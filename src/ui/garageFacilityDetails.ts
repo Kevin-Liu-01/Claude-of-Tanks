@@ -3198,7 +3198,7 @@ export function addGarageFacilityDetails({
         clusterBox(bunker, 0, faceT / 2 + 0.01, 0.4 + board * 0.55, 2 * halfFace - 0.1, 0.03, 0.03, concreteDark, 'masonry');
       }
       // the blast doors: two steel leaves on a top track, the left drawn back against its pier, the right half open
-      // across the opening (the right pier carries the LED panel and the bunker's number and crest)
+      // across the opening (the right pier carries the slideshow's CRT and the bunker's number and crest)
       clusterBox(bunker, -1.6, faceT / 2 + 0.35, portalH + 0.35, 9.6, 0.18, 0.18, dark, 'structure'); // the track
       for (const [leafU, leafW] of [[-portalHalf - 1.6, 3.1], [1.55, 3.1]] as const) {
         clusterBox(bunker, leafU, faceT / 2 + 0.25, portalH / 2 + 0.05, leafW, portalH - 0.1, 0.16, steelLeaf, 'structure');
@@ -3648,7 +3648,7 @@ export function addGarageFacilityDetails({
       }
       // the drainage pumps and the yard kit round the bay
       addServiceManifold(fixedCluster(-9.5, 13.5), 0, 0, 4.2);
-      // (garage r9: the winch stood in front of the LED panel's column: the canopy's A-frame does the lifting now)
+      // (garage r9: the winch stood in front of the slideshow's column: the canopy's A-frame does the lifting now)
       addSafetyRail(fixedCluster(-11.5, 18.5), 0, 0, 6.5);
       addHydrostaticInspectionDock(fixedCluster(15.5, 24.0), 0, 0, new THREE.Color(0x456d5c));
   };

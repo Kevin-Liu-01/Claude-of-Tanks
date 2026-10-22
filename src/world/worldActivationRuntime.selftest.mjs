@@ -441,4 +441,32 @@ for (const recovery of ['ordinary-ensure', 'ordinary-activate', 'ordinary-resume
   assert.equal(h.activity.length, 0, 'invalid early warm intent cannot change sky or scene ownership');
 }
 
+// (2026-10-19, black-screen-228 RC5) the activation's one hidden frame: only a world nobody presents sits it out, and it
+// comes back on every exit, a rejected frame wait included (the cache hands that world object to the next entry)
+{
+  const hiddenAtFrame = [];
+  let failNext = false;
+  const target = world('built', 2);
+  const instance = createWorldActivationRuntime({
+    ...runtimeOptions,
+    coordinator: { ...coordinator, cache: new Map(), beginBuild: () => ({ promise: Promise.resolve(target), listeners: new Set(),
+      fraction: 1, label: 'Ready', stageTimings: {} }), cancelBackgroundExcept() {} },
+    nextFrame: async () => {
+      hiddenAtFrame.push(!target.group.visible);
+      if (failNext) { failNext = false; throw new Error('frame wait rejected'); }
+    },
+  });
+  failNext = true;
+  await assert.rejects(instance.ensure('built', null), /frame wait rejected/);
+  assert.equal(hiddenAtFrame[0], true, 'a world nobody presents sits out its one frame');
+  assert.equal(target.group.visible, true, 'a rejected frame wait leaves the world visible');
+  await instance.ensure('built', null);
+  assert.equal(instance.current, target);
+  hiddenAtFrame.length = 0;
+  await instance.ensure('built', null);
+  assert.ok(hiddenAtFrame.length > 0 && hiddenAtFrame.every((hidden) => hidden === false),
+    'the active, presented world is never hidden by a repeated activation');
+  assert.equal(target.group.visible, true);
+}
+
 console.log('worldActivationRuntime.selftest: activation, services, warm, sky restoration, dormancy, traces and single selected battle IBL/recovery passed');

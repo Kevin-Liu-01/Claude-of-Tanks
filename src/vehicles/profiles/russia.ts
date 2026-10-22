@@ -247,6 +247,8 @@ interface SkirtBandOptions {
 interface FlapBaseOptions {
   readonly x: number;
   readonly w: number;
+  /** 2026-10-21: 'painted-rubber' paints the flaps in the vehicle scheme (finish only); default bare rubber. */
+  readonly material?: 'rubber' | 'painted-rubber';
 }
 
 type FlapOptions = FlapBaseOptions & (
@@ -1098,12 +1100,12 @@ export function ruFlaps(P: RussiaMudguardPort, o: FlapOptions): void {
     const xf = s * o.x;
     if (o.front) MUDGUARDS.add(P, { hang: true,
       label: `ru-front-flap-${s}`, x: xf, y: o.front[0], z: o.frontZ,
-      thickness: 0.045, length: o.w, height: o.front[1], material: 'rubber',
+      thickness: 0.045, length: o.w, height: o.front[1], material: o.material ?? 'rubber',
       rotation: [0, Math.PI / 2, 0], crown: 0.014, frontCut: o.front[1] * 0.11,
     });
     if (o.rear) MUDGUARDS.add(P, {
       label: `ru-rear-flap-${s}`, x: xf, y: o.rear[0], z: o.rearZ,
-      thickness: 0.045, length: o.w, height: o.rear[1], material: 'rubber',
+      thickness: 0.045, length: o.w, height: o.rear[1], material: o.material ?? 'rubber',
       rotation: [0, Math.PI / 2, 0], crown: 0.014, rearCut: o.rear[1] * 0.09,
     });
   }
@@ -1472,7 +1474,7 @@ export function buildT62Obr1975(P: RussiaBuilderPort): void {
     // sinks the run under the dome line while the muzzle still rakes
     // visibly forward over the crown.)
     // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's DShKM)
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'dshk', scale: 1.08, tone: 'two-tone', elev: 0.02, ammo: true, working: true });
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'dshk', scale: 1.08, tone: 'two-tone', elev: 0.02, ammo: true, working: true, ridingCradle: true });
     mg.position.set(-0.572, 0.92, -0.30);
     mg.rotation.y = -0.06;
     P.turretG.add(mg);

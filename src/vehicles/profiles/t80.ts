@@ -755,7 +755,7 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
       const mg = FITTINGS.pintleMG({
         mats: P.mats, cls: 'nsvt', scale: v === 2 ? 0.84 : 0.88,
         tone: 'two-tone', ammo: true, shield: true, elev: 0,
-        working: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
+        working: true, ridingCradle: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
       });
       mg.rotation.set(0, 0, 0);
       mg.userData.supportAssembly = station.name;

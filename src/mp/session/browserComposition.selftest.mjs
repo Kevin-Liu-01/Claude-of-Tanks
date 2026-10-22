@@ -269,9 +269,9 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
     showActiveRoom(notice, code = null) { menu.shown.push(notice); menu.shownCodes.push(code); calls.push(`menu.show:${notice}`); return true; },
   };
   const battleLoad = {
-    visible: false, progressLabels: [], shows: [],
+    visible: false, progressLabels: [], shows: [], rosterCalls: [],
     show(info) { battleLoad.visible = true; battleLoad.shows.push(info); calls.push(`load.show:${info.mapName}`); },
-    rosters() {},
+    rosters(allies, enemies, teams) { battleLoad.rosterCalls.push({ allies, enemies, teams: teams ?? null }); },
     progress(fraction, label) { battleLoad.progressLabels.push([fraction, label]); },
     async hide() { battleLoad.visible = false; calls.push('load.hide'); },
   };
@@ -430,6 +430,13 @@ assert.ok(calls.indexOf('battleStart:me:m1a1_abrams_hc:alpine') < calls.indexOf(
 assert.equal(harness.battleLoad.shows.at(-1).mapName, 'Map alpine', 'the loader names the concrete battlefield of match_start, not the room default');
 assert.equal(harness.battleLoad.shows.at(-1).allies[0].isPlayer, true);
 assert.equal(harness.battleLoad.shows.at(-1).enemies[0].id, 'm1a1_abrams_hc');
+// TEAM NATIONS on the room's loader (round 2, E10; round 3 the critic's E-R2-3: no receipt read the third argument): under
+// MONO-NATION each side's flag comes off its seated vehicles — both seats here drive the American Abrams
+{
+  const flags = harness.battleLoad.rosterCalls.at(-1)?.teams;
+  assert.ok(flags, 'the room loader is handed the sides\' flags');
+  assert.deepEqual([flags.allied, flags.enemy, flags.alliedFills.length, flags.enemyFills.length], ['USA', 'USA', 0, 0], 'each side\'s country off its seats');
+}
 assert.equal(harness.presentations.length, 1);
 const recorded = harness.presentations[0];
 assert.equal(recorded.options.spectator, false);

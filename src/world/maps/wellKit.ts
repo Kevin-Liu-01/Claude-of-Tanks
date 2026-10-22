@@ -43,7 +43,7 @@ import {
 } from './craftMesh.ts';
 
 export type WellForm = 'zhuravel' | 'logwell' | 'drawwell' | 'pump' | 'granite' | 'desert' | 'tubewell' | 'ringwell' | 'trough' | 'windlass';
-export type MonumentForm = 'krieger' | 'lorraine' | 'stele';
+export type MonumentForm = 'krieger' | 'lorraine' | 'stele' | 'saeule';
 
 /** Each place's well: by its kit, else by its map (a map with no kit). */
 export const WELL_FORMS: Readonly<Record<string, WellForm>> = Object.freeze({
@@ -72,6 +72,8 @@ export function monumentFormFor(architectureId: string | null | undefined, mapId
 export interface WellBuildContext {
   stone?: { kind: StoneSurfaceKind; dressed: boolean; tint: Rgb; damp: number } | null;
   seed?: number;
+  /** a phone's build (the column's shaft a plain 12-gon, not fluted) */
+  mobile?: boolean;
 }
 export function wellStoneOf(style: ArchitectureStyle | null | undefined): WellBuildContext['stone'] {
   if (!style) return null;
@@ -1198,12 +1200,336 @@ function stele(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry {
   return m.geometry();
 }
 
+// --------------------------------------------------------------------------------------------- the Friedenssäule
+// (the maps lane, 228; the owner's pick, 2026-10-18: "a civic square with a tree-lined green, memorial column and parked
+// period cars") a Franconian town's victory column of 1871 that later took the tablets of 1914-18 and 1939-45: three
+// octagonal steps of Burgsandstein, the pedestal — its base course, the die with a polished tablet sunk in each face (the
+// town's arms in relief over lettering worn past reading, a laurel on the back), its cornice — an Attic base, a Tuscan
+// shaft of seven drums tapering on its entasis (sixteen flutes; a phone's plain twelve-sided shaft), the capital
+// (necking, echinus, abacus), the figure drum and the gilt Victoria: her robe, her wings, the wreath raised in her right
+// hand, the palm in her left; two bronze wreaths left at the front. 12.3 m. Broken: the shaft snaps above its second
+// drum; the drums above it, the capital and the Victoria lie out along the fall, the stub standing on the pedestal.
+// No national emblem and no legible name (the plan's sensitivity rule): the arms are a town's tower, the words strokes.
+
+const COLUMN_STEPS = [2.05, 1.8, 1.55] as const, COLUMN_RISE = 0.18;
+const COLUMN_STONE: Rgb = hexLin(0xb89e7a);
+const GILT_BRIGHT: Rgb = hexLin(0xc8a040), GILT_DEEP: Rgb = hexLin(0x8f7230), VERDIGRIS: Rgb = hexLin(0x5f8a74), BRONZE_DARK: Rgb = hexLin(0x6a5a3a);
+/** The column's heights (m over the ground): the steps' top, the die, the cornice, the shaft and the figure. */
+const COLUMN_Y = (() => {
+  const steps = COLUMN_STEPS.length * COLUMN_RISE, base = steps + 0.25, die = base + 1.35, cornice = die + 0.3;
+  const attic = cornice + 0.4, shaft = attic + 6.4, capital = shaft + 0.55, drum = capital + 0.4;
+  return { steps, base, die, cornice, attic, shaft, capital, drum, top: drum + 2.1 };
+})();
+const SHAFT_R0 = 0.5, SHAFT_R1 = 0.42, DRUMS = 7;
+
+/** The shaft's radius at height y (its entasis: a swell a third of the way up). */
+function shaftRadius(y: number): number {
+  const t = Math.max(0, Math.min(1, (y - COLUMN_Y.attic) / (COLUMN_Y.shaft - COLUMN_Y.attic)));
+  return SHAFT_R0 + (SHAFT_R1 - SHAFT_R0) * t + 0.012 * Math.sin(Math.PI * Math.min(1, t * 1.5));
+}
+
+/** A surface of revolution on the flat texel: `profile` [r, y] bottom up round `axis` through `o` (vertical by default),
+ *  `n` sides, its colour by `shade`. `top` closes the last ring. */
+function latheFlat(m: Mesh, profile: ReadonlyArray<readonly [number, number]>, n: number, shade: (q: V3, nn: V3) => Rgb,
+  opts: { o?: V3; axis?: V3; top?: boolean; bottom?: boolean; phase?: number } = {}): void {
+  const o = opts.o ?? [0, 0, 0], ax = opts.axis ?? Y;
+  const ref: V3 = Math.abs(ax[1]) > 0.9 ? [0, 0, 1] : [0, 1, 0];
+  const s1 = normal3(cross3(ax, ref)), s2 = cross3(s1, ax);
+  const uv = (): [number, number] => [m.surface.flatUv?.[0] ?? 0.5, m.surface.flatUv?.[1] ?? 0.5];
+  const at = (r: number, y: number, a: number): V3 => add(o, add(scl(ax, y), add(scl(s1, Math.sin(a) * r), scl(s2, Math.cos(a) * r))));
+  const ph = opts.phase ?? 0;
+  for (let j = 0; j + 1 < profile.length; j++) {
+    const [r0, y0] = profile[j], [r1, y1] = profile[j + 1];
+    for (let k = 0; k < n; k++) {
+      const a0 = ph + (k / n) * Math.PI * 2, a1 = ph + ((k + 1) / n) * Math.PI * 2, am = (a0 + a1) / 2;
+      const out = add(add(scl(s1, Math.sin(am) * (y1 - y0)), scl(s2, Math.cos(am) * (y1 - y0))), scl(ax, r0 - r1));
+      m.quad(at(r0, y0, a0), at(r0, y0, a1), at(r1, y1, a1), at(r1, y1, a0), out, uv, shade, false);
+    }
+  }
+  const capAt = (j: number, sign: number): void => {
+    const [r, y] = profile[j];
+    if (!(r > 0)) return;
+    const c = add(o, scl(ax, y)), nn = scl(ax, sign);
+    for (let k = 0; k < n; k++) {
+      const a0 = ph + (k / n) * Math.PI * 2, a1 = ph + ((k + 1) / n) * Math.PI * 2;
+      m.quad(c, at(r, y, a0), at(r, y, a1), c, nn, uv, shade, false);
+    }
+  };
+  if (opts.top) capAt(profile.length - 1, 1);
+  if (opts.bottom) capAt(0, -1);
+}
+const cross3 = (a: V3, b: V3): V3 => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const normal3 = (a: V3): V3 => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+
+/** An octagonal course of eight dressed stones, circumradius R, `ring` m deep, from y0 to y1, each its own unit. */
+function octagonCourse(m: Mesh, ctx: WellBuildContext, R: number, ring: number, y0: number, y1: number, k: number, chipped = -1): void {
+  const shade = weathered(ctx, k, { lichen: 0.9 }), ym = (y0 + y1) / 2;
+  const rho = R * Math.cos(Math.PI / 8) - ring / 2, half = R * Math.sin(Math.PI / 8) - 0.004;
+  for (let i = 0; i < 8; i++) {
+    const am = ((i + 0.5) / 8) * Math.PI * 2, nx = Math.sin(am), nz = Math.cos(am), tx = Math.cos(am), tz = -Math.sin(am);
+    const cx = nx * rho, cz = nz * rho, top = i === chipped ? y1 - 0.06 : y1;
+    member(m, [cx - tx * half, (y0 + top) / 2, cz - tz * half], [cx + tx * half, (y0 + top) / 2, cz + tz * half], ring, top - y0, [nx, 0, nz],
+      [1, 1, 1], MASON, { chamfer: i === chipped ? 0.07 : 0.025, shade });
+    void ym;
+  }
+}
+
+/** One drum of the shaft from y0 to y1 at the origin (or laid along `axis` from `o`): sixteen flutes, or a plain
+ *  twelve-gon on a phone; its own tone; its top and bottom joint faces. */
+function shaftDrum(m: Mesh, y0: number, y1: number, k: number, fluted: boolean, place?: { o: V3; axis: V3 }): void {
+  const n = fluted ? 32 : 12, base = mul(COLUMN_STONE, k);
+  const shade = (q: V3, nn: V3): Rgb => {
+    // lichen at the joints (the bottom and top 8 cm), a damp foot on the lowest drum
+    const local = place ? 0 : q[1];
+    const nearJoint = place ? 0.4 : Math.min(Math.abs(local - y0), Math.abs(local - y1)) < 0.08 ? 1 : 0;
+    const b = blotch(q, 5);
+    let c = mul(base, 0.97 + b * 0.06);
+    if (nearJoint && b > 0.55) c = mulRgb(c, mix([1, 1, 1], LICHEN, 0.45));
+    if (!place && q[1] < COLUMN_Y.attic + 0.5) c = mul(c, 0.92);
+    return mul(c, 0.94 + 0.06 * Math.max(0, nn[1]));
+  };
+  const prof: Array<[number, number]> = [];
+  for (let s = 0; s <= 2; s++) { const y = y0 + ((y1 - y0) * s) / 2; prof.push([shaftRadius(y), y - (place ? y0 : 0)]); }
+  if (!fluted) { latheFlat(m, prof, n, shade, { o: place?.o, axis: place?.axis, top: true, bottom: !!place }); return; }
+  // fluted: the arrises at the drum's radius, the flutes' floors 6 % in (a 32-sided section, alternating)
+  const o = place?.o ?? [0, 0, 0], ax = place?.axis ?? Y;
+  const ref: V3 = Math.abs(ax[1]) > 0.9 ? [0, 0, 1] : [0, 1, 0];
+  const s1 = normal3(cross3(ax, ref)), s2 = cross3(s1, ax);
+  const uv = (): [number, number] => [m.surface.flatUv?.[0] ?? 0.5, m.surface.flatUv?.[1] ?? 0.5];
+  const at = (r: number, y: number, a: number): V3 => add(o, add(scl(ax, y), add(scl(s1, Math.sin(a) * r), scl(s2, Math.cos(a) * r))));
+  for (let j = 0; j + 1 < prof.length; j++) {
+    for (let i = 0; i < n; i++) {
+      const a0 = (i / n) * Math.PI * 2, a1 = ((i + 1) / n) * Math.PI * 2, f0 = i % 2 ? 0.94 : 1, f1 = (i + 1) % 2 ? 0.94 : 1;
+      const p00 = at(prof[j][0] * f0, prof[j][1], a0), p01 = at(prof[j][0] * f1, prof[j][1], a1);
+      const p10 = at(prof[j + 1][0] * f0, prof[j + 1][1], a0), p11 = at(prof[j + 1][0] * f1, prof[j + 1][1], a1);
+      const am = (a0 + a1) / 2, out = add(scl(s1, Math.sin(am)), scl(s2, Math.cos(am)));
+      m.quad(p00, p01, p11, p10, out, uv, shade, false);
+    }
+  }
+  for (const [j, sign] of [[prof.length - 1, 1], ...(place ? [[0, -1] as const] : [])] as const) {
+    const c = add(o, scl(ax, prof[j][1])), nn = scl(ax, sign);
+    for (let i = 0; i < n; i++) {
+      const a0 = (i / n) * Math.PI * 2, a1 = ((i + 1) / n) * Math.PI * 2;
+      m.quad(c, at(prof[j][0] * (i % 2 ? 0.94 : 1), prof[j][1], a0), at(prof[j][0] * ((i + 1) % 2 ? 0.94 : 1), prof[j][1], a1), c, nn, uv, shade, false);
+    }
+  }
+}
+
+/** The capital (necking, echinus, abacus) and the figure drum, from y (at the origin, or laid along `axis` from `o`). */
+function columnCapital(m: Mesh, ctx: WellBuildContext, y: number, place?: { o: V3; axis: V3 }): void {
+  const shade = weathered(ctx, 1.02, { lichen: 0.5, base: COLUMN_STONE });
+  const off = place ? -y : 0;
+  latheFlat(m, [[SHAFT_R1 + 0.01, y + off], [SHAFT_R1 + 0.035, y + 0.03 + off], [SHAFT_R1 + 0.035, y + 0.08 + off], [SHAFT_R1, y + 0.1 + off],
+    [SHAFT_R1 + 0.02, y + 0.2 + off], [0.56, y + 0.33 + off], [0.6, y + 0.37 + off]], 24, shade, { o: place?.o, axis: place?.axis, top: true, bottom: !!place });
+  // the abacus: a square slab 1.25 m, its arrises cut back
+  if (!place) {
+    block(m, 0, 0, y + 0.37, y + 0.55, 1.25, 1.25, COLUMN_STONE, FLAT, { chamfer: 0.03, shade });
+    latheFlat(m, [[0.44, y + 0.55], [0.44, y + 0.88], [0.47, y + 0.9], [0.47, y + 0.95]], 24, shade, { top: true });
+  } else {
+    // laid down: the abacus and the figure drum along the axis past the echinus
+    const a = add(place.o, scl(place.axis, 0.37)), b = add(place.o, scl(place.axis, 0.55));
+    member(m, a, b, 1.25, 1.25, [0, 1, 0], COLUMN_STONE, FLAT, { chamfer: 0.03, shade });
+    latheFlat(m, [[0.44, 0.55], [0.44, 0.88], [0.47, 0.9], [0.47, 0.95]], 24, shade, { o: place.o, axis: place.axis, top: true });
+  }
+}
+
+/** The gilt Victoria, about 2.1 m, standing on y (her front local +z): robe, bodice, head, wings, the raised wreath,
+ *  the palm. Every member meets the one it hangs from (the r2 grounding). */
+function victoria(m: Mesh, y: number, phone: boolean): void {
+  const u = 1, n = phone ? 7 : 10;
+  const gilt = (q: V3, nn: V3): Rgb => mix(GILT_DEEP, GILT_BRIGHT, Math.max(0, Math.min(1, 0.35 + 0.55 * Math.max(0, nn[1]) + 0.25 * Math.max(0, nn[2])
+    + (blotch(q, 9) - 0.5) * 0.2)));
+  const G = { chamfer: 0.025, shade: gilt };
+  // the robe: flaring from the girdle to the plinth, a fold swung forward over the stepping left foot
+  latheFlat(m, [[0.36, y], [0.37, y + 0.05], [0.33, y + 0.3], [0.27, y + 0.7], [0.21, y + 1.0], [0.19, y + 1.12]], n, gilt, { bottom: false });
+  member(m, [-0.12, y + 0.05, 0.2], [-0.14, y + 0.9, 0.14], 0.16, 0.12, X, GILT_BRIGHT, FLAT, G);
+  member(m, [0.15, y + 0.05, 0.22], [0.1, y + 0.75, 0.12], 0.12, 0.1, X, GILT_DEEP, FLAT, G);
+  // the bodice and the shoulders, the neck and the head with its knot of hair
+  member(m, [0, y + 1.08, 0], [0, y + 1.5, 0], 0.4 * u, 0.25, Z, GILT_BRIGHT, FLAT, { chamfer: 0.07, shade: gilt });
+  member(m, [-0.24, y + 1.45, 0], [0.24, y + 1.45, 0], 0.12, 0.2, Y, GILT_BRIGHT, FLAT, { chamfer: 0.05, shade: gilt });
+  latheFlat(m, [[0.05, y + 1.5], [0.055, y + 1.58], [0.1, y + 1.62], [0.115, y + 1.7], [0.1, y + 1.79], [0.05, y + 1.83], [0.0, y + 1.84]], n, gilt, { top: false });
+  latheFlat(m, [[0.05, y + 1.74], [0.07, y + 1.78], [0.05, y + 1.83], [0, y + 1.84]], 6, gilt, { o: [0, 0, -0.08] });
+  // the right arm raised high, the laurel wreath in its hand
+  member(m, [0.22, y + 1.47, 0.0], [0.3, y + 1.78, 0.06], 0.085, 0.085, X, GILT_BRIGHT, FLAT, G);
+  member(m, [0.3, y + 1.76, 0.06], [0.34, y + 2.06, 0.1], 0.075, 0.075, X, GILT_BRIGHT, FLAT, G);
+  const wc: V3 = [0.35, y + 2.2, 0.11], wr = 0.13, wn = phone ? 8 : 12;
+  for (let k = 0; k < wn; k++) {
+    const a0 = (k / wn) * Math.PI * 2, a1 = ((k + 1.15) / wn) * Math.PI * 2;
+    member(m, add(wc, [Math.sin(a0) * wr, Math.cos(a0) * wr, 0]), add(wc, [Math.sin(a1) * wr, Math.cos(a1) * wr, 0]), 0.045, 0.035, Z, GILT_BRIGHT, FLAT, { shade: gilt });
+  }
+  // the left arm lowered and forward, the palm branch rising from its hand
+  member(m, [-0.22, y + 1.47, 0], [-0.3, y + 1.2, 0.1], 0.085, 0.085, X, GILT_BRIGHT, FLAT, G);
+  member(m, [-0.3, y + 1.22, 0.1], [-0.28, y + 1.04, 0.32], 0.075, 0.075, X, GILT_BRIGHT, FLAT, G);
+  const p0: V3 = [-0.28, y + 1.0, 0.34], p1: V3 = [-0.33, y + 1.82, 0.44];
+  member(m, p0, p1, 0.03, 0.03, X, GILT_DEEP, FLAT, { shade: gilt });
+  for (let k = 1; k <= (phone ? 4 : 7); k++) {
+    const t = k / (phone ? 5 : 8), c: V3 = add(p0, scl(sub3(p1, p0), t)), l = 0.22 * (1 - t * 0.55);
+    for (const s of [-1, 1]) member(m, c, add(c, [s * l, l * 0.55, 0.03]), 0.05, 0.012, Z, GILT_BRIGHT, FLAT, { shade: gilt });
+  }
+  // the wings: from her shoulder blades back and up, each a whole swept plate (both faces) under its leading edge's
+  // member, the primaries' scallops along its trailing edge (228 r2, the blind critics: three separate blades a wing
+  // read as "a spiky blob" against the sky)
+  for (const s of [-1, 1]) {
+    const root: V3 = [s * 0.09, y + 1.42, -0.1];
+    const edge: V3[] = [[s * 0.16, y + 1.6, -0.15], [s * 0.33, y + 1.95, -0.29], [s * 0.5, y + 2.12, -0.42], [s * 0.55, y + 1.92, -0.47],
+      [s * 0.52, y + 1.66, -0.5], [s * 0.45, y + 1.4, -0.48], [s * 0.34, y + 1.2, -0.42], [s * 0.2, y + 1.22, -0.26]];
+    // (flat on the kit's print: its colour over the print's texel, its uv the texel's, as a FLAT member's)
+    const uv: readonly [number, number] = [m.surface.flatUv?.[0] ?? 0.5, m.surface.flatUv?.[1] ?? 0.5];
+    for (let k = 0; k + 1 < edge.length; k++) {
+      const a = edge[k], b = edge[k + 1];
+      const e1 = sub3(a, root), e2 = sub3(b, root);
+      const cr: V3 = [e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]];
+      const l = Math.hypot(cr[0], cr[1], cr[2]) || 1, nn: V3 = [cr[0] / l, cr[1] / l, cr[2] / l], back: V3 = [-nn[0], -nn[1], -nn[2]];
+      // each face a hair off the plate's mid-plane (no z-fight between them)
+      const off = (p: V3, n: V3): V3 => [p[0] + n[0] * 0.008, p[1] + n[1] * 0.008, p[2] + n[2] * 0.008];
+      m.tri(off(root, nn), off(a, nn), off(b, nn), nn, nn, nn, uv, uv, uv, m.colour(gilt(root, nn), false));
+      m.tri(off(root, back), off(b, back), off(a, back), back, back, back, uv, uv, uv, m.colour(gilt(root, back), false));
+    }
+    member(m, root, edge[2], 0.07, 0.05, [s, 0, 0.3], GILT_BRIGHT, FLAT, { chamfer: 0.015, shade: gilt });
+  }
+}
+
+/** A bronze laurel wreath leant against the die's front (its ring tilted 15 degrees back, its ribbon's tails on the
+ *  step), standing on y. */
+function leaningWreath(m: Mesh, x: number, y: number, z: number, rad: number): void {
+  const n = 14, lean = 0.26, bronze = (q: V3): Rgb => mix(VERDIGRIS, BRONZE_DARK, blotch(q, 11) * 0.7);
+  const at = (a: number, rr: number): V3 => [x + Math.sin(a) * rr, y + rad + Math.cos(a) * rr * Math.cos(lean), z + Math.cos(a) * rr * Math.sin(lean)];
+  for (let k = 0; k < n; k++) {
+    const a0 = (k / n) * Math.PI * 2, a1 = ((k + 1.2) / n) * Math.PI * 2;
+    member(m, at(a0, rad), at(a1, rad), 0.09, 0.06, [0, Math.sin(lean), -Math.cos(lean)], VERDIGRIS, FLAT, { shade: bronze });
+  }
+  for (const t of [-1, 1]) member(m, at(Math.PI, rad), [x + t * 0.12, y + 0.01, z + 0.12], 0.05, 0.015, [0, 1, 0], BRONZE_DARK, FLAT, { shade: bronze });
+}
+
+/** The town's arms in relief over a face's tablet: a shield of the die's stone, a tower with its gate on it. */
+function armsRelief(m: Mesh, ctx: WellBuildContext, face: number, y: number): void {
+  // (carved in the die's own stone: on its print, a shade lighter where it stands proud)
+  const shade = weathered(ctx, 1.08, { lichen: 0.3 }), K: Rgb = [1.08, 1.08, 1.08];
+  const z0 = face - 0.004, z1 = face + 0.025;
+  member(m, [-0.2, y, (z0 + z1) / 2], [0.2, y, (z0 + z1) / 2], z1 - z0, 0.24, [0, 0, 1], K, MASON, { shade });
+  for (const s of [-1, 1]) member(m, [s * 0.2, y - 0.12, (z0 + z1) / 2], [0, y - 0.36, (z0 + z1) / 2], z1 - z0, 0.18, [0, 0, 1], K, MASON, { shade });
+  // the tower: its body, three merlons, the gate's arch a step back
+  const zt = z1 + 0.012, T: Rgb = [1.14, 1.14, 1.14];
+  member(m, [0, y - 0.25, zt], [0, y + 0.06, zt], 0.13, 0.022, [1, 0, 0], T, MASON, { shade: weathered(ctx, 1.14, { lichen: 0.2 }) });
+  for (const s of [-1, 0, 1]) member(m, [s * 0.045, y + 0.06, zt], [s * 0.045, y + 0.1, zt], 0.03, 0.022, [1, 0, 0], T, MASON, { shade: weathered(ctx, 1.14, { lichen: 0.2 }) });
+}
+
+function saeule(ctx: WellBuildContext, broken: boolean): THREE.BufferGeometry {
+  const m = meshFor(false, ctx), r = stream(0x5a01 + (ctx.seed ?? 0)), phone = !!ctx.mobile;
+  const Yc = COLUMN_Y;
+  // the steps: three octagonal courses of dressed stones (each upper course sits on the one below's inside)
+  COLUMN_STEPS.forEach((R, k) => {
+    const next = COLUMN_STEPS[k + 1] ?? 1.0, ring = Math.min(R, R - next + 0.25), y0 = k ? k * COLUMN_RISE : -0.12;
+    octagonCourse(m, ctx, R, ring, y0, (k + 1) * COLUMN_RISE, 0.98 + k * 0.015, broken ? (k === 0 ? 5 : k === 1 ? 2 : -1) : -1);
+  });
+  // the pedestal: its base course, the die with its four sunk panels and their tablets, the cornice
+  squareCourse(m, ctx, 2.0, 0.5, Yc.steps - 0.02, Yc.base, 1.0, { chamfer: 0.03 });
+  block(m, 0, 0, Yc.steps, Yc.base - 0.01, 1.0, 1.0, COLUMN_STONE, FLAT, { shade: weathered(ctx, 0.95) });
+  const dw = 1.8, depth = 0.045;
+  const panel: SunkPanel = { u0: -0.6, u1: 0.6, y0: Yc.base + 0.18, y1: Yc.die - 0.2 };
+  sunkDie(m, ctx, dw, dw, Yc.base, Yc.die, { px: panel, nx: panel, pz: panel, nz: panel }, depth, [1, 1, 1], MASON, Yc.die + 0.02);
+  // the front: the arms over the lettering; the sides: the two wars' tablets; the back: the laurel
+  tablet(m, 'pz', dw / 2, depth, { ...panel, y1: panel.y1 - 0.42 }, 5, r);
+  armsRelief(m, ctx, dw / 2 - depth, panel.y1 - 0.2);
+  for (const side of ['px', 'nx'] as const) tablet(m, side, dw / 2, depth, panel, 9, r);
+  wreath(m, 'nz', dw / 2 - depth + 0.01, 0, (panel.y0 + panel.y1) / 2, 0.24);
+  band(m, ctx, dw + 0.04, dw + 0.04, Yc.die, Yc.die + 0.08, 1.03, 0.015);
+  band(m, ctx, dw + 0.24, dw + 0.24, Yc.die + 0.08, Yc.die + 0.22, 1.05, 0.04);
+  band(m, ctx, dw + 0.08, dw + 0.08, Yc.die + 0.22, Yc.cornice, 1.04, 0.025);
+  // the two bronze wreaths left at the front, on the top step
+  for (const s of [-1, 1]) leaningWreath(m, s * 0.42, Yc.steps, dw / 2 + 0.1, 0.3);
+  // the Attic base: plinth, torus, scotia, torus
+  const sh = weathered(ctx, 1.0, { lichen: 0.6, base: COLUMN_STONE });
+  block(m, 0, 0, Yc.cornice, Yc.cornice + 0.1, 1.2, 1.2, COLUMN_STONE, FLAT, { chamfer: 0.02, shade: sh });
+  latheFlat(m, [[0.6, Yc.cornice + 0.1], [0.62, Yc.cornice + 0.15], [0.6, Yc.cornice + 0.2], [0.54, Yc.cornice + 0.24], [0.53, Yc.cornice + 0.3],
+    [0.56, Yc.cornice + 0.34], [SHAFT_R0 + 0.02, Yc.attic - 0.02], [SHAFT_R0, Yc.attic]], phone ? 12 : 24, sh, { top: false });
+  // the shaft in its drums
+  const dh = (Yc.shaft - Yc.attic) / DRUMS, fluted = !phone;
+  const snapAt = Yc.attic + dh * 2 + dh * 0.4;
+  for (let d = 0; d < DRUMS; d++) {
+    const y0 = Yc.attic + d * dh + (d ? 0.003 : 0), y1 = Yc.attic + (d + 1) * dh - 0.003;
+    const tone = 0.95 + hash(d, 3, 0x5ae1) * 0.1;
+    if (!broken) { shaftDrum(m, y0, y1, tone, fluted); continue; }
+    if (d < 2) { shaftDrum(m, y0, y1, tone, fluted); continue; }
+    if (d === 2) {
+      // the snapped drum: its lower part standing, its top broken ragged
+      const start = m.mark;
+      shaftDrum(m, y0, y1, tone, fluted);
+      snap(m, start, ragged(snapAt, 4.2));
+    }
+  }
+  if (!broken) {
+    columnCapital(m, ctx, Yc.shaft);
+    victoria(m, Yc.drum, phone);
+    return m.geometry();
+  }
+  // the fall: along a bearing in the frame, the drums laid out one after another, each turned a little off it; the
+  // capital past them and the Victoria face down at the end
+  const bearing = 2.1 + r() * 0.3, bx = Math.sin(bearing), bz = Math.cos(bearing);
+  let d = 2.6;
+  for (let k = 2; k < DRUMS; k++) {
+    const len = k === 2 ? dh * 0.6 : dh, yaw = bearing + (r() - 0.5) * 0.6;
+    const ax: V3 = [Math.sin(yaw), 0, Math.cos(yaw)], rad = shaftRadius(Yc.attic + k * dh);
+    d += k === 2 ? 0.6 : 0.25 + r() * 0.4;
+    const side = (r() - 0.5) * 1.2;
+    const o: V3 = [bx * d + bz * side - ax[0] * len / 2, rad - 0.02, bz * d - bx * side - ax[2] * len / 2];
+    const y0 = Yc.attic + k * dh;
+    // a laid drum: the same section along its own axis
+    const start = m.mark;
+    shaftDrum(m, y0, y0 + len, 0.94 + hash(k, 3, 0x5ae1) * 0.1, fluted, { o, axis: ax });
+    void start;
+    d += len;
+  }
+  d += 0.5;
+  {
+    const yaw = bearing + 0.35, ax: V3 = [Math.sin(yaw), 0, Math.cos(yaw)];
+    columnCapital(m, ctx, 0, { o: [bx * d, 0.62, bz * d], axis: ax });
+    d += 1.6;
+  }
+  // the Victoria thrown face down past the capital, a wing broken off beside her
+  const vs = m.mark;
+  victoria(m, 0, phone);
+  m.tilt(vs, [0, 0, 0], [1, 0, 0], Math.PI / 2 - 0.08);
+  m.turn(vs, 0, 0, bearing);
+  let low = Infinity;
+  for (let i = vs; i < m.mark; i += 3) low = Math.min(low, m.p[i + 1]);
+  for (let i = vs; i < m.mark; i += 3) { m.p[i] += bx * d; m.p[i + 1] += 0.03 - low; m.p[i + 2] += bz * d; }
+  return m.geometry();
+}
+
+/**
+ * The column's collision solid, the same on every tier: its octagonal steps, the pedestal and the shaft as three plain
+ * prisms. The props refit its records to this, not to the drawn stones: the steps' stone-by-stone slivers grew needles
+ * at the bots' clearance (a mitred margin) and closed the planner's diagonals past the column (the plan's seat keeps
+ * them 2.75 m clear of its octagon).
+ */
+export function memorialColumnSolid(): THREE.BufferGeometry {
+  const steps = new THREE.CylinderGeometry(COLUMN_STEPS[0], COLUMN_STEPS[0], COLUMN_Y.steps + 0.12, 8).toNonIndexed();
+  steps.translate(0, (COLUMN_Y.steps - 0.12) / 2, 0);
+  const pedestal = new THREE.BoxGeometry(2.04, COLUMN_Y.cornice - COLUMN_Y.steps, 2.04).toNonIndexed();
+  pedestal.translate(0, (COLUMN_Y.cornice + COLUMN_Y.steps) / 2, 0);
+  const shaft = new THREE.CylinderGeometry(SHAFT_R1, 0.62, COLUMN_Y.drum + 1.9 - COLUMN_Y.cornice, 12).toNonIndexed();
+  shaft.translate(0, (COLUMN_Y.drum + 1.9 + COLUMN_Y.cornice) / 2, 0);
+  const parts = [steps, pedestal, shaft];
+  const count = parts.reduce((n, g) => n + g.attributes.position.count, 0), pos = new Float32Array(count * 3), nrm = new Float32Array(count * 3);
+  let at = 0;
+  for (const g of parts) { pos.set(g.attributes.position.array as Float32Array, at * 3); nrm.set(g.attributes.normal.array as Float32Array, at * 3); at += g.attributes.position.count; g.dispose(); }
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  return out;
+}
+
+/** The column's record height (m): the Victoria's wreath. */
+export const MEMORIAL_COLUMN_HEIGHT = COLUMN_Y.top;
+
 /** A map's monument, intact or broken. */
 export function buildMonument(form: MonumentForm, ctx: WellBuildContext, broken = false): THREE.BufferGeometry {
   switch (form) {
     case 'krieger': return krieger(ctx, broken);
     case 'lorraine': return lorraine(ctx, broken);
     case 'stele': return stele(ctx, broken);
+    case 'saeule': return saeule(ctx, broken);
   }
 }
 void scl;

@@ -22,6 +22,7 @@
  * the building's first strike (a few hundred cells a face), nothing per frame.
  */
 import { holeOutlineK, type DamageFace, type FractureMaterial, type StructureDamageAnatomy, type Vec3 } from '../world/destructionKit.ts';
+import { faceSetback, faceSetbackMedian } from '../world/structureEnclosure.ts';
 
 /** The cell a wall breaks into: wide and tall (m), before a face's own fitting. */
 const CELL_W_M = 0.5;
@@ -111,6 +112,16 @@ export interface FaceGrid {
   readonly damage: Float32Array;
   /** How far each cell has sagged (m, down). */
   readonly sag: Float32Array;
+  /** 1 where no wall is drawn at the grid's plane over the cell (destruction-slabs 227: the anatomy's face ran past the
+   *  drawn walls): void — nothing breaks, nothing falls, nothing is drawn — but it bears what stands over it (an upper
+   *  storey's wall over a hall's gate is carried by what the face does not model). */
+  readonly absent: Uint8Array;
+  /**
+   * (destruction-slabs 227 round 4; lane B's skybridge #2 penstock: an open pipe's face redrawn as cells stood as a flat
+   * patch of wall and bars in front of the pipe) set once the presentation finds no flat wall drawn in the face's slab (a
+   * pipe, a frame, an arcade): no round breaks it, nothing of it falls (the kit's hole stands for it).
+   */
+  notWall?: boolean;
 }
 
 export interface WallFracture {
@@ -123,6 +134,8 @@ export interface WallFracture {
    * it, so the field's upper storeys bear on their floor line too (a fall inside a storey still settles as it does).
    */
   floorsHold: boolean;
+  /** Each face's neighbour at its −u end and its +u end (the perpendicular face of its storey sharing that corner), or −1. */
+  readonly ends: Int32Array;
 }
 
 export type WallStrikeKind = 'blast' | 'kinetic' | 'shaped';
@@ -242,9 +255,16 @@ function gableOver(anatomy: StructureDamageAnatomy, storeyIndex: number, face: D
   return apex - face.height > 0.8 ? top : null;
 }
 
-function layGrid(anatomy: StructureDamageAnatomy, storeyIndex: number, faceIndex: number): FaceGrid {
+function layGrid(anatomy: StructureDamageAnatomy, storeyIndex: number, faceIndex: number): FaceGrid | null {
   const storey = anatomy.storeys[storeyIndex];
   const face = storey.faces[faceIndex];
+  // (destruction-slabs 227) on the drawn wall: the grid stands at the face's median setback (structureEnclosure.ts), a
+  // face with no wall drawn behind it lays none, and a cell over no drawn wall at that plane is void (absent)
+  const med = faceSetbackMedian(anatomy, storeyIndex, faceIndex);
+  if (!(med.share > 0)) return null;
+  const back = Number.isFinite(med.median) ? med.median : 0;
+  // (its own copy: a storey's fall lowers a grid's origin, never the anatomy's face — destruction-slabs 227 round 3)
+  const origin: Vec3 = [face.origin[0] - face.out[0] * back, face.origin[1], face.origin[2] - face.out[2] * back];
   const material = faceMaterial(face);
   const law = cellLaw(material);
   const wallHeight = Math.max(0.3, face.height);
@@ -318,12 +338,26 @@ function layGrid(anatomy: StructureDamageAnatomy, storeyIndex: number, faceIndex
     }
   }
   const skin = face.layers.length > 1 ? Math.max(0.02, face.layers[0].thicknessM || 0.03) : Math.min(0.06, faceWallThickness(face) * 0.3);
+  const opening = Uint8Array.from(state, (v) => (v === CELL_OPENING ? 1 : 0));
+  // a cell over no drawn wall at the grid's plane (its stretch of the face reads no setback near the median's): void
+  const absent = new Uint8Array(n);
+  if (anatomy.enclosure) {
+    const thick = faceWallThickness(face) + 0.35;
+    const walled = (u: number): boolean => { const sb = faceSetback(anatomy, storeyIndex, faceIndex, u); return Number.isFinite(sb) && Math.abs(sb - back) <= thick; };
+    for (let c = 0; c < n; c++) {
+      const u0 = cellU[2 * c], u1 = cellU[2 * c + 1];
+      if (walled(u0 + 0.02) || walled((u0 + u1) / 2) || walled(u1 - 0.02)) continue;
+      absent[c] = 1;
+      state[c] = CELL_VOID;
+      opening[c] = 0;
+    }
+  }
   return {
     storey: storeyIndex, faceIndex, section: face.section, name: face.name,
-    origin: face.origin, u: face.u, out: face.out, width: face.width, height, wallHeight, gableTop,
+    origin, u: face.u, out: face.out, width: face.width, height, wallHeight, gableTop,
     thickness: faceWallThickness(face), skinM: skin, material, bonded: law.bonded,
     rowY: Float32Array.from(rowsY), rowStart: Int32Array.from(rowStart), cellU: Float32Array.from(cellU),
-    state, opening: Uint8Array.from(state, (v) => (v === CELL_OPENING ? 1 : 0)), damage: new Float32Array(n), sag: new Float32Array(n),
+    state, opening, damage: new Float32Array(n), sag: new Float32Array(n), absent,
   };
 }
 
@@ -333,19 +367,57 @@ export function createWallFracture(anatomy: StructureDamageAnatomy): WallFractur
   const stacks = new Map<string, number[]>();
   anatomy.storeys.forEach((storey, s) => storey.faces.forEach((_face, f) => {
     const grid = layGrid(anatomy, s, f);
+    if (!grid) return;
     const list = stacks.get(grid.name) ?? [];
     list.push(faces.length);
     stacks.set(grid.name, list);
     faces.push(grid);
   }));
   for (const list of stacks.values()) list.sort((a, b) => faces[a].storey - faces[b].storey);
-  return { anatomy, faces, stacks, floorsHold: false };
+  // (destruction-slabs 227) the face sharing each corner: a corner bears only while that face's corner stands there
+  const ends = new Int32Array(faces.length * 2).fill(-1);
+  faces.forEach((g, i) => {
+    for (const side of [0, 1]) {
+      const sg = side ? 1 : -1;
+      const px = g.origin[0] + g.u[0] * sg * g.width / 2, pz = g.origin[2] + g.u[2] * sg * g.width / 2;
+      let best = -1, bd = Infinity;
+      faces.forEach((h, j) => {
+        if (j === i || h.storey !== g.storey || Math.abs(g.out[0] * h.out[0] + g.out[2] * h.out[2]) > 0.3) return;
+        for (const e of [-1, 1]) {
+          const d = Math.hypot(h.origin[0] + h.u[0] * e * h.width / 2 - px, h.origin[2] + h.u[2] * e * h.width / 2 - pz);
+          if (d < bd) { bd = d; best = j; }
+        }
+      });
+      if (best >= 0 && bd <= Math.max(g.thickness, faces[best].thickness) + 0.6) ends[i * 2 + side] = best;
+    }
+  });
+  return { anatomy, faces, stacks, floorsHold: false, ends };
+}
+
+/** Whether a face's end at row `r` bears (its corner): with no face sharing the corner, it does; else while that face's
+ *  cell at the corner at that height stands (or is void there). */
+function endBears(wall: WallFracture, fi: number, r: number, side: 0 | 1): boolean {
+  const n = wall.ends[fi * 2 + side];
+  if (n === undefined || n < 0) return true;
+  const g = wall.faces[fi], h = wall.faces[n];
+  const y = g.origin[1] + (g.rowY[r] + g.rowY[r + 1]) / 2 - h.origin[1];
+  if (y < 0 || y > h.height) return true;
+  let rr = 0;
+  while (rr + 1 < h.rowY.length - 1 && h.rowY[rr + 1] <= y) rr++;
+  // the neighbour's end nearest the corner
+  const sg = side ? 1 : -1;
+  const px = g.origin[0] + g.u[0] * sg * g.width / 2, pz = g.origin[2] + g.u[2] * sg * g.width / 2;
+  const dl = Math.hypot(h.origin[0] - h.u[0] * h.width / 2 - px, h.origin[2] - h.u[2] * h.width / 2 - pz);
+  const dr = Math.hypot(h.origin[0] + h.u[0] * h.width / 2 - px, h.origin[2] + h.u[2] * h.width / 2 - pz);
+  const c = dl <= dr ? h.rowStart[rr] : h.rowStart[rr + 1] - 1;
+  return h.absent[c] === 1 || h.state[c] === CELL_VOID || standing(h.state[c]) || h.state[c] === CELL_OPENING;
 }
 
 /** The face a body-frame point strikes: nearest plane within 1.2 m, inside its span (±0.3 m) and its storey. */
-export function struckFace(wall: WallFracture, x: number, y: number, z: number): { face: number; u: number; v: number } | null {
+export function struckFace(wall: WallFracture, x: number, y: number, z: number, withNotWall = false): { face: number; u: number; v: number } | null {
   let best = -1, bestD = 1.2, bu = 0, bv = 0;
   wall.faces.forEach((g, i) => {
+    if (g.notWall && !withNotWall) return;
     const dx = x - g.origin[0], dy = y - g.origin[1], dz = z - g.origin[2];
     const along = dx * g.u[0] + dy * g.u[1] + dz * g.u[2];
     const v = dy;
@@ -477,8 +549,8 @@ function settleLoads(wall: WallFracture, name: string, out: Pick<WallStrikeOutco
         let e = c;
         while (e + 1 < c1 && standing(grid.state[e + 1]) && !sup[e + 1]) e++;
         const length = grid.cellU[2 * e + 1] - grid.cellU[2 * c];
-        const leftEnd = c === c0 || (standing(grid.state[c - 1]) && sup[c - 1] === 1);
-        const rightEnd = e === c1 - 1 || (standing(grid.state[e + 1]) && sup[e + 1] === 1);
+        const leftEnd = c === c0 ? endBears(wall, stack[s], r, 0) : standing(grid.state[c - 1]) && sup[c - 1] === 1;
+        const rightEnd = e === c1 - 1 ? endBears(wall, stack[s], r, 1) : standing(grid.state[e + 1]) && sup[e + 1] === 1;
         if (length <= span + 1e-6 && leftEnd && rightEnd) for (let k = c; k <= e; k++) sup[k] = 1;
         c = e + 1;
       }
@@ -577,7 +649,8 @@ function bearOn(grid: FaceGrid, sup: Uint8Array, r: number, u0: number, u1: numb
   for (let c = grid.rowStart[r]; c < grid.rowStart[r + 1]; c++) {
     const a = grid.cellU[2 * c], b = grid.cellU[2 * c + 1];
     if (b <= u0 || a >= u1) continue;
-    if (!standing(grid.state[c]) || !sup[c]) continue;
+    // (an absent cell bears: what stands over it is carried by what the face does not model)
+    if (!grid.absent[c] && (!standing(grid.state[c]) || !sup[c])) continue;
     bearing += Math.min(b, u1) - Math.max(a, u0);
   }
   // a sliver of contact is no bearing (a corner on a corner)

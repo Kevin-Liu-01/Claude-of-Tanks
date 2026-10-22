@@ -57,6 +57,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/hullBurstEarth.selftest.mjs',
     'src/fx/heavyColumn.selftest.mjs',
     'src/fx/thermalGroundAndEmbers.selftest.mjs',
+    // (orange-rings-230) the crater marks lit as the ground they lie on (Steinburg's glowing rings)
+    'src/fx/craterMarksLight.selftest.mjs',
     'src/engine/thermalWreckCooling.selftest.mjs',
     'src/engine/thermalHullHeat.selftest.mjs',
     'src/engine/thermalLensBloom.selftest.mjs',
@@ -67,6 +69,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/killSurfaces.selftest.mjs',
     // (r2) the AC-130's airframe, its own chunk staged under the cover, hidden only in its own lens; the warm path
     'src/game/gunshipAirframe.selftest.mjs',
+    // (ac130-barrels-230, the owner) the guns beside the gimbal lens: seen firing and recoiling, their rounds, missile and
+    // smoke leaving their muzzles
+    'src/fx/gunshipLens.selftest.mjs',
     'src/fx/timeOfDayMarks.selftest.mjs',
     'src/fx/localLights.selftest.mjs',
     'src/fx/worldWindPalette.selftest.mjs',
@@ -101,6 +106,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/remoteGunFleet.selftest.mjs',
     'src/vehicles/profiles/mbt70Rh202.selftest.mjs',
     'src/vehicles/roofWeaponPolicy.selftest.mjs',
+    // 2026-10-20 (the fleet ZTZ-99A2 lane): the QJC-88's arc stops short of the commander's sight (the whole moving mass
+    // swept both ways at 25 mm; the old arc and the bare depression table as negative controls)
+    'src/vehicles/ztz99a2RoofArc.selftest.mjs',
     'src/vehicles/profiles/challenger3MachineGunAssembly.selftest.mjs',
     'src/vehicles/profiles/amx30B2Roof.selftest.mjs',
     'src/vehicles/fleetRenewal.selftest.mjs',
@@ -109,6 +117,28 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/nationalUkraineProtection.selftest.mjs',
     'src/vehicles/nationalPolandProtection.selftest.mjs',
     'src/vehicles/nationalRoof.selftest.mjs',
+    // 2026-10-20 (release 227, national lamp guards): every national turret lamp's base plate runs 10 mm past its guard
+    // posts (no post flat coplanar with a plate end), by the exact coplanar census (coplanarOverlap.test-support.mjs)
+    'src/vehicles/nationalLampGuards.selftest.mjs',
+    // 2026-10-16 (release 227, CN track): the Yun's and Qilin's add-ons wrapped round their base turrets, the Qilin 10 %
+    // shorter, the clearances; the three roof stations calibre-true and automatic inside their arcs
+    'src/vehicles/cnAddOns.selftest.mjs',
+    'src/vehicles/cnStations.selftest.mjs',
+    // 2026-10-20 (release 229): every working FITTINGS.pintleMG call rides its cradle, the riding rig of each class and
+    // shield clear of its own mount (the whole fleet is measured in fleetPassDefault's workingPintleCradle audit)
+    'src/vehicles/workingPintleCradle.selftest.mjs',
+    // 2026-10-17 (release 227 CN M5): the moving-part clearances (main gun over the hull and the add-ons, the underside and
+    // the ring collars, the roof stations over their arcs, the box sights on the boots): about 300 s of CPU unloaded
+    // (Qilin ~110-170 s, Kunlun ~130 s, Yun ~50-190 s; 430-830 s wall on a loaded box)
+    'src/vehicles/cnClearance.selftest.mjs',
+    // 2026-10-19 (release 227 CN round 8, owner: "the rear of qilinns turret is exposed and nnot filled"): the Qilin's cut
+    // bustle closed underneath (the ring collar hidden from behind) and its full-width rear rack loaded
+    'src/vehicles/qilinRearFill.selftest.mjs',
+    // 2026-10-18 (release 227 land stage; critics CN4-2, UAPL-R6C-1/2/3): the bored-trunnion yoke under the wedge, cradle
+    // and casemate stations (no moving part through its yoke over pitch and recoil), and the Zubr II illuminator's
+    // own-gun mask (its beam never lights its own barrel)
+    'src/vehicles/nationalStationYoke.selftest.mjs',
+    'src/vehicles/searchlightOwnGunMask.selftest.mjs',
     'src/sim/smokeBallistics.selftest.mjs',
     'src/vehicles/smokeFan.selftest.mjs',
     'src/sim/smokeScreenCover.selftest.mjs',
@@ -139,6 +169,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/magazineIndicator.selftest.mjs',
     'src/vehicles/profiles/griffinViper.selftest.mjs',
     'src/sim/gunPitchLimits.selftest.mjs',
+    // 2026-10-20 (the CN lane's measured depression, carried to the national concepts and the fleet's curves): every
+    // published gunPitchByYawDeg keeps the whole gun 25 mm off its hull at every yaw; the bare depression meets the hull
+    'src/vehicles/nationalGunClearance.selftest.mjs',
     'src/sim/moduleArticulation.selftest.mjs',
     'src/sim/weaponHousing.selftest.mjs',
     'src/sim/weaponModuleDamage.selftest.mjs',
@@ -639,6 +672,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/donorStockSeating.selftest.mjs',
     // release 227: the fleet Type 96B's gun clears its hull through traverse and pitch (trimmed boot, rear-deck curve)
     'src/vehicles/profiles/type96MantletClearance.selftest.mjs',
+    // release 227: the fleet Type 96B's box sight rides the gun at its measured top; the mantlet stands over the hull
+    'src/vehicles/profiles/type96bSightBoot.selftest.mjs',
     'src/vehicles/profiles/type99AAngularTurret.selftest.mjs',
     'src/vehicles/profiles/chineseGunMountEraSpent.selftest.mjs',
     'src/vehicles/profiles/eraSeating.selftest.mjs',
@@ -660,6 +695,13 @@ export const SELFTEST_SUITES = Object.freeze({
     // vehicleMarkings and tankAssets (2026-10-02).
     'src/vehicles/fleetPassDefault.selftest.mjs',
     'src/vehicles/fleetFloorClearance.selftest.mjs',
+    // 2026-10-16 (release 227; the owner: "brand new era packages ... innovate for the hetman 2 and zubr 2 and also the
+    // zubr ... machine gun emplacements that are aut ocontrolled"): the three frontal ERA packages, lights, WKM-B stations
+    // and rear-arc gun curves
+    'src/vehicles/frontEraPackages.selftest.mjs',
+    // 2026-10-21 (release 230, UA/PL round 11): the three ids' main gun over their own hulls with the shallower mantlet
+    // chin and the gun-depression lane's curves (the barrel 25 mm, the mount 20 mm off the hull at every yaw)
+    'src/vehicles/nationalGunMantlet.selftest.mjs',
     // the fleet pass harness itself, on a scripted factory (no fleet build)
     'src/vehicles/fleetPass.selftest.mjs',
     // 2026-10-01: the fleet geometry ledger (one full-fleet HIGH+LOW sweep) replaces the frozen per-receipt geometry pins.
@@ -772,6 +814,14 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/simplexFast.selftest.mjs',
     'src/engine/resolutionPolicy.selftest.mjs',
     'src/engine/viewportRuntime.selftest.mjs',
+    // 2026-10-19 (black-screen-228): the battle's black-world guard (detection, the heal ladder, receipts, zero allocation),
+    // the first-frame warm's one-pass transactions, the finite guards on the temporal paths, the live warms that restore
+    // before every yield, and the repro harness's summary arithmetic
+    'src/engine/blackWorldGuard.selftest.mjs',
+    'src/engine/postWarmFirstFrame.selftest.mjs',
+    'src/engine/nanGuards.selftest.mjs',
+    'src/game/liveCombatWarm.selftest.mjs',
+    'tools/black-world-repro-summary.selftest.mjs',
     'src/engine/frameLoopScheduler.selftest.mjs',
     'src/engine/cameraRig.selftest.mjs',
     'src/engine/garageFramePacer.selftest.mjs',
@@ -824,6 +874,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/garageDisplayAtlas.selftest.mjs',
     'src/ui/garageAtmosphere.selftest.mjs',
     'src/ui/garageDisplayPlacement.selftest.mjs',
+    // garage 231 (2026-10-21): the slideshow's CRT clear of every deck, rail, column, structure and kit piece
+    'src/ui/garageSlideshowClearance.selftest.mjs',
     // garage r9 (g1 lane): the outside environment from each map (generator check, landmarks, budgets)
     'src/ui/garageSkyline.selftest.mjs',
     // garage r9 (g1 lane, criterion 16): the near facility's primitives rebuilt as kit geometry
@@ -1025,6 +1077,11 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/particleTextureAssets.selftest.mjs',
     'src/fx/volumeMedia.selftest.mjs',
     'src/fx/structureStages.selftest.mjs',
+    // destruction-slabs 227 round 3: what a building's damage leaves hanging comes down (a roof's chimney and ladder, a mill's
+    // sails, a loose room or face piece)
+    'src/fx/structureHanging.selftest.mjs',
+    // destruction-slabs 227 round 4: no debris plate rests on its edge, no remnant stands over the building as drawn
+    'src/fx/uprightPlates.selftest.mjs',
     'src/fx/structureStagesPieceHides.selftest.mjs', // 2026-10-16 props lane B (227 co-hold): a live run's named-piece hides wait for its wreck's birth, a settled run's apply at once
     'src/fx/structureDebris.selftest.mjs', // 2026-10-12: thrown pieces lie where their flight meets the ground; still pieces belong to their building
     'src/fx/rubbleBodies.selftest.mjs', // 2026-10-12: a building's larger falling pieces are bodies of the one physics engine
@@ -1037,6 +1094,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/collapseBodies.selftest.mjs',
     'src/fx/fractureStages.selftest.mjs',
     'tools/destruction-check.selftest.mjs', // 2026-10-12: Steinburg's buildings destroyed and judged (textured, nothing hanging, rubble at rest on the ground)
+    'tools/destruction-slab-check.selftest.mjs', // 2026-10-17: the stray-slab detector's judgement (a room past the walls, a floating plate, a flattened matrix)
     'src/fx/structureMask.selftest.mjs', // 2026-10-13: nothing hangs from a falling building (straddling triangles come down with the front)
     'src/fx/latticeGround.selftest.mjs', // 2026-10-13: the landing solves read the ground as drawn from its lattice's vertices, once each
     'src/ui/hitEventFormat.selftest.mjs',
@@ -1405,6 +1463,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/collapseCascade.selftest.mjs',
     // 2026-10-16 (destruction lane): a collapse leaves a ruin, never a raft (the r2 sweep's anti-raft floors), every kit
     'src/world/collapseRuin.selftest.mjs',
+    // 2026-10-17 (destruction-slabs 227, the owner's church slabs): one drawn enclosure per structure; the room, floor
+    // and ruin writers place through it
+    'src/world/structureEnclosure.selftest.mjs',
+    // 2026-10-18 (destruction-slabs 227 round 4): the intact and enclosure measures made off the parts when first asked
+    // for (never in the props build), the same read back through the placement
+    'src/world/structureDeferredMeasure.selftest.mjs',
     // the kit seam's world side: the default kit, the aDamage tags, spans, depth materials and shadow touch (§16.4)
     'src/world/destructionKit.selftest.mjs',
     'src/world/fractureAnatomy.selftest.mjs',
@@ -1425,6 +1489,27 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/matchModes.selftest.mjs',
     // 2026-10-03 (bots lane): the frontline attack regroups before the last sector.
     'src/sim/frontlineRegroup.selftest.mjs',
+    // 2026-10-18 (owner, gameplay-modes-228): per-mode bot doctrine (classic byte-identical), the Horde's wave law and
+    // arrival ring, the honest hunt, Frontline's line and counter-attack, CTF and Turbo Ball roles, the revived bot's
+    // fresh route, a mission owns its waypoints, TEAM NATIONS (planner, nation index, room seating) and the harness gate
+    'src/sim/botDoctrine.selftest.mjs',
+    'src/sim/hordeWaveLaw.selftest.mjs',
+    'src/sim/honestHunt.selftest.mjs',
+    'src/sim/frontlineDefenders.selftest.mjs',
+    'src/sim/flagBots.selftest.mjs',
+    'src/sim/ballIntercept.selftest.mjs',
+    'src/sim/reviveClearsModeTarget.selftest.mjs',
+    'src/game/ai.missionOwnership.selftest.mjs',
+    // round 2 (the critic's E5/E6): the scout kite, the no-ram lane and the zone sortie act only on hulls the side spots
+    'src/game/ai.honestSenses.selftest.mjs',
+    // round 3 (the critic's M3/M4): the jockey and the rolling turn — classic stands and pivots as before
+    'src/game/ai.jockey.selftest.mjs',
+    // round 3 (the critic's M2/M3): the hunt's run-in beside its quarry and the orbit rings spread by the pack
+    'src/game/ai.huntRunIn.selftest.mjs',
+    'src/sim/teamNations.selftest.mjs',
+    'src/sim/nationIndex.selftest.mjs',
+    'src/mp/room/roomBots.selftest.mjs',
+    'tools/mode-aggression-harness.selftest.mjs',
     'src/sim/matchRuleset.selftest.mjs',
     // 2026-10-17 (v2 progression): the proving ground's ruleset row, practice partition, range layout, card and drive.
     'src/sim/provingGround.selftest.mjs',
@@ -1675,6 +1760,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/workedGroundMask.selftest.mjs',
     'src/world/mangroveWaterPalette.selftest.mjs',
     'src/world/shallowWater.selftest.mjs',
+    // 2026-10-17 (ground lane, MASTER #14/#15): level water held in its banks; Monsoon's channel at 0.5
+    'src/world/waterBank.selftest.mjs',
     'src/world/waterRipples.selftest.mjs',
     'src/world/oceanFft.selftest.mjs',
     'src/world/roadMaskProfile.selftest.mjs',
@@ -1724,6 +1811,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propsMaterialGeometry.selftest.mjs',
     'src/world/crushableClutter.selftest.mjs',
     'src/world/smallPropsDestructible.selftest.mjs', // 2026-10-13: the village well, the square's monument and the rail yard's coal break under a hull and a round
+    // (the maps lane, 228) the civic-area and pathway kit (world/civic): its plans and generality, every planned map's areas
+    // (filled, seated, lit, stream-neutral against the map without its plan) and pathways (fronted, clear, continuous)
+    'src/world/civic/civicPlans.selftest.mjs',
+    'src/world/civic/civicFurniture.selftest.mjs',
+    'src/world/civic/civicArea.selftest.mjs',
+    'src/world/civic/roadLife.selftest.mjs', // (229) every map's road life: at its seats, out of the discs, no new pool, stream-neutral
+    'src/world/civic/civicPathways.selftest.mjs',
     'src/world/maps/wellKit.selftest.mjs', // 2026-10-13 the looks lane: each place's village well and square monument
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/yardDressing.selftest.mjs',
@@ -1807,6 +1901,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/groundCoverClearance.selftest.mjs',
     'src/world/shrubClearance.selftest.mjs', // b12 (the scenery lane): no shrub stands inside a boulder or a structure
     'src/world/civilianVehicleGeometry.selftest.mjs',
+    'src/world/maps/vehicleFarForm.selftest.mjs', // (229) the parked vehicles' far form: inside the body's box, tagged, a black livery dark far off
     'src/world/grassLighting.selftest.mjs',
     'src/world/grassAtlasPadding.selftest.mjs',
     'src/world/grassBladeShape.selftest.mjs',
@@ -2050,6 +2145,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/loadingScreens.selftest.mjs',
     'src/ui/mapBackdrop.selftest.mjs',
     'src/ui/fonts.selftest.mjs',
+    // 2026-10-17: Chakra Petch + IBM Plex replace Monument; pinned OFL files, one marker per document,
+    // real weights only, the 11 px floor, tabular figures only through .num, metric-matched fallbacks, zh-CN resets
+    'src/ui/typeSystem.selftest.mjs',
     'src/ui/bootScreen.selftest.mjs',
     'src/ui/battleLoadProgress.selftest.mjs',
     'src/ui/mapLqip.selftest.mjs',
@@ -2148,6 +2246,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/track-texture-source.browser.selftest.mjs',
     'tools/sourced-building-source.browser.selftest.mjs',
     'tools/horizon-panorama-bake.browser.selftest.mjs',
+    // 2026-10-19 (black-screen-228): a real battle fails on a black world at its start and after Esc and Resume, and the
+    // guard heals the owner's signature (a camera without layer 0) within half a second
+    'tools/black-world.browser.selftest.mjs',
     // the drawn-geometry shape's control and garages (the maps ride on collisionManifestDrift, the tanks on fleetPassHigh)
     'src/world/maps/drawnGeometryShape.selftest.mjs',
     'tools/props-build-profile.selftest.mjs',
@@ -2156,5 +2257,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // FSP-01: real Garage, warm switches gated on main-thread blocking and
     // first painted frame; cold switches reported only.
     'tools/garage-switch-probe.selftest.mjs',
+    // destruction-slabs 227 (2026-10-17, the owner's church slabs): the stray-slab detector over every destructible kind of
+    // every map, one props build per map in a worker pool (no plate, wall or run standing past the walls, none floating)
+    'tools/destruction-slab-kinds.selftest.mjs',
   ]),
 });

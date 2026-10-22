@@ -6,6 +6,20 @@ import { CopyShader } from 'three/examples/jsm/shaders/CopyShader.js';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
 
 /**
+ * (2026-10-20, black-screen-228 round 2, D1) a resized target's depth texture takes the new size at once. Three sizes a
+ * DepthTexture's image only when it sets a framebuffer up (WebGLTextures.setupDepthTexture), and allocates its storage
+ * once, immutably, wherever it is first bound after a dispose. A resize disposes the target; when the depth texture's
+ * first bind after it was a sampler (a soft particle, the cloud trace, a lone warm pass) its storage took the OLD size,
+ * the framebuffer setup that followed only rewrote the image numbers, and the scene target stayed
+ * FRAMEBUFFER_INCOMPLETE_DIMENSIONS: every world draw dropped (INVALID_FRAMEBUFFER_OPERATION) while the late FX and the
+ * HUD drew on, the owner's black world, until the next resize.
+ */
+export function sizeDepthWithTarget(target: THREE.WebGLRenderTarget): void {
+  const image = target.depthTexture?.image as { width: number; height: number } | undefined;
+  if (image) { image.width = target.width; image.height = target.height; }
+}
+
+/**
  * Keep resolved world color/depth in one independent target. The following
  * SceneAerialPass reads that target directly, so the normal composer path does
  * not need an identity color copy before doing its first real shading work.
@@ -47,7 +61,9 @@ export class SceneAAPass extends RenderPass {
 
   setSize(width: number, height: number): void {
     this.endMatrixFrame();
-    this.sceneTarget.setSize(width, height);
+    // (black-screen-228 RC2) whole pixels, at least one: never a zero-size scene target
+    this.sceneTarget.setSize(Math.max(1, Math.floor(width)), Math.max(1, Math.floor(height)));
+    sizeDepthWithTarget(this.sceneTarget);
   }
 
   /** Only the complete synchronous composer transaction may share transforms. */

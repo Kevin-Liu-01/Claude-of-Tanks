@@ -14,6 +14,7 @@ import * as THREE from 'three';
 import { KIT, type RunningGearConfig, type TankBuilderPort } from './tankFactoryCore.ts';
 import { FITTINGS, convexSlab } from './profiles/kit.ts';
 import { facetedSlab } from './profiles/facetedSlab.ts';
+import { markFixedPaintedPanel } from './profiles/fixedPaintedPanel.ts';
 import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './profiles/type10GunSeat.ts';
 import { K2_ROAD_WHEELS } from './profiles/k2RoadWheels.ts';
 import './modern3Specs.ts';
@@ -1474,7 +1475,7 @@ function buildK1A1Turret(P: Modern3BuilderPort) {
     P.add('turretDetail', torus(0.235, 0.014, 22), 0.58, 0.735, -0.62);
     // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): both crew guns are working stations
     const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', seed: 14,
-      elev: 0.02, ammo: true, ring: { r: 0.23, stubs: 4 }, working: true });
+      elev: 0.02, ammo: true, ring: { r: 0.23, stubs: 4 }, working: true, ridingCradle: true });
     mg.name = 'k1CommanderK6';
     mg.position.set(0.58, 0.734, -0.62);
     P.turretG.add(mg);
@@ -1482,7 +1483,7 @@ function buildK1A1Turret(P: Modern3BuilderPort) {
     // receiver stays below the K6 datum and retains a visible three-stub base.
     P.add('turretDetail', torus(0.185, 0.011, 18), -0.52, 0.685, -0.55);
     const mg2 = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'two-tone', seed: 15,
-      elev: 0.02, ammo: false, ring: { r: 0.17, stubs: 3 }, working: true });
+      elev: 0.02, ammo: false, ring: { r: 0.17, stubs: 3 }, working: true, ridingCradle: true });
     mg2.name = 'k1LoaderM60';
     mg2.position.set(-0.52, 0.690, -0.55);
     P.turretG.add(mg2);
@@ -2132,7 +2133,7 @@ function buildType10Native2026(
     P.add('turretDetail', box(0.242, 0.0385, 0.286), 1.276, 0.484, -0.055);       // swing platform
     {
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the Type 10's roof M2 is a working station
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.99, seed: 12, elev: -0.02, ammo: false, rotation: [0, -0.28, 0], working: true });
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.99, seed: 12, elev: -0.02, ammo: false, rotation: [0, -0.28, 0], working: true, ridingCradle: true });
       mg.name = 'type10RoofM2';
       mg.position.set(1.32, 0.5038, -0.055);
       P.turretG.add(mg);
@@ -3833,12 +3834,17 @@ function buildM2A2Bradley(P: Modern3BuilderPort) {
 
 function addBMP2Fenders(P: Modern3BuilderPort): void {
   const { box, slab } = KIT;
+  // Art fixes 230 (2026-10-21, hero-card critics: "a large flat dark box sits on the nose", "flat black slab panels
+  // hang on the hull side"): the rubber-fabric shields over the sprocket and idler runs and their end flaps are
+  // painted in the vehicle scheme like the rest of the hull, as crews paint them. Finish only: the same solids.
+  const shield = (label: string, w: number, h: number, d: number) =>
+    markFixedPaintedPanel(box(w, h, d), label, 'hullRubber');
   for (const s of [-1, 1]) {
     P.add('hull', box(0.21, 0.055, 1.16), s * 1.42, 1.23, 2.44);
     P.add('hull', box(0.23, 0.055, 1.14), s * 1.43, 1.23, -2.685);
     P.add('hull', box(0.165, 0.2125, 0.46), s * 1.5025, 1.05875, -0.24);       // mid skirt block up into the sponson/side-armour foot (it hung 58-128 mm under it: owner 2026-10-19 float sweep)
-    P.add('hullRubber', box(0.15, 0.56, 0.60), s * 1.475, 0.955, 2.20);
-    P.add('hullRubber', box(0.15, 0.56, 1.40), s * 1.475, 0.955, -2.40);
+    P.add('hullFixedPaintedBodywork', shield('bmp2-front-shield', 0.15, 0.56, 0.60), s * 1.475, 0.955, 2.20);
+    P.add('hullFixedPaintedBodywork', shield('bmp2-rear-shield', 0.15, 0.56, 1.40), s * 1.475, 0.955, -2.40);
     P.add('hull', box(0.025, 0.21, 0.44), s * 1.5625, 0.955, 2.64);
     P.add('hull', box(0.05, 0.06, 0.20), s * 1.5475, 0.955, 1.80);
     for (const [zc, zl] of [[-2.885, 0.43], [-2.44, 0.44], [-2.055, 0.31], [-1.675, 0.44]]) {
@@ -3858,8 +3864,8 @@ function addBMP2Fenders(P: Modern3BuilderPort): void {
       [-1.365, 1.30, -0.01], [-1.29, 1.30, -0.01], [-1.29, 1.30, -0.47], [-1.365, 1.30, -0.47],
       [-1.365, 1.42, -0.01], [-1.29, 1.52, -0.01], [-1.29, 1.52, -0.47], [-1.365, 1.42, -0.47],
     ), 0, 0, 0);
-    P.add('hullRubber', box(0.21, 0.34, 0.05), s * 1.42, 1.03, 2.72);
-    P.add('hullRubber', box(0.21, 0.28, 0.045), s * 1.44, 1.10, -3.165);
+    P.add('hullFixedPaintedBodywork', shield('bmp2-front-flap', 0.21, 0.34, 0.05), s * 1.42, 1.03, 2.72);
+    P.add('hullFixedPaintedBodywork', shield('bmp2-rear-flap', 0.21, 0.28, 0.045), s * 1.44, 1.10, -3.165);
   }
 }
 

@@ -119,7 +119,7 @@ export function createPlanView(S: PlanSource, t: (key: string) => string): { rea
   map.style.cssText = 'width:100%;aspect-ratio:1;border-radius:3px;display:block;background:' + COLORS.ground;
   graph.style.cssText = 'width:100%;height:64px;border-radius:3px;display:block;cursor:ew-resize;background:' + COLORS.ink;
   const legend = document.createElement('div');
-  legend.style.cssText = 'font:10px/1.3 ui-monospace,monospace;letter-spacing:.06em;color:' + COLORS.text;
+  legend.style.cssText = 'font:11px/1.3 var(--font-mono);letter-spacing:.06em;color:' + COLORS.text;
   root.append(map, graph, legend);
   let plan: PlanGeometry | null = null, features: StudioPlanFeatures | null = null, base: HTMLCanvasElement | null = null, mapKey = '';
   const cam: CameraRailSample = {}, track: ActorTrackSample = {};

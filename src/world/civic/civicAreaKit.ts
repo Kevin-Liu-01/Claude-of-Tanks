@@ -1,0 +1,702 @@
+// src/world/civic/civicAreaKit.ts — a town square's civic area from its plan (the maps lane, 228; the owner, 2026-10-18:
+// "completely fill in this steinburg center", the pick "a civic square with a tree-lined green, memorial column and
+// parked period cars"; 2026-10-19: one shared kit every map with a square adopts through its plan).
+//
+// What it lays (one geometry on the props' vertex-coloured baked material, no draw of its own, no record):
+//   - the roundel at the crossing: the granite ring band flush in the setts, the basalt rose at its heart;
+//   - each bed of the green: its granite kerb in units, the dwarf wall inside it in dressed units under a chamfered
+//     coping, the gate piers at its mouths with their caps, its gravel paths edged with a row of setts, worn patches at
+//     the mouths, and its feature (a flower roundel on its sandstone edge in its gravel ring; a clipped box arc);
+//   - the flush paving the plan names (granite bands, a forecourt's setts, a church path's flags), the frontage walks
+//     along every facade that fronts the room (flags in courses and the Rinne at their foot), the fountain's ring;
+//   - the church's landing steps, the parking bays' pale sett rows, the tree grates in their granite frames, the
+//     monument's gravel octagon with its chain posts.
+// What it returns for the props to place after every seeded pass (stream-neutral): its furniture, its parked vehicles,
+// its lamps and its railing modules as props destructibles; its room as a veto (the scatter passes after the landmarks
+// keep their draws and leave out what they would stand there); its lawns' rectangles (the terrain's mask).
+//
+// The plan carries every seat; this file names no map.
+import type * as THREE from 'three';
+import { CivicMesh, hexRgb, mixRgb, scaleRgb, toned, civicHash, civicNoise, type Rgb } from './civicMesh.ts';
+import type { RegionalCivicStyle } from './styles.ts';
+import type { CivicAreaPlan, CivicBed, CivicRect, CivicStrip, PathwayPlan } from './types.ts';
+
+/** A placed building's plot (props buildingFeatures): centre, full width (local x) and depth (local z), heading. */
+export interface CivicPlot { readonly x: number; readonly z: number; readonly w: number; readonly d: number; readonly rot: number }
+
+export interface CivicAreaContext {
+  ground(x: number, z: number): number;
+  tier: 'desktop' | 'mobile';
+  /** the plots standing when the area is composed: the frontage walks run along the ones that front its room */
+  plots: readonly CivicPlot[];
+  /** (228 r3) the map's pathway plan: its streets' pavements turn into the room's frontage walks at its mouths */
+  pathways?: PathwayPlan | null;
+}
+
+/** One props destructible the area adds: its kind, world seat, heading (radians) and scale. */
+export interface CivicPiece { kind: string; x: number; z: number; yaw: number; scale: number }
+
+export interface CivicAreaBuild {
+  geometry: THREE.BufferGeometry | null;
+  pieces: CivicPiece[];
+  veto: CivicRect;
+  /** the veto room's heading about its centre (radians; 0 a world rectangle) */
+  vetoYaw: number;
+  census: Record<string, number>;
+  /** plan outlines for the probes' plots (flat [x, z, ...] lists) */
+  debug: Array<{ pts: number[]; col: [number, number, number]; fill?: [number, number, number] }>;
+}
+
+const SKIN = 0.014;
+const deg = (d: number): number => (d * Math.PI) / 180;
+
+/** The distance from (x, z) to a rectangle (0 inside). */
+function rectDistance(r: CivicRect, x: number, z: number): number {
+  const dx = Math.max(r.x0 - x, 0, x - r.x1), dz = Math.max(r.z0 - z, 0, z - r.z1);
+  return Math.hypot(dx, dz);
+}
+const inRect = (r: CivicRect, x: number, z: number, m = 0): boolean => x >= r.x0 - m && x <= r.x1 + m && z >= r.z0 - m && z <= r.z1 + m;
+
+/** Flags in courses over a rectangle: courses `course` m across the long axis, flags of lengths in `len` along it, each
+ *  its own tone, laid on a joint bed. */
+function flagRect(m: CivicMesh, r: CivicRect, style: RegionalCivicStyle, lift = SKIN, salt = 1, cell = 2.0): void {
+  const base = hexRgb(style.pavement.hex), joint = hexRgb(style.pavement.joint);
+  const alongX = r.x1 - r.x0 >= r.z1 - r.z0;
+  const L = alongX ? r.x1 - r.x0 : r.z1 - r.z0, W = alongX ? r.z1 - r.z0 : r.x1 - r.x0;
+  m.skinRect(r.x0, r.z0, r.x1, r.z1, lift - 0.004, joint, cell);
+  const courses = Math.max(1, Math.round(W / style.pavement.course)), cw = W / courses, gap = 0.012;
+  const [l0, l1] = style.pavement.length;
+  for (let k = 0; k < courses; k++) {
+    let s = (civicHash(k, salt, 77) * (l1 - l0)) % (l1 - l0);
+    // the first flag of a course cut short so the joints break bond
+    let first = true;
+    for (let a = 0; a < L - 0.02;) {
+      const len = first ? Math.max(0.2, l0 * 0.5 + s) : l0 + civicHash(a, k + salt * 13, 31) * (l1 - l0);
+      first = false; s = 0;
+      const b = Math.min(L, a + len);
+      const u0 = a + gap / 2, u1 = b - gap / 2, v0 = k * cw + gap / 2, v1 = (k + 1) * cw - gap / 2;
+      const col = toned(base, a + r.x0, k + r.z0, style.pavement.tone, salt);
+      if (alongX) m.skinRect(r.x0 + u0, r.z0 + v0, r.x0 + u1, r.z0 + v1, lift, col, Math.min(1.2, cell));
+      else m.skinRect(r.x0 + v0, r.z0 + u0, r.x0 + v1, r.z0 + u1, lift, col, Math.min(1.2, cell));
+      a = b;
+    }
+  }
+}
+
+/** A band of granite units (0.5 m across the band's long axis, 0.8–1.2 m along), flush. */
+function graniteRect(m: CivicMesh, r: CivicRect, hex: number, lift = SKIN, unit = 1.0): void {
+  const base = hexRgb(hex);
+  const alongX = r.x1 - r.x0 >= r.z1 - r.z0;
+  const L = alongX ? r.x1 - r.x0 : r.z1 - r.z0;
+  m.skinRect(r.x0, r.z0, r.x1, r.z1, lift - 0.004, scaleRgb(base, 0.55), 2.0);
+  const n = Math.max(1, Math.round(L / unit)), u = L / n, gap = 0.01;
+  for (let k = 0; k < n; k++) {
+    const col = toned(base, k, r.x0 + r.z0, 0.07, 5);
+    if (alongX) m.skinRect(r.x0 + k * u + gap, r.z0 + gap, r.x0 + (k + 1) * u - gap, r.z1 - gap, lift, col, 1.2);
+    else m.skinRect(r.x0 + gap, r.z0 + k * u + gap, r.x1 - gap, r.z0 + (k + 1) * u - gap, lift, col, 1.2);
+  }
+}
+
+/** A field of small setts drawn as a toned mosaic (a cell a sett group: the terrain's own setts carry the joints). */
+function settRect(m: CivicMesh, r: CivicRect, hex: number, lift = SKIN): void {
+  const base = hexRgb(hex);
+  m.skinRect(r.x0, r.z0, r.x1, r.z1, lift, (x, z) => toned(base, Math.floor(x / 0.3), Math.floor(z / 0.3), 0.09, 9), 0.3);
+}
+
+/** (229 b3) A strip of flush paving along its centreline: a row of bricks on edge along each side and, between them, a
+ *  herringbone of units twice as long as wide (bricks at 45 degrees to the line, pavers square to it), each unit cut to the
+ *  field's edges and toned on its own (one in nine a darker over-burnt brick), on a joint bed; a phone lays the field as
+ *  a toned mosaic in the strip's frame. Returns the units laid. */
+function stripPaving(m: CivicMesh, s: CivicStrip, style: RegionalCivicStyle, tier: 'desktop' | 'mobile', salt: number): number {
+  const dx = s.to[0] - s.from[0], dz = s.to[1] - s.from[1], len = Math.hypot(dx, dz);
+  if (len < 0.1) return 0;
+  const ux = dx / len, uz = dz / len, half = s.width / 2;
+  // the world point t along the line and o to its left
+  const P = (t: number, o: number): [number, number] => [s.from[0] + ux * t - uz * o, s.from[1] + uz * t + ux * o];
+  const brick = s.kind === 'brick';
+  const base = hexRgb(brick ? style.bands.sett : style.pavement.hex), joint = hexRgb(style.pavement.joint);
+  const L = brick ? 0.24 : 0.2, W = L / 2, edge = brick ? 0.115 : 0.1, gap = 0.012, hf = half - edge - gap;
+  m.skin(P(0, -half), P(len, -half), P(len, half), P(0, half), SKIN - 0.004, joint, 1.5);
+  // the edge rows: units on edge along the line, standing a few millimetres proud
+  let units = 0;
+  const unitCol = (a: number, b: number, k: number): Rgb => {
+    const c = toned(base, a, b, brick ? 0.14 : 0.07, salt + k);
+    return brick && civicHash(a, b, salt + 61) < 0.11 ? scaleRgb(c, 0.62) : c;
+  };
+  for (const side of [-1, 1]) {
+    const o0 = side < 0 ? -half : half - edge, o1 = side < 0 ? -half + edge : half;
+    const n = Math.max(1, Math.round(len / L));
+    for (let k = 0; k < n; k++) {
+      const t0 = (len * k) / n + gap / 2, t1 = (len * (k + 1)) / n - gap / 2;
+      m.skin(P(t0, o0 + gap / 2), P(t1, o0 + gap / 2), P(t1, o1 - gap / 2), P(t0, o1 - gap / 2), SKIN + 0.006, unitCol(k, side, 3), 4);
+      units++;
+    }
+  }
+  if (tier === 'mobile') {
+    m.skin(P(0, -hf), P(len, -hf), P(len, hf), P(0, hf), SKIN, (x, z) => unitCol(Math.floor(x / 0.5), Math.floor(z / 0.5), 5), 0.5);
+    return units;
+  }
+  // the herringbone in its own axes (a, b), a unit W: a "horizontal" unit at (i + 2n, i - 2n) two units along a, a
+  // "vertical" one at (i + 2n, i - 2n + 1) two along b (the staircase chain, the chains 4 apart across)
+  const th = brick ? Math.PI / 4 : 0, c = Math.cos(th), sn = Math.sin(th);
+  const toTO = (a: number, b: number): [number, number] => [(a * c - b * sn) * W, (a * sn + b * c) * W];
+  const corners = [[0, -hf], [len, -hf], [len, hf], [0, hf]].map(([t, o]) => [(t * c + o * sn) / W, (-t * sn + o * c) / W]);
+  const aMin = Math.min(...corners.map((q) => q[0])), aMax = Math.max(...corners.map((q) => q[0]));
+  const bMin = Math.min(...corners.map((q) => q[1])), bMax = Math.max(...corners.map((q) => q[1]));
+  const clip = (poly: Array<[number, number]>, keep: (q: [number, number]) => number): Array<[number, number]> => {
+    const out: Array<[number, number]> = [];
+    for (let i = 0; i < poly.length; i++) {
+      const p = poly[i], q = poly[(i + 1) % poly.length], dp = keep(p), dq = keep(q);
+      if (dp >= 0) out.push(p);
+      if ((dp >= 0) !== (dq >= 0)) { const f = dp / (dp - dq); out.push([p[0] + (q[0] - p[0]) * f, p[1] + (q[1] - p[1]) * f]); }
+    }
+    return out;
+  };
+  const g = gap / 2 / W;
+  for (let n = Math.floor((aMin - bMax) / 4) - 1; n <= Math.ceil((aMax - bMin) / 4) + 1; n++) {
+    for (let i = Math.floor((aMin + bMin) / 2) - 3; i <= Math.ceil((aMax + bMax) / 2) + 1; i++) {
+      const a0 = i + 2 * n, b0 = i - 2 * n;
+      if (a0 > aMax + 1 || a0 < aMin - 3 || b0 > bMax + 1 || b0 < bMin - 4) continue;
+      for (const [aa, ab, ba, bb] of [[a0, a0 + 2, b0, b0 + 1], [a0, a0 + 1, b0 + 1, b0 + 3]]) {
+        let poly: Array<[number, number]> = [toTO(aa + g, ba + g), toTO(ab - g, ba + g), toTO(ab - g, bb - g), toTO(aa + g, bb - g)];
+        poly = clip(poly, (q) => q[0]); poly = clip(poly, (q) => len - q[0]);
+        poly = clip(poly, (q) => q[1] + hf); poly = clip(poly, (q) => hf - q[1]);
+        if (poly.length < 3) continue;
+        const col = unitCol(aa * 2 + 1, ba * 2 + 1, 7);
+        const pts = poly.map(([t, o]) => { const [x, z] = P(t, o); return [x, m.ground(x, z) + SKIN, z]; });
+        for (let k = 1; k + 1 < pts.length; k++) m.tri(pts[0], pts[k], pts[k + 1], col);
+        units++;
+      }
+    }
+  }
+  return units;
+}
+
+/** (229 b1 r1) A plaza's square tiles over a rectangle: each tile its own tone of the style's pavement stone, on a joint
+ *  bed, a hand under the roundel's lift (the ring and its rose lie on them); a phone lays tiles twice the size. */
+function tileRect(m: CivicMesh, r: CivicRect, style: RegionalCivicStyle, tier: 'desktop' | 'mobile'): number {
+  const base = hexRgb(style.pavement.hex), joint = hexRgb(style.pavement.joint), u = tier === 'mobile' ? 1.5 : 0.75, gap = 0.014;
+  const lift = SKIN - 0.004;
+  m.skinRect(r.x0, r.z0, r.x1, r.z1, lift - 0.003, joint, 3.0);
+  const nx = Math.max(1, Math.round((r.x1 - r.x0) / u)), nz = Math.max(1, Math.round((r.z1 - r.z0) / u));
+  const ux = (r.x1 - r.x0) / nx, uz = (r.z1 - r.z0) / nz;
+  for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+    const x0 = r.x0 + i * ux + gap / 2, z0 = r.z0 + j * uz + gap / 2;
+    m.skinRect(x0, z0, x0 + ux - gap, z0 + uz - gap, lift, toned(base, Math.floor(x0 * 4), Math.floor(z0 * 4), style.pavement.tone * 1.4, 71), 4);
+  }
+  return nx * nz;
+}
+
+/** A kerb (or a coping, a wall unit run) from a to b in units, its section from `section(end, top)`; each unit toned. */
+function unitRun(m: CivicMesh, a: readonly [number, number], b: readonly [number, number], side: readonly [number, number],
+  units: readonly [number, number], col: Rgb, k: number, section: (ga: number, gb: number, end: 0 | 1) => ReadonlyArray<readonly [number, number]>, salt: number): void {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  if (len < 0.05) return;
+  const n = Math.max(1, Math.round(len / ((units[0] + units[1]) / 2))), joint = 0.008;
+  for (let i = 0; i < n; i++) {
+    const t0 = i / n + (i ? joint / 2 / len : 0), t1 = (i + 1) / n - (i < n - 1 ? joint / 2 / len : 0);
+    const p: [number, number] = [a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0];
+    const q: [number, number] = [a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1];
+    const gp = m.ground(p[0], p[1]), gq = m.ground(q[0], q[1]);
+    const c = toned(col, p[0] + i * 0.37, p[1], k, salt);
+    m.run(p, q, side, (end) => section(gp, gq, end), (face) => (face === -1 ? scaleRgb(c, 0.9) : c));
+  }
+}
+
+/** The four sides of a bed rectangle, each with its outward normal and its run along it (counter-clockwise). */
+function bedSides(r: CivicRect): Array<{ side: 'n' | 's' | 'e' | 'w'; a: [number, number]; b: [number, number]; out: [number, number] }> {
+  return [
+    { side: 's', a: [r.x0, r.z0], b: [r.x1, r.z0], out: [0, -1] },
+    { side: 'e', a: [r.x1, r.z0], b: [r.x1, r.z1], out: [1, 0] },
+    { side: 'n', a: [r.x1, r.z1], b: [r.x0, r.z1], out: [0, 1] },
+    { side: 'w', a: [r.x0, r.z1], b: [r.x0, r.z0], out: [-1, 0] },
+  ];
+}
+
+/** A side's stretches between its mouths' openings (inset `inset` from the corners): [from, to] along it, world. */
+function sideStretches(r: CivicRect, side: 'n' | 's' | 'e' | 'w', bed: CivicBed, inset: number): Array<[number, number]> {
+  const horiz = side === 'n' || side === 's';
+  const lo = (horiz ? r.x0 : r.z0) + inset, hi = (horiz ? r.x1 : r.z1) - inset;
+  const cuts = bed.mouths.filter((mo) => mo.side === side).map((mo) => [mo.at - mo.width / 2, mo.at + mo.width / 2] as [number, number])
+    .sort((p, q) => p[0] - q[0]);
+  const out: Array<[number, number]> = [];
+  let at = lo;
+  for (const [c0, c1] of cuts) { if (c0 > at) out.push([at, Math.min(c0, hi)]); at = Math.max(at, c1); }
+  if (at < hi) out.push([at, hi]);
+  return out;
+}
+
+/** A point on a side at `t` along it, `off` metres in from the edge. */
+function sidePoint(r: CivicRect, side: 'n' | 's' | 'e' | 'w', t: number, off: number): [number, number] {
+  switch (side) {
+    case 'n': return [t, r.z1 - off];
+    case 's': return [t, r.z0 + off];
+    case 'e': return [r.x1 - off, t];
+    default: return [r.x0 + off, t];
+  }
+}
+
+/** Whether (x, z) lies on one of a bed's paths (its width and `margin` more). */
+function onBedPath(bed: CivicBed, x: number, z: number, margin = 0): boolean {
+  for (const p of bed.paths) {
+    const dx = p.to[0] - p.from[0], dz = p.to[1] - p.from[1], l2 = dx * dx + dz * dz || 1;
+    const t = Math.max(0, Math.min(1, ((x - p.from[0]) * dx + (z - p.from[1]) * dz) / l2));
+    if (Math.hypot(x - p.from[0] - dx * t, z - p.from[1] - dz * t) <= p.width / 2 + margin) return true;
+  }
+  return false;
+}
+
+function composeBed(m: CivicMesh, bed: CivicBed, style: RegionalCivicStyle, pieces: CivicPiece[], census: Record<string, number>, tier: 'desktop' | 'mobile'): void {
+  const r = bed.rect, E = style.edging;
+  // the mown lawn inside the dwarf wall: a sward of a few greens in drifts, a worn margin along the wall's foot
+  const greens = style.lawn.greens.map(hexRgb), bareCol = hexRgb(style.lawn.bare), inset = E.kerb.width + (bed.low ? 0 : E.wall.width);
+  const lawnAt = (x: number, z: number): Rgb => {
+    // two octaves of drifts between the style's greens, a worn margin along the wall's foot
+    const n = civicNoise(x, z, 4.5, 61) * 0.65 + civicNoise(x, z, 1.4, 62) * 0.35, f = n * (greens.length - 1);
+    const k = Math.min(greens.length - 2, Math.floor(f)), g = mixRgb(greens[k], greens[k + 1], f - k);
+    const edge = Math.min(x - r.x0, r.x1 - x, z - r.z0, r.z1 - z) - inset;
+    return edge < 0.6 ? mixRgb(g, bareCol, 0.35 * (1 - Math.max(0, edge) / 0.6)) : g;
+  };
+  m.skinShaded(r.x0 + inset, r.z0 + inset, r.x1 - inset, r.z1 - inset, 0.006, lawnAt, 0.9);
+  census.lawnM2 = (census.lawnM2 ?? 0) + (r.x1 - r.x0 - 2 * inset) * (r.z1 - r.z0 - 2 * inset);
+  const kerbCol = hexRgb(E.kerb.hex), wallCol = hexRgb(E.wall.hex), pierCol = hexRgb(E.pier.hex);
+  const kw = E.kerb.width, ww = E.wall.width;
+  for (const s of bedSides(r)) {
+    const horiz = s.side === 'n' || s.side === 's';
+    // the kerb's run goes the whole side (the mouths' thresholds are the kerb dropped flush); the wall stops at the mouths
+    const inward: [number, number] = [-s.out[0], -s.out[1]];
+    for (const [t0, t1] of sideStretches(r, s.side, bed, 0)) {
+      const a = sidePoint(r, s.side, t0, kw / 2), b = sidePoint(r, s.side, t1, kw / 2);
+      unitRun(m, a, b, inward, [1.0, 1.4], kerbCol, 0.06, (ga, gb, end) => {
+        const g = end ? gb : ga, top = g + E.kerb.face, foot = g - 0.12;
+        // across `inward`: -kw/2 the road side (outside), its arris rounded off
+        return [[-kw / 2, foot], [kw / 2, foot], [kw / 2, top], [-kw / 2 + 0.04, top], [-kw / 2, top - 0.04]];
+      }, 11);
+    }
+    // the thresholds at the mouths: a flush granite sill across each opening
+    for (const mo of bed.mouths.filter((q) => q.side === s.side)) {
+      const a = sidePoint(r, s.side, mo.at - mo.width / 2, 0), b = sidePoint(r, s.side, mo.at + mo.width / 2, kw + ww);
+      m.skinRect(Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1]), SKIN + 0.004, scaleRgb(kerbCol, 0.96), 0.8);
+    }
+    // (228 r7) a low bed keeps its kerb alone
+    if (bed.low) continue;
+    // the dwarf wall: dressed units 0.30 wide, its coping a little proud of both faces, chamfered
+    const wallStretches = sideStretches(r, s.side, bed, kw);
+    for (const [t0, t1] of wallStretches) {
+      const a = sidePoint(r, s.side, t0, kw + ww / 2), b = sidePoint(r, s.side, t1, kw + ww / 2);
+      const H = E.wall.height, cop = E.wall.coping;
+      unitRun(m, a, b, inward, [0.8, 1.3], wallCol, 0.08, (ga, gb, end) => {
+        const g = end ? gb : ga;
+        return [[-ww / 2, g - 0.1], [ww / 2, g - 0.1], [ww / 2, g + H - 0.06], [-ww / 2, g + H - 0.06]];
+      }, 23);
+      unitRun(m, a, b, inward, [0.9, 1.4], scaleRgb(wallCol, 1.06), 0.05, (ga, gb, end) => {
+        const g = end ? gb : ga, y0 = g + H - 0.06, y1 = g + H;
+        return [[-ww / 2 - cop, y0], [ww / 2 + cop, y0], [ww / 2 + cop, y1 - 0.015], [ww / 2 + cop - 0.02, y1], [-ww / 2 - cop + 0.02, y1], [-ww / 2 - cop, y1 - 0.015]];
+      }, 29);
+      // the railing modules behind the wall (lawn side), open at the mouths
+      if (E.railing && !bed.mouths.some((mo) => mo.side === s.side && mo.open && t0 >= mo.at - mo.width / 2 - 0.01 && t1 <= mo.at + mo.width / 2 + 0.01)) {
+        const len = t1 - t0, pitch = E.railing.pitch * E.railing.scale, n = Math.floor(len / pitch + 0.15);
+        const lead = (len - n * pitch) / 2;
+        for (let k = 0; k < n; k++) {
+          const t = t0 + lead + (k + 0.5) * pitch;
+          const [x, z] = sidePoint(r, s.side, t, kw + ww + 0.07);
+          pieces.push({ kind: E.railing.kind, x, z, yaw: horiz ? Math.PI / 2 : 0, scale: E.railing.scale });
+          census.railing = (census.railing ?? 0) + 1;
+        }
+      }
+    }
+    // the gate piers either side of each mouth on the wall's line, their caps
+    for (const mo of bed.mouths.filter((q) => q.side === s.side)) {
+      for (const sgn of [-1, 1]) {
+        const t = mo.at + sgn * (mo.width / 2 + E.pier.size / 2);
+        const [x, z] = sidePoint(r, s.side, t, kw + ww / 2);
+        const yaw = horiz ? 0 : Math.PI / 2;
+        m.block(x, z, yaw, E.pier.size / 2, E.pier.size / 2, E.pier.height, toned(pierCol, x, z, 0.05, 3), { level: true, ch: 0.02, embed: 0.1 });
+        m.block(x, z, yaw, E.pier.size / 2 + 0.035, E.pier.size / 2 + 0.035, E.pier.height + 0.07, scaleRgb(pierCol, 1.08),
+          { level: true, ch: 0.025, top: m.ground(x, z) + E.pier.height + 0.07, embed: -E.pier.height + 0.01 });
+        census.piers = (census.piers ?? 0) + 1;
+      }
+      // the worn ground at the mouth inside the gate (bare earth either side of the path)
+      const [px, pz] = sidePoint(r, s.side, mo.at, kw + ww + 1.2);
+      const bare = hexRgb(style.lawn.bare);
+      for (let q = 0; q < 2; q++) {
+        const off = (q ? 1 : -1) * (mo.width / 2 + 0.5);
+        const cx = horiz ? px + off : px, cz = horiz ? pz : pz + off;
+        m.skinRing(cx, cz, 0, 0.75 + civicHash(cx, cz, 4) * 0.35, 7, SKIN - 0.004, (k) => toned(bare, cx + k, cz, 0.08, 6));
+      }
+    }
+  }
+  // the gravel paths, their edges a row of setts
+  const pathCol = hexRgb(style.path.hex), edgeCol = hexRgb(style.path.edgeHex);
+  const ring = bed.feature?.kind === 'flowerRondell' || bed.feature?.kind === 'fountain' ? bed.feature : null;
+  for (const p of bed.paths) {
+    const dx = p.to[0] - p.from[0], dz = p.to[1] - p.from[1], len = Math.hypot(dx, dz), ux = dx / len, uz = dz / len;
+    const nx = -uz, nz = ux, hw = p.width / 2;
+    // the stretches outside the feature's ring
+    const spans: Array<[number, number]> = [];
+    if (ring) {
+      const t = (ring.x - p.from[0]) * ux + (ring.z - p.from[1]) * uz, off = Math.abs((ring.x - p.from[0]) * nx + (ring.z - p.from[1]) * nz);
+      if (off < ring.ring) {
+        const half = Math.sqrt(ring.ring * ring.ring - off * off) - 0.3;
+        spans.push([0, Math.max(0, t - half)], [Math.min(len, t + half), len]);
+      } else spans.push([0, len]);
+    } else spans.push([0, len]);
+    for (const [s0, s1] of spans) {
+      if (s1 - s0 < 0.1) continue;
+      const P = (s: number, o: number): [number, number] => [p.from[0] + ux * s + nx * o, p.from[1] + uz * s + nz * o];
+      m.skin(P(s0, -hw), P(s1, -hw), P(s1, hw), P(s0, hw), SKIN, (x, z) => toned(pathCol, Math.floor(x / 0.7), Math.floor(z / 0.7), 0.05, 12), 0.7);
+      for (const o of [-hw, hw]) {
+        const n = Math.max(1, Math.round((s1 - s0) / 0.14));
+        for (let k = 0; k < n; k++) {
+          const a = s0 + (s1 - s0) * k / n, b = s0 + (s1 - s0) * (k + 1) / n - 0.012, e = o > 0 ? o - 0.13 : o;
+          m.skin(P(a, e), P(b, e), P(b, e + 0.13), P(a, e + 0.13), SKIN + 0.006, toned(edgeCol, a, o, 0.1, 13), 0.5);
+        }
+      }
+      census.pathM2 = (census.pathM2 ?? 0) + (s1 - s0) * p.width;
+    }
+  }
+  if (ring?.kind === 'fountain') {
+    // (229) the glorieta: its gravel ring, the basin's rim of dressed stone in sixteen units, its water, the pedestal in
+    // the middle with its bowl and its cap (render only: a hull drives over the bed's lawn and through the basin's rim)
+    m.skinRing(ring.x, ring.z, ring.r, ring.ring, 40, SKIN, (k) => toned(pathCol, k, ring.x, 0.05, 14));
+    const rim = hexRgb(style.edging.wall.hex), water = hexRgb(0x2c4a4e), g = m.ground(ring.x, ring.z);
+    for (let k = 0; k < 16; k++) {
+      const a0 = (k / 16) * Math.PI * 2, a1 = ((k + 0.96) / 16) * Math.PI * 2, rr = ring.r - 0.17;
+      const p0: [number, number] = [ring.x + Math.sin(a0) * rr, ring.z + Math.cos(a0) * rr], p1: [number, number] = [ring.x + Math.sin(a1) * rr, ring.z + Math.cos(a1) * rr];
+      const mid = (a0 + a1) / 2, out: [number, number] = [Math.sin(mid), Math.cos(mid)];
+      m.run(p0, p1, out, () => [[-0.17, g - 0.1], [0.17, g - 0.1], [0.17, g + 0.42], [0.13, g + 0.46], [-0.13, g + 0.46], [-0.17, g + 0.42]],
+        (face) => toned(face === 3 ? scaleRgb(rim, 1.06) : rim, k, 4, 0.05, 15));
+    }
+    m.skinRing(ring.x, ring.z, 0, ring.r - 0.32, 32, 0.32, (k) => toned(water, k, 1, 0.04, 16));
+    m.block(ring.x, ring.z, Math.PI / 4, 0.22, 0.22, 1.05, toned(rim, 1, 2, 0.04, 17), { level: true, ch: 0.03, embed: 0.1 });
+    m.skinRing(ring.x, ring.z, 0, 0.62, 16, 1.05, () => scaleRgb(rim, 1.04));
+    m.block(ring.x, ring.z, 0, 0.12, 0.12, 1.4, scaleRgb(rim, 1.08), { level: true, ch: 0.02, embed: 0.1 });
+    census.fountains = (census.fountains ?? 0) + 1;
+  } else if (ring) {
+    // the gravel ring, the flower bed's sandstone edge, its soil and its begonias in rings, red and white
+    m.skinRing(ring.x, ring.z, ring.r, ring.ring, 40, SKIN, (k) => toned(pathCol, k, ring.x, 0.05, 14));
+    const edge = hexRgb(style.edging.wall.hex);
+    for (let k = 0; k < 20; k++) {
+      const a0 = (k / 20) * Math.PI * 2, a1 = ((k + 0.95) / 20) * Math.PI * 2, rr = ring.r - 0.12;
+      const p0: [number, number] = [ring.x + Math.sin(a0) * rr, ring.z + Math.cos(a0) * rr], p1: [number, number] = [ring.x + Math.sin(a1) * rr, ring.z + Math.cos(a1) * rr];
+      const mid = (a0 + a1) / 2, out: [number, number] = [Math.sin(mid), Math.cos(mid)];
+      const g = m.ground(ring.x, ring.z);
+      m.run(p0, p1, out, () => [[-0.12, g - 0.08], [0.12, g - 0.08], [0.12, g + 0.1], [0.1, g + 0.12], [-0.1, g + 0.12], [-0.12, g + 0.1]], toned(edge, k, 2, 0.06, 15));
+    }
+    m.skinRing(ring.x, ring.z, 0, ring.r - 0.24, 24, 0.07, () => hexRgb(0x3a2e22));
+    const flowers = style.flowers.map(hexRgb), leaf = hexRgb(0x2e4a26);
+    // the bedding in rings: each plant a low cushion of leaves (eight-sided) under its dome of blooms, red and white in
+    // alternate rings, a plant's blooms its own shade
+    const rings = tier === 'mobile' ? 3 : 5;
+    for (let band = 0; band < rings; band++) {
+      const rr = 0.3 + band * ((ring.r - 0.65) / Math.max(1, rings - 1)), n = Math.max(4, Math.round((Math.PI * 2 * rr) / 0.34));
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * Math.PI * 2 + band * 0.37, cx = ring.x + Math.sin(a) * rr, cz = ring.z + Math.cos(a) * rr;
+        const bloom = toned(flowers[(band % 2) * 2 + (k % 2)] ?? flowers[0], cx, cz, 0.12, 63), g = m.ground(cx, cz) + 0.07;
+        const h = 0.16 + civicHash(cx, cz, 16) * 0.06, rad = 0.17, seg = tier === 'mobile' ? 5 : 8;
+        const top = [cx, g + h, cz];
+        for (let sg = 0; sg < seg; sg++) {
+          const b0 = (sg / seg) * Math.PI * 2, b1 = ((sg + 1) / seg) * Math.PI * 2, bm = (b0 + b1) / 2;
+          const q0 = [cx + Math.sin(b0) * rad, g, cz + Math.cos(b0) * rad], q1 = [cx + Math.sin(b1) * rad, g, cz + Math.cos(b1) * rad];
+          const w0 = [cx + Math.sin(b0) * rad * 0.7, g + h * 0.6, cz + Math.cos(b0) * rad * 0.7], w1 = [cx + Math.sin(b1) * rad * 0.7, g + h * 0.6, cz + Math.cos(b1) * rad * 0.7];
+          const out = [Math.sin(bm), 0.5, Math.cos(bm)];
+          m.quad(q0, q1, w1, w0, scaleRgb(leaf, 0.9 + 0.2 * civicHash(cx, sg, 64)), out);
+          m.tri(w0, w1, top, bloom, [Math.sin(bm), 1.4, Math.cos(bm)]);
+        }
+        census.flowers = (census.flowers ?? 0) + 1;
+      }
+    }
+  }
+  if (bed.feature?.kind === 'hedgeArc') {
+    const f = bed.feature, hedge = hexRgb(style.hedge);
+    const a0 = deg(f.fromDeg), a1 = deg(f.toDeg), n = Math.max(4, Math.round(Math.abs(a1 - a0) * f.r / 0.45));
+    for (let k = 0; k < n; k++) {
+      const p = a0 + (a1 - a0) * (k / n), q = a0 + (a1 - a0) * ((k + 1) / n), mid = (p + q) / 2;
+      const P0: [number, number] = [f.x + Math.sin(p) * f.r, f.z + Math.cos(p) * f.r], P1: [number, number] = [f.x + Math.sin(q) * f.r, f.z + Math.cos(q) * f.r];
+      const cx = (P0[0] + P1[0]) / 2, cz = (P0[1] + P1[1]) / 2;
+      if (onBedPath(bed, cx, cz, 0.35)) continue;
+      const out: [number, number] = [Math.sin(mid), Math.cos(mid)], H = f.height * (0.95 + civicHash(cx, cz, 17) * 0.1);
+      const g0 = m.ground(P0[0], P0[1]), g1 = m.ground(P1[0], P1[1]);
+      // a clipped box hedge: square sides, its top rounded; each length its own green
+      m.run(P0, P1, out, (end) => {
+        const g = end ? g1 : g0;
+        return [[-0.32, g - 0.05], [0.32, g - 0.05], [0.33, g + H * 0.72], [0.22, g + H], [-0.22, g + H], [-0.33, g + H * 0.72]];
+      }, (face) => toned(face === 3 ? scaleRgb(hedge, 1.18) : hedge, cx, cz + face, 0.1, 18), false);
+      census.hedgeM = (census.hedgeM ?? 0) + f.r * Math.abs(q - p);
+    }
+  }
+}
+
+/** The frontage walks: along each plot's face that fronts the room (within 3.5 m of it, facing it), flags `width` wide
+ *  out from the facade and the Rinne at their foot; not over a bed, an arm's prop-free middle is no matter (paving). */
+function frontageWalks(m: CivicMesh, area: CivicAreaPlan, plots: readonly CivicPlot[], style: RegionalCivicStyle, census: Record<string, number>,
+  debug: CivicAreaBuild['debug']): void {
+  const room = area.room, cx = (room.x0 + room.x1) / 2, cz = (room.z0 + room.z1) / 2;
+  const W = 2.0, G = style.gutter.width, base = hexRgb(style.pavement.hex), joint = hexRgb(style.pavement.joint), gut = hexRgb(style.gutter.hex);
+  for (const b of plots) {
+    const c = Math.cos(b.rot), s = Math.sin(b.rot);
+    const ax: [number, number] = [c, -s], az: [number, number] = [s, c];
+    for (const [nrm, half, along, alongHalf] of [
+      [ax, b.w / 2, az, b.d / 2], [[-ax[0], -ax[1]], b.w / 2, az, b.d / 2], [az, b.d / 2, ax, b.w / 2], [[-az[0], -az[1]], b.d / 2, ax, b.w / 2],
+    ] as Array<[[number, number], number, [number, number], number]>) {
+      const mx = b.x + nrm[0] * half, mz = b.z + nrm[1] * half;
+      if (inRect(room, mx, mz, -0.5)) continue; // a plot inside the room is not its frontage
+      if (rectDistance(room, mx, mz) > 3.5) continue;
+      if (nrm[0] * (cx - mx) + nrm[1] * (cz - mz) <= 0) continue;
+      // the face must turn to the room squarely (within 30 degrees of the room edge it faces)
+      const toRoom = Math.abs(nrm[0]) > Math.abs(nrm[1]) ? [Math.sign(nrm[0]), 0] : [0, Math.sign(nrm[1])];
+      if (nrm[0] * toRoom[0] + nrm[1] * toRoom[1] < 0.86) continue;
+      // the walk's cells along the face, a metre at a time; each cell kept off the beds and the room's outside
+      const n = Math.max(1, Math.round((alongHalf * 2) / 1.0));
+      for (let k = 0; k < n; k++) {
+        const t0 = -alongHalf + (alongHalf * 2 * k) / n, t1 = -alongHalf + (alongHalf * 2 * (k + 1)) / n;
+        const at = (t: number, o: number): [number, number] => [mx + along[0] * t + nrm[0] * o, mz + along[1] * t + nrm[1] * o];
+        const mid = at((t0 + t1) / 2, W / 2);
+        if (!inRect(room, mid[0], mid[1], 1.5)) continue;
+        if (area.beds.some((bed) => inRect(bed.rect, mid[0], mid[1], 0.6))) continue;
+        if (area.paving.some((p) => inRect(p.rect, mid[0], mid[1], 0.2))) continue;
+        // flags in two courses (1.0 m each) on the joint bed, then the Rinne's three rows of setts, dished
+        m.skin(at(t0, 0.02), at(t1, 0.02), at(t1, W), at(t0, W), SKIN - 0.004, joint, 1.2);
+        for (let q = 0; q < 2; q++) {
+          const o0 = 0.02 + q * (W / 2) + 0.006, o1 = 0.02 + (q + 1) * (W / 2) - 0.006, sh = (k + q) % 2 ? 0.5 : 0;
+          const cuts = [t0, t0 + (t1 - t0) * (0.35 + sh * 0.3), t1];
+          for (let j = 0; j + 1 < cuts.length; j++) {
+            const a = cuts[j] + 0.006, e = cuts[j + 1] - 0.006;
+            m.skin(at(a, o0), at(e, o0), at(e, o1), at(a, o1), SKIN, toned(base, mid[0] + j + q * 3, mid[1] + k, style.pavement.tone, 21), 1.2);
+          }
+        }
+        for (let row = 0; row < style.gutter.rows; row++) {
+          const o0 = W + (row * G) / style.gutter.rows + 0.005, o1 = W + ((row + 1) * G) / style.gutter.rows - 0.005;
+          const dip = row === 1 ? -style.gutter.dish : -style.gutter.dish * 0.5;
+          const ns = Math.max(1, Math.round((t1 - t0) / 0.16));
+          for (let j = 0; j < ns; j++) {
+            const a = t0 + ((t1 - t0) * j) / ns + 0.005, e = t0 + ((t1 - t0) * (j + 1)) / ns - 0.005;
+            m.skin(at(a, o0), at(e, o0), at(e, o1), at(a, o1), SKIN + dip * 0.2, toned(gut, a + row, mid[1], 0.12, 22), 0.6);
+          }
+        }
+        census.walkM2 = (census.walkM2 ?? 0) + (t1 - t0) * W;
+      }
+      const p0 = [mx + along[0] * -alongHalf, mz + along[1] * -alongHalf], p1 = [mx + along[0] * alongHalf, mz + along[1] * alongHalf];
+      debug.push({ pts: [p0[0], p0[1], p1[0], p1[1], p1[0] + nrm[0] * W, p1[1] + nrm[1] * W, p0[0] + nrm[0] * W, p0[1] + nrm[1] * W], col: [150, 120, 60] });
+    }
+  }
+}
+
+/** A civic area composed from its plan: its geometry, the destructibles it adds, its veto. */
+export function composeCivicArea(area: CivicAreaPlan, style: RegionalCivicStyle, ctx: CivicAreaContext): CivicAreaBuild {
+  const m = new CivicMesh(ctx.ground);
+  const pieces: CivicPiece[] = [];
+  const census: Record<string, number> = {};
+  const debug: CivicAreaBuild['debug'] = [];
+  const granite = hexRgb(style.bands.granite), basalt = hexRgb(style.bands.basalt);
+  // the roundel: its ring band in granite units, the basalt rose and its rays
+  const C = area.centre;
+  // (228 r3, the blind critics: "a thin pale circle ... reads like a roundabout or helipad marking") the ring band a dark
+  // basalt inlay in units, its inner line granite
+  // (228 r8, the blind critics: the crossing's disc "reads as a traffic roundabout") a hidden roundel draws nothing; (229 b3)
+  // nor one with `inlay: false` (a village place's crossing, a char's haat)
+  if (!C.hidden && C.inlay !== false) {
+    m.skinRing(C.x, C.z, C.ringR[0], C.ringR[1], 64, SKIN, (k) => toned(basalt, k, 1, 0.09, 31));
+    m.skinRing(C.x, C.z, C.ringR[0] - 0.22, C.ringR[0] - 0.02, 64, SKIN, (k) => toned(granite, k, 9, 0.06, 30));
+    m.skinRing(C.x, C.z, C.roseR, C.roseR + 0.16, 32, SKIN, (k) => toned(basalt, k, 2, 0.06, 32));
+    if (C.fill) {
+      // (229 b2 r2, the blind critics: "a small grey disc on a darker square patch", "a pale bluish puddle" at night) the
+      // roundel laid in klinker: concentric courses of setts from the rose out to the ring's granite line, each course its
+      // own tone, a touch under the bands so they read on top
+      const sett = hexRgb(C.fillHex ?? style.bands.sett), r0 = C.roseR + 0.16, r1 = C.ringR[0] - 0.22, n = Math.max(1, Math.round((r1 - r0) / 0.5));
+      for (let q = 0; q < n; q++) {
+        const a = r0 + ((r1 - r0) * q) / n, b = r0 + ((r1 - r0) * (q + 1)) / n;
+        m.skinRing(C.x, C.z, a, b - 0.015, 64, SKIN - 0.003, (k) => toned(sett, k + q * 64, q, 0.09, 35));
+      }
+    }
+    const rays = C.rays * 2;
+    for (let k = 0; k < rays; k++) {
+      const a0 = (k / rays) * Math.PI * 2, a1 = ((k + 1) / rays) * Math.PI * 2, am = (a0 + a1) / 2;
+      // a ray: the point out at the rim on the even sectors (basalt), the granite between
+      const tipR = C.roseR, P = (a: number, r: number): number[] => { const x = C.x + Math.sin(a) * r, z = C.z + Math.cos(a) * r; return [x, ctx.ground(x, z) + SKIN, z]; };
+      m.tri(P(a0, 0.45), P(am, tipR), P(a1, 0.45), k % 2 ? toned(basalt, k, 3, 0.05, 33) : toned(granite, k, 3, 0.05, 34));
+      m.tri(P(a0, 0.45), P(a0, tipR), P(am, tipR), toned(granite, k, 4, 0.05, 35));
+      m.tri(P(a1, 0.45), P(am, tipR), P(a1, tipR), toned(granite, k, 5, 0.05, 36));
+    }
+    m.skinRing(C.x, C.z, 0, 0.45, 12, SKIN, () => granite);
+  }
+  for (const bed of area.beds) {
+    composeBed(m, bed, style, pieces, census, ctx.tier);
+    const r = bed.rect;
+    debug.push({ pts: [r.x0, r.z0, r.x1, r.z0, r.x1, r.z1, r.x0, r.z1], col: [40, 140, 40], fill: [170, 205, 150] });
+  }
+  for (const p of area.paving) {
+    if (p.kind === 'tiles') { census.tiles = (census.tiles ?? 0) + tileRect(m, p.rect, style, ctx.tier); continue; }
+    if (p.kind === 'flags') flagRect(m, p.rect, style, p.cell ? SKIN + 0.012 : SKIN, 3, p.cell ?? 2.0);
+    else if (p.kind === 'setts') settRect(m, p.rect, style.bands.sett, SKIN);
+    else graniteRect(m, p.rect, p.kind === 'basalt' ? style.bands.basalt : style.bands.granite, SKIN);
+    debug.push({ pts: [p.rect.x0, p.rect.z0, p.rect.x1, p.rect.z0, p.rect.x1, p.rect.z1, p.rect.x0, p.rect.z1], col: [130, 130, 130] });
+  }
+  for (const [k, st] of (area.strips ?? []).entries()) {
+    census.stripUnits = (census.stripUnits ?? 0) + stripPaving(m, st, style, ctx.tier, 50 + k);
+    census.stripM = (census.stripM ?? 0) + Math.hypot(st.to[0] - st.from[0], st.to[1] - st.from[1]);
+    debug.push({ pts: [st.from[0], st.from[1], st.to[0], st.to[1]], col: [150, 80, 50] });
+  }
+  // (229 b3) the platforms round the trees' feet: whitewashed brick under a worn brick top, its arrises chamfered
+  const wash = hexRgb(style.edging.wall.hex), topBrick = hexRgb(style.bands.sett);
+  for (const pf of area.platforms ?? []) {
+    const yaw = deg(pf.yawDeg), c = Math.cos(yaw), sn = Math.sin(yaw), g = ctx.ground(pf.x, pf.z);
+    m.block(pf.x, pf.z, yaw, pf.half, pf.half, pf.height, (face) => toned(wash, pf.x + face, pf.z, 0.04, 44), { level: true, ch: 0.03, embed: 0.12 });
+    const W = (u: number, v: number): [number, number] => [pf.x + u * c + v * sn, pf.z - u * sn + v * c];
+    const inset = pf.half - 0.16, n = Math.max(2, Math.round((inset * 2) / 0.5));
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      const u0 = -inset + (2 * inset * i) / n, u1 = -inset + (2 * inset * (i + 1)) / n, v0 = -inset + (2 * inset * j) / n, v1 = -inset + (2 * inset * (j + 1)) / n;
+      const q = [W(u0, v0), W(u1, v0), W(u1, v1), W(u0, v1)].map(([x, z]) => [x, g + pf.height + 0.004, z]);
+      m.quad(q[0], q[1], q[2], q[3], toned(topBrick, pf.x + i, pf.z + j, 0.12, 45));
+    }
+    census.platforms = (census.platforms ?? 0) + 1;
+    const r = pf.half;
+    debug.push({ pts: [...W(-r, -r), ...W(r, -r), ...W(r, r), ...W(-r, r)], col: [220, 210, 190] });
+  }
+  if (area.frontage !== false) frontageWalks(m, area, ctx.plots, style, census, debug);
+  // (228 r3, the blind critics: the streets' pavements "end abruptly" in "pale wedge slabs" at the square's mouths) each
+  // mouth's corners paved flush: from the street's kerb line out past its widest pavement, as deep into the room as a
+  // frontage walk and its gutter, so the street's dropped kerb runs on into the room's walks
+  if (ctx.pathways) {
+    const pw = ctx.pathways, room = area.room, K = pw.kerbM, outer = K + style.kerb.width + pw.maxWalkM, depth = 2.45;
+    for (const [mx, mz] of pw.mouths) {
+      const edge = Math.abs(mx - room.x0) < 1 ? 'w' : Math.abs(mx - room.x1) < 1 ? 'e' : Math.abs(mz - room.z0) < 1 ? 's' : Math.abs(mz - room.z1) < 1 ? 'n' : null;
+      if (!edge) continue;
+      for (const sgn of [-1, 1]) {
+        const a = sgn < 0 ? -outer : K, b = sgn < 0 ? -K : outer;
+        const r: CivicRect = edge === 's' ? { x0: mx + a, x1: mx + b, z0: room.z0, z1: room.z0 + depth }
+          : edge === 'n' ? { x0: mx + a, x1: mx + b, z0: room.z1 - depth, z1: room.z1 }
+          : edge === 'w' ? { x0: room.x0, x1: room.x0 + depth, z0: mz + a, z1: mz + b }
+          : { x0: room.x1 - depth, x1: room.x1, z0: mz + a, z1: mz + b };
+        const hits = (q: CivicRect) => q.x0 < r.x1 && q.x1 > r.x0 && q.z0 < r.z1 && q.z1 > r.z0;
+        if (area.beds.some((bed) => hits(bed.rect)) || area.paving.some((p) => hits(p.rect))) continue;
+        // (228 r6, the blind critics: "pale torn slab patches" — the street's camber poked up through the coarse bed) laid
+        // on the ground every 0.3 m, a hand proud
+        flagRect(m, r, style, SKIN + 0.012, 7, 0.3);
+        census.mouthAprons = (census.mouthAprons ?? 0) + 1;
+      }
+    }
+  }
+  if (area.fountainRing) {
+    const f = area.fountainRing;
+    m.skinRing(f.x, f.z, f.r - 0.5, f.r, 56, SKIN, (k) => toned(granite, k, 6, 0.07, 37));
+    m.skinRing(f.x, f.z, f.r, f.r + 0.45, 56, SKIN - 0.006, (k) => toned(hexRgb(style.gutter.hex), k, 7, 0.1, 38));
+  }
+  for (const st of area.steps) {
+    const yaw = deg(st.yawDeg), c = Math.cos(yaw), s = Math.sin(yaw), g = ctx.ground(st.x, st.z), col = hexRgb(style.steps);
+    for (let k = 0; k < st.count; k++) {
+      // step k (0 the lowest) runs out from the door its treads' depth, its top k + 1 rises over the ground at the door
+      const depth = (st.count - k) * 0.38, x = st.x + s * depth / 2, z = st.z + c * depth / 2;
+      m.block(x, z, yaw, st.width / 2 - k * 0.15, depth / 2, st.rise * (k + 1), toned(col, x, z, 0.05, 39),
+        { top: g + st.rise * (k + 1), ch: 0.02, embed: 0.08 });
+    }
+  }
+  // the bays: a row of paler setts, each its own stone with its joints, flush with the square (no paint)
+  const bay = hexRgb(style.bands.bay);
+  for (const b of area.bayMarks) {
+    const yaw = deg(b.yawDeg), ux = Math.sin(yaw), uz = Math.cos(yaw), n = Math.max(1, Math.round(b.length / 0.17));
+    for (let k = 0; k < n; k++) {
+      const t0 = -b.length / 2 + (b.length * k) / n + 0.014, t1 = -b.length / 2 + (b.length * (k + 1)) / n - 0.014;
+      const P = (t: number, o: number): [number, number] => [b.x + ux * t - uz * o, b.z + uz * t + ux * o];
+      m.skin(P(t0, -0.07), P(t1, -0.07), P(t1, 0.07), P(t0, 0.07), SKIN, toned(bay, t0 + b.x, b.z, 0.1, 40), 0.5);
+    }
+  }
+  // the gutters: three rows of darker setts along each carriageway's edge, the middle row dished
+  const gut = hexRgb(style.gutter.hex), gw = style.gutter.width / style.gutter.rows;
+  const gridIron = hexRgb(style.grate.iron);
+  for (const r of area.rinnen) {
+    const dx = r.to[0] - r.from[0], dz = r.to[1] - r.from[1], len = Math.hypot(dx, dz), ux = dx / len, uz = dz / len;
+    const P = (t: number, o: number): [number, number] => [r.from[0] + ux * t - uz * o, r.from[1] + uz * t + ux * o];
+    for (let row = 0; row < style.gutter.rows; row++) {
+      const o0 = -style.gutter.width / 2 + row * gw + 0.01, o1 = o0 + gw - 0.02, n = Math.max(1, Math.round(len / 0.3));
+      for (let k = 0; k < n; k++) {
+        const t0 = (len * k) / n + 0.012, t1 = (len * (k + 1)) / n - 0.012;
+        m.skin(P(t0, o0), P(t1, o0), P(t1, o1), P(t0, o1), SKIN - (row === 1 ? 0.004 : 0), toned(gut, t0 + r.from[0], row + r.from[1], 0.12, 43), 0.6);
+      }
+    }
+    census.rinneM = (census.rinneM ?? 0) + len;
+    // (228 r6) its gully grates every 12 m: a cast-iron grate of bars across the gutter in a granite frame
+    for (let t = 6; t < len - 3; t += 12) {
+      const gx = r.from[0] + ux * t, gz = r.from[1] + uz * t, hl = 0.32, hw = 0.24;
+      const Q = (a: number, o: number): [number, number] => [gx + ux * a - uz * o, gz + uz * a + ux * o];
+      m.skin(Q(-hl - 0.08, -hw - 0.08), Q(hl + 0.08, -hw - 0.08), Q(hl + 0.08, hw + 0.08), Q(-hl - 0.08, hw + 0.08), SKIN + 0.002, toned(granite, gx, gz, 0.05, 44), 1);
+      m.skin(Q(-hl, -hw), Q(hl, -hw), Q(hl, hw), Q(-hl, hw), SKIN + 0.004, scaleRgb(gridIron, 0.55), 1);
+      for (let b = 0; b < 6; b++) {
+        const a0 = -hl + 0.04 + b * ((2 * hl - 0.08) / 6), a1 = a0 + 0.045;
+        m.skin(Q(a0, -hw + 0.03), Q(a1, -hw + 0.03), Q(a1, hw - 0.03), Q(a0, hw - 0.03), SKIN + 0.006, scaleRgb(gridIron, 1.5), 1);
+      }
+      census.gullies = (census.gullies ?? 0) + 1;
+    }
+  }
+  // (228 r6) the manhole covers: a round cast-iron lid with its rings and its frame
+  for (const c of area.covers ?? []) {
+    m.skinRing(c.x, c.z, 0.31, 0.39, 20, SKIN + 0.003, (k) => toned(granite, k, c.x, 0.05, 45));
+    m.skinRing(c.x, c.z, 0, 0.31, 20, SKIN + 0.004, () => scaleRgb(gridIron, 0.9));
+    for (const rr of [0.08, 0.16, 0.24]) m.skinRing(c.x, c.z, rr, rr + 0.025, 20, SKIN + 0.006, () => scaleRgb(gridIron, 1.6));
+    census.covers = (census.covers ?? 0) + 1;
+  }
+  // (228 r6) the leaves fallen under the trees: small flat leaves in the season's browns and ochres, scattered thinner
+  // toward the edge of each crown's shade
+  if ((area.litterR ?? 0) > 0) {
+    const leafCols = [0x6a4a22, 0x8a6a2a, 0x5a5a2a, 0x7a3e1e, 0x9a7a3a].map(hexRgb);
+    for (const t of area.trees.stations) {
+      const n = ctx.tier === 'mobile' ? 30 : 90;
+      for (let i = 0; i < n; i++) {
+        const h1 = civicHash(t.x * 7 + i, t.z, 61), h2 = civicHash(t.z * 5 - i, t.x, 62), h3 = civicHash(i, t.x + t.z, 63);
+        const rr = area.litterR! * Math.sqrt(h1), a = h2 * Math.PI * 2, lx = t.x + Math.sin(a) * rr, lz = t.z + Math.cos(a) * rr;
+        if (area.beds.some((b) => inRect(b.rect, lx, lz, 0.2))) continue;
+        const sz = 0.07 + h3 * 0.08, yaw = h3 * 6.28, cc = Math.cos(yaw), ss = Math.sin(yaw);
+        const L = (u: number, v: number): [number, number] => [lx + u * cc + v * ss, lz - u * ss + v * cc];
+        m.skin(L(-sz, -sz * 0.6), L(sz, -sz * 0.6), L(sz, sz * 0.6), L(-sz, sz * 0.6), SKIN + 0.005, leafCols[Math.floor(h1 * 997) % leafCols.length], 1);
+      }
+      census.litter = (census.litter ?? 0) + n;
+    }
+  }
+  // the trees' grates: an iron grate of concentric slots in a granite frame
+  const iron = hexRgb(style.grate.iron), frame = hexRgb(style.grate.frame);
+  for (const t of area.trees.stations) {
+    if (!t.grate) continue;
+    const h = 0.9;
+    m.skinRect(t.x - h, t.z - h, t.x + h, t.z + h, SKIN, frame, 1.0);
+    m.skinRect(t.x - h + 0.14, t.z - h + 0.14, t.x + h - 0.14, t.z + h - 0.14, SKIN + 0.003, iron, 0.8);
+    for (let ring = 1; ring <= 3; ring++) {
+      m.skinRing(t.x, t.z, 0.18 * ring, 0.18 * ring + 0.05, 16, SKIN + 0.006, () => scaleRgb(iron, 1.6));
+    }
+    census.grates = (census.grates ?? 0) + 1;
+  }
+  // the monument's gravel octagon and its granite chain posts (the column itself is the props' destructible)
+  if (area.monument) {
+    const mo = area.monument, path = hexRgb(style.path.hex);
+    m.skinRing(mo.x, mo.z, 0, 2.9, 8, SKIN + 0.002, (k) => toned(path, k, 8, 0.04, 41), Math.PI / 8, Math.PI * 2 + Math.PI / 8);
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * Math.PI * 2 + Math.PI / 8, x = mo.x + Math.sin(a) * 2.75, z = mo.z + Math.cos(a) * 2.75;
+      m.block(x, z, a, 0.09, 0.09, 0.62, toned(hexRgb(style.edging.pier.hex), x, z, 0.06, 42), { level: true, ch: 0.025, embed: 0.12 });
+      // the chain to the next post: a sagging line of links
+      const b = ((k + 1) / 8) * Math.PI * 2 + Math.PI / 8, x2 = mo.x + Math.sin(b) * 2.75, z2 = mo.z + Math.cos(b) * 2.75;
+      const g = ctx.ground(x, z);
+      for (let l = 0; l < 6; l++) {
+        const u0 = l / 6, u1 = (l + 0.8) / 6, sag = (u: number) => 0.5 - 0.14 * 4 * u * (1 - u);
+        const p0: [number, number] = [x + (x2 - x) * u0, z + (z2 - z) * u0], p1: [number, number] = [x + (x2 - x) * u1, z + (z2 - z) * u1];
+        const side: [number, number] = [-(z2 - z), x2 - x], sl = Math.hypot(side[0], side[1]) || 1;
+        m.run(p0, p1, [side[0] / sl, side[1] / sl], (end) => {
+          const y = g + sag(end ? u1 : u0);
+          return [[-0.012, y - 0.012], [0.012, y - 0.012], [0.012, y + 0.012], [-0.012, y + 0.012]];
+        }, iron, false);
+      }
+    }
+  }
+  // the pieces: the furniture, the parked vehicles, the lamps
+  for (const f of [...area.furniture, ...area.parking, ...area.lamps]) {
+    pieces.push({ kind: f.kind, x: f.x, z: f.z, yaw: deg(f.yawDeg), scale: f.scale ?? 1 });
+    census[f.kind] = (census[f.kind] ?? 0) + 1;
+  }
+  for (const a of area.arms) debug.push({ pts: [a.x0, a.z0, a.x1, a.z0, a.x1, a.z1, a.x0, a.z1], col: [90, 90, 200] });
+  {
+    const R = area.room, rcx = (R.x0 + R.x1) / 2, rcz = (R.z0 + R.z1) / 2, yaw = deg(area.roomYawDeg ?? 0), c = Math.cos(yaw), sn = Math.sin(yaw);
+    const W = (u: number, v: number): number[] => [rcx + u * c + v * sn, rcz - u * sn + v * c];
+    const hx = (R.x1 - R.x0) / 2, hz = (R.z1 - R.z0) / 2;
+    debug.push({ pts: [...W(-hx, -hz), ...W(hx, -hz), ...W(hx, hz), ...W(-hx, hz)], col: [200, 0, 200] });
+  }
+  census.triangles = m.triangles;
+  return { geometry: m.geometry(`civic:${area.id}`), pieces, veto: area.room, vetoYaw: deg(area.roomYawDeg ?? 0), census, debug };
+}

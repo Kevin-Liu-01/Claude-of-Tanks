@@ -407,9 +407,9 @@
     {
       "id": "maps",
       "file": "maps.webp",
-      "sha256": "5aefe4374fecd7acc87b8828a6176b09560079a4b72eb2439ebddf4b42e36412",
-      "sourceCommit": "fefce24846f8a3c9cff903ff72ddb5eff2b67170",
-      "recipeSha256": "bee33f5797ccb3b5afbaf08989065f0cba6cb49527fbb246165e888644247d8d",
+      "sha256": "a881e35328b4ae6e55a016950418eb25073fe17338698e015399c7d000af80dc",
+      "sourceCommit": "001ca8d376b27c95f15088c937c176f3297ca097",
+      "recipeSha256": "77a55871ef78cd2a8196bc6c0d8b52741e43d1aeda502ad1faaebd5ed59bb27c",
       "renderer": "ANGLE (Apple, ANGLE Metal Renderer: Apple M5 Max, Unspecified Version)",
       "launch": {
         "verified": true,
@@ -423,7 +423,7 @@
         "timeOfDay": "day",
         "actors": [
           {
-            "id": "m1a2_x",
+            "id": "m1a2_abrams",
             "name": "hero",
             "pos": [
               -56,
@@ -456,15 +456,15 @@
       },
       "textures": {
         "mapId": "verdant",
-        "requested": 6,
-        "applied": 6
+        "requested": 5,
+        "applied": 5
       },
       "overlay": null,
       "overlayCount": 0,
       "smoke": null,
       "arcs": [],
       "vehicle": {
-        "id": "m1a2_x",
+        "id": "m1a2_abrams",
         "name": "M1A2 Abrams"
       },
       "map": "Verdant Fields"

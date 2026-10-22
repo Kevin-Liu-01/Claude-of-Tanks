@@ -36,7 +36,9 @@ for (const [id, t] of Object.entries(T)) if (t) assert.equal(t.nearM ?? 0, 0, `$
   assert.match(trails, /v\[i \* 6 \+ 3\]\.set\(look\.rise, look\.windK, look\.glow, look\.nearM \?\? 0\);/, 'the near fade rides in the look table');
   assert.match(trails, /if \( vNear > 0\.0 \) T \*= smoothstep\( 0\.2 \* vNear, vNear, vR\.z \);/, 'none within a fifth of it, full past it');
   const effects = readFileSync(new URL('./effects.ts', import.meta.url), 'utf8');
-  assert.match(effects, /const tl = trail\.pylon \? gunshipTrailOf\(base\) : base;/, "only the gunship's missile (drawn off its pylon) takes it");
+  // (ac130-barrels-230) and off the lens's rail its own narrow look (lensTrailOf), the gunship's near fade with it
+  assert.match(effects, /const tl = trail\.pylon \? \(trail\.lensK !== undefined \? lensTrailOf\(base\) : gunshipTrailOf\(base\)\) : base;/,
+    "only the gunship's missile (drawn off its pylon) takes it");
 }
 assert.ok(T.hellfire.life >= 9 && T.kornet.life <= 4, 'a dense trail hangs, a wisp is soon gone');
 assert.ok(T.mclos.c0[0] < T.hellfire.c0[0], 'an old motor is greyer');

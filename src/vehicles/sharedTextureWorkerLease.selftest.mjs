@@ -40,7 +40,7 @@ class FakeWorker {
     if (postFailure) throw postFailure;
     assert.equal(this.terminated, 0, 'terminated transports cannot accept successor work');
     assert(Number.isSafeInteger(message.requestId));
-    assert.match(message.fontUrl, /\/fonts\/abc-monument-grotesk\/ABCMonumentGrotesk-Bold\.woff2$/);
+    assert.match(message.fontUrl, /\/fonts\/chakra-petch\/ChakraPetch-Bold-Latin\.woff2$/);
     jobs.push({ owner: this, message: structuredClone(message), replied: false });
   }
   terminate() { this.terminated++; }

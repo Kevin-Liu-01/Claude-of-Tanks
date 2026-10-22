@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createDeploymentShadowWarmOwner } from './deploymentShadowWarm.ts';
+import { warmDepthProgramSteps } from './depthProgramWarm.ts';
 import { installArticulatedShadowBatch } from './articulatedShadowBatch.ts';
 import { markShadowOnly, routeShadowOnlyLayer, SHADOW_ONLY_LAYER } from './renderLayers.ts';
 import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
@@ -113,7 +114,10 @@ const savedFrustum = {
   near: farCamera.near,
   far: farCamera.far,
 };
-const depthSteps = [...owner.warmDepthProgramSteps()];
+// (2026-10-19) the rare warm's depth-program pass, demand-loaded with the combat warm runtime (depthProgramWarm.ts)
+let depthRenders = 0;
+const depthSteps = [...warmDepthProgramSteps({ lights, scene, worldGroup: world, warmRender: () => { depthRenders += 1; } })];
+assert.equal(depthRenders, depthSteps.length, 'one warm render a step');
 assert.equal(depthSteps.length, 4,
   'five world children form four bounded cohorts plus one actor root');
 assert.deepEqual({

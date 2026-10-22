@@ -10,7 +10,7 @@ import { PUBLIC_ROUTE_RECORDS } from '../../src/ui/localeRouting.ts';
 
 const root = new URL('../../', import.meta.url);
 const crest = readFileSync(new URL('public/brand/logo-mark.svg', root)).toString('base64');
-const font = readFileSync(new URL('public/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2', root)).toString('base64');
+const font = readFileSync(new URL('public/fonts/chakra-petch/ChakraPetch-Bold-Latin.woff2', root)).toString('base64');
 assert.equal(OG_IMAGE_CARDS.length, 20, 'default, private rooms, Studio, the 404, and every public page need a card');
 assert.equal(new Set(OG_IMAGE_CARDS.map(([id]) => id)).size, 20);
 // Every labelled card has a Chinese twin for its /cn page, labelled in that page's own catalog words.

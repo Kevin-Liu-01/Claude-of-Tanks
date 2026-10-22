@@ -49,13 +49,12 @@ export function createEndOverlayRuntime({
   const root = ownerDocument.createElement('div');
   root.style.cssText =
     'position:fixed;inset:0;display:none;z-index:70;align-items:center;justify-content:center;'
-    + 'flex-direction:column;gap:22px;background:rgba(4,7,10,0.55);'
-    + "font-family:'ABC Monument Grotesk','Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#eef4f9;";
+    + 'flex-direction:column;gap:22px;background:rgba(4,7,10,0.55);color:#eef4f9;';
   root.className = 'cot-end';
 
   const title = ownerDocument.createElement('div');
   title.style.cssText =
-    'font-size:52px;font-weight:800;letter-spacing:0.3em;text-shadow:0 2px 18px rgba(0,0,0,0.8);';
+    'font-size:52px;font-weight:700;letter-spacing:0.3em;text-shadow:0 2px 18px rgba(0,0,0,0.8);';
   const recordLine = ownerDocument.createElement('div');
   recordLine.style.cssText =
     'font-size:15px;font-weight:700;letter-spacing:0.14em;color:#cfd9e2;'
@@ -64,8 +63,7 @@ export function createEndOverlayRuntime({
   returnButton.textContent = t('endOverlay.returnToGarage');
   returnButton.style.cssText =
     'font-size:16px;font-weight:700;letter-spacing:0.2em;padding:14px 44px;cursor:pointer;'
-    + 'color:#fff7ea;border:1px solid #ffc169;background:linear-gradient(180deg,#ffa02e,#d95f00);'
-    + "font-family:'ABC Monument Grotesk','Segoe UI',Roboto,Helvetica,Arial,sans-serif;";
+    + 'color:#fff7ea;border:1px solid #ffc169;background:linear-gradient(180deg,#ffa02e,#d95f00);';
   root.append(title, recordLine, returnButton);
   ownerDocument.body.appendChild(root);
 

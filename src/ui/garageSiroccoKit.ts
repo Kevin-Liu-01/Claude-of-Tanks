@@ -10,7 +10,7 @@ import type { GarageKitPlacement } from './garageKitPlacement.ts';
  * - the perimeter on the left: a HESCO line with its mesh wordmark banner, the rebuilt guard tower (braced legs, a
  *   sandbag parapet with its firing gap, a camouflage net, a caged ladder) and a short T-wall run with the stencilled
  *   crest;
- * - the LED trailer running the slideshow under the shade sail's back edge, in the canonical frame's right band clear of
+ * - the monitor trailer running the slideshow's CRT under the shade sail's back edge, in the canonical frame's right band clear of
  *   the hero's halo (garageSlideshowPlacement.ts), with its generator;
  * - the engine cell at the canonical frame's right edge: an A-frame gantry at work with a power pack hanging plumb over
  *   its stand, the bench and the welding cart;
@@ -28,7 +28,7 @@ import type { GarageKitPlacement } from './garageKitPlacement.ts';
 
 export const SIROCCO_KIT_PLACEMENT: GarageKitPlacement = {
   items: [
-    // -- the perimeter on the left and the LED trailer's power
+    // -- the perimeter on the left and the monitor trailer's power
     { kind: 'wall', wall: 'hesco', points: [[-29.2, 18.8], [-19.4, 17.8]], params: { mural: 'brand.banner.h', muralEvery: 7 } },
     { kind: 'display', display: 'pvc', rect: 'brand.wordmark.light', at: [-25.0, 17.8], yaw: toward([-25.0, 17.8]), y: 1.42, size: [3.4, 0.64], options: { gap: 0.2 } },
     { kind: 'prop', name: 'guardTower', at: [-16.4, 17.9], yaw: toward([-16.4, 17.9]) },
@@ -36,7 +36,7 @@ export const SIROCCO_KIT_PLACEMENT: GarageKitPlacement = {
     { kind: 'prop', name: 'sandbag', at: [-18.6, 16.2], yaw: 0.2, params: { variant: 1 } },
     { kind: 'prop', name: 'sandbag', at: [-18.1, 16.0], yaw: -0.3, params: { variant: 2 } },
     { kind: 'prop', name: 'sandbag', at: [-18.3, 16.1], yaw: 0.1, y: 0.15 },
-    // -- the LED trailer under the sail's back edge (garageSlideshowPlacement.ts), its generator and cable reel
+    // -- the monitor trailer under the sail's back edge (garageSlideshowPlacement.ts), its generator and cable reel
     { kind: 'prop', name: 'generator', at: [16.6, 21.6], yaw: toward([16.6, 21.6]) + 1.2 },
     { kind: 'prop', name: 'cableReel', at: [11.4, 20.6], yaw: 0.5 },
     // -- the engine cell at the canonical frame's right edge: an A-frame at work on a power pack

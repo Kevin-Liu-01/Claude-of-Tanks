@@ -8,11 +8,20 @@ assert.match(
   /\.viewer-bottom-console \.mode-dock\{[^}]*width:min\(800px,100%\)[^}]*grid-template-columns:168px repeat\(5,minmax\(0,1fr\)\)/,
   'desktop diagnostic dock must reserve enough width for its label and five modes',
 );
+// at the 11 px type floor the heading wraps inside its own grid cell (icon | heading | info), so it
+// can never run under the info control; the subtitles that no longer fit a mode button legibly are hidden, not clipped.
 assert.match(
   css,
-  /\.mode-dock>p>span\{[^}]*min-width:0[^}]*white-space:nowrap/,
-  'diagnostic dock heading must stay on one line without overlapping its info control',
+  /\.mode-dock>p\{display:grid;grid-template-columns:20px minmax\(0,1fr\) 20px;/,
+  'diagnostic dock heading keeps its own grid column between the icon and the info control',
 );
+assert.match(
+  css,
+  /\.mode-dock>p>span\{[^}]*min-width:0[^}]*white-space:normal/,
+  'diagnostic dock heading wraps inside its column instead of overlapping its info control',
+);
+assert.match(css, /\.mode-dock>button small\{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset\(50%\)/,
+  'mode subtitles leave the picture (the icons and names carry the mode) but stay in each button\'s accessible name');
 assert.match(
   css,
   /\.mode-dock>button span\{[^}]*min-width:0[^}]*white-space:nowrap/,
@@ -40,4 +49,4 @@ assert.match(css, /data-cot-width='phone'\] \.view-controls\{grid-template-colum
 assert.match(css, /data-cot-height='short'\]\[data-cot-orientation='landscape'\][\s\S]*\.viewer\{[\s\S]*height:calc\(var\(--cot-viewport-height,100dvh\) - 56px\);min-height:300px/,
   'short landscape Gallery viewports must fit the live viewer into the available height');
 
-console.log('modeDockLayout.selftest: single-line diagnostic labels and responsive dock widths pass');
+console.log('modeDockLayout.selftest: diagnostic labels in their own columns (no clip, no overlap) and responsive dock widths pass');

@@ -45,9 +45,14 @@ function hull(P:TankBuilderPort):void {
     skirt(P,side);
     fenderReinforcements(P,side);
   }
-  // The broad low apron is a separate thin hanging sheet, not a filled hull.
+  // The broad low apron is a separate thin hanging sheet, not a filled hull: the T-80U's rubber mat over the lower
+  // front plate, bare rubber (owner 2026-10-21: "they are technically supposed to be made of rubber"). Art fixes 230:
+  // a bolted steel clamp strip holds its top edge under the hanger struts. Its measured extent is unchanged.
   P.addMudguard('t80u-x-bow-apron','hullRubber',box(2.04451,.68890,.00902),0,.566517,3.011124);
-  for(const x of [-.72,-.591,-.463,-.067,.067,.463,.591,.72])P.addEquipment('hullDetail',beamBetween([x,.925,3.025],[x,.976,3.129],.018));
+  P.addEquipment('hullDetail',box(2.03,.046,.014),0,.885,3.0215);
+  const apronHangers=[-.72,-.591,-.463,-.067,.067,.463,.591,.72];
+  for(const x of apronHangers)P.addEquipment('hullDetail',beamBetween([x,.925,3.025],[x,.976,3.129],.018));
+  for(const x of [-.98,...apronHangers,.98])P.addEquipment('hullDetail',cylZ(.0125,.010,10),x,.885,3.0325);
 }
 
 function fenderShell(P:TankBuilderPort,side:number):void {

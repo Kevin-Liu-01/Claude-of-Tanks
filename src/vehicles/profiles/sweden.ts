@@ -152,7 +152,7 @@ function addStrv103BOraclePackage(P: SwedishBuilderPort): void {
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's Ksp 58, hull-owned)
   mount(P, 'hull', FITTINGS.pintleMG({
     mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.78,
-    elev: 0.07, shield: true, ammo: true, seed: 10320, working: true,
+    elev: 0.07, shield: true, ammo: true, seed: 10320, working: true, ridingCradle: true,
   }), 0.38, 1.98, -0.26, [0, 0.04, 0]);
   P.add('hull', box(0.32, 0.25, 0.28), -0.45, 1.96, -0.22);
   P.add('hullGlass', box(0.18, 0.095, 0.022), -0.45, 1.98, -0.06);
@@ -219,7 +219,7 @@ function addStrv81Package(P: SwedishBuilderPort): void {
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the commander's Ksp 58)
   mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.80,
-    elev: 0.08, shield: true, ammo: true, seed: 8120, feed: 'right', working: true,
+    elev: 0.08, shield: true, ammo: true, seed: 8120, feed: 'right', working: true, ridingCradle: true,
   }), -0.47, 0.94, -0.52, [0, -0.05, 0]);
   P.add('turret', box(0.34, 0.09, 0.32), 0.47, 0.91, -0.36);
   P.add('turretDetail', cylY(0.12, 0.14, 0.25, 14), 0.47, 1.06, -0.36);
@@ -576,7 +576,7 @@ function buildUdes03(P: SwedishBuilderPort): void {
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (hull-owned)
   mount(P, 'hull', FITTINGS.pintleMG({
     mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.64,
-    elev: 0.05, shield: false, ammo: true, seed: 302, working: true,
+    elev: 0.05, shield: false, ammo: true, seed: 302, working: true, ridingCradle: true,
   }), 0.38, 1.70, -0.28, [0, -0.05, 0]);
   P.addEquipment('hull', box(0.24, 0.18, 0.27), 0.64, 1.72, -0.54);
   P.add('hullGlass', box(0.14, 0.07, 0.018), 0.64, 1.75, -0.40);             // 2026-10-19 (owner float sweep): 6 mm ahead of the sight box; set into it
@@ -850,7 +850,7 @@ function buildStrv103A(P: SwedishBuilderPort): void {
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (hull-owned)
   mount(P, 'hull', FITTINGS.pintleMG({
     mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 1.0,
-    elev: 0.04, shield: 'low', ammo: true, seed: 10430, working: true,
+    elev: 0.04, shield: 'low', ammo: true, seed: 10430, working: true, ridingCradle: true,
   }), 0.40, 1.999, -0.24, [0, 0.05, 0]);                                      // commander Ksp 58 on the cupola race
   P.add('hull', sph(0.155, 14, Math.PI / 2), -0.52, 1.87, -0.30);             // fixed observation dome (left)
   P.add('hullDark', torus(0.14, 0.012, 12), -0.52, 1.925, -0.30);

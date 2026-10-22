@@ -151,6 +151,14 @@ export default {
         structure: 'transformershed', redoubt: true, wreck: true, wreckOffsetZ: 16 },
     ],
     blockFill: true, streetRows: true, streetRowsAfterLandmarks: true,
+    // (229, the owner: "other decorations and landmarks ... same should apply to ... suzhou") the Settlement's Public
+    // Garden on the open lot east of the crossing (the r2 critics' blank lot beside the new kerbs): a railed lawn, its
+    // cross paths, benches and Bund lamps round the cast-iron bandstand, its front to road 1. Its ground vetoed (the
+    // map's streams and seats as without it), a seat no base battle's hull reached (probes/pace lmseats.mjs, r 11 m)
+    landmarks: [
+      { kind: 'parkSquare', x: 46, z: 22, yawDeg: -131.3, ground: 'veto', name: 'the Public Garden',
+        params: { width: 20, depth: 18, paths: 'cross', railing: 'iron', benches: 4, lamps: 4, centre: 'bandstand' } },
+    ],
     // the creek runs through the district as it stood: every building keeps its place but those its water reaches
     // (props.ts settlementOverWater: a landmark moves off the water after the district stands, a row is left out)
     settlementOverWater: true,

@@ -82,6 +82,29 @@ export function planDents(samples: DentSamples | null, count: number, rMin: numb
 }
 
 /**
+ * The span along the bore (the gun's frame, +Z from the trunnions) a wreck's bend is planned on: the mesh named 'gun'
+ * where it reaches most of the way to the mouth, as before; else (230: the tube authored into gunMount, gunDark or gunBarrelN, the 'gun'
+ * mesh only a sleeve or the muzzle end, so the BMP-2, the Bradleys, the Lynx, the Puma, the BMPTs and the Sheridan never bent) from the gun
+ * rig's drawn stock out to its farthest reach. Bore furniture and shadow proxies never plan it. `toGun` maps a mesh into
+ * the gun's frame.
+ */
+export function wreckBarrelSpan(meshes: readonly THREE.Mesh[], toGun: (mesh: THREE.Mesh) => THREE.Matrix4): { zMin: number; zMax: number } | null {
+  const box = new THREE.Box3();
+  const spans = meshes.filter((mesh) => !(mesh as THREE.InstancedMesh).isInstancedMesh && mesh.geometry?.attributes?.position
+    && !mesh.userData.authoredShadowProxy && !/muzzleBore|shadow/i.test(mesh.name || '')).map((mesh) => {
+    mesh.geometry.computeBoundingBox();
+    box.copy(mesh.geometry.boundingBox!).applyMatrix4(toGun(mesh));
+    return { mesh, zMin: box.min.z, zMax: box.max.z };
+  });
+  if (!spans.length) return null;
+  const reach = Math.max(...spans.map((span) => span.zMax));
+  const named = spans.find((span) => span.mesh.name === 'gun');
+  // a barrel, not a sleeve or a muzzle piece: the 'gun' mesh running most of the way out keeps the span it always planned
+  if (named && named.zMax >= reach * 0.8 && named.zMax - Math.max(0, named.zMin) >= reach * 0.6) return { zMin: named.zMin, zMax: named.zMax };
+  return { zMin: Math.min(...spans.map((span) => span.zMin)), zMax: reach };
+}
+
+/**
  * The barrel's bend in the gun's frame (+Z along the bore from the trunnions): past a point 35–60 % along it the bore
  * curves by κ·(z − z0)², the muzzle 0.22–0.55 m off (scaled to the barrel), down under its own weight in the fire or —
  * on a turret the blast threw — any way. Null for a gun too short to bend.

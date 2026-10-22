@@ -57,11 +57,11 @@ interface MultiplayerStatusSurface {
 // ------------------------------------------------------------ style
 
 export const MP_STATUS_CSS = `.cot-mp-status{position:fixed;z-index:91;top:8px;right:var(--hud-network-corner-right,10px);display:flex;flex-direction:column;align-items:flex-end;gap:6px;
-  font-family:${FONT_COND};font-variant-numeric:tabular-nums;text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.85);pointer-events:none}
+  font-family:${FONT_COND};text-transform:uppercase;text-shadow:0 1px 2px rgba(0,0,0,.85);pointer-events:none}
 .cot-mp-status.lobby{position:static;align-items:flex-start;text-shadow:none}
 .cot-mp-strip{display:inline-flex;align-items:center;gap:8px;min-height:28px;padding:3px 9px;border:1px solid rgba(174,193,207,.22);border-radius:0;
   background:linear-gradient(180deg,rgba(14,20,25,.86),rgba(5,9,12,.78));box-shadow:0 5px 14px rgba(0,0,0,.22);color:#dce6ed;
-  font:inherit;font-size:11px;font-weight:800;letter-spacing:.04em;cursor:pointer;pointer-events:auto}
+  font:inherit;font-size:11px;font-weight:700;letter-spacing:.04em;cursor:pointer;pointer-events:auto}
 .cot-mp-strip:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .cot-mp-strip .glyph{display:inline-flex;width:16px;height:16px;color:#b9e7c0}
 .cot-mp-strip .glyph svg{width:16px;height:16px}
@@ -72,8 +72,8 @@ export const MP_STATUS_CSS = `.cot-mp-status{position:fixed;z-index:91;top:8px;r
 .cot-mp-strip.unknown .glyph{color:#8494a0}.cot-mp-strip.unknown .glyph .b2,.cot-mp-strip.unknown .glyph .b3{opacity:.22}
 .cot-mp-strip .unit{display:inline-grid;grid-template-columns:auto auto;align-items:baseline;column-gap:4px}
 .cot-mp-strip .unit+.unit{padding-left:8px;border-left:1px solid rgba(171,190,204,.2)}
-.cot-mp-strip .unit b{font-size:11px;font-weight:800;line-height:1}
-.cot-mp-strip .unit i{font-style:normal;font-size:6.5px;font-weight:800;line-height:1;letter-spacing:.13em;color:#8494a0}
+.cot-mp-strip .unit b{font-size:11px;font-weight:700;line-height:1}
+.cot-mp-strip .unit i{font-style:normal;font-size:11px;font-weight:700;line-height:1;letter-spacing:.03em;color:#8494a0}
 .cot-mp-strip.good .ping b{color:#b9e7c0}.cot-mp-strip.degraded .ping b{color:#ffd27a}.cot-mp-strip.bad .ping b,.cot-mp-strip.offline .ping b{color:#ff8c82}
 .cot-mp-strip .unit.host b{color:#ffd27a;letter-spacing:.12em}
 .cot-mp-strip .unit[hidden]{display:none!important}
@@ -93,24 +93,24 @@ body:not(.cot-touch-layout)[data-cot-width='phone'] .cot-mp-status.battle .unit:
 .cot-mp-banner.migrating{color:#cbeaff;border-color:rgba(174,193,207,.55)}
 .cot-mp-banner{position:fixed;left:50%;top:88px;transform:translate(-50%,0);z-index:91;min-width:220px;max-width:calc(100vw - 32px);box-sizing:border-box;
   padding:8px 16px;border:1px solid rgba(238,166,67,.62);background:rgba(9,13,18,.94);box-shadow:0 12px 36px rgba(0,0,0,.52);color:#f2bd73;
-  font:800 11px ${FONT_COND};letter-spacing:.12em;text-align:center;text-transform:uppercase;pointer-events:none}
+  font:700 11px ${FONT_COND};letter-spacing:.12em;text-align:center;text-transform:uppercase;pointer-events:none}
 .cot-mp-banner.lobby{position:static;transform:none;max-width:none}
 .cot-mp-banner[hidden]{display:none}
 .cot-mp-banner.bad,.cot-mp-banner.offline{color:#ff887b;border-color:rgba(255,103,91,.7)}
 .cot-mp-banner .leave{display:none;margin:8px auto 0}
 .cot-mp-banner.leaving .leave{display:block}
 .cot-mp-leave{min-height:44px;padding:8px 14px;border:1px solid currentColor;border-radius:0;background:#151c24;color:#f0a9a0;
-  font:800 11px ${FONT_COND};letter-spacing:.12em;text-transform:uppercase;cursor:pointer;pointer-events:auto}
+  font:700 11px ${FONT_COND};letter-spacing:.12em;text-transform:uppercase;cursor:pointer;pointer-events:auto}
 .cot-mp-leave:hover{color:#ffd0c5;border-color:rgba(239,110,82,.9)}
 .cot-mp-leave:focus-visible{outline:2px solid #fff;outline-offset:3px}
 .cot-mp-panel{width:300px;max-width:calc(100vw - 20px);box-sizing:border-box;padding:8px 10px 10px;border:1px solid rgba(174,193,207,.22);
-  background:rgba(7,11,15,.92);box-shadow:0 12px 36px rgba(0,0,0,.45);color:#cbeaff;font-size:10.5px;font-weight:700;letter-spacing:.04em;pointer-events:auto}
+  background:rgba(7,11,15,.92);box-shadow:0 12px 36px rgba(0,0,0,.45);color:#cbeaff;font-size:11px;font-weight:700;letter-spacing:.02em;pointer-events:auto}
 .cot-mp-panel[hidden]{display:none}
 .cot-mp-panel .notice{margin:0 0 8px;font-size:12px;line-height:1.5;text-transform:none;color:#f2bd73}
 .cot-mp-panel .head{display:flex;justify-content:space-between;gap:10px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid rgba(171,190,204,.2);font-size:11px;color:#dce6ed}
 .cot-mp-panel .head .verdict{color:#b9e7c0}.cot-mp-panel.degraded .head .verdict{color:#ffd27a}.cot-mp-panel.bad .head .verdict,.cot-mp-panel.offline .head .verdict{color:#ff8c82}
 .cot-mp-panel .row{display:grid;grid-template-columns:minmax(74px,auto) 1fr;column-gap:10px;padding:2px 0;text-transform:none}
-.cot-mp-panel .row span{color:#8494a0;text-transform:uppercase;letter-spacing:.1em;font-size:9px;align-self:baseline}
+.cot-mp-panel .row span{color:#8494a0;text-transform:uppercase;letter-spacing:.03em;font-size:11px;align-self:baseline}
 .cot-mp-panel .row b{font-weight:700;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cot-mp-panel .cot-mp-leave{display:block;width:100%;margin-top:8px}
 body.cot-touch-layout .cot-mp-strip{min-height:44px;padding:6px 12px}
@@ -125,11 +125,11 @@ body[data-cot-width='phone'] .cot-mp-banner{width:calc(100vw - (var(--cot-edge) 
    reader; an outage is announced and also named on the button itself. */
 body.cot-touch-layout[data-cot-width][data-cot-height] .cot-mp-status.battle{
   left:var(--hud-network-left,116px);top:var(--hud-network-top,112px);right:auto;align-items:flex-start}
-body.cot-touch-layout .cot-mp-status.battle .cot-mp-strip{box-sizing:border-box;width:44px;height:44px;padding:3px;gap:2px;flex-wrap:wrap;justify-content:center;font-size:9px}
+body.cot-touch-layout .cot-mp-status.battle .cot-mp-strip{box-sizing:border-box;width:44px;height:44px;padding:3px;gap:2px;flex-wrap:wrap;justify-content:center;font-size:11px}
 body.cot-touch-layout .cot-mp-status.battle .unit:not(.ping),body.cot-touch-layout .cot-mp-status.battle .unit i{display:none}
 body.cot-touch-layout .cot-mp-status.battle .glyph{width:100%;justify-content:center}
 .cot-mp-strip .notice{display:none}
-body.cot-touch-layout .cot-mp-status.battle .notice:not(:empty){display:block;width:100%;font-size:9px;line-height:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body.cot-touch-layout .cot-mp-status.battle .notice:not(:empty){display:block;width:100%;font-size:11px;line-height:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 body.cot-touch-layout .cot-mp-status.battle .cot-mp-panel{position:fixed;right:max(8px,env(safe-area-inset-right));top:calc(var(--hud-network-top,112px) + 50px);width:min(300px,calc(100vw - 16px));max-width:calc(100vw - 16px);max-height:calc(100dvh - var(--hud-network-top,112px) - 58px);overflow:auto;overscroll-behavior:contain}
 body.cot-touch-layout .cot-mp-banner.battle{position:fixed;width:1px!important;height:1px;min-width:0;padding:0;border:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 body.cot-touch-layout .cot-mp-banner.battle .leave{display:none}
@@ -278,7 +278,7 @@ export function createMultiplayerStatusSurface({
   const glyph = createElement('span', 'glyph', strip);
   glyph.innerHTML = uiIconSVG('signal', 16);
   const pingUnitNode = createElement('span', 'unit ping', strip);
-  const pingValue = createElement('b', '', pingUnitNode);
+  const pingValue = createElement('b', 'num', pingUnitNode);
   pingValue.textContent = '—';
   const pingUnit = createElement('i', '', pingUnitNode);
   const hostUnit = createElement('span', 'unit host', strip);

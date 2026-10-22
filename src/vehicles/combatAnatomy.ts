@@ -25,6 +25,8 @@ import {
   calibrationOrientationPoint, stockCollisionCoverCandidates, stockCollisionFaceCovered,
 } from './calibrationStockGeometry.ts';
 import { internalLayoutFor } from './internalLayoutRegistry.ts';
+import { COMBAT_GUN_RIGS, type CombatGunRig } from './combatGunRigs.generated.ts';
+import { rememberAuthoredRig } from './combatGunRigSeat.ts';
 import type {
   InternalCrewStation,
   InternalLayoutRecord,
@@ -114,12 +116,17 @@ interface CollisionCell extends Bounds {
   faces: CollisionFace[];
   structureKind: string | null;
   sourceStock?: string;
+  /** Release 227 (gen-combat-anatomy HULL_LATERAL_CUTS): a slice cut at a hull's glacis edges, one of its bands. */
+  lateralBand?: boolean;
 }
 
 interface ArmorAnatomy {
   externalWeapons?: ExternalWeaponStock[];
   roofGun?: AuxiliaryInventory['guns'][number];
   turretPivot: Vec3;
+  gunPivot?: Vec3;
+  gunBarrel?: { lengthM: number; radiusM: number; collision?: boolean };
+  boundingRadiusM?: number;
   hullPlates: ArmorPlate[];
   turretPlates: ArmorPlate[];
   modules?: ModuleVolume[];
@@ -398,6 +405,7 @@ function collisionCellFromCalibration(
     faces,
     structureKind: source.structureKind || null,
     ...(source.sourceStock === undefined ? {} : { sourceStock: source.sourceStock }),
+    ...(source.lateralBand ? { lateralBand: true } : {}),
   };
 }
 
@@ -414,12 +422,20 @@ function collisionBoundaryCounts(cells: readonly CollisionCell[]): Map<number, n
 
 function markInternalCollisionFaces(cells: readonly CollisionCell[]): void {
   const boundaryCounts = collisionBoundaryCounts(cells);
+  // (release 227: the band cuts of a laterally cut hull, x planes two of its bands share)
+  const lateralCounts = new Map<number, number>();
+  for (const cell of cells) if (cell.lateralBand) for (const x of [cell.min[0], cell.max[0]]) {
+    const key = Math.round(x * 10000);
+    lateralCounts.set(key, (lateralCounts.get(key) || 0) + 1);
+  }
   for (const cell of cells) {
     const candidates = cell.sourceStock === undefined ? cells : stockCollisionCoverCandidates(cell, cells);
     for (const face of cell.faces) {
       const key = Math.round(face.center[2] * 10000);
       face.internal = cell.sourceStock === undefined
-        ? Math.abs(face.normal[2]) > 0.985 && (boundaryCounts.get(key) || 0) > 1
+        ? (Math.abs(face.normal[2]) > 0.985 && (boundaryCounts.get(key) || 0) > 1)
+          || (cell.lateralBand === true && Math.abs(face.normal[0]) > 0.985
+            && (lateralCounts.get(Math.round(face.center[0] * 10000)) || 0) > 1)
         : stockCollisionFaceCovered(cell, face, candidates);
     }
   }
@@ -1499,6 +1515,23 @@ function assignCollisionOutputs(
   else delete armor.trackContact;
 }
 
+/**
+ * 230 gun-barrel alignment: seat the combat articulation where the builder seated its rig (combatGunRigs.generated.ts,
+ * measured by tools/gun-barrel-align-census.mjs). The turret and trunnion pivots, the barrel length and, where the
+ * authored one was off, its radius are replaced; the bounding radius only grows to keep the muzzle inside the
+ * authorities' trace broadphase. Runs before the anatomy reconciles, so the turret ring and the turret cells (both
+ * measured in the builder's rig_turret frame) follow the same pivot.
+ */
+export function applyCombatGunRig(armor: ArmorAnatomy, rig: CombatGunRig | undefined): void {
+  if (!rig || !armor.gunBarrel) return;
+  rememberAuthoredRig(armor);
+  armor.turretPivot = [...rig.turretPivot];
+  armor.gunPivot = [...rig.gunPivot];
+  armor.gunBarrel = { ...armor.gunBarrel, lengthM: rig.lengthM, ...(rig.radiusM === undefined ? {} : { radiusM: rig.radiusM }) };
+  const reach = Math.hypot(rig.turretPivot[0], rig.turretPivot[2]) + Math.hypot(rig.gunPivot[0], rig.gunPivot[2]) + rig.lengthM + 0.4;
+  if (!(Number(armor.boundingRadiusM) >= reach)) armor.boundingRadiusM = Math.round(reach * 1000) / 1000;
+}
+
 export function finalizeCombatAnatomy<T>(
   spec: T,
   calibration?: CombatAnatomyCalibration | null,
@@ -1511,6 +1544,7 @@ export function finalizeCombatAnatomy(
   const calibration = resolveCombatCalibration(spec, requestedCalibration);
   if (!spec?.armor || spec[FINALIZED]) return spec;
   const armor = spec.armor;
+  applyCombatGunRig(armor, COMBAT_GUN_RIGS[spec.id]);
   if (calibration) reconcileCalibratedAnatomy(armor, calibration);
   // Non-playable comparison/authoring specs are intentionally outside the
   // 122-vehicle evidence registry. Keep their authored anatomy usable without

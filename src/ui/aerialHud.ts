@@ -17,7 +17,7 @@ function icon(parent:HTMLElement,name:UiIconId,cls='flight-icon'):HTMLElement {
 }
 function instrument(parent:HTMLElement,name:UiIconId,label:string){
   const host=node('span','flight-instrument',parent);host.title=label;host.setAttribute('aria-label',label);
-  icon(host,name);const value=node('b','',host);return {host,value};
+  icon(host,name);const value=node('b','num',host);return {host,value};
 }
 function gunshipDesignation(escort:HudMatchModeState['escort']):string {
   return escort?t('flight.gunship.escort',{alive:escort.alive,rescued:escort.rescued,required:escort.required}):t('flight.gunship.role');

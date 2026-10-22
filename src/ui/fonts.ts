@@ -1,82 +1,43 @@
-// src/ui/fonts.ts — shared UI typography: self-hosted ABC Monument Grotesk
-// (Dinamo Typefaces — commercial face, owner-provided cut; see
-// docs/ATTRIBUTION.md) + the canonical font stacks and type tokens every UI
-// module imports. Injecting once here keeps all screens (garage, HUD,
-// settings, damage panel, and overlays) on the exact same system.
+// src/ui/fonts.ts — the shell's font stacks and the overlay type rules every UI module imports.
 //
-// PROVENANCE: the owner originally asked for Klim's "Die Grotesk"
-// (unobtainable); Archivo shipped as the documented free substitute; then
-// Inter (fonts r3); then the owner directed THIS swap to ABC Monument
-// Grotesk (fonts r4, 2026-08-04) using their own Dinamo cut. TYPE MANDATE
-// carries over: usage weight floor is 500 (body/default 500, hierarchy
-// 600/700/800 — nothing in the UI renders below medium).
+// TYPE (owner ruling 2026-10-17): Chakra Petch (display), IBM Plex Sans (body) and IBM Plex Mono
+// (readouts), self-hosted SIL OFL Latin subsets that replace ABC Monument Grotesk everywhere. Their @font-face rules,
+// fallbacks and type tokens are declared once, by each document's `<!--cot:type …-->` marker (src/ui/typeFaces.ts,
+// expanded by vite.config.ts), so this boot module carries no face data.
 //
-// Hosting (public/fonts/abc-monument-grotesk/): THREE static woff2 faces —
-// Regular / Medium / Bold — declared with @font-face weight RANGES so the
-// existing weight hierarchy maps without touching call sites: 100-400 →
-// Regular, 500-600 → Medium (the UI workhorse), 700-900 → Bold. Monument
-// Grotesk has no condensed cut either, so the FONT_COND rules keep their
-// tightened tracking and narrow system fallbacks.
-
-/** Primary UI stack — Monument Grotesk with grotesque system fallbacks. */
-export const FONT_STACK = "'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+// 'Cot UI' is the weight-voiced shell family: 400 / 500 IBM Plex Sans (reading text, the 500 UI floor), 600 Chakra
+// Petch SemiBold (the label voice), 700 Chakra Petch Bold (titles, buttons, display numerals). Every weight the UI asks
+// for is a real face (the type lint holds code to those four). Readouts that tick in place take the `.num` class
+// (IBM Plex Mono, tabular figures); nothing else sets tabular figures.
 
 /**
- * Numeral / label stack (HUD counters, timers, stat labels, damage panel).
- * Historically a condensed grotesque (WoT-style military HUD look); under
- * Monument Grotesk it is the same family — the density comes from tightened
- * letter-spacing at the consuming rules, and the narrow system faces stay in
- * the fallback slot so an unresolved webfont still fits the tight HUD boxes.
- * Every rule that uses this stack also sets tabular numerals (fonts.css block
- * below), so timers and counters never jitter.
+ * Primary UI stack, canvas-safe (canvas text cannot read var()). Equal to TYPE_STACK.ui in src/ui/typeFaces.ts and
+ * to the --font-ui token; src/ui/typeSystem.selftest.mjs holds the three together.
  */
-export const FONT_COND = "'ABC Monument Grotesk','Arial Narrow','Avenir Next Condensed','Helvetica Neue Condensed','Roboto Condensed','Liberation Sans Narrow',Arial,sans-serif";
+export const FONT_STACK = "'Cot UI','Cot Accents','Cot Symbols','Cot Fallback','PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC',sans-serif";
 
-// Weights the UI actually uses (resolved against the face ranges below).
-// Floor is 500: nothing below medium anywhere in the UI.
+/**
+ * Numeral / label stack (HUD counters, timers, stat labels, damage panel). Once a condensed grotesque; it is the
+ * same weight-voiced family now: labels at 600/700 are Chakra Petch, whose metric-matched fallback keeps an
+ * unresolved webfont inside the tight HUD boxes.
+ */
+export const FONT_COND = FONT_STACK;
+
+// The faces the shell paints first (resolved against the 'Cot UI' ranges): Plex Sans Medium, Chakra Petch Bold.
 const WEIGHTS = [500, 700] as const;
 
-const FONT_DIR = '/fonts/abc-monument-grotesk';
-
-const FONT_FACE_CSS = `@font-face{
-  font-family:'ABC Monument Grotesk';
-  src:url('${FONT_DIR}/ABCMonumentGrotesk-Regular.woff2') format('woff2');
-  font-weight:100 400;font-style:normal;font-display:swap;}
-@font-face{
-  font-family:'ABC Monument Grotesk';
-  src:url('${FONT_DIR}/ABCMonumentGrotesk-Medium.woff2') format('woff2');
-  font-weight:500 600;font-style:normal;font-display:swap;}
-@font-face{
-  font-family:'ABC Monument Grotesk';
-  src:url('${FONT_DIR}/ABCMonumentGrotesk-Bold.woff2') format('woff2');
-  font-weight:700 900;font-style:normal;font-display:swap;}
-`;
-
-const FONT_CSS = `:root { --cot-font-ui: ${FONT_STACK}; }
-/* stats and timers line up: lining tabular figures across every overlay */
-.cot-garage,.cot-hud,.cot-settings,.cot-dp,.cot-hints,.cot-end{
-  font-variant-numeric:lining-nums tabular-nums;}
-/* weight floor 500 for every overlay root: unweighted text never renders at
-   book/regular (explicit 600/700/800 hierarchy steps are unaffected) */
-.cot-garage,.cot-hud,.cot-settings,.cot-dp,.cot-hints,.cot-end,
-.cot-bl,.cot-si,.cot-kc,.cot-touch,.cot-studio{
-  font-weight:500;font-optical-sizing:auto;}`;
+// Weight floor 500 for every overlay root: unweighted text never renders at book/regular (explicit 600/700
+// hierarchy steps are unaffected). Figures stay proportional here: `.num` alone sets tabular figures.
+const FONT_CSS = `.cot-garage,.cot-hud,.cot-settings,.cot-dp,.cot-hints,.cot-end,
+.cot-bl,.cot-si,.cot-kc,.cot-touch,.cot-studio{font-weight:500;font-optical-sizing:auto;}`;
 
 let warmed = false;
 
 /**
- * Inject the @font-face rules (idempotent) and pre-warm the hosted weights so
- * late downloads replace the readable fallback. Warm each physical file once,
- * without blocking startup. Safe to call from every UI module.
+ * Inject the overlay type rules (idempotent) and pre-warm the two first-paint faces so late downloads replace the
+ * metric-matched fallback. Warm each physical file once, without blocking startup. Safe to call from every UI module.
  */
 export function ensureFonts(): void {
-  // Reuse first-paint declarations rather than registering each face twice.
-  if (!document.getElementById('cot-font-faces')) {
-    const faces = document.createElement('style');
-    faces.id = 'cot-font-faces';
-    faces.textContent = FONT_FACE_CSS;
-    document.head.appendChild(faces);
-  }
   if (!document.getElementById('cot-fonts')) {
     const s = document.createElement('style');
     s.id = 'cot-fonts';
@@ -86,7 +47,7 @@ export function ensureFonts(): void {
   if (!warmed && document.fonts && document.fonts.load) {
     warmed = true;
     for (const w of WEIGHTS) {
-      document.fonts.load(`${w} 16px 'ABC Monument Grotesk'`).catch(() => {});
+      document.fonts.load(`${w} 16px 'Cot UI'`).catch(() => {});
     }
   }
 }

@@ -17,6 +17,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
 import { buildChallenger3RearTurretClosure } from './challenger3RearTurret.ts';
 import { facetedSlab } from './facetedSlab.ts';
+import { markFixedPaintedPanel } from './fixedPaintedPanel.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // Shared geometry and exact-equipment fittings come from the cycle-free
 // profile kit; builders destructure the geometry they use at call time.
@@ -386,7 +387,10 @@ function challenger1Build(P: ChallengerBuilderPort): void {
       // sweep (<=4.065) and the 4.047 column boundary (§C). The wrap owns
       // the 3.982 column's 0.49 bottom regardless (the flap never painted
       // it), so the move is mask-free.
-      P.hangMudguard('challenger1-front-flap', 'hullRubber', box(0.16, 0.30, 0.04), s * 1.62, 0.85, 4.02);
+      // Art fixes 230 (2026-10-21, hero-card critics: "light-grey untextured plates at the front corners"): the tip
+      // flaps are painted in the vehicle scheme with the wings they hang from. Finish only.
+      P.hangMudguard('challenger1-front-flap', 'hullFixedPaintedBodywork',
+        markFixedPaintedPanel(box(0.16, 0.30, 0.04), 'challenger1-front-flap', 'hullRubber'), s * 1.62, 0.85, 4.02);
       // (r3 note: trim planks were TRIED here per the revolution r15 recipe
       // and removed — r15's plank painted a line its band couldn't reach
       // behind the skirt window; HERE the band is visible and reads LOWER
@@ -1016,7 +1020,7 @@ function challenger1Build(P: ChallengerBuilderPort): void {
       // commander's sight hood (2.59 m): the gun breaks the turret's far skyline in the hero view instead of hiding
       // behind the hood.
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.06, scale: 1.0, seed: 7, riser: 0.10, working: true });
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', elev: 0.06, scale: 1.0, seed: 7, riser: 0.10, working: true, ridingCradle: true });
       mg.name = 'challenger1LoaderL37';
       mg.position.set(-0.74, 0.876, -0.15);
       mg.rotation.y = -0.06;
@@ -1039,7 +1043,7 @@ function challenger1Build(P: ChallengerBuilderPort): void {
         P.add('turretGlass', box(0.075, 0.034, 0.012), vx, 0.80, vz + 0.035, 0, vry, 0);
       }
       // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 1.0, seed: 8, riser: 0.10, working: true });
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag', tone: 'dark', scale: 1.0, seed: 8, riser: 0.10, working: true, ridingCradle: true });
       mg.name = 'challenger1CommanderL37';
       mg.position.set(0.70, 0.795, -0.40);
       mg.rotation.y = 0.05;
@@ -1854,7 +1858,7 @@ function cr2MountedMg(
     barrelBridge: cls === 'mag',
     rotation: [0, rotationY, 0],
     // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): the crew gun is a working station
-    working: true,
+    working: true, ridingCradle: true,
   });
   mg.position.set(x, y, z);
   mg.userData.mountSeatY = y;
@@ -2751,9 +2755,11 @@ function buildChallenger3XSensors(
       0, 0, side * 0.48);
   }
   P.addEquipment('turret', box(0.90, 0.52, 0.08), 0, 1.39, -2.14, -0.08, 0, 0);
-  P.add('turretDark', box(0.78, 0.40, 0.018), 0, 1.39, -2.095, -0.08, 0, 0);
+  // Art fixes 230 (2026-10-21, hero-card critics: "a flat black untextured box stands on the turret roof"): the array
+  // face is a painted radome like the frame it sits in, divided into four tiles by dark joint strips. Finish only.
+  P.add('turretDetail', box(0.78, 0.40, 0.018), 0, 1.39, -2.095, -0.08, 0, 0);
   for (const x of [-0.30, 0, 0.30]) {
-    P.add('turretDetail', box(0.018, 0.44, 0.014), x, 1.39, -2.083, -0.08, 0, 0);
+    P.add('turretDark', box(0.018, 0.44, 0.014), x, 1.39, -2.083, -0.08, 0, 0);
   }
   receipt.radarArrays = 1;
 }
@@ -4947,26 +4953,34 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
       0.72, 0.59, -0.22);
     P.add('turret', box(0.64, 0.12, 0.58), 0.72, C3H, -0.22);                   // roof shoe: foundation overlaps its underside
     P.add('turret', cylY(0.18, 0.24, 0.14, 8), 0.72, C3H + 0.06, -0.18);         // octagonal pedestal
+    // Release 230 (the owner's field-equipment standard: nothing that moves passes through what does not): the M2
+    // (stretched 1.55 along its bore) pitched and recoiled through this stock. Its receiver's rear swung down into the
+    // body and the junction tier from about 20 degrees of elevation and through the rear cover at rest, the receiver
+    // passed through the cradle bar between the fork cheeks, the can through the left cheek and the inner sensor, and the
+    // pitching spine and rails enclosed the receiver's front, the can and the barrel. The body and the junction tier now
+    // crown under the receiver's sweep (world 2.79), the fork cheeks stand clear of the gun's sides and carry its
+    // trunnions alone (no bar across its path), the inner sensor stands outboard of the can, the rear cover is gone (the
+    // receiver's own butt closes the station), and the cradle the gun rides in (spine, rails and cross bar) runs under
+    // the gun and forward of its can.
     const finishRwsBody = rwsStock();
-    P.add('turretDetail', frustum(0.27, 0.28, -0.28, 0.20, 0.22, -0.22, 0, 0.26),
+    P.add('turretDetail', frustum(0.27, 0.28, -0.28, 0.20, 0.22, -0.22, 0, 0.115),
       0.72, C3H + 0.12, -0.22);                                                  // low faceted open-mount body
-    for (const sx of [-1, 1]) P.add('turretDetail', box(0.075, 0.34, 0.10), 0.72 + sx * 0.22, C3H + 0.33, -0.22);
-    P.add('turretDetail', box(0.50, 0.055, 0.10), 0.72, C3H + 0.49, -0.22);      // visible but structurally continuous cradle
+    for (const sx of [-1, 1]) P.add('turretDetail', box(0.075, 0.34, 0.10), 0.72 + (sx < 0 ? -0.25 : 0.22), C3H + 0.33, -0.22);
     finishRwsBody();
     const finishRwsSpine = rwsStock('pitch');
-    P.addEquipment('turret', box(0.28, 0.18, 0.50), 0.745, C3H + 0.43, 0.18);            // receiver spine: mount body -> recoil rails
+    P.addEquipment('turret', box(0.28, 0.056, 0.336), 0.745, C3H + 0.3695, 0.262);       // receiver spine: mount body -> recoil rails
     finishRwsSpine();
     const finishRwsInnerSensor = rwsStock();
-    P.add('turretDark', cylY(0.105, 0.12, 0.18, 8), 0.43, C3H + 0.40, -0.22);   // faceted sensor head
-    P.add('turretGlass', box(0.14, 0.08, 0.02), 0.43, C3H + 0.40, -0.11);
+    P.add('turretDark', cylY(0.105, 0.12, 0.18, 8), 0.385, C3H + 0.40, -0.22);  // faceted sensor head
+    P.add('turretGlass', box(0.14, 0.08, 0.02), 0.385, C3H + 0.40, -0.11);
     finishRwsInnerSensor();
     // Forward open cradle follows the source RWS component's measured
     // z=.67..2.70 world run.  Twin rails + a faceted terminal optic give the
     // right silhouette mass without substituting the print's Boxer cannon
     // for the required M2.
     const finishRwsRails = rwsStock('pitch');
-    for (const x of [0.61, 0.88]) P.add('turretDetail', box(0.045, 0.045, 1.08), x, C3H + 0.52, 0.40);
-    P.add('turretDetail', box(0.31, 0.045, 0.045), 0.745, C3H + 0.52, 0.93);
+    for (const x of [0.61, 0.88]) P.add('turretDetail', box(0.045, 0.045, 0.7145), x, C3H + 0.42, 0.583);
+    P.add('turretDetail', box(0.31, 0.045, 0.045), 0.745, C3H + 0.42, 0.93);
     finishRwsRails();
     // The forward optic is turret-face equipment, not a pod hanging from the
     // elevated gun rails.  Seat its tapered body and neck directly into the
@@ -5021,17 +5035,15 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
     // and those columns fell to the 2.38 roof). Top 2.60w; front columns
     // unchanged (the 2.85 mount body owns x -0.13..-0.47 tops).
     const finishRwsRearBody = rwsStock();
-    P.add('turretDetail', frustum(0.22, 0.16, -0.16, 0.18, 0.13, -0.13, 0, 0.30),
+    P.add('turretDetail', frustum(0.22, 0.16, -0.16, 0.18, 0.13, -0.13, 0, 0.205),
       0.72, C3H + 0.03, -0.42);                                                  // faceted ammunition/junction tier
     finishRwsRearBody();
     P.add('turret', box(0.40, 0.25, 0.28), 0.72, 0.755, -0.42);                 // buried roof-to-tier service trunk
     const finishRwsRearCover = rwsStock();
-    P.add('turretDark', box(0.34, 0.025, 0.23), 0.72, C3H + 0.335, -0.42);       // lid seam
-    P.add('turretDetail', frustum(0.22, 0.04, -0.04, 0.105, 0.03, -0.03, 0, 0.26),
-      0.70, 1.17, -0.48);                                                        // source RWS rear face begins world z .67
+    P.add('turretDark', box(0.34, 0.025, 0.23), 0.72, C3H + 0.228, -0.42);       // lid seam
     finishRwsRearCover();
     {
-      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', remoteControlled: true, tone: 'two-tone', seed: 31, elev: 0.05, ammo: true });
+      const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', remoteControlled: true, ridingCradle: true, tone: 'two-tone', seed: 31, elev: 0.05, ammo: true });
       mg.position.set(0.72, C3H + 0.22, -0.10);
       mg.scale.z = 1.55;                                                         // measured .73..2.67 world run
       P.turretG.add(mg);

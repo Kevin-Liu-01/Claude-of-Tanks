@@ -26,6 +26,9 @@ import {
   bodyMoundHeightAt, damageRng, damageSeed,
   type DamageMeshWriter, type DamageRole, type DamageWriters, type FractureSlot, type Rgb, type StructureDamageAnatomy,
 } from './destructionKit.ts';
+import {
+  bandEnclosure, drawnOverAt, enclosedAt, positionsOf, standsOnPosts, tallestDrawn, tallWallAt, wallAlong, wallBaseAt, wallClusters, wallSpots, wallTopAt,
+} from './structureEnclosure.ts';
 
 /** The ruin's floors (the sweep's: 25 % and 60 %, with margin). */
 export const RUIN_HEIGHT_SHARE = 0.3;
@@ -52,6 +55,37 @@ const RUIN_RESERVE_VERTS = 200 * 24;
 let ruinScale = 1;
 /** The ruin's footprint in the body frame (its walls' rectangle: their centre and half extents), set per collapse. */
 let fcx = 0, fcz = 0, fhw = 1, fhd = 1;
+/** The collapsing structure (its drawn enclosure: a ruin's piece stands on a drawn wall, never in the open past it). */
+let ruinOf: StructureDamageAnatomy | null = null;
+
+/**
+ * (destruction-slabs 227) Where a standing piece meant for the footprint's edge at (x, z) stands: on the ground storey's
+ * first drawn wall inward from it along (nx, nz) — the distance in, or NaN where none is drawn within half the footprint
+ * (0 for a structure without an enclosure: its faces are its walls).
+ */
+function inToWall(x: number, z: number, nx: number, nz: number): number {
+  if (!ruinOf) return 0;
+  return wallAlong(ruinOf, 0, x, z, nx, nz, Math.max(fhw, fhd));
+}
+/** The drawn top of the wall cell `d` in from (x, z) along (nx, nz) (inToWall's find): that cell's own, no neighbour's
+ *  (a skin wall's post under a gable end's eave stood at the gable's peak height). */
+function topOfWallIn(x: number, z: number, nx: number, nz: number, d: number): number {
+  const cell = ruinOf?.enclosure?.cell;
+  if (!ruinOf || !cell) return Infinity;
+  const k = d + cell * 0.5;
+  return wallTopAt(ruinOf, x + nx * k, z + nz * k, 0);
+}
+/** The lowest the drawn walls stand along a plan run (five spots, a tenth in from each end): a long stub on a ragged wall
+ *  is no taller than its lowest stretch is drawn (destruction-slabs 227: a ruin's 7.8 m stub stood 1.8 m over its wall). */
+function topAlong(ax: number, az: number, bx: number, bz: number): number {
+  if (!ruinOf) return Infinity;
+  let low = Infinity;
+  for (let k = 0; k < 5; k++) {
+    const t = 0.1 + 0.2 * k;
+    low = Math.min(low, wallTopAt(ruinOf, ax + (bx - ax) * t, az + (bz - az) * t));
+  }
+  return low;
+}
 
 function resetMeasure(top: number, halfW: number, halfD: number): void {
   bins.fill(0); cells.fill(0);
@@ -198,9 +232,14 @@ function cornerPiers(rng: () => number, slot: FractureSlot, cap: number, mesh: D
   const t = Math.max(0.3, Math.min(0.8, slot.thicknessM > 0.05 ? slot.thicknessM * 1.6 : 0.45));
   for (let corner = 0; corner < 4; corner++) {
     const sx = corner & 1 ? 1 : -1, sz = corner & 2 ? 1 : -1;
-    const height = Math.min(cap, ruinScale * share * (0.85 + rng() * 0.3));
-    if (height < 0.6) continue;
+    const height0 = Math.min(cap, ruinScale * share * (0.85 + rng() * 0.3));
     const legX = Math.min(hw, Math.max(0.8, 2 * hw * (0.16 + rng() * 0.12))), legZ = Math.min(hd, Math.max(0.8, 2 * hd * (0.16 + rng() * 0.12)));
+    // (destruction-slabs 227) each leg on the drawn wall in from the footprint's edge, no taller than that wall is drawn
+    const inZ = inToWall(fcx + sx * (hw - legX / 2), fcz + sz * hd, 0, -sz), inX = inToWall(fcx + sx * hw, fcz + sz * (hd - legZ / 2), -sx, 0);
+    const legs = [Number.isFinite(inZ), Number.isFinite(inX)];
+    const height = Math.min(height0,
+      legs[0] ? topAlong(fcx + sx * hw, fcz + sz * (hd - inZ), fcx + sx * (hw - legX), fcz + sz * (hd - inZ)) : Infinity,
+      legs[1] ? topAlong(fcx + sx * (hw - inX), fcz + sz * hd, fcx + sx * (hw - inX), fcz + sz * (hd - legZ)) : Infinity);
     let h0 = -FOOT_M;
     for (let course = 0; course < 3; course++) {
       const top = height * (course === 0 ? 0.55 : course === 1 ? 0.82 : 1);
@@ -209,8 +248,10 @@ function cornerPiers(rng: () => number, slot: FractureSlot, cap: number, mesh: D
       const shade = 0.82 + rng() * 0.16;
       // the leg along x (on the z face), then the leg along z (on the x face)
       const lx = legX * shrink * (0.85 + rng() * 0.15), lz = legZ * shrink * (0.85 + rng() * 0.15);
-      box(mesh, fcx + sx * (hw - lx / 2), cy, fcz + sz * (hd - t / 2), lx / 2, hy, t / 2, 0, slot.tint, shade);
-      box(mesh, fcx + sx * (hw - t / 2), cy, fcz + sz * (hd - lz / 2), t / 2, hy, lz / 2, 0, slot.tint, shade);
+      if (height < 0.6 || !(hy > 0.05)) continue;
+      // (a leg's course over one not drawn, or over one capped under its plan, would stand in the air: that leg stops)
+      if (legs[0] && (!rbox(mesh, fcx + sx * (hw - lx / 2), cy, fcz + sz * (hd - inZ - t / 2), lx / 2, hy, t / 2, 0, slot.tint, shade) || rboxTop < top - 0.02)) legs[0] = false;
+      if (legs[1] && (!rbox(mesh, fcx + sx * (hw - inX - t / 2), cy, fcz + sz * (hd - lz / 2), t / 2, hy, lz / 2, 0, slot.tint, shade) || rboxTop < top - 0.02)) legs[1] = false;
       h0 = top;
     }
   }
@@ -229,13 +270,19 @@ function wallStubs(rng: () => number, slot: FractureSlot, cap: number, mesh: Dam
     for (let k = 1; k < runs - 1 && roomFor(mesh, 1); k++) {
       if (k === gap || k === gap + 1) continue;
       const u0 = -len / 2 + (k / runs) * len, u1 = -len / 2 + ((k + 1) / runs) * len;
-      const h = Math.min(cap, ruinScale * share * (0.55 + rng() * 0.6));
-      if (h < 0.4) continue;
+      const h0 = Math.min(cap, ruinScale * share * (0.55 + rng() * 0.6));
       const u = (u0 + u1) / 2, hu = (u1 - u0) / 2 * (0.9 + rng() * 0.1);
       const shade = 0.8 + rng() * 0.18;
+      // (destruction-slabs 227) on the drawn wall in from the edge, no taller than it is drawn there
+      const ex = alongX ? fcx + u : fcx + side * off, ez = alongX ? fcz + side * off : fcz + u;
+      const d = inToWall(ex, ez, alongX ? 0 : -side, alongX ? -side : 0);
+      if (!Number.isFinite(d)) continue;
+      const x = alongX ? fcx + u : fcx + side * (off - d - t / 2), z = alongX ? fcz + side * (off - d - t / 2) : fcz + u;
+      const h = Math.min(h0, alongX ? topAlong(x - hu, z, x + hu, z) : topAlong(x, z - hu, x, z + hu));
+      if (h < 0.4) continue;
       const cy = (h - FOOT_M) / 2, hy = (h + FOOT_M) / 2;
-      if (alongX) box(mesh, fcx + u, cy, fcz + side * (off - t / 2), hu, hy, t / 2, 0, slot.tint, shade);
-      else box(mesh, fcx + side * (off - t / 2), cy, fcz + u, t / 2, hy, hu, 0, slot.tint, shade);
+      if (alongX) rbox(mesh, x, cy, z, hu, hy, t / 2, 0, slot.tint, shade);
+      else rbox(mesh, x, cy, z, t / 2, hy, hu, 0, slot.tint, shade);
     }
   }
   mesh.end();
@@ -245,7 +292,7 @@ function wallStubs(rng: () => number, slot: FractureSlot, cap: number, mesh: Dam
  * A standing wall fragment on a face (its `k`-th of a seeded walk round the plan): a ragged run of the wall, 1–2.5 m long,
  * two or three courses stepping down to one side, 50–80 % of the ruin's scale (never past `cap`).
  */
-function wallFragment(rng: () => number, slot: FractureSlot, cap: number, mesh: DamageMeshWriter, k: number): void {
+function wallFragment(rng: () => number, slot: FractureSlot, cap: number, mesh: DamageMeshWriter, k: number, minH = 0): void {
   if (!roomFor(mesh, 3) || !mesh.begin(slot.bucket, 'remnant')) return;
   const hw = fhw, hd = fhd;
   const t = Math.max(0.25, Math.min(0.7, slot.thicknessM > 0.05 ? slot.thicknessM * 1.4 : 0.4));
@@ -253,20 +300,64 @@ function wallFragment(rng: () => number, slot: FractureSlot, cap: number, mesh: 
   const alongX = face < 2, len = alongX ? 2 * hw : 2 * hd, off = alongX ? hd : hw, side = face & 1 ? 1 : -1;
   const run = Math.min(len * 0.45, 1 + rng() * 1.5);
   const u = (rng() - 0.5) * Math.max(0, len - run);
-  const height = Math.min(cap, ruinScale * (0.5 + rng() * 0.3));
+  const height0 = Math.min(cap, ruinScale * (0.5 + rng() * 0.3));
   const courses = 2 + (rng() < 0.5 ? 1 : 0);
   const lean = rng() < 0.5 ? -1 : 1;
+  // (destruction-slabs 227) on the drawn wall in from the edge, no taller than it is drawn there
+  const ex = alongX ? fcx + u : fcx + side * off, ez = alongX ? fcz + side * off : fcz + u;
+  const d = inToWall(ex, ez, alongX ? 0 : -side, alongX ? -side : 0);
+  const at = Number.isFinite(d) ? off - d - t / 2 : NaN;
+  const height = !Number.isFinite(at) ? 0 : Math.min(height0, alongX ? topAlong(fcx + u - run / 2, fcz + side * at, fcx + u + run / 2, fcz + side * at)
+    : topAlong(fcx + side * at, fcz + u - run / 2, fcx + side * at, fcz + u + run / 2));
+  // (destruction-slabs 227 round 2: on a ruin's ragged walls, fragments where the walls are drawn low only spread the
+  // heap's height thinner — a hundred of them stood a ruin at a fifth of its height) none under the height the ruin lacks
+  const keep = height >= minH;
   let y0 = -FOOT_M;
   for (let c = 0; c < courses; c++) {
     const y1 = height * ((c + 1) / courses) * (c === courses - 1 ? 1 : 0.9 + rng() * 0.1);
+    if (!keep) continue;
     const l = run * (1 - c * 0.3);
     const uc = u + lean * (run - l) / 2;
     const hy = (y1 - y0) / 2, shade = 0.8 + rng() * 0.18;
-    if (alongX) box(mesh, fcx + uc, y0 + hy, fcz + side * (off - t / 2), l / 2, hy, t / 2, 0, slot.tint, shade);
-    else box(mesh, fcx + side * (off - t / 2), y0 + hy, fcz + uc, t / 2, hy, l / 2, 0, slot.tint, shade);
+    if (!(height > 0.4) || !(hy > 0.05)) continue;
+    // (a course over one not drawn, or over one capped under its plan, would stand in the air: the run stops)
+    if (!(alongX ? rbox(mesh, fcx + uc, y0 + hy, fcz + side * at, l / 2, hy, t / 2, 0, slot.tint, shade)
+      : rbox(mesh, fcx + side * at, y0 + hy, fcz + uc, t / 2, hy, l / 2, 0, slot.tint, shade))) break;
+    if (rboxTop < y1 - 0.02) break;
     y0 = y1;
   }
   mesh.end();
+}
+
+/**
+ * A remnant's box no taller than the walls are drawn under it — its middle and its ends, each its own cell (destruction-
+ * slabs 227 round 3: a ruin's stubs and piers stood 1–3 m over the walls as drawn at their spots; one where nothing is
+ * drawn is no remnant).
+ */
+/** The top of the box rbox drew last (NaN: none) — a course capped under its plan has nothing over it (round 3: the
+ *  course over a capped one stood in the air, a warehouse's leaning post heads over its capped posts). */
+let rboxTop = NaN;
+function rbox(mesh: DamageMeshWriter, cx: number, cy: number, cz: number, hx: number, hy: number, hz: number, yaw: number,
+  tint: Rgb, shade: number, footed = true): boolean {
+  rboxTop = NaN;
+  if (ruinOf) {
+    const c = Math.cos(yaw), s = Math.sin(yaw);
+    const ax = hx >= hz ? hx * 0.8 : 0, az = hx >= hz ? 0 : hz * 0.8;
+    let lim = wallTopAt(ruinOf, cx, cz, 0);
+    lim = Math.min(lim, wallTopAt(ruinOf, cx + ax * c + az * s, cz - ax * s + az * c, 0), wallTopAt(ruinOf, cx - ax * c - az * s, cz + ax * s - az * c, 0));
+    const bottom = cy - hy;
+    // (and only where the wall is drawn down to its foot: a post mill's body on its trestle stood its ruin's walls from
+    // the ground up to where the body hung — a frame's posts excepted: a boatshed's reach the ground under its cladding)
+    if (footed && wallBaseAt(ruinOf, cx, cz) > 1.2) return false;
+    if (Number.isFinite(lim) && cy + hy > lim + 0.05) {
+      const top = Math.max(bottom, lim);
+      if (top - bottom < 0.3) return false;
+      hy = (top - bottom) / 2; cy = bottom + hy;
+    }
+  }
+  box(mesh, cx, cy, cz, hx, hy, hz, yaw, tint, shade);
+  rboxTop = cy + hy;
+  return true;
 }
 
 /** A segment from (ax, az) to (bx, bz) in plan as a box `hy` half high at `cy`, `t` thick (the box's local x along it). */
@@ -311,6 +402,42 @@ function strut(mesh: DamageMeshWriter, ax: number, ay: number, az: number, bx: n
   }
 }
 
+/**
+ * A leg's bent length from its head: a prism from the head's top (its corners those of the box under it, axis-aligned at
+ * `h` round (x, z)) to the same square round the tip, and the tip's cap. Written vertex by vertex (no allocation).
+ */
+const _bl = new Float64Array(24);
+function bentLeg(mesh: DamageMeshWriter, x: number, y: number, z: number, h: number, tx: number, ty: number, tz: number,
+  tint: Rgb, shade: number): void {
+  if (!(Math.hypot(tx - x, ty - y, tz - z) > 1e-3)) return;
+  const r = tint[0] * shade, g = tint[1] * shade, b = tint[2] * shade;
+  // corners in order round the square (−,−) (+,−) (+,+) (−,+): base 0..3, tip 4..7
+  for (let k = 0; k < 4; k++) {
+    const sx = k === 1 || k === 2 ? 1 : -1, sz = k >= 2 ? 1 : -1;
+    _bl[k * 3] = x + sx * h; _bl[k * 3 + 1] = y; _bl[k * 3 + 2] = z + sz * h;
+    _bl[12 + k * 3] = tx + sx * h; _bl[12 + k * 3 + 1] = ty; _bl[12 + k * 3 + 2] = tz + sz * h;
+  }
+  const mx = (x + tx) / 2, my = (y + ty) / 2, mz = (z + tz) / 2;
+  const quad = (a: number, bb: number, c: number, d: number): void => {
+    const ax = _bl[bb * 3]! - _bl[a * 3]!, ay = _bl[bb * 3 + 1]! - _bl[a * 3 + 1]!, az = _bl[bb * 3 + 2]! - _bl[a * 3 + 2]!;
+    const cx = _bl[d * 3]! - _bl[a * 3]!, cy = _bl[d * 3 + 1]! - _bl[a * 3 + 1]!, cz = _bl[d * 3 + 2]! - _bl[a * 3 + 2]!;
+    let nx = ay * cz - az * cy, ny = az * cx - ax * cz, nz = ax * cy - ay * cx;
+    const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+    // outward: away from the member's middle
+    const ox = (_bl[a * 3]! + _bl[c * 3]!) / 2 - mx, oy = (_bl[a * 3 + 1]! + _bl[c * 3 + 1]!) / 2 - my, oz = (_bl[a * 3 + 2]! + _bl[c * 3 + 2]!) / 2 - mz;
+    const flip = nx * ox + ny * oy + nz * oz < 0;
+    if (flip) { nx = -nx; ny = -ny; nz = -nz; }
+    const v0 = mesh.vertex(_bl[a * 3]!, _bl[a * 3 + 1]!, _bl[a * 3 + 2]!, nx, ny, nz, 0, 0, r, g, b);
+    const v1 = mesh.vertex(_bl[bb * 3]!, _bl[bb * 3 + 1]!, _bl[bb * 3 + 2]!, nx, ny, nz, 1, 0, r, g, b);
+    const v2 = mesh.vertex(_bl[c * 3]!, _bl[c * 3 + 1]!, _bl[c * 3 + 2]!, nx, ny, nz, 1, 1, r, g, b);
+    const v3 = mesh.vertex(_bl[d * 3]!, _bl[d * 3 + 1]!, _bl[d * 3 + 2]!, nx, ny, nz, 0, 1, r, g, b);
+    if (!flip) { mesh.triangle(v0, v1, v2); mesh.triangle(v0, v2, v3); }
+    else { mesh.triangle(v0, v2, v1); mesh.triangle(v0, v3, v2); }
+  };
+  for (let k = 0; k < 4; k++) quad(k, (k + 1) % 4, 4 + (k + 1) % 4, 4 + k);
+  quad(4, 5, 6, 7);
+}
+
 interface FrameLegs { legs: ReadonlyArray<{ foot: readonly number[]; head: readonly number[] }>; size: number; bucket: string; colour: Rgb | null }
 /** The frame's lattice reading (latticeFall.ts latticeOf), its own or its first body's. */
 function latticeLegs(anatomy: StructureDamageAnatomy): FrameLegs | null {
@@ -329,6 +456,65 @@ function frameSlot(anatomy: StructureDamageAnatomy): FractureSlot {
   return wall && !MASONRY.has(wall.material) ? wall : STEEL;
 }
 const _stubTop: number[] = [], _stubX: number[] = [], _stubZ: number[] = [];
+/** Each stub's kinked head (its upper length's top middle) and half-thickness: a bent leg goes on from there. */
+const _stubHeadX: number[] = [], _stubHeadZ: number[] = [], _stubHalf: number[] = [];
+/** The last frame's stubs stood on its drawn wall clusters (no bays between them: no girts, no struts across). */
+let stubsDrawn = false;
+/**
+ * (destruction-slabs 227 round 2) Stubs where the walls are drawn tall: the drawn wall cells (of any storey: a tower on its
+ * podium) standing over the height the ruin still lacks, tallest first, each stub a short run along its wall from the
+ * ground (no farther than the wall runs that tall, no taller than it is drawn there) at least 1.8 m from the last, until
+ * the ruin stands. A tower set back on its podium keeps its own walls' lower courses, where the corner piers and edge
+ * stubs (capped at the podium's drawn top) left a raft (the critic's anti-raft probe: 39 structures under the floors, an
+ * arcology's ruin at a fifth of its height).
+ */
+function tallWallStubs(rng: () => number, slot: FractureSlot, cap: number, mesh: DamageMeshWriter, target: number): void {
+  const anatomy = ruinOf;
+  const cell = anatomy?.enclosure?.cell;
+  // (round 2: an airstrip's 5 m cells stood 12 m stubs where nothing is drawn) only on a grid fine enough to stand on a wall
+  if (!anatomy || !cell || cell > 1) return;
+  // walls tall enough that a stub on them stands over the target, else the tallest there are — the body's own walls: not
+  // what is drawn far over it (round 2: a mast compound's lattice mast, 47 m over its 3.7 m hut, stood stone stubs in its
+  // legs' cells that the mast's fall left standing alone)
+  const ownTop = Math.max(anatomy.h, anatomy.roof?.ridgeY ?? 0) + 1;
+  const own = (list: ReturnType<typeof wallSpots>) => list.filter((sp) => sp.top <= ownTop);
+  let spots = own(wallSpots(anatomy, target * 1.25, 600));
+  if (spots.length < 4) spots = own(wallSpots(anatomy, target * 0.6, 600));
+  if (!spots.length || !mesh.begin(slot.bucket, 'remnant')) return;
+  const t = Math.max(0.25, Math.min(0.7, slot.thicknessM > 0.05 ? slot.thicknessM * 1.4 : 0.4));
+  const placed: number[] = [];
+  // two passes: stubs 1.8 m apart at a half to most of the wall's drawn height; still short, closer (1 m) and taller (a
+  // low wide body's heap outweighs a few stubs: a tank farm's crumpled shells stand to most of their height)
+  // (round 2: a third course, 0.6 m apart and lower, on a fine grid, for a body whose tall walls are few — a ruin's ragged
+  // runs, a tank farm's shells)
+  for (let pass = 0, n = 0; pass < (cell <= 0.6 ? 3 : 2); pass++, n = 0) {
+  const minGap2 = pass === 2 ? 0.36 : pass ? 1.0 : 1.8 * 1.8;
+  for (; n < spots.length && placed.length < 192 && roomFor(mesh, 1) && heightP90() < target; n++) {
+    // a seeded stride through the tallest spots (not every stub on the one tallest wall)
+    const spot = spots[(n * 7 + Math.floor(rng() * 5)) % spots.length]!;
+    let near = false;
+    for (let q = 0; q < placed.length; q += 2) if ((placed[q]! - spot.x) ** 2 + (placed[q + 1]! - spot.z) ** 2 < minGap2) { near = true; break; }
+    if (near) continue;
+    // a half to most of the wall's drawn height there, and over the height the ruin lacks where the wall reaches it
+    const h = Math.min(cap, Math.max(spot.top * (pass === 2 ? 0.7 + rng() * 0.15 : pass ? 0.7 + rng() * 0.22 : 0.5 + rng() * 0.35), Math.min(spot.top * 0.92, target * (1.2 + rng() * 0.3))));
+    if (h < 0.6) continue;
+    // its run: out from the spot along its wall while the wall stands that tall, up to 1.3 m each way
+    const dx = spot.alongX ? 1 : 0, dz = spot.alongX ? 0 : 1;
+    const reach = 0.5 + rng() * 0.8;
+    let a = 0, b = 0;
+    for (let d = cell * 0.5; d <= reach; d += cell * 0.5) { if (!tallWallAt(anatomy, spot.x - dx * d, spot.z - dz * d, h)) break; a = d; }
+    for (let d = cell * 0.5; d <= reach; d += cell * 0.5) { if (!tallWallAt(anatomy, spot.x + dx * d, spot.z + dz * d, h)) break; b = d; }
+    const hu = Math.max(t / 2, (a + b) / 2 + cell * 0.25), mid = (b - a) / 2;
+    const x = spot.x + dx * mid, z = spot.z + dz * mid;
+    const cy = (h - FOOT_M) / 2, hy = (h + FOOT_M) / 2, shade = 0.8 + rng() * 0.18;
+    if (spot.alongX) box(mesh, x, cy, z, hu, hy, t / 2, 0, slot.tint, shade);
+    else box(mesh, x, cy, z, t / 2, hy, hu, 0, slot.tint, shade);
+    placed.push(spot.x, spot.z);
+  }
+  }
+  mesh.end();
+}
+
 /**
  * An open frame's buckled remnant (never masonry): every leg of its lattice standing to a buckle `share` of its height up
  * (kinked at mid-height, seeded), a girt ring between the legs under the buckle, in the frame's own bucket and tint;
@@ -336,21 +522,48 @@ const _stubTop: number[] = [], _stubX: number[] = [], _stubZ: number[] = [];
  * middle.
  */
 function frameStubs(anatomy: StructureDamageAnatomy, rng: () => number, cap: number, mesh: DamageMeshWriter, share: number,
-  fallback: FractureSlot | null): void {
+  fallback: FractureSlot | null, named = true): void {
+  // (a stub-less return leaves no earlier building's stubs for frameTier)
+  _stubTop.length = 0; _stubX.length = 0; _stubZ.length = 0; _stubHeadX.length = 0; _stubHeadZ.length = 0; _stubHalf.length = 0; stubsDrawn = false;
   const lattice = latticeLegs(anatomy);
+  // (destruction-slabs 227) a frame by what it draws (no lattice reading, no frame's name: a tank on its legs, a fence)
+  // stands its stubs on its own drawn legs (the ground storey's wall clusters, to their drawn tops), never a four-legged
+  // stump about its middle where it drew nothing
+  const drawn = !lattice && !named && anatomy.enclosure
+    ? wallClusters(anatomy, 0, 6).filter((c) => c.top > 0.6).map((c) => ({ foot: [c.x, 0, c.z], head: [c.x, c.top, c.z] })) : null;
+  if (drawn && !drawn.length) return;
+  // (destruction-slabs 227) a named frame without a reading (a guyed mast on its pad beside its hut) stands its stump where
+  // it is drawn tallest, no wider than it is drawn there (about the footprint's middle it stood a 2.8 m lattice beside the
+  // 0.6 m mast, where nothing was drawn), and none where its body draws nothing near the frame's height (a set piece whose
+  // mast is its own falling piece: the body left is its pad and hut)
+  const tall = !lattice && !drawn && anatomy.enclosure ? tallestDrawn(anatomy) : null;
+  const stumpTop = Math.max(2, ruinScale);
+  if (!lattice && !drawn && anatomy.enclosure && (!tall || tall.top < 0.5 * stumpTop)) return;
   const bucket = lattice ? lattice.bucket : fallback?.bucket;
   if (!bucket || !roomFor(mesh, 16) || !mesh.begin(bucket, 'remnant')) return;
   const tint: Rgb = lattice?.colour ?? fallback?.tint ?? [0.42, 0.42, 0.44];
   const t = Math.max(0.12, Math.min(0.5, lattice ? lattice.size : 0.2));
-  _stubTop.length = 0; _stubX.length = 0; _stubZ.length = 0;
-  const legs = lattice ? lattice.legs : null;
+  _stubTop.length = 0; _stubX.length = 0; _stubZ.length = 0; _stubHeadX.length = 0; _stubHeadZ.length = 0; _stubHalf.length = 0;
+  const legs = lattice ? lattice.legs : drawn;
   const n = legs ? legs.length : 4;
-  const r = Math.max(0.5, Math.min(1.4, 0.18 * Math.min(fhw, fhd)));
+  const sx = tall ? tall.x : fcx, sz = tall ? tall.z : fcz;
+  const r = tall ? Math.max(0.12, Math.min(1.4, Math.min(tall.halfW, tall.halfD) - t / 2))
+    : Math.max(0.5, Math.min(1.4, 0.18 * Math.min(fhw, fhd)));
   for (let k = 0; k < n && roomFor(mesh, 3); k++) {
-    const foot = legs ? legs[k]!.foot : [fcx + (k & 1 ? r : -r), 0, fcz + (k & 2 ? r : -r)];
-    const head = legs ? legs[k]!.head : [foot[0]!, Math.max(2, ruinScale), foot[2]!];
+    let foot = legs ? legs[k]!.foot : [sx + (k & 1 ? r : -r), 0, sz + (k & 2 ? r : -r)];
+    // (a named stump's leg on the tall cluster's nearest drawn cell: a hollow tower's ring left its legs in the void)
+    if (!legs && tall && tall.spots.length) {
+      let best = 0, bd = Infinity;
+      for (let q = 0; q < tall.spots.length; q += 2) {
+        const d2 = (tall.spots[q]! - foot[0]!) ** 2 + (tall.spots[q + 1]! - foot[2]!) ** 2;
+        if (d2 < bd) { bd = d2; best = q; }
+      }
+      foot = [tall.spots[best]!, 0, tall.spots[best + 1]!];
+    }
+    // (a named stump buckles as high up its frame as the frame's own height reads, never over the frame as drawn there)
+    const head = legs ? legs[k]!.head : [foot[0]!, stumpTop, foot[2]!];
     const rise = Math.max(0.5, head[1]! - foot[1]!);
-    const top = Math.min(cap, foot[1]! + rise * share * (0.85 + rng() * 0.3));
+    const top = Math.min(cap, foot[1]! + rise * share * (0.85 + rng() * 0.3), tall ? tall.top : Infinity);
     const u = (top - foot[1]!) / rise;
     const x = foot[0]! + (head[0]! - foot[0]!) * u, z = foot[2]! + (head[2]! - foot[2]!) * u;
     const mid = (foot[1]! - FOOT_M + top) / 2;
@@ -359,11 +572,15 @@ function frameStubs(anatomy: StructureDamageAnatomy, rng: () => number, cap: num
     // the leg to the kink, then the kinked upper length to the buckle
     box(mesh, (foot[0]! + x) / 2, (foot[1]! - FOOT_M + mid) / 2, (foot[2]! + z) / 2, t / 2, (mid - foot[1]! + FOOT_M) / 2, t / 2, 0, tint, shade);
     box(mesh, x + kx, (mid + top) / 2, z + kz, t / 2, (top - mid) / 2, t / 2, 0, tint, shade);
-    _stubTop.push(top); _stubX.push(x); _stubZ.push(z);
+    _stubTop.push(top); _stubX.push(x); _stubZ.push(z); _stubHeadX.push(x + kx); _stubHeadZ.push(z + kz); _stubHalf.push(t / 2);
   }
-  // the girt ring under the lowest buckle
+  // the girt ring under the lowest buckle (not between a drawn frame's clusters: they need not be a frame's bays)
   let low = Infinity;
   for (const y of _stubTop) low = Math.min(low, y);
+  // (a named stump where its frame is drawn tallest takes no bent legs out from it: struts across it, between its own
+  // legs, only)
+  stubsDrawn = !!drawn || !!tall;
+  if (drawn) low = NaN;
   if (Number.isFinite(low)) {
     // girts up the standing panels (their bracing reads as the frame's own, and stands)
     for (const f of [0.2, 0.36, 0.52, 0.68, 0.84, 0.97]) {
@@ -394,28 +611,53 @@ function frameStubs(anatomy: StructureDamageAnatomy, rng: () => number, cap: num
 function frameTier(rng: () => number, cap: number, mesh: DamageMeshWriter, tier: number, fallback: FractureSlot,
   anatomy: StructureDamageAnatomy): void {
   const n = _stubX.length;
-  if (!n) return;
+  if (!n || (stubsDrawn && tier === 1)) return;
   const lattice = latticeLegs(anatomy);
   const bucket = lattice ? lattice.bucket : fallback.bucket;
   if (!roomFor(mesh, n * 2) || !mesh.begin(bucket, 'remnant')) return;
   const tint: Rgb = lattice?.colour ?? fallback.tint;
   const t = Math.max(0.12, Math.min(0.5, lattice ? lattice.size : 0.2));
+  // the frame's middle: its stubs' (a named stump stands where its frame is drawn, not about the footprint's middle)
+  let mx = 0, mz = 0;
+  for (let k = 0; k < n; k++) { mx += _stubX[k]! / n; mz += _stubZ[k]! / n; }
   for (let k = 0; k < n && roomFor(mesh, 2); k++) {
     const x = _stubX[k]!, z = _stubZ[k]!, top = _stubTop[k]!;
     if (tier === 1) {
-      // out from the frame's middle, up to 1.45 times the buckle (never past the cap)
-      const ox = x - fcx, oz = z - fcz, ol = Math.hypot(ox, oz) || 1;
-      const reach = 0.8 + rng() * 1.4;
-      const y1 = Math.min(cap, top * (1.3 + rng() * 0.15));
-      strut(mesh, x, top, z, x + (ox / ol) * reach, y1, z + (oz / ol) * reach, t * 0.9, tint, 0.8 + rng() * 0.15);
+      // up to 1.45 times the buckle (never past the cap): out from the frame's middle, or (destruction-slabs 227 round 2)
+      // where the frame's drawn form is known, folded in over its middle — under what it drew there (a water tower's legs
+      // under its tank), never splayed out over nothing (a leg bent out and up stood past the drawn tower's envelope; capped
+      // there, it drooped to the ground and the ruin stood a fifth of the tower's height)
+      const ox = x - mx, oz = z - mz, ol = Math.hypot(ox, oz) || 1;
+      const inward = !!ruinOf && ol > 0.6;
+      const reach = inward ? Math.min(ol * 0.85, 0.8 + rng() * 1.4) : 0.8 + rng() * 1.4;
+      const sgn = inward ? -1 : 1;
+      const tx = x + sgn * (ox / ol) * reach, tz = z + sgn * (oz / ol) * reach;
+      const drawnTip = ruinOf ? drawnOverAt(ruinOf, tx, tz, 0) : Infinity;
+      const y1 = Math.min(cap, top * (1.3 + rng() * 0.15), Number.isFinite(drawnTip) ? Math.max(0.4, drawnTip + 0.4) : Infinity);
+      // (destruction-slabs 227 round 3) from the stub's kinked head itself, its corners the head's (one member bent, as the
+      // slab check reads it: a strut from beside the head stood held at one end only, a board in the air)
+      bentLeg(mesh, _stubHeadX[k]!, top, _stubHeadZ[k]!, _stubHalf[k]!, tx, y1, tz, tint, 0.8 + rng() * 0.15);
     } else {
       const j = (k + (n >> 1)) % n;
       if (j === k) continue;
       const y = Math.min(_stubTop[k]!, _stubTop[j]!) * (0.78 + rng() * 0.15);
-      strut(mesh, x, y, z, _stubX[j]!, y * (0.92 + rng() * 0.1), _stubZ[j]!, t * 0.7, tint, 0.8 + rng() * 0.15);
+      const y1 = y * (0.92 + rng() * 0.1), shade = 0.8 + rng() * 0.15;
+      // (round 4, Earthrise's Apollo site: its fence's opposite posts, read as a drawn frame's legs, were strutted across the
+      // whole site — a star of bars over the regolith) a strut only where the form is drawn over its whole length, to more
+      // than half its height (a water tower's legs under its tank, a tank's legs under its shell)
+      if (ruinOf && !drawnAlong(ruinOf, x, z, _stubX[j]!, _stubZ[j]!, 0.5 * Math.min(y, y1))) continue;
+      strut(mesh, x, y, z, _stubX[j]!, y1, _stubZ[j]!, t * 0.7, tint, shade);
     }
   }
   mesh.end();
+}
+
+/** Whether the form is drawn over every cell between two plan points (body frame) to at least `minM`. */
+function drawnAlong(anatomy: StructureDamageAnatomy, ax: number, az: number, bx: number, bz: number, minM: number): boolean {
+  const cell = anatomy.enclosure?.cell ?? 1;
+  const n = Math.max(1, Math.ceil(Math.hypot(bx - ax, bz - az) / cell));
+  for (let i = 1; i < n; i++) if (!(drawnOverAt(anatomy, ax + ((bx - ax) * i) / n, az + ((bz - az) * i) / n, 0) >= minM)) return false;
+  return true;
 }
 
 /**
@@ -423,7 +665,13 @@ function frameTier(rng: () => number, cap: number, mesh: DamageMeshWriter, tier:
  * (a gap left in each), `share` of the ruin's scale, some leaning (two courses offset), and a wall panel or two leant
  * against them, in the wall's own bucket and tint.
  */
-function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: DamageMeshWriter, share: number): void {
+function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: DamageMeshWriter, share: number, loose = false): void {
+  // (loose posts need a grid fine enough to read a post's own drawn height: a guyed mast's metre cells stood them 1.8 m
+  // over what is drawn there)
+  if (loose && !((ruinOf?.enclosure?.cell ?? Infinity) <= 0.6)) return;
+  // (and any post on a grid too coarse to stand on a wall: an airstrip's 5 m cells stood its posts and boards where nothing is
+  // drawn)
+  if ((ruinOf?.enclosure?.cell ?? 0) > 1) return;
   if (!roomFor(mesh, 8) || !mesh.begin(slot.bucket, 'remnant')) return;
   const t = Math.max(0.14, Math.min(0.32, slot.thicknessM > 0.05 ? slot.thicknessM : 0.2));
   for (let face = 0; face < 4 && roomFor(mesh, 3); face++) {
@@ -433,21 +681,46 @@ function framePosts(rng: () => number, slot: FractureSlot, cap: number, mesh: Da
     for (let k = 0; k < posts && roomFor(mesh, 2); k++) {
       if (k === gap) continue;
       const u = -len / 2 + t / 2 + (k / (posts - 1)) * (len - t);
-      const x = alongX ? fcx + u : fcx + side * (off - t / 2), z = alongX ? fcz + side * (off - t / 2) : fcz + u;
-      const h = Math.min(cap, ruinScale * share * (0.6 + rng() * 0.5));
-      if (h < 0.5) continue;
-      const lean = rng() < 0.4 ? (rng() - 0.5) * 0.6 : 0;
+      const h0 = Math.min(cap, ruinScale * share * (0.6 + rng() * 0.5));
+      // (round 4; airfield #12's hall: a loose post's leant head stood off its drawn wall, over nothing) a loose post stands
+      // plumb over the cell it was read in (the draws kept)
+      const lean0 = rng() < 0.4 ? (rng() - 0.5) * 0.6 : 0, lean = loose ? 0 : lean0;
       const shade = 0.8 + rng() * 0.18;
+      // (destruction-slabs 227) on the drawn wall in from the edge, no taller than it is drawn there
+      const px = alongX ? fcx + u : fcx + side * off, pz = alongX ? fcz + side * off : fcz + u, pnx = alongX ? 0 : -side, pnz = alongX ? -side : 0;
+      // (a frame's posts and rails make no wall cell — too thin for a band's cover: `loose`, they stand on the plan's edge
+      // under what is drawn over it there)
+      let d = inToWall(px, pz, pnx, pnz);
+      if (!Number.isFinite(d) && loose) d = 0;
+      if (!Number.isFinite(d)) continue;
+      const x = alongX ? fcx + u : fcx + side * (off - d - t / 2), z = alongX ? fcz + side * (off - d - t / 2) : fcz + u;
+      // (loose: no taller than drawn in its own cell, and none where nothing is drawn — a frame's yard, a farm's gap)
+      const h = Math.min(h0, loose && ruinOf ? 0.8 * wallTopAt(ruinOf, x, z, 0) : topOfWallIn(px, pz, pnx, pnz, d));
+      if (h < 0.5) continue;
       const h1 = h * 0.55;
-      box(mesh, x, (h1 - FOOT_M) / 2, z, t / 2, (h1 + FOOT_M) / 2, t / 2, 0, slot.tint, shade);
-      box(mesh, x + (alongX ? lean : 0), (h1 + h) / 2, z + (alongX ? 0 : lean), t / 2, (h - h1) / 2, t / 2, 0, slot.tint, shade);
+      if (rbox(mesh, x, (h1 - FOOT_M) / 2, z, t / 2, (h1 + FOOT_M) / 2, t / 2, 0, slot.tint, shade, false) && rboxTop >= h1 - 0.02) {
+        rbox(mesh, x + (alongX ? lean : 0), (h1 + h) / 2, z + (alongX ? 0 : lean), t / 2, (h - h1) / 2, t / 2, 0, slot.tint, shade, false);
+      }
     }
-    // panels of the wall leant against its posts
+    // panels of the wall leant against its posts, inside the walls (destruction-slabs 227: they stood 0.25 m past them)
     for (let p = 0; p < 2 && roomFor(mesh, 1); p++) {
-      const pl = Math.min(len * 0.45, 1.6 + rng() * 1.6), ph = Math.min(cap, ruinScale * share * (0.6 + rng() * 0.35));
+      const pl = Math.min(len * 0.45, 1.6 + rng() * 1.6), ph0 = Math.min(cap, ruinScale * share * (0.6 + rng() * 0.35));
       const u = (rng() - 0.5) * (len - pl);
-      const x = alongX ? fcx + u : fcx + side * (off + 0.25), z = alongX ? fcz + side * (off + 0.25) : fcz + u;
-      box(mesh, x, ph / 2 - 0.1, z, alongX ? pl / 2 : 0.05, ph / 2, alongX ? 0.05 : pl / 2, 0, slot.tint, 0.75 + rng() * 0.2);
+      const shade = 0.75 + rng() * 0.2;
+      const px = alongX ? fcx + u : fcx + side * off, pz = alongX ? fcz + side * off : fcz + u, pnx = alongX ? 0 : -side, pnz = alongX ? -side : 0;
+      let d = inToWall(px, pz, pnx, pnz);
+      if (!Number.isFinite(d) && loose) d = 0;
+      if (!Number.isFinite(d)) continue;
+      const inset = off - d - t - 0.12;
+      const x = alongX ? fcx + u : fcx + side * inset, z = alongX ? fcz + side * inset : fcz + u;
+      // (loose: under what is drawn at its middle and both its ends, inside the drawn plan)
+      const ex = alongX ? pl / 2 : 0, ez = alongX ? 0 : pl / 2;
+      const ph = Math.min(ph0, loose && ruinOf
+        ? (enclosedAt(ruinOf, x - ex, z - ez, 0) && enclosedAt(ruinOf, x + ex, z + ez, 0)
+          ? 0.8 * Math.min(wallTopAt(ruinOf, x, z, 0), wallTopAt(ruinOf, x - ex, z - ez, 0), wallTopAt(ruinOf, x + ex, z + ez, 0)) : 0)
+        : topOfWallIn(px, pz, pnx, pnz, d));
+      if (!(ph > 0.3)) continue;
+      rbox(mesh, x, ph / 2 - 0.1, z, alongX ? pl / 2 : 0.05, ph / 2, alongX ? 0.05 : pl / 2, 0, slot.tint, shade, false);
     }
   }
   mesh.end();
@@ -460,13 +733,49 @@ function roofSlabs(anatomy: StructureDamageAnatomy, rng: () => number, mesh: Dam
   for (let k = 0; k < 6 && roomFor(mesh, 1); k++) {
     const x = fcx + (rng() - 0.5) * fhw * 1.4, z = fcz + (rng() - 0.5) * fhd * 1.4;
     const base = bodyMoundHeightAt(anatomy, x, z);
-    const len = 2 * Math.min(fhw, fhd) * (0.25 + rng() * 0.2);
+    // (destruction-slabs 227 round 4; caldera #28's warehouse: six plates of its roof 5-7 m across stood bolt upright in a
+    // row over its heap, billboards in the ruin — the owner's "weird ugly boxes/surfaces") a section of the covering a
+    // roof's bay across at most, leant on the heap from one buried edge: 25-40° off the vertical, never on its end
+    const len = Math.min(3.2, 2 * Math.min(fhw, fhd) * (0.25 + rng() * 0.2));
     const rise = Math.min(cap, len * (0.5 + rng() * 0.4));
     const shade = 0.7 + rng() * 0.25;
-    // a slab stood on its end against the heap: a thin box, tall over the mound
-    box(mesh, x, base + rise / 2, z, len / 2, rise / 2, Math.max(0.08, roof.thicknessM), rng() * Math.PI, roof.covering.tint, shade);
+    // (destruction-slabs 227) only over what the building drew (its walls and their enclosure)
+    const yaw = rng() * Math.PI;
+    const lean = (0.44 + rng() * 0.26) * (rng() < 0.5 ? 1 : -1);
+    if (enclosedAt(anatomy, x, z, 0.5) === false) continue;
+    // (round 2: a warehouse's leant slab stood a third past its walls) both its ends over the drawn plan too
+    const ex = Math.cos(yaw) * len / 2, ez = -Math.sin(yaw) * len / 2;
+    if (enclosedAt(anatomy, x + ex, z + ez, 0) === false || enclosedAt(anatomy, x - ex, z - ez, 0) === false) continue;
+    // its foot a hand into the mound, its top over the heap at the lean (and over the drawn plan: the top's reach too)
+    const ox = Math.sin(yaw) * Math.sin(lean) * rise / 2, oz = Math.cos(yaw) * Math.sin(lean) * rise / 2;
+    if (enclosedAt(anatomy, x + 2 * ox, z + 2 * oz, 0) === false) continue;
+    leantBox(mesh, x + ox, base - 0.1 + Math.cos(lean) * rise / 2, z + oz, len / 2, rise / 2, Math.max(0.08, roof.thicknessM), yaw, lean,
+      roof.covering.tint, shade);
   }
   mesh.end();
+}
+
+/** An oriented box leant `lean` radians about its own long (local x) axis, then turned `yaw` about y: a slab leaning on
+ *  the heap (its local z its thickness). Written vertex by vertex, as `box`. */
+function leantBox(mesh: DamageMeshWriter, cx: number, cy: number, cz: number, hx: number, hy: number, hz: number, yaw: number,
+  lean: number, tint: Rgb, shade: number): void {
+  const c = Math.cos(yaw), s = Math.sin(yaw), cl = Math.cos(lean), sl = Math.sin(lean);
+  const r = tint[0] * shade, g = tint[1] * shade, b = tint[2] * shade;
+  for (const [n, quad] of BOX_FACES) {
+    // the normal: leant about x (y, z), then turned about y
+    const ny = n[1] * cl - n[2] * sl, nzl = n[1] * sl + n[2] * cl;
+    const nx = n[0] * c + nzl * s, nz = -n[0] * s + nzl * c;
+    const su = n[0] !== 0 ? hz * 2 : hx * 2, sv = n[1] !== 0 ? hz * 2 : hy * 2;
+    for (let i = 0; i < 4; i++) {
+      const [qx, qy, qz] = quad[i]!;
+      const lx = qx * hx, ly = qy * hy, lz = qz * hz;
+      const yl = ly * cl - lz * sl, zl = ly * sl + lz * cl;
+      _quad[i] = mesh.vertex(cx + lx * c + zl * s, cy + yl, cz - lx * s + zl * c, nx, ny, nz,
+        i === 1 || i === 2 ? su : 0, i >= 2 ? sv : 0, r, g, b);
+    }
+    mesh.triangle(_quad[0]!, _quad[2]!, _quad[1]!);
+    mesh.triangle(_quad[0]!, _quad[3]!, _quad[2]!);
+  }
 }
 
 /**
@@ -509,12 +818,19 @@ export function intactHeightP90(anatomy: StructureDamageAnatomy): number {
  */
 export function measureIntactParts(parts: Readonly<Record<string, readonly BufferGeometry[]>> | null | undefined): StructureDamageAnatomy['intact'] | null {
   if (!parts) return null;
-  let topY = 0, minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, any = false;
+  // (destruction-slabs 227 round 3, the load-time budget) the parts' positions read straight from their arrays (a
+  // generic attribute accessor a corner was most of its time on urban); the same numbers as before
+  const sources: Array<{ array: ArrayLike<number>; stride: number; offset: number; count: number; index: ArrayLike<number> | null; n: number }> = [];
   for (const list of Object.values(parts)) for (const geometry of list) {
-    const pos = geometry.getAttribute('position');
-    if (!pos) continue;
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
+    const src = positionsOf(geometry);
+    if (!src) continue;
+    const ix = geometry.getIndex();
+    sources.push({ ...src, index: ix ? ix.array : null, n: ix ? ix.count : src.count });
+  }
+  let topY = 0, minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, any = false;
+  for (const { array, stride, offset, count } of sources) {
+    for (let i = 0, o = offset; i < count; i++, o += stride) {
+      const x = array[o]!, y = array[o + 1]!, z = array[o + 2]!;
       if (y > topY) topY = y;
       if (x < minX) minX = x; if (x > maxX) maxX = x; if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
       any = true;
@@ -523,20 +839,16 @@ export function measureIntactParts(parts: Readonly<Record<string, readonly Buffe
   if (!any || !(topY > 0)) return null;
   bins.fill(0);
   let total = 0;
-  for (const list of Object.values(parts)) for (const geometry of list) {
-    const pos = geometry.getAttribute('position');
-    if (!pos) continue;
-    const index = geometry.getIndex();
-    const n = index ? index.count : pos.count;
+  for (const { array, stride, offset, index, n } of sources) {
     for (let t = 0; t + 2 < n; t += 3) {
-      const a = index ? index.getX(t) : t, b = index ? index.getX(t + 1) : t + 1, c = index ? index.getX(t + 2) : t + 2;
-      const ax = pos.getX(a), ay = pos.getY(a), az = pos.getZ(a);
-      const ux = pos.getX(b) - ax, uy = pos.getY(b) - ay, uz = pos.getZ(b) - az;
-      const vx = pos.getX(c) - ax, vy = pos.getY(c) - ay, vz = pos.getZ(c) - az;
+      const a = offset + (index ? index[t]! : t) * stride, b = offset + (index ? index[t + 1]! : t + 1) * stride, c = offset + (index ? index[t + 2]! : t + 2) * stride;
+      const ax = array[a]!, ay = array[a + 1]!, az = array[a + 2]!;
+      const ux = array[b]! - ax, uy = array[b + 1]! - ay, uz = array[b + 2]! - az;
+      const vx = array[c]! - ax, vy = array[c + 1]! - ay, vz = array[c + 2]! - az;
       const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
       const area = 0.5 * Math.sqrt(nx * nx + ny * ny + nz * nz);
       if (!(area > 0)) continue;
-      const y = (ay + pos.getY(b) + pos.getY(c)) / 3;
+      const y = (ay + array[b + 1]! + array[c + 1]!) / 3;
       bins[Math.max(0, Math.min(BINS - 1, Math.floor((y / topY) * BINS)))] += area;
       total += area;
     }
@@ -550,15 +862,20 @@ export function measureIntactParts(parts: Readonly<Record<string, readonly Buffe
   // its plan: every triangle laid on a 32 × 32 grid over its box (a barycentric lattice no coarser than a cell)
   const cells = new Uint8Array(PLAN_N * PLAN_N);
   const sx = Math.max(1e-3, maxX - minX), sz = Math.max(1e-3, maxZ - minZ), cell = Math.min(sx, sz) / PLAN_N;
-  for (const list of Object.values(parts)) for (const geometry of list) {
-    const pos = geometry.getAttribute('position');
-    if (!pos) continue;
-    const index = geometry.getIndex();
-    const n = index ? index.count : pos.count;
+  for (const { array, stride, offset, index, n } of sources) {
     for (let t = 0; t + 2 < n; t += 3) {
-      const a = index ? index.getX(t) : t, b = index ? index.getX(t + 1) : t + 1, c = index ? index.getX(t + 2) : t + 2;
-      const ax = pos.getX(a), az = pos.getZ(a), ux = pos.getX(b) - ax, uz = pos.getZ(b) - az, vx = pos.getX(c) - ax, vz = pos.getZ(c) - az;
+      const a = offset + (index ? index[t]! : t) * stride, b = offset + (index ? index[t + 1]! : t + 1) * stride, c = offset + (index ? index[t + 2]! : t + 2) * stride;
+      const ax = array[a]!, az = array[a + 2]!, ux = array[b]! - ax, uz = array[b + 2]! - az, vx = array[c]! - ax, vz = array[c + 2]! - az;
       const steps = Math.max(1, Math.min(64, Math.ceil(Math.max(Math.hypot(ux, uz), Math.hypot(vx, vz)) / cell)));
+      if (steps === 1) {
+        // (the lattice of one step: its three corners)
+        for (const [px, pz] of [[ax, az], [ax + ux, az + uz], [ax + vx, az + vz]] as const) {
+          const ci = Math.min(PLAN_N - 1, Math.max(0, Math.floor(((px - minX) / sx) * PLAN_N)));
+          const ck = Math.min(PLAN_N - 1, Math.max(0, Math.floor(((pz - minZ) / sz) * PLAN_N)));
+          cells[ck * PLAN_N + ci] = 1;
+        }
+        continue;
+      }
       for (let i = 0; i <= steps; i++) for (let j = 0; j <= steps - i; j++) {
         const x = ax + (ux * i + vx * j) / steps, z = az + (uz * i + vz * j) / steps;
         const ci = Math.min(PLAN_N - 1, Math.max(0, Math.floor(((x - minX) / sx) * PLAN_N)));
@@ -580,6 +897,10 @@ const PLAN_N = 32;
  * A heap follows the form's own pieces, not its box.
  */
 export function intactPlanAt(anatomy: StructureDamageAnatomy, x: number, z: number): boolean | null {
+  // (destruction-slabs 227) the drawn enclosure where there is one, for every form (a dense one's plan is no box either:
+  // a church's forecourt, a station's platform)
+  const drawn = enclosedAt(anatomy, x, z, 0.75);
+  if (drawn !== null) return drawn;
   const intact = anatomy.intact;
   if (!intact || !intact.cells || !(intact.planFill < 0.5)) return null;
   const sx = intact.maxX - intact.minX, sz = intact.maxZ - intact.minZ;
@@ -605,6 +926,11 @@ function footprintOf(anatomy: StructureDamageAnatomy): void {
       if (x < minX) minX = x; if (x > maxX) maxX = x; if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
     }
   }
+  // (destruction-slabs 227) the ground storey's drawn walls and what they enclose, where the structure has them
+  const band0 = bandEnclosure(anatomy, 0);
+  if (band0 && band0.solidBox[2] - band0.solidBox[0] > 0.5 && band0.solidBox[3] - band0.solidBox[1] > 0.5) {
+    minX = band0.solidBox[0]; minZ = band0.solidBox[1]; maxX = band0.solidBox[2]; maxZ = band0.solidBox[3];
+  }
   const intact = anatomy.intact;
   if (!(maxX - minX > 0.5 && maxZ - minZ > 0.5) && intact) { minX = intact.minX; maxX = intact.maxX; minZ = intact.minZ; maxZ = intact.maxZ; }
   if (!(maxX - minX > 0.5 && maxZ - minZ > 0.5)) { minX = -anatomy.w / 2; maxX = anatomy.w / 2; minZ = -anatomy.d / 2; maxZ = anatomy.d / 2; }
@@ -627,7 +953,9 @@ const reachBox = new Float64Array(4);
 /** The wall materials a ruin's piers and stubs stand in: masonry (a wall of courses or a mass), never a frame or a skin. */
 const MASONRY: ReadonlySet<string> = new Set(['brick', 'stone', 'rubble', 'concrete', 'adobe', 'plaster', 'infill', 'earth']);
 /** The builders that are open frames, whatever their walls read as (they fall as their own lattice: latticeFall.ts). */
-const FRAME_BUILDER = /watertower|windmill|mill-wheel|mast|pylon|lattice|headframe|gantry|derrick|crane|radar|antenna|aerial/i;
+// (round 4: Earthrise's relay repeater, a lattice mast on its pad, read as a skin wall stood its stubs 17 m up its legs' cells:
+// solid columns where it drew bars)
+const FRAME_BUILDER = /watertower|windmill|mill-wheel|mast|pylon|lattice|headframe|gantry|derrick|crane|radar|antenna|aerial|repeater/i;
 /** An open frame by its builder's name. */
 export function frameByName(builder: string | null | undefined): boolean {
   return typeof builder === 'string' && FRAME_BUILDER.test(builder);
@@ -649,7 +977,9 @@ function framePlan(anatomy: StructureDamageAnatomy): boolean {
  * the whole pass.
  */
 export function ruinKind(anatomy: StructureDamageAnatomy, builder: string | null = null): 'frame' | 'skin' | 'masonry' {
-  if (framePlan(anatomy) || anatomy.intact?.frame || frameByName(builder)) return 'frame';
+  // (destruction-slabs 227) or by what it draws: it stands on posts, every band open (a fire lookout, a market's stalls:
+  // whatever their walls read as; a ruin's ragged walls or a gate's piers enclose little too, but they are runs)
+  if (framePlan(anatomy) || anatomy.intact?.frame || frameByName(builder) || standsOnPosts(anatomy)) return 'frame';
   const wall = wallSlot(anatomy);
   return wall && MASONRY.has(wall.material) ? 'masonry' : 'skin';
 }
@@ -683,6 +1013,7 @@ export function keepRuinStanding<R>(anatomy: StructureDamageAnatomy, seed: numbe
   inner = out.mesh;
   writers.pieces = out.pieces;
   measuring = true;
+  ruinOf = anatomy.enclosure ? anatomy : null;
   footprintOf(anatomy);
   // the plan the ruin covers: the intact's own box about the body's origin, else the walls' rectangle about it
   const halfW = intact ? Math.max(Math.abs(intact.minX), Math.abs(intact.maxX)) : Math.abs(fcx) + fhw;
@@ -712,9 +1043,16 @@ export function keepRuinStanding<R>(anatomy: StructureDamageAnatomy, seed: numbe
           Math.max(intact.minZ, reachBox[2]!), Math.min(intact.maxZ, reachBox[3]!));
       }
       // an open frame: its own legs buckled and standing, nothing heaped where it drew nothing, no masonry
-      if (heightP90() < target) frameStubs(anatomy, rng, cap, measuringWriter, 0.42, frameSlot(anatomy));
+      if (heightP90() < target) frameStubs(anatomy, rng, cap, measuringWriter, 0.42, frameSlot(anatomy),
+        framePlan(anatomy) || !!intact?.frame || frameByName(builder));
       // still short: the bent upper legs leaning out from the buckle, then struts across the frame (each a new member)
       for (let tier = 1; tier <= 2 && heightP90() < target; tier++) frameTier(rng, cap, measuringWriter, tier, frameSlot(anatomy), anatomy);
+      // (destruction-slabs 227 round 2: a rack or a shed read as a frame by its posts — no longer as a skin wall — stood
+      // at a fifth of its height on its legs alone) still short: its posts where it is drawn, and its boards leant on them
+      // (not a named frame's or a lattice's: a gantry, a mast or a mill wheel stands on its own legs)
+      for (let pass = 0; pass < 12 && ruinOf && !frameByName(builder) && !framePlan(anatomy) && heightP90() < target; pass++) {
+        framePosts(rng, frameSlot(anatomy), cap, measuringWriter, 0.4 + Math.min(8, pass) * 0.05, true);
+      }
       return result;
     }
     if (pile && planShare() < RUIN_PLAN_SHARE) fillMound(anatomy, rng, pile, measuringWriter, fcx - fhw, fcx + fhw, fcz - fhd, fcz + fhd);
@@ -726,14 +1064,23 @@ export function keepRuinStanding<R>(anatomy: StructureDamageAnatomy, seed: numbe
     // more of them), the fallen covering's slabs once
     if (wall && heightP90() < target) cornerPiers(rng, wall, cap, measuringWriter, 0.42 + rng() * 0.18);
     if (wall && heightP90() < target) wallStubs(rng, wall, cap, measuringWriter, 0.32);
+    // still short (a tower set back on its podium: the walls round the plan's edge are drawn low): stubs on its walls
+    // where they are drawn tall, before the fragments spend the reserve
+    if (wall && heightP90() < target) tallWallStubs(rng, wall, cap, measuringWriter, target);
     if (heightP90() < target) roofSlabs(anatomy, rng, measuringWriter, cap * 0.5);
-    for (let k = 0; k < 120 && wall && heightP90() < target && roomFor(measuringWriter, 3); k++) wallFragment(rng, wall, cap, measuringWriter, k);
-    // a skin wall: its posts and leant panels until it stands
+    for (let k = 0; k < 120 && wall && heightP90() < target && roomFor(measuringWriter, 3); k++) wallFragment(rng, wall, cap, measuringWriter, k, target);
+    // a skin wall: its walls' posts where they are drawn tall (a bin over its legs, a mill on its base, a tank's shell),
+    // then its posts and leant panels round the plan until it stands
     const skin = kind === 'skin' ? wallSlot(anatomy) : null;
+    if (skin && ruinOf && heightP90() < target) tallWallStubs(rng, skin, cap, measuringWriter, target);
     for (let pass = 0; pass < 8 && skin && heightP90() < target; pass++) framePosts(rng, skin, cap, measuringWriter, 0.4 + pass * 0.05);
+    // (round 2: a tank farm's shells stand few and far between, its crumpled heap the most of its vertices) still short:
+    // posts and panels on the plan's edge under what is drawn there, as a frame's
+    for (let pass = 0; pass < 4 && skin && ruinOf && heightP90() < target; pass++) framePosts(rng, skin, cap, measuringWriter, 0.6 + pass * 0.05, true);
   } finally {
     kitPhase = false;
     measuring = false;
+    ruinOf = null;
     inner = null;
     writers.pieces = null as unknown as DamageWriters['pieces'];
   }

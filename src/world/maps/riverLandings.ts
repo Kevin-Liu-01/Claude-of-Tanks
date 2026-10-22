@@ -21,6 +21,9 @@ interface LandingHeightField {
   /** Round 58: the baked union wetness and the sheet's depth of a liquid field, read by the strand law on a sea shore. */
   _waterWetnessAt?(x: number, z: number): number;
   getWaterDepthAt?(x: number, z: number): number;
+  /** (2026-10-21, level water held in its banks: waterBank.ts) the water's top of the body that holds (x, z) — its
+   * level (the floor) plus the map's depth; NaN where none does. Absent (a field without bodies), the top is the level. */
+  getWaterBodySurfaceAt?(x: number, z: number): number;
 }
 
 interface LandingLake {
@@ -39,13 +42,22 @@ export interface RiverLanding {
   angle: number;
   length: number;
   deckY: number;
+  /** The bed under the planar core the tip stands over: the lake's level (its floor). */
   waterLevel: number;
+  /** (2026-10-21, waterBank.ts) the water's top there: the floor plus the map's depth (the level on a field without
+   * bodies). The dry shore under the deck's shore end and the hauled-out boat stand over it. */
+  surface: number;
   boatX: number;
   boatZ: number;
   boatYaw: number;
   /** Round 58: on a sea strand, the derived jetty (the water's edge, the core, the gangway, the moored boat). */
   shore: ShoreJettyPlan | null;
 }
+
+/** (2026-10-21, waterBank.ts) how far over the water's top a hauled-out boat's ground stands: the dry side of the shore.
+ * The base's 5 cm over the floor stood Mangrove's boats in the water's depth (0.43 m) by the sheet; its flats now meet the
+ * tidal waterline flush, the boats ~10 m up them. */
+const BEACHED_BOAT_DRY_M = 0.02;
 
 /** Authored shore placement, never one automatic jetty per interpolated cell. */
 export function planRiverLanding(
@@ -83,6 +95,13 @@ export function planRiverLanding(
     if (heightField.getWaterMaskAt(px, pz) !== 1
       || Math.abs(heightField.getHeightAt(px, pz) - level) > 1e-8) return null;
   }
+  // (2026-10-21, level water held in its banks: waterBank.ts) the level is the floor and the water stands the map's depth
+  // over it; the bank law holds the dry shore a lip over that top, so the shore stations and the boat are measured from
+  // the water's top, not the floor (Mangrove's floor sits 0.43 m under its tidal waterline). A field without bodies keeps
+  // the level as its top, as before. The deck stands 0.65 m over that top: Mangrove's deck where it stood before its
+  // floor went under the tidal waterline (the fishery wharf's dock and foundation adapt to it unchanged).
+  const body = heightField.getWaterBodySurfaceAt?.(tipX, tipZ) ?? Number.NaN;
+  const surface = body === body ? body : level;
   // Validate every pile station along the actual authored length, not only
   // a short default footprint or an unsampled midpoint of a longer deck.
   for (let station = 0; station <= Math.round(spans); station++) {
@@ -90,7 +109,7 @@ export function planRiverLanding(
     for (const side of [-1, 1]) {
       const px = x + Math.cos(inward) * t - Math.sin(inward) * side * 0.75;
       const pz = z + Math.sin(inward) * t + Math.cos(inward) * side * 0.75;
-      if (heightField._roadDist(px, pz) < 7 || heightField.getHeightAt(px, pz) > level + 0.50) return null;
+      if (heightField._roadDist(px, pz) < 7 || heightField.getHeightAt(px, pz) > surface + 0.50) return null;
     }
   }
   const boatX = lake.x + Math.cos(angle) * radius * 1.16 - Math.sin(angle) * 5;
@@ -98,9 +117,9 @@ export function planRiverLanding(
   // A shore of one overlapping cell may be inside the next cell. Inspect the
   // full union so a grounded fishing boat is never placed in open water.
   if (sampleShorelineMask([], lakes, boatX, boatZ) > 0.02
-    || heightField.getHeightAt(boatX, boatZ) <= level + 0.05) return null;
+    || heightField.getHeightAt(boatX, boatZ) <= surface + BEACHED_BOAT_DRY_M) return null;
   return {
-    x, z, angle: inward, length, deckY: level + 0.65, waterLevel: level,
+    x, z, angle: inward, length, deckY: surface + 0.65, waterLevel: level, surface,
     boatX, boatZ,
     boatYaw: -angle - Math.PI / 2,
     shore: null,
@@ -116,7 +135,7 @@ export function landingBoatSeatOk(heightField: LandingHeightField, lakes: readon
   x: number, z: number): boolean {
   if (sampleShorelineMask([], lakes, x, z) > 0.02) return false;
   if (landing.shore) return heightField.getWaterMaskAt(x, z) === 0 && heightField._roadDist(x, z) >= 7;
-  return heightField.getHeightAt(x, z) > landing.waterLevel + 0.05;
+  return heightField.getHeightAt(x, z) > landing.surface + BEACHED_BOAT_DRY_M;
 }
 
 /** Round 58: a landing on a sea strand — the jetty from the strand law, the beached boat hauled up the dry strand
@@ -134,6 +153,7 @@ function planStrandLanding(
     || heightField._roadDist(boatX, boatZ) < 7) return null;
   return {
     x: shore.x, z: shore.z, angle: shore.angle, length: shore.length, deckY: shore.deckY, waterLevel: level,
+    surface: shore.surface,
     boatX, boatZ,
     boatYaw: -angle - Math.PI / 2,
     shore,

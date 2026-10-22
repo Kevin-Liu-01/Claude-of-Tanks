@@ -45,7 +45,7 @@ export async function loadMaterialPainterFont(url: string, ports: MaterialPainte
     ports.fonts.add(font);
     await font.load();
     if (font.status !== 'loaded' || !ports.fonts.has(font)
-      || !ports.fonts.check("900 16px 'ABC Monument Grotesk'", '0123456789')) throw new Error('Material font unavailable');
+      || !ports.fonts.check("700 16px 'Cot UI'", '0123456789')) throw new Error('Material font unavailable');
     return true;
   } catch {
     if (font) { try { ports.fonts.delete(font); } catch { /* failed realm will be terminated */ } }
@@ -109,7 +109,7 @@ function startNativeWorker(scope: PainterWorkerScope): void {
           if (!response.ok) throw new Error('Material font download failed');
           return response.arrayBuffer();
         },
-        createFont: bytes => new FontFace('ABC Monument Grotesk', bytes,
+        createFont: bytes => new FontFace('Cot UI', bytes,
           { weight: '700 900', style: 'normal', display: 'optional' }),
       });
       return ready;

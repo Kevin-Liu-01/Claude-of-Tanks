@@ -11,6 +11,11 @@ import { createTank, createTankSteps, type CreateTankOptions } from '../vehicles
 import { rosterVisualAttempts } from './rosterVisualFallback.ts';
 import { ERA_NEIGHBOURS, isBotTankId, rankMatchCandidates } from './matchmaking.ts';
 import { ENEMY_NATION_OPTIONS } from './teamArrangement.ts';
+import { TEAM_NATIONS_RULES } from '../sim/matchRuleset.ts';
+import { countryOfVehicle, type CountryId } from '../sim/countries.ts';
+import { pickNationalSides, teamNationsSeed, type NationNote, type NationRow } from '../sim/teamNations.ts';
+import { tankTier } from '../vehicles/tier.ts';
+import type { SoloNationalMode, SoloNationalPlan } from './soloRosterPlan.ts';
 import { getDeviceTier } from '../engine/quality.ts';
 import { mulberry32 } from './stateCore.ts';
 import type { CombatState } from '../sim/damage.ts';
@@ -571,6 +576,58 @@ function defaultWaveNations(
   return eligible[(offset + Math.abs(Math.floor(battleOrdinal) * 7)) % eligible.length].option.specNations;
 }
 
+/** A battle's TEAM NATIONS record (the deploy chip, the HUD team panel and the receipts read it). */
+export interface BattleTeamNations {
+  readonly teamNations: 'mono' | 'random';
+  readonly allied: CountryId | null;
+  readonly enemy: CountryId | null;
+  readonly notes: readonly NationNote[];
+}
+
+/** A pool entity as the planner's row: its vehicle, country, era and tier. */
+function nationRowOf(entity: RosterEntity): NationRow {
+  const spec = entity.spec as { nation?: string; era?: string } | null | undefined;
+  return { id: entity.specId, country: countryOfVehicle(entity.specId, spec?.nation), era: spec?.era ?? null, tier: tankTier(entity.specId) };
+}
+
+/**
+ * MONO-NATION's battle (sim/teamNations.ts pickNationalSides): the player's pick seat 0 of the allies, the allied bots
+ * from the player's country and its closest allies, the enemy seats from one opposing country, in the curated pool's
+ * seeded, recency-rotated order; a vehicle fielded twice is a clone entity. The allied entities come back explicitly.
+ */
+export function pickNationalBattle(
+  game: RosterGameState,
+  playerSpecId: string,
+  battleOrdinal: number,
+  plan: SoloNationalPlan,
+): { participants: RosterEntity[]; allies: RosterEntity[]; record: BattleTeamNations } {
+  const player = game.tankById.get(playerSpecId);
+  if (!player) throw new Error(`unknown battle vehicle: ${playerSpecId}`);
+  const ranked = randomBattleCandidates(game, player, battleOrdinal);
+  const byId = new Map(ranked.map((entity) => [entity.specId, entity]));
+  const sides = pickNationalSides({
+    rows: ranked.map(nationRowOf), alliedHumans: [nationRowOf(player)],
+    alliedSeats: plan.alliedSeats, enemySeats: plan.enemySeats,
+    campaignEnemy: plan.campaignEnemy, arrangedEnemy: plan.arrangedEnemy,
+    seed: teamNationsSeed(battleOrdinal, game.rosterSeed ?? 0, playerSpecId),
+    rivalBlocWeight: TEAM_NATIONS_RULES.rivalBlocWeight,
+    autoNeedsContemporaries: TEAM_NATIONS_RULES.autoEnemyNeedsContemporaries,
+  });
+  const seat = (side: 'allied' | 'enemy', k: number, id: string, repeat: boolean): RosterEntity => {
+    const source = id === player.specId ? player : byId.get(id) ?? game.tankById.get(id)!;
+    return repeat || source === player
+      ? createRosterEntity(source.specId, `${side}:${k}:${source.specId}`, (side === 'allied' ? 8000 : 8500) + k, true)
+      : source;
+  };
+  const allies = sides.allies.map((s, k) => seat('allied', k, s.id, s.repeat));
+  const enemies = sides.enemies.map((s, k) => seat('enemy', k, s.id, s.repeat));
+  return {
+    participants: [player, ...enemies, ...allies],
+    allies,
+    record: Object.freeze({ teamNations: 'mono', allied: sides.allied, enemy: sides.enemy, notes: sides.notes }),
+  };
+}
+
 export function pickBattleParticipants(
   game: RosterGameState,
   playerSpecId: string,
@@ -581,7 +638,9 @@ export function pickBattleParticipants(
   // (allies + enemy pool) and keep exactly `formationLead` seats for the named nation
   slots: number | null = null,
   formationLead: number | null = null,
-  alliedSlots: number | null = null,
+  // TEAM NATIONS (gameplay-modes-228): MONO's plan (pickNationalBattle), RANDOM ('random': no country preference at all,
+  // the wave modes' default formation included), or null (the legacy pool: direct callers and the receipts)
+  national: SoloNationalMode = null,
 ): RosterEntity[] {
   const player = game.tankById.get(playerSpecId);
   if (!player) throw new Error(`unknown battle vehicle: ${playerSpecId}`);
@@ -596,6 +655,9 @@ export function pickBattleParticipants(
     game, player, randomize, enemySlots, battleOrdinal,
   );
   if (forced) return [player, ...forced.slice(0, enemySlots)];
+  if (randomize && national && national !== 'random') {
+    return pickNationalBattle(game, playerSpecId, battleOrdinal, national).participants;
+  }
 
   let others: RosterEntity[];
   if (randomize) {
@@ -605,26 +667,9 @@ export function pickBattleParticipants(
     // the production catalog cannot fill all 13 non-player slots;
     // picking the Random battlefield no longer turns WWII vs modern back on.
     const waveMode = formationLead != null;
-    const nations = preferredNations.length || !waveMode
+    const nations = preferredNations.length || !waveMode || national === 'random'
       ? preferredNations
       : defaultWaveNations(game, battleOrdinal, Math.min(enemySlots, Math.floor(formationLead)));
-    if (alliedSlots != null) {
-      const count = Math.min(enemySlots - 1, Math.max(0, Math.floor(alliedSlots)));
-      const candidates = randomBattleCandidates(game, player, battleOrdinal);
-      const nation = String(player.spec.nation ?? '');
-      const aliases = ENEMY_NATION_OPTIONS.find(option => option.specNations.includes(nation))?.specNations ?? [nation];
-      const national = candidates.filter(entity => aliases.includes(String(entity.spec.nation ?? '')));
-      const pool = national.length ? national : [player];
-      const allies = Array.from({length: count}, (_, index) => {
-        const source = pool[index % pool.length];
-        return index < national.length ? source
-          : createRosterEntity(source.specId, `allied:${index}:${source.specId}`, 8000 + index, true);
-      });
-      const reserved = new Set(allies.map(entity => entity.id));
-      const enemies = preferNations(candidates.filter(entity => !reserved.has(entity.id)), player, nations,
-        enemySlots - count, waveMode).slice(0, enemySlots - count);
-      return [player, ...enemies, ...allies];
-    }
     others = preferNations(randomBattleCandidates(game, player, battleOrdinal), player, nations,
       Math.max(0, waveMode ? Math.min(enemySlots, Math.floor(formationLead)) : enemySlots - 3), waveMode);
   } else {
@@ -647,9 +692,9 @@ export function planBattleParticipantIds(
   preferredNations: readonly string[] = [],
   slots: number | null = null,
   formationLead: number | null = null,
-  alliedSlots: number | null = null,
+  national: SoloNationalMode = null,
 ) {
-  return pickBattleParticipants(game, playerSpecId, randomize, game.battleCount + 1, preferredNations, slots, formationLead, alliedSlots)
+  return pickBattleParticipants(game, playerSpecId, randomize, game.battleCount + 1, preferredNations, slots, formationLead, national)
     .map((entity) => entity.specId);
 }
 
@@ -686,10 +731,10 @@ export function planBattleCamoOverrides(
   preferredNations: readonly string[] = [],
   slots: number | null = null,
   formationLead: number | null = null,
-  alliedSlots: number | null = null,
+  national: SoloNationalMode = null,
 ) {
   const battleOrdinal = game.battleCount + 1;
-  const participants = pickBattleParticipants(game, playerSpecId, randomize, battleOrdinal, preferredNations, slots, formationLead, alliedSlots);
+  const participants = pickBattleParticipants(game, playerSpecId, randomize, battleOrdinal, preferredNations, slots, formationLead, national);
   return autoCamoIdsForBattle(
     participants, playerSpecId, mapId, randomize, battleOrdinal,
   );

@@ -34,10 +34,10 @@ export function buildT72B3MXHullCore(P:TankBuilderPort):void {
   P.add('hull',cylY(1.318788,.026,48),YAW[0],1.512,YAW[2]);
 }
 
-function hull(P:TankBuilderPort):void {
+function hull(P:TankBuilderPort,skirtEra=true):void {
   buildT72B3MXHullCore(P);
   for(const side of [-1,1])fenders(P,side);
-  addT72B3MSideMounts(P);
+  addT72B3MSideMounts(P,{skirtEra});
 }
 
 function fenders(P:TankBuilderPort,side:number):void {
@@ -77,10 +77,10 @@ function runningGear(P:TankBuilderPort):void {
   });
 }
 
-function hullCassettes(P:TankBuilderPort):void {
+function hullCassettes(P:TankBuilderPort,nativeEra=true):void {
   for(const side of [-1,1]){
     const left=side<0?-1.103:.014,right=side<0?-.014:1.103;
-    P.destructibleCluster(`glacis_era_${side<0?'L':'R'}`,()=>{
+    if(nativeEra)P.destructibleCluster(`glacis_era_${side<0?'L':'R'}`,()=>{
       const cover=roofSheet([[2.00,left,right,1.4934,1.4934],[2.61,left,right,1.2725,1.2725],[3.25,left,right,1.0232,1.0232]],.040);
       P.addExternalArmor('hull',markEraHitFaces(cover,[0,1,0]));
       for(const z of [2.14,2.45,2.78,3.07])for(const x of [side*.30,side*.73]){
@@ -93,11 +93,13 @@ function hullCassettes(P:TankBuilderPort):void {
       [-1.389,-.795,1.53164,.79919],[-.785,-.19,1.53164,.79919],[-.18,.415,1.53164,.79919],
       [.423,1.018,1.53164,.79919],[1.029,1.624,1.53164,.79919],[1.637,2.232,1.52077,.79884],
       [2.242,3.182,1.47615,.7984]]){
+      if(nativeEra){
       P.addEquipment('hullDetail',box(.009,top-low,b-a),lane-side*.014,(low+top)/2,(a+b)/2);
       P.destructibleCluster(`skirt_era_${side<0?'L':'R'}`,()=>{
         for(const [y,h]of [[(top+1.24)/2,(top-1.24)],[(low+1.203)/2,1.203-low]])P.addExternalArmor('hull',
           markEraHitFaces(box(.018,h,b-a),[side,0,0]),lane,y,(a+b)/2);
       });
+      }
       if(a> -1.4&&b<2.24)P.addMudguard('t72b3m-x-lower-curtain','hullRubber',box(.003,.277,b-a-.006),lane-side*.009,.6591,(a+b)/2);
     }
     P.addMudguard('t72b3m-x-front-curtain','hullRubber',box(.004,.17,.935),lane-side*.009,.7146,2.712);
@@ -105,7 +107,7 @@ function hullCassettes(P:TankBuilderPort):void {
   }
 }
 
-function deckEquipment(P:TankBuilderPort):void {
+function deckEquipment(P:TankBuilderPort,glacisLamps=true,sweptStrap=true):void {
   P.addEquipment('hullDetail',boxSections([[-2.19,1.058,1.578,1.535],[-2.03,1.058,1.62359,1.535],
     [-1.69,1.058,1.62359,1.535],[-1.482,1.058,1.577,1.535]]));
   for(const x of [-.527,.523]){
@@ -117,9 +119,11 @@ function deckEquipment(P:TankBuilderPort):void {
     [1.44,-2.70,.58,.82,1.511],[1.42,-1.80,.51,.79,1.582],[1.45,-.45,.59,1.60,1.505],
     [1.43,1.04,.59,1.25,1.503],[1.43,2.20,.59,.89,1.468]]){
     // each deck plate and its strips seat on the deck under them (owner 2026-10-19 sweep: authored 1-5 cm over it)
+    // (sweptStrap false: no strap whose inner end lies within 1.4 m of the turret's yaw axis on the right covers)
     P.snapGroup('t72b3m-deck-plate',()=>{
       P.addEquipment('hullDetail',box(w,.024,d),x,y,z);
-      for(const dz of [-d*.38,d*.38])P.addEquipment('hullDetail',box(w*.84,.020,.037),x,y+.022,z+dz);
+      // (sweptStrap false: no strap whose inner end lies within 1.4 m of the turret's yaw axis on the right covers)
+      for(const dz of [-d*.38,d*.38])if(sweptStrap||x>0||Math.hypot(Math.abs(x)-w*.42,z+dz-YAW[2])>1.4)P.addEquipment('hullDetail',box(w*.84,.020,.037),x,y+.022,z+dz);
     },{reachM:.06});
   }
   P.addEquipment('hullDark',box(.17,.12,.586),1.759,1.431,-1.797);
@@ -128,8 +132,8 @@ function deckEquipment(P:TankBuilderPort):void {
   P.addEquipment('hullDark',box(.39,.027,.085),.002,1.491,2.03);
   // each headlight with its guard is seated on the glacis (it stood 5 cm off it; owner 2026-10-19 sweep)
   // 2026-10-19 (owner float sweep): the lamp still stood 51 mm in front of its guard after that seat; it sits back on a
-  // crossbar between the guard bars
-  for(const x of [-.863,.868])P.snapGroup('t72b3m-headlight',()=>{
+  // crossbar between the guard bars (glacisLamps false: a national hull's own lamps replace both, release 227)
+  if(glacisLamps)for(const x of [-.863,.868])P.snapGroup('t72b3m-headlight',()=>{
     P.addEquipment('hullDetail',markVehicleNightLens(cylZ(.076,.105,24),'headlight'),x,1.318,2.9355);
     for(const dx of [-.118,.118])P.addEquipment('hullDetail',beamBetween([x+dx,1.12,3.007],[x+dx,1.38,2.85],.009));
     P.addEquipment('hullDetail',beamBetween([x-.118,1.318,2.8874],[x+.118,1.318,2.8874],.009));
@@ -301,13 +305,13 @@ function machineGun(P:TankBuilderPort):void {
   stationFromDrawnGun(group,{name:'t72b3mXRoofKord',caliberMm:12.7});
 }
 
-function mainGun(P:TankBuilderPort):void {
-  const muzzle=T72B3M_X_DATUMS.muzzleZ,floor=T72B3M_X_DATUMS.boreFloorZ;
+function mainGun(P:TankBuilderPort,chinLift=0):void {
+  const muzzle=T72B3M_X_DATUMS.muzzleZ,floor=T72B3M_X_DATUMS.boreFloorZ,c=chinLift;
   KIT.buildGun(P,{len:floor-GUN[2],r:.085,baseR:.13,sleeve:false,collar:false});
   P.add('gunMount',cylX(.238,.61,32),0,0,0);
-  P.add('gunMount',castSections([[.939,.27,.27,2.118,1.565,1.85],
-    [1.334,.337,.337,2.108,1.566,1.86],[1.50,.300,.300,2.081,1.61,1.85],
-    [1.791,.1606,.1606,1.98264,1.66135,1.82199]],GUN));
+  P.add('gunMount',castSections([[.939,.27,.27,2.118,1.565+c,1.85],
+    [1.334,.337,.337,2.108,1.566+c,1.86],[1.50,.300,.300,2.081,1.61+c,1.85],
+    [1.791,.1606,.1606,1.98264,1.66135+c,1.82199]],GUN));
   for(const [a,b,ra,rb]of [[1.791,2.302,.12879,.11855],[2.3013,3.1700,.12129,.12129],
     [3.170,3.987,.11571,.11140],[3.987,4.0365,.1222,.12607],[4.0365,4.962,.12607,.12607],
     [4.962,5.0073,.12258,.09258],[5.0067,5.84385,.102544,.102544]]){
@@ -326,9 +330,20 @@ function mainGun(P:TankBuilderPort):void {
   P.muzzleZ=muzzle-GUN[2];
 }
 
-export function buildT72B3MXHull(P:TankBuilderPort):void {
+/** Options for carrying the T-72B3M hull under a national package. Each defaults to the T-72B3M's own output.
+ * `nativeEra: false` drops its Relikt glacis sheet and straps and its side-skirt Relikt boxes with their backing
+ * strips (the rubber curtains stay: under a national hull's own fitted skirt banks their top edges tuck into the banks'
+ * undersides), and with them the side mounts that only those boxes carried (t72b3mXSideMounts skirtEra: the rearmost
+ * upper links and the open rail fields' four lower strips); `glacisLamps: false` drops the two round glacis headlights and their guards.
+ * (2026-10-16, release 227: Hetman II's own frontal package replaces them; its fitted skirt banks buried the boxes.)
+ * `sweptStrap: false` drops the two right deck-cover straps within 1.4 m of the turret's yaw axis (z .22 and .55): they
+ * stand 2 cm over their covers, into the path of the T-72B3M turret's mantlet, whose foot rides 4 mm over the covers at
+ * yaw -57 to -99 (release 227, round 2: Hetman II's whole-gun sweep). */
+interface T72B3MXHullOptions { nativeEra?:boolean; glacisLamps?:boolean; sweptStrap?:boolean }
+
+export function buildT72B3MXHull(P:TankBuilderPort,options:T72B3MXHullOptions={}):void {
   P.hullG.position.set(0,0,0);
-  hull(P);runningGear(P);hullCassettes(P);deckEquipment(P);rearEquipment(P);
+  hull(P,options.nativeEra!==false);runningGear(P);hullCassettes(P,options.nativeEra!==false);deckEquipment(P,options.glacisLamps!==false,options.sweptStrap!==false);rearEquipment(P);
 }
 
 export function buildT72B3MX(P:TankBuilderPort):void {
@@ -341,7 +356,18 @@ export function buildT72B3MX(P:TankBuilderPort):void {
  * fitted remote station replaces the commander's Kord omits it and its drum
  * (one working roof gun, never a duplicate); one whose station's barrel sweeps
  * the two rear roof masts omits them and fits its own outside that sweep. */
-export interface T72B3MXTurretOptions { commanderGun?:boolean; antennaMasts?:boolean }
+export interface T72B3MXTurretOptions {
+  commanderGun?:boolean; antennaMasts?:boolean;
+  /** false drops the nine Relikt cheek cells with their nine support beams and the 33 roof cassettes (a national
+   * concept that fits its own frontal package on this turret, release 227). */
+  reliktEra?:boolean;
+  /** Metres the cast mantlet's underside is raised at each of its four stations (default 0, the T-72B3M's own). Release
+   * 230 (UA/PL round 11; the gun-depression lane's census, 2026-10-21: the mantlet's underside passes 6-18 mm over the
+   * driver's hatch and periscope at yaw 0-25, and over the right deck cover at yaw -48..-133, at every pitch, which no
+   * depression stop cures): a concept whose gun must clear its hull by 20 mm takes a shallower chin. The trunnion boss
+   * (radius .238, 19 mm over the stock underside) stays inside the lifted mantlet for a lift up to .016. */
+  mantletChinLift?:number;
+}
 
 /** The complete T-72B3M (2016) turret in its own turret frame (the turret ring
  * centre is the origin): cast shell, Relikt cheek and roof cassettes, bustle
@@ -350,8 +376,11 @@ export interface T72B3MXTurretOptions { commanderGun?:boolean; antennaMasts?:boo
 export function buildT72B3MXTurret(P:TankBuilderPort,options:T72B3MXTurretOptions={}):void {
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   turret(P);
-  cheekCassettes(P);roofCassettes(P);bustle(P);roofEquipment(P,options.antennaMasts!==false);smoke(P);
-  if(options.commanderGun!==false)machineGun(P);mainGun(P);
+  if(options.reliktEra!==false){cheekCassettes(P);roofCassettes(P);}
+  bustle(P);roofEquipment(P,options.antennaMasts!==false);smoke(P);
+  if(options.mantletChinLift!==undefined&&!(options.mantletChinLift>=0&&options.mantletChinLift<=.016))
+    throw new RangeError(`mantletChinLift ${options.mantletChinLift}: 0 to .016 m (the trunnion boss stays inside)`);
+  if(options.commanderGun!==false)machineGun(P);mainGun(P,options.mantletChinLift??0);
 }
 export const T72B3M_X_PROFILES={t72b3m_2016:{build:buildT72B3MX}} as const;
 

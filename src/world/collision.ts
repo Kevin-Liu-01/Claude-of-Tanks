@@ -534,7 +534,9 @@ export interface CollisionRecord {
  * broke it and flew on into the tank behind, a held press of any hull pushed it over, and the bots drove into it.
  */
 export function isFortifiedCoverKind(kind: string | undefined): boolean {
-  return kind === 'bunker';
+  // (the maps lane, 228) and a square's memorial column (world/civic): dressed stone a hull steers round, every round
+  // stops on, the third heavy HE hit or a heavy ram brings down
+  return kind === 'bunker' || kind === 'memorialcolumn';
 }
 
 /** A crushable a hull drives through (the bots' lanes and routes read it so): not fortified cover. */

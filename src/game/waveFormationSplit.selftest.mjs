@@ -27,8 +27,12 @@ const play = (gameMode, playerSpecId, ordinal, arrangement = null) => {
     allies: bots.filter((entity) => entity.team === 'player').map((entity) => entity.specId),
     enemies: bots.filter((entity) => entity.team === 'enemy').map((entity) => entity.specId),
     leadTeams: game.tanks.slice(1).map((entity) => entity.team),
+    teams: game.teamNations,
   };
 };
+// TEAM NATIONS (gameplay-modes-228): a MONO side is its country plus the fills its notes name
+const allowed = (teams, side) => new Set([side === 'bravo' ? teams.enemy : teams.allied,
+  ...teams.notes.filter((note) => note.side === side).map((note) => note.country)]);
 try {
   const hordeBlocs = new Set();
   // the Horde's split is the ruleset's (2026-10-17: four allies, a twenty-strong pool)
@@ -38,17 +42,21 @@ try {
     assert.equal(battle.enemies.length, hordePool, `horde ordinal ${ordinal}: ${hordePool} hostiles`);
     assert.equal(battle.allies.length, hordeAllies, `horde ordinal ${ordinal}: ${hordeAllies} allied bots`);
     const blocs = new Set(battle.enemies.map(blocOf));
-    assert.equal(blocs.size, 1, `horde ordinal ${ordinal}: every hostile from one nation bloc (${[...blocs].join(',')})`);
+    const ok = allowed(battle.teams, 'bravo');
+    assert.ok([...blocs].every((bloc) => ok.has(bloc)), `horde ordinal ${ordinal}: every hostile from the enemy country or a listed fill (${[...blocs].join(',')})`);
+    assert.ok(battle.enemies.filter((id) => blocOf(id) === battle.teams.enemy).length > hordePool / 2, `horde ordinal ${ordinal}: the enemy country leads`);
+    assert.notEqual(battle.teams.enemy, blocOf('m1a3'), `horde ordinal ${ordinal}: never the player's own country`);
+    assert.ok(battle.allies.every((id) => allowed(battle.teams, 'alpha').has(blocOf(id))), `horde ordinal ${ordinal}: the allies are the player's country (or its fills)`);
     assert.deepEqual(battle.leadTeams.slice(0, hordePool), Array(hordePool).fill('enemy'), `horde ordinal ${ordinal}: the formation seats are the enemy side`);
-    hordeBlocs.add([...blocs][0]);
+    hordeBlocs.add(battle.teams.enemy);
   }
   assert.ok(hordeBlocs.size >= 2, `consecutive Horde sorties meet different armies (${[...hordeBlocs].join(',')})`);
   for (const ordinal of [0, 5]) {
     const battle = play('frontline_assault', 'm1a1_abrams_hc', ordinal);
-    assert.equal(battle.enemies.length, 10, `frontline ordinal ${ordinal}: ten defenders`);
+    assert.equal(battle.enemies.length, 12, `frontline ordinal ${ordinal}: twelve defenders`);
     assert.equal(battle.allies.length, 3, `frontline ordinal ${ordinal}: three allied bots`);
     const blocs = new Set(battle.enemies.map(blocOf));
-    assert.equal(blocs.size, 1, `frontline ordinal ${ordinal}: one nation defends (${[...blocs].join(',')})`);
+    assert.ok([...blocs].every((bloc) => allowed(battle.teams, 'bravo').has(bloc)), `frontline ordinal ${ordinal}: one nation defends, filled only as noted (${[...blocs].join(',')})`);
   }
   {
     const arranged = play('endless_horde', 'm1a1_abrams_hc', 2, { allies: 2, enemies: 14, waveSize: 5, enemyNation: 'germany' });
@@ -59,6 +67,12 @@ try {
     const standard = play('standard', 'm1a1_abrams_hc', 1);
     assert.equal(standard.enemies.length, 7, 'standard battles keep the 7 hostiles');
     assert.equal(standard.allies.length, 6, 'standard battles keep the 6 allies');
+  }
+  {
+    // RANDOM: the pool is genuinely mixed, the wave modes included (an explicit opt-out of the same-nation waves)
+    const mixed = new Set();
+    for (const ordinal of [0, 1, 2]) for (const id of play('endless_horde', 'm1a3', ordinal, { teamNations: 'random' }).enemies) mixed.add(blocOf(id));
+    assert.ok(mixed.size >= 3, `RANDOM Horde pools mix nations (${[...mixed].join(',')})`);
   }
 } finally {
   world.release();

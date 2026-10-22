@@ -17,7 +17,7 @@ const pin = (at: Point, target: Point, ...paths: string[]): GuideAnnotation => (
  * except smoke trajectories, which are projected from the actual launcher receipt. */
 export const INFO_GUIDE_CAPTURES: Partial<Record<InfoGuideId, GuideCapture>> = {
   maps: { file:'maps', annotations:[
-    pin([10,12],[39,56],'M 23 97 Q 32 78 44 65 Q 52 53 58 35'),
+    pin([10,12],[39,56],'M 23 97 Q 32 78 44 65 Q 57 44 60 36'), // (2026-10-21) the route on the 227 aerial's road
     pin([76,17],[74,43],'M 66 57 Q 65 42 73 32 Q 81 27 83 38'),
     pin([70,83],[44,65],'M 38 58 L 50 73 M 39 73 L 50 57'),
   ]},

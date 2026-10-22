@@ -116,8 +116,10 @@ assert.ok(features('tow').probeR < 0.25, "TOW's probe is thin at its tip");
   assert.match(fx, /trail\.tailM = missileBodyDims\(trail\.look\.id, trail\.calMm, _bodyDims\)\[1\];/);
   assert.match(fx, /const back = trail\.tailM \?\? 1\.3;\n    wires\.tail\(/, 'the wire leaves the drawn tail');
   assert.match(fx, /const motorBack = trail\.tailM \?\? 1\.3;/, 'the trail is born at the drawn tail');
-  // (ac130-fx-228 r2) along the drawn axis (_mDir: a gunship missile curving off its wing pylon onto its line)
-  assert.match(fx, /const tailM = trail\.tailM \?\? 1\.3;\n    _mHead\.copy\(_mPos\)\.addScaledVector\(_mDir, -tailM\);/, 'the motor glow at the drawn tail');
+  // (ac130-fx-228 r2) along the drawn axis (_mDir: a gunship missile curving off its wing pylon onto its line); (ac130-
+  // barrels-230) at the drawn body's size (bodyK: off the lens's rail its rail round's size, 1 for every other round)
+  assert.match(fx, /const tailM = \(trail\.tailM \?\? 1\.3\) \* bodyK;\n    _mHead\.copy\(_mPos\)\.addScaledVector\(_mDir, -tailM\);/, 'the motor glow at the drawn tail');
+  assert.match(fx, /let bodyK = 1;/, 'every round but the lens rail\'s at its own size');
   assert.doesNotMatch(fx, /0\.65 \+ 0\.625 \* look\.bodyLen/, 'no offset of the old cylinder is left');
   assert.match(fx, /for \(const id of Object\.keys\(MISSILE_AIRFRAMES\)\) writeGuidedBody\(pos, dir, MISSILE_LOOKS\[id\] \?\? MISSILE_LOOKS\.konkurs\);/,
     'the covered warm draws every airframe (their buffers upload under the cover)');

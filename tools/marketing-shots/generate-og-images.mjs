@@ -1,6 +1,6 @@
 // Deterministic 1200x630 social cards composed from approved in-engine captures.
 // The default game card and every route companion share the owner-approved
-// bottom-left Monument Grotesk lockup, rendered from the current crest master.
+// bottom-left Chakra Petch lockup (the display face), rendered from the current crest master.
 // Every card shows the current game (owner, 2026-10-15: "for the social link cards, they have to use the modern version
 // of the game, not the old"): the versus stills (public/media/versus-r1) for the game, the home page, private rooms,
 // the 404 and the manual's battle topics, performance and loading among them; two of the combat round's duels
@@ -71,10 +71,10 @@ function asDataUrl(path, mime) {
 export function cardHtml(label, source, position, fit = 'cover', lang = 'en') {
   const image = asDataUrl(join(ROOT, source), 'image/webp');
   const logo = asDataUrl(LOGO, 'image/svg+xml');
-  const font = asDataUrl(join(ROOT, 'public/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2'), 'font/woff2');
+  const font = asDataUrl(join(ROOT, 'public/fonts/chakra-petch/ChakraPetch-Bold-Latin.woff2'), 'font/woff2');
   const contain = fit === 'contain';
   return `<!doctype html><html><head><style>
-    @font-face{font-family:'ABC Monument Grotesk';src:url(${font}) format('woff2');font-weight:700 900;font-display:block}
+    @font-face{font-family:'Chakra Petch';src:url(${font}) format('woff2');font-weight:650 1000;font-display:block}
     *{box-sizing:border-box}html,body{margin:0;width:1200px;height:630px;overflow:hidden;background:#071018}
     .card,.backdrop,.hero,.shade,.grain{position:absolute;inset:0}
     .backdrop{width:100%;height:100%;object-fit:cover;object-position:${position};filter:blur(${contain ? 18 : 0}px) saturate(.88) brightness(.6);transform:scale(${contain ? 1.08 : 1})}
@@ -84,9 +84,9 @@ export function cardHtml(label, source, position, fit = 'cover', lang = 'en') {
     .rule{position:absolute;top:42px;right:48px;width:92px;height:3px;background:#f5a623;box-shadow:0 0 18px rgba(245,166,35,.28)}
     .label{position:absolute;top:57px;right:48px;color:#f4f7f9;font:700 15px/1 Arial,sans-serif;letter-spacing:3.3px;text-shadow:0 2px 7px #000;text-align:right}
     .label:lang(zh){top:55px;font:600 19px/1 'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Microsoft YaHei',sans-serif;letter-spacing:4px}
-    .lockup{position:absolute;left:64px;bottom:46px;display:flex;align-items:center;gap:20px;font-family:'ABC Monument Grotesk',sans-serif}
+    .lockup{position:absolute;left:64px;bottom:46px;display:flex;align-items:center;gap:20px;font-family:'Chakra Petch',sans-serif}
     .crest{width:150px;height:150px;flex:none;object-fit:contain;filter:drop-shadow(0 6px 26px rgba(0,0,0,.65))}
-    .wordmark{font-weight:800;font-size:64px;letter-spacing:.10em;color:#f2f7fb;line-height:1;text-shadow:0 2px 24px rgba(0,0,0,.8)}
+    .wordmark{font-weight:700;font-size:64px;letter-spacing:.10em;color:#f2f7fb;line-height:1;text-shadow:0 2px 24px rgba(0,0,0,.8)}
     .wordmark-subtitle{margin-top:0;font-weight:700;font-size:25px;letter-spacing:.30em;color:#f0a030}
     .edge{position:absolute;inset:14px;border:1px solid rgba(189,207,218,.2)}
     .game .backdrop,.game .grain,.game .edge{display:none}
@@ -123,7 +123,7 @@ async function generateOgImages(cards = OG_IMAGE_CARDS) {
       await page.setContent(cardHtml(label, source, position, fit, locale), { waitUntil: 'load' });
       await page.evaluate(async () => {
         await document.fonts.ready;
-        if (!document.fonts.check('800 64px "ABC Monument Grotesk"')) throw new Error('brand font failed to load');
+        if (!document.fonts.check('700 64px "Chakra Petch"')) throw new Error('brand font failed to load');
         await Promise.all([...document.images].map((image) => image.complete
           ? (image.naturalWidth ? Promise.resolve() : Promise.reject(new Error('image failed to decode')))
           : new Promise((resolveImage, rejectImage) => {

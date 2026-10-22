@@ -2443,7 +2443,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         ring.arc(x, y, r * 0.94, 0, Math.PI * 2);
         strokeWrapped(ctx, S, ring, rgb(blk, 0.92), r * 0.09);
         ctx.save();
-        ctx.font = `900 ${Math.round(r * 1.15)}px 'ABC Monument Grotesk', sans-serif`;
+        ctx.font = `700 ${Math.round(r * 1.15)}px 'Cot UI', sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = rgb(blk, 0.94);
@@ -2553,7 +2553,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
         fillWrapped(ctx, S, q, rgb(mix(base, [20, 26, 14], 0.35), 0.55));
       }
       ctx.save();                                      // registration serial
-      ctx.font = `700 ${Math.round(S * 0.028)}px 'ABC Monument Grotesk', sans-serif`;
+      ctx.font = `700 ${Math.round(S * 0.028)}px 'Cot UI', sans-serif`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = rgb(white, 0.8);
@@ -2587,7 +2587,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       strokeWrapped(ctx, S, band2, rgb(white, 0.82), S * 0.035);
       const num = String(safeHullNumber(100 + ((rng() * 899) | 0)));   // tactical number
       ctx.save();
-      ctx.font = `900 ${Math.round(S * 0.17)}px 'ABC Monument Grotesk', sans-serif`;
+      ctx.font = `700 ${Math.round(S * 0.17)}px 'Cot UI', sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillStyle = rgb(white, 0.9);
@@ -2709,7 +2709,7 @@ export function createMaterialPainter<C extends MaterialCanvas>(
       const paintUsmcNumber = (): void => {
         ctx.save();
         const num2 = String(safeHullNumber(10 + ((rng() * 89) | 0)));
-        ctx.font = `900 ${Math.round(S * 0.13)}px 'ABC Monument Grotesk', sans-serif`;
+        ctx.font = `700 ${Math.round(S * 0.13)}px 'Cot UI', sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = rgb(white, 0.88);

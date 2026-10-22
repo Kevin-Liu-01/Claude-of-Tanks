@@ -86,7 +86,7 @@ const CSS = `
 .cot-range-card .rc-head .mi,.cot-range-card .rc-head .mi svg{display:block;width:18px;height:18px;color:${AMBER}}
 .cot-range-card .rc-round{font:700 13px ${PROVING_DISPLAY};letter-spacing:.02em;color:#fff1d6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cot-range-card .rc-rng{margin-left:auto;display:flex;align-items:center;gap:5px;font:500 15px ${PROVING_MONO};color:#e8f0f5;
-  font-variant-numeric:tabular-nums;white-space:nowrap}
+  white-space:nowrap}
 .cot-range-card .rc-rng svg{width:14px;height:14px;color:#7f909c}
 .cot-range-card .rc-rng small{font-size:11px;color:#7f909c;margin-left:-3px}
 .cot-range-card .rc-shot{display:none;flex-direction:column;gap:4px;padding:7px 8px 8px;background:rgba(255,255,255,.035);
@@ -96,18 +96,17 @@ const CSS = `
 .cot-range-card .rc-shot.stale{opacity:.5;transition:opacity .4s}
 .cot-range-card .rc-verdict{display:flex;align-items:baseline;gap:8px}
 .cot-range-card .rc-verdict b{font:700 19px ${PROVING_DISPLAY};letter-spacing:.04em;text-transform:uppercase;color:var(--rc-tone,#e8f0f5)}
-.cot-range-card .rc-verdict .rc-at{margin-left:auto;font:500 12px ${PROVING_MONO};color:#c8d4dc;font-variant-numeric:tabular-nums;
+.cot-range-card .rc-verdict .rc-at{margin-left:auto;font:500 12px ${PROVING_MONO};color:#c8d4dc;
   white-space:nowrap}
 .cot-range-card .rc-gauge{position:relative;height:9px;background:rgba(255,255,255,.08)}
 .cot-range-card .rc-gauge i{position:absolute;left:0;top:0;bottom:0;background:var(--rc-tone,#9aa7b0);opacity:.85}
 .cot-range-card .rc-gauge s{position:absolute;top:-3px;bottom:-3px;width:3px;margin-left:-1.5px;background:#f4f7f9;
   box-shadow:0 0 0 1px rgba(0,0,0,.55)}
-.cot-range-card .rc-figs{display:flex;align-items:center;gap:10px;font:500 12px ${PROVING_MONO};color:#e8f0f5;
-  font-variant-numeric:tabular-nums}
+.cot-range-card .rc-figs{display:flex;align-items:center;gap:10px;font:500 12px ${PROVING_MONO};color:#e8f0f5}
 .cot-range-card .rc-figs .rc-pen,.cot-range-card .rc-figs .rc-eff{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
 .cot-range-card .rc-figs svg{width:13px;height:13px;flex:0 0 auto}
 .cot-range-card .rc-figs .rc-pen svg{color:var(--rc-tone,#9aa7b0)}
-.cot-range-card .rc-figs .rc-pen small{font:500 10px ${PROVING_MONO};color:#7f909c;margin-left:2px}
+.cot-range-card .rc-figs .rc-pen small{font:500 11px ${PROVING_MONO};color:#7f909c;margin-left:2px}
 .cot-range-card .rc-figs .rc-eff svg{color:#c8d4dc}
 .cot-range-card .rc-shot.glance .rc-eff,.cot-range-card .rc-shot.glance .rc-gauge s{display:none}
 .cot-range-card .rc-tgt{font:600 11px ${PROVING_DISPLAY};color:#9fb0bb;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -116,11 +115,11 @@ const CSS = `
 .cot-range-card .rc-lane{display:grid;grid-template-columns:44px 20px minmax(0,1fr) auto;gap:6px;align-items:center;
   padding:3px 5px;border-left:2px solid transparent}
 .cot-range-card .rc-lane.laid{background:rgba(240,160,48,.13);border-left-color:${AMBER}}
-.cot-range-card .rc-r{font:500 12px ${PROVING_MONO};color:#e2ebf2;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
-.cot-range-card .rc-r small{font-size:10px;color:#7f909c;margin-left:1px}
+.cot-range-card .rc-r{font:500 12px ${PROVING_MONO};color:#e2ebf2;text-align:right;white-space:nowrap}
+.cot-range-card .rc-r small{font-size:11px;color:#7f909c;margin-left:1px}
 .cot-range-card .rc-a svg{display:block;width:20px;height:20px}
 .cot-range-card .rc-t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c8d4dc}
-.cot-range-card .rc-o{font:700 10px ${PROVING_DISPLAY};letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;
+.cot-range-card .rc-o{font:700 11px ${PROVING_DISPLAY};letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;
   border:1px solid currentColor;white-space:nowrap}
 .cot-range-card .rc-o.pen{color:#7ee87e}.cot-range-card .rc-o.marginal{color:#f3a536}.cot-range-card .rc-o.nopen{color:#f05a5a}
 .cot-range-card .rc-foot{display:grid;grid-template-columns:1fr 1fr 40px;gap:5px}
@@ -130,7 +129,7 @@ const CSS = `
 .cot-range-card .rc-foot button:hover{border-color:rgba(240,160,48,.6)}
 .cot-range-card .rc-foot button[aria-pressed='true']{color:#fff1d6;border-color:${AMBER};background:rgba(240,160,48,.18)}
 .cot-range-card .rc-foot button svg{width:15px;height:15px;flex:0 0 auto}
-.cot-range-card .rc-foot kbd{font:500 10px ${PROVING_MONO};color:${AMBER};border:1px solid rgba(240,160,48,.45);padding:0 4px}
+.cot-range-card .rc-foot kbd{font:500 11px ${PROVING_MONO};color:${AMBER};border:1px solid rgba(240,160,48,.45);padding:0 4px}
 /* a phone: one row (the range, then the three controls as icons) and the last shot under it; the left lane is short there,
    so the card never scrolls or clips its controls */
 body.cot-touch-layout .cot-range-card{width:min(236px,var(--hud-side-width,236px));max-height:none;overflow:visible;

@@ -63,7 +63,7 @@ function commanderWeapon(P: TankBuilderPort): void {
   // 2026-10-14 (VH.14, the coordinator's ruling "every drawn gun works"): the commander's station is a working remote
   // station (remoteControlled), no longer a fixed copy.
   const gun = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', tone: 'two-tone',
-    scale: 1.275, ammo: true, shield: false, ring: false, seed: 2042, remoteControlled: true });
+    scale: 1.275, ammo: true, shield: false, ring: false, seed: 2042, remoteControlled: true, ridingCradle: true });
   gun.scale.setScalar(.70 / S);
   gun.name = 'arieteC2CommanderK2';
   gun.userData.roofWeapon = { donor: 'k2_black_panther', relativeScale: .70 };

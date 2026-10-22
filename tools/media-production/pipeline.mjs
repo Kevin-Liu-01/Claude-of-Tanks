@@ -85,16 +85,16 @@ export function writeReviewPage(out,receipt) {
 /** Native-size promo cards retain the full camera framing, with a readable brand band. */
 export async function promoCard(source, path, time) {
   const canvas=createCanvas(source.width,source.height),ctx=canvas.getContext('2d');
-  const font=join(process.cwd(),'public/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2');
-  if(existsSync(font)) GlobalFonts.registerFromPath(font,'Monument');
+  const font=join(process.cwd(),'public/fonts/chakra-petch/ChakraPetch-Bold-Latin.woff2');
+  if(existsSync(font)) GlobalFonts.registerFromPath(font,'Chakra Petch');
   ctx.drawImage(await loadImage(source.path),0,0);
   const w=source.width,h=source.height,pad=w*.055;
   const shade=ctx.createLinearGradient(0,h*.60,0,h);shade.addColorStop(0,'#06101700');shade.addColorStop(1,'#061017f5');
   ctx.fillStyle=shade;ctx.fillRect(0,h*.60,w,h*.4);
   ctx.fillStyle='#efc078';ctx.fillRect(pad,h*.78,w*.07,Math.max(3,h*.003));
-  ctx.font=`bold ${Math.round(w*.026)}px Monument, sans-serif`;ctx.fillText(`${time.toUpperCase()} / WATER IN MOTION`,pad,h*.83);
-  ctx.fillStyle='#f4f6f5';ctx.font=`bold ${Math.round(w*.065)}px Monument, sans-serif`;ctx.fillText('CLAUDE OF TANKS',pad,h*.91);
-  ctx.fillStyle='#c0cbd0';ctx.font=`${Math.round(w*.018)}px Monument, sans-serif`;ctx.fillText('PLAY IN YOUR BROWSER',pad,h*.95);
+  ctx.font=`bold ${Math.round(w*.026)}px 'Chakra Petch', sans-serif`;ctx.fillText(`${time.toUpperCase()} / WATER IN MOTION`,pad,h*.83);
+  ctx.fillStyle='#f4f6f5';ctx.font=`bold ${Math.round(w*.065)}px 'Chakra Petch', sans-serif`;ctx.fillText('CLAUDE OF TANKS',pad,h*.91);
+  ctx.fillStyle='#c0cbd0';ctx.font=`${Math.round(w*.018)}px 'Chakra Petch', sans-serif`;ctx.fillText('PLAY IN YOUR BROWSER',pad,h*.95);
   const bytes=canvas.toBuffer('image/png');mkdirSync(dirname(path),{recursive:true});writeFileSync(path,bytes);
   return {path,width:w,height:h,bytes:bytes.length,sha256:digest(bytes)};
 }

@@ -22,7 +22,7 @@ export const GARAGE_KIT_REDROCK: GarageKitPlacement = {
     { kind: 'sign', sign: 'post', rect: 'picto.overhead', at: [11.6, 9.8], yaw: Math.PI / 4 + 0.3, size: [0.6, 0.6] },
     // the site office cell
     { kind: 'display', display: 'station', at: [-12.8, 7.0], yaw: Math.PI / 2 - 0.25, screens: ['readout.armor.k2', 'map.badlands', 'readout.modules.burlak'], width: 2.0, rugged: true },
-    // the LED trailer's generator and its cable reel beside it (the trailer itself: garageSlideshowPlacement.ts)
+    // the monitor trailer's generator and its cable reel beside it (the trailer itself: garageSlideshowPlacement.ts)
     { kind: 'prop', name: 'generator', at: [22.2, 37.6], yaw: 0 },
     { kind: 'prop', name: 'cableReel', at: [21.2, 39.6], yaw: 0.4 },
     { kind: 'display', display: 'nameboard', at: [-15.4, 14.2], yaw: Math.PI / 2, width: 2.6, posts: 1.2 },

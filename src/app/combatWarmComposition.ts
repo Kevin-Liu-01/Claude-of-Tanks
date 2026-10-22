@@ -128,7 +128,6 @@ export function createCombatWarmComposition({
     camera,
     lighting,
     warmRender,
-    getWorldGroup: () => getWorld()?.group ?? null,
     noteFovPrimed,
     simDt,
   });
@@ -188,7 +187,7 @@ export function createCombatWarmComposition({
   });
 
   combatWarm = createCombatWarmCoordinator({
-    createOpening: () => battleWarm.requireRuntime().createCombatOpeningWarmSteps(createContext()),
+    createOpening: (execution) => battleWarm.requireRuntime().createCombatOpeningWarmSteps(createContext(), execution),
     createRare: (execution) => battleWarm.requireRuntime().createCombatRareWarmSteps(createContext(), execution),
   });
 

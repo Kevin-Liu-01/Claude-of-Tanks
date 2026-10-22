@@ -9,7 +9,7 @@ function fitText(ctx, text, size, width) {
   font(ctx, size); while (ctx.measureText(text).width > width && size > 10) font(ctx, --size);
 }
 export function setupFonts(root) {
-  const file = join(root, 'public/fonts/abc-monument-grotesk/ABCMonumentGrotesk-Bold.woff2');
+  const file = join(root, 'public/fonts/chakra-petch/ChakraPetch-Bold-Latin.woff2');
   if (existsSync(file)) GlobalFonts.registerFromPath(file, 'Campaign');
 }
 function shade(ctx, w, h, from = .57) {

@@ -69,6 +69,8 @@ function compile(body, constraintBody = constraints, helpers = helperSource) {
       compiledCanals = null, carveCanals = (canals, x, z, h) => h, liquidDepthM = 0,
       // (the ground lane, 2026-10-12) and the paddies' levelled basins (terrain.paddies, paddies.ts levelPaddies); none here
       compiledPaddies = null, levelPaddies = (paddies, x, z, h) => h,
+      // (the ground lane, 2026-10-17) and the level water's banks (waterBank.ts): a dry fixture reports no water
+      marshBank = { level: 0, coverage: 0, floor: -Infinity }, lakeBankLaw = null,
       // (2026-10-07) and the lifted paths' crowned banks in the road plane's blend; this fixture lifts none
       gRoadLift = null, gRoadCrest = null,
       // the map-borders lane (2026-10-03): the foreground clearance past the playable edge (nil on this classic fixture),

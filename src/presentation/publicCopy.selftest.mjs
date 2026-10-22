@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { typeTokenCss, TYPE_STACK } from '../ui/typeFaces.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const pageFiles = ['site/home.html', 'site/gallery.html', 'site/docs.html'];
@@ -76,16 +77,16 @@ assert.doesNotMatch(homeSource.replace(homeTrailerRow, ''), /\/media\/site50-r14
 // (round six, 2026-10-15: the trailer's VP9 webm first, its H.264 mp4 after for a browser that plays no VP9)
 assert.match(docsSource, /<video controls[^>]*poster="\/media\/site50-r14\/films\/trailer\.jpg"[^>]*><source src="\/media\/site50-r14\/films\/trailer\.webm" type="video\/webm"><source src="\/media\/site50-r14\/films\/trailer\.mp4"/);
 assert.doesNotMatch(`${homeSource}${docsSource}`, /promo-v13/, 'the v13 reel is retired from both pages');
-assert.match(
-  homeStyles,
-  /html\[lang\^='zh'\] \.v5-hero-copy h1\{[^}]*font-family:'PingFang SC','Noto Sans CJK SC','Microsoft YaHei'[^}]*\}/,
-  'Chinese hero typography must use an explicit CJK font stack',
-);
-assert.match(
-  homeStyles,
-  /html\[lang\^='zh'\] \.v5-hero-copy h1 span\{[^}]*color:(?!transparent)[^;}]+;[^}]*-webkit-text-stroke:[^;}]+;[^}]*paint-order:stroke fill[^}]*\}/,
-  'Chinese hollow headline must mask joined glyph seams and paint its outline behind the face',
-);
+// Chinese headlines (the type rules): the CJK system faces follow the Latin face in the shared stack, the
+// lines open up, and no outline type is set on Chinese: the shared .t-hollow treatment paints solid ink in zh-CN.
+assert.match(homeStyles, /html\[lang\^='zh'\] \.v5-hero-copy h1\{line-height:1\.15\}/, 'Chinese hero lines open up');
+assert.doesNotMatch(homeStyles, /html\[lang\^='zh'\][^{]*\{[^}]*-webkit-text-stroke/, 'no outline type on the Chinese hero');
+assert.match(readFileSync(join(ROOT, 'site/home.html'), 'utf8'), /<span class="t-hollow" data-i18n="home\.hero\.titleSub">/,
+  'the hero subline uses the shared hollow treatment');
+assert.match(typeTokenCss({ fx: true }), /:lang\(zh-CN\) \.t-hollow\{color:var\(--hollow-ink,#eef4f8\);-webkit-text-stroke:0;opacity:\.72\}/,
+  'the shared hollow treatment is solid ink on Chinese');
+assert.match(TYPE_STACK.ui, /^'Cot UI','Cot Accents','Cot Symbols','Cot Fallback','PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC'/,
+  'Chinese glyphs come from the system CJK faces right after the Latin face, its accents and marks faces and its fallback');
 
 const landingIcons = [
   'play', 'screenshots', 'vehicle', 'battlefield', 'gpu', 'multiplayer',

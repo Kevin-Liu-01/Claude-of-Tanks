@@ -304,7 +304,7 @@ function roofFurniture(P: TankBuilderPort): void {
     if(side>0)P.snapGroup('k2-sensor-cradle',cradle,{reachM:.10,mode:'down'});
     else cradle();
   }
-  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', scale: 1.275, remoteControlled: true, seed: 2042, tone: 'two-tone', ammo: true, shield: false, ring: false });
+  const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'm2', scale: 1.275, remoteControlled: true, ridingCradle: true, seed: 2042, tone: 'two-tone', ammo: true, shield: false, ring: false });
   mg.position.set(-.74, 2.53032 + GROUND - YAW_Y, .5425 - CENTER_Z - YAW_Z);
   P.turretG.add(mg);
 }

@@ -993,5 +993,7 @@ void main() {
 	} else if ( uRebuildK >= 0.0 && valid ) {
 		if ( bayerRank( cell ) > uRebuildK ) outv += ( upsampled( p ) - outv ) / ( uRebuildK + 1.0 );
 	}
-	gl_FragColor = vec4( max( outv.rgb, vec3( 0.0 ) ), clamp( outv.a, 0.0, 1.0 ) );
+	// (2026-10-19, black-screen-228 RC6) finite values only: max and clamp may keep a NaN under fast math, and the history
+	// would carry it frame to frame; a NaN or Inf texel resolves to clear sky (no light, full transmittance)
+	gl_FragColor = all( lessThan( abs( outv ), vec4( 6e4 ) ) ) ? vec4( max( outv.rgb, vec3( 0 ) ), clamp( outv.a, 0., 1. ) ) : vec4( 0, 0, 0, 1 );
 }`;

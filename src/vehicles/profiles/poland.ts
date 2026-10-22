@@ -614,7 +614,7 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's NSVT)
   mount(P, 'turret', FITTINGS.pintleMG({
     mats: P.mats, cls: 'nsvt', tone: 'two-tone', scale: 1.0,
-    ammo: true, seed: 9321, feed: 'left', reflexSight: true, ring: { r: 0.155, stubs: 3 }, working: true,
+    ammo: true, seed: 9321, feed: 'left', reflexSight: true, ring: { r: 0.155, stubs: 3 }, working: true, ridingCradle: true,
   }), 1.00, 0.605, -0.30, [0, -0.08, 0]);
 
   // PCO SKO-1M/Drawa-T sight suite (gunner right-front, hooded) + commander
@@ -892,13 +892,25 @@ function addPL01SkirtsAndRunningGear(P: PolishBuilderPort, context: PL01BuildCon
           [s * 1.64, k0 + 0.001, z0], [s * f0, k0 + 0.002, z0], [s * f1, k1 + 0.002, z1], [s * 1.64, k1 + 0.001, z1]));
       });
     }
-    // panel seams + latch dressing on the face band
+    // panel seams + latch dressing on the face band. Art fixes 230 (2026-10-21, hero-card critics: "a 2-3 px dark
+    // speck floats in the air ahead of the nose"): toward the bow the face crest falls (t - 0.14 at the outer face),
+    // so the front seam stood 0.23 m and its upper latch 0.26 m above the skirt. Both now stop under the crest.
+    // The face also leans inboard toward the bow (faceX 1.90 -> 1.86), so the dressing follows it there too.
+    const faceAt = (z: number, column: 1 | 4): number => {
+      for (let k = 0; k < zs.length - 1; k++) {
+        const za = zs[k][0], zb = zs[k + 1][0];
+        if (z >= za && z <= zb) return zs[k][column] + (zs[k + 1][column] - zs[k][column]) * (z - za) / (zb - za);
+      }
+      return zs[zs.length - 1][column];
+    };
+    const crestAt = (z: number): number => faceAt(z, 1) - 0.14;
     for (let i = 0; i < 7; i++) {
       const z = 2.56 - i * 0.82;
-      P.add('hullDark', box(0.014, 0.46, 0.022), s * 1.902, 1.60, z);
-      // 2026-10-19 (owner float sweep): the bow latch (z 2.84) hung 177 mm over the falling crest; it sits on the face band.
-      P.add('hullDetail', box(0.018, 0.05, 0.09), s * (i === 0 ? 1.88 : 1.905), i === 0 ? 1.48 : 1.82, z + 0.28);
-      P.add('hullDetail', box(0.018, 0.05, 0.09), s * 1.905, 1.42, z - 0.26);
+      const seamTop = Math.min(1.83, crestAt(z) - 0.008);
+      P.add('hullDark', box(0.014, seamTop - 1.37, 0.022), s * (faceAt(z, 4) + 0.002), (seamTop + 1.37) / 2, z);
+      P.add('hullDetail', box(0.018, 0.05, 0.09), s * (faceAt(z + 0.28, 4) + 0.005),
+        Math.min(1.82, crestAt(z + 0.28) - 0.035), z + 0.28);
+      P.add('hullDetail', box(0.018, 0.05, 0.09), s * (faceAt(z - 0.26, 4) + 0.005), 1.42, z - 0.26);
     }
     // shoulder shadow seam follows the falling top line (r3: a full-length
     // strip at 2.0 owned the z 2.4-2.9 tops where the fold reads 1.66-1.81)
@@ -1204,7 +1216,7 @@ function addPL01RemoteWeaponStation(P: PolishBuilderPort, context: PL01BuildCont
     const rwsWeapon = FITTINGS.pintleMG({
       mats: P.mats, cls: 'mag', tone: 'two-tone', scale: 0.66, elev: 0.12,
       ammo: true, shield: true, ring: { r: 0.16, stubs: 4 }, seed: 1020, feed: 'right',
-      remoteControlled: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
+      remoteControlled: true, ridingCradle: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
     });
     rwsWeapon.name = 'pl01_rws_weapon';
     mount(P, 'turret', rwsWeapon, -0.05, turretRoofLocalY + 0.14, -1.33, [0, Math.PI / 2, 0]);
@@ -1239,7 +1251,7 @@ function addPL01RemoteWeaponStation(P: PolishBuilderPort, context: PL01BuildCont
       cx - 0.28, roofEquipmentY(1.085), cz - 0.02);
     const crowsGun = FITTINGS.pintleMG({
       mats: P.mats, cls: 'm2', tone: 'two-tone', scale: 0.78,
-      elev: 0.05, ammo: true, shield: 'armored', remoteControlled: true, seed: 1058,
+      elev: 0.05, ammo: true, shield: 'armored', remoteControlled: true, ridingCradle: true, seed: 1058,
     });
     crowsGun.name = 'pl01_105_crows_weapon';
     crowsGun.position.set(cx, turretRoofLocalY + 0.16, cz + 0.06);

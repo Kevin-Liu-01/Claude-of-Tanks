@@ -299,8 +299,13 @@ interface MediaScreenState {
 interface StationActor {
   gun: THREE.Object3D | null;
   weapon: THREE.Object3D | null;
+  /** Release 227 round 4: a riding cradle's gun (`auxiliaryWeaponRecoil` under the pitch group) recoils alone along its
+   * own axis, its cradle and trunnion pin staying in their bearing; other stations recoil the whole pitch group. */
+  recoiling: THREE.Object3D | null;
+  recoilTravel: number;
   rest: THREE.Quaternion;
   restWeapon: THREE.Vector3;
+  restRecoiling: THREE.Vector3;
   muzzle: THREE.Vector3;
   caliberMm: number;
   shots: number;
@@ -333,10 +338,14 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
   }
   function stationActor(root:THREE.Object3D,mount:NonNullable<ReturnType<typeof auxiliaryCapabilities>>['guns'][number]|undefined,shots:number):StationActor{
     const gun=mount ? root.getObjectByName(mount.name)??null : null;
-    const station:StationActor={gun,weapon:gun?.getObjectByName('auxiliaryWeaponPitch')??null,rest:gun?.quaternion.clone()??new THREE.Quaternion(),
-      restWeapon:new THREE.Vector3(),muzzle:new THREE.Vector3(...(mount?.muzzle as [number,number,number]??[0,.35,1.22])),
+    const weapon=gun?.getObjectByName('auxiliaryWeaponPitch')??null;
+    const recoiling=weapon?.getObjectByName('auxiliaryWeaponRecoil')??null,travel=Number(gun?.userData.auxiliaryRecoilM);
+    const station:StationActor={gun,weapon,recoiling:recoiling??weapon,recoilTravel:Number.isFinite(travel)&&travel>=0?travel:.025,
+      rest:gun?.quaternion.clone()??new THREE.Quaternion(),restWeapon:new THREE.Vector3(),restRecoiling:new THREE.Vector3(),
+      muzzle:new THREE.Vector3(...(mount?.muzzle as [number,number,number]??[0,.35,1.22])),
       caliberMm:mount?.caliberMm??12.7,shots,recoil:0};
-    if(station.weapon)station.restWeapon.copy(station.weapon.position);return station;
+    if(station.weapon)station.restWeapon.copy(station.weapon.position);
+    if(station.recoiling)station.restRecoiling.copy(station.recoiling.position);return station;
   }
   function prepare(entity:AuxiliaryVisualEntity,root:THREE.Object3D):Actor{
     const guns=auxiliaryCapabilities(entity.spec)?.guns??[],state=entity.combat?.auxiliary;
@@ -347,6 +356,7 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
   function restStation(station:StationActor){
     if(station.gun)station.gun.quaternion.copy(station.rest);
     if(station.weapon){station.weapon.rotation.x=0;station.weapon.position.copy(station.restWeapon);}
+    if(station.recoiling)station.recoiling.position.copy(station.restRecoiling);
     station.shots=0;station.recoil=0;
   }
   /** One station's yaw, pitch and recoil, and on a new shot its flash, report and ejected case. */
@@ -354,7 +364,8 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
     if(!actor.gun)return;
     actor.gun.quaternion.copy(actor.rest).multiply(turn.setFromAxisAngle(yAxis,yaw));
     actor.recoil=Math.max(0,actor.recoil-dt*4);
-    if(actor.weapon){actor.weapon.rotation.x=-pitch;actor.weapon.position.z=actor.restWeapon.z-actor.recoil*.025;}
+    if(actor.weapon)actor.weapon.rotation.x=-pitch;
+    if(actor.recoiling)actor.recoiling.position.z=actor.restRecoiling.z-actor.recoil*actor.recoilTravel;
     if(visible&&shots!==actor.shots){
       actor.gun.updateWorldMatrix(true,true);
       position.copy(actor.muzzle);
@@ -767,7 +778,7 @@ export function createAuxiliaryPresentation(parent: THREE.Group, ports: Ports) {
       updateCasings(dt);
     },
     reset(){
-      for(const a of actors.values()){if(a.gun)a.gun.quaternion.copy(a.rest);if(a.weapon){a.weapon.rotation.x=0;a.weapon.position.copy(a.restWeapon);}}
+      for(const a of actors.values()){if(a.gun)a.gun.quaternion.copy(a.rest);if(a.weapon){a.weapon.rotation.x=0;a.weapon.position.copy(a.restWeapon);}if(a.recoiling)a.recoiling.position.copy(a.restRecoiling);}
       actors.clear();networkScreens=null;mediaScreens.clear();lastTime=-1;lastPuff=-1;lastTrail=-1;grenades.count=0;for(const item of pool)item.age=9;casings.count=0;
     },
   };

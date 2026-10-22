@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createGameState } from './stateCore.ts';
 import {
-  pickBattleParticipants, planBattleCamoOverrides, planBattleParticipantIds, spawnTanks,
+  pickBattleParticipants, pickNationalBattle, planBattleCamoOverrides, planBattleParticipantIds, spawnTanks,
 } from './rosterState.ts';
 import { getSpec, PRODUCTION_TANK_IDS } from '../vehicles/specs.ts';
 import { ENEMY_NATION_OPTIONS } from './teamArrangement.ts';
@@ -145,15 +145,22 @@ for (const [era, ids] of catalogByEra) {
 
 console.log('rosterPlanning.selftest: session diversity, deterministic preload/entry, recent-roster rotation and same-nation waves passed');
 
-// A nation with only the player's type still gets a complete allied side,
-// with independent identities, while planning remains free of pool mutation.
+// TEAM NATIONS (gameplay-modes-228): a country with only the player's type still gets a complete allied side — from its
+// closest allied countries first, its own type again only once those run dry — with independent identities, while
+// planning remains free of pool mutation.
 {
  const player=game.tankById.get('m1a1_abrams_hc');
  const sparse={...game,allTanks:game.allTanks.filter(entity=>entity===player||entity.spec.nation!==player.spec.nation)};
  const before=sparse.tankById.size;
- const participants=pickBattleParticipants(sparse,'m1a1_abrams_hc',true,5,[],13,null,6);
+ const plan={alliedSeats:6,enemySeats:7,campaignEnemy:null,arrangedEnemy:null};
+ const participants=pickBattleParticipants(sparse,'m1a1_abrams_hc',true,5,[],13,null,plan);
  assert.equal(participants.length,14);
- assert.ok(participants.slice(-6).every(entity=>entity.specId==='m1a1_abrams_hc'&&entity.id!=='m1a1_abrams_hc'));
+ const national=pickNationalBattle(sparse,'m1a1_abrams_hc',5,plan);
+ assert.deepEqual(national.participants.map(entity=>entity.id),participants.map(entity=>entity.id),'the plan and the pick agree');
+ assert.equal(national.allies.length,6);
+ assert.ok(national.allies.every(entity=>entity.spec.nation!=='USA'),'no other US vehicle: the allies come from the closest allied countries');
+ assert.ok(national.record.notes.some(note=>note.side==='alpha'&&note.reason==='ally'),'and the fill is noted');
+ assert.equal(national.record.allied,'usa','the allied side is still the player\'s country');
  assert.equal(new Set(participants.map(entity=>entity.id)).size,14);
  assert.equal(sparse.tankById.size,before,'preloading must not register battle entities');
 }

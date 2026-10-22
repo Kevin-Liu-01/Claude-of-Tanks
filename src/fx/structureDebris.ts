@@ -366,6 +366,11 @@ export interface StructureDebris {
   standingRuns(tag: number): readonly THREE.Mesh[];
   /** A standing run goes with the section it stood in: hidden, and never shown (a delayed stage's run included). */
   dropRun(mesh: THREE.Mesh): void;
+  /** (round 5) A run just laid shows no sooner than `atS` (fx s): a set piece's piece laid at rest while its fall plays. */
+  showFrom(mesh: THREE.Mesh, atS: number): void;
+  /** Some of a standing run's triangles go (by triangle, in its index: a rim's chunk left hanging over a hole whose wall
+   *  went round it); the rest stands. */
+  dropRunTris(mesh: THREE.Mesh, tris: readonly number[]): void;
   update(): void;
   shiftTime(delta: number): void;
   reset(): void;
@@ -785,6 +790,8 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
         geo.computeBoundingSphere();
         const mesh = new THREE.Mesh(geo, material);
         mesh.name = `fx-structure-${run.role}-${run.bucket}`;
+        // (destruction-slabs 227) whose run it is, for receipts that judge one building's runs
+        mesh.userData.structure = stageStructure;
         mesh.matrixAutoUpdate = false;
         mesh.castShadow = run.role !== 'debris';
         mesh.receiveShadow = true;
@@ -872,6 +879,19 @@ export function createStructureDebris(o: StructureDebrisOptions): StructureDebri
     dropRun(mesh) {
       mesh.userData.dropped = true;
       mesh.visible = false;
+    },
+    showFrom(mesh, atS) {
+      if (!(atS > o.now())) return;
+      mesh.visible = false;
+      const was = showAt.find((s) => s.mesh === mesh);
+      if (was) was.at = Math.max(was.at, atS); else showAt.push({ mesh, at: atS });
+    },
+    dropRunTris(mesh, tris) {
+      const ix = mesh.geometry.index;
+      if (!ix) return;
+      const a = ix.array as Uint16Array | Uint32Array;
+      for (const t of tris) { const v = a[t * 3]!; a[t * 3 + 1] = v; a[t * 3 + 2] = v; }
+      ix.needsUpdate = true;
     },
     stats() {
       let pieces = 0;

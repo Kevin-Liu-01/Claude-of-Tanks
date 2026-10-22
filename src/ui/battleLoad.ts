@@ -128,10 +128,11 @@ const CSS = `
   padding:clamp(20px,3vh,34px) clamp(18px,2.5vw,34px) clamp(16px,2.2vh,26px);
   background:transparent;border:0;box-shadow:none;}
 
-.cot-bl .cap{text-align:center;padding-bottom:clamp(15px,2.5vh,27px);}
-.cot-bl .kicker{font-family:${FONT_COND};font-size:10.5px;font-weight:700;
-  letter-spacing:.36em;text-indent:.36em;color:#f0a030;text-transform:uppercase;}
-.cot-bl .mapname{margin-top:7px;font-size:clamp(30px,4.1vw,52px);font-weight:800;
+.cot-bl .cap{text-align:center;padding-bottom:clamp(15px,2.5vh,27px);display:flex;flex-direction:column;align-items:center;}
+/* The mode reads under the map's name, never as a kicker above it (owner UI rules 2026-10-17). */
+.cot-bl .kicker{order:1;margin-top:9px;font-family:${FONT_COND};font-size:11px;font-weight:700;
+  letter-spacing:.16em;text-indent:.16em;color:#f0a030;text-transform:uppercase;}
+.cot-bl .mapname{margin-top:0;font-size:clamp(30px,4.1vw,52px);font-weight:700;
   letter-spacing:.14em;text-indent:.14em;text-transform:uppercase;color:#f4f8fc;
   text-shadow:0 3px 22px rgba(0,0,0,.9);}
 /* --- rosters ------------------------------------------------------------- */
@@ -143,10 +144,13 @@ const CSS = `
 .cot-bl .thead{height:var(--bl-heading);display:flex;align-items:center;gap:9px;padding:0 8px 8px;
   border-bottom:1px solid rgba(146,164,180,.24);font-family:${FONT_COND};
   font-size:11px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;}
+.cot-bl .thead .flags{display:inline-flex;align-items:center;gap:3px;}
+.cot-bl .thead .flags i{font-style:normal;opacity:.6;font-size:10px;}
+.cot-bl .thead .flags .cot-flag{border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.35);}
 .cot-bl .team.ally .thead{color:#7fdc8a;border-bottom-color:rgba(127,220,138,.4);}
 .cot-bl .team.foe .thead{color:#f07a72;border-bottom-color:rgba(240,122,114,.4);}
 .cot-bl .team.foe .thead{flex-direction:row-reverse;}
-.cot-bl .thead .n{margin-left:auto;font-variant-numeric:tabular-nums;color:#8a97a3;
+.cot-bl .thead .n{margin-left:auto;color:#8a97a3;
   letter-spacing:.12em;}
 .cot-bl .team.foe .thead .n{margin-left:0;margin-right:auto;}
 /* Center each roster as a block. Rows never stretch when a team is small.
@@ -175,13 +179,13 @@ const CSS = `
 .cot-bl .team.foe .row .nm{text-align:right;}
 .cot-bl .row.me .nm{color:#ffe4b0;}
 .cot-bl .vs{width:48px;height:48px;display:grid;place-items:center;justify-self:center;align-self:center;
-  font-family:${FONT_COND};font-size:11px;font-weight:800;letter-spacing:.14em;color:#c8d4dd;
+  font-family:${FONT_COND};font-size:11px;font-weight:700;letter-spacing:.14em;color:#c8d4dd;
   background:rgba(6,10,14,.82);border:1px solid rgba(240,176,74,.34);
   box-shadow:inset 0 0 0 3px rgba(4,7,10,.75),0 8px 22px rgba(0,0,0,.4);}
 /* --- footer: progress + countdown --------------------------------------- */
 .cot-bl .foot{padding-top:clamp(15px,2.5vh,24px);}
 .cot-bl .fmeta{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
-  margin-bottom:8px;font-family:${FONT_COND};letter-spacing:-.01em;font-variant-numeric:tabular-nums;}
+  margin-bottom:8px;font-family:${FONT_COND};letter-spacing:-.01em;}
 .cot-bl .fstage{min-height:2.6em;line-height:1.3;display:flex;align-items:flex-end;font-size:11px;font-weight:700;letter-spacing:.26em;color:#9fb0bf;
   text-transform:uppercase;}
 .cot-bl .fpct{font-size:19px;font-weight:700;color:#ffd27a;}
@@ -193,14 +197,14 @@ const CSS = `
   box-shadow:0 0 14px rgba(240,160,48,.5);transition:transform .18s linear;}
 .cot-bl.on .ffill{will-change:transform;}
 .cot-bl .count{margin-top:13px;text-align:center;font-family:${FONT_COND};
-  font-size:15px;font-weight:800;letter-spacing:.3em;text-indent:.3em;
+  font-size:15px;font-weight:700;letter-spacing:.3em;text-indent:.3em;
   color:#dce6ee;text-transform:uppercase;height:30px;line-height:30px;
   text-shadow:0 2px 8px rgba(0,0,0,.9);}
 .cot-bl .count b{color:#ffd27a;font-size:23px;text-shadow:0 0 18px rgba(240,160,48,.36);}
 .cot-bl .tip{margin-top:9px;text-align:center;font-size:11px;color:#82909b;
   line-height:1.45;padding:0 5%;}
 .cot-bl .tip b{color:#c2903f;font-family:${FONT_COND};font-weight:700;
-  letter-spacing:.2em;text-transform:uppercase;font-size:9.5px;margin-right:8px;}
+  letter-spacing:.12em;text-transform:uppercase;font-size:11px;margin-right:8px;}
 @media (prefers-reduced-motion:reduce){.cot-bl.leaving,.cot-bl .ffill{transition-duration:1ms;}}
 `;
 
@@ -242,6 +246,17 @@ export interface PendingBattlefield {
   readonly thumb?: string;
 }
 
+/**
+ * TEAM NATIONS (gameplay-modes-228): each side's country (a spec nation for its flag) and the countries that filled it
+ * ("+UK"), or null for RANDOM / no country.
+ */
+interface BattleLoadTeams {
+  readonly allied: string | null;
+  readonly enemy: string | null;
+  readonly alliedFills: readonly string[];
+  readonly enemyFills: readonly string[];
+}
+
 export interface BattleLoadScreen {
   readonly root: HTMLElement;
   readonly visible: boolean;
@@ -251,6 +266,7 @@ export interface BattleLoadScreen {
   rosters(
     allies: readonly BattleLoadRosterRow[],
     enemies: readonly BattleLoadRosterRow[],
+    teams?: BattleLoadTeams | null,
   ): void;
   progress(fraction: number, label?: string): void;
   countdown(seconds: number): void;
@@ -287,14 +303,14 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     `<main class="briefing"><div class="cap"><div class="kicker">${t('battleLoad.kicker')}</div>` +
     `<div class="mapname"></div></div>` +
     `<div class="teams">` +
-    `<div class="team ally"><div class="thead"><span>${t('battleLoad.allies')}</span><span class="n">0</span></div>` +
+    `<div class="team ally"><div class="thead"><span>${t('battleLoad.allies')}</span><span class="flags" aria-hidden="true"></span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
     `<div class="vs">${t('battleLoad.vs')}</div>` +
-    `<div class="team foe"><div class="thead"><span>${t('battleLoad.enemies')}</span><span class="n">0</span></div>` +
+    `<div class="team foe"><div class="thead"><span>${t('battleLoad.enemies')}</span><span class="flags" aria-hidden="true"></span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
     `</div>` +
     `<div class="foot" aria-live="polite"><div class="fmeta"><div class="fstage">${t('battleLoad.loading')}</div>` +
-    `<div class="fpct">0%</div></div>` +
+    `<div class="fpct num">0%</div></div>` +
     `<div class="fbar" role="progressbar" aria-label="${t('battleLoad.loading')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="ffill"></div></div>` +
     `<div class="count"></div><div class="tip"></div></div></main>`;
   document.body.appendChild(root);
@@ -364,6 +380,23 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   let shownFill = '';
   let shownPercent = -1;
   let shownStage = '';
+
+  const allyFlags = requiredElement<HTMLSpanElement>(root, '.team.ally .flags');
+  const foeFlags = requiredElement<HTMLSpanElement>(root, '.team.foe .flags');
+  /**
+   * A side's country flag and its fills, small (owner UI rules: flags over words). The flag module (its SVG assets) is
+   * the garage's, already loaded in the browser; it is imported on demand so this screen's module stays Node-loadable.
+   */
+  let flagsPass = 0;
+  function fillFlags(host: HTMLElement, nation: string | null, fills: readonly string[]): void {
+    const pass = String(++flagsPass);
+    host.dataset.flagsPass = pass;
+    if (!nation) { host.innerHTML = ''; return; }
+    void import('./flags.ts').then(({ flagIconHTML }) => {
+      if (host.dataset.flagsPass !== pass) return; // a later roster took this side
+      host.innerHTML = flagIconHTML(nation, 18, 13) + fills.map((fill) => `<i>+</i>${flagIconHTML(fill, 14, 10)}`).join('');
+    });
+  }
 
   function fillTeam(
     host: HTMLElement,
@@ -447,9 +480,12 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     rosters(
       allies: readonly BattleLoadRosterRow[],
       enemies: readonly BattleLoadRosterRow[],
+      teams: BattleLoadTeams | null = null,
     ) {
       fillTeam(allyRows, allyN, allyTeam, allies);
       fillTeam(foeRows, foeN, foeTeam, enemies);
+      fillFlags(allyFlags, teams?.allied ?? null, teams?.alliedFills ?? []);
+      fillFlags(foeFlags, teams?.enemy ?? null, teams?.enemyFills ?? []);
     },
 
     /**

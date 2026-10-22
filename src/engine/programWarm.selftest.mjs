@@ -91,6 +91,33 @@ assert.equal([...forwardOwner.linkerBreathingSlices(3)].length, 3,
   'pending ANGLE links receive a bounded number of scheduler slices');
 forwardOwner.invalidate();
 
+{
+  // (2026-10-20, black-screen-228 round 2, eng D4) includeHidden: the live combat warm compiles the idle effect pools
+  // too (a shock ring, a muzzle ring, a smoke volume sits hidden until it fires); the default walk stays visible-only
+  forwardGl.pending = false;
+  const compiled = [];
+  const renderer = {
+    ...forwardRenderer,
+    compile(root, camera, targetScene) { compiled.push(root.name); forwardRenderer.compile.call(this, root, camera, targetScene); },
+  };
+  const shown = { isMesh: true, name: 'shown-dust' };
+  const idle = { isMesh: true, name: 'idle-shock-ring' };
+  const pool = { name: 'fx', traverse(callback) { callback(this); callback(shown); callback(idle); },
+    traverseVisible(callback) { callback(this); callback(shown); } };
+  const owner = createForwardProgramWarmOwner({ renderer, scene: pool, camera: 'live-camera', getTarget: () => 'composer-hdr',
+    now: () => { warmClock += 1; return warmClock; } });
+  [...owner.initializeSteps(pool)];
+  assert.deepEqual(compiled, ['shown-dust'], 'the default walk compiles the visible renderables only');
+  compiled.length = 0;
+  owner.invalidate();
+  const fresh = createForwardProgramWarmOwner({ renderer, scene: pool, camera: 'live-camera', getTarget: () => 'composer-hdr',
+    now: () => { warmClock += 1; return warmClock; } });
+  [...fresh.initializeSteps(pool, null, { includeHidden: true })];
+  assert.deepEqual(compiled, ['shown-dust', 'idle-shock-ring'], 'includeHidden compiles the idle pools as well');
+  fresh.invalidate();
+  forwardGl.pending = true;
+}
+
 function timedForwardFixture({ compileFailure = null, clockFailure = false } = {}) {
   let clock = 0;
   const events = [];

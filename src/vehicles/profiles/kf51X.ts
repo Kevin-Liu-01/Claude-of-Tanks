@@ -284,7 +284,7 @@ function pantherRoof(P: TankBuilderPort): void {
   fitting(P,'turretDark',box(.17,.20,.018),.3337,2.79,-2.077);
   fitting(P,'turretGlass',box(.12,.13,.009),.3337,2.805,-2.063);
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the remote roof MG)
-  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mg3',scale:.84,tone:'two-tone',ammo:false,shield:false,ring:false,seed:51051,remoteControlled:true});
+  const mg=FITTINGS.pintleMG({mats:P.mats,cls:'mg3',scale:.84,tone:'two-tone',ammo:false,shield:false,ring:false,seed:51051,remoteControlled:true,ridingCradle:true});
   mg.position.set(.10,2.712-RING_Y,-2.54-RING_Z);P.turretG.add(mg);
   // Source rear service plates sit on the tapered bustle, not at maximum
   // cheek width. Their actual footprints do not widen the aft turret.

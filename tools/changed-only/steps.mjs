@@ -48,6 +48,8 @@ export const TABLES = Object.freeze({
   presentationProjections: { kind: 'module', files: ['src/vehicles/presentationAnchors.generated.ts'], exportName: 'TANK_PRESENTATION_PROJECTIONS' },
   tankAssets: { kind: 'json', files: ['public/icons/tank-assets.json'], path: ['tanks'] },
   gunJunction: { kind: 'json', files: ['docs/geometry-gate/gun-junction.json'], path: ['tanks'] },
+  // 230: the combat articulation frames measured from each builder's rig (finalizeCombatAnatomy applies a row).
+  combatGunRigs: { kind: 'module', files: ['src/vehicles/combatGunRigs.generated.ts'], exportName: 'COMBAT_GUN_RIGS' },
 });
 
 /** Index and loader maps that import every shard of a table. Their bytes depend only on which shards exist, so they

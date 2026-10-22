@@ -414,10 +414,17 @@ export function createWorldActivationRuntime<
     mark: (stage: WorldActivationStage) => void,
   ): Promise<void> => {
     const precompile = activationOptions?.precompile !== false;
-    world.group.visible = false;
-    if (precompile) await options.nextFrame();
+    // (2026-10-19, black-screen-228 RC5) the world sits out one frame only while no one presents it, and comes back on
+    // every exit: a rejected or abandoned frame wait never leaves a cached (reused) world hidden, and the active,
+    // presented world is never hidden
+    const hide = world !== current || dormant;
+    try {
+      if (hide) world.group.visible = false;
+      if (precompile) await options.nextFrame();
+    } finally {
+      world.group.visible = true;
+    }
     mark('present');
-    world.group.visible = true;
 
     if (precompile || activationOptions?.compilePrograms === true) {
       await compileWorldPrograms(world.group);
