@@ -617,19 +617,7 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b.stat-comparison{displ
   width:min(1100px,calc(100vw - 640px));height:52px;display:grid;
   grid-template-columns:var(--country-edge) auto minmax(0,1fr) var(--country-edge);
   align-items:center;pointer-events:auto;isolation:isolate;direction:ltr;}
-.cot-country-rail::before,.cot-country-rail::after{content:'';position:absolute;z-index:2;
-  top:0;bottom:4px;width:26px;opacity:0;pointer-events:none;
-  transition:opacity .16s,width .16s;}
-.cot-country-rail::before{left:var(--country-track-start,var(--country-edge));
-  background:linear-gradient(90deg,rgba(7,11,15,.92),rgba(7,11,15,.5) 30%,transparent);}
-.cot-country-rail::after{right:var(--country-edge);
-  background:linear-gradient(270deg,rgba(7,11,15,.92),rgba(7,11,15,.5) 30%,transparent);}
-.cot-country-rail.has-more-left::before,.cot-country-rail.has-more-right::after{opacity:.78;}
-.cot-country-rail:hover::before,.cot-country-rail:hover::after,
-.cot-country-rail:focus-within::before,.cot-country-rail:focus-within::after{width:34px;}
-.cot-country-rail.has-more-left:hover::before,.cot-country-rail.has-more-right:hover::after,
-.cot-country-rail.has-more-left:focus-within::before,
-.cot-country-rail.has-more-right:focus-within::after{opacity:1;}
+.cot-country-chip.is-sliver{visibility:hidden;}
 .cot-country-chips{grid-column:3;display:flex;justify-content:safe center;gap:3px;width:100%;min-width:0;
   height:52px;padding:2px 3px 4px;
   overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;

@@ -1364,17 +1364,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   window.addEventListener('resize', queueCarouselAffordances);
 
   // Country flags use the same honest overflow contract as the vehicle strip:
-  // fixed edge fades/buttons appear only where hidden content really exists.
-  // The left fade starts where the flag track does, past the Filter toggle's slot (its badge changes its width).
-  let countryTrackStart = -1;
+  // the edge buttons appear only where hidden content really exists.
   const syncCountryRailAffordances = () => {
     const { hasLeft, hasRight } = horizontalRailState(
       chipsEl.scrollLeft, chipsEl.scrollWidth, chipsEl.clientWidth,
     );
-    if (chipsEl.offsetLeft !== countryTrackStart) {
-      countryTrackStart = chipsEl.offsetLeft;
-      countryRailEl.style.setProperty('--country-track-start', `${countryTrackStart}px`);
-    }
     countryRailEl.classList.toggle('has-more-left', hasLeft);
     countryRailEl.classList.toggle('has-more-right', hasRight);
     const affordances: Array<[HTMLButtonElement, boolean]> = [
@@ -2335,6 +2329,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let countryFilter = countryGroups[0]?.id || 'us';
   let renderedCountryFilter: string | null = null;
   const chipById = new Map<string, HTMLButtonElement>();
+  // A flag less than half inside the track hides (critic 236: slivers of a flag or a count read as stray glyphs beside
+  // the Filter toggle); a flag cut by the edge but mostly shown stays as the cue that the rail continues.
+  const chipSliverObserver = typeof IntersectionObserver === 'function'
+    ? new IntersectionObserver((entries) => {
+      for (const entry of entries) entry.target.classList.toggle('is-sliver', entry.intersectionRatio < 0.5);
+    }, { root: chipsEl, threshold: [0.5] })
+    : null;
   function initializeCountryChips(): void {
     for (const group of countryGroups) {
       const count = group.count;
@@ -2360,6 +2361,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
       chipsEl.appendChild(chip);
       chipById.set(group.id, chip);
+      chipSliverObserver?.observe(chip);
     }
   }
   initializeCountryChips();

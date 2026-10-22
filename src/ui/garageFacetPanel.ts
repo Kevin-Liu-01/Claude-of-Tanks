@@ -254,7 +254,11 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   function fit(): void {
     if (!open) return;
     const top = host.anchor.getBoundingClientRect().top;
-    panel.style.maxHeight = `${Math.round(Math.max(160, Math.min(520, top - 16)))}px`;
+    const fitHeight = Math.round(Math.max(160, Math.min(520, top - 16)));
+    panel.style.maxHeight = `${fitHeight}px`;
+    // a short landscape phone: the panel takes all of that height and covers the header whole, rather than stopping a
+    // few px under the top and slicing through its letters (critic 236)
+    panel.style.minHeight = document.body.dataset.cotHeight === 'short' ? `${fitHeight}px` : '';
     updateCues();
   }
 

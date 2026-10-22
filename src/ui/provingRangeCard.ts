@@ -103,6 +103,7 @@ const CSS = `
 .cot-range-card .rc-round{font:700 13px ${PROVING_DISPLAY};letter-spacing:.02em;color:#fff1d6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cot-range-card .rc-rng{margin-left:auto;display:flex;align-items:center;gap:5px;font:500 15px ${PROVING_MONO};color:#e8f0f5;
   white-space:nowrap}
+.cot-range-card .rc-rng[hidden]{display:none}
 .cot-range-card .rc-rng svg{width:14px;height:14px;color:#7f909c}
 .cot-range-card .rc-rng small{font-size:11px;color:#7f909c;margin-left:-3px}
 .cot-range-card .rc-shot{display:none;flex-direction:column;gap:4px;padding:7px 8px 8px;background:rgba(255,255,255,.035);
@@ -270,6 +271,21 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
   resetButton.addEventListener('click', (event) => { event.stopPropagation(); emit('ui:rangeReset'); });
   movingButton.addEventListener('click', (event) => { event.stopPropagation(); emit('ui:rangeMoving'); });
   exitButton.addEventListener('click', (event) => { event.stopPropagation(); emit('ui:rangeExit'); });
+  // The controls' names are set again whenever the card shows: it is built the moment its module lands, which can be
+  // before the locale's lazy strings are resident (critic 236: zh-CN controls read in English).
+  const labelControls = (): void => {
+    root.setAttribute('aria-label', t('hud.range.title'));
+    resetButton.title = t('action.rangeReset');
+    movingButton.title = t('action.rangeMoving');
+    exitButton.title = t('hud.range.exit');
+    exitButton.setAttribute('aria-label', t('hud.range.exit'));
+    const names: Array<[HTMLButtonElement, string, string]> = [[resetButton, 'hud.range.reset', 'hud.range.reset'],
+      [exitButton, 'hud.range.garage', 'hud.range.garage'], [movingButton, 'hud.range.moving', 'hud.range.movingShort']];
+    for (const [button, long, short] of names) {
+      button.querySelector('.rc-l')!.textContent = t(long);
+      button.querySelector('.rc-s')!.textContent = t(short);
+    }
+  };
   // touch: a tap on the card must not fall through to the battle's look/fire surface
   root.addEventListener('pointerdown', (event) => event.stopPropagation());
 
@@ -393,7 +409,7 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
   const update = (input: RangeCardInput): void => {
     const range = input.range;
     if (!range || !range.lanes.length) { hide(); return; }
-    if (!shown) { shown = true; root.classList.add('show'); }
+    if (!shown) { shown = true; labelControls(); root.classList.add('show'); }
     if (range !== lastRange || input.shellSlot !== lastSlot) {
       renderLanes(range, input.shellSlot);
       lastRange = range;
@@ -402,9 +418,13 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
       lastSerial = -1;
     }
     if (input.shellName !== lastShellName) { roundEl.textContent = input.shellName; lastShellName = input.shellName; }
-    // the rangefinder: the range the gun is laid at, to the metre (a dash with nothing under the sight)
+    // the rangefinder: the range the gun is laid at, to the metre (no readout with nothing under the sight)
     const laidRange = input.laidRangeM != null && Number.isFinite(input.laidRangeM) ? Math.round(input.laidRangeM) : -1;
-    if (laidRange !== lastLaidRange) { laidRangeEl.textContent = laidRange >= 0 ? String(laidRange) : '—'; lastLaidRange = laidRange; }
+    if (laidRange !== lastLaidRange) {
+      laidRangeEl.textContent = laidRange >= 0 ? String(laidRange) : '';
+      laidRangeEl.parentElement!.hidden = laidRange < 0;
+      lastLaidRange = laidRange;
+    }
     const serial = range.lastShot?.serial ?? 0;
     if (serial !== lastSerial) {
       lastSerial = serial;
