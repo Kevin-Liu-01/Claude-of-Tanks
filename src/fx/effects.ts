@@ -728,8 +728,9 @@ const MUZZLE_LIGHT_RANGE = 12;
  *  of the peak, sand two thirds. */
 const MUZZLE_LIGHT_REF_MM = 122.5, MUZZLE_LIGHT_BORE_POW = 1.2;
 const MUZZLE_LIGHT_SNOW_K = 0.33, MUZZLE_LIGHT_SAND_K = 0.66;
-/** (240) at night the ground under a muzzle takes at most this many times the night's key light (muzzleLightPulse) */
-const MUZZLE_NIGHT_GROUND_CAP = 8;
+/** The muzzle light's hue by day ("r5: less saturated kiss"), and (240) at night a propellant flame's warm yellow-orange
+ *  (muzzleLightPulse, by the dark level) */
+const MUZZLE_LIGHT_HEX = 0xffe4c4, MUZZLE_NIGHT_HEX = 0xffb06a;
 /** (EF.10) the local lights' gains on the smoke and dust they reach (a radiance gain on the medium's own colour, at the
  *  light; falling off as (1 - d / range)^2): a headlight's beam, a flash at its peak, a wreck's fire at its mean */
 const LOCAL_HEADLIGHT_GAIN = 1.4, LOCAL_FLASH_GAIN = 2.4, LOCAL_FIRE_GAIN = 1.5;
@@ -1334,7 +1335,8 @@ function* createFxSteps(
   // --- dynamic lights (budget: exactly 2 PointLights) -----------------------
   // Muzzle: warm white-amber (was deep orange — the "saturated ground decal"
   // read); tighter range so it kisses the hull rather than floods the field.
-  const muzzleLight = new THREE.PointLight(0xffe4c4, 0, MUZZLE_LIGHT_RANGE, 2); // r5: less saturated kiss
+  const muzzleLight = new THREE.PointLight(MUZZLE_LIGHT_HEX, 0, MUZZLE_LIGHT_RANGE, 2); // r5: less saturated kiss
+  const _muzzleNight = new THREE.Color(MUZZLE_NIGHT_HEX);
   // lighting_post r5: range 34 -> 24 — the wide range warmed the ENTIRE
   // visible field to mustard from the 22 m camera; wreck/debris keep their
   // warm pool, the wider grass field drops out of the mustard band.
@@ -1365,25 +1367,16 @@ function* createFxSteps(
 
   /** (233) a gun's muzzle light by its bore and the ground under its muzzle: peak (x MUZZLE_LIGHT_PEAK) and reach (m) */
   const muzzlePulse = { peakK: 1, range: MUZZLE_LIGHT_RANGE };
-  function muzzleLightPulse(caliberMm: number, x: number, y: number, z: number): typeof muzzlePulse {
+  function muzzleLightPulse(caliberMm: number, x: number, z: number): typeof muzzlePulse {
     const bore = Number.isFinite(caliberMm) && caliberMm > 0 ? caliberMm / MUZZLE_LIGHT_REF_MM : 1;
     const surface = classifyTerrain(heightField, x, z);
     const groundK = surface === 'snow' ? MUZZLE_LIGHT_SNOW_K : surface === 'sand' ? MUZZLE_LIGHT_SAND_K : 1;
-    let peakK = THREE.MathUtils.clamp(Math.pow(bore, MUZZLE_LIGHT_BORE_POW), 0.03, 1.4) * groundK;
-    // (240, the coordinator: a big gun's flash "pooling white on snow" at night) under the night's open camera (about two
-    // stops over the day's) the ground straight under the muzzle takes at most MUZZLE_NIGHT_GROUND_CAP x the night's key
-    // light (the moon), as the explosion light's pool is capped against the sun: a 125 mm round lights the snow round it
-    // for its instant, warm, without burning it to a white band; a small gun's kiss is under the cap and unchanged; by day
-    // (the dark level 0) nothing changes
-    const dark = tracers.darkLevel();
-    if (dark > 0) {
-      const ground = groundY(x, z);
-      const h = Number.isFinite(ground) ? Math.max(1, y - ground) : 1;
-      const rig = (engineCtx.scene?.userData as { lightRig?: { sunIntensity?: number } } | undefined)?.lightRig;
-      const cap = MUZZLE_NIGHT_GROUND_CAP * Math.max(0.3, rig?.sunIntensity ?? 4.5) * h * h / MUZZLE_LIGHT_PEAK;
-      peakK += (Math.min(peakK, cap) - peakK) * dark;
-    }
-    muzzlePulse.peakK = peakK;
+    // (240, the coordinator: a big gun's flash "pooling white on snow" at night) its light is a propellant flame's: by the
+    // dark level its hue warms from the day's peach-white to MUZZLE_NIGHT_HEX, so under the night's open camera the snow
+    // round a big gun's muzzle takes a warm firelit pool for its instant instead of a white band (a night ground cap,
+    // tried first, turned the firing hull into a silhouette: the brightness stays the bore's)
+    muzzleLight.color.setHex(MUZZLE_LIGHT_HEX).lerp(_muzzleNight, tracers.darkLevel());
+    muzzlePulse.peakK = THREE.MathUtils.clamp(Math.pow(bore, MUZZLE_LIGHT_BORE_POW), 0.03, 1.4) * groundK;
     muzzlePulse.range = THREE.MathUtils.clamp(MUZZLE_LIGHT_RANGE * Math.sqrt(bore), 3, 14);
     return muzzlePulse;
   }
@@ -2746,7 +2739,7 @@ function* createFxSteps(
     particles.emit('smoke', puff);
     // (240) the motor's flash lights its launcher by the rocket's calibre and the ground under it (muzzleLightPulse) at the
     // 0.3 of a gun's peak it always took: one flat 138 cd for a 57 mm rocket and a 220 mm one alike before
-    const pulse = muzzleLightPulse(caliberMm, pos.x, pos.y, pos.z);
+    const pulse = muzzleLightPulse(caliberMm, pos.x, pos.z);
     flashLight(lightStates[0], pos, MUZZLE_LIGHT_PEAK * 0.3 * pulse.peakK, -birthOffset, undefined, undefined, undefined,
       pulse.range);
   }
@@ -6214,7 +6207,7 @@ function* createFxSteps(
     // kiss over 4 m of the turret roof; it lit nothing before), and never cuts short a bigger gun's pulse still burning
     flash: (p,d,caliber) => {
       const lightK = spawnMuzzleFlash(p,d,caliber,0);
-      const pulse = muzzleLightPulse(caliber, p.x, p.y, p.z);
+      const pulse = muzzleLightPulse(caliber, p.x, p.z);
       const peak = MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale;
       if (!(muzzleLight.intensity > peak)) flashLight(lightStates[0], p, peak, 0, undefined, undefined, undefined, pulse.range);
     },
@@ -6805,7 +6798,7 @@ function* createFxSteps(
       _sv.copy(pos).addScaledVector(dir, -0.15);
       _sv.y += 0.10;
       // (233) by the bore and the ground under the muzzle (muzzleLightPulse)
-      const pulse = muzzleLightPulse(caliberMm, _sv.x, _sv.y, _sv.z);
+      const pulse = muzzleLightPulse(caliberMm, _sv.x, _sv.z);
       flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale, 0,
         undefined, undefined, undefined, pulse.range);
     },
@@ -7663,7 +7656,7 @@ function* createFxSteps(
       _sv.copy(muzzlePos).addScaledVector(dir, -0.18);
       _sv.y += 0.10;
       // (233) a gun's by its bore and the ground under the muzzle (muzzleLightPulse); (240) a rocket's too, at its motor's 0.3
-      const pulse = muzzleLightPulse(caliberMm, _sv.x, _sv.y, _sv.z);
+      const pulse = muzzleLightPulse(caliberMm, _sv.x, _sv.z);
       flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * (rocket ? 0.3 : 1) * pulse.peakK * muzzleLightScale, ageS,
         undefined, undefined, undefined, pulse.range);
     },
