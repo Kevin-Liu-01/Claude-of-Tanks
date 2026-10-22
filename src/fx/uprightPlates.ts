@@ -375,6 +375,73 @@ function piecesWithTriangles(w: Float64Array, count: number, index: THREE.Buffer
 const _pq = new THREE.Quaternion(), _pa = new THREE.Vector3(), _pe1 = new THREE.Vector3(), _pe2 = new THREE.Vector3(), _pc = new THREE.Vector3();
 const _UPV = new THREE.Vector3(0, 1, 0);
 
+/** (perf-240) A drawing's triangles in a plan grid: each listed in every cell its plan box meets (start/tris, by cell), and
+ *  those a laid plate moved since (`moved`: read by every query, where they are now). */
+interface PlanGrid {
+  x0: number; z0: number; cell: number; nx: number; nz: number; start: Int32Array; tris: Int32Array; seen: Uint32Array; stamp: number;
+  moved: number[];
+}
+const PLAN_CELL_M = 4, PLAN_CELLS_MAX = 256;
+function planGridOf(ww: Float64Array, n: number, index: THREE.BufferAttribute | null): PlanGrid {
+  const box = new Float64Array(n * 4);
+  let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
+  for (let t = 0; t < n; t++) {
+    const a = index ? index.getX(t * 3) : t * 3, b = index ? index.getX(t * 3 + 1) : t * 3 + 1, c = index ? index.getX(t * 3 + 2) : t * 3 + 2;
+    const lx = Math.min(ww[a * 3]!, ww[b * 3]!, ww[c * 3]!), hx = Math.max(ww[a * 3]!, ww[b * 3]!, ww[c * 3]!);
+    const lz = Math.min(ww[a * 3 + 2]!, ww[b * 3 + 2]!, ww[c * 3 + 2]!), hz = Math.max(ww[a * 3 + 2]!, ww[b * 3 + 2]!, ww[c * 3 + 2]!);
+    // (a triangle off the finite plane stamps nothing: left out)
+    if (!(Number.isFinite(lx) && Number.isFinite(hx) && Number.isFinite(lz) && Number.isFinite(hz))) { box[t * 4] = NaN; continue; }
+    box[t * 4] = lx; box[t * 4 + 1] = lz; box[t * 4 + 2] = hx; box[t * 4 + 3] = hz;
+    if (lx < x0) x0 = lx; if (lz < z0) z0 = lz; if (hx > x1) x1 = hx; if (hz > z1) z1 = hz;
+  }
+  if (!(x1 >= x0 && z1 >= z0)) return { x0: 0, z0: 0, cell: 1, nx: 0, nz: 0, start: new Int32Array(1), tris: new Int32Array(0), seen: new Uint32Array(n), stamp: 0, moved: [] };
+  const cell = Math.max(PLAN_CELL_M, (x1 - x0) / PLAN_CELLS_MAX, (z1 - z0) / PLAN_CELLS_MAX);
+  const nx = Math.floor((x1 - x0) / cell) + 1, nz = Math.floor((z1 - z0) / cell) + 1;
+  const start = new Int32Array(nx * nz + 1);
+  for (let pass = 0; pass < 2; pass++) {
+    const fill = pass === 1 ? new Int32Array(start[nx * nz]!) : null;
+    const at = pass === 1 ? start.slice(0, nx * nz) : null;
+    for (let t = 0; t < n; t++) {
+      if (Number.isNaN(box[t * 4]!)) continue;
+      const i0 = Math.floor((box[t * 4]! - x0) / cell), k0 = Math.floor((box[t * 4 + 1]! - z0) / cell);
+      const i1 = Math.floor((box[t * 4 + 2]! - x0) / cell), k1 = Math.floor((box[t * 4 + 3]! - z0) / cell);
+      for (let k = k0; k <= k1; k++) for (let i = i0; i <= i1; i++) {
+        if (fill) fill[at![k * nx + i]!++] = t; else start[k * nx + i + 1]!++;
+      }
+    }
+    if (fill) return { x0, z0, cell, nx, nz, start, tris: fill, seen: new Uint32Array(n), stamp: 0, moved: [] };
+    for (let c = 0; c < nx * nz; c++) start[c + 1] = start[c + 1]! + start[c]!;
+  }
+  throw new Error('unreachable');
+}
+/** A laid plate's triangles onto its drawing's grid's moved list (no grid yet: it is built where they are now). */
+function planGridMoved(g: PlanGrid | null, tris: ArrayLike<number>): void {
+  if (g) for (let q = 0; q < tris.length; q++) g.moved.push(tris[q]!);
+}
+let planHits = new Int32Array(256);
+/** The triangles whose plan box may meet [x0, x1] x [z0, z1] (as built, or moved since), each once, into planHits; their
+ *  count. */
+function planGridQuery(g: PlanGrid, x0: number, z0: number, x1: number, z1: number): number {
+  g.stamp = (g.stamp + 1) >>> 0;
+  if (g.stamp === 0) { g.seen.fill(0); g.stamp = 1; }
+  let count = 0;
+  const hit = (t: number): void => {
+    if (g.seen[t] === g.stamp) return;
+    g.seen[t] = g.stamp;
+    if (count === planHits.length) { const grown = new Int32Array(count * 2); grown.set(planHits); planHits = grown; }
+    planHits[count++] = t;
+  };
+  for (let m = 0; m < g.moved.length; m++) hit(g.moved[m]!);
+  if (!g.nx || !(x1 >= g.x0) || !(z1 >= g.z0)) return count;
+  const i0 = Math.max(0, Math.floor((x0 - g.x0) / g.cell)), i1 = Math.min(g.nx - 1, Math.floor((x1 - g.x0) / g.cell));
+  const k0 = Math.max(0, Math.floor((z0 - g.z0) / g.cell)), k1 = Math.min(g.nz - 1, Math.floor((z1 - g.z0) / g.cell));
+  for (let k = k0; k <= k1; k++) for (let i = i0; i <= i1; i++) {
+    const c = k * g.nx + i;
+    for (let m = g.start[c]!; m < g.start[c + 1]!; m++) hit(g.tris[m]!);
+  }
+  return count;
+}
+
 /**
  * Lay the perched flat plates of drawings come to rest (in place): `edit` are laid, `also` hold them (their drawn tops)
  * and stay as they are; `hold` reads the records and bodies (null: the drawings and the ground alone). Returns how many
@@ -399,6 +466,10 @@ export function layPerchedPlates(edit: readonly PlateDrawing[], also: readonly P
     }
     return sp;
   };
+  // (perf-240) a drawing scanned for a second plate is read through its plan grid (planGridOf), made then; a plate of it laid
+  // after puts its triangles on the grid's moved list
+  const scans = new Int32Array(all.length);
+  const grids: Array<PlanGrid | null> = all.map(() => null);
   let laid = 0;
   const cv = [0, 0, 0, 0, 0, 0];
   for (let e = 0; e < edit.length; e++) {
@@ -496,7 +567,13 @@ export function layPerchedPlates(edit: readonly PlateDrawing[], also: readonly P
         const bodyOfK = all[k]!.bodyOf;
         const ownBody = !bodyOfK && (k === e || (plateBody !== undefined && all[k]!.body === plateBody));
         const own = ownBody ? splitOf(k) : null;
-        for (let t = 0; t < n; t++) {
+        // (perf-240) a drawing's second scan on reads the triangles its plan grid finds meeting the plate's grid: the only
+        // ones the plan test below lets through (one off the finite plane stamps nothing either way); the tops keep each
+        // cell's highest, whatever the order
+        const grid = ++scans[k]! > 1 ? (grids[k] ??= planGridOf(ww, n, idx)) : null;
+        const count = grid ? planGridQuery(grid, gx0, gz0, gx1, gz1) : n;
+        for (let m = 0; m < count; m++) {
+          const t = grid ? planHits[m]! : m;
           if (own && !(own.low.get(own.tri[t]!)! < y0 - OWN_LOWER_M)) continue;
           const a = idx ? idx.getX(t * 3) : t * 3, b = idx ? idx.getX(t * 3 + 1) : t * 3 + 1, c = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
           const ax_ = ww[a * 3]!, ay = ww[a * 3 + 1]!, az = ww[a * 3 + 2]!, bx = ww[b * 3]!, by = ww[b * 3 + 1]!, bz = ww[b * 3 + 2]!;
@@ -583,6 +660,7 @@ export function layPerchedPlates(edit: readonly PlateDrawing[], also: readonly P
               w[i * 3] = _v.x + px; w[i * 3 + 1] = _v.y + py; w[i * 3 + 2] = _v.z + pz;
               changed[i] = 1;
             }
+            planGridMoved(grids[e], pieceTris);
             const nrm = d.geometry.getAttribute('normal') as THREE.BufferAttribute | THREE.InterleavedBufferAttribute | undefined;
             if (nrm) {
               if (d.matrix) { _nm.getNormalMatrix(d.matrix); _nmInv.copy(_nm).invert(); }
@@ -611,6 +689,7 @@ export function layPerchedPlates(edit: readonly PlateDrawing[], also: readonly P
           w[i * 3] = _pc.x + mx; w[i * 3 + 1] = _pc.y + my; w[i * 3 + 2] = _pc.z + mz;
           changed[i] = 1;
         }
+        planGridMoved(grids[e], pieceTris);
         const nrm = d.geometry.getAttribute('normal') as THREE.BufferAttribute | THREE.InterleavedBufferAttribute | undefined;
         if (nrm) {
           if (d.matrix) { _nm.getNormalMatrix(d.matrix); _nmInv.copy(_nm).invert(); }
@@ -635,6 +714,7 @@ export function layPerchedPlates(edit: readonly PlateDrawing[], also: readonly P
         if (!Number.isFinite(g) || !(g < y0)) continue;
         const dy = g + 0.02 - y0;
         for (const i of list) { w[i * 3 + 1] = w[i * 3 + 1]! + dy; changed[i] = 1; }
+        planGridMoved(grids[e], pieceTris);
       }
       // (its lowest point as laid: what its body's other pieces read of it)
       let low = Infinity;
