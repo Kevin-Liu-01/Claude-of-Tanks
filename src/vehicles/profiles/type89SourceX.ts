@@ -3,7 +3,8 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // All stock is authored here; the local source is only a measurement oracle.
 import * as THREE from 'three';
 import { KIT, FITTINGS, convexSlab } from './kit.ts';
-import { armorLoft, chassisLoft, sideWall, openTube, turretEquipment, optic, antenna, deckGrille } from './europeSourcePrimitives.ts';
+// 240: the pre-227 hollow sight box (opticFrame) until this vehicle's own lane adopts the solid optic() head
+import { armorLoft, chassisLoft, sideWall, openTube, turretEquipment, opticFrame as optic, antenna, deckGrille } from './europeSourcePrimitives.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { weaponAssembly } from './weaponStock.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';

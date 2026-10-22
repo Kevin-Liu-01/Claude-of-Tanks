@@ -4,7 +4,8 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Coordinates are metres; no source mesh is loaded by the playable builder.
 import * as THREE from 'three';
 import { KIT, convexSlab } from './kit.ts';
-import { chassisLoft, sideWall, turretEquipment, optic, deckGrille, openTube, mirrorX } from './europeSourcePrimitives.ts';
+// 240: the pre-227 hollow sight box (opticFrame) until this vehicle's own lane adopts the solid optic() head
+import { chassisLoft, sideWall, turretEquipment, opticFrame as optic, deckGrille, openTube, mirrorX } from './europeSourcePrimitives.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { weaponAssembly } from './weaponStock.ts';

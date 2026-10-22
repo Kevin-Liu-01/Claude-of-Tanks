@@ -73,7 +73,40 @@ export function openTube(P: TankBuilderPort, radius: number, start: number, end:
   P.physicalMuzzleBore = { outerRadiusM: radius, innerRadiusM: boreRadius, depthM: .20 };
 }
 
+/**
+ * A turret sight head inside the box `width` x `height` x `depth` centred on (x, y, z), windows facing +Z.
+ *
+ * 2026-10-17 (227, VEH-01; the round-4 critics' "hollow optic() boxes"): it was four 35 mm walls and a back plate round
+ * one dark pane that filled the whole front, so every importer's sight read as an empty square tube. It is now a solid
+ * armoured head on a narrower slew plinth, under a roof plate, with a brow and cheeks shading a framed window: the day
+ * and thermal panes side by side and the laser rangefinder's port below them. Same envelope as before.
+ */
 export function optic(P: TankBuilderPort, x: number, y: number, z: number,
+  width: number, height: number, depth: number): void {
+  const put = (bucket: string, g: THREE.BufferGeometry, dx: number, dy: number, dz: number) =>
+    turretEquipment(P, bucket, g, x + dx, y + dy, z + dz);
+  const w = width, h = height, d = depth;
+  const plinthH = h * .16, headH = h * .80, roofH = h * .04;
+  const face = -d / 2 + d * .88;                        // the head's front face (the brow and cheeks stand ahead of it)
+  put('turretDetail', KIT.box(w * .84, plinthH, d * .84), 0, -h / 2 + plinthH / 2, -d * .08);            // slew plinth
+  put('turretDetail', KIT.box(w, headH, d * .88), 0, -h / 2 + plinthH + headH / 2, -d * .06);             // armoured head
+  put('turretDetail', KIT.box(w * .94, roofH, d * .86), 0, h / 2 - roofH / 2, -d * .07);                  // roof plate
+  const hood = d / 2 - face;
+  put('turretDetail', KIT.box(w, h * .05, hood), 0, h * .44, face + hood / 2);                             // brow
+  const cheek = Math.min(.03, w * .12);
+  for (const side of [-1, 1]) put('turretDetail', KIT.box(cheek, h * .42, hood), side * (w - cheek) / 2, h * .2, face + hood / 2);
+  const winY = h * .2;
+  put('turretDark', KIT.box(w - 2 * cheek - .01, h * .40, .014), 0, winY, face + .007);                    // window frame
+  put('turretGlass', KIT.box(w * .40, h * .28, .012), -w * .18, winY, face + .016);                        // day pane
+  put('turretGlass', KIT.box(w * .24, h * .28, .012), w * .22, winY, face + .016);                         // thermal pane
+  const port = Math.min(w, h) * .07;
+  put('turretDark', KIT.cylZ(port * 1.5, .01, P.q ? 16 : 10), w * .22, -h * .1, face + .005);              // rangefinder bezel
+  put('turretGlass', KIT.cylZ(port, .012, P.q ? 16 : 10), w * .22, -h * .1, face + .011);                  // rangefinder port
+}
+
+/** The hollow sight box `optic` built before 2026-10-17, kept (240) for type89, borsuk and puma_s1 until their own lanes
+ * adopt the solid head above. */
+export function opticFrame(P: TankBuilderPort, x: number, y: number, z: number,
   width: number, height: number, depth: number): void {
   const put = (bucket: string, g: THREE.BufferGeometry, dx: number, dy: number, dz: number) =>
     turretEquipment(P, bucket, g, x + dx, y + dy, z + dz);

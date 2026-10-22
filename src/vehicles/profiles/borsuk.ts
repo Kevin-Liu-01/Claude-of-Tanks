@@ -4,7 +4,8 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
-import { chassisLoft, armorLoft, sideWall, openTube, optic, antenna, turretEquipment, mirrorX } from './europeSourcePrimitives.ts';
+// 240: the pre-227 hollow sight box (opticFrame) until this vehicle's own lane adopts the solid optic() head
+import { chassisLoft, armorLoft, sideWall, openTube, opticFrame as optic, antenna, turretEquipment, mirrorX } from './europeSourcePrimitives.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { weaponAssembly } from './weaponStock.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
