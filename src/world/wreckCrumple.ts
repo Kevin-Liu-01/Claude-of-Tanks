@@ -597,10 +597,11 @@ export function crumpleBurntVehicle(geometry: THREE.BufferGeometry, seed: number
     part.ends.push({ s, zFace: s > 0 ? b.max.z : b.min.z, zone: 0.7 + rng() * 0.4, amount: 0.2 + rng() * 0.25,
       buckle: 0.05 + rng() * 0.07, yLo: top * 0.35, yHi: top * 0.6 });
   }
-  // (world-polish-240) the whole greenhouse settles as its pillars soften: the roof comes down a quarter to two fifths of
-  // its height over the belt line, level end to end (a sag as wide and as long as the body many times over)
+  // (world-polish-240) the whole greenhouse settles as its pillars soften and buckle: the roof (and what it carries, a
+  // rack) comes down a half to two thirds of its height over the belt line, level end to end (a sag as wide and as long as
+  // the body many times over), so the window openings close to slots and no arch of roof stands over the shell
   const reach = 4 * Math.max(length, 2 * hw);
-  part.roofs.push({ hw: reach, zc: (b.min.z + b.max.z) / 2, half: reach, sag: (0.25 + rng() * 0.15) * top * 0.45, yBelt: top * 0.55, yTop: top });
+  part.roofs.push({ hw: reach, zc: (b.min.z + b.max.z) / 2, half: reach, sag: (0.5 + rng() * 0.15) * top * 0.45, yBelt: top * 0.55, yTop: top });
   const before = geometry.boundingBox!.max.y;
   applyPart(part, geometry);
   geometry.computeBoundingBox();
