@@ -211,6 +211,8 @@ interface FxVisual {
   /** the gun's or a launcher tube's mouth in the world now (a wire-guided missile's wire is fixed there) */
   gunMuzzleWorld?(out: THREE.Vector3, muzzleIndex?: number, guided?: boolean): unknown;
   setDestroyed(options?: { pop?: boolean; ageS?: number }): void;
+  /** (240) the vehicle's overall size (TankVisual.dims): a kill roots its night flames on the deck by its height */
+  dims?: { heightM?: number };
   /** Wreck visuals report true; a revived/reset visual reports false (wreck r1 reads this). */
   isDestroyed?(): boolean;
   applyEquipmentDamage?(event: EquipmentDamageEvent): boolean;
@@ -347,6 +349,8 @@ interface SmokeColumn {
    *  night"; r2: "a red spotlight in full sun" when it burned bright by day too); its flames are tongues along its cabin
    *  and over its roof (233). */
   car?: [number, number, number];
+  /** (240) a tank wreck's deck over the column's foot (m, DECK_OF_HEIGHT x its hull's height): its night flames' root */
+  deck?: number;
 }
 
 interface LiveShell {
@@ -724,6 +728,8 @@ const MUZZLE_LIGHT_RANGE = 12;
  *  of the peak, sand two thirds. */
 const MUZZLE_LIGHT_REF_MM = 122.5, MUZZLE_LIGHT_BORE_POW = 1.2;
 const MUZZLE_LIGHT_SNOW_K = 0.33, MUZZLE_LIGHT_SAND_K = 0.66;
+/** (240) at night the ground under a muzzle takes at most this many times the night's key light (muzzleLightPulse) */
+const MUZZLE_NIGHT_GROUND_CAP = 8;
 /** (EF.10) the local lights' gains on the smoke and dust they reach (a radiance gain on the medium's own colour, at the
  *  light; falling off as (1 - d / range)^2): a headlight's beam, a flash at its peak, a wreck's fire at its mean */
 const LOCAL_HEADLIGHT_GAIN = 1.4, LOCAL_FLASH_GAIN = 2.4, LOCAL_FIRE_GAIN = 1.5;
@@ -805,9 +811,20 @@ function flameOf(col: SmokeColumn): number {
 }
 const SMOKE_SMOLDER_S = 35;    // post-column ember/wisp stage on the wreck
 /** (233, the integrator's confirmation critic: at night the tongues read as "two pill-shaped sprite blobs") a tank
- *  wreck's licks are tongues by day only: from this dark level up (the tracers' light level, 0 day .. 1 night) its
- *  column keeps main's round licks. A burning car's tongues (emitCarFlames) burn so at every hour. */
+ *  wreck's licks are the day's tongues by day only: from this dark level up (the tracers' light level, 0 day .. 1 night)
+ *  its column licks flame-cut tongues on its deck (240: emitNightTongue). A burning car's tongues (emitCarFlames) burn so
+ *  at every hour. */
 const NIGHT_FIRE_DARK = 0.5;
+/** (240) a night tongue's deck over the column's foot (m) when the kill named no hull height (`SmokeColumn.deck`) */
+const NIGHT_TONGUE_DECK_M = 1.5;
+/** (240) a wreck's deck under its night flames: this share of the hull's height (a turret's roof stands at ~1) */
+const DECK_OF_HEIGHT = 0.78;
+/** (240) a night fire's light on its own smoke (nightSmokeGlowAt): from this far over its deck (its flames' tops), this
+ *  many times the day slot's gain, over this reach (m, x the column's scale) */
+const NIGHT_SMOKE_GLOW_UP_M = 0.9, NIGHT_SMOKE_GLOW_K = 3, NIGHT_SMOKE_GLOW_REACH_M = 2.8;
+/** (240) a burning tank wreck's pooled light at night (updateWreckLight): over its deck (m), its gain on the day's, its
+ *  reach (m; the day's 12) */
+const NIGHT_FIRE_LIGHT_UP_M = 1.2, NIGHT_FIRE_LIGHT_K = 1.8, NIGHT_FIRE_LIGHT_RANGE_M = 18;
 const SHELL_BURST_COLUMN_S = 14; // a shell hit's smoke-only column (the Studio's stand-in blast; no wreck burns)
 // r5 column-continuity rebuild: 0.05 (was 0.11) — the 9 Hz cadence of very
 // large puffs is what let the column macro-structure fall apart in motion
@@ -1347,11 +1364,25 @@ function* createFxSteps(
 
   /** (233) a gun's muzzle light by its bore and the ground under its muzzle: peak (x MUZZLE_LIGHT_PEAK) and reach (m) */
   const muzzlePulse = { peakK: 1, range: MUZZLE_LIGHT_RANGE };
-  function muzzleLightPulse(caliberMm: number, x: number, z: number): typeof muzzlePulse {
+  function muzzleLightPulse(caliberMm: number, x: number, y: number, z: number): typeof muzzlePulse {
     const bore = Number.isFinite(caliberMm) && caliberMm > 0 ? caliberMm / MUZZLE_LIGHT_REF_MM : 1;
     const surface = classifyTerrain(heightField, x, z);
     const groundK = surface === 'snow' ? MUZZLE_LIGHT_SNOW_K : surface === 'sand' ? MUZZLE_LIGHT_SAND_K : 1;
-    muzzlePulse.peakK = THREE.MathUtils.clamp(Math.pow(bore, MUZZLE_LIGHT_BORE_POW), 0.03, 1.4) * groundK;
+    let peakK = THREE.MathUtils.clamp(Math.pow(bore, MUZZLE_LIGHT_BORE_POW), 0.03, 1.4) * groundK;
+    // (240, the coordinator: a big gun's flash "pooling white on snow" at night) under the night's open camera (about two
+    // stops over the day's) the ground straight under the muzzle takes at most MUZZLE_NIGHT_GROUND_CAP x the night's key
+    // light (the moon), as the explosion light's pool is capped against the sun: a 125 mm round lights the snow round it
+    // for its instant, warm, without burning it to a white band; a small gun's kiss is under the cap and unchanged; by day
+    // (the dark level 0) nothing changes
+    const dark = tracers.darkLevel();
+    if (dark > 0) {
+      const ground = groundY(x, z);
+      const h = Number.isFinite(ground) ? Math.max(1, y - ground) : 1;
+      const rig = (engineCtx.scene?.userData as { lightRig?: { sunIntensity?: number } } | undefined)?.lightRig;
+      const cap = MUZZLE_NIGHT_GROUND_CAP * Math.max(0.3, rig?.sunIntensity ?? 4.5) * h * h / MUZZLE_LIGHT_PEAK;
+      peakK += (Math.min(peakK, cap) - peakK) * dark;
+    }
+    muzzlePulse.peakK = peakK;
     muzzlePulse.range = THREE.MathUtils.clamp(MUZZLE_LIGHT_RANGE * Math.sqrt(bore), 3, 14);
     return muzzlePulse;
   }
@@ -2712,7 +2743,11 @@ function* createFxSteps(
     col3(0xb0aca0, puff.col0); col3(0x7b7b73, puff.col1);
     puff.alpha = 0.3;
     particles.emit('smoke', puff);
-    flashLight(lightStates[0], pos, MUZZLE_LIGHT_PEAK * 0.3, -birthOffset);
+    // (240) the motor's flash lights its launcher by the rocket's calibre and the ground under it (muzzleLightPulse) at the
+    // 0.3 of a gun's peak it always took: one flat 138 cd for a 57 mm rocket and a 220 mm one alike before
+    const pulse = muzzleLightPulse(caliberMm, pos.x, pos.y, pos.z);
+    flashLight(lightStates[0], pos, MUZZLE_LIGHT_PEAK * 0.3 * pulse.peakK, -birthOffset, undefined, undefined, undefined,
+      pulse.range);
   }
 
   /**
@@ -3894,7 +3929,8 @@ function* createFxSteps(
       // (integration, 2026-10-09) media's shell burst (the Studio's stand-in blast on open ground) keeps its shorter,
       // smoke-only column on this tier too: no flame licks over bare ground and no smolder (shellBurstColumn.selftest)
       columns.push({ key: wreckOf ? `wreck:${wreckOf}` : null, wreckOf, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0,
-        ttl: shellBurst ? SHELL_BURST_COLUMN_S : SMOKE_COLUMN_S, scale: burn ? 1.45 : 1.3, flame: !shellBurst });
+        ttl: shellBurst ? SHELL_BURST_COLUMN_S : SMOKE_COLUMN_S, scale: burn ? 1.45 : 1.3, flame: !shellBurst,
+        deck: deckOf(visual) });
       capColumns();
       finalizeDestroyedVisual(visual, rack, birthOffset);
       return;
@@ -3960,9 +3996,16 @@ function* createFxSteps(
     // composed replays and warm-ups pass no id and keep the world-fixed column.
     // a shell burst leaves a shorter smoke-only column: no wreck burns there
     columns.push({ key: wreckOf ? `wreck:${wreckOf}` : null, wreckOf, pos: [pos.x, Math.max(pos.y, gy), pos.z], acc: 0,
-      ttl: shellBurst ? SHELL_BURST_COLUMN_S : SMOKE_COLUMN_S, scale: burn ? 1.45 : 1.3, flame: !shellBurst });
+      ttl: shellBurst ? SHELL_BURST_COLUMN_S : SMOKE_COLUMN_S, scale: burn ? 1.45 : 1.3, flame: !shellBurst,
+        deck: deckOf(visual) });
     capColumns();
     finalizeDestroyedVisual(visual, rack, birthOffset);
+  }
+
+  /** (240) a wreck's deck over its foot (m) from its hull's height, or undefined when the kill names no visual */
+  function deckOf(visual: FxVisual | null): number | undefined {
+    const h = visual?.dims?.heightM;
+    return typeof h === 'number' && h > 0 ? DECK_OF_HEIGHT * h : undefined;
   }
 
   /** Camera-distance size compensation so kills stay legible at 200-400 m. */
@@ -4146,24 +4189,16 @@ function* createFxSteps(
     else if (rng() < (0.70 + 0.30 * stage) * fk) {
       const licks = rng() < 0.35 ? 2 : 1;
       for (let li = 0; li < licks; li++) {
-        // (233) by day a tongue (emitColumnTongue); at night main's round lick
-        if (!nightFire()) { emitColumnTongue(col, fk, dk, birthOffset); continue; }
-        _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
-        _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
-        _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.2;
-        _puffO.vel[0] = (rng() - 0.5) * 0.6; _puffO.vel[1] = 1.0 + rng() * 0.9; _puffO.vel[2] = (rng() - 0.5) * 0.6;
-        _puffO.life = 0.30 + rng() * 0.28;
-        _puffO.size0 = (1.15 + rng() * 0.4) * col.scale * dk * (0.55 + 0.45 * fk);
-        _puffO.size1 = (0.75 + rng() * 0.3) * col.scale * dk * (0.55 + 0.45 * fk); // shrink as it dies
-        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
-        col3(0xffcf70, _puffO.col0); col3(0xff5a10, _puffO.col1);
-        _puffO.alpha = 0.95; _puffO.grav = 1.4; _puffO.birthOffset = birthOffset - rng() * 0.15;
-        particles.emit('fire', _puffO);
+        // (233) by day a tongue (emitColumnTongue); (240) at night a flame-cut tongue on the deck (emitNightTongue)
+        if (!nightFire()) emitColumnTongue(col, fk, dk, birthOffset);
+        else emitNightTongue(col, fk, dk, birthOffset);
       }
+      // (240) at night a third, smaller tongue as often as not: a night fire is many short licks, not one or two
+      if (nightFire() && rng() < 0.5) emitNightTongue(col, fk * 0.7, dk, birthOffset);
     }
   }
 
-  /** (233) a tank wreck's column keeps main's round licks at night (NIGHT_FIRE_DARK); by day its licks are tongues */
+  /** (233) by day a tank wreck's licks are tongues; (240) at night (NIGHT_FIRE_DARK) flame-cut tongues (emitNightTongue) */
   function nightFire(): boolean {
     return tracers.darkLevel() >= NIGHT_FIRE_DARK;
   }
@@ -4172,7 +4207,7 @@ function* createFxSteps(
    * By day, one flame lick on a burning tank wreck's deck as a tongue (233, the FX follow-up: "fire is round sprite
    * blobs"), in the one tongue card a burning car's flames use (emitCarFlames: a negative end size, the card's height over
    * its width in `rot`, its tip's sway in `rotVel`): spread over the deck, rising from it, as many and as big as its fire is
-   * alive (`fk`, flameOf). At night the column keeps main's round licks (the integrator's critic on the night tongues: "two
+   * alive (`fk`, flameOf). At night emitNightTongue's (the integrator's critic on these tongues at night: "two
    * pill-shaped sprite blobs").
    */
   function emitColumnTongue(col: SmokeColumn, fk: number, dk: number, birthOffset: number): void {
@@ -4190,6 +4225,33 @@ function* createFxSteps(
     _puffO.rotVel = 6 + rng() * 5;
     col3(0xffb35a, _puffO.col0); col3(0xee500e, _puffO.col1);
     _puffO.alpha = 0.8; _puffO.grav = 0.8; _puffO.birthOffset = birthOffset - rng() * 0.15;
+    particles.emit('fire', _puffO);
+  }
+
+  /**
+   * (240, the night fire's "two pill-shaped sprite blobs" and "flames read as blobs") at night a tank wreck's flame lick
+   * is a tongue cut to a flame's outline (a negative tip sway: particles.ts vFlame) rooted ON its deck (`deck`, the
+   * hull's height at the kill): main's round licks were born 1-1.5 m over the hull's foot, inside most hulls, and showed
+   * as a faint glow through the turret or a pale disc over it. Narrower and more of them than the day's tongues, and a
+   * thinner card, so their stack burns orange-yellow against the night sky instead of clipping to a white pill.
+   */
+  function emitNightTongue(col: SmokeColumn, fk: number, dk: number, birthOffset: number): void {
+    const deck = col.deck ?? NIGHT_TONGUE_DECK_M;
+    _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.5 * col.scale;
+    _puffO.pos[1] = col.pos[1] + deck * (0.84 + rng() * 0.18);
+    _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.5 * col.scale;
+    _puffO.vel[0] = COLUMN_WIND_X * 0.25 + (rng() - 0.5) * 0.3;
+    _puffO.vel[1] = 0.35 + rng() * 0.5;
+    _puffO.vel[2] = COLUMN_WIND_Z * 0.25 + (rng() - 0.5) * 0.3;
+    _puffO.life = 0.35 + rng() * 0.3;
+    const w = (0.42 + rng() * 0.3) * col.scale * dk * (0.55 + 0.45 * fk);
+    _puffO.size0 = w;
+    _puffO.size1 = -w * 0.7;
+    // its height over its width, and its tip's sway (negative: the flame's outline)
+    _puffO.rot = 1.9 + rng() * 0.9;
+    _puffO.rotVel = -(6 + rng() * 6);
+    col3(0xffb04a, _puffO.col0); col3(0xd8400a, _puffO.col1);
+    _puffO.alpha = 0.62; _puffO.grav = 0.6; _puffO.birthOffset = birthOffset - rng() * 0.15;
     particles.emit('fire', _puffO);
   }
 
@@ -4301,6 +4363,17 @@ function* createFxSteps(
   // (localLights.ts): the night pool's headlight spots, the muzzle flash, the explosion light (a burst's pulse, which the
   // volume media light themselves, or the latest wreck's fire) and the other burning wrecks' fires. By day the fires
   // and flashes light their smoke at a third (the sun outshines them); a headlight burns only at night.
+  /**
+   * (240, the night fire's smoke "over-lit far above the fire" and its base "not lit by its own flames") at night a burning
+   * tank wreck lights its smoke from its flames' tops (its deck + NIGHT_SMOKE_GLOW_UP_M), NIGHT_SMOKE_GLOW_K x as strongly
+   * over only NIGHT_SMOKE_GLOW_REACH_M x its scale: soot scatters a few per cent of what reaches it, so the old slot (1.2 m
+   * over the hull's foot, inside the hull, at the day's gain) left the base as black as the column's top. The smoke
+   * glows orange just over the flames and is the night's dark grey a few metres up.
+   */
+  function nightSmokeGlowAt(col: SmokeColumn, color: THREE.Color, gain: number): boolean {
+    return addLocalPoint(col.pos[0], col.pos[1] + (col.deck ?? NIGHT_TONGUE_DECK_M) + NIGHT_SMOKE_GLOW_UP_M, col.pos[2],
+      NIGHT_SMOKE_GLOW_REACH_M * col.scale, color, gain * NIGHT_SMOKE_GLOW_K);
+  }
   let nightPool: THREE.Object3D | null | undefined;
   let nightPoolLookedAt = -1e9;
   const _wreckFire = new THREE.Color(EXPLOSION_LIGHT_HEX);
@@ -4325,6 +4398,7 @@ function* createFxSteps(
       }
     }
     const nightK = 0.35 + 0.65 * tracers.darkLevel();
+    const nightFlames = tracers.darkLevel() >= NIGHT_FIRE_DARK;
     if (muzzleLight.intensity > 0) {
       const p = muzzleLight.position;
       addLocalPoint(p.x, p.y, p.z, muzzleLight.distance * 1.5, muzzleLight.color,
@@ -4340,6 +4414,9 @@ function* createFxSteps(
       if (pulse) {
         addLocalPoint(p.x, p.y, p.z, explosionLight.distance * 1.3, explosionLight.color,
           nightK * LOCAL_FLASH_GAIN * explosionLight.intensity / EXPLOSION_LIGHT_PEAK, true);
+      } else if (nightFlames && wreckLit && !wreckLit.car) {
+        // (240) at night from its flames' tops, over a short reach (nightSmokeGlowAt)
+        nightSmokeGlowAt(wreckLit, explosionLight.color, nightK * LOCAL_FIRE_GAIN * explosionLight.intensity / (12 * NIGHT_FIRE_LIGHT_K));
       } else {
         addLocalPoint(p.x, p.y - 2.2, p.z, LOCAL_FIRE_REACH_M * 1.3, explosionLight.color,
           nightK * LOCAL_FIRE_GAIN * explosionLight.intensity / 12);
@@ -4351,8 +4428,9 @@ function* createFxSteps(
       const col = columns[i], fk = flameOf(col);
       if (col === wreckLit || !(fk > 0)) continue;
       const flicker = 0.8 + 0.12 * Math.sin(now * 11.3 + i * 1.7) + 0.08 * Math.sin(now * 6.1 + i * 2.9);
-      if (!addLocalPoint(col.pos[0], col.pos[1] + 1.2, col.pos[2], LOCAL_FIRE_REACH_M * col.scale, _wreckFire,
-        LOCAL_FIRE_GAIN * nightK * flicker * col.scale * fk)) break;
+      const gain = LOCAL_FIRE_GAIN * nightK * flicker * col.scale * fk;
+      if (nightFlames && !col.car) { if (!nightSmokeGlowAt(col, _wreckFire, gain)) break; continue; }
+      if (!addLocalPoint(col.pos[0], col.pos[1] + 1.2, col.pos[2], LOCAL_FIRE_REACH_M * col.scale, _wreckFire, gain)) break;
     }
     endLocalLights();
   }
@@ -4386,14 +4464,20 @@ function* createFxSteps(
       // (wave 266: the wreck fire's light left a red patch on the ground and the hull's deck) a living flicker over the
       // wreck, set higher and softer: the flames on the deck carry the fire, the light only warms round them
       // (a car's fire is lower and lights the car and the ground round it: r1c, "the fire lights almost nothing at night")
-      explosionLight.position.set(col.pos[0], col.pos[1] + (col.car ? 2.2 : 3.4), col.pos[2]);
-      explosionLight.distance = 12;
+      // (240) at night a tank wreck's light hangs among its flames' tops (its deck + NIGHT_FIRE_LIGHT_UP_M), NIGHT_FIRE_LIGHT_K x
+      // as bright over NIGHT_FIRE_LIGHT_RANGE_M: its deck under the flames glows and the ground round it takes a warm,
+      // flickering pool to ~10 m (the night critic: a burning wreck that "lights almost nothing" round it)
+      const night = !col.car && nightFire();
+      explosionLight.position.set(col.pos[0], col.pos[1] + (col.car ? 2.2 : night
+        ? (col.deck ?? NIGHT_TONGUE_DECK_M) + NIGHT_FIRE_LIGHT_UP_M : 3.4), col.pos[2]);
+      explosionLight.distance = night ? NIGHT_FIRE_LIGHT_RANGE_M : 12;
       // (fx round 7c) a burst's pulse may have left its own hue on the pooled light: the wreck's fire is the kill orange
       explosionLight.color.setHex(EXPLOSION_LIGHT_HEX);
       const time = particles.getTime();
       explosionLight.intensity = (
         9.5 + 3.2 * Math.sin(time * 13.7) + 2.2 * Math.sin(time * 7.1 + 1.9)
-      ) * col.scale * (blast ? 0.45 : 1) * (col.car ? 0.45 + 1.15 * tracers.darkLevel() : 1) * flameOf(col);
+      ) * col.scale * (blast ? 0.45 : 1) * (col.car ? 0.45 + 1.15 * tracers.darkLevel() : night ? NIGHT_FIRE_LIGHT_K : 1)
+        * flameOf(col);
       return;
     }
     const pulseRange = explosionState.range ?? 13;
@@ -6124,7 +6208,14 @@ function* createFxSteps(
     // atmospherics lane: the smoke screen on the media layer (desktop tiers; null on the phone tier)
     blast,
     report: (id,p,caliber) => auxiliaryReport?.(id,p,caliber),
-    flash: (p,d,caliber) => { spawnMuzzleFlash(p,d,caliber,0); },
+    // (240) a roof gun's flash lights its mount as any gun of its bore does (muzzleLightPulse: a 12.7 mm round a ~30 cd
+    // kiss over 4 m of the turret roof; it lit nothing before), and never cuts short a bigger gun's pulse still burning
+    flash: (p,d,caliber) => {
+      const lightK = spawnMuzzleFlash(p,d,caliber,0);
+      const pulse = muzzleLightPulse(caliber, p.x, p.y, p.z);
+      const peak = MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale;
+      if (!(muzzleLight.intensity > peak)) flashLight(lightStates[0], p, peak, 0, undefined, undefined, undefined, pulse.range);
+    },
     smoke: (p,scale,density=1,life=2.4,wind=null) => {
       for(let i=0;i<3;i++){
         _puffO.pos[0]=p.x+(rng()-.5)*1.4*scale;_puffO.pos[1]=p.y+(i-1)*1.7*scale;_puffO.pos[2]=p.z+(rng()-.5)*1.4*scale;
@@ -6712,7 +6803,7 @@ function* createFxSteps(
       _sv.copy(pos).addScaledVector(dir, -0.15);
       _sv.y += 0.10;
       // (233) by the bore and the ground under the muzzle (muzzleLightPulse)
-      const pulse = muzzleLightPulse(caliberMm, _sv.x, _sv.z);
+      const pulse = muzzleLightPulse(caliberMm, _sv.x, _sv.y, _sv.z);
       flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale, 0,
         undefined, undefined, undefined, pulse.range);
     },
@@ -7569,10 +7660,10 @@ function* createFxSteps(
       // onto the mantlet/hull front, but the hottest lit metal is the muzzle.
       _sv.copy(muzzlePos).addScaledVector(dir, -0.18);
       _sv.y += 0.10;
-      // (233) a gun's by its bore and the ground under the muzzle (muzzleLightPulse); a rocket keeps its own pulse
-      const pulse = rocket ? null : muzzleLightPulse(caliberMm, _sv.x, _sv.z);
-      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * (pulse ? pulse.peakK : 0.3) * muzzleLightScale, ageS,
-        undefined, undefined, undefined, pulse?.range);
+      // (233) a gun's by its bore and the ground under the muzzle (muzzleLightPulse); (240) a rocket's too, at its motor's 0.3
+      const pulse = muzzleLightPulse(caliberMm, _sv.x, _sv.y, _sv.z);
+      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * (rocket ? 0.3 : 1) * pulse.peakK * muzzleLightScale, ageS,
+        undefined, undefined, undefined, pulse.range);
     },
 
     /**
