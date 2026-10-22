@@ -182,9 +182,12 @@ export default {
   // distance graded into a warm grey haze, the exposure a third of a stop down, the grade a touch warm and less saturated
   // (the haze 0.00085, not round 4's 0.00098: at that the panorama relight's sunset ranges stood at 0.66 of the sky
   // toward the sun, past the silhouette law's 0.65 (horizonPanoramaRelight.selftest); at 0.00085 they stand at 0.62-0.63)
-  sky: { ...frontier.sky, sunElevationDeg: 24, sunAzimuthDeg: 108, turbidity: 6.2, mieCoefficient: 0.0075, fogDensity: 0.00085, fogTintHex: 0xa1a89f, fogMix: 0.6,
+  // (233, the media lane's maps-227 review: "a grey-green haze veil desaturates the ground"): Verdant's air (0.00085 ->
+  // 0.00074), the fog tint's grey-green share down (fogMix 0.6 -> 0.5) and the grade's saturation most of the way back
+  // (0.9 -> 0.95): the distance keeps its warm haze, the near pinewoods and grass their colour
+  sky: { ...frontier.sky, sunElevationDeg: 24, sunAzimuthDeg: 108, turbidity: 6.2, mieCoefficient: 0.0075, fogDensity: 0.00074, fogTintHex: 0xa1a89f, fogMix: 0.5,
     cloudOpacity: 1.05, cloudOpacity2: 0.72, sunIntensity: 3.5,
-    lighting: { exposureEV: -0.3, groundAlbedoHex: 0x6c6a4e, warmth: 0.06, saturation: 0.9, contrast: 1.04 },
+    lighting: { exposureEV: -0.3, groundAlbedoHex: 0x6c6a4e, warmth: 0.06, saturation: 0.95, contrast: 1.04 },
     // 2026-10-14 (the SKY lane, SKY-02: a sky grade per place; atmosphere.ts sky grade, faded at a low sun and at night): a Southern pine country's humid haze
     atmosphere: { horizonTintHex: 0xdee0d4, horizonTintAmount: 0.4, horizonBandDeg: 10, zenithTintHex: 0x6a92c2, zenithTintAmount: 0.2 },
   },
