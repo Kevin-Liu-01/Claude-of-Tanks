@@ -936,14 +936,14 @@ export function* makeRegionalStone(kind: StoneSurfaceKind, tint: Tint, anisotrop
  * (2026-10-22, world-polish-240; the coordinator: Aegis Crossing's bridge "gets its own dressed-stone texture instead of a
  * shared one") the Puente Nuevo's own ashlar, apart from the village's dressed sandstone: the gorge's calcarenite in big
  * squared blocks — courses of 45-65 cm and blocks of 0.7-1.6 m at the bridge body's 0.24 repeats a metre, a few split —
- * under tight joints in the stone's own tone, some raked out; each block's tone a little further from its neighbours',
- * the calcarenite's bedding stronger across its face, the mason's tooling inside a wide margin, the arrises chipped, the
+ * under tight joints in the stone's own tone, some raked out; each block's tone close to its neighbours' (the gorge's one
+ * bed), the calcarenite's grain and faint bedding, the mason's tooling inside a wide margin, the arrises chipped, the
  * lime's orange-grey crust in patches and the rain's runs down the courses. Its own seed: no stone of it is the village's.
  */
 const BRIDGE_ASHLAR: Partial<MasonryRecipe> = Object.freeze({ courseMin: 55, courseMax: 80, blockMin: 86, blockMax: 197, mortar: 1.1,
-  mortarTint: [0.46, 0.42, 0.37] as Tint, mortarOfStone: 0.6, spread: 0.17, hue: 0.07, relief: 0.42, pillow: 0.1, faceRamp: 0.14,
-  speckle: 0.05, lichen: 0.2, lichenTint: [0.74, 0.6, 0.42] as Tint, grime: 0.24, rubble: 0.12, bedding: 0.07, mottle: 0.38,
-  streaks: 0.34, tooling: 0.42, margin: 10, chips: 0.2, raked: 0.2 });
+  mortarTint: [0.46, 0.42, 0.37] as Tint, mortarOfStone: 0.6, spread: 0.1, hue: 0.035, relief: 0.42, pillow: 0.1, faceRamp: 0.14,
+  speckle: 0.08, lichen: 0.2, lichenTint: [0.74, 0.6, 0.42] as Tint, grime: 0.22, rubble: 0.12, bedding: 0.04, mottle: 0.3,
+  streaks: 0.34, tooling: 0.36, margin: 10, chips: 0.2, raked: 0.2 });
 
 /** The gorge bridge's own stone (512 px): the sandstone's relief under BRIDGE_ASHLAR. */
 export function* makeBridgeAshlar(tint: Tint, anisotropy: number, seed = 0x7a1e):
