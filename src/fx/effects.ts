@@ -716,6 +716,14 @@ const MUZZLE_LIGHT_S = 0.14;   // lighting_post r6: composed frame catches 41% o
 // with quadratic decay, so the r5 "20 m road wash" cannot return.
 const MUZZLE_LIGHT_PEAK = 460;
 const MUZZLE_LIGHT_RANGE = 12;
+/** (233, the media lane's Q2: one 460 cd / 12 m muzzle light for every gun, so a rifle-calibre burst pooled the ground as
+ *  a 125 mm shot did, and the pool stood white on snow) the light follows the bore: the tuned peak and reach above are a
+ *  120-125 mm gun's, the peak scaling as the bore^1.2 (7.62 mm ~16 cd, 12.7 mm ~30, 30 mm ~85, 152 mm ~600) and the reach
+ *  as its square root (3 m for a rifle calibre, 5.9 m for 30 mm, 13.4 m for 152 mm); and it follows the ground under the
+ *  muzzle, as a burst's own pulse does (blastRecipes' albedoK): snow returns about four times turf's light, so a third
+ *  of the peak, sand two thirds. */
+const MUZZLE_LIGHT_REF_MM = 122.5, MUZZLE_LIGHT_BORE_POW = 1.2;
+const MUZZLE_LIGHT_SNOW_K = 0.33, MUZZLE_LIGHT_SAND_K = 0.66;
 /** (EF.10) the local lights' gains on the smoke and dust they reach (a radiance gain on the medium's own colour, at the
  *  light; falling off as (1 - d / range)^2): a headlight's beam, a flash at its peak, a wreck's fire at its mean */
 const LOCAL_HEADLIGHT_GAIN = 1.4, LOCAL_FLASH_GAIN = 2.4, LOCAL_FIRE_GAIN = 1.5;
@@ -796,6 +804,10 @@ function flameOf(col: SmokeColumn): number {
   return fade * fade * (3 - 2 * fade) * (0.35 + 0.65 * rise);
 }
 const SMOKE_SMOLDER_S = 35;    // post-column ember/wisp stage on the wreck
+/** (233, the integrator's confirmation critic: at night the tongues read as "two pill-shaped sprite blobs") a tank
+ *  wreck's licks are tongues by day only: from this dark level up (the tracers' light level, 0 day .. 1 night) its
+ *  column keeps main's round licks. A burning car's tongues (emitCarFlames) burn so at every hour. */
+const NIGHT_FIRE_DARK = 0.5;
 const SHELL_BURST_COLUMN_S = 14; // a shell hit's smoke-only column (the Studio's stand-in blast; no wreck burns)
 // r5 column-continuity rebuild: 0.05 (was 0.11) — the 9 Hz cadence of very
 // large puffs is what let the column macro-structure fall apart in motion
@@ -1331,6 +1343,17 @@ function* createFxSteps(
       basePow: 2.6 },
   ];
 
+  /** (233) a gun's muzzle light by its bore and the ground under its muzzle: peak (x MUZZLE_LIGHT_PEAK) and reach (m) */
+  const muzzlePulse = { peakK: 1, range: MUZZLE_LIGHT_RANGE };
+  function muzzleLightPulse(caliberMm: number, x: number, z: number): typeof muzzlePulse {
+    const bore = Number.isFinite(caliberMm) && caliberMm > 0 ? caliberMm / MUZZLE_LIGHT_REF_MM : 1;
+    const surface = classifyTerrain(heightField, x, z);
+    const groundK = surface === 'snow' ? MUZZLE_LIGHT_SNOW_K : surface === 'sand' ? MUZZLE_LIGHT_SAND_K : 1;
+    muzzlePulse.peakK = THREE.MathUtils.clamp(Math.pow(bore, MUZZLE_LIGHT_BORE_POW), 0.03, 1.4) * groundK;
+    muzzlePulse.range = THREE.MathUtils.clamp(MUZZLE_LIGHT_RANGE * Math.sqrt(bore), 3, 14);
+    return muzzlePulse;
+  }
+
   function lightAge(state: LightState): number {
     return particles.getTime() - state.bornAt;
   }
@@ -1378,6 +1401,8 @@ function* createFxSteps(
     // (black-screen-228 RC6) a pulse with a non-finite place never moves a light there
     if (!(Number.isFinite(pos.x) && Number.isFinite(pos.y) && Number.isFinite(pos.z))) return;
     state.light.position.copy(pos);
+    // (233) the muzzle light's reach: its gun's (muzzleLightPulse), the 12 m default for every other muzzle-light pulse
+    if (state.light === muzzleLight) state.light.distance = range && range > 0 ? range : MUZZLE_LIGHT_RANGE;
     // (fx 9: 8t) the pulse's own reach (the pooled explosion light: 13 m unless the pulse asks less)
     if (state.light === explosionLight) {
       state.range = range && range > 0 ? range : 13;
@@ -4008,7 +4033,9 @@ function* createFxSteps(
       // (233) its flames die down with its fire (flameOf); a car's are tongues along its cabin
       const fk = flameOf(col);
       if (col.car) emitCarFlames(col, fk, dk, birthOffset);
-      else if (rng() < (0.70 + 0.30 * stage) * fk) {
+      // (233) by day a tank wreck's lick is a tongue (emitColumnTongue); at night main's round lick
+      else if (rng() < (0.70 + 0.30 * stage) * fk && !nightFire()) emitColumnTongue(col, fk, dk, birthOffset);
+      else if (nightFire() && rng() < (0.70 + 0.30 * stage) * fk) {
         _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
         _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
         _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.2;
@@ -4117,6 +4144,8 @@ function* createFxSteps(
     else if (rng() < (0.70 + 0.30 * stage) * fk) {
       const licks = rng() < 0.35 ? 2 : 1;
       for (let li = 0; li < licks; li++) {
+        // (233) by day a tongue (emitColumnTongue); at night main's round lick
+        if (!nightFire()) { emitColumnTongue(col, fk, dk, birthOffset); continue; }
         _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
         _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
         _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.2;
@@ -4130,6 +4159,36 @@ function* createFxSteps(
         particles.emit('fire', _puffO);
       }
     }
+  }
+
+  /** (233) a tank wreck's column keeps main's round licks at night (NIGHT_FIRE_DARK); by day its licks are tongues */
+  function nightFire(): boolean {
+    return tracers.darkLevel() >= NIGHT_FIRE_DARK;
+  }
+
+  /**
+   * By day, one flame lick on a burning tank wreck's deck as a tongue (233, the FX follow-up: "fire is round sprite
+   * blobs"), in the one tongue card a burning car's flames use (emitCarFlames: a negative end size, the card's height over
+   * its width in `rot`, its tip's sway in `rotVel`): spread over the deck, rising from it, as many and as big as its fire is
+   * alive (`fk`, flameOf). At night the column keeps main's round licks (the integrator's critic on the night tongues: "two
+   * pill-shaped sprite blobs").
+   */
+  function emitColumnTongue(col: SmokeColumn, fk: number, dk: number, birthOffset: number): void {
+    _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.7 * col.scale;
+    _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.4;
+    _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.7 * col.scale;
+    _puffO.vel[0] = COLUMN_WIND_X * 0.2 + (rng() - 0.5) * 0.3;
+    _puffO.vel[1] = 0.4 + rng() * 0.6;
+    _puffO.vel[2] = COLUMN_WIND_Z * 0.2 + (rng() - 0.5) * 0.3;
+    _puffO.life = 0.4 + rng() * 0.3;
+    const w = (0.7 + rng() * 0.35) * col.scale * dk * (0.55 + 0.45 * fk);
+    _puffO.size0 = w;
+    _puffO.size1 = -w * 0.6;
+    _puffO.rot = 1.5 + rng() * 0.7;
+    _puffO.rotVel = 6 + rng() * 5;
+    col3(0xffb35a, _puffO.col0); col3(0xee500e, _puffO.col1);
+    _puffO.alpha = 0.8; _puffO.grav = 0.8; _puffO.birthOffset = birthOffset - rng() * 0.15;
+    particles.emit('fire', _puffO);
   }
 
   /**
@@ -4266,7 +4325,7 @@ function* createFxSteps(
     const nightK = 0.35 + 0.65 * tracers.darkLevel();
     if (muzzleLight.intensity > 0) {
       const p = muzzleLight.position;
-      addLocalPoint(p.x, p.y, p.z, MUZZLE_LIGHT_RANGE * 1.5, muzzleLight.color,
+      addLocalPoint(p.x, p.y, p.z, muzzleLight.distance * 1.5, muzzleLight.color,
         LOCAL_FLASH_GAIN * nightK * muzzleLight.intensity / MUZZLE_LIGHT_PEAK);
     }
     const blastState = lightStates[1];
@@ -6650,7 +6709,10 @@ function* createFxSteps(
       // the brightest lit surface is the muzzle itself.
       _sv.copy(pos).addScaledVector(dir, -0.15);
       _sv.y += 0.10;
-      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * lightK * muzzleLightScale, 0);
+      // (233) by the bore and the ground under the muzzle (muzzleLightPulse)
+      const pulse = muzzleLightPulse(caliberMm, _sv.x, _sv.z);
+      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale, 0,
+        undefined, undefined, undefined, pulse.range);
     },
 
     /** Tank-on-tank metal contact: lateral sparks, track debris and a low
@@ -7505,7 +7567,10 @@ function* createFxSteps(
       // onto the mantlet/hull front, but the hottest lit metal is the muzzle.
       _sv.copy(muzzlePos).addScaledVector(dir, -0.18);
       _sv.y += 0.10;
-      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * (rocket ? 0.3 : 1) * muzzleLightScale, ageS);
+      // (233) a gun's by its bore and the ground under the muzzle (muzzleLightPulse); a rocket keeps its own pulse
+      const pulse = rocket ? null : muzzleLightPulse(caliberMm, _sv.x, _sv.z);
+      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * (pulse ? pulse.peakK : 0.3) * muzzleLightScale, ageS,
+        undefined, undefined, undefined, pulse?.range);
     },
 
     /**

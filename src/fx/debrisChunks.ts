@@ -45,7 +45,7 @@ attribute vec4 aVL;   // vel.xyz, life
 attribute vec4 aAR;   // spin axis.xyz, spin rate
 attribute vec4 aSG;   // scale, groundY, drag, seed
 attribute vec4 aCH;   // albedo.rgb, heat
-attribute vec4 aLT;   // landing age (s; negative: rest at the spawn's ground, the legacy law), 0, 0, 0
+attribute vec4 aLT;   // landing age (s; negative: rest at the spawn's ground, the legacy law), rest height (x scale), 0, 0
 uniform float uTime;
 varying vec3 vNormalW;
 varying vec3 vAlbedo;
@@ -80,7 +80,9 @@ void main() {
   float ta = landing > 0.5 ? min( age, tLand ) : age;
   float s = ( 1.0 - exp( -k * ta ) ) / k;
   vec3 center = aPB.xyz + aVL.xyz * s + vec3( 0.0, -4.9 * ta * ta, 0.0 );
-  float rest = aSG.y + aSG.x * 0.32;
+  // (233) a thin piece (a sheet, a shard, a splinter) lies low on the ground: at a clod's 0.32 x its size it floated a
+  // hand's breadth over the grass, a dark plate pasted on the scene
+  float rest = aSG.y + aSG.x * aLT.y;
   float grounded = landing > 0.5 ? step( tLand, age ) : step( center.y, rest );
   center.y = landing > 0.5 ? ( grounded > 0.5 ? rest : center.y ) : max( center.y, rest );
   // (wave 276: pieces "lie on the grass at 3 s and then simply vanish") a piece that has landed lies where it fell for
@@ -94,6 +96,9 @@ void main() {
   float h1 = fract( aSG.w * 37.719 ), h2 = fract( aSG.w * 61.113 ), h3 = fract( aSG.w * 91.537 );
   vec3 lp = position * vec3( 0.8 + h1 * 0.4, 0.8 + h2 * 0.4, 0.8 + h3 * 0.4 );
   float fade = 1.0 - smoothstep( 0.95, 1.0, tl );
+  // (233, the FX follow-up: "pasted-on black debris chips") a piece a few metres from the lens shrinks away: a steel sheet
+  // off the player's own hull filled a tenth of the frame as one flat dark plate
+  fade *= smoothstep( 0.9, 3.5, distance( center, cameraPosition ) );
   vec3 p = rot * ( lp * aSG.x * fade );
   // the shutter's smear: in flight a piece draws drawn out along its velocity by a 1/45 s exposure, the way a camera
   // films thrown earth (wave 276: still clods read as "black squares"); a resting piece is its own shape
@@ -110,7 +115,7 @@ void main() {
   // the core and its glow stays near the fire, so far out against the sky it is a dark, smeared fragment, never a lit
   // card; a cold piece (a wall's bricks, a field's clods) keeps its own material's colour
   float dCore = length( center - aPB.xyz );
-  float sootK = smoothstep( 1.5, 7.0, dCore ) * clamp( aCH.w * 2.0, 0.0, 1.0 );
+  float sootK = smoothstep( 1.5, 7.0, dCore ) * clamp( aCH.w * 2.0, 0.0, 1.0 ) * 0.7;
   // (dcore 2026-10-11, waves 385/388a: "glowing orange-yellow dots" over a ruin for 8 s — unshadowed chips lit as if in
   // full sun inside the heap's shade) a negative heat is a dust coat: a landed piece darkens by that share
   float coat = max( -aCH.w, 0.0 );
@@ -154,6 +159,14 @@ void main() {
   float diff = ndl * 0.8 + 0.2 * ( nl * 0.5 + 0.5 );
   vec3 amb = mix( uGroundCol, uSkyCol, n.y * 0.5 + 0.5 ) * 1.4;
   vec3 col = vAlbedo * ( uSunCol * diff + amb );
+  // (233, the FX follow-up: "flat dark decals that read as stuck on") a near-black piece (charred steel, soot) is drawn
+  // by its edges and its sheen: its rims catch the sky at grazing angles and its faces a soft glint of the sun, so a
+  // bent sheet shows its folds and a chip its thickness instead of one flat dark cut-out
+  vec3 v = normalize( cameraPosition - vWorldPos );
+  float dark = 1.0 - smoothstep( 0.06, 0.2, dot( vAlbedo, vec3( 0.2126, 0.7152, 0.0722 ) ) );
+  float rim = pow( 1.0 - abs( dot( n, v ) ), 3.0 );
+  float glint = pow( max( dot( reflect( -uSunDir, n ), v ), 0.0 ), 18.0 );
+  col += dark * ( ( uSkyCol + 0.25 * uSunCol ) * rim * 0.35 + uSunCol * glint * 0.22 * step( 0.0, nl ) );
   // a hot piece glows in its crevices first, then cools to the material
   col += vec3( 1.4, 0.36, 0.06 ) * vHeat * ( 0.35 + 0.65 * ( 1.0 - ndl ) );
   #ifdef USE_FOG
@@ -245,6 +258,12 @@ function shapeGeometry(shape: ChunkShape, rand: () => number): THREE.BufferGeome
   }
 }
 
+/** (233) the height a landed piece's centre rests at over the ground, x its size: a lump's half-height, a thin piece's
+ *  far less (it lies on its face or stands in the ground on its edge) */
+const REST_K: Readonly<Record<ChunkShape, number>> = Object.freeze({
+  clod: 0.32, stone: 0.3, brick: 0.16, splinter: 0.06, shard: 0.04, sheet: 0.1,
+});
+
 const LAYOUT = { aPB: 4, aVL: 4, aAR: 4, aSG: 4, aCH: 4, aLT: 4 } as const;
 type AttrName = keyof typeof LAYOUT;
 const NAMES = Object.keys(LAYOUT) as AttrName[];
@@ -262,8 +281,11 @@ class ShapePool {
   private wrapEnd = -1;
   liveUntil = -Infinity;
 
+  private readonly restK: number;
+
   constructor(shape: ChunkShape, capacity: number, material: THREE.ShaderMaterial, rand: () => number) {
     this.capacity = capacity;
+    this.restK = REST_K[shape];
     const base = shapeGeometry(shape, rand);
     const geo = new THREE.InstancedBufferGeometry();
     geo.setAttribute('position', base.getAttribute('position'));
@@ -299,7 +321,7 @@ class ShapePool {
     A.aAR[j] = p.ax; A.aAR[j + 1] = p.ay; A.aAR[j + 2] = p.az; A.aAR[j + 3] = p.spin;
     A.aSG[j] = p.scale; A.aSG[j + 1] = p.groundY; A.aSG[j + 2] = p.drag; A.aSG[j + 3] = p.seed;
     A.aCH[j] = p.r; A.aCH[j + 1] = p.g; A.aCH[j + 2] = p.b; A.aCH[j + 3] = p.heat;
-    A.aLT[j] = landing; A.aLT[j + 1] = 0; A.aLT[j + 2] = 0; A.aLT[j + 3] = 0;
+    A.aLT[j] = landing; A.aLT[j + 1] = this.restK; A.aLT[j + 2] = 0; A.aLT[j + 3] = 0;
     if (birth + p.life > this.liveUntil) this.liveUntil = birth + p.life;
     if (this.dirtyStart < 0) { this.dirtyStart = i; this.dirtyEnd = i + 1; }
     else if (i === this.dirtyEnd) this.dirtyEnd = i + 1;
@@ -412,7 +434,7 @@ export function createDebrisChunks(o: { seed: number; now: () => number; scene?:
       let landing = -1;
       if (o.groundAt) {
         // where its flight meets the ground (the rest height then the ground there, not under its spawn)
-        const tl = ballisticLanding(p.x, p.y, p.z, p.vx, p.vy, p.vz, p.drag, p.scale * 0.32, o.groundAt, _land);
+        const tl = ballisticLanding(p.x, p.y, p.z, p.vx, p.vy, p.vz, p.drag, p.scale * REST_K[p.shape], o.groundAt, _land);
         if (Number.isFinite(tl)) { landing = tl; p.groundY = _land[1]; }
       }
       pools[p.shape].emit(p, o.now() + p.birthOffset, landing);
