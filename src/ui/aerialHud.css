@@ -369,4 +369,8 @@ html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-p
 body[data-scope-vision='left'] .cot-hud .cot-scope-vision{left:auto;right:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 180px))}
 @media(max-width:539px){body[data-scope-vision='left'] .cot-hud .cot-scope-vision{right:min(calc(50% + max(15vmin + 8px,80px)),calc(100% - 112px))}}
 body[data-scope-vision='none'] .cot-hud .cot-scope-vision{visibility:hidden}
+/* Folded (owner backlog 2026-10-21: the Daylight plate sat over the scope picture): a moment after the sight opens or the
+   view changes, the plate keeps only its glyph, on its seat's sight-side edge; hover and focus unfold it. */
+.cot-hud .cot-scope-vision[data-fold='1']:not(:hover,:focus-visible){width:auto;min-width:0;padding:6px 14px;gap:0}
+.cot-scope-vision[data-fold='1']:not(:hover,:focus-visible) :is(.scope-vision-copy,.flight-key,.scope-vision-cycle){display:none}
 @media(forced-colors:active){.cot-hud .cot-scope-vision{outline:1px solid ButtonText}.cot-scope-vision:focus-visible{outline:3px solid Highlight}.scope-vision-step.active{background:Highlight}}

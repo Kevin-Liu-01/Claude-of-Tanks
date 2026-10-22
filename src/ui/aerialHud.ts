@@ -29,6 +29,8 @@ type AerialGround=()=>{getHeightAt(x:number,z:number):number}|null;
 export function formatDroneAltitude(heightM:number):string{
   const h=Math.max(0,heightM);return h<9.95?`${h.toFixed(1)}m`:`${Math.round(h)}m`;
 }
+/** How long the scope's vision plate shows its name after the sight opens or the view changes, before folding. */
+const SCOPE_PLATE_UNFOLD_MS=2200;
 /** Mode-specific instruments keep the shared amber/slate HUD language and real controls. */
 export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGround=()=>null){
   const signal=node('div','cot-drone-signal-loss',parent);signal.hidden=true;
@@ -46,6 +48,9 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
   const scopeKey=node('kbd','flight-key',scopeView);scopeKey.setAttribute('aria-hidden','true');
   icon(scopeView,'undo','scope-vision-cycle');
   let priorScope:AerialVision|null=null,priorScopeKey='',priorScopeLocale='';
+  // The plate names the view while the sight opens or the view changes, then folds to its glyph so it never sits over
+  // the scope picture as a notice (owner backlog 2026-10-21); hover and focus unfold it (aerialHud.css).
+  let scopeShown=false,scopeFolded=false,scopeUnfoldUntil=0;
   // A sensor change the optics actually made (click or key) is announced once, for its sound.
   const switchScope=()=>{if(!scopeView.hidden){cycleScopeVision();bus.emit('ui:visionChanged',{});}};scopeView.addEventListener('click',switchScope);bus.on('ui:aerialVision',switchScope);
   const root=node('section' ,'cot-flight-hud',parent);root.hidden=true;
@@ -120,7 +125,11 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
   }
   function updateScopeControls(visible:boolean,active:boolean,scoped:boolean,viewKey:string):void {
     scopeView.hidden=!visible||active||!scoped;
-    const scope=getScopeVision(),scopeLocale=getLocale();
+    const scope=getScopeVision(),scopeLocale=getLocale(),now=performance.now();
+    if(!scopeView.hidden&&(!scopeShown||scope!==priorScope))scopeUnfoldUntil=now+SCOPE_PLATE_UNFOLD_MS;
+    scopeShown=!scopeView.hidden;
+    const fold=scopeShown&&now>=scopeUnfoldUntil;
+    if(fold!==scopeFolded){scopeFolded=fold;scopeView.dataset.fold=fold?'1':'';}
     if(scope!==priorScope||viewKey!==priorScopeKey||scopeLocale!==priorScopeLocale){
       const next=AERIAL_VIEWS[(AERIAL_VIEWS.indexOf(scope)+1)%AERIAL_VIEWS.length]!;
       scopeLabel.textContent=t('flight.view.'+scope);scopeKey.textContent=viewKey;
