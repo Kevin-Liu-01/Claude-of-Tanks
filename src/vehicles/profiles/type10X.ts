@@ -55,9 +55,7 @@ function hull(P:TankBuilderPort):void {
     tubSection(1.75,1.376,.432),tubSection(2.50,1.370,.440),
     // Actual source lower bow has two planes, not a straight floor-to-tip
     // diagonal. Upper roofs remain on the previous exact interpolation.
-    tubSection(2.8980457874,1.3389330117,.4439975738),
-    tubSection(3.3136651848,1.3064944246,.7213660983),
-    tubSection(3.32,1.306,.7303013235),tubSection(3.615,1.166,1.1463973487),
+    ...TYPE10_X_BOW_SECTIONS.map(([z,top,bottom])=>tubSection(z,top,bottom)),
   ]));
   for(const side of [-1,1]) {
     const rows=[[-3.615,1.515,1.50],[-1.96,1.532,1.512],[-1.47,1.463,1.443],
@@ -77,6 +75,13 @@ function hull(P:TankBuilderPort):void {
   P.add('hull',cylinder(1.31519,.041,64),-.00276,1.485,.20655);
   deckEquipment(P);frontEquipment(P);
 }
+
+// The tub's bow stations [z, roof, floor]: the floor rises over the lower bow's two planes to the nose and the roof
+// falls over the beak. The dozer kit seats on them (type10Dozer.ts).
+export const TYPE10_X_BOW_SECTIONS=Object.freeze([
+  [2.8980457874,1.3389330117,.4439975738],[3.3136651848,1.3064944246,.7213660983],
+  [3.32,1.306,.7303013235],[3.615,1.166,1.1463973487],
+] as const);
 
 function sideArmor(P:TankBuilderPort,side:number):void {
   addType10Skirts(P,side);

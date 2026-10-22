@@ -1,17 +1,19 @@
-// Type 10 (Dozer): the JGSDF ドーザ装置 (dozer kit) on the production Type 10 hull (buildType10DozerBase, modern3.ts).
+// Type 10 (Dozer): the JGSDF ドーザ装置 (dozer kit) on the modern Type 10 (type10X.ts; owner 2026-10-22).
 // First-party procedural geometry: Kevin B. Liu (NOTICE.md). No source model; the kit follows the JGSDF arrangement:
-// a full-width moldboard on two push arms pinned to clevises on the lower bow plate, raised and lowered by two
-// hydraulic rams that the crew works from inside (hoses run through the bow plate). It lifts and lowers only; it
-// cannot angle or tilt.
+// a full-width moldboard on two push arms pinned to clevises on the lower bow, raised and lowered by two hydraulic rams
+// that the crew works from inside (hoses run through the bow plate). It lifts and lowers only; it cannot angle or tilt.
 //
 // One rigid assembly (moldboard, back rails, brackets and push arms) turns about the hinge axis. The battle and Garage
-// build carries it STOWED: cutting edge 45 cm up, every vertex over the 0.374 m belly line (coordinator ruling
-// 2026-10-16, "nothing below the belly line"), the blade's top 1.24 m, 0.2 m under the 120 mm gun at its 10 degree
-// stop across the whole front arc. LOWERED (edge 4 cm off the ground) is a presentation pose only:
-// spec.visual.dozerBlade = 'lowered' before the build.
+// build carries it STOWED: tipped back 32 degrees, cutting edge 0.52 m up, every vertex over the hull's 0.393 m floor
+// (coordinator ruling 2026-10-16, "nothing below the belly line"), the blade's top under the 120 mm gun at its
+// 10 degree stop across the whole front arc. LOWERED (edge 4 cm off the ground, the blade near upright) is a
+// presentation pose only: spec.visual.dozerBlade = 'lowered' before the build.
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { KIT, orientedSlab } from './kit.ts';
+import { reserveDecorVolume } from './fieldChest.ts';
+import { TYPE10_X_BOW_SECTIONS } from './type10X.ts';
+import { TYPE10_X_BOW_LINK_W, TYPE10_X_BOW_LINK_XS } from './type10XBow.ts';
 
 export type Type10DozerPose = 'stowed' | 'lowered';
 
@@ -21,49 +23,56 @@ interface Type10DozerPort {
   add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
 }
 
-// ---- hull datums (buildType10Native2026, hull frame) -------------------------------------------------------------
-// Lower bow plate: (y 0.462, z 3.19) to (y 0.935, z 3.586) across |x| <= 0.946; outward normal forward and down.
-const LOWER_PLATE = { y0: 0.462, z0: 3.19, y1: 0.935, z1: 3.586 } as const;
-// Upper beak plate: (y 1.5015, z 3.168) to (y 1.0505, z 3.74) across |x| <= 0.946; outward normal up and forward.
-const BEAK_PLATE = { y0: 1.5015, z0: 3.168, y1: 1.0505, z1: 3.74 } as const;
+// ---- hull datums (type10X.ts, hull frame) ---------------------------------------------------------------------------
+// The lower bow is two planes, floor to floor between the tub's bow stations: plate A rises from the belly at
+// z 2.90 to the crease at y 0.72, plate B from the crease to the nose (y 1.146, z 3.615), across |x| <= 0.875. Both
+// face forward and down. Plate B carries the spare links (type10XBow.ts); the tow eyes stand off it between the pairs.
+// Over the nose the beak falls to the roof; the 120 mm gun at its 10 degree stop sweeps 0.15-0.25 m over it, so no ram
+// seat fits up there that the lowered rams would not drive through the nose. The arms pin on plate A and the rams seat
+// on plate B, between the link pairs, just under the nose.
+const [[zA0, , yA0], [zA1, , yA1], [zB0, , yB0], [zB1, , yB1]] = TYPE10_X_BOW_SECTIONS;
 
 interface PlateFrame {
-  /** Hull [y, z] of the plate surface at its own height y (lower plate) or station z (beak). */
-  at(t: number): [number, number];
-  /** Outward unit normal [ny, nz]. */
+  /** Hull [y, z] of the plate surface `s` metres up the plate from its foot. */
+  at(s: number): [number, number];
+  /** How far up the plate (metres from its foot) it reaches height y. */
+  sAt(y: number): number;
+  /** Outward unit normal [ny, nz]: forward and down. */
   readonly n: [number, number];
 }
 
-function lowerPlate(): PlateFrame {
-  const { y0, z0, y1, z1 } = LOWER_PLATE;
+function floorPlate(y0: number, z0: number, y1: number, z1: number): PlateFrame {
   const dy = y1 - y0, dz = z1 - z0, len = Math.hypot(dy, dz);
-  return { at: (y) => [y, z0 + (y - y0) * dz / dy], n: [-dz / len, dy / len] };
+  return { at: (s) => [y0 + s * dy / len, z0 + s * dz / len], sAt: (y) => (y - y0) * len / dy, n: [-dz / len, dy / len] };
 }
 
-function beakPlate(): PlateFrame {
-  const { y0, z0, y1, z1 } = BEAK_PLATE;
-  const dy = y1 - y0, dz = z1 - z0, len = Math.hypot(dy, dz);
-  return { at: (z) => [y0 + (z - z0) * dy / dz, z], n: [dz / len, -dy / len] };
-}
+const PLATE_A = floorPlate(yA0, zA0, yA1, zA1);
+const PLATE_B = floorPlate(yB0, zB0, yB1, zB1);
 
 // ---- the kit's own datums -----------------------------------------------------------------------------------------
-const ARM_X = 0.62;                 // push-arm centres, inside the 1.076 track bands and the 0.946 bow plate
-const RAM_X = 0.40;                 // ram centres, between the 0.242 prow and the 0.67 tow eyes
-const BLADE_HALF_W = 1.62;          // moldboard x +-1.62; end plates carry it to +-1.645 (track bands end 1.592)
+const ARM_X = 0.67;                 // push-arm centres, midway between the tow eyes (x 0.466) and the tub's flank (0.875)
+// ram centres, midway between the inner and outer spare-link pairs (0.351 | 0.573): over the tow eyes, under the nose
+const RAM_X = (TYPE10_X_BOW_LINK_XS[2] + TYPE10_X_BOW_LINK_XS[3]) / 2;
+const RAM_PAD_HALF_W = (TYPE10_X_BOW_LINK_XS[3] - TYPE10_X_BOW_LINK_XS[2] - TYPE10_X_BOW_LINK_W) / 2 - 0.026;
+const BLADE_HALF_W = 1.62;          // moldboard x +-1.62; end plates carry it to +-1.645 (track bands end 1.518)
 const BLADE_H = 0.84;               // moldboard height along its own face
 const PLATE_T = 0.032;              // moldboard plate
-const STOWED_LEAN = 16 * Math.PI / 180; // the raised blade tips back toward the bow
-const STOWED_EDGE: [number, number] = [0.45, 4.30];  // [y, z] of the cutting-edge datum, stowed
+const STOWED_LEAN = 32 * Math.PI / 180; // the raised blade tips back toward the bow; lowered it stands 10 degrees back
+const STOWED_EDGE: [number, number] = [0.52, 4.50];  // [y, z] of the cutting-edge datum, stowed
 const LOWERED_EDGE_Y = 0.04;        // the cutting edge just off the ground, lowered
-const HINGE_FACE_Y = 0.56;          // the arm clevis sits on the bow plate at this height (its pad clears the plate's foot)
+const HINGE_S = PLATE_A.sAt(0.62);  // the arm clevis on plate A, its pad clear of the plate's foot and of the crease
 const HINGE_OUT = 0.065;            // pin centre off the plate
-const RAM_FACE_Z = 3.40;            // the ram clevis sits on the beak plate at this station
-const RAM_OUT = 0.15;               // a raised clevis pedestal: the lowered rams pass 3 cm over the beak shoulders
+const HINGE_PAD = 0.22;             // clevis pad and cheeks along the plate
+const HINGE_CHEEK = 0.195;
+const RAM_S = PLATE_B.sAt(0.98);    // the ram clevis on plate B, its pad clear of the tow eyes below
+const RAM_OUT = 0.065;              // pin centre off the plate: the barrel eye clears it
+const RAM_PAD = 0.24;
+const RAM_CHEEK = 0.205;
 const ARM_PIN: [number, number] = [0.15, -0.285];   // [u, w] blade-local: the push-arm pin behind the lower rail
 const RAM_PIN: [number, number] = [0.70, -0.20];    // [u, w] blade-local: the ram eye behind the top rail
 const BARREL_START = 0.08;          // the barrel begins past the clevis cheeks (a 35 mm neck runs between them)
-const BARREL_LEN = 0.46;            // barrel end, from the base pin; stroke 0.34 m between the poses
-const ROD_LEN = 0.50;               // eye pin to piston: still 6 cm inside the barrel at full extension
+const ROD_SHOWS = 0.10;             // stowed, the barrel ends this far short of the eye pin (the rod and its eye show)
+const ROD_OVERLAP = 0.06;           // lowered, the rod's piston stays this far inside the barrel
 
 /** The moldboard's concave front face: w (forward) at height u up the blade. The lip curls forward at the top. */
 const face = (u: number): number => -0.10 * (1 - ((u - 0.40) / 0.42) ** 2);
@@ -129,9 +138,8 @@ export interface Type10DozerDatums {
 
 /** The blade-local -> hull matrix for a pose, with the hinge and the lift angle. */
 export function type10DozerFrame(pose: Type10DozerPose): Type10DozerDatums {
-  const lp = lowerPlate();
-  const [fy, fz] = lp.at(HINGE_FACE_Y);
-  const hinge = { y: fy + lp.n[0] * HINGE_OUT, z: fz + lp.n[1] * HINGE_OUT };
+  const [fy, fz] = PLATE_A.at(HINGE_S);
+  const hinge = { y: fy + PLATE_A.n[0] * HINGE_OUT, z: fz + PLATE_A.n[1] * HINGE_OUT };
   const stowed = new THREE.Matrix4().compose(new THREE.Vector3(0, STOWED_EDGE[0], STOWED_EDGE[1]),
     new THREE.Quaternion().setFromEuler(new THREE.Euler(-STOWED_LEAN, 0, 0)), new THREE.Vector3(1, 1, 1));
   // Lowering turns the rigid assembly forward-down about the hinge (+x rotation) until the edge datum reaches
@@ -147,6 +155,17 @@ export function type10DozerFrame(pose: Type10DozerPose): Type10DozerDatums {
 
 function local(matrix: THREE.Matrix4, x: number, u: number, w: number): THREE.Vector3 {
   return new THREE.Vector3(x, u, w).applyMatrix4(matrix);
+}
+
+/** The ram's base pin on plate B (hull frame, x = 0 plane). */
+function ramBase(): THREE.Vector3 {
+  const [y, z] = PLATE_B.at(RAM_S);
+  return new THREE.Vector3(0, y + PLATE_B.n[0] * RAM_OUT, z + PLATE_B.n[1] * RAM_OUT);
+}
+
+/** Pin-to-pin ram length in a pose. */
+function ramLength(pose: Type10DozerPose): number {
+  return ramBase().distanceTo(local(type10DozerFrame(pose).matrix, 0, RAM_PIN[0], RAM_PIN[1]));
 }
 
 /** A cylinder along the hull-frame segment a -> b (both in the x = const plane). */
@@ -185,8 +204,12 @@ export function addType10DozerKit(P: Type10DozerPort, pose: Type10DozerPose = 's
   const q = P.q !== false;
   const frame = type10DozerFrame(pose);
   const M = frame.matrix;
-  const lp = lowerPlate(), bp = beakPlate();
+  const lp = PLATE_A, bp = PLATE_B;
   const hinge = new THREE.Vector3(0, frame.hinge.y, frame.hinge.z);
+  // the rams' barrel and rod follow the seats: the barrel ends ROD_SHOWS short of the eye stowed, and the rod keeps
+  // ROD_OVERLAP inside the barrel lowered
+  const barrelLen = ramLength('stowed') - ROD_SHOWS;
+  const rodLen = ramLength('lowered') - barrelLen + ROD_OVERLAP;
   const posed = (g: THREE.BufferGeometry): THREE.BufferGeometry => g.applyMatrix4(M);
 
   // ---- moldboard, cutting edge, end plates ------------------------------------------------------------------------
@@ -243,28 +266,27 @@ export function addType10DozerKit(P: Type10DozerPort, pose: Type10DozerPose = 's
       P.add('hullDark', cylX(0.026, 0.19, 10), x, at.y, at.z);                    // pins through both cheeks
       for (const o of [-1, 1]) P.add('hullDark', cylX(0.044, 0.012, 12), x + o * 0.086, at.y, at.z); // retaining bosses
     }
-    // hull clevis: a pad welded to the bow plate and two cheeks carrying the pin
-    P.add('hullEquipment', pad(lp, HINGE_FACE_Y, 0.17, x - 0.14, x + 0.14, 0.022));
-    for (const o of [-1, 1]) P.add('hullEquipment', cheek(lp, HINGE_FACE_Y, 0.15, HINGE_OUT + 0.05, x + o * 0.0675, 0.025));
+    // hull clevis: a pad welded to plate A and two cheeks carrying the pin
+    P.add('hullEquipment', pad(lp, HINGE_S, HINGE_PAD, x - 0.14, x + 0.14, 0.022));
+    for (const o of [-1, 1]) P.add('hullEquipment', cheek(lp, HINGE_S, HINGE_CHEEK, HINGE_OUT + 0.05, x + o * 0.0675, 0.025));
   }
 
-  // ---- hydraulic rams: clevis on the beak plate -> eye behind the blade's top rail ------------------------------------
-  const [rfy, rfz] = bp.at(RAM_FACE_Z);
+  // ---- hydraulic rams: clevis on plate B, between the link pairs -> eye behind the blade's top rail -------------------
   for (const s of [-1, 1]) {
     const x = s * RAM_X;
-    const base = new THREE.Vector3(x, rfy + bp.n[0] * RAM_OUT, rfz + bp.n[1] * RAM_OUT);
+    const base = ramBase().setX(x);
     const eye = local(M, x, RAM_PIN[0], RAM_PIN[1]);
     const dir = new THREE.Vector3().subVectors(eye, base).normalize();
     const along = (t: number): THREE.Vector3 => base.clone().addScaledVector(dir, t);
-    P.add('hullEquipment', pad(bp, RAM_FACE_Z, 0.19, x - 0.10, x + 0.10, 0.020));
-    for (const o of [-1, 1]) P.add('hullEquipment', cheek(bp, RAM_FACE_Z, 0.16, RAM_OUT + 0.045, x + o * 0.0525, 0.025));
+    P.add('hullEquipment', pad(bp, RAM_S, RAM_PAD, x - RAM_PAD_HALF_W, x + RAM_PAD_HALF_W, 0.020));
+    for (const o of [-1, 1]) P.add('hullEquipment', cheek(bp, RAM_S, RAM_CHEEK, RAM_OUT + 0.045, x + o * 0.0525, 0.025));
     const length = base.distanceTo(eye);
     P.add('hullEquipment', cylX(0.050, 0.075, 16), x, base.y, base.z);             // barrel trunnion eye
     P.add('hullEquipment', strut(0.035, along(0.03), along(BARREL_START + 0.02), 12)); // neck between the cheeks
-    P.add('hullEquipment', strut(0.056, along(BARREL_START), along(BARREL_LEN), q ? 18 : 12)); // barrel
+    P.add('hullEquipment', strut(0.056, along(BARREL_START), along(barrelLen), q ? 18 : 12)); // barrel
     P.add('hullDark', strut(0.060, along(BARREL_START), along(BARREL_START + 0.025), q ? 18 : 12)); // end cap
-    P.add('hullDark', strut(0.062, along(BARREL_LEN - 0.035), along(BARREL_LEN), q ? 18 : 12)); // gland nut
-    P.add('hullDark', strut(0.030, along(Math.max(length - ROD_LEN, BARREL_START + 0.03)),
+    P.add('hullDark', strut(0.062, along(barrelLen - 0.035), along(barrelLen), q ? 18 : 12)); // gland nut
+    P.add('hullDark', strut(0.030, along(Math.max(length - rodLen, BARREL_START + 0.03)),
       eye.clone().addScaledVector(dir, -0.03), 12));                                // rod
     P.add('hullDark', cylX(0.042, 0.075, 14), x, eye.y, eye.z);                    // rod eye
     for (const at of [base, eye]) {
@@ -272,13 +294,14 @@ export function addType10DozerKit(P: Type10DozerPort, pose: Type10DozerPose = 's
       for (const o of [-1, 1]) P.add('hullDark', cylX(0.036, 0.010, 12), x + o * 0.068, at.y, at.z);
     }
     if (q) {
-      // two hoses from bulkhead fittings in the beak plate (outboard of the clevis) to elbow ports on the barrel: each
-      // leaves its fitting square to the plate and enters its port square to the barrel (one smooth S, no free end)
-      const side = new THREE.Vector3(s, 0, 0);
+      // two hoses from bulkhead fittings in plate B (over the clevis pad, inboard and outboard) to elbow ports on the
+      // barrel's two sides: each leaves its fitting square to the plate and enters its port square to the barrel (one
+      // smooth S, no free end)
       const n = new THREE.Vector3(0, bp.n[0], bp.n[1]);
-      for (const [fz, portT] of [[RAM_FACE_Z - 0.05, BARREL_START + 0.05], [RAM_FACE_Z + 0.07, BARREL_LEN - 0.08]] as const) {
-        const [fy, fzz] = bp.at(fz);
-        const fit = new THREE.Vector3(x + s * 0.16, fy, fzz);
+      for (const [o, portT] of [[-1, BARREL_START + 0.05], [1, barrelLen - 0.08]] as const) {
+        const side = new THREE.Vector3(s * o, 0, 0);
+        const [fy, fzz] = bp.at(RAM_S + RAM_PAD / 2 + 0.04);
+        const fit = new THREE.Vector3(x + s * o * 0.04, fy, fzz);
         P.add('hullDark', strut(0.028, fit.clone().addScaledVector(n, -0.004), fit.clone().addScaledVector(n, 0.022), 6)); // bulkhead nut
         P.add('hullDark', strut(0.016, fit.clone().addScaledVector(n, 0.02), fit.clone().addScaledVector(n, 0.065), 10)); // nipple
         const axis = along(portT);
@@ -293,7 +316,23 @@ export function addType10DozerKit(P: Type10DozerPort, pose: Type10DozerPose = 's
   }
 
   // No plate on the blade: marking seats are armour-only (vehicleMarkingSeating.ts markingArmorMeshes) and the kit is
-  // equipment, so the hull number stays on the stern plate and the turret carries the tactical number.
+  // equipment, so the turret carries the tactical number.
+
+  // The bow is the kit's: the decor keeps its shackles and chain off the blade and the clevises (fieldChest.ts). One
+  // volume for the blade assembly, one for the clevises and rams on the lower bow, in this pose.
+  const blade = new THREE.Box3();
+  for (const x of [-BLADE_HALF_W - 0.04, BLADE_HALF_W + 0.04]) {
+    for (const u of [-0.02, BLADE_H + 0.04]) for (const w of [-0.36, 0.03]) blade.expandByPoint(local(M, x, u, w));
+  }
+  const mounts = new THREE.Box3();
+  for (const [plate, s0, s1, out, half] of [[lp, HINGE_S - HINGE_PAD / 2, HINGE_S + HINGE_PAD / 2, HINGE_OUT + 0.07, ARM_X + 0.15],
+    [bp, RAM_S - RAM_PAD / 2, RAM_S + RAM_PAD / 2 + 0.07, RAM_OUT + 0.07, RAM_X + 0.10]] as const) {
+    for (const t of [s0, s1]) for (const o of [0, out]) {
+      const [y, z] = plate.at(t);
+      for (const x of [-half, half]) mounts.expandByPoint(new THREE.Vector3(x, y + plate.n[0] * o, z + plate.n[1] * o));
+    }
+  }
+  for (const v of [blade, mounts]) reserveDecorVolume(P.hullG, v.min.toArray(), v.max.toArray());
 
   P.hullG.userData.type10DozerReceipt = {
     pose,
@@ -301,5 +340,6 @@ export function addType10DozerKit(P: Type10DozerPort, pose: Type10DozerPose = 's
     liftDeg: frame.liftDeg,
     edge: local(M, 0, 0, 0).toArray(),
     top: local(M, 0, BLADE_H, face(BLADE_H)).toArray(),
+    ram: [ramLength('stowed'), ramLength('lowered')],
   };
 }

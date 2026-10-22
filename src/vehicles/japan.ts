@@ -19,7 +19,7 @@ import {
 } from './fleetSpecRegistry.ts';
 
 const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
-const JAPAN_IDS = Object.freeze(['stb1', 'type90a', 'type10b', 'type10_dozer'] as const);
+const JAPAN_IDS = Object.freeze(['stb1', 'type90a', 'type10b'] as const);
 
 interface AutoloaderSpec {
   magazineSize: number;
@@ -179,16 +179,6 @@ const JAPAN_SPECS = {
     },
     armorFactor: 1.08,
   }),
-  // Owner order 2026-10-21: the production Type 10 fitted with the JGSDF dozer kit (ドーザ装置付き). Same gun, fire
-  // control and armour as the Type 10; the 2 t blade and its rams cost a little speed and pivot, and the bow blade makes
-  // it the family's breaching tank. Paint: the green digital of the owner's reference render (plate 99-0239).
-  type10_dozer: variant('type10_dozer', 'type10_tk_x', {
-    name: 'Type 10 (Dozer)', number: '24', scheme: 'digital',
-    base: '#3e4b33', weather: '#545e43', patches: ['#1f271b', '#5e7040', '#735a3c'],
-    camoScale: 0.40,
-    stats: { hp: 2650, enginePowerHp: 1200, weightTons: 50.0, topSpeedKmh: 66,
-      reverseSpeedKmh: 30, hullTraverseDegS: 44, turretTraverseDegS: 46, gunPitchDegS: 36 },
-  }),
 } satisfies Record<string, FleetTankSpec>;
 
 // Type 10B's layered side/turret modules are active reactive armor. The
@@ -215,7 +205,7 @@ const TYPE10_PAIR_RIG: Readonly<{
   gunPivot: TYPE10_GUN_SEAT.turretLocalPivot,
 });
 
-for (const id of ['type10_tk_x', 'type10b', 'type10_dozer'] as const) {
+for (const id of ['type10_tk_x', 'type10b'] as const) {
   const armor = registries.tankSpecs[id]?.armor;
   if (!armor) throw new Error(`type10_tk_x pair rig re-auth: ${id} spec missing`);
   armor.turretPivot = [...TYPE10_PAIR_RIG.turretPivot];

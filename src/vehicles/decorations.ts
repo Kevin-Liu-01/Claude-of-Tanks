@@ -472,10 +472,17 @@ function fnv1a(str: string): number {
   return h >>> 0;
 }
 
+/**
+ * Vehicles that dress exactly as another: the Type 10 (Dozer) is the modern Type 10 with a bow kit (owner 2026-10-22),
+ * so it takes the Type 10's manifest and seed; its kit reserves the bow (profiles/type10Dozer.ts), which keeps the bow
+ * shackles and chain off the blade.
+ */
+const DECOR_TWIN: ReadonlyMap<string, string> = new Map([['type10_dozer', 'type10']]);
+
 function decorIdentityFor(specId: string): string {
   // The kit is seeded from the id's schema-1 spelling, so an id rename never
   // moves a load (SSOT 2.19, tankIdAliases.ts).
-  const seedId = tankSeedId(specId);
+  const seedId = tankSeedId(DECOR_TWIN.get(specId) ?? specId);
   // Keep the prototype hull-kit seed stable across its turret redesign.
   // Both Revolution variants choose their explicit manifests below.
   return seedId === 'leo2_revolution_proto' ? 'leo2_revolution' : seedId;
@@ -2903,17 +2910,6 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
     { kit: 'tracks', p: 1, v: { n: 3, linkW: 0.42 }, slot: ['turretSidePlate', { side: -1 }] },
   ],
-  // the production kit; the dozer blade covers the bow, so no bow shackles
-  type10_dozer: () => [
-    { kit: 'basket', p: 1, v: { w: 1.3, d: 0.36, h: 0.28 }, slot: ['turretRearFrame', {}] },
-    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', { onBasket: true }] },
-    { kit: 'camonet', p: 1, v: { v: 'drape', len: 0.9, w: 0.8 }, slot: ['rearDeck', { center: true }] },
-    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.5, h: 0.28, d: 0.36 }, slot: ['rearDeck', { corner: -1 }] },
-    { kit: 'cable', p: 1, v: { len: 2.0 }, slot: ['hullSideTop', { side: 1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
-    { kit: 'tracks', p: 1, v: { n: 3, linkW: 0.42 }, slot: ['turretSidePlate', { side: -1 }] },
-  ],
   t90am: () => [
     { kit: 'log', p: 1, v: { len: 2.6 }, slot: ['hullRearLow', {}] },
     { kit: 'drums', p: 1, v: { v: 'twin' }, slot: ['hullRear', {}] },
@@ -2927,6 +2923,8 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
 
 /** Resolve the manifest rows for one spec (curated table or era default). */
 export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
+  const twin = DECOR_TWIN.get(spec.id);
+  if (twin) return decorManifestFor({ ...spec, id: twin }, rng);
   // These concepts own their complete stowage and mounts. Generic aft cargo
   // falls behind the native fuel drums, outside any physical support.
   if (NATIONAL_MODERNIZATION_IDS.some(id=>id===spec.id)||NATIONAL_LEGACY_IDS.some(id=>id===spec.id)) return [];

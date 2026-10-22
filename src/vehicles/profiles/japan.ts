@@ -6,10 +6,11 @@
 import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, convexSlab } from './kit.ts';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { buildType10BBase, buildType10DozerBase } from '../modern3.ts';
+import { buildType10BBase } from '../modern3.ts';
 import { buildType90 } from './misc.ts';
 import { TYPE10_MANTLET_FIT } from './type10GunSeat.ts';
 import { addType10DozerKit } from './type10Dozer.ts';
+import { buildType10X } from './type10X.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mount as mountFitting } from './fittingMount.ts';
@@ -62,7 +63,7 @@ interface JapaneseBuilderPort {
       readonly gunPivot: readonly [number, number, number];
       readonly turretPivot: readonly [number, number, number];
     };
-    readonly visual: { readonly number?: string; readonly dozerBlade?: string };
+    readonly visual: { readonly number?: string };
   };
   readonly geometryReceipt?: boolean;
   topY: number;
@@ -934,10 +935,10 @@ function buildType10B(P: JapaneseBuilderPort): void {
   addType10BPackage(P);
 }
 
-function buildType10Dozer(P: JapaneseBuilderPort): void {
-  // Owner order 2026-10-21: the production Type 10 with the JGSDF dozer kit. The blade rides stowed in battle and the
-  // Garage; spec.visual.dozerBlade = 'lowered' builds the presentation pose (profiles/type10Dozer.ts).
-  buildType10DozerBase(P);
+function buildType10Dozer(P: TankBuilderPort): void {
+  // The modern Type 10 (profiles/type10X.ts, owner 2026-10-22) with the JGSDF dozer kit. The blade rides stowed in battle
+  // and the Garage; spec.visual.dozerBlade = 'lowered' builds the presentation pose (profiles/type10Dozer.ts).
+  buildType10X(P);
   addType10DozerKit(P, P.spec.visual.dozerBlade === 'lowered' ? 'lowered' : 'stowed');
 }
 

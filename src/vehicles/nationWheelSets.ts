@@ -85,7 +85,7 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
     note: 'Fleet plain twelve-fastener dish at the PL-01 dish 0.60 r (poland.ts).' }),
   bwp1: Object.freeze({ donor: 'bwp1', self: ['bwp1'], pattern: 'armored-hub-six', construction: 'bwp1-armoured-hub',
     note: 'Fleet armoured-hub six-fastener disc (afvFamily.ts draws the generic stock).' }),
-  type10_tk_x: Object.freeze({ donor: 'type10_tk_x', self: ['type10'], pattern: 'flanged-twelve', construction: 'type10-paired',
+  type10_tk_x: Object.freeze({ donor: 'type10_tk_x', self: ['type10', 'type10_dozer'], pattern: 'flanged-twelve', construction: 'type10-paired',
     note: 'Paired turned halves with a recessed hub and a real guide channel (pairedRunningGearStock.ts, the Type 10 X fitted course).' }),
   type90_kyumaru: Object.freeze({ donor: 'type90_kyumaru', self: ['type90'], pattern: 'flanged-twelve', construction: 'type90-recessed-forging',
     note: 'Lathed forging with the dish 120 mm behind the rubber face and a clipped hub over an open tire annulus (type90X.ts).' }),
