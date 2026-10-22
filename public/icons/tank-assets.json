@@ -716855,24 +716855,24 @@
               {
                 "min": [
                   -0.9486,
-                  0.5024,
+                  0.6541,
                   0.8969
                 ],
                 "max": [
                   -0.8038,
-                  0.6464,
+                  0.7981,
                   0.9328
                 ]
               },
               {
                 "min": [
                   0.8038,
-                  0.5024,
+                  0.6541,
                   0.8969
                 ],
                 "max": [
                   0.9486,
-                  0.6464,
+                  0.7981,
                   0.9328
                 ]
               },
@@ -716915,24 +716915,24 @@
               {
                 "min": [
                   -0.7286,
-                  0.5026,
+                  0.6541,
                   1.2669
                 ],
                 "max": [
                   -0.5838,
-                  0.6466,
+                  0.7981,
                   1.3028
                 ]
               },
               {
                 "min": [
                   0.5838,
-                  0.5026,
+                  0.6541,
                   1.2669
                 ],
                 "max": [
                   0.7286,
-                  0.6466,
+                  0.7981,
                   1.3028
                 ]
               }
@@ -717083,8 +717083,8 @@
           }
         ]
       },
-      "geometryHash": "3f0ccfac",
-      "metadataHash": "4da5855f",
+      "geometryHash": "b1e0307e",
+      "metadataHash": "00ce02ef",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.0514
@@ -717147,15 +717147,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31724,
-          "sha256": "83797e7b3eba86b1ccac4875e3d0c9ea4c52eb694a77f105178c472cff484bef",
+          "bytes": 31800,
+          "sha256": "2001964ee0fc98057a44ce26156cfdceb1b36962b33f4e317439b0ed110f12c4",
           "thumbnail": {
             "file": "thumbs/pl01_105_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11694,
-            "sha256": "464281c9fb71ca186e1f8ec5e43254c5d9ecb3b156ef16ebe667aae8d0e1c918"
+            "bytes": 11684,
+            "sha256": "f106765ca54bb74c80617cbfeb682ac238dafbf69edcdf7266d9e7a0c8e23855"
           }
         },
         "top": {
@@ -717163,16 +717163,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16780,
-          "sha256": "7f94f59bbf048f7aee878fecd278d23747fda53a29247b01e6f30fc2d1f36624"
+          "bytes": 17262,
+          "sha256": "28f976f60c37c5f5afc4223acff0925c22fa66ee47d79fec0cc7b6866032d650"
         },
         "side": {
           "file": "pl01_105_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 11932,
-          "sha256": "16e0eae8a183c5610cd4f89945bb66a6a8f342d8b598c5bf6f1036676e1091e7"
+          "bytes": 12100,
+          "sha256": "6c2a1373d64649b89b5e6479ff2efc7a231cdeedab1cc8031ac7725cf6d3ff0d"
         },
         "topSilhouette": {
           "file": "pl01_105_top_silhouette.png",
@@ -717187,32 +717187,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4868,
-          "sha256": "398460126483b2057a6153a838c498c55e374b5f7aba4a96be23b178e00b3591"
+          "bytes": 4897,
+          "sha256": "0f5d321b1fe8633cdefa429e7d3d199f9241e5848b2f6592c69171351d3beded"
         },
         "armorSide": {
           "file": "pl01_105_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 117745,
-          "sha256": "144950aac7a2d03e21c9c1ff25b0cd3a138d8f3fa9658f991894d509a70cc3c8"
+          "bytes": 117963,
+          "sha256": "d86934b4e158b64feae269ed7d21f0dd02c754d0877f9f0a1f4e317eab5448c9"
         },
         "modulesSide": {
           "file": "pl01_105_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 116844,
-          "sha256": "c2508840577489f69e588f42dcf1fa5d27aeab9a987985e3a10257fffef50a97"
+          "bytes": 116791,
+          "sha256": "58b6a5dea80c00e369f8dd8e5b924c8f5b2d708631bed79511060506817ff550"
         },
         "crewSide": {
           "file": "pl01_105_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 100452,
-          "sha256": "c32d1b3b79a4c06c6d73a0246b397b97eee43b1c9300f0c172b70b0b969e520c"
+          "bytes": 100691,
+          "sha256": "6648fd9e2275f42828aab19a630a750d0c1c22d064453ff4b159edb84066a736"
         },
         "markings": {
           "file": "pl01_105_markings.png",
