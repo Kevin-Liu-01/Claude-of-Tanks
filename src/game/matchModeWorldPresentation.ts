@@ -30,6 +30,10 @@ const ICON_NEAR_M = 16;
 const ICON_FAR_M = 42;
 const ICON_HOLD_M = 120;
 const ICON_MAX_GROWTH = 3.5;
+/** The proving ground's lane boards keep growing to the far lane (owner backlog 2026-10-21: legible from the firing line),
+ *  their foot held at the tether's top so a grown board never covers its hull. */
+const LANE_MAX_GROWTH = 7;
+const LANE_BOARD_FOOT_M = 11 - 2.3;
 
 interface MarkerGroup extends THREE.Group {
   userData: {
@@ -336,7 +340,7 @@ export function createMatchModeWorldPresentation(
     return sprite;
   };
   // distance treatment for a marker's icon and light column
-  const fadeByViewer = (marker: MarkerGroup): void => {
+  const fadeByViewer = (marker: MarkerGroup, maxGrowth = ICON_MAX_GROWTH): void => {
     const viewer = options.viewerPosition?.();
     if (!viewer) return;
     const distance = Math.hypot(marker.position.x - viewer.x, marker.position.z - viewer.z);
@@ -344,7 +348,7 @@ export function createMatchModeWorldPresentation(
     const icon = marker.userData.icon;
     if (icon) {
       const base = Number(icon.userData.baseScale) || icon.scale.x;
-      const growth = Math.max(1, Math.min(ICON_MAX_GROWTH, distance / ICON_HOLD_M));
+      const growth = Math.max(1, Math.min(maxGrowth, distance / ICON_HOLD_M));
       icon.scale.set(base * growth, base * growth, 1);
       (icon.material as THREE.SpriteMaterial).opacity = visibility;
       icon.visible = visibility > 0.02;
@@ -961,13 +965,13 @@ export function createMatchModeWorldPresentation(
       ring.rotation.x = -Math.PI / 2;
       ring.position.y = 0.1;
       // high over the hull: the laid hull's target plate sits just above it, the board well clear of the plate
-      const icon = iconSprite(`range-lane-${laneMarkers.length + 1}-icon`, 4.6, 11);
+      const icon = iconSprite(`range-lane-${laneMarkers.length + 1}-icon`, 4.6, LANE_BOARD_FOOT_M + 2.3);
       marker.userData.icon = icon;
       // a thin tether from the ring up to the board: the board is the lane's marker, anchored to its mark
       laneTether ??= new THREE.CylinderGeometry(0.05, 0.05, 1, 6, 1, true);
       const tether = new THREE.Mesh(laneTether, basic(AMBER, 0.55));
-      tether.scale.y = 11 - 2.3;
-      tether.position.y = (11 - 2.3) / 2;
+      tether.scale.y = LANE_BOARD_FOOT_M;
+      tether.position.y = LANE_BOARD_FOOT_M / 2;
       marker.add(ring, tether, icon);
       marker.visible = false;
       root.add(marker);
@@ -988,7 +992,9 @@ export function createMatchModeWorldPresentation(
       const label = mark.rangeM != null ? String(mark.rangeM) : mark.label ?? '';
       const size = label.length > 2 ? 36 : 46;
       setIcon(marker.userData.icon, `lane:${label}`, (ctx, c) => drawLaneGlyph(ctx, c, c, 44, label, `700 ${size}px system-ui, sans-serif`));
-      fadeByViewer(marker);
+      fadeByViewer(marker, LANE_MAX_GROWTH);
+      const icon = marker.userData.icon;
+      if (icon) icon.position.y = LANE_BOARD_FOOT_M + icon.scale.y / 2;
     }
   };
 
