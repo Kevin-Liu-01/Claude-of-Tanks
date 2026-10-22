@@ -1390,7 +1390,11 @@ try {
   // (2026-10-21, item/mp-rejoin-229) the returning tab's long tasks and long animation frames (with script attribution),
   // times on its own clock beside its entry's start (report.a2LongFrames.entryStartedAt)
   report.a2LongFrames = await pages.a2.evaluate(() => ({ entryStartedAt: window.__NETWORK_LOAD?.startedAt ?? null,
-    longtasks: (window.__MP_E2E_LONGTASKS ?? []).slice(-400), frames: (window.__MP_E2E_LONG_FRAMES ?? []).slice() })).catch(() => null);
+    longtasks: (window.__MP_E2E_LONGTASKS ?? []).slice(-400), frames: (window.__MP_E2E_LONG_FRAMES ?? []).slice(),
+    // a diagnostic build's long cooperative slices (their yield-site stacks) and its User Timing spans, when it has them
+    slices: window.__RJ_DIAG ?? null,
+    timing: performance.getEntriesByType('mark').concat(performance.getEntriesByType('measure')).filter((entry) => entry.name.startsWith('rj:'))
+      .map((entry) => ({ name: entry.name, start: Math.round(entry.startTime), ms: Math.round(entry.duration) })) })).catch(() => null);
   // (2026-10-20, item/mp-rejoin-229) the returning tab's world load as its activation trace names it (build stages, warm)
   report.a2WorldLoad = await pages.a2.evaluate(() => JSON.parse(JSON.stringify({ load: window.__WORLD_LOAD ?? null, prefetch: window.__WORLD_PREFETCH ?? null }))).catch(() => null);
   const a2Entry = await pages.a2.evaluate(() => ({ stages: window.__NETWORK_LOAD?.stages ?? null, totalMs: window.__NETWORK_LOAD?.totalMs ?? null, status: window.__NETWORK_LOAD?.status ?? null, rewelcomes: window.__NETWORK_LOAD?.rewelcomes ?? 0, rewelcomeAtMs: window.__NETWORK_LOAD?.rewelcomeAtMs ?? null }));

@@ -44,6 +44,7 @@ import { ACTION_BITS, VERDICT } from '../wire/index.ts';
 import type { VerdictId, WelcomeMessage, WireEvent } from '../wire/index.ts';
 import type { RoomMatchStartPayload, RoomSnapshot } from '../room/protocol.ts';
 import { getSpec } from '../../vehicles/specs.ts';
+import { planFromRoom } from '../host/hostPlan.ts';
 import { sideFlags } from '../../sim/countries.ts';
 import type { SerializedLobby } from '../room/lobbyShape.ts';
 import { MATCH_BUILD, matchRefusalCodeOf, matchRefusalMessage, type MatchRefusalCode } from '../wire/matchBuild.ts';
@@ -1183,6 +1184,15 @@ export function createBrowserComposition({
       // must not lengthen the world's stage, and prepareRoster joins whatever is still in flight (the bakes coalesce).
       const seats = sessionRound.room.players.flatMap((player) => (player.team !== 'spectator' && player.specId
         ? [{ specId: player.specId, camo: player.camo || 'factory', isViewer: !active.spectator && player.id === viewerId }] : []));
+      // 2026-10-21 (item/mp-rejoin-232, lever 7): the bots arrive only with the WELCOME, and their textures (baked in a worker
+      // after it) held the 231 rejoins' roster stage about 2 s. The host plans them from this room and seed (host/hostPlan.ts
+      // planFromRoom, the real room's match_start carries no plan), so the same plan names them here and their bakes join
+      // the world load; a wrong guess is a spare bake, never a different roster.
+      try {
+        for (const bot of planFromRoom(sessionRound.room, { seed: matchStart.seed }).bots) {
+          if (bot.specId) seats.push({ specId: bot.specId, camo: 'factory', isViewer: false });
+        }
+      } catch { /* no plan from this snapshot: the WELCOME paints them */ }
       if (load.prewarmRoster && seats.length) {
         let warming: MaybePromise<RuntimeValue>;
         try { warming = load.prewarmRoster(seats, active.abort.signal); } catch { warming = undefined; }
