@@ -254,7 +254,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const place = { left: map.left + seatWidth / 2, top: map.bottom + OBJECTIVE_SEAT_GAP, width: seatWidth };
       writeObjective('side', place);
       const floor = Math.min(read('.cot-touch.on .joy')?.top ?? height, read('.cot-touch.on .fire.alt')?.top ?? height, height) - 8;
-      if (node.getBoundingClientRect().bottom <= floor) { seat = 'side'; objectivePlace = place; } else objectiveTopKey = key;
+      // (never kept from a measure the HUD's faces have not reached yet: a fallback face wraps wider)
+      if (node.getBoundingClientRect().bottom <= floor) { seat = 'side'; objectivePlace = place; }
+      else if (document.fonts?.status !== 'loading') objectiveTopKey = key;
     }
     writeObjective(seat, objectivePlace);
     return seat;
@@ -1073,6 +1075,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
   window.addEventListener('cot-hud-relayout', schedule);
   // Keyboard and toolbar changes of the visible height arrive here once responsiveLayout.ts has resized the root.
   window.addEventListener('cot:layoutchange', schedule);
+  // The HUD's faces arriving re-measure what a fallback face set (the objective's side seat among them).
+  document.fonts?.addEventListener?.('loadingdone', () => { planInputs = true; schedule(); });
   // Transforms (notably the spectator tray's entrance) do not resize the
   // border box. Measure the settled position without polling its animation.
   // A pass that lands mid-fade measures the reticle's furniture where its fade has it, so the end of a furniture's own fade
