@@ -1364,10 +1364,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
   // Country flags use the same honest overflow contract as the vehicle strip:
   // fixed edge fades/buttons appear only where hidden content really exists.
+  // The left fade starts where the flag track does, past the Filter toggle's slot (its badge changes its width).
+  let countryTrackStart = -1;
   const syncCountryRailAffordances = () => {
     const { hasLeft, hasRight } = horizontalRailState(
       chipsEl.scrollLeft, chipsEl.scrollWidth, chipsEl.clientWidth,
     );
+    if (chipsEl.offsetLeft !== countryTrackStart) {
+      countryTrackStart = chipsEl.offsetLeft;
+      countryRailEl.style.setProperty('--country-track-start', `${countryTrackStart}px`);
+    }
     countryRailEl.classList.toggle('has-more-left', hasLeft);
     countryRailEl.classList.toggle('has-more-right', hasRight);
     const affordances: Array<[HTMLButtonElement, boolean]> = [
@@ -2358,7 +2364,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   initializeCountryChips();
 
   // --- ROSTER FILTER (class, role, era, search) -----------------------------
-  // The Filter toggle leads the flag rail. Its panel and the fleet facet tables load on the first press
+  // The Filter toggle leads the flag rail in its own slot, outside the scrolling flag track. Its panel and the fleet facet tables load on the first press
   // (garageFacetPanel.ts), never on the game entry; the panel hands back a visible-card predicate that narrows
   // every national strip, re-counts the flags and keeps the strip on a nation with a match.
   let rosterFacetMatch: ((specId: string) => boolean) | null = null;
@@ -2375,7 +2381,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   facetToggle.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 3h12l-4.6 5.4V13' +
     'l-2.8 1.2V8.4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>' +
     '<span class="ct num" hidden></span>';
-  chipsEl.prepend(facetToggle);
+  countryRailEl.insertBefore(facetToggle, chipsEl);
   function setRosterFacetFilter(match: ((specId: string) => boolean) | null): void {
     rosterFacetMatch = match;
     for (const group of countryGroups) {
