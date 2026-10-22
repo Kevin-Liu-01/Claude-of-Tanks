@@ -38,10 +38,15 @@ import { resolveWreckRoster } from './wreckRoster.ts';
 import { collectWreckShellSolids, collectWreckSolids } from './wreckCollision.ts';
 import { crumpleWreckGeometry, planWreckCrumple, refineForCrumple, type WreckCrumplePlan } from './wreckCrumple.ts';
 import { buildWreckDebris, seatWreckDebris } from './wreckDebris.ts';
+import {
+  buildTurretRingWellGeometry, cutTurretRingAperture, emptyTurretRingRim, planTurretRingHulk, type TurretRingSeat,
+} from '../vehicles/turretRingWell.ts';
 
 export interface WreckOptions {
   seed?: number;
   pop?: boolean;
+  /** (tank-opt RING) false bakes a cook-off's hulk without its ring well (the receipts' A/B); default on. */
+  ring?: boolean;
   /** The paint the tank wore (sRGB hex; the map's camouflage family, wreckRemnantPaint): patches survive the burn on
    * the lower flanks. Unset: char and oxide only. */
   remnant?: number;
@@ -83,6 +88,63 @@ interface WreckBakeOwner {
   geometries: Set<THREE.BufferGeometry>;
 }
 
+/** A cook-off hulk's ring (tank-opt RING, 2026-10-16; turretRingWell.ts planTurretRingHulk): the hull-side parts the
+ *  bake collects (posed and crumpled), cut once they are all in — exactly, on their final shape: the race's prism (the
+ *  band closing those cut faces round the rim) and the well's under it, clear of the bent hull's skin — and the well
+ *  merged in as real geometry, so the hulk's one mesh shows the ring its turret left. */
+interface WreckRingStage {
+  seat: TurretRingSeat;
+  /** The bake's root frame to the hull frame (the cuts'), and back. */
+  toHull: THREE.Matrix4;
+  fromHull: THREE.Matrix4;
+  /** The hull-side parts collected so far, each a generated interior fill or not. */
+  parts: Map<THREE.BufferGeometry, boolean>;
+}
+
+function stageWreckRing(visual: TankWreckVisual, root: THREE.Object3D): WreckRingStage | null {
+  const seat = visual.turretRingSeat?.();
+  const hull = root.getObjectByName('rig_hull');
+  if (!seat || !hull) return null;
+  const toHull = hull.matrixWorld.clone().invert().multiply(root.matrixWorld);
+  return { seat, toHull, fromHull: toHull.clone().invert(), parts: new Map() };
+}
+
+/** A hull-side part (not the turret's or the gun's): what the ring's cut takes. */
+function ringCuttable(object: THREE.Object3D, root: THREE.Object3D): boolean {
+  for (let node: THREE.Object3D | null = object.parent; node && node !== root; node = node.parent) {
+    if (node.name === 'rig_turret' || node.name === 'rig_gun') return false;
+  }
+  return true;
+}
+
+/** Every collected hull-side part cut at the ring, then the well merged; the placement budget counts the hulk as it
+ *  always has (the cuts' and the well's triangles are not the map's to place). */
+function* finishWreckRingSteps(ring: WreckRingStage, target: WreckGeometrySet, owner: WreckBakeOwner):
+  Generator<WreckGeometryBuildSlice, void, void> {
+  const plan = planTurretRingHulk(ring.seat, [...ring.parts].map(([geometry, fill]) => ({ geometry, toHull: ring.toHull, fill })));
+  yield { fine: true, stage: 'ring-plan' };
+  const rim = emptyTurretRingRim(plan.sides);
+  let done = 0;
+  for (let i = 0; i < target.geos.length; i++) {
+    const part = target.geos[i];
+    if (!ring.parts.has(part)) continue;
+    const cut = cutTurretRingAperture(part, plan.cuts, ring.toHull, rim);
+    if (cut !== part) {
+      owner.geometries.add(cut);
+      target.budgetTriDelta -= triangleCount(cut) - triangleCount(part);
+      target.geos[i] = cut;
+    }
+    if (++done % 16 === 0) yield { fine: true, stage: `ring-cut-${done}` };
+  }
+  const well = buildTurretRingWellGeometry(plan.seat, rim, plan.sides).applyMatrix4(ring.fromHull);
+  owner.geometries.add(well);
+  target.geos.push(well);
+  target.budgetTriDelta -= triangleCount(well);
+  yield { fine: true, stage: 'ring-well' };
+}
+
+const triangleCount = (geometry: THREE.BufferGeometry): number =>
+  ((geometry.index?.count ?? geometry.attributes.position.count) / 3) | 0;
 
 interface WreckGeometrySet {
   geos: THREE.BufferGeometry[];
@@ -224,6 +286,7 @@ function* appendWreckMeshGeometrySteps(
   size: THREE.Vector3,
   owner: WreckBakeOwner,
   crumple: WreckCrumplePlan | null,
+  ring: WreckRingStage | null = null,
 ): Generator<WreckGeometryBuildSlice, void, void> {
   if (!mesh.geometry?.attributes?.position || isDiscardedWreckPart(mesh, root)) return;
   if (WRECK_BURNT_AWAY.test(mesh.name || '')) {
@@ -257,7 +320,10 @@ function* appendWreckMeshGeometrySteps(
   }
   if (material?.transparent && 'map' in material && material.map) return;
   if (mesh instanceof THREE.InstancedMesh) {
+    const first = target.geos.length;
     yield* appendInstancedGeometrySteps(mesh, rootInv, target.geos, owner, crumple);
+    // its copies are bent already: the ring cuts them with the rest
+    if (ring && ringCuttable(mesh, root)) for (let i = first; i < target.geos.length; i++) ring.parts.set(target.geos[i], false);
     return;
   }
   if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
@@ -271,6 +337,9 @@ function* appendWreckMeshGeometrySteps(
   if (refined !== clone) owner.geometries.add(refined);
   crumpleWreckGeometry(crumple, refined, mesh);
   target.geos.push(refined);
+  // (tank-opt RING) a hull-side part: the ring cuts it once every part is in and bent (finishWreckRingSteps)
+  const ringPart = !!ring && ringCuttable(mesh, root);
+  if (ring && ringPart) ring.parts.set(refined, !!mesh.userData.interiorFill);
   // integ/218 (sealed r1 over destruction 350): the kept muzzle walls and the canvas's second faces stay out of the
   // placement budget as they were before the crumple; the second face reverses the crumpled surface, so both windings
   // follow the same dents
@@ -279,6 +348,7 @@ function* appendWreckMeshGeometrySteps(
     const back = reversedWreckGeometry(refined, owner);
     target.geos.push(back);
     target.budgetTriDelta -= (back.attributes.position.count / 3) | 0;
+    if (ring && ringPart) ring.parts.set(back, false);
   }
 }
 
@@ -287,6 +357,7 @@ function* collectWreckGeometrySteps(
   rootInv: THREE.Matrix4,
   owner: WreckBakeOwner,
   crumple: WreckCrumplePlan | null = null,
+  ring: WreckRingStage | null = null,
 ): Generator<WreckGeometryBuildSlice, WreckGeometrySet, void> {
   const target: WreckGeometrySet = { geos: [], proxyGeos: [], burntAway: new THREE.Box3(), budgetTriDelta: 0 };
   const size = new THREE.Vector3();
@@ -297,7 +368,7 @@ function* collectWreckGeometrySteps(
   while (stack.length) {
     const object = stack.pop()!;
     if (object instanceof THREE.Mesh) {
-      yield* appendWreckMeshGeometrySteps(object, root, rootInv, target, size, owner, crumple);
+      yield* appendWreckMeshGeometrySteps(object, root, rootInv, target, size, owner, crumple, ring);
     }
     for (let index = object.children.length - 1; index >= 0; index--) stack.push(object.children[index]);
     if (++visited % 16 === 0 || !stack.length) {
@@ -608,8 +679,14 @@ function* buildTankWreckSteps(
     // skirts, a slack track, a bent barrel — planned from the posed hierarchy on the wreck's own seed, applied part by
     // part as the bake collects it; the solids above are the posed hierarchy's, so collision does not move
     const crumple = planWreckCrumple(root, seed, !!opts.pop);
+    // (tank-opt RING, 2026-10-16; the owner: "when the turret blows off we should see that") a cook-off's hulk shows the
+    // ring its turret left: staged after the solids and the crumple plan (neither moves), merged into the one mesh; a
+    // plain kill's turret still covers its ring, so its hulk keeps the deck as it was
+    const ring = opts.pop && opts.ring !== false ? stageWreckRing(visual, root) : null;
     yield { fine: true, stage: 'construct' };
-    const { geos, proxyGeos, burntAway, budgetTriDelta } = yield* collectWreckGeometrySteps(root, rootInv, owner, crumple);
+    const collected = yield* collectWreckGeometrySteps(root, rootInv, owner, crumple, ring);
+    if (ring) yield* finishWreckRingSteps(ring, collected, owner);
+    const { geos, proxyGeos, burntAway, budgetTriDelta } = collected;
     if (!geos.length) throw new Error('no bakeable geometry');
     const normalized = yield* normalizeGeometrySetSteps(geos, true, owner);
     const merged = mergeRequired(normalized, 'merge failed');

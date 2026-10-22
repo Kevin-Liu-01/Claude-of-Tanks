@@ -155,7 +155,8 @@ export type HeroCardKind = 'roster' | 'rosterCompact' | 'galleryBrowse' | 'deplo
  *   numeral alone (the compact cards: "Tier VIII" at 11 px would span two thirds of a phone card).
  * No card text is under 11 px, the type system's floor (owner: no small text): nameSize, minName and tierSize, and
  * the Garage strip's own boxes (garage.css: phone 102 px with a 5 px pad, the short landscape strip 102 px too, so the
- * longest name, "T-72B3 Bastion-M (Concept)", needs 91.5 px and keeps to two lines).
+ * longest name when this was measured, "T-72B3 Bastion-M (Concept)", needed 91.5 px and kept to two lines; 233 dropped
+ * that tag from sixteen national names).
  * Blind critic round 1 (2026-10-20, both critics): with the gun swung back over the deck every card was
  * fitted by its whole silhouette, so a short-gun hull (IFVs, launchers, KV-2) spanned the card edge to edge
  * at up to 1.6x a main battle tank's core height. The roster shares (0.66 / 0.50, compact 0.70 / 0.64) cap

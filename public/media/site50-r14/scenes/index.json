@@ -2058,12 +2058,12 @@
    "group": "fleet",
    "vehicle": "type96_80_feng",
    "title": {
-    "en": "A Type 96-80 Fēng (Concept) knocks out a Type 10 at Skybridge Chasm",
-    "zh": "一辆 Type 96-80 Fēng (Concept) 在天桥裂谷击毁一辆 Type 10"
+    "en": "A Type 96-80 Fēng knocks out a Type 10 at Skybridge Chasm",
+    "zh": "一辆 Type 96-80 Fēng 在天桥裂谷击毁一辆 Type 10"
    },
    "short": {
-    "en": "Type 96-80 Fēng (Concept), Skybridge Chasm",
-    "zh": "Type 96-80 Fēng (Concept)，天桥裂谷"
+    "en": "Type 96-80 Fēng, Skybridge Chasm",
+    "zh": "Type 96-80 Fēng，天桥裂谷"
    },
    "map": "skybridge",
    "durationMs": 6600,
@@ -2959,12 +2959,12 @@
    "group": "fleet",
    "vehicle": "ua_t80u_modern",
    "title": {
-    "en": "A T-80U Zoria (Concept) fires on the move at Frosthollow",
-    "zh": "一辆 T-80U Zoria (Concept) 在霜谷行进间射击"
+    "en": "A T-80U Zoria fires on the move at Frosthollow",
+    "zh": "一辆 T-80U Zoria 在霜谷行进间射击"
    },
    "short": {
-    "en": "T-80U Zoria (Concept), Frosthollow",
-    "zh": "T-80U Zoria (Concept)，霜谷"
+    "en": "T-80U Zoria, Frosthollow",
+    "zh": "T-80U Zoria，霜谷"
    },
    "map": "winter",
    "durationMs": 6600,
@@ -2976,12 +2976,12 @@
    "group": "fleet",
    "vehicle": "ua_t72b3m_modern",
    "title": {
-    "en": "A T-72B3M Hetman (Concept) leads the column through Frosthollow at sunset",
-    "zh": "日落时分，一辆 T-72B3M Hetman (Concept) 率领纵队穿过霜谷"
+    "en": "A T-72B3M Hetman leads the column through Frosthollow at sunset",
+    "zh": "日落时分，一辆 T-72B3M Hetman 率领纵队穿过霜谷"
    },
    "short": {
-    "en": "T-72B3M Hetman (Concept), Frosthollow",
-    "zh": "T-72B3M Hetman (Concept)，霜谷"
+    "en": "T-72B3M Hetman, Frosthollow",
+    "zh": "T-72B3M Hetman，霜谷"
    },
    "map": "winter",
    "durationMs": 6600,
@@ -2993,12 +2993,12 @@
    "group": "fleet",
    "vehicle": "ua_t72b3_modern",
    "title": {
-    "en": "A T-72B3 Sich (Concept) fires across Frontier Basin in the morning",
-    "zh": "清晨，一辆 T-72B3 Sich (Concept) 在边疆盆地开火"
+    "en": "A T-72B3 Sich fires across Frontier Basin in the morning",
+    "zh": "清晨，一辆 T-72B3 Sich 在边疆盆地开火"
    },
    "short": {
-    "en": "T-72B3 Sich (Concept), Frontier Basin",
-    "zh": "T-72B3 Sich (Concept)，边疆盆地"
+    "en": "T-72B3 Sich, Frontier Basin",
+    "zh": "T-72B3 Sich，边疆盆地"
    },
    "map": "frontier",
    "durationMs": 6600,
@@ -3010,12 +3010,12 @@
    "group": "fleet",
    "vehicle": "pl_t72b3m_modern",
    "title": {
-    "en": "A T-72B3M Wilk (Concept) fires across Earthrise Basin",
-    "zh": "一辆 T-72B3M Wilk (Concept) 在Earthrise Basin开火"
+    "en": "A T-72B3M Wilk fires across Earthrise Basin",
+    "zh": "一辆 T-72B3M Wilk 在Earthrise Basin开火"
    },
    "short": {
-    "en": "T-72B3M Wilk (Concept), Earthrise Basin",
-    "zh": "T-72B3M Wilk (Concept)，Earthrise Basin"
+    "en": "T-72B3M Wilk, Earthrise Basin",
+    "zh": "T-72B3M Wilk，Earthrise Basin"
    },
    "map": "moon",
    "durationMs": 6600,
@@ -3027,12 +3027,12 @@
    "group": "fleet",
    "vehicle": "pl_t72b3_modern",
    "title": {
-    "en": "A T-72B3 Zubr (Concept) leads the column through Frosthollow at sunset",
-    "zh": "日落时分，一辆 T-72B3 Zubr (Concept) 率领纵队穿过霜谷"
+    "en": "A T-72B3 Zubr leads the column through Frosthollow at sunset",
+    "zh": "日落时分，一辆 T-72B3 Zubr 率领纵队穿过霜谷"
    },
    "short": {
-    "en": "T-72B3 Zubr (Concept), Frosthollow",
-    "zh": "T-72B3 Zubr (Concept)，霜谷"
+    "en": "T-72B3 Zubr, Frosthollow",
+    "zh": "T-72B3 Zubr，霜谷"
    },
    "map": "winter",
    "durationMs": 6600,
@@ -3044,12 +3044,12 @@
    "group": "fleet",
    "vehicle": "pl_t72b3_zubr_ii",
    "title": {
-    "en": "A T-72B3 Zubr II (Concept) knocks out a T-72B3 at Earthrise Basin",
-    "zh": "一辆 T-72B3 Zubr II (Concept) 在Earthrise Basin击毁一辆 T-72B3"
+    "en": "A T-72B3 Zubr II knocks out a T-72B3 at Earthrise Basin",
+    "zh": "一辆 T-72B3 Zubr II 在Earthrise Basin击毁一辆 T-72B3"
    },
    "short": {
-    "en": "T-72B3 Zubr II (Concept), Earthrise Basin",
-    "zh": "T-72B3 Zubr II (Concept)，Earthrise Basin"
+    "en": "T-72B3 Zubr II, Earthrise Basin",
+    "zh": "T-72B3 Zubr II，Earthrise Basin"
    },
    "map": "moon",
    "durationMs": 6600,
@@ -3061,12 +3061,12 @@
    "group": "fleet",
    "vehicle": "cn_t80u_modern",
    "title": {
-    "en": "A T-80U Yun (Concept) crosses Skybridge Chasm through shellfire",
-    "zh": "一辆 T-80U Yun (Concept) 冒着炮火穿越天桥裂谷"
+    "en": "A T-80U Yun crosses Skybridge Chasm through shellfire",
+    "zh": "一辆 T-80U Yun 冒着炮火穿越天桥裂谷"
    },
    "short": {
-    "en": "T-80U Yun (Concept), Skybridge Chasm",
-    "zh": "T-80U Yun (Concept)，天桥裂谷"
+    "en": "T-80U Yun, Skybridge Chasm",
+    "zh": "T-80U Yun，天桥裂谷"
    },
    "map": "skybridge",
    "durationMs": 6600,
@@ -3078,12 +3078,12 @@
    "group": "fleet",
    "vehicle": "cn_t72b3m_modern",
    "title": {
-    "en": "A T-72B3M Kunlun (Concept) knocks out a K2 Black Panther at Skybridge Chasm at sunset",
-    "zh": "日落时分，一辆 T-72B3M Kunlun (Concept) 在天桥裂谷击毁一辆 K2 Black Panther"
+    "en": "A T-72B3M Kunlun knocks out a K2 Black Panther at Skybridge Chasm at sunset",
+    "zh": "日落时分，一辆 T-72B3M Kunlun 在天桥裂谷击毁一辆 K2 Black Panther"
    },
    "short": {
-    "en": "T-72B3M Kunlun (Concept), Skybridge Chasm",
-    "zh": "T-72B3M Kunlun (Concept)，天桥裂谷"
+    "en": "T-72B3M Kunlun, Skybridge Chasm",
+    "zh": "T-72B3M Kunlun，天桥裂谷"
    },
    "map": "skybridge",
    "durationMs": 6600,
@@ -3095,12 +3095,12 @@
    "group": "fleet",
    "vehicle": "cn_t72b3_modern",
    "title": {
-    "en": "A T-72B3 Qilin (Concept) fires across Mangrove Reach in the morning",
-    "zh": "清晨，一辆 T-72B3 Qilin (Concept) 在红树林水道开火"
+    "en": "A T-72B3 Qilin fires across Mangrove Reach in the morning",
+    "zh": "清晨，一辆 T-72B3 Qilin 在红树林水道开火"
    },
    "short": {
-    "en": "T-72B3 Qilin (Concept), Mangrove Reach",
-    "zh": "T-72B3 Qilin (Concept)，红树林水道"
+    "en": "T-72B3 Qilin, Mangrove Reach",
+    "zh": "T-72B3 Qilin，红树林水道"
    },
    "map": "mangrove",
    "durationMs": 6600,
@@ -3112,12 +3112,12 @@
    "group": "fleet",
    "vehicle": "ru_t80u_modern",
    "title": {
-    "en": "A T-80U Bars-M (Concept) charges through artillery at Tarkhan Steppe",
-    "zh": "一辆 T-80U Bars-M (Concept) 冒着炮击冲过塔尔罕草原"
+    "en": "A T-80U Bars-M charges through artillery at Tarkhan Steppe",
+    "zh": "一辆 T-80U Bars-M 冒着炮击冲过塔尔罕草原"
    },
    "short": {
-    "en": "T-80U Bars-M (Concept), Tarkhan Steppe",
-    "zh": "T-80U Bars-M (Concept)，塔尔罕草原"
+    "en": "T-80U Bars-M, Tarkhan Steppe",
+    "zh": "T-80U Bars-M，塔尔罕草原"
    },
    "map": "steppe",
    "durationMs": 6600,
@@ -3129,12 +3129,12 @@
    "group": "fleet",
    "vehicle": "ru_t72b3m_modern",
    "title": {
-    "en": "A T-72B3M Bulat-M (Concept) leads the assault across Olympus Basin",
-    "zh": "一辆 T-72B3M Bulat-M (Concept) 率队突击奥林匹斯盆地"
+    "en": "A T-72B3M Bulat-M leads the assault across Olympus Basin",
+    "zh": "一辆 T-72B3M Bulat-M 率队突击奥林匹斯盆地"
    },
    "short": {
-    "en": "T-72B3M Bulat-M (Concept), Olympus Basin",
-    "zh": "T-72B3M Bulat-M (Concept)，奥林匹斯盆地"
+    "en": "T-72B3M Bulat-M, Olympus Basin",
+    "zh": "T-72B3M Bulat-M，奥林匹斯盆地"
    },
    "map": "mars",
    "durationMs": 6600,
@@ -3146,12 +3146,12 @@
    "group": "fleet",
    "vehicle": "ru_t72b3_modern",
    "title": {
-    "en": "A T-72B3 Bastion-M (Concept) fires on the move at Whiteout Station in the morning",
-    "zh": "清晨，一辆 T-72B3 Bastion-M (Concept) 在白茫站行进间射击"
+    "en": "A T-72B3 Bastion-M fires on the move at Whiteout Station in the morning",
+    "zh": "清晨，一辆 T-72B3 Bastion-M 在白茫站行进间射击"
    },
    "short": {
-    "en": "T-72B3 Bastion-M (Concept), Whiteout Station",
-    "zh": "T-72B3 Bastion-M (Concept)，白茫站"
+    "en": "T-72B3 Bastion-M, Whiteout Station",
+    "zh": "T-72B3 Bastion-M，白茫站"
    },
    "map": "whiteout",
    "durationMs": 6600,
