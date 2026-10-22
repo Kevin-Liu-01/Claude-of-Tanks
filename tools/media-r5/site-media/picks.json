@@ -468,10 +468,10 @@
     },
     "s66-type96-80-feng-skybridge": {
       "map": "skybridge",
-      "en": "A Type 96-80 Fēng (Concept) knocks out a Type 10 at Skybridge Chasm",
-      "zh": "一辆 Type 96-80 Fēng (Concept) 在天桥裂谷击毁一辆 Type 10",
-      "shortEn": "Type 96-80 Fēng (Concept), Skybridge Chasm",
-      "shortZh": "Type 96-80 Fēng (Concept)，天桥裂谷",
+      "en": "A Type 96-80 Fēng knocks out a Type 10 at Skybridge Chasm",
+      "zh": "一辆 Type 96-80 Fēng 在天桥裂谷击毁一辆 Type 10",
+      "shortEn": "Type 96-80 Fēng, Skybridge Chasm",
+      "shortZh": "Type 96-80 Fēng，天桥裂谷",
       "fleet": true
     },
     "s67-type99a-titan-gorge": {
@@ -700,18 +700,18 @@
     },
     "s128-pl-t72b3-zubr-ii-moon": {
       "map": "moon",
-      "en": "A T-72B3 Zubr II (Concept) knocks out a T-72B3 at Earthrise Basin",
-      "zh": "一辆 T-72B3 Zubr II (Concept) 在Earthrise Basin击毁一辆 T-72B3",
-      "shortEn": "T-72B3 Zubr II (Concept), Earthrise Basin",
-      "shortZh": "T-72B3 Zubr II (Concept)，Earthrise Basin",
+      "en": "A T-72B3 Zubr II knocks out a T-72B3 at Earthrise Basin",
+      "zh": "一辆 T-72B3 Zubr II 在Earthrise Basin击毁一辆 T-72B3",
+      "shortEn": "T-72B3 Zubr II, Earthrise Basin",
+      "shortZh": "T-72B3 Zubr II，Earthrise Basin",
       "fleet": true
     },
     "s129-pl-t72b3m-modern-moon": {
       "map": "moon",
-      "en": "A T-72B3M Wilk (Concept) fires across Earthrise Basin",
-      "zh": "一辆 T-72B3M Wilk (Concept) 在Earthrise Basin开火",
-      "shortEn": "T-72B3M Wilk (Concept), Earthrise Basin",
-      "shortZh": "T-72B3M Wilk (Concept)，Earthrise Basin",
+      "en": "A T-72B3M Wilk fires across Earthrise Basin",
+      "zh": "一辆 T-72B3M Wilk 在Earthrise Basin开火",
+      "shortEn": "T-72B3M Wilk, Earthrise Basin",
+      "shortZh": "T-72B3M Wilk，Earthrise Basin",
       "fleet": true
     },
     "s131-pt91-twardy-longleaf": {
