@@ -49,6 +49,10 @@ const CURVES = {
   t80uk: [],
   // release 231: the C1 Ariete pre-series, its hull under the turret's sweep and its mantlet raked (profiles/misc.ts)
   c1_ariete_preserie: [],
+  // release 231: the Ariete prototypes, their turrets' undersides at the hull slab and the roof ahead of the turret at the
+  // print's fore line (profiles/italy.ts)
+  c1_ariete_proto_serie1: [],
+  c2_ariete_proto: [],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type
