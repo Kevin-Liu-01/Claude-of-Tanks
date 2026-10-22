@@ -3816,13 +3816,15 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         outline: [[-1.05, -3.35], [1.05, -3.35], [1.42, -2.32], [1.36, 0.38], [0.86, 1.12], [-0.86, 1.12], [-1.36, 0.38], [-1.42, -2.32]],
         // release 233: the gunner's primary sight and its FEP FLIR head (0.55..1.03 x, 0.62..1.30 z) stand clear of the net
         holes: [rect(-1.26, -0.48, -0.86, 0.02), rect(-0.52, 0.05, 0.06, 0.55), rect(0.16, 0.83, -0.64, 0.06), rect(-1.28, -0.70, -2.92, -1.70), rect(0.68, 1.30, -2.84, -1.62), rect(0.50, 1.08, 0.60, 1.30)], seed: 37 }],
-      // 2026-10-22 (lane 240; critic: "crumpled mesh at the turret's right rear"): the right flank's cover was fitted
-      // over the bustle-side stowage (the rack, its bag and boxes, x -1.70..-1.47 at z -3.17..-2.08), each column
-      // stepping out and back over another load, and creased into a crumpled lump. That flank now ends ahead of the
-      // stowage (z -2.02); the stowage rides bare, as the left flank's plain bustle wall keeps its cover.
+      // 2026-10-22 (lane 240; critic: "crumpled mesh at the turret's right rear"): both flank covers were fitted round
+      // the bustle, each column stepping out and back as the wall did, and creased into a crumpled lump at the rear
+      // corner: on the -X flank over the bustle-side stowage drum and its boxes (x -1.70..-1.47, z -3.17..-2.08), on the
+      // +X (hero) flank round the bustle's taper from z -2.32 aft (its walls stepping between x 1.25 and 1.56). Each
+      // cover now ends where the plain turret wall does (-X at z -2.02, ahead of the stowage; +X at -2.32), and the
+      // bustle and its stowage ride bare.
       side: [-1, 1].map((side) => {
-        const z0 = side < 0 ? -2.02 : -3.20;
-        return { side, z0, z1: 0.80, nz: side < 0 ? 24 : 32, ny: 8,
+        const z0 = side < 0 ? -2.02 : -2.32;
+        return { side, z0, z1: 0.80, nz: side < 0 ? 24 : 26, ny: 8,
           topAt: () => 0.80, bottomAt: (z: number) => 0.02 + Math.sin(z * 3.2) * 0.024,
           outAt: (z: number, t: number) => (z < -1.65 ? 1.52 : 1.68) + (1 - t) * 0.028, seed: 51 + side,
           // 2026-10-21 (the owner: the star on the turret): the right flank's drape leaves a window for the national
