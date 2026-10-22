@@ -139,6 +139,14 @@ function addMinePlow(P: AbramsIdentityPort): void {
     P.addEquipment('hullDetail', box(0.10, 0.09, 0.14), side * 0.70, 1.19, 3.84);
   }
   P.addEquipment('hullDetail', box(3.74, 0.15, 0.17), 0, BEAM_Y, BEAM_Z);                        // lift beam
+  // Mounting frame (blind critic r1: the blades read "hung on rather than mounted"): a lower frame bar across the nose
+  // and a diagonal strut from each beam end back to it, so every blade unit is carried by a braced triangle.
+  // (the bar passes through both hull brackets, which carry it into the nose)
+  P.addEquipment('hullDetail', box(2.02, 0.12, 0.14), 0, 0.80, 3.75);
+  for (const side of [-1, 1]) {
+    P.addEquipment('hullDetail', beam([side * 1.80, BEAM_Y - 0.02, BEAM_Z - 0.04], [side * 0.96, 0.80, 3.77], 0.08, 0.09));
+    P.addEquipment('hullDetail', beam([side * 1.30, BEAM_Y - 0.04, BEAM_Z - 0.05], [side * 0.78, 0.81, 3.77], 0.07, 0.08));
+  }
   for (const side of [-1, 1]) {
     const x0 = side > 0 ? BLADE_X0 : -BLADE_X1, x1 = side > 0 ? BLADE_X1 : -BLADE_X0;
     // Moldboard: a curved 20 mm plate, concave forward, its cutting edge low and leading.
@@ -153,7 +161,7 @@ function addMinePlow(P: AbramsIdentityPort): void {
     }
     for (const fx of [0.22, 0.78]) {
       const x = x0 + (x1 - x0) * fx;
-      P.addEquipment('hullDetail', beam([x, BEAM_Y - 0.02, BEAM_Z + 0.06], [x, 0.74, 4.48], 0.07, 0.09));
+      P.addEquipment('hullDetail', beam([x, BEAM_Y - 0.02, BEAM_Z + 0.06], [x, 0.74, 4.48], 0.10, 0.12));
     }
     // Skids under the moldboard ends (depth shoes) and the cutting tines along its edge.
     for (const x of [x0 + 0.06, x1 - 0.06]) {
@@ -185,8 +193,7 @@ function addDesertStormStowage(P: AbramsIdentityPort): void {
     const left = roll(0.86, 0.12, [-0.28, 0.28]), right = roll(0.70, 0.11, [-0.22, 0.22], 0.07);
     softLoad(P, 'turretCloth', 'turretDark', left, [-0.55, deck + restY(left), RACK_MID_Z], Math.PI / 2);
     softLoad(P, 'turretCanvasPale', 'turretDark', right, [0.62, deck + restY(right), RACK_MID_Z], Math.PI / 2);
-    rationCase(P, 0.02, deck - 0.003, RACK_MID_Z + 0.02, 0.04);
-    rationCase(P, 0.05, deck + 0.237, RACK_MID_Z - 0.01, -0.10);
+    rationCase(P, 0.06, deck - 0.003, RACK_MID_Z + 0.01, 0.04);
   }, { reachM: 0.06, mode: 'down' });
   // Four 20 l water cans on a shelf hung from the rack's rear fence.
   P.snapGroup('m1a1ha-rack-water-cans', () => {
