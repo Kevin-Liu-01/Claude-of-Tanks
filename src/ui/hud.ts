@@ -2023,6 +2023,19 @@ function fmtTimer(s: number): string {
  * The Horde's status line under the live ruleset (else the mode's own table): unlimited rounds drop the ammunition
  * count, which could only read full.
  */
+/** How far a touch may travel on a vehicle-row tile and still act on its lift (UI-06: farther is a swipe to aim). */
+const TAP_SLOP_PX = 10;
+
+/** The objective's progress as its " · " parts, each count's figures held together: a short landscape's compact form
+ *  stacks the parts in the side seat (battleHudLayout.css data-objective-seat). */
+function setObjectiveValue(target: HTMLElement, copy: string): void {
+  target.replaceChildren();
+  copy.split(' · ').forEach((part, index) => {
+    if (index) target.append(Object.assign(document.createElement('span'), { className: 'sep', textContent: '\u00a0· ' }));
+    target.append(Object.assign(document.createElement('span'), { className: 'seg', textContent: part.replace(/ \/ /g, ' / ') }));
+  });
+}
+
 export function hordeStatusCopy(modeState: HudMatchModeState, liveRuleset: MatchRuleset | null): string {
   const horde = modeState.horde;
   const wave = String(horde?.wave || 1), alive = String(horde?.remaining ?? horde?.alive ?? 0);
@@ -2454,32 +2467,41 @@ export function initHud(bus: EventBus): HudRuntime {
   // --- shell selector + consumables ---
   const controlsRow = el('div', 'cot-vehicle-controls', root);
   controlsRow.setAttribute('role','group'); controlsRow.setAttribute('aria-label',t('systems.title'));
+  /** Binds a control of the row. A mouse acts on its press and suppresses the compatibility mouse event: while the
+   *  game owns pointer lock a bubbled Mouse0 is the fire binding, and a click reaching window would fire the cannon
+   *  alongside the action. A touch acts on its lift within TAP_SLOP_PX of where it began (UI-06): a swipe to aim that
+   *  starts on a tile acts on nothing. Keyboard activation is a click with detail 0 and no press. */
+  const bindControl = (button: HTMLButtonElement, act: () => void): void => {
+    let touchId = -1, touchX = 0, touchY = 0;
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.pointerType === 'mouse') { act(); return; }
+      touchId = event.pointerId; touchX = event.clientX; touchY = event.clientY;
+    });
+    button.addEventListener('pointerup', (event) => {
+      if (event.pointerId !== touchId) return;
+      touchId = -1;
+      event.stopPropagation();
+      if (Math.hypot(event.clientX - touchX, event.clientY - touchY) <= TAP_SLOP_PX) act();
+    });
+    button.addEventListener('pointercancel', () => { touchId = -1; });
+    button.addEventListener('click', (event) => { event.stopPropagation(); if (event.detail === 0) act(); });
+  };
   const specialButton = el('button', 'cot-special', controlsRow);
   specialButton.type = 'button';
   specialButton.hidden = true;
   specialButton.innerHTML = '<span class="si"></span><span class="sl"></span><span class="sk">E</span><small class="system-status"></small>';
-  // Act on pointerdown and suppress the compatibility mouse event. While the
-  // game owns pointer lock, a bubbled Mouse0 is the fire binding; letting a
-  // touch/click reach window would fire the cannon alongside this action.
-  specialButton.addEventListener('pointerdown', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (!specialButton.hidden && !specialButton.disabled) bus.emit('ui:specialAction', {});
-  });
-  // Keyboard activation produces click(detail=0) without pointerdown.
-  specialButton.addEventListener('click', (event) => {
-    event.stopPropagation();
-    if (event.detail === 0 && !specialButton.hidden && !specialButton.disabled) bus.emit('ui:specialAction', {});
-  });
+  bindControl(specialButton, () => { if (!specialButton.hidden && !specialButton.disabled) bus.emit('ui:specialAction', {}); });
   // Owner (2026-09-16, Turbo Ball): the jump keycap shows only in rulesets with a jump launch.
   const jumpHint = el('button', 'cot-jump', controlsRow);
   jumpHint.type = 'button';
-  jumpHint.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();bus.emit('ui:selfRight',{});});
-  jumpHint.addEventListener('click',e=>{e.stopPropagation();if(e.detail===0)bus.emit('ui:selfRight',{});});
+  bindControl(jumpHint, () => bus.emit('ui:selfRight', {}));
   // round 30 (owner 2026-09-20): a rocket marks the jump — it is a boost now, on the ground or in the air
   jumpHint.innerHTML = `<span class="si">${uiIconSVG('rocket', 18)}</span><span class="sl"></span><span class="sk">F</span><small class="system-status"></small>`;
   const jumpLabel = requireElement<HTMLElement>(jumpHint, '.sl');
   jumpLabel.textContent=t('hud.jump');
+  jumpHint.setAttribute('aria-label', t('hud.jump'));
   const jumpKey = requireElement<HTMLElement>(jumpHint, '.sk');
   const specialIcon = requireElement<HTMLElement>(specialButton, '.si');
   const specialLabel = requireElement<HTMLElement>(specialButton, '.sl');
@@ -2490,8 +2512,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const droneButton = el('button', 'cot-auxiliary cot-drone-control', controlsRow); droneButton.type = 'button'; droneButton.hidden = true;
   droneButton.innerHTML = `<span class="si">${uiIconSVG('modeDrone',18)}</span><span class="sl"></span><span class="sk">V</span>`;
   droneButton.setAttribute('aria-label', t('systems.drone.help'));
-  droneButton.addEventListener('pointerdown', event => { event.preventDefault(); event.stopPropagation(); if (!droneButton.disabled) bus.emit('ui:drone', {}); });
-  droneButton.addEventListener('click', event => { event.stopPropagation(); if (event.detail === 0 && !droneButton.disabled) bus.emit('ui:drone', {}); });
+  bindControl(droneButton, () => { if (!droneButton.disabled) bus.emit('ui:drone', {}); });
   // The drone altimeter reads the same terrain height field as the spotting line-of-sight tests (set on map load).
   const aerialHud = createAerialHud(root,bus,() => heightFieldRef);
   const missileButton=el('button','cot-auxiliary',controlsRow);missileButton.type='button';missileButton.hidden=true;
@@ -2503,16 +2524,14 @@ export function initHud(bus: EventBus): HudRuntime {
     if(slot<0)return;
     bus.emit('ui:shellSelect',{slot:(missilePlayer.input?.shellSlot??missilePlayer.combat?.shellSlot)===slot?previousConventionalSlot:slot});
   }
-  missileButton.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();toggleExtraMissile();});
-  missileButton.addEventListener('click',e=>{e.stopPropagation();if(e.detail===0)toggleExtraMissile();});
+  bindControl(missileButton, toggleExtraMissile);
   let defaultLightsOn=false;
   bus.on('auxiliary:defaultLights',payload=>{defaultLightsOn=!!(payload as {on:boolean}).on;});
   const auxiliaryButtons = (['smoke','lights','roofGun'] as const).map(action=>{
     const button=el('button','cot-auxiliary',controlsRow);button.type='button';button.hidden=true;
     button.innerHTML=`<span class="si">${uiIconSVG(action==='lights'?'lightbulb':action,18)}</span><span class="sl">${t(`systems.${action}`)}</span><span class="sk"></span><small class="system-status"></small>`;
     button.title=t(`systems.${action}.help`);button.setAttribute('aria-label',button.title);
-    button.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(!button.disabled)bus.emit(`ui:${action==='lights' ? 'lightsToggle' : action}`,{});});
-    button.addEventListener('click',e=>{e.stopPropagation();if(e.detail===0&&!button.disabled)bus.emit(`ui:${action==='lights' ? 'lightsToggle' : action}`,{});});
+    bindControl(button, () => { if (!button.disabled) bus.emit(`ui:${action==='lights' ? 'lightsToggle' : action}`, {}); });
     return {action,button,label:button.querySelector<HTMLElement>('.sl')!,status:button.querySelector('small')!,key:button.querySelector<HTMLElement>('.sk')!};
   });
   // Owner (2026-10-14): one ordering for the row (vehicleControlOrder.ts); a jump mode puts the jump farthest left.
@@ -2527,6 +2546,27 @@ export function initHud(bus: EventBus): HudRuntime {
     arrangeVehicleControls(controlsRow,vehicleControls,on);
   }
   setControlsJumpMode(false);
+  // UI-06: where a touch row holds fewer whole tiles than its controls, its last place pages through the rest
+  // (battleHudLayout.ts writes the pages); a tap anywhere off the row returns it to its first page.
+  const moreButton = el('button', 'cot-systems-more', controlsRow);
+  moreButton.type = 'button';
+  moreButton.hidden = true;
+  moreButton.innerHTML = `<span class="si next">${uiIconSVG('chevronRight', 18)}</span><span class="si back">${uiIconSVG('chevronLeft', 18)}</span>`;
+  moreButton.setAttribute('aria-label', t('systems.more'));
+  const setControlsPage = (page: number): void => {
+    if (controlsRow.dataset.page === String(page)) return;
+    controlsRow.dataset.page = String(page);
+    window.dispatchEvent(new Event('cot-hud-relayout'));
+  };
+  bindControl(moreButton, () => setControlsPage((Number(controlsRow.dataset.page) + 1) % Math.max(1, Number(controlsRow.dataset.pages) || 1)));
+  window.addEventListener('pointerdown', (event) => {
+    if (Number(controlsRow.dataset.page) > 0 && !controlsRow.contains(event.target as Node)) setControlsPage(0);
+  }, true);
+  /** A control's caption: its name, or a count it is showing (a cooldown), which a touch tile shows alone. */
+  const setControlText = (label: Element, text: string, count: boolean): void => {
+    label.textContent = text;
+    label.toggleAttribute('data-count', count);
+  };
   const reloadForSlot=createVehicleCooldownReader();
   function updateSpecialAction(player: HudTank | null | undefined, aim: HudAimInput | null | undefined = null): void {
     const canControl=!!player?.combat&&!player.combat.destroyed;
@@ -2541,7 +2581,8 @@ export function initHud(bus: EventBus): HudRuntime {
     droneButton.dataset.phase = drone.phase;
     droneButton.classList.toggle('active', !!flight?.active);
     droneButton.setAttribute('aria-pressed', String(!!flight?.active));
-    droneButton.querySelector('.sl')!.textContent = flight?.active ? t('systems.drone.return') : (flight?.cooldownS ?? 0) > 0 ? `${Math.ceil(flight!.cooldownS)}s` : t('systems.drone');
+    const droneWait = !flight?.active && (flight?.cooldownS ?? 0) > 0;
+    setControlText(droneButton.querySelector('.sl')!, flight?.active ? t('systems.drone.return') : droneWait ? `${Math.ceil(flight!.cooldownS)}s` : t('systems.drone'), droneWait);
 
     root.classList.toggle('aerial-active', !!flight?.active);
     root.classList.toggle('aerial-drone', flight?.kind === 'drone' && flight.active);
@@ -2553,8 +2594,9 @@ export function initHud(bus: EventBus): HudRuntime {
       button.classList.toggle('active',active);
       if(action!=='smoke')button.setAttribute('aria-pressed',String(active));
       button.disabled=!canControl||(action==='roofGun'&&player?.combat?.modules?.roofGun?.state==='red')||(action==='smoke'&&(cooldown>0||state?.smokeCharges===0));
-      label.textContent=action==='smoke' && state?.smokeCharges===0 ? '0/3'
-        : action==='smoke' && cooldown ? t('systems.cooldown',{seconds:cooldown}) : t(`systems.${action}`);
+      const smokeWait=action==='smoke'&&state?.smokeCharges!==0&&cooldown>0;
+      setControlText(label,action==='smoke' && state?.smokeCharges===0 ? '0/3'
+        : smokeWait ? t('systems.cooldown',{seconds:cooldown}) : t(`systems.${action}`),smokeWait);
       status.textContent=action==='smoke'?`${state?.smokeCharges??3}/3`:'';
       if(action==='smoke')button.setAttribute('aria-label',`${t('systems.smoke.help')} ${status.textContent}${cooldown?' · '+label.textContent:''}`);
     }
@@ -2594,7 +2636,7 @@ export function initHud(bus: EventBus): HudRuntime {
       ? Number(action?.missileSlot) : -1;
     // Weapon channels keep the missile timer accurate even while the cannon is selected.
     const missileWait=extraMissileSlot>=0?Math.ceil(reloadForSlot(combat,extraMissileSlot,lastTimeS) || 0):0;
-    missileButton.querySelector('.sl')!.textContent=!missileEmpty&&missileWait>0?t('systems.cooldown',{seconds:missileWait}):t('systems.atgm');
+    setControlText(missileButton.querySelector('.sl')!,!missileEmpty&&missileWait>0?t('systems.cooldown',{seconds:missileWait}):t('systems.atgm'),!missileEmpty&&missileWait>0);
     missileButton.setAttribute('aria-label', emptyMissileLabel ? `${t('garage.shellType.ATGM')} ${emptyMissileLabel}` : t('garage.shellType.ATGM'));
     const specialMissileEmpty=specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE&&missileEmpty;
     // A magazine reload with nothing stowed to load is spent too: no countdown, no pointless reload.
@@ -2604,7 +2646,7 @@ export function initHud(bus: EventBus): HudRuntime {
       &&magazineFeedEmpty(combat,player?.spec,cards?.[aim?.shellSlot??localSlot]?.unlimited===true));
     const wait=specialEmpty?0:specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE?Math.ceil(reloadForSlot(combat,missileSlot,lastTimeS)||0)
       :specialKind===SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD?Math.ceil(combat?.gunReload?.t??combat?.reload.t??0):0;
-    specialLabel.textContent=wait>0?t('systems.cooldown',{seconds:wait}):specialLabel.dataset.short||'';
+    setControlText(specialLabel,wait>0?t('systems.cooldown',{seconds:wait}):specialLabel.dataset.short||'',wait>0);
     specialButton.setAttribute('aria-label', specialMissileEmpty ? `${specialButton.title} ${emptyMissileLabel}` : specialButton.title || t('hud.special.unavailable'));
     specialButton.querySelector('small')!.textContent='';
     specialButton.classList.toggle('empty', specialEmpty);
@@ -3306,7 +3348,7 @@ export function initHud(bus: EventBus): HudRuntime {
     modeStatusEl.dataset.mode = modeId;
     modeStatusEl.title = t(`playMenu.matchMode.${modeId}.label`);
     modeStatusName.textContent = t(`hud.objective.${modeId}`);
-    modeStatusValue.textContent = copy;
+    setObjectiveValue(modeStatusValue, copy);
     modeStatusEl.classList.add('show');
     lastModeStatus = status;
   }

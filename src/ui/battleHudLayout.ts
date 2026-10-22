@@ -112,6 +112,14 @@ const PORTRAIT_SIGHT_ROOM_H = 720;
  *  touchWarningSeated): a short landscape, and a portrait phone 340 px wide or less (r10g: every seat by the sight met the
  *  left FIRE button, the map or the speedometer at 320x568). */
 const touchChipParked = (width: number, height: number) => (width > height && height < 550) || (height >= width && width <= 340);
+/** A short landscape at most this tall (touch) seats the objective under the map in its compact form, its progress
+ *  alone (the mode's name in its title), where the left column holds it over the joystick: the centre column then holds
+ *  the notices from under the score (at 568x290 the panel under the score left them no clear place). Where the column
+ *  is too short (568x256) the panel stays under the score. battleHudLayout.css data-objective-seat. */
+const OBJECTIVE_COMPACT_H = 340;
+/** The side seat's gap under the map, and its least width: the parked warning chip's (battleHudLayout.css), one column. */
+const OBJECTIVE_SEAT_GAP = 4;
+const PARKED_CHIP_W = 106;
 /** A touch target's least side (battle-hud-layout.browser.mjs) and the systems row's gap (battleHudLayout.css). */
 const TOUCH_TARGET = 44;
 const SYSTEMS_GAP = 3;
@@ -226,6 +234,42 @@ export function installBattleHudLayout(root: HTMLElement): void {
       touch ? read('.cot-touch.on .joy')?.top ?? height : height,
       touch ? read('.cot-touch.on .fire.alt')?.top ?? (height <= 340 ? height - 206 : height) : height,
       read('.cot-drive')?.top ?? height) - 8;
+  }
+  /** The objective's place this pass (`--hud-objective-*`): centred under the score, or its side seat. */
+  let objectivePlace = { left: 0, top: 0, width: 0 };
+  /** The window and mode the objective last left the side seat for: it stays under the score there, so a count that
+   *  gains a digit (a Horde's rounds) moves it once at most, never back and forth. */
+  let objectiveTopKey = '';
+  /** Seats the objective (OBJECTIVE_COMPACT_H) and writes its seat and place before the pass reads it: the side seat is
+   *  measured in its compact form under the map and kept where it ends over the joystick (the left lane's own floor
+   *  reserves a short landscape's hidden second FIRE button). 'side', or '' (the panel under the score). */
+  function seatObjective(touch: boolean, width: number, height: number, map: DOMRect | null, score: DOMRect | null): string {
+    const node = document.querySelector<HTMLElement>('.cot-mode-status.show');
+    objectivePlace = { left: score ? score.left + score.width / 2 : width / 2, top: score?.bottom || 64,
+      width: objectiveWidth(score?.width || 344) - (touch && read('.cot-mp-status.battle') && width > height ? 52 : 0) };
+    let seat = '';
+    const key = `${width}x${height}|${node?.dataset.mode}`;
+    if (node && touch && width > height && height <= OBJECTIVE_COMPACT_H && map && map.left < width / 2 && key !== objectiveTopKey) {
+      const seatWidth = Math.max(map.width, PARKED_CHIP_W);
+      const place = { left: map.left + seatWidth / 2, top: map.bottom + OBJECTIVE_SEAT_GAP, width: seatWidth };
+      writeObjective('side', place);
+      const floor = Math.min(read('.cot-touch.on .joy')?.top ?? height, read('.cot-touch.on .fire.alt')?.top ?? height, height) - 8;
+      // (never kept from a measure the HUD's faces have not reached yet: a fallback face wraps wider)
+      if (node.getBoundingClientRect().bottom <= floor) { seat = 'side'; objectivePlace = place; }
+      else if (document.fonts?.status !== 'loading') objectiveTopKey = key;
+    }
+    writeObjective(seat, objectivePlace);
+    return seat;
+  }
+  function writeObjective(seat: string, place: { left: number; top: number; width: number }) {
+    if ((document.body.dataset.objectiveSeat ?? '') !== seat) {
+      if (seat) document.body.dataset.objectiveSeat = seat;
+      else delete document.body.dataset.objectiveSeat;
+    }
+    // (as the pass's own write formats them)
+    setBodyVar('--hud-objective-top', `${place.top}px`);
+    setBodyVar('--hud-objective-left', `${Math.floor(place.left)}px`);
+    setBodyVar('--hud-objective-width', `${Math.floor(place.width)}px`);
   }
   /** A node's box when it shows (laid out, not hidden or transparent), else null. */
   const shownBox = (node: Element): DOMRect | null => {
@@ -544,14 +588,16 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const map = read('.cot-minimap');
     const score = read('.cot-top');
     const scoreBottom = score?.bottom || 64;
+    const objectiveSeat = seatObjective(touch, width, height, map, score);
     const objective = read('.cot-mode-status.show');
-    const top = Math.max(scoreBottom, objective?.bottom || 0);
+    const side = objectiveSeat === 'side' && objective ? objective : null;
+    const top = side ? scoreBottom : Math.max(scoreBottom, objective?.bottom || 0);
     const telemetry = read('.cot-net');
     const earLeft = read('.cot-ear.l');
     let leftAnchor = Math.max(top, earLeft?.bottom || 0,
       !touch && width < 768 && telemetry && telemetry.top < height / 2 ? telemetry.bottom : 0,
       touch && touchChipParked(width, height) ? read('.cot-aim-warning:not([hidden])')?.bottom || 0 : 0,
-      map && map.left < width / 2 ? map.bottom : 0) + 8;
+      map && map.left < width / 2 ? map.bottom : 0, side?.bottom || 0) + 8;
     const systems = read('.cot-vehicle-controls');
     let systemsHeight = systems?.height ?? 0;
     const ammo = read('.cot-shells');
@@ -629,6 +675,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
       systemsPerRow = Math.max(1, Math.ceil(inRow / rows));
       systemsHeight = rows * TOUCH_TARGET + (rows - 1) * SYSTEMS_GAP;
     };
+    // (a row that pages no longer, its paging marks lifted before it is counted)
+    const more = document.querySelector<HTMLButtonElement>('.cot-vehicle-controls>.cot-systems-more');
+    const paged = touch && !systemsSlot && !!systemsElement && !!more;
+    if (!paged && more && !more.hidden) {
+      more.hidden = true;
+      for (const button of systemsElement?.children ?? []) button.removeAttribute('data-off');
+    }
     if (systemsSlot) {
       for (const button of systemsElement?.children ?? []) if (button.checkVisibility()) systemsCount++;
       slotRows();
@@ -643,6 +696,29 @@ export function installBattleHudLayout(root: HTMLElement): void {
       dockWidth = Math.min(systemsWidth, naturalWidth);
       // (the top slot's rows in the width the ammo column leaves it)
       if (systemsSlot) { dockWidth = systemsWidth; slotRows(); }
+    }
+    // UI-06 (owner 2026-10-14: "a better way to show the stuff u can do row on mobile"): a touch row is whole 44 px tiles
+    // and never scrolls; where its width holds fewer tiles than it has controls, its last place is the More tile, which
+    // pages through the rest in the same place (hud.ts), so nothing new covers the sight or the controls. The paging
+    // marks are lifted while the row's controls are counted (no frame between).
+    if (paged && systemsElement && more) {
+      const controls: HTMLElement[] = [];
+      for (const node of systemsElement.children) {
+        const button = node as HTMLElement;
+        if (button === more) continue;
+        button.removeAttribute('data-off');
+        if (button.checkVisibility()) controls.push(button);
+      }
+      const fits = Math.max(1, Math.floor((systemsWidth - 4 + SYSTEMS_GAP) / (TOUCH_TARGET + SYSTEMS_GAP)));
+      const perPage = controls.length > fits ? Math.max(1, fits - 1) : Math.max(1, controls.length);
+      const pages = Math.max(1, Math.ceil(controls.length / perPage));
+      const page = Math.min(pages - 1, Number(systemsElement.dataset.page) || 0);
+      controls.forEach((button, index) => { if (Math.floor(index / perPage) !== page) button.setAttribute('data-off', ''); });
+      more.hidden = pages <= 1;
+      more.classList.toggle('last', pages > 1 && page === pages - 1);
+      if (systemsElement.dataset.pages !== String(pages)) systemsElement.dataset.pages = String(pages);
+      if (systemsElement.dataset.page !== String(page)) systemsElement.dataset.page = String(page);
+      if (pages > 1) dockWidth = Math.min(systemsWidth, (perPage + 1) * (TOUCH_TARGET + SYSTEMS_GAP) - SYSTEMS_GAP + 4);
     }
     // (the buttons beside the chrome: the row's last ones, each 44 px, from the slot's left edge; the marks cleared once
     // none sits there)
@@ -817,7 +893,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         && noticeLeft < systemsLeft + dockWidth && width - noticeLeft > systemsLeft) {
         noticeTop = systemsTop + systemsHeight + 8;
       }
-      if (touch && width > height && height <= 340) noticeTop = Math.max(top + 16, scoreBottom + 52);
+      if (touch && width > height && height <= 340) noticeTop = Math.max(top + 16, side ? 0 : scoreBottom + 52);
       alertTop = noticeTop + (notice?.height ?? 48) + 8;
     }
     const stack = battleSideStack(leftEnd - leftTop, chat, toastCount);
@@ -913,13 +989,20 @@ export function installBattleHudLayout(root: HTMLElement): void {
         banner.dispatchEvent(new Event('cot-banner-placement'));
       }
     }
-    const network = !!read('.cot-mp-status.battle');
+    // A short landscape parks the warning chip under the map; beside the objective's side seat at its top, below the
+    // network button where that stands there.
+    const chipLeft = side ? Math.ceil(side.right) + OBJECTIVE_SEAT_GAP : 8;
+    let chipTop = width > height || touchChipParked(width, height) ? (map?.bottom ?? 114) + 4 : height * .5 + 48;
+    if (side) {
+      chipTop = side.top;
+      if (strip && strip.left < chipLeft + PARKED_CHIP_W && strip.right > chipLeft && strip.bottom > chipTop) chipTop = Math.ceil(strip.bottom) + 4;
+    }
     const properties = {
       'status-lift': Math.max(5, (read('.cot-dp')?.top ?? 0) - (statusDockBottom() ?? height)),
       'center-notice-width': plan ? plan.detection.w : 248,
       'flight-right-clearance': map && map.left > width / 2 && map.bottom > height / 2 ? width - map.left + 12 : 12,
       'network-left': width > height ? Math.max(122, (map?.right ?? 104) + 8) : (map?.right ?? 104) + 8,
-      'aim-warning-top': width > height || touchChipParked(width, height) ? (map?.bottom ?? 114) + 4 : height * .5 + 48,
+      'aim-warning-top': chipTop, 'aim-warning-left': chipLeft,
       'fps-top': (read('.cot-spec.show')?.top ?? 36) - 28,
       'network-top': width > height ? scoreBottom + 4 : (chrome?.top ?? top + 8),
       'network-corner-right': networkRight,
@@ -933,9 +1016,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'touch-alert-w': touchPlan?.alertW ?? width - 24, 'touch-banner-cx': touchPlan?.bannerCx ?? width / 2,
       'touch-countdown-cx': touchPlan?.countdownCx ?? width / 2, 'touch-countdown-top': touchPlan?.countdownTop ?? top + 8,
       'touch-rules-top': touchPlan?.rulesTop ?? height,
-      'objective-top': scoreBottom, 'objective-bottom': top, 'banner-top': bannerTop, 'tray-shift': trayShift,
-      'objective-width': objectiveWidth(score?.width || 344) - (touch && network && width > height ? 52 : 0),
-      'objective-left': score ? score.left + score.width / 2 : width / 2,
+      'objective-top': objectivePlace.top, 'objective-bottom': top, 'banner-top': bannerTop, 'tray-shift': trayShift,
+      'objective-width': objectivePlace.width, 'objective-left': objectivePlace.left,
       'kill-left-top': leftAnchor, 'kill-right-top': rightAnchor,
       'kill-left-height': killHeightLeft, 'kill-right-height': killHeightRight,
       'left-top': leftTop, 'left-height': Math.max(0, leftEnd - leftTop),
@@ -993,6 +1075,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
   window.addEventListener('cot-hud-relayout', schedule);
   // Keyboard and toolbar changes of the visible height arrive here once responsiveLayout.ts has resized the root.
   window.addEventListener('cot:layoutchange', schedule);
+  // The HUD's faces arriving re-measure what a fallback face set (the objective's side seat among them).
+  document.fonts?.addEventListener?.('loadingdone', () => { planInputs = true; schedule(); });
   // Transforms (notably the spectator tray's entrance) do not resize the
   // border box. Measure the settled position without polling its animation.
   // A pass that lands mid-fade measures the reticle's furniture where its fade has it, so the end of a furniture's own fade

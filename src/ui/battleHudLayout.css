@@ -178,6 +178,17 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status[d
 body[data-cot-battle-layout] .cot-mode-status .mi{grid-column:1;grid-row:1/3;color:var(--objective-accent)}
 body[data-cot-battle-layout] .cot-mode-status .mn{grid-column:2;grid-row:1;color:var(--objective-accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body[data-cot-battle-layout] .cot-mode-status .mv{grid-column:2;grid-row:2;white-space:nowrap;font-size:9px;letter-spacing:0}
+/* A short landscape's side seat (battleHudLayout.ts OBJECTIVE_COMPACT_H): the objective under the map in its compact form,
+   the icon and the progress, each part of it on its own line, the mode's name in the title */
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-objective-seat] .cot-mode-status{
+  min-height:0;grid-template-rows:auto;align-items:center;font-size:11px;line-height:13px}
+body[data-cot-battle-layout][data-objective-seat] .cot-mode-status .mn{display:none}
+body[data-cot-battle-layout][data-objective-seat] .cot-mode-status .mi{grid-row:1}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-objective-seat] .cot-mode-status .mv{grid-row:1;white-space:normal;font-size:11px;letter-spacing:.02em}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-objective-seat='side'] .cot-mode-status{
+  clip-path:none;padding:4px 6px;gap:0 6px;grid-template-columns:15px minmax(0,1fr);box-shadow:0 4px 12px #0007}
+body[data-cot-battle-layout][data-objective-seat='side'] .cot-mode-status .sep{display:none}
+body[data-cot-battle-layout][data-objective-seat='side'] .cot-mode-status .seg{display:block}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-touch .mobile-chrome{top:calc(var(--hud-objective-bottom,64px) + 8px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-killfeed{display:contents}
 body[data-cot-battle-layout] .cot-kill-lane{
@@ -196,7 +207,23 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:calc(var(--hud-objective-bottom,72px) + 8px)}
 
-body.cot-touch-layout .cot-vehicle-controls>button{height:44px!important;min-height:44px;grid-template-rows:1fr;padding-block:5px}
+/* UI-06 (owner 2026-10-14: "a better way to show the stuff u can do row on mobile"): on touch the row is 44 px tiles in
+   the consumables' form that never scroll, each its icon alone (its name is its label; a keycap means nothing on glass),
+   with a count in its corner while it has one (a cooldown, the smoke charges); the More tile pages through what the row
+   cannot hold (battleHudLayout.ts data-off, hud.ts) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls{overflow:visible;gap:3px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button{flex:0 0 44px;width:44px!important;min-width:44px;height:44px!important;min-height:44px;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);place-items:center;padding:0;border:1px solid #92a4b447;border-bottom:2px solid #92a4b447;background:linear-gradient(180deg,#0e1318eb,#080b0ef2);box-shadow:inset 0 1px #ffffff09,0 4px 13px #00000042}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button.active{border-color:#c89a50;box-shadow:inset 0 -2px #efb84e}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button.empty{border-bottom-color:var(--hud-danger)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button[data-off]{display:none!important}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button .si{grid-column:1;grid-row:1}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls .si svg{width:22px!important;height:22px!important}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button :is(.sl,.sk,.system-status){display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button :is(.sl[data-count],.system-status:not(:empty)){display:block;grid-column:1;grid-row:1;align-self:end;justify-self:end;margin:0 3px 2px 0;font:700 11px/1 var(--hud-font,system-ui);letter-spacing:-.01em;color:#cfd9e2;text-shadow:0 1px 2px #000e}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button .sl[data-count]~.system-status{display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>.cot-systems-more:not([hidden]){display:grid}
+.cot-systems-more .back,.cot-systems-more.last .next{display:none!important}
+.cot-systems-more.last .back{display:flex!important}
 body[data-cot-battle-layout] .cot-kill-lane.r .cot-kf{border-left:0;border-right:2px solid #f05a5a;background:linear-gradient(90deg,transparent,rgba(8,12,16,.82) 26%)}
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] :is(.cot-dp,.cot-drive){bottom:128px}
@@ -243,7 +270,6 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag svg.o
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid) .cot-er{container:roster-row / size}
 @container roster-row (max-height:22px){.cot-hud .cot-ear .cot-er .n .veh{display:none}.cot-hud .cot-ear .cot-er .n .nick{font-size:9px;line-height:1.1}}
 
-body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-report,.tight-shot-report) .cot-si-kicker{display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-report,.tight-shot-report) .cot-si-hd{min-height:26px;padding-block:3px}
 
 /* Short landscape is a height budget, not a miniature desktop. Leave the
@@ -306,7 +332,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
 }
 
 @media (max-height:549px) and (orientation:landscape){
-  .cot-aim-warning{left:8px;top:var(--hud-aim-warning-top,118px);transform:none;width:106px;font-size:9px;line-height:10px;padding:2px 10px}
+  .cot-aim-warning{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:106px;font-size:9px;line-height:10px;padding:2px 10px}
 }
 @media (max-height:340px) and (orientation:landscape){
   .cot-touch-aim .aimhint{display:none}
@@ -426,14 +452,11 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
    the band the scope's marks take over the sight): on a portrait phone under 720 px tall the layout seats the row in the
    top slot right of the map (data-systems-slot), compact: the slot's width shared by its buttons, --hud-systems-per-row a
    row (the layout's count: a five-control kit at 320 wide wraps to two rows), each 44 px tall and wide at the least (the
-   touch target), its icon over its label, without the keyboard's key badges a touch screen has no use for */
+   touch target), each a tile as everywhere on touch */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls{width:var(--hud-systems-width);overflow:visible;flex-wrap:wrap}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button{flex:1 1 calc((100% - (var(--hud-systems-per-row,3) - 1) * 3px) / var(--hud-systems-per-row,3));width:auto!important;min-width:44px;height:44px!important;min-height:44px;grid-template-columns:minmax(0,1fr);grid-template-rows:17px 13px;row-gap:2px;padding:5px 1px 6px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button{flex:1 1 calc((100% - (var(--hud-systems-per-row,3) - 1) * 3px) / var(--hud-systems-per-row,3));width:auto!important;min-width:44px}
 /* ...and what one row cannot hold sits beside the touch chrome, left of it and level with it (the layout's data-slot-beside
    index and the chrome's offset: a five-control kit at 320 wide, whose second row met the ammo drawer's open shells) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button[data-slot-beside]{position:absolute!important;flex:none;width:44px!important;min-width:44px;top:var(--hud-systems-beside-dy);left:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button[data-slot-beside='1']{left:47px}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .si{grid-column:1;grid-row:1}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .sl{grid-column:1;grid-row:2;max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:8px}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .sk{display:none}
 }

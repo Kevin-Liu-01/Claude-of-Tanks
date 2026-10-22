@@ -1024,7 +1024,9 @@ export function createMatchModeWorldPresentation(
       rangeDressing ??= createProvingRangeDressing(root, options);
       rangeDressing.update(state.range);
     } else rangeDressing?.update(null);
-    updateSpawns(state, marks);
+    // (the proving ground's firing line has its start board and the map's mark: no revive beacon round the player's own
+    // hull, whose full-strength team ring flooded the tarmac at every start and reset)
+    if (!state.range) updateSpawns(state, marks);
   };
 
   const dispose = (): void => {

@@ -3828,6 +3828,7 @@
   "garage.stat.gunTraverse": "火炮横向转速",
   "garage.stat.gunBloom": "火炮转动散布 · 20°/秒",
   "systems.title": "车辆控制",
+  "systems.more": "更多控制",
   "systems.smoke": "烟幕",
   "systems.smoke.help": "向前发射烟幕弹。共三轮，冷却28秒。烟幕遮挡视线，但不阻挡炮弹。",
   "systems.lights": "车灯",
