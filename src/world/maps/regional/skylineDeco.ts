@@ -23,12 +23,13 @@ type Crown = 'pyramid' | 'stepped' | 'needle';
  * (the owner, 2026-10-21: the Shanghai skyscrapers "are underdesigned") a Bund tower's dress, by its crown, where every
  * tower wore the same brown brick grid: the pyramid's Sassoon House in granite over dark bronze spandrels, the stepped
  * crown's Broadway Mansions and Park Hotel in their brown brick over darker spandrels, the needle's tower in pale stone
- * over green-black spandrels; the accent of its friezes and crown.
+ * over green-black spandrels; the stone of its centre spines (the brick towers' granite); the accent of its friezes and
+ * crown.
  */
-const DRESSES: Readonly<Record<Crown, { wall: RegionalBucket; spandrel: { bucket: RegionalBucket; colour?: Rgb; shade?: number }; accent: Rgb }>> = {
-  pyramid: { wall: 'plaster3', spandrel: { bucket: 'structureMetal', colour: rgb(0x3a3128) }, accent: COPPER },
-  stepped: { wall: 'stone', spandrel: { bucket: 'stone', shade: 0.62 }, accent: GILT },
-  needle: { wall: 'plaster2', spandrel: { bucket: 'structureMetal', colour: rgb(0x2c3a34) }, accent: GILT },
+const DRESSES: Readonly<Record<Crown, { wall: RegionalBucket; spine: RegionalBucket; spandrel: { bucket: RegionalBucket; colour?: Rgb; shade?: number }; accent: Rgb }>> = {
+  pyramid: { wall: 'plaster3', spine: 'plaster3', spandrel: { bucket: 'structureMetal', colour: rgb(0x3a3128) }, accent: COPPER },
+  stepped: { wall: 'stone', spine: 'plaster3', spandrel: { bucket: 'stone', shade: 0.62 }, accent: GILT },
+  needle: { wall: 'plaster2', spine: 'plaster2', spandrel: { bucket: 'structureMetal', colour: rgb(0x2c3a34) }, accent: GILT },
 };
 
 /** A rect less the part of it a corner void (a collapsed corner's) takes: cut on the side that loses the less. */
@@ -61,50 +62,55 @@ function deckFinials(sink: PartSink, r: Rect, y: number, bay: number, bucket: Re
 }
 
 /**
- * The Art Deco chevrons along a setback's parapet: a band of raised stepped triangles 10 cm proud, between the parapet's
- * foot and its finials (none over a collapsed corner's void).
+ * The Art Deco chevrons along a setback's parapet in the tower's accent (gilt, the pyramid's copper): a band of stepped
+ * triangles proud of it between its foot and its finials, three quarters of a metre high so the band reads from the
+ * street (none over a collapsed corner's void).
  */
-function chevrons(sink: PartSink, r: Rect, y: number, bucket: RegionalBucket, gone: Rect | null): void {
+function chevrons(sink: PartSink, r: Rect, y: number, accent: Rgb, gone: Rect | null): void {
+  const opts = { ...DECOR, colour: accent };
   for (const face of rectFaces(r)) {
-    const n = Math.max(2, Math.round(face.width / 1.1)), w = face.width / n;
+    const n = Math.max(2, Math.round(face.width / 1.3)), w = face.width / n;
     for (let k = 0; k < n; k++) {
       const u = -face.width / 2 + (k + 0.5) * w, p = facePoint(face, u, 0, 0);
       if (within(gone, p[0], p[2], 0.6)) continue;
-      sink.prism(bucket, [facePoint(face, u - w * 0.42, y), facePoint(face, u + w * 0.42, y), facePoint(face, u, y + 0.5)], face.out, 0.1, DECOR);
-      sink.prism(bucket, [facePoint(face, u - w * 0.22, y), facePoint(face, u + w * 0.22, y), facePoint(face, u, y + 0.27)], face.out, 0.16, DECOR);
+      sink.prism('structureMetal', [facePoint(face, u - w * 0.44, y), facePoint(face, u + w * 0.44, y), facePoint(face, u, y + 0.75)], face.out, 0.14, opts);
+      sink.prism('structureMetal', [facePoint(face, u - w * 0.24, y), facePoint(face, u + w * 0.24, y), facePoint(face, u, y + 0.4)], face.out, 0.22, opts);
     }
   }
 }
 
 /**
- * A face's centre spine: two fins of the deco pier, deeper and wider than the rest, framing its middle bay (two bays on an
- * even count) from the tier's foot past its parapet, the stepped panel between them over the parapet and the accent's
- * blade at its head — the vertical every Bund tower of the thirties drew up its front.
+ * A face's centre spine: two fins of the deco pier, twice the depth and width of the rest (in the spine's own stone: the
+ * brick towers' granite), framing its middle bay (two bays on an even count) from the tier's foot past its parapet, the
+ * stepped head between them six metres over the parapet and the accent's blade on it -- the vertical every Bund tower of
+ * the thirties drew up its front.
  */
 function spine(sink: PartSink, face: Face, y0: number, top: number, bay: number, bucket: RegionalBucket, accent: Rgb): void {
   const n = Math.max(1, Math.round(face.width / bay)), bw = face.width / n;
-  const half = n % 2 ? bw / 2 : bw, head = top + 2.6;
-  for (const s of [-1, 1]) steppedPier(sink, bucket, face, s * half, y0, head, 0.95, 0.95, { ...DECOR, fineSides: true, shadow: true });
-  const pw = 2 * half - 0.95;
-  faceBox(sink, bucket, face, 0, (top + 0.9 + head) / 2, 0.25, pw, head - top - 0.9, 0.5, { ...DECOR, shadow: true });
-  faceBox(sink, bucket, face, 0, head + 0.45, 0.2, pw * 0.62, 0.9, 0.4, { ...DECOR, shadow: true });
-  faceBox(sink, 'structureMetal', face, 0, head + 0.9 + 0.7, 0.2, 0.26, 1.4, 0.36, { ...DECOR, colour: accent });
+  const half = n % 2 ? bw / 2 : bw, head = top + 4.5, fw = 1.4, fo = 1.5;
+  for (const s of [-1, 1]) steppedPier(sink, bucket, face, s * half, y0, head, fw, fo, { ...DECOR, fineSides: true, shadow: true });
+  const pw = 2 * half - fw;
+  faceBox(sink, bucket, face, 0, (top + 0.9 + head) / 2, 0.4, pw, head - top - 0.9, 0.8, { ...DECOR, shadow: true });
+  faceBox(sink, bucket, face, 0, head + 0.8, 0.3, pw * 0.6, 1.6, 0.6, { ...DECOR, shadow: true });
+  faceBox(sink, 'structureMetal', face, 0, head + 1.6 + 1.2, 0.3, 0.36, 2.4, 0.5, { ...DECOR, colour: accent, shadow: true });
 }
 
 /**
  * A blade sign hung edge-on off a pier's front (the hotels' and the department stores' names down their towers): its
- * board and the characters down both sides, an iron bracket top and bottom. (u, y0) the pier and the board's foot.
+ * board in a gilt edge and the characters down both sides, read at any range, an iron bracket top and bottom. (u, y0) the
+ * pier and the board's foot.
  */
 function bladeSign(sink: PartSink, face: Face, u: number, y0: number, h: number, out: number, board: Rgb, ink: Rgb, rng: () => number): void {
-  const reach = 1.25, oc = out + reach / 2;
+  const reach = 1.4, oc = out + reach / 2;
   faceBox(sink, 'structureWood', face, u, y0 + h / 2, oc, 0.26, h, reach, { ...DECOR, colour: board, shadow: true });
+  faceBox(sink, 'structureMetal', face, u, y0 + h / 2, out + reach + 0.04, 0.3, h + 0.08, 0.08, { ...DECOR, colour: GILT });
   for (const s of [-1, 1]) {
     // the board's side as a face of its own, its u along the reach
     const side: Face = { origin: facePoint(face, u + s * 0.13, 0, 0), u: [face.out[0] * s, 0, face.out[2] * s], out: [face.u[0] * s, 0, face.u[2] * s], width: reach };
-    const n = Math.max(2, Math.min(7, Math.floor(h / (reach * 0.95)))), cell = Math.min(reach * 0.62, h / n / 1.2);
+    const n = Math.max(2, Math.min(7, Math.floor(h / (reach * 0.95)))), cell = Math.min(reach * 0.66, h / n / 1.15);
     for (let k = 0; k < n; k++) {
       glyph(s * oc, y0 + h - (k + 0.5) * h / n, cell, rng, (u0, u1, a, b) =>
-        faceBox(sink, 'structureWood', side, (u0 + u1) / 2, (a + b) / 2, 0.006, u1 - u0, b - a, 0.012, { ...DECOR, colour: ink, fine: true }));
+        faceBox(sink, 'structureWood', side, (u0 + u1) / 2, (a + b) / 2, 0.006, u1 - u0, b - a, 0.012, { ...DECOR, colour: ink }));
     }
   }
   for (const y of [y0 + 0.3, y0 + h - 0.3]) faceBox(sink, 'structureMetal', face, u, y, out + 0.15, 0.08, 0.08, 0.3, { ...DECOR, colour: STEEL });
@@ -157,8 +163,12 @@ export function decoTower(opts: SkylineOptions & { crown?: 'pyramid' | 'stepped'
       deckFinials(sink, r, top + 0.9, facade.bay, wall, gone);
       // (230, "underdesigned") the Art Deco chevrons along the setback's parapet; up each wide face of the first tier its
       // centre spine
-      chevrons(sink, r, top + 0.12, wall, gone);
-      if (t === 0) for (const face of rectFaces(r)) if (face.width >= 12) spine(sink, face, y, top, facade.bay, wall, dress.accent);
+      chevrons(sink, r, top + 0.08, dress.accent, gone);
+      for (const face of rectFaces(r)) {
+        // (never up a face whose middle a collapsed corner's void reaches: its fins would stand before the void)
+        const mid = facePoint(face, 0, 0, 0);
+        if (face.width >= 10 && !within(gone, mid[0], mid[2], 4)) spine(sink, face, y, top, facade.bay, dress.spine, dress.accent);
+      }
       left -= n; y = top;
       if (left <= 0) break;
       const k = Math.min((r.x1 - r.x0) * 0.16, (r.z1 - r.z0) * 0.16, 3.2);
