@@ -262,6 +262,7 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   stb1: anchor('turret', 'left', 0.41, 0.47, 0.22, 1),
   type90a: anchor('turret', 'right', 0.35, 0.44, 0.24, -1),
   type10b: anchor('hull', 'left', 0.39, 0.61, 0.23, 1),
+  type10_dozer: anchor('turret', 'right', 0.37, 0.44, 0.23, -1), // the production turret's seat
   m2a2_bradley: anchor('hull', 'left', 0.43, 0.64, 0.25, 1),
   bmp2: anchor('hull', 'right', 0.45, 0.65, 0.23, -1),
   spz_puma: anchor('hull', 'left', 0.40, 0.62, 0.25, 1),

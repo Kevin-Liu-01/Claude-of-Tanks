@@ -147,6 +147,7 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   stb1: { displayName: 'STB-1', shortName: 'STB-1', searchAliases: ['STB 1 Japan'] },
   type90a: { displayName: 'Type 90A', shortName: 'Type 90A', searchAliases: ['Type 90 Kai'] },
   type10b: { displayName: 'Type 10B', shortName: 'Type 10B', searchAliases: ['Type 10 Kai'] },
+  type10_dozer: { displayName: 'Type 10 (Dozer)', shortName: 'Type 10 Dozer', searchAliases: ['Type 10 dozer blade', 'Type 10 dozer kit'] },
   leo2a3: {
     displayName: 'Leopard 2A3', shortName: 'Leopard 2A3',
     searchAliases: ['Leopard 2A4 OTCO', '2A3'],
