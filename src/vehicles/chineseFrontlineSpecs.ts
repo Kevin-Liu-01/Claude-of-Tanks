@@ -155,7 +155,8 @@ const CHINESE_FRONTLINE_SPECS = {
       caliberMm: 35, reloadS: 12, baseAccuracy: 0.30, aimTimeS: 1.7,
       launcherSalvo: { rounds: 2, intervalS: .35 },
       primaryGuided: true, soundProfile: 'konkurs-launch',
-      launcherMuzzles: [-1.28, -.88, .88, 1.28].flatMap(x => [.02, .42].map(y => ({ x, y, z: 1.00 }))),
+      // The collar mouths of the round-canister pods (profiles/ztz100Prototype.ts ZTZ100_PROTOTYPE_LAUNCHER, 2026-10-21).
+      launcherMuzzles: [-1.23, -.93, .93, 1.23].flatMap(x => [.12, .42].map(y => ({ x, y, z: 1.00 }))),
       bloom: { move: 0.055, hullRot: 0.075, turret: 0.050, afterShot: 1.8 },
       shells: [
         shell('HJ-P9 Tandem', 'HEAT', 152, 950, 950, 500, 320,
@@ -166,7 +167,7 @@ const CHINESE_FRONTLINE_SPECS = {
           { pen2000Mm: 112, reloadS: 0.30, count: 180, soundProfile: 'kde-35' }),
       ],
     },
-    dims: { hullLengthM: 6.94, overallLengthM: 7.70, widthM: 3.734, heightM: 1.90, silhouetteHeightM: 2.74 },
+    dims: { hullLengthM: 6.94, overallLengthM: 7.70, widthM: 3.734, heightM: 1.90, silhouetteHeightM: 2.64 },
     armor: modernArmor({
       hl: 3.47, hw: 1.85, inW: 1.15, floor: 0.35, trkTop: 1.05, roofY: 1.41,
       turretPivot: [0, 1.41, -0.55], gunPivot: [0, 0.64, 0.80],

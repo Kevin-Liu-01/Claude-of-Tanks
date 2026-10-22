@@ -7,7 +7,7 @@
  */
 import type * as TurretRingWell from './turretRingWell.ts';
 
-type TurretRingModule = Pick<typeof TurretRingWell, 'createTurretRingPresentation'>;
+type TurretRingModule = Pick<typeof TurretRingWell, 'createTurretRingPresentation' | 'capTurretRingDents'>;
 
 let ringModule: TurretRingModule | null = null;
 let loading: Promise<TurretRingModule> | null = null;

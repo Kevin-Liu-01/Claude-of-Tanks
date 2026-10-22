@@ -75,6 +75,20 @@ const CAR = { belly: 0.45, track: 0.34, floor: 0.85, floorMax: 0.5, heavyTop: 2.
   trackFloor: 0.75, body: 0.33, glass: 0.12,
   droop: 0.7, tallDroop: DROOP_SLOPE, tallTop: 1.9, crease: 0.05, alongK: 1.6, acrossK: 1.9, bow: 0.12, rack: 0.2, splay: 1.0,
   squash: 0.28, wheelHit: 0.8, jitter: 0.012 } as const;
+/** A tall body folded into itself (233; r3's critics: a box crossed in part stood as "a flat ramp", its walls pressed into
+ *  one smooth sheet over the droop): it buckles in folds as deep as it sank — its sides bow out in waves up and along
+ *  them, its roof crumples — up to `fold` m once it sank `sunk` m; its share of this rises from `from` to `to` m tall (a
+ *  car keeps its own creases). The folds' pitch up and along it (1/m). Its droop beside a crush is steeper, `droop` m a
+ *  metre (233's blind critic: the uncrossed rear of a box still rose as "a slanted panel ... a ramp" at the props' own
+ *  slope): the box stands where no hull crossed it, its fold to the crush short and buckled (r2's steeper fold stood as
+ *  "a billboard" when it was one smooth sheet). */
+const TALL = { from: 1.9, to: 2.5, fold: 0.24, sunk: 1.4, upK: 1.3, alongK: 0.9, acrossK: 1.6, droop: 2.0 } as const;
+
+/** A crush copy's bend segments (the car-wreck lane, 233; r3's critics: a box truck crossed in part stood its box as "a flat
+ *  ramp" with "thin straight lines" to it): its frame rails, its box's floor and the trims along its edges are each one
+ *  quad, their corners only at their ends, so a crush could only tilt them. An edge over `long` m is cut into pieces of
+ *  `seg` m at most; the rest of the body keeps its own triangles (a car gains 2-4 % of its triangles, a truck 15-30 %). */
+const BEND = { long: 1.5, seg: 0.5 } as const;
 
 /** A car's anatomy over its field (its own frame): its belt line and its wheels. */
 export interface CrushVehicle {
@@ -86,6 +100,8 @@ export interface CrushVehicle {
   readonly body: number;
   /** The droop beside a crush (m a metre): CAR.droop, or CAR.tallDroop for a tall body (a van's box, a truck's tilt). */
   readonly droop: number;
+  /** How far it is a tall body that buckles in folds as it sinks (TALL; 0 a car). */
+  readonly tall: number;
   /** The wheels, packed [zc, yc, r, xIn, xOut, side] (side −1 left, +1 right; xIn/xOut the tyre's |x| span). */
   readonly wheels: Float32Array;
   /** Per vertex of the rest it was read from: the wheel it belongs to, or −1. */
@@ -157,10 +173,154 @@ export function vehicleAnatomy(rest: ArrayLike<number>, surf: ArrayLike<number> 
   let wheelTop = 0;
   for (let w = 0; w < packed.length; w += 6) wheelTop = Math.max(wheelTop, packed[w + 1] + packed[w + 2]);
   const heavy = top > CAR.heavyTop, floorMax = heavy ? CAR.heavyFloorMax : CAR.floorMax;
+  const tall = Math.max(0, Math.min(1, (top - TALL.from) / (TALL.to - TALL.from)));
   const floor = wheelTop > 0 ? Math.max(0.25, Math.min(floorMax, wheelTop * CAR.floor)) : Math.min(floorMax, top * 0.3);
   return { belt: Math.max(top * 0.3, Math.min(top * 0.8, belt)), floor, body: heavy ? CAR.heavyBody : CAR.body,
-    droop: top > CAR.tallTop ? CAR.tallDroop : CAR.droop,
+    droop: top > CAR.tallTop ? CAR.tallDroop + (TALL.droop - CAR.tallDroop) * tall : CAR.droop,
+    tall,
     wheels: packed, wheelOf, hubCap: new Float32Array(packed.length / 6) };
+}
+
+/** A copy's bend segments: its triangles with the long ones cut, and the vertices the cuts add (after the rest's own). */
+export interface BendPlan {
+  /** The new index: the body's triangles, every long one replaced by a strip of short ones. */
+  readonly index: Uint32Array;
+  /** Per added vertex: the two vertices of the edge it lies on (`a`, `b`) and its share along it from `a` (`t`). */
+  readonly a: Uint32Array;
+  readonly b: Uint32Array;
+  readonly t: Float32Array;
+}
+
+/**
+ * Bend segments for a crush copy (BEND): every edge longer than `long` is cut into pieces of `seg` at most, the count a
+ * function of the edge's length alone and the cuts measured from its lower end (by position), so two faces meeting along
+ * an edge (a box's crisp corners carry their own vertices) are cut at the very same points and nothing opens between them
+ * as the crush bends them. A quad (two coplanar triangles about a shared longest edge) becomes one strip between its long
+ * sides, a lone triangle a strip from the corner opposite its shortest edge; a side of either that is long too is fanned.
+ * Null when nothing is long. `triangles` is the body's share of `index`. Allocates (once per copy, at the crush).
+ */
+export function bendSegments(rest: ArrayLike<number>, index: ArrayLike<number>, triangles: number,
+  long: number = BEND.long, seg: number = BEND.seg): BendPlan | null {
+  const count = Math.floor(rest.length / 3);
+  const len = (p: number, q: number): number =>
+    Math.hypot(rest[q * 3] - rest[p * 3], rest[q * 3 + 1] - rest[p * 3 + 1], rest[q * 3 + 2] - rest[p * 3 + 2]);
+  const pieces = (p: number, q: number): number => { const l = len(p, q); return l > long ? Math.ceil(l / seg) : 1; };
+  const flat = (k: number): boolean => index[k] === index[k + 1] || index[k + 1] === index[k + 2] || index[k] === index[k + 2];
+  let any = false;
+  for (let k = 0; k < triangles * 3 && !any; k += 3) {
+    if (!flat(k) && (pieces(index[k], index[k + 1]) > 1 || pieces(index[k + 1], index[k + 2]) > 1 || pieces(index[k + 2], index[k]) > 1)) any = true;
+  }
+  if (!any) return null;
+  const ea: number[] = [], eb: number[] = [], et: number[] = [];
+  const cuts = new Map<number, number>();
+  // the k-th of n points from p toward q (its own vertex at either end), shared by every triangle on that edge
+  const point = (p: number, q: number, k: number, n: number): number => {
+    if (k <= 0) return p;
+    if (k >= n) return q;
+    const key = Math.min(p, q) * count + Math.max(p, q);
+    // the edge's lower end by position (ties by index): coincident edges of two faces measure from the same corner
+    let lo = p, hi = q;
+    for (let d = 0; d < 3; d++) {
+      const dp = rest[p * 3 + d], dq = rest[q * 3 + d];
+      if (dp !== dq) { if (dq < dp) { lo = q; hi = p; } break; }
+    }
+    let first = cuts.get(key);
+    if (first === undefined) {
+      first = count + ea.length;
+      for (let j = 1; j < n; j++) { ea.push(lo); eb.push(hi); et.push(j / n); }
+      cuts.set(key, first);
+    }
+    return first + (lo === p ? k : n - k) - 1;
+  };
+  const out: number[] = [];
+  // a triangle (x, e0, e1) whose side e0 → e1 is cut: a fan from x along it
+  const fan = (x: number, e0: number, e1: number): void => {
+    const n = pieces(e0, e1);
+    for (let k = 0; k < n; k++) out.push(x, point(e0, e1, k, n), point(e0, e1, k + 1, n));
+  };
+  // a strip between the chains p0 → p1 and q0 → q1 (the same way round; p's side first in the winding, (p0, p1, q0)
+  // winding as the face): its start side (q0 → p0) and its end side (p1 → q1) fanned where they are cut; a triangle's
+  // strip starts at its corner (p0 = q0)
+  const strip = (p0: number, p1: number, q0: number, q1: number): void => {
+    const np = pieces(p0, p1), nq = pieces(q0, q1);
+    let i = 0, j = 0, first = p0 !== q0;
+    if (!first) {
+      i = 1; j = 1;
+      const pi = point(p0, p1, 1, np), qj = point(q0, q1, 1, nq);
+      if (np === 1 && nq === 1 && pieces(p1, q1) > 1) fan(p0, p1, q1);
+      else out.push(p0, pi, qj);
+    }
+    while (i < np || j < nq) {
+      // the side that is behind steps: (pi, its next, qj) along p, (pi, qj's next, qj) along q, both winding as the face
+      const stepP = j >= nq || (i < np && (i + 1) / np <= (j + 1) / nq);
+      const pi = point(p0, p1, i, np), qj = point(q0, q1, j, nq);
+      const x = stepP ? point(p0, p1, i + 1, np) : point(q0, q1, j + 1, nq);
+      if (stepP) i++; else j++;
+      const last = i >= np && j >= nq;
+      if (first && pieces(q0, p0) > 1) fan(x, q0, p0);
+      else if (last && pieces(p1, q1) > 1) fan(stepP ? pi : qj, p1, q1);
+      else out.push(pi, x, qj);
+      first = false;
+    }
+  };
+  // quads: two triangles about a shared longest edge, coplanar and convex
+  const longest = new Int32Array(triangles).fill(-1);
+  const byEdge = new Map<number, number[]>();
+  for (let t = 0; t < triangles; t++) {
+    const k = t * 3;
+    if (flat(k)) continue;
+    let best = -1, bl = -1;
+    for (let e = 0; e < 3; e++) { const l = len(index[k + e], index[k + (e + 1) % 3]); if (l > bl) { bl = l; best = e; } }
+    if (bl <= long) continue;
+    longest[t] = best;
+    const p = index[k + best], q = index[k + (best + 1) % 3], key = Math.min(p, q) * count + Math.max(p, q);
+    const list = byEdge.get(key);
+    if (list) list.push(t); else byEdge.set(key, [t]);
+  }
+  const normalOf = (p: number, q: number, r: number, o: number[]): number[] => {
+    const ux = rest[q * 3] - rest[p * 3], uy = rest[q * 3 + 1] - rest[p * 3 + 1], uz = rest[q * 3 + 2] - rest[p * 3 + 2];
+    const vx = rest[r * 3] - rest[p * 3], vy = rest[r * 3 + 1] - rest[p * 3 + 1], vz = rest[r * 3 + 2] - rest[p * 3 + 2];
+    o[0] = uy * vz - uz * vy; o[1] = uz * vx - ux * vz; o[2] = ux * vy - uy * vx;
+    return o;
+  };
+  const n1: number[] = [0, 0, 0], n2: number[] = [0, 0, 0];
+  const aligned = (u: number[], v: number[]): boolean => {
+    const lu = Math.hypot(u[0], u[1], u[2]), lv = Math.hypot(v[0], v[1], v[2]);
+    return lu > 1e-12 && lv > 1e-12 && (u[0] * v[0] + u[1] * v[1] + u[2] * v[2]) / (lu * lv) > 0.9995;
+  };
+  const done = new Uint8Array(triangles);
+  for (let t = 0; t < triangles; t++) {
+    const k = t * 3;
+    if (done[t]) continue;
+    done[t] = 1;
+    // (nothing long: as it was)
+    if (longest[t] < 0) { out.push(index[k], index[k + 1], index[k + 2]); continue; }
+    // its partner across its longest edge, as a quad x → w → y → u (this triangle x → y → u, the other y → x → w)
+    {
+      const e = longest[t], x = index[k + e], y = index[k + (e + 1) % 3], u = index[k + (e + 2) % 3];
+      const list = byEdge.get(Math.min(x, y) * count + Math.max(x, y));
+      const o = list && list.length === 2 ? (list[0] === t ? list[1] : list[0]) : -1;
+      if (o >= 0 && !done[o]) {
+        const ko = o * 3, eo = longest[o];
+        const ox = index[ko + eo], oy = index[ko + (eo + 1) % 3], w = index[ko + (eo + 2) % 3];
+        // the same edge run the other way, the same plane, and the other diagonal inside the quad (convex)
+        if (ox === y && oy === x && aligned(normalOf(x, y, u, n1), normalOf(y, x, w, n2))
+          && aligned(n1, normalOf(x, w, u, n2)) && aligned(n1, normalOf(w, y, u, n2))) {
+          done[o] = 1;
+          // the strip runs along the longer pair of opposite sides (x → w beside u → y, or w → y beside x → u)
+          if (Math.min(len(x, w), len(u, y)) >= Math.min(len(w, y), len(u, x))) strip(x, w, u, y);
+          else strip(w, y, x, u);
+          continue;
+        }
+      }
+    }
+    // a lone triangle: a strip from the corner opposite its shortest side, both chains from that corner
+    const a = index[k], b = index[k + 1], c = index[k + 2];
+    const lab = len(a, b), lbc = len(b, c), lca = len(c, a);
+    const [cc, ca, cb] = lbc <= lab && lbc <= lca ? [a, b, c] : lca <= lab ? [b, c, a] : [c, a, b];
+    strip(cc, ca, cc, cb);
+  }
+  return { index: Uint32Array.from(out), a: Uint32Array.from(ea), b: Uint32Array.from(eb), t: Float32Array.from(et) };
 }
 
 /** A triangle wave of period 1 in [−1, 1]: a fold's crease (flat-shaded, its ridges read as folded sheet). */
@@ -406,6 +566,7 @@ export function deformPositions(f: CrushField, rest: ArrayLike<number>, out: Flo
           // itself (the roof stays on top of the doors, the doors on the sills)
           const bodyOver = Math.max(0, Math.min(y, car.belt) - cap), glassOver = Math.max(0, y - Math.max(car.belt, cap));
           ny = cap + bodyOver * car.body + glassOver * CAR.glass;
+          const sunk = y - ny;
           const up = Math.min(1, (y - cap) / 0.3);
           // the panels fold in creases across the length and the width (the same rest place folds the same)
           const along = tri(z * CAR.alongK + x * 0.35 + 0.17), across = tri(x * CAR.acrossK - z * 0.25 + 0.61);
@@ -414,6 +575,15 @@ export function deformPositions(f: CrushField, rest: ArrayLike<number>, out: Flo
           const flank = Math.max(0, Math.min(1, (Math.abs(x) / Math.max(0.3, halfWidth) - 0.55) / 0.4));
           const t = Math.min(1, (y - cap) / Math.max(0.3, f.top - cap));
           nx += Math.sign(x || 1) * flank * pressed * (CAR.bow * 4 * t * (1 - t) + CAR.crease * 0.7 * along);
+          // a tall body buckles in folds as deep as it sank (its sides bow out in waves, its roof crumples)
+          if (car.tall > 0) {
+            const fold = TALL.fold * car.tall * Math.sqrt(Math.min(1, sunk / TALL.sunk));
+            const wave = 0.6 * tri(y * TALL.upK + z * 0.45 + 0.3) + 0.4 * tri(z * TALL.alongK - y * 0.3 + 0.8);
+            nx += Math.sign(x || 1) * flank * fold * (0.55 + 0.45 * wave);
+            // (its roof folds mostly down into it: little stands up into a hull still over it)
+            ny += fold * (1 - flank) * (0.55 * tri(z * TALL.alongK * 1.3 + x * 0.6 + 0.1) + 0.35 * tri(x * TALL.acrossK - z * 0.7 + 0.45) - 0.3);
+            nz += fold * 0.3 * wave;
+          }
           // the roof racks over along the hull's travel as the pillars fold
           if (y > car.belt) {
             const rack = CAR.rack * pressed * Math.min(1, (y - car.belt) / Math.max(0.2, f.top - car.belt));

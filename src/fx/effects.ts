@@ -342,10 +342,11 @@ interface SmokeColumn {
   /** false: a shell burst on open ground — smoke only, no flame licks on a deck line nothing stands on, no ember
    * smolder after (2026-10-03, the Studio's floating fire: shell hits left 40 s of flame over bare ice and water). */
   flame?: boolean;
-  /** A burning map car (the car-wreck lane, 2026-10-21): its length (its nose's half length, world XZ); its fire's light
-   *  sits lower over it and burns brighter as the night falls (r1c: "the fire lights almost nothing at night"; r2: "a red
-   *  spotlight in full sun" when it burned bright by day too). */
-  car?: [number, number];
+  /** A burning map car (the car-wreck lane, 2026-10-21): its length (its nose's half length, world XZ) and its height (m);
+   *  its fire's light sits lower over it and burns brighter as the night falls (r1c: "the fire lights almost nothing at
+   *  night"; r2: "a red spotlight in full sun" when it burned bright by day too); its flames are tongues along its cabin
+   *  and over its roof (233). */
+  car?: [number, number, number];
 }
 
 interface LiveShell {
@@ -726,10 +727,6 @@ const MUZZLE_LIGHT_SNOW_K = 0.33, MUZZLE_LIGHT_SAND_K = 0.66;
 /** (EF.10) the local lights' gains on the smoke and dust they reach (a radiance gain on the medium's own colour, at the
  *  light; falling off as (1 - d / range)^2): a headlight's beam, a flash at its peak, a wreck's fire at its mean */
 const LOCAL_HEADLIGHT_GAIN = 1.4, LOCAL_FLASH_GAIN = 2.4, LOCAL_FIRE_GAIN = 1.5;
-/** (233) a burning wreck's light on its own smoke, by day and by night alike (x LOCAL_FIRE_GAIN): the fire is as bright
- *  at noon as at midnight and the exposure already lifts it at night (the night scale on it washed the night column a
- *  flat cream once the newest wreck took the full gain); by day it now warms its base (the newest wreck's had ~0.2) */
-const WRECK_FIRE_SMOKE_K = 0.3;
 /** a wreck fire's reach on its own smoke (m, x the column's scale): the lit underside only a few metres round the flames */
 const LOCAL_FIRE_REACH_M = 5;
 // lighting_post r3: 1.1 s / pow-3 decay left the light at 9% of peak while
@@ -793,16 +790,23 @@ const SMOKE_COLUMN_S = 40;
  *  (r1c: night wrecks killed a minute before had no fire left; a car fire burns for many minutes). */
 const VEHICLE_BURN_S = 18;
 const CAR_BURN_S = 30;
+/** A fire's life (the car-wreck lane, 233: "the fire glow can outlast the visible flame"): it dies down over its last
+ *  FLAME_FADE_S (a car's CAR_FLAME_FADE_S) as its licks thin and shrink, and its light goes with them; a car's fire takes
+ *  hold over CAR_FLAME_RISE_S. */
+const FLAME_FADE_S = 4;
+const CAR_FLAME_FADE_S = 6;
+const CAR_FLAME_RISE_S = 1.2;
+/** A burning column's flame now (0: none — a smoke-only column, or burnt out and smouldering — to 1). */
+function flameOf(col: SmokeColumn): number {
+  if (col.flame === false || !(col.ttl > 0)) return 0;
+  const fade = Math.min(1, col.ttl / (col.car ? CAR_FLAME_FADE_S : FLAME_FADE_S));
+  const rise = col.car ? Math.min(1, Math.max(0, (CAR_BURN_S - col.ttl) / CAR_FLAME_RISE_S)) : 1;
+  return fade * fade * (3 - 2 * fade) * (0.35 + 0.65 * rise);
+}
 const SMOKE_SMOLDER_S = 35;    // post-column ember/wisp stage on the wreck
-/** (233, the FX follow-up: the wreck's glow outlived its visible flames) a column's flames die down over their last
- *  seconds — fewer, lower, thinner licks — and the fire's light (the pooled light over the wreck and its smoke's local
- *  light) follows them down to nothing as the last lick dies; the smoulder after carries no flame light. */
-const FLAME_DIE_S = 6;
-/** (233, the integrator's confirmation critic: at night the tongues read as "two pill-shaped sprite blobs", the smoke
- *  over-lit far above the fire, the smoulder kept a warm tint) the tongue flames, their die-down and their light are the
- *  day's: from this dark level up (the tracers' light level, 0 day .. 1 night) the fire keeps main's night look — round
- *  licks for the column's whole life, the pooled light riding the newest column through its smoulder, the night-scaled
- *  local light on its smoke */
+/** (233, the integrator's confirmation critic: at night the tongues read as "two pill-shaped sprite blobs") a tank
+ *  wreck's licks are tongues by day only: from this dark level up (the tracers' light level, 0 day .. 1 night) its
+ *  column keeps main's round licks. A burning car's tongues (emitCarFlames) burn so at every hour. */
 const NIGHT_FIRE_DARK = 0.5;
 const SHELL_BURST_COLUMN_S = 14; // a shell hit's smoke-only column (the Studio's stand-in blast; no wreck burns)
 // r5 column-continuity rebuild: 0.05 (was 0.11) — the 9 Hz cadence of very
@@ -3969,6 +3973,48 @@ function* createFxSteps(
     return Math.pow(THREE.MathUtils.clamp(d / 90, 1, 2.4), 0.75);
   }
 
+  /**
+   * A burning car's flames for one column tick (the car-wreck lane, 233; r3's critics: "round flame sprites", "soft round
+   * blobs over the cab"): tongues (the fire pool's upright tapered cards, a negative end size) rising out of its windows
+   * and over its roof along its cabin, a few low and broad in the body, the rest tall and narrow, swaying; as many and as
+   * big as its fire is alive (`fk`, flameOf).
+   */
+  function emitCarFlames(col: SmokeColumn, fk: number, dk: number, birthOffset: number): void {
+    const car = col.car;
+    if (!car || !(fk > 0)) return;
+    const lx = car[0], lz = car[1], heightM = Math.max(1, car[2]);
+    const half = Math.hypot(lx, lz) || 1, ux = lx / half, uz = lz / half;
+    // its base (the column sits 0.25 m under it) and the size of its fire (a truck's cab burns bigger than a small car)
+    const baseY = col.pos[1] + 0.25, big = Math.min(1.5, Math.max(0.8, heightM / 1.5));
+    const n = rng() < 0.55 * fk ? 2 : rng() < 0.9 * fk ? 1 : 0;
+    for (let k = 0; k < n; k++) {
+      // along the cabin (its middle and a little toward the nose), across its width
+      const along = (rng() - 0.45) * half * 0.5, across = (rng() - 0.5) * 0.8 * big;
+      const low = rng() < 0.3;
+      // its foot in the body (the cabin's windows and the roof line; r2's blind critic: "stiff spikes ... floating detached
+      // above the car", the tongues rose a metre and more over their lives): it stays at its foot, flickering up a little
+      _puffO.pos[0] = col.pos[0] + ux * along - uz * across;
+      _puffO.pos[1] = baseY + heightM * (low ? 0.3 + rng() * 0.15 : 0.45 + rng() * 0.3);
+      _puffO.pos[2] = col.pos[2] + uz * along + ux * across;
+      _puffO.vel[0] = COLUMN_WIND_X * 0.2 + (rng() - 0.5) * 0.15;
+      _puffO.vel[1] = 0.25 + rng() * 0.45;
+      _puffO.vel[2] = COLUMN_WIND_Z * 0.2 + (rng() - 0.5) * 0.15;
+      _puffO.life = 0.45 + rng() * 0.35;
+      const w = (low ? 0.6 + rng() * 0.25 : 0.42 + rng() * 0.24) * big * dk * (0.5 + 0.5 * fk);
+      _puffO.size0 = w;
+      // (negative: a tongue, narrowing to 60 % of its width as it dies)
+      _puffO.size1 = -w * 0.6;
+      // its height over its width, and its tip's sway (rad/s)
+      _puffO.rot = low ? 1.2 + rng() * 0.3 : 1.6 + rng() * 0.8;
+      _puffO.rotVel = 7 + rng() * 6;
+      // (r1 in the game: white-hot spikes) orange-yellow at its root, deep orange as it dies; a thinner card, so its
+      // stacked core burns yellow, not white
+      col3(0xffa848, _puffO.col0); col3(0xe8480c, _puffO.col1);
+      _puffO.alpha = 0.62; _puffO.grav = 0.5; _puffO.birthOffset = birthOffset - rng() * COLUMN_TICK_S;
+      particles.emit('fire', _puffO);
+    }
+  }
+
   /** One tick of a persistent smoke column emitter (stage-decayed). */
   function emitColumnPuff(col: SmokeColumn, birthOffset = 0): void {
     // Stage decay: a fresh kill pumps thick black smoke; over the column's
@@ -3984,9 +4030,24 @@ function* createFxSteps(
       if (rng() < (COLUMN_TICK_S / 0.16) * lod) {
         mediaColumnPuff(blast, col.pos[0], col.pos[1], col.pos[2], stage, col.scale * dk / Math.sqrt(lod), birthOffset);
       }
-      // (233) a smoke-only column (a shell burst on open ground) licks no flame here either, as the pooled tier never did
-      const flameK = columnFlameK(col);
-      if (flameK > 0 && rng() < (0.70 + 0.30 * stage) * (0.35 + 0.65 * flameK)) emitFlameLick(col, dk, birthOffset, flameK);
+      // (233) its flames die down with its fire (flameOf); a car's are tongues along its cabin
+      const fk = flameOf(col);
+      if (col.car) emitCarFlames(col, fk, dk, birthOffset);
+      // (233) by day a tank wreck's lick is a tongue (emitColumnTongue); at night main's round lick
+      else if (rng() < (0.70 + 0.30 * stage) * fk && !nightFire()) emitColumnTongue(col, fk, dk, birthOffset);
+      else if (nightFire() && rng() < (0.70 + 0.30 * stage) * fk) {
+        _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
+        _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
+        _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.2;
+        _puffO.vel[0] = (rng() - 0.5) * 0.6; _puffO.vel[1] = 1.0 + rng() * 0.9; _puffO.vel[2] = (rng() - 0.5) * 0.6;
+        _puffO.life = 0.30 + rng() * 0.28;
+        _puffO.size0 = (1.15 + rng() * 0.4) * col.scale * dk * (0.55 + 0.45 * fk);
+        _puffO.size1 = (0.75 + rng() * 0.3) * col.scale * dk * (0.55 + 0.45 * fk);
+        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
+        col3(0xffcf70, _puffO.col0); col3(0xff5a10, _puffO.col1);
+        _puffO.alpha = 0.95; _puffO.grav = 1.4; _puffO.birthOffset = birthOffset - rng() * 0.15;
+        particles.emit('fire', _puffO);
+      }
       return;
     }
     const s = col.scale * (0.62 + 0.38 * stage) * dk;
@@ -4077,66 +4138,56 @@ function* createFxSteps(
     // hull"): licks are born ON the deck line, rise slowly, live SHORT and
     // SHRINK with age — fire that licks up off the wreck and dies before it
     // can drift free. Higher rate so the base always carries flame.
-    const flameK = columnFlameK(col);
-    if (flameK > 0 && rng() < (0.70 + 0.30 * stage) * (0.35 + 0.65 * flameK)) {
-      const licks = rng() < 0.35 * flameK ? 2 : 1;
-      for (let li = 0; li < licks; li++) emitFlameLick(col, dk, birthOffset, flameK);
+    // (233) the licks die down with the fire (flameOf); a car's are tongues along its cabin
+    const fk = flameOf(col);
+    if (col.car) emitCarFlames(col, fk, dk, birthOffset);
+    else if (rng() < (0.70 + 0.30 * stage) * fk) {
+      const licks = rng() < 0.35 ? 2 : 1;
+      for (let li = 0; li < licks; li++) {
+        // (233) by day a tongue (emitColumnTongue); at night main's round lick
+        if (!nightFire()) { emitColumnTongue(col, fk, dk, birthOffset); continue; }
+        _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
+        _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
+        _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.2;
+        _puffO.vel[0] = (rng() - 0.5) * 0.6; _puffO.vel[1] = 1.0 + rng() * 0.9; _puffO.vel[2] = (rng() - 0.5) * 0.6;
+        _puffO.life = 0.30 + rng() * 0.28;
+        _puffO.size0 = (1.15 + rng() * 0.4) * col.scale * dk * (0.55 + 0.45 * fk);
+        _puffO.size1 = (0.75 + rng() * 0.3) * col.scale * dk * (0.55 + 0.45 * fk); // shrink as it dies
+        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
+        col3(0xffcf70, _puffO.col0); col3(0xff5a10, _puffO.col1);
+        _puffO.alpha = 0.95; _puffO.grav = 1.4; _puffO.birthOffset = birthOffset - rng() * 0.15;
+        particles.emit('fire', _puffO);
+      }
     }
   }
 
-  /** (233) how much a column still burns: 1 while it burns, down to 0 over its flames' last FLAME_DIE_S; 0 for a
-   *  smoke-only column and through the smoulder */
-  function columnFlameK(col: SmokeColumn): number {
-    if (col.flame === false || !(col.ttl > 0)) return 0;
-    return nightFire() ? 1 : THREE.MathUtils.smoothstep(col.ttl, 0, FLAME_DIE_S);
-  }
-
-  /** (233) main's fire at night (NIGHT_FIRE_DARK) */
+  /** (233) a tank wreck's column keeps main's round licks at night (NIGHT_FIRE_DARK); by day its licks are tongues */
   function nightFire(): boolean {
     return tracers.darkLevel() >= NIGHT_FIRE_DARK;
   }
 
-  /** The newest column still burning (the pooled fire light rides it), or null. */
-  function burningColumn(): SmokeColumn | null {
-    for (let i = columns.length - 1; i >= 0; i--) if (columnFlameK(columns[i]) > 0) return columns[i];
-    return null;
-  }
-
   /**
-   * One flame lick on a burning wreck's deck. (233, the FX follow-up: "flat orange fire sprites"; "fire is round sprite
-   * blobs") a tongue, not a blob: the fire pool's flame card (a negative size0) stands tall along the world's up from its
-   * root on the deck, tapers to a torn tip and sways rather than spins. Licks are born ON the deck line, rise slowly, live
-   * SHORT and SHRINK with age (r7: "two cotton-ball flame blobs hovering above the hull"); a dying fire's licks are lower
-   * and thinner (flameK).
+   * By day, one flame lick on a burning tank wreck's deck as a tongue (233, the FX follow-up: "fire is round sprite
+   * blobs"), in the one tongue card a burning car's flames use (emitCarFlames: a negative end size, the card's height over
+   * its width in `rot`, its tip's sway in `rotVel`): spread over the deck, rising from it, as many and as big as its fire is
+   * alive (`fk`, flameOf). At night the column keeps main's round licks (the integrator's critic on the night tongues: "two
+   * pill-shaped sprite blobs").
    */
-  function emitFlameLick(col: SmokeColumn, dk: number, birthOffset: number, flameK: number): void {
-    if (nightFire()) {
-      // main's lick at night (NIGHT_FIRE_DARK)
-      _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
-      _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
-      _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.2;
-      _puffO.vel[0] = (rng() - 0.5) * 0.6; _puffO.vel[1] = 1.0 + rng() * 0.9; _puffO.vel[2] = (rng() - 0.5) * 0.6;
-      _puffO.life = 0.30 + rng() * 0.28;
-      _puffO.size0 = (1.15 + rng() * 0.4) * col.scale * dk;
-      _puffO.size1 = (0.75 + rng() * 0.3) * col.scale * dk;
-      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
-      col3(0xffcf70, _puffO.col0); col3(0xff5a10, _puffO.col1);
-      _puffO.alpha = 0.95; _puffO.grav = 1.4; _puffO.birthOffset = birthOffset - rng() * 0.15;
-      particles.emit('fire', _puffO);
-      return;
-    }
-    const k = 0.55 + 0.45 * flameK;
-    // spread over the deck (a fire along it, never one candle at its middle)
+  function emitColumnTongue(col: SmokeColumn, fk: number, dk: number, birthOffset: number): void {
     _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.7 * col.scale;
-    _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
+    _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.4;
     _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.7 * col.scale;
-    _puffO.vel[0] = (rng() - 0.5) * 0.6; _puffO.vel[1] = (1.0 + rng() * 0.9) * k; _puffO.vel[2] = (rng() - 0.5) * 0.6;
-    _puffO.life = 0.30 + rng() * 0.28;
-    _puffO.size0 = -(1.05 + rng() * 0.4) * col.scale * dk * k;
-    _puffO.size1 = (0.7 + rng() * 0.3) * col.scale * dk * k; // shrink as it dies
-    _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 1.5 + rng() * 2.5;
-    col3(0xffcf70, _puffO.col0); col3(0xff5a10, _puffO.col1);
-    _puffO.alpha = 0.95; _puffO.grav = 1.4; _puffO.birthOffset = birthOffset - rng() * 0.15;
+    _puffO.vel[0] = COLUMN_WIND_X * 0.2 + (rng() - 0.5) * 0.3;
+    _puffO.vel[1] = 0.4 + rng() * 0.6;
+    _puffO.vel[2] = COLUMN_WIND_Z * 0.2 + (rng() - 0.5) * 0.3;
+    _puffO.life = 0.4 + rng() * 0.3;
+    const w = (0.7 + rng() * 0.35) * col.scale * dk * (0.55 + 0.45 * fk);
+    _puffO.size0 = w;
+    _puffO.size1 = -w * 0.6;
+    _puffO.rot = 1.5 + rng() * 0.7;
+    _puffO.rotVel = 6 + rng() * 5;
+    col3(0xffb35a, _puffO.col0); col3(0xee500e, _puffO.col1);
+    _puffO.alpha = 0.8; _puffO.grav = 0.8; _puffO.birthOffset = birthOffset - rng() * 0.15;
     particles.emit('fire', _puffO);
   }
 
@@ -4282,38 +4333,24 @@ function* createFxSteps(
     // only within a few metres of the flames") a wreck's fire lights its smoke from the flames themselves (1.2 m over the
     // hull, not the pooled light's 3.4 m) and only a few metres round them (LOCAL_FIRE_REACH_M x the column's scale);
     // a burst's pulse keeps its own reach (the pooled puffs take it; the media light their pulse themselves)
-    const night = nightFire();
     if (explosionLight.intensity > 0) {
       const p = explosionLight.position, pulse = lightAge(blastState) < blastState.dur;
       if (pulse) {
         addLocalPoint(p.x, p.y, p.z, explosionLight.distance * 1.3, explosionLight.color,
           nightK * LOCAL_FLASH_GAIN * explosionLight.intensity / EXPLOSION_LIGHT_PEAK, true);
-      } else if (night) {
-        // main's at night (NIGHT_FIRE_DARK): the newest wreck's smoke by the pooled light's flicker
+      } else {
         addLocalPoint(p.x, p.y - 2.2, p.z, LOCAL_FIRE_REACH_M * 1.3, explosionLight.color,
           nightK * LOCAL_FIRE_GAIN * explosionLight.intensity / 12);
       }
     }
-    if (night) {
-      // main's at night: the other burning wrecks (the explosion light rides the latest column)
-      for (let i = columns.length - 2; i >= 0; i--) {
-        const col = columns[i];
-        if (col.flame === false || !(col.ttl > 0)) continue;
-        const flicker = 0.8 + 0.12 * Math.sin(now * 11.3 + i * 1.7) + 0.08 * Math.sin(now * 6.1 + i * 2.9);
-        if (!addLocalPoint(col.pos[0], col.pos[1] + 1.2, col.pos[2], LOCAL_FIRE_REACH_M * col.scale, _wreckFire,
-          LOCAL_FIRE_GAIN * nightK * flicker * col.scale)) break;
-      }
-      endLocalLights();
-      return;
-    }
-    // every burning wreck lights its smoke from its flames (233: the newest took the pooled light's flicker / 12, under
-    // half the others' gain, and kept it through the smoulder), as its flames burn (columnFlameK)
+    // the other burning wrecks (the explosion light rides the latest one still burning, or a burst's pulse the latest
+    // column), each as bright as its fire is alive (flameOf)
     for (let i = columns.length - 1; i >= 0; i--) {
-      const col = columns[i], flameK = columnFlameK(col);
-      if (!(flameK > 0)) continue;
+      const col = columns[i], fk = flameOf(col);
+      if (col === wreckLit || !(fk > 0)) continue;
       const flicker = 0.8 + 0.12 * Math.sin(now * 11.3 + i * 1.7) + 0.08 * Math.sin(now * 6.1 + i * 2.9);
       if (!addLocalPoint(col.pos[0], col.pos[1] + 1.2, col.pos[2], LOCAL_FIRE_REACH_M * col.scale, _wreckFire,
-        LOCAL_FIRE_GAIN * WRECK_FIRE_SMOKE_K * flicker * col.scale * flameK)) break;
+        LOCAL_FIRE_GAIN * nightK * flicker * col.scale * fk)) break;
     }
     endLocalLights();
   }
@@ -4331,16 +4368,19 @@ function* createFxSteps(
     impactDecals.sweep();
   }
 
+  /** The column the explosion light rides now (writeLocalLights lights the others). */
+  let wreckLit: SmokeColumn | null = null;
   function updateWreckLight(): void {
+    wreckLit = columns.length ? columns[columns.length - 1] : null;
     if (replaySuppressed) return;
     const explosionState = lightStates[1];
-    // (233) the light rides the newest column still burning and dies with its flames (columnFlameK): no glow over a
-    // smouldering wreck or a smoke-only crater (after the pulse, applyLight has already set it dark)
-    // (at night main's: the latest column, smouldering or not; NIGHT_FIRE_DARK)
-    const night = nightFire();
-    const col = lightAge(explosionState) < explosionState.dur ? null
-      : night ? columns[columns.length - 1] ?? null : burningColumn();
-    if (col) {
+    if (lightAge(explosionState) >= explosionState.dur && columns.length) {
+      // (233: "the fire glow can outlast the visible flame": it rode the latest column into its smoulder, and a smoke-only
+      // one) the latest column still burning, its light dying down with its flames
+      let col: SmokeColumn | null = null;
+      for (let i = columns.length - 1; i >= 0 && !col; i--) if (flameOf(columns[i]) > 0) col = columns[i];
+      wreckLit = col;
+      if (!col) return;
       // (wave 266: the wreck fire's light left a red patch on the ground and the hull's deck) a living flicker over the
       // wreck, set higher and softer: the flames on the deck carry the fire, the light only warms round them
       // (a car's fire is lower and lights the car and the ground round it: r1c, "the fire lights almost nothing at night")
@@ -4351,7 +4391,7 @@ function* createFxSteps(
       const time = particles.getTime();
       explosionLight.intensity = (
         9.5 + 3.2 * Math.sin(time * 13.7) + 2.2 * Math.sin(time * 7.1 + 1.9)
-      ) * col.scale * (blast ? 0.45 : 1) * (col.car ? 0.45 + 1.15 * tracers.darkLevel() : 1) * (night ? 1 : columnFlameK(col));
+      ) * col.scale * (blast ? 0.45 : 1) * (col.car ? 0.45 + 1.15 * tracers.darkLevel() : 1) * flameOf(col);
       return;
     }
     const pulseRange = explosionState.range ?? 13;
@@ -7279,7 +7319,7 @@ function* createFxSteps(
         const car = Math.hypot(dir.x, dir.z) > 0.3;
         const col: SmokeColumn = { key: null, pos: [pos.x, car ? pos.y : Math.max(pos.y, gy), pos.z], acc: 0, ttl: car ? CAR_BURN_S : VEHICLE_BURN_S,
           scale: Math.max(0.45, Math.min(0.75, heightM * 0.3)), flame: true,
-          ...(car ? { car: [dir.x, dir.z] as [number, number] } : {}) };
+          ...(car ? { car: [dir.x, dir.z, heightM] as [number, number, number] } : {}) };
         columns.push(col);
         emitColumnPuff(col);
         capColumns();

@@ -3,6 +3,13 @@
 Variant: M1A1 Heavy Armor (first-gen DU armor package). Externally near
 identical to M1A1: no CITV, no CROWS, M256 L/44.
 
+## Release 233 identity (2026-10-21)
+
+Owner: the M1A1 marks were "kinda samey". The HA is now the Desert Storm breach tank: plain CARC sand
+(`sig_m1a1ha`), a track-width mine plow carried raised on the bow (equipment, outside the gun lane), a canvas rack cover
+piled with bedrolls and ration cases, water cans behind the rack and ammunition cans on the bustle roof. Its armour,
+stats and tier are unchanged. Matrix and sources: [abrams-m60-distinct-233](../../history/research/abrams-m60-distinct-233.md).
+
 ## Real-vehicle dimensions
 - Same envelope as M1A1: hull ~7.92 m, overall 9.77 m, width 3.66 m,
   height 2.44 m, M256 L/44. 7 road wheels.

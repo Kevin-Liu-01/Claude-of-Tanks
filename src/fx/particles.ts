@@ -40,7 +40,6 @@ interface PuffOptions {
   readonly pos: Vec3Tuple;
   readonly vel: Vec3Tuple;
   readonly life: number;
-  /** (233) negative: a flame lick (the fire pool's tongue card, PUFF_VERT), its size |size0| */
   readonly size0: number;
   readonly size1: number;
   readonly col0: Vec3Tuple;
@@ -280,7 +279,6 @@ varying vec2 vShade;
 varying float vParticleDepth;
 varying float vSeed;
 varying float vAge;
-varying float vFlame;
 #ifdef FX_LIGHT_TINT
 varying vec3 vEmit;
 #endif
@@ -295,7 +293,7 @@ void main() {
   float age = uTime - aPB.w;
   if ( life <= 0.0 || age < 0.0 || age > life ) {
     vUv = uv; vUvA = uv; vUvB = uv; vFMix = 0.0;
-    vColor = vec4( 0.0 ); vT = 0.0; vShade = vec2( 0.0 ); vSeed = 0.0; vAge = 0.0; vFlame = 0.0;
+    vColor = vec4( 0.0 ); vT = 0.0; vShade = vec2( 0.0 ); vSeed = 0.0; vAge = 0.0;
     vParticleDepth = 1e9;
     #ifdef FX_LIGHT_TINT
       vEmit = vec3( 0.0 );
@@ -310,30 +308,23 @@ void main() {
   vSeed = fract( aPB.w * 1.6180339 + aPB.x * 0.0713 + aPB.z * 0.1131 );
   vAge = age;
   vec3 wpos = aPB.xyz + particleDisplace( aVL.xyz, aC0.w, age, uDrag );
-  // (233, the FX follow-up: "fire is round sprite blobs") a flame lick (a negative size0, PuffOptions) is a tongue: it
-  // stands along the world's up from its root (the card's foot stays where it was born), ~1.7x its width side-on, sways
-  // rather than spins, and its flipbook blob sits low in the card (its dense heart near the root, the tip thinning out)
-  float flame = 1.0 - step( 0.0, aSR.x );
-  vFlame = flame;
-  float size = mix( abs( aSR.x ), aSR.y, t );
-  float ang = flame > 0.5 ? 0.14 * sin( aSR.z + aSR.w * age ) : aSR.z + aSR.w * age;
+  // (the car-wreck lane, 233: "fire is round flame sprites") a flame tongue, flagged by a negative end size: it stands
+  // upright from its foot, aSR.z times as tall as it is wide, narrowing to its tip, the tip swaying at aSR.w rad/s
+  float tongue = step( aSR.y, -1e-6 );
+  float size = mix( aSR.x, abs( aSR.y ), t );
+  float ang = ( aSR.z + aSR.w * age ) * ( 1.0 - tongue );
   float ca = cos( ang ), sa = sin( ang );
+  vec2 corner = vec2( position.x * ca - position.y * sa,
+                      position.x * sa + position.y * ca ) * size;
+  if ( tongue > 0.5 ) {
+    float up = position.y + 0.5;
+    float tall = size * aSR.z;
+    corner = vec2( position.x * size * ( 1.0 - 0.5 * up ) + sin( age * aSR.w + vSeed * 6.2832 ) * 0.32 * size * up * up,
+                   ( up - 0.22 ) * tall );
+  }
   vec3 camRight = vec3( viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0] );
   vec3 camUp    = vec3( viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1] );
-  vec2 local = position.xy;
-  vec3 cardRight = camRight, cardUp = camUp;
-  if ( flame > 0.5 ) {
-    // the world's up in the card's plane: from straight above a tongue foreshortens to its round foot
-    vec3 camBack = vec3( viewMatrix[0][2], viewMatrix[1][2], viewMatrix[2][2] );
-    vec3 upP = vec3( 0.0, 1.0, 0.0 ) - camBack * camBack.y;
-    float upL = length( upP );
-    cardUp = normalize( mix( camUp, upP / max( upL, 1e-3 ), smoothstep( 0.15, 0.45, upL ) ) );
-    cardRight = normalize( cross( cardUp, camBack ) );
-    local.y = ( position.y + 0.5 ) * ( 1.0 + ( 0.75 - 0.3 * t ) * upL ) - 0.5;
-  }
-  vec2 corner = vec2( local.x * ca - local.y * sa,
-                      local.x * sa + local.y * ca ) * size;
-  wpos += cardRight * corner.x + cardUp * corner.y;
+  wpos += camRight * corner.x + camUp * corner.y;
   // sun direction projected into the billboard plane (fake lit-smoke normal)
   vShade = vec2( dot( uSunDirW, camRight ), dot( uSunDirW, camUp ) );
   // flipbook: cycle the uTiles x uTiles atlas over the particle life, with
@@ -346,9 +337,8 @@ void main() {
   vFMix = ff - f0;
   // the atlas paints frame 0 top-left on a canvas and the CanvasTexture uploads it with flipY, so canvas row 0 is the
   // texture's TOP band: a frame's row counts down from v = 1 (counting up played the rows last-first: 12-15, 8-11, ...)
-  vec2 fuv = flame > 0.5 ? vec2( uv.x, 0.22 + 0.78 * uv.y ) : uv;
-  vUvA = ( vec2( mod( f0, uTiles ), uTiles - 1.0 - floor( f0 / uTiles ) ) + fuv ) / uTiles;
-  vUvB = ( vec2( mod( f1, uTiles ), uTiles - 1.0 - floor( f1 / uTiles ) ) + fuv ) / uTiles;
+  vUvA = ( vec2( mod( f0, uTiles ), uTiles - 1.0 - floor( f0 / uTiles ) ) + uv ) / uTiles;
+  vUvB = ( vec2( mod( f1, uTiles ), uTiles - 1.0 - floor( f1 / uTiles ) ) + uv ) / uTiles;
   float peak = aC1.w;
   #ifdef FX_LIGHT_TINT
     // Studio self-lit puff: a negative peak alpha flags col0 as emission that
@@ -437,17 +427,9 @@ varying float vFMix;
 varying vec4 vColor;
 varying float vT;
 varying vec2 vShade;
-varying float vSeed;
-varying float vFlame;
 ${FOG_PARS_F}
 ${TONECAP_GLSL}
 ${SOFT_DEPTH_GLSL}
-float fHash( vec2 p ) { p = fract( p * vec2( 0.1031, 0.1030 ) ); p += dot( p, p.yx + 33.33 ); return fract( ( p.x + p.y ) * p.x ); }
-float fNoise( vec2 p ) {
-  vec2 i = floor( p ), f = fract( p );
-  f = f * f * ( 3.0 - 2.0 * f );
-  return mix( mix( fHash( i ), fHash( i + vec2( 1.0, 0.0 ) ), f.x ), mix( fHash( i + vec2( 0.0, 1.0 ) ), fHash( i + vec2( 1.0, 1.0 ) ), f.x ), f.y );
-}
 void main() {
   float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
   // erosion-style dissolve: the alpha threshold rises with age so the noisy
@@ -476,28 +458,13 @@ void main() {
   // chewing every edge, hundreds of dark stipple dots").
   float er = vT * 0.30;
   float a = smoothstep( er, er + 0.72 + 0.48 * vT, tex ) * vColor.a * softDepthFade();
-  // (233) a flame lick's tongue (PUFF_VERT): it narrows from its root to its tip, its edges and tip torn into licks by
-  // a noise rising through it, and it burns hottest at its root
-  float rootHeat = 1.0;
-  if ( vFlame > 0.5 ) {
-    float tear = fNoise( vec2( vUv.x * 3.2 + vSeed * 17.0, vUv.y * 2.4 - vT * 2.6 + vSeed * 5.0 ) ) * 0.65
-      + fNoise( vec2( vUv.x * 7.4 - vSeed * 11.0, vUv.y * 5.2 - vT * 4.1 ) ) * 0.35;
-    // a teardrop: a broad root, widest a fifth of the way up, tapering to a torn tip (the r1 taper read as even pillars)
-    float hw = 0.46 * smoothstep( -0.3, 0.2, vUv.y ) * ( 1.0 - 0.82 * smoothstep( 0.2, 1.0, vUv.y ) );
-    float xw = abs( vUv.x - 0.5 );
-    a *= 1.0 - smoothstep( hw * ( 0.45 + 0.6 * tear ), hw * ( 0.9 + 0.6 * tear ), xw );
-    a *= 1.0 - smoothstep( 0.45 + 0.35 * tear, 0.95, vUv.y );
-    rootHeat = mix( 1.1, 0.65, vUv.y );
-  }
   if ( a < 0.004 ) discard;
   ${FOG_SCALE_F}
   // blackbody interior: texels well above the erosion front read white-hot,
   // the dissolving rim cools through orange to deep red as vT -> 1
-  float heat = clamp( ( tex - er ) * 2.6 * rootHeat, 0.0, 1.0 );
+  float heat = clamp( ( tex - er ) * 2.6, 0.0, 1.0 );
   float hot = 0.45 + heat * heat * ( 2.2 - vT * 1.6 );
   vec3 col = vColor.rgb * hot * ( 1.0 - vT * vT * 0.45 );
-  // (233) a flame lick: yellow at its root, orange to red toward its tip (the r1 tongues read pale cream pillars)
-  if ( vFlame > 0.5 ) col *= mix( vec3( 1.0, 0.9, 0.7 ), vec3( 1.0, 0.55, 0.28 ), smoothstep( 0.15, 0.9, vUv.y ) );
   // rim tint — r5: the hard 0.0-0.55 gate stamped a saturated RED BAND onto
   // the rim (r4 "hard red banding"). The ramp now walks white -> yellow ->
   // orange -> sooty umber across a wide gate so no single hue bands.

@@ -1255,6 +1255,25 @@ export function navigationReachabilityContains(navigation: BotNavigationGrid, ma
     && connectorClear(point, { x: cellX(navigation.cellPositions, index), z: cellZ(navigation.cellPositions, index) });
 }
 
+/**
+ * Whether a hull at `point` can drive out into the flood `mask` (spawns-234): an open neighbour cell (3 x 3, as the flood
+ * seeds its starts) that is flooded and joined to the point by a clear connector. A spawn needs only this departure; an
+ * objective needs its own cell (navigationReachabilityContains).
+ */
+export function navigationReachabilityNear(navigation: BotNavigationGrid, mask: Uint8Array,
+  point: Position2, connectorClear: (from: Position2, to: Position2) => boolean): boolean {
+  if (!Number.isFinite(point.x + point.z) || Math.max(Math.abs(point.x), Math.abs(point.z)) > WORLD_MAX) return false;
+  const cx = worldCell(point.x), cz = worldCell(point.z);
+  for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+    const ix = cx + dx, iz = cz + dz;
+    if (isOutsideGrid(ix, iz)) continue;
+    const index = cellIndex(ix, iz);
+    if (navigation.blocked[index] || mask[index] !== 1) continue;
+    if (connectorClear(point, { x: cellX(navigation.cellPositions, index), z: cellZ(navigation.cellPositions, index) })) return true;
+  }
+  return false;
+}
+
 function nearestOpen(blocked: Uint8Array, ix: number, iz: number): [number, number] {
   for (let radius = 0; radius < 8; radius++) {
     for (let dz = -radius; dz <= radius; dz++) {
