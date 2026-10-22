@@ -46,7 +46,7 @@ import {
   LIVE_TURRET_DENTS,
 } from './materials.ts';
 import { bendGeometry, dentSamples, planBend, planDents, wreckBarrelSpan, wreckRandom, type WreckDent } from './wreckDents.ts';
-import { createTurretRingPresentation, type TurretRingSeat } from './turretRingWell.ts';
+import { capTurretRingDents, createTurretRingPresentation, type TurretRingSeat } from './turretRingWell.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills } from './interiorFills.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
@@ -9617,6 +9617,8 @@ function* createTankOwnedSteps(
       hullPlates.geometry.computeBoundingBox();
       planDents(dentSamples(hullPlates.geometry, null), LIVE_HULL_DENTS, 0.6, 1.2, 0.13, 0.28, rng, hullDents,
         box.copy(hullPlates.geometry.boundingBox!).getCenter(new THREE.Vector3()));
+      // (233) the turret ring's race gives way to no dent: each held to a few cm on its rim (turretRingWell.ts)
+      capTurretRingDents(hullDents, turretRing.seat());
     }
     if (turretPlates) {
       turretPlates.geometry.computeBoundingBox();

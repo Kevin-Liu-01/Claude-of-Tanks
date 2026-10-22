@@ -1310,7 +1310,50 @@ export function turretRingPlateDents(geometry: THREE.BufferGeometry, origin: THR
     for (const start of [layout.rim, layout.outer[1], layout.outer[2], layout.inner[0], layout.inner[1]]) offsets[(start + k) * 3 + 1] += up;
     offsets[(layout.outer[0] + k) * 3 + 1] -= down;
   }
+  // (233; the blind critic: "the opening is not round: a teardrop with a pointed cusp", the Leopard 2A6's blast) the race
+  // is a ring of hardened steel: the opening and the race's inner edge (every vertex inside the rim's ring) move as one
+  // plane with the rim, its least-squares fit (a translation and a tilt), never pinched by a dent; the rim follows the
+  // field and the race's face takes the difference
+  let mx = 0, my = 0, mz = 0, sy = 0, sz = 0, sxx = 0, szz = 0;
+  for (let k = 0; k < sides; k++) {
+    const i = layout.rim + k, x = position.getX(i), z = position.getZ(i);
+    mx += offsets[i * 3]; my += offsets[i * 3 + 1]; mz += offsets[i * 3 + 2];
+    sy += offsets[i * 3 + 1] * x; sz += offsets[i * 3 + 1] * z; sxx += x * x; szz += z * z;
+  }
+  mx /= sides; my /= sides; mz /= sides;
+  const gx = sxx > 0 ? sy / sxx : 0, gz = szz > 0 ? sz / szz : 0;
+  for (let i = 0; i < layout.rim; i++) {
+    offsets[i * 3] = mx;
+    offsets[i * 3 + 1] = my + gx * position.getX(i) + gz * position.getZ(i);
+    offsets[i * 3 + 2] = mz;
+  }
   return offsets;
+}
+
+/** The most a live hull dent may move the race's rim (m): under the race's narrowest width, so the rim never crosses
+ *  the opening it rings (capTurretRingDents). */
+const RIM_DENT_CAP_M = 0.03;
+
+/**
+ * (233; the blind critic on the Leopard 2A6's blast: "the opening is not round: a teardrop with a pointed cusp") the
+ * race is the roof's stiffest member: a live hull dent gives way round it. Each planned dent (the hull frame, as
+ * tankFactoryCore planLiveCrumple plans them) keeps its place and size, its depth held so that its field on the race's
+ * rim circle is at most RIM_DENT_CAP_M; one whose sphere misses the rim is unchanged. No draw from the plan's random
+ * stream changes, so every other dent of the wreck stays as it was.
+ */
+export function capTurretRingDents(
+  dents: { cx: number; cy: number; cz: number; r2: number; depth: number }[],
+  seat: TurretRingSeat | null,
+): void {
+  if (!seat) return;
+  for (const dent of dents) {
+    if (!(dent.r2 > 0) || !(dent.depth > 0)) continue;
+    // its centre's distance from the rim circle (on the race's plane, round the ring's axis)
+    const h = Math.hypot(dent.cx - seat.cx, dent.cz - seat.cz) - seat.rimR, v = dent.cy - seat.deckY;
+    const q = 1 - (h * h + v * v) / dent.r2;
+    if (q <= 0) continue;
+    dent.depth = Math.min(dent.depth, RIM_DENT_CAP_M / (q * q));
+  }
 }
 
 /** How far outside the rim the plate's edge looks for the field's lift (m): past the band polygon's reach. */
@@ -1448,7 +1491,8 @@ vec3 cotRingN = vec3( 0.0, 1.0, 0.0 );
       float inCell = fract( cellF );
       float cooked = step( 0.68, cotRingHash( floor( cellF ) + 7.0 ) );
       float mid = mix( vCotRingB.y, vCotRingB.z, 0.45 );
-      base = hr < mid ? vec3( 0.094, 0.088, 0.072 ) : vec3( 0.084, 0.068, 0.042 );
+      // (233; the critic: "the spokes bright, toy-like") sooted by the fire that cooked them
+      base = hr < mid ? vec3( 0.068, 0.063, 0.052 ) : vec3( 0.06, 0.049, 0.03 );
       base *= mix( 1.0, 0.42, cooked );
       if ( inCell < 0.06 || inCell > 0.94 ) base = vec3( 0.016 );
     } else if ( kind == 3 ) {
@@ -1468,7 +1512,9 @@ vec3 cotRingN = vec3( 0.0, 1.0, 0.0 );
       } else cotRingSun = 0.0;
     #endif
     float view = kind == 0 ? 0.5 * ( 1.0 - dep / sqrt( dep * dep + 4.0 * R * R ) ) : R * R / ( R * R + dep * dep );
-    cotRingSky = mix( 0.05, 1.0, clamp( view * 1.15, 0.0, 1.0 ) );
+    // (233; the blind critic: "the well's interior pure black, no detail") the walls and floor keep a little of the sky
+    // light the opening lets in, bounced down the well
+    cotRingSky = mix( 0.14, 1.0, clamp( view * 1.15, 0.0, 1.0 ) );
     cotRingRough = kind == 0 && dep >= ${(LIP_M + GEAR_M).toFixed(3)} ? 0.92 : cotRingRough;
     if ( kind == 1 ) cotRingRough = 0.95;
   }
@@ -1507,7 +1553,7 @@ interface RingEngineContext {
 }
 
 /** The ring material's program key: every wreck's material compiles to the fleet's one program. */
-const TURRET_RING_PROGRAM_KEY = 'turret-ring-well-v3';
+const TURRET_RING_PROGRAM_KEY = 'turret-ring-well-v4';
 
 /**
  * A wreck's ring material, on the engine context's cascade registration (a stub's or a tool's takes the hooks
