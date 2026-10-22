@@ -1,20 +1,21 @@
-/* Claude of Tanks motion contract.
+/* Claude of Tanks motion contract: legacy names over the motion tokens.
  *
- * Keep interaction motion crisp and interruptible. Full-screen state changes
- * may use the scene duration; frequently used controls stay in the fast/base
- * bands. These variables are intentionally framework-free so injected HUD,
- * garage, modal, loading, and public-page styles all share the same rhythm.
+ * The durations and easings live in src/ui/tokens/tokens.json (--dur-*, --ease-*); these names are aliases kept
+ * while surfaces migrate, each pointing at the nearest token (tokens.json alias.$was records the shipped values and
+ * src/ui/tokens/tokens.selftest.mjs proves the choice). Each fallback equals the token's value, so public pages that
+ * load this file without tokens.css keep the same rhythm. Keep interaction motion crisp and interruptible:
+ * frequently used controls stay in the fast/base bands.
  */
 :root {
-  --cot-motion-instant: 90ms;
-  --cot-motion-fast: 140ms;
-  --cot-motion-base: 190ms;
-  --cot-motion-slow: 260ms;
-  --cot-motion-scene: 420ms;
-  --cot-ease-out: cubic-bezier(.16, 1, .3, 1);
-  --cot-ease-move: cubic-bezier(.65, 0, .35, 1);
-  --cot-ease-drawer: cubic-bezier(.32, .72, 0, 1);
-  --cot-ease-soft: cubic-bezier(.22, 1, .36, 1);
+  --cot-motion-instant: var(--dur-instant, 80ms);
+  --cot-motion-fast: var(--dur-fast, 140ms);
+  --cot-motion-base: var(--dur-base, 220ms);
+  --cot-motion-slow: var(--dur-base, 220ms);
+  --cot-motion-scene: var(--dur-screen, 360ms);
+  --cot-ease-out: var(--ease-camera, cubic-bezier(.16,1,.3,1));
+  --cot-ease-move: var(--ease-move, cubic-bezier(.65,0,.35,1));
+  --cot-ease-drawer: var(--ease-enter, cubic-bezier(.2,.8,.2,1));
+  --cot-ease-soft: var(--ease-enter, cubic-bezier(.2,.8,.2,1));
 }
 
 @media (prefers-reduced-motion: reduce) {

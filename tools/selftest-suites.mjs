@@ -934,6 +934,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/pinch-zoom-probe.selftest.mjs',
     'src/ui/hudEditorPreview.selftest.mjs',
     'src/ui/runtimeStyles.selftest.mjs',
+    // 2026-10-17 (brand-ui BUI-F1): tokens.json -> tokens.css + tokens.ts in sync; SPEC 4.4 contrast and 4.5
+    // colour-vision floors from the token values; the legacy names alias the tokens
+    'src/ui/tokens/tokens.selftest.mjs',
     'src/ui/topAccentBorders.selftest.mjs',
     'src/vehicles/camoPolicy.selftest.mjs',
     // 2026-10-09 (fix/camo-defaults): production's camouflage system, row for row (R113; the owner's 10-09 messages)

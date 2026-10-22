@@ -213,7 +213,7 @@ assert.match(hud,
   'phase changes must clear every transient combat-feedback surface together');
 assert.doesNotMatch(hud, /t\('hud\.aimWarning\.muzzleBlocked'/,
   'bore obstructions must not add a muzzle-block overlay');
-assert.match(hud, /--hud-layer-world:6;--hud-layer-sight:8;--hud-layer-status:18;[\s\S]*--hud-layer-controls:24;--hud-layer-score:30/,
+assert.match(hud, /--hud-layer-world:var\(--z-hud-world,6\);--hud-layer-sight:var\(--z-hud-sight,8\);--hud-layer-status:var\(--z-hud-status,18\);[\s\S]*--hud-layer-controls:var\(--z-hud-controls,24\);--hud-layer-score:var\(--z-hud-score,30\)/,
   'battle UI must declare one ordered layer contract with world indicators below fixed controls');
 assert.match(hud, /t\('hud\.sixth\.label'\)[\s\S]*t\('hud\.sixth\.sub'\)/,
   'sixth sense must present one explicit detection state with supporting copy');
@@ -347,12 +347,10 @@ assert.match(playMenu, /Object\.defineProperty\(control, 'disabled',[\s\S]*trigg
 assert.match(publicNav, /\.public-nav__links \.public-nav__github\{gap:9px;padding-inline:15px\}/,
   'the desktop GitHub star control needs comfortable internal spacing');
 
-assert.match(responsiveSurfaces,
-  /body\[data-cot-width='phone'\] \.cot-network-status\{[\s\S]*width:calc\(100vw - \(var\(--cot-edge\) \* 2\)\)[\s\S]*min-width:0/,
-  'phone reconnect banners must fit the safe viewport instead of retaining their desktop minimum');
-assert.match(responsiveSurfaces,
-  /body\[data-cot-width\] \.cot-network-diagnostics\{[\s\S]*white-space:pre-wrap;overflow-wrap:anywhere/,
-  'network diagnostics must wrap and scroll rather than escape narrow screens');
+// (2026-10-17, BUI-F1) the network status banner and diagnostics panel left the tree with the multiplayer cutover
+// (stage B, 509170998): their responsive overrides went with the boot CSS they no longer styled.
+assert.doesNotMatch(responsiveSurfaces, /\.cot-network-(?:status|diagnostics)\b|\.cot-info-popover\b/,
+  'boot CSS carries no rules for surfaces that no longer exist');
 assert.match(responsiveSurfaces,
   /body\[data-cot-width\] \.cot-trans \.core\{width:min\(680px,100%\)[\s\S]*body\[data-cot-width='phone'\] \.cot-trans \.title/,
   'state transitions must cap their core and recompose long titles on phones');

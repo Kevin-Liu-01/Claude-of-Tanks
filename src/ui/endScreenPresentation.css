@@ -34,7 +34,7 @@ body[data-cot-width] .cot-es.cot-es--record .es-awards .aw b{white-space:normal;
 body[data-cot-width] .cot-es.cot-es--record .es-best{margin:18px 20px;background:linear-gradient(110deg,#5e472327,#16222dc9);border:1px solid #a68b5366}
 .cot-es--record .es-combat-details{padding:0 20px 18px}.cot-es--record .es-combat-details>summary{cursor:pointer;min-height:48px;display:flex;align-items:center;gap:10px;border-top:1px solid #ffffff18;color:#a8bdcc;font-size:12px;font-weight:700}.cot-es--record .es-combat-details>summary::before{content:'+';color:#f1b85f;font-size:22px}.cot-es--record .es-combat-details[open]>summary::before{content:'−'}
 body[data-cot-width] .cot-es.cot-es--record .es-stat-secondary{border:0;background:transparent;margin:16px 20px;gap:10px}.cot-es--record .es-combat-details .es-mini{padding:14px}.cot-es--record .es-combat-details .es-blow{font-size:12px;margin:10px 0;color:#9db4c5}
-body[data-cot-width] .cot-es.cot-es--record .es-kill-block{flex:none;min-height:0;padding:0}.cot-es--record .es-kl{max-height:none}
+body[data-cot-width] .cot-es.cot-es--record .es-kill-block{flex:none;min-height:0;padding:0}
 body[data-cot-width] .cot-es.cot-es--record .es-scoreboard{padding:22px;margin:0;background:transparent;border:0;border-bottom:1px solid #ffffff20}
 body[data-cot-width] .cot-es.cot-es--record .es-rosters{flex:none;min-height:0;padding:20px;gap:20px}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-list{overflow:visible;max-height:none;flex:none}

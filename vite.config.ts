@@ -431,6 +431,9 @@ export default defineConfig({
             // with the loading roster it added preload edges); the group takes exactly these two modules, none of their
             // dependencies.
             { name: 'icons', test: /[\\/]src[\\/]ui[\\/](?:icons|killSourceIdentity)\.ts$/, includeDependenciesRecursively: false },
+            // brand-ui BUI-F1: the design tokens (src/ui/tokens/tokens.css, linked first by the game and cn documents) keep
+            // a stylesheet of their own; merged into a shared chunk they reorder the entry's imports and minified names.
+            { name: 'designTokens', test: /[\\/]src[\\/]ui[\\/]tokens[\\/]tokens\.css$/, includeDependenciesRecursively: false },
             { name: 'groundBounce', test: /(?:[\\/]three[\\/]examples[\\/]jsm[\\/]postprocessing[\\/]Pass\.js|[\\/]src[\\/]engine[\\/](?:atmosphere|cloudscapes|lightModelCore|hazeLaw|groundBounce)\.ts)$/, includeDependenciesRecursively: false },
             // 2026-10-19 (gameplay-modes-228 round 2): TEAM NATIONS' country table and its planner are one chunk — the
             // garage's TEAMS switch reads the table, the solo roster plans with both, the rooms read both — instead of

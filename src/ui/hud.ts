@@ -1427,10 +1427,10 @@ function drawShellIcon(canvas: HTMLCanvasElement, type: string): void {
 
 const HUD_CSS = `
 .cot-hud{position:fixed;inset:0;pointer-events:none;z-index:40;font-family:${FONT_STACK};isolation:isolate;
-  --hud-panel:rgba(7,11,15,.92);--hud-edge:rgba(181,199,212,.32);
-  --hud-muted:#93a3af;--hud-text:#e8f0f5;--hud-action:#f0a030;--hud-danger:#f05a5a;
-  --hud-layer-world:6;--hud-layer-sight:8;--hud-layer-status:18;
-  --hud-layer-controls:24;--hud-layer-score:30;
+  --hud-panel:var(--hud-plate,rgba(13,16,20,.92));--hud-edge:var(--line-3,rgba(246,243,236,.24));
+  --hud-muted:var(--ink-3,#9a9a95);--hud-text:var(--ink-1,#f6f3ec);--hud-action:var(--accent,#f0a030);--hud-danger:#f05a5a;
+  --hud-layer-world:var(--z-hud-world,6);--hud-layer-sight:var(--z-hud-sight,8);--hud-layer-status:var(--z-hud-status,18);
+  --hud-layer-controls:var(--z-hud-controls,24);--hud-layer-score:var(--z-hud-score,30);
   -webkit-user-select:none;user-select:none;color:var(--hud-text);overflow:hidden;}
 .cot-hud *{box-sizing:border-box;margin:0;padding:0;}
 .cot-ret{position:absolute;z-index:var(--hud-layer-sight);inset:0;width:100%;height:100%;display:block;}

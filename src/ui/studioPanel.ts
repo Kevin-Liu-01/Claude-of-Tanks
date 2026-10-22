@@ -1776,7 +1776,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     dialog.showModal();
     const archiveRoot = dialog.querySelector<HTMLElement>('[data-media-archive]');
     if (!archiveRoot) throw new Error('[studio] missing production archive root');
-    mountMediaArchive(archiveRoot, { mode: 'compact', limit: 61 })
+    // The archive's stylesheet loads at this boundary, its one host in the game (the game boot does not carry it).
+    import('../presentation/mediaArchive.css')
+      .then(() => mountMediaArchive(archiveRoot, { mode: 'compact', limit: 61 }))
       .catch((error: RuntimeValue) => flashBusy(errorMessage(error)));
   });
   secArchive.append(archiveCopy, archiveBtn);

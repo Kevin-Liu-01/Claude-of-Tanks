@@ -74,6 +74,24 @@ Decorative metadata such as repository stars must render a stable-width loading
 state or a bounded verified local cache, then refresh only through the cached
 same-origin endpoint. Never ship a hardcoded numeric fallback or make boot or
 Garage presentation depend on a third-party request.
+Design tokens have one source, `tokens/tokens.json` (OKLCH colours, type,
+space, radii, elevation, layers, motion, presets). `node tools/gen-tokens.mjs`
+writes `tokens/tokens.css` (linked first by `index.html`) and `tokens/tokens.ts`
+(resolved values for canvas and three.js); never edit either by hand.
+Canvas and three.js read `tokenValue(name, presets)`, which follows the
+colour-vision, contrast and motion presets through every derived token exactly
+as the tokens.css cascade does. `tokens/tokens.selftest.mjs` fails on drift,
+compares tokens.ts with the cascade under every preset combination and
+recomputes the contrast and colour-vision tables. Components read semantic or
+component tokens (`--surface-*`, `--ink-*`, `--accent*`, `--team-*`, `--btn-*`,
+`--hud-*`), never a ramp (`--graphite-*`, `--tungsten-*`). A control's border
+is `--line-control` (3:1 on every surface and plate); `--line-1/2/3` are
+decoration. Coloured words read `--text-*` (high contrast turns them to
+ink-1), never `--team-*` or `--ok`/`--danger` directly. The legacy
+`--cot-motion-*`, `--cot-ease-*`, `--hud-*` and `--cot-amber/ink/gold` names
+alias the nearest token of their family (`--cot-gold` folds into the accent,
+SPEC 4.2), with fallbacks equal to the token values. The font tokens equal
+`typeFaces.ts` `TYPE_STACK` (the selftest holds them together).
 Shared DOM, font, generated-icon, image-preload, featured-media, and map-art
 primitives are strict TypeScript owners. Extend their exported contracts rather
 than creating screen-local unchecked copies.

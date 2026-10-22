@@ -233,10 +233,6 @@ body[data-cot-width='compact'] .cot-play .identity-note,
 body[data-cot-width='phone'] .cot-play .identity-note{padding:0}
 body[data-cot-width='compact'] .cot-play .room-action,
 body[data-cot-width='phone'] .cot-play .room-action{min-height:124px}
-body[data-cot-width='compact'] .cot-play .ranked-form,
-body[data-cot-width='phone'] .cot-play .ranked-form{grid-template-columns:1fr 1fr}
-body[data-cot-width='compact'] .cot-play .ranked-form label:nth-child(-n+2),
-body[data-cot-width='phone'] .cot-play .ranked-form label:nth-child(-n+2){grid-column:1/-1}
 body[data-cot-width='compact'] .cot-play .vehicle-icon,
 body[data-cot-width='phone'] .cot-play .vehicle-icon{width:46px;height:32px;flex-basis:46px}
 body[data-cot-width='compact'] .cot-play .vehicle-name,
@@ -622,14 +618,10 @@ body.cot-touch-layout[data-cot-width='phone'][data-cot-orientation='portrait'] .
 /* ROOM CHAT -------------------------------------------------------------- */
 body[data-cot-height='compact'] .cot-room-chat,
 body[data-cot-height='short'] .cot-room-chat{top:50%}
-body[data-cot-height='compact'] .cot-room-chat-log,
-body[data-cot-height='short'] .cot-room-chat-log{max-height:105px}
 body[data-cot-width='compact'] .cot-room-chat,
 body[data-cot-width='phone'] .cot-room-chat{
   top:clamp(340px,calc(50% + 20px),calc(var(--cot-viewport-height,100dvh) - 80px));bottom:auto;width:min(360px,44vw);min-width:220px;
 }
-body[data-cot-width='compact'] .cot-room-chat-log,
-body[data-cot-width='phone'] .cot-room-chat-log{max-height:clamp(48px,calc(var(--cot-viewport-height,100dvh) - 440px),92px)}
 body.cot-touch-layout[data-cot-width='compact'] .cot-room-chat,
 body.cot-touch-layout[data-cot-width='phone'] .cot-room-chat{top:180px}
 
@@ -702,36 +694,7 @@ body[data-cot-height='short'] .cot-kc-label.nm{display:none!important}
 body[data-cot-height='compact'][data-cot-orientation='portrait'] .cot-kc-micro,
 body[data-cot-height='compact'][data-cot-orientation='portrait'] .cot-kc-label.nm{display:none!important}
 
-/* CONTEXT HELP ----------------------------------------------------------- */
-body[data-cot-width='compact'] .cot-info-popover,
-body[data-cot-width='phone'] .cot-info-popover{width:min(420px,calc(100vw - 16px));max-height:min(66dvh,520px)}
-
 /* TRANSIENT / RECOVERY SURFACES ----------------------------------------- */
-body[data-cot-width] .cot-network-status{
-  box-sizing:border-box;max-width:calc(100vw - (var(--cot-edge) * 2));
-  top:max(20px,calc(env(safe-area-inset-top) + 12px));overflow-wrap:anywhere;
-}
-body[data-cot-width='compact'] .cot-network-status,
-body[data-cot-width='phone'] .cot-network-status{
-  top:max(66px,calc(env(safe-area-inset-top) + 58px));width:calc(100vw - (var(--cot-edge) * 2));
-  min-width:0;padding:8px 12px;font-size:11px;line-height:1.35;letter-spacing:.03em;
-}
-body.cot-touch-layout[data-cot-orientation='portrait'] .cot-network-status{
-  top:max(146px,calc(env(safe-area-inset-top) + 138px));
-}
-body[data-cot-width] .cot-network-diagnostics{
-  box-sizing:border-box;max-width:calc(100vw - 16px);max-height:calc(var(--cot-viewport-height,100dvh) - 80px);
-  overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;
-}
-body[data-cot-width='compact'] .cot-network-diagnostics,
-body[data-cot-width='phone'] .cot-network-diagnostics{
-  left:max(8px,env(safe-area-inset-left));top:max(112px,calc(env(safe-area-inset-top) + 104px));
-  width:min(390px,calc(100vw - 16px));font-size:11px;line-height:1.4;
-}
-body.cot-touch-layout[data-cot-orientation='portrait'] .cot-network-diagnostics{
-  top:max(194px,calc(env(safe-area-inset-top) + 186px));max-height:calc(var(--cot-viewport-height,100dvh) - 210px);
-}
-
 body[data-cot-width] .cot-trans{box-sizing:border-box;padding:var(--cot-edge)}
 body[data-cot-width] .cot-trans .core{width:min(680px,100%);max-width:100%}
 body[data-cot-width] .cot-trans .title,

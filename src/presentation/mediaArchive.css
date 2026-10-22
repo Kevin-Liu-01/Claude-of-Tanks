@@ -2,13 +2,13 @@
   --cot-bg:#05080b;
   --cot-panel:#0b1014;
   --cot-panel-raised:#11181e;
-  --cot-ink:#edf3f7;
+  --cot-ink:var(--ink-1,#f6f3ec);
   --cot-copy:#b8c5ce;
   --cot-muted:#7f909d;
   --cot-line:rgba(161,181,196,.18);
   --cot-line-strong:rgba(161,181,196,.34);
-  --cot-amber:#f0a030;
-  --cot-gold:#ffd27a;
+  --cot-amber:var(--accent,#f0a030);
+  --cot-gold:var(--text-accent,#f0a030);
   --cot-cyan:#65d0dd;
   --cot-green:#6bd59c;
 }
