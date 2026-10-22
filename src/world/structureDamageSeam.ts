@@ -13,6 +13,7 @@
  * positions, the anatomy's placement and the presentation's pivots are all world points.
  */
 import { frameByName, keepRuinStanding, measureIntactParts } from './collapseRuin.ts';
+import { faceSetback, measureEnclosure } from './structureEnclosure.ts';
 import { BufferAttribute, type BufferGeometry, type Material, type Object3D } from 'three';
 import {
   damageSeed, kitPlanFor, structureDamageKitChain,
@@ -112,21 +113,130 @@ export interface DescribeStructureArgs {
 export function describeStructure(args: DescribeStructureArgs): StructureDamageAnatomy {
   const seed = damageSeed(mapDamageHash(args.mapId), Math.round(args.placement.x * 100), Math.round(args.placement.z * 100));
   const input: StructureDescribeInput = { ...args, seed, kitPlan: kitPlanFor(args.parts, args.style) };
-  // the intact form as drawn, once (collapseRuin.ts: what a collapse keeps a ruin standing against)
-  const intact = measureIntactParts(args.parts);
-  if (intact && frameByName(args.builder)) intact.frame = true;
   for (const kit of structureDamageKitChain(args.builder, args.style)) {
     if (kit === DEFAULT_STRUCTURE_DAMAGE_KIT || !kit.describe) continue;
     try {
       const anatomy = kit.describe(input);
-      if (anatomy) { if (intact) anatomy.intact = intact; return anatomy; }
+      if (anatomy) { defer(anatomy, args); return anatomy; }
     } catch {
       // a kit that cannot describe this building leaves it to the default (never a build failure)
     }
   }
   const anatomy = describeDefault(input);
-  if (intact) anatomy.intact = intact;
+  defer(anatomy, args);
   return anatomy;
+}
+
+/**
+ * (destruction-slabs 227 round 4; the engineering critic: the props build ran 7.7-11 % slower than main, the two measures
+ * below a ninth of an urban build) the intact form as drawn (collapseRuin.ts: what a collapse keeps a ruin standing
+ * against) and the drawn enclosure (structureEnclosure.ts: the only geometry its damage writers place against) are read
+ * off the building's parts once, when first asked for, or by the idle measurer after the build
+ * (measureDeferredStructures, a slice a frame) — never in the load. The parts are held till then: placed in the world
+ * since (props.ts mergeInto), they are read back into the body frame through the anatomy's placement, the box they had
+ * at describe the check.
+ */
+interface DeferredMeasure { anatomy: StructureDamageAnatomy; parts: DescribeStructureArgs['parts'] | null; builder: string; mapId: string;
+  probe: [number, number, number] | null; box: [number, number, number, number, number] | null;
+  intact: StructureDamageAnatomy['intact'] | null; enclosure: StructureDamageAnatomy['enclosure'] | null }
+const pendingMeasures: DeferredMeasure[] = [];
+let warnedReadBack = false;
+function defer(anatomy: StructureDamageAnatomy, args: DescribeStructureArgs): void {
+  // (another map's structures still waiting — a tool that builds map after map never runs the idle measurer — are measured
+  // first: one map's parts held at most)
+  if (pendingMeasures.length && pendingMeasures[pendingMeasures.length - 1]!.mapId !== args.mapId) measureDeferredStructures(Infinity);
+  const job: DeferredMeasure = { anatomy, parts: args.parts, builder: args.builder, mapId: args.mapId, probe: null, box: null, intact: null, enclosure: null };
+  // the first corner as described (a part moved since reads differently) and the parts' box in the body frame
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, y1 = -Infinity;
+  for (const list of Object.values(args.parts)) for (const g of list) {
+    const pos = g.getAttribute('position');
+    if (!pos || !pos.count) continue;
+    if (!job.probe) job.probe = [pos.getX(0), pos.getY(0), pos.getZ(0)];
+    if (!g.boundingBox) g.computeBoundingBox();
+    const b = g.boundingBox;
+    if (!b || b.isEmpty()) continue;
+    x0 = Math.min(x0, b.min.x); x1 = Math.max(x1, b.max.x); z0 = Math.min(z0, b.min.z); z1 = Math.max(z1, b.max.z); y1 = Math.max(y1, b.max.y);
+  }
+  if (Number.isFinite(x0)) job.box = [x0, x1, z0, z1, y1];
+  Object.defineProperty(anatomy, 'intact', {
+    configurable: true, enumerable: true,
+    get: () => { measureNow(job); return job.intact ?? undefined; },
+    set: (v) => { measureNow(job); job.intact = v ?? null; },
+  });
+  Object.defineProperty(anatomy, 'enclosure', {
+    configurable: true, enumerable: true,
+    get: () => { measureNow(job); return job.enclosure ?? undefined; },
+    set: (v) => { measureNow(job); job.enclosure = v ?? null; },
+  });
+  pendingMeasures.push(job);
+}
+/** A deferred structure's two measures, now (once): its parts read back into the body frame if they were placed since. */
+function measureNow(job: DeferredMeasure): void {
+  const parts = job.parts;
+  if (!parts) return;
+  job.parts = null;
+  const body = bodyFrameParts(parts, job);
+  try {
+    const intact = measureIntactParts(body);
+    if (intact && frameByName(job.builder)) intact.frame = true;
+    job.intact = intact;
+  } catch { job.intact = null; }
+  try { job.enclosure = measureEnclosure(body, job.anatomy); } catch {
+    // a structure whose parts cannot be read keeps the faces' reading (never a build failure)
+    job.enclosure = null;
+  }
+}
+/** The parts as they were described (body frame): as they are while unplaced, else read back through the placement. */
+function bodyFrameParts(parts: DescribeStructureArgs['parts'], job: DeferredMeasure): DescribeStructureArgs['parts'] {
+  let first: BufferGeometry | null = null;
+  for (const list of Object.values(parts)) { for (const g of list) if (g.getAttribute('position')?.count) { first = g; break; } if (first) break; }
+  if (!first || !job.probe) return parts;
+  const pos = first.getAttribute('position')!;
+  if (pos.getX(0) === job.probe[0] && pos.getY(0) === job.probe[1] && pos.getZ(0) === job.probe[2]) return parts;
+  const { x: px, y: py, z: pz, yaw } = job.anatomy.placement;
+  const c = Math.cos(yaw), s = Math.sin(yaw);
+  const out: Record<string, BufferGeometry[]> = {};
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity, y1 = -Infinity;
+  for (const [bucket, list] of Object.entries(parts)) {
+    const copies: BufferGeometry[] = [];
+    for (const g of list) {
+      const src = g.getAttribute('position');
+      if (!src) continue;
+      const n = src.count, arr = new Float32Array(n * 3);
+      for (let i = 0; i < n; i++) {
+        const dx = src.getX(i) - px, dz = src.getZ(i) - pz;
+        const bx = dx * c - dz * s, by = src.getY(i) - py, bz = dx * s + dz * c;
+        arr[i * 3] = bx; arr[i * 3 + 1] = by; arr[i * 3 + 2] = bz;
+        if (bx < x0) x0 = bx; if (bx > x1) x1 = bx; if (bz < z0) z0 = bz; if (bz > z1) z1 = bz; if (by > y1) y1 = by;
+      }
+      const index = g.getIndex();
+      const attribute = new BufferAttribute(arr, 3);
+      copies.push({ userData: g.userData, getAttribute: (name: string) => (name === 'position' ? attribute : undefined),
+        getIndex: () => index } as unknown as BufferGeometry);
+    }
+    out[bucket] = copies;
+  }
+  // (the check: read back, the parts stand in the box they had at describe; a part moved by anything but the placement
+  // reads off it — kept as it is then, and said once)
+  const b = job.box;
+  if (b && Math.max(Math.abs(x0 - b[0]), Math.abs(x1 - b[1]), Math.abs(z0 - b[2]), Math.abs(z1 - b[3]), Math.abs(y1 - b[4])) > 0.15) {
+    if (!warnedReadBack) { warnedReadBack = true; console.warn(`[structureDamageSeam] ${job.builder}: parts read back off their described box`); }
+    return parts;
+  }
+  return out;
+}
+/**
+ * The idle measurer (the world's update, a slice a frame): deferred structures measured for up to `budgetMs`; how many are
+ * left. `budgetMs` Infinity measures them all (a receipt, a warm).
+ */
+export function measureDeferredStructures(budgetMs: number): number {
+  const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
+  while (pendingMeasures.length) {
+    const job = pendingMeasures.pop()!;
+    measureNow(job);
+    if (Number.isFinite(budgetMs) && typeof performance !== 'undefined' && performance.now() - t0 >= budgetMs) break;
+  }
+  return pendingMeasures.length;
 }
 
 type StageMember = 'damaged' | 'breach' | 'sectionDown' | 'storeyDown' | 'collapse';
@@ -184,12 +294,18 @@ function holeOnAnatomy(anatomy: StructureDamageAnatomy, x: number, y: number, z:
   const along = (bx - face.origin[0]) * face.u[0] + (bz - face.origin[2]) * face.u[2];
   const u = Math.max(-face.width / 2, Math.min(face.width / 2, along));
   const hy = Math.max(0, Math.min(storey.y1 - storey.y0, by - storey.y0));
+  // (destruction-slabs 227) the hole goes on the drawn wall behind the face (its setback there); where no wall stands
+  // behind that stretch of the face the round passed through an opening or a frame: no kit hole, its burst only (a
+  // section's fall, hole 255, still names its face: the section's parts come down wherever its centre stands)
+  const behind = faceSetback(anatomy, storey.index, storey.faces.indexOf(face), u);
+  if (!Number.isFinite(behind) && hole !== 255) return null;
+  const setback = Number.isFinite(behind) ? behind : 0;
   const length = Math.hypot(dirX, dirZ);
   const wx = length > 1e-9 ? dirX / length : -face.out[0] * c - face.out[2] * s;
   const wz = length > 1e-9 ? dirZ / length : face.out[0] * s - face.out[2] * c;
   return {
     section: face.section, storey: storey.index, face: face.name, hole, u, y: hy, radiusM,
-    dirX: wx * c - wz * s, dirZ: wx * s + wz * c, munition, cause, seed: damageSeed(anatomy.seed, face.section, hole),
+    dirX: wx * c - wz * s, dirZ: wx * s + wz * c, munition, cause, seed: damageSeed(anatomy.seed, face.section, hole), setback,
   };
 }
 

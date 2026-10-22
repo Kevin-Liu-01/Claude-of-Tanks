@@ -1,7 +1,7 @@
 // i18nLazyCatalog.selftest.mjs — every document loads its own catalogs on demand: English documents never load the
 // zh-CN catalog and Chinese ones preload it (FE-P3); no page's static graph holds a catalog, so a public page loads only
 // its generated page catalog (tools/i18n-page-catalogs.selftest.mjs) and the game the full catalogs, less the Scene
-// Studio's strings, which load with its chunk.
+// Studio's strings, which load with its chunk, and the Garage Filter panel's, which load with the panel.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -142,14 +142,22 @@ const studioPlugin = i18nStudioCatalog();
 studioPlugin.configResolved({ root: ROOT });
 const pluginContext = { addWatchFile() {}, error(message) { throw new Error(message); } };
 assert.equal(studioPlugin.enforce, 'pre', 'the split serves the catalog files before Vite reads them');
+// (230: the Garage Filter panel's strings are a second slice, section 6; the split keeps both)
+const fleetKeys = Object.keys(splitStudioCatalog(fullCatalogs['en-US']).fleet).sort();
+const sliceModule = (plugin, slice, locale) => JSON.parse(plugin.load.call(pluginContext,
+  plugin.resolveId.call(pluginContext, `virtual:cot-i18n-${slice}/${locale}`)).replace(/^export default /, '').replace(/;\s*$/, ''));
 for (const locale of ['en-US', 'zh-CN']) {
   const game = JSON.parse(studioPlugin.load.call(pluginContext, resolve(ROOT, `src/ui/i18nCatalog.${locale}.json`)));
-  const sliceId = studioPlugin.resolveId.call(pluginContext, `virtual:cot-i18n-studio/${locale}`);
-  const slice = JSON.parse(studioPlugin.load.call(pluginContext, sliceId).replace(/^export default /, '').replace(/;\s*$/, ''));
+  const slice = sliceModule(studioPlugin, 'studio', locale);
+  const fleet = sliceModule(studioPlugin, 'fleet', locale);
   assert.ok(studioKeys.every((key) => !(key in game)), `the game's ${locale} catalog leaves the Studio's strings out`);
   assert.deepEqual(Object.keys(slice).sort(), studioKeys, `the ${locale} Studio slice holds them`);
-  assert.deepEqual({ ...game, ...slice }, fullCatalogs[locale], `the ${locale} split loses and changes nothing`);
+  assert.ok(fleetKeys.every((key) => !(key in game)), `the game's ${locale} catalog leaves the Filter panel's strings out`);
+  assert.deepEqual(Object.keys(fleet).sort(), fleetKeys, `the ${locale} fleet slice holds them`);
+  assert.deepEqual({ ...game, ...slice, ...fleet }, fullCatalogs[locale], `the ${locale} split loses and changes nothing`);
 }
+assert.throws(() => studioPlugin.resolveId.call(pluginContext, 'virtual:cot-i18n-fleet/fr-FR'), /no fleet catalog for the locale "fr-FR"/,
+  'a slice of an unknown locale fails the build');
 assert.equal(studioPlugin.load.call(pluginContext, resolve(ROOT, 'src/ui/i18n.ts')), null, 'other modules load as written');
 // 2026-10-15: the build restricts the game's catalogs to the keys its graph and workers can show (the page catalog scan's
 // `game` keys, tools/i18n-page-catalogs.mjs); the Studio slice stays whole, and no key set (the dev server) keeps them.
@@ -164,9 +172,8 @@ for (const locale of ['en-US', 'zh-CN']) {
   const expected = Object.fromEntries(Object.entries(fullCatalogs[locale])
     .filter(([key]) => (key === shownKeys[0] || key === shownKeys[3])));
   assert.deepEqual(game, expected, `the ${locale} game catalog holds only the shown keys it has, in catalog order, no Studio key`);
-  const sliceId = restricted.resolveId.call(pluginContext, `virtual:cot-i18n-studio/${locale}`);
-  const slice = JSON.parse(restricted.load.call(pluginContext, sliceId).replace(/^export default /, '').replace(/;\s*$/, ''));
-  assert.deepEqual(Object.keys(slice).sort(), studioKeys, `the ${locale} Studio slice is not restricted`);
+  assert.deepEqual(Object.keys(sliceModule(restricted, 'studio', locale)).sort(), studioKeys, `the ${locale} Studio slice is not restricted`);
+  assert.deepEqual(Object.keys(sliceModule(restricted, 'fleet', locale)).sort(), fleetKeys, `the ${locale} fleet slice is not restricted`);
   assert.equal(wholePlugin.load.call(pluginContext, file), studioPlugin.load.call(pluginContext, file),
     `no key set: the ${locale} game catalog is served whole`);
 }
@@ -192,7 +199,7 @@ assert.match(readFileSync(resolve(ROOT, 'src/main.ts'), 'utf8'),
   'the Studio opens once its strings are resident');
 // Runtime: the Studio merges each resident locale's slice into its dictionary (here English and, after section 3's
 // switch, Chinese); a failed slice merges nothing.
-const { extendResidentDictionaries } = await import('./studioStrings.ts');
+const { extendResidentDictionaries } = await import('./i18nSlices.ts');
 await assert.rejects(extendResidentDictionaries(() => Promise.reject(new Error('offline'))), /offline/, 'a failed slice rejects');
 assert.equal(dictionaries.catalogText('en-US', 'studio.film.probe'), 'studio.film.probe', 'and merges nothing');
 const sliceRequests = [];
@@ -205,5 +212,56 @@ assert.equal(dictionaries.catalogText('en-US', 'studio.film.probe'), 'Film');
 assert.equal(dictionaries.catalogText('zh-CN', 'studio.film.probe'), '影片');
 assert.equal(dictionaries.catalogText('zh-CN', 'garage.battle'), '出战', 'the merge keeps the game\'s strings');
 
+// 6. The Garage Filter panel's strings (src/ui/i18nFleetKeys.ts, 230) load with the panel: the toggle loads them beside
+//    the panel's module and stylesheet, and the panel mounts once they are resident. Only the panel's own graph shows
+//    them; the toggle's label, which the Garage shows before the panel loads, stays in the boot catalog.
+// (the slice is the whole fleet.* family less the toggle's label: the Gallery's two select defaults ride along, which
+// the game never shows and the Gallery's own page catalog carries)
+assert.ok(fleetKeys.length > 40, 'the Filter panel owns its class, role, status and filter strings');
+assert.ok(fleetKeys.every((key) => !readFileSync(resolve(ROOT, 'index.html'), 'utf8').includes(key)),
+  'the game\'s markup shows no string of the fleet slice');
+assert.deepEqual(Object.keys(splitStudioCatalog(fullCatalogs['zh-CN']).fleet).sort(), fleetKeys, 'both locales split the fleet slice alike');
+assert.ok(fleetKeys.every((key) => key.startsWith('fleet.')) && !fleetKeys.some((key) => studioKeys.includes(key)),
+  'the fleet slice is its own family, apart from the Studio\'s');
+assert.ok(!fleetKeys.includes('fleet.filter.toggleAria') && 'fleet.filter.toggleAria' in splitStudioCatalog(fullCatalogs['en-US']).game,
+  'the Filter toggle\'s label stays in the game\'s boot catalog');
+const PANEL_ENTRY = 'src/ui/garageFacetPanel.ts';
+const panelClosure = staticImportClosure(PANEL_ENTRY, { root: ROOT });
+const fleetFamily = /[`'"]fleet\.(?:class|role|status|filter)\.(?:\$\{|[`'"])/;
+const showsFleet = (text) => fleetKeys.find((key) => ["'", '"', '`'].some((quote) => text.includes(`${quote}${key}${quote}`)))
+  ?? text.match(fleetFamily)?.[0];
+const panelModulesShowingFleet = [];
+for (const file of sources) {
+  if (file === 'src/ui/i18nFleetKeys.ts') continue;
+  const text = readFileSync(resolve(ROOT, file), 'utf8');
+  const shown = showsFleet(text);
+  if (panelClosure.has(file)) {
+    if (shown) panelModulesShowingFleet.push(file);
+    continue;
+  }
+  assert.equal(shown, undefined, `${file} shows the Filter panel string ${shown}, which the game's catalogs leave out`);
+}
+assert.ok(panelModulesShowingFleet.includes(PANEL_ENTRY) && panelModulesShowingFleet.includes('src/vehicles/vehicleFacets.ts'),
+  `the panel and its facet tables show the fleet slice (${panelModulesShowingFleet.join(', ')})`);
+// Outside the panel's graph only the Gallery (a public page: its page catalog holds every key it reaches) imports a module
+// that shows the slice, and the game reaches the panel only through the toggle's import(), which loads the slice too.
+for (const module of panelModulesShowingFleet) {
+  const importers = importersOf(module).filter((file) => !panelClosure.has(file) && !file.startsWith('src/gallery/'));
+  assert.deepEqual(importers, module === PANEL_ENTRY ? ['src/ui/garage.ts'] : [],
+    `${module} shows the fleet slice; its importers outside the panel load it without the slice: ${importers.join(', ')}`);
+  assert.ok(!gameClosure.has(module), `the game statically loads ${module}: ${importChain(gameClosure, module)}`);
+}
+assert.ok(!gameClosure.has('src/ui/fleetStrings.ts'), 'the game loads the fleet slice only with the panel');
+assert.match(readFileSync(resolve(ROOT, 'src/ui/garage.ts'), 'utf8'),
+  /facetPanel \?\?= Promise\.all\(\[import\('\.\/garageFacetPanel\.ts'\), import\('\.\/garageFacetPanel\.css'\),\s*import\('\.\/fleetStrings\.ts'\)\.then\(\(strings\) => strings\.ensureFleetStrings\(\)\)\]\)\s*\.then\(\(\[\{ mountGarageFacetPanel \}\]\) => mountGarageFacetPanel\(/,
+  'the Filter panel mounts once its strings are resident');
+// Runtime: outside Vite both loaders resolve at once (the full catalogs are resident); inside, one request per slice.
+const [{ ensureFleetStrings }, { ensureStudioStrings }] = await Promise.all([import('./fleetStrings.ts'), import('./studioStrings.ts')]);
+assert.equal(await ensureFleetStrings(), undefined);
+assert.equal(await ensureStudioStrings(), undefined);
+assert.equal(dictionaries.catalogText('zh-CN', 'fleet.filter.clear'), fullCatalogs['zh-CN']['fleet.filter.clear'],
+  'Node keeps the panel\'s strings resident');
+
 console.log('i18nLazyCatalog.selftest: no page graph holds a catalog; zh-CN loads on demand, English pages never fetch it, '
-  + `/cn/ preloads it; the Studio's ${studioKeys.length} strings per locale load with its chunk`);
+  + `/cn/ preloads it; the Studio's ${studioKeys.length} strings per locale load with its chunk and the Filter panel's `
+  + `${fleetKeys.length} with the panel`);

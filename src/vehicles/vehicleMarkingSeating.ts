@@ -136,6 +136,17 @@ function markingOccluderMeshes(root: THREE.Object3D): VehicleMesh[] {
   return meshes;
 }
 
+/**
+ * A camouflage suit's cloth (ghillieSuit.ts: the net and garnish, nonArmor open-lattice dressing named
+ * <id>_ghillie_<owner>_net / _leaves): paint is never backed by it. 2026-10-21 (the M1A1 Abrams FEP): its hull
+ * insignia read 6/9 clear on the ULCANS drape hanging in its paint plane, the armour 6-8 cm behind and the drape over
+ * its middle row; a sample whose first surface is the suit's cloth is not clear (the impact decals' rule,
+ * fx/impactDecals.ts isImpactDecalSkin).
+ */
+function isSuitCloth(object: THREE.Object3D): boolean {
+  return object.userData?.continuityRole === 'open-lattice' && /_ghillie_/.test(object.name);
+}
+
 function doubleSidedMarkingRaycastScope(meshes: readonly VehicleMesh[]): () => void {
   const originalSides = new Map<THREE.Material, THREE.Side>();
   for (const mesh of meshes) {
@@ -207,7 +218,8 @@ function boundedMarkingVisibilityReceipt(
     const surfaceErrorM = Math.abs(surfaceOffsetM);
     maximumSurfaceErrorM = Math.max(maximumSurfaceErrorM, surfaceErrorM);
     if (surfaceOffsetM >= -SURFACE_MARKING_STYLE.visibilityOcclusionToleranceM
-        && surfaceOffsetM <= SURFACE_MARKING_STYLE.visibilityToleranceM) clearSamples += 1;
+        && surfaceOffsetM <= SURFACE_MARKING_STYLE.visibilityToleranceM
+        && !isSuitCloth(hit.object)) clearSamples += 1;
   }
   return {
     visibilitySamples: MARKING_VISIBILITY_SAMPLE_GRID.length,

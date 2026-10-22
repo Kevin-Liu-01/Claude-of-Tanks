@@ -225,8 +225,8 @@ function paintTrack(rng: Rng): HTMLCanvasElement {
 }
 
 function redrawWhenMarkingFontReady(draw: () => void): void {
-  if (document.fonts && !document.fonts.check("bold 16px 'ABC Monument Grotesk'")) {
-    document.fonts.load("bold 16px 'ABC Monument Grotesk'").then(faces => { if (faces.length) draw(); }).catch(() => {});
+  if (document.fonts && !document.fonts.check("bold 16px 'Cot UI'")) {
+    document.fonts.load("bold 16px 'Cot UI'").then(faces => { if (faces.length) draw(); }).catch(() => {});
   }
 }
 
@@ -323,7 +323,7 @@ function paintTextDecal(ctx: CanvasRenderingContext2D, text: string): void {
   const length = Math.max(1, text.length);
   const draw = (): void => {
     ctx.clearRect(0, 0, 256, 256);
-    ctx.font = `bold ${Math.min(120, Math.floor(380 / length))}px 'ABC Monument Grotesk', sans-serif`;
+    ctx.font = `bold ${Math.min(120, Math.floor(380 / length))}px 'Cot UI', sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineWidth = 10;
@@ -3400,8 +3400,8 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
       const t = lease?.texture ?? track(canvasTex(paintDecal(kind, text, marking), { aniso }));
       // number decals re-bake when their font loads (paintDecal registered first, so
       // its redraw runs before this) — push the fresh canvas to the GPU.
-      if (document.fonts && !document.fonts.check("bold 16px 'ABC Monument Grotesk'")) {
-        document.fonts.load("bold 16px 'ABC Monument Grotesk'").then(faces => { if (faces.length) t.needsUpdate = true; }).catch(() => {});
+      if (document.fonts && !document.fonts.check("bold 16px 'Cot UI'")) {
+        document.fonts.load("bold 16px 'Cot UI'").then(faces => { if (faces.length) t.needsUpdate = true; }).catch(() => {});
       }
       const m = track(setup(new THREE.MeshStandardMaterial({
         map: t, transparent: true, roughness: 0.8, metalness: 0.1,

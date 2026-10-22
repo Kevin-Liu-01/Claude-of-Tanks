@@ -33,11 +33,22 @@ interface PlacementWorld {
   obstacles: readonly CollisionRecord[];
   queryObstacles?: ObstacleQuery | null;
 }
-interface PlacementOptions extends PlacementWorld { anchors: PlacementAnchors; mode: string; mapId?: string; assaultLines?: readonly (PlacementPoint | null)[] | null }
+interface PlacementOptions extends PlacementWorld {
+  anchors: PlacementAnchors; mode: string; mapId?: string; assaultLines?: readonly (PlacementPoint | null)[] | null;
+  /**
+   * The span along the axis the mode's own objectives stand apart (gameplay-modes-228 round 3: the ruleset's CTF
+   * flagPitch.baseAxisM and Turbo Ball ball.goalAxisM; null or absent keeps them on the bases reserved at the anchors).
+   * Each is reserved through the same objective search as the bases (dry, firm, level, clear of solids, reachable by a
+   * dry route from both deployments), so the point the mode controller uses is the point this placement proved.
+   */
+  objectiveAxisM?: number | null;
+}
 interface Footprint { radius: number; relief: number; normalY: number; solidOnly?: boolean; halfExtent?: number }
 const SPAWN_NORMAL_Y = .90;
 const OBJECTIVE_NORMAL_Y = .94;
 const SEARCH_RADII = [8, 16, 24, 32, 48, 64, 80, 104, 128, 160, 200, 248, 304, 368];
+/** An axis objective moves at most this far across the axis (or inward) before the ring search takes over. */
+const OBJECTIVE_SPAN_SHIFT_M = 160;
 
 /** Uses ALL authored pads, never the selected roster or relocated vehicles. */
 export function matchPlacementAnchors(spawns: {
@@ -296,6 +307,11 @@ export interface MatchPlacement {
   readonly zones: readonly PlacementPoint[];
   /** Frontline Assault lines carved into the terrain (assault-trenches worlds), else null. */
   readonly assaultLines: readonly (PlacementPoint | null)[] | null;
+  /**
+   * The CTF flag bases or the Turbo Ball goals on the axis (options.objectiveAxisM), each a reserved objective footprint;
+   * null when the mode keeps them on `centers`.
+   */
+  readonly objectives: { readonly alpha: PlacementPoint; readonly bravo: PlacementPoint } | null;
   /** Slot k of a side's symmetric deployment (sim/deployment.ts), on this world and clear of this mode's objectives. */
   deploymentSlot(team: DeploymentTeam, k: number): DeploymentSlot;
   /** The centroid of a side's first `count` slots: where its spawn marker stands. */
@@ -305,6 +321,12 @@ export interface MatchPlacement {
   spawn(point: PlacementSpawn, key: string, radius?: number, explicit?: boolean,
     occupied?: readonly OccupiedPlacement[]): PlacementSpawn;
   respawn(point: PlacementSpawn, key: string, occupied: readonly OccupiedPlacement[]): PlacementSpawn | null;
+  /**
+   * A respawn that stays near its point (gameplay-modes-228, the Horde's arrival ring): the same footprint, terrain and
+   * occupancy rules as `respawn`, searched only on the rings within `maxShiftM`, and null past them — never the
+   * map-wide lattice, which could put an arrival anywhere (beside the humans it was kept away from).
+   */
+  respawnNear(point: PlacementSpawn, key: string, occupied: readonly OccupiedPlacement[], maxShiftM: number): PlacementSpawn | null;
   pickup(point: PlacementPoint, occupied?: readonly OccupiedPlacement[]): PlacementPoint | null;
 }
 
@@ -336,10 +358,11 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
   }
 
   function find(preferred: PlacementPoint, footprint: Footprint, key: string, half = 0,
-    occupied: readonly (PlacementPoint & { radius: number })[] = []): PlacementPoint | null {
+    occupied: readonly (PlacementPoint & { radius: number })[] = [], maxShiftM = Infinity): PlacementPoint | null {
     if (acceptable(preferred, footprint, key, half, occupied)) return { x: preferred.x, z: preferred.z };
     const point = { x: 0, z: 0 };
     for (const radius of SEARCH_RADII) {
+      if (radius > maxShiftM) return null;
       const steps = Math.max(16, Math.ceil(radius * Math.PI * 2 / 16));
       for (let step = 0; step < steps; step++) {
         const angle = step / steps * Math.PI * 2;
@@ -381,6 +404,44 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
   const middle = mode === 'turbo_ball'
     ? reserve(MATCH_OBJECTIVE_LAYOUTS[options.mapId ?? '']?.kickoff ?? originalMiddle, { radius: 12, relief: 3, normalY: OBJECTIVE_NORMAL_Y, solidOnly: true, halfExtent: MATCH_MODE_ARENA_HALF_EXTENT_M }, 'kickoff')
     : mode === 'ac130' ? reserve(originalMiddle, {radius:30,relief:7,normalY:OBJECTIVE_NORMAL_Y,solidOnly:true}, 'extraction') : originalMiddle;
+  // the flag bases / goals on the axis (objectiveAxisM): the middle ± half the span along the reserved bases' axis (the
+  // mode controller's own frame), each moved by the objective search to ground the bases' footprint proves
+  const objectiveSpan = options.objectiveAxisM ?? null;
+  let objectives: MatchPlacement['objectives'] = null;
+  if ((mode === 'capture_the_flag' || mode === 'turbo_ball') && objectiveSpan != null) {
+    const bx = centers.bravo.x - centers.alpha.x, bz = centers.bravo.z - centers.alpha.z, span = Math.hypot(bx, bz) || 1;
+    if (objectiveSpan < span) {
+      const radius = mode === 'turbo_ball' ? 18 : 12;
+      const halfExtent = mode === 'turbo_ball' ? MATCH_MODE_ARENA_HALF_EXTENT_M : undefined;
+      const footprint = { radius, relief: 5, normalY: OBJECTIVE_NORMAL_Y, solidOnly: true, halfExtent };
+      const ax = bx / span, az = bz / span;
+      const at = (side: -1 | 1) => ({ x: middle.x + ax * side * 0.5 * objectiveSpan, z: middle.z + az * side * 0.5 * objectiveSpan });
+      // the span is the rule: a point the footprint refuses moves across the axis (or inward) first, so the pitch keeps
+      // its length (round 3: the plain ring search took one Desert goal 80 m outward, a 560 m pitch), then the ring search
+      const reserveOnSpan = (side: -1 | 1, key: string): PlacementPoint => {
+        const preferred = at(side), probe = { x: 0, z: 0 };
+        if (acceptable(preferred, footprint, key, side, [])) {
+          reservations.push({ ...preferred, radius: footprint.radius, key });
+          return preferred;
+        }
+        for (const radius of SEARCH_RADII) {
+          if (radius > OBJECTIVE_SPAN_SHIFT_M) break;
+          for (const [ux, uz] of [[az, -ax], [-az, ax], [-ax * side, -az * side]] as const) {
+            probe.x = preferred.x + ux * radius; probe.z = preferred.z + uz * radius;
+            if (!acceptable(probe, footprint, key, side, [])) continue;
+            const found = { x: probe.x, z: probe.z };
+            reservations.push({ ...found, radius: footprint.radius, key });
+            return found;
+          }
+        }
+        return reserve(preferred, footprint, key, side);
+      };
+      objectives = Object.freeze({
+        alpha: Object.freeze(reserveOnSpan(-1, 'objective-alpha')),
+        bravo: Object.freeze(reserveOnSpan(1, 'objective-bravo')),
+      });
+    }
+  }
   function placeZones(): PlacementPoint[] {
     const targets = MATCH_OBJECTIVE_LAYOUTS[options.mapId ?? '']?.zones
       ?? [-105, 0, 105].map(offset => ({ x: originalMiddle.x + uz * offset, z: originalMiddle.z - ux * offset }));
@@ -423,14 +484,14 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
   };
 
   function resolveSpawn(point: PlacementSpawn, key: string, radius: number | undefined,
-    explicit: boolean, occupied: readonly OccupiedPlacement[]): PlacementSpawn | null {
+    explicit: boolean, occupied: readonly OccupiedPlacement[], maxShiftM = Infinity): PlacementSpawn | null {
     if (explicit) explicitKeys.add(key);
     const old = reservations.find(entry => entry.key === key);
     radius = radius ?? old?.radius ?? 4.5;
     const footprint = { radius, relief: 2, normalY: SPAWN_NORMAL_Y };
     const along = (point.x - originalMiddle.x) * ux + (point.z - originalMiddle.z) * uz;
     const half = Math.abs(along) > 60 ? Math.sign(along) : 0;
-    const found = explicitKeys.has(key) ? point : find(point, footprint, key, half, occupied);
+    const found = explicitKeys.has(key) ? point : find(point, footprint, key, half, occupied, maxShiftM);
     if (!found) return null;
     if (old) Object.assign(old, found, { radius });
     else reservations.push({ ...found, radius, key });
@@ -439,7 +500,7 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
 
   return {
     navigation: access?.navigation ?? null,
-    anchors, centers, middle, zones,
+    anchors, centers, middle, zones, objectives,
     assaultLines: options.assaultLines ?? null,
     deployment: deploymentOf,
     deploymentSlot: (team, k) => deploymentOf().slot(team, k),
@@ -455,6 +516,7 @@ export function createMatchPlacement(options: PlacementOptions): MatchPlacement 
       return found;
     },
     respawn: (point, key, occupied) => resolveSpawn(point, key, undefined, false, occupied),
+    respawnNear: (point, key, occupied, maxShiftM) => resolveSpawn(point, key, undefined, false, occupied, Math.max(0, maxShiftM)),
     pickup(point, occupied = []) {
       return find(point, { radius: 7, relief: 2, normalY: SPAWN_NORMAL_Y, solidOnly: true }, 'pickup', 0, occupied);
     },

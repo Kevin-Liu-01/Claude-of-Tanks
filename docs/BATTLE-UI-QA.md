@@ -709,9 +709,11 @@ Receipts: `.qa-dev/garage-mobile-complete` and `.qa-dev/garage-related-*`.
 The game uses `font-display: swap`: a slow self-hosted font must replace the
 readable fallback after arrival. `optional` can leave a cold visit permanently
 in the fallback and must not be restored as a loading optimization. The inline
-`cot-font-faces` style owns first-paint declarations; `ensureFonts()` reuses it
-and warms only Medium and Bold once. Regular remains demand-loaded. The battle
-menu and compact Garage controls use the current Monument Grotesk stack.
+`cot-font-faces` style (expanded from each document's `cot:type` marker,
+`src/ui/typeFaces.ts`) owns every face declaration; `ensureFonts()` warms only
+the two first-paint faces once (IBM Plex Sans Medium and Chakra Petch Bold).
+The other weights remain demand-loaded. The battle menu and compact Garage
+controls use the weight-voiced `'Cot UI'` stack.
 Canvas signs and vehicle markings wait for their specific face before repaint
 and texture upload, rather than the document-wide font-ready promise.
 

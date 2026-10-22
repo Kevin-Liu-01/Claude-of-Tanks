@@ -219,8 +219,38 @@ let shareMost = 0, shareSkipped = 0;
 // a point off every wall breaks nothing
 assert.equal(r.fracture.strike(seam, 40, 1, 40, 1, 0, 'he', 1.2, 125), null, 'a burst off the building breaks no face');
 console.log = log0;
+// (destruction-slabs 227 round 4, lane B's penstock) a face whose slab draws no flat wall — a pipe lying along the
+// cottage's front where its wall was — is not taken: nothing redrawn, no chunk thrown, the pipe's triangles left as they
+// are drawn, and a later round on it lays nothing (an empty answer: the kit lays no rim for it either)
+{
+  const pipeSeam = seamOf('hessian', 'cottage', [8, 10, 6.5], 9);
+  const f = pipeSeam.anatomy.storeys[0].faces.find((g) => g.name === 'front');
+  const R = Math.max(0.6, Math.min(1.4, f.height / 2 - 0.1)), cy = f.origin[1] + R + 0.05;
+  const pipe = new THREE.CylinderGeometry(R, R, f.width * 0.9, 24, 1, true).toNonIndexed();
+  // along the face (its u), its front at the face's plane
+  const yaw = Math.atan2(f.u[0], f.u[2]);
+  pipe.applyMatrix4(new THREE.Matrix4().makeRotationX(Math.PI / 2)).applyMatrix4(new THREE.Matrix4().makeRotationY(yaw))
+    .applyMatrix4(new THREE.Matrix4().makeTranslation(f.origin[0] - f.out[0] * R, cy, f.origin[2] - f.out[2] * R));
+  const col = new Float32Array(pipe.attributes.position.count * 3).fill(0.7);
+  pipe.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const pipeMesh = new THREE.Mesh(pipe, material);
+  pipeSeam.spans = [{ mesh: pipeMesh, position: pipe.attributes.position, bucket: 'stone', first: 0, count: pipe.attributes.position.count, partClass: 'wall', instanceId: null }];
+  const pr = rig(pipeSeam);
+  const p0 = Float32Array.from(pipe.attributes.position.array);
+  const hitAt = [f.origin[0] + f.out[0] * 0.05, cy, f.origin[2] + f.out[2] * 0.05];
+  const first = pr.fracture.strike(pipeSeam, ...hitAt, -f.out[0], -f.out[2], 'he', 1.2, 125);
+  pr.fracture.flush();
+  pr.step(1);
+  const faces = []; pr.group.traverse((o) => { if (o.isMesh && /fx-fracture-face/.test(o.name)) faces.push(o); });
+  assert.equal(faces.length, 0, 'a pipe\'s face is drawn as no wall');
+  assert.equal(pr.fracture.stats().bodies, 0, 'and throws no chunk');
+  assert.ok(p0.every((v, i) => v === pipe.attributes.position.array[i]), 'its triangles stay as they are drawn');
+  const second = pr.fracture.strike(pipeSeam, hitAt[0] + 0.01, hitAt[1] + 1.2, hitAt[2], -f.out[0], -f.out[2], 'he', 1.2, 125);
+  assert.ok(Array.isArray(first) && Array.isArray(second) && second.length === 0, 'a later round on it takes nothing and lays nothing');
+}
+
 assert.deepEqual(outside, [], 'every body draws inside its parts');
 console.log(`structureFracture.selftest: a round on a cottage's front face took it out of the bucket (${after.flat - whole.flat} triangles), `
   + `drew it again with its hole (${drawn.toFixed(1)} m2), threw ${s0.bodies} bodies that came to rest (${s1.baked} baked, ${r.landings.length} landings), `
   + `a second round widened it, the reset stood it up byte for byte, a front breached along its foot leaned out (median ${leanOut.toFixed(1)} m out), the same twice, `
-  + `a barrage held to its share of the pool (${shareMost} of 12, ${shareSkipped} past it)`);
+  + `a barrage held to its share of the pool (${shareMost} of 12, ${shareSkipped} past it), a pipe's face taken as no wall`);

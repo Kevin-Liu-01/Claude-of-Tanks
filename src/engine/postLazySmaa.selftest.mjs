@@ -18,7 +18,11 @@ const block = post.slice(at, post.indexOf('const upscaler = new FsrUpscalePass()
 assert.ok(post.lastIndexOf('composer.addPass(grade);', at) > 0 && block.includes('composer.addPass(smaaSlot);'),
   'the slot follows the output grade and precedes the upscaler');
 assert.match(block, /smaaSlot\.enabled = false;\s*smaaSlot\.needsSwap = false;/, 'an empty slot leaves the frame untouched');
-assert.match(block, /import\('three\/examples\/jsm\/postprocessing\/SMAAPass\.js'\)/);
+// (2026-10-19, black-screen-228) the pass arrives through the chain's own lazy half, which re-exports three's SMAA pass
+// beside the first-frame warm (one chunk, one dynamic import)
+assert.match(block, /import\('\.\/postLazyPasses\.ts'\)/);
+const lazy = await readFile(new URL('./postLazyPasses.ts', import.meta.url), 'utf8');
+assert.match(lazy, /^export \{ SMAAPass \} from 'three\/examples\/jsm\/postprocessing\/SMAAPass\.js';$/m);
 assert.match(block, /SMAA_THRESHOLD = '0\.055';/, 'the High-preset edge threshold');
 assert.match(block, /SMAA_MAX_SEARCH_STEPS = '16';/, 'the High-preset search');
 assert.match(block, /const at = composer\.passes\.indexOf\(smaaSlot\);\s*composer\.removePass\(smaaSlot\);\s*composer\.insertPass\(smaa, at\);/);

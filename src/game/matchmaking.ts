@@ -1,3 +1,4 @@
+import { ERA_NEIGHBOURS } from '../sim/countries.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 // Shared garage/matchmaking eligibility and pure candidate ordering.
 //
@@ -22,13 +23,9 @@ interface MatchCandidate {
 }
 
 /** Eras a roster may draw from around the player's: contemporaries only, never WW2 against modern. Campaign
- * formations (2026-09-14) and ordinary matchmaking (diversity r2, 2026-09-18) share the one table. */
-export const ERA_NEIGHBOURS: Readonly<Record<string, readonly string[]>> = Object.freeze({
-  ww2: Object.freeze(['ww2']),
-  'cold-war': Object.freeze(['cold-war', 'modern']),
-  modern: Object.freeze(['modern', 'cold-war', 'next-generation']),
-  'next-generation': Object.freeze(['next-generation', 'modern']),
-});
+ * formations (2026-09-14), ordinary matchmaking (diversity r2, 2026-09-18) and TEAM NATIONS (sim/teamNations.ts, which
+ * owns the table since gameplay-modes-228) share the one table. */
+export { ERA_NEIGHBOURS };
 
 export const isGarageVisibleTankId = (id: RuntimeValue): id is string =>
   typeof id === 'string' && (DEV_FLEET_ACTIVE || !GARAGE_HIDDEN_TANK_IDS.has(id));

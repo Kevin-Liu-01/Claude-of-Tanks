@@ -4,7 +4,6 @@ import { guidedMissileSlot, specialActionKind, SPECIAL_ACTION_KINDS } from '../s
 // Counts only (4.8 kB): the 217 kB mount-geometry inventory stays on the battle path (FE-P2).
 import { GARAGE_AUXILIARY_SUMMARY } from './garageAuxiliarySummary.generated.ts';
 import { movementDispersionFactor } from '../sim/movementDispersion.ts';
-import { createBattleArrangementPanel } from './battleArrangementPanel.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 // src/ui/garage.ts — full-screen garage/tank-select overlay: dark gradient
 // frame with a transparent center band (the 3D pedestal shows through),
@@ -82,6 +81,7 @@ import type { CamoTagId, CamoCollectionId, CustomCamo } from '../vehicles/camoPo
 import type { CustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import type { ImagePriority } from './imagePreload.ts';
 import type { FleetTake, FleetTakeIndex, FleetTakePlayer } from './fleetTakes.ts';
+import { countryOfVehicle } from '../sim/countries.ts';
 
 type BattleMode = PlayMode;
 // The fleet takes load with the battle gallery, never with the Garage (see the featured panel).
@@ -565,7 +565,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // brand mark (tank + Claude Code commander) so the garage brand matches
     // the entry screen; master copy public/brand/logo-mark.svg
     `<img class="mark" src="/brand/logo-mark.svg" alt="" draggable="false">` +
-    `<span>CLAUDE <b>OF TANKS</b></span></div>` +
+    `<span lang="en">CLAUDE <b>OF TANKS</b></span></div>` +
     `<div class="cot-brand-utilities cot-header-nav" aria-label="${t('garage.nav.home')} & ${t('garage.nav.record')}">` +
     `<button class="nv" data-nav="home" type="button" aria-label="${t('garage.nav.home')}" title="${t('garage.nav.home')}">` +
     `<img class="nvi nvi-product" src="/brand/nav/home.svg" alt="" draggable="false">` +
@@ -1494,9 +1494,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           const tag = document.createElement('span');
           tag.className = 'cot-map-region';
           tag.dataset.region = region;
-          tag.innerHTML = uiIconSVG(regionTagIcon(region)!, 9);
+          tag.innerHTML = uiIconSVG(regionTagIcon(region)!, 12);
           const label = document.createElement('span');
           label.textContent = t(`camoTag.${region}`);
+          tag.title = label.textContent;
           tag.appendChild(label);
           tags.appendChild(tag);
         }
@@ -2402,7 +2403,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let facetPanel: Promise<GarageFacetPanel> | null = null;
   facetToggle.addEventListener('click', () => {
     emit('ui:click', {});
-    facetPanel ??= Promise.all([import('./garageFacetPanel.ts'), import('./garageFacetPanel.css')])
+    // (the panel's strings load beside it: it mounts once they are resident, so it never shows a raw key)
+    facetPanel ??= Promise.all([import('./garageFacetPanel.ts'), import('./garageFacetPanel.css'),
+      import('./fleetStrings.ts').then((strings) => strings.ensureFleetStrings())])
       .then(([{ mountGarageFacetPanel }]) => mountGarageFacetPanel({
         anchor: countryRailEl,
         toggle: facetToggle,
@@ -3044,7 +3047,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     mars: { short: 'GRAV', label: t('garage.battle.marsLabel'), icon: 'modeMars' },
   };
   function closeBattleMenu({ restoreFocus = false } = {}) {
-    arrangementPanel.close();
+    arrangementPanel?.close();
     marsDropdowns.forEach(dropdown => dropdown.close());
     battleMenu.classList.remove('open');
     battleModeBtn.setAttribute('aria-expanded', 'false');
@@ -3175,7 +3178,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     setBattleGameMode(choice.dataset.gameMode);
   });
   // sides (owner 2026-09-18): the battle menu's 7v7 / 14v14 / custom switch stores one sides setting for the
-  // symmetric modes (game/teamArrangement.ts writeSides, clamped by the ruleset); the menu stays open while the
+  // symmetric modes (game/teamArrangement.ts writeTeamArrangement, clamped by the ruleset); the menu stays open while the
   // player types, and the wave modes arrange their allied bots and pool in the play menu instead
   const sidesChoices = [...battleMenu.querySelectorAll<HTMLButtonElement>('.cot-sides-choice')];
   const sidesCustom = requiredElement<HTMLElement>(battleMenu, '[data-sides-custom]');
@@ -3225,10 +3228,22 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const setupIcon = requiredElement<HTMLElement>(battleMenu, '[data-setup-icon]');
   const setupSelection = requiredElement<HTMLElement>(battleMenu, '[data-setup-selection]');
   const setupLaunch = requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-launch]');
-  const arrangementPanel = createBattleArrangementPanel(soloOptions);
+  // The mode settings and the TEAMS switch load with the battle menu's first render (round 2, the critic's E3: the TEAMS
+  // control grew the game's entry chunk); MONO's switch leads with the selected vehicle's flag
+  let arrangementPanel: { render(mode: GameModeId): void; close(): void } | null = null;
+  let arrangementPanelLoad: Promise<void> | null = null;
+  const renderArrangementPanel = (): void => {
+    if (arrangementPanel) { arrangementPanel.render(battleGameMode); return; }
+    arrangementPanelLoad ??= import('./battleArrangementPanel.ts').then(({ createBattleArrangementPanel }) => {
+      arrangementPanel = createBattleArrangementPanel(soloOptions, {
+        playerCountry: () => countryOfVehicle(selectedId, specs.find((spec) => spec.id === selectedId)?.nation),
+      });
+      arrangementPanel.render(battleGameMode);
+    });
+  };
   renderBattleOptions = () => {
     battleMenu.dataset.rule = battleGameMode;
-    arrangementPanel.render(battleGameMode);
+    renderArrangementPanel();
     renderSides();
     const solo = battleMode === 'solo';
     const shown = solo && battleGameMode === 'mars';

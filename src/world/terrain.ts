@@ -29,9 +29,10 @@ import { hinterlandSupplyFor } from './hinterlandHook.ts';
 import { onPresetChange, resolvePresetName, texSize } from '../engine/quality.ts';
 import { terrainWallSkyLift } from '../engine/groundBounce.ts';
 import { registerRetainedObject3DResources } from '../engine/resourceLifetime.ts';
-import { shorelineDistance, shorelineRadiusAt, shorelineWetness, sampleShorelineMask } from './shoreline.ts';
+import { shorelineDistance, shorelineRadiusAt, shorelineWetness, shorelineWetnessFromDistance, sampleShorelineMask } from './shoreline.ts';
+import { WATER_BANK_LIP_FADE_M, WATER_BANK_LIP_M, waterBankLip, waterBedAt, waterCoverage, waterlineDistance } from './waterBank.ts';
 import { alignLiquidLakeLevels, buildLiquidLakeBanks, buildLiquidMarshSurfaces, LIQUID_MARSH_CORE, LIQUID_MARSH_STRIDE } from './liquidMarshSurface.ts';
-import { composeLakeHeight, type LakeHeightResult } from './lakeHeightComposition.ts';
+import { composeLakeHeight, type LakeBankLaw, type LakeHeightResult } from './lakeHeightComposition.ts';
 import { buildLakeCandidateIndex, lakeCandidatesAt, type LakeCandidateIndex } from './lakeCandidateIndex.ts';
 import { buildLiquidMarshIndex, liquidMarshIndexBucket, sampleIndexedMarshWetness } from './liquidMarshIndex.ts';
 import { createHardstandVegetationExclusion, stampHardstandRoadGrids, stampHardstandRoadMask, type HardstandConfig } from './hardstandSurface.ts';
@@ -64,6 +65,7 @@ import { createBorderLandform, resolveBorderLandform, type BorderLandformSetting
 import type { FarmsteadStyle } from './borderFarmsteads.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
 import { canalWetness, carveCanals, compileCanals, inCanal, type CanalConfig } from './canals.ts';
+import { canalLevelAt } from './canals.ts'; // (the ground lane, 2026-10-17: the sheet holds a canal's level)
 import { compilePaddies, inPaddy, inPaddyClearing, levelPaddies, paddyCanals, paddyRiceAt, paddyWaterLevelAt, paddyWaterQuads,
   resolvePaddyFloors, PADDY_DEPTH_M, type PaddyConfig, type PaddyRiceSeat, type PaddyWaterQuad } from './paddies.ts';
 import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
@@ -77,6 +79,8 @@ import { cinderYardWeedsAt, groundReduxUniformValues, resolveGroundReduxProfile 
 import { ROAD_CARRIAGEWAY_GLSL, ROAD_PAVING_GLSL } from './roadSurfaceShader.ts';
 import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, withLevelPaddies, type LandFieldSample, type LandUseProfile } from './landUse.ts';
 import { drawIceCracks } from './iceCracks.ts';
+import { civicLawns, civicPavedRooms } from './civic/plans/index.ts';
+import type { CivicRect } from './civic/types.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -595,6 +599,8 @@ export interface TerrainLayout {
   roadStations?: (RoadStationOrigin | null)[];
   /** Round 57: the authored rail spurs, carried to the dressing kit like the lake discs; absent when the map lays none. */
   railSpurs?: readonly RailSpurConfig[];
+  /** (the maps lane, 228) a civic plan's lawns and paved square (world/civic/plans); absent on a map without one. */
+  civicGround?: { readonly lawns: readonly CivicRect[]; readonly paved: readonly CivicRect[] };
   terrain: TerrainSettings;
 }
 
@@ -663,6 +669,11 @@ export interface HeightField {
   /** Round 47 (2026-09-23): the map's bay contours evaluated anywhere, the square included — wetness 0..1 and the bay's
    * water level — so the horizon ring, the terrain material and the sheet apron continue the coast past the red line. */
   getOutlandWaterAt?(x: number, z: number): { wetness: number; level: number } | null;
+  /** (ground lane, 2026-10-17; MASTER #14, "water meets its banks level") the water's top of the lake or liquid marsh
+   * that holds (x, z) — its level (the floor) plus the map's full depth, one surface per body (a marsh's plane), or a
+   * canal's own level — which the sheet holds instead of following its bed up the banks (waterBank.ts carves the beds
+   * under it); NaN where no lake, marsh or canal holds it. */
+  getWaterBodySurfaceAt?(x: number, z: number): number;
   /** Water pass 8: one splash into the reactive field (shell impacts); absent without the field. */
   addWaterImpulse?(x: number, z: number, radiusM: number, amplitudeM: number, foam?: number): void;
   /** Water pass 8: true when the reactive field carries the wakes (the FX layer then skips its ring prints). */
@@ -1202,6 +1213,8 @@ export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads 
     ...(roadStations ? { roadStations } : {}),
     // Round 57 (2026-09-24): authored rail spurs ride the layout to the dressing kit; no key on a map without one.
     ...(t.railSpurs?.length ? { railSpurs: t.railSpurs } : {}),
+    // (the maps lane, 228) a civic plan's ground (world/civic): the lawns the mask keeps green, the square it paves
+    ...(civicLawns(cfg?.id).length ? { civicGround: { lawns: civicLawns(cfg?.id), paved: civicPavedRooms(cfg?.id) } } : {}),
     terrain: t,
   };
 }
@@ -1739,6 +1752,10 @@ function* heightFieldBuildSteps(
   const liquidDepthM = liquidWater ? waterContactProfile(cfg?.id || '').depthM : 0;
   const waterRampStart = cfg?.splat?.seaRamp?.[0] ?? 0.40;
   const waterRampEnd = cfg?.splat?.seaRamp?.[1] ?? 0.78;
+  // (the ground lane, 2026-10-17; waterBank.ts) a liquid marsh's visible waterline (its shoreline law's wetness at the ramp's
+  // start) and the lake law the in-square composition holds its banks by (set with the lakes' banks, below)
+  const marshWaterline = waterlineDistance(0.45, 1, waterRampStart);
+  let lakeBankLaw: LakeBankLaw | null = null;
   let liquidSurfaces: Float64Array | null = null;
   let liquidLakeBanks: Float64Array | null = null;
   // Authored drainage contours may have wide grading aprons that overlap a
@@ -1746,6 +1763,11 @@ function* heightFieldBuildSteps(
   // every legacy lake retains the original sequential arithmetic below.
   const continuousLakeAprons = _LAKES.some(lake => lake.radii !== undefined);
   const lakeHeightResult: LakeHeightResult = { height: 0, wetness: 0 };
+  // (the ground lane, 2026-10-17; waterBank.ts) the liquid marshes' report for the height query in flight: the most
+  // covering marsh's level and coverage, the share of the marshes' levels in the height (230: the bank graded from the
+  // water's top stands the depth higher in it) and the nearest dry-side waterline; heightAt fills it,
+  // applyHeightConstraints merges the lakes' and sets the bed by the water's true mask
+  const marshBank = { level: 0, coverage: 0, lift: 0, beyondM: Infinity, shoreLevel: 0 };
   // (2026-10-08, lakeCandidateIndex.ts) the discs that can reach a point, so a map whose water is a chain of many discs
   // (Skybridge's meander) does not walk them all at every sample; rebuilt once the liquid banks fix each disc's band;
   // null under nine discs (the plain loops), and every result bit-identical either way
@@ -1888,6 +1910,51 @@ function* heightFieldBuildSteps(
     return h + unionTop + carve;
   }
 
+  /**
+   * (the ground lane, 2026-10-17; MASTER #14 / GW.14; waterBank.ts) level water held in its banks: under the water (the
+   * true mask: getWaterMaskAt's, so a ford's or a pad's dried water is dry ground) the bed holds the water's top at the most
+   * covering body's level; a body's water dried by a road or a pad stands at least a lip over that level. (230, 2026-10-21)
+   * Past every waterline the bank is graded from a lip over the water's top, not from the floor: the carve's own blend
+   * toward the bodies' levels (their bank bands and weights) stands the depth and the lip higher in its share
+   * (marshBank.lift, the lakes' liftWeight), so the shore meets the bed's lip at the waterline with no crest. The 10-17
+   * cut held the dry shore over a 9 m plateau and cut it off at a 16 m reach, which stepped every bank lower than the
+   * water's top.
+   */
+  function holdWaterInBanks(x: number, z: number, h: number, lakesOn: boolean): number {
+    // (the ring's seam row seats on the square's edge from the outland's own composition: the banks fade out over the
+    // last 28 m, so the seam meets the ground as before; the sheet fades with them, getWaterBodySurfaceAt)
+    const edgeKeep = waterBankEdgeKeep(x, z);
+    if (edgeKeep <= 0) return h;
+    const held = holdWaterInBanksCore(x, z, h, lakesOn);
+    return edgeKeep >= 1 ? held : h + (held - h) * edgeKeep;
+  }
+  function holdWaterInBanksCore(x: number, z: number, h: number, lakesOn: boolean): number {
+    let level = marshBank.level, coverage = marshBank.coverage, lift = marshBank.lift;
+    let shoreBeyondM = marshBank.beyondM, shoreLevel = marshBank.shoreLevel;
+    if (lakesOn && lakeBankLaw !== null) {
+      if ((lakeHeightResult.bedCoverage ?? 0) > coverage) { coverage = lakeHeightResult.bedCoverage!; level = lakeHeightResult.bedLevel!; }
+      // the lakes compose over the marshes' height: what the marshes lifted keeps the lakes' remaining share
+      const lakeLift = lakeHeightResult.liftWeight ?? 0;
+      lift = 1 - (1 - lift) * (1 - lakeLift);
+      if ((lakeHeightResult.shoreBeyondM ?? Infinity) < shoreBeyondM) {
+        shoreBeyondM = lakeHeightResult.shoreBeyondM!; shoreLevel = lakeHeightResult.shoreLevel!;
+      }
+    }
+    if (coverage > 0) {
+      const mask = smoothstep(waterRampStart, waterRampEnd, waterWetnessAt(x, z));
+      const surface = level + liquidDepthM;
+      return mask > 0 ? waterBedAt(surface, liquidDepthM, mask) : Math.max(h, surface + WATER_BANK_LIP_M);
+    }
+    // the bank graded from a lip over the water's top (the depth and the lip in the levels' share); where a bank's share
+    // stops short of whole at its waterline the lip tops it up there, fading
+    const graded = lift > 0 ? h + (liquidDepthM + WATER_BANK_LIP_M) * lift : h;
+    return shoreBeyondM < WATER_BANK_LIP_FADE_M ? waterBankLip(shoreLevel + liquidDepthM, graded, shoreBeyondM) : graded;
+  }
+  /** (230) the bank law's share near the square's edge: whole inside 480 m, none from 508 m (the ring's seam). */
+  function waterBankEdgeKeep(x: number, z: number): number {
+    return 1 - smoothstep(480, 508, Math.max(Math.abs(x), Math.abs(z)));
+  }
+
   function applyHeightConstraints(
     x: number,
     z: number,
@@ -1916,10 +1983,11 @@ function* heightFieldBuildSteps(
     let lakeWetness = 0;
     if (lakesOn) {
       composeLakeHeight(_LAKES, lakeLevels, liquidLakeBanks, continuousLakeAprons,
-        x, z, h, settlementWeight, lakeHeightResult, lakesNear(x, z));
+        x, z, h, settlementWeight, lakeHeightResult, lakesNear(x, z), lakeBankLaw);
       h = lakeHeightResult.height;
       lakeWetness = lakeHeightResult.wetness;
     }
+    if (liquidDepthM > 0 && (lakeBankLaw !== null || liquidSurfaces !== null)) h = holdWaterInBanks(x, z, h, lakesOn);
     let padWetness = 1;
     if (padsOn) {
       const padRadiusSquared = lakeWetness > 0 ? 26 * 26 : 22 * 22;
@@ -2281,6 +2349,9 @@ function* heightFieldBuildSteps(
     let marshW = 0;
     let waterWeight = 0, waterLevelSum = 0, waterWeightSum = 0;
     let waterCoreSum = 0, waterCoreCount = 0;
+    // (2026-10-17, waterBank.ts) the most covering liquid marsh, the levels' share and the nearest dry-side waterline
+    // (holdWaterInBanks sets the bed and grades the bank)
+    marshBank.level = 0; marshBank.coverage = 0; marshBank.lift = 0; marshBank.beyondM = Infinity; marshBank.shoreLevel = 0;
     for (let mi = 0; mi < _MARSHES.length; mi++) {
       if (index) {
         while (!bits && ++word < liquidIndexWords) bits = index[bucket + word];
@@ -2321,9 +2392,18 @@ function* heightFieldBuildSteps(
         const priority = weight / Math.max(1e-9, 1 - weight);
         waterWeightSum += priority; waterLevelSum += level * priority;
         if (md <= LIQUID_MARSH_CORE) { waterCoreSum += level; waterCoreCount++; }
+        if (m.sorFlat === undefined && liquidDepthM > 0) {
+          const coverage = waterCoverage(shorelineWetnessFromDistance(md, false), waterRampStart, waterRampEnd);
+          if (coverage > marshBank.coverage) { marshBank.coverage = coverage; marshBank.level = level; }
+          else if (coverage === 0) {
+            const beyondM = Math.max(0, (md - marshWaterline) * shorelineRadiusAt(m, Math.atan2(z - m.z, x - m.x)));
+            if (beyondM < WATER_BANK_LIP_FADE_M && beyondM < marshBank.beyondM) { marshBank.beyondM = beyondM; marshBank.shoreLevel = level; }
+          }
+        }
       }
     }
     if (waterCoreCount) {
+      marshBank.lift = 1; // (230, waterBank.ts) a flat core is all level
       // All base/micro/macro relief is overwritten by a fully flat core.
       // Keep the canonical lake, pad and road constraints, without spending
       // thirteen simplex evaluations on a value that cannot reach the mesh.
@@ -2411,6 +2491,7 @@ function* heightFieldBuildSteps(
       const target = waterLevelSum / waterWeightSum;
       h += (target - h) * waterWeight;
       marshW = Math.max(marshW, waterWeight); // road berm noise cannot ripple liquid cores
+      marshBank.lift = waterWeight; // (230, waterBank.ts) the levels' share in the height
     }
     // frozen/ice lakes: pull the terrain to a flat sheet at the lake level.
     // The flat sheet runs almost to the shore (0.94 r), and the grade toward
@@ -2726,6 +2807,7 @@ function* heightFieldBuildSteps(
     // Activate after road/pad heights are fixed. Sample the same pre-sheet
     // terrain as the marsh policy; tiny connected drainage cells must not
     // cram a multi-metre bank into the fixed ice lake's 0.38-radius apron.
+    if (liquidDepthM > 0) lakeBankLaw = { depthM: liquidDepthM, rampStart: waterRampStart, rampEnd: waterRampEnd };
     liquidLakeBanks = buildLiquidLakeBanks(liquidLakes,
       (x, z) => heightAt(x, z, false, false, false));
     lakeIndex = buildLakeCandidateIndex(_LAKES, liquidLakeBanks);
@@ -3253,7 +3335,20 @@ function* heightFieldBuildSteps(
       return yield* heightFieldBuildSteps(seed,originalRoadPlacementConfig(cfg),true);
     }} : {}),
     _mesaW: mesaWeight,
-    ...(liquidWater ? { _waterWetnessAt: waterWetnessAt, getOutlandWaterAt: outlandWaterAt } : {}),
+    ...(liquidWater ? { _waterWetnessAt: waterWetnessAt, getOutlandWaterAt: outlandWaterAt,
+      getWaterBodySurfaceAt: (x: number, z: number): number => {
+        // a canal's water at its own level first (the Polders ditch; a canal meeting a basin takes the basin's level)
+        const canal = compiledCanals !== null ? canalLevelAt(compiledCanals, x, z) : Number.NaN;
+        if (canal === canal) return canal;
+        const body = outlandWaterAt(x, z);
+        if (!body) return Number.NaN;
+        // (230) over the square's last 28 m the banks fade back to the carve the ring's seam meets (holdWaterInBanks), and
+        // the sheet with them: toward its bed plus the depth its coverage holds, the sea apron's own law (edgeWater.ts)
+        const keep = waterBankEdgeKeep(x, z), top = body.level + liquidDepthM;
+        if (keep >= 1) return top;
+        const carve = getHeightAt(x, z) + getWaterDepthAt(x, z);
+        return carve + (top - carve) * keep;
+      } } : {}),
     ...(_sorStations ? { _sorWetnessAt: sorWetnessAt } : {}),
   };
 }
@@ -3926,6 +4021,8 @@ export function makeMaskTexture(
   shoreDirtStart: number | null = null,
   sorWetnessAt: HeightField['_sorWetnessAt'] | null = null,
   viaductCut = false,
+  lawns: readonly CivicRect[] = [],
+  pavedRooms: readonly CivicRect[] = [],
 ): THREE.DataTexture {
   const _VILLAGE = layout.village;
   const activityWear = layout.terrain.villageWear === 'activity-patches';
@@ -4115,6 +4212,35 @@ export function makeMaskTexture(
   }
   if (layout.terrain.hardstands?.length) {
     stampHardstandRoadMask(layout.terrain.hardstands, px, s, MAP_SIZE);
+  }
+  // (the maps lane, 228) a civic area's room paved frontage to frontage (civic/plans): the square's setts out to the houses,
+  // past the apron's own edge, no village wear on them
+  for (const r of pavedRooms) {
+    const i0 = Math.max(0, Math.floor((r.x0 - 2 + HALF) * T)), i1 = Math.min(s - 1, Math.ceil((r.x1 + 2 + HALF) * T));
+    const j0 = Math.max(0, Math.floor((r.z0 - 2 + HALF) * T)), j1 = Math.min(s - 1, Math.ceil((r.z1 + 2 + HALF) * T));
+    for (let tz = j0; tz <= j1; tz++) for (let tx = i0; tx <= i1; tx++) {
+      const x = (tx + 0.5) / T - HALF, z = (tz + 0.5) / T - HALF;
+      const depth = Math.min(x - r.x0, r.x1 - x, z - r.z0, r.z1 - z) + 1.0;
+      const pave = Math.max(0, Math.min(1, depth / 1.6 + 0.5));
+      if (pave <= 0) continue;
+      const j = (tz * s + tx) * 4;
+      px[j] = Math.max(px[j], pave * 255); px[j + 1] *= 1 - pave; px[j + 3] *= 1 - pave;
+    }
+  }
+  // (the maps lane, 228) a civic area's lawns (civic/plans): off the road paint and the village wear, so the terrain grows
+  // its green there (the road distance and the placement fields are untouched: no pass moves); each texel by its centre's
+  // depth inside the lawn, so the bilinear edge falls under the bed's kerb and dwarf wall
+  for (const r of lawns) {
+    const i0 = Math.max(0, Math.floor((r.x0 + HALF) * T) - 1), i1 = Math.min(s - 1, Math.ceil((r.x1 + HALF) * T) + 1);
+    const j0 = Math.max(0, Math.floor((r.z0 + HALF) * T) - 1), j1 = Math.min(s - 1, Math.ceil((r.z1 + HALF) * T) + 1);
+    for (let tz = j0; tz <= j1; tz++) for (let tx = i0; tx <= i1; tx++) {
+      const x = (tx + 0.5) / T - HALF, z = (tz + 0.5) / T - HALF;
+      const depth = Math.min(x - r.x0, r.x1 - x, z - r.z0, r.z1 - z);
+      const lawn = Math.max(0, Math.min(1, (depth - 0.2) / 1.6 + 0.5));
+      if (lawn <= 0) continue;
+      const j = (tz * s + tx) * 4;
+      px[j] *= 1 - lawn; px[j + 1] *= 1 - lawn; px[j + 3] *= 1 - lawn;
+    }
   }
   if (shoreDirtStart !== null) {
     // The road-distance raster has no further consumers. Reuse it without
@@ -4389,6 +4515,8 @@ uniform vec4 uRoadSurf, uRoadSurfB;
 uniform vec4 uPaveClass, uPaveWear, uPaveTown;
 // (R2) the procedural paving's (stone tone, a kerbed town's street class, centre lines, shell-hole fills)
 uniform vec4 uPaveExtra;
+// (the maps lane, 228) a square's setts' tone over the streets' (x; 1 on every map that names none)
+uniform vec4 uPaveSquare;
 // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving (a cobble set: Cinder Junction, Steinburg,
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
 uniform float uPavedRock;
@@ -8002,7 +8130,7 @@ function* createSplatMaterialSteps(
   sourcedTexturesReady.then(measureLayerMeans, measureLayerMeans);
   const maskNoi = new SimplexNoise({ random: mulberry32(3010) });
   const mask = makeMaskTexture(maskNoi, layout, rockMask, waterWetnessAt,
-    S.shoreDirt ? (S.seaRamp?.[0] ?? 0.40) : null, sorWetnessAt, !!S.townPaving);
+    S.shoreDirt ? (S.seaRamp?.[0] ?? 0.40) : null, sorWetnessAt, !!S.townPaving, layout.civicGround?.lawns, layout.civicGround?.paved);
   yield;
   if (!_splatFields) yield* splatFieldSteps();
   const noiseTex = makeShaderNoiseTexture(3011);
@@ -8139,6 +8267,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uPaveWear = { value: new THREE.Vector4(...paved.wear) };
     shader.uniforms.uPaveTown = { value: new THREE.Vector4(...paved.town) };
     shader.uniforms.uPaveExtra = { value: new THREE.Vector4(...paved.extra) };
+    shader.uniforms.uPaveSquare = { value: new THREE.Vector4(...paved.square) };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
     shader.uniforms.uYardCinder = { value: yardCinder };
     shader.uniforms.uThatch = { value: thatchV };

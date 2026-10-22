@@ -381,7 +381,7 @@ if (!/function\* prebakeDestroyedVariantSteps\([\s\S]*prebakeBurntSteps/.test(ba
   || !/function warmDestroyedVisual\([\s\S]*setDestroyed/.test(battleWarm)
   || !/function\* warmDestroyedRosterVariantsSteps\([\s\S]*prebakeDestroyedVariantSteps[\s\S]*warmDestroyedVisual/.test(battleWarm)
   || !/function\* warmCombatDestructionEffectSteps\([\s\S]*fx\.destruction[\s\S]*fx\.propBreak[\s\S]*fx\.propCrush/.test(battleWarm)
-  || !/function\* createCombatRareWarmSteps\([\s\S]*yield\* warmCombatDestructionEffectSteps\(context\)[\s\S]*compileHiddenVariantsSteps/.test(battleWarm)) {
+  || !/function\* createCombatRareWarmSteps\([\s\S]*yield\* warmCombatDestructionEffectSteps\(context(?:, execution)?\)[\s\S]*compileHiddenVariantsSteps/.test(battleWarm)) {
   throw new Error('deferred warm lost a full-quality wreck/destruction/hidden-variant family');
 }
 if (!/finishedAtPreBattleS[\s\S]*doneBeforeRollout[\s\S]*setPending\(false\)/.test(deferredWarm)

@@ -174,7 +174,7 @@
     "t80u_bars_m": {"panYM":0.478,"bottomYM":0,"hullMin":[-1.722,0.478,-3.36],"hullMax":[1.722,1.563,3.36],"turretMinY":-0.095},
     "t80u_husarz": {"panYM":0.478,"bottomYM":0,"hullMin":[-1.722,0.478,-3.36],"hullMax":[1.722,1.563,3.36],"turretMinY":-0.095},
     "t80u_kursk": {"panYM":0.44,"bottomYM":0,"hullMin":[-1.8,0.44,-3.505],"hullMax":[1.8,1.84,3.5859],"turretMinY":-0.05},
-    "t80u_yun": {"panYM":0.375,"bottomYM":0,"hullMin":[-1.722,0.478,-3.36],"hullMax":[1.722,1.563,3.36],"turretMinY":-0.095},
+    "t80u_yun": {"panYM":0.375,"bottomYM":0,"hullMin":[-1.722,0.478,-3.36],"hullMax":[1.722,1.563,3.36],"turretMinY":-0.03,"accepted":{"reason":"release 227 CN track (owner 2026-10-16): the Yun's turret base is the Type 96B on the T-80U ring +40 mm; its ring collar (y -0.03) is the turret floor the cast Yun turret's -0.095 was","by":"kevinliu","date":"2026-10-20","from":{"turretFloorY":-0.095}}},
     "t80u_zoria": {"panYM":0.478,"bottomYM":0,"hullMin":[-1.722,0.478,-3.36],"hullMax":[1.722,1.563,3.36],"turretMinY":-0.095},
     "t80uk": {"panYM":0.2221,"bottomYM":0,"hullMin":[-1.722,0.478,-3.36],"hullMax":[1.722,1.563,3.36],"turretMinY":-0.028},
     "t84": {"panYM":0.4526,"bottomYM":0,"hullMin":[-1.955,0.4526,-3.47],"hullMax":[1.955,1.5295,3.835],"turretMinY":-0.08},

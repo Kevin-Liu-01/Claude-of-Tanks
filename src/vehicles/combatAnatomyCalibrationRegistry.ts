@@ -18,6 +18,8 @@ export interface AnatomyCalibrationCell extends AnatomyCalibrationBounds {
   readonly interiorPoint?: readonly number[];
   readonly sourceStock?: string;
   readonly sourceStation?: number;
+  /** Release 227 (gen-combat-anatomy HULL_LATERAL_CUTS): one band of a slice cut at a hull's glacis edges. */
+  readonly lateralBand?: boolean;
 }
 
 export interface AnatomyCalibrationStructure extends AnatomyCalibrationBounds {

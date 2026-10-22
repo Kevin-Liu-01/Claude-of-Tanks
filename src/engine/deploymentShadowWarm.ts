@@ -4,7 +4,6 @@ import type {
   DirectionalLight,
   Material,
   Object3D,
-  OrthographicCamera,
   Scene,
   WebGLRenderer,
 } from 'three';
@@ -99,7 +98,7 @@ interface DeploymentShadowWarmReceipt {
 }
 
 export interface DeploymentShadowWarmOwner {
-  warmDepthProgramSteps(): Generator<void, void, void>;
+  // (the rare warm's depth-program pass lives in depthProgramWarm.ts, with the combat warm runtime)
   prime(yieldForBudget?: BudgetYield | null): Promise<DeploymentShadowWarmReceipt>;
   dispose(): void;
 }
@@ -110,7 +109,6 @@ interface DeploymentShadowWarmOptions {
   camera: Camera;
   lighting: DeploymentLighting;
   warmRender: (() => void) & Pick<OffscreenSceneWarmer, 'prepareProgramsSteps'>;
-  getWorldGroup(): Object3D | null;
   noteFovPrimed(fov: number): void;
   simDt: number;
   now?: () => number;
@@ -264,22 +262,6 @@ function observeShadowRender(
   }
 }
 
-function ownsLight(root: Object3D): boolean {
-  let result = false;
-  root.traverse((object) => {
-    if ((object as Object3D & { isLight?: boolean }).isLight) result = true;
-  });
-  return result;
-}
-
-function visibleContentRoots(scene: Scene): Object3D[] {
-  const lightRoots = new Set(scene.children.filter(ownsLight));
-  return scene.children.filter((candidate) =>
-    candidate.visible !== false
-      && !(candidate as Object3D & { isCamera?: boolean }).isCamera
-      && !lightRoots.has(candidate));
-}
-
 function createCasterBatches(scene: Scene, camera: Camera): CasterState {
   const casters: CasterState['casters'] = [];
   const lods: CasterState['lods'] = [];
@@ -346,7 +328,6 @@ export function createDeploymentShadowWarmOwner({
   camera,
   lighting,
   warmRender,
-  getWorldGroup,
   noteFovPrimed,
   simDt,
   now = () => performance.now(),
@@ -374,98 +355,6 @@ export function createDeploymentShadowWarmOwner({
   uploadMaterial.name = 'DeploymentBufferUpload';
   let disposed = false;
   const disposedError = new Error('Deployment shadow warmer was disposed');
-
-  const warmDepthProgramSteps = function* (): Generator<void, void, void> {
-    const lights = lighting.csm?.lights ?? [];
-    const light = lights[lights.length - 1];
-    if (!light?.shadow) return;
-    const siblingShadowState = [];
-    for (const sibling of lights) {
-      if (sibling === light || !sibling.shadow) continue;
-      siblingShadowState.push({
-        shadow: sibling.shadow,
-        autoUpdate: sibling.shadow.autoUpdate,
-      });
-      sibling.shadow.autoUpdate = false;
-      sibling.shadow.needsUpdate = false;
-    }
-    const shadowCamera = light.shadow.camera as OrthographicCamera;
-    const saved = {
-      left: shadowCamera.left,
-      right: shadowCamera.right,
-      top: shadowCamera.top,
-      bottom: shadowCamera.bottom,
-      near: shadowCamera.near,
-      far: shadowCamera.far,
-      autoUpdate: light.shadow.autoUpdate,
-    };
-    shadowCamera.left = -520;
-    shadowCamera.right = 520;
-    shadowCamera.top = 520;
-    shadowCamera.bottom = -520;
-    shadowCamera.near = 0.5;
-    shadowCamera.far = 1_600;
-    shadowCamera.updateProjectionMatrix();
-    light.shadow.autoUpdate = false;
-
-    const roots = visibleContentRoots(scene);
-    const renderRoot = (root: Object3D, visibleChildren: Set<Object3D> | null = null): void => {
-      const hiddenRoots: Object3D[] = [];
-      const hiddenChildren: Object3D[] = [];
-      for (const candidate of roots) {
-        if (candidate === root || candidate.visible === false) continue;
-        candidate.visible = false;
-        hiddenRoots.push(candidate);
-      }
-      if (visibleChildren) {
-        for (const child of root.children) {
-          if (visibleChildren.has(child) || child.visible === false) continue;
-          child.visible = false;
-          hiddenChildren.push(child);
-        }
-      }
-      try {
-        light.shadow.needsUpdate = true;
-        warmRender();
-      } catch {
-        // The following live shadow render remains the compatibility fallback.
-      } finally {
-        for (const child of hiddenChildren) child.visible = true;
-        for (const candidate of hiddenRoots) candidate.visible = true;
-      }
-    };
-
-    try {
-      const worldGroup = getWorldGroup();
-      for (const root of roots) {
-        if (root === worldGroup && root.children.length > 1) {
-          const visible = root.children.filter((child) => child.visible !== false);
-          const cohortSize = Math.max(1, Math.ceil(visible.length / 4));
-          for (let index = 0; index < visible.length; index += cohortSize) {
-            renderRoot(root, new Set(visible.slice(index, index + cohortSize)));
-            yield;
-          }
-        } else {
-          renderRoot(root);
-          yield;
-        }
-      }
-    } finally {
-      shadowCamera.left = saved.left;
-      shadowCamera.right = saved.right;
-      shadowCamera.top = saved.top;
-      shadowCamera.bottom = saved.bottom;
-      shadowCamera.near = saved.near;
-      shadowCamera.far = saved.far;
-      shadowCamera.updateProjectionMatrix();
-      light.shadow.autoUpdate = saved.autoUpdate;
-      light.shadow.needsUpdate = true;
-      for (const state of siblingShadowState) {
-        state.shadow.autoUpdate = state.autoUpdate;
-        state.shadow.needsUpdate = true;
-      }
-    }
-  };
 
   async function yieldCovered(yieldForBudget: BudgetYield | null): Promise<void> {
     if (disposed) throw disposedError;
@@ -645,7 +534,6 @@ export function createDeploymentShadowWarmOwner({
   };
 
   return {
-    warmDepthProgramSteps,
     prime,
     dispose() {
       if (disposed) return;

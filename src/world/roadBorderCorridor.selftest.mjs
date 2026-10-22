@@ -326,7 +326,10 @@ const constraintFactory = new Function('fixture', `
     gRoadLift = null, gRoadCrest = null,
     // the map-revival lane (2026-10-08, Skybridge round 6): the lakes a point can reach (lakeCandidateIndex.ts); no lakes
     // are authored here, so every point reads the plain loop (null)
-    lakesNear = () => null } = fixture;
+    lakesNear = () => null,
+    // (2026-10-21, the ground lane: level water held in its banks, waterBank.ts) the bank law the lakes compose by and
+    // the hold that grades the banks from the water's top; this fixture authors no liquid water (no law, no hold)
+    lakeBankLaw = null, liquidDepthM = 0, liquidSurfaces = null, holdWaterInBanks = (_x, _z, h) => h } = fixture;
   ${stripTypeScriptTypes(constraintSource)}
   return applyHeightConstraints;
 `);

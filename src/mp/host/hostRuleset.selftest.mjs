@@ -5,6 +5,8 @@
 import assert from 'node:assert/strict';
 import { hostRulesetFor } from './hostRuleset.ts';
 import { matchRulesetFor } from '../../sim/matchRuleset.ts';
+import { GAME_MODE_IDS } from '../../sim/matchModes.ts';
+import { MAX_RULESET_JSON_BYTES } from '../wire/constants.ts';
 import { CAMPAIGN_OPERATIONS } from '../../game/campaignOperations.ts';
 import { createHostPortPair } from './hostProtocol.ts';
 import { createMatchHostCore } from './matchHostCore.ts';
@@ -79,4 +81,22 @@ const arrangement = { allies: null, enemies: null, waveSize: null, enemyNation: 
   assert.equal(created[0].ruleset?.scoreTarget, 100, 'the in-process match plays the room\'s score target');
 }
 
-console.log('mp host ruleset: the room\'s arrangement and campaign operation reach the host actor (browser core, sealed config, in-process service) pass');
+// ---- every table the host can name fits the WELCOME's ruleset string (gameplay-modes-228 round 3, the critic's E-R2-6:
+// the doctrine tables took the largest mode from 885 to 2099 bytes of MAX_RULESET_JSON_BYTES; the codec throws past it)
+let widest = { bytes: 0, label: '' };
+{
+  const arrangements = [null,
+    { teamNations: 'random' }, { teamNations: 'mono', enemyNation: 'germany' }, { allies: 13, enemies: 14 }, { allies: 40, enemies: 1 },
+    { allies: 0, enemies: 41, scoreTarget: 999, respawnS: 30, waveStep: 9, holdS: 90, waveSize: 20, enemyNation: 'south_korea' },
+    { juggernautRole: 'boss' }, { juggernautRole: 'hunter' }, { marsGravity: 'moon', marsCaches: 'frequent' },
+  ];
+  const operations = [null, ...CAMPAIGN_OPERATIONS.map((operation) => operation.id)];
+  for (const mode of GAME_MODE_IDS) for (const arrangement of arrangements) for (const operation of mode === 'frontline_assault' ? operations : [null]) {
+    const bytes = Buffer.byteLength(JSON.stringify(hostRulesetFor(mode, arrangement, operation)), 'utf8');
+    if (bytes > widest.bytes) widest = { bytes, label: `${mode} ${JSON.stringify(arrangement)} ${operation ?? ''}` };
+    assert.ok(bytes <= MAX_RULESET_JSON_BYTES, `${mode} ${JSON.stringify(arrangement)} ${operation ?? ''}: ${bytes} B of the WELCOME's ${MAX_RULESET_JSON_BYTES}`);
+  }
+}
+
+console.log(`mp host ruleset: the room\'s arrangement and campaign operation reach the host actor (browser core, sealed config, in-process service); `
+  + `every mode x arrangement x operation fits the WELCOME (widest ${widest.bytes} B of ${MAX_RULESET_JSON_BYTES}: ${widest.label}) pass`);

@@ -5,6 +5,9 @@ import * as THREE from 'three';
 export const NIGHT_EMISSION_ATTRIBUTE = 'nightEmissionMask';
 export const NIGHT_HEADLIGHT_COLOR = 0xffe2ad;
 export const NIGHT_SHTORA_COLOR = 0xff3020;
+/** Release 230 (UA/PL round 11): a cool-white LED lens (mask 3), the modern national packages' LED bars, pods and the
+ * Zubr II's boresighted searchlight; the warm halogen (mask 1) and the red (mask 2) are unchanged. */
+export const NIGHT_LED_COLOR = 0xe6eeff;
 // Saturated red driven at the shared white-lamp radiance (3) turns amber
 // through ACES' channel mixing and washes to a pale pink along AgX's path to
 // white (the production curve since 2026-10-01). Keep only a fifth of the
@@ -46,7 +49,7 @@ export function refreshNightEmissionBase(material: THREE.MeshStandardMaterial): 
 }
 
 export function setNightEmissionMask(
-  geometry: THREE.BufferGeometry, value: 0 | 1 | 2, vertices?: readonly number[],
+  geometry: THREE.BufferGeometry, value: 0 | 1 | 2 | 3, vertices?: readonly number[],
 ): void {
   const values = new Uint8Array(geometry.getAttribute('position').count);
   if (vertices) for (const vertex of vertices) values[vertex] = value;
@@ -55,7 +58,7 @@ export function setNightEmissionMask(
 }
 
 /** The runtime drives white emissive/color intensity; the authored mask owns
- * warm lamp/red Shtora tint. Original day emission is unchanged even on an
+ * warm lamp (1)/red Shtora (2)/cool LED (3) tint. Original day emission is unchanged even on an
  * existing emissive material. Call before warm compilation, once per material.
  */
 export function installNightEmissionMask(
@@ -74,11 +77,12 @@ export function installNightEmissionMask(
   BASE_EMISSION.set(material, base);
   const headlight = new THREE.Color(NIGHT_HEADLIGHT_COLOR);
   const shtora = new THREE.Color(NIGHT_SHTORA_COLOR).multiplyScalar(RED_EMISSION_GAIN);
+  const led = new THREE.Color(NIGHT_LED_COLOR);
   const previous = material.onBeforeCompile, previousKey = material.customProgramCacheKey;
   material.onBeforeCompile = function (shader, renderer) {
     previous.call(this, shader, renderer);
     Object.assign(shader.uniforms, {
-      nightEmissionBase: { value: base }, nightEmissionWarm: { value: headlight }, nightEmissionRed: { value: shtora },
+      nightEmissionBase: { value: base }, nightEmissionWarm: { value: headlight }, nightEmissionRed: { value: shtora }, nightEmissionCool: { value: led },
       nightEmissionRedLevel: { value: NIGHT_RED_DISPLAY_LEVEL }, nightEmissionFloorExposure: { value: NIGHT_RED_FLOOR_EXPOSURE },
       nightEmissionExposure,
     });
@@ -86,18 +90,18 @@ export function installNightEmissionMask(
     const activityFactor = activity ? ` * ${activity}` : '';
     shader.vertexShader = shader.vertexShader.replace('#include <common>', `#include <common>\nattribute float nightEmissionMask;\nvarying float vNightEmissionMask, vNightEmissionActive;${activityDeclaration}`)
       .replace('#include <begin_vertex>', `#include <begin_vertex>\nvNightEmissionMask = nightEmissionMask;\nvNightEmissionActive = 1.0${activityFactor};`);
-    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vNightEmissionMask, vNightEmissionActive;\nuniform vec3 nightEmissionBase, nightEmissionWarm, nightEmissionRed;\nuniform float nightEmissionRedLevel, nightEmissionFloorExposure, nightEmissionExposure;')
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nvarying float vNightEmissionMask, vNightEmissionActive;\nuniform vec3 nightEmissionBase, nightEmissionWarm, nightEmissionRed, nightEmissionCool;\nuniform float nightEmissionRedLevel, nightEmissionFloorExposure, nightEmissionExposure;')
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-vec3 nightEmissionTint = mix(nightEmissionWarm, nightEmissionRed, step(1.5, vNightEmissionMask));
+vec3 nightEmissionTint = mix(mix(nightEmissionWarm, nightEmissionRed, step(1.5, vNightEmissionMask)), nightEmissionCool, step(2.5, vNightEmissionMask));
 float nightEmissionOn = step(0.5, vNightEmissionMask) * clamp(vNightEmissionActive, 0.0, 1.0);
 vec3 nightEmissionDriven = totalEmissiveRadiance - nightEmissionBase;
 totalEmissiveRadiance = nightEmissionBase + nightEmissionDriven * nightEmissionTint * nightEmissionOn;
-float nightEmissionRedLens = step(1.5, vNightEmissionMask) * nightEmissionOn;
+float nightEmissionRedLens = step(1.5, vNightEmissionMask) * (1.0 - step(2.5, vNightEmissionMask)) * nightEmissionOn;
 float nightEmissionLit = step(1e-4, dot(nightEmissionDriven, nightEmissionDriven));
 float nightEmissionRedPeak = max(max(totalEmissiveRadiance.r, totalEmissiveRadiance.g), max(totalEmissiveRadiance.b, 1e-6)) * nightEmissionExposure;
 float nightEmissionRedScale = mix(min(1.0, nightEmissionFloorExposure / nightEmissionExposure), min(1.0, nightEmissionRedLevel / nightEmissionRedPeak), nightEmissionLit);
 totalEmissiveRadiance *= mix(1.0, nightEmissionRedScale, nightEmissionRedLens);`);
   };
-  material.customProgramCacheKey = function () { return previousKey.call(this) + '|night-emission-mask-v1:' + activity; };
+  material.customProgramCacheKey = function () { return previousKey.call(this) + '|night-emission-mask-v2:' + activity; };
   material.needsUpdate = true;
 }

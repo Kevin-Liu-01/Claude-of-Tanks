@@ -27,6 +27,7 @@ import {
   type DamageFace, type FractureMaterial, type FractureSlot, type StructureDamageAnatomy, type Vec3,
 } from '../world/destructionKit.ts';
 import type { CollisionRecord } from '../world/collision.ts';
+import { bandEnclosure, roofFurnitureAt } from '../world/structureEnclosure.ts';
 import { createRigidBox, createRigidShape, type RigidShape } from '../sim/rigidBody.ts';
 
 type CollapsePieceKind = 'wall' | 'floor' | 'roof' | 'gable' | 'chimney' | 'drum' | 'crown';
@@ -197,6 +198,13 @@ export interface CollapsePlan {
   /** The chimneys' bucket (a stack's broken top draws in it). */
   readonly chimneyBucket: string;
   /**
+   * (destruction-slabs 227 round 2) Whether what stands over the eaves at a body-frame plan point off every slab is the
+   * roof's furniture — a chimney or a dormer set on the covering, a turret on the ridge, nothing drawn under it from below
+   * — and goes with the roof (it rode nothing: a roof's fall left its chimney in the sky and its dormer on the attic floor).
+   * Absent: none is (what stands over the eaves off the slabs stays, as a tower does).
+   */
+  readonly furnitureAt?: (x: number, z: number) => boolean;
+  /**
    * A shaft (a stack, a water tower, a minaret, a tower: the kit reads it as one) topples as a stack of drums over its
    * stump instead: its stump's top, the drums' bounds up it (ascending, from the stump's top) and their pieces, its crown.
    */
@@ -236,6 +244,9 @@ const MAX_WALL_M = 0.7;
 const GAP_M = 0.012;
 /** The top storey's proxies stop this far under the eaves (the roof slab's box dips over the wall plate). */
 const EAVE_GUARD_M = 0.22;
+/** What a roof slab's piece takes (destruction-slabs 227): within this of its plane, facing within 50 degrees of it. */
+const ROOF_ON_M = 0.8;
+const ROOF_FACING = Math.cos(50 * Math.PI / 180);
 
 const SIDES: readonly Vec3[] = [[1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]];
 
@@ -719,27 +730,37 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
     const fy0 = plan.floorY0 + GAP_M / 2, fy1 = plan.floorY1 - GAP_M / 2;
     const slot = next.floor.structure;
     const concrete = slot.material === 'concrete';
-    const area = anatomy.w * anatomy.d;
+    // (destruction-slabs 227) the floor spans the storey's drawn enclosure (its interior's box), never the anatomy's w x d
+    // (a box round every part for the default reading: a floor drawn and solid past the walls); none where the storey
+    // encloses under half its box (a frame, a trestle)
+    let fcx = cx, fcz = cz, fhw = hw, fhd = hd;
+    const band = bandEnclosure(anatomy, s + 1);
+    if (band) {
+      const ib = band.interiorBox;
+      if (!(band.share >= 0.5 && band.interiorM2 >= 2 && ib[2] - ib[0] > 0.6 && ib[3] - ib[1] > 0.6)) continue;
+      fcx = (ib[0] + ib[2]) / 2; fcz = (ib[1] + ib[3]) / 2; fhw = (ib[2] - ib[0]) / 2; fhd = (ib[3] - ib[1]) / 2;
+    }
+    const area = 4 * fhw * fhd;
     const kgM2 = concrete ? (fy1 - fy0) * DENSITY.concrete : 95;
     // it cracks across its joists when it lands: two or three each way by its size (body x and z about its centre)
-    const longX = hw >= hd;
-    const fx = spanCuts(-hw, hw, longX && hw * 2 > 7 ? 3 : 2), fz = spanCuts(-hd, hd, !longX && hd * 2 > 7 ? 3 : 2);
-    const xs = [-hw, ...fx, hw], zs = [-hd, ...fz, hd];
+    const longX = fhw >= fhd;
+    const fx = spanCuts(-fhw, fhw, longX && fhw * 2 > 7 ? 3 : 2), fz = spanCuts(-fhd, fhd, !longX && fhd * 2 > 7 ? 3 : 2);
+    const xs = [-fhw, ...fx, fhw], zs = [-fhd, ...fz, fhd];
     const floorParts: CollapsePart[] = [];
     for (let iz = 0; iz + 1 < zs.length; iz++) for (let ix = 0; ix + 1 < xs.length; ix++) {
       const a0 = xs[ix], a1 = xs[ix + 1], b0 = zs[iz], b1 = zs[iz + 1];
       floorParts.push({ center: [(a0 + a1) / 2, 0, (b0 + b1) / 2], half: [(a1 - a0) / 2 - GAP_M / 2, (fy1 - fy0) / 2, (b1 - b0) / 2 - GAP_M / 2],
-        massKg: Math.max(200, area * kgM2) * (a1 - a0) * (b1 - b0) / (4 * hw * hd), rect: { u0: a0, u1: a1, y0: b0, y1: b1 } });
+        massKg: Math.max(200, area * kgM2) * (a1 - a0) * (b1 - b0) / (4 * fhw * fhd), rect: { u0: a0, u1: a1, y0: b0, y1: b1 } });
     }
     plan.floorPiece = add({
-      kind: 'floor', center: [cx, (fy0 + fy1) / 2, cz], rotation: [0, 0, 0, 1],
-      boxes: [{ center: [0, 0, 0], half: [hw, (fy1 - fy0) / 2, hd] }], massKg: Math.max(200, area * kgM2),
+      kind: 'floor', center: [fcx, (fy0 + fy1) / 2, fcz], rotation: [0, 0, 0, 1],
+      boxes: [{ center: [0, 0, 0], half: [fhw, (fy1 - fy0) / 2, fhd] }], massKg: Math.max(200, area * kgM2),
       material: slot.material, core: slot, back: ceilingOf(slot), face: null,
       // its struck side drops into the gap the burst wall left; the rest of it follows as its walls go
       releaseS: 0.1 + rng() * 0.12, kick: [0, -1.1 - 0.5 * rng(), 0],
-      kickAt: struckSide >= 0 ? [SIDES[struckSide][0] * hw * 0.85, 0, SIDES[struckSide][2] * hd * 0.85] : [0, 0, 0], shatterS: -1,
+      kickAt: struckSide >= 0 ? [SIDES[struckSide][0] * fhw * 0.85, 0, SIDES[struckSide][2] * fhd * 0.85] : [0, 0, 0], shatterS: -1,
       parts: floorParts.length > 1 ? floorParts : [], partCutsU: floorParts.length > 1 ? fx : [], partCutsY: floorParts.length > 1 ? fz : [],
-      partFrame: floorParts.length > 1 ? { origin: [cx, 0, cz], u: [1, 0, 0], v: [0, 0, 1] } : null,
+      partFrame: floorParts.length > 1 ? { origin: [fcx, 0, fcz], u: [1, 0, 0], v: [0, 0, 1] } : null,
     });
   }
 
@@ -895,7 +916,8 @@ export function planCollapsePieces(anatomy: StructureDamageAnatomy, blow: Collap
     });
   }
   return { pieces, structureIdx: anatomy.structureIdx, groundY, eaveY, cx, cz, hw, hd, storeys: storeyPlans, roof: slabs, gables: gableFaces,
-    chimneys, struckSide, chimneyBucket: anatomy.chimneys[0]?.bucket ?? 'brick', shaft: null };
+    chimneys, struckSide, chimneyBucket: anatomy.chimneys[0]?.bucket ?? 'brick', shaft: null,
+    ...(anatomy.enclosure && slabs.length ? { furnitureAt: (x: number, z: number) => roofFurnitureAt(anatomy, x, z, anatomy.roof?.eaveY ?? eaveY, anatomy.roof?.ridgeY ?? Infinity) } : {}) };
 }
 
 /** A shaft's crown as its kit hands it over (regional/shaft.ts ShaftExtras.crown). */
@@ -1047,6 +1069,8 @@ const PIECE_VERTEX_STRIDE = 11;
 export const STATIC_PIECE = -1;
 /** What the collapse drops (a roof chimney's attic part, under the covering before and nothing after). */
 const DROPPED_PIECE = -2;
+/** A probed corner over the eaves on no slab: the triangle takes the whole test (never a key of its own). */
+const OFF_ROOF_PROBE = -3;
 
 const MAX_SPLITS = 10;
 const _cent: [number, number, number] = [0, 0, 0];
@@ -1359,9 +1383,27 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
       if (Math.hypot(nx, ny, nz) > 1e-3 && !probing && across(poly, nx, ny, nz, d, depth, (h, _s, dd) => roofAssign(h, dd))) return;
     }
     const slab = plan.roof[nearest(centroid(poly))];
+    // (destruction-slabs 227: a slab's body grew round everything over the eaves no gable claimed — a hose tower, a spire,
+    // a half-hip's infill wall — and lay 4 m thick under its drawn covering) a slab takes what lies on its plane: within
+    // 0.8 m of it and facing along its normal (within 50 degrees; its underside within its own depth); what stands over the
+    // eaves off every slab is a wall's (the top storey's panel on its side) or nothing the collapse throws
+    {
+      const cc = centroid(poly);
+      let nx = 0, ny = 0, nz = 0;
+      for (const v of poly) { nx += v[3]; ny += v[4]; nz += v[5]; }
+      const nl = Math.hypot(nx, ny, nz) || 1;
+      const off = (cc[0] - slab.p[0]) * slab.n[0] + (cc[1] - slab.p[1]) * slab.n[1] + (cc[2] - slab.p[2]) * slab.n[2];
+      const facing = (nx * slab.n[0] + ny * slab.n[1] + nz * slab.n[2]) / nl;
+      const onSlab = Math.abs(off) <= ROOF_ON_M && (facing >= ROOF_FACING || (facing <= -ROOF_FACING && Math.abs(off) <= 0.45));
+      if (!onSlab) { offRoof(poly, depth, Math.abs(ny / nl), slab); return; }
+    }
+    slabAssign(poly, depth, slab);
+  };
+  /** A polygon to a slab's piece (its halves by the slab's cuts). */
+  const slabAssign = (poly: Poly, depth: number, slab: RoofSlabPlan): void => {
     const eOff = dot(slab.e, slab.p);
     for (const cut of slab.cuts) {
-      if (!probing && across(poly, slab.e[0], slab.e[1], slab.e[2], eOff + cut, depth, (h, _s, dd) => roofAssign(h, dd))) return;
+      if (!probing && across(poly, slab.e[0], slab.e[1], slab.e[2], eOff + cut, depth, (h, _s, dd) => slabAssign(h, dd, slab))) return;
     }
     const c = centroid(poly);
     const e = slab.e[0] * c[0] + slab.e[1] * c[1] + slab.e[2] * c[2] - eOff;
@@ -1371,6 +1413,36 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
     partAssign(poly, depth, null, piece);
   };
 
+  // over the eaves but on no slab: a near-vertical surface by a top-storey face (a dormer's cheek, an end wall the gable
+  // rule did not take) goes with that storey's panels; anything else (a tower's, a spire's, a cupola's) is dropped with the
+  // collapse (a roof-only cut builds nothing of it: it stands in the world's buckets)
+  const offRoof = (poly: Poly, depth: number, ny: number, slab: RoofSlabPlan): void => {
+    // (a corner probed alone says only that the triangle needs the whole test: its centroid decides)
+    if (probing) { emit(OFF_ROOF_PROBE, poly); return; }
+    const top = plan.storeys[plan.storeys.length - 1];
+    const c0 = centroid(poly);
+    // (destruction-slabs 227 round 2) the roof's furniture (a cluster the enclosure reads as standing on the covering, not
+    // drawn from below: the world's flatten reads the same) rides the slab it stands on — before the face rule, or a wall
+    // dormer's cheeks went with the panels and its frames into the sky
+    if (plan.furnitureAt?.(c0[0], c0[2])) { slabAssign(poly, depth, slab); return; }
+    // (within a little of the eaves: a panel draws no more than that over its box)
+    if (top && ny < 0.5 && c0[1] <= plan.eaveY + 1.2) {
+      const c = c0;
+      for (const fp of top.faces) {
+        const f = fp.face;
+        const u = (c[0] - f.origin[0]) * f.u[0] + (c[2] - f.origin[2]) * f.u[2];
+        if (Math.abs(u) > f.width / 2 + 0.3) continue;
+        // every corner of it by the face's plane (a surface across the attic is no wall's)
+        let near = true;
+        for (const v of poly) {
+          const d = (v[0] - f.origin[0]) * f.out[0] + (v[2] - f.origin[2]) * f.out[2];
+          if (d > 0.6 || d < -fp.thickness - 0.6) { near = false; break; }
+        }
+        if (near) { wallAssign(poly, depth); return; }
+      }
+    }
+    emit(DROPPED_PIECE, poly);
+  };
   // most triangles lie inside one piece: each corner probed alone (no plane can split a point), and when all three
   // agree the triangle is copied whole; only a triangle across a cut goes through the splitting rules
   const probe: Poly = [new Float64Array(stride)];
@@ -1406,7 +1478,7 @@ export function partitionTriangles(plan: CollapsePlan, vertices: Float32Array | 
   };
   for (let t = 0; t < triangles; t++) {
     const p0 = pieceOf(t, 0);
-    if (pieceOf(t, 1) === p0 && pieceOf(t, 2) === p0 && !(p0 === STATIC_PIECE && gaps.length && spansGap(t))) {
+    if (p0 !== OFF_ROOF_PROBE && pieceOf(t, 1) === p0 && pieceOf(t, 2) === p0 && !(p0 === STATIC_PIECE && gaps.length && spansGap(t))) {
       let list = out.get(p0);
       if (!list) { list = []; out.set(p0, list); }
       const o = t * 3 * stride;

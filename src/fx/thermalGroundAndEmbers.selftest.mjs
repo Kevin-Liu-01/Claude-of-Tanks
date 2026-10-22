@@ -27,8 +27,10 @@ const hotFor = Math.log(CRATER_HEAT_PEAK / 1.55) * CRATER_HEAT_S, whiteFor = Mat
 assert.ok(hotFor >= 10 && hotFor <= 20, `the ground reads hot for ${hotFor.toFixed(1)} s (10-20 s)`);
 assert.ok(whiteFor >= 3 && whiteFor < hotFor, `white-hot for ${whiteFor.toFixed(1)} s first`);
 const craterSrc = readFileSync(new URL('./craterMarks.ts', import.meta.url), 'utf8');
-assert.match(craterSrc, /if \( uHeatView > 0\.5 && kind > 3\.5 && kind < 4\.5 \) \{\s*col \+= vec3\( \$\{CRATER_HEAT_PEAK\.toFixed\(2\)\} \) \* exp\( -age \/ \$\{CRATER_HEAT_S\.toFixed\(2\)\} \)/,
+assert.match(craterSrc, /if \( uHeatView > 0\.5 && kind > 3\.5 && kind < 4\.5 \) \{\s*heat = vec3\( \$\{CRATER_HEAT_PEAK\.toFixed\(2\)\} \) \* exp\( -age \/ \$\{CRATER_HEAT_S\.toFixed\(2\)\} \)/,
   'only the rayed kind, only under the heat lens, by its age');
+// (orange-rings-230) the marks are lit by the scene's own light; the heat is an emission no light reaches
+assert.match(craterSrc, /totalEmissiveRadiance \+= cotMarkHeat;/, 'the heat is emitted, not lit');
 
 function runtime(userData, night = false) {
   const scene = new THREE.Scene();
@@ -48,7 +50,7 @@ function runtime(userData, night = false) {
   const crater = fx.group.getObjectByName('fx-crater-marks')?.material;
   let ember = null;
   fx.group.getObjectByName('fx-volume-media')?.traverse((o) => { if (!ember && o.material?.uniforms?.uEmberK) ember = o.material.uniforms; });
-  return { heatView: crater?.uniforms?.uHeatView?.value, ember, emberLevel: ember?.uGrade2?.value.z };
+  return { heatView: crater?.userData?.uniforms?.uHeatView?.value, ember, emberLevel: ember?.uGrade2?.value.z };
 }
 assert.equal(runtime({ thermalFlight: true, flightVision: 1 }).heatView, 1, 'the infrared lens sees the ground heat');
 assert.equal(runtime({ thermalFlight: true, flightVision: 2 }).heatView, 1, 'so does the thermal lens');

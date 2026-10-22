@@ -3,12 +3,13 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 
 import { KitBuilder, kitRandom, type KitBuildResult } from './garageKitGeometry.ts';
 import { garageKitSkin } from './garageKitSkins.ts';
-import { buildComputerStation, buildFabricBanner, buildFramedPrint } from './garageDisplayKit.ts';
+import { buildComputerStation, buildFabricBanner, buildFramedPrint, buildSlideshowFrame } from './garageDisplayKit.ts';
 import { buildGarageProp } from './garagePropKit.ts';
 import { buildGarageBenchPiece } from './garageBenchKit.ts';
 import { buildJibCrane } from './garageCraneKit.ts';
 import { buildDeckLedStrip, buildLongSpanRacking, buildMezzanineOffice } from './garageVerdantFinish.ts';
 import { armGarageDisplayAtlas, createGarageDecalMaterial, createGarageDisplayMaterial } from './garageDisplayAtlas.ts';
+import { GARAGE_VERDANT_SLIDESHOW, garageSlideshowHousing } from './garageSlideshowPlacement.ts';
 
 /**
  * Verdant's share of the garage r9 kit, in the dressing's frame (the hall's world-local axes: the west wall at x = -23
@@ -57,6 +58,15 @@ export function buildGarageVerdantKit(params: {
   const prints = ['still.desert', 'still.winter', 'still.coastal'] as const;
   // a picture rail high on the wall, above the services and clear of the hero's halo
   prints.forEach((rect, index) => add(110 + index, WEST, 6.62, -2.5 - index * 1.95, Math.PI / 2, (b) => buildFramedPrint(b, rect, 1.6, 0.9)));
+  // the slideshow's CRT on its stand (garage 231; the owner, 2026-10-21: "make it a crt screen like the one we removed"),
+  // the dressing's glass on its face plane: the frame stands back from the glass by the housing's face offset
+  {
+    const { position: [x, y, z], yaw, width, glassZ } = GARAGE_VERDANT_SLIDESHOW;
+    const out = glassZ - garageSlideshowHousing('freestanding', width).faceZ;
+    add(170, x + Math.sin(yaw) * out, 0, z + Math.cos(yaw) * out, yaw, (b) => {
+      buildSlideshowFrame(b, { width, mount: 'freestanding', bottomY: y - (width * 9 / 16 + 0.16) / 2 });
+    });
+  }
   // the diagnostics station at the slideshow's foot: readouts and the Verdant Fields map, cabled to its floor box
   add(120, -19.6, 0, 7.4, Math.PI / 2, (b) => {
     buildComputerStation(b, { screens: ['readout.armor.abrams', 'map.verdant', 'readout.modules.abrams'], width: 2.0 });

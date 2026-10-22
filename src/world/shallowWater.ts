@@ -165,7 +165,8 @@ export function shoreDistanceTexture(mask: THREE.Texture, size: number, wetFrom:
 }
 
 export function* shallowWaterGeometrySteps(
-  field: Pick<HeightField, 'size' | 'getHeightAt' | 'getWaterMaskAt' | 'getWaterDepthAt' | 'getPaddyWaterLevelAt' | 'getPaddyWaterQuads'>,
+  field: Pick<HeightField, 'size' | 'getHeightAt' | 'getWaterMaskAt' | 'getWaterDepthAt' | 'getPaddyWaterLevelAt' | 'getPaddyWaterQuads'
+    | 'getWaterBodySurfaceAt'>,
 ): Generator<void, ShallowWaterGeometry | null, void> {
   const segments = Math.ceil(field.size / GRID_STEP_M);
   const count = segments + 1, step = field.size / segments, half = field.size / 2;
@@ -185,21 +186,40 @@ export function* shallowWaterGeometrySteps(
     const wx = x * step - half, wz = z * step - half;
     return field.getHeightAt(wx, wz) + (field.getWaterDepthAt?.(wx, wz) ?? 0);
   };
+  // (ground lane, 2026-10-17; MASTER #14, the critics' "tilted water wedge climbing the far bank" at Mangrove, Monsoon's
+  // and Delta's banks) a wet corner holds its body's level (HeightField getWaterBodySurfaceAt: a lake's or a liquid
+  // marsh's surface) instead of its bed plus a depth that thins with the shore's coverage, which tilted the water down the
+  // bank band and, with the shore's dry corners on the bank, up it. A wet corner no lake or marsh holds (a canal) keeps
+  // its bed plus depth, as does every corner on a field without bodies.
+  const bodySurfaceAt = field.getWaterBodySurfaceAt;
+  const wetSurfaceY = (x: number, z: number): number => {
+    if (bodySurfaceAt) {
+      const body = bodySurfaceAt(x * step - half, z * step - half);
+      if (body === body) return body;
+    }
+    return surfaceY(x, z);
+  };
   function vertex(x: number, z: number): number {
     const key = z * count + x;
     if (slots[key] >= 0) return slots[key];
     const wx = x * step - half, wz = z * step - half;
     const index = positions.length / 3;
     slots[key] = index;
-    let y = surfaceY(x, z);
+    let y = wet[key] > MIN_COVERAGE ? wetSurfaceY(x, z) : surfaceY(x, z);
     if (wet[key] <= MIN_COVERAGE) {
       // a wall's corner: the highest wet corner round it, when the corner stands more than WALL_RISE_M over it
       let water = -Infinity;
       for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
         const nx = x + dx, nz = z + dz;
-        if ((dx || dz) && nx >= 0 && nz >= 0 && nx < count && nz < count && wet[nz * count + nx] > MIN_COVERAGE) water = Math.max(water, surfaceY(nx, nz));
+        if ((dx || dz) && nx >= 0 && nz >= 0 && nx < count && nz < count && wet[nz * count + nx] > MIN_COVERAGE) water = Math.max(water, wetSurfaceY(nx, nz));
       }
-      if (water > -Infinity && y > water + WALL_RISE_M) y = water;
+      if (water > -Infinity) {
+        // (2026-10-17; 230) on a field with bodies a shore's corner holds the water's level beside it: on a bank the bank
+        // hides the sheet's edge, over lower dry ground the fragment discard does (no mask there), so every triangle of a
+        // body's water runs level (the 10-17 cut tucked such corners under their ground and tilted the shore's cells)
+        if (bodySurfaceAt) y = water;
+        else if (y > water + WALL_RISE_M) y = water;
+      }
     }
     positions.push(wx, y, wz);
     normals.push(0, 1, 0);

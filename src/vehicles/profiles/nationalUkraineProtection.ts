@@ -55,7 +55,7 @@ const DECKS:Readonly<Record<ProtectionId,{glacis:readonly[number,number];fall:nu
   t80u_zoria:{glacis:[1.95,3.25],fall:.42,glacisTop:1.47,roof:.68,marks:[[-.92,-1.02],[-.53,-1.20]]},
   t72b3m_hetman:{glacis:[1.95,3.45],fall:.38,glacisTop:1.50,roof:.72,marks:[[-.79,-1.12],[.79,-1.12]]},
   t72b3_sich:{glacis:[1.95,3.30],fall:.38,glacisTop:1.45,roof:.68,marks:[[-.78,-1.12],[1.21,-.34]]},
-  t72b3m_hetman_ii:{glacis:[1.95,3.45],fall:.38,glacisTop:1.50,roof:.72,marks:[[-1.18,-2.30],[-1.24,-1.59]]},
+  t72b3m_hetman_ii:{glacis:[1.95,3.06],fall:.38,glacisTop:1.50,roof:.72,marks:[[-1.18,-2.30],[-1.24,-1.59]]},
 };
 /**
  * The trident and the hull number keep their places on the turret roof (marks: the turret-frame seats the marking
@@ -87,6 +87,9 @@ function camouflage(id:ProtectionId,index:number):GhillieConfig{
     id,seed:8460+index*113,style:'leafy',density:1.8,leafScale:.8,boughShare:.42,fieldClearanceM:.03,hemFloorM:.6,
     // the hull's suit keeps under the protection receipt's continuous main-gun envelope (its glacis boughs lie low)
     conservativeGunEnvelope:true,
+    // release 227 (round 2): Hetman II's stepped prow and chevron glacis: no card passes into a course or a band
+    // (round 7: spent, the cloth and garnish over a sector's modules fall onto the stock under them: eraSpentDrape.ts)
+    ...(id==='t72b3m_hetman_ii'?{cardsClearOfArmour:true,dropOverSpentEra:true}:{}),
     light:0x6d7e48,dark:0x31482d,netColor:'rgba(38,53,30,0.83)',
     hull:{
      // 2026-10-12 (cam-netting): the glacis netted to the bow plate, the driver's hatch and periscopes open (the
@@ -94,9 +97,19 @@ function camouflage(id:ProtectionId,index:number):GhillieConfig{
      // every yaw) comes down to within 3-7 cm of it from 1.5 m out and below it past 2.7 m, so no net or bough fits
      top:[
       laidNet({x0:-1.5,x1:1.5,z0:k.glacis[0],z1:k.glacis[1],nx:30,nz:Math.round((k.glacis[1]-k.glacis[0])/.1),
-       yAt:(_x:number,z:number)=>k.glacisTop-Math.max(0,z-k.glacis[0])*k.fall,garnishRiseM:.1,seed:137}),
+       yAt:(_x:number,z:number)=>k.glacisTop-Math.max(0,z-k.glacis[0])*k.fall,garnishRiseM:.1,seed:137,
+       // release 227 (round 4): over Hetman II's chevron bands the net lies on the bands' tops (ghillieSuit.ts envelopeM),
+       // and it ends behind the nose sill (DECKS: z 3.06): the sill's LED bars, its hood and the hinge line under it stay
+       // clear of the net's edge and of the garnish that hung from it over them (the critic: "foliage strands cross the new
+       // LED light-bar housings")
+       // (round 6: the shingled glacis blocks leave two four-cell scraps of it tied to nothing: minPieceTris drops them)
+       ...(id==='t72b3m_hetman_ii'?{envelopeM:.09,envelopeZ:[1.98,3.06] as const,minPieceTris:12}:{})}),
      ],
-     face:[{z:bowZ,x0:-1.02,x1:1.02,y0:bowTop-.36,y1:bowTop,nx:20,ny:5,seed:101}],
+     // (release 227, round 2: Hetman II's bow drape is tied over the faces of its hinged lower-plate aprons, under its
+     // nose sill: the T-72B3M lower plate rises from (z 2.60, y .533) to (3.342, .955), the aprons' faces stand .07 off it)
+     face:[id==='t72b3m_hetman_ii'
+      ?{z:3.2,zAt:(_x:number,y:number)=>2.60+(y+.07*.869-.533)/.5687+.07*.494,x0:-1.0,x1:1.0,y0:.64,y1:.92,nx:20,ny:5,seed:101,seatGapM:.012}
+      :{z:bowZ,x0:-1.02,x1:1.02,y0:bowTop-.36,y1:bowTop,nx:20,ny:5,seed:101}],
      side:[-1,1].flatMap(side=>d.hullPanels.map(([z0,z1],i)=>({
       side,z0:z0+.055,z1:z1-.055,nz:15,ny:7,seed:37+side+i*17,
       // Tied under the header (tiedTop): the drape starts 4 mm under the header's centre line, 1.4 cm outside the
@@ -169,9 +182,10 @@ export function ukrainianSkirtEra(P:TankBuilderPort,side:number,z:number,step:nu
 }
 
 /** The hull screens, skirt-return ERA and (unless a donor-turret kit fits its own) the turret screens. */
-export function addNationalUkraineProtection(P:TankBuilderPort,id:ProtectionId,options:{turretScreens?:boolean}={}):void{
+export function addNationalUkraineProtection(P:TankBuilderPort,id:ProtectionId,
+  options:{turretScreens?:boolean;frontReturnEra?:boolean}={}):void{
   const d=NATIONAL_UKRAINE_PROTECTION[id],hull=permanentStock(P,'hull'),turret=permanentStock(P,'turret');
-  const turretScreens=options.turretScreens!==false;
+  const turretScreens=options.turretScreens!==false,frontReturnEra=options.frontReturnEra!==false;
   for(const side of [-1,1]){
     // Four independently framed side screens retain real service gaps. All
     // feet are above the ERA lids. 2026-10-09 (owner): every bay carries a net,
@@ -221,6 +235,8 @@ export function addNationalUkraineProtection(P:TankBuilderPort,id:ProtectionId,o
     // Forward/rear skirt returns receive their own short ERA banks, seated
     // by ray onto finite armor stock rather than floating past the fenders.
     for(const z of [-2.96,-2.65,2.65,2.96]){
+      // (release 227) a hull with its own bow modules on the front banks keeps only the rear returns
+      if(!frontReturnEra&&z>0)continue;
       const hit=seat(hull,[side*3,1.16,z],[-side,0,0]);
       const rotation=new THREE.Euler().setFromQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(side,0,0),hit.normal));
       eraCassette(P,'hull',`skirt_era_${side<0?'L':'R'}`,hit.point.clone().addScaledVector(hit.normal,.030).toArray(),[.076,.22,.21],[rotation.x,rotation.y,rotation.z]);

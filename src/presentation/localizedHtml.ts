@@ -7,6 +7,7 @@ import {
 } from '../ui/localeRouting.ts';
 import { renderProductStats } from '../productStats.ts';
 import { SITE_ORIGIN, socialCardUrl } from './siteMetadata.ts';
+import { zhTypeFloorStyle } from '../ui/zhTypeFloor.ts';
 
 function escapeAttribute(value: string): string {
   return value.replace(/[&<>"]/g, (character) => ({
@@ -170,6 +171,16 @@ function addLocaleCatalogPreload(html: string, locale: SupportedLocale): string 
   return html.replace(/<\/head>/i, `${link}\n</head>`);
 }
 
+function addZhTypeFloor(html: string, route: PublicRouteRecord): string {
+  if (html.includes('id="cot-zh-type"')) return html;
+  const style = zhTypeFloorStyle(route.id);
+  const head = html.indexOf('<style id="cot-font-faces">');
+  const end = head >= 0 ? html.indexOf('</style>', head) : -1;
+  return end >= 0
+    ? `${html.slice(0, end + 8)}${style}${html.slice(end + 8)}`
+    : html.replace(/<\/head>/i, `${style}\n</head>`);
+}
+
 /**
  * Produce a crawl-time locale document. Visible body copy is still owned by
  * the runtime data-i18n pass; this owner localizes discovery metadata before
@@ -207,5 +218,7 @@ export function localizeHtmlDocument(
   output = replaceMeta(output, 'property', 'og:locale', locale.replace('-', '_'));
   output = addLocaleLinks(output, route);
   output = addLocaleCatalogPreload(output, locale);
+  // Chinese documents carry the zh-CN label floor (the type rules) right after their type head; English ones never do.
+  if (locale === 'zh-CN') output = addZhTypeFloor(output, route);
   return localizeStructuredData(output, route, locale);
 }

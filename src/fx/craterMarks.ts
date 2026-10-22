@@ -18,7 +18,14 @@
  * the soil of the place: the surface kind under the burst and the map's ground climate (loam, sandy loam, sand, dark
  * soil through snow, black mud, grey chips on rock and road, ash).
  *
- * No per-frame work but the clock and the light: a stamp uploads its own slot.
+ * (orange-rings-230, 2026-10-21) The light is the ground's own: the mark is three's standard lit material registered
+ * with the engine's cascades (lighting.ts setupShadowMaterial, receiver-only like the terrain it lies on), its shader
+ * writing only the surface — the albedo, the coverage, the relief's normal over the draped ground's own and a heavy
+ * shell's heat. It used to light itself: the sun's full colour with a 0.35 wrap and no shadow, and a hemisphere guess
+ * for the sky. A mark in a building's shadow, under a low sun or under the moon drew several times brighter than the
+ * ground round it — Steinburg's glowing orange rings on the cobbles by day, pale discs over the fields by night.
+ *
+ * No per-frame work but the clock: a stamp uploads its own slot.
  */
 import * as THREE from 'three';
 import type { SurfaceKind } from './surfaceLooks.ts';
@@ -82,7 +89,8 @@ export function craterSoil(surface: SurfaceKind, climate: CraterClimate, out: [n
   }
 }
 
-const VERT = /* glsl */ `
+/** The vertex stage's additions to three's standard program: the slot's attributes, the draped ground's normal. */
+const VERT_PARS = /* glsl */ `
 attribute vec4 aInfo;   // birth, surface index, kind (0 gouge, 1 HE, 2 scar, 3 HESH), seed (0..1)
 attribute vec4 aShape;  // wobble phases p1, p2, p3 (a crater) and its rim's share of the disc (0: a mark)
 attribute vec4 aSoil;   // the turned soil (linear rgb), cover
@@ -94,44 +102,35 @@ varying vec4 vInfo;
 varying vec4 vShape;
 varying vec4 vSoil;
 varying float vSize;
-#ifdef USE_FOG
-  varying float vFogDepth;
-#endif
-void main() {
+varying vec3 vGroundN;  // the draped ground's normal (world: the mesh never moves)
+`;
+const VERT_MAIN = /* glsl */ `
   vDisc = aDisc;
   vInfo = aInfo;
   vShape = aShape;
   vSoil = aSoil;
   vSize = aSize;
-  vec4 mvPosition = viewMatrix * vec4( position, 1.0 );
-  #ifdef USE_FOG
-    vFogDepth = -mvPosition.z;
-  #endif
-  gl_Position = ( uTime - aInfo.x < 0.0 ) ? vec4( 0.0, 0.0, 2.0, 1.0 ) : projectionMatrix * mvPosition;
-}
+  vGroundN = normal;
+`;
+/** a slot born after the clock (a warm's or a rebased stamp) draws nothing */
+const VERT_UNBORN = /* glsl */ `
+  if ( uTime - aInfo.x < 0.0 ) gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
 `;
 
-const FRAG = /* glsl */ `
+/**
+ * The fragment stage's additions: the mark's surface as a function three's lit program calls — its albedo (linear),
+ * coverage, the relief's normal about the up axis, a glossy share and a heavy shell's heat to a heat-imaging lens. The
+ * light is the program's own (the sun through the cascades, the sky, the clouds' shade, the fog).
+ */
+const FRAG_PARS = /* glsl */ `
 uniform float uTime;
-uniform vec3 uSunDir;
-uniform vec3 uSunCol;
-uniform vec3 uSkyCol;
 uniform float uHeatView;  // (ac130-fx-228 follow-up) 1 under a heat-imaging lens (infrared, thermal), else 0
 varying vec2 vDisc;
 varying vec4 vInfo;
 varying vec4 vShape;
 varying vec4 vSoil;
 varying float vSize;
-#ifdef USE_FOG
-  uniform vec3 fogColor;
-  #ifdef FOG_EXP2
-    uniform float fogDensity;
-  #else
-    uniform float fogNear;
-    uniform float fogFar;
-  #endif
-  varying float vFogDepth;
-#endif
+varying vec3 vGroundN;
 float h21( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 ); }
 float vnoise( vec2 p ) {
   vec2 i = floor( p ), f = fract( p );
@@ -139,7 +138,7 @@ float vnoise( vec2 p ) {
   return mix( mix( h21( i ), h21( i + vec2( 1.0, 0.0 ) ), f.x ), mix( h21( i + vec2( 0.0, 1.0 ) ), h21( i + vec2( 1.0, 1.0 ) ), f.x ), f.y );
 }
 float fbm( vec2 p ) { return 0.55 * vnoise( p ) + 0.3 * vnoise( p * 2.13 + 7.1 ) + 0.15 * vnoise( p * 4.37 + 3.3 ); }
-void main() {
+void cotCraterMark( out vec3 col, out float a, out vec3 n, out float gloss, out vec3 heat ) {
   float seed = vInfo.w;
   vec2 so = vec2( fract( seed * 7.13 ), fract( seed * 3.71 ) ) * 40.0;
   float r = length( vDisc );
@@ -178,9 +177,8 @@ void main() {
   float fresh = 1.0 - smoothstep( 20.0, 300.0, age );
   vec3 soil = vSoil.rgb;
   int surf = int( vInfo.y + 0.5 );
-  vec3 col;
-  float a;
-  vec3 n = vec3( 0.0, 1.0, 0.0 );
+  n = vec3( 0.0, 1.0, 0.0 );
+  gloss = 0.0;
   if ( drone ) {
     // (FX-05) a drone warhead's pocked scorch: a small black blast spot, a dense ring of the fragment sleeve's pocks round
     // it, and the battery's melted cells, a glossy black patch beside the spot; no star, no bowl
@@ -201,6 +199,7 @@ void main() {
     a = max( max( soot * 0.95, pockD * 0.85 ), melt * 0.95 );
     // the melted cells catch the sun: a glossy patch
     n = normalize( vec3( 0.0, 1.0, 0.0 ) + vec3( fine - 0.5, 0.0, lumps - 0.5 ) * 0.4 * melt );
+    gloss = melt;
   } else if ( scar ) {
     // a shaped charge's scar (wave 276: it left a bowl): a small black pit, a star of soot thrown out of it in streaks of
     // different lengths, a scorched halo, a thin scatter of fine soil; no bowl, no rim
@@ -297,28 +296,64 @@ void main() {
   }
   a *= vSoil.a * smoothstep( 0.0, 0.35, age );  // the ejecta lands over the first third of a second
   if ( a < 0.01 ) discard;
-  float ndl = clamp( dot( n, uSunDir ), 0.0, 1.0 );
-  col *= uSunCol * ( 0.35 + 0.65 * ndl ) + uSkyCol;
+  // (2026-10-08, the owner's black screens) finite colour only
+  if ( !( abs( col.r ) < 6.0e4 && abs( col.g ) < 6.0e4 && abs( col.b ) < 6.0e4 && abs( a ) < 6.0e4 ) ) discard;
   // (ac130-fx-228 follow-up, the coordinator: "a 152 mm impact keeps a hot ground signature that fades over 10-20 s")
   // a heavy shell's scorched pit and its halo stay hot to a heat-imaging lens (the grade images luminance over ~1.55):
   // CRATER_HEAT_PEAK at the burst, falling as exp(-age / CRATER_HEAT_S); white-hot ~5 s, warm to ~12 s. Never evaluated
-  // under any other lens.
+  // under any other lens. An emission: no light of the scene reaches it.
+  heat = vec3( 0.0 );
   if ( uHeatView > 0.5 && kind > 3.5 && kind < 4.5 ) {
-    col += vec3( ${CRATER_HEAT_PEAK.toFixed(2)} ) * exp( -age / ${CRATER_HEAT_S.toFixed(2)} ) * ( 1.0 - smoothstep( 0.2, 0.9, qw ) );
+    heat = vec3( ${CRATER_HEAT_PEAK.toFixed(2)} ) * exp( -age / ${CRATER_HEAT_S.toFixed(2)} ) * ( 1.0 - smoothstep( 0.2, 0.9, qw ) );
   }
-  #ifdef USE_FOG
-    #ifdef FOG_EXP2
-      float fogFactor = 1.0 - exp( -fogDensity * fogDensity * vFogDepth * vFogDepth );
-    #else
-      float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
-    #endif
-    col = mix( col, fogColor, fogFactor );
-  #endif
-  // (2026-10-08, the owner's black screens) finite colour only
-  if ( !( abs( col.r ) < 6.0e4 && abs( col.g ) < 6.0e4 && abs( col.b ) < 6.0e4 && abs( a ) < 6.0e4 ) ) discard;
-  gl_FragColor = vec4( col, a );
 }
 `;
+/** the surface, where three's program has laid its own albedo */
+const FRAG_SURFACE = /* glsl */ `
+  vec3 cotMarkCol, cotMarkN, cotMarkHeat;
+  float cotMarkA, cotMarkGloss;
+  cotCraterMark( cotMarkCol, cotMarkA, cotMarkN, cotMarkGloss, cotMarkHeat );
+  diffuseColor = vec4( cotMarkCol, cotMarkA );
+`;
+const FRAG_ROUGHNESS = /* glsl */ `
+  roughnessFactor = mix( roughnessFactor, 0.4, cotMarkGloss );
+`;
+/** the relief's slopes tilt the draped ground's own normal (the ground's slope and a dug bowl's walls come with it) */
+const FRAG_NORMAL = /* glsl */ `
+  vec3 cotMarkNW = normalize( normalize( vGroundN ) + cotMarkN - vec3( 0.0, 1.0, 0.0 ) );
+  normal = normalize( ( viewMatrix * vec4( cotMarkNW, 0.0 ) ).xyz );
+`;
+const FRAG_HEAT = /* glsl */ `
+  totalEmissiveRadiance += cotMarkHeat;
+`;
+
+/** Insert `add` after (or, for `void main() {`, before) each anchor of three's program; a missing anchor throws. */
+function patchProgram(source: string, edits: ReadonlyArray<readonly [string, string, 'before' | 'after']>): string {
+  for (const [anchor, add, where] of edits) {
+    if (source.split(anchor).length !== 2) throw new Error(`craterMarks: three's program has no single ${anchor}`);
+    source = source.replace(anchor, where === 'before' ? `${add}\n${anchor}` : `${anchor}\n${add}`);
+  }
+  return source;
+}
+/** The hook that makes three's standard program the mark's. */
+function craterMarksCompileHook(uniforms: { uTime: { value: number }; uHeatView: { value: number } }) {
+  return (shader: { uniforms: Record<string, unknown>; vertexShader: string; fragmentShader: string }): void => {
+    shader.uniforms.uTime = uniforms.uTime;
+    shader.uniforms.uHeatView = uniforms.uHeatView;
+    shader.vertexShader = patchProgram(shader.vertexShader, [
+      ['void main() {', VERT_PARS, 'before'],
+      ['#include <begin_vertex>', VERT_MAIN, 'after'],
+      ['#include <project_vertex>', VERT_UNBORN, 'after'],
+    ]);
+    shader.fragmentShader = patchProgram(shader.fragmentShader, [
+      ['void main() {', FRAG_PARS, 'before'],
+      ['#include <map_fragment>', FRAG_SURFACE, 'after'],
+      ['#include <roughnessmap_fragment>', FRAG_ROUGHNESS, 'after'],
+      ['#include <normal_fragment_maps>', FRAG_NORMAL, 'after'],
+      ['#include <emissivemap_fragment>', FRAG_HEAT, 'after'],
+    ]);
+  };
+}
 
 /** A deforming crater's surface (crater-render-spec §D). */
 interface CraterSurfaceInput {
@@ -337,15 +372,23 @@ interface CraterSurfaceInput {
   birth: number;
 }
 
+/** The engine's cascade registration for a lit material and its shader hook (lighting.ts setupShadowMaterial). */
+type LitMaterialSetup = (material: THREE.Material, hook: NonNullable<THREE.Material['onBeforeCompile']>) => unknown;
+
+interface CraterMarksOptions {
+  /** (orange-rings-230) the marks take the ground's own light: without it (a Node receipt) the hook alone compiles */
+  setupMaterial?: LitMaterialSetup;
+}
+
 export interface CraterMarks {
-  readonly mesh: THREE.Mesh<THREE.BufferGeometry, THREE.ShaderMaterial>;
+  readonly mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
   /** A deforming crater's surface, draped on `heightAt` (the deformed ground) over its 1.6 R reach. */
   crater(c: CraterSurfaceInput, heightAt: (x: number, z: number) => number): void;
   /** A burst that dug nothing: rim radius (m), the surface and climate, its kind (true: HE, false: a gouge), a seed
    *  0..1, its birth. */
   stamp(x: number, z: number, rimRadiusM: number, surface: SurfaceKind, kind: CraterMarkKind | boolean, seed: number, birth: number,
     groundY: (x: number, z: number) => number, climate?: CraterClimate): void;
-  update(now: number, scene: THREE.Scene | null | undefined): void;
+  update(now: number): void;
   /** (ac130-fx-228 follow-up) this frame's camera images heat: a heavy shell's ground stays hot to it */
   setHeatView(on: boolean): void;
   shiftTime(delta: number): void;
@@ -355,7 +398,7 @@ export interface CraterMarks {
   readonly craters: number;
 }
 
-export function createCraterMarks(): CraterMarks {
+export function createCraterMarks(options: CraterMarksOptions = {}): CraterMarks {
   const template = new Float32Array(VERTS * 2);
   for (let ri = 1; ri <= RINGS; ri++) {
     for (let s = 0; s < SEG; s++) {
@@ -372,6 +415,9 @@ export function createCraterMarks(): CraterMarks {
   const shapes = new Float32Array(SLOTS * VERTS * 4);
   const soils = new Float32Array(SLOTS * VERTS * 4);
   const sizes = new Float32Array(SLOTS * VERTS);
+  // the draped ground's normal per vertex (the lit program's own attribute): up until a stamp drapes its slot
+  const normals = new Float32Array(SLOTS * VERTS * 3);
+  for (let i = 1; i < normals.length; i += 3) normals[i] = 1;
   const index: number[] = [];
   for (let c = 0; c < SLOTS; c++) {
     const base = c * VERTS;
@@ -396,7 +442,10 @@ export function createCraterMarks(): CraterMarks {
   sol.setUsage(THREE.DynamicDrawUsage);
   const siz = new THREE.BufferAttribute(sizes, 1);
   siz.setUsage(THREE.DynamicDrawUsage);
+  const nor = new THREE.BufferAttribute(normals, 3);
+  nor.setUsage(THREE.DynamicDrawUsage);
   geo.setAttribute('position', pos);
+  geo.setAttribute('normal', nor);
   geo.setAttribute('aDisc', new THREE.BufferAttribute(disc, 2));
   geo.setAttribute('aInfo', inf);
   geo.setAttribute('aShape', shp);
@@ -406,31 +455,39 @@ export function createCraterMarks(): CraterMarks {
   geo.setDrawRange(0, 0);
   const uTime = { value: 0 };
   const uHeatView = { value: 0 };
-  const uSunDir = { value: new THREE.Vector3(0.527, 0.574, -0.627).normalize() };
-  const uSunCol = { value: new THREE.Vector3(1.3, 1.25, 1.15) };
-  const uSkyCol = { value: new THREE.Vector3(0.3, 0.32, 0.36) };
-  const material = new THREE.ShaderMaterial({
-    vertexShader: VERT,
-    fragmentShader: FRAG,
-    uniforms: Object.assign(THREE.UniformsUtils.clone(THREE.UniformsLib.fog), { uTime, uSunDir, uSunCol, uSkyCol, uHeatView }),
+  // (orange-rings-230) three's standard lit material: the shader writes the surface (craterMarksCompileHook), the
+  // program lights it as it lights the ground — the sun through the cascades, the sky, the clouds' shade, the fog
+  const material = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    roughness: 0.96,
+    metalness: 0,
     transparent: true,
     depthWrite: false,
     polygonOffset: true,
     polygonOffsetFactor: -4,
     polygonOffsetUnits: -4,
     side: THREE.DoubleSide,
-    fog: true,
   });
+  material.name = 'fx-crater-marks';
+  // never in a depth map, lying on the receiver-only terrain: its shadows meet the ground's (RECEIVER_ONLY_SHADOW_NOTE)
+  material.userData.cotShadowReceiverOnly = true;
+  material.userData.uniforms = { uTime, uHeatView };
+  const hook = craterMarksCompileHook({ uTime, uHeatView });
+  material.onBeforeCompile = hook;
+  material.customProgramCacheKey = () => 'fx-crater-marks-lit-v1';
+  options.setupMaterial?.(material, hook);
   const mesh = new THREE.Mesh(geo, material);
   mesh.name = 'fx-crater-marks';
   mesh.frustumCulled = false;
   mesh.matrixAutoUpdate = false;
   mesh.renderOrder = 2.5; // after the terrain and the wreck scorch, before every particle
+  mesh.receiveShadow = true; // the cascades' shadow on the mark, as on the ground under it
+  mesh.castShadow = false;
   mesh.visible = false;   // out of the render list until the first mark
   // a whole upload (the first, a reset, a clock rebase) is never cut short by a stamp's range written before the
   // renderer gets to it (three uploads only the ranges when there are any): a reset's cleared slots would otherwise
   // keep the last match's craters on the GPU in the fixed crater region
-  const attrs = [pos, inf, shp, sol, siz];
+  const attrs = [pos, inf, shp, sol, siz, nor];
   let wholePending = true;
   pos.onUpload(() => { wholePending = false; });
   const whole = (): void => { wholePending = true; for (const a of attrs) { a.clearUpdateRanges(); a.needsUpdate = true; } };
@@ -438,6 +495,32 @@ export function createCraterMarks(): CraterMarks {
   let markCursor = 0, markCount = 0;
   let highest = -1;
   const soil: [number, number, number, number] = [0, 0, 0, 0];
+
+  /** The draped slot's normals from its own grid (no more ground reads): the tangent along its ring and the radial run
+   *  across the rings either side; the centre's, its first ring's mean. */
+  function drapeNormals(base: number): void {
+    let cx = 0, cy = 0, cz = 0;
+    for (let ri = 1; ri <= RINGS; ri++) {
+      const ring = base + 1 + (ri - 1) * SEG;
+      for (let s = 0; s < SEG; s++) {
+        const v = ring + s;
+        const t1 = (ring + (s + 1) % SEG) * 3, t0 = (ring + (s + SEG - 1) % SEG) * 3;
+        const r0 = (ri === 1 ? base : ring - SEG + s) * 3, r1 = (ri === RINGS ? v : ring + SEG + s) * 3;
+        const tx = positions[t1] - positions[t0], ty = positions[t1 + 1] - positions[t0 + 1], tz = positions[t1 + 2] - positions[t0 + 2];
+        const rx = positions[r1] - positions[r0], ry = positions[r1 + 1] - positions[r0 + 1], rz = positions[r1 + 2] - positions[r0 + 2];
+        // t x r points up on a level ring (the template turns counter-clockwise seen from above)
+        let nx = ty * rz - tz * ry, ny = tz * rx - tx * rz, nz = tx * ry - ty * rx;
+        const len = Math.hypot(nx, ny, nz);
+        if (len > 1e-9 && ny > 0) { nx /= len; ny /= len; nz /= len; } else { nx = 0; ny = 1; nz = 0; }
+        normals[v * 3] = nx; normals[v * 3 + 1] = ny; normals[v * 3 + 2] = nz;
+        if (ri === 1) { cx += nx; cy += ny; cz += nz; }
+      }
+    }
+    const len = Math.hypot(cx, cy, cz);
+    normals[base * 3] = len > 1e-9 ? cx / len : 0;
+    normals[base * 3 + 1] = len > 1e-9 ? cy / len : 1;
+    normals[base * 3 + 2] = len > 1e-9 ? cz / len : 0;
+  }
 
   function write(slot: number, x: number, z: number, radius: number, yaw: number, heightAt: (x: number, z: number) => number,
     lift: number, birth: number, surfaceIndex: number, kind: number, seed: number,
@@ -456,14 +539,16 @@ export function createCraterMarks(): CraterMarks {
       soils[q] = soil[0]; soils[q + 1] = soil[1]; soils[q + 2] = soil[2]; soils[q + 3] = soil[3];
       sizes[base + v] = rimM;
     }
+    drapeNormals(base);
     if (!wholePending) {
       pos.addUpdateRange(base * 3, VERTS * 3);
       inf.addUpdateRange(base * 4, VERTS * 4);
       shp.addUpdateRange(base * 4, VERTS * 4);
       sol.addUpdateRange(base * 4, VERTS * 4);
       siz.addUpdateRange(base, VERTS);
+      nor.addUpdateRange(base * 3, VERTS * 3);
     }
-    pos.needsUpdate = inf.needsUpdate = shp.needsUpdate = sol.needsUpdate = siz.needsUpdate = true;
+    pos.needsUpdate = inf.needsUpdate = shp.needsUpdate = sol.needsUpdate = siz.needsUpdate = nor.needsUpdate = true;
     if (slot > highest) highest = slot;
     geo.setDrawRange(0, (highest + 1) * INDICES_PER_SLOT);
     mesh.visible = true;
@@ -491,22 +576,8 @@ export function createCraterMarks(): CraterMarks {
         0, 0, 0, 0, rimRadiusM);
     },
     setHeatView(on) { uHeatView.value = on ? 1 : 0; },
-    update(now, scene) {
+    update(now) {
       uTime.value = now;
-      if (highest < 0) return;
-      const ud = scene?.userData as { sunDirWorld?: THREE.Vector3; lightRig?: { sunIntensity?: number; sunColor?: THREE.Color;
-        hemiIntensity?: number; hemiSky?: THREE.Color } } | undefined;
-      const sd = ud?.sunDirWorld;
-      if (sd && sd.lengthSq() > 1e-8) uSunDir.value.copy(sd).normalize();
-      const rig = ud?.lightRig;
-      if (rig) {
-        const si = (rig.sunIntensity ?? 4.5) / Math.PI;
-        const sc = rig.sunColor;
-        uSunCol.value.set(sc ? sc.r * si : si, sc ? sc.g * si : si, sc ? sc.b * si : si);
-        const hi = (rig.hemiIntensity ?? 0.4) * 1.6 / Math.PI;
-        const sky = rig.hemiSky;
-        uSkyCol.value.set(sky ? sky.r * hi : hi, sky ? sky.g * hi : hi, sky ? sky.b * hi : hi);
-      }
     },
     shiftTime(delta) {
       for (let i = 0; i < info.length; i += 4) if (info[i] > -1e8) info[i] += delta;

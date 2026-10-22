@@ -170,6 +170,9 @@ const BUILTINS = {
   pow: (a, b) => zip([a, b], Math.pow), floor: (a) => zip([a], Math.floor), fract: (a) => zip([a], (x) => x - Math.floor(x)),
   sin: (a) => zip([a], Math.sin), cos: (a) => zip([a], Math.cos),
   float: (a) => scalar(a, 'float()'),
+  // (2026-10-19, black-screen-228: the finite guard's component-wise compare; comparisons with NaN are false)
+  lessThan: (a, b) => { if (!isVec(a) || !isVec(b) || a.length !== b.length) throw new Error('glsl: lessThan of mismatched vectors'); return { bvec: a.map((x, k) => x < b[k]) }; },
+  all: (v) => { if (!v || !Array.isArray(v.bvec)) throw new Error('glsl: all() takes a bvec'); return v.bvec.every(Boolean); },
   vec2: (...a) => construct(2, a), vec3: (...a) => construct(3, a), vec4: (...a) => construct(4, a),
 };
 

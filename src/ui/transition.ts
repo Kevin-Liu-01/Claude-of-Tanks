@@ -94,7 +94,7 @@ const CSS = `
   filter:drop-shadow(0 4px 18px rgba(0,0,0,.7));}
 .cot-trans .kick{margin-top:16px;font-family:${FONT_COND};font-size:11px;font-weight:700;
   letter-spacing:.4em;text-indent:.4em;color:#f0a030;text-transform:uppercase;}
-.cot-trans .title{margin-top:9px;font-size:clamp(26px,4.2vw,44px);font-weight:800;
+.cot-trans .title{margin-top:9px;font-size:clamp(26px,4.2vw,44px);font-weight:700;
   letter-spacing:.16em;text-indent:.16em;text-transform:uppercase;color:#f4f8fc;
   text-shadow:0 3px 26px rgba(0,0,0,.85);text-align:center;}
 .cot-trans .sub{margin-top:8px;font-family:${FONT_COND};font-size:11.5px;font-weight:600;
@@ -103,8 +103,8 @@ const CSS = `
 .cot-trans .meter{margin-top:30px;width:min(400px,64vw);}
 .cot-trans .meter.off{visibility:hidden;}
 .cot-trans .mrow{display:flex;align-items:baseline;justify-content:space-between;
-  margin-bottom:7px;font-family:${FONT_COND};font-variant-numeric:tabular-nums;}
-.cot-trans .mstage{font-size:10px;font-weight:700;letter-spacing:.26em;color:#9fb0bf;
+  margin-bottom:7px;font-family:${FONT_COND};}
+.cot-trans .mstage{font-size:11px;font-weight:700;letter-spacing:.18em;color:#9fb0bf;
   text-transform:uppercase;}
 .cot-trans .mpct{font-size:15px;font-weight:700;color:#ffd27a;}
 .cot-trans .mbar{position:relative;height:4px;background:rgba(255,255,255,.07);
@@ -157,7 +157,7 @@ export function createTransition(): TransitionScreen {
     `<img class="mark" src="/brand/logo-mark.svg" alt="" draggable="false">` +
     `<div class="kick"></div><div class="title"></div><div class="sub"></div>` +
     `<div class="meter"><div class="mrow"><div class="mstage"></div>` +
-    `<div class="mpct">0%</div></div>` +
+    `<div class="mpct num">0%</div></div>` +
     `<div class="mbar"><div class="mfill"></div></div></div>` +
     `</div>`;
   document.body.appendChild(root);

@@ -20,6 +20,22 @@ import { collapsePenstock } from './penstockFall.ts';
 type Writers = { mesh: DamageMeshWriter; pieces: DamagePieceWriter };
 type P3 = [number, number, number];
 
+/** The end of a beamBetween(a, b) box at `b` (its cross-section as beamBetween lays it), facing out along a -> b. */
+function beamCap(mesh: Mesh, a: Vec3, b: Vec3, w: number, t: number, upHint: Vec3, tint: Rgb, shade: number): void {
+  const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2], l = Math.hypot(dx, dy, dz);
+  if (!(l > 1e-6)) return;
+  const ax: Vec3 = [dx / l, dy / l, dz / l];
+  const cr = (p: Vec3, q: Vec3): Vec3 => [p[1] * q[2] - p[2] * q[1], p[2] * q[0] - p[0] * q[2], p[0] * q[1] - p[1] * q[0]];
+  const nz = (v: Vec3): Vec3 => { const k = Math.hypot(v[0], v[1], v[2]); return [v[0] / k, v[1] / k, v[2] / k]; };
+  let side = cr(ax, upHint);
+  if (!(Math.hypot(side[0], side[1], side[2]) >= 0.5)) side = cr(ax, [1, 0, 0]);
+  side = nz(side);
+  const up = nz(cr(side, ax));
+  const hw = w / 2, ht = t / 2;
+  const P = (s: number, u: number): Vec3 => [b[0] + side[0] * s + up[0] * u, b[1] + side[1] * s + up[1] * u, b[2] + side[2] * s + up[2] * u];
+  mesh.quadUvAlong(P(-hw, -ht), P(hw, -ht), P(hw, ht), P(-hw, ht), ax, w, [tint[0] * shade, tint[1] * shade, tint[2] * shade]);
+}
+
 export function latticeOf(anatomy: StructureDamageAnatomy): LatticeReading | null {
   const k = anatomy.kitPlan as { damage?: { lattice?: LatticeReading } } | undefined;
   return k?.damage?.lattice ?? null;
@@ -104,8 +120,13 @@ export function collapseLattice(anatomy: StructureDamageAnatomy, seed: number, o
   // laid order: latticeFrame's corners)
   const n = legs.length;
   // (a column, one leg: its stub alone; a frame of two or more legs, its bays)
+  // (destruction-slabs 227 round 4; steppe #4, tselina's gantry: its rendered tower read as one leg 4.4 m across, its stub
+  // an open tube and its upper length folded as one, a 5 x 4 m side of it standing 2.7 m up on nothing) a column as broad
+  // as a wall is no angle leg: its stub capped, its upper length a closed block lying on the ground along the fall
+  const solid = n === 1 && s > 1;
   if (n >= 1 && mesh.begin(lat.bucket, 'remnant')) {
     legs.forEach((l, k) => beamBetween(mesh, l.foot, tops[k], s, s, [0, 1, 0], tint));
+    if (solid) beamCap(mesh, legs[0].foot, tops[0], s, s, [0, 1, 0], tint, 0.9);
     const low = Math.min(...tops.map((t) => t[1])) - 0.1;
     const levels = [y0 + 0.3, ...lat.girts.filter((g) => g > y0 + 0.3 && g < low)];
     // (a face the frame leaves open, a portal's along its bridge, stands its posts alone: LatticeReading.faces)
@@ -125,7 +146,22 @@ export function collapseLattice(anatomy: StructureDamageAnatomy, seed: number, o
   // the frame above the buckle folded over: each leg from its stub's head down along the fall, kinked where it struck
   const upper = height - (stand - y0);
   let reach = 0;
-  if (mesh.begin(lat.bucket, 'rubble')) {
+  if (solid && mesh.begin(lat.bucket, 'rubble')) {
+    // the column's upper length on the ground beside its stump, broken in two where it struck, each a closed block
+    const t = tops[0], half = s / 2, len = Math.max(s, upper * (0.85 + rng() * 0.1));
+    const kink = (rng() - 0.5) * 0.3, d2: Vec3 = [axis[0] * Math.cos(kink) - axis[2] * Math.sin(kink), 0, axis[0] * Math.sin(kink) + axis[2] * Math.cos(kink)];
+    const a: P3 = [t[0] + axis[0] * (s * 0.75 + 0.3), 0, t[2] + axis[2] * (s * 0.75 + 0.3)];
+    const m: P3 = [a[0] + axis[0] * len * 0.5, 0, a[2] + axis[2] * len * 0.5];
+    const e: P3 = [m[0] + d2[0] * len * 0.5, 0, m[2] + d2[2] * len * 0.5];
+    for (const p of [a, m, e]) p[1] = ground(p[0], p[2]) + half * 0.9;
+    beamBetween(mesh, a, m, s, s * 0.9, [0, 1, 0], tint);
+    beamCap(mesh, m, a, s, s * 0.9, [0, 1, 0], dull, 0.75);
+    beamCap(mesh, a, m, s, s * 0.9, [0, 1, 0], dull, 0.75);
+    beamBetween(mesh, m, e, s, s * 0.9, [0, 1, 0], tint);
+    beamCap(mesh, e, m, s, s * 0.9, [0, 1, 0], dull, 0.75);
+    beamCap(mesh, m, e, s, s * 0.9, [0, 1, 0], dull, 0.75);
+    reach = (e[0] - cx) * axis[0] + (e[2] - cz) * axis[2];
+  } else if (mesh.begin(lat.bucket, 'rubble')) {
     for (const t of tops) {
       const drop = t[1] - ground(t[0], t[2]), run = Math.sqrt(Math.max(0.25, upper * upper * (0.9 + rng() * 0.08) - drop * drop));
       const yaw = (rng() - 0.5) * 0.25, d: Vec3 = [axis[0] * Math.cos(yaw) - axis[2] * Math.sin(yaw), 0, axis[0] * Math.sin(yaw) + axis[2] * Math.cos(yaw)];

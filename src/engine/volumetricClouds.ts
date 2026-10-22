@@ -580,7 +580,9 @@ vec3 cloudKnee( vec3 c ) {
 void main() {
 	vec3 dir = normalize( vWorldPosition - cameraPosition );
 	vec2 uv = gl_FragCoord.xy / uTargetSize;
-	vec4 c = max( cloudsCatmullRom( uv, uHistorySize ), vec4( 0.0 ) );
+	vec4 c = cloudsCatmullRom( uv, uHistorySize );
+	// (black-screen-228 RC6) a non-finite history read is clear sky, never an opaque black dome
+	c = all( lessThan( abs( c ), vec4( 6e4 ) ) ) ? max( c, vec4( 0. ) ) : vec4( 0., 0., 0., 1. );
 	// nothing below the horizon line (the history holds no cloud there either) — unless the camera is in the slab
 	float above = max( smoothstep( -0.05, -0.02, dir.y ), uInside );
 	// the knee eases off within a few degrees of the sun: the silver lining of a cloud in front of it outshines the glow
@@ -720,6 +722,8 @@ export class VolumetricCloudLayer {
   private trace: THREE.WebGLRenderTarget;
   private historyIndex = 0;
   private historyValid = false;
+  /** The history textures hold a traced frame since they were last allocated (a frozen layer keeps showing it). */
+  private historyHeld = false;
   private targetWidth = 0;
   private targetHeight = 0;
   private readonly noise: CloudNoiseTextures = { weather: null, streets: null, blue: null, local: null };
@@ -1014,6 +1018,20 @@ export class VolumetricCloudLayer {
     return true;
   }
 
+  /**
+   * (2026-10-20, black-screen-228 round 2, D1) the trace stops reading the scene's depth until a live frame hands it a
+   * resolved one again. A paused or inactive layer (the Garage) kept the last battle's scene depth bound to its trace,
+   * and the covered warm's trace on the next entry sampled it before any scene pass had set the resized target up: a
+   * sampler-first bind that allocated the depth's storage at the stale size (engine/sceneSourcePass.ts
+   * sizeDepthWithTarget closes that for every binder; the layer no longer binds a depth it does not read).
+   */
+  private releaseSceneDepth(): void {
+    this.sceneDepthReady = false;
+    const t = this.traceMaterial.uniforms;
+    if (t.tSceneDepth) t.tSceneDepth.value = null;
+    if (t.uSceneDepthOn) t.uSceneDepthOn.value = 0;
+  }
+
   /** Forget the history: the next frames rebuild it at four slots a frame. */
   resetHistory(): void {
     this.rebuild = 0;
@@ -1086,6 +1104,7 @@ export class VolumetricCloudLayer {
     const hw = Math.max(4, Math.round(width * CLOUD_HISTORY_SCALE)), hh = Math.max(4, Math.round(height * CLOUD_HISTORY_SCALE));
     const tw = Math.ceil(hw / CLOUD_TRACE_DIVISOR), th = Math.ceil(hh / CLOUD_TRACE_DIVISOR);
     for (const rt of this.history) rt.setSize(hw, hh);
+    this.historyHeld = false;
     this.trace.setSize(tw, th);
     for (const m of [this.traceMaterial, this.resolveMaterial]) {
       (m.uniforms.uHistorySize.value as THREE.Vector2).set(hw, hh);
@@ -1273,6 +1292,7 @@ export class VolumetricCloudLayer {
     this.renderQuad(this.resolveMaterial, next);
     this.historyIndex = 1 - this.historyIndex;
     this.historyValid = true;
+    this.historyHeld = true;
     this.domeMaterial.uniforms.tClouds.value = next.texture;
   }
 
@@ -1377,12 +1397,12 @@ export class VolumetricCloudLayer {
     // ensureVolumes() after it, so a linking layer never bakes its volumes on the main thread
     if (!preset || !this.active || renderer !== this.renderer || this.linkPending || !this.ensureVolumes()) {
       this.dome.visible = false;
-      this.sceneDepthReady = false;
+      this.releaseSceneDepth();
       this.dropCloudShade();
       return;
     }
     this.refreshLifetime();
-    if (this.context?.isContextLost()) { this.dome.visible = false; this.sceneDepthReady = false; return; }
+    if (this.context?.isContextLost()) { this.dome.visible = false; this.releaseSceneDepth(); return; }
     this.syncTier();
     // 2026-10-14 (the SKY lane; the horizons lane's bird frames over Polders, 400 m up and 1.3 km off the centre: the
     // cloud field cut by straight walls with a clear hole over the map): the dome was a 3.4 km sphere about the world
@@ -1542,7 +1562,10 @@ export class VolumetricCloudLayer {
     this.endTimer();
     this.frame++;
     this.framesShown++;
-    this.dome.visible = true;
+    // (black-screen-228 P2) only over a resolved history: a reset layer with nothing traced yet shows no dome; a frozen
+    // (QA) layer keeps showing the history it holds, as it did before (round 2, eng D9: a camera cut under a frozen layer
+    // reset the flag with no trace to follow, and the capture tools lost the dome)
+    this.dome.visible = this.historyValid || (this.frozen && this.historyHeld);
     // a camera in or over the lowest lane sees the cloud in front of the terrain (no depth test, no horizon mask)
     const inside = C.pos.y > low ? 1 : 0;
     this.domeMaterial.uniforms.uInside.value = inside;
@@ -1845,6 +1868,8 @@ export class VolumetricCloudLayer {
     if (!prevW || !prevH) this.resize(16, 16);
     try {
       this.syncTier();
+      // (round 2, D1) the warm's 1 x 1 trace never samples a live target's depth
+      this.releaseSceneDepth();
       this.renderQuad(this.traceMaterial, this.trace);
       this.resolveMaterial.uniforms.tTrace.value = this.trace.textures[0];
       this.resolveMaterial.uniforms.tTraceDepth.value = this.trace.textures[1];
@@ -1857,6 +1882,7 @@ export class VolumetricCloudLayer {
       scratch.dispose();
     } finally {
       this.resetHistory();
+      this.historyHeld = false; // the warm's resolve is no frame a frozen layer may show
     }
   }
 

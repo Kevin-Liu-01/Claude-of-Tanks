@@ -10,13 +10,13 @@ const CSS = `
 .cot-vehicle-status{position:absolute;left:0;bottom:calc(100% + var(--hud-status-lift,5px));display:flex;gap:4px;width:100%;pointer-events:auto;}
 .cot-vehicle-status[hidden],.cot-status-box[hidden]{display:none!important}
 .cot-status-box{position:relative;isolation:isolate;flex:0 0 34px;height:34px;padding:5px;display:grid;place-items:center;overflow:hidden;
- border:1px solid #64727e;background:linear-gradient(#152029f2,#080e14ed);color:#f36e69;font:800 11px/1 sans-serif;cursor:help;box-shadow:0 2px 5px #0006;}
+ border:1px solid #64727e;background:linear-gradient(#152029f2,#080e14ed);color:#f36e69;font:700 11px/1 var(--font-ui);cursor:help;box-shadow:0 2px 5px #0006;}
 .cot-status-box[data-tone=warning]{color:#ffbf60;border-color:#a77b3e}
 .cot-status-box[data-tone=danger]{border-color:#b65551}
 .cot-status-box[data-tone=positive]{color:#9ae8a6;border-color:#5b9667}
 .cot-status-box svg{width:23px;height:23px;position:relative;z-index:1;filter:drop-shadow(0 1px 2px #000)}
 .cot-status-fill{position:absolute;inset:0;background:currentColor;opacity:.25;transform-origin:bottom;transform:scaleY(var(--repair-fill,0));pointer-events:none;}
-.cot-status-mark{position:absolute;bottom:0;right:1px;z-index:2;min-width:9px;text-align:center;font:900 10px/1 sans-serif;color:inherit;text-shadow:0 1px 2px #000}
+.cot-status-mark{position:absolute;bottom:0;right:1px;z-index:2;min-width:9px;text-align:center;font:700 11px/1 var(--font-ui);color:inherit;text-shadow:0 1px 2px #000}
 .cot-status-box:focus-visible{outline:2px solid #ffe0a6;outline-offset:2px}
 .cot-status-box:hover{background:#253542}
 .cot-status-summary{white-space:pre-line}

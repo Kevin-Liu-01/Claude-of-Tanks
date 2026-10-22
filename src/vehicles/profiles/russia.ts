@@ -1472,7 +1472,7 @@ export function buildT62Obr1975(P: RussiaBuilderPort): void {
     // sinks the run under the dome line while the muzzle still rakes
     // visibly forward over the crown.)
     // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's DShKM)
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'dshk', scale: 1.08, tone: 'two-tone', elev: 0.02, ammo: true, working: true });
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'dshk', scale: 1.08, tone: 'two-tone', elev: 0.02, ammo: true, working: true, ridingCradle: true });
     mg.position.set(-0.572, 0.92, -0.30);
     mg.rotation.y = -0.06;
     P.turretG.add(mg);

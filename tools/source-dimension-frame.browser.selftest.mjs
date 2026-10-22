@@ -9,8 +9,9 @@ let server,browser;
 await lock.acquire(45*60*1000);
 const refresh=setInterval(()=>lock.refresh(),30000);refresh.unref();
 try {
+  // enforce 'pre' (2026-10-19): the fixture answers before vite.config's cot-routes middleware rewrites an unknown text/html path to /404.html
   server=await createServer({root:process.cwd(),logLevel:'error',server:{port:0,hmr:false,watch:null},
-    plugins:[{name:'dimension-fixture',configureServer(server){server.middlewares.use((req,res,next)=>{
+    plugins:[{name:'dimension-fixture',enforce:'pre',configureServer(server){server.middlewares.use((req,res,next)=>{
       if(req.url!=='/__dimension_fixture')return next();
       res.setHeader('Content-Type','text/html');res.end('<!doctype html><html><body></body></html>');
     });}}]});

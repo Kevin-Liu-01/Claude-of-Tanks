@@ -2478,7 +2478,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (record?.crushable !== true) return false;
     const kind = record.kind;
     return !(kind === 'wallstone' || kind === 'walladobe' || kind === 'sandbagsmall' || kind === 'sandbagbig' || kind === 'sandbagwall'
-      || kind === 'small-rock' || kind === 'bunker'
+      || kind === 'small-rock' || kind === 'bunker' || kind === 'memorialcolumn' // (the maps lane 228: collision.ts isFortifiedCoverKind)
       // (physics DST-03: the log, stone and steel huts stop a round, collision.ts DENSE_HUT_SLAB_KINDS and the motor pool)
       || /^(fieldhut|saunahut|alpinerefuge|longhouse|quonsethut|guardpost|motorpool)$/.test(kind ?? '')
       || /^(setpiece_(stz3|bv206|snocat|an26|d8h|k2tram|haulpak)|rolling_(omm|g10|tank|v60|covered4|gondola4|tank4|tem1)|tram_(k2|shanghai))$/.test(kind ?? '')); // the Sarajevo tram's kind 'k2', not a tank id (tank-ids:keep)

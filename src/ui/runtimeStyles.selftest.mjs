@@ -100,7 +100,7 @@ assert.match(garageCss,
   /body\[data-cot-panels='overlay'\] \.cot-eqpick \.pgrid\{[^}]*min-height:0;[^}]*max-height:none;[^}]*flex:1 1 auto/,
   'Compact Garage equipment choices must scroll inside the bounded picker');
 assert.match(garageCss,
-  /\.cot-sidebar-section-title\{[^}]*font:700 10px[^}]*letter-spacing:\.24em[^}]*text-transform:uppercase;/,
+  /\.cot-sidebar-section-title\{[^}]*font:600 11px[^}]*letter-spacing:\.12em[^}]*text-transform:uppercase;/,
   'Garage sidebars must share one section-heading typography contract');
 for (const headerClass of [
   'ftitle cot-sidebar-section-title',

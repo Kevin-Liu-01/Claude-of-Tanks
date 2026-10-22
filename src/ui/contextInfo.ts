@@ -84,13 +84,13 @@ const CSS = `
 .cot-info-modal__media figure::after{content:"";position:absolute;inset:55% 0 0;pointer-events:none;
   background:linear-gradient(180deg,transparent,rgba(3,6,8,.9))}
 .cot-info-modal__media figcaption{position:absolute;z-index:1;left:14px;right:14px;bottom:12px;color:#dce5eb;
-  font-size:10px;font-weight:850;line-height:1.35;letter-spacing:.13em;text-transform:uppercase}
+  font-size:11px;font-weight:700;line-height:1.35;letter-spacing:.06em;text-transform:uppercase}
 .cot-info-modal__sections{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:9px}
 .cot-info-modal__section{display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px;padding:14px;border:1px solid rgba(154,174,189,.18);
   background:rgba(8,12,16,.5)}.cot-info-modal__section-icon{color:#e6a03a}.cot-info-modal__section h3{margin:0 0 5px;color:#e4ebf0;
   font-size:12px;line-height:1.25;letter-spacing:.1em;text-transform:uppercase}.cot-info-modal__section p{margin:0;color:#91a2ae;font-size:12px;line-height:1.55}
 .cot-info-modal__json{max-height:360px;margin:0;overflow:auto;padding:16px;border:1px solid rgba(154,174,189,.18);
-  background:rgba(1,4,6,.64);color:#cbd7df;font:500 12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;tab-size:2;white-space:pre}
+  background:rgba(1,4,6,.64);color:#cbd7df;font:500 12px/1.6 var(--font-mono);tab-size:2;white-space:pre}
 body[data-cot-width='phone'] .cot-info-modal{gap:15px}body[data-cot-width='phone'] .cot-info-modal__lead{font-size:14px}
 body[data-cot-width='phone'] .cot-info-modal__media{grid-template-columns:1fr!important}
 body[data-cot-width='phone'] .cot-info-modal__media figure{min-height:120px}

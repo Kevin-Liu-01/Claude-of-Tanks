@@ -1,6 +1,7 @@
 import { lathedWheelSection } from './lathedWheelStock.ts';
 import { VEHICLE_HULL_LENGTH_FACTORS } from '../vehicleSizePolicy.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
+import { auxiliaryWeaponProfile } from '../auxiliaryWeapons.ts';
 // Strictly typed family extraction from russia.ts (§5.75). Geometry bytes are unchanged.
 import * as THREE from 'three';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
@@ -764,6 +765,45 @@ function addT90FamilyHull(P: T90BuilderPort, {
   });
 }
 
+/**
+ * Release 230: where an automated station's moving parts reach, in the station's frame before it is placed: the gun's
+ * recoil group at rest (its pitch about the trunnion's x axis and its recoil along its bore keep every point's x), and
+ * `cradleRearZ`, the rearmost z the cradle (its shield) reaches over an x band at or below a height as it pitches about
+ * the trunnion through the weapon's range (its vertices, a degree apart).
+ */
+function automatedStationReach(weapon: THREE.Object3D, depression: number, elevation: number) {
+  weapon.updateMatrixWorld(true);
+  const pitch = weapon.getObjectByName('auxiliaryWeaponPitch')!, recoil = weapon.getObjectByName('auxiliaryWeaponRecoil')!;
+  const gun = new THREE.Box3().setFromObject(recoil), pivot = pitch.position, cradle: THREE.Vector3[] = [];
+  const toPitch = new THREE.Matrix4().copy(pitch.matrixWorld).invert(), toPitchFrame = new THREE.Matrix4();
+  pitch.traverse((node) => {
+    const mesh = node as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    for (let up: THREE.Object3D | null = mesh; up; up = up.parent) if (up === recoil) return;
+    toPitchFrame.multiplyMatrices(toPitch, mesh.matrixWorld);
+    const position = mesh.geometry.getAttribute('position');
+    for (let i = 0; i < position.count; i++) cradle.push(new THREE.Vector3().fromBufferAttribute(position, i).applyMatrix4(toPitchFrame));
+  });
+  const pitches: number[] = [];
+  for (let e = -depression; e < elevation; e += Math.PI / 180) pitches.push(e);
+  pitches.push(elevation);
+  return {
+    gunMinX: gun.min.x,
+    gunMaxX: gun.max.x,
+    cradleRearZ(x0: number, x1: number, yMax: number): number {
+      let rear = Infinity;
+      for (const e of pitches) {
+        const c = Math.cos(e), s = Math.sin(e);
+        for (const v of cradle) {
+          if (v.x < x0 || v.x > x1 || pivot.y + v.y * c + v.z * s > yMax) continue;
+          rear = Math.min(rear, pivot.z - v.y * s + v.z * c);
+        }
+      }
+      return rear;
+    },
+  };
+}
+
 // Tagil-derived integrated commander station. The panoramic optic, armored
 // slew race, ammunition box, elevation yoke and Kord occupy one connected
 // remote mount instead of being scattered between a sight tower and one or
@@ -780,7 +820,6 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
   weaponYaw = 0,
   weaponClass = 'kord',
   includeRace = true,
-  openWeaponBay = false,
   weaponName,
   receiptKey,
 }: {
@@ -794,8 +833,6 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
   weaponYaw?: number;
   weaponClass?: 'kord' | 'nsvt';
   includeRace?: boolean;
-  /** Seat the gun in an open yoke on a low pedestal instead of burying its receiver in the armored head. */
-  openWeaponBay?: boolean;
   weaponName: string;
   receiptKey: string;
 }): THREE.Group {
@@ -824,89 +861,10 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
 
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): every host's automated station works, not only the
   // T-90's and the Proryv's — the armoured head turns with its gun and the gun fires.
-  const finishStation = captureAuxiliaryStock(P,weaponName);
-  // The open bay's deck top, where its cheek plates stand (round 5).
-  let deckTopY: number | null = null;
-  if (openWeaponBay) {
-    // 2026-10-07 (tank-accessories round 3): the critics read the T-90M station as "a stack of plain boxes around a
-    // bare tube": the Kord's receiver, feed and can sat inside the 0.34 m head box and only the barrel showed. The head
-    // becomes a low pedestal and deck under the gun's own cradle, so the receiver, feed cover, can and belt stand in
-    // the open yoke between the armored cheek plates, beside the sight and the ammunition housing.
-    const pedestalTopY = weaponFootY + 0.012;
-    P.addEquipment('turret', box(fit(0.36), pedestalTopY - (foundationTopY - fitY(0.02)), fit(0.34)),
-      x, (pedestalTopY + foundationTopY - fitY(0.02)) * 0.5, z + fit(0.04), 0, yaw, 0);
-    // 2026-10-08 (tank-accessories round 5, the contact receipt: the cheek plates hung beside the deck, their
-    // corners touching nothing within 15 mm): the deck spans the cheeks, and the cheeks stand on it.
-    P.add('turretDark', box(fit(0.58), 0.018, fit(0.38)), x, pedestalTopY + 0.004, z + fit(0.04), 0, yaw, 0);
-    deckTopY = pedestalTopY + 0.013;
-  } else {
-    P.addEquipment('turret', box(fit(0.40), fitY(0.34), fit(0.36)),
-      x, headCenterY, z + fit(0.04), 0, yaw, 0);
-    P.add('turretDark', box(fit(0.44), fitY(0.045), fit(0.40)),
-      x, headCenterY + fitY(0.19), z + fit(0.04), 0, yaw, 0);
-  }
-  for (const side of [-1, 1]) {
-    // On the open bay the plate's lowest (inboard) corner sits 3 mm into the deck: half its rotated height below
-    // its centre is h/2 cos(a) + w/2 sin(a).
-    const lean = side * fit(0.08), plateH = fitY(0.27);
-    const cheekY = deckTopY === null ? headCenterY + fitY(0.06)
-      : deckTopY - 0.003 + plateH / 2 * Math.cos(lean) + fit(0.035) * Math.abs(Math.sin(lean));
-    P.addEquipment('turret', box(fit(0.070), plateH, fit(0.28)),
-      x + side * fit(0.23), cheekY, z + fit(0.10),
-      0, yaw, lean);
-    // round 5: the plate's bolt heads, two rows of two on its outer face
-    for (const by of [-0.3, 0.3]) for (const bz of [-0.09, 0.09]) {
-      const ly = by * plateH;
-      P.add('turretDark', KIT.cylX(fit(0.011), fit(0.012), 6),
-        x + side * (fit(0.23) + fit(0.035) * Math.cos(lean) - ly * Math.sin(Math.abs(lean)) + fit(0.004)),
-        cheekY + ly * Math.cos(lean), z + fit(0.10) + bz * scale, 0, yaw, 0);
-    }
-  }
-  P.addEquipment('turret', box(fit(0.19), fitY(0.21), fit(0.22)),
-    x + fit(0.27), headCenterY - fitY(0.02), z + fit(0.21), 0, yaw, 0);
-  P.add('turretGlass', box(fit(0.13), fitY(0.13), fit(0.014)),
-    x + fit(0.27), headCenterY, z + fit(0.328), 0, yaw, 0);
-  // 2026-10-08 (tank-accessories round 5; wave 254 on the T-90M: "a stack of blunt slabs (flat side boxes, a
-  // camo-painted sensor block and a bare tube barrel) with no cabling, optics glass, ammunition feed chute or
-  // fasteners"): the sight's window sits in a dark bezel under a sun hood with the rangefinder's port beside it, the
-  // sight and the work light carry their cables down to the station's base, the ammunition housing shows its lid seam
-  // and latches, and the armoured plates carry their bolt heads.
-  P.add('turretDark', box(fit(0.155), fitY(0.155), fit(0.012)), x + fit(0.27), headCenterY, z + fit(0.322), 0, yaw, 0);
-  P.add('turretDark', box(fit(0.21), fitY(0.016), fit(0.07)), x + fit(0.27), headCenterY + fitY(0.088), z + fit(0.345),
-    -0.18, yaw, 0);
-  P.add('turretDark', KIT.cylZ(fit(0.022), fit(0.02), 10), x + fit(0.27) + fit(0.062), headCenterY - fitY(0.07), z + fit(0.326),
-    0, yaw, 0);
-  P.add('turretGlass', KIT.cylZ(fit(0.014), fit(0.008), 10), x + fit(0.27) + fit(0.062), headCenterY - fitY(0.07), z + fit(0.336),
-    0, yaw, 0);
-  P.add('turretDark', sweptTube([[x + fit(0.27) + fit(0.07), headCenterY - fitY(0.08), z + fit(0.11)],
-    [x + fit(0.27) + fit(0.105), headCenterY - fitY(0.10), z + fit(0.05)],
-    [x + fit(0.27) + fit(0.105), foundationTopY + fitY(0.02), z + fit(0.0)],
-    [x + fit(0.24), foundationTopY - fitY(0.01), z - fit(0.02)]], fit(0.011), 6, 10));
-  P.addEquipment('turret', box(fit(0.22), fitY(0.18), fit(0.28)),
-    x - fit(0.27), headCenterY - fitY(0.04), z - fit(0.01), 0, yaw, 0);
-  P.add('turretDark', box(fit(0.226), fitY(0.012), fit(0.286)), x - fit(0.27), headCenterY + fitY(0.035), z - fit(0.01), 0, yaw, 0);
-  for (const dz of [-0.09, 0.09]) {
-    P.add('turretDark', box(fit(0.03), fitY(0.05), fit(0.012)), x - fit(0.27), headCenterY + fitY(0.02),
-      z - fit(0.01) + fit(0.14) + fit(0.004), 0, yaw, 0);
-    P.add('turretDark', box(fit(0.012), fitY(0.05), fit(0.03)), x - fit(0.27) - fit(0.114), headCenterY + fitY(0.02),
-      z - fit(0.01) + dz * scale, 0, yaw, 0);
-  }
-  // A protected coaxial work light gives every family station a readable
-  // purpose at gallery distance without turning its weapon or optic into a
-  // camouflage-painted lump. The housing and lens remain external equipment.
-  P.add('turretDark', KIT.cylZ(fit(0.070), fit(0.075), 14),
-    x - fit(0.25), headCenterY + fitY(0.08), z + fit(0.25), 0, yaw, 0);
-  P.add('turretGlass', KIT.cylZ(fit(0.054), fit(0.012), 14),
-    x - fit(0.25), headCenterY + fitY(0.08), z + fit(0.294), 0, yaw, 0);
-  P.add('turretDark', sweptTube([[x - fit(0.25), headCenterY + fitY(0.06), z + fit(0.215)],
-    [x - fit(0.25), headCenterY + fitY(0.04), z + fit(0.15)], [x - fit(0.26), headCenterY + fitY(0.05), z + fit(0.11)]],
-    fit(0.009), 6, 8));
-
-  finishStation();
   const weapon = FITTINGS.pintleMG({
     mats: P.mats,
     cls: weaponClass,
-    remoteControlled: true,
+    remoteControlled: true, ridingCradle: true,
     // The weapon and yoke stay dark against the painted armored head so the
     // single automated package remains legible in the normal three-quarter
     // gallery view. A camouflage-painted receiver made the consolidated
@@ -918,8 +876,100 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
     scale: weaponScale,
     barrelBridge: true,
   });
+  // Release 230 (the owner's field-equipment standard: nothing that moves passes through what does not): the station's
+  // stock stands clear of everything its gun sweeps through its pitch range and recoil (workingPintleCradleAudit
+  // measures the whole station). Every host seats the gun in the open bay (the closed head buried the receiver, which
+  // swept through it at every pitch); the cheek plates and the housings beside the gun stand outboard of the gun's sides
+  // (the can's side by the can), and the sight and the work light stand back of the shield's sweep at their height.
+  const profile = auxiliaryWeaponProfile(12.7, P.spec.id);
+  const reach = automatedStationReach(weapon, profile.depressionRad, profile.elevationRad);
+  const clear = 0.008; // the audit's 1.5 mm, its sampling and room
+  const lean = fit(0.08), plateH = fitY(0.27);
+  const cheekIn = fit(0.23) - fit(0.035) * Math.cos(lean) - plateH / 2 * Math.sin(lean); // its top edge, leaning in
+  const outL = Math.max(0, -reach.gunMinX + clear - Math.min(cheekIn, fit(0.157)));
+  const outR = Math.max(0, reach.gunMaxX + clear - Math.min(cheekIn, fit(0.165)));
+  // the sight (its hood's front edge and top) and the work light (its lens and top), from the gun's foot
+  const footZ = z + fit(0.10);
+  const sightBack = Math.max(0, z + fit(0.381) - footZ + clear
+    - reach.cradleRearZ(fit(0.165) + outR - clear, Infinity, headCenterY + fitY(0.096) + fit(0.007) - weaponFootY + clear));
+  const lightBack = Math.max(0, z + fit(0.30) - footZ + clear
+    - reach.cradleRearZ(-Infinity, -(fit(0.18) + outL) + clear, headCenterY + fitY(0.08) + fit(0.07) - weaponFootY + clear));
+  const sx = x + fit(0.27) + outR, sz = (value: number): number => z + fit(value) - sightBack;
+  const ax = x - fit(0.27) - outL, lx = x - fit(0.25) - outL, lz = (value: number): number => z + fit(value) - lightBack;
+  const finishStation = captureAuxiliaryStock(P,weaponName);
+  // 2026-10-07 (tank-accessories round 3): the critics read the T-90M station as "a stack of plain boxes around a
+  // bare tube": the Kord's receiver, feed and can sat inside the 0.34 m head box and only the barrel showed. The head
+  // becomes a low pedestal and deck under the gun's own cradle, so the receiver, feed cover, can and belt stand in
+  // the open yoke between the armored cheek plates, beside the sight and the ammunition housing.
+  const pedestalTopY = weaponFootY + 0.012;
+  P.addEquipment('turret', box(fit(0.36), pedestalTopY - (foundationTopY - fitY(0.02)), fit(0.34)),
+    x, (pedestalTopY + foundationTopY - fitY(0.02)) * 0.5, z + fit(0.04), 0, yaw, 0);
+  // 2026-10-08 (tank-accessories round 5, the contact receipt: the cheek plates hung beside the deck, their
+  // corners touching nothing within 15 mm): the deck spans the cheeks, and the cheeks stand on it (release 230: out to
+  // each plate where it stands outboard).
+  const deckL = Math.max(fit(0.29), fit(0.275) + outL), deckR = Math.max(fit(0.29), fit(0.275) + outR);
+  P.add('turretDark', box(deckL + deckR, 0.018, fit(0.38)), x + (deckR - deckL) / 2, pedestalTopY + 0.004, z + fit(0.04), 0, yaw, 0);
+  // The open bay's deck top, where its cheek plates stand (round 5).
+  const deckTopY = pedestalTopY + 0.013;
+  for (const side of [-1, 1]) {
+    // The plate's lowest (inboard) corner sits 3 mm into the deck: half its rotated height below its centre is
+    // h/2 cos(a) + w/2 sin(a).
+    const cheekX = x + side * (fit(0.23) + (side < 0 ? outL : outR)), sideLean = side * lean;
+    const cheekY = deckTopY - 0.003 + plateH / 2 * Math.cos(lean) + fit(0.035) * Math.sin(lean);
+    P.addEquipment('turret', box(fit(0.070), plateH, fit(0.28)),
+      cheekX, cheekY, z + fit(0.10),
+      0, yaw, sideLean);
+    // round 5: the plate's bolt heads, two rows of two on its outer face
+    for (const by of [-0.3, 0.3]) for (const bz of [-0.09, 0.09]) {
+      const ly = by * plateH;
+      P.add('turretDark', KIT.cylX(fit(0.011), fit(0.012), 6),
+        cheekX + side * (fit(0.035) * Math.cos(lean) - ly * Math.sin(lean) + fit(0.004)),
+        cheekY + ly * Math.cos(lean), z + fit(0.10) + bz * scale, 0, yaw, 0);
+    }
+  }
+  P.addEquipment('turret', box(fit(0.19), fitY(0.21), fit(0.22)),
+    sx, headCenterY - fitY(0.02), sz(0.21), 0, yaw, 0);
+  P.add('turretGlass', box(fit(0.13), fitY(0.13), fit(0.014)),
+    sx, headCenterY, sz(0.328), 0, yaw, 0);
+  // 2026-10-08 (tank-accessories round 5; wave 254 on the T-90M: "a stack of blunt slabs (flat side boxes, a
+  // camo-painted sensor block and a bare tube barrel) with no cabling, optics glass, ammunition feed chute or
+  // fasteners"): the sight's window sits in a dark bezel under a sun hood with the rangefinder's port beside it, the
+  // sight and the work light carry their cables down to the station's base, the ammunition housing shows its lid seam
+  // and latches, and the armoured plates carry their bolt heads.
+  P.add('turretDark', box(fit(0.155), fitY(0.155), fit(0.012)), sx, headCenterY, sz(0.322), 0, yaw, 0);
+  P.add('turretDark', box(fit(0.21), fitY(0.016), fit(0.07)), sx, headCenterY + fitY(0.088), sz(0.345),
+    -0.18, yaw, 0);
+  P.add('turretDark', KIT.cylZ(fit(0.022), fit(0.02), 10), sx + fit(0.062), headCenterY - fitY(0.07), sz(0.326),
+    0, yaw, 0);
+  P.add('turretGlass', KIT.cylZ(fit(0.014), fit(0.008), 10), sx + fit(0.062), headCenterY - fitY(0.07), sz(0.336),
+    0, yaw, 0);
+  P.add('turretDark', sweptTube([[sx + fit(0.07), headCenterY - fitY(0.08), sz(0.11)],
+    [sx + fit(0.105), headCenterY - fitY(0.10), sz(0.05)],
+    [sx + fit(0.105), foundationTopY + fitY(0.02), z + fit(0.0)],
+    [x + fit(0.24) + outR, foundationTopY - fitY(0.01), z - fit(0.02)]], fit(0.011), 6, 10));
+  P.addEquipment('turret', box(fit(0.22), fitY(0.18), fit(0.28)),
+    ax, headCenterY - fitY(0.04), z - fit(0.01), 0, yaw, 0);
+  P.add('turretDark', box(fit(0.226), fitY(0.012), fit(0.286)), ax, headCenterY + fitY(0.035), z - fit(0.01), 0, yaw, 0);
+  for (const dz of [-0.09, 0.09]) {
+    P.add('turretDark', box(fit(0.03), fitY(0.05), fit(0.012)), ax, headCenterY + fitY(0.02),
+      z - fit(0.01) + fit(0.14) + fit(0.004), 0, yaw, 0);
+    P.add('turretDark', box(fit(0.012), fitY(0.05), fit(0.03)), ax - fit(0.114), headCenterY + fitY(0.02),
+      z - fit(0.01) + dz * scale, 0, yaw, 0);
+  }
+  // A protected coaxial work light gives every family station a readable
+  // purpose at gallery distance without turning its weapon or optic into a
+  // camouflage-painted lump. The housing and lens remain external equipment.
+  P.add('turretDark', KIT.cylZ(fit(0.070), fit(0.075), 14),
+    lx, headCenterY + fitY(0.08), lz(0.25), 0, yaw, 0);
+  P.add('turretGlass', KIT.cylZ(fit(0.054), fit(0.012), 14),
+    lx, headCenterY + fitY(0.08), lz(0.294), 0, yaw, 0);
+  P.add('turretDark', sweptTube([[lx, headCenterY + fitY(0.06), lz(0.215)],
+    [lx, headCenterY + fitY(0.04), lz(0.15)], [lx - fit(0.01), headCenterY + fitY(0.05), lz(0.11)]],
+    fit(0.009), 6, 8));
+
+  finishStation();
   weapon.name = weaponName;
-  weapon.position.set(x, weaponFootY, z + fit(0.10));
+  weapon.position.set(x, weaponFootY, footZ);
   // Keep the armored station's deliberate roof angle, but align the Kord
   // itself with the vehicle centreline. The fitting's barrel axis is +Z.
   weapon.rotation.y = weaponYaw;
@@ -940,7 +990,7 @@ function addT90AutomatedCommanderStation(P: T90BuilderPort, {
     includeRace,
     foundationTopY,
     weaponFootY,
-    openWeaponBay,
+    openWeaponBay: true,
     heightScale,
     structuralFoundation: true,
     separateManualWeaponStations: 0,
@@ -3467,15 +3517,9 @@ function addT90MProryvGunAndFinish(
   // r1: fin 0.25 -> 0.186 band at c +0.005 — the ref evac crest band is
   // 1.522..1.708 exactly (my 1.485..1.735 read 0.031x3 cols)
   P.add('gun', box(0.02, 0.186, 0.24), 0, 0.005, 2.04);  // evac crest fin (band under the 12% body-column threshold)
-  // r27: the spec's legacy gunBarrel.lengthM 6.0 predates this profile —
-  // the GUN SHADOW PROXY (cylZ from the pivot, §C: proxies ARE in gate
-  // masks, raycast-disabled so whatsat can't see it = the r26 "no
-  // authored mesh" mystery) ran to world 7.28, 1.08 past the authored
-  // muzzle (world 6.20 = ref-exact). Align the spec datum to the build;
-  // consumers audited: proxy + muzzleZ default (overridden by tubeGun)
-  // + UI framing (shotInfo/tankThumbs — now tighter/truer). FLAGGED in
-  // the round report for orchestrator ratification.
-  P.spec.armor.gunBarrel.lengthM = 4.92;
+  // r27 set P.spec.armor.gunBarrel.lengthM = 4.92 here, at visual build time: the browser's spec then differed from
+  // every authority's, which never builds a tank. 230: the combat barrel comes from src/vehicles/combatGunRigs.generated.ts
+  // (finalizeCombatAnatomy), measured from this tube's mouth, so the client and the authorities read one length.
   // r8 ORDER 2 note (DETAIL-SLOT LOUD-CARRIER law): the drum set is fixed
   // by RE-BUCKET (see the rack block above), not a mats.detail retint —
   // 'detail' is registered on the shared paintable set and a builder-time
@@ -4860,7 +4904,6 @@ function finishT90BaseAuthored(P: T90BuilderPort): void {
     heightScale: 1.10,
     weaponScale: 1.0,
     weaponYaw: 0,
-    openWeaponBay: true,
     weaponName: 't90Ru417AutomatedKord',
     receiptKey: 't90Ru417AutomatedStationReceipt',
   });
@@ -6734,28 +6777,31 @@ function rebuildT90MSTurretExact(P: T90BuilderPort): void {
     [-0.25, 0.70, -0.29], [0.25, 0.70, -0.29], [0.25, 0.70, 0.29], [-0.25, 0.70, 0.29],
     [-0.16, 0.98, -0.165], [0.16, 0.98, -0.165], [0.16, 0.98, 0.165], [-0.16, 0.98, 0.165],
   ), P.mats.hull, 0, 0, 0);
+  // Release 230 (the owner's field-equipment standard: nothing that moves passes through what does not): the Kord
+  // stood in the armored head's upper half, under a cradle bar and brow at its trunnion's height, so its receiver, can
+  // and barrel passed through the head, the bar and the brow at every pitch (and its right side through the optic
+  // housing above y 1.32). The head is the armored plinth under the gun, crowned 8 mm under the lowest the gun sweeps
+  // (its receiver's rear at full elevation, y 1.176); the gun stands on it in the open, carried by its own cradle and
+  // trunnion arm (no bar or brow across its path), between the ammunition coffin and the optic, which stands 36 mm
+  // outboard of the gun's right side; the feed chute stops short of the gun's sweep.
   towerPart('t90msTagilTowerAlignedArmoredHead', weldedStationLoft([
-    [-0.165, 0.98, 1.54, -0.23, 0.23, -0.16, 0.16, -0.07, 0.09],
-    [0.165, 0.98, 1.54, -0.21, 0.21, -0.15, 0.15, -0.06, 0.08],
+    [-0.165, 0.98, 1.168, -0.23, 0.23, -0.16, 0.16, -0.22, 0.22],
+    [0.165, 0.98, 1.168, -0.21, 0.21, -0.15, 0.15, -0.20, 0.20],
   ]), P.mats.hull, 0, 0, 0);
-  towerPart('t90msTagilTowerCradle', box(0.30, 0.045, 0.15), P.mats.dark,
-    0.02, 1.50, 0.035);
-  towerPart('t90msTagilTowerBrow', box(0.34, 0.025, 0.29), P.mats.detail,
-    0.01, 1.555, 0.015);
 
   // Independent day/thermal optic, protected work light and unequal
   // ammunition coffin. Recessed lenses stay glass; receiver/feed hardware
   // stays neutral gunmetal instead of inheriting camouflage.
   towerPart('t90msTagilTowerOpticHousing', box(0.19, 0.27, 0.22), P.mats.hull,
-    0.245, 1.285, 0.055);
+    0.281, 1.285, 0.055);
   towerPart('t90msTagilTowerThermalWindow', box(0.115, 0.105, 0.012), P.mats.glass,
-    0.245, 1.315, 0.171);
+    0.281, 1.315, 0.171);
   towerPart('t90msTagilTowerDayWindow', KIT.cylZ(0.034, 0.014, 12), P.mats.glass,
-    0.20, 1.225, 0.174);
+    0.236, 1.225, 0.174);
   towerPart('t90msTagilTowerLightHousing', KIT.cylZ(0.072, 0.10, 14), P.mats.dark,
-    -0.245, 1.25, 0.10);
+    -0.245, 1.235, 0.10);
   towerPart('t90msTagilTowerWorkLight', KIT.cylZ(0.057, 0.012, 14), P.mats.glass,
-    -0.245, 1.25, 0.156);
+    -0.245, 1.235, 0.156);
   towerPart('t90msTagilTowerAmmoBox', box(0.23, 0.21, 0.29), P.mats.dark,
     -0.255, 1.105, -0.035);
   towerPart('t90msTagilTowerAmmoLid', box(0.245, 0.022, 0.305), P.mats.detail,
@@ -6766,9 +6812,11 @@ function rebuildT90MSTurretExact(P: T90BuilderPort): void {
   // frame on a green box, with loose orange-tan tabs and no readable receiver, feed or ammunition box"): the seven feed
   // links are one articulated chute, each hinged link overlapping the next, rising from the coffin's lid over the cradle
   // into the Kord's feedway; and the remote Kord carries no crew shield (nobody stands behind it), so its receiver and
-  // feed cover show. The links keep their names and count for the Gallery.
+  // feed cover show. The links keep their names and count for the Gallery. Release 230: the chute turns towards the
+  // gun from the coffin's lid and ends 3 cm outboard of the gun's sweep (a rigid chute on the traverse cannot follow
+  // the gun's pitch into its feedway).
   {
-    const p0 = [-0.245, 1.236, 0.06], p3 = [-0.06, 1.262, 0.19], apex = 1.30;
+    const p0 = [-0.245, 1.236, 0.06], p3 = [-0.165, 1.262, 0.15], apex = 1.30;
     const at = (t: number): number[] => {
       const u = 1 - t, p1 = [p0[0], apex, p0[2]], p2 = [p3[0] - 0.05, apex, p3[2]];
       return [0, 1, 2].map((k) => u * u * u * p0[k] + 3 * u * u * t * p1[k] + 3 * u * t * t * p2[k] + t * t * t * p3[k]);
@@ -6784,10 +6832,10 @@ function rebuildT90MSTurretExact(P: T90BuilderPort): void {
     }
   }
   {
-    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'kord', remoteControlled: true, tone: 'dark', elev: -0.10, ammo: true, shield: false, scale: 1.16 });
-    // The Kord is carried by the top yoke, not buried beside the bustle.  Its
-    // foot enters the faceted station above and the receiver/barrel now own
-    // the reference-height horizontal combat silhouette.
+    const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'kord', remoteControlled: true, ridingCradle: true, tone: 'dark', elev: -0.10, ammo: true, shield: false, scale: 1.16 });
+    // The Kord stands on the armored plinth, not buried beside the bustle. Its
+    // foot enters the plinth and the receiver/barrel own the reference-height
+    // horizontal combat silhouette.
     mg.position.set(0.09, 1.12, 0.075);
     mg.rotation.y = 0;
     mg.name = 't90msTagilRemoteKord';
@@ -7310,7 +7358,6 @@ function addT90MProryvBustleAndRoof(P: T90BuilderPort): void {
     // true scale (round 3): the 1.12 Kord read as "an oversized, uncooled tube indistinguishable from a cannon"
     weaponScale: 1.0,
     weaponYaw: 0,
-    openWeaponBay: true,
     weaponName: 't90mProryvRemoteKord',
     receiptKey: 't90mProryvAutomatedStationReceipt',
   });

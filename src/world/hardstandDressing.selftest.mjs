@@ -8,8 +8,11 @@ import { readFileSync } from 'node:fs';
 import { createHeightField } from './terrain.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { HARDSTAND_LIP_M, buildHardstandDressing, hardstandIsPaved } from './hardstandDressing.ts';
+import { civicUndressedPads } from './civic/plans/index.ts';
 
-const PAVED = ['airfield', 'urban', 'ruinspires', 'railyard', 'cliffbridge']; // (Ronda's pads inside its paved town rect)
+// (229 b1, the civic kit: Ruinspires' three squares and Aegis Crossing's two plazas are civic areas now, their pads
+// undressed: civicUndressedPads)
+const PAVED = ['airfield', 'urban', 'railyard'];
 const inside = (s, x, z, inset) => {
   const yaw = (s.yawDeg ?? 0) * Math.PI / 180, dx = x - s.x, dz = z - s.z;
   return Math.abs(dx * Math.cos(yaw) - dz * Math.sin(yaw)) < s.width / 2 - inset && Math.abs(dx * Math.sin(yaw) + dz * Math.cos(yaw)) < s.length / 2 - inset;
@@ -18,8 +21,10 @@ const dressed = [];
 for (const mapId of MAP_IDS) {
   const cfg = getMapConfig(mapId), strips = cfg.terrain?.hardstands ?? [];
   const field = createHeightField(1337, cfg), L = field._layout;
-  const g = buildHardstandDressing(strips, cfg.splat, field, L.roads, L.village, 1337);
-  const paved = strips.filter((s) => hardstandIsPaved(cfg.splat, s.x, s.z, L.village));
+  // (the maps lane, 228) a pad a civic area dresses as its town square (civic/plans) takes none of the yard's dressing
+  const undressed = civicUndressedPads(mapId);
+  const g = buildHardstandDressing(strips, cfg.splat, field, L.roads, L.village, 1337, undressed);
+  const paved = strips.filter((s, i) => hardstandIsPaved(cfg.splat, s.x, s.z, L.village) && !undressed.has(i));
   assert.equal(!!g, paved.length > 0, `${mapId}: dressed exactly where the terrain paves a pad`);
   if (!g) continue;
   dressed.push(mapId);
@@ -31,6 +36,7 @@ for (const mapId of MAP_IDS) {
     const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
     assert.ok([x, y, z, c.getX(i), c.getY(i), c.getZ(i)].every(Number.isFinite));
     const h = y - field.getHeightAt(x, z);
+    assert.ok(![...undressed].some((i) => inside(strips[i], x, z, -0.3)), `${mapId}: nothing on the civic square's pad`);
     if (strips.some((s) => inside(s, x, z, -0.2))) {
       // on a pad or its edge band: the ruling — never a step in the drive surface
       onPad++; worst = Math.max(worst, h);
@@ -60,7 +66,7 @@ for (const mapId of MAP_IDS) {
     }
     assert.ok(keys > 2 * 16 * 6, `the thresholds' piano keys at both ends (${keys})`);
   } else assert.equal(lights, 0, `${mapId}: nothing stands off a yard`);
-  const again = buildHardstandDressing(strips, cfg.splat, field, L.roads, L.village, 1337);
+  const again = buildHardstandDressing(strips, cfg.splat, field, L.roads, L.village, 1337, undressed);
   assert.deepEqual(again.attributes.position.array, p.array, 'deterministic');
   g.dispose(); again.dispose();
   console.log(`${mapId}: ${tris} triangles, ${paved.length} paved pads, highest over a pad ${worst.toFixed(3)} m`);

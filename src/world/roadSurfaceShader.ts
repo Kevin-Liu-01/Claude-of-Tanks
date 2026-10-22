@@ -269,7 +269,10 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
           float jointS = 0.0;
           if (sv > 0.004) {
             vec2 sq = rq;
-            if (mod(uPaveClass.z, 2.0) > 0.5) { float cc = (fract(sq.y / 2.6) - 0.5) * 2.6; sq.x += 1.7 - sqrt(2.89 - cc * cc); }
+            // (the maps lane, 228 r2) a civic square's own arcs off the centrelines (uPaveSquare.zw: chord, radius), gentler
+            // than the street's 2.6 m on 1.7 m (the critics: "a stamped, moire-like repeat at eye level"); absent: the street's
+            float arcC = !fr && uPaveSquare.z > 0.0 ? uPaveSquare.z : 2.6, arcR = !fr && uPaveSquare.z > 0.0 ? uPaveSquare.w : 1.7;
+            if (mod(uPaveClass.z, 2.0) > 0.5) { float cc = (fract(sq.y / arcC) - 0.5) * arcC; sq.x += arcR - sqrt(arcR * arcR - cc * cc); }
             float course = sq.x / 0.17, ci = floor(course);
             vec2 cr = cellHash2(vec2(ci, 17.0));
             float swd = 0.17 + 0.09 * cr.y;
@@ -288,6 +291,8 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
               * mix(vec3(1.0), sh.y > 0.5 ? vec3(1.04, 1.0, 0.95) : vec3(0.96, 0.99, 1.04), 0.6 * fract(sh.x * 3.7));
             stone *= 1.0 - 0.12 * wheelW; // (wave 333: worn wheel tracks darker, grimed with rubber and oil)
             vec3 jointC = mix(mix(stone * 0.30, uMeanD.rgb * 0.40, 0.35), uMeanG.rgb * 0.50, mossy * 0.5);
+            // (228 r2) a civic square's joints sanded paler (uPaveSquare.y), so its field reads as stone, not a black grid
+            if (!fr) jointC = mix(jointC, stone * 0.66, uPaveSquare.y);
             float lost = step(0.992, sh.y) * svs;
             vec3 settMean = mix(vec3(0.150, 0.146, 0.139), jointC, 0.26) * (1.0 - 0.10 * wheelW);
             col = mix(mix(settMean, stone, sv), jointC, jointS);
@@ -303,7 +308,7 @@ export const ROAD_PAVING_GLSL = /* glsl */`      // roads lane R1c (2026-10-09; 
           }
           col *= 0.94 + 0.12 * nzq(uv, 0.35, vec2(0.23, 0.41)).x;
           if (fr) col *= 1.0 - 0.14 * (1.0 - smoothstep(0.0, 0.45, abs(abs(rq.y) - 1.6))) * smoothstep(0.50, 0.78, nz(uv, 0.21, vec2(0.13, 0.71)).g);
-          col *= uPaveExtra.x;
+          col *= uPaveExtra.x * (fr ? 1.0 : uPaveSquare.x);
           pav = vec4(col, mix(0.86, 0.68, wheelW * (1.0 - jointS)));
         } else if ((pCls > 4.5 && pCls < 5.5) || pCls > 6.5) {
           // BRICK — clinker (5: the Dutch dyke road's klinkers in herringbone across the road, sand-jointed, red-brown to

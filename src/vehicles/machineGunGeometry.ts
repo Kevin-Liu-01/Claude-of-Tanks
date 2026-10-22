@@ -169,6 +169,9 @@ export interface PintleLayout {
   readonly barrelLength: number;
   /** The recessed bore's depth at the muzzle (0: the end marker; PintleOptions.muzzleBoreDepth). */
   readonly muzzleBoreDepth: number;
+  /** Release 227 round 4 (critic CN-4): the can's tray, strap and arm in the can's own paint rather than the gun's steel
+   * (a riding-cradle emplacement's: its tray plate, the largest face under the gun, read as crumpled silver sheet). */
+  readonly canTrayPainted?: boolean;
 }
 
 /** Machine-gun barrel components are authored on the fitting's local +Z axis and only translated (straight barrels). */
@@ -249,45 +252,74 @@ export function createPintleLayout(opts: PintleOptions, parts: MachineGunParts):
 }
 
 /** A flat-faced machined ring (rectangular section, chamfered top edges) about +Y: a revolved closed section. */
-export function machinedRing(rIn: number, rOut: number, h: number, chamfer: number, segments: number): THREE.BufferGeometry {
+export function machinedRing(rIn: number, rOut: number, h: number, chamfer: number, segments: number, gap = 0): THREE.BufferGeometry {
   const c = Math.min(chamfer, (rOut - rIn) * 0.4, h * 0.45);
   const section = [[rIn, 0], [rOut, 0], [rOut, h - c], [rOut - c, h], [rIn + c, h], [rIn, h - c], [rIn, 0]]
     .map(([r, y]) => new THREE.Vector2(r, y));
-  const lathe = new THREE.LatheGeometry(section, segments);
-  const flat = lathe.toNonIndexed();
+  // release 229: `gap` opens the ring `gap` radians either side of -Z (a split race ring), its two ends capped
+  const lathe = gap > 0 ? new THREE.LatheGeometry(section, segments, Math.PI + gap, Math.PI * 2 - 2 * gap) : new THREE.LatheGeometry(section, segments);
+  let flat = lathe.toNonIndexed();
   lathe.dispose();
+  if (gap > 0) {
+    const caps: number[] = [];
+    for (const [phi, sense] of [[Math.PI + gap, 1], [Math.PI - gap, -1]] as const) {
+      const at = (i: number): number[] => [section[i]!.x * Math.sin(phi), section[i]!.y, section[i]!.x * Math.cos(phi)];
+      // a fan over the closed section, wound to face away from the ring (towards the gap)
+      for (let i = 1; i < 5; i++) caps.push(...(sense > 0 ? [...at(0), ...at(i), ...at(i + 1)] : [...at(0), ...at(i + 1), ...at(i)]));
+    }
+    const ring = flat.getAttribute('position').array, uv = flat.getAttribute('uv').array;
+    const merged = new THREE.BufferGeometry();
+    merged.setAttribute('position', new THREE.Float32BufferAttribute([...ring, ...caps], 3));
+    merged.setAttribute('uv', new THREE.Float32BufferAttribute([...uv, ...new Array(caps.length / 3 * 2).fill(0)], 2));
+    flat.dispose();
+    flat = merged;
+  }
   flat.computeVertexNormals();
   const creased = toCreasedNormals(flat, (40 * Math.PI) / 180);
   if (creased !== flat) flat.dispose();
   return creased;
 }
 
-export function addPintleMount(context: PintleLayout): void {
-  if (context.mount === 'external-cradle') return;
-  const { bodyBottom, bodyW, colTop, parts, s, supportSlot, trunY, weaponSlot } = context;
+/** The pintle's flanged bearing and its bolt heads on the roof (the foot of every pintle mount). */
+function addPintleFlange(context: PintleLayout): void {
+  const { parts, s, supportSlot, weaponSlot } = context;
   const near = context.detail === 1;
-  // Flanged bearing, spindle and yoke bridge form one visible load path. The old single post made every gun look like
-  // a block on a rod.
   // 2026-10-07 (round 4, Type 99A critics: "the dark rings round the MG pedestal read as loose rubber hoses, not
   // machined ring mounts"): the bearing is a turned flange with a chamfered collar and its bolt heads, not a round
   // torus.
-  const colH = colTop - 0.014;
   parts.add(supportSlot, latheY([[0.0005, 0], [0.040 * s, 0], [0.040 * s, 0.006], [0.034 * s, 0.010], [0.029 * s, 0.010],
     [0.029 * s, 0.017], [0.025 * s, 0.021], [0.0005, 0.021]], near ? 14 : 10), 0, 0, 0);
   if (near) for (let k = 0; k < 4; k++) {
     const a = Math.PI / 4 + k * Math.PI / 2;
     parts.add(weaponSlot, cylY(0.0045 * s, 0.0045 * s, 0.006, 6), Math.cos(a) * 0.035 * s, 0.009, Math.sin(a) * 0.035 * s);
   }
-  parts.add(weaponSlot, cylY(0.018 * s, 0.023 * s, colH, near ? 12 : 8), 0, 0.014 + colH / 2, 0);
+}
+
+/** A risen pintle's sleeve, clamp collar and lock bolt over its column (risers over 30 mm). */
+function addPintleRiserSleeve(context: PintleLayout): void {
+  const { s, weaponSlot } = context;
+  const near = context.detail === 1;
   if (context.riser > 0.03) {
     // 2026-10-08 (round 5; wave 254 on the Challenger 1: "it sits on a bare thin pole, so it reads as a prop on a stick
     // rather than a gun in a mount"): a risen pintle stands in its post: a 64 mm sleeve over the riser with a clamp
     // collar and its lock bolt at the top, so the spindle above it reads as the pintle in its socket.
     const sleeveH = context.riser + 0.02;
-    parts.add(context.supportSlot, cylY(0.03 * s, 0.034 * s, sleeveH, near ? 12 : 8), 0, 0.014 + sleeveH / 2, 0);
-    parts.add(context.supportSlot, cylY(0.038 * s, 0.038 * s, 0.022 * s, near ? 12 : 8), 0, 0.014 + sleeveH - 0.011 * s, 0);
-    if (near) parts.add(weaponSlot, cylX(0.006 * s, 0.03 * s, 6), 0.045 * s, 0.014 + sleeveH - 0.011 * s, 0);
+    context.parts.add(context.supportSlot, cylY(0.03 * s, 0.034 * s, sleeveH, near ? 12 : 8), 0, 0.014 + sleeveH / 2, 0);
+    context.parts.add(context.supportSlot, cylY(0.038 * s, 0.038 * s, 0.022 * s, near ? 12 : 8), 0, 0.014 + sleeveH - 0.011 * s, 0);
+    if (near) context.parts.add(weaponSlot, cylX(0.006 * s, 0.03 * s, 6), 0.045 * s, 0.014 + sleeveH - 0.011 * s, 0);
   }
+}
+
+export function addPintleMount(context: PintleLayout): void {
+  if (context.mount === 'external-cradle') return;
+  const { bodyBottom, bodyW, colTop, parts, s, trunY, weaponSlot } = context;
+  const near = context.detail === 1;
+  // Flanged bearing, spindle and yoke bridge form one visible load path. The old single post made every gun look like
+  // a block on a rod.
+  const colH = colTop - 0.014;
+  addPintleFlange(context);
+  parts.add(weaponSlot, cylY(0.018 * s, 0.023 * s, colH, near ? 12 : 8), 0, 0.014 + colH / 2, 0);
+  addPintleRiserSleeve(context);
   parts.add(weaponSlot, box(0.115 * s, 0.045 * s, 0.15 * s), 0, colTop + 0.0225 * s, 0.01);
   // 2026-10-07 (round 3): a cradle that carries the gun. The fork arms used to stand inside the receiver's walls; the
   // cheeks now clasp the receiver from outside, a cradle floor runs under it, and the trunnion pin passes through
@@ -306,6 +338,522 @@ export function addPintleMount(context: PintleLayout): void {
   if (near) parts.add(weaponSlot, place(block(0.010 * s, 0.055 * s, 0.012 * s), 0, 0, 0, 0.5, 0, 0),
     cx + 0.013 * s, colTop + 0.075 * s, -0.01 * s);
   if (context.classKey === 'nsvt') addNsvtMountFurniture(context);
+}
+
+/**
+ * The riding cradle's recoil travel (metres): the gun (receiver, barrel and can) slides this far back along its own axis
+ * inside the cradle on each shot (the runtime's `auxiliaryWeaponRecoil` group, fx/auxiliaryPresentation.ts), a
+ * soft-mounted 12.7 mm's buffer stroke.
+ */
+export const RIDING_CRADLE_RECOIL_M = 0.012;
+
+/** The gun a riding cradle is fitted round (release 229): its triangles in the fitting's frame, 9 numbers each. */
+type RidingCradleGun = ArrayLike<number>;
+/** What the fit decided for what the caller draws round the cradle: the shield moved `shieldDZ` forward, its gun port
+ * `portW` either side of the bore and `portBelow` / `portAbove` it (addPintleShieldPort), the gun's stroke and the race
+ * ring's drop. */
+export interface RidingCradleFit {
+  readonly shieldDZ: number; readonly portW: number; readonly portBelow: number; readonly portAbove: number;
+  /** How far under the gun's centre line the shield rides (12 mm, or none where its top beam would meet the gun). */
+  readonly shieldDrop: number;
+  /** The gun's recoil stroke in its cradle (RIDING_CRADLE_RECOIL_M, or less where the pin leaves less room). */
+  readonly stroke: number;
+  /** How far the race ring round the foot is set down under the gun's tail at full elevation (addPintleRing), and the
+   * half-angle it is split behind the gun where that is not enough. */
+  readonly ringDrop: number;
+  readonly ringGap: number;
+}
+
+// ---- the riding cradle's fit round its gun (release 229) -------------------------------------------------------------
+// Axis-aligned boxes are [x0, y0, z0, x1, y1, z1]; a section is a convex polygon in the pitch plane (y, z), flat pairs.
+type FitBox = [number, number, number, number, number, number];
+
+/** Does triangle `o` of `T` overlap box `b` (separating axes: the box's three, the triangle's normal, the nine edge
+ * crosses)? */
+function triangleBoxOverlap(T: ArrayLike<number>, o: number, b: FitBox): boolean {
+  const cx = (b[0] + b[3]) / 2, cy = (b[1] + b[4]) / 2, cz = (b[2] + b[5]) / 2, hx = (b[3] - b[0]) / 2, hy = (b[4] - b[1]) / 2, hz = (b[5] - b[2]) / 2;
+  const v = [T[o]! - cx, T[o + 1]! - cy, T[o + 2]! - cz, T[o + 3]! - cx, T[o + 4]! - cy, T[o + 5]! - cz, T[o + 6]! - cx, T[o + 7]! - cy, T[o + 8]! - cz];
+  for (let k = 0; k < 3; k++) {
+    const h = [hx, hy, hz][k]!, a = v[k]!, c = v[3 + k]!, d = v[6 + k]!;
+    if (Math.min(a, c, d) > h || Math.max(a, c, d) < -h) return false;
+  }
+  const e = [v[3]! - v[0]!, v[4]! - v[1]!, v[5]! - v[2]!, v[6]! - v[3]!, v[7]! - v[4]!, v[8]! - v[5]!, v[0]! - v[6]!, v[1]! - v[7]!, v[2]! - v[8]!];
+  const axes: number[][] = [[e[1]! * e[5]! - e[2]! * e[4]!, e[2]! * e[3]! - e[0]! * e[5]!, e[0]! * e[4]! - e[1]! * e[3]!]];
+  for (let i = 0; i < 3; i++) for (let k = 0; k < 3; k++) {
+    const ex = e[3 * i]!, ey = e[3 * i + 1]!, ez = e[3 * i + 2]!;
+    axes.push(k === 0 ? [0, -ez, ey] : k === 1 ? [ez, 0, -ex] : [-ey, ex, 0]);
+  }
+  for (const [ax, ay, az] of axes) {
+    const p0 = v[0]! * ax! + v[1]! * ay! + v[2]! * az!, p1 = v[3]! * ax! + v[4]! * ay! + v[5]! * az!, p2 = v[6]! * ax! + v[7]! * ay! + v[8]! * az!;
+    const r = hx * Math.abs(ax!) + hy * Math.abs(ay!) + hz * Math.abs(az!);
+    if (Math.min(p0, p1, p2) > r || Math.max(p0, p1, p2) < -r) return false;
+  }
+  return true;
+}
+
+/** The z spans the gun takes from the cradle part `b` over its recoil stroke (each overlapping triangle's z range, its
+ * rear end `stroke` further back, both ends widened by `m`). */
+function gunSpansIn(gun: RidingCradleGun, b: FitBox, stroke: number, m: number): [number, number][] {
+  const swept: FitBox = [b[0] - m, b[1] - m, b[2] - m, b[3] + m, b[4] + m, b[5] + stroke + m], out: [number, number][] = [];
+  for (let o = 0; o < gun.length; o += 9) if (triangleBoxOverlap(gun, o, swept)) {
+    const z0 = Math.min(gun[o + 2]!, gun[o + 5]!, gun[o + 8]!), z1 = Math.max(gun[o + 2]!, gun[o + 5]!, gun[o + 8]!);
+    out.push([z0 - stroke - m, z1 + m]);
+  }
+  return out;
+}
+
+/** The free stretch of [z0, z1] round `anchor` between the `spans` (null when the anchor itself is taken). */
+function freeStretch(z0: number, z1: number, anchor: number, spans: readonly [number, number][]): [number, number] | null {
+  let lo = z0, hi = z1;
+  for (const [a, b] of spans) {
+    if (b <= lo || a >= hi) continue;
+    if (a <= anchor && b >= anchor) return null;
+    if (b < anchor) lo = Math.max(lo, b); else hi = Math.min(hi, a);
+  }
+  return [lo, hi];
+}
+
+/** The free stretch round `anchor`, or where the anchor is taken the longest free stretch of [z0, z1]. */
+function longestStretch(z0: number, z1: number, anchor: number, spans: readonly [number, number][]): [number, number] {
+  const round = freeStretch(z0, z1, anchor, spans);
+  if (round) return round;
+  let best: [number, number] = [z0, z0], at = z0;
+  for (const [a, b] of [...spans.filter(([a, b]) => b > z0 && a < z1).sort((p, q) => p[0] - q[0]), [z1, z1] as [number, number]]) {
+    if (a - at > best[1] - best[0]) best = [at, a];
+    at = Math.max(at, b);
+  }
+  return best;
+}
+
+/** Triangle `o` of `T` cut to the slab u0 <= u <= u1 (u = side * x), as its section in the pitch plane (y, z pairs). */
+function sectionInSlab(T: ArrayLike<number>, o: number, side: number, u0: number, u1: number): number[] {
+  let poly: number[][] = [[side * T[o]!, T[o + 1]!, T[o + 2]!], [side * T[o + 3]!, T[o + 4]!, T[o + 5]!], [side * T[o + 6]!, T[o + 7]!, T[o + 8]!]];
+  for (const [bound, dir] of [[u0, 1], [u1, -1]] as const) {
+    const next: number[][] = [];
+    for (let i = 0; i < poly.length; i++) {
+      const a = poly[i]!, c = poly[(i + 1) % poly.length]!, da = dir * (a[0]! - bound), dc = dir * (c[0]! - bound);
+      if (da >= 0) next.push(a);
+      if (da * dc < 0) { const t = da / (da - dc); next.push([a[0]! + (c[0]! - a[0]!) * t, a[1]! + (c[1]! - a[1]!) * t, a[2]! + (c[2]! - a[2]!) * t]); }
+    }
+    poly = next;
+    if (!poly.length) return [];
+  }
+  return poly.flatMap((p) => [p[1]!, p[2]!]);
+}
+
+/** A section turned `el` about the pivot (py, pz) (the gun elevating) after sliding `r` back along its own axis. */
+function posedSection(sec: readonly number[], py: number, pz: number, el: number, r: number): number[] {
+  const c = Math.cos(el), sn = Math.sin(el), out: number[] = [];
+  for (let i = 0; i < sec.length; i += 2) {
+    const y = sec[i]! - py, z = sec[i + 1]! - r - pz;
+    out.push(py + y * c + z * sn, pz - y * sn + z * c);
+  }
+  return out;
+}
+
+/** Do a convex section and the rectangle y0..y1 x z0..z1 overlap (separating axes in the plane)? */
+function sectionMeetsRect(sec: readonly number[], y0: number, y1: number, z0: number, z1: number): boolean {
+  let a = Infinity, b = -Infinity, c = Infinity, d = -Infinity;
+  for (let i = 0; i < sec.length; i += 2) { a = Math.min(a, sec[i]!); b = Math.max(b, sec[i]!); c = Math.min(c, sec[i + 1]!); d = Math.max(d, sec[i + 1]!); }
+  if (a > y1 || b < y0 || c > z1 || d < z0) return false;
+  const n = sec.length / 2, corners = [[y0, z0], [y0, z1], [y1, z0], [y1, z1]];
+  for (let i = 0; i < n; i++) {
+    const ay = sec[2 * i]!, az = sec[2 * i + 1]!, by = sec[(2 * i + 2) % sec.length]!, bz = sec[(2 * i + 3) % sec.length]!;
+    const ny = -(bz - az), nz = by - ay;
+    let lo = Infinity, hi = -Infinity, lo2 = Infinity, hi2 = -Infinity;
+    for (let k = 0; k < n; k++) { const p = sec[2 * k]! * ny + sec[2 * k + 1]! * nz; lo = Math.min(lo, p); hi = Math.max(hi, p); }
+    for (const [y, z] of corners) { const p = y! * ny + z! * nz; lo2 = Math.min(lo2, p); hi2 = Math.max(hi2, p); }
+    if (lo > hi2 || hi < lo2) return false;
+  }
+  return true;
+}
+
+/** The lowest a section comes inside z0..z1 (Infinity when it misses the strip). */
+function sectionLowIn(sec: readonly number[], z0: number, z1: number): number {
+  let low = Infinity;
+  const n = sec.length / 2;
+  for (let i = 0; i < n; i++) {
+    const ay = sec[2 * i]!, az = sec[2 * i + 1]!, by = sec[(2 * i + 2) % sec.length]!, bz = sec[(2 * i + 3) % sec.length]!;
+    if (az >= z0 && az <= z1) low = Math.min(low, ay);
+    for (const zc of [z0, z1]) if ((az - zc) * (bz - zc) < 0) low = Math.min(low, ay + (by - ay) * (zc - az) / (bz - az));
+  }
+  return low;
+}
+
+/** The distance from the point (py, pz), or the segment from it `r` towards +z, to a section (0 inside). */
+function sectionDistance(sec: readonly number[], py: number, pz: number, r: number): number {
+  const n = sec.length / 2;
+  const inside = (y: number, z: number): boolean => {
+    let sign = 0;
+    for (let i = 0; i < n; i++) {
+      const ay = sec[2 * i]!, az = sec[2 * i + 1]!, by = sec[(2 * i + 2) % sec.length]!, bz = sec[(2 * i + 3) % sec.length]!;
+      const c = (by - ay) * (z - az) - (bz - az) * (y - ay);
+      if (Math.abs(c) < 1e-15) continue;
+      if (sign === 0) sign = Math.sign(c); else if (Math.sign(c) !== sign) return false;
+    }
+    return n >= 3;
+  };
+  if (inside(py, pz) || (r > 0 && inside(py, pz + r))) return 0;
+  const segSeg = (ay: number, az: number, by: number, bz: number): number => {
+    // the closest approach of segment A-B to the segment (py, pz)-(py, pz + r)
+    let d = Infinity;
+    const toSeg = (qy: number, qz: number, uy: number, uz: number, vy: number, vz: number): number => {
+      const dy = vy - uy, dz = vz - uz, l = dy * dy + dz * dz, t = l > 0 ? Math.max(0, Math.min(1, ((qy - uy) * dy + (qz - uz) * dz) / l)) : 0;
+      return Math.hypot(qy - uy - dy * t, qz - uz - dz * t);
+    };
+    d = Math.min(d, toSeg(py, pz, ay, az, by, bz), toSeg(py, pz + r, ay, az, by, bz), toSeg(ay, az, py, pz, py, pz + r), toSeg(by, bz, py, pz, py, pz + r));
+    if (r > 0 && (ay - py) * (by - py) < 0) { const zc = az + (bz - az) * (py - ay) / (by - ay); if (zc >= pz && zc <= pz + r) d = 0; }
+    return d;
+  };
+  let d = Infinity;
+  for (let i = 0; i < n; i++) d = Math.min(d, segSeg(sec[2 * i]!, sec[2 * i + 1]!, sec[(2 * i + 2) % sec.length]!, sec[(2 * i + 3) % sec.length]!));
+  return d;
+}
+
+/** The longest recoil stroke (up to `full`) over which no part of the gun in the slab u0..u1 comes within `radius` of the
+ * pivot's axis (the gun slides back, so the pivot runs forward through its sections). */
+function strokeRoom(gun: RidingCradleGun, side: number, u0: number, u1: number, py: number, pz: number, radius: number, full: number): number {
+  const secs: number[][] = [];
+  for (let o = 0; o < gun.length; o += 9) { const sec = sectionInSlab(gun, o, side, u0, u1); if (sec.length >= 6) secs.push(sec); }
+  const clear = (r: number): boolean => secs.every((sec) => sectionDistance(sec, py, pz, r) >= radius);
+  if (clear(full)) return full;
+  if (!clear(0)) return 0;
+  let lo = 0, hi = full;
+  for (let i = 0; i < 14; i++) { const mid = (lo + hi) / 2; if (clear(mid)) lo = mid; else hi = mid; }
+  return lo;
+}
+
+/** A box's twelve triangles. */
+function boxTriangles(b: FitBox): number[] {
+  const [x0, y0, z0, x1, y1, z1] = b, p = [[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0], [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]];
+  const faces = [[0, 1, 2, 3], [4, 5, 6, 7], [0, 1, 5, 4], [3, 2, 6, 7], [0, 3, 7, 4], [1, 2, 6, 5]], out: number[] = [];
+  for (const [a, b2, c, d] of faces) out.push(...p[a!]!, ...p[b2!]!, ...p[c!]!, ...p[a!]!, ...p[c!]!, ...p[d!]!);
+  return out;
+}
+
+/** Records the boxes of what a cradle adds (each geometry's box, placed), and passes every part on. */
+function recordingParts(parts: MachineGunParts, boxes: { box: FitBox; spins: boolean }[]): MachineGunParts & { spinning: boolean } {
+  const rec = {
+    spinning: false,
+    add(slot: string, geometry: THREE.BufferGeometry, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0): void {
+      geometry.computeBoundingBox();
+      const bb = geometry.boundingBox!, m = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z),
+        new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(1, 1, 1));
+      const placed = bb.clone().applyMatrix4(m);
+      boxes.push({ box: [placed.min.x, placed.min.y, placed.min.z, placed.max.x, placed.max.y, placed.max.z], spins: rec.spinning });
+      parts.add(slot, geometry, x, y, z, rx, ry, rz);
+    },
+  };
+  return rec;
+}
+
+/**
+ * Release 227, round 3 (critic D4; owner field-equipment standard: nothing interpenetrates a moving part): a working
+ * pintle whose cradle rides the gun. The fleet's working pintle keeps its cradle, shield and yoke bridge on the yaw stage
+ * while the gun pitches about the receiver's centre (recY, recZ), so at full elevation the receiver's lower rear sweeps
+ * 22 mm into the bridge, at 23 degrees the barrel passes 15 mm through the shield's top beam, and the ammunition can
+ * meets the shield's brace. Here everything that carries the gun pitches with it about its trunnion pin, on the pitch
+ * axis: the two cheeks, the cradle floor, the pin and its head, and the shield on a bar and a cross-bar under the barrel
+ * (`cradle`, the caller's pitch-group parts; the shield itself is the caller's addPintleShield into the same parts,
+ * without its yaw-stage braces). The yaw stage keeps the flange, a shortened column, a low yoke base under the
+ * receiver's swept floor (its top 10 mm under the lowest the receiver, cradle and can come over it through 45 degrees of
+ * elevation) and one side arm on the side away from the feed, its bearing ring round the pin with 2 mm of air. The lock
+ * lever (inside the can on the fleet mount) is not drawn.
+ *
+ * Round 4 (critic CN3-D1: the runtime recoiled the whole pitch group, so the pin left its bearing by 12-25 mm through
+ * every burst): the gun recoils RIDING_CRADLE_RECOIL_M inside the cradle (the caller draws it into its own recoil group)
+ * and the cradle, pin and shield stay on the trunnion. The cheeks stand clear of the receiver's side furniture over that
+ * stroke: the pin-side cheek 3 mm outboard of the charging-handle slide, its front 3 mm ahead of the pin and the handle's
+ * knob 9 mm ahead of it at full recoil; the feed-side cheek 2 mm outboard of the side-plate seam and 1.5 mm inboard of the
+ * can, its front 2 mm behind the can tray's arm (which runs in under the receiver) at full recoil; the receiver slides on
+ * the cradle floor (a 0.5 mm fit, round 5). The bearing ring's
+ * outer radius is 20 mm, 2 mm behind the knob's stem at full recoil. The cradle (cheeks, floor, carrier bars) is painted
+ * with the vehicle (`cradleSlot`, critic CN-4: the weapon steel's grain read as a crumpled silver sheet from below); the
+ * pin stays steel.
+ *
+ * Release 227 land stage (visual critic CN-D1: "the traverse ring, the post collar and the yoke all use a bright,
+ * unpainted metal that looks like crumpled foil ... a chrome toy gear on a matte military mount"): the yaw stage (flange
+ * and its bolts, column, riser sleeve, yoke base, side arm and its bearing ring) is painted with the vehicle too, in the
+ * cradle's slot, as a real cupola pintle mount is; only the gun, its pin and the pin's head stay weapon steel.
+ *
+ * Release 229 (the fleet's working pintles ride their cradles): where the gun the cradle carries has furniture the
+ * QJC-88 has not, the cradle is fitted round it, and only there (every class the fleet carries at every scale: the
+ * GPMGs' pistol grips and butts, the NSVT's hung box and solenoid, the heavy guns' collars at their true section, the
+ * DShK's AA ring sight). `gun` is the gun's triangles in the fitting's frame (receiver, barrel, can and feed); with it:
+ * - each cradle part (the cheeks, the floor, the shield carrier) keeps clear of the gun over the gun's recoil stroke: it
+ *   is cut back along the bore to the free stretch round the pin (the pin-side cheek steps outboard past anything at the
+ *   pin itself), the floor's feed-side edge stops short of the side furniture over it, and a feed-side cheek with less
+ *   than 30 mm free is left off;
+ * - the shield's gun port opens round whatever of the gun passes through the shield's plane over the stroke (4 mm of
+ *   air), and where that cannot fit between the shield's leaves and under its top beam the shield stands further forward
+ *   (returned: the caller draws the shield and its port with it);
+ * - the yaw stage stays 1.6 mm clear of everything that moves (the gun at rest and recoiled, and the cradle) through
+ *   -10.3 to +45 degrees: the bearing ring's radius shrinks to the closest moving part in its slab (the side arm stepping
+ *   outboard of any part that would come within 3 mm of the pin), and the yoke base's top drops under the lowest
+ *   anything comes over its footprint, its thickness giving way to a riser's sleeve before the build fails.
+ * Without `gun` (and wherever nothing of the gun is in the way) every dimension is the release-227 emplacement's.
+ *
+ * Release 230 (the American M2 and M240 working stations ride their cradles, profiles/kit.ts fittingAmericanM2): a host
+ * that draws its own shield on the pitch group passes `hostShield` (the context carries no shieldVariant then): the
+ * cradle's carrier bar and cross-bar run forward to `carrierTo` (the shield's back face, which they bury 2 mm), narrowed
+ * between the gun's side furniture as for the fleet shield, and the yaw stage keeps its air from the shield's triangles
+ * (`moving`, in the fitting's frame) as from the cradle.
+ */
+export function addPintleRidingCradle(context: PintleLayout, cradle: MachineGunParts, cradleSlot = 'detail',
+  gun?: RidingCradleGun, hostShield?: { readonly carrierTo: number; readonly moving: ArrayLike<number> }): RidingCradleFit {
+  if (context.mount === 'external-cradle') throw new Error('addPintleRidingCradle: a pintle mount only');
+  const { bodyBottom, bodyW, feedSign: f, parts, recY, recZ, s, trunY, trunZ, weaponSlot } = context;
+  const near = context.detail === 1;
+  const airGun = 0.0002, airYaw = 0.0016, side = -f;
+  // round 5 (critic CN5-01): the floor's top 0.5 mm under the receiver's floor line, a slide fit (an exact triangle test
+  // read the coincident faces as crossing at every pitch; the receiver slides on it, it never meets it)
+  const floorBottom = bodyBottom - 0.0105 * s;
+  // the pin-side cheek outboard of the charging slide (bodyW/2 + 9 mm), the feed-side one between the seam strip
+  // (bodyW/2 + 3.5 mm) and the can (bodyW/2 + 14 mm)
+  const pinT = 0.012 * s, feedIn = bodyW / 2 + 0.0055 * s, feedT = 0.007 * s;
+  const pinR = 0.009 * s, armT = 0.012 * s, ringSeg = near ? 24 : 16;
+  // release 229: the bearing keeps 1.7 mm of air round the pin at every scale (2 mm x s fell under the 1.5 mm the fleet
+  // receipt asks below s = 0.75; the ring's flats take a further 1 %)
+  const ringIn = Math.max(0.011 * s, (pinR + 0.0017) / Math.cos(Math.PI / ringSeg));
+  // the cheeks (the pin side's front 3 mm ahead of the pin; the feed side's 2 mm behind the can tray's arm under the
+  // receiver at full recoil, addPintleAmmo) and the floor under the receiver
+  const cheekFront = recZ + pinR + 0.003 * s, cheekRear = -0.04 * s, cheekTop = trunY + 0.010 * s;
+  const canD = (context.cls.caliber > 10 ? 0.26 : 0.24) * s, canArmRear = recZ - 0.02 * s + canD * 0.18 - 0.015 * s;
+  const shieldH = context.shieldVariant === 'low' ? 0.14 : context.shieldVariant === 'armored' ? 0.27 : 0.22;
+  // the lowest the receiver's floor line comes over the base's rear edge through 45 degrees (y / cos e + z tan e)
+  const e = 45 * Math.PI / 180, baseRear = -0.03 * s, baseFront = recZ + 0.025 * s;
+  const sweptLow = recY + (bodyBottom - recY) / Math.cos(e) + (baseRear - recZ) * Math.tan(e);
+  const xBox = (u0: number, u1: number, s0: number): [number, number] => [Math.min(s0 * u0, s0 * u1), Math.max(s0 * u0, s0 * u1)];
+  // the fit (release 229), each round from the release-227 emplacement's dimensions at the round's recoil stroke
+  let stroke = RIDING_CRADLE_RECOIL_M, head = near, pinIn = 0, feedFront = 0, floorFeedX = 0, barHalf = 0;
+  let pinZ: [number, number] = [0, 0], feedZ: [number, number] | null = null, floorZ: [number, number] = [0, 0];
+  let shieldDZ = 0, shieldDrop = 0, portW = 0, portBelow = 0, portAbove = 0, armIn = 0, ringOut = 0, armHalf = 0, baseH = 0, baseTop = 0, ringDrop = 0, ringGap = 0;
+  // the shield carrier's front: the fleet shield's back face, or the host's (release 230)
+  const carrierBack = (): number => hostShield ? hostShield.carrierTo : trunZ + 0.035 * s - 0.015 * s + shieldDZ;
+  // pitch group: the cheeks, the floor under the receiver, the shield's carrier and the class's furniture (the pin and its
+  // head are drawn last)
+  const drawCradle = (target: MachineGunParts): void => {
+    for (const [x0, t, z] of [[side * pinIn, side * pinT, pinZ], [f * feedIn, f * feedT, feedZ]] as const) {
+      if (z) target.add(cradleSlot, block(Math.abs(t), cheekTop - floorBottom, z[1] - z[0]), x0 + t / 2, (cheekTop + floorBottom) / 2, (z[1] + z[0]) / 2);
+    }
+    // the floor ends with the feed-side cheek (the can's strap and tray arm come back over its front at full recoil)
+    const floorX0 = side * (pinIn + pinT), floorX1 = f * floorFeedX;
+    target.add(cradleSlot, block(Math.abs(floorX1 - floorX0), 0.010 * s, floorZ[1] - floorZ[0]), (floorX0 + floorX1) / 2, floorBottom + 0.005 * s, (floorZ[1] + floorZ[0]) / 2);
+    // the shield's carrier under the barrel: a bar forward from the floor's front, inboard of the can, and a cross-bar
+    // behind the shield's inner panels (release 229: an open mount has no shield and draws no carrier)
+    if (context.shieldVariant || hostShield) {
+      const shieldBack = carrierBack();
+      target.add(cradleSlot, block(2 * barHalf, 0.010 * s, shieldBack - floorZ[1] + 0.002 * s), 0, floorBottom + 0.005 * s, (shieldBack + floorZ[1]) / 2);
+      target.add(cradleSlot, block(0.180 * s, 0.010 * s, 0.025 * s), 0, floorBottom + 0.005 * s, shieldBack - 0.0125 * s + 0.002 * s);
+    }
+    if (context.classKey === 'nsvt') addNsvtCradleFurniture(context, target, cradleSlot, { floorBottom, cheekX: pinIn + pinT / 2, cheekT: pinT, cheekRear: pinZ[0] });
+  };
+  for (let round = 0; round < 4; round++) {
+    pinIn = bodyW / 2 + 0.012 * s;
+    feedFront = context.ammo ? Math.min(cheekFront, canArmRear - stroke - 0.002 * s) : cheekFront;
+    pinZ = [cheekRear, cheekFront]; feedZ = [cheekRear, feedFront]; floorZ = [cheekRear, feedFront]; floorFeedX = feedIn + feedT;
+    shieldDZ = 0; shieldDrop = 0.012 * s; portW = portBelow = portAbove = 0.036 * s; barHalf = 0.040 * s;
+    if (gun) {
+      // the pin-side cheek: the free stretch round the pin, stepping outboard past anything at the pin itself
+      for (let pass = 0; pass < 4; pass++) {
+        const [x0, x1] = xBox(pinIn, pinIn + pinT, side), box: FitBox = [x0, floorBottom, cheekRear, x1, cheekTop, cheekFront];
+        const spans = gunSpansIn(gun, box, stroke, airGun), free = freeStretch(cheekRear, cheekFront, recZ, spans);
+        if (free && free[0] <= recZ - pinR - 0.003 * s && free[1] >= recZ + pinR + 0.002 * s) { pinZ = free; break; }
+        let out = pinIn;
+        const swept: FitBox = [x0 - airGun, floorBottom, recZ - pinR - 0.003 * s, x1 + airGun, cheekTop, recZ + pinR + 0.002 * s + stroke];
+        for (let o = 0; o < gun.length; o += 9) if (triangleBoxOverlap(gun, o, swept)) {
+          out = Math.max(out, side * gun[o]!, side * gun[o + 3]!, side * gun[o + 6]!);
+        }
+        pinIn = out + 0.002 * s;
+      }
+      // the floor: its feed-side edge short of the side furniture over it, then the free stretch round the pin
+      {
+        const [x0, x1] = xBox(-(pinIn + pinT), floorFeedX, f);
+        const swept: FitBox = [x0 - airGun, floorBottom - airGun, cheekRear - airGun, x1 + airGun, floorBottom + 0.010 * s + airGun, feedFront + stroke + airGun];
+        for (let o = 0; o < gun.length; o += 9) if (triangleBoxOverlap(gun, o, swept)) {
+          const u = Math.min(f * gun[o]!, f * gun[o + 3]!, f * gun[o + 6]!);
+          if (u > bodyW * 0.3) floorFeedX = Math.max(bodyW * 0.3, Math.min(floorFeedX, u - airGun - 0.0005 * s));
+        }
+        const [fx0, fx1] = xBox(-(pinIn + pinT), floorFeedX, f);
+        floorZ = longestStretch(cheekRear, feedFront, recZ, gunSpansIn(gun, [fx0, floorBottom, cheekRear, fx1, floorBottom + 0.010 * s, feedFront], stroke, airGun));
+      }
+      // the feed-side cheek: the free stretch round the pin, or the longest one, or none under 30 mm
+      {
+        const [x0, x1] = xBox(feedIn, feedIn + feedT, f);
+        const best = longestStretch(cheekRear, feedFront, recZ, gunSpansIn(gun, [x0, floorBottom, cheekRear, x1, cheekTop, feedFront], stroke, airGun));
+        feedZ = best[1] - best[0] >= 0.030 * s ? best : null;
+      }
+      // the shield: its port round whatever passes through its plane over the stroke, or the shield further forward
+      if (context.shieldVariant) {
+        const halfW = 0.087 * s;
+        // the shield rides 12 mm low (its top level with the leaf sight), or at the fleet mount's height where its top
+        // beam would meet the gun (the NSVT's laid-back carrying handle at the true barrel section), before it moves forward
+        place: for (let dz = 0; ; dz += 0.005 * s) for (const drop of [0.012 * s, 0]) {
+          if (dz > 0.12 * s) throw new Error(`addPintleRidingCradle: no shield place clears the ${context.classKey}`);
+          const shieldRecY = recY - drop;
+          const foot = shieldRecY + 0.018 * s - shieldH * s / 2 + 0.010 * s, beamIn = shieldRecY + shieldH * 0.48 * s - 0.010 * s;
+          const z0 = trunZ + 0.035 * s + dz - 0.0185 * s, z1 = trunZ + 0.035 * s + dz + 0.0185 * s;
+          const window: FitBox = [-halfW, foot, z0 - airGun, halfW, beamIn, z1 + stroke + airGun];
+          let w = 0.036 * s, below = 0.036 * s, above = 0.036 * s;
+          for (let o = 0; o < gun.length; o += 9) if (triangleBoxOverlap(gun, o, window)) {
+            // the part of the triangle in the shield's slab (its section across the bore: y, x pairs)
+            const sec = sectionInSlab([gun[o + 2]!, gun[o + 1]!, gun[o]!, gun[o + 5]!, gun[o + 4]!, gun[o + 3]!, gun[o + 8]!, gun[o + 7]!, gun[o + 6]!],
+              0, 1, z0 - airGun, z1 + stroke + airGun);
+            for (let i = 0; i < sec.length; i += 2) {
+              w = Math.max(w, Math.abs(sec[i + 1]!) + 0.004 * s);
+              below = Math.max(below, trunY - sec[i]! + 0.004 * s); above = Math.max(above, sec[i]! - trunY + 0.004 * s);
+            }
+          }
+          if (w <= halfW - 0.006 * s && trunY - below >= foot + 0.004 * s && trunY + above <= beamIn - 0.004 * s) {
+            shieldDZ = dz; shieldDrop = drop; portW = w; portBelow = below; portAbove = above; break place;
+          }
+        }
+      }
+      if (context.shieldVariant || hostShield) {
+        // the carrier bar under the barrel narrows between the side furniture over its run (a small can's strap)
+        const shieldBack = carrierBack();
+        const bar: FitBox = [-barHalf - airGun, floorBottom - airGun, floorZ[1] - airGun, barHalf + airGun, floorBottom + 0.010 * s + airGun, shieldBack + stroke + airGun];
+        for (let o = 0; o < gun.length; o += 9) if (triangleBoxOverlap(gun, o, bar)) {
+          const x0 = gun[o]!, x1 = gun[o + 3]!, x2 = gun[o + 6]!, inner = Math.min(Math.abs(x0), Math.abs(x1), Math.abs(x2));
+          if (Math.sign(x0) === Math.sign(x1) && Math.sign(x1) === Math.sign(x2) && inner > 0.020 * s) barHalf = Math.max(0.020 * s, Math.min(barHalf, inner - airGun - 0.0005 * s));
+        }
+      }
+    }
+    // the yaw stage: the side arm on the pin side 4 mm outboard of its cheek, its bearing ring round the pin, the base
+    armIn = pinIn + pinT + 0.004 * s; ringOut = 0.020 * s; armHalf = ringOut; baseH = 0.030 * s; baseTop = sweptLow - 0.010 * s; ringDrop = 0; ringGap = 0;
+    if (!gun) break;
+    // the yaw stage's fit runs over the cradle as drawn (its parts' boxes) and the gun at rest and recoiled
+    const drawn: { box: FitBox; spins: boolean }[] = [];
+    drawCradle(recordingParts({ add: () => {} }, drawn));
+    const moving: { T: ArrayLike<number>; stroke: number }[] = [{ T: gun, stroke }];
+    for (const d of drawn) moving.push({ T: boxTriangles(d.box), stroke: 0 });
+    if (hostShield) moving.push({ T: hostShield.moving, stroke: 0 });
+    // the fleet's pitch range: 10.3 degrees down (the heavy and rifle profiles) to 0.76 rad up (their 0.75)
+    const poses: number[] = []; for (let a = -0.18; a < 0.76; a += Math.PI / 180) poses.push(a); poses.push(0.76);
+    let shorter = 0;
+    for (let pass = 0; pass < 6; pass++) {
+      const u0 = armIn - airYaw, u1 = armIn + armT + airYaw;
+      // the moving parts in the arm's slab: too close to the pin for a ring (radial), or sections the arm must clear
+      const secs: { sec: number[]; r: number; o: number; T: ArrayLike<number> }[] = [];
+      let closest = Infinity, out = armIn, radial = false;
+      for (const { T, stroke: r } of moving) for (let o = 0; o < T.length; o += 9) {
+        const sec = sectionInSlab(T, o, side, u0, u1);
+        if (sec.length < 6) continue;
+        const d = sectionDistance(sec, recY, recZ, r);
+        if (d < ringIn + 0.003 * s + airYaw) { radial = true; out = Math.max(out, side * T[o]!, side * T[o + 3]!, side * T[o + 6]!); }
+        else { closest = Math.min(closest, d); secs.push({ sec, r, o, T }); }
+      }
+      const ringFit = Math.min(0.020 * s, closest - airYaw);
+      // the arm block under the ring (its top 4 mm into the ring), as deep as the ring or as much less as clears
+      const meets = (half: number): { T: ArrayLike<number>; o: number } | null => {
+        for (const { sec, r, o, T } of secs) for (const a of poses) for (const rr of r ? [0, r / 2, r] : [0]) {
+          if (sectionMeetsRect(posedSection(sec, recY, recZ, a, rr), -Infinity, recY - Math.max(ringFit - 0.004 * s, pinR + airYaw + 0.0005) + airYaw,
+            recZ - half - airYaw, recZ + half + airYaw)) return { T, o };
+        }
+        return null;
+      };
+      let blocker = radial ? null : meets(ringFit);
+      if (!radial && !blocker) { ringOut = ringFit; armHalf = ringFit; break; }
+      if (!radial && blocker) {
+        let lo = 0.006 * s, hi = ringFit;
+        if (!meets(lo)) {
+          for (let i = 0; i < 10; i++) { const mid = (lo + hi) / 2; if (meets(mid)) hi = mid; else lo = mid; }
+          ringOut = ringFit; armHalf = lo; break;
+        }
+        out = Math.max(out, side * blocker.T[blocker.o]!, side * blocker.T[blocker.o + 3]!, side * blocker.T[blocker.o + 6]!);
+      }
+      // a recoiling part (a small GPMG's charging knob) that would leave no room for the ring takes a shorter stroke (at
+      // least 6 mm) before the side arm steps outboard past it
+      if (pass === 0 && radial) {
+        const room = strokeRoom(gun, side, u0, u1, recY, recZ, ringIn + 0.003 * s + airYaw, stroke);
+        if (room < stroke && room >= 0.006) { shorter = Math.floor(room * 2000) / 2000; break; }
+      }
+      armIn = out + airYaw + 0.001 * s;
+    }
+    if (shorter) { stroke = shorter; continue; }
+    // the base under the lowest anything comes over its footprint
+    {
+      const u0 = -0.045 * s - airYaw, u1 = armIn + armT + airYaw, reach = recY - baseTop - 0.02 * s;
+      let low = Infinity;
+      for (const { T, stroke: r } of moving) for (let o = 0; o < T.length; o += 9) {
+        const sec = sectionInSlab(T, o, side, u0, u1);
+        if (sec.length < 6) continue;
+        let far = 0; for (let i = 0; i < sec.length; i += 2) far = Math.max(far, Math.hypot(sec[i]! - recY, sec[i + 1]! - recZ));
+        if (far < reach) continue;
+        for (const a of poses) for (const rr of r ? [0, r] : [0]) low = Math.min(low, sectionLowIn(posedSection(sec, recY, recZ, a, rr), baseRear - airYaw, baseFront + airYaw));
+      }
+      baseTop = Math.min(baseTop, low - airYaw);
+    }
+    // the race ring round the foot (the caller's addPintleRing): set down under the lowest the gun's tail comes over it
+    if (context.ring) {
+      const rr = (context.ring.r || 0.20) * s, band0 = rr - 0.013 - 0.012 - airYaw, band1 = rr + 0.013 + airYaw, top = near ? 0.048 : 0.043;
+      const pts: number[] = [], dense: number[] = [];
+      for (const { T, stroke: r } of moving) for (let o = 0; o < T.length; o += 9) {
+        let far = 0; for (let k = 0; k < 9; k += 3) far = Math.max(far, Math.hypot(T[o + k + 1]! - recY, T[o + k + 2]! - recZ));
+        if (far < recY - top - 0.02) continue;
+        const ax = T[o]!, ay = T[o + 1]!, az = T[o + 2]!, bx = T[o + 3]!, by = T[o + 4]!, bz = T[o + 5]!, cx = T[o + 6]!, cy = T[o + 7]!, cz = T[o + 8]!;
+        const n = Math.max(1, Math.ceil(Math.max(Math.hypot(bx - ax, by - ay, bz - az), Math.hypot(cx - ax, cy - ay, cz - az)) / 0.006));
+        for (let i = 0; i <= n; i++) for (let j = 0; i + j <= n; j++) {
+          const u = i / n, v = j / n;
+          (r ? pts : dense).push(ax + (bx - ax) * u + (cx - ax) * v, ay + (by - ay) * u + (cy - ay) * v, az + (bz - az) * u + (cz - az) * v);
+        }
+      }
+      let low = Infinity;
+      const tail: number[] = [];
+      for (const a of poses) {
+        if (a < 0.3) continue;
+        const c = Math.cos(a), sn = Math.sin(a);
+        for (const [P, r] of [[pts, 0], [pts, stroke], [dense, 0]] as const) for (let i = 0; i < P.length; i += 3) {
+          const y = P[i + 1]! - recY, z = P[i + 2]! - r - recZ, py = recY + y * c + z * sn, pz = recZ - y * sn + z * c;
+          const rad = Math.hypot(P[i]!, pz);
+          if (rad >= band0 && rad <= band1) { low = Math.min(low, py); tail.push(P[i]!, py, pz); }
+        }
+      }
+      // a ring set down 8 mm at most (lower, it sinks towards the roof it stands on); where that is not enough it keeps
+      // its authored height and opens behind the gun under the tail
+      const need = Math.max(0, top - (low - airYaw));
+      ringDrop = need <= 0.008 ? need : 0;
+      for (let i = 0; i < tail.length; i += 3) if (tail[i + 1]! < top - ringDrop + airYaw) {
+        ringGap = Math.max(ringGap, Math.abs(Math.atan2(tail[i]!, -tail[i + 2]!)) + (airYaw + 0.002) / rr);
+      }
+    }
+    // the recoil stroke the pin leaves (a small GPMG's charging knob runs back over it): a shorter stroke refits
+    const pinStart = pinIn + pinT - 0.002 * s, pinOut = armIn + armT + 0.005 * s;
+    const room = strokeRoom(gun, side, pinStart - airGun, pinOut + airGun, recY, recZ, pinR + airGun, stroke);
+    if (room >= stroke) break;
+    stroke = Math.floor(room * 2000) / 2000;
+  }
+  if (gun && head) {
+    const pinOut = armIn + armT + 0.005 * s;
+    head = strokeRoom(gun, side, pinOut - 0.001 * s - airGun, pinOut + 0.005 * s + airGun, recY, recZ, 0.016 * s + airGun, stroke) >= stroke;
+  }
+  drawCradle(cradle);
+  const sleeveTop = 0.014 + Math.max(0, context.riser > 0.03 ? context.riser + 0.02 : 0) + 0.010 * s;
+  if (baseTop - baseH < sleeveTop) baseH = Math.max(0.012 * s, baseTop - sleeveTop);
+  const baseY = baseTop - baseH;
+  if (baseY < sleeveTop - 1e-9) throw new Error('addPintleRidingCradle: no room for the yoke base over the riser');
+  const armX = side * (armIn + armT / 2), armD = 2 * armHalf;
+  // yaw stage: flange, column, riser sleeve, the base and the side arm with its bearing ring round the pin, all in the
+  // vehicle's paint (the cradle's slot; land stage, critic CN-D1)
+  const painted = { ...context, supportSlot: cradleSlot, weaponSlot: cradleSlot };
+  addPintleFlange(painted);
+  const colH = baseY - 0.014;
+  parts.add(cradleSlot, cylY(0.018 * s, 0.023 * s, colH, near ? 12 : 8), 0, 0.014 + colH / 2, 0);
+  addPintleRiserSleeve(painted);
+  const baseIn = 0.045 * s, baseX0 = side * (armIn + armT), baseX1 = f * baseIn;
+  parts.add(cradleSlot, block(Math.abs(baseX1 - baseX0), baseH, baseFront - baseRear), (baseX0 + baseX1) / 2, baseY + baseH / 2, (baseRear + baseFront) / 2);
+  // the arm's top 4 mm into the ring, never nearer the pin than the bearing's own air (a small gun's shrunk ring)
+  const armTop = recY - Math.max(ringOut - 0.004 * s, pinR + airYaw + 0.0005);
+  parts.add(cradleSlot, block(armT, armTop - baseTop + 0.002 * s, armD), armX, (armTop + baseTop - 0.002 * s) / 2, recZ);
+  parts.add(cradleSlot, place(machinedRing(ringIn, ringOut, armT, 0.002 * s, ringSeg), 0, 0, 0, 0, 0, Math.PI / 2),
+    armX + armT / 2, recY, recZ);
+  // the pin through the cheek into the bearing, and its head: weapon steel where the shield's bolts and recesses already
+  // draw the gun's steel on the cradle, the cradle's paint on an open mount (release 229: the cradle stays one mesh); a
+  // charging knob that runs back over the head's place leaves the head off
+  const pinOut = armIn + armT + 0.005 * s, pinStart = pinIn + pinT - 0.002 * s, pinSlot = context.shieldVariant ? weaponSlot : cradleSlot;
+  cradle.add(pinSlot, cylX(pinR, pinOut - pinStart, near ? 10 : 8), side * (pinStart + pinOut) / 2, recY, recZ);
+  if (head) cradle.add(pinSlot, cylX(0.016 * s, 0.006 * s, 10), side * (pinOut + 0.002 * s), recY, recZ);
+  return { shieldDZ, shieldDrop, portW, portBelow, portAbove, stroke, ringDrop, ringGap };
 }
 
 // 2026-10-05 (tank-accessories lane): the Browning family keeps its load path, its envelope and its muzzle point;
@@ -684,13 +1232,13 @@ export function addPintleAmmo(context: PintleLayout): void {
   // the can tray on a pintle: a floor under the can, its strap and the arm to the cradle under the receiver (an external
   // cradle's host carries the can)
   const canBottom = canY - canH / 2;
-  const armX0 = Math.abs(ax) - canW / 2, armX1 = bodyW * 0.3;
+  const armX0 = Math.abs(ax) - canW / 2, armX1 = bodyW * 0.3, traySlot = context.canTrayPainted ? canSlot : weaponSlot;
   if (tall) {
-    parts.add(weaponSlot, block(canW + 0.012 * s, 0.008 * s, canD * 0.62), ax, canBottom - 0.004 * s, canZ);
-    if (near) parts.add(weaponSlot, block(0.008 * s, canH * 0.7, 0.028 * s), ax - f * (canW / 2 + 0.004 * s), canBottom + canH * 0.35, canZ + canD * 0.18);
+    parts.add(traySlot, block(canW + 0.012 * s, 0.008 * s, canD * 0.62), ax, canBottom - 0.004 * s, canZ);
+    if (near) parts.add(traySlot, block(0.008 * s, canH * 0.7, 0.028 * s), ax - f * (canW / 2 + 0.004 * s), canBottom + canH * 0.35, canZ + canD * 0.18);
     if (armX0 > armX1) {
       const armY = Math.max(canBottom, bodyBottom) + 0.005 * s;
-      parts.add(weaponSlot, block(armX0 - armX1, 0.009 * s, 0.03 * s), f * (armX0 + armX1) / 2, armY, canZ + canD * 0.18);
+      parts.add(traySlot, block(armX0 - armX1, 0.009 * s, 0.03 * s), f * (armX0 + armX1) / 2, armY, canZ + canD * 0.18);
     }
   }
   // the belt: out of the mouth, up and over, and down onto the tray at the feedway
@@ -730,7 +1278,8 @@ export function addPintleFeed(context: PintleLayout, p0: readonly number[], apex
   addBelt(context, p0, p1, p2, p3, round, maxRounds);
 }
 
-export function addPintleShield(context: PintleLayout): void {
+export function addPintleShield(context: PintleLayout,
+  { braces = true, recessSlot = 'shadow' }: { readonly braces?: boolean; readonly recessSlot?: string } = {}): void {
   const { parts, recY, s, shieldVariant, tone, trunZ, weaponSlot } = context;
   if (!shieldVariant) return;
   // 2026-10-08 (round 5; wave 254 on the T-90M: "the two flat dark plates flanking the gun are slabs with a pair of tiny
@@ -755,14 +1304,15 @@ export function addPintleShield(context: PintleLayout): void {
     parts.add(shieldSlot, plate(outerW, shieldH * 0.94),
       side * (xe + Math.cos(wing) * outerW * s / 2), recY + 0.018 * s, shieldZ - Math.sin(wing) * outerW * s / 2,
       0, side * wing, side * 0.035);
-    // the stiffener post behind the inner panel's outboard edge, and the brace down to the cradle
+    // the stiffener post behind the inner panel's outboard edge, and the brace down to the cradle (a riding cradle
+    // carries its shield on its own bars: addPintleRidingCradle)
     parts.add(weaponSlot, box(0.018 * s, shieldH * 0.82 * s, 0.030 * s), side * (xe - 0.012 * s), recY + 0.006 * s, shieldZ - 0.026 * s);
-    parts.add(weaponSlot, box(0.020 * s, 0.020 * s, 0.14 * s),
+    if (braces) parts.add(weaponSlot, box(0.020 * s, 0.020 * s, 0.14 * s),
       side * 0.115 * s, recY - shieldH * 0.30 * s, shieldZ - 0.060 * s,
       -0.22, 0, side * 0.08);
     // the vision slot (a recess in the inner panel) under its hood
     const slotY = recY + shieldH * 0.22 * s;
-    parts.add('shadow', box(innerW * 0.6 * s, 0.024 * s, T * 0.7), side * xi, slotY, shieldZ + T * 0.2, 0, -side * 0.055, 0);
+    parts.add(recessSlot, box(innerW * 0.6 * s, 0.024 * s, T * 0.7), side * xi, slotY, shieldZ + T * 0.2, 0, -side * 0.055, 0);
     parts.add(shieldSlot, box(innerW * 0.72 * s, 0.012 * s, 0.032 * s), side * xi, slotY + 0.019 * s, shieldZ + T * 0.5 + 0.008 * s,
       0.4, -side * 0.055, 0);
     if (near) for (const sy of [-0.3, 0.36]) for (const sx of [0.2, 0.86]) {
@@ -778,28 +1328,60 @@ export function addPintleShield(context: PintleLayout): void {
 }
 
 /**
+ * Release 227, round 6 (visual critic CN-D3: "the 'light shield' reads as an open rectangular window frame ... not a
+ * shield plate. From the front it looks like a hollow box frame around the gun"): a riding cradle's shield closes the
+ * 0.15 m window between its two inner panels with a face plate round a gun port, on the same pitch group, so it reads
+ * as one shield with a port. Four flat plates, 20 mm thick, 12 mm into each inner panel's inboard edge and set between
+ * the panels' faces (no coplanar face): an apron under the port down to 10 mm over the leaves' foot, a plate over it
+ * into the top beam, and two port cheeks. The port is 36 mm from the barrel's axis each way: the barrel's support collar
+ * (24 mm radius) passes through it with 12 mm of air at every pitch (cradle and barrel pitch together) and through the
+ * whole 12 mm recoil stroke (the barrel runs back along its own axis); the receiver's and the can's fronts stand 16 mm
+ * behind the plates at rest and recoil away from them. The aprons bury the shield carrier's cross-bar front by 1 mm.
+ */
+export function addPintleShieldPort(context: PintleLayout, fit?: RidingCradleFit): void {
+  const { parts, recY, s, shieldVariant, tone, trunY, trunZ } = context;
+  if (!shieldVariant) return;
+  const shieldSlot = tone === 'dark' ? 'dark' : 'detail';
+  const shieldH = shieldVariant === 'low' ? 0.14 : shieldVariant === 'armored' ? 0.27 : 0.22;
+  const x0 = 0.075 * s, t = 0.022 * s, z = trunZ + 0.035 * s - 0.003 * s, halfW = x0 + 0.012 * s;
+  // release 229: a port fitted round the gun the cradle carries (addPintleRidingCradle), the QJC-88's 36 mm otherwise
+  const port = fit?.portW ?? 0.036 * s, portBottom = trunY - (fit?.portBelow ?? port), portTop = trunY + (fit?.portAbove ?? port);
+  const foot = recY + 0.018 * s - shieldH * s / 2 + 0.010 * s, beamIn = recY + shieldH * 0.48 * s - 0.010 * s;
+  parts.add(shieldSlot, block(2 * halfW, portBottom - foot, t), 0, (portBottom + foot) / 2, z);
+  parts.add(shieldSlot, block(2 * halfW, beamIn - portTop, t), 0, (beamIn + portTop) / 2, z);
+  const cheekW = halfW - port, cheekH = portTop - portBottom + 0.004 * s;
+  const cheekY = (fit?.portBelow ?? port) === (fit?.portAbove ?? port) ? trunY : (portTop + portBottom) / 2;
+  for (const side of [-1, 1]) parts.add(shieldSlot, block(cheekW, cheekH, t), side * (port + cheekW / 2), cheekY, z);
+}
+
+/**
  * The AA ring round the mount. 2026-10-07 (round 4, Type 99A critics: "the dark rings on the hatch and round the MG
  * pedestal read as loose rubber hoses, not machined ring mounts"): a flat-faced machined ring with chamfered edges,
  * its bolt heads and the brackets that carry it, in the mount's paint, instead of a round 22 mm torus.
  */
-export function addPintleRing(context: PintleLayout): void {
+export function addPintleRing(context: PintleLayout, slot?: 'dark' | 'detail', drop = 0, gap = 0): void {
   const { parts, ring, s, tone } = context;
   if (ring) {
     const rr = (ring.r || 0.20) * s;
     const near = context.detail === 1;
-    const rSlot = tone === 'dark' ? 'dark' : 'detail';
-    parts.add(rSlot, machinedRing(rr - 0.013, rr + 0.013, 0.016, 0.004, near ? 24 : 16), 0, 0.027, 0);
+    const rSlot = slot ?? (tone === 'dark' ? 'dark' : 'detail');
+    // release 229: a riding cradle's ring may sit `drop` lower, under its gun's tail at full elevation (its brackets
+    // shorter; up to 8 mm), and where that is not enough it is split `gap` radians either side of the gun's rear (the ring turns
+    // with the gun, so the split is always under the tail), its bolt heads and brackets kept clear of the split
+    const inGap = (a: number, half: number): boolean => gap > 0 && Math.abs(Math.atan2(Math.cos(a), -Math.sin(a))) < gap + half / rr;
+    parts.add(rSlot, machinedRing(rr - 0.013, rr + 0.013, 0.016, 0.004, near ? 24 : 16, gap), 0, 0.027 - drop, 0);
     if (near) {
       const bolts = Math.min(8, Math.max(6, Math.round(rr / 0.04)));
+      // a riding cradle's ring (an explicit slot) keeps its bolt heads in the ring's own paint: the yaw stage is one mesh
       for (let k = 0; k < bolts; k++) {
         const a = 0.3 + k * (Math.PI * 2 / bolts);
-        parts.add('dark', cylY(0.0042, 0.0042, 0.005, 5), Math.cos(a) * rr, 0.0455, Math.sin(a) * rr);
+        if (!inGap(a, 0.0042)) parts.add(slot ?? 'dark', cylY(0.0042, 0.0042, 0.005, 5), Math.cos(a) * rr, 0.0455 - drop, Math.sin(a) * rr);
       }
     }
     const stubs = ring.stubs || 3;
     for (let k = 0; k < stubs; k++) {
       const a = 0.6 + k * (Math.PI * 2 / stubs);
-      parts.add(rSlot, box(0.024, 0.032, 0.024), Math.cos(a) * rr * 0.98, 0.018, Math.sin(a) * rr * 0.98);
+      if (!inGap(a, 0.017)) parts.add(rSlot, box(0.024, 0.032 - drop, 0.024), Math.cos(a) * rr * 0.98, 0.018 - drop / 2, Math.sin(a) * rr * 0.98);
     }
   }
 }
@@ -838,9 +1420,12 @@ function addNsvtReceiver(context: PintleLayout): void {
   if (near) {
     parts.add(weaponSlot, roundBar([-bodyW * 0.45, top + coverH * 0.5, frontZ - 0.006 * s], [bodyW * 0.45, top + coverH * 0.5, frontZ - 0.006 * s],
       0.006 * s, 6));
-    // the cover latch at its rear edge and the barrel-lock wedge on the front top, away from the feed
-    parts.add(weaponSlot, block(bodyW * 0.4, coverH * 0.9, 0.012 * s), 0, top + coverH * 0.45, coverZ - coverD / 2);
-    parts.add(weaponSlot, place(block(0.014 * s, 0.012 * s, 0.07 * s), 0, 0, 0, 0, -f * 0.18, 0), -f * bodyW * 0.3, top + coverH + 0.006 * s, frontZ - 0.05 * s);
+    // the cover latch at its rear edge and the barrel-lock wedge on the front top, away from the feed. 2026-10-20
+    // (release 227 coplanar census: the latch's underside lay in the cover's, 2.2 cm2, and the wedge's in the feed-slide
+    // hump's): each foot runs 1 mm down into the stock under it (the latch's into the receiver, the wedge's into the
+    // cover), their tops where they were
+    parts.add(weaponSlot, block(bodyW * 0.4, coverH * 0.9 + 0.001, 0.012 * s), 0, top + coverH * 0.45 - 0.0005, coverZ - coverD / 2);
+    parts.add(weaponSlot, place(block(0.014 * s, 0.012 * s + 0.001, 0.07 * s), 0, 0, 0, 0, -f * 0.18, 0), -f * bodyW * 0.3, top + coverH + 0.006 * s - 0.0005, frontZ - 0.05 * s);
     // the pressed flutes along both walls
     for (const side of [-1, 1]) {
       parts.add(weaponSlot, block(0.004 * s, bodyH * 0.07, len * 0.8), side * (bodyW / 2 + 0.0015 * s), bodyBottom + boxH * 0.42, midZ);
@@ -955,7 +1540,7 @@ function addNsvtAmmo(context: PintleLayout): void {
  * mount), and the mount's collimator sight on its arm beside the receiver on the side away from the box.
  */
 function addNsvtMountFurniture(context: PintleLayout): void {
-  const { bodyW, colTop, feedSign: f, parts, recZ, remote, s, trunY, weaponSlot } = context;
+  const { bodyW, colTop, feedSign: f, parts, remote, s, weaponSlot } = context;
   const near = context.detail === 1;
   if (remote) return;
   const cx = bodyW / 2 + 0.008 * s;
@@ -963,10 +1548,38 @@ function addNsvtMountFurniture(context: PintleLayout): void {
   parts.add(weaponSlot, block(0.012 * s, 0.014 * s, 0.11 * s), -f * (cx + 0.012 * s), colTop + 0.06 * s, -0.07 * s);
   parts.add(weaponSlot, place(block(0.02 * s, 0.075 * s, 0.026 * s), 0, 0, 0, 0.25, 0, 0), -f * (cx + 0.012 * s), colTop + 0.03 * s, -0.125 * s);
   if (near) parts.add(weaponSlot, block(0.006 * s, 0.024 * s, 0.008 * s), -f * (cx + 0.012 * s), colTop + 0.05 * s, -0.103 * s);
+  addNsvtCollimator(context, parts, cx, 0);
+}
+
+/**
+ * Release 229 (the fleet's working pintles ride their cradles): a crew NSVT's furniture on its riding cradle, pitching
+ * with it (`cradle`, the pitch group's parts). The firing handle runs straight back from the pin-side cheek at the
+ * floor's height and ends in a cross grip with the trigger lever under it: the fleet mount's grip, dropping 75 mm behind
+ * the cradle, would swing down into the yoke base at full elevation. The collimator stands on the same cheek 10 mm
+ * further aft than the fleet mount's, so its box stays 8 mm outside the bearing ring's radius at every pitch.
+ */
+function addNsvtCradleFurniture(context: PintleLayout, cradle: MachineGunParts, slot: string,
+  { floorBottom, cheekX, cheekT, cheekRear }: { floorBottom: number; cheekX: number; cheekT: number; cheekRear: number }): void {
+  const { feedSign: f, s } = context;
+  if (context.remote) return;
+  const near = context.detail === 1;
+  const armY = floorBottom + 0.012 * s, armL = 0.06 * s, gripZ = cheekRear - armL + 0.011 * s;
+  cradle.add(slot, block(cheekT, 0.014 * s, armL + 0.005 * s), -f * cheekX, armY, cheekRear - (armL - 0.005 * s) / 2);
+  cradle.add(slot, block(0.05 * s, 0.022 * s, 0.022 * s), -f * (cheekX - cheekT / 2 + 0.025 * s), armY, gripZ);
+  if (near) cradle.add(context.shieldVariant ? context.weaponSlot : slot, block(0.006 * s, 0.018 * s, 0.008 * s), -f * (cheekX + 0.012 * s), armY - 0.018 * s, gripZ + 0.008 * s);
+  addNsvtCollimator({ ...context, parts: cradle, weaponSlot: slot }, cradle, cheekX - 0.012 * s, 0.010 * s);
+}
+
+/**
+ * The NSVT mount's collimator (K10-T): a boxed sight on an L-arm from the pin-side cheek (`cx` its centre line), its
+ * objective window forward and the eyepiece and brow pad at the back, beside the receiver's rear half at the gunner's
+ * eye line, `back` further aft than the fleet mount's.
+ */
+function addNsvtCollimator(context: PintleLayout, parts: MachineGunParts, cx: number, back: number): void {
+  const { bodyW, feedSign: f, recZ, s, trunY, weaponSlot } = context;
+  const near = context.detail === 1;
   if (!context.reflexSight) return;
-  // the collimator: a boxed sight on an L-arm from the cheek, its objective window forward and the eyepiece and brow
-  // pad at the back, beside the receiver's rear half at the gunner's eye line
-  const sx = -f * (bodyW / 2 + 0.05 * s), sy = trunY + 0.045 * s, sz = recZ - 0.07 * s;
+  const sx = -f * (bodyW / 2 + 0.05 * s), sy = trunY + 0.045 * s, sz = recZ - 0.07 * s - back;
   parts.add(weaponSlot, block(0.012 * s, 0.065 * s, 0.03 * s), -f * (cx + 0.012 * s), trunY + 0.005 * s, sz + 0.02 * s);
   parts.add(weaponSlot, block(Math.abs(sx) - cx - 0.006 * s, 0.012 * s, 0.03 * s), -f * (cx + (Math.abs(sx) - cx) / 2), trunY + 0.035 * s, sz + 0.02 * s);
   parts.add(weaponSlot, moldedBox(0.052 * s, 0.07 * s, 0.11 * s, 0.006 * s, 1, 0.004 * s), sx, sy, sz);

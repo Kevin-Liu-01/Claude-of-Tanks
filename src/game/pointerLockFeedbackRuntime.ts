@@ -73,7 +73,6 @@ export function createPointerLockFeedbackRuntime({
       'position:fixed;top:96px;left:50%;transform:translateX(-50%);z-index:66;' +
       'padding:9px 22px;pointer-events:none;background:rgba(9,13,17,.88);' +
       'border:1px solid rgba(240,176,74,.55);color:#ffd27a;' +
-      "font-family:'ABC Monument Grotesk','Segoe UI',Roboto,Helvetica,Arial,sans-serif;" +
       'font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;' +
       'box-shadow:0 4px 18px rgba(0,0,0,.5);opacity:1;transition:opacity 1.2s ease;';
     document.body.appendChild(element);

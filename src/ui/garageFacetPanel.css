@@ -1,8 +1,8 @@
 /* Garage roster Filter panel (garageFacetPanel.ts), loaded with the panel on the first Filter press.
    Owner UI rules 2026-10-17: no eyebrows, less text and more showing (class silhouettes, role symbols, live counts,
-   the landing's hollow outline on the fleet total). Type reads the brand tokens when a page defines them
-   (--font-ui, --font-display) and today's Garage stack otherwise. */
-.cot-facet-panel{--facet-font:var(--font-ui,'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif);
+   the landing's hollow outline on the fleet total). Type reads the page's type tokens
+   (--font-ui, and --font-display where a page declares the display family). */
+.cot-facet-panel{--facet-font:var(--font-ui);
   --facet-display:var(--font-display,var(--facet-font));--facet-bg:rgb(10,14,18);
   position:absolute;z-index:6;right:var(--country-edge,34px);bottom:calc(100% + 8px);
   width:min(640px,calc(100% - var(--country-edge,34px)));container-type:inline-size;
@@ -20,18 +20,16 @@
 .cot-facet-toggle[aria-expanded='true'],.cot-facet-toggle.is-active{color:#ffd27a;border-color:rgba(240,176,74,.65);
   border-bottom-color:#f0a030;background:linear-gradient(180deg,rgba(32,24,12,.97),rgba(14,10,6,.98));}
 .cot-facet-toggle .ct{min-width:14px;padding:0 4px;line-height:14px;text-align:center;
-  font:800 10px/14px var(--font-ui,'ABC Monument Grotesk','Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif);
-  font-variant-numeric:tabular-nums;color:#1a1105;background:#f0a030;}
+  font:700 11px/14px var(--font-ui);color:#1a1105;background:#f0a030;}
 .cot-facet-toggle .ct[hidden]{display:none;}
 .cot-country-chip.is-facet-empty{opacity:.42;}
 .cot-facet-panel .cot-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
   clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0;}
-.cot-facet-panel .num{font-variant-numeric:lining-nums tabular-nums;}
 /* Head: the tally, the search, Clear and close on one row; a narrow panel puts the search on its own line. */
 .cot-facet-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0;}
 .cot-facet-tally{order:1;flex:0 0 auto;margin:0;display:flex;align-items:baseline;gap:1px;line-height:.9;
-  font-family:var(--facet-display);font-weight:800;letter-spacing:-.02em;}
-.cot-facet-tally b{font-size:32px;font-weight:800;color:#ffd27a;}
+  font-family:var(--facet-display);font-weight:700;letter-spacing:-.02em;}
+.cot-facet-tally b{font-size:32px;font-weight:700;color:#ffd27a;}
 .cot-facet-tally>.num:not(b){font-size:32px;color:transparent;-webkit-text-stroke:1px rgba(198,210,220,.55);}
 .cot-facet-search{order:2;flex:1 1 200px;min-width:0;position:relative;display:flex;align-items:center;}
 .cot-facet-clear{order:3;}

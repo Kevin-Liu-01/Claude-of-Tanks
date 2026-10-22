@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { createTank } from '../src/vehicles/tankFactory.ts';
 import { ALL_TANK_IDS } from '../src/vehicles/specs.ts';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
+import { measureSeatedMarkingVisibility } from '../src/vehicles/vehicleMarkingSeating.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outputPath = path.join(root, 'src/vehicles/vehicleMarkingSeats.generated.ts');
@@ -24,6 +25,9 @@ for (const id of onlyIds ?? []) if (!ALL_TANK_IDS.includes(id)) throw new Error(
 const round = (value) => Number(Number(value).toFixed(7));
 const vector = (values) => values.map(round);
 const records = {};
+// 2026-10-21 (the M1A1 Abrams FEP): every solved seat re-measured on the finished visual, as the vehicleMarkings audit
+// re-measures it on the game's build; a seat whose receipt the shipped vehicle does not read is never written
+const unmatched = [];
 
 for (const id of ALL_TANK_IDS) {
   if (onlyIds && !onlyIds.has(id) && previous[id]) { records[id] = previous[id]; continue; }
@@ -34,6 +38,11 @@ for (const id of ALL_TANK_IDS) {
     if (!object.userData?.vehicleMarking) return;
     const kind = object.userData.markingKind;
     if (kind !== 'insignia' && kind !== 'designation') return;
+    const finished = measureSeatedMarkingVisibility(visual.root, object);
+    if (finished.visibilityClearSamples !== object.userData.visibilityClearSamples) {
+      unmatched.push(`${id}/${kind}: solved ${object.userData.visibilityClearSamples}/${object.userData.visibilitySamples}, `
+        + `the finished build reads ${finished.visibilityClearSamples}/${finished.visibilitySamples}`);
+    }
     seats.push({
       kind,
       parent: object.userData.surfaceOwner,
@@ -98,6 +107,11 @@ const staleGroupPaths = fs.existsSync(groupOutputDir)
     .filter((filePath) => !(filePath in outputs))
   : [];
 process.stdout.write('\n');
+if (unmatched.length) {
+  console.error('[marking-seats] the solver measured another build than the one it seats the markings on:');
+  for (const line of unmatched) console.error(`  ${line}`);
+  process.exit(1);
+}
 if (check) {
   const staleOutputs = Object.entries(outputs)
     .filter(([filePath, expected]) => !fs.existsSync(filePath) || fs.readFileSync(filePath, 'utf8') !== expected)

@@ -7,7 +7,7 @@ import type { GarageKitPlacement } from './garageKitPlacement.ts';
  * Coordinates are the opening view's frame (garageKitPlacements.ts); the rain canopy's floor stands 0.45 m on its plinth.
  *
  * The cells: bamboo lashed round the canopy's columns; the canopy busy, not bare: a light A-frame gantry at work on a power pack beside its stand, the bench and
- * roll cabs at its back, the welding cart and the raised drum rack on the right; the LED panel bolted to the canopy's
+ * roll cabs at its back, the welding cart and the raised drum rack on the right; the slideshow's CRT bolted to the canopy's
  * front-right column (garageSlideshowPlacement.ts) with the field computer beside it on its rugged case; the tarp banner
  * lashed between bamboo poles; the bamboo-framed notice board with three prints at the left; sandbags along the drain,
  * sealed cases and the radio's generator; the nameboard; drips off the right gutter, mist in the hills' folds and steam

@@ -1,22 +1,9 @@
 {
   "version": 1,
-  "created": "2026-10-14T23:59:51.820Z",
-  "sourceDigest": "33d2cadd02643ae874cae6a3f0891a66456ebe2bdd73c9cd5af0df98095e1b6f",
-  "revision": "627f06dc074e3b34b4358b9ec18f386cbe2d8199",
+  "created": "2026-10-21T23:22:38.369Z",
+  "sourceDigest": "c54103bcf0c1e5c17e8f60aa152b698b79f6d66dc92832bab7850655655e8da7",
+  "revision": "001ca8d376b27c95f15088c937c176f3297ca097",
   "shots": [
-    {
-      "src": "/maps/fjord.webp",
-      "previewSrc": "/maps/cards/fjord.webp",
-      "alt": "fjord battlefield overview",
-      "title": "fjord",
-      "map": "fjord",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 1
-    },
     {
       "src": "/maps/polders.webp",
       "previewSrc": "/maps/cards/polders.webp",
@@ -28,20 +15,7 @@
       "effects": [
         "daylight"
       ],
-      "sequence": 2
-    },
-    {
-      "src": "/maps/copper_mesa.webp",
-      "previewSrc": "/maps/cards/copper_mesa.webp",
-      "alt": "copper mesa battlefield overview",
-      "title": "copper mesa",
-      "map": "copper_mesa",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 3
+      "sequence": 1
     },
     {
       "src": "/maps/verdant.webp",
@@ -55,6 +29,227 @@
         "daylight"
       ],
       "sequence": 1
+    },
+    {
+      "src": "/maps/urban.webp",
+      "previewSrc": "/maps/cards/urban.webp",
+      "alt": "urban battlefield overview",
+      "title": "urban",
+      "map": "urban",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 2
+    },
+    {
+      "src": "/maps/coastal.webp",
+      "previewSrc": "/maps/cards/coastal.webp",
+      "alt": "coastal battlefield overview",
+      "title": "coastal",
+      "map": "coastal",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 3
+    },
+    {
+      "src": "/maps/autumn.webp",
+      "previewSrc": "/maps/cards/autumn.webp",
+      "alt": "autumn battlefield overview",
+      "title": "autumn",
+      "map": "autumn",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 4
+    },
+    {
+      "src": "/maps/steppe.webp",
+      "previewSrc": "/maps/cards/steppe.webp",
+      "alt": "steppe battlefield overview",
+      "title": "steppe",
+      "map": "steppe",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 5
+    },
+    {
+      "src": "/maps/railyard.webp",
+      "previewSrc": "/maps/cards/railyard.webp",
+      "alt": "railyard battlefield overview",
+      "title": "railyard",
+      "map": "railyard",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 6
+    },
+    {
+      "src": "/maps/frontier.webp",
+      "previewSrc": "/maps/cards/frontier.webp",
+      "alt": "frontier battlefield overview",
+      "title": "frontier",
+      "map": "frontier",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 7
+    },
+    {
+      "src": "/maps/fjord.webp",
+      "previewSrc": "/maps/cards/fjord.webp",
+      "alt": "fjord battlefield overview",
+      "title": "fjord",
+      "map": "fjord",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 8
+    },
+    {
+      "src": "/maps/badlands.webp",
+      "previewSrc": "/maps/cards/badlands.webp",
+      "alt": "badlands battlefield overview",
+      "title": "badlands",
+      "map": "badlands",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 9
+    },
+    {
+      "src": "/maps/blackglass.webp",
+      "previewSrc": "/maps/cards/blackglass.webp",
+      "alt": "blackglass battlefield overview",
+      "title": "blackglass",
+      "map": "blackglass",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 10
+    },
+    {
+      "src": "/maps/titan_gorge.webp",
+      "previewSrc": "/maps/cards/titan_gorge.webp",
+      "alt": "titan gorge battlefield overview",
+      "title": "titan gorge",
+      "map": "titan_gorge",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 11
+    },
+    {
+      "src": "/maps/skybridge.webp",
+      "previewSrc": "/maps/cards/skybridge.webp",
+      "alt": "skybridge battlefield overview",
+      "title": "skybridge",
+      "map": "skybridge",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 12
+    },
+    {
+      "src": "/maps/whiteout.webp",
+      "previewSrc": "/maps/cards/whiteout.webp",
+      "alt": "whiteout battlefield overview",
+      "title": "whiteout",
+      "map": "whiteout",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 13
+    },
+    {
+      "src": "/maps/orchard.webp",
+      "previewSrc": "/maps/cards/orchard.webp",
+      "alt": "orchard battlefield overview",
+      "title": "orchard",
+      "map": "orchard",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 14
+    },
+    {
+      "src": "/maps/mangrove.webp",
+      "previewSrc": "/maps/cards/mangrove.webp",
+      "alt": "mangrove battlefield overview",
+      "title": "mangrove",
+      "map": "mangrove",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 15
+    },
+    {
+      "src": "/maps/moon.webp",
+      "previewSrc": "/maps/cards/moon.webp",
+      "alt": "moon battlefield overview",
+      "title": "moon",
+      "map": "moon",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 16
+    },
+    {
+      "src": "/maps/cliffbridge.webp",
+      "previewSrc": "/maps/cards/cliffbridge.webp",
+      "alt": "cliffbridge battlefield overview",
+      "title": "cliffbridge",
+      "map": "cliffbridge",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 17
+    },
+    {
+      "src": "/maps/copper_mesa.webp",
+      "previewSrc": "/maps/cards/copper_mesa.webp",
+      "alt": "copper mesa battlefield overview",
+      "title": "copper mesa",
+      "map": "copper_mesa",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 3
     },
     {
       "src": "/maps/desert.webp",
@@ -83,84 +278,6 @@
       "sequence": 3
     },
     {
-      "src": "/maps/urban.webp",
-      "previewSrc": "/maps/cards/urban.webp",
-      "alt": "urban battlefield overview",
-      "title": "urban",
-      "map": "urban",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 4
-    },
-    {
-      "src": "/maps/coastal.webp",
-      "previewSrc": "/maps/cards/coastal.webp",
-      "alt": "coastal battlefield overview",
-      "title": "coastal",
-      "map": "coastal",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 5
-    },
-    {
-      "src": "/maps/autumn.webp",
-      "previewSrc": "/maps/cards/autumn.webp",
-      "alt": "autumn battlefield overview",
-      "title": "autumn",
-      "map": "autumn",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 6
-    },
-    {
-      "src": "/maps/steppe.webp",
-      "previewSrc": "/maps/cards/steppe.webp",
-      "alt": "steppe battlefield overview",
-      "title": "steppe",
-      "map": "steppe",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 7
-    },
-    {
-      "src": "/maps/railyard.webp",
-      "previewSrc": "/maps/cards/railyard.webp",
-      "alt": "railyard battlefield overview",
-      "title": "railyard",
-      "map": "railyard",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 8
-    },
-    {
-      "src": "/maps/frontier.webp",
-      "previewSrc": "/maps/cards/frontier.webp",
-      "alt": "frontier battlefield overview",
-      "title": "frontier",
-      "map": "frontier",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 9
-    },
-    {
       "src": "/maps/delta.webp",
       "previewSrc": "/maps/cards/delta.webp",
       "alt": "delta battlefield overview",
@@ -172,19 +289,6 @@
         "daylight"
       ],
       "sequence": 10
-    },
-    {
-      "src": "/maps/badlands.webp",
-      "previewSrc": "/maps/cards/badlands.webp",
-      "alt": "badlands battlefield overview",
-      "title": "badlands",
-      "map": "badlands",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 11
     },
     {
       "src": "/maps/monsoon.webp",
@@ -252,45 +356,6 @@
       "sequence": 16
     },
     {
-      "src": "/maps/blackglass.webp",
-      "previewSrc": "/maps/cards/blackglass.webp",
-      "alt": "blackglass battlefield overview",
-      "title": "blackglass",
-      "map": "blackglass",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 17
-    },
-    {
-      "src": "/maps/titan_gorge.webp",
-      "previewSrc": "/maps/cards/titan_gorge.webp",
-      "alt": "titan gorge battlefield overview",
-      "title": "titan gorge",
-      "map": "titan_gorge",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 18
-    },
-    {
-      "src": "/maps/skybridge.webp",
-      "previewSrc": "/maps/cards/skybridge.webp",
-      "alt": "skybridge battlefield overview",
-      "title": "skybridge",
-      "map": "skybridge",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 19
-    },
-    {
       "src": "/maps/airfield.webp",
       "previewSrc": "/maps/cards/airfield.webp",
       "alt": "airfield battlefield overview",
@@ -317,32 +382,6 @@
       "sequence": 23
     },
     {
-      "src": "/maps/whiteout.webp",
-      "previewSrc": "/maps/cards/whiteout.webp",
-      "alt": "whiteout battlefield overview",
-      "title": "whiteout",
-      "map": "whiteout",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 24
-    },
-    {
-      "src": "/maps/orchard.webp",
-      "previewSrc": "/maps/cards/orchard.webp",
-      "alt": "orchard battlefield overview",
-      "title": "orchard",
-      "map": "orchard",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 25
-    },
-    {
       "src": "/maps/longleaf.webp",
       "previewSrc": "/maps/cards/longleaf.webp",
       "alt": "longleaf battlefield overview",
@@ -354,19 +393,6 @@
         "daylight"
       ],
       "sequence": 26
-    },
-    {
-      "src": "/maps/mangrove.webp",
-      "previewSrc": "/maps/cards/mangrove.webp",
-      "alt": "mangrove battlefield overview",
-      "title": "mangrove",
-      "map": "mangrove",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 27
     },
     {
       "src": "/maps/saltwind.webp",
@@ -406,45 +432,58 @@
         "daylight"
       ],
       "sequence": 30
-    },
-    {
-      "src": "/maps/moon.webp",
-      "previewSrc": "/maps/cards/moon.webp",
-      "alt": "moon battlefield overview",
-      "title": "moon",
-      "map": "moon",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 31
-    },
-    {
-      "src": "/maps/cliffbridge.webp",
-      "previewSrc": "/maps/cards/cliffbridge.webp",
-      "alt": "cliffbridge battlefield overview",
-      "title": "cliffbridge",
-      "map": "cliffbridge",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 32
     }
   ],
   "films": [],
   "media": {
-    "/maps/verdant.webp": "production-map-verdant",
-    "/maps/cards/verdant.webp": "production-map-verdant",
-    "/maps/thumbs/verdant.webp": "production-map-verdant",
     "/maps/desert.webp": "production-map-desert",
     "/maps/cards/desert.webp": "production-map-desert",
     "/maps/thumbs/desert.webp": "production-map-desert",
     "/maps/winter.webp": "production-map-winter",
     "/maps/cards/winter.webp": "production-map-winter",
     "/maps/thumbs/winter.webp": "production-map-winter",
+    "/maps/delta.webp": "production-map-delta",
+    "/maps/cards/delta.webp": "production-map-delta",
+    "/maps/thumbs/delta.webp": "production-map-delta",
+    "/maps/monsoon.webp": "production-map-monsoon",
+    "/maps/cards/monsoon.webp": "production-map-monsoon",
+    "/maps/thumbs/monsoon.webp": "production-map-monsoon",
+    "/maps/alpine.webp": "production-map-alpine",
+    "/maps/cards/alpine.webp": "production-map-alpine",
+    "/maps/thumbs/alpine.webp": "production-map-alpine",
+    "/maps/caldera.webp": "production-map-caldera",
+    "/maps/cards/caldera.webp": "production-map-caldera",
+    "/maps/thumbs/caldera.webp": "production-map-caldera",
+    "/maps/foundry.webp": "production-map-foundry",
+    "/maps/cards/foundry.webp": "production-map-foundry",
+    "/maps/thumbs/foundry.webp": "production-map-foundry",
+    "/maps/ruinspires.webp": "production-map-ruinspires",
+    "/maps/cards/ruinspires.webp": "production-map-ruinspires",
+    "/maps/thumbs/ruinspires.webp": "production-map-ruinspires",
+    "/maps/airfield.webp": "production-map-airfield",
+    "/maps/cards/airfield.webp": "production-map-airfield",
+    "/maps/thumbs/airfield.webp": "production-map-airfield",
+    "/maps/oasis.webp": "production-map-oasis",
+    "/maps/cards/oasis.webp": "production-map-oasis",
+    "/maps/thumbs/oasis.webp": "production-map-oasis",
+    "/maps/longleaf.webp": "production-map-longleaf",
+    "/maps/cards/longleaf.webp": "production-map-longleaf",
+    "/maps/thumbs/longleaf.webp": "production-map-longleaf",
+    "/maps/saltwind.webp": "production-map-saltwind",
+    "/maps/cards/saltwind.webp": "production-map-saltwind",
+    "/maps/thumbs/saltwind.webp": "production-map-saltwind",
+    "/maps/reservoir.webp": "production-map-reservoir",
+    "/maps/cards/reservoir.webp": "production-map-reservoir",
+    "/maps/thumbs/reservoir.webp": "production-map-reservoir",
+    "/maps/mars.webp": "production-map-mars",
+    "/maps/cards/mars.webp": "production-map-mars",
+    "/maps/thumbs/mars.webp": "production-map-mars",
+    "/maps/copper_mesa.webp": "production-map-copper_mesa",
+    "/maps/cards/copper_mesa.webp": "production-map-copper_mesa",
+    "/maps/thumbs/copper_mesa.webp": "production-map-copper_mesa",
+    "/maps/verdant.webp": "production-map-verdant",
+    "/maps/cards/verdant.webp": "production-map-verdant",
+    "/maps/thumbs/verdant.webp": "production-map-verdant",
     "/maps/urban.webp": "production-map-urban",
     "/maps/cards/urban.webp": "production-map-urban",
     "/maps/thumbs/urban.webp": "production-map-urban",
@@ -463,27 +502,12 @@
     "/maps/frontier.webp": "production-map-frontier",
     "/maps/cards/frontier.webp": "production-map-frontier",
     "/maps/thumbs/frontier.webp": "production-map-frontier",
-    "/maps/delta.webp": "production-map-delta",
-    "/maps/cards/delta.webp": "production-map-delta",
-    "/maps/thumbs/delta.webp": "production-map-delta",
+    "/maps/fjord.webp": "production-map-fjord",
+    "/maps/cards/fjord.webp": "production-map-fjord",
+    "/maps/thumbs/fjord.webp": "production-map-fjord",
     "/maps/badlands.webp": "production-map-badlands",
     "/maps/cards/badlands.webp": "production-map-badlands",
     "/maps/thumbs/badlands.webp": "production-map-badlands",
-    "/maps/monsoon.webp": "production-map-monsoon",
-    "/maps/cards/monsoon.webp": "production-map-monsoon",
-    "/maps/thumbs/monsoon.webp": "production-map-monsoon",
-    "/maps/alpine.webp": "production-map-alpine",
-    "/maps/cards/alpine.webp": "production-map-alpine",
-    "/maps/thumbs/alpine.webp": "production-map-alpine",
-    "/maps/caldera.webp": "production-map-caldera",
-    "/maps/cards/caldera.webp": "production-map-caldera",
-    "/maps/thumbs/caldera.webp": "production-map-caldera",
-    "/maps/foundry.webp": "production-map-foundry",
-    "/maps/cards/foundry.webp": "production-map-foundry",
-    "/maps/thumbs/foundry.webp": "production-map-foundry",
-    "/maps/ruinspires.webp": "production-map-ruinspires",
-    "/maps/cards/ruinspires.webp": "production-map-ruinspires",
-    "/maps/thumbs/ruinspires.webp": "production-map-ruinspires",
     "/maps/blackglass.webp": "production-map-blackglass",
     "/maps/cards/blackglass.webp": "production-map-blackglass",
     "/maps/thumbs/blackglass.webp": "production-map-blackglass",
@@ -493,72 +517,26 @@
     "/maps/skybridge.webp": "production-map-skybridge",
     "/maps/cards/skybridge.webp": "production-map-skybridge",
     "/maps/thumbs/skybridge.webp": "production-map-skybridge",
-    "/maps/airfield.webp": "production-map-airfield",
-    "/maps/cards/airfield.webp": "production-map-airfield",
-    "/maps/thumbs/airfield.webp": "production-map-airfield",
-    "/maps/oasis.webp": "production-map-oasis",
-    "/maps/cards/oasis.webp": "production-map-oasis",
-    "/maps/thumbs/oasis.webp": "production-map-oasis",
     "/maps/whiteout.webp": "production-map-whiteout",
     "/maps/cards/whiteout.webp": "production-map-whiteout",
     "/maps/thumbs/whiteout.webp": "production-map-whiteout",
     "/maps/orchard.webp": "production-map-orchard",
     "/maps/cards/orchard.webp": "production-map-orchard",
     "/maps/thumbs/orchard.webp": "production-map-orchard",
-    "/maps/longleaf.webp": "production-map-longleaf",
-    "/maps/cards/longleaf.webp": "production-map-longleaf",
-    "/maps/thumbs/longleaf.webp": "production-map-longleaf",
     "/maps/mangrove.webp": "production-map-mangrove",
     "/maps/cards/mangrove.webp": "production-map-mangrove",
     "/maps/thumbs/mangrove.webp": "production-map-mangrove",
-    "/maps/saltwind.webp": "production-map-saltwind",
-    "/maps/cards/saltwind.webp": "production-map-saltwind",
-    "/maps/thumbs/saltwind.webp": "production-map-saltwind",
-    "/maps/reservoir.webp": "production-map-reservoir",
-    "/maps/cards/reservoir.webp": "production-map-reservoir",
-    "/maps/thumbs/reservoir.webp": "production-map-reservoir",
-    "/maps/mars.webp": "production-map-mars",
-    "/maps/cards/mars.webp": "production-map-mars",
-    "/maps/thumbs/mars.webp": "production-map-mars",
     "/maps/moon.webp": "production-map-moon",
     "/maps/cards/moon.webp": "production-map-moon",
     "/maps/thumbs/moon.webp": "production-map-moon",
     "/maps/cliffbridge.webp": "production-map-cliffbridge",
     "/maps/cards/cliffbridge.webp": "production-map-cliffbridge",
     "/maps/thumbs/cliffbridge.webp": "production-map-cliffbridge",
-    "/maps/fjord.webp": "production-map-fjord",
-    "/maps/cards/fjord.webp": "production-map-fjord",
-    "/maps/thumbs/fjord.webp": "production-map-fjord",
     "/maps/polders.webp": "production-map-polders",
     "/maps/cards/polders.webp": "production-map-polders",
-    "/maps/thumbs/polders.webp": "production-map-polders",
-    "/maps/copper_mesa.webp": "production-map-copper_mesa",
-    "/maps/cards/copper_mesa.webp": "production-map-copper_mesa",
-    "/maps/thumbs/copper_mesa.webp": "production-map-copper_mesa"
+    "/maps/thumbs/polders.webp": "production-map-polders"
   },
   "recipes": {
-    "production-map-verdant": {
-      "map": "verdant",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -64,
-          55.820642264736016,
-          -148
-        ],
-        "lookAt": [
-          80,
-          1.4904804887571228,
-          156
-        ],
-        "fov": 55
-      }
-    },
     "production-map-desert": {
       "map": "desert",
       "timeOfDay": "day",
@@ -603,138 +581,6 @@
         "fov": 55
       }
     },
-    "production-map-urban": {
-      "map": "urban",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -110,
-          62.00084185600281,
-          -236
-        ],
-        "lookAt": [
-          -30,
-          13.137615203857422,
-          20
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-coastal": {
-      "map": "coastal",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          356,
-          60,
-          -300
-        ],
-        "lookAt": [
-          96,
-          -6.957800224607393,
-          190
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-autumn": {
-      "map": "autumn",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          388,
-          59.462884011603556,
-          -478
-        ],
-        "lookAt": [
-          -60,
-          9.039659165792045,
-          60
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-steppe": {
-      "map": "steppe",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -330,
-          63.91121474148995,
-          -470
-        ],
-        "lookAt": [
-          60,
-          6.637644410133362,
-          60
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-railyard": {
-      "map": "railyard",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          150,
-          71.82597844441426,
-          -240
-        ],
-        "lookAt": [
-          -20,
-          4.2871347069740295,
-          10
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-frontier": {
-      "map": "frontier",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          150,
-          76.30363623238867,
-          -330
-        ],
-        "lookAt": [
-          -20,
-          1.0524110273179432,
-          40
-        ],
-        "fov": 55
-      }
-    },
     "production-map-delta": {
       "map": "delta",
       "timeOfDay": "day",
@@ -753,28 +599,6 @@
           -34,
           -2.2612647733302884,
           72
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-badlands": {
-      "map": "badlands",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -236,
-          78.53501105308533,
-          -226
-        ],
-        "lookAt": [
-          38,
-          12.089912178825951,
-          54
         ],
         "fov": 55
       }
@@ -889,72 +713,6 @@
         "fov": 55
       }
     },
-    "production-map-blackglass": {
-      "map": "blackglass",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -344,
-          71.72204410413012,
-          -308
-        ],
-        "lookAt": [
-          18,
-          11.14154795357121,
-          46
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-titan_gorge": {
-      "map": "titan_gorge",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -286,
-          89.24861361585899,
-          -246
-        ],
-        "lookAt": [
-          38,
-          5.716665279100756,
-          68
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-skybridge": {
-      "map": "skybridge",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -280,
-          90.54023383110109,
-          -236
-        ],
-        "lookAt": [
-          22,
-          -7.542576703243222,
-          92
-        ],
-        "fov": 55
-      }
-    },
     "production-map-airfield": {
       "map": "airfield",
       "timeOfDay": "day",
@@ -999,50 +757,6 @@
         "fov": 55
       }
     },
-    "production-map-whiteout": {
-      "map": "whiteout",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -256,
-          81.43021650704293,
-          -262
-        ],
-        "lookAt": [
-          68,
-          -1.4053230451260046,
-          82
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-orchard": {
-      "map": "orchard",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -244,
-          91.18236503844784,
-          -256
-        ],
-        "lookAt": [
-          60,
-          1.4796470717863688,
-          98
-        ],
-        "fov": 55
-      }
-    },
     "production-map-longleaf": {
       "map": "longleaf",
       "timeOfDay": "day",
@@ -1061,28 +775,6 @@
           50,
           3.406648465938786,
           100
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-mangrove": {
-      "map": "mangrove",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -260,
-          82.54785720797634,
-          -260
-        ],
-        "lookAt": [
-          52,
-          -0.002277284860610962,
-          90
         ],
         "fov": 55
       }
@@ -1153,6 +845,358 @@
         "fov": 55
       }
     },
+    "production-map-copper_mesa": {
+      "map": "copper_mesa",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -284,
+          98.73237693106759,
+          -282
+        ],
+        "lookAt": [
+          -30,
+          -7.45084991533119,
+          90
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-verdant": {
+      "map": "verdant",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -64,
+          55.820642264736016,
+          -148
+        ],
+        "lookAt": [
+          80,
+          1.4904804887571228,
+          156
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-urban": {
+      "map": "urban",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -110,
+          62.00084185600281,
+          -236
+        ],
+        "lookAt": [
+          -30,
+          13.137615203857422,
+          20
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-coastal": {
+      "map": "coastal",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          356,
+          60,
+          -300
+        ],
+        "lookAt": [
+          96,
+          -6.957800224607393,
+          190
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-autumn": {
+      "map": "autumn",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          388,
+          59.462884011603556,
+          -478
+        ],
+        "lookAt": [
+          -60,
+          9.044492808392327,
+          60
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-steppe": {
+      "map": "steppe",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -330,
+          63.91121474148995,
+          -470
+        ],
+        "lookAt": [
+          60,
+          6.637644410133362,
+          60
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-railyard": {
+      "map": "railyard",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          150,
+          71.82597844441426,
+          -240
+        ],
+        "lookAt": [
+          -20,
+          4.2871347069740295,
+          10
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-frontier": {
+      "map": "frontier",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          150,
+          76.30363623238867,
+          -330
+        ],
+        "lookAt": [
+          -20,
+          1.0524110273179432,
+          40
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-fjord": {
+      "map": "fjord",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          80,
+          56.7513572239795,
+          -130
+        ],
+        "lookAt": [
+          470,
+          -8.2,
+          120
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-badlands": {
+      "map": "badlands",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -236,
+          78.53501105308533,
+          -226
+        ],
+        "lookAt": [
+          38,
+          12.089912178825951,
+          54
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-blackglass": {
+      "map": "blackglass",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -344,
+          71.72204410413012,
+          -308
+        ],
+        "lookAt": [
+          18,
+          11.14154795357121,
+          46
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-titan_gorge": {
+      "map": "titan_gorge",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -286,
+          89.24861361585899,
+          -246
+        ],
+        "lookAt": [
+          38,
+          5.716665279100756,
+          68
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-skybridge": {
+      "map": "skybridge",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -280,
+          90.54023383110109,
+          -236
+        ],
+        "lookAt": [
+          22,
+          -18,
+          92
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-whiteout": {
+      "map": "whiteout",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -256,
+          81.43021650704293,
+          -262
+        ],
+        "lookAt": [
+          68,
+          -1.4053230451260046,
+          82
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-orchard": {
+      "map": "orchard",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -244,
+          91.18042109739834,
+          -256
+        ],
+        "lookAt": [
+          60,
+          1.4797670084821508,
+          98
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-mangrove": {
+      "map": "mangrove",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -260,
+          82.54785720797634,
+          -260
+        ],
+        "lookAt": [
+          52,
+          -0.002277284860610962,
+          90
+        ],
+        "fov": 55
+      }
+    },
     "production-map-moon": {
       "map": "moon",
       "timeOfDay": "day",
@@ -1197,28 +1241,6 @@
         "fov": 55
       }
     },
-    "production-map-fjord": {
-      "map": "fjord",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          80,
-          56.7513572239795,
-          -130
-        ],
-        "lookAt": [
-          470,
-          -8.2,
-          120
-        ],
-        "fov": 55
-      }
-    },
     "production-map-polders": {
       "map": "polders",
       "timeOfDay": "day",
@@ -1240,54 +1262,224 @@
         ],
         "fov": 55
       }
-    },
-    "production-map-copper_mesa": {
-      "map": "copper_mesa",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -284,
-          98.73237693106759,
-          -282
-        ],
-        "lookAt": [
-          -30,
-          -7.45084991533119,
-          90
-        ],
-        "fov": 55
-      }
     }
   },
   "assets": [
     {
-      "src": "/maps/fjord.webp",
-      "sha256": "68aaa00681a5c0b7793bf2fac8e3c69bf863a54c828126df2258787b845474da"
-    },
-    {
-      "src": "/maps/cards/fjord.webp",
-      "sha256": "838f1d57bb8a00b8dcdd8dabbb60f334141af5ed254478bbbbb6eddcab9a0fd2"
-    },
-    {
-      "src": "/maps/thumbs/fjord.webp",
-      "sha256": "c9796bf0532d9d0835a0f3a6099a0fce9e8258fee8879e0833dd2130bc0427cc"
-    },
-    {
       "src": "/maps/polders.webp",
-      "sha256": "0f54a3c34dd5b0723d3674070aedffb247286b25be5b02f4b83b227c14e59b39"
+      "sha256": "582b4c20f58eb383a8e193149d9af0ce519b0a787460949d30fe4964deb20a3f"
     },
     {
       "src": "/maps/cards/polders.webp",
-      "sha256": "fdf95d7e9fa527f77ac6eea2445ad4febd814b59a44689a40aaabed67bbc6f98"
+      "sha256": "bb52386cf02a3a0d5c8a9cbacfb25bcc1c44925d161e8bcaa8dd90c8f2538e47"
     },
     {
       "src": "/maps/thumbs/polders.webp",
-      "sha256": "8fa3d262dcbf3824178d126dff78bb282a73f9bf5322c07a1004fd393ae6a30a"
+      "sha256": "b35c7cf5e7693caf0560d5eb67631ab121fe04dab66a5c6b4226870d8edb6ccc"
+    },
+    {
+      "src": "/maps/verdant.webp",
+      "sha256": "21a2d2782d3a49e239d1d9b32fcbc4d4e0e6820a2b188b850b3a21fd59aaed22"
+    },
+    {
+      "src": "/maps/cards/verdant.webp",
+      "sha256": "584249174ec3e2c060711a6672cc6a16cd7723a3683195dbc3420096d4d47548"
+    },
+    {
+      "src": "/maps/thumbs/verdant.webp",
+      "sha256": "57cc913782822b4db1f64cc181ba78162014c59691dbdea96f7dbc523c5e71d6"
+    },
+    {
+      "src": "/maps/urban.webp",
+      "sha256": "5a2aa96b973d46caa2758cf3790225aed7c3eca26fa46b47603670ad206cc588"
+    },
+    {
+      "src": "/maps/cards/urban.webp",
+      "sha256": "0f47d4f174775f01f21a58bb5b7c33788e709c557a3ddc769590464647b00ec1"
+    },
+    {
+      "src": "/maps/thumbs/urban.webp",
+      "sha256": "44dae0ff52f390338add4c4dd5fa9cc160b615b31263438e367ab71a00f55fa0"
+    },
+    {
+      "src": "/maps/coastal.webp",
+      "sha256": "f393cc4ed0a0737f18d8d52b5d3cdb121556a4aa166b7fcf5ac3ce2551775c1b"
+    },
+    {
+      "src": "/maps/cards/coastal.webp",
+      "sha256": "2e4d72ddb7e66db1ed03b7d381874012d8fe5c8f76bd207b904371646537bc97"
+    },
+    {
+      "src": "/maps/thumbs/coastal.webp",
+      "sha256": "8ee5b4b518862603ee92783ce75b7d109bce42f424410ed35bb38ccc5aa5d8f0"
+    },
+    {
+      "src": "/maps/autumn.webp",
+      "sha256": "09b74c03b45fa69587e94f7f5035e3ddcb1fa02f80476d7f5cc425ac230ec8c2"
+    },
+    {
+      "src": "/maps/cards/autumn.webp",
+      "sha256": "efa6bc73f73425e8f7d87dc949aef9174688c25d9912f8da0b4f94c7a8a9d782"
+    },
+    {
+      "src": "/maps/thumbs/autumn.webp",
+      "sha256": "1637ffd51b671453c3a0cfe9e9f4f6f1152f75c1e2bd6c1f90ce11ad7e818d11"
+    },
+    {
+      "src": "/maps/steppe.webp",
+      "sha256": "3f2c5be8b499ca564949f27907efc80ebd9fbdf5562e6cca89df0aa9854a9d93"
+    },
+    {
+      "src": "/maps/cards/steppe.webp",
+      "sha256": "e3c3d40bc52827ffc3bf6b27b539ff1d40b22a781a2f2c626b2da68d42530ce4"
+    },
+    {
+      "src": "/maps/thumbs/steppe.webp",
+      "sha256": "46652b318f9b8835229db247f505e4f499c7eec1a5811951d596598a785b9a48"
+    },
+    {
+      "src": "/maps/railyard.webp",
+      "sha256": "88373e5cbad773a1dabf523da34e1f193bf55ccba821ef768bd51a6335778dea"
+    },
+    {
+      "src": "/maps/cards/railyard.webp",
+      "sha256": "418b1979a841c1bbf1606ee18397652a21903e2d662aaffb587cdb6429d0ca3c"
+    },
+    {
+      "src": "/maps/thumbs/railyard.webp",
+      "sha256": "b322127035926a2d8e8ec64466afcbb1dfe2632d5c486826c00e85ef6535db29"
+    },
+    {
+      "src": "/maps/frontier.webp",
+      "sha256": "1aa5af979d1d379ebec206f4cda5e8b8bd8fa6da91569887f8fb6805acc2c1d5"
+    },
+    {
+      "src": "/maps/cards/frontier.webp",
+      "sha256": "69ffb2b939ed0bc954d1d9994c7d6409036c5df4a2b7dd7b3ed5224b0e913fc4"
+    },
+    {
+      "src": "/maps/thumbs/frontier.webp",
+      "sha256": "b66ed2ac371de3617bd6b684cf0ea560cac163274fd9c3972d99286570b6ffcd"
+    },
+    {
+      "src": "/maps/fjord.webp",
+      "sha256": "afd45412a685d7bd63b4b71de5e624a3d01caffda2ff31f777b58ebb71e48b28"
+    },
+    {
+      "src": "/maps/cards/fjord.webp",
+      "sha256": "36fa4e98cedf463d47a89fce2a191406d4776061aa8880da9dd6e455dddd350e"
+    },
+    {
+      "src": "/maps/thumbs/fjord.webp",
+      "sha256": "54d0a1deeb441d752497b104a253beaf3639379a3934d9f14a55bceeec871f12"
+    },
+    {
+      "src": "/maps/badlands.webp",
+      "sha256": "dcb5063a52cac39414c9bb310524af36d702a29ae577a3729fb420bc48a44845"
+    },
+    {
+      "src": "/maps/cards/badlands.webp",
+      "sha256": "773156ef0383da029d9d6e4d26998c2db2d43d783f05656204bd2decd14002f8"
+    },
+    {
+      "src": "/maps/thumbs/badlands.webp",
+      "sha256": "3ec9a411a124db66344a4cd92116b3041218e983748a434d73301fa6c9510271"
+    },
+    {
+      "src": "/maps/blackglass.webp",
+      "sha256": "5f8c82d67b3c7da1051507605ec6e6931ff874f5edf4082f1105b48e07bbbbe1"
+    },
+    {
+      "src": "/maps/cards/blackglass.webp",
+      "sha256": "f56ec9e4bfd6170152a139d6e3336769f2a7b8e065ff8a40c1d88b6389e5a94b"
+    },
+    {
+      "src": "/maps/thumbs/blackglass.webp",
+      "sha256": "e7efb2cceb154853978e9f4de27491fa52f4f100586ceb34e1a4f538124fef69"
+    },
+    {
+      "src": "/maps/titan_gorge.webp",
+      "sha256": "1c1f90a0e1c8ea15b42593cadc46bb8273968bcda7d2159ef37db037627f2949"
+    },
+    {
+      "src": "/maps/cards/titan_gorge.webp",
+      "sha256": "acb8e665d7f40049a707a373d7405613ca5b91e5e7c350fac1d1da367e12a01b"
+    },
+    {
+      "src": "/maps/thumbs/titan_gorge.webp",
+      "sha256": "9baeb3e7f9b0b40fefd4e6dec4ba839b1adbc7b3c0c24036d82873ce371fcc62"
+    },
+    {
+      "src": "/maps/skybridge.webp",
+      "sha256": "eec928247956770651e3008560299a3676157fbe437b23bc7ba949e2039ae13c"
+    },
+    {
+      "src": "/maps/cards/skybridge.webp",
+      "sha256": "a4770f18422a474c0dd20b622584d1858b8201b63c8153c6ea18c0b3cabb2108"
+    },
+    {
+      "src": "/maps/thumbs/skybridge.webp",
+      "sha256": "fad2798e95bac58595ac1d619ce0ff2bb89b139c5440e68d47d5466f1e670ef2"
+    },
+    {
+      "src": "/maps/whiteout.webp",
+      "sha256": "41f372faf9e06b3c41652d0f178f4ab910b56e03d418e18ff25ee148c36eee74"
+    },
+    {
+      "src": "/maps/cards/whiteout.webp",
+      "sha256": "1ea0a8ddd6928c44bc761523dc0ca7155be7e31a446c2b674093b03932f42ca8"
+    },
+    {
+      "src": "/maps/thumbs/whiteout.webp",
+      "sha256": "d7f4cfccf2511562a20ece3a1f60a05e4a8cd5981de54142df9453808b28660e"
+    },
+    {
+      "src": "/maps/orchard.webp",
+      "sha256": "77763e41b54285d769aecb2dfe4e560ceac752df47c5ffd9cc8552156babcdc7"
+    },
+    {
+      "src": "/maps/cards/orchard.webp",
+      "sha256": "5430374995af0fdf2c28de5d3079a4a69463233fffcb9f8260aadc57c4eb106c"
+    },
+    {
+      "src": "/maps/thumbs/orchard.webp",
+      "sha256": "524019e7ccad121ae55379c3a02df22b8cfb02fcd7fcf7949bf7799c0154b5ef"
+    },
+    {
+      "src": "/maps/mangrove.webp",
+      "sha256": "e4c36612dc3e58a86c8c998ddbb09dcd05da62cb1357cbdee531408cbd850e96"
+    },
+    {
+      "src": "/maps/cards/mangrove.webp",
+      "sha256": "647538d06839caae47495a58eecae6bc8d6f8f3cb2ca8bb3294b34b68d84ab6c"
+    },
+    {
+      "src": "/maps/thumbs/mangrove.webp",
+      "sha256": "8c5cb9bd72c7a7b2a8a88602b6491620700031ad0ebef7cae28a51041a6bb573"
+    },
+    {
+      "src": "/maps/moon.webp",
+      "sha256": "956b3832ce2256503b8c01572947126675becfcd140c3feac62e950f3c9be2bc"
+    },
+    {
+      "src": "/maps/cards/moon.webp",
+      "sha256": "2c5c67698d6a778b20593e440677ebe6ddcfeaccb2942574543d74c1c261cf87"
+    },
+    {
+      "src": "/maps/thumbs/moon.webp",
+      "sha256": "29585e13340f86838fe50ad575d521a3028506ff5a57450455b2234761dca857"
+    },
+    {
+      "src": "/maps/cliffbridge.webp",
+      "sha256": "34a48ebc3e2e08f17361293f3d07b95daf7cd13f611119001f60267ca15ff060"
+    },
+    {
+      "src": "/maps/cards/cliffbridge.webp",
+      "sha256": "45157b8dd732e473ff935f6b3000fe701d94835f52142d76056635c322aaeb40"
+    },
+    {
+      "src": "/maps/thumbs/cliffbridge.webp",
+      "sha256": "925aa16feb54499c0be5ded5955d7b15832d8825fff735207c88e179054ad811"
     },
     {
       "src": "/maps/copper_mesa.webp",
@@ -1300,18 +1492,6 @@
     {
       "src": "/maps/thumbs/copper_mesa.webp",
       "sha256": "531faf794f4a03bf7ff7bb1be3322e1edd2ee34dcf2ea05656cc6e29c2b9c1e9"
-    },
-    {
-      "src": "/maps/verdant.webp",
-      "sha256": "9c69af38a8082f97e2888cf913dcd12493bbc3cb56d432e655f4f89db7504056"
-    },
-    {
-      "src": "/maps/cards/verdant.webp",
-      "sha256": "fa1af24794d14363cca3477bb883c46fdcbfe69daad0a9c314e79b82a31f7b7f"
-    },
-    {
-      "src": "/maps/thumbs/verdant.webp",
-      "sha256": "ae8bab0772d912ab95e0335684cfd6bb3e6b9253f3d44dc7f27538ad9c97e36f"
     },
     {
       "src": "/maps/desert.webp",
@@ -1338,78 +1518,6 @@
       "sha256": "964c4d6fa20b7f566c40f2dfa412d71e92d420dadbd3ffb3266a6c64ed7e31f7"
     },
     {
-      "src": "/maps/urban.webp",
-      "sha256": "ee4812293a482a7ae0cdb79ec686c14261c5d147107c4076d71964584716c1fa"
-    },
-    {
-      "src": "/maps/cards/urban.webp",
-      "sha256": "e65a143be990b69f964031fa9a5a3ceb931434d6b44599b123376dd1ed4091e2"
-    },
-    {
-      "src": "/maps/thumbs/urban.webp",
-      "sha256": "9b778ce715e016b69eb19c8fb46feceaa69981bd27aa38b1821ab62074d457b5"
-    },
-    {
-      "src": "/maps/coastal.webp",
-      "sha256": "015161fd6f540c8be836d1531e3ec7a7fcf346ebfad91e77edd76b2a979b0188"
-    },
-    {
-      "src": "/maps/cards/coastal.webp",
-      "sha256": "9517919e217c1b8e4b7c40b2c90f7c667a7bf9f7d42b9902613f1bd0855075c2"
-    },
-    {
-      "src": "/maps/thumbs/coastal.webp",
-      "sha256": "f1a42e5c8ec38748cf77b114f2328d9a7a711ee874861cee3a3095ba4fcaff74"
-    },
-    {
-      "src": "/maps/autumn.webp",
-      "sha256": "49afd2a066737fbb519bd1119dec862c2d522bcb0bf25325dbf416f8b88df235"
-    },
-    {
-      "src": "/maps/cards/autumn.webp",
-      "sha256": "a0e19ad3dfb895e3fa66aef791a53db7544558ced769a4af195668a4be927be7"
-    },
-    {
-      "src": "/maps/thumbs/autumn.webp",
-      "sha256": "29c5fe8c0aa34c1cc8d0caec485da2ede3ea76a0b817c0b6de47b552e2d4842f"
-    },
-    {
-      "src": "/maps/steppe.webp",
-      "sha256": "cabf66c814f12bc2e7654131f77cd9db06751b32b75febc8d7667a337fe9fb3d"
-    },
-    {
-      "src": "/maps/cards/steppe.webp",
-      "sha256": "46def7a5ddf98e88ace53ae7f2962d4544d78af90524ab1e8499e45fe39b3e6f"
-    },
-    {
-      "src": "/maps/thumbs/steppe.webp",
-      "sha256": "0f5d22f4fdb60ca8a3f83bcce515ad0078b7e71bb6f681360d02eaff0b832f41"
-    },
-    {
-      "src": "/maps/railyard.webp",
-      "sha256": "0c1f87dfce59f8cfe36164d1fb9edf640ff0c5d4a09a90e0ce88e2809583508b"
-    },
-    {
-      "src": "/maps/cards/railyard.webp",
-      "sha256": "ce731a248f73937adaa2853f675023b6849cb6cc772014431f51eb3a32de75b8"
-    },
-    {
-      "src": "/maps/thumbs/railyard.webp",
-      "sha256": "5220afd73fe0fe5996a532fd1bb1217769c158ddd41ecd0b5f22bda0904d10b8"
-    },
-    {
-      "src": "/maps/frontier.webp",
-      "sha256": "a733c31a89826876185690d71ca06d75ea8a0c54e5dbf5809a40feee1bceb86c"
-    },
-    {
-      "src": "/maps/cards/frontier.webp",
-      "sha256": "79f4647ba2314cb90a6fd6d725ebbfc8638c823fbd50c6670909d48af6788e83"
-    },
-    {
-      "src": "/maps/thumbs/frontier.webp",
-      "sha256": "bee90dadead260ef4725e45c1b639ecc94cfcf6f65b7766657b70950dbbc20d4"
-    },
-    {
       "src": "/maps/delta.webp",
       "sha256": "fb5352be1b135a336201ccb458fc329932a7f159f7ae4df12fe4ab7cbac9d4de"
     },
@@ -1420,18 +1528,6 @@
     {
       "src": "/maps/thumbs/delta.webp",
       "sha256": "a76e2672963250197d3009f0ae662d0f7f89bc311fd875a8abaa53f807cde2b6"
-    },
-    {
-      "src": "/maps/badlands.webp",
-      "sha256": "ae3b11de431f0755defec8281adbef86cd197a040283e591a2952aa91542ab77"
-    },
-    {
-      "src": "/maps/cards/badlands.webp",
-      "sha256": "a52688acfd4d52031ed9f6aa898f98a9b9ed4e2e017499203b11fbb23f9a2be8"
-    },
-    {
-      "src": "/maps/thumbs/badlands.webp",
-      "sha256": "01e47139b3b9cb57f0e967824cbc0cbf05fd4d4cb29f6e858fc7bb8f54b6aa6d"
     },
     {
       "src": "/maps/monsoon.webp",
@@ -1494,42 +1590,6 @@
       "sha256": "6cc405f31e13e9cbae576db7af000f6e990a0de916e7b116829e47e25f705dd6"
     },
     {
-      "src": "/maps/blackglass.webp",
-      "sha256": "735e90c24aa65d456f552cec1364253bfa0e8e4887d9541e151d579db101fa78"
-    },
-    {
-      "src": "/maps/cards/blackglass.webp",
-      "sha256": "4aca01c07a94f359a730a6800705f7a66702176420826dbdc01cb31f84f7fcdc"
-    },
-    {
-      "src": "/maps/thumbs/blackglass.webp",
-      "sha256": "bbea72ee02563899a5f106e1228212fcf08fc652e820ebab66cd6ce9290ac217"
-    },
-    {
-      "src": "/maps/titan_gorge.webp",
-      "sha256": "4f8bc10605000bec54cd147b6e06ac6b168c180fe0bae43c21337a12dcd11b7f"
-    },
-    {
-      "src": "/maps/cards/titan_gorge.webp",
-      "sha256": "fd20fa7a4edc6a8dd7492a38ae2c9b9dfa75f59d7eddfd98082204b73ecbd715"
-    },
-    {
-      "src": "/maps/thumbs/titan_gorge.webp",
-      "sha256": "7b82292ff618f2475cda21af8ba412cb2998e7f78d8ed49d9d1a43da80ed0ac2"
-    },
-    {
-      "src": "/maps/skybridge.webp",
-      "sha256": "afd910c06d4a44e21136118a5419d7ac9ed989c578ba1f180eb1e68773a0f9ff"
-    },
-    {
-      "src": "/maps/cards/skybridge.webp",
-      "sha256": "38bf5ddda5b01efb32367211ce7748f38cefefa06b1849491811a122873b0383"
-    },
-    {
-      "src": "/maps/thumbs/skybridge.webp",
-      "sha256": "f04078431f9caff07bd12225f2f5ff96780a9e7e0c8aea35bba48f27f3df2f3e"
-    },
-    {
       "src": "/maps/airfield.webp",
       "sha256": "0508cf7ad573fe0a3c263061f2acd2a5cfb109a8b998a5ca9d905bd6dc0f2220"
     },
@@ -1554,30 +1614,6 @@
       "sha256": "7dfa731dcff442e12e5eb382a1fc61af944f8e989667237b3e7072e7068ff8cb"
     },
     {
-      "src": "/maps/whiteout.webp",
-      "sha256": "e95f1526dfae2c6a1028ca6fa22974f4e37356b07595d539bad8144a3a672897"
-    },
-    {
-      "src": "/maps/cards/whiteout.webp",
-      "sha256": "5d21ae76afcd49b2020c8d7abd0c7c7953cac257c89ba68462703368a92e84eb"
-    },
-    {
-      "src": "/maps/thumbs/whiteout.webp",
-      "sha256": "2526e87ed9a67b6038c0b951bb68ab6663e4ef076b3bb60838b4b69909cc2924"
-    },
-    {
-      "src": "/maps/orchard.webp",
-      "sha256": "872414e7cc1a4130c4a421f70c106d63431d405ef2d1547797f8130cca202fd8"
-    },
-    {
-      "src": "/maps/cards/orchard.webp",
-      "sha256": "26844a3126206f995e67204022b70a09c83695ac67cc4dd3ac575b1026a9a6a9"
-    },
-    {
-      "src": "/maps/thumbs/orchard.webp",
-      "sha256": "4f5f13dae35d7522c651c40081a3fe3fee5b49033bc10f5bd36a6dd49723823f"
-    },
-    {
       "src": "/maps/longleaf.webp",
       "sha256": "d9478b672370683db601747b628217168243d7739cadf22f583caf5cde5236eb"
     },
@@ -1588,18 +1624,6 @@
     {
       "src": "/maps/thumbs/longleaf.webp",
       "sha256": "d190295bbb06384683ee1b001fb853e3f978d975669a77f3b4a49b1bcf583366"
-    },
-    {
-      "src": "/maps/mangrove.webp",
-      "sha256": "30afbf8b44b0ccc2689d5886b45bd614e32bbfd61100c05c63466a5c6e4150a5"
-    },
-    {
-      "src": "/maps/cards/mangrove.webp",
-      "sha256": "ef8c7f0095c0f25eb83138fb0c5858b46b85e30eeb97dbc516ec9cdaef28a171"
-    },
-    {
-      "src": "/maps/thumbs/mangrove.webp",
-      "sha256": "166aba174e9463cc516f1905eab6d602f00af30b09b975f2f80e8f9b34675fb1"
     },
     {
       "src": "/maps/saltwind.webp",
@@ -1636,55 +1660,17 @@
     {
       "src": "/maps/thumbs/mars.webp",
       "sha256": "823145aaf69a2042e1703965ac481b3d6a2f2302392a8ed0adfea56908d897f1"
-    },
-    {
-      "src": "/maps/moon.webp",
-      "sha256": "2eacdbce5f2e5a66706959d06e97371167ca7c6772dbc4fe060839d78136f547"
-    },
-    {
-      "src": "/maps/cards/moon.webp",
-      "sha256": "f2b44aa4584a3d10e4dc3b8eb8ad1342d95d104fd309af07c7ad5ff90c231781"
-    },
-    {
-      "src": "/maps/thumbs/moon.webp",
-      "sha256": "99049050b1f8eb35bef303e608f05109082c04b0779eab11922793d99cf0f12b"
-    },
-    {
-      "src": "/maps/cliffbridge.webp",
-      "sha256": "5c5e0abb24202218a34b6a278fac442906231e2165a5d02f6b1a9eeda2092e01"
-    },
-    {
-      "src": "/maps/cards/cliffbridge.webp",
-      "sha256": "5763c282712e04c7bdf29384ce06a41b3938f5329cb0327b344f663f7ea0af55"
-    },
-    {
-      "src": "/maps/thumbs/cliffbridge.webp",
-      "sha256": "28092c4e762876b593b1599cfa1ef42fa8361f14bccd203a7c419f2692e1025a"
     }
   ],
   "review": {
-    "reviewedAt": "2026-10-14T23:59:47.326Z",
-    "notes": "MED-04 (the coordinator, 2026-10-14): the three maps whose site art still showed the banned broken-stratocumulus deck, captured again as day overviews on main 9c511dd48 + media/ui-maps 627f06dc0 (fair-weather cumulus). Masters inspected at full size and in the old-vs-new sheets; r1's Fjord frame was rejected by the coordinator and re-framed for r2; Polders and Copper Mesa checked against r1 by PSNR.",
+    "reviewedAt": "2026-10-21T19:51:37+00:00",
+    "notes": "Maps 227: the blind review of the 33 frames against their live pictures (opus + sonnet). This batch holds the frames it passed (1 here); the frames it did not pass keep their live pictures.",
     "maps": {
-      "fjord": {
-        "accepted": true,
-        "notes": "The new framing (recipes.mjs mapScene override, lab candidate c of six): from above the west road, 50 m up, across the village on the shore, a house near-left, the road leading in, the fjord with its cliff headland and lighthouse, the peaks behind. Fair-weather cumulus; no broken deck. The near grass is darker than in the 208 hero (the map's current look). Interim until the maps lane re-authors fjord.ts's overview camera.",
-        "hashes": [
-          "5da24e09cdcbb006d8031dfcc698b44be3f7866b0ee17068afddcb3c97216404"
-        ]
-      },
       "polders": {
         "accepted": true,
-        "notes": "The authored frame of the 208 hero under fair-weather cumulus (the banned deck gone); the windmill, farms, pylon and the canals read.",
+        "notes": "Blind review 2026-10-21, two critics (A/B shuffled, key unseen): the new frame preferred (opus: new: authored frame (0.85); sonnet: new: authored frame (0.9)).",
         "hashes": [
-          "77324206c96ea3f758b024c3ac9ec108a8b4b116049cf9b07744814f922b2ae3"
-        ]
-      },
-      "copper_mesa": {
-        "accepted": true,
-        "notes": "The authored frame of the 208 hero under fair-weather cumulus; warmer ground and more mine works. Published with --min-quality=67 (the coordinator's ruling: its old bytes hold at q73 hero, q67 card, q70 thumb; the q67 card matched q76 at 1:1).",
-        "hashes": [
-          "c90186ab151176a706ecd92d6d7b55a33a0d9ccbdf99e4c2c85ad41bc91246cf"
+          "800094ad6d44d0f7b40002ffc7f03ada1c45232d25de2923b04478019dd8d03a"
         ]
       }
     }
@@ -1926,18 +1912,6 @@
       },
       "assets": [
         {
-          "src": "/maps/verdant.webp",
-          "sha256": "9c69af38a8082f97e2888cf913dcd12493bbc3cb56d432e655f4f89db7504056"
-        },
-        {
-          "src": "/maps/cards/verdant.webp",
-          "sha256": "fa1af24794d14363cca3477bb883c46fdcbfe69daad0a9c314e79b82a31f7b7f"
-        },
-        {
-          "src": "/maps/thumbs/verdant.webp",
-          "sha256": "ae8bab0772d912ab95e0335684cfd6bb3e6b9253f3d44dc7f27538ad9c97e36f"
-        },
-        {
           "src": "/maps/desert.webp",
           "sha256": "670567a54cdc098186500799c4d90bdfa5001451b4bf27c004e83454f2945c26"
         },
@@ -1962,78 +1936,6 @@
           "sha256": "964c4d6fa20b7f566c40f2dfa412d71e92d420dadbd3ffb3266a6c64ed7e31f7"
         },
         {
-          "src": "/maps/urban.webp",
-          "sha256": "ee4812293a482a7ae0cdb79ec686c14261c5d147107c4076d71964584716c1fa"
-        },
-        {
-          "src": "/maps/cards/urban.webp",
-          "sha256": "e65a143be990b69f964031fa9a5a3ceb931434d6b44599b123376dd1ed4091e2"
-        },
-        {
-          "src": "/maps/thumbs/urban.webp",
-          "sha256": "9b778ce715e016b69eb19c8fb46feceaa69981bd27aa38b1821ab62074d457b5"
-        },
-        {
-          "src": "/maps/coastal.webp",
-          "sha256": "015161fd6f540c8be836d1531e3ec7a7fcf346ebfad91e77edd76b2a979b0188"
-        },
-        {
-          "src": "/maps/cards/coastal.webp",
-          "sha256": "9517919e217c1b8e4b7c40b2c90f7c667a7bf9f7d42b9902613f1bd0855075c2"
-        },
-        {
-          "src": "/maps/thumbs/coastal.webp",
-          "sha256": "f1a42e5c8ec38748cf77b114f2328d9a7a711ee874861cee3a3095ba4fcaff74"
-        },
-        {
-          "src": "/maps/autumn.webp",
-          "sha256": "49afd2a066737fbb519bd1119dec862c2d522bcb0bf25325dbf416f8b88df235"
-        },
-        {
-          "src": "/maps/cards/autumn.webp",
-          "sha256": "a0e19ad3dfb895e3fa66aef791a53db7544558ced769a4af195668a4be927be7"
-        },
-        {
-          "src": "/maps/thumbs/autumn.webp",
-          "sha256": "29c5fe8c0aa34c1cc8d0caec485da2ede3ea76a0b817c0b6de47b552e2d4842f"
-        },
-        {
-          "src": "/maps/steppe.webp",
-          "sha256": "cabf66c814f12bc2e7654131f77cd9db06751b32b75febc8d7667a337fe9fb3d"
-        },
-        {
-          "src": "/maps/cards/steppe.webp",
-          "sha256": "46def7a5ddf98e88ace53ae7f2962d4544d78af90524ab1e8499e45fe39b3e6f"
-        },
-        {
-          "src": "/maps/thumbs/steppe.webp",
-          "sha256": "0f5d22f4fdb60ca8a3f83bcce515ad0078b7e71bb6f681360d02eaff0b832f41"
-        },
-        {
-          "src": "/maps/railyard.webp",
-          "sha256": "0c1f87dfce59f8cfe36164d1fb9edf640ff0c5d4a09a90e0ce88e2809583508b"
-        },
-        {
-          "src": "/maps/cards/railyard.webp",
-          "sha256": "ce731a248f73937adaa2853f675023b6849cb6cc772014431f51eb3a32de75b8"
-        },
-        {
-          "src": "/maps/thumbs/railyard.webp",
-          "sha256": "5220afd73fe0fe5996a532fd1bb1217769c158ddd41ecd0b5f22bda0904d10b8"
-        },
-        {
-          "src": "/maps/frontier.webp",
-          "sha256": "a733c31a89826876185690d71ca06d75ea8a0c54e5dbf5809a40feee1bceb86c"
-        },
-        {
-          "src": "/maps/cards/frontier.webp",
-          "sha256": "79f4647ba2314cb90a6fd6d725ebbfc8638c823fbd50c6670909d48af6788e83"
-        },
-        {
-          "src": "/maps/thumbs/frontier.webp",
-          "sha256": "bee90dadead260ef4725e45c1b639ecc94cfcf6f65b7766657b70950dbbc20d4"
-        },
-        {
           "src": "/maps/delta.webp",
           "sha256": "fb5352be1b135a336201ccb458fc329932a7f159f7ae4df12fe4ab7cbac9d4de"
         },
@@ -2044,18 +1946,6 @@
         {
           "src": "/maps/thumbs/delta.webp",
           "sha256": "a76e2672963250197d3009f0ae662d0f7f89bc311fd875a8abaa53f807cde2b6"
-        },
-        {
-          "src": "/maps/badlands.webp",
-          "sha256": "ae3b11de431f0755defec8281adbef86cd197a040283e591a2952aa91542ab77"
-        },
-        {
-          "src": "/maps/cards/badlands.webp",
-          "sha256": "a52688acfd4d52031ed9f6aa898f98a9b9ed4e2e017499203b11fbb23f9a2be8"
-        },
-        {
-          "src": "/maps/thumbs/badlands.webp",
-          "sha256": "01e47139b3b9cb57f0e967824cbc0cbf05fd4d4cb29f6e858fc7bb8f54b6aa6d"
         },
         {
           "src": "/maps/monsoon.webp",
@@ -2118,42 +2008,6 @@
           "sha256": "6cc405f31e13e9cbae576db7af000f6e990a0de916e7b116829e47e25f705dd6"
         },
         {
-          "src": "/maps/blackglass.webp",
-          "sha256": "735e90c24aa65d456f552cec1364253bfa0e8e4887d9541e151d579db101fa78"
-        },
-        {
-          "src": "/maps/cards/blackglass.webp",
-          "sha256": "4aca01c07a94f359a730a6800705f7a66702176420826dbdc01cb31f84f7fcdc"
-        },
-        {
-          "src": "/maps/thumbs/blackglass.webp",
-          "sha256": "bbea72ee02563899a5f106e1228212fcf08fc652e820ebab66cd6ce9290ac217"
-        },
-        {
-          "src": "/maps/titan_gorge.webp",
-          "sha256": "4f8bc10605000bec54cd147b6e06ac6b168c180fe0bae43c21337a12dcd11b7f"
-        },
-        {
-          "src": "/maps/cards/titan_gorge.webp",
-          "sha256": "fd20fa7a4edc6a8dd7492a38ae2c9b9dfa75f59d7eddfd98082204b73ecbd715"
-        },
-        {
-          "src": "/maps/thumbs/titan_gorge.webp",
-          "sha256": "7b82292ff618f2475cda21af8ba412cb2998e7f78d8ed49d9d1a43da80ed0ac2"
-        },
-        {
-          "src": "/maps/skybridge.webp",
-          "sha256": "afd910c06d4a44e21136118a5419d7ac9ed989c578ba1f180eb1e68773a0f9ff"
-        },
-        {
-          "src": "/maps/cards/skybridge.webp",
-          "sha256": "38bf5ddda5b01efb32367211ce7748f38cefefa06b1849491811a122873b0383"
-        },
-        {
-          "src": "/maps/thumbs/skybridge.webp",
-          "sha256": "f04078431f9caff07bd12225f2f5ff96780a9e7e0c8aea35bba48f27f3df2f3e"
-        },
-        {
           "src": "/maps/airfield.webp",
           "sha256": "0508cf7ad573fe0a3c263061f2acd2a5cfb109a8b998a5ca9d905bd6dc0f2220"
         },
@@ -2178,30 +2032,6 @@
           "sha256": "7dfa731dcff442e12e5eb382a1fc61af944f8e989667237b3e7072e7068ff8cb"
         },
         {
-          "src": "/maps/whiteout.webp",
-          "sha256": "e95f1526dfae2c6a1028ca6fa22974f4e37356b07595d539bad8144a3a672897"
-        },
-        {
-          "src": "/maps/cards/whiteout.webp",
-          "sha256": "5d21ae76afcd49b2020c8d7abd0c7c7953cac257c89ba68462703368a92e84eb"
-        },
-        {
-          "src": "/maps/thumbs/whiteout.webp",
-          "sha256": "2526e87ed9a67b6038c0b951bb68ab6663e4ef076b3bb60838b4b69909cc2924"
-        },
-        {
-          "src": "/maps/orchard.webp",
-          "sha256": "872414e7cc1a4130c4a421f70c106d63431d405ef2d1547797f8130cca202fd8"
-        },
-        {
-          "src": "/maps/cards/orchard.webp",
-          "sha256": "26844a3126206f995e67204022b70a09c83695ac67cc4dd3ac575b1026a9a6a9"
-        },
-        {
-          "src": "/maps/thumbs/orchard.webp",
-          "sha256": "4f5f13dae35d7522c651c40081a3fe3fee5b49033bc10f5bd36a6dd49723823f"
-        },
-        {
           "src": "/maps/longleaf.webp",
           "sha256": "d9478b672370683db601747b628217168243d7739cadf22f583caf5cde5236eb"
         },
@@ -2212,18 +2042,6 @@
         {
           "src": "/maps/thumbs/longleaf.webp",
           "sha256": "d190295bbb06384683ee1b001fb853e3f978d975669a77f3b4a49b1bcf583366"
-        },
-        {
-          "src": "/maps/mangrove.webp",
-          "sha256": "30afbf8b44b0ccc2689d5886b45bd614e32bbfd61100c05c63466a5c6e4150a5"
-        },
-        {
-          "src": "/maps/cards/mangrove.webp",
-          "sha256": "ef8c7f0095c0f25eb83138fb0c5858b46b85e30eeb97dbc516ec9cdaef28a171"
-        },
-        {
-          "src": "/maps/thumbs/mangrove.webp",
-          "sha256": "166aba174e9463cc516f1905eab6d602f00af30b09b975f2f80e8f9b34675fb1"
         },
         {
           "src": "/maps/saltwind.webp",
@@ -2260,30 +2078,388 @@
         {
           "src": "/maps/thumbs/mars.webp",
           "sha256": "823145aaf69a2042e1703965ac481b3d6a2f2302392a8ed0adfea56908d897f1"
+        }
+      ]
+    },
+    {
+      "created": "2026-10-14T23:59:51.820Z",
+      "revision": "627f06dc074e3b34b4358b9ec18f386cbe2d8199",
+      "sourceDigest": "33d2cadd02643ae874cae6a3f0891a66456ebe2bdd73c9cd5af0df98095e1b6f",
+      "review": {
+        "reviewedAt": "2026-10-14T23:59:47.326Z",
+        "notes": "MED-04 (the coordinator, 2026-10-14): the three maps whose site art still showed the banned broken-stratocumulus deck, captured again as day overviews on main 9c511dd48 + media/ui-maps 627f06dc0 (fair-weather cumulus). Masters inspected at full size and in the old-vs-new sheets; r1's Fjord frame was rejected by the coordinator and re-framed for r2; Polders and Copper Mesa checked against r1 by PSNR.",
+        "maps": {
+          "fjord": {
+            "accepted": true,
+            "notes": "The new framing (recipes.mjs mapScene override, lab candidate c of six): from above the west road, 50 m up, across the village on the shore, a house near-left, the road leading in, the fjord with its cliff headland and lighthouse, the peaks behind. Fair-weather cumulus; no broken deck. The near grass is darker than in the 208 hero (the map's current look). Interim until the maps lane re-authors fjord.ts's overview camera.",
+            "hashes": [
+              "5da24e09cdcbb006d8031dfcc698b44be3f7866b0ee17068afddcb3c97216404"
+            ]
+          },
+          "polders": {
+            "accepted": true,
+            "notes": "The authored frame of the 208 hero under fair-weather cumulus (the banned deck gone); the windmill, farms, pylon and the canals read.",
+            "hashes": [
+              "77324206c96ea3f758b024c3ac9ec108a8b4b116049cf9b07744814f922b2ae3"
+            ]
+          },
+          "copper_mesa": {
+            "accepted": true,
+            "notes": "The authored frame of the 208 hero under fair-weather cumulus; warmer ground and more mine works. Published with --min-quality=67 (the coordinator's ruling: its old bytes hold at q73 hero, q67 card, q70 thumb; the q67 card matched q76 at 1:1).",
+            "hashes": [
+              "c90186ab151176a706ecd92d6d7b55a33a0d9ccbdf99e4c2c85ad41bc91246cf"
+            ]
+          }
+        }
+      },
+      "assets": [
+        {
+          "src": "/maps/copper_mesa.webp",
+          "sha256": "6da0fa22f9f7a06be78c878eba71efcf97be083000fa862281684a4a6a961eeb"
+        },
+        {
+          "src": "/maps/cards/copper_mesa.webp",
+          "sha256": "d2707ce6554c120376232e9d0b7f5121e069915dceca08c349bc53d24829aa77"
+        },
+        {
+          "src": "/maps/thumbs/copper_mesa.webp",
+          "sha256": "531faf794f4a03bf7ff7bb1be3322e1edd2ee34dcf2ea05656cc6e29c2b9c1e9"
+        }
+      ]
+    },
+    {
+      "created": "2026-10-21T23:02:34.387Z",
+      "revision": "001ca8d376b27c95f15088c937c176f3297ca097",
+      "sourceDigest": "c54103bcf0c1e5c17e8f60aa152b698b79f6d66dc92832bab7850655655e8da7",
+      "review": {
+        "reviewedAt": "2026-10-21T19:51:37+00:00",
+        "notes": "Maps 227: the blind review of the 33 frames against their live pictures (opus + sonnet). This batch holds the frames it passed (17 here); the frames it did not pass keep their live pictures.",
+        "maps": {
+          "autumn": {
+            "accepted": true,
+            "notes": "Blind review 2026-10-21, two critics (A/B shuffled, key unseen): the new frame preferred (opus: new: authored frame (0.65); sonnet: new: authored frame (0.6)).",
+            "hashes": [
+              "8deffccf50ceb7594410d18f00d26e638b152489017b5c32c804a5f6ddf8f8ae"
+            ]
+          },
+          "badlands": {
+            "accepted": true,
+            "notes": "Blind review 2026-10-21, two critics (A/B shuffled, key unseen): the new frame preferred (opus: new: authored frame (0.75); sonnet: new: authored frame (0.8)).",
+            "hashes": [
+              "8397ba4731e7963c0816911678bc63fbf97b9f50028960f94cb102ee9f25047a"
+            ]
+          },
+          "blackglass": {
+            "accepted": true,
+            "notes": "Blind review 2026-10-21, two critics (A/B shuffled, key unseen): the new frame preferred (opus: new: authored frame (0.75); sonnet: new: authored frame (0.8)).",
+            "hashes": [
+              "ddfe6aa172d7e39c48a98f0b3290a55bc48c1b1df40a85766dcffd2679e2df83"
+            ]
+          },
+          "cliffbridge": {
+            "accepted": true,
+            "notes": "Blind review 2026-10-21, two critics (A/B shuffled, key unseen): the new frame preferred (opus: new: authored frame (0.8); sonnet: new: authored frame (0.65)).",
+            "hashes": [
+              "412c32233a08760978b11c815df2732277453aa5f205e23a8efcd390aaad1475"
+            ]
+          },
+          "coastal": {
+            "accepted": true,
+            "notes": "Blind review 2026-10-21, two critics (A/B shuffled, key unseen): the new frame preferred (opus: new: authored frame (0.55); sonnet: new: authored frame (0.6)).",
+            "hashes": [
+              "f78481cab1f06428016df7be4020480dbaad108b322fab33f10bcb6f384a7127"
+            ]
+          },
+          "fjord": {
+            "accepted": true,
+            "notes": "Blind review 2026-10-21, two critics (A/B shuffled, key unseen): the new frame preferred (opus: new: authored frame (0.8); sonnet: new: authored frame (0.8)).",
+            "hashes": [
+              "864c204631c41034818cf084b4351b542eea3e6a95dcc03869c0b470cee101d6"
+            ]
+          },
+          "frontier": {
+            "accepted": true,
+            "notes": "Blind review 2026-10-21, two critics (A/B shuffled, key unseen): the new frame preferred (opus: new: authored frame (0.8); sonnet: new: authored frame (0.85)).",
+            "hashes": [
+              "640984dd844a79eb39a810eafd78c9fab3a465fa77c6c5b1b47152263869f7c5"
+            ]
+          },
+          "mangrove": {
+            "accepted": true,
+            "notes": "Blind review 2026-10-21, two critics (A/B shuffled, key unseen): the new frame preferred (opus: new: authored frame (0.55); sonnet: tie (0.5)).",
+            "hashes": [
+              "2fcdfc6bd7ed08f9fe5bfe105555c66a0baec849fb5c7b3188fe4822c0c7ceee"
+            ]
+          },
+          "moon": {
+            "accepted": true,
+            "notes": "Blind review 2026-10-21, two critics (A/B shuffled, key unseen): the new frame preferred (opus: new: authored frame (0.75); sonnet: new: authored frame (0.85)).",
+            "hashes": [
+              "df58f9a5dffd5e16aaf0ef7d119e0f09221f7786dd7c0c4ae38fb5d2670219a4"
+            ]
+          },
+          "orchard": {
+            "accepted": true,
+            "notes": "Blind review 2026-10-21, two critics (A/B shuffled, key unseen): the new frame preferred (opus: new: authored frame (0.65); sonnet: new: authored frame (0.65)).",
+            "hashes": [
+              "d54edf8ca7eeba30bec7b7f7ffc8e71b57bb4bc5c86a7fea246959e7b9de4b0a"
+            ]
+          },
+          "railyard": {
+            "accepted": true,
+            "notes": "Blind review 2026-10-21, two critics (A/B shuffled, key unseen): the new frame preferred (opus: new: authored frame (0.75); sonnet: new: authored frame (0.85)).",
+            "hashes": [
+              "a81c29a0569e23d82ba9274e00b19e7b2feadd0f405074b30e8103aa92637268"
+            ]
+          },
+          "skybridge": {
+            "accepted": true,
+            "notes": "Blind review 2026-10-21, two critics (A/B shuffled, key unseen): the new frame preferred (opus: new: authored frame (0.75); sonnet: new: authored frame (0.8)).",
+            "hashes": [
+              "1f1b072ab7ff46b5b86d034a7ecd1ce1dd1ffd39517ee0b037b4bfa5b23bea3b"
+            ]
+          },
+          "steppe": {
+            "accepted": true,
+            "notes": "Blind review 2026-10-21, two critics (A/B shuffled, key unseen): the new frame preferred (opus: new: authored frame (0.55); sonnet: new: authored frame (0.55)).",
+            "hashes": [
+              "05aa7881b1e321970c5a4691ad6a027d745cbb64e3a6a7e18b7344c6cb75e57c"
+            ]
+          },
+          "titan_gorge": {
+            "accepted": true,
+            "notes": "Blind review 2026-10-21, two critics (A/B shuffled, key unseen): the new frame preferred (opus: new: authored frame (0.75); sonnet: new: authored frame (0.7)).",
+            "hashes": [
+              "ac47601cbc6803b01bc062925ce4e3f05c7cbb64222f9e95f07fbf9d6f0ff36f"
+            ]
+          },
+          "urban": {
+            "accepted": true,
+            "notes": "Blind review 2026-10-21, two critics (A/B shuffled, key unseen): the new frame preferred (opus: new: authored frame (0.85); sonnet: new: authored frame (0.9)).",
+            "hashes": [
+              "323103b8a451b1dfa4a25b8c3c05ca3a5d927982a5fcda92dd4cd4f7fe1c83d7"
+            ]
+          },
+          "verdant": {
+            "accepted": true,
+            "notes": "Blind review 2026-10-21, two critics (A/B shuffled, key unseen): the new frame preferred (opus: new: authored frame (0.7); sonnet: new: authored frame (0.8)).",
+            "hashes": [
+              "88cac23ca09bfb51843dc9e69fd9b29204a57984bc2fa01a5f49b9724b2a2020"
+            ]
+          },
+          "whiteout": {
+            "accepted": true,
+            "notes": "Blind review 2026-10-21, two critics (A/B shuffled, key unseen): the new frame preferred (opus: new: authored frame (0.7); sonnet: new: authored frame (0.6)).",
+            "hashes": [
+              "26f19b9c1e11f02d2c7b5778be1d0156243e8d70478e5f8b635a843433bb42b7"
+            ]
+          }
+        }
+      },
+      "assets": [
+        {
+          "src": "/maps/verdant.webp",
+          "sha256": "21a2d2782d3a49e239d1d9b32fcbc4d4e0e6820a2b188b850b3a21fd59aaed22"
+        },
+        {
+          "src": "/maps/cards/verdant.webp",
+          "sha256": "584249174ec3e2c060711a6672cc6a16cd7723a3683195dbc3420096d4d47548"
+        },
+        {
+          "src": "/maps/thumbs/verdant.webp",
+          "sha256": "57cc913782822b4db1f64cc181ba78162014c59691dbdea96f7dbc523c5e71d6"
+        },
+        {
+          "src": "/maps/urban.webp",
+          "sha256": "5a2aa96b973d46caa2758cf3790225aed7c3eca26fa46b47603670ad206cc588"
+        },
+        {
+          "src": "/maps/cards/urban.webp",
+          "sha256": "0f47d4f174775f01f21a58bb5b7c33788e709c557a3ddc769590464647b00ec1"
+        },
+        {
+          "src": "/maps/thumbs/urban.webp",
+          "sha256": "44dae0ff52f390338add4c4dd5fa9cc160b615b31263438e367ab71a00f55fa0"
+        },
+        {
+          "src": "/maps/coastal.webp",
+          "sha256": "f393cc4ed0a0737f18d8d52b5d3cdb121556a4aa166b7fcf5ac3ce2551775c1b"
+        },
+        {
+          "src": "/maps/cards/coastal.webp",
+          "sha256": "2e4d72ddb7e66db1ed03b7d381874012d8fe5c8f76bd207b904371646537bc97"
+        },
+        {
+          "src": "/maps/thumbs/coastal.webp",
+          "sha256": "8ee5b4b518862603ee92783ce75b7d109bce42f424410ed35bb38ccc5aa5d8f0"
+        },
+        {
+          "src": "/maps/autumn.webp",
+          "sha256": "09b74c03b45fa69587e94f7f5035e3ddcb1fa02f80476d7f5cc425ac230ec8c2"
+        },
+        {
+          "src": "/maps/cards/autumn.webp",
+          "sha256": "efa6bc73f73425e8f7d87dc949aef9174688c25d9912f8da0b4f94c7a8a9d782"
+        },
+        {
+          "src": "/maps/thumbs/autumn.webp",
+          "sha256": "1637ffd51b671453c3a0cfe9e9f4f6f1152f75c1e2bd6c1f90ce11ad7e818d11"
+        },
+        {
+          "src": "/maps/steppe.webp",
+          "sha256": "3f2c5be8b499ca564949f27907efc80ebd9fbdf5562e6cca89df0aa9854a9d93"
+        },
+        {
+          "src": "/maps/cards/steppe.webp",
+          "sha256": "e3c3d40bc52827ffc3bf6b27b539ff1d40b22a781a2f2c626b2da68d42530ce4"
+        },
+        {
+          "src": "/maps/thumbs/steppe.webp",
+          "sha256": "46652b318f9b8835229db247f505e4f499c7eec1a5811951d596598a785b9a48"
+        },
+        {
+          "src": "/maps/railyard.webp",
+          "sha256": "88373e5cbad773a1dabf523da34e1f193bf55ccba821ef768bd51a6335778dea"
+        },
+        {
+          "src": "/maps/cards/railyard.webp",
+          "sha256": "418b1979a841c1bbf1606ee18397652a21903e2d662aaffb587cdb6429d0ca3c"
+        },
+        {
+          "src": "/maps/thumbs/railyard.webp",
+          "sha256": "b322127035926a2d8e8ec64466afcbb1dfe2632d5c486826c00e85ef6535db29"
+        },
+        {
+          "src": "/maps/frontier.webp",
+          "sha256": "1aa5af979d1d379ebec206f4cda5e8b8bd8fa6da91569887f8fb6805acc2c1d5"
+        },
+        {
+          "src": "/maps/cards/frontier.webp",
+          "sha256": "69ffb2b939ed0bc954d1d9994c7d6409036c5df4a2b7dd7b3ed5224b0e913fc4"
+        },
+        {
+          "src": "/maps/thumbs/frontier.webp",
+          "sha256": "b66ed2ac371de3617bd6b684cf0ea560cac163274fd9c3972d99286570b6ffcd"
+        },
+        {
+          "src": "/maps/fjord.webp",
+          "sha256": "afd45412a685d7bd63b4b71de5e624a3d01caffda2ff31f777b58ebb71e48b28"
+        },
+        {
+          "src": "/maps/cards/fjord.webp",
+          "sha256": "36fa4e98cedf463d47a89fce2a191406d4776061aa8880da9dd6e455dddd350e"
+        },
+        {
+          "src": "/maps/thumbs/fjord.webp",
+          "sha256": "54d0a1deeb441d752497b104a253beaf3639379a3934d9f14a55bceeec871f12"
+        },
+        {
+          "src": "/maps/badlands.webp",
+          "sha256": "dcb5063a52cac39414c9bb310524af36d702a29ae577a3729fb420bc48a44845"
+        },
+        {
+          "src": "/maps/cards/badlands.webp",
+          "sha256": "773156ef0383da029d9d6e4d26998c2db2d43d783f05656204bd2decd14002f8"
+        },
+        {
+          "src": "/maps/thumbs/badlands.webp",
+          "sha256": "3ec9a411a124db66344a4cd92116b3041218e983748a434d73301fa6c9510271"
+        },
+        {
+          "src": "/maps/blackglass.webp",
+          "sha256": "5f8c82d67b3c7da1051507605ec6e6931ff874f5edf4082f1105b48e07bbbbe1"
+        },
+        {
+          "src": "/maps/cards/blackglass.webp",
+          "sha256": "f56ec9e4bfd6170152a139d6e3336769f2a7b8e065ff8a40c1d88b6389e5a94b"
+        },
+        {
+          "src": "/maps/thumbs/blackglass.webp",
+          "sha256": "e7efb2cceb154853978e9f4de27491fa52f4f100586ceb34e1a4f538124fef69"
+        },
+        {
+          "src": "/maps/titan_gorge.webp",
+          "sha256": "1c1f90a0e1c8ea15b42593cadc46bb8273968bcda7d2159ef37db037627f2949"
+        },
+        {
+          "src": "/maps/cards/titan_gorge.webp",
+          "sha256": "acb8e665d7f40049a707a373d7405613ca5b91e5e7c350fac1d1da367e12a01b"
+        },
+        {
+          "src": "/maps/thumbs/titan_gorge.webp",
+          "sha256": "9baeb3e7f9b0b40fefd4e6dec4ba839b1adbc7b3c0c24036d82873ce371fcc62"
+        },
+        {
+          "src": "/maps/skybridge.webp",
+          "sha256": "eec928247956770651e3008560299a3676157fbe437b23bc7ba949e2039ae13c"
+        },
+        {
+          "src": "/maps/cards/skybridge.webp",
+          "sha256": "a4770f18422a474c0dd20b622584d1858b8201b63c8153c6ea18c0b3cabb2108"
+        },
+        {
+          "src": "/maps/thumbs/skybridge.webp",
+          "sha256": "fad2798e95bac58595ac1d619ce0ff2bb89b139c5440e68d47d5466f1e670ef2"
+        },
+        {
+          "src": "/maps/whiteout.webp",
+          "sha256": "41f372faf9e06b3c41652d0f178f4ab910b56e03d418e18ff25ee148c36eee74"
+        },
+        {
+          "src": "/maps/cards/whiteout.webp",
+          "sha256": "1ea0a8ddd6928c44bc761523dc0ca7155be7e31a446c2b674093b03932f42ca8"
+        },
+        {
+          "src": "/maps/thumbs/whiteout.webp",
+          "sha256": "d7f4cfccf2511562a20ece3a1f60a05e4a8cd5981de54142df9453808b28660e"
+        },
+        {
+          "src": "/maps/orchard.webp",
+          "sha256": "77763e41b54285d769aecb2dfe4e560ceac752df47c5ffd9cc8552156babcdc7"
+        },
+        {
+          "src": "/maps/cards/orchard.webp",
+          "sha256": "5430374995af0fdf2c28de5d3079a4a69463233fffcb9f8260aadc57c4eb106c"
+        },
+        {
+          "src": "/maps/thumbs/orchard.webp",
+          "sha256": "524019e7ccad121ae55379c3a02df22b8cfb02fcd7fcf7949bf7799c0154b5ef"
+        },
+        {
+          "src": "/maps/mangrove.webp",
+          "sha256": "e4c36612dc3e58a86c8c998ddbb09dcd05da62cb1357cbdee531408cbd850e96"
+        },
+        {
+          "src": "/maps/cards/mangrove.webp",
+          "sha256": "647538d06839caae47495a58eecae6bc8d6f8f3cb2ca8bb3294b34b68d84ab6c"
+        },
+        {
+          "src": "/maps/thumbs/mangrove.webp",
+          "sha256": "8c5cb9bd72c7a7b2a8a88602b6491620700031ad0ebef7cae28a51041a6bb573"
         },
         {
           "src": "/maps/moon.webp",
-          "sha256": "2eacdbce5f2e5a66706959d06e97371167ca7c6772dbc4fe060839d78136f547"
+          "sha256": "956b3832ce2256503b8c01572947126675becfcd140c3feac62e950f3c9be2bc"
         },
         {
           "src": "/maps/cards/moon.webp",
-          "sha256": "f2b44aa4584a3d10e4dc3b8eb8ad1342d95d104fd309af07c7ad5ff90c231781"
+          "sha256": "2c5c67698d6a778b20593e440677ebe6ddcfeaccb2942574543d74c1c261cf87"
         },
         {
           "src": "/maps/thumbs/moon.webp",
-          "sha256": "99049050b1f8eb35bef303e608f05109082c04b0779eab11922793d99cf0f12b"
+          "sha256": "29585e13340f86838fe50ad575d521a3028506ff5a57450455b2234761dca857"
         },
         {
           "src": "/maps/cliffbridge.webp",
-          "sha256": "5c5e0abb24202218a34b6a278fac442906231e2165a5d02f6b1a9eeda2092e01"
+          "sha256": "34a48ebc3e2e08f17361293f3d07b95daf7cd13f611119001f60267ca15ff060"
         },
         {
           "src": "/maps/cards/cliffbridge.webp",
-          "sha256": "5763c282712e04c7bdf29384ce06a41b3938f5329cb0327b344f663f7ea0af55"
+          "sha256": "45157b8dd732e473ff935f6b3000fe701d94835f52142d76056635c322aaeb40"
         },
         {
           "src": "/maps/thumbs/cliffbridge.webp",
-          "sha256": "28092c4e762876b593b1599cfa1ef42fa8361f14bccd203a7c419f2692e1025a"
+          "sha256": "925aa16feb54499c0be5ded5955d7b15832d8825fff735207c88e179054ad811"
         }
       ]
     }

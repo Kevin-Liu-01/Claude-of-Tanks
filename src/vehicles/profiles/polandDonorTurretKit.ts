@@ -1,9 +1,12 @@
 // Owner 2026-10-15 (VEH-22): the T-72B3 Zubr and Zubr II carry the T-72B3M (2016) turret itself
-// (nationalDonorTurret.ts) on their T-72B3 hulls, up-armoured with the Polish field fit: the modern remote autocannon
-// on the commander's cupola, ERAWA courses, slat screens and nets with leaves, lamps, sensors and stowage.
+// (nationalDonorTurret.ts) on their T-72B3 hulls, up-armoured with the Polish field fit: a remote weapon on the
+// commander's cupola, ERAWA courses, slat screens and nets with leaves, lamps, sensors and stowage.
 //   "make the t72b3 zubr turret properly based off the t72 b3m 2016, except obvioulsy up armored annnd using modern
 //    autocannon and cages and the leaves and lights and ERa and other emplacements"
-// The hulls keep their Polish packages unchanged (nationalPoland.ts hullEquipment, zubrII.ts).
+// Release 227 (owner 2026-10-16: "brand new era packages ... innovate for the hetman 2 and zubr 2 and also the zubr.
+// also make thhe zubr 2 and zubr autocannons into proper machine gun emplacements that are aut ocontrolled"): the
+// stations are 12.7 mm WKM-B emplacements (profiles/nationalRoofWeapon.ts 'cradle', 'casemate'), the turret fronts
+// carry the Krata / Krata-2 boxes and roof tiles and the hulls their frontal fields and grids (polandFrontEra.ts).
 //
 // The donor turret is never reshaped: every added part is seated against its real surfaces. Coordinates are
 // turret-local (origin on the ring centre, +Z forward, +X the vehicle's left, +Y up). Measured donor datums used here
@@ -16,7 +19,9 @@
 import * as THREE from 'three';
 import {KIT} from './kit.ts';
 import {beamBetween} from './measuredPrimitives.ts';
-import {eraCassette, strappedPack} from './modernizationFittings.ts';
+import {Stock, loft, eraModule} from './eraModuleKit.ts';
+import {polishCheekBoxes, polishRoofGrid, polishRoofSpine, zubrIILidCourse, stackTile} from './polandFrontEra.ts';
+import {strappedPack} from './modernizationFittings.ts';
 import {nationalLamp, nationalEye, nationalRoofSensor} from './nationalRoofSystems.ts';
 import {hullEquipment} from './nationalPoland.ts';
 import {addPolishProtection} from './nationalPolandProtection.ts';
@@ -37,70 +42,7 @@ const eraSector = (side: number): string => `turret_era_${side < 0 ? 'L' : 'R'}`
 /** Round-stock facets: the authored count on the high tier, fewer on the far (low) tier. */
 const seg = (P: TankBuilderPort, high: number, low: number): number => (P.q ? high : low);
 
-/** Raycast seats on permanent stock only: the donor casting plus the kit's own welded housings, never removable ERA,
- * stowage boxes or other fittings. */
-class Stock {
-  private readonly meshes: THREE.Mesh[] = [];
-  private readonly material = new THREE.MeshBasicMaterial({side: THREE.DoubleSide});
-  private readonly ray = new THREE.Raycaster();
-  private readonly id: string;
-  constructor(id: string, geometries: readonly THREE.BufferGeometry[] = []) {
-    this.id = id;
-    for (const g of geometries) this.add(g);
-  }
-  add(g: THREE.BufferGeometry): THREE.BufferGeometry {
-    const mesh = new THREE.Mesh(g, this.material); mesh.updateMatrixWorld(true); this.meshes.push(mesh); return g;
-  }
-  /** The highest permanent surface under a plan point. */
-  top(x: number, z: number): number {
-    this.ray.set(new THREE.Vector3(x, 4, z), new THREE.Vector3(0, -1, 0));
-    const hit = this.ray.intersectObjects(this.meshes, false)[0];
-    if (!hit) throw new Error(`${this.id}: no permanent turret seat at ${x.toFixed(3)},${z.toFixed(3)}`);
-    return hit.point.y;
-  }
-  /** The first permanent surface along a ray, its normal turned back towards the ray's origin. */
-  face(origin: V3, direction: V3): {point: THREE.Vector3; normal: THREE.Vector3} {
-    const dir = new THREE.Vector3(...direction).normalize();
-    this.ray.set(new THREE.Vector3(...origin), dir);
-    const hit = this.ray.intersectObjects(this.meshes, false)[0];
-    if (!hit?.face) throw new Error(`${this.id}: no permanent turret face from ${origin.map(v => v.toFixed(3))}`);
-    const normal = hit.face.normal.clone().transformDirection(hit.object.matrixWorld);
-    if (normal.dot(dir) > 0) normal.negate();
-    return {point: hit.point.clone(), normal};
-  }
-  dispose(): void { this.material.dispose(); }
-}
-
-/** Closed loft through rings of 3D points (equal counts), every face wound outwards. */
-function loft(rings: readonly (readonly V3[])[]): THREE.BufferGeometry {
-  const positions: number[] = [];
-  const v = (p: V3) => new THREE.Vector3(...p);
-  const centroid = (points: readonly V3[]) => points.reduce((c, p) => c.add(v(p)), new THREE.Vector3()).multiplyScalar(1 / points.length);
-  const push = (a: THREE.Vector3, b: THREE.Vector3, c: THREE.Vector3, inside: THREE.Vector3) => {
-    const n = b.clone().sub(a).cross(c.clone().sub(a)), out = a.clone().add(b).add(c).multiplyScalar(1 / 3).sub(inside);
-    if (n.dot(out) < 0) positions.push(...a.toArray(), ...c.toArray(), ...b.toArray());
-    else positions.push(...a.toArray(), ...b.toArray(), ...c.toArray());
-  };
-  const n = rings[0].length;
-  for (let s = 0; s < rings.length - 1; s++) {
-    const inside = centroid([...rings[s], ...rings[s + 1]]);
-    for (let i = 0; i < n; i++) {
-      const j = (i + 1) % n, a = v(rings[s][i]), b = v(rings[s][j]), c = v(rings[s + 1][j]), d = v(rings[s + 1][i]);
-      push(a, b, c, inside); push(a, c, d, inside);
-    }
-  }
-  for (const [s, t] of [[0, 1], [rings.length - 1, rings.length - 2]] as const) {
-    const c = centroid(rings[s]), inside = centroid([...rings[s], ...rings[t]]);
-    for (let i = 0; i < n; i++) push(c, v(rings[s][i]), v(rings[s][(i + 1) % n]), inside);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  const uv: number[] = [];
-  for (let i = 0; i < positions.length; i += 3) uv.push(positions[i], positions[i + 2]);
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
-  g.computeVertexNormals();
-  return g;
-}
+// Stock (raycast seats on permanent stock) and loft (closed ring loft) live in eraModuleKit.ts (release 227).
 
 /** A removable screen or cage member: open lattice, tagged for the Polish protection receipts. */
 function lattice(P: TankBuilderPort, g: THREE.BufferGeometry, tag: string): void {
@@ -108,15 +50,20 @@ function lattice(P: TankBuilderPort, g: THREE.BufferGeometry, tag: string): void
   P.addEquipment('turretOpenLattice', g);
 }
 
-/** A side-type ERAWA cassette seated by raycast on permanent stock, its hit face along the seat's outward normal. */
+/** A side-type ERAWA cassette seated by raycast on permanent stock, its hit face along the seat's outward normal.
+ * Release 227 (the Zubr II's re-skin): the two-layer stack cassette of the Krata-2 terrace (polandFrontEra.ts
+ * stackTile) at the same seat and sector, in place of the rounded box: a .045 base and a .03 chamfered top layer. */
 function eraTile(P: TankBuilderPort, seats: Stock, side: number, origin: V3, direction: V3,
   size: readonly [thickness: number, height: number, length: number]): void {
   const {point, normal} = seats.face(origin, direction);
-  const sign = point.x < 0 ? -1 : 1;
-  const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(sign, 0, 0), normal);
-  const r = new THREE.Euler().setFromQuaternion(q);
-  const center = point.clone().addScaledVector(normal, size[0] / 2 - .006);
-  eraCassette(P, 'turret', eraSector(side), center.toArray(), size, [r.x, r.y, r.z]);
+  const up = new THREE.Vector3(0, 1, 0).addScaledVector(normal, -normal.y).normalize();
+  const along = up.clone().cross(normal).normalize();
+  // (each cassette's foot 12 mm higher than the rounded box's: the lowest course then clears the hull's deck-cabinet
+  // latches by 2.5 cm wherever the turret turns, as the frontal receipt requires of every changed part)
+  const lift = .012;
+  const corner = point.clone().addScaledVector(along, -size[2] / 2).addScaledVector(up, -size[1] / 2 + lift);
+  const g = stackTile(P, corner, along, up, normal, size[2], size[1] - lift, size[0] * .6, size[0] * .4);
+  eraModule(P, {owner: 'turret', sector: eraSector(side), geometry: g, outward: tuple(normal), minDot: .5, name: 'cabinet cassette'});
 }
 
 /** A welded block rising from the casting to a level top: it reaches down to the lowest of its footprint's seats. */
@@ -143,8 +90,6 @@ function levelSeat(casting: Stock, x: number, z: number, w: number, d: number): 
 // rearHalf, rearBottom/Top: the rack's slatted rear face).
 const ZUBR_ROW = POLISH_PROTECTION_LAYOUTS[PROTECTION_MODEL.t72b3_zubr];
 const ZUBR = {
-  belt: {low: .040, high: .120, origin: [0, .08, .30] as V3, start: .34, chinX: .44, inner: .035, outer: .045},
-  tile: [.040, .068, .125] as const,
   // front stanchions behind the left smoke bank's lines of fire (its brackets end at z -.18): the right one outboard of
   // the commander's cupola (x -1.067 at z -.34), the left one between the gunner's sight hood (z -.212), his cupola and
   // the left rear roof cassette (x 1.025); the rear ones behind both cupolas
@@ -156,65 +101,6 @@ const ZUBR = {
   rack: {front: -2.00, rear: ZUBR_ROW.rearZ, half: ZUBR_ROW.rearHalf, floor: ZUBR_ROW.rearBottom, top: ZUBR_ROW.rearTop,
     rails: [.30, .62] as const},
 } as const;
-
-/** The casting's outline at height y along a radial ray from the belt origin (plan angle phi from +X towards +Z). */
-function outline(casting: Stock, side: number, phi: number, y: number): {point: THREE.Vector3; dir: THREE.Vector3} {
-  const [ox, , oz] = ZUBR.belt.origin, dir = new THREE.Vector3(side * Math.cos(phi), 0, Math.sin(phi));
-  const origin: V3 = [ox + dir.x * 3, y, oz + dir.z * 3];
-  const {point} = casting.face(origin, [-dir.x, 0, -dir.z]);
-  return {point, dir};
-}
-
-/** The fine ERAWA course: a welded pannier fitted round the cast shell's undercut from the chin beside the mantlet to the
- * forward flank (where the shell curves away beneath the Relikt fan), every tile seated on it by raycast. */
-function zubrEraBelt(P: TankBuilderPort, casting: Stock): void {
-  const b = ZUBR.belt;
-  for (const side of SIDES) {
-    // Stations every ~.15 m along the outline, from the flank at z .34 round the corner to the chin at |x| .44.
-    const samples: {phi: number; point: THREE.Vector3}[] = [];
-    for (let phi = 0; phi < 1.4; phi += .004) {
-      const {point} = outline(casting, side, phi, (b.low + b.high) / 2);
-      if (point.z < b.start) continue;
-      samples.push({phi, point});
-      if (Math.abs(point.x) <= b.chinX) break;
-    }
-    const stations: typeof samples = [samples[0]];
-    let run = 0;
-    for (let i = 1; i < samples.length; i++) {
-      run += samples[i].point.distanceTo(samples[i - 1].point);
-      if (run >= .15 || i === samples.length - 1) { stations.push(samples[i]); run = 0; }
-    }
-    const rings: V3[][] = stations.map(({phi}) => {
-      const lo = outline(casting, side, phi, b.low), hi = outline(casting, side, phi, b.high);
-      const mid = outline(casting, side, phi, (b.low + b.high) / 2), d = lo.dir;
-      const reach = Math.max(...[lo, hi, mid].map(o => o.point.clone().sub(new THREE.Vector3(...b.origin).setY(o.point.y)).dot(d)));
-      const at = (r: number, y: number): V3 => [b.origin[0] + d.x * r, y, b.origin[2] + d.z * r];
-      const inner = (o: {point: THREE.Vector3}) => o.point.clone().sub(new THREE.Vector3(...b.origin).setY(o.point.y)).dot(d) - b.inner;
-      return [at(inner(lo), b.low), at(reach + b.outer, b.low), at(reach + b.outer, b.high), at(inner(hi), b.high)];
-    });
-    const pannier = loft(rings);
-    P.addExternalArmor('turret', pannier);
-    const seats = new Stock(P.spec.id, [pannier]);
-    try {
-      for (let i = 0; i < rings.length - 1; i++) {
-        const [, ob0, ot0] = rings[i], [, ob1, ot1] = rings[i + 1];
-        const mid = new THREE.Vector3(...ob0).add(new THREE.Vector3(...ob1)).add(new THREE.Vector3(...ot0)).add(new THREE.Vector3(...ot1)).multiplyScalar(.25);
-        const along = new THREE.Vector3(...ob1).sub(new THREE.Vector3(...ob0)); along.y = 0;
-        if (along.length() < b.outer) continue;
-        const out = new THREE.Vector3(along.z, 0, -along.x).normalize();
-        if (out.x * side < 0 && Math.abs(out.x) > Math.abs(out.z) * .2) out.negate();
-        if (out.z < 0 && Math.abs(out.z) > Math.abs(out.x)) out.negate();
-        const length = Math.min(ZUBR.tile[2], along.length() - .018);
-        eraTile(P, seats, side, tuple(mid.clone().addScaledVector(out, .3)), tuple(out.clone().negate()), [ZUBR.tile[0], ZUBR.tile[1], length]);
-      }
-    } finally { seats.dispose(); }
-    // Bolt heads along the pannier's top edge.
-    for (let i = 1; i < rings.length - 1; i += 2) {
-      const [, , ot, it] = rings[i];
-      P.addEquipment('turretDark', cylY(.016, .016, .012, seg(P, 8, 6)), ot[0] * .8 + it[0] * .2, b.high + .005, ot[2] * .8 + it[2] * .2);
-    }
-  }
-}
 
 /** A welded stanchion on the cast roof shoulder (top plate at `top`) and a cantilever arm from its outer face out over
  * the stowage box lids to x `toX`, its root in a bolted shoe. */
@@ -341,7 +227,12 @@ function zubrSensors(P: TankBuilderPort, casting: Stock): void {
 }
 
 function buildZubrTurret(P: TankBuilderPort, casting: Stock): void {
-  zubrEraBelt(P, casting);
+  // Release 227: the Krata field frame (polandFrontEra.ts) replaces the fine pannier course under the donor's Relikt
+  // fan, which this concept no longer carries (nationalDonorTurrets.ts reliktEra: false).
+  polishCheekBoxes(P, casting, 1);
+  polishRoofGrid(P, casting, 1);
+  // Release 230 (UA/PL round 11): the Krata roof spine and rear row.
+  polishRoofSpine(P, casting, 1);
   zubrScreens(P, casting, NATIONAL_ROOF_LOADOUTS.t72b3_zubr.lamp);
   rearRack(P, casting, ZUBR.rack);
   zubrRackLoad(P);
@@ -379,7 +270,7 @@ function cabinetPath(side: number): {outer: [number, number][]; inner: [number, 
 }
 
 function zubrIICabinets(P: TankBuilderPort, casting: Stock): void {
-  const w = ZUBR_II.wall;
+  const w = ZUBR_II.wall, lidPlates: THREE.BufferGeometry[] = [];
   for (const side of SIDES) {
     const {outer, inner} = cabinetPath(side);
     // The wall's lower edge clears the hull's deck cabinets where it sweeps beyond r 2.0 (its rear and shoulder).
@@ -395,10 +286,12 @@ function zubrIICabinets(P: TankBuilderPort, casting: Stock): void {
       const c = w.x - w.back - w.lid * Math.SQRT2;
       return i === 2 ? [side * (w.x - w.lid), (w.x - w.lid) - c] : [ox - side * w.lid / Math.SQRT2, oz + w.lid / Math.SQRT2];
     });
-    P.addExternalArmor('turret', loft(outer.map(([ox, oz], i) => {
+    const lid = loft(outer.map(([ox, oz], i) => {
       const [ix, iz] = lidIn[i];
       return [[ix, w.top - .02, iz], [ox, w.top - .02, oz], [ox, w.top + .004, oz], [ix, w.top + .004, iz]] as V3[];
-    })));
+    }));
+    P.addExternalArmor('turret', lid);
+    lidPlates.push(lid);
     // The welded floor under the boxes, from inside the casting's lower flank to the wall, ahead of the knee.
     const floorRings: V3[][] = [];
     for (let z = w.front; z >= w.knee - 1e-6; z -= (w.front - w.knee) / 5) {
@@ -436,16 +329,21 @@ function zubrIICabinets(P: TankBuilderPort, casting: Stock): void {
         P.addEquipment('turretDark', cylX(.013, .012, 8).rotateY(-side * Math.PI / 4), px + side * .0035, w.top - .045, pz - .0035);
       }
     }
-    // Bolted access lids; the right lid carries a clamped crowbar, the left keeps its middle clear as the drone dock's
-    // flat landing (ZUBR_II_DOCK), outside the remote station's sweep with nothing overhead.
+    // Bolted access lids; the left lid carries a clamped crowbar. (ZUBR_II_DOCK, the left lid's middle, was the drone
+    // dock's flat landing; the mission seat solver seats the dock on the roof front instead, outside the WKM-B station's
+    // sweep, and release 230's lid course tiles the lid's middle.)
+    // Release 227 (national lamp clearance): the front lid's handle at its rear end, 15 mm behind the driving lamp's base
+    // plate (centred on the lid it ran under the lamp, 10 mm up through the plate into the lamp's body).
     for (const z of [.25, -.70]) {
       P.addEquipment('turretDetail', box(.27, .022, .30), side * (w.x - .17), w.top + .015, z);
-      P.addEquipment('turretDark', box(.07, .018, .10), side * (w.x - .17), w.top + .034, z);
+      P.addEquipment('turretDark', box(.07, .018, .10), side * (w.x - .17), w.top + .034, z > 0 ? z - .065 : z);
     }
     if (side < 0) {
+      // Release 227 (national lamp guards): the bar ends 20 mm behind the lamp's base plate (it ran on under the plate's
+      // inboard end, its front clamp's top 1.5 mm under the plate's top: a z-fight the longer guarded plate would widen).
       const bx = side * (w.x - w.lid + .06);
-      P.addEquipment('turretDark', beamBetween([bx, w.top + .022, .34], [bx, w.top + .022, -.84], .015, seg(P, 10, 6)));
-      for (const z of [.26, -.76]) P.addEquipment('turretDark', box(.05, .03, .03), bx, w.top + .016, z);
+      P.addEquipment('turretDark', beamBetween([bx, w.top + .022, .23], [bx, w.top + .022, -.84], .015, seg(P, 10, 6)));
+      for (const z of [.15, -.76]) P.addEquipment('turretDark', box(.05, .03, .03), bx, w.top + .016, z);
     }
     // Square driving lamps on the cabinets' front ends.
     nationalLamp(P, side * (w.x - .17), w.front - .09, w.top + .004, NATIONAL_ROOF_LOADOUTS.t72b3_zubr_ii.lamp);
@@ -456,6 +354,8 @@ function zubrIICabinets(P: TankBuilderPort, casting: Stock): void {
     stanchionArm(P, casting, side, front[0], front[1], st.top, w.top - .01, side * (lidInner(front[1]) + .04));
     stanchionArm(P, casting, side, side * st.rear[0], st.rear[1], st.top, w.top - .01, side * (lidInner(st.rear[1]) + .04));
   }
+  // Release 230 (UA/PL round 11): the Krata-2 lid course on the lids, clear of every lid fitting laid above.
+  zubrIILidCourse(P, lidPlates);
 }
 
 /** The Zubr II's drone-dock landing on the left cabinet lid (turret frame: centre x, lid top y, centre z). */
@@ -504,6 +404,11 @@ function zubrIISensors(P: TankBuilderPort): void {
 
 function buildZubrIITurret(P: TankBuilderPort, casting: Stock): void {
   zubrIICabinets(P, casting);
+  // Release 227: the Krata-2 raked terrace boxes and roof grid (polandFrontEra.ts).
+  polishCheekBoxes(P, casting, 2);
+  polishRoofGrid(P, casting, 2);
+  // Release 230 (UA/PL round 11): the Krata-2 roof spine and rear row.
+  polishRoofSpine(P, casting, 2);
   rearRack(P, casting, ZUBR_II.basket);
   zubrIIBasketLoad(P);
   zubrIISensors(P);

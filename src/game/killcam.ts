@@ -1091,8 +1091,8 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-micro{position:absolute;z-index:8;display:flex;align-items:center;gap:5px;white-space:nowrap;
   background:linear-gradient(135deg,rgba(17,25,31,.92),rgba(6,10,14,.94));
   border:1px solid var(--kc-line);border-left:2px solid #86a9bf;color:#b8d3e4;padding:2px 6px 3px;
-  font-family:${FONT_COND};font-weight:700;font-size:9px;
-  letter-spacing:.14em;text-transform:uppercase;line-height:1.2;
+  font-family:${FONT_COND};font-weight:700;font-size:11px;
+  letter-spacing:.06em;text-transform:uppercase;line-height:1.2;
   box-shadow:0 4px 12px rgba(0,0,0,.38);}
 .cot-kc-bart,.cot-kc-barb{position:absolute;left:0;right:0;height:9vh;}
 .cot-kc-bart{top:0;border-bottom:1px solid rgba(242,165,54,.18);
@@ -1171,10 +1171,10 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-killer.on{display:block;}
 .cot-kc-killer.rv{opacity:1;transform:none;}
 .cot-kc-killer .kk{display:flex;align-items:center;gap:7px;padding:8px 0 6px;
-  border-bottom:1px solid var(--kc-line-soft);font-family:${FONT_COND};font-weight:800;font-size:8px;
-  letter-spacing:.26em;color:#ff8d83;text-transform:uppercase;}
+  border-bottom:1px solid var(--kc-line-soft);font-family:${FONT_COND};font-weight:700;font-size:11px;
+  letter-spacing:.14em;color:#ff8d83;text-transform:uppercase;}
 .cot-kc-killer .kk svg{color:var(--kc-red);filter:drop-shadow(0 0 5px rgba(240,91,80,.48));}
-.cot-kc-killer .nm{margin-top:7px;font-weight:800;font-size:14.5px;
+.cot-kc-killer .nm{margin-top:7px;font-weight:700;font-size:14.5px;
   letter-spacing:.01em;color:#f4f8fc;display:flex;align-items:center;gap:8px;}
 .cot-kc-killer .nm .sil{width:50px;height:24px;flex:0 0 auto;padding:2px;
   background-repeat:no-repeat;background-position:center;background-size:contain;
@@ -1183,12 +1183,12 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-killer .nm .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap;}
 .cot-kc-killer .nm .t i{display:block;font-style:normal;font-family:${FONT_COND};
-  font-weight:700;font-size:9px;letter-spacing:.16em;color:#9fb0bf;
+  font-weight:700;font-size:11px;letter-spacing:.07em;color:#9fb0bf;
   text-transform:uppercase;margin-top:1px;}
 .cot-kc-killer .rows{margin-top:7px;display:grid;grid-template-columns:1fr 1fr;
   gap:3px 12px;border-top:1px solid var(--kc-line-soft);padding-top:6px;}
-.cot-kc-killer .kv{display:flex;justify-content:space-between;font-size:10.5px;
-  color:var(--kc-muted);font-variant-numeric:tabular-nums;letter-spacing:.03em;}
+.cot-kc-killer .kv{display:flex;justify-content:space-between;font-size:11px;
+  color:var(--kc-muted);letter-spacing:.01em;}
 .cot-kc-killer .kv>span,.cot-kc-kv>span{display:flex;align-items:center;gap:5px;}
 .cot-kc-killer .kv>span svg,.cot-kc-kv>span svg{color:#71818d;}
 .cot-kc-killer .kv b{color:#ffd9a0;font-weight:700;font-family:${FONT_COND};
@@ -1204,34 +1204,34 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-title::before{left:16px;}.cot-kc-title::after{right:16px;}
 .cot-kc-title .tl{display:flex;align-items:center;justify-content:center;gap:8px;}
 .cot-kc-title .tl svg{color:var(--kc-amber);filter:drop-shadow(0 0 7px rgba(242,165,54,.26));}
-.cot-kc-title .t{font-family:${FONT_COND};font-weight:800;
+.cot-kc-title .t{font-family:${FONT_COND};font-weight:700;
   font-size:15px;letter-spacing:.42em;color:#ffd59b;text-shadow:0 1px 10px rgba(0,0,0,.9);}
-.cot-kc-title .s{font-family:${FONT_COND};font-size:9.5px;font-weight:700;
-  letter-spacing:.16em;color:#9fadb8;margin-top:3px;text-transform:uppercase;
-  font-variant-numeric:tabular-nums;}
+.cot-kc-title .s{font-family:${FONT_COND};font-size:11px;font-weight:700;
+  letter-spacing:.08em;color:#9fadb8;margin-top:3px;text-transform:uppercase;
+  }
 .cot-kc-skip{position:absolute;z-index:10;bottom:1.4vh;right:28px;display:flex;align-items:center;
-  gap:8px;font-family:${FONT_COND};font-weight:700;font-size:8px;letter-spacing:.18em;
+  gap:8px;font-family:${FONT_COND};font-weight:700;font-size:11px;letter-spacing:.07em;
   color:#83919c;text-transform:uppercase;}
 .cot-kc-skip .ico{color:#a7b3bd;}
 .cot-kc-skip kbd{min-width:58px;padding:3px 6px 4px;border:1px solid var(--kc-line);
   border-bottom-color:rgba(242,165,54,.5);background:rgba(13,20,25,.85);color:#c9d3db;
-  font:800 8px/1 ${FONT_COND};letter-spacing:.13em;text-align:center;}
+  font:700 11px/1 ${FONT_COND};letter-spacing:.05em;text-align:center;}
 .cot-kc-annot{position:absolute;z-index:9;left:28px;bottom:11.5vh;width:300px;
   background:linear-gradient(145deg,var(--kc-panel-hi),var(--kc-panel) 62%,rgba(5,8,11,.97));
   border:1px solid var(--kc-line);border-left:3px solid var(--kc-amber);
   box-shadow:0 16px 38px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.035);padding:0 0 9px;}
 .cot-kc-annot .hd{padding:7px 11px 6px;border-bottom:1px solid var(--kc-line-soft);}
 .cot-kc-annot .hd .m{display:flex;align-items:center;gap:6px;margin-bottom:3px;
-  font-family:${FONT_COND};font-size:7px;font-weight:800;letter-spacing:.2em;color:#8796a1;text-transform:uppercase;}
+  font-family:${FONT_COND};font-size:11px;font-weight:700;letter-spacing:.07em;color:#8796a1;text-transform:uppercase;}
 .cot-kc-annot .hd .m svg{color:var(--kc-amber);}
 .cot-kc-annot .shellrow{display:flex;align-items:center;gap:7px;}
 .cot-kc-annot .shellrow>svg{color:#ffd49a;}
-.cot-kc-annot .hd .k{font-family:${FONT_COND};font-weight:800;
+.cot-kc-annot .hd .k{font-family:${FONT_COND};font-weight:700;
   font-size:12.5px;letter-spacing:.08em;color:#ffd49a;}
-.cot-kc-annot .hd .w{font-size:9.5px;color:#bcc8d1;margin-top:2px;letter-spacing:.03em;}
+.cot-kc-annot .hd .w{font-size:11px;color:#bcc8d1;margin-top:2px;letter-spacing:0em;}
 .cot-kc-rows{padding:6px 11px 0;display:grid;grid-template-columns:1fr 1fr;gap:3px 13px;}
-.cot-kc-kv{display:flex;justify-content:space-between;gap:8px;font-size:10px;color:var(--kc-muted);
-  font-variant-numeric:tabular-nums;letter-spacing:.03em;}
+.cot-kc-kv{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--kc-muted);
+  letter-spacing:0em;}
 .cot-kc-kv b{color:#e4edf4;font-weight:700;font-family:${FONT_COND};letter-spacing:-.01em;}
 /* r8: the pen row spans the card on ONE line (it wrapped into a mangled
    two-line label/value jumble); the ERA/screens qualifier is a suffix chip
@@ -1239,12 +1239,12 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-kv.w{grid-column:1/-1;}
 .cot-kc-kv.pen b{white-space:nowrap;}
 .cot-kc-kv b .q{display:inline-block;margin-left:6px;padding:0 3px 1px;
-  border:1px solid currentColor;font-size:8px;letter-spacing:.12em;
-  vertical-align:1.5px;line-height:1.25;font-weight:800;}
-.cot-kc-pencap{grid-column:1/-1;font-size:8.5px;color:#5f6d7a;letter-spacing:.05em;
+  border:1px solid currentColor;font-size:11px;letter-spacing:.05em;
+  vertical-align:1.5px;line-height:1.25;font-weight:700;}
+.cot-kc-pencap{grid-column:1/-1;font-size:11px;color:#5f6d7a;letter-spacing:0em;
   text-align:right;margin-top:-2px;}
 .cot-kc-banner{margin:7px 11px 0;padding:4px 8px;text-align:center;display:none;
-  font-family:${FONT_COND};font-weight:800;font-size:11px;
+  font-family:${FONT_COND};font-weight:700;font-size:11px;
   letter-spacing:.18em;color:#ff8a7d;border:1px solid rgba(240,91,80,.55);
   background:linear-gradient(135deg,#602719e8,#25130fed);box-shadow:inset 0 0 16px #ff9a3b18;}
 .cot-kc.ammo-racked .cot-kc-banner{padding:10px 14px;font-size:13px;color:#ffcc92;letter-spacing:.09em;}
@@ -1254,14 +1254,14 @@ body[data-cot-width='phone'] .cot-kc.ammo-racked .cot-kc-banner{padding:7px 10px
 .cot-kc-label{position:absolute;white-space:nowrap;display:flex;align-items:center;gap:7px;
   background:linear-gradient(135deg,rgba(18,26,32,.94),rgba(5,9,12,.96));
   border:1px solid var(--kc-line);border-left:2px solid currentColor;padding:4px 8px 5px;
-  font-family:${FONT_COND};font-weight:800;font-size:11.5px;
+  font-family:${FONT_COND};font-weight:700;font-size:12px;
   letter-spacing:.09em;text-transform:uppercase;line-height:1.25;
   box-shadow:0 7px 18px rgba(0,0,0,.5),inset 0 1px rgba(255,255,255,.025);}
 .cot-kc-label .ico,.cot-kc-micro .ico{display:flex;align-items:center;color:currentColor;}
 .cot-kc-label .copy{display:block;min-width:0;}
 .cot-kc-label .main{display:block;}
-.cot-kc-label .s{display:block;font-size:9.5px;font-weight:700;letter-spacing:.06em;
-  color:#e8f0f6;font-variant-numeric:tabular-nums;}
+.cot-kc-label .s{display:block;font-size:11px;font-weight:700;letter-spacing:.01em;
+  color:#e8f0f6;}
 .cot-kc-label.ok{color:#8a97a3;border-color:var(--kc-line);border-left-color:currentColor;
   background:linear-gradient(135deg,rgba(16,22,27,.82),rgba(5,8,11,.86));
   box-shadow:0 4px 12px rgba(0,0,0,.34);font-weight:700;}
@@ -1271,21 +1271,21 @@ body[data-cot-width='phone'] .cot-kc.ammo-racked .cot-kc-banner{padding:7px 10px
    its organ like the micro identity tags, so it can never straddle the hull
    silhouette edge. Informational, never a casualty. */
 .cot-kc-label.nm{color:#9fb0bf;border:1px dashed rgba(150,166,180,.48);border-left:2px solid #758896;
-  background:rgba(7,12,16,.82);box-shadow:0 4px 12px rgba(0,0,0,.3);font-weight:700;font-size:9.5px;
-  letter-spacing:.11em;padding:2px 6px 3px;opacity:.85;}
+  background:rgba(7,12,16,.82);box-shadow:0 4px 12px rgba(0,0,0,.3);font-weight:700;font-size:11px;
+  letter-spacing:.05em;padding:2px 6px 3px;opacity:.85;}
 .cot-kc-label.nm .copy{display:flex;align-items:center;}
-.cot-kc-label.nm .s{display:inline;font-size:9.5px;font-weight:600;color:#788695;}
+.cot-kc-label.nm .s{display:inline;font-size:11px;font-weight:600;color:#788695;}
 .cot-kc-dot{position:absolute;z-index:8;width:8px;height:8px;border-radius:1px;
   transform:translate(-50%,-50%) rotate(45deg);background:currentColor;box-shadow:0 0 10px currentColor;}
 .cot-kc-dot.ok{background:rgba(7,12,16,.8);border:1.5px solid currentColor;box-shadow:none;}
 .cot-kc-dmg{position:absolute;z-index:8;display:flex;align-items:center;gap:7px;font-family:${FONT_COND};
-  font-weight:800;font-size:25px;color:#ffd166;
-  letter-spacing:.045em;text-shadow:0 2px 12px rgba(0,0,0,.9);font-variant-numeric:tabular-nums;
+  font-weight:700;font-size:25px;color:#ffd166;
+  letter-spacing:.045em;text-shadow:0 2px 12px rgba(0,0,0,.9);
   background:linear-gradient(135deg,rgba(22,27,28,.96),rgba(7,11,14,.96));
   border:1px solid var(--kc-line);border-right:3px solid var(--kc-amber);
   box-shadow:0 9px 22px rgba(0,0,0,.52);padding:10px 10px 5px;line-height:1.1;}
-.cot-kc-dmg::before{content:"DAMAGE";position:absolute;top:3px;right:9px;font:800 6.5px/1 ${FONT_COND};
-  letter-spacing:.2em;color:#8f9ca6;text-align:right;}
+.cot-kc-dmg::before{content:"DAMAGE";position:absolute;top:3px;right:9px;font:700 11px/1 ${FONT_COND};
+  letter-spacing:.07em;color:#8f9ca6;text-align:right;}
 .cot-kc-dmg .ico{color:var(--kc-amber);}
 .cot-kc-leader{position:absolute;z-index:7;inset:0;width:100%;height:100%;overflow:visible;}
 .cot-kc-flash{z-index:12;}

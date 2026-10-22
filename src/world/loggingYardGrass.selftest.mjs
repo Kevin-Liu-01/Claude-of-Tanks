@@ -10,6 +10,8 @@ import { advanceGrassChunkWork, createGrassChunkWork } from './grassChunkWork.ts
 import { advanceGrassCarpetWork, createGrassCarpetWork } from './grassCarpetWork.ts';
 import { createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees } from './groundCoverCraters.ts';
 import longleaf from './maps/longleaf.ts';
+// (the maps lane, 228) the civic plan's lawn test and rooms the grass stage reads (world/civic; null off a planned map)
+import { civicLawnTest, civicPavedRooms } from './civic/plans/index.ts';
 import verdant from './maps/verdant.ts';
 
 const source = readFileSync(new URL('./vegetation.ts', import.meta.url), 'utf8');
@@ -33,8 +35,10 @@ function compile(legacy) {
   const body = legacy ? stages.replace(treatment, '') : stages;
   return new Function('THREE', 'sampleSplatNoise', 'buildGrassTuftGeometry', 'resolveGroundReduxProfile', 'swardPatchAt',
     'advanceGrassChunkWork', 'createGrassChunkWork', 'advanceGrassCarpetWork', 'createGrassCarpetWork',
-    'createCraterFollower', 'createStaticCoverPatcher', 'followCraters', 'reseatCraterTrees', 'restoreCraterTrees', `return (${stripTypeScriptTypes(`
+    'createCraterFollower', 'createStaticCoverPatcher', 'followCraters', 'reseatCraterTrees', 'restoreCraterTrees',
+    'civicLawnTest', 'civicPavedRooms', `return (${stripTypeScriptTypes(`
     function build(heightField, config, mobileTier, mulberry32, groundCoverBlocked = null) {
+      const cfg = config; // (the maps lane, 228: the grass stage reads its map's civic plan by the config's id)
       const lightDesk = false; // (Ultra Low, 2026-10-13) the light-world vegetation is a desktop preset's; the default here
       ${section('const HALF = 512;', 'function treePositionNoise(')}
       const seed = 2001, group = new THREE.Group(), veg = { avoid: null, ...config.vegetation }, deferFarGrass = false;
@@ -62,7 +66,8 @@ function compile(legacy) {
     }
   `)});`)(THREE, sampleSplatNoise, buildGrassTuftGeometry, resolveGroundReduxProfile, swardPatchAt,
     advanceGrassChunkWork, createGrassChunkWork, advanceGrassCarpetWork, createGrassCarpetWork,
-    createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees);
+    createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees,
+    civicLawnTest, civicPavedRooms);
 }
 const build = compile(false), buildLegacy = compile(true);
 

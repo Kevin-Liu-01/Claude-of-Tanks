@@ -150,8 +150,12 @@ const glassBefore = Float32Array.from(glass.mesh.geometry.getAttribute('position
     assert.ok(typeof mat.onBeforeCompile === 'function', 'its share of the sky\'s light is bound (three ignores it otherwise)');
     assert.ok(typeof mat.customProgramCacheKey === 'function' && /struct/i.test(mat.customProgramCacheKey()),
       'the room material carries the mask patch (it falls and folds with the building)');
+    // (destruction-slabs 227 round 3: a room is its walls' colour in shade, at most six tenths of a tint — the owner's "dark
+    // grey-navy slabs" were rooms drawn near black — never a lit wall)
     const col = room.geometry.getAttribute('color');
-    assert.ok(col && col.array[0] < 0.5 && col.array[1] < 0.5 && col.array[2] < 0.5, 'the room is dim');
+    let maxC = 0;
+    for (let i = 0; col && i < col.array.length; i++) maxC = Math.max(maxC, col.array[i]);
+    assert.ok(col && maxC <= 0.6 + 1e-6, `the room is in shade (its brightest vertex ${maxC.toFixed(3)})`);
   }
 }
 

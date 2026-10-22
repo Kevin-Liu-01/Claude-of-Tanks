@@ -119,7 +119,7 @@
       "id": "t72_rys",
       "ring": [
         0,
-        1.55158,
+        1.61658,
         0.0718698169
       ],
       "gunLocal": [
@@ -138,17 +138,17 @@
       "hullLengthM": 6.720291335,
       "widthM": 3.5999999046325684,
       "overallLengthM": 9.528229266973241,
-      "tallestM": 2.649079966621399,
+      "tallestM": 2.714079966621399,
       "specDimensions": {
         "hullLengthM": 6.720291335,
         "overallLengthM": 9.534282731,
         "widthM": 3.6,
-        "heightM": 2.172451481
+        "heightM": 2.237451481
       },
       "test": "src/vehicles/fleetRenewal.selftest.mjs",
       "weaponSystem": "conventional-cannon",
       "hullWidthM": 3.6,
-      "silhouette": "Polish game concept on the complete T-80U chassis and casting, with seated cheek ERA, command optics, open rear cage and field equipment"
+      "silhouette": "Polish game concept on the complete T-80U chassis and casting, the casting raised 65 mm on a stationary ring race to a T-72 ring height, with seated cheek ERA, command optics, open rear cage and field equipment"
     }
   }
 }

@@ -26,6 +26,7 @@ import { dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig, type Connect } from 'vite';
 import { renderProductStats } from './src/productStats.ts';
+import { expandTypeMarkers } from './src/ui/typeFaces.ts';
 import { localizeHtmlDocument } from './src/presentation/localizedHtml.ts';
 import { publicRouteForEntry, resolveLocalePath } from './src/ui/localeRouting.ts';
 import { replaceAppVersionTokens, resolveAppVersion } from './tools/appVersion.ts';
@@ -270,6 +271,15 @@ export default defineConfig({
       },
     },
     {
+      // The type system (src/ui/typeFaces.ts): every document's `<!--cot:type …-->` marker becomes its font preloads and
+      // the one <style id="cot-font-faces"> (faces, fallbacks, type tokens). Pre-order, so Vite sees it as source markup.
+      name: 'cot-type-faces',
+      enforce: 'pre',
+      transformIndexHtml(html) {
+        return expandTypeMarkers(html);
+      },
+    },
+    {
       name: 'cot-locale-documents',
       enforce: 'post',
       transformIndexHtml(html, ctx) {
@@ -422,6 +432,10 @@ export default defineConfig({
             // dependencies.
             { name: 'icons', test: /[\\/]src[\\/]ui[\\/](?:icons|killSourceIdentity)\.ts$/, includeDependenciesRecursively: false },
             { name: 'groundBounce', test: /(?:[\\/]three[\\/]examples[\\/]jsm[\\/]postprocessing[\\/]Pass\.js|[\\/]src[\\/]engine[\\/](?:atmosphere|cloudscapes|lightModelCore|hazeLaw|groundBounce)\.ts)$/, includeDependenciesRecursively: false },
+            // 2026-10-19 (gameplay-modes-228 round 2): TEAM NATIONS' country table and its planner are one chunk — the
+            // garage's TEAMS switch reads the table, the solo roster plans with both, the rooms read both — instead of
+            // two boot requests (the table and the planner each split off on their own)
+            { name: 'teamNations', test: /[\\/]src[\\/]sim[\\/](?:countries|teamNations)\.ts$/, includeDependenciesRecursively: false },
           ],
         },
       },

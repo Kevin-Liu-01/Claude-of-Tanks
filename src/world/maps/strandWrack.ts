@@ -35,6 +35,9 @@ export interface StrandHeightField {
   _roadDist(x: number, z: number): number;
   /** The baked union wetness (shore rings included) on a liquid field; the lake's own contour ramp otherwise. */
   _waterWetnessAt?(x: number, z: number): number;
+  /** (2026-10-21, waterBank.ts) the water's top of the body holding (x, z): its level (the floor) plus the map's depth;
+   * absent, the level is the top. */
+  getWaterBodySurfaceAt?(x: number, z: number): number;
 }
 
 interface StrandBuckets {
@@ -189,9 +192,33 @@ function wrackLine(s: number, phaseA: number, phaseB: number): number {
 interface Placement {
   ctx: StrandContext;
   lake: StrandLake;
+  /** The water's top the high-water mark lies within reach of (strandWaterTop). */
   level: number;
   extent: number;
   salt: number;
+}
+
+/** (2026-10-21, waterBank.ts) a strand lake's water top: the floor (its level) plus the map's depth, read from the field in
+ * the planar core 6 m inside the first water edge an 8° march of the shore finds; the level on a field without bodies (the
+ * beach used to lie at the floor, under the water's edge; it meets the water's top now). Cached per field and lake. */
+const waterTops = new WeakMap<StrandHeightField, Map<StrandLake, number>>();
+function strandWaterTop(field: StrandHeightField, lake: StrandLake & { level: number }): number {
+  if (!field.getWaterBodySurfaceAt) return lake.level;
+  let tops = waterTops.get(field);
+  if (!tops) { tops = new Map(); waterTops.set(field, tops); }
+  const known = tops.get(lake);
+  if (known !== undefined) return known;
+  let top = lake.level;
+  for (let a = 0; a < TAU; a += TAU / 45) {
+    const band = strandBandAt(field, lake, a);
+    if (!band) continue;
+    const r = band.edge - 6, x = lake.x + Math.cos(a) * r, z = lake.z + Math.sin(a) * r;
+    if (field.getWaterMaskAt(x, z) !== 1) continue;
+    const surface = field.getWaterBodySurfaceAt(x, z);
+    if (surface === surface) { top = surface; break; }
+  }
+  tops.set(lake, top);
+  return top;
 }
 
 /** A piece's centre a metre inside the dressing square, so its fronds, planks and pebbles stay inside it too. */
@@ -249,7 +276,7 @@ function admits(p: Placement, x: number, z: number, half: number): boolean {
 
 /** The same admission the wrack line uses, for a kit piece re-derived onto the strand (the coastal driftwood). */
 export function strandAdmits(ctx: StrandContext, lake: StrandLake & { level: number }, x: number, z: number, half: number): boolean {
-  return admits({ ctx, lake, level: lake.level, extent: ctx.extent ?? EXTENT_M, salt: 0 }, x, z, half);
+  return admits({ ctx, lake, level: strandWaterTop(ctx.heightField, lake), extent: ctx.extent ?? EXTENT_M, salt: 0 }, x, z, half);
 }
 
 type ObbPose = ReturnType<typeof planGroundedObbPose>;
@@ -484,7 +511,7 @@ export function dressStrandWrack(ctx: StrandContext): StrandWrackCensus {
     census.lakes++;
     const [phaseA, phaseB] = shorelinePhases(lake);
     const table = marchBands(field, lake, extent);
-    const p: Placement = { ctx, lake, level: lake.level, extent, salt: hash32(lakeIndex * 2654435761 + 97) };
+    const p: Placement = { ctx, lake, level: strandWaterTop(field, lake), extent, salt: hash32(lakeIndex * 2654435761 + 97) };
     // round 67: the map's stream hands this lake one salt; every station and landing piece draws from its own stream
     const lakeSalt = Math.floor(ctx.rng() * 4294967296);
     let angle = 0, s = 0, station = 0;

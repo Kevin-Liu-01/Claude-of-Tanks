@@ -6,15 +6,18 @@ const stationName = 'fitting_browningDerived_m2';
 // Nominal authored corners, in the tank turret's frame (the kit bevels box
 // edges by up to 15 mm). These cover the
 // supporting assembly that formerly stayed behind when the M2 traversed.
+// Release 230 (the station's stock clears the gun's sweep, challenger.ts): no crossmember spans the gun's path (the
+// left fork cheek stands outboard of the can), the inner sensor stands 45 mm outboard, the junction tier's lid and the
+// cradle the gun rides in (spine, rails, tie) come down under the gun.
 const corners = [
   ['fork', 'yaw', [.9775, 1.18, -.17]],
-  ['crossmember', 'yaw', [.97, 1.1975, -.17]],
-  ['inner sensor', 'yaw', [.50, 1.12, -.10]],
+  ['left fork', 'yaw', [.4325, 1.18, -.17]],
+  ['inner sensor', 'yaw', [.455, 1.12, -.10]],
   ['outer sensor bracket', 'yaw', [1.01, 1.02, -.11]],
-  ['rear housing lid', 'yaw', [.89, 1.0275, -.305]],
-  ['receiver spine', 'pitch', [.885, 1.20, .43]],
-  ['right recoil rail', 'pitch', [.9025, 1.2225, .94]],
-  ['forward rail tie', 'pitch', [.90, 1.2225, .9525]],
+  ['rear housing lid', 'yaw', [.89, .9205, -.305]],
+  ['receiver spine', 'pitch', [.885, 1.0775, .43]],
+  ['right recoil rail', 'pitch', [.9025, 1.1225, .94]],
+  ['forward rail tie', 'pitch', [.90, 1.1225, .9525]],
   ['roof foundation', 'fixed', [1.04, .74, .07]],
   ['independent front optic', 'fixed', [.86, .28, .89]],
 ];

@@ -692,7 +692,7 @@ export function drawTacticalNumber(
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const text = record.tacticalNumber;
   const fontSize = Math.min(height * 0.68, width / Math.max(1, text.length) * 1.75);
-  ctx.font = `800 ${Math.max(16, fontSize)}px 'ABC Monument Grotesk', sans-serif`;
+  ctx.font = `700 ${Math.max(16, fontSize)}px 'Cot UI', sans-serif`;
   ctx.lineWidth = Math.max(2, fontSize * 0.08);
   ctx.strokeStyle = SURFACE_MARKING_STYLE.markingOutline;
   ctx.fillStyle = SURFACE_MARKING_STYLE.markingPigment;

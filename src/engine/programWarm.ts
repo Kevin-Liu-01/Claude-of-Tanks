@@ -134,7 +134,8 @@ export interface ForwardProgramWarmOwner {
   initializeSteps(
     root?: Object3D,
     stats?: ForwardProgramWarmStats | null,
-    options?: { requireCompletion?: boolean },
+    /** includeHidden: also the hidden renderables (idle effect pools a live warm compiles in place, 2026-10-20) */
+    options?: { requireCompletion?: boolean; includeHidden?: boolean },
   ): Generator<void, void, void>;
   linkerBreathingSlices(maxSlices: number, timing?: ForwardProgramCompileTiming,
     signal?: AbortSignal, existingPrograms?: ReadonlySet<LinkedProgram>): Generator<void, void, void>;
@@ -1248,7 +1249,7 @@ export function createForwardProgramWarmOwner({
   const initializeSteps = function* (
     root: Object3D = scene,
     stats: ForwardProgramWarmStats | null = null,
-    { requireCompletion = false }: { requireCompletion?: boolean } = {},
+    { requireCompletion = false, includeHidden = false }: { requireCompletion?: boolean; includeHidden?: boolean } = {},
   ): Generator<void, void, void> {
     const ownedEpoch = epoch;
     const lifetime = initializationLifetime(renderer, requireCompletion);
@@ -1266,7 +1267,7 @@ export function createForwardProgramWarmOwner({
     let sliceAt = now();
     const objects: Object3D[] = [];
     const programs: MaterialProgramCohort = new Map();
-    root.traverseVisible((object) => {
+    (includeHidden ? root.traverse : root.traverseVisible).call(root, (object) => {
       const renderable = object as ForwardWarmObject;
       if (renderable.isMesh || renderable.isPoints || renderable.isLine || renderable.isSprite) {
         objects.push(object);

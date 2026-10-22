@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {Vector3} from 'three';
-import {minimumMechanicalGunPitch} from './gunPitchLimits.ts';
+import {minimumMechanicalGunPitch,mechanicalGunPitchFloor} from './gunPitchLimits.ts';
 import {createTankState,updateTank,SIM_DT} from './movement.ts';
 const D=Math.PI/180,near=(a,b)=>assert(Math.abs(a-b)<1e-10,`${a} != ${b}`);
 const curve=[[0,-9],[22,-9],[30,-6],[35,-5],[42,-7],[47,-9],[120,-9],[130,-7],[135,-5],[145,0],[160,1],[170,2],[180,2]];
@@ -33,4 +33,13 @@ for(const sign of [-1,1]){const moving=entity(spec);moving.state.turretYaw=sign*
   for(let i=0;i<180;i++){updateTank(moving,field,SIM_DT);assert(moving.state.gunPitch>=minimumMechanicalGunPitch(spec,moving.state.turretYaw)-1e-12);}}
 const side=entity(spec);side.state.turretYaw=90*D;side.state.gunPitch=-9*D;updateTank(side,field,SIM_DT);near(side.state.gunPitch,-9*D);
 const corner=entity(spec);corner.state.turretYaw=35*D;corner.state.gunPitch=-9*D;corner.input.aimLocked=true;updateTank(corner,field,SIM_DT);near(corner.state.gunPitch,-5*D);
-console.log('gunPitchLimits: measured piecewise stops, signed/wrapped yaw, exact legacy arithmetic, invalid-curve negatives and actual chase/held-state clearance PASS');
+// the once-validated floor (the leafy net's hot loop) is the per-call form to the bit: every station, signed and wrapped,
+// dense and far-wound yaws, the one-and-two-turn modulo edges, and the undeclared and invalid curves
+for(const s of [spec,plain,{gunPitchByYawDeg:curve},{...spec,gunPitchByYawDeg:[[0,-6],[156,-6],[159,-5],[166,-5],[169,-6],[180,-6]]}]){
+  const floor=mechanicalGunPitchFloor(s),yaws=[0,-0,Math.PI,-Math.PI,2*Math.PI,-2*Math.PI,3*Math.PI,1e-300,-1e-300,Math.PI-1e-15,-Math.PI+1e-15,1e6,-1e6];
+  for(const [x] of s.gunPitchByYawDeg??[])for(const turns of [-3,-1,0,1,2])for(const sign of [-1,1])yaws.push((sign*x+turns*360)*D,(sign*x+turns*360)*D+1e-13);
+  for(let k=0;k<20000;k++)yaws.push(k*0.000977-9.7,Math.sin(k)*40);
+  for(const yaw of yaws)assert(Object.is(floor(yaw),minimumMechanicalGunPitch(s,yaw)),`floor(${yaw}) differs`);
+  if(s.gunPitchByYawDeg)assert.throws(()=>floor(NaN),RangeError);}
+for(const invalid of [[],[[0,-9]],[[1,-9],[180,1]],[[0,-9],[180,NaN]]])assert.throws(()=>mechanicalGunPitchFloor({gunPitchByYawDeg:invalid}),RangeError);
+console.log('gunPitchLimits: measured piecewise stops, signed/wrapped yaw, exact legacy arithmetic, invalid-curve negatives, actual chase/held-state clearance and the bit-exact once-validated floor PASS');

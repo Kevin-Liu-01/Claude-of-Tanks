@@ -84,7 +84,7 @@ export function drawHexBadge(ctx: Ctx, x: number, y: number, r: number, style: B
   ctx.stroke();
   ctx.setLineDash([]);
   if (style.label) {
-    ctx.font = style.font || `700 ${Math.round(r * 1.05)}px system-ui, sans-serif`;
+    ctx.font = style.font || `700 ${Math.round(r * 1.05)}px 'Cot UI', sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.lineWidth = Math.max(1, r * 0.22);

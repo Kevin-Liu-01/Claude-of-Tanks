@@ -10,9 +10,9 @@
 //                                                                          one capped child per seed, DIR/<tag>.<seed>.json
 //   node tools/mode-balance-probe.mjs --table DIR <tag...>                 aggregate the rows of each tag
 //   node tools/mode-balance-probe.mjs --record=src/sim/zombieBalance.measured.json --dir=DIR \
-//     --tags=infected:<before>:<after>:<tuned>,endless_horde:<before>:<after>:<tuned>
+//     --tags=infected:<before>:<after>:<tuned>,endless_horde:<before>:<after>:<tuned>   (<before> `keep`: the record's own)
 //                                                                          the band zombieBalance.selftest checks; <tuned>
-//                                                                          (optional, e.g. 1-16) names the seeds the rules
+//                                                                          (optional, e.g. 1-16 or 1-8+101-108) names the seeds the rules
 //                                                                          were tuned on, and the record adds a hold-out
 //                                                                          aggregate of every other seed
 //
@@ -46,7 +46,9 @@ const BEFORE = Object.freeze({
   infected: { ammo: 'spec', respawnS: 3, enemies: 4,
     infection: { infectedSpeed: 1.4, survivorHpScale: 0.3, infectedHpScale: 1.25, infectedReloadScale: 0.7, hunt: false } },
   endless_horde: { ammo: 'spec', hpScale: 1.25, allies: 2, enemies: 14,
-    horde: { waveSize: 5, waveStep: 1, surgeEvery: 3, hostileHpScale: 1.25, hpPerWave: 0.16, speedPerWave: 0.045, speedPerWaveMax: 0.55,
+    // in today's schema (gameplay-modes-228): +1 a wave, no curve, no special waves, the whole pool alive, the old 6 s lull
+    horde: { waveSize: 5, waveStep: 1, waveCurve: 0, runnerEvery: 0, swarmEvery: 0, maxAlive: 14, maxAliveCap: 14, intermissionS: 6,
+      hostileReloadScale: 1, spawnOutOfSight: false, hostileHpScale: 1.25, hpPerWave: 0.16, hpPerWaveLate: 0.16, speedPerWave: 0.045, speedPerWaveMax: 0.55,
       cacheHeal: { first: 0.62, perWave: 0.055, floor: 0.08 }, hostileDifficultyStep: 0 } },
   juggernaut: { ammo: 'spec' },
 });
@@ -106,11 +108,17 @@ if (arg('record', null) != null) {
     record.rules[mode] = JSON.parse(JSON.stringify({ hpScale: r.hpScale, reloadScale: r.reloadScale, damageScale: r.damageScale,
       speedMultiplier: r.speedMultiplier, ammo: r.ammo, respawnS: r.respawnS, timeLimitS: r.timeLimitS, allies: r.allies, enemies: r.enemies,
       infection: r.infection ?? null, horde: r.horde ?? null }));
-    record.before[mode] = aggregate(readRows(dir, beforeTag));
+    // a before tag of `keep` carries the before rows of the record already at OUT (the 16aeab482 runs: the table they
+    // ran on predates today's Horde schema, so they are history, not something to re-run)
+    if (beforeTag === 'keep') {
+      const kept = JSON.parse(readFileSync(arg('record'), 'utf8')).before?.[mode];
+      if (!kept) throw new Error(`--tags ${mode}:keep: ${arg('record')} has no before row for ${mode}`);
+      record.before[mode] = kept;
+    } else record.before[mode] = aggregate(readRows(dir, beforeTag));
     const afterRows = readRows(dir, afterTag);
     record.after[mode] = aggregate(afterRows);
     if (tuned) {
-      const tunedSeeds = new Set(parseSeeds(tuned));
+      const tunedSeeds = new Set(parseSeeds(tuned.replaceAll('+', ',')));
       record.after[mode].tunedSeeds = [...tunedSeeds];
       record.after[mode].holdout = aggregate(afterRows.filter((row) => !tunedSeeds.has(row.seed)));
     }

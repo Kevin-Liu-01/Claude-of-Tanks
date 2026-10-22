@@ -84,7 +84,7 @@ function loaderMachineGun(P: TankBuilderPort): void {
   // its receiver top (~2.53) stays under the source roofline height anchor.
   // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station (the loader's AA gun)
   const mg = FITTINGS.pintleMG({ mats: P.mats, cls: 'mag58', tone: 'dark', scale: .86, ammo: true, shield: false, ring: false, seed: 7191,
-    working: true });
+    working: true, ridingCradle: true });
   mg.name = 'arieteLoaderGpmg';
   mg.position.set(x - pivot[0], 2.29 - pivot[1], z - pivot[2]);
   mg.rotation.y = -.22;

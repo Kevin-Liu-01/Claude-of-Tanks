@@ -16,7 +16,7 @@ import { arcWeight, mapBearing, type GarageSkyline, type GarageSkylineEmitter } 
  *   lifting the patrol craft's gun shield off its mount for overhaul; the harbour master's hut with its desk and screens;
  *   the harbour master's flag mast; stacked lobster pots, a net drying frame, orange buoys on their rope, rope coils;
  *   gulls perched on the dock's bollards (static).
- * - Displays: the slideshow on its LED board on the far pierhead, the brand's banner lashed to the caisson's rail, a big
+ * - Displays: the slideshow's CRT on the far pierhead, the brand's banner lashed to the caisson's rail, a big
  *   crest-and-wordmark banner on the boatshed's sea wall, the harbour notice board with three prints, the nameboard,
  *   the harbour master's screens (readouts and the Saltmere Bay map).
  * - The skyline (K10): the map's coast composed about the quay. The garage stands on Saltmere's strand, the bay before
@@ -424,7 +424,7 @@ export const SALTMERE_KIT: GarageKitPlacement = {
     { kind: 'piece', key: 'saltmere-gull', build: gull, at: [20.15, 27.35], yaw: 0.6, datum: true, y: 0.74, grounded: false },
     { kind: 'piece', key: 'saltmere-gull', build: gull, at: [20.15, 32.55], yaw: -2.2, datum: true, y: 0.74, grounded: false },
     { kind: 'piece', key: 'saltmere-gull', build: gull, at: [9.05, 32.55], yaw: 2.6, datum: true, y: 0.74, grounded: false },
-    // the slideshow on its LED board on the far pierhead (garageSlideshowPlacement.ts), the brand on the caisson's rail
+    // the slideshow's CRT on its stand on the far pierhead's plinth (garageSlideshowPlacement.ts), the brand on the caisson's rail
     { kind: 'piece', key: 'saltmere-plinth', build: pierheadPlinth, at: [23.5, 37.25], yaw: FACE_CAMERA, datum: true, grounded: false },
     { kind: 'display', display: 'pvc', rect: 'brand.banner.h', at: [17.7, 33.82], yaw: FACE_CAMERA, y: 1.25, size: [3.2, 0.5],
       options: { gap: 0.12 }, datum: true },

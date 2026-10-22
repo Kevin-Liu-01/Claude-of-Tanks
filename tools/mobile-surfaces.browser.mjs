@@ -67,13 +67,13 @@ for(const [name,width,height,locale='en-US'] of [
     await tap(`button[data-garage-panel="${panel}"]`);
     await check(panel,[panel==='equipment'?'.cot-garage .stats':'.cot-leftcol']);
     if(panel==='maps'){
-      const inspect=page.locator('.cot-map-card').filter({has:page.locator('.cot-map-select[aria-label="Verdant Fields"]')}).locator('.cot-map-inspect');
+      const inspect=page.locator('.cot-map-card').filter({has:page.locator('.mthumb.verdant')}).locator('.cot-map-inspect');
       assert.equal(await inspect.isDisabled(),true,'unselected map cannot be enlarged');
-      await tap('.cot-map-select[aria-label="Verdant Fields"]');
+      await tap('.cot-map-card:has(.mthumb.verdant) .cot-map-select');
       assert.equal(await page.locator('.cot-modal-root.is-open').count(),0,'first tap only selects the map');
       assert.equal(await inspect.isEnabled(),true,'selected map can now be enlarged');
       await tap('button[data-garage-panel="maps"]');
-      await tap('.cot-map-select[aria-label="Verdant Fields"]');
+      await tap('.cot-map-card:has(.mthumb.verdant) .cot-map-select');
       await page.locator('.cot-modal-root.is-open .cot-modal').waitFor({state:'visible'});
       await check('map-preview',['.cot-modal-root.is-open .cot-modal']);
       await page.locator('.cot-modal-root.is-open .cot-modal__close').tap();

@@ -266,8 +266,25 @@ assert.match(dressing, /battleScreenResidentImageLimit = 2/,
 assert.match(dressing, /resizeWidth: BATTLE_SCREEN_DECODE_W,[\s\S]{0,60}resizeHeight: BATTLE_SCREEN_DECODE_H/,
   'stills decode at the panel size, never at their 1920 x 1080 source');
 assert.match(dressing, /const BATTLE_SCREEN_DECODE_W = 1024;\nconst BATTLE_SCREEN_DECODE_H = 576;/);
-assert.doesNotMatch(dressing, /scanline|rollingGlow|bendUv/,
-  'the panel is a flat LED panel, not a CRT');
+// garage 231 (the owner, 2026-10-21: "make it a crt screen like the one we removed"): the one material is a CRT's, its
+// picture barrel-warped into rounded corners of dark glass, raster lines and phosphor stripes that fade before they can
+// alias, a slow hum bar on a wrapped clock and darker corners; the glass is bulged geometry, 48 triangles; the housing
+// is the kit's (Verdant's kit builds it at the shared pose), so the dressing builds no bezel, cabinet or legs of its own
+assert.match(dressing, /c \*= 1\.0 \+ dot\(c, c\) \* 0\.04;/, 'the picture bows with the glass (a barrel warp)');
+assert.match(dressing, /float d = length\(max\(abs\(c\) \* vec2\(1\.778, 1\.0\) - vec2\(1\.658, 0\.88\), 0\.0\)\) - 0\.12;/,
+  'the picture rounds off at its corners into the dark glass');
+assert.match(dressing, /1\.0 - smoothstep\(0\.3, 0\.7, fwidth\(y\)\)\) \* cos\(6\.2832 \* y\)/,
+  'raster lines fade to their mean before they alias');
+assert.match(dressing, /fract\(uv\.y - uTime \* 0\.05\)/, 'a slow hum bar rolls up the picture');
+assert.match(dressing, /uTime\.value = \(performance\.now\(\) % 1e6\) \* 1e-3;/,
+  'the hum bar\'s clock wraps on a whole number of passes and allocates nothing');
+assert.match(dressing, /smoothstep\(0\.3, 2\.2, dot\(c, c\)\)/, 'the tube\'s corners are darker');
+assert.match(dressing, /new THREE\.PlaneGeometry\(BATTLE_SCREEN_PANEL_W, BATTLE_SCREEN_PANEL_W \* 9 \/ 16, 6, 4\)/,
+  'the glass is 48 triangles');
+assert.match(dressing, /\(1 - u \* u\) \* \(1 - v \* v\) \* GARAGE_SLIDESHOW_GLASS_BULGE \* BATTLE_SCREEN_PANEL_W/,
+  'the glass bulges at its centre and sits flush with the housing\'s face plane at its edges');
+assert.doesNotMatch(dressing, /statusLedMaterial|displayPostGeometry|gl_FragCoord/,
+  'the housing is the kit\'s CRT, and no raster line is a screen-space pattern');
 assert.match(dressing, /color = mix\(vec3\(luma\), color, 0\.55\) \* 0\.62;/,
   'the slideshow stays dimmed and drained toward grey (the re-judge, 2026-10-15)');
 assert.doesNotMatch(dressing, /currentVariant\.id !== 'verdant_motor_pool'/,
@@ -409,7 +426,7 @@ assert.match(dressing, /import \{ FEATURED_SHOTS \} from '\.\.\/ui\/featuredShot
 assert.match(dressing, /FEATURED_SHOTS\.filter\(\(shot\) => shot\.maps\?\.length\),/,
   'the slideshow rotation must include current battlefield captures while excluding editor/studio frames');
 assert.match(dressing, /garage_slideshow_screen/);
-assert.match(dressing, /battleScreenMode = 'led-crossfade-slideshow'/);
+assert.match(dressing, /battleScreenMode = 'crt-crossfade-slideshow'/);
 assert.match(dressing, /mix\(exposed\(uImageA, uv\), exposed\(uImageB, uv\), uTransition\)/,
   'the slideshow crossfades between its two resident images');
 // garage r9 (the blind critic: "a dark urban-street frame, much less legible than the bright tank still"): each still is

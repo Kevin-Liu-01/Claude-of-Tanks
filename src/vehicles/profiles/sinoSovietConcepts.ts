@@ -34,7 +34,9 @@ function build(P:TankBuilderPort,variant:Variant):void {
   const z=variant==='feng'?.07187:variant==='lei'?.114315:.065591;
   P.turretG.position.set(...frame.turret);
   P.gunG.position.set(frame.gun[0]-frame.turret[0],frame.gun[1]-frame.turret[1],frame.gun[2]-frame.turret[2]);
-  buildType96Turret(P,{bootFloor:BOOT_FLOOR[variant]});
+  // the box sight over the mantlet rides the pitching boot (boxSightOnGun): turret-fixed, the boot passed through it; it
+  // keeps the fleet Type 96B's measured top (boxSightSourceTop)
+  buildType96Turret(P,{bootFloor:BOOT_FLOOR[variant],boxSightOnGun:true,boxSightSourceTop:true});
   addType96GunnerSightPlinth(P);   // the gunner's sight housing stood 60 mm over the roof (owner 2026-10-19 float sweep)
   P.turretG.position.set(frame.turret[0],y,z);
   P.add('turret',cylY(1.05,1.08,.09,40),0,.02,0);

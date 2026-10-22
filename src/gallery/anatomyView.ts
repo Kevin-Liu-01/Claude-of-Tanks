@@ -67,7 +67,7 @@ export interface AnatomyHost {
 const STYLE = `
 .anatomy-bar{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;width:min(800px,100%);margin:0 auto 6px;pointer-events:auto}
 .anatomy-bar[hidden]{display:none}
-.anatomy-chip,.anatomy-seg button{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:5px 10px;border:1px solid rgba(174,190,197,.24);background:rgba(5,9,11,.9);color:#aeb8bb;font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;backdrop-filter:blur(10px)}
+.anatomy-chip,.anatomy-seg button{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:5px 10px;border:1px solid rgba(174,190,197,.24);background:rgba(5,9,11,.9);color:#aeb8bb;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;backdrop-filter:blur(10px)}
 .anatomy-chip svg,.anatomy-seg svg{width:14px;height:14px;flex:none}
 .anatomy-chip[aria-pressed="true"]{border-color:rgba(255,189,92,.7);background:rgba(74,46,10,.88);color:#ffd08a}
 .anatomy-chip:hover,.anatomy-seg button:hover{border-color:rgba(255,189,92,.5);color:#ffe2b4}
@@ -77,16 +77,16 @@ const STYLE = `
 .anatomy-seg button[aria-checked="true"]{background:rgba(74,46,10,.9);color:#ffd08a;box-shadow:inset 0 -2px 0 #f0a030}
 #viewport .overlay-legend.anatomy-legend{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 10px}
 #viewport .anatomy-legend .anatomy-ramp{display:grid;grid-template-columns:auto minmax(180px,300px);align-items:center;gap:8px;padding:5px 9px;background:rgba(5,9,11,.92);border:1px solid rgba(174,190,197,.2)}
-#viewport .anatomy-legend .anatomy-ramp b{color:#d9dfe1;font-size:10px;letter-spacing:.06em;white-space:nowrap}
+#viewport .anatomy-legend .anatomy-ramp b{color:#d9dfe1;font-size:11px;letter-spacing:.03em;white-space:nowrap}
 #viewport .anatomy-legend .anatomy-ramp-bar{position:relative;height:9px;border:1px solid rgba(0,0,0,.6)}
 #viewport .anatomy-legend .anatomy-ramp-ticks{position:relative;height:12px;margin-top:3px}
-#viewport .anatomy-legend .anatomy-ramp-ticks span{position:absolute;display:block;min-height:0;padding:0;border:0;background:none;transform:translateX(-50%);color:#9aa5a9;font:600 9px/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:0;text-transform:none;white-space:nowrap}
-#viewport .anatomy-legend .anatomy-key{display:inline-flex;align-items:center;gap:6px;min-height:22px;padding:4px 8px;background:rgba(5,9,11,.92);border:1px solid rgba(174,190,197,.2);color:#b5bfc2;font-size:10px;letter-spacing:.05em;text-transform:uppercase}
+#viewport .anatomy-legend .anatomy-ramp-ticks span{position:absolute;display:block;min-height:0;padding:0;border:0;background:none;transform:translateX(-50%);color:#9aa5a9;font:500 11px/1 var(--font-mono);letter-spacing:0;text-transform:none;white-space:nowrap}
+#viewport .anatomy-legend .anatomy-key{display:inline-flex;align-items:center;gap:6px;min-height:22px;padding:4px 8px;background:rgba(5,9,11,.92);border:1px solid rgba(174,190,197,.2);color:#b5bfc2;font-size:11px;letter-spacing:.02em;text-transform:uppercase}
 #viewport .anatomy-legend .anatomy-key i{width:10px;height:10px;background:var(--key);box-shadow:0 0 0 1px rgba(0,0,0,.5)}
 #viewport .anatomy-legend .anatomy-key svg{width:13px;height:13px;color:var(--key)}
 .anatomy-badges{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden}
 .anatomy-badges[hidden]{display:none}
-.anatomy-badge{position:absolute;left:0;top:0;display:grid;place-items:center;width:26px;height:26px;margin:-13px 0 0 -13px;padding:0;border:2px solid var(--badge);border-radius:50%;background:rgba(6,9,11,.86);color:var(--badge);font:800 11px/1 "IBM Plex Mono",ui-monospace,monospace;pointer-events:auto;will-change:transform;box-shadow:0 2px 10px rgba(0,0,0,.5)}
+.anatomy-badge{position:absolute;left:0;top:0;display:grid;place-items:center;width:26px;height:26px;margin:-13px 0 0 -13px;padding:0;border:2px solid var(--badge);border-radius:50%;background:rgba(6,9,11,.86);color:var(--badge);font:500 11px/1 var(--font-mono);pointer-events:auto;will-change:transform;box-shadow:0 2px 10px rgba(0,0,0,.5)}
 .anatomy-badge svg{width:14px;height:14px}
 .anatomy-badge[aria-pressed="true"]{background:#f0a030;border-color:#ffd08a;color:#1c1204}
 .anatomy-badge.is-off{display:none}
@@ -94,14 +94,14 @@ const STYLE = `
 body[data-cot-width='phone'] .anatomy-chip span,body[data-cot-width='compact'] .anatomy-chip span{display:none}
 body[data-cot-width='phone'] .anatomy-bar,body[data-cot-width='compact'] .anatomy-bar{gap:3px;margin-bottom:4px}
 body[data-cot-width='phone'] .anatomy-chip,body[data-cot-width='compact'] .anatomy-chip,
-body[data-cot-width='phone'] .anatomy-seg button,body[data-cot-width='compact'] .anatomy-seg button{min-height:32px;padding:4px 8px;font-size:9px}
+body[data-cot-width='phone'] .anatomy-seg button,body[data-cot-width='compact'] .anatomy-seg button{min-height:32px;padding:4px 7px;font-size:11px;letter-spacing:.01em}
 body[data-cot-width='phone'] .anatomy-seg button,body[data-cot-width='compact'] .anatomy-seg button{min-width:0}
 body[data-cot-width='phone'] #viewport .overlay-legend.anatomy-legend{gap:3px 4px}
 body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp{grid-template-columns:auto minmax(0,1fr);gap:6px;width:100%;padding:3px 7px}
-body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp b{font-size:8.5px}
-body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp-ticks span{font-size:8px}
+body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp b{font-size:11px;letter-spacing:0}
+body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp-ticks span{font-size:11px}
 body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp-ticks span[data-minor]{display:none}
-body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-key{min-height:18px;gap:4px;padding:2px 5px;font-size:8.5px;letter-spacing:.03em}
+body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-key{min-height:18px;gap:4px;padding:2px 5px;font-size:11px;letter-spacing:0}
 body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-key i{width:8px;height:8px}
 `;
 

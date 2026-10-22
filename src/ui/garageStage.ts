@@ -199,9 +199,9 @@ function makeWallTexture(rng: RandomSource): HTMLCanvasElement {
 // Stenciled workshop signage uses real safety categories instead of painting
 // every board yellow: blue identifies bays, red marks hazards, green marks
 // service equipment, and amber remains the general caution accent.
-// Monument Grotesk has no condensed cut: bake at 44px but shrink-to-fit against the
-// plate's inner width (the old 79%-width face fit 'NO SMOKING' at 44px flat).
-const SIGN_FONT = "700 44px 'ABC Monument Grotesk', 'Arial Narrow', Arial, sans-serif";
+// The display face (Chakra Petch Bold) has no condensed cut: bake at 44px but shrink-to-fit
+// against the plate's inner width (the old 79%-width face fit 'NO SMOKING' at 44px flat).
+export const SIGN_FONT = "700 44px 'Cot UI', 'Arial Narrow', Arial, sans-serif";
 export function makeSignTexture(rng: RandomSource, text: string): HTMLCanvasElement {
   const W = 256, H = 128;
   const c = document.createElement('canvas');
@@ -246,7 +246,7 @@ export function makeSignTexture(rng: RandomSource, text: string): HTMLCanvasElem
     g.restore();
     g.font = SIGN_FONT;
     g.textAlign = 'center';
-    // shrink-to-fit: Monument Grotesk is wider than the retired condensed cut, and the
+    // shrink-to-fit: the display face is wider than the retired condensed cut, and the
     // longest plate ('NO SMOKING') would otherwise run through the keyline.
     const maxW = W - 44;
     const w0 = g.measureText(text).width;
@@ -262,7 +262,7 @@ export function makeSignTexture(rng: RandomSource, text: string): HTMLCanvasElem
     }
   };
   draw();
-  // font mandate: bake in Monument Grotesk — redraw once if the face lands
+  // font mandate: bake in the display face — redraw once if it lands
   // after the first bake (caller flips needsUpdate on the wrapping texture).
   if (document.fonts && !document.fonts.check(SIGN_FONT)) {
     document.fonts.load(SIGN_FONT).then(faces => { if (faces.length) draw(); }).catch(() => {});

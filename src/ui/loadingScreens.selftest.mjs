@@ -111,7 +111,10 @@ assert.match(bootHtml, /#cot-boot\.cot-boot-enter \.cot-boot-load[\s\S]*?cot-boo
 assert.match(bootSource,
   /classList\.remove\('cot-boot-enter'\);[\s\S]{0,100}entranceState = 'complete'/,
   'the boot controller must permanently retire the entrance class after one play');
-assert.equal((bootHtml.match(/font-display:\s*swap/g) || []).length, 3,
+// The faces come from the cot:type marker: every hosted face of the expanded head swaps in.
+const { expandTypeMarkers } = await import('./typeFaces.ts');
+const bootFaces = [...expandTypeMarkers(bootHtml).matchAll(/@font-face\{[^}]*url\([^}]*\}/g)].map(([rule]) => rule);
+assert.ok(bootFaces.length >= 3 && bootFaces.every((rule) => /font-display:swap/.test(rule)),
   'late inline game fonts must replace the fallback instead of abandoning the brand face');
 assert.match(bootHtml, /\.cot-boot-pct \{ width: 64px; flex: 0 0 64px;/,
   'boot percentage updates must keep a stable reserved width');

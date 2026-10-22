@@ -7,7 +7,8 @@
 // from the vehicle's verified seats (the registry). This receipt holds it:
 //   1. a re-solve reproduces the verified record exactly where every seat still reads its recorded clear count (the
 //      Type 90A, whose builder stations stay retired while its profile seats stand; the CV90 and the Merkava Mk 4B,
-//      netted hulls);
+//      netted hulls; 2026-10-21, the PT-91A Twardy, whose suit covers three samples of its turret insignia, and the
+//      M1A1 Abrams FEP: the solver measures the vehicle with its suit on, as the game and the vehicleMarkings audit do);
 //   2. a seat that no longer reads its recorded count is searched again no farther than 0.5 m from where it stood (here
 //      the CV90's insignia, recorded as reading more samples than the receipt casts, so it cannot stand);
 //   3. without a verified record the solver's own search runs as before (the seat it finds is a verified one).
@@ -43,7 +44,7 @@ function solvedSeats(id) {
 const distance = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
 // 1. stable re-solves
-for (const id of ['type90a', 'cv90', 'merkava4b']) {
+for (const id of ['type90a', 'cv90', 'merkava4b', 'pt91a_twardy', 'm1a1_abrams_fep']) {
   const record = vehicleMarkingSeats(id);
   assert.ok(record?.length, `${id}: a verified record is registered`);
   assert.deepEqual(solvedSeats(id), record.map((seat) => ({ ...seat })), `${id}: a re-solve keeps every seat that still reads as recorded`);
@@ -68,4 +69,4 @@ for (const seat of fresh) assert.ok(seat.visibilityClearSamples >= 6, `${seat.ki
 registerVehicleMarkingSeatRecords({ cv90: { schemaVersion: 1, seats: cv90 } });
 
 console.warn = warn;
-console.log(`markingSeatStability: 3 records re-solved unchanged; a seat that cannot stand moved ${moved.toFixed(3)} m (<= 0.5); a fresh solve seats both`);
+console.log(`markingSeatStability: 5 records re-solved unchanged; a seat that cannot stand moved ${moved.toFixed(3)} m (<= 0.5); a fresh solve seats both`);
