@@ -1661421,17 +1661421,17 @@
           }
         ]
       },
-      "geometryHash": "4134d611",
+      "geometryHash": "bff2d600",
       "metadataHash": "1f53b5cd",
       "presentationAnchor": {
-        "xM": 0.0011,
-        "zM": -0.0456
+        "xM": 0.0007,
+        "zM": -0.0471
       },
-      "presentationHash": "b41036c9",
+      "presentationHash": "49a42cc7",
       "presentationProjection": {
         "centerYM": 1.5825,
-        "topHalfM": 6.6527,
-        "sideHalfM": 3.3263
+        "topHalfM": 6.6543,
+        "sideHalfM": 3.3271
       },
       "appearance": {
         "version": 1,
@@ -1661481,39 +1661481,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 93947,
-          "sha256": "89e50ace69ed9839f5834383140b3303e96e27478a55628bc8cc4e6e7d6a74d7"
+          "bytes": 94371,
+          "sha256": "41e7f501d5373212e6dd3ff93eafddfd0492fa7c5c3dc45fc350bdfffad1667d"
         },
         "modulesSide": {
           "file": "t80u_husarz_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 92403,
-          "sha256": "14863328a536cb7ce5a1c014276e9d08be7196a99f0252ec7b7510aca410ace8"
+          "bytes": 93604,
+          "sha256": "d63c583c6671bd9ce93ee1d508881e73450cb39501985e27b37b4841a46ae420"
         },
         "crewSide": {
           "file": "t80u_husarz_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79157,
-          "sha256": "e34a67050cc33760c135a9674a611a3816fca3b386c8729f0441fee0f9b14927"
+          "bytes": 80630,
+          "sha256": "6d097551f74680cae29c5ea733209bff1ba717fb1558863fc6ecb4c01507284f"
         },
         "angle": {
           "file": "t80u_husarz_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28994,
-          "sha256": "03369165d9c6f7b36e0c4229c730104429fc49610f043f3edd1aa4d47702f7c4",
+          "bytes": 29112,
+          "sha256": "fb47c637c21a2f928d331cf94f2b9075e7b72720d2c52e83806d127815143c32",
           "thumbnail": {
             "file": "thumbs/t80u_husarz_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11176,
-            "sha256": "1cf7a85e0ddca4e6de6589657eb98fb10c33b813d24b18c4a10b1ae1ab8877d4"
+            "bytes": 11120,
+            "sha256": "0c92e53a2f92e4c43abb48486df80e01757856ed30c21b74151585a1cf480e79"
           }
         },
         "top": {
@@ -1661521,32 +1661521,32 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19258,
-          "sha256": "6a5b69fb88f34764ac1496d4f307d9c0f63f791e87662a706cf79c01acfd959e"
+          "bytes": 21006,
+          "sha256": "9c41fbb9650d8c8a50dfdd1df06242b275542b44b51828752c55b6d5dbee89fb"
         },
         "side": {
           "file": "t80u_husarz_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9512,
-          "sha256": "912b5dacfa70e54ab6ab523c6d1ae3c2906ed3373b5801e472820d8c81870d86"
+          "bytes": 9878,
+          "sha256": "82f3e9fd163377da3b5daa3738220af6c4d04e8034bd2b590bf1c4bb3e969e12"
         },
         "topSilhouette": {
           "file": "t80u_husarz_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1780,
-          "sha256": "ec7aeaaf6e3bd4b615664a04e9cd3baf2a24ff96f07b435abb8198de04a371d2"
+          "bytes": 1826,
+          "sha256": "17a6f554cefaf4ae23b421c3000529fc13adfa47890d38231cc06f383f1cb786"
         },
         "sideSilhouette": {
           "file": "t80u_husarz_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4195,
-          "sha256": "903478fdc3173640e3d493925134617ab006875e2a2c1769f30526eb70de7bef"
+          "bytes": 4110,
+          "sha256": "2025b874bf1e2c674c4ff8be1d666fe5589542fb68ce5302d9a9a8c7fce2719e"
         },
         "markings": {
           "file": "t80u_husarz_markings.png",
