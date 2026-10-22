@@ -32,27 +32,39 @@ for (const id of ['m60a1', 'm60a3']) {
   const glacis = hull?.userData.m60GlacisArmorReceipt;
   const armorFinish = turret?.userData.americanArmorFinishReceipt;
 
-  assert.ok(sideCassettes, `${id}: side armor publishes its fender seating receipt`);
-  assert(sideCassettes.cassetteTopY <= sideCassettes.fenderTopY - 0.20,
-    `${id}: side armor hangs below rather than above/in line with the fender datum`);
-  assert(sideCassettes.supportRailCenterY > sideCassettes.cassetteTopY,
-    `${id}: upper support rail remains above the lowered cassette course`);
-  assert.equal(sideCassettes.hangerCount, sideCassettes.count,
-    `${id}: every lowered side cassette has a visible fender hanger`);
-  assert(sideCassettes.cassetteCenterY < sideCassettes.previousCenterY,
-    `${id}: side armor is lower than the superseded perched placement`);
-  assert(sideCassettes.trackClearanceInnerX > 1.78,
-    `${id}: lowered cassette wall remains outside the live track envelope`);
-  assert(sideCassettes.exteriorX <= 1.8155,
-    `${id}: track clearance does not widen the tank past its M60 fender envelope`);
-  assert.equal(sideCassettes.blackOutlineStrips, 0,
-    `${id}: side armor separation uses panel gaps instead of black outline strips`);
-  assert.equal(glacis?.surfaceNormalAligned, true,
-    `${id}: every glacis cassette is built from the actual upper-deck surface`);
-  assert.equal(glacis?.maximumSupportGapM, 0,
-    `${id}: glacis armor is embedded flush rather than hovering above the rake`);
-  assert.equal(glacis?.blackOutlineStrips, 0,
-    `${id}: glacis armor does not paint high-contrast frames over the camouflage`);
+  // Release 233 (owner 2026-10-21: the A1 and A3 stop looking alike): the USMC M60A1 keeps its side and glacis armour;
+  // the US Army M60A3 runs with open running gear under full-length fenders (patton.ts finishM60A3Fenders).
+  if (id === 'm60a1') {
+    assert.ok(sideCassettes, `${id}: side armor publishes its fender seating receipt`);
+    assert(sideCassettes.cassetteTopY <= sideCassettes.fenderTopY - 0.20,
+      `${id}: side armor hangs below rather than above/in line with the fender datum`);
+    assert(sideCassettes.supportRailCenterY > sideCassettes.cassetteTopY,
+      `${id}: upper support rail remains above the lowered cassette course`);
+    assert.equal(sideCassettes.hangerCount, sideCassettes.count,
+      `${id}: every lowered side cassette has a visible fender hanger`);
+    assert(sideCassettes.cassetteCenterY < sideCassettes.previousCenterY,
+      `${id}: side armor is lower than the superseded perched placement`);
+    assert(sideCassettes.trackClearanceInnerX > 1.78,
+      `${id}: lowered cassette wall remains outside the live track envelope`);
+    assert(sideCassettes.exteriorX <= 1.8155,
+      `${id}: track clearance does not widen the tank past its M60 fender envelope`);
+    assert.equal(sideCassettes.blackOutlineStrips, 0,
+      `${id}: side armor separation uses panel gaps instead of black outline strips`);
+    assert.equal(glacis?.surfaceNormalAligned, true,
+      `${id}: every glacis cassette is built from the actual upper-deck surface`);
+    assert.equal(glacis?.maximumSupportGapM, 0,
+      `${id}: glacis armor is embedded flush rather than hovering above the rake`);
+    assert.equal(glacis?.blackOutlineStrips, 0,
+      `${id}: glacis armor does not paint high-contrast frames over the camouflage`);
+  } else {
+    const fenders = hull?.userData.m60a3FenderReceipt;
+    assert.equal(sideCassettes, undefined, 'M60A3: no USMC side armour over its running gear');
+    assert.equal(glacis, undefined, 'M60A3: a clean glacis without the A1 cassettes');
+    assert.equal(fenders?.openRunningGear, true, 'M60A3: open running gear under full-length fenders');
+    assert.equal(fenders.fenderFollowsDeck, true, 'M60A3: each fender follows the deck line');
+    assert(fenders.outerX <= 1.8155, 'M60A3: the fenders keep the M60 width envelope');
+    assert.equal(fenders.rearBins, 2, 'M60A3: two rear fender stowage bins');
+  }
   assert.equal(shoulders?.mirroredClosedVolumes, 2,
     `${id}: closed bow shoulders extend from both fenders`);
   assert(shoulders?.trackClearanceFloorY >= 1.40,

@@ -1892,7 +1892,7 @@
     },
     {
       "id": "type96_80_feng",
-      "name": "Type 96-80 Fēng (Concept)",
+      "name": "Type 96-80 Fēng",
       "nation": "China",
       "role": "mbt",
       "tier": 10,
@@ -1913,7 +1913,7 @@
     },
     {
       "id": "type96_72m_lei",
-      "name": "Type 96-72M Léi (Concept)",
+      "name": "Type 96-72M Léi",
       "nation": "China",
       "role": "mbt",
       "tier": 10,
@@ -2745,7 +2745,7 @@
       "reload": 6.4,
       "aim": 1.57,
       "view": 410,
-      "smoke": 20,
+      "smoke": 12,
       "lights": true,
       "roofGun": true,
       "missile": false,
@@ -4349,7 +4349,7 @@
     },
     {
       "id": "t80u_zoria",
-      "name": "T-80U Zoria (Concept)",
+      "name": "T-80U Zoria",
       "nation": "Ukraine",
       "role": "mbt",
       "tier": 10,
@@ -4370,7 +4370,7 @@
     },
     {
       "id": "t72b3m_hetman",
-      "name": "T-72B3M Hetman (Concept)",
+      "name": "T-72B3M Hetman",
       "nation": "Ukraine",
       "role": "mbt",
       "tier": 10,
@@ -4391,7 +4391,7 @@
     },
     {
       "id": "t72b3m_hetman_ii",
-      "name": "T-72B3M Hetman II (Concept)",
+      "name": "T-72B3M Hetman II",
       "nation": "Ukraine",
       "role": "mbt",
       "tier": 10,
@@ -4412,7 +4412,7 @@
     },
     {
       "id": "t72b3_sich",
-      "name": "T-72B3 Sich (Concept)",
+      "name": "T-72B3 Sich",
       "nation": "Ukraine",
       "role": "mbt",
       "tier": 10,
@@ -4433,7 +4433,7 @@
     },
     {
       "id": "t80u_husarz",
-      "name": "T-80U Husarz (Concept)",
+      "name": "T-80U Husarz",
       "nation": "Poland",
       "role": "mbt",
       "tier": 10,
@@ -4454,7 +4454,7 @@
     },
     {
       "id": "t72b3m_wilk",
-      "name": "T-72B3M Wilk (Concept)",
+      "name": "T-72B3M Wilk",
       "nation": "Poland",
       "role": "mbt",
       "tier": 10,
@@ -4475,7 +4475,7 @@
     },
     {
       "id": "t72b3_zubr",
-      "name": "T-72B3 Zubr (Concept)",
+      "name": "T-72B3 Zubr",
       "nation": "Poland",
       "role": "mbt",
       "tier": 10,
@@ -4496,7 +4496,7 @@
     },
     {
       "id": "t72b3_zubr_ii",
-      "name": "T-72B3 Zubr II (Concept)",
+      "name": "T-72B3 Zubr II",
       "nation": "Poland",
       "role": "mbt",
       "tier": 10,
@@ -4517,7 +4517,7 @@
     },
     {
       "id": "t80u_yun",
-      "name": "T-80U Yun (Concept)",
+      "name": "T-80U Yun",
       "nation": "China",
       "role": "mbt",
       "tier": 10,
@@ -4538,7 +4538,7 @@
     },
     {
       "id": "t72b3m_kunlun",
-      "name": "T-72B3M Kunlun (Concept)",
+      "name": "T-72B3M Kunlun",
       "nation": "China",
       "role": "mbt",
       "tier": 10,
@@ -4559,7 +4559,7 @@
     },
     {
       "id": "t72b3_qilin",
-      "name": "T-72B3 Qilin (Concept)",
+      "name": "T-72B3 Qilin",
       "nation": "China",
       "role": "mbt",
       "tier": 10,
@@ -4580,7 +4580,7 @@
     },
     {
       "id": "t80u_bars_m",
-      "name": "T-80U Bars-M (Concept)",
+      "name": "T-80U Bars-M",
       "nation": "Russia",
       "role": "mbt",
       "tier": 10,
@@ -4601,7 +4601,7 @@
     },
     {
       "id": "t72b3m_bulat_m",
-      "name": "T-72B3M Bulat-M (Concept)",
+      "name": "T-72B3M Bulat-M",
       "nation": "Russia",
       "role": "mbt",
       "tier": 10,
@@ -4622,7 +4622,7 @@
     },
     {
       "id": "t72b3_bastion_m",
-      "name": "T-72B3 Bastion-M (Concept)",
+      "name": "T-72B3 Bastion-M",
       "nation": "Russia",
       "role": "mbt",
       "tier": 10,

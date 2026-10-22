@@ -71,6 +71,8 @@ const EXTERNAL_LAUNCHER_BUCKETS = Object.freeze({
   // exterior air. Never bridge their slots into a solid gun casing; the
   // actual recoiling cannon and all native geometry remain audited.
   type100: Object.freeze(['gunMount', 'gunMountDark']),
+  // 2026-10-21: the ZTZ-100 Prototype's armored box banks became open pods of round canisters in the same frames.
+  ztz100_prototype: Object.freeze(['gunMount', 'gunMountDark']),
 });
 
 /** Select actual body-shell triangles without changing their positions or order. */

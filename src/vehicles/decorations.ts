@@ -2683,6 +2683,18 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'camonet', p: 1, v: { v: 'roll', len: 1.0 }, slot: ['turretSide', { side: 1 }] },
     { kit: 'tarp', p: 1, v: { v: 'thin', len: 0.8 }, slot: ['rearDeck', { center: true, back: true, small: true }] },
   ],
+  // Release 233 (owner 2026-10-21: the A1 and A3 stop looking alike): the US Army M60A3 runs open fenders with two rear
+  // bins of its own (profiles/patton.ts finishM60A3Fenders), so its loadout takes none of the A1's fender bin and the
+  // cupola's shielded M2 stands alone; cans and tools sit on the opposite sides to the A1's, and no net roll covers the
+  // A3's turret-side ERA.
+  m60a3: () => [
+    { kit: 'jerry', p: 1, v: { n: 2, water: true }, slot: ['hullRearRack', { x: -0.17 }] },
+    { kit: 'cable', p: 1, v: { len: 2.4 }, slot: ['hullSideTop', { side: 1 }] },
+    { kit: 'tools', p: 1, v: { set: ['shovel', 'sledge', 'crowbar'] }, slot: ['fender', { side: 1, zFrac: 0.12, along: true }] },
+    { kit: 'tarp', p: 1, v: { v: 'fat', len: 1.15 }, slot: ['rearDeck', { corner: 1 }] },
+    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
+    { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
+  ],
   type74: () => [
     { kit: 'aamg', p: 1, v: { v: 'm2' }, slot: ['turretRoof', { rear: true, side: 1 }] },
     { kit: 'light', p: 1, v: { v: 'ir_large' }, slot: ['turretRoof', { rear: false, side: -1 }] },
@@ -2738,6 +2750,10 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
     { kit: 'slat', p: 1, v: { w: Math.min(1.7, s.dims.widthM * 0.5), h: 0.5 }, slot: ['hullRearCage', {}] },
   ],
+  // Release 233: the M1A1HA carries a track-width mine plow on its bow (profiles/abramsM1A1Identity.ts), so the default
+  // draw keeps everything but its bow hardware (the shackle pair and the tow chain), which would hang on the raised plow.
+  m1a1ha: (spec, rng) => defaultManifest(spec, rng)
+    .map((row) => (row.slot[0] === 'bowPair' || row.slot[0] === 'bowChain' ? { ...row, p: 0 } : row)),
   m1a1_abrams_hc: () => [
     { kit: 'basket', p: 1, v: { w: 1.4, d: 0.42, h: 0.32 }, slot: ['turretRearFrame', {}] },
     { kit: 'packs', p: 1, v: { n: 4 }, slot: ['turretRear', { onBasket: true }] },

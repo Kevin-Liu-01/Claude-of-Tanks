@@ -44,6 +44,7 @@ import { ACTION_BITS, VERDICT } from '../wire/index.ts';
 import type { VerdictId, WelcomeMessage, WireEvent } from '../wire/index.ts';
 import type { RoomMatchStartPayload, RoomSnapshot } from '../room/protocol.ts';
 import { getSpec } from '../../vehicles/specs.ts';
+import { planFromRoom } from '../host/hostPlan.ts';
 import { sideFlags } from '../../sim/countries.ts';
 import type { SerializedLobby } from '../room/lobbyShape.ts';
 import { MATCH_BUILD, matchRefusalCodeOf, matchRefusalMessage, type MatchRefusalCode } from '../wire/matchBuild.ts';
@@ -165,12 +166,26 @@ export interface BrowserLoadPorts {
    * WELCOME's bots are painted after it). Never refuses the round; the trace records how many it warmed.
    */
   prewarmRoster?(seats: readonly { specId: string; camo: string; isViewer: boolean }[], signal: AbortSignal): MaybePromise<RuntimeValue>;
+  /**
+   * 2026-10-20 (item/mp-rejoin-229): the round this seat entered, kept across a reload (the app keeps it in this
+   * browser's storage), so a tab reopened on the same room's invite builds that battlefield during its boot; null
+   * forgets it (the seat left the room, or the room is gone). Never refuses the round.
+   */
+  rememberRound?(round: BrowserRememberedRound | null): void;
   nextFrame(): MaybePromise<RuntimeValue>;
   setAdaptiveSuspended(suspended: boolean): void;
   now?(): number;
   recordTrace?(trace: BrowserLoadTrace): void;
   recordEntryFailure?(failure: BrowserEntryFailure | null): void;
   recordSlowEntry?(beacon: BrowserSlowEntry): void;
+}
+
+/** The round a seat entered, as the app remembers it across a reload (BrowserLoadPorts.rememberRound). */
+export interface BrowserRememberedRound {
+  roomCode: string;
+  matchId: string;
+  mapId: string;
+  terrainVariant: TerrainVariant;
 }
 
 export interface BrowserRosterPorts {
@@ -929,9 +944,14 @@ export function createBrowserComposition({
     .finally(() => settleEntry(false));
 
   /** The room is gone for this seat (kicked, expired, resume denied, transport exhausted, an explicit leave). */
+  const forgetRound = (): void => {
+    try { load.rememberRound?.(null); } catch { /* nothing to forget */ }
+  };
+
   const handleRoomClosed = (reason: string): void => {
     const current = roomSession;
     if (!current) return;
+    forgetRound();
     const mode = roomMode();
     const active = round;
     const loading = !!active && !active.revealed;
@@ -953,6 +973,7 @@ export function createBrowserComposition({
   };
 
   const leaveRoom = (reason = 'left_room'): void => {
+    forgetRound();
     const active = round;
     const loading = !!active && !active.revealed;
     const inBattle = roomPorts.getPhase() === 'battle' && !!active && active.revealed;
@@ -1140,6 +1161,9 @@ export function createBrowserComposition({
     try {
       if (!active.spectator && !active.ownSpecId) throw new Error('The lobby vehicle selection is unavailable.');
       const terrainVariant: TerrainVariant = terrainVariantFor(active.mode); // the mode's battlefield (sim/matchRuleset.ts)
+      try {
+        load.rememberRound?.({ roomCode: sessionRound.room.roomCode, matchId: active.matchId, mapId: active.mapId, terrainVariant });
+      } catch { /* a reload only loses the head start */ }
       scene.resetRoundState();
       roster.setCamoBiome(active.mapId);
       roster.emitBattleStart({ playerId: viewerId, specId: active.ownSpecId, mapId: active.mapId });
@@ -1160,6 +1184,15 @@ export function createBrowserComposition({
       // must not lengthen the world's stage, and prepareRoster joins whatever is still in flight (the bakes coalesce).
       const seats = sessionRound.room.players.flatMap((player) => (player.team !== 'spectator' && player.specId
         ? [{ specId: player.specId, camo: player.camo || 'factory', isViewer: !active.spectator && player.id === viewerId }] : []));
+      // 2026-10-21 (item/mp-rejoin-232, lever 7): the bots arrive only with the WELCOME, and their textures (baked in a worker
+      // after it) held the 231 rejoins' roster stage about 2 s. The host plans them from this room and seed (host/hostPlan.ts
+      // planFromRoom, the real room's match_start carries no plan), so the same plan names them here and their bakes join
+      // the world load; a wrong guess is a spare bake, never a different roster.
+      try {
+        for (const bot of planFromRoom(sessionRound.room, { seed: matchStart.seed }).bots) {
+          if (bot.specId) seats.push({ specId: bot.specId, camo: 'factory', isViewer: false });
+        }
+      } catch { /* no plan from this snapshot: the WELCOME paints them */ }
       if (load.prewarmRoster && seats.length) {
         let warming: MaybePromise<RuntimeValue>;
         try { warming = load.prewarmRoster(seats, active.abort.signal); } catch { warming = undefined; }

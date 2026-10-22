@@ -8,8 +8,8 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { KIT } from './kit.ts';
 import { sectionSolid, type SolidSection, type SectionPoint } from './sectionSolid.ts';
-import { lathedWheelSection } from './lathedWheelStock.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
+import { addClampFrame, addLaunchCanister, type LaunchCanister } from './missileCanisterStock.ts';
 
 const { box, cylX, cylY, cylZ, torus } = KIT;
 type XYZ = [number, number, number];
@@ -257,11 +257,21 @@ function runningGear(P: TankBuilderPort): void {
 // Owner-directed missile-carrier concept. Dimensions are design decisions,
 // not measurements of the superseded historical MBT turret.
 const T = { roof: .49, gunY: .64, gunZ: .80, gunLen: 1.45, pivotY: 1.41, pivotZ: -.55 } as const;
+// 2026-10-21 (owner: "follow that of the object 695, and tagil"): the two armored box banks became open pods of round
+// 152 mm HJ-P9 canisters on a 0.30 m pitch, the Object 695 vocabulary; the upper row keeps its height, the lower row
+// rises 0.10 m to sit just above the pitch axis. outerRadius/innerRadius are the collar and the dark-lined bore.
 export const ZTZ100_PROTOTYPE_LAUNCHER = Object.freeze({
-  columns: [-1.28, -.88, .88, 1.28] as const, rows: [.02, .42] as const,
-  rear: -1.12, mouth: 1.00, outerRadius: .175, innerRadius: .145,
+  podCenters: [-1.08, 1.08] as const, pitch: .30,
+  columns: [-1.23, -.93, .93, 1.23] as const, rows: [.12, .42] as const,
+  rear: -1.10, mouth: 1.00, outerRadius: .143, innerRadius: .112, frames: [-.62, .58] as const,
   gunPivot: [0, T.gunY, T.gunZ] as const, backupLength: T.gunLen,
   backupOuterRadius: .045, backupInnerRadius: .0175, backupDepth: .09,
+});
+const L = ZTZ100_PROTOTYPE_LAUNCHER;
+export const ZTZ100_PROTOTYPE_CANISTER: LaunchCanister = Object.freeze({
+  bodyRadius: .126, collarRadius: L.outerRadius, boreRadius: L.innerRadius, capRadius: .134, bandRadius: .133,
+  rear: L.rear, mouth: L.mouth, collarLength: .16, recess: .095,
+  bands: Object.freeze([L.frames[0], -.02, L.frames[1]]), segments: [20, 12] as const,
 });
 
 function bodySection(z: number, width: number, top: number): SolidSection {
@@ -288,45 +298,28 @@ function armoredBody(P: TankBuilderPort): void {
     P.add('turret', part(box(.15, .48, .42), 'pitch-pedestal'), s * .515, .37, T.gunZ);
     P.add('turret', part(cylX(.18, .20, P.q ? 28 : 14), 'pitch-bearing'), s * .515, T.gunY, T.gunZ);
     P.add('turretDark', part(cylX(.095, .018, P.q ? 20 : 10), 'pitch-bearing-cap'), s * .625, T.gunY, T.gunZ);
+    // Fixed elevation drive: a gearbox on the pedestal's outer face under the bearing it turns, its motor below. Both
+    // stay inboard of x .70 (the journal clears the gearbox by 5 mm); the pitching pods start at .711.
+    P.addEquipment('turret', part(box(.10, .20, .28), 'elevation-gearbox'), s * .635, .405, T.gunZ);
+    P.addEquipment('turretDark', part(cylZ(.06, .24, P.q ? 16 : 10), 'elevation-motor'), s * .64, .26, T.gunZ + .06);
   }
 }
 
-/** A closed thick-walled tube with real air, joined to its closed rear plate. */
-function missileCell(P: TankBuilderPort, x: number, y: number): void {
-  const D = ZTZ100_PROTOTYPE_LAUNCHER, n = P.q ? 28 : 14;
-  const tube = lathedWheelSection([[D.rear, D.innerRadius], [D.rear, D.outerRadius],
-    [D.mouth, D.outerRadius], [D.mouth, D.innerRadius]], n).rotateY(-Math.PI / 2);
-  P.addModuleVisual('missileRack', 'gunMount', part(tube, 'missile-canister'), x, y, 0);
-  P.addEquipment('gunMountDark', part(cylZ(D.outerRadius, .05, n), 'missile-backplate'), x, y, D.rear + .02);
-  for (const z of [-.72, .54]) {
-    const band = lathedWheelSection([[z - .04, .173], [z - .04, .196],
-      [z + .04, .196], [z + .04, .173]], n).rotateY(-Math.PI / 2);
-    P.addEquipment('gunMount', part(band, 'canister-saddle'), x, y, 0);
+/** One pod: four canisters (the middle band only at HIGH), a clamp frame at each frame station, two rails under the
+ * bottom straps, an inner cradle plate across the inner posts, and the trunnion hub on the fixed bearing's journal. */
+function pod(P: TankBuilderPort, side: number): void {
+  const C = ZTZ100_PROTOTYPE_CANISTER, c = side * L.podCenters[1], n = P.q ? 24 : 12;
+  const columns = L.columns.filter(x => Math.sign(x) === side), bands = P.q ? C.bands : L.frames;
+  for (const x of columns) for (const y of L.rows) addLaunchCanister(P, part, C, x, y, bands);
+  let bottom = 0;
+  for (const z of L.frames) bottom = addClampFrame(P, part, C, columns, L.rows, z).bottom;
+  for (const dx of [-L.pitch / 2, L.pitch / 2]) {
+    P.addEquipment('gunMount', part(new THREE.BoxGeometry(.045, .04, 1.30), 'pod-rail'), c + dx, bottom - .034, -.02);
   }
-}
-
-/** Thin faceted shoulders frame each 2x2 bank; none caps a terminal mouth. */
-function bankHousing(P: TankBuilderPort, side: number): void {
-  const x = side * 1.08;
-  for (const edge of [-1, 1]) {
-    const wall = (z: number, bottom: number): SolidSection => ({ z,
-      ring: [[-.0225, bottom], [.0225, bottom], [.0225, .655], [-.0225, .655]] });
-    P.addEquipment('gunMount', part(sectionSolid([
-      wall(-1.10, -.155), wall(-.92, -.215), wall(.97, -.215),
-    ]), 'bank-side-armor'), x + edge * .445, 0, 0);
-  }
-  P.addEquipment('gunMount', part(sectionSolid([
-    { z: -1.10, ring: [[-.445, .63], [.445, .63], [.37, .69], [-.37, .69]] },
-    { z: .97, ring: [[-.445, .63], [.445, .63], [.37, .69], [-.37, .69]] },
-  ]), 'bank-armored-roof'), x, 0, 0);
-  P.addEquipment('gunMount', part(box(.93, .04, 1.91), 'bank-lower-tray'), x, -.195, .015);
-  // The inner fork is beside the bores; the low transverse webs meet saddles.
-  P.addEquipment('gunMount', part(box(.07, .25, .30), 'bank-inner-fork'), side * .655, -.075, 0);
-  for (const z of [-.72, .54]) {
-    P.addEquipment('gunMount', part(box(.91, .04, .08), 'bank-saddle-web'), x, -.16, z);
-    P.addEquipment('gunMount', part(box(.91, .035, .08), 'bank-between-row-web'), x, .22, z);
-  }
-  P.addEquipment('gunMount', part(cylX(.13, .14, P.q ? 24 : 12), 'bank-pitch-journal'), side * .64, 0, 0);
+  P.addEquipment('gunMount', part(new THREE.BoxGeometry(.03, .52, 1.32), 'pod-cradle-plate'), c - side * .328, .06, -.02);
+  P.addEquipment('gunMount', part(cylX(.165, .03, n), 'pod-trunnion-hub'), c - side * .354, 0, 0);
+  // The journal runs from inside the fixed bearing (x .415-.615) into the hub.
+  P.addEquipment('gunMountDark', part(cylX(.13, .16, n), 'bank-pitch-journal'), side * .645, 0, 0);
 }
 
 function backupCannon(P: TankBuilderPort): void {
@@ -368,15 +361,10 @@ function sensorsAndHatches(P: TankBuilderPort): void {
 
 function turret(P: TankBuilderPort): void {
   armoredBody(P);
-  weaponAssembly(P, () => {
-    for (const side of [-1, 1]) bankHousing(P, side);
-    for (const x of ZTZ100_PROTOTYPE_LAUNCHER.columns) {
-      for (const y of ZTZ100_PROTOTYPE_LAUNCHER.rows) missileCell(P, x, y);
-    }
-  });
+  weaponAssembly(P, () => { for (const side of [-1, 1]) pod(P, side); });
   backupCannon(P);
   sensorsAndHatches(P);
-  P.topY = 1.33;
+  P.topY = 1.24;
 }
 
 function buildZtz100Prototype(P: TankBuilderPort): void {
@@ -395,7 +383,7 @@ function buildZtz100Prototype(P: TankBuilderPort): void {
     P.hullG.userData.ztz100Receipt = Object.freeze({
       architecture: 'ztz100-prototype-missile-concept', datums: ZTZ100_PROTOTYPE_DATUMS, hullStations: HULL_Z.length,
       launcherTubesByWeapon: { 'HJ-P9 Tandem': 8, 'HJ-P9 Blast': 8 }, physicalLauncherTubes: 8,
-      roadWheelsPerSide: 7, gunLengthM: T.gunLen, launcherTopM: 2.74, pivot: [0, T.pivotY, T.pivotZ], trunnion: [0, T.gunY, T.gunZ],
+      roadWheelsPerSide: 7, gunLengthM: T.gunLen, launcherTopM: 2.64, pivot: [0, T.pivotY, T.pivotZ], trunnion: [0, T.gunY, T.gunZ],
     });
   }
 }
