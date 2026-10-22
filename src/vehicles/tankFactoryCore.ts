@@ -46,6 +46,7 @@ import {
   LIVE_TURRET_DENTS,
 } from './materials.ts';
 import { bendGeometry, dentSamples, planBend, planDents, wreckBarrelSpan, wreckRandom, type WreckDent } from './wreckDents.ts';
+import { createTurretRingPresentation, type TurretRingSeat } from './turretRingWell.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills } from './interiorFills.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
@@ -1281,6 +1282,9 @@ interface TankVisual {
   prewarmBurn(): THREE.Object3D[];
   getWreckFallbackMaterial(): THREE.Material;
   stageBattleDetailsForWarm(): () => void;
+  /** The turret ring as built, hull frame (turretRingWell.ts): what a wreck's ring plate and a hulk's well are sized
+   *  from. Measured once while the turret is seated; null on a turretless hull. */
+  turretRingSeat(): TurretRingSeat | null;
   resetDestroyed(): void;
   resetForGaragePresentation(): void;
   setVisible(visible: boolean): void;
@@ -9427,6 +9431,20 @@ function* createTankOwnedSteps(
   // rusty"): the hull's and the turret's dents ride the burn hook (materials.ts), the gun's bend is a bent copy of each of
   // its meshes' geometry, swapped in at the kill and back at a rematch
   const liveBentGun: [THREE.Mesh, THREE.BufferGeometry][] = [];
+  // (tank-opt RING, 2026-10-16; the owner: "give tanks proper turret ring areas because when the turret blows off we
+  // should see that") the ring a kill leaves on the hull: the hull's meshes swapped for copies cut inside the ring and a
+  // plate made on it at the kill, both undone at a rematch, so an intact tank holds nothing of it (turretRingWell.ts)
+  const turretRing = createTurretRingPresentation({
+    specId,
+    root,
+    hull: hullG,
+    turret: turretG,
+    armor,
+    engineCtx,
+    high: geometryQuality !== 'low',
+    rendered: !geometryOnly,
+    dents: () => (burnU.uCrOn.value ? { centres: burnU.uCrHull.value, dirs: burnU.uCrHullDir.value } : null),
+  });
   // ammo-rack turret pop (physics arc + spin, settles askew on the hull)
   let popActive = false;
   let popT = 0;
@@ -9652,6 +9670,8 @@ function* createTankOwnedSteps(
     for (const decal of decalMeshes) decal.visible = false;
     wreckAge = ageS;
     burnU.uBurnT.value = ageS;
+    // the ring plate takes the hull's dents as the burn hook ramps them in (turretRingWell.ts)
+    turretRing.ramp(ageS);
     // (fx 8p) the fire: the turret ring at the kill (before a cook-off throws the turret); the char's reach from it, its
     // start and its spread (a plain kill's; launchDestroyedTurret speeds a cook-off's)
     turretG.getWorldPosition(burnU.uBurnO.value);
@@ -9967,6 +9987,7 @@ function* createTankOwnedSteps(
           if (wreckAge >= 0) {
             wreckAge += adv;
             burnU.uBurnT.value = wreckAge;
+            turretRing.ramp(wreckAge);
             const decay = Math.exp(-wreckAge / 8);
             // r7: glow tau 1.5 -> 0.9 s — the fire-lit wash must collapse with
             // the fireball; at 1.5 s it held the whole darker char uniform
@@ -10396,6 +10417,9 @@ function* createTankOwnedSteps(
       // Non-wrappable materials (rare) fall back to the shared burnt swap.
       applyWreckMaterials();
       planLiveCrumple(!!(opts && opts.pop));
+      // the ring: the hull cut inside it and the plate on it, after the sweep captured the live materials (the plate keeps
+      // its own ring material), on the planned dents, while the turret is still seated
+      turretRing.show();
       const ageS0 = Math.max(0, (opts && opts.ageS) || 0);
       // the turret's body driver, if its physics has loaded by this kill (wreckTurretDriverLoader.ts); before the
       // wreck presentation, which reads whether a body drives the turret
@@ -10468,8 +10492,15 @@ function* createTankOwnedSteps(
     stageBattleDetailsForWarm() {
       const wasAttached = battleDetailsAttached;
       setBattleDetailsAttached(true);
-      return () => setBattleDetailsAttached(wasAttached);
+      // the ring plate's program compiles behind the same cover (one fleet material: the first wreck warms it)
+      const restoreRing = turretRing.stageWarm();
+      return () => {
+        restoreRing();
+        setBattleDetailsAttached(wasAttached);
+      };
     },
+
+    turretRingSeat() { return turretRing.seat(); },
 
     applyEquipmentDamage(event) {
       return !destroyed && equipmentDamage.apply(event);
@@ -10485,6 +10516,7 @@ function* createTankOwnedSteps(
       equipmentDamage.reset();
       weaponDamage.reset();
       resetLiveCrumple();
+      turretRing.hide();
       if (destroyed) {
         destroyed = false;
         // restore the EXACT captured visibility (never a blanket `true` —
@@ -10566,6 +10598,7 @@ function* createTankOwnedSteps(
 
     dispose() {
       equipmentDamage.dispose();
+      turretRing.dispose();
       releaseBattleGeometry?.();
       releaseBattleGeometry=undefined;
       // Detached detail is intentionally outside root traversal while far.

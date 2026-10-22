@@ -190,6 +190,26 @@ Destroyed-only char and ember atlases must remain demand-owned. The battle warm
 pipeline prepares fielded variants before rollout, while `setDestroyed()` is
 the correctness fallback for Studio and diagnostic callers that skip warming;
 never restore eager wreck-map creation to ordinary vehicle construction.
+The ring a kill leaves (`turretRingWell.ts`, tank-opt RING 2026-10-16) follows
+the same rule: `setDestroyed()` swaps every hull mesh crossing the race's
+polygon for a cut copy (the gun-bend pattern) and puts one plate on `rig_hull`
+on the same polygon (its own ring material, one draw, one fleet program) that
+fakes the well by tracing the view ray against a virtual cylinder; a band round
+its rim closes the cut faces. The plate takes the hull's dents at its vertices
+and ramps with the burn clock (`ramp`), so it moves with the cut deck;
+`resetDestroyed()`/`dispose()` put every mesh back on the geometry it held, so
+an intact build holds nothing of it and its fingerprint and sealed ledgers never
+see it. Its seat is `measureTurretRing` on the visual's own build, once (the
+built seat, the deck round the race, the race inside the turret base and the
+deck's outline; a geometry-only hulk build adds the exterior pass, the floor and
+the well's wall clear of the hull's skin). A calibration `turretRing` receipt
+can stand in for it, but the generator does not publish one: the ring is
+presentation only, and the anatomy's turretRing volume (a sim module) keeps its
+own law. A cook-off hulk's
+bake cuts its hull-side parts exactly after the crumple and merges the well's
+real geometry with its placement budget unchanged. `node tools/turret-ring-census.mjs
+--all --gate` is the fleet receipt; `node tools/turret-ring-probe.mjs --ids=… --gate`
+the z-buffer one (coverage under dents, exterior holes, live and hulk).
 Camouflaged roof fittings, sights, smoke dispensers, stowage, and machine guns
 must use `P.addEquipment()` so they never expand the main armor shell. Offensive
 rocket/missile launchers are damageable: scope their housings, canisters and
