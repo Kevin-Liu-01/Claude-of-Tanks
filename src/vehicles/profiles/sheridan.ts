@@ -9,6 +9,7 @@ import { sheridanWheelFaceLayers } from '../nationWheelConstructions.ts';
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { KIT, FITTINGS, muzzleBore } from './kit.ts';
+import { stockTopFace, upSlopeTurn } from './stockFaceSeat.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec2Tuple = [number, number];
@@ -125,22 +126,6 @@ const GLACIS_ERA_EMBED_M = 0.008;
  * two 0.1664 m rows, 8 mm apart from 10 mm behind the crease. */
 const GLACIS_ERA_ROW_ALONG = [0.1108, 0.3203, 0.5122, 0.6866] as const;
 
-/** Where a ray straight down meets the hull's stock at (x, z) (hull-local), and that face's upward normal. */
-function hullTopFace(P: SheridanBuilderPort, x: number, z: number): { point: THREE.Vector3; normal: THREE.Vector3 } {
-  const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
-  const ray = new THREE.Raycaster(new THREE.Vector3(x, 4, z), new THREE.Vector3(0, -1, 0));
-  let best: THREE.Intersection | undefined;
-  P.forEachBucketPart('hull', (geometry) => {
-    const hit = ray.intersectObject(new THREE.Mesh(geometry, material), false)[0];
-    if (hit && (!best || hit.distance < best.distance)) best = hit;
-  });
-  material.dispose();
-  if (!best?.face) throw new Error(`${P.spec.id}: no hull face under x ${x}, z ${z}`);
-  const normal = best.face.normal.clone();
-  if (normal.y < 0) normal.negate();
-  return { point: best.point.clone(), normal };
-}
-
 /** One glacis ERA course: `cols` cassettes a row on the given rows, each lying on the hull face under its centre (its
  * width across, its height up the slope, its depth along the face's normal). */
 function layGlacisEra(P: SheridanBuilderPort, put: EraPut, rows: readonly number[], cols: number, spacing: number,
@@ -149,10 +134,8 @@ function layGlacisEra(P: SheridanBuilderPort, put: EraPut, rows: readonly number
   for (const along of rows) {
     for (let col = 0; col < cols; col++) {
       const x = (col - (cols - 1) / 2) * spacing;
-      const { point, normal } = hullTopFace(P, x, GLACIS_CREASE_Z - along * Math.cos(GLACIS_RAKE));
-      const upSlope = new THREE.Vector3(0, 0, -1).addScaledVector(normal, normal.z).normalize();
-      const across = new THREE.Vector3().crossVectors(upSlope, normal);
-      const turn = new THREE.Euler().setFromRotationMatrix(new THREE.Matrix4().makeBasis(across, upSlope, normal));
+      const { point, normal } = stockTopFace(P, x, GLACIS_CREASE_Z - along * Math.cos(GLACIS_RAKE));
+      const turn = upSlopeTurn(normal);
       const centre = point.addScaledVector(normal, depth / 2 - GLACIS_ERA_EMBED_M);
       put(centre.x, centre.y, centre.z, turn.x, turn.y, turn.z, sx, sy, sz);
     }
