@@ -11073,9 +11073,11 @@ function buildKF51(P: TankBuilderPort) {
             const ord = (ring: FourPointRing): FourPointRing => (
               s < 0 ? [ring[1], ring[0], ring[3], ring[2]] : ring
             );
+            // 2026-10-22 (polish-240's winding fix, landed here): the z 3.718/3.650 ring comes first; the other order
+            // built the shoulder inside out, its 0.80 foot an opening from below.
             armorShell(sideName, KIT.slab(
-              ...ord([[s * 1.60, 0.800, 3.758], [s * 1.72, 0.800, 3.758], [s * 1.72, 1.235, 3.690], [s * 1.60, 1.235, 3.690]]),
-              ...ord([[s * 1.60, 0.800, 3.718], [s * 1.72, 0.800, 3.718], [s * 1.72, 1.235, 3.650], [s * 1.60, 1.235, 3.650]])));
+              ...ord([[s * 1.60, 0.800, 3.718], [s * 1.72, 0.800, 3.718], [s * 1.72, 1.235, 3.650], [s * 1.60, 1.235, 3.650]]),
+              ...ord([[s * 1.60, 0.800, 3.758], [s * 1.72, 0.800, 3.758], [s * 1.72, 1.235, 3.690], [s * 1.60, 1.235, 3.690]])));
             armorShell(sideName, KIT.xform(KIT.box(0.06, 0.43, 0.46), s * 1.71, 1.015, 3.47));
           }
         };

@@ -306,6 +306,9 @@ function gunnersPrimarySight(C: EquipmentContext): void {
     [nx, ny, nz, d], [-nx, -ny, -nz, -d + .002],
     [1, 0, 0, x1], [-1, 0, 0, -x0], [0, 1, 0, 2.45555], [0, -1, 0, -2.276235],
   ]), [0, 0, 0], 'turret', 'turretGlass');
+  // 2026-10-22 (owner float calls): the left pane stood alone 9.8 mm from the right one; a mullion bar fills the slot
+  // between their edges (both panes meet it at z .8674 there) and carries it.
+  emit(C, 'GunnersSightMullion', new THREE.BoxGeometry(.00983, .17932, .016), [-.819345, 2.365893, .8674], 'turret', 'turretDark');
 }
 
 function gunnersSightFlanges(C: EquipmentContext): void {
@@ -750,7 +753,9 @@ function loaderWeapon(C: EquipmentContext, shields: boolean): void {
   const group = new THREE.Group();
   for(const part of sourceLoaderWeapon(!!C.P.q))mgMesh(C,group,part.name,part.geometry,[0,0,0]);
   for(const part of sourceLoaderFeed())mgMesh(C,group,part.name,part.geometry,[0,0,0]);
-  mgMesh(C, group, 'LoaderM240Barrel', profiledTube([{ z: .18, r: .0116 }, { z: .644, r: .0116 },
+  // 2026-10-22 (owner float calls): the barrel began 37 mm ahead of the receiver's collar (8 mm over the fore
+  // receiver); it now starts on the collar's .143 front face.
+  mgMesh(C, group, 'LoaderM240Barrel', profiledTube([{ z: .143, r: .0116 }, { z: .644, r: .0116 },
     { z: .655, r: .013205 }, { z: .696, r: .013205 }], .004, 16), [0, .011, 0]);
   group.position.set(.840 - C.frame.turret[0], 2.69153 - C.frame.turret[1], -.06037 - C.frame.turret[2]);
   group.rotation.y = Math.atan2(.829, .559);

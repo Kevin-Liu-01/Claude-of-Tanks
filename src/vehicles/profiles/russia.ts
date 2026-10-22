@@ -1559,8 +1559,10 @@ export function buildT62Obr1975(P: RussiaBuilderPort): void {
 // 2.008, sleeve r.122, muzzle 6.58.
 // Invisible width anchor: sub-pixel studs at the exact normalized half-width
 // (is7 precedent) so safeScale stays 1.0 and authored heights hold.
-export function widthAnchor(P: RussiaGeometryPort, halfW: number, y: number, z: number): void {
-  for (const s of [-1, 1]) P.add('hull', KIT.box(0.012, 0.02, 0.02), s * (halfW - 0.006), y, z);
+// 2026-10-22 (owner float calls): `innerX` is the face a stud stands on; the stud runs inboard to it, its outer face
+// still the width plane (the default is the old 12 mm stud).
+export function widthAnchor(P: RussiaGeometryPort, halfW: number, y: number, z: number, innerX = halfW - 0.012): void {
+  for (const s of [-1, 1]) P.add('hull', KIT.box(halfW - innerX, 0.02, 0.02), s * (halfW + innerX) / 2, y, z);
 }
 
 // ---- T-80 line: T-80 (1976) / T-80B / T-80BV ------------------------------
