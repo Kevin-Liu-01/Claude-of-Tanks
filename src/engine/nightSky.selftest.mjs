@@ -86,4 +86,24 @@ assert.match(sky, /if \( uPlanetPhase > 0\.5 \) phaseL = normalize\( vec3\( dot\
   const angle = Math.acos(e[0] * sun[0] + e[1] * sun[1] + e[2] * sun[2]) / rad, lit = (1 + Math.cos((180 - angle) * rad)) / 2;
   assert.ok(angle >= 90 && lit > 0.5 && lit < 0.95, `the Earth ${angle.toFixed(0)} degrees from the sun, gibbous (${(lit * 100).toFixed(0)} % lit)`);
 }
+// ---- Olympus Basin planet-lit (2026-10-07, the owner's decision in the PR body; wave 65's critics: "physically impossible
+// daytime Mars"; salvage 240, item 83): the galaxy dome stays, the basin is lit by the planet in it — a dim, cool key —
+// and takes the night's ground treatment through the light model's night (post.ts's scotopic shift)
+{
+  const { resolveLightModel } = await import('./lightModelCore.ts');
+  const was = { sunIntensity: 3.2, sunColorHex: 0xe4ebff, hemiIntensity: 0.56, fillIntensity: 0.36 };
+  const M = MARS_SKY_PRESET;
+  assert.ok(M.nightSky === 1 && M.skyIntensity === 0.06 && M.planetDeg === 3.4, 'the galaxy dome as the owner asked');
+  assert.ok(M.sunIntensity <= was.sunIntensity * 0.4, `a dim key (${M.sunIntensity} against ${was.sunIntensity})`);
+  assert.ok(M.hemiIntensity < was.hemiIntensity && M.fillIntensity < was.fillIntensity, 'the sky and the fill dimmed with it');
+  const rgb = (hex) => [(hex >> 16) & 255, (hex >> 8) & 255, hex & 255];
+  const [r0, , b0] = rgb(was.sunColorHex), [r1, , b1] = rgb(M.sunColorHex);
+  assert.ok(b1 / r1 > b0 / r0 * 1.05, `a cooler key (B/R ${(b0 / r0).toFixed(2)} -> ${(b1 / r1).toFixed(2)})`);
+  const mars = resolveLightModel({ ...DEFAULT_SKY_PRESET, ...M }, null, null);
+  assert.equal(mars.mode, 'legacy');
+  assert.equal(mars.night, 1, 'the basin takes the night grade (the light model\'s night drives post.ts\'s scotopic shift)');
+  // Earthrise Basin's galaxy sky keeps its daylight key
+  const moon = resolveLightModel({ ...DEFAULT_SKY_PRESET, ...getMapConfig('moon').sky }, null, null);
+  assert.equal(moon.night, 0, 'Earthrise Basin keeps its daylight key');
+}
 console.log('nightSky.selftest: the approved night (moonlight whole; the knobs at 0.3 / 0.8 still key it; day, sunset, Mars and the galaxy domes untouched), no stars over cloud, the cell-law stars PASS');
