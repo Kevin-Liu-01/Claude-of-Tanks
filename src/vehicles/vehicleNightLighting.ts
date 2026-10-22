@@ -3,7 +3,9 @@
 // geometry transform before emitter seats are measured from those faces.
 import * as THREE from 'three';
 import { registerSmokeSockets } from './vehicleAuxiliaryGeometry.ts';
-import { registerNightLightEmitters, registerNightBeamClearance, type NightLightEmitter } from '../engine/nightLightingRuntime.ts';
+import {
+  registerNightLightEmitters, registerNightBeamClearance, nightBeamClearanceOf, type NightLightEmitter,
+} from '../engine/nightLightingRuntime.ts';
 import {
   NIGHT_EMISSION_ATTRIBUTE, NIGHT_HEADLIGHT_COLOR, NIGHT_SHTORA_COLOR, NIGHT_LED_COLOR,
   setNightEmissionMask, installNightEmissionMask, refreshNightEmissionBase,
@@ -169,6 +171,8 @@ export function transferVehicleNightLenses(sources: readonly LensMesh[], batch: 
  * largest radius); the per-frame test reads the last rendered world matrices and allocates nothing.
  */
 export const SEARCHLIGHT_MASK_STATIONS = 12;
+/** Each searchlight maskSearchlightsOffOwnGun wrapped, to the lamp it wrapped (a cloned visual masks its own). */
+const UNMASKED_LAMPS = new WeakMap<NightLightEmitter, NightLightEmitter>();
 function maskSearchlightsOffOwnGun(root: THREE.Object3D): void {
   const gun = root.getObjectByName('rig_gun');
   if (!gun) return;
@@ -203,9 +207,41 @@ function maskSearchlightsOffOwnGun(root: THREE.Object3D): void {
         }
         return true;
       };
-      return { ...lamp, isActive: own ? () => own() && clearOfGun() : clearOfGun };
+      const masked = { ...lamp, isActive: own ? () => own() && clearOfGun() : clearOfGun };
+      UNMASKED_LAMPS.set(masked, lamp);
+      return masked;
     });
     registerSources(anchor, emitters);
+  }
+}
+
+/**
+ * A cloned visual's lamps (cloneTankVisual): the counterpart of each of the source's lens meshes registers the same
+ * emitters, their emissive material the clone's own copy; its searchlights are masked off its own gun and its beams
+ * clear its own gun, as the source's are.
+ */
+export function copyVehicleNightLighting(
+  sourceRoot: THREE.Object3D,
+  cloneRoot: THREE.Object3D,
+  objectOf: (source: THREE.Object3D) => THREE.Object3D | undefined,
+  materialOf: (source: THREE.MeshStandardMaterial) => THREE.MeshStandardMaterial,
+): void {
+  sourceRoot.traverse((source) => {
+    const lamps = SOURCES.get(source);
+    const target = lamps ? objectOf(source) : undefined;
+    if (!lamps || !target) return;
+    registerSources(target, lamps.map((lamp) => {
+      const base = UNMASKED_LAMPS.get(lamp) ?? lamp;
+      return base.emission ? { ...base, emission: { ...base.emission, material: materialOf(base.emission.material) } } : base;
+    }));
+  });
+  maskSearchlightsOffOwnGun(cloneRoot);
+  const clearance = nightBeamClearanceOf(sourceRoot);
+  const gun = clearance ? objectOf(clearance.gun) : undefined;
+  if (clearance && gun) {
+    registerNightBeamClearance(cloneRoot, gun, {
+      start: clearance.start.toArray(), end: clearance.end.toArray(), radius: clearance.radius,
+    });
   }
 }
 

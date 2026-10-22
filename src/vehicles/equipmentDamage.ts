@@ -251,6 +251,25 @@ export class EquipmentDamage {
     return this.owners.some((owner) => owner.geometry === geometry);
   }
 
+  /** The same lid ranges over a cloned visual's own copies of these buffers (cloneTankVisual); undamaged only. */
+  cloneFor(copyOf: (geometry: THREE.BufferGeometry) => THREE.BufferGeometry): EquipmentDamage {
+    if (this.disposed || this.damagedParts) throw new Error('only an undamaged visual\'s equipment can be cloned');
+    const clone = new EquipmentDamage();
+    const owners = new Map<GeometryOwner, GeometryOwner>();
+    for (const owner of this.owners) {
+      const copy: GeometryOwner = { geometry: copyOf(owner.geometry), changed: false, box: null, sphere: null };
+      owners.set(owner, copy);
+      clone.owners.push(copy);
+    }
+    for (const range of this.ranges) {
+      const owner = owners.get(range.owner)!;
+      const position = ownFloatPosition(owner.geometry, 'position'), normal = ownFloatPosition(owner.geometry, 'normal');
+      if (!position || !normal) throw new Error('a cloned equipment buffer lost its float position or normal');
+      clone.ranges.push({ ...range, owner, position, normal, originalPosition: null, originalNormal: null });
+    }
+    return clone;
+  }
+
   /** One bounded nearest-part buckle per hit; no frame-loop work or mesh copies. */
   apply(event: EquipmentDamageEvent): boolean {
     if (this.disposed || !isLocalEquipmentHit(event)) return false;

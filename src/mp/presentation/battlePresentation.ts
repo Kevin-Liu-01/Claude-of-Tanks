@@ -27,7 +27,7 @@ import type { SpecialActionState } from '../../sim/specialActionPolicy.ts';
 import { AERIAL_RULES, matchRulesetFor, rulesetVerdictSide } from '../../sim/matchRuleset.ts';
 import type { MatchRuleset } from '../../sim/matchRuleset.ts';
 import { normalizeGameMode } from '../../sim/matchModes.ts';
-import { createTank, ensureTankBuilder } from '../../vehicles/fleetFactory.ts';
+import { cloneTankVisual, createTank, ensureTankBuilder } from '../../vehicles/fleetFactory.ts';
 import { prebakeSharedTextures } from '../../vehicles/materials.ts';
 import type { FleetTankSpec } from '../../vehicles/specContracts.ts';
 import { getSpec } from '../../vehicles/specs.ts';
@@ -173,11 +173,17 @@ export interface EngineContext {
   anisotropy?: number;
 }
 
-type CreateTankVisual = (
-  specId: string,
-  engineCtx: EngineContext,
-  options: { camoSeed: number; camoPattern: string; quality: 'high' | 'ai' | 'low' | 'preview'; eraVisualBindingReceipt: false },
-) => TankVisual;
+interface TankVisualOptions {
+  camoSeed: number;
+  camoPattern: string;
+  quality: 'high' | 'ai' | 'low' | 'preview';
+  eraVisualBindingReceipt: false;
+}
+
+type CreateTankVisual = (specId: string, engineCtx: EngineContext, options: TankVisualOptions) => TankVisual;
+
+/** A second visual of a pristine one's vehicle (fleetFactory cloneTankVisual); throws where it needs a build. */
+type CloneTankVisual = (source: TankVisual, engineCtx: EngineContext, options: TankVisualOptions) => TankVisual;
 
 type PrepareVisualTextures = (
   spec: FleetTankSpec, anisotropy: number, quality: string, tick: () => Promise<void>, camo: string,
@@ -190,6 +196,7 @@ export interface BattlePresentationOptions {
   spectator?: boolean;
   worldCollision?: WorldCollisionLike | null;
   createTankVisual?: CreateTankVisual;
+  cloneTankVisual?: CloneTankVisual;
   prepareVisualTextures?: PrepareVisualTextures;
   rosterScheduling?: FrameSchedulerOptions;
   clearVehicleDecals?: ((visual: TankVisual) => void) | null;
@@ -300,6 +307,7 @@ export function createBattlePresentation({
   spectator = false,
   worldCollision = null,
   createTankVisual = createTank as CreateTankVisual,
+  cloneTankVisual: cloneVisual = cloneTankVisual as unknown as CloneTankVisual,
   prepareVisualTextures = prebakeSharedTextures as PrepareVisualTextures,
   rosterScheduling,
   clearVehicleDecals = null,
@@ -312,6 +320,8 @@ export function createBattlePresentation({
   if (!engineCtx || !engineCtx.scene || !game || !bus) throw new TypeError('engineCtx, game and bus are required');
   const actors = new Map<string, MatchActor>();
   const actorsByEntity = new Map<number, MatchActor>();
+  /** Visuals made ahead of their seats' turn (prepareSharedVisuals), each taken by its seat's ensureActor. */
+  const preparedVisuals = new Map<string, TankVisual>();
   const roster: MatchActor[] = [];
   const visibleRoster: MatchActor[] = [];
   const shellById = new Map<number, MatchShell>();
@@ -363,6 +373,43 @@ export function createBattlePresentation({
 
   // ------------------------------------------------------------ roster
 
+  function visualOptions(entry: RosterEntry, isViewer: boolean): TankVisualOptions {
+    return {
+      camoSeed: 4000 + (hashString(entry.playerId) % 100000),
+      camoPattern: camoFor(entry),
+      quality: textureQuality(isViewer),
+      // Generated anatomy and live strip/reset clusters already own gameplay; the authoring audit stays off.
+      eraVisualBindingReceipt: false,
+    };
+  }
+
+  /**
+   * 2026-10-22 (the MP rejoin, item 232: the roster's six synchronous builds took 5.2 s of the returning tab's entry,
+   * three of them the same XM1A3 at 0.95-1.5 s each): the seats that share a vehicle and a paint take one build, and
+   * every other one of them a copy of it (cloneTankVisual, a few ms) made while it is still pristine. The viewer's own
+   * seat is the build when it is one of them, so the vehicle the Garage adopts back is always a built one. A copy that
+   * cannot be made leaves its seat to build its own when its turn comes.
+   */
+  async function prepareSharedVisuals(
+    group: readonly RosterEntry[], rosterContext: RosterContext, textureTick: () => Promise<void>,
+    assertActive: () => void,
+  ): Promise<void> {
+    const viewerOf = (entry: RosterEntry) => !spectator && entry.entityId === rosterContext.ownEntityId;
+    const sourceEntry = group.find(viewerOf) ?? group[0]!;
+    const sourceViewer = viewerOf(sourceEntry);
+    const camo = camoFor(sourceEntry);
+    try { await prepareVisualTextures(getSpec(sourceEntry.specId), engineCtx.anisotropy ?? 4, textureQuality(sourceViewer), textureTick, camo); }
+    catch { /* createTank keeps its synchronous compatibility path */ }
+    assertActive();
+    const source = createTankVisual(sourceEntry.specId, engineCtx, visualOptions(sourceEntry, sourceViewer));
+    preparedVisuals.set(sourceEntry.playerId, source);
+    for (const entry of group) {
+      if (entry === sourceEntry) continue;
+      try { preparedVisuals.set(entry.playerId, cloneVisual(source, engineCtx, visualOptions(entry, viewerOf(entry)))); }
+      catch { /* this seat builds its own visual */ }
+    }
+  }
+
   function ensureActor(entry: RosterEntry, isViewer: boolean): MatchActor {
     const existing = actors.get(entry.playerId);
     if (existing) {
@@ -374,13 +421,10 @@ export function createBattlePresentation({
     const camo = camoFor(entry);
     const state = createTankState(spec, new Vector3(), 0);
     const gunship = game.gameMode === 'ac130' && entry.team === TEAM.ALPHA && !entry.bot;
-    const visual = gunship ? createGunshipBattleVisual(spec.id) : createTankVisual(spec.id, engineCtx, {
-      camoSeed: 4000 + (hashString(entry.playerId) % 100000),
-      camoPattern: camo,
-      quality: textureQuality(isViewer),
-      // Generated anatomy and live strip/reset clusters already own gameplay; the authoring audit stays off.
-      eraVisualBindingReceipt: false,
-    });
+    const prepared = preparedVisuals.get(entry.playerId);
+    preparedVisuals.delete(entry.playerId);
+    const visual = gunship ? createGunshipBattleVisual(spec.id)
+      : prepared ?? createTankVisual(spec.id, engineCtx, visualOptions(entry, isViewer));
     engineCtx.scene.add(visual.root);
     visual.setVisible(false);
     const actor: MatchActor = {
@@ -412,6 +456,15 @@ export function createBattlePresentation({
     const yieldWork = async (force = false) => { await schedule(force); assertActive(); };
     const textureTick = async () => { await schedule(); };
     if (active.some((entry) => !actors.has(entry.playerId))) await yieldWork(true);
+    // the seats still to paint that share a vehicle and a paint (prepareSharedVisuals)
+    const shared = new Map<string, RosterEntry[]>();
+    for (const entry of active) {
+      if (actors.has(entry.playerId) || (game.gameMode === 'ac130' && entry.team === TEAM.ALPHA && !entry.bot)) continue;
+      const vehicle = `${entry.specId}:${camoFor(entry)}`;
+      let group = shared.get(vehicle);
+      if (!group) shared.set(vehicle, group = []);
+      group.push(entry);
+    }
     const warmed = new Set<string>();
     for (let index = 0; index < active.length; index++) {
       const entry = active[index]!;
@@ -422,7 +475,12 @@ export function createBattlePresentation({
       const camo = camoFor(entry);
       const quality = textureQuality(isViewer);
       const key = `${entry.specId}:${camo}:${quality}`;
-      if (!gunship && !warmed.has(key)) {
+      const group = shared.get(`${entry.specId}:${camo}`);
+      if (group && group.length > 1 && !actors.has(entry.playerId) && !preparedVisuals.has(entry.playerId)) {
+        shared.delete(`${entry.specId}:${camo}`);
+        await prepareSharedVisuals(group, rosterContext, textureTick, assertActive);
+      }
+      if (!gunship && !warmed.has(key) && !preparedVisuals.has(entry.playerId)) {
         warmed.add(key);
         try { await prepareVisualTextures(getSpec(entry.specId), engineCtx.anisotropy ?? 4, quality, textureTick, camo); }
         catch { /* createTank keeps its synchronous compatibility path */ }
@@ -1175,6 +1233,8 @@ export function createBattlePresentation({
     (worldCollision as { bindGroundOverlay?(overlay: unknown): void } | null)?.bindGroundOverlay?.(null);
     unmount();
     for (const actor of actors.values()) actor.visual.dispose();
+    for (const visual of preparedVisuals.values()) visual.dispose();
+    preparedVisuals.clear();
     actors.clear();
     actorsByEntity.clear();
     roster.length = 0;

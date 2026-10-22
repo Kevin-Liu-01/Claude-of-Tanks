@@ -28,6 +28,13 @@ export class WeaponDamageVisuals {
   ownsGeometry(geometry: BufferGeometry): boolean {
     return this.ranges.some((range) => range.geometry === geometry);
   }
+  /** The same scorch ranges over a cloned visual's own copies of these buffers (cloneTankVisual); unscorched only. */
+  cloneFor(copyOf: (geometry: BufferGeometry) => BufferGeometry): WeaponDamageVisuals {
+    if (this.states.size) throw new Error('only an unscorched visual\'s weapons can be cloned');
+    const clone = new WeaponDamageVisuals();
+    clone.ranges = this.ranges.map((range) => ({ ...range, geometry: copyOf(range.geometry), original: null }));
+    return clone;
+  }
   set(module: string, state: ModuleStateName): void {
     if ((this.states.get(module) ?? 'ok') === state) return;
     this.states.set(module, state);

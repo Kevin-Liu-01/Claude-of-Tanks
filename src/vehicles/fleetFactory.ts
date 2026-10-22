@@ -5,11 +5,13 @@
 // opening vehicle are registered only when a concrete tank id requests them.
 import './fleetRegistration.ts';
 import {
+  cloneTankVisual as cloneTankVisualCore,
   configureTankFactory,
   createTank as createTankCore,
   createTankSteps as createTankCoreSteps,
   registerCanonicalBuilders,
   registerProfiledBuilders,
+  type TankCloneOptions,
 } from './tankFactoryCore.ts';
 import { FLEET_GROUP_BY_ID, type FleetGroup } from './fleetManifest.ts';
 import {
@@ -273,6 +275,15 @@ export function createTank(
     throw new Error(`Tank builder '${specId}' is not loaded; await ensureTankBuilder('${specId}')`);
   }
   return createTankCore(specId, engineCtx, opts);
+}
+
+/**
+ * A second visual of a finished one's vehicle, copied from it instead of built (tankFactoryCore cloneTankVisual: a few
+ * ms instead of a 1-1.5 s build). The source must be pristine (never added to a scene, synced or damaged). Throws where
+ * a clone cannot carry the source faithfully; the caller then builds with createTank.
+ */
+export function cloneTankVisual(source: TankVisual, engineCtx: RuntimeValue, opts: TankCloneOptions = {}): TankVisual {
+  return cloneTankVisualCore(source, engineCtx, opts);
 }
 
 /** Demand-ready private construction; callers must close abandoned iterators. */

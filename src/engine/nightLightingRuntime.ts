@@ -157,6 +157,11 @@ export function registerNightBeamClearance(owner: THREE.Object3D, gun: THREE.Obj
     radius: capsule.radius }));
 }
 
+/** The clearance registered on `owner` itself, for a copy of its vehicle to register its own (copyVehicleNightLighting). */
+export function nightBeamClearanceOf(owner: THREE.Object3D): Readonly<ClearanceState> | null {
+  return CLEARANCES.get(owner) ?? null;
+}
+
 /** The clearance of the nearest owner above `anchor` (its own vehicle), shared by every lamp of that vehicle. */
 function clearanceFor(anchor: THREE.Object3D): ClearanceState | null {
   for (let owner: THREE.Object3D | null = anchor; owner; owner = owner.parent) {
