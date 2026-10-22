@@ -4,7 +4,10 @@ type AuxiliaryStockPort = {
 };
 
 type Point=readonly [number,number,number];
-export interface StationDatum {name:string;caliberMm:number;yaw:Point;pivot:Point;muzzle:Point}
+/** `recoilM` (release 230, the MBT-70's gun housing): the gun recoils that far along its bore in its own
+ * `auxiliaryWeaponRecoil` group under the pitch group (stage 'recoil'), while the pitch stage (a housing or cradle) only
+ * elevates; without it the whole pitch group recoils (fx/auxiliaryPresentation.ts). */
+export interface StationDatum {name:string;caliberMm:number;yaw:Point;pivot:Point;muzzle:Point;recoilM?:number}
 const BUCKETS=['turret','turretEquipment','turretDetail','turretDark','turretGlass','turretGunmetal','turretTrack'];
 /** Capture only explicitly authored station stock. The factory still performs
  * its normal material, UV, damage and receipt work before mounting that stock. */
@@ -12,6 +15,8 @@ export function beginAuxiliaryStation(P:AuxiliaryStockPort & {turretG: THREE.Gro
   const root=new THREE.Group(), weapon=new THREE.Group();
   root.name=datum.name;root.position.fromArray(datum.yaw);weapon.name='auxiliaryWeaponPitch';
   weapon.position.fromArray(datum.pivot).sub(root.position);root.add(weapon);P.turretG.add(root);
+  if(datum.recoilM!==undefined){const recoil=new THREE.Group();recoil.name='auxiliaryWeaponRecoil';weapon.add(recoil);
+    root.userData.auxiliaryRecoilM=datum.recoilM;}
   const muzzle=new THREE.Vector3(...datum.muzzle).sub(root.position);
   Object.assign(root.userData,{remoteControlled:true,firingAxis:'+Z',caliberMm:datum.caliberMm,
     auxiliaryPivot:weapon.position.toArray(),auxiliaryMuzzle:muzzle.toArray(),muzzleLocalZ:muzzle.z,
@@ -27,7 +32,7 @@ export function beginAuxiliaryStation(P:AuxiliaryStockPort & {turretG: THREE.Gro
     let exactGun=false;
     stock.traverse(o=>{if(o.userData.fittingRoot&&o.userData.fittingExact&&o.userData.fitting==='pintleMG')exactGun=true;});
     if(exactGun)root.userData.fitting='weaponStationMount';
-  }, mark(stage:'yaw'|'pitch'){
+  }, mark(stage:'yaw'|'pitch'|'recoil'){
     P.forEachBucketPart(BUCKETS,part=>{
       if(seen.has(part))return;seen.add(part);
       part.userData.auxiliaryStation={name:root.name,stage};
