@@ -277,6 +277,17 @@ interface ActiveConnection {
 
 const NO_ICE: RtcIceConfig = Object.freeze({ iceServers: [], relayOnly: false });
 
+/**
+ * The newest attempt's steps in clock ms, null until each happens (2026-10-20, item/mp-rejoin-229: the entry trace times
+ * the link: the 227 rejoins spent 7.4 s between the offer and the open). Diagnostics only; written in place.
+ */
+export interface RtcLinkTimeline {
+  connectAtMs: number | null;
+  offerAtMs: number | null;
+  answerAtMs: number | null;
+  openAtMs: number | null;
+}
+
 export class WebRtcTransport implements Transport {
   readonly kind = 'webrtc';
   readonly stats: TransportStats = createTransportStats();
@@ -312,6 +323,7 @@ export class WebRtcTransport implements Transport {
   private signalsSent = 0;
   private candidatesSent = 0;
   private candidatesReceived = 0;
+  private readonly timeline: RtcLinkTimeline = { connectAtMs: null, offerAtMs: null, answerAtMs: null, openAtMs: null };
 
   constructor({
     signaler,
@@ -364,6 +376,8 @@ export class WebRtcTransport implements Transport {
   get signalStats(): { sent: number; candidatesSent: number; candidatesReceived: number; stale: number; immediateRetries: number } {
     return { sent: this.signalsSent, candidatesSent: this.candidatesSent, candidatesReceived: this.candidatesReceived, stale: this.staleSignalCount, immediateRetries: this.immediateRetries };
   }
+  /** The newest attempt's timeline (RtcLinkTimeline). */
+  get linkTimeline(): Readonly<RtcLinkTimeline> { return this.timeline; }
 
   onFrame(listener: (frame: Uint8Array) => void): Unsubscribe { return this.frameListeners.add(listener); }
 
@@ -442,6 +456,9 @@ export class WebRtcTransport implements Transport {
     const link = ++this.link;
     const attempt = this.attempt;
     const target = this.signaler.target();
+    const timeline = this.timeline;
+    timeline.connectAtMs = this.clock();
+    timeline.offerAtMs = null; timeline.answerAtMs = null; timeline.openAtMs = null;
     this.transition('connecting', { attempt });
     this.attemptTimer = this.setTimer(() => {
       this.attemptTimer = null;
@@ -520,6 +537,7 @@ export class WebRtcTransport implements Transport {
           }
           connection.offered = true;
           this.signalsSent++;
+          this.timeline.offerAtMs = this.clock();
           // from here the host's answer and the handshakes have offerConnectTimeoutMs; past it the offer is lost
           this.offerTimer = this.setTimer(() => {
             this.offerTimer = null;
@@ -548,6 +566,7 @@ export class WebRtcTransport implements Transport {
     if (signal.kind === 'answer') {
       if (connection.remoteDescribed || !signal.sdp) { this.staleSignalCount++; return; }
       connection.remoteDescribed = true;
+      this.timeline.answerAtMs = this.clock();
       void connection.pc.setRemoteDescription({ type: 'answer', sdp: signal.sdp }).then(() => {
         if (this.connection !== connection) return;
         const queued = connection.pendingCandidates.splice(0);
@@ -583,6 +602,7 @@ export class WebRtcTransport implements Transport {
     this.lostAtMs = null;
     this.gate.reset();
     this.stats.opens++;
+    this.timeline.openAtMs = this.clock();
     this.pairTypes = null;
     this.transition('open', { attempt, resumed });
     this.readCandidatePair(link);

@@ -1316,6 +1316,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/mp-p2p-peer.selftest.mjs',
     'tools/mp-p2p-decline.selftest.mjs',
     'tools/mp-p2p-stepdown.selftest.mjs',
+    'tools/mp-p2p-early-link.selftest.mjs', // 2026-10-20 item/mp-rejoin-229: a running match's re-entry links beside its load
     'tools/mp-room-lifecycle.selftest.mjs',
     'src/mp/session/browserComposition.selftest.mjs',
     'src/mp/session/lobbyIntent.selftest.mjs',
