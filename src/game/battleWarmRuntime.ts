@@ -87,6 +87,8 @@ interface TerrainWarmPoint {
 }
 
 interface BattleWarmWorld {
+  /** (perf-240) The world's destruction tables (map.ts warmDestruction), made behind the veil. */
+  warmDestruction?(): void;
   getGrassWorkState?(): {
     disposed: boolean;
     carpet?: { cold: boolean; pending: boolean };
@@ -225,6 +227,7 @@ export async function warmBattleTerrainTiles({
   primePresentation = true,
   presentationCamera,
 }: TerrainWarmOptions): Promise<void> {
+  world?.warmDestruction?.();
   const heightField = world?.heightField;
   const warmer = heightField?.warmFastTilesAround;
   if (typeof warmer !== 'function') return;

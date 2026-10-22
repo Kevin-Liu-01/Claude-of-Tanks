@@ -248,6 +248,9 @@ export interface WorldRuntime {
    * filled in), where its parts are in the merged buckets, and its kit chain's stage builders — or null.
    */
   structureDamage(structureIdx: number): StructureDamageSeam | null;
+  /** (perf-240) The presentation's structure table and its bodies' record grid made now (the battle's warm, behind its
+   *  veil), not at the battle's first destruction event (16 + 5 ms on Steinburg, in that frame). */
+  warmDestruction?(): void;
   /**
    * Hand every props-bucket material (each batch's own clone included, and the depth material every bucket that casts
    * a structure's shadow draws its shadow with: info.role 'depth') to `patch` once, with the meshes drawing it; returns
@@ -939,6 +942,7 @@ function assembleWorld(
     // 'loop'-class small clutter) — hull overlap in main.ts triggers
     // crushProp (hinge-topple / debris swap) + fx.propCrush splinters.
     structureDamage: getStructureDamage,
+    warmDestruction: () => { structureTable ??= createStructureDamage(obstacles, colliders); getBodyRecordQuery(); },
     patchStructureMaterials: (patch) => patchStructureMaterialEntries(props.structureMaterials, patch),
     touchStructureShadows: (structureIdx) => { getStructureDamage(structureIdx)?.touchShadows(); },
     bodyRecordQuery: getBodyRecordQuery,
