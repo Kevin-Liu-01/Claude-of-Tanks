@@ -144,8 +144,6 @@ export interface MapSkyConfig extends Partial<SkyPreset> {
   sunColorHex?: number;
   hemiIntensity?: number;
   fillIntensity?: number;
-  /** 2026-10-07: a galaxy sky lit as a night takes this share of the night's ground treatment (lightModelCore.ts). */
-  nightGrade?: number;
   /** (the Earthrise 228 rebuild) the legacy rig's shade light, sRGB (lightModelCore.ts LightModelPreset.shadeHex). */
   shadeHex?: number | null;
 }
