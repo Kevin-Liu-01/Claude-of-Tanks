@@ -19,6 +19,7 @@ import { KIT, FITTINGS, orientedSlab, muzzleTipDot } from './kit.ts';
 import { sectionSolid, type SectionPoint } from './sectionSolid.ts';
 import { eraCassette } from './modernizationFittings.ts';
 import { equipmentFoot, lowOptic, permanentParts, serviceCable, serviceCase } from './nationalChina.ts';
+import { place } from '../accessoryPrimitives.ts';
 import { machinedRing } from '../machineGunGeometry.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -287,6 +288,9 @@ function addSkirts(P: TankBuilderPort): void {
     P.add('hull', sectionSolid([carrierRear, 2.55, 2.95, carrierFront].map((z) => ({
       z, ring: ring(carrierIn, carrierOut, carrierBottom(z), 1.30),
     }))));
+    // the bow cap: a 48 mm edge over the carrier's and the band's front ends, so the skirt ends square, not in a sheet
+    P.add('hull', KIT.box(0.048, 1.47 - carrierBottom(carrierFront), 0.04), side * 1.842,
+      (1.47 + carrierBottom(carrierFront)) / 2, carrierFront - 0.01);
     // two courses of bricks, the lower one staggered by half a brick
     const sector = side < 0 ? 'skirt_era_L' : 'skirt_era_R';
     const brickL = 0.58, gap = 0.035, pitch = brickL + gap, t = 0.022;
@@ -328,9 +332,11 @@ function addDeckStowage(P: TankBuilderPort): void {
   const { box } = KIT;
   for (const side of [-1, 1]) {
     for (const z of [-2.25, -3.02]) {
-      P.addEquipment('hullDetail', box(0.30, 0.08, 0.66), side * 1.52, 1.82, z);
-      P.addEquipment('hullDark', box(0.31, 0.012, 0.68), side * 1.52, 1.857, z);                     // lid seam
-      for (const dz of [-0.20, 0.20]) P.addEquipment('hullDark', box(0.016, 0.045, 0.05), side * 1.672, 1.825, z + dz); // latches
+      P.addEquipment('hullDetail', box(0.30, 0.068, 0.66), side * 1.52, 1.78 + 0.034, z);
+      // the lid: 5 mm proud of the body all round (its overhang is the seam), a hinge bar along its inboard edge
+      P.addEquipment('hullDetail', box(0.31, 0.014, 0.67), side * 1.52, 1.853, z);
+      P.addEquipment('hullDark', box(0.016, 0.012, 0.56), side * 1.367, 1.853, z);
+      for (const dz of [-0.20, 0.20]) P.addEquipment('hullDark', box(0.016, 0.045, 0.05), side * 1.672, 1.82, z + dz); // latches
     }
   }
 }
@@ -351,8 +357,35 @@ function addSternBin(P: TankBuilderPort): void {
   }
 }
 
+/**
+ * A bolted towing beam across the 62-degree nose plate (y 0.70 at z 3.30 to 1.215 at 3.02), 0.30 m down from the
+ * nose break: a 0.14 m deep, 0.06 m proud bevelled section bedded 8 mm into the plate, from |x| 0.98, with eight bolt
+ * heads and a towing eye on a lug at each end. It breaks the tall nose into two courses; the gun at -7 degrees passes
+ * 0.35 m over it.
+ */
+function addNoseBeam(P: TankBuilderPort): void {
+  const { cylY, torus, box } = KIT;
+  const up = new THREE.Vector3(0, 0.515, -0.28).normalize(), n = new THREE.Vector3(0, -up.z, up.y);
+  const at = (s: number, out: number): THREE.Vector3 =>
+    new THREE.Vector3(0, 1.215, 3.02).addScaledVector(up, -s).addScaledVector(n, out);
+  const section: ZY[] = [[0.37, -0.008], [0.36, 0.06], [0.24, 0.06], [0.23, -0.008]]
+    .map(([s, out]) => { const p = at(s, out); return [p.z, p.y] as const; });
+  P.add('hullDetail', loftX([-0.98, 0.98].map((x) => ({ x, ring: section }))));
+  const face = at(0.30, 0.06), tilt = Math.atan2(n.z, n.y);
+  for (const x of [-0.84, -0.56, -0.28, -0.08, 0.08, 0.28, 0.56, 0.84]) {
+    P.add('hullDark', place(cylY(0.016, 0.016, 0.012, 8), x, face.y + n.y * 0.004, face.z + n.z * 0.004, tilt));
+  }
+  // a lug off the beam's lower face, the eye standing face-forward through it, 2 cm clear of the plate at its foot
+  const lug = at(0.37, 0.035);
+  for (const side of [-1, 1]) {
+    P.add('hullDetail', box(0.05, 0.10, 0.10), side * 0.92, lug.y - 0.045, lug.z + 0.03);
+    P.add('hullDark', place(torus(0.045, 0.014, 12), side * 0.92, lug.y - 0.10, lug.z + 0.055, Math.PI / 2));
+  }
+}
+
 function dressLongweiHull(P: TankBuilderPort): void {
   addGlacisField(P);
+  addNoseBeam(P);
   addGlacisLamps(P);
   addSkirts(P);
   addDeckStowage(P);
@@ -524,13 +557,15 @@ function addBustle(P: TankBuilderPort): void {
   P.turretG.add(rack);
 }
 
-/** One GL-5-style radar face on a short pedestal: a flat panel angled `yaw` from the turret's nose. */
+/** One GL-5-style radar housing angled `yaw` from the turret's nose: a plinth bedded 30 mm into its seat, a deep
+ * armoured box on it with the dark array face 3 mm into its front, and a rain lip over the face. */
 function addRadarFace(P: TankBuilderPort, x: number, y: number, z: number, yaw: number): void {
   const { box } = KIT;
-  P.addEquipment('turretDetail', box(0.16, 0.13, 0.14), x, y + 0.065 - 0.03, z, 0, yaw, 0);
-  P.addEquipment('turretDetail', box(0.32, 0.26, 0.06), x, y + 0.225, z, 0, yaw, 0);
   const face = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
-  P.addModuleVisual('optics', 'turretDark', box(0.27, 0.21, 0.012), x + face.x * 0.033, y + 0.225, z + face.z * 0.033, 0, yaw, 0);
+  P.addEquipment('turretDetail', box(0.30, 0.07, 0.18), x, y + 0.005, z, 0, yaw, 0);
+  P.addEquipment('turretDetail', box(0.34, 0.28, 0.13), x, y + 0.175, z, 0, yaw, 0);
+  P.addModuleVisual('optics', 'turretDark', box(0.29, 0.22, 0.012), x + face.x * 0.068, y + 0.17, z + face.z * 0.068, 0, yaw, 0);
+  P.addEquipment('turretDetail', box(0.36, 0.018, 0.17), x + face.x * 0.02, y + 0.322, z + face.z * 0.02, 0, yaw, 0);
 }
 
 /** One two-cell hard-kill launcher on a low turntable base, its cells pitched 12 degrees up, facing `yaw`. */
@@ -591,7 +626,7 @@ function addTurretRoof(P: TankBuilderPort): void {
   }
   // GL-5-style radar faces at the four corners, launchers on the roof sides
   for (const side of [-1, 1]) {
-    addRadarFace(P, side * 1.18, PACKAGE_TOP_Y, 0.44, side * 0.75);
+    addRadarFace(P, side * 1.18, PACKAGE_TOP_Y, 0.40, side * 0.75);
     addRadarFace(P, side * 0.95, ROOF_Y, -2.62, side * (Math.PI - 0.80));
     addLauncher(P, side * 1.02, ROOF_Y, -0.98, side * 0.32);
   }
@@ -618,6 +653,7 @@ function addTurretRoof(P: TankBuilderPort): void {
     whip.position.set(side * 1.00, ROOF_Y, -2.30);
     P.turretG.add(whip);
   }
+  P.addEquipment('turretDetail', box(0.10, 0.02, 0.10), -0.30, ROOF_Y + 0.006, -2.80);
   P.addEquipment('turretDetail', cylY(0.018, 0.024, 0.36, 10), -0.30, ROOF_Y + 0.18 - 0.004, -2.80);
   P.addEquipment('turretDetail', box(0.16, 0.02, 0.02), -0.30, ROOF_Y + 0.36, -2.80);
   // lift eyes behind the front package's corners and on the bustle's rear edge

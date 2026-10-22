@@ -10,18 +10,29 @@
 >   (underside 0.34 m over the ring, clear of the raised engine deck at every yaw) with two bins a side, two blow-off
 >   panels and a rear basket.
 > - **Roof:** gunner's low sight (left), commander's panoramic sight on a 0.55 m mast (right), a shielded QJC-88 on a
->   socket post, a GL-5-style hard-kill suite (four flat radar faces at the corners, two two-cell launchers, a
->   processor case and cables), whips and a
->   meteorological mast. Smoke: two four-tube banks on each side's forward side modules (16 tubes; the decor's cheek
+>   socket post, a GL-5-style hard-kill suite (four radar housings on plinths at the corners, two two-cell launchers,
+>   a processor case and cables), whips and a meteorological mast. Smoke: two four-tube banks on each side's forward side modules (16 tubes; the decor's cheek
 >   pair is dropped for this id).
 > - **Gun:** 125 mm on the unchanged trunnion and 6.454 m length: a mid-barrel evacuator between two thermal-sleeve
 >   runs, a thick muzzle end and an MRS.
 > - **Hull dress:** a straight FY-5 glacis grid (`glacis_era_L/R`) with low lamp cowls under the gun's depression
 >   line; skirts with two staggered brick courses (`skirt_era_L/R`) over a carrier and slat armour over the engine bay;
->   low rear fender bins; an armoured stern bin in place of the fuel drums.
+>   a bolted towing beam with two eyes across the nose plate; lidded rear fender bins; a low stern tool box between the
+>   exhaust grilles in place of the fuel drums (the 99A's left-side exhaust port is gone).
+> - **Gun clearance:** the spec now carries a measured `gunPitchByYawDeg` (tools/gun-depression-sweep.mjs): -7 deg
+>   except about -4 deg over the raised glacis shoulders at 40-50 deg of yaw and +0.5..+3.5 deg over the engine deck
+>   from 137 deg (before the redesign the gun passed through the deck). The ZTZ-99A/99A2 clones drop the curve.
 > - **Combat envelope:** `createType99Armor('ztz99_longwei')` now follows this geometry (plate strengths carried over).
 >   The Type 96B X, which had taken its frame from the Longwei, keeps the retired envelope frozen as
 >   `createType99Armor('type96b_frame')`.
+> - **Gameplay deltas (listed for the owner):** smoke tubes 24 -> 16 (two four-tube banks a side; the decor cheek pair is
+>   dropped); the deck-clearance curve above; the turret's combat plates follow the new shape at the old strengths
+>   (cheek 700/600/850 now in lower, upper and corner facets; FY-4 on the lower tier's bricks; mantlet 380/450); skirt
+>   ERA spans z 2.80..-1.47 (was 2.72..-2.10), the rear skirt zone is the slat cage; crew/radio/optics boxes moved to
+>   the new layout. HP, mobility, gun, reload, pivots, barrel and dimensions are unchanged (silhouette height 3.17 m).
+> - **Verification (light checks, release 233):** typecheck (only main's known misc.ts red), build PASS; one blind
+>   critic on 8 randomised before/after pairs preferred the redesign in all 8 (about 8/6/7 vs 4/5/4); its fix round
+>   grounded the radar faces, lidded the fender bins, dressed the nose and capped the skirt fronts.
 
 > **CURRENT AUTHORITY (2026-08-12):** the `6d52abda` first-party
 > strict-clearance freeze at the end of this packet supersedes the historical
