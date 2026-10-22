@@ -29,6 +29,10 @@ type AerialGround=()=>{getHeightAt(x:number,z:number):number}|null;
 export function formatDroneAltitude(heightM:number):string{
   const h=Math.max(0,heightM);return h<9.95?`${h.toFixed(1)}m`:`${Math.round(h)}m`;
 }
+/** How long the scope's vision plate shows its name after the sight opens or the view changes, before folding. */
+const SCOPE_PLATE_UNFOLD_MS=2200;
+/** A touch held this long on the plate names the view rather than switching it. */
+const SCOPE_LONG_PRESS_MS=450;
 /** Mode-specific instruments keep the shared amber/slate HUD language and real controls. */
 export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGround=()=>null){
   const signal=node('div','cot-drone-signal-loss',parent);signal.hidden=true;
@@ -38,6 +42,8 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
   const context=grain.getContext('2d');if(context){const pixels=context.createImageData(64,64);let seed=593;for(let i=0;i<pixels.data.length;i+=4){seed=(Math.imul(seed,1664525)+1013904223)>>>0;const n=seed>>>24;pixels.data[i]=pixels.data[i+1]=pixels.data[i+2]=n;pixels.data[i+3]=180;}context.putImageData(pixels,0,0);signal.style.setProperty('--signal-noise',`url(${grain.toDataURL()})`);}
   const scopeView=node('button','cot-scope-vision',parent);scopeView.type='button';scopeView.hidden=true;
   const scopeGlyph=icon(scopeView,'timeDay','scope-vision-emblem');
+  // the folded plate's tag (DAY, IR, THM, NV): the glyph is never a bare symbol (critic 236)
+  const scopeTag=node('span','scope-vision-tag',scopeView);scopeTag.setAttribute('aria-hidden','true');
   const scopeCopy=node('span','scope-vision-copy',scopeView),scopeLabel=node('span','scope-vision-label',scopeCopy);
   const scopeTrack=node('span','scope-vision-track',scopeCopy);scopeTrack.setAttribute('aria-hidden','true');
   const scopeViews=['daylight','infrared','thermal','night'] as const;
@@ -46,8 +52,21 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
   const scopeKey=node('kbd','flight-key',scopeView);scopeKey.setAttribute('aria-hidden','true');
   icon(scopeView,'undo','scope-vision-cycle');
   let priorScope:AerialVision|null=null,priorScopeKey='',priorScopeLocale='';
+  // The plate names the view while the sight opens or the view changes, then folds to its glyph so it never sits over
+  // the scope picture as a notice (owner backlog 2026-10-21); hover and focus unfold it (aerialHud.css).
+  let scopeShown=false,scopeFolded=false,scopeUnfoldUntil=0;
   // A sensor change the optics actually made (click or key) is announced once, for its sound.
-  const switchScope=()=>{if(!scopeView.hidden){cycleScopeVision();bus.emit('ui:visionChanged',{});}};scopeView.addEventListener('click',switchScope);bus.on('ui:aerialVision',switchScope);
+  const switchScope=()=>{if(!scopeView.hidden){cycleScopeVision();bus.emit('ui:visionChanged',{});}};bus.on('ui:aerialVision',switchScope);
+  // A touch long-press names the view (the plate unfolds) instead of switching it; a tap switches.
+  let scopePressTimer=0,scopeLongPressed=false;
+  scopeView.addEventListener('click',()=>{if(scopeLongPressed){scopeLongPressed=false;return;}switchScope();});
+  scopeView.addEventListener('pointerdown',event=>{
+    if(event.pointerType!=='touch')return;
+    scopeLongPressed=false;clearTimeout(scopePressTimer);
+    scopePressTimer=window.setTimeout(()=>{scopeLongPressed=true;scopeUnfoldUntil=performance.now()+SCOPE_PLATE_UNFOLD_MS;},SCOPE_LONG_PRESS_MS);
+  });
+  for(const type of ['pointerup','pointercancel','pointerleave'])scopeView.addEventListener(type,()=>clearTimeout(scopePressTimer));
+  scopeView.addEventListener('contextmenu',event=>event.preventDefault());
   const root=node('section' ,'cot-flight-hud',parent);root.hidden=true;
   const sight=node('div','flight-sight',root);sight.setAttribute('aria-hidden','true');
   const solution=node('div','gunship-solution',root);solution.hidden=true;
@@ -120,13 +139,17 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
   }
   function updateScopeControls(visible:boolean,active:boolean,scoped:boolean,viewKey:string):void {
     scopeView.hidden=!visible||active||!scoped;
-    const scope=getScopeVision(),scopeLocale=getLocale();
+    const scope=getScopeVision(),scopeLocale=getLocale(),now=performance.now();
+    if(!scopeView.hidden&&(!scopeShown||scope!==priorScope))scopeUnfoldUntil=now+SCOPE_PLATE_UNFOLD_MS;
+    scopeShown=!scopeView.hidden;
+    const fold=scopeShown&&now>=scopeUnfoldUntil;
+    if(fold!==scopeFolded){scopeFolded=fold;scopeView.dataset.fold=fold?'1':'';}
     if(scope!==priorScope||viewKey!==priorScopeKey||scopeLocale!==priorScopeLocale){
       const next=AERIAL_VIEWS[(AERIAL_VIEWS.indexOf(scope)+1)%AERIAL_VIEWS.length]!;
-      scopeLabel.textContent=t('flight.view.'+scope);scopeKey.textContent=viewKey;
+      scopeLabel.textContent=t('flight.view.'+scope);scopeKey.textContent=viewKey;scopeTag.textContent=t(`flight.view.tag.${scope}`);
       scopeGlyph.innerHTML=uiIconSVG(scopeIcons[scope],22);scopeView.dataset.view=scope;
       for(const step of scopeSteps)step.classList.toggle('active',step.dataset.view===scope);
-      scopeView.title=t('flight.view.next',{view:t('flight.view.'+next)});
+      scopeView.title=`${t('flight.view.scope',{view:t('flight.view.'+scope)})} · ${t('flight.view.next',{view:t('flight.view.'+next)})}`;
       scopeView.setAttribute('aria-label',t('flight.view.switch',{current:t('flight.view.'+scope),next:t('flight.view.'+next)}));
       scopeView.setAttribute('aria-keyshortcuts',viewKey);
       priorScope=scope;priorScopeKey=viewKey;priorScopeLocale=scopeLocale;

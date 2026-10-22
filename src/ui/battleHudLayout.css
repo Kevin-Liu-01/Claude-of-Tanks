@@ -12,6 +12,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log{
   scrollbar-width:thin;scrollbar-color:#657580 transparent;pointer-events:auto;
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost{height:var(--hud-right-height);justify-content:flex-end}
+/* A narrow mouse window (480-640 px; the HUD follow-up of 2026-10-21): the shot report and the open log stop short of the
+   sight's widest ring and its range tag (the scope-vision seat's clearance) instead of reaching over the sight. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) :is(.cot-si-cardhost,.cot-si-log){
+  width:min(var(--hud-side-width),max(176px,calc(50vw - max(15vmin + 8px,80px) - var(--hud-report-right,12px))))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost:empty{pointer-events:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-card{flex-shrink:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log .sec{gap:8px;flex-wrap:wrap}

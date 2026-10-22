@@ -7412,7 +7412,9 @@ export function initHud(bus: EventBus): HudRuntime {
     rangeCard.update({
       range, shellSlot: slot,
       shellName: player?.spec?.gun?.shells?.[slot]?.name || shellTypeLabel(player?.spec?.gun?.shells?.[slot]?.type || ''),
-      laidTargetId: frame.aim?.gunTargetId ?? null, laidRangeM: frame.aim?.distM ?? null,
+      // the range from the muzzle along the bore (the shot's own flight distance), not the camera ray's
+      laidTargetId: frame.aim?.gunTargetId ?? null, laidRangeM: frame.aim?.gunDistM ?? frame.aim?.distM ?? null,
+      hullX: player?.state?.pos.x ?? null, hullZ: player?.state?.pos.z ?? null,
       resetKey: frame.auxiliaryKeyLabels?.rangeReset || 'R', movingKey: frame.auxiliaryKeyLabels?.rangeMoving || 'Y',
     });
   }
