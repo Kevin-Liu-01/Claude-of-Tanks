@@ -244188,17 +244188,17 @@
           }
         ]
       },
-      "geometryHash": "2dbde244",
+      "geometryHash": "70a68c0c",
       "metadataHash": "5c48993d",
       "presentationAnchor": {
         "xM": -0.0002,
-        "zM": 0.2398
+        "zM": 0.255
       },
-      "presentationHash": "6e918f50",
+      "presentationHash": "5db866c4",
       "presentationProjection": {
         "centerYM": 1.81,
-        "topHalfM": 5.9494,
-        "sideHalfM": 2.9747
+        "topHalfM": 5.9332,
+        "sideHalfM": 2.9666
       },
       "appearance": {
         "version": 1,
@@ -244253,15 +244253,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28950,
-          "sha256": "3ca05557a96aca6dd4295597107c92c419aeab03ab009d582ecf495786203e6a",
+          "bytes": 28734,
+          "sha256": "852d3bfaf32ed721916ffbc60903a861190729a6c5192731427768303e57fa4f",
           "thumbnail": {
             "file": "thumbs/m1a1ha_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 12258,
-            "sha256": "3caa5a6da4e6bbebf7b972fd77cb7bbddb5e790ecdc53c9ec207af8eb553e277"
+            "bytes": 12054,
+            "sha256": "274a1029c95fd58053dba809cb3bcd6192b145dfeb108c78bf9de31339611e5c"
           }
         },
         "top": {
@@ -244269,56 +244269,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 14490,
-          "sha256": "ddc0246159ac7618f91fc8f932ac7fb7227a6a1b7d84c3fbbbd6739f2fd5aa33"
+          "bytes": 14768,
+          "sha256": "d6c8726401e24c25026502f6458b48b48275253ea35a6a1faf676da7d4bd37f2"
         },
         "side": {
           "file": "m1a1ha_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 14272,
-          "sha256": "8d47fdeb29717ef7a0713736d58503fad1af236a63adc5eba1728cc8f4f1544c"
+          "bytes": 14624,
+          "sha256": "795db6d51b1255c92a9ae7447ba0be7cf35d1ff1fecb719b3e600e61c015d5dc"
         },
         "topSilhouette": {
           "file": "m1a1ha_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 2051,
-          "sha256": "f92bb3b59433da34f53430fbe8687ef8956e348a5d54c755c449015e753e8af9"
+          "bytes": 1923,
+          "sha256": "d511c52759c5ec907cc075d55d6f2f08c29b4f43ca0085f296ab3aac95cd9995"
         },
         "sideSilhouette": {
           "file": "m1a1ha_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5261,
-          "sha256": "5ca8a67f563424d4106e9b3a7b91a956726b5245defba9b64f4af9cb906b4080"
+          "bytes": 5303,
+          "sha256": "256e987211e1a7daf749d6880bb150d455d39fd60a65d3be671edaf7d5cbe2e5"
         },
         "armorSide": {
           "file": "m1a1ha_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 110871,
-          "sha256": "2c8e97b266c70a49860f9ec9b52a3ec35922d89f83b14c48fa10bfa5b4878a25"
+          "bytes": 107647,
+          "sha256": "389d363a920c3b664fc7712cdb1a285d3a95f878f317b7f75769cfc7c287cedd"
         },
         "modulesSide": {
           "file": "m1a1ha_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 115892,
-          "sha256": "e9405664269c290dd6dc030644d6f7ef9819f8a2f0ec8011d4d9fc3857e8e5ad"
+          "bytes": 112240,
+          "sha256": "a1019c56ec719618ccd76d698b5bbbc2656e8dd3c62eacfd5482f80b0977e736"
         },
         "crewSide": {
           "file": "m1a1ha_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 104033,
-          "sha256": "c58105b2908acab01a27447fc029c0ea158dd2900b009374941ed7be5c95488a"
+          "bytes": 99990,
+          "sha256": "cc4eb7ebd6ce6b0bd2619e4784cab805acf47c6884425335ff0f68eaddba0adb"
         },
         "markings": {
           "file": "m1a1ha_markings.png",
