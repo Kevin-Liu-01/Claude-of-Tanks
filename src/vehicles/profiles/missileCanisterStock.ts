@@ -77,6 +77,31 @@ export function addLaunchCanister(P: TankBuilderPort, tag: Tag, c: LaunchCaniste
   for (const z of bandStations) P.addEquipment('gunMount', tag(cylZ(c.bandRadius, BAND, n), 'canister-band'), x, y, z);
 }
 
+/** A toothed elevation sector, coaxial with the pitch axis (+X) and centred on x = 0 across its width. Angles are in
+ * the gun frame's Z-Y plane, measured from +Z toward +Y; a point at θ sits at θ + pitch once the cradle elevates, so a
+ * fixed pinion at φ meshes for every pitch while the arc covers [φ − elevation, φ + depression]. The web runs in from
+ * `inner` (on the trunnion hub) to `outer`; teeth stand `tooth` proud of it (LOW: a plain rim). */
+export function elevationSector(inner: number, outer: number, tooth: number, fromDeg: number, toDeg: number,
+  teeth: number, width: number, toothed: boolean): THREE.BufferGeometry {
+  const a0 = fromDeg * Math.PI / 180, a1 = toDeg * Math.PI / 180, pitch = (a1 - a0) / teeth;
+  const at = (r: number, a: number): THREE.Vector2 => new THREE.Vector2(r * Math.cos(a), r * Math.sin(a));
+  const rim: THREE.Vector2[] = [];
+  if (toothed) {
+    for (let k = 0; k < teeth; k++) {
+      const a = a0 + k * pitch;
+      rim.push(at(outer, a), at(outer, a + pitch / 4), at(outer + tooth, a + pitch / 4),
+        at(outer + tooth, a + 3 * pitch / 4), at(outer, a + 3 * pitch / 4));
+    }
+    rim.push(at(outer, a1));
+  } else {
+    for (let k = 0; k <= 6; k++) rim.push(at(outer + tooth / 2, a0 + (a1 - a0) * k / 6));
+  }
+  for (let k = 4; k >= 0; k--) rim.push(at(inner, a0 + (a1 - a0) * k / 4));
+  // Shape x is gun-frame Z, shape y is Y; a −90° turn about Y sends the extrusion along −X.
+  return new THREE.ExtrudeGeometry(new THREE.Shape(rim), { depth: width, bevelEnabled: false, steps: 1 })
+    .rotateY(-Math.PI / 2).translate(width / 2, 0, 0);
+}
+
 /** The frame's member centres: outer post x on each side, bottom and top strap y. */
 export interface ClampFrame {
   readonly left: number;
