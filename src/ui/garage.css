@@ -607,15 +607,15 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b.stat-comparison{displ
   grid-template-columns:var(--country-edge) auto minmax(0,1fr) var(--country-edge);
   align-items:center;pointer-events:auto;isolation:isolate;direction:ltr;}
 .cot-country-rail::before,.cot-country-rail::after{content:'';position:absolute;z-index:2;
-  top:0;bottom:4px;width:54px;opacity:0;pointer-events:none;
+  top:0;bottom:4px;width:26px;opacity:0;pointer-events:none;
   transition:opacity .16s,width .16s;}
 .cot-country-rail::before{left:var(--country-track-start,var(--country-edge));
-  background:linear-gradient(90deg,rgba(7,11,15,.98),rgba(7,11,15,.70) 32%,transparent);}
+  background:linear-gradient(90deg,rgba(7,11,15,.92),rgba(7,11,15,.5) 30%,transparent);}
 .cot-country-rail::after{right:var(--country-edge);
-  background:linear-gradient(270deg,rgba(7,11,15,.98),rgba(7,11,15,.70) 32%,transparent);}
+  background:linear-gradient(270deg,rgba(7,11,15,.92),rgba(7,11,15,.5) 30%,transparent);}
 .cot-country-rail.has-more-left::before,.cot-country-rail.has-more-right::after{opacity:.78;}
 .cot-country-rail:hover::before,.cot-country-rail:hover::after,
-.cot-country-rail:focus-within::before,.cot-country-rail:focus-within::after{width:62px;}
+.cot-country-rail:focus-within::before,.cot-country-rail:focus-within::after{width:34px;}
 .cot-country-rail.has-more-left:hover::before,.cot-country-rail.has-more-right:hover::after,
 .cot-country-rail.has-more-left:focus-within::before,
 .cot-country-rail.has-more-right:focus-within::after{opacity:1;}
@@ -1518,6 +1518,12 @@ body[data-cot-width='phone'][data-cot-orientation='portrait'] :is(.cot-garage-ma
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage-tools,
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .stats{
   top:calc(max(120px,calc(env(safe-area-inset-top) + 114px)) + var(--cot-room-row-space,0px));
+}
+/* the dossier's height follows its lower portrait top, so it ends above the flag rail (it covered the rail's right half
+   and its › arrow) */
+body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .stats{
+  max-height:calc(var(--cot-viewport-height,100dvh) - max(120px,calc(env(safe-area-inset-top) + 114px))
+    - var(--cot-room-row-space,0px) - var(--cot-side-panel-bottom));
 }
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-eqpick.open{
   left:max(var(--cot-overlay-edge),env(safe-area-inset-left));right:max(var(--cot-overlay-edge),env(safe-area-inset-right));
