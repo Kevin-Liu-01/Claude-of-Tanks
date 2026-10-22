@@ -1769,6 +1769,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/roadDistanceField.selftest.mjs',
     'src/world/fieldTrenchTerrain.selftest.mjs',
     'src/world/frontlineAtmosphere.selftest.mjs',
+    // 2026-10-22: the map's air — the per-map table, tier and time gates, seeded cards, the pinned frame
+    'src/world/mapAmbience.selftest.mjs',
     'src/world/flyoverAircraft.selftest.mjs',
     'src/world/groundLitter.selftest.mjs',
     // round 73 (2026-09-25): the ground redux — the profile table and material contract, the pressure field, the tall-grass tier

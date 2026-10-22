@@ -142,6 +142,11 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
   'far-earth': Object.freeze({
     on: `(() => { let n = 0; window.__DEBUG.scene.traverse((o) => { const a = o.userData && o.userData.panoAir; if (!a) return; if (a.offSkyline !== undefined) { a.uPanoSkyline.value = a.offSkyline; delete a.offSkyline; } a.uPanoHaze.value.w = a.uPanoHaze.value.x > 0 ? 1 : 0; n++; }); return { shells: n }; })()`,
     off: `(() => { let n = 0; window.__DEBUG.scene.traverse((o) => { const a = o.userData && o.userData.panoAir; if (!a) return; if (a.offSkyline === undefined) a.offSkyline = a.uPanoSkyline.value; a.uPanoSkyline.value = null; a.uPanoHaze.value.w = 0; n++; }); return { shells: n }; })()` }),
+  // (2026-10-22) the map's air (world/mapAmbience.ts): its one or two late-FX draws; off hides them, so the delta is their
+  // whole cost (in a live battle the pools keep the late pass running on both sides)
+  'map-ambience': Object.freeze({
+    on: `(() => { const a = window.__DEBUG.mapAmbience; a.setEnabled(true); return a.current ? { ...a.current.stats } : null; })()`,
+    off: `(() => { const a = window.__DEBUG.mapAmbience; a.setEnabled(false); return a.current ? { ...a.current.stats } : null; })()` }),
   // its null control (docs/PERFORMANCE.md: a control beside any toggle under a millisecond): the same scene walk and
   // the same shells found, a flag the shader never reads switched, so its quartets give the blocks' own noise
   'far-earth-null': Object.freeze({

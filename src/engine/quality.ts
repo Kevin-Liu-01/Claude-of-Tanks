@@ -143,6 +143,11 @@ export interface QualityPreset {
   readonly volumetricClouds?: boolean;
   readonly terrainLite?: boolean;
   readonly lightWorld?: boolean;
+  /**
+   * 2026-10-22 (the map's air, world/mapAmbience.ts): the share of each map's airborne particles drawn (pollen, leaves,
+   * snow, dust, embers) — 1 the full count, 0 none (Ultra Low on both tiers). A picture lever only; absent means none.
+   */
+  readonly ambience?: number;
 }
 
 /**
@@ -317,6 +322,7 @@ export function texSize(px: number, textureClass: 'world' | 'vehicle' = 'world')
 export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   ultra: {
     label: 'Ultra',
+    ambience: 1, // 2026-10-22: the map air's density (world/mapAmbience.ts)
     msaaSamples: 4,
     // 2026-09-14 (owner: 1049e4e "looks a lot better … on low graphics too"): temporal AA is off by
     // default on every desktop tier. The tree-shadow flashing it was added for (2026-09-12) was the
@@ -358,6 +364,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   // read soft. Ultra remains the explicit 4x inspection tier.
   high: {
     label: 'High',
+    ambience: 1,
     msaaSamples: 0,
     taa: false, // 2026-09-14: off by default, see the Ultra note
     contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, // round 69 (2026-09-24)
@@ -392,6 +399,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   },
   medium: {
     label: 'Medium',
+    ambience: 0.7,
     msaaSamples: 0,
     taa: false, // 2026-09-14: off by default, see the Ultra note
     contactShadows: true, groundBounce: true, sunShafts: true, lensFlare: true, // round 69 (2026-09-24)
@@ -412,6 +420,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   },
   low: {
     label: 'Low',
+    ambience: 0.45,
     msaaSamples: 0,
     tallGrass: 0.25, // round 73 (2026-09-25): a quarter of the sward
     maxPixelRatio: 1.0,
@@ -435,6 +444,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   // - a quarter of Low's tall grass, the lighter world build (see `lightWorld`).
   ultralow: {
     label: 'Ultra Low',
+    ambience: 0,
     msaaSamples: 0,
     tallGrass: 0.1,
     maxPixelRatio: 0.8,
@@ -455,6 +465,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   // range, no bloom, the cheapest terrain splat. The phone tier already keeps the baked decks and the light world.
   'mobile-ultralow': {
     label: 'Ultra Low',
+    ambience: 0,
     msaaSamples: 0,
     maxPixelRatio: 1.0,
     aoScale: 0,
@@ -477,6 +488,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   // mobile default.
   'mobile-low': {
     label: 'Performance',
+    ambience: 0.3,
     msaaSamples: 0,
     // Never raster below one 3D sample per CSS pixel. The final DPR-3 output
     // is reconstructed separately; sub-CSS input was the blocky failure mode.
@@ -511,6 +523,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   //   graphics memory on the devices most likely to lose their context.
   mobile: {
     label: 'Balanced',
+    ambience: 0.4,
     msaaSamples: 0,
     maxPixelRatio: 1.4,
     adaptiveBasePixelRatio: 1.25,
@@ -529,6 +542,7 @@ export const PRESETS: Readonly<Record<PresetName, QualityPreset>> = {
   },
   'mobile-high': {
     label: 'Quality',
+    ambience: 0.5,
     msaaSamples: 2,
     maxPixelRatio: 1.7,
     adaptiveBasePixelRatio: 1.5,

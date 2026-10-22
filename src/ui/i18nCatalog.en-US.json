@@ -2654,6 +2654,8 @@
   "studioPanel.fx.cinematicOff": "CINEMATIC FX · OFF",
   "studioPanel.fx.trackDustOn": "TRACK DUST · ON",
   "studioPanel.fx.trackDustOff": "TRACK DUST · OFF",
+  "studioPanel.fx.ambienceOn": "MAP AIR · ON",
+  "studioPanel.fx.ambienceOff": "MAP AIR · OFF",
   "studioPanel.fx.smokeScreen": "SMOKE SCREEN",
   "studioPanel.fx.flare": "ILLUMINATION FLARE",
   "studioPanel.fx.embers": "EMBERS",

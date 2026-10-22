@@ -236,6 +236,8 @@ export interface StudioPanelApi extends StudioPicturePanelApi {
   readonly fxQuality: string;
   setTrackDust(on: boolean): RuntimeValue;
   readonly trackDust: boolean;
+  setAmbience(on: boolean): RuntimeValue;
+  readonly ambience: boolean;
   advanceFx(milliseconds: number): RuntimeValue;
   setStoryboardDuration(milliseconds: number): RuntimeValue;
   setTimeScale(scale: number): RuntimeValue;
@@ -1271,7 +1273,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   cineBtn.addEventListener('click', () => S.setFxQuality(S.fxQuality === 'cinematic' ? 'battle' : 'cinematic'));
   const dustBtn = el('button', null, t('studioPanel.fx.trackDustOff'));
   dustBtn.addEventListener('click', () => S.setTrackDust(!S.trackDust));
-  cineToggles.append(cineBtn, dustBtn);
+  // the map's air (world/mapAmbience.ts): pollen, leaves, snow, dust, embers by map
+  const airBtn = el('button', null, t('studioPanel.fx.ambienceOn'));
+  airBtn.addEventListener('click', () => { S.setAmbience(!S.ambience); refreshCinematicToggles(); });
+  cineToggles.append(cineBtn, dustBtn, airBtn);
   cineGroup.appendChild(cineToggles);
   secFx.appendChild(cineGroup);
   function refreshCinematicToggles(): void {
@@ -1280,6 +1285,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     cineBtn.textContent = t(on ? 'studioPanel.fx.cinematicOn' : 'studioPanel.fx.cinematicOff');
     dustBtn.classList.toggle('on', S.trackDust);
     dustBtn.textContent = t(S.trackDust ? 'studioPanel.fx.trackDustOn' : 'studioPanel.fx.trackDustOff');
+    airBtn.classList.toggle('on', S.ambience);
+    airBtn.textContent = t(S.ambience ? 'studioPanel.fx.ambienceOn' : 'studioPanel.fx.ambienceOff');
   }
   fxGroup(t('studioPanel.fxGroup.cinematic'), [
     [t('studioPanel.fx.smokeScreen'), () => withSelected((a) => S.effect({ type: 'smoke_screen', actor: a.uid }))],

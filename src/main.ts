@@ -68,7 +68,7 @@ import {
 import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
   reportSustainedOverload, setPresetName, setMobilePresetName,
-  noteGpuRenderer, getDeviceTier, shouldReleaseInactivePhaseGpu, applyGraphicsRecovery, onPresetChange,
+  noteGpuRenderer, getDeviceTier, shouldReleaseInactivePhaseGpu, applyGraphicsRecovery, onPresetChange, getPreset,
 } from './engine/quality.ts';
 import { createSky, DEFAULT_SKY_PRESET } from './engine/sky.ts';
 import { deriveCloudLayerPreset } from './engine/cloudPresets.ts';
@@ -77,6 +77,7 @@ import { EXPOSURE_REFERENCE_ILLUMINANCE, loadGroundedLightModel } from './engine
 import { loadCloudscapeLayers } from './engine/cloudPresets.ts';
 import { battlePreferences } from './game/battlePreferences.ts';
 import { createFrontlineAtmosphereAccess } from './world/frontlineAtmosphereAccess.ts';
+import { createMapAmbienceAccess } from './world/mapAmbienceAccess.ts';
 import { createNightLightingAccess } from './engine/nightLightingAccess.ts';
 import { createMissionBrief } from './ui/missionBrief.ts';
 import { createLighting } from './engine/lighting.ts';
@@ -754,7 +755,11 @@ const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
     // createPost runs during garage boot, before this demand-loaded graph
     // exists. Hand its late-composite activity/depth state to the existing
     // pass now; otherwise every layer-30 effect is simulated but invisible.
-    post.attachLateFxState(live.group.userData.softParticles);
+    // (the map's air, 2026-10-22) the ambience draws in the same pass and keeps it running while the pools are idle
+    const softParticles = live.group.userData.softParticles as { isActive?: () => boolean } | undefined;
+    post.attachLateFxState(softParticles ? {
+      ...softParticles, isActive: () => softParticles.isActive?.() === true || mapAmbience.isActive(),
+    } : softParticles);
     return live;
   },
   activate: (live) => {
@@ -927,7 +932,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
 const missionBrief = createMissionBrief();
 let pendingCampaignOperationId: string | null = null;
 const setGarageSpots = (active: boolean): void => {
-  if (active) { battleAtmosphere.reset(); nightLighting.reset(); frontline.reset(); missionBrief.hide(); }
+  if (active) { battleAtmosphere.reset(); nightLighting.reset(); frontline.reset(); mapAmbience.reset(); missionBrief.hide(); }
   garagePhasePresentation.setActive(active);
 };
 const setGarageSunTrim = (active: boolean): void => {
@@ -945,6 +950,7 @@ garageEnvironmentPresentation = createGarageEnvironmentPresentationRuntime({
     battleAtmosphere.reset();
     nightLighting.reset();
     frontline.reset();
+    mapAmbience.reset();
     const variant = getGarageVariant(selectedGarageVariantId);
     // (2026-10-15, the SKY lane) the overcast battlefields' yards under the Garage's fair weather (garageWeather.ts)
     sky.applyPresentationPreset(withGarageWeather(variant.mapId, getGarageSkyPreset(variant.mapId)), scene);
@@ -1692,6 +1698,18 @@ const frontline = createFrontlineAtmosphereAccess(() => ({
   getHeightField: () => currentWorld()?.heightField ?? null,
   getSpawns: () => currentWorld()?.spawnPoints ?? null,
 }));
+// 2026-10-22 (the owner: "add better map ambience like particles or leaves or petals ... depending on map"): what floats
+// in each battlefield's air (world/mapAmbienceTable.ts). Lazy like the front; prepared behind the covered entry with the
+// battle's time of day, reset with the Garage, drawn in the late-FX pass on the fx clock.
+const mapAmbience = createMapAmbienceAccess(() => ({
+  parent: scene,
+  scene,
+  getHeightAt: (x, z) => currentWorld()?.heightField?.getHeightAt?.(x, z) ?? null,
+  getSunDirection: () => sky.sunDir,
+  isSightView: () => rig.mode === 'SNIPER' && game.phase === 'battle',
+  getTierScale: () => getPreset().ambience ?? 0,
+}));
+const battleAmbienceTime = () => battleAtmosphere.current?.weather?.timeOfDay ?? 'day';
 /** A covered entry revealed before the player's top-down masks linked; the damage panel's retry ladder finishes them. */
 function deferredPanelMasks(specId: string): void {
   console.warn(`[battle] top-down view of ${specId} still linking at reveal; the damage panel retries it`);
@@ -2105,6 +2123,7 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
       const provingTime = game.ruleset?.provingGround?.timeOfDay;
       await battleAtmosphere.prepare(game.battleCount, game.mapId, provingTime ? [provingTime] : battlePreferences.times);
       await frontline.prepare(game.battleCount, game.mapId);
+      await mapAmbience.prepare(game.battleCount, game.mapId, battleAmbienceTime());
     },
     prepareNightLighting: () => nightLighting.prepare(),
     runSceneWatchdog: async (assertCurrent: () => void) => {
@@ -2598,6 +2617,7 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
             const mapId = currentWorld()?.mapId ?? game.mapId;
             await battleAtmosphere.prepare(seed, mapId);
             await frontline.prepare(seed, mapId);
+            await mapAmbience.prepare(seed, mapId, battleAmbienceTime());
           },
           terrain: () => {
             const world = currentWorld();
@@ -3303,7 +3323,7 @@ invalidateGaragePresentation = () => {
   frameLoop.restart();
 };
 // Quality changes mutate shadow projections and post targets even in a sleeping Garage.
-onPresetChange(() => invalidateGaragePresentation());
+onPresetChange(() => { invalidateGaragePresentation(); mapAmbience.refreshTier(); });
 bus.on('phase:change', () => {
   if (game.phase === 'garage') {
     pendingTerrainVariant = null;
@@ -3411,6 +3431,7 @@ window.__SHOTS = {
    *  that hour applies it, so captures can judge the effects and the light together ('day' restores the day). */
   async battleTime(time: 'day' | 'sunset' | 'night') {
     await battleAtmosphere.prepare(0, currentWorld()?.mapId ?? game.mapId, [time]);
+    await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, battleAmbienceTime());
     return battleAtmosphere.current?.weather?.timeOfDay ?? null;
   },
 };
@@ -3541,9 +3562,19 @@ const studioAccess = createStudioAccess({
         studioLightRuntime = null; // a failed chunk fetch stays retryable
         throw error;
       });
-      return (await studioLightRuntime).apply(time, light);
+      const applied = await (await studioLightRuntime).apply(time, light);
+      // (the map's air) the Studio films the full count at its own hour, on its pinned fx clock
+      mapAmbience.setDensityOverride(1);
+      await mapAmbience.prepare(0, currentWorld()?.mapId ?? game.mapId, time);
+      return applied;
     },
-    restoreStudioAtmosphere: () => studioLightLive?.restore(),
+    setAmbienceEnabled: (on: boolean) => mapAmbience.setEnabled(on),
+    restoreStudioAtmosphere: () => {
+      studioLightLive?.restore();
+      // the Studio's toggle and full count never follow it into a battle
+      mapAmbience.setDensityOverride(null);
+      mapAmbience.setEnabled(true);
+    },
     getStudioLight: () => studioLightLive,
     warmStudioPipeline: combatWarmComposition.warmStudioPipeline,
     transition,
@@ -3639,6 +3670,7 @@ if (diagnosticsRequested) {
       scene, camera, renderer, post, lighting, game, rig, bus, input, settings,
       getBattleAtmosphere: () => battleAtmosphere,
       getNightLighting: () => nightLighting,
+      getMapAmbience: () => mapAmbience,
       pauseInfo, garage, flags: debugFlags, frameInfo, playerShellLog, botPressure,
       killcam, showroom, garageDressing, devTrace,
       quality: {

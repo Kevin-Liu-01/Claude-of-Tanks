@@ -38,6 +38,7 @@ export interface DebugSurfaceDependencies {
   getFx(): RuntimeValue;
   getBattleAtmosphere?(): RuntimeValue;
   getNightLighting?(): RuntimeValue;
+  getMapAmbience?(): RuntimeValue;
   getPedestalVisual(): RuntimeValue;
   isGarageModePreviewPending?(): boolean;
   isPedestalOnStage(): boolean;
@@ -116,6 +117,8 @@ export function installDebugSurface(
     get fx() { return deps.getFx(); },
     get battleAtmosphere() { return deps.getBattleAtmosphere?.() ?? null; },
     get nightLighting() { return deps.getNightLighting?.() ?? null; },
+    /** The map's air (world/mapAmbienceAccess.ts): `.current.stats`, `.setEnabled(on)`, `.prepare(seed, map, time)`. */
+    get mapAmbience() { return deps.getMapAmbience?.() ?? null; },
     input: deps.input,
     settings: deps.settings,
     pauseInfo: deps.pauseInfo,

@@ -2610,6 +2610,8 @@
   "studioPanel.fx.cinematicOff": "电影级特效 · 关",
   "studioPanel.fx.trackDustOn": "履带扬尘 · 开",
   "studioPanel.fx.trackDustOff": "履带扬尘 · 关",
+  "studioPanel.fx.ambienceOn": "环境飘浮物 · 开",
+  "studioPanel.fx.ambienceOff": "环境飘浮物 · 关",
   "studioPanel.fx.smokeScreen": "烟幕弹齐射",
   "studioPanel.fx.flare": "照明弹",
   "studioPanel.fx.embers": "飞舞余烬",

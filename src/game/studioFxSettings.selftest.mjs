@@ -5,25 +5,30 @@ import {
 } from './studioFxSettings.ts';
 
 // Backward compatibility: scenes without the block keep the battle look.
-assert.deepEqual(normalizeStudioFx(undefined), { quality: 'battle', trackDust: false });
-assert.deepEqual(normalizeStudioFx({ quality: 'bogus' }), { quality: 'battle', trackDust: false });
+assert.deepEqual(normalizeStudioFx(undefined), { quality: 'battle', trackDust: false, ambience: true });
+assert.deepEqual(normalizeStudioFx({ quality: 'bogus' }), { quality: 'battle', trackDust: false, ambience: true });
 assert.equal(studioFxState(normalizeStudioFx(null)), null, 'default settings serialize to no block');
 
 // Cinematic implies track dust unless explicitly disabled.
-assert.deepEqual(normalizeStudioFx({ quality: 'cinematic' }), { quality: 'cinematic', trackDust: true });
-assert.deepEqual(normalizeStudioFx({ quality: 'cinematic', trackDust: false }), { quality: 'cinematic', trackDust: false });
-assert.deepEqual(normalizeStudioFx({ trackDust: true }), { quality: 'battle', trackDust: true });
+assert.deepEqual(normalizeStudioFx({ quality: 'cinematic' }), { quality: 'cinematic', trackDust: true, ambience: true });
+assert.deepEqual(normalizeStudioFx({ quality: 'cinematic', trackDust: false }), { quality: 'cinematic', trackDust: false, ambience: true });
+assert.deepEqual(normalizeStudioFx({ trackDust: true }), { quality: 'battle', trackDust: true, ambience: true });
+// the map's air (2026-10-22) is on unless a scene turns it off, and only the off state is written
+assert.deepEqual(normalizeStudioFx({ ambience: false }), { quality: 'battle', trackDust: false, ambience: false });
+assert.deepEqual(studioFxState({ quality: 'battle', trackDust: false, ambience: false }), { quality: 'battle', ambience: false });
 
 // state() -> load() -> state() is identity for every combination.
 for (const quality of STUDIO_FX_QUALITIES) {
   for (const trackDust of [true, false]) {
-    const settings = { quality, trackDust };
-    const block = studioFxState(settings);
-    assert.deepEqual(normalizeStudioFx(block), settings, `${quality}/${trackDust} round-trips`);
-    if (block) assert.deepEqual(studioFxState(normalizeStudioFx(JSON.parse(JSON.stringify(block)))), block);
+    for (const ambience of [true, false]) {
+      const settings = { quality, trackDust, ambience };
+      const block = studioFxState(settings);
+      assert.deepEqual(normalizeStudioFx(block), settings, `${quality}/${trackDust}/${ambience} round-trips`);
+      if (block) assert.deepEqual(studioFxState(normalizeStudioFx(JSON.parse(JSON.stringify(block)))), block);
+    }
   }
 }
-assert.deepEqual(studioFxState({ quality: 'cinematic', trackDust: true }), { quality: 'cinematic' });
+assert.deepEqual(studioFxState({ quality: 'cinematic', trackDust: true, ambience: true }), { quality: 'cinematic' });
 
 // Parameter schema: defaults inside ranges, clamping, unknown keys rejected.
 for (const [type, defs] of Object.entries(STUDIO_FX_PARAMS)) {

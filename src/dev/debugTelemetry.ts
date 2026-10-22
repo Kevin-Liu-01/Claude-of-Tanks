@@ -150,6 +150,15 @@ export function createDebugTelemetryOwner(
     return gpuName;
   }
 
+  /** (the map's air, world/mapAmbience.ts) its layers and draws, e.g. "fluff 360 · 1 draw"; null without a battle's air. */
+  function ambienceText(stats: RuntimeValue): string | null {
+    const s = stats as { layers?: { kind: string; instances: number }[]; draws?: number; enabled?: boolean } | undefined;
+    if (!s || !Array.isArray(s.layers)) return null;
+    if (!s.layers.length) return 'none';
+    const layers = s.layers.map((layer) => `${layer.kind} ${layer.instances}`).join(' · ');
+    return `${layers} · ${s.draws ?? 0} draw${s.draws === 1 ? '' : 's'}${s.enabled === false ? ' (off)' : ''}`;
+  }
+
   function collect(): Record<string, RuntimeValue> {
     const draw = deps.renderer.getDrawingBufferSize(drawSize);
     const outputResolution = deps.renderer.userData.outputResolution ?? null;
@@ -193,6 +202,7 @@ export function createDebugTelemetryOwner(
         wrecks: collectionSize(world?.tankWreckSpots),
         looseTotal: loose.total,
         looseActive: loose.active,
+        ambience: ambienceText(deps.scene.userData.mapAmbience),
       },
       shadows: {
         ...shadow,
