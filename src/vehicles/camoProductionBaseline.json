@@ -345,7 +345,7 @@
  ],
  "selections": {
   "auto": "abb6bd27a92352ef",
-  "factory": "130188c39662f598",
+  "factory": "cdeb9d9dad770dc5",
   "summer": "7a1d98aa5fb259e8",
   "desert": "14d9b65287748398",
   "winter": "723e3b88f2feeb86",
@@ -394,7 +394,7 @@
   "pacific45": "841451c28aa26371",
   "jungleops": "3749a804519b769e",
   "rasputitsa": "94fa9a51148f59ee",
-  "signature": "0d9b13b723f61536",
+  "signature": "8e14071f076cca31",
   "service_usa_desert": "2e10870e1deb2066",
   "service_marder1a3": "60356e7224403b34",
   "service_leo2a4m": "f51c71586f31ebb8",
@@ -524,32 +524,32 @@
   },
   "m1a1ha": {
    "selection": "factory",
-   "stock": "service_usa_desert",
-   "factory": "bf1100a01153293a",
+   "stock": "sig_m1a1ha",
+   "factory": "8fdfab241cb85c17",
    "auto": "dpm digitaldesert winterbands urbanblock oakleaf summer desert urbanblock urban dpm dpm dpm"
   },
   "m1a2": {
    "selection": "factory",
-   "stock": "service_usa_desert",
-   "factory": "694f3df7a4d82a8b",
+   "stock": "sig_m1a1_abrams_hc",
+   "factory": "53745bf4e28169ba",
    "auto": "merdc digitaldesert winterbands urbanblock oakleaf dpm chocchip berlin urban dpm merdc merdc"
   },
   "m1a2_tusk": {
    "selection": "factory",
-   "stock": "service_usa_desert",
-   "factory": "65c6c57c28462b6e",
+   "stock": "sig_m1a1_abrams_sa",
+   "factory": "3caa4d389f685cd0",
    "auto": "merdc desert winter urban oakleaf merdc chocchip urbanblock urban summer merdc merdc"
   },
   "m1a2_sepv2": {
    "selection": "factory",
-   "stock": "service_usa_desert",
-   "factory": "694f3df7a4d82a8b",
+   "stock": "sig_m1a1_abrams_aim",
+   "factory": "3afb0c541567096d",
    "auto": "tigerstripe pinkdesert merdcwinter urban autumn dpm digitaldesert berlin urbanblock summer tigerstripe tigerstripe"
   },
   "m1a2_sepv3": {
    "selection": "factory",
-   "stock": "service_usa_desert",
-   "factory": "ab5d9df66dd46615",
+   "stock": "sig_m1a1_abrams_fep",
+   "factory": "5d444e0e73e63266",
    "auto": "flecktarn digitaldesert winterbands urbanblock oakleaf dpm digitaldesert urban urban dpm flecktarn flecktarn"
   },
   "m1a3": {
@@ -1160,8 +1160,8 @@
   },
   "m60a1": {
    "selection": "factory",
-   "stock": "service_usa_desert",
-   "factory": "ba60cc4fc1c78614",
+   "stock": "sig_m60a1",
+   "factory": "70f10725441bad5e",
    "auto": "flecktarn desert winter berlin oakleaf dpm chocchip urban urban summer flecktarn flecktarn"
   },
   "merkava1b": {
@@ -1292,8 +1292,8 @@
   },
   "m60a3": {
    "selection": "factory",
-   "stock": "service_usa_desert",
-   "factory": "ba60cc4fc1c78614",
+   "stock": "sig_m60a3",
+   "factory": "9967f1a5c9c28bc5",
    "auto": "merdc digitaldesert winterbands urban oakleaf merdc desert berlin urban flecktarn merdc merdc"
   },
   "ua_t64bv": {
