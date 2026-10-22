@@ -46,10 +46,11 @@ assert.deepEqual([
   SETTINGS_ACTION_ICONS.shell2.badge,
   SETTINGS_ACTION_ICONS.shell3.badge,
 ], ['1', '2', '3'], 'shell icons keep their slot identity');
+// The armour-overlay glyph follows the one icon rule (brand-ui BUI-F4): drawn once in the sprite, coloured by its
+// row's tone through currentColor, never with baked thickness colours.
 const armorSvg = uiIconSVG(SETTINGS_OPTION_ICONS.armorAimOverlay.id, 16);
-for (const color of ['#d95b54', '#e3a53b', '#63c77a']) {
-  assert.ok(armorSvg.includes(color), `armor flashlight icon includes ${color}`);
-}
+assert.match(armorSvg, /href="#i-armorFlashlight"/, 'the armour overlay draws its own glyph');
+assert.doesNotMatch(armorSvg, /#[0-9a-f]{6}/i, 'the armour overlay glyph carries no baked colour');
 
 console.log('settingsControls.selftest: controls references and exhaustive setting icons passed');
 setLocale(originalLocale);

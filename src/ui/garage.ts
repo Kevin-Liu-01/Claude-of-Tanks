@@ -568,26 +568,26 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<span lang="en">CLAUDE <b>OF TANKS</b></span></div>` +
     `<div class="cot-brand-utilities cot-header-nav" aria-label="${t('garage.nav.home')} & ${t('garage.nav.record')}">` +
     `<button class="nv" data-nav="home" type="button" aria-label="${t('garage.nav.home')}" title="${t('garage.nav.home')}">` +
-    `<img class="nvi nvi-product" src="/brand/nav/home.svg" alt="" draggable="false">` +
+    `${uiIconSVG('home', 16, 'currentColor', 'nvi nvi-product')}` +
     `<span class="nav-label">${t('garage.nav.home')}</span></button>` +
     `<button class="nv cot-record-trigger" type="button" aria-label="${t('garage.nav.record')}" ` +
     `title="${t('garage.nav.record')}" aria-haspopup="dialog" aria-expanded="false" aria-controls="cot-record-modal">` +
-    `${uiIconSVG('battleRecord', 15, 'currentColor', 'nvi')}` +
+    `${uiIconSVG('record', 15, 'currentColor', 'nvi')}` +
     `<span class="nav-label">${t('garage.nav.record')}</span><span class="record-badge" aria-hidden="true">0</span>` +
     `<span class="record-new" aria-hidden="true" hidden></span></button>` +
     `</div></div>` +
     `<nav class="cot-nav cot-header-nav" aria-label="${t('garage.nav.garage')}">` +
-    `<button class="nv on cot-nav-desktop" data-nav="garage" type="button" aria-label="${t('garage.nav.garage')}" title="${t('garage.nav.garage')}">` +
-    `<img class="nvi nvi-product" src="/brand/nav/garage.svg" alt="" draggable="false">` +
+    `<button class="nv on cot-nav-desktop" data-nav="garage" type="button" aria-current="page" aria-label="${t('garage.nav.garage')}" title="${t('garage.nav.garage')}">` +
+    `${uiIconSVG('garage', 16, 'currentColor', 'nvi nvi-product')}` +
     `<span class="nav-label">${t('garage.nav.garage')}</span></button>` +
     `<button class="nv cot-nav-desktop" data-nav="studio" type="button" aria-label="${t('garage.nav.studio')}" title="${t('garage.nav.studio')}">` +
-    `<img class="nvi nvi-product" src="/brand/nav/studio.svg" alt="" draggable="false">` +
+    `${uiIconSVG('studio', 16, 'currentColor', 'nvi nvi-product')}` +
     `<span class="nav-label">${t('garage.nav.studio')}</span></button>` +
     `<button class="nv cot-nav-desktop" data-nav="gallery" type="button" aria-label="${t('garage.nav.gallery')}" title="${t('garage.nav.gallery')}">` +
-    `<img class="nvi nvi-product" src="/brand/nav/tank-gallery.svg" alt="" draggable="false">` +
+    `${uiIconSVG('gallery', 16, 'currentColor', 'nvi nvi-product')}` +
     `<span class="nav-label">${t('garage.nav.gallery')}</span></button>` +
     `<button class="nv cot-nav-desktop" data-nav="docs" type="button" aria-label="${t('garage.nav.docs')}" title="${t('garage.nav.docs')}">` +
-    `<img class="nvi nvi-product" src="/brand/nav/docs.svg" alt="" draggable="false">` +
+    `${uiIconSVG('manual', 16, 'currentColor', 'nvi nvi-product')}` +
     `<span class="nav-label">${t('garage.nav.docs')}</span></button>` +
     `<div class="cot-locale-credit-wrap cot-nav-desktop">` +
     `<button class="nv cot-locale-switcher" data-nav="locale" type="button" ` +
@@ -611,25 +611,25 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `${uiIconSVG('menu', 17, 'currentColor', 'nvi')}<span class="nav-label">${t('garage.nav.menu')}</span></button>` +
     `<div class="cot-mobile-nav-menu" id="cot-mobile-nav-menu" role="group" aria-label="${t('garage.nav.menu')}" hidden>` +
     `<button type="button" data-mobile-nav="home">` +
-    `<img src="/brand/nav/home.svg" alt="" draggable="false"><span class="cot-mobile-nav-copy">` +
+    `${uiIconSVG('home', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.home')}</strong><small>${t('garage.nav.mobileHomeSub')}</small></span></button>` +
     `<button type="button" data-mobile-nav="garage" aria-current="page">` +
-    `<img src="/brand/nav/garage.svg" alt="" draggable="false"><span class="cot-mobile-nav-copy">` +
+    `${uiIconSVG('garage', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.garage')}</strong><small>${t('garage.nav.mobileGarageSub')}</small></span></button>` +
     `<button type="button" data-mobile-nav="studio">` +
-    `<img src="/brand/nav/studio.svg" alt="" draggable="false"><span class="cot-mobile-nav-copy">` +
+    `${uiIconSVG('studio', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.studio')}</strong><small>${t('garage.nav.mobileStudioSub')}</small></span></button>` +
     `<button type="button" data-mobile-nav="gallery">` +
-    `<img src="/brand/nav/tank-gallery.svg" alt="" draggable="false"><span class="cot-mobile-nav-copy">` +
+    `${uiIconSVG('gallery', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.gallery')}</strong><small>${t('garage.nav.mobileGallerySub')}</small></span></button>` +
     `<button type="button" data-mobile-nav="docs">` +
-    `<img src="/brand/nav/docs.svg" alt="" draggable="false"><span class="cot-mobile-nav-copy">` +
+    `${uiIconSVG('manual', 20)}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.docs')}</strong><small>${t('garage.nav.mobileDocsSub')}</small></span></button>` +
     `<button type="button" data-mobile-nav="locale" aria-label="${localeSwitchLabel}">` +
     `${uiIconSVG('globe', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('settings.language.title')}</strong><small>EN / 中文</small></span></button>` +
     `<button type="button" data-mobile-nav="record">` +
-    `${uiIconSVG('battleRecord', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
+    `${uiIconSVG('record', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('garage.nav.record')}</strong><small>${t('garage.nav.mobileRecordSub')}</small></span></button>` +
     `<button type="button" data-mobile-nav="environment">` +
     `${uiIconSVG('garage', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
@@ -667,7 +667,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<span class="choice-name">${t('garage.battle.modeFlag')}</span></button>` +
     `<button class="cot-battle-choice" type="button" data-game-mode="infected" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeInfected', 17)}</span><span class="choice-name">${t('playMenu.matchMode.infected.label')}</span></button>` +
     `<button class="cot-battle-choice" type="button" data-game-mode="frontline_assault" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('modeZones', 17)}</span>` +
+    `<span class="choice-icon">${uiIconSVG('modeFrontline', 17)}</span>` +
     `<span class="choice-name">${t('garage.battle.modeFront')}</span></button>` +
     `<button class="cot-battle-choice" type="button" data-game-mode="realistic" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeRealistic', 17)}</span><span class="choice-name">${t('playMenu.matchMode.realistic.label')}</span></button>` +
     `<button class="cot-battle-choice" type="button" data-game-mode="gun_game" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeGunGame', 17)}</span><span class="choice-name">${t('playMenu.matchMode.gun_game.label')}</span></button>` +
@@ -3055,7 +3055,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     zone_control: { short: '750', label: t('garage.battle.zoneLabel'), icon: 'modeZones' },
     turbo_ball: { short: 'TURBO', label: t('garage.battle.ballLabel'), icon: 'modeTurbo' },
     endless_horde: { short: 'WAVE', label: t('garage.battle.hordeLabel'), icon: 'modeHorde' },
-    frontline_assault: { short: 'FRONT', label: t('garage.battle.frontLabel'), icon: 'modeZones' },
+    frontline_assault: { short: 'FRONT', label: t('garage.battle.frontLabel'), icon: 'modeFrontline' },
     mars: { short: 'GRAV', label: t('garage.battle.marsLabel'), icon: 'modeMars' },
   };
   // The menu scrolls in one region between its head and launch row: where it continues below the footer (the special

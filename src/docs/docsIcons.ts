@@ -1,77 +1,81 @@
-import { uiIconSVG, type UiIconId } from '../ui/uiIcons.ts';
+// Field-manual icon vocabulary (brand-ui BUI-F4). Copyright © 2026 Kevin B. Liu.
+// Each docs key names the glyph that means it, from the shared sprite, in one of two tones: the accent for what a
+// player meets in the game, steel for how it is engineered.
 
-type DocsIconTone = 'steel' | 'amber' | 'cyan' | 'green' | 'red' | 'violet';
+import { icon, type IconId } from '../ui/icons/icon.ts';
+
+type DocsIconTone = 'accent' | 'steel';
 
 interface DocsIconSpec {
-  readonly id: UiIconId;
+  readonly id: IconId;
   readonly tone: DocsIconTone;
 }
 
-/** One typed visual vocabulary for the field-manual landing page. */
+/** One typed visual vocabulary for the field manual. */
 export const DOCS_ICON_SPECS = Object.freeze({
-  manual: { id: 'battleRecord', tone: 'amber' },
+  manual: { id: 'manual', tone: 'accent' },
   github: { id: 'github', tone: 'steel' },
-  fleet: { id: 'gallery', tone: 'amber' },
-  battlefields: { id: 'map', tone: 'green' },
-  simulation: { id: 'clock', tone: 'cyan' },
-  refresh: { id: 'performance', tone: 'green' },
-  overview: { id: 'battleRecord', tone: 'amber' },
-  rendering: { id: 'graphics', tone: 'cyan' },
-  vehicles: { id: 'track', tone: 'amber' },
-  combat: { id: 'fireGun', tone: 'red' },
-  worlds: { id: 'map', tone: 'green' },
-  interface: { id: 'controller', tone: 'cyan' },
-  multiplayer: { id: 'radio', tone: 'cyan' },
-  performance: { id: 'performance', tone: 'green' },
-  mobile: { id: 'autoAim', tone: 'cyan' },
-  studio: { id: 'pixels', tone: 'violet' },
-  filming: { id: 'studio', tone: 'amber' },
-  gallery: { id: 'scope', tone: 'amber' },
-  verification: { id: 'check', tone: 'green' },
-  authority: { id: 'shield', tone: 'green' },
-  measured: { id: 'graphics', tone: 'cyan' },
-  assets: { id: 'check', tone: 'amber' },
-  specification: { id: 'battleRecord', tone: 'cyan' },
-  rig: { id: 'track', tone: 'amber' },
-  anatomy: { id: 'crew', tone: 'red' },
-  release: { id: 'check', tone: 'green' },
-  runtimeData: { id: 'telemetry', tone: 'cyan' },
-  coordinates: { id: 'globe', tone: 'amber' },
-  build: { id: 'repair', tone: 'amber' },
-  models: { id: 'gallery', tone: 'amber' },
-  ai: { id: 'battleBots', tone: 'red' },
-  audio: { id: 'sound', tone: 'cyan' },
-  quality: { id: 'check', tone: 'green' },
-  architecture: { id: 'battleRecord', tone: 'amber' },
-  isolation: { id: 'copy', tone: 'cyan' },
-  evidence: { id: 'telemetry', tone: 'green' },
-  memory: { id: 'battleRecord', tone: 'violet' },
-  landing: { id: 'check', tone: 'green' },
-  research: { id: 'optics', tone: 'cyan' },
-  construction: { id: 'repair', tone: 'amber' },
-  iconPipeline: { id: 'pixels', tone: 'violet' },
-  critique: { id: 'scope', tone: 'red' },
-  perception: { id: 'optics', tone: 'cyan' },
-  navigation: { id: 'map', tone: 'green' },
-  aiming: { id: 'autoAim', tone: 'amber' },
-  teamwork: { id: 'team', tone: 'green' },
-  survival: { id: 'shield', tone: 'red' },
-  spatial: { id: 'ambience', tone: 'cyan' },
-  weapons: { id: 'fireGun', tone: 'red' },
-  mix: { id: 'sound', tone: 'amber' },
-  replay: { id: 'clock', tone: 'violet' },
-  loading: { id: 'reload', tone: 'amber' },
-  profiling: { id: 'telemetry', tone: 'cyan' },
-  optimization: { id: 'speed', tone: 'green' },
-  device: { id: 'graphics', tone: 'violet' },
-  budgets: { id: 'performance', tone: 'red' },
-  armor: { id: 'penetration', tone: 'red' },
-  modes: { id: 'modeStandard', tone: 'amber' },
-  garage: { id: 'garage', tone: 'amber' },
-  accessibility: { id: 'check', tone: 'green' },
-  workflow: { id: 'rematch', tone: 'cyan' },
-  damage: { id: 'damage', tone: 'red' },
-  radio: { id: 'radio', tone: 'cyan' },
+  fleet: { id: 'vehicle', tone: 'accent' },
+  battlefields: { id: 'map', tone: 'accent' },
+  simulation: { id: 'clock', tone: 'steel' },
+  refresh: { id: 'performance', tone: 'steel' },
+  overview: { id: 'layerModules', tone: 'steel' },
+  rendering: { id: 'graphics', tone: 'steel' },
+  vehicles: { id: 'vehicle', tone: 'accent' },
+  combat: { id: 'fireGun', tone: 'accent' },
+  worlds: { id: 'regionWoodland', tone: 'accent' },
+  interface: { id: 'controller', tone: 'steel' },
+  multiplayer: { id: 'signal', tone: 'accent' },
+  performance: { id: 'performance', tone: 'steel' },
+  mobile: { id: 'phone', tone: 'accent' },
+  studio: { id: 'studio', tone: 'accent' },
+  filming: { id: 'cameraPath', tone: 'accent' },
+  gallery: { id: 'gallery', tone: 'accent' },
+  verification: { id: 'check', tone: 'steel' },
+  authority: { id: 'shield', tone: 'steel' },
+  measured: { id: 'toolMeasure', tone: 'steel' },
+  assets: { id: 'pixels', tone: 'steel' },
+  specification: { id: 'battleRecord', tone: 'steel' },
+  rig: { id: 'track', tone: 'steel' },
+  anatomy: { id: 'layerXray', tone: 'accent' },
+  release: { id: 'rocket', tone: 'steel' },
+  runtimeData: { id: 'telemetry', tone: 'steel' },
+  coordinates: { id: 'statRange', tone: 'steel' },
+  build: { id: 'repair', tone: 'steel' },
+  models: { id: 'toolHitbox', tone: 'steel' },
+  ai: { id: 'battleBots', tone: 'accent' },
+  audio: { id: 'sound', tone: 'accent' },
+  quality: { id: 'statBest', tone: 'steel' },
+  architecture: { id: 'battleLan', tone: 'steel' },
+  isolation: { id: 'toolIsolate', tone: 'steel' },
+  evidence: { id: 'toolPhoto', tone: 'steel' },
+  memory: { id: 'paste', tone: 'steel' },
+  landing: { id: 'deploy', tone: 'steel' },
+  research: { id: 'optics', tone: 'steel' },
+  construction: { id: 'layerMarkup', tone: 'steel' },
+  iconPipeline: { id: 'brush', tone: 'steel' },
+  critique: { id: 'freeLook', tone: 'steel' },
+  perception: { id: 'visionInfrared', tone: 'accent' },
+  navigation: { id: 'roleFlanker', tone: 'accent' },
+  aiming: { id: 'scope', tone: 'accent' },
+  teamwork: { id: 'team', tone: 'accent' },
+  survival: { id: 'medkit', tone: 'accent' },
+  spatial: { id: 'globe', tone: 'accent' },
+  weapons: { id: 'gun', tone: 'accent' },
+  mix: { id: 'music', tone: 'accent' },
+  replay: { id: 'rematch', tone: 'accent' },
+  loading: { id: 'reload', tone: 'steel' },
+  profiling: { id: 'heartbeat', tone: 'steel' },
+  optimization: { id: 'speed', tone: 'steel' },
+  device: { id: 'gpu', tone: 'steel' },
+  budgets: { id: 'statAverage', tone: 'steel' },
+  armor: { id: 'layerArmor', tone: 'accent' },
+  modes: { id: 'modeStandard', tone: 'accent' },
+  garage: { id: 'garage', tone: 'accent' },
+  accessibility: { id: 'player', tone: 'steel' },
+  workflow: { id: 'statChain', tone: 'steel' },
+  damage: { id: 'damage', tone: 'accent' },
+  radio: { id: 'radio', tone: 'accent' },
 } as const satisfies Readonly<Record<string, DocsIconSpec>>);
 
 export type DocsIconKey = keyof typeof DOCS_ICON_SPECS;
@@ -89,6 +93,6 @@ export function mountDocsIcons(root: ParentNode = document): void {
     if (!spec) return;
     element.classList.add('doc-icon', `tone-${spec.tone}`);
     element.setAttribute('aria-hidden', 'true');
-    element.innerHTML = uiIconSVG(spec.id, 24);
+    element.innerHTML = icon(spec.id, { size: 24 });
   });
 }

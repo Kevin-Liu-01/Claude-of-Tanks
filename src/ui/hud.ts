@@ -3285,7 +3285,8 @@ export function initHud(bus: EventBus): HudRuntime {
     if (modeId === 'standard') return 'modeStandard';
     if (modeId === 'capture_the_flag') return 'modeFlag';
     if (modeId === 'mars') return 'modeMars';
-    if (modeId === 'zone_control' || modeId === 'frontline_assault') return 'modeZones';
+    if (modeId === 'zone_control') return 'modeZones';
+    if (modeId === 'frontline_assault') return 'modeFrontline';
     if (modeId === 'turbo_ball') return 'modeTurbo';
     return 'modeHorde';
   }
@@ -7090,7 +7091,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // (with the repair), respawns, the flag changing hands, caches dropping
   on('mode:line_advanced', ({ line, total }) => {
     showAlert(t('hud.alert.lineTaken', { line: Math.max(1, Number(line) || 1), total: Math.max(1, Number(total) || 3) }), {
-      icon: 'modeZones', tone: 'success',
+      icon: 'modeFrontline', tone: 'success',
     });
   });
   on('mode:wave_cleared', ({ wave, nextWaveInS }) => {

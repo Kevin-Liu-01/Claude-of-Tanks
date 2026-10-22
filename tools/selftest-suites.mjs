@@ -2168,6 +2168,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/entry/telemetry.selftest.mjs',
     'src/entry/inlineWatchdogSink.selftest.mjs',
     'src/ui/icons.selftest.mjs',
+    // 2026-10-18 (brand-ui BUI-F4): the one icon sprite: drawing rules, one stroke per optical size, the 10 KB sprite
+    // and 3 KB boot-slice budgets, the generated index in sync, the icon() host markup, no retired product marks
+    'src/ui/icons/icon.selftest.mjs',
     'src/ui/flags.selftest.mjs',
     'src/ui/garageLocaleNavigation.selftest.mjs',
     'src/ui/garageVariantPicker.selftest.mjs',

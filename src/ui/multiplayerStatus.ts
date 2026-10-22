@@ -66,11 +66,10 @@ export const MP_STATUS_CSS = `.cot-mp-status{position:fixed;z-index:91;top:8px;r
 .cot-mp-strip:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .cot-mp-strip .glyph{display:inline-flex;width:16px;height:16px;color:#b9e7c0}
 .cot-mp-strip .glyph svg{width:16px;height:16px}
-.cot-mp-strip .glyph .b1,.cot-mp-strip .glyph .b2,.cot-mp-strip .glyph .b3{opacity:1}
-.cot-mp-strip.degraded .glyph{color:#ffd27a}.cot-mp-strip.degraded .glyph .b3{opacity:.22}
-.cot-mp-strip.bad .glyph{color:#ff8c82}.cot-mp-strip.bad .glyph .b2,.cot-mp-strip.bad .glyph .b3{opacity:.22}
-.cot-mp-strip.offline .glyph{color:#ff8c82}.cot-mp-strip.offline .glyph .b1,.cot-mp-strip.offline .glyph .b2,.cot-mp-strip.offline .glyph .b3{opacity:.22}
-.cot-mp-strip.unknown .glyph{color:#8494a0}.cot-mp-strip.unknown .glyph .b2,.cot-mp-strip.unknown .glyph .b3{opacity:.22}
+.cot-mp-strip.degraded .glyph{color:#ffd27a;--i-b3:.22}
+.cot-mp-strip.bad .glyph{color:#ff8c82;--i-b2:.22;--i-b3:.22}
+.cot-mp-strip.offline .glyph{color:#ff8c82;--i-b1:.22;--i-b2:.22;--i-b3:.22}
+.cot-mp-strip.unknown .glyph{color:#8494a0;--i-b2:.22;--i-b3:.22}
 .cot-mp-strip .unit{display:inline-grid;grid-template-columns:auto auto;align-items:baseline;column-gap:4px}
 .cot-mp-strip .unit+.unit{padding-left:8px;border-left:1px solid rgba(171,190,204,.2)}
 .cot-mp-strip .unit b{font-size:11px;font-weight:700;line-height:1}

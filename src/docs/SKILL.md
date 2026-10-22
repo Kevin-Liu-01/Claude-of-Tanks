@@ -14,7 +14,7 @@ game-rendered evidence, without booting the playable world.
 <!-- agent-docs:fill:model -->
 `docs.ts` owns manual navigation, copy feedback, and archive interaction.
 `topics.ts` owns topic order, content, section/media definitions, and rendering.
-`docsIcons.ts` maps manual concepts to the shared typed icon vocabulary.
+`docsIcons.ts` maps manual concepts to the shared icon sprite in two tones (accent for gameplay, steel for engineering).
 `battleReels.ts` owns selectable recorded battle clips; `docs.css` styles the
 manual. `referenceTakes.ts` gives each vehicle record of the fleet reference
 its own take (over `src/ui/fleetTakes.ts`) the first time the record opens. `site/docs.html` and `site/docs-*.html` are the corresponding page entries.

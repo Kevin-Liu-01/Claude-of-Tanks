@@ -191,14 +191,8 @@ document.querySelectorAll<HTMLImageElement>('img[data-deferred-src]').forEach((i
   mountDeferredImage(image);
 });
 
-// The home page's mode cards carry the battle setup's own mode icons (src/ui/uiIcons.ts, as GAME_MODE_DEFINITIONS in
-// src/sim/matchModes.ts names them), so the page draws none of its own; the icon set loads only where a card asks.
-const uiIconSlots = [...document.querySelectorAll<HTMLElement>('[data-ui-icon]')];
-if (uiIconSlots.length) {
-  void import('../ui/uiIcons.ts').then(({ uiIconSVG }) => {
-    for (const slot of uiIconSlots) slot.innerHTML = uiIconSVG(slot.dataset.uiIcon || '', 26);
-  });
-}
+// The home page's mode cards carry the battle setup's own mode icons (as GAME_MODE_DEFINITIONS in src/sim/matchModes.ts
+// names them) in [data-ui-icon] slots, which the shared public nav (publicNav.ts) fills from the shared icon set.
 
 function mountViewportVideo(video: HTMLVideoElement): void {
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');

@@ -143,6 +143,12 @@ display numerals). `'Cot UI'` (`var(--font-ui)`, `FONT_STACK`) is Plex Sans at
 Latin-only lockups `lang="en"` and track them on that element, so the zh-CN reset
 (no tracking on Chinese) leaves them alone; Chinese display headings take a CJK
 line-height (1.14-1.15). `typeSystem.selftest.mjs` holds all of it.
+Icons (brand-ui BUI-F4): every glyph is one `<symbol>` in `icons/sprite.svg`
+(24-unit masters, 16-unit optical masters `-s`), drawn through `icon()` in
+`icons/icon.ts`; never paste inline SVG glyphs into a surface. Glyphs carry no
+stroke width, caps, joins or colour (the host does: 1.5 / 1.25, square, mitre,
+currentColor). After a sprite edit run `node tools/gen-icon-sprite.mjs` and
+`node tools/icon-stroke-census.mjs`. `uiIconSVG` is the compatibility call.
 `garage.ts` is a strict presentation adapter: keep fleet, map, camouflage,
 loadout, room-status, and battle-intent inputs explicit; fail fast when its
 static markup contract is missing; and preserve its disclosure/event lifecycle

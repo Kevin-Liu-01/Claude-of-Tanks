@@ -14,11 +14,11 @@ A World of Tanks-style armored combat simulator built directly with Three.js and
 
 <table width="100%" align="center">
 <tr>
-<td width="20%" align="center" valign="middle" bgcolor="#05080b"><a href="https://cot.kevinliu.studio/"><img src="public/brand/features/play.svg" height="58" alt="Play armored combat"><br><strong>PLAY</strong></a></td>
-<td width="20%" align="center" valign="middle" bgcolor="#05080b"><a href="https://cot.kevinliu.studio/docs"><img src="public/brand/nav/docs.svg" height="58" alt="Open the armored vehicle field manual"><br><strong>FIELD MANUAL</strong></a></td>
-<td width="20%" align="center" valign="middle" bgcolor="#05080b"><a href="https://cot.kevinliu.studio/gallery"><img src="public/brand/nav/tank-gallery.svg" height="58" alt="Open Tank Gallery"><br><strong>TANK GALLERY</strong></a></td>
-<td width="20%" align="center" valign="middle" bgcolor="#05080b"><a href="https://cot.kevinliu.studio/studio"><img src="public/brand/nav/studio.svg" height="58" alt="Open Scene Studio"><br><strong>SCENE STUDIO</strong></a></td>
-<td width="20%" align="center" valign="middle" bgcolor="#05080b"><a href="docs/INDEX.md"><img src="public/brand/features/modules.svg" height="58" alt="Open the engineering documentation"><br><strong>ENGINEERING DOCS</strong></a></td>
+<td width="20%" align="center" valign="middle" bgcolor="#05080b"><a href="https://cot.kevinliu.studio/"><img src="docs/media/icons/play.svg" height="58" alt="Play armored combat"><br><strong>PLAY</strong></a></td>
+<td width="20%" align="center" valign="middle" bgcolor="#05080b"><a href="https://cot.kevinliu.studio/docs"><img src="docs/media/icons/manual.svg" height="58" alt="Open the armored vehicle field manual"><br><strong>FIELD MANUAL</strong></a></td>
+<td width="20%" align="center" valign="middle" bgcolor="#05080b"><a href="https://cot.kevinliu.studio/gallery"><img src="docs/media/icons/gallery.svg" height="58" alt="Open Tank Gallery"><br><strong>TANK GALLERY</strong></a></td>
+<td width="20%" align="center" valign="middle" bgcolor="#05080b"><a href="https://cot.kevinliu.studio/studio"><img src="docs/media/icons/studio.svg" height="58" alt="Open Scene Studio"><br><strong>SCENE STUDIO</strong></a></td>
+<td width="20%" align="center" valign="middle" bgcolor="#05080b"><a href="docs/INDEX.md"><img src="docs/media/icons/layerModules.svg" height="58" alt="Open the engineering documentation"><br><strong>ENGINEERING DOCS</strong></a></td>
 </tr>
 </table>
 
@@ -42,9 +42,9 @@ screenshots of the rail, the feature reel, the four camera-path loops, the destr
 ## Fight, inspect, and direct
 
 <p>
-  <img src="public/brand/features/live-combat.svg" width="52" alt="Live tank combat icon" title="Fight">
-  <img src="public/brand/features/armor.svg" width="52" alt="Armor inspection icon" title="Inspect">
-  <img src="public/brand/nav/studio.svg" width="72" alt="Scene Studio icon" title="Direct">
+  <img src="docs/media/icons/fireGun.svg" width="52" alt="Live tank combat icon" title="Fight">
+  <img src="docs/media/icons/layerArmor.svg" width="52" alt="Armor inspection icon" title="Inspect">
+  <img src="docs/media/icons/studio.svg" width="72" alt="Scene Studio icon" title="Direct">
 </p>
 
 - **Fight:** enter Standard Battle, Capture the Flag, Zone Control, armed low-gravity Turbo Ball, Gravity Mode, cooperative
@@ -77,8 +77,8 @@ The provenance gate currently reports **220 first-party procedural battle playab
 ## Field footage
 
 <p>
-  <img src="public/brand/features/screenshots.svg" width="52" alt="In-engine battle screenshot icon" title="In-engine footage">
-  <img src="public/brand/features/camera-paths.svg" width="52" alt="Camera path icon" title="Camera rails">
+  <img src="docs/media/icons/toolPhoto.svg" width="52" alt="In-engine battle screenshot icon" title="In-engine footage">
+  <img src="docs/media/icons/cameraPath.svg" width="52" alt="Camera path icon" title="Camera rails">
 </p>
 
 Each frame below opens a looping WebM recorded from the game. The camera rails use live vehicles, maps, ballistics,
@@ -102,9 +102,9 @@ recoil, impacts, sparks, smoke, debris, and destruction effects.
 ## Vehicle-specific mechanics
 
 <p>
-  <img src="public/brand/features/vehicle.svg" width="52" alt="Procedural vehicle icon" title="Vehicle-specific systems">
-  <img src="public/brand/features/missile.svg" width="52" alt="Guided missile icon" title="Guided weapons">
-  <img src="public/brand/features/modules.svg" width="52" alt="Internal tank modules icon" title="Internal anatomy and autoloaders">
+  <img src="docs/media/icons/vehicle.svg" width="52" alt="Procedural vehicle icon" title="Vehicle-specific systems">
+  <img src="docs/media/icons/rocket.svg" width="52" alt="Guided missile icon" title="Guided weapons">
+  <img src="docs/media/icons/layerModules.svg" width="52" alt="Internal tank modules icon" title="Internal anatomy and autoloaders">
 </p>
 
 The fleet does not reduce every vehicle to the same gun and movement model. Specifications can add their own loading,
@@ -134,9 +134,9 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 ## Combat systems
 
 <p>
-  <img src="public/brand/features/live-combat.svg" width="52" alt="Live combat icon" title="Physical combat">
-  <img src="public/brand/features/armor.svg" width="52" alt="Armor inspection icon" title="Plate-level armor">
-  <img src="public/brand/features/modules.svg" width="52" alt="Internal modules icon" title="Internal damage">
+  <img src="docs/media/icons/fireGun.svg" width="52" alt="Live combat icon" title="Physical combat">
+  <img src="docs/media/icons/layerArmor.svg" width="52" alt="Armor inspection icon" title="Plate-level armor">
+  <img src="docs/media/icons/layerModules.svg" width="52" alt="Internal modules icon" title="Internal damage">
 </p>
 
 <table>
@@ -162,9 +162,9 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 ## Worlds and vehicle design
 
 <p>
-  <img src="public/brand/features/battlefield.svg" width="52" alt="Battlefield icon" title="Authored battlefields">
-  <img src="public/brand/features/vehicle.svg" width="52" alt="Procedural tank icon" title="First-party procedural vehicles">
-  <img src="public/brand/nav/tank-gallery.svg" width="72" alt="Tank Gallery icon" title="Tank Gallery">
+  <img src="docs/media/icons/map.svg" width="52" alt="Battlefield icon" title="Authored battlefields">
+  <img src="docs/media/icons/vehicle.svg" width="52" alt="Procedural tank icon" title="First-party procedural vehicles">
+  <img src="docs/media/icons/gallery.svg" width="72" alt="Tank Gallery icon" title="Tank Gallery">
 </p>
 
 <table>
@@ -202,7 +202,7 @@ triangles, transitions, cache residency, and repeated-cycle memory. See the
 ## Renderer, drivers, and performance
 
 <p>
-  <img src="public/brand/features/gpu.svg" width="52" alt="GPU renderer icon" title="GPU-aware renderer">
+  <img src="docs/media/icons/gpu.svg" width="52" alt="GPU renderer icon" title="GPU-aware renderer">
 </p>
 
 The renderer treats quality as a device contract instead of a single desktop preset. It selects a GPU/driver-aware
@@ -229,7 +229,7 @@ thermal limits, GPU and driver, resolution, and quality level. Combat rules rema
 ## Multiplayer
 
 <p>
-  <img src="public/brand/features/multiplayer.svg" width="52" alt="Multiplayer tanks icon" title="Authoritative multiplayer">
+  <img src="docs/media/icons/team.svg" width="52" alt="Multiplayer tanks icon" title="Authoritative multiplayer">
 </p>
 
 LAN and private rooms run their match in the host commander's browser over WebRTC and use the shared renderer-free movement and combat rules. No database or dedicated game server is required; Internet rooms meet through a small rooms Worker (seats, signaling, host migration), and restricted networks may need TURN relay. See [Multiplayer v2](docs/MULTIPLAYER-V2.md).
@@ -268,9 +268,9 @@ source-file and Gallery-markup intake, measured geometry and negative space,
 independent review gates, reusable agent briefs, and handoff templates.
 
 <p>
-  <img src="public/brand/nav/studio.svg" width="72" alt="Scene Studio icon" title="Scene Studio">
-  <img src="public/brand/features/camera-paths.svg" width="52" alt="Camera path icon" title="Camera direction">
-  <img src="public/brand/features/screenshots.svg" width="52" alt="Capture icon" title="Deterministic capture">
+  <img src="docs/media/icons/studio.svg" width="72" alt="Scene Studio icon" title="Scene Studio">
+  <img src="docs/media/icons/cameraPath.svg" width="52" alt="Camera path icon" title="Camera direction">
+  <img src="docs/media/icons/toolPhoto.svg" width="52" alt="Capture icon" title="Deterministic capture">
 </p>
 
 <table>

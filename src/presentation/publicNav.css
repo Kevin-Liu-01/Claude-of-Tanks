@@ -137,18 +137,17 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
   opacity:.72;
   transition:opacity var(--cot-motion-fast) ease,transform var(--cot-motion-fast) var(--cot-ease-out);
 }
-.public-nav__icon--tank{width:20px;height:16px}
-.public-nav__icon--studio{width:18px;height:16px}
-.public-nav__icon--home{width:18px;height:16px}
-.public-nav__icon--docs{width:18px;height:16px}
+.public-nav__icon--tank{width:16px;height:16px}
+.public-nav__icon--studio{width:16px;height:16px}
+.public-nav__icon--home{width:16px;height:16px}
+.public-nav__icon--docs{width:16px;height:16px}
 .public-nav__play-icon{
-  width:17px;
-  height:14px;
+  width:15px;
+  height:15px;
   flex:none;
-  background:currentColor;
-  -webkit-mask:url('/brand/features/play.svg') center/contain no-repeat;
-  mask:url('/brand/features/play.svg') center/contain no-repeat;
+  fill:currentColor;
 }
+[data-ui-icon]>svg{display:block;width:100%;height:100%}
 .public-nav__links a[aria-current="page"]{
   color:#efeee9;
   border-color:rgba(233,163,70,.5);
@@ -250,7 +249,7 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
   letter-spacing:.05em;
 }
 .public-nav__menu a+a{margin-top:4px}
-.public-nav__menu .public-nav__icon{width:20px;height:18px;opacity:.86}
+.public-nav__menu .public-nav__icon{width:18px;height:18px;opacity:.86}
 
 @media ((height < 520px) or (width < 900px) or ((width < 1440px) and ((pointer: coarse) or (hover: none)))){
 :root body .public-nav{height:56px;background:rgba(6,9,12,.985);backdrop-filter:none;-webkit-backdrop-filter:none}
@@ -262,13 +261,13 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
 :root body .public-nav__links a{gap:5px;height:40px;padding-inline:10px;font-size:11px;letter-spacing:.01em}
 :root body .public-nav__locale{height:40px;padding-inline:8px}
 :root body .public-nav__icon{width:12px;height:12px}
-:root body .public-nav__icon--tank{width:17px;height:14px}
+:root body .public-nav__icon--tank{width:14px;height:14px}
 }
 @media ((height < 520px) or (width < 900px) or ((width < 1440px) and ((pointer: coarse) or (hover: none)))){:root body .public-nav__icon--studio,
 :root body .public-nav__icon--home,
-:root body .public-nav__icon--docs{width:16px;height:14px}}
+:root body .public-nav__icon--docs{width:14px;height:14px}}
 @media ((height < 520px) or (width < 900px) or ((width < 1440px) and ((pointer: coarse) or (hover: none)))){
-:root body .public-nav__play-icon{width:15px;height:12px}
+:root body .public-nav__play-icon{width:13px;height:13px}
 :root body .public-nav__links .public-nav__github{padding-inline:9px}
 :root body .public-nav__links .public-nav__cta{height:40px;padding-inline:12px}
 :root body .public-nav__menu-trigger{display:flex}

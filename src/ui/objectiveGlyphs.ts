@@ -12,22 +12,38 @@
  * green, enemy red, neutral chalk, contested amber — the HUD's blip colours.
  */
 
+import { TOKENS, tokenValue } from './tokens/tokens.ts';
+
 export type ObjectiveSide = 'own' | 'enemy' | 'neutral' | 'contested';
 
+/** `#rrggbb` at an alpha, as the rgba() canvas fills take. */
+function withAlpha(hex: string, alpha: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${alpha})`;
+}
+
+/**
+ * Team colours follow the HUD's blips, which keep the classic green/red identity until the HUD token restyle
+ * (brand-ui BUI-H1) moves every team mark at once; the rest are the brand tokens.
+ */
+const TEAM_PRESET = { cvd: 'classic' } as const;
+const OWN = tokenValue('team-own', TEAM_PRESET);
+const ENEMY = tokenValue('team-enemy', TEAM_PRESET);
+
 export const OBJECTIVE_PALETTE = Object.freeze({
-  own: '#7ee87e',
-  enemy: '#f05a5a',
-  neutral: '#e8eef3',
-  contested: '#f3a536',
-  ownFill: 'rgba(126,232,126,0.34)',
-  enemyFill: 'rgba(240,90,90,0.34)',
-  neutralFill: 'rgba(232,238,243,0.16)',
-  contestedFill: 'rgba(243,165,54,0.34)',
-  keyline: 'rgba(6,9,12,0.86)',
-  chalk: '#f4f8fc',
-  heal: '#65e68a',
-  ammo: '#f3a536',
-  ball: '#f6f9fc',
+  own: OWN,
+  enemy: ENEMY,
+  neutral: TOKENS['team-neutral'],
+  contested: TOKENS.accent,
+  ownFill: withAlpha(OWN, 0.34),
+  enemyFill: withAlpha(ENEMY, 0.34),
+  neutralFill: withAlpha(TOKENS['team-neutral'], 0.16),
+  contestedFill: withAlpha(TOKENS.accent, 0.34),
+  keyline: withAlpha(TOKENS['graphite-950'], 0.86),
+  chalk: TOKENS['ink-1'],
+  heal: TOKENS.ok,
+  ammo: TOKENS.accent,
+  ball: TOKENS['ink-1'],
 });
 
 export function sideColor(side: ObjectiveSide): string {

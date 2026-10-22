@@ -448,9 +448,8 @@ const SETTINGS_CSS = `
 .cot-gear{position:fixed;top:60px;right:26px;z-index:62;width:42px;height:42px;display:none;
   align-items:center;justify-content:center;cursor:pointer;
   background:rgba(11,15,20,.8);border:1px solid rgba(146,164,180,.3);
-  transition:border-color .12s;pointer-events:auto;}
-.cot-gear:hover{border-color:rgba(240,176,74,.6);}
-.cot-gear:hover svg path{fill:#f0b04a;}
+  transition:border-color .12s,color var(--dur-fast);pointer-events:auto;color:var(--ink-3);}
+.cot-gear:hover{border-color:rgba(240,176,74,.6);color:#f0b04a;}
 .cot-hints{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);z-index:45;
   display:none;align-items:center;gap:16px;padding:8px 20px;pointer-events:none;
   background:linear-gradient(180deg,rgba(9,13,17,.82),rgba(7,10,14,.7));
@@ -477,7 +476,7 @@ body.cot-touch-layout .cot-settings button{min-height:44px;}
 body.cot-touch-layout .cot-set-close{width:44px;height:44px;}
 `;
 
-const GEAR_SVG = uiIconSVG('settings', 22, '#9fb0bf');
+const GEAR_SVG = uiIconSVG('settings', 22);
 
 const ESC_HOLD_MS = 700; // hold Esc this long during capture to bind Escape itself
 const PAD_START_BUTTON = 9; // START closes the panel for controller players
