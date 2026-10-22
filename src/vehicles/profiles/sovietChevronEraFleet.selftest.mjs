@@ -8,6 +8,8 @@ import { FLEET_RENEWAL_DONORS } from '../fleetRenewalSpecs.ts';
 // 20260930.md): t72bu_1989 on t72bu (its Kontakt chevrons, "lower ERA chevron halves restored on both BUs"), t80uk (now
 // the T-80UK) on t80u and t64bv1 on t72b3. Their reactive armour is the donor study's own construction, not this
 // shared two-row carrier, so they leave the carrier cases below and are held to their donor's reactive sectors.
+// 2026-10-21: the T-64BV1 has its own build (t64bvX.ts: K-1 glacis field, skirt containers and turret horseshoe) on
+// the B3's physical frame; its containers still fill exactly the B3 frame's six gameplay sectors.
 const REBUILT = Object.freeze({ t72bu_1989: 't72bu', t80uk: 't80u', t64bv1: 't72b3' });
 const eraSectors = (id) => {
   const tank = createTank(id, null, { proceduralOnly: true, quality: 'high', camoSeed: 4242, geometryReceipt: true });
