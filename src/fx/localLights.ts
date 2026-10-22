@@ -15,6 +15,9 @@
 import * as THREE from 'three';
 
 export const LOCAL_LIGHT_SLOTS = 8;
+/** (240) a spot's (a headlight's) light on smoke and dust is the slot's own out to this range (m), then falls as the
+ *  inverse square: a beam lights the dust round its own vehicle, not a wreck's column 25 m down the road */
+const HEADLIGHT_SCATTER_NEAR_M = 7;
 
 // a type literal (not an interface): it spreads into a material's uniform map, which wants an index signature
 type LocalLightUniforms = {
@@ -44,6 +47,10 @@ vec3 localLightAt( vec3 p, float skipBursts ) {
     att *= att;
     vec4 lc = uLocalC[ i ];
     vec4 ld = uLocalD[ i ];
+    // (240, the night fire's critic: "the smoke over-lit far above the fire" — a burning wreck ahead of the player stood in
+    // its headlight beams, whose linear window lit the smoke and dust 25 m out at half their near strength) a spot's beam
+    // spreads: past HEADLIGHT_SCATTER_NEAR_M its light on the medium falls as the inverse square
+    if ( ld.w > -1.5 ) att *= min( 1.0, ${(HEADLIGHT_SCATTER_NEAR_M * HEADLIGHT_SCATTER_NEAR_M).toFixed(1)} / max( dist * dist, 1e-3 ) );
     float cone = ld.w < -1.5 ? 1.0 : smoothstep( ld.w, lc.w, dot( d / max( dist, 1e-3 ), ld.xyz ) );
     sum += lc.rgb * ( att * cone );
   }

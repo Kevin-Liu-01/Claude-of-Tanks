@@ -11,10 +11,16 @@ interface ThermalActor {
   state?:{speed?:number}|null;
 }
 /** (ac130-fx-228 follow-up, the coordinator: "a killed vehicle goes dark at once in thermal") a destroyed hull keeps its
- * heat and cools: its stand-in's emission falls as exp(-age / WRECK_COOL_S) from the battle (sim) time it was first
+ * heat and cools: its stand-in's heat share falls as exp(-age / WRECK_COOL_S) from the battle (sim) time it was first
  * seen destroyed, in WRECK_HEAT_LEVELS steps, until under 1 / WRECK_HEAT_LEVELS it is the cold wreck's own material.
- * Render-only and deterministic: the age is the simulation clock's. */
-export const WRECK_COOL_S = 20;
+ * Render-only and deterministic: the age is the simulation clock's. (240, the coordinator: "a wreck reads cold from ~5 s")
+ * 20 s -> 30 s: a burning hull holds its fire for its column's ~40 s; and the share now walks the emission down the heat
+ * lens's grade window (WRECK_HEAT_FLOOR, cotHeatEmission) instead of scaling it, which put a half-hot wreck under the
+ * window's cold edge (1.55) about ten seconds after the kill. */
+export const WRECK_COOL_S = 30;
+/** (240) the emission a wreck's heat share walks down to (cotHeatEmission): just under the heat lens's cold edge
+ *  (engine/post.ts thermalHeat: 1.55 .. 3.1), so a cooling wreck fades through the window's greys to cold */
+export const WRECK_HEAT_FLOOR = 1.45;
 export const WRECK_HEAT_LEVELS = 12;
 /** The wreck's heat share (0..1, quantised; 0 = cold) `ageS` seconds after it was destroyed. */
 export function wreckHeatLevel(ageS:number):number{
@@ -92,7 +98,7 @@ const HEAT_VERTEX=`
     vHeatNear = smoothstep( ${f(HEAT_NEAR_A)}, ${f(HEAT_NEAR_B)}, heatSpan );
   }`;
 const HEAT_FRAGMENT_PARS=`uniform vec4 uHeatEng0; // the engine box's min xyz, the falloff squared
-uniform vec4 uHeatEng1; // its max xyz
+uniform vec4 uHeatEng1; // its max xyz, 1 for a wreck (its heat share walks the emission to WRECK_HEAT_FLOOR)
 uniform vec4 uHeatK;
 uniform float uHeatPart;
 varying vec3 vHeatP;
@@ -108,7 +114,8 @@ float cotHeatEmission() {
     float dy = max( uHeatEng0.y - vHeatP.y, 0.0 ) + max( vHeatP.y - uHeatEng1.y - 0.6, 0.0 );
     e = ${f(HEAT_HULL)} + ${f(HEAT_ENGINE)} * exp( -( dot( dxz, dxz ) + dy * dy ) / max( uHeatEng0.w, 1e-3 ) );
   }
-  return mix( ${f(HEAT_FAR)}, e, vHeatNear ) * uHeatK.z;
+  float hot = mix( ${f(HEAT_FAR)}, e, vHeatNear );
+  return mix( hot * uHeatK.z, mix( ${f(WRECK_HEAT_FLOOR)}, hot, uHeatK.z ), uHeatEng1.w );
 }`;
 /** One vehicle's heat state and the uniforms its stand-ins share. */
 interface HeatRecord {
@@ -197,9 +204,10 @@ export function createThermalVehicles(){
     rec.clockS=timeS;
   }
   /** this frame's heat for a hull: its frame, gun heat and scale (side x wreck heat) beside its drive heat */
-  function apply(root:Object3D,actor:ThermalActor,enemy:boolean,heat=1,timeS?:number):void {
+  function apply(root:Object3D,actor:ThermalActor,enemy:boolean,heat=1,timeS?:number,wreck=false):void {
     const rec=record(root,actor);
     rec.inv.value.copy(root.matrixWorld).invert();
+    rec.eng1.value.w=wreck?1:0;
     const falloff=lightTune('THERMAL_ENGINE_R',HEAT_ENGINE_R);rec.eng0.value.w=falloff*falloff;
     const shot=typeof timeS==='number'&&actor.id?shots.get(actor.id):undefined;
     // the QA hook's THERMAL_HULL_MAP 0 lays no map (no span on the screen: the old flat white-hot) for a same-build A/B
@@ -270,15 +278,18 @@ export function createThermalVehicles(){
         const root=actor.visual?.root;
         if(!root)continue;
         const destroyed=!!actor.combat?.destroyed;
-        // every frame, lens or not: the time a hull is first seen destroyed (its wreck cools from there)
-        if(destroyed&&clocked&&!destroyedAt.has(root))destroyedAt.set(root,timeS);
-        else if(!destroyed&&destroyedAt.has(root))destroyedAt.delete(root);
+        // every frame, lens or not: the time a hull is first seen destroyed (its wreck cools from there); (240) and its
+        // meshes listed again, at the kill and at a revival: the kill adds meshes the live hull never had (the turret
+        // ring's plate and well, turretRingWell.ts), which drew in their own cold material, a black disc where the
+        // turret sat on a hull the lens saw hot
+        if(destroyed&&clocked&&!destroyedAt.has(root)){destroyedAt.set(root,timeS);meshes.delete(root);parts.delete(root);}
+        else if(!destroyed&&destroyedAt.has(root)){destroyedAt.delete(root);meshes.delete(root);parts.delete(root);}
         if(clocked)drive(record(root,actor),actor,destroyed,timeS);
         if(!active||!root.visible||!root.parent||actor.networkVisible===false)continue;
         if(!destroyed){apply(root,actor,actor.team!==team,1,clocked?timeS:undefined);continue;}
         if(!clocked)continue;
         const heat=wreckHeatLevel(timeS-(destroyedAt.get(root)??timeS));
-        if(heat>0)apply(root,actor,actor.team!==team,heat,timeS);
+        if(heat>0)apply(root,actor,actor.team!==team,heat,timeS,true);
       }
     },
     end,

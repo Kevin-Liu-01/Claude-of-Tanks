@@ -10,7 +10,7 @@ import { BoxGeometry, Group, Mesh, MeshStandardMaterial, ShaderLib } from 'three
 import {
   createThermalVehicles, driveHeatStep, gunHeatAt, gunShotHeat, heatPartOf, DRIVE_COOL_S, DRIVE_HOT_MPS, DRIVE_WARM_S,
   GUN_COOL_S, HEAT_ENGINE, HEAT_ENGINE_R, HEAT_FAR, HEAT_GEAR_COLD, HEAT_GEAR_HOT, HEAT_GUN_COLD, HEAT_GUN_HOT, HEAT_HULL,
-  HEAT_NEAR_A, HEAT_NEAR_B,
+  HEAT_NEAR_A, HEAT_NEAR_B, WRECK_HEAT_FLOOR,
 } from './thermalVehicles.ts';
 
 // ---- 1. the parts, by the visual's rig and names ----
@@ -87,9 +87,11 @@ for (const re of [
   new RegExp(`else if \\( uHeatPart > 0\\.5 \\) e = ${g(HEAT_GEAR_COLD)} \\+ ${g(HEAT_GEAR_HOT)} \\* uHeatK\\.x;`),
   /float dy = max\( uHeatEng0\.y - vHeatP\.y, 0\.0 \) \+ max\( vHeatP\.y - uHeatEng1\.y - 0\.6, 0\.0 \);/,
   new RegExp(`e = ${g(HEAT_HULL)} \\+ ${g(HEAT_ENGINE)} \\* exp\\( -\\( dot\\( dxz, dxz \\) \\+ dy \\* dy \\) / max\\( uHeatEng0\\.w, 1e-3 \\) \\);`),
-  new RegExp(`return mix\\( ${g(HEAT_FAR)}, e, vHeatNear \\) \\* uHeatK\\.z;`),
+  new RegExp(`float hot = mix\\( ${g(HEAT_FAR)}, e, vHeatNear \\);`),
+  // (240) a wreck's heat share walks the emission down to WRECK_HEAT_FLOOR (uHeatEng1.w 1); a live hull's scales it
+  new RegExp(`return mix\\( hot \\* uHeatK\\.z, mix\\( ${g(WRECK_HEAT_FLOOR)}, hot, uHeatK\\.z \\), uHeatEng1\\.w \\);`),
 ]) assert.match(fs, re, 'the shader is the map the mirror reads');
-function emission(part, p, drive, gun, near = 1, scale = 1) {
+function emission(part, p, drive, gun, near = 1, scale = 1, wreck = false) {
   let e;
   if (part === 2) e = HEAT_GUN_COLD + HEAT_GUN_HOT * gun;
   else if (part === 1) e = HEAT_GEAR_COLD + HEAT_GEAR_HOT * drive;
@@ -99,7 +101,8 @@ function emission(part, p, drive, gun, near = 1, scale = 1) {
     const dy = Math.max(ENGINE.min[1] - p[1], 0) + Math.max(p[1] - ENGINE.max[1] - 0.6, 0);
     e = HEAT_HULL + HEAT_ENGINE * Math.exp(-(dx * dx + dz * dz + dy * dy) / (HEAT_ENGINE_R * HEAT_ENGINE_R));
   }
-  return (HEAT_FAR + (e - HEAT_FAR) * near) * scale;
+  const hot = HEAT_FAR + (e - HEAT_FAR) * near;
+  return wreck ? WRECK_HEAT_FLOOR + (hot - WRECK_HEAT_FLOOR) * scale : hot * scale;
 }
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const seen = (e) => [smooth(1.55, 3.1, e * 0.62), smooth(1.55, 3.1, e)]; // the grazing and the facing face
@@ -108,6 +111,11 @@ const side = seen(emission(0, [1.9, 1.2, 1.5], 0, 0)), turretTop = seen(emission
 const gearCold = seen(emission(1, null, 0, 0)), gearHot = seen(emission(1, null, 1, 0));
 const gunCold = seen(emission(2, null, 0, 0)), gunHot = seen(emission(2, null, 0, 1));
 assert.ok(deck[0] === 1 && rear[0] === 1, `the engine deck and its exhaust end white-hot at any angle (${deck[0]}, ${rear[0]})`);
+// (240) a half-hot wreck seen whole from the gunship stays in the grade's window (a warm grey), where scaling its emission
+// put it under the cold edge; the floor sits just under that edge, so a cooling wreck fades to cold
+const wreckHalf = seen(emission(0, [0, 2.0, 0.5], 0, 0, 0, 0.5, true))[1], scaledHalf = seen(emission(0, [0, 2.0, 0.5], 0, 0, 0, 0.5))[1];
+assert.ok(wreckHalf > 0.5 && scaledHalf < 0.25, `a half-hot wreck reads warm (${wreckHalf.toFixed(2)}; scaled: ${scaledHalf.toFixed(2)})`);
+assert.ok(WRECK_HEAT_FLOOR < 1.55 && seen(emission(0, [0, 2.0, 0.5], 0, 0, 0, 0.04, true))[1] < 0.02, 'and fades to cold');
 assert.ok(side[1] <= 0.45 && turretTop[1] <= 0.45, `the hull sides and the turret cooler (${side[1].toFixed(2)}, ${turretTop[1].toFixed(2)} facing)`);
 assert.ok(gearCold[1] === 0 && gearHot[0] >= 0.6, `the running gear cold at rest, warm after driving (${gearHot[0].toFixed(2)} grazing)`);
 assert.ok(gunCold[1] <= 0.1 && gunHot[0] === 1, `the barrel cold, white-hot after a run of shots`);

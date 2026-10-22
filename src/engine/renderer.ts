@@ -20,6 +20,7 @@ import { routeShadowOnlyLayer } from './renderLayers.ts';
 import { installContextResourceLifetime } from './contextResourceLifetime.ts';
 
 import { createContextRecovery, type ContextRecoveryOwner, type RecoveryNotice } from './contextRecovery.ts';
+import { shapeLampPointLights } from './lampLightShape.ts';
 
 type GameRenderer = THREE.WebGLRenderer & {
   userData: {
@@ -94,6 +95,8 @@ export function createRenderer(container: HTMLElement): GameRenderer {
   // a pooled explosion or muzzle light a few centimetres from glossy paint, glass or water pushed GGX specular past the
   // half-float HDR range (Inf, then NaN through TAA and bloom: a black frame). The floor sits at 0.25 m (16x).
   limitPointLightFalloff();
+  // (240) the night pool's town lamps light as lanterns: their halo kept, dark up the facade over them (lampLightShape.ts)
+  shapeLampPointLights();
   renderer.domElement.addEventListener('webglcontextlost', recovery.lost, false);
   renderer.domElement.addEventListener('webglcontextrestored', recovery.restored, false);
   const dispose = renderer.dispose.bind(renderer);

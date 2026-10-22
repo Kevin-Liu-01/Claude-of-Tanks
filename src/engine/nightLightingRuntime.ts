@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { LAMP_LIGHT_DECAY } from './lampLightShape.ts';
 
 type NightLightKind = 'headlight' | 'building' | 'shtora' | 'marker';
 type LocalPoint = readonly [number, number, number];
@@ -386,7 +387,8 @@ function createSpots(group: THREE.Group, count: number): LightSlot<THREE.SpotLig
 
 function createPoints(group: THREE.Group, count: number): LightSlot<THREE.PointLight>[] {
   return Array.from({ length: count }, (_, index) => {
-    const light = new THREE.PointLight(0xffd79e, 0, 18, 2);
+    // (240) the lamp's decay marks it a lantern for the lit programs (lampLightShape.ts): dark up the wall over its glass
+    const light = new THREE.PointLight(0xffd79e, 0, 18, LAMP_LIGHT_DECAY);
     light.name = `night-building-light-${index}`; light.castShadow = false;
     group.add(light);
     return { light, source: null };
