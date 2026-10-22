@@ -6,8 +6,8 @@
 //
 // For every turreted tank (or --ids), on the shipped builds:
 //   receipt  the ring as the anatomy generator measures it (turretRingWell.ts measureTurretRing, with its exterior pass,
-//            on the geometryReceipt build), and where the anatomy's turretRing volume moves with it (alignTurretRing: onto
-//            the built seat's axis, centred on the deck round the race) — the ids the next tank:anatomy:update touches;
+//            on the geometryReceipt build), and how far the anatomy's turretRing volume sits from it (informational: the
+//            volume is a sim module and the 233 landing leaves it, and the generated anatomy, as they were);
 //   live     the battle builds (the player's HIGH geometry, a bot's LOW) with that receipt registered: intact they hold
 //            no ring plate and no cut copy; setDestroyed puts exactly one plate (one mesh, its own ring material) on
 //            rig_hull, centred on the built seat and seated on the receipt's deck, inside the turret base, and swaps the
@@ -23,7 +23,7 @@
 //   node tools/turret-ring-census.mjs --all [--shard=k/n] [--out=dir] [--base=fp.jsonl] [--gate]
 //   node tools/turret-ring-census.mjs --all --fingerprints-only --out=dir   # the base commit's fingerprints
 //   node tools/turret-ring-census.mjs --ids=... --receipts-from=<dir>/src/vehicles/combatAnatomyGroups  # a generated tree's
-// The receipt is --receipts-from's, else the published calibration's (after tank:anatomy:update), else measured here.
+// The receipt is --receipts-from's, else a registered calibration's (none is published), else measured here.
 import { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import * as THREE from 'three';
@@ -231,8 +231,8 @@ for (const id of ids) {
     receipt ??= measureTurretRing(hull, turret, turretRingRadius(spec.armor), { exterior: true });
   } finally { receiptVisual.dispose(); }
   row.receipt = receipt;
-  // the anatomy's turretRing volume today and once alignTurretRing reads the receipt (the volume translates onto the
-  // seat's axis and the deck; its size and every later step are unchanged)
+  // the anatomy's turretRing volume today against the built ring (informational: were it re-centred on the seat's axis
+  // and the deck, a sim change the 233 landing does not make)
   const box = spec.armor.modules?.find((module) => module.module === 'turretRing');
   if (box && receipt) {
     const origin = box.turretLocal ? spec.armor.turretPivot : [0, 0, 0];

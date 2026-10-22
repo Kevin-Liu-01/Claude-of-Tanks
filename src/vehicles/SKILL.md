@@ -199,11 +199,13 @@ its rim closes the cut faces. The plate takes the hull's dents at its vertices
 and ramps with the burn clock (`ramp`), so it moves with the cut deck;
 `resetDestroyed()`/`dispose()` put every mesh back on the geometry it held, so
 an intact build holds nothing of it and its fingerprint and sealed ledgers never
-see it. Its seat is the anatomy receipt's `turretRing` (gen-combat-anatomy
-measures the built seat, the deck round the race, the race inside the turret
-base and the deck's outline, and with its exterior pass the floor and the well's
-wall clear of the hull's skin; `alignTurretRing` centres the turretRing volume
-on it); a missing or stale receipt measures the build once. A cook-off hulk's
+see it. Its seat is `measureTurretRing` on the visual's own build, once (the
+built seat, the deck round the race, the race inside the turret base and the
+deck's outline; a geometry-only hulk build adds the exterior pass, the floor and
+the well's wall clear of the hull's skin). A calibration `turretRing` receipt
+can stand in for it, but the generator does not publish one: the ring is
+presentation only, and the anatomy's turretRing volume (a sim module) keeps its
+own law. A cook-off hulk's
 bake cuts its hull-side parts exactly after the crumple and merges the well's
 real geometry with its placement budget unchanged. `node tools/turret-ring-census.mjs
 --all --gate` is the fleet receipt; `node tools/turret-ring-probe.mjs --ids=… --gate`

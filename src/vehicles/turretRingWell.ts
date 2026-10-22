@@ -11,9 +11,10 @@
  *
  *  - The ring as built (`measureTurretRing`): the rig_turret seat, the deck the race lies on (the deck round its rim),
  *    the race's reach (inside the turret base, from the anatomy's turret-ring radius) and how far the deck falls away
- *    under its rim, in the rig_hull frame. tools/gen-combat-anatomy.mjs records it in every turreted tank's calibration
- *    receipt (`turretRing`), where the anatomy's turretRing volume centres on it too (combatAnatomy.ts alignTurretRing);
- *    a visual whose receipt is missing or stale measures its own build once (the same function).
+ *    under its rim, in the rig_hull frame. A calibration receipt (`turretRing`) can carry it, but none is published yet
+ *    (the 233 landing keeps the sim and the generated anatomy as they are: the anatomy's turretRing volume is a sim
+ *    module and keeps its own law), so a visual measures its own build once (the same function), at the battle warm's
+ *    covered stage or at the kill; a stale receipt is measured over the same way.
  *  - The ring's prism: one polygon round the race's rim (HIGH 64 sides, LOW 48; `turretRingSides`), from under the
  *    deck's plates to the turret's band. A live wreck (battle, killcam, Studio, gallery) swaps every hull mesh crossing
  *    it for a copy without it at the kill (`cutTurretRingMeshes`, as the gun's bend swaps its meshes), and back at the
@@ -694,6 +695,10 @@ function wholly(plane: RingPlane, poly: ArrayLike<number>, outside: boolean): bo
  * prism: every piece near the race then lies within one sector, its corners moved by the field at their own points, and
  * the field moves a corner at most 0.72 of its distance from the rim (|f'| ≤ 4 · 0.28 / 0.6 · 0.385 for the deepest,
  * tightest dent), so no piece folds back over it. A short face follows the field closely enough as it is.
+ * (233) Every split goes through the sectors first, the zone only choosing which long faces are refined: clipped
+ * against the polygons' sides one after another, a long face's outside left a long sliver between each two neighbouring
+ * sides' lines, out to its far edge, and a dent folded those over (the Hetman II's deck showed a fan of holes beside the
+ * ring). Within one sector a piece faces one side of each polygon, so one clip per polygon cuts it exactly.
  */
 const LIVE_ZONE_M = 0.36;
 const LIVE_BAND_M = 0.08;
@@ -702,7 +707,7 @@ const REFINE_EDGE_M = 0.09;
 /** Nor is a face refined that lies wholly this far under the race's top (m): past the most a dent lifts a corner. */
 const REFINE_UNDER_M = 0.3;
 
-/** A cutter: the prism, and (a live cut's) its refinement: the zone's polygon, the band's and the sectors' lines. */
+/** A cutter: the prism and the sectors' lines, and (a live cut's) its refinement: the zone's polygon and the band's. */
 interface RingCutter {
   readonly prism: RingPrism;
   readonly zone: RingPrism | null;
@@ -712,12 +717,10 @@ interface RingCutter {
 
 function ringCutter(cut: TurretRingCut, refine: boolean): RingCutter {
   const sectors: RingPlane[] = [];
-  if (refine) {
-    // the full lines through opposite corners (the polygon has an even number of sides)
-    for (let k = 0; k < cut.sides / 2; k++) {
-      const a = (k / cut.sides) * Math.PI * 2, tx = Math.cos(a), tz = -Math.sin(a);
-      sectors.push(ringPlane(tx, 0, tz, cut.cx * tx + cut.cz * tz));
-    }
+  // the full lines through opposite corners (the polygon has an even number of sides)
+  for (let k = 0; k < cut.sides / 2; k++) {
+    const a = (k / cut.sides) * Math.PI * 2, tx = Math.cos(a), tz = -Math.sin(a);
+    sectors.push(ringPlane(tx, 0, tz, cut.cx * tx + cut.cz * tz));
   }
   return {
     prism: ringPrism(cut),
@@ -746,10 +749,10 @@ function sectorOf(cut: TurretRingCut, poly: ArrayLike<number>): number {
 /**
  * Split one triangle (hull-frame corners `t`, 9 numbers) at the cutter. Returns false when it lies clear (keep it as it
  * is). Otherwise its pieces go to `emit` (disjoint, covering exactly the triangle less the prism): clipped against the
- * caps (what lies under the floor or over the top is kept as it is); a long face in the zone split on the zone's polygon
- * (what lies past it kept whole), its sectors, and per wedge its side of the band and of the prism; any other face across
- * the prism clipped against each side in turn. What lies inside the prism is gone; `onRim(k, y)` hears every point side
- * k leaves on that side of the polygon (the cut faces' reach on bearing k).
+ * caps (what lies under the floor or over the top is kept as it is), split on the sectors' lines, and per wedge (one
+ * sector, side k) its side of the band (a long face in the zone) and of the prism. A face across the prism that nothing
+ * inside it took is kept as it is. What lies inside the prism is gone; `onRim(k, y)` hears every point side k leaves on
+ * that side of the polygon (the cut faces' reach on bearing k).
  */
 function splitAtRing(cutter: RingCutter, t: ArrayLike<number>, emit: (poly: number[]) => void,
   onRim: ((k: number, y: number) => void) | null): boolean {
@@ -786,17 +789,16 @@ function splitAtRing(cutter: RingCutter, t: ArrayLike<number>, emit: (poly: numb
     split = true;
     if (!rest.length) break;
   }
-  if (rest.length && refine && cutter.zone && cutter.band) {
-    // past the zone's polygon: kept whole
-    for (const side of cutter.zone.sides) {
-      if (wholly(side, rest, false)) continue;
-      keep(clipPolygon(rest, side, true));
-      rest = clipPolygon(rest, side, false);
-      split = true;
-      if (!rest.length) break;
-    }
-    // inside it: the wedges (both sides of each line through two opposite corners)
-    let wedges = rest.length ? [rest] : [];
+  const band = refine ? cutter.band : null;
+  // between the caps a face that is not refined is split only if the prism takes something of it
+  if (rest.length && !band && prism.sides.some((side) => wholly(side, rest, true))) {
+    keep(rest);
+    rest = [];
+  }
+  if (rest.length) {
+    // the wedges: both sides of each line through two opposite corners
+    let wedges = [rest];
+    let sectored = false;
     for (const line of cutter.sectors) {
       const next: number[][] = [];
       for (const poly of wedges) {
@@ -804,42 +806,40 @@ function splitAtRing(cutter: RingCutter, t: ArrayLike<number>, emit: (poly: numb
         const a = clipPolygon(poly, line, true), b = clipPolygon(poly, line, false);
         if (a.length) next.push(a);
         if (b.length) next.push(b);
-        split = true;
+        sectored = true;
       }
       wedges = next;
     }
     // per wedge, its side of the band (both kept) and of the prism (its inside gone)
+    const kept = pieces.length;
+    let taken = false;
     for (const wedge of wedges) {
       const k = sectorOf(cut, wedge);
-      const bandSide = cutter.band.sides[k], rimSide = prism.sides[k];
-      if (wholly(bandSide, wedge, true)) { keep(wedge); continue; }
+      const rimSide = prism.sides[k];
       let inner = wedge;
-      if (!wholly(bandSide, wedge, false)) {
-        keep(clipPolygon(wedge, bandSide, true));
-        inner = clipPolygon(wedge, bandSide, false);
-        split = true;
+      if (band) {
+        const bandSide = band.sides[k];
+        if (wholly(bandSide, wedge, true)) { keep(wedge); continue; }
+        if (!wholly(bandSide, wedge, false)) {
+          keep(clipPolygon(wedge, bandSide, true));
+          inner = clipPolygon(wedge, bandSide, false);
+          sectored = true;
+        }
+        if (!inner.length) continue;
       }
-      if (!inner.length) continue;
       if (wholly(rimSide, inner, true)) { keep(inner); continue; }
-      split = true;
+      taken = true;
       keep(clipPolygon(inner, rimSide, true, sideCut(k)));
     }
-    rest = [];
-  }
-  // a face across the prism: its outside pieces are kept, its inside is gone
-  if (rest.length && !prism.sides.some((side) => wholly(side, rest, true))) {
-    split = true;
-    for (let k = 0; k < cut.sides; k++) {
-      const side = prism.sides[k];
-      if (wholly(side, rest, false)) continue;
-      keep(clipPolygon(rest, side, true, sideCut(k)));
-      rest = clipPolygon(rest, side, false);
-      if (!rest.length) break;
+    if (taken || (band && sectored)) split = true;
+    else {
+      // nothing taken and nothing to refine: the face between the caps stays whole
+      pieces.length = kept;
+      keep(rest);
     }
     rest = [];
   }
   if (!split) return false;
-  if (rest.length) keep(rest);
   for (const poly of pieces) emit(poly);
   return true;
 }

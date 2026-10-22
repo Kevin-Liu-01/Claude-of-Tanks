@@ -4,8 +4,7 @@
 //
 //  - the measure on a built hull and turret (the deck round the race's rim, the turret base, the skirt, the floor) and
 //    its exterior pass (a hull narrower than the ring under its deck: the well narrows to a ledge);
-//  - the anatomy: alignTurretRing centres the turretRing volume on the receipt's seat and deck, and keeps today's law
-//    without one;
+//  - the anatomy: the turretRing volume (a sim module) keeps today's law whether or not a ring receipt is present;
 //  - the live cut: nothing of a hull face left inside the prism, every attribute and group carried, a long face past the
 //    rim split into its sectors, the cut faces' reach per side; the plate: faces up, its band out and in, the hull's dents
 //    at its vertices (its rim never under the field's bow), the burn clock's share; the well's shader;
@@ -119,7 +118,7 @@ const polygonArea = (r, sides) => 0.5 * sides * r * r * Math.sin((2 * Math.PI) /
   assert.equal(turretRingRadius({ modules: [] }), 0.85, 'no ring volume: the fleet median');
 }
 
-// ---- the anatomy: alignTurretRing on the receipt ------------------------------------------------------------------
+// ---- the anatomy: the ring's receipt never moves the sim's turretRing volume ----------------------------------------
 {
   const source = getSpec('t72b3');
   const ring = { module: 'turretRing', min: [-0.8, 1.2, -0.7], max: [0.8, 1.45, 0.9], turretLocal: false };
@@ -145,11 +144,10 @@ const polygonArea = (r, sides) => 0.5 * sides * r * r * Math.sin((2 * Math.PI) /
   close(centre(legacy, 1), 1.5 - 0.3, 1e-9, 'without a receipt: the calibrated turret bottom plus the spec pivot (today)');
   close(centre(legacy, 2), 0.1, 1e-9, 'and its authored centre');
   const built = fixture({ seat: [0.02, 1.62, 0.45], deckY: 1.48, rimR: 0.86, skirt: 0.006, footR: 1.2, floorY: 0.55 });
-  close(centre(built, 0), 0.02, 1e-9, 'the volume on the built seat\'s axis (x)');
-  close(centre(built, 2), 0.45, 1e-9, 'the volume on the built seat\'s axis (z)');
-  close(centre(built, 1), 1.48, 1e-9, 'centred on the deck under the built ring');
-  close(built.max[1] - built.min[1], 0.25, 1e-9, 'its thickness and footprint kept');
-  close(built.max[0] - built.min[0], 1.6, 1e-9, 'its lateral size kept');
+  for (let axis = 0; axis < 3; axis++) {
+    close(built.min[axis], legacy.min[axis], 1e-9, `a ring receipt leaves the volume as it was (min ${axis})`);
+    close(built.max[axis], legacy.max[axis], 1e-9, `a ring receipt leaves the volume as it was (max ${axis})`);
+  }
 }
 
 // ---- the live cut ------------------------------------------------------------------------------------------------
