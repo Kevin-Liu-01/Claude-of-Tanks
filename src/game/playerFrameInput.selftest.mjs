@@ -22,7 +22,7 @@ function createInput() {
     locked: false,
     pad: false,
     cursorAim: false,
-    virtualActive: false,
+    virtualOn: false,
     onAction(action, listener) {
       let group = actions.get(action);
       if (!group) actions.set(action, group = new Set());
@@ -41,7 +41,7 @@ function createInput() {
     isLocked: () => runtime.locked,
     padActive: () => runtime.pad,
     isCursorAim: () => runtime.cursorAim,
-    virtualActive: () => runtime.virtualActive,
+    virtualActive: () => runtime.virtualOn,
     consumeMouseDelta(out) {
       out.x = runtime.mouse.x;
       out.y = runtime.mouse.y;
@@ -121,6 +121,14 @@ assert.equal(owner.poll(sample).wheel, 0);
 assert.equal(player.input.fire, true);
 
 forced = false;
+input.locked = false;
+owner.poll(sample);
+assert.equal(player.input.fire, false, 'a held fire key fires only through a fire lane');
+input.virtualOn = true;
+owner.poll(sample);
+assert.equal(player.input.fire, true, 'the touch stick is a fire lane');
+input.virtualOn = false;
+input.locked = true;
 input.state.fire = false;
 input.state.forward = false;
 input.state.right = false;

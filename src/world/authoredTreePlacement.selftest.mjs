@@ -45,7 +45,7 @@ const dependencies = { THREE, mulberry32, treeRichness, TREE_ARCHETYPES, treeTru
   // trees lane (2026-10-05): an opted-in map's stands inside its settlement rect (vegetation.ts authoredInSettlement)
   insideClearPolygon, plannedSiteClearances,
   // symmetric deployments (modes lane 2026-10-08): the slots' clearings, the trees in them dropped after placement
-  deploymentClearings, excludeVegetation,
+  deploymentClearings,
   // (the maps lane, 228) a civic plan's trees and lawns (world/civic)
   civicTreeStations, civicLawnTest, civicPavedRooms };
 const builder = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* placement(heightField, cfg) {
