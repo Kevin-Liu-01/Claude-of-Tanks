@@ -242,3 +242,38 @@ console.log('matchSessionP2p.selftest: the host boot and its reports, the start 
 }
 for (const core of cores) core.dispose();
 console.log('matchSessionP2p.selftest: the re-entry decline and its fallback boot verified; a peer whose host never links gives up at the window');
+
+// ---- (2026-10-20, item/mp-rejoin-229; the 229 e2e under load) a peer whose client already closed its match link (its
+//      recovery ran past the grace: the round is lost) is elected anyway: no host boots and nothing throws — replacing the
+//      closed link threw "transport closed" as an unhandled rejection in the page
+{
+  const { transport, client, session } = await joinedClient();
+  session.dispose();
+  const matchId = 'm4-0000f00d';
+  const hostSecret = createHash('sha256').update(`${SEAT_SECRET}:${matchId}`).digest('hex');
+  const token = signSeatToken(hostSecret, { v: 1, roomId: roomCode, seat: 0, playerId: 'me', name: 'Me', team: 'alpha', specId: 'm1a1_abrams_hc', iat: Date.now() - 1000, exp: Date.now() + 3_600_000 });
+  const rejections = [];
+  const onRejection = (error) => rejections.push(error);
+  process.on('unhandledRejection', onRejection);
+  const peer = new MatchSession({
+    room: client, clock: () => performance.now(),
+    createPresentation: () => { const presentation = new RecordingPresentation(8); return { adapter: presentation, controls: null, prediction: null, dispose: () => presentation.dispose() }; },
+    p2p: { createPeerConnection: world.createPeerConnection, createHostPort: createInProcessHostPort({ world: 'terrain', onCore: (core) => cores.push(core), reportIntervalMs: 500 }), manifestBase: null, tier: 'desktop', countdownS: 1 },
+  });
+  peer.start();
+  transport.deliver({ type: 'room_state', payload: { room: snapshotWith({ transport: 'p2p', hostId: 'other', generation: 1, since: 2000 }) } });
+  transport.deliver({ type: 'match_start', payload: { matchId, round: 1, mapId: 'verdant', mode: 'standard', seed: 7, seat: 0, team: 'alpha', seatToken: token, matchUrl: p2pMatchUrl(roomCode, 1), hostId: 'other', expiresAt: Date.now() + 3_600_000 } });
+  await until(() => peer.phase === 'match' && peer.role === 'peer', 'the peer entered');
+  // the client's recovery gave up: it closes its own match link (MatchClient.stepRecovery)
+  peer.match.transport.close('timeout', 'recovery');
+  const coresBefore = cores.length;
+  transport.deliver({ type: 'host_changed', payload: { hostId: 'me', generation: 2, resumeTick: 100, reason: 'timeout', hostSecret } });
+  await sleep(300);
+  assert.equal(rejections.length, 0, `no unhandled rejection (${rejections.map((error) => error?.message).join(', ')})`);
+  assert.equal(cores.length, coresBefore, 'no host thread booted for a lost round');
+  assert.notEqual(peer.role, 'host');
+  process.off('unhandledRejection', onRejection);
+  peer.dispose(); client.dispose();
+}
+for (const core of cores) core.dispose();
+console.log('matchSessionP2p.selftest: an election onto a seat whose match link is already closed boots nothing and throws nothing');

@@ -42,6 +42,7 @@
  * src/mp/session/browserComposition.ts — but the proof keeps the load honest rather than leaning on it).
  */
 import { mkdir, writeFile } from 'node:fs/promises';
+import { writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import net from 'node:net';
 import { join, resolve } from 'node:path';
@@ -124,6 +125,8 @@ const report = { pass: false, failures: [], findings: [], errors: [], steps: [],
   options: { roomKind, gameMode: gameModeOption || null, map: mapOption || null, phoneSeat: phoneSeat || null, hostThrottle: hostThrottle || null, seatThrottle: seatThrottle || null, forceRelay, dist: distDir || null, shootS, profileS, separateBrowsers },
   roles: { swaps: [], hostAtReveal: null, elected: null }, roomLog: {}, bandwidth: null, measure: null, entry: null };
 const failures = report.failures;
+/** (2026-10-17) the room ended the match before the migration: the run's later steps have nothing to measure. */
+class MatchEndedEarly extends Error {}
 const step = (name, detail = {}) => { report.steps.push({ name, atMs: elapsedMs(), ...detail }); log(`${name} (${(elapsedMs() / 1000).toFixed(1)} s)${Object.keys(detail).length ? ` ${JSON.stringify(detail)}` : ''}`); };
 const errors = report.errors;
 function observe(page, label) {
@@ -163,6 +166,21 @@ function installPageRecorder(forceRelay = false) {
     new PerformanceObserver((list) => { for (const entry of list.getEntries()) if (longtasks.length < 2000) longtasks.push({ start: Math.round(entry.startTime), ms: Math.round(entry.duration) }); })
       .observe({ type: 'longtask', buffered: true });
   } catch { /* no long-task timing in this browser */ }
+  // (2026-10-21, item/mp-rejoin-229) long animation frames over 150 ms with their script attribution (where a stall's time
+  // went, at no profiler cost): the returning tab's entry reads them against its stages (report.a2LongFrames)
+  const longFrames = window.__MP_E2E_LONG_FRAMES = [];
+  try {
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        if (entry.duration < 150 || longFrames.length >= 400) continue;
+        longFrames.push({ start: Math.round(entry.startTime), ms: Math.round(entry.duration), blockingMs: Math.round(entry.blockingDuration ?? 0),
+          scripts: (entry.scripts ?? []).filter((script) => script.duration >= 20).sort((a, b) => b.duration - a.duration).slice(0, 6).map((script) => ({
+            ms: Math.round(script.duration), invoker: String(script.invoker ?? '').slice(0, 80), type: script.invokerType ?? null,
+            fn: script.sourceFunctionName || null, src: String(script.sourceURL ?? '').replace(/^https?:\/\/[^/]+/, '').slice(0, 80),
+            char: script.sourceCharPosition ?? null, forcedLayoutMs: Math.round(script.forcedStyleAndLayoutDuration ?? 0) })) });
+      }
+    }).observe({ type: 'long-animation-frame', buffered: true });
+  } catch { /* no LoAF in this browser */ }
   // (2026-10-14, the §7 side-by-side) each presented frame's interval while `track` is on (the frame cost on every page),
   // and the smoothness sampler: every other hull's presented pose frame to frame — a step well past what its own speed
   // explains is a visible snap (a first sight or a hull coming out of the fog is not: the previous frame must have shown it)
@@ -749,6 +767,31 @@ async function joinAsAlly(page, label, invite) {
 let rooms = null;
 let vite = null;
 let browser = null;
+// (2026-10-20, item/mp-rejoin-229) a run stopped from outside (its alarm, a kill) closes its browsers first: puppeteer's
+// Chromes sit in their own process groups and otherwise go on rendering as orphans
+// and leaves what it measured so far: the report as it stands and, with --a2-profile, the returning tab's profile
+let signalProfile = null;
+const saveOnSignal = async (signal) => {
+  report.stoppedBy = signal;
+  report.wallMs = elapsedMs();
+  report.pass = false;
+  if (signalProfile) {
+    const profile = await Promise.race([signalProfile.send('Profiler.stop').then((result) => result.profile).catch(() => null), sleep(5000).then(() => null)]);
+    if (profile) await writeFile(join(outputDir, signalProfile.file), JSON.stringify(profile)).catch(() => {});
+  }
+  // synchronous: a starved process may be ended before an asynchronous write lands, leaving an empty report
+  try { writeFileSync(join(outputDir, 'report.json'), JSON.stringify(report, null, 2)); } catch { /* the directory is gone */ }
+};
+for (const signal of ['SIGTERM', 'SIGINT', 'SIGHUP', 'SIGALRM']) {
+  process.once(signal, () => {
+    const open = [browser, ...extraBrowsers].filter(Boolean);
+    const code = 128 + ({ SIGHUP: 1, SIGINT: 2, SIGALRM: 14, SIGTERM: 15 })[signal];
+    void Promise.race([saveOnSignal(signal), sleep(8000)]).then(() => Promise.race([Promise.allSettled(open.map((entry) => entry.close())), sleep(5000)])).finally(() => {
+      for (const entry of open) { try { entry.process()?.kill('SIGKILL'); } catch { /* gone */ } }
+      process.exit(code);
+    });
+  });
+}
 const pages = { a: null, b: null, c: null, a2: null };
 let contextA = null;
 const contexts = { a: null, b: null, c: null };
@@ -870,8 +913,19 @@ try {
   }
   // --game-mode / --map: the admin sets them in the lobby (the controls the player uses), before anyone readies
   if (gameModeOption) {
-    await activate(pages.a, `.cot-play [data-game-mode="${gameModeOption}"]`);
+    // (2026-10-17) the room lobby keeps the rule cards in a section it does not lay out, so a pointer click finds no box
+    // ("Node is either not clickable or not an Element"): the card's own click handler sends set_game_mode as the host
+    await pages.a.evaluate((mode) => {
+      const card = document.querySelector(`.cot-play [data-game-mode="${mode}"]`);
+      if (!card) throw new Error(`no game mode card ${mode}`);
+      card.click();
+    }, gameModeOption);
     await waitFor(pages.a, (mode) => document.querySelector(`.cot-play [data-game-mode="${mode}"]`)?.classList.contains('on'), `A game mode ${gameModeOption}`, 15_000, { args: [gameModeOption] });
+    if (!live) {
+      const roomMode = () => rooms.room(report.room.code)?.room?.settings?.gameMode ?? null;
+      for (let waited = 0; roomMode() !== gameModeOption && waited < 15_000; waited += 100) await sleep(100);
+      if (roomMode() !== gameModeOption) report.findings.push(`--game-mode ${gameModeOption} did not take: the room plays ${roomMode()}`);
+    }
   }
   if (mapOption) {
     // (2026-10-14) since the play menu syncs the host's Garage pick into the room (syncGarageSelection: set_map), the
@@ -891,7 +945,7 @@ try {
       if (roomMap() !== mapOption) report.findings.push(`--map ${mapOption} did not take: the room plays ${roomMap()}`);
     }
   }
-  if (gameModeOption || mapOption) step('lobby-settings', { gameMode: gameModeOption || null, map: mapOption || null, roomMap: live ? null : rooms.room(report.room.code)?.room?.settings?.mapId ?? null });
+  if (gameModeOption || mapOption) step('lobby-settings', { gameMode: gameModeOption || null, map: mapOption || null, roomMap: live ? null : rooms.room(report.room.code)?.room?.settings?.mapId ?? null, roomGameMode: live ? null : rooms.room(report.room.code)?.room?.settings?.gameMode ?? null });
   await activate(pages.c,'.cot-play [data-action="ready"]');
   await activate(pages.b,'.cot-play [data-action="ready"]');
   await activate(pages.a,'.cot-play [data-action="ready"]');
@@ -912,6 +966,13 @@ try {
     waitFor(pages.b, inBattle, 'B battle revealed', 240_000, { entryOf: 'B' }),
     waitFor(pages.c, inBattle, 'C battle revealed', 240_000, { entryOf: 'C' }),
   ]);
+  // (2026-10-20, item/mp-rejoin-229) each seat's own cold entry: its boot stages, the entry's stages, its world build
+  report.joinLoads = Object.fromEntries(await Promise.all(['a', 'b', 'c'].map(async (label) => [label.toUpperCase(),
+    await pages[label].evaluate(() => JSON.parse(JSON.stringify({
+      boot: Object.fromEntries(Object.entries(window.__BOOT_TIMINGS ?? {}).filter(([, value]) => typeof value === 'number').map(([key, value]) => [key, Math.round(value)])),
+      entry: window.__NETWORK_LOAD ? { stages: window.__NETWORK_LOAD.stages, totalMs: window.__NETWORK_LOAD.totalMs } : null,
+      world: window.__WORLD_LOAD ?? null,
+    }))).catch(() => null)])));
   if(mobile||phoneSeat==='c'){
     const baseViewport = mobile ? mobileViewport : phoneViewport;
     for(const viewport of [baseViewport,{...baseViewport,width:568,height:256},{...baseViewport,width:320,height:568},baseViewport]){
@@ -1040,6 +1101,15 @@ try {
     step('profiled', Object.fromEntries(Object.entries(report.profile).map(([label, row]) => [label, row ? { msPerFrame: row.msPerFrame, mpMsPerFrame: row.areas?.mp?.msPerFrame ?? null } : null])));
   }
 
+  // (2026-10-17) a match the room already ended (bots against slow seats under load) has no host to migrate and no round to
+  // return to: the run stops here as INCONCLUSIVE, naming the step the end came after, rather than failing 98 s later on
+  // "neither B nor C hosts" with every reading after the end taken from the result screen
+  const endedBeforeClose = !live ? report.roomEvents.find((event) => event.kind === 'match_ended') ?? null : null;
+  if (endedBeforeClose) {
+    const afterStep = report.steps.filter((row) => row.atMs <= endedBeforeClose.atMs).at(-1)?.name ?? null;
+    report.matchEndedEarly = { atMs: endedBeforeClose.atMs, result: endedBeforeClose.result ?? null, reason: endedBeforeClose.reason ?? null, afterStep };
+    throw new MatchEndedEarly(`migration and rejoin: the room ended the match (${endedBeforeClose.reason ?? '?'}) at ${(endedBeforeClose.atMs / 1000).toFixed(1)} s, after step ${afterStep}, before A closed`);
+  }
   // ---- A closes its tab: after the grace the room elects B; B resumes from its keyframe, C follows; no reset
   // both peers' views of each other and of themselves: the room may elect either (the labels follow the election)
   let lastSeenByC = await sample(pages.c, ids.b);
@@ -1133,6 +1203,7 @@ try {
       await a2ProfileSession.send('Profiler.setSamplingInterval', { interval: 1000 }).catch(() => {});
       await a2ProfileSession.send('Profiler.start').catch(() => {});
       a2ProfileStartedAt = elapsedMs();
+      signalProfile = Object.assign(a2ProfileSession, { file: a2ProfileEntry ? 'a2-entry.cpuprofile' : 'a2-garage.cpuprofile' });
     }
   }
   await pages.a2.setViewport(testViewport);
@@ -1151,6 +1222,9 @@ try {
   void pages.a2.waitForFunction(inBattle, { timeout: 420_000, polling: 100 }).then(() => { report.rejoinTiming.revealedAfterMs = elapsedMs() - a2OpenedAtMs; }).catch(() => {});
   await waitFor(pages.a2, () => window.__GAME_READY === true && window.__DEBUG?.game?.phase === 'garage', 'A2 garage ready', 240_000);
   report.rejoinTiming.garageAfterMs = elapsedMs() - a2OpenedAtMs;
+  // (2026-10-20, item/mp-rejoin-229) the returning tab's boot by stage (main.ts BOOT_TIMINGS: numbers only)
+  report.a2BootTimings = await pages.a2.evaluate(() => Object.fromEntries(Object.entries(window.__BOOT_TIMINGS ?? {})
+    .filter(([, value]) => typeof value === 'number').map(([key, value]) => [key, Math.round(value)]))).catch(() => null);
   // (2026-10-15) the return's entry, sampled every 200 ms from its Garage to its battle: the trace's stages as they are
   // marked (a stage marked twice shows its first value replaced), the link (transport, offers, reconnects, the WELCOME),
   // the round's welcome / activation / reveal and the loader's own label — each row when anything in it changed
@@ -1168,6 +1242,12 @@ try {
           session: s?.session?.phase ?? null, transport: m?.transportState ?? null, welcomed: m?.welcomed ?? null, link: m?.phase ?? null,
           reconnects: m?.reconnects ?? null, helloRetries: m?.helloRetries ?? null, close: m?.closeReason ?? null,
           offers: s?.session?.p2p?.offersSent ?? null,
+          // (2026-10-20, item/mp-rejoin-229) the peer link's newest attempt, ms from the entry's start: began/offer/answer/open
+          linkMs: (() => {
+            const t = s?.session?.p2p?.link;
+            if (!t || typeof load?.startedAt !== 'number') return null;
+            return [t.connectAtMs, t.offerAtMs, t.answerAtMs, t.openAtMs].map((at) => (typeof at === 'number' ? Math.round(at - load.startedAt) : '-')).join('/');
+          })(),
           round: s?.round ? `${s.round.welcomed ? 'W' : '-'}${s.round.activated ? 'A' : '-'}${s.round.revealed ? 'R' : '-'}` : null,
           label: (document.querySelector('.cot-bl')?.classList.contains('on') ? document.querySelector('.cot-bl')?.textContent?.replace(/\s+/g, ' ').trim().slice(0, 80) : null) ?? null,
         };
@@ -1178,6 +1258,7 @@ try {
   })();
   const stopEntryTrace = async () => { entryTraceOn = false; await entryTracer; };
   if (a2ProfileSession && !a2ProfileEntry) {
+    signalProfile = null;
     const profile = await a2ProfileSession.send('Profiler.stop').then((result) => result.profile).catch(() => null);
     if (profile) {
       await writeFile(join(outputDir, 'a2-garage.cpuprofile'), JSON.stringify(profile));
@@ -1290,6 +1371,7 @@ try {
   await waitFor(pages.a2, (id) => { const p = window.__MULTIPLAYER_V2?.stats?.(); return p?.session?.p2p?.role === 'peer' && p?.session?.p2p?.hostId === id && p?.session?.match?.phase === 'live'; }, 'A2 live as a peer of B', 90_000, { args: [ids.b], polling: 250 });
   await stopEntryTrace();
   if (a2ProfileSession && a2ProfileEntry) {
+    signalProfile = null;
     const profile = await a2ProfileSession.send('Profiler.stop').then((result) => result.profile).catch(() => null);
     await a2ProfileSession.detach().catch(() => {});
     if (profile) {
@@ -1305,6 +1387,16 @@ try {
     }
   }
   await Promise.all([pages.b, pages.c].map((page) => page.setViewport(testViewport)));
+  // (2026-10-21, item/mp-rejoin-229) the returning tab's long tasks and long animation frames (with script attribution),
+  // times on its own clock beside its entry's start (report.a2LongFrames.entryStartedAt)
+  report.a2LongFrames = await pages.a2.evaluate(() => ({ entryStartedAt: window.__NETWORK_LOAD?.startedAt ?? null,
+    longtasks: (window.__MP_E2E_LONGTASKS ?? []).slice(-400), frames: (window.__MP_E2E_LONG_FRAMES ?? []).slice(),
+    // a diagnostic build's long cooperative slices (their yield-site stacks) and its User Timing spans, when it has them
+    slices: window.__RJ_DIAG ?? null,
+    timing: performance.getEntriesByType('mark').concat(performance.getEntriesByType('measure')).filter((entry) => entry.name.startsWith('rj:'))
+      .map((entry) => ({ name: entry.name, start: Math.round(entry.startTime), ms: Math.round(entry.duration) })) })).catch(() => null);
+  // (2026-10-20, item/mp-rejoin-229) the returning tab's world load as its activation trace names it (build stages, warm)
+  report.a2WorldLoad = await pages.a2.evaluate(() => JSON.parse(JSON.stringify({ load: window.__WORLD_LOAD ?? null, prefetch: window.__WORLD_PREFETCH ?? null }))).catch(() => null);
   const a2Entry = await pages.a2.evaluate(() => ({ stages: window.__NETWORK_LOAD?.stages ?? null, totalMs: window.__NETWORK_LOAD?.totalMs ?? null, status: window.__NETWORK_LOAD?.status ?? null, rewelcomes: window.__NETWORK_LOAD?.rewelcomes ?? 0, rewelcomeAtMs: window.__NETWORK_LOAD?.rewelcomeAtMs ?? null }));
   step('b-c-restored', { viewport: `${testViewport.width}x${testViewport.height}`, a2Entry });
   report.rejoin = { ...report.rejoin, a: await startOf(pages.a2), p2p: await p2pOf(pages.a2), peersOnB: (await p2pOf(pages.b))?.peersConnected ?? null, attempts: a2Attempts, entry: a2Entry };
@@ -1314,9 +1406,13 @@ try {
   await screenshot(pages.a2, 'a-rejoined-as-peer.png');
   }
 } catch (error) {
+  if (error instanceof MatchEndedEarly) {
+    report.inconclusive = [...(report.inconclusive ?? []), error.message];
+  } else {
   failures.push(error instanceof Error ? error.stack || error.message : String(error));
   // (2026-10-15) a page whose renderer hangs never answers a screenshot: each one is bounded, so the report is still written
   for(const [label,page] of Object.entries(pages))if(page&&!page.isClosed())await Promise.race([screenshot(page,`${label}-failure.png`).catch(()=>{}),sleep(15_000)]);
+  }
 } finally {
   for (const [label, page] of Object.entries(pages)) if (page && !page.isClosed()) await Promise.race([collectRoomLog(label.toUpperCase(), page), sleep(10_000)]);
   // every election each page heard, with the room's reason: the ones before the reveal are MP-S03's entry elections
@@ -1334,6 +1430,8 @@ try {
     try { await rooms?.close(); } catch { /* gone */ }
   };
   await Promise.race([teardown(), sleep(20_000)]);
+  // (2026-10-20, item/mp-rejoin-229) a browser whose close hung past the race is killed, never left rendering as an orphan
+  for (const entry of [browser, ...extraBrowsers]) { try { if (entry?.process()?.exitCode === null) entry.process().kill('SIGKILL'); } catch { /* gone */ } }
 }
 
 if (json) console.log(JSON.stringify(report, null, 2));

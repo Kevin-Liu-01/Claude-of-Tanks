@@ -25,7 +25,7 @@ import type { PresentationAdapter } from '../presentation/adapter.ts';
 import { WebSocketTransport } from '../transport/webSocketTransport.ts';
 import type { WebSocketTransportOptions } from '../transport/webSocketTransport.ts';
 import { WebRtcTransport } from '../transport/webRtcTransport.ts';
-import type { RtcCandidateType, RtcIceConfig, RtcPeerConnectionFactory, Signaler } from '../transport/webRtcTransport.ts';
+import type { RtcCandidateType, RtcIceConfig, RtcLinkTimeline, RtcPeerConnectionFactory, Signaler } from '../transport/webRtcTransport.ts';
 import { MigratingTransport } from '../transport/migratingTransport.ts';
 import { Listeners } from '../transport/transport.ts';
 import type { Transport, Unsubscribe } from '../transport/transport.ts';
@@ -150,6 +150,8 @@ export interface SessionP2pStatus {
   /** Signals the peer transport refused as stale (another host's or generation's) and offers it sent (P3b diagnostics; 0 as a host). */
   staleSignals: number;
   offersSent: number;
+  /** The peer link's newest attempt: began, offer sent, answer received, channel open (clock ms; null as a host). */
+  link: Readonly<RtcLinkTimeline> | null;
   /** As a migrated host: how long the world held still for the seats that were playing, and why it moved (null otherwise). */
   resumeHold: HostCoreStats['resumeHold'];
 }
@@ -246,7 +248,7 @@ export class MatchSession {
   private runningGeneration = 0;
   private readonly p2pStatus: SessionP2pStatus = {
     role: null, generation: 0, hostId: null, migrating: false, migrationHostId: null, candidateType: null, viaTurn: false,
-    peersConnected: 0, relayed: 0, uplinkBytesPerS: 0, hostState: null, snapshotSkips: 0, staleSignals: 0, offersSent: 0, resumeHold: null,
+    peersConnected: 0, relayed: 0, uplinkBytesPerS: 0, hostState: null, snapshotSkips: 0, staleSignals: 0, offersSent: 0, link: null, resumeHold: null,
   };
 
   constructor({
@@ -302,6 +304,7 @@ export class MatchSession {
     status.snapshotSkips = this.host?.snapshotSkips ?? 0;
     status.staleSignals = this.peerTransport?.staleSignals ?? 0;
     status.offersSent = this.peerTransport?.signalStats.sent ?? 0;
+    status.link = this.peerTransport?.linkTimeline ?? null;
     status.resumeHold = this.host?.resumeHold ?? null;
     return status;
   }
@@ -380,20 +383,22 @@ export class MatchSession {
     this.lastVerdict = null;
     this.setPhase('loading', payload.matchId);
     this.startEntryReports(round, payload);
+    const early = this.openEarlyPeerLink(payload, round);
     let presentation: SessionPresentation;
     try {
       presentation = await this.createPresentation(round);
     } catch (error) {
+      this.closeEarlyPeerLink(early, 'presentation failed');
       if (generation === this.generation) { this.currentRound = null; this.setPhase('lobby', 'presentation failed'); }
       throw error;
     }
-    if (generation !== this.generation || this.disposed) { presentation.dispose(); throw new Error('round superseded'); }
+    if (generation !== this.generation || this.disposed) { this.closeEarlyPeerLink(early, 'round superseded'); presentation.dispose(); throw new Error('round superseded'); }
     this.presentation = presentation;
     let transport: Transport;
     const rtc = parseP2pMatchUrl(payload.matchUrl);
     if (rtc) {
       try {
-        transport = this.openPeerToPeer(payload, round);
+        transport = this.adoptEarlyPeerLink(early) ?? this.openPeerToPeer(payload, round);
       } catch (error) {
         presentation.dispose();
         this.presentation = null;
@@ -679,6 +684,51 @@ export class MatchSession {
     });
   }
 
+  /**
+   * 2026-10-20 (item/mp-rejoin-229; MP-228-REJOIN lever 1): a seat entering a match that is already playing on another
+   * seat's host opens its peer link now, beside its presentation's world load. On the 227 rejoins the link stayed idle
+   * until the world was built (15.5 s) and then took 7.4 s to open, and the roster stage waited for the WELCOME. The
+   * HELLO still waits for the presentation: the match client is built on this link once the world is ready and says
+   * hello then (MatchClient.connect on an open link), so the host attaches the seat no earlier than before and nothing
+   * on the wire changes. A fresh match's host boots only after its own world, so a starting match's peers keep the late
+   * link (their early offers would go unanswered); so do a seat the room names as host and a re-entry that declines it.
+   */
+  private openEarlyPeerLink(payload: RoomMatchStartPayload, round: SessionRound): { migrating: MigratingTransport; peer: WebRtcTransport } | null {
+    if (!this.p2pOptions || !parseP2pMatchUrl(payload.matchUrl) || round.room.match?.status !== 'playing') return null;
+    const hostId = this.room.hostId ?? payload.hostId ?? null;
+    if (!hostId || hostId === this.room.playerId) return null;
+    const migrating = this.openPeerToPeer(payload, round) as MigratingTransport;
+    const peer = this.peerTransport;
+    if (!peer || this.migrating !== migrating) { migrating.close(undefined, 'early link not a peer link'); return null; }
+    migrating.open();
+    return { migrating, peer };
+  }
+
+  /**
+   * The early link the presentation's world load ran beside, once the world is ready: kept when it is still this round's
+   * peer link (open, or still connecting or reconnecting on its own) and the room still names another seat as host; the
+   * link follows an election that came meanwhile (`retarget`). Otherwise it is closed and the late path opens one (null).
+   */
+  private adoptEarlyPeerLink(early: { migrating: MigratingTransport; peer: WebRtcTransport } | null): Transport | null {
+    if (!early) return null;
+    const hostId = this.room.hostId;
+    if (this.migrating !== early.migrating || this.peerTransport !== early.peer || early.migrating.state === 'closed' || !hostId || hostId === this.room.playerId) {
+      this.closeEarlyPeerLink(early, 'early link replaced');
+      return null;
+    }
+    this.servingHostId = hostId;
+    this.runningGeneration = Math.max(this.runningGeneration, this.room.generation);
+    early.peer.retarget('host changed during entry');
+    return early.migrating;
+  }
+
+  private closeEarlyPeerLink(early: { migrating: MigratingTransport; peer: WebRtcTransport } | null, reason: string): void {
+    if (!early) return;
+    if (this.migrating === early.migrating) this.migrating = null;
+    if (this.peerTransport === early.peer) this.peerTransport = null;
+    early.migrating.close(undefined, reason);
+  }
+
   /** The transport of an rtc:// match: the host's loopback (this seat boots the host) or a WebRTC link to the host. */
   private openPeerToPeer(payload: RoomMatchStartPayload, round: SessionRound): Transport {
     const p2p = this.p2pOptions;
@@ -775,7 +825,10 @@ export class MatchSession {
     const client = this.matchClient;
     const round = this.currentRound;
     const migrating = this.migrating;
-    if (!client || !round || !migrating || !parseP2pMatchUrl(round.matchStart.matchUrl)) return;
+    // 2026-10-20 (item/mp-rejoin-229, the 229 e2e under load): a match link its client already closed (recovery past
+    // its grace: the round is lost for this seat) carries no migration; replacing it threw "transport closed" as an
+    // unhandled rejection in the page
+    if (!client || !round || !migrating || migrating.state === 'closed' || !parseP2pMatchUrl(round.matchStart.matchUrl)) return;
     const me = this.room.playerId;
     if (change.generation <= this.runningGeneration) {
       // The election that named the host at the start (the URL's generation), or one this seat already runs: nothing moves —
@@ -878,7 +931,7 @@ export class MatchSession {
       void this.room.declineHost(true, { unable: true }).catch(() => { /* the room may predate the command */ });
       return;
     }
-    if (this.host !== host || this.matchClient !== client) { host.stop(); return; }
+    if (this.host !== host || this.matchClient !== client || migrating.state === 'closed') { if (this.host === host) this.host = null; host.stop(); return; }
     const previous = this.peerTransport;
     this.peerTransport = null;
     migrating.replace(host.transport, 'host migration');
@@ -946,6 +999,8 @@ export class MatchSession {
     const client = this.matchClient;
     const presentation = this.presentation;
     const host = this.host;
+    // an early peer link no match client owns yet (openEarlyPeerLink): the client's leave would have closed it
+    const unowned = client ? null : this.migrating;
     const handedOff = this.handedOff;
     this.handedOff = false;
     this.stopEntryReports(`leave: ${reason}`);
@@ -964,6 +1019,7 @@ export class MatchSession {
       try { client.leave(closeReason); } catch { /* already closed */ }
       client.dispose();
     }
+    unowned?.close(undefined, `leave: ${reason}`);
     if (host) {
       // The peers' channels drop silently and the room hears this seat will not host: it elects the next one — and, its
       // actor being gone (`unable`), ends the match at once when nobody else can take it (2026-09-30).

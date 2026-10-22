@@ -895957,13 +895957,13 @@
     },
     "t72b3_bastion_m": {
       "id": "t72b3_bastion_m",
-      "name": "T-72B3 Bastion-M (Concept)",
+      "name": "T-72B3 Bastion-M",
       "label": {
         "id": "t72b3_bastion_m",
-        "displayName": "T-72B3 Bastion-M (Concept)",
-        "shortName": "T-72B3 Bastion-M (Concept)",
+        "displayName": "T-72B3 Bastion-M",
+        "shortName": "T-72B3 Bastion-M",
         "searchAliases": [
-          "T-72B3 Bastion-M (Concept)",
+          "T-72B3 Bastion-M",
           "t72b3_bastion_m",
           "t72b3 bastion m"
         ],
@@ -916176,13 +916176,13 @@
     },
     "t72b3_qilin": {
       "id": "t72b3_qilin",
-      "name": "T-72B3 Qilin (Concept)",
+      "name": "T-72B3 Qilin",
       "label": {
         "id": "t72b3_qilin",
-        "displayName": "T-72B3 Qilin (Concept)",
-        "shortName": "T-72B3 Qilin (Concept)",
+        "displayName": "T-72B3 Qilin",
+        "shortName": "T-72B3 Qilin",
         "searchAliases": [
-          "T-72B3 Qilin (Concept)",
+          "T-72B3 Qilin",
           "t72b3_qilin",
           "t72b3 qilin"
         ],
@@ -936676,13 +936676,13 @@
     },
     "t72b3_sich": {
       "id": "t72b3_sich",
-      "name": "T-72B3 Sich (Concept)",
+      "name": "T-72B3 Sich",
       "label": {
         "id": "t72b3_sich",
-        "displayName": "T-72B3 Sich (Concept)",
-        "shortName": "T-72B3 Sich (Concept)",
+        "displayName": "T-72B3 Sich",
+        "shortName": "T-72B3 Sich",
         "searchAliases": [
-          "T-72B3 Sich (Concept)",
+          "T-72B3 Sich",
           "t72b3_sich",
           "t72b3 sich"
         ],
@@ -993720,13 +993720,13 @@
     },
     "t72b3_zubr": {
       "id": "t72b3_zubr",
-      "name": "T-72B3 Zubr (Concept)",
+      "name": "T-72B3 Zubr",
       "label": {
         "id": "t72b3_zubr",
-        "displayName": "T-72B3 Zubr (Concept)",
-        "shortName": "T-72B3 Zubr (Concept)",
+        "displayName": "T-72B3 Zubr",
+        "shortName": "T-72B3 Zubr",
         "searchAliases": [
-          "T-72B3 Zubr (Concept)",
+          "T-72B3 Zubr",
           "t72b3_zubr",
           "t72b3 zubr"
         ],
@@ -1070778,13 +1070778,13 @@
     },
     "t72b3_zubr_ii": {
       "id": "t72b3_zubr_ii",
-      "name": "T-72B3 Zubr II (Concept)",
+      "name": "T-72B3 Zubr II",
       "label": {
         "id": "t72b3_zubr_ii",
-        "displayName": "T-72B3 Zubr II (Concept)",
-        "shortName": "T-72B3 Zubr II (Concept)",
+        "displayName": "T-72B3 Zubr II",
+        "shortName": "T-72B3 Zubr II",
         "searchAliases": [
-          "T-72B3 Zubr II (Concept)",
+          "T-72B3 Zubr II",
           "t72b3_zubr_ii",
           "t72b3 zubr ii"
         ],
@@ -1239314,13 +1239314,13 @@
     },
     "t72b3m_bulat_m": {
       "id": "t72b3m_bulat_m",
-      "name": "T-72B3M Bulat-M (Concept)",
+      "name": "T-72B3M Bulat-M",
       "label": {
         "id": "t72b3m_bulat_m",
-        "displayName": "T-72B3M Bulat-M (Concept)",
-        "shortName": "T-72B3M Bulat-M (Concept)",
+        "displayName": "T-72B3M Bulat-M",
+        "shortName": "T-72B3M Bulat-M",
         "searchAliases": [
-          "T-72B3M Bulat-M (Concept)",
+          "T-72B3M Bulat-M",
           "t72b3m_bulat_m",
           "t72b3m bulat m"
         ],
@@ -1261728,13 +1261728,13 @@
     },
     "t72b3m_hetman": {
       "id": "t72b3m_hetman",
-      "name": "T-72B3M Hetman (Concept)",
+      "name": "T-72B3M Hetman",
       "label": {
         "id": "t72b3m_hetman",
-        "displayName": "T-72B3M Hetman (Concept)",
-        "shortName": "T-72B3M Hetman (Concept)",
+        "displayName": "T-72B3M Hetman",
+        "shortName": "T-72B3M Hetman",
         "searchAliases": [
-          "T-72B3M Hetman (Concept)",
+          "T-72B3M Hetman",
           "t72b3m_hetman",
           "t72b3m hetman"
         ],
@@ -1321612,13 +1321612,13 @@
     },
     "t72b3m_hetman_ii": {
       "id": "t72b3m_hetman_ii",
-      "name": "T-72B3M Hetman II (Concept)",
+      "name": "T-72B3M Hetman II",
       "label": {
         "id": "t72b3m_hetman_ii",
-        "displayName": "T-72B3M Hetman II (Concept)",
-        "shortName": "T-72B3M Hetman II (Concept)",
+        "displayName": "T-72B3M Hetman II",
+        "shortName": "T-72B3M Hetman II",
         "searchAliases": [
-          "T-72B3M Hetman II (Concept)",
+          "T-72B3M Hetman II",
           "t72b3m_hetman_ii",
           "t72b3m hetman ii"
         ],
@@ -1376616,13 +1376616,13 @@
     },
     "t72b3m_kunlun": {
       "id": "t72b3m_kunlun",
-      "name": "T-72B3M Kunlun (Concept)",
+      "name": "T-72B3M Kunlun",
       "label": {
         "id": "t72b3m_kunlun",
-        "displayName": "T-72B3M Kunlun (Concept)",
-        "shortName": "T-72B3M Kunlun (Concept)",
+        "displayName": "T-72B3M Kunlun",
+        "shortName": "T-72B3M Kunlun",
         "searchAliases": [
-          "T-72B3M Kunlun (Concept)",
+          "T-72B3M Kunlun",
           "t72b3m_kunlun",
           "t72b3m kunlun"
         ],
@@ -1392693,13 +1392693,13 @@
     },
     "t72b3m_wilk": {
       "id": "t72b3m_wilk",
-      "name": "T-72B3M Wilk (Concept)",
+      "name": "T-72B3M Wilk",
       "label": {
         "id": "t72b3m_wilk",
-        "displayName": "T-72B3M Wilk (Concept)",
-        "shortName": "T-72B3M Wilk (Concept)",
+        "displayName": "T-72B3M Wilk",
+        "shortName": "T-72B3M Wilk",
         "searchAliases": [
-          "T-72B3M Wilk (Concept)",
+          "T-72B3M Wilk",
           "t72b3m_wilk",
           "t72b3m wilk"
         ],
@@ -1533352,13 +1533352,13 @@
     },
     "t80u_bars_m": {
       "id": "t80u_bars_m",
-      "name": "T-80U Bars-M (Concept)",
+      "name": "T-80U Bars-M",
       "label": {
         "id": "t80u_bars_m",
-        "displayName": "T-80U Bars-M (Concept)",
-        "shortName": "T-80U Bars-M (Concept)",
+        "displayName": "T-80U Bars-M",
+        "shortName": "T-80U Bars-M",
         "searchAliases": [
-          "T-80U Bars-M (Concept)",
+          "T-80U Bars-M",
           "t80u_bars_m",
           "t80u bars m"
         ],
@@ -1553750,13 +1553750,13 @@
     },
     "t80u_husarz": {
       "id": "t80u_husarz",
-      "name": "T-80U Husarz (Concept)",
+      "name": "T-80U Husarz",
       "label": {
         "id": "t80u_husarz",
-        "displayName": "T-80U Husarz (Concept)",
-        "shortName": "T-80U Husarz (Concept)",
+        "displayName": "T-80U Husarz",
+        "shortName": "T-80U Husarz",
         "searchAliases": [
-          "T-80U Husarz (Concept)",
+          "T-80U Husarz",
           "t80u_husarz",
           "t80u husarz"
         ],
@@ -1665380,13 +1665380,13 @@
     },
     "t80u_yun": {
       "id": "t80u_yun",
-      "name": "T-80U Yun (Concept)",
+      "name": "T-80U Yun",
       "label": {
         "id": "t80u_yun",
-        "displayName": "T-80U Yun (Concept)",
-        "shortName": "T-80U Yun (Concept)",
+        "displayName": "T-80U Yun",
+        "shortName": "T-80U Yun",
         "searchAliases": [
-          "T-80U Yun (Concept)",
+          "T-80U Yun",
           "t80u_yun",
           "t80u yun"
         ],
@@ -1688580,13 +1688580,13 @@
     },
     "t80u_zoria": {
       "id": "t80u_zoria",
-      "name": "T-80U Zoria (Concept)",
+      "name": "T-80U Zoria",
       "label": {
         "id": "t80u_zoria",
-        "displayName": "T-80U Zoria (Concept)",
-        "shortName": "T-80U Zoria (Concept)",
+        "displayName": "T-80U Zoria",
+        "shortName": "T-80U Zoria",
         "searchAliases": [
-          "T-80U Zoria (Concept)",
+          "T-80U Zoria",
           "t80u_zoria",
           "t80u zoria"
         ],
@@ -1951749,13 +1951749,13 @@
     },
     "type96_72m_lei": {
       "id": "type96_72m_lei",
-      "name": "Type 96-72M Léi (Concept)",
+      "name": "Type 96-72M Léi",
       "label": {
         "id": "type96_72m_lei",
-        "displayName": "Type 96-72M Léi (Concept)",
-        "shortName": "Type 96-72M Léi (Concept)",
+        "displayName": "Type 96-72M Léi",
+        "shortName": "Type 96-72M Léi",
         "searchAliases": [
-          "Type 96-72M Léi (Concept)",
+          "Type 96-72M Léi",
           "type96_72m_lei",
           "type96 72m lei"
         ],
@@ -1961121,13 +1961121,13 @@
     },
     "type96_80_feng": {
       "id": "type96_80_feng",
-      "name": "Type 96-80 Fēng (Concept)",
+      "name": "Type 96-80 Fēng",
       "label": {
         "id": "type96_80_feng",
-        "displayName": "Type 96-80 Fēng (Concept)",
-        "shortName": "Type 96-80 Fēng (Concept)",
+        "displayName": "Type 96-80 Fēng",
+        "shortName": "Type 96-80 Fēng",
         "searchAliases": [
-          "Type 96-80 Fēng (Concept)",
+          "Type 96-80 Fēng",
           "type96_80_feng",
           "type96 80 feng"
         ],
