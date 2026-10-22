@@ -24,15 +24,8 @@ const CONCEPT_GUN_PITCH_BY_YAW_DEG:Readonly<Record<'type96_72_long'|'type96_80_f
   type96_80_feng:[[0,-7],[143,-7],[148,-5],[156,-5],[158,-3.4],[160,0],[180,0]],
   type96_72m_lei:[[0,-7],[27,-7],[30,-5.3],[31,-5],[36,-5],[37,-5.3],[40,-7],[41,-6.5],[42,-6.3],[44,-6.3],[46,-6],[49,-4.7],[51,-4.7],[52,-5.1],[54,-7],[122,-7],[123,-6.2],[124,-5.5],[126,-5.5],[128,-6.2],[129,-5.2],[130,-3.5],[131,-2.9],[132,-1.4],[133,-0.6],[134,-0.5],[138,-0.5],[139,-0.1],[142,-0.1],[145,-1],[147,-0.4],[148,0.8],[149,1.5],[158,1.5],[160,3.5],[180,3.5]],
 };
-/** Release 230 (the gun-hull lane, after the gun-depression lane's sweep: "the T-72 Ryś's mantlet and barrel root touch
- * the deck through most of the traverse"): the Ryś's T-80U casting rides this far (m) above the T-80U's own yaw datum, on a
- * stationary ring race (profiles/t72Rys.ts). On the T-80U deck the mount's underside stood 0-3 cm over the roof ahead and
- * met the engine deck's panel astern (its top 1.586 m, 3.3 cm over the mount) at every pitch; on the real T-72 family the
- * ring stands clear of the engine deck. Measured against the fleet's T-72B3 (t72b3XArmor.ts): its trunnion 0.302 m over
- * the roof and its ring 5.2 cm over the engine deck; the Ryś's, raised, 0.298 m and 5.4 cm. The whole gun keeps 26 mm from
- * the hull at every yaw at level and full elevation from a 6 cm raise (tools/gun-depression-sweep.mjs); 6.5 cm keeps 31 mm. */
-export const T72_RYS_RING_RAISE_M=.065;
-/** Release 230: the raised Ryś's main-gun depression by absolute turret yaw (degrees; sim/gunPitchLimits.ts), measured with
+/** Release 230 (the gun-hull lane): the T-72 Ryś rides the T-80U X casting's raised ring (t80uXArmor.ts
+ * T80U_X_RING_RAISE_M; its spec takes the T-80U's raised frame). Its main-gun depression by absolute turret yaw (degrees; sim/gunPitchLimits.ts), measured with
  * tools/gun-depression-sweep.mjs (1914 s): no mount conflict at any yaw, full depression to 145, then the engine deck's
  * grilles and fittings (to -4 at 150-157, -0.8 at 171-175). nationalGunClearance.selftest.mjs holds it at 25 mm. */
 const T72_RYS_GUN_PITCH_BY_YAW_DEG=Object.freeze([[0,-5],[145,-5],[150,-4],[152,-4],[156,-4.4],[157,-4],[158,-2.9],[159,-2.5],
@@ -82,10 +75,7 @@ export function synchronizeFleetRenewalMetadata():void{
   // registrations originated from these older slots).
   const donors=structuredClone(TANK_SPECS);
   for(const [id,donor] of Object.entries(FLEET_RENEWAL_DONORS))copyPhysicalFrame(TANK_SPECS[id],donors[donor]);
-  // release 230: the Ryś's raised ring (T72_RYS_RING_RAISE_M); its turret plates, crew and modules are turret-local
-  const rys=TANK_SPECS.t72_rys,[rx,ry,rz]=rys.armor.turretPivot;
-  rys.armor.turretPivot=[rx,ry+T72_RYS_RING_RAISE_M,rz];rys.dims.heightM+=T72_RYS_RING_RAISE_M;
-  rys.gunPitchByYawDeg=T72_RYS_GUN_PITCH_BY_YAW_DEG;
+  TANK_SPECS.t72_rys.gunPitchByYawDeg=T72_RYS_GUN_PITCH_BY_YAW_DEG;
   TANK_SPECS.t72b3m_2022.name='T-72B3M obr. 2022';
   TANK_SPECS.t72b3m_2016.name='T-72B3M obr. 2016';
   // Owner-directed turret transplants keep hull-local damage owners and use
