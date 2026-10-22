@@ -324,8 +324,10 @@ export default {
     // every map shared the Earth-blue dome. Ash in the air: a thinner Rayleigh sky over a blue-absorbing aerosol (the tight
     // lobe kept: no wide halo), the dark crater floor under the bounce, an ochre-ash band on the horizon and a smoky steel
     // overhead (atmosphere.ts sky grade: the dome, the fog's colour and the sky light all follow it)
+    // (233, the media lane's maps-227 review: "a thick pinkish-tan haze band ... across the whole horizon"): the ochre band
+    // at a little over half its weight (0.6 -> 0.35), so the somma's rim stands against it rather than dissolving into it
     atmosphere: { rayleighScale: 0.8, mieScale: 7, mieG: 0.88, mieTintHex: 0xb8987a, groundAlbedoHex: 0x4b4845,
-      horizonTintHex: 0xc4a27a, horizonTintAmount: 0.6, horizonBandDeg: 9, zenithTintHex: 0x8e9cab, zenithTintAmount: 0.35 },
+      horizonTintHex: 0xc4a27a, horizonTintAmount: 0.35, horizonBandDeg: 9, zenithTintHex: 0x8e9cab, zenithTintAmount: 0.35 },
   },
   minimap: {
     base: [60, 57, 50], hard: [77, 73, 67], soft: [57, 54, 49],
