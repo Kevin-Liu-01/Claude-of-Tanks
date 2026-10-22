@@ -1267,7 +1267,9 @@ function* createFxSteps(
   const stages: StructureStages | null = structMask && structDebris
     ? createStructureStages({ mask: structMask, debris: structDebris, now: () => particles.getTime(),
       materialFor: (bucket) => bucketMaterials.get(bucket)?.material ?? null, scars, crumble: mediaTier ? 1 : 0.15,
-      fracture: fractureStages ? fractureStages.attach : null })
+      fracture: fractureStages ? fractureStages.attach : null,
+      onLanding: pieceLanding,
+      onShards: (x, y, z, vx, vy, vz, mass, id) => { if (blast) breakShardsFx(blast, x, y, z, vx, vy, vz, mass, lookOf(id)); } })
     : null;
   /** Each struck building's last burst (fx seconds), the dust load in the air round it then (the bursts' scales, each
    *  fading over 1.5 s) and the largest burst in that load (also fading): a burst's own dust thins by the load against its

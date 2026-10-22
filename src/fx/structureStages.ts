@@ -26,7 +26,7 @@
 import * as THREE from 'three';
 import type { MunitionClass, StructureBreachEvent, StructureStageEvent } from '../sim/destructionEvents.ts';
 import {
-  anatomyCentre, damageRng, damageSeed, type DamageFace, type DamageFall, type DamageRole, type DamageStageResult, type DamageStorey, type DamageWriters,
+  anatomyCentre, damageRng, damageSeed, DEBRIS_STRIDE, type DamageFace, type DamageFall, type DamageRole, type DamageStageResult, type DamageStorey, type DamageWriters,
   type DebrisShape, type FractureMaterial, type FractureSlot, type StructureDamageAnatomy,
 } from '../world/destructionKit.ts';
 import { clearOverEaves, drawnOverAt, faceSetback, faceSetbackMedian, roofFurnitureAt, storeyInterior } from '../world/structureEnclosure.ts';
@@ -194,6 +194,10 @@ export interface StructureStagesOptions {
   crumble?: number;
   /** Walls broken where struck, falls and collapses as rigid bodies (fx/fractureStages.ts; the phone: none). */
   fracture?: ((host: FractureHost) => StageFracture) | null;
+  /** (destruction-slabs 233) A set piece's piece breaking up where it stands (DamageFall.crumbleS): its dust as a piece's
+   *  landing raises it, and its shards thrown (effects.ts: pieceLandingFx, breakShardsFx). */
+  onLanding?(x: number, y: number, z: number, speedMps: number, massKg: number, structureIdx: number): void;
+  onShards?(x: number, y: number, z: number, vx: number, vy: number, vz: number, massKg: number, structureIdx: number): void;
 }
 
 /** The section and storey a run was laid for (-1: none — a roof's wreckage has no storey, a storey's heap no
@@ -1038,31 +1042,78 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
    * silhouette and lost its sails the same way) the E12 kit lays a set piece's pieces at rest at once: each laid by one
    * rigid turn (DamageFall) is shown falling there — a copy of its own triangles turned and dropped over gravity's time,
    * its turn eased in as a fall's is — and the stage's laid copy shows when the fall ends, where the fall ends.
+   * (destruction-slabs 233; the critics' polders #46: its upper tower's chunks sank straight down through the stage round
+   * the shaft) a fall is thrown: out at a steady pace, down and over at gravity's (the kit's landmarks/damage.ts fallWay
+   * throws it far enough to pass over what stands in its way), never along the straight line from where it stood to where
+   * it lies; one that cannot fall clear of it (`crumble`) stands its moment, then breaks up there in its dust and shards.
    */
   interface PieceFall { seam: StructureDamageSeam; meshes: THREE.Mesh[]; axis: THREE.Vector3; angle: number; pivot: THREE.Vector3; t: THREE.Vector3;
-    t0: number; T: number }
+    t0: number; T: number; crumble: boolean; piece: string; debris: readonly number[] | null; debrisBucket: string;
+    /** When the stage's laid copies show (its longest fall's end): a fall that ended lies at its end until then. */
+    holdTo: number; u: number }
   const pieceFalls: PieceFall[] = [];
   const _fq = new THREE.Quaternion(), _fm = new THREE.Matrix4(), _fb = new THREE.Matrix4(), _fbi = new THREE.Matrix4(), _fv = new THREE.Vector3();
   const _fr = new THREE.Matrix4(), _fp = new THREE.Vector3(), _fs = new THREE.Vector3(1, 1, 1), _fup = new THREE.Vector3(0, 1, 0);
-  /** A body-frame fall's pose `k` of the way (0..1) as a world matrix into _fm (the meshes' vertices are in the world). */
-  function fallMatrix(f: PieceFall, k: number): THREE.Matrix4 {
+  /** A body-frame fall's pose at `u` of its time (0..1) as a world matrix into _fm (the meshes' vertices are in the world):
+   *  its drop eased in as gravity gathers it (u²), its throw out at a steady pace (u), its turn eased in and out —
+   *  (238; the critic's polders #46 film: a chunk turning a fifth of its turn in the last tenth of its fall flipped from its
+   *  pale inner face to its brick between two frames as it landed, "a box swapped") it lands without spinning. */
+  function fallMatrix(f: PieceFall, u: number): THREE.Matrix4 {
     const { x, y, z, yaw } = f.seam.anatomy.placement;
     _fb.compose(_fp.set(x, y, z), _fq.setFromAxisAngle(_fup, yaw), _fs);
     _fbi.copy(_fb).invert();
-    _fq.setFromAxisAngle(f.axis, f.angle * k);
+    const k = u * u;
+    _fq.setFromAxisAngle(f.axis, f.angle * k * (3 - 2 * u));
     _fr.makeRotationFromQuaternion(_fq);
-    // body frame: v -> R_k (v - pivot) + pivot + t k
-    _fv.copy(f.pivot).applyQuaternion(_fq).negate().add(f.pivot).addScaledVector(f.t, k);
+    // body frame: v -> R (v - pivot) + pivot + (t_x u, t_y u², t_z u)
+    _fv.copy(f.pivot).applyQuaternion(_fq).negate().add(f.pivot);
+    _fv.x += f.t.x * u; _fv.y += f.t.y * k; _fv.z += f.t.z * u;
     _fr.setPosition(_fv);
     return _fm.copy(_fb).multiply(_fr).multiply(_fbi);
   }
+  const _cb = new THREE.Box3(), _cbox = new THREE.Box3();
+  /** A crumbling piece's copy broken up where it stands: the pieces of it the kit threw (DamageFall.debris), thrown now;
+   *  its dust and shards over its height, out from the set piece's middle (a mass by its box, a hollow wall's share). */
+  function crumblePiece(f: PieceFall): void {
+    const list = f.debris;
+    if (list && list.length >= DEBRIS_STRIDE && f.debrisBucket) {
+      run(f.seam, 0, false, (out) => {
+        for (let i = 0; i + DEBRIS_STRIDE <= list.length; i += DEBRIS_STRIDE) {
+          const sz = list[i + 6]!, spin = list[i + 10]!;
+          if (!out.pieces.push(f.debrisBucket, 'chunk', i % 4, list[i]!, list[i + 1]!, list[i + 2]!, 0, Math.sin(spin / 2), 0, Math.cos(spin / 2),
+            sz, sz * 0.6, sz * 0.8, list[i + 7]!, list[i + 8]!, list[i + 9]!, list[i + 3]!, list[i + 4]!, list[i + 5]!)) break;
+        }
+        return { cuts: [], hides: [] };
+      }, false, undefined, true);
+    }
+    _cbox.makeEmpty();
+    for (const m of f.meshes) { if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); _cb.copy(m.geometry.boundingBox!).applyMatrix4(m.matrix); _cbox.union(_cb); }
+    if (_cbox.isEmpty()) return;
+    const { x: px, z: pz } = f.seam.anatomy.placement;
+    const sx = _cbox.max.x - _cbox.min.x, sy = _cbox.max.y - _cbox.min.y, sz = _cbox.max.z - _cbox.min.z;
+    const mass = Math.min(20000, Math.max(200, 400 * sx * sy * sz));
+    const cx = (_cbox.min.x + _cbox.max.x) / 2, cz = (_cbox.min.z + _cbox.max.z) / 2;
+    const ox = cx - px, oz = cz - pz, ol = Math.hypot(ox, oz) || 1;
+    for (const h of [0.15, 0.5, 0.85]) {
+      const y = _cbox.min.y + sy * h;
+      o.onShards?.(cx, y, cz, (ox / ol) * 2.5, 1.5, (oz / ol) * 2.5, mass / 3, f.seam.structureIdx);
+    }
+    o.onLanding?.(cx, _cbox.min.y + 0.2, cz, 5, mass, f.seam.structureIdx);
+  }
   function startPieceFalls(seam: StructureDamageSeam, falls: readonly DamageFall[], made: readonly THREE.Mesh[]): void {
     let until = 0;
+    const first = pieceFalls.length;
     const { x: px, y: py, z: pz, yaw } = seam.anatomy.placement;
     const c = Math.cos(yaw), sn = Math.sin(yaw);
     for (const fall of falls) {
       const spans = seam.spans.filter((sp) => sp.piece === fall.piece && sp.count >= 3 && !flattenedSpans.has(sp));
-      if (!spans.length) continue;
+      if (!spans.length) {
+        // (233; polders #46's second breach 0.45 s after its first: its cap laid again at rest on the mound while the cap
+        // the first took was still in the air) a piece an earlier stage took and still falling: what this stage lays again
+        // shows when that fall ends
+        for (const f of pieceFalls) if (f.seam === seam && f.piece === fall.piece) until = Math.max(until, f.t0 + f.T, f.holdTo);
+        continue;
+      }
       // its own triangles as they stand (world), per material; its middle (body frame) for its drop
       const byMat = new Map<THREE.Material, { geometry: THREE.BufferGeometry; names: string[]; data: number[][] }>();
       let mx = 0, my = 0, mz = 0, n = 0;
@@ -1119,25 +1170,35 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       const pivot = new THREE.Vector3(fall.pivot[0], fall.pivot[1], fall.pivot[2]), t = new THREE.Vector3(fall.t[0], fall.t[1], fall.t[2]);
       _fv.set(mx, my, mz).sub(pivot).applyMatrix4(_fr).add(pivot).add(t);
       const drop = Math.max(0.3, my - _fv.y);
-      const T = Math.min(FALL_MAX_S, Math.max(FALL_MIN_S, Math.sqrt(2 * drop / 9.81) * FALL_SLOW));
-      const f: PieceFall = { seam, meshes, axis, angle, pivot, t, t0: o.now(), T };
+      const crumble = fall.crumbleS !== undefined && fall.crumbleS >= 0;
+      const T = crumble ? fall.crumbleS! : Math.min(FALL_MAX_S, Math.max(FALL_MIN_S, Math.sqrt(2 * drop / 9.81) * FALL_SLOW));
+      const f: PieceFall = { seam, meshes, axis, angle, pivot, t, t0: o.now(), T, crumble, piece: fall.piece, holdTo: 0, u: 0,
+        debris: fall.debris ?? null, debrisBucket: fall.debrisBucket ?? '' };
       fallMatrix(f, 0);
       for (const m of meshes) { m.matrix.copy(_fm); m.matrixWorldNeedsUpdate = true; }
       pieceFalls.push(f);
       until = Math.max(until, f.t0 + T);
     }
     if (until > 0) for (const m of made) debris.showFrom(m, until);
+    for (let i = first; i < pieceFalls.length; i++) pieceFalls[i]!.holdTo = until;
   }
   function stepPieceFalls(): void {
     if (!pieceFalls.length) return;
     const now = o.now();
     let k = 0;
     for (const f of pieceFalls) {
-      // (gone the moment the laid copy shows: the debris reads the same sum)
-      if (now >= f.t0 + f.T) { for (const m of f.meshes) { m.removeFromParent(); m.geometry.dispose(); } f.seam.touchShadows(); continue; }
+      // (gone the moment the laid copy shows: the debris reads the same sum — a fall ended before the stage's longest lies
+      // at its end till then; a crumbling piece goes in its dust and shards)
+      if (f.crumble ? now >= f.t0 + f.T : now >= Math.max(f.t0 + f.T, f.holdTo)) {
+        if (f.crumble) crumblePiece(f);
+        for (const m of f.meshes) { m.removeFromParent(); m.geometry.dispose(); }
+        f.seam.touchShadows();
+        continue;
+      }
+      if (f.crumble || (now >= f.t0 + f.T && f.u === 1)) { pieceFalls[k++] = f; continue; }
       const u = Math.min(1, Math.max(0, (now - f.t0) / f.T));
-      // (a fall gathers speed: its turn and its drop eased in)
-      fallMatrix(f, u * u);
+      f.u = u;
+      fallMatrix(f, u);
       for (const m of f.meshes) { m.matrix.copy(_fm); m.matrixWorldNeedsUpdate = true; }
       f.seam.touchShadows();
       pieceFalls[k++] = f;
@@ -1875,7 +1936,7 @@ export function createStructureStages(o: StructureStagesOptions): StructureStage
       for (const h of heldHides) h.at += delta;
       for (const f of falling) f.until += delta;
       for (const f of storeyFalls) f.t0 += delta;
-      for (const f of pieceFalls) f.t0 += delta;
+      for (const f of pieceFalls) { f.t0 += delta; f.holdTo += delta; }
     },
     reset() {
       storeyFalls.length = 0;
