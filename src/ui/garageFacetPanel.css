@@ -99,6 +99,12 @@ body[data-cot-panels='overlay'] .cot-facet-row::-webkit-scrollbar{display:none;}
 .cot-facet-rowwrap::after{content:'\203A';right:0;justify-content:flex-end;padding-right:6px;
   background:linear-gradient(90deg,transparent,var(--facet-bg) 62%);}
 .cot-facet-rowwrap[data-more*='l']::before,.cot-facet-rowwrap[data-more*='r']::after{opacity:1;}
+/* A short landscape phone (390 px tall): the panel tops out at the screen's edge over the rail, so its rows sit closer and
+   its padding is slimmer, and all three rows fit with no scroll (it overflowed by a few px). */
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-panel{gap:5px;padding:6px 10px 6px;}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-rowwrap{padding-top:6px;}
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-rowwrap::before,
+body[data-cot-height='short'][data-cot-panels='overlay'] .cot-facet-rowwrap::after{top:6px;}
 body[data-cot-input='coarse'] :is(.cot-facet-option,.cot-facet-clear,.cot-facet-close,.cot-facet-search input){min-height:44px;}
 body[data-cot-input='coarse'] .cot-facet-search input{height:44px;}
 body[data-cot-input='coarse'] .cot-facet-close{width:44px;}
