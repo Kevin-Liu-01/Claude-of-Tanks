@@ -11,6 +11,7 @@ import { buildAbramsSourceXUkraineKit } from './abramsSourceXUkraineKit.ts';
 import { buildAbramsSourceXSepv3Kit } from './abramsSourceXSepv3Kit.ts';
 import { ABRAMS_SOURCE_X_FRAME } from '../abramsSourceXDatums.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
+import { addTrackWidthMinePlow } from './abramsMinePlow.ts';
 export { ABRAMS_SOURCE_X_FRAME } from '../abramsSourceXDatums.ts';
 
 // Inferred articulation from the source's bearing circle and level bore.
@@ -24,7 +25,9 @@ function abramsSourceXConfiguration(id: string) {
   // owner 2026-09-16: the SEPv3 carries all the side turret and skirt armour and attachments — the
   // rectangular ARAT set with the Trophy launchers taking three stations of each rear course
   return { a1, sepv3, curvedArat, urbanArmor: curvedArat || id === 'm1a2_abrams_tusk' || sepv3,
-    ukrainian: id === 'ua_m1a2_abrams' };
+    ukrainian: id === 'ua_m1a2_abrams',
+    // owner 2026-10-22: the UA M1A2 and the SEPv2 carry the track-width mine plow, as the M1A1 HA (and the UA M1A1 on it)
+    minePlow: id === 'ua_m1a2_abrams' || curvedArat };
 }
 
 function turretSlab(P: TankBuilderPort, corners: readonly XYZ[]): void {
@@ -118,6 +121,11 @@ function* buildAbramsXCooperativeSteps(P: TankBuilderPort, cooperative = true): 
   bindAbramsSourceXStockEra(P, options.urbanArmor || options.ukrainian);
   if (cooperative) yield "buildAbramsX:bindAbramsSourceXStockEra(P, options.urbanArmor || options.ukrainian);";
   yield* buildAbramsSourceXEquipmentCooperativeSteps(P, options, frame, cooperative);
+  if (options.minePlow) {
+    // on the bow before the field kit and the nets are laid over the finished build
+    addTrackWidthMinePlow(P);
+    if (cooperative) yield "buildAbramsX:addTrackWidthMinePlow(P);";
+  }
   if (options.ukrainian) {
     // owner 2026-09-15: the M1A2 Abrams UA wears its field kit over the finished study
     buildAbramsSourceXUkraineKit(P);
