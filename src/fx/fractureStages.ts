@@ -64,7 +64,9 @@ export interface FractureHost {
   worldMaterial(byBucket: Map<string, THREE.Material>, bucket: string): THREE.Material | null;
   spanMaterials(seam: StructureDamageSeam): Map<string, THREE.Material>;
   /** The room behind a hole in a source material's texture (structureStages roomMaterialFor). */
-  roomMaterialFor(source: THREE.Material | null | undefined): THREE.Material;
+  roomMaterialFor(source: THREE.Material | null | undefined, open?: boolean): THREE.Material;
+  /** (233) A room's material open to the sky (structureStages openRoomMaterial): lit as the building's outside is. */
+  openRoomMaterial?(material: THREE.Material): THREE.Material;
   /** (round 6) The sweep took parts of a structure down: true when that took most of its roof (its top storey opened). */
   roofDropped?(seam: StructureDamageSeam): boolean;
   /** (round 6) Claim a storey's room for the fracture (false: the kit's room stands there already). */
@@ -251,7 +253,8 @@ export function createFractureStages(o: FractureStagesOptions): FractureStages {
     keepSpan: (span) => host?.keep(span),
     holdBake: (structureIdx, y) => bodies.floorHolds(structureIdx, y),
     materialFor: (seam, bucket) => resolverOf(seam)(bucket),
-    roomMaterial: (seam, bucket) => (host ? host.roomMaterialFor(resolverOf(seam)(bucket)) : null),
+    roomMaterial: (seam, bucket, open) => (host ? host.roomMaterialFor(resolverOf(seam)(bucket), open) : null),
+    openRoomMaterial: (material) => host?.openRoomMaterial?.(material) ?? material,
     claimRoom: (seam, key) => host?.claimRoom?.(seam, key) ?? true,
     onLanding: o.onLanding,
     onRefused(seam, x, y, z, sizeM, slot, vx, vy, vz) {

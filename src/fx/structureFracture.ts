@@ -54,7 +54,9 @@ interface StructureFractureOptions {
   poolShare?: number;
   /** The room behind a holed storey's material for a bucket (structureStages' fx-structure-room in that bucket's texture:
    *  dim, vertex-tinted, compiled at the battle warm); absent, the wall's own. */
-  roomMaterial?(seam: StructureDamageSeam, bucket: string): THREE.Material | null;
+  roomMaterial?(seam: StructureDamageSeam, bucket: string, open?: boolean): THREE.Material | null;
+  /** (233) A room's material open to the sky (its roof fallen: lit as the building's outside is); absent, as it is. */
+  openRoomMaterial?(material: THREE.Material): THREE.Material;
   /** (round 6) Claim a storey's room (its interior's key) for this structure: false when the kit laid it already (the two
    *  drawn in one place fought: urban church #15's nave, its far wall flickering through itself). */
   claimRoom?(seam: StructureDamageSeam, key: string): boolean;
@@ -319,8 +321,10 @@ const DUST_COAT = 0.42;
 /** A room's light behind a breach (its walls; the floor and ceiling by their own shade): the wall's colour in shade. */
 const ROOM_SHADE = 0.6;
 /** (destruction-slabs 227 round 6; the round-5 films' tavern #7: its roofless top storey's inner walls glared white, lit at the
- *  face's full tint) a top storey's room open to the sky is lit a quarter under the sunlit face: it stands inside its walls. */
-const OPEN_ROOM_SHADE = 0.75;
+ *  face's full tint) a top storey's room open to the sky is lit a quarter under the sunlit face: it stands inside its walls —
+ *  (238: the glare was the room material's light; in the building's own material a quarter under read near black beside the
+ *  sunlit wall heads) at the face's tint. */
+const OPEN_ROOM_SHADE = 1;
 /** (round 5) A room's floor this far over its floor line (m): the storey under it draws its own top there. */
 const ROOM_FLOOR_LIFT_M = 0.02;
 const CRACK_MIN_CELLS = 6;
@@ -1140,44 +1144,64 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
     if (o.claimRoom && !o.claimRoom(live.seam, interior.key)) return;
     live.roomStoreys.add(interior.key);
     const roomLayout: Layout = { names: ['uv', 'color'], sizes: [2, 3], stride: 11 };
-    const room = o.roomMaterial?.(live.seam, draw.core.bucket) ?? null;
+    // inward-facing walls, floor and ceiling of the storey's room
+    // (round 4, tavern #7) the top storey's room under a roof that has fallen has no ceiling: open to the sky, never a lid —
+    // (round 5) and lit as the sky lights it, not in an interior's shade — (233) in the sky's light as the outside is
+    const open = storey === a.storeys.length - 1 && !!a.roof && roofGone.has(live.seam.structureIdx);
+    const room = o.roomMaterial?.(live.seam, draw.core.bucket, open) ?? null;
     const layout = room ? roomLayout : cg.layout;
-    const material = room ?? cg.material;
     const { y0, y1 } = interior;
     // (destruction-slabs 227 round 3, the owner's "dark grey-navy slabs" and the visual critic's: a blown-out facade showed
     // the room's far wall as one flat untextured dark plane filling the building) the room in the wall's own colour, in
     // shade — an interior, its texture readable — never the near-black void the anatomy's interior colour drew
-    const col = room ? draw.core.tint : a.interior.color;
-    const list: number[] = [];
-    // inward-facing walls, floor and ceiling of the storey's room
-    // (round 4, tavern #7) the top storey's room under a roof that has fallen has no ceiling: open to the sky, never a lid —
-    // (round 5) and lit as the sky lights it, not in an interior's shade
-    const open = storey === a.storeys.length - 1 && !!a.roof && roofGone.has(live.seam.structureIdx);
-    const q = (p0: number[], p1: number[], p2: number[], p3: number[], n: number[], shade: number) =>
-      pushQuad(list, layout, p0, p1, p2, p3, n, col, room ? shade * (open ? OPEN_ROOM_SHADE : ROOM_SHADE) : shade);
-    for (const [ax, az, bx, bz, nx, nz] of interior.walls) q([ax, y0, az], [bx, y0, bz], [bx, y1, bz], [ax, y1, az], [nx, 0, nz], Math.abs(nx) > 0.5 ? 0.9 : 1);
+    // (233; the critics' tavern #7 lid: its roofless top storey's floor was the wall's plaster, one pale-to-black plane
+    // under the sky) its floor in the storey's own boards and its ceiling in what carries the storey over it, as the kit's
+    // room (structureStages layInterior) lays them: a mesh a surface's bucket
+    const above = a.storeys[storey + 1];
+    const floorSlot = room ? st.floor?.structure ?? null : null;
+    const ceilSlot = room ? above?.floor?.structure ?? a.roof?.structure ?? floorSlot : null;
+    const roomOf = (slot: { bucket: string } | null): THREE.Material | null =>
+      (slot ? o.roomMaterial?.(live.seam, slot.bucket, open) : null) ?? room;
+    const surfaces: Array<{ material: THREE.Material; col: readonly number[]; list: number[]; ceilFrom: number }> = [];
+    const surface = (material: THREE.Material | null, col: readonly number[]) => {
+      const m = material ?? cg.material;
+      let s = surfaces.find((e) => e.material === m && e.col === col);
+      if (!s) { s = { material: m, col, list: [], ceilFrom: -1 }; surfaces.push(s); }
+      return s;
+    };
+    // (233: the tavern's roofless top storey showed its timber frame's core as one dark board wall) its walls in the face's
+    // render or infill where it has one (an interior is plastered), as the kit's room lays them; else the face's core
+    const wallSlot = room ? st.faces[draw.grid.faceIndex]?.layers.find((l) => l.material === 'plaster' || l.material === 'infill') ?? null : null;
+    const walls = wallSlot ? surface(roomOf(wallSlot), wallSlot.tint) : surface(room, room ? draw.core.tint : a.interior.color);
+    const floor = floorSlot ? surface(roomOf(floorSlot), floorSlot.tint) : walls;
+    const ceil = ceilSlot ? surface(roomOf(ceilSlot), ceilSlot.tint) : walls;
+    const q = (s: { col: readonly number[]; list: number[] }, p0: number[], p1: number[], p2: number[], p3: number[], n: number[], shade: number) =>
+      pushQuad(s.list, layout, p0, p1, p2, p3, n, s.col, room ? shade * (open ? OPEN_ROOM_SHADE : ROOM_SHADE) : shade);
+    for (const [ax, az, bx, bz, nx, nz] of interior.walls) q(walls, [ax, y0, az], [bx, y0, bz], [bx, y1, bz], [ax, y1, az], [nx, 0, nz], Math.abs(nx) > 0.5 ? 0.9 : 1);
     // (round 5) its floor a hand over the floor line, where the storey under it draws its top
     const fy = y0 + ROOM_FLOOR_LIFT_M;
-    for (const [x0, z0, x1, z1] of interior.rects) q([x0, fy, z0], [x1, fy, z0], [x1, fy, z1], [x0, fy, z1], [0, 1, 0], 0.9);
+    for (const [x0, z0, x1, z1] of interior.rects) q(floor, [x0, fy, z0], [x1, fy, z0], [x1, fy, z1], [x0, fy, z1], [0, 1, 0], 0.9);
     // (the ceilings last: a roof that falls after this room was laid takes them by the draw range)
-    const ceilFrom = list.length / layout.stride;
-    if (!open) for (const [x0, z0, x1, z1] of interior.rects) q([x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1], [0, -1, 0], 0.7);
-    if (!list.length) return;
-    const mesh = new THREE.Mesh(interleavedOf(layout, Float32Array.from(list)), material);
-    mesh.name = `fx-fracture-room-${live.seam.structureIdx}`;
-    maskTag(live, mesh);
-    mesh.userData.storey = storey;
-    mesh.userData.roomKey = interior.key;
-    mesh.userData.ceilFrom = ceilFrom;
-    mesh.userData.roomShade = room && !open ? ROOM_SHADE : 1;
-    if (room && open) mesh.userData.openToSky = true;
-    mesh.matrixAutoUpdate = false;
-    bodyToWorld(live, mesh.matrix);
-    mesh.matrix.elements[13] -= (live.sunk[storey] ?? 0) + (live.flight[storey] ?? 0);
-    mesh.matrixWorldNeedsUpdate = true;
-    mesh.receiveShadow = true;
-    o.group.add(mesh);
-    live.room.push(mesh);
+    for (const s of surfaces) s.ceilFrom = s.list.length / layout.stride;
+    if (!open) for (const [x0, z0, x1, z1] of interior.rects) q(ceil, [x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1], [0, -1, 0], 0.7);
+    for (const s of surfaces) {
+      if (!s.list.length) continue;
+      const mesh = new THREE.Mesh(interleavedOf(layout, Float32Array.from(s.list)), s.material);
+      mesh.name = `fx-fracture-room-${live.seam.structureIdx}`;
+      maskTag(live, mesh);
+      mesh.userData.storey = storey;
+      mesh.userData.roomKey = interior.key;
+      mesh.userData.ceilFrom = s.ceilFrom;
+      mesh.userData.roomShade = room && !open ? ROOM_SHADE : 1;
+      if (room && open) mesh.userData.openToSky = true;
+      mesh.matrixAutoUpdate = false;
+      bodyToWorld(live, mesh.matrix);
+      mesh.matrix.elements[13] -= (live.sunk[storey] ?? 0) + (live.flight[storey] ?? 0);
+      mesh.matrixWorldNeedsUpdate = true;
+      mesh.receiveShadow = true;
+      o.group.add(mesh);
+      live.room.push(mesh);
+    }
   }
 
   // ---- the roof sags over a wall that went from under it (S2) --------------------------------------------------------
@@ -2170,6 +2194,7 @@ export function createStructureFracture(o: StructureFractureOptions): StructureF
         const shade = Number(m.userData.roomShade ?? 1);
         if (m.userData.openToSky === true || !(shade < 1)) continue;
         m.userData.openToSky = true;
+        if (o.openRoomMaterial && !Array.isArray(m.material)) m.material = o.openRoomMaterial(m.material);
         const col = m.geometry.getAttribute('color') as THREE.InterleavedBufferAttribute | undefined;
         if (!col) continue;
         const n = m.userData.ceilFrom as number;
