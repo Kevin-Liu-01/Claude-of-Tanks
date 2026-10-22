@@ -299,7 +299,7 @@ export function streetLifeRng(ctx: RegionalBuildContext): () => number {
  * A sign's characters in a cell `cell` square centred (cu, cy): two or three bars across, a stem down, now and then a short
  * hook — read from the street as brushed characters. `stroke(u0, u1, y0, y1)` lays each.
  */
-function glyph(cu: number, cy: number, cell: number, rng: () => number, stroke: (u0: number, u1: number, y0: number, y1: number) => void): void {
+export function glyph(cu: number, cy: number, cell: number, rng: () => number, stroke: (u0: number, u1: number, y0: number, y1: number) => void): void {
   const half = cell / 2, s = cell * 0.13, bars = 2 + (rng() < 0.5 ? 1 : 0);
   for (let j = 0; j < bars; j++) {
     const by = cy - half + (j + 0.5) * cell / bars + (rng() - 0.5) * s, bw = cell * (0.55 + rng() * 0.45);
