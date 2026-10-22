@@ -6703,6 +6703,14 @@ void splatCompute() {
     // albedo where the normal has mipped away; round 73's sine was one more soft undulation
     float dwave = fract(sph * 0.0669 + (n2 - 0.5) * 0.2 + wOff.y * (0.3 / 48.0)); // wOff.y / 48: the 0.0009 field's G, centred
     float drift = (dwave < 0.8 ? dwave / 0.8 : (1.0 - dwave) / 0.2) * 2.0 - 1.0;
+    // (2026-10-07, the ground lane; wave 182's Frosthollow bird under the overcast: "dark wiggly lines" over the open
+    // snow; ported by salvage 240 onto the 10-14 trains) the lee band and the sawtooth's drop span a fifth of the 15 m
+    // wave (about 3 m), and out to 420 m they were drawn unfiltered: past a pixel or two of footprint they aliased into
+    // thin dark lines. Filtered to the pixel's footprint along the wind as the other far terms are (stripeAA): the drop
+    // eases to the wave's own fundamental (0.744 · cos, its crest at 0.65 of the wave), the wave to its mean as its whole
+    // period nears the pixel, the lee band to its mean (0.12)
+    float edgeAA = stripeAA(0.2 / 0.0669, swind);
+    drift = mix(0.744 * cos(6.2832 * (dwave - 0.65)), drift, edgeAA) * stripeAA(1.0 / 0.0669, swind);
     drift *= 0.2 + 0.8 * smoothstep(0.35, 0.70, n2w);
     float driftD = 1.0 - smoothstep(120.0, 420.0, effDist);
     float sw = uReduxSnow.y * meadowG * (1.0 - fR) * (1.0 - triW) * (1.0 - roadCore);
@@ -6717,7 +6725,7 @@ void splatCompute() {
       sTilt -= sH * dot(sTilt, sH) * (1.0 - keepA);
     }
     n.xy += sTilt;
-    float lee = smoothstep(0.78, 0.84, dwave) * (1.0 - smoothstep(0.88, 0.98, dwave));
+    float lee = mix(0.12, smoothstep(0.78, 0.84, dwave) * (1.0 - smoothstep(0.88, 0.98, dwave)), edgeAA);
     a.rgb *= 1.0 + drift * 0.05 * sw * smoothstep(40.0, 120.0, effDist) * driftD;
     a.rgb *= 1.0 - lee * 0.13 * sw * uReduxC.w * smoothstep(15.0, 50.0, effDist) * (0.6 + 0.4 * n1hs);
   }

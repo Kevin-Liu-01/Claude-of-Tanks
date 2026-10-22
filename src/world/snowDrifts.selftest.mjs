@@ -138,6 +138,11 @@ for (const term of [
   'float sast = sin(sph * 3.4 + ((n2 - 0.5) * 0.25 + (n1 - 0.5) * 0.2) * 6.2832) * (1.0 - smoothstep(30.0, 120.0, camDist));',
   'float dwave = fract(sph * 0.0669 + (n2 - 0.5) * 0.2 + wOff.y * (0.3 / 48.0));',
   'float drift = (dwave < 0.8 ? dwave / 0.8 : (1.0 - dwave) / 0.2) * 2.0 - 1.0;',
+  // (2026-10-07, wave 182's Frosthollow bird: the lee lines aliased past ~120 m; salvage 240) the drift's drop and lee
+  // band filtered to the pixel's footprint along the wind — the drop to the wave's fundamental, the wave to its mean
+  'float edgeAA = stripeAA(0.2 / 0.0669, swind);',
+  'drift = mix(0.744 * cos(6.2832 * (dwave - 0.65)), drift, edgeAA) * stripeAA(1.0 / 0.0669, swind);',
+  'float lee = mix(0.12, smoothstep(0.78, 0.84, dwave) * (1.0 - smoothstep(0.88, 0.98, dwave)), edgeAA);',
   'drift *= 0.2 + 0.8 * smoothstep(0.35, 0.70, n2w);',
   'vec2 sTilt = swind * clamp(sast * 0.5 + drift * driftD * 0.9, -0.3, 0.3) * sw;',
   'float dkE = 2.0 * max(uDetailGain, 1e-3) * (1.0 + smoothstep(18.0, 45.0, camDist) * (1.0 - smoothstep(300.0, 600.0, camDist)));',
@@ -146,6 +151,19 @@ for (const term of [
 ]) assert.ok(block.includes(term), `the block carries: ${term}`);
 for (const old of ['nz(uv, 0.0025', 'n1h * 5.0', 'n1 * 0.9', '(0.78 + 0.44 * n2)', 'n2w * 0.5'])
   assert.ok(!block.includes(old), `round 73b's ringing term is gone: ${old}`);
+// the far stand-ins are the drift's own: the sawtooth's fundamental (amplitude and crest) and the lee band's mean, measured
+// here over one wave, are the constants the filter eases to — the frame's tone at range is unchanged
+{
+  const N = 100000; let a1 = 0, b1 = 0, lee = 0;
+  for (let i = 0; i < N; i++) {
+    const d = i / N, s = (d < 0.8 ? d / 0.8 : (1 - d) / 0.2) * 2 - 1;
+    a1 += (2 * s * Math.cos(2 * Math.PI * d)) / N; b1 += (2 * s * Math.sin(2 * Math.PI * d)) / N;
+    lee += (smooth(0.78, 0.84, d) * (1 - smooth(0.88, 0.98, d))) / N;
+  }
+  const crest = (((Math.atan2(b1, a1) / (2 * Math.PI)) % 1) + 1) % 1;
+  assert.ok(Math.abs(Math.hypot(a1, b1) - 0.744) < 0.002 && Math.abs(crest - 0.65) < 0.002, `the drop eases to the wave's fundamental (${Math.hypot(a1, b1).toFixed(4)} at ${crest.toFixed(4)})`);
+  assert.ok(Math.abs(lee - 0.12) < 0.002, `the lee band eases to its mean (${lee.toFixed(4)})`);
+}
 // the twin's wOff is the shader's (the 0.0009 field read once for the domain warp and the drift's meander)
 assert.ok(terrain.includes('vec2 wOff = (nz(uv, 0.0009, vec2(0.53, 0.17)).rg - 0.5) * 48.0;'), 'the domain warp the drift reads');
 // SPLAT_NORMAL_FRAG draws the encoded delta twice over, times dk with the range gain — the terminator bound's dkE
