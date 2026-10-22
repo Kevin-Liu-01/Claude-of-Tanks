@@ -381,7 +381,16 @@ export interface DamageFall {
   r: readonly number[];
   pivot: readonly [number, number, number];
   t: readonly [number, number, number];
+  /** (destruction-slabs 233) The piece cannot fall clear of what stands under it: it stands this long (s), then breaks
+   *  up where it stands in its dust and shards (its pose is where it stood; nothing of it is laid whole). */
+  crumbleS?: number;
+  /** (238) The pieces of it a crumble throws (body frame), DEBRIS_STRIDE numbers each: x, y, z, vx, vy, vz, size, r, g, b,
+   *  spin about the vertical; thrown from `debrisBucket` as it breaks up. */
+  debris?: readonly number[];
+  debrisBucket?: string;
 }
+/** Numbers a DamageFall's debris piece takes. */
+export const DEBRIS_STRIDE = 11;
 
 /** What a stage returns beside what it wrote. */
 export interface DamageStageResult {
