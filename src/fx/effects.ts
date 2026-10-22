@@ -726,6 +726,10 @@ const MUZZLE_LIGHT_SNOW_K = 0.33, MUZZLE_LIGHT_SAND_K = 0.66;
 /** (EF.10) the local lights' gains on the smoke and dust they reach (a radiance gain on the medium's own colour, at the
  *  light; falling off as (1 - d / range)^2): a headlight's beam, a flash at its peak, a wreck's fire at its mean */
 const LOCAL_HEADLIGHT_GAIN = 1.4, LOCAL_FLASH_GAIN = 2.4, LOCAL_FIRE_GAIN = 1.5;
+/** (233) a burning wreck's light on its own smoke, by day and by night alike (x LOCAL_FIRE_GAIN): the fire is as bright
+ *  at noon as at midnight and the exposure already lifts it at night (the night scale on it washed the night column a
+ *  flat cream once the newest wreck took the full gain); by day it now warms its base (the newest wreck's had ~0.2) */
+const WRECK_FIRE_SMOKE_K = 0.3;
 /** a wreck fire's reach on its own smoke (m, x the column's scale): the lit underside only a few metres round the flames */
 const LOCAL_FIRE_REACH_M = 5;
 // lighting_post r3: 1.1 s / pow-3 decay left the light at 9% of peak while
@@ -4096,13 +4100,14 @@ function* createFxSteps(
    */
   function emitFlameLick(col: SmokeColumn, dk: number, birthOffset: number, flameK: number): void {
     const k = 0.55 + 0.45 * flameK;
-    _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
+    // spread over the deck (a fire along it, never one candle at its middle)
+    _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.7 * col.scale;
     _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
-    _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.2;
+    _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.7 * col.scale;
     _puffO.vel[0] = (rng() - 0.5) * 0.6; _puffO.vel[1] = (1.0 + rng() * 0.9) * k; _puffO.vel[2] = (rng() - 0.5) * 0.6;
     _puffO.life = 0.30 + rng() * 0.28;
-    _puffO.size0 = -(0.95 + rng() * 0.35) * col.scale * dk * k;
-    _puffO.size1 = (0.6 + rng() * 0.25) * col.scale * dk * k; // shrink as it dies
+    _puffO.size0 = -(1.05 + rng() * 0.4) * col.scale * dk * k;
+    _puffO.size1 = (0.7 + rng() * 0.3) * col.scale * dk * k; // shrink as it dies
     _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 1.5 + rng() * 2.5;
     col3(0xffcf70, _puffO.col0); col3(0xff5a10, _puffO.col1);
     _puffO.alpha = 0.95; _puffO.grav = 1.4; _puffO.birthOffset = birthOffset - rng() * 0.15;
@@ -4263,7 +4268,7 @@ function* createFxSteps(
       if (!(flameK > 0)) continue;
       const flicker = 0.8 + 0.12 * Math.sin(now * 11.3 + i * 1.7) + 0.08 * Math.sin(now * 6.1 + i * 2.9);
       if (!addLocalPoint(col.pos[0], col.pos[1] + 1.2, col.pos[2], LOCAL_FIRE_REACH_M * col.scale, _wreckFire,
-        LOCAL_FIRE_GAIN * nightK * flicker * col.scale * flameK)) break;
+        LOCAL_FIRE_GAIN * WRECK_FIRE_SMOKE_K * flicker * col.scale * flameK)) break;
     }
     endLocalLights();
   }

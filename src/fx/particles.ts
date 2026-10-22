@@ -311,8 +311,8 @@ void main() {
   vAge = age;
   vec3 wpos = aPB.xyz + particleDisplace( aVL.xyz, aC0.w, age, uDrag );
   // (233, the FX follow-up: "fire is round sprite blobs") a flame lick (a negative size0, PuffOptions) is a tongue: it
-  // stands along the world's up from its root (the card's foot stays where it was born), sways rather than spins, and
-  // its flipbook blob sits low in the card (its dense heart near the root, the tip thinning out)
+  // stands along the world's up from its root (the card's foot stays where it was born), ~1.7x its width side-on, sways
+  // rather than spins, and its flipbook blob sits low in the card (its dense heart near the root, the tip thinning out)
   float flame = 1.0 - step( 0.0, aSR.x );
   vFlame = flame;
   float size = mix( abs( aSR.x ), aSR.y, t );
@@ -323,14 +323,13 @@ void main() {
   vec2 local = position.xy;
   vec3 cardRight = camRight, cardUp = camUp;
   if ( flame > 0.5 ) {
-    // the world's up in the card's plane: a tongue seen side-on stands ~2.2x its width, from straight above it
-    // foreshortens to its round foot
+    // the world's up in the card's plane: from straight above a tongue foreshortens to its round foot
     vec3 camBack = vec3( viewMatrix[0][2], viewMatrix[1][2], viewMatrix[2][2] );
     vec3 upP = vec3( 0.0, 1.0, 0.0 ) - camBack * camBack.y;
     float upL = length( upP );
     cardUp = normalize( mix( camUp, upP / max( upL, 1e-3 ), smoothstep( 0.15, 0.45, upL ) ) );
     cardRight = normalize( cross( cardUp, camBack ) );
-    local.y = ( position.y + 0.5 ) * ( 1.0 + ( 1.25 - 0.55 * t ) * upL ) - 0.5;
+    local.y = ( position.y + 0.5 ) * ( 1.0 + ( 0.75 - 0.3 * t ) * upL ) - 0.5;
   }
   vec2 corner = vec2( local.x * ca - local.y * sa,
                       local.x * sa + local.y * ca ) * size;
@@ -483,11 +482,12 @@ void main() {
   if ( vFlame > 0.5 ) {
     float tear = fNoise( vec2( vUv.x * 3.2 + vSeed * 17.0, vUv.y * 2.4 - vT * 2.6 + vSeed * 5.0 ) ) * 0.65
       + fNoise( vec2( vUv.x * 7.4 - vSeed * 11.0, vUv.y * 5.2 - vT * 4.1 ) ) * 0.35;
-    float hw = mix( 0.5, 0.1, pow( vUv.y, 0.85 ) );
+    // a teardrop: a broad root, widest a fifth of the way up, tapering to a torn tip (the r1 taper read as even pillars)
+    float hw = 0.46 * smoothstep( -0.3, 0.2, vUv.y ) * ( 1.0 - 0.82 * smoothstep( 0.2, 1.0, vUv.y ) );
     float xw = abs( vUv.x - 0.5 );
     a *= 1.0 - smoothstep( hw * ( 0.45 + 0.6 * tear ), hw * ( 0.9 + 0.6 * tear ), xw );
     a *= 1.0 - smoothstep( 0.45 + 0.35 * tear, 0.95, vUv.y );
-    rootHeat = mix( 1.3, 0.6, vUv.y );
+    rootHeat = mix( 1.1, 0.65, vUv.y );
   }
   if ( a < 0.004 ) discard;
   ${FOG_SCALE_F}
@@ -496,6 +496,8 @@ void main() {
   float heat = clamp( ( tex - er ) * 2.6 * rootHeat, 0.0, 1.0 );
   float hot = 0.45 + heat * heat * ( 2.2 - vT * 1.6 );
   vec3 col = vColor.rgb * hot * ( 1.0 - vT * vT * 0.45 );
+  // (233) a flame lick: yellow at its root, orange to red toward its tip (the r1 tongues read pale cream pillars)
+  if ( vFlame > 0.5 ) col *= mix( vec3( 1.0, 0.9, 0.7 ), vec3( 1.0, 0.55, 0.28 ), smoothstep( 0.15, 0.9, vUv.y ) );
   // rim tint — r5: the hard 0.0-0.55 gate stamped a saturated RED BAND onto
   // the rim (r4 "hard red banding"). The ramp now walks white -> yellow ->
   // orange -> sooty umber across a wide gate so no single hue bands.
