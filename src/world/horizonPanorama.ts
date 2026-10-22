@@ -1550,6 +1550,21 @@ void main() {
     prevE = ej; prevV = v;
   }
   if (hitV < 0.0) { gl_FragColor = vec4(0.0); return; }
+  // (2026-10-22, world-polish-240: Copper Mesa's "pale haze slab") a texel over the eye's horizontal but under the ring's
+  // own skyline is the ring's from the eye; past the shell its ray may clear the far country altogether. There it is open
+  // air: the ring stands against the sky from every camera, and the shell takes the far earth only under a camera's own
+  // horizontal (painted with the hidden band's fill, it stood over the ring's crest as a pale slab from the elevated views)
+  if (e > 0.0 && e < atan(texture2D(uEdge, vec2(u, 0.5)).a) - 0.002) {
+    bool beyond = false;
+    for (int j = 0; j < 512; j++) {
+      if (float(j) >= uGrid.y) break;
+      float v = (float(j) + 0.5) / uGrid.y;
+      float r = rowRadius(v);
+      if (r < uFrame.z) continue;
+      if (atan(texture2D(uHeight, vec2(u, v)).r - uFrame.w, r) >= e) { beyond = true; break; }
+    }
+    if (!beyond) { gl_FragColor = vec4(0.0); return; }
+  }
   vec2 g = vec2(u, hitV);
   float rr = rowRadius(hitV);
   vec3 wp = vec3(cos(a) * rr, uFrame.w + tanE * rr, sin(a) * rr);
