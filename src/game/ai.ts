@@ -2805,8 +2805,20 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
   ): AiObstacle | null {
     let bestT = Infinity;
     let box: AiObstacle | null = null;
+    // (perf-240) a solid whose box stands clear of the ray's reach is passed before its footprint is read (a scan of
+    // every solid on the map read each one's: 14 % of a 15 v 15 Steinburg step). The clearance region lies within
+    // 2 × margin of the footprint (a corner's miter is capped at CLEARANCE_MITER_LIMIT, a bevelled one reaches √2) and
+    // every footprint inside its record's box, so the solids passed are the ones whose entry is null: the same box, in
+    // the same order. (A NaN reach passes nothing.)
+    const length = Math.sqrt(directionX * directionX + directionZ * directionZ);
+    const reach = length > 1e-9 ? limit / length : 0;
+    const endX = sourceX + directionX * reach, endZ = sourceZ + directionZ * reach;
+    const pad = margin * 2 + 0.01;
+    const minX = Math.min(sourceX, endX) - pad, maxX = Math.max(sourceX, endX) + pad;
+    const minZ = Math.min(sourceZ, endZ) - pad, maxZ = Math.max(sourceZ, endZ) + pad;
     for (let i = 0; i < obstacles.length; i++) {
       const o = obstacles[i];
+      if (o.max[0] < minX || o.min[0] > maxX || o.max[2] < minZ || o.min[2] > maxZ) continue;
       if (o.crushed || hullYieldingRecord(o) || o.kind === 'bridge') continue;
       const entry = rayCollisionClearanceEntry2(
         o as CollisionRecord,
