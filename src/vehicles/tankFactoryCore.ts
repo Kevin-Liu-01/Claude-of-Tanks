@@ -8504,7 +8504,7 @@ function* createTankOwnedSteps(
       delete mesh.userData.combatHitboxPart;
       const owner=parent, mount=root.getObjectByName(station.name);
       if(!mount)throw new Error('Missing auxiliary station '+station.name);
-      const target=station.stage==='pitch'?mount.getObjectByName('auxiliaryWeaponPitch')!:mount;
+      const target=station.stage==='yaw'?mount:mount.getObjectByName(station.stage==='recoil'?'auxiliaryWeaponRecoil':'auxiliaryWeaponPitch')!;
       root.updateMatrixWorld(true);
       merged.applyMatrix4(new THREE.Matrix4().copy(target.matrixWorld).invert().multiply(owner.matrixWorld));
       target.add(mesh);return;

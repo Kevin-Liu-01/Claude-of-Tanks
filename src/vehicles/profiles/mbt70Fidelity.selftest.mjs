@@ -96,7 +96,9 @@ assert.ok(Math.abs(size.x - spec.dims.widthM) < 0.08,
 // 2026-09-17 ground datum: the hull sits ~2 cm lower on the 28 mm band (3.232); the station's seat on the turret is unchanged
 // 2026-10-21 (float-gaps 230): the envelope's top is the 0.92 m right whip's tip, not the Rh 202 station (3.200). Both
 // rear whip pots hovered 22.5 mm over the roof at their x 0.94 seats; the factory now drops them onto it (fittingSnap
-// seatOnRig, kit.ts antennaWhip), so the tip and the envelope fall 24.5 mm (3.230 -> 3.205). The station is unmoved.
+// seatOnRig, kit.ts antennaWhip), so the tip and the envelope fall 24.5 mm (3.230 -> 3.205).
+// 2026-10-21 (owner: a proper gun turret for the roof gun): the Rh 202's armoured housing and the sight on its roof
+// stand over the whip: the envelope's top is the sight hood, 0.44 m over the commander's station (3.342).
 assert.ok(size.y > 3.19 && size.y < 3.36,
   `commander station remains seated on the low rounded turret (${size.y.toFixed(3)})`);
 for (const name of ['rig_hull', 'rig_turret', 'rig_gun', 'rig_muzzle']) {
@@ -328,7 +330,44 @@ assert.ok(raisedFrontWheelY >= restFrontWheelY + 0.20,
   `terrain conformance samples the re-seated front station (${raisedFrontWheelY.toFixed(3)} m local Y over rest ${restFrontWheelY.toFixed(3)})`);
 contactTank.dispose();
 
-console.log('mbt70Fidelity.selftest: source proportions, procedural ownership, anatomy and ATGM contract pass');
+// 2026-10-21 (owner: "its side armor needs to be fixed"): the side armour and side stock lie on the cast shell they hang
+// on (modern2.ts mbt70ShellFaces). Each seated piece's back corners stand at most 25 mm into the shell along its
+// normal and none off it; the shell cuts none of its outer corners; and none stands outboard of the hull's width.
+{
+  let castShell = null;
+  const seated = createTank('mbt70', null, { proceduralOnly: true, geometryReceipt: true, partCensus(bucket, g, source) {
+    if (bucket !== 'turret' || source !== 'add' || castShell) return;
+    g.computeBoundingBox();
+    if (g.boundingBox.max.z - g.boundingBox.min.z > 4) castShell = g.clone();
+  } });
+  const seats = seated.root.getObjectByName('rig_turret').userData.mbt70SideStockSeats;
+  assert.ok(castShell, 'the cast turret shell is captured');
+  assert.equal(seats?.length, 18, 'nine seated side pieces a side: three ERA cassettes, the tube bank\'s bracket, two '
+    + 'lockers, the grab rail\'s two brackets and the canister\'s cradle');
+  const shellMesh = new THREE.Mesh(castShell, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+  const ray = new THREE.Raycaster();
+  // a corner's depth into the shell along its piece's normal: + inside the face, - standing off it
+  const depth = (corner, normal) => {
+    const n = new THREE.Vector3(...normal);
+    ray.set(new THREE.Vector3(...corner).addScaledVector(n, 0.5), n.negate());
+    const hit = ray.intersectObject(shellMesh, false)[0];
+    return hit ? 0.5 - hit.distance : -Infinity;
+  };
+  for (const { name, normal, back, front } of seats) {
+    for (const corner of back) {
+      const d = depth(corner, normal);
+      assert.ok(d >= -0.0005 && d <= 0.025, `${name}: a back corner ${(d * 1000).toFixed(1)} mm into the shell (on it, never off it)`);
+    }
+    for (const corner of front) {
+      assert.ok(depth(corner, normal) < 0, `${name}: the shell does not cut its outer face`);
+      assert.ok(Math.abs(corner[0]) <= spec.dims.widthM / 2 + 0.005, `${name}: inside the hull's width (${corner[0]})`);
+    }
+  }
+  seated.dispose();
+}
+
+console.log('mbt70Fidelity.selftest: source proportions, procedural ownership, anatomy and ATGM contract pass; '
+  + 'the side armour and side stock lie on the cast shell');
 
 // Keep the donor-family roller and turret-seat regressions on the existing
 // MBT-70 pretest route without widening package.json's generated command line.
