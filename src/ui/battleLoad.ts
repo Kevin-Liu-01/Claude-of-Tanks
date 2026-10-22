@@ -167,6 +167,7 @@ const CSS = `
   border-right:2px solid transparent;}
 .cot-bl .team.ally .row{border-left-color:rgba(127,220,138,.42);}
 .cot-bl .team.foe .row{border-right-color:rgba(240,122,114,.42);}
+.cot-bl .row.slot{background:rgba(171,193,209,.025);}
 .cot-bl .row.me{background:linear-gradient(90deg,rgba(240,160,48,.20),rgba(240,160,48,.03));
   border-left-color:#f0a030;}
 .cot-bl .row .tier{flex:0 0 26px;text-align:center;font-family:${FONT_COND};
@@ -188,7 +189,7 @@ const CSS = `
   margin-bottom:8px;font-family:${FONT_COND};letter-spacing:-.01em;}
 .cot-bl .fstage{min-height:2.6em;line-height:1.3;display:flex;align-items:flex-end;font-size:11px;font-weight:700;letter-spacing:.26em;color:#9fb0bf;
   text-transform:uppercase;}
-.cot-bl .fpct{font-size:19px;font-weight:700;color:#ffd27a;}
+.cot-bl .fpct{min-width:4ch;text-align:right;font-variant-numeric:tabular-nums;font-size:19px;font-weight:700;color:#ffd27a;}
 .cot-bl .fbar{position:relative;height:5px;background:rgba(255,255,255,.07);overflow:hidden;
   box-shadow:inset 0 0 0 1px rgba(146,164,180,.22);}
 .cot-bl .ffill{position:absolute;left:0;top:0;bottom:0;width:100%;
@@ -237,7 +238,16 @@ interface BattleLoadInfo {
   readonly mode?: string;
   readonly allies: readonly BattleLoadRosterRow[];
   readonly enemies: readonly BattleLoadRosterRow[];
+  /** Rows each empty team sheet holds open until rosters() fills it (a solo entry: the default split). */
+  readonly slots?: number;
 }
+
+/**
+ * The default solo split (src/sim/matchRuleset.ts: the player and six allies against seven): a solo entry reserves this
+ * many rows per side from its first frame, so the sheets fill in place instead of growing when the roster arrives
+ * (2026-10-22, nav-perf-240: the sheets grew from one row to seven and moved up 99 px about 20 s into the load).
+ */
+export const PENDING_ROSTER_SLOTS = 7;
 
 /** The battlefield a pending entry is about to load, known before its loading owner is imported. */
 export interface PendingBattlefield {
@@ -403,9 +413,17 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     countEl2: HTMLElement,
     team: HTMLElement,
     rows: readonly BattleLoadRosterRow[] = [],
+    slots = 0,
   ): void {
-    team.style.setProperty('--bl-count', String(Math.max(1, rows.length)));
+    const reserved = rows.length ? 0 : Math.max(0, Math.floor(slots));
+    team.style.setProperty('--bl-count', String(Math.max(1, rows.length, reserved)));
     host.textContent = '';
+    for (let slot = 0; slot < reserved; slot += 1) {
+      const el = document.createElement('div');
+      el.className = 'row slot';
+      el.setAttribute('aria-hidden', 'true');
+      host.appendChild(el);
+    }
     for (const r of rows) {
       const el = document.createElement('div');
       el.className = 'row' + (r.isPlayer ? ' me' : '');
@@ -426,7 +444,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       el.append(tier, sil, nm);
       host.appendChild(el);
     }
-    countEl2.textContent = String(rows.length);
+    countEl2.textContent = reserved ? '' : String(rows.length);
   }
 
   const api: BattleLoadScreen = {
@@ -447,6 +465,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
         ...(chosen?.thumb ? { thumb: chosen.thumb } : {}),
         allies: [],
         enemies: [],
+        slots: PENDING_ROSTER_SLOTS,
       });
     },
 
@@ -459,8 +478,8 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       nameEl.textContent = info.mapName || t('battleLoad.fallbackMapName');
       if (info.mode) kickEl.textContent = info.mode;
       stageArt(info.thumb, info.biome);
-      fillTeam(allyRows, allyN, allyTeam, info.allies);
-      fillTeam(foeRows, foeN, foeTeam, info.enemies);
+      fillTeam(allyRows, allyN, allyTeam, info.allies, info.slots);
+      fillTeam(foeRows, foeN, foeTeam, info.enemies, info.slots);
       const [h, b] = localizedTip(
         BATTLE_TIPS[Math.floor(Math.random() * BATTLE_TIPS.length)],
       );

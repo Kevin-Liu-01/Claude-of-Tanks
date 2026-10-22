@@ -65,8 +65,8 @@ const HELPERS = `const visible = (sel) => { const el = typeof sel === 'string' ?
     for (let n = el; n && n.nodeType === 1; n = n.parentElement) { const s = getComputedStyle(n);
       if (s.display === 'none' || s.visibility === 'hidden' || Number(s.opacity) < 0.05) return false; }
     return true; };
-  const decoded = (sel) => [...document.querySelectorAll(sel)].filter((img) => { const r = img.getBoundingClientRect();
-    return r.bottom > 0 && r.top < innerHeight && r.width > 2; }).every((img) => img.complete && img.naturalWidth > 0);
+  const decoded = (sel) => { const shown = [...document.querySelectorAll(sel)].filter((img) => visible(img));
+    return shown.length > 0 && shown.every((img) => img.complete && img.naturalWidth > 0); };
   const any = (sel) => [...document.querySelectorAll(sel)].some((el) => visible(el));`;
 const when = (body) => `(() => { ${HELPERS} return (${body}); })()`;
 
@@ -458,7 +458,10 @@ async function main() {
   const out = resolve(option('out', 'nav-timeline-out'));
   const bases = parseBases();
   const wanted = option('journeys', 'all').split(',');
-  const journeys = wanted.includes('all') ? JOURNEYS : JOURNEYS.filter((j) => wanted.includes(j.id) || wanted.includes(j.group));
+  // A word names a journey when one has that id, else a group.
+  const ids = new Set(JOURNEYS.map((j) => j.id));
+  const journeys = wanted.includes('all') ? JOURNEYS
+    : JOURNEYS.filter((j) => wanted.includes(j.id) || wanted.some((w) => !ids.has(w) && w === j.group));
   const profiles = option('profiles', 'desktop,phone').split(',');
   const caches = option('caches', 'cold,warm').split(',');
   const holdDeadline = Number(process.env.NAV_HOLD_DEADLINE || 0);
@@ -485,6 +488,7 @@ async function main() {
   }
   const runs = [];
   let stopped = false;
+  let runIndex = 0;
   try {
     const helper = await browser.newPage();
     helper.setDefaultTimeout(180000);
@@ -493,7 +497,10 @@ async function main() {
     for (const journey of journeys) {
       for (const profileName of profiles) {
         const profile = PROFILES[profileName];
-        for (const base of bases) {
+        // Alternate which build goes first: the first run of a browser compiles shaders and warms the GPU process,
+        // and a fixed order would hand the second build that head start every time.
+        const order = (runIndex += 1) % 2 ? bases : [...bases].reverse();
+        for (const base of order) {
           if (Date.now() - holdStarted > budgetMs) { stopped = true; break; }
           const outDir = join(out, base.label);
           mkdirSync(outDir, { recursive: true });

@@ -2874,11 +2874,12 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
   getSelectedSpecId: () => selectedVehicle.id,
   presentation: {
     setAdaptiveSuspended: (suspended: boolean) => post.setAdaptiveSuspended(suspended),
-    clearBattle: () => {
+    clearBattle: ({ keepScreens = false }: { readonly keepScreens?: boolean } = {}) => {
       armorAimOverlay.clear();
       battleResultPresentation.clearPending();
       killcam.cancel();
       if (killcam.spectate?.active) killcam.spectate.stop(true);
+      if (keepScreens) return;
       veilHud(false);
       // cancel() can flush a buffered report, so hide battle UI afterward.
       currentHud()?.setMode?.('hidden');
@@ -3735,15 +3736,14 @@ if (testDriveSpecId) {
     if (game.phase === 'garage' && !battleEntryLifecycle.pending) garage.testDrive(testDriveSpecId);
   }).catch((error) => console.error('[test-drive] failed to launch', error));
 }
-// 2026-10-22 (nav-perf-240): the two Garage panels a click opens, the settings and the play menu, take their chunks
-// (about 16 + 22 kB gzip) in the first quiet idle after the entry gate, so neither click waits on a download; a phone
-// has no hover to warm them.
+// 2026-10-22 (nav-perf-240): the two Garage panels a click opens, the settings and the play menu, are built hidden in
+// the first quiet idle after the entry gate (their chunks are about 16 + 22 kB gzip), so neither click waits on a
+// download or on building the panel; a phone has no hover to warm them.
 if (!STUDIO_BOOT_INTENT && !pendingRoomInvitePromise) {
   void entryReady.then(() => requestQuietIdle(() => {
     if (game.phase !== 'garage' || battleEntryLifecycle.pending) return;
     settings.preload().catch((error) => console.warn('[settings] idle preload failed', error));
-    Promise.all([loadPlayMenuModule(), import('./mp/session/lobbyIntent.ts')])
-      .catch((error) => console.warn('[play-menu] idle preload failed', error));
+    playSurface.prepareMenu();
   }));
 }
 garageBootDone = true;
