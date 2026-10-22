@@ -161,13 +161,19 @@ export interface BotDoctrine {
   readonly routeMoveM: number | null;
   /** Targets are claimed only this close (null: any spotted target in sight); a rusher's hunt brings it closer. */
   readonly claimRangeM: number | null;
+  /**
+   * Pack fire (gameplay-modes-233, the critic's Infected major: the fire-team allocation spread the infected's rounds a
+   * hunter a survivor, so ten survivors at 150 % hull soaked them and Verdant converted one in 7:00): each friend already
+   * laid on a target makes it read 1 + packFire times nearer. 0 keeps the classic allocation (each friend on it, farther).
+   */
+  readonly packFire: number;
 }
 /** Today's controller, knob for knob. */
 export const CLASSIC_BOT_DOCTRINE: BotDoctrine = Object.freeze({
   openingRead: true, holdBandScale: 1, engageRangeScale: 1, coverScale: 1, fallbackScale: 1, hitReactions: 'all',
   scoutKite: true, scoot: true, spearheadGuard: true, conserveRounds: true, stalemateSilentS: 12, missionSpeed: 0.85,
   missionBreakOffHp: 0.25, missionOwnsRoute: false, missionLocalReachM: 0, zoneSortieM: 0, settleShots: true, jockeyS: 0, rush: false, rollingTurns: false, noRamLane: false, offensiveJump: false, searchRouting: 'live',
-  routeRefreshS: null, routeMoveM: null, claimRangeM: null,
+  routeRefreshS: null, routeMoveM: null, claimRangeM: null, packFire: 0,
 });
 /**
  * The route push each builder ran before the doctrine (round 2, the critic's E9: one 3 s / 12 m figure for both changed
@@ -624,6 +630,12 @@ interface InfectionBotRules {
    * not at a far base: the outbreak is among them. Null keeps the infected's base.
    */
   readonly arrival: ArrivalRules | null;
+  /**
+   * The pack hunt (gameplay-modes-233): each infected already on a survivor pulls the next hunter to it by this many
+   * metres of its distance, where the shared hunt rules spread them a hunter a quarry (HUNT_RULES.crowdPenaltyM). Absent or
+   * 0 keeps the spread.
+   */
+  readonly packPullM?: number;
 }
 
 /**
@@ -1168,8 +1180,9 @@ const HORDE_ALLY_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
   missionOwnsRoute: true,
   openingRead: false, conserveRounds: false, searchRouting: 'spotted', routeRefreshS: 1.25, routeMoveM: 8, noRamLane: true,
 });
-// the infected keep firing at range on the way in (a zombie's long shot is wasted; the infected's is pressure)
-const INFECTED_DOCTRINE: Partial<BotDoctrine> = Object.freeze({ ...RUSH_DOCTRINE, hitReactions: 'angle', claimRangeM: null });
+// the infected keep firing at range on the way in (a zombie's long shot is wasted; the infected's is pressure) and lay
+// on the survivor their pack already shoots (gameplay-modes-233: packFire, with infectionBots.packPullM)
+const INFECTED_DOCTRINE: Partial<BotDoctrine> = Object.freeze({ ...RUSH_DOCTRINE, hitReactions: 'angle', claimRangeM: null, packFire: 0.5 });
 const SURVIVOR_DOCTRINE: Partial<BotDoctrine> = Object.freeze({
   missionOwnsRoute: true,
   openingRead: false, conserveRounds: false, fallbackScale: 0.5, hitReactions: 'angle', stalemateSilentS: 6,
@@ -1229,7 +1242,11 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     flagBots: Object.freeze({ recoverShare: 0.5, recoverMin: 2, huntWhenHomeFlagTaken: false, escorts: 4, carrierGuards: 0,
       escortAheadM: 24, escortSideM: 22, defendShare: 0.15, defendMinSquad: 6, interceptLeadS: 2.5,
       raidStageM: 120, raidHoldInM: 25, raidGroupM: 70, raidMinGroup: 2, raidWaitS: 12 }),
-    flagPitch: Object.freeze({ baseAxisM: 400, respawnBackM: 100 }) }),
+    // gameplay-modes-233 (owner 2026-10-18's "aggression of bots trying to capture flag"; main's 401-408: 0.88 captures a
+    // match, a capture in 3 of 8, 6 draws, first pickup 94 s, nearly every carrier killed on its run): the bases 320 m
+    // apart (was 400) and a carrier at full speed (was 85 %). The A/B over the same seeds: 1.38 captures, a capture in 6
+    // of 8, 2 draws, first pickup 64 s; the shorter pitch alone 0.88 / 6 / 3, the full-speed carrier alone 0.88 / 4 / 4
+    flagPitch: Object.freeze({ baseAxisM: 320, respawnBackM: 100, carrierSpeedScale: 1 }) }),
   // Zones: respawning hold-the-ground play; the 750-point target resolves inside the clock.
   zone_control: Object.freeze({ ...STANDARD, mode: 'zone_control', respawnS: 6 }),
   // Turbo Ball: arcade physics — 0.6 g so hulls and shells fly, 1.85× speed, tough hulls, half
@@ -1248,11 +1265,16 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     // up behind the ball may shoot it from 12 m (the line-up stands 20 m back: at a 20 m floor the ball lay still while the
     // striker went round it), the teams line up at the kick-off at the start too and a revive stands 40 m behind its own
     // goal (ball.kickoffAtStart, ball.respawnBackM; the A/B over seeds 401-402: nearest bot 46-75 -> 20-54 m)
+    // gameplay-modes-233 (the critic: no goal in many matches; main's 401-408: 1.38 goals a match, 4 of 8 goalless, the
+    // nearest bot 48 m off the ball, most touches long shots): three strikers on the ball (was 2; crowdCap 3, so the first
+    // screen still stands off and three a team close on it as before) and a ball shot from 100 m at most (was 160), so the
+    // bots drive the ball instead of plinking it round the middle. The A/B over the same seeds: 1.5 goals, 1 goalless, the
+    // nearest bot 39 m; a 400 m pitch instead scored 2.25 a match but left 3 goalless, and both together did worse
     bots: Object.freeze({ alpha: BALL_DOCTRINE, bravo: BALL_DOCTRINE }),
-    ballBots: Object.freeze({ strikers: 2, supportBackM: 10, supportSideM: 12, strikerHoldS: 3, swapM: 25, leadMaxS: 3,
-      leadIterations: 2, screens: 2, screenNear: 0.85, screenFar: 0.6, screenSideM: 28, keepers: 1, keeperM: 30, crowdCap: 2,
+    ballBots: Object.freeze({ strikers: 3, supportBackM: 10, supportSideM: 12, strikerHoldS: 3, swapM: 25, leadMaxS: 3,
+      leadIterations: 2, screens: 2, screenNear: 0.85, screenFar: 0.6, screenSideM: 28, keepers: 1, keeperM: 30, crowdCap: 3,
       crowdM: 30, crowdMarginM: 5, wingM: 40, wingStepM: 20, lineUpM: 7, goRoundM: 16, behindM: 20, throughM: 18,
-      shootBall: Object.freeze({ maxRangeM: 160, minRangeM: 12, coneDeg: 30, everyRole: true, overTanks: true }) }),
+      shootBall: Object.freeze({ maxRangeM: 100, minRangeM: 12, coneDeg: 30, everyRole: true, overTanks: true }) }),
     ball: Object.freeze({ goalAxisM: 480, idleResetS: 30, kickoffM: 60, kickoffAtStart: true, respawnBackM: 40 }),
   }),
   // Horde: survival — the player with four allied bots on alpha (co-op humans join it), a pool of
@@ -1342,10 +1364,16 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // infection 136 s -> 59 s, 2.4 -> 3.5 infections a minute; the survivors still won 1 of 8). A pack rule (the infected
   // holding their respawns to rise together) was tried and cut: it halved the infected on the field (first infection 136 s
   // against 50 s without it). docs/GAME-MODES.md "Bot aggression per mode".
+  // gameplay-modes-233 (the critic's major: a shooting gallery, the first infection at 87 s on main, 3.26 a minute): the
+  // infected hunt as a pack — they gather on the survivor the pack already hunts (infectionBots.packPullM 60 m a hunter,
+  // where the shared hunt rules spread them one a survivor) and lay on the hull it already shoots (the doctrine's
+  // packFire) — and the survivors stand at 130 % hull (was 150 %). The A/B on seeds 401, 403, 404, 408: the first
+  // infection 92 / 90 / 88 s -> 28 / 25 / 26 s on Steinburg, Desert and Coastal; Verdant (a WWII E-100 pick, the
+  // survivors' 128 mm rounds ~1040 a hit against a 313 hp infected) stays the survivors' round. A 3 s respawn was worse.
   infected: Object.freeze({ ...STANDARD, mode: 'infected', ammo: 'unlimited', allies: 9, enemies: 5, respawnS: 5, timeLimitS: 420,
-    infection: Object.freeze({ infectedSpeed: 1.3, survivorHpScale: 1.5, infectedHpScale: .25, infectedReloadScale: 1, hunt: true }),
+    infection: Object.freeze({ infectedSpeed: 1.3, survivorHpScale: 1.3, infectedHpScale: .25, infectedReloadScale: 1, hunt: true }),
     bots: Object.freeze({ bravo: INFECTED_DOCTRINE, alpha: SURVIVOR_DOCTRINE }),
-    infectionBots: Object.freeze({ survivorRallyM: 90, arrival: Object.freeze({
+    infectionBots: Object.freeze({ survivorRallyM: 90, packPullM: 60, arrival: Object.freeze({
       spawnRingM: Object.freeze([70, 120] as const), fallbackRingM: Object.freeze([120, 200] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,
       spawnMinHumanM: 60, spawnOutOfSight: true, sightRangeM: 450, sightStepM: 8, sightEyeM: 2.4, sightHullM: 1.5,
       sightMarginM: 1, sightLeadM: 0, spawnCandidates: 12 }) }) }),
@@ -1823,7 +1851,9 @@ export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
   if (ruleset.enemyNation && ruleset.teamNations !== 'random') line('enemyNation', { value: ruleset.enemyNation });
   if (ruleset.scoreTarget != null) line('scoreTarget', { value: String(ruleset.scoreTarget) });
   if (ruleset.assault) line('sectorHold', { value: String(ruleset.assault.holdS) });
-  if (ruleset.mode === 'capture_the_flag') line('carrierSpeed', { value: percent(ruleset.flagPitch?.carrierSpeedScale ?? FLAG_CARRIER_SPEED_SCALE) });
+  // the carrier's chip only where carrying slows it (gameplay-modes-233: the carrier keeps its speed)
+  const carrierSpeed = ruleset.flagPitch?.carrierSpeedScale ?? FLAG_CARRIER_SPEED_SCALE;
+  if (ruleset.mode === 'capture_the_flag' && carrierSpeed !== 1) line('carrierSpeed', { value: percent(carrierSpeed) });
   if (ruleset.horde) {
     line('hordeWaves', { value: String(hordeWaveSize(ruleset.horde, 1)), step: String(hordeWaveSize(ruleset.horde, 2) - hordeWaveSize(ruleset.horde, 1)) });
     line('hordeField', { value: String(ruleset.horde.maxAlive), lull: String(ruleset.horde.intermissionS) });

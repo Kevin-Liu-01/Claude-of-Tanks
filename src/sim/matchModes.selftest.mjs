@@ -554,9 +554,9 @@ for (const mode of ['zone_control','mars','standard','capture_the_flag','turbo_b
   const bots = Array.from({length: 6}, (_, i) => entity(`ball-role-${i}`, 'alpha', i * 10, -80, {bot: true}));
   const {match} = controller('turbo_ball', [...bots, entity('goalkeeper', 'bravo', 0, 100)]);
   const jobs = bots.map(bot => match.botObjective(bot));
-  assert.equal(jobs.filter(job => job.mission === 'striker').length, 2, 'two strikers: the chaser and its support (gameplay-modes-228)');
+  assert.equal(jobs.filter(job => job.mission === 'striker').length, 3, 'three strikers: the chaser and its supports (gameplay-modes-233; two in 228)');
   assert.equal(jobs.filter(job => job.mission === 'keeper').length, 1, 'a keeper off the own goal');
-  assert.equal(jobs.filter(job => job.mission === 'screen').length, 3, 'the rest cover lanes');
+  assert.equal(jobs.filter(job => job.mission === 'screen').length, 2, 'the rest cover lanes');
   assert.ok(jobs.filter(job => job.mission !== 'striker').every(job => Math.hypot(job.x - match.state.ball.x, job.z - match.state.ball.z) >= 30
     || job === jobs.find(j => j.mission === 'screen')), 'the crowd cap: only the strikers and the first screen close on the ball');
   assert.ok(new Set(jobs.map(job => `${job.x.toFixed(1)}:${job.z.toFixed(1)}`)).size >= 3,
