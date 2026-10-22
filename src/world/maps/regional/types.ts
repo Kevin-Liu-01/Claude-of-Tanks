@@ -126,6 +126,12 @@ export interface ArchitectureStyle {
    * `builders` as it is. The build streams and the plan keep the structure id (buildRegionalParts).
    */
   mapBuilders?: Readonly<Record<string, Readonly<Record<string, string>>>>;
+  /**
+   * (227, the looks lane; BLD-04) The builders the kit's houses come from where they stand on plots outside the
+   * building-detail census's dwelling class (tools/building-detail-census.mjs DWELLINGS): Page's ranch houses on
+   * Skybridge's depot and container-row plots. The census reads the kit's dwellings over them; nothing in a build reads it.
+   */
+  dwellings?: readonly string[];
   /** per-building tint palettes and weathering strengths (weather.ts DEFAULT_WEATHER when absent) */
   weather?: WeatherPalette;
   /** share of houses showing war damage: burnt or boarded windows, a stripped roof patch (house.ts; default 0.2) */

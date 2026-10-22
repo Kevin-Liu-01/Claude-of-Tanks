@@ -191,13 +191,13 @@
    "facePass": 0.75
   },
   "glencanyon": {
-   "score": 8,
-   "silhouette": 1,
-   "mid": 3,
-   "fine": 2,
-   "trisPerWallM2": 1.82,
-   "fineShare": 0.443,
-   "facePass": 0.813
+   "score": 17,
+   "silhouette": 4,
+   "mid": 5,
+   "fine": 6,
+   "trisPerWallM2": 14.8,
+   "fineShare": 0.556,
+   "facePass": 1
   },
   "navajo": {
    "score": 13,
@@ -624,19 +624,19 @@
   "queenstown/watertower": "3cd41a5da4447e8a",
   "queenstown/containerRow": "3de8e4439b1ae185",
   "queenstown/ruin": "fcf849429f049f20",
-  "glencanyon/arcology": "a7a5293e9beb1ca2",
-  "glencanyon/megatower": "5d28e73c983b9cd7",
-  "glencanyon/needletower": "979bd8295a557c95",
+  "glencanyon/arcology": "eef6c2073c7bfa24",
+  "glencanyon/megatower": "dc6262386806afca",
+  "glencanyon/needletower": "965c04a900984169",
   "glencanyon/terracetower": "2495d3567327f99e",
   "glencanyon/broadcasttower": "9af6d67f474f8d40",
   "glencanyon/parkingdeck": "00e01d7617fba527",
   "glencanyon/civichall": "071f642ac3088020",
-  "glencanyon/factory": "0b28cb8d7443d20b",
+  "glencanyon/factory": "aaf1d6096d6bef63",
   "glencanyon/gantry": "d65e81680844b1ee",
   "glencanyon/foundryoffice": "33a203f2e6e4752b",
   "glencanyon/warehouse": "913c23a97afc7835",
-  "glencanyon/depot": "5e542622c74eca3f",
-  "glencanyon/containerRow": "46677062b4bf74d0",
+  "glencanyon/depot": "7e9f434eaeedb76d",
+  "glencanyon/containerRow": "06d46ca9e2dd049d",
   "glencanyon/firestation": "4a8e23f47b3b546c",
   "glencanyon/watertower": "2102d3b93db56f67",
   "glencanyon/ruin": "d1ad0675b3db32f4",
@@ -761,6 +761,9 @@
   "tselina/stack": "a60ebd4b7b29fe97",
   "tselina/barn": "e550167af4084dc5",
   "tselina/granary": "ed46cd939da2d165",
-  "tselina/ruin": "dd30121b0d1154f7"
+  "tselina/ruin": "dd30121b0d1154f7",
+  "glencanyon/church": "8a8b2cac989a63ae",
+  "glencanyon/shoppingCentre": "72b2fdcb121a3316",
+  "glencanyon/fieldHeadquarters": "a011a06622799ccc"
  }
 }
