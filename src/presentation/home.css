@@ -185,14 +185,13 @@ button{font:inherit;color:inherit}
 @media(hover:none){.v5-shot-controls button:hover{border-color:var(--line);background:#0a1015;color:#eef3f6}}
 @media(hover:hover) and (pointer:fine){.v5-social-card:hover,.v5-reddit-grid article:hover{border-color:color-mix(in srgb,var(--social-accent,#9aabb8) 58%,var(--line));background-color:#0d151b;box-shadow:0 26px 72px rgba(0,0,0,.24)}.v5-social-card:hover::after{opacity:.34;transform:scale(1.03)}.v5-shot-rail figure:hover img{transform:scale(1.018);filter:saturate(1.05) contrast(1.03)}.v5-mosaic-grid figure:hover img{transform:scale(1.025);filter:saturate(1.05) contrast(1.035)}}
 @media(prefers-reduced-motion:reduce){.v5-social-card,.v5-social-card::after,.v5-social-card>a,.v5-reddit-grid article,.v5-hero-rail [data-hero-slide]{transition:none}.v5-social-card::after{transform:none}.v5-shot-rail img,.v5-map-wall img,.v5-versus-wall img,.v5-mosaic-grid img,.v5-trailer figcaption{transition:none}}
-.v5-video-control{position:absolute;z-index:4;top:20px;left:20px;min-height:42px;padding:0 16px;border:1px solid rgba(255,210,122,.76);background:rgba(4,7,10,.88);color:var(--gold);font:700 11px/1 var(--font-ui);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;box-shadow:0 8px 30px rgba(0,0,0,.28)}
-.v5-video-control:hover{background:var(--gold);color:#080b0e}.v5-video-control[hidden]{display:none}.v5-evidence article{position:relative}.v5-evidence article .v5-video-control{left:calc(29% + 20px)}
+/* The shared player's control (src/presentation/mediaPlayer.css) sits where the old video control did */.cot-media-toggle{top:20px;left:20px;right:auto;bottom:auto}.v5-evidence article{position:relative}.v5-evidence article .cot-media-toggle{left:calc(29% + 20px)}
 .v5-film,.v5-trailers,.v5-split,.v5-versus,.v5-multiplayer,.v5-destruction,.v5-rails,.v5-maps,.v5-modes,.v5-mechanics,.v5-evidence,.v5-mosaic,.v5-cta{content-visibility:auto;contain-intrinsic-size:auto 1100px}
-@media (width < 1100px){.v5-evidence article .v5-video-control{left:20px}}
+@media (width < 1100px){.v5-evidence article .cot-media-toggle{left:20px}}
 @media (width < 768px){
 :where(body).home-v5::before{display:none}
 :where(body).home-v5 :is(.v5-film>video,.v5-destruction>video,.v5-rail-grid video,.v5-evidence video){filter:none}
-.v5-video-control{top:14px;left:14px;min-height:40px}
+.cot-media-toggle{top:14px;left:14px}
 :is(.v5-film,.v5-trailers,.v5-split,.v5-versus,.v5-multiplayer,.v5-destruction,.v5-rails,.v5-maps,.v5-modes,.v5-mechanics,.v5-evidence,.v5-mosaic,.v5-cta){contain-intrinsic-size:auto 1200px}
 :where(body){--pad:18px}
 .footer .inner{align-items:flex-start;flex-direction:column}

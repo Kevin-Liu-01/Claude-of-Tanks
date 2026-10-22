@@ -60,7 +60,7 @@
   --btn-h-s:36px;--btn-h-m:48px;--btn-h-l:56px;--btn-h-xl:64px;--target-min:44px;--btn-primary-fill:var(--accent);
   --btn-primary-ink:var(--ink-on-accent);--btn-primary-hover:var(--accent-hi);--btn-primary-press:var(--accent-lo);
   --btn-secondary-fill:rgba(246,243,236,.06);--btn-secondary-edge:var(--line-control);--btn-press-edge:var(--ink-3);
-  --btn-danger-edge:var(--danger);--btn-disabled-ink:var(--ink-4);--btn-press-drop:1px;
+  --btn-danger-edge:var(--danger);--btn-disabled-ink:var(--ink-4);--btn-press-drop:1px;--btn-primary-bevel:inset 0 1px 0 rgba(255,255,255,.3),inset 0 -2px 0 rgba(0,0,0,.18);
   --chip-fill:var(--surface-raised);--chip-edge:var(--line-control);--chip-fill-on:var(--accent-wash);--chip-edge-on:var(--accent);
   --selected-edge:2px;
   --hollow-stroke:1.5px;--hollow-ink:rgba(246,243,236,.88);--hollow-fill:transparent;--hollow-accent:var(--accent);
@@ -69,6 +69,7 @@
   --hud-fs-copy:calc(13px*var(--cot-hud-scale));--hud-fs-body:calc(14px*var(--cot-hud-scale));--hud-fs-numeral:calc(20px*var(--cot-hud-scale));
   --focus-bracket-color:var(--accent-hi);--focus-bracket-width:2px;--focus-bracket-offset:5px;--focus-bracket-travel:6px;
   --focus-bracket-dur:var(--dur-fast);
+  --media-toggle-z:4;
   --warn-hatch:8px;--team-squad-ring:0px;
 }
 :root[data-cvd=deutan]{

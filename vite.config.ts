@@ -38,6 +38,7 @@ import { glslMinify } from './tools/viteGlslMinify.ts';
 import { cssInTsMinify } from './tools/viteCssInTsMinify.ts';
 import { BOOT_RUNTIME_MODULES, i18nPageCatalogs, VITE_PRELOAD_HELPER } from './tools/viteI18nPageCatalogs.ts';
 import { i18nStudioCatalog } from './tools/viteI18nStudioCatalog.ts';
+import { gameEntryMeta } from './tools/viteGameEntryMeta.ts';
 
 const appVersion = resolveAppVersion(dirname(fileURLToPath(import.meta.url)));
 /** The match build line every page and host Worker of this build send in their HELLO (src/mp/wire/matchBuild.ts). */
@@ -323,6 +324,9 @@ export default defineConfig({
       },
     },
     peerHarnessPlugin(),
+    // brand-ui BUI-F7: the public pages name the game's entry chunk for the Play button's hover prefetch (the game's
+    // own documents are left byte for byte as they were).
+    gameEntryMeta(),
     {
       name: 'cot-routes',
       configureServer(server) {
@@ -444,6 +448,13 @@ export default defineConfig({
             // already: on its own it became one more boot request on the game and Gallery pages for 0.3 KB, and beside
             // dom.ts it made every fonts importer preload the DOM helpers too. Exactly these two modules.
             { name: 'fonts', test: /[\\/]src[\\/]ui[\\/](?:fonts|styleLayers)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-18 (brand-ui BUI-F7): the site's one playback policy (src/presentation/mediaPlayer.ts, which imports
+            // nothing) rides in the fleet takes' chunk. As a chunk of its own it became one more entry in the game entry's
+            // preload list for the Garage's import('./fleetTakes.ts'), new bytes on every game boot; grouped with the
+            // scene-link helper instead it moved that chunk earlier in the Studio's list. Here the entry is byte-identical
+            // apart from hashes. The public pages reach the player with import() beside their first bytes (with the fleet
+            // takes' small helpers, about 7 KB brotli, only on pages that show a video).
+            { name: 'fleetTakes', test: /[\\/]src[\\/](?:ui[\\/]fleetTakes|presentation[\\/]mediaPlayer)\.ts$/, includeDependenciesRecursively: false },
             { name: 'groundBounce', test: /(?:[\\/]three[\\/]examples[\\/]jsm[\\/]postprocessing[\\/]Pass\.js|[\\/]src[\\/]engine[\\/](?:atmosphere|cloudscapes|lightModelCore|hazeLaw|groundBounce)\.ts)$/, includeDependenciesRecursively: false },
             // 2026-10-19 (gameplay-modes-228 round 2): TEAM NATIONS' country table and its planner are one chunk — the
             // garage's TEAMS switch reads the table, the solo roster plans with both, the rooms read both — instead of

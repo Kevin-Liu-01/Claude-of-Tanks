@@ -1,6 +1,7 @@
 import { mountDocsIcons, type DocsIconKey } from './docsIcons.ts';
 import { getLocale, t } from '../ui/i18n.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
+import { createMediaPlayer, mediaType } from '../presentation/mediaPlayer.ts';
 
 // The Filming manual's take viewer and process (2026-10-06, owner: "the frames, previz, engine review 1 and round
 // four loop ... along with the process"). The media is public/media/filming-r1, built by
@@ -90,7 +91,7 @@ function viewerMarkup(): string {
   const stageButtons = FILMING_STAGES.map((stage, index) => `<button type="button" class="filming-stage-button" data-filming-stage="${stage}" aria-pressed="false"><b>${pad(index + 1)}</b><span>${STAGE_TEXT[stage].label}</span></button>`).join('');
   const takeCards = FILMING_TAKES.map((take, index) => `<button type="button" class="filming-take-card" data-filming-take="${index}" aria-pressed="false"><img src="${filmingThumb(take)}" alt="" width="384" height="216" loading="lazy" decoding="async"><span><b>${pad(take.n)}</b><strong>${take.title}</strong><small>${take.place} · ${take.time}</small></span></button>`).join('');
   return `<div class="filming-viewer" data-filming-viewer role="region" aria-label="${t('docs.filming.viewer.aria')}">
-    <figure class="filming-screen"><video data-filming-video muted loop playsinline controls preload="metadata"${reducedMotion() ? '' : ' autoplay'}></video>
+    <figure class="filming-screen"><video data-filming-video muted loop playsinline controls preload="none"></video>
       <figcaption><span><strong data-filming-stage-label></strong><small data-filming-stage-detail></small></span><b data-filming-take-label></b></figcaption></figure>
     <div class="filming-stage-bar" role="group" aria-label="${t('docs.filming.viewer.stagesAria')}">${stageButtons}</div>
     <p class="filming-stage-note" data-filming-stage-note></p>
@@ -155,8 +156,9 @@ export function mountFilming(article: HTMLElement): void {
   const root = viewerSection.querySelector<HTMLElement>('[data-filming-viewer]');
   const video = root?.querySelector<HTMLVideoElement>('[data-filming-video]');
   if (!root || !video) return;
-  // The muted property, not only the attribute, lets the browser start a clip without a gesture.
-  video.muted = true;
+  // The site's one playback policy (src/presentation/mediaPlayer.ts): the clip plays by itself only on screen, with
+  // motion allowed and no data saving; the video's own controls are the viewer's, and nothing transfers before a play.
+  const player = createMediaPlayer(video, { native: true, control: 'none', label: () => '' });
   const field = (name: string): HTMLElement => root.querySelector<HTMLElement>(`[data-filming-${name}]`)!;
   const stageButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-filming-stage]')];
   const takeButtons = [...root.querySelectorAll<HTMLButtonElement>('[data-filming-take]')];
@@ -177,13 +179,7 @@ export function mountFilming(article: HTMLElement): void {
     field('take-label').textContent = takeLabel(take);
     video.setAttribute('aria-label', t('docs.filming.viewer.videoAria', { take: take.title, stage: text.label }));
     const src = filmingVideo(take, stage);
-    if (video.getAttribute('src') !== src) {
-      video.pause();
-      video.poster = filmingPoster(take, stage);
-      video.src = src;
-      video.load();
-    }
-    if (!reducedMotion()) video.play().catch(() => {});
+    player.show({ sources: [{ src, type: mediaType(src) }], poster: filmingPoster(take, stage) });
   };
 
   const showTake = (): void => {

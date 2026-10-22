@@ -14,7 +14,7 @@
     "src/gallery/gallery.css": {"colour":291,"fontSize":109,"letterSpacing":38,"zIndex":16,"shadow":47,"duration":7,"important":17},
     "src/game/killcam.ts": {"colour":95,"fontSize":25,"letterSpacing":22,"zIndex":12,"shadow":14,"duration":3,"important":13},
     "src/game/pointerLockFeedbackRuntime.ts": {"colour":0,"fontSize":0,"letterSpacing":0,"zIndex":1,"shadow":0,"duration":0,"important":0},
-    "src/presentation/home.css": {"colour":141,"fontSize":81,"letterSpacing":29,"zIndex":16,"shadow":12,"duration":15,"important":0},
+    "src/presentation/home.css": {"colour":137,"fontSize":80,"letterSpacing":28,"zIndex":15,"shadow":11,"duration":15,"important":0},
     "src/presentation/manualStart.css": {"colour":9,"fontSize":3,"letterSpacing":0,"zIndex":0,"shadow":0,"duration":0,"important":0},
     "src/presentation/mediaArchive.css": {"colour":30,"fontSize":11,"letterSpacing":9,"zIndex":3,"shadow":1,"duration":0,"important":0},
     "src/presentation/mediaLibrary.css": {"colour":15,"fontSize":15,"letterSpacing":7,"zIndex":0,"shadow":1,"duration":6,"important":0},

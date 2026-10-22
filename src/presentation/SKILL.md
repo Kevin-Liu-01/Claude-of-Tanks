@@ -13,7 +13,15 @@ the heavy game boot graph. Preserve accessible browsing and restrained media cos
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
 `publicNav.ts` and its CSS own responsive public navigation and deferred star
-counts. `publicPages.ts` coordinates hero/shot rails and viewport media loading.
+counts. `publicPages.ts` coordinates hero/shot rails, mounts the page's videos
+through the shared player and owns the Play hand-off. `mediaPlayer.ts` is the
+site's one playback policy (brand-ui SPEC 8.3: near-margin source, 50/10
+visibility, 10 s release, one transfer at a time, 2 desktop / 1 phone, 150 ms
+hover, AV1 → VP9 → H.264, nothing by itself under reduced motion or data
+saving, `abortPageMedia` before navigating into the game); the fleet takes,
+the topic headers and the Filming viewer use it too. `responsivePicture.ts`
+writes stills with rungs, sizes, explicit size, LQIP/tone and the 640 rung
+under data saving. Both import nothing and never enter the game's boot graph.
 `home.css` is the landing's stylesheet in the Vite graph (hashed under
 `/assets/`, cached immutably); every public stylesheet lays out at first paint
 from media queries at `responsiveLayout.ts`'s band edges, never the
@@ -51,8 +59,16 @@ and loading policy; those contracts extend beyond this directory.
 
 - Navigation: inspect `publicNav.ts` plus affected root HTML, then run
   `node src/presentation/publicNav.selftest.mjs`.
-- Loading/motion: run `publicLoading.selftest.mjs`; use the established browser
-  workflow to verify viewport entry/exit and reduced-motion behavior.
+- Loading/motion: run `publicLoading.selftest.mjs`, `mediaPlayer.selftest.mjs`
+  and `responsivePicture.selftest.mjs`; the media receipts are
+  `tools/media-fallback`, `media-freshness`, `media-page-unique` and
+  `media-r5/site-video-budget` (`*.selftest.mjs`); after `npm run build`,
+  `npm run media:motion-savedata` proves zero video bytes under reduced motion
+  and Save-Data and the Play hand-off in a real browser.
+- New media on a page: a `<video data-media-player>` lists `<source data-src
+  type [data-rung=phone|wide]>` in ladder order (AV1, VP9, H.264) with
+  `data-poster`; a retiring collection goes in media-freshness's RETIRING with
+  the replacement that ends it.
 - Public copy or discovery: run `publicCopy.selftest.mjs`,
   `seoMetadata.selftest.mjs`, and `analytics.selftest.mjs` as applicable.
 - Archive changes: inspect the packaged manifest and recipe mappings before
@@ -61,5 +77,7 @@ and loading policy; those contracts extend beyond this directory.
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
 Passing a source-contract selftest does not prove the responsive pixels or
-media playback lifecycle. Do not eagerly fetch the complete archive on the
+media playback lifecycle. The player rides in the fleet takes' chunk
+(vite.config.ts group): as its own chunk it adds an entry to the game entry's
+preload list; keep it import-free. Do not eagerly fetch the complete archive on the
 landing page or import `src/main.ts` to obtain public product information.

@@ -197,6 +197,7 @@ export const TOKENS = {
   'btn-danger-edge': '#ff5a4e',
   'btn-disabled-ink': '#5d636a',
   'btn-press-drop': '1px',
+  'btn-primary-bevel': 'inset 0 1px 0 rgba(255,255,255,.3),inset 0 -2px 0 rgba(0,0,0,.18)',
   'chip-fill': '#11151a',
   'chip-edge': 'rgba(246,243,236,.38)',
   'chip-fill-on': 'rgba(240,160,48,.12)',
@@ -218,6 +219,7 @@ export const TOKENS = {
   'focus-bracket-offset': '5px',
   'focus-bracket-travel': '6px',
   'focus-bracket-dur': '140ms',
+  'media-toggle-z': '4',
   'warn-hatch': '8px',
   'team-squad-ring': '0px',
 } as const;
