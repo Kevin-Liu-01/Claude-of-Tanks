@@ -980,6 +980,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const battleBtn = requiredElement<HTMLButtonElement>(root, '.cot-battle');
   const battleModeBtn = requiredElement<HTMLButtonElement>(root, '.cot-battle-mode');
   const battleMenu = requiredElement<HTMLElement>(root, '.cot-battle-menu');
+  const battleMenuScroll = requiredElement<HTMLElement>(battleMenu, '.cot-battle-menu-scroll');
   const battleChoices = [...root.querySelectorAll<HTMLButtonElement>('.cot-battle-choice[data-mode]')];
   const battleRuleChoices = [...root.querySelectorAll<HTMLButtonElement>('.cot-battle-choice[data-game-mode]')];
   const roomReminder = requiredElement<HTMLButtonElement>(root, '.cot-room-reminder');
@@ -3052,6 +3053,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     frontline_assault: { short: 'FRONT', label: t('garage.battle.frontLabel'), icon: 'modeZones' },
     mars: { short: 'GRAV', label: t('garage.battle.marsLabel'), icon: 'modeMars' },
   };
+  // The menu scrolls in one region between its head and launch row: where it continues below the footer (the special
+  // modes on a short window), a fade and a chevron over the footer's edge say so.
+  function syncBattleMenuScrollCue(): void {
+    const below = battleMenuScroll.scrollTop + battleMenuScroll.clientHeight < battleMenuScroll.scrollHeight - 4;
+    battleMenu.classList.toggle('has-more-below', below);
+  }
+  battleMenuScroll.addEventListener('scroll', syncBattleMenuScrollCue, { passive: true });
+  if (typeof ResizeObserver === 'function') {
+    const cueObserver = new ResizeObserver(() => { if (battleMenu.classList.contains('open')) syncBattleMenuScrollCue(); });
+    cueObserver.observe(battleMenuScroll);
+    for (const column of battleMenuScroll.children) cueObserver.observe(column);
+  }
   function closeBattleMenu({ restoreFocus = false } = {}) {
     arrangementPanel?.close();
     marsDropdowns.forEach(dropdown => dropdown.close());
@@ -3067,8 +3080,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     battleModeBtn.setAttribute('aria-expanded', 'true');
     const activeRule = battleMode !== 'solo' || battleGameMode === 'standard' ? null
       : battleRuleChoices.find((choice) => choice.dataset.gameMode === battleGameMode);
-    const scroller = requiredElement<HTMLElement>(battleMenu, '.cot-battle-menu-scroll');
+    const scroller = battleMenuScroll;
     scroller.scrollTop = 0;
+    syncBattleMenuScrollCue();
     const selectedChoice = activeRule || battleChoices.find((choice) => choice.dataset.mode === battleMode);
     const scrollBounds = scroller.getBoundingClientRect();
     const selectedBounds = selectedChoice?.getBoundingClientRect();
