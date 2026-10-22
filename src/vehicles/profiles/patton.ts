@@ -219,6 +219,7 @@ interface PattonHullConfig {
   readonly bellyFrontZ: number;
   readonly bellyRearZ: number;
   readonly gear: RunningGearConfig;
+  readonly aftCentreClosure?: boolean;
   readonly bandHW?: number;
   readonly bellyHW?: number;
   readonly bellyY?: number;
@@ -991,6 +992,37 @@ function curveHull(P: PattonBuilderPort, H: PattonHullConfig): BuiltHull {
     }
   };
   curveHullHullStage3();
+  // H.aftCentreClosure opt-in (owner 2026-10-21, "gaps in hull around the engines ... a top slab and bottom slab"):
+  // H.sponsonAftY lifts the WHOLE band floor aft, the centre between the tracks included, while the tub below it
+  // stops at the sponson line and the rear ramp climbs only slowly to the tail. Over the engine bay that left a
+  // see-through slot from track to track. The tub's side plates now carry on up into the band: one block over the
+  // flat tub and one riding the ramp's top face with its taper, flush with both side walls, its top buried 1 cm in
+  // the band. The lifted over-track soffit outboard stays as it was.
+  const curveHullAftClosure = (): void => {
+    if (!H.aftCentreClosure || H.sponsonAftY == null || H.sponsonAftZ == null || H.narrowTail) return;
+    const aftZ = H.sponsonAftZ;
+    const top = H.sponsonAftY + 0.01;
+    const tubTop = spons + 0.02;         // the lower hull box's top
+    const rampY0 = spons + 0.04;         // the rear ramp's top face, bellyRearZ -> tail
+    const rampY1 = tail[1] - 0.02;
+    const zr = H.bellyRearZ, zt = tail[0] + 0.02;
+    const twx = H.tailTaper ? Math.max(H.tailTaper.hw1, iw * 0.55) : iw * 0.92;
+    // the band floor starts to climb at the station ahead of the first lifted one
+    const lift = bandDeck.findIndex((p) => p[0] <= aftZ);
+    const za = lift > 0 ? Math.max(bandDeck[lift - 1][0], zr) : aftZ;
+    if (za > zr) P.add('hull', box(iw * 2, top - tubTop, za - zr), 0, (top + tubTop) / 2, (za + zr) / 2);
+    // the ramp meets the band floor here; the block ends inside the band
+    const f = Math.min(1, (H.sponsonAftY - rampY0) / Math.max(0.001, rampY1 - rampY0));
+    const ze = zr + (zt - zr) * f, ye = rampY0 + (rampY1 - rampY0) * f, we = iw + (twx - iw) * f;
+    P.add('hull', slab(
+      [-iw, rampY0, zr], [iw, rampY0, zr], [we, ye, ze], [-we, ye, ze],
+      [-iw, top, zr], [iw, top, zr], [we, Math.max(top, ye + 0.01), ze], [-we, Math.max(top, ye + 0.01), ze]));
+    P.hullG.userData.pattonAftCentreClosure = Object.freeze({
+      revision: 'engine-bay-tub-wall-r1', z0: +za.toFixed(3), z1: +ze.toFixed(3), halfWidth: +iw.toFixed(3),
+      tubTopY: +tubTop.toFixed(3), soffitY: H.sponsonAftY,
+    });
+  };
+  curveHullAftClosure();
   const rearUndercutBottomY = H.rearUndercutFloorJoin ? belly : belly + 0.3;
   const curveHullHullStage4 = (): void => {
     P.hullG.userData.pattonLowerHullReceipt = {
@@ -6374,7 +6406,7 @@ function xformCyl(r: number): THREE.CylinderGeometry {
 const M46_HULL: PattonHullConfig = {
   W: 3.51, bandHW: 1.42, trackW: 0.60, trackInset: 0.10, sponsonY: 1.12, bellyY: 0.48, noseW: 1.30,
   ...M46_M47_TRACK_FINISH,
-  bellyHW: 1.025, glacisWingY0: 1.30, glacisWingDrop: 0.04, sponsonAftY: 1.35, sponsonAftZ: -2.39,
+  bellyHW: 1.025, glacisWingY0: 1.30, glacisWingDrop: 0.04, sponsonAftY: 1.35, sponsonAftZ: -2.39, aftCentreClosure: true,
   deckCorridor: { x: 1.02, floor: 1.28, z0: -2.70, z1: 1.40 },
   runningGearFit: true, runningGearFace: true,
   darkGearFit: true, // r7 A4 (m47 A3 recipe): muffler legs + roller brackets +
@@ -6448,7 +6480,7 @@ const M47_HULL: PattonHullConfig = {
   // 1.774 @ -3.25..-3.47, stepped tail descent).
   W: 3.51, bandHW: 1.40, trackW: 0.60, trackInset: 0.10, sponsonY: 1.12, bellyY: 0.468, bellyHW: 1.025, noseW: 1.30,
   ...M46_M47_TRACK_FINISH,
-  glacisWingY0: 1.40, sponsonAftY: 1.44, sponsonAftZ: -2.90,
+  glacisWingY0: 1.40, sponsonAftY: 1.44, sponsonAftZ: -2.90, aftCentreClosure: true,
   deckCorridor: { x: 1.02, floor: 1.34, z0: -2.90, z1: 1.40 },
   runningGearFit: true, runningGearFace: true,
   darkGearFit: true, // r4 A3: muffler legs + roller brackets off the pale bucket
@@ -6516,7 +6548,7 @@ const M48_HULL: PattonHullConfig = {
   // cols to ground). botY 0.045: pads land at 0.000 (r1: 0.02 hung them
   // -0.025 and heightM paid p95top+0.025).
   W: 3.631, bandHW: 1.705, trackW: 0.67, trackInset: 0.055, sponsonY: 1.39,
-  sponsonAftY: 1.54, sponsonAftZ: -2.60,
+  sponsonAftY: 1.54, sponsonAftZ: -2.60, aftCentreClosure: true,
   bellyY: 0.626, bellyHW: 1.00, noseW: 1.01, flatDeck: true,
   // Lift only the concealed over-track soffits above the moving shoe
   // orbit.  The source-exact outer wall and upper glacis faces stay fixed.
