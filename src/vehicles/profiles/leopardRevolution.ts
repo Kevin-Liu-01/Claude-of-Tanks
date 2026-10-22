@@ -119,13 +119,15 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
         [side * 1.95, yTop(front) - 0.17, front], [side * 1.64, yTop(front) - 0.015, front],
       ));
       for (const z of [rear + 0.13, front - 0.13]) {
-        // 2026-10-22 (owner float calls): the brackets stood 5-7 mm off the module's raked outer face; each now leans
-        // with that face and sits on it, its cap riding its outer face as before.
+        // 2026-10-22 (owner float calls): the brackets stood 5-7 mm off the module's raked outer face (on the front
+        // module, whose top falls with the glacis, above its top edge); each now leans with that face and sits on it,
+        // below the edge, its cap riding its outer face as before.
         const t = (z - rear) / (front - rear), low = 0.77 + 0.05 * t, high = yTop(z) - 0.17;
-        const rake = Math.atan2(0.07, high - low), faceX = 1.88 + 0.07 * (1.24 - low) / (high - low);
+        const y = Math.min(1.24, high - 0.035);
+        const rake = Math.atan2(0.07, high - low), faceX = 1.88 + 0.07 * (y - low) / (high - low);
         const cx = faceX + 0.0125 / Math.cos(rake);
-        P.addEquipment('hullDetail', box(0.025, 0.045, 0.12), side * cx, 1.24, z, 0, 0, -side * rake);
-        P.addEquipment('hullDark', cylX(0.016, 0.028, 8), side * (cx + 0.016 * Math.cos(rake)), 1.24 - 0.016 * Math.sin(rake), z,
+        P.addEquipment('hullDetail', box(0.025, 0.045, 0.12), side * cx, y, z, 0, 0, -side * rake);
+        P.addEquipment('hullDark', cylX(0.016, 0.028, 8), side * (cx + 0.016 * Math.cos(rake)), y - 0.016 * Math.sin(rake), z,
           0, 0, -side * rake);
       }
     }
@@ -145,7 +147,9 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
       P.addEquipment('hullOpenLatticeDark', box(0.31, 0.038, 0.045), side * 1.83, 1.35, z);
       P.addEquipment('hullOpenLattice', box(0.036, 1.59 - low, 0.035), side * 1.984, (1.59 + low) / 2, z);
     }
-    for (let j = 0; j < 13; j++) {
+    // 2026-10-22 (owner float calls): the lowest course had no length (a 6 cm stub clamped on, 22 mm short of the first
+    // upright); the courses start at the second.
+    for (let j = 1; j < 13; j++) {
       const y = 0.735 + j * 0.069;
       const length = Math.max(0.06, Math.min(3.20, (y - 0.735) * 3.20 / 0.305));
       P.addEquipment('hullOpenLattice', box(0.03, 0.019, length), side * 1.984, y, -0.62 - length / 2);

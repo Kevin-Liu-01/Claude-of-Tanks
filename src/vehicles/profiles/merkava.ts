@@ -3476,7 +3476,10 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
         // Short spare-link courses are real hull equipment, not another moving
         // track.  Their broad shoes are buried into the lower bow and leave the
         // suspension corridor untouched.
-        const spareZ = g.z1 - Math.min(0.24, spanZ * 0.12);
+        // 2026-10-22 (owner float calls): on the BAZ (0.26 m tiles) the course sat 7 cm into the last tile row, so the
+        // seat pass re-hung it on a rack over the tiles that stood 8-20 mm proud of them. Its seat moves ahead of that
+        // row onto the bare lower glacis (tile front ~2.735, link half-depth ~0.06).
+        const spareZ = P.spec.id === 'merkava3_baz' ? lastZ + 0.20 : g.z1 - Math.min(0.24, spanZ * 0.12);
         const spareY = gTop(spareZ) + 0.028;
         const spareStep = Math.min(0.24, w * 0.52 / Math.max(1, hullUpgrade.spare));
         // VEH-13: the course is one registered run (spareTrackSeat.ts), seated on the bow it was sunk into

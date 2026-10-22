@@ -4743,25 +4743,21 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
             pts: [[1.564, 1.20, -3.945], [1.60, 1.10, -3.965], [1.57, 1.00, -3.985], [1.52, 0.955, -3.99]] });
           P.hullG.add(tipCable);
         }
-        // Belly-armor lip at the lower-plate toe (TUSK belly kit).  Its upper
-        // face now meets the belly pan exactly at the pan's forward edge instead
-        // of floating 73 mm below it.  Keep the authored rake: flattening the lip
-        // would erase the lower-bow break, while lifting it blindly would drive
-        // the forward end into the glacis.  Solving the rotated upper face at the
-        // actual belly/core endpoint produces a clean line contact with no
-        // coplanar overlap and keeps the complete part in the canonical hull rig.
+        // Belly-armor lip at the lower-plate toe (TUSK belly kit).
+        // 2026-10-22 (owner float calls): the lip's "contact" was solved at g.belly 0.25 m up the nose rake, where the
+        // hull's underside already stands 40 mm higher (the rake leaves the belly at noseRake[0], not at g.belly), so
+        // the whole plate hung 36 mm under the bow and its bar 116 mm. The plate now lies on the lower bow's first
+        // rake segment (pitched to it; its upper face IS that plane, so it meets the belly pan's forward edge
+        // noseRake[0] exactly), and the bar is bolted under its leading edge.
         const bellyLipHeight = 0.06;
         const bellyLipDepth = 0.35;
-        const bellyLipZ = 2.75;
-        const bellyLipPitch = -0.16;
-        const bellyFloorFrontZ = g.noseRake[0][0] + 0.25;
-        const lipTopLocalY = bellyLipHeight / 2;
-        const lipTopLocalZAtContact = (
-          bellyFloorFrontZ - bellyLipZ - lipTopLocalY * Math.sin(bellyLipPitch)
-        ) / Math.cos(bellyLipPitch);
-        const lipTopOffsetYAtContact = lipTopLocalY * Math.cos(bellyLipPitch)
-          - lipTopLocalZAtContact * Math.sin(bellyLipPitch);
-        const bellyLipY = g.belly - lipTopOffsetYAtContact;
+        const [bellyFloorFrontZ, bellyFloorY] = g.noseRake[0];
+        const rakeSlope = (g.noseRake[1][1] - bellyFloorY) / (g.noseRake[1][0] - bellyFloorFrontZ);
+        const bellyLipPitch = -Math.atan(rakeSlope);
+        const lipFaceZ = bellyFloorFrontZ + 0.15;                     // the upper face's centre on the rake plane
+        const lipFaceY = bellyFloorY + rakeSlope * (lipFaceZ - bellyFloorFrontZ);
+        const bellyLipY = lipFaceY - Math.cos(bellyLipPitch) * bellyLipHeight / 2;
+        const bellyLipZ = lipFaceZ - Math.sin(bellyLipPitch) * bellyLipHeight / 2;
         P.add('hull', box(1.8, bellyLipHeight, bellyLipDepth),
           0, bellyLipY, bellyLipZ, bellyLipPitch, 0, 0);
         if (P.geometryReceipt) {
@@ -4774,14 +4770,20 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
               height: bellyLipHeight,
               depth: bellyLipDepth,
               pitch: bellyLipPitch,
-              bellyFloorY: g.belly,
+              bellyFloorY,
               bellyFloorFrontZ,
-              upperFaceYAtContact: bellyLipY + lipTopOffsetYAtContact,
+              upperFaceYAtContact: lipFaceY + rakeSlope * (bellyFloorFrontZ - lipFaceZ),
             });
           };
           buildTejasFamilyHullCourse9();
         }
-        P.add('hullDetail', box(1.76, 0.024, 0.024), 0, 0.27, 2.9);
+        {
+          // the bar under the leading edge: its top on the lip's underside at the bar's rear edge
+          const barZ = bellyLipZ + Math.cos(bellyLipPitch) * bellyLipDepth / 2 - 0.03;
+          const underZ = bellyLipZ - Math.sin(bellyLipPitch) * bellyLipHeight / 2;  // a point of the underside plane
+          const underY = bellyLipY - Math.cos(bellyLipPitch) * bellyLipHeight / 2 + rakeSlope * (barZ - 0.012 - underZ);
+          P.add('hullDetail', box(1.76, 0.024, 0.024), 0, underY - 0.012, barZ);
+        }
         // ---- Urban lights: guarded IR/white driving pods on both fender wings
         // (bracket posts weld them to the fender strips) + mirrors on masts —
         // the city-traffic kit. Everything x <= 1.66, tops <= 1.56 (bow zone).

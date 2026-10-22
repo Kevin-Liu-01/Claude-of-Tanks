@@ -3666,7 +3666,7 @@ function addT90SMLegacyHullFront(P: T90BuilderPort): void {
   }
   // width stud INSIDE the flank-wall z-band (at z +0.27 it owned the +-1.9
   // plan front columns where the ref is rear-only, r9c)
-  widthAnchor(P, 1.89, 0.90, -1.60);
+  widthAnchor(P, 1.89, 0.91, -1.60, 1.8748);   // 2026-10-22 (owner float calls): on the flank plate's face (4 mm off it)
   // fender lips: thin segmented shelves (prism law) at the tub edge
   // T5H: run ends at z 2.455 (i<10) — the ref side deck line FALLS to
   // 1.202..1.256 over z 2.5..3.0 (today's workorder: the i=10 lip's flat

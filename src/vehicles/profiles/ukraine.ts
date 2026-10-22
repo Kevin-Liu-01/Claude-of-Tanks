@@ -724,7 +724,7 @@ function buildUAT80BV(P: UkraineBuilderPort): void {
   for (const s of [-1, 1]) for (let i = 0; i < 2; i++) {
     P.add('hullRubber', box(0.035, 0.26, 0.58), s * 1.752, 0.90, 2.62 - i * 0.64, 0, 0, -s * 0.015);
   }
-  widthAnchor(P, 1.76, 0.82, -2.48);
+  widthAnchor(P, 1.76, 0.89, -2.48, 1.749);   // 2026-10-22 (owner float calls): on the last K-1 tile's face (it hung 40 mm under it)
   };
   buildBVRunningGearAndSkirts();
 
@@ -985,7 +985,7 @@ function buildUAT80UKursk(P: UkraineBuilderPort): void {
     P.add('hullTrack', box(0.012, 0.095, 0.58), s * 1.7715, 1.20, z, 0, 0, -s * 0.018);
     P.add('hullDark', box(0.010, 0.022, 0.52), s * 1.7755, 1.235, z, 0, 0, -s * 0.018);
   }
-  widthAnchor(P, 1.80, 0.82, -2.55);
+  widthAnchor(P, 1.80, 0.89, -2.55, 1.780);   // 2026-10-22 (owner float calls): on the last K-1 tile's face (it hung 41 mm under it)
   };
   buildKurskRunningGearAndSkirts();
 

@@ -11397,20 +11397,9 @@ function buildKF51(P: TankBuilderPort) {
           }
         };
         buildKF51AssemblyStage18();
-        // #7 WHEEL/SKIRT AMPLITUDE — the ref's wheel-zone dark tail (p5 25.8)
-        // is the BAY VOID between the wheel arcs, not the wheel faces: our
-        // certified gap piers/AO wall are shadow-bucket (52-floored). Collapse-
-        // class overlays ride 1.5-3 mm proud of their certified faces (seam-
-        // ring-law class, xy-interior): the wall band shows the black wedges
-        // between the lower arcs, the pier faces darken the 0.55..0.71 gaps.
-        // (pier-face overlays tried and REMOVED: ref gaps read ~51 at p25 — the
-        // certified 52-class piers already match; only the wedge zone goes black)
-        const bayVoid = mkTone(0x010101, 0.0);               // r6 #1c: wedges join the rings in the 25.8 class (ref wheel-zone dark tail p5 25.8, nothing at 16; 0x020202 measured FLOORED ~52 here — 0x010101 is the reachable step)
         const buildKF51AssemblyStage19 = (): void => {
-          for (const s of [-1, 1] as const) {
-            tone(bayVoid, KIT.xform(KIT.box(0.002, 0.325, 5.09), s * 1.1625, 0.5875, 0.145));   // AO wall face overlay (the wedges read ~42 now = one step above black, ref-plain zone)
-            tone(edgeDark, KIT.xform(KIT.box(0.002, 0.036, 4.17), s * 1.1625, 0.4215, -0.29375)); // wall lip strip: TRUE-DARK crevice line under the hem — the small-area carrier of the ref zone's p5 25.8 dark tail
-          }
+          // 2026-10-22 (owner float calls): the #7 bay-void overlay and its lip strip went with the AO wall they dressed
+          // (it hung 0.21 m off the hull side).
           // #6 deck dot-perforated plates at the old fan spots + grille dot rows
           // (tops <= 1.8375, under the 1.8415 deck-band side line)
           // r6 #7b METRONOME BREAK: every dot grid/row re-laid on hand-jittered
@@ -11453,7 +11442,7 @@ function buildKF51(P: TankBuilderPort) {
           // UNREACHABLE on the tone path — the flat class is the route (see the
           // flat() note by mkTone). Envelope EXACT (y <= 1.8375 deck headroom
           // class, z -2.50..-2.90).
-          tone(flat(0x1b1b18), KIT.xform(KIT.box(0.64, 0.012, 0.40), 0, 1.8225, -2.70));  // housing plate (charcoal ~27)
+          tone(flat(0x1b1b18), KIT.xform(KIT.box(0.64, 0.0285, 0.40), 0, 1.81425, -2.70));  // housing plate (charcoal ~27; 2026-10-22: run down onto the deck it stood 5.5 mm over, top unchanged)
           tone(flat(0x121210), KIT.xform(KIT.box(0.34, 0.008, 0.34), -0.06, 1.8300, -2.70)); // dark mesh well (~18)
           for (const [mx, mz] of [[-0.19, -2.585], [-0.10, -2.60], [0.005, -2.59], [0.09, -2.605],
             [-0.20, -2.66], [-0.09, -2.675], [0.015, -2.66], [0.10, -2.68],
