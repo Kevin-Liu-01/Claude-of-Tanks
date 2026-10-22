@@ -6,7 +6,7 @@ import { MAP_IDS } from './maps/mapIds.ts';
 import {
   AMBIENCE_KINDS, AMBIENCE_TIMES, MAP_AMBIENCE, ambienceCount, ambienceHash, ambienceLayersFor, ambienceTimeOf,
 } from './mapAmbienceTable.ts';
-import { AMBIENCE_RADIUS_M, ambienceSeeds, createMapAmbience } from './mapAmbience.ts';
+import { ambienceSeeds, createMapAmbience } from './mapAmbience.ts';
 import { LATE_FX_LAYER } from '../fx/layers.ts';
 
 // every battlefield has a row of at most two layers (two draws); the Moon carries nothing
@@ -77,7 +77,7 @@ const renderer = { info: { render: { frame: 1 } }, getRenderTarget: () => null, 
 const leafMesh = air.group.children[0];
 leafMesh.onBeforeRender(renderer, scene, camera);
 const u = leafMesh.material.uniforms;
-assert.equal(u.uOrigin.value.x, 100 - AMBIENCE_RADIUS_M);
+assert.equal(u.uOrigin.value.x, 100 - AMBIENCE_KINDS.leaf.radiusM);
 assert.equal(u.uOrigin.value.y, 4 + AMBIENCE_KINDS.leaf.bandM[0], 'the band stands on the ground under the camera');
 assert.equal(u.uTime.value, 12.5);
 for (const key of ['uOffset0', 'uOffset1', 'uOffset2']) {

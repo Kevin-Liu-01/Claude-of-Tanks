@@ -68,14 +68,12 @@ export interface MapAmbience {
   dispose(): void;
 }
 
-/** The box's half width (m): the wrap volume round the camera. */
-export const AMBIENCE_RADIUS_M = 32;
 /** Speed classes: each layer's particles fall and drift at three speeds (heavier and lighter flakes, leaves, specks). */
 const SPEED_CLASSES = [0.8, 1, 1.22] as const;
 /** Shader time wraps here (float precision for the sway phases; a pop of a few cm once in 2.3 h). */
 const SHADER_TIME_WRAP_S = 8192;
 /** Brightness of an unlit card under the pools' tint (calibrated against the lit ground on the beauty frames). */
-const CARD_GAIN = 1.7;
+const CARD_GAIN = 2.8;
 const BASE_FOV_DEG = 60;
 /** Camera height over the ground where the air fades out (the gunship's and the drone's views). */
 const AERIAL_FADE_M: readonly [number, number] = [55, 90];
@@ -168,8 +166,8 @@ void main() {
   vec3 ex = rotAxis( vec3( 1.0, 0.0, 0.0 ), axis, ang );
   vec3 ey = rotAxis( vec3( 0.0, 1.0, 0.0 ), axis, ang );
   float px = size * uPixel / max( dist, 0.05 );
-  float grow = max( 1.0, 2.0 / max( px, 1e-3 ) );
-  a /= grow;
+  float grow = max( 1.0, 2.4 / max( px, 1e-3 ) );
+  a /= sqrt( grow );
   size *= grow;
   vec3 wp = p + ( ex * position.x * uAspect + ey * position.y ) * size;
   // both faces take the light (thin, translucent); edge-on to the sun a card goes dim
@@ -189,9 +187,14 @@ void main() {
 #else
   mvPosition = viewMatrix * vec4( p, 1.0 );
   float px = size * uPixel / max( -mvPosition.z, 0.05 );
-  float grow = max( 1.0, 1.6 / max( px, 1e-3 ) );
-  // a speck under the pixel floor keeps roughly its light, spread over the floor's area
-  a /= grow * sqrt( grow );
+#ifdef EMISSIVE
+  // a glow keeps a few pixels: a far ember is a soft orange point, never a lone flickering pixel
+  float grow = max( 1.0, 2.6 / max( px, 1e-3 ) );
+#else
+  float grow = max( 1.0, 2.2 / max( px, 1e-3 ) );
+#endif
+  // a speck under the pixel floor stays a visible point, a little fainter the farther it is
+  a /= sqrt( grow );
   size *= grow;
   mvPosition.xy += position.xy * size;
 #endif
@@ -202,9 +205,9 @@ void main() {
     * ( 0.72 + 0.28 * sin( t * 13.0 + ph * 5.0 ) * sin( t * 7.3 + ph ) );
 #elif defined( BLINK_PULSE )
   // a firefly's flash: a quick rise, a soft fall, dark between
-  float period = 2.4 + 3.6 * aSeed.w;
+  float period = 2.2 + 3.0 * aSeed.w;
   float c = fract( t / period + aRand.z );
-  vBlink = smoothstep( 0.0, 0.05, c ) * ( 1.0 - smoothstep( 0.08, 0.34, c ) );
+  vBlink = smoothstep( 0.0, 0.06, c ) * ( 1.0 - smoothstep( 0.12, 0.5, c ) );
 #elif defined( BLINK_GLINT )
   // a turning crystal flashes when its face meets the eye: sharp, brief, and different from every angle
   float g = sin( t * ( 1.1 + 1.8 * aSeed.w ) + ph * 9.0 + dot( vdir, vec3( 31.0, 17.0, 23.0 ) ) );
@@ -255,8 +258,10 @@ void main() {
 #elif defined( SHAPE_SLIVER )
   m = ( 1.0 - smoothstep( 0.5, 1.0, abs( c.x ) ) ) * ( 1.0 - smoothstep( 0.78, 1.0, abs( c.y ) ) );
 #elif defined( SHAPE_STREAK )
+  // a soft wisp: gaussian across, a long fading tail and a softened head
   float along = c.y * 0.5 + 0.5;
-  m = ( 1.0 - smoothstep( 0.0, 1.0, abs( c.x ) ) ) * smoothstep( 0.0, 0.75, along ) * ( 1.0 - smoothstep( 0.92, 1.0, along ) );
+  m = exp( -c.x * c.x * 3.5 ) * ( 1.0 - smoothstep( 0.6, 1.0, abs( c.x ) ) ) * smoothstep( 0.0, 0.65, along )
+    * ( 1.0 - smoothstep( 0.78, 1.0, along ) );
 #else
   m = exp( -r2 * 3.4 ) * ( 1.0 - smoothstep( 0.65, 1.0, r2 ) );
 #endif
@@ -264,7 +269,7 @@ void main() {
   if ( a < 0.003 ) discard;
 #ifdef EMISSIVE
   // self-lit: a hot core in a soft glow (the scene's light plays no part)
-  vec3 col = vAlbedo * uEmissive * vBlink * ( 0.35 + 1.4 * exp( -r2 * 7.0 ) );
+  vec3 col = vAlbedo * uEmissive * vBlink * ( 0.18 + 2.4 * exp( -r2 * 18.0 ) );
 #else
   vec3 col = vAlbedo * shade * uTint * uGain * ( vLight + uScatter * vScat ) * vBlink;
 #endif
@@ -309,7 +314,7 @@ export function ambienceSeeds(seed: number, layerIndex: number, def: AmbienceKin
     if (cluster > 0) {
       if (i % cluster === 0) { cx = rand(); cy = rand(); cz = rand(); cls = rand(); }
       // a swarm: members within about a metre of its centre, one speed class so it never comes apart
-      const spreadXZ = 0.9 / (AMBIENCE_RADIUS_M * 2), spreadY = 0.6 / Math.max(0.5, def.bandM[1] - def.bandM[0]);
+      const spreadXZ = 0.9 / (def.radiusM * 2), spreadY = 0.6 / Math.max(0.5, def.bandM[1] - def.bandM[0]);
       seeds[o] = (cx + (rand() - 0.5) * 2 * spreadXZ + 1) % 1;
       seeds[o + 1] = Math.min(0.94, Math.max(0.08, cy + (rand() - 0.5) * 2 * spreadY));
       seeds[o + 2] = (cz + (rand() - 0.5) * 2 * spreadXZ + 1) % 1;
@@ -351,8 +356,6 @@ export function createMapAmbience(options: MapAmbienceOptions): MapAmbience {
   const uSunDir = { value: new THREE.Vector3(0, 1, 0) };
   const uPixel = { value: 900 };
   const uVisible = { value: 1 };
-  const uNear = { value: new THREE.Vector2(0.35, 1.6) };
-  const uFadeR = { value: new THREE.Vector2(AMBIENCE_RADIUS_M * 0.7, AMBIENCE_RADIUS_M * 0.97) };
   const _cam = new THREE.Vector3();
   const layers: LayerRuntime[] = [];
   let enabled = true;
@@ -409,7 +412,7 @@ export function createMapAmbience(options: MapAmbienceOptions): MapAmbience {
     const tanHalf = Math.tan(THREE.MathUtils.degToRad(Math.max(1, fov)) / 2);
     // a long lens brings the near specks up to fill its frame: the clear zone grows with the zoom
     const zoom = Math.tan(THREE.MathUtils.degToRad(BASE_FOV_DEG) / 2) / tanHalf;
-    uNear.value.set(0.35 * Math.max(1, zoom), 1.6 * Math.max(1, zoom));
+    const lens = Math.max(1, zoom);
     const target = renderer.getRenderTarget();
     const heightPx = target ? target.height : renderer.domElement.height;
     uPixel.value = heightPx / (2 * tanHalf);
@@ -420,13 +423,16 @@ export function createMapAmbience(options: MapAmbienceOptions): MapAmbience {
     const night = 1 - THREE.MathUtils.smoothstep(tintLum, 0.25, 0.8);
     for (const l of layers) {
       const u = l.mesh.material.uniforms;
-      u.uOrigin.value.set(_cam.x - AMBIENCE_RADIUS_M, groundY + l.def.bandM[0], _cam.z - AMBIENCE_RADIUS_M);
+      (u.uNear.value as THREE.Vector2).set(l.def.nearM[0] * lens, l.def.nearM[1] * lens);
+      // the unlit cards sit a little lower at night, where the dim tint already over-lights them against the moonlit ground
+      u.uGain.value = CARD_GAIN * l.def.gain * (1 - 0.3 * night);
+      u.uOrigin.value.set(_cam.x - l.def.radiusM, groundY + l.def.bandM[0], _cam.z - l.def.radiusM);
       for (let c = 0; c < SPEED_CLASSES.length; c++) {
         const v = l.vel[c];
         (u[`uOffset${c}`].value as THREE.Vector3).set(wrapMod(v.x * t, l.box.x), wrapMod(v.y * t, l.box.y), wrapMod(v.z * t, l.box.z));
       }
       // embers and fireflies carry the night; by day an ember is a faint orange fleck
-      if (l.def.emissive > 0) u.uEmissive.value = l.def.emissive * (0.3 + 0.7 * night);
+      if (l.def.emissive > 0) u.uEmissive.value = l.def.emissive * (0.5 + 0.5 * night);
     }
   }
 
@@ -440,7 +446,7 @@ export function createMapAmbience(options: MapAmbienceOptions): MapAmbience {
     geometry.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seeds, 4));
     geometry.setAttribute('aRand', new THREE.InstancedBufferAttribute(rands, 4));
     geometry.instanceCount = capacity;
-    const box = new THREE.Vector3(AMBIENCE_RADIUS_M * 2, def.bandM[1] - def.bandM[0], AMBIENCE_RADIUS_M * 2);
+    const box = new THREE.Vector3(def.radiusM * 2, def.bandM[1] - def.bandM[0], def.radiusM * 2);
     const wind = sceneWindFor(mapId);
     const along = Math.max(def.windShare * wind.speed, def.minWindMps);
     const vel = SPEED_CLASSES.map((k) => new THREE.Vector3(wind.dirX * along * k, -def.fallMps * k, wind.dirZ * along * k));
@@ -475,13 +481,13 @@ export function createMapAmbience(options: MapAmbienceOptions): MapAmbience {
         uPal0: { value: palette[0] },
         uPal1: { value: palette[1] },
         uPal2: { value: palette[2] },
-        uFadeR,
-        uNear,
+        uFadeR: { value: new THREE.Vector2(def.radiusM * 0.7, def.radiusM * 0.97) },
+        uNear: { value: new THREE.Vector2(def.nearM[0], def.nearM[1]) },
         uVisible,
         uPixel,
         uSunDir,
         uTint,
-        uGain: { value: CARD_GAIN },
+        uGain: { value: CARD_GAIN * def.gain },
         uScatter: { value: def.scatter },
         uEmissive: { value: def.emissive },
       },

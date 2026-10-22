@@ -30,9 +30,16 @@ export interface AmbienceKindDef {
   readonly shape: AmbienceShape;
   /** Instances at the full tier (QualityPreset.ambience 1) for a density of 1. */
   readonly count: number;
+  /** Half width of the wrap box round the camera (m): a kind read only up close (a leaf, a petal) packs its count into a
+   * small box, so the frame shows a few near cards rather than confetti in the distance. */
+  readonly radiusM: number;
   /** Height band above the ground under the camera (m). */
   readonly bandM: readonly [number, number];
-  /** Card size (m): a speck's diameter, a tumbling card's length, a streak's width. */
+  /** The clear zone round the lens (m): gone at the first, full at the second (scaled by the lens's zoom). A streak
+   * starts metres out, so blown snow and sand skim the ground ahead rather than raking past the camera. */
+  readonly nearM: readonly [number, number];
+  /** Card size (m): a speck's diameter (an emissive speck's glow, its hot core a fifth of it), a tumbling card's length,
+   * a streak's width. */
   readonly sizeM: readonly [number, number];
   /** Tumbling cards: width over length. */
   readonly aspect: number;
@@ -56,6 +63,8 @@ export interface AmbienceKindDef {
   readonly alpha: number;
   /** Brightening toward the sun (translucent down, petals, dust catching the light). */
   readonly scatter: number;
+  /** Brightness over the shared card gain: a coloured card (a leaf, a petal) sits lower so the tone curve keeps its hue. */
+  readonly gain: number;
   /** Self-light in HDR units at night (embers, fireflies); faded by day. */
   readonly emissive: number;
   readonly blink: AmbienceBlink;
@@ -64,62 +73,64 @@ export interface AmbienceKindDef {
 
 const kind = (def: Partial<AmbienceKindDef> & Pick<AmbienceKindDef, 'motion' | 'shape' | 'count' | 'bandM' | 'sizeM'>): AmbienceKindDef =>
   Object.freeze({
-    aspect: 1, streakS: 0, fallMps: 0, windShare: 0.6, minWindMps: 0, wobbleM: 0.3, wobbleHz: 0.2, spinHz: 0,
-    jitterM: 0, cluster: 0, alpha: 1, scatter: 0, emissive: 0, blink: 'none' as const, additive: false, ...def,
+    radiusM: 32, nearM: [0.6, 2] as const, aspect: 1, streakS: 0, fallMps: 0, windShare: 0.6, minWindMps: 0, wobbleM: 0.3, wobbleHz: 0.2, spinHz: 0,
+    jitterM: 0, cluster: 0, alpha: 1, scatter: 0, gain: 1, emissive: 0, blink: 'none' as const, additive: false, ...def,
   });
 
+// the counts and sizes read in a gameplay frame (the owner, 2026-10-22, on the first pass: "for all of these i can
+// barely see ambience"): a few near cards always in view, the far ones still a visible speck
 export const AMBIENCE_KINDS = Object.freeze({
   /** Thistle, dandelion and feather-grass down, catkin fluff: slow, buoyant, bright against the sun. */
-  fluff: kind({ motion: 'drift', shape: 'fluff', count: 360, bandM: [0.3, 14], sizeM: [0.03, 0.055], fallMps: 0.07,
-    windShare: 0.85, wobbleM: 0.45, wobbleHz: 0.2, alpha: 0.8, scatter: 2.2 }),
+  fluff: kind({ motion: 'drift', shape: 'fluff', count: 1500, radiusM: 24, bandM: [0.3, 10], sizeM: [0.06, 0.11], fallMps: 0.07,
+    windShare: 0.85, wobbleM: 0.45, wobbleHz: 0.2, alpha: 0.95, scatter: 2.2 }),
   /** Broadleaf leaves: rocking, turning cards that fall a metre a second. */
-  leaf: kind({ motion: 'tumble', shape: 'leaf', count: 190, bandM: [0, 16], sizeM: [0.06, 0.09], aspect: 0.66,
-    fallMps: 0.85, windShare: 0.6, wobbleM: 0.7, wobbleHz: 0.32, spinHz: 0.55, alpha: 1, scatter: 1.1 }),
+  leaf: kind({ motion: 'tumble', shape: 'leaf', count: 900, radiusM: 18, bandM: [0, 12], sizeM: [0.09, 0.14], aspect: 0.66,
+    fallMps: 0.85, windShare: 0.6, wobbleM: 0.7, wobbleHz: 0.32, spinHz: 0.55, alpha: 1, scatter: 1.1, gain: 0.55 }),
   /** Petals: small, slow, fluttering. */
-  petal: kind({ motion: 'tumble', shape: 'petal', count: 230, bandM: [0, 13], sizeM: [0.026, 0.04], aspect: 0.78,
-    fallMps: 0.42, windShare: 0.75, wobbleM: 0.5, wobbleHz: 0.42, spinHz: 0.85, alpha: 0.95, scatter: 1.8 }),
+  petal: kind({ motion: 'tumble', shape: 'petal', count: 900, radiusM: 16, bandM: [0, 9], sizeM: [0.06, 0.09], aspect: 0.78,
+    fallMps: 0.42, windShare: 0.75, wobbleM: 0.5, wobbleHz: 0.42, spinHz: 0.85, alpha: 0.95, scatter: 1.8, gain: 0.7 }),
   /** Conifer needles: thin slivers spinning down fast. */
-  needle: kind({ motion: 'tumble', shape: 'sliver', count: 170, bandM: [0, 16], sizeM: [0.06, 0.09], aspect: 0.09,
-    fallMps: 1.1, windShare: 0.5, wobbleM: 0.25, wobbleHz: 0.5, spinHz: 1.3, alpha: 1, scatter: 0.6 }),
+  needle: kind({ motion: 'tumble', shape: 'sliver', count: 800, radiusM: 18, bandM: [0, 12], sizeM: [0.1, 0.17], aspect: 0.09,
+    fallMps: 1.1, windShare: 0.5, wobbleM: 0.25, wobbleHz: 0.5, spinHz: 1.3, alpha: 1, scatter: 0.6, gain: 0.6 }),
   /** Straw chaff and sawdust flecks off the harvest and the mill: golden slivers carried far. */
-  chaff: kind({ motion: 'tumble', shape: 'sliver', count: 240, bandM: [0, 12], sizeM: [0.028, 0.055], aspect: 0.2,
-    fallMps: 0.33, windShare: 0.95, wobbleM: 0.5, wobbleHz: 0.3, spinHz: 1.1, alpha: 0.95, scatter: 1.6 }),
+  chaff: kind({ motion: 'tumble', shape: 'sliver', count: 1100, radiusM: 20, bandM: [0, 9], sizeM: [0.05, 0.09], aspect: 0.2,
+    fallMps: 0.33, windShare: 0.95, wobbleM: 0.5, wobbleHz: 0.3, spinHz: 1.1, alpha: 0.95, scatter: 1.6, gain: 0.75 }),
   /** Light snowfall. */
-  snow: kind({ motion: 'drift', shape: 'flake', count: 2000, bandM: [-1, 26], sizeM: [0.022, 0.04], fallMps: 0.95,
-    windShare: 0.55, wobbleM: 0.35, wobbleHz: 0.24, alpha: 0.9, scatter: 0.8 }),
+  snow: kind({ motion: 'drift', shape: 'flake', count: 9500, radiusM: 30, bandM: [-1, 22], sizeM: [0.04, 0.07], fallMps: 0.95,
+    windShare: 0.55, wobbleM: 0.35, wobbleHz: 0.24, alpha: 1, scatter: 0.8 }),
   /** Diamond dust: ice crystals hanging in clear cold air, glinting as they turn. */
-  crystal: kind({ motion: 'drift', shape: 'disc', count: 650, bandM: [0, 14], sizeM: [0.009, 0.015], fallMps: 0.16,
+  crystal: kind({ motion: 'drift', shape: 'disc', count: 2600, radiusM: 20, bandM: [0, 10], sizeM: [0.014, 0.024], fallMps: 0.16,
     windShare: 0.5, wobbleM: 0.3, wobbleHz: 0.18, alpha: 0.9, scatter: 4, blink: 'glint', additive: true }),
   /** Spindrift: snow blown low off the snowfields. */
-  spindrift: kind({ motion: 'streak', shape: 'streak', count: 900, bandM: [0, 2.4], sizeM: [0.018, 0.032], streakS: 0.12,
-    fallMps: 0.12, windShare: 2.2, minWindMps: 5, wobbleM: 0.25, wobbleHz: 0.6, alpha: 0.32, scatter: 0.8 }),
+  spindrift: kind({ motion: 'streak', shape: 'streak', count: 2200, radiusM: 28, bandM: [0, 1.3], nearM: [3.5, 8], sizeM: [0.025, 0.045], streakS: 0.15,
+    fallMps: 0.12, windShare: 2.2, minWindMps: 5, wobbleM: 0.25, wobbleHz: 0.6, alpha: 0.3, scatter: 0.8 }),
   /** Dust motes: tiny specks that hang in the air and catch the sun. */
-  dust: kind({ motion: 'drift', shape: 'disc', count: 620, bandM: [0, 12], sizeM: [0.007, 0.013], fallMps: 0.015,
-    windShare: 0.55, wobbleM: 0.35, wobbleHz: 0.14, alpha: 0.7, scatter: 3.2 }),
+  dust: kind({ motion: 'drift', shape: 'disc', count: 3000, radiusM: 18, bandM: [0, 9], sizeM: [0.012, 0.022], fallMps: 0.015,
+    windShare: 0.55, wobbleM: 0.35, wobbleHz: 0.14, alpha: 0.9, scatter: 3.2 }),
   /** Blown sand and grit skimming the ground. */
-  sand: kind({ motion: 'streak', shape: 'streak', count: 680, bandM: [0, 1.5], sizeM: [0.008, 0.015], streakS: 0.08,
-    fallMps: 0, windShare: 2.1, minWindMps: 4.5, wobbleM: 0.18, wobbleHz: 0.9, alpha: 0.42, scatter: 1 }),
+  sand: kind({ motion: 'streak', shape: 'streak', count: 2800, radiusM: 24, bandM: [0, 1.8], nearM: [2.5, 6], sizeM: [0.016, 0.03], streakS: 0.12,
+    fallMps: 0, windShare: 2.1, minWindMps: 4.5, wobbleM: 0.18, wobbleHz: 0.9, alpha: 0.4, scatter: 1 }),
   /** Ash and soot flecks, turning slowly as they settle. */
-  ash: kind({ motion: 'tumble', shape: 'disc', count: 460, bandM: [0, 18], sizeM: [0.013, 0.026], aspect: 0.8,
-    fallMps: 0.28, windShare: 0.7, wobbleM: 0.5, wobbleHz: 0.24, spinHz: 0.45, alpha: 0.85, scatter: 0.3 }),
+  ash: kind({ motion: 'tumble', shape: 'disc', count: 2000, radiusM: 22, bandM: [0, 14], sizeM: [0.024, 0.045], aspect: 0.8,
+    fallMps: 0.28, windShare: 0.7, wobbleM: 0.5, wobbleHz: 0.24, spinHz: 0.45, alpha: 0.85, scatter: 0.3, gain: 0.6 }),
   /** Drifting embers: hot specks rising and cooling. */
-  ember: kind({ motion: 'drift', shape: 'disc', count: 150, bandM: [0, 16], sizeM: [0.009, 0.015], fallMps: -0.55,
-    windShare: 0.8, wobbleM: 0.6, wobbleHz: 0.4, alpha: 1, emissive: 7, blink: 'flicker', additive: true }),
+  ember: kind({ motion: 'drift', shape: 'disc', count: 700, radiusM: 26, bandM: [0, 14], sizeM: [0.05, 0.085], fallMps: -0.55,
+    windShare: 0.8, wobbleM: 0.6, wobbleHz: 0.4, alpha: 1, emissive: 10, blink: 'flicker', additive: true }),
   /** Fireflies: slow wandering flashes low over the grass. */
-  firefly: kind({ motion: 'drift', shape: 'disc', count: 130, bandM: [0.3, 3.4], sizeM: [0.012, 0.018], fallMps: 0,
-    windShare: 0.05, wobbleM: 1.4, wobbleHz: 0.08, alpha: 1, emissive: 9, blink: 'pulse', additive: true }),
+  firefly: kind({ motion: 'drift', shape: 'disc', count: 900, bandM: [0.6, 3.6], sizeM: [0.06, 0.09], fallMps: 0,
+    windShare: 0.05, wobbleM: 1.4, wobbleHz: 0.08, alpha: 1, emissive: 14, blink: 'pulse', additive: true }),
   /** Mist and humid motes: droplets glinting in damp air. */
-  mote: kind({ motion: 'drift', shape: 'disc', count: 500, bandM: [0, 10], sizeM: [0.011, 0.022], fallMps: 0.01,
-    windShare: 0.35, wobbleM: 0.4, wobbleHz: 0.12, alpha: 0.42, scatter: 3 }),
+  mote: kind({ motion: 'drift', shape: 'disc', count: 2400, radiusM: 18, bandM: [0, 8], sizeM: [0.018, 0.035], fallMps: 0.01,
+    windShare: 0.35, wobbleM: 0.4, wobbleHz: 0.12, alpha: 0.7, scatter: 3 }),
   /** Midges and gnats: dark specks dancing in swarms. */
-  insect: kind({ motion: 'drift', shape: 'disc', count: 150, bandM: [0.5, 3], sizeM: [0.006, 0.009], fallMps: 0,
+  insect: kind({ motion: 'drift', shape: 'disc', count: 600, radiusM: 22, bandM: [0.5, 3], sizeM: [0.008, 0.013], fallMps: 0,
     windShare: 0.1, wobbleM: 0.45, wobbleHz: 0.18, jitterM: 0.3, cluster: 10, alpha: 0.9, scatter: 0.4 }),
   /** Light drizzle: thin falling streaks. */
-  drizzle: kind({ motion: 'streak', shape: 'streak', count: 1400, bandM: [-1, 20], sizeM: [0.004, 0.007], streakS: 0.05,
-    fallMps: 5.5, windShare: 0.5, wobbleM: 0.05, wobbleHz: 0.3, alpha: 0.26, scatter: 0.8 }),
+  drizzle: kind({ motion: 'streak', shape: 'streak', count: 6000, radiusM: 24, bandM: [-1, 16], nearM: [1.5, 4], sizeM: [0.006, 0.01], streakS: 0.05,
+    fallMps: 5.5, windShare: 0.5, wobbleM: 0.05, wobbleHz: 0.3, alpha: 0.4, scatter: 0.8 }),
   /** Salt spray: fine bright droplets carried inland on the sea wind. */
-  spray: kind({ motion: 'drift', shape: 'disc', count: 540, bandM: [0, 9], sizeM: [0.009, 0.017], fallMps: 0.03,
-    windShare: 1, wobbleM: 0.5, wobbleHz: 0.2, alpha: 0.5, scatter: 3 }),
+  spray: kind({ motion: 'drift', shape: 'disc', count: 2000, radiusM: 20, bandM: [0, 8], sizeM: [0.015, 0.028], fallMps: 0.03,
+    windShare: 1, wobbleM: 0.5, wobbleHz: 0.2, alpha: 0.75, scatter: 3 }),
 } satisfies Record<string, AmbienceKindDef>);
 
 export type AmbienceKind = keyof typeof AMBIENCE_KINDS;
@@ -168,7 +179,7 @@ export const MAP_AMBIENCE: Readonly<Record<MapId, readonly AmbienceLayer[]>> = O
   // the Sary-Arka grain steppe: feather-grass down on the wind, dust off the tracks
   steppe: [L('fluff', [0xf2ead6, 0xe6dcc2, 0xfaf4e6], { density: 1.1 }), L('dust', [0xd8c08e, 0xc8ad78, 0xe4d2a6])],
   // Cinder Junction: coal soot, and cinders from the stage and the engines
-  railyard: [L('ash', [0x2e2c2a, 0x45413d, 0x5a554f]), L('ember', [0xff8a2a, 0xffb347, 0xff6a1a], { density: 0.6 })],
+  railyard: [L('ash', [0x2e2c2a, 0x45413d, 0x5a554f]), L('ember', [0xff6a1a, 0xff8a2a, 0xff5214], { density: 0.6 })],
   // the Huenfeld basin's farms: harvest chaff, fireflies along the river at night
   frontier: [L('chaff', [0xd8b765, 0xe8cd85, 0xc49e4e]), L('firefly', FIREFLY, { density: 0.7, times: NIGHT })],
   // Narvik in May, a fortnight after the snow: sea mist off the fjord, birch catkin fluff
@@ -184,7 +195,7 @@ export const MAP_AMBIENCE: Readonly<Record<MapId, readonly AmbienceLayer[]>> = O
   // the Aso caldera: fine volcanic ash, a few embers off the vents
   caldera: [L('ash', [0x8a8580, 0x6e6a66, 0xa29d97]), L('ember', [0xff7a22, 0xff9a3a, 0xff5a14], { density: 0.4 })],
   // the Völklingen furnaces: sparks drifting off the works, soot settling
-  foundry: [L('ember', [0xffa040, 0xffc060, 0xff7020]), L('ash', [0x3a3632, 0x504a44, 0x2a2826], { density: 0.8 })],
+  foundry: [L('ember', [0xff6a1a, 0xff8a2a, 0xffaa48]), L('ash', [0x3a3632, 0x504a44, 0x2a2826], { density: 0.8 })],
   // besieged Sarajevo: concrete dust, burnt paper and ash
   ruinspires: [L('dust', [0xc9c2b6, 0xb3aa9c, 0xd8d2c6]), L('ash', [0x4a4642, 0x6a645e, 0x34312e], { density: 0.8 })],
   // Shanghai, autumn 1937: the Settlement's plane-tree leaves, ash blown over from burning Zhabei
