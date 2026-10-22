@@ -134,11 +134,6 @@ export const VOLUME_TURB_K = 0.05;
  *  soft fade runs over the body's whole thickness: what stands inside the body is covered by the smoke in front of it, in
  *  proportion to its depth in it. */
 const VOLUME_FRONT_K = 0.3, VOLUME_FRONT_MAX_M = 5;
-/** (233, the AC-130 follow-up: "a killed vehicle's heat decays instantly" and "the 152 mm IR hot signature is missing")
- *  a long-wave sensor sees through smoke and dust, but the media drew at full opacity to a heat-imaging camera: from the
- *  gunship a wreck's own column covered its hot hull within seconds of the kill, and a burst's cold dust its hot gas.
- *  Under a heat-imaging camera a cold medium keeps this share of its opacity; hot gas keeps all of it. */
-const THERMAL_SMOKE_ALPHA = 0.25;
 
 export function volumePositionAt(rec: ArrayLike<number>, o: number, windX: number, windZ: number, age: number,
   out: Float32Array | number[]): void {
@@ -349,11 +344,12 @@ void main() {
   vGlow = gl;
   // (EF.10, MASTER 19) headlights, the muzzle and burning wrecks light the medium (a burst's own pulse is uGlow's;
   // compiled out on Low and Ultra Low)
-  // (233, the FX follow-up: the wreck's fire "doesn't light its own smoke base") taken a third of the way from the body's
-  // heart to the corner: a column body's corners stood metres out of a fire's few-metre reach while its heart sat over
-  // the flames
+  // (233, the FX follow-up: the wreck's fire "doesn't light its own smoke base") by day taken a third of the way from the
+  // body's heart to the corner: a column body's corners stood metres out of a fire's few-metre reach while its heart sat
+  // over the flames; at night (uGrade2.y) at the corner, as main (the integrator's critic: the night smoke over-lit far
+  // above the fire)
   #ifdef FX_LOCAL_LIGHTS
-    vLocal = localLightAt( mix( center, wpos, 0.35 ), 1.0 );
+    vLocal = localLightAt( mix( mix( center, wpos, 0.35 ), wpos, uGrade2.y ), 1.0 );
   #endif
   // (fx 8q, wave 381's pack: the collapse dust "darker and browner than A's warm lit tan"; full-resolution crops showed the
   // same puffs dark olive-brown in B against walls in full sun) no cloud shade on the media: 8c's per-vertex cloud shade
@@ -393,7 +389,6 @@ uniform float uCameraFar;
 uniform sampler2D uDetail;
 uniform float uDetailK;
 uniform float uWarpK;
-uniform float uHeatSmoke; // (233) a cold medium's share of its opacity to this camera (THERMAL_SMOKE_ALPHA under a heat lens)
 varying vec2 vDetail;
 varying vec2 vUvA;
 varying vec2 vUvB;
@@ -468,9 +463,7 @@ void main() {
   float edgeN = wn.x + 0.5 + lowS * ( dn - 0.5 ) * 0.9;
   float fall = 1.0 - smoothstep( 0.4 - 0.14 * lowS + ( 0.36 + 0.14 * lowS ) * edgeN, 1.02, rr );
   float covS = mix( covE, pow( covE, 1.6 + 0.6 * lowS ) * fall, sb );
-  // (233) a heat-imaging camera sees through the cold medium (THERMAL_SMOKE_ALPHA); hot gas and a burst's lit heart stay
-  float heatSeen = smoothstep( 0.04, 0.35, B.g * B.g * vHeat + vGlow );
-  float a = covS * vColor.a * ( 1.0 - k * k ) * uGrade.x * mix( uHeatSmoke, 1.0, heatSeen );
+  float a = covS * vColor.a * ( 1.0 - k * k ) * uGrade.x;
   if ( a < 0.003 ) discard;
   a *= softDepthFadeV();
   if ( a < 0.003 ) discard;
@@ -753,7 +746,6 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
   const uGrade = { value: new THREE.Vector4(1, 1, DEFAULT_TUNE.back, DEFAULT_TUNE.ms) };
   const uGrade2 = { value: new THREE.Vector4(DEFAULT_TUNE.ground, 0, 0, DEFAULT_TUNE.night) };
   const uHeatCool = { value: 1 };
-  const uHeatSmoke = { value: 1 };
   const totalRows = VOLUME_ATLAS.bands * VOLUME_ATLAS.rowsPerBand;
   const bandWarp: THREE.Vector4[] = [];
   for (let b = 0; b < VOLUME_ATLAS.bands; b++) bandWarp.push(new THREE.Vector4(1, 0, 0, 0));
@@ -777,7 +769,7 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     vertexShader: VOLUME_VERT,
     fragmentShader: VOLUME_FRAG,
     uniforms: Object.assign(THREE.UniformsUtils.clone(THREE.UniformsLib.fog), {
-      uTime, uWind, uSunDir, uSunCol, uSkyCol, uGroundCol, uGrade, uGrade2, uHeatCool, uHeatSmoke,
+      uTime, uWind, uSunDir, uSunCol, uSkyCol, uGroundCol, uGrade, uGrade2, uHeatCool,
       uMapA: mapA, uMapB: mapB,
       uAtlas: { value: new THREE.Vector4(VOLUME_ATLAS.columns, totalRows, VOLUME_ATLAS.rowsPerBand, VOLUME_ATLAS.frames) },
       uFlowScale: { value: VOLUME_ATLAS.flowScale },
@@ -963,7 +955,6 @@ export function createVolumeMedia(o: VolumeMediaOptions): VolumeMedia {
     }
     heatK = o.heatGain ? o.heatGain(camera) : 1;
     uHeatCool.value = o.heatCool ? o.heatCool(camera) : 1;
-    uHeatSmoke.value = heatK > 1 ? THERMAL_SMOKE_ALPHA : 1;
     refreshLight();
     // live set (birth <= now <= birth + life), keeping last frame's order for an almost-sorted start
     let n = 0;

@@ -798,6 +798,12 @@ const SMOKE_SMOLDER_S = 35;    // post-column ember/wisp stage on the wreck
  *  seconds — fewer, lower, thinner licks — and the fire's light (the pooled light over the wreck and its smoke's local
  *  light) follows them down to nothing as the last lick dies; the smoulder after carries no flame light. */
 const FLAME_DIE_S = 6;
+/** (233, the integrator's confirmation critic: at night the tongues read as "two pill-shaped sprite blobs", the smoke
+ *  over-lit far above the fire, the smoulder kept a warm tint) the tongue flames, their die-down and their light are the
+ *  day's: from this dark level up (the tracers' light level, 0 day .. 1 night) the fire keeps main's night look — round
+ *  licks for the column's whole life, the pooled light riding the newest column through its smoulder, the night-scaled
+ *  local light on its smoke */
+const NIGHT_FIRE_DARK = 0.5;
 const SHELL_BURST_COLUMN_S = 14; // a shell hit's smoke-only column (the Studio's stand-in blast; no wreck burns)
 // r5 column-continuity rebuild: 0.05 (was 0.11) — the 9 Hz cadence of very
 // large puffs is what let the column macro-structure fall apart in motion
@@ -4082,7 +4088,12 @@ function* createFxSteps(
    *  smoke-only column and through the smoulder */
   function columnFlameK(col: SmokeColumn): number {
     if (col.flame === false || !(col.ttl > 0)) return 0;
-    return THREE.MathUtils.smoothstep(col.ttl, 0, FLAME_DIE_S);
+    return nightFire() ? 1 : THREE.MathUtils.smoothstep(col.ttl, 0, FLAME_DIE_S);
+  }
+
+  /** (233) main's fire at night (NIGHT_FIRE_DARK) */
+  function nightFire(): boolean {
+    return tracers.darkLevel() >= NIGHT_FIRE_DARK;
   }
 
   /** The newest column still burning (the pooled fire light rides it), or null. */
@@ -4099,6 +4110,21 @@ function* createFxSteps(
    * and thinner (flameK).
    */
   function emitFlameLick(col: SmokeColumn, dk: number, birthOffset: number, flameK: number): void {
+    if (nightFire()) {
+      // main's lick at night (NIGHT_FIRE_DARK)
+      _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
+      _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
+      _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.2;
+      _puffO.vel[0] = (rng() - 0.5) * 0.6; _puffO.vel[1] = 1.0 + rng() * 0.9; _puffO.vel[2] = (rng() - 0.5) * 0.6;
+      _puffO.life = 0.30 + rng() * 0.28;
+      _puffO.size0 = (1.15 + rng() * 0.4) * col.scale * dk;
+      _puffO.size1 = (0.75 + rng() * 0.3) * col.scale * dk;
+      _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
+      col3(0xffcf70, _puffO.col0); col3(0xff5a10, _puffO.col1);
+      _puffO.alpha = 0.95; _puffO.grav = 1.4; _puffO.birthOffset = birthOffset - rng() * 0.15;
+      particles.emit('fire', _puffO);
+      return;
+    }
     const k = 0.55 + 0.45 * flameK;
     // spread over the deck (a fire along it, never one candle at its middle)
     _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.7 * col.scale;
@@ -4256,10 +4282,29 @@ function* createFxSteps(
     // only within a few metres of the flames") a wreck's fire lights its smoke from the flames themselves (1.2 m over the
     // hull, not the pooled light's 3.4 m) and only a few metres round them (LOCAL_FIRE_REACH_M x the column's scale);
     // a burst's pulse keeps its own reach (the pooled puffs take it; the media light their pulse themselves)
-    if (explosionLight.intensity > 0 && lightAge(blastState) < blastState.dur) {
-      const p = explosionLight.position;
-      addLocalPoint(p.x, p.y, p.z, explosionLight.distance * 1.3, explosionLight.color,
-        nightK * LOCAL_FLASH_GAIN * explosionLight.intensity / EXPLOSION_LIGHT_PEAK, true);
+    const night = nightFire();
+    if (explosionLight.intensity > 0) {
+      const p = explosionLight.position, pulse = lightAge(blastState) < blastState.dur;
+      if (pulse) {
+        addLocalPoint(p.x, p.y, p.z, explosionLight.distance * 1.3, explosionLight.color,
+          nightK * LOCAL_FLASH_GAIN * explosionLight.intensity / EXPLOSION_LIGHT_PEAK, true);
+      } else if (night) {
+        // main's at night (NIGHT_FIRE_DARK): the newest wreck's smoke by the pooled light's flicker
+        addLocalPoint(p.x, p.y - 2.2, p.z, LOCAL_FIRE_REACH_M * 1.3, explosionLight.color,
+          nightK * LOCAL_FIRE_GAIN * explosionLight.intensity / 12);
+      }
+    }
+    if (night) {
+      // main's at night: the other burning wrecks (the explosion light rides the latest column)
+      for (let i = columns.length - 2; i >= 0; i--) {
+        const col = columns[i];
+        if (col.flame === false || !(col.ttl > 0)) continue;
+        const flicker = 0.8 + 0.12 * Math.sin(now * 11.3 + i * 1.7) + 0.08 * Math.sin(now * 6.1 + i * 2.9);
+        if (!addLocalPoint(col.pos[0], col.pos[1] + 1.2, col.pos[2], LOCAL_FIRE_REACH_M * col.scale, _wreckFire,
+          LOCAL_FIRE_GAIN * nightK * flicker * col.scale)) break;
+      }
+      endLocalLights();
+      return;
     }
     // every burning wreck lights its smoke from its flames (233: the newest took the pooled light's flicker / 12, under
     // half the others' gain, and kept it through the smoulder), as its flames burn (columnFlameK)
@@ -4291,7 +4336,10 @@ function* createFxSteps(
     const explosionState = lightStates[1];
     // (233) the light rides the newest column still burning and dies with its flames (columnFlameK): no glow over a
     // smouldering wreck or a smoke-only crater (after the pulse, applyLight has already set it dark)
-    const col = lightAge(explosionState) >= explosionState.dur ? burningColumn() : null;
+    // (at night main's: the latest column, smouldering or not; NIGHT_FIRE_DARK)
+    const night = nightFire();
+    const col = lightAge(explosionState) < explosionState.dur ? null
+      : night ? columns[columns.length - 1] ?? null : burningColumn();
     if (col) {
       // (wave 266: the wreck fire's light left a red patch on the ground and the hull's deck) a living flicker over the
       // wreck, set higher and softer: the flames on the deck carry the fire, the light only warms round them
@@ -4303,7 +4351,7 @@ function* createFxSteps(
       const time = particles.getTime();
       explosionLight.intensity = (
         9.5 + 3.2 * Math.sin(time * 13.7) + 2.2 * Math.sin(time * 7.1 + 1.9)
-      ) * col.scale * (blast ? 0.45 : 1) * (col.car ? 0.45 + 1.15 * tracers.darkLevel() : 1) * columnFlameK(col);
+      ) * col.scale * (blast ? 0.45 : 1) * (col.car ? 0.45 + 1.15 * tracers.darkLevel() : 1) * (night ? 1 : columnFlameK(col));
       return;
     }
     const pulseRange = explosionState.range ?? 13;
