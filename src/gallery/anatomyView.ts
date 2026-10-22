@@ -81,6 +81,8 @@ const STYLE = `
 #viewport .anatomy-legend .anatomy-ramp-bar{position:relative;height:9px;border:1px solid rgba(0,0,0,.6)}
 #viewport .anatomy-legend .anatomy-ramp-ticks{position:relative;height:12px;margin-top:3px}
 #viewport .anatomy-legend .anatomy-ramp-ticks span{position:absolute;display:block;min-height:0;padding:0;border:0;background:none;transform:translateX(-50%);color:#9aa5a9;font:500 11px/1 var(--font-mono);letter-spacing:0;text-transform:none;white-space:nowrap}
+#viewport .anatomy-legend .anatomy-ramp-ticks span:first-child{transform:none}
+#viewport .anatomy-legend .anatomy-ramp-ticks span:last-child{transform:translateX(-100%)}
 #viewport .anatomy-legend .anatomy-key{display:inline-flex;align-items:center;gap:6px;min-height:22px;padding:4px 8px;background:rgba(5,9,11,.92);border:1px solid rgba(174,190,197,.2);color:#b5bfc2;font-size:11px;letter-spacing:.02em;text-transform:uppercase}
 #viewport .anatomy-legend .anatomy-key i{width:10px;height:10px;background:var(--key);box-shadow:0 0 0 1px rgba(0,0,0,.5)}
 #viewport .anatomy-legend .anatomy-key svg{width:13px;height:13px;color:var(--key)}
@@ -96,7 +98,11 @@ body[data-cot-width='phone'] .anatomy-bar,body[data-cot-width='compact'] .anatom
 body[data-cot-width='phone'] .anatomy-chip,body[data-cot-width='compact'] .anatomy-chip,
 body[data-cot-width='phone'] .anatomy-seg button,body[data-cot-width='compact'] .anatomy-seg button{min-height:32px;padding:4px 7px;font-size:11px;letter-spacing:.01em}
 body[data-cot-width='phone'] .anatomy-seg button,body[data-cot-width='compact'] .anatomy-seg button{min-width:0}
-body[data-cot-width='phone'] #viewport .overlay-legend.anatomy-legend{gap:3px 4px}
+/* a phone keys the layers in an even grid (the Gallery follow-up of 2026-10-21: the chips wrapped into ragged centred rows);
+   the armour ramp keeps its own full row */
+body[data-cot-width='phone'] #viewport .overlay-legend.anatomy-legend{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px 4px}
+body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp{grid-column:1/-1}
+body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-key{min-width:0;justify-content:flex-start;white-space:nowrap}
 body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp{grid-template-columns:auto minmax(0,1fr);gap:6px;width:100%;padding:3px 7px}
 body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp b{font-size:11px;letter-spacing:0}
 body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp-ticks span{font-size:11px}
