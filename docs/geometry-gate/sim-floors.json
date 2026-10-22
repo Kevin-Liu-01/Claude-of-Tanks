@@ -197,7 +197,7 @@
     "tos1a_tagil": {"panYM":0.437,"bottomYM":0,"hullMin":[-1.792,0.4848,-3.3681],"hullMax":[1.792,1.5506,3.6767],"turretMinY":-0.015},
     "type10": {"panYM":0.3683,"bottomYM":-0.0425,"hullMin":[-1.5796,0.393,-3.615],"hullMax":[1.5796,1.532,3.814],"turretMinY":0.0067},
     "type100": {"panYM":0.3375,"bottomYM":0,"hullMin":[-1.548,0.36,-3.267],"hullMax":[1.548,1.8,3.15],"turretMinY":0.0405},
-    "type10_dozer": {"panYM":0.374,"bottomYM":0,"hullMin":[-1.782,0.374,-3.762],"hullMax":[1.782,1.782,3.762],"turretMinY":-0.088,"accepted":{"reason":"first measurement","by":"kevinliu","date":"2026-10-21","from":"no earlier row"}},
+    "type10_dozer": {"panYM":0.3683,"bottomYM":-0.0425,"hullMin":[-1.5796,0.393,-3.615],"hullMax":[1.5796,1.532,3.814],"turretMinY":0.0067,"accepted":{"reason":"re-based onto the modern type10 hull (owner 2026-10-22), appliqué and field kit","by":"kevinliu","date":"2026-10-22","from":{"panYM":0.374,"bottomYM":0,"hullFloorY":0.374,"hullRoofY":1.782,"hullMinX":-1.782,"hullMaxX":1.782,"hullTailZ":-3.762,"hullBowZ":3.762,"turretFloorY":-0.088}}},
     "type10_tk_x": {"panYM":0.374,"bottomYM":0,"hullMin":[-1.782,0.374,-3.762],"hullMax":[1.782,1.782,3.762],"turretMinY":-0.088},
     "type10b": {"panYM":0.374,"bottomYM":0,"hullMin":[-1.782,0.374,-3.762],"hullMax":[1.782,1.782,3.762],"turretMinY":-0.088},
     "type59": {"panYM":0.2907,"bottomYM":0,"hullMin":[-1.815,0.34,-3.53],"hullMax":[1.815,1.9481,3.57],"turretMinY":-0.025},

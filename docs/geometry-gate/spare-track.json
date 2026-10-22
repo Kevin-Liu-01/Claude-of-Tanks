@@ -3627,33 +3627,33 @@
    "hostSweep": []
   },
   "type10_dozer": {
-   "inputHash": "69377e327881f461",
+   "inputHash": "b650e6e6790d4415",
    "runs": [
     {
      "index": 0,
-     "site": "fitting:spareTrackLinks@buildType10Native2026HullStage1@modern3.ts",
-     "source": "fitting",
+     "site": "adhoc:type10-bow-link@<anon>@profiles/type10XBow.ts",
+     "source": "adhoc",
      "frame": "hull",
-     "registered": false,
+     "registered": true,
      "classes": [],
      "primary": "OK",
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.812,
-      "gap": 0.127,
+      "support": 0.939,
+      "gap": 0,
       "air": 0.061,
       "hidden": 0,
-      "sunkMaxM": 0.01,
+      "sunkMaxM": 0.001,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.944,
-      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1734>"
+      "exposure": 0.831,
+      "host": "hull<hull@profiles/type10X.ts:50>"
      }
     },
     {
      "index": 1,
-     "site": "adhoc:type10-rear-links@<anon>@modern3.ts",
+     "site": "adhoc:type10-bow-link@<anon>@profiles/type10XBow.ts",
      "source": "adhoc",
      "frame": "hull",
      "registered": true,
@@ -3666,11 +3666,55 @@
       "gap": 0,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0,
+      "sunkMaxM": 0.001,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 1,
-      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1710>"
+      "exposure": 0.867,
+      "host": "hull<hull@profiles/type10X.ts:50>"
+     }
+    },
+    {
+     "index": 2,
+     "site": "adhoc:type10-bow-link@<anon>@profiles/type10XBow.ts",
+     "source": "adhoc",
+     "frame": "hull",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0.001,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.771,
+      "host": "hull<hull@profiles/type10X.ts:50>"
+     }
+    },
+    {
+     "index": 3,
+     "site": "adhoc:type10-bow-link@<anon>@profiles/type10XBow.ts",
+     "source": "adhoc",
+     "frame": "hull",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 0.939,
+      "gap": 0,
+      "air": 0.061,
+      "hidden": 0,
+      "sunkMaxM": 0.001,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.916,
+      "host": "hull<hull@profiles/type10X.ts:50>"
      }
     }
    ],

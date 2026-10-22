@@ -12,9 +12,11 @@
 // - Bolted appliqué (type10DozerArmor.ts, whose spaced plates the spec carries): four modules a side on the hull skirts,
 //   two wall modules and a cheek module a side on the turret.
 // - Lights: work lamps on the forward turret modules and on the bustle, and the searchlight.
+// - Smoke: a four-tube bank a side on the rear turret modules (the TK-X build's eight charges; type10 draws none).
 // - Equipment: stowage bins on the front fenders; the field cage's strapped packs.
 import * as THREE from 'three';
-import { KIT, orientedSlab } from './kit.ts';
+import { KIT, FITTINGS, orientedSlab } from './kit.ts';
+import { mount } from './fittingMount.ts';
 import { sourceMachineGun } from './sourceMachineGun.ts';
 import { captureAuxiliaryStock } from './auxiliaryStation.ts';
 import { addModernFieldCage } from './modernFieldCage.ts';
@@ -121,10 +123,6 @@ function turretB(P: TankBuilderPort): THREE.Group {
   w.add('turretDetail', box(.15, .20, .30), B.x - .43, B.race + .25, B.pivotZ - .20);
   w.add('turretGlass', box(.08, .08, .012), B.x - .43, B.race + .27, B.pivotZ - .045);
   w.add('turretDark', box(.17, .02, .34), B.x - .43, B.race + .36, B.pivotZ - .19);
-  // smoke dischargers, three a side, on the bustle cheeks
-  if (P.q) for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
-    w.add('turretDark', cylZ(.032, .14, 12), B.x + s * (.33 - i * .055), B.race + .30, B.z - .49, -.5, s * .35, 0);
-  }
   w.stage('pitch');
   // the mantlet block, the gun and its brake
   w.add('turretDetail', box(.30, .22, .18), B.x, B.pivotY, B.pivotZ + .06);
@@ -276,6 +274,10 @@ export function addType10DozerFieldKit(P: TankBuilderPort): void {
   const T = TYPE10_DOZER_TURRET_APPLIQUE;
   for (const s of [-1, 1]) {
     workLamp(P, s * (T.x0 + T.t / 2) + PIVOT[0], T.y1 + PIVOT[1], T.spans[1][1] - .05 + PIVOT[2]);
+    // the bank's bracket stands on the rear module's top (the fitting's base box hangs 0.085 under its origin)
+    mount(P, 'turret', FITTINGS.smokeBank({ mats: P.mats, count: 4, r: .040, len: .27, spacing: .095, splay: s * 1.02,
+      pitch: -.42, arc: .60, slot: 'detail', rotation: [0, 0, -s * .10], seed: 1010 + (s > 0 ? 1 : 0) }),
+    s * (T.x0 + T.t / 2), T.y1 + .085, (T.spans[0][0] + T.spans[0][1]) / 2);
     fenderBin(P, s);
   }
   workLamp(P, -.30, ROOF_Y, -1.80, true);                                                          // over the bustle
