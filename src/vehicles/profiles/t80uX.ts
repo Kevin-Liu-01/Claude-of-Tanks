@@ -10,6 +10,8 @@ import {boxSections,castSections,roofSheet,beamBetween,blindTube,cappedTube,type
 import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {sourceMachineGun} from './sourceMachineGun.ts';
 import { stationFromDrawnGun } from './auxiliaryStation.ts';
+import {machinedRing} from '../machineGunGeometry.ts';
+import {T80U_X_RING_RAISE_M} from '../t80uXArmor.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 
 const YAW:Point3=[0,1.55158,.0718698169];
@@ -255,7 +257,12 @@ export function buildT80UXHull(P:TankBuilderPort):void {
 }
 
 export function buildT80UX(P:TankBuilderPort):void {
-  P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);
+  // release 231 (t80uXArmor.ts T80U_X_RING_RAISE_M): the casting rides above the source's yaw datum on a stationary machined
+  // race bedded into the sloping roof (its foot 0.7-3.4 cm under the roof, inside the hull's 1.038 m half-width), its top
+  // 2 mm under the casting's ring collar (cylY .994 at -.028 to .016 in the turret frame). Turret parts stay authored
+  // against YAW, so the whole casting, its gun and its kit rise together.
+  P.hullG.position.set(0,0,0);P.turretG.position.set(YAW[0],YAW[1]+T80U_X_RING_RAISE_M,YAW[2]);
+  P.addEquipment('hullDetail',machinedRing(.90,1.01,YAW[1]+T80U_X_RING_RAISE_M-.030-1.522,.004,P.q?32:20),YAW[0],1.522,YAW[2]);
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   P.muzzleZ=T80U_X_DATUMS.muzzleZ-GUN[2];P.topY=T80U_X_DATUMS.highestFittingM-YAW[1];
   buildT80UXHull(P);casting(P);turretEra(P);roofEquipment(P);smoke(P);machineGun(P);mainGun(P);

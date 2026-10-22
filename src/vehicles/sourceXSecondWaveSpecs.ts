@@ -8,7 +8,7 @@ import { donorSpec } from './donorSpecs.ts';
 import { restoreInstalledVehicleFrame } from './vehicleSizePolicy.ts';
 import { createT62MV1XArmorZones } from './t62mv1XArmor.ts';
 import { createT72B1987XArmorZones } from './t72b1987XArmor.ts';
-import { createT80UXArmorZones } from './t80uXArmor.ts';
+import { createT80UXArmorZones, T80U_X_RING_RAISE_M, T80U_X_GUN_PITCH_BY_YAW_DEG } from './t80uXArmor.ts';
 import { createT72B3XArmorZones, T72B3_X_SOURCE_DATUMS, T72B3_X_GUN_PITCH_BY_YAW_DEG } from './t72b3XArmor.ts';
 import {createT72B3MXArmorZones,T72B3M_X_SOURCE_DATUMS} from './t72b3mXArmor.ts';
 import {createT72BUXArmorZones,T72BU_X_SOURCE_DATUMS} from './t72buXArmor.ts';
@@ -63,7 +63,8 @@ const dimensions: Readonly<Record<string, FleetDimensions>> = {
   amx30b: { hullLengthM: 6.30289, overallLengthM: 9.54869, widthM: 3.11322, heightM: 2.284, silhouetteHeightM: 2.991, silhouetteHullLengthM: 6.662 },
   t62mv1: { hullLengthM: 6.363553662, overallLengthM: 9.510790337, widthM: 3.30, heightM: 2.082969, silhouetteHeightM: 2.558, silhouetteHullLengthM: 6.742 },
   t72b_1987: { hullLengthM: 6.737070506, overallLengthM: 9.703027867, widthM: 3.59, heightM: 2.105640266, silhouetteHeightM: 2.531, silhouetteHullLengthM: 7.243 },
-  t80u: { hullLengthM: 6.720291335, overallLengthM: 9.534282731, widthM: 3.6, heightM: 2.172451481, silhouetteHeightM: 2.484, silhouetteHullLengthM: 6.652 },
+  // release 231: the structural roof rises with the T-80U X ring (t80uXArmor.ts T80U_X_RING_RAISE_M); the silhouette fields stay the oracle's
+  t80u: { hullLengthM: 6.720291335, overallLengthM: 9.534282731, widthM: 3.6, heightM: 2.172451481 + T80U_X_RING_RAISE_M, silhouetteHeightM: 2.484, silhouetteHullLengthM: 6.652 },
   leclerc_xlr: { hullLengthM: 7.1303053, overallLengthM: 9.8043880, widthM: 3.6, heightM: 2.36494, silhouetteHeightM: 2.75059, silhouetteHullLengthM: 6.840284 },
   amx56: { ...LECLERC_CLASSIC_X_DATUMS.dims,
     widthM: LECLERC_CLASSIC_X_DATUMS.fieldKitWidthM },
@@ -102,7 +103,8 @@ const frames: Readonly<Record<string, SourceFrame>> = {
   amx30b: { turret: [0, 1.584, .285], gun: [-.011, 1.87565, 1.60], muzzleZ: 5.99439 },
   t62mv1: { turret: [0, 1.446436, .3041853764], gun: [0, 1.6650417561, 1.5303753764], muzzleZ: 5.920914939 },
   t72b_1987: { turret: [-.0000548974, 1.4040902854, -.0343498434], gun: [-.0000548633, 1.6208176016, 1.2669569241], muzzleZ: 5.766827075 },
-  t80u: { turret: [0, 1.55158, .0718698169], gun: [0, 1.7564274071, 1.4199398169], muzzleZ: 6.002754533 },
+  // release 231: the ring and the trunnion over it raised by T80U_X_RING_RAISE_M (the gun's own frame is unchanged)
+  t80u: { turret: [0, 1.55158 + T80U_X_RING_RAISE_M, .0718698169], gun: [0, 1.7564274071 + T80U_X_RING_RAISE_M, 1.4199398169], muzzleZ: 6.002754533 },
   leclerc_xlr: { turret: [-.00215336, 1.40294995, .72122934], gun: [.018886, 1.8791055, 1.998880], muzzleZ: 6.239235 },
   amx56: { turret: [...LECLERC_CLASSIC_X_DATUMS.turretPivot],
     gun: [...LECLERC_CLASSIC_X_DATUMS.trunnion], muzzleZ: LECLERC_CLASSIC_X_DATUMS.muzzleZ },
@@ -158,6 +160,8 @@ function applyAuthoredFrame(spec: FleetTankSpec, id: string): void {
   }
   // release 230: the T-72B3's measured stops (t72b3XArmor.ts); its donor template keeps none
   if (id === 't72b3') spec.gunPitchByYawDeg = T72B3_X_GUN_PITCH_BY_YAW_DEG;
+  // release 231: the raised T-80U's measured stops (t80uXArmor.ts)
+  if (id === 't80u') spec.gunPitchByYawDeg = T80U_X_GUN_PITCH_BY_YAW_DEG;
   const frame = frames[id];
   spec.armor.turretPivot = [...frame.turret];
   spec.armor.gunPivot = [frame.gun[0] - frame.turret[0],
