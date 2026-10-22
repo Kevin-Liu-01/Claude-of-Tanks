@@ -98,9 +98,11 @@ body[data-cot-width='phone'] .anatomy-bar,body[data-cot-width='compact'] .anatom
 body[data-cot-width='phone'] .anatomy-chip,body[data-cot-width='compact'] .anatomy-chip,
 body[data-cot-width='phone'] .anatomy-seg button,body[data-cot-width='compact'] .anatomy-seg button{min-height:32px;padding:4px 7px;font-size:11px;letter-spacing:.01em}
 body[data-cot-width='phone'] .anatomy-seg button,body[data-cot-width='compact'] .anatomy-seg button{min-width:0}
-/* a phone keys the layers in an even grid (the Gallery follow-up of 2026-10-21: the chips wrapped into ragged centred rows);
-   the armour ramp keeps its own full row */
-body[data-cot-width='phone'] #viewport .overlay-legend.anatomy-legend{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:3px 4px}
+/* a phone keys five or more layers in an even grid (the Gallery follow-up of 2026-10-21: they wrapped into ragged centred
+   rows with an orphan); fewer keep their one centred row, and the armour ramp keeps its own full row */
+body[data-cot-width='phone'] #viewport .overlay-legend.anatomy-legend{gap:3px 4px}
+body[data-cot-width='phone'] #viewport .overlay-legend.anatomy-legend:has(> .anatomy-key:nth-of-type(5)){display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr))}
 body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp{grid-column:1/-1}
 body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-key{min-width:0;justify-content:flex-start;white-space:nowrap}
 body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp{grid-template-columns:auto minmax(0,1fr);gap:6px;width:100%;padding:3px 7px}
