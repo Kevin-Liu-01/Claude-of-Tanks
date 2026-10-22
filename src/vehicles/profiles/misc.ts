@@ -394,9 +394,8 @@ function muzzleBore(P: MiscBuilderPort, r: number, zTip: number): void {
 // ---------------------------------------------------------------------------
 export function buildAriete(P: MiscBuilderPort): void {
   const { box, cylX, cylY, cylZ, frustum, torus, buildGun, buildRunningGear,
-    fenders, headlight, liftEye, openRackGrid, periscope, towCable, stowage } = KIT;
+    fenders, headlight, liftEye, openRackGrid, periscope, towCable } = KIT;
   const slab = orientedSlab;                                                   // §C missing-side fix: winding-corrected slabs only (see orientedSlab)
-  const { rng } = P;
   // ---- hull tub + sponsons + stepped deck ----
   const buildArieteHullStage1 = (): void => {
     P.add('hull', box(2.06, 0.90, 5.90), 0, 0.85, 0.05);                        // tub x +-1.03, belly 0.35 (push round: ref front-row bottoms 0.343 at +-0.66-1.03), z -2.90..3.00
