@@ -17,11 +17,11 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 import * as THREE from 'three';
 import { buildChallenger3RearTurretClosure } from './challenger3RearTurret.ts';
 import { facetedSlab } from './facetedSlab.ts';
-import { markFixedPaintedPanel } from './fixedPaintedPanel.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 // Shared geometry and exact-equipment fittings come from the cycle-free
 // profile kit; builders destructure the geometry they use at call time.
 import { KIT, FITTINGS, muzzleBore } from './kit.ts';
+import { stockTopFace, upSlopeTurn } from './stockFaceSeat.ts';
 import '../challengerSpecs.ts';
 // ch1-base tone port (uk round 2026-08-07): materials.js is cycle-free — the
 // ambient-floor hook re-attach is the same import uk.ts carries.
@@ -386,10 +386,7 @@ function challenger1Build(P: ChallengerBuilderPort): void {
       // sweep (<=4.065) and the 4.047 column boundary (§C). The wrap owns
       // the 3.982 column's 0.49 bottom regardless (the flap never painted
       // it), so the move is mask-free.
-      // Art fixes 230 (2026-10-21, hero-card critics: "light-grey untextured plates at the front corners"): the tip
-      // flaps are painted in the vehicle scheme with the wings they hang from. Finish only.
-      P.hangMudguard('challenger1-front-flap', 'hullFixedPaintedBodywork',
-        markFixedPaintedPanel(box(0.16, 0.30, 0.04), 'challenger1-front-flap', 'hullRubber'), s * 1.62, 0.85, 4.02);
+      P.hangMudguard('challenger1-front-flap', 'hullRubber', box(0.16, 0.30, 0.04), s * 1.62, 0.85, 4.02);
       // (r3 note: trim planks were TRIED here per the revolution r15 recipe
       // and removed — r15's plank painted a line its band couldn't reach
       // behind the skirt window; HERE the band is visible and reads LOWER
@@ -2664,21 +2661,24 @@ function buildChallenger3XGlacisEra(
   P: ChallengerBuilderPort,
   receipt: Challenger3XReceipt,
 ): void {
-  const glacisFrame = cr2SurfaceFrame([0, 0.9718, 0.2358], [1, 0, 0]);
+  // 2026-10-21 (owner: "fix the challenger 3's front era as well which isnt on the glacis properly"): the cassettes were
+  // laid on the Challenger 2's 13.6-degree glacis line and snapped down onto whatever stock they met, but this hull's
+  // glacis falls at 22.3 degrees (y 1.54 at z 2.3 to 1.07 at z 3.5), so each centre cassette sat 9 degrees off the
+  // plate on one edge, the third column straddled the 10-20 cm step at |x| 0.92-0.95 between the glacis and the side
+  // shelves (13.6 degrees), and the lowest row ran over the glacis' foot. Each cassette now lies on the face under its
+  // centre (stockTopFace), back 8 mm in: three columns on the glacis (to |x| 0.87), two on the shelf (from |x| 0.97),
+  // four rows up the slope from the foot.
+  const columns = [0.155, 0.445, 0.735, 1.10, 1.39];
+  const rows = [3.384, 3.107, 2.829, 2.552];
+  const scale = [0.94, 1.76, 0.80] as const, depth = 0.07 * scale[2], embed = 0.008;
   for (const side of [-1, 1]) {
     const sector = `c3x_glacis_era_${side > 0 ? 'R' : 'L'}`;
     P.eraCluster(sector, (place) => {
-      for (let row = 0; row < 4; row++) {
-        const z = 3.45 - row * 0.32;
-        const surfaceY = 1.24 + (3.60 - z) * (0.31 / 1.28);
-        for (let station = 0; station < 5; station++) {
-          const point = new THREE.Vector3(side * (0.18 + station * 0.29), surfaceY, z)
-            .addScaledVector(glacisFrame.normal, 0.020);
-          // seated along the plate normal on this hull's glacis, which runs 14 cm under the CR2 surface line the
-          // stations follow (owner 2026-10-19 sweep)
-          const n = glacisFrame.normal;
-          P.snapGroup('c3-glacis-era', () => place(point.x, point.y, point.z, ...glacisFrame.rotation, 0.94, 1.76, 0.80),
-            { reachM: 0.20, direction: [-n.x, -n.y, -n.z] });
+      for (const z of rows) {
+        for (const column of columns) {
+          const { point, normal } = stockTopFace(P, side * column, z);
+          const turn = upSlopeTurn(normal), centre = point.addScaledVector(normal, depth / 2 - embed);
+          place(centre.x, centre.y, centre.z, turn.x, turn.y, turn.z, ...scale);
           receipt.glacisEraCassettes++;
         }
       }

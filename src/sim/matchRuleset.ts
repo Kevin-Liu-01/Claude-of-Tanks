@@ -710,6 +710,8 @@ export const TEAM_NATIONS_MODE_SCOPE: Readonly<Record<GameModeId, { readonly not
   juggernaut: { note: 'juggernaut' },
   // the escorts are the player's country, the ground force one enemy country
   ac130: { note: 'ac130' },
+  // the proving ground is a solo range against static target hulls: no team fiction applies (230 x gameplay-modes union)
+  proving_ground: { note: null },
 });
 
 export interface TeamArrangement {

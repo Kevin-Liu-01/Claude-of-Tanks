@@ -13,7 +13,8 @@ export class WeaponDamageVisuals {
     let start = 0;
     for (const part of parts) {
       const count = part.index?.count ?? part.getAttribute('position').count;
-      const module = part.userData.auxiliaryStation?.stage === 'pitch' ? 'roofGun' : part.userData.weaponStock?.module;
+      const stage = part.userData.auxiliaryStation?.stage;
+      const module = stage === 'pitch' || stage === 'recoil' ? 'roofGun' : part.userData.weaponStock?.module;
       if (module) {
         // Damage keeps references to these color buffers. The rigid-stock pool
         // must not replace them with shared clones after construction.

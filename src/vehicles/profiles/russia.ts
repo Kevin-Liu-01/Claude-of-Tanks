@@ -247,8 +247,6 @@ interface SkirtBandOptions {
 interface FlapBaseOptions {
   readonly x: number;
   readonly w: number;
-  /** 2026-10-21: 'painted-rubber' paints the flaps in the vehicle scheme (finish only); default bare rubber. */
-  readonly material?: 'rubber' | 'painted-rubber';
 }
 
 type FlapOptions = FlapBaseOptions & (
@@ -1100,12 +1098,12 @@ export function ruFlaps(P: RussiaMudguardPort, o: FlapOptions): void {
     const xf = s * o.x;
     if (o.front) MUDGUARDS.add(P, { hang: true,
       label: `ru-front-flap-${s}`, x: xf, y: o.front[0], z: o.frontZ,
-      thickness: 0.045, length: o.w, height: o.front[1], material: o.material ?? 'rubber',
+      thickness: 0.045, length: o.w, height: o.front[1], material: 'rubber',
       rotation: [0, Math.PI / 2, 0], crown: 0.014, frontCut: o.front[1] * 0.11,
     });
     if (o.rear) MUDGUARDS.add(P, {
       label: `ru-rear-flap-${s}`, x: xf, y: o.rear[0], z: o.rearZ,
-      thickness: 0.045, length: o.w, height: o.rear[1], material: o.material ?? 'rubber',
+      thickness: 0.045, length: o.w, height: o.rear[1], material: 'rubber',
       rotation: [0, Math.PI / 2, 0], crown: 0.014, rearCut: o.rear[1] * 0.09,
     });
   }

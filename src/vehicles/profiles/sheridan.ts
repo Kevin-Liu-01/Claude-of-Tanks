@@ -9,6 +9,7 @@ import { sheridanWheelFaceLayers } from '../nationWheelConstructions.ts';
 import * as THREE from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { KIT, FITTINGS, muzzleBore } from './kit.ts';
+import { stockTopFace, upSlopeTurn } from './stockFaceSeat.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 
 type Vec2Tuple = [number, number];
@@ -110,6 +111,36 @@ const nonUniformXform = KIT.xform as (
 ) => THREE.BufferGeometry;
 
 const D2R = Math.PI / 180;
+
+// 2026-10-21 (owner on the M551A1 TTS: "fix the era at front"): the glacis ERA courses stood as fins. The upper glacis
+// rises 25 degrees from its crease with the bow deck (z 2.39) toward the turret, and both courses were turned -25 to
+// -26 degrees about x, which stands a cassette's face 65 degrees off that surface. Each cassette now lies on the hull's
+// own face under its centre (a ray down onto the hull stock, which also rolls the outer columns with the crowned
+// glacis), its back 8 mm in. The two courses take four rows up the slope from the crease, 8 mm apart: the Sheridan's
+// own course the lower two, the TTS's second course the upper two (its last row ends at z 1.69, 10 cm under the
+// turret's and the depressed gun's swept underside). Their columns stay inside the fenders' inner edges (|x| 1.07).
+const GLACIS_CREASE_Z = 2.39;
+const GLACIS_RAKE = 25 * D2R;
+const GLACIS_ERA_EMBED_M = 0.008;
+/** Each row's centre, along the slope from the crease: the Sheridan course's two 0.2015 m rows, then the TTS course's
+ * two 0.1664 m rows, 8 mm apart from 10 mm behind the crease. */
+const GLACIS_ERA_ROW_ALONG = [0.1108, 0.3203, 0.5122, 0.6866] as const;
+
+/** One glacis ERA course: `cols` cassettes a row on the given rows, each lying on the hull face under its centre (its
+ * width across, its height up the slope, its depth along the face's normal). */
+function layGlacisEra(P: SheridanBuilderPort, put: EraPut, rows: readonly number[], cols: number, spacing: number,
+  [sx, sy, sz]: readonly [number, number, number]): void {
+  const depth = 0.07 * sz;
+  for (const along of rows) {
+    for (let col = 0; col < cols; col++) {
+      const x = (col - (cols - 1) / 2) * spacing;
+      const { point, normal } = stockTopFace(P, x, GLACIS_CREASE_Z - along * Math.cos(GLACIS_RAKE));
+      const turn = upSlopeTurn(normal);
+      const centre = point.addScaledVector(normal, depth / 2 - GLACIS_ERA_EMBED_M);
+      put(centre.x, centre.y, centre.z, turn.x, turn.y, turn.z, sx, sy, sz);
+    }
+  }
+}
 const SHERIDAN_X_SCALE = 2.82 / 3.04;
 const SHERIDAN_Y_SCALE = 0.965;
 const SHERIDAN_TURRET_X_SCALE = 1.028;
@@ -593,14 +624,7 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   // second solid wall. ERA keeps the fleet-standard continuous vehicle-scale
   // camouflage and two-layer cassette construction supplied by eraCluster.
   P.eraCluster('m551a1_tts_glacis_era', (put) => {
-    for (let row = 0; row < 2; row++) {
-      for (let col = 0; col < 6; col++) {
-        // 2026-10-19 (owner float sweep): the cassettes stood 38-44 mm off the 25-degree glacis; each sits 42 mm further
-        // in along its normal (0, -0.906, -0.423)
-        put((col - 2.5) * 0.40, 1.362 + row * 0.18, 2.362 - row * 0.37,
-          -25 * D2R, 0, 0, 1.28, 1.28, 0.64);
-      }
-    }
+    layGlacisEra(P, put, GLACIS_ERA_ROW_ALONG.slice(2), 6, 0.36, [1.24, 1.28, 0.64]);
   });
   for (const side of [-1, 1]) {
     for (let index = 0; index < skirtPanelZ.length; index++) {
@@ -705,10 +729,12 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
       }
     }, true);
   }
+  // 2026-10-21 (owner on the TTS's front ERA): four of the roof course's eight cassettes stood 3 mm over the roof's front
+  // (hull-contact-census); the course beds 6 mm into it.
   P.eraCluster('m551a1_tts_turret_roof_era', (put) => {
     for (let row = 0; row < 2; row++) {
       for (let col = 0; col < 4; col++) {
-        put((col - 1.5) * 0.40, 2.292, 0.50 - row * 0.42,
+        put((col - 1.5) * 0.40, 2.283, 0.50 - row * 0.42,
           -Math.PI / 2, 0, 0, 1.25, 1.25, 0.55);
       }
     }
@@ -718,16 +744,18 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
 
   const buildTtsOpticsAndAutocannon = (): void => {
   // Large protected searchlight to gun-right, as in the supplied silhouette.
-  // A deep bracket crosses into the cheek; the lens is proud of the housing.
-  P.addEquipment('turret', box(0.48, 0.54, 0.40), 0.66, 0.56, 1.32, 0, -0.04, 0);
-  P.add('turretDark', box(0.43, 0.49, 0.035), 0.66, 0.56, 1.535, 0, -0.04, 0);
-  P.addModuleVisual('optics', 'turretGlass', box(0.35, 0.40, 0.026),
-    0.66, 0.56, 1.558, 0, -0.04, 0);
-  P.add('turretDetail', box(0.14, 0.20, 0.46), 0.39, 0.41, 1.23, 0, -0.22, 0);
-  for (const side of [-1, 1]) {
-    P.add('turretDark', cylY(0.035, 0.035, 0.64, P.q ? 14 : 10),
-      0.66 + side * 0.27, 0.56, 1.34);
-  }
+  // 2026-10-21 (owner: "fix the light by its gun that glitches into mantlet"): the light's box (x 0.42-0.90), its inner
+  // guard post (x 0.355-0.425) and its bracket (x 0.32-0.46) stood inside the gun mask's 0.519 m half-width, so the
+  // mantlet passed through them at every pitch, and the box's back ran into the right cheek ERA bank (front z 1.274).
+  // The light now stands outboard of the mask: its inner face at x 0.56 is 41 mm clear of it at any pitch (the mask
+  // turns about the trunnion's x axis). Its back beds 14 mm into the bank's front and the cheek's front edge, its foot
+  // stands 11 mm over the cheek's smoke tubes (to y 0.479), a bracket under it runs into the cheek, a visor shades the
+  // lens, and the lens stays proud of the housing.
+  P.addEquipment('turret', box(0.36, 0.36, 0.30), 0.74, 0.67, 1.41);
+  P.add('turretDark', box(0.32, 0.32, 0.03), 0.74, 0.67, 1.571);
+  P.addModuleVisual('optics', 'turretGlass', box(0.26, 0.26, 0.022), 0.74, 0.67, 1.591);
+  P.add('turretDark', box(0.38, 0.02, 0.10), 0.74, 0.858, 1.55);
+  P.add('turretDetail', box(0.19, 0.04, 0.12), 0.685, 0.47, 1.30);
 
   // Additional armored lamp emplacements, laser-warning nodes and roof
   // electronics reinforce the high-technology TTS read without changing the
@@ -993,14 +1021,7 @@ function addSheridanHullProtectionAndFurniture(
   // the former Y=0.81 course covered the suspension and erased Sheridan's
   // characteristic boat hull in every side comparison.
   P.eraCluster('sheridan_glacis_era', (put) => {
-    for (let row = 0; row < 2; row++) {
-      const z = 2.21 - row * 0.43;
-      const y = 1.34 + row * 0.21;
-      for (let col = 0; col < 5; col++) {
-        const x = (col - 2) * 0.47;
-        put(x, y, z, -26 * D2R, 0, 0, 1.62, 1.55, 0.58);
-      }
-    }
+    layGlacisEra(P, put, GLACIS_ERA_ROW_ALONG.slice(0, 2), 5, 0.43, [1.50, 1.55, 0.58]);
   });
   for (const side of [-1, 1]) {
     P.eraCluster(`sheridan_skirt_era_${side > 0 ? 'R' : 'L'}`, (put) => {

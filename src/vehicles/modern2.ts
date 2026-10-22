@@ -21,6 +21,7 @@ import { KIT, type TankBuilderPort } from './tankFactoryCore.ts';
 // §I fittings census: the FITTINGS import is the spelling that survives
 // synchronous top-level createTank rigs.
 import { FITTINGS, muzzleBore } from './profiles/kit.ts';
+import { markSmokeTube } from './vehicleAuxiliaryGeometry.ts';
 import { addMbt70Rh202 } from './profiles/mbt70Rh202.ts';
 import { buildM1A1BareHull } from './profiles/abrams.ts';
 import { foldedShoulderReturn } from './profiles/foldedShoulderReturn.ts';
@@ -1551,6 +1552,61 @@ function addMBT70UpperFenderReturns(P: Modern2BuilderPort): void {
   }
 }
 
+/** One face of the MBT-70's cast turret shell, where a level ray from outboard meets it at (y, z) on one side
+ * (turret-local), and a placer for stock authored in that face's frame: +Z out of the face, +Y up it (as near
+ * world-up as the face allows), +X along it (aft on the right side, forward on the left). */
+interface Mbt70ShellFace {
+  readonly point: THREE.Vector3;
+  readonly normal: THREE.Vector3;
+  /** Moves `geometry` from the face frame onto the shell, offset (along, up, out) from the seat point. */
+  place(geometry: THREE.BufferGeometry, along?: number, up?: number, out?: number): THREE.BufferGeometry;
+  /** The receipt of a box placed at (along, up, out) in the face frame: its back and outer face corners, turret-local. */
+  seat(name: string, size: readonly [number, number, number], along?: number, up?: number, out?: number): Mbt70SideSeat;
+}
+
+/** A side piece's seat on the shell (turret-local, mm-rounded): mbt70Fidelity reads its corners against the shell. */
+interface Mbt70SideSeat {
+  readonly name: string;
+  readonly normal: readonly number[];
+  readonly back: readonly (readonly number[])[];
+  readonly front: readonly (readonly number[])[];
+}
+
+function mbt70ShellFaces(shell: THREE.BufferGeometry): {
+  face(y: number, z: number, side: number): Mbt70ShellFace;
+  dispose(): void;
+} {
+  const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+  const mesh = new THREE.Mesh(shell, material);
+  const ray = new THREE.Raycaster();
+  return {
+    face(y, z, side) {
+      ray.set(new THREE.Vector3(side * 4, y, z), new THREE.Vector3(-side, 0, 0));
+      const hit = ray.intersectObject(mesh, false)[0];
+      if (!hit?.face) throw new Error(`mbt70: no turret shell at y ${y}, z ${z} (side ${side})`);
+      const point = hit.point.clone(), normal = hit.face.normal.clone();
+      if (normal.x * side < 0) normal.negate();
+      const up = new THREE.Vector3(0, 1, 0).addScaledVector(normal, -normal.y).normalize();
+      const along = new THREE.Vector3().crossVectors(up, normal).normalize();
+      const basis = new THREE.Matrix4().makeBasis(along, up, normal);
+      const frame = new THREE.Matrix4().copy(basis).setPosition(point);
+      const corner = (x: number, u: number, out: number): number[] => new THREE.Vector3(x, u, out).applyMatrix4(frame)
+        .toArray().map((v) => Math.round(v * 1e4) / 1e4);
+      return {
+        point, normal,
+        place(geometry, x = 0, u = 0, out = 0) {
+          return geometry.translate(x, u, out).applyMatrix4(frame);
+        },
+        seat(name, [w, h, t], x = 0, u = 0, out = 0) {
+          const face = (depth: number) => [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([a, b]) => corner(x + a * w / 2, u + b * h / 2, depth));
+          return { name, normal: normal.toArray().map((v) => Math.round(v * 1e4) / 1e4), back: face(out - t / 2), front: face(out + t / 2) };
+        },
+      };
+    },
+    dispose() { material.dispose(); },
+  };
+}
+
 function buildMBT70BareHull(P: Modern2BuilderPort): void {
   const { box } = KIT;
   buildM1A1BareHull(P, {
@@ -1591,6 +1647,23 @@ function buildMBT70BareHull(P: Modern2BuilderPort): void {
       side * 1.31, 1.69, -3.05, 0.025 * side, 0, 0);
     P.add('hullDetail', box(0.035, 0.34, 1.18), side * 1.00, 1.43, -3.05,
       0.025 * side, 0, 0);
+    // 2026-10-21 (owner: "rear of tank side armor (fender side armor) is missing, and tracks would touch it if they were
+    // there"): the side aprons end at z -2.62, and aft of them the sprocket and the track's wrap stood bare under the
+    // rear fender. A side plate hangs from the rear fender's outer edge down to the aprons' lower line (y 1.137), on a
+    // flange seated 6 mm into the fender's top, both in the fender's frame (its centre and 0.035 rad rake). The aprons'
+    // own line would have met the sprocket, whose outer disc stands to |x| 1.744 within 0.27 m of its axle (the band to
+    // 1.715): the plate's inner face stands at 1.756, 12 mm off the sprocket and 41 mm off the track. Its forward
+    // 0.12 m laps the apron's end, 4 mm outboard of it.
+    const fenderX = 1.54, fenderY = 1.64, fenderZ = -3.16, fenderRake = 0.035;
+    const plateIn = 1.756 - fenderX, plateT = 0.02, plateTop = 0.059, plateBottom = 1.137 - fenderY;
+    const guard = side < 0 ? 'hullTrackGuardL' : 'hullTrackGuardR';
+    P.addMudguard(`mbt70_rear_side_plate_${side}`, guard,
+      box(plateT, plateTop - plateBottom, 1.32).translate(side * (plateIn + plateT / 2), (plateTop + plateBottom) / 2, 0),
+      side * fenderX, fenderY, fenderZ, fenderRake, 0, 0);
+    const flangeIn = 0.15, flangeW = plateIn + plateT - flangeIn;
+    P.addMudguard(`mbt70_rear_side_flange_${side}`, guard,
+      box(flangeW, 0.02, 1.32).translate(side * (flangeIn + flangeW / 2), 0.049, 0),
+      side * fenderX, fenderY, fenderZ, fenderRake, 0, 0);
     for (const z of [-3.48, -3.05, -2.62]) {
       P.add('hullDetail', box(0.11, 0.035, 0.035), side * 1.20, 1.66, z);
     }
@@ -1602,7 +1675,6 @@ function buildMBT70(P: Modern2BuilderPort) {
   const {
     box, polyMultiLoft, cylY, cylZ, sph, torus,
     buildGun, liftEye, periscope,
-    smokeCluster,
   } = KIT;
   const seg = P.q ? 24 : 14;
 
@@ -1663,7 +1735,7 @@ function buildMBT70(P: Modern2BuilderPort) {
     const t = Math.min(1, (-z - 0.55) / (2.92 - 0.55));
     return BUSTLE_FLOOR_RISE_M * t;
   };
-  P.add('turret', polyMultiLoft(turretPlan, [
+  const castShell = polyMultiLoft(turretPlan, [
     { height: turretFloorHeight, inset: 1.00 },
     // The raked aft floor reaches .23 m: carry the lower belt above it
     // instead of letting a constant .22 m ring cross through that floor.
@@ -1671,7 +1743,9 @@ function buildMBT70(P: Modern2BuilderPort) {
       inset: rearBiasedInset(0.88, 0.96, 0.99) },
     { height: 0.52, inset: rearBiasedInset(0.70, 0.89, 0.95) },
     { height: TH, inset: rearBiasedInset(0.52, 0.84, 0.91) },
-  ]));
+  ]);
+  P.add('turret', castShell);
+  const shellFaces = mbt70ShellFaces(castShell);
   // The whole primary shell is one continuous loft. Closely spaced nose
   // stations retain the reference model's rounded plan, while contraction
   // from the very first station gives it a roughly 45-degree continuous
@@ -1705,14 +1779,8 @@ function buildMBT70(P: Modern2BuilderPort) {
     P.add('turretDetail', box(0.035, 0.22, 0.035), 0.42 + s * 0.43, 0.79, -2.66);
   }
   P.add('turretDetail', box(0.90, 0.035, 0.035), 0.42, 0.90, -2.66);
-  // Facet seams and lifting eyes make the broad armor read as assembled plate.
-  for (const s of [-1, 1]) {
-    P.add('turretDark', box(0.018, 0.50, 1.36), s * 1.39, 0.40, -0.62, 0, s * 0.08, 0);
-    // 2026-10-19 (owner float sweep): this side rail stood 49-140 mm off the curved flank; shortened to the flank's
-    // broad shoulder and moved in onto its widest line.
-    P.add('turretDetail', box(0.05, 0.05, 0.80), s * 1.668, 0.54, -1.37);
-    liftEye(P, 'turretDetail', s * 1.12, TH + 0.02, -1.28);
-  }
+  // Lifting eyes on the roof (the flank's grab rails are seated with the side stock below).
+  for (const s of [-1, 1]) liftEye(P, 'turretDetail', s * 1.12, TH + 0.02, -1.28);
   // Roof hatches: structural cupolas are explicitly separated from fittings.
   P.addCupola('turret', cylY(0.32, 0.34, 0.12, seg), 0.62, TH + 0.06, -0.72);
   P.addCupola('turret', cylY(0.29, 0.31, 0.10, seg), -0.58, TH + 0.05, -0.60);
@@ -1726,7 +1794,8 @@ function buildMBT70(P: Modern2BuilderPort) {
   // Tall commander's station and source-shaped optical housings.
   P.addEquipment('turret', cylY(0.24, 0.27, 0.18, seg), 0.62, TH + 0.25, -0.72);
   P.addEquipment('turret', box(0.42, 0.28, 0.42), 0.62, TH + 0.46, -0.66);
-  P.add('turretGlass', box(0.24, 0.13, 0.025), 0.62, TH + 0.48, -0.43);
+  // 2026-10-21: the window stood 8 mm off the station's face (hull-contact-census); its back is now 2.5 mm into it.
+  P.add('turretGlass', box(0.24, 0.13, 0.025), 0.62, TH + 0.48, -0.44);
   // 2026-10-14 (owner markup; coordinator ruling): the KPz 70's 20 mm Rh 202 remote station, not a .50-calibre M2
   addMbt70Rh202(P, TH + 0.60);
   // Seat the gunner sight through a thin gasket directly on the roof.  Its
@@ -1772,35 +1841,92 @@ function buildMBT70(P: Modern2BuilderPort) {
     P.addEquipment('turretDark', box(0.055, 0.035, 0.11), x, TH + 0.1225, -1.72);
   }
   P.addEquipment('turretDark', box(0.055, 0.035, 0.11), -0.94, 0.7675, -2.18);
-  smokeCluster(P, 1.26, 0.55, -0.62, 4, 1.18, 0.70);
-  smokeCluster(P, -1.26, 0.55, -0.62, 4, -1.18, 0.70);
-  // The MBT-70's signature paired smoke canisters sit proud of the turret
-  // flanks.  Give each its own seated cradle and large capped cylinder so the
-  // pair remains legible instead of disappearing into the smaller tube banks.
-  for (const side of [-1, 1]) {
-    const yaw = side * 0.58;
-    P.addEquipment('turretDetail', box(0.20, 0.15, 0.30), side * 1.31, 0.34, 0.05, 0, yaw, 0);
-    P.addEquipment('turretDetail', cylZ(0.105, 0.42, 12), side * 1.36, 0.51, 0.10, -0.48, yaw, 0);
-    P.add('turretDark', torus(0.106, 0.018, 12), side * 1.36, 0.51, 0.10, -0.48, yaw, 0);
-  }
 
-  // Modernized applique: compact structural ERA cassettes follow the cast
-  // cheeks, while the donor glacis receives a shallow two-row array.  Their
-  // centers stay inside the certified 3.51 m width envelope and remain real
-  // armor rather than decoration-only hitbox inflation.
-  const turretEraStations = [
-    { x: 1.42, y: 0.34, z: -0.08, yaw: 0.08 },
-    { x: 1.37, y: 0.34, z: 0.34, yaw: 0.18 },
-    { x: 1.22, y: 0.34, z: 0.76, yaw: 0.34 },
-  ];
+  // ---- side armour and side stock, seated on the cast shell ----------------
+  // 2026-10-21 (owner: "its side armor needs to be fixed"): the cheeks rake about 45 degrees and the flanks about 20,
+  // and the side stock stood at fixed x with upright faces, so it was buried in one place and proud in another. The ERA
+  // cassettes' lower halves sank 16-20 cm into the cheeks while their tops stood 20 cm off them; the paired smoke
+  // canisters and their cradles sank into the cheeks; both four-tube banks and all four lockers lay wholly inside the
+  // armour (the banks' grenades launched from 12-25 cm inside it); a dark facet-seam slab came out through each front
+  // cheek; and the grab rails stood 4 cm off the curved flanks at both ends. Each piece now takes the shell's own face
+  // where it sits (mbt70ShellFaces), its back 6 mm into it, and each lies on one facet of the loft (it scales its rings
+  // about the plan's vertex centroid, z 0.257, so the creases run diagonally across the cheek: at the cassettes' height
+  // they cross at about z 0.20, 0.50 and 0.75). Nothing stands outboard of the hull's 3.51 m: the tube bank sweeps its
+  // tubes forward along the flank, as on the Leopard 2, and the canister rides the bustle's narrower upper band.
+  const SIDE_SEAT_IN_M = 0.006;
+  const ERA_THICKNESS_M = 0.075;
+  // Modernized applique: compact structural ERA cassettes lie on the cast cheeks' three facets, while the donor glacis
+  // receives a shallow two-row array. They remain real armour rather than decoration-only hitbox inflation.
+  const turretEraStations = [0.625, 0.345, 0.06];
+  const sideSeats: Mbt70SideSeat[] = [];
   for (const side of [-1, 1]) {
-    for (const station of turretEraStations) {
-      P.add('turret', box(0.20, 0.24, 0.34), side * station.x, station.y, station.z,
-        -0.10, side * station.yaw, side * 0.08);
-      P.add('turretDetail', box(0.15, 0.025, 0.26), side * (station.x + 0.035),
-        station.y + 0.02, station.z, -0.10, side * station.yaw, side * 0.08);
+    const fwd = -side; // the face frame's +X runs aft on the right side
+    const lr = side < 0 ? 'L' : 'R';
+    for (const z of turretEraStations) {
+      const face = shellFaces.face(0.36, z, side);
+      sideSeats.push(face.seat(`era_${lr}_${z}`, [0.24, 0.22, ERA_THICKNESS_M], 0, 0, ERA_THICKNESS_M / 2 - SIDE_SEAT_IN_M));
+      P.add('turret', face.place(box(0.24, 0.22, ERA_THICKNESS_M), 0, 0, ERA_THICKNESS_M / 2 - SIDE_SEAT_IN_M));
+      P.add('turretDetail', face.place(box(0.19, 0.16, 0.012), 0, 0, ERA_THICKNESS_M - SIDE_SEAT_IN_M + 0.004));
+    }
+    // four smoke dischargers on a bracket on the flank's upper band, swept forward along it and raised 0.5 rad (the
+    // bracket sits 10 mm in: the flank's quads twist, and one corner otherwise met the shell at 0.2 mm)
+    {
+      const face = shellFaces.face(0.62, -0.88, side), bracketT = 0.05, bracketIn = 0.010;
+      sideSeats.push(face.seat(`smoke_bracket_${lr}`, [0.40, 0.10, bracketT], 0, 0, bracketT / 2 - bracketIn));
+      P.addEquipment('turretDetail', face.place(box(0.40, 0.10, bracketT), 0, 0, bracketT / 2 - bracketIn));
+      for (let k = 0; k < 4; k++) {
+        const f = k - 1.5;
+        const tube = markSmokeTube(cylZ(0.036, 0.20, 8)).translate(0, 0, 0.10)
+          .rotateY(fwd * (1.05 + f * 0.08)).rotateX(-0.5);
+        P.add('turretDetail', face.place(tube, f * 0.095, 0, bracketT - bracketIn - 0.012));
+      }
+    }
+    // the flank locker on the lower band, slim (the band is the turret's widest, 1.70 m out at the locker's foot), and
+    // its two latches
+    {
+      const face = shellFaces.face(0.35, -1.25, side);
+      sideSeats.push(face.seat(`flank_locker_${lr}`, [0.34, 0.16, 0.05], 0, 0, 0.025 - SIDE_SEAT_IN_M));
+      P.addEquipment('turret', face.place(box(0.34, 0.16, 0.05), 0, 0, 0.025 - SIDE_SEAT_IN_M));
+      for (const a of [-0.10, 0.10]) {
+        P.addEquipment('turretDark', face.place(box(0.03, 0.04, 0.012), a, 0.045, 0.05 - SIDE_SEAT_IN_M + 0.004));
+      }
+    }
+    // a grab rail over the insignia on the bustle's upper band: two brackets, each on its own face, and the bar
+    // standing 3 cm off the plate
+    {
+      const ends = [-1.59, -1.91].map((z) => shellFaces.face(0.68, z, side));
+      for (const [i, face] of ends.entries()) {
+        sideSeats.push(face.seat(`rail_bracket_${lr}_${i}`, [0.03, 0.03, 0.045], 0, 0, 0.0225 - SIDE_SEAT_IN_M));
+        P.add('turretDetail', face.place(box(0.03, 0.03, 0.045), 0, 0, 0.0225 - SIDE_SEAT_IN_M));
+      }
+      const a = ends[0].point.clone().addScaledVector(ends[0].normal, 0.045);
+      const b = ends[1].point.clone().addScaledVector(ends[1].normal, 0.045);
+      const bar = cylZ(0.015, a.distanceTo(b) + 0.03, 8).lookAt(b.clone().sub(a));
+      P.add('turretDetail', bar.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2));
+    }
+    // The MBT-70's signature paired smoke canisters: one per side, a large capped cylinder on its own cradle on the
+    // bustle's upper band, pointing forward and 20 degrees up along the plate, legible behind the smaller tube bank.
+    {
+      const face = shellFaces.face(0.66, -2.15, side), cradleT = 0.05, r = 0.075, length = 0.36;
+      sideSeats.push(face.seat(`canister_cradle_${lr}`, [0.26, 0.12, cradleT], 0, 0, cradleT / 2 - SIDE_SEAT_IN_M));
+      P.addEquipment('turretDetail', face.place(box(0.26, 0.12, cradleT), 0, 0, cradleT / 2 - SIDE_SEAT_IN_M));
+      const lay = (geometry: THREE.BufferGeometry) => face.place(geometry.rotateY(fwd * Math.PI / 2).rotateZ(fwd * 0.35),
+        0, 0.01, cradleT - SIDE_SEAT_IN_M + r - 0.010);
+      P.addEquipment('turretDetail', lay(cylZ(r, length, 12)));
+      P.add('turretDark', lay(torus(r + 0.001, 0.014, 12).translate(0, 0, length / 2 - 0.010)));
+    }
+    // the bustle locker on the lower band, aft of the insignia and ahead of the spare links
+    {
+      const face = shellFaces.face(0.40, -2.17, side);
+      sideSeats.push(face.seat(`bustle_locker_${lr}`, [0.30, 0.16, 0.08], 0, 0, 0.04 - SIDE_SEAT_IN_M));
+      P.addEquipment('turret', face.place(box(0.30, 0.16, 0.08), 0, 0, 0.04 - SIDE_SEAT_IN_M));
+      for (const a of [-0.09, 0.09]) {
+        P.addEquipment('turretDark', face.place(box(0.03, 0.04, 0.012), a, 0.045, 0.08 - SIDE_SEAT_IN_M + 0.004));
+      }
     }
   }
+  shellFaces.dispose();
+  P.turretG.userData.mbt70SideStockSeats = sideSeats;
   const hullEraStations = [
     [-0.82, 1.405, 2.86], [-0.29, 1.405, 2.86], [0.29, 1.405, 2.86], [0.82, 1.405, 2.86],
     // 2026-10-19 (owner float sweep): the aft row stood 15 mm over the glacis; lowered onto it.
@@ -1815,8 +1941,6 @@ function buildMBT70(P: Modern2BuilderPort) {
   // lockers, roof electronics, cable raceways and spare-link carriers add the
   // requested worked-up vehicle detail without expanding armor volumes.
   for (const side of [-1, 1]) {
-    P.addEquipment('turret', box(0.24, 0.18, 0.38), side * 1.47, 0.49, -1.25, 0, side * 0.05, 0);
-    P.addEquipment('turret', box(0.22, 0.16, 0.34), side * 1.44, 0.52, -1.72, 0, side * 0.04, 0);
     P.addEquipment('turretDetail', box(0.055, 0.055, 0.64), side * 1.18, TH + 0.04, -1.52);
     const links = FITTINGS.spareTrackLinks({
       mats: P.mats, links: SPARE_TRACK_LINKS, width: SPARE_TRACK_WIDTH_M, pitch: 0.165, seed: 77 + side,

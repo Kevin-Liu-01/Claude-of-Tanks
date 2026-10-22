@@ -26,6 +26,7 @@ import { releaseStaticMergeParts } from './staticMergeParts.ts';
 import { combatVisibleObjects, retainCombatLods } from './combatVisibility.ts';
 import { detachEmptyLodSentinels } from '../engine/lodEmptySentinels.ts';
 import { installZoomAwareLods } from '../engine/lodDistanceScale.ts';
+import { RUBBER_UV_REPEATS_PER_M } from './rubberSurface.ts';
 import {fitLoadedTrackContact,loadedContactScratch} from './loadedTrackContact.ts';
 import { seatStaggeredTrackGround } from './staggeredTrackGround.ts';
 import {carrierWidthAt,splitCarrierSections,validateCarrierSections,type TrackCarrierWidthStation} from './trackCarrierSections.ts';
@@ -1097,6 +1098,25 @@ const FIXED_GEAR_ROLE_MATERIAL_ROLE: Readonly<Record<string, string>> = Object.f
   wheelInset: 'tireRubber', wheelTire: 'tireRubber', tireRubber: 'tireRubber',
   trackPad: 'trackPad', trackSteel: 'trackSteel', trackHardware: 'trackSteel', gearShadow: 'gearShadow',
 });
+/**
+ * Art fixes 230 (owner 2026-10-21: "rubber all over the place, including for flaps, mudguards, and tyres, need proper
+ * textures"): the rubber's detail maps (materials.ts, rubberSurface.ts) read in metres. Every single-material mesh drawn
+ * in that rubber, the merged hull rubber (flaps, mudguards, mats, skirts) and the tyres alike, is box-projected on its
+ * own geometry at RUBBER_UV_REPEATS_PER_M, so a 2 m bow mat and a 0.2 m flap show the same grain; their parts' UVs ran
+ * 0..1 per face. Geometry-local, so a tyre's grain turns with its wheel.
+ */
+function applyRubberSurfaceUVs(root: THREE.Object3D): void {
+  const done = new Set<THREE.BufferGeometry>();
+  root.traverse((object) => {
+    const mesh = object as THREE.Mesh;
+    if (!mesh.isMesh || Array.isArray(mesh.material) || !mesh.material?.userData?.rubberSurface) return;
+    const geometry = mesh.geometry;
+    if (!geometry?.getAttribute('position') || done.has(geometry)) return;
+    done.add(geometry);
+    faceBoxUV(geometry, RUBBER_UV_REPEATS_PER_M);
+  });
+}
+
 function isolatedGearMaterial<M extends THREE.Material>(
   material: M, appearanceRole: string | undefined, disposables: Array<{ dispose(): void }>,
 ): M {
@@ -8546,7 +8566,7 @@ function* createTankOwnedSteps(
       delete mesh.userData.combatHitboxPart;
       const owner=parent, mount=root.getObjectByName(station.name);
       if(!mount)throw new Error('Missing auxiliary station '+station.name);
-      const target=station.stage==='pitch'?mount.getObjectByName('auxiliaryWeaponPitch')!:mount;
+      const target=station.stage==='yaw'?mount:mount.getObjectByName(station.stage==='recoil'?'auxiliaryWeaponRecoil':'auxiliaryWeaponPitch')!;
       root.updateMatrixWorld(true);
       const toStation=new THREE.Matrix4().copy(target.matrixWorld).invert().multiply(owner.matrixWorld);
       merged.applyMatrix4(toStation);
@@ -10670,6 +10690,7 @@ function* createTankOwnedSteps(
     // scheme wheel paint; camouflage armor, skirts and guards are deliberately
     // outside this normalization.
     normalizeTankAppearance(root, { wheelPaint: mats.wheels, wheelPaintShade: mats.wheelsRecessed ?? null });
+    applyRubberSurfaceUVs(root);
     // 2026-10-18 (the wheel-band lane, round 3): the unlit flat parts (the KF51's mud flaps, the bore discs) write the
     // vehicle tag a lit part does, so the ground occlusion never takes them for ground under the hull
     tagUnlitVehicleMaterials(engineCtx, root);

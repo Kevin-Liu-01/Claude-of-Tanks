@@ -1710,48 +1710,63 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 .cot-revive .n{font-family:${FONT_COND};font-size:84px;font-weight:700;line-height:92px;color:#f6f1e6;
   text-shadow:-2px -2px 0 rgba(4,7,10,.98),2px -2px 0 rgba(4,7,10,.98),-2px 2px 0 rgba(4,7,10,.98),2px 2px 0 rgba(4,7,10,.98),
     0 3px 14px rgba(0,0,0,.9);}
-/* battle_countdown r3: WoT-style pre-battle freeze — kicker + big numeral,
-   center-upper so it never fights the reticle. The numeral pops on each
-   second via a keyed scale animation; the release swaps to ROLL OUT! and
-   fades. Both lines use dark text edges instead of backdrops so terrain stays
-   visible behind them. Fixed grid rows keep the numeral anchored while the
-   kicker hides for rollout. Pure overlay: pointer-events none, no page layout impact. */
-.cot-prebattle{position:absolute;z-index:var(--hud-layer-status);left:50%;top:22%;transform:translateX(-50%);
-  width:min(390px,calc(100vw - 32px));display:grid;grid-template-columns:minmax(0,1fr);
-  grid-template-rows:30px 92px auto;
-  row-gap:7px;justify-items:center;text-align:center;pointer-events:none;
+/* battle_countdown r4 (owner 2026-10-21: "the 3 2 1 area can be a lot better but regardless it needs to be in center of
+   screen"): a dial on the centre line just over the crosshair, the rules panel on that line under the sight (both placed
+   by countdownPlace.ts). The numeral (Chakra Petch) sits in a ring that drains over each second on a soft dark disc that
+   holds on bright skies; each second scales in, the release says GO with the ring full and widening as it fades. No
+   kicker while counting (its line stays for screen readers); PREPARING and WAITING show their line under the dial.
+   Pure overlay: pointer-events none, no page layout impact. */
+.cot-prebattle{--pb-d:164px;--pb-ink:#ffc45e;position:absolute;z-index:var(--hud-layer-status);left:50%;top:30%;
+  transform:translateX(-50%);transform-origin:50% 0;display:grid;grid-template-columns:var(--pb-d);
+  grid-template-rows:var(--pb-d);justify-items:center;align-items:center;text-align:center;pointer-events:none;
   opacity:0;transition:opacity var(--cot-motion-slow) var(--cot-ease-out);}
 .cot-prebattle.on{opacity:1;}
-.cot-prebattle .k{display:inline-block;padding:7px 18px 6px;font-family:${FONT_COND};
-  font-size:17px;font-weight:700;line-height:1;letter-spacing:.3em;text-indent:.3em;
-  text-transform:uppercase;color:#ffe0a2;
-  text-shadow:-1px -1px 0 rgba(4,7,10,.98),1px -1px 0 rgba(4,7,10,.98),
-    -1px 1px 0 rgba(4,7,10,.98),1px 1px 0 rgba(4,7,10,.98),
-    0 2px 8px rgba(0,0,0,.9),0 0 16px rgba(240,160,48,.24);
-  transition:opacity var(--cot-motion-fast) var(--cot-ease-out);}
-.cot-prebattle.rollout .k{visibility:hidden;opacity:0;}
-.cot-prebattle .r{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 6px;max-width:100%;margin-top:2px;
-  transition:opacity var(--cot-motion-fast) var(--cot-ease-out);}
-.cot-prebattle .r:empty{display:none}
-.cot-prebattle .r span{padding:3px 8px 2px;border:1px solid rgba(240,200,120,.42);border-radius:3px;
-  background:rgba(6,9,13,.72);font-family:${FONT_COND};font-size:11px;font-weight:700;letter-spacing:.04em;
-  text-transform:uppercase;color:#f2d9a6;text-shadow:0 1px 3px rgba(0,0,0,.9);}
-.cot-prebattle.rollout .r,.cot-prebattle.waiting .r{visibility:hidden;opacity:0;}
-.cot-prebattle .n{width:100%;height:92px;display:flex;align-items:center;justify-content:center;
-  font-family:${FONT_STACK};font-size:92px;
-  font-weight:700;line-height:1;color:#ffd27a;
-  text-shadow:-2px -2px 0 rgba(4,7,10,.98),0 -2px 0 rgba(4,7,10,.98),
-    2px -2px 0 rgba(4,7,10,.98),2px 0 0 rgba(4,7,10,.98),
-    2px 2px 0 rgba(4,7,10,.98),0 2px 0 rgba(4,7,10,.98),
-    -2px 2px 0 rgba(4,7,10,.98),-2px 0 0 rgba(4,7,10,.98),
-    0 2px 10px rgba(0,0,0,.85),0 0 34px rgba(240,160,48,.35);}
+.cot-prebattle::before{content:'';grid-area:1/1;width:100%;height:100%;border-radius:50%;
+  background:radial-gradient(closest-side,rgba(5,8,12,.62),rgba(5,8,12,.46) 70%,rgba(5,8,12,0));}
+.cot-prebattle .ring{grid-area:1/1;width:100%;height:100%;overflow:visible;}
+.cot-prebattle .ring circle{fill:none;}
+.cot-prebattle .trk{stroke:rgba(255,236,200,.16);stroke-width:2.5;}
+.cot-prebattle .tks{stroke:rgba(255,236,200,.5);stroke-width:2.5;stroke-dasharray:.5 9.5;}
+.cot-prebattle .arc{stroke:var(--pb-ink);stroke-width:3;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:0;
+  filter:drop-shadow(0 0 3px rgba(255,170,60,.6));}
+.cot-prebattle .n{grid-area:1/1;position:relative;top:.03em;font:700 100px/1 var(--font-ui);letter-spacing:0;
+  white-space:nowrap;color:#fff4e2;text-shadow:0 2px 14px rgba(0,0,0,.6),0 0 2px rgba(0,0,0,.75);}
+.cot-prebattle .k{grid-area:2/1;margin-top:8px;font:600 14px/1.2 var(--font-ui);letter-spacing:.14em;text-indent:.14em;
+  text-transform:uppercase;white-space:nowrap;color:#ffe2a8;text-shadow:0 1px 3px rgba(0,0,0,.9),0 0 10px rgba(0,0,0,.6);}
+.cot-prebattle:not(.preparing,.waiting) .k{position:absolute;width:1px;height:1px;margin:0;overflow:hidden;clip-path:inset(50%);}
 .cot-prebattle .n.tick{animation:cot-pb-pop var(--cot-motion-slow) var(--cot-ease-out);}
 .cot-prebattle .n.tick-alt{animation:cot-pb-pop-alt var(--cot-motion-slow) var(--cot-ease-out);}
-.cot-prebattle .n.go{font-size:64px;letter-spacing:.12em;text-indent:.12em;color:#ffe4b0;}
-.cot-prebattle.waiting .n{font-size:48px;letter-spacing:.12em;text-indent:.12em;}
-.cot-prebattle.waiting .k{font-size:14px;letter-spacing:.16em;text-indent:.16em;}
-@keyframes cot-pb-pop{from{transform:scale(1.28);opacity:.4;}to{transform:scale(1);opacity:1;}}
-@keyframes cot-pb-pop-alt{from{transform:scale(1.28);opacity:.4;}to{transform:scale(1);opacity:1;}}
+.cot-prebattle .n.tick~.ring .arc{animation:cot-pb-drain 1s linear both;}
+.cot-prebattle .n.tick-alt~.ring .arc{animation:cot-pb-drain-alt 1s linear both;}
+.cot-prebattle.preparing .arc{stroke-dasharray:18 82;animation:cot-pb-chase 1.2s linear infinite;}
+.cot-prebattle .n.go{font-size:60px;letter-spacing:.04em;text-indent:.04em;color:var(--pb-ink);}
+.cot-prebattle.rollout .n~.ring .arc{animation:none;stroke-dashoffset:0;}
+.cot-prebattle.rollout .ring,.cot-prebattle.rollout::before{animation:cot-pb-burst 900ms var(--cot-ease-out) both;}
+.cot-prebattle.waiting{grid-template-columns:auto;grid-template-rows:auto;}
+.cot-prebattle.waiting::before,.cot-prebattle.waiting .ring{display:none;}
+.cot-prebattle.waiting .n{font-size:40px;letter-spacing:.08em;text-indent:.08em;}
+@keyframes cot-pb-pop{from{transform:scale(1.45);opacity:0;}to{transform:scale(1);opacity:1;}}
+@keyframes cot-pb-pop-alt{from{transform:scale(1.45);opacity:0;}to{transform:scale(1);opacity:1;}}
+@keyframes cot-pb-drain{from{stroke-dashoffset:0;}to{stroke-dashoffset:-100;}}
+@keyframes cot-pb-drain-alt{from{stroke-dashoffset:0;}to{stroke-dashoffset:-100;}}
+@keyframes cot-pb-chase{from{stroke-dashoffset:0;}to{stroke-dashoffset:-100;}}
+@keyframes cot-pb-burst{to{transform:scale(1.35);opacity:0;}}
+/* The rules (matchRuleset.ts rulesetLines): one calm panel, values in the data voice. */
+.cot-prebattle-rules{position:absolute;z-index:var(--hud-layer-status);left:50%;top:calc(50% + 84px);transform:translateX(-50%);
+  transform-origin:50% 0;box-sizing:border-box;width:max-content;max-width:min(840px,calc(100vw - 32px));display:flex;
+  flex-wrap:wrap;justify-content:center;gap:7px 20px;padding:10px 20px;border:1px solid rgba(255,214,150,.16);
+  border-radius:6px;background:rgba(6,9,13,.7);box-shadow:0 10px 30px rgba(0,0,0,.32);font:600 13px/1.25 var(--font-ui);
+  letter-spacing:.07em;text-transform:uppercase;color:#ebe3d3;pointer-events:none;opacity:0;visibility:hidden;
+  transition:opacity var(--cot-motion-slow) var(--cot-ease-out),visibility 0s linear var(--cot-motion-slow);}
+.cot-prebattle-rules:empty{display:none;}
+.cot-prebattle.on:not(.rollout,.waiting)~.cot-prebattle-rules:not(.unplaced){opacity:1;visibility:visible;transition-delay:0s;}
+.cot-prebattle-rules>span{display:inline-flex;align-items:baseline;gap:.4em;white-space:nowrap;}
+.cot-prebattle-rules b{font:500 13px/1.25 var(--font-mono);letter-spacing:0;color:#ffc45e;}
+@media (prefers-reduced-motion:reduce){
+  .cot-prebattle .n.tick,.cot-prebattle .n.tick-alt{animation:none;}
+  .cot-prebattle .n~.ring .arc,.cot-prebattle.preparing .arc{animation:none;}
+  .cot-prebattle.rollout .ring,.cot-prebattle.rollout::before{animation:none;}
+}
 .cot-alert.show{opacity:1;transform:translate(-50%,0);}
 .cot-jump{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:150px;transform:translateX(-50%);display:none;align-items:center;gap:8px;padding:6px 12px;border:1px solid rgba(255,255,255,.28);border-radius:6px;background:rgba(10,12,14,.55);color:#e8e6df;font:600 12px/1 var(--hud-font,system-ui);letter-spacing:.14em;text-transform:uppercase;pointer-events:none}
 .cot-jump.on{display:flex}
@@ -2341,13 +2356,17 @@ export function initHud(bus: EventBus): HudRuntime {
   shotInfo.setTeamResolver((id) => teamById.get(id));
   root.appendChild(shotInfo.root);
   // ======================= END SHOT-INFO SECTION ============================
-  // battle_countdown r1: pre-battle freeze overlay (kicker + numeral)
+  // battle_countdown r4: pre-battle freeze overlay — the numeral, the dial's ring after it (its drain keys off the
+  // numeral's tick class), the status line; the rules panel a sibling (countdownPlace.ts places both)
   const preBattleEl = el('div', 'cot-prebattle', root);
+  const pbNum = el('div', 'n', preBattleEl);
+  preBattleEl.insertAdjacentHTML('beforeend', '<svg class="ring" viewBox="0 0 100 100" aria-hidden="true">'
+    + '<circle class="trk" cx="50" cy="50" r="45"/><circle class="tks" cx="50" cy="50" r="49.5" pathLength="120"/>'
+    + '<circle class="arc" cx="50" cy="50" r="45" pathLength="100" transform="rotate(-90 50 50)"/></svg>');
   const pbKick = el('div', 'k', preBattleEl);
   pbKick.textContent = t('hud.battleBeginsIn');
-  const pbNum = el('div', 'n', preBattleEl);
-  // batch 19: the rules of engagement — one chip per ruleset line, Standard shows none
-  const pbRules = el('div', 'r', preBattleEl);
+  // batch 19: the rules of engagement — one line per ruleset rule, Standard shows none
+  const pbRules = el('div', 'cot-prebattle-rules', root);
   pbRules.setAttribute('aria-label', t('hud.preBattleRules'));
   const preBattleOverlay = createPreBattleOverlay(preBattleEl, pbKick, pbNum);
   // respawn (owner 2026-09-15): the revive count replaces the death hand-off to spectate/garage
@@ -7529,7 +7548,19 @@ export function initHud(bus: EventBus): HudRuntime {
       if (!ruleset || ruleset.provingGround) return;
       for (const line of rulesetLines(ruleset)) {
         const chip = document.createElement('span');
-        chip.textContent = t(`rules.line.${line.key}`, line.key === 'enemyNation' ? { value: t(`campaign.enemy.${line.values.value}`) } : line.values);
+        if (line.key === 'enemyNation') chip.textContent = t('rules.line.enemyNation', { value: t(`campaign.enemy.${line.values.value}`) });
+        else {
+          // numbers in the data voice: each numeric value is marked through the template, then set apart in a <b>
+          const marked: Record<string, string> = {};
+          for (const [k, v] of Object.entries(line.values)) marked[k] = /\d/.test(v) ? `\u0001${v}\u0002` : v;
+          const parts = t(`rules.line.${line.key}`, marked).split(/[\u0001\u0002]/);
+          for (let i = 0; i < parts.length; i++) {
+            const text = parts[i].trim();
+            if (!text) continue;
+            if (i % 2) el('b', '', chip).textContent = text;
+            else chip.append(text);
+          }
+        }
         pbRules.appendChild(chip);
       }
     },
