@@ -47,6 +47,16 @@ key.shadow.bias = -0.00025;
 key.shadow.normalBias = 0.02;
 key.shadow.radius = 3;
 
+// Sample boards only (lane 235's barrel study): a light that reaches the gun tube alone (the meshes riding rig_recoil),
+// drawn in a second pass over the first. three.js lights only what shares the camera's layers, so the hull, the turret
+// and the ground keep the policy rig exactly; the shipped render passes no `gunRim` and never draws the pass.
+const TUBE_LAYER = 3;
+const gunRim = new THREE.DirectionalLight();
+gunRim.layers.set(TUBE_LAYER);
+gunRim.target.layers.set(TUBE_LAYER);
+lights.add(gunRim, gunRim.target);
+for (const light of [hemi, key, fill, rim, kicker]) light.layers.enable(TUBE_LAYER);
+
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.ShadowMaterial({ opacity: 0.4 }));
 ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
@@ -253,8 +263,37 @@ function measureSides(root, visual, cam, sw, sh) {
 }
 
 /**
+ * The tube light's meshes: everything riding the recoil group (the tube, its sleeve, evacuator and muzzle brake), on
+ * TUBE_LAYER as well as the default one. Returns them, or [] when the vehicle has no recoiling tube.
+ */
+function tubeMeshes(root) {
+  const recoil = root.getObjectByName('rig_recoil');
+  const meshes = [];
+  recoil?.traverse((object) => { if (object.isMesh && object.visible) meshes.push(object); });
+  return meshes;
+}
+
+/**
+ * Draw the frame: the scene as the policy lights it, then (a sample board's `gunRim`) the tube's meshes again over it,
+ * lit by the rig and the tube light together. The second pass keeps the first pass's depth, so only the tube's visible
+ * pixels change; the shadow map is the first pass's.
+ */
+function drawFrame(cam, tube) {
+  renderer.render(scene, cam);
+  if (!tube) return;
+  renderer.autoClear = false;
+  renderer.shadowMap.autoUpdate = false;
+  cam.layers.set(TUBE_LAYER);
+  renderer.render(scene, cam);
+  cam.layers.set(0);
+  renderer.shadowMap.autoUpdate = true;
+  renderer.autoClear = true;
+}
+
+/**
  * Render one vehicle's hero layer. `overrides` replaces fields of HERO_CAMERA / HERO_POSE / HERO_LIGHTS /
- * HERO_FRAME (sample boards only; the shipped renderer passes none).
+ * HERO_FRAME (sample boards only; the shipped renderer passes none). `overrides.gunRim` ({ color, intensity, position },
+ * the position like the rig's: metres from the tank centre for the camera on the +X flank) adds the tube light.
  */
 function renderHero(id, overrides = {}) {
   const camera = { ...HERO_CAMERA, ...(overrides.camera || {}) };
@@ -293,6 +332,17 @@ function renderHero(id, overrides = {}) {
     ground.visible = shadows;
     configureLights(rig, center, mirror, radius);
     key.castShadow = shadows;
+    // the sample board's tube light (lane 235): the tube's meshes join its layer, the light stands like the rig's
+    const tube = overrides.gunRim ? tubeMeshes(root) : [];
+    for (const mesh of tube) mesh.layers.enable(TUBE_LAYER);
+    if (tube.length) {
+      const def = overrides.gunRim;
+      gunRim.color.set(def.color ?? 0xffffff);
+      gunRim.intensity = def.intensity ?? 1;
+      gunRim.position.set(center.x + def.position[0] * mirror, center.y + def.position[1], center.z + def.position[2]);
+      gunRim.target.position.copy(center);
+      gunRim.target.updateMatrixWorld();
+    }
 
     const aspect = frame.width / frame.height;
     const vHalf = deg(camera.fovDeg) / 2;
@@ -306,7 +356,7 @@ function renderHero(id, overrides = {}) {
     const sw = frame.width * frame.supersample;
     const sh = frame.height * frame.supersample;
     renderer.setSize(sw, sh, false);
-    renderer.render(scene, cam);
+    drawFrame(cam, tube.length > 0);
     const src = document.createElement('canvas');
     src.width = sw; src.height = sh;
     const sc = src.getContext('2d', { willReadFrequently: true });
@@ -317,7 +367,7 @@ function renderHero(id, overrides = {}) {
     let vehicleCanvas = null;
     if (shadows) {
       ground.visible = false;
-      renderer.render(scene, cam);
+      drawFrame(cam, tube.length > 0);
       vehicleCanvas = document.createElement('canvas');
       vehicleCanvas.width = sw; vehicleCanvas.height = sh;
       const tc = vehicleCanvas.getContext('2d', { willReadFrequently: true });
@@ -385,6 +435,7 @@ function renderHero(id, overrides = {}) {
         facing: camera.facing,
         camera: { azimuthDeg: camera.azimuthDeg, elevationDeg: camera.elevationDeg, fovDeg: camera.fovDeg },
         pose: posed,
+        ...(tube.length ? { gunRim: { ...overrides.gunRim, meshes: tube.length } } : {}),
         // Measured by projection through the card lens: the hull's bow side and the gun's side, with the
         // trunnion and muzzle tip in layer pixels.
         bowSide: sides.bowSide,
