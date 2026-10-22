@@ -25,9 +25,13 @@ for(const quality of ['high','low']) {
     });
     const newLamps=lamps.filter(({o,emitter})=>{
       const p=turret.worldToLocal(o.localToWorld(new Vector3(...emitter.position)));
-      return Math.abs(p.z-.991)<.015 && Math.abs(p.y-.68)<.015;
+      return Math.abs(Math.abs(p.x)-.657)<.02 && Math.abs(p.z-1.293)<.02;
     });
-    assert.equal(newLamps.length,2,'both new cheek white-light apertures are wired for night emission');
+    assert.equal(newLamps.length,2,'both seated cheek white-light apertures are wired for night emission');
+    for(const {o,emitter} of newLamps) {
+      const d=new Vector3(...emitter.direction).transformDirection(o.matrixWorld);
+      assert(d.z>.98&&Math.abs(d.y)<.01,'each white lamp faces forward, toed out a few degrees');
+    }
     const ray=new Raycaster();
     for(const {o,emitter} of newLamps) {
       const position=o.localToWorld(new Vector3(...emitter.position));
@@ -41,9 +45,14 @@ for(const quality of ['high','low']) {
     for(const s of [-1,1]) {
       // Bracket roots must actually enter the casting, verified against its
       // triangles rather than trusting authored attachment flags.
-      for(const [x,y,z] of [[s*.60,.445,.85],[s*.64,.42,-1.68],[s*.64,.42,-2.20]]) {
+      for(const [x,y,z] of [[s*.64,.42,-1.68],[s*.64,.42,-2.20]]) {
         ray.set(new Vector3(x,y,z),new Vector3(s,0,0));ray.near=0;ray.far=.7;
-        assert(ray.intersectObject(proxy).length>0,'cheek carrier and bustle arms root inside the solid turret');
+        assert(ray.intersectObject(proxy).length>0,'bustle arms root inside the solid turret');
+      }
+      // every lamp housing stands over the casting's own shoulder facet, never past the ridge
+      for(const [x,z] of [[s*.64,1.17],[s*.86,.80]]) {
+        ray.set(new Vector3(x,2,z),new Vector3(0,-1,0));ray.near=0;ray.far=2;
+        assert(ray.intersectObject(proxy).length>0,'cheek lamp housings seat on the turret shell');
       }
       const bank=turret.getObjectByName(`pl01_105_forward_smoke_${s}`);
       assert.ok(bank.parent === turret,'extra smoke pod follows the turret');

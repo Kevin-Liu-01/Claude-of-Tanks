@@ -212,7 +212,7 @@ type Tone = 'clay' | 'joint' | 'band';
 function capsuleBetween(a: THREE.Vector3, b: THREE.Vector3, radius: number): THREE.BufferGeometry {
   const delta = b.clone().sub(a);
   const length = Math.max(1e-4, delta.length());
-  const geometry = new THREE.CapsuleGeometry(radius, Math.max(0.001, length), 2, 8);
+  const geometry = new THREE.CapsuleGeometry(radius, Math.max(0.001, length), 3, 10);
   geometry.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), delta.normalize()));
   geometry.translate((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2);
   return geometry;
@@ -252,7 +252,7 @@ export function buildCrewModel(station: CrewStation, floorY: number, inside?: In
   pieces.clay.push(ellipsoid(at(0.03), [0.165, 0.11, 0.115], trunk));
   pieces.clay.push(ellipsoid(at(S.spine * 0.3), [0.145, 0.16, 0.105], trunk));
   pieces.clay.push(ellipsoid(at(S.spine * 0.64), [0.19, 0.2, 0.12], trunk));
-  // Neck and head with a CVC helmet, ear cups and the role band.
+  // Neck and head with a CVC helmet and the role band.
   pieces.clay.push(capsuleBetween(p(joints.shoulder), p(joints.neckTop), 0.05));
   const head = p(joints.head);
   const headPitch = trunk + fit.pose.neck;
@@ -262,18 +262,14 @@ export function buildCrewModel(station: CrewStation, floorY: number, inside?: In
   helmet.rotateX(headPitch);
   helmet.translate(head.x, head.y + S.headRadius * 0.12 * Math.cos(headPitch), head.z - S.headRadius * 0.12 * Math.sin(headPitch));
   pieces.clay.push(helmet);
-  for (const side of [-1, 1]) {
-    const cup = new THREE.CylinderGeometry(0.042, 0.042, 0.035, 10);
-    cup.rotateZ(Math.PI / 2);
-    cup.translate(head.x + side * S.headRadius * 1.02, head.y, head.z);
-    pieces.joint.push(cup);
-  }
   const band = new THREE.TorusGeometry(S.headRadius * 1.17, 0.012, 4, 22);
   band.rotateX(Math.PI / 2 + headPitch);
   band.translate(head.x, head.y + S.headRadius * 0.22 * Math.cos(headPitch), head.z - S.headRadius * 0.22 * Math.sin(headPitch));
   pieces.band.push(band);
+  // Limbs are clay capsules whose round ends meet at the joints: one continuous figure, no graphite ball joints (the Gallery
+  // follow-up of 2026-10-21: the jointed balls and ear cups read as a toy mannequin).
   for (const side of [-1, 1]) {
-    // Arms: shoulder, upper arm, elbow, forearm, hand.
+    // Arms: upper arm, forearm, hand.
     const shoulder = p(joints.shoulder, side * S.shoulderHalfWidth);
     const elbow = p(joints.elbow, side * S.shoulderHalfWidth * 1.02);
     const wrist = p(joints.wrist, side * S.shoulderHalfWidth * 0.86);
@@ -281,14 +277,12 @@ export function buildCrewModel(station: CrewStation, floorY: number, inside?: In
     pieces.clay.push(capsuleBetween(shoulder, elbow, 0.047));
     pieces.clay.push(capsuleBetween(elbow, wrist, 0.039));
     pieces.clay.push(capsuleBetween(wrist, tip, 0.034));
-    pieces.joint.push(ellipsoid(shoulder, [0.058, 0.058, 0.058], 0, 'joint'), ellipsoid(elbow, [0.046, 0.046, 0.046], 0, 'joint'));
-    // Legs: hip, thigh, knee, shin, boot.
+    // Legs: thigh, shin, boot.
     const hip = p(joints.hip, side * S.hipHalfWidth * 1.7);
     const knee = p(joints.knee, side * S.hipHalfWidth * 1.75);
     const ankle = p(joints.ankle, side * S.hipHalfWidth * 1.75);
     pieces.clay.push(capsuleBetween(hip, knee, 0.07));
     pieces.clay.push(capsuleBetween(knee, ankle, 0.052));
-    pieces.joint.push(ellipsoid(knee, [0.058, 0.058, 0.058], 0, 'joint'), ellipsoid(hip, [0.066, 0.066, 0.066], 0, 'joint'));
     const boot = new THREE.BoxGeometry(0.1, 0.085, S.foot);
     boot.translate(ankle.x, ankle.y - S.ankle + 0.0425 - 0.02, ankle.z + S.foot * 0.3);
     pieces.joint.push(boot);

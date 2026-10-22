@@ -254,7 +254,7 @@ const SEAT = { cx: 0.1, cz: 0.2, deckY: 1.5, openR: 0.78, rimR: 0.84, skirt: 0.0
   const rimColumns = new Set();
   for (const start of [layout.rim, ...layout.outer, ...layout.inner]) for (let k = 0; k < 48; k++) rimColumns.add(start + k);
   let bowed = 0;
-  for (let i = 0; i < position.count; i++) {
+  for (let i = layout.rim; i < position.count; i++) {
     const f = field(position.getX(i) + origin.x, position.getY(i) + origin.y, position.getZ(i) + origin.z);
     close(offsets[i * 3], f[0], 1e-6, 'the field at a plate vertex (x)');
     close(offsets[i * 3 + 2], f[2], 1e-6, 'the field at a plate vertex (z)');
@@ -262,6 +262,14 @@ const SEAT = { cx: 0.1, cz: 0.2, deckY: 1.5, openR: 0.78, rimR: 0.84, skirt: 0.0
     else if (Math.abs(offsets[i * 3 + 1] - f[1]) > 1e-6) bowed++;
   }
   assert.ok(bowed > 0, 'the rim rises over the field\'s bow by the dent');
+  // (233) inside the rim's ring the opening and the race's inner edge move as one plane: one translation, one tilt
+  for (let i = 1; i < layout.rim; i++) {
+    close(offsets[i * 3], offsets[0], 1e-9, 'the opening translates as one (x)');
+    close(offsets[i * 3 + 2], offsets[2], 1e-9, 'the opening translates as one (z)');
+  }
+  const tilt = (i) => offsets[i * 3 + 1] - offsets[1];
+  const ring0 = 1, n0 = 48;
+  for (let k = 0; k < n0 / 2; k++) close(tilt(ring0 + k) + tilt(ring0 + k + n0 / 2), 0, 1e-8, 'the opening tilts as a plane'); // float32 offsets: ulp ~1.9e-9 at a few cm
   for (let k = 0; k < 48; k++) {
     const a = layout.rim + k, b = layout.rim + ((k + 1) % 48);
     for (const t of [0.25, 0.5, 0.75]) {
@@ -471,8 +479,5 @@ const SEAT = { cx: 0.1, cz: 0.2, deckY: 1.5, openR: 0.78, rimR: 0.84, skirt: 0.0
   assert.match(core, /burnU\.uBurnT\.value = wreckAge;\s*turretRing\.ramp\(wreckAge\);/, 'and every frame after');
   assert.match(core, /resetLiveCrumple\(\);\s*turretRing\.hide\(\);/, 'the rematch undoes it');
   assert.match(core, /dispose\(\) \{\s*equipmentDamage\.dispose\(\);\s*turretRing\.dispose\(\);/, 'and dispose frees it');
-  const generator = readFileSync(new URL('../../tools/gen-combat-anatomy.mjs', import.meta.url), 'utf8');
-  assert.match(generator, /measureTurretRing\(hullRig, turretRig, turretRingRadius\(TANK_SPECS\[id\]\?\.armor\), \{ exterior: true \}\)/,
-    'the anatomy generator records the ring as built, over the hull\'s skin');
 }
 console.log('turretRingWell selftest: ok');

@@ -118,9 +118,13 @@ export const NATIONAL_CAMO_PATTERN_IDS = Object.freeze([
  * (camoCatalogProductionIndices.selftest.mjs).
  */
 const AUTHORED_PAINT_IDS_AFTER_GT = Object.freeze(['paint_m6_linebacker'] as const);
-type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number];
+/** Authored paints that joined after the release-233 Signatures, in the order they joined: the Type 10 (Dozer)'s JGSDF
+ * digital came with that tank (2026-10-21). */
+const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer'] as const);
+type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number];
 const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
-  (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id);
+  (AUTHORED_PAINT_IDS_AFTER_GT as readonly string[]).includes(id)
+  || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
  * each mark wears its own service paint as its Signature. Appended after every earlier id, so no serialized index moves.
@@ -147,6 +151,7 @@ export const CAMO_PATTERN_IDS = Object.freeze([
   'gt', // Append after existing IDs to preserve serialized catalog indices.
   ...AUTHORED_PAINT_IDS_AFTER_GT,
   ...RELEASE_233_SIGNATURE_IDS,
+  ...AUTHORED_PAINT_IDS_AFTER_233,
 ] as const);
 
 export type CamoPatternId = typeof CAMO_PATTERN_IDS[number];
@@ -789,6 +794,8 @@ const DEFAULT_CAMO_PATTERN_BY_TANK_ID: Readonly<Record<string, CamoPatternId>> =
   m48a5_patton: 'summer',
   m2a2_bradley: 'summer',
   ztz100_prototype: 'sig_ztz100_x',
+  // 2026-10-21: the dozer Type 10 wears the green digital of the owner's reference, its own catalog paint
+  type10_dozer: 'paint_type10_dozer',
 });
 
 /** The stock appearance, independent of the player's saved selection. */

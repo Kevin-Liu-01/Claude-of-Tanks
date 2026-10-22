@@ -234,6 +234,14 @@ function addKV2HullShellAndSponsons(P: SovietHeavyBuilderPort): void {
   P.add('hull', slab(
     [-0.854, 0.426, -3.17], [0.854, 0.426, -3.17], [0.854, 0.546, -3.43], [-0.854, 0.546, -3.43],
     [-0.854, 0.526, -3.17], [0.854, 0.526, -3.17], [0.854, 0.646, -3.43], [-0.854, 0.646, -3.43]));
+  // Rear hull between the final drives (owner 2026-10-21, "a hole in kv 2 at rear"): the belly and the centre bridge
+  // end at z -3.20 and the tail plate begins at -3.40, so the 0.20 m between them stood open from one sprocket to the
+  // other under the sponson wall. The engine-bay end block fills it flush with the belly sides and the tail plate:
+  // seated in the lower rear plate, under the recess back wall, and up into the sponson wall above.
+  P.add('hull', slab(
+    [-0.86, 0.485, -3.20], [0.86, 0.485, -3.20], [0.86, 0.582, -3.40], [-0.86, 0.582, -3.40],
+    [-0.86, 1.28, -3.20], [0.86, 1.28, -3.20], [0.86, 1.28, -3.40], [-0.86, 1.28, -3.40]));
+  P.add('hull', box(1.72, 0.08, 0.16), 0, 1.32, -3.28);
   // plate-fill r1 (owner screenshot instance): the stepped stern plates
   // read as an OPEN SHELL — the chamfer/deck-slope corners hung over empty
   // caves aft of the sponson end (x 0.86..1.44, the tail plate is only

@@ -478,6 +478,65 @@ export const aircraftWreck: LandmarkBuilder = (ctx) => {
       }
     }
   }
+  // the roof's skin where it survived the fire (233; the media lane's maps-227 review: "the hangar is a bare rib frame
+  // with the aircraft showing through", read from the overview as see-through geometry): the burnt sheeting still on the
+  // purlins wherever both ribs of a bay stand — whole over the bays the fire spared, the stubs' haunches over the ones it
+  // brought down — gone where a purlin sags or a sheet hangs loose from it and here and there burnt through, every edge
+  // at a gap torn ragged. A panel spans two of the rib's lengths and half the bay, lying on the top chord's bars, its
+  // outside burnt to soot and bare steel under the ash, its underside black. Dressing.
+  const skinLift = 0.3, skinStep = 2 / steps, panels = Math.round(1 / skinStep);
+  // the skin at a bay's share f between rib r and r + 1, t along the arch: on the top chord, lifted off it radially
+  const skinAt = (r: number, f: number, t: number): Vec3 => {
+    const a = drawnAt(r, t), b = drawnAt(r + 1, t);
+    const x = a[0] + (b[0] - a[0]) * f, y = a[1] + (b[1] - a[1]) * f + depthRib, z = a[2] + (b[2] - a[2]) * f;
+    const ry = y - cyArc, rl = Math.hypot(x, ry) || 1;
+    return [x + x / rl * skinLift, y + ry / rl * skinLift, z];
+  };
+  // a purlin that sagged or shed a sheet (the purlins' own laws above), and the half of its bay the sheet hangs in
+  const shedAt = (r: number, t: number): { sag: boolean; sheet: -1 | 0 | 1 } => {
+    if (noise2(r * 3.3, t * 9.1) < 0.3) return { sag: false, sheet: 0 };
+    return { sag: noise2(r * 1.9, t * 5.7) > 0.7, sheet: noise2(r * 2.1, t * 4.3) > 0.62 ? (noise2(r, t) < 0.5 ? -1 : 1) : 0 };
+  };
+  const purlinTs = [0.08, 0.2, 0.32, 0.44, 0.56, 0.68, 0.8, 0.92];
+  for (let r = 0; r + 1 < ribZ.length; r++) {
+    const bayZ = (ribZ[r] + ribZ[r + 1]) / 2, heat = 1 - smoothstep(14, 40, Math.abs(bayZ - (axisZ - 4)));
+    for (const half of [0, 1]) {
+      const f0 = half * 0.5, f1 = f0 + 0.5;
+      const held = (k: number) => {
+        if (k < 0 || k >= panels) return false;
+        const s0 = k * skinStep, s1 = Math.min(1, s0 + skinStep);
+        if (!stands(r, s0) || !stands(r, s1) || !stands(r + 1, s0) || !stands(r + 1, s1)) return false;
+        for (const t of purlinTs) {
+          if (t < s0 - 0.03 || t > s1 + 0.03) continue;
+          const shed = shedAt(r, t);
+          if (shed.sag || shed.sheet === (half ? 1 : -1)) return false;
+        }
+        // burnt through: a hole here and there, more of them toward the fire
+        return noise2(r * 2.3 + half * 5.9, k * 1.7) > 0.1 + 0.35 * heat;
+      };
+      for (let k = 0; k < panels; k++) {
+        if (!held(k)) continue;
+        const s0 = k * skinStep, s1 = Math.min(1, s0 + skinStep);
+        // a ragged edge at a gap: each corner pulled back from it by its own share of the panel
+        const tearT = (s: number, f: number, toward: number) => s + toward * skinStep * (0.15 + 0.45 * noise2(r * 3.7 + f * 6.1, s * 11.3 + half));
+        const lo0 = held(k - 1) ? s0 : tearT(s0, f0, 1), lo1 = held(k - 1) ? s0 : tearT(s0, f1, 1);
+        const hi0 = held(k + 1) ? s1 : tearT(s1, f0, -1), hi1 = held(k + 1) ? s1 : tearT(s1, f1, -1);
+        let q: Vec3[] = [skinAt(r, f0, lo0), skinAt(r, f1, lo1), skinAt(r, f1, hi1), skinAt(r, f0, hi0)];
+        // wound counter-clockwise from outside (away from the arch's centre)
+        const ux = q[1][0] - q[0][0], uy = q[1][1] - q[0][1], uz = q[1][2] - q[0][2];
+        const vx = q[3][0] - q[0][0], vy = q[3][1] - q[0][1], vz = q[3][2] - q[0][2];
+        if ((uy * vz - uz * vy) * q[0][0] + (uz * vx - ux * vz) * (q[0][1] - cyArc) < 0) q = [q[0], q[3], q[2], q[1]];
+        const n = noise2(r * 1.7 + half * 3.1, k * 0.63);
+        const outside = lerp(lerp(ASH_W, CHAR_STEEL, 0.5 + 0.25 * n), lerp(SOOT, BARE, 0.3 * noise2(r * 4.1, k * 0.29 + half)),
+          0.15 + 0.35 * heat + 0.3 * noise2(r * 0.9 + half * 2.2, k * 0.47));
+        sink.polygon('structureMetal', q, { colour: outside, decor: true });
+        sink.polygon('structureMetal', [q[0], q[3], q[2], q[1]].map((p): Vec3 => {
+          const ry = p[1] - cyArc, rl = Math.hypot(p[0], ry) || 1;
+          return [p[0] - p[0] / rl * 0.03, p[1] - ry / rl * 0.03, p[2]];
+        }), { colour: lerp(SOOT, CHAR_STEEL, 0.2 + 0.2 * n), decor: true });
+      }
+    }
+  }
   // the burnt cladding still on the back wall's girts, torn: sheets standing from the wall's top in the fire's colours
   // (round 4's burnt aluminium; the connectivity sweep, 217: on the wall, never hung from girts that are gone)
   for (let x = -span / 2 + 2; x < span / 2 - 2; x += 2.2) {

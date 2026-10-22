@@ -386,6 +386,10 @@ export function buildT72B3XTurret(P:TankBuilderPort,options:T72B3XTurretOptions=
 }
 export const T72B3_X_PROFILES={t72b3:{build:buildT72B3X}} as const;
 
+/** The B3's 2A46 tube and mantlet cover at its own trunnion, for a hull that keeps the B3 gun datum (t64bvX.ts).
+ * The caller places P.gunG on that trunnion. */
+export function buildT72B3XMainGun(P:TankBuilderPort):void { mainGun(P); }
+
 /** Native mechanical foundation for owner-authorized complete hull rebuilds. */
 export function buildT72B3XRunningGear(P:TankBuilderPort):void { runningGear(P); }
 

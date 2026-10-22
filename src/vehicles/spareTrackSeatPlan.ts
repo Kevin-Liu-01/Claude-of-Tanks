@@ -177,6 +177,10 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "t90a_burlak_proto": {
     "fitting@hull(0.58,1.48,0.58)": [0.4976, 0.54584, -2.8502, 0.64984, -0.27875, 0.64984, -0.27875, 1],
   },
+  "type10_dozer": {
+    "fitting@hull(-1.12,1.79,-3.15)": [-1.70105, 1.01835, -2.658, 0.5, -0.5, 0.5, 0.5, 1],
+    "type10-rear-links@hull(1.12,1.17,-3.77)": [-0.574, 0.2941, -0.00225, -0.70711, 0, 0, 0.70711, 0],
+  },
   "type10_tk_x": {
     "fitting@hull(-1.12,1.79,-3.15)": [-1.70105, 1.01835, -2.658, 0.5, -0.5, 0.5, 0.5, 1],
     "type10-rear-links@hull(1.12,1.17,-3.77)": [-0.574, 0.2941, -0.00225, -0.70711, 0, 0, 0.70711, 0],
@@ -195,7 +199,7 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
     "fitting@turret(0.30,0.35,-3.22)": [0.254, 0.8165, -2.08, 0, 0.70711, 0, 0.70711, 0],
   },
   "ua_m1a2_abrams": {
-    "ua-abrams-rear-deck-shoes@hull(0.00,1.76,-3.55)": [0.143, 4.907, -3.46558, 0.5, 0.5, 0.5, -0.5, 1],
+    "ua-abrams-rear-deck-shoes@hull(0.00,1.76,-3.55)": [0.139, 5.057, -3.46558, 0.5, 0.5, 0.5, -0.5, 1],
   },
   "ua_m2a3_bradley": {
     "fitting@hull(0.50,1.67,2.21)": [0.55675, 1.72188, 2.20357, 0.05179, 0.70521, 0.05179, 0.70521, 1],

@@ -980,6 +980,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const battleBtn = requiredElement<HTMLButtonElement>(root, '.cot-battle');
   const battleModeBtn = requiredElement<HTMLButtonElement>(root, '.cot-battle-mode');
   const battleMenu = requiredElement<HTMLElement>(root, '.cot-battle-menu');
+  const battleMenuScroll = requiredElement<HTMLElement>(battleMenu, '.cot-battle-menu-scroll');
   const battleChoices = [...root.querySelectorAll<HTMLButtonElement>('.cot-battle-choice[data-mode]')];
   const battleRuleChoices = [...root.querySelectorAll<HTMLButtonElement>('.cot-battle-choice[data-game-mode]')];
   const roomReminder = requiredElement<HTMLButtonElement>(root, '.cot-room-reminder');
@@ -1363,17 +1364,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   window.addEventListener('resize', queueCarouselAffordances);
 
   // Country flags use the same honest overflow contract as the vehicle strip:
-  // fixed edge fades/buttons appear only where hidden content really exists.
-  // The left fade starts where the flag track does, past the Filter toggle's slot (its badge changes its width).
-  let countryTrackStart = -1;
+  // the edge buttons appear only where hidden content really exists.
   const syncCountryRailAffordances = () => {
     const { hasLeft, hasRight } = horizontalRailState(
       chipsEl.scrollLeft, chipsEl.scrollWidth, chipsEl.clientWidth,
     );
-    if (chipsEl.offsetLeft !== countryTrackStart) {
-      countryTrackStart = chipsEl.offsetLeft;
-      countryRailEl.style.setProperty('--country-track-start', `${countryTrackStart}px`);
-    }
     countryRailEl.classList.toggle('has-more-left', hasLeft);
     countryRailEl.classList.toggle('has-more-right', hasRight);
     const affordances: Array<[HTMLButtonElement, boolean]> = [
@@ -2334,6 +2329,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let countryFilter = countryGroups[0]?.id || 'us';
   let renderedCountryFilter: string | null = null;
   const chipById = new Map<string, HTMLButtonElement>();
+  // A flag less than half inside the track hides (critic 236: slivers of a flag or a count read as stray glyphs beside
+  // the Filter toggle); a flag cut by the edge but mostly shown stays as the cue that the rail continues.
+  const chipSliverObserver = typeof IntersectionObserver === 'function'
+    ? new IntersectionObserver((entries) => {
+      for (const entry of entries) entry.target.classList.toggle('is-sliver', entry.intersectionRatio < 0.5);
+    }, { root: chipsEl, threshold: [0.5] })
+    : null;
   function initializeCountryChips(): void {
     for (const group of countryGroups) {
       const count = group.count;
@@ -2359,6 +2361,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       });
       chipsEl.appendChild(chip);
       chipById.set(group.id, chip);
+      chipSliverObserver?.observe(chip);
     }
   }
   initializeCountryChips();
@@ -2864,7 +2867,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<button class="cot-layer-link" type="button" data-gallery-layer="modules">${uiIconSVG('gallery', 13)}${t('garage.dossier.modules.open')}</button></section>` +
       `<section class="cot-stat-section">${statSectionTitle('crew', t('garage.dossier.section.crew'), `${crewRows.length} ${t('garage.dossier.crew.stations')}`, 'Crew')}` +
       `<div class="cot-crew-grid">${crewChips}</div></section>`;
-    requiredElement<HTMLElement>(statsEl, 'h3').textContent = spec.label?.displayName || spec.name;
+    const dossierName = requiredElement<HTMLElement>(statsEl, 'h3');
+    dossierName.textContent = spec.label?.displayName || spec.name;
+    // a long name sets a step smaller and may take a third line, so the compact phone head holds it whole (garage.css)
+    dossierName.classList.toggle('is-long', dossierName.textContent.length > 18);
     const technicalImage = statsEl.querySelector<HTMLImageElement>('[data-technical-image]');
     if (technicalImage) technicalImage.alt = `${spec.label?.displayName || spec.name} ${initialTechnicalViewCaption.toLowerCase()}`;
     const dossierHead = statsEl.querySelector('.cot-dossier-head');
@@ -3052,6 +3058,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     frontline_assault: { short: 'FRONT', label: t('garage.battle.frontLabel'), icon: 'modeZones' },
     mars: { short: 'GRAV', label: t('garage.battle.marsLabel'), icon: 'modeMars' },
   };
+  // The menu scrolls in one region between its head and launch row: where it continues below the footer (the special
+  // modes on a short window), a fade and a chevron over the footer's edge say so.
+  function syncBattleMenuScrollCue(): void {
+    const below = battleMenuScroll.scrollTop + battleMenuScroll.clientHeight < battleMenuScroll.scrollHeight - 4;
+    battleMenu.classList.toggle('has-more-below', below);
+  }
+  battleMenuScroll.addEventListener('scroll', syncBattleMenuScrollCue, { passive: true });
+  if (typeof ResizeObserver === 'function') {
+    const cueObserver = new ResizeObserver(() => { if (battleMenu.classList.contains('open')) syncBattleMenuScrollCue(); });
+    cueObserver.observe(battleMenuScroll);
+    for (const column of battleMenuScroll.children) cueObserver.observe(column);
+  }
   function closeBattleMenu({ restoreFocus = false } = {}) {
     arrangementPanel?.close();
     marsDropdowns.forEach(dropdown => dropdown.close());
@@ -3067,8 +3085,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     battleModeBtn.setAttribute('aria-expanded', 'true');
     const activeRule = battleMode !== 'solo' || battleGameMode === 'standard' ? null
       : battleRuleChoices.find((choice) => choice.dataset.gameMode === battleGameMode);
-    const scroller = requiredElement<HTMLElement>(battleMenu, '.cot-battle-menu-scroll');
+    const scroller = battleMenuScroll;
     scroller.scrollTop = 0;
+    syncBattleMenuScrollCue();
     const selectedChoice = activeRule || battleChoices.find((choice) => choice.dataset.mode === battleMode);
     const scrollBounds = scroller.getBoundingClientRect();
     const selectedBounds = selectedChoice?.getBoundingClientRect();

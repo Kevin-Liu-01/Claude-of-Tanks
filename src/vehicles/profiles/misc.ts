@@ -1157,6 +1157,20 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
       P.add('hullDark', box(0.022, 0.09, 0.03), s * 1.646, 1.315, 2.72);
     }
     towCable(P, [[-1.10, 1.44, 2.30], [0, 1.50, 1.85], [1.10, 1.44, 2.30]]);
+    // 2026-10-21 (sealed ledger work order, "two real ~1 cm hullDark slits at (+-1.04, 1.44, 2.30)"): the cable is
+    // an open tube, so its two ends showed its hollow core over the splash ridge. Swaged ferrules on the cable's own
+    // end tangents close them.
+    {
+      const run = new THREE.CatmullRomCurve3([new THREE.Vector3(-1.10, 1.44, 2.30), new THREE.Vector3(0, 1.50, 1.85),
+        new THREE.Vector3(1.10, 1.44, 2.30)], false, 'centripetal');
+      for (const u of [0, 1]) {
+        const end = run.getPointAt(u), out = run.getTangentAt(u).multiplyScalar(u === 0 ? -1 : 1);
+        const ferrule = cylY(0.029, 0.029, 0.07, 10)
+          .applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), out));
+        const at = end.addScaledVector(out, -0.01);
+        P.add('hullDark', ferrule.translate(at.x, at.y, at.z));
+      }
+    }
     // §B3.2: second tow cable run on the right engine deck — crown 1.62 under
     // the ref's own 1.634 engine line (side cols -1.9..-3.0), interior to the
     // deck plan outline.

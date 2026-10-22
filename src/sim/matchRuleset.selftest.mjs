@@ -1,6 +1,7 @@
 // Rulesets are the contract every mode plays by (owner 2026-09-14 evening): pin the values the
 // sim reads, their determinism, the campaign difficulty fold, and the rule lines the cards show.
 import assert from 'node:assert/strict';
+import { isPracticeMode } from './gameModeCatalog.ts';
 import { GAME_MODE_IDS } from './matchModes.ts';
 import { rulesetSeatHullScale,
   matchRulesetFor, rulesetLines, rulesetAmmoCapacity, rulesetReloadMultiplier, RULESET_SCORE_TARGETS,
@@ -164,15 +165,15 @@ assert.deepEqual({ ...ctf.flagBots }, { recoverShare: 0.5, recoverMin: 2, huntWh
   escortAheadM: 24, escortSideM: 22, defendShare: 0.15, defendMinSquad: 6, interceptLeadS: 2.5,
   raidStageM: 120, raidHoldInM: 25, raidGroupM: 70, raidMinGroup: 2, raidWaitS: 12 },
   'the flag bots run the flags: half recover, the rest raid back as a group; a carrier\'s team escorts it, four strong, no guard home (round 3b)');
-assert.deepEqual({ ...ctf.flagPitch }, { baseAxisM: 400, respawnBackM: 100 }, 'the bases 400 m apart, a revive 100 m behind its own (round 3b)');
+assert.deepEqual({ ...ctf.flagPitch }, { baseAxisM: 320, respawnBackM: 100, carrierSpeedScale: 1 }, 'the bases 320 m apart, a revive 100 m behind its own (round 3b), a carrier at full speed (gameplay-modes-233)');
 {
   const ball = matchRulesetFor('turbo_ball');
   assert.deepEqual([ball.ballBots.strikers, ball.ballBots.strikerHoldS, ball.ballBots.swapM, ball.ballBots.leadMaxS, ball.ballBots.screens,
     ball.ballBots.screenNear, ball.ballBots.screenFar, ball.ballBots.keepers, ball.ballBots.keeperM, ball.ballBots.crowdCap, ball.ballBots.crowdM],
-  [2, 3, 25, 3, 2, 0.85, 0.6, 1, 30, 2, 30], 'two strikers on the intercept, two screens, a keeper; the bots keep two on the ball so the three the cap allows hold (round 3b)');
+  [3, 3, 25, 3, 2, 0.85, 0.6, 1, 30, 3, 30], 'three strikers on the intercept (gameplay-modes-233), two screens, a keeper; three a team on the ball, the first screen standing off');
   assert.deepEqual([ball.ballBots.supportBackM, ball.ballBots.supportSideM], [10, 12], 'the support striker beside the intercept (round 3b)');
-  assert.deepEqual({ ...ball.ballBots.shootBall }, { maxRangeM: 160, minRangeM: 12, coneDeg: 30, everyRole: true, overTanks: true },
-    'every role shoots the ball toward the opponent goal, before a farther tank (round 2), a lined-up striker from 12 m (round 3b)');
+  assert.deepEqual({ ...ball.ballBots.shootBall }, { maxRangeM: 100, minRangeM: 12, coneDeg: 30, everyRole: true, overTanks: true },
+    'every role shoots the ball toward the opponent goal, before a farther tank (round 2), a lined-up striker from 12 m (round 3b), from 100 m at most (gameplay-modes-233)');
   assert.ok(ball.ballBots.shootBall.minRangeM < ball.ballBots.behindM, 'a striker lined up behind the ball may shoot it');
   assert.deepEqual([ball.ball.kickoffAtStart, ball.ball.respawnBackM, ball.ball.kickoffM], [true, 40, 60], 'the opening kick-off line, a revive behind its own goal (round 3b)');
   assert.deepEqual([ball.ballBots.crowdMarginM, ball.ballBots.wingM, ball.ballBots.wingStepM, ball.ballBots.lineUpM, ball.ballBots.goRoundM,
@@ -184,15 +185,16 @@ assert.deepEqual([...TEAM_NATIONS_IDS], ['mono', 'random']); assert.equal(DEFAUL
 for (const mode of GAME_MODE_IDS) {
   assert.equal(matchRulesetFor(mode).teamNations, 'mono', `${mode}: MONO-NATION is the default`);
   assert.ok(TEAM_NATIONS_MODE_SCOPE[mode], `${mode}: a TEAM NATIONS scope row`);
-  assert.equal(matchRulesetFor(mode, null, { teamNations: 'random' }).teamNations, 'random', `${mode}: RANDOM is arranged`);
+  // the proving ground (a practice mode) has no opposing team to arrange: it stays MONO
+  if (!isPracticeMode(mode)) assert.equal(matchRulesetFor(mode, null, { teamNations: 'random' }).teamNations, 'random', `${mode}: RANDOM is arranged`);
 }
 assert.deepEqual(normalizeTeamArrangement('standard', { teamNations: 'random' }), { allies: null, enemies: null, waveSize: null, enemyNation: null, teamNations: 'random' });
 assert.equal(normalizeTeamArrangement('standard', { teamNations: 'mono' }), null, 'mono is the absent default');
 assert.equal(normalizeTeamArrangement('standard', { alliedNation: 'player' }), null, 'the retired alliedNation reads as MONO and is dropped');
 assert.deepEqual(rulesetLines(matchRulesetFor('standard', null, { teamNations: 'random' })), [], 'RANDOM is the switch\'s to show: no chip repeats it');
 assert.ok(!rulesetLines(matchRulesetFor('endless_horde', null, { teamNations: 'random' })).some((line) => line.key === 'teamsMono'), 'nor the fiction chip under RANDOM');
-assert.deepEqual(rulesetLines(ctf).map((line) => line.key), ['respawn', 'carrierSpeed']);
-assert.equal(rulesetLines(ctf)[1].values.value, '-15 %'); assert.equal(FLAG_CARRIER_SPEED_SCALE, 0.85);
+assert.deepEqual(rulesetLines(ctf).map((line) => line.key), ['respawn'], 'no carrier chip: the carrier keeps its speed (gameplay-modes-233)');
+assert.equal(rulesetLines({ ...ctf, flagPitch: { ...ctf.flagPitch, carrierSpeedScale: undefined } })[1].values.value, '-15 %'); assert.equal(FLAG_CARRIER_SPEED_SCALE, 0.85);
 assert.equal(RULESET_SCORE_TARGETS.zone_control, 750, 'zone target resolves inside the clock');
 
 const assault = matchRulesetFor('frontline_assault');

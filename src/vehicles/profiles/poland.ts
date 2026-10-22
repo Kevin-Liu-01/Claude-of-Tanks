@@ -1043,6 +1043,40 @@ function addPL01HullFurniture(P: PolishBuilderPort, context: PL01BuildContext): 
   }
 }
 
+// The faceted diamond turret's measured stations, [zWorld, halfW, roofY, baseY] (pivot [0, 2.07, -0.90]).
+const PL01_TURRET_STATIONS = [
+  [0.98, 0.34, 2.56, 2.16],
+  [0.44, 0.72, 2.79, 2.10],
+  [-0.20, 1.10, 2.79, 2.075],
+  [-0.88, 1.487, 2.79, 2.07],
+  [-1.18, 1.487, 2.79, 2.07],
+  [-2.17, 1.245, 2.79, 2.07],
+  [-3.16, 0.95, 2.785, 2.09],
+  [-3.40, 0.66, 2.60, 2.21],
+  [-3.60, 0.09, 2.385, 2.355],
+] as const;
+const PL01_TURRET_SHOULDER_DEPTH = 0.30;
+const PL01_TURRET_ROOF_INSET = 0.34;
+
+/** The turret shell's upper surface at a turret-local plan point: the roof plate, or the in-leaning shoulder band
+ * between the roof ring and the shoulder ring, as addPL01TurretShell builds them. Null outside the shoulder ring
+ * (beyond it the wall leans back in underneath). Roof and cheek fittings seat on this. */
+function pl01ShellTopY(context: PL01BuildContext, x: number, zLocal: number): number | null {
+  const ST = PL01_TURRET_STATIONS, ax = Math.abs(x), z = zLocal - 0.90;
+  for (let i = 0; i < ST.length - 1; i++) {
+    const [zA, wA, rA, bA] = ST[i], [zB, wB, rB, bB] = ST[i + 1];
+    if (z > zA || z < zB) continue;
+    const t = (zA - z) / (zA - zB), lerp = (a: number, b: number): number => a + (b - a) * t;
+    const roof = context.shellY(lerp(rA, rB) - 2.07);
+    const shoulderT = PL01_TURRET_SHOULDER_DEPTH * context.turretHeightScale;
+    const shoulder = Math.max(roof - shoulderT, context.shellY(lerp(bA, bB) - 2.07));
+    const w = lerp(wA, wB), rw = Math.max(0.07, w - PL01_TURRET_ROOF_INSET);
+    if (ax <= rw) return roof;
+    return ax <= w ? roof + (shoulder - roof) * (ax - rw) / (w - rw) : null;
+  }
+  return null;
+}
+
 function addPL01TurretShell(P: PolishBuilderPort, context: PL01BuildContext): void {
   const { box, cylX, cylY, cylZ, torus } = KIT;
   const { is105, shellY, turretHeightScale, turretRoofLocalY } = context;
@@ -1053,19 +1087,8 @@ function addPL01TurretShell(P: PolishBuilderPort, context: PL01BuildContext): vo
   // low-profile shell is 86.4% of the source height: a second 20% increase
   // over the approved 72% r4 shell, still measured about the unchanged ring.
   {
-    const ST = [
-      // [zWorld, halfW, roofY, baseY]
-      [0.98, 0.34, 2.56, 2.16],
-      [0.44, 0.72, 2.79, 2.10],
-      [-0.20, 1.10, 2.79, 2.075],
-      [-0.88, 1.487, 2.79, 2.07],
-      [-1.18, 1.487, 2.79, 2.07],
-      [-2.17, 1.245, 2.79, 2.07],
-      [-3.16, 0.95, 2.785, 2.09],
-      [-3.40, 0.66, 2.60, 2.21],
-      [-3.60, 0.09, 2.385, 2.355],
-    ];
-    const shoulderT = 0.30 * turretHeightScale;  // upper in-lean band depth
+    const ST = PL01_TURRET_STATIONS;
+    const shoulderT = PL01_TURRET_SHOULDER_DEPTH * turretHeightScale;  // upper in-lean band depth
     const baseIn = 0.26;     // lower wall inboard set-back at the base plane
     for (let i = 0; i < ST.length - 1; i++) {
       const [zA, wA, rA, bA] = ST[i], [zB, wB, rB, bB] = ST[i + 1];
@@ -1080,7 +1103,7 @@ function addPL01TurretShell(P: PolishBuilderPort, context: PL01BuildContext): vo
         [-bwA, baseA, zLA], [bwA, baseA, zLA], [bwB, baseB, zLB], [-bwB, baseB, zLB],
         [-wA, shA, zLA], [wA, shA, zLA], [wB, shB, zLB], [-wB, shB, zLB]));
       // upper in-leaning band: shoulder ring -> roof ring
-      const rwA = Math.max(0.07, wA - 0.34), rwB = Math.max(0.07, wB - 0.34);
+      const rwA = Math.max(0.07, wA - PL01_TURRET_ROOF_INSET), rwB = Math.max(0.07, wB - PL01_TURRET_ROOF_INSET);
       P.add('turret', slab(
         [-wA, shA, zLA], [wA, shA, zLA], [wB, shB, zLB], [-wB, shB, zLB],
         [-rwA, roofA, zLA], [rwA, roofA, zLA], [rwB, roofB, zLB], [-rwB, roofB, zLB]));
@@ -1443,7 +1466,7 @@ function buildPL01(P: PolishBuilderPort): void {
   addPL01Gun(P, context);
   if (context.is105) {
     addEscortFieldKit(P,ESCORT_FIELD_KITS.pl01_105);
-    addPL01FieldTurret(P,context.turretRoofLocalY);
+    addPL01FieldTurret(P,context.turretRoofLocalY,(x,z)=>pl01ShellTopY(context,x,z));
   }
 }
 

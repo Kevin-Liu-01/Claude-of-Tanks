@@ -2,7 +2,7 @@
 // Round 31/32 (owner 2026-09-20/21): every distinct authored paint in the fleet as a reusable catalog entry, named for
 // its nation and pattern (never a vehicle); recipes that already exist as a named Signature / Service / national preset
 // are not repeated, and scale / patch / cell knobs never split one paint into two.
-// 20 entries over 79 vehicles.
+// 21 entries over 80 vehicles.
 
 export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_amx40',
@@ -23,6 +23,7 @@ export const AUTHORED_PAINT_IDS = Object.freeze([
   'paint_strv81',
   'paint_t72b3m',
   'paint_t90ms',
+  'paint_type10_dozer',
   'paint_type74',
   'paint_ua_t80u_modern',
 ] as const);
@@ -61,6 +62,7 @@ export const AUTHORED_PAINT_ENTRIES: readonly AuthoredPaintEntry[] = Object.free
   {id: 'paint_strv81',lead: 'strv81',sourceTankIds: ['strv81'],nation: 'Sweden',label: 'Swedish Woodland',tags: ['se','woodland','organic','signature'],visual: {scheme: 'woodland',base: '#39483b',weather: '#4f5948',patches: ['#263129','#62634a','#74664c'],camoScale: 0.55}},
   {id: 'paint_t72b3m',lead: 't72b3m_2022',sourceTankIds: ['t72b3m_2022','t72b3m_2016'],nation: 'Russia',label: 'Russian Plain Deep Green',tags: ['ru','woodland','geometric','signature'],visual: {scheme: 'solid',base: '#293a28',weather: '#2e422d',patches: [],solidWeatheringIntensity: 0.03}},
   {id: 'paint_t90ms',lead: 't90ms_2011',sourceTankIds: ['t90ms_2011','t90ms_tagil'],nation: 'USSR/Russia',label: 'Russian Plain Brown',tags: ['ru','woodland','geometric','signature'],visual: {scheme: 'solid',base: '#6a6047',weather: '#75694e',patches: []}},
+  {id: 'paint_type10_dozer',lead: 'type10_dozer',sourceTankIds: ['type10_dozer'],nation: 'Japan',label: 'JGSDF Digital Woodland',tags: ['jp','woodland','digital','signature'],visual: {scheme: 'digital',base: '#3e4b33',weather: '#545e43',patches: ['#1f271b','#5e7040','#735a3c'],camoScale: 0.4}},
   {id: 'paint_type74',lead: 'type74',sourceTankIds: ['type74'],nation: 'Japan',label: 'JGSDF Bands Woodland',tags: ['jp','woodland','stripes','signature'],visual: {scheme: 'stripes',base: '#44503a',weather: '#4e5a44',patches: ['#4d4133','#37432f'],camoScale: 0.6}},
   {id: 'paint_ua_t80u_modern',lead: 't80u_zoria',sourceTankIds: ['t80u_zoria','t72b3m_hetman','t72b3m_hetman_ii','t72b3_sich'],nation: 'Ukraine',label: 'Ukrainian Woodland',tags: ['ua','woodland','organic','signature'],visual: {scheme: 'woodland',base: '#536243',weather: '#4a5c42',patches: ['#283829','#8b9260']}},
 ]);

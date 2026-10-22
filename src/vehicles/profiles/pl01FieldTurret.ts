@@ -11,24 +11,44 @@ interface FieldTurretPort {
 
 /** PL-01 105 mission package, seated on its diamond shell. All brackets,
  * stores and open guards are equipment, never additional invisible armor. */
-export function addPL01FieldTurret(P: FieldTurretPort, roofY: number): void {
-  const { box, cylX, cylY, cylZ } = KIT;
+export function addPL01FieldTurret(P: FieldTurretPort, roofY: number,
+  shellTopY: (x: number, z: number) => number | null): void {
+  const { box, cylY, cylZ } = KIT;
+  // Owner 2026-10-21 ("make the 4 lights on turret of pl01 105 oriented much better"): the white-light and IR drums
+  // stood on posts over a crossmember that ran out past the cheek, square to the hull while the diamond's front
+  // shoulders sweep back 31 degrees. Each lamp is now its own drum head on a cast pedestal seated on the swept
+  // shoulder facet: the pedestal's foot follows the facet 12 mm deep, the head stands with its whole lens above the
+  // roof line (a blind critic read the first, lower housings as lamps sunk into the armour), and the lens faces
+  // forward toed out 8 degrees under a visor. The white lamp sits ahead and inboard, the IR lamp behind it and
+  // outboard along the ridge, so neither blocks the other.
+  const seatLamp = (s: number, x0: number, z0: number, white: boolean): void => {
+    const yaw = s * .14, fx = Math.sin(yaw), fz = Math.cos(yaw);   // lens axis
+    const w = .17, d = .17, head = .092, len = .20, r = .072;
+    const at = (u: number, v: number): [number, number] => [s * x0 + fz * u + fx * v, z0 - fx * u + fz * v];
+    const foot = (u: number, v: number): number => {
+      const [x, z] = at(u, v), y = shellTopY(x, z);
+      if (y == null) throw new Error(`PL-01 105 lamp foot (${x.toFixed(3)}, ${z.toFixed(3)}) is off the turret shell`);
+      return y - .012;
+    };
+    const headY = roofY + head + .012, padTop = headY - head + .012;
+    const ring = [[-w / 2, d / 2], [w / 2, d / 2], [w / 2, -d / 2], [-w / 2, -d / 2]] as const;
+    P.addEquipment('turretDetail', orientedSlab(
+      ...ring.map(([u, v]) => [at(u, v)[0], foot(u, v), at(u, v)[1]]),
+      ...ring.map(([u, v]) => [at(u, v)[0], padTop, at(u, v)[1]])));
+    const [hx, hz] = at(0, .01);
+    P.addEquipment('turretDetail', cylZ(head, len, 20), hx, headY, hz, 0, yaw, 0);
+    const [fxp, fzp] = at(0, .01 + len / 2);
+    P.addEquipment('turretDark', cylZ(r + .012, .012, 20), fxp + fx * .002, headY, fzp + fz * .002, 0, yaw, 0);
+    const lens = cylZ(r, .016, 20);
+    // Only the white lamp emits; the IR optic stays dark.
+    P.addEquipment('turretGlass', white ? markVehicleNightLens(lens, 'headlight') : lens,
+      fxp + fx * .006, headY, fzp + fz * .006, 0, yaw, 0);
+    const [vx, vz] = at(0, .01 + len / 2 - .02);
+    P.addEquipment('turretDark', box(2 * head + .03, .016, .10), vx, headY + head + .006, vz, 0, yaw, 0);
+  };
   for (const s of [-1, 1]) {
-    // A bolted cheek crossmember supports separate white-light and IR drums.
-    // The inner feet enter the sloping casting; the outer lamps have real stays.
-    P.addEquipment('turretDetail', box(.60,.065,.18), s*.86,.445,.85);
-    for (const x of [.70,1.02]) {
-      P.addEquipment('turretDetail', box(.045,.205,.085), s*x,.58,.85);
-      P.addEquipment('turretDark', cylX(.032,.065,12), s*x,.66,.85);
-      P.addEquipment('turretDetail', cylZ(.13,.19,20), s*x,.68,.88);
-      const lens = cylZ(.103,.018,20);
-      // Only the visible white-light drum emits. The adjacent IR optic stays dark.
-      P.addEquipment('turretGlass', x<.8 ? markVehicleNightLens(lens,'headlight') : lens,
-        s*x,.68,.982);
-      P.addEquipment('turretDark', box(.26,.023,.27), s*x,.813,.89);
-      for (const dx of [-.125,.125])
-        P.addEquipment('turretDetail', box(.018,.25,.023), s*x+dx,.68,1.008);
-    }
+    seatLamp(s, .64, 1.17, true);
+    seatLamp(s, .86, .80, false);
 
     // Faceted side mission boxes hug the shoulder. Their lids carry extra
     // outward-firing smoke tubes; service handles and cooling slots face out.
@@ -89,5 +109,5 @@ export function addPL01FieldTurret(P: FieldTurretPort, roofY: number): void {
     P.addEquipment('turretGlass',box(.135,.065,.014),x,roofY+.123,z+.087);
     P.addEquipment('turretDark',box(.205,.023,.19),x,roofY+.191,z);
   }
-  P.turretG.userData.pl01FieldTurret = 'cheek-lamps-side-pods-braced-bustle-r1';
+  P.turretG.userData.pl01FieldTurret = 'seated-cheek-lamps-side-pods-braced-bustle-r2';
 }

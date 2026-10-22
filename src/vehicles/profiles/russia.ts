@@ -1,7 +1,7 @@
 import type { SnapGroupOptions, TankBuilderPort } from '../tankFactoryCore.ts';
 import { withSeatRole, withSpareTrackRun } from '../spareTrackSeat.ts';
 import { spareLinkBlock } from '../spareLinkGeometry.ts';
-import { buildT64Modern } from './t72ModernVariants.ts';
+import { buildT64Modern } from './t64bvX.ts';
 // Soviet/Russian modern family procedural profiles (fidelity oracles:
 // recovered T-62/T-64/T-72/T-90 variants + PT-91M). Owned by the
 // Russia-modern family agent.

@@ -5,9 +5,7 @@
 // deep-bustle VT turret authored in the game's native +Z-forward frame.
 
 import {addChineseThroatStock,addChineseMovingMantlet} from './chineseGunOpening.ts';
-import { sectionSolid } from './sectionSolid.ts';
 import { tankSeedId } from '../tankIdAliases.ts';
-import { latheY, place } from '../accessoryPrimitives.ts';
 import * as THREE from 'three';
 import { KIT, FITTINGS, orientedSlab, muzzleTipDot } from './kit.ts';
 import {
@@ -17,8 +15,8 @@ import {
   interpolateChevronStation,
   type ChevronStation,
 } from './chineseChevron.ts';
-import { buildType99AHullOnly } from '../modern2.ts';
-import { addRearFuelDrums, buildZTZ99A2Hull, type ChinaBuilderPort } from './china.ts';
+import { buildZTZ99A2Hull, type ChinaBuilderPort } from './china.ts';
+import { buildLongwei } from './longwei.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { TYPE100_PROFILES } from './type100.ts';
 import { ZTZ100_X_PROFILES } from './ztz100X.ts';
@@ -73,63 +71,6 @@ function addChinese125Gun(
   P.muzzleZ = config.length;
 }
 
-/**
- * Type 99A gun throat (2026-10-07, tank-accessories round 3). The narrow-channel chevrons keep their x 0.21 inner
- * stations, so between the shell's front face (z 0.35) and the chevrons' sloping back faces the throat stood open to
- * the sky down to the ring plate, 0.65 m deep: the blind critics read the generated interior fill inside it as "a dark
- * serrated block beside the mantlet" (a gear wheel, not a boot) and the hole itself as "pure-black unmodeled cavities".
- * A welded throat deck closes the pocket at the chevrons' upper-edge height, lapping 30 mm under every upper edge and
- * 50 mm into the shell roof, and a pleated canvas dust boot (the fleet's mantlet-boot skin) wraps the gun root from
- * under the deck's front edge onto the collar, so the channel between the chevrons shows the boot's soft folds.
- */
-function addType99AGunThroatClosure(P: FrontlinePort, stations: readonly ChevronStation[]): void {
-  const upperEdge = stations.slice(0, 4).map((station) => [station.upperX ?? station.x, station.upperZ] as const);
-  // the chevrons' upper-edge x at a given z (the edge runs outboard as it runs aft)
-  const edgeX = (z: number): number => {
-    for (let index = 0; index < upperEdge.length - 1; index++) {
-      const [xa, za] = upperEdge[index], [xb, zb] = upperEdge[index + 1];
-      if (z <= za && z >= zb) return xa + (xb - xa) * (za - z) / Math.max(1e-6, za - zb);
-    }
-    return z > upperEdge[0][1] ? upperEdge[0][0] : upperEdge.at(-1)![0];
-  };
-  const lap = 0.03;
-  const deckTop = stations[0].upperY + 0.012, deckBottom = stations[0].upperY - 0.022;
-  const channelHalf = upperEdge[0][0] - 0.006;
-  const frontZ = upperEdge[0][1] + 0.052;
-  const deckSection = (z: number, half: number) => ({ z, ring: [[-half, deckBottom], [half, deckBottom], [half, deckTop], [-half, deckTop]] as [number, number][] });
-  P.add('turret', sectionSolid([
-    deckSection(0.30, edgeX(0.30 - lap) + lap),
-    deckSection(0.40, edgeX(0.40 - lap) + lap),
-    deckSection(0.50, edgeX(0.50 - lap) + lap),
-    deckSection(0.58, edgeX(0.58 - lap) + lap),
-    deckSection(upperEdge[0][1] + lap, upperEdge[0][0] + lap),
-    deckSection(frontZ, channelHalf),
-  ]));
-  // Pleated boot in the gun frame: troughs on the collar's rear radius, crests just under the deck, five soft folds
-  // tapering toward the collar; the rear rim tucks under the deck and the front cuff into the collar (gun-local z 0
-  // is the collar's rear face, radius 0.273).
-  const gunY = P.gunG.position.y, gunZ = P.gunG.position.z;
-  const crest = deckBottom - gunY - 0.004, trough = 0.296;
-  const rearZ = frontZ - gunZ - 0.12;
-  const foldStart = rearZ + 0.012, foldEnd = 0.012, folds = 5;
-  const profile: Array<readonly [number, number]> = [[0.24, rearZ], [trough, rearZ + 0.004]];
-  const samples = folds * 6;
-  for (let index = 1; index <= samples; index++) {
-    const t = index / samples;
-    const z = foldStart + (foldEnd - foldStart) * t;
-    const amplitude = (crest - trough) * (1 - 0.35 * t);
-    profile.push([trough + amplitude * (0.5 - 0.5 * Math.cos(2 * Math.PI * folds * t)), z]);
-  }
-  profile.push([0.278, 0.024], [0.262, 0.034]);
-  P.add('gunMountCanvasSkin', place(latheY(profile, P.q ? 24 : 14), 0, 0, 0, Math.PI / 2, 0, 0));
-  P.add('gunMountDark', KIT.torus(0.276, 0.007, P.q ? 24 : 14), 0, 0, 0.018, Math.PI / 2, 0, 0);   // the cuff's clamp band
-  P.turretG.userData.type99aGunThroatReceipt = Object.freeze({
-    deckTopLocalY: deckTop, deckBottomLocalY: deckBottom, deckFrontLocalZ: frontZ, lapM: lap,
-    bootFolds: folds, bootCrestRadiusM: crest, bootTroughRadiusM: trough, bootBucket: 'gunMountCanvasSkin',
-    closesInteriorPocket: true,
-  });
-}
-
 function addSmokeAndWarningSuite(
   P: FrontlinePort,
   config: {
@@ -178,7 +119,7 @@ function buildVT4A1Hull(P: FrontlinePort): void {
   buildZTZ99A2Hull(P);
 }
 
-type VtFamilyVariant = 'vt4a1' | 'ztz99_longwei';
+type VtFamilyVariant = 'vt4a1';
 
 interface VtFamilyTurretConfig {
   readonly variant: VtFamilyVariant;
@@ -209,15 +150,6 @@ const VT_FAMILY_TURRETS: Readonly<Record<VtFamilyVariant, VtFamilyTurretConfig>>
     rearExtensionM: 0, rearUndersideLiftM: 0, rearCrownLiftM: 0,
     gunY: 0.3198,
     gunZ: 0.75, gunLength: 5.95,
-  }),
-  ztz99_longwei: Object.freeze({
-    variant: 'ztz99_longwei', pivotY: 1.57, pivotZ: 0.64,
-    heightScale: 0.82, widthScale: 0.96, depthScale: 0.94, chevronDepthScale: 0.94,
-    frontShellLengthScale: 0.90,
-    chevronInnerAdvanceM: 0.18, chevronOuterAdvanceM: 0.04, chevronLiftM: 0,
-    rearExtensionM: 0.50, rearUndersideLiftM: 0.42, rearCrownLiftM: 0.10,
-    gunY: 0.3198,
-    gunZ: 0.74, gunLength: 6.454,
   }),
 });
 
@@ -363,11 +295,10 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
   });
   addChinese125Gun(P, {
     length: config.gunLength,
-    rootR: variant === 'ztz99_longwei' ? 0.26 : 0.25,
-    sleeveStart: variant === 'ztz99_longwei' ? 1.68 : 1.55,
-    sleeveEnd: variant === 'ztz99_longwei' ? 3.86 : 3.62,
+    rootR: 0.25,
+    sleeveStart: 1.55,
+    sleeveEnd: 3.62,
   });
-  if (variant === 'ztz99_longwei') addType99AGunThroatClosure(P, chevronStations);
 
   // The bustle is structural volume, not a detached basket. These overlapping
   // armored panniers continue the primary shell to a deep rear service wall;
@@ -405,7 +336,7 @@ function addVtFamilyChevronFoundation(P: FrontlinePort, config: VtFamilyTurretCo
   mount(P, 'turret', FITTINGS.stowageRack({
     mats: P.mats, w: sx(2.65), d: sz(0.62), h: sy(0.48), posts: 8,
     fill: 0.78, rails: 3, mesh: false, rotation: [0, Math.PI, 0],
-    seed: variant === 'ztz99_longwei' ? 9940 : 438,
+    seed: 438,
   }), [0, rearBottomY(0.14, -2.78), rearZ(-2.78)]);
 }
 
@@ -427,7 +358,7 @@ function addMachinedRace(P: FrontlinePort, rIn: number, rOut: number, h: number,
 }
 
 function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig): void {
-  const { box, cylY } = KIT;
+  const { box } = KIT;
   const { variant, heightScale, widthScale, depthScale } = config;
   const heightRatio = heightScale / 0.75;
   const roofLift = 0.89 * heightScale - 0.6675;
@@ -450,8 +381,8 @@ function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig):
   // Roof equipment is re-seated to the lower 3/4-height crown. Sights,
   // warning heads and the RWS preserve their own dimensions but no longer
   // hover at the old full-height roof datum.
-  const sightX = variant === 'ztz99_longwei' ? -0.56 : -0.50;
-  const sightZ = variant === 'ztz99_longwei' ? 0.06 : 0.16;
+  const sightX = -0.50;
+  const sightZ = 0.16;
   P.addEquipment('turret', box(0.44, 0.34, 0.40), sightX, 0.83 + roofLift, sightZ, 0, -0.05, 0);
   P.addModuleVisual('optics', 'turretGlass', box(0.25, 0.17, 0.020),
     sightX, 0.85 + roofLift, sightZ + 0.21, 0, -0.05, 0);
@@ -463,12 +394,12 @@ function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig):
   // fitting paint, with its bolt circle.
   addMachinedRace(P, 0.178, 0.208, 0.014, 0.47, 0.87 + roofLift, -0.02, 10);
   addSmokeAndWarningSuite(P, {
-    warningX: sx(variant === 'ztz99_longwei' ? 1.08 : 1.02),
-    warningZ: sz(variant === 'ztz99_longwei' ? -1.38 : -1.52),
+    warningX: sx(1.02),
+    warningZ: sz(-1.52),
     warningY: 0.72 + roofLift,
-    smokeX: sx(variant === 'ztz99_longwei' ? 1.24 : 1.18),
-    smokeZ: sz(variant === 'ztz99_longwei' ? -0.18 : -0.08),
-    smokeY: sy(variant === 'ztz99_longwei' ? 0.42 : 0.39),
+    smokeX: sx(1.18),
+    smokeZ: sz(-0.08),
+    smokeY: sy(0.39),
   });
   if (variant === 'vt4a1') {
     mount(P, 'turret', FITTINGS.openYokeRws({
@@ -478,53 +409,24 @@ function addVtFamilyChevronRoof(P: FrontlinePort, config: VtFamilyTurretConfig):
       weaponName: 'QJC-88 remote weapon station', seed: 430,
     }), [0.38, 0.73 + roofLift, -0.86], [0, 0.03, 0]);
     P.addEquipment('turret', box(0.38, 0.15, 0.32), 0.38, 0.69 + roofLift, -0.86);
-  } else {
-    // Type 99A derivative keeps the same roof load path but a distinct PLA
-    // commander station. The broad pedestal, armored panoramic cabinet and
-    // cap are one continuous seated stack; this restores the Type 99A's tall
-    // command silhouette without reintroducing its discarded legacy turret.
-    P.addEquipment('turret', box(0.42, 0.12, 0.40), 0.48, 0.75 + roofLift, -0.72);
-    // round 4 (2026-10-07, wave 215): a flat machined race seated on the pedestal (the round tube floated 6 mm over it)
-    addMachinedRace(P, 0.158, 0.19, 0.014, 0.48, 0.81 + roofLift, -0.72, 10);
-    // 2026-10-08 (round 5; wave 255 on the Type 99A: "a long barrel on a plain block receiver with no ammunition box,
-    // belt or feed"; the coordinator: the right gun per nation, at true size): the QJC-88 (the W85's vehicle form) at
-    // true scale, its 50-round box and belt on the left, instead of a 0.72 NSVT.
-    mount(P, 'turret', FITTINGS.pintleMG({
-      mats: P.mats, cls: 'qjc88', tone: 'two-tone', scale: 1.0,
-      ammo: true, elev: 0.03, rotation: [0, 0.08, 0], seed: 9944, working: true, ridingCradle: true, // VH.14 (coordinator ruling 2026-10-14: every drawn gun works): a working station
-    }), [0.48, 0.82 + roofLift, -0.62]);
-    P.addEquipment('turret', box(0.48, 0.30, 0.44), 0.72, 0.82 + roofLift, -1.06);
-    P.addEquipment('turret', box(0.46, 0.36, 0.42), 0.72, 1.12 + roofLift, -1.06,
-      0, -0.03, 0);
-    P.add('turretDark', box(0.38, 0.11, 0.035), 0.72, 1.12 + roofLift, -0.835);
-    P.addModuleVisual('optics', 'turretGlass', box(0.30, 0.075, 0.018),
-      0.72, 1.12 + roofLift, -0.814);
-    P.addEquipment('turret', cylY(0.055, 0.065, 0.31, 12),
-      0.72, 1.47 + roofLift, -1.06);
-    P.addEquipment('turret', box(0.34, 0.18, 0.34),
-      0.72, 1.65 + roofLift, -1.06, 0, -0.03, 0);
-    P.addModuleVisual('optics', 'turretGlass', box(0.22, 0.075, 0.018),
-      0.72, 1.65 + roofLift, -0.878);
-    P.add('turretDetail', cylY(0.025, 0.032, 0.22, 10),
-      0.72, 1.85 + roofLift, -1.06);
   }
   for (const side of [-1, 1] as const) {
     mount(P, 'turret', FITTINGS.stowageRack({
       mats: P.mats, w: sz(1.38), d: sx(0.42), h: sy(0.34), rails: 3, fill: 0.58,
-      seed: (variant === 'ztz99_longwei' ? 9950 : 432) + side,
+      seed: 432 + side,
     }), [side * sx(1.28), rearTopY(0.35, -1.94), rearZ(-1.94)], [0, side * Math.PI / 2, 0]);
     mount(P, 'turret', FITTINGS.antennaWhip({
       mats: P.mats, h: side < 0 ? 1.18 : 1.05, r: 0.011,
-      seed: (variant === 'ztz99_longwei' ? 9960 : 434) + side,
+      seed: 434 + side,
     }), [side * sx(0.76), 0.70 + roofLift + config.rearCrownLiftM * rearProgress(-2.12),
       rearZ(-2.12)]);
   }
-  const marking = variant === 'ztz99_longwei' ? '99A' : 'VT4';
+  const marking = 'VT4';
   P.decal('turret', 'number', marking, 0.23,
     [-sx(1.59), sy(0.36), sz(-0.72)], -Math.PI / 2);
   P.decal('turret', 'number', marking, 0.23,
     [sx(1.59), sy(0.36), sz(-0.72)], Math.PI / 2);
-  P.topY = Math.max(P.topY || 0, variant === 'ztz99_longwei' ? 2.12 : 1.28);
+  P.topY = Math.max(P.topY || 0, 1.28);
 }
 
 function addVtFamilyChevronReceipt(P: FrontlinePort, config: VtFamilyTurretConfig): void {
@@ -544,7 +446,7 @@ function addVtFamilyChevronReceipt(P: FrontlinePort, config: VtFamilyTurretConfi
   const commonReceipt = Object.freeze({
     architecture: 'vt-integrated-chevron-family-r5',
     variant, pivotLocalM: Object.freeze([0, config.pivotY, config.pivotZ]),
-    pivotShiftForwardM: variant === 'vt4a1' ? 0.55 : 0.66,
+    pivotShiftForwardM: 0.55,
     turretHeightScale: heightScale, primaryShellHeightM: shellHeight,
     widthScale, depthScale, chevronDepthScale: config.chevronDepthScale,
     frontShellLengthScale: config.frontShellLengthScale,
@@ -578,20 +480,6 @@ function addVtFamilyChevronReceipt(P: FrontlinePort, config: VtFamilyTurretConfi
       upperRootSetbackM: 1.22, lowerReturnMaxSetbackM: 0.90,
       roofRws: true, supportedBustleCages: true,
     });
-  } else {
-    P.turretG.userData.type99aVtDerivativeReceipt = Object.freeze({
-      ...commonReceipt,
-      derivativeOf: 'vt4a1', independentGeometry: true,
-      previousTurretHeightScale: 1.12, matchedVt4a1TurretHeight: true,
-      legacyType99aTurretRemoved: true, oldTurretEquipmentRemoved: true,
-      turretEquipmentReseated: true, dedicatedPlaCommanderStation: true,
-      continuousCommanderSightStack: true, commandSightTopWorldYM: 3.55,
-      exactHullRetained: true, selectedForwardCheekShorteningPct: 10,
-      turretMovedForwardM: 0.42, turretRaisedM: 0.09,
-      slopedBustleUnderside: true, rearHullOverlapEliminated: true,
-      minimumRearDeckClearanceM: 0.02,
-      chevronsReseatedForward: true,
-    });
   }
 }
 
@@ -623,18 +511,9 @@ function buildVT4A1(P: FrontlinePort): void {
   }
 }
 
-function buildType99AWithVtDerivative(P: FrontlinePort): void {
-  buildType99AHullOnly(P as never);
-  addRearFuelDrums(P, 1.56, -3.68, 9910, {
-    radius: 0.25, length: 1.12, centerX: 0.61, cradleDepth: 0.34,
-    rearPlateZ: -3.52,
-  });
-  buildVtFamilyChevronTurret(P, VT_FAMILY_TURRETS.ztz99_longwei);
-}
-
 export const CHINESE_FRONTLINE_PROFILES = Object.freeze({
   vt4a1: Object.freeze({ build: buildVT4A1 }),
-  ztz99_longwei: Object.freeze({ build: buildType99AWithVtDerivative }),
+  ztz99_longwei: Object.freeze({ build: buildLongwei }),
   ...TYPE100_PROFILES,
   ...ZTZ100_X_PROFILES,
   ...ZTZ100_PROTOTYPE_PROFILES,

@@ -2409,6 +2409,11 @@ export function createKillCam(deps: KillcamDeps) {
   }
 
   function replayArmorText(event: KillcamHitEvent): string {
+    // a glance tests no thickness: the plate and the angle it glanced at (the shot card's line), not "→ 0 mm eff."
+    const plateMm = event.nominalMm || event.physicalMm || 0;
+    if (event.kind === 'ricochet' && plateMm > 0) {
+      return t('shotInfo.armorRicochet', { mm: Math.round(plateMm), angle: Math.round(event.impactAngleDeg || 0) });
+    }
     const hasArmor = (event.nominalMm || 0) > 0 || (event.effectiveMm || 0) > 0;
     if (hasArmor) {
       return `${Math.round(event.nominalMm || 0)} → ${Math.round(event.effectiveMm || 0)} mm eff.`;

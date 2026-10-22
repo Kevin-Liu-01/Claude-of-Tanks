@@ -567,6 +567,9 @@ interface ShellFiredEvent {
   weaponSound: string | null;
   muzzleIndex: number;
   recoilScale: number;
+  /** (233) the round's own blast envelope when its spec has one (the gunship's howitzer: 22 m): the effects size its
+   *  charge by it (effects.ts rememberMunition) instead of the calibre's generic charge */
+  blastRadiusM?: number;
 }
 
 interface NearestTankTrace {
@@ -2129,6 +2132,7 @@ function emitShellFired(
   _firedEv.recoilScale = recoilScale;
   _firedEv.caliberMm = shellSpec.caliberMm;
   _firedEv.velocityMps = shellSpec.velocityMps;
+  _firedEv.blastRadiusM = shellSpec.blastRadiusM;
   _firedEv.timeS = game.timeS;
   _firedEv.muzzlePos[0] = _muzzle.x;
   _firedEv.muzzlePos[1] = _muzzle.y;

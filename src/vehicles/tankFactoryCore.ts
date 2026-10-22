@@ -9643,6 +9643,9 @@ function* createTankOwnedSteps(
       hullPlates.geometry.computeBoundingBox();
       planDents(dentSamples(hullPlates.geometry, null), LIVE_HULL_DENTS, 0.6, 1.2, 0.13, 0.28, rng, hullDents,
         box.copy(hullPlates.geometry.boundingBox!).getCenter(new THREE.Vector3()));
+      // (233) the turret ring's race gives way to no dent: each held to a few cm on its rim (turretRingWell.ts, through
+      // its lazy module: before it lands there is no ring to keep round either)
+      turretRingModule()?.capTurretRingDents(hullDents, turretRing.seat());
     }
     if (turretPlates) {
       turretPlates.geometry.computeBoundingBox();

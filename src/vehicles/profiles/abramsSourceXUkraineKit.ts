@@ -228,9 +228,11 @@ function stowage(P: TankBuilderPort): void {
     put(P, 'turret', 'turretDark', 'net-strap', box(.025, .32, .32), [x, 2.28926 + .15, -2.62]);
   }
   // low tarp rolls and a stack of spare track shoes on the rear deck, under the bustle sweep
+  // release 231 (the gun-hull fleet lane): 0.14 m rolls (were 0.20), 15 mm under the bustle rack's lattice (they stood
+  // 4.5 cm into it at rest)
   for (const side of [-1, 1]) {
-    const roll = cylY(.10, .10, 1.10, 12).rotateX(Math.PI / 2);
-    put(P, 'hull', 'hullRubber', 'tarp-roll', roll, [side * .82, 1.694 + .10, -3.15]);
+    const roll = cylY(.07, .07, 1.10, 12).rotateX(Math.PI / 2);
+    put(P, 'hull', 'hullRubber', 'tarp-roll', roll, [side * .82, 1.694 + .07, -3.15]);
   }
   // VEH-13: one registered run (spareTrackSeat.ts); the gun crossed it at yaw 178
   const shoes = spareTrackRunTag({ site: 'ua-abrams-rear-deck-shoes', source: 'adhoc', rotation: [0, 0, 0] });
