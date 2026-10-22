@@ -25,6 +25,8 @@
 // level crossings. Three lanes cross the midfield: past the western washery and spoil bank, through the yard, and
 // past the eastern works; the embankment and the banks give both sides hull-down ground.
 
+import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
+
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 
 // The main line's centre: a straight chord through the station square, rising 6.6 m per 100 m of easting.
@@ -138,10 +140,10 @@ export default {
     // The station square and the two level-crossing aprons: level paved ground the zone-control placement seats
     // its 30 m discs on (the crossings lie inside the yard's grading, so their roads reach them at a road grade).
     hardstands: [
-      { x: 0, z: 0, width: 62, length: 62, yawDeg: 0, grade: 0 },
-      { x: -262, z: lineZ(-262) - 4, width: 60, length: 60, yawDeg: 4, grade: 0 },
+      { x: 0, z: 0, width: 62, length: 62, yawDeg: 0, grade: 0, paint: WORN_YARD_PAINT },
+      { x: -262, z: lineZ(-262) - 4, width: 60, length: 60, yawDeg: 4, grade: 0, paint: WORN_YARD_PAINT },
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): at its ground's median height, a 16 m bank
-      { x: 262, z: lineZ(262) + 4, width: 60, length: 60, yawDeg: 4, level: 1.6, grade: 0, bankM: 16 },
+      { x: 262, z: lineZ(262) + 4, width: 60, length: 60, yawDeg: 4, level: 1.6, grade: 0, bankM: 16, paint: WORN_YARD_PAINT },
     ],
     landforms: [
       // The main-line embankment outside the yard, each half from the throat to the cutting.
