@@ -10,7 +10,7 @@
 // clay-and-bamboo rice granaries (gola) under conical thatch; the river ghat's boat sheds.
 import { PartSink, alongPlot, faceBox, facePoint, pick, plotAxes, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { bevelSpan, orientedPrism } from './millWorks.ts';
-import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
 import { corrugatedCladding } from './villageCraft.ts';
 import { doorUnit, rollerDoor, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, GALVANISED, PAINTED_SHEET, RUSTED, WEATHERED_PLANK, ladder, veranda } from './vernacular.ts';
@@ -30,6 +30,25 @@ const PUMP_IRON: readonly Rgb[] = [0x2f5a3e, 0x5a3a2a, 0x4a4e52].map(rgb);
 const ENAMEL: readonly Rgb[] = [0x141414, 0x1f3a2a, 0x4a1a1a].map(rgb);
 /** the veranda's depth, from the wall to the post line */
 const VERANDA_D = 1.5;
+/** (maps-stalled 240, r2's blind: the do-chala's gable "an oversized blank mud wall") the gable's vent: its opening's size
+ *  and its middle's height as a share of the gable's rise */
+const DO_CHALA_VENT = { w: 0.8, h: 0.44, at: 0.38 };
+
+/** The do-chala gable's vent (HouseDialect.gableOpenings): a square hole under the ridge, cut on every tier (the phones'
+ *  solids are the desktop's), where the gable stands tall and wide enough to hold it with a hand of mud round it. */
+const doChalaVent = (_face: Face, poly: Array<[number, number]>, frame: HouseFrame): HoleRect[] => {
+  const vent = doChalaVentRect(poly, frame);
+  return vent ? [vent] : [];
+};
+function doChalaVentRect(poly: ReadonlyArray<readonly [number, number]>, frame: HouseFrame): HoleRect | null {
+  const y0 = Math.min(...poly.map(([, y]) => y)), apex = Math.max(...poly.map(([, y]) => y)), hw = Math.max(...poly.map(([u]) => u));
+  const rise = apex - y0;
+  if (rise < 1.0 || frame.roof.ridgeY - frame.eaveY < 1.0) return null;
+  const vy = y0 + rise * DO_CHALA_VENT.at, top = vy + DO_CHALA_VENT.h / 2;
+  // the gable's half-width at the vent's head, the rake falling straight from the apex
+  if (hw * (apex - top) / rise < DO_CHALA_VENT.w / 2 + 0.15) return null;
+  return { u0: -DO_CHALA_VENT.w / 2, u1: DO_CHALA_VENT.w / 2, y0: vy - DO_CHALA_VENT.h / 2, y1: top };
+}
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -120,6 +139,7 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
   const roofLivery = sheetColour(rng);
   const deck = plinth + 0.16;
   const dialect: HouseDialect = {
+    ...(thatched && kind === 'gable' ? { gableOpenings: doChalaVent } : {}),
     window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, style, rng, 0.3),
     door: (s, face, o, y0) => {
       // (the lift) the door in its carved frame: the big homestead's panelled leaf, a small house's planks; the mud steps
@@ -163,6 +183,7 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
       }
     } finally { sink.paint = prior; }
   }
+  if (thatched && kind === 'gable') doChalaGables(sink, hf!);
   // the bhiti's edge slumped: a skirt of mud from its top edge out and down to the ground round it
   sink.dressing(mobile, () => {
     // (Lane C 2026-10-16, regionalArchitecture's ray audit: the skirt's quads were wound inward) each wound to face out and up
@@ -191,6 +212,27 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
  * on the timber tile read as a plank cabin); from the deck to the post heads between the wall and the end post, and over
  * it the piece up to the lean-to's underside. Its draws are none; a phone builds the sheets without their ribs.
  */
+function doChalaGables(sink: PartSink, hf: HouseFrame): void {
+  const poly = hf.roof.gable;
+  if (!poly) return;
+  const y0 = Math.min(...poly.map(([, y]) => y)), apex = Math.max(...poly.map(([, y]) => y)), hw = Math.max(...poly.map(([u]) => u));
+  const vent = doChalaVentRect(poly, hf), pole = shade(BAMBOO, 0.82), slat = shade(BAMBOO, 0.92);
+  // the tie's height and its half-length inside the rakes there, a hand short of them
+  const tie = y0 + 0.18, tieHalf = hw * (apex - tie) / (apex - y0) - 0.1;
+  for (const name of ['front', 'back'] as const) {
+    const face = hf.faces[name];
+    // the gable's bamboo frame on its mud: the tie across its foot (clear of the veranda's thatch where it meets the wall)
+    // and the king post up to the vent
+    faceBox(sink, 'structureWood', face, 0, tie, 0.03, 2 * tieHalf, 0.1, 0.1, { colour: pole, decor: true });
+    if (!vent || vent.y0 - tie < 0.2) continue;
+    faceBox(sink, 'structureWood', face, 0, (tie + 0.05 + vent.y0) / 2, 0.03, 0.08, vent.y0 - tie - 0.05, 0.08, { colour: pole, decor: true });
+    // the vent's bamboo lattice set back in its reveal: four upright slats and a rail through them
+    const vh = vent.y1 - vent.y0, vy = (vent.y0 + vent.y1) / 2, back = -hf.gableReveal * 0.5;
+    for (const u of [-0.27, -0.09, 0.09, 0.27]) faceBox(sink, 'structureWood', face, u, vy, back, 0.045, vh, 0.03, { colour: slat, decor: true, fine: true });
+    faceBox(sink, 'structureWood', face, 0, vy, back + 0.02, vent.u1 - vent.u0, 0.04, 0.03, { colour: pole, decor: true, fine: true });
+  }
+}
+
 function verandaScreens(sink: PartSink, front: Face, width: number, deck: number, highY: number, plateTop: number, postTop: number, mobile: boolean,
   tin: { livery: (k: number) => Rgb; frame: Rgb } | null): void {
   const L = VERANDA_D - 0.1 - 0.07, panelTop = postTop - 0.02;
