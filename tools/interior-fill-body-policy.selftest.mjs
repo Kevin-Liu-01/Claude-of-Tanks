@@ -31,7 +31,7 @@ for (const configuredId of configuredIds) {
   }
 }
 
-const launcherIds = ['object695', 'type100'];
+const launcherIds = ['object695', 'type100', 'ztz100_prototype'];
 const launcherBuckets = new Set(['gunMount', 'gunMountDark']);
 for (const launcherId of launcherIds) {
 const launcherSelected = interiorFillBoundaryTriangles(launcherId, triangles, names);
