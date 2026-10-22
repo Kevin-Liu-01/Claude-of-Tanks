@@ -22,6 +22,8 @@
 // downs, so the pads cannot see each other. The three zone-control objectives stand on the axis: the inland hamlet,
 // the bocage crossroads and the village.
 
+import { TRODDEN_GREEN_PAINT } from '../hardstandSurface.ts';
+
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 // The inland road is grid road 0 (x = -90, the village's west lane): its vertex at z, by the grid's own jitter law
 // (terrain.ts buildGridRoads, jitter 2.2, index 0), so a border stub can start exactly on its end.
@@ -102,9 +104,9 @@ export default {
     // village's graded floor.
     hardstands: [
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): tilted 7 % with its slope, a 16 m bank
-      { x: -290, z: 22, width: 60, length: 60, yawDeg: 179, level: -0.4, grade: 0.072, bankM: 16 },
+      { x: -290, z: 22, width: 60, length: 60, yawDeg: 179, level: -0.4, grade: 0.072, bankM: 16, paint: TRODDEN_GREEN_PAINT },
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): a 20 m bank
-      { x: -155, z: 22, width: 60, length: 60, yawDeg: 0, level: 6.6, grade: 0, bankM: 20 },
+      { x: -155, z: 22, width: 60, length: 60, yawDeg: 0, level: 6.6, grade: 0, bankM: 20, paint: TRODDEN_GREEN_PAINT },
     ],
     // E-W lanes CLIP at the strand (hi: 262) so no road paves into the bay
     // 2026-10-02 redesign: the four village lanes keep their own 32 m lattice inside the village. The inland road (road

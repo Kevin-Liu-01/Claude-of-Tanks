@@ -16,9 +16,20 @@ export interface HardstandConfig {
   /** The painted surfacing (stampHardstandRoadMask): its strength over the apron (cover, default 1: the whole apron
    * compacted) and a mottle of worn and drifted patches across it (0..1, default 0). The Redrock lane (2026-10-07): a
    * desert outpost's yard is graded sand the wind keeps drifting back over, not a ruled brown rectangle from the air.
-   * Paint only: the apron's level, grade and every road query are the same. */
-  paint?: { cover?: number; mottle?: number };
+   * Paint only: the apron's level, grade and every road query are the same. `ragged` (0..1, default 0) breaks the
+   * outline (apron paint 234; the owner, 2026-10-22: "these squares just relaly stand out"): the corners round off, the edge
+   * is bitten inward in irregular bays (paintBite) and the paint fades in over a wider inner feather, so a yard on open
+   * ground stops reading as a ruled square from the air. Inward only: the paint never reaches past the spill it had. */
+  paint?: HardstandPaint;
 }
+
+/** An apron's painted surfacing (HardstandConfig.paint). */
+export interface HardstandPaint { cover?: number; mottle?: number; ragged?: number }
+/** A working yard, square or forecourt on open ground: packed earth worn and drifted back over in patches, its outline
+ * broken (the Redrock and Skybridge yards' surfacing with a ragged edge). */
+export const WORN_YARD_PAINT: HardstandPaint = Object.freeze({ cover: 0.75, mottle: 0.5, ragged: 1 });
+/** A green or meadow the zone discs seat on: the ground's own grass, trodden bare in patches, no ruled edge. */
+export const TRODDEN_GREEN_PAINT: HardstandPaint = Object.freeze({ cover: 0.4, mottle: 0.7, ragged: 1 });
 
 /** The road blend's own bank: the ground holds an apron's plane to 3.8 m and is back on its own height by 14 m. */
 const ROAD_BANK_M = 14 - 3.8;
@@ -132,9 +143,28 @@ function paintNoise(x: number, z: number): number {
   return a + (b - a) * ux + (c - a) * uz + (a - b - c + d) * ux * uz;
 }
 
+/** A ragged apron's paint (HardstandPaint.ragged): its corners round off by this share of its narrower side, its edge is
+ * bitten inward up to RAGGED_BITE_M, and the paint fades in over RAGGED_FEATHER_M more inside the edge. */
+const RAGGED_CORNER = 0.3, RAGGED_BITE_M = 12, RAGGED_FEATHER_M = 5;
+
+/** The bay the outline is bitten in at (x, z), 0..RAGGED_BITE_M: worn and grassed-over margins at ~24 m and ~8 m, their
+ * own noise field (paintSpill's tongues stand between them). */
+function paintBite(x: number, z: number): number {
+  const n = paintNoise(x / 24 - 23.7, z / 24 + 5.1) * 0.65 + paintNoise(x / 8 + 9.4, z / 8 - 14.2) * 0.35;
+  return RAGGED_BITE_M * smooth(0.3, 0.8, n);
+}
+
+/** signedDistance to the strip with its corners rounded by `round` metres (never less than the square's own). */
+function roundedDistance(strip: HardstandPlane, x: number, z: number, round: number): number {
+  const dx = x - strip.x, dz = z - strip.z;
+  const across = Math.abs(dx * strip.c - dz * strip.s) - strip.width * 0.5 + round;
+  const along = Math.abs(dx * strip.s + dz * strip.c) - strip.length * 0.5 + round;
+  return Math.hypot(Math.max(0, across), Math.max(0, along)) + Math.min(0, Math.max(across, along)) - round;
+}
+
 /** How far the surfacing spills past the edge at (x, z), 0..HARDSTAND_PAINT_SPILL_M: gravel and spoil worked out onto
- * the bank in irregular tongues, so a yard does not read as a ruled rectangle from the air. Outward only: the apron
- * itself is always fully paved. */
+ * the bank in irregular tongues, so a yard does not read as a ruled rectangle from the air. Outward only: inside its
+ * edge an apron is fully paved unless its paint is mottled or ragged. */
 function paintSpill(x: number, z: number): number {
   const n = paintNoise(x / 17 + 41.3, z / 17 - 7.9) * 0.62 + paintNoise(x / 6.5 - 3.1, z / 6.5 + 12.7) * 0.38;
   return HARDSTAND_PAINT_SPILL_M * smooth(0.35, 0.85, n);
@@ -152,10 +182,13 @@ export function stampHardstandRoadMask(
   for (const strip of prepare(strips, () => 0)) {
     const [x0, x1, z0, z1] = bounds(strip, step, size, halfMap, 2 + HARDSTAND_PAINT_SPILL_M);
     const cover = strip.paint?.cover ?? 1, mottle = strip.paint?.mottle ?? 0;
+    const ragged = Math.max(0, Math.min(1, strip.paint?.ragged ?? 0));
+    const round = ragged * RAGGED_CORNER * Math.min(strip.width, strip.length);
     for (let iz = z0; iz <= z1; iz++) for (let ix = x0; ix <= x1; ix++) {
-      const edge = signedDistance(strip, (ix + 0.5) * step - halfMap, (iz + 0.5) * step - halfMap);
       const x = (ix + 0.5) * step - halfMap, z = (iz + 0.5) * step - halfMap;
-      let coverage = 1 - smooth(-0.75, 1.25, edge - paintSpill(x, z));
+      // a ragged outline: rounded corners and inward bays (both only move the edge inward), a wider inner feather
+      const edge = ragged > 0 ? roundedDistance(strip, x, z, round) + ragged * paintBite(x, z) : signedDistance(strip, x, z);
+      let coverage = 1 - smooth(-0.75 - ragged * RAGGED_FEATHER_M, 1.25, edge - paintSpill(x, z));
       if (coverage <= 0) continue;
       if (cover < 1 || mottle > 0) {
         // worn and drifted patches: smooth fields at ~9 m and ~3.5 m, the apron's own surfacing between them

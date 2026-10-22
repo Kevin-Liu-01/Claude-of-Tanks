@@ -27,6 +27,7 @@
 // idols on the kurgans, a wind pump at the kolkhoz well, straw ricks on the station's fields and the 110 kV line that
 // brought the elevator its power.
 
+import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { gully } from './geology.ts';
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
@@ -155,10 +156,10 @@ export default {
     // stands on its ground with a bank wide enough to make no wall (maps lane A's apron bank law: 115 wall points
     // before, none now).
     hardstands: [
-      { x: -330, z: -240, width: 64, length: 68, yawDeg: 0, level: 1.5, grade: 0 },
-      { x: 271, z: -64, width: 56, length: 56, yawDeg: 0, grade: 'road', bankM: 18 },
-      { x: 206, z: 360, width: 58, length: 58, yawDeg: 0, grade: 'road', bankM: 18 },
-      { x: 52, z: 82, width: 50, length: 50, yawDeg: -23, level: 1.9, grade: 0.054, bankM: 24 },
+      { x: -330, z: -240, width: 64, length: 68, yawDeg: 0, level: 1.5, grade: 0, paint: WORN_YARD_PAINT },
+      { x: 271, z: -64, width: 56, length: 56, yawDeg: 0, grade: 'road', bankM: 18, paint: WORN_YARD_PAINT },
+      { x: 206, z: 360, width: 58, length: 58, yawDeg: 0, grade: 'road', bankM: 18, paint: WORN_YARD_PAINT },
+      { x: 52, z: 82, width: 50, length: 50, yawDeg: -23, level: 1.9, grade: 0.054, bankM: 24, paint: WORN_YARD_PAINT },
     ],
     // Round 57 (2026-09-24): the grain station's rail spur (railSpurs.ts; maps/mapKits.ts lays the track). One
     // siding along the elevator row's loading face — 7 m north of the long store's back wall, past the head
