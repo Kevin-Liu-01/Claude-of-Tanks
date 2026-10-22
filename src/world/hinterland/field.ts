@@ -19,7 +19,7 @@
 // scree, snow, sand, water, settlement ground, roads, rails); geologyAt gives the strata phase, the rock share and the
 // snow. No Math.random, no allocation per query (callers own their outputs).
 import { createLandFieldSample, landUseAt, resolveLandUseProfile, type LandFieldSample, type LandUseProfile } from '../landUse.ts';
-import { hinterlandBearing, hinterlandPoint, type HinterlandSpec, type HinterlandWaterConfig } from './spec.ts';
+import { arcWeight, hinterlandBearing, hinterlandPoint, type HinterlandSpec, type HinterlandWaterConfig } from './spec.ts';
 import { fbm2, hash12, hashString, noise2, seedOffset, smoothstep } from './noise.ts';
 
 /** The square's terrain edge (TERRAIN_HALF_EXTENT_M) and its playable edge. */
@@ -103,6 +103,8 @@ export interface HinterlandWaterSample {
   level: number;
   /** HinterlandWaterConfig['kind'] index: 0 none, 1 sea, 2 lake, 3 river, 4 canal, 5 flood. */
   kind: number;
+  /** The sea's ice cover there (HinterlandWaterConfig.ice), 0 open water. */
+  ice?: number;
 }
 
 export function createHinterlandWater(): HinterlandWaterSample {
@@ -162,6 +164,9 @@ export interface HinterlandField {
   readonly features: HinterlandPlanFeatures;
   /** The map's land use as it runs on past the edge (its own profile, or the region's). */
   readonly landUse: LandUseProfile | null;
+  /** 0..1 on a hedge's line past the edge (the land use's hedged boundaries, the border's hedgerows near the edge) —
+   * coverAt's hedge without the rest of the cover (the near band's hedge trees ask it on a fine lattice). */
+  hedgeAt(x: number, z: number): number;
   /** The same field with the planner's features levelled in (term 3). */
   withFeatures(features: HinterlandPlanFeatures): HinterlandField;
 }
@@ -194,7 +199,7 @@ function regionLandUse(spec: HinterlandSpec, seed: number): LandUseProfile | nul
 /** A sea or a flood is a coast in the world, not a sector: the water lies past a coastline at `coastM` from the
  * centre, square to the normal bearing (the arc's middle), wandering along its length, and (a channel or an estuary)
  * a far shore `widthM` beyond it. A radial sector drew right-angle shores at its ends (D9). */
-interface ResolvedSea { nx: number; nz: number; coastM: number; wanderM: number; widthM: number; level: number; salt: number }
+interface ResolvedSea { nx: number; nz: number; coastM: number; wanderM: number; widthM: number; level: number; ice: number; salt: number }
 interface ResolvedLake { x: number; z: number; r: number; level: number; salt: number }
 interface ResolvedChannel { xs: Float64Array; zs: Float64Array; halfW: number; levels: Float64Array; minX: number; maxX: number; minZ: number; maxZ: number; kind: number }
 interface ResolvedFlood { nx: number; nz: number; level: number; fromM: number; salt: number }
@@ -269,7 +274,12 @@ export function createHinterlandField(
     for (let i = 0; i < DATUM_N; i++) {
       const az = (i / DATUM_N) * 360, a = az * Math.PI / 180;
       let sum = 0, n = 0;
-      for (let d = 560; d <= 840; d += 70) {
+      // (a place's own datum, 2026-10-17: 'edge' reads the level at the edge itself — Skybridge's slickrock runs on at the
+      // rim's level where the square's old border raised the ring's plateau 560-840 m out; a number is the level outright)
+      const datumMode = spec.outland.datum ?? 'handover';
+      if (typeof datumMode === 'number') { raw[i] = datumMode; continue; }
+      const [d0, d1, dd] = datumMode === 'edge' ? [0, 80, 20] : [560, 840, 70];
+      for (let d = d0; d <= d1; d += dd) {
         const rr = HINTERLAND_EDGE_M + d;
         // (on the square's own frame: a bearing's ray meets the edge's square, then runs out d past it)
         const sx = Math.sin(a), sz = Math.cos(a), k = rr / Math.max(Math.abs(sx), Math.abs(sz));
@@ -295,12 +305,22 @@ export function createHinterlandField(
   const [riseLo, riseHi] = spec.outland.riseM;
   const invL = 1 / Math.max(150, spec.outland.wavelengthM);
   const ridged = Math.max(0, Math.min(1, spec.geology.erosion));
+  const reliefArcs = spec.outland.reliefArcs ?? [];
+  // term 2's hold and ease for this place (default HINTERLAND_NEAR_HOLD_M / HINTERLAND_NEAR_EASE_M)
+  const [nearHoldM, nearEaseM] = spec.outland.nearHold ?? [HINTERLAND_NEAR_HOLD_M, HINTERLAND_NEAR_EASE_M];
   function regionalRelief(x: number, z: number, edgeOut: number): number {
     const wx = x + 0.35 * spec.outland.wavelengthM * noise2(x * invL * 0.37 + wox, z * invL * 0.37 + woz);
     const wz = z + 0.35 * spec.outland.wavelengthM * noise2(x * invL * 0.37 - woz, z * invL * 0.37 + wox);
     const n0 = fbm2(wx * invL + rox, wz * invL + roz, 4);
     const shaped = n0 * (1 - ridged) + ((1 - Math.abs(n0)) * 2 - 1.1) * ridged;
-    const amp = riseLo + (riseHi - riseLo) * smoothstep(HINTERLAND_NEAR_HOLD_M, HINTERLAND_NEAR_EASE_M + 900, edgeOut);
+    let amp = riseLo + (riseHi - riseLo) * smoothstep(nearHoldM, nearEaseM + 900, edgeOut);
+    // (a quiet arc: the relief scaled on its bearings, eased over 12°)
+    if (reliefArcs.length) {
+      const b = hinterlandBearing(x, z);
+      let k = 1;
+      for (const arc of reliefArcs) k = Math.min(k, 1 + (arc.scale - 1) * arcWeight(b, arc.azDeg, 12));
+      amp *= k;
+    }
     return amp * (0.5 + 0.5 * shaped);
   }
   /**
@@ -326,7 +346,7 @@ export function createHinterlandField(
     const salt = 101 + index * 17;
     if (w.kind === 'sea') {
       const [nx, nz] = arcNormal(w.arc?.azDeg ?? [180, 180]);
-      seas.push({ nx, nz, coastM: w.coastM ?? 2400, wanderM: w.coastWanderM ?? 450, widthM: w.widthM ?? Infinity, level: w.level ?? -1, salt });
+      seas.push({ nx, nz, coastM: w.coastM ?? 2400, wanderM: w.coastWanderM ?? 450, widthM: w.widthM ?? Infinity, level: w.level ?? -1, ice: Math.max(0, Math.min(1, w.ice ?? 0)), salt });
     } else if (w.kind === 'lake' && w.at) {
       const p = hinterlandPoint(w.at);
       lakes.push({ x: p.x, z: p.z, r: w.radiusM ?? 300, level: w.level ?? baseNoWater(p.x, p.z) - 0.5, salt });
@@ -382,7 +402,7 @@ export function createHinterlandField(
       return addRelief(x, z, h, edgeOut, texelM);
     }
     // term 2's ease: the battlefield's outland near, the region's relief round the datum far
-    const ease = smoothstep(HINTERLAND_NEAR_HOLD_M, HINTERLAND_NEAR_EASE_M, edgeOut);
+    const ease = smoothstep(nearHoldM, nearEaseM, edgeOut);
     if (ease >= 1) h = datumAt(hinterlandBearing(x, z)) + regionalRelief(x, z, edgeOut);
     else {
       let near = outlandAt(x, z);
@@ -455,7 +475,7 @@ export function createHinterlandField(
 
   /** Term 6 applied to a base height: the floor under the water, and the water sample. */
   function waterInto(x: number, z: number, base: number, out: HinterlandWaterSample | null): number {
-    if (out) { out.wet = 0; out.level = 0; out.kind = 0; }
+    if (out) { out.wet = 0; out.level = 0; out.kind = 0; out.ice = 0; }
     const edgeOut = edgeOutOf(x, z);
     if (edgeOut <= 0) return base;
     let h = base;
@@ -475,7 +495,7 @@ export function createHinterlandField(
         const deep = Math.min(smoothstep(coast, coast + 1200, out_), Number.isFinite(sea.widthM) ? 1 - smoothstep(coast + sea.widthM - 1200, coast + sea.widthM, out_) : 1);
         const floor = sea.level - 1.5 - 4 * deep;
         h = h + (Math.min(h, floor) - h) * s;
-        if (out && h < sea.level && s > out.wet) { out.wet = smoothstep(0, 0.6, sea.level - h); out.level = sea.level; out.kind = 1; }
+        if (out && h < sea.level && s > out.wet) { out.wet = smoothstep(0, 0.6, sea.level - h); out.level = sea.level; out.kind = 1; out.ice = sea.ice; }
       }
     }
     for (const flood of floods) {
@@ -666,7 +686,7 @@ export function createHinterlandField(
   }
   // (a flat place keeps the battlefield's border woods only near the edge, where they continue its own; past that its
   // woodlots are the region's — small, so the eye runs out over the polder between them — HL-2b's long views)
-  const nearWoodsHold = flat ? [220, 320] : [HINTERLAND_NEAR_HOLD_M, HINTERLAND_NEAR_EASE_M];
+  const nearWoodsHold = flat ? [220, 320] : [nearHoldM, nearEaseM];
   function woodsAt(x: number, z: number, edgeOut: number): number {
     const near = ground.getBorderWoodsAt && edgeOut < nearWoodsHold[1] ? ground.getBorderWoodsAt(x, z) : 0;
     const ease = smoothstep(nearWoodsHold[0], nearWoodsHold[1], edgeOut);
@@ -738,8 +758,19 @@ export function createHinterlandField(
     return out;
   }
 
+  const hedgeSample: LandFieldSample = createLandFieldSample();
+  function hedgeAt(x: number, z: number): number {
+    const edgeOut = edgeOutOf(x, z);
+    if (edgeOut <= 0) return 0;
+    if (landUse && spec.outland.fields > 0) {
+      landUseAt(landUse, x, z, hedgeSample);
+      if (hedgeSample.active > 0) return hedgeSample.hedge * Math.min(1, spec.outland.hedges * 1.4);
+    }
+    return ground.getBorderHedgeAt && edgeOut < HINTERLAND_NEAR_HOLD_M ? ground.getBorderHedgeAt(x, z) : 0;
+  }
+
   const field: HinterlandField = {
-    spec, seed, datumAt, baseHeightAt, heightAt, displayHeightAt, waterAt, coverAt, geologyAt, features, landUse,
+    spec, seed, datumAt, baseHeightAt, heightAt, displayHeightAt, waterAt, coverAt, geologyAt, hedgeAt, features, landUse,
     get lastDisplayBase() { return lastDisplayBase; },
     withFeatures: (next) => createHinterlandField(spec, seed, ground, { ...options, features: next }),
   };

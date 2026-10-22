@@ -14,15 +14,40 @@ const DRAFT: HinterlandConfig = {
   lab: true,
   outland: {woods: 0.2, hedges: 0.85, fields: 0.75, settle: {villages: 3, hamlets: 4, farms: 12}},
   landforms: [
-    {kind: 'ridge', at: {azDeg: 267, distM: 1346}, heightM: 32, lengthM: 1100, widthM: 520, strikeDeg: 177},
-    {kind: 'ridge', at: {azDeg: 41, distM: 1497}, heightM: 16, lengthM: 1100, widthM: 520, strikeDeg: 131},
+    // the long low swells of the plateau (the brief's keep: "a 40–58 m swell at 1.3–1.4 km giving 13 summits"): twelve
+    // swells round the compass, tangential, 800–1000 m long, 20-26 m over the plateau's own 20-40 m relief there (at their
+    // full 44-57 m the skyline stood to 4°, twice the ring's), with the Psel's valley and bluff in the north-west sector
+    // where the ring had its thirteenth
+    { kind: 'ridge', at: { azDeg: 2, distM: 1274 }, heightM: 23, lengthM: 980, widthM: 500, strikeDeg: 92 },
+    { kind: 'ridge', at: { azDeg: 25, distM: 1349 }, heightM: 21, lengthM: 920, widthM: 500, strikeDeg: 115 },
+    { kind: 'ridge', at: { azDeg: 54, distM: 1312 }, heightM: 22, lengthM: 980, widthM: 500, strikeDeg: 144 },
+    { kind: 'ridge', at: { azDeg: 85, distM: 1318 }, heightM: 23, lengthM: 860, widthM: 500, strikeDeg: 175 },
+    { kind: 'ridge', at: { azDeg: 105, distM: 1426 }, heightM: 22, lengthM: 920, widthM: 500, strikeDeg: 195 },
+    { kind: 'ridge', at: { azDeg: 143, distM: 1406 }, heightM: 21, lengthM: 860, widthM: 500, strikeDeg: 233 },
+    { kind: 'ridge', at: { azDeg: 170, distM: 1346 }, heightM: 21, lengthM: 980, widthM: 500, strikeDeg: 260 },
+    { kind: 'ridge', at: { azDeg: 196, distM: 1390 }, heightM: 23, lengthM: 920, widthM: 500, strikeDeg: 286 },
+    { kind: 'ridge', at: { azDeg: 218, distM: 1418 }, heightM: 20, lengthM: 800, widthM: 500, strikeDeg: 308 },
+    { kind: 'ridge', at: { azDeg: 244, distM: 1308 }, heightM: 26, lengthM: 860, widthM: 500, strikeDeg: 334 },
+    { kind: 'ridge', at: { azDeg: 276, distM: 1275 }, heightM: 25, lengthM: 800, widthM: 500, strikeDeg: 6 },
+    { kind: 'ridge', at: { azDeg: 356, distM: 1277 }, heightM: 22, lengthM: 860, widthM: 500, strikeDeg: 86 },
+    // north-west: the Psel's valley below the plateau, and its right bank's wooded bluff over it (the brief)
+    { kind: 'valley', at: { azDeg: 316, distM: 2500 }, heightM: 30, lengthM: 9000, widthM: 1400, strikeDeg: 46, name: 'the Psel valley' },
+    { kind: 'escarpment', at: { azDeg: 316, distM: 3500 }, heightM: 60, lengthM: 8000, widthM: 1600, strikeDeg: 46,
+      cover: { forest: [0, 90] }, name: "the Psel's wooded bluff" },
+    // south-east: the Kursk–Belgorod railway on its embankment, Prokhorovka station's water tower by it
+    { kind: 'dike', at: { azDeg: 140, distM: 3300 }, heightM: 4, lengthM: 7000, widthM: 26, strikeDeg: 50, name: 'the railway embankment' },
   ],
-  water: [],
+  water: [
+    { kind: 'river', path: [{ azDeg: 266, distM: 3900 }, { azDeg: 285, distM: 2916 }, { azDeg: 316, distM: 2500 }, { azDeg: 347, distM: 2915 }, { azDeg: 6, distM: 3900 }],
+      widthM: 28, name: 'the Psel' },
+  ],
   far: [{azDeg: [0, 360], distKm: [4, 15], reliefM: 70, form: 'plain', layers: 0}],
   landmarks: [
     {kind: 'pylonLine', from: 'exit:s', azDeg: 170, name: 'the 110 kV line south'},
     {kind: 'elevator', at: {azDeg: 128, distM: 2300}, name: 'the kolkhoz elevator'},
     {kind: 'waterTower', at: {azDeg: 142, distM: 3900}, name: 'Prokhorovka station water tower'},
+    // a khutor's post mill on the swells east (the brief: khutors along the balkas, a windmill)
+    { kind: 'postMill', at: { azDeg: 72, distM: 1900 }, name: 'a khutor mill' },
   ],
   exceptions: {C6: 'Kursk is flat: no far layer stands over the swells; the inhabited near band carries the distance (H1 §5.2)'},
 };

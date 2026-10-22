@@ -129,6 +129,17 @@ const S0 = wire.surface[0], mid = (S0.n >> 1) * (S0.n + 1) * 4;
 assert.deepEqual([...S0.rgba.subarray(mid, mid + 4)], [0, 0, 0, 0], 'inside the square nothing is baked');
 const object = createHinterlandObject(copy, {});
 const land = object.getObjectByName('hinterland-land');
+// (round 5) drawn after the battlefield's opaque objects, so they reject its hidden fragments; a phone draws the light
+// variant (no bedding, shoulders or ground bump), a program of its own
+assert.equal(object.renderOrder, 1, 'the Hinterland draws after the battlefield');
+{
+  const lite = createHinterlandObject(copyHinterlandWire(wire), { getDeviceTier: () => 'mobile' }).getObjectByName('hinterland-land');
+  assert.notEqual(lite.material.customProgramCacheKey(), land.material.customProgramCacheKey(), 'the light tiers compile their own program');
+  assert.match(lite.material.customProgramCacheKey(), /land-lite/, 'a phone draws the light land');
+  // (Glacier round 6) the full tiers' patch is 32 quads a side (the crags' facets), the light tiers' 16
+  assert.match(land.material.customProgramCacheKey(), /-q32-/, 'the full tiers draw the finer patch');
+  assert.match(lite.material.customProgramCacheKey(), /-q16-/, 'the light tiers keep the 16-quad patch');
+}
 // the land's and the outland's shaders take every patch (a replace on a chunk that moved would silently drop one): the
 // projection, the surface, the haze for the remapped depth's segment and the compression, and the written depth
 {
@@ -143,9 +154,13 @@ const land = object.getObjectByName('hinterland-land');
   for (const [re, what] of [ [/hlSurfaceAt\( vHlWorld\.xz \)/, 'the surface'],
     [/hinterlandSegmentDepth\( hlHazeD, hlDrawnR \)/, 'the remapped segment\'s haze'], [/hinterlandProjectDrawn\( vHlWorld/, 'the remapped projection'], [/#define HL_REMAP/, 'the remap switched on (no ?hlDepth=0 in Node)'],
     [/hlTilt/, 'the ground\'s relief normal'], [/hlHazeTarget\(/, 'the dome-sky haze target'],
-    [/hlStrataAt\( vHlWorld, hlNW, hlL \)/, 'the steep faces\' strata'], [/0\.6 \* hlLedge/, 'the ledges\' snow facing the sky']]) {
+    [/hlRockAt\( vHlWorld, hlNW, hlEY, hlFoot, hlShare, hlSnow \)/, 'the faces\' rock and snow per pixel'], [/0\.9 \* hlStep/, 'the beds\' relief in the light'],
+    [/#ifndef HL_LITE/, 'the light tiers\' variant']]) {
     assert.match(ls.vertexShader + ls.fragmentShader, re, `the land's shader carries ${what}`);
   }
+  // (Glacier round 6, the critics on 5d's "evenly spaced horizontal white stripes": no periodic band along the height,
+  // and no painted ledge snow; the beds are relief and the snow lies where the face holds it)
+  assert.doesNotMatch(ls.fragmentShader, /sin\( vHlWorld\.y \*|hlLedge|hlShoulderAt/, 'no painted bands or decal snowfields');
   // (the polders' rock travels; their ledges hold no snow)
   assert.ok(wire.rock && wire.rock.rgb.every((c) => c > 0 && c < 1) && wire.rock.snowy === false, 'the region\'s rock travels for the strata');
   const built = object.getObjectByName('hinterland-buildings');
