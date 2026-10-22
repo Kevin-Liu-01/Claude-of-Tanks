@@ -39,7 +39,7 @@
   "borsuk": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2e6023955afa25e1","gun":"c3f57f001ff3363b"}},
   "bwp1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b19e3d2cf37c4005","gun":"041bd056c6d9cadd"}},
   "c1_ariete": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"69bdbc5bbe692334","gun":"6bdf86c28d83249b"}},
-  "c1_ariete_preserie": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5e9b6bdb97d63cc1","gun":"6ffff605428c7a87"}},
+  "c1_ariete_preserie": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5e9b6bdb97d63cc1","gun":"9338e8eef19361a1"}},
   "c1_ariete_proto_serie1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"8dec3c23f455aec2","gun":"f441b8b98bbc611e"}},
   "c2_ariete": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c0f53ac1919d74d1","gun":"d6ff27be311c5a58"}},
   "c2_ariete_proto": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0af7b19f4f540b30","gun":"e137e1dca7885228"}},
