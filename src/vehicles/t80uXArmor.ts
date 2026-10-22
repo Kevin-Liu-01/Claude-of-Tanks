@@ -12,6 +12,15 @@ import {plate,type ArmorPlate} from './specHelpers.ts';
  * 5.2 cm over its engine deck), raised: 0.298 m and 5.4 cm; the whole mount keeps 31 mm from the hull at every yaw and
  * pitch (26.5 mm from a 6 cm raise). The turret's plates, crew and modules are turret-local and rise with it. */
 export const T80U_X_RING_RAISE_M=.065;
+/** Release 231: the raised T-80U's and T-80UK's main-gun depression by absolute turret yaw (degrees; sim/gunPitchLimits.ts),
+ * measured with tools/gun-depression-sweep.mjs on the raised ring (the whole gun 26 mm off every hull mesh at every degree;
+ * no mount conflict, nothing blocked at full elevation): full depression to 143-145, then the engine deck's grilles and
+ * fittings; the T-80UK's command kit over the rear deck holds its gun up to +7.5 at 155-159. */
+export const T80U_X_GUN_PITCH_BY_YAW_DEG=Object.freeze([[0,-5],[145,-5],[149,-4.2],[153,-4.2],[156,-4.4],[157,-4],[158,-2.9],
+  [159,-2.5],[162,-2],[164,-1.8],[169,-1.5],[170,-1],[171,-0.8],[175,-0.8],[176,-0.9],[178,-1.9],[180,-1.9]] as const);
+export const T80UK_X_GUN_PITCH_BY_YAW_DEG=Object.freeze([[0,-5],[143,-5],[144,1.6],[145,4.3],[146,5.5],[147,6],[149,6.5],
+  [155,7.3],[157,7.5],[159,7.5],[160,7.3],[164,4.8],[165,3.9],[166,1.7],[167,-1.8],[169,-1.5],[170,-1],[171,-0.8],[175,-0.8],
+  [176,-0.9],[178,-1.9],[180,-1.9]] as const);
 
 export function createT80UXArmorZones():{hullPlates:ArmorPlate[];turretPlates:ArmorPlate[]} {
   const options={kind:'era',era:{keReduction:.20,ceFlatMm:400}};

@@ -1,6 +1,7 @@
 // Owner-directed September fleet rebuilds. Donor shapes are explicit; the
 // four hybrids below are original game concepts, not historical variants.
 import {TANK_SPECS,MODEL_SOURCE,ALL_TANK_IDS} from './specs.ts';
+import {T80UK_X_GUN_PITCH_BY_YAW_DEG} from './t80uXArmor.ts';
 import {bindFleetRegistries,cloneFleetVariant,registerFleetSpecs,stripSilhouetteDimensions} from './fleetSpecRegistry.ts';
 import {createT62MV1XArmorZones} from './t62mv1XArmor.ts';
 import {modernArmor,leftSidePlate,rightSidePlate,plate} from './specHelpers.ts';
@@ -76,6 +77,8 @@ export function synchronizeFleetRenewalMetadata():void{
   const donors=structuredClone(TANK_SPECS);
   for(const [id,donor] of Object.entries(FLEET_RENEWAL_DONORS))copyPhysicalFrame(TANK_SPECS[id],donors[donor]);
   TANK_SPECS.t72_rys.gunPitchByYawDeg=T72_RYS_GUN_PITCH_BY_YAW_DEG;
+  // release 231: the T-80UK's own measured stops (its command kit over the rear deck; t80uXArmor.ts)
+  TANK_SPECS.t80uk.gunPitchByYawDeg=T80UK_X_GUN_PITCH_BY_YAW_DEG;
   TANK_SPECS.t72b3m_2022.name='T-72B3M obr. 2022';
   TANK_SPECS.t72b3m_2016.name='T-72B3M obr. 2016';
   // Owner-directed turret transplants keep hull-local damage owners and use

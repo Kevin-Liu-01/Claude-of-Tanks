@@ -8,7 +8,7 @@ import { donorSpec } from './donorSpecs.ts';
 import { restoreInstalledVehicleFrame } from './vehicleSizePolicy.ts';
 import { createT62MV1XArmorZones } from './t62mv1XArmor.ts';
 import { createT72B1987XArmorZones } from './t72b1987XArmor.ts';
-import { createT80UXArmorZones, T80U_X_RING_RAISE_M } from './t80uXArmor.ts';
+import { createT80UXArmorZones, T80U_X_RING_RAISE_M, T80U_X_GUN_PITCH_BY_YAW_DEG } from './t80uXArmor.ts';
 import { createT72B3XArmorZones, T72B3_X_SOURCE_DATUMS, T72B3_X_GUN_PITCH_BY_YAW_DEG } from './t72b3XArmor.ts';
 import {createT72B3MXArmorZones,T72B3M_X_SOURCE_DATUMS} from './t72b3mXArmor.ts';
 import {createT72BUXArmorZones,T72BU_X_SOURCE_DATUMS} from './t72buXArmor.ts';
@@ -160,6 +160,8 @@ function applyAuthoredFrame(spec: FleetTankSpec, id: string): void {
   }
   // release 230: the T-72B3's measured stops (t72b3XArmor.ts); its donor template keeps none
   if (id === 't72b3') spec.gunPitchByYawDeg = T72B3_X_GUN_PITCH_BY_YAW_DEG;
+  // release 231: the raised T-80U's measured stops (t80uXArmor.ts)
+  if (id === 't80u') spec.gunPitchByYawDeg = T80U_X_GUN_PITCH_BY_YAW_DEG;
   const frame = frames[id];
   spec.armor.turretPivot = [...frame.turret];
   spec.armor.gunPivot = [frame.gun[0] - frame.turret[0],

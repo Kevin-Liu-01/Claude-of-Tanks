@@ -44,6 +44,9 @@ const CURVES = {
   // (t80uXArmor.ts T80U_X_RING_RAISE_M; before it, its mount stood in the deck through most of the traverse)
   t72b3: [],
   t72_rys: [],
+  // release 231: the fleet T-80U and T-80UK on the raised T-80U X ring
+  t80u: [],
+  t80uk: [],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type
