@@ -109,7 +109,8 @@ function garnishStreamOf(seed: number): () => number {
   };
 }
 
-function paintGarnishedNet(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingContext2D, S: number, pal: NetPalette, seed: number): void {
+function paintGarnishedNet(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingContext2D, S: number, pal: NetPalette, seed: number,
+  stripDensity = 1): void {
   const rng = garnishStreamOf(seed);
   const wrap9 = (draw: (ox: number, oy: number) => void): void => { for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) draw(ox, oy); };
   // the crew's garnish density and the tone patches: periodic fields (whole cycles per tile), so the tile still wraps
@@ -215,7 +216,7 @@ function paintGarnishedNet(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
   };
   for (const [i, j] of order) {
     const k = knot(i, j);
-    const d = density(k[0], k[1]);
+    const d = density(k[0], k[1]) * stripDensity;
     if (rng() > Math.pow(d, 2.2) * 1.05) continue;
     const count = 2 + Math.floor(rng() * (1 + d * 3.5));
     const base = rng() < 0.8 ? patchTone(k[0], k[1]) : pickTone();
@@ -239,10 +240,11 @@ function paintGarnishedNet(ctx: CanvasRenderingContext2D, hctx: CanvasRenderingC
 
 /**
  * The garnished net and its height map for a theatre (cached per theatre, seed and palette set; null without a DOM).
- * `field`: the fleet field nets' darker palette (FIELD_NET_PALETTES).
+ * `field`: the fleet field nets' darker palette (FIELD_NET_PALETTES). `stripDensity` scales the crew's garnish density
+ * at every knot (1: the issue net, about 69 % of the tile cloth; lower: more open cord between the bunches).
  */
-export function garnishedNetTextures(theatre: SuitTheatre, seed: number, field = false): { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } | null {
-  const key = `${field ? 'field:' : ''}${theatre}:${seed}`;
+export function garnishedNetTextures(theatre: SuitTheatre, seed: number, field = false, stripDensity = 1): { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } | null {
+  const key = `${field ? 'field:' : ''}${theatre}:${seed}${stripDensity === 1 ? '' : `:strips${stripDensity}`}`;
   if (netCache.has(key)) return netCache.get(key)!;
   let out: { map: THREE.CanvasTexture; bump: THREE.CanvasTexture } | null = null;
   if (typeof document !== 'undefined') {
@@ -251,7 +253,7 @@ export function garnishedNetTextures(theatre: SuitTheatre, seed: number, field =
       canvas.width = canvas.height = height.width = height.height = NET_TEXTURE_PX;
       const ctx = canvas.getContext('2d'), hctx = height.getContext('2d');
       if (ctx && hctx) {
-        paintGarnishedNet(ctx, hctx, NET_TEXTURE_PX, (field ? FIELD_NET_PALETTES : NET_PALETTES)[theatre], seed);
+        paintGarnishedNet(ctx, hctx, NET_TEXTURE_PX, (field ? FIELD_NET_PALETTES : NET_PALETTES)[theatre], seed, stripDensity);
         const map = new THREE.CanvasTexture(canvas);
         map.colorSpace = THREE.SRGBColorSpace;
         const bump = new THREE.CanvasTexture(height);

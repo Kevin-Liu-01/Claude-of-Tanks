@@ -2750,6 +2750,14 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
     { kit: 'slat', p: 1, v: { w: Math.min(1.7, s.dims.widthM * 0.5), h: 0.5 }, slot: ['hullRearCage', {}] },
   ],
+  // Release 240: the C2 Ariete prototype's roof net (ghillieFleetSuits.ts) is drawn up over every load stowed under it
+  // (ghillieDrape.ts). The default draw's twin-can cradle, which found its seat on the turret roof's rear right, stands
+  // 0.45 m: the net drawn up over it rose into an arch off the roof beside the commander's sight, open underneath. The
+  // cradle keeps its other seats (the rear rack, the bustle, the deck), never the roof under the net.
+  c2_ariete_proto: (spec, rng) => defaultManifest(spec, rng).map((row) => (row.kit === 'cargo' && row.v?.v === 'twin-can-cradle'
+    && row.slot[0] === 'fleetCargo' && row.slot[1].routes
+    ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => slot !== 'turretRoof') }] }
+    : row)),
   // Release 233: the M1A1HA carries a track-width mine plow on its bow (profiles/abramsM1A1Identity.ts), so the default
   // draw keeps everything but its bow hardware (the shackle pair and the tow chain), which would hang on the raised plow.
   m1a1ha: (spec, rng) => defaultManifest(spec, rng)

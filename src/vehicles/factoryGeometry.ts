@@ -517,16 +517,18 @@ export function faceBoxUV(geometry: THREE.BufferGeometry, scale = 0.35): THREE.B
 }
 
 /**
- * The camouflage projection of a merged bucket's thin parts (2026-10-22, lane 240; critic on the M1A1 HC's three-tone:
- * "camo patches with hard straight edges"). faceBoxUV projects each triangle along its own normal, so the narrow edge
- * faces of a plate (a skirt panel's rims, a rib's top, a frame's ends) sample the tile along a single line: a band of
- * whatever colour that line crosses, cut square at the plate's faces, and a skirt of ribbed panels turns into blocks
- * of black and brown. A part whose bounding box is thinner than `thinM` along one axis is a plate seen face-on along
- * that axis: every one of its triangles takes that axis's projection, so the paint on its edges continues the paint on
- * its face, as sprayed paint does. Parts are in merge order (mergeAll); thicker parts keep their per-face projection.
+ * The camouflage projection of a merged bucket's plate-like parts (2026-10-22, lane 240; critic on the M1A1 HC's
+ * three-tone: "camo patches with hard straight edges"). faceBoxUV projects each triangle along its own normal, so the
+ * narrow faces of a plate or a cassette (a skirt module's ends and top, a rib's edge, an armour tile's sides) sample
+ * the tile along a single line: bars of whatever colour that line crosses, cut square at the module's corners, and a
+ * skirt of cassettes reads as blocks of black and brown. A part that is plate-like (its thinnest dimension under
+ * `plateK` of its middle one) and either thinner than `thinM` or small (at most `plateM` thick and `smallM` long) is
+ * projected whole along its thin axis, so its edges carry on the paint of its face round the corner, as sprayed paint
+ * does. Larger parts (hull and turret shells, long panels), blocks and rods keep their per-face projection. Parts are
+ * in merge order (mergeAll).
  */
 export function thinPartBoxUV(parts: readonly THREE.BufferGeometry[], merged: THREE.BufferGeometry, scale = 0.35,
-  thinM = 0.06): void {
+  thinM = 0.06, plateM = 0.2, smallM = 1.2, plateK = 0.6): void {
   const position = merged.getAttribute('position'), uv = merged.getAttribute('uv');
   if (!position || !uv) return;
   const box = new THREE.Box3(), size = new THREE.Vector3();
@@ -536,9 +538,11 @@ export function thinPartBoxUV(parts: readonly THREE.BufferGeometry[], merged: TH
     const partPosition = part.getAttribute('position');
     if (!partPosition) { offset += count; continue; }
     box.setFromBufferAttribute(partPosition as THREE.BufferAttribute).getSize(size);
-    const thin = Math.min(size.x, size.y, size.z);
-    if (thin < thinM && count) {
-      const axis = size.y === thin ? 1 : size.x === thin ? 0 : 2;
+    const dims = [size.x, size.y, size.z].sort((a, b) => a - b);
+    // a plate has one thin axis: a rod (two thin axes alike) keeps its per-face projection, having no face to follow
+    const plate = dims[0] <= plateK * dims[1] && (dims[0] < thinM || (dims[0] <= plateM && dims[2] <= smallM));
+    if (plate && count) {
+      const axis = size.y === dims[0] ? 1 : size.x === dims[0] ? 0 : 2;
       for (let i = offset; i < offset + count && i < position.count; i++) {
         const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
         uv.setXY(i, (axis === 0 ? z : x) * scale, (axis === 1 ? z : y) * scale);

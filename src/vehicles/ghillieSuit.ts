@@ -251,6 +251,12 @@ export interface GhillieConfig {
    */
   netTextureSeed?: number;
   /**
+   * 2026-10-22 (lane 240): the garnish density of the suit's net texture (camoNetTexture.ts stripDensity; default 1, the
+   * issue net). The M1A2 X suits' nets at full density were about 69 % olive cloth: on the sand ARAT skirts each drape
+   * read as a dark rectangle behind its boughs.
+   */
+  netStripDensity?: number;
+  /**
    * 2026-10-13 (netting-pl; the coordinator on the owner's performance push: "thin the garnish's triangle cost (fewer
    * cards per clump, LOD the far clumps) rather than raise ceilings"): a field suit's garnish budget. `clumpCards` keeps
    * that share of each clump's boughs and strips (at least two), each kept card longer by its share's -0.4 power and
@@ -3320,7 +3326,8 @@ function makeNet(
   // shared per theatre or palette and seed (never disposed with a visual); the height map takes the cloth's bump slot
   // (the cloned canvas already samples one), so neither adds a shader variant
   const leafy = cfg.style === 'leafy';
-  const shared = leafy ? garnishedNetTextures(theatre, cfg.netTextureSeed ?? cfg.seed, isFieldNet(cfg)) : cutLeafCoverTextures(cover, cfg.seed);
+  const shared = leafy ? garnishedNetTextures(theatre, cfg.netTextureSeed ?? cfg.seed, isFieldNet(cfg), cfg.netStripDensity ?? 1)
+    : cutLeafCoverTextures(cover, cfg.seed);
   return makeCloth(P, (m) => {
     m.color.setHex(0xffffff);
     if (shared) {
@@ -5737,7 +5744,8 @@ function* addGhillieOwner(
   if (netMesh && !netShared && P.mats.wheels) {
     followVehicleScheme(P.mats.wheels, netMat, (vis) => {
       const t = theatreOfHex(vis.base);
-      const next = leafy ? garnishedNetTextures(t, cfg.netTextureSeed ?? cfg.seed, field) : cutLeafCoverTextures(coverPaletteOf(vis, t), cfg.seed);
+      const next = leafy ? garnishedNetTextures(t, cfg.netTextureSeed ?? cfg.seed, field, cfg.netStripDensity ?? 1)
+        : cutLeafCoverTextures(coverPaletteOf(vis, t), cfg.seed);
       if (next) { netMat.map = next.map; netMat.bumpMap = next.bump; }
     });
   }

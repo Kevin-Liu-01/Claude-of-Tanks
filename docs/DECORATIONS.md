@@ -262,6 +262,11 @@ and its painted rim stay masked clean.
    new track-width mine plow fills the bow); `m60a3` gets its own loadout, since
    its new open fenders and rear bins differ from the A1's (see
    `docs/history/research/abrams-m60-distinct-233.md`).
+5. **Release 240 row (2026-10-22, the vehicles polish lane)** — `c2_ariete_proto`
+   keeps the default draw, but its twin-can cradle never takes the turret roof:
+   the roof net (`ghillieFleetSuits.ts`) is drawn up over every load under it
+   (`ghillieDrape.ts`), and the 0.45 m cradle pulled it into an arch off the roof
+   beside the commander's sight. The cradle keeps its rack, bustle and deck seats.
 
 ## Scratch probes kept from this round
 
