@@ -71,15 +71,17 @@ for (const id of MAP_IDS) {
     assert.ok(main.envelope >= 0 && main.envelope < 1);
   }
 }
-assert.ok(stacks.monsoon.lanes[0].channels[0] === 1 && stacks.monsoon.lanes[0].envelope > 0.5, 'a front\'s towers gathered by the envelope, never the envelope\'s blobs');
-assert.ok(stacks.monsoon.lanes[0].cover < 0.6, 'a front\'s towers stand apart');
-assert.ok(cloudBsmSlices(stacks.monsoon) === 64 && cloudBsmSlices(stacks.winter) === 24, 'a front\'s towers take the most slices, a thin deck the least');
+// (233: a front's towers by the regime's own row under Monsoon's sky — the map draws its congestus since)
+const front = cloudStackOf(deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...getMapConfig('monsoon').sky, cloudscape: { regime: 'cumulonimbus-front', windDirDeg: 200 } }));
+assert.ok(front.lanes[0].channels[0] === 1 && front.lanes[0].envelope > 0.5, 'a front\'s towers gathered by the envelope, never the envelope\'s blobs');
+assert.ok(front.lanes[0].cover < 0.6, 'a front\'s towers stand apart');
+assert.ok(cloudBsmSlices(front) === 64 && cloudBsmSlices(stacks.winter) === 24, 'a front\'s towers take the most slices, a thin deck the least');
 assert.ok(Object.keys(stacks).length >= 30, `every shipped battlefield resolves a stack (${Object.keys(stacks).length})`);
 assert.ok(stacks.verdant.lanes.length === 1, 'a fair-weather sky: one cumulus lane at its condensation level (no confetti aloft)');
 // (round 9, 2026-10-07: a front sheds its debris aloft — wave 235's "hazy translucent smear over the sun and confetti-like
 // popcorn fragments" — and its towers are solid, their core over the cumulus' 0.46)
-assert.ok(stacks.monsoon.lanes.length === 1, 'a front\'s towers alone, no debris aloft');
-assert.ok(Math.abs(stacks.monsoon.lanes[0].core - 0.74) < 1e-9 && stacks.verdant.lanes[0].core === 0.46, 'a front\'s towers solid, a fair-weather cumulus carved');
+assert.ok(front.lanes.length === 1, 'a front\'s towers alone, no debris aloft');
+assert.ok(Math.abs(front.lanes[0].core - 0.74) < 1e-9 && stacks.verdant.lanes[0].core === 0.46, 'a front\'s towers solid, a fair-weather cumulus carved');
 // (2026-10-14, the SKY lane: the only stack with a lane aloft was the broken deck's thin veil, and the owner retired
 // broken-stratocumulus on 2026-10-13 — "no more of the cloud type depicted in fjord")
 assert.ok(Object.entries(stacks).every(([, s]) => s.lanes.length === 1), 'no battlefield carries a layer aloft');
