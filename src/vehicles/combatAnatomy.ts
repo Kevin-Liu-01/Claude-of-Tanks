@@ -1075,6 +1075,15 @@ function alignTurretRing(armor: ArmorAnatomy, calibration: CombatAnatomyCalibrat
   if (!ring || !calibration?.turret) return;
   const thickness = Math.max(0.14, ring.max[1] - ring.min[1]);
   const baseY = calibration.turret.min[1] + (ring.turretLocal ? 0 : armor.turretPivot[1]);
+  // (240) on the turret's yaw axis. The hull's calibration maps the authored box with the hull's plates, which carried
+  // it off the drawn ring (211 of 217 turreted tanks, up to 1.65 m). The pivot is where the builder seats rig_turret
+  // (applyCombatGunRig), so the box keeps its calibrated size and centres on it; a turret-local box on its frame's origin.
+  const dx = (ring.turretLocal ? 0 : armor.turretPivot[0]) - (ring.min[0] + ring.max[0]) * 0.5;
+  const dz = (ring.turretLocal ? 0 : armor.turretPivot[2]) - (ring.min[2] + ring.max[2]) * 0.5;
+  for (const box of [ring, ...(ring.parts || [])]) {
+    box.min[0] += dx; box.max[0] += dx;
+    box.min[2] += dz; box.max[2] += dz;
+  }
   ring.min[1] = baseY - thickness * 0.5;
   ring.max[1] = baseY + thickness * 0.5;
 }

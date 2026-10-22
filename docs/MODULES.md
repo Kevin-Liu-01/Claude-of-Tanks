@@ -100,6 +100,15 @@ as a damaged gun and a red gun mount prevents its casemate weapon from firing.
   capsules, or elliptic cylinders. Long volumes are segmented across adjacent
   shell cells and seated inside their convex component, eliminating false AABB
   corner hits and internal volumes exposed through empty air.
+- **The turret ring on the turret's axis** (240, 2026-10-22): the hull's
+  calibration maps the authored ring box with the hull's plates, and on 211 of
+  217 turreted tanks that carried it off the drawn ring (median 0.16 m, up to
+  1.65 m on the AFT-10). `alignTurretRing` keeps the box's calibrated size and
+  its base on the calibrated turret bottom, and centres it on the turret pivot,
+  where the builder seats `rig_turret` (`combatGunRigs.generated.ts` where a
+  builder moves it). The precise shapes, seated inside the shell cells after
+  it, keep their volume-weighted centre within 5.5 cm of the axis (median
+  1 mm). `combatAnatomyAudit` pins the box on the axis for every tank.
 - **Hand-authored layouts**: foundational and modern vehicles still own the
   semantic location and articulation frame (`turretLocal`) of each system;
   the finalizer changes collision representation, not module identity.

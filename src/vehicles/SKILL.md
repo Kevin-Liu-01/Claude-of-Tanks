@@ -205,7 +205,8 @@ deck's outline; a geometry-only hulk build adds the exterior pass, the floor and
 the well's wall clear of the hull's skin). A calibration `turretRing` receipt
 can stand in for it, but the generator does not publish one: the ring is
 presentation only, and the anatomy's turretRing volume (a sim module) keeps its
-own law. A cook-off hulk's
+own law: centred on the turret pivot, the rig_turret seat (`alignTurretRing`,
+240), never on the receipt. A cook-off hulk's
 bake cuts its hull-side parts exactly after the crumple and merges the well's
 real geometry with its placement budget unchanged. `node tools/turret-ring-census.mjs
 --all --gate` is the fleet receipt; `node tools/turret-ring-probe.mjs --ids=… --gate`

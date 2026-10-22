@@ -231,8 +231,8 @@ for (const id of ids) {
     receipt ??= measureTurretRing(hull, turret, turretRingRadius(spec.armor), { exterior: true });
   } finally { receiptVisual.dispose(); }
   row.receipt = receipt;
-  // the anatomy's turretRing volume today against the built ring (informational: were it re-centred on the seat's axis
-  // and the deck, a sim change the 233 landing does not make)
+  // the anatomy's turretRing volume against the built ring (informational: since 240 it stands on the turret pivot's
+  // axis, the seat in the tank's metres, while the receipt's seat is in rig_hull's, and keeps the calibrated turret bottom)
   const box = spec.armor.modules?.find((module) => module.module === 'turretRing');
   if (box && receipt) {
     const origin = box.turretLocal ? spec.armor.turretPivot : [0, 0, 0];
