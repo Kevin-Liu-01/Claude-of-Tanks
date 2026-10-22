@@ -151,6 +151,9 @@ const CHINESE_FRONTLINE_SPECS = {
     terrainResistance: { hard: 0.66, medium: 0.76, soft: 1.30 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 40, gunPitchDegS: 32, gunElevationDeg: 20, gunDepressionDeg: 6,
+    // Measured (tools/gun-depression-sweep.mjs, 2026-10-22, lane 240): the 35 mm L/90 keeps its full depression to 155 deg
+    // of yaw; over the engine deck its tube rides above the rear-deck stowage.
+    gunPitchByYawDeg: [[0, -6], [155, -6], [156, 4.6], [157, 5.5], [159, 6.4], [162, 6.4], [163, 6], [164, 5.4], [173, 6], [180, 6]],
     gun: {
       caliberMm: 35, reloadS: 12, baseAccuracy: 0.30, aimTimeS: 1.7,
       launcherSalvo: { rounds: 2, intervalS: .35 },
