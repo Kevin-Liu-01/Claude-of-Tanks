@@ -512,6 +512,8 @@ function buildPT91Twardy(P: PolishBuilderPort): void {
     [1.22, 0.12], [1.26, 0.24], [1.18, 0.46], [1.00, 0.64],
     [0.72, 0.755], [0.38, 0.80], [0.03, 0.81],
   ];
+  // TANK-OPT companions (227): half the ring disc looks up into the open casting from below a thrown turret;
+  // `closeBase: true` caps it. Held for the gun-hull lane's T-72 batch (240): that lane flips it and regenerates.
   meshDomeCurved(P, rings, 0.98, 0, -0.08, { capR: 1.85 });
   // bustle (ref 2.04-2.07 band z -1.58..-1.14 -> local -1.60..-1.16)
   P.add('turret', box(1.52, 0.40, 0.50), 0, 0.46, -1.35);

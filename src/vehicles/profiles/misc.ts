@@ -2559,6 +2559,8 @@ function buildType90Turret(P: MiscBuilderPort): void {
     [1.21, 0.90], [1.21, -1.127], [1.18, -1.155], [1.18, -1.705], [-1.18, -1.705],
     [-1.18, -1.155], [-1.30, -1.127], [-1.30, 1.19], [-1.20, 1.19], [-1.08, 1.70], [-0.93, 1.84], [-0.80, 1.92],
   ];
+  // TANK-OPT companions (227): the band's open bottom shows the inside from below a thrown turret; polyTurret's
+  // closeBottom closes it. Held for the gun-hull lane's Type 90 batch (240): that lane passes `true` and regenerates.
   P.add('turret', KIT.polyTurret(PLAN_LO, 0.70, 1.0, 1.0), 0, 0.03, 0);        // wall band 1.43..2.13 — the REAL near-vertical welded slab sides (the r6 1.423-1.446 underside base holds; §B7: the print's 1.77 wall top is the squashed read)
   P.add('turret', KIT.polyTurret(PLAN_HI, 0.08, 1.0, 1.0), 0, 0.73, 0);        // wall extension band 2.13..2.21 (plan unchanged — footprint is registration-neutral)
   P.add('turret', box(1.96, 0.36, 1.855), 0, 0.76, 0.5475);                    // roof plate x +-0.98, TOP 2.34 (the published datum), z_w -0.578..1.278 (r7: rear cap moved OFF station slab i5 [-1.224..-0.684] into i6 — a z-cap face paints the whole 1.98..2.34 band into its slab under the front-clip END-CAP law; the print's own sheet roof vanishes mid-slab and its i4/i5 tops read the 2.24 shelf line)

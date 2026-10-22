@@ -297,6 +297,8 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
     curved: v === 2,
     reference: 't80/t80b/ua_t80u_kursk',
     equipmentSeatRevision: v === 2 ? 't80bv-family-reseat-r2' : 'reference-original',
+    // TANK-OPT companions (227): the casting's open base showed from below a thrown turret (5-12 % of the ring disc).
+    closeBase: true,
   });
   // Fixed-height armor/equipment follows the crown delta from the rejected
   // seven-ring shell; roof-relative seats inherit it through roofDrop.
