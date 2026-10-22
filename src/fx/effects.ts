@@ -821,10 +821,11 @@ const NIGHT_TONGUE_DECK_M = 1.5;
 const DECK_OF_HEIGHT = 0.78;
 /** (240) a night fire's light on its own smoke (nightSmokeGlowAt): from this far over its deck (its flames' tops), this
  *  many times the day slot's gain, over this reach (m, x the column's scale) */
-const NIGHT_SMOKE_GLOW_UP_M = 0.9, NIGHT_SMOKE_GLOW_K = 3, NIGHT_SMOKE_GLOW_REACH_M = 2.8;
-/** (240) a burning tank wreck's pooled light at night (updateWreckLight): over its deck (m), its gain on the day's, its
- *  reach (m; the day's 12) */
-const NIGHT_FIRE_LIGHT_UP_M = 1.2, NIGHT_FIRE_LIGHT_K = 1.8, NIGHT_FIRE_LIGHT_RANGE_M = 18;
+const NIGHT_SMOKE_GLOW_UP_M = 0.9, NIGHT_SMOKE_GLOW_K = 5, NIGHT_SMOKE_GLOW_REACH_M = 3.4;
+/** (240) a burning tank wreck's pooled light at night (updateWreckLight): over its deck (m: among its flames' tops, so the
+ *  turret's roof under it never burns white while the ground round it takes a pool), its gain on the day's, its reach (m;
+ *  the day's 12) and its hue (a fire's yellow-orange: the kill orange painted the hull red at night) */
+const NIGHT_FIRE_LIGHT_UP_M = 2.0, NIGHT_FIRE_LIGHT_K = 3.5, NIGHT_FIRE_LIGHT_RANGE_M = 20, NIGHT_FIRE_LIGHT_HEX = 0xff9848;
 const SHELL_BURST_COLUMN_S = 14; // a shell hit's smoke-only column (the Studio's stand-in blast; no wreck burns)
 // r5 column-continuity rebuild: 0.05 (was 0.11) — the 9 Hz cadence of very
 // large puffs is what let the column macro-structure fall apart in motion
@@ -4193,8 +4194,8 @@ function* createFxSteps(
         if (!nightFire()) emitColumnTongue(col, fk, dk, birthOffset);
         else emitNightTongue(col, fk, dk, birthOffset);
       }
-      // (240) at night a third, smaller tongue as often as not: a night fire is many short licks, not one or two
-      if (nightFire() && rng() < 0.5) emitNightTongue(col, fk * 0.7, dk, birthOffset);
+      // (240) at night a third, smaller tongue more often than not: a night fire is many licks, not one or two
+      if (nightFire() && rng() < 0.7) emitNightTongue(col, fk * 0.7, dk, birthOffset);
     }
   }
 
@@ -4244,14 +4245,14 @@ function* createFxSteps(
     _puffO.vel[1] = 0.35 + rng() * 0.5;
     _puffO.vel[2] = COLUMN_WIND_Z * 0.25 + (rng() - 0.5) * 0.3;
     _puffO.life = 0.35 + rng() * 0.3;
-    const w = (0.42 + rng() * 0.3) * col.scale * dk * (0.55 + 0.45 * fk);
+    const w = (0.6 + rng() * 0.4) * col.scale * dk * (0.55 + 0.45 * fk);
     _puffO.size0 = w;
     _puffO.size1 = -w * 0.7;
     // its height over its width, and its tip's sway (negative: the flame's outline)
-    _puffO.rot = 1.9 + rng() * 0.9;
+    _puffO.rot = 2.1 + rng() * 1.0;
     _puffO.rotVel = -(6 + rng() * 6);
     col3(0xffb04a, _puffO.col0); col3(0xd8400a, _puffO.col1);
-    _puffO.alpha = 0.62; _puffO.grav = 0.6; _puffO.birthOffset = birthOffset - rng() * 0.15;
+    _puffO.alpha = 0.72; _puffO.grav = 0.6; _puffO.birthOffset = birthOffset - rng() * 0.15;
     particles.emit('fire', _puffO);
   }
 
@@ -4465,14 +4466,15 @@ function* createFxSteps(
       // wreck, set higher and softer: the flames on the deck carry the fire, the light only warms round them
       // (a car's fire is lower and lights the car and the ground round it: r1c, "the fire lights almost nothing at night")
       // (240) at night a tank wreck's light hangs among its flames' tops (its deck + NIGHT_FIRE_LIGHT_UP_M), NIGHT_FIRE_LIGHT_K x
-      // as bright over NIGHT_FIRE_LIGHT_RANGE_M: its deck under the flames glows and the ground round it takes a warm,
-      // flickering pool to ~10 m (the night critic: a burning wreck that "lights almost nothing" round it)
+      // as bright over NIGHT_FIRE_LIGHT_RANGE_M, in a fire's yellow-orange: its deck under the flames glows and the ground
+      // round it takes a warm, flickering pool to ~10 m (the 240 probe: at night the ground round a burning wreck stayed as
+      // dark as the field, the hull painted flat red)
       const night = !col.car && nightFire();
       explosionLight.position.set(col.pos[0], col.pos[1] + (col.car ? 2.2 : night
         ? (col.deck ?? NIGHT_TONGUE_DECK_M) + NIGHT_FIRE_LIGHT_UP_M : 3.4), col.pos[2]);
       explosionLight.distance = night ? NIGHT_FIRE_LIGHT_RANGE_M : 12;
       // (fx round 7c) a burst's pulse may have left its own hue on the pooled light: the wreck's fire is the kill orange
-      explosionLight.color.setHex(EXPLOSION_LIGHT_HEX);
+      explosionLight.color.setHex(night ? NIGHT_FIRE_LIGHT_HEX : EXPLOSION_LIGHT_HEX);
       const time = particles.getTime();
       explosionLight.intensity = (
         9.5 + 3.2 * Math.sin(time * 13.7) + 2.2 * Math.sin(time * 7.1 + 1.9)
