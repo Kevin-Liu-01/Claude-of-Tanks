@@ -41,6 +41,7 @@
  */
 import * as THREE from 'three';
 import { FIRST_PARTY_VEHICLE_AUTHORSHIP } from '../authorship.ts';
+import { registerTurretRingModule } from './turretRingLoader.ts';
 import {
   combatAnatomyCalibration, type AnatomyTurretRingReceipt,
 } from './combatAnatomyCalibrationRegistry.ts';
@@ -2012,3 +2013,6 @@ function cutAperture(
   result.userData = { ...geometry.userData };
   return result;
 }
+
+// tankFactoryCore reaches this module through turretRingLoader.ts (off the boot graph): register as it evaluates.
+registerTurretRingModule({ createTurretRingPresentation, capTurretRingDents });
