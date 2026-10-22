@@ -572,12 +572,15 @@ export function crumpleBurntVehicle(geometry: THREE.BufferGeometry, seed: number
   const part: PartPlan = { toFrame: identity, fromFrame: identity, dents: [], bulges: [], droops: [], hinges: [], sags: [], bend: null,
     roofs: [], ends: [], creases: [], caves: [] };
   const top = geometry.boundingBox!.max.y, hw = Math.max(-b.min.x, b.max.x), length = b.max.z - b.min.z;
-  // the roof, pressed in over the cabin (once or twice along it)
+  // the roof, pressed in over the cabin (once or twice along it). (2026-10-22, world-polish-240; 233's blind critic: the
+  // burnt roof "a thin twisted rail, like a roof rack", "a loose ribbon", "an open lid") its panel and its edges go down
+  // together, the edges by three fifths of the middle (they held, and with the glass gone they stood over a sunken panel
+  // as two thin rails)
   const roofs = 1 + (rng() < 0.4 ? 1 : 0);
   for (let i = 0; i < roofs; i++) {
     const half = (0.55 + rng() * 0.6) * Math.max(0.6, length / 4.2);
-    part.roofs.push({ hw: hw * 1.05, zc: b.min.z + half * 0.6 + (length - half * 1.2) * rng(), half,
-      sag: (0.18 + rng() * 0.22) * Math.max(0.7, top / 1.5), yBelt: top * 0.55, yTop: top });
+    part.roofs.push({ hw: hw * 1.6, zc: b.min.z + half * 0.6 + (length - half * 1.2) * rng(), half,
+      sag: (0.11 + rng() * 0.13) * Math.max(0.7, top / 1.5), yBelt: top * 0.55, yTop: top });
   }
   // dents on the flanks and the ends
   const samples: { p: number[]; n: number[] } = { p: [], n: [] };
@@ -594,6 +597,10 @@ export function crumpleBurntVehicle(geometry: THREE.BufferGeometry, seed: number
     part.ends.push({ s, zFace: s > 0 ? b.max.z : b.min.z, zone: 0.7 + rng() * 0.4, amount: 0.2 + rng() * 0.25,
       buckle: 0.05 + rng() * 0.07, yLo: top * 0.35, yHi: top * 0.6 });
   }
+  // (world-polish-240) the whole greenhouse settles as its pillars soften: the roof comes down a quarter to two fifths of
+  // its height over the belt line, level end to end (a sag as wide and as long as the body many times over)
+  const reach = 4 * Math.max(length, 2 * hw);
+  part.roofs.push({ hw: reach, zc: (b.min.z + b.max.z) / 2, half: reach, sag: (0.25 + rng() * 0.15) * top * 0.45, yBelt: top * 0.55, yTop: top });
   const before = geometry.boundingBox!.max.y;
   applyPart(part, geometry);
   geometry.computeBoundingBox();

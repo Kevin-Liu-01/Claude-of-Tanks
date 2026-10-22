@@ -367,7 +367,7 @@ export function deriveCloudLayerPreset(sky: CloudLayerSkyInput): CloudLayerPrese
   const legacy = deriveLegacy(sky);
   // (2026-10-05: the scene wind's drift in place of the cloudscape's own — one wind per battlefield)
   const qaPatch = (globalThis as { __CLOUDSCAPE_PATCH?: CloudscapeConfig | null }).__CLOUDSCAPE_PATCH; // WP240-QA
-  const scape0 = qaPatch && sky.cloudscape ? { ...sky.cloudscape, ...qaPatch } : sky.cloudscape; // WP240-QA
+  const scape0 = qaPatch && sky.cloudscape ? Object.fromEntries(Object.entries({ ...sky.cloudscape, ...qaPatch }).filter(([, v]) => v !== null)) as CloudscapeConfig : sky.cloudscape; // WP240-QA
   const scape = scape0 && sky.sceneWind && Number.isFinite(sky.sceneWind.cloudDirDeg)
     ? { ...scape0, windDirDeg: sky.sceneWind.cloudDirDeg } : scape0;
   const derived = scape && cloudscape ? cloudscape(legacy, sky, scape) : legacy;

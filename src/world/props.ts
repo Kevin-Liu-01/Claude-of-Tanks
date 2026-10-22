@@ -284,7 +284,7 @@ export interface WorldStructureDamage {
 import { YARD_SHED, gardenParts, planYard, yardKeepOut, type YardWorld } from './maps/regional/yards.ts';
 import { hashSeed, streamFrom } from './maps/regional/geometry.ts';
 import type { RegionalBuildContext, RegionalGround } from './maps/regional/types.ts';
-import { makeRegionalConcrete, makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
+import { makeBridgeAshlar, makeRegionalConcrete, makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
 import { ASSAULT_TRENCH, FIELD_TRENCH } from '../sim/assaultLines.ts';
 import { deploymentClearings } from '../sim/matchPlacement.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
@@ -3978,6 +3978,10 @@ function* propsBuildSteps(
       regionalArchitecture.surfaces.stone.dressed, regionalArchitecture.surfaces.stone.weathered)
     : yield* makeStone(noi, aniso, T.stone || null);
   yield { fine: true, stage: 'stone-maps' };
+  // (2026-10-22, world-polish-240) Aegis Crossing's gorge bridge in its own ashlar, not the village's stone: the
+  // bridgeStone bucket the Ronda masonry fills (maps/archedStoneBridge.ts)
+  const bridgeAshlar = mapId === 'cliffbridge' && regionalArchitecture
+    ? yield* makeBridgeAshlar(regionalArchitecture.surfaces.stone.tint, aniso) : null;
   const wood = makeWood(noi, aniso, T.wood || null);
   yield { fine: true };
   const straw = makeStraw(noi, aniso, T.straw || null);
@@ -4177,10 +4181,14 @@ function* propsBuildSteps(
         roughnessMap: stone.surface, aoMap: stone.surface, vertexColors: true, roughness: 1, metalness: 0 }),
       regionalRoof: Object.assign(makeRoofMaterial(roofT, mapId), { vertexColors: true }),
     } : {}),
+    ...(bridgeAshlar ? {
+      bridgeStone: new THREE.MeshStandardMaterial({ map: bridgeAshlar.albedo, normalMap: bridgeAshlar.normal,
+        roughnessMap: bridgeAshlar.surface, aoMap: bridgeAshlar.surface, vertexColors: true, roughness: 1, metalness: 0 }),
+    } : {}),
   };
   function configureSurfaceMaterials(): void {
     for (const key of ['plaster', 'plaster2', 'plaster3', 'roof', 'stone', 'fieldStone', 'fieldMud', 'wood',
-      'straw', 'hay', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof']) {
+      'straw', 'hay', 'structureWood', 'structureCanvas', 'burlap', 'structureMetal', 'steel', 'regionalPlaster', 'regionalPlaster2', 'regionalPlaster3', 'regionalStone', 'regionalRoof', 'bridgeStone']) {
       if (mats[key]) mats[key].aoMapIntensity = 0.82;
     }
     // the scenery lane (wave 52, Verdant's village wall: its face in shade "a flat extruded slab with a near-black blocky
@@ -4236,7 +4244,7 @@ function* propsBuildSteps(
   const wallGrimeHook: MaterialShaderHook = (shader) => grimeShader(shader, true);
   const wallGrime = !!regionalArchitecture && mapId !== 'verdant' && !kitLegacy(mapId);
   const isKitWall = (kind: string) => wallGrime && (kind === 'regionalPlaster' || kind === 'regionalPlaster2'
-    || kind === 'regionalPlaster3' || kind === 'regionalStone');
+    || kind === 'regionalPlaster3' || kind === 'regionalStone' || kind === 'bridgeStone');
   function grimeShader(shader: MaterialShader, walls: boolean): void {
     shader.uniforms.uGrime = { value: grimeTex };
     shader.vertexShader = _mustReplace(shader.vertexShader, '#include <common>',
@@ -4396,6 +4404,7 @@ ${snowCap ? `
     plaster: [], plaster2: [], plaster3: [], stone: [], fieldStone: [], fieldMud: [], roof: [], wood: [], dark: [],
     glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [], structureWood: [],
     regionalPlaster: [], regionalPlaster2: [], regionalPlaster3: [], regionalStone: [], regionalRoof: [],
+    ...(mats.bridgeStone ? { bridgeStone: [] } : {}),
     // (the phones keep the rail bed on the baked material: no ballast program there)
     ...(mobileProps ? {} : { ballast: [] }),
   };
