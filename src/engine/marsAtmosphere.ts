@@ -4,10 +4,11 @@ import type { MapSkyConfig } from '../world/maps/horizon.ts';
 export const MARS_SKY_PRESET = Object.freeze({
   // galaxy sky: the dimmed dome carries the night starfield with a wide band, nebula clouds and a planet (the owner's mode
   // design, 2026-09-18: "make it look like a proper galaxy map")
-  // (2026-10-10, the map-revival lane; gauntlet wave 346: "a magenta-purple nebula starfield") the owner's galaxy sky kept,
-  // its look nearer a photograph's: the nebula's magenta (0x9a4c88) a dust-rose, and the band (galaxy 1.9 -> 1.1) narrower
-  // and sparser, so its stars stop crowding into a candy-bright river (presence along its core 0.91 -> 0.57 of the cells)
-  skyIntensity: 0.06, nightSky: 1, galaxy: 1.1, nebulaHex: 0x7a5448, planetDeg: 3.4, planetHex: 0xd2e0ff,
+  // (2026-10-22, world-polish-240; the coordinator, on media's maps-235 A/B: "the bright sky is gone") the owner's galaxy
+  // as the site's photograph shows it: the magenta nebula (0x9a4c88) and the wide band (galaxy 1.9) back. The map-revival
+  // lane's photographic toning (2026-10-10: a dust-rose 0x7a5448, galaxy 1.1) came after that photograph and went against
+  // the 10-11 ruling that this sky is the owner's order
+  skyIntensity: 0.06, nightSky: 1, galaxy: 1.9, nebulaHex: 0x9a4c88, planetDeg: 3.4, planetHex: 0xd2e0ff,
   sunElevationDeg: 24, sunAzimuthDeg: 122,
   turbidity: 2.2, rayleigh: 0.35, mieCoefficient: 0.0045, mieDirectionalG: 0.78,
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): thin dust decks over the galaxy. The decks are not
