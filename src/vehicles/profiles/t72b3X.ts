@@ -181,18 +181,22 @@ function sideCassette(P:TankBuilderPort,side:number,z:number,y:number,planeDista
   }
 }
 
+// The cast shell's transverse sections (world frame): z, left and right half-widths, top. Each section has broad cast
+// shoulders rather than an ellipse; the right course is fuller than the left around the sights.
+const CASTING_STATIONS:readonly(readonly[z:number,left:number,right:number,top:number])[]=[
+  [-1.32765,.026,.046,1.902],[-1.15,.5103,.5398,2.057],[-.85,.9317,.9105,2.195],
+  [-.55,1.1223,1.1415,2.274],[-.25,1.2315,1.2574,2.254],
+  [.05,1.2654,1.2999,2.187],[.35,1.2438,1.287,2.1255],[.65,1.1212,1.179,2.0449],
+  [.95,.8663,.9434,1.9433],[1.10,.6679,.7381,1.8857],
+];
+const CASTING_LOW=1.446,LEFT_SHOULDER=1.575,RIGHT_SHOULDER=1.650;
+// The cheek blocks either side of the gun opening: z, outer half-width, top.
+const CHEEK_BLOCKS:readonly(readonly[z:number,width:number,top:number])[]=[[1.09,.746,1.89],[1.20,.38,1.82],[1.259,.20,1.643]];
+
 function casting(P:TankBuilderPort):void {
-  const stations:readonly(readonly[number,number,number,number])[]=[
-    [-1.32765,.026,.046,1.902],[-1.15,.5103,.5398,2.057],[-.85,.9317,.9105,2.195],
-    [-.55,1.1223,1.1415,2.274],[-.25,1.2315,1.2574,2.254],
-    [.05,1.2654,1.2999,2.187],[.35,1.2438,1.287,2.1255],[.65,1.1212,1.179,2.0449],
-    [.95,.8663,.9434,1.9433],[1.10,.6679,.7381,1.8857],
-  ];
-  const rows=stations.map(([z,l,r,top])=>{
-    const low=1.446,leftShoulder=1.575,rightShoulder=1.650;
+  const rows=CASTING_STATIONS.map(([z,l,r,top])=>{
+    const low=CASTING_LOW,leftShoulder=LEFT_SHOULDER,rightShoulder=RIGHT_SHOULDER;
     const ring:Array<readonly[number,number]>=[[-l*.98,low],[r*.98,low],[r,rightShoulder]];
-    // Fixed source transverse sections have broad cast shoulders rather than
-    // an ellipse. The right course is fuller than the left around the sights.
     for(let i=1;i<24;i++){
       const a=i*Math.PI/24,c=Math.cos(a),w=c<0?l:r,shoulder=c<0?leftShoulder:rightShoulder;
       ring.push([c*w,shoulder+(top-shoulder)*Math.pow(Math.sin(a),c<0?.72:.60)]);
@@ -200,11 +204,31 @@ function casting(P:TankBuilderPort):void {
     ring.push([-l,leftShoulder]);return{z:z-YAW[2],ring:ring.map(([x,y])=>[x-YAW[0],y-YAW[1]] as const)};
   });
   P.add('turret',sectionSolid(rows));
-  for(const side of [-1,1])P.add('turret',sectionSolid([[1.09,.746,1.89],[1.20,.38,1.82],[1.259,.20,1.643]].map(([z,w,y])=>{
+  for(const side of [-1,1])P.add('turret',sectionSolid(CHEEK_BLOCKS.map(([z,w,y])=>{
     const a=side<0?-w:.18,b=side<0?-.18:w;
     return{z:z-YAW[2],ring:[[a,1.447-YAW[1]],[b,1.447-YAW[1]],[b,y-YAW[1]],[a,y-YAW[1]]]};
   })));
   P.add('turret',cylY(1.10204,.030,40),0,-.005,0);
+}
+
+/** True for a world-frame point inside the cast shell or its cheek blocks (the analytic courses the sections sample),
+ * for fittings seated on the casting by another build (t64bv2017.ts). */
+export function t72b3XCastingContains(x:number,y:number,z:number):boolean {
+  if(y<CASTING_LOW)return false;
+  for(const side of [-1,1]){
+    if(side*x<.18||z<CHEEK_BLOCKS[0][0]||z>CHEEK_BLOCKS[CHEEK_BLOCKS.length-1][0])continue;
+    const k=z<CHEEK_BLOCKS[1][0]?0:1,[z0,w0,t0]=CHEEK_BLOCKS[k],[z1,w1,t1]=CHEEK_BLOCKS[k+1],f=(z-z0)/(z1-z0);
+    if(side*x<=w0+(w1-w0)*f&&y<=1.447+(t0-1.447+(t1-t0)*f))return true;
+  }
+  const last=CASTING_STATIONS.length-1;
+  if(z<CASTING_STATIONS[0][0]||z>CASTING_STATIONS[last][0])return false;
+  const above=CASTING_STATIONS.findIndex(s=>s[0]>z),k=above<0?last-1:Math.max(0,above-1),a=CASTING_STATIONS[k],b=CASTING_STATIONS[k+1];
+  const f=(z-a[0])/(b[0]-a[0]),left=x<0,w=left?a[1]+(b[1]-a[1])*f:a[2]+(b[2]-a[2])*f,top=a[3]+(b[3]-a[3])*f;
+  const shoulder=left?LEFT_SHOULDER:RIGHT_SHOULDER;
+  if(y>=top)return false;
+  if(y<=shoulder)return Math.abs(x)<=w*(.98+.02*(y-CASTING_LOW)/(shoulder-CASTING_LOW));
+  const sinA=((y-shoulder)/(top-shoulder))**(1/(left?.72:.60));
+  return Math.abs(x)<=w*Math.sqrt(1-sinA*sinA);
 }
 
 type CassettePlane=readonly[x:number,y:number,z:number,width:number,length:number,pitch:number,yaw:number];
@@ -357,22 +381,26 @@ function mainGun(P:TankBuilderPort):void {
   P.muzzleZ=muzzle-GUN[2];
 }
 
-export function buildT72B3XHull(P:TankBuilderPort):void {
+/** Options for a build on the whole B3 study. A vehicle that carries another reactive-armour layout (the T-64BV mod.
+ * 2017's Kontakt-1, t64bv2017.ts) leaves out the B3's Kontakt-5 glacis cells, side cassettes and turret cassettes. */
+export interface T72B3XOptions { kontakt5?:boolean }
+
+export function buildT72B3XHull(P:TankBuilderPort,options:T72B3XOptions={}):void {
   P.hullG.position.set(0,0,0);
-  hull(P);runningGear(P);engineDeck(P);rearFittings(P);hullEra(P);
+  hull(P);runningGear(P);engineDeck(P);rearFittings(P);if(options.kontakt5!==false)hullEra(P);
 }
 
-export function buildT72B3X(P:TankBuilderPort):void {
+export function buildT72B3X(P:TankBuilderPort,options:T72B3XOptions={}):void {
   P.hullG.position.set(0,0,0);P.turretG.position.set(...YAW);
   P.topY=T72B3_X_DATUMS.highestFittingM-YAW[1];
-  buildT72B3XHull(P);buildT72B3XTurret(P);
+  buildT72B3XHull(P,options);buildT72B3XTurret(P,options);
 }
 
 /** Options for reusing the T-72B3 turret on another hull. A vehicle whose own
  * fitted remote station replaces the commander's machine gun omits that gun
  * (one working roof gun, never a duplicate); one whose station's barrel sweeps
  * the roof whips omits them and fits its own outside that sweep. */
-export interface T72B3XTurretOptions { commanderGun?:boolean; antennae?:boolean }
+export interface T72B3XTurretOptions extends T72B3XOptions { commanderGun?:boolean; antennae?:boolean }
 
 /** The complete T-72B3 turret in its own turret frame (the turret ring centre
  * is the origin): casting, Kontakt-5 cheek and roof cassettes, roof equipment,
@@ -381,7 +409,7 @@ export interface T72B3XTurretOptions { commanderGun?:boolean; antennae?:boolean 
 export function buildT72B3XTurret(P:TankBuilderPort,options:T72B3XTurretOptions={}):void {
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   P.muzzleZ=T72B3_X_DATUMS.muzzleZ-GUN[2];
-  casting(P);cheekEra(P);roofEra(P);
+  casting(P);if(options.kontakt5!==false){cheekEra(P);roofEra(P);}
   roofEquipment(P);if(options.antennae!==false)antennae(P);smoke(P);if(options.commanderGun!==false)machineGun(P);mainGun(P);
 }
 export const T72B3_X_PROFILES={t72b3:{build:buildT72B3X}} as const;

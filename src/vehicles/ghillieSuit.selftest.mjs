@@ -191,7 +191,8 @@ for (const id of ids) {
     // 2026-10-01: the owner's Donbas rebuild (cdbfe54dc, "t64bv_donbas with supported foliage, net and cages";
     // profiles/donbasFieldCover.ts) replaced the deck-wide blanket with supported flank drapes over the five side
     // ERA cassettes (z -1.9..1.7 on the t72b3 hull) and a bustle cover behind the open sights and hatches. 2026-10-22:
-    // back on the t72b3 hull with the T-64BV mod. 2017's restored build (owner: "its previous model").
+    // back on the t72b3 hull with the T-64BV mod. 2017's previous build (owner: "its previous model"), its flanks now
+    // carrying Kontakt-1 containers on the leading skirt panels (t64bv2017.ts); the drapes still run z -2.22..2.08.
     const cover = turretRig.userData.fieldCover;
     assert.deepEqual(cover, { supported: true, sightsOpen: true, hatchesOpen: true, revision: 1 },
       `${id} field cover is carried on real rails with sights and hatches open`);

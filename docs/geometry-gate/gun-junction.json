@@ -160,7 +160,7 @@
   "t62_1975": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"23df205e31f7ca80","gun":"fd2c04b844e3da2c"}},
   "t62mv1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"81e12de02c1caa29","gun":"a316fa1648bc84e0"}},
   "t64bv1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"400a0ee9df6c6e72","gun":"7a3ee07bec3f4bd1"}},
-  "t64bv_donbas": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"14238124fa56c2e9","gun":"f2a2af64592643f3"}},
+  "t64bv_donbas": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e48bfd1f3c02db6a","gun":"f2a2af64592643f3"}},
   "t72_rys": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"1716a971c417c098","gun":"d32147a4bb8e44e1"}},
   "t72b3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"89196f85b9692efc","gun":"89122d55e62065fa"}},
   "t72b3_bastion_m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2dda245904a21e7d","gun":"ea681e8b91e7b0d3"}},

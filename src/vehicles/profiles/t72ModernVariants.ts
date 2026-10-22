@@ -3,11 +3,10 @@ import {KIT} from './kit.ts';
 import {buildT72B3MXHull} from './t72b3mX.ts';
 import {buildT72B3X} from './t72b3X.ts';
 import {buildT90SMXTurret} from './t90X.ts';
-import {addDonbasFieldCover} from './donbasFieldCover.ts';
 import {buildT72BUX} from './t72buX.ts';
 import {attachedCage,eraCassette,supportedSensor,strappedPack} from './modernizationFittings.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
-const {box,cylY}=KIT;
+const {box}=KIT;
 
 function addB3M2022HullProtection(P:TankBuilderPort):void {
   // Deep segmented Relikt side cassettes, with a second soft-case belt beneath.
@@ -37,40 +36,6 @@ export function buildT72BU1989(P:TankBuilderPort):void {
   P.addModuleVisual('optics','turretGlass',box(.20,.065,.012),.24,.73,-.543);
   strappedPack(P,'turret',[.16,.57,-1.60],[.58,.22,.32]);
   P.hullG.userData.familyRebuild={donor:'t72bu',revision:1};
-}
-// The Ukrainian T-64BV mod. 2017 (t64bv_donbas). Owner 2026-10-22, verbatim: "the ukranian t64bv1 should just be its
-// previous model with an updated name". Release 237 moved it onto the T-64BV1's own build (t64bvX.ts); it is back on
-// the T-72B3 study exactly as before that release (the old buildT64Modern(P,true)): the two-tier turret cassettes, the
-// skirt cassettes, the rear cage, the service bins and whips, and the Donbas field cover.
-export function buildT64BV2017(P:TankBuilderPort):void {
-  buildT72B3X(P);
-  const sector=(s:number)=>`turret_era_${s<0?'L':'R'}`;
-  // The requested B3 chassis/casting forms the structural base. National
-  // modernization changes the cassette cadence and rear equipment layout.
-  for(const side of [-1,1])for(let i=0;i<4;i++){
-    const a=.36+i*.24,x=side*(.64+i*.22),z=1.49-i*.22;
-    for(let row=0;row<2;row++)eraCassette(P,'turret',sector(side),
-      [x,.37+row*.11,z-P.turretG.position.z],
-      [.185,.085,.20],[.43,side*a,0]);
-  }
-  for(const side of [-1,1])for(let i=0;i<5;i++){
-    const z=-1.9+i*.90;
-    eraCassette(P,'hull',`skirt_era_${side<0?'L':'R'}`,[side*1.80,1.12,z],[.095,.40,.78],[0,0,side*.03]);
-    P.addEquipment('hullDetail',box(.15,.04,.72),side*1.76,1.34,z);
-  }
-  supportedSensor(P,[.40,.88,-.49],.66);
-  // 2026-10-19 (owner float sweep): the T-64 turret's rear wall stands 0.35 m forward of the T-72's, so the cage hung in
-  // the air behind it; it moves 0.25 m forward and its brackets reach the wall
-  attachedCage(P,'turret',[0,.31,-1.64],1.82,.46,.53);
-  strappedPack(P,'turret',[-.38,.39,-1.39],[.55,.24,.32]);   // inside the cage, 0.25 m forward with it
-  // Two independent service bins and paired whips; no national markings
-  // are borrowed from the donor's decal geometry.
-  for(const side of [-1,1]){
-    P.addEquipment('turretDetail',box(.28,.18,.30),side*.74,.41,-1.39);
-    P.addEquipment('turretDark',cylY(.009,.013,.62,10),side*.74,.80,-1.39);
-  }
-  addDonbasFieldCover(P);
-  P.hullG.userData.familyRebuild={donor:'t72b3',revision:2,variant:'donbas'};
 }
 export function buildJaguarModern(P:TankBuilderPort):void {
   buildT72B3X(P);

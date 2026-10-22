@@ -1,7 +1,7 @@
 // The T-64BV1's own procedural build (owner 2026-10-21, verbatim: "make the t64bv1 look a lot different from the t72b3,
 // rn they look identical"). Until this file the T-64BV1 and the Donbas were the T-72B3 study with a few extra cassettes.
 // The Ukrainian T-64BV mod. 2017 (t64bv_donbas) went back to that study (owner 2026-10-22: "the ukranian t64bv1 should
-// just be its previous model with an updated name"; t72ModernVariants.ts buildT64BV2017).
+// just be its previous model with an updated name"; t64bv2017.ts, with this build's Kontakt-1 layout).
 // First-party solids from published facts (docs/references/tanks/t64bv1.md, "2026-10-21 distinct T-64 build"): six small
 // steel-tyred dual road wheels with internal shock absorbers and four return rollers per side, a narrower double-pin
 // track, a raised front idler and a twelve-tooth rear sprocket; the 68-degree glacis under a Kontakt-1 brick field, the
@@ -91,8 +91,9 @@ function flaps(P:TankBuilderPort,side:number):void {
   P.addMudguard('t64bv-x-front-flap','hullRubber',box(w,.15,.012),x,frontFenderY(3.232)-.095,3.232);
 }
 
-/** One Kontakt-1 container: the reactive body (its +Y face is the hit face) and its bolted lid, oriented by `basis`. */
-function k1Brick(P:TankBuilderPort,owner:'hull'|'turret',sector:string,basis:THREE.Matrix4,size:Point3):void {
+/** One Kontakt-1 container: the reactive body (its +Y face is the hit face) and its bolted lid, oriented by `basis`.
+ * The T-64BV mod. 2017 (t64bv2017.ts) lays the same containers on the T-72B3 study. */
+export function k1Brick(P:TankBuilderPort,owner:'hull'|'turret',sector:string,basis:THREE.Matrix4,size:Point3):void {
   const [w,th,len]=size;
   // HIGH draws the container's rounded edges; LOW the plain block (the fleet LOW tier's cost rule)
   const body=P.q?box(w,th,len):new THREE.BoxGeometry(w,th,len);

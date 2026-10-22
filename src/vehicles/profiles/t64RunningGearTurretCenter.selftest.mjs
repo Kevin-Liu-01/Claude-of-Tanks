@@ -11,7 +11,8 @@ import { FLEET_RENEWAL_DONORS } from '../fleetRenewalSpecs.ts';
 // the seating laws the old receipt protected: wheels standing on the band face at one axle height, suspension-driven
 // wheels, and one articulated turret/gun assembly at the combat datum. 2026-10-22 (owner: "the ukranian t64bv1 should
 // just be its previous model with an updated name"): the T-64BV mod. 2017 (t64bv_donbas) is back on the T-72B3 study
-// (t72ModernVariants.ts buildT64BV2017) and is held to the donor course again, as before release 237.
+// (t64bv2017.ts, its Kontakt-1 layout in place of the B3's Kontakt-5) and is held to the donor course again, as before
+// release 237.
 const EPSILON = 1e-6;
 const near = (actual, expected, message) => assert.ok(Math.abs(actual - expected) <= EPSILON,
   `${message}: expected ${expected}, received ${actual}`);
