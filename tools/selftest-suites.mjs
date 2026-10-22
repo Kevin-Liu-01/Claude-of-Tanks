@@ -229,6 +229,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/watertightAudit.selftest.mjs',
     // 2026-10-16 (test-speed R7c): the gate's named carries (docs/geometry-gate/watertight-carry.json) and their rules
     'tools/watertight-carry.selftest.mjs',
+    // 2026-10-16 (tank-opt HIDDEN): fills drawn as their exact, conforming boundary surface; closed boxes bit-identical
+    'src/vehicles/interiorFillSurface.selftest.mjs',
+    // 2026-10-16 (tank-opt HIDDEN): a wreck draws the closed boxes again (setDestroyed), the rematch the surface
+    'src/vehicles/interiorFillWreck.selftest.mjs',
     'tools/barak-rear-bay-fill-policy.selftest.mjs',
     'src/vehicles/profiles/kurganetsRearDoorStock.selftest.mjs',
     'src/vehicles/profiles/kurganetsBowStock.selftest.mjs',

@@ -416,8 +416,10 @@ const SEAT = { cx: 0.1, cz: 0.2, deckY: 1.5, openR: 0.78, rimR: 0.84, skirt: 0.0
     let swapped = 0;
     const turretSide = (mesh) => { for (let o = mesh.parent; o; o = o.parent) if (o === turret) return true; return false; };
     for (const [mesh, geometry] of before) {
-      // (the gun swaps its own meshes for bent copies at the kill: wreckDents.ts)
-      if (mesh.geometry === geometry || turretSide(mesh)) continue;
+      // (the gun swaps its own meshes for bent copies at the kill: wreckDents.ts; the interior fills swap their drawn
+      // surface for the closed boxes at the kill, interiorFills.ts / interiorFillWreck.selftest.mjs, and the ring never
+      // cuts a fill)
+      if (mesh.geometry === geometry || turretSide(mesh) || mesh.userData.interiorFill) continue;
       swapped++;
       assert.ok(mesh.geometry.userData.turretRingCut, 'a swapped mesh holds the ring\'s cut copy');
       const m = new THREE.Matrix4().multiplyMatrices(inv, mesh.matrixWorld);
