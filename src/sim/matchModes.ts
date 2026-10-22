@@ -2214,6 +2214,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
     const quarry = teams[otherTeam(side)].filter((t) => t.modeActive !== false && !t.combat.destroyed && spottedBy(t, side));
     huntLoad.clear();
     const fair = quarry.length ? Math.ceil(hunters.length / quarry.length) : 0;
+    // the Infected's pack hunt (infectionBots.packPullM): hunters gather on a quarry instead of spreading over them
+    const packPullM = ruleset.infection ? ruleset.infectionBots?.packPullM ?? 0 : 0;
     hunters.forEach((hunter, rank) => {
       let plan = huntPlan.get(hunter.id);
       if (!plan) { plan = { x: 0, z: 0 }; huntPlan.set(hunter.id, plan); }
@@ -2221,7 +2223,8 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
       for (const t of quarry) {
         const load = huntLoad.get(t.id) ?? 0;
         const d = Math.sqrt(squaredDistance(hunter, t.state.pos.x, t.state.pos.z));
-        const cost = d + (d > HUNT_RULES.spreadBeyondM ? HUNT_RULES.crowdPenaltyM * Math.max(0, load + 1 - fair) : 0);
+        const cost = packPullM > 0 ? d - packPullM * load
+          : d + (d > HUNT_RULES.spreadBeyondM ? HUNT_RULES.crowdPenaltyM * Math.max(0, load + 1 - fair) : 0);
         if (cost < bestCost) { bestCost = cost; best = t; }
       }
       let tx: number, tz: number;
