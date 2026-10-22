@@ -1,10 +1,10 @@
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Polish amphibious Borsuk with the unmanned ZSSW-30 and twin Spike LR mount.
-import * as THREE from 'three';
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { chassisLoft, armorLoft, sideWall, openTube, optic, antenna, turretEquipment, mirrorX } from './europeSourcePrimitives.ts';
+import { launchCellParts, perforatedPlate } from './missileCanisterStock.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { weaponAssembly } from './weaponStock.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
@@ -120,19 +120,14 @@ function buildSpike(P: TankBuilderPort): void {
     for (const x of [1.1375,1.5425]) turretEquipment(P,'turretDetail',box(.035,.52,1.48),x,2.69,-.45);
     for (const y of [2.4475,2.9325]) turretEquipment(P,'turretDetail',box(.44,.035,1.48),1.34,y,-.45);
     turretEquipment(P,'turretDetail',box(.44,.52,.035),1.34,2.69,-1.2075);
+    // 2026-10-21 (owner: launch tubes "like the object 695, and tagil"): a perforated front plate 1 cm inside the
+    // walls closes the box, and each Spike cell is a rim collar 2 cm proud of the walls with a dark liner and sealed
+    // terminal 45 cm deep, replacing the short sleeve, flat ring and shallow cup.
+    turretEquipment(P,'turretDetail',perforatedPlate(.38,.46,.02,[[0,-.125],[0,.125]],.092,P.q?24:12),1.34,2.69,.28);
     for (const y of [2.565,2.815]) {
-      const tube=new THREE.CylinderGeometry(.106,.106,.15,24,1,true).rotateX(Math.PI/2);
-      turretEquipment(P,'turretDark',tube,1.34,y,.21);
-      turretEquipment(P,'turretDetail',new THREE.RingGeometry(.083,.108,24),1.34,y,.29);
-      // The recessed end plate spans the sleeve, not only the smaller front
-      // aperture. Finite stock closes the annular gap from rear oblique views.
-      turretEquipment(P,'turretDark',cylZ(.107,.025,24),1.34,y,.20);
-      // Match the inward-facing finite bore used by the shared cannon mouth.
-      const mouth=new THREE.CylinderGeometry(.083,.083,.09,24,1,true).rotateX(Math.PI/2);
-      const index=mouth.index!;
-      for(let i=0;i<index.count;i+=3){const a=index.getX(i+1);index.setX(i+1,index.getX(i+2));index.setX(i+2,a);}
-      mouth.computeVertexNormals();
-      turretEquipment(P,'turretDark',mouth,1.34,y,.245);
+      const cell=launchCellParts({bore:.083,wall:.018,proud:.03,behind:.02,depth:.45,segments:[24,12]},P.q,0,0,.28);
+      turretEquipment(P,'turretDetail',cell.rim,1.34,y,0);
+      turretEquipment(P,'turretDark',cell.bore,1.34,y,0);
     }
   });
 }

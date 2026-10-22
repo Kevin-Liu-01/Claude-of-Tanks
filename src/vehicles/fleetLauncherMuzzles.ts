@@ -8,7 +8,8 @@ function turret(x: number, y: number, z: number, pitch = 0, yaw = 0): LauncherMu
   return { x, y, z, frame: 'turret', pitch, yaw };
 }
 function mouth(x: number, y: number, z: number): LauncherMuzzle { return { x, y, z }; }
-const bradley = [mouth(-.97, .04, .145), mouth(-.97, -.20, .145)];
+// 2026-10-21: the TOW collars' mouths on the flat-fronted pod (modern3.ts), 8.5 cm ahead of the old sloped face.
+const bradley = [mouth(-.97, .04, .23), mouth(-.97, -.20, .23)];
 const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   m2a2_bradley: bradley,
   ua_m2a3_bradley: bradley,
@@ -16,7 +17,8 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   spz_puma: [mouth(1.19, -.02, .465), mouth(1.41, -.02, .465)],
   puma_s1: [-.1005,.1005].map(dx => mouth(1.366+dx,-.0462,.7294)),
   borsuk: [.545,.795].map(y => turret(1.34,y,.91)),
-  type89: [-1,1].map(side => turret(side*1.25,.63,.36)),
+  // 2026-10-21: the Jyu-MAT canister collars stand 4 cm proud of the duct front (profiles/type89SourceX.ts).
+  type89: [-1,1].map(side => turret(side*1.25,.63,.40)),
   spz_wotan: [.36, .59].map(y => turret(-1.02 * .9, y * .9, .839 * .9)),
   raiju_ifv: [-1, 1].flatMap(s => [.32, .56].map(y => turret(s * 1.39 * .9, y * .9, .7175 * .9))),
   cv90_mk4_concept: [.42, .70].map(y => turret(-1.20 * .9, y * .9, .68 * .9)),

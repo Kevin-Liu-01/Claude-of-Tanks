@@ -6,7 +6,7 @@ import {weaponAssembly} from './weaponStock.ts';
 import {supportedSensor,strappedPack,attachedCage} from './modernizationFittings.ts';
 import {addEscortFieldKit} from './escortFieldKit.ts';
 import {ESCORT_FIELD_KITS} from '../escortFieldKitLayout.ts';
-import {blindTube} from './measuredPrimitives.ts';
+import {launchCellParts,perforatedPlate} from './missileCanisterStock.ts';
 import {markVehicleNightLens} from '../vehicleNightLighting.ts';
 import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {box,cylX,cylY,cylZ}=KIT;
@@ -48,7 +48,14 @@ export function buildUpiorUpgrade(P:TankBuilderPort):void {
     // Four housing walls surround a recessed bore; no cap crosses the mouth.
     for(const x of [.998,1.202])P.addEquipment('turretDetail',box(.018,.24,1.15),x,.37,.255);
     for(const y of [.259,.481])P.addEquipment('turretDetail',box(.186,.018,1.15),1.10,y,.255);
-    P.addEquipment('turretDark',blindTube(.096,.073,1.15,1.10,24),1.10,.37,.255);
+    // 2026-10-21 (owner: launch tubes "like the object 695, and tagil"): a perforated front plate 2 cm inside the
+    // walls and a rear plate close the housing; the Spike cell is a rim collar 2 cm proud of the walls with a dark
+    // liner and sealed terminal 45 cm deep, replacing the bare blind tube.
+    P.addEquipment('turretDetail',perforatedPlate(.196,.214,.02,[[0,0]],.082,P.q?24:12),1.10,.37,.81);
+    P.addEquipment('turretDetail',box(.196,.214,.02),1.10,.37,-.30);
+    const cell=launchCellParts({bore:.073,wall:.018,proud:.04,behind:.02,depth:.45,segments:[24,12]},P.q,1.10,.37,.81);
+    P.addEquipment('turretDetail',cell.rim);
+    P.addEquipment('turretDark',cell.bore);
   });
   P.addEquipment('turretDetail',cylY(.11,.14,.13,16),.33,.675,-.51);
   P.addEquipment('turretDark',box(.12,.13,.36),.33,.79,-.42);

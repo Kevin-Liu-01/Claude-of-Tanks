@@ -15,6 +15,7 @@ import {
 } from './advancedIfvScale.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mountRotated as mount } from './fittingMount.ts';
+import { launchCellParts, perforatedPlate } from './missileCanisterStock.ts';
 
 type Vec3 = [number, number, number];
 type Owner = 'hull' | 'turret';
@@ -23,6 +24,7 @@ interface LightTigerBuilderPort extends AdvancedIfvScalePort {
   readonly gunG: THREE.Group;
   readonly mats: Record<string, THREE.Material>;
   readonly geometryReceipt?: boolean;
+  readonly q?: boolean;
   readonly spec: { readonly id: string; readonly visual: { readonly number?: string } };
   muzzleZ: number;
   add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
@@ -280,17 +282,26 @@ function addTurret(P: LightTigerBuilderPort): void {
   // Signature Jyu-MAT Kai channels sit in proud squared armored side boxes.
   // A buried collar overlaps the turret shoulder while the wider launcher pod
   // projects far enough outboard to remain readable in front and side views.
+  // 2026-10-21 (owner: launch tubes "like the object 695, and tagil"): each pod is an open pack, four walls and a back
+  // plate around a perforated front plate 2 cm inside them, with two cells whose rim collars stand proud of the walls
+  // around dark liners and sealed terminals 40 cm deep (the dark rectangles on a closed box read as no tube at all).
+  // The pod grows 6 cm taller, centred on the unchanged mouths (y 0.32 / 0.56, z 0.7175).
   weaponAssembly(P, () => {
+    const cell = { bore: .085, wall: .02, proud: .0475, behind: .02, depth: .40, segments: [24, 12] as const };
     for (const side of [-1, 1]) {
-      P.addEquipment('turret', box(0.18, 0.42, 0.68), side * 1.16, 0.46, 0.38,
-        0, 0, side * 0.035);
-      P.addEquipment('turret', box(0.46, 0.46, 0.62), side * 1.39, 0.46, 0.38,
-        0, 0, side * 0.035);
-      for (const y of [0.32, 0.56]) {
-        P.add('turretDark', box(0.28, 0.14, 0.025), side * 1.39, y, 0.705);
+      const at = [side * 1.39, 0.44, 0.38, 0, 0, side * 0.035] as const;
+      P.addEquipment('turret', box(0.18, 0.42, 0.56), side * 1.16, 0.46, 0.32, 0, 0, side * 0.035);
+      for (const x of [-0.215, 0.215]) P.addEquipment('turret', KIT.xform(box(0.03, 0.47, 0.62), x, 0, 0), ...at);
+      for (const y of [-0.245, 0.245]) P.addEquipment('turret', KIT.xform(box(0.46, 0.03, 0.618), 0, y, -0.001), ...at);
+      P.addEquipment('turret', KIT.xform(box(0.41, 0.47, 0.03), 0, 0, -0.29), ...at);
+      P.addEquipment('turret', KIT.xform(perforatedPlate(0.41, 0.47, 0.02, [[0, -0.12], [0, 0.12]], 0.095, P.q ? 24 : 12),
+        0, 0, 0.29), ...at);
+      for (const y of [-0.12, 0.12]) {
+        const parts = launchCellParts(cell, P.q, 0, y, 0.29);
+        P.addEquipment('turret', parts.rim, ...at);
+        P.add('turretDark', parts.bore, ...at);
       }
     }
-
   });
   // Twin large square roof optics echo the Type 89's paired sight boxes. The
   // housings straddle the gun instead of blocking it, with deep dark bezels

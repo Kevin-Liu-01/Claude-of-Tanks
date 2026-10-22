@@ -24,6 +24,7 @@ import {
 import { T90_PROFILES } from './t90.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
 import { mount } from './fittingMount.ts';
+import { launchCellParts, perforatedPlate } from './missileCanisterStock.ts';
 
 type Vec3Tuple = [number, number, number];
 type VehicleAssemblyOwner = 'hull' | 'turret';
@@ -269,9 +270,11 @@ function addUkrainianBradleyPackage(P: AfvBuilderPort): void {
     armorTile(P, 'hull', side * (0.25 + i * 0.30), 1.57 - row * 0.10,
       2.40 - row * 0.26, 0.27, 0.095, 0.28, [-0.34, 0, 0], false);
   }
-  for (const side of [-1, 1]) for (let i = 0; i < 4; i++) {
-    armorTile(P, 'turret', side * 1.17, 0.47, 0.53 - i * 0.42,
-      0.12, 0.30, 0.34, [0, 0, side * 0.05], false);
+  // 2026-10-21: only the right flank carries these tiles. The left four hovered over the TOW pod's old sloped top (and
+  // would have met it as it elevated; the front one crossed the upper tube's mouth); the flat-fronted pod (modern3.ts)
+  // now covers that flank.
+  for (let i = 0; i < 4; i++) {
+    armorTile(P, 'turret', 1.17, 0.47, 0.53 - i * 0.42, 0.12, 0.30, 0.34, [0, 0, 0.05], false);
   }
   P.add('turretDark', box(2.18, 0.24, 0.055), 0, 0.35, -1.50);
   mount(P, 'turret', FITTINGS.stowageRack({
@@ -724,14 +727,26 @@ function addM3A3Turret(P: AfvBuilderPort): void {
     P.add('turret', box(0.24, 0.28, 0.46), -0.76, 0.53, -0.18);
     P.add('turret', xform(cylX(0.090, 0.22, 12), 0, 0, 0), -0.88, 0.57, -0.18);
     P.add('turret', box(0.11, 0.33, 0.64), -0.91, 0.60, -0.20, -0.05, 0, 0);
-    P.addEquipment('turret', box(0.40, 0.44, 1.08), -0.91, 0.73, -0.22, -0.05, 0, 0);
+    // 2026-10-21 (owner: launch tubes "like the object 695, and tagil"): the box is an open pack, four walls and a back
+    // plate around a perforated front plate 1 cm inside them; each TOW tube is a rim collar standing at the unchanged
+    // launch exits around a dark liner and sealed terminal 16 cm deep, 152 mm bore (the dark face and two painted
+    // discs read as a closed lid).
+    const at = [-0.91, 0.73, -0.22, -0.05, 0, 0] as const;
+    for (const x of [-0.1875, 0.1875]) P.addEquipment('turret', xform(box(0.025, 0.395, 1.08), x, 0, 0), ...at);
+    for (const y of [-0.2075, 0.2075]) P.addEquipment('turret', xform(box(0.40, 0.025, 1.078), 0, y, -0.001), ...at);
+    P.addEquipment('turret', xform(box(0.355, 0.395, 0.025), 0, 0, -0.525), ...at);
+    const tubes = [0.0851, -0.1033];
+    P.addEquipment('turret', xform(perforatedPlate(0.355, 0.395, 0.02, tubes.map(y => [0, y] as const), 0.082,
+      P.q ? 24 : 12), 0, 0, 0.53), ...at);
+    for (const y of tubes) {
+      // 16 cm deep: the sealed terminal stays ahead of the elevating cradle inside the box (front at world z 0.12).
+      const tube = launchCellParts({ bore: 0.076, wall: 0.012, proud: 0.054, behind: 0.02, depth: 0.16,
+        segments: [24, 12] }, P.q, 0, y, 0.53);
+      P.addEquipment('turret', tube.rim, ...at);
+      P.add('turretDark', tube.bore, ...at);
+    }
     for (let k = 0; k < 3; k++) {
       P.add('turretDark', box(0.42, 0.03, 0.05), -0.91, 0.61 + k * 0.12, -0.22, -0.05, 0, 0);
-    }
-    P.add('turretDark', box(0.36, 0.38, 0.05), -0.91, 0.75, 0.305, -0.05, 0, 0);
-    for (const dy of [-0.115, 0.115]) {
-      P.add('turretDark', cylZ(0.088, 0.04, 14), -0.91, 0.75 + dy * 0.82, 0.328, -0.05, 0, 0);
-      P.add('turretDetail', cylZ(0.097, 0.022, 14), -0.91, 0.75 + dy * 0.82, 0.352, -0.05, 0, 0);
     }
     P.add('turretDark', box(0.36, 0.36, 0.04), -0.91, 0.71, -0.75, -0.05, 0, 0);
 

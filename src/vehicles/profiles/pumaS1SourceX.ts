@@ -2,9 +2,9 @@ import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Source-measured Puma S1 replica. The separate upgraded Puma S1 is preserved.
 // Coordinates are metres; no source mesh is loaded by the playable builder.
-import * as THREE from 'three';
 import { KIT, convexSlab } from './kit.ts';
 import { chassisLoft, sideWall, turretEquipment, optic, deckGrille, openTube, mirrorX } from './europeSourcePrimitives.ts';
+import { launchCellParts, perforatedPlate } from './missileCanisterStock.ts';
 import { sectionSolid } from './sectionSolid.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { weaponAssembly } from './weaponStock.ts';
@@ -174,10 +174,13 @@ function gun(P: TankBuilderPort): void {
     for(const dy of [-.255,.255])P.addGunExtra(box(.472,.035,1.84),tx,ty+dy,front-.92);
     P.addGunExtra(box(.47,.53,.045),tx,ty,front-1.84);
     P.addGunExtra(box(.78,.095,.47),tx-.23,ty-.245,-.25);
+    // 2026-10-21 (owner: launch tubes "like the object 695, and tagil"): a perforated front plate 1 cm inside the
+    // walls closes the bank, and each cell is a rim collar 2 cm proud of the walls around a weapon-steel liner and
+    // sealed terminal 45 cm deep, replacing the painted open tubes, flat rings and shallow discs.
+    P.addGunExtra(perforatedPlate(.415,.485,.02,[[-.1005,0],[.1005,0]],.084,P.q?24:12),tx,ty,front-.01);
     for(const dx of [-.1005,.1005]) {
-      P.addGunExtra(new THREE.CylinderGeometry(.082,.082,1.28,P.q?20:10,1,true).rotateX(Math.PI/2),tx+dx,ty,front-.67);
-      P.addGunExtra(new THREE.RingGeometry(.062,.084,P.q?20:10),tx+dx,ty,front);
-      P.addGunExtraDark(new THREE.CircleGeometry(.062,P.q?20:10),tx+dx,ty,front-.20);
+      const cell=launchCellParts({bore:.074,wall:.02,proud:.03,behind:.02,depth:.45,segments:[24,12]},P.q,tx+dx,ty,front-.01);
+      P.addGunExtra(cell.rim);P.addGunExtraDark(cell.bore);
     }
   });
 }

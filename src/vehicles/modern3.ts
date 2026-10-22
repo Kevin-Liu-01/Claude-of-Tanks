@@ -15,6 +15,7 @@ import { KIT, type RunningGearConfig, type TankBuilderPort } from './tankFactory
 import { FITTINGS, convexSlab } from './profiles/kit.ts';
 import { facetedSlab } from './profiles/facetedSlab.ts';
 import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './profiles/type10GunSeat.ts';
+import { launchCellParts, perforatedPlate } from './profiles/missileCanisterStock.ts';
 import { K2_ROAD_WHEELS } from './profiles/k2RoadWheels.ts';
 import './modern3Specs.ts';
 
@@ -3536,19 +3537,24 @@ export function buildBradley(P: Modern3BuilderPort) {
     // ~2.17 at its x -1.27 tip — my flat 2.41 top + 2.46 rib read +0.25 on
     // the front -1.2 cols) and its front diagonal sits ~0.1 lower than the
     // r3 cut; the tube muzzle discs sat 0.1 PROUD of the diagonal.
+    // 2026-10-21 (owner: launch tubes "like the object 695, and tagil"): the print's sloped slab could not hold two
+    // stacked TOW tubes (its outer top fell below the upper bore). The pod is now an open pack of the same width,
+    // flat-fronted: four walls and a back plate around a perforated front plate 1 cm inside them, and two cells
+    // whose rim collars stand 3 cm proud around dark liners and sealed terminals 45 cm deep (170 mm bore).
     weaponAssembly(P, () => {
-      P.addGunExtra(slab(
-        [-1.155, -0.32, 0.00], [-0.785, -0.32, 0.34], [-0.785, -0.32, -0.93], [-1.155, -0.32, -0.93],
-        [-1.155, -0.075, 0.00], [-0.785, 0.16, 0.34], [-0.785, 0.16, -0.93], [-1.155, -0.075, -0.93],
-      ), 0, 0, 0);                                                                  // armored pod box (1.93..2.41 east,
-                                                                                    //   top falling to 2.175 west)
-      P.addGunExtra(box(0.22, 0.05, 1.00), -0.90, 0.185, -0.43);                    // lid rib (east half only — its
-                                                                                    //   world -1.205 end lit the front
-                                                                                    //   -1.198 col at 2.46)
-      P.addGunExtraDark(cylZ(0.115, 0.06, 14), -0.97, 0.04, 0.115);                 // upper tube muzzle (flush under
-      P.addGunExtraDark(cylZ(0.115, 0.06, 14), -0.97, -0.20, 0.115);                //   the new diagonal)
+      // Tail at z -0.86 (7 cm short of the print's), clear of the turret's rear-left stowage bag.
+      for (const x of [-1.14, -0.80]) P.addGunExtra(box(0.03, 0.47, 1.06), x, -0.08, -0.33);
+      for (const y of [-0.325, 0.165]) P.addGunExtra(box(0.37, 0.03, 1.056), -0.97, y, -0.33);
+      P.addGunExtra(box(0.32, 0.47, 0.03), -0.97, -0.08, -0.84);
+      P.addGunExtra(perforatedPlate(0.32, 0.47, 0.02, [[0, 0.12], [0, -0.12]], 0.0965, P.q ? 24 : 12), -0.97, -0.08, 0.19);
+      for (const y of [0.04, -0.20]) {
+        const tube = launchCellParts({ bore: 0.085, wall: 0.02, proud: 0.04, behind: 0.02, depth: 0.45,
+          segments: [24, 12] }, P.q, -0.97, y, 0.19);
+        P.addGunExtra(tube.rim); P.addGunExtraDark(tube.bore);
+      }
+      P.addGunExtra(box(0.22, 0.05, 0.92), -0.90, 0.185, -0.39);                    // lid rib on the pod roof
       P.addGunExtra(box(0.32, 0.26, 0.34), -0.65, -0.04, 0.10);                     // elevation arm to the mount
-      P.addGunExtra(box(0.28, 0.16, 0.26), -0.665, 0.06, 0.40);                     // pod root bracket (laps the pod
+      P.addGunExtra(box(0.28, 0.16, 0.26), -0.665, 0.06, 0.32);                     // pod root bracket (laps the pod
                                                                                     //   r4: east world -0.59 — the -0.66
                                                                                     //   face was 2 mm outside the -0.621
                                                                                     //   col window, ref front 0.727)
@@ -5182,7 +5188,7 @@ function buildType89Hull(P: Modern3BuilderPort) {
 }
 
 function buildType89Turret(P: Modern3BuilderPort) {
-  const { box, cylY, cylZ, buildGun, stowage, torus } = KIT;
+  const { box, cylY, cylZ, buildGun, stowage, torus, xform } = KIT;
   const slab = orientedSlab;
   const { rng } = P;
   const num = P.spec.visual.number || '';
@@ -5210,11 +5216,20 @@ function buildType89Turret(P: Modern3BuilderPort) {
   // ---- Jyu-MAT LAUNCHER BOXES both flanks (THE identity tell): single-
   // tube armored box on a wall bracket + support strut, tilted up 8 deg,
   // seated at wall-top height so the wings read in side profile ------------
+  // 2026-10-21 (owner: launch tubes "like the object 695, and tagil"): each box is an open pack, four walls and a back
+  // plate around a perforated front plate 2 cm inside them; the tube is a rim collar 1 cm proud of the walls around a
+  // dark liner and sealed terminal 40 cm deep, on the unchanged launch axis (the dark door and disc read as no tube).
   weaponAssembly(P, () => {
     for (const s of [-1, 1]) {
-      P.add('turret', box(0.36, 0.36, 0.92), s * 0.92, 0.32, -0.16, -0.14, 0, 0);
-      P.add('turretDark', box(0.30, 0.30, 0.02), s * 0.92, 0.385, 0.295, -0.14, 0, 0); // muzzle door recess
-      P.add('turretDark', cylZ(0.10, 0.04, 14), s * 0.92, 0.385, 0.285, -0.14, 0, 0); // tube mouth
+      const at = [s * 0.92, 0.32, -0.16, -0.14, 0, 0] as const;
+      for (const x of [-0.165, 0.165]) P.add('turret', xform(box(0.03, 0.31, 0.92), x, 0, 0), ...at);
+      for (const y of [-0.165, 0.165]) P.add('turret', xform(box(0.36, 0.03, 0.918), 0, y, -0.001), ...at);
+      P.add('turret', xform(box(0.31, 0.31, 0.03), 0, 0, -0.44), ...at);
+      P.add('turretDetail', xform(perforatedPlate(0.31, 0.31, 0.02, [[0, 0]], 0.095, P.q ? 24 : 12), 0, 0, 0.44), ...at);
+      const tube = launchCellParts({ bore: 0.085, wall: 0.02, proud: 0.03, behind: 0.02, depth: 0.40, segments: [24, 12] },
+        P.q, 0, 0, 0.44);
+      P.add('turretDetail', tube.rim, ...at);
+      P.add('turretDark', tube.bore, ...at);
       P.add('turretDetail', box(0.36, 0.05, 0.06), s * 0.92, 0.17, -0.55);       // rear cap rib
       P.add('turret', box(0.05, 0.28, 0.52), s * 0.73, 0.30, -0.20);             // wall bracket
       P.add('turretDetail', box(0.04, 0.04, 0.36), s * 0.85, 0.12, 0.14, 0, 0, s * 0.6); // support strut
