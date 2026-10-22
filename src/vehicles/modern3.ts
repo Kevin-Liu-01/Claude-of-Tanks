@@ -15,7 +15,7 @@ import { KIT, type RunningGearConfig, type TankBuilderPort } from './tankFactory
 import { FITTINGS, convexSlab } from './profiles/kit.ts';
 import { facetedSlab } from './profiles/facetedSlab.ts';
 import { TYPE10_GUN_SEAT, TYPE10_MANTLET_FIT } from './profiles/type10GunSeat.ts';
-import { launchCellParts, perforatedPlate } from './profiles/missileCanisterStock.ts';
+import { declareLaunchBore, launchCellParts, perforatedPlate } from './profiles/missileCanisterStock.ts';
 import { K2_ROAD_WHEELS } from './profiles/k2RoadWheels.ts';
 import './modern3Specs.ts';
 
@@ -5218,7 +5218,7 @@ function buildType89Turret(P: Modern3BuilderPort) {
   // seated at wall-top height so the wings read in side profile ------------
   // 2026-10-21 (owner: launch tubes "like the object 695, and tagil"): each box is an open pack, four walls and a back
   // plate around a perforated front plate 2 cm inside them; the tube is a rim collar 1 cm proud of the walls around a
-  // dark liner and sealed terminal 40 cm deep, on the unchanged launch axis (the dark door and disc read as no tube).
+  // dark liner and sealed terminal 9 cm deep, on the unchanged launch axis (the dark door and disc read as no tube).
   weaponAssembly(P, () => {
     for (const s of [-1, 1]) {
       const at = [s * 0.92, 0.32, -0.16, -0.14, 0, 0] as const;
@@ -5226,10 +5226,14 @@ function buildType89Turret(P: Modern3BuilderPort) {
       for (const y of [-0.165, 0.165]) P.add('turret', xform(box(0.36, 0.03, 0.918), 0, y, -0.001), ...at);
       P.add('turret', xform(box(0.31, 0.31, 0.03), 0, 0, -0.44), ...at);
       P.add('turretDetail', xform(perforatedPlate(0.31, 0.31, 0.02, [[0, 0]], 0.095, P.q ? 24 : 12), 0, 0, 0.44), ...at);
-      const tube = launchCellParts({ bore: 0.085, wall: 0.02, proud: 0.03, behind: 0.02, depth: 0.40, segments: [24, 12] },
-        P.q, 0, 0, 0.44);
+      // A sealed terminal 9 cm behind the mouth, Object 695's recess: the pod's 8-degree tilt would let a deep bore read
+      // as enclosed air to the interior-fill voxels, which then box it in.
+      const cell = { bore: 0.085, wall: 0.02, proud: 0.03, behind: 0.02, depth: 0.06, segments: [24, 12] as const };
+      const tube = launchCellParts(cell, P.q, 0, 0, 0.44);
       P.add('turretDetail', tube.rim, ...at);
       P.add('turretDark', tube.bore, ...at);
+      declareLaunchBore(P.turretG, new THREE.Matrix4().compose(new THREE.Vector3(at[0], at[1], at[2]),
+        new THREE.Quaternion().setFromEuler(new THREE.Euler(at[3], at[4], at[5])), new THREE.Vector3(1, 1, 1)), cell, 0, 0, 0.44);
       P.add('turretDetail', box(0.36, 0.05, 0.06), s * 0.92, 0.17, -0.55);       // rear cap rib
       P.add('turret', box(0.05, 0.28, 0.52), s * 0.73, 0.30, -0.20);             // wall bracket
       P.add('turretDetail', box(0.04, 0.04, 0.36), s * 0.85, 0.12, 0.14, 0, 0, s * 0.6); // support strut

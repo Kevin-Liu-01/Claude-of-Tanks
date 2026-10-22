@@ -126,6 +126,16 @@ export function launchCellParts(c: LaunchCell, q: boolean | undefined, x: number
   return { rim: rim.translate(x, y, 0), bore: KIT.mergeAll(dark).translate(x, y, 0) };
 }
 
+/** Declare a launch cell's bore as open air on the rig group that carries it (`frame` maps the launcher's own frame
+ * into that group). tools/physical-bore-air.mjs reads `userData.launchBores` beside the gun's declared and carved
+ * bores, so the interior-fill voxels never box in a tilted bore that reads as enclosed (Hayate's 8-degree pods). */
+export function declareLaunchBore(owner: THREE.Object3D, frame: THREE.Matrix4, c: LaunchCell, x: number, y: number,
+  face: number): void {
+  const bores = (owner.userData.launchBores ??= []) as { matrix: number[]; innerRadiusM: number; depthM: number; muzzleZ: number }[];
+  bores.push({ matrix: frame.clone().multiply(new THREE.Matrix4().makeTranslation(x, y, 0)).toArray(),
+    innerRadiusM: c.bore, depthM: c.proud + c.depth, muzzleZ: face + c.proud });
+}
+
 /** A flat launcher face plate, front face at z = 0 and `thickness` deep, centred on (0, 0) with round holes. */
 export function perforatedPlate(width: number, height: number, thickness: number,
   holes: readonly (readonly [number, number])[], holeRadius: number, segments: number): THREE.BufferGeometry {

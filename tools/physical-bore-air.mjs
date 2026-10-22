@@ -57,10 +57,23 @@ export function physicalBoreAir(root) {
     if (!frame) throw new Error(`physical muzzle bore frame ${declared.frame} is missing`);
     primary = boreRecord(frame, declared.innerRadiusM, declared.depthM, declared.muzzleZ, 'physical');
   }
-  const carved = carvedBores(root);
+  const carved = [...carvedBores(root), ...launchBores(root)];
   if (!primary && !carved.length) return null;
   const bores = primary ? [primary, ...carved] : carved;
   return { ...(primary ?? carved[0]), bores };
+}
+
+/** 2026-10-21: launch cells a profile declares open (missileCanisterStock.ts declareLaunchBore), in the frame of the
+ * rig group that carries them. Their recesses open to the sky through the collar mouth, like the gun's. */
+function launchBores(root) {
+  const bores = [];
+  root.traverse((object) => {
+    for (const bore of object.userData?.launchBores ?? []) {
+      const world = object.matrixWorld.clone().multiply(new THREE.Matrix4().fromArray(bore.matrix));
+      bores.push(boreRecord({ matrixWorld: world }, bore.innerRadiusM, bore.depthM, bore.muzzleZ, 'launch'));
+    }
+  });
+  return bores;
 }
 
 const boresOf = (bore) => bore?.bores ?? (bore ? [bore] : []);

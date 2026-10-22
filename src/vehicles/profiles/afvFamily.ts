@@ -728,23 +728,26 @@ function addM3A3Turret(P: AfvBuilderPort): void {
     P.add('turret', xform(cylX(0.090, 0.22, 12), 0, 0, 0), -0.88, 0.57, -0.18);
     P.add('turret', box(0.11, 0.33, 0.64), -0.91, 0.60, -0.20, -0.05, 0, 0);
     // 2026-10-21 (owner: launch tubes "like the object 695, and tagil"): the box is an open pack, four walls and a back
-    // plate around a perforated front plate 1 cm inside them; each TOW tube is a rim collar standing at the unchanged
-    // launch exits around a dark liner and sealed terminal 16 cm deep, 152 mm bore (the dark face and two painted
-    // discs read as a closed lid).
-    const at = [-0.91, 0.73, -0.22, -0.05, 0, 0] as const;
-    for (const x of [-0.1875, 0.1875]) P.addEquipment('turret', xform(box(0.025, 0.395, 1.08), x, 0, 0), ...at);
-    for (const y of [-0.2075, 0.2075]) P.addEquipment('turret', xform(box(0.40, 0.025, 1.078), 0, y, -0.001), ...at);
-    P.addEquipment('turret', xform(box(0.355, 0.395, 0.025), 0, 0, -0.525), ...at);
-    const tubes = [0.0851, -0.1033];
-    P.addEquipment('turret', xform(perforatedPlate(0.355, 0.395, 0.02, tubes.map(y => [0, y] as const), 0.082,
-      P.q ? 24 : 12), 0, 0, 0.53), ...at);
+    // plate around a perforated front plate 1 cm inside them; each TOW tube is a rim collar around a dark liner and a
+    // sealed terminal 6 cm behind the face, 152 mm bore (the dark face and two painted discs read as a closed lid).
+    // The turret's buckets are squashed to TURRET_HEIGHT_SCALE below and its equipment re-seated part by part, which
+    // would shear a multi-part pack. So the pack is authored at its final place (the old box's re-seated centre, y
+    // 0.6334), merged and pre-stretched by the inverse scale: one rigid launcher whose cells meet its launch exits.
+    const at = [-0.91, 0.6334, -0.22, -0.05, 0, 0] as const;
+    const placed = (g: THREE.BufferGeometry) => xform(g, ...at).scale(1, 1 / TURRET_HEIGHT_SCALE, 1);
+    const tubes = [-0.095, 0.095];
+    const cell = { bore: 0.076, wall: 0.016, proud: 0.054, behind: 0.02, depth: 0.06, segments: [24, 12] as const };
+    const paint: THREE.BufferGeometry[] = [], dark: THREE.BufferGeometry[] = [];
+    for (const x of [-0.1875, 0.1875]) paint.push(xform(box(0.025, 0.395, 1.08), x, 0, 0));
+    for (const y of [-0.2075, 0.2075]) paint.push(xform(box(0.40, 0.025, 1.078), 0, y, -0.001));
+    paint.push(xform(box(0.355, 0.395, 0.025), 0, 0, -0.525));
+    paint.push(xform(perforatedPlate(0.355, 0.395, 0.02, tubes.map(y => [0, y] as const), 0.084, P.q ? 24 : 12), 0, 0, 0.53));
     for (const y of tubes) {
-      // 16 cm deep: the sealed terminal stays ahead of the elevating cradle inside the box (front at world z 0.12).
-      const tube = launchCellParts({ bore: 0.076, wall: 0.012, proud: 0.054, behind: 0.02, depth: 0.16,
-        segments: [24, 12] }, P.q, 0, y, 0.53);
-      P.addEquipment('turret', tube.rim, ...at);
-      P.add('turretDark', tube.bore, ...at);
+      const tube = launchCellParts(cell, P.q, 0, y, 0.53);
+      paint.push(tube.rim); dark.push(tube.bore);
     }
+    P.add('turretDetail', placed(KIT.mergeAll(paint)));
+    P.add('turretDark', placed(KIT.mergeAll(dark)));
     for (let k = 0; k < 3; k++) {
       P.add('turretDark', box(0.42, 0.03, 0.05), -0.91, 0.61 + k * 0.12, -0.22, -0.05, 0, 0);
     }

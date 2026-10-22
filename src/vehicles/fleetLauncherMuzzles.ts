@@ -28,7 +28,8 @@ const mounts: Readonly<Record<string, readonly LauncherMuzzle[]>> = {
   bmpt_terminator2: [-1, 1].flatMap(s => [.335, .575].map(y => turret(s * (.93 + .011 * Math.sin(.035)), y, .668 + .011 * Math.cos(.035), 0, s * .035))),
   bwp1: [turret(.28, 1.11, .76)],
   marder1a3: [turret(.55, .92, .445)],
-  m3a3_bradley: [-.115, .115].map(dy => turret(-.91, .75 + dy * .82 + .011 * Math.sin(.05), .352 + .011 * Math.cos(.05), .05)),
+  // 2026-10-21: the TOW collar mouths of the rebuilt pack (profiles/afvFamily.ts addM3A3Turret), final datums.
+  m3a3_bradley: [-1, 1].map(s => turret(-.91, .6626 + s * .0949, .3633 - s * .0047, .05)),
   upior: [turret(1.10, .37, .83)],
   bmpt_t90: [-1, 1].flatMap(s => [1.005, 1.245].flatMap(x => [.35, .60].map(y => turret(s * (x + .011 * Math.sin(.03)), y, .724 + .011 * Math.cos(.03), 0, s * .03)))),
   // Preserve the source battery's left-to-right, lower/upper firing order.
