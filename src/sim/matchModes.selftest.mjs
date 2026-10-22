@@ -429,7 +429,9 @@ assert.equal(GAME_MODE_DEFINITIONS.turbo_ball.respawns, true);
   alpha.state.pos.x = enemyFlag.x; alpha.state.pos.z = enemyFlag.z;
   match.step(1 / 60, 1);
   assert.equal(enemyFlag.carrierId, 'alpha');
-  assert.ok(Math.abs(alpha.modeSpeedMultiplier - FLAG_CARRIER_SPEED_SCALE) < 1e-9, 'the carrier drives at 85 %');
+  // (233) the CTF ruleset sets its own carrier share (flagPitch.carrierSpeedScale: full speed); the 0.85 default is the fallback
+  const carrierShare = matchRulesetFor('capture_the_flag').flagPitch?.carrierSpeedScale ?? FLAG_CARRIER_SPEED_SCALE;
+  assert.ok(Math.abs(alpha.modeSpeedMultiplier - carrierShare) < 1e-9, `the carrier drives at its ruleset's share (${carrierShare})`);
   alpha.state.pos.x = ownFlag.baseX; alpha.state.pos.z = ownFlag.baseZ;
   match.step(1 / 60, 2);
   assert.equal(match.state.score.alpha, 1);

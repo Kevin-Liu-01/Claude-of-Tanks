@@ -1,6 +1,7 @@
 // Rulesets are the contract every mode plays by (owner 2026-09-14 evening): pin the values the
 // sim reads, their determinism, the campaign difficulty fold, and the rule lines the cards show.
 import assert from 'node:assert/strict';
+import { isPracticeMode } from './gameModeCatalog.ts';
 import { GAME_MODE_IDS } from './matchModes.ts';
 import { rulesetSeatHullScale,
   matchRulesetFor, rulesetLines, rulesetAmmoCapacity, rulesetReloadMultiplier, RULESET_SCORE_TARGETS,
@@ -184,7 +185,8 @@ assert.deepEqual([...TEAM_NATIONS_IDS], ['mono', 'random']); assert.equal(DEFAUL
 for (const mode of GAME_MODE_IDS) {
   assert.equal(matchRulesetFor(mode).teamNations, 'mono', `${mode}: MONO-NATION is the default`);
   assert.ok(TEAM_NATIONS_MODE_SCOPE[mode], `${mode}: a TEAM NATIONS scope row`);
-  assert.equal(matchRulesetFor(mode, null, { teamNations: 'random' }).teamNations, 'random', `${mode}: RANDOM is arranged`);
+  // the proving ground (a practice mode) has no opposing team to arrange: it stays MONO
+  if (!isPracticeMode(mode)) assert.equal(matchRulesetFor(mode, null, { teamNations: 'random' }).teamNations, 'random', `${mode}: RANDOM is arranged`);
 }
 assert.deepEqual(normalizeTeamArrangement('standard', { teamNations: 'random' }), { allies: null, enemies: null, waveSize: null, enemyNation: null, teamNations: 'random' });
 assert.equal(normalizeTeamArrangement('standard', { teamNations: 'mono' }), null, 'mono is the absent default');
