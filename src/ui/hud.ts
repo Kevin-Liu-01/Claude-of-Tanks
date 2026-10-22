@@ -1155,6 +1155,7 @@ const RET_CEIL_FRAC = 0.15;
 // Shared type system (see src/ui/fonts.ts): FONT_COND drives the numeral/label
 // hierarchy (weight floor 500); readouts that tick in place take the .num class.
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
+import { A11Y } from './accessibilityPreferences.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import {
   CONSUMABLE_READY_MARK, CONSUMABLE_RULES, cooldownRemaining,
@@ -2055,9 +2056,6 @@ export function initHud(bus: EventBus): HudRuntime {
   let markShown = false, markX = NaN, markY = NaN;
   const on = (event: string, listener: (payload: HudEventPayload) => void): (() => void) =>
     bus.on(event, (payload) => listener(payload as HudEventPayload));
-  const reducedMotionQuery = typeof window.matchMedia === 'function'
-    ? window.matchMedia('(prefers-reduced-motion: reduce)')
-    : null;
   const hpLayer = el('div', 'cot-hpbars', root);
   const dmgLayer = el('div', 'cot-dmglayer', root);
 
@@ -2127,12 +2125,11 @@ export function initHud(bus: EventBus): HudRuntime {
   let netLastMs = 0;       // wall-clock of previous update (fps EMA only)
   let netLastPaintMs = 0;  // DOM values update at 4 Hz, not every render frame
   let netEmaDt = 1 / 60;
-  // Desktop keeps the player's Interface preference. Mobile always shows the
-  // compact readout directly below its top-right control row.
+  // The player's Interface preference on every device (off by default, brand-ui SPEC 12.1.6): touch layouts no longer
+  // force the readout on.
   let netOptIn = false;
   function updateNetReadout(frame: HudFrame): void {
-    const mobileRequired = document.body.classList.contains('cot-touch-layout');
-    if (!netOptIn && !mobileRequired) return;
+    if (!netOptIn) return;
     const now = performance.now();
     if (netLastMs > 0) {
       const dt = Math.min(0.25, (now - netLastMs) / 1000);
@@ -2266,14 +2263,16 @@ export function initHud(bus: EventBus): HudRuntime {
   /** (ac130-fx-228) the combatants flying the gunship: their vehicle is the AC-130 (its icon in the silhouette's place) */
   const aircraftById = new Set<string>();
   const earRows = new Map<string, EarRow>(); // tank id -> { root, hp, dead, name }
+  // Tab holds the rosters open, or toggles them when the player chose toggle for it (hold-or-toggle, Accessibility).
   window.addEventListener('keydown', event => {
     if (event.code !== 'Tab' || mode === 'hidden' || isAnyModalOpen() || document.querySelector('.cot-settings.open') ||
         (event.target instanceof Element && event.target.closest('input,textarea,select,[contenteditable="true"],.cot-room-chat'))) return;
     event.preventDefault();
-    root.classList.add('rosters-expanded');
+    if (!A11Y.toggles.has('rosters')) root.classList.add('rosters-expanded');
+    else if (!event.repeat) root.classList.toggle('rosters-expanded');
   }, true);
   const collapseRosters = (): void => { root.classList.remove('rosters-expanded'); };
-  window.addEventListener('keyup', event => { if (event.code === 'Tab') collapseRosters(); }, true);
+  window.addEventListener('keyup', event => { if (event.code === 'Tab' && !A11Y.toggles.has('rosters')) collapseRosters(); }, true);
   window.addEventListener('blur', collapseRosters);
 
   const killfeed = el('div', 'cot-killfeed', root);
@@ -3807,8 +3806,9 @@ export function initHud(bus: EventBus): HudRuntime {
       1,
       paint.rimHalfAngle,
     );
-    if (paint.age < 0.25) {
-      const flash = 1 - paint.age / 0.25;
+    if (paint.age < 0.25 && A11Y.flash > 0) {
+      // the white bloom of a fresh hit, scaled by the player's flash intensity (Accessibility)
+      const flash = (1 - paint.age / 0.25) * A11Y.flash;
       ctx.globalCompositeOperation = 'lighter';
       strokeHitIndicatorArc(
         frame,
@@ -3928,8 +3928,8 @@ export function initHud(bus: EventBus): HudRuntime {
   function drawHitMark(g: CanvasRenderingContext2D, cx: number, cy: number, timeS: number): void {
     if (!hitMark) return;
     const age = timeS - hitMark.t0;
-    const visual = hitConfirmVisualState(
-      age, !!reducedMotionQuery?.matches, hitConfirmScratch);
+    // Reduce motion is the player's choice or the OS while they follow it (accessibilityPreferences.ts).
+    const visual = hitConfirmVisualState(age, A11Y.reduceMotion, hitConfirmScratch);
     if (!visual.visible) { hitMark = null; return; }
 
     const baseColor = hitMark.bounced ? '202,218,232' : '255,166,48';
@@ -3979,8 +3979,8 @@ export function initHud(bus: EventBus): HudRuntime {
 
     // Brief center spark marks the exact impact acknowledgement. It vanishes
     // before the hold phase and is disabled entirely under reduced motion.
-    if (visual.flash > 0.001) {
-      const sparkAlpha = visual.opacity * visual.flash;
+    if (visual.flash * A11Y.flash > 0.001) {
+      const sparkAlpha = visual.opacity * visual.flash * A11Y.flash;
       const sparkR = 3.5 + 2.5 * visual.flash;
       g.strokeStyle = `rgba(5,8,12,${(sparkAlpha * 0.75).toFixed(3)})`;
       g.lineWidth = 3.2;

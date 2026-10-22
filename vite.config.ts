@@ -455,6 +455,11 @@ export default defineConfig({
             // apart from hashes. The public pages reach the player with import() beside their first bytes (with the fleet
             // takes' small helpers, about 7 KB brotli, only on pages that show a video).
             { name: 'fleetTakes', test: /[\\/]src[\\/](?:ui[\\/]fleetTakes|presentation[\\/]mediaPlayer)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-18 (brand-ui BUI-F9): the accessibility reader and the token selection it writes ride with the shared DOM
+            // primitives, a leaf chunk only the game loads at boot. The main entry, the input layer's chunk and the lazy HUD,
+            // FX and kill cam all import the reader, so on its own it became one more game boot request. The group takes
+            // exactly these three modules, none of their dependencies.
+            { name: 'dom', test: /[\\/]src[\\/]ui[\\/](?:dom|accessibilityPreferences|tokens[\\/]tokenSelection)\.ts$/, includeDependenciesRecursively: false },
             { name: 'groundBounce', test: /(?:[\\/]three[\\/]examples[\\/]jsm[\\/]postprocessing[\\/]Pass\.js|[\\/]src[\\/]engine[\\/](?:atmosphere|cloudscapes|lightModelCore|hazeLaw|groundBounce)\.ts)$/, includeDependenciesRecursively: false },
             // 2026-10-19 (gameplay-modes-228 round 2): TEAM NATIONS' country table and its planner are one chunk — the
             // garage's TEAMS switch reads the table, the solo roster plans with both, the rooms read both — instead of

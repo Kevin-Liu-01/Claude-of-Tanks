@@ -70,6 +70,11 @@ import {
 } from '../engine/quality.ts';
 // entry telemetry (2026-09-24): the anonymous crash/load beacon is a player choice
 import { setTelemetryOptOut, telemetryOptOutStored } from '../entry/telemetry.ts';
+import {
+  COLOR_PRESETS, DEFAULT_ACCESSIBILITY, HOLD_ACTIONS, RANGES, accessibilityPreferences, saveAccessibility, setCustomTeamColours,
+  type AccessibilityChange, type ColorPreset, type HoldAction, type MotionMode,
+} from './accessibilitySettings.ts';
+import { tokenValue } from './tokens/tokens.ts';
 
 const PRESET_LABEL_KEYS: Readonly<Record<PresetName, string>> = Object.freeze({
   ultra: 'settings.preset.ultra',
@@ -83,7 +88,7 @@ const PRESET_LABEL_KEYS: Readonly<Record<PresetName, string>> = Object.freeze({
   'mobile-high': 'settings.preset.mobileHigh',
 });
 
-type SettingsTab = 'controls' | 'gameplay' | 'sound' | 'graphics' | 'language';
+type SettingsTab = 'controls' | 'gameplay' | 'sound' | 'graphics' | 'accessibility' | 'language';
 type BindingSlotKey = BindingSlot | 'pad';
 type NumericSettingKey =
   | 'sensitivity'
@@ -471,6 +476,25 @@ const SETTINGS_CSS = `
 .cot-resume .rz-sub{font-size:11px;font-weight:600;letter-spacing:.22em;color:#9fb0bf;
   text-transform:uppercase;}
 
+/* ACCESSIBILITY tab (brand-ui BUI-F9; BUI-S4 redesigns it): the live preview draws the team shapes in the team tokens
+   and a text and HUD sample in the type tokens, so every choice shows before the player leaves the panel. */
+.cot-a11y-preview{display:flex;align-items:center;gap:18px;margin:4px 10px 8px;padding:10px 14px;
+  background:var(--surface-page);border:1px solid var(--line-control);color:var(--ink-1);}
+.cot-a11y-preview .shape{font-size:var(--fs-24);line-height:1;}
+.cot-a11y-preview .own{color:var(--team-own)}.cot-a11y-preview .enemy{color:var(--team-enemy)}
+.cot-a11y-preview .squad{color:var(--team-squad);border-radius:50%;outline:var(--team-squad-ring) solid var(--ink-1);}
+.cot-a11y-preview .sample{margin-left:auto;font-size:var(--fs-16);font-weight:600;}
+.cot-a11y-preview .hudnum{font-size:var(--hud-fs-numeral);font-weight:700;padding:2px 8px;background:var(--hud-plate);
+  border:1px solid var(--line-3);}
+.cot-set-seg.wrap{flex-wrap:wrap;justify-content:flex-end;}
+.cot-set-seg .sw{display:inline-flex;gap:2px;margin-right:6px;}
+.cot-set-seg .sw i{font-style:normal;color:var(--o)}.cot-set-seg .sw i+i{color:var(--e)}
+.cot-a11y-custom{display:flex;align-items:center;gap:10px;}
+.cot-a11y-custom input[type=color]{width:44px;height:32px;padding:0;border:1px solid var(--line-control);background:none;cursor:pointer;}
+.cot-a11y-custom input[type=color]:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:2px;}
+.cot-a11y-custom input[aria-invalid=true]{border-color:var(--danger);}
+.cot-set-note.refused{color:var(--text-danger);}
+
 /* Touch settings use a true finger-sized target floor in every orientation. */
 body.cot-touch-layout .cot-settings button{min-height:44px;}
 body.cot-touch-layout .cot-set-close{width:44px;height:44px;}
@@ -554,6 +578,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<button class="cot-set-tab" data-tab="gameplay" type="button">${t('settings.tab.gameplay')}</button>` +
     `<button class="cot-set-tab" data-tab="sound" type="button">${t('settings.tab.sound')}</button>` +
     `<button class="cot-set-tab" data-tab="graphics" type="button">${t('settings.tab.graphics')}</button>` +
+    `<button class="cot-set-tab" data-tab="accessibility" type="button">${t('settings.tab.accessibility')}</button>` +
     `<button class="cot-set-tab" data-tab="language" type="button">${t('settings.tab.language')}</button>` +
     `</div>` +
     `<div class="cot-set-conflict"><span class="msg"></span>` +
@@ -1238,6 +1263,188 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     el('div', 'cot-set-note', diagnostics).textContent = t('settings.diagnostics.note');
   }
 
+  // --- ACCESSIBILITY tab (brand-ui SPEC 12.1.6 and 14; the core is accessibilityPreferences.ts, BUI-S4 redesigns this)
+  const A11Y_ICONS = {
+    textScale: { id: 'zoomIn', tone: 'cyan' },
+    hudScale: { id: 'autoAim', tone: 'amber' },
+    colors: { id: 'team', tone: 'green' },
+    highContrast: { id: 'graphics', tone: 'violet' },
+    motion: { id: 'speed', tone: 'cyan' },
+    shake: { id: 'damage', tone: 'amber' },
+    flash: { id: 'lightbulb', tone: 'amber' },
+    droneStatic: { id: 'modeDrone', tone: 'cyan' },
+    rosters: { id: 'team', tone: 'cyan' },
+  } as const satisfies Readonly<Record<string, SettingsIconSpec>>;
+
+  /** One segmented choice bound to a preference (aria-pressed on each option). */
+  function a11ySeg<T extends string>(
+    parent: HTMLElement, label: string, icon: SettingsIconSpec,
+    options: ReadonlyArray<readonly [T, string]>, current: () => T, choose: (value: T) => void, wrap = false,
+  ): HTMLButtonElement[] {
+    const row = el('div', 'cot-set-row', parent);
+    settingLabel(row, label, icon);
+    const seg = el('div', `cot-set-seg${wrap ? ' wrap' : ''}${options.length === 2 ? ' onoff' : ''}`, row);
+    seg.setAttribute('role', 'group');
+    seg.setAttribute('aria-label', label);
+    const buttons = options.map(([value, text]) => {
+      const b = el('button', '', seg);
+      b.type = 'button';
+      b.dataset.value = value;
+      b.textContent = text;
+      b.addEventListener('click', () => {
+        if (current() === value) return;
+        choose(value);
+        sync();
+        emit('ui:click', {});
+      });
+      return b;
+    });
+    const sync = (): void => {
+      for (const b of buttons) {
+        const on = b.dataset.value === current();
+        b.classList.toggle('sel', on);
+        b.setAttribute('aria-pressed', String(on));
+      }
+    };
+    sync();
+    return buttons;
+  }
+
+  /** A percentage slider bound to a numeric preference (the range and its number field, as the other tabs). */
+  function a11ySlider(
+    parent: HTMLElement, label: string, icon: SettingsIconSpec,
+    key: 'textScale' | 'hudScale' | 'shake' | 'flash', [min, max]: readonly [number, number],
+  ): void {
+    const row = el('div', 'cot-set-row', parent);
+    settingLabel(row, label, icon);
+    const wrap = el('div', 'cot-set-slider', row);
+    const range = el('input', '', wrap);
+    range.type = 'range';
+    range.setAttribute('aria-label', label);
+    range.min = String(min);
+    range.max = String(max);
+    range.step = '0.05';
+    const num = el('input', '', wrap);
+    num.type = 'number';
+    num.setAttribute('aria-label', label);
+    num.min = String(Math.round(min * 100));
+    num.max = String(Math.round(max * 100));
+    num.step = '5';
+    el('span', 'unit', wrap).textContent = '%';
+    const sync = (): void => {
+      const v = accessibilityPreferences()[key];
+      range.value = String(v);
+      range.style.setProperty('--f', `${(((v - min) / (max - min)) * 100).toFixed(1)}%`);
+      num.value = String(Math.round(v * 100));
+    };
+    const set = (value: number): void => {
+      if (Number.isFinite(value)) saveAccessibility({ [key]: Math.round(value * 100) / 100 } as AccessibilityChange);
+      sync();
+    };
+    sync();
+    range.addEventListener('input', () => set(parseFloat(range.value)));
+    num.addEventListener('change', () => { set(parseFloat(num.value) / 100); emit('ui:click', {}); });
+    range.addEventListener('change', () => emit('ui:click', {}));
+  }
+
+  function renderAccessibility(): void {
+    body.textContent = '';
+    const prefs = accessibilityPreferences;
+    const vision = groupCard(body, t('settings.a11y.vision'));
+    const preview = el('div', 'cot-a11y-preview', vision);
+    preview.setAttribute('aria-hidden', 'true');
+    preview.innerHTML = '<span class="shape own">&#9650;</span><span class="shape enemy">&#9670;</span>'
+      + '<span class="shape squad">&#9679;</span><span class="sample">' + t('settings.a11y.sample') + '</span><span class="hudnum num">88</span>';
+    a11ySlider(vision, t('settings.a11y.textScale'), A11Y_ICONS.textScale, 'textScale', RANGES.textScale);
+    a11ySlider(vision, t('settings.a11y.hudScale'), A11Y_ICONS.hudScale, 'hudScale', RANGES.hudScale);
+    // Each preset shows its own ally and enemy colours on the chevron and diamond, so the choice is seen, not read.
+    const presetButtons = a11ySeg(vision, t('settings.a11y.colors'), A11Y_ICONS.colors,
+      COLOR_PRESETS.map((preset) => [preset, t(`settings.a11y.preset.${preset}`)] as const),
+      () => prefs().colorPreset, (preset: ColorPreset) => { saveAccessibility({ colorPreset: preset }); syncCustom(); }, true);
+    const swatch = (button: HTMLButtonElement, own: string, enemy: string): void => {
+      const sw = document.createElement('span');
+      sw.className = 'sw';
+      sw.setAttribute('aria-hidden', 'true');
+      sw.style.setProperty('--o', own);
+      sw.style.setProperty('--e', enemy);
+      sw.innerHTML = '<i>&#9650;</i><i>&#9670;</i>';
+      button.prepend(sw);
+    };
+    for (const button of presetButtons) {
+      const preset = button.dataset.value as ColorPreset;
+      if (preset === 'custom') swatch(button, prefs().customOwn, prefs().customEnemy);
+      else {
+        const cvd = preset === 'default' ? {} : { cvd: preset };
+        swatch(button, tokenValue('team-own', cvd), tokenValue('team-enemy', cvd));
+      }
+    }
+    // Custom: own and enemy pickers; a pair under the colour-vision or contrast floors is refused (colorVision.ts).
+    const customRow = el('div', 'cot-set-row', vision);
+    settingLabel(customRow, t('settings.a11y.preset.custom'), A11Y_ICONS.colors);
+    const custom = el('div', 'cot-a11y-custom', customRow);
+    const ownPick = el('input', '', custom);
+    ownPick.type = 'color';
+    ownPick.setAttribute('aria-label', t('hud.team.ally'));
+    const enemyPick = el('input', '', custom);
+    enemyPick.type = 'color';
+    enemyPick.setAttribute('aria-label', t('hud.team.enemies'));
+    const refused = el('div', 'cot-set-note refused', vision);
+    refused.setAttribute('role', 'status');
+    const syncCustom = (): void => {
+      ownPick.value = prefs().customOwn;
+      enemyPick.value = prefs().customEnemy;
+      customRow.hidden = prefs().colorPreset !== 'custom';
+      refused.hidden = true;
+      for (const pick of [ownPick, enemyPick]) pick.removeAttribute('aria-invalid');
+    };
+    const tryCustom = (): void => {
+      const check = setCustomTeamColours(ownPick.value, enemyPick.value);
+      if (check.ok) {
+        syncCustom();
+        const sw = presetButtons.find((b) => b.dataset.value === 'custom')?.querySelector<HTMLElement>('.sw');
+        sw?.style.setProperty('--o', ownPick.value);
+        sw?.style.setProperty('--e', enemyPick.value);
+        return;
+      }
+      refused.hidden = false;
+      refused.textContent = t('settings.a11y.refused');
+      const blames = (side: string): boolean => check.failures.some((f) => f.check.split(/[~ ]/)[0] === side
+        || f.check.endsWith(`~${side}`));
+      ownPick.setAttribute('aria-invalid', String(blames('own')));
+      enemyPick.setAttribute('aria-invalid', String(blames('enemy')));
+    };
+    ownPick.addEventListener('change', tryCustom);
+    enemyPick.addEventListener('change', tryCustom);
+    syncCustom();
+    a11ySeg(vision, t('settings.a11y.highContrast'), A11Y_ICONS.highContrast,
+      [['off', t('settings.off')], ['on', t('settings.on')]] as const,
+      () => (prefs().highContrast ? 'on' : 'off'), (v) => { saveAccessibility({ highContrast: v === 'on' }); });
+
+    const motion = groupCard(body, t('settings.a11y.motion'));
+    a11ySeg<MotionMode>(motion, t('settings.a11y.reduceMotion'), A11Y_ICONS.motion,
+      [['system', t('settings.a11y.system')], ['reduce', t('settings.on')], ['full', t('settings.off')]],
+      () => prefs().motion, (mode) => { saveAccessibility({ motion: mode }); });
+    a11ySlider(motion, t('settings.a11y.shake'), A11Y_ICONS.shake, 'shake', RANGES.shake);
+    a11ySlider(motion, t('settings.a11y.flash'), A11Y_ICONS.flash, 'flash', RANGES.flash);
+    a11ySeg(motion, t('settings.a11y.droneStatic'), A11Y_ICONS.droneStatic,
+      [['off', t('settings.off')], ['on', t('settings.on')]] as const,
+      () => (prefs().droneStatic ? 'on' : 'off'), (v) => { saveAccessibility({ droneStatic: v === 'on' }); });
+
+    // Every hold action can latch on one press and release on the next (src/game/input.ts, the HUD's roster key).
+    const holds = groupCard(body, t('settings.a11y.holds'));
+    const holdLabel = (action: HoldAction): string => (action === 'rosters' ? t('settings.a11y.hold.rosters')
+      : t(input.actionDefs.find((def) => def.id === action)?.label ?? 'settings.a11y.holds'));
+    for (const action of HOLD_ACTIONS) {
+      a11ySeg(holds, holdLabel(action), action === 'rosters' ? A11Y_ICONS.rosters : SETTINGS_ACTION_ICONS[action],
+        [['hold', t('settings.a11y.hold')], ['toggle', t('settings.a11y.toggle')]] as const,
+        () => (prefs().toggles.includes(action) ? 'toggle' : 'hold'),
+        (mode) => {
+          const others = prefs().toggles.filter((a) => a !== action);
+          saveAccessibility({ toggles: mode === 'toggle' ? [...others, action] : others });
+        });
+    }
+  }
+
   // --- LANGUAGE tab -----------------------------------------------------------
   function renderLanguage() {
     body.textContent = '';
@@ -1276,10 +1483,11 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       t.classList.toggle('sel', t.dataset.tab === activeTab);
     }
     resetBtn.style.visibility =
-      activeTab === 'controls' || activeTab === 'graphics' || activeTab === 'sound'
+      activeTab === 'controls' || activeTab === 'graphics' || activeTab === 'sound' || activeTab === 'accessibility'
         ? 'visible' : 'hidden';
     if (activeTab === 'controls') renderControls();
     else if (activeTab === 'graphics') renderGraphics();
+    else if (activeTab === 'accessibility') renderAccessibility();
     else if (activeTab === 'sound') renderSound();
     else if (activeTab === 'language') renderLanguage();
     else renderGameplay();
@@ -1580,6 +1788,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       if (getDeviceTier() === 'mobile') setMobilePresetName('mobile');
       else setPresetName('auto');
       renderTab();
+      return;
+    }
+    if (activeTab === 'accessibility') {
+      const { customOwn: _own, customEnemy: _enemy, ...defaults } = DEFAULT_ACCESSIBILITY;
+      saveAccessibility(defaults);
+      renderTab();
+      emit('ui:click', {});
       return;
     }
     if (activeTab === 'sound') {

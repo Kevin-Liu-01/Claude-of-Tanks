@@ -11,6 +11,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 // Contract: docs/ARCHITECTURE.md §3.7.3.
 
 import { ensureFonts } from './fonts.ts';
+import { prefersReducedMotion } from './accessibilityPreferences.ts';
 import { FEATURED_SHOTS } from './featuredShots.ts';
 import { preloadImage } from './imagePreload.ts';
 import { flagIconHTML } from './flags.ts';
@@ -410,10 +411,9 @@ const SHELL_TYPE_COLOR: Readonly<Record<string, string>> = {
 
 
 
-// garage_ui: one shared accessibility gate for the WAAPI micro-transitions
-// (the CSS entrance set is gated by the same media query in garage.css).
-const REDUCED_MOTION = typeof matchMedia === 'function' &&
-  matchMedia('(prefers-reduced-motion: reduce)').matches;
+// garage_ui: one shared accessibility gate for the WAAPI micro-transitions and smooth scrolls: the player's Reduce
+// motion choice, or the OS while they follow it (the CSS entrance set's media query follows the same choice,
+// accessibilityPreferences.ts).
 
 
 // --- CAMO PICKER SECTION: demand-loaded exact swatch painter -----------------
@@ -1380,7 +1380,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const queueCountryRailAffordances = () => requestAnimationFrame(syncCountryRailAffordances);
   const scrollCountries = (direction: number): void => {
     const distance = Math.max(180, chipsEl.clientWidth * 0.72);
-    chipsEl.scrollBy({ left: direction * distance, behavior: REDUCED_MOTION ? 'auto' : 'smooth' });
+    chipsEl.scrollBy({ left: direction * distance, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
   };
   chipsEl.addEventListener('scroll', syncCountryRailAffordances, { passive: true });
   chipsEl.addEventListener('wheel', (event) => {
@@ -2433,7 +2433,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const activeChip = chipById.get(countryId);
     requestAnimationFrame(() => {
       if (api.isOpen && activeChip) activeChip.scrollIntoView({
-        block: 'nearest', inline: 'center', behavior: REDUCED_MOTION ? 'auto' : 'smooth',
+        block: 'nearest', inline: 'center', behavior: prefersReducedMotion() ? 'auto' : 'smooth',
       });
       syncCountryRailAffordances();
     });
@@ -2448,7 +2448,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // stagger created a burst of animation objects and style flushes on every
     // nation switch, precisely while portraits were also decoding.
     if (previousCountry && previousCountry !== countryId && api.isOpen &&
-        cardsEl.animate && !REDUCED_MOTION) {
+        cardsEl.animate && !prefersReducedMotion()) {
       cardsEl.animate([{ opacity: 0.76 }, { opacity: 1 }],
         { duration: 140, easing: 'ease-out' });
     }
@@ -2627,7 +2627,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const shouldAnimate = vehicleChanged
       && statsFor !== null
       && typeof statsEl.animate === 'function'
-      && !REDUCED_MOTION;
+      && !prefersReducedMotion();
     if (!shouldAnimate) return;
     statsEl.animate(
       [{ opacity: 0.25, transform: 'translateY(5px)' }, { opacity: 1, transform: 'none' }],

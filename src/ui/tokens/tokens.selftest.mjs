@@ -26,11 +26,11 @@ import { join, relative } from 'node:path';
 import { brotliCompressSync, constants as zlib } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import {
-  TOKENS_CSS, TOKENS_JSON, TOKENS_TS, VISION_VIEWS, composePresets, composite, contrast, createResolver, deltaE, flattenTokens,
-  generate, hexToRgb, luminance, presetEffects,
+  SELECTION_TS, TOKENS_CSS, TOKENS_JSON, TOKENS_TS, VISION_VIEWS, composePresets, composite, contrast, createResolver, deltaE, flattenTokens,
+  generate, hexToRgb, luminance, presetEffects, runtimeTokens,
 } from '../../../tools/gen-tokens.mjs';
 import {
-  TOKENS, TOKEN_BREAKPOINTS, TOKEN_EASE, TOKEN_GRID, TOKEN_MS, TOKEN_PRESETS, TOKEN_PX, tokenValue,
+  TOKENS, TOKEN_BREAKPOINTS, TOKEN_EASE, TOKEN_GRID, TOKEN_MS, TOKEN_PRESETS, TOKEN_PX, TOKEN_RUNTIME, tokenValue,
 } from './tokens.ts';
 import { VIEWPORT_HEIGHT_BANDS, VIEWPORT_WIDTH_BANDS } from '../responsiveLayout.ts';
 import { FONT_STACK } from '../fonts.ts';
@@ -48,7 +48,7 @@ const meta = (key) => key.startsWith('$');
 const first = generate(source);
 const again = generate(structuredClone(source));
 assert.deepEqual(again, first, 'gen-tokens is idempotent: the same tokens.json always yields the same bytes');
-for (const path of [TOKENS_CSS, TOKENS_TS]) {
+for (const path of [TOKENS_CSS, TOKENS_TS, SELECTION_TS]) {
   assert.equal(readFileSync(path, 'utf8'), first[path],
     `${relative(ROOT, path)} drifted from tokens.json: run node tools/gen-tokens.mjs`);
 }
@@ -73,6 +73,19 @@ assert.equal(composePresets(directWins, { x: 'p', y: 'q' }, 'b', null), createRe
   'a direct override beats another axis\'s derived value');
 assert.throws(() => presetEffects(withAxis({ c: 'oklch(70% 0 0)' })), /both declare --c/);
 assert.throws(() => presetEffects(withAxis({ e: 'oklch(30% 0 0)' })), /--m under x=p \+ y=q/);
+// Runtime tokens (BUI-F9, SPEC 4.6 Custom): the pure aliases of a runtime token follow it transitively; anything else
+// derived from one, or another axis's preset overriding one, is refused, so liveToken() and the cascade agree.
+const runtimeProbe = (semantic, runtime, preset = probe.preset) => runtimeTokens({ semantic, preset, runtime });
+assert.deepEqual(runtimeProbe({ g: { a: 'oklch(50% 0 0)', b: '{a}', d: '{b}', e: 'oklch(40% 0 0)' } }, { mine: { axis: 'x', tokens: ['a'] } }),
+  [{ preset: 'mine', axis: 'x', tokens: [{ name: 'a', follows: ['b', 'd'] }] }], 'a runtime token\'s aliases follow it transitively');
+assert.throws(() => runtimeProbe({ g: { a: 'oklch(50% 0 0)', m: '0 0 0 1px {a}' } }, { mine: { axis: 'x', tokens: ['a'] } }),
+  /--m derives from the runtime token --a by more than a pure alias/);
+assert.throws(() => runtimeProbe({ g: { a: 'oklch(50% 0 0)' } }, { mine: { axis: 'y', tokens: ['a'] } },
+  { x: { p: { a: 'oklch(60% 0 0)' } }, y: { q: {} } }), /preset x=p overrides the runtime token --a/);
+assert.throws(() => runtimeProbe({ g: { a: 'oklch(50% 0 0)' } }, { p: { axis: 'x', tokens: ['a'] } }), /collides with the x preset/);
+assert.deepEqual(TOKEN_RUNTIME, { 'team-own': ['text-own'], 'team-enemy': ['text-enemy'] },
+  'Custom team colours move the team tokens and the text roles that alias them (SPEC 4.6)');
+assert.deepEqual(source.runtime.custom, { axis: 'cvd', tokens: ['team-own', 'team-enemy'] }, 'Custom is a runtime preset on the colour-vision axis');
 
 // tokens.css is a pure token sheet: :root blocks of custom properties (and the OS reduce-motion copy), nothing else.
 const generatedCss = first[TOKENS_CSS];
@@ -91,8 +104,8 @@ const parseDecls = (text) => {
   return decls;
 };
 const mediaBlocks = [];
-const cssRest = cssBody.replace(/@media ([^{]+)\{\s*:root\{([^}]*)\}\s*\}/g, (_, query, decls) => {
-  mediaBlocks.push({ query: query.trim(), decls: parseDecls(decls) });
+const cssRest = cssBody.replace(/@media ([^{]+)\{\s*:root(:not\(\[data-([a-z]+)\]\))?\{([^}]*)\}\s*\}/g, (_, query, guard, axis, decls) => {
+  mediaBlocks.push({ query: query.trim(), guard: axis ?? null, decls: parseDecls(decls) });
   return '';
 });
 const cssBlocks = [];
@@ -482,6 +495,9 @@ const reduceBlock = presetBlocks.find((b) => b.axis === 'motion' && b.preset ===
 assert.equal(mediaBlocks.length, 1, 'one OS media block');
 assert.equal(mediaBlocks[0].query, '(prefers-reduced-motion:reduce)', 'the OS reduce-motion switch');
 assert.deepEqual([...mediaBlocks[0].decls], [...reduceBlock.decls], 'the OS switch sets exactly the data-motion=reduce hook');
+// BUI-F9: the OS copy applies only while the player follows the OS (no data-motion attribute): data-motion=reduce collapses
+// the durations whatever the OS says, data-motion=full keeps them whatever it says (SPEC 9, both ways).
+assert.equal(mediaBlocks[0].guard, 'motion', 'the OS reduce-motion copy yields to an explicit data-motion choice');
 const defaults = cssBlocks.find((b) => b.axis === null).decls;
 const resolveCss = (text, decls, depth = 0) => {
   assert.ok(depth < 32, `tokens.css reference cycle near ${text}`);
@@ -609,10 +625,10 @@ for (const legacy of Object.keys(source.alias['src/ui/motion.css']).filter((n) =
   assert.match(motion, new RegExp(`@media \\(prefers-reduced-motion: reduce\\)[\\s\\S]*--${legacy}: 1ms;`),
     `motion.css collapses --${legacy} for reduced-motion users on pages without tokens.css`);
 }
-// The presets are hooks: data-cvd / data-contrast / data-motion get their writers with the accessibility core
-// (BUI-F9); the OS reduce-motion switch works today.
+// The presets are hooks that src/ui/accessibilityPreferences.ts (BUI-F9) writes from the player's choices; with no
+// data-motion attribute the OS reduce-motion switch decides.
 assert.match(generatedCss, /:root\[data-motion=reduce\]\{[^}]*--dur-base:1ms;/, 'the data-motion=reduce hook for the Reduce motion setting');
-assert.match(generatedCss, /@media \(prefers-reduced-motion:reduce\)\{\s*:root\{[^}]*--dur-base:1ms;/, 'the OS reduce-motion switch');
+assert.match(generatedCss, /@media \(prefers-reduced-motion:reduce\)\{\s*:root:not\(\[data-motion\]\)\{[^}]*--dur-base:1ms;/, 'the OS reduce-motion switch');
 
 // Nothing outside the token package reads a colour ramp (SPEC 4.1), the aliases included.
 const PRIMITIVE_READ = /var\(--(graphite|paper|tungsten|sky|vermilion|mint|yellow)-\d+\b/g;

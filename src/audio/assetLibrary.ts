@@ -67,6 +67,8 @@ export interface AssetLibrary {
   /** A decoded take of a crew line: the given take when it exists, else a random one (no immediate repeat). */
   voice(language: string, line: string, random: () => number, take?: number): AudioBuffer | null;
   voiceTakes(language: string, line: string): number;
+  /** The take voice() last returned for a crew line (its index in the script), or -1 before any: the caption names it. */
+  voiceTake(language: string, line: string): number;
   stats(): { assets: number; decodedMb: number; sfxMb: number; voiceMb: number; pinned: number; pending: number; failed: number; voices: string[] };
   /**
    * Resolves once every load in flight (sound effects and voice packs) has settled, the loads those start included: the
@@ -388,6 +390,9 @@ export function createAssetLibrary({
     },
     voiceTakes(language, line) {
       return VOICE_PACKS[language]?.[line]?.length ?? 0;
+    },
+    voiceTake(language, line) {
+      return voiceEntries.get(voiceKey(language, line))?.lastVariant ?? -1;
     },
     stats() {
       let pending = 0;

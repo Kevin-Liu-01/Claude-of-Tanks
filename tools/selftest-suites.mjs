@@ -957,6 +957,14 @@ export const SELFTEST_SUITES = Object.freeze({
     // ensureStyle(), every linked stylesheet hashed; the style-literal ratchet (counts may only fall)
     'src/ui/styleLayers.selftest.mjs',
     'tools/style-literal-census.selftest.mjs',
+    // 2026-10-18 (brand-ui BUI-F9): the accessibility core — the record, :root as its runtime source (the head seed and
+    // applyAccessibility agree), text and HUD scale, colour presets through tokens.ts, Custom pairs under the floors
+    // refused, Reduce motion over the OS both ways, shake/flash/static consumers, the 1 KB boot reader; hold or toggle
+    // and the perf meter default; the caption stream for radio, alarms and key sounds
+    'src/ui/accessibilityPreferences.selftest.mjs',
+    'src/ui/colorVision.selftest.mjs',
+    'src/game/inputHoldToggle.selftest.mjs',
+    'src/audio/captions.selftest.mjs',
     'src/ui/topAccentBorders.selftest.mjs',
     'src/vehicles/camoPolicy.selftest.mjs',
     // 2026-10-09 (fix/camo-defaults): production's camouflage system, row for row (R113; the owner's 10-09 messages)

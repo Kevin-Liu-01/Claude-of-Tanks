@@ -113,7 +113,11 @@ export function dataSaver(): boolean {
   return !!hints?.saveData || /^(?:slow-2g|2g|3g)$/.test(hints?.effectiveType || '');
 }
 
+/** Reduced motion: the player's choice on :root (data-motion reduce or full, src/ui/accessibilityPreferences.ts) wins
+ *  over the OS, which decides while they follow it. Inline: the public pages never load the accessibility core. */
 function reducedMotion(): boolean {
+  const choice = typeof document === 'undefined' ? undefined : document.documentElement?.dataset?.motion;
+  if (choice === 'reduce' || choice === 'full') return choice === 'reduce';
   return !!query('(prefers-reduced-motion: reduce)')?.matches;
 }
 
@@ -595,6 +599,8 @@ export function createMediaPlayer(video: HTMLVideoElement, options: MediaPlayerO
   if (typeof document !== 'undefined') document.addEventListener('visibilitychange', sync);
   const motion = query('(prefers-reduced-motion: reduce)');
   motion?.addEventListener?.('change', sync);
+  // The in-game Reduce motion choice (src/ui/accessibilitySettings.ts applyAccessibility announces it).
+  if (typeof window !== 'undefined') window.addEventListener?.('cot:accessibility', sync);
   players.add(core);
   installLifecycle();
 
@@ -622,6 +628,7 @@ export function createMediaPlayer(video: HTMLVideoElement, options: MediaPlayerO
       if (hoverTimer) clearTimeout(hoverTimer);
       if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', sync);
       motion?.removeEventListener?.('change', sync);
+      if (typeof window !== 'undefined') window.removeEventListener?.('cot:accessibility', sync);
       hoverTarget.removeEventListener('pointerenter', hoverOn);
       hoverTarget.removeEventListener('focusin', hoverOn);
       hoverTarget.removeEventListener('pointerleave', hoverOff);

@@ -109,6 +109,22 @@ z-index, shadow, duration and `!important` literals outside the token package
 (CSS, CSS-in-TS, HTML); `tools/style-literal-baseline.json` may only fall (a
 new file starts at zero). After replacing literals with tokens, lower it with
 `node tools/style-literal-census.mjs --write`.
+The player's accessibility choices (BUI-F9) live on `:root`: the game
+document's head seed (`index.html`) writes them before first paint and
+`accessibilitySettings.ts` `applyAccessibility()` after a change, identically
+(`accessibilityPreferences.selftest.mjs` pins the two): `data-cvd`,
+`data-contrast`, `data-motion` (reduce/full; none follows the OS),
+`data-drone-static`, `data-toggles`, `--cot-user-text`, `--cot-user-hud`,
+`--cot-shake-scale`, `--cot-flash-scale` and Custom `--team-own/-enemy`.
+`accessibilityPreferences.ts` is the boot reader (it rides in the `dom` chunk):
+per-frame code reads `A11Y` (shake, flash, reduceMotion, toggles) and script asks
+`prefersReducedMotion()`, never `matchMedia` alone; canvas reads `liveToken()`
+(`tokens/tokenSelection.ts` holds the selection, so boot carries no token table).
+The record, Custom pairs (refused under the floors by `colorVision.ts`), the
+Accessibility settings tab and the motion-rule override (`accessibilityMotion.ts`)
+are lazy. A new hold action joins `HOLD_ACTIONS` and the hold census in
+`src/game/inputHoldToggle.selftest.mjs`; a new screen flash multiplies by
+`A11Y.flash` (CSS: `--cot-flash-scale`), new camera motion by `A11Y.shake`.
 Shared DOM, font, generated-icon, image-preload, featured-media, and map-art
 primitives are strict TypeScript owners. Extend their exported contracts rather
 than creating screen-local unchecked copies.

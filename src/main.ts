@@ -228,6 +228,7 @@ import { loadEquipment as loadSelectedEquipment } from './game/equipment.ts';
 import { createSettingsAccess } from './ui/settingsAccess.ts';
 import { createMobileBattleInputAccess } from './game/mobileBattleInputAccess.ts';
 import { installResponsiveLayout } from './ui/responsiveLayout.ts';
+import { installAccessibility } from './ui/accessibilityPreferences.ts';
 import { installPinchZoomGuard } from './ui/pinchZoomGuard.ts';
 import {
   spawnTanks, ensureStagedVisuals, ensureStagedVisualsSteps, nextStagedBake, planBattleParticipantIds,
@@ -393,6 +394,9 @@ installResponsiveLayout();
 // Browser pinch-zoom is never a page zoom here (2026-09-20; the guard used to exist only inside the touch
 // controls). index.html's inline copy guards the splash from first paint; this hands over from it (2026-10-15).
 installPinchZoomGuard();
+// The player's accessibility choices (text and HUD size, colour preset, contrast, motion, shake, flash, toggles):
+// index.html seeded them on :root before first paint; from here they stay live (src/ui/accessibilityPreferences.ts).
+installAccessibility();
 // Apply static i18n attributes to the boot screen so the credits button,
 // gate prompt, and retry button respect the active locale from first paint.
 bindStaticI18nAuto();

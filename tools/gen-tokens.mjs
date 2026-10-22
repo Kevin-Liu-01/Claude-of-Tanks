@@ -5,6 +5,7 @@
 //   src/ui/tokens/tokens.css  custom properties, linked by index.html (the game and cn documents) ahead of the entry;
 //                             the build keeps it a stylesheet chunk of its own (vite.config.ts group designTokens)
 //   src/ui/tokens/tokens.ts   the same values for canvas, three.js, the minimap, the kill cam and the damage panel
+//   src/ui/tokens/tokenSelection.ts  the selection in force (setActiveTokens), apart so the boot reader carries no table
 //
 //   node tools/gen-tokens.mjs           write both files (idempotent: no clock, no environment input)
 //   node tools/gen-tokens.mjs --check   exit 1 when either file drifts from tokens.json
@@ -29,6 +30,14 @@
 // the override replaces the reference. Every combination of presets is resolved from the merged overrides and must
 // equal both compositions, and no two axes may declare the same property in CSS, or generation fails.
 //
+// An axis's preset with "$media" (motion=reduce) is also copied under that media query for :root:not([data-<axis>]): no
+// attribute is the player's "System" choice, so an explicit data-<axis> (reduce, or full) overrides the OS both ways.
+//
+// Runtime tokens ("runtime": { preset: { axis, tokens } }) are written by a player's preference (SPEC 4.6 Custom team
+// colours) instead of a fixed table: tokens.ts carries, per token, the pure aliases that follow it, and the live switch
+// setActiveTokens() / liveToken() that canvas, three.js and the minimap read. A token derived from a runtime token by
+// anything but a pure alias, or a preset on another axis overriding one, fails generation.
+//
 // The colour maths (WCAG 2.x contrast, Machado 2009 colour-vision simulation, CIE76 ΔE) is exported
 // for src/ui/tokens/tokens.selftest.mjs, which recomputes the SPEC 4.4 contrast and 4.5 colour-vision tables.
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -40,6 +49,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const TOKENS_JSON = join(ROOT, 'src/ui/tokens/tokens.json');
 export const TOKENS_CSS = join(ROOT, 'src/ui/tokens/tokens.css');
 export const TOKENS_TS = join(ROOT, 'src/ui/tokens/tokens.ts');
+export const SELECTION_TS = join(ROOT, 'src/ui/tokens/tokenSelection.ts');
 
 /* ---------------------------------------------------------------- colour maths */
 
@@ -331,6 +341,45 @@ export function localeOverrides(source, tokens = flattenTokens(source)) {
   return out;
 }
 
+/**
+ * The runtime tokens as [{ preset, axis, tokens: [{ name, follows: [alias names] }] }]. Throws unless every token
+ * derived from a runtime token is a pure alias of it (transitively) and no preset on another axis overrides one.
+ */
+export function runtimeTokens(source, tokens = flattenTokens(source), effects = presetEffects(source, tokens)) {
+  const out = [];
+  const names = new Set(tokens.map((t) => t.name));
+  for (const [preset, entry] of Object.entries(source.runtime ?? {})) {
+    if (isMeta(preset)) continue;
+    const { axis, tokens: list } = entry;
+    if (!Object.hasOwn(source.preset ?? {}, axis)) throw new Error(`gen-tokens: runtime ${preset} names an unknown axis ${axis}`);
+    if (Object.hasOwn(source.preset[axis], preset)) throw new Error(`gen-tokens: runtime ${preset} collides with the ${axis} preset of that name`);
+    const rows = [];
+    for (const name of list) {
+      if (!names.has(name)) throw new Error(`gen-tokens: runtime ${preset} names undefined token --${name}`);
+      for (const e of effects) {
+        if (e.axis !== axis && Object.hasOwn(e.values, name)) {
+          throw new Error(`gen-tokens: preset ${e.axis}=${e.preset} overrides the runtime token --${name}`);
+        }
+      }
+      const follows = [];
+      const frontier = [name];
+      while (frontier.length) {
+        const from = frontier.shift();
+        for (const t of tokens) {
+          if (typeof t.raw !== 'string' || !t.raw.includes(`{${from}}`)) continue;
+          if (t.raw !== `{${from}}`) {
+            throw new Error(`gen-tokens: --${t.name} derives from the runtime token --${name} by more than a pure alias (${t.raw})`);
+          }
+          if (!follows.includes(t.name)) { follows.push(t.name); frontier.push(t.name); }
+        }
+      }
+      rows.push({ name, follows });
+    }
+    out.push({ preset, axis, tokens: rows });
+  }
+  return out;
+}
+
 function cssBlock(selector, decls) {
   return `${selector}{\n${decls.map((line) => `  ${line}`).join('\n')}\n}\n`;
 }
@@ -356,7 +405,7 @@ function generateCss(source) {
   for (const { axis, preset, media, css } of presetEffects(source, tokens)) {
     const decls = [css.map(([name, value]) => `--${name}:${value};`).join('')];
     text += cssBlock(`:root[data-${axis}=${preset}]`, decls);
-    if (media) text += `@media ${media}{\n${cssBlock(':root', decls).replace(/^/gm, '  ').trimEnd()}\n}\n`;
+    if (media) text += `@media ${media}{\n${cssBlock(`:root:not([data-${axis}])`, decls).replace(/^/gm, '  ').trimEnd()}\n}\n`;
   }
   for (const [locale, decls] of localeOverrides(source, tokens)) text += cssBlock(`:root:lang(${locale})`, [decls.join('')]);
   return `${text}}\n`;
@@ -389,6 +438,7 @@ function generateTs(source) {
   const presets = presetEffects(source, tokens);
   const axes = [...new Set(presets.map((p) => p.axis))];
   const table = (entries, indent) => (entries.length ? tsObject(entries.map(([name, v]) => [name, tsString(v)]), indent) : '{}');
+  runtimeTokens(source, tokens, presets); // validates the runtime section (tokenSelection.ts carries it)
   const presetTs = axes.map((axis) => [axis, tsObject(presets.filter((p) => p.axis === axis)
     .map(({ preset, set, follows }) => [preset, tsObject([['set', table(set, '        ')], ['follows', table(follows, '        ')]], '      ')]),
     '    ')]);
@@ -396,11 +446,14 @@ function generateTs(source) {
 // edit tokens.json and run \`node tools/gen-tokens.mjs\`. Copyright © 2026 Kevin B. Liu.
 // Design tokens of Claude of Tanks (brand-ui SPEC §4) for canvas, three.js, the minimap, the kill cam and the
 // damage panel. Values are fully resolved; CSS consumers read the custom properties in tokens.css instead.
+import { ACTIVE_TOKENS, TOKEN_RUNTIME } from './tokenSelection.ts';
+
+export { TOKEN_RUNTIME, setActiveTokens, tokenEpoch } from './tokenSelection.ts';
 
 /** Every token by its CSS custom-property name (without "--"), resolved at the default presets and scale 1. */
 export const TOKENS = ${tsObject(values)} as const;
 
-type TokenName = keyof typeof TOKENS;
+export type TokenName = keyof typeof TOKENS;
 
 /** Pixel tokens as numbers (type, space, radius): CSS multiplies the type scale by --cot-type-scale. */
 export const TOKEN_PX = ${tsObject(px)} as const;
@@ -417,7 +470,8 @@ export const TOKEN_EASE = ${tsObject(ease)} as const;
 export const TOKEN_PRESETS = ${tsObject(presetTs)} as const;
 
 type PresetAxis = keyof typeof TOKEN_PRESETS;
-type TokenPresets = { [A in PresetAxis]?: keyof (typeof TOKEN_PRESETS)[A] };
+/** One preset per axis (undefined: the axis at its default). */
+export type TokenPresets = { [A in PresetAxis]?: keyof (typeof TOKEN_PRESETS)[A] };
 type PresetTable = { readonly set: Readonly<Record<string, string>>; readonly follows: Readonly<Record<string, string>> };
 
 /** One token's value under a preset selection (default presets when omitted): derived values, then direct overrides. */
@@ -433,6 +487,23 @@ export function tokenValue(name: TokenName, presets: TokenPresets = {}): string 
   return out;
 }
 
+/** One token's value under the selection in force (tokenSelection.ts setActiveTokens, written by the player's
+ *  accessibility preferences): what the tokens.css cascade gives on :root right now. */
+export function liveToken(name: TokenName): string {
+  const { presets, runtime } = ACTIVE_TOKENS;
+  const value = runtime[name];
+  if (value === undefined) return tokenValue(name, presets);
+  if (!Object.hasOwn(TOKEN_RUNTIME, name)) {
+    // a selected preset's direct override beats the value derived from a runtime token (high contrast's text-own)
+    for (const axis of Object.keys(presets) as PresetAxis[]) {
+      const preset = presets[axis];
+      const table = (preset ? TOKEN_PRESETS[axis][preset as never] : undefined) as PresetTable | undefined;
+      if (table && Object.hasOwn(table.set, name)) return table.set[name];
+    }
+  }
+  return value;
+}
+
 /** Viewport bands (px, inclusive maxima), mirrored from src/ui/responsiveLayout.ts. */
 export const TOKEN_BREAKPOINTS = ${tsLiteral(source.breakpoint ?? {})} as const;
 
@@ -441,9 +512,59 @@ export const TOKEN_GRID = ${tsLiteral(source.grid ?? {})} as const;
 `;
 }
 
-/** Both generated files keyed by path. Pure: the same tokens.json always yields the same bytes. */
+/** tokenSelection.ts text: the runtime tokens and the selection in force, with no token table (the boot reader's). */
+function generateSelectionTs(source) {
+  const tokens = flattenTokens(source);
+  const presets = presetEffects(source, tokens);
+  const runtime = runtimeTokens(source, tokens, presets);
+  const runtimeRows = runtime.flatMap((r) => r.tokens);
+  const runtimeTs = runtimeRows.length
+    ? tsObject(runtimeRows.map(({ name, follows }) => [name, `[${follows.map(tsString).join(', ')}]`])) : '{}';
+  const runtimeNote = runtime.map((r) => `${r.preset} on the ${r.axis} axis`).join(', ') || 'none';
+  return `// Generated by tools/gen-tokens.mjs from src/ui/tokens/tokens.json. Do not edit by hand:
+// edit tokens.json and run \`node tools/gen-tokens.mjs\`. Copyright © 2026 Kevin B. Liu.
+// The token selection in force (brand-ui SPEC 4.6): the presets and runtime tokens the player's accessibility preferences
+// apply (src/ui/accessibilityPreferences.ts). Apart from tokens.ts so that boot reader carries no token table; liveToken()
+// in tokens.ts reads it.
+import type { TokenName, TokenPresets } from './tokens.ts';
+
+/** Runtime tokens (tokens.json "runtime": ${runtimeNote}), each with the pure aliases that follow it. */
+export const TOKEN_RUNTIME = ${runtimeTs} as const;
+
+type RuntimeToken = keyof typeof TOKEN_RUNTIME;
+
+/** The selection in force: presets per axis and runtime token values (their followers included). */
+export const ACTIVE_TOKENS = {
+  presets: {} as TokenPresets,
+  runtime: {} as Partial<Record<TokenName, string>>,
+  epoch: 0,
+};
+
+/**
+ * The selection the player's accessibility preferences apply (accessibilityPreferences.ts writes the same one on :root as
+ * data-<axis> attributes and inline runtime tokens): presets, plus a runtime preset's token values (Custom team colours,
+ * already accepted by src/ui/colorVision.ts). tokens.ts liveToken() then reads what the cascade shows.
+ */
+export function setActiveTokens(presets: TokenPresets, runtime: Partial<Record<RuntimeToken, string>> = {}): void {
+  ACTIVE_TOKENS.presets = presets;
+  ACTIVE_TOKENS.runtime = {};
+  for (const [name, follows] of Object.entries(TOKEN_RUNTIME) as [RuntimeToken, readonly TokenName[]][]) {
+    const value = runtime[name];
+    if (value !== undefined) for (const token of [name, ...follows]) ACTIVE_TOKENS.runtime[token] = value;
+  }
+  ACTIVE_TOKENS.epoch++;
+}
+
+/** Bumps on every setActiveTokens(): canvases repaint their cached colours when it moves. */
+export function tokenEpoch(): number {
+  return ACTIVE_TOKENS.epoch;
+}
+`;
+}
+
+/** Every generated file keyed by path. Pure: the same tokens.json always yields the same bytes. */
 export function generate(source = JSON.parse(readFileSync(TOKENS_JSON, 'utf8'))) {
-  return { [TOKENS_CSS]: generateCss(source), [TOKENS_TS]: generateTs(source) };
+  return { [TOKENS_CSS]: generateCss(source), [TOKENS_TS]: generateTs(source), [SELECTION_TS]: generateSelectionTs(source) };
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
@@ -461,6 +582,6 @@ if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
     console.error(`gen-tokens: ${drift.join(', ')} drifted from src/ui/tokens/tokens.json; run node tools/gen-tokens.mjs`);
     process.exitCode = 1;
   } else {
-    console.log(check ? 'gen-tokens: generated files match tokens.json' : 'gen-tokens: tokens.css and tokens.ts written');
+    console.log(check ? 'gen-tokens: generated files match tokens.json' : 'gen-tokens: tokens.css, tokens.ts and tokenSelection.ts written');
   }
 }

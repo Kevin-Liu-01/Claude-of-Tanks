@@ -91,7 +91,7 @@
   --dur-instant:1ms;--dur-fast:1ms;--dur-base:1ms;--dur-screen:1ms;--dur-stage:1ms;
 }
 @media (prefers-reduced-motion:reduce){
-  :root{
+  :root:not([data-motion]){
     --dur-instant:1ms;--dur-fast:1ms;--dur-base:1ms;--dur-screen:1ms;--dur-stage:1ms;
   }
 }

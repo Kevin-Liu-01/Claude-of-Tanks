@@ -150,6 +150,36 @@
     })();
   </script>
   <script type="module" src="/src/ui/localeBootstrap.ts"></script>
+  <script>
+    // The player's accessibility choices before first paint: colour preset, contrast, motion, drone static, hold or
+    // toggle, text and HUD size, camera shake and flash intensity, written on :root, where the game reads them
+    // (src/ui/accessibilityPreferences.ts) and where a change is written the same way (accessibilitySettings.ts
+    // applyAccessibility, which accessibilityPreferences.selftest.mjs pins to this seed). A Custom pair is re-checked.
+    (() => {
+      try {
+        const p = JSON.parse(localStorage.getItem('cot.accessibility.v1') || 'null');
+        if (!p || typeof p !== 'object') return;
+        const root = document.documentElement, data = root.dataset, hex = /^#[0-9a-f]{6}$/i;
+        const set = (name, value) => value !== 1 && root.style.setProperty(name, String(value));
+        const num = (v, lo, hi) => typeof v === 'number' && isFinite(v) ? Math.min(hi, Math.max(lo, v)) : 1;
+        if (['deutan', 'protan', 'tritan', 'classic', 'custom'].includes(p.colorPreset)) data.cvd = p.colorPreset;
+        if (p.colorPreset === 'custom') {
+          set('--team-own', hex.test(p.customOwn) ? p.customOwn.toLowerCase() : '#57b8ff');
+          set('--team-enemy', hex.test(p.customEnemy) ? p.customEnemy.toLowerCase() : '#ff5a4e');
+        }
+        if (p.highContrast === true) data.contrast = 'high';
+        if (p.motion === 'reduce' || p.motion === 'full') data.motion = p.motion;
+        if (p.droneStatic === false) data.droneStatic = 'off';
+        const toggles = Array.isArray(p.toggles)
+          ? ['fire', 'handbrake', 'freeLook', 'freeCamera', 'rosters'].filter((action) => p.toggles.includes(action)) : [];
+        if (toggles.length) data.toggles = toggles.join(' ');
+        set('--cot-user-text', num(p.textScale, .8, 2));
+        set('--cot-user-hud', num(p.hudScale, .75, 1.5));
+        set('--cot-shake-scale', num(p.shake, 0, 1));
+        set('--cot-flash-scale', num(p.flash, 0, 1));
+      } catch (_) { /* no storage: the defaults */ }
+    })();
+  </script>
   <link rel="stylesheet" href="/src/ui/tokens/tokens.css" />
   <style>
     @layer reset,tokens,base,components,surfaces,utilities,overrides;

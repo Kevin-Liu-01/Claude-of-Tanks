@@ -80,6 +80,7 @@ import { createWheelNotcher } from './wheelNotches.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.ts';
 import { createElement as el } from '../ui/dom.ts';
 import { ensureStyle } from '../ui/styleLayers.ts';
+import { A11Y } from '../ui/accessibilityPreferences.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
 import {
   hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
@@ -1140,7 +1141,7 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
   background:radial-gradient(circle at 50% 52%,rgba(255,244,218,.78),rgba(242,165,54,.2) 34%,transparent 72%);
   opacity:0;pointer-events:none;}
 .cot-kc-flash.go{animation:cotKcFlash var(--cot-motion-scene) var(--cot-ease-out) forwards;}
-@keyframes cotKcFlash{0%{opacity:.62;}33%{opacity:.28;}100%{opacity:0;}}
+@keyframes cotKcFlash{0%{opacity:calc(.62*var(--cot-flash-scale,1));}33%{opacity:calc(.28*var(--cot-flash-scale,1));}100%{opacity:0;}}
 /* DEATH-VIEW GRADE (killcam_endscreen r1): subtle desaturation + vignette
    ramp over the whole death replay — screen-space only (the post chain is
    not this module's), ramped by CSS opacity so cancel() cleanly restores. */
@@ -1293,7 +1294,7 @@ body[data-cot-width='phone'] .cot-kc.ammo-racked .cot-kc-banner{padding:7px 10px
   .cot-kc .cot-kc-title{transform:translate(-50%,0)!important;}
   .cot-kc .cot-kc-annot,.cot-kc .cot-kc-killer{transform:none!important;}
   .cot-kc .cot-kc-anim{animation:none!important;opacity:1;}
-  .cot-kc-flash.go{animation:none!important;opacity:.12;}
+  .cot-kc-flash.go{animation:none!important;opacity:calc(.12*var(--cot-flash-scale,1));}
 }
 `;
 
@@ -3913,7 +3914,8 @@ export function createKillCam(deps: KillcamDeps) {
     // peak displacement made the exact impact frame jump, while 47-61 Hz
     // oscillation read as camera jitter on low-refresh/mobile displays.
     const shakeIn = THREE.MathUtils.smoothstep(pb.itWall, 0, 0.08);
-    const shake = 0.055 * shakeIn * Math.exp(-pb.itWall / 0.3);
+    // scaled by the Accessibility camera-shake setting (0 holds the replay camera still)
+    const shake = 0.055 * shakeIn * Math.exp(-pb.itWall / 0.3) * A11Y.shake;
     if (shake > 0.004) {
       _a.x += Math.sin(pb.itWall * 19.0) * shake;
       _a.y += Math.sin(pb.itWall * 14.0) * shake * 0.55;

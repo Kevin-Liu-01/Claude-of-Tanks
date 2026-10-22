@@ -2,6 +2,9 @@
 // edit tokens.json and run `node tools/gen-tokens.mjs`. Copyright © 2026 Kevin B. Liu.
 // Design tokens of Claude of Tanks (brand-ui SPEC §4) for canvas, three.js, the minimap, the kill cam and the
 // damage panel. Values are fully resolved; CSS consumers read the custom properties in tokens.css instead.
+import { ACTIVE_TOKENS, TOKEN_RUNTIME } from './tokenSelection.ts';
+
+export { TOKEN_RUNTIME, setActiveTokens, tokenEpoch } from './tokenSelection.ts';
 
 /** Every token by its CSS custom-property name (without "--"), resolved at the default presets and scale 1. */
 export const TOKENS = {
@@ -224,7 +227,7 @@ export const TOKENS = {
   'team-squad-ring': '0px',
 } as const;
 
-type TokenName = keyof typeof TOKENS;
+export type TokenName = keyof typeof TOKENS;
 
 /** Pixel tokens as numbers (type, space, radius): CSS multiplies the type scale by --cot-type-scale. */
 export const TOKEN_PX = {
@@ -384,7 +387,8 @@ export const TOKEN_PRESETS = {
 } as const;
 
 type PresetAxis = keyof typeof TOKEN_PRESETS;
-type TokenPresets = { [A in PresetAxis]?: keyof (typeof TOKEN_PRESETS)[A] };
+/** One preset per axis (undefined: the axis at its default). */
+export type TokenPresets = { [A in PresetAxis]?: keyof (typeof TOKEN_PRESETS)[A] };
 type PresetTable = { readonly set: Readonly<Record<string, string>>; readonly follows: Readonly<Record<string, string>> };
 
 /** One token's value under a preset selection (default presets when omitted): derived values, then direct overrides. */
@@ -398,6 +402,23 @@ export function tokenValue(name: TokenName, presets: TokenPresets = {}): string 
     }
   }
   return out;
+}
+
+/** One token's value under the selection in force (tokenSelection.ts setActiveTokens, written by the player's
+ *  accessibility preferences): what the tokens.css cascade gives on :root right now. */
+export function liveToken(name: TokenName): string {
+  const { presets, runtime } = ACTIVE_TOKENS;
+  const value = runtime[name];
+  if (value === undefined) return tokenValue(name, presets);
+  if (!Object.hasOwn(TOKEN_RUNTIME, name)) {
+    // a selected preset's direct override beats the value derived from a runtime token (high contrast's text-own)
+    for (const axis of Object.keys(presets) as PresetAxis[]) {
+      const preset = presets[axis];
+      const table = (preset ? TOKEN_PRESETS[axis][preset as never] : undefined) as PresetTable | undefined;
+      if (table && Object.hasOwn(table.set, name)) return table.set[name];
+    }
+  }
+  return value;
 }
 
 /** Viewport bands (px, inclusive maxima), mirrored from src/ui/responsiveLayout.ts. */

@@ -9,6 +9,13 @@ import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
 import { ensureStyle } from './styleLayers.ts';
 
+/** Reduce motion: the player's choice on :root (data-motion reduce or full, src/ui/accessibilityPreferences.ts), or the
+ *  OS while they follow it. Inline: the public pages load this modal and never carry the accessibility core. */
+function reducedMotion(): boolean {
+  const choice = document.documentElement?.dataset.motion;
+  return choice === 'reduce' || (choice !== 'full' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+}
+
 export const MODAL_FOCUSABLE_SELECTOR = [
   'a[href]', 'button:not([disabled])', 'input:not([disabled])',
   'select:not([disabled])', 'textarea:not([disabled])',
@@ -261,7 +268,7 @@ export function createModal({
         if (restoreFocus && trigger?.isConnected) trigger.focus({ preventScroll: true });
         trigger = null;
       };
-      if (immediate || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) finish();
+      if (immediate || reducedMotion()) finish();
       else closeTimer = window.setTimeout(finish, 210);
       onClose?.(controller);
     },
