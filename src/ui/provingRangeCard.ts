@@ -179,10 +179,13 @@ body.cot-touch-layout .cot-range-card .rc-foot button{width:46px;min-height:44px
 body.cot-touch-layout .cot-range-card .rc-foot .rc-s{display:block;max-width:100%;text-align:center}
 body.cot-touch-layout .cot-range-card .rc-foot [data-range-action='moving']{order:1}
 body.cot-touch-layout .cot-range-card .rc-foot [data-range-action='exit']{order:2}
-/* the course on a phone: its own compact row under the controls, each feature its glyph (its figure in its title) */
-body.cot-touch-layout .cot-range-card .rc-course{order:3;flex:1 1 100%;gap:4px;padding:4px 6px 5px}
-body.cot-touch-layout .cot-range-card .rc-cf{padding:2px 1px}
-body.cot-touch-layout .cot-range-card .rc-cf span{display:none}
+/* the course on a phone stays in the one row: the feature under or ahead of the hull and the count take the head's place
+   (its icon and the laid range), and the way along is a line on the card's lower edge */
+body.cot-touch-layout .cot-range-card:has(.rc-course:not([hidden])) .rc-head{display:none}
+body.cot-touch-layout .cot-range-card .rc-course{flex:0 0 auto;padding:0;background:none}
+body.cot-touch-layout .cot-range-card .rc-cf{flex:0 0 auto;padding:2px 3px}
+body.cot-touch-layout .cot-range-card .rc-cf:not(.now,.next),body.cot-touch-layout .cot-range-card .rc-cf span{display:none}
+body.cot-touch-layout .cot-range-card .rc-course-bar{position:absolute;left:0;right:0;bottom:0;height:3px}
 body.cot-touch-layout .cot-range-card .rc-foot button svg{width:18px;height:18px}
 /* the last shot at the top right under the screen's own buttons, one line: clear of the sight in the middle and of the
    round controls under the card */
@@ -337,7 +340,7 @@ export function createProvingRangeCard(parent: HTMLElement, emit: (type: string)
     if (key === courseKey) return;
     courseKey = key;
     for (let i = 0; i < courseChips.length; i++) {
-      courseChips[i].className = i < done ? 'rc-cf done' : i === done && inside ? 'rc-cf now' : 'rc-cf';
+      courseChips[i].className = i < done ? 'rc-cf done' : i === done ? (inside ? 'rc-cf now' : 'rc-cf next') : 'rc-cf';
     }
     courseCountEl!.innerHTML = `${done}<small>/${courseChips.length}</small>`;
     courseBarEl.style.width = `${fraction}%`;
