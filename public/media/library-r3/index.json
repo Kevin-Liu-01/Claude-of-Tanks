@@ -1,6 +1,6 @@
 {
  "version": 2,
- "count": 836,
+ "count": 845,
  "collections": [
   {
    "key": "scenes",
@@ -28,7 +28,7 @@
    },
    "count": 394,
    "sets": 14,
-   "bytes": 23923814
+   "bytes": 23923244
   },
   {
    "key": "duels",
@@ -40,9 +40,9 @@
     "en-US": "Two tanks, one frame: the duels, by time of day.",
     "zh-CN": "两辆坦克，同框对决：按时段分组的对决。"
    },
-   "count": 16,
+   "count": 25,
    "sets": 3,
-   "bytes": 301275
+   "bytes": 338709
   },
   {
    "key": "combat",
