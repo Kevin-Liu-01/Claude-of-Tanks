@@ -14,6 +14,15 @@ import {
 import type { AimBloom, FleetTankSpec } from './specContracts.ts';
 import { bindFleetRegistries, registerFleetSpecs } from './fleetSpecRegistry.ts';
 
+/** Release 231 (the gun-hull fleet lane): the C1 Ariete pre-series's main-gun depression by absolute turret yaw (degrees;
+ * sim/gunPitchLimits.ts), measured with tools/gun-depression-sweep.mjs after its hull tops came under the turret's sweep
+ * and its mantlet's lower parts were raked (profiles/misc.ts): no mount conflict, nothing blocked at full elevation. The
+ * hull's fore deck holds the barrel to -4.3 ahead; -5.5 over the sides; a notch over the front mudguard crests at
+ * 20-28; level to +0.6 over the rear deck from 148. */
+const C1_ARIETE_PRESERIE_GUN_PITCH_BY_YAW_DEG = Object.freeze([[0, -4.3], [19, -3.6], [20, -1.8], [21, -0.3], [22, 0.1],
+  [25, 0.2], [27, 0], [28, -0.4], [29, -3.1], [33, -3], [44, -4.4], [49, -5.3], [131, -5.3], [136, -4.4], [147, -3],
+  [148, -1.1], [149, -0.2], [150, 0.2], [157, 0.5], [180, 0.6]] as const);
+
 const BLOOM_MODERN: Readonly<AimBloom> = {
   move: 0.06,
   hullRot: 0.08,
@@ -703,6 +712,7 @@ const MODERN3_SPECS = {
     terrainResistance: { hard: 0.7, medium: 0.8, soft: 1.5 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 38, gunPitchDegS: 30, gunElevationDeg: 20, gunDepressionDeg: 9,
+    gunPitchByYawDeg: C1_ARIETE_PRESERIE_GUN_PITCH_BY_YAW_DEG,
     gun: {
       caliberMm: 120, reloadS: 6.2, baseAccuracy: 0.29, aimTimeS: 1.7,
       bloom: BLOOM_MODERN,
