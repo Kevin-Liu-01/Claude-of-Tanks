@@ -127,19 +127,17 @@ const isAuthoredPaintIdAfterGt = (id: string): id is AuthoredPaintIdAfterGt =>
   || (AUTHORED_PAINT_IDS_AFTER_233 as readonly string[]).includes(id);
 /**
  * Release 233 (owner 2026-10-21: the M1A1 HA, AIM, FEP, HC and SA are "kinda samey", and the M60A1 and M60A3 likewise):
- * each mark wears its own service paint as its Signature. Appended after every earlier id, so no serialized index moves.
+ * the marks with a patterned service paint wear it as their Signature. Appended after every earlier id, so no serialized
+ * index moves. Owner 2026-10-22: "i dont like the monnocolor flat camos, just use the default americann desert for those
+ * kinds of cases. i do like the new special camos": the flat HA, AIM, SA and M60A1 coats are gone and those tanks keep
+ * the US desert service coat.
  */
 const RELEASE_233_SIGNATURE_IDS = Object.freeze([
-  'sig_m1a1ha', 'sig_m1a1_abrams_hc', 'sig_m1a1_abrams_aim', 'sig_m1a1_abrams_fep', 'sig_m1a1_abrams_sa',
-  'sig_m60a1', 'sig_m60a3',
+  'sig_m1a1_abrams_hc', 'sig_m1a1_abrams_fep', 'sig_m60a3',
 ] as const);
 const RELEASE_233_SIGNATURE_LABEL: Readonly<Record<typeof RELEASE_233_SIGNATURE_IDS[number], string>> = Object.freeze({
-  sig_m1a1ha: 'M1A1 HA Desert Storm Sand',
   sig_m1a1_abrams_hc: 'M1A1 HC USAREUR Three-Tone',
-  sig_m1a1_abrams_aim: 'M1A1 AIM OIF Tan',
   sig_m1a1_abrams_fep: 'M1A1 FEP USMC Woodland',
-  sig_m1a1_abrams_sa: 'M1A1 SA CARC Green',
-  sig_m60a1: 'M60A1 USMC Desert Sand',
   sig_m60a3: 'M60A3 MERDC Woodland',
 });
 const AUTHORED_PAINT_IDS_BEFORE_GT = AUTHORED_PAINT_IDS.filter(
@@ -567,19 +565,11 @@ export const SHARED_CAMO_PRESETS: readonly SharedCamoPreset[] = Object.freeze([
     { scheme: 'desert', base: '#858a74', weather: '#a0a48a', patches: ['#586350', '#bcb399', '#74674f'], camoScale: 0.5 }),
   preset('sig_sabra_mk2_x', 'sabra_mk2', signatureTags('il', 'desert', 'stripes'),
     { scheme: 'stripes', base: '#9a947a', weather: '#b0a68b', patches: ['#586456', '#c4b490', '#75644d'], camoScale: 0.46 }),
-  // Release 233: the M1A1 marks' and the M60s' own service paints (RELEASE_233_SIGNATURE_IDS).
-  preset('sig_m1a1ha', 'm1a1ha', signatureTags('usa', 'desert', 'geometric'),
-    { scheme: 'solid', base: '#c9b38a', weather: '#d5c19c', patches: [], solidWeatheringIntensity: 0.6 }),
+  // Release 233: the M1A1 marks' and the M60A3's own patterned service paints (RELEASE_233_SIGNATURE_IDS).
   preset('sig_m1a1_abrams_hc', 'm1a1_abrams_hc', signatureTags('usa', 'woodland', 'organic'),
     { scheme: 'nato', base: '#56603a', weather: '#646e47', patches: ['#1b1d16', '#5a432d'], camoScale: 0.62 }),
-  preset('sig_m1a1_abrams_aim', 'm1a1_abrams_aim', signatureTags('usa', 'desert', 'geometric'),
-    { scheme: 'solid', base: '#9a8058', weather: '#b89e74', patches: [], solidWeatheringIntensity: 0.85 }),
   preset('sig_m1a1_abrams_fep', 'm1a1_abrams_fep', signatureTags('usa', 'woodland', 'organic'),
     { scheme: 'blotch', base: '#5f6e43', weather: '#6e7c50', patches: ['#6c5537', '#1f2219', '#968b5f'], camoScale: 0.5 }),
-  preset('sig_m1a1_abrams_sa', 'm1a1_abrams_sa', signatureTags('usa', 'woodland', 'geometric'),
-    { scheme: 'solid', base: '#4c5230', weather: '#6a7046', patches: [], solidWeatheringIntensity: 0.55 }),
-  preset('sig_m60a1', 'm60a1', signatureTags('usa', 'desert', 'geometric'),
-    { scheme: 'solid', base: '#b39a6c', weather: '#c3ab80', patches: [], solidWeatheringIntensity: 0.7 }),
   preset('sig_m60a3', 'm60a3', signatureTags('usa', 'woodland', 'organic'),
     { scheme: 'nato', base: '#4f5a35', weather: '#5d6841', patches: ['#6b5a3b', '#a39363', '#1d1f19'], camoScale: 0.72 }),
   preset('sig_t84', 't84', signatureTags('ua', 'woodland', 'organic'),
@@ -735,7 +725,7 @@ export function camoMatchesTag(
 export const SIGNATURE_CAMO_TANK_IDS = Object.freeze([
   // United States
   'abramsx', 'm551_sheridan',
-  'm1a1ha', 'm1a1_abrams_hc', 'm1a1_abrams_aim', 'm1a1_abrams_fep', 'm1a1_abrams_sa', 'm60a1', 'm60a3',
+  'm1a1_abrams_hc', 'm1a1_abrams_fep', 'm60a3',
   // Germany
   'leo2a3', 'mbt70', 'kf51_u',
   // Russia / USSR
