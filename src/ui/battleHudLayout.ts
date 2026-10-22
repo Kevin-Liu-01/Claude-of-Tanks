@@ -112,10 +112,10 @@ const PORTRAIT_SIGHT_ROOM_H = 720;
  *  touchWarningSeated): a short landscape, and a portrait phone 340 px wide or less (r10g: every seat by the sight met the
  *  left FIRE button, the map or the speedometer at 320x568). */
 const touchChipParked = (width: number, height: number) => (width > height && height < 550) || (height >= width && width <= 340);
-/** A short landscape at most this tall (touch) shows the objective in its compact form, its progress alone (the mode's
- *  line in its title): under the map where the left column holds it over the joystick ('side', clear of the centre
- *  column, which then holds the notices from under the score: at 568x290 the panel under the score left them no clear
- *  place), else under the score ('top'). battleHudLayout.css data-objective-seat. */
+/** A short landscape at most this tall (touch) seats the objective under the map in its compact form, its progress
+ *  alone (the mode's name in its title), where the left column holds it over the joystick: the centre column then holds
+ *  the notices from under the score (at 568x290 the panel under the score left them no clear place). Where the column
+ *  is too short (568x256) the panel stays under the score. battleHudLayout.css data-objective-seat. */
 const OBJECTIVE_COMPACT_H = 340;
 /** The side seat's gap under the map, and its least width: the parked warning chip's (battleHudLayout.css), one column. */
 const OBJECTIVE_SEAT_GAP = 4;
@@ -242,14 +242,14 @@ export function installBattleHudLayout(root: HTMLElement): void {
   let objectiveTopKey = '';
   /** Seats the objective (OBJECTIVE_COMPACT_H) and writes its seat and place before the pass reads it: the side seat is
    *  measured in its compact form under the map and kept where it ends over the joystick (the left lane's own floor
-   *  reserves a short landscape's hidden second FIRE button). '' (the full panel), 'top' or 'side'. */
+   *  reserves a short landscape's hidden second FIRE button). 'side', or '' (the panel under the score). */
   function seatObjective(touch: boolean, width: number, height: number, map: DOMRect | null, score: DOMRect | null): string {
     const node = document.querySelector<HTMLElement>('.cot-mode-status.show');
     objectivePlace = { left: score ? score.left + score.width / 2 : width / 2, top: score?.bottom || 64,
       width: objectiveWidth(score?.width || 344) - (touch && read('.cot-mp-status.battle') && width > height ? 52 : 0) };
-    let seat = node && touch && width > height && height <= OBJECTIVE_COMPACT_H ? 'top' : '';
+    let seat = '';
     const key = `${width}x${height}|${node?.dataset.mode}`;
-    if (node && seat && map && map.left < width / 2 && key !== objectiveTopKey) {
+    if (node && touch && width > height && height <= OBJECTIVE_COMPACT_H && map && map.left < width / 2 && key !== objectiveTopKey) {
       const seatWidth = Math.max(map.width, PARKED_CHIP_W);
       const place = { left: map.left + seatWidth / 2, top: map.bottom + OBJECTIVE_SEAT_GAP, width: seatWidth };
       writeObjective('side', place);
@@ -673,6 +673,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
       systemsPerRow = Math.max(1, Math.ceil(inRow / rows));
       systemsHeight = rows * TOUCH_TARGET + (rows - 1) * SYSTEMS_GAP;
     };
+    // (a row that pages no longer, its paging marks lifted before it is counted)
+    const more = document.querySelector<HTMLButtonElement>('.cot-vehicle-controls>.cot-systems-more');
+    const paged = touch && !systemsSlot && !!systemsElement && !!more;
+    if (!paged && more && !more.hidden) {
+      more.hidden = true;
+      for (const button of systemsElement?.children ?? []) button.removeAttribute('data-off');
+    }
     if (systemsSlot) {
       for (const button of systemsElement?.children ?? []) if (button.checkVisibility()) systemsCount++;
       slotRows();
@@ -687,6 +694,29 @@ export function installBattleHudLayout(root: HTMLElement): void {
       dockWidth = Math.min(systemsWidth, naturalWidth);
       // (the top slot's rows in the width the ammo column leaves it)
       if (systemsSlot) { dockWidth = systemsWidth; slotRows(); }
+    }
+    // UI-06 (owner 2026-10-14: "a better way to show the stuff u can do row on mobile"): a touch row is whole 44 px tiles
+    // and never scrolls; where its width holds fewer tiles than it has controls, its last place is the More tile, which
+    // pages through the rest in the same place (hud.ts), so nothing new covers the sight or the controls. The paging
+    // marks are lifted while the row's controls are counted (no frame between).
+    if (paged && systemsElement && more) {
+      const controls: HTMLElement[] = [];
+      for (const node of systemsElement.children) {
+        const button = node as HTMLElement;
+        if (button === more) continue;
+        button.removeAttribute('data-off');
+        if (button.checkVisibility()) controls.push(button);
+      }
+      const fits = Math.max(1, Math.floor((systemsWidth - 4 + SYSTEMS_GAP) / (TOUCH_TARGET + SYSTEMS_GAP)));
+      const perPage = controls.length > fits ? Math.max(1, fits - 1) : Math.max(1, controls.length);
+      const pages = Math.max(1, Math.ceil(controls.length / perPage));
+      const page = Math.min(pages - 1, Number(systemsElement.dataset.page) || 0);
+      controls.forEach((button, index) => { if (Math.floor(index / perPage) !== page) button.setAttribute('data-off', ''); });
+      more.hidden = pages <= 1;
+      more.classList.toggle('last', pages > 1 && page === pages - 1);
+      if (systemsElement.dataset.pages !== String(pages)) systemsElement.dataset.pages = String(pages);
+      if (systemsElement.dataset.page !== String(page)) systemsElement.dataset.page = String(page);
+      if (pages > 1) dockWidth = Math.min(systemsWidth, (perPage + 1) * (TOUCH_TARGET + SYSTEMS_GAP) - SYSTEMS_GAP + 4);
     }
     // (the buttons beside the chrome: the row's last ones, each 44 px, from the slot's left edge; the marks cleared once
     // none sits there)

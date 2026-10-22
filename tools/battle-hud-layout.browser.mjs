@@ -556,7 +556,11 @@ try {
       if(state.startsWith('mode-')) {
         if(await page.locator('.cot-mode-status button').count())result.failures.push('objective must not contain a Brief button');
         const detected=result.rects.find(r=>r.name==='cot-sixth on');
-        if(!detected||(state==='mode-standard'?!!objective:!objective||detected.y<objective.bottom+7))result.failures.push('detection must clear the objective by at least 7px');
+        // (a short landscape's side seat stands the objective under the map, and the detection takes the band under the
+        // score beside it: there it keeps the notice planner's 6 px from the seat, TOUCH_NOTICE_GAP)
+        const apart=(a,b)=>Math.max(a.x-b.right,b.x-a.right,a.y-b.bottom,b.y-a.bottom);
+        if(!detected||(state==='mode-standard'?!!objective:!objective||(result.seat==='side'?apart(detected,objective)<6:detected.y<objective.bottom+7)))
+          result.failures.push(result.seat==='side'?'detection must keep 6px from the side-seated objective':'detection must clear the objective by at least 7px');
       }
       if(state.startsWith('notifications')) {
         const hexagons=await page.locator('.cot-sixth.on,.cot-alert.show').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).clipPath));
@@ -618,19 +622,31 @@ try {
         }
       }
       if(state==='idle'){
-        // The full Gravity + ATGM kit must remain usable after moving to a side lane.
-        const buttons=page.locator('.cot-vehicle-controls > button:visible');
-        if(await buttons.count()!==5)errors.push(`${name}: expected all five vehicle controls`);
+        // The full Gravity + ATGM kit must remain usable after moving to a side lane. On touch the row is whole 44 px tiles
+        // that never scroll, and a row that cannot hold them all pages through the rest behind its More tile (UI-06).
         await page.evaluate(()=>{
           window.__controlEvents=[];
           for(const event of ['ui:specialAction','ui:selfRight','ui:smoke','ui:lightsToggle','ui:roofGun'])
             window.__HUD_LAYOUT.bus.on(event,()=>window.__controlEvents.push(event));
         });
-        for(const button of await buttons.all()){
-          const box=await button.boundingBox();
-          if(box.width<44||box.height<(touch?44:32))errors.push(`${name}: vehicle control below touch target minimum`);
-          await button.click();
+        const pageCount=await page.evaluate(()=>Number(document.querySelector('.cot-vehicle-controls').dataset.pages)||1);
+        let pressed=0;
+        for(let index=0;index<pageCount;index++){
+          const buttons=page.locator('.cot-vehicle-controls > button:visible');
+          for(const button of await buttons.all()){
+            const box=await button.boundingBox();
+            if(box.width<44||box.height<(touch?44:32))errors.push(`${name}: vehicle control below touch target minimum`);
+            if(touch&&(box.x<-.5||box.x+box.width>width+.5))errors.push(`${name}: vehicle control off the screen`);
+            if(await button.evaluate(node=>node.classList.contains('cot-systems-more')))continue;
+            await button.click();
+            pressed++;
+          }
+          if(touch&&await page.evaluate(()=>{const row=document.querySelector('.cot-vehicle-controls');return row.scrollWidth>row.clientWidth+1;}))
+            errors.push(`${name}: the touch row scrolls`);
+          if(index<pageCount-1)await page.locator('.cot-systems-more').click();
         }
+        if(pageCount>1)await page.locator('.cot-systems-more').click();
+        if(pressed!==5)errors.push(`${name}: expected all five vehicle controls (${pressed} reached)`);
         const events=await page.evaluate(()=>window.__controlEvents);
         // Mars is a jump mode: the jump leads the row (vehicleControlOrder.ts), then the loadout in its own order.
         if(events.join(',')!=='ui:selfRight,ui:specialAction,ui:smoke,ui:lightsToggle,ui:roofGun')
