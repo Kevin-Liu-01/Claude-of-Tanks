@@ -400,8 +400,8 @@ export function buildAriete(P: MiscBuilderPort): void {
   // ---- hull tub + sponsons + stepped deck ----
   const buildArieteHullStage1 = (): void => {
     P.add('hull', box(2.06, 0.90, 5.90), 0, 0.85, 0.05);                        // tub x +-1.03, belly 0.35 (push round: ref front-row bottoms 0.343 at +-0.66-1.03), z -2.90..3.00
-    P.add('hull', box(3.12, 0.16, 5.92), 0, 1.35, -0.66);                        // sponson band over the tracks (x +-1.56; r12: rear edge to -3.62 — the raised sprocket wrap opened two top-down sky cells at (+-1.53, -3.57) between plate, wrap and skirt)
-    P.add('hull', box(3.12, 0.05, 1.915), 0, 1.4365, 0.6075);                    // main deck 1.4615 (z -0.35..1.565; r3 1024 worldtrace: the ref deck line reads 1.48 rendered = 1.4615 authored across z 0.1..1.54 — the 1.445 deck sat -0.018 on 12 side cols)
+    P.add('hull', box(3.12, 0.16, 5.92), 0, 1.33, -0.66);                        // sponson band over the tracks (x +-1.56; r12: rear edge to -3.62 — the raised sprocket wrap opened two top-down sky cells at (+-1.53, -3.57) between plate, wrap and skirt)
+    P.add('hull', box(3.12, 0.05, 1.915), 0, 1.3875, 0.6075);                    // main deck 1.4615 (z -0.35..1.565; r3 1024 worldtrace: the ref deck line reads 1.48 rendered = 1.4615 authored across z 0.1..1.54 — the 1.445 deck sat -0.018 on 12 side cols)
     P.add('hull', box(3.12, 0.045, 0.455), 0, 1.3635, 1.7925);                   // driver dip plate 1.386 (z 1.565..2.02 — ref dip band 1.402-1.413 rendered over 1.63..2.0)
     P.add('hull', box(3.12, 0.045, 0.32), 0, 1.3945, 2.18);                      // fore step 1.417 (z 2.02..2.34)
     // glacis: long shallow plate then the center nose (ref plan center 3.68)
@@ -441,7 +441,8 @@ export function buildAriete(P: MiscBuilderPort): void {
     // at +-1.6-1.76) + thin tip lip + the SS-A front bracket hidden in their
     // plan shadow, behind the idler wrap's dilated 3.70 far edge
     for (const s of [-1, 1]) {
-      P.add('hull', box(0.13, 0.41, 0.14), s * 1.615, 1.395, 3.35);              // crest block inner (top 1.60, x 1.55-1.68, z 3.28-3.42; bottom 1.19 clears the idler wrap)
+      // release 231: the crest's top at 1.555 (it stood 2.5 cm into the rear basket's sweep, 1.575 at 4.0-4.2 m, with the turret turned round)
+      P.add('hull', box(0.13, 0.365, 0.14), s * 1.615, 1.3725, 3.35);           // crest block inner (top 1.555 since 231; was 1.60, x 1.55-1.68, z 3.28-3.42; bottom 1.19 clears the idler wrap)
       P.add('hull', box(0.057, 0.355, 0.14), s * 1.7085, 1.3675, 3.35);          // crest OUTER CROWN step (top 1.545 — push-2: the ref front crest FALLS outboard: 1.567@1.726 / 1.557@1.767 vs the flat 1.60 block's +0.05; r3-1024: outer face 1.737 — the 1.745 face rendered 1.7671, a 4.6 mm coin-flip sliver in the ±1.784 col whose ref top is the 1.317 skirt skin)
       P.add('hullRubber', box(0.50, 0.05, 0.12), s * 1.32, 1.235, 3.40);         // rubber lip under the crest (r3-1024: raised+pulled to z 3.34-3.46 / y 1.21-1.26 — the raised wrap circle climbs to 1.175 under it, and any content in the z 3.464-3.577 apex window above ~1.0 prints the 3.568 col over the ref's [0.786..1.01] annulus band)
       // Closed glacis shoulder: the center glacis and the outboard crest used
@@ -462,7 +463,7 @@ export function buildAriete(P: MiscBuilderPort): void {
     // 2026-10-19 (owner float sweep): the outer courses (lamps, stubs) stood 24 mm behind the hull's tail; they run 4 mm into it.
     for (const s of [-1, 1]) P.add('hull', box(0.43, 0.82, 0.088), s * 1.205, 1.03, -3.656); // rear plate OUTER courses x 0.99-1.42
     P.add('hull', box(0.40, 0.055, 0.21), 0, 1.415, -3.795);                     // thin tail lip 1.385..1.445 (z -3.69..-3.90) — CENTER-ONLY x +-0.30 (push round: the 2.70 lip printed plan rear -3.94 at every x where the ref rear is -3.65..-3.83; sides fall back to the -3.71 rear plate)
-    P.add('hull', box(0.36, 0.41, 0.19), 0, 1.365, -3.795);                       // SS-A REAR ANCHOR: center tail block to -3.89 (ref plan -3.88 center col; band 0.32 at the ref's own 1.385-1.565 lip heights; muzzle drops to 5.78 so overall stays 9.67)
+    P.add('hull', box(0.36, 0.39, 0.19), 0, 1.355, -3.795);                       // release 231: top 1.55, under the rear basket's 1.576 sweep (was 1.57)                       // SS-A REAR ANCHOR: center tail block to -3.89 (ref plan -3.88 center col; band 0.32 at the ref's own 1.385-1.565 lip heights; muzzle drops to 5.78 so overall stays 9.67)
     for (const s of [-1, 1]) {
       P.hangMudguard('c1-ariete-preserie-rear-flap', 'hullRubber', box(0.40, 0.25, 0.03), s * 1.30, 1.00, -3.62);         // rear flaps
       P.add('hullDark', box(0.14, 0.07, 0.035), s * 1.20, 1.36, -3.71);          // taillights
@@ -474,20 +475,27 @@ export function buildAriete(P: MiscBuilderPort): void {
     P.add('hullDark', box(1.62, 0.26, 0.04), 0, 1.10, -3.70);                    // rear grille shadow (x +-0.81: clear of the notch cols)
     for (let k = 0; k < 3; k++) P.add('hullDetail', box(1.58, 0.032, 0.045), 0, 1.00 + k * 0.09, -3.705);
     // rear superstructure: stepped deck -> powerpack hump -> rear deck run
-    P.add('hull', box(3.06, 0.04, 0.36), 0, 1.455, -0.53);                       // step 1.475 (z -0.35..-0.71)
-    P.add('hull', box(3.06, 0.045, 0.40), 0, 1.4825, -0.91);                     // step 1.505 (z -0.71..-1.11)
-    P.add('hull', box(3.00, 0.05, 0.22), 0, 1.510, -1.22);                       // step 1.535
-    P.add('hull', box(1.09, 0.125, 0.63), 0, 1.5425, -1.645);                    // powerpack hump INNER 1.605 x ±0.545 (r3 1024 front rows: the ref deck-edge top line STEPS across x — 1.625 rendered at |x|<0.55, 1.598 at 0.57-1.05, 1.667 at 1.01-1.34 — the flat 1.640 hump read +0.034..+0.06 on ~28 front cols; side keeps its 1.669 line via the outer segments)
+    // Release 231 (the gun-hull fleet lane; the owner: "the older c1 arietes clip through hull"): the turret's front cheek
+    // wedges (underside 1.455, out to 2.44 m from the ring) swept 15-22 cm into the stepped rear deck and the powerpack
+    // hump (1.475-1.646) when the turret turned rearward, and 6.5 mm into the main deck. A turret that traverses must
+    // clear every hull top within its sweep, so the main deck, the steps, the hump and the swept rear deck sit at 1.4125
+    // (3.3 cm under the cheeks); the tail deck past the sweep keeps its 1.565 run under the bustle. The turret and its
+    // 2.50 m height are unchanged. The lowered rear deck runs on to -3.27, so the spare links lie on it past the cheeks'
+    // 2.50 m reach, behind the basket at rest and under the bustle's 1.575 sweep, against the tail deck's front face.
+    P.add('hull', box(3.06, 0.04, 0.36), 0, 1.3925, -0.53);                       // step 1.475 (z -0.35..-0.71)
+    P.add('hull', box(3.06, 0.045, 0.40), 0, 1.39, -0.91);                     // step 1.505 (z -0.71..-1.11)
+    P.add('hull', box(3.00, 0.05, 0.22), 0, 1.3875, -1.22);                       // step 1.535
+    P.add('hull', box(1.09, 0.125, 0.63), 0, 1.35, -1.645);                    // powerpack hump INNER 1.605 x ±0.545 (r3 1024 front rows: the ref deck-edge top line STEPS across x — 1.625 rendered at |x|<0.55, 1.598 at 0.57-1.05, 1.667 at 1.01-1.34 — the flat 1.640 hump read +0.034..+0.06 on ~28 front cols; side keeps its 1.669 line via the outer segments)
     for (const s of [-1, 1]) {
-      P.add('hull', box(0.45, 0.098, 0.63), s * 0.77, 1.529, -1.645);            // hump MID step 1.578 (x 0.545-0.995 -> rendered 1.598 = the ref front want)
-      P.add('hull', box(0.338, 0.166, 0.63), s * 1.164, 1.563, -1.645);          // hump OUTER shoulder 1.646 (x 0.995-1.333 -> rendered 1.667; also the side 1.669 line, extended aft to -1.96 per the fresh side rows)
+      P.add('hull', box(0.45, 0.098, 0.63), s * 0.77, 1.3635, -1.645);            // hump MID step 1.578 (x 0.545-0.995 -> rendered 1.598 = the ref front want)
+      P.add('hull', box(0.338, 0.166, 0.63), s * 1.164, 1.3295, -1.645);          // hump OUTER shoulder 1.646 (x 0.995-1.333 -> rendered 1.667; also the side 1.669 line, extended aft to -1.96 per the fresh side rows)
     }
-    P.add('hullDark', box(2.20, 0.014, 0.55), 0, 1.553, -1.645);
-    P.add('hull', box(3.00, 0.14, 0.84), 0, 1.525, -2.38);                       // rear deck 1.595 (z -1.96..-2.80 — the ref 1.595 run; fwd edge meets the extended hump)
-    P.add('hull', box(2.90, 0.10, 0.70), 0, 1.535, -3.15);                       // tail deck 1.565 (z -2.80..-3.50)
-    P.add('hull', box(1.66, 0.10, 0.14), 0, 1.515, -3.57);                       // tail deck rear center (to -3.64; push-2 notch: the x 0.85-0.97 window stops at -3.50 = the ref's -3.53/-3.57 rear-notch cols)
-    for (const s of [-1, 1]) P.add('hull', box(0.46, 0.10, 0.14), s * 1.22, 1.515, -3.57); // tail deck rear outer
-    for (let k = 0; k < 5; k++) P.add('hullDetail', box(2.20, 0.014, 0.05), 0, 1.598, -2.10 - k * 0.22);
+    P.add('hullDark', box(2.20, 0.014, 0.55), 0, 1.417, -1.645);
+    P.add('hull', box(3.00, 0.14, 1.31), 0, 1.3425, -2.615);                     // release 231: lowered under the turret's sweep, z -1.96..-3.27                       // rear deck 1.595 (z -1.96..-2.80 — the ref 1.595 run; fwd edge meets the extended hump)
+    P.add('hull', box(2.90, 0.10, 0.23), 0, 1.505, -3.385);                      // release 231: starts at -3.27, behind the spare links; top 1.555 (2 cm under the rear basket's 1.576 sweep)                       // tail deck 1.565 (z -2.80..-3.50)
+    P.add('hull', box(1.66, 0.10, 0.14), 0, 1.495, -3.57);                       // tail deck rear center (to -3.64; push-2 notch: the x 0.85-0.97 window stops at -3.50 = the ref's -3.53/-3.57 rear-notch cols)
+    for (const s of [-1, 1]) P.add('hull', box(0.46, 0.10, 0.14), s * 1.22, 1.495, -3.57); // tail deck rear outer
+    for (let k = 0; k < 4; k++) P.add('hullDetail', box(2.20, 0.014, 0.05), 0, 1.4175, -2.10 - k * 0.22); // release 231: the fifth slat's station carries the spare links
     P.add('hullDark', box(0.24, 0.20, 0.28), -1.30, 1.30, -2.86);                // left exhaust box (r12: bottom 1.20 — the raised sprocket wrap climbed to 1.15 rendered and clipped the old 1.05 base, 50 voxels)
     for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.03, 0.18, 0.24), -1.435, 1.30, -2.86 + (k - 1) * 0.0);
     // driver station on the dip plate + episcopes + V splash rail
@@ -502,24 +510,27 @@ export function buildAriete(P: MiscBuilderPort): void {
     headlight(P, 1.40, 1.20, 3.30, -0.25, 0.048);
     P.add('hullDetail', torus(0.08, 0.015, 10), -0.60, 0.62, 3.40, Math.PI / 2, 0, 0); // tow eyes
     P.add('hullDetail', torus(0.08, 0.015, 10), 0.60, 0.62, 3.40, Math.PI / 2, 0, 0);
-    liftEye(P, 'hullDetail', -1.40, 1.42, 0.55);
-    liftEye(P, 'hullDetail', 1.40, 1.42, 0.55);
-    towCable(P, [[-1.10, 1.27, 2.68], [0, 1.425, 2.18], [1.10, 1.27, 2.68]]);   // (r3-1024: re-draped — the 1.42@2.30 knot printed 1.446 across the z 2.37-2.6 cols over the re-laid 1.358 glacis)
-    stowage(P, 'hullCloth', rng, [[-1.30, 1.555, -2.15, 0.44, 0.10, 0.8]]);      // deck roll FLAT (push round: the 1.66/0.14 roll topped 1.75 across five side cols + four front cols where the ref line is 1.585-1.66)
+    // release 231: no lift eyes on the deck edge (their rings stood 4.7 cm into the turret's sweep)
+    // release 231: the middle drapes on the glacis past the turret's sweep (its 1.447 knot at z 2.18 stood under the cheeks)
+    towCable(P, [[-1.10, 1.27, 2.68], [0, 1.37, 2.42], [1.10, 1.27, 2.68]]);   // (r3-1024: re-draped — the 1.42@2.30 knot printed 1.446 across the z 2.37-2.6 cols over the re-laid 1.358 glacis)
+    // release 231: no deck roll (the turret's front cheeks sweep 3 cm over the rear deck; nothing taller fits under them)      // deck roll FLAT (push round: the 1.66/0.14 roll topped 1.75 across five side cols + four front cols where the ref line is 1.585-1.66)
     // deck dressing (turret-fix: the bare 3.1 m fore deck + no baked AO fused
     // hull and turret into one wall at 3/4 angles) — all paper-thin interior
     // pieces, zero silhouette
-    P.add('hullDark', box(2.00, 0.006, 0.50), 0, 1.449, 1.31);                   // contact-shadow band on the deck ahead of the turret ring (SS-B2 attachment-shadow device)
-    P.add('hullDark', box(0.72, 0.008, 0.40), -0.98, 1.449, 0.90);               // battery/intake panel L
-    for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.66, 0.010, 0.04), -0.98, 1.451, 0.78 + k * 0.12);
-    P.add('hullDark', box(0.50, 0.008, 0.34), 1.06, 1.449, 0.95);                // stowage panel R
+    P.add('hullDark', box(2.00, 0.006, 0.50), 0, 1.4155, 1.31);                   // contact-shadow band on the deck ahead of the turret ring (SS-B2 attachment-shadow device)
+    P.add('hullDark', box(0.72, 0.008, 0.40), -0.98, 1.4155, 0.90);               // battery/intake panel L
+    for (let k = 0; k < 3; k++) P.add('hullDetail', box(0.66, 0.010, 0.04), -0.98, 1.4175, 0.78 + k * 0.12);
+    P.add('hullDark', box(0.50, 0.008, 0.34), 1.06, 1.4155, 0.95);                // stowage panel R
     {
-      const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.46, seed: 7 });
-      links.position.set(-0.70, 1.478, -2.98);                                   // spare links SUNK to tops 1.578 (r3 1024: the 1.645 tops printed the 0.57-1.05 front cols where the ref line is 1.598 rendered; 1.578 renders 1.598 exactly — the front want AND the low edge of the side 1.598-1.631 band)
+      // release 231: across the lowered rear deck (feet 2 mm into it), 2.55 m and more from the ring, tops 1.518
+      const links = FITTINGS.spareTrackLinks({ mats: P.mats, links: 4, width: 0.46, seed: 7, rotation: [0, Math.PI / 2, 0] });
+      links.position.set(-0.84, 1.4515, -3.03);                                   // spare links SUNK to tops 1.578 (r3 1024: the 1.645 tops printed the 0.57-1.05 front cols where the ref line is 1.598 rendered; 1.578 renders 1.598 exactly — the front want AND the low edge of the side 1.598-1.631 band)
       P.hullG.add(links);
     }
-    P.add('hull', box(0.14, 0.125, 0.18), 0, 1.5755, -2.85);                     // CENTER EXHAUST STACK top 1.638 (r3 1024: the ref center dome — front ±0.04 cols want 1.659 rendered AND side -2.76..-2.88 wants 1.66 — is one x ±0.07 mass on the tail deck; §B3: stack body with a dark grate cap)
-    P.add('hullDark', box(0.10, 0.02, 0.12), 0, 1.6255, -2.85);                  // stack grate inlay (top 1.6355, inside the body crown)
+    // release 231: the centre exhaust is a grate flush on the lowered rear deck (its 1.638 stack stood 20 cm into the
+    // turret's sweep; nothing taller than 1.43 fits under the front cheeks there)
+    P.add('hullDark', box(0.14, 0.006, 0.18), 0, 1.4155, -2.55);                     // CENTER EXHAUST STACK top 1.638 (r3 1024: the ref center dome — front ±0.04 cols want 1.659 rendered AND side -2.76..-2.88 wants 1.66 — is one x ±0.07 mass on the tail deck; §B3: stack body with a dark grate cap)
+    P.add('hullDetail', box(0.10, 0.008, 0.12), 0, 1.418, -2.55);                  // stack grate inlay (top 1.6355, inside the body crown)
     P.decal('hull', 'number', 'EI 118', 0.26, [-0.92, 1.279, 3.06], 0, -0.21);  // ON the glacis plane (push round r2: the 3.66 nose seat became a floating band in the tube-only 3.643 col after the nose pull)
     // Exhaust soot stays on the actual left exhaust housing.  The previous
     // oversized card extended aft/down across the elevated final-drive shoes;
@@ -767,18 +778,24 @@ export function buildAriete(P: MiscBuilderPort): void {
     // wedge cheeks (r4 architecture restored — its plan row scored 70.1)
     P.gunG.position.set(0, 0.206, 0.89);
     trunnionRoll(P, 0.185, 0.55);
-    P.addGunExtra(box(0.36, 0.40, 0.85), 0, -0.02, 0.72);                        // central mantlet block to z_w 1.745 (top 1.87 — its side band tops 1.81-1.84; 0.36 wide: +-0.18 covers the +-0.165 plan col the 0.44 r4 block over-filled)
-    P.addGunExtra(cylZ(0.135, 0.48, 12), 0, 0, 1.36);                            // gun-root collar to z_w 2.20 (turret-fix: fills the prow notch center so the recess reads mantlet+gun, not a hole)
+    // Release 231 (the gun-hull fleet lane): the mantlet's lower parts raked and flattened so they ride the barrel's own
+    // depression (the hull's fore deck limits it to about -4.4 degrees ahead): the block's lower front edge rises 12 cm
+    // (its top, sides and rear unchanged), the surround and its canvas core flatter, the root collar slimmer. At -9 they
+    // stood 8-11 cm into the driver's plate, which held the whole gun to -1.2 degrees ahead.
+    P.addGunExtra(slab(
+      [-0.18, -0.22, 0.295], [0.18, -0.22, 0.295], [0.18, -0.10, 1.145], [-0.18, -0.10, 1.145],
+      [-0.18, 0.18, 0.295], [0.18, 0.18, 0.295], [0.18, 0.18, 1.145], [-0.18, 0.18, 1.145]), 0, 0, 0); // central mantlet block, lower front raked                        // central mantlet block to z_w 1.745 (top 1.87 — its side band tops 1.81-1.84; 0.36 wide: +-0.18 covers the +-0.165 plan col the 0.44 r4 block over-filled)
+    P.addGunExtra(cylZ(0.105, 0.40, 12), 0, 0, 1.32);                            // gun-root collar to z_w 2.20 (turret-fix: fills the prow notch center so the recess reads mantlet+gun, not a hole)
     // §B3 NO-MYSTERY-BOXES sweep (owner directive, C1 mantlet area): the two
     // canvas masses now carry CANVAS TELLS — cinch straps + a rolled top hem —
     // all inside the priced mantlet band (y 1.51-1.83, x +-0.41 < the 0.42
     // wedge roots, z within each cover's own footprint): identifiable dust
     // covers, not bare rectangles. Envelope-neutral: no mask row changes.
     P.addGunExtra(geometryXform(KIT.sph(0.25, 18), 0, 0, 0, 0, 0, 0,
-      [1.58, 0.50, 0.92]), 0, -0.011, 1.33);                                    // rounded armored mantlet surround
+      [1.58, 0.36, 0.92]), 0, 0.01, 1.33);                                    // rounded armored mantlet surround
     P.addGunExtraDark(geometryXform(KIT.sph(0.25, 18), 0, 0, 0, 0, 0, 0,
-      [1.18, 0.42, 0.76]), 0, -0.008, 1.365);                                   // seated canvas core
-    for (const sx of [-0.27, 0, 0.27]) P.addGunExtraDark(box(0.014, 0.256, 0.464), sx, -0.011, 1.33); // snout cinch straps (3 mm proud on the cover faces)
+      [1.18, 0.30, 0.76]), 0, 0.012, 1.365);                                   // seated canvas core
+    for (const sx of [-0.27, 0, 0.27]) P.addGunExtraDark(box(0.014, 0.184, 0.464), sx, 0.01, 1.33); // snout cinch straps (3 mm proud on the cover faces)
     P.addGunExtraDark(cylX(0.028, 0.72, 10), 0, 0.096, 1.44);                    // rolled canvas hem across the snout top edge (kills the razor box corner; crown 1.81 <= the 1.83 band)
     P.addGunExtra(geometryXform(KIT.sph(0.23, 18), 0, 0, 0, 0, 0, 0,
       [1.52, 0.70, 0.65]), 0, -0.01, 0.55);                                     // rounded armored root surround
