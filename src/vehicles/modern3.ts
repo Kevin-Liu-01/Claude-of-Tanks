@@ -2265,9 +2265,9 @@ export function buildType10BBase(P: Modern3BuilderPort) {
 
 // ======================== Type 10 (Dozer) shared base =======================
 // Owner order 2026-10-21: "make a new type 10 variannt based off the version with a dozer!" The JGSDF fits some
-// production Type 10s with the ドーザ装置 (dozer kit). The production hull and turret stay whole; its plate moves from
-// the nose, which the blade covers, onto the blade (profiles/type10Dozer.ts), and it carries its own hull and turret
-// numbers.
+// production Type 10s with the ドーザ装置 (dozer kit). The production hull and turret stay whole; the blade
+// (profiles/type10Dozer.ts) covers the nose plate, so the hull number rides on the stern alone, and it carries its own
+// hull and turret numbers.
 export function buildType10DozerBase(P: Modern3BuilderPort) {
   buildType10Native2026(P, { hullNumber: '99-0239', bowNumberPlate: false, turretNumber: '24' });
 }

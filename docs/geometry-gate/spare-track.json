@@ -3627,7 +3627,7 @@
    "hostSweep": []
   },
   "type10_dozer": {
-   "inputHash": "55fdc5a5fc6c701c",
+   "inputHash": "69377e327881f461",
    "runs": [
     {
      "index": 0,
@@ -3647,7 +3647,7 @@
       "sunkMaxM": 0.01,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.933,
+      "exposure": 0.944,
       "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1734>"
      }
     },
@@ -3669,7 +3669,7 @@
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.906,
+      "exposure": 1,
       "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1710>"
      }
     }

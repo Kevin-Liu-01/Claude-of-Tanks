@@ -41,12 +41,14 @@ profiles/type10Dozer.ts). Production base: modern3.ts `buildType10Native2026` th
   y 0.417, over the 0.374 belly line (coordinator ruling 2026-10-16: nothing below the belly line).
 - Lowered (presentation only, `spec.visual.dozerBlade = 'lowered'` before the build): the rigid assembly turns 25.2
   degrees about the hinge; the edge sits 4 cm off the ground at z 4.18.
-- The hull plate number 99-0239 rides on the blade; the nose plate is behind it (`bowNumberPlate: false`). The turret
-  carries '24'.
+- Markings: no plate on the blade. Marking seats are armour-only (vehicleMarkingSeating.ts) and the kit is equipment,
+  so the nose plate (behind the blade, `bowNumberPlate: false`) is dropped and the stern plate and the turret carry
+  the numbers (the paint system prints the spec's tactical number, '24').
 - Gameplay: the Type 10's gun, fire control and armour; 50 t, 66 km/h, 30 km/h reverse, 44 deg/s pivot, 2650 HP;
   breakthrough role (assault doctrine). The kit is equipment (`hullEquipment`), not armour.
 - Paint: the owner's green digital, its own catalog paint `paint_type10_dozer` ("JGSDF Digital Woodland" /
-  "陆上自卫队林地数码迷彩"), appended after GT so production's serialized camo indices hold.
+  "陆上自卫队林地数码迷彩"), appended after GT so production's serialized camo indices hold, and the tank's stock coat
+  (camoPolicy.ts DEFAULT_CAMO_PATTERN_BY_TANK_ID; otherwise it would wear Japan's national service_type10).
 
 ## Measurements (lane probes, .qa-dev/type10-dozer, not receipts)
 

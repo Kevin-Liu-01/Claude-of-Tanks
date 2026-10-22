@@ -15,14 +15,10 @@ import { KIT, orientedSlab } from './kit.ts';
 
 export type Type10DozerPose = 'stowed' | 'lowered';
 
-type Vec3Tuple = [number, number, number];
-
 interface Type10DozerPort {
   readonly q?: boolean;
   readonly hullG: THREE.Group;
   add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
-  decal(owner: 'hull' | 'turret', kind: string, label: string, scale: number, position: Vec3Tuple,
-    yaw?: number, pitch?: number): void;
 }
 
 // ---- hull datums (buildType10Native2026, hull frame) -------------------------------------------------------------
@@ -240,7 +236,7 @@ export function addType10DozerKit(P: Type10DozerPort, pose: Type10DozerPose = 's
     const h = new THREE.Vector3(x, hinge.y, hinge.z);
     const d = new THREE.Vector3().subVectors(pin, h);
     const len = d.length();
-    P.add('hullEquipment', box(0.10, 0.12, len), x, (h.y + pin.y) / 2, (h.z + pin.z) / 2, -Math.atan2(d.y, d.z), 0, 0);
+    P.add('hullEquipment', box(0.10, 0.16, len), x, (h.y + pin.y) / 2, (h.z + pin.z) / 2, -Math.atan2(d.y, d.z), 0, 0);
     P.add('hullEquipment', cylX(0.062, 0.10, 16), x, h.y, h.z);                    // arm eye on the hull pin
     P.add('hullEquipment', cylX(0.058, 0.10, 16), x, pin.y, pin.z);                // arm eye on the blade pin
     for (const at of [h, pin]) {
@@ -276,33 +272,28 @@ export function addType10DozerKit(P: Type10DozerPort, pose: Type10DozerPose = 's
       for (const o of [-1, 1]) P.add('hullDark', cylX(0.036, 0.010, 12), x + o * 0.068, at.y, at.z);
     }
     if (q) {
-      // two hoses from bulkhead fittings in the beak plate (outboard of the clevis) to the barrel's ports
+      // two hoses from bulkhead fittings in the beak plate (outboard of the clevis) to elbow ports on the barrel: each
+      // leaves its fitting square to the plate and enters its port square to the barrel (one smooth S, no free end)
       const side = new THREE.Vector3(s, 0, 0);
-      for (const [fz, portT] of [[RAM_FACE_Z - 0.05, BARREL_START + 0.05], [RAM_FACE_Z + 0.07, BARREL_LEN - 0.07]] as const) {
+      const n = new THREE.Vector3(0, bp.n[0], bp.n[1]);
+      for (const [fz, portT] of [[RAM_FACE_Z - 0.05, BARREL_START + 0.05], [RAM_FACE_Z + 0.07, BARREL_LEN - 0.08]] as const) {
         const [fy, fzz] = bp.at(fz);
         const fit = new THREE.Vector3(x + s * 0.16, fy, fzz);
-        const n = new THREE.Vector3(0, bp.n[0], bp.n[1]);
-        P.add('hullDark', strut(0.019, fit.clone().addScaledVector(n, -0.004), fit.clone().addScaledVector(n, 0.03), 10));
-        const port = along(portT).addScaledVector(side, 0.052);
-        P.add('hullDark', strut(0.014, port.clone().addScaledVector(side, -0.012), port.clone().addScaledVector(side, 0.018), 8));
-        const start = fit.clone().addScaledVector(n, 0.028);
-        const end = port.clone().addScaledVector(side, 0.014);
-        const lift = start.clone().addScaledVector(n, 0.05);
-        const sag = start.clone().lerp(end, 0.6).addScaledVector(side, 0.03).addScaledVector(n, 0.02);
-        const curve = new THREE.CatmullRomCurve3([start, lift, sag, end]);
-        P.add('hullRubber', new THREE.TubeGeometry(curve, 14, 0.011, 6, false));
+        P.add('hullDark', strut(0.028, fit.clone().addScaledVector(n, -0.004), fit.clone().addScaledVector(n, 0.022), 6)); // bulkhead nut
+        P.add('hullDark', strut(0.016, fit.clone().addScaledVector(n, 0.02), fit.clone().addScaledVector(n, 0.065), 10)); // nipple
+        const axis = along(portT);
+        P.add('hullDark', strut(0.020, axis.clone().addScaledVector(side, 0.040), axis.clone().addScaledVector(side, 0.082), 10)); // port elbow
+        const start = fit.clone().addScaledVector(n, 0.06);
+        const end = axis.clone().addScaledVector(side, 0.078);
+        const curve = new THREE.CatmullRomCurve3([start, start.clone().addScaledVector(n, 0.05),
+          end.clone().addScaledVector(side, 0.06), end], false, 'centripetal');
+        P.add('hullRubber', new THREE.TubeGeometry(curve, 16, 0.012, 7, false));
       }
     }
   }
 
-  // ---- the hull number rides on the blade (the nose plate is behind it) --------------------------------------------
-  {
-    const u = 0.60, slope = (face(u + 0.01) - face(u - 0.01)) / 0.02;
-    const at = local(M, 0, u, face(u) + 0.006);
-    // the face normal there: the pose's turn, less the lean, plus the concave face's own tilt at u
-    const pitch = -STOWED_LEAN + (pose === 'lowered' ? frame.liftDeg * Math.PI / 180 : 0) + Math.atan(slope);
-    P.decal('hull', 'number', '99-0239', 0.25, [at.x, at.y, at.z], 0, pitch);
-  }
+  // No plate on the blade: marking seats are armour-only (vehicleMarkingSeating.ts markingArmorMeshes) and the kit is
+  // equipment, so the hull number stays on the stern plate and the turret carries the tactical number.
 
   P.hullG.userData.type10DozerReceipt = {
     pose,

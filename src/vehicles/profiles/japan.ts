@@ -95,7 +95,6 @@ interface JapaneseBuilderPort {
     scale: number,
     position: Vec3Tuple,
     yaw: number,
-    pitch?: number,
   ): void;
   scaleBuckets(names: readonly string[], x: number, y: number, z: number): void;
   offsetBuckets(names: readonly string[], x?: number, y?: number, z?: number): void;
