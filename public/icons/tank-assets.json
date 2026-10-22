@@ -1930465,6 +1930465,1127 @@
         }
       }
     },
+    "type10_dozer": {
+      "id": "type10_dozer",
+      "name": "Type 10 (Dozer)",
+      "label": {
+        "id": "type10_dozer",
+        "displayName": "Type 10 (Dozer)",
+        "shortName": "Type 10 Dozer",
+        "searchAliases": [
+          "Type 10 (Dozer)",
+          "Type 10 Dozer",
+          "type10_dozer",
+          "type10 dozer",
+          "Type 10 dozer blade",
+          "Type 10 dozer kit"
+        ],
+        "noteKey": null
+      },
+      "markings": {
+        "schemaVersion": 1,
+        "countryCode": "jp",
+        "countryLabel": "Japan",
+        "filterLabel": "JP",
+        "insignia": "jp-roundel",
+        "tacticalNumber": "24",
+        "designation": "JGSDF-24",
+        "markingCode": "JP:jp-roundel:24"
+      },
+      "nation": "Japan",
+      "countryCode": "jp",
+      "era": "modern",
+      "tier": 10,
+      "tierNumeral": "X",
+      "dimensionsM": {
+        "hullLength": 7.524,
+        "overallLength": 10.439,
+        "width": 3.564,
+        "height": 2.948
+      },
+      "gun": {
+        "caliberMm": 120,
+        "shells": [
+          {
+            "name": "Type 10 APFSDS",
+            "type": "APFSDS",
+            "pen100Mm": 891,
+            "pen1000Mm": 811,
+            "pen2000Mm": 730
+          },
+          {
+            "name": "JM12A1 HEAT-MP",
+            "type": "HEAT",
+            "pen100Mm": 600,
+            "pen1000Mm": 600,
+            "pen2000Mm": null
+          },
+          {
+            "name": "Type 10 HE",
+            "type": "HE",
+            "pen100Mm": 45,
+            "pen1000Mm": 45,
+            "pen2000Mm": null
+          }
+        ]
+      },
+      "armor": {
+        "schemaVersion": 3,
+        "turretPivot": [
+          0,
+          1.672,
+          0.2354
+        ],
+        "plates": [
+          {
+            "hitboxId": "H01",
+            "name": "upper_glacis",
+            "physicalMm": 45,
+            "keMm": 134,
+            "ceMm": 168,
+            "kind": "main",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.6394,
+                1.0098,
+                3.762
+              ],
+              [
+                1.6394,
+                1.0098,
+                3.762
+              ],
+              [
+                1.6394,
+                1.782,
+                1.368
+              ],
+              [
+                -1.6394,
+                1.782,
+                1.368
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H02",
+            "name": "lower_front",
+            "physicalMm": 450,
+            "keMm": 504,
+            "ceMm": 672,
+            "kind": "main",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.6038,
+                0.495,
+                3.154
+              ],
+              [
+                1.6038,
+                0.495,
+                3.154
+              ],
+              [
+                1.6038,
+                1.0098,
+                3.762
+              ],
+              [
+                -1.6038,
+                1.0098,
+                3.762
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H03",
+            "name": "hull_side_upper_R",
+            "physicalMm": 35,
+            "keMm": 67,
+            "ceMm": 67,
+            "kind": "main",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.782,
+                1.0908,
+                1.938
+              ],
+              [
+                1.782,
+                1.0908,
+                -3.762
+              ],
+              [
+                1.782,
+                1.782,
+                -3.762
+              ],
+              [
+                1.782,
+                1.782,
+                1.938
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H04",
+            "name": "hull_side_upper_L",
+            "physicalMm": 35,
+            "keMm": 67,
+            "ceMm": 67,
+            "kind": "main",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.782,
+                1.0908,
+                -3.762
+              ],
+              [
+                -1.782,
+                1.0908,
+                1.938
+              ],
+              [
+                -1.782,
+                1.782,
+                1.938
+              ],
+              [
+                -1.782,
+                1.782,
+                -3.762
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H05",
+            "name": "hull_side_lower_R",
+            "physicalMm": 35,
+            "keMm": 67,
+            "ceMm": 67,
+            "kind": "main",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.144,
+                0.495,
+                3.458
+              ],
+              [
+                1.144,
+                0.495,
+                -3.572
+              ],
+              [
+                1.144,
+                1.0908,
+                -3.572
+              ],
+              [
+                1.144,
+                1.0908,
+                3.458
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H06",
+            "name": "hull_side_lower_L",
+            "physicalMm": 35,
+            "keMm": 67,
+            "ceMm": 67,
+            "kind": "main",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.144,
+                0.495,
+                -3.572
+              ],
+              [
+                -1.144,
+                0.495,
+                3.458
+              ],
+              [
+                -1.144,
+                1.0908,
+                3.458
+              ],
+              [
+                -1.144,
+                1.0908,
+                -3.572
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H07",
+            "name": "skirt_R",
+            "physicalMm": 60,
+            "keMm": 134,
+            "ceMm": 336,
+            "kind": "spaced",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.802,
+                0.5747,
+                3.3858
+              ],
+              [
+                1.802,
+                0.5747,
+                -3.3858
+              ],
+              [
+                1.802,
+                1.195,
+                -3.3858
+              ],
+              [
+                1.802,
+                1.195,
+                3.3858
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H08",
+            "name": "skirt_L",
+            "physicalMm": 60,
+            "keMm": 134,
+            "ceMm": 336,
+            "kind": "spaced",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.802,
+                0.5747,
+                -3.3858
+              ],
+              [
+                -1.802,
+                0.5747,
+                3.3858
+              ],
+              [
+                -1.802,
+                1.195,
+                3.3858
+              ],
+              [
+                -1.802,
+                1.195,
+                -3.3858
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H09",
+            "name": "track_R",
+            "physicalMm": 20,
+            "keMm": 20,
+            "ceMm": 20,
+            "kind": "external",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.5325,
+                0.12,
+                3.762
+              ],
+              [
+                1.5325,
+                0.12,
+                -3.762
+              ],
+              [
+                1.5325,
+                1.045,
+                -3.762
+              ],
+              [
+                1.5325,
+                1.045,
+                3.762
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H10",
+            "name": "track_L",
+            "physicalMm": 20,
+            "keMm": 20,
+            "ceMm": 20,
+            "kind": "external",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.5325,
+                0.12,
+                -3.762
+              ],
+              [
+                -1.5325,
+                0.12,
+                3.762
+              ],
+              [
+                -1.5325,
+                1.045,
+                3.762
+              ],
+              [
+                -1.5325,
+                1.045,
+                -3.762
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H11",
+            "name": "hull_rear",
+            "physicalMm": 35,
+            "keMm": 39,
+            "ceMm": 39,
+            "kind": "main",
+            "turretLocal": false,
+            "verts": [
+              [
+                1.6929,
+                0.495,
+                -3.762
+              ],
+              [
+                -1.6929,
+                0.495,
+                -3.762
+              ],
+              [
+                -1.6929,
+                1.782,
+                -3.762
+              ],
+              [
+                1.6929,
+                1.782,
+                -3.762
+              ]
+            ]
+          },
+          {
+            "hitboxId": "H12",
+            "name": "hull_roof",
+            "physicalMm": 40,
+            "keMm": 45,
+            "ceMm": 45,
+            "kind": "main",
+            "turretLocal": false,
+            "verts": [
+              [
+                -1.6929,
+                1.782,
+                1.368
+              ],
+              [
+                1.6929,
+                1.782,
+                1.368
+              ],
+              [
+                1.6929,
+                1.782,
+                -3.762
+              ],
+              [
+                -1.6929,
+                1.782,
+                -3.762
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T01",
+            "name": "turret_cheek_R",
+            "physicalMm": 600,
+            "keMm": 672,
+            "ceMm": 952,
+            "kind": "main",
+            "turretLocal": true,
+            "verts": [
+              [
+                0.2644,
+                -0.088,
+                2.0537
+              ],
+              [
+                1.595,
+                -0.088,
+                0.9561
+              ],
+              [
+                1.595,
+                0.6393,
+                0.8524
+              ],
+              [
+                0.2644,
+                0.6393,
+                1.95
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T02",
+            "name": "turret_cheek_L",
+            "physicalMm": 600,
+            "keMm": 672,
+            "ceMm": 952,
+            "kind": "main",
+            "turretLocal": true,
+            "verts": [
+              [
+                -1.573,
+                -0.088,
+                0.9561
+              ],
+              [
+                -0.2424,
+                -0.088,
+                2.0537
+              ],
+              [
+                -0.2424,
+                0.6393,
+                1.95
+              ],
+              [
+                -1.573,
+                0.6393,
+                0.8524
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T03",
+            "name": "mantlet",
+            "physicalMm": 320,
+            "keMm": 426,
+            "ceMm": 504,
+            "kind": "main",
+            "turretLocal": true,
+            "verts": [
+              [
+                -0.3454,
+                -0.0112,
+                2.123
+              ],
+              [
+                0.3674,
+                -0.0112,
+                2.123
+              ],
+              [
+                0.3674,
+                0.4555,
+                2.0884
+              ],
+              [
+                -0.3454,
+                0.4555,
+                2.0884
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T04",
+            "name": "turret_side_R",
+            "physicalMm": 250,
+            "keMm": 280,
+            "ceMm": 392,
+            "kind": "main",
+            "turretLocal": true,
+            "verts": [
+              [
+                1.595,
+                -0.088,
+                0.9866
+              ],
+              [
+                1.595,
+                -0.088,
+                -2.596
+              ],
+              [
+                1.595,
+                0.6393,
+                -2.596
+              ],
+              [
+                1.595,
+                0.6393,
+                0.9866
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T05",
+            "name": "turret_side_L",
+            "physicalMm": 250,
+            "keMm": 280,
+            "ceMm": 392,
+            "kind": "main",
+            "turretLocal": true,
+            "verts": [
+              [
+                -1.573,
+                -0.088,
+                -2.596
+              ],
+              [
+                -1.573,
+                -0.088,
+                0.9866
+              ],
+              [
+                -1.573,
+                0.6393,
+                0.9866
+              ],
+              [
+                -1.573,
+                0.6393,
+                -2.596
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T06",
+            "name": "turret_rear",
+            "physicalMm": 50,
+            "keMm": 56,
+            "ceMm": 56,
+            "kind": "main",
+            "turretLocal": true,
+            "verts": [
+              [
+                1.5158,
+                -0.088,
+                -2.596
+              ],
+              [
+                -1.4938,
+                -0.088,
+                -2.596
+              ],
+              [
+                -1.4938,
+                0.6393,
+                -2.596
+              ],
+              [
+                1.5158,
+                0.6393,
+                -2.596
+              ]
+            ]
+          },
+          {
+            "hitboxId": "T07",
+            "name": "turret_roof",
+            "physicalMm": 40,
+            "keMm": 45,
+            "ceMm": 45,
+            "kind": "main",
+            "turretLocal": true,
+            "verts": [
+              [
+                -1.573,
+                0.649,
+                0.9866
+              ],
+              [
+                1.595,
+                0.649,
+                0.9866
+              ],
+              [
+                1.595,
+                0.649,
+                -2.596
+              ],
+              [
+                -1.573,
+                0.649,
+                -2.596
+              ]
+            ]
+          }
+        ],
+        "modules": [
+          {
+            "volumeId": "M01",
+            "name": "gun",
+            "min": [
+              -0.2266,
+              0.0083,
+              -1.224
+            ],
+            "max": [
+              0.2486,
+              0.475,
+              2.0537
+            ],
+            "turretLocal": true
+          },
+          {
+            "volumeId": "M02",
+            "name": "turretRing",
+            "min": [
+              -1.122,
+              1.4757,
+              -0.7953
+            ],
+            "max": [
+              1.122,
+              1.6923,
+              1.338
+            ],
+            "turretLocal": false
+          },
+          {
+            "volumeId": "M03",
+            "name": "autoloader",
+            "min": [
+              -0.7873,
+              0.0833,
+              -2.4317
+            ],
+            "max": [
+              0.8093,
+              0.3625,
+              -1.5865
+            ],
+            "turretLocal": true
+          },
+          {
+            "volumeId": "M04",
+            "name": "engine",
+            "min": [
+              -1.0868,
+              0.495,
+              -3.572
+            ],
+            "max": [
+              1.0868,
+              1.5997,
+              -1.862
+            ],
+            "turretLocal": false
+          },
+          {
+            "volumeId": "M05",
+            "name": "transmission",
+            "min": [
+              -0.9346,
+              0.6097,
+              -3.4352
+            ],
+            "max": [
+              0.9346,
+              1.405,
+              -2.8538
+            ],
+            "turretLocal": false
+          },
+          {
+            "volumeId": "M06",
+            "name": "fuelTank",
+            "min": [
+              -1.0868,
+              0.495,
+              -1.786
+            ],
+            "max": [
+              1.0868,
+              1.1439,
+              -0.912
+            ],
+            "turretLocal": false
+          },
+          {
+            "volumeId": "M07",
+            "name": "ammoRack",
+            "min": [
+              -1.0978,
+              -0.088,
+              -2.596
+            ],
+            "max": [
+              1.1198,
+              0.4938,
+              -1.4221
+            ],
+            "turretLocal": true
+          },
+          {
+            "volumeId": "M08",
+            "name": "radio",
+            "min": [
+              -0.9394,
+              -0.0394,
+              -2.2759
+            ],
+            "max": [
+              -0.1474,
+              0.312,
+              -1.4221
+            ],
+            "turretLocal": true
+          },
+          {
+            "volumeId": "M09",
+            "name": "optics",
+            "min": [
+              -1.1605,
+              0.504,
+              -0.711
+            ],
+            "max": [
+              0.862,
+              1.2199,
+              1.3715
+            ],
+            "parts": [
+              {
+                "min": [
+                  0.722,
+                  0.504,
+                  -0.711
+                ],
+                "max": [
+                  0.862,
+                  0.574,
+                  -0.609
+                ]
+              },
+              {
+                "min": [
+                  -1.1605,
+                  0.825,
+                  -0.5401
+                ],
+                "max": [
+                  -0.9735,
+                  0.891,
+                  -0.5269
+                ]
+              },
+              {
+                "min": [
+                  0.15,
+                  0.515,
+                  -0.073
+                ],
+                "max": [
+                  0.29,
+                  0.585,
+                  0.029
+                ]
+              },
+              {
+                "min": [
+                  -0.385,
+                  1.1781,
+                  0.462
+                ],
+                "max": [
+                  -0.165,
+                  1.2199,
+                  0.484
+                ]
+              },
+              {
+                "min": [
+                  0.6175,
+                  0.7114,
+                  1.3565
+                ],
+                "max": [
+                  0.7825,
+                  0.7764,
+                  1.3715
+                ]
+              }
+            ],
+            "turretLocal": true
+          },
+          {
+            "volumeId": "M10",
+            "name": "trackL",
+            "min": [
+              -1.5917,
+              0.0384,
+              -3.3935
+            ],
+            "max": [
+              -1.0757,
+              1.4048,
+              3.528
+            ],
+            "turretLocal": false
+          },
+          {
+            "volumeId": "M11",
+            "name": "trackR",
+            "min": [
+              1.0757,
+              0.0384,
+              -3.3935
+            ],
+            "max": [
+              1.5917,
+              1.4048,
+              3.528
+            ],
+            "turretLocal": false
+          },
+          {
+            "volumeId": "M12",
+            "name": "roofGun",
+            "min": [
+              -0.1327,
+              -0.0896,
+              -0.3465
+            ],
+            "max": [
+              0.0782,
+              0.1169,
+              1.199
+            ],
+            "parts": [
+              {
+                "min": [
+                  -0.1079,
+                  -0.0896,
+                  -0.099
+                ],
+                "max": [
+                  0.0708,
+                  0.0151,
+                  0.0158
+                ]
+              },
+              {
+                "min": [
+                  -0.1327,
+                  -0.0792,
+                  -0.3465
+                ],
+                "max": [
+                  0.0782,
+                  0.1169,
+                  1.199
+                ]
+              }
+            ],
+            "turretLocal": false
+          }
+        ],
+        "crew": [
+          {
+            "volumeId": "C01",
+            "name": "driver",
+            "min": [
+              -0.858,
+              0.6575,
+              1.938
+            ],
+            "max": [
+              -0.0572,
+              1.5997,
+              3.458
+            ],
+            "turretLocal": false
+          },
+          {
+            "volumeId": "C02",
+            "name": "gunner",
+            "min": [
+              0.2011,
+              -0.0686,
+              -0.9953
+            ],
+            "max": [
+              1.199,
+              0.5302,
+              0.2243
+            ],
+            "turretLocal": true
+          },
+          {
+            "volumeId": "C03",
+            "name": "commander",
+            "min": [
+              0.2011,
+              -0.0686,
+              -1.7423
+            ],
+            "max": [
+              1.2782,
+              0.5665,
+              -0.9953
+            ],
+            "turretLocal": true
+          }
+        ]
+      },
+      "geometryHash": "4089082f",
+      "metadataHash": "14442a4b",
+      "presentationAnchor": {
+        "xM": -0.0033,
+        "zM": 0.18
+      },
+      "presentationHash": "5c0c73c1",
+      "presentationProjection": {
+        "centerYM": 2.0499,
+        "topHalfM": 6.9256,
+        "sideHalfM": 3.4628
+      },
+      "appearance": {
+        "version": 1,
+        "issues": [],
+        "roles": {
+          "wheelTire": 2,
+          "wheelDish": 7,
+          "wheelInset": 1,
+          "suspensionLink": 1,
+          "suspensionJoint": 1,
+          "trackHardware": 4,
+          "trackBand": 2,
+          "trackPad": 1,
+          "trackPadSimplified": 1,
+          "fittingPaint": 10,
+          "opticGlass": 4,
+          "gunmetal": 15,
+          "trackSteel": 3,
+          "armorPaint": 9,
+          "tireRubber": 1,
+          "wood": 1,
+          "canvas": 2,
+          "unclassified": 19,
+          "gearShadow": 1,
+          "machineGun": 2
+        }
+      },
+      "muzzleBore": {
+        "tagged": 1,
+        "rims": 0,
+        "physicalRims": 1,
+        "physicalFloors": 1,
+        "discs": 0,
+        "authored": 0,
+        "fallback": 1
+      },
+      "vehicleMarkings": {
+        "total": 5,
+        "insignia": 1,
+        "designation": 3,
+        "verifiedInsignia": 1,
+        "verifiedDesignation": 3,
+        "minimumVisibilityRatio": 0.6666667,
+        "codes": [
+          "JP:jp-roundel:24"
+        ]
+      },
+      "assets": {
+        "angle": {
+          "file": "type10_dozer_angle.webp",
+          "width": 512,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 29842,
+          "sha256": "0935a67203224004927a71bf033e79dd6dca0d00a864fb8d04725e2f4a9c67d2",
+          "thumbnail": {
+            "file": "thumbs/type10_dozer_angle.webp",
+            "width": 256,
+            "height": 256,
+            "mime": "image/webp",
+            "bytes": 11942,
+            "sha256": "5c103d3a3cd7026390f868f4ae99bf0f6a1ba37af320891d51b2fb6a22547845"
+          }
+        },
+        "top": {
+          "file": "type10_dozer_top.webp",
+          "width": 512,
+          "height": 512,
+          "mime": "image/webp",
+          "bytes": 13652,
+          "sha256": "b76708c8c34c377fc3fc4cedaa7b35716a7dfc470d45aa2bbb52f679253becb7"
+        },
+        "side": {
+          "file": "type10_dozer_side.webp",
+          "width": 512,
+          "height": 256,
+          "mime": "image/webp",
+          "bytes": 10544,
+          "sha256": "0f2eba067301df19f44bb84b9ef4a6e6ccf6fb65a148adda88c7bd43fa60775d"
+        },
+        "topSilhouette": {
+          "file": "type10_dozer_top_silhouette.png",
+          "width": 128,
+          "height": 128,
+          "mime": "image/png",
+          "bytes": 1397,
+          "sha256": "78ca9ff995517febe1edf7a3675a8210d6cefc148fe2eba4a9794cf01c2ca616"
+        },
+        "sideSilhouette": {
+          "file": "type10_dozer_side_silhouette.png",
+          "width": 256,
+          "height": 128,
+          "mime": "image/png",
+          "bytes": 4491,
+          "sha256": "8af36b84f3b31cb0424f9591adc4faef95b30fa89479e9e1855898181fe2702b"
+        },
+        "armorSide": {
+          "file": "type10_dozer_armor_side.png",
+          "width": 512,
+          "height": 256,
+          "mime": "image/png",
+          "bytes": 90463,
+          "sha256": "f50383b09068bf8a33efd417aefef9a7d286c45edad107403b3f55a02b58a26a"
+        },
+        "modulesSide": {
+          "file": "type10_dozer_modules_side.png",
+          "width": 512,
+          "height": 256,
+          "mime": "image/png",
+          "bytes": 98398,
+          "sha256": "8fa6ecd6d1946d207b8fd02ab04742ad6a1ecccea4af8f2038e130ae51c93b6f"
+        },
+        "crewSide": {
+          "file": "type10_dozer_crew_side.png",
+          "width": 512,
+          "height": 256,
+          "mime": "image/png",
+          "bytes": 82987,
+          "sha256": "2e7df774314cfa4647f4c8be144d8fa26e81f65cec56a20e99a07a501326bcf7"
+        },
+        "markings": {
+          "file": "type10_dozer_markings.png",
+          "width": 256,
+          "height": 128,
+          "mime": "image/png",
+          "bytes": 34084,
+          "sha256": "3a123ab56d85ac270400856afe74a7060d19e1f87054e86fc6a89cabdaf0066d"
+        }
+      }
+    },
     "type10_tk_x": {
       "id": "type10_tk_x",
       "name": "Type 10 (TK-X)",
