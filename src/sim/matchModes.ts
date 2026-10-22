@@ -12,6 +12,7 @@ import {
 import { createGunshipEscort, ESCORT_RULES, type EscortState } from './gunshipEscort.ts';
 import { applyJuggernautScale } from './juggernautScale.ts';
 import type { MatchPlacement } from './matchPlacement.ts';
+import { placementTankRadius } from './hullRadius.ts';
 import { ASSAULT_LINE_FRACTIONS } from './assaultLines.ts';
 import { MATCH_MODE_ARENA_HALF_EXTENT_M as WORLD_MARGIN_M } from './matchObjectiveLayouts.ts';
 import {
@@ -732,9 +733,16 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   // gives or takes round it (lx, lz; NaN for a hull that rose anywhere else)
   const huntAnchor = new Map<string, { x: number; z: number; atS: number; lx: number; lz: number; swept: boolean }>();
   let arrivals = 0;
-  const occupiedBy = (entity: Entity): { x: number; z: number; radius: number }[] =>
-    entities.filter(other => other !== entity && !other.combat.destroyed && other.modeActive !== false)
-      .map(other => ({ x: other.state.pos.x, z: other.state.pos.z, radius: 4.5 }));
+  // the live hulls a placement keeps clear of, each by its own seat radius (a Juggernaut's by its scale; a gunship in
+  // its orbit stands on no ground); with `enemyClearM`, every live enemy by that distance (the ruleset's respawnSafeM)
+  const occupiedBy = (entity: Entity, enemyClearM: number | null = null): { x: number; z: number; radius: number; clearM?: number }[] =>
+    entities.filter(other => other !== entity && !other.combat.destroyed && other.modeActive !== false && other.aerial?.kind !== 'gunship')
+      .map(other => {
+        const radius = (other.spec?.dims ? placementTankRadius(other.spec) : 4.5) * (other.state.modeScale ?? 1);
+        return enemyClearM != null && teamOf(other) !== teamOf(entity)
+          ? { x: other.state.pos.x, z: other.state.pos.z, radius, clearM: enemyClearM }
+          : { x: other.state.pos.x, z: other.state.pos.z, radius };
+      });
   /** Revive at the entity's own spawn, or at `at` (a Horde arrival point, a Frontline line slot) when given. */
   const reviveAtSpawn = (entity: Entity, healthScale = 1, at: MatchModeSpawn | null = null): void => {
     // the infected rise round the survivors (infectionBots.arrival), a convert's first life included
@@ -751,11 +759,17 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
         }
       }
     }
+    // a director's point (an arrival ring, a line slot, the kick-off) keeps its own rules; a revive at the hull's own
+    // spawn or its flag / ball revive slot keeps the ruleset's safe radius from live enemies (respawnSafeM) while the
+    // rings within 2.5 times it hold one, else stands on its spawn as before
+    const safeM = at ? null : ruleset.respawnSafeM ?? null;
     if (!at && flagRespawnBackM != null) at = flagRespawnSpot(entity, flagRespawnBackM);
     if (!at && ballRespawnBackM != null) at = ballRespawnSpot(entity, ballRespawnBackM);
     const spawn = at ?? spawns.get(entity.id);
     if (!spawn) return;
-    const safeSpawn = placement ? placement.respawn(spawn, entity.id, occupiedBy(entity)) : spawn;
+    const safeSpawn = !placement ? spawn
+      : (safeM ? placement.respawnNear(spawn, entity.id, occupiedBy(entity, safeM), safeM * 2.5) : null)
+        ?? placement.respawn(spawn, entity.id, occupiedBy(entity));
     if (!safeSpawn) {
       if (id === 'endless_horde' || id === 'frontline_assault') deactivate(entity);
       respawnAt.set(entity.id, { atS: placementTimeS + 1, healthScale });

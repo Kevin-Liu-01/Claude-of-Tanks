@@ -1051,6 +1051,13 @@ export interface MatchRuleset {
   readonly shellKnockScale: number;
   /** Seconds to respawn, or null when a destroyed vehicle stays destroyed. */
   readonly respawnS: number | null;
+  /**
+   * A respawn at the hull's own spawn (or its flag / ball revive slot) keeps this far from every live enemy hull, moving
+   * on the placement's rings up to 2.5 times it, else back on its spawn (spawns-234: a revive came back beside an enemy
+   * parked on the deployment). The game director's arrivals (Horde, Infected), the Frontline line slots and the kick-off
+   * keep their own rules; null keeps only the hull's own disc.
+   */
+  readonly respawnSafeM?: number | null;
   /** Clock in seconds, or null for no clock. */
   readonly timeLimitS: number | null;
   /** How an expired clock resolves when the score is level (or has no score). */
@@ -1149,7 +1156,7 @@ const DESTRUCTION_OFF: DestructionRules = Object.freeze({
 const STANDARD: MatchRuleset = Object.freeze({
   mode: 'standard', gravityScale: 1, physics: STANDARD_PHYSICS, speedMultiplier: 1, hpScale: 1, damageScale: 1, reloadScale: 1,
   ammo: 'spec', equipmentSlots: 3, consumables: true, criticalDamage: true, jumpMps: null, recoilLaunchScale: 1, shellKnockScale: 0.3,
-  respawnS: null, timeLimitS: 900, timeout: 'draw', endingHoldS: ENDING_HOLD_S,
+  respawnS: null, respawnSafeM: 75, timeLimitS: 900, timeout: 'draw', endingHoldS: ENDING_HOLD_S,
   allies: null, enemies: null, assault: null, horde: null, enemyNation: null, teamNations: DEFAULT_TEAM_NATIONS,
   destruction: DESTRUCTION_ON, terrainVariant: null, records: true,
 });
@@ -1355,7 +1362,7 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // outcome on the range is the outcome in battle.
   proving_ground: Object.freeze({
     ...STANDARD, mode: 'proving_ground', alwaysVisible: true, ammo: 'unlimited',
-    allies: 0, enemies: PROVING_GROUND_RULES.lanes.length, respawnS: 3, timeLimitS: null,
+    allies: 0, enemies: PROVING_GROUND_RULES.lanes.length, respawnS: 3, respawnSafeM: null, timeLimitS: null,
     records: false, provingGround: PROVING_GROUND_RULES,
   }),
 });
