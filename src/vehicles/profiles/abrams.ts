@@ -271,6 +271,8 @@ interface BareHullOptions {
   readonly returnRollerZs?: readonly number[];
   readonly returnTrackTopY?: number;
   readonly returnRollerR?: number;
+  /** The drive sprocket's axle height, in place of the donor's raised M1 station. */
+  readonly sprocketY?: number;
 }
 
 interface BrowningOptions {
@@ -2301,11 +2303,12 @@ const TEJAS_TURRET = {
 // second approximate Abrams hull, while deliberately omitting the deep skirt
 // wall so its wheels and track return remain exposed.
 export function buildM1A1BareHull(builder: RuntimeValue, {
-  returnRollerZs, returnTrackTopY, returnRollerR,
+  returnRollerZs, returnTrackTopY, returnRollerR, sprocketY,
 }: BareHullOptions = {}): void {
   const P = requireAbramsBuilder(builder);
   abramsHull(P, {
     ...TEJAS_HULL,
+    ...(sprocketY === undefined ? {} : { sprocketY }),
     hollowRoadWheels: false, // the MBT-70 draws its nation wheel (Germany: the Leopard 2A6 X paired dish, owner 2026-09-22) into the envelope of this solid stock
     // This donor omits the exposed Tejas pod stage. The MBT-70 assembled
     // hull requires 150 mm travel; its lens then clears the bow by 7.7 mm.

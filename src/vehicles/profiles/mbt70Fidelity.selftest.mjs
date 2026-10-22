@@ -106,48 +106,56 @@ for (const name of ['rig_hull', 'rig_turret', 'rig_gun', 'rig_muzzle']) {
 }
 const gunRig = tank.root.getObjectByName('rig_gun');
 const mantlet = gunRig.userData.mbt70MantletReceipt;
-assert.equal(mantlet?.profile, 'parabolic-arrow',
-  'cast shield uses the MBT-70 rounded-arrow/parabolic contour');
+// 2026-10-22 (owner: "make the mantlet ... properly built" and the cone "properly coming out of mantlet, not a little
+// protruded in front"): the five-ring parabolic shield and its brow sphere gave way to one cast block lofted along the gun
+// axis, and the collar (the cone) moved back into its face. The contracts below are the cast block's.
+assert.equal(mantlet?.profile, 'cast-tapered-block',
+  'the mantlet is one casting tapering in plan and elevation to the collar face');
 assert.equal(mantlet?.circularMainShield, false,
   'main mantlet cannot regress to a circular cylinder or torus');
 assert.equal(mantlet?.orientation, 'vertical',
   'compound mantlet stands vertically around the launcher axis');
 assert.ok(mantlet.heightM > mantlet.widthM,
   'cast shield keeps its vertical semi-cylindrical read');
-assert.equal(mantlet.heightM, mantlet.turretHeightM,
-  'cast shield height is capped to the turret shell height');
-assert.ok(Math.abs(mantlet.verticalCenterOffsetM - 0.03) < 1e-9,
-  'cast shield is re-centred from the launcher axis onto the turret shell');
-assert.ok(mantlet.planStations >= 13 && mantlet.ringCount >= 5,
-  'mantlet has enough plan and elevation stations to hold the compound curve');
-assert.ok(mantlet.rearOverlapM >= 0.30,
-  'mantlet root penetrates the turret nose instead of floating ahead of it');
-assert.ok(mantlet.depthM < 1.20 && mantlet.foreAftScale < 0.90,
-  'mantlet fore-aft projection is shortened without removing its rear overlap');
-assert.ok(mantlet.rootRecessWidthM < mantlet.widthM * 0.50,
-  'launcher-root recess is substantially narrower than the cast shield');
-assert.ok(mantlet.rootRecessHeightM < mantlet.heightM * 0.60,
-  'launcher-root recess is substantially shorter than the cast shield');
+assert.ok(mantlet.crownM <= mantlet.turretHeightM - spec.armor.gunPivot[1] + 1e-9
+  && mantlet.chinM >= -spec.armor.gunPivot[1] - 1e-9,
+  'the casting stays inside the turret shell\'s height around the trunnion');
+assert.ok(mantlet.sectionCount >= 8,
+  'mantlet has enough sections along the gun axis to hold the compound curve');
+assert.ok(mantlet.rearZM <= -0.20 && mantlet.fullSectionToZM >= 0.30,
+  'mantlet root penetrates the turret nose at full section instead of floating ahead of it');
+assert.ok(mantlet.faceZM - mantlet.rearZM < 1.20,
+  'mantlet fore-aft projection stays short');
+assert.ok(mantlet.collarBaseZM < mantlet.faceZM && mantlet.collarBaseZM + mantlet.collarLengthM > mantlet.faceZM + 0.2,
+  'the collar\'s wide end is seated inside the mantlet face and the collar stands out of it');
+assert.ok(mantlet.collarBaseRadiusM > mantlet.collarTipRadiusM,
+  'the collar tapers toward the muzzle');
+assert.equal(mantlet.coaxialPort, true);
 assert.equal(mantlet.xm150Sleeve, true);
 assert.equal(mantlet.nearMuzzleSensor, true);
 const turretRig = tank.root.getObjectByName('rig_turret');
 const turretShell = turretRig.getObjectByName('turret');
 const gunMount = gunRig.getObjectByName('gunMount');
-// Owner's Gallery patch: the cone at Z 1.065..1.315 must narrow toward
-// the muzzle. Probe the actual side surface, not a builder receipt label.
+// Owner's Gallery patch (2026-09-21): the cone narrows toward the muzzle. Probe the actual side surface, not a builder
+// receipt label; and (2026-10-22) its wide end grows out of the mantlet face with no air between them: just behind the
+// face the casting stands over the collar's base radius, just in front of it the cast fillet ring does.
 for (const quality of ['high', 'low']) {
   const visual = createTank('mbt70', null, { proceduralOnly:true, geometryReceipt:true, quality });
   try {
     const pitch=visual.root.getObjectByName('rig_gun'),mount=pitch.getObjectByName('gunMount');
+    const m=pitch.userData.mbt70MantletReceipt;
     visual.root.updateMatrixWorld(true);
     const radiusAt=z=>{
-      const hit=new THREE.Raycaster(pitch.localToWorld(new THREE.Vector3(0,.4,z)),
-        new THREE.Vector3(0,-1,0).transformDirection(pitch.matrixWorld),0,.4).intersectObject(mount,false)[0];
-      assert.ok(hit,`${quality}: launcher cone has a physical side surface`);
+      const hit=new THREE.Raycaster(pitch.localToWorld(new THREE.Vector3(0,.5,z)),
+        new THREE.Vector3(0,-1,0).transformDirection(pitch.matrixWorld),0,.5).intersectObject(mount,false)[0];
+      assert.ok(hit,`${quality}: launcher collar has a physical side surface at z ${z}`);
       return pitch.worldToLocal(hit.point.clone()).y;
     };
-    assert.ok(Math.abs(radiusAt(1.10)-.213)<.002,`${quality}: wide rear seats against the throat ring`);
-    assert.ok(Math.abs(radiusAt(1.29)-.175)<.002,`${quality}: narrow front points toward the muzzle`);
+    const along=t=>m.collarBaseZM+m.collarLengthM*t, coneR=t=>m.collarBaseRadiusM+(m.collarTipRadiusM-m.collarBaseRadiusM)*t;
+    assert.ok(Math.abs(radiusAt(along(.4))-coneR(.4))<.002,`${quality}: wide rear grows out of the mantlet face`);
+    assert.ok(Math.abs(radiusAt(along(.9))-coneR(.9))<.002,`${quality}: narrow front points toward the muzzle`);
+    assert.ok(radiusAt(m.faceZM-.004)>m.collarBaseRadiusM+.01,`${quality}: the casting's face stands round the collar's base`);
+    assert.ok(radiusAt(m.faceZM+.004)>m.collarBaseRadiusM,`${quality}: the fillet ring closes the collar onto the face`);
   } finally {visual.dispose();}
 }
 const turretShellBounds = new THREE.Box3().setFromObject(turretShell);
@@ -175,8 +183,10 @@ assert.deepEqual(tank.root.getObjectByName('rig_turret').userData.mbt70TurretRec
   spareTrackLinksPerRack: 3,
   spareTrackMountXM: 1.641,
   spareTrackMountZM: -2.68,
-  bustleStowageRacks: 2,
-  bustleJerryCanCount: 2,
+  bustleBasketWidthM: 1.9,
+  bustleBasketDepthM: 0.42,
+  bustleBasketFloorYM: 0.32,
+  bustleBasketLoad: ['soft bag', 'soft bag', 'rolled tarp', 'ammunition can', 'ammunition can', 'tool chest', 'jerry can pair'],
   bustleTowCable: true,
   insigniaRearLocalZM: -1.72,
   addedEquipmentPieces: 24,
@@ -224,9 +234,7 @@ for (const side of ['left', 'right']) {
     `${side} spare links contact the bustle cheek without a visible air gap`);
 }
 for (const name of [
-  'mbt70_bustle_stowage_rack_left',
-  'mbt70_bustle_stowage_rack_right',
-  'mbt70_bustle_jerry_cans',
+  'mbt70_bustle_basket',
   'mbt70_bustle_tow_cable',
 ]) {
   const fitting = turretRig.getObjectByName(name);
@@ -267,6 +275,20 @@ for (const rollerZ of [1.46, 0, -1.46]) {
   assert.ok(mbt70GearReceipt.loopPoints.some(([z, y]) => Math.abs(z - rollerZ) <= 1e-6
     && Math.abs(y - mbt70TopRunY) <= 1e-6),
   `MBT-70 upper track is supported by the return roller at z=${rollerZ}`);
+}
+// 2026-10-22 (owner: "rear wheels should be moved down so theyre not going into fender"): the drive sprocket sits on the
+// track's top run, level with it, and its wrap stands under the aprons' and rear side plates' lower line (1.137) with the
+// run's own clearance (the shoes stand ~4.5 cm over the loop's centreline); the idler's wrap stands 9 cm under the front
+// track guard's sheet (1.357).
+{
+  const { sprocket, idler, loopPoints } = mbt70GearReceipt;
+  const crown = (near) => Math.max(...loopPoints.filter(([z]) => Math.abs(z - near) < 0.4).map(([, y]) => y));
+  assert.ok(Math.abs(crown(sprocket.z) - mbt70TopRunY) < 0.02,
+    `the top run passes level onto the sprocket (${crown(sprocket.z).toFixed(3)} vs ${mbt70TopRunY.toFixed(3)})`);
+  assert.ok(crown(sprocket.z) + 0.045 <= 1.137 - 0.05,
+    `the sprocket's shoe crown clears the rear plates' 1.137 line by 5 cm (${crown(sprocket.z).toFixed(3)})`);
+  assert.ok(crown(idler.z) + 0.045 <= 1.357 - 0.09,
+    `the idler's shoe crown stands 9 cm under the front guard sheet (${crown(idler.z).toFixed(3)})`);
 }
 assert.deepEqual(tank.root.getObjectByName('rig_hull')?.userData.nativeWheelPatterns,
   ['plain-dish-twelve'], 'native running gear records the one Germany nation wheel pattern (2026-09-22)');

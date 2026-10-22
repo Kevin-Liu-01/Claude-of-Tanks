@@ -97,7 +97,7 @@ await runFleetSweep(`
   assert.ok(mbt70.root.getObjectByName('rig_turret')?.userData?.mbt70TurretReceipt,
     'lazy MBT-70 route constructs the authored turret, not the box placeholder');
   assert.equal(mbt70.root.getObjectByName('rig_gun')?.userData?.mbt70MantletReceipt?.profile,
-    'parabolic-arrow', 'lazy MBT-70 route retains the authored XM150 mantlet');
+    'cast-tapered-block', 'lazy MBT-70 route retains the authored XM150 mantlet (the cast block, 2026-10-22)');
   mbt70.dispose();
   await fleet.ensureTankBuilder('ztz99_longwei');
   assert.equal(fleet.isTankBuilderReady('ztz99_longwei'), true);

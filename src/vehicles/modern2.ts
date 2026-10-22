@@ -55,7 +55,6 @@ import type {
 import type { FleetTankSpec, TankSpecRegistry } from './specContracts.ts';
 
 type VehicleAssemblyOwner = 'hull' | 'turret';
-type GeometryScale = number | readonly [number, number, number];
 type EraPlacement = (...transform: number[]) => void;
 
 export interface Modern2BuilderPort {
@@ -148,17 +147,6 @@ interface MbtArmorOptions {
   bustleAmmo?: boolean;
   capsule?: boolean;
 }
-
-const scaledGeometryTransform = KIT.xform as (
-  geometry: THREE.BufferGeometry,
-  x?: number,
-  y?: number,
-  z?: number,
-  rotationX?: number,
-  rotationY?: number,
-  rotationZ?: number,
-  scale?: GeometryScale,
-) => THREE.BufferGeometry;
 
 const apfsds = (
   name: string,
@@ -904,26 +892,160 @@ function mbt70ShellFaces(shell: THREE.BufferGeometry): {
   };
 }
 
+/** A prism with the (z, y) outline `ring`, its two faces at x = inner(y) and outer(y) on the +x side (a plate that follows a
+ * leaning hull face), mirrored to -x with its winding kept outward. */
+function mbt70SidePlate(ring: readonly (readonly [number, number])[], inner: (y: number) => number,
+  outer: (y: number) => number, side: number): THREE.BufferGeometry {
+  const shape = new THREE.Shape(ring.map(([z, y]) => new THREE.Vector2(z, y)));
+  const g = new THREE.ExtrudeGeometry(shape, { depth: 1, bevelEnabled: false, curveSegments: 1 });
+  const p = g.getAttribute('position');
+  for (let i = 0; i < p.count; i++) {
+    const z = p.getX(i), y = p.getY(i), x = p.getZ(i) < 0.5 ? inner(y) : outer(y);
+    p.setXYZ(i, side * x, y, z);
+  }
+  // the shape's (z, y, depth) -> (x, y, z) swap reverses handedness, and the -x mirror reverses it back
+  if (side > 0) mbt70FlipWinding(g);
+  g.deleteAttribute('normal');
+  g.computeVertexNormals();
+  return g;
+}
+
+function mbt70FlipWinding(g: THREE.BufferGeometry): void {
+  const p = g.getAttribute('position');
+  for (let i = 0; i < p.count; i += 3) {
+    const x = p.getX(i + 1), y = p.getY(i + 1), z = p.getZ(i + 1);
+    p.setXYZ(i + 1, p.getX(i + 2), p.getY(i + 2), p.getZ(i + 2)); p.setXYZ(i + 2, x, y, z);
+  }
+}
+
+/** The geometry mirrored to -x, its faces kept outward. */
+function mbt70MirrorX(g: THREE.BufferGeometry): THREE.BufferGeometry {
+  const m = (g.index ? g.toNonIndexed() : g).scale(-1, 1, 1);
+  mbt70FlipWinding(m);
+  m.deleteAttribute('normal');
+  m.computeVertexNormals();
+  return m;
+}
+
+/** A cast solid lofted along +z through superellipse sections [z, half-width, crown, chin] (crown above the axis, chin
+ * below it, so a section can sit off-centre), smooth-shaded round its sides, its two ends flat. */
+function mbt70CastLoft(sections: readonly (readonly [number, number, number, number])[], n: number,
+  exponent: number): THREE.BufferGeometry {
+  const pos: number[] = [], uv: number[] = [], index: number[] = [];
+  const e = 2 / exponent, pow = (v: number) => Math.sign(v) * Math.abs(v) ** e;
+  const ring = (z: number, hw: number, crown: number, chin: number) => Array.from({ length: n }, (_, k) => {
+    const t = (k / n) * Math.PI * 2, x = hw * pow(Math.cos(t)), v = pow(Math.sin(t));
+    return [x, v >= 0 ? v * crown : -v * chin, z] as const;
+  });
+  const rings = sections.map(([z, hw, crown, chin]) => ring(z, hw, crown, chin));
+  for (const r of rings) for (const [x, y, z] of r) { pos.push(x, y, z); uv.push(x + z, y); }
+  for (let s = 0; s < rings.length - 1; s++) for (let k = 0; k < n; k++) {
+    const a = s * n + k, b = s * n + (k + 1) % n, c = (s + 1) * n + (k + 1) % n, d = (s + 1) * n + k;
+    index.push(a, b, c, a, c, d);
+  }
+  // flat end caps on their own vertices (a shared rim would smear the side shading into the caps)
+  for (const [r, front] of [[rings[0], false], [rings[rings.length - 1], true]] as const) {
+    const base = pos.length / 3, z = r[0][2];
+    pos.push(0, (Math.max(...r.map((p) => p[1])) + Math.min(...r.map((p) => p[1]))) / 2, z); uv.push(z, 0);
+    for (const [x, y] of r) { pos.push(x, y, z); uv.push(x, y); }
+    for (let k = 0; k < n; k++) {
+      const a = base + 1 + k, b = base + 1 + (k + 1) % n;
+      if (front) index.push(base, a, b); else index.push(base, b, a);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(index);
+  // keep every face outward whatever the ring direction
+  let volume = 0;
+  const A = new THREE.Vector3(), B = new THREE.Vector3(), C = new THREE.Vector3(), p = g.getAttribute('position');
+  for (let i = 0; i < index.length; i += 3) {
+    A.fromBufferAttribute(p, index[i]); B.fromBufferAttribute(p, index[i + 1]); C.fromBufferAttribute(p, index[i + 2]);
+    volume += A.dot(B.clone().cross(C));
+  }
+  if (volume < 0) { for (let i = 0; i < index.length; i += 3) [index[i + 1], index[i + 2]] = [index[i + 2], index[i + 1]]; g.setIndex(index); }
+  g.computeVertexNormals();
+  return g;
+}
+
+/** A flat webbing strap (4 mm) through (y, z) points at x = 0, each run a box laid along it. */
+function mbt70Strap(points: readonly (readonly [number, number])[], width: number): THREE.BufferGeometry {
+  const runs: THREE.BufferGeometry[] = [];
+  for (let i = 1; i < points.length; i++) {
+    const [y0, z0] = points[i - 1], [y1, z1] = points[i];
+    const length = Math.hypot(y1 - y0, z1 - z0);
+    // each run 4 mm long at both ends, so the bends close
+    runs.push(KIT.box(width, 0.004, length + 0.008).rotateX(-Math.atan2(y1 - y0, z1 - z0))
+      .translate(0, (y0 + y1) / 2, (z0 + z1) / 2));
+  }
+  return KIT.mergeAll(runs);
+}
+
+// 2026-10-22 (owner, on the Garage side view: "rear wheels should be moved down so theyre not going into fender"): the
+// donor M1's raised drive sprocket (axle 1.10, its track crown 1.477) stood behind release 231's rear side plate, whose
+// lower edge is the aprons' line (1.137): the upper half of the wheel and its track wrap disappeared into the fender. The
+// sprocket comes down to the track's own top run, as on the real KPz 70 (the top run passes straight from the last return
+// roller onto the sprocket): its shoe crown at 1.075 stands 6 cm under the aprons' line, like the run ahead of it.
+const MBT70_SPROCKET_Y_M = 0.70;
+
+/** 2026-10-22 (owner: "make the ... front shoulders and mudguards be properly built"): the front track guards were two
+ * flat 9 cm boxes laid over the idler, and the bow's corners ended in the donor's bare blade face with its ragged lower
+ * edge. Each guard is now a 20 mm sheet on the track-guard line, its outer edge and its front turned down 8 cm and its
+ * inner edge carried by two gussets on the hull wall; a 35 mm cheek plate laid on the blade face closes the bow corner
+ * on a clean line. Hull-local, before the hull's 0.94 Z scale. */
+function addMBT70FrontGuards(P: Modern2BuilderPort, side: number): void {
+  // The sheet runs level from the apron's front end (2.55, over its 1.36 roof lip) to 3.05, then sweeps down onto the
+  // blade's deck (1.305-1.31 at 3.49-3.52), seated 8 mm into it: the guard's front is the mudguard's own bend, not a box
+  // end. It lies 2 mm over the 1.355 glacis and 5 mm into the deck-edge wall at |x| 1.035. Its turned outer flange
+  // follows it 8 cm deep at |x| 1.728-1.750, 2 mm inside the apron web it laps (mbt70UpperFenders) and outboard of the
+  // 1.715 track edge. Underside 10.7 cm over the idler's shoe crown (1.25) at the bend, 15 cm at 3.25.
+  const inX = 1.03, top = 1.377, sheet = 0.02, flange = 0.08, z0 = 2.55, bend = 3.05, z1 = 3.49, nose = 1.322;
+  const rise = 0.003; // the rolled rim of the flange stands 3 mm over the sheet (no coplanar top)
+  const at = (x: number) => () => x;
+  const profile = (dy: number, below: number) => [[z0, top + dy - below], [bend, top + dy - below], [z1, nose + dy - below],
+    [z1, nose + dy], [bend, top + dy], [z0, top + dy]] as [number, number][];
+  P.addMudguard(`mbt70_m1_front_fender_${side}`, 'hull', KIT.mergeAll([
+    mbt70SidePlate(profile(0, sheet), at(inX), at(1.74), side),
+    mbt70SidePlate(profile(rise, flange + rise), at(1.728), at(1.75), side),
+  ]));
+  // a pressed stiffening rib along the sheet's middle
+  P.add('hullDetail', mbt70SidePlate([[z0 + 0.04, top - 0.004], [bend, top - 0.004], [z1 - 0.04, nose + 0.002],
+    [z1 - 0.04, nose + 0.014], [bend, top + 0.008], [z0 + 0.04, top + 0.008]], at(1.385), at(1.415), side));
+  // gussets on the hull wall (|x| 1.054-1.08 here) up into the sheet, inboard of the shoe pins (|x| >= 1.092)
+  for (const z of [2.86, 3.24]) {
+    const hi = (z < bend ? top : top + (nose - top) * (z - bend) / (z1 - bend)) - sheet + 0.004;
+    const gusset = new THREE.Shape([new THREE.Vector2(1.068, hi), new THREE.Vector2(1.068, 1.25), new THREE.Vector2(1.135, hi)]);
+    const g = new THREE.ExtrudeGeometry(gusset, { depth: 0.012, bevelEnabled: false }).translate(0, 0, z - 0.006);
+    P.add('hullDetail', side > 0 ? g : mbt70MirrorX(g));
+  }
+  // bolt heads along the sheet's inner edge (into the deck-edge stock) and along the flange's face, clear of the apron lap
+  const sheetTop = (z: number) => (z < bend ? top : top + (nose - top) * (z - bend) / (z1 - bend));
+  for (const z of [2.66, 2.92, 3.18, 3.40]) P.add('hullDetail', KIT.cylY(0.016, 0.016, 0.008, 8), side * 1.06, sheetTop(z) + 0.003, z);
+  for (const z of [2.70, 2.88, 3.06, 3.24, 3.42]) P.add('hullDetail', KIT.cylX(0.016, 0.009, 8), side * 1.7535, sheetTop(z) - 0.04, z);
+  // The bow cheek: the blade face leans in from |x| 1.676 at y 0.65 to 1.630 at 1.30 (z 3.50-3.85); the plate's outer face
+  // follows it 1.9 cm proud, its inner face 1.6 cm into it. Its top carries the guard's line on over the blade's
+  // 1.305-1.34 deck, 1.5-2 cm over it; its lower edge runs straight under the blade's stepped nose (3.54, 0.64 to 3.83,
+  // 0.94), so no notch of the donor edge shows; it stops 2 cm ahead of the idler's shoe wrap (3.45).
+  const outer = (y: number) => 1.695 - 0.07 * (y - 0.65);
+  P.add('hull', mbt70SidePlate([
+    [3.47, 0.60], [3.54, 0.628], [3.83, 0.925], [3.885, 1.09], [3.885, 1.335], [3.84, 1.358], [3.47, 1.325],
+  ], (y) => outer(y) - 0.035, outer, side));
+  for (const [z, y] of [[3.53, 1.29], [3.69, 1.30], [3.845, 1.29], [3.52, 0.75], [3.66, 0.86], [3.80, 1.00]]) {
+    P.add('hullDetail', KIT.cylX(0.016, 0.009, 8), side * (outer(y) + 0.003), y, z);
+  }
+}
+
 function buildMBT70BareHull(P: Modern2BuilderPort): void {
   const { box } = KIT;
   buildM1A1BareHull(P, {
     returnRollerZs: [1.46, 0, -1.46],
     returnTrackTopY: 1.06,
     returnRollerR: 0.11,
+    sprocketY: MBT70_SPROCKET_Y_M,
   });
   for (const side of [-1, 1]) {
-    P.addMudguard(`mbt70_m1_front_fender_${side}`, 'hull',
-      box(0.42, 0.09, 1.18), side * 1.54, 1.37, 3.10, -0.055, 0, 0);
-    // The donor M1A1 front fender covers the whole track width from the deck
-    // edge outward. The skirtless composition kept only its outer 0.42 m, so
-    // the inner track band and the ground beside the hull wall showed through
-    // a 6-30 cm slot (B2 contiguity hole, |x| 1.04-1.33, z 2.36-3.12 world).
-    // The inner fender continues the outer one in its own plane and section:
-    // it abuts the outer fender's inner face at |x| 1.33 and buries 5 mm into
-    // the upper hull wall (deck edge |x| 1.035). Its underside stays 7.8 cm
-    // above the front idler's track crown. Painted bodywork, no armour role.
-    P.addMudguard(`mbt70_m1_front_fender_inner_${side}`, 'hullFixedPaintedBodywork',
-      box(0.30, 0.09, 1.18), side * 1.18, 1.37, 3.10, -0.055, 0, 0);
+    addMBT70FrontGuards(P, side);
     P.addMudguard(`mbt70_m1_rear_fender_${side}`, 'hull',
       box(0.42, 0.09, 1.32), side * 1.54, 1.64, -3.16, 0.035, 0, 0);
     P.add('hull', box(0.12, 0.48, 1.38), side * 0.96, 1.41, -3.05, 0.025 * side, 0, 0);
@@ -970,7 +1092,7 @@ function buildMBT70BareHull(P: Modern2BuilderPort): void {
 
 function buildMBT70(P: Modern2BuilderPort) {
   const {
-    box, polyMultiLoft, cylY, cylZ, sph, torus,
+    box, polyMultiLoft, cylY, cylZ, torus,
     buildGun, liftEye, periscope,
   } = KIT;
   const seg = P.q ? 24 : 14;
@@ -1052,7 +1174,13 @@ function buildMBT70(P: Modern2BuilderPort) {
   // and spacious while the front remains low and sleek.
   P.add('turretDark', box(3.06, 0.025, 1.88), 0, 0.69, -1.75);                  // bustle roof seam
   const autoloaderFloorY = turretFloorHeight([0, -2.64]);
-  P.add('turret', box(3.20, 0.48, 0.72), 0, autoloaderFloorY + 0.24, -2.64);   // autoloader bustle, seated on raked floor
+  // 2026-10-22: the box's 8 cm overhang behind the shell stood with its underside at 1.693 world, 4.7 cm into the hull's
+  // rear fender boxes (top 1.74) at their front ends, and it swept through them as the turret turned. Its underside is
+  // now at 0.275 (1.765, 9 mm over the hull's highest stock, 1.756, at every bearing); the rest of the box lies in the
+  // shell, whose own floor carries it, and its top is unchanged.
+  const AUTOLOADER_BOX_BOTTOM_Y_M = 0.275, autoloaderBoxTop = autoloaderFloorY + 0.48;
+  P.add('turret', box(3.20, autoloaderBoxTop - AUTOLOADER_BOX_BOTTOM_Y_M, 0.72), 0,
+    (autoloaderBoxTop + AUTOLOADER_BOX_BOTTOM_Y_M) / 2, -2.64);                // autoloader bustle
   P.add('turretDark', box(3.00, 0.025, 0.62), 0, autoloaderFloorY + 0.50, -2.64); // bustle lid seam
   // The owner's rear-quarter reference shows the MBT-70's characteristic
   // stepped bustle-roof cassette: three proud rectangular doors run aft
@@ -1104,26 +1232,64 @@ function buildMBT70(P: Modern2BuilderPort) {
   P.add('turretGlass', box(0.22, 0.17, 0.025), -0.64,
     GUNNER_SIGHT_BASE_Y_M + GUNNER_SIGHT_HEIGHT_M * 0.54, 0.20);
   periscope(P, 'turretDetail', -0.58, TH + 0.16, -0.30);
-  // Rear basket, smoke launchers, antennae and securely seated stowage.
-  // 2026-10-19 (owner float sweep): the basket frame stood 14 mm behind the stowage racks it closes; now on them.
-  P.add('turretDetail', box(3.20, 0.05, 0.05), 0, 0.70, -3.046);
-  P.add('turretDetail', box(3.20, 0.05, 0.05), 0, 0.19, -3.046);
-  for (let k = 0; k < 13; k++) P.add('turretDetail', box(0.035, 0.50, 0.035), -1.50 + k * 0.25, 0.45, -3.046);
-  for (const [side, seed] of [[-1, 73], [1, 74]]) {
-    const rack = FITTINGS.stowageRack({
-      mats: P.mats, w: 1.26, d: 0.38, h: 0.28, rails: 3, fill: 0.95,
-      seed, rotation: [0, Math.PI, 0],
-    });
-    rack.name = `mbt70_bustle_stowage_rack_${side < 0 ? 'left' : 'right'}`;
-    rack.position.set(side * 0.68, 0.205, -2.84);
-    P.turretG.add(rack);
-  }
-  const bustleCans = FITTINGS.jerryCans({
-    mats: P.mats, count: 2, gap: 0.04, seed: 75,
+  // ---- the bustle basket and its load --------------------------------------
+  // 2026-10-22 (owner: "make its bustle have actual items in it"): the two stowage racks and the jerry-can pair stood
+  // 4-6 cm behind the autoloader bustle's rear face, so their loads lay inside its armour and only the racks' end frames
+  // showed, a dark grille, with a fence of thirteen painted bars across the face. The KPz 70 carries an open basket on
+  // the bustle's back. One welded basket now hangs on that face (feet 1 cm into it): 1.90 m wide, 0.42 m deep, its floor
+  // 5.4 cm over the deck kit the bustle swings over (1.756), and inside a 3.55 m radius of the ring, clear of the engine
+  // deck's cargo (3.62 m and out) at every bearing. In it, seated on its floor (0.344): two soft bags under a rolled tarp
+  // on the left, two ammunition cans under a tool chest in the middle, a strapped jerry-can pair on the right; cargo straps
+  // run from the bustle face over the load to the fence rail.
+  const BASKET_W_M = 1.90, BASKET_D_M = 0.42, BASKET_FLOOR_Y_M = 0.32, BASKET_Z_M = -3.0 - BASKET_D_M / 2;
+  const basket = FITTINGS.stowageRack({
+    mats: P.mats, w: BASKET_W_M, d: BASKET_D_M, h: 0.34, rails: 2, fill: 0, seed: 73, rotation: [0, Math.PI, 0],
   });
-  bustleCans.name = 'mbt70_bustle_jerry_cans';
-  bustleCans.position.set(-0.92, 0.215, -2.78);
-  P.turretG.add(bustleCans);
+  basket.name = 'mbt70_bustle_basket';
+  basket.position.set(0, BASKET_FLOOR_Y_M, BASKET_Z_M);
+  P.turretG.add(basket);
+  // it hangs on two welded end gussets: plates 12 mm thick, 1 cm into the bustle face, carrying the basket's end frames
+  // from its floor up to the bustle's top edge (the critic round read the floor as resting on the engine deck)
+  for (const s of [-1, 1]) {
+    const gusset = mbt70SidePlate([[-2.99, BASKET_FLOOR_Y_M - 0.012], [-3.0 - BASKET_D_M + 0.01, BASKET_FLOOR_Y_M - 0.012],
+      [-3.0 - BASKET_D_M + 0.01, BASKET_FLOOR_Y_M + 0.03], [-2.99, 0.66]], () => BASKET_W_M / 2 + 0.001,
+    () => BASKET_W_M / 2 + 0.013, s);
+    P.addEquipment('turret', gusset);
+  }
+  {
+    const floor = BASKET_FLOOR_Y_M + 0.024, zc = BASKET_Z_M;
+    let seed = 7301;
+    const rng = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    KIT.stowage(P, 'turret', rng, [[-0.70, floor + 0.11, zc, 0.40, 0.22, 0.30], [-0.27, floor + 0.10, zc, 0.36, 0.20, 0.30]]);
+    KIT.tarpRoll(P, 'turret', -0.48, floor + 0.20 + 0.105, zc, 0.84, 0.105, true, 18);
+    KIT.ammoCan(P, 'turret', 0.17, floor + 0.10, zc, 0);
+    KIT.ammoCan(P, 'turret', 0.33, floor + 0.10, zc, 0);
+    // the tool chest on the cans (their handles 0.153 over their centres)
+    const chestY = floor + 0.10 + 0.155 + 0.065;
+    const chest = box(0.36, 0.13, 0.30);
+    chest.userData.issueDrab = true;
+    P.addEquipment('turret', chest, 0.25, chestY, zc);
+    P.addEquipment('turretDark', box(0.364, 0.012, 0.304), 0.25, chestY + 0.035, zc);
+    for (const x of [0.15, 0.35]) P.addEquipment('turretDark', box(0.03, 0.045, 0.012), x, chestY + 0.02, zc - 0.155);
+    KIT.jerryCan(P, 'turret', 0.74, floor + 0.242, zc, Math.PI / 2);
+    // the pair's retaining band, 1 mm clear of the cans
+    for (const s of [-1, 1]) {
+      P.addEquipment('turretDark', box(0.358, 0.03, 0.004), 0.74, floor + 0.36, zc + s * 0.178);
+      P.addEquipment('turretDark', box(0.004, 0.03, 0.358), 0.74 + s * 0.178, floor + 0.36, zc);
+    }
+    // cargo straps: from a bolted anchor on the bustle face, over the load (round the roll's crown, flat over the
+    // chest), down to the fence's top rail
+    const back = -3.0, front = BASKET_Z_M - BASKET_D_M / 2 + 0.012, rail = BASKET_FLOOR_Y_M + 0.34 * 0.95 + 0.012;
+    const rollY = floor + 0.305, rollR = 0.105 + 0.006;
+    const overRoll = [-60, -30, 0, 30, 60].map((deg) => [rollY + rollR * Math.cos(deg * Math.PI / 180),
+      zc - rollR * Math.sin(deg * Math.PI / 180)] as const);
+    const chestTop = chestY + 0.068;
+    for (const [x, path] of [[-0.66, overRoll], [-0.30, overRoll],
+      [0.25, [[chestTop, zc + 0.15], [chestTop, zc - 0.15]]]] as const) {
+      P.addEquipment('turretDark', box(0.05, 0.03, 0.012), x, 0.66, back - 0.004);
+      P.addEquipment('turretDark', mbt70Strap([[0.66, back - 0.01], ...path, [rail, front]], 0.038), x, 0, 0);
+    }
+  }
   const bustleCable = FITTINGS.towCable({
     mats: P.mats, r: 0.018, eyes: false, seed: 76,
     pts: [[-1.18, 0.73, -2.40], [0, 0.77, -2.58], [1.18, 0.73, -2.40]],
@@ -1262,52 +1428,45 @@ function buildMBT70(P: Modern2BuilderPort) {
   }
 
   // ---- 152 mm XM150 gun/launcher ------------------------------------------
-  // Signature cast gun shield. This is deliberately NOT a circular disc:
-  // thirteen plan stations make a rounded arrow/parabola that is broad at
-  // the turret face and advances progressively toward the launcher axis.
-  // Five vertical rings swell through the middle, then contract into the
-  // crown/chin, producing the MBT-70's bulbous semi-cylindrical contour.
-  // Its rear course reaches behind the shell nose, so pitch reveals a real
-  // trunnion intersection rather than a plate floating ahead of the cheeks.
-  const MANTLET_FORE_AFT_SCALE = 0.84;
-  const mantletPlan = [
-    [-0.72, -0.30], [-0.70, 0.05], [-0.63, 0.36], [-0.50, 0.64],
-    [-0.32, 0.86], [-0.12, 1.00], [0, 1.04], [0.12, 1.00],
-    [0.32, 0.86], [0.50, 0.64], [0.63, 0.36], [0.70, 0.05],
-    [0.72, -0.30],
-  ].map(([x, z]) => [x, -0.30 + (z + 0.30) * MANTLET_FORE_AFT_SCALE]);
-  const MANTLET_NATIVE_HEIGHT_M = 1.44;
-  const MANTLET_HEIGHT_M = TH;
-  const MANTLET_VERTICAL_SCALE = MANTLET_HEIGHT_M / MANTLET_NATIVE_HEIGHT_M;
-  // The launcher axis sits 3 cm below the middle of the 0.80 m turret shell.
-  // Re-centre the cast shield on that shell so its chin begins at the turret
-  // base and its crown terminates at the roof instead of rising above it.
-  const MANTLET_VERTICAL_OFFSET_M = TH * 0.5 - P.spec.armor.gunPivot[1];
-  // The compound shield was previously authored in its native horizontal
-  // frame: 1.44 m wide but only .66 m tall. Rotate that exact curved mass
-  // around the launcher axis so the rounded arrow stands vertically, as on
-  // the MBT-70, then clamp its vertical extent to the turret shell without
-  // changing its fore-aft trunnion penetration or compact launcher width.
-  P.addGunExtra(scaledGeometryTransform(polyMultiLoft(mantletPlan, [
-    { height: -0.33, inset: 0.70 },
-    { height: -0.19, inset: 0.90 },
-    { height: 0.00, inset: 1.00 },
-    { height: 0.19, inset: 0.91 },
-    { height: 0.33, inset: 0.70 },
-  ]), 0, 0, 0, 0, 0, Math.PI / 2, [MANTLET_VERTICAL_SCALE, 1, 1]),
-  0, MANTLET_VERTICAL_OFFSET_M, 0.08);
-  // A shallow cast brow melts the shield into the turret roof. The oval
-  // recess follows the parabolic shield, while the only truly circular part
-  // is the compact 152 mm launcher throat itself.
-  P.addGunExtra(scaledGeometryTransform(sph(0.28, seg, Math.PI * 0.62), 0, 0, 0, 0, 0, 0,
-    [0.68, 1.10, 1.10]), 0, 0.11, 0.43);
-  const GUN_ROOT_RECESS_RADIUS_M = 0.19;
-  const GUN_ROOT_RECESS_SCALE: GeometryScale = [0.82, 1.14, 1];
-  P.addGunExtraDark(scaledGeometryTransform(cylZ(GUN_ROOT_RECESS_RADIUS_M, 0.045, seg), 0, 0, 0, 0, 0, 0,
-    GUN_ROOT_RECESS_SCALE), 0, 0, 0.94);
-  // The wide rear end seats against the throat ring; taper toward the muzzle.
-  P.addGunExtra(cylZ(0.17, 0.25, seg, 0.22), 0, 0, 1.19);
-  P.addGunExtraDark(cylZ(0.225, 0.035, seg), 0, 0, 1.085);
+  // 2026-10-22 (owner: "make the mantlet ... properly built" and "make its cone be properly coming out of manntlet, not a
+  // little protruded in front"): the shield was a coarse five-ring loft with a brow sphere stuck on its top, and the
+  // launcher's cone, its throat ring and the root recess stood 3-16 cm ahead of its nose, in the air. The KPz 70's mantlet
+  // (Munster, Koblenz) is one casting: a broad block sunk in the turret's front that tapers in plan and in elevation to a
+  // face the launcher's collar grows out of, the coaxial MG3's port in its shoulder. Here it is lofted through sections
+  // along the gun axis (gun-local [z, half-width, crown, chin]): the full block to z 0.34, inside the shell's raked nose
+  // (0.25 ahead of the trunnion at its height, 0.53 at its foot), then a taper to the face at 0.84. Crown 0.41 and chin
+  // -0.37 keep it inside the turret's height at rest (roof 0.43, floor -0.37 from the axis); the rear crown drops to 0.39
+  // so full depression does not lift it through the roof's front edge. From z 0.52 the chin stands 0.18-0.20 under the
+  // axis: at the full 10 degrees of depression it keeps 26 mm over the glacis's aft ERA row (top 1.534), which lies under
+  // it. (The one critic round read a first, longer nose to z 0.84 as "large and pointed": the face now stands at 0.755,
+  // broad and blunt, 0.5 m ahead of the shell at the trunnion.)
+  const MANTLET_FACE_Z_M = 0.755;
+  const MANTLET_SECTIONS: readonly (readonly [number, number, number, number])[] = [
+    [-0.22, 0.38, 0.39, -0.37], [0.0, 0.38, 0.41, -0.37], [0.34, 0.38, 0.41, -0.37], [0.44, 0.374, 0.402, -0.28],
+    [0.52, 0.366, 0.39, -0.203], [0.60, 0.35, 0.37, -0.18], [0.66, 0.326, 0.345, -0.185], [0.71, 0.293, 0.312, -0.198],
+    [0.74, 0.266, 0.284, -0.207], [MANTLET_FACE_Z_M, 0.25, 0.268, -0.198],
+  ];
+  const mantlet = mbt70CastLoft(MANTLET_SECTIONS, P.q ? 48 : 24, 2.6);
+  P.addGunExtra(mantlet);
+  // The collar (the cone): its wide end 2 cm into the face behind a cast fillet ring, tapering toward the muzzle, then a
+  // short chamfer down onto the thermal sleeve.
+  const COLLAR_BASE_R_M = 0.20, COLLAR_TIP_R_M = 0.165, COLLAR_LENGTH_M = 0.25;
+  const collarZ0 = MANTLET_FACE_Z_M - 0.02;
+  P.addGunExtra(cylZ(COLLAR_TIP_R_M, COLLAR_LENGTH_M, seg, COLLAR_BASE_R_M), 0, 0, collarZ0 + COLLAR_LENGTH_M / 2);
+  P.addGunExtra(cylZ(0.214, 0.026, seg, 0.222), 0, 0, MANTLET_FACE_Z_M + 0.008);
+  P.addGunExtra(cylZ(0.132, 0.03, seg, COLLAR_TIP_R_M), 0, 0, collarZ0 + COLLAR_LENGTH_M + 0.015);
+  // the coaxial MG3: a cast boss on the left shoulder of the casting, its port, and the muzzle along the gun axis
+  {
+    const hit = new THREE.Raycaster(new THREE.Vector3(-0.29, 0.06, 2), new THREE.Vector3(0, 0, -1))
+      .intersectObject(new THREE.Mesh(mantlet), false)[0];
+    if (!hit?.face) throw new Error('mbt70: no mantlet surface at the coaxial port');
+    const n = hit.face.normal.clone(), q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), n);
+    const at = (geometry: THREE.BufferGeometry, out: number) => geometry.applyQuaternion(q)
+      .translate(hit.point.x + n.x * out, hit.point.y + n.y * out, hit.point.z + n.z * out);
+    P.addGunExtra(at(cylZ(0.056, 0.05, seg), 0.012));
+    P.addGunExtraDark(at(cylZ(0.033, 0.012, seg), 0.034));
+    P.addGunExtraDark(cylZ(0.013, 0.08, 8), hit.point.x, hit.point.y, hit.point.z + 0.07);
+  }
   buildGun(P, {
     len: 3.88, r: 0.098, sleeve: true, evac: 0.50,
     baseR: 0.19, evacR: 1.24, collar: true,
@@ -1338,21 +1497,26 @@ function buildMBT70(P: Modern2BuilderPort) {
     supportEmbedM: muzzleReferenceEmbedM,
   });
 
+  const [mantletRearZ, mantletHalfWidth, mantletCrown, mantletChin] = MANTLET_SECTIONS[1];
   P.gunG.userData.mbt70MantletReceipt = {
-    profile: 'parabolic-arrow',
+    profile: 'cast-tapered-block',
     circularMainShield: false,
     orientation: 'vertical',
-    widthM: 0.66,
-    heightM: MANTLET_HEIGHT_M,
+    widthM: mantletHalfWidth * 2,
+    heightM: mantletCrown - mantletChin,
     turretHeightM: TH,
-    verticalCenterOffsetM: MANTLET_VERTICAL_OFFSET_M,
-    depthM: 1.34 * MANTLET_FORE_AFT_SCALE,
-    rearOverlapM: 0.30,
-    foreAftScale: MANTLET_FORE_AFT_SCALE,
-    rootRecessWidthM: GUN_ROOT_RECESS_RADIUS_M * GUN_ROOT_RECESS_SCALE[0] * 2,
-    rootRecessHeightM: GUN_ROOT_RECESS_RADIUS_M * GUN_ROOT_RECESS_SCALE[1] * 2,
-    ringCount: 5,
-    planStations: mantletPlan.length,
+    crownM: mantletCrown,
+    chinM: mantletChin,
+    rearZM: MANTLET_SECTIONS[0][0],
+    faceZM: MANTLET_FACE_Z_M,
+    sectionCount: MANTLET_SECTIONS.length,
+    collarBaseZM: collarZ0,
+    collarLengthM: COLLAR_LENGTH_M,
+    collarBaseRadiusM: COLLAR_BASE_R_M,
+    collarTipRadiusM: COLLAR_TIP_R_M,
+    coaxialPort: true,
+    fullSectionToZM: MANTLET_SECTIONS[2][0],
+    trunnionSectionZM: mantletRearZ,
     xm150Sleeve: true,
     nearMuzzleSensor: true,
   };
@@ -1375,8 +1539,10 @@ function buildMBT70(P: Modern2BuilderPort) {
     spareTrackLinksPerRack: SPARE_TRACK_LINKS,
     spareTrackMountXM: SPARE_TRACK_MOUNT_X_M,
     spareTrackMountZM: SPARE_TRACK_MOUNT_Z_M,
-    bustleStowageRacks: 2,
-    bustleJerryCanCount: 2,
+    bustleBasketWidthM: BASKET_W_M,
+    bustleBasketDepthM: BASKET_D_M,
+    bustleBasketFloorYM: BASKET_FLOOR_Y_M,
+    bustleBasketLoad: ['soft bag', 'soft bag', 'rolled tarp', 'ammunition can', 'ammunition can', 'tool chest', 'jerry can pair'],
     bustleTowCable: true,
     insigniaRearLocalZM: INSIGNIA_REAR_LOCAL_Z_M,
     addedEquipmentPieces: 24,
