@@ -249,11 +249,14 @@ function runway(w: Writer, s: HardstandConfig, other: OnOther, seed: number): vo
  * `town` the village rect (a town-paved map paves only there), `seed` the map's.
  */
 export function buildHardstandDressing(strips: readonly HardstandConfig[] | undefined, splat: PavingSplat | null | undefined,
-  ground: DressingGround, roads: readonly (readonly (readonly [number, number])[])[], town: TownRect | null, seed: number): THREE.BufferGeometry | null {
+  ground: DressingGround, roads: readonly (readonly (readonly [number, number])[])[], town: TownRect | null, seed: number,
+  undressed: ReadonlySet<number> = new Set()): THREE.BufferGeometry | null {
   if (!strips?.length) return null;
   const w = new Writer(ground);
   for (const [i, s] of strips.entries()) {
     if (!hardstandIsPaved(splat, s.x, s.z, town)) continue;
+    // (the maps lane, 228) a pad a civic area dresses as a town square (civic/plans): no airfield lip, gullies or patches
+    if (undressed.has(i)) continue;
     const own = Math.floor(hash(Math.round(s.x), Math.round(s.z), seed) * 0x7fffffff);
     const other = onOtherStrip(strips, i);
     lip(w, s, roads, other, own);

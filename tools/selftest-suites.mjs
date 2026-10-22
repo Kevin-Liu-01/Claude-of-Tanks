@@ -1811,6 +1811,13 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/propsMaterialGeometry.selftest.mjs',
     'src/world/crushableClutter.selftest.mjs',
     'src/world/smallPropsDestructible.selftest.mjs', // 2026-10-13: the village well, the square's monument and the rail yard's coal break under a hull and a round
+    // (the maps lane, 228) the civic-area and pathway kit (world/civic): its plans and generality, every planned map's areas
+    // (filled, seated, lit, stream-neutral against the map without its plan) and pathways (fronted, clear, continuous)
+    'src/world/civic/civicPlans.selftest.mjs',
+    'src/world/civic/civicFurniture.selftest.mjs',
+    'src/world/civic/civicArea.selftest.mjs',
+    'src/world/civic/roadLife.selftest.mjs', // (229) every map's road life: at its seats, out of the discs, no new pool, stream-neutral
+    'src/world/civic/civicPathways.selftest.mjs',
     'src/world/maps/wellKit.selftest.mjs', // 2026-10-13 the looks lane: each place's village well and square monument
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/yardDressing.selftest.mjs',
@@ -1894,6 +1901,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/groundCoverClearance.selftest.mjs',
     'src/world/shrubClearance.selftest.mjs', // b12 (the scenery lane): no shrub stands inside a boulder or a structure
     'src/world/civilianVehicleGeometry.selftest.mjs',
+    'src/world/maps/vehicleFarForm.selftest.mjs', // (229) the parked vehicles' far form: inside the body's box, tagged, a black livery dark far off
     'src/world/grassLighting.selftest.mjs',
     'src/world/grassAtlasPadding.selftest.mjs',
     'src/world/grassBladeShape.selftest.mjs',

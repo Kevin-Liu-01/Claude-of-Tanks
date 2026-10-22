@@ -79,6 +79,8 @@ import { cinderYardWeedsAt, groundReduxUniformValues, resolveGroundReduxProfile 
 import { ROAD_CARRIAGEWAY_GLSL, ROAD_PAVING_GLSL } from './roadSurfaceShader.ts';
 import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTierOf, landUseUniformValues, resolveLandUseProfile, withLevelPaddies, type LandFieldSample, type LandUseProfile } from './landUse.ts';
 import { drawIceCracks } from './iceCracks.ts';
+import { civicLawns, civicPavedRooms } from './civic/plans/index.ts';
+import type { CivicRect } from './civic/types.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -597,6 +599,8 @@ export interface TerrainLayout {
   roadStations?: (RoadStationOrigin | null)[];
   /** Round 57: the authored rail spurs, carried to the dressing kit like the lake discs; absent when the map lays none. */
   railSpurs?: readonly RailSpurConfig[];
+  /** (the maps lane, 228) a civic plan's lawns and paved square (world/civic/plans); absent on a map without one. */
+  civicGround?: { readonly lawns: readonly CivicRect[]; readonly paved: readonly CivicRect[] };
   terrain: TerrainSettings;
 }
 
@@ -1209,6 +1213,8 @@ export function createLayout(cfg: TerrainMapConfig | null = null, completeRoads 
     ...(roadStations ? { roadStations } : {}),
     // Round 57 (2026-09-24): authored rail spurs ride the layout to the dressing kit; no key on a map without one.
     ...(t.railSpurs?.length ? { railSpurs: t.railSpurs } : {}),
+    // (the maps lane, 228) a civic plan's ground (world/civic): the lawns the mask keeps green, the square it paves
+    ...(civicLawns(cfg?.id).length ? { civicGround: { lawns: civicLawns(cfg?.id), paved: civicPavedRooms(cfg?.id) } } : {}),
     terrain: t,
   };
 }
@@ -4015,6 +4021,8 @@ export function makeMaskTexture(
   shoreDirtStart: number | null = null,
   sorWetnessAt: HeightField['_sorWetnessAt'] | null = null,
   viaductCut = false,
+  lawns: readonly CivicRect[] = [],
+  pavedRooms: readonly CivicRect[] = [],
 ): THREE.DataTexture {
   const _VILLAGE = layout.village;
   const activityWear = layout.terrain.villageWear === 'activity-patches';
@@ -4204,6 +4212,35 @@ export function makeMaskTexture(
   }
   if (layout.terrain.hardstands?.length) {
     stampHardstandRoadMask(layout.terrain.hardstands, px, s, MAP_SIZE);
+  }
+  // (the maps lane, 228) a civic area's room paved frontage to frontage (civic/plans): the square's setts out to the houses,
+  // past the apron's own edge, no village wear on them
+  for (const r of pavedRooms) {
+    const i0 = Math.max(0, Math.floor((r.x0 - 2 + HALF) * T)), i1 = Math.min(s - 1, Math.ceil((r.x1 + 2 + HALF) * T));
+    const j0 = Math.max(0, Math.floor((r.z0 - 2 + HALF) * T)), j1 = Math.min(s - 1, Math.ceil((r.z1 + 2 + HALF) * T));
+    for (let tz = j0; tz <= j1; tz++) for (let tx = i0; tx <= i1; tx++) {
+      const x = (tx + 0.5) / T - HALF, z = (tz + 0.5) / T - HALF;
+      const depth = Math.min(x - r.x0, r.x1 - x, z - r.z0, r.z1 - z) + 1.0;
+      const pave = Math.max(0, Math.min(1, depth / 1.6 + 0.5));
+      if (pave <= 0) continue;
+      const j = (tz * s + tx) * 4;
+      px[j] = Math.max(px[j], pave * 255); px[j + 1] *= 1 - pave; px[j + 3] *= 1 - pave;
+    }
+  }
+  // (the maps lane, 228) a civic area's lawns (civic/plans): off the road paint and the village wear, so the terrain grows
+  // its green there (the road distance and the placement fields are untouched: no pass moves); each texel by its centre's
+  // depth inside the lawn, so the bilinear edge falls under the bed's kerb and dwarf wall
+  for (const r of lawns) {
+    const i0 = Math.max(0, Math.floor((r.x0 + HALF) * T) - 1), i1 = Math.min(s - 1, Math.ceil((r.x1 + HALF) * T) + 1);
+    const j0 = Math.max(0, Math.floor((r.z0 + HALF) * T) - 1), j1 = Math.min(s - 1, Math.ceil((r.z1 + HALF) * T) + 1);
+    for (let tz = j0; tz <= j1; tz++) for (let tx = i0; tx <= i1; tx++) {
+      const x = (tx + 0.5) / T - HALF, z = (tz + 0.5) / T - HALF;
+      const depth = Math.min(x - r.x0, r.x1 - x, z - r.z0, r.z1 - z);
+      const lawn = Math.max(0, Math.min(1, (depth - 0.2) / 1.6 + 0.5));
+      if (lawn <= 0) continue;
+      const j = (tz * s + tx) * 4;
+      px[j] *= 1 - lawn; px[j + 1] *= 1 - lawn; px[j + 3] *= 1 - lawn;
+    }
   }
   if (shoreDirtStart !== null) {
     // The road-distance raster has no further consumers. Reuse it without
@@ -4478,6 +4515,8 @@ uniform vec4 uRoadSurf, uRoadSurfB;
 uniform vec4 uPaveClass, uPaveWear, uPaveTown;
 // (R2) the procedural paving's (stone tone, a kerbed town's street class, centre lines, shell-hole fills)
 uniform vec4 uPaveExtra;
+// (the maps lane, 228) a square's setts' tone over the streets' (x; 1 on every map that names none)
+uniform vec4 uPaveSquare;
 // the map-borders lane (2026-10-03): 1 when the map's R layer is its paving (a cobble set: Cinder Junction, Steinburg,
 // Ironworks, Kestrel) — its natural steep faces then take the D layer (bare ground) instead of drawing cobbles
 uniform float uPavedRock;
@@ -8091,7 +8130,7 @@ function* createSplatMaterialSteps(
   sourcedTexturesReady.then(measureLayerMeans, measureLayerMeans);
   const maskNoi = new SimplexNoise({ random: mulberry32(3010) });
   const mask = makeMaskTexture(maskNoi, layout, rockMask, waterWetnessAt,
-    S.shoreDirt ? (S.seaRamp?.[0] ?? 0.40) : null, sorWetnessAt, !!S.townPaving);
+    S.shoreDirt ? (S.seaRamp?.[0] ?? 0.40) : null, sorWetnessAt, !!S.townPaving, layout.civicGround?.lawns, layout.civicGround?.paved);
   yield;
   if (!_splatFields) yield* splatFieldSteps();
   const noiseTex = makeShaderNoiseTexture(3011);
@@ -8228,6 +8267,7 @@ function* createSplatMaterialSteps(
     shader.uniforms.uPaveWear = { value: new THREE.Vector4(...paved.wear) };
     shader.uniforms.uPaveTown = { value: new THREE.Vector4(...paved.town) };
     shader.uniforms.uPaveExtra = { value: new THREE.Vector4(...paved.extra) };
+    shader.uniforms.uPaveSquare = { value: new THREE.Vector4(...paved.square) };
     shader.uniforms.uTownWear = { value: S.townWear ?? 1 };
     shader.uniforms.uYardCinder = { value: yardCinder };
     shader.uniforms.uThatch = { value: thatchV };

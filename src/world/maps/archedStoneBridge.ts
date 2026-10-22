@@ -9,6 +9,7 @@ import { box, jitterUV, scaleUV, slabBox } from '../propGeometry.ts';
 import { bevelBox } from './bevelBox.ts';
 import { cloneCollisionRecord, setCompoundShape, type SimpleCollisionShape } from '../collision.ts';
 import type { DressingBuckets, DressingHeightField, FocusedDressingContext, LayoutDisc, Rng } from './mapKits.ts';
+import { getDeviceTier } from '../../engine/quality.ts';
 
 /** Round 61: the deck plane the river kit builds its arched bridge on (terrain.ts BridgeDeckPlane). */
 export interface DressingBridgeDeck {
@@ -197,7 +198,7 @@ export function addRuinedRiverBridge(
 
 /** The bridge's dressing: none over the round-61 body ('plain': Cliffbridge's gorge span, until its own pass), or a
  *  Norman river bridge's masonry ('norman': Amberford). */
-export type BridgeMasonry = 'plain' | 'norman';
+export type BridgeMasonry = 'plain' | 'norman' | 'ronda';
 
 /** A local stream for the dressing's UV jitter (so the map's own stream keeps its place: the old pieces' draws only). */
 export function localRng(seed: number): () => number {
@@ -315,6 +316,111 @@ function normanMasonry(b: {
     }
   }
   return mergeStone(parts);
+}
+
+/**
+ * (229, the owner: "make the big bridge in aegis crossing a lot more detailed") the Tajo gorge's viaduct dressed as Ronda's
+ * Puente Nuevo is, on the round-61 body, in its local frame (x along the road, y up, z across): on both faces each arch's
+ * ring of great voussoirs with its keystone, the piers' pointed cutwaters with their sloped caps and the pilasters rising
+ * from them, a two-step cornice under the parapets on its corbels with a stone spout every twelve metres, the parapets'
+ * coping in lengths and their dado posts; on the deck the footways' flags behind their kerbs along both parapets and the
+ * expansion joints over the piers. Visual only (the bridge's record is unchanged); a phone lays larger voussoirs and
+ * leaves the corbels and the spouts. Returns the stone geometry and the iron (the joints' plates).
+ */
+function rondaMasonry(b: {
+  halfWidth: number; bodyHalf: number; parapetHalf: number; deckY: number; top: number; bottom: number; springY: number;
+  centreY: number; radius: number; halfAngle: number; arcs: readonly number[]; piers: readonly number[]; seed: number;
+  mobile: boolean;
+}): { stone: THREE.BufferGeometry; iron: THREE.BufferGeometry } {
+  const r = localRng(b.seed), parts: THREE.BufferGeometry[] = [], iron: THREE.BufferGeometry[] = [];
+  const add = (g: THREE.BufferGeometry) => { jitterUV(g, r); parts.push(g); };
+  const RING = 1.05, PROUD = 0.12, BLOCK = b.mobile ? 1.8 : 0.95;
+  const capTop = b.springY + 0.9;
+  for (const face of [-1, 1]) {
+    const zf = face * b.halfWidth;
+    // the arch rings: great voussoirs in odd counts (the keystone at the crown), every other one deeper
+    for (const ax of b.arcs) {
+      const arc = 2 * b.halfAngle * b.radius;
+      const n = Math.max(9, Math.round(arc / BLOCK) | 1);
+      const step = (2 * b.halfAngle) / n;
+      for (let k = 0; k < n; k++) {
+        const a = Math.PI / 2 - b.halfAngle + (k + 0.5) * step, key = k === (n - 1) / 2;
+        const depth = key ? RING * 1.45 : k % 2 ? RING * 0.8 : RING;
+        const len = 2 * b.radius * Math.sin(step / 2) * 0.95;
+        const pr = PROUD + (key ? 0.08 : 0);
+        const v = block(len, depth, pr, 0.7);
+        v.translate(0, depth / 2, 0);
+        v.rotateZ(a - Math.PI / 2);
+        v.translate(ax + Math.cos(a) * b.radius, b.centreY + Math.sin(a) * b.radius, zf + face * pr / 2);
+        add(v);
+      }
+    }
+    // the piers: a pointed cutwater with its sloped cap, the pilaster over it up to the cornice
+    for (const px of b.piers) {
+      const w = BRIDGE_PIER_M * 0.55, out = BRIDGE_PIER_M * 0.95;
+      const poly: [number, number][] = face > 0 ? [[px - w, zf], [px + w, zf], [px, zf + out]] : [[px + w, zf], [px - w, zf], [px, zf - out]];
+      add(prism(poly, b.bottom, capTop));
+      add(prism(poly, capTop, [capTop + 1.1, capTop + 1.1, capTop]));
+      const pil = block(BRIDGE_PIER_M * 0.75, b.top - 0.8 - capTop - 0.9, 0.2, 0.7);
+      pil.translate(px, (capTop + 0.9 + b.top - 0.8) / 2, zf + face * 0.1);
+      add(pil);
+    }
+    // the cornice under the parapet: a band and a deeper moulding over it, the body's length
+    const band = block(b.bodyHalf * 2 + 0.4, 0.32, 0.2, 0.7);
+    band.translate(0, b.top - 0.62, zf + face * 0.1);
+    add(band);
+    const mould = block(b.bodyHalf * 2 + 0.6, 0.24, 0.38, 0.7);
+    mould.translate(0, b.top - 0.34, zf + face * 0.19);
+    add(mould);
+    if (!b.mobile) {
+      // its corbels, a metre and a half apart, and a stone spout every twelve metres under them
+      const nC = Math.round((b.bodyHalf * 2) / 1.5);
+      for (let k = 0; k <= nC; k++) {
+        const x = -b.bodyHalf + (k * b.bodyHalf * 2) / nC;
+        const c = block(0.3, 0.42, 0.3, 0.7);
+        c.translate(x, b.top - 0.99, zf + face * 0.15);
+        add(c);
+      }
+      for (let x = -b.bodyHalf + 6; x < b.bodyHalf - 5; x += 12) {
+        const sp = block(0.26, 0.24, 0.75, 0.7);
+        sp.translate(x + 0.75, b.top - 0.86, zf + face * 0.37);
+        add(sp);
+      }
+    }
+    // the parapet's coping in lengths and its dado posts on the outer face every six metres
+    const copeLen = 1.5, nCope = Math.max(2, Math.round((b.parapetHalf * 2) / copeLen));
+    for (let k = 0; k < nCope; k++) {
+      const x0 = -b.parapetHalf + (k * b.parapetHalf * 2) / nCope;
+      const c = block((b.parapetHalf * 2) / nCope - 0.025, 0.16, 0.68, 0.7);
+      c.translate(x0 + b.parapetHalf / nCope, b.deckY + BRIDGE_PARAPET_HEIGHT_M + 0.08, face * (b.halfWidth - BRIDGE_PARAPET_THICK_M / 2));
+      add(c);
+    }
+    for (let x = -b.parapetHalf + 3; x < b.parapetHalf - 2; x += 6) {
+      const d = block(0.55, BRIDGE_PARAPET_HEIGHT_M + 0.55, 0.14, 0.7);
+      d.translate(x, b.deckY + (BRIDGE_PARAPET_HEIGHT_M + 0.55) / 2 - 0.4, zf + face * 0.07);
+      add(d);
+    }
+    // the footway along the parapet's inner face: its flags in lengths, its kerb
+    const walkW = 1.7, kerbW = 0.24, zIn = face * (b.halfWidth - BRIDGE_PARAPET_THICK_M);
+    const nFlag = Math.round((b.bodyHalf * 2) / 1.2);
+    for (let k = 0; k < nFlag; k++) {
+      const x0 = -b.bodyHalf + (k * b.bodyHalf * 2) / nFlag;
+      const f = block((b.bodyHalf * 2) / nFlag - 0.03, 0.1, walkW - 0.03, 0.7);
+      f.translate(x0 + b.bodyHalf / nFlag, b.deckY + 0.05, zIn - face * walkW / 2);
+      add(f);
+    }
+    const kerb = block(b.bodyHalf * 2, 0.16, kerbW, 0.7);
+    kerb.translate(0, b.deckY + 0.08, zIn - face * (walkW + kerbW / 2));
+    add(kerb);
+  }
+  // the expansion joints over the piers and at the abutments: an iron plate across the carriageway
+  const carriage = (b.halfWidth - BRIDGE_PARAPET_THICK_M - 1.7 - 0.24) * 2;
+  for (const x of [-b.bodyHalf + 0.6, ...b.piers, b.bodyHalf - 0.6]) {
+    const j = box(0.16, 0.02, carriage, 0.7);
+    j.translate(x, b.deckY + 0.01, 0);
+    iron.push(j);
+  }
+  return { stone: mergeStone(parts), iron: mergeStone(iron) };
 }
 
 /** The parapets' runs (#27): about six metres each. */
@@ -475,9 +581,9 @@ export function addArchedStoneBridge(
         cz + uz * end * parapetHalf + vz * inset * side));
     }
   }
-  // cutwaters on both faces of every pier, their noses turned into the stream
+  // cutwaters on both faces of every pier, their noses turned into the stream (the Ronda masonry carries its own)
   const cutwaterTop = springY + 0.5;
-  for (let i = 0; i < arches - 1; i++) {
+  for (let i = 0; i < (style === 'ronda' ? 0 : arches - 1); i++) {
     const pierX = -wetSpan / 2 + (i + 1) * chord + i * BRIDGE_PIER_M + BRIDGE_PIER_M / 2;
     for (const side of [-1, 1]) {
       const nose = box(BRIDGE_PIER_M * 0.8, cutwaterTop - bottom, BRIDGE_PIER_M * 0.8, 0.7);
@@ -503,6 +609,14 @@ export function addArchedStoneBridge(
   }
   // (#27) a Norman river bridge's masonry over the body: the arch rings, the string course, the coped parapets, the
   // pointed cutwaters with their starlings and the pilasters over them (visual only: the record below is unchanged)
+  if (style === 'ronda') {
+    const arcs = Array.from({ length: arches }, (_, i) => -wetSpan / 2 + chord / 2 + i * (chord + BRIDGE_PIER_M));
+    const piers = Array.from({ length: arches - 1 }, (_, i) => -wetSpan / 2 + (i + 1) * chord + i * BRIDGE_PIER_M + BRIDGE_PIER_M / 2);
+    const g = rondaMasonry({ halfWidth, bodyHalf, parapetHalf, deckY, top, bottom, springY, centreY, radius, halfAngle,
+      arcs, piers, seed: Math.round(cx * 13 + cz * 7), mobile: getDeviceTier() === 'mobile' });
+    buckets.stone.push(alignWidth(g.stone, ux, uz).translate(cx, 0, cz));
+    buckets.dark.push(alignWidth(g.iron, ux, uz).translate(cx, 0, cz));
+  }
   if (style === 'norman') {
     const arcs = Array.from({ length: arches }, (_, i) => -wetSpan / 2 + chord / 2 + i * (chord + BRIDGE_PIER_M));
     const piers = Array.from({ length: arches - 1 }, (_, i) => -wetSpan / 2 + (i + 1) * chord + i * BRIDGE_PIER_M + BRIDGE_PIER_M / 2);

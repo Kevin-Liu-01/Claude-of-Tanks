@@ -896,7 +896,8 @@ export function dressMapExtras({
   const focused = { mapId, L, heightField, rng, buckets, groundingReceipts, obstacles, colliders, clutter, structure, shore, animated, boats: boatFamilyForMap(mapId ?? ''),
     trunks: trunksOf(trees), setPieceDestructible, rollingStockDestructible, tramDestructible };
   if (mapId === 'cliffbridge') {
-    for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused);
+    // (229, the owner: the big bridge "a lot more detailed") the Puente Nuevo's masonry
+    for (const deck of heightField.bridgeDecks ?? []) addArchedStoneBridge(deck, heightField, rng, buckets, focused, 'ronda');
   }
   if (kits.includes('coastal')) dressCoastalShore(focused);
   if (kits.includes('river')) {

@@ -121,6 +121,8 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
     joinStructureShells() {},
     // (F2, 2026-10-13) and merges its buildings' roof decks into the records before it returns; no structures here either
     mergeStructureDecks() {}, colliders: [],
+    // (the maps lane, 228) the props' stream counters the runtime's tail publishes (the civic receipts read them)
+    placementDraws: null, mainDraws: 0,
   };
   const runtime = compileFunction(runtimeBody, Object.keys(context),
     { filename: 'props.ts:production-destructible-runtime' })(...Object.values(context));

@@ -367,7 +367,9 @@ export const parkSquare: LandmarkBuilder = (ctx) => {
   const centreHeight = Number(ctx.params.centreHeight) > 0 ? { height: Number(ctx.params.centreHeight) } : {};
   // (`inscription`: the centre piece's, an obelisk's plaque)
   const inscription = ctx.params.inscription ? { inscription: String(ctx.params.inscription) } : {};
-  if (centre !== 'none' && centre !== '') children.push({ kind: centre as LandmarkKind, x: 0, z: 0, yawDeg: 0, params: centre === 'obelisk' ? { railing: false, ...centreHeight, ...inscription } : centreHeight });
+  // (229, the maps lane: `centreStyle`, the centre piece's own style — an Ottoman fountain in Sarajevo's park)
+  const centreStyle = ctx.params.centreStyle ? { style: String(ctx.params.centreStyle) } : {};
+  if (centre !== 'none' && centre !== '') children.push({ kind: centre as LandmarkKind, x: 0, z: 0, yawDeg: 0, params: centre === 'obelisk' ? { railing: false, ...centreHeight, ...inscription } : { ...centreHeight, ...centreStyle } });
   return { parts: finishLandmark(sink), tints: { plaster3: [0.95, 0.86, 0.68] }, destructibles, children };
 };
 
