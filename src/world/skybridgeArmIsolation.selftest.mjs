@@ -14,31 +14,31 @@ const BEFORE = {
   desert: '256cdd8034669156',
   winter: '9726f7f88e679a00',
   urban: 'd55a1084385adf87',
-  coastal: 'bd0869e3b6f74cbd',
-  autumn: '7729ce23aed0d036', // 2026-10-17 re-pinned, was 5647eccd5ae5f182: MAPS Lane A's autumn backlog (item/maps-backlog-227): the f3 hedge-bank ridge at (128, 59) retired (its 1.6 m faces were the steep cells inside zone 2's disc); the ford green stays at (154, 54)
+  coastal: '620c251249cddff8', // 2026-10-21 re-pinned, was bd0869e3b6f74cbd: GROUND water banks (item/ground-water-banks-230): the beds carved by the water's mask, the banks graded from the water's top
+  autumn: '31207b2388d2371b', // 2026-10-21 re-pinned, was 7729ce23aed0d036: GROUND water banks (item/ground-water-banks-230): the beds carved by the water's mask, the banks graded from the water's top
   steppe: 'f39da59d3b8341be',
   railyard: '3fc793f5cfa28201',
   frontier: '6dd169127afbaa73',
-  fjord: '844ae8b1facb58b7',
-  delta: 'caed446bb84fde07', // 2026-10-16 re-pinned, was 125801425dddc92c: GROUND Delta stacks (integ/226 91aebdbf2, item/ground-delta-stacks cf4abb8f5: the second paddy row keeps its west paddy); the port's merge 074713b3a left it at its pin
+  fjord: '263574381b329f77', // 2026-10-21 re-pinned, was 844ae8b1facb58b7: GROUND water banks (item/ground-water-banks-230): the beds carved by the water's mask, the banks graded from the water's top
+  delta: '25bec9a7e9ab9c79', // 2026-10-21 re-pinned, was caed446bb84fde07: GROUND water banks (item/ground-water-banks-230): the beds carved by the water's mask, the banks graded from the water's top
   badlands: '8a1498dd5c9b9eb1',
-  monsoon: '84b5ee48c992bafc', // 2026-10-16 re-pinned, was ee7f16856debcd25: MAPS Monsoon Ridge Kohima (integ/226 d8a514543, item/maps-monsoon efaafd74c; merged before the port, which was cut from d4b0d0fcb); the port's own side 074713b3a^2 still hashes to the old pin
+  monsoon: 'cf9a5157dfdbfe97', // 2026-10-21 re-pinned, was 84b5ee48c992bafc: GROUND water banks (item/ground-water-banks-230): the beds carved by the water's mask, the banks graded from the water's top; its flood channel laid at 0.5
   alpine: 'ad1861235bf42d36', // 2026-10-16 re-pinned, was 02f111788b73aad4: the Glacier Hinterland back in 226 (integ/226 1ad81a403, the integrator's re-revert: alpine rimH 52 -> 30); the port's merge 074713b3a left it at its pin
   caldera: '8242b97c1c879b54',
   foundry: '82760ac67681631c', // 2026-10-17 re-pinned, was 9d91c513ba3f7e1c: MAPS Lane A's Ironworks re-landing (item/maps-ironworks-227, round d4b718bd6): the furnace line's floor, a level apron cut into the ore berm at (-74, -29), 48 x 22 m, level 2.4, bank 14 m (without it the old hash holds)
   ruinspires: 'f8fb31019a15a8f3',
-  blackglass: '05d5d86640658a70',
+  blackglass: '5e7af900683ef1fb', // 2026-10-21 re-pinned, was 05d5d86640658a70: GROUND water banks (item/ground-water-banks-230): the beds carved by the water's mask, the banks graded from the water's top
   titan_gorge: '485e822b044f058f',
-  polders: 'cdb827a60a297964',
+  polders: '8dc90829e88feeb2', // 2026-10-21 re-pinned, was cdb827a60a297964: GROUND water banks (item/ground-water-banks-230): the beds carved by the water's mask, the banks graded from the water's top
   copper_mesa: 'e691d76f1096fc14',
   airfield: '4f534969f5970ae0', // 2026-10-16 re-pinned, was 794c991f91b951fa: MAPS Kestrel Airfield rebuild (integ/226 af8e48d28, item/maps-kestrel 284ef2ffe); the port's merge 074713b3a left it at its pin
-  oasis: '6901cc139213a499',
+  oasis: '156b434394ea66e7', // 2026-10-21 re-pinned, was 6901cc139213a499: GROUND water banks (item/ground-water-banks-230): the beds carved by the water's mask, the banks graded from the water's top
   whiteout: '45c4a24901c001e1',
   orchard: '9f6683777ae5b79b',
   longleaf: '0cf4d34bac0555b1',
-  mangrove: '0f287d0f5ff5b30e',
-  saltwind: '590eec2375e191ba',
-  reservoir: '863f6b8225ce9365',
+  mangrove: '9d855cba612b1012', // 2026-10-21 re-pinned, was 0f287d0f5ff5b30e: GROUND water banks (item/ground-water-banks-230): the beds carved by the water's mask, the banks graded from the water's top; its floor under the tidal waterline (-2.73)
+  saltwind: 'dd2ba94bc4fd2909', // 2026-10-21 re-pinned, was 590eec2375e191ba: GROUND water banks (item/ground-water-banks-230): the beds carved by the water's mask, the banks graded from the water's top
+  reservoir: '445afcbee9db735b', // 2026-10-21 re-pinned, was 863f6b8225ce9365: GROUND water banks (item/ground-water-banks-230): the beds carved by the water's mask, the banks graded from the water's top
   mars: 'b760ed9717fba45a',
   moon: '0aa6b7fb664e549a', // 2026-10-18 re-pinned, was 7ce00910e42eb981: MAPS Earthrise 228 rebuild (item/maps-earthrise-228 8018118a90, integ/228 27adeab6a; the owner's ask, independent blind 16-0): the moon's landforms and works rebuilt
   cliffbridge: '073028df8cb5fabb',

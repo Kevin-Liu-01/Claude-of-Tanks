@@ -20,6 +20,9 @@
 // and the three strongpoints and zone-control discs stand within 10 % of equal route distance from both deployments.
 import delta from './delta.ts';
 import { createLakeChannel } from './marshChannel.ts';
+
+/** The tidal waterline (-2.3 m) less the creek's water depth (waterContact.ts TANNIN_CREEK: 0.43 m): the lakes' floor. */
+const MANGROVE_TIDAL_FLOOR = -2.73;
 export default {
   id: 'mangrove', name: 'Mangrove Reach',
   blurb: 'Fishing compounds occupy low estuary islands connected by shallow fords and raised tracks',
@@ -41,16 +44,19 @@ export default {
     // wrapping the fishing village. Only the existing raised roads interrupt
     // its water, not broad un-authored land gaps. Reuse eighteen spine cells
     // and eight creek cells; all twenty-six share the same tidal waterline.
+    // (the ground lane, 2026-10-17; MASTER #14, the critics' "tilted water wedge climbing the far bank") a lake's level is
+    // its floor and its water stands the creek's depth (TANNIN_CREEK: 0.43 m) over it: the tidal waterline -2.3 is the
+    // water's top, flush with the flats, so the floor is -2.73 (the water had stood 0.43 m over the flats round it)
     lakes: [
       ...createLakeChannel([
         { x: 80, z: -310, r: 36 }, { x: 80, z: -190, r: 36 },
         { x: 124, z: -82, r: 36 }, { x: 114, z: 72, r: 36 },
         { x: 68, z: 194, r: 36 }, { x: 108, z: 308, r: 36 },
-      ], -2.3),
+      ], MANGROVE_TIDAL_FLOOR),
       ...createLakeChannel([
         { x: -224, z: 202, r: 38 }, { x: -158, z: 250, r: 38 },
         { x: 56, z: 260, r: 38 },
-      ], -2.3),
+      ], MANGROVE_TIDAL_FLOOR),
     ],
     marshes: [],
     landforms: [

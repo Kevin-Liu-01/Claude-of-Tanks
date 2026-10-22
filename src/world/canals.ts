@@ -134,6 +134,17 @@ export function canalWetness(compiled: CompiledCanals, x: number, z: number): nu
   return wet;
 }
 
+/** (the ground lane, 2026-10-17; MASTER #14, the Polders ditch) the level of the canal whose water reaches (x, z) (its
+ *  wetness band: a metre past the waterline), the nearest one's; NaN where none does. The water sheet holds it. */
+export function canalLevelAt(compiled: CompiledCanals, x: number, z: number): number {
+  let best = Infinity, level = Number.NaN;
+  for (const c of compiled.canals) {
+    const d = canalDistance(c, x, z);
+    if (d < c.half + 1 && d < best) { best = d; level = c.level; }
+  }
+  return level;
+}
+
 /** Whether (x, z) lies in a canal's water or on its banks' foot (vegetation and props keep off). */
 export function inCanal(compiled: CompiledCanals, x: number, z: number, marginM = 1.5): boolean {
   for (const c of compiled.canals) if (canalDistance(c, x, z) < c.half + marginM) return true;
