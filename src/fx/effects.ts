@@ -715,6 +715,14 @@ const MUZZLE_LIGHT_S = 0.14;   // lighting_post r6: composed frame catches 41% o
 // with quadratic decay, so the r5 "20 m road wash" cannot return.
 const MUZZLE_LIGHT_PEAK = 460;
 const MUZZLE_LIGHT_RANGE = 12;
+/** (233, the media lane's Q2: one 460 cd / 12 m muzzle light for every gun, so a rifle-calibre burst pooled the ground as
+ *  a 125 mm shot did, and the pool stood white on snow) the light follows the bore: the tuned peak and reach above are a
+ *  120-125 mm gun's, the peak scaling as the bore^1.2 (7.62 mm ~16 cd, 12.7 mm ~30, 30 mm ~85, 152 mm ~600) and the reach
+ *  as its square root (3 m for a rifle calibre, 5.9 m for 30 mm, 13.4 m for 152 mm); and it follows the ground under the
+ *  muzzle, as a burst's own pulse does (blastRecipes' albedoK): snow returns about four times turf's light, so a third
+ *  of the peak, sand two thirds. */
+const MUZZLE_LIGHT_REF_MM = 122.5, MUZZLE_LIGHT_BORE_POW = 1.2;
+const MUZZLE_LIGHT_SNOW_K = 0.33, MUZZLE_LIGHT_SAND_K = 0.66;
 /** (EF.10) the local lights' gains on the smoke and dust they reach (a radiance gain on the medium's own colour, at the
  *  light; falling off as (1 - d / range)^2): a headlight's beam, a flash at its peak, a wreck's fire at its mean */
 const LOCAL_HEADLIGHT_GAIN = 1.4, LOCAL_FLASH_GAIN = 2.4, LOCAL_FIRE_GAIN = 1.5;
@@ -782,6 +790,10 @@ const SMOKE_COLUMN_S = 40;
 const VEHICLE_BURN_S = 18;
 const CAR_BURN_S = 30;
 const SMOKE_SMOLDER_S = 35;    // post-column ember/wisp stage on the wreck
+/** (233, the FX follow-up: the wreck's glow outlived its visible flames) a column's flames die down over their last
+ *  seconds — fewer, lower, thinner licks — and the fire's light (the pooled light over the wreck and its smoke's local
+ *  light) follows them down to nothing as the last lick dies; the smoulder after carries no flame light. */
+const FLAME_DIE_S = 6;
 const SHELL_BURST_COLUMN_S = 14; // a shell hit's smoke-only column (the Studio's stand-in blast; no wreck burns)
 // r5 column-continuity rebuild: 0.05 (was 0.11) — the 9 Hz cadence of very
 // large puffs is what let the column macro-structure fall apart in motion
@@ -1317,6 +1329,17 @@ function* createFxSteps(
       basePow: 2.6 },
   ];
 
+  /** (233) a gun's muzzle light by its bore and the ground under its muzzle: peak (x MUZZLE_LIGHT_PEAK) and reach (m) */
+  const muzzlePulse = { peakK: 1, range: MUZZLE_LIGHT_RANGE };
+  function muzzleLightPulse(caliberMm: number, x: number, z: number): typeof muzzlePulse {
+    const bore = Number.isFinite(caliberMm) && caliberMm > 0 ? caliberMm / MUZZLE_LIGHT_REF_MM : 1;
+    const surface = classifyTerrain(heightField, x, z);
+    const groundK = surface === 'snow' ? MUZZLE_LIGHT_SNOW_K : surface === 'sand' ? MUZZLE_LIGHT_SAND_K : 1;
+    muzzlePulse.peakK = THREE.MathUtils.clamp(Math.pow(bore, MUZZLE_LIGHT_BORE_POW), 0.03, 1.4) * groundK;
+    muzzlePulse.range = THREE.MathUtils.clamp(MUZZLE_LIGHT_RANGE * Math.sqrt(bore), 3, 14);
+    return muzzlePulse;
+  }
+
   function lightAge(state: LightState): number {
     return particles.getTime() - state.bornAt;
   }
@@ -1364,6 +1387,8 @@ function* createFxSteps(
     // (black-screen-228 RC6) a pulse with a non-finite place never moves a light there
     if (!(Number.isFinite(pos.x) && Number.isFinite(pos.y) && Number.isFinite(pos.z))) return;
     state.light.position.copy(pos);
+    // (233) the muzzle light's reach: its gun's (muzzleLightPulse), the 12 m default for every other muzzle-light pulse
+    if (state.light === muzzleLight) state.light.distance = range && range > 0 ? range : MUZZLE_LIGHT_RANGE;
     // (fx 9: 8t) the pulse's own reach (the pooled explosion light: 13 m unless the pulse asks less)
     if (state.light === explosionLight) {
       state.range = range && range > 0 ? range : 13;
@@ -3949,19 +3974,9 @@ function* createFxSteps(
       if (rng() < (COLUMN_TICK_S / 0.16) * lod) {
         mediaColumnPuff(blast, col.pos[0], col.pos[1], col.pos[2], stage, col.scale * dk / Math.sqrt(lod), birthOffset);
       }
-      if (rng() < 0.70 + 0.30 * stage) {
-        _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
-        _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
-        _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.2;
-        _puffO.vel[0] = (rng() - 0.5) * 0.6; _puffO.vel[1] = 1.0 + rng() * 0.9; _puffO.vel[2] = (rng() - 0.5) * 0.6;
-        _puffO.life = 0.30 + rng() * 0.28;
-        _puffO.size0 = (1.15 + rng() * 0.4) * col.scale * dk;
-        _puffO.size1 = (0.75 + rng() * 0.3) * col.scale * dk;
-        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
-        col3(0xffcf70, _puffO.col0); col3(0xff5a10, _puffO.col1);
-        _puffO.alpha = 0.95; _puffO.grav = 1.4; _puffO.birthOffset = birthOffset - rng() * 0.15;
-        particles.emit('fire', _puffO);
-      }
+      // (233) a smoke-only column (a shell burst on open ground) licks no flame here either, as the pooled tier never did
+      const flameK = columnFlameK(col);
+      if (flameK > 0 && rng() < (0.70 + 0.30 * stage) * (0.35 + 0.65 * flameK)) emitFlameLick(col, dk, birthOffset, flameK);
       return;
     }
     const s = col.scale * (0.62 + 0.38 * stage) * dk;
@@ -4052,22 +4067,46 @@ function* createFxSteps(
     // hull"): licks are born ON the deck line, rise slowly, live SHORT and
     // SHRINK with age — fire that licks up off the wreck and dies before it
     // can drift free. Higher rate so the base always carries flame.
-    if (col.flame !== false && rng() < 0.70 + 0.30 * stage) {
-      const licks = rng() < 0.35 ? 2 : 1;
-      for (let li = 0; li < licks; li++) {
-        _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
-        _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
-        _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.2;
-        _puffO.vel[0] = (rng() - 0.5) * 0.6; _puffO.vel[1] = 1.0 + rng() * 0.9; _puffO.vel[2] = (rng() - 0.5) * 0.6;
-        _puffO.life = 0.30 + rng() * 0.28;
-        _puffO.size0 = (1.15 + rng() * 0.4) * col.scale * dk;
-        _puffO.size1 = (0.75 + rng() * 0.3) * col.scale * dk; // shrink as it dies
-        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
-        col3(0xffcf70, _puffO.col0); col3(0xff5a10, _puffO.col1);
-        _puffO.alpha = 0.95; _puffO.grav = 1.4; _puffO.birthOffset = birthOffset - rng() * 0.15;
-        particles.emit('fire', _puffO);
-      }
+    const flameK = columnFlameK(col);
+    if (flameK > 0 && rng() < (0.70 + 0.30 * stage) * (0.35 + 0.65 * flameK)) {
+      const licks = rng() < 0.35 * flameK ? 2 : 1;
+      for (let li = 0; li < licks; li++) emitFlameLick(col, dk, birthOffset, flameK);
     }
+  }
+
+  /** (233) how much a column still burns: 1 while it burns, down to 0 over its flames' last FLAME_DIE_S; 0 for a
+   *  smoke-only column and through the smoulder */
+  function columnFlameK(col: SmokeColumn): number {
+    if (col.flame === false || !(col.ttl > 0)) return 0;
+    return THREE.MathUtils.smoothstep(col.ttl, 0, FLAME_DIE_S);
+  }
+
+  /** The newest column still burning (the pooled fire light rides it), or null. */
+  function burningColumn(): SmokeColumn | null {
+    for (let i = columns.length - 1; i >= 0; i--) if (columnFlameK(columns[i]) > 0) return columns[i];
+    return null;
+  }
+
+  /**
+   * One flame lick on a burning wreck's deck. (233, the FX follow-up: "flat orange fire sprites"; "fire is round sprite
+   * blobs") a tongue, not a blob: the fire pool's flame card (a negative size0) stands tall along the world's up from its
+   * root on the deck, tapers to a torn tip and sways rather than spins. Licks are born ON the deck line, rise slowly, live
+   * SHORT and SHRINK with age (r7: "two cotton-ball flame blobs hovering above the hull"); a dying fire's licks are lower
+   * and thinner (flameK).
+   */
+  function emitFlameLick(col: SmokeColumn, dk: number, birthOffset: number, flameK: number): void {
+    const k = 0.55 + 0.45 * flameK;
+    _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
+    _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
+    _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.2;
+    _puffO.vel[0] = (rng() - 0.5) * 0.6; _puffO.vel[1] = (1.0 + rng() * 0.9) * k; _puffO.vel[2] = (rng() - 0.5) * 0.6;
+    _puffO.life = 0.30 + rng() * 0.28;
+    _puffO.size0 = -(0.95 + rng() * 0.35) * col.scale * dk * k;
+    _puffO.size1 = (0.6 + rng() * 0.25) * col.scale * dk * k; // shrink as it dies
+    _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = 1.5 + rng() * 2.5;
+    col3(0xffcf70, _puffO.col0); col3(0xff5a10, _puffO.col1);
+    _puffO.alpha = 0.95; _puffO.grav = 1.4; _puffO.birthOffset = birthOffset - rng() * 0.15;
+    particles.emit('fire', _puffO);
   }
 
   /**
@@ -4204,7 +4243,7 @@ function* createFxSteps(
     const nightK = 0.35 + 0.65 * tracers.darkLevel();
     if (muzzleLight.intensity > 0) {
       const p = muzzleLight.position;
-      addLocalPoint(p.x, p.y, p.z, MUZZLE_LIGHT_RANGE * 1.5, muzzleLight.color,
+      addLocalPoint(p.x, p.y, p.z, muzzleLight.distance * 1.5, muzzleLight.color,
         LOCAL_FLASH_GAIN * nightK * muzzleLight.intensity / MUZZLE_LIGHT_PEAK);
     }
     const blastState = lightStates[1];
@@ -4212,23 +4251,19 @@ function* createFxSteps(
     // only within a few metres of the flames") a wreck's fire lights its smoke from the flames themselves (1.2 m over the
     // hull, not the pooled light's 3.4 m) and only a few metres round them (LOCAL_FIRE_REACH_M x the column's scale);
     // a burst's pulse keeps its own reach (the pooled puffs take it; the media light their pulse themselves)
-    if (explosionLight.intensity > 0) {
-      const p = explosionLight.position, pulse = lightAge(blastState) < blastState.dur;
-      if (pulse) {
-        addLocalPoint(p.x, p.y, p.z, explosionLight.distance * 1.3, explosionLight.color,
-          nightK * LOCAL_FLASH_GAIN * explosionLight.intensity / EXPLOSION_LIGHT_PEAK, true);
-      } else {
-        addLocalPoint(p.x, p.y - 2.2, p.z, LOCAL_FIRE_REACH_M * 1.3, explosionLight.color,
-          nightK * LOCAL_FIRE_GAIN * explosionLight.intensity / 12);
-      }
+    if (explosionLight.intensity > 0 && lightAge(blastState) < blastState.dur) {
+      const p = explosionLight.position;
+      addLocalPoint(p.x, p.y, p.z, explosionLight.distance * 1.3, explosionLight.color,
+        nightK * LOCAL_FLASH_GAIN * explosionLight.intensity / EXPLOSION_LIGHT_PEAK, true);
     }
-    // the other burning wrecks (the explosion light rides the latest column)
-    for (let i = columns.length - 2; i >= 0; i--) {
-      const col = columns[i];
-      if (col.flame === false || !(col.ttl > 0)) continue;
+    // every burning wreck lights its smoke from its flames (233: the newest took the pooled light's flicker / 12, under
+    // half the others' gain, and kept it through the smoulder), as its flames burn (columnFlameK)
+    for (let i = columns.length - 1; i >= 0; i--) {
+      const col = columns[i], flameK = columnFlameK(col);
+      if (!(flameK > 0)) continue;
       const flicker = 0.8 + 0.12 * Math.sin(now * 11.3 + i * 1.7) + 0.08 * Math.sin(now * 6.1 + i * 2.9);
       if (!addLocalPoint(col.pos[0], col.pos[1] + 1.2, col.pos[2], LOCAL_FIRE_REACH_M * col.scale, _wreckFire,
-        LOCAL_FIRE_GAIN * nightK * flicker * col.scale)) break;
+        LOCAL_FIRE_GAIN * nightK * flicker * col.scale * flameK)) break;
     }
     endLocalLights();
   }
@@ -4249,8 +4284,10 @@ function* createFxSteps(
   function updateWreckLight(): void {
     if (replaySuppressed) return;
     const explosionState = lightStates[1];
-    if (lightAge(explosionState) >= explosionState.dur && columns.length) {
-      const col = columns[columns.length - 1];
+    // (233) the light rides the newest column still burning and dies with its flames (columnFlameK): no glow over a
+    // smouldering wreck or a smoke-only crater (after the pulse, applyLight has already set it dark)
+    const col = lightAge(explosionState) >= explosionState.dur ? burningColumn() : null;
+    if (col) {
       // (wave 266: the wreck fire's light left a red patch on the ground and the hull's deck) a living flicker over the
       // wreck, set higher and softer: the flames on the deck carry the fire, the light only warms round them
       // (a car's fire is lower and lights the car and the ground round it: r1c, "the fire lights almost nothing at night")
@@ -4261,7 +4298,7 @@ function* createFxSteps(
       const time = particles.getTime();
       explosionLight.intensity = (
         9.5 + 3.2 * Math.sin(time * 13.7) + 2.2 * Math.sin(time * 7.1 + 1.9)
-      ) * col.scale * (blast ? 0.45 : 1) * (col.car ? 0.45 + 1.15 * tracers.darkLevel() : 1);
+      ) * col.scale * (blast ? 0.45 : 1) * (col.car ? 0.45 + 1.15 * tracers.darkLevel() : 1) * columnFlameK(col);
       return;
     }
     const pulseRange = explosionState.range ?? 13;
@@ -6579,7 +6616,10 @@ function* createFxSteps(
       // the brightest lit surface is the muzzle itself.
       _sv.copy(pos).addScaledVector(dir, -0.15);
       _sv.y += 0.10;
-      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * lightK * muzzleLightScale, 0);
+      // (233) by the bore and the ground under the muzzle (muzzleLightPulse)
+      const pulse = muzzleLightPulse(caliberMm, _sv.x, _sv.z);
+      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale, 0,
+        undefined, undefined, undefined, pulse.range);
     },
 
     /** Tank-on-tank metal contact: lateral sparks, track debris and a low
@@ -7434,7 +7474,10 @@ function* createFxSteps(
       // onto the mantlet/hull front, but the hottest lit metal is the muzzle.
       _sv.copy(muzzlePos).addScaledVector(dir, -0.18);
       _sv.y += 0.10;
-      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * (rocket ? 0.3 : 1) * muzzleLightScale, ageS);
+      // (233) a gun's by its bore and the ground under the muzzle (muzzleLightPulse); a rocket keeps its own pulse
+      const pulse = rocket ? null : muzzleLightPulse(caliberMm, _sv.x, _sv.z);
+      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * (pulse ? pulse.peakK : 0.3) * muzzleLightScale, ageS,
+        undefined, undefined, undefined, pulse?.range);
     },
 
     /**

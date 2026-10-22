@@ -1,13 +1,14 @@
 // thermalWreckCooling.selftest.mjs — (ac130-fx-228 follow-up, the coordinator: "a killed vehicle goes dark at once in
 // thermal") a destroyed hull keeps its heat in a heat-imaging lens and cools by the simulation clock: full heat at the
-// kill, its stand-ins' heat scale falling as exp(-age / WRECK_COOL_S) in WRECK_HEAT_LEVELS steps, the cold wreck's own
-// material once under a step. The kill's time is noted every frame, lens or not (a lens raised later sees the true age);
+// kill, its stand-ins' heat scale falling toward WRECK_HEAT_FLOOR as exp(-age / WRECK_COOL_S) in WRECK_HEAT_LEVELS steps
+// (233: through the heat grade's window over a minute, not ~10 s), the cold wreck's own material past WRECK_COLD_S. The kill's time is noted every frame, lens or not (a lens raised later sees the true age);
 // the wreck keeps its hull's own stand-ins (fx-ir-hull-heat-229: one per vehicle and part, one heat program); without a
 // clock a wreck is cold, as before; a revived hull starts its clock again. Render-only: the shared fleet material is never
 // touched.
 import assert from 'node:assert/strict';
 import { BoxGeometry, Group, Mesh, MeshStandardMaterial, ShaderLib } from 'three';
-import { createThermalVehicles, HEAT_FRIENDLY, WRECK_COOL_S, WRECK_HEAT_LEVELS, wreckHeatLevel } from './thermalVehicles.ts';
+import { createThermalVehicles, HEAT_FRIENDLY, WRECK_COLD_S, WRECK_COOL_S, WRECK_HEAT_FLOOR, WRECK_HEAT_LEVELS, wreckHeatLevel }
+  from './thermalVehicles.ts';
 
 const source = new MeshStandardMaterial({ color: 0x476234 });
 const scene = new Group();
@@ -23,11 +24,12 @@ const frame = (active, timeS) => { heat.begin([live, wreck], active, 'ally', tim
 const uniformsOf = (m) => { const sh = { uniforms: {}, vertexShader: ShaderLib.standard.vertexShader, fragmentShader: ShaderLib.standard.fragmentShader }; m.onBeforeCompile(sh); return sh.uniforms; };
 const scaleOf = (m) => uniformsOf(m).uHeatK.value.z;
 
-// the curve: full at the kill, falling, cold past ~5 time constants, never rising
+// the curve: full at the kill, falling, still warm a minute on (233), cold past WRECK_COLD_S, never rising
 assert.equal(wreckHeatLevel(0), 1);
 let last = 1;
 for (let t = 0; t <= 200; t += 0.5) { const h = wreckHeatLevel(t); assert.ok(h <= last + 1e-12, 'a wreck never warms'); last = h; }
-assert.equal(wreckHeatLevel(WRECK_COOL_S * 5), 0, 'cold within five time constants');
+assert.ok(wreckHeatLevel(60) * 4 > 1.55, 'a minute-old wreck\'s top still glows in the heat grade (233)');
+assert.equal(wreckHeatLevel(WRECK_COLD_S), 0, 'cold past WRECK_COLD_S');
 assert.equal(wreckHeatLevel(-1), 0);
 
 frame(true, 99);
@@ -41,7 +43,8 @@ frame(false, 100);
 assert.ok(frame(false, 100.5)[1] === source, 'no stand-in while the lens is down');
 // the lens raised 20 s later sees a 20 s-old wreck
 const [, at20] = frame(true, 120);
-const expect20 = Math.round(Math.exp(-20 / WRECK_COOL_S) * WRECK_HEAT_LEVELS) / WRECK_HEAT_LEVELS;
+const expect20 = Math.round((WRECK_HEAT_FLOOR + (1 - WRECK_HEAT_FLOOR) * Math.exp(-20 / WRECK_COOL_S)) * WRECK_HEAT_LEVELS)
+  / WRECK_HEAT_LEVELS;
 assert.ok(at20 !== source, 'a 20 s-old wreck keeps a stand-in');
 assert.ok(at20 === wreckLive, 'its own hull\'s stand-in (one per vehicle and part)');
 assert.ok(Math.abs(scaleOf(at20) - expect20) < 1e-9, `it glows at ${expect20.toFixed(3)} of a live hull (${scaleOf(at20).toFixed(3)})`);
@@ -55,7 +58,7 @@ assert.ok(at40 < expect20, 'and cools as it ages');
 frame(true, 120);
 assert.ok(Math.abs(scaleOf(at20) - expect20) < 1e-9, 'the same wreck age, the same heat');
 // cold: the wreck's own material again
-assert.ok(frame(true, 100 + WRECK_COOL_S * 5)[1] === source, 'a cold wreck shows its own material');
+assert.ok(frame(true, 100 + WRECK_COLD_S)[1] === source, 'a cold wreck shows its own material');
 assert.equal(source.emissive.r, 0, 'the shared fleet material is never touched');
 // a revived hull starts its clock again
 wreck.combat.destroyed = false; frame(true, 300);
@@ -71,4 +74,4 @@ const unclocked = createThermalVehicles();
 unclocked.begin([wreck], true, 'ally');
 assert.ok(wreck.mesh.material === source, 'without the battle clock a wreck is cold, as before');
 unclocked.end();
-console.log(`thermalWreckCooling: a wreck stays hot in the heat lens and cools by the battle clock (${expect20.toFixed(2)} at 20 s, cold by ${WRECK_COOL_S * 5} s), on its hull's own stand-ins and the one heat program`);
+console.log(`thermalWreckCooling: a wreck stays hot in the heat lens and cools by the battle clock (${expect20.toFixed(2)} at 20 s, cold by ${WRECK_COLD_S} s), on its hull's own stand-ins and the one heat program`);

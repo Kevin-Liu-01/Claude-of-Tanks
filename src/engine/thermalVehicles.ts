@@ -11,15 +11,22 @@ interface ThermalActor {
   state?:{speed?:number}|null;
 }
 /** (ac130-fx-228 follow-up, the coordinator: "a killed vehicle goes dark at once in thermal") a destroyed hull keeps its
- * heat and cools: its stand-in's emission falls as exp(-age / WRECK_COOL_S) from the battle (sim) time it was first
- * seen destroyed, in WRECK_HEAT_LEVELS steps, until under 1 / WRECK_HEAT_LEVELS it is the cold wreck's own material.
- * Render-only and deterministic: the age is the simulation clock's. */
-export const WRECK_COOL_S = 20;
+ * heat and cools from the battle (sim) time it was first seen destroyed, in WRECK_HEAT_LEVELS steps, until it is the
+ * cold wreck's own material. (233, the AC-130 follow-up: "a killed vehicle's heat decays instantly") the emission's
+ * exp(-age / 20 s) took a far hull (4 x its share, 0.62-1 by its facing) through the heat grade's 1.55-3.1 window in
+ * ~10 s: its sides cold by ~9 s, its top by ~19. The share now falls toward the window's floor instead —
+ * WRECK_HEAT_FLOOR + (1 - floor) x exp(-age / WRECK_COOL_S): white-hot over the kill's first ~20 s, the hull's top warm
+ * to about a minute (its sides cooling first), under the window by ~90 s — and past WRECK_COLD_S (by then well under the
+ * window: no step) it is the wreck's own material. Render-only and deterministic: the age is the simulation clock's. */
+export const WRECK_COOL_S = 40;
+export const WRECK_HEAT_FLOOR = 0.3;
+export const WRECK_COLD_S = 150;
 export const WRECK_HEAT_LEVELS = 12;
 /** The wreck's heat share (0..1, quantised; 0 = cold) `ageS` seconds after it was destroyed. */
 export function wreckHeatLevel(ageS:number):number{
-  if(!(ageS>=0))return 0;
-  const level=Math.round(Math.exp(-ageS/WRECK_COOL_S)*WRECK_HEAT_LEVELS);
+  if(!(ageS>=0)||ageS>=WRECK_COLD_S)return 0;
+  const share=WRECK_HEAT_FLOOR+(1-WRECK_HEAT_FLOOR)*Math.exp(-ageS/WRECK_COOL_S);
+  const level=Math.round(share*WRECK_HEAT_LEVELS);
   return level>=1?level/WRECK_HEAT_LEVELS:0;
 }
 /** (fx-ir-hull-heat-229, the coordinator: "close up a live hull is a flat white slab: the heat signal saturates") a hull's

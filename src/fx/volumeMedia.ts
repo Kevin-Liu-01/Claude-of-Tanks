@@ -125,6 +125,15 @@ const ATTRS = ['aPB', 'aVL', 'aDY', 'aSZ', 'aCA', 'aCB', 'aFB', 'aHT'] as const;
 export const VOLUME_SHEAR_K = 0.03;
 /** Eddies: a puff wanders by this share of its size per second of age (up to 4 s), on slow seeded cycles. */
 export const VOLUME_TURB_K = 0.05;
+/** (233, the smoke-wind films' "flat, hard, ground-hugging base" and "rectangular haze panel over the Verdant trees", and
+ *  the "speckle inside the smoke") a card drawn through its body's centre slices whatever stands in the body: the ground
+ *  it sits on drew a hard flat foot, a tree clump inside a thin veil showed the crowns before its plane crisp and those
+ *  behind it hazed (a flat panel through the canopy), and the grass inside a low bank punched blade-shaped holes in it.
+ *  A card is drawn at its body's near side instead — this share of its size toward the lens (at most VOLUME_FRONT_MAX_M,
+ *  and never past half the way to the lens), its corners scaled so its footprint on the screen is unchanged — and its
+ *  soft fade runs over the body's whole thickness: what stands inside the body is covered by the smoke in front of it, in
+ *  proportion to its depth in it. */
+const VOLUME_FRONT_K = 0.3, VOLUME_FRONT_MAX_M = 5;
 
 export function volumePositionAt(rec: ArrayLike<number>, o: number, windX: number, windZ: number, age: number,
   out: Float32Array | number[]): void {
@@ -202,6 +211,7 @@ varying float vT;
 varying float vFade;
 varying float vParticleDepth;
 varying float vFeather;
+varying float vThick;     // (233) the body's thickness the soft fade runs over (m)
 varying vec2 vDetail;
 varying vec3 vSoft;       // card-local uv, 1 for the billow medium (its softened silhouette)
 #ifdef FX_LOCAL_LIGHTS
@@ -215,7 +225,7 @@ void main() {
   if ( life <= 0.0 || age < 0.0 || age > life ) {
     vUvA = vec2( 0.0 ); vUvB = vec2( 0.0 ); vTiles = vec4( 0.0 ); vBlend = 0.0; vColor = vec4( 0.0 ); vDetail = vec2( 0.0 );
     vW = vec4( 0.0 ); vWfb = vec2( 0.0 ); vHeat = 0.0; vMirror = 1.0; vT = 0.0; vFade = 1.0; vParticleDepth = 1e9;
-    vFeather = 1.0; vGlow = 0.0; vSoft = vec3( 0.5, 0.5, 0.0 );
+    vFeather = 1.0; vThick = 0.0; vGlow = 0.0; vSoft = vec3( 0.5, 0.5, 0.0 );
     #ifdef FX_LOCAL_LIGHTS
       vLocal = vec3( 0.0 );
     #endif
@@ -251,7 +261,13 @@ void main() {
   float aspect = max( abs( aFB.y ), 0.25 );
   float px = position.x * aspect;
   vec2 corner = vec2( px * ca - position.y * sa, px * sa + position.y * ca ) * size;
-  vec3 wpos = center + camRight * corner.x + camUp * corner.y;
+  // (233) the card at the body's near side (VOLUME_FRONT_K), its footprint on the screen kept
+  float camD = distance( center, cameraPosition );
+  float pull = min( min( ${VOLUME_FRONT_K.toFixed(2)} * size, ${VOLUME_FRONT_MAX_M.toFixed(1)} ), max( 0.0, 0.5 * ( camD - 1.5 ) ) );
+  float keep = ( camD - pull ) / max( camD, 1e-3 );
+  vec3 wpos = center + ( cameraPosition - center ) * ( pull / max( camD, 1e-3 ) )
+    + ( camRight * corner.x + camUp * corner.y ) * keep;
+  vThick = 2.0 * pull;
   // --- flipbook: the sim's own clock (gamma-warped frame spacing), blended along the motion vectors
   float band = aFB.x;
   float mirror = aFB.y < 0.0 ? -1.0 : 1.0;
@@ -328,8 +344,11 @@ void main() {
   vGlow = gl;
   // (EF.10, MASTER 19) headlights, the muzzle and burning wrecks light the medium (a burst's own pulse is uGlow's;
   // compiled out on Low and Ultra Low)
+  // (233, the FX follow-up: the wreck's fire "doesn't light its own smoke base") taken a third of the way from the body's
+  // heart to the corner: a column body's corners stood metres out of a fire's few-metre reach while its heart sat over
+  // the flames
   #ifdef FX_LOCAL_LIGHTS
-    vLocal = localLightAt( wpos, 1.0 );
+    vLocal = localLightAt( mix( center, wpos, 0.35 ), 1.0 );
   #endif
   // (fx 8q, wave 381's pack: the collapse dust "darker and browner than A's warm lit tan"; full-resolution crops showed the
   // same puffs dark olive-brown in B against walls in full sun) no cloud shade on the media: 8c's per-vertex cloud shade
@@ -383,6 +402,7 @@ varying float vT;
 varying float vFade;
 varying float vParticleDepth;
 varying float vFeather;
+varying float vThick;
 varying float vGlow;
 #ifdef FX_LOCAL_LIGHTS
 varying vec3 vLocal;
@@ -393,7 +413,8 @@ float softDepthFadeV() {
   vec2 suv = gl_FragCoord.xy / max( uSoftViewport, vec2( 1.0 ) );
   float rawDepth = texture2D( uSceneDepth, suv ).x;
   float sceneDepthM = -( uCameraNear * uCameraFar ) / ( ( uCameraFar - uCameraNear ) * rawDepth - uCameraFar );
-  return smoothstep( 0.0, vFeather, sceneDepthM - vParticleDepth );
+  // (233) over the body's thickness at least: the smoke in front of what stands inside it
+  return smoothstep( 0.0, max( vFeather, 0.8 * vThick ), sceneDepthM - vParticleDepth );
 }
 vec3 blackbody( float h ) {
   // ember red -> orange -> yellow -> white (linear; saturated so the filmic curve keeps it fire)
@@ -526,8 +547,10 @@ void main() {
   if ( vGlow > 0.002 ) col += ( vColor.rgb * 0.6 + vec3( 0.55, 0.2, 0.05 ) ) * vGlow * ( 0.35 + 0.65 * cov ) * uGrade.y;
   // (EF.10) the local lights scatter in the medium's own colour, the thick body more than its thin rim (a headlight's
   // beam shows in the dust it drives through; a burning wreck lights its smoke's underside)
+  // (233) soot scatters a fire's light at 7 % at least: at its own ~3 % albedo the flames' light on their smoke base was
+  // lost in the night floor
   #ifdef FX_LOCAL_LIGHTS
-    col += vColor.rgb * vLocal * ( 0.35 + 0.65 * cov );
+    col += max( vColor.rgb, vec3( 0.07 ) ) * vLocal * ( 0.35 + 0.65 * cov );
   #endif
   #ifdef USE_FOG
     #ifdef FOG_EXP2
