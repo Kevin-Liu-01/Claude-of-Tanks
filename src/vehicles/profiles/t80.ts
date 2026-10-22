@@ -36,6 +36,7 @@ interface T80BuilderPort {
   readonly spec: { id: string; visual: { number?: string } };
   readonly disposables: DisposableResource[];
   muzzleZ?: number;
+  muzzleAxisY?: number;
   topY?: number;
   add(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addEquipment(slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
@@ -724,6 +725,9 @@ function buildT80Line(P: T80BuilderPort, v: T80Variant): void {
       [0.55, 2.03, 0.128, 0.128, 0, -0.040], [2.03, 2.78, 0.130, 0.130, 0, -0.048], [2.78, gunEnd, 0.128, 0.128, 0, -0.054],
     ], { rings: [[3.60, 0.132, 0, -0.054], [4.40, 0.132, 0, -0.054], [Math.min(5.10, gunEnd - 0.18), 0.132, 0, -0.054]], muzzle: gunEnd });
     muzzleBore(P, { r: 0.128, y: -0.054 });  // §B3.1 turret-lane 2026-08-06 (shadow-named, mask/frame-neutral; all three marks)
+    // TANK-OPT W-5 (2026-10-17): the fire anchor rides the tube's own axis, 54 mm under the gun's local axis, so the
+    // flash and the round leave the bore instead of the barrel's crown.
+    P.muzzleAxisY = -0.054;
     // r25f sleeve clamp plate (pt91m precedent): the ref tube's plan edges
     // (±0.19) own the ±0.16..0.19 plan columns — but only to world 6.04
     // (r26: the full-length plate owned the muzzle-tip plan columns 0.23

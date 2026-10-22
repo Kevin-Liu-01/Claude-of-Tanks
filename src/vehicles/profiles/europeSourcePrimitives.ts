@@ -26,8 +26,13 @@ export function turretEquipment(P: TankBuilderPort, bucket: string, geometry: TH
     y - P.turretG.position.y, z - P.turretG.position.z, rx, ry, rz);
 }
 
-/** Open tube, physical mouth annulus and recessed termination. */
-export function openTube(P: TankBuilderPort, radius: number, start: number, end: number, boreRadius = radius * .74): void {
+/** Open tube, physical mouth annulus and recessed termination.
+ * `shadowedBore` (2026-10-17, CDX-62): the bore's wall and backstop are drawn as the carved bores' are (the hardware
+ * dark wall, the shadow backstop) instead of in polished weapon steel. A small-calibre bore in a polished tube caught
+ * the gallery light down its whole length (amx10p read 84 against the muzzle-bore probe's 80; kf41_lynx 41 inside a
+ * dark brake), so the mouth did not read as a hole. */
+export function openTube(P: TankBuilderPort, radius: number, start: number, end: number, boreRadius = radius * .74,
+  { shadowedBore = false }: { shadowedBore?: boolean } = {}): void {
   const n = P.q ? 28 : 14;
   const outer = new THREE.CylinderGeometry(radius, radius, end - start, n, 1, true);
   outer.rotateX(Math.PI / 2);
@@ -40,9 +45,30 @@ export function openTube(P: TankBuilderPort, radius: number, start: number, end:
     const a = index.getX(i + 1); index.setX(i + 1, index.getX(i + 2)); index.setX(i + 2, a);
   }
   inner.computeVertexNormals();
-  P.add('gunDark', inner, 0, 0, end - .10);
-  P.add('gun', new THREE.RingGeometry(boreRadius, radius, n), 0, 0, end);
-  P.add('gunDark', new THREE.CircleGeometry(boreRadius, n), 0, 0, end - .20);
+  const floor = new THREE.CircleGeometry(boreRadius, n);
+  if (shadowedBore) {
+    for (const [name, geometry, material, z] of [
+      ['openTubeBoreWall', inner, P.mats.dark, end - .10],
+      ['openTubeBoreBackstop', floor, P.mats.shadow, end - .20],
+    ] as const) {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = name;
+      mesh.position.set(0, 0, z);
+      mesh.castShadow = false;
+      mesh.receiveShadow = true;
+      // bore stock exactly as the carved bores' wall and backstop: barrel stock to the bore inventory, never a
+      // small part on a wreck, never a carving surface (carvedMuzzleBore.ts, wrecks.ts, muzzle-bore-inventory.mjs)
+      mesh.userData.carvedBoreStock = true;
+      P.recoilG.add(mesh);
+      P.disposables.push(geometry);
+    }
+    P.add('gun', new THREE.RingGeometry(boreRadius, radius, n), 0, 0, end);
+  } else {
+    // (the shipped order: wall, mouth annulus, backstop)
+    P.add('gunDark', inner, 0, 0, end - .10);
+    P.add('gun', new THREE.RingGeometry(boreRadius, radius, n), 0, 0, end);
+    P.add('gunDark', floor, 0, 0, end - .20);
+  }
   P.muzzleZ = end;
   P.physicalMuzzleBore = { outerRadiusM: radius, innerRadiusM: boreRadius, depthM: .20 };
 }

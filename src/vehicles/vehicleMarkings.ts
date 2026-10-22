@@ -10,6 +10,12 @@ export interface VehicleMarkingAnchor {
   readonly vertical: number;
   readonly sizeM: number;
   readonly designationDirection: -1 | 1;
+  /** 2026-10-17 (VEHICLES): an explicit station for the designation where the insignia's neighbour along the side
+   * runs off the armour (merkava4b: past the turret's rear edge, into air). It is solved from this station every time,
+   * not kept from the last verified seat. */
+  readonly designationStation?: { readonly longitudinal: number; readonly vertical: number };
+  /** Set by the solver on the designation it seats from `designationStation`: armour under every edge and corner. */
+  readonly fullSupport?: boolean;
 }
 
 interface CountryMarking {
@@ -333,7 +339,10 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   // right-forward on 3C and left-rear on 3D.
   merkava3c: anchor('hull', 'right', 0.57, 0.58, 0.25, -1),
   merkava3_baz: anchor('hull', 'left', 0.40, 0.58, 0.25, 1),
-  merkava4b: anchor('turret', 'right', 0.38, 0.44, 0.24, -1),
+  // the designation 0.11 aft of the insignia stood 8 cm past the turret's rear edge (1.685, 2.216, -2.765): it goes
+  // on the lower side band ahead of the right bustle box, the insignia stays where it reads
+  merkava4b: Object.freeze({ ...anchor('turret', 'right', 0.38, 0.44, 0.24, -1),
+    designationStation: Object.freeze({ longitudinal: 0.40, vertical: 0.16 }) }),
   type59: anchor('turret', 'right', 0.45, 0.48, 0.23, -1),
   amx30: anchor('turret', 'left', 0.43, 0.47, 0.24, 1),
   amx30b2: anchor('turret', 'right', 0.41, 0.48, 0.24, -1),
