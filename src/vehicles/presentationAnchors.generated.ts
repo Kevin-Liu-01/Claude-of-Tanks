@@ -461,7 +461,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   warrior_tes_h: Object.freeze({ centerYM: 1.9925, topHalfM: 3.7585, sideHalfM: 2.132 }),
   xk2_black_panther: Object.freeze({ centerYM: 2.1373, topHalfM: 5.6768, sideHalfM: 2.8384 }),
   ztz100: Object.freeze({ centerYM: 1.5205, topHalfM: 5.5414, sideHalfM: 2.7707 }),
-  ztz100_prototype: Object.freeze({ centerYM: 1.37, topHalfM: 4.1726, sideHalfM: 2.0863 }),
+  ztz100_prototype: Object.freeze({ centerYM: 1.3215, topHalfM: 4.1726, sideHalfM: 2.0863 }),
   ztz85_iii: Object.freeze({ centerYM: 2.4346, topHalfM: 6.2341, sideHalfM: 3.117 }),
   ztz99_longwei: Object.freeze({ centerYM: 2.0898, topHalfM: 8.6957, sideHalfM: 4.3478 }),
   ztz99a: Object.freeze({ centerYM: 1.8304, topHalfM: 7.9886, sideHalfM: 3.9943 }),
