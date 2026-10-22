@@ -84,8 +84,7 @@ function checkKnownSourceFixtures(tank,id){
   if(id==='t80u'){
     const air=new THREE.Raycaster(new THREE.Vector3(1.36,1.74,-3.31),new THREE.Vector3(0,-1,0),0,.26).intersectObject(detail,false);
     assert.equal(air.length,0,'T80 source empty rear cradle does not acquire a fuel drum');
-    // 2026-10-21 (art fixes 230): the bow apron is painted in the scheme (hullFixedPaintedBodywork), same sheet.
-    const apron=tank.root.getObjectByName('hullFixedPaintedBodywork');
+    const apron=tank.root.getObjectByName('hullRubber');
     const hit=new THREE.Raycaster(new THREE.Vector3(0,.4,4),new THREE.Vector3(0,0,-1),0,1.2).intersectObject(apron,false)[0];
     near(hit?.point.z,3.015634537,.000002,'T80 separate thin low hanging bow apron');
   }
