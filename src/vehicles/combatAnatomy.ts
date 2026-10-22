@@ -1074,6 +1074,28 @@ function alignTurretRing(armor: ArmorAnatomy, calibration: CombatAnatomyCalibrat
   const ring = (armor.modules || []).find((box) => box.module === 'turretRing');
   if (!ring || !calibration?.turret) return;
   const thickness = Math.max(0.14, ring.max[1] - ring.min[1]);
+  const built = calibration.turretRing;
+  if (built && Array.isArray(built.seat) && built.seat.length === 3 && Number.isFinite(built.deckY)) {
+    // (tank-opt RING, 2026-10-16; the ring verify: the volume sat at the calibrated turret bottom plus the SPEC pivot,
+    // off the built ring wherever a builder re-seats or scales the turret or a basket hangs under it, and on the
+    // authored centre rather than the built seat's axis) the ring as built: on the rig_turret seat's axis, centred on the
+    // deck under it (rig_hull frame; a turret-local volume keeps the authored pivot's frame)
+    const origin = ring.turretLocal ? armor.turretPivot : [0, 0, 0];
+    const dx = built.seat[0] - origin[0] - (ring.min[0] + ring.max[0]) * 0.5;
+    const dz = built.seat[2] - origin[2] - (ring.min[2] + ring.max[2]) * 0.5;
+    const baseY = built.deckY - origin[1];
+    const dy = baseY - (ring.min[1] + ring.max[1]) * 0.5;
+    for (const part of Array.isArray(ring.parts) ? ring.parts : []) {
+      part.min[0] += dx; part.max[0] += dx;
+      part.min[1] += dy; part.max[1] += dy;
+      part.min[2] += dz; part.max[2] += dz;
+    }
+    ring.min[0] += dx; ring.max[0] += dx;
+    ring.min[2] += dz; ring.max[2] += dz;
+    ring.min[1] = baseY - thickness * 0.5;
+    ring.max[1] = baseY + thickness * 0.5;
+    return;
+  }
   const baseY = calibration.turret.min[1] + (ring.turretLocal ? 0 : armor.turretPivot[1]);
   ring.min[1] = baseY - thickness * 0.5;
   ring.max[1] = baseY + thickness * 0.5;

@@ -45,6 +45,27 @@ export interface AnatomyEraPlateReceipt extends Record<string, RuntimeValue> {
   readonly visualSectors?: readonly string[];
 }
 
+/**
+ * The turret ring as built (tools/gen-combat-anatomy.mjs, turretRingWell.ts measureTurretRing), in the rig_hull frame:
+ * the rig_turret seat, the deck top under the ring, the hull-side race's outer radius (inside the turret base), how far
+ * the deck falls away under the race's rim, the turret base's inscribed radius over the deck and the well's floor. The
+ * anatomy's turretRing volume centres on it (combatAnatomy.ts alignTurretRing); a wreck's ring plate and a hulk's well
+ * are sized from it.
+ */
+export interface AnatomyTurretRingReceipt extends Record<string, RuntimeValue> {
+  readonly seat: readonly number[];
+  readonly deckY: number;
+  readonly rimR: number;
+  readonly skirt: number;
+  readonly footR: number;
+  /** The well's floor: a floor plate over the highest of the hull's undersides under the opening, and over its skin. */
+  readonly floorY?: number;
+  /** The well's wall under the race's lip where the hull's skin keeps it narrower than the gear's band (a ledge). */
+  readonly wellR?: number;
+  /** The nearest the hull's skin comes to the ring's axis under the lip, when within a hulk crumple's reach of it. */
+  readonly skinR?: number;
+}
+
 export interface CombatAnatomyCalibration extends Record<string, RuntimeValue> {
   readonly externalWeapons?: readonly AnatomyWeaponReceipt[];
   readonly hull: AnatomyCalibrationBounds;
@@ -63,6 +84,8 @@ export interface CombatAnatomyCalibration extends Record<string, RuntimeValue> {
   };
   /** The tracks' ground contact as the builder lays it (sim/trackContact.ts): the movement solve's receipt. */
   readonly trackContact?: TrackContactReceipt;
+  /** The turret ring as built (turreted tanks). */
+  readonly turretRing?: AnatomyTurretRingReceipt;
 }
 
 export interface AnatomyWeaponReceipt extends AnatomyCalibrationCell {
