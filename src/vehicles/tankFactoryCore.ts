@@ -1145,7 +1145,7 @@ interface TankFactoryOptions {
    * generated seats (vehicleMarkingSeats.generated.ts). Only tools/gen-vehicle-marking-seats.mjs passes it (update and
    * --check, the seats' drift guard); every other build, receipt builds included, applies the generated seats as the
    * game does (2026-10-05: leo2a6_ua's receipt builds ran the solver for 167-325 s). A vehicle without generated seats
-   * falls back to the solver either way. */
+   * falls back to the solver either way. The solver sees the suit or field net (assemblyInCore). */
   solveMarkingSeats?: boolean;
   /** Default-on anatomy metadata; static wreck baking discards this receipt. */
   eraVisualBindingReceipt?: boolean;
@@ -1163,7 +1163,8 @@ interface TankFactoryOptions {
   staticDrawMerge?: 'off' | 'identity' | 'translations';
   /** Build the deferred assembly (TankBuilderPort.afterAssemble: a suit or field net) inside the core, where it ran
    * before 2026-10-16, instead of in its own slices after the core checkpoint. Only the parity receipts pass it
-   * (tools/deferred-assembly-parity.mjs, tankFactoryDeferredAssembly.selftest.mjs): both builds must be identical. */
+   * (tools/deferred-assembly-parity.mjs, tankFactoryDeferredAssembly.selftest.mjs): both builds must be identical.
+   * A solveMarkingSeats build always builds it in the core: the marking solver measures the finished vehicle. */
   assemblyInCore?: boolean;
   /** FSP-06 material-role census (tools/material-roles-audit.mjs): observes every authored part with the
    * bucket it merges into, before the merge erases part identity. Diagnostic only; builds are byte-identical
@@ -8716,8 +8717,13 @@ function* createTankOwnedSteps(
   }
   // Equipment laid against the finished armour (a camouflage suit or field net) is built after the core, in slices of its
   // own, against the vehicle exactly as it stands here (runDeferredAssembly).
+  // 2026-10-21 (the M1A1 Abrams FEP's marking row, stale since the deferral): the live marking solver below measures
+  // the vehicle the game shows, its suit included, so a solver build lays the suit here, where the parity receipts
+  // prove it builds exactly what the deferred slices build. Deferred, the solver saw a bare hull: the FEP's insignia,
+  // whose recorded clear count includes the ULCANS drape, could not stand, and its re-search took a seat that the
+  // vehicleMarkings audit reads 2/9 on the finished build.
   const deferredAssembly = P.afterAssemble.splice(0);
-  if (opts.assemblyInCore === true) {
+  if (opts.assemblyInCore === true || solveMarkingSeats) {
     for (const step of deferredAssembly.splice(0)) {
       const work = step({ root, hullG, turretG, gunG, recoilG }) as Generator<void, void, void> | undefined;
       if (work) for (let next = work.next(); !next.done; next = work.next()) { /* the whole step, here */ }
