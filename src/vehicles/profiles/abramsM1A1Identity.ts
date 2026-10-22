@@ -12,7 +12,8 @@
 //   m1a1_abrams_sa    Situational Awareness with TUSK: the bustle-rack extension, the TUSK tank-infantry phone and the
 //                     SA thermal head on the gunner's primary sight.
 // Every item is equipment (no armour or hit-model ownership) and every group that rests on the vehicle is authored inside
-// P.snapGroup, so the factory seats it on the stock under it. Each mark's paint lives in camoPolicy.ts (sig_<id>).
+// P.snapGroup, so the factory seats it on the stock under it. The HC and FEP also wear their own patterned paint
+// (camoPolicy.ts sig_<id>); the others keep the US desert service coat (owner 2026-10-22: no flat single-colour coats).
 // First-party procedural geometry: Kevin B. Liu (NOTICE.md).
 import * as THREE from 'three';
 import { box, cylX, cylY, cylZ, sph, torus, xform } from '../factoryGeometry.ts';
