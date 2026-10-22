@@ -349,7 +349,7 @@ function wireGame() {
 // --- the landing page's social cards (their battle photos sit at low opacity behind each quote) -------------------
 function wireSocialCards() {
   for (const [modifier, pick] of Object.entries(PICKS.home.socialCards)) {
-    swap('public/home.css', new RegExp(`(\\.v5-social-card--${modifier}\\{--social-card-image:url\\(')[^']+('\\))`),
+    swap('src/presentation/home.css', new RegExp(`(\\.v5-social-card--${modifier}\\{--social-card-image:url\\(')[^']+('\\))`),
       (_, open, close) => `${open}${still(pick.id, pick.still)}${close}`, `social card ${modifier}`);
   }
 }

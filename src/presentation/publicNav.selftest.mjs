@@ -38,7 +38,7 @@ const expectedLinks = [
 ];
 const navCss = readFileSync(join(ROOT, 'src/presentation/publicNav.css'), 'utf8');
 const navSource = readFileSync(join(ROOT, 'src/presentation/publicNav.ts'), 'utf8');
-const homeCss = readFileSync(join(ROOT, 'public/home.css'), 'utf8');
+const homeCss = readFileSync(join(ROOT, 'src/presentation/home.css'), 'utf8');
 const docsCss = readFileSync(join(ROOT, 'src/docs/docs.css'), 'utf8');
 const galleryCss = readFileSync(join(ROOT, 'src/gallery/gallery.css'), 'utf8');
 assert.equal(formatGitHubStarCount(999), '999');

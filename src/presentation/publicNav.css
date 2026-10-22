@@ -1,5 +1,6 @@
 @import url('../ui/motion.css');
-
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
 html,body{min-height:var(--cot-viewport-height,100dvh)}
 
 .public-nav{
@@ -251,37 +252,43 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
 .public-nav__menu a+a{margin-top:4px}
 .public-nav__menu .public-nav__icon{width:20px;height:18px;opacity:.86}
 
-body[data-cot-panels='overlay'] .public-nav{height:56px;background:rgba(6,9,12,.985);backdrop-filter:none;-webkit-backdrop-filter:none}
-body[data-cot-panels='overlay'] .public-nav__inner{width:calc(100% - 20px)}
-body[data-cot-panels='overlay'] .public-nav__brand span{display:none}
-body[data-cot-panels='overlay'] .public-nav__brand img{width:28px;height:34px}
-body[data-cot-panels='overlay'] .public-nav__links{gap:5px}
-body[data-cot-panels='overlay'] .public-nav__links>a:not(.public-nav__github):not(.public-nav__cta){display:none}
-body[data-cot-panels='overlay'] .public-nav__links a{gap:5px;height:40px;padding-inline:10px;font-size:11px;letter-spacing:.01em}
-body[data-cot-panels='overlay'] .public-nav__locale{height:40px;padding-inline:8px}
-body[data-cot-panels='overlay'] .public-nav__icon{width:12px;height:12px}
-body[data-cot-panels='overlay'] .public-nav__icon--tank{width:17px;height:14px}
-body[data-cot-panels='overlay'] .public-nav__icon--studio,
-body[data-cot-panels='overlay'] .public-nav__icon--home,
-body[data-cot-panels='overlay'] .public-nav__icon--docs{width:16px;height:14px}
-body[data-cot-panels='overlay'] .public-nav__play-icon{width:15px;height:12px}
-body[data-cot-panels='overlay'] .public-nav__links .public-nav__github{padding-inline:9px}
-body[data-cot-panels='overlay'] .public-nav__links .public-nav__cta{height:40px;padding-inline:12px}
-body[data-cot-panels='overlay'] .public-nav__menu-trigger{display:flex}
-body[data-cot-panels='overlay'] .public-nav__menu:not([hidden]){display:block}
+@media ((height < 520px) or (width < 900px) or ((width < 1440px) and ((pointer: coarse) or (hover: none)))){
+:root body .public-nav{height:56px;background:rgba(6,9,12,.985);backdrop-filter:none;-webkit-backdrop-filter:none}
+:root body .public-nav__inner{width:calc(100% - 20px)}
+:root body .public-nav__brand span{display:none}
+:root body .public-nav__brand img{width:28px;height:34px}
+:root body .public-nav__links{gap:5px}
+:root body .public-nav__links>a:not(.public-nav__github):not(.public-nav__cta){display:none}
+:root body .public-nav__links a{gap:5px;height:40px;padding-inline:10px;font-size:11px;letter-spacing:.01em}
+:root body .public-nav__locale{height:40px;padding-inline:8px}
+:root body .public-nav__icon{width:12px;height:12px}
+:root body .public-nav__icon--tank{width:17px;height:14px}
+}
+@media ((height < 520px) or (width < 900px) or ((width < 1440px) and ((pointer: coarse) or (hover: none)))){:root body .public-nav__icon--studio,
+:root body .public-nav__icon--home,
+:root body .public-nav__icon--docs{width:16px;height:14px}}
+@media ((height < 520px) or (width < 900px) or ((width < 1440px) and ((pointer: coarse) or (hover: none)))){
+:root body .public-nav__play-icon{width:15px;height:12px}
+:root body .public-nav__links .public-nav__github{padding-inline:9px}
+:root body .public-nav__links .public-nav__cta{height:40px;padding-inline:12px}
+:root body .public-nav__menu-trigger{display:flex}
+:root body .public-nav__menu:not([hidden]){display:block}
+}
 
-body[data-cot-width='phone'] .public-nav__inner{width:calc(100% - 12px);gap:6px}
-body[data-cot-width='phone'] .public-nav__links{gap:3px}
-body[data-cot-width='phone'] .public-nav__links a{gap:3px;padding-inline:5px;font-size:11px;letter-spacing:0em}
-body[data-cot-width='phone'] .public-nav__links .public-nav__github{gap:5px;padding-inline:6px}
-body[data-cot-width='phone'] .public-nav__stars{padding-left:5px}
-body[data-cot-width='phone'] .public-nav__links .public-nav__cta{padding-inline:7px}
-body[data-cot-width='phone'] .public-nav__locale{width:42px;padding:0;gap:2px;font-size:11px;letter-spacing:0}
-body[data-cot-width='phone'] .public-nav__locale svg{display:none}
+@media (width < 520px){
+:root body .public-nav__inner{width:calc(100% - 12px);gap:6px}
+:root body .public-nav__links{gap:3px}
+:root body .public-nav__links a{gap:3px;padding-inline:5px;font-size:11px;letter-spacing:0em}
+:root body .public-nav__links .public-nav__github{gap:5px;padding-inline:6px}
+:root body .public-nav__stars{padding-left:5px}
+:root body .public-nav__links .public-nav__cta{padding-inline:7px}
+:root body .public-nav__locale{width:42px;padding:0;gap:2px;font-size:11px;letter-spacing:0}
+:root body .public-nav__locale svg{display:none}
+}
 
-body[data-cot-input='coarse'] .public-nav__links a,
-body[data-cot-input='coarse'] .public-nav__menu-trigger,
-body[data-cot-input='coarse'] .public-nav__locale{min-height:44px}
+@media ((pointer: coarse) or (hover: none)){:root body .public-nav__links a,
+:root body .public-nav__menu-trigger,
+:root body .public-nav__locale{min-height:44px}}
 
 @media(hover:hover) and (pointer:fine){
   .public-nav__links a:hover{color:#efeee9;border-color:rgba(233,163,70,.5);background:rgba(255,255,255,.05);transform:translateY(-1px)}
@@ -292,4 +299,5 @@ body[data-cot-input='coarse'] .public-nav__locale{min-height:44px}
 
 @media(prefers-reduced-motion:reduce){
   .public-nav__links a,.public-nav__icon{transition:none}
+}
 }

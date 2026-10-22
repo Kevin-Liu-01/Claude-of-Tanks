@@ -2,6 +2,8 @@
  * edit tokens.json and run `node tools/gen-tokens.mjs`. Copyright © 2026 Kevin B. Liu.
  * Design tokens of Claude of Tanks (brand-ui SPEC §4): primitives -> semantic roles -> component tokens.
  * Components read semantic or component tokens only. Presets switch on :root[data-cvd|data-contrast|data-motion]. */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer tokens{
 :root{
   --graphite-950:#050608;--graphite-900:#07090b;--graphite-850:#0b0e11;--graphite-800:#11151a;--graphite-750:#161b21;
   --graphite-700:#1c222a;--graphite-600:#28303a;--graphite-500:#3a434e;
@@ -91,4 +93,5 @@
   :root{
     --dur-instant:1ms;--dur-fast:1ms;--dur-base:1ms;--dur-screen:1ms;--dur-stage:1ms;
   }
+}
 }

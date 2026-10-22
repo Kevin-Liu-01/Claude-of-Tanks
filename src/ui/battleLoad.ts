@@ -18,6 +18,7 @@ import { uiIconSVG } from './uiIcons.ts';
 import { tierNumeral } from '../vehicles/tier.ts';
 import { t } from './i18n.ts';
 import { killSourceIdentity } from './killSourceIdentity.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { isImagePreloaded, preloadImage } from './imagePreload.ts';
 import { mapCardFor } from './mapBackdrop.ts';
 import { MAP_THUMBS } from './mapThumbs.ts';
@@ -145,7 +146,7 @@ const CSS = `
   border-bottom:1px solid rgba(146,164,180,.24);font-family:${FONT_COND};
   font-size:11px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;}
 .cot-bl .thead .flags{display:inline-flex;align-items:center;gap:3px;}
-.cot-bl .thead .flags i{font-style:normal;opacity:.6;font-size:10px;}
+.cot-bl .thead .flags i{font-style:normal;opacity:.6;font-size:11px;}
 .cot-bl .thead .flags .cot-flag{border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.35);}
 .cot-bl .team.ally .thead{color:#7fdc8a;border-bottom-color:rgba(127,220,138,.4);}
 .cot-bl .team.foe .thead{color:#f07a72;border-bottom-color:rgba(240,122,114,.4);}
@@ -288,12 +289,7 @@ function requiredElement<T extends Element>(root: ParentNode, selector: string):
  *   root:HTMLElement}}
  */
 export function createBattleLoadScreen(): BattleLoadScreen {
-  if (!document.getElementById('cot-bl-style')) {
-    const s = document.createElement('style');
-    s.id = 'cot-bl-style';
-    s.textContent = CSS;
-    document.head.appendChild(s);
-  }
+  ensureStyle('cot-bl-style', CSS, 'surfaces');
   const root = document.createElement('div');
   root.className = 'cot-bl';
   root.setAttribute('role', 'status');

@@ -1,5 +1,7 @@
 @import './battleHudLayout.css';
 
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
 :root{
   --cot-edge:clamp(10px,1.7vw,28px);
   --cot-control-floor:36px;
@@ -806,4 +808,5 @@ body[data-cot-input='coarse'] .cot-es .cot-es-btn{min-height:48px}
   body[data-cot-width] .cot-play *,body[data-cot-width] .cot-es *,body[data-cot-width] .cot-studio *{
     scroll-behavior:auto!important;
   }
+}
 }

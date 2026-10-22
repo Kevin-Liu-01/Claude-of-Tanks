@@ -35,6 +35,7 @@ import { assertPublicBuildEnv } from './tools/publicBuildEnv.ts';
 import { isExistingProjectDocument } from './tools/existing-document-route.ts';
 import { sharedWorkerChunks } from './tools/viteSharedWorkers.ts';
 import { glslMinify } from './tools/viteGlslMinify.ts';
+import { cssInTsMinify } from './tools/viteCssInTsMinify.ts';
 import { BOOT_RUNTIME_MODULES, i18nPageCatalogs, VITE_PRELOAD_HELPER } from './tools/viteI18nPageCatalogs.ts';
 import { i18nStudioCatalog } from './tools/viteI18nStudioCatalog.ts';
 
@@ -250,6 +251,10 @@ export default defineConfig({
     // programs at build time; lines, directives, in-line text and every library shader stay as written (game boot
     // -31.3 KB raw / -10.4 KB brotli).
     glslMinify(),
+    // 2026-10-18 (brand-ui BUI-F3, tools/viteCssInTsMinify.ts): comments and layout whitespace out of the CSS kept in
+    // TS literals (the HUD, menus, settings, end screen and kill cam sheets ensureStyle() injects); strings,
+    // interpolation edges and the CSS token stream stay exactly as written (the build fails otherwise).
+    cssInTsMinify(),
     { name: 'cot-public-build-env', apply: 'build', configResolved(config) { assertPublicBuildEnv(config.env); } },
     {
       name: 'cot-app-version',
@@ -434,6 +439,11 @@ export default defineConfig({
             // brand-ui BUI-F1: the design tokens (src/ui/tokens/tokens.css, linked first by the game and cn documents) keep
             // a stylesheet of their own; merged into a shared chunk they reorder the entry's imports and minified names.
             { name: 'designTokens', test: /[\\/]src[\\/]ui[\\/]tokens[\\/]tokens\.css$/, includeDependenciesRecursively: false },
+            // 2026-10-18 (brand-ui BUI-F3): the style injector (src/ui/styleLayers.ts, ensureStyle with its cascade layer)
+            // rides with the type sheet (src/ui/fonts.ts), which injects through it and which 18 of its 24 callers import
+            // already: on its own it became one more boot request on the game and Gallery pages for 0.3 KB, and beside
+            // dom.ts it made every fonts importer preload the DOM helpers too. Exactly these two modules.
+            { name: 'fonts', test: /[\\/]src[\\/]ui[\\/](?:fonts|styleLayers)\.ts$/, includeDependenciesRecursively: false },
             { name: 'groundBounce', test: /(?:[\\/]three[\\/]examples[\\/]jsm[\\/]postprocessing[\\/]Pass\.js|[\\/]src[\\/]engine[\\/](?:atmosphere|cloudscapes|lightModelCore|hazeLaw|groundBounce)\.ts)$/, includeDependenciesRecursively: false },
             // 2026-10-19 (gameplay-modes-228 round 2): TEAM NATIONS' country table and its planner are one chunk — the
             // garage's TEAMS switch reads the table, the solo roster plans with both, the rooms read both — instead of

@@ -19,7 +19,8 @@ import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 // Contract: docs/ARCHITECTURE.md §3.7.1.
 import * as THREE from 'three';
 import { captureMinimapScene, requireSceneMinimap, type MinimapCaptureReceipt } from './minimapCapturePolicy.ts';
-import { createElement as el, ensureStyle } from './dom.ts';
+import { createElement as el } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { isAnyModalOpen } from './modal.ts';
 import { installBattleHudLayout, SCORE_BOTTOM_INSET, MAX_BATTLE_NOTIFICATIONS } from './battleHudLayout.ts';
 import { createPreBattleOverlay } from './preBattleOverlay.ts';
@@ -2038,7 +2039,7 @@ export function hordeStatusCopy(modeState: HudMatchModeState, liveRuleset: Match
  */
 export function initHud(bus: EventBus): HudRuntime {
   ensureFonts();
-  ensureStyle('cot-hud-style', HUD_CSS);
+  ensureStyle('cot-hud-style', HUD_CSS, 'surfaces');
 
   const root = el('div', 'cot-hud');
   document.body.appendChild(root);

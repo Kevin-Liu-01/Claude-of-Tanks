@@ -19,7 +19,8 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 import { MAX_BATTLE_NOTIFICATIONS } from './battleHudLayout.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
-import { createElement as el, ensureStyle } from './dom.ts';
+import { createElement as el } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import {
   hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
   type HitEventPresentation,
@@ -993,7 +994,7 @@ export function mergeEndRosterRow(
  */
 export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   ensureFonts();
-  ensureStyle('cot-si-style', SI_CSS);
+  ensureStyle('cot-si-style', SI_CSS, 'surfaces');
 
   const root = el('div', 'cot-si');
   const cardHost = el('div', 'cot-si-cardhost', root);

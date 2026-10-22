@@ -92,6 +92,23 @@ ink-1), never `--team-*` or `--ok`/`--danger` directly. The legacy
 alias the nearest token of their family (`--cot-gold` folds into the accent,
 SPEC 4.2), with fallbacks equal to the token values. The font tokens equal
 `typeFaces.ts` `TYPE_STACK` (the selftest holds them together).
+Every stylesheet declares into the cascade layers of `styleLayers.ts` (`reset,
+tokens, base, components, surfaces, utilities, overrides`, SPEC §5): a `.css`
+file opens with `@layer reset,…,overrides;` (after any `@import`) and wraps its
+rules in one `@layer <name>{…}`; CSS-in-TS goes only through
+`ensureStyle(id, css, layer)` (never `createElement('style')`). A later layer
+beats an earlier one regardless of specificity, and an `!important` reverses
+that, so moving a sheet between layers changes contests that specificity decides
+today: every sheet that predates the layers (shell, HUD, pages, the legacy
+shared controls, the document defaults, the generated type head and zh-CN floor)
+sits in `surfaces`, `tokens.css` and `motion.css` in `tokens`; `components`
+fills as BUI-F5 builds controls for it. `styleLayers.selftest.mjs` enforces the
+structure.
+`tools/style-literal-census.mjs` counts colour, font-size, letter-spacing,
+z-index, shadow, duration and `!important` literals outside the token package
+(CSS, CSS-in-TS, HTML); `tools/style-literal-baseline.json` may only fall (a
+new file starts at zero). After replacing literals with tokens, lower it with
+`node tools/style-literal-census.mjs --write`.
 Shared DOM, font, generated-icon, image-preload, featured-media, and map-art
 primitives are strict TypeScript owners. Extend their exported contracts rather
 than creating screen-local unchecked copies.

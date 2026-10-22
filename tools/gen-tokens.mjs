@@ -34,6 +34,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { STYLE_LAYER_ORDER } from '../src/ui/styleLayers.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const TOKENS_JSON = join(ROOT, 'src/ui/tokens/tokens.json');
@@ -323,13 +324,15 @@ function generateCss(source) {
     if (row.join('').length > 100) flush();
   }
   flush();
-  let text = CSS_HEADER + cssBlock(':root', lines);
+  // The tokens layer (brand-ui SPEC §5): the sheet opens with the document's layer order (src/ui/styleLayers.ts), then
+  // declares into its own layer.
+  let text = `${CSS_HEADER}${STYLE_LAYER_ORDER}\n@layer tokens{\n${cssBlock(':root', lines)}`;
   for (const { axis, preset, media, css } of presetEffects(source, tokens)) {
     const decls = [css.map(([name, value]) => `--${name}:${value};`).join('')];
     text += cssBlock(`:root[data-${axis}=${preset}]`, decls);
     if (media) text += `@media ${media}{\n${cssBlock(':root', decls).replace(/^/gm, '  ').trimEnd()}\n}\n`;
   }
-  return text;
+  return `${text}}\n`;
 }
 
 const tsKey = (name) => (/^[a-z_$][a-z0-9_$]*$/i.test(name) ? name : `'${name}'`);

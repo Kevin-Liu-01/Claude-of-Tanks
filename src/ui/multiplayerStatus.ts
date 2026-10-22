@@ -15,7 +15,8 @@
  * at most at the model's sample cadence. Layout follows the responsive body
  * attributes (no width media queries; the same lanes `.cot-net` uses).
  */
-import { createElement, ensureStyle } from './dom.ts';
+import { createElement } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { FONT_COND } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
@@ -265,7 +266,7 @@ export function createMultiplayerStatusSurface({
   now = () => performance.now(),
   leaveConfirmMs = LEAVE_CONFIRM_MS,
 }: MultiplayerStatusSurfaceOptions = {}): MultiplayerStatusSurface {
-  ensureStyle(STYLE_ID, MP_STATUS_CSS);
+  ensureStyle(STYLE_ID, MP_STATUS_CSS, 'surfaces');
   const parent = container ?? document.body;
   const root = createElement('div', `cot-mp-status ${host}`, parent);
   root.setAttribute('role', 'group');

@@ -1,4 +1,6 @@
 /* The media library (mediaLibrary.ts): collection tabs, sets of thumbnails cut from their sheets, one viewer. */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
 .media-library{
   --library-ink:#edf3f7;
   --library-muted:#7f909d;
@@ -43,16 +45,21 @@
 .media-library-controls{display:flex;align-items:center;gap:6px;flex:none}
 .media-library-controls output{min-width:76px;color:var(--library-muted);font:500 11px/1 var(--font-mono);text-align:center}
 .media-library-controls button{min-width:42px;min-height:42px;border:1px solid var(--library-line);background:transparent;color:var(--library-gold);cursor:pointer;font-size:20px;transition:border-color .14s ease,background-color .14s ease}
-body[data-cot-width='phone'] .media-library-tabs,body[data-cot-width='compact'] .media-library-tabs{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding-bottom:2px}
-body[data-cot-width='phone'] .media-library-tabs::-webkit-scrollbar,body[data-cot-width='compact'] .media-library-tabs::-webkit-scrollbar{display:none}
-body[data-cot-width='phone'] .media-library-tabs button,body[data-cot-width='compact'] .media-library-tabs button{flex:none}
-body[data-cot-width='phone'] .media-library-intro{grid-template-columns:minmax(0,1fr)}
-body[data-cot-width='phone'] .media-library-intro output{grid-column:1;grid-row:auto}
-body[data-cot-width='phone'] .media-library-viewer figcaption{flex-wrap:wrap;padding:12px}
-body[data-cot-input='coarse'] .media-library-tabs button,body[data-cot-input='coarse'] .media-library-controls button{min-height:44px}
+@media (width < 768px){
+:root body .media-library-tabs{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding-bottom:2px}
+:root body .media-library-tabs::-webkit-scrollbar{display:none}
+:root body .media-library-tabs button{flex:none}
+}
+@media (width < 520px){
+:root body .media-library-intro{grid-template-columns:minmax(0,1fr)}
+:root body .media-library-intro output{grid-column:1;grid-row:auto}
+:root body .media-library-viewer figcaption{flex-wrap:wrap;padding:12px}
+}
+@media ((pointer: coarse) or (hover: none)){:root body .media-library-tabs button,:root body .media-library-controls button{min-height:44px}}
 @media(hover:hover) and (pointer:fine){
   .media-library-tabs button:hover{color:var(--library-ink);border-color:var(--library-line-strong)}
   .media-library-thumb:hover{filter:brightness(1.18)}
   .media-library-controls button:hover{border-color:var(--library-amber);background:rgba(240,160,48,.08)}
 }
 @media(prefers-reduced-motion:reduce){.media-library-tabs button,.media-library-thumb,.media-library-controls button{transition:none}}
+}

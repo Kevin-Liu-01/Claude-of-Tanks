@@ -1,3 +1,5 @@
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
 .cot-garage{--cot-garage-sidebar-width:280px;--cot-garage-sidebar-top:86px;--cot-garage-sidebar-bottom:210px;
   position:fixed;inset:0;z-index:60;display:none;font-family:var(--font-ui);
   color:#e6edf3;-webkit-user-select:none;user-select:none;overflow:hidden;pointer-events:none;}
@@ -1811,3 +1813,4 @@ body[data-cot-panels='overlay'] .cot-garage .cot-compact-equipment-trigger svg{w
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel] :is(.cot-map-card .mname,.cot-camo-card .cl){font-size:12px;line-height:1.35;white-space:normal;overflow-wrap:anywhere}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel] .cot-map-region{font-size:11px}
 body[data-cot-height='short'][data-cot-panels='overlay'] .cot-garage[data-garage-panel] :is(.cot-map-card .mthumb,.cot-camo-card .sw){max-height:28dvh}
+}

@@ -27,6 +27,16 @@ every registered map (authored time of day, desktop High, 1600x900) through
 census.json, contact sheets, an index and an A/B `compare`; `capture` resumes
 in bounded batches and takes the cot-shots lease itself (probe mutex = caller).
 
+Build transforms: `viteGlslMinify.ts` (shader literals) and `viteCssInTsMinify.ts`
+(the CSS kept in TS literals: comments and layout whitespace out, strings and
+interpolation edges untouched, the CSS token stream checked at build time; its
+selftest proves each literal is the same stylesheet under Lightning CSS).
+`style-literal-census.mjs` is the style-literal ratchet (colour, font-size,
+letter-spacing, z-index, shadow, duration, `!important` outside the token
+package; `style-literal-baseline.json` may only fall, `--write` lowers it).
+`public-first-paint.browser.mjs` opens each public page with JavaScript off and
+on and fails when the first-paint layout differs (`--compare` diffs two runs).
+
 Performance probes drive the browser and record JSON; fleet/geometry tools audit
 authored tanks; screenshot/visual tools stage canonical views; strip/release
 tools enforce public asset boundaries. `local-import-integrity.selftest.mjs`

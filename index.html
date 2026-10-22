@@ -152,6 +152,8 @@
   <script type="module" src="/src/ui/localeBootstrap.ts"></script>
   <link rel="stylesheet" href="/src/ui/tokens/tokens.css" />
   <style>
+    @layer reset,tokens,base,components,surfaces,utilities,overrides;
+    @layer surfaces {
     :root {
       /* One raster-quality contract for every DOM HUD mounted by the game.
          Most panels are composited translucent layers, where browser defaults
@@ -196,8 +198,11 @@
        a single module is fetched, and the bar below is driven by real load
        stages (see bootScreen.ts / main.ts BOOT STAGES).
        --------------------------------------------------------------------- */
+    }
   </style>
   <style>
+    @layer reset,tokens,base,components,surfaces,utilities,overrides;
+    @layer surfaces {
     #cot-boot {
       position: fixed; inset: 0; width: var(--cot-viewport-width, 100dvw);
       height: var(--cot-viewport-height, 100dvh); z-index: 200; overflow: hidden;
@@ -388,8 +393,12 @@
     .cot-boot-link:hover .cot-boot-link-icon { transform: scale(1.1); }
     .cot-boot-link:active { transform: translateY(0); box-shadow: none; transition-duration: .06s; }
     .cot-boot-link:focus-visible { outline: 2px solid #f0a030; outline-offset: 3px; }
-    body[data-cot-width-density='narrow'] .cot-boot-links { gap: 8px; }
-    body[data-cot-width-density='narrow'] .cot-boot-links > .cot-boot-link { padding-inline: 6px; }
+    /* The splash paints before any module writes body[data-cot-*]: its phone sizes read the same bands
+       (src/ui/responsiveLayout.ts) as media queries, so the first frame already has them (brand-ui SPEC 5.5). */
+    @media (width <= 380px) {
+      :root body .cot-boot-links { gap: 8px; }
+      :root body .cot-boot-links > .cot-boot-link { padding-inline: 6px; }
+    }
     @media (prefers-reduced-motion: reduce) {
       #cot-boot-hero .hly { transition-duration: .01ms; }
       #cot-boot.cot-boot-enter .cot-boot-mark,
@@ -488,9 +497,12 @@
     #cot-boot.cot-boot-enter .cot-boot-foot {
       animation: cot-boot-fade .42s cubic-bezier(.16,1,.3,1) .18s backwards;
     }
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-boot-mark { width: 92px; height: 92px; }
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-boot-load { margin-top: 32px; }
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-boot-tip { height: 144px; }
+    @media (width < 768px) {
+      .cot-boot-mark { width: 92px; height: 92px; }
+      .cot-boot-load { margin-top: 32px; }
+      .cot-boot-tip { height: 144px; }
+    }
+    }
   </style>
   <script>
     // CHUNK RECOVERY r4: production sessions are deployment-pinned by routing

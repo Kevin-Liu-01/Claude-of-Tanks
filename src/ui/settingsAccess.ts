@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-import { createElement, ensureStyle } from './dom.ts';
+import { createElement } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { isAnyModalOpen } from './modal.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
@@ -41,7 +42,7 @@ const TRIGGER_CSS = `
 `;
 
 function createDefaultGear(): HTMLButtonElement {
-  ensureStyle('cot-settings-trigger-style', TRIGGER_CSS);
+  ensureStyle('cot-settings-trigger-style', TRIGGER_CSS, 'surfaces');
   const gear = createElement('button', 'cot-gear') as HTMLButtonElement;
   gear.type = 'button';
   gear.setAttribute('aria-label', t('settings.gearAria'));

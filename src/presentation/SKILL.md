@@ -14,6 +14,11 @@ the heavy game boot graph. Preserve accessible browsing and restrained media cos
 <!-- agent-docs:fill:model -->
 `publicNav.ts` and its CSS own responsive public navigation and deferred star
 counts. `publicPages.ts` coordinates hero/shot rails and viewport media loading.
+`home.css` is the landing's stylesheet in the Vite graph (hashed under
+`/assets/`, cached immutably); every public stylesheet lays out at first paint
+from media queries at `responsiveLayout.ts`'s band edges, never the
+`body[data-cot-*]` hooks the boot module writes after it runs
+(`src/ui/viewportQueries.test-support.mjs`, checked by `mobileLayout.selftest.mjs`).
 `mediaArchive.ts` renders the packaged showcase manifest and lightbox;
 `captureRecipes.ts` links media to reproducible Scene Studio recipes.
 Adjacent selftests also cover root public HTML, SEO metadata, copy, analytics,

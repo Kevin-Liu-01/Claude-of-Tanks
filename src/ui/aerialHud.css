@@ -1,3 +1,5 @@
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
 .cot-flight-hud{position:absolute;inset:0;pointer-events:none;color:#e1f5ee;text-shadow:0 1px 3px #000}
 .cot-flight-hud[hidden],.cot-flight-hud [hidden]{display:none!important}
 .flight-sight{position:absolute;left:50%;top:50%;width:42px;height:42px;transform:translate(-50%,-50%);background:
@@ -377,3 +379,4 @@ body[data-scope-vision='none'] .cot-hud .cot-scope-vision{visibility:hidden}
 .cot-scope-vision[data-fold='1']:not(:hover,:focus-visible) .scope-vision-tag{display:block}
 .cot-scope-vision[data-fold='1']:not(:hover,:focus-visible) :is(.scope-vision-copy,.flight-key,.scope-vision-cycle){display:none}
 @media(forced-colors:active){.cot-hud .cot-scope-vision{outline:1px solid ButtonText}.cot-scope-vision:focus-visible{outline:3px solid Highlight}.scope-vision-step.active{background:Highlight}}
+}

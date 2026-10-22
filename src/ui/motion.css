@@ -6,6 +6,8 @@
  * load this file without tokens.css keep the same rhythm. Keep interaction motion crisp and interruptible:
  * frequently used controls stay in the fast/base bands.
  */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer tokens{
 :root {
   --cot-motion-instant: var(--dur-instant, 80ms);
   --cot-motion-fast: var(--dur-fast, 140ms);
@@ -28,4 +30,5 @@
   }
 
   html { scroll-behavior: auto !important; }
+}
 }

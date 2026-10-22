@@ -57,7 +57,7 @@ assert.ok(docsScriptSource.includes(`{ mode: 'wall', limit: ${archiveCount}, fil
   'the manual\'s wall shows the whole archive');
 
 const homeSource = readFileSync(join(ROOT, 'site/home.html'), 'utf8');
-const homeStyles = readFileSync(join(ROOT, 'public/home.css'), 'utf8');
+const homeStyles = readFileSync(join(ROOT, 'src/presentation/home.css'), 'utf8');
 const docsSource = readFileSync(join(ROOT, 'site/docs.html'), 'utf8');
 const galleryHtmlSource = readFileSync(join(ROOT, 'site/gallery.html'), 'utf8');
 const readmeSource = readFileSync(join(ROOT, 'README.md'), 'utf8');

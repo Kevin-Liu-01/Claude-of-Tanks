@@ -1,3 +1,5 @@
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
 :root{--nf-ink:#f3f5f6;--nf-muted:#c4cdd2;--nf-line:rgba(219,229,234,.3);--nf-amber:#f2a12d;--nf-motion:160ms;--nf-ease:cubic-bezier(.2,.8,.2,1);--cot-warning-tape:repeating-linear-gradient(135deg,#f0a030 0 9px,#07090b 9px 18px)}
 *{box-sizing:border-box}
 html{min-width:280px;background:#030507}
@@ -21,3 +23,4 @@ body.not-found-page::after{position:fixed;z-index:4;right:0;bottom:0;left:0;heig
 @media (hover:hover) and (pointer:fine){.not-found__actions a:hover{border-color:var(--nf-amber);background:rgba(15,19,21,.84);color:#fff;transform:translateY(-2px)}.not-found__actions .not-found__primary:hover{background:#ffb33d;color:#171006}}
 @media (max-width:480px){.not-found::before{background-position:59% 50%}.not-found h1{font-size:clamp(8rem,45vw,12rem);-webkit-text-stroke-width:1.5px}.not-found__actions{gap:7px;margin-top:42px}.not-found__actions a{min-width:96px;min-height:44px;gap:7px;padding:0 12px;font-size:11px}.not-found__icon{width:15px;height:15px;flex-basis:15px}}
 @media (prefers-reduced-motion:reduce){.not-found__actions a{transition:none}}
+}

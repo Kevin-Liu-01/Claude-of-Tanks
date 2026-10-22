@@ -15,7 +15,8 @@
  * It renders only when its inputs change (the range record, the loaded slot, the laid lane, the switch, the last shot,
  * the key labels), so a steady frame does no DOM or string work.
  */
-import { createElement, ensureStyle } from './dom.ts';
+import { createElement } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { hitOutcomeFor, nominalPenFor } from './hitEventFormat.ts';
@@ -226,7 +227,7 @@ function presentedAngleLabel(deg: number): string {
 }
 
 export function createProvingRangeCard(parent: HTMLElement, emit: (type: string) => void): ProvingRangeCard {
-  ensureStyle('cot-range-card-style', CSS);
+  ensureStyle('cot-range-card-style', CSS, 'surfaces');
   void loadProvingType();
   const root = createElement('section', 'cot-range-card', parent);
   root.setAttribute('aria-label', t('hud.range.title'));

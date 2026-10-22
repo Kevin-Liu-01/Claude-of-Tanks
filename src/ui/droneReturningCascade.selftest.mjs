@@ -9,6 +9,7 @@
 // loading of aerialHud.css does not fix). No dependencies: a small CSS tokenizer and selector matcher below.
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
+import { STYLE_LAYERS } from './styleLayers.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 
@@ -46,9 +47,14 @@ const hudSheet = hudSource.match(/\nconst HUD_CSS = `([\s\S]*?)\n`;/);
 assert.ok(hudSheet, 'the HUD keeps its own sheet in hud.ts (HUD_CSS)');
 const sheets = readdirSync(new URL('.', import.meta.url)).filter((file) => file.endsWith('.css')).sort()
   .map((file) => ({ name: file, text: read(`./${file}`) }));
-sheets.push({ name: 'hud.ts HUD_CSS', text: hudSheet[1].replace(/\$\{[^}]*\}/g, 'x') });
+// CSS-in-TS declares its cascade layer at the ensureStyle() call (brand-ui SPEC §5); the stand-in dock rules land in
+// battleHudLayout.css, so they take its layer.
+const hudLayer = /ensureStyle\('cot-hud-style', HUD_CSS, '([a-z]+)'\)/.exec(hudSource)?.[1];
+assert.ok(hudLayer, 'the HUD sheet is injected through ensureStyle with its layer');
+sheets.push({ name: 'hud.ts HUD_CSS', text: `@layer ${hudLayer}{${hudSheet[1].replace(/\$\{[^}]*\}/g, 'x')}}` });
 const liveDock = sheets.find((sheet) => sheet.name === 'battleHudLayout.css')?.text.includes('[data-hud-dock]');
-if (!liveDock) sheets.push({ name: 'dock rules (item/hud-actions-mobile 2600fa32f)', text: DOCK_RULES_2600FA32F });
+const dockLayer = /@layer ([a-z]+)\{/.exec(sheets.find((sheet) => sheet.name === 'battleHudLayout.css')?.text ?? '')?.[1];
+if (!liveDock) sheets.push({ name: 'dock rules (item/hud-actions-mobile 2600fa32f)', text: dockLayer ? `@layer ${dockLayer}{${DOCK_RULES_2600FA32F}}` : DOCK_RULES_2600FA32F });
 for (const name of ['aerialHud.css', 'battleHudLayout.css', 'responsiveSurfaces.css']) {
   assert.ok(sheets.some((sheet) => sheet.name === name), `${name} is read`);
 }
@@ -79,22 +85,26 @@ function blockEnd(text, open) {
   }
   throw new Error('unbalanced block');
 }
-function parseSheet(text, sheet, media = [], rules = []) {
+function parseSheet(text, sheet, media = [], rules = [], layer = null) {
   text = text.replace(/\/\*[\s\S]*?\*\//g, '');
   let i = 0;
   while (i < text.length) {
     const brace = text.indexOf('{', i), semi = text.indexOf(';', i);
     if (brace < 0) break;
-    if (semi >= 0 && semi < brace && /^\s*@(import|charset|namespace)/.test(text.slice(i, semi))) { i = semi + 1; continue; }
+    if (semi >= 0 && semi < brace && /^\s*@(import|charset|namespace|layer)/.test(text.slice(i, semi))) { i = semi + 1; continue; }
     const prelude = text.slice(i, brace).trim();
     const end = blockEnd(text, brace);
     const body = text.slice(brace + 1, end);
     i = end + 1;
     if (prelude.startsWith('@')) {
       const at = prelude.match(/^@([\w-]+)\s*(.*)$/s);
-      if (at[1] === 'media') parseSheet(body, sheet, [...media, at[2]], rules);
-      else if (at[1] === 'supports' || at[1] === 'container') parseSheet(body, sheet, media, rules); // conservative: may apply
-      else if (at[1] === 'layer' || at[1] === 'scope') throw new Error(`${sheet}: @${at[1]} changes the cascade; teach this receipt`);
+      if (at[1] === 'media') parseSheet(body, sheet, [...media, at[2]], rules, layer);
+      else if (at[1] === 'supports' || at[1] === 'container') parseSheet(body, sheet, media, rules, layer); // conservative: may apply
+      else if (at[1] === 'layer') {
+        // a named layer block (src/ui/styleLayers.ts order); nested layers would need dotted names
+        assert.ok(layer === null && STYLE_LAYERS.includes(at[2].trim()), `${sheet}: @layer ${at[2]} is one of the document's layers`);
+        parseSheet(body, sheet, media, rules, at[2].trim());
+      } else if (at[1] === 'scope') throw new Error(`${sheet}: @${at[1]} changes the cascade; teach this receipt`);
       continue; // @keyframes, @font-face, @page, @property
     }
     assert.ok(!body.includes('{'), `${sheet}: no nested rules in "${prelude.slice(0, 60)}"`);
@@ -106,7 +116,7 @@ function parseSheet(text, sheet, media = [], rules = []) {
       return { property: d.slice(0, colon).trim().toLowerCase(), value, important };
     });
     for (const selector of splitTop(prelude, ',')) {
-      rules.push({ sheet, selector: selector.trim(), parsed: parseSelector(selector.trim()), media, declarations, order: rules.length });
+      rules.push({ sheet, selector: selector.trim(), parsed: parseSelector(selector.trim()), media, declarations, order: rules.length, layer });
     }
   }
   return rules;
@@ -312,19 +322,25 @@ function resolve(node, property, env) {
       if (names.includes(declaration.property)) hits.push({ ...declaration, rule, specificity: specificity(rule.parsed) });
     }
   }
-  hits.sort((a, b) => (a.important - b.important) || compareSpecificity(a.specificity, b.specificity) || a.rule.order - b.rule.order);
+  hits.sort((a, b) => (a.important - b.important) || layerRank(a) - layerRank(b) || compareSpecificity(a.specificity, b.specificity) || a.rule.order - b.rule.order);
   return hits;
 }
+/** Cascade layers (CSS Cascade 5): a later layer wins normal declarations, an earlier one wins !important; unlayered beats every layer when normal and loses to every layer when important. */
+function layerRank(hit) {
+  const index = hit.rule.layer === null ? STYLE_LAYERS.length : STYLE_LAYERS.indexOf(hit.rule.layer);
+  return hit.important ? -index : index;
+}
 const RETURNING = /\[data-phase=returning\]/;
-const label = (hit) => hit ? `(${hit.specificity.join(',')})${hit.important ? '!' : ''} ${hit.rule.sheet}: ${hit.rule.selector} { ${hit.property}: ${hit.value} }` : 'none (inherited/initial)';
-/** The returning rule wins, and outranks every other declaration of the property by importance and specificity. */
+const label = (hit) => hit ? `(${hit.specificity.join(',')})${hit.important ? '!' : ''}${hit.rule.layer ? ` @${hit.rule.layer}` : ''} ${hit.rule.sheet}: ${hit.rule.selector} { ${hit.property}: ${hit.value} }` : 'none (inherited/initial)';
+/** The returning rule wins, and outranks every other declaration of the property by importance, layer and specificity. */
 function assertReturningWins(hits, what) {
   const winner = hits.at(-1);
   assert.ok(winner && RETURNING.test(winner.rule.selector), `${what}: the returning cue wins (winner ${label(winner)})`);
   for (const other of hits) {
     if (RETURNING.test(other.rule.selector)) continue;
-    assert.ok(winner.important > other.important || (winner.important === other.important && compareSpecificity(winner.specificity, other.specificity) > 0),
-      `${what}: the returning cue outranks ${label(other)} by specificity, not by source order`);
+    assert.ok(winner.important > other.important || (winner.important === other.important && layerRank(winner) > layerRank(other))
+      || (winner.important === other.important && layerRank(winner) === layerRank(other) && compareSpecificity(winner.specificity, other.specificity) > 0),
+      `${what}: the returning cue outranks ${label(other)} by layer or specificity, not by source order`);
   }
   return winner;
 }

@@ -7,6 +7,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
+import { ensureStyle } from './styleLayers.ts';
 
 export const MODAL_FOCUSABLE_SELECTOR = [
   'a[href]', 'button:not([disabled])', 'input:not([disabled])',
@@ -140,11 +141,7 @@ body[data-cot-input='coarse'] :is(.cot-modal__close,.cot-modal__button){min-widt
 
 function ensureCss() {
   ensureFonts();
-  if (document.getElementById('cot-shared-modal-css')) return;
-  const style = document.createElement('style');
-  style.id = 'cot-shared-modal-css';
-  style.textContent = CSS;
-  document.head.appendChild(style);
+  ensureStyle('cot-shared-modal-css', CSS, 'surfaces');
 }
 
 function lockBody() {

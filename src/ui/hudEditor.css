@@ -1,5 +1,7 @@
 /* Workshop chrome shares the game's steel plates, amber selection and typography.
    Battle frames inside the preview come directly from their production owners. */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
 .cot-modal-root.cot-hud-editor{padding:16px;place-items:center}
 .cot-hud-editor .cot-modal{width:100%;max-width:1720px;height:calc(100dvh - 32px);max-height:calc(100dvh - 32px);border-top:2px solid #dca246}
 .cot-hud-editor .cot-modal__header{padding:18px 22px}
@@ -54,4 +56,5 @@ body .cot-modal-root.cot-hud-editor .cot-modal__body{display:flex;flex-direction
  .cot-hud-editor .cot-modal__footer button{min-height:36px}.hud-edit-toolbar{flex-wrap:nowrap;gap:4px}
  .hud-edit-profiles{gap:3px;flex-wrap:nowrap}.hud-edit-toolbar button:not(.hud-edit-part){min-height:36px;font-size:11px;padding:4px 6px}
  .hud-edit-status{font-size:11px}.hud-edit-inspector p{display:none}
+}
 }

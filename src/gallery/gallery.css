@@ -1,4 +1,5 @@
-
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
 :root{
   color-scheme:dark;
   --bg:#07090b;
@@ -257,123 +258,139 @@ button{cursor:pointer}
 
 /* Semantic viewport composition. responsiveLayout.ts owns the only device
    thresholds; this workspace consumes width, height and input pressure. */
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .gallery-shell{grid-template-columns:270px minmax(390px,1fr) 330px}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .panel-heading{padding:18px 16px 14px}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .panel-heading h1{font-size:26px}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .archive-filters{padding:12px}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .workspace-identity{grid-template-columns:48px minmax(0,1fr);gap:8px;padding:8px}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .workspace-identity>img{width:48px}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .workspace-identity h1{font-size:18px}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .vehicle-card{grid-template-columns:68px minmax(0,1fr) 24px}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .vehicle-card img{width:67px}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .dossier-identity{grid-template-columns:82px minmax(0,1fr);gap:9px;padding:8px}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .dossier-tank-frame img{width:80px}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .dossier-head h2{font-size:19px}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .view-controls{width:min(630px,100%);grid-template-columns:56px repeat(9,minmax(30px,1fr))}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .view-controls-label>span{display:none}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .view-controls>button{margin-left:2px}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .viewer-bottom-console .mode-dock{grid-template-columns:150px repeat(5,minmax(0,1fr))}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .mode-dock>p{gap:8px;padding-inline:8px}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .mode-dock>p>span{font-size:11px;letter-spacing:0em}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .mode-dock>button{padding-inline:5px}
-:where(body[data-cot-width='laptop'],body[data-cot-width='tablet'],body[data-cot-width='compact'],body[data-cot-width='phone']) .mode-dock>button img{width:26px;height:26px}
+@media (width < 1440px){
+.gallery-shell{grid-template-columns:270px minmax(390px,1fr) 330px}
+.panel-heading{padding:18px 16px 14px}
+.panel-heading h1{font-size:26px}
+.archive-filters{padding:12px}
+.workspace-identity{grid-template-columns:48px minmax(0,1fr);gap:8px;padding:8px}
+.workspace-identity>img{width:48px}
+.workspace-identity h1{font-size:18px}
+.vehicle-card{grid-template-columns:68px minmax(0,1fr) 24px}
+.vehicle-card img{width:67px}
+.dossier-identity{grid-template-columns:82px minmax(0,1fr);gap:9px;padding:8px}
+.dossier-tank-frame img{width:80px}
+.dossier-head h2{font-size:19px}
+.view-controls{width:min(630px,100%);grid-template-columns:56px repeat(9,minmax(30px,1fr))}
+.view-controls-label>span{display:none}
+.view-controls>button{margin-left:2px}
+.viewer-bottom-console .mode-dock{grid-template-columns:150px repeat(5,minmax(0,1fr))}
+.mode-dock>p{gap:8px;padding-inline:8px}
+.mode-dock>p>span{font-size:11px;letter-spacing:0em}
+.mode-dock>button{padding-inline:5px}
+.mode-dock>button img{width:26px;height:26px}
+}
 
-body[data-cot-width='tablet']{overflow:auto}
-body[data-cot-width='tablet'] .gallery-shell{
+@media (768px <= width < 1100px){:root body{overflow:auto}}
+@media (768px <= width < 1100px){:root body .gallery-shell{
   height:auto;min-height:calc(var(--cot-viewport-height,100dvh) - 56px);grid-template-columns:280px minmax(0,1fr);
   grid-template-rows:minmax(480px,70dvh) auto;
+}}
+@media (768px <= width < 1100px){
+:root body .archive-panel{grid-row:1;max-height:70dvh}
+:root body .viewer{grid-row:1;min-height:480px}
+:root body .dossier{grid-column:1/-1;grid-row:2;border-left:0;border-top:1px solid var(--line)}
+:root body .dossier-scroll{height:auto;display:grid;grid-template-columns:320px minmax(0,1fr);align-items:start}
+:root body .dossier-head{grid-column:1;grid-row:1/span 3}
+:root body .dossier-section{grid-column:2}
+:root body .model-note{grid-column:1/-1}
+:root body .viewer-head{display:block}
+:root body .view-controls{width:100%;grid-template-columns:42px repeat(9,minmax(30px,1fr))}
+:root body .view-controls-label{grid-template-columns:20px 18px;padding-inline:2px}
+:root body .view-controls-label img{width:20px}
+:root body .inspection-readout{top:66px}
+:root body .mode-dock>p{display:none}
+:root body .viewer-bottom-console .mode-dock{grid-template-columns:repeat(5,minmax(0,1fr))}
 }
-body[data-cot-width='tablet'] .archive-panel{grid-row:1;max-height:70dvh}
-body[data-cot-width='tablet'] .viewer{grid-row:1;min-height:480px}
-body[data-cot-width='tablet'] .dossier{grid-column:1/-1;grid-row:2;border-left:0;border-top:1px solid var(--line)}
-body[data-cot-width='tablet'] .dossier-scroll{height:auto;display:grid;grid-template-columns:320px minmax(0,1fr);align-items:start}
-body[data-cot-width='tablet'] .dossier-head{grid-column:1;grid-row:1/span 3}
-body[data-cot-width='tablet'] .dossier-section{grid-column:2}
-body[data-cot-width='tablet'] .model-note{grid-column:1/-1}
-body[data-cot-width='tablet'] .viewer-head{display:block}
-body[data-cot-width='tablet'] .view-controls{width:100%;grid-template-columns:42px repeat(9,minmax(30px,1fr))}
-body[data-cot-width='tablet'] .view-controls-label{grid-template-columns:20px 18px;padding-inline:2px}
-body[data-cot-width='tablet'] .view-controls-label img{width:20px}
-body[data-cot-width='tablet'] .inspection-readout{top:66px}
-body[data-cot-width='tablet'] .mode-dock>p{display:none}
-body[data-cot-width='tablet'] .viewer-bottom-console .mode-dock{grid-template-columns:repeat(5,minmax(0,1fr))}
 
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']){overflow:auto}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .gallery-shell{
+@media (width < 768px){:where(body){overflow:auto}}
+@media (width < 768px){.gallery-shell{
   height:auto;min-height:calc(var(--cot-viewport-height,100dvh) - 56px);display:flex;flex-direction:column;
+}}
+@media (width < 768px){
+.viewer{order:1;height:clamp(520px,calc(var(--cot-viewport-height,100dvh) - 336px),660px);min-height:520px}
+.archive-panel{order:2;max-height:none;border-right:0;border-top:1px solid var(--line)}
+.vehicle-list{max-height:460px;padding-inline:9px}
+.dossier{order:3;border-left:0;border-top:1px solid var(--line)}
+.dossier-scroll{height:auto;display:block}
 }
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .viewer{order:1;height:clamp(520px,calc(var(--cot-viewport-height,100dvh) - 336px),660px);min-height:520px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .archive-panel{order:2;max-height:none;border-right:0;border-top:1px solid var(--line)}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .vehicle-list{max-height:460px;padding-inline:9px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .dossier{order:3;border-left:0;border-top:1px solid var(--line)}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .dossier-scroll{height:auto;display:block}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .dossier-head,
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .dossier-section{grid-column:auto;grid-row:auto}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .panel-heading{padding:14px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .workspace-identity{grid-template-columns:58px minmax(0,1fr);gap:11px;padding:10px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .workspace-identity>img{width:56px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .workspace-identity h1{font-size:21px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .archive-filters{margin-bottom:10px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .vehicle-card{grid-template-columns:78px minmax(0,1fr) 28px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .vehicle-card img{width:77px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .dossier-identity{grid-template-columns:104px minmax(0,1fr)}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .dossier-tank-frame img{width:98px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .dossier-head h2{font-size:23px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .viewer-head{left:8px;right:8px;top:8px;display:block}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .view-controls{width:100%;grid-template-columns:42px repeat(9,minmax(30px,1fr));padding:3px;overflow-x:hidden}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .view-controls-label,
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .view-controls>button{height:40px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .view-controls>button>span{font-size:11px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .inspection-readout{top:58px;left:8px;width:min(230px,61%)}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .viewer-bottom-console{left:8px;right:8px;bottom:7px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .viewer-bottom-console .mode-dock{grid-template-columns:repeat(5,minmax(0,1fr));padding:3px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .mode-dock>p{display:none}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .mode-dock>button{min-height:55px;flex-direction:column;justify-content:center;gap:1px;margin-left:3px;padding:3px 2px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .mode-dock>button img{width:25px;height:24px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .mode-dock>button span{font-size:11px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .mode-dock>button small{display:none}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .viewer-footer-row{margin-top:4px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .viewer-help{gap:8px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .viewer-bay{font-size:11px}
-:where(body[data-cot-width='compact'],body[data-cot-width='phone']) .viewer-bottom-console .overlay-legend{margin-bottom:5px}
-body[data-cot-width='phone'] .view-controls{grid-template-columns:repeat(5,minmax(44px,1fr));grid-template-rows:repeat(2,44px);gap:2px}
-body[data-cot-width='phone'] .view-controls-label,
-body[data-cot-width='phone'] .view-controls>button{height:44px;min-height:44px;margin-left:0}
-body[data-cot-width='phone'] .view-controls>button>span{font-size:11px;letter-spacing:0em}
-body[data-cot-width='phone'] .inspection-readout{top:104px}
-body[data-cot-width='phone'] .view-button-icon,
-body[data-cot-width='phone'] .view-button-icon svg{width:18px;height:18px}
-body[data-cot-width='phone'] .view-controls-label{grid-template-columns:20px 20px;place-items:center;gap:2px}
-body[data-cot-width='phone'] .view-controls-label img{display:block;width:20px}
-body[data-cot-width='phone'] .viewer-help>span{gap:3px}
-body[data-cot-width='phone'] .viewer-help{gap:6px;font-size:11px}
-body[data-cot-width='phone'] .viewer-bay{letter-spacing:.12em}
-body[data-cot-width='phone'] .live-pill{min-width:164px}
-body[data-cot-width='phone'] .live-status small{display:none}
-body[data-cot-width='phone'] .mode-dock button span{font-size:11px;letter-spacing:.02em}
-body[data-cot-width='phone'] .dossier-group-head{padding-right:0;margin-bottom:45px}
-body[data-cot-width='phone'] .dossier-actions{top:54px;left:14px;right:14px}
-body[data-cot-width='phone'] .dossier-actions button{flex:1}
-body[data-cot-width='phone'] .dossier-identity{grid-template-columns:92px minmax(0,1fr)}
-body[data-cot-width='phone'] .dossier-tank-frame img{width:88px}
+@media (width < 768px){.dossier-head,
+.dossier-section{grid-column:auto;grid-row:auto}}
+@media (width < 768px){
+.panel-heading{padding:14px}
+.workspace-identity{grid-template-columns:58px minmax(0,1fr);gap:11px;padding:10px}
+.workspace-identity>img{width:56px}
+.workspace-identity h1{font-size:21px}
+.archive-filters{margin-bottom:10px}
+.vehicle-card{grid-template-columns:78px minmax(0,1fr) 28px}
+.vehicle-card img{width:77px}
+.dossier-identity{grid-template-columns:104px minmax(0,1fr)}
+.dossier-tank-frame img{width:98px}
+.dossier-head h2{font-size:23px}
+.viewer-head{left:8px;right:8px;top:8px;display:block}
+.view-controls{width:100%;grid-template-columns:42px repeat(9,minmax(30px,1fr));padding:3px;overflow-x:hidden}
+}
+@media (width < 768px){.view-controls-label,
+.view-controls>button{height:40px}}
+@media (width < 768px){
+.view-controls>button>span{font-size:11px}
+.inspection-readout{top:58px;left:8px;width:min(230px,61%)}
+.viewer-bottom-console{left:8px;right:8px;bottom:7px}
+.viewer-bottom-console .mode-dock{grid-template-columns:repeat(5,minmax(0,1fr));padding:3px}
+.mode-dock>p{display:none}
+.mode-dock>button{min-height:55px;flex-direction:column;justify-content:center;gap:1px;margin-left:3px;padding:3px 2px}
+.mode-dock>button img{width:25px;height:24px}
+.mode-dock>button span{font-size:11px}
+.mode-dock>button small{display:none}
+.viewer-footer-row{margin-top:4px}
+.viewer-help{gap:8px}
+.viewer-bay{font-size:11px}
+.viewer-bottom-console .overlay-legend{margin-bottom:5px}
+}
+@media (width < 520px){:root body .view-controls{grid-template-columns:repeat(5,minmax(44px,1fr));grid-template-rows:repeat(2,44px);gap:2px}}
+@media (width < 520px){:root body .view-controls-label,
+:root body .view-controls>button{height:44px;min-height:44px;margin-left:0}}
+@media (width < 520px){
+:root body .view-controls>button>span{font-size:11px;letter-spacing:0em}
+:root body .inspection-readout{top:104px}
+}
+@media (width < 520px){:root body .view-button-icon,
+:root body .view-button-icon svg{width:18px;height:18px}}
+@media (width < 520px){
+:root body .view-controls-label{grid-template-columns:20px 20px;place-items:center;gap:2px}
+:root body .view-controls-label img{display:block;width:20px}
+:root body .viewer-help>span{gap:3px}
+:root body .viewer-help{gap:6px;font-size:11px}
+:root body .viewer-bay{letter-spacing:.12em}
+:root body .live-pill{min-width:164px}
+:root body .live-status small{display:none}
+:root body .mode-dock button span{font-size:11px;letter-spacing:.02em}
+:root body .dossier-group-head{padding-right:0;margin-bottom:45px}
+:root body .dossier-actions{top:54px;left:14px;right:14px}
+:root body .dossier-actions button{flex:1}
+:root body .dossier-identity{grid-template-columns:92px minmax(0,1fr)}
+:root body .dossier-tank-frame img{width:88px}
+}
 
-body[data-cot-width-density='narrow'] .view-button-icon,
-body[data-cot-width-density='narrow'] .view-button-icon svg{width:16px;height:16px}
+@media (width <= 380px){:root body .view-button-icon,
+:root body .view-button-icon svg{width:16px;height:16px}}
 
-:where(body[data-cot-height='short'],body[data-cot-height-density='tight']){overflow:auto}
-:where(body[data-cot-height='short'],body[data-cot-height-density='tight']) .gallery-shell{height:auto;min-height:420px}
-:where(body[data-cot-height='short'],body[data-cot-height-density='tight']) .viewer{min-height:420px}
-body[data-cot-height='short'][data-cot-orientation='landscape'] .gallery-shell{
+@media (height < 520px), (height <= 430px){
+:where(body){overflow:auto}
+.gallery-shell{height:auto;min-height:420px}
+.viewer{min-height:420px}
+}
+@media (height < 520px) and (aspect-ratio >= 1/1){:root:root body .gallery-shell{
   min-height:calc(var(--cot-viewport-height,100dvh) - 56px);grid-template-rows:minmax(300px,calc(var(--cot-viewport-height,100dvh) - 56px)) auto;
-}
-body[data-cot-height='short'][data-cot-orientation='landscape'] .viewer{
+}}
+@media (height < 520px) and (aspect-ratio >= 1/1){:root:root body .viewer{
   height:calc(var(--cot-viewport-height,100dvh) - 56px);min-height:300px;
-}
+}}
 
-body[data-cot-input='coarse'] .gallery-select-trigger,
-body[data-cot-input='coarse'] .gallery-select-option,
-body[data-cot-input='coarse'] .mode-dock>button,
-body[data-cot-input='coarse'] .view-controls>button{min-height:44px}
+@media ((pointer: coarse) or (hover: none)){:root body .gallery-select-trigger,
+:root body .gallery-select-option,
+:root body .mode-dock>button,
+:root body .view-controls>button{min-height:44px}}
 
 /* The damage workbench shares dossier controls and stays out of the orbit canvas. */
 .damage-workbench-host{display:contents}
@@ -394,7 +411,7 @@ body[data-cot-input='coarse'] .view-controls>button{min-height:44px}
 .damage-tools{padding-top:12px;border-top:1px solid var(--line)}
 .damage-ray{padding-left:18px;color:var(--muted);font-size:11px;max-height:220px;overflow:auto;overflow-wrap:anywhere;line-height:1.6;scrollbar-width:thin}
 .damage-ray:empty{display:none}.damage-ray li+li{margin-top:6px}
-body[data-cot-width='phone'] .damage-workbench{padding:16px}
+@media (width < 520px){:root body .damage-workbench{padding:16px}}
 
 /* In action: the selected vehicle's own take (src/gallery/inAction.ts over src/ui/fleetTakes.ts). The loop is decorative
    and muted; the caption names the take and the link opens its scene in the Studio. */
@@ -410,11 +427,14 @@ body[data-cot-width='phone'] .damage-workbench{padding:16px}
 .fleet-take-title{color:#c4ccce;font-size:11px;line-height:1.5}
 .fleet-take-studio{padding:7px 8px;border:1px solid rgba(174,190,197,.2);background:linear-gradient(#12191d,#080c0f);color:#9aa4a7;font-size:11px;font-weight:700;letter-spacing:.01em;text-transform:uppercase;text-decoration:none;white-space:nowrap;transition:color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease}
 .fleet-take-studio:hover{border-color:rgba(233,163,70,.58);color:var(--amber-pale)}
-body[data-cot-input='coarse'] .fleet-take-toggle{width:44px;height:44px}
-body[data-cot-input='coarse'] .fleet-take-studio{display:grid;place-items:center;min-height:44px}
+@media ((pointer: coarse) or (hover: none)){
+:root body .fleet-take-toggle{width:44px;height:44px}
+:root body .fleet-take-studio{display:grid;place-items:center;min-height:44px}
+}
 /* zh-CN: tight display headings open up (CJK glyphs fill the em box; the type rules) */
 :lang(zh-CN) :is(.panel-heading h1,.dossier-head h2){line-height:1.14}
 /* No kicker above a heading (owner UI rules 2026-10-17): the archive's line stays for assistive technology, and the
    dossier's nation, era and tier read under the vehicle's name, after its designation. */
 .workspace-identity .eyebrow{position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .dossier-identity>div{display:flex;flex-direction:column;min-width:0}#dossierName{order:1;margin-top:0}#dossierDesignation{order:2}#dossierMeta{order:3;margin:5px 0 0}
+}

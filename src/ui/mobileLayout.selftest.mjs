@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { viewportQueryViolations } from './viewportQueries.test-support.mjs';
 
 
 const [
@@ -393,15 +394,22 @@ for (const [source, pattern, label] of [
   [pointerLockFeedback, /element\.className = 'cot-lock-toast'/, 'pointer-lock fallback'],
 ]) assert.match(source, pattern, `${label} surface must remain present while responsive composition owns its geometry`);
 
-const semanticSurfaceFiles = [
-  '../game/killcam.ts',
+// The public pages lay out at first paint, before or without JavaScript (brand-ui SPEC §5.5): their stylesheets read
+// media queries at responsiveLayout.ts's band edges instead of the body[data-cot-*] hooks the boot module writes.
+for (const relativePath of [
   '../gallery/gallery.css',
   '../presentation/mediaArchive.css',
   '../presentation/publicNav.css',
-  '../presentation/publicPages.ts',
   '../docs/docs.css',
+  '../presentation/home.css',
+]) {
+  const source = await readFile(new URL(relativePath, import.meta.url), 'utf8');
+  assert.deepEqual(viewportQueryViolations(source, relativePath), [], `${relativePath} keeps the one viewport contract at first paint`);
+}
+const semanticSurfaceFiles = [
+  '../game/killcam.ts',
+  '../presentation/publicPages.ts',
   '../docs/battleReels.ts',
-  '../../public/home.css',
   '../../index.html',
   './battleLoad.ts',
   './contextInfo.ts',
@@ -425,7 +433,7 @@ const semanticSurfaceFiles = [
 for (const relativePath of semanticSurfaceFiles) {
   const source = await readFile(new URL(relativePath, import.meta.url), 'utf8');
   assert.doesNotMatch(source,
-    /@media[^\n]*(?:max-width|min-width|orientation|max-height|min-height)|matchMedia\([^\n]*(?:max-width|min-width|orientation|max-height|min-height)/,
+    /@media[^{\n]*(?:max-width|min-width|orientation|max-height|min-height)|matchMedia\([^\n]*(?:max-width|min-width|orientation|max-height|min-height)/,
     `${relativePath} must not reintroduce an independent device-layout breakpoint`);
 }
 

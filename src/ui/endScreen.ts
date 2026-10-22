@@ -33,7 +33,8 @@ import { containModalTab } from './modal.ts';
 import { createRichTooltip } from './richTooltip.ts';
 import { awardDetails } from './awardDetails.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
-import { createElement as el, ensureStyle } from './dom.ts';
+import { createElement as el } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { iconUrl, maskIcon } from './icons.ts';
 import { killSourceIdentity } from './killSourceIdentity.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -541,7 +542,7 @@ function vehicleName(specId: string | null | undefined): string {
  */
 export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRuntime {
   ensureFonts();
-  ensureStyle('cot-es-style', ES_CSS);
+  ensureStyle('cot-es-style', ES_CSS, 'surfaces');
   host.classList.add('cot-es');
   host.setAttribute('role', 'dialog');
   host.setAttribute('aria-modal', 'true');

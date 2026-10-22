@@ -1,3 +1,5 @@
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
 body[data-cot-width] .cot-es.cot-es--record *{box-sizing:border-box;min-width:0}
 /* The debrief keeps result, personal highlights, rewards and team detail distinct. */
 body[data-cot-width] .cot-es.cot-es--record{box-sizing:border-box;justify-content:flex-start;gap:0;padding:clamp(12px,3vh,30px) max(16px,calc((100vw - 1280px)/2));overflow:hidden;pointer-events:auto;background:linear-gradient(90deg,#070e16f0,#070e1690 65%,#070e16d9),linear-gradient(0deg,#070e16 0%,#070e1633 100%),var(--report-map,none) center/cover no-repeat #080f16}
@@ -81,3 +83,4 @@ body[data-cot-width] .cot-es.cot-es--record :is(.es-tr,.es-room-player,.es-campa
 body[data-cot-width] .cot-es.cot-es--record .es-tr.me{border-color:#c89a5066;background:linear-gradient(90deg,#a2792920,#a2792908)}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-list{border-top-color:#93a5b438}
 body[data-cot-width] .cot-es.cot-es--record .es-report .es-rematch{border:1px solid #93a5b438}
+}

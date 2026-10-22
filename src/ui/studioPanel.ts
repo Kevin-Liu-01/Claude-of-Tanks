@@ -25,6 +25,7 @@ import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
 import { createInfoButton, type InfoButton } from './contextInfo.ts';
 import { createPlanView, type StudioPlanFeatures } from './studioPlanView.ts';
 import { getLocale, t } from './i18n.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { STUDIO_FX_PARAMS } from '../game/studioFxSettings.ts';
 import { hrefForLocale } from './localeRouting.ts';
 import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
@@ -646,12 +647,7 @@ const CSS = `
  */
 export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   ensureFonts();
-  if (!document.getElementById('cot-studio-css')) {
-    const st = document.createElement('style');
-    st.id = 'cot-studio-css';
-    st.textContent = CSS + STUDIO_PRODUCTION_CSS;
-    document.head.appendChild(st);
-  }
+  ensureStyle('cot-studio-css', CSS + STUDIO_PRODUCTION_CSS, 'surfaces');
 
   const root = el('div', 'cot-studio');
   document.body.appendChild(root);

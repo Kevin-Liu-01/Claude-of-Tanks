@@ -76,7 +76,11 @@ assert.throws(() => presetEffects(withAxis({ e: 'oklch(30% 0 0)' })), /--m under
 
 // tokens.css is a pure token sheet: :root blocks of custom properties (and the OS reduce-motion copy), nothing else.
 const generatedCss = first[TOKENS_CSS];
-const cssBody = generatedCss.replace(/\/\*[\s\S]*?\*\//g, '');
+// The sheet opens with the document's layer order and declares into the tokens layer (brand-ui SPEC §5).
+const layered = /^@layer reset,tokens,base,components,surfaces,utilities,overrides;\s*@layer tokens\{([\s\S]*)\}\s*$/
+  .exec(generatedCss.replace(/\/\*[\s\S]*?\*\//g, '').trim());
+assert.ok(layered, 'tokens.css opens with the layer order and wraps every token block in @layer tokens');
+const cssBody = layered[1];
 const parseDecls = (text) => {
   const decls = new Map();
   for (const part of text.split(';').map((s) => s.trim()).filter(Boolean)) {
@@ -177,9 +181,9 @@ for (const t of tokens.filter((x) => x.tier === 'component' && typeof x.raw === 
 }
 // Hollow display type is the landing's (owner UI rule 5): no fill, the same 1.5 px stroke, the same shadow (which keeps
 // the outline readable over bright media).
-// The landing's span wears the type package's .t-hollow (src/ui/typeFaces.ts) and sets its own shadow (public/home.css).
+// The landing's span wears the type package's .t-hollow (src/ui/typeFaces.ts) and sets its own shadow (src/presentation/home.css).
 const tHollow = /\.t-hollow\{color:transparent;-webkit-text-stroke:var\(--hollow-stroke,([\d.]+px)\)/.exec(read('src/ui/typeFaces.ts'));
-const landingHollow = /\.v5-hero-copy h1 span\{--hollow-ink:[^;]+;text-shadow:([^;}]+)\}/.exec(read('public/home.css'));
+const landingHollow = /\.v5-hero-copy h1 span\{--hollow-ink:[^;]+;text-shadow:([^;}]+)\}/.exec(read('src/presentation/home.css'));
 assert.ok(tHollow && landingHollow, 'the landing headline keeps its hollow Latin span (.t-hollow) and its shadow');
 assert.equal(TOKENS['hollow-fill'], 'transparent', 'hollow type is truly hollow, as on the landing');
 assert.equal(TOKENS['hollow-stroke'], tHollow[1], 'hollow stroke width equals the landing headline');

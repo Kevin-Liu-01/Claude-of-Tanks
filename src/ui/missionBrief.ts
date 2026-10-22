@@ -3,7 +3,7 @@
 // opposing formation. Shown from the pre-battle countdown until a few seconds after roll-out,
 // then it fades; leaving the battlefield removes it at once. Pure DOM over the i18n catalog.
 import { t } from './i18n.ts';
-import { ensureStyle } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { ensureFonts, FONT_COND, FONT_STACK } from './fonts.ts';
 import {
   CAMPAIGN_OBJECTIVE_KEYS, CAMPAIGN_OPERATIONS, campaignOperationById, campaignOperationForMap,
@@ -69,7 +69,7 @@ interface MissionBriefRuntime {
 
 export function createMissionBrief(parent: HTMLElement = document.body): MissionBriefRuntime {
   ensureFonts();
-  ensureStyle(STYLE_ID, CSS);
+  ensureStyle(STYLE_ID, CSS, 'surfaces');
   const root = document.createElement('aside');
   root.className = 'cot-brief';
   root.setAttribute('role', 'note');

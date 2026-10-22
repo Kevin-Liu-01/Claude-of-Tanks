@@ -6,6 +6,7 @@ import { FONT_STACK, FONT_COND } from './fonts.ts';
 import { installPinchZoomGuard } from './pinchZoomGuard.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
+import { ensureStyle } from './styleLayers.ts';
 import {
   getDeviceTier, getMobilePresetChoice, getStoredChoice,
   MOBILE_PRESET_ORDER, PRESET_ORDER, PRESETS, resolvePresetName,
@@ -392,10 +393,7 @@ export function createTouchControls({
   input, bus, isBattleActive, isSniper = () => false, getFlightKind = () => undefined,
   onOpenSettings = () => {}, onToggleSound = () => false,
 }: TouchControlsOptions): TouchControlsRuntime {
-  if (!document.getElementById('cot-touch-style')) {
-    const style = document.createElement('style');
-    style.id = 'cot-touch-style'; style.textContent = CSS; document.head.appendChild(style);
-  }
+  ensureStyle('cot-touch-style', CSS, 'surfaces');
   const root = document.createElement('div');
   root.className = 'cot-touch';
   root.setAttribute('role', 'group');

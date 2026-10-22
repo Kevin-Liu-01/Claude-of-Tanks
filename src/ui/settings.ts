@@ -44,7 +44,8 @@ import {
 } from './settingsIcons.ts';
 import { containModalTab, isAnyModalOpen } from './modal.ts';
 import { shouldOpenSettingsFromPointerUnlock } from './keyboardOwnership.ts';
-import { createElement as el, ensureStyle } from './dom.ts';
+import { createElement as el } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { CREW_VOICE_NATIONS, isCrewVoiceSetting } from '../audio/crewVoice.ts';
 import type { CustomSelectController } from './customSelect.ts';
 import {
@@ -538,7 +539,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     bus?.emit(event, payload);
   };
 
-  ensureStyle('cot-settings-style', SETTINGS_CSS);
+  ensureStyle('cot-settings-style', SETTINGS_CSS, 'surfaces');
 
   // --- DOM ---------------------------------------------------------------------
   const root = el('div', 'cot-settings');

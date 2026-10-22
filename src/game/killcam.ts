@@ -78,7 +78,8 @@ import { killcamCameraFloor } from './killcamGround.ts';
 import * as THREE from 'three';
 import { createWheelNotcher } from './wheelNotches.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from '../ui/fonts.ts';
-import { createElement as el, ensureStyle } from '../ui/dom.ts';
+import { createElement as el } from '../ui/dom.ts';
+import { ensureStyle } from '../ui/styleLayers.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
 import {
   hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
@@ -1462,7 +1463,7 @@ export function createKillCam(deps: KillcamDeps) {
   function ensureDom(): KillcamDom {
     if (dom) return dom;
     ensureFonts();
-    ensureStyle('cot-kc-style', KC_CSS);
+    ensureStyle('cot-kc-style', KC_CSS, 'surfaces');
     const root = el('div', 'cot-kc');
     document.body.appendChild(root);
     el('div', 'cot-kc-grade', root); // death-view desat + vignette (class 'grade')

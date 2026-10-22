@@ -1,5 +1,7 @@
 /* One event-measured lane per side: rosters above, driving controls below.
    These selectors intentionally outrank battle-lazy injected component CSS. */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
 body[data-cot-battle-layout][data-cot-width][data-cot-height]{--hud-side-width:min(300px,calc(50vw - 24px));--hud-feed-width:min(240px,calc(50vw - 24px));--hud-message-width:min(400px,calc(50vw - 24px))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-drive{left:184px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-minimap{
@@ -434,3 +436,4 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .si{grid-column:1;grid-row:1}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .sl{grid-column:1;grid-row:2;max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:8px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .sk{display:none}
+}
