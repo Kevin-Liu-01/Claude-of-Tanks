@@ -16,9 +16,9 @@
  * readouts and the feed lanes with them (`soft`).
  *
  * Each takes the highest place that keeps TOUCH_SIGHT_GAP from the footprint and TOUCH_NOTICE_GAP from everything else,
- * centred on the sight where it fits there, else in the free span nearest the centre. The countdown goes first, in the
- * detection's place (nothing spots the player before the roll-out), scaled down to 60 % where it must, the alert alone
- * then off it; otherwise the detection
+ * centred on the sight where it fits there, else in the free span nearest the centre. The countdown goes first, on the
+ * centre line just over the crosshair with its rules panel under it (countdownPlace.ts), in the detection's stead
+ * (nothing spots the player before the roll-out), the alert alone then off both; otherwise the detection
  * and the alert take, cheapest first: where integ put them,
  * when that keeps clear; the stack (the detection over the alert, one centre); the two apart; the same with the alert,
  * then the detection, then both in their compact form (the short landscapes' 136 px notice, the alert in 8 px type). The
@@ -31,6 +31,8 @@
  * DOM-free and deterministic; battleHudLayout.ts measures the inputs on each relayout. touchNoticePlan.selftest.mjs checks
  * every recorded touch size; tools/hud-touch-notices.browser.mjs measures the rendered boxes against the reticle's ink.
  */
+
+import { placeCountdown } from './countdownPlace.ts';
 
 export interface TouchBox { x0: number; y0: number; x1: number; y1: number }
 export interface TouchSize { w: number; h: number }
@@ -191,8 +193,9 @@ interface TouchNoticeInput {
   /** The detection's box and the alert's (its height in the detection's width; a reserve while none shows). */
   readonly notice: TouchSize;
   readonly alert: TouchSize;
-  /** The pre-battle countdown's box while it shows. */
+  /** The pre-battle countdown's box while it shows, and its rules panel's. */
   readonly countdown: TouchSize | null;
+  readonly countdownRules?: TouchSize | null;
   /** The medal card's, when one waits for a place. */
   readonly banner: TouchSize | null;
   /** Where integ put the detection's top (the stack's, centred). */
@@ -203,15 +206,15 @@ interface TouchNoticePlan {
   noticeCx: number; noticeTop: number; alertCx: number; alertTop: number; alertW: number;
   /** Each in its compact form; the alert at the map's width (`alertW`) over the map, through the scope. */
   noticeCompact: boolean; alertCompact: boolean; alertNarrow: boolean;
-  /** The countdown's centre, top and scale (its top fixed: battleHudLayout.css scales it from there). */
+  /** The countdown's centre, top and scale (its top fixed: battleHudLayout.css scales it from there), and its rules
+   *  panel's top and scale under the sight (shown false: no place clears it). */
   countdownCx: number; countdownTop: number; countdownScale: number;
+  rulesTop: number; rulesScale: number; rulesShown: boolean;
   /** Every element keeps clear of the footprint and the furniture. */
   cleared: boolean;
   bannerCx: number; bannerTop: number; bannerReady: boolean;
 }
 
-/** The countdown's scales, largest first. */
-const COUNTDOWN_SCALES = [1, 0.8, 0.6];
 /** A label's cost in a least intrusive place, per px² (the footprint's is 1, a panel's or a control's 10), and a notice
  *  already placed (the countdown, the first of the detection and the alert). */
 const LABEL_WEIGHT = 0.25;
@@ -246,7 +249,8 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
   const start = top + INTEG_STACK_GAP;
   const plan: TouchNoticePlan = { noticeCx: cx, noticeTop: input.fallbackTop, alertCx: cx,
     alertTop: input.fallbackTop + input.notice.h + INTEG_STACK_GAP, alertW: input.alert.w, noticeCompact: false, alertCompact: false, alertNarrow: false,
-    countdownCx: cx, countdownTop: start, countdownScale: 1, cleared: true, bannerCx: cx, bannerTop: start, bannerReady: false };
+    countdownCx: cx, countdownTop: start, countdownScale: 1, rulesTop: height, rulesScale: 1, rulesShown: false,
+    cleared: true, bannerCx: cx, bannerTop: start, bannerReady: false };
   // (where nothing clears, a notice reaches into the footprint before it covers a panel or a control: the footprint is
   // modelled at full bloom, and the panels are there whole)
   // (a notice already placed counts a hundred times a panel: the notices never stack on each other while any other place
@@ -255,25 +259,23 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
   const readouts = scope ? keep.slice(1) : [];
   const layers = (extra: readonly TouchBox[]) => [[sight, 1], [readouts, READOUT_SCOPE_WEIGHT], [input.obstacles, 10], [input.soft, 10],
     [map, scope ? MAP_SCOPE_WEIGHT : 10], [labels, LABEL_WEIGHT], [extra, PLACED_WEIGHT]] as const;
-  // the countdown first: the alert may show with it, the detection never (nothing spots the player before the roll-out)
+  // the countdown first, on the centre line over the crosshair and its rules panel under it (countdownPlace.ts, owner
+  // 2026-10-21: "regardless it needs to be in center of screen"): the alert may show with it, the detection never
+  // (nothing spots the player before the roll-out)
   const placed: TouchBox[] = [];
   if (input.countdown) {
-    // (in full, then scaled down to 60 % where it must, as the mouse layout's planner does)
-    let place: { cx: number; y: number } | null = null;
-    for (const scale of COUNTDOWN_SCALES) {
-      place = touchFreePlace(scaled(input.countdown, scale), cx, start, width, height, blocks);
-      plan.countdownScale = scale;
-      if (place) break;
-    }
-    place ??= leastIntrusive(scaled(input.countdown, plan.countdownScale), cx, start, width, height, layers([]));
-    plan.countdownCx = place.cx; plan.countdownTop = place.y;
-    placed.push(boxOf(place.cx, place.y, scaled(input.countdown, plan.countdownScale)));
+    const rules = input.countdownRules ?? null;
+    const place = placeCountdown(width, height, top, input.countdown, rules, [...input.obstacles, ...input.soft, ...map, ...labels], gap);
+    plan.countdownTop = place.top; plan.countdownScale = place.scale;
+    plan.rulesTop = place.rulesTop; plan.rulesScale = place.rulesScale; plan.rulesShown = place.rulesShown;
+    if (!place.cleared) plan.cleared = false;
+    placed.push(boxOf(cx, place.top, scaled(input.countdown, place.scale)));
+    if (rules && place.rulesShown) placed.push(boxOf(cx, place.rulesTop, scaled(rules, place.rulesScale)));
   }
   const clearOf = (box: TouchBox, others: readonly TouchBox[]) => box.x0 >= gap && box.x1 <= width - gap
     && box.y0 >= gap && box.y1 <= height - gap && [...blocks, ...others].every((block) => apart(box, block) >= gap);
   if (input.countdown) {
     // the countdown takes the detection's place (it never shows with it); the alert alone keeps off it
-    if (!clearOf(placed[0], [])) plan.cleared = false;
     plan.noticeCx = plan.countdownCx; plan.noticeTop = plan.countdownTop;
     const alert = touchFreePlace(input.alert, cx, start, width, height, [...blocks, ...placed]);
     const compact = alert ? null : touchFreePlace(TOUCH_COMPACT_ALERT, cx, start, width, height, [...blocks, ...placed]);

@@ -105,13 +105,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .
   left:12px;right:auto;bottom:12px;width:calc(100vw - 24px);transform:none;
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-spec.in{transform:none}
-body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-cot-width='compact'] .cot-prebattle{width:calc(100vw - 248px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-special{
   left:auto;right:12px;bottom:84px;transform:none;
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-cot-width='phone'] .cot-special{bottom:184px}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait'] .cot-prebattle{width:calc(100vw - 132px)}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-prebattle{width:calc(100vw - 420px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-special{
   bottom:calc(max(22px,env(safe-area-inset-bottom)) + 174px);
 }
@@ -192,14 +189,11 @@ body[data-cot-battle-layout] .cot-kill-lane .cot-kf .c{display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:max(108px,calc(var(--hud-objective-bottom,64px) + 8px))}
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:calc(var(--hud-objective-bottom,72px) + 8px)}
-body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-height='short'][data-cot-orientation='landscape'] .cot-prebattle{top:calc(var(--hud-objective-bottom,64px) + 8px)}
-body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-height='short']:not(.cot-touch-layout) .cot-prebattle{width:240px}
 
 body.cot-touch-layout .cot-vehicle-controls>button{height:44px!important;min-height:44px;grid-template-rows:1fr;padding-block:5px}
 body[data-cot-battle-layout] .cot-kill-lane.r .cot-kf{border-left:0;border-right:2px solid #f05a5a;background:linear-gradient(90deg,transparent,rgba(8,12,16,.82) 26%)}
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] :is(.cot-dp,.cot-drive){bottom:128px}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait'] .cot-prebattle{top:var(--hud-portrait-countdown-top,255px)}
 
 /* Detection shares the score's central lane; narrow layouts clear team feeds. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-sixth{top:var(--hud-notice-top);max-width:var(--hud-center-notice-width,248px)}
@@ -250,9 +244,6 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-
    center notices clear of the second fire button and the bottom system strip. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='landscape'][data-cot-width='compact'] .cot-touch .fire.alt{left:12px}
 @media (max-height:340px) and (orientation:landscape){
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-prebattle{grid-template-rows:20px 48px auto;row-gap:3px;transform:translateX(-50%)}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-prebattle .k{font-size:11px;letter-spacing:.1em;padding:4px 8px;white-space:nowrap}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-prebattle .n{height:48px;font-size:44px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{min-height:32px;padding-block:4px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth .sub{display:none}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-alert{font-size:9px;padding-block:5px;min-height:28px}
@@ -282,17 +273,12 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-con{height:44px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{left:122px;transform:none;width:136px;min-height:32px;font-size:9px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-alert{box-sizing:border-box;font-size:8px;line-height:1.2;padding:4px 12px;top:var(--hud-notice-top);left:266px;transform:none;width:134px;max-width:134px}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-prebattle.on{display:flex;align-items:center;justify-content:center;gap:6px;min-height:40px}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-prebattle .n{font-size:30px;height:36px}
 }
 @media (max-width:340px) and (orientation:portrait){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{width:180px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shells{top:215px;bottom:auto!important}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell{height:44px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell:not(.wide) canvas{transform:translateX(-50%) scale(.6)}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-prebattle{grid-template-rows:20px 42px auto;gap:3px}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-prebattle .k{font-size:10px;padding:3px}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-prebattle .n{font-size:38px;height:42px}
 }
 
 /* Physical gun warnings used to be painted on the reticle canvas, invisible
@@ -372,6 +358,9 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientati
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-prebattle{
   top:var(--hud-countdown-top,22%);left:var(--hud-countdown-x,50%);transform:translateX(-50%) scale(var(--hud-countdown-scale,1));transform-origin:50% 0;
 }
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-prebattle-rules{
+  top:var(--hud-countdown-rules-top,calc(50% + 84px));transform:translateX(-50%) scale(var(--hud-countdown-rules-scale,1));
+}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-revive{
   top:var(--hud-revive-top,30%);left:var(--hud-revive-x,50%);transform:translateX(-50%) scale(var(--hud-revive-scale,1));transform-origin:50% 0;
 }
@@ -418,6 +407,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 /* (the card's own width wherever it sits: a fixed box shrinks to the room right of its left edge, and the plan measures it) */
 body.cot-touch-layout[data-touch-notices] .cot-medal-toasts{left:var(--hud-touch-banner-cx,50%);width:max-content}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation].cot-touch-layout[data-touch-notices] .cot-prebattle{left:var(--hud-touch-countdown-cx,50%);top:var(--hud-touch-countdown-top);transform:translateX(-50%) scale(var(--hud-touch-countdown-scale,1));transform-origin:50% 0}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation].cot-touch-layout[data-touch-notices] .cot-prebattle-rules{top:var(--hud-touch-rules-top);transform:translateX(-50%) scale(var(--hud-touch-rules-scale,1))}
+/* (a touch screen's rules in 12 px: the planner may take them to 92 %, the 11 px floor) */
+body.cot-touch-layout .cot-prebattle-rules{max-width:calc(100vw - 24px);gap:5px 14px;padding:8px 14px;font-size:12px}
+body.cot-touch-layout .cot-prebattle-rules b{font-size:12px}
 
 /* r10f (the notices critic: the drive gauge 2 px from the APFSDS slot at 1024 wide): the inline tray, centred, moves right
    by the layout's measured shift until it keeps the damage panel's 12 px gap from the gauge */
