@@ -516,6 +516,40 @@ export function faceBoxUV(geometry: THREE.BufferGeometry, scale = 0.35): THREE.B
   return geometry;
 }
 
+/**
+ * The camouflage projection of a merged bucket's thin parts (2026-10-22, lane 240; critic on the M1A1 HC's three-tone:
+ * "camo patches with hard straight edges"). faceBoxUV projects each triangle along its own normal, so the narrow edge
+ * faces of a plate (a skirt panel's rims, a rib's top, a frame's ends) sample the tile along a single line: a band of
+ * whatever colour that line crosses, cut square at the plate's faces, and a skirt of ribbed panels turns into blocks
+ * of black and brown. A part whose bounding box is thinner than `thinM` along one axis is a plate seen face-on along
+ * that axis: every one of its triangles takes that axis's projection, so the paint on its edges continues the paint on
+ * its face, as sprayed paint does. Parts are in merge order (mergeAll); thicker parts keep their per-face projection.
+ */
+export function thinPartBoxUV(parts: readonly THREE.BufferGeometry[], merged: THREE.BufferGeometry, scale = 0.35,
+  thinM = 0.06): void {
+  const position = merged.getAttribute('position'), uv = merged.getAttribute('uv');
+  if (!position || !uv) return;
+  const box = new THREE.Box3(), size = new THREE.Vector3();
+  let offset = 0, changed = false;
+  for (const part of parts) {
+    const count = part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
+    const partPosition = part.getAttribute('position');
+    if (!partPosition) { offset += count; continue; }
+    box.setFromBufferAttribute(partPosition as THREE.BufferAttribute).getSize(size);
+    const thin = Math.min(size.x, size.y, size.z);
+    if (thin < thinM && count) {
+      const axis = size.y === thin ? 1 : size.x === thin ? 0 : 2;
+      for (let i = offset; i < offset + count && i < position.count; i++) {
+        const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
+        uv.setXY(i, (axis === 0 ? z : x) * scale, (axis === 1 ? z : y) * scale);
+      }
+      changed = true;
+    }
+    offset += count;
+  }
+  if (changed) uv.needsUpdate = true;
+}
+
 export function mergeAll(geometries: readonly THREE.BufferGeometry[]): THREE.BufferGeometry {
   const flat = geometries.map((geometry) => geometry.index ? geometry.toNonIndexed() : geometry);
   const merged = mergeGeometries(flat, false);

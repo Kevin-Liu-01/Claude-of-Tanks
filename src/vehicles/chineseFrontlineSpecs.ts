@@ -167,11 +167,13 @@ const CHINESE_FRONTLINE_SPECS = {
           { pen2000Mm: 112, reloadS: 0.30, count: 180, soundProfile: 'kde-35' }),
       ],
     },
-    dims: { hullLengthM: 6.94, overallLengthM: 7.70, widthM: 3.734, heightM: 1.90, silhouetteHeightM: 2.64 },
+    // 2026-10-22 (lane 240, owner-approved): the backup gun's calibre-true 35 mm L/90 tube carries the muzzle 2.05 m
+    // further forward (3.75 m ahead of the hull datum), past the bow.
+    dims: { hullLengthM: 6.94, overallLengthM: 7.825, widthM: 3.734, heightM: 1.90, silhouetteHeightM: 2.64 },
     armor: modernArmor({
       hl: 3.47, hw: 1.85, inW: 1.15, floor: 0.35, trkTop: 1.05, roofY: 1.41,
       turretPivot: [0, 1.41, -0.55], gunPivot: [0, 0.64, 0.80],
-      barrelLenM: 1.45, barrelRadM: 0.045,
+      barrelLenM: 3.50, barrelRadM: 0.045,
       glacis: [90, 540, 740], lower: [70, 340, 460], side: [55, 240, 360],
       skirt: [35, 110, 240], rear: 40, roof: 38,
       tw: 1.50, tFrontZ: 1.15, tRearZ: -1.25, tH: 0.50,

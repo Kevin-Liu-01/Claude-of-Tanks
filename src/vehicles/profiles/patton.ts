@@ -4450,13 +4450,26 @@ function finishM60HullArmor(
   const cassetteTopY = 1.56;
   const cassetteHeightM = a3 ? 0.54 : 0.58;
   const cassetteCenterY = cassetteTopY - cassetteHeightM / 2;
+  // 2026-10-22 (lane 240; critic: "slatted vertical side plates"): the eight cassettes hung apart on their hangers read
+  // as a fence of slats, daylight between them and under the fender. The course now hangs on one continuous skirt
+  // plate, fender rail to cassette foot, its face 3 mm behind the cassette bodies (1.8045 against 1.8075) and its inner
+  // face outboard of the track envelope (1.7955 against 1.795), with a flange from its top onto the rail: the gaps read
+  // as seams between armour tiles on a skirt.
+  const cassetteLen = a3 ? 0.52 : 0.57;
+  const skirtZ0 = stations[0] - cassetteLen / 2 - 0.025, skirtZ1 = stations[stations.length - 1] + cassetteLen / 2 + 0.025;
+  const skirtBottomY = cassetteCenterY - cassetteHeightM / 2 + 0.005, skirtTopY = fenderTopY - 0.02;
   for (const side of [-1, 1]) {
     for (const z of stations) pattonSideCassette(P, side, cassetteCenterY, z,
-      cassetteHeightM, a3 ? 0.52 : 0.57, variant);
+      cassetteHeightM, cassetteLen, variant);
     P.add('hull', box(0.055, 0.065, 5.45), side * 1.73, fenderTopY - 0.025, -0.10);
     for (const z of stations) {
       P.add('hull', box(0.048, fenderTopY - cassetteTopY + 0.04, 0.052),
         side * 1.73, (fenderTopY + cassetteTopY) / 2 - 0.01, z);
+    }
+    if (!a3) {
+      P.add('hull', box(0.009, skirtTopY - skirtBottomY, skirtZ1 - skirtZ0),
+        side * 1.80, (skirtTopY + skirtBottomY) / 2, (skirtZ0 + skirtZ1) / 2);
+      P.add('hull', box(0.05, 0.02, skirtZ1 - skirtZ0), side * 1.778, skirtTopY - 0.008, (skirtZ0 + skirtZ1) / 2);
     }
   }
   P.hullG.userData.m60SideCassetteReceipt = {

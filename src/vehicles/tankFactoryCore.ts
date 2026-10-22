@@ -35,11 +35,11 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { ConvexGeometry } from 'three/examples/jsm/geometries/ConvexGeometry.js';
 import { getSpec, TANK_SPECS, attachTrackShapes } from './specs.ts';
 import {
-  box, boxUV, cylX, cylY, cylZ, faceBoxUV, frustum, lathe, mergeAll, mulberry32,
+  box, boxUV, cylX, cylY, cylZ, faceBoxUV, frustum, lathe, mergeAll, mulberry32, thinPartBoxUV,
   polyLoft, polyMultiLoft, polyTurret, slab, sph, straightRidgeGunMask,
   torus, xform,
 } from './factoryGeometry.ts';
-import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
+import { CAMO_THIN_PART_PROJECTION_IDS, CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
 import {
   createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial, tagUnlitVehicleMaterials, LIVE_HULL_DENTS,
@@ -8523,6 +8523,7 @@ function* createTankOwnedSteps(
       // blended, so a per-vertex axis landed one triangle's corners on different projections and the mips smeared the
       // pattern to one flat darker tone on 165 hulls (the T-90AM's "second hull"); camo now stays crisp to every edge.
       faceBoxUV(merged, CAMO_UV_REPEATS_PER_M);
+      if (CAMO_THIN_PART_PROJECTION_IDS.has(specId)) thinPartBoxUV(list, merged, CAMO_UV_REPEATS_PER_M);
       shiftPartCamouflage(list, merged);
       bakeDirt(merged, DIRT_Y[parentKey], bucket === 'hull' || bucket === 'hullGun' ? 1 : 0.5,
         !!spec.visual.bakeDirtDeckEq);

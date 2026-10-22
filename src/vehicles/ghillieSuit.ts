@@ -3809,12 +3809,19 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         outline: [[-1.05, -3.35], [1.05, -3.35], [1.42, -2.32], [1.36, 0.38], [0.86, 1.12], [-0.86, 1.12], [-1.36, 0.38], [-1.42, -2.32]],
         // release 233: the gunner's primary sight and its FEP FLIR head (0.55..1.03 x, 0.62..1.30 z) stand clear of the net
         holes: [rect(-1.26, -0.48, -0.86, 0.02), rect(-0.52, 0.05, 0.06, 0.55), rect(0.16, 0.83, -0.64, 0.06), rect(-1.28, -0.70, -2.92, -1.70), rect(0.68, 1.30, -2.84, -1.62), rect(0.50, 1.08, 0.60, 1.30)], seed: 37 }],
-      side: [-1, 1].map((side) => ({ side, z0: -3.20, z1: 0.80, nz: 32, ny: 8,
-        topAt: () => 0.80, bottomAt: (z) => 0.02 + Math.sin(z * 3.2) * 0.024,
-        outAt: (z, t) => (z < -1.65 ? 1.52 : 1.68) + (1 - t) * 0.028, seed: 51 + side,
-        // round 3 ("along both turret sides the net rises as vertical free-standing fence panels"): the flank drape
-        // rolls over the roof edge and tucks under the roof net
-        shoulder: { z0: -3.20, z1: 0.40, inAt: (z: number) => sepv3TurretRoofEdge(z) - 0.06, yAt: () => 0.874 } })),
+      // 2026-10-22 (lane 240; critic: "crumpled mesh at the turret's right rear"): the right flank's cover was fitted
+      // over the bustle-side stowage (the rack, its bag and boxes, x -1.70..-1.47 at z -3.17..-2.08), each column
+      // stepping out and back over another load, and creased into a crumpled lump. That flank now ends ahead of the
+      // stowage (z -2.02); the stowage rides bare, as the left flank's plain bustle wall keeps its cover.
+      side: [-1, 1].map((side) => {
+        const z0 = side < 0 ? -2.02 : -3.20;
+        return { side, z0, z1: 0.80, nz: side < 0 ? 24 : 32, ny: 8,
+          topAt: () => 0.80, bottomAt: (z: number) => 0.02 + Math.sin(z * 3.2) * 0.024,
+          outAt: (z: number, t: number) => (z < -1.65 ? 1.52 : 1.68) + (1 - t) * 0.028, seed: 51 + side,
+          // round 3 ("along both turret sides the net rises as vertical free-standing fence panels"): the flank drape
+          // rolls over the roof edge and tucks under the roof net
+          shoulder: { z0, z1: 0.40, inAt: (z: number) => sepv3TurretRoofEdge(z) - 0.06, yAt: () => 0.874 } };
+      }),
       face: [{ z: 1.38, x0: -1.36, x1: 1.36, y0: -0.02, y1: 0.76, nx: 20, ny: 8,
         outline: [[-1.00, -0.02], [1.00, -0.02], [1.36, 0.40], [0.96, 0.76], [-0.96, 0.76], [-1.36, 0.40]],
         holes: [rect(-0.52, 0.52, -0.06, 0.68), rect(-1.22, -0.78, 0.44, 0.78), rect(0.55, 1.22, 0.44, 0.78)], seed: 61 }],
