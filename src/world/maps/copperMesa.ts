@@ -9,6 +9,7 @@
 // and ore bins, the concentrator stepping down its slope, the smelters' brick power house and its stack, the railway's
 // engine shed, the water tank on its trestle, the Empire Hotel behind its two-storey verandah of cast-iron lace, and
 // rows of weatherboard cottages under corrugated iron with their bullnose verandahs and picket fences.
+import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import { roundRoadBends } from './roadBends.ts';
 
@@ -68,7 +69,7 @@ export default {
     // (2026-10-06, the batch-4 integration: round 2's gullied hills set nine cells of zone 1's 30 m disc past the seat's
     // 0.94 slope, so the match placement moved it 24 m off its hint, and zone 3 8 m off its own to keep clear of it; an
     // apron under zone 1 levels its disc, sited by tools/hardstand-site.mjs under the apron bank law)
-    hardstands: [{ x: 95.76, z: 25.16, width: 56, length: 56, yawDeg: 0, level: 1.2, grade: 0, bankM: 20 }],
+    hardstands: [{ x: 95.76, z: 25.16, width: 56, length: 56, yawDeg: 0, level: 1.2, grade: 0, bankM: 20, paint: WORN_YARD_PAINT }],
     workedGround: QUEENSTOWN_STREETS,
     roads: { paths: roundRoadBends([
       // A stepped loading apron on the eastern shelf puts the gantries and

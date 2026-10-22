@@ -30,6 +30,7 @@
 // open west ridge, the town's streets, and the east gap under the castle rock; the garage yards and the farmsteads mark
 // them off.
 
+import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { STEINBURG_ROWS } from './steinburgRows.ts';
 
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
@@ -143,7 +144,7 @@ export default {
     hardstands: [
       { x: -50, z: 0, width: 64, length: 64, yawDeg: 6, grade: 0 },
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): on the west road's own grade, a 16 m bank
-      { x: -330, z: 4, width: 60, length: 60, yawDeg: 100, grade: 'road', bankM: 16 },
+      { x: -330, z: 4, width: 60, length: 60, yawDeg: 100, grade: 'road', bankM: 16, paint: WORN_YARD_PAINT },
     ],
   },
 

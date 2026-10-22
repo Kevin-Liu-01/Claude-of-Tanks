@@ -19,6 +19,7 @@
 // The middle zone and the turbo-ball kickoff stand on the deployments' perpendicular bisector by the town, where the
 // houses leave a disc clear.
 
+import { TRODDEN_GREEN_PAINT } from '../hardstandSurface.ts';
 import { DEFAULT_GARAGE_SKY } from './catalog.ts';
 
 export default {
@@ -55,9 +56,9 @@ export default {
     // seats its 30 m discs on, each clear of the country roads.
     hardstands: [
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): 24 m north onto flatter ground, a 16 m bank
-      { x: -250, z: -126, width: 60, length: 60, yawDeg: 0, level: 1.0, grade: 0, bankM: 16 },
+      { x: -250, z: -126, width: 60, length: 60, yawDeg: 0, level: 1.0, grade: 0, bankM: 16, paint: TRODDEN_GREEN_PAINT },
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): 24 m south onto flatter ground, a 16 m bank
-      { x: 270, z: 166, width: 60, length: 60, yawDeg: 0, level: 1.5, grade: 0, bankM: 16 },
+      { x: 270, z: 166, width: 60, length: 60, yawDeg: 0, level: 1.5, grade: 0, bankM: 16, paint: TRODDEN_GREEN_PAINT },
     ],
     landforms: [
       // The swells: the southern one broken at the north-south road (x -25..50); the northern one is its rotation.

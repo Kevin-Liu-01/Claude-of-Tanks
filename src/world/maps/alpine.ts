@@ -28,6 +28,8 @@
 // Italian frontier guard's ochre barracks (the plateau was Italian until 1947); the Vallo Alpino's concrete blockhouse in
 // the village and its casemate at the western pass redoubt; the houses shelled in April 1945, roofless.
 
+import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
+
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
 
 // Landform geology (landformGeology.ts): the spurs are arêtes, straight steep flanks to a narrow crest, cut by couloirs;
@@ -66,8 +68,8 @@ export default {
     // The col yard (the western zone-control seat) and alpha's assembly yard (its turbo goal and its flag seat on it),
     // both level, both keeping the apron bank law with 24 m banks (docs/MAP-LAYOUT-BRIEF.md, "Apron banks").
     hardstands: [
-      { x: -266, z: 44, width: 44, length: 44, yawDeg: 0, level: -3.9, grade: 0, bankM: 24 },
-      { x: -204, z: -378, width: 40, length: 40, yawDeg: 0, level: 9.7, grade: 0, bankM: 24 },
+      { x: -266, z: 44, width: 44, length: 44, yawDeg: 0, level: -3.9, grade: 0, bankM: 24, paint: WORN_YARD_PAINT },
+      { x: -204, z: -378, width: 40, length: 40, yawDeg: 0, level: 9.7, grade: 0, bankM: 24, paint: WORN_YARD_PAINT },
     ],
     village: { x0: -204, x1: 202, z0: -212, z1: 222, cx: -42, cz: 28, feather: 58, flatten: 0.69, relief: 0.3 },
     landforms: [

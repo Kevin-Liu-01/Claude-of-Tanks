@@ -13,6 +13,7 @@
 // of equal driven distance: the temple forecourt by the west road, the town's square and the tea estate's drying yard
 // on the east.
 
+import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { createMarshChannel } from './marshChannel.ts';
 
 // Rainwater follows the lower saddle into the eastern floodplain; the
@@ -116,11 +117,11 @@ export default {
       // Alpha's assembly apron round its pad in the south valley, where road 2 crosses it. It takes the road's own
       // height and grade (6 % down the valley on this seed), so the road keeps its grade at every terrain seed. Its
       // turbo goal and its flag seat on it.
-      { x: -40, z: -340, width: 32, length: 32, yawDeg: 6, grade: 'road', bankM: 16 },
+      { x: -40, z: -340, width: 32, length: 32, yawDeg: 6, grade: 'road', bankM: 16, paint: WORN_YARD_PAINT },
       // the temple forecourt astride the west road, on the road's own grade, with a 24 m bank down to the channel
-      { x: -306, z: 16, width: 44, length: 44, yawDeg: -5, grade: 'road', bankM: 24 },
+      { x: -306, z: 16, width: 44, length: 44, yawDeg: -5, grade: 'road', bankM: 24, paint: WORN_YARD_PAINT },
       // the drying yard at its ground's median height
-      { x: 400, z: 8, width: 56, length: 56, yawDeg: 0, level: 4.5, grade: 0 },
+      { x: 400, z: 8, width: 56, length: 56, yawDeg: 0, level: 4.5, grade: 0, paint: WORN_YARD_PAINT },
     ],
     village: { x0: -132, x1: 156, z0: -112, z1: 174, cx: 12, cz: 26, feather: 50, flatten: 0.74, relief: 0.28 },
     landforms: [
