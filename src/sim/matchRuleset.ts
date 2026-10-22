@@ -1235,7 +1235,11 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     flagBots: Object.freeze({ recoverShare: 0.5, recoverMin: 2, huntWhenHomeFlagTaken: false, escorts: 4, carrierGuards: 0,
       escortAheadM: 24, escortSideM: 22, defendShare: 0.15, defendMinSquad: 6, interceptLeadS: 2.5,
       raidStageM: 120, raidHoldInM: 25, raidGroupM: 70, raidMinGroup: 2, raidWaitS: 12 }),
-    flagPitch: Object.freeze({ baseAxisM: 400, respawnBackM: 100 }) }),
+    // gameplay-modes-233 (owner 2026-10-18's "aggression of bots trying to capture flag"; main's 401-408: 0.88 captures a
+    // match, a capture in 3 of 8, 6 draws, first pickup 94 s, nearly every carrier killed on its run): the bases 320 m
+    // apart (was 400) and a carrier at full speed (was 85 %). The A/B over the same seeds: 1.38 captures, a capture in 6
+    // of 8, 2 draws, first pickup 64 s; the shorter pitch alone 0.88 / 6 / 3, the full-speed carrier alone 0.88 / 4 / 4
+    flagPitch: Object.freeze({ baseAxisM: 320, respawnBackM: 100, carrierSpeedScale: 1 }) }),
   // Zones: respawning hold-the-ground play; the 750-point target resolves inside the clock.
   zone_control: Object.freeze({ ...STANDARD, mode: 'zone_control', respawnS: 6 }),
   // Turbo Ball: arcade physics — 0.6 g so hulls and shells fly, 1.85× speed, tough hulls, half
@@ -1254,11 +1258,16 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
     // up behind the ball may shoot it from 12 m (the line-up stands 20 m back: at a 20 m floor the ball lay still while the
     // striker went round it), the teams line up at the kick-off at the start too and a revive stands 40 m behind its own
     // goal (ball.kickoffAtStart, ball.respawnBackM; the A/B over seeds 401-402: nearest bot 46-75 -> 20-54 m)
+    // gameplay-modes-233 (the critic: no goal in many matches; main's 401-408: 1.38 goals a match, 4 of 8 goalless, the
+    // nearest bot 48 m off the ball, most touches long shots): three strikers on the ball (was 2; crowdCap 3, so the first
+    // screen still stands off and three a team close on it as before) and a ball shot from 100 m at most (was 160), so the
+    // bots drive the ball instead of plinking it round the middle. The A/B over the same seeds: 1.5 goals, 1 goalless, the
+    // nearest bot 39 m; a 400 m pitch instead scored 2.25 a match but left 3 goalless, and both together did worse
     bots: Object.freeze({ alpha: BALL_DOCTRINE, bravo: BALL_DOCTRINE }),
-    ballBots: Object.freeze({ strikers: 2, supportBackM: 10, supportSideM: 12, strikerHoldS: 3, swapM: 25, leadMaxS: 3,
-      leadIterations: 2, screens: 2, screenNear: 0.85, screenFar: 0.6, screenSideM: 28, keepers: 1, keeperM: 30, crowdCap: 2,
+    ballBots: Object.freeze({ strikers: 3, supportBackM: 10, supportSideM: 12, strikerHoldS: 3, swapM: 25, leadMaxS: 3,
+      leadIterations: 2, screens: 2, screenNear: 0.85, screenFar: 0.6, screenSideM: 28, keepers: 1, keeperM: 30, crowdCap: 3,
       crowdM: 30, crowdMarginM: 5, wingM: 40, wingStepM: 20, lineUpM: 7, goRoundM: 16, behindM: 20, throughM: 18,
-      shootBall: Object.freeze({ maxRangeM: 160, minRangeM: 12, coneDeg: 30, everyRole: true, overTanks: true }) }),
+      shootBall: Object.freeze({ maxRangeM: 100, minRangeM: 12, coneDeg: 30, everyRole: true, overTanks: true }) }),
     ball: Object.freeze({ goalAxisM: 480, idleResetS: 30, kickoffM: 60, kickoffAtStart: true, respawnBackM: 40 }),
   }),
   // Horde: survival — the player with four allied bots on alpha (co-op humans join it), a pool of
@@ -1835,7 +1844,9 @@ export function rulesetLines(ruleset: MatchRuleset): RulesetLine[] {
   if (ruleset.enemyNation && ruleset.teamNations !== 'random') line('enemyNation', { value: ruleset.enemyNation });
   if (ruleset.scoreTarget != null) line('scoreTarget', { value: String(ruleset.scoreTarget) });
   if (ruleset.assault) line('sectorHold', { value: String(ruleset.assault.holdS) });
-  if (ruleset.mode === 'capture_the_flag') line('carrierSpeed', { value: percent(ruleset.flagPitch?.carrierSpeedScale ?? FLAG_CARRIER_SPEED_SCALE) });
+  // the carrier's chip only where carrying slows it (gameplay-modes-233: the carrier keeps its speed)
+  const carrierSpeed = ruleset.flagPitch?.carrierSpeedScale ?? FLAG_CARRIER_SPEED_SCALE;
+  if (ruleset.mode === 'capture_the_flag' && carrierSpeed !== 1) line('carrierSpeed', { value: percent(carrierSpeed) });
   if (ruleset.horde) {
     line('hordeWaves', { value: String(hordeWaveSize(ruleset.horde, 1)), step: String(hordeWaveSize(ruleset.horde, 2) - hordeWaveSize(ruleset.horde, 1)) });
     line('hordeField', { value: String(ruleset.horde.maxAlive), lull: String(ruleset.horde.intermissionS) });
