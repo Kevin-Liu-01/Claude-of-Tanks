@@ -39,6 +39,7 @@ import type { EquipmentItem } from '../game/equipment.ts';
 import { equipmentHoverPreview, projectEquipmentLoadout } from './equipmentPreview.ts';
 import { equipIconSVG } from './equipIcons.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { keycap, scale20 } from './components/components.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
 import { shellIconSVG } from './shellIcons.ts';
 import {
@@ -579,7 +580,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<span class="nav-label">${t('garage.nav.garage')}</span></button>` +
     `<button class="nv cot-nav-desktop" data-nav="studio" type="button" aria-label="${t('garage.nav.studio')}" title="${t('garage.nav.studio')}">` +
     `${uiIconSVG('studio', 16, 'currentColor', 'nvi nvi-product')}` +
-    `<span class="nav-label">${t('garage.nav.studio')}</span></button>` +
+    `<span class="nav-label">${t('garage.nav.studio')}</span>${keycap('F8')}</button>` +
     `<button class="nv cot-nav-desktop" data-nav="gallery" type="button" aria-label="${t('garage.nav.gallery')}" title="${t('garage.nav.gallery')}">` +
     `${uiIconSVG('gallery', 16, 'currentColor', 'nvi nvi-product')}` +
     `<span class="nav-label">${t('garage.nav.gallery')}</span></button>` +
@@ -609,32 +610,32 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<div class="cot-mobile-nav-menu" id="cot-mobile-nav-menu" role="group" aria-label="${t('garage.nav.menu')}" hidden>` +
     `<button type="button" data-mobile-nav="home">` +
     `${uiIconSVG('home', 20)}<span class="cot-mobile-nav-copy">` +
-    `<strong>${t('garage.nav.home')}</strong><small>${t('garage.nav.mobileHomeSub')}</small></span></button>` +
+    `<strong>${t('garage.nav.home')}</strong></span></button>` +
     `<button type="button" data-mobile-nav="garage" aria-current="page">` +
     `${uiIconSVG('garage', 20)}<span class="cot-mobile-nav-copy">` +
-    `<strong>${t('garage.nav.garage')}</strong><small>${t('garage.nav.mobileGarageSub')}</small></span></button>` +
+    `<strong>${t('garage.nav.garage')}</strong></span></button>` +
     `<button type="button" data-mobile-nav="studio">` +
     `${uiIconSVG('studio', 20)}<span class="cot-mobile-nav-copy">` +
-    `<strong>${t('garage.nav.studio')}</strong><small>${t('garage.nav.mobileStudioSub')}</small></span></button>` +
+    `<strong>${t('garage.nav.studio')}</strong></span></button>` +
     `<button type="button" data-mobile-nav="gallery">` +
     `${uiIconSVG('gallery', 20)}<span class="cot-mobile-nav-copy">` +
-    `<strong>${t('garage.nav.gallery')}</strong><small>${t('garage.nav.mobileGallerySub')}</small></span></button>` +
+    `<strong>${t('garage.nav.gallery')}</strong></span></button>` +
     `<button type="button" data-mobile-nav="docs">` +
     `${uiIconSVG('manual', 20)}<span class="cot-mobile-nav-copy">` +
-    `<strong>${t('garage.nav.docs')}</strong><small>${t('garage.nav.mobileDocsSub')}</small></span></button>` +
+    `<strong>${t('garage.nav.docs')}</strong></span></button>` +
     `<button type="button" data-mobile-nav="locale" aria-label="${localeSwitchLabel}">` +
     `${uiIconSVG('globe', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('settings.language.title')}</strong><small>EN / 中文</small></span></button>` +
     `<button type="button" data-mobile-nav="record">` +
     `${uiIconSVG('record', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
-    `<strong>${t('garage.nav.record')}</strong><small>${t('garage.nav.mobileRecordSub')}</small></span></button>` +
+    `<strong>${t('garage.nav.record')}</strong></span></button>` +
     `<button type="button" data-mobile-nav="environment">` +
     `${uiIconSVG('garage', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
-    `<strong>${t('garage.nav.stagingArea')}</strong><small>${t('garage.tools.chooseStaging')}</small></span></button></div></nav>` +
+    `<strong>${t('garage.nav.stagingArea')}</strong></span></button></div></nav>` +
     `<div class="cot-battle-control">` +
     `<button class="cot-battle" type="button" data-ui-sound="deploy" aria-label="${t('garage.battle.startBots')}">` +
     `<span class="battle-active-icon">${uiIconSVG('battleBots', 20)}</span>` +
-    `<span class="battle-word">${t('garage.battle')}</span></button>` +
+    `<span class="battle-word">${t('garage.battle')}</span>${keycap('Enter')}</button>` +
     `<button class="cot-battle-mode" type="button" aria-haspopup="dialog" aria-expanded="false" ` +
     `aria-controls="cot-battle-menu" aria-label="${t('garage.battle.menuTypeBots')}">` +
     `<span>${t('garage.battle.typeBots')}</span></button>` +
@@ -733,18 +734,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<nav class="cot-garage-tools" aria-label="${t('garage.tools.stagingAreas')}">` +
     `<button class="cot-garage-tool cot-garage-preview-card" type="button" data-garage-panel="maps" ` +
     `aria-label="${t('garage.tools.chooseStaging')}" aria-expanded="false" aria-controls="cot-garage-maps">` +
-    `<span class="cot-garage-preview-head">${uiIconSVG('map', 15)}<strong>${t('garage.tools.battlefields')}</strong><small>${t('garage.setup.selected')}</small></span>` +
+    `<span class="cot-garage-preview-head">${uiIconSVG('map', 15)}<strong>${t('garage.tools.battlefields')}</strong></span>` +
     `<span class="cot-garage-map-preview" aria-hidden="true"></span>` +
     `<span class="cot-garage-preview-foot"><span data-garage-map-name></span>` +
-    `<small>${t('garage.setup.change')} ${uiIconSVG('chevronRight', 9)}</small></span></button>` +
+    `${uiIconSVG('chevronRight', 14)}</span></button>` +
     `<button class="cot-garage-tool cot-garage-preview-card" type="button" data-garage-panel="appearance" ` +
     `aria-label="${t('garage.tools.appearanceHint')}" aria-expanded="false" aria-controls="cot-garage-camos">` +
-    `<span class="cot-garage-preview-head">${uiIconSVG('camouflage', 15)}<strong>${t('garage.tools.camos')}</strong><small>${t('garage.setup.selected')}</small></span>` +
+    `<span class="cot-garage-preview-head">${uiIconSVG('camouflage', 15)}<strong>${t('garage.tools.camos')}</strong></span>` +
     `<span class="cot-garage-camo-preview" aria-hidden="true">` +
     `<canvas width="64" height="44"></canvas><canvas width="64" height="44"></canvas>` +
     `<canvas width="64" height="44"></canvas><canvas width="64" height="44"></canvas></span>` +
     `<span class="cot-garage-preview-foot"><span data-garage-camo-name></span>` +
-    `<small>${t('garage.setup.change')} ${uiIconSVG('chevronRight', 9)}</small></span></button></nav>` +
+    `${uiIconSVG('chevronRight', 14)}</span></button></nav>` +
     `<button class="cot-garage-panel-scrim" type="button" aria-label="${t('garage.tools.close')}"></button>` +
     `<div class="stats" id="cot-garage-dossier" data-locked="${t('garage.vehicleLocked')}"></div>` +
     `<div class="cot-country-rail">` +
@@ -768,16 +769,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `title="${t('garage.tools.environments')}" aria-haspopup="listbox" aria-expanded="false" ` +
     `aria-controls="cot-garage-variant-menu">` +
     `<img class="cot-garage-variant-trigger-thumb" alt="" draggable="false">` +
-    `<span class="cot-garage-variant-trigger-copy"><small>${uiIconSVG('garage', 11)}` +
-    `<span>${t('garage.nav.stagingArea')}</span></small>` +
+    `<span class="cot-garage-variant-trigger-copy">` +
     `<strong class="cot-garage-variant-label">${t('garage.tools.environments')}</strong></span>` +
-    `<span class="cot-garage-variant-action"><span>${t('garage.setup.change')}</span>` +
-    `${uiIconSVG('chevronRight', 11, 'currentColor', 'cot-garage-variant-chevron')}</span></button></div>` +
+    `<span class="cot-garage-variant-action">` +
+    `${uiIconSVG('chevronRight', 16, 'currentColor', 'cot-garage-variant-chevron')}</span></button></div>` +
     `<div class="cot-maps" id="cot-garage-maps"></div>` +
     `<div class="cot-camos" id="cot-garage-camos"></div></div>` +
     `<div class="cot-garage-variant-menu" id="cot-garage-variant-menu" role="listbox" data-heading="${t('garage.tools.stagingAreas')}" ` +
     `aria-label="${t('garage.tools.environments')}" hidden></div>` +
-    `<div class="hint">&#8592; &#8594; ${t('garage.hint.select')} &nbsp;&middot;&nbsp; ${t('garage.hint.battle')}</div>`;
+    // The showroom's lower third (brand-ui S2): the selected tank's name, once and large, over its identity as a flag and
+    // glyphs. Desktop shows it beside the stage; layouts that fold the panels keep the name in the dossier's head instead.
+    `<section class="cot-lower-third" aria-live="polite"><h2 class="cot-lt-name"></h2><div class="cot-lt-id"></div></section>`;
   document.body.appendChild(root);
   mountGitHubStars(root);
 
@@ -2342,8 +2344,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       chip.dataset.country = group.id;
       chip.title = t('garage.country.chipTitle', { name: group.name, count });
       chip.setAttribute('aria-label', t('garage.country.chipAria', { name: group.name }));
-      chip.innerHTML = `${flagIconHTML(group.nation, 22)}` +
-        `<span class="code">${group.label}</span><span class="ct">${count}</span>`;
+      // The flag names the nation (owner UI rule 3); the chip keeps its name for assistive technology and its count.
+      chip.innerHTML = `${flagIconHTML(group.nation, 28, 21)}<span class="ct num">${count}</span>`;
       chip.addEventListener('click', () => {
         emit('ui:click', {});
         applyCountryFilter(group.id);
@@ -2592,10 +2594,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const value = opts.mod ? `<span class="eqmod">${valueText}</span>` : valueText;
     const title = opts && opts.title ? ` title="${opts.title}"` : '';
     const icon = opts?.icon || 'speed';
+    // The fixed 20-cell scale (brand-ui SPEC 6.2): the raw value above, the peer-normalised rating as lit cells.
     return `<div class="srow"${title}><span class="sicon">${uiIconSVG(icon, 16)}</span>` +
       `<div class="lr"><span>${label}</span>` +
-      `<b>${value}</b></div>` +
-      `<div class="track"><div class="fill" style="width:${pct}%"></div></div></div>`;
+      `<b>${value}</b></div>${scale20(Math.round(Number(pct) / 5))}</div>`;
   }
 
   function activateTechnicalTab(tab: HTMLButtonElement): void {
@@ -2669,7 +2671,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           `${equipIconSVG(item.id, 26)}<span class="sl">${t(`equipment.${item.id}.short`) || item.short}</span></button>`
         : `<button type="button" class="eqslot empty" data-slot="${index}" ` +
           `aria-label="${escapeHtmlAttribute(slotLabel)}" title="${escapeHtmlAttribute(tooltip)}">` +
-          `<span class="plus">+</span><span class="sl">${t('garage.equipment.empty.name')}</span></button>`);
+          `<span class="plus">+</span></button>`);
     }
     return slots.join('');
   }
@@ -2698,6 +2700,47 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       : salvo ? `<div class="magazine-spec"><span>${t('garage.stat.missileSalvo')}</span><b>` +
         `${salvo.rounds} ${t('garage.stat.rounds')} &middot; ${(salvo.intervalS * reloadMultiplier).toFixed(2)} ${t('garage.stat.cycle')} &middot; ` +
         `${reloadS.toFixed(1)} ${t('garage.stat.fullReload')}</b></div>` : '';
+  }
+
+  const ERA_GLYPH: Readonly<Record<string, string>> = Object.freeze({
+    'next-generation': 'eraNextGeneration', modern: 'eraModern', 'cold-war': 'eraColdWar', ww2: 'eraWorldWarII', interwar: 'eraInterwar',
+  });
+  const lowerThird = requiredElement<HTMLElement>(root, '.cot-lower-third');
+  const lowerName = requiredElement<HTMLElement>(lowerThird, '.cot-lt-name');
+  const lowerId = requiredElement<HTMLElement>(lowerThird, '.cot-lt-id');
+  let lowerClassFor = '';
+  /** The name once, in the display voice: a short trailing designation (3, 2A6, HC, SEPv3) in the accent. */
+  function renderLowerThird(spec: GarageTankSpec, crew: number): void {
+    const name = spec.label?.displayName || spec.name;
+    const at = name.lastIndexOf(' ');
+    const tail = at > 0 ? name.slice(at + 1) : '';
+    lowerName.textContent = tail && tail.length <= 5 ? name.slice(0, at + 1) : name;
+    if (tail && tail.length <= 5) {
+      const accent = document.createElement('span');
+      accent.className = 'acc';
+      accent.textContent = tail;
+      lowerName.append(accent);
+    }
+    lowerName.classList.toggle('is-long', name.length > 16);
+    const tier = tierNumeral(spec.id) || '';
+    lowerId.innerHTML =
+      `<span class="lt-nation">${flagIconHTML(spec.nation, 32, 24)}<span>${tNation(spec.nation)}</span></span>` +
+      `<span>${uiIconSVG(ERA_GLYPH[spec.era] || 'eraModern', 18)}<span>${vehicleEraLabelI18n(spec.era, t)}</span></span>` +
+      (tier ? `<span class="lt-tier">${tierChipHTML(tier)}</span>` : '') +
+      `<span title="${escapeHtmlAttribute(t('garage.dossier.section.crew'))}">${uiIconSVG('crew', 18)}<span class="num">${crew}</span></span>` +
+      `<span class="lt-class" hidden></span>`;
+    // The class glyph and name ride with the facet tables, loaded beside the stage (never in the boot graph); the slot
+    // closes the row, so its arrival moves nothing.
+    lowerClassFor = spec.id;
+    void Promise.all([import('../vehicles/vehicleFacets.ts'), import('./vehicleFacetIcons.ts')]).then(([facets, icons]) => {
+      if (lowerClassFor !== spec.id) return;
+      const value = facets.vehicleClassForId(spec.id);
+      const slot = lowerId.querySelector<HTMLElement>('.lt-class');
+      if (!value || !slot) return;
+      slot.innerHTML = `${icons.vehicleClassGlyphSVG(value, 18)}<span>${facets.vehicleFacetLabel(facets.VEHICLE_CLASS_META[value], t, { short: true })}</span>`;
+      slot.title = facets.vehicleFacetLabel(facets.VEHICLE_CLASS_META[value], t);
+      slot.hidden = false;
+    }).catch(() => {});
   }
 
   function renderStats(spec: GarageTankSpec): void {
@@ -2786,7 +2829,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `aria-label="${t('garage.dossier.expand.aria', { name: spec.label?.displayName || spec.name, view: initialTechnicalViewLabel })}">` +
       `<img src="${iconUrl(spec.id, initialTechnicalView.assetView)}" alt="" ` +
       `data-technical-image draggable="false" loading="lazy" decoding="async" fetchpriority="low">` +
-      `<span class="cot-technical-expand-label">${uiIconSVG('zoomIn', 14)}${t('garage.dossier.expand')}</span></button>` +
+      `<span class="cot-technical-expand-label">${uiIconSVG('zoomIn', 16)}</span></button>` +
       `<figcaption data-technical-caption-output>${initialTechnicalViewCaption}</figcaption></figure>` +
       `<button class="cot-gallery-link cot-technical-gallery" type="button" ` +
       `data-gallery-layer="${initialTechnicalView.galleryLayer}" data-technical-gallery>` +
@@ -2864,6 +2907,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<button class="cot-layer-link" type="button" data-gallery-layer="modules">${uiIconSVG('gallery', 13)}${t('garage.dossier.modules.open')}</button></section>` +
       `<section class="cot-stat-section">${statSectionTitle('crew', t('garage.dossier.section.crew'), `${crewRows.length} ${t('garage.dossier.crew.stations')}`, 'Crew')}` +
       `<div class="cot-crew-grid">${crewChips}</div></section>`;
+    renderLowerThird(spec, crewRows.length);
     const dossierName = requiredElement<HTMLElement>(statsEl, 'h3');
     dossierName.textContent = spec.label?.displayName || spec.name;
     // a long name sets a step smaller and may take a third line, so the compact phone head holds it whole (garage.css)

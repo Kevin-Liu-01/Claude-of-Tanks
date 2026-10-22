@@ -19,7 +19,7 @@ const LAYER_ORDER = '@layer reset,tokens,base,components,surfaces,utilities,over
 /** The Garage, Deploy, settings, service record and mission brief (the game document and the Studio's). */
 const SHELL: readonly string[] = [
   // game bar and garage
-  '.nv .nav-label', '.cot-locale-options span', '.cot-battle-mode span', '.cot-multiplayer-entry span', '.cot-garage .hint',
+  '.nv .nav-label', '.cot-locale-options span', '.cot-battle-mode span', '.cot-multiplayer-entry span',
   '.cot-garage-variant-trigger-copy strong', '.cot-garage-variant-trigger-copy small span', '.cot-garage-variant-action span',
   '.cot-sidebar-section-title span',
   "body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>span",

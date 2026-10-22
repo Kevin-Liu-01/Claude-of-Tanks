@@ -137,6 +137,7 @@ import {
 } from './vehicles/materials.ts';
 import './ui/motion.css';
 import './ui/responsiveSurfaces.css';
+import './ui/components/components.css';
 import './ui/garage.css';
 import './ui/battleTimeChoices.css';
 import { createGarage } from './ui/garage.ts';

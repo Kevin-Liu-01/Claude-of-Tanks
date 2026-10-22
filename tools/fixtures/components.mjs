@@ -2,12 +2,12 @@
 // diffs. Dev only (tools/fixtures/components.html); never shipped. ?lang=zh-CN renders the Chinese catalog.
 import '../../src/ui/tokens/tokens.css';
 import '../../src/ui/motion.css';
+import '../../src/ui/components/components.css';
 import {
-  button, chip, ensureComponentStyles, keycap, scaleCells, segmented, statRow, tabs, tag, toggle, vehicle, wireRoving,
+  button, chip, keycap, scaleCells, segmented, statRow, tabs, tag, toggle, vehicle, wireRoving,
 } from '../../src/ui/components/components.ts';
 import { t } from '../../src/ui/i18n.ts';
 
-ensureComponentStyles();
 const section = (title, body) => `<section><h2>${title}</h2><div class="row">${body}</div></section>`;
 const variants = ['primary', 'secondary', 'ghost', 'quiet', 'danger'];
 const sizes = [36, 48, 56, 64];
