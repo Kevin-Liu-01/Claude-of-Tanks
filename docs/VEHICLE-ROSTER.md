@@ -97,8 +97,8 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 87 | PROD | `ztz99_longwei` | ZTZ-99 Longwei | China | IX | Modern | Production |
 | 88 | PROD | `type96b` | Type 96B | China | X | Modern | Production |
 | 89 | PROD | `type96_72_long` | Type 96-72 Lóng (Concept) | China | IX | Modern | Production |
-| 90 | PROD | `type96_80_feng` | Type 96-80 Fēng (Concept) | China | X | Modern | Production |
-| 91 | PROD | `type96_72m_lei` | Type 96-72M Léi (Concept) | China | X | Modern | Production |
+| 90 | PROD | `type96_80_feng` | Type 96-80 Fēng | China | X | Modern | Production |
+| 91 | PROD | `type96_72m_lei` | Type 96-72M Léi | China | X | Modern | Production |
 | 92 | PROD | `aft10` | AFT-10 | China | X | Modern | Production |
 | 93 | PROD | `ztz99a` | ZTZ-99A | China | X | Modern | Production |
 | 94 | PROD | `ztz99a2` | ZTZ-99A2 | China | X | Modern | Production |
@@ -214,20 +214,20 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 204 | PROD | `amx10p_25` | AMX-10P 25 | France | X | Cold War | Production |
 | 205 | PROD | `marder2` | Marder 2 | Germany | X | Modern | Production |
 | 206 | PROD | `m6_linebacker` | M6 Linebacker | USA | X | Modern | Production |
-| 207 | PROD | `t80u_zoria` | T-80U Zoria (Concept) | Ukraine | X | Next Generation | Production |
-| 208 | PROD | `t72b3m_hetman` | T-72B3M Hetman (Concept) | Ukraine | X | Next Generation | Production |
-| 209 | PROD | `t72b3m_hetman_ii` | T-72B3M Hetman II (Concept) | Ukraine | X | Next Generation | Production |
-| 210 | PROD | `t72b3_sich` | T-72B3 Sich (Concept) | Ukraine | X | Next Generation | Production |
-| 211 | PROD | `t80u_husarz` | T-80U Husarz (Concept) | Poland | X | Next Generation | Production |
-| 212 | PROD | `t72b3m_wilk` | T-72B3M Wilk (Concept) | Poland | X | Next Generation | Production |
-| 213 | PROD | `t72b3_zubr` | T-72B3 Zubr (Concept) | Poland | X | Next Generation | Production |
-| 214 | PROD | `t72b3_zubr_ii` | T-72B3 Zubr II (Concept) | Poland | X | Next Generation | Production |
-| 215 | PROD | `t80u_yun` | T-80U Yun (Concept) | China | X | Next Generation | Production |
-| 216 | PROD | `t72b3m_kunlun` | T-72B3M Kunlun (Concept) | China | X | Next Generation | Production |
-| 217 | PROD | `t72b3_qilin` | T-72B3 Qilin (Concept) | China | X | Next Generation | Production |
-| 218 | PROD | `t80u_bars_m` | T-80U Bars-M (Concept) | Russia | X | Next Generation | Production |
-| 219 | PROD | `t72b3m_bulat_m` | T-72B3M Bulat-M (Concept) | Russia | X | Next Generation | Production |
-| 220 | PROD | `t72b3_bastion_m` | T-72B3 Bastion-M (Concept) | Russia | X | Next Generation | Production |
+| 207 | PROD | `t80u_zoria` | T-80U Zoria | Ukraine | X | Next Generation | Production |
+| 208 | PROD | `t72b3m_hetman` | T-72B3M Hetman | Ukraine | X | Next Generation | Production |
+| 209 | PROD | `t72b3m_hetman_ii` | T-72B3M Hetman II | Ukraine | X | Next Generation | Production |
+| 210 | PROD | `t72b3_sich` | T-72B3 Sich | Ukraine | X | Next Generation | Production |
+| 211 | PROD | `t80u_husarz` | T-80U Husarz | Poland | X | Next Generation | Production |
+| 212 | PROD | `t72b3m_wilk` | T-72B3M Wilk | Poland | X | Next Generation | Production |
+| 213 | PROD | `t72b3_zubr` | T-72B3 Zubr | Poland | X | Next Generation | Production |
+| 214 | PROD | `t72b3_zubr_ii` | T-72B3 Zubr II | Poland | X | Next Generation | Production |
+| 215 | PROD | `t80u_yun` | T-80U Yun | China | X | Next Generation | Production |
+| 216 | PROD | `t72b3m_kunlun` | T-72B3M Kunlun | China | X | Next Generation | Production |
+| 217 | PROD | `t72b3_qilin` | T-72B3 Qilin | China | X | Next Generation | Production |
+| 218 | PROD | `t80u_bars_m` | T-80U Bars-M | Russia | X | Next Generation | Production |
+| 219 | PROD | `t72b3m_bulat_m` | T-72B3M Bulat-M | Russia | X | Next Generation | Production |
+| 220 | PROD | `t72b3_bastion_m` | T-72B3 Bastion-M | Russia | X | Next Generation | Production |
 
 ## Policy ownership
 

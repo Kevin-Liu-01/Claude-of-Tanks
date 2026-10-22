@@ -1717,6 +1717,7 @@
     "tools/mp-exit-e2e.selftest.mjs": 42000,
     "tools/mp-p2p-decline.selftest.mjs": 20000,
     "tools/mp-p2p-headless-crash.selftest.mjs": 23000,
+    "tools/mp-p2p-early-link.selftest.mjs": 14000,
     "tools/mp-p2p-headless.selftest.mjs": 18000,
     "tools/mp-p2p-peer.selftest.mjs": 41000,
     "tools/mp-p2p-stepdown.selftest.mjs": 27000,

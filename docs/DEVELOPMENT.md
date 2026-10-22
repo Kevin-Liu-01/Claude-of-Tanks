@@ -244,6 +244,21 @@ no enforced CSP yet: the inline scripts would need build-time hashes.
 
 The selftest runners wait for the shared capture lock (`/tmp/cot-shots.lock`, FIFO tickets in `/tmp/cot-shots.queue`) before their browser receipts; `COT_SHOTS_LOCK_TIMEOUT_MS` sets that wait (default 45 min — chain 94 died at 1/413 behind another session's browser audit, so landing chains export three hours).
 
+### Owned capture holds (2026-10-21)
+
+On 2026-10-21 three GPU captures overlapped. Hold A's lock directory was removed while A still ran, B took the free path,
+and A's failing `release()` then removed B's directory, so C got in while B ran. All three results were voided. Each
+hold now writes `owner.json` (pid, nonce, ticket and stamp, the directory's dev:inode, and the start time) into the
+directory it creates. `refresh()` and `release()` act only on their own hold. They return `true` when they acted. If the
+lock at the path is not theirs, they log the refusal, touch nothing and return `false`. Stale recovery removes a lock
+only when its owner pid is dead, or when the lock has gone `lockStaleMs` without a refresh and that pid now names
+another process. A late refresh from a live owner never frees the lock. A lock directory without a token (from an
+older copy) is reaped only when it is empty and four times `lockStaleMs` old. Releasing or reaping renames the
+directory away and then clears it, together with its `*.holder` files. Any waiter may clear a dead owner's lock, but
+only the queue head claims. A caller that must not keep results from a hold it lost can check that `refresh()` still
+returns `true` before saving them. `tools/visual-census-lock.mjs` uses the same owned holds, and so does capture lane
+2's copy (`~/cot-launch-state/tools/capture-lock-lane2.mjs`).
+
 ### The rooms Worker's TypeScript program (2026-09-28)
 
 `cloudflare/rooms/tsconfig.json` compiles the Worker with `lib: ["ES2022"]` and no DOM, and a **type-only** import still joins a

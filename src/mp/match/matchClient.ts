@@ -431,6 +431,12 @@ export class MatchClient {
 
   connect(): void {
     if (this.disposed) throw new Error('match client disposed');
+    // 2026-10-20 (item/mp-rejoin-229): a link the session opened beside the world load is open already, and its `open`
+    // went by before this client listened: the handshake starts on it now. Connecting or reconnecting, its `open` is ahead.
+    if (this.transport.state === 'open') {
+      this.transportChanged({ state: 'open', previous: 'connecting', attempt: 0, resumed: false });
+      return;
+    }
     this.transport.open();
   }
 

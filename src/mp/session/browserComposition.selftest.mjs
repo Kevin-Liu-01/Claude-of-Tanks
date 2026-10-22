@@ -301,6 +301,7 @@ function createHarness({ loadWorld, blackWatchdog, compile, entryTimeoutMs = 120
       nextFrame: async () => { calls.push('nextFrame'); },
       setAdaptiveSuspended: (value) => calls.push(`adaptive:${value}`),
       recordTrace: (trace) => { ports.trace = trace; },
+      rememberRound: (round) => { (ports.remembered ??= []).push(round); },
       recordEntryFailure: (failure) => { ports.failure = failure; },
       recordSlowEntry: (beacon) => { calls.push(`slowEntry:${beacon.stage}:${beacon.code}:${beacon.pending}`); (ports.slowEntries ??= []).push(beacon); },
       ...(loadAuthorityObstacles ? { loadAuthorityObstacles: (mapId, signal) => { calls.push(`authorityObstacles:${mapId}:${signal instanceof AbortSignal}`); return loadAuthorityObstacles(mapId, signal); } } : {}),
@@ -427,6 +428,8 @@ assert.equal(composition.active, true);
 assert.equal(composition.inMatch, false);
 assert.ok(calls.includes('loadModules') && calls.includes('ensureBattleVisuals') && calls.includes('loadWorld:alpine:null'), 'modules, visuals and the round map load together');
 assert.ok(calls.indexOf('battleStart:me:m1a1_abrams_hc:alpine') < calls.indexOf('loadWorld:alpine:null'), 'the battle-start intent precedes the world load');
+// 2026-10-20 (item/mp-rejoin-229): the round is remembered for a reload, so a tab reopened on the invite builds its battlefield during boot
+assert.deepEqual(harness.ports.remembered, [{ roomCode: 'ABC123', matchId: 'match-1', mapId: 'alpine', terrainVariant: null }], 'the entered round is remembered');
 assert.equal(harness.battleLoad.shows.at(-1).mapName, 'Map alpine', 'the loader names the concrete battlefield of match_start, not the room default');
 assert.equal(harness.battleLoad.shows.at(-1).allies[0].isPlayer, true);
 assert.equal(harness.battleLoad.shows.at(-1).enemies[0].id, 'm1a1_abrams_hc');
@@ -788,6 +791,7 @@ assert.ok(harness.menu.updates >= 1, 'later room states update the attached lobb
   let settled = null;
   midEntry.then((value) => { settled = value; });
   mid.composition.leaveRoom('explicit_leave');
+  assert.equal(mid.ports.remembered.at(-1), null, 'an explicit leave forgets the remembered round (no warm for a room left on purpose)');
   assert.equal(mid.lifecycle.pending, true, 'the entry stays held until the covered restore is done');
   await settle(4);
   assert.equal(settled, false, 'the entry settles false after the restore');

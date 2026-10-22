@@ -61,6 +61,9 @@ export interface TankArmorPose {
 export interface EraProtection {
   keReduction: number;
   ceFlatMm: number;
+  /** A block that defeats tandem warheads (owner 2026-10-21: Hetman II's Duplet): a tandem round's precursor does not
+   * clear it, so its main charge still loses ceFlatMm here (sim/damage.ts). Absent: a tandem round passes every ERA. */
+  antiTandem?: boolean;
 }
 
 export interface ArmorPlate {
