@@ -1,5 +1,28 @@
 # Type 99A / ZTZ-99A (`type99a`) — BASE-21 photo-class packet
 
+> **CURRENT AUTHORITY (release 233, 2026-10-21): the Longwei redesign.** The owner asked to "completely redesign the
+> longwei" (`ztz99_longwei`, the old `type99a` id). The vehicle is now an original PLA design built in
+> `src/vehicles/profiles/longwei.ts` on the certified Type 99A print-loft hull below (structure moved there from
+> `modern2.ts` unchanged; the old 99A rotating assembly and the VT-4-derived chevron turret are retired):
+> - **Turret:** a terraced front on a 16.4-degree blunt prow: a lower composite tier carrying three FY-5 bricks a side
+>   (`turret_era_L/R`), a 24-degree step, an upper tier set back 0.26 m, both tiers bevelled 45 degrees at their outer
+>   corners; three spaced composite side modules a side; a square box mantlet in a 0.72 m throat; a long bustle
+>   (underside 0.34 m over the ring, clear of the raised engine deck at every yaw) with two bins a side, two blow-off
+>   panels and a rear basket.
+> - **Roof:** gunner's low sight (left), commander's panoramic sight on a 0.55 m mast (right), a shielded QJC-88 on a
+>   socket post, a GL-5-style hard-kill suite (four flat radar faces at the corners, two two-cell launchers, a
+>   processor case and cables), whips and a
+>   meteorological mast. Smoke: two four-tube banks on each side's forward side modules (16 tubes; the decor's cheek
+>   pair is dropped for this id).
+> - **Gun:** 125 mm on the unchanged trunnion and 6.454 m length: a mid-barrel evacuator between two thermal-sleeve
+>   runs, a thick muzzle end and an MRS.
+> - **Hull dress:** a straight FY-5 glacis grid (`glacis_era_L/R`) with low lamp cowls under the gun's depression
+>   line; skirts with two staggered brick courses (`skirt_era_L/R`) over a carrier and slat armour over the engine bay;
+>   low rear fender bins; an armoured stern bin in place of the fuel drums.
+> - **Combat envelope:** `createType99Armor('ztz99_longwei')` now follows this geometry (plate strengths carried over).
+>   The Type 96B X, which had taken its frame from the Longwei, keeps the retired envelope frozen as
+>   `createType99Armor('type96b_frame')`.
+
 > **CURRENT AUTHORITY (2026-08-12):** the `6d52abda` first-party
 > strict-clearance freeze at the end of this packet supersedes the historical
 > no-oracle/build-ready state, the §5.51/§5.52 print-loft builder and the

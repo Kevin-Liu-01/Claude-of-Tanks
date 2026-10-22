@@ -50,8 +50,8 @@ for (const [id, authoredPivotY, authoredPivotZ] of [
     'Type 99A flank crosses the visible skirt and outer sponson before the interior');
   const turret = plateHits(armor, [4, 2.10, 0.40], [-4, 2.10, 0.40])
     .map((hit) => hit.plate.name);
-  assert.deepEqual(turret.slice(0, 2), ['turret_side_forward_R', 'turret_era_R'],
-    'Type 99A turret flank crosses the welded wall and integrated chevron layer');
+  assert.deepEqual(turret.slice(0, 2), ['turret_side_forward_R', 'turret_side_forward_L'],
+    'Longwei turret flank crosses its side modules (release 233: the terraced front stands ahead of this line)');
   const roof = plateHits(armor, [0, 4, -2.40], [0, -1, -2.40]);
   assert.equal(roof[0].plate.name, 'hull_roof_engine', 'Type 99A raised engine deck is the roof surface');
   assert(Math.abs(roof[0].point.y - 1.78) < 1e-8, 'Type 99A engine deck sits at the rendered 1.78 m line');
