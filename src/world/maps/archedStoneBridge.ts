@@ -243,17 +243,131 @@ export function prism(input: readonly (readonly [number, number])[], y0: number,
   return g;
 }
 
-/** Temporaries merged into one fresh geometry with the three streams the stone bucket keeps (each source disposed). */
-export function mergeStone(parts: THREE.BufferGeometry[]): THREE.BufferGeometry {
+/** Temporaries merged into one fresh geometry with the three streams the stone bucket keeps (each source disposed); with
+ *  `colour`, the regional stone's fourth (the vertex tone). */
+export function mergeStone(parts: THREE.BufferGeometry[], colour = false): THREE.BufferGeometry {
   const flat = parts.map((p) => {
     const g = p.index ? p.toNonIndexed() : p;
     const out = new THREE.BufferGeometry();
-    for (const k of ['position', 'normal', 'uv']) { const a = g.getAttribute(k); if (a) out.setAttribute(k, a); }
+    for (const k of colour ? ['position', 'normal', 'uv', 'color'] : ['position', 'normal', 'uv']) { const a = g.getAttribute(k); if (a) out.setAttribute(k, a); }
     return out;
   });
   const g = mergeGeometries(flat, false);
   for (const p of parts) p.dispose();
   if (!g) throw new Error('archedStoneBridge: the masonry does not merge');
+  return g;
+}
+
+type Rgb = readonly [number, number, number];
+
+/**
+ * (the owner, 2026-10-21, on the Ronda bridge: "kind of ugly ... it just looks like a mass of repeated textures") the gorge
+ * bridge's stone is laid as the village's walls are — the regional stone material: its per-vertex tone and the walls'
+ * rain runs — in two roles. The body (spandrels, vault soffits, piers, wings, the deck's edge) in the dressed ashlar's
+ * courses at 0.24 repeats a metre (the village's 0.5; courses of 0.4-0.6 m, the Puente Nuevo's), whose 2.4 m lifts each
+ * take a tone a few per cent off their neighbours', darker with the damp over the lowest ten metres and in the vaults'
+ * soffits (andalusian.ts lays the kit's sandstone dressed: the rough one's patchwork of block colours halved). The
+ * dressed trim (voussoirs, cutwater caps, cornice, corbels, spouts, copings, posts) paler at the village's density, each
+ * stone its own shade; the footways' flags greyer. Colour and UV only: the geometry, the map stream's draws and the record
+ * are unchanged.
+ */
+const RONDA_BODY_UV = 0.24 / 0.7;
+const RONDA_TRIM_UV = 0.5 / 0.7;
+const RONDA_LIFT_M = 2.4;
+const RONDA_BODY: Rgb = [0.9, 0.84, 0.76];
+const RONDA_TRIM: Rgb = [1.1, 1.07, 1.01];
+const RONDA_FLAGS: Rgb = [0.84, 0.83, 0.82];
+
+/** A face's weathering at height h over the footing, its normal rising ny: the damp darkens the lowest ten metres (to 0.64
+ *  at the foot), a soffit takes the vault's shade (to 0.6 facing straight down), a face turned up neither. */
+function rondaWeather(h: number, ny: number): number {
+  if (ny > 0.6) return 1;
+  const t = Math.min(1, Math.max(0, h / 10));
+  const damp = 0.64 + 0.36 * t * t * (3 - 2 * t);
+  return ny < -0.2 ? damp * (1 - 0.4 * Math.min(1, (-ny - 0.2) / 0.6)) : damp;
+}
+
+/** A lift's tone: 0.94-1.04, fixed by its index and the bridge. */
+function rondaLiftTone(lift: number, seed: number): number {
+  const s = Math.sin((lift + 1) * 12.9898 + seed * 0.0137) * 43758.5453;
+  return 0.94 + 0.1 * (s - Math.floor(s));
+}
+
+/** A constant vertex tone over a piece (its stone's own shade). */
+function paintPiece(g: THREE.BufferGeometry, c: Rgb): THREE.BufferGeometry {
+  const n = g.getAttribute('position').count, col = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) col.set(c, i * 3);
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  return g;
+}
+
+/** A polygon (x y z nx ny nz u v rows) clipped to the side of the plane y = h above or below it. */
+function clipY(poly: number[][], h: number, above: boolean): number[][] {
+  const out: number[][] = [];
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i], b = poly[(i + 1) % poly.length];
+    const ia = above ? a[1] >= h : a[1] <= h, ib = above ? b[1] >= h : b[1] <= h;
+    if (ia) out.push(a);
+    if (ia !== ib) {
+      // the edge in a canonical direction, so the two triangles sharing it cut it at the identical point
+      const [s, e] = a[0] < b[0] || (a[0] === b[0] && (a[1] < b[1] || (a[1] === b[1] && a[2] <= b[2]))) ? [a, b] : [b, a];
+      const t = (h - s[1]) / (e[1] - s[1]);
+      out.push(s.map((x, k) => (k === 1 ? h : x + (e[k] - x) * t)));
+    }
+  }
+  return out;
+}
+
+/** The body's stone: its triangles cut at the lifts' joints, each piece toned by its lift and weathered (source disposed). */
+function toneRondaBody(source: THREE.BufferGeometry, bottom: number, seed: number): THREE.BufferGeometry {
+  const g = source.index ? source.toNonIndexed() : source;
+  scaleUV(g, RONDA_BODY_UV, RONDA_BODY_UV);
+  const P = g.getAttribute('position'), N = g.getAttribute('normal'), U = g.getAttribute('uv');
+  const pos: number[] = [], nor: number[] = [], uv: number[] = [], col: number[] = [];
+  const vert = (i: number) => [P.getX(i), P.getY(i), P.getZ(i), N.getX(i), N.getY(i), N.getZ(i), U.getX(i), U.getY(i)];
+  const emit = (poly: number[][], lift: number) => {
+    const tone = rondaLiftTone(lift, seed);
+    for (let k = 1; k + 1 < poly.length; k++) for (const v of [poly[0], poly[k], poly[k + 1]]) {
+      pos.push(v[0], v[1], v[2]); nor.push(v[3], v[4], v[5]); uv.push(v[6], v[7]);
+      const damp = rondaWeather(v[1] - bottom, 0), w = rondaWeather(v[1] - bottom, v[4]) * tone;
+      // the damp's foot a little greener
+      col.push(RONDA_BODY[0] * w, RONDA_BODY[1] * w * (1 + 0.1 * (1 - damp)), RONDA_BODY[2] * w);
+    }
+  };
+  for (let i = 0; i + 2 < P.count; i += 3) {
+    const tri = [vert(i), vert(i + 1), vert(i + 2)];
+    const lo = Math.floor((Math.min(tri[0][1], tri[1][1], tri[2][1]) - bottom) / RONDA_LIFT_M);
+    const hi = Math.floor((Math.max(tri[0][1], tri[1][1], tri[2][1]) - bottom) / RONDA_LIFT_M - 1e-6);
+    if (lo >= hi) { emit(tri, lo); continue; }
+    for (let k = lo; k <= hi; k++) {
+      const piece = clipY(clipY(tri, bottom + k * RONDA_LIFT_M, true), bottom + (k + 1) * RONDA_LIFT_M, false);
+      if (piece.length >= 3) emit(piece, k);
+    }
+  }
+  if (g !== source) g.dispose();
+  source.dispose();
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  out.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  return out;
+}
+
+/** The trim's stone: its pieces' shades (or the trim's own) weathered at the village's density. */
+function toneRondaTrim(source: THREE.BufferGeometry, bottom: number): THREE.BufferGeometry {
+  const g = source.index ? source.toNonIndexed() : source;
+  if (g !== source) source.dispose();
+  scaleUV(g, RONDA_TRIM_UV, RONDA_TRIM_UV);
+  const P = g.getAttribute('position'), N = g.getAttribute('normal'), C = g.getAttribute('color');
+  const col = new Float32Array(P.count * 3);
+  for (let i = 0; i < P.count; i++) {
+    const w = rondaWeather(P.getY(i) - bottom, N.getY(i));
+    col[i * 3] = (C ? C.getX(i) : RONDA_TRIM[0]) * w;
+    col[i * 3 + 1] = (C ? C.getY(i) : RONDA_TRIM[1]) * w;
+    col[i * 3 + 2] = (C ? C.getZ(i) : RONDA_TRIM[2]) * w;
+  }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
   return g;
 }
 
@@ -325,15 +439,23 @@ function normanMasonry(b: {
  * from them, a two-step cornice under the parapets on its corbels with a stone spout every twelve metres, the parapets'
  * coping in lengths and their dado posts; on the deck the footways' flags behind their kerbs along both parapets and the
  * expansion joints over the piers. Visual only (the bridge's record is unchanged); a phone lays larger voussoirs and
- * leaves the corbels and the spouts. Returns the stone geometry and the iron (the joints' plates).
+ * leaves the corbels and the spouts. Returns the body's stone (the cutwaters' shafts, the pilasters), the trim's (every
+ * dressed piece and the flags, each in its stone's own shade: the vertex tone) and the iron (the joints' plates).
  */
 function rondaMasonry(b: {
   halfWidth: number; bodyHalf: number; parapetHalf: number; deckY: number; top: number; bottom: number; springY: number;
   centreY: number; radius: number; halfAngle: number; arcs: readonly number[]; piers: readonly number[]; seed: number;
   mobile: boolean;
-}): { stone: THREE.BufferGeometry; iron: THREE.BufferGeometry } {
-  const r = localRng(b.seed), parts: THREE.BufferGeometry[] = [], iron: THREE.BufferGeometry[] = [];
-  const add = (g: THREE.BufferGeometry) => { jitterUV(g, r); parts.push(g); };
+}): { body: THREE.BufferGeometry; trim: THREE.BufferGeometry; iron: THREE.BufferGeometry } {
+  const r = localRng(b.seed), shade = localRng(b.seed + 1);
+  const body: THREE.BufferGeometry[] = [], parts: THREE.BufferGeometry[] = [], iron: THREE.BufferGeometry[] = [];
+  // a dressed stone (or a flag) in its own shade; the body's shafts take their lifts' tone later (toneRondaBody)
+  const add = (g: THREE.BufferGeometry, tone: Rgb | null = RONDA_TRIM) => {
+    jitterUV(g, r);
+    if (!tone) { body.push(g); return; }
+    const s = 0.9 + 0.16 * shade();
+    parts.push(paintPiece(g, [tone[0] * s, tone[1] * s, tone[2] * s]));
+  };
   const RING = 1.05, PROUD = 0.12, BLOCK = b.mobile ? 1.8 : 0.95;
   const capTop = b.springY + 0.9;
   for (const face of [-1, 1]) {
@@ -359,11 +481,11 @@ function rondaMasonry(b: {
     for (const px of b.piers) {
       const w = BRIDGE_PIER_M * 0.55, out = BRIDGE_PIER_M * 0.95;
       const poly: [number, number][] = face > 0 ? [[px - w, zf], [px + w, zf], [px, zf + out]] : [[px + w, zf], [px - w, zf], [px, zf - out]];
-      add(prism(poly, b.bottom, capTop));
+      add(prism(poly, b.bottom, capTop), null);
       add(prism(poly, capTop, [capTop + 1.1, capTop + 1.1, capTop]));
       const pil = block(BRIDGE_PIER_M * 0.75, b.top - 0.8 - capTop - 0.9, 0.2, 0.7);
       pil.translate(px, (capTop + 0.9 + b.top - 0.8) / 2, zf + face * 0.1);
-      add(pil);
+      add(pil, null);
     }
     // the cornice under the parapet: a band and a deeper moulding over it, the body's length
     const band = block(b.bodyHalf * 2 + 0.4, 0.32, 0.2, 0.7);
@@ -407,11 +529,11 @@ function rondaMasonry(b: {
       const x0 = -b.bodyHalf + (k * b.bodyHalf * 2) / nFlag;
       const f = block((b.bodyHalf * 2) / nFlag - 0.03, 0.1, walkW - 0.03, 0.7);
       f.translate(x0 + b.bodyHalf / nFlag, b.deckY + 0.05, zIn - face * walkW / 2);
-      add(f);
+      add(f, RONDA_FLAGS);
     }
     const kerb = block(b.bodyHalf * 2, 0.16, kerbW, 0.7);
     kerb.translate(0, b.deckY + 0.08, zIn - face * (walkW + kerbW / 2));
-    add(kerb);
+    add(kerb, RONDA_FLAGS);
   }
   // the expansion joints over the piers and at the abutments: an iron plate across the carriageway
   const carriage = (b.halfWidth - BRIDGE_PARAPET_THICK_M - 1.7 - 0.24) * 2;
@@ -420,7 +542,7 @@ function rondaMasonry(b: {
     j.translate(x, b.deckY + 0.01, 0);
     iron.push(j);
   }
-  return { stone: mergeStone(parts), iron: mergeStone(iron) };
+  return { body: mergeStone(body), trim: mergeStone(parts, true), iron: mergeStone(iron) };
 }
 
 /** The parapets' runs (#27): about six metres each. */
@@ -550,12 +672,18 @@ export function addArchedStoneBridge(
   scaleUV(body, 0.7, 0.7); // the extrusion's UVs are metres; the stone bucket's boxes carry 0.7 per metre
   jitterUV(body, rng);
   alignWidth(body, ux, uz);
-  buckets.stone.push(body.translate(cx, 0, cz));
+  // (the owner, 2026-10-21) the Ronda bridge's stone goes to the regional material in its two roles once every piece is
+  // laid (toneRondaBody, toneRondaTrim); the other masonries keep the stone bucket
+  const rondaBody: THREE.BufferGeometry[] = [], rondaTrim: THREE.BufferGeometry[] = [];
+  const stoneOut = (g: THREE.BufferGeometry, trim = false): void => {
+    (style !== 'ronda' ? buckets.stone : trim ? rondaTrim : rondaBody).push(g);
+  };
+  stoneOut(body.translate(cx, 0, cz));
   // the deck slab, level and flush with the approaches (a thin slab takes per-face metre UVs — box() would stretch
   // the stone across the deck's width into stripes), and the parapets on its edges with end posts
   const slab = slabBox(bodyHalf * 2, BRIDGE_SLAB_M, width, 0.7);
   jitterUV(slab, rng);
-  buckets.stone.push(alignWidth(slab, ux, uz).translate(cx, deckY - BRIDGE_SLAB_M / 2, cz));
+  stoneOut(alignWidth(slab, ux, uz).translate(cx, deckY - BRIDGE_SLAB_M / 2, cz));
   const parapetHalf = bodyHalf + 0.2;
   // (#27) with the props' structure sink the parapets stand as structures of their own, in runs of about six metres,
   // each with its coping and its end post: a round's blow or a ram brings a run down as its own pieces (the sections
@@ -571,14 +699,14 @@ export function addArchedStoneBridge(
     const inset = halfWidth - BRIDGE_PARAPET_THICK_M / 2;
     const parapet = box(parapetHalf * 2, BRIDGE_PARAPET_HEIGHT_M, BRIDGE_PARAPET_THICK_M, 0.7);
     jitterUV(parapet, rng);
-    buckets.stone.push(alignWidth(parapet, ux, uz)
-      .translate(cx + vx * inset * side, deckY + BRIDGE_PARAPET_HEIGHT_M / 2, cz + vz * inset * side));
+    stoneOut(alignWidth(parapet, ux, uz)
+      .translate(cx + vx * inset * side, deckY + BRIDGE_PARAPET_HEIGHT_M / 2, cz + vz * inset * side), true);
     for (const end of [-1, 1]) {
       const post = box(0.8, BRIDGE_PARAPET_HEIGHT_M + 0.4, 0.8, 0.7);
       jitterUV(post, rng);
-      buckets.stone.push(alignWidth(post, ux, uz).translate(
+      stoneOut(alignWidth(post, ux, uz).translate(
         cx + ux * end * parapetHalf + vx * inset * side, deckY + (BRIDGE_PARAPET_HEIGHT_M + 0.4) / 2,
-        cz + uz * end * parapetHalf + vz * inset * side));
+        cz + uz * end * parapetHalf + vz * inset * side), true);
     }
   }
   // cutwaters on both faces of every pier, their noses turned into the stream (the Ronda masonry carries its own)
@@ -589,7 +717,7 @@ export function addArchedStoneBridge(
       const nose = box(BRIDGE_PIER_M * 0.8, cutwaterTop - bottom, BRIDGE_PIER_M * 0.8, 0.7);
       nose.rotateY(Math.PI / 4);
       jitterUV(nose, rng);
-      buckets.stone.push(alignWidth(nose, ux, uz).translate(
+      stoneOut(alignWidth(nose, ux, uz).translate(
         cx + ux * pierX + vx * (halfWidth + 0.5) * side, (cutwaterTop + bottom) / 2,
         cz + uz * pierX + vz * (halfWidth + 0.5) * side));
     }
@@ -604,7 +732,7 @@ export function addArchedStoneBridge(
       const wing = box(5.2, wingTop - foot, 0.9, 0.7);
       wing.rotateY(-end * side * 0.6);
       jitterUV(wing, rng);
-      buckets.stone.push(alignWidth(wing, ux, uz).translate(wingX, (foot + wingTop) / 2, wingZ));
+      stoneOut(alignWidth(wing, ux, uz).translate(wingX, (foot + wingTop) / 2, wingZ));
     }
   }
   // (#27) a Norman river bridge's masonry over the body: the arch rings, the string course, the coped parapets, the
@@ -612,10 +740,16 @@ export function addArchedStoneBridge(
   if (style === 'ronda') {
     const arcs = Array.from({ length: arches }, (_, i) => -wetSpan / 2 + chord / 2 + i * (chord + BRIDGE_PIER_M));
     const piers = Array.from({ length: arches - 1 }, (_, i) => -wetSpan / 2 + (i + 1) * chord + i * BRIDGE_PIER_M + BRIDGE_PIER_M / 2);
+    const seed = Math.round(cx * 13 + cz * 7);
     const g = rondaMasonry({ halfWidth, bodyHalf, parapetHalf, deckY, top, bottom, springY, centreY, radius, halfAngle,
-      arcs, piers, seed: Math.round(cx * 13 + cz * 7), mobile: getDeviceTier() === 'mobile' });
-    buckets.stone.push(alignWidth(g.stone, ux, uz).translate(cx, 0, cz));
+      arcs, piers, seed, mobile: getDeviceTier() === 'mobile' });
+    rondaBody.push(alignWidth(g.body, ux, uz).translate(cx, 0, cz));
+    rondaTrim.push(alignWidth(g.trim, ux, uz).translate(cx, 0, cz));
     buckets.dark.push(alignWidth(g.iron, ux, uz).translate(cx, 0, cz));
+    // one geometry in the regional stone (a bucket set without it, a receipt's: the stone bucket, untoned)
+    const toned = mergeStone([...rondaBody.map((p) => toneRondaBody(p, bottom, seed)), ...rondaTrim.map((p) => toneRondaTrim(p, bottom))], true);
+    if (buckets.regionalStone) buckets.regionalStone.push(toned);
+    else { toned.deleteAttribute('color'); buckets.stone.push(toned); }
   }
   if (style === 'norman') {
     const arcs = Array.from({ length: arches }, (_, i) => -wetSpan / 2 + chord / 2 + i * (chord + BRIDGE_PIER_M));
