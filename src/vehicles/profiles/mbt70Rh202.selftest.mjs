@@ -1,7 +1,7 @@
 // MBT-70 roof weapon (owner markup 2026-10-14 on its M2-derived machine-gun body; coordinator ruling: the KPz 70's
 // calibre-true 20 mm Rh 202 remote station and its weapon profile). The working roof gun is the 20 mm station on the
 // commander's station top, firing the 20 mm profile; no .50-calibre M2 remains on the turret; its traverse arc and
-// its full depression over that arc hold against the built stock.
+// depression table hold against the built stock.
 // 2026-10-21 (owner: "the mbt 70 needs a proper gun turret with a gun housing for a machine gun"): the station is a
 // small gun turret, an armoured housing on trunnions in an armoured yoke that elevates with the gun, the gun recoiling
 // inside it. Measured as workingPintleCradleAudit measures a working station (cnTurretGeometry.test-support.mjs
@@ -63,16 +63,26 @@ for (const quality of ['high', 'low']) {
     for (let yaw = gun.yawArc[0]; yaw <= gun.yawArc[1] + 1e-9; yaw += DEG) {
       for (let p = 0; p <= profile.elevationRad + 1e-9; p += .05) assert.ok(!probe(yaw, p), `clear at ${(yaw / DEG).toFixed(0)}°, +${p.toFixed(2)}`);
     }
-    // no depression table: the profile's full depression holds over the whole arc (every 2 degrees and at its ends)
-    assert.equal(gun.depressionByYaw, undefined, 'the station depresses fully over its arc');
+    // The depression the authority allows at a yaw (auxiliarySystems.ts depressionAt: outside the table the profile's,
+    // inside it the lesser end of the interval) holds against the stock over the whole arc: every half degree, and
+    // every 0.05 degree across the table's span (the left whip's tip is a few centimetres across).
+    const table = gun.depressionByYaw;
+    const allowed = (yaw) => {
+      if (yaw < table[0][0] || yaw > table.at(-1)[0]) return profile.depressionRad;
+      for (let i = 1; i < table.length; i++) if (yaw <= table[i][0]) return Math.min(profile.depressionRad, table[i - 1][1], table[i][1]);
+      return Math.min(profile.depressionRad, table.at(-1)[1]);
+    };
     const yaws = [];
-    for (let deg = gun.yawArc[0] / DEG; deg < gun.yawArc[1] / DEG; deg += 2) yaws.push(deg);
+    for (let deg = gun.yawArc[0] / DEG; deg < gun.yawArc[1] / DEG; deg += 0.5) yaws.push(deg);
+    for (let deg = table[0][0] / DEG; deg <= table.at(-1)[0] / DEG; deg += 0.05) yaws.push(deg);
     yaws.push(gun.yawArc[1] / DEG);
-    stationDepression(tank.root, station, profile, yaws).forEach((deepest, i) => assert.equal(deepest, profile.depressionRad,
-      `the full ${profile.depressionRad} rad depression holds at ${yaws[i].toFixed(0)}° (measured ${deepest})`));
+    stationDepression(tank.root, station, profile, yaws).forEach((deepest, i) => {
+      const want = allowed(yaws[i] * DEG);
+      assert.ok(want <= deepest + 1e-9, `the allowed ${want} rad depression holds at ${yaws[i].toFixed(2)}° (measured ${deepest})`);
+    });
   }
   tank.dispose();
 }
 console.log('mbt70Rh202: the 20 mm Rh 202 remote station is the working roof gun (20x139 mm, between the heavy MG and the 30 mm), '
   + 'an armoured gun housing elevating with it and the gun recoiling inside it, 1.5 mm clear through pitch and recoil; '
-  + 'no M2 remains, the arc and full depression hold against the stock');
+  + 'no M2 remains, arc and depression hold against the stock');

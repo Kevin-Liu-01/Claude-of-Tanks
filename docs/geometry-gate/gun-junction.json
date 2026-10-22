@@ -127,7 +127,7 @@
   "m6_linebacker": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"ca0c435e86d0c224","gun":"fe56f24dd4020f61"}},
   "marder1a3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6d47a1bc49807439","gun":"b14c562394d897b0"}},
   "marder2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a8c8d2da1ebb7462","gun":"ebbcd342b3c43bfc"}},
-  "mbt70": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b4c73f1e52bd41a9","gun":"b6ac88092ee5d83b"}},
+  "mbt70": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e3be37f4b2cf77fd","gun":"b6ac88092ee5d83b"}},
   "merkava1b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"8a3073deeab8a105","gun":"153c197ed7399646"}},
   "merkava2b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"13a6ffc979563550","gun":"1207587f7d389bed"}},
   "merkava2d": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5fd3d2e238ae9d72","gun":"5078349e266c90e4"}},

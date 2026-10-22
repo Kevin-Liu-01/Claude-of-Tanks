@@ -105,8 +105,11 @@ export function addMbt70Rh202(P: Rh202Port, top: number): THREE.Group {
   flush('recoil');
   // Traverse and depression measured against the built turret (tools/roof-station-arcs.mjs, 2026-10-21): the 2.06 m
   // reach clears everything from -155 to +158 degrees; behind that the rear whip antennas stop it, so the arc keeps its
-  // +-153 degrees. The trunnion now stands 50 mm higher, and the gun depresses the profile's full 0.14 rad over the whole
-  // arc (the old station's table held 0.103 rad over the turret's left side and 0.121 at the +153 degree stop).
+  // +-153 degrees. The gun depresses the profile's full 0.14 rad over the arc but for the left whip: its tip stands
+  // 1.63 m out at -114 degrees, and from -115.4 to -112.9 degrees the barrel clears it by 0.021 rad of depression at
+  // most (0.05-degree scan). The table holds 0.011 rad (0.01 margin) from -116 to -112.4 degrees: the authority takes
+  // the lesser end of each interval (auxiliarySystems.ts depressionAt).
   station.root.userData.yawArc = [-2.6704, 2.6704];
+  station.root.userData.depressionByYaw = [[-2.0246, .14], [-1.9932, .011], [-1.9617, .14]];
   return station.root;
 }
