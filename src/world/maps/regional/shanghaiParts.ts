@@ -276,3 +276,142 @@ export function brickBands(sink: PartSink, face: Face, u0: number, u1: number, y
   if (u1 - u0 < 0.3) return;
   for (const y of ys) faceBox(sink, 'structureMetal', face, (u0 + u1) / 2, y, 0.012, u1 - u0, 0.16, 0.025, { colour, decor: true, fine: true });
 }
+
+// ------------------------------------------------------------------------------------------------ the street's life (230)
+
+/**
+ * (the owner, 2026-10-21: "improve the shanghai buildings a ton") the stream the street's life draws from — the rows' end
+ * walls, the painted advertisements, the rooftop hoardings, the bamboo poles — forked from the building's identity (the house grammar still draws from the building's own stream for each window, so a
+ * row with new end windows reshuffles its later dressing). Tier-independent: the end walls' windows are structural.
+ */
+export function streetLifeRng(ctx: RegionalBuildContext): () => number {
+  let a = 0x6a09e667;
+  for (const ch of `${ctx.structureId}|${Math.round((ctx.x ?? 0) * 10)}|${Math.round((ctx.z ?? 0) * 10)}`) a = Math.imul(a ^ ch.charCodeAt(0), 0x5bd1e995) >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * A sign's characters in a cell `cell` square centred (cu, cy): two or three bars across, a stem down, now and then a short
+ * hook — read from the street as brushed characters. `stroke(u0, u1, y0, y1)` lays each.
+ */
+function glyph(cu: number, cy: number, cell: number, rng: () => number, stroke: (u0: number, u1: number, y0: number, y1: number) => void): void {
+  const half = cell / 2, s = cell * 0.13, bars = 2 + (rng() < 0.5 ? 1 : 0);
+  for (let j = 0; j < bars; j++) {
+    const by = cy - half + (j + 0.5) * cell / bars + (rng() - 0.5) * s, bw = cell * (0.55 + rng() * 0.45);
+    stroke(cu - bw / 2, cu + bw / 2, by - s / 2, by + s / 2);
+  }
+  const sx = cu + (rng() - 0.5) * cell * 0.5;
+  stroke(sx - s / 2, sx + s / 2, cy - half, cy + half);
+  if (rng() < 0.45) { const hx = cu + (rng() < 0.5 ? -1 : 1) * cell * 0.32; stroke(hx - s / 2, hx + s / 2, cy - half * 0.9, cy); }
+}
+
+/** The painted advertisements' grounds as paint on the limewash: a vermilion, a black, a cream, a dark green, an ochre. */
+const AD_GROUNDS: readonly Rgb[] = [[0.98, 0.44, 0.36], [0.34, 0.33, 0.32], [1.12, 1.08, 0.94], [0.5, 0.66, 0.58], [1.1, 0.86, 0.52]];
+const AD_INK_LIGHT: Rgb = [1.16, 1.13, 1.02], AD_INK_DARK: Rgb = [0.26, 0.25, 0.24], AD_INK_RED: Rgb = [0.92, 0.36, 0.3];
+
+/**
+ * A painted advertisement on a blank wall (the cigarette, soap and medicine signs painted across Shanghai's end walls in
+ * the 1930s): its ground in a band of the ink, the characters down a standing panel or across a lying one with a
+ * romanised line under them, faded toward the wall. Paint on a rendered panel 2 cm proud (the render bucket's, so on brick
+ * it is a painted panel): the paint takes the wall's damp and grime (weather.ts). (u, y) the panel's bottom centre, w × h.
+ * Dressing; the ground reads at any range, the lettering within the fine-detail distance.
+ */
+export function wallAd(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, rng: () => number): void {
+  if (w < 1.6 || h < 1.2) return;
+  const fade = 0.15 + rng() * 0.45;
+  const toward = (c: Rgb): Rgb => [c[0] + (1 - c[0]) * fade, c[1] + (1 - c[1]) * fade, c[2] + (1 - c[2]) * fade];
+  const gi = Math.min(AD_GROUNDS.length - 1, Math.floor(rng() * AD_GROUNDS.length));
+  const light = gi === 1 || gi === 3 || (gi === 0 && rng() < 0.6);
+  const ink = toward(light ? AD_INK_LIGHT : gi === 2 && rng() < 0.5 ? AD_INK_RED : AD_INK_DARK);
+  const paint = (u0: number, u1: number, y0: number, y1: number, o: number, tint: Rgb, fine: boolean) =>
+    sink.polygon('plaster', [facePoint(face, u0, y0, o), facePoint(face, u1, y0, o), facePoint(face, u1, y1, o), facePoint(face, u0, y1, o)],
+      fine ? { decor: true, tint, fine: true } : { decor: true, tint });
+  const l = u - w / 2, r = u + w / 2, t = y + h, b = Math.min(0.14, h * 0.06);
+  paint(l, r, y, t, 0.02, toward(AD_GROUNDS[gi]), false);
+  paint(l, r, t - b, t, 0.026, ink, false); paint(l, r, y, y + b, 0.026, ink, false);
+  paint(l, l + b, y + b, t - b, 0.026, ink, false); paint(r - b, r, y + b, t - b, 0.026, ink, false);
+  const tall = h > w * 1.2, pad = b * 2.4;
+  const run = (tall ? h : w) - 2 * pad, across = (tall ? w : h) - 2 * pad;
+  const cell = Math.min(across * (tall ? 0.78 : 0.5), run / 3);
+  const n = Math.max(2, Math.min(6, Math.floor(run / (cell * 1.2))));
+  const stroke = (u0: number, u1: number, y0: number, y1: number) => paint(u0, u1, y0, y1, 0.032, ink, true);
+  for (let k = 0; k < n; k++) {
+    const along = -run / 2 + (k + 0.5) * run / n;
+    if (tall) glyph(u, (y + t) / 2 - along, cell, rng, stroke);
+    else glyph(u + along, y + pad + across * 0.66, cell, rng, stroke);
+  }
+  // the romanised line under a lying panel's characters
+  if (!tall && across > 1.4) {
+    const ly = y + pad + across * 0.12, lh = Math.min(0.22, across * 0.1);
+    for (let lu = l + pad; lu < r - pad - 0.3;) {
+      const ww = 0.25 + rng() * 0.9;
+      paint(lu, Math.min(r - pad, lu + ww), ly, ly + lh, 0.032, ink, true);
+      lu += ww + 0.18;
+    }
+  }
+}
+
+/** The rooftop hoardings' boards: a lacquer red, a cream, a dark green, a navy, a yellow ochre; their lettering's paint. */
+const HOARDING_BOARDS: readonly Rgb[] = [0x8c2b22, 0xd9cfb4, 0x2f4a3c, 0x2b3a55, 0xc29a3a].map(rgb);
+const HOARDING_INK: readonly Rgb[] = [WHITE_TRIM, rgb(0x8c2b22), WHITE_TRIM, WHITE_TRIM, rgb(0x1d1c1b)];
+
+/**
+ * A hoarding on a Settlement block's flat roof (the advertising frames over the tram streets of 1937): a painted board on
+ * its iron frame, lifted clear of the parapet and set `back` metres behind the street face, its characters to the street;
+ * the frame's posts carried down to the roof and raked back to it. (u, roofY) the frame's foot centre on the face's line,
+ * w × h the board. Dressing that casts its shadow.
+ */
+export function rooftopHoarding(sink: PartSink, face: Face, u: number, roofY: number, back: number, w: number, h: number, rng: () => number): void {
+  const lift = 1.4, y0 = roofY + lift, o = -back;
+  const gi = Math.min(HOARDING_BOARDS.length - 1, Math.floor(rng() * HOARDING_BOARDS.length));
+  faceBox(sink, 'structureWood', face, u, y0 + h / 2, o, w, h, 0.08, { colour: HOARDING_BOARDS[gi], decor: true, shadow: true });
+  faceBox(sink, 'structureWood', face, u, y0 + h - 0.06, o + 0.06, w + 0.1, 0.12, 0.1, { colour: shade(HOARDING_BOARDS[gi], 0.6), decor: true });
+  const ink = HOARDING_INK[gi], n = Math.max(2, Math.min(7, Math.floor(w / (h * 0.62)))), cell = Math.min(h * 0.56, (w - 0.6) / n / 1.15);
+  for (let k = 0; k < n; k++) {
+    glyph(u - w / 2 + 0.3 + (k + 0.5) * (w - 0.6) / n, y0 + h * 0.56, cell, rng, (u0, u1, a, b) =>
+      faceBox(sink, 'structureWood', face, (u0 + u1) / 2, (a + b) / 2, o + 0.045, u1 - u0, b - a, 0.012, { colour: ink, decor: true, fine: true }));
+  }
+  faceBox(sink, 'structureWood', face, u, y0 + h * 0.17, o + 0.045, w * 0.7, h * 0.09, 0.012, { colour: ink, decor: true, fine: true });
+  // the frame: its posts behind the board down to the roof, a rail under the board, a raking strut back from each post
+  const posts = Math.max(2, Math.round(w / 2.4) + 1);
+  for (let k = 0; k < posts; k++) {
+    const pu = u - w / 2 + 0.2 + k * (w - 0.4) / (posts - 1);
+    faceBox(sink, 'structureMetal', face, pu, roofY + (lift + h) / 2, o - 0.1, 0.09, lift + h, 0.09, { colour: IRON, decor: true, shadow: true });
+    sink.member('structureMetal', facePoint(face, pu, y0 + h * 0.6, o - 0.14), facePoint(face, pu, roofY, o - 0.14 - (lift + h * 0.6) * 0.55),
+      0.07, 0.07, [0, 1, 0], { colour: IRON, decor: true, exposed: true }, 0);
+  }
+  faceBox(sink, 'structureMetal', face, u, y0 - 0.06, o - 0.1, w, 0.1, 0.1, { colour: IRON, decor: true, shadow: true });
+}
+
+/** Bamboo, cut and dried. */
+const BAMBOO = rgb(0x9a8a5a);
+/** The washing on the poles: a white, an indigo, a faded red, a grey, a blue-and-white print's blue, a khaki. */
+const WASHING: readonly Rgb[] = [0xd8d4c8, 0x2f3d5c, 0x9a4a3a, 0x8a8a84, 0x6a86a8, 0xa8986a].map(rgb);
+
+/**
+ * Bamboo poles run out of an upper window over the street, the washing pegged along them (the lanes' and the shophouses'
+ * everyday sight): one or two from the sill at (u, y), rising a little as they reach `reach` metres out. Dressing.
+ */
+export function laundryPoles(sink: PartSink, face: Face, u: number, y: number, reach: number, rng: () => number): void {
+  const poles = rng() < 0.55 ? 1 : 2;
+  for (let k = 0; k < poles; k++) {
+    const pu = u + (poles === 2 ? (k - 0.5) * 0.46 : 0), py = y + k * 0.1, rise = 0.1 + rng() * 0.08;
+    const drift = (rng() - 0.5) * 0.5;
+    sink.member('structureWood', facePoint(face, pu, py, -0.12), facePoint(face, pu + drift, py + reach * rise, reach), 0.045, 0.045, [0, 1, 0],
+      { colour: BAMBOO, decor: true, exposed: true }, 0);
+    // the clothes along the pole, edge-on to the facade: a side face through the pole's line
+    const side: Face = { origin: facePoint(face, pu, 0, 0), u: face.out, out: face.u, width: reach };
+    for (let along = 0.45 + rng() * 0.2; along < reach - 0.25;) {
+      const gw = 0.35 + rng() * 0.45, gh = 0.35 + rng() * 0.55, at = along + gw / 2;
+      if (at + gw / 2 > reach - 0.1) break;
+      const top = py + at * rise - 0.02;
+      faceBox(sink, 'structureWood', side, at, top - gh / 2, drift * at / reach, gw, gh, 0.012, { colour: choose(rng(), WASHING), decor: true, fine: true });
+      along += gw + 0.08 + rng() * 0.35;
+    }
+  }
+}

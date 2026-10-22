@@ -35,8 +35,8 @@ import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import {
   AWNINGS, CHAR, CHINA_RED, DEG, GILT, GODOWN_WINDOW, IRON, LACQUER, SASH, SIGN_BOARDS, TEAK, TILE_COPING, WHITE_TRIM,
-  archOutline, bankOf, brickBands, choose, clampTo, fillOf, nameBoard, pocks, pyramid, raisedRidge, roofHole, rowFill, sandbags,
-  signboard, uvOffset,
+  archOutline, bankOf, brickBands, choose, clampTo, fillOf, nameBoard, pocks, pyramid, raisedRidge, roofHole, rooftopHoarding, rowFill, sandbags,
+  signboard, streetLifeRng, uvOffset, wallAd,
 } from './shanghaiParts.ts';
 import { SHANGHAI_BUND_BUILDERS } from './shanghaiBund.ts';
 import { shikumenRow, shophouseRow } from './shanghaiLanes.ts';
@@ -112,6 +112,15 @@ function settlementBlock(ctx: RegionalBuildContext): RegionalParts {
       openings.push(...windowRhythm('back', st, W, { w: 0.95, h: 1.4, sill: 1.0, spacing: 2.8, margin: 1.0 }));
     }
     openings.push({ face: 'back', storey: 0, kind: 'door', u: W * 0.22, w: 1.0, y0: 0, h: 2.2 });
+    // (the owner, 2026-10-21: "improve the shanghai buildings a ton") the block's sides, blank brick or stucco three and four
+    // storeys high wherever a gap opened beside it: each side its upper storeys' sashes, a painted advertisement across
+    // them (wallAd, below) or the bare wall; chosen from the street's own stream (shanghaiParts.ts streetLifeRng)
+    const life = streetLifeRng(ctx);
+    const sides = (['left', 'right'] as const).map((face) => ({ face, kind: ((r: number) => (r < 0.55 ? 'windows' : r < 0.85 ? 'ad' : 'blank'))(life()) }));
+    for (const side of sides) {
+      if (side.kind !== 'windows') continue;
+      for (let st = 1; st < floors; st++) openings.push(...windowRhythm(side.face, st, D, { w: 1.0, h: 1.7, sill: 0.85, spacing: 2.7, margin: 1.2 }));
+    }
     // (looks 227) the grey stone shop storey on its granite plinth, the shops a step up from the street
     const spec: HouseSpec = {
       w: W, d: D, plinth: { h: 0.3, out: 0.06, bucket: 'plaster3' }, skirt: null,
@@ -163,6 +172,16 @@ function settlementBlock(ctx: RegionalBuildContext): RegionalParts {
     sink.dressing(mobile, () => pocks(sink, front, -W / 2 + 0.3, W / 2 - 0.3, frame.floors[1] + 0.2, eaveY - 0.3, 3 + Math.floor(look() * 8), look, keepOpen, 'plaster'));
     // (looks 227: the white course ran across the top storey's windows at eaveY - 0.75) the sill course under them
     if (brick && !mobile) brickBands(sink, front, -W / 2, W / 2, [frame.floors[floors - 1] + 0.62], WHITE_TRIM);
+    // (230) a side's painted advertisement over its upper storeys; a hoarding on the roof over a third of the blocks,
+    // set back from the street parapet and clear of its crest
+    for (const side of sides) {
+      if (side.kind !== 'ad') continue;
+      const y0 = frame.floors[1] + 0.45;
+      wallAd(sink, frame.faces[side.face], (life() - 0.5) * Math.max(0, D - 9.5), y0, Math.min(D - 2.2, 7.5), Math.min(eaveY - y0 - 0.7, 6.4), life);
+    }
+    if (life() < 0.34 && W > 7) {
+      rooftopHoarding(sink, front, (life() - 0.5) * Math.max(0, W - 11), eaveY + 0.3, 2.4 + life() * 1.2, Math.min(W * 0.72, 9.5), 2.5 + life() * 0.9, life);
+    }
   });
   return sink.finish();
 }

@@ -183,8 +183,19 @@ export default {
     // Customs House read "dark olive" with "a crude checkerboard" of windows — the preset's third render is a weathered
     // green-grey, hue 0.2, and a map's tones override its kit's, props.ts): the Bund's granite and the deco towers'
     // dressings stand in the kit's warm grey (maps/regional/shanghai.ts surfaces.tones.plaster3)
+    // (the owner, 2026-10-21: "improve the shanghai buildings a ton") the preset's first and second renders were a dark
+    // ochre (lightness 0.34 at the mid sample) and a terracotta brown: every shophouse, its fire walls and the Settlement's
+    // stucco read as one mustard clay in the low sun. The Chinese district's walls are the Jiangnan limewash the kit
+    // painted (shanghai.ts surfaces.tones.plaster), a warm grey-white dirtied by soot and rain, its brightest mottles eased
+    // over a knee as Steinburg's are (mapQuality's bound: lightness <= 0.62 at the mid sample); the Settlement's stucco a
+    // pale sand
     tones: {
       ...makeRealisticCityBuildingTones({ value: 0.73, saturation: 0.82, soot: 0.035, roofValue: 0.72, coolAccent: 0.015 }),
+      plaster: (_h: number, s: number, l: number) => {
+        const x = l * 1.1;
+        return [0.1, clamp01(s * 0.16 + 0.026), clamp01(x < 0.58 ? x : 0.58 + (x - 0.58) * 0.35)];
+      },
+      plaster2: (_h: number, s: number, l: number) => [0.095, clamp01(s * 0.32 + 0.1), clamp01(l * 1.0)],
       plaster3: (_h: number, s: number, l: number) => [0.09, clamp01(s * 0.12 + 0.03), clamp01(l * 0.9 + 0.05)],
     },
     wallStyle: 'brick', wallStoneChance: 0.82, buildingLat: [15, 7],
