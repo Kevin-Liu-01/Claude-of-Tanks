@@ -142,7 +142,7 @@
   "object148_proto": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c2ece826c7ff5d60","gun":"70690af84fec42b4"}},
   "object695": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c0b57b5d72c50af8","gun":"339e7790ffeb1282"}},
   "pl01": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a7a0bcef0e6c5c8f","gun":"0e6116ba7b854087"}},
-  "pl01_105": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b7368b0339f44b8e","gun":"8122705c3019de76"}},
+  "pl01_105": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"641c89477550b75f","gun":"8122705c3019de76"}},
   "pt91a_twardy": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"eb86629ab9f60942","gun":"9bf21d7bd171c8a8"}},
   "pt91m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0a387e2cc4f918f7","gun":"b34c728ba3ba87fb"}},
   "puma_s1": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"fa014f76d195c39d","gun":"1a364347d584d94c"}},
