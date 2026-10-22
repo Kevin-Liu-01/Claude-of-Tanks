@@ -26,6 +26,15 @@ fleet release gate.
 `internalAnatomyVisuals.ts` is the strict shared geometry owner for Gallery and
 killcam module, crew, and drivetrain presentation; keep both consumers on its
 volume and resource-lifetime contracts.
+A built visual's runtime (its per-actor state and methods, `createTankRuntimeSteps`) and each running-gear unit's
+(`createRunningGearRuntime`) read only the explicit record their build hands them (`TankRuntimeEnv`,
+`RunningGearRuntimeEnv`): a new runtime value goes into that record, never a capture of a build local. That is what
+lets `cloneTankVisual` (232, the MP roster's repeated vehicles: a few ms instead of a 1-1.5 s build) copy a pristine
+visual (`vehicleGraphClone.ts`) and run the same runtimes over the copy: shared stock and camouflage textures, its own
+materials (`copyVehicleMaterial`), written buffers, gear state, burn, dents and lamps (`copyVehicleNightLighting`). A
+profile that patches the finished gear does it through a recorded helper the clone replays
+(`scaleRunningGearMotion`); a clone refuses (throws, the caller builds) any hook, callback, object kind or gear patch
+it does not know.
 The factory core's read-only analyses live beside it (round 46,
 `docs/CLEANUP-2026-09-23-structure.md`): `eraSurfaceFrame.ts` (ERA plate frames
 and PCA fit), `muzzleCapProfiles.ts` (barrel cap/mouth-edge walkers),
