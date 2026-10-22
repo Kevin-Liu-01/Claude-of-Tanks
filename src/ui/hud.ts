@@ -2021,6 +2021,16 @@ function fmtTimer(s: number): string {
  * The Horde's status line under the live ruleset (else the mode's own table): unlimited rounds drop the ammunition
  * count, which could only read full.
  */
+/** The objective's progress as its " · " parts, each count's figures held together: a short landscape's compact form
+ *  stacks the parts in the side seat (battleHudLayout.css data-objective-seat). */
+function setObjectiveValue(target: HTMLElement, copy: string): void {
+  target.replaceChildren();
+  copy.split(' · ').forEach((part, index) => {
+    if (index) target.append(Object.assign(document.createElement('span'), { className: 'sep', textContent: '\u00a0· ' }));
+    target.append(Object.assign(document.createElement('span'), { className: 'seg', textContent: part.replace(/ \/ /g, ' / ') }));
+  });
+}
+
 export function hordeStatusCopy(modeState: HudMatchModeState, liveRuleset: MatchRuleset | null): string {
   const horde = modeState.horde;
   const wave = String(horde?.wave || 1), alive = String(horde?.remaining ?? horde?.alive ?? 0);
@@ -3305,7 +3315,7 @@ export function initHud(bus: EventBus): HudRuntime {
     modeStatusEl.dataset.mode = modeId;
     modeStatusEl.title = t(`playMenu.matchMode.${modeId}.label`);
     modeStatusName.textContent = t(`hud.objective.${modeId}`);
-    modeStatusValue.textContent = copy;
+    setObjectiveValue(modeStatusValue, copy);
     modeStatusEl.classList.add('show');
     lastModeStatus = status;
   }

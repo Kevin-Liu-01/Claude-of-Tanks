@@ -112,6 +112,14 @@ const PORTRAIT_SIGHT_ROOM_H = 720;
  *  touchWarningSeated): a short landscape, and a portrait phone 340 px wide or less (r10g: every seat by the sight met the
  *  left FIRE button, the map or the speedometer at 320x568). */
 const touchChipParked = (width: number, height: number) => (width > height && height < 550) || (height >= width && width <= 340);
+/** A short landscape at most this tall (touch) shows the objective in its compact form, its progress alone (the mode's
+ *  line in its title): under the map where the left column holds it over the joystick ('side', clear of the centre
+ *  column, which then holds the notices from under the score: at 568x290 the panel under the score left them no clear
+ *  place), else under the score ('top'). battleHudLayout.css data-objective-seat. */
+const OBJECTIVE_COMPACT_H = 340;
+/** The side seat's gap under the map, and its least width: the parked warning chip's (battleHudLayout.css), one column. */
+const OBJECTIVE_SEAT_GAP = 4;
+const PARKED_CHIP_W = 106;
 /** A touch target's least side (battle-hud-layout.browser.mjs) and the systems row's gap (battleHudLayout.css). */
 const TOUCH_TARGET = 44;
 const SYSTEMS_GAP = 3;
@@ -226,6 +234,40 @@ export function installBattleHudLayout(root: HTMLElement): void {
       touch ? read('.cot-touch.on .joy')?.top ?? height : height,
       touch ? read('.cot-touch.on .fire.alt')?.top ?? (height <= 340 ? height - 206 : height) : height,
       read('.cot-drive')?.top ?? height) - 8;
+  }
+  /** The objective's place this pass (`--hud-objective-*`): centred under the score, or its side seat. */
+  let objectivePlace = { left: 0, top: 0, width: 0 };
+  /** The window and mode the objective last left the side seat for: it stays under the score there, so a count that
+   *  gains a digit (a Horde's rounds) moves it once at most, never back and forth. */
+  let objectiveTopKey = '';
+  /** Seats the objective (OBJECTIVE_COMPACT_H) and writes its seat and place before the pass reads it: the side seat is
+   *  measured in its compact form under the map and kept where it ends over the joystick (the left lane's own floor
+   *  reserves a short landscape's hidden second FIRE button). '' (the full panel), 'top' or 'side'. */
+  function seatObjective(touch: boolean, width: number, height: number, map: DOMRect | null, score: DOMRect | null): string {
+    const node = document.querySelector<HTMLElement>('.cot-mode-status.show');
+    objectivePlace = { left: score ? score.left + score.width / 2 : width / 2, top: score?.bottom || 64,
+      width: objectiveWidth(score?.width || 344) - (touch && read('.cot-mp-status.battle') && width > height ? 52 : 0) };
+    let seat = node && touch && width > height && height <= OBJECTIVE_COMPACT_H ? 'top' : '';
+    const key = `${width}x${height}|${node?.dataset.mode}`;
+    if (node && seat && map && map.left < width / 2 && key !== objectiveTopKey) {
+      const seatWidth = Math.max(map.width, PARKED_CHIP_W);
+      const place = { left: map.left + seatWidth / 2, top: map.bottom + OBJECTIVE_SEAT_GAP, width: seatWidth };
+      writeObjective('side', place);
+      const floor = Math.min(read('.cot-touch.on .joy')?.top ?? height, read('.cot-touch.on .fire.alt')?.top ?? height, height) - 8;
+      if (node.getBoundingClientRect().bottom <= floor) { seat = 'side'; objectivePlace = place; } else objectiveTopKey = key;
+    }
+    writeObjective(seat, objectivePlace);
+    return seat;
+  }
+  function writeObjective(seat: string, place: { left: number; top: number; width: number }) {
+    if ((document.body.dataset.objectiveSeat ?? '') !== seat) {
+      if (seat) document.body.dataset.objectiveSeat = seat;
+      else delete document.body.dataset.objectiveSeat;
+    }
+    // (as the pass's own write formats them)
+    setBodyVar('--hud-objective-top', `${place.top}px`);
+    setBodyVar('--hud-objective-left', `${Math.floor(place.left)}px`);
+    setBodyVar('--hud-objective-width', `${Math.floor(place.width)}px`);
   }
   /** A node's box when it shows (laid out, not hidden or transparent), else null. */
   const shownBox = (node: Element): DOMRect | null => {
@@ -544,14 +586,16 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const map = read('.cot-minimap');
     const score = read('.cot-top');
     const scoreBottom = score?.bottom || 64;
+    const objectiveSeat = seatObjective(touch, width, height, map, score);
     const objective = read('.cot-mode-status.show');
-    const top = Math.max(scoreBottom, objective?.bottom || 0);
+    const side = objectiveSeat === 'side' && objective ? objective : null;
+    const top = side ? scoreBottom : Math.max(scoreBottom, objective?.bottom || 0);
     const telemetry = read('.cot-net');
     const earLeft = read('.cot-ear.l');
     let leftAnchor = Math.max(top, earLeft?.bottom || 0,
       !touch && width < 768 && telemetry && telemetry.top < height / 2 ? telemetry.bottom : 0,
       touch && touchChipParked(width, height) ? read('.cot-aim-warning:not([hidden])')?.bottom || 0 : 0,
-      map && map.left < width / 2 ? map.bottom : 0) + 8;
+      map && map.left < width / 2 ? map.bottom : 0, side?.bottom || 0) + 8;
     const systems = read('.cot-vehicle-controls');
     let systemsHeight = systems?.height ?? 0;
     const ammo = read('.cot-shells');
@@ -817,7 +861,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         && noticeLeft < systemsLeft + dockWidth && width - noticeLeft > systemsLeft) {
         noticeTop = systemsTop + systemsHeight + 8;
       }
-      if (touch && width > height && height <= 340) noticeTop = Math.max(top + 16, scoreBottom + 52);
+      if (touch && width > height && height <= 340) noticeTop = Math.max(top + 16, side ? 0 : scoreBottom + 52);
       alertTop = noticeTop + (notice?.height ?? 48) + 8;
     }
     const stack = battleSideStack(leftEnd - leftTop, chat, toastCount);
@@ -913,13 +957,20 @@ export function installBattleHudLayout(root: HTMLElement): void {
         banner.dispatchEvent(new Event('cot-banner-placement'));
       }
     }
-    const network = !!read('.cot-mp-status.battle');
+    // A short landscape parks the warning chip under the map; beside the objective's side seat at its top, below the
+    // network button where that stands there.
+    const chipLeft = side ? Math.ceil(side.right) + OBJECTIVE_SEAT_GAP : 8;
+    let chipTop = width > height || touchChipParked(width, height) ? (map?.bottom ?? 114) + 4 : height * .5 + 48;
+    if (side) {
+      chipTop = side.top;
+      if (strip && strip.left < chipLeft + PARKED_CHIP_W && strip.right > chipLeft && strip.bottom > chipTop) chipTop = Math.ceil(strip.bottom) + 4;
+    }
     const properties = {
       'status-lift': Math.max(5, (read('.cot-dp')?.top ?? 0) - (statusDockBottom() ?? height)),
       'center-notice-width': plan ? plan.detection.w : 248,
       'flight-right-clearance': map && map.left > width / 2 && map.bottom > height / 2 ? width - map.left + 12 : 12,
       'network-left': width > height ? Math.max(122, (map?.right ?? 104) + 8) : (map?.right ?? 104) + 8,
-      'aim-warning-top': width > height || touchChipParked(width, height) ? (map?.bottom ?? 114) + 4 : height * .5 + 48,
+      'aim-warning-top': chipTop, 'aim-warning-left': chipLeft,
       'fps-top': (read('.cot-spec.show')?.top ?? 36) - 28,
       'network-top': width > height ? scoreBottom + 4 : (chrome?.top ?? top + 8),
       'network-corner-right': networkRight,
@@ -933,9 +984,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'touch-alert-w': touchPlan?.alertW ?? width - 24, 'touch-banner-cx': touchPlan?.bannerCx ?? width / 2,
       'touch-countdown-cx': touchPlan?.countdownCx ?? width / 2, 'touch-countdown-top': touchPlan?.countdownTop ?? top + 8,
       'touch-rules-top': touchPlan?.rulesTop ?? height,
-      'objective-top': scoreBottom, 'objective-bottom': top, 'banner-top': bannerTop, 'tray-shift': trayShift,
-      'objective-width': objectiveWidth(score?.width || 344) - (touch && network && width > height ? 52 : 0),
-      'objective-left': score ? score.left + score.width / 2 : width / 2,
+      'objective-top': objectivePlace.top, 'objective-bottom': top, 'banner-top': bannerTop, 'tray-shift': trayShift,
+      'objective-width': objectivePlace.width, 'objective-left': objectivePlace.left,
       'kill-left-top': leftAnchor, 'kill-right-top': rightAnchor,
       'kill-left-height': killHeightLeft, 'kill-right-height': killHeightRight,
       'left-top': leftTop, 'left-height': Math.max(0, leftEnd - leftTop),

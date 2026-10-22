@@ -347,7 +347,7 @@ function measure(state){
       timing:animation.effect?.getComputedTiming(),
     })),
   })):undefined;
-  return {failures,rects,body:document.body.dataset,ammoTransitions};
+  return {failures,rects,body:document.body.dataset,seat:document.body.dataset.objectiveSeat||'',ammoTransitions};
 }
 try {
   for (const [name,width,height,touch,locale='en-US',options={}] of cases) {
@@ -498,9 +498,16 @@ try {
       const result=await page.evaluate(measure,state);
       const score=result.rects.find(r=>r.name==='cot-top');
       const objective=result.rects.find(r=>r.name==='cot-mode-status show');
-      if(score&&objective&&(objective.x<=score.x+25 || objective.right>=score.right-25))
-        result.failures.push('objective must fit inside the scoreboard bottom edge');
-      if(score&&objective&&Math.abs(objective.y-score.bottom)>.5) result.failures.push('objective must touch the scoreboard');
+      // a short landscape's side seat (battleHudLayout.ts OBJECTIVE_COMPACT_H): the compact objective in the map's column
+      const map=result.rects.find(r=>r.name.split(' ').includes('cot-minimap'));
+      if(objective&&result.seat==='side'){
+        if(!map||Math.abs(objective.x-map.x)>.5||Math.abs(objective.y-map.bottom-4)>.5)
+          result.failures.push('the side-seated objective must sit 4px under the map, in its column');
+      }else{
+        if(score&&objective&&(objective.x<=score.x+25 || objective.right>=score.right-25))
+          result.failures.push('objective must fit inside the scoreboard bottom edge');
+        if(score&&objective&&Math.abs(objective.y-score.bottom)>.5) result.failures.push('objective must touch the scoreboard');
+      }
       const compactNotices=await page.locator('.cot-si-toast').evaluateAll(nodes=>nodes.filter(node=>node.checkVisibility({checkVisibilityCSS:true})).map(node=>({
         height:node.getBoundingClientRect().height,secondary:!!node.querySelector('.l2'),
       })));

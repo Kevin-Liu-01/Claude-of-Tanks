@@ -321,7 +321,6 @@ const SHELL_TYPE_COLOR: Readonly<Record<string, string>> = {
 // Crisp 12px module/crew glyphs (currentColor) — same visual language as the
 // damage panel's canvas icons, redrawn as inline SVG for DOM cards.
 const GLYPH: Record<string, string> = {
-  ballistic: uiIconSVG('scope', 10),
   shell: uiIconSVG('shell', 10),
   target: uiIconSVG('autoAim', 10),
   angle: uiIconSVG('scope', 10),
@@ -363,17 +362,17 @@ const SI_CSS = `
 .cot-si-card.out{opacity:0;}
 
 .cot-si-missile-blast{flex:0 0 30px;min-height:30px;padding:5px 9px!important;font-size:11px;color:#ffd166;overflow:hidden;line-height:1.3;}
-.cot-si-hd{min-height:38px;display:flex;align-items:center;justify-content:space-between;
+.cot-si-hd{min-height:38px;display:flex;align-items:center;justify-content:space-between;gap:8px;
   padding:4px 9px 3px;border-bottom:1px solid rgba(146,164,180,.2);}
-.cot-si-state{display:flex;min-width:0;flex-direction:column;gap:3px;}
-.cot-si-kicker{font-family:${FONT_COND};font-size:11px;font-weight:700;line-height:1;
-  letter-spacing:.07em;color:#778692;text-transform:uppercase;display:flex;align-items:center;gap:4px;}
-.cot-si-kicker svg{width:9px;height:9px;flex:0 0 auto;}
+.cot-si-state{display:flex;min-width:0;}
 .cot-si-badge{font-family:${FONT_COND};font-weight:700;
-  font-size:12px;line-height:1;letter-spacing:.13em;white-space:nowrap;
+  font-size:13px;line-height:1.15;letter-spacing:.1em;
   display:flex;align-items:center;gap:5px;}
-.cot-si-badge svg{width:11px;height:11px;flex:0 0 auto;}
-.cot-si-dmg{min-width:62px;text-align:right;font-family:${FONT_COND};letter-spacing:-.02em;font-weight:700;font-size:20px;
+.cot-si-badge svg{width:12px;height:12px;flex:0 0 auto;}
+/* a card the right lane narrows beside the sight (560-640 px windows): the outcome keeps its row beside the damage */
+.cot-si-card{container:si-card/inline-size;}
+@container si-card (max-width:220px){.cot-si-badge{letter-spacing:.03em;}.cot-si-badge svg{display:none;}}
+.cot-si-dmg{flex:0 0 auto;text-align:right;font-family:${FONT_COND};letter-spacing:-.02em;font-weight:700;font-size:20px;
   color:#ffd166;display:flex;justify-content:flex-end;align-items:center;gap:4px;}
 .cot-si-dmg svg{width:12px;height:12px;flex:0 0 auto;}
 .cot-si-sub{height:21px;padding:3px 9px;font-size:11px;color:#c6d2dc;letter-spacing:0em;
@@ -415,8 +414,6 @@ const SI_CSS = `
 .cot-si-diag .box{position:relative;flex:0 0 auto;}
 .cot-si-diag .box:first-child{width:90px!important;height:90px!important;}
 .cot-si-diag .box:nth-child(2){width:172px!important;height:86px!important;}
-.cot-si-diag .box::after{content:attr(data-view);position:absolute;left:2px;bottom:0;
-  font:700 11px/1 ${FONT_COND};letter-spacing:.03em;color:#758491;text-transform:uppercase;}
 .cot-si-diag .sil{position:absolute;inset:0;}
 /* shaded per-tank plan-form render (icons pipeline <id>_top/_side.png)
    layered over the silhouette base: a canvas-baked NEUTRAL-GRAY schematic
@@ -734,11 +731,12 @@ function appendShotCardHeader(
   ev: ShotHitEvent,
   cls: HitOutcomePresentation,
 ): void {
+  // The outcome heads the card and the weapon reads on the row under it (a missile by its rack); the card's name is its
+  // label, not an eyebrow over the outcome (it wrapped in a narrow window's card).
+  card.setAttribute('role', 'group');
+  card.setAttribute('aria-label', t(weaponHitKind(ev) === 'missile' ? 'shotInfo.missileImpact' : 'killcam.ballisticAnalysis'));
   const header = el('div', 'cot-si-hd', card);
   const state = el('div', 'cot-si-state', header);
-  const kicker = el('span', 'cot-si-kicker', state);
-  const missile = weaponHitKind(ev) === 'missile';
-  kicker.innerHTML = `${missile ? uiIconSVG('missileRack', 12) : GLYPH.ballistic}<span>${t(missile ? 'shotInfo.missileImpact' : 'killcam.ballisticAnalysis')}</span>`;
   const badge = el('span', 'cot-si-badge', state);
   badge.innerHTML = `${uiIconSVG(cls.icon, 11)}<span>${cls.label}</span>`;
   badge.style.color = cls.color;
@@ -750,8 +748,9 @@ function appendShotCardHeader(
 function appendShotCardSubtitle(card: HTMLDivElement, ev: ShotHitEvent): void {
   const subtitle = el('div', 'cot-si-sub', card);
   const typeColor = SHELL_TYPE_COLOR[ev.shellType] || '#9fb0bf';
+  const missile = weaponHitKind(ev) === 'missile';
   subtitle.innerHTML =
-    `<span><span class="ty" style="color:${typeColor}">${GLYPH.shell}${ev.shellType}</span>` +
+    `<span><span class="ty${missile ? ' missile' : ''}" style="color:${typeColor}">${missile ? uiIconSVG('missileRack', 10) : GLYPH.shell}${ev.shellType}</span>` +
     `<span class="cot-si-subtext">${shellDisplayName(ev)}</span></span>` +
     `<span>${GLYPH.target}<span class="cot-si-subtext">${ev.targetName || ''}</span></span>`;
 }
