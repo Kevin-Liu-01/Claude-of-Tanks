@@ -1371,8 +1371,10 @@ export const ANDALUSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureSty
   surfaces: {
     // teja árabe: curved clay tiles in channels and caps, orange-brown, lichened
     roof: { kind: 'canal', tint: [0.74, 0.45, 0.3] },
-    // the gorge's golden calcarenite (the Puente Nuevo's stone)
-    stone: { kind: 'sandstone', tint: [0.82, 0.73, 0.57] },
+    // the gorge's golden calcarenite (the Puente Nuevo's stone), dressed: (the owner, 2026-10-21, on the gorge bridge: "a
+    // mass of repeated textures") the rough sandstone's tan, cream and grey-green blocks (spread 0.2, hue 0.1) laid a
+    // patchwork across the bridge's hundred metres; the dressed ashlar's even courses halve the swing
+    stone: { kind: 'sandstone', tint: [0.82, 0.73, 0.57], dressed: true },
     sourced: { plaster: false, wood: true },
     // (the facades lane, round 11; waves 319/320: the walls' procedural canvas read as "speckle", "sponge", "cork",
     // "camouflage noise": its 6 cm bumps shade as dots from the street, as Steinburg's did before round 8) the walls

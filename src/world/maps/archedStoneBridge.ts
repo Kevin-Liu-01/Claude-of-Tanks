@@ -263,13 +263,15 @@ type Rgb = readonly [number, number, number];
 /**
  * (the owner, 2026-10-21, on the Ronda bridge: "kind of ugly ... it just looks like a mass of repeated textures") the gorge
  * bridge's stone is laid as the village's walls are — the regional stone material: its per-vertex tone and the walls'
- * rain runs — in two roles. The body (spandrels, vault soffits, piers, wings, the deck's edge) in coarse courses, 0.32
- * repeats a metre against the village's 0.5, whose 2.4 m lifts each take a tone a few per cent off their neighbours',
- * darker with the damp over the lowest ten metres and in the vaults' soffits. The dressed trim (voussoirs, cutwater caps,
- * cornice, corbels, spouts, copings, posts) paler at the village's density, each stone its own shade; the footways' flags
- * greyer. Colour and UV only: the geometry, the map stream's draws and the record are unchanged.
+ * rain runs — in two roles. The body (spandrels, vault soffits, piers, wings, the deck's edge) in the dressed ashlar's
+ * courses at 0.24 repeats a metre (the village's 0.5; courses of 0.4-0.6 m, the Puente Nuevo's), whose 2.4 m lifts each
+ * take a tone a few per cent off their neighbours', darker with the damp over the lowest ten metres and in the vaults'
+ * soffits (andalusian.ts lays the kit's sandstone dressed: the rough one's patchwork of block colours halved). The
+ * dressed trim (voussoirs, cutwater caps, cornice, corbels, spouts, copings, posts) paler at the village's density, each
+ * stone its own shade; the footways' flags greyer. Colour and UV only: the geometry, the map stream's draws and the record
+ * are unchanged.
  */
-const RONDA_BODY_UV = 0.32 / 0.7;
+const RONDA_BODY_UV = 0.24 / 0.7;
 const RONDA_TRIM_UV = 0.5 / 0.7;
 const RONDA_LIFT_M = 2.4;
 const RONDA_BODY: Rgb = [0.9, 0.84, 0.76];
