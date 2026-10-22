@@ -3626,6 +3626,57 @@
    "uncovered": [],
    "hostSweep": []
   },
+  "type10_dozer": {
+   "inputHash": "55fdc5a5fc6c701c",
+   "runs": [
+    {
+     "index": 0,
+     "site": "fitting:spareTrackLinks@buildType10Native2026HullStage1@modern3.ts",
+     "source": "fitting",
+     "frame": "hull",
+     "registered": false,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 0.812,
+      "gap": 0.127,
+      "air": 0.061,
+      "hidden": 0,
+      "sunkMaxM": 0.01,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.933,
+      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1734>"
+     }
+    },
+    {
+     "index": 1,
+     "site": "adhoc:type10-rear-links@<anon>@modern3.ts",
+     "source": "adhoc",
+     "frame": "hull",
+     "registered": true,
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [],
+     "measures": {
+      "support": 1,
+      "gap": 0,
+      "air": 0,
+      "hidden": 0,
+      "sunkMaxM": 0,
+      "sweepM": 0,
+      "traverseM": null,
+      "exposure": 0.906,
+      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1710>"
+     }
+    }
+   ],
+   "uncovered": [],
+   "hostSweep": []
+  },
   "type10_tk_x": {
    "inputHash": "56a3ea5164935368",
    "runs": [

@@ -1114,6 +1114,27 @@
       "suspension": false
     },
     {
+      "id": "type10_dozer",
+      "name": "Type 10 (Dozer)",
+      "nation": "Japan",
+      "role": "mbt",
+      "tier": 10,
+      "hp": 2650,
+      "speed": 66,
+      "reverse": 30,
+      "hull": 41.8,
+      "turret": 47.8,
+      "dispersion": 0.275,
+      "reload": 5.2,
+      "aim": 1.44,
+      "view": 410,
+      "smoke": 8,
+      "lights": true,
+      "roofGun": true,
+      "missile": false,
+      "suspension": false
+    },
+    {
       "id": "type10b",
       "name": "Type 10B",
       "nation": "Japan",
@@ -4905,7 +4926,7 @@
       "respawn": null,
       "score": null,
       "speed": 1,
-      "hp": 1,
+      "hp": 1.8,
       "reload": 1,
       "ammo": "unlimited",
       "equipment": 3,
@@ -4982,7 +5003,7 @@
         "gravity": 1,
         "minutes": 7,
         "survivorHp": 150,
-        "infectedHp": 30,
+        "infectedHp": 25,
         "killsPerWeapon": 0,
         "weapons": 5
       }
