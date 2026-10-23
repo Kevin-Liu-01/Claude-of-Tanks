@@ -56,6 +56,8 @@ interface WorldTelemetry {
   wrecks?: number | string;
   looseActive?: number | string;
   looseTotal?: number | string;
+  /** The map's air (world/mapAmbience.ts): its layers' instances and draws. */
+  ambience?: string | null;
 }
 
 interface ShadowCascadeTelemetry {
@@ -239,7 +241,8 @@ function simulationText(simulation: SimulationTelemetry, gamePhase: string): str
 function worldText(world: WorldTelemetry): string {
   return `${world.obstacles ?? '—'} obstacles   ${world.colliders ?? '—'} colliders\n` +
     `${world.concealers ?? '—'} conceal   ${world.destructibles ?? '—'} destruct\n` +
-    `${world.wrecks ?? '—'} wreck sites   loose ${world.looseActive ?? '—'}/${world.looseTotal ?? '—'} awake`;
+    `${world.wrecks ?? '—'} wreck sites   loose ${world.looseActive ?? '—'}/${world.looseTotal ?? '—'} awake` +
+    (world.ambience ? `\nair ${world.ambience}` : '');
 }
 
 function cascadeText(cascades: readonly ShadowCascadeTelemetry[]): string {
