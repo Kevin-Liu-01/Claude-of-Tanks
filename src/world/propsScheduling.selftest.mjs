@@ -192,6 +192,8 @@ for (const failureAt of ['tick', 'bake', 'import']) {
       // (the 228 entry diet) the land mask of a sky that draws the Earth loads with its world (earthLandAccess.ts): Urban's draws none
       skyDrawsEarth: (sky) => (sky?.earth ?? 0) > 0.5, loadEarthLand: () => assert.fail('Urban draws no Earth'),
       preloadPropModels: () => { events.push('archive-request'); return archive.promise; },
+      // (2026-10-15, the perf lane) the map's kits load beside the terrain (worldKits.ts): loaded at once here
+      loadMapKits: async () => {},
       prepareSourcedTerrain: () => ({ cancel() { cancelled++; } }),
       createHeightFieldAsync: async () => { clock += 10; return height; },
       createHeightField: () => assert.fail('fine path stays async'),
