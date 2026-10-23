@@ -14,7 +14,10 @@ button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px}
 [hidden]{display:none!important}
-html:not(.gallery-ready) :is(.browse,.dossier-scroll,.stage-right){visibility:hidden}
+/* the panes JS fills show once filled (gallery.ts adds .gallery-ready); a script that never runs reveals them anyway */
+html:not(.gallery-ready) :is(.browse,.dossier-scroll,.stage-right){visibility:hidden;
+  animation:gallery-reveal var(--dur-instant) calc(var(--dur-stage) * 6) forwards}
+@keyframes gallery-reveal{to{visibility:visible}}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .cot-i{flex:none}
 
@@ -76,6 +79,7 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.stage-right){visibility:hi
 .vl-row:focus-visible{outline:2px solid var(--accent-hi);outline-offset:-2px}
 .vl-art{display:none}
 .vehicle-list[data-layout=grid]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-content:start;gap:var(--s1)}
+.vehicle-list[data-layout=grid] .vl-section{display:contents}
 .vehicle-list[data-layout=grid] .vl-group{grid-column:1/-1}
 .vehicle-list[data-layout=grid] .vl-row{display:block;height:auto;aspect-ratio:264/188;padding:0;overflow:hidden;
   background:var(--surface-raised);border:1px solid var(--line-1)}
