@@ -33,6 +33,9 @@ const KINDS = {
   stook: { maps: ['autumn', 'cliffbridge', 'delta', 'frontier', 'polders', 'verdant'], near: 420 },
   strawrick: { maps: ['steppe'], near: 360 },
   strawstack: { maps: ['cliffbridge', 'delta', 'mangrove'], near: 260 },
+  // (2026-10-22, Saltmere Bay's strand from landmarks L2: the goémoniers' kelp kilns and seaweed stacks)
+  kelpkiln: { maps: ['coastal'], near: 480 },
+  weedstack: { maps: ['coastal'], near: 320 },
 };
 const rows = [];
 for (const [kind, { maps, near, topple }] of Object.entries(KINDS)) {

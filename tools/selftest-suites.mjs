@@ -1989,6 +1989,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // the woods catch-up (item 41, 2026-10-22): Monsoon's Naga Hills forms, Wadi Rum's and the oasis's tortilis, Glacier
     // Pass's April snow, round 8's canopy form by place
     'src/world/woodsCatchup.selftest.mjs',
+    // the trees lane (2026-10-08, the gauntlet's wave 278): Saltmere's shrubs the coast's gorse, swept inland by the wind
+    'src/world/coastalScrub.selftest.mjs',
     // trees round 2b (2026-10-03): where trees stand: woodland edges and verges, Wadi Rum's groves, the palms' sites
     'src/world/treeSpacing.selftest.mjs',
     'src/world/hedgeTrees.selftest.mjs',
