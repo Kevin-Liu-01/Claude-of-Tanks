@@ -483,7 +483,8 @@ for (const mapId of MAP_IDS) {
   assert.ok(tafoni >= 0 && tafoni <= 1 && (d.lithology === 'sandstone' || tafoni === 0), `${mapId}: a honeycomb in sandstone only`);
   assert.ok(depth > 0 && depth <= 0.03, `${mapId}: a parting a couple of centimetres deep`);
 }
-assert.ok(['desert', 'badlands', 'oasis'].every((m) => rockDressingFor(m, null).beds[2] === 1), 'the arid sandstone honeycombed');
+// (item 46, 2026-10-22: Siwa's stone is the Miocene limestone, no tafoni; Monument Valley's De Chelly sandstone keeps them)
+assert.ok(['desert', 'badlands', 'titan_gorge'].every((m) => rockDressingFor(m, null).beds[2] === 1), 'the arid sandstone honeycombed');
 assert.equal(rockDressingFor('longleaf', null).beds[2], 0, 'the wet sandstone not');
 assert.notDeepEqual(rockDressingFor('railyard', (h, s, l) => [0.6, s, l]).soil, rockDressingFor('railyard', null).soil, 'the dirt tone law reaches the soil');
 // (b18; wave 121: Dahar's boulders "none of the horizontal bedding planes, cross-bedded laminae or coarse sand grain",
@@ -506,8 +507,14 @@ for (const mapId of MAP_IDS) {
   assert.ok(d.fabric2.length === 4 && d.fabric2.every((v) => v >= 0 && v <= 1), `${mapId}: a bounded second fabric`);
   assert.deepEqual([...d.fabric2], FABRIC2[d.lithology] ?? [0, 0, 0, 0], `${mapId}: the second fabric is its ${d.lithology}'s`);
 }
-assert.deepEqual(['copper_mesa', 'moon', 'orchard', 'reservoir', 'mars'].map((m) => rockLithologyFor(m)),
-  ['conglomerate', 'breccia', 'limestone', 'slate', 'basalt'], 'Queenstown\'s Owen conglomerate, the highland breccia, the Chouf\'s limestone, the Eifel\'s slate, the Tharsis basalt');
+assert.deepEqual(['copper_mesa', 'orchard', 'reservoir', 'mars', 'moon'].map((m) => rockLithologyFor(m)),
+  ['conglomerate', 'limestone', 'slate', 'basalt', 'basalt'], 'Queenstown\'s Owen conglomerate, the Chouf\'s limestone, the Eifel\'s slate, the Tharsis basalt; the Moon\'s boulders as Earthrise left them');
+// (item 46, 2026-10-22, MAP-01) each map's stone its own geology's: the Moselle's Jaumont limestone, the Naga Hills'
+// sandstones, the Saar's Buntsandstein, Siwa's Miocene limestone
+assert.deepEqual(['autumn', 'monsoon', 'foundry', 'oasis'].map((m) => rockLithologyFor(m)), ['limestone', 'sandstone', 'sandstone', 'limestone'],
+  'Amberford, Monsoon Ridge, Ironworks and Sunscar in their own stone');
+assert.ok(rockBaseToneFor('foundry')[0] < 0.06 && rockBaseToneFor('oasis')[2] > 0.6 && rockBaseToneFor('cliffbridge')[2] > 0.5,
+  'the Saar\'s red sandstone, Siwa\'s cream limestone, Ronda\'s buff calcarenite');
 assert.ok(['conglomerate', 'breccia'].every((l) => [0, 1, 2].every((v) => BOULDER_KINDS[boulderKindFor(l, v)] !== 'rounded')),
   'the clastic rocks break as blocks and slabs (wave 346: "no egg domes")');
 assert.ok(rockBaseToneFor('reservoir')[0] < 0.15 && rockBaseToneFor('orchard')[2] > 0.45 && rockBaseToneFor('verdant') === null,
@@ -739,7 +746,8 @@ const hullAt = source.indexOf('rockHulls.push(legacy.hull); // the collision pro
 // (the Redrock lane, round 10: the form takes the map's angularity too, RockClimate.angular; the hitbox lane, 2026-10-11:
 // the drawn, collision and far forms from one constructor, rockDressing.ts boulderVariantForms)
 assert.ok(hullAt > 0 && hullAt < source.indexOf('const forms = boulderVariantForms(vi, noi, () => mulberry32(seed + 60 + vi), legacy.hull, legacy.top, lithology, angular, mobileProps);'), 'the legacy hull is taken before the form is fitted inside it, as the map\'s rock breaks');
-assert.match(source, /paintBoulder\(forms\.drawn, P\.rockTone, lithology\);\n\s*rockGeos\.push\(forms\.drawn\.geometry\);/);
+// (item 46, 2026-10-22: painted from the map's own stone, rockBaseToneFor, before its lithology's)
+assert.match(source, /paintBoulder\(forms\.drawn, P\.rockTone, lithology, rockBaseToneFor\(mapId\)\);\n\s*rockGeos\.push\(forms\.drawn\.geometry\);/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockGround', new THREE\.InstancedBufferAttribute\(ground, 1\)\)/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockSlope', new THREE\.InstancedBufferAttribute\(slope, 2\)\)/, 'every boulder the slope of its ground');
 assert.match(source, /const rockContact = !snowCap && rockDressing\.dust < 0\.5;/, 'a contact patch round every boulder, but on snow and sand');

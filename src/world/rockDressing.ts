@@ -83,18 +83,24 @@ const ROCK_CLIMATE: Readonly<Record<string, RockClimate>> = Object.freeze({
   // (wave 57: Prokhorovka lies south of the glacial limit, so no erratic boulders; its exposed rock is the Cretaceous
   // chalk of the Belogorye — white blocks and outcrops, a little moss, the grey and orange lichens of calcareous stone)
   verdant: { moss: 0.6, dust: 0, lith: 'chalk', lichen: [0.16, GREY_GREEN, ORANGE, 0.7] },
-  autumn: { moss: 0.7, dust: 0, lith: 'granite', lichen: [0.2, GREY_GREEN, ORANGE, 0.75] },
+  // (item 46, 2026-10-22, the owner's MAP-01 "plants and rocks and bushes": each map's stone its own geology's) Amberford is
+  // the Moselle at the foot of the Côtes de Moselle: the golden Jaumont limestone of the Bajocian, weathered grey (was
+  // granite; the map's field-stone tone keeps its warm grey)
+  autumn: { moss: 0.7, dust: 0, lith: 'limestone', lichen: [0.2, GREY_GREEN, ORANGE, 0.75], tone: [0.11, 0.3, 0.56] },
   coastal: { moss: 0.6, dust: 0, lith: 'granite', lichen: [0.27, ORANGE, PALE, 0.55] },
   fjord: { moss: 0.8, dust: 0, lith: 'gneiss', lichen: [0.2, GREY_GREEN, BLACK, 0.65] },
-  monsoon: { moss: 0.85, dust: 0, lith: 'granite', lichen: [0.19, PALE, GREY_GREEN, 0.6] },
+  // (item 46) Kohima's Naga Hills are Tertiary shales and sandstones (the Barail and Disang groups), grey-buff under the
+  // red soil's stain: no granite crops out there (was granite)
+  monsoon: { moss: 0.85, dust: 0, lith: 'sandstone', lichen: [0.19, PALE, GREY_GREEN, 0.6], tone: [0.09, 0.15, 0.42] },
   mangrove: { moss: 0.85, dust: 0, lith: 'limestone', lichen: [0.19, PALE, ORANGE, 0.7] },
   delta: { moss: 0.7, dust: 0, lith: 'limestone', lichen: [0.17, PALE, GREY_GREEN, 0.6] },
   polders: { moss: 0.65, dust: 0, lith: 'granite', lichen: [0.22, GREY_GREEN, ORANGE, 0.6] },
   // (2026-10-10, the map-revival lane; gauntlet wave 346, Orchard: "mid blue-grey ... granite set down on the turf
   // rather than pale, karst-pitted Chouf limestone"): Mount Lebanon's Jurassic limestone, pale grey-cream, fluted and
   // pitted (ROCK_CLAST_GLSL's karren), dark lichen streaks, less moss than a wet map (was granite, moss 0.7)
-  orchard: { moss: 0.4, dust: 0.08, lith: 'limestone', lichen: [0.22, PALE, BLACK, 0.55], tone: [0.11, 0.1, 0.52] },
-  longleaf: { moss: 0.75, dust: 0, lith: 'sandstone', lichen: [0.19, GREY_GREEN, PALE, 0.7] },
+  orchard: { moss: 0.4, dust: 0.08, lith: 'limestone', lichen: [0.22, PALE, BLACK, 0.55], tone: [0.11, 0.12, 0.56] },
+  // (item 46) Rapides Parish's Catahoula sandstone, stained rusty by its iron (its colour only: the form is the sandstone's)
+  longleaf: { moss: 0.75, dust: 0, lith: 'sandstone', lichen: [0.19, GREY_GREEN, PALE, 0.7], tone: [0.07, 0.32, 0.38] },
   // (2026-10-10, wave 346, Reservoir: "a dark teal-green, near-rectangular box ... no cleavage planes"; "Eifel slate crops
   // out as steeply dipping stacks of thin plates with ragged edges and grey-brown weathering"): the slate's cleavage
   // steep (LITHOLOGY_CUTS: thin beds standing on edge, the form stepped at them), crisper arrises, a brown-grey stone
@@ -104,7 +110,9 @@ const ROCK_CLIMATE: Readonly<Record<string, RockClimate>> = Object.freeze({
   alpine: { moss: 0.45, dust: 0, lith: 'gneiss', lichen: [0.19, YELLOW_GREEN, BLACK, 0.55] },
   urban: { moss: 0.3, dust: 0.1, lith: 'granite', lichen: [0.07, PALE, ORANGE, 0.7] },
   railyard: { moss: 0.25, dust: 0.15, lith: 'granite', lichen: [0.06, PALE, ORANGE, 0.7] },
-  foundry: { moss: 0.25, dust: 0.15, lith: 'granite', lichen: [0.05, PALE, ORANGE, 0.7] },
+  // (item 46) Völklingen's Saar valley: the red Buntsandstein of its cliffs over the Carboniferous coal measures, brick-red
+  // under the works' soot (was granite)
+  foundry: { moss: 0.25, dust: 0.15, lith: 'sandstone', lichen: [0.05, PALE, ORANGE, 0.7], tone: [0.03, 0.3, 0.38] },
   ruinspires: { moss: 0.25, dust: 0.1, lith: 'sandstone', lichen: [0.09, PALE, ORANGE, 0.6] },
   // (the map-revival lane, Skybridge round 4, gauntlet waves 170-171: "grey granite boulders" — Glen Canyon is the
   // Arizona desert: its blocks are Navajo sandstone under the dust and the varnish of the dry country, as Titan Gorge's)
@@ -121,15 +129,13 @@ const ROCK_CLIMATE: Readonly<Record<string, RockClimate>> = Object.freeze({
   // sandstone, varnish 0.3, dust 0.75)
   copper_mesa: { moss: 0, dust: 0.55, lith: 'conglomerate', lichen: [0.04, ORANGE, BLACK, 0.5], varnish: 0.12, angular: 0.35, tone: [0.96, 0.1, 0.4] },
   titan_gorge: { moss: 0, dust: 0.7, lith: 'sandstone', lichen: [0.04, BLACK, ORANGE, 0.6], varnish: 0.27 },
-  oasis: { moss: 0, dust: 0.7, lith: 'sandstone', lichen: [0.04, ORANGE, BLACK, 0.5], varnish: 0.24 },
-  // (2026-10-10, wave 346, Olympus Basin: "flat-shaded maroon slabs ... like a broken brick pile"; "dark grey basalt
-  // dusted tan": the map's rock tone law, mars.ts) its basalt's breaks crisper
-  mars: { moss: 0, dust: 0.9, lith: 'basalt', lichen: [0, PALE, PALE, 1], angular: 0.3 },
-  // (2026-10-10, wave 346, Earthrise: "smooth, near-identical egg-shaped domes ... rather than lunar breccia"; "rounded-
-  // angular fractured masses, dust-coated and half-sunk"): the highland breccia, its angular clasts the material's, its
-  // forms fractured blocks (was basalt)
-  moon: { moss: 0, dust: 0.7, lith: 'breccia', lichen: [0, PALE, PALE, 1], angular: 0.55 },
-  cliffbridge: { moss: 0.6, dust: 0.6, lith: 'limestone', lichen: [0.19, ORANGE, PALE, 0.5] },
+  // (item 46) Siwa's scarps and its Shali are the Miocene limestone of the Marmarica plateau, cream to tan, the varnish
+  // thinner on a carbonate (was sandstone, varnish 0.24)
+  oasis: { moss: 0, dust: 0.7, lith: 'limestone', lichen: [0.04, ORANGE, BLACK, 0.5], varnish: 0.1, tone: [0.11, 0.26, 0.66] },
+  mars: { moss: 0, dust: 0.9, lith: 'basalt', lichen: [0, PALE, PALE, 1] },
+  moon: { moss: 0, dust: 0.7, lith: 'basalt', lichen: [0, PALE, PALE, 1] },
+  // (item 46) Ronda's gorge is cut in a buff Miocene calcarenite, a sandy limestone (its colour only)
+  cliffbridge: { moss: 0.6, dust: 0.6, lith: 'limestone', lichen: [0.19, ORANGE, PALE, 0.5], tone: [0.1, 0.24, 0.6] },
   winter: { moss: 0, dust: 0, lith: 'granite', lichen: [0.16, BLACK, YELLOW_GREEN, 0.6] },
   whiteout: { moss: 0, dust: 0, lith: 'granite', lichen: [0.12, BLACK, YELLOW_GREEN, 0.7] },
 });

@@ -20,7 +20,7 @@ import './maps/horizon.ts';
 // Round 73 (2026-09-25): the tall-grass tier and the pressure field its blades bend to
 import { createTallGrass, type TallGrass } from './tallGrass.ts';
 // item 45 (2026-10-22): the ruts behind the tanks
-import { createTrackMarks, trackMarkSegmentsFor, type TrackMarks } from './trackMarks.ts';
+import { createTrackMarks, trackMarkSegmentsFor, type TrackMarks, type TrackMarksHull } from './trackMarks.ts';
 import type { GroundDisturbance } from './groundPressure.ts';
 import type { HeightField, TerrainMapConfig } from './terrain.ts';
 import {
@@ -335,7 +335,7 @@ export interface WorldRuntime {
    */
   advanceTrackMarks?(dt: number): void;
   stampTrackMarks?(key: object, x: number, z: number, yaw: number, halfGaugeM: number, trackWidthM: number, depth: number): void;
-  layTrackMarkPaths?(paths: readonly (readonly number[])[], speedMps?: number): number;
+  layTrackMarkPaths?(paths: readonly (readonly number[])[], speedMps?: number, hull?: TrackMarksHull): number;
   trackMarksActive?(): boolean;
   setSniperFade(
     fraction: number,
@@ -1138,7 +1138,7 @@ function assembleWorld(
     /** Item 45: the ruts behind the tanks (battlePresentationRuntime.ts lays them from the simulation's poses). */
     advanceTrackMarks(dt) { trackMarks.advance(dt); },
     stampTrackMarks(key, x, z, yaw, halfGaugeM, trackWidthM, depth) { trackMarks.stamp(key, x, z, yaw, halfGaugeM, trackWidthM, depth); },
-    layTrackMarkPaths: (paths, speedMps) => trackMarks.layPaths(paths, speedMps),
+    layTrackMarkPaths: (paths, speedMps, hull) => trackMarks.layPaths(paths, speedMps, hull),
     trackMarksActive: () => trackMarks.active(),
     /**
      * Sniper near-grass suppression passthrough (see vegetation.setSniperFade).

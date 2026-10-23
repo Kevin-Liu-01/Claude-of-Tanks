@@ -105,6 +105,13 @@ export interface TrackMarksOptions {
   segments?: number;
 }
 
+/** A hull's tracks for layPaths: the half gauge and the track's width (m), its depth (1 for a 45 t MBT). */
+export interface TrackMarksHull {
+  halfGaugeM?: number;
+  trackWidthM?: number;
+  depth?: number;
+}
+
 export interface TrackMarksStats {
   /** Segments written since the battle began, those the ring holds now, and its size. */
   written: number;
@@ -126,9 +133,9 @@ export interface TrackMarks {
   stamp(key: object, x: number, z: number, yaw: number, halfGaugeM: number, trackWidthM: number, depth: number): void;
   /**
    * Diagnostics and the capture tools: drive hulls along polylines ([x0, z0, x1, z1, ...] each) at `speedMps`, stamped
-   * at 60 Hz with the clock advanced as a battle's. Returns the stamps made.
+   * at 60 Hz with the clock advanced as a battle's, on the given hull (an MBT's by default). Returns the stamps made.
    */
-  layPaths(paths: readonly (readonly number[])[], speedMps?: number): number;
+  layPaths(paths: readonly (readonly number[])[], speedMps?: number, hull?: TrackMarksHull): number;
   /** True while hulls are laying marks (a stamp within TRACK_MARKS.activeS of the marks' clock). */
   active(): boolean;
   /** Set the camera the marks fade from (each frame). */
@@ -524,8 +531,9 @@ export function createTrackMarks(field: TrackMarksField, options: TrackMarksOpti
     advance(dt) { if (dt > 0) { time += dt; uniforms.uTime.value = time; } },
     stamp,
     active: () => time - lastLaid < TRACK_MARKS.activeS,
-    layPaths(paths, speedMps = 8) {
+    layPaths(paths, speedMps = 8, hull = {}) {
       const step = speedMps / 60;
+      const halfGauge = hull.halfGaugeM ?? 1.5, width = hull.trackWidthM ?? 0.6, depth = hull.depth ?? 1;
       let n = 0;
       for (const path of paths) {
         const key = {};
@@ -533,7 +541,7 @@ export function createTrackMarks(field: TrackMarksField, options: TrackMarksOpti
           const ax = path[i], az = path[i + 1], bx = path[i + 2], bz = path[i + 3];
           const len = Math.hypot(bx - ax, bz - az) || 1, yaw = Math.atan2(bx - ax, bz - az);
           for (let d = 0; d < len; d += step) {
-            stamp(key, ax + (bx - ax) * d / len, az + (bz - az) * d / len, yaw, 1.4, 0.6, 1);
+            stamp(key, ax + (bx - ax) * d / len, az + (bz - az) * d / len, yaw, halfGauge, width, depth);
             time += 1 / 60;
             n++;
           }
