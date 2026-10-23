@@ -463,21 +463,24 @@
   "idea": "the crest kill from above: a crane shot down onto the Chieftain tipping over the fold, gun on the burning T-64BV in the grass below",
   "view": "top-down",
   "lens": "a",
-  "pick": "vs10-steppe-chieftain-t64-r7-top:a"
+  "pick": "vs10-steppe-chieftain-t64-r7-top:a",
+  "restage": [
+   "r7g: lens {\"pos\":[11.25,10,-295.48],\"lookAt\":[-1.78,-0.47,-291.79],\"fov\":58,\"rollDeg\":10}"
+  ]
  },
  "camera": {
   "name": "a",
   "pos": [
-   7.49,
-   6.5,
-   -294.11
+   11.25,
+   10,
+   -295.48
   ],
   "lookAt": [
-   -0.77,
+   -1.78,
    -0.47,
-   -291.11
+   -291.79
   ],
-  "fov": 54,
+  "fov": 58,
   "rollDeg": 10,
   "groundRel": true
  },
@@ -485,16 +488,16 @@
   {
    "name": "a",
    "pos": [
-    7.49,
-    6.5,
-    -294.11
+    11.25,
+    10,
+    -295.48
    ],
    "lookAt": [
-    -0.77,
+    -1.78,
     -0.47,
-    -291.11
+    -291.79
    ],
-   "fov": 54,
+   "fov": 58,
    "rollDeg": 10,
    "groundRel": true
   }

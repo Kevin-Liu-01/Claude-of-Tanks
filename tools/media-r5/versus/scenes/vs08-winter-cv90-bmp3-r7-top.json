@@ -602,24 +602,26 @@
   "pick": "vs08-winter-cv90-bmp3-r7-top:a",
   "restage": [
    "r7c: hero flash 6957 -> 6890 ms; wall planks removed (1); dust trails x0.6",
-   "r7d: foe turret -2.79 -> -12.79 (10° off centre, on the hero's front corner)",
+   "r7d: foe turret -2.79 -> -12.79 (10\u00b0 off centre, on the hero's front corner)",
    "r7e: lens [-172.47, 5, -24.75] fov 42.77 -> [-169.3, 11.01, -34.19] fov 58",
-   "r7f: lens {\"pos\":[-172.47,5,-24.75],\"lookAt\":[-164.78,0,-28.58],\"fov\":42.77,\"rollDeg\":-9.28}"
-  ]
+   "r7f: lens {\"pos\":[-172.47,5,-24.75],\"lookAt\":[-164.78,0,-28.58],\"fov\":42.77,\"rollDeg\":-9.28}",
+   "r7g: lens {\"pos\":[-176.05,7.5,-22.97],\"lookAt\":[-163.92,0,-29.84],\"fov\":46.77,\"rollDeg\":-9.28}"
+  ],
+  "view": "top-down"
  },
  "camera": {
   "name": "a",
   "pos": [
-   -172.47,
-   5,
-   -24.75
+   -176.05,
+   7.5,
+   -22.97
   ],
   "lookAt": [
-   -164.78,
+   -163.92,
    0,
-   -28.58
+   -29.84
   ],
-  "fov": 42.77,
+  "fov": 46.77,
   "rollDeg": -9.28,
   "groundRel": true
  },
@@ -627,16 +629,16 @@
   {
    "name": "a",
    "pos": [
-    -172.47,
-    5,
-    -24.75
+    -176.05,
+    7.5,
+    -22.97
    ],
    "lookAt": [
-    -164.78,
+    -163.92,
     0,
-    -28.58
+    -29.84
    ],
-   "fov": 42.77,
+   "fov": 46.77,
    "rollDeg": -9.28,
    "groundRel": true
   }

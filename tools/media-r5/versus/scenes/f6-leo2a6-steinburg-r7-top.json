@@ -570,42 +570,44 @@
   "pick": "f6-leo2a6-steinburg-r7-top:a",
   "restage": [
    "r7c: foe0 turret -29 -> -6.95; hero flash 6958 -> 6900 ms",
-   "r7d: foe turret -6.95 -> -16.95 (10° off centre, on the hero's front corner)",
+   "r7d: foe turret -6.95 -> -16.95 (10\u00b0 off centre, on the hero's front corner)",
    "r7e: lens [-52.39, 5.01, -71.71] fov 49.92 -> [-55.55, 16.79, -83.33] fov 44",
-   "r7f: lens {\"pos\":[-51.64,4.01,-71.71],\"lookAt\":[-48.51,1.25,-75.54],\"fov\":53.92,\"rollDeg\":-4.24}"
-  ]
+   "r7f: lens {\"pos\":[-51.64,4.01,-71.71],\"lookAt\":[-48.51,1.25,-75.54],\"fov\":53.92,\"rollDeg\":-4.24}",
+   "r7g: lens {\"pos\":[-53.54,6.01,-69.39],\"lookAt\":[-48.51,1.25,-76.54],\"fov\":51.92,\"rollDeg\":-7.24}"
+  ],
+  "view": "top-down"
  },
  "camera": {
   "name": "a",
   "pos": [
-   -51.64,
-   4.01,
-   -71.71
+   -53.54,
+   6.01,
+   -69.39
   ],
   "lookAt": [
    -48.51,
    1.25,
-   -75.54
+   -76.54
   ],
-  "fov": 53.92,
-  "rollDeg": -4.24,
+  "fov": 51.92,
+  "rollDeg": -7.24,
   "groundRel": true
  },
  "cameraVariants": [
   {
    "name": "a",
    "pos": [
-    -51.64,
-    4.01,
-    -71.71
+    -53.54,
+    6.01,
+    -69.39
    ],
    "lookAt": [
     -48.51,
     1.25,
-    -75.54
+    -76.54
    ],
-   "fov": 53.92,
-   "rollDeg": -4.24,
+   "fov": 51.92,
+   "rollDeg": -7.24,
    "groundRel": true
   }
  ]
