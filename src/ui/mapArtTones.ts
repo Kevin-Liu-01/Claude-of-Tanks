@@ -7,7 +7,7 @@
  */
 export const MAP_ART_TONES: Readonly<Record<string, readonly [string, string, string]>> = Object.freeze({
   verdant: ['#a3bed4', '#6c7a71', '#4e5240'],
-  desert: ['#9fb1bd', '#c5ad8a', '#c0a87f'],
+  desert: ['#a0aeba', '#c6ad88', '#c1a87f'],
   winter: ['#b2bdc7', '#acb3b5', '#9ea6a9'],
   urban: ['#9fbbcf', '#716c62', '#636443'],
   coastal: ['#a1c2db', '#859487', '#6d8563'],
@@ -18,8 +18,8 @@ export const MAP_ART_TONES: Readonly<Record<string, readonly [string, string, st
   fjord: ['#a5c0d3', '#788a89', '#36433b'],
   delta: ['#a6c4d8', '#607870', '#495e3f'],
   badlands: ['#8c9fb9', '#ad886e', '#b8825a'],
-  monsoon: ['#a5b9c2', '#616f64', '#444d39'],
-  alpine: ['#a2b4bd', '#b2b8bb', '#b0b7bb'],
+  monsoon: ['#9eafb6', '#626f65', '#4b523a'],
+  alpine: ['#9eb0c1', '#a0aebf', '#8ea2bc'],
   caldera: ['#92b0c8', '#606d6a', '#323f37'],
   foundry: ['#bac2cb', '#555653', '#3e3d36'],
   ruinspires: ['#96b8d6', '#777e7e', '#5c5b54'],
@@ -29,17 +29,17 @@ export const MAP_ART_TONES: Readonly<Record<string, readonly [string, string, st
   polders: ['#aabfcd', '#818674', '#525a36'],
   copper_mesa: ['#88a0b5', '#9b887b', '#9f8372'],
   airfield: ['#9bc0db', '#7d877d', '#5c614f'],
-  oasis: ['#a5c2dc', '#aea189', '#9e8e6e'],
+  oasis: ['#a6bfd8', '#ae9f85', '#9f8f6d'],
   whiteout: ['#9ea9b1', '#a1abb0', '#a1acb2'],
   orchard: ['#a2bdd1', '#6d7a6a', '#656b48'],
-  longleaf: ['#a6c6dc', '#6b796d', '#545d3e'],
+  longleaf: ['#a9bccb', '#686e68', '#514f3d'],
   mangrove: ['#b3c9d5', '#708073', '#475839'],
   saltwind: ['#9baeb2', '#6a726e', '#5a584e'],
-  reservoir: ['#9fbbcd', '#546863', '#4e5538'],
+  reservoir: ['#9ab8ce', '#536763', '#404936'],
   mars: ['#5e353d', '#b96944', '#b5613d'],
   moon: ['#040505', '#1a2024', '#6d7479'],
   cliffbridge: ['#8c8e81', '#9a8c71', '#796e52'],
 });
 
 /** The bands' mean over every battlefield: the gradient before the battlefield is known. */
-export const MAP_ART_TONE_DEFAULT: readonly [string, string, string] = ['#9aadbd', '#828175', '#726d56'];
+export const MAP_ART_TONE_DEFAULT: readonly [string, string, string] = ['#9aacbc', '#818075', '#716c56'];

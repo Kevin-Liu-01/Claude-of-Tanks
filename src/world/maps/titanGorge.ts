@@ -34,6 +34,7 @@
 // sheds and trailers of a working valley; the jewellery stands by the road; abandoned camps. The valley floor is sand
 // under juniper and sagebrush, the grass on it cured to straw.
 
+import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import desert from './desert.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 import { TITAN_HOMESITES } from './titanHomesites.ts'; // the maps lane, 2026-10-15: the valley's homesites
@@ -50,8 +51,8 @@ export default {
     // the authored shelves and buttes replace the noise mesas, and the rock gate reads them (terrain.ts landformRock)
     mesas: null, landformRock: true,
     hardstands: [
-      { x: -250, z: 50, width: 52, length: 52, yawDeg: 133, level: -1.9, grade: 0.08, bankM: 16 },
-      { x: 250, z: -50, width: 48, length: 48, yawDeg: -47, level: 8.1, grade: 0, bankM: 20 },
+      { x: -250, z: 50, width: 52, length: 52, yawDeg: 133, level: -1.9, grade: 0.08, bankM: 16, paint: WORN_YARD_PAINT },
+      { x: 250, z: -50, width: 48, length: 48, yawDeg: -47, level: 8.1, grade: 0, bankM: 20, paint: WORN_YARD_PAINT },
     ],
     village: { x0: -138, x1: 148, z0: -132, z1: 152, cx: 8, cz: 12, feather: 58, flatten: 0.66, relief: 0.30 },
     // each cross road's junctions and the northern fork are nodes both roads share, so the junction blend grades one

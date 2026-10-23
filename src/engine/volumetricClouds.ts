@@ -37,6 +37,7 @@ import type { AtmospherePublishedState } from './sky.ts';
 import { CLOUD_BLUE_SIZE, CLOUD_LOCAL_SIZE, CLOUD_WEATHER_SIZE } from './cloudNoise.ts';
 import { CLOUD_LAYER_RULES, cloudLayerKey, type CloudLayerPreset } from './cloudPresets.ts';
 import { resolvePresetName } from './quality.ts';
+import { A11Y } from '../ui/accessibilityPreferences.ts';
 import { publishCloudShade, type CloudShadeUniforms } from './cloudShadeMap.ts';
 import { lightTune } from './lightModelCore.ts';
 import { beginRgba8Readback } from './rgba8Readback.ts';
@@ -1709,7 +1710,8 @@ export class VolumetricCloudLayer {
     this.flashAge += step;
     const strokeT = this.flashAge / 0.09;
     const k = Math.floor(strokeT);
-    flash.w = k < this.flashStrokes ? this.flashPeak * Math.exp(-(strokeT - k) * 0.09 / 0.03) * (1 - 0.25 * k) : 0;
+    // a lightning stroke's strength, scaled by the player's flash intensity (Accessibility, A11Y.flash)
+    flash.w = k < this.flashStrokes ? this.flashPeak * Math.exp(-(strokeT - k) * 0.09 / 0.03) * (1 - 0.25 * k) * A11Y.flash : 0;
     if (this.qaFlash > 0) flash.w = this.qaFlash;
   }
 

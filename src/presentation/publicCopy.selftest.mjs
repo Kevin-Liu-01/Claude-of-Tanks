@@ -57,7 +57,7 @@ assert.ok(docsScriptSource.includes(`{ mode: 'wall', limit: ${archiveCount}, fil
   'the manual\'s wall shows the whole archive');
 
 const homeSource = readFileSync(join(ROOT, 'site/home.html'), 'utf8');
-const homeStyles = readFileSync(join(ROOT, 'public/home.css'), 'utf8');
+const homeStyles = readFileSync(join(ROOT, 'src/presentation/home.css'), 'utf8');
 const docsSource = readFileSync(join(ROOT, 'site/docs.html'), 'utf8');
 const galleryHtmlSource = readFileSync(join(ROOT, 'site/gallery.html'), 'utf8');
 const readmeSource = readFileSync(join(ROOT, 'README.md'), 'utf8');
@@ -88,24 +88,22 @@ assert.match(typeTokenCss({ fx: true }), /:lang\(zh-CN\) \.t-hollow\{color:var\(
 assert.match(TYPE_STACK.ui, /^'Cot UI','Cot Accents','Cot Symbols','Cot Fallback','PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC'/,
   'Chinese glyphs come from the system CJK faces right after the Latin face, its accents and marks faces and its fallback');
 
-const landingIcons = [
-  'play', 'screenshots', 'vehicle', 'battlefield', 'gpu', 'multiplayer',
-  'live-combat', 'modules', 'camera-paths', 'missile', 'armor',
-];
+// Landing and README pictograms come from the one icon sprite (brand-ui BUI-F4): the page references its symbols, the
+// README shows the accent exports tools/gen-icon-sprite.mjs writes; the retired product-mark folders stay gone.
+const landingIcons = ['play', 'toolPhoto', 'vehicle', 'map', 'gpu', 'team', 'fireGun', 'layerModules', 'cameraPath',
+  'rocket', 'layerArmor'];
 for (const icon of landingIcons) {
-  const relative = `brand/features/${icon}.svg`;
-  const asset = readFileSync(join(ROOT, 'public', relative), 'utf8');
-  assert.match(asset, /^<svg[^>]+viewBox="0 0 64 64"/, `${icon} icon must use the shared 64 px grid`);
-  assert.match(asset, /role="img" aria-label="[^"]+"/, `${icon} icon must describe its visual concept`);
-  assert.ok(homeSource.includes(`/${relative}`), `landing page must use ${icon}.svg`);
-  assert.ok(readmeSource.includes(`public/${relative}`), `README must show ${icon}.svg`);
+  assert.ok(homeSource.includes(`href="#i-${icon}"`), `landing page must use the ${icon} glyph`);
 }
-for (const relative of ['brand/nav/docs.svg', 'brand/nav/tank-gallery.svg', 'brand/nav/studio.svg']) {
-  assert.ok(readmeSource.includes(`public/${relative}`), `README must show ${relative}`);
+for (const [, icon] of readmeSource.matchAll(/docs\/media\/icons\/([A-Za-z]+)\.svg/g)) {
+  const asset = readFileSync(join(ROOT, 'docs/media/icons', `${icon}.svg`), 'utf8');
+  assert.match(asset, /^<svg[^>]+viewBox="0 0 24 24"/, `${icon} README pictogram uses the 24-unit grid`);
 }
-const docsMark = readFileSync(join(ROOT, 'public/brand/nav/docs.svg'), 'utf8');
-assert.match(docsMark, /data-vehicle="m1a1_abrams_hc"/, 'Docs mark must use the shared M1A2 vehicle silhouette');
-assert.doesNotMatch(docsMark, /<image|data:image\//, 'Docs mark must use crisp native vector geometry');
+for (const icon of ['manual', 'gallery', 'studio', 'play']) {
+  assert.ok(readmeSource.includes(`docs/media/icons/${icon}.svg`), `README must show the ${icon} pictogram`);
+}
+assert.ok(!existsSync(join(ROOT, 'public/brand/nav')) && !existsSync(join(ROOT, 'public/brand/features')),
+  'the retired product-mark folders stay out of the shipped tree');
 
 for (const film of ['trailer.webm', 'trailer.mp4', 'trailer.jpg', 'reel.mp4', 'reel.jpg']) {
   assert.ok(existsSync(join(ROOT, 'public/media/site50-r14/films', film)), `missing film: ${film}`);

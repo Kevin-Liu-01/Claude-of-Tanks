@@ -184,6 +184,51 @@
   ],
   "versus": [
     {
+      "id": "vs04-railyard-leclerc-t14-r7",
+      "title": "Cinder Junction, golden hour: Leclerc SXXI v T-14 Armata",
+      "src": "/media/versus-r1/vs04-railyard-leclerc-t14-r7.webp"
+    },
+    {
+      "id": "vs04-railyard-leclerc-t14-r7-top",
+      "title": "Cinder Junction, golden hour, from above: Leclerc SXXI v T-14 Armata",
+      "src": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-top.webp"
+    },
+    {
+      "id": "vs10-steppe-chieftain-t64-r7",
+      "title": "Tarkhan Steppe, golden hour: Chieftain Mk 10 v T-64BV1",
+      "src": "/media/versus-r1/vs10-steppe-chieftain-t64-r7.webp"
+    },
+    {
+      "id": "vs10-steppe-chieftain-t64-r7-top",
+      "title": "Tarkhan Steppe, golden hour, from above: Chieftain Mk 10 v T-64BV1",
+      "src": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top.webp"
+    },
+    {
+      "id": "f6-leo2a6-steinburg-r7",
+      "title": "Steinburg, day: Leopard 2A6 v T-90M",
+      "src": "/media/versus-r1/f6-leo2a6-steinburg-r7.webp"
+    },
+    {
+      "id": "vs06-coastal-type10-ztz99a2-r7",
+      "title": "Saltmere Bay, day: Type 10 v ZTZ-99A2",
+      "src": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r7.webp"
+    },
+    {
+      "id": "vs07-autumn-ariete-t62-r7",
+      "title": "Amberford, golden hour: C2 Ariete v T-62MV-1",
+      "src": "/media/versus-r1/vs07-autumn-ariete-t62-r7.webp"
+    },
+    {
+      "id": "vs08-winter-cv90-bmp3-r7",
+      "title": "Frosthollow, day: CV90 Mk 4 v BMP-3",
+      "src": "/media/versus-r1/vs08-winter-cv90-bmp3-r7.webp"
+    },
+    {
+      "id": "vs09-alpine-strv122-t80bv-r7",
+      "title": "Glacier Pass, day: Stridsvagn 122 v T-80BV",
+      "src": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7.webp"
+    },
+    {
       "id": "vs01-desert-abrams-t90m-r6",
       "title": "Sirocco Wadi, day: M1A2 Abrams SEPv3 v T-90M",
       "src": "/media/versus-r1/vs01-desert-abrams-t90m-r6.webp"
@@ -242,6 +287,104 @@
       "id": "f7-t90m-column-r5",
       "title": "Frontier Basin, day: T-90M v Leopard 2A6",
       "src": "/media/versus-r1/f7-t90m-column-r5.webp"
+    }
+  ],
+  "versusFilms": [
+    {
+      "id": "vs04-railyard-leclerc-t14-r7",
+      "title": "Cinder Junction, golden hour: Leclerc SXXI v T-14 Armata",
+      "src": "/media/versus-films-r1/vs04-railyard-leclerc-t14-r7.mp4",
+      "mobile": "/media/versus-films-r1/vs04-railyard-leclerc-t14-r7-mobile.mp4",
+      "poster": "/media/versus-films-r1/vs04-railyard-leclerc-t14-r7.jpg",
+      "seconds": 8.5
+    },
+    {
+      "id": "vs10-steppe-chieftain-t64-r7",
+      "title": "Tarkhan Steppe, golden hour: Chieftain Mk 10 v T-64BV1",
+      "src": "/media/versus-films-r1/vs10-steppe-chieftain-t64-r7.mp4",
+      "mobile": "/media/versus-films-r1/vs10-steppe-chieftain-t64-r7-mobile.mp4",
+      "poster": "/media/versus-films-r1/vs10-steppe-chieftain-t64-r7.jpg",
+      "seconds": 8.5
+    },
+    {
+      "id": "f6-leo2a6-steinburg-r7",
+      "title": "Steinburg, day: Leopard 2A6 v T-90M",
+      "src": "/media/versus-films-r1/f6-leo2a6-steinburg-r7.mp4",
+      "mobile": "/media/versus-films-r1/f6-leo2a6-steinburg-r7-mobile.mp4",
+      "poster": "/media/versus-films-r1/f6-leo2a6-steinburg-r7.jpg",
+      "seconds": 8.5
+    },
+    {
+      "id": "vs06-coastal-type10-ztz99a2-r7",
+      "title": "Saltmere Bay, day: Type 10 v ZTZ-99A2",
+      "src": "/media/versus-films-r1/vs06-coastal-type10-ztz99a2-r7.mp4",
+      "mobile": "/media/versus-films-r1/vs06-coastal-type10-ztz99a2-r7-mobile.mp4",
+      "poster": "/media/versus-films-r1/vs06-coastal-type10-ztz99a2-r7.jpg",
+      "seconds": 8.5
+    },
+    {
+      "id": "vs07-autumn-ariete-t62-r7",
+      "title": "Amberford, golden hour: C2 Ariete v T-62MV-1",
+      "src": "/media/versus-films-r1/vs07-autumn-ariete-t62-r7.mp4",
+      "mobile": "/media/versus-films-r1/vs07-autumn-ariete-t62-r7-mobile.mp4",
+      "poster": "/media/versus-films-r1/vs07-autumn-ariete-t62-r7.jpg",
+      "seconds": 8.5
+    },
+    {
+      "id": "vs08-winter-cv90-bmp3-r7",
+      "title": "Frosthollow, day: CV90 Mk 4 v BMP-3",
+      "src": "/media/versus-films-r1/vs08-winter-cv90-bmp3-r7.mp4",
+      "mobile": "/media/versus-films-r1/vs08-winter-cv90-bmp3-r7-mobile.mp4",
+      "poster": "/media/versus-films-r1/vs08-winter-cv90-bmp3-r7.jpg",
+      "seconds": 8.5
+    },
+    {
+      "id": "vs09-alpine-strv122-t80bv-r7",
+      "title": "Glacier Pass, day: Stridsvagn 122 v T-80BV",
+      "src": "/media/versus-films-r1/vs09-alpine-strv122-t80bv-r7.mp4",
+      "mobile": "/media/versus-films-r1/vs09-alpine-strv122-t80bv-r7-mobile.mp4",
+      "poster": "/media/versus-films-r1/vs09-alpine-strv122-t80bv-r7.jpg",
+      "seconds": 8.5
+    },
+    {
+      "id": "vs01-desert-abrams-t90m-r6",
+      "title": "Sirocco Wadi, day: M1A2 Abrams SEPv3 v T-90M",
+      "src": "/media/versus-films-r1/vs01-desert-abrams-t90m-r6.mp4",
+      "mobile": "/media/versus-films-r1/vs01-desert-abrams-t90m-r6-mobile.mp4",
+      "poster": "/media/versus-films-r1/vs01-desert-abrams-t90m-r6.jpg",
+      "seconds": 8.5
+    },
+    {
+      "id": "vs02-verdant-challenger-t80u-r6",
+      "title": "Verdant Fields, day: Challenger 3 v T-80U",
+      "src": "/media/versus-films-r1/vs02-verdant-challenger-t80u-r6.mp4",
+      "mobile": "/media/versus-films-r1/vs02-verdant-challenger-t80u-r6-mobile.mp4",
+      "poster": "/media/versus-films-r1/vs02-verdant-challenger-t80u-r6.jpg",
+      "seconds": 8.5
+    },
+    {
+      "id": "vs03-reservoir-k2-ztz99-r6",
+      "title": "Highland Reservoir, golden hour: K2 Black Panther v ZTZ-99 Longwei",
+      "src": "/media/versus-films-r1/vs03-reservoir-k2-ztz99-r6.mp4",
+      "mobile": "/media/versus-films-r1/vs03-reservoir-k2-ztz99-r6-mobile.mp4",
+      "poster": "/media/versus-films-r1/vs03-reservoir-k2-ztz99-r6.jpg",
+      "seconds": 8.5
+    },
+    {
+      "id": "vs05-oasis-merkava-t72b3-r6",
+      "title": "Sunscar Oasis, day: Merkava Mk 4 v T-72B3",
+      "src": "/media/versus-films-r1/vs05-oasis-merkava-t72b3-r6.mp4",
+      "mobile": "/media/versus-films-r1/vs05-oasis-merkava-t72b3-r6-mobile.mp4",
+      "poster": "/media/versus-films-r1/vs05-oasis-merkava-t72b3-r6.jpg",
+      "seconds": 8.5
+    },
+    {
+      "id": "f7-t90m-column-r5",
+      "title": "Frontier Basin, day: T-90M v Leopard 2A6",
+      "src": "/media/versus-films-r1/f7-t90m-column-r5.mp4",
+      "mobile": "/media/versus-films-r1/f7-t90m-column-r5-mobile.mp4",
+      "poster": "/media/versus-films-r1/f7-t90m-column-r5.jpg",
+      "seconds": 10.5
     }
   ],
   "trailers": [

@@ -2,6 +2,8 @@
    Owner UI rules 2026-10-17: no eyebrows, less text and more showing (class silhouettes, role symbols, live counts,
    the landing's hollow outline on the fleet total). Type reads the page's type tokens
    (--font-ui, and --font-display where a page declares the display family). */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
 .cot-facet-panel{--facet-font:var(--font-ui);
   --facet-display:var(--font-display,var(--facet-font));--facet-bg:rgb(10,14,18);
   position:absolute;z-index:6;right:var(--country-edge,34px);bottom:calc(100% + 8px);
@@ -110,3 +112,4 @@ body[data-cot-input='coarse'] .cot-facet-search input{height:44px;}
 body[data-cot-input='coarse'] .cot-facet-close{width:44px;}
 @media (prefers-reduced-motion:reduce){.cot-facet-toggle,.cot-facet-option,.cot-facet-option svg,.cot-facet-clear,.cot-facet-close,
   .cot-facet-rowwrap::before,.cot-facet-rowwrap::after{transition:none;}}
+}

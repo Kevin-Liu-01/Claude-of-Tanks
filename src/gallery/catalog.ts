@@ -12,7 +12,7 @@ import {
   vehicleFacetsForId,
 } from '../vehicles/vehicleFacets.ts';
 import { matchesVehicleFacetQuery, parseVehicleFacetQuery } from '../vehicles/vehicleFacetSearch.ts';
-import { getLocale, t } from '../ui/i18n.ts';
+import { formatNumber, getLocale, t } from '../ui/i18n.ts';
 
 interface GalleryShellSpec {
   name?: string;
@@ -258,8 +258,7 @@ function galleryRatings(
 
 function galleryArmamentSentence(spec: GalleryVehicleSpec, gun: GalleryGunSummary): string {
   const familyCount = gun.shellTypes.length || 1;
-  const familyKey = gun.shellTypes.length === 1 ? 'gallery.brief.family.one' : 'gallery.brief.family.other';
-  const familyLabel = t(familyKey);
+  const familyLabel = t('gallery.brief.family', { count: familyCount });
   if (!gun.autoloader) {
     return t('gallery.brief.armedFamily', {
       caliber: Number(spec.gun?.caliberMm || 0),
@@ -322,7 +321,7 @@ function galleryHighlights(
   return [
     ...(gun.autoloader ? [t('gallery.highlight.magazine', {
       size: gun.magazineSize,
-      damage: gun.burstDamage.toLocaleString('en-US'),
+      damage: formatNumber(gun.burstDamage),
       cycle: rounded(gun.intraClipS),
     })] : []),
     gun.best

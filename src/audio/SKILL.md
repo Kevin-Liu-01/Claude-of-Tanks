@@ -27,6 +27,12 @@ LOD), `soundCues.ts` (per-asset bus/space/jitter/caps), `weaponAudio.ts`
 `propSounds.ts` (what every world prop kind sounds like), `voiceLines.ts`
 (radio discipline, crew language). Web Audio owners: `mixer.ts`, `assetLibrary.ts`,
 `voicePool.ts`, `vehicleRig.ts`, `ambienceDirector.ts`, `crewRadio.ts`.
+`captions.ts` owns the caption stream (BUI-F9): every keyed transmission
+(`crewRadio.ts` `onTransmit`, with the take spoken and the speaking role from
+`captionSpeakers.generated.ts`) and the `CAPTION_SOUNDS` cues the engine raises
+(`caption('id', x, y, z)`, with a bearing from the listener) go out on the bus
+as `audio:caption`; the renderer reads text from `captionScript.generated.ts`
+(both tables from `tools/audio/build-captions.mjs`, run after any crew-line edit).
 `lazyAudio.ts` owns gesture-time context creation and mixer transfer (it makes
 no sound of its own); `listenerPoseRuntime.ts` owns
 the hybrid camera/vehicle listener. The two `*.generated.ts` manifests are

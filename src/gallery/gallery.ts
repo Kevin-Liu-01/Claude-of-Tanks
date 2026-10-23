@@ -530,8 +530,8 @@ function renderSurfaceInspection(info: SurfaceInspectionInfo | null): void {
   $('#inspectionId').textContent = `F${info.faceIndex}`;
   $('#inspectionOwner').textContent = info.ownership;
   $('#inspectionTitle').textContent = info.mesh;
-  const instance = info.instanceId === null ? '' : ` · instance ${info.instanceId}`;
-  $('#inspectionDetails').textContent = `Triangle ${info.faceIndex}${instance} · world [${info.point.join(', ')}]`;
+  $('#inspectionDetails').textContent = t(info.instanceId === null ? 'gallery.inspection.triangle' : 'gallery.inspection.triangleInstance',
+    { face: info.faceIndex, instance: info.instanceId ?? '', point: info.point.join(', ') });
   readout.hidden = false;
 }
 
@@ -612,11 +612,11 @@ function renderRoster(): void {
     if (heroCards?.module.decorateHeroCard(thumb, record.id, heroCards.manifest, { tankSizes: '90px', flagSizes: '110px' })) image.remove();
     const copy = document.createElement('span');
     const meta = document.createElement('small');
-    meta.textContent = `${record.nation} // ${record.era}`;
+    meta.textContent = `${nationName(record.nation)} · ${record.era}`;
     if (record.developmentOnly) {
       const devTag = document.createElement('b');
       devTag.className = 'vehicle-dev-tag';
-      devTag.textContent = record.rosterTag || 'DEV';
+      devTag.textContent = record.rosterTag || t('garage.card.devTag');
       meta.append(' ', devTag);
     }
     const title = document.createElement('strong');
@@ -646,18 +646,25 @@ function renderRoster(): void {
   });
 }
 
+/** A nation id's localized name (`nation.<id>`), or the id itself when the catalog has none. */
+function nationName(nation: string): string {
+  const key = `nation.${nation}`;
+  const name = t(key);
+  return name === key ? nation : name;
+}
+
 function renderDossier(record: GalleryRecord): void {
   const allIndex = records.findIndex((item) => item.id === record.id) + 1;
   $('#dossierIndex').textContent = String(allIndex).padStart(3, '0');
-  $('#dossierMeta').textContent = [record.nation, record.era, record.vehicleClass?.label,
-    `Tier ${record.tierNumeral}`].filter(Boolean).join(' // ');
+  $('#dossierMeta').textContent = [t('gallery.dossier.meta', { nation: nationName(record.nation), era: record.era, tier: record.tierNumeral }),
+    record.vehicleClass?.label].filter(Boolean).join(' · ');
   $('#dossierName').textContent = record.displayName;
-  $('#dossierDesignation').textContent = `fleet://${record.id} · ${record.era}`;
+  $('#dossierDesignation').textContent = record.era;
   $('#dossierAuthor').textContent = t('gallery.dossier.authorLine', {
     creator: record.authorship?.creator || 'Kevin B. Liu',
   });
   $('#dossierTankIcon').src = record.image;
-  $('#dossierTankIcon').alt = `${record.displayName} side profile`;
+  $('#dossierTankIcon').alt = t('gallery.dossier.iconAlt', { name: record.displayName });
   const ratingPresentation: Readonly<Record<string, { tone: string; icon: string; key: string }>> = {
     firepower: { tone: '#e9a346', icon: 'damage', key: 'gallery.dossier.rating.firepower' },
     protection: { tone: '#67d19a', icon: 'shield', key: 'gallery.dossier.rating.protection' },

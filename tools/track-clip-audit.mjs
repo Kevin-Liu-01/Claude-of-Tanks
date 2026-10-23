@@ -1,4 +1,4 @@
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { createCaptureLock } from './capture-lock.mjs';
 import { uniqueIds } from './id-list.mjs';
 // Track-containment audit driver (owner law 2026-08-03, GEOMETRY-GATE.md #4): fleet audit
 // driver for tools/track-clip-audit.html. Lists procedural-source ids, audits
@@ -25,10 +25,9 @@ const { quality, outDir } = trackClipOptions(process.argv.slice(2));
 
 // A repeated --ids entry fails before the capture hold (2026-10-16, test-speed R4c)
 uniqueIds(process.argv.find((a) => a.startsWith('--ids='))?.slice(6).split(','), 'track-clip-audit --ids');
-await acquireLock(45 * 60 * 1000);
-process.on('exit', releaseLock);
-const refresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-refresher.unref();
+// The server and browser start while the ticket waits; the hold covers the page loads only (2026-10-22, capture-hold).
+const captureLock = createCaptureLock();
+process.on('exit', () => captureLock.release());
 
 const idArg = process.argv.find((a) => a.startsWith('--ids='));
 /** Preserve the standard-check parser's band-first line, then append shoe evidence. */
@@ -82,7 +81,6 @@ function writeAuditReports(results) {
   }
 }
 
-try {
 await withIsolatedCaptureBrowser({
   root: process.cwd(), logLevel: 'error',
   server: { port: 7461 + Math.floor(Math.random() * 30), strictPort: false, hmr: false, watch: { ignored: ['**/*'] } },
@@ -116,8 +114,4 @@ const results = [];
     }
   }
   writeAuditReports(results);
-});
-} finally {
-  clearInterval(refresher);
-  releaseLock();
-}
+}, { capture: { lock: captureLock, waitMs: 45 * 60 * 1000 } });
