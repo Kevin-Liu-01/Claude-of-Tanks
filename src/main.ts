@@ -140,6 +140,7 @@ import './ui/responsiveSurfaces.css';
 import './ui/components/components.css';
 import './ui/garage.css';
 import './ui/deploy.css';
+import './ui/showroom.css';
 import './ui/battleTimeChoices.css';
 import { createGarage } from './ui/garage.ts';
 import { battleOrdinalBase, installBattleRecords } from './game/profile.ts';

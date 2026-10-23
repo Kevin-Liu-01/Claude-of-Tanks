@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 const garageTs = await readFile(new URL('./garage.ts', import.meta.url), 'utf8');
 const garageCss = await readFile(new URL('./garage.css', import.meta.url), 'utf8');
 
-const headerStart = garageTs.indexOf('<div class="cot-brand-utilities cot-header-nav"');
+const headerStart = garageTs.indexOf('<div class="cot-brand-rail">');
 const headerEnd = garageTs.indexOf('<nav class="cot-nav cot-header-nav"', headerStart);
 assert.ok(headerStart >= 0 && headerEnd > headerStart, 'garage header markup remains identifiable');
 assert.doesNotMatch(garageTs.slice(headerStart, headerEnd), /cot-garage-variant-trigger/,
@@ -52,7 +52,7 @@ assert.match(garageCss,
   /body\[data-cot-width='compact'\] \.cot-garage-variant-menu,[\s\S]*?grid-template-columns:1fr;/,
   'compact screens retain the existing single-column staging gallery');
 assert.match(garageCss,
-  /\.cot-garage \.title\{[^}]*letter-spacing:\.18em;/,
-  'the desktop CLAUDE OF TANKS wordmark uses slightly tighter tracking');
+  /\.cot-wordmark \.wm\[lang=en\]\{letter-spacing:\.08em\}/,
+  'the Claude of Tanks wordmark keeps its own tracking in every locale');
 
 console.log('garageVariantPicker.selftest: ok');
