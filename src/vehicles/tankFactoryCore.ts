@@ -1847,6 +1847,8 @@ const PROC_SHADOW_DEPTH_MAT = new THREE.MeshDepthMaterial({
 });
 const PROC_SHADOW_BODY_INSET_M = 0.05;
 const PROC_SHADOW_GUN_INSET_M = 0.012;
+const PROC_SHADOW_BARREL_OVERLAP_M = 0.05;
+const PROC_SHADOW_BARREL_SEAM_M = 0.04;
 const PROC_SHADOW_MIN_AXIS_SCALE = 0.8;
 const SHADOW_SUPPORT_DIRECTIONS = (() => {
   const directions = [
@@ -1899,13 +1901,21 @@ function packShadowSupports(directions: readonly THREE.Vector3[]): ShadowSupport
 }
 
 const SHADOW_SUPPORTS = packShadowSupports(SHADOW_SUPPORT_DIRECTIONS);
-// 243: a barrel is a tube along +Z of the gun group. Eight radial supports at
-// its breech and muzzle rings and at its widest station, plus the two axial
-// ones, hold its taper, sleeve and brake in at most 48 triangles, so the
-// mantlet's hull and the barrel's share the one proxy draw's 120.
+// 243: the gun proxy is three hulls in one draw, together inside the per-
+// caster 120 triangles. The mantlet takes the 26 cube supports (axes, edge
+// and corner diagonals: a mantlet is a box; at most 48 triangles); each half
+// of the barrel, a tube along +Z of the gun group, eight radial supports at
+// its two end rings plus the two axial ones (at most 32).
+const MANTLET_SHADOW_SUPPORTS = packShadowSupports((() => {
+  const directions: THREE.Vector3[] = [];
+  for (const x of [-1, 0, 1]) for (const y of [-1, 0, 1]) for (const z of [-1, 0, 1]) {
+    if (x || y || z) directions.push(new THREE.Vector3(x, y, z).normalize());
+  }
+  return directions;
+})());
 const BARREL_SHADOW_SUPPORTS = packShadowSupports((() => {
   const directions = [new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1)];
-  for (const tilt of [-0.45, 0, 0.45]) {
+  for (const tilt of [-0.45, 0.45]) {
     for (let i = 0; i < 8; i++) {
       const angle = (i / 8) * Math.PI * 2;
       directions.push(new THREE.Vector3(Math.cos(angle), Math.sin(angle), tilt).normalize());
@@ -2030,6 +2040,80 @@ function authoredShadowHull(
 
   const supportPoints = uniqueShadowSupportPoints(bestDots, bestPoints, supports);
   return finalizeAuthoredShadowHull(supportPoints, sourceTriangles, insetM);
+}
+
+/**
+ * 243: the hull of the part of a barrel between two owner-frame stations along +Z. The tube is cut, not filtered: a
+ * long cylinder has vertices only on its end rings, so its triangles are clipped to the slab and the cut points
+ * count as supports too.
+ */
+function barrelSegmentShadowHull(
+  owner: THREE.Object3D,
+  sourceMeshes: readonly THREE.Object3D[],
+  insetM: number,
+  supports: ShadowSupportSet,
+  fromZ: number,
+  toZ: number,
+): THREE.BufferGeometry | null {
+  const sources = sourceMeshes.filter((mesh): mesh is VehicleMesh =>
+    isVehicleMesh(mesh) && !isVehicleInstancedMesh(mesh) && !!mesh.geometry?.getAttribute('position'));
+  if (!sources.length || !(toZ > fromZ)) return null;
+  owner.updateWorldMatrix(true, true);
+  const ownerInverse = new THREE.Matrix4().copy(owner.matrixWorld).invert();
+  const localMatrix = new THREE.Matrix4();
+  const bestDots = new Float64Array(supports.count).fill(-Infinity);
+  const bestPoints = new Float64Array(supports.count * 3);
+  const consider = (px: number, py: number, pz: number): void => {
+    for (let direction = 0; direction < supports.count; direction++) {
+      const dot = px * supports.x[direction] + py * supports.y[direction] + pz * supports.z[direction];
+      if (dot <= bestDots[direction]) continue;
+      bestDots[direction] = dot;
+      bestPoints[direction * 3] = px;
+      bestPoints[direction * 3 + 1] = py;
+      bestPoints[direction * 3 + 2] = pz;
+    }
+  };
+  const corners = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
+  let sourceTriangles = 0;
+  for (const mesh of sources) {
+    mesh.updateWorldMatrix(true, false);
+    localMatrix.multiplyMatrices(ownerInverse, mesh.matrixWorld);
+    const position = mesh.geometry.getAttribute('position');
+    const index = mesh.geometry.index;
+    const count = index ? index.count : position.count;
+    sourceTriangles += count / 3;
+    for (let triangle = 0; triangle + 2 < count; triangle += 3) {
+      for (let k = 0; k < 3; k++) {
+        corners[k].fromBufferAttribute(position, index ? index.getX(triangle + k) : triangle + k).applyMatrix4(localMatrix);
+      }
+      for (let k = 0; k < 3; k++) {
+        const a = corners[k], b = corners[(k + 1) % 3];
+        if (a.z >= fromZ && a.z <= toZ) consider(a.x, a.y, a.z);
+        for (const station of [fromZ, toZ]) {
+          if ((a.z - station) * (b.z - station) >= 0) continue;
+          const t = (station - a.z) / (b.z - a.z);
+          consider(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t, station);
+        }
+      }
+    }
+  }
+  const supportPoints = uniqueShadowSupportPoints(bestDots, bestPoints, supports);
+  return finalizeAuthoredShadowHull(supportPoints, sourceTriangles, insetM);
+}
+
+/** The owner-frame z extent of some meshes' geometry bounds. */
+function ownerZRange(owner: THREE.Object3D, meshes: readonly THREE.Object3D[]): [number, number] | null {
+  owner.updateWorldMatrix(true, true);
+  const ownerInverse = new THREE.Matrix4().copy(owner.matrixWorld).invert();
+  const bounds = new THREE.Box3(), box = new THREE.Box3(), relative = new THREE.Matrix4();
+  for (const mesh of meshes) {
+    if (!isVehicleMesh(mesh) || !mesh.geometry) continue;
+    mesh.updateWorldMatrix(true, false);
+    if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+    if (!mesh.geometry.boundingBox) continue;
+    bounds.union(box.copy(mesh.geometry.boundingBox).applyMatrix4(relative.multiplyMatrices(ownerInverse, mesh.matrixWorld)));
+  }
+  return bounds.isEmpty() ? null : [bounds.min.z, bounds.max.z];
 }
 
 /** Several convex shadow hulls as one proxy geometry (one draw), keeping the hull provenance its receipts read. */
@@ -2191,16 +2275,30 @@ function installProceduralShadowProxies(
   // joined in the one proxy draw. A single hull over both ran from the wide
   // mantlet to the slim muzzle: the gun's shadow (and the Gallery's glass
   // shell, which drew the proxy) was a wedge several barrels wide.
-  const gunGeo = joinShadowHulls([
-    authoredShadowHull(gunG, [
-      ...find(gunG, ['gunMount']),
-      // Source-study receivers moved from gunDark to the stationary pitching
-      // mount. Preserve exactly that stock's historical shadow participation;
-      // unrelated legacy dark detail keeps its existing caster behavior.
-      ...find(gunG, ['gunMountDark']).filter(mesh => mesh.userData.preserveRecoilShadowSource),
-    ], PROC_SHADOW_GUN_INSET_M),
-    authoredShadowHull(gunG, find(recoilG, ['gun', 'gunDark']), PROC_SHADOW_GUN_INSET_M, BARREL_SHADOW_SUPPORTS),
-  ]);
+  const mantletGeo = authoredShadowHull(gunG, [
+    ...find(gunG, ['gunMount']),
+    // Source-study receivers moved from gunDark to the stationary pitching
+    // mount. Preserve exactly that stock's historical shadow participation;
+    // unrelated legacy dark detail keeps its existing caster behavior.
+    ...find(gunG, ['gunMountDark']).filter(mesh => mesh.userData.preserveRecoilShadowSource),
+  ], PROC_SHADOW_GUN_INSET_M, MANTLET_SHADOW_SUPPORTS);
+  // The barrel is the tube in front of the mantlet (overlapping it by
+  // PROC_SHADOW_BARREL_OVERLAP_M), in two hulls along its length: a breech or
+  // receiver behind the mantlet face is inside the turret's and mantlet's
+  // shadows, and a hull from a thick collar to a slim muzzle was a wedge
+  // again (AMX-40 prototype, Ajax).
+  const barrel = find(recoilG, ['gun', 'gunDark']);
+  const barrelZ = ownerZRange(gunG, barrel);
+  const barrelHulls: (THREE.BufferGeometry | null)[] = [];
+  if (barrelZ) {
+    const fromZ = Math.max(barrelZ[0], mantletGeo?.boundingBox ? mantletGeo.boundingBox.max.z - PROC_SHADOW_BARREL_OVERLAP_M : -Infinity);
+    const midZ = (fromZ + barrelZ[1]) / 2;
+    barrelHulls.push(
+      barrelSegmentShadowHull(gunG, barrel, PROC_SHADOW_GUN_INSET_M, BARREL_SHADOW_SUPPORTS, fromZ, midZ + PROC_SHADOW_BARREL_SEAM_M),
+      barrelSegmentShadowHull(gunG, barrel, PROC_SHADOW_GUN_INSET_M, BARREL_SHADOW_SUPPORTS, midZ, barrelZ[1]),
+    );
+  }
+  const gunGeo = joinShadowHulls([mantletGeo, ...barrelHulls]);
 
   const add = (parent: THREE.Object3D, geo: THREE.BufferGeometry, name: string): void => {
     disposables.push(geo);
