@@ -5,7 +5,7 @@ import type { LazyAudio } from '../audio/lazyAudio.ts';
 import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import type { WorkYielder } from '../engine/frameScheduler.ts';
 import { t } from '../ui/i18n.ts';
-import type { BattleLoadRosterRow, BattleLoadScreen } from '../ui/battleLoad.ts';
+import { PENDING_ROSTER_SLOTS, type BattleLoadRosterRow, type BattleLoadScreen } from '../ui/battleLoad.ts';
 import type { MaterialTankSpec } from '../vehicles/materials.ts';
 import type { WorldRuntime } from '../world/map.ts';
 import type { BattlefieldMapConfig } from '../world/maps/index.ts';
@@ -377,6 +377,7 @@ export function createSoloBattleLoadingRuntime(
         mode: soloBattleLoadingModeLabel(normalizedGameMode, mapId),
         allies: [],
         enemies: [],
+        slots: PENDING_ROSTER_SLOTS,
       });
       await audio.startLoadingAfterPaint();
       await ensureBattleVisuals();

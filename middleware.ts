@@ -105,18 +105,22 @@ export default async function middleware(request: Request): Promise<Response> {
 
 /** Room-link and studio metadata, and the localized `/cn` 404; null when the request passes through unchanged. */
 async function documentResponse(request: Request, requestUrl: URL, cookie: string | null): Promise<Response | null> {
+  // The route table alone (no imports) settles most `/cn` requests: a static localized page that is neither the studio
+  // nor a room link passes through without the catalogs (2026-10-22, nav-perf-240: every /cn page view loaded both).
+  const { PUBLIC_ROUTE_RECORDS, resolveLocalePath } = await import('./src/ui/localeRouting.ts');
+  const localePath = resolveLocalePath(requestUrl.pathname);
+  const staticLocalized = localePath.route && localePath.pathname !== '/studio'
+    && !((localePath.pathname === '/' || localePath.pathname === '/index.html') && requestUrl.searchParams.has('room'));
+  if (staticLocalized) return null;
   // Both catalogs, resident before the metadata helpers resolve zh-CN text (perf/boot-weight made zh-CN a lazy chunk).
   await import('./src/ui/i18nCatalog.ts');
   const [
     { localizeHtmlDocument },
     { injectSiteMetadata, localizedStudioMetadata, privateRoomMetadata },
-    { PUBLIC_ROUTE_RECORDS, resolveLocalePath },
   ] = await Promise.all([
     import('./src/presentation/localizedHtml.ts'),
     import('./src/presentation/siteMetadata.ts'),
-    import('./src/ui/localeRouting.ts'),
   ]);
-  const localePath = resolveLocalePath(requestUrl.pathname);
   const locale = localePath.locale ?? 'en-US';
   const isPlayableDocument = localePath.pathname === '/' || localePath.pathname === '/index.html';
   const roomMetadata = isPlayableDocument ? privateRoomMetadata(requestUrl, locale) : null;

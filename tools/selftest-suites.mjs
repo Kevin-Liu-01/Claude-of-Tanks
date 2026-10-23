@@ -743,6 +743,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/viteGlslMinify.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F3): the CSS-in-TS minifier keeps every literal the same stylesheet (Lightning CSS)
     'tools/viteCssInTsMinify.selftest.mjs',
+    'tools/viteSpeculationRules.selftest.mjs',
+    'tools/viteResponsiveSeed.selftest.mjs',
+    'tools/viteNavChrome.selftest.mjs',
+    'tools/vercel-static-preview.selftest.mjs',
     'tools/telemetry-report.selftest.mjs',
     'tools/browser-failure-evidence.selftest.mjs',
     'tools/battle-entry-sweep.selftest.mjs',

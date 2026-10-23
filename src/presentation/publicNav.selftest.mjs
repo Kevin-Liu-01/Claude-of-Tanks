@@ -38,6 +38,9 @@ const expectedLinks = [
 ];
 const navCss = readFileSync(join(ROOT, 'src/presentation/publicNav.css'), 'utf8');
 const navSource = readFileSync(join(ROOT, 'src/presentation/publicNav.ts'), 'utf8');
+// The bar's switch and menu button markup (2026-10-22, nav-perf-240): the build writes it into every page
+// (tools/viteNavChrome.ts) and publicNav.ts binds it, or mounts it on a page without it.
+const navChromeSource = readFileSync(join(ROOT, 'src/presentation/publicNavChrome.ts'), 'utf8');
 const homeCss = readFileSync(join(ROOT, 'src/presentation/home.css'), 'utf8');
 const docsCss = readFileSync(join(ROOT, 'src/docs/docs.css'), 'utf8');
 const galleryCss = readFileSync(join(ROOT, 'src/gallery/gallery.css'), 'utf8');
@@ -103,16 +106,20 @@ assert.match(navCss,
   'the shared public surface must render a compact loading indicator instead of a numeric guess');
 assert.match(navCss, /\.public-nav__links>a:not\(\.public-nav__github\):not\(\.public-nav__cta\)\{display:none\}/,
   'mobile public navigation must collapse page links while retaining GitHub and Play Now');
-assert.match(navSource, /className = 'public-nav__menu-trigger'/,
+assert.match(navChromeSource, /class="public-nav__menu-trigger"/,
   'public pages must mount a shared mobile menu trigger');
+assert.match(navSource, /createContextualFragment\(MENU_TRIGGER_MARKUP\)/,
+  'a page built without the menu trigger still gets the shared one');
 assert.match(navSource, /garage\.href = hrefForLocale\('\/', getLocale\(\)\)/,
   'the public mobile menu must expose the locale-matched Garage alongside every public page');
 assert.match(navSource, /resolveLocalePath\(node\.getAttribute\('href'\)/,
   'the mobile Home control must survive localized link rewriting');
 assert.match(navSource, /event\.code !== 'Escape'/,
   'the public mobile navigation must close with Escape');
-assert.match(navSource, /className = 'public-nav__locale'/,
+assert.match(navChromeSource, /class="public-nav__locale"/,
   'public pages must expose a visible locale switcher in the shared navigation');
+assert.match(navSource, /createContextualFragment\(localeSwitchMarkup\(current\)\)/,
+  'a page built without the locale switcher still gets the shared one');
 assert.match(navSource, /className = 'public-nav__locale-credit'/,
   'the public locale switcher must expose General Translation attribution');
 assert.match(navSource, /\/brand\/partners\/general-translation\.png/,

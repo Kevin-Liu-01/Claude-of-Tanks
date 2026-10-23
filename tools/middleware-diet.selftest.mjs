@@ -33,19 +33,23 @@ const plain = await middleware(new Request('https://cot.kevinliu.studio/', { hea
 const afterPlain = heavy();
 const gallery = await middleware(new Request('https://cot.kevinliu.studio/gallery?room=ABC123', { headers: { accept: 'text/html' } }));
 const afterGallery = heavy();
+const cnPage = await middleware(new Request('https://cot.kevinliu.studio/cn/docs/build', { headers: { accept: 'text/html' } }));
+const afterCnPage = heavy();
 const studio = await middleware(new Request('https://cot.kevinliu.studio/studio', { headers: { accept: 'text/html' } }));
 const afterStudio = heavy();
-console.log(JSON.stringify({ afterPlain, afterGallery, afterStudio, plain: plain.status, gallery: gallery.status, studio: studio.status,
-  plainNext: plain.headers.get('x-middleware-next'), studioBody: (await studio.text()).includes('Scene Studio') }));
+console.log(JSON.stringify({ afterPlain, afterGallery, afterCnPage, afterStudio, plain: plain.status, gallery: gallery.status, studio: studio.status,
+  plainNext: plain.headers.get('x-middleware-next'), cnPageNext: cnPage.headers.get('x-middleware-next'), studioBody: (await studio.text()).includes('Scene Studio') }));
 `;
 const run = spawnSync(process.execPath, ['--input-type=module', '-e', probe], { cwd: root, encoding: 'utf8', timeout: 60_000 });
 assert.equal(run.status, 0, `the probe ran: ${run.stderr.slice(-800)}`);
 const result = JSON.parse(run.stdout.trim().split('\n').at(-1));
 assert.deepEqual(result.afterPlain, [], 'a plain / loads none of the metadata or localization modules');
 assert.deepEqual(result.afterGallery, [], 'the gallery (even with a room-like query) loads none of them');
+assert.deepEqual(result.afterCnPage, ['localeRouting.ts'], 'a static /cn page reads the route table and nothing else (nav-perf-240)');
+assert.equal(result.cnPageNext, '1', 'a static /cn page passes through to its build-time document');
 assert.deepEqual(result.afterStudio, ['i18nCatalog.ts', 'localeRouting.ts', 'localizedHtml.ts', 'siteMetadata.ts'],
   'the studio loads them on demand');
 assert.equal(result.plainNext, '1', 'a plain / passes through to the static document');
 assert.equal(result.studioBody, true, 'the studio still gets its metadata');
 
-console.log('middleware-diet.selftest: / and the gallery load only the deployment pin; ?room=, /studio and /cn load the metadata modules on demand');
+console.log('middleware-diet.selftest: / and the gallery load only the deployment pin; a static /cn page only the route table; ?room=, /studio and the /cn 404 load the metadata modules on demand');

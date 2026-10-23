@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
+import { localeSwitchMarkup, MENU_TRIGGER_MARKUP } from './publicNavChrome.ts';
 import { bindStaticI18nAuto } from './staticI18n.ts';
 import { getLocale, setLocale, t } from '../ui/i18n.ts';
 import {
@@ -22,26 +23,26 @@ const mountStars = (): Promise<RuntimeValue> => import('../ui/githubStars.ts')
 
 function mountLocaleSwitcher(): void {
   const links = document.querySelector<HTMLElement>('.public-nav__links');
-  if (!links || links.querySelector('.public-nav__locale')) return;
+  if (!links || links.querySelector('.public-nav__locale-credit')) return;
 
   const current = getLocale();
   const next = current === 'zh-CN' ? 'en-US' : 'zh-CN';
-  const wrapper = document.createElement('div');
-  wrapper.className = 'public-nav__locale-wrap';
-  const button = document.createElement('button');
-  button.className = 'public-nav__locale';
-  button.type = 'button';
+  // The build writes the switch into the bar (tools/viteNavChrome.ts); a page without it gets it here.
+  if (!links.querySelector('.public-nav__locale')) {
+    links.insertBefore(document.createRange().createContextualFragment(localeSwitchMarkup(current)),
+      links.querySelector('.public-nav__github, .public-nav__cta'));
+  }
+  const wrapper = links.querySelector<HTMLElement>('.public-nav__locale-wrap');
+  const button = links.querySelector<HTMLButtonElement>('.public-nav__locale');
+  if (!wrapper || !button) return;
   button.dataset.locale = current;
   button.setAttribute('aria-label', t(next === 'zh-CN'
     ? 'publicNav.language.switchToChinese'
     : 'publicNav.language.switchToEnglish'));
   button.title = button.getAttribute('aria-label') || '';
-  button.innerHTML =
-    '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/>' +
-    '<path d="M3.8 12h16.4M12 3.5c2.2 2.4 3.3 5.2 3.3 8.5S14.2 18.1 12 20.5M12 3.5C9.8 5.9 8.7 8.7 8.7 12s1.1 6.1 3.3 8.5"/></svg>' +
-    `<span data-locale-option="en-US"${current === 'en-US' ? ' class="is-current"' : ''}>EN</span>` +
-    '<i aria-hidden="true">/</i>' +
-    `<span data-locale-option="zh-CN"${current === 'zh-CN' ? ' class="is-current"' : ''}>中文</span>`;
+  for (const option of button.querySelectorAll<HTMLElement>('[data-locale-option]')) {
+    option.classList.toggle('is-current', option.dataset.localeOption === current);
+  }
   button.addEventListener('click', () => {
     setLocale(next);
     window.location.assign(currentLocationHrefForLocale(window.location, next));
@@ -57,14 +58,12 @@ function mountLocaleSwitcher(): void {
     '<img src="/brand/partners/general-translation.png" alt="" draggable="false">' +
     `<span><small>${t('publicNav.language.creditEyebrow')}</small>` +
     `<strong>${t('publicNav.language.creditName')}</strong></span>`;
-  wrapper.append(button, credit);
-
-  links.insertBefore(wrapper, links.querySelector('.public-nav__github, .public-nav__cta'));
+  wrapper.append(credit);
 }
 
 function mountMobileNavigation(): void {
   const links = document.querySelector<HTMLElement>('.public-nav__links');
-  if (!links || links.querySelector('.public-nav__menu-trigger')) return;
+  if (!links || links.querySelector('.public-nav__menu')) return;
 
   const directLinks = [...links.children].filter((node) => node.matches?.('a'));
   const pageLinks = directLinks.filter((node) =>
@@ -72,13 +71,13 @@ function mountMobileNavigation(): void {
   const home = pageLinks.find((node) =>
     resolveLocalePath(node.getAttribute('href') || '').pathname === '/home');
 
-  const trigger = document.createElement('button');
-  trigger.className = 'public-nav__menu-trigger';
-  trigger.type = 'button';
+  // The build writes the button into the bar (tools/viteNavChrome.ts); a page without it gets it here.
+  if (!links.querySelector('.public-nav__menu-trigger')) {
+    links.append(document.createRange().createContextualFragment(MENU_TRIGGER_MARKUP));
+  }
+  const trigger = links.querySelector<HTMLButtonElement>('.public-nav__menu-trigger');
+  if (!trigger) return;
   trigger.setAttribute('aria-label', t('publicNav.openMenu'));
-  trigger.setAttribute('aria-expanded', 'false');
-  trigger.setAttribute('aria-controls', 'public-nav-menu');
-  trigger.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h16M4 12h16M4 17.5h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
 
   const menu = document.createElement('div');
   menu.className = 'public-nav__menu';
@@ -140,7 +139,7 @@ function mountMobileNavigation(): void {
     if (!layoutEvent.detail?.overlayPanels) close();
   });
 
-  links.append(trigger, menu);
+  links.append(menu);
 }
 
 /**
