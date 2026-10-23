@@ -48,7 +48,7 @@ function mountMenuSheet(): void {
     trigger.setAttribute('aria-label', t(open ? 'publicNav.closeMenu' : 'publicNav.openMenu'));
     if (!open && restoreFocus) trigger.focus();
   };
-  trigger.addEventListener('click', () => set(menu.hidden));
+  trigger.addEventListener('click', () => set(Boolean(menu.hidden)));
   menu.addEventListener('click', (event) => {
     if (event.target instanceof Element && event.target.closest('a')) set(false);
   });
