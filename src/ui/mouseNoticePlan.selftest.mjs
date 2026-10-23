@@ -1,39 +1,40 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  alertReserve, detectionHeight, MOUSE_NOTICE_GAP_PX, MOUSE_RETICLE, MOUSE_RETICLE_MARGIN_PX, mouseMedalWaits, mouseNoticePlanWork,
+  alertReserve, DETECTION_H, MOUSE_NOTICE_GAP_PX, MOUSE_RETICLE, MOUSE_RETICLE_MARGIN_PX, mouseMedalWaits, mouseNoticePlanWork,
   mouseReticleFootprint, planMouseNotices,
 } from './mouseNoticePlan.ts';
 import { battleRosterHeight } from './battleHudLayout.ts';
 
 // The mouse census viewports (desk-notices round, 2026-10-16): the fixed HUD boxes the rendered fixture
-// (tools/fixtures/battle-hud-layout.html, mars objective, 7 v 7) measured on integ/226, [x, y, w, h]; lanes are
+// (tools/fixtures/battle-hud-layout.html, mars objective, 7 v 7) measured on integ/226, [x, y, w, h], the objective
+// re-measured on integ/231 09cb278fdd (one 30 px row since its tagline went in ui(240) set 2: 41 before); lanes are
 // [left top, left bottom, right top, right bottom] as battleHudLayout.ts derives them; cd the countdown's natural box.
 const VIEWPORTS = [
-  { vp: [1024, 600], score: [349, 0, 326, 62], obj: [382, 62, 260, 41], earL: [0, 58, 160, 133], earR: [864, 58, 160, 105], map: [816, 392, 192, 192], dp: [12, 405, 160, 183], drive: [184, 480, 108, 108], sys: [320, 480, 382, 32], ammo: [296, 520, 433, 64], card: [708, 196, 300, 184], net: [887, 8, 127, 28], lanes: [199, 361, 171, 188], cd: [390, 136] },
-  { vp: [1000, 600], score: [337, 0, 326, 62], obj: [370, 62, 260, 41], earL: [0, 58, 160, 133], earR: [840, 58, 160, 105], map: [792, 392, 192, 192], dp: [12, 405, 160, 183], drive: [184, 480, 108, 108], sys: [308, 480, 382, 32], ammo: [284, 520, 433, 64], card: [684, 196, 300, 184], net: [863, 8, 127, 28], lanes: [199, 361, 171, 188], cd: [390, 136] },
-  { vp: [1024, 768], score: [349, 0, 326, 62], obj: [382, 62, 260, 41], earL: [0, 58, 160, 189], earR: [864, 58, 160, 169], map: [788, 532, 220, 220], dp: [12, 573, 160, 183], drive: [184, 648, 108, 108], sys: [320, 648, 382, 32], ammo: [296, 688, 433, 64], card: [708, 260, 300, 260], net: [887, 8, 127, 28], lanes: [255, 529, 235, 252], cd: [390, 136] },
-  { vp: [1152, 648], score: [404, 0, 344, 62], obj: [437, 62, 278, 41], earL: [0, 52, 172, 133], earR: [980, 52, 172, 105], map: [929, 425, 207, 207], dp: [12, 453, 160, 183], drive: [184, 528, 108, 108], sys: [384, 528, 382, 32], ammo: [360, 568, 433, 64], card: [836, 190, 300, 222], net: [1015, 8, 127, 28], lanes: [193, 409, 165, 182], cd: [390, 136] },
-  { vp: [1280, 720], score: [468, 0, 344, 62], obj: [501, 62, 278, 41], earL: [0, 52, 179, 189], earR: [1101, 52, 179, 127], map: [1044, 484, 220, 220], dp: [12, 525, 160, 183], drive: [184, 600, 108, 108], sys: [448, 600, 382, 32], ammo: [424, 640, 433, 64], card: [964, 212, 300, 260], net: [1143, 8, 127, 28], lanes: [249, 481, 187, 204], cd: [390, 136] },
-  { vp: [1280, 800], score: [468, 0, 344, 62], obj: [501, 62, 278, 41], earL: [0, 52, 179, 189], earR: [1101, 52, 179, 189], map: [1044, 564, 220, 220], dp: [12, 605, 160, 183], drive: [184, 680, 108, 108], sys: [448, 680, 382, 32], ammo: [424, 720, 433, 64], card: [964, 292, 300, 260], net: [1143, 8, 127, 28], lanes: [249, 561, 249, 284], cd: [390, 136] },
-  { vp: [1366, 768], score: [511, 0, 344, 62], obj: [544, 62, 278, 41], earL: [0, 52, 191, 189], earR: [1175, 52, 191, 175], map: [1130, 532, 220, 220], dp: [12, 573, 160, 183], drive: [184, 648, 108, 108], sys: [491, 648, 382, 32], ammo: [467, 688, 433, 64], card: [1050, 260, 300, 260], net: [1229, 8, 127, 28], lanes: [249, 529, 235, 252], cd: [390, 136] },
-  { vp: [1440, 900], score: [548, 0, 344, 62], obj: [581, 62, 278, 41], earL: [0, 52, 194, 189], earR: [1246, 52, 194, 189], map: [1204, 664, 220, 220], dp: [12, 705, 160, 183], drive: [184, 780, 108, 108], sys: [528, 780, 382, 32], ammo: [504, 820, 433, 64], card: [1124, 392, 300, 260], net: [1303, 8, 127, 28], lanes: [249, 661, 249, 384], cd: [390, 136] },
-  { vp: [1536, 864], score: [596, 0, 344, 62], obj: [629, 62, 278, 41], earL: [0, 52, 194, 189], earR: [1342, 52, 194, 189], map: [1300, 628, 220, 220], dp: [12, 669, 160, 183], drive: [184, 744, 108, 108], sys: [576, 744, 382, 32], ammo: [552, 784, 433, 64], card: [1220, 356, 300, 260], net: [1399, 8, 127, 28], lanes: [249, 625, 249, 348], cd: [390, 136] },
-  { vp: [1600, 900], score: [628, 0, 344, 62], obj: [661, 62, 278, 41], earL: [0, 52, 194, 189], earR: [1406, 52, 194, 189], map: [1364, 664, 220, 220], dp: [12, 705, 160, 183], drive: [184, 780, 108, 108], sys: [608, 780, 382, 32], ammo: [584, 820, 433, 64], card: [1284, 392, 300, 260], net: [1463, 8, 127, 28], lanes: [249, 661, 249, 384], cd: [390, 136] },
-  { vp: [1680, 1050], score: [668, 0, 344, 62], obj: [701, 62, 278, 41], earL: [0, 52, 194, 189], earR: [1486, 52, 194, 189], map: [1444, 814, 220, 220], dp: [12, 855, 160, 183], drive: [184, 930, 108, 108], sys: [648, 930, 382, 32], ammo: [624, 970, 433, 64], card: [1364, 542, 300, 260], net: [1543, 8, 127, 28], lanes: [249, 811, 249, 534], cd: [390, 136] },
-  { vp: [1920, 1080], score: [788, 0, 344, 62], obj: [821, 62, 278, 41], earL: [0, 52, 194, 189], earR: [1726, 52, 194, 189], map: [1684, 844, 220, 220], dp: [12, 885, 160, 183], drive: [184, 960, 108, 108], sys: [768, 960, 382, 32], ammo: [744, 1000, 433, 64], card: [1604, 572, 300, 260], net: [1783, 8, 127, 28], lanes: [249, 841, 249, 564], cd: [390, 136] },
-  { vp: [2560, 1440], score: [1108, 0, 344, 62], obj: [1141, 62, 278, 41], earL: [0, 52, 194, 189], earR: [2366, 52, 194, 189], map: [2324, 1204, 220, 220], dp: [12, 1245, 160, 183], drive: [184, 1320, 108, 108], sys: [1088, 1320, 382, 32], ammo: [1064, 1360, 433, 64], card: [2244, 932, 300, 260], net: [2423, 8, 127, 28], lanes: [249, 1201, 249, 924], cd: [390, 136] },
-  { vp: [3440, 1440], score: [1548, 0, 344, 62], obj: [1581, 62, 278, 41], earL: [0, 52, 194, 189], earR: [3246, 52, 194, 189], map: [3204, 1204, 220, 220], dp: [12, 1245, 160, 183], drive: [184, 1320, 108, 108], sys: [1528, 1320, 382, 32], ammo: [1504, 1360, 433, 64], card: [3124, 932, 300, 260], net: [3303, 8, 127, 28], lanes: [249, 1201, 249, 924], cd: [390, 136] },
-  { vp: [820, 1180], score: [247, 0, 326, 62], obj: [280, 62, 260, 41], earL: [0, 58, 160, 189], earR: [660, 58, 160, 189], map: [584, 944, 220, 220], dp: [12, 869, 160, 183], drive: [184, 944, 108, 108], sys: [12, 1076, 382, 32], ammo: [12, 1116, 325, 52], card: [504, 672, 300, 260], net: [683, 8, 127, 28], lanes: [255, 825, 255, 664], cd: [390, 136] },
-  { vp: [768, 1024], score: [221, 0, 326, 62], obj: [254, 62, 260, 41], earL: [0, 58, 160, 189], earR: [608, 58, 160, 189], map: [532, 788, 220, 220], dp: [12, 713, 160, 183], drive: [184, 788, 108, 108], sys: [12, 920, 382, 32], ammo: [12, 960, 325, 52], card: [452, 516, 300, 260], net: [631, 8, 127, 28], lanes: [255, 669, 255, 508], cd: [390, 136] },
-  { vp: [540, 720], score: [110, 4, 320, 57], obj: [143, 61, 254, 41], map: [8, 109, 104, 104], dp: [8, 455, 120, 137], drive: [140, 511, 81, 81], sys: [144, 620, 382, 32], ammo: [231, 660, 301, 52], card: [282, 251, 246, 260], net: [120, 109, 88, 20], lanes: [221, 410, 109, 243], cd: [292, 136] },
-  { vp: [390, 844], score: [44, 4, 302, 57], obj: [77, 61, 236, 41], map: [8, 109, 104, 104], dp: [8, 579, 120, 137], drive: [140, 635, 81, 81], sys: [12, 744, 366, 32], ammo: [81, 784, 301, 52], card: [203, 375, 175, 260], net: [120, 109, 88, 20], lanes: [221, 534, 109, 367], cd: [358, 136] },
-  { vp: [844, 390], score: [259, 0, 326, 62], obj: [292, 62, 260, 41], map: [703, 249, 125, 125], dp: [12, 217, 160, 45], drive: [184, 154, 108, 108], sys: [12, 286, 382, 32], ammo: [12, 326, 325, 52], card: [528, 115, 300, 122], net: [707, 8, 127, 28], lanes: [111, 146, 111, 107], cd: [240, 136] },
+  { vp: [1024, 600], score: [349, 0, 326, 62], obj: [382, 62, 260, 30], earL: [0, 58, 160, 133], earR: [864, 58, 160, 105], map: [816, 392, 192, 192], dp: [12, 405, 160, 183], drive: [184, 480, 108, 108], sys: [320, 480, 382, 32], ammo: [296, 520, 433, 64], card: [708, 196, 300, 184], net: [887, 8, 127, 28], lanes: [199, 361, 171, 188], cd: [390, 136] },
+  { vp: [1000, 600], score: [337, 0, 326, 62], obj: [370, 62, 260, 30], earL: [0, 58, 160, 133], earR: [840, 58, 160, 105], map: [792, 392, 192, 192], dp: [12, 405, 160, 183], drive: [184, 480, 108, 108], sys: [308, 480, 382, 32], ammo: [284, 520, 433, 64], card: [684, 196, 300, 184], net: [863, 8, 127, 28], lanes: [199, 361, 171, 188], cd: [390, 136] },
+  { vp: [1024, 768], score: [349, 0, 326, 62], obj: [382, 62, 260, 30], earL: [0, 58, 160, 189], earR: [864, 58, 160, 169], map: [788, 532, 220, 220], dp: [12, 573, 160, 183], drive: [184, 648, 108, 108], sys: [320, 648, 382, 32], ammo: [296, 688, 433, 64], card: [708, 260, 300, 260], net: [887, 8, 127, 28], lanes: [255, 529, 235, 252], cd: [390, 136] },
+  { vp: [1152, 648], score: [404, 0, 344, 62], obj: [437, 62, 278, 30], earL: [0, 52, 172, 133], earR: [980, 52, 172, 105], map: [929, 425, 207, 207], dp: [12, 453, 160, 183], drive: [184, 528, 108, 108], sys: [384, 528, 382, 32], ammo: [360, 568, 433, 64], card: [836, 190, 300, 222], net: [1015, 8, 127, 28], lanes: [193, 409, 165, 182], cd: [390, 136] },
+  { vp: [1280, 720], score: [468, 0, 344, 62], obj: [501, 62, 278, 30], earL: [0, 52, 179, 189], earR: [1101, 52, 179, 127], map: [1044, 484, 220, 220], dp: [12, 525, 160, 183], drive: [184, 600, 108, 108], sys: [448, 600, 382, 32], ammo: [424, 640, 433, 64], card: [964, 212, 300, 260], net: [1143, 8, 127, 28], lanes: [249, 481, 187, 204], cd: [390, 136] },
+  { vp: [1280, 800], score: [468, 0, 344, 62], obj: [501, 62, 278, 30], earL: [0, 52, 179, 189], earR: [1101, 52, 179, 189], map: [1044, 564, 220, 220], dp: [12, 605, 160, 183], drive: [184, 680, 108, 108], sys: [448, 680, 382, 32], ammo: [424, 720, 433, 64], card: [964, 292, 300, 260], net: [1143, 8, 127, 28], lanes: [249, 561, 249, 284], cd: [390, 136] },
+  { vp: [1366, 768], score: [511, 0, 344, 62], obj: [544, 62, 278, 30], earL: [0, 52, 191, 189], earR: [1175, 52, 191, 175], map: [1130, 532, 220, 220], dp: [12, 573, 160, 183], drive: [184, 648, 108, 108], sys: [491, 648, 382, 32], ammo: [467, 688, 433, 64], card: [1050, 260, 300, 260], net: [1229, 8, 127, 28], lanes: [249, 529, 235, 252], cd: [390, 136] },
+  { vp: [1440, 900], score: [548, 0, 344, 62], obj: [581, 62, 278, 30], earL: [0, 52, 194, 189], earR: [1246, 52, 194, 189], map: [1204, 664, 220, 220], dp: [12, 705, 160, 183], drive: [184, 780, 108, 108], sys: [528, 780, 382, 32], ammo: [504, 820, 433, 64], card: [1124, 392, 300, 260], net: [1303, 8, 127, 28], lanes: [249, 661, 249, 384], cd: [390, 136] },
+  { vp: [1536, 864], score: [596, 0, 344, 62], obj: [629, 62, 278, 30], earL: [0, 52, 194, 189], earR: [1342, 52, 194, 189], map: [1300, 628, 220, 220], dp: [12, 669, 160, 183], drive: [184, 744, 108, 108], sys: [576, 744, 382, 32], ammo: [552, 784, 433, 64], card: [1220, 356, 300, 260], net: [1399, 8, 127, 28], lanes: [249, 625, 249, 348], cd: [390, 136] },
+  { vp: [1600, 900], score: [628, 0, 344, 62], obj: [661, 62, 278, 30], earL: [0, 52, 194, 189], earR: [1406, 52, 194, 189], map: [1364, 664, 220, 220], dp: [12, 705, 160, 183], drive: [184, 780, 108, 108], sys: [608, 780, 382, 32], ammo: [584, 820, 433, 64], card: [1284, 392, 300, 260], net: [1463, 8, 127, 28], lanes: [249, 661, 249, 384], cd: [390, 136] },
+  { vp: [1680, 1050], score: [668, 0, 344, 62], obj: [701, 62, 278, 30], earL: [0, 52, 194, 189], earR: [1486, 52, 194, 189], map: [1444, 814, 220, 220], dp: [12, 855, 160, 183], drive: [184, 930, 108, 108], sys: [648, 930, 382, 32], ammo: [624, 970, 433, 64], card: [1364, 542, 300, 260], net: [1543, 8, 127, 28], lanes: [249, 811, 249, 534], cd: [390, 136] },
+  { vp: [1920, 1080], score: [788, 0, 344, 62], obj: [821, 62, 278, 30], earL: [0, 52, 194, 189], earR: [1726, 52, 194, 189], map: [1684, 844, 220, 220], dp: [12, 885, 160, 183], drive: [184, 960, 108, 108], sys: [768, 960, 382, 32], ammo: [744, 1000, 433, 64], card: [1604, 572, 300, 260], net: [1783, 8, 127, 28], lanes: [249, 841, 249, 564], cd: [390, 136] },
+  { vp: [2560, 1440], score: [1108, 0, 344, 62], obj: [1141, 62, 278, 30], earL: [0, 52, 194, 189], earR: [2366, 52, 194, 189], map: [2324, 1204, 220, 220], dp: [12, 1245, 160, 183], drive: [184, 1320, 108, 108], sys: [1088, 1320, 382, 32], ammo: [1064, 1360, 433, 64], card: [2244, 932, 300, 260], net: [2423, 8, 127, 28], lanes: [249, 1201, 249, 924], cd: [390, 136] },
+  { vp: [3440, 1440], score: [1548, 0, 344, 62], obj: [1581, 62, 278, 30], earL: [0, 52, 194, 189], earR: [3246, 52, 194, 189], map: [3204, 1204, 220, 220], dp: [12, 1245, 160, 183], drive: [184, 1320, 108, 108], sys: [1528, 1320, 382, 32], ammo: [1504, 1360, 433, 64], card: [3124, 932, 300, 260], net: [3303, 8, 127, 28], lanes: [249, 1201, 249, 924], cd: [390, 136] },
+  { vp: [820, 1180], score: [247, 0, 326, 62], obj: [280, 62, 260, 30], earL: [0, 58, 160, 189], earR: [660, 58, 160, 189], map: [584, 944, 220, 220], dp: [12, 869, 160, 183], drive: [184, 944, 108, 108], sys: [12, 1076, 382, 32], ammo: [12, 1116, 325, 52], card: [504, 672, 300, 260], net: [683, 8, 127, 28], lanes: [255, 825, 255, 664], cd: [390, 136] },
+  { vp: [768, 1024], score: [221, 0, 326, 62], obj: [254, 62, 260, 30], earL: [0, 58, 160, 189], earR: [608, 58, 160, 189], map: [532, 788, 220, 220], dp: [12, 713, 160, 183], drive: [184, 788, 108, 108], sys: [12, 920, 382, 32], ammo: [12, 960, 325, 52], card: [452, 516, 300, 260], net: [631, 8, 127, 28], lanes: [255, 669, 255, 508], cd: [390, 136] },
+  { vp: [540, 720], score: [110, 4, 320, 56], obj: [143, 60, 254, 30], map: [8, 109, 104, 104], dp: [8, 455, 120, 137], drive: [140, 511, 81, 81], sys: [144, 620, 382, 32], ammo: [231, 660, 301, 52], card: [282, 251, 246, 260], net: [120, 109, 88, 20], lanes: [221, 410, 109, 243], cd: [292, 136] },
+  { vp: [390, 844], score: [44, 4, 302, 56], obj: [77, 60, 236, 30], map: [8, 109, 104, 104], dp: [8, 579, 120, 137], drive: [140, 635, 81, 81], sys: [12, 744, 366, 32], ammo: [81, 784, 301, 52], card: [203, 375, 175, 260], net: [120, 109, 88, 20], lanes: [221, 534, 109, 367], cd: [358, 136] },
+  { vp: [844, 390], score: [259, 0, 326, 62], obj: [292, 62, 260, 30], map: [703, 249, 125, 125], dp: [12, 217, 160, 45], drive: [184, 154, 108, 108], sys: [12, 286, 382, 32], ammo: [12, 326, 325, 52], card: [528, 115, 300, 122], net: [707, 8, 127, 28], lanes: [111, 146, 111, 107], cd: [240, 136] },
   // the round-1 verifier's odd windows (its census boxes; the report card, the readout and the lanes as battleHudLayout.ts
   // derives them from those): a 768-wide landscape, a 481-wide portrait just above main's 9 px rule, the compact edge
-  { vp: [768, 600], score: [221, 0, 326, 62], obj: [254, 62, 260, 41], earL: [0, 58, 160, 74], earR: [608, 58, 160, 105], map: [560, 392, 192, 192], dp: [12, 289, 160, 183], drive: [184, 364, 108, 108], sys: [12, 496, 382, 32], ammo: [12, 536, 325, 52], card: [452, 196, 300, 184], net: [631, 8, 127, 28], lanes: [140, 245, 171, 188], cd: [390, 136] },
-  { vp: [481, 700], score: [81, 4, 320, 57], obj: [113, 61, 254, 41], map: [8, 109, 104, 104], dp: [8, 435, 120, 137], drive: [140, 491, 81, 81], sys: [85, 600, 382, 32], ammo: [172, 640, 301, 52], card: [252, 231, 217, 260], net: [120, 109, 88, 20], lanes: [221, 391, 109, 223], cd: [390, 136] },
-  { vp: [1000, 551], score: [337, 0, 326, 62], obj: [370, 62, 260, 41], earL: [0, 58, 160, 133], earR: [840, 58, 160, 105], map: [808, 359, 176, 176], dp: [12, 356, 160, 183], drive: [184, 431, 108, 108], sys: [308, 431, 382, 32], ammo: [284, 471, 433, 64], card: [684, 196, 300, 151], net: [863, 8, 127, 28], lanes: [199, 312, 171, 188], cd: [390, 136] },
+  { vp: [768, 600], score: [221, 0, 326, 62], obj: [254, 62, 260, 30], earL: [0, 58, 160, 74], earR: [608, 58, 160, 105], map: [560, 392, 192, 192], dp: [12, 289, 160, 183], drive: [184, 364, 108, 108], sys: [12, 496, 382, 32], ammo: [12, 536, 325, 52], card: [452, 196, 300, 184], net: [631, 8, 127, 28], lanes: [140, 245, 171, 188], cd: [390, 136] },
+  { vp: [481, 700], score: [81, 4, 320, 56], obj: [113, 60, 254, 30], map: [8, 109, 104, 104], dp: [8, 435, 120, 137], drive: [140, 491, 81, 81], sys: [85, 600, 382, 32], ammo: [172, 640, 301, 52], card: [252, 231, 217, 260], net: [120, 109, 88, 20], lanes: [221, 391, 109, 223], cd: [390, 136] },
+  { vp: [1000, 551], score: [337, 0, 326, 62], obj: [370, 62, 260, 30], earL: [0, 58, 160, 133], earR: [840, 58, 160, 105], map: [808, 359, 176, 176], dp: [12, 356, 160, 183], drive: [184, 431, 108, 108], sys: [308, 431, 382, 32], ammo: [284, 471, 433, 64], card: [684, 196, 300, 151], net: [863, 8, 127, 28], lanes: [199, 312, 171, 188], cd: [390, 136] },
 ];
 const box = ([x, y, w, h]) => ({ x, y, w, h });
 /** The planner's input as battleHudLayout.ts assembles it from those boxes (each roster down to its Tab height). */
@@ -64,7 +65,7 @@ function inputFor(v, { objective = true, rosters = 7 } = {}) {
   return {
     width, height, top, obstacles, furniture,
     lanes: [lane(0, leftTop, v.lanes[1]), lane(width - side, rightTop, v.lanes[3])],
-    smallAlert: height <= 550 || width <= 480, compactDetection: height <= 550,
+    smallAlert: height <= 550 || width <= 480,
     countdown: { w: v.cd[0], h: v.cd[1] }, revive: { w: Math.min(390, width - 32), h: 129 },
     medal: { w: Math.min(380, width - 32), h: width > 640 ? 85 : 76 },
     medalCompact: { w: Math.min(250, width - 24), h: 40 },
@@ -210,11 +211,9 @@ for (const v of VIEWPORTS) {
 }
 
 // 3. The alert reserve holds the tallest measured alert (wave 123 cleared, carrier down, ammunition type empty, ATGM
-//    deselected; en-US and zh-CN) at each slot width; the detection height is its measured box.
+//    deselected; en-US and zh-CN) at each slot width.
 for (const [w, h] of [[520, 38], [409, 50], [334, 52], [260, 67], [234, 70], [180, 101], [159, 118]]) assert.ok(alertReserve(w, false) >= h, `12 px alert at ${w}`);
 for (const [w, h] of [[340, 28], [200, 29.6], [159, 40.4]]) assert.ok(alertReserve(w, true) >= h, `9 px alert at ${w}`);
-for (const [w, h] of [[248, 48], [230, 48], [214, 52.6], [164, 52.6]]) assert.ok(detectionHeight(w, false) >= h && detectionHeight(w, false) <= h + 1);
-assert.equal(detectionHeight(248, true), 32);
 
 // 4. Every viewport, with and without the objective: every element sits on the window's centre line (noticeCentreLine.ts,
 //    owner 2026-10-22 on live 240: the flank had set the detection 135 px left of it and the alert 114 px right of it at
@@ -229,8 +228,10 @@ assert.equal(detectionHeight(248, true), 32);
 //    the countdown while that shows (countdownAlert); nothing leaves the screen or touches an instrument (but the
 //    fallback's notices); a lane an element crosses keeps a row while it shows (and while the detection and the alert
 //    show together), and keeps all its rows while nothing shows (the plan holds no lane change outside `giveWay`).
-const NOTICE_TIER = { '1024x600': [1, 1], '1000x600': [1, 1], '1024x768': [1, 2], '1152x648': [1, 2], '1280x720': [1, 2],
-  '1366x768': [1, 2], '540x720': [-1, -1], '844x390': [-1, 0], '768x600': [1, 1], '481x700': [-1, -1], '1000x551': [0, 1] };
+// (the detection's one 32 px row, owner 2026-10-22: at 1280 x 720 and 1366 x 768 the alert under it now clears the scope's
+// upper arm, which the 48 px box had sent it onto or within 7 px of)
+const NOTICE_TIER = { '1024x600': [1, 2], '1000x600': [1, 2], '1152x648': [1, 2], '540x720': [-1, 2], '844x390': [-1, 0],
+  '768x600': [1, 1], '481x700': [-1, 2], '1000x551': [1, 1] };
 // (the medal card's centre column meets the report card and the map, or the systems row, all the way down on these)
 const NO_MEDAL = ['844x390', '844x390s', '481x700', '481x700s'];
 // (where no place on the centre line keeps the alert off the countdown and the instruments, it goes over the fewest
@@ -246,7 +247,7 @@ const TIER_FLOOR = { countdown: 0, revive: 0, medal: 1 };
 const rowPx = (side, lane) => side === 0 && lane.bottom - lane.top >= 62 ? 62 : 26;
 // (844 x 390, 768 x 600 and 481 x 700: the side lanes cross the centre line's whole band over the sight)
 const EMPTIED = ['844x390 revive l', '844x390s alert l', '844x390s alert r', '844x390s detection+alert l', '844x390s detection+alert r',
-  '768x600s revive l', '481x700 detection+alert r', '481x700s detection+alert r'];
+  '481x700 detection+alert r'];
 const emptied = [];
 let plans = 0, slowest = 0, ms = 0, work = 0, mostWork = 0;
 for (const v of VIEWPORTS) {
@@ -268,7 +269,7 @@ for (const v of VIEWPORTS) {
     assert.ok(!('laneTop' in plan), 'no lane moves while nothing shows');
     const keep = mouseReticleFootprint(input.width, input.height, 2, [], input.furniture);
     const det = plan.detection, alert = alertBox(plan.alert);
-    assert.equal(det.h, detectionHeight(det.w, input.compactDetection));
+    assert.equal(det.h, DETECTION_H);
     assert.ok(det.w >= 164 && det.w <= 248, `${name}: the detection is between 164 and 248 wide`);
     assert.equal(plan.alert.small, input.smallAlert, `${name}: the alert keeps main's type size`);
     assert.ok(plan.alert.h >= alertReserve(plan.alert.w, plan.alert.small), `${name}: the alert's slot holds every alert`);
@@ -503,22 +504,23 @@ for (const v of VIEWPORTS) for (const rosters of v.earL ? [7, 14, 20] : [7]) for
 }
 
 // 5. Main's placements where they were fine: a centred stack under the score from 1280 x 800 up, the detection at
-//    main's own top. Where the flank stood (1000 to 1366 px wide at 600 to 768 px tall: the band over the ring holds one
-//    notice and the scope's arm splits it) the notices stay on the centre line: the stack over the battle sight at full
-//    bloom (the alert's foot over the scope arm's tip while the scope is up), or each at its own height.
+//    main's own top (under the one-row objective: 100). Where the flank stood (1000 to 1366 px wide at 600 to 768 px tall)
+//    the stack stays on the centre line, clear of everything the reticle draws from 1024 x 768 (the detection's one row
+//    leaves the alert room over the scope's upper arm) and of the battle sight at full bloom on the shorter windows (the
+//    alert's foot over the scope arm's tip while the scope is up).
 const at = (w, h, objective = true) => planMouseNotices(inputFor(VIEWPORTS.find((v) => v.vp[0] === w && v.vp[1] === h), { objective }));
 for (const [w, h] of [[1280, 800], [1440, 900], [1536, 864], [1600, 900], [1680, 1050], [1920, 1080], [2560, 1440], [3440, 1440]]) {
   const plan = at(w, h);
   assert.equal(plan.arrangement, 'stack', `${w}x${h} stacks`);
   assert.equal(plan.detection.x + plan.detection.w / 2, w / 2, `${w}x${h}: the detection is centred`);
-  assert.equal(plan.detection.y, Math.max(111, Math.ceil(h * .12)), `${w}x${h}: the detection keeps main's top`);
+  assert.equal(plan.detection.y, Math.max(100, Math.ceil(h * .12)), `${w}x${h}: the detection keeps main's top`);
   assert.equal(plan.alert.y, plan.detection.y + plan.detection.h + 8, `${w}x${h}: the alert sits under the detection`);
   assert.ok(!plan.alert.small && plan.alert.w >= 512, `${w}x${h}: the alert keeps one 12 px line`);
 }
-for (const [w, h, arrangement] of [[1024, 600, 'split'], [1000, 600, 'split'], [1024, 768, 'stack'], [1152, 648, 'split'], [1280, 720, 'stack'], [1366, 768, 'stack']]) {
+for (const [w, h, tier] of [[1024, 600, 1], [1000, 600, 1], [1024, 768, 2], [1152, 648, 1], [1280, 720, 2], [1366, 768, 2]]) {
   const plan = at(w, h);
-  assert.equal(plan.arrangement, arrangement, `${w}x${h}: ${arrangement}`);
-  assert.equal(plan.clearance, 1, `${w}x${h}: clear of the battle sight at full bloom`);
+  assert.equal(plan.arrangement, 'stack', `${w}x${h}: stack`);
+  assert.equal(plan.clearance, tier, `${w}x${h}: ${tier === 2 ? 'clear of everything the reticle draws' : 'clear of the battle sight at full bloom'}`);
   assert.ok(plan.detection.x + plan.detection.w / 2 === w / 2 && plan.alert.x === w / 2, `${w}x${h}: both on the centre line`);
 }
 

@@ -70,8 +70,6 @@ export interface MouseNoticeInput {
   readonly lanes: readonly [PlanLane | null, PlanLane | null];
   /** main sets the alert in 9 px type here (h <= 550 or w <= 480). */
   readonly smallAlert: boolean;
-  /** main hides the detection's second line here (h <= 550). */
-  readonly compactDetection: boolean;
   /** The countdown's and revive count's unscaled boxes (null: not measured), and the countdown's rules panel. */
   readonly countdown: PlanSize | null;
   readonly countdownRules?: PlanSize | null;
@@ -488,11 +486,10 @@ export function mouseReticleFootprint(width: number, height: number, tier: 0 | 1
   return out;
 }
 
-/** The detection's box height at width `w` (hud.ts .cot-sixth: one 8 px sub line from 230 px, two from 164). */
-export function detectionHeight(w: number, compact: boolean): number {
-  if (compact) return 32;
-  return w >= 230 ? 48 : w >= 164 ? 53 : 64;
-}
+/** The detection's box height (hud.ts .cot-sixth: the lamp and its label on one row at every width; its second line went
+ *  with the owner's 2026-10-22 rule on secondary labels, and at 1280 x 720 the 48 px box sent the alert under it onto the
+ *  scope's upper arm). */
+export const DETECTION_H = 32;
 /** Widths the detection may take: main's 248 down to 164 (narrower clips the label outside the six-sided frame). */
 const DETECTION_WIDTHS = [248, 230, 164] as const;
 
@@ -962,8 +959,8 @@ function configs(input: MouseNoticeInput): Config[] {
     const dw = Math.min(full, width - 2 * EDGE_PX);
     if (dw === lastDw) continue;
     lastDw = dw;
-    const dh = detectionHeight(dw, input.compactDetection);
-    const detCost = (248 - dw) * .1 + (dh - detectionHeight(248, input.compactDetection)) * 1.5;
+    const dh = DETECTION_H;
+    const detCost = (248 - dw) * .1;
     let lastAw = -1;
     for (const awFull of small ? ALERT_WIDTHS_9 : ALERT_WIDTHS_12) {
       const aw = Math.min(awFull, width - 2 * EDGE_PX);
@@ -1102,7 +1099,7 @@ function fallbackPair(input: MouseNoticeInput, resting: readonly PlanKeepOut[], 
     [...full, ...input.obstacles])]);
   if (least) return { ...least, arrangement: 'fallback' };
   const { width, height, top } = input;
-  const dw = Math.min(248, width - 28), dh = detectionHeight(dw, input.compactDetection);
+  const dw = Math.min(248, width - 28), dh = DETECTION_H;
   const aw = Math.min(520, width - 32), ah = alertReserve(aw, input.smallAlert);
   const y = Math.max(top + MOUSE_NOTICE_GAP_PX, height * .12);
   const cx = noticeCentreX(width);

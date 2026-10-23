@@ -4814,7 +4814,6 @@
   "garage.module.track": "Track",
   "settings.valueAria": "{label} value",
   "hud.ammo.switching": "Switching ammunition",
-  "touch.landscapeHint": "Landscape recommended",
   "endOverlay.kills": "{count, plural, one {# kill} other {# kills}}",
   "customCamo.asset.star": "Star",
   "customCamo.asset.chevron": "Chevron",
