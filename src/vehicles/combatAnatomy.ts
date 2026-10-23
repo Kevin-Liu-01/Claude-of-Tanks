@@ -16,6 +16,7 @@ import {
   type AnatomyCalibrationBounds,
   type AnatomyCalibrationCell,
   type AnatomyCalibrationStructure,
+  type AnatomyCrewSeatReceipt,
   type AnatomyModuleShapeReceipt,
   type AnatomyEraPlateReceipt,
   type CombatAnatomyCalibration,
@@ -100,6 +101,10 @@ interface ModuleVolume extends AnatomyVolume {
 interface CrewVolume extends AnatomyVolume {
   crew: string;
   station?: string;
+  /** 235: the seated body's head centre (frame-local), from the calibration's crew seat. */
+  head?: Vec3;
+  /** 235: the P50 body's posture at its seat (the Gallery mannequin's joint angles), from the calibration's crew seat. */
+  posture?: AnatomyCrewSeatReceipt['posture'];
 }
 
 interface CollisionFace {
@@ -647,9 +652,34 @@ function addPreciseCrewShapes(armor: ArmorAnatomy, volume: CrewVolume): void {
   }
 }
 
-function addPreciseInternalShapes(armor: ArmorAnatomy): void {
+function copyAnatomyShape(shape: AnatomyCrewSeatReceipt['shapes'][number]): AnatomyShape {
+  return shape.kind === 'ellipsoid'
+    ? { kind: 'ellipsoid', center: shape.center.slice(), radii: shape.radii.slice() }
+    : { kind: 'capsule', a: shape.a.slice(), b: shape.b.slice(), radius: shape.radius };
+}
+
+/**
+ * 235 crew fit: a calibration's crew seat (tools/crew-seat-fit.mjs, published by gen-combat-anatomy) is a P50 body
+ * seated in its role's posture inside the exact shell. Its station box, head, posture and hit shapes are applied as
+ * literal numbers, so every client and authority reads the same crew.
+ */
+function applyCrewSeat(volume: CrewVolume, seat: AnatomyCrewSeatReceipt): void {
+  volume.min = seat.min.slice();
+  volume.max = seat.max.slice();
+  volume.shapes = seat.shapes.map(copyAnatomyShape);
+  volume.head = seat.head.slice();
+  volume.posture = { ...seat.posture };
+}
+
+function addPreciseInternalShapes(armor: ArmorAnatomy, calibration: CombatAnatomyCalibration | null): void {
   for (const volume of armor.modules || []) addPreciseModuleShapes(armor, volume);
-  for (const volume of armor.crew || []) addPreciseCrewShapes(armor, volume);
+  // The generator measures the legacy stations; it never reads its own previous seats.
+  const seats = isCombatAnatomyMeasurementMode() ? null : calibration?.crewSeats;
+  for (const volume of armor.crew || []) {
+    const seat = seats?.find((entry) => entry.crew === volume.crew);
+    if (seat && !!volume.turretLocal === (seat.frame === 'turret')) applyCrewSeat(volume, seat);
+    else addPreciseCrewShapes(armor, volume);
+  }
 }
 
 function shapeCenter(shape: AnatomyShape): Vec3 {
@@ -1543,6 +1573,7 @@ export function finalizeCombatAnatomy(
   if (!isCombatAnatomySpec(spec)) return spec;
   const calibration = resolveCombatCalibration(spec, requestedCalibration);
   if (!spec?.armor || spec[FINALIZED]) return spec;
+  if (isCombatAnatomyMeasurementMode()) rememberAuthoredAnatomy(spec);
   const armor = spec.armor;
   applyCombatGunRig(armor, COMBAT_GUN_RIGS[spec.id]);
   if (calibration) reconcileCalibratedAnatomy(armor, calibration);
@@ -1562,9 +1593,33 @@ export function finalizeCombatAnatomy(
     const max = [0, 1, 2].map(axis => Math.max(...parts.map(part => part.max[axis]))) as Vec3;
     (armor.modules ||= []).push({module: 'roofGun', min, max, parts, external: true, roofGunFollow: true});
   }
-  addPreciseInternalShapes(armor);
+  addPreciseInternalShapes(armor, calibration);
   Object.defineProperty(spec, FINALIZED, { value: true, enumerable: false });
   return spec;
+}
+
+// 235 crew fit: in measurement mode the generator re-finalizes each spec's authored combat data against the calibration
+// it is writing (the crew seats it fits sit in that calibration's shell, in one pass).
+const authoredAnatomy = new Map<string, CombatAnatomySpec>();
+
+function plainCopy<T>(value: T): T {
+  if (Array.isArray(value)) return value.map(plainCopy) as T;
+  if (ArrayBuffer.isView(value) && !(value instanceof DataView)) return (value as unknown as { slice(): T }).slice();
+  if (value === null || typeof value !== 'object' || Object.getPrototypeOf(value) !== Object.prototype) return value;
+  const out: Record<string, unknown> = {};
+  for (const [key, entry] of Object.entries(value)) out[key] = plainCopy(entry);
+  return out as T;
+}
+
+function rememberAuthoredAnatomy(spec: CombatAnatomySpec): void {
+  if (authoredAnatomy.has(spec.id)) return;
+  authoredAnatomy.set(spec.id, plainCopy({ id: spec.id, role: spec.role, gun: spec.gun, armor: spec.armor }));
+}
+
+/** A fresh copy of a spec's combat data as authored, before any finalization (measurement mode only; else null). */
+export function authoredCombatAnatomy(id: string): CombatAnatomySpec | null {
+  const authored = authoredAnatomy.get(id);
+  return authored ? plainCopy(authored) : null;
 }
 
 export { combatAnatomyCalibration } from './combatAnatomyCalibrationRegistry.ts';
