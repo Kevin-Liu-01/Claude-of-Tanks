@@ -326,7 +326,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     const localPlayer = player();
     if (localPlayer) aimController.update(frameInfo.aim);
     else if (watched && watch && !watch.flying()) {
-      aimController.observe(frameInfo.aim, watched, { sight: watch.sight(), zoom: watch.zoom() });
+      aimController.observe(frameInfo.aim, watched.id, { sight: watch.sight(), zoom: watch.zoom() });
     }
     requireHud().update(frameInfo);
     updateArmorOverlay(localPlayer);

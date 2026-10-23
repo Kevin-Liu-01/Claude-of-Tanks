@@ -144,7 +144,8 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
   hold(up, 1);
   hold(down, -1);
 
-  let shownKey = '';
+  // what the bar shows now (compared field by field: the bar rebuilds nothing on an unchanged frame)
+  const shown = { view: '' as WatchHudView | '', tank: null as WatchHudTank | null, canTake: false, speedIndex: -1 };
   const pips = (index: number, steps: number): string => {
     let out = '<span class="pips" aria-hidden="true">';
     for (let i = 0; i < steps; i++) out += `<i class="${i <= index ? 'on' : ''}" style="height:${6 + i * 2}px"></i>`;
@@ -158,21 +159,26 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
         if (root.dataset.watch) delete root.dataset.watch;
         document.body.classList.remove('cot-spectating');
         bar.hidden = true;
-        shownKey = '';
+        shown.view = '';
         return;
       }
-      if (root.dataset.watch !== state.view) root.dataset.watch = state.view;
-      // flying, the battle HUD's own-tank furniture is off (its spectator rule); riding and driving, it is the tank's
-      document.body.classList.toggle('cot-spectating', state.view === 'drone');
+      if (root.dataset.watch !== state.view) {
+        root.dataset.watch = state.view;
+        // flying, the battle HUD's own-tank furniture is off (its spectator rule); riding and driving, it is the tank's
+        document.body.classList.toggle('cot-spectating', state.view === 'drone');
+      }
       const tank = state.view === 'drone' ? null : state.tank;
-      const key = `${state.view}|${tank?.id ?? ''}|${state.canTake ? 1 : 0}|${state.speedIndex}`;
-      if (key === shownKey && bar.isConnected) return;
+      if (bar.isConnected && shown.view === state.view && shown.tank === tank && shown.canTake === state.canTake
+        && shown.speedIndex === state.speedIndex) return;
       if (!bar.isConnected) {
         const mount = host();
         if (!mount) return;
         mount.append(bar, rail);
       }
-      shownKey = key;
+      shown.view = state.view;
+      shown.tank = tank;
+      shown.canTake = state.canTake;
+      shown.speedIndex = state.speedIndex;
       bar.hidden = false;
       if (tank) {
         const specId = tank.spec?.id ?? tank.specId ?? '';

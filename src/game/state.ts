@@ -2280,8 +2280,9 @@ function emitHeOutcomes(
 
 /** The ruleset launch for a shot: the fired direction and the shooter's stamped recoil launch scale, or null. */
 function recoilLaunchFor(entity: SoloEntity, dir: THREE.Vector3): RecoilLaunch | null {
-  // crews only: bots keep the ordinary hull kick so their driving and gunnery are not thrown around
-  const scale = entity.bot ? 1 : (entity.modeRecoilLaunchScale ?? 1);
+  // crews only: bots keep the ordinary hull kick so their driving and gunnery are not thrown around (a watcher driving a
+  // bot's seat is the crew: game/watchSeat.ts)
+  const scale = entity.bot && !entity.isPlayer ? 1 : (entity.modeRecoilLaunchScale ?? 1);
   return scale > 1 ? { scale, dirX: dir.x, dirY: dir.y, dirZ: dir.z } : null;
 }
 

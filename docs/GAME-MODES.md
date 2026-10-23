@@ -30,6 +30,45 @@ rule the battle does not keep.
 | Drone | Destroy opponents with tanks and directly piloted drones | Launch a physical FPV quadcopter; its shaped charge interacts with cages, ERA and spaced armor at the impact point; unlimited rounds | 6 s | First team to 20 kills (configurable), or 10:00 score decision |
 | AC-130 | Protect ground allies until at least half reach extraction | Fragile escorts, a marked exit, overhead scope, three independent weapon channels and unlimited ammunition | No | Half extracted; defeat if too few survive or 8:00 expires |
 
+## Watch (watch-mode-243, 2026-10-23)
+
+Owner: "watch tank battles and be able to go into a spectator view you can control like a drone and then into any tank
+currently fighting (being controlled by a bot)"; through Main the same day, "be able to ride along in spectator mode but
+go into tank describes driving it". Deploy's **Watch** button starts the selected mode on the selected map with every
+seat a bot's. The rules are the `WATCH_RULES` entry in `src/sim/matchRuleset.ts` (`watchRulesetFor`):
+
+- Every battle mode but the AC-130 can be watched (its gunship is the human's alone; the proving ground has no fight).
+- The human seat is set up exactly as ever (side, spawn, role, your Garage tank) and a bot drives it, so every mode
+  fields its own sides and keeps its own clock, respawns, scores and objectives. That seat stays the mode's human seat
+  (`bot: false`), so Frontline and the Horde still end when it falls.
+- Nothing is recorded (`battle:ended` carries `watch: true`; `battleKeepsRecords`).
+- The watcher sees every hull (`watchRevealsAll`) until they take a seat; a taken seat sees as its side does.
+
+| View | Desktop | Gamepad | Touch |
+| --- | --- | --- | --- |
+| Drone | WASD/arrows move, mouse looks, Space·E climb, C·Q descend, Shift boosts, wheel sets cruise speed | Left stick moves, right stick looks, RT/LT climb/descend, L3 boosts | Stick moves, drag looks, the climb rail |
+| Ride along | Click a tank, F (the one in view) or Tab; Q/E and Shift+Tab cycle; Shift or wheel-in for the gunner sight; V flies off | A rides the tank in view; LB/RB cycle; B flies off | Tap a tank or the cycle buttons |
+| Take control | Enter (again to leave) | R3 | The Drive / Leave button |
+
+A ridden tank's wreck is held `deathHoldS`, then the camera rides on with its killer (a burn-out or crash credits the
+last hull that hit it), or the drone lifts off. Every handover is an eased pose blend that arcs over long hops
+(`src/engine/watchCamera.ts`).
+
+**Take control** is the player's own path: `src/game/watchSeat.ts` parks the hull's AI controller and makes the hull
+`game.player`. The fixed step drives a hull from its controller only while `aiCtl` is set, so the frame input
+(`playerFrameInput.ts`) is the only writer of the hull's input while it is driven. Leaving gives the controller back,
+and it resumes from the hull's live state. A driven hull's death plays the player's death flow (death camera, replay),
+then the watcher is back on the drone.
+
+Receipts:
+- `src/game/watchSeat.selftest.mjs`: the ruleset entry, bot → player → bot leaves the hull identical, an exact replay
+  over the swap, no controller step while driven, every watchable mode running with no human seat.
+- `src/game/watchController.selftest.mjs`: the death handoff, picking and cycling, take and leave.
+- `src/engine/watchCamera.selftest.mjs`: the drone's clamp to the terrain floor, structures (slide), the world square
+  and the ceiling.
+
+The controller, camera and bar load as one lazy chunk with a watched battle (`src/app/watchRuntime.ts`).
+
 ## Aerial sensor views
 
 In Drone and AC-130, press **I** (rebindable in Settings), or tap the view button beside the aircraft icon, to cycle

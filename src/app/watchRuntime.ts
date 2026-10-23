@@ -9,13 +9,11 @@ import {
   createWatchController,
   type WatchController,
   type WatchControllerOptions,
+  type WatchEntity,
 } from '../game/watchController.ts';
 import { watchRevealsAll } from '../game/watchSeat.ts';
 import { createWatchHud, type WatchHudTank } from '../ui/watchHud.ts';
-import type { CameraEntity } from '../engine/cameraRig.ts';
-import type { WatchSeatEntity } from '../game/watchSeat.ts';
-
-type WatchRuntimeEntity = CameraEntity & WatchSeatEntity & WatchHudTank;
+type WatchRuntimeEntity = WatchEntity & WatchHudTank;
 
 type ControllerPorts<TEntity extends WatchRuntimeEntity> = Omit<WatchControllerOptions<TEntity>,
   'watchCamera' | 'openingFrame'>;

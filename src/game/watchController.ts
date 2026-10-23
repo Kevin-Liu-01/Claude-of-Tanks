@@ -20,7 +20,6 @@ import { Vector3, type PerspectiveCamera } from 'three';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { CameraEntity } from '../engine/cameraRig.ts';
 import type { WatchCamera, WatchCameraInput } from '../engine/watchCamera.ts';
-import { WATCH_RIDE } from '../engine/watchCamera.ts';
 import type { EventBus } from './stateCore.ts';
 import type { PadSnapshot } from './input.ts';
 import type { CameraFrameInput } from './playerFrameInput.ts';
@@ -30,8 +29,9 @@ import { leaveWatchSeat, openWatchSeats, takeWatchSeat, watchSeatRefusal, type W
 export type WatchView = 'off' | 'drone' | 'ride' | 'drive';
 
 /** A hull the controller can ride and seat: the camera's fields (a parked pool entry has no state) and the seat's. */
-type WatchEntity = WatchSeatEntity & Omit<CameraEntity, 'state' | 'combat' | 'input'> & {
+export type WatchEntity = WatchSeatEntity & Omit<CameraEntity, 'state' | 'combat' | 'input'> & {
   state: CameraEntity['state'] | null;
+  input: WatchSeatEntity['input'] & { aimPoint?: Vector3 | null };
 };
 type LiveWatchEntity<TEntity extends WatchEntity> = TEntity & { state: CameraEntity['state']; combat: { destroyed?: boolean } };
 
@@ -134,7 +134,8 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
   const killerOf = new Map<string, string>();
   const lastAttacker = new Map<string, string>();
   const unsubscribe: Array<() => void> = [];
-  let lastEmitted = '';
+  // the last announced view (compared field by field: nothing is built per frame)
+  const announced = { view: '' as WatchView | '', id: null as string | null, sight: false, canTake: false };
 
   const rules = (): WatchRules | null => game.ruleset?.watch ?? null;
   const watching = (): boolean => live && !driving && game.phase === 'battle';
@@ -150,11 +151,13 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
 
   function emitChange(): void {
     const target = driving ?? rideTarget();
-    const view = api.view;
-    const key = `${view}|${target?.id ?? ''}|${watchCamera.sight ? 1 : 0}|${api.canTake ? 1 : 0}`;
-    if (key === lastEmitted) return;
-    lastEmitted = key;
-    bus.emit('watch:change', { view, id: target?.id ?? null, sight: watchCamera.sight, canTake: api.canTake } as RuntimeValue);
+    const view = api.view, id = target?.id ?? null, sight = watchCamera.sight, canTake = api.canTake;
+    if (view === announced.view && id === announced.id && sight === announced.sight && canTake === announced.canTake) return;
+    announced.view = view;
+    announced.id = id;
+    announced.sight = sight;
+    announced.canTake = canTake;
+    bus.emit('watch:change', { view, id, sight, canTake } as RuntimeValue);
   }
 
   // ------------------------------------------------------------------ picking
@@ -231,6 +234,7 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
     if (!watching() || !target || watchSeatRefusal(game, target) !== null) return;
     const sight = watchCamera.sight;
     const zoom = watchCamera.zoom;
+    const step = watchCamera.orbitStep;
     // the rig opens on the pose the ride-along held: the same orbit behind the same lay
     camera.getWorldDirection(_forward);
     const yaw = Math.atan2(_forward.x, _forward.z);
@@ -243,7 +247,7 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
     options.onSeat(target);
     rig.release();
     if (sight) rig.snapSniper(zoom, yaw, pitch);
-    else rig.snapArcade(WATCH_RIDE.orbitIndex, yaw, pitch);
+    else rig.snapArcade(step, yaw, pitch);
     emitChange();
   }
 
@@ -435,7 +439,7 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
       window.addEventListener('blur', onBlur);
       window.addEventListener('pointerdown', onPointerDown, true);
       window.addEventListener('pointerup', onPointerUp, true);
-      lastEmitted = '';
+      announced.view = '';
       emitChange();
     },
 
@@ -471,6 +475,8 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
     stop(): void {
       if (driving) leaveWatchSeat(game);
       driving = null;
+      // the ledger ends with the battle: nothing after it (a room, the next sortie) reads a stale watch
+      game.watch = null;
       live = false;
       watchCamera.stop();
       for (const off of unsubscribe.splice(0)) off();
@@ -483,7 +489,7 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
       touchClimb = 0;
       killerOf.clear();
       lastAttacker.clear();
-      lastEmitted = '';
+      announced.view = '';
       bus.emit('watch:change', { view: 'off', id: null, sight: false, canTake: false } as RuntimeValue);
     },
   };

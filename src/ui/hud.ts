@@ -7465,7 +7465,8 @@ export function initHud(bus: EventBus): HudRuntime {
       mmDirty = true;
     }
     playerRef = frame.player || playerRef;
-    if (frame.player) playerId = frame.player.id;
+    // flying the watch drone, the frame's tank is only its anchor: no kill reads "You", no hit is the HUD's own
+    if (frame.player) playerId = watchDrone ? null : frame.player.id;
     jumpKey.textContent = frame.selfRightKeyLabel || 'F';
     if(frame.matchModeState?.id)setControlsJumpMode(isJumpMode(liveRuleset?.mode===frame.matchModeState.id?liveRuleset:matchRulesetFor(normalizeGameMode(frame.matchModeState.id))));
     if(frame.auxiliaryKeyLabels){

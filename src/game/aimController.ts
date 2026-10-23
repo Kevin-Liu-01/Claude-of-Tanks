@@ -147,7 +147,7 @@ export interface AimController {
    * Watch mode's ride-along (watch-mode-243): the same frame for a hull the watcher only looks through — its gunner's
    * aim point, its reload, rounds and bore — read-only, with no armour targeting.
    */
-  observe(frame: AimFrame, tank: AimTank, view: { readonly sight: boolean; readonly zoom: number }): void;
+  observe(frame: AimFrame, tankId: string, view: { readonly sight: boolean; readonly zoom: number }): void;
 }
 
 const AIM_STICKY_INFLATE = 1.15;
@@ -438,8 +438,10 @@ export function createAimController(deps: AimControllerDependencies): AimControl
   }
 
   const observedRig: AimRig = { aimPoint: new THREE.Vector3(), aimDist: 0, mode: 'ARCADE', zoom: 1 };
-  function observe(frame: AimFrame, tank: AimTank, view: { readonly sight: boolean; readonly zoom: number }): void {
+  function observe(frame: AimFrame, tankId: string, view: { readonly sight: boolean; readonly zoom: number }): void {
     frame.ammoSelectionPending = false;
+    let tank: AimTank | null = null;
+    for (const entry of deps.getGame().tanks) if (entry.id === tankId) { tank = entry; break; }
     if (!tank?.state || !tank.combat || !tank.visual) return;
     const laid = tank.input?.aimPoint;
     if (laid) observedRig.aimPoint.copy(laid);

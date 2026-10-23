@@ -117,6 +117,8 @@ export interface WatchCamera {
   readonly target: CameraEntity | null;
   readonly sight: boolean;
   readonly zoom: number;
+  /** The ride-along's orbit step (an index into WATCH_RIDE.orbitSteps, the player rig's own steps). */
+  readonly orbitStep: number;
   readonly speedIndex: number;
   readonly blending: boolean;
   /** The drone's integrated position (the receipts read the clamp from it). */
@@ -475,6 +477,7 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
     get target() { return mode === 'ride' ? target : null; },
     get sight() { return mode === 'ride' && sight; },
     get zoom() { return WATCH_RIDE.zooms[zoomIndex]; },
+    get orbitStep() { return orbitIndex; },
     get speedIndex() { return speedIndex; },
     get blending() { return blendT < blendDur; },
     get dronePosition() { return dronePos; },
