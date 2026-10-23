@@ -54,7 +54,8 @@ try {
   await page.clock.runFor(100);
   if(!touch){
    assert.equal(await page.locator('.cot-si-card').getAttribute('data-damage'),'400');
-   assert.match(await page.locator('.cot-si-kicker').textContent(),/Missile impact/);
+   assert.equal(await page.locator('.cot-si-card').getAttribute('aria-label'),'Missile impact');
+   assert.equal(await page.locator('.cot-si-sub .ty.missile svg').count(),1,'the missile reads by its rack on the weapon row');
    assert.match(await page.locator('.cot-si-missile-blast').textContent(),/2 vehicles.*150 damage/);
    // A phone's summary hides its schematic (responsiveSurfaces.css, battleHudLayout.css); a hidden box measures
    // 0,0,0,0, which no card contains, so only rendered boxes are measured and the phone asserts the hiding itself.

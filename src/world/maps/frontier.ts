@@ -22,6 +22,8 @@
 // objectives stand on the valley floor: the west river meadow below its mill, the village square and the east river
 // meadow. Three lanes cross the slopes: the west farm lane, the main road, and the ridge lane past the estate.
 
+import { TRODDEN_GREEN_PAINT, WORN_YARD_PAINT } from '../hardstandSurface.ts';
+
 const rot = ([x, z]: readonly [number, number]): [number, number] => [-x, -z];
 const both = (path: readonly (readonly [number, number])[]): [number, number][][] => [
   path.map(([x, z]) => [x, z] as [number, number]), path.map(rot),
@@ -76,11 +78,11 @@ export default {
     // zone-control placement seats its 30 m discs on. Each meadow lies on the river flats clear of the valley road
     // (an apron on the road would ramp it past a road grade), at the flats' own level.
     hardstands: [
-      { x: 0, z: 0, width: 60, length: 60, yawDeg: 0, grade: 0 },
+      { x: 0, z: 0, width: 60, length: 60, yawDeg: 0, grade: 0, paint: WORN_YARD_PAINT },
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): a 24 m bank
-      { x: -290, z: -30, width: 60, length: 60, yawDeg: 0, level: -3.4, grade: 0, bankM: 24 },
+      { x: -290, z: -30, width: 60, length: 60, yawDeg: 0, level: -3.4, grade: 0, bankM: 24, paint: TRODDEN_GREEN_PAINT },
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): a 16 m bank
-      { x: 290, z: 30, width: 60, length: 60, yawDeg: 0, level: -2.5, grade: 0, bankM: 16 },
+      { x: 290, z: 30, width: 60, length: 60, yawDeg: 0, level: -2.5, grade: 0, bankM: 16, paint: TRODDEN_GREEN_PAINT },
     ],
     landforms: [
       ...valleyTrough(),

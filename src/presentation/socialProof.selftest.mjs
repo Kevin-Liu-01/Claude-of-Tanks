@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const home = readFileSync(join(ROOT, 'site/home.html'), 'utf8');
-const styles = readFileSync(join(ROOT, 'public/home.css'), 'utf8');
+const styles = readFileSync(join(ROOT, 'src/presentation/home.css'), 'utf8');
 
 assert.match(home, /<header class="v5-hero">[\s\S]*?<\/header>\s*<section class="manual-start shell" aria-labelledby="manual-start-title">[\s\S]*?<\/section>\s*<section class="v5-social-proof" aria-labelledby="social-proof-title">/,
   'the player-guide navigation must follow the hero, with the preserved social proof immediately after it');
