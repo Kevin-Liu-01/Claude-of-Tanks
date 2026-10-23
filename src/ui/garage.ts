@@ -39,7 +39,8 @@ import type { EquipmentItem } from '../game/equipment.ts';
 import { equipmentHoverPreview, projectEquipmentLoadout } from './equipmentPreview.ts';
 import { equipIconSVG } from './equipIcons.ts';
 import { uiIconSVG } from './uiIcons.ts';
-import { keycap, scale20 } from './components/components.ts';
+import { keycap, scale20, wireRoving } from './components/components.ts';
+import { campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
 import { shellIconSVG } from './shellIcons.ts';
 import {
@@ -66,7 +67,7 @@ import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts'
 import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { testDriveLaunch } from '../game/provingGroundSession.ts';
 import {
-  isWaveMode, matchRulesetFor, modeCopyValues, rulesetSides, BATTLE_FIELD_LIMIT, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
+  isWaveMode, matchRulesetFor, modeCopyValues, rulesetSides, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
 } from '../sim/matchRuleset.ts';
 import { readMarsSettings, readTeamArrangement, writeMarsSettings, writeTeamArrangement } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
@@ -172,7 +173,7 @@ interface GarageOptions {
   readonly onBattle?: (
     specId: string,
     mapId: string,
-    options: { readonly gameMode: GameModeId },
+    options: { readonly gameMode: GameModeId; readonly campaignOperationId?: string },
   ) => void;
   readonly onPlayRequest?: (request: PlayRequest) => void;
   readonly onPlayModeIntent?: (mode: BattleMode) => void;
@@ -210,6 +211,23 @@ export interface GarageRuntime {
   /** Test drive a vehicle (default: the selected one) on the proving ground; false when it cannot launch now. */
   testDrive(specId?: string | null): boolean;
   setSelectedMap(mapId: string): void;
+}
+
+/** Each battle rule's glyph (src/ui/icons): the Deploy screen's choices and the Deploy button read this one table. */
+const MODE_GLYPH: Readonly<Partial<Record<GameModeId, string>>> = Object.freeze({
+  zone_control: 'modeZones', capture_the_flag: 'modeFlag', frontline_assault: 'modeFrontline', turbo_ball: 'modeTurbo',
+  gun_game: 'modeGunGame', mars: 'modeMars', juggernaut: 'modeJuggernaut', infected: 'modeInfected',
+  endless_horde: 'modeHorde', realistic: 'modeRealistic', drone: 'modeDrone', ac130: 'modeAc130',
+});
+
+/** The Deploy screen's rule choices: glyph, name and a chip row the ruleset fills (renderDeployChips). */
+function deployCardsHTML(ids: readonly GameModeId[], card: boolean): string {
+  return ids.map((id) => {
+    const name = `<span class="choice-name">${t(`playMenu.matchMode.${id}.label`)}</span><span class="cot-deploy-chips" data-deploy-chips="${id}"></span>`;
+    return `<button class="cot-battle-choice${card ? ' cot-deploy-card' : ''}" type="button" data-game-mode="${id}" data-mode-tone="${id}" ` +
+      `aria-pressed="false"><span class="choice-icon">${uiIconSVG(MODE_GLYPH[id] || 'modeStandard', card ? 44 : 24)}</span>` +
+      `${card ? name : `<span>${name}</span>`}</button>`;
+  }).join('');
 }
 
 function requiredElement<T extends Element>(parent: ParentNode, selector: string): T {
@@ -634,64 +652,51 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<strong>${t('garage.nav.stagingArea')}</strong></span></button></div></nav>` +
     `<div class="cot-battle-control">` +
     `<button class="cot-battle" type="button" data-ui-sound="deploy" aria-label="${t('garage.battle.startBots')}">` +
-    `<span class="battle-active-icon">${uiIconSVG('battleBots', 20)}</span>` +
+    `<span class="battle-active-icon">${uiIconSVG('modeStandard', 20)}</span>` +
     `<span class="battle-word">${t('garage.battle')}</span>${keycap(t('garage.key.enter'))}</button>` +
     `<button class="cot-battle-mode" type="button" aria-haspopup="dialog" aria-expanded="false" ` +
     `aria-controls="cot-battle-menu" aria-label="${t('garage.battle.menuTypeBots')}">` +
-    `<span>${t('garage.battle.typeBots')}</span></button>` +
-    `<div class="cot-battle-menu" id="cot-battle-menu" role="dialog" aria-label="${t('garage.battle.menuAria')}">` +
-    `<div class="cot-battle-menu-head"><strong>${t('garage.battle.setupDescription')}</strong>` +
-    `<button type="button" data-battle-close aria-label="${t('garage.battle.closeSetup')}">&times;</button></div>` +
-    `<div class="cot-battle-menu-scroll"><div class="cot-battle-mode-list">` +
-    `<button class="cot-battle-choice cot-battle-regular" type="button" data-mode="solo" aria-pressed="true">` +
-    `<span class="choice-icon">${uiIconSVG('battleBots', 17)}</span>` +
-    `<span><span class="choice-name">${t('garage.battle.soloLabel')}</span>` +
-    `<span class="choice-description">${t('garage.battle.regularDescription')}</span></span></button>` +
-    // the proving ground (2026-10-20): the selected tank straight onto the range, one press from the battle menu
-    `<button class="cot-battle-choice cot-battle-regular cot-battle-proving" type="button" data-proving>` +
-    `<span class="choice-icon">${uiIconSVG('modeProving', 17)}</span>` +
-    `<span><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span>` +
-    `<span class="choice-description">${t('garage.battle.provingDescription')}</span></span></button>` +
-    `<div class="cot-battle-menu-label" id="cot-special-modes">${t('garage.battle.soloRules')}</div>` +
-    `<div class="cot-battle-choice-grid" role="group" aria-labelledby="cot-special-modes">` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="drone" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeDrone', 17)}</span><span class="choice-name">${t('playMenu.matchMode.drone.label')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="ac130" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeAc130', 17)}</span><span class="choice-name">${t('playMenu.matchMode.ac130.label')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="mars" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('modeMars', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeMars')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="juggernaut" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeJuggernaut', 17)}</span><span class="choice-name">${t('playMenu.matchMode.juggernaut.label')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="capture_the_flag" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('modeFlag', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeFlag')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="infected" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeInfected', 17)}</span><span class="choice-name">${t('playMenu.matchMode.infected.label')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="frontline_assault" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('modeFrontline', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeFront')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="realistic" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeRealistic', 17)}</span><span class="choice-name">${t('playMenu.matchMode.realistic.label')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="gun_game" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeGunGame', 17)}</span><span class="choice-name">${t('playMenu.matchMode.gun_game.label')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="turbo_ball" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('modeTurbo', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeTurbo')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="zone_control" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('modeZones', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeZones')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="endless_horde" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('modeHorde', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeHorde')}</span></button>` +
-    `</div><div class="cot-battle-menu-label" id="cot-multiplayer-modes">${t('garage.battle.multiplayer')}</div>` +
-    `<div class="cot-battle-choice-grid" role="group" aria-labelledby="cot-multiplayer-modes">` +
-    `<button class="cot-battle-choice" type="button" data-mode="private" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('battlePrivate', 17)}</span>` +
-    `<span><span class="choice-name">${t('garage.battle.typePrivate')}</span>` +
-    `<span class="choice-description">${t('garage.battle.privateDescription')}</span></span></button>` +
-    `<button class="cot-battle-choice" type="button" data-mode="lan" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('battleLan', 17)}</span>` +
-    `<span><span class="choice-name">${t('garage.battle.typeLan')}</span>` +
-    `<span class="choice-description">${t('garage.battle.lanDescription')}</span></span></button></div>` +
-    `</div><div class="cot-battle-details">` +
+    `<span>${t('garage.battle.soloLabel')}</span></button>` +
+    // The Deploy screen (brand-ui S3, SPEC 12.1.4): the battle menu opens as one full screen. Its head returns to the
+    // Garage and holds the four ways to play; the modes sit on the left as four cards and a grid of rows, each with its
+    // glyph and the rules its ruleset sets; the plate on the right holds the selected mode, its six rules, the sides,
+    // the time, the tank and one Deploy button. Private and LAN rooms open the play menu as before.
+    `<div class="cot-battle-menu" id="cot-battle-menu" role="dialog" aria-modal="true" aria-labelledby="cot-deploy-title">` +
+    `<header class="cot-deploy-head">` +
+    `<button type="button" class="cot-deploy-back" data-battle-close data-ui-sound="back" aria-label="${t('garage.battle.closeSetup')}">` +
+    `${uiIconSVG('chevronLeft', 18)}<span>${t('garage.nav.garage')}</span>${keycap('Esc')}</button>` +
+    `<h2 class="cot-deploy-title" id="cot-deploy-title">${t('garage.battle')}</h2>` +
+    `<nav class="cot-deploy-tabs" aria-label="${t('garage.battle.menuAria')}">` +
+    `<div class="cot-deploy-tablist" role="tablist" aria-label="${t('garage.battle.menuAria')}">` +
+    `<button type="button" class="cot-deploy-tab" role="tab" id="cot-deploy-tab-quick" data-tab="quick" aria-selected="true" aria-controls="cot-deploy-quick">` +
+    `${uiIconSVG('battleBots', 18)}${t('garage.deploy.quick')}</button>` +
+    `<button type="button" class="cot-deploy-tab" role="tab" id="cot-deploy-tab-campaign" data-tab="campaign" aria-selected="false" aria-controls="cot-deploy-campaign" tabindex="-1">` +
+    `${uiIconSVG('modeFrontline', 18)}${t('campaign.heading')}<span class="cot-deploy-count num" data-deploy-campaign-count></span></button></div>` +
+    `<button type="button" class="cot-deploy-tab" data-deploy-room="private">${uiIconSVG('battlePrivate', 18)}${t('garage.battle.typePrivate')}</button>` +
+    `<button type="button" class="cot-deploy-tab" data-deploy-room="lan">${uiIconSVG('battleLan', 18)}${t('garage.battle.typeLan')}</button>` +
+    `</nav></header>` +
+    `<div class="cot-battle-menu-scroll">` +
+    `<section class="cot-battle-mode-list cot-deploy-panel" id="cot-deploy-quick" role="tabpanel" aria-labelledby="cot-deploy-tab-quick" data-deploy-panel="quick">` +
+    `<div class="cot-deploy-cards">` +
+    `<button class="cot-battle-choice cot-deploy-card" type="button" data-mode="solo" data-mode-tone="standard" aria-pressed="true">` +
+    `<span class="choice-icon">${uiIconSVG('modeStandard', 44)}</span>` +
+    `<span class="choice-name">${t('garage.battle.soloLabel')}</span><span class="cot-deploy-chips" data-deploy-chips="standard"></span></button>` +
+    deployCardsHTML(['zone_control', 'capture_the_flag', 'frontline_assault'], true) +
+    `</div><div class="cot-deploy-rows">` +
+    deployCardsHTML(['turbo_ball', 'gun_game', 'mars', 'juggernaut', 'infected', 'endless_horde', 'realistic', 'drone', 'ac130'], false) +
+    // the proving ground (2026-10-20): the selected tank straight onto the range, one press from the Deploy screen
+    `<button class="cot-battle-choice" type="button" data-proving data-mode-tone="proving">` +
+    `<span class="choice-icon">${uiIconSVG('modeProving', 24)}</span>` +
+    `<span><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span></span></button>` +
+    `</div></section>` +
+    `<section class="cot-deploy-panel cot-deploy-campaign" id="cot-deploy-campaign" role="tabpanel" aria-labelledby="cot-deploy-tab-campaign" data-deploy-panel="campaign" hidden>` +
+    `<div class="cot-deploy-ops" role="list" data-deploy-ops></div></section>` +
+    `<aside class="cot-deploy-plate" aria-labelledby="cot-deploy-mode-title" aria-describedby="cot-deploy-mode-about">` +
+    `<div class="cot-battle-details">` +
     `<div class="cot-battle-preview"><span class="cot-battle-preview-icon" data-setup-icon aria-hidden="true"></span>` +
-    `<div><small>${t('garage.setup.selected')}</small><h3 data-setup-title></h3></div>` +
-    `<p data-setup-description></p></div>` +
+    `<h3 id="cot-deploy-mode-title" data-setup-title></h3>` +
+    `<p id="cot-deploy-mode-about" data-setup-description hidden></p></div>` +
+    `<dl class="cot-deploy-rules" data-deploy-rules></dl>` +
     `<div class="cot-battle-solo-options" data-solo-options>` +
     `<div data-team-options>` +
     // sides (owner 2026-09-18): "a switch that's default set to 7v7 but then switching it does 14v14 and you can also
@@ -707,12 +712,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<label><span>${t('garage.battle.sidesEnemies')}</span><input type="number" inputmode="numeric" step="1" ` +
     `min="${TEAM_ARRANGEMENT_LIMITS.enemies.standard[0]}" max="${TEAM_ARRANGEMENT_LIMITS.enemies.standard[1]}" data-sides-field="enemies"></label>` +
     `<b class="cot-sides-readout" data-sides-readout></b>` +
-    `<small>${t('garage.battle.sidesNote', { max: String(BATTLE_FIELD_LIMIT) })}</small>` +
     `</div>` +
     `</div><fieldset class="cot-battle-times" data-time-options aria-describedby="cot-time-hint">` +
     battleTimeChoicesMarkup('cot-time-hint') + `</fieldset>` +
     `<div class="cot-battle-galaxy" data-galaxy-sky hidden>${uiIconSVG('regionNight', 24)}` +
-    `<div><strong>${t('garage.battle.galaxySky')}</strong><p>${t('garage.battle.nightGalaxy')}</p></div></div>` +
+    `<strong>${t('garage.battle.galaxySky')}</strong></div>` +
     // Mars settings (owner 2026-09-18 "give it a bunch of boosts and settings"): the gravity world and the
     // boost-cache cadence, shown while Mars is the selected rule (game/teamArrangement.ts readMarsSettings)
     `<div class="cot-battle-menu-label" data-mars-label hidden>${t('garage.battle.marsSettings')}</div>` +
@@ -720,11 +724,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<label><span>${t('garage.battle.marsGravity')}</span><select data-mars-field="gravity">` +
     MARS_GRAVITY_IDS.map((id) => `<option value="${id}">${t(`mars.gravity.${id}`)}</option>`).join('') + `</select></label>` +
     `<label><span>${t('garage.battle.marsCaches')}</span><select data-mars-field="caches">` +
-    MARS_CACHE_IDS.map((id) => `<option value="${id}">${t(`mars.caches.${id}`)}</option>`).join('') + `</select></label>` +
-    `<small>${t('garage.battle.marsNote')}</small></div>` +
-    `</div></div></div><div class="cot-battle-menu-foot">` +
-    `<span data-setup-selection></span><button type="button" data-battle-launch>` +
-    `${t('garage.battle')}${uiIconSVG('chevronRight', 14)}</button></div></div>` +
+    MARS_CACHE_IDS.map((id) => `<option value="${id}">${t(`mars.caches.${id}`)}</option>`).join('') + `</select></label></div>` +
+    `</div></div>` +
+    `<div class="cot-battle-menu-foot"><div class="cot-deploy-tank" data-deploy-tank></div>` +
+    `<span data-setup-selection hidden></span><button type="button" data-battle-launch data-ui-sound="deploy">` +
+    `${uiIconSVG('deploy', 24)}<span>${t('garage.battle')}</span>${keycap(t('garage.key.enter'))}</button></div>` +
+    `</aside></div></div>` +
     `<button class="cot-multiplayer-entry" type="button" aria-haspopup="dialog">` +
     `${uiIconSVG('team', 17)}<span>${t('garage.multiplayer.open')}</span></button>` +
     `<div class="cot-room-controls" role="group" aria-label="${t('garage.battle.roomReadiness')}">` +
@@ -979,6 +984,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const battleBtn = requiredElement<HTMLButtonElement>(root, '.cot-battle');
   const battleModeBtn = requiredElement<HTMLButtonElement>(root, '.cot-battle-mode');
   const battleMenu = requiredElement<HTMLElement>(root, '.cot-battle-menu');
+  // The Deploy screen fills the viewport, so it lives at the Garage root, outside the Deploy button's transformed box.
+  root.appendChild(battleMenu);
   const battleMenuScroll = requiredElement<HTMLElement>(battleMenu, '.cot-battle-menu-scroll');
   const battleChoices = [...root.querySelectorAll<HTMLButtonElement>('.cot-battle-choice[data-mode]')];
   const battleRuleChoices = [...root.querySelectorAll<HTMLButtonElement>('.cot-battle-choice[data-game-mode]')];
@@ -3013,9 +3020,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function launchBattle(
     specId: string,
     mapId: string,
-    { emitClick = true, gameMode = battleGameMode }: {
+    { emitClick = true, gameMode = battleGameMode, campaignOperationId }: {
       emitClick?: boolean;
       gameMode?: GameModeId;
+      campaignOperationId?: string;
     } = {},
   ): void {
     // Battle entry must be unstoppable: the pre-battle emits fan out to five+
@@ -3029,7 +3037,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     } catch (err) {
       console.error('[garage] battle-start listener failed:', err);
     }
-    if (onBattle) onBattle(specId, mapId, { gameMode }); // MAP-CONFIG WIRING
+    if (onBattle) onBattle(specId, mapId, campaignOperationId ? { gameMode, campaignOperationId } : { gameMode }); // MAP-CONFIG WIRING
   }
 
   /** The proving ground with this vehicle (the dossier's button, the Gallery's link): never inside a room's lobby. */
@@ -3076,36 +3084,33 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     launchBattle(specId, mapId);
   }
 
+  // A campaign operation is a Frontline Assault sortie on its own map, through the same play request as Deploy.
+  function deployCampaign(operationId: string, mapId: string): void {
+    if (!selectedId) return;
+    const specId = selectedId;
+    closeBattleMenu();
+    const start = () => launchBattle(specId, mapId, { emitClick: false, gameMode: 'frontline_assault', campaignOperationId: operationId });
+    if (opts.onPlayRequest) {
+      try { emit('ui:click', {}); } catch (_) { /* presentation-only */ }
+      opts.onPlayRequest({ mode: 'solo', gameMode: 'frontline_assault', specId, mapId, startSolo: start });
+      return;
+    }
+    start();
+  }
+
   interface BattleChoiceMeta {
-    readonly short: string;
     readonly label: string;
     readonly icon: string;
   }
-  // The button names a mode with its glossary short name (src/ui/glossary.json), never a code (BUI-F8).
+  // The toggle under Deploy names its mode in full, as the Deploy screen does: never a code (BUI-F8, SPEC 12.1.4).
   const battleModeMeta: Readonly<Record<BattleMode, BattleChoiceMeta>> = {
-    solo: { short: t('garage.battle.typeBots'), label: t('garage.battle.soloLabel'), icon: 'battleBots' },
-    private: { short: t('garage.battle.typePrivate'), label: t('garage.battle.privateLabel'), icon: 'battlePrivate' },
-    lan: { short: t('garage.battle.typeLan'), label: t('garage.battle.lanLabel'), icon: 'battleLan' },
+    solo: { label: t('garage.battle.soloLabel'), icon: 'modeStandard' },
+    private: { label: t('garage.battle.privateLabel'), icon: 'battlePrivate' },
+    lan: { label: t('garage.battle.lanLabel'), icon: 'battleLan' },
   };
-  const battleRuleMeta = Object.fromEntries(Object.entries({
-    juggernaut: 'modeJuggernaut', infected: 'modeInfected', realistic: 'modeRealistic', gun_game: 'modeGunGame',
-    drone: 'modeDrone', ac130: 'modeAc130', capture_the_flag: 'modeFlag', zone_control: 'modeZones',
-    turbo_ball: 'modeTurbo', endless_horde: 'modeHorde', frontline_assault: 'modeFrontline', mars: 'modeMars',
-  }).map(([id, icon]) => [id, {
-    short: t(`playMenu.matchMode.${id}.short`), label: t(`playMenu.matchMode.${id}.label`), icon,
+  const battleRuleMeta = Object.fromEntries(Object.entries(MODE_GLYPH).map(([id, icon]) => [id, {
+    label: t(`playMenu.matchMode.${id}.label`), icon,
   }])) as Partial<Record<GameModeId, BattleChoiceMeta>>;
-  // The menu scrolls in one region between its head and launch row: where it continues below the footer (the special
-  // modes on a short window), a fade and a chevron over the footer's edge say so.
-  function syncBattleMenuScrollCue(): void {
-    const below = battleMenuScroll.scrollTop + battleMenuScroll.clientHeight < battleMenuScroll.scrollHeight - 4;
-    battleMenu.classList.toggle('has-more-below', below);
-  }
-  battleMenuScroll.addEventListener('scroll', syncBattleMenuScrollCue, { passive: true });
-  if (typeof ResizeObserver === 'function') {
-    const cueObserver = new ResizeObserver(() => { if (battleMenu.classList.contains('open')) syncBattleMenuScrollCue(); });
-    cueObserver.observe(battleMenuScroll);
-    for (const column of battleMenuScroll.children) cueObserver.observe(column);
-  }
   function closeBattleMenu({ restoreFocus = false } = {}) {
     arrangementPanel?.close();
     marsDropdowns.forEach(dropdown => dropdown.close());
@@ -3117,13 +3122,21 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     closeMobileNavigation();
     setGaragePanel('');
     renderBattleOptions();
+    renderDeployTank();
+    for (const tab of deployTabs.querySelectorAll<HTMLElement>('[role=tab]')) {
+      const on = tab.dataset.tab === 'quick';
+      tab.setAttribute('aria-selected', String(on));
+      tab.tabIndex = on ? 0 : -1;
+    }
+    showDeployTab('quick');
+    const campaign = campaignSummary();
+    deployCampaignCount.textContent = `${campaign.cleared} / ${campaign.total}`;
     battleMenu.classList.add('open');
     battleModeBtn.setAttribute('aria-expanded', 'true');
     const activeRule = battleMode !== 'solo' || battleGameMode === 'standard' ? null
       : battleRuleChoices.find((choice) => choice.dataset.gameMode === battleGameMode);
     const scroller = battleMenuScroll;
     scroller.scrollTop = 0;
-    syncBattleMenuScrollCue();
     const selectedChoice = activeRule || battleChoices.find((choice) => choice.dataset.mode === battleMode);
     const scrollBounds = scroller.getBoundingClientRect();
     const selectedBounds = selectedChoice?.getBoundingClientRect();
@@ -3144,7 +3157,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (mode !== 'solo' && opts.onPlayModeIntent) {
       try { opts.onPlayModeIntent(mode); } catch (_) { /* optional warm path */ }
     }
-    requiredElement<HTMLElement>(battleModeBtn, 'span').textContent = meta.short;
+    requiredElement<HTMLElement>(battleModeBtn, 'span').textContent = meta.label;
     requiredElement<HTMLElement>(battleBtn, '.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
     battleModeBtn.setAttribute('aria-label', t('garage.battle.typeAria', { label: meta.label }));
     battleBtn.setAttribute('aria-label', t('garage.battle.startRulesAria', { label: meta.label }));
@@ -3164,7 +3177,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     battleGameMode = id;
     opts.onGameModeSelect?.(id);
     try { localStorage.setItem('cot.game.mode.v1', id); } catch (_) { /* session-only */ }
-    requiredElement<HTMLElement>(battleModeBtn, 'span').textContent = meta.short;
+    requiredElement<HTMLElement>(battleModeBtn, 'span').textContent = meta.label;
     requiredElement<HTMLElement>(battleBtn, '.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
     battleModeBtn.setAttribute('aria-label', t('garage.battle.rulesAria', { label: meta.label }));
     battleBtn.setAttribute('aria-label', t('garage.battle.startRulesAria', { label: meta.label }));
@@ -3178,9 +3191,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-close]').addEventListener('click', () => {
     closeBattleMenu({ restoreFocus: true });
   });
-  battleControl.addEventListener('focusout', (event) => {
-    if (event.relatedTarget instanceof Node && !battleControl.contains(event.relatedTarget)) closeBattleMenu();
-  });
+  const leavesDeploy = (event: FocusEvent) => event.relatedTarget instanceof Node
+    && !battleControl.contains(event.relatedTarget) && !battleMenu.contains(event.relatedTarget);
+  battleControl.addEventListener('focusout', (event) => { if (leavesDeploy(event)) closeBattleMenu(); });
+  battleMenu.addEventListener('focusout', (event) => { if (leavesDeploy(event)) closeBattleMenu(); });
   const multiplayerEntry = requiredElement<HTMLButtonElement>(root, '.cot-multiplayer-entry');
   multiplayerEntry.addEventListener('click', () => openMultiplayer());
   const warmMultiplayer = () => opts.onPlayModeIntent?.('private');
@@ -3311,6 +3325,91 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       arrangementPanel.render(battleGameMode);
     });
   };
+  // The Deploy screen (brand-ui S3). Every chip and rule reads the mode's ruleset (sim/matchRuleset.ts), so the screen
+  // never promises a rule the battle does not keep.
+  const deployRules = requiredElement<HTMLElement>(battleMenu, '[data-deploy-rules]');
+  const deployTank = requiredElement<HTMLElement>(battleMenu, '[data-deploy-tank]');
+  const deployOps = requiredElement<HTMLElement>(battleMenu, '[data-deploy-ops]');
+  const deployCampaignCount = requiredElement<HTMLElement>(battleMenu, '[data-deploy-campaign-count]');
+  const deployTabs = requiredElement<HTMLElement>(battleMenu, '.cot-deploy-tablist');
+  const deployPanels = [...battleMenu.querySelectorAll<HTMLElement>('[data-deploy-panel]')];
+  const clockText = (seconds: number | null): string => seconds == null ? '∞'
+    : `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, '0')}`;
+  function deployFacts(mode: GameModeId) {
+    const ruleset = matchRulesetFor(mode, null, readTeamArrangement(mode));
+    const sides = rulesetSides(ruleset);
+    return {
+      teams: t('garage.deploy.sides', { allies: String(sides.allies + 1), enemies: String(sides.enemies) }),
+      clock: clockText(ruleset.timeLimitS),
+      respawn: ruleset.respawnS == null ? null : t('garage.deploy.seconds', { value: String(ruleset.respawnS) }),
+      victory: ruleset.scoreTarget == null ? null : String(ruleset.scoreTarget),
+      equipment: ruleset.equipmentSlots ? String(ruleset.equipmentSlots) : t('garage.deploy.none'),
+      ammo: t(`garage.deploy.ammo.${ruleset.ammo}`),
+    };
+  }
+  type DeployFacts = ReturnType<typeof deployFacts>;
+  const DEPLOY_FACT_ICON = { teams: 'team', clock: 'clock', respawn: 'rematch', victory: 'statVictory', equipment: 'eqToolbox', ammo: 'shell' } as const;
+  function renderDeployChips(): void {
+    for (const row of battleMenu.querySelectorAll<HTMLElement>('[data-deploy-chips]')) {
+      const facts = deployFacts(normalizeGameMode(row.dataset.deployChips));
+      const card = row.closest('.cot-deploy-card') !== null;
+      const shown = (['teams', 'clock', 'respawn', 'victory'] as const).filter((key) => facts[key] != null).slice(0, card ? 3 : 2);
+      row.innerHTML = shown.map((key) => `<span>${uiIconSVG(DEPLOY_FACT_ICON[key], 14)}${facts[key]}</span>`).join('');
+    }
+  }
+  function renderDeployRules(): void {
+    const facts: DeployFacts = deployFacts(battleGameMode);
+    deployRules.innerHTML = (['teams', 'clock', 'respawn', 'victory', 'equipment', 'ammo'] as const).map((key) =>
+      `<div class="cot-deploy-rule">${uiIconSVG(DEPLOY_FACT_ICON[key], 18)}<dt>${t(`garage.deploy.rule.${key}`)}</dt>` +
+      `<dd class="num">${facts[key] ?? (key === 'victory' ? t('garage.deploy.elimination') : t('garage.deploy.none'))}</dd></div>`).join('');
+  }
+  // the selected tank under the rules: its roster card (hero render over its flag) and its name
+  function renderDeployTank(): void {
+    const card = selectedId ? cardById.get(selectedId) : null;
+    const spec = selectedId ? specById.get(selectedId) : null;
+    if (!card || !spec) { deployTank.replaceChildren(); return; }
+    const copy = card.cloneNode(true) as HTMLElement;
+    copy.classList.remove('sel');
+    copy.removeAttribute('title');
+    copy.setAttribute('aria-hidden', 'true');
+    copy.inert = true;
+    deployTank.replaceChildren(copy);
+    deployTank.insertAdjacentHTML('beforeend', `<div><b>${escapeHtmlAttribute(spec.label?.displayName || spec.name)}</b>` +
+      `<span>${flagIconHTML(spec.nation, 24, 18)}${t(`nation.${spec.nation}`)}</span></div>`);
+  }
+  function renderDeployCampaign(): void {
+    deployOps.innerHTML = campaignLadder().map(({ operation, status, progress, stars }) => {
+      const title = t(`campaign.op.${operation.id}.title`);
+      const action = status === 'locked'
+        ? `<span class="cot-deploy-op-lock" title="${escapeHtmlAttribute(t('campaign.lockedHint', { index: operation.index - 1 }))}">${uiIconSVG('battlePrivate', 20)}</span>`
+        : `<button class="cot-deploy-op-launch" type="button" data-campaign-launch="${operation.id}" data-map-id="${operation.mapId}">${
+          t(status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}</button>`;
+      // the operation's battlefield, as the Garage's map cards show it
+      const thumb = maps.find((map) => map.id === operation.mapId)?.thumb;
+      return `<article class="cot-deploy-op ${status}" role="listitem" aria-label="${escapeHtmlAttribute(title)}">` +
+        `<span class="cot-deploy-op-index" aria-hidden="true">${String(operation.index).padStart(2, '0')}</span>` +
+        `<span class="cot-deploy-op-map" aria-hidden="true"${thumb ? ` style="background-image:url(&quot;${escapeHtmlAttribute(thumb)}&quot;)"` : ''}></span>` +
+        `<span><b class="cot-deploy-op-name">${title}</b><span class="cot-deploy-op-meta">` +
+        `<span>${uiIconSVG('map', 14)}${t(`map.${operation.mapId}`)}</span><span>${uiIconSVG('clock', 14)}${clockText(operation.timeLimitS)}</span>` +
+        `<span class="cot-deploy-op-stars" role="img" aria-label="${escapeHtmlAttribute(t('campaign.starsAria', { stars, max: 3 }))}">${
+          [0, 1, 2].map((slot) => `<i class="${slot < stars ? 'on' : ''}">${uiIconSVG('star', 14)}</i>`).join('')}</span>` +
+        (progress ? `<span>${t('campaign.best', { best: progress.bestLine, total: progress.total })}</span>` : '') +
+        `</span></span>${action}</article>`;
+    }).join('');
+  }
+  function showDeployTab(id: string): void {
+    battleMenu.dataset.deployTab = id;
+    for (const panel of deployPanels) panel.hidden = panel.dataset.deployPanel !== id;
+    if (id === 'campaign') renderDeployCampaign();
+  }
+  wireRoving(deployTabs, (id) => { emit('ui:click', {}); showDeployTab(id); });
+  for (const room of battleMenu.querySelectorAll<HTMLButtonElement>('[data-deploy-room]')) {
+    room.addEventListener('click', () => openMultiplayer(room.dataset.deployRoom === 'lan' ? 'lan' : 'private'));
+  }
+  deployOps.addEventListener('click', (event) => {
+    const launch = (event.target as Element | null)?.closest<HTMLButtonElement>('[data-campaign-launch]');
+    if (launch?.dataset.campaignLaunch && launch.dataset.mapId) deployCampaign(launch.dataset.campaignLaunch, launch.dataset.mapId);
+  });
   renderBattleOptions = () => {
     battleMenu.dataset.rule = battleGameMode;
     renderArrangementPanel();
@@ -3339,6 +3438,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     marsField('gravity').value = settings.gravity;
     marsField('caches').value = settings.caches;
     marsDropdowns.forEach(dropdown => { if (!shown) dropdown.close(); dropdown.refresh(); });
+    renderDeployRules();
+    renderDeployChips();
   };
   marsSettings.addEventListener('change', () => {
     emit('ui:click', {});
@@ -3355,7 +3456,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
   } catch (_) { /* session-only */ }
   root.addEventListener('pointerdown', (event) => {
-    if (!battleControl.contains(eventNode(event))) closeBattleMenu();
+    const node = eventNode(event);
+    if (!battleControl.contains(node) && !battleMenu.contains(node)) closeBattleMenu();
   });
   prevVehicleBtn.addEventListener('click', () => step(-1));
   nextVehicleBtn.addEventListener('click', () => step(1));
