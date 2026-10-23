@@ -2484,13 +2484,19 @@ function vehicleEnvScaleUniform(material: THREE.Material): { readonly value: num
 // rubberSurface.ts; owner 2026-10-21: rubber stays rubber) and the burnt wreck opt out (COT_NO_FIELD_DUST); anything
 // drawn without a vehicle root (uVehGround.w 0: thumbnails, tooling) keeps its paint.
 const FIELD_DUST_TABLE_HEX = 0xa8a189;
-/** Kicked-up dust: full below FIELD_DUST_H0 m above the ground contact, none above FIELD_DUST_H1. */
-const FIELD_DUST_H0 = 0.3;
-const FIELD_DUST_H1 = 1.5;
+// Blind critic round 1 (240, the Leclerc S2's close track, top and quarter): the first weights washed the track pale
+// cream, the road wheels tan and the lower plates in a milky haze, and big soft blotches greyed the deck's camo. Round 2:
+// the track iron opts out (the band textures carry their own dirt), the kicked-up dust ramps from the ground contact
+// itself, the cover and the settled film are lighter, and the breakup is twice as fine.
+/** Kicked-up dust: full at FIELD_DUST_H0 m above the ground contact, none above FIELD_DUST_H1. */
+const FIELD_DUST_H0 = 0.0;
+const FIELD_DUST_H1 = 1.2;
 /** The settled film's weight on a face turned straight up (0..1 of the kicked-up dust's). */
-const FIELD_DUST_SETTLED = 0.4;
+const FIELD_DUST_SETTLED = 0.25;
 /** How far the dust colour covers the paint at full weight. */
-const FIELD_DUST_COVER = 0.5;
+const FIELD_DUST_COVER = 0.3;
+/** The whole term's weight (uCotFieldDust.w): 0 ships every vehicle without field dust. */
+const FIELD_DUST_WEIGHT = 1;
 const FIELD_DUST_ROUGH = 0.96;
 const fieldDustColor = new THREE.Color();
 const fieldDustValue = new THREE.Vector4();
@@ -2502,7 +2508,7 @@ const FIELD_DUST_UNIFORM = Object.freeze({
     if (hex !== fieldDustHex) {
       fieldDustHex = hex;
       fieldDustColor.setHex(hex);
-      fieldDustValue.set(fieldDustColor.r, fieldDustColor.g, fieldDustColor.b, fieldDustValue.w || 1);
+      fieldDustValue.set(fieldDustColor.r, fieldDustColor.g, fieldDustColor.b, FIELD_DUST_WEIGHT);
     }
     return fieldDustValue;
   },
@@ -2553,7 +2559,7 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
 		float fdUp = dot( inverseTransformDirection( normal, viewMatrix ), uVehUp );
 		float fdWeight = max( 1.0 - smoothstep( ${FIELD_DUST_H0.toFixed(3)}, ${FIELD_DUST_H1.toFixed(3)}, fdHeight ),
 			${FIELD_DUST_SETTLED.toFixed(3)} * smoothstep( 0.45, 0.95, fdUp ) );
-		float fdBreak = 0.62 * cotFdNoise( vCotFdPos * 2.3 ) + 0.38 * cotFdNoise( vCotFdPos * 9.1 + 7.0 );
+		float fdBreak = 0.62 * cotFdNoise( vCotFdPos * 4.6 ) + 0.38 * cotFdNoise( vCotFdPos * 18.0 + 7.0 );
 		float fd = saturate( fdWeight * ( 0.35 + 1.1 * fdBreak ) - 0.12 ) * uCotFieldDust.w * uVehGround.w;
 		diffuseColor.rgb = mix( diffuseColor.rgb, uCotFieldDust.rgb, fd * ${FIELD_DUST_COVER.toFixed(3)} );
 		roughnessFactor = mix( roughnessFactor, ${FIELD_DUST_ROUGH.toFixed(3)}, fd );
@@ -3475,6 +3481,8 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
     map: trackTexL, bumpMap: trackTexL, bumpScale: 0.5, ...trackMatOpts })));
   const trackR = track(setup(new THREE.MeshStandardMaterial({
     map: trackTexR, bumpMap: trackTexR, bumpScale: 0.5, ...trackMatOpts })));
+  // VH.05 round 2 (240 blind critic): the track iron keeps its own dirt; the field-dust term washed it pale cream
+  for (const iron of [trackL, trackR, trackLink, spareTrack, spareLink]) iron.defines = { ...iron.defines, COT_NO_FIELD_DUST: 1 };
 
   const marking = vehicleMarkingRecord(spec);
   const decalCache = new Map<string, THREE.MeshStandardMaterial>();
