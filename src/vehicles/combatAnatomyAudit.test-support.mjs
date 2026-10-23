@@ -14,7 +14,7 @@ import { CORE_MODULE_IDS, MODULE_IDS } from '../sim/moduleCatalog.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.ts';
 import { assertTos1aTagilTurretCells } from './tos1aTagilAnatomy.test-support.mjs';
-import { crewShell } from '../../tools/crew-seat-fit.mjs';
+import { crewArmour } from '../../tools/crew-seat-fit.mjs';
 import {
   INTERNAL_LAYOUT_BY_TANK,
   INTERNAL_LAYOUT_SOURCES,
@@ -144,8 +144,8 @@ export function createCombatAnatomyAudit() {
   }
 
   // 235 crew fit: a seated crew member's body spans cells, and a turret crew member sits in the basket (below the
-  // turret, through the ring), so its shapes are held to the crew shell (tools/crew-seat-fit.mjs crewShell: armour at
-  // every turret yaw): every surface sample within 3 mm of it.
+  // turret), so its shapes are held to the armour as a whole (tools/crew-seat-fit.mjs crewArmour: the hull, the turret,
+  // the hull under the turret at every yaw; never the open gap between them): every surface sample within 3 mm of it.
   const SPHERE = [];
   for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (let k = -1; k <= 1; k++) {
     if (i || j || k) SPHERE.push([i, j, k].map((value) => value / Math.hypot(i, j, k)));
@@ -256,7 +256,7 @@ export function createCombatAnatomyAudit() {
               && box.module !== 'gun' && box.module !== 'optics') {
             const cells = box.turretLocal ? shell.turret : shell.hull;
             if (box.crew && box.posture) {
-              const crew = crewShell(spec.armor, box.turretLocal ? 'turret' : 'hull');
+              const crew = crewArmour(spec.armor, box.turretLocal ? 'turret' : 'hull');
               assert(shapeSamples(shape).every((point) => crew.inside(point, -0.003)),
                 `${id}/${box.crew}: seated crew shape stays inside closed armor`);
             } else {

@@ -70,7 +70,8 @@ export interface AnatomyTurretRingReceipt extends Record<string, RuntimeValue> {
 /**
  * 235 crew fit (tools/crew-seat-fit.mjs): a P50 (1.75 m) body seated at one crew station, in its frame (hull, or turret
  * at rest). The posture is the Gallery mannequin's joint angles (radians); `head` the head centre; `min`/`max` the
- * station box (the body's bounds trimmed to the shell); `shapes` the body's hit shapes (head, torso, thighs, shins).
+ * station box (the largest box inside the shell within the body's bounds); `shapes` the body's hit shapes (head first,
+ * then torso, thighs and shins, held to the armour proper: a piece crossing the turret ring's open gap is cut out).
  * `relaxed` names the obstacles the seat had to ignore; `trimmed` is the body's outside share where no posture fitted.
  */
 export interface AnatomyCrewSeatReceipt extends Record<string, RuntimeValue> {
@@ -94,6 +95,8 @@ export interface AnatomyCrewSeatReceipt extends Record<string, RuntimeValue> {
     | { readonly kind: 'ellipsoid'; readonly center: readonly number[]; readonly radii: readonly number[] }
     | { readonly kind: 'capsule'; readonly a: readonly number[]; readonly b: readonly number[]; readonly radius: number }
   )[];
+  /** Where HE splash strikes the body: head, torso, lap. */
+  readonly blastPoints: readonly (readonly number[])[];
   readonly relaxed?: string;
   readonly trimmed?: number;
 }
