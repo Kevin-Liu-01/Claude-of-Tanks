@@ -2062,6 +2062,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',
     'src/world/structureKit.selftest.mjs',
+    // the maps-restyle lane (2026-10-22, from the destructible-kits lane 2026-10-11): the roadside light buildings and
+    // random hulks in 180-degree twins on a map that declares its rotation centre (the fairness ask)
+    'src/world/roadsideTwins.selftest.mjs',
     'src/world/maps/marsSettlement.selftest.mjs',
     // (the Earthrise 228 rebuild, 2026-10-18) Taurus-Littrow Station's plan, set pieces and stock (maps/earthriseStation.ts)
     'src/world/maps/earthriseStation.selftest.mjs',

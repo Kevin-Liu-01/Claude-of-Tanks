@@ -392,6 +392,9 @@ export default {
     // list keeps its entry: dropping it re-seats the scattered huts after it and every pass that avoids them (measured:
     // the guard post 132 m, crates, rugs, tents, spools, barriers, signs and wall runs moved)
     destructibleBuildings: ['deserttent', 'commandtent', 'checkpointhut', 'guardpost'],
+    // (the destructible-kits lane, 2026-10-11: the fairness ask) the layout turns about [0, 0] (its beats pair there):
+    // the roadside light buildings and the random hulks stand in twins about it (props.ts PropsMapConfig.rotationalCentre)
+    rotationalCentre: [0, 0],
     structureVariants: { checkpointhut: 'ksargate' },
     // Two pairs, each turned through 180° about the ford: a ruined bordj (desert fort) on each flank, on the far side
     // of the wadi from the team whose flank zone it watches, and a checkpoint where the caravan road enters the ksar.
