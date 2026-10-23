@@ -313,33 +313,38 @@ async function filmstrip(helper, picks, portrait, heading) {
 }
 
 /**
- * A trace on the browser's own session, not the page's: a navigation that activates a prerendered page swaps the
- * page's target (tools/viteSpeculationRules.ts), and a page-session trace ends on a session that never started it.
+ * A trace on a session of its own on the page's target (the screenshot category records only for a page target).
+ * A navigation that activates a prerendered page (tools/viteSpeculationRules.ts) swaps the page's target and closes
+ * that session: the step then keeps its probe's measures and has no frames, and the next step traces the new target.
  */
 let openTrace = null;
-async function startTrace(browser) {
-  // A step that failed between start and stop left the browser tracing: end that trace first.
+async function startTrace(page) {
   if (openTrace) await openTrace().catch(() => {});
-  const session = await browser.target().createCDPSession();
+  const session = await page.createCDPSession();
   await session.send('Tracing.start', {
     transferMode: 'ReturnAsStream',
     traceConfig: { includedCategories: ['devtools.timeline', 'disabled-by-default-devtools.screenshot'], excludedCategories: ['*'] },
   });
   const stop = async () => {
     openTrace = null;
-    const done = new Promise((resolve) => session.once('Tracing.tracingComplete', resolve));
-    await session.send('Tracing.end');
-    const { stream } = await done;
-    const chunks = [];
-    for (;;) {
-      const { data, base64Encoded, eof } = await session.send('IO.read', { handle: stream, size: 1 << 22 });
-      chunks.push(Buffer.from(data, base64Encoded ? 'base64' : 'utf8'));
-      if (eof) break;
+    try {
+      const done = new Promise((resolve) => session.once('Tracing.tracingComplete', resolve));
+      await session.send('Tracing.end');
+      const { stream } = await done;
+      const chunks = [];
+      for (;;) {
+        const { data, base64Encoded, eof } = await session.send('IO.read', { handle: stream, size: 1 << 22 });
+        chunks.push(Buffer.from(data, base64Encoded ? 'base64' : 'utf8'));
+        if (eof) break;
+      }
+      await session.send('IO.close', { handle: stream }).catch(() => {});
+      const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      return Array.isArray(parsed) ? parsed : parsed.traceEvents || [];
+    } catch {
+      return []; // the target was swapped under the trace
+    } finally {
+      await session.detach().catch(() => {});
     }
-    await session.send('IO.close', { handle: stream }).catch(() => {});
-    await session.detach().catch(() => {});
-    const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-    return Array.isArray(parsed) ? parsed : parsed.traceEvents || [];
   };
   openTrace = stop;
   return stop;
@@ -367,7 +372,7 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
   }, spec).catch(() => {});
   // The frame on screen before the input: the reference the first response is measured against.
   const before = await page.screenshot({ type: 'jpeg', quality: 40, optimizeForSpeed: true, encoding: 'base64' }).catch(() => null);
-  const stopTrace = await startTrace(page.browser());
+  const stopTrace = await startTrace(page);
   let clickAt = await page.evaluate(() => { console.timeStamp('nav:click'); return performance.timeOrigin + performance.now(); });
   const wallStart = Date.now();
   let error = null;
