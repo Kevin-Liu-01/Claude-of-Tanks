@@ -32,7 +32,8 @@ import { terrainVariantFor } from '../../sim/matchRuleset.ts';
 import type { V2RoomSession } from './playMenuAdapter.ts';
 import { createBattlePresentation } from '../presentation/battlePresentation.ts';
 import type {
-  BattlePresentation, BattlePresentationOptions, EngineContext, EventBus, MatchActor, PresentationGameState, TankVisual,
+  BattlePresentation, BattlePresentationOptions, EngineContext, EventBus, MatchActor, PresentationGameState, RosterPrebuild,
+  RosterPrebuildSeat, TankVisual,
 } from '../presentation/battlePresentation.ts';
 import type { ObstacleIdentity } from '../presentation/authorityObstacles.ts';
 import type { WorldCollisionLike } from '../presentation/predictionWorld.ts';
@@ -166,6 +167,12 @@ export interface BrowserLoadPorts {
    * WELCOME's bots are painted after it). Never refuses the round; the trace records how many it warmed.
    */
   prewarmRoster?(seats: readonly { specId: string; camo: string; isViewer: boolean }[], signal: AbortSignal): MaybePromise<RuntimeValue>;
+  /**
+   * 2026-10-23 (item/mp-rejoin-levers-242): the named seats' vehicles built beside the world load (battlePresentation
+   * prebuildRosterVisuals), handed to the round's roster, which takes them before it builds; the round's abort stops it.
+   * Preferred over prewarmRoster where the app has it.
+   */
+  prebuildRoster?(seats: readonly RosterPrebuildSeat[], signal: AbortSignal): RosterPrebuild | null;
   /**
    * 2026-10-20 (item/mp-rejoin-229): the round this seat entered, kept across a reload (the app keeps it in this
    * browser's storage), so a tab reopened on the same room's invite builds that battlefield during its boot; null
@@ -1182,18 +1189,26 @@ export function createBrowserComposition({
       load.battleLoad.progress(0.08, 'Loading battlefield');
       // 2026-10-15 (the MP stream): the named seats' vehicles warm beside the world (prewarmRoster). Never awaited here: it
       // must not lengthen the world's stage, and prepareRoster joins whatever is still in flight (the bakes coalesce).
-      const seats = sessionRound.room.players.flatMap((player) => (player.team !== 'spectator' && player.specId
-        ? [{ specId: player.specId, camo: player.camo || 'factory', isViewer: !active.spectator && player.id === viewerId }] : []));
+      // (2026-10-23, item/mp-rejoin-levers-242) an AC-130 room's alpha players fly the gunship: no tank to build for them
+      const gunshipSeat = (team: string): boolean => sessionRound.room.settings.gameMode === 'ac130' && team === 'alpha';
+      const seats = sessionRound.room.players.flatMap((player) => (player.team !== 'spectator' && player.specId && !gunshipSeat(player.team)
+        ? [{ playerId: player.id, specId: player.specId, camo: player.camo || 'factory', isViewer: !active.spectator && player.id === viewerId }] : []));
       // 2026-10-21 (item/mp-rejoin-232, lever 7): the bots arrive only with the WELCOME, and their textures (baked in a worker
       // after it) held the 231 rejoins' roster stage about 2 s. The host plans them from this room and seed (host/hostPlan.ts
       // planFromRoom, the real room's match_start carries no plan), so the same plan names them here and their bakes join
       // the world load; a wrong guess is a spare bake, never a different roster.
       try {
         for (const bot of planFromRoom(sessionRound.room, { seed: matchStart.seed }).bots) {
-          if (bot.specId) seats.push({ specId: bot.specId, camo: 'factory', isViewer: false });
+          if (bot.specId) seats.push({ playerId: bot.playerId, specId: bot.specId, camo: 'factory', isViewer: false });
         }
       } catch { /* no plan from this snapshot: the WELCOME paints them */ }
-      if (load.prewarmRoster && seats.length) {
+      // 2026-10-23 (item/mp-rejoin-levers-242): where the app can, the seats' vehicles themselves are built beside the world
+      // (prebuildRoster; the roster takes them after the WELCOME), else their builders and textures are warmed
+      let prebuilt: RosterPrebuild | null = null;
+      if (load.prebuildRoster && seats.length) {
+        try { prebuilt = load.prebuildRoster(seats, active.abort.signal); } catch { prebuilt = null; }
+        if (prebuilt) void prebuilt.settled.then(() => { active.trace.rosterPrewarmed = seats.length; }, () => { /* the roster builds them */ });
+      } else if (load.prewarmRoster && seats.length) {
         let warming: MaybePromise<RuntimeValue>;
         try { warming = load.prewarmRoster(seats, active.abort.signal); } catch { warming = undefined; }
         void Promise.resolve(warming).then(() => { active.trace.rosterPrewarmed = seats.length; }, () => { /* the roster paints them itself */ });
@@ -1220,6 +1235,7 @@ export function createBrowserComposition({
         ...(scene.clearVehicleDecals ? { clearVehicleDecals: scene.clearVehicleDecals } : {}),
         ...(scene.onVisualReady ? { onVisualReady: scene.onVisualReady } : {}),
         camoFor: (entry) => camoOf.get(entry.playerId) ?? 'factory',
+        prebuilt,
         onRosterProgress: (fraction, specId) => {
           if (round !== active) return;
           noteProgress(active);
