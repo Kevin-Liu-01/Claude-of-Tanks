@@ -15,10 +15,10 @@
   background:linear-gradient(270deg,rgba(5,8,11,.85) 0%,rgba(5,8,11,.35) 60%,rgba(5,8,11,0) 100%);}
 .cot-brand-rail{position:absolute;top:20px;left:34px;height:36px;display:flex;align-items:center;
   gap:14px;pointer-events:auto;}
-.cot-garage .title{position:static;font-size:17px;font-weight:700;
-  letter-spacing:.18em;color:#9fb0bf;text-transform:uppercase;
-  display:flex;align-items:center;gap:10px;}
-.cot-garage .title b{color:#f0a030;}
+.cot-garage .title{position:static;font:700 var(--fs-18)/1 var(--font-display);
+  letter-spacing:var(--track-label);color:var(--ink-1);text-transform:uppercase;
+  display:flex;align-items:center;gap:var(--s3);}
+.cot-garage .title b{color:var(--accent);}
 /* the Latin wordmark keeps its tracking inside a Chinese page (the zh-CN reset zeroes the parent) */
 .cot-brand-rail .title [lang=en]{letter-spacing:.18em}
 /* garage_ui: compact brand badge (v3 colored crest, tank + Claude Code
@@ -31,23 +31,22 @@
 /* Header hierarchy: personal destinations sit with the brand at left, while
    workspace navigation stays at right and BATTLE owns the center. This keeps
    the primary action legible without compressing every destination together. */
-.cot-brand-utilities{height:32px;display:flex;align-items:stretch;gap:3px;padding-left:14px;
-  border-left:1px solid rgba(146,164,180,.24);}
-.cot-nav{position:absolute;top:20px;right:26px;display:flex;align-items:stretch;gap:4px;
-  height:34px;pointer-events:auto;z-index:8;}
-.cot-header-nav .nv{font-family:var(--font-ui);font-size:11px;font-weight:700;
-  letter-spacing:.02em;text-transform:uppercase;color:#8a97a3;cursor:pointer;
-  display:inline-flex;align-items:center;gap:6px;
-  padding:0 6px;background:rgba(11,15,20,.72);
-  border:1px solid rgba(146,164,180,.28);border-bottom-width:2px;
-  text-decoration:none;transition:color .15s,border-color .15s,background .15s,transform .15s ease-out;}
-.cot-header-nav .nv:active{transform:scale(.97);}
+.cot-brand-utilities{height:36px;display:flex;align-items:stretch;gap:2px;padding-left:var(--s3);
+  border-left:1px solid var(--line-2);}
+.cot-nav{position:absolute;top:20px;right:26px;display:flex;align-items:stretch;gap:2px;
+  height:36px;pointer-events:auto;z-index:8;}
+/* Tabs, not boxes (brand-ui S2): the display voice, the current destination on an accent underline. */
+.cot-header-nav .nv{font:600 var(--fs-13)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;
+  color:var(--ink-2);cursor:pointer;display:inline-flex;align-items:center;gap:var(--s2);padding:0 var(--s3);
+  background:transparent;border:0;border-radius:var(--control-radius);text-decoration:none;
+  transition:color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter);}
+.cot-header-nav .nv:active{transform:translateY(var(--btn-press-drop));}
 @media (hover:hover) and (pointer:fine){
-  .cot-header-nav .nv:hover{color:#ffd27a;border-color:rgba(240,176,74,.6);}
+  .cot-header-nav .nv:hover{color:var(--ink-1);background:var(--surface-hover);}
 }
-.cot-header-nav .nv.on{color:#f0b04a;border-color:rgba(240,176,74,.55);
-  background:rgba(24,19,11,.82);cursor:default;}
-.cot-brand-utilities .nv{background:rgba(8,12,16,.58);border-color:rgba(146,164,180,.22);}
+.cot-header-nav .nv.on{color:var(--ink-1);cursor:default;
+  background:linear-gradient(var(--accent),var(--accent)) bottom/100% 2px no-repeat,var(--btn-secondary-fill);}
+.cot-header-nav .nv .cot-c-kbd{margin-left:var(--s1);}
 /* Product destinations use the same authored marks as the public navigation. */
 .cot-header-nav .nv .nvi{width:13px;height:13px;display:block;object-fit:contain;}
 .cot-header-nav .nv .nvi-product{width:16px;height:16px;}
@@ -76,13 +75,12 @@
 .cot-locale-credit-wrap:focus-within .cot-locale-credit{opacity:1;visibility:visible;pointer-events:auto;
   transform:translate(-50%,0);transition-delay:0s;}
 .cot-header-nav .cot-record-trigger{position:relative;}
-.cot-header-nav .cot-record-trigger[aria-expanded='true']{color:#ffd27a;border-color:#f0a030;
-  background:rgba(35,24,10,.94);}
-.cot-header-nav .record-badge{min-width:17px;height:16px;padding:0 4px;display:inline-grid;place-items:center;
-  color:#1a1105;background:#f0a030;border:1px solid #ffc46b;font:700 11px var(--font-ui);
-  line-height:1;letter-spacing:0;box-shadow:0 0 12px rgba(240,160,48,.2);}
-.cot-header-nav .record-new{position:absolute;top:-4px;right:-4px;width:9px;height:9px;border-radius:50%;
-  background:#ffd27a;border:1px solid #f0a030;box-shadow:0 0 10px rgba(240,160,48,.85);}
+.cot-header-nav .cot-record-trigger[aria-expanded='true']{color:var(--ink-1);background:var(--accent-wash);}
+.cot-header-nav .record-badge{min-width:18px;height:18px;padding:0 var(--s1);display:inline-grid;place-items:center;
+  color:var(--ink-on-accent);background:var(--accent);border-radius:var(--control-radius);
+  font:600 var(--fs-11)/1 var(--font-mono);letter-spacing:normal;}
+.cot-header-nav .record-new{position:absolute;top:var(--s1);right:var(--s1);width:8px;height:8px;border-radius:50%;
+  background:var(--accent-hi);}
 .cot-header-nav .record-new[hidden]{display:none;}
 .cot-garage-variant-control{position:relative;z-index:14;width:100%;min-width:0;flex:0 0 54px;display:flex;}
 .cot-garage-variant-trigger{appearance:none;position:relative;isolation:isolate;width:100%;height:54px;padding:6px 8px 7px 10px;
@@ -163,7 +161,10 @@
 @keyframes cot-github-star-spin{to{transform:rotate(1turn)}}
 .cot-nav .cot-settings-slot{width:34px;height:34px;flex:0 0 auto;}
 .cot-nav .cot-gear{position:static;width:34px;height:34px;min-height:34px;z-index:auto;
-  right:auto;top:auto;}
+  right:auto;top:auto;border-color:transparent;background:transparent;}
+@media (hover:hover){.cot-nav .cot-gear:hover{background:var(--surface-hover);}}
+/* GitHub is its mark and its star count; the name stays in its accessible label */
+.cot-header-nav .cot-github .nav-label{display:none;}
 .cot-header-nav .nv:focus-visible,.cot-mobile-nav-menu button:focus-visible{
   outline:2px solid #ffd27a;outline-offset:2px;}
 .cot-nav .cot-mobile-nav-trigger,.cot-mobile-nav-menu{display:none;}
@@ -195,10 +196,9 @@
 /* LOCAL SERVICE RECORD: career totals, the medal case, achievement tiers and
    the last battles (serviceRecordView.ts) behind the top-bar Record control.
    The dialog keeps one height across tabs; only its body scrolls. */
-.cot-sidebar-section-title{display:flex;align-items:center;gap:7px;min-height:24px;margin-bottom:7px;
-  color:#8a97a3;font:600 11px var(--font-ui);
-  letter-spacing:.12em;text-transform:uppercase;}
-.cot-sidebar-section-title > svg{width:13px;height:13px;flex:0 0 auto;color:#f0a030;}
+.cot-sidebar-section-title{display:flex;align-items:center;gap:var(--s2);min-height:24px;margin-bottom:var(--s2);
+  color:var(--ink-2);font:600 var(--fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;}
+.cot-sidebar-section-title > svg{width:14px;height:14px;flex:0 0 auto;color:var(--ink-3);}
 /* zh-CN labels sit one step up (the type rules: 13 px floor for Chinese labels) */
 :lang(zh-CN) :is(.cot-sidebar-section-title,.cot-technical-tab,.cot-battle-menu-label){font-size:13px}
 .cot-sidebar-section-title > span{min-width:0;flex:1 1 auto;white-space:nowrap;}
@@ -223,7 +223,7 @@
 .cot-battle .battle-active-icon{width:21px;height:21px;display:grid;place-items:center;
   color:#fff3dc;filter:drop-shadow(0 1px 0 rgba(92,45,0,.35));}
 .cot-battle .battle-active-icon svg{display:block;width:20px;height:20px;}
-.cot-battle .battle-word{text-indent:.24em;}
+.cot-battle .battle-word{text-indent:.24em;text-transform:uppercase;}
 .cot-battle-mode{position:relative;flex:0 0 32%;min-width:0;padding:1px 16px 0 2px;border-left:1px solid rgba(108,55,2,.62);
   font-size:11px;letter-spacing:.02em;text-align:center;}
 .cot-battle-mode::after{content:'';position:absolute;right:9px;top:50%;margin-top:-2px;
@@ -452,26 +452,24 @@ body[data-cot-panels='overlay'] .cot-garage .stats h3.is-long{-webkit-line-clamp
 .cot-garage .stats .stats-ti{position:absolute;right:47px;top:17px;width:34px;height:22px;
   object-fit:contain;pointer-events:none;opacity:.82;
   filter:drop-shadow(0 4px 6px rgba(0,0,0,.78));}
-.cot-gallery-link{width:100%;height:30px;margin-top:11px;padding:0 9px;display:flex;align-items:center;gap:8px;
-  color:#b6c5d0;background:linear-gradient(90deg,rgba(240,160,48,.1),rgba(20,27,34,.7));
-  border:1px solid rgba(240,176,74,.3);cursor:pointer;text-align:left;font:700 11px var(--font-ui);
-  letter-spacing:.05em;text-transform:uppercase;transition:color .14s,border-color .14s,background .14s;}
-.cot-gallery-link svg{width:15px;height:15px;color:#f0a030;flex:0 0 auto;}
-.cot-gallery-link .go{margin-left:auto;color:#f0a030;font-size:13px;line-height:1;}
-.cot-gallery-link:hover,.cot-gallery-link:focus-visible{color:#fff0d7;border-color:#f0a030;
-  background:linear-gradient(90deg,rgba(240,160,48,.2),rgba(32,24,12,.86));outline:none;}
-.cot-stat-section{position:relative;padding:13px 15px 15px;margin-bottom:8px;
-  background:linear-gradient(155deg,rgba(16,22,28,.96),rgba(7,10,13,.96) 76%);
-  border:1px solid rgba(146,164,180,.2);box-shadow:0 10px 28px rgba(0,0,0,.36);}
+.cot-gallery-link{width:100%;height:36px;margin-top:var(--s3);padding:0 var(--s3);display:flex;align-items:center;gap:var(--s2);
+  color:var(--ink-1);background:var(--btn-secondary-fill);border:1px solid var(--btn-secondary-edge);border-radius:var(--control-radius);
+  cursor:pointer;text-align:left;font:600 var(--fs-13)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;
+  transition:background-color var(--dur-fast) var(--ease-enter),border-color var(--dur-fast) var(--ease-enter);}
+.cot-gallery-link svg{width:16px;height:16px;color:var(--ink-2);flex:0 0 auto;}
+.cot-gallery-link .go{margin-left:auto;color:var(--ink-3);font-size:var(--fs-14);line-height:1;}
+.cot-gallery-link:hover,.cot-gallery-link:focus-visible{background:var(--surface-hover);border-color:var(--line-3);outline:none;}
+.cot-gallery-link:focus-visible{box-shadow:var(--focus-ring);}
+.cot-stat-section{position:relative;padding:var(--s3) var(--s4) var(--s4);margin-bottom:var(--s2);
+  background:var(--plate-highlight),var(--surface-plate);border:1px solid var(--line-1);box-shadow:var(--e1);}
 .cot-stat-section:last-child{margin-bottom:0;}
-.cot-stat-title small{flex:0 0 auto;color:#596975;font:700 11px var(--font-ui);
-  letter-spacing:.01em;text-transform:uppercase;}
+.cot-stat-title small{flex:0 0 auto;color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-mono);
+  letter-spacing:normal;text-transform:none;}
 .cot-performance-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
 .cot-garage .srow{position:relative;min-width:0;min-height:50px;padding:8px 8px 8px 36px;
-  background:linear-gradient(145deg,rgba(23,30,37,.72),rgba(10,14,18,.82));
-  border:1px solid rgba(146,164,180,.13);overflow:hidden;}
+  background:var(--btn-secondary-fill);border:1px solid var(--line-1);overflow:hidden;}
 .cot-garage .srow .sicon{position:absolute;left:8px;top:10px;width:20px;height:20px;display:grid;
-  place-items:center;color:#d99531;background:rgba(240,160,48,.07);border:1px solid rgba(240,176,74,.12);}
+  place-items:center;color:var(--ink-3);}
 .cot-garage .srow .sicon svg{width:15px;height:15px;}
 .cot-garage .srow .lr{display:flex;flex-direction:column;gap:2px;font-size:11px;line-height:1.15;
   letter-spacing:0;color:#7f909d;white-space:normal;}
@@ -479,13 +477,13 @@ body[data-cot-panels='overlay'] .cot-garage .stats h3.is-long{-webkit-line-clamp
    case-sensitive ("6.0 s", "67 km/h", not "6.0 S" / "67 KM/H") */
 .cot-garage .srow .lr b{min-width:0;color:#edf3f7;font-size:11px;font-weight:700;
   letter-spacing:.01em;text-transform:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cot-garage .srow .track{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(255,255,255,.06);overflow:hidden;}
+.cot-garage .srow .cot-c-scale{height:5px;margin-top:4px;}
 /* docked panels keep the two-column performance cards, each a compact stat: the icon leads a sentence-case
    label that uses the card's full width (a long label balances onto a second line under the icon instead of a narrow
    column of three), the value beneath, the bar along the base. Two rows (four stats) stay in view on a 900 px screen
    and five at 1080p; nothing hides under the fade or clips. */
 body[data-cot-panels='persistent'] .cot-garage .cot-performance-grid{gap:5px}
-body[data-cot-panels='persistent'] .cot-garage .srow{display:block;min-height:0;padding:5px 6px 8px;font-size:11px;line-height:1.15;
+body[data-cot-panels='persistent'] .cot-garage .srow{display:block;min-height:0;padding:4px 6px 6px;font-size:11px;line-height:1.15;
   color:#93a3af;text-wrap:balance}
 body[data-cot-panels='persistent'] .cot-garage .srow .sicon{position:static;display:inline-grid;vertical-align:-3px;width:14px;height:14px;
   margin-right:4px;background:none;border:0}
@@ -494,8 +492,6 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr{display:contents}
 body[data-cot-panels='persistent'] .cot-garage .srow .lr>span{font-size:11px;line-height:1.15;color:#93a3af}
 body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-top:2px;font-size:14px;line-height:1.1;white-space:normal;overflow:visible}
 body[data-cot-panels='persistent'] .cot-garage .srow .lr b.stat-comparison{display:flex}
-.cot-garage .srow .fill{height:100%;background:linear-gradient(90deg,#b87425,#f0b04a);
-  box-shadow:0 0 8px rgba(240,160,48,.18);}
 .cot-garage .shellhead{display:grid;grid-template-columns:46px minmax(0,1fr) 62px 48px;
   gap:7px;padding:0 7px 5px;color:#637481;font:700 11px var(--font-ui);
   letter-spacing:.02em;text-transform:uppercase;}
@@ -562,7 +558,8 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b.stat-comparison{displ
 .cot-technical-expand-label svg{width:13px;height:13px;color:#f0b04a;}
 .cot-technical-expand:hover .cot-technical-expand-label,.cot-technical-expand:focus-visible .cot-technical-expand-label{
   color:#fff0d7;background:rgba(39,27,11,.94);border-color:rgba(240,176,74,.72);}
-.cot-technical-figure figcaption{min-height:26px;padding:7px 8px;color:#95a5b1;background:rgba(13,18,23,.94);
+/* the tabs name the view; the caption stays for assistive technology (brand-ui S2) */
+.cot-technical-figure figcaption{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;min-height:26px;padding:7px 8px;color:#95a5b1;background:rgba(13,18,23,.94);
   border-top:1px solid rgba(146,164,180,.14);font:700 11px var(--font-ui);
   letter-spacing:0em;line-height:1.3;text-transform:uppercase;}
 .cot-technical-gallery{margin-top:6px;}
@@ -628,21 +625,14 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b.stat-comparison{displ
   box-shadow:0 0 18px rgba(240,160,48,.12);}
 .cot-country-edge:active{transform:scale(.96);}
 .cot-country-edge.is-unavailable{visibility:hidden;opacity:0;pointer-events:none;}
-.cot-country-chip{cursor:pointer;border:1px solid rgba(146,164,180,.3);
-  border-bottom:2px solid rgba(146,164,180,.4);background:rgba(11,15,20,.82);
-  color:#9fb0bf;font-family:var(--font-ui);font-size:11px;font-weight:700;
-  letter-spacing:.05em;text-transform:uppercase;padding:6px 7px 5px;
-  display:inline-flex;align-items:center;gap:6px;white-space:nowrap;flex:0 0 auto;
-  scroll-snap-align:center;
-  transition:color .15s,border-color .15s,background .15s,transform .15s;outline:none;}
-.cot-country-chip .cot-flag{width:22px;height:auto;display:block;box-shadow:0 0 0 1px rgba(255,255,255,.12);}
-.cot-country-chip:hover{color:#c6d2dc;border-color:rgba(210,225,240,.5);
-  transform:translateY(-1px);}
-.cot-country-chip.sel{color:#ffd27a;border-color:rgba(240,176,74,.65);
-  border-bottom-color:#f0a030;
-  background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
-.cot-country-chip .ct{font-weight:600;color:#6d7a86;letter-spacing:.04em;}
-.cot-country-chip.sel .ct{color:#d8a04c;}
+.cot-country-chip{cursor:pointer;border:1px solid var(--line-1);border-radius:var(--control-radius);background:var(--surface-plate);
+  color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-mono);padding:var(--s1) var(--s2);
+  display:inline-flex;align-items:center;gap:var(--s2);white-space:nowrap;flex:0 0 auto;scroll-snap-align:center;
+  transition:color var(--dur-fast) var(--ease-enter),border-color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter);
+  outline:none;}
+.cot-country-chip .cot-flag{width:28px;height:21px;display:block;border-radius:var(--control-radius);}
+.cot-country-chip:hover{color:var(--ink-1);border-color:var(--line-3);}
+.cot-country-chip.sel{color:var(--ink-1);border-color:var(--accent);background:var(--accent-wash);}
 /* Roster Filter toggle, in its own rail slot before the flag track (owner 2026-10-21: the sticky toggle covered the first
    flag), so no flag ever scrolls beneath it and the arrows move the flags alone. Its height follows the track's padding.
    Only its idle look rides the boot: its open, active and badge styles load with the panel (garageFacetPanel.css). */
@@ -743,8 +733,6 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b.stat-comparison{displ
   color:#f6f3ec;letter-spacing:0;text-align:left;white-space:normal;overflow-wrap:anywhere;
   text-shadow:0 1px 3px rgba(0,0,0,.85);}
 .cot-card.hc-n2 .nm{text-shadow:0 1px 3px rgba(0,0,0,.85),0 0 7px rgba(0,0,0,.75);}
-.cot-garage .hint{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);
-  font-size:11px;letter-spacing:.06em;color:rgba(138,151,163,.7);text-transform:uppercase;}
 /* MAP-CONFIG WIRING: complete registered battlefield picker + random. */
 /* camo_spotting r1: maps + camo picker stack in ONE flex column so they can
    never overlap at short viewports (the old absolute anchors collided at
@@ -762,12 +750,11 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b.stat-comparison{displ
    the amber title tick so the column rhythm holds.) */
 .cot-maps,.cot-camos{box-sizing:border-box;width:100%;height:var(--cot-sidebar-panel-height,280px);
   flex:0 1 var(--cot-sidebar-panel-height,280px);min-height:108px;
-  background:linear-gradient(180deg,rgba(9,13,17,.66),rgba(6,9,12,.58));
-  border:1px solid rgba(146,164,180,.16);padding:9px 9px 8px;}
+  background:var(--plate-highlight),var(--surface-plate);border:1px solid var(--line-1);padding:var(--s2) var(--s2) var(--s2);}
 .cot-maps .mtitle,.cot-camos .ctitle,.cot-featured .ftitle > span:first-child{
   display:flex;align-items:center;gap:7px;}
 .cot-maps .mtitle svg,.cot-camos .ctitle svg,.cot-featured .ftitle > span:first-child svg{
-  width:13px;height:13px;flex:0 0 auto;color:#f0a030;}
+  width:14px;height:14px;flex:0 0 auto;color:var(--ink-3);}
 .cot-maps{position:static;overflow:hidden;display:flex;flex-direction:column;pointer-events:auto;}
 /* half-cut last row + fade = "more below" affordance instead of a broken
    clip; .can-scroll is toggled by JS only when the list truly overflows */
@@ -777,19 +764,17 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b.stat-comparison{displ
 .cot-map-scroll.can-scroll{
   -webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 22px),transparent 100%);
   mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 22px),transparent 100%);}
-.cot-maps .mtitle{font-size:11px;font-weight:700;letter-spacing:.16em;color:#8a97a3;
-  text-transform:uppercase;margin-bottom:5px;}
+.cot-maps .mtitle{font:600 var(--fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);color:var(--ink-2);
+  text-transform:uppercase;margin-bottom:var(--s2);}
 .cot-maps .mtitle .cot-info-trigger{margin-left:auto;letter-spacing:0}
 /* Two-column map tiles keep the full battlefield roster scannable while
    matching the camouflage cards' preview-over-caption layout. */
 .cot-map-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;}
 .cot-map-card{display:block;min-width:0;cursor:pointer;text-align:center;
-  background:linear-gradient(180deg,rgba(13,18,23,.82),rgba(8,11,14,.9));
-  border:1px solid rgba(146,164,180,.24);border-bottom:2px solid rgba(146,164,180,.24);
-  padding:4px 4px 3px;transition:border-color .12s,background .12s;}
-.cot-map-card:hover{border-color:rgba(210,225,240,.5);}
-.cot-map-card.sel{border-color:#f0a030;border-bottom-color:#f0a030;
-  background:linear-gradient(180deg,rgba(32,24,12,.9),rgba(14,10,6,.92));}
+  background:var(--btn-secondary-fill);border:1px solid var(--line-1);border-radius:var(--control-radius);
+  padding:var(--s1) var(--s1) 3px;transition:border-color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter);}
+.cot-map-card:hover{border-color:var(--line-3);}
+.cot-map-card.sel{border-color:var(--accent);background:var(--accent-wash);}
 .cot-map-card .mthumb{width:100%;height:auto;aspect-ratio:2.65;background-size:112% auto;
   background-position:center;border:1px solid rgba(0,0,0,.55);position:relative;
   box-shadow:inset 0 0 0 1px rgba(235,243,250,.14);
@@ -1112,7 +1097,6 @@ body[data-cot-width='phone'] .cot-eqtooltip{display:none!important;}
   animation:cot-g-fade var(--cot-motion-base) var(--cot-ease-out) backwards;}
 .cot-garage.enter .title,.cot-garage.enter .cot-nav,
 .cot-garage.enter .cot-leftcol,
-.cot-garage.enter .hint{animation:cot-g-fade var(--cot-motion-base) var(--cot-ease-out) 45ms backwards;}
 .cot-garage.enter .stats{animation:cot-g-rise var(--cot-motion-slow) var(--cot-ease-out) 70ms backwards;}
 .cot-garage.enter .cot-battle-control{animation:cot-g-drop-c var(--cot-motion-slow) var(--cot-ease-out) 45ms backwards;}
 .cot-garage.enter .cot-country-rail{animation:cot-g-rise-c var(--cot-motion-slow) var(--cot-ease-out) 90ms backwards;}
@@ -1187,12 +1171,16 @@ body[data-cot-height='tall'] .cot-featured{display:block;}
 body[data-cot-width='laptop'] .cot-garage{
   --cot-garage-sidebar-width:clamp(232px,20vw,272px);
 }
-body[data-cot-width='laptop'] .cot-header-nav .nv{width:34px;padding:0;justify-content:center;gap:0}
-body[data-cot-width='laptop'] .cot-header-nav .nav-label{display:none}
+/* Laptop keeps every destination labelled; GitHub and the locale fold to icons, and below 1280 px Home and Record do too. */
+body[data-cot-width='laptop'] .cot-header-nav :is(.cot-github,.cot-locale-switcher) .nav-label{display:none}
+body[data-cot-width='laptop'] .cot-header-nav .nv{padding-inline:var(--s2)}
 body[data-cot-width='laptop'] .cot-header-nav .cot-locale-switcher{width:34px;padding:0}
 body[data-cot-width='laptop'] .cot-header-nav .cot-locale-options{display:none}
-body[data-cot-width='laptop'] .cot-header-nav .record-badge{
-  position:absolute;right:-5px;top:-5px;min-width:14px;height:14px;padding:0 3px;font-size:11px;
+@media (max-width:1279px){
+  body[data-cot-width='laptop'] .cot-header-nav :is([data-nav='home'],.cot-record-trigger) .nav-label{display:none}
+  body[data-cot-width='laptop'] .cot-header-nav .record-badge{
+    position:absolute;right:-5px;top:-5px;min-width:14px;height:14px;padding:0 3px;font-size:var(--fs-11);
+  }
 }
 body[data-cot-width='laptop'] .cot-nav .github-stars{
   position:absolute;right:-7px;top:-6px;min-width:24px;height:14px;padding:0 3px;display:grid;place-items:center;
@@ -1295,8 +1283,16 @@ body[data-cot-panels='overlay'] .cot-nav .cot-gear{width:44px;height:44px;min-he
 body[data-cot-panels='overlay'] .cot-battle-control{
   top:max(12px,env(safe-area-inset-top));width:clamp(196px,28vw,238px);height:44px;z-index:20;
 }
-body[data-cot-panels='overlay'] .cot-battle{font-size:clamp(14px,1.8vw,17px)}
-body[data-cot-panels='overlay'] .cot-battle-mode{font-size:11px}
+body[data-cot-panels='overlay'] .cot-battle{font-size:clamp(14px,1.8vw,17px);letter-spacing:var(--track-label-s)}
+body[data-cot-panels='overlay'] .cot-battle .battle-word{text-indent:0}
+/* folded: the Deploy button already shows the mode's glyph, so the toggle shows only its chevron (its name stays in aria-label) */
+body[data-cot-panels='overlay'] .cot-battle-mode span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+body[data-cot-panels='overlay'] .cot-battle{flex:1 1 auto}
+body[data-cot-panels='overlay'] .cot-battle-mode{flex:0 0 52px;min-width:44px;padding:0;font-size:var(--fs-11)}
+/* the split stays inside the button's face: a short rule, not the full-height border that overhung the hexagon */
+body[data-cot-panels='overlay'] .cot-battle-control .cot-battle-mode{border-left:0;
+  background:linear-gradient(var(--btn-primary-press),var(--btn-primary-press)) left center/1px 56% no-repeat;}
+body[data-cot-panels='overlay'] .cot-battle-control .cot-battle-mode::after{right:auto;left:50%;margin-left:-4px}
 body[data-cot-panels='overlay'] .cot-garage-tools{
   display:flex;left:max(var(--cot-overlay-edge),env(safe-area-inset-left));right:auto;
   top:calc(76px + var(--cot-room-row-space,0px));bottom:auto;width:var(--cot-compact-left-width);transform:none;
@@ -1457,7 +1453,6 @@ body[data-cot-panels='overlay'] .cot-hc[data-hero-facing='left'] .hc-tier,body[d
 body[data-cot-panels='overlay'] .cot-card .ti{width:98px;height:52px;left:4px;top:14px;
   transform:translate(var(--cot-thumb-x,-10px),var(--cot-thumb-y,-6px))
     scale(var(--cot-thumb-scale,1.2))}
-body[data-cot-panels='overlay'] .cot-garage .hint{display:none}
 
 body[data-cot-width='phone'] .cot-garage .title span,
 body[data-cot-width='compact'] .cot-garage .title span{display:none}
@@ -1542,7 +1537,7 @@ body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-p
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>svg,
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>.cot-info-trigger{display:none}
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>span{
-  font-size:11px;letter-spacing:0;
+  font:600 var(--fs-11)/1 var(--font-ui);letter-spacing:0;
 }
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-grid{grid-template-columns:1fr;gap:3px}
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .srow{
@@ -1648,6 +1643,65 @@ body[data-cot-input='coarse'] .cot-garage a{touch-action:manipulation}
 body[data-cot-input='coarse'] .cot-country-chip{min-width:44px}
 body[data-cot-input='coarse'] .cot-facet-toggle{min-height:44px}
 
+/* The showroom's one primary action (brand-ui S2, SPEC 12.1.3): Deploy, bottom right on a docked layout, the mode
+   beneath it as its change control, Multiplayer and the room row above it, the setup menu opening upward. Folded
+   layouts keep the top control. */
+body[data-cot-panels='persistent'] .cot-garage{--cot-deploy-w:var(--cot-garage-sidebar-width);}
+body[data-cot-panels='persistent'] .cot-battle-control{top:auto;left:auto;right:22px;bottom:22px;transform:none;
+  width:var(--cot-deploy-w);height:auto;display:grid;grid-template-rows:var(--btn-h-xl) var(--btn-h-s);
+  background:var(--btn-primary-fill);border-radius:var(--control-radius);box-shadow:var(--btn-primary-bevel);}
+body[data-cot-panels='persistent'] .cot-battle{justify-content:flex-start;gap:var(--s3);padding:0 var(--s4);
+  color:var(--btn-primary-ink);font:700 var(--fs-24)/1 var(--font-display);letter-spacing:var(--track-label-s);}
+body[data-cot-panels='persistent'] .cot-battle .battle-active-icon{color:var(--btn-primary-ink);filter:none;}
+body[data-cot-panels='persistent'] .cot-battle .battle-word{text-indent:0;}
+body[data-cot-panels='persistent'] .cot-battle .cot-c-kbd{margin-left:auto;}
+body[data-cot-panels='persistent'] .cot-battle-mode{border-left:0;border-top:1px solid var(--btn-primary-press);
+  padding:0 var(--s6) 0 var(--s4);text-align:left;color:var(--btn-primary-ink);
+  font:600 var(--fs-13)/1 var(--font-display);letter-spacing:var(--track-label-s);}
+body[data-cot-panels='persistent'] .cot-battle-mode::after{right:var(--s4);}
+@media (hover:hover){body[data-cot-panels='persistent'] :is(.cot-battle,.cot-battle-mode):hover{background:var(--btn-primary-hover);}}
+body[data-cot-panels='persistent'] .cot-battle-menu{top:auto;bottom:calc(100% + var(--s2));left:auto;right:0;transform:none;
+  max-height:min(680px,calc(var(--cot-viewport-height,100dvh) - 220px));}
+body[data-cot-panels='persistent'] :is(.cot-multiplayer-entry,.cot-room-controls){top:auto;bottom:calc(100% + var(--s2));
+  left:auto;right:0;transform:none;}
+body[data-cot-panels='persistent'] .cot-carousel{left:34px;right:calc(22px + var(--cot-deploy-w) + var(--s4));
+  transform:none;max-width:none;}
+body[data-cot-panels='persistent'] .cot-garage.enter .cot-battle-control{animation-name:cot-g-fade;}
+body[data-cot-panels='persistent'] .cot-battle .cot-c-kbd{color:var(--btn-primary-ink);border-color:currentColor;}
+body[data-cot-panels='persistent'] .cot-multiplayer-entry{height:var(--btn-h-s);min-height:0;padding:0 var(--s4);border:1px solid var(--btn-secondary-edge);
+  border-radius:var(--control-radius);background:var(--surface-plate);color:var(--ink-1);clip-path:none;
+  font:600 var(--fs-13)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;}
+body[data-cot-panels='persistent'] .cot-multiplayer-entry::before{display:none;}
+body[data-cot-panels='persistent'] .cot-multiplayer-entry:hover{background:var(--surface-hover);color:var(--ink-1);}
+/* the dossier's head gave its name to the lower third: only its about control stays, over the view tabs */
+body[data-cot-panels='persistent'] .cot-garage .cot-technical-section .cot-dossier-head{min-height:0;padding:0;margin:0;border:0;background:none;}
+body[data-cot-panels='persistent'] .cot-garage .cot-technical-section .cot-dossier-head>.cot-info-trigger{top:var(--s3);right:var(--s3);}
+body[data-cot-panels='persistent'] .cot-garage .cot-technical-tabs{margin-right:var(--s6);}
+/* the nation rail rides over the roster's own box */
+/* the dossier column clears only the Deploy stack below it (Deploy, its mode row and Multiplayer), not the rail */
+body[data-cot-panels='persistent'] .cot-garage .stats{bottom:calc(22px + var(--btn-h-xl) + 2 * var(--btn-h-s) + var(--s2) + var(--s4));}
+body[data-cot-panels='persistent'] .cot-country-rail{left:calc(34px + var(--cot-garage-sidebar-width) + var(--s4));
+  right:calc(22px + var(--cot-deploy-w) + var(--s4));width:auto;transform:none;}
+body[data-cot-panels='persistent'] .cot-lower-third{bottom:262px;}
+body[data-cot-panels='persistent'][data-cot-height='standard'] .cot-lt-name,
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-name{font-size:var(--fs-44);}
+
+/* The lower third (brand-ui S2): the name once, in the display voice, beside the stage on a docked layout; the
+   dossier's head gives its own copy up there. Folded layouts keep the name in the dossier's head. */
+.cot-lower-third{display:none;}
+body[data-cot-panels='persistent'] .cot-lower-third{position:absolute;display:flex;flex-direction:column;gap:var(--s3);
+  left:calc(34px + var(--cot-garage-sidebar-width) + var(--s6));right:calc(22px + var(--cot-garage-sidebar-width) + var(--s6));
+  bottom:252px;pointer-events:none;}
+.cot-lt-name{font:700 var(--fs-88)/.9 var(--font-display);letter-spacing:var(--track-title);text-transform:uppercase;
+  color:var(--ink-1);text-wrap:balance;}
+.cot-lt-name.is-long{font-size:var(--fs-60);}
+.cot-lt-name .acc{color:var(--accent);}
+.cot-lt-id{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s5);font:500 var(--fs-16)/1 var(--font-ui);color:var(--ink-2);}
+.cot-lt-id>span{display:inline-flex;align-items:center;gap:var(--s2);}
+.cot-lt-id .cot-i,.cot-lt-id .lt-class svg{color:var(--ink-3);}
+.cot-lt-id .cot-flag{width:32px;height:24px;border-radius:var(--control-radius);}
+.cot-lt-id .lt-tier b{color:var(--accent);}
+body[data-cot-panels='persistent'] .cot-garage :is(.cot-dossier-title,.cot-dossier-head .sub,.stats-ti){display:none;}
 /* Room setup is a separate, explicit action underneath Battle. */
 .cot-multiplayer-entry{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);
   display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;

@@ -19,9 +19,13 @@ assert.match(garageTs,
 assert.doesNotMatch(garageTs,
   /class="cot-garage-variant-location"/,
   'the closed selector does not repeat the underlying battlefield name');
+// The closed selector shows its change affordance as a chevron (brand-ui S2: no secondary words); the trigger keeps its
+// localized accessible name.
 assert.match(garageTs,
-  /class="cot-garage-variant-action"[\s\S]*?garage\.setup\.change/,
-  'the closed selector exposes a visible localized change affordance');
+  /class="cot-garage-variant-action">[\s\S]*?uiIconSVG\('chevronRight'/,
+  'the closed selector exposes a visible change affordance');
+assert.match(garageTs, /class="cot-garage-variant-trigger" type="button" aria-label="\$\{t\('garage\.tools\.chooseStaging'\)\}"/,
+  'the trigger names its action for assistive technology');
 assert.match(garageTs,
   /garageVariantLabel\.textContent = variantDisplayName;[\s\S]*?garageVariantThumb\.src = selected\.thumb \|\| selected\.hero \|\| '';/,
   'selection changes synchronize the closed selector preview');

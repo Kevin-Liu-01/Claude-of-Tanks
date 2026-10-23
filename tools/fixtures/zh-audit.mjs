@@ -6,6 +6,7 @@
 import '../../src/ui/tokens/tokens.css';
 import '../../src/ui/motion.css';
 import '../../src/ui/responsiveSurfaces.css';
+import '../../src/ui/components/components.css';
 import '../../src/ui/garage.css';
 import '../../src/ui/endScreenPresentation.css';
 import '../../src/ui/richTooltip.css';
