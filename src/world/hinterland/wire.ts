@@ -7,6 +7,12 @@ import type { HinterlandLevel, HinterlandPyramid } from './pyramid.ts';
 import type { HinterlandSurfaceLevel } from './surface.ts';
 import type { HinterlandOutlandGeometry, HinterlandShapeArrays } from './outlandGeometry.ts';
 
+/** The road ribbons' surfaces (sRGB bytes): a road's tarmac, a dike road's, a farm track's gravel and earth, a line's
+ * ballast (outlandGeometry.ts draws them; buildings.ts gives the roads the battlefield's packed earth). */
+export const HINTERLAND_ROAD_SRGB: Readonly<Record<string, readonly [number, number, number]>> = Object.freeze({
+  road: [78, 76, 72], dikeRoad: [88, 84, 78], track: [118, 104, 84], rail: [66, 60, 54],
+});
+
 /** The surface's edge offsets' encoding (surface.ts, material.ts): (s + HL_EDGE_OFFSET_M) × HL_EDGE_SCALE in 16 bits
  * (±256 m at 1/128 m); 65535 is "no edge". Here, where both sides read it without the page importing the field. */
 export const HL_EDGE_OFFSET_M = 256;

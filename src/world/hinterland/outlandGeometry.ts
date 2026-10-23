@@ -12,6 +12,7 @@
 // pyramid, its walls carried a metre and a half down.
 import type { HinterlandPlan, HinterlandTree } from './outland.ts';
 import { samplePyramid, type HinterlandPyramid } from './pyramid.ts';
+import { HINTERLAND_ROAD_SRGB } from './wire.ts';
 
 /** One draw's triangles (non-indexed): positions, normals (snorm8) and linear colours (unorm8, square-root encoded). */
 export interface HinterlandShapeArrays { position: Float32Array; normal: Int8Array; color: Uint8Array }
@@ -456,9 +457,7 @@ function treeColor(species: string, form: string, tone: number, leaf: number): V
 /** The roads' surfaces (linear): Zeeland's clinker and tarmac, a farm track's gravel and earth, a line's ballast. */
 /** A snowy place's roads: packed snow between their banks (the Glacier bird view's black slashes). */
 const SNOW_ROAD_COLOR: V3 = lin([196, 204, 214]);
-const ROAD_COLOR: Readonly<Record<string, V3>> = {
-  road: lin([78, 76, 72]), dikeRoad: lin([88, 84, 78]), track: lin([118, 104, 84]), rail: lin([66, 60, 54]),
-};
+const ROAD_COLOR: Readonly<Record<string, V3>> = Object.fromEntries(Object.entries(HINTERLAND_ROAD_SRGB).map(([k, c]) => [k, lin(c)]));
 
 /**
  * A road's ribbon over the drawn land: resampled every 6 m near the battlefield and coarser with distance (1 % of it),
@@ -471,7 +470,9 @@ function addRoad(S: Shapes, xs: readonly number[], zs: readonly number[], widthM
   let px = NaN, pz = NaN, pl: V3 | null = null, pr: V3 | null = null;
   const emit = (x: number, z: number, dx: number, dz: number): void => {
     const d = Math.hypot(x, z);
-    if (Math.max(Math.abs(x), Math.abs(z)) < 516) { pl = pr = null; return; }
+    // (horizons-240: from the edge itself, where the battlefield's own road ends — at 516 m the land's blurred road
+    // texels stood alone over the last metres, the critics' "pale smear" at the seam)
+    if (Math.max(Math.abs(x), Math.abs(z)) < 512) { pl = pr = null; return; }
     const l = Math.hypot(dx, dz) || 1, nx = -dz / l * half, nz = dx / l * half;
     const lift = 0.25 + d * 0.00035;
     const L: V3 = [x + nx, ground(x + nx, z + nz) + lift, z + nz], R: V3 = [x - nx, ground(x - nx, z - nz) + lift, z - nz];

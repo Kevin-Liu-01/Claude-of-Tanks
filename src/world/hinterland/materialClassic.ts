@@ -7,11 +7,15 @@
 import * as THREE from 'three';
 import { HL_EDGE_OFFSET_M, HL_EDGE_SCALE, type HinterlandWire } from './wire.ts';
 import type { HinterlandSurface } from './material.ts';
+import { HINTERLAND_GROUND_APPLY, HINTERLAND_GROUND_PARS, hinterlandGroundUniforms, type HinterlandGround } from './groundDetail.ts';
 
 type PackedSurface = { texture: THREE.DataTexture; edges: THREE.DataTexture | null; blocks: { x0: number; y0: number; n: number; texelM: number; halfM: number }[] };
 
 /** The surface for a region without snow, from the packed atlas (material.ts packSurface). */
-export function createClassicHinterlandSurface(wire: HinterlandWire, { texture, edges, blocks }: PackedSurface, lite = false): HinterlandSurface {
+export function createClassicHinterlandSurface(wire: HinterlandWire, { texture, edges, blocks }: PackedSurface, lite = false,
+  ground: HinterlandGround | null = null): HinterlandSurface {
+  // (the battlefield's ground carried past the edge on the full tiers: groundDetail.ts)
+  const withGround = !!ground && !lite;
   const n = blocks.length;
   const rot = wire.landRot ?? [1, 0];
   // the steep faces' strata: from 3° past the region's rock slope to 9° past it (the alpine 43–49°: the coordinator's
@@ -27,9 +31,11 @@ export function createClassicHinterlandSurface(wire: HinterlandWire, { texture, 
     uHlLandRot: { value: new THREE.Vector3(rot[0], rot[1], edges && wire.landRot ? 1 : 0) },
     uHlSBlock: { value: blocks.map((b) => new THREE.Vector4(b.x0, b.y0, b.n, b.texelM)) },
     uHlSHalf: { value: blocks.map((b) => b.halfM) },
+    ...(withGround ? hinterlandGroundUniforms(ground!) : {}),
   };
   const fragmentPars = /* glsl */`
 ${lite ? '#define HL_LITE' : ''}
+${withGround ? '#define HL_GROUND' : ''}
 uniform sampler2D uHlSurface;
 uniform sampler2D uHlEdges;
 uniform vec3 uHlLandRot; // the land-use grid's (cos, sin) heading; z: 1 where the edges are baked
@@ -145,7 +151,7 @@ vec3 hlStrataAt( vec3 w, vec3 n, out float ledge ) {
   vec3 snowC = vec3( 0.72, 0.79, 0.88 );
   return mix( mix( rockC, snowC, ( 1.0 - crisp ) * uHlStrata.z * hold * 0.14 ), snowC, ledge );
 }
-`;
+${HINTERLAND_GROUND_PARS}`;
   const albedo = /* glsl */`{
     vec4 hlS = hlSurfaceAt( vHlWorld.xz );
     vec3 hlAlb = pow( hlS.rgb, vec3( 2.2 ) );
@@ -163,7 +169,7 @@ vec3 hlStrataAt( vec3 w, vec3 n, out float ledge ) {
       hlD += ( sin( vHlWorld.y * 0.9 + hlNoise( hlP * 0.02 ) * 6.0 ) * 0.08 ) * hlMid;
     }
     diffuseColor.rgb = hlAlb * clamp( 1.0 + hlD, 0.55, 1.5 );
-    // the steep faces: the strata over the atlas, by the face's own slope (computed in uniform control flow, so the
+${HINTERLAND_GROUND_APPLY}    // the steep faces: the strata over the atlas, by the face's own slope (computed in uniform control flow, so the
     // beds' footprint is well defined at the slope's edge); none on the light tiers (HL_LITE, as round 6's)
 #ifndef HL_LITE
     if ( uHlRock.w > 0.5 ) {
@@ -211,5 +217,5 @@ vec3 hlStrataAt( vec3 w, vec3 n, out float ledge ) {
     // a ledge's snow lies on its level top: it faces the sky, not the wall's own fall
     if ( hlLedge > 0.0 ) normal = normalize( mix( normal, ( viewMatrix * vec4( 0.0, 1.0, 0.0, 0.0 ) ).xyz, 0.6 * hlLedge ) );
   }`;
-  return { uniforms, fragmentPars, albedo, roughness, normal, key: lite ? 'lite-classic' : 'classic' };
+  return { uniforms, fragmentPars, albedo, roughness, normal, key: lite ? 'lite-classic' : withGround ? 'classic-ground' : 'classic' };
 }
