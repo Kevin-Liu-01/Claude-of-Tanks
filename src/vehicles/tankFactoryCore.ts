@@ -7,7 +7,6 @@ import type { ModuleStateName } from '../sim/damage.ts';
 import { DetachedGear } from './detachedGear.ts';
 import { vehicleAuthoringSpec, VEHICLE_SIZE_FACTORS } from './vehicleSizePolicy.ts';
 import { resizeAuthoredVehicle } from './profiles/vehicleSize.ts';
-import { runningGearMotionScaleOf, scaleRunningGearMotion } from './scaledGroundSampler.ts';
 import { markSmokeTube, alignSmokeBanks, transferSmokeSockets } from './vehicleAuxiliaryGeometry.ts';
 // src/vehicles/tankFactoryCore.ts — cycle-free procedural factory implementation.
 // Recognizable replicas composed from BufferGeometries (ARCHITECTURE §3.3.2).
@@ -44,9 +43,8 @@ import { CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
 import {
   createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial, tagUnlitVehicleMaterials, LIVE_HULL_DENTS,
-  LIVE_TURRET_DENTS, copyVehicleMaterial, acquireTankTextureLease,
+  LIVE_TURRET_DENTS,
 } from './materials.ts';
-import { VehicleGraphCopy } from './vehicleGraphClone.ts';
 import { bendGeometry, dentSamples, planBend, planDents, wreckBarrelSpan, wreckRandom, type WreckDent } from './wreckDents.ts';
 import type { TurretRingSeat, createTurretRingPresentation } from './turretRingWell.ts';
 import { loadTurretRingModule, turretRingModule } from './turretRingLoader.ts';
@@ -57,7 +55,7 @@ import { measureNearShadowCasterWork } from './shadowCasterWork.ts';
 import { materialOnlyPaintSourceBucket } from './profiles/fixedPaintedPanel.ts';
 import {
   markVehicleNightLens, prepareVehicleNightLensParts, registerVehicleNightLensMesh,
-  transferVehicleNightLenses, finalizeVehicleNightLighting, copyVehicleNightLighting,
+  transferVehicleNightLenses, finalizeVehicleNightLighting,
 } from './vehicleNightLighting.ts';
 import { wheelPatternFor } from './wheelPatterns.ts';
 import { trackPatternFor } from './trackPatterns.ts';
@@ -163,11 +161,11 @@ type Rng = () => number;
 type Side = -1 | 1;
 type GeometryScale = number | readonly [number, number, number];
 export type VehicleOwner = 'hull' | 'turret';
-type DisposableVehicleResource = THREE.BufferGeometry | THREE.Material | THREE.Texture;
+export type DisposableVehicleResource = THREE.BufferGeometry | THREE.Material | THREE.Texture;
 type TankBuilder = (...args: never[]) => void;
 type FactoryFitting = (...args: never[]) => RuntimeValue;
 type TankBuilderRecord = Record<string, TankBuilder>;
-interface TankMaterials {
+export interface TankMaterials {
   hull: THREE.MeshStandardMaterial;
   wheels: THREE.MeshStandardMaterial;
   wheelsRecessed: THREE.MeshStandardMaterial;
@@ -808,7 +806,7 @@ function sampleWheelGroundDeviation(
   return (ground - wy) * frame.invHsy;
 }
 
-interface RunningGearUnit {
+export interface RunningGearUnit {
   __units?: RunningGearUnit[];
   /** The hull-local id its scene objects carry as userData.runningGearUnitId (one per buildRunningGear call). */
   unitId?: number;
@@ -1157,7 +1155,7 @@ function buildRunningGearPublic(builder: object, options: object): RunningGearUn
   return buildRunningGear(builder, options);
 }
 
-interface TankFactoryOptions {
+export interface TankFactoryOptions {
   camoSeed?: number;
   camoPattern?: string | null;
   quality?: 'high' | 'ai' | 'low' | 'preview';
@@ -1208,7 +1206,7 @@ interface TankEngineContext {
   releaseShadowMaterial?: (material: THREE.Material) => boolean;
 }
 
-function normalizeTankEngineContext(value: RuntimeValue): TankEngineContext | null | undefined {
+export function normalizeTankEngineContext(value: RuntimeValue): TankEngineContext | null | undefined {
   if (value == null) return value;
   if (typeof value !== 'object') throw new TypeError('Tank engine context must be an object');
   const context = value as Partial<TankEngineContext>;
@@ -1231,7 +1229,7 @@ interface PresentationAnchor {
   zM: number;
 }
 
-interface TankVisual {
+export interface TankVisual {
   root: THREE.Group;
   specId: string;
   dims: { lengthM: number; widthM: number; heightM: number };
@@ -1395,7 +1393,7 @@ function requireTankPoseState(value: RuntimeValue): TankPoseState {
   return state as TankPoseState;
 }
 
-interface StaticDetailRecord {
+export interface StaticDetailRecord {
   object: THREE.Object3D;
   baseVisible: boolean;
 }
@@ -1415,7 +1413,7 @@ function isVehicleGroup(object: THREE.Object3D): object is THREE.Group {
   return 'isGroup' in object && object.isGroup === true;
 }
 
-function isVehicleMaterial(resource: DisposableVehicleResource): resource is THREE.Material {
+export function isVehicleMaterial(resource: DisposableVehicleResource): resource is THREE.Material {
   return resource instanceof THREE.Material;
 }
 
@@ -1683,7 +1681,7 @@ function installBattleDetailGroups(records: readonly StaticDetailRecord[]): {
 // before it draws and releases it after, so the lower hull, running gear and track run of whichever tank is drawing
 // fall off toward its own ground contact. Installed after decoration, batching and detail regrouping, beside the
 // coplanar layers, so every color-pass mesh carries it; the root closure costs no parent walk per draw.
-function installVehicleGroundReference(root: THREE.Object3D): void {
+export function installVehicleGroundReference(root: THREE.Object3D): void {
   root.traverse((object) => {
     if (!(object as THREE.Mesh).isMesh) return;
     const before = object.onBeforeRender, after = object.onAfterRender;
@@ -1740,7 +1738,7 @@ function collectCoplanarDepthLayers(root: THREE.Object3D): CoplanarLayerRecord[]
   return records.map(({ object, materials }, index) => ({ object, materials, layer: index + 1 }));
 }
 
-function installCoplanarDepthLayers(root: THREE.Object3D, records: readonly CoplanarLayerRecord[]): void {
+export function installCoplanarDepthLayers(root: THREE.Object3D, records: readonly CoplanarLayerRecord[]): void {
   for (const { object, materials, layer } of records) {
     object.userData.coplanarDepthLayer = layer;
     const previous = object.onBeforeRender;
@@ -5607,7 +5605,7 @@ interface BandInfluence {
   triangles: Uint32Array;
 }
 
-function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGearUnit {
+export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGearUnit {
   const {
     cfg, disposables, hullG, mats, ribMat, entries, made, suspWheels, suspensionLinks, addRoadWheelLayer, xcForSide,
     relayWheel, layRelay, xc, wheelY, wheelYs, wheelR, wheelW, wheelZs, roadWheelOutsetM, sideStationReceipt,
@@ -6149,9 +6147,9 @@ function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGearUnit {
 }
 
 /** Each running-gear unit's runtime record: what cloneTankVisual copies a clone's unit from. */
-const GEAR_RUNTIME_ENVS = new WeakMap<RunningGearUnit, RunningGearRuntimeEnv>();
+export const GEAR_RUNTIME_ENVS = new WeakMap<RunningGearUnit, RunningGearRuntimeEnv>();
 /** The methods a unit or a registry was made with, to tell a profile's later patch of one (cloneRunningGear). */
-const GEAR_OWN_METHODS = new WeakMap<RunningGearUnit, Map<string, unknown>>();
+export const GEAR_OWN_METHODS = new WeakMap<RunningGearUnit, Map<string, unknown>>();
 function gearMethodsOf(gear: RunningGearUnit): Map<string, unknown> {
   return new Map(Object.entries(gear).filter(([, value]) => typeof value === 'function'));
 }
@@ -6185,7 +6183,7 @@ function registerGearUnit(P: RunningGearBuilderPort, unit: RunningGearUnit): voi
 }
 
 /** The registry P.gear becomes over two or more units (registerGearUnit; a clone's units, cloneTankVisual). */
-function combineGearUnits(units: RunningGearUnit[]): RunningGearUnit {
+export function combineGearUnits(units: RunningGearUnit[]): RunningGearUnit {
   const cgs = units.map((u) => u.contactGeom);
   const zF = Math.max(...cgs.map((c) => c.zCenterM + c.halfLenM));
   const zR = Math.min(...cgs.map((c) => c.zCenterM - c.halfLenM));
@@ -9355,7 +9353,7 @@ function* createTankOwnedSteps(
  * drive it and the build's tail), under the names the runtime reads them by. The runtime reads nothing else of the
  * build, so a clone of a finished visual (cloneTankVisual) runs the same runtime over its own copies of these.
  */
-interface TankRuntimeEnv {
+export interface TankRuntimeEnv {
   specId: string;
   opts: TankFactoryOptions;
   legacyDecoration: boolean;
@@ -9425,225 +9423,9 @@ interface TankCloneSource {
   mobileDetailObjects: StaticDetailRecord[];
   depthLayers: CoplanarLayerRecord[];
 }
-const TANK_CLONE_SOURCES = new WeakMap<TankVisual, TankCloneSource>();
+export const TANK_CLONE_SOURCES = new WeakMap<TankVisual, TankCloneSource>();
 
-/** A clone's own paint and texture tier (cloneTankVisual); the geometry tier and the paint scheme are its source's. */
-export interface TankCloneOptions {
-  camoSeed?: number;
-  camoPattern?: string | null;
-  quality?: TankFactoryOptions['quality'];
-}
-
-/**
- * A second visual of a finished one's vehicle, built by copying it instead of running its build (the multiplayer
- * roster's repeated vehicles: 1-1.5 s of build each, the clone a few ms). The copy shares every buffer its runtime never
- * writes and the camouflage textures; its tree, transforms, materials, ERA, equipment and weapon damage buffers,
- * running-gear state, track bands and texture scroll, burn mask, dents and lamps are its own, driven by its own runtime
- * (createTankRuntimeSteps over its copies). `camoSeed` seeds the clone's runtime randomness (the wreck's burn, pop and
- * dents); its stowage is its source's, the one thing a fresh build's seed would also move.
- *
- * The source must be pristine: built but never shown, synced, warmed, damaged or destroyed (the roster clones it
- * before it adds it to the scene). Battle-batched builds (batchStatic) cannot be cloned. Anything the copy cannot
- * carry faithfully throws, and the caller builds the visual from scratch instead.
- */
-export function cloneTankVisual(source: TankVisual, engineContext: RuntimeValue, cloneOpts: TankCloneOptions = {}): TankVisual {
-  const record = TANK_CLONE_SOURCES.get(source);
-  if (!record) throw new Error(`${source.specId}: not a finished factory visual`);
-  const { env } = record;
-  const quality = cloneOpts.quality ?? env.opts.quality ?? 'high';
-  const camoPattern = cloneOpts.camoPattern === undefined ? env.opts.camoPattern ?? null : cloneOpts.camoPattern;
-  const camoSeed = cloneOpts.camoSeed ?? 4000;
-  const engineCtx = normalizeTankEngineContext(engineContext);
-  if (env.batchStatic) throw new Error(`${env.specId}: a battle-batched visual cannot be cloned`);
-  if ((quality === 'low' ? 'low' : 'high') !== env.geometryQuality) throw new Error(`${env.specId}: a clone keeps its source's geometry tier`);
-  if (camoPattern !== (env.opts.camoPattern ?? null)) throw new Error(`${env.specId}: a clone keeps its source's paint scheme`);
-  if (engineCtx !== env.engineCtx) throw new Error(`${env.specId}: a clone registers through its source's engine context`);
-  if (source.isDestroyed() || source.root.parent) throw new Error(`${env.specId}: only a pristine visual can be cloned`);
-  for (const cluster of env.destructibleClusters.values()) {
-    if (cluster.spent) throw new Error(`${env.specId}: only a pristine visual can be cloned`);
-  }
-
-  const disposables: DisposableVehicleResource[] = [];
-  let lease: { release(): void } | null = null;
-  try {
-    const sourceMats = env.mats;
-    // the track bands scroll their own textures (updateGearSurface): the copy's share the image, not the offset
-    const textures = new Map<THREE.Texture, THREE.Texture>();
-    for (const texture of [sourceMats.trackTexL, sourceMats.trackTexR]) {
-      const own = texture.clone();
-      textures.set(texture, own);
-      disposables.push(own);
-    }
-    const materials = new Map<THREE.Material, THREE.Material>();
-    const copy = new VehicleGraphCopy((material) => {
-      let own = materials.get(material);
-      if (!own) {
-        own = copyVehicleMaterial(material);
-        for (const [key, value] of Object.entries(own)) {
-          const texture = value as THREE.Texture | null;
-          if (texture?.isTexture && textures.has(texture)) (own as unknown as Record<string, unknown>)[key] = textures.get(texture);
-        }
-        materials.set(material, own);
-        disposables.push(own);
-      }
-      return own;
-    }, new Set(['runningGearRoadWheels', 'runningGearGroundRun']));
-    if (!env.geometryOnly) lease = acquireTankTextureLease(env.spec, engineCtx, quality, camoPattern);
-    const mats = {} as TankMaterials;
-    for (const [key, value] of Object.entries(sourceMats)) {
-      (mats as unknown as Record<string, unknown>)[key] = value instanceof THREE.Material ? copy.material(value)
-        : value instanceof THREE.Texture ? textures.get(value) ?? value : value;
-    }
-    mats.prepareBurnt = () => {
-      // the shared char atlases, attached to the copy's own wreck fallback as its source attaches them
-      sourceMats.prepareBurnt?.();
-      if (mats.burnt.map === sourceMats.burnt.map && mats.burnt.emissiveMap === sourceMats.burnt.emissiveMap) return;
-      mats.burnt.map = sourceMats.burnt.map;
-      mats.burnt.emissiveMap = sourceMats.burnt.emissiveMap;
-      mats.burnt.needsUpdate = true;
-    };
-    mats.decal = () => { throw new Error('a cloned visual paints no new markings'); };
-    const held = lease;
-    mats.dispose = () => { held?.release(); };
-
-    // the buffers the runtime writes: the ERA clusters' and drapes' positions, the equipment lids, the weapons' scorch
-    // colours and every dynamic buffer (the track bands)
-    const written = new Set<THREE.BufferAttribute | THREE.InterleavedBufferAttribute>();
-    for (const cluster of env.destructibleClusters.values()) {
-      for (const range of cluster.ranges) written.add(range.position);
-      for (const drape of cluster.drapes ?? []) written.add(drape.position);
-    }
-    source.root.traverse((object) => {
-      const geometry = (object as THREE.Mesh).isMesh ? (object as THREE.Mesh).geometry : null;
-      if (!geometry) return;
-      const attributes = Object.values(geometry.attributes);
-      if (env.equipmentDamage.ownsGeometry(geometry) || env.weaponDamage.ownsGeometry(geometry)
-          || attributes.some((attribute) => written.has(attribute)
-            || ('usage' in attribute && attribute.usage !== THREE.StaticDrawUsage))) {
-        disposables.push(copy.ownGeometry(geometry));
-      }
-    });
-    const root = copy.tree(source.root);
-    copy.userData();
-    root.userData.textureQuality = quality;
-
-    const object = <T extends THREE.Object3D>(value: T): T => copy.object(value);
-    const geometryOf = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => copy.geometry(geometry);
-    const cloneEnv: TankRuntimeEnv = {
-      ...env,
-      opts: { ...env.opts, camoSeed, camoPattern, quality },
-      engineCtx,
-      mats,
-      rng: mulberry32((camoSeed | 0) ^ 0x9e37),
-      root, hullG: object(env.hullG), turretG: object(env.turretG), gunG: object(env.gunG), recoilG: object(env.recoilG),
-      barrelGs: env.barrelGs.map(object),
-      eraPlacements: env.eraPlacements.map((placement) => ({ ...placement, _mesh: placement._mesh && object(placement._mesh) })),
-      eraLocal: env.eraLocal.map(object),
-      destructibleClusters: new Map([...env.destructibleClusters].map(([name, cluster]) => [name, {
-        ranges: cluster.ranges.map((range) => ({ ...range, position: copy.attribute(range.position) })),
-        spent: false,
-        ...(cluster.drapes ? { drapes: cluster.drapes.map((drape) => ({ ...drape, position: copy.attribute(drape.position) })) } : {}),
-      }])),
-      disposables,
-      equipmentDamage: env.equipmentDamage.cloneFor(geometryOf),
-      weaponDamage: env.weaponDamage.cloneFor(geometryOf),
-      P: { gear: cloneRunningGear(env.P.gear, copy, mats, disposables), muzzleZ: env.P.muzzleZ },
-      decalMeshes: env.decalMeshes.map(object),
-      proceduralShadowSources: env.proceduralShadowSources.map(object),
-      muzzle: object(env.muzzle),
-      launcherTips: env.launcherTips.map(object),
-      muzzleTips: env.muzzleTips.map(object),
-      carvedMuzzleFrames: env.carvedMuzzleFrames.map(object),
-      turretTop: object(env.turretTop),
-      restScan: copy.value(env.restScan),
-      gearCG: copy.value(env.gearCG),
-      drawnCG: copy.value(env.drawnCG),
-      ownsTree: false,
-    };
-    const mobileDetailObjects = record.mobileDetailObjects.map((entry) => ({ ...entry, object: object(entry.object) }));
-    const steps = createTankRuntimeSteps(cloneEnv, { mobileDetailObjects });
-    const made = steps.next();
-    if (!made.done) throw new Error(`${env.specId}: a clone's runtime yielded`);
-    const visual = made.value;
-    // the render hooks every finished mesh carries: its coplanar depth layer, then the ground reference around it
-    const depthLayers = record.depthLayers.map((layer) => ({
-      object: object(layer.object), materials: layer.materials.map((material) => copy.material(material)), layer: layer.layer,
-    }));
-    installCoplanarDepthLayers(root, depthLayers);
-    installVehicleGroundReference(root);
-    copyVehicleNightLighting(source.root, root, (value) => copy.objects.get(value),
-      (material) => copy.material(material));
-    root.userData.cloneSourceSpecId = env.specId;
-    TANK_CLONE_SOURCES.set(visual, { env: cloneEnv, mobileDetailObjects, depthLayers });
-    return visual;
-  } catch (error) {
-    for (const resource of disposables) {
-      if (isVehicleMaterial(resource)) engineCtx?.releaseShadowMaterial?.(resource);
-      resource.dispose();
-    }
-    lease?.release();
-    throw error;
-  }
-}
-
-/** A clone's running gear: each of its source's units' runtimes over the clone's copies (createRunningGearRuntime). */
-function cloneRunningGear(
-  gear: RunningGearUnit | null,
-  copy: VehicleGraphCopy,
-  mats: TankMaterials,
-  disposables: DisposableVehicleResource[],
-): RunningGearUnit | null {
-  if (!gear) return null;
-  const units = (gear.__units || [gear]).map((unit) => {
-    const env = GEAR_RUNTIME_ENVS.get(unit);
-    if (!env) throw new Error('a running-gear unit without its runtime record cannot be cloned');
-    if (env.spinnerInstances.length) throw new Error('a battle-batched running gear cannot be cloned');
-    return createRunningGearRuntime({
-      ...env,
-      disposables,
-      hullG: copy.object(env.hullG),
-      mats,
-      ribMat: copy.material(env.ribMat),
-      entries: copy.value(env.entries),
-      made: copy.value(env.made),
-      suspWheels: copy.value(env.suspWheels),
-      suspensionLinks: copy.value(env.suspensionLinks),
-      addRoadWheelLayer: () => { throw new Error('a cloned running gear takes no new road-wheel layers'); },
-      tl: copy.object(env.tl),
-      tr: copy.object(env.tr),
-      tgL: copy.geometry(env.tgL),
-      tgR: copy.geometry(env.tgR),
-      linkMeshes: copy.value(env.linkMeshes),
-      spinners: copy.value(env.spinners),
-      bandRestPos: copy.value(env.bandRestPos),
-      loadedContact: copy.value(env.loadedContact),
-      gearContactGeom: copy.value(env.gearContactGeom),
-    });
-  });
-  const clone = units.length === 1 ? units[0]! : combineGearUnits(units);
-  // what the builder did to the gear after building it (profiles/vehicleSize.ts rescales its contact, track hitboxes and
-  // wheel layout and runs its solver in the authoring frame): the source's data as it stands, and the same motion scale
-  for (const [key, value] of Object.entries(gear)) {
-    if (key !== '__units' && typeof value !== 'function') (clone as unknown as Record<string, unknown>)[key] = copy.value(value);
-  }
-  const scale = runningGearMotionScaleOf(gear);
-  if (scale) scaleRunningGearMotion(clone, scale.factor);
-  const own = GEAR_OWN_METHODS.get(gear);
-  for (const [key, value] of Object.entries(gear)) {
-    if (typeof value !== 'function' || own?.get(key) === value) continue;
-    if (scale && value === scale[key as 'update' | 'updateSurface' | 'conform']) continue;
-    throw new Error(`a running gear whose ${key} a profile replaced cannot be cloned`);
-  }
-  for (const unit of gear.__units ?? []) {
-    const unitOwn = GEAR_OWN_METHODS.get(unit);
-    for (const [key, value] of Object.entries(unit)) {
-      if (typeof value === 'function' && unitOwn?.get(key) !== value) throw new Error(`a running gear whose ${key} a profile replaced cannot be cloned`);
-    }
-  }
-  return clone;
-}
-
-function* createTankRuntimeSteps(
+export function* createTankRuntimeSteps(
   env: TankRuntimeEnv,
   adoption: TankRuntimeAdoption | null = null,
 ): Generator<void, TankVisual, void> {
