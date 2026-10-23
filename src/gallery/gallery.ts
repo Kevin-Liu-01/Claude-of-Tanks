@@ -38,8 +38,10 @@ import { flagIconCode } from '../ui/flagCodes.ts';
 import { iconUrl } from '../ui/icons.ts';
 import { icon, type IconId } from '../ui/icons/icon.ts';
 import {
-  ensureComponentStyles, esc, flag, scale20, scaleCells, silhouette, statRow, tabs, wireRoving,
+  esc, flag, scale20, scaleCells, silhouette, statRow, tabs, wireRoving,
 } from '../ui/components/components.ts';
+// the shared component sheet, static in the components layer (brand-ui S2: the kit no longer mounts it)
+import '../ui/components/components.css';
 import { cameraViewGlyphSVG } from './viewGlyphs.ts';
 import { drawTrueScale } from './trueScale.ts';
 import { t, getLocale, formatNumber } from '../ui/i18n.ts';
@@ -96,7 +98,6 @@ function writePrefs(): void {
   } catch { /* storage may be blocked */ }
 }
 
-ensureComponentStyles();
 bindStaticI18nAuto();
 const viewport = $<HTMLElement>('#viewport');
 const vehicleList = $<HTMLElement>('#vehicleList');
