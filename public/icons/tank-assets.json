@@ -825822,17 +825822,17 @@
           }
         ]
       },
-      "geometryHash": "29615ed5",
+      "geometryHash": "07fa360b",
       "metadataHash": "dfb1a361",
       "presentationAnchor": {
-        "xM": 0.0074,
-        "zM": -0.1359
+        "xM": 0.0093,
+        "zM": -0.1332
       },
-      "presentationHash": "e03f1373",
+      "presentationHash": "f73200b5",
       "presentationProjection": {
         "centerYM": 2.7285,
-        "topHalfM": 6.3501,
-        "sideHalfM": 3.175
+        "topHalfM": 6.3472,
+        "sideHalfM": 3.1736
       },
       "appearance": {
         "version": 1,
@@ -825882,39 +825882,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81717,
-          "sha256": "e2944d8d8dae329034169db106d2411ad23be42ff7e7a8cfbb9e8bbfcd347e86"
+          "bytes": 80639,
+          "sha256": "f585076c091d5a240016bcf1d9f0c7faa50783e988808e80844421602d8fbf27"
         },
         "modulesSide": {
           "file": "t64bv_donbas_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 95175,
-          "sha256": "f9e76fcd64406461970b705d1101e0c34b4e8e5b1f3fd149c8b0b46b9ac140cb"
+          "bytes": 94633,
+          "sha256": "f3372fcfe6999730527dff1ba6fe128dabb633494663ae885e915f2900b22a37"
         },
         "armorSide": {
           "file": "t64bv_donbas_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 93114,
-          "sha256": "0d10cdc179e0a3e8c2d91b54c31227275b1e48371ba81a15246d295353b748c7"
+          "bytes": 92740,
+          "sha256": "bb18fa363f5c32eed7ca05268dfe980e1f33e1745757b7967579f61198c36a25"
         },
         "angle": {
           "file": "t64bv_donbas_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30198,
-          "sha256": "298f4012cbf2d119d83091877ee7f8701005595c4616136c2bcb24eb2ba944a1",
+          "bytes": 29372,
+          "sha256": "7a3b50b0b6edc81a2dad7e8c0de64e447153613fe1e4f588d10a3ff039fd244c",
           "thumbnail": {
             "file": "thumbs/t64bv_donbas_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11752,
-            "sha256": "5a2fa845dc78634c95a73a1ee42ad53f6120d5afb513f3e0201829f66e663b9b"
+            "bytes": 11856,
+            "sha256": "44fa550b5c9791569d580b930fcaa69712ba97cf01255a877607f7b3d4b3332e"
           }
         },
         "top": {
@@ -825922,24 +825922,24 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 13958,
-          "sha256": "aa6146e606a19f282004c5c3f3c87d92cabadf150dab2f232699239fe03bc5af"
+          "bytes": 13740,
+          "sha256": "93c1a98bc68358f037f6a406b720cd0bf471d398d5f0763bc1de8619c83fd741"
         },
         "sideSilhouette": {
           "file": "t64bv_donbas_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4651,
-          "sha256": "8d605aa62add18668955deb300a5fccc457fbdd65aea501e99d31abe22aa9daf"
+          "bytes": 4684,
+          "sha256": "2421ac9c7a004e4d8b1255eb54aada60921fa6ec6dbac7d76564f27f6ccb5002"
         },
         "topSilhouette": {
           "file": "t64bv_donbas_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1640,
-          "sha256": "aaf41951bc51186ad49a9ebe186e66ff175a758ffbfb9bf9a3639178b7a8cd4c"
+          "bytes": 1495,
+          "sha256": "53ca90e7d6cce72790f024730bedd6c003113456d416a2b7780ff7dae8d2c6a1"
         },
         "markings": {
           "file": "t64bv_donbas_markings.png",
@@ -825954,8 +825954,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 11350,
-          "sha256": "6f2fb366093b45b636a675af630f4a53f21cec840cd76c8b212f128d593c7a18"
+          "bytes": 11204,
+          "sha256": "98bfdaf22215bc5791224ac7eb1efee07ca10278efd2db7957d3fb9befc6486a"
         }
       }
     },
