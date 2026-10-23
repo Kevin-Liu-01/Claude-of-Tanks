@@ -94,11 +94,19 @@ function liftField(index: readonly SkinPanelIndex[]): (point: SkinPoint) => Skin
   };
 }
 
-/** The flashlight shell of one frame's cells, or null when they have no outer surface. */
-export function buildFlashlightGeometry(
-  cells: Parameters<typeof armorSkinPanels>[0],
-  neutral: THREE.Color,
-): FlashlightGeometry | null {
+interface FlashlightTemplate {
+  readonly position: THREE.Float32BufferAttribute;
+  readonly bary: THREE.Float32BufferAttribute;
+  readonly border: THREE.Float32BufferAttribute;
+  readonly samples: FlashlightSample[];
+  readonly targets: Uint32Array;
+  readonly sphere: THREE.Sphere;
+}
+
+/** One template per cell list (one per spec frame): every vehicle of a spec shares the shell, only its colours are its own. */
+const templates = new WeakMap<object, FlashlightTemplate | null>();
+
+function buildTemplate(cells: Parameters<typeof armorSkinPanels>[0]): FlashlightTemplate | null {
   const panels = armorSkinPanels(cells);
   if (!panels.length) return null;
   const index = indexSkinPanels(panels);
@@ -113,11 +121,10 @@ export function buildFlashlightGeometry(
   const isBorder = skinBorderTest(index, SOFT_CREASE_COS);
   const count = triangles.length * 3;
   const positions = new Float32Array(count * 3);
-  const colors = new Float32Array(count * 3);
   const bary = new Float32Array(count * 3);
   const borders = new Float32Array(count * 3);
   // one sample per panel corner: the corner's copies (one per triangle meeting there) take its colour
-  const corners = new Map<string, { panel: number; point: SkinPoint; toward: SkinPoint; vertices: number[] }>();
+  const corners = new Map<string, { point: SkinPoint; toward: SkinPoint; vertices: number[] }>();
   triangles.forEach((triangle, t) => {
     const [a, b, c] = triangle.points;
     const centroid: SkinPoint = [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3];
@@ -127,12 +134,11 @@ export function buildFlashlightGeometry(
       const vertex = t * 3 + k;
       const l = lift(point);
       positions.set([point[0] + l[0], point[1] + l[1], point[2] + l[2]], vertex * 3);
-      colors.set([neutral.r, neutral.g, neutral.b], vertex * 3);
       bary[vertex * 3 + k] = 1;
       borders.set([edge[0] ? 1 : 0, edge[1] ? 1 : 0, edge[2] ? 1 : 0], vertex * 3);
       const cornerKey = `${triangle.panel}|${key(point)}`;
       let corner = corners.get(cornerKey);
-      if (!corner) { corner = { panel: triangle.panel, point, toward: [0, 0, 0], vertices: [] }; corners.set(cornerKey, corner); }
+      if (!corner) { corner = { point, toward: [0, 0, 0], vertices: [] }; corners.set(cornerKey, corner); }
       corner.vertices.push(vertex);
       corner.toward[0] += centroid[0]; corner.toward[1] += centroid[1]; corner.toward[2] += centroid[2];
     });
@@ -151,15 +157,35 @@ export function buildFlashlightGeometry(
     targets.set(corner.vertices, cursor);
     cursor += n;
   }
+  const position = new THREE.Float32BufferAttribute(positions, 3);
+  const sphere = new THREE.Sphere();
+  new THREE.Box3().setFromBufferAttribute(position).getBoundingSphere(sphere);
+  return {
+    position, bary: new THREE.Float32BufferAttribute(bary, 3), border: new THREE.Float32BufferAttribute(borders, 3),
+    samples, targets, sphere,
+  };
+}
+
+/** The flashlight shell of one frame's cells for one vehicle, or null when they have no outer surface. */
+export function buildFlashlightGeometry(
+  cells: Parameters<typeof armorSkinPanels>[0],
+  neutral: THREE.Color,
+): FlashlightGeometry | null {
+  if (!cells?.length) return null;
+  let template = templates.get(cells);
+  if (template === undefined) { template = buildTemplate(cells); templates.set(cells, template); }
+  if (!template) return null;
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('position', template.position);
+  const colors = new Float32Array(template.position.count * 3);
+  for (let vertex = 0; vertex < template.position.count; vertex++) colors.set([neutral.r, neutral.g, neutral.b], vertex * 3);
   const color = new THREE.Float32BufferAttribute(colors, 3);
   color.setUsage(THREE.DynamicDrawUsage);
   geometry.setAttribute('color', color);
-  geometry.setAttribute('aSkinBary', new THREE.Float32BufferAttribute(bary, 3));
-  geometry.setAttribute('aSkinBorder', new THREE.Float32BufferAttribute(borders, 3));
-  geometry.computeBoundingSphere();
-  return { geometry, color, samples, targets };
+  geometry.setAttribute('aSkinBary', template.bary);
+  geometry.setAttribute('aSkinBorder', template.border);
+  geometry.boundingSphere = template.sphere.clone();
+  return { geometry, color, samples: template.samples, targets: template.targets };
 }
 
 /**
