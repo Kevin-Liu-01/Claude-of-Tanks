@@ -229,10 +229,10 @@ html[lang^='zh'] :is(h1,h2,.v5-evidence h3,.v5-mode--hero h3){line-height:1.15}
   -webkit-mask:var(--sil) center/contain no-repeat;mask:var(--sil) center/contain no-repeat}
 .cot-sil--flip{transform:scaleX(-1)}
 .vs-duel{display:flex;align-items:center;gap:var(--s3);min-width:0}
-.vs-side{display:inline-flex;align-items:center;gap:var(--s2);min-width:0}
+.vs-side{display:inline-flex;align-items:center;gap:var(--s2);min-width:0;height:24px}
 .vs-side b{overflow:hidden;font:700 var(--vs-name,var(--fs-16))/1 var(--font-ui);letter-spacing:var(--track-label-s);text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap;color:var(--ink-1)}
 .vs-mark{flex:none;padding:4px 6px;border:1px solid color-mix(in srgb,var(--accent) 50%,transparent);font:700 var(--fs-12)/1 var(--font-ui);letter-spacing:var(--track-label);color:var(--accent)}
-.vs-where{display:inline-flex;align-items:center;gap:7px;font:500 var(--fs-13)/1 var(--font-ui);color:var(--ink-2);white-space:nowrap}
+.vs-where{display:inline-flex;align-items:center;gap:7px;height:18px;font:500 var(--fs-13)/1 var(--font-ui);color:var(--ink-2);white-space:nowrap}
 .vs-where .cot-i{color:var(--ink-3)}
 
 /* 01 the living versus hero: the headline in the sky, the duel named on the road, the counts on the floor */
@@ -246,6 +246,7 @@ html[lang^='zh'] :is(h1,h2,.v5-evidence h3,.v5-mode--hero h3){line-height:1.15}
 .hero__copy,.hero__matchup,.hero__scene,.hero__stats{position:relative}
 .hero__copy{grid-area:copy;align-self:start}
 .hero__title{display:flex;flex-direction:column;margin:0;font:700 var(--home-h1)/.86 var(--font-ui);letter-spacing:var(--track-title);text-transform:uppercase;color:var(--ink-1);text-shadow:var(--hollow-shadow)}
+.hero__line{display:block;height:.86em;white-space:nowrap}
 .hero__title .t-hollow{--hollow-stroke:2px;text-shadow:none}
 .hero__ctas{display:flex;flex-wrap:wrap;gap:var(--s3);margin-top:var(--s6)}
 .hero__matchup{grid-area:match;align-self:end;display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3) var(--s5);margin-bottom:var(--s5);--vs-name:var(--fs-24);--sil-w:74px;--sil-h:24px}
@@ -254,7 +255,7 @@ html[lang^='zh'] :is(h1,h2,.v5-evidence h3,.v5-mode--hero h3){line-height:1.15}
 .hero__matchup .vs-where{padding-left:var(--s5);border-left:1px solid var(--line-2);font-size:var(--fs-14)}
 .hero__scene{grid-area:scene;align-self:end;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--s2);margin-bottom:var(--s5)}
 .hero__stats{grid-area:stats;display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s6);min-height:52px;margin:0 calc(var(--home-x) * -1);padding:var(--s2) var(--home-x);list-style:none;border-top:1px solid var(--line-1)}
-.hero__stats li{display:inline-flex;align-items:center;gap:9px;font:500 var(--fs-13)/1 var(--font-ui);color:var(--ink-3)}
+.hero__stats li{display:inline-flex;align-items:center;gap:9px;height:24px;white-space:nowrap;font:500 var(--fs-13)/1 var(--font-ui);color:var(--ink-3)}
 .hero__stats .cot-i{color:var(--ink-2)}
 .hero__stats b{font:700 var(--fs-18)/1 var(--font-ui);color:var(--ink-1)}
 
@@ -325,14 +326,15 @@ html[lang^='zh'] :is(h1,h2,.v5-evidence h3,.v5-mode--hero h3){line-height:1.15}
   .home .public-nav__tools>.public-nav__cta{display:none}
   .hero{grid-template-columns:minmax(0,1fr);grid-template-areas:"copy" "match" "scene" "stats";min-height:max(640px,100svh);padding-top:calc(var(--shell-nav-h) + var(--s5))}
   .hero__still{object-position:56% 50%}
-  .hero__ctas .cot-btn--xl{--btn-h:var(--btn-h-l);padding:0 20px;font-size:var(--fs-16)}
+  .hero__ctas{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:var(--s2)}
+  .hero__ctas .cot-btn--xl{--btn-h:var(--btn-h-l);min-width:0;padding:0 12px;overflow:hidden;font-size:var(--fs-14)}
   .hero__matchup{flex-direction:column;align-items:flex-start;gap:10px;margin-bottom:var(--s4);--vs-name:var(--fs-20);--sil-w:58px;--sil-h:19px}
   .hero__matchup .vs-duel{flex-direction:column;align-items:flex-start;gap:8px}
   .hero__matchup .vs-side--foe{flex-direction:row-reverse}
   .hero__matchup .vs-where{padding-left:0;border-left:0}
   .hero__scene{justify-content:flex-start;margin-bottom:var(--s4)}
   .hero__stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding-block:var(--s3);border-top:0}
-  .hero__stats li{flex-direction:column;align-items:flex-start;gap:5px;padding:8px;border:1px solid var(--line-1);border-radius:var(--r1);background:var(--home-veil);font-size:var(--fs-11)}
+  .hero__stats li{flex-direction:column;align-items:flex-start;justify-content:center;gap:5px;height:56px;overflow:hidden;padding:8px;border:1px solid var(--line-1);border-radius:var(--r1);background:var(--home-veil);font-size:var(--fs-11)}
   .hero__stats li .cot-i{display:none}
   .hero__stats li:last-child{display:none}
   .versus{padding-top:var(--s8)}
