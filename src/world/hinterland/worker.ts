@@ -9,7 +9,7 @@ import { buildHinterland } from './pipeline.ts';
 import { withSelectedHinterland } from './select.ts';
 import { resolveHinterlandSpec } from './spec.ts';
 import { packHinterlandPlan, type HinterlandGroundedTree, type HinterlandWire } from './wire.ts';
-import { bakeHinterlandSurface, plantHinterlandWoods, raiseHinterlandCanopy } from './surface.ts';
+import { bakeHinterlandSurface, plantHinterlandHedges, plantHinterlandWoods, raiseHinterlandCanopy } from './surface.ts';
 import { buildHinterlandOutlandGeometry, HINTERLAND_NEAR_TREE_M } from './outlandGeometry.ts';
 import { samplePyramid } from './pyramid.ts';
 import { sightlineBlocker } from './outland.ts';
@@ -47,6 +47,8 @@ export function buildHinterlandWire(request: HinterlandRequest): { wire: Hinterl
     const blocks = sightlineBlocker(build.plan.settlements, groundAt);
     const open = (t: { x: number; z: number; heightM: number; crownM: number }): boolean => !blocks || !blocks(t);
     trees.push(...plantHinterlandWoods(build.field, build.pyramid.levels, woods, groundAt, { withinM: HINTERLAND_NEAR_TREE_M }).filter(open));
+    // (the hedgerows' and shelterbelts' standards along the hedged boundaries, where impostors draw them)
+    trees.push(...plantHinterlandHedges(build.field, groundAt, { withinM: HINTERLAND_NEAR_TREE_M }).filter(open));
   }
   // (the woods stand as a canopy over the land: the drawn heights rise by it, after the surface read their slopes; under
   // the woods' own trees it is their under-storey)
