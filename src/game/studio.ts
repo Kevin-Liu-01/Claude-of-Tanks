@@ -250,6 +250,8 @@ interface StudioContext {
   autoEnter?: boolean;
   /** An idle pooled PointLight Studio may drive (flares, night firelight). */
   borrowLight?(): THREE.PointLight | null;
+  /** The map's air on or off (main.ts → world/mapAmbienceAccess.ts; the scene's `fx.ambience`). */
+  setAmbienceEnabled?(on: boolean): void;
 }
 
 interface StudioActorInput {
@@ -549,7 +551,7 @@ interface StudioSceneInput {
   /** The tank id schema the scene was written under (missing = 1; tankIdAliases.ts). */
   tankIdSchema?: number;
   map?: string;
-  fx?: { quality?: string; trackDust?: boolean };
+  fx?: { quality?: string; trackDust?: boolean; ambience?: boolean };
   productionFormat?: ProductionFormat;
   timeOfDay?: StudioTimeOfDay;
   light?: StudioLight | null;
@@ -1740,6 +1742,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   function applyFxSettings(next: StudioFxSettings): void {
     fxSettings = next;
+    ctx.setAmbienceEnabled?.(next.ambience);
     if (cinematics || next.quality === 'cinematic' || next.trackDust) {
       const layer = ensureCinematics();
       layer.setQuality(next.quality);
@@ -5341,7 +5344,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     /** Scene FX quality: `battle` (the game's exact look) or `cinematic`. */
     setFxQuality(quality: StudioFxQuality) {
       if (recording || filming || !STUDIO_FX_QUALITIES.includes(quality)) return fxSettings.quality;
-      applyFxSettings(normalizeStudioFx({ quality, trackDust: quality === 'cinematic' ? true : fxSettings.trackDust }));
+      applyFxSettings(normalizeStudioFx({ quality, trackDust: quality === 'cinematic' ? true : fxSettings.trackDust,
+        ambience: fxSettings.ambience }));
       rebuildEffects(clockMs);
       return fxSettings.quality;
     },
@@ -5354,6 +5358,14 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       return fxSettings.trackDust;
     },
     get trackDust() { return fxSettings.trackDust; },
+    /** The map's air (pollen, leaves, snow, dust, embers) on or off; it films on the pinned fx clock either way. */
+    setAmbience(on: boolean) {
+      if (recording || filming) return fxSettings.ambience;
+      applyFxSettings({ ...fxSettings, ambience: !!on });
+      invalidate();
+      return fxSettings.ambience;
+    },
+    get ambience() { return fxSettings.ambience; },
     cinematicStats: () => cinematics?.stats() ?? null,
     setMap: (id: string) => recording || filming
       ? Promise.reject(new Error(filming ? 'Finish the film render first' : 'Stop recording before changing battlefield'))
