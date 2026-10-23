@@ -387,6 +387,13 @@ interface LeopardHullV3Config {
   readonly deck: readonly Vec2Tuple[];
   readonly sponsonY: number;
   readonly sponsonLaneLift?: SponsonLaneLift;
+  /** Release 240 (the owner: "make sure all tank turrets are clear of hulls"): a well in the deck under the turret's
+   *  sweep, |x| < halfW from z1 forward to z0 (z1 < z0), its top held at y: where the engine deck rises aft inside the
+   *  reach of the turret's low front corners, a traverse ran them through it. Inboard of the turret's walls the well is
+   *  under the turret at rest; turned, it reads as the ring's well. */
+  readonly turretWell?: { readonly halfW: number; readonly z0: number; readonly z1: number; readonly y: number };
+  /** The rear-deck radiator well's length aft of the fans' front (m; default 1.0). */
+  readonly radiatorWellLength?: number;
   readonly bellyY?: number;
   readonly innerW?: number;
   readonly xc: number;
@@ -1372,6 +1379,31 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
   // keeps the sponson floor, the outboard (over-track) part lifts its bottom
   // clear of the crest — exactly the real sponson-over-track configuration.
   const SLL = H.sponsonLaneLift;
+  // a deck slab from x0 to x1 (its corners in that order) from the floor to the deck line ya (at za) .. yb (at zb),
+  // za > zb; with H.turretWell, split at the well's edges and held at its level inside it (without one: the one slab,
+  // corner for corner as before)
+  const TW = H.turretWell;
+  const deckSlab = (x0: number, x1: number, floor: number, za: number, zb: number, ya: number, yb: number): void => {
+    const yAt = (z: number): number => (z === za ? ya : z === zb ? yb : ya + (yb - ya) * ((z - za) / (zb - za)));
+    const lo = Math.min(x0, x1), hi = Math.max(x0, x1);
+    const xs = [x0, x1], zs = [za, zb];
+    if (TW && zb < TW.z0 && za > TW.z1 && lo < TW.halfW && hi > -TW.halfW) {
+      for (const x of [-TW.halfW, TW.halfW]) if (x > lo && x < hi) xs.push(x);
+      for (const z of [TW.z0, TW.z1]) if (z < za && z > zb) zs.push(z);
+      xs.sort((a, b) => (x0 < x1 ? a - b : b - a)); zs.sort((a, b) => b - a);
+    }
+    const pieces: THREE.BufferGeometry[] = [];
+    for (let k = 0; k + 1 < zs.length; k++) for (let i = 0; i + 1 < xs.length; i++) {
+      const zf = zs[k], zr = zs[k + 1], xa = xs[i], xb = xs[i + 1];
+      const inWell = !!TW && (zf + zr) / 2 < TW.z0 && (zf + zr) / 2 > TW.z1 && Math.abs((xa + xb) / 2) < TW.halfW;
+      const yf = inWell ? Math.min(yAt(zf), TW!.y) : yAt(zf), yr = inWell ? Math.min(yAt(zr), TW!.y) : yAt(zr);
+      pieces.push(slab(
+        [xa, floor, zf], [xb, floor, zf], [xb, floor, zr], [xa, floor, zr],
+        [xa, yf, zf], [xb, yf, zf], [xb, yr, zr], [xa, yr, zr]));
+    }
+    // one part, as the unsplit slab was (the anatomy's body roof reads its parts by size)
+    P.add('hull', pieces.length === 1 ? pieces[0] : KIT.mergeAll(pieces));
+  };
   // §B4 SHOE-ENVELOPE opt-ins (2026-08-06 blind-spot round, defaults undefined
   // -> byte-identical for every caller not passing them):
   //   capZ0/capY  — the full-depth slab piece ABUTTING the window from the
@@ -1391,9 +1423,7 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
           const [zF, yF] = deck[i], [zR, yR] = deck[i + 1];
           const winLo = SLL?.capZ0 ?? SLL?.z0 ?? 0;
           if (!SLL || Math.min(zF, zR) >= SLL.z1 || Math.max(zF, zR) <= winLo) {
-            P.add('hull', slab(
-              [-hw, H.sponsonY, zF], [hw, H.sponsonY, zF], [hw, H.sponsonY, zR], [-hw, H.sponsonY, zR],
-              [-hw, yF, zF], [hw, yF, zF], [hw, yR, zR], [-hw, yR, zR]));
+            deckSlab(-hw, hw, H.sponsonY, zF, zR, yF, yR);
             return;
           }
           // split this segment at the lift window (deck runs front->rear: zF > zR)
@@ -1411,21 +1441,15 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
                 const inWin = mid <= SLL.z1 && mid >= SLL.z0;
                 const inCap = !inWin && SLL.capZ0 != null && mid < SLL.z0 && mid >= SLL.capZ0;
                 if (!inWin && !inCap) {
-                  P.add('hull', slab(
-                    [-hw, H.sponsonY, za], [hw, H.sponsonY, za], [hw, H.sponsonY, zb], [-hw, H.sponsonY, zb],
-                    [-hw, ya, za], [hw, ya, za], [hw, yb, zb], [-hw, yb, zb]));
+                  deckSlab(-hw, hw, H.sponsonY, za, zb, ya, yb);
                 } else {
                   const inCrest = SLL.crestZ0 != null && SLL.crestZ1 != null
                     && mid <= SLL.crestZ1 && mid >= SLL.crestZ0;
                   const lift = inCap ? (SLL.capY ?? SLL.y)
                     : inCrest ? (SLL.crestY ?? SLL.y) : SLL.y;
-                  P.add('hull', slab(                                                    // centre: full-depth to the sponson floor
-                    [-SLL.x0, H.sponsonY, za], [SLL.x0, H.sponsonY, za], [SLL.x0, H.sponsonY, zb], [-SLL.x0, H.sponsonY, zb],
-                    [-SLL.x0, ya, za], [SLL.x0, ya, za], [SLL.x0, yb, zb], [-SLL.x0, yb, zb]));
+                  deckSlab(-SLL.x0, SLL.x0, H.sponsonY, za, zb, ya, yb);                // centre: full-depth to the sponson floor
                   for (const s of [-1, 1] as const) {                                              // outboard: lifted over the wrap crest
-                    P.add('hull', slab(
-                      [s * SLL.x0, lift, za], [s * hw, lift, za], [s * hw, lift, zb], [s * SLL.x0, lift, zb],
-                      [s * SLL.x0, ya, za], [s * hw, ya, za], [s * hw, yb, zb], [s * SLL.x0, yb, zb]));
+                    deckSlab(s * SLL.x0, s * hw, lift, za, zb, ya, yb);
                   }
                 }
               };
@@ -1850,8 +1874,14 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
         }
         }
         const rx = hw - 0.40;
-        P.add('hullDark', box(0.38, 0.014, 1.0), s * rx, fy + 0.008, fz + 0.55);
-        for (let k = 0; k < 5; k++) P.add('hullDetail', box(0.32, 0.012, 0.06), s * rx, fy + 0.013, fz + 0.18 + k * 0.18);
+        // (H.radiatorWellLength, release 240: shorter from the front, so the well's fore end stays out of the turret's
+        // sweep; without it the 1.0 m well, as before)
+        const rwLen = H.radiatorWellLength ?? 1.0;
+        P.add('hullDark', box(0.38, 0.014, rwLen), s * rx, fy + 0.008, rwLen === 1.0 ? fz + 0.55 : fz + 0.05 + rwLen / 2);
+        for (let k = 0; k < 5; k++) {
+          if (fz + 0.21 + k * 0.18 > fz + 0.05 + rwLen + 1e-9) break;                   // the slats inside the well
+          P.add('hullDetail', box(0.32, 0.012, 0.06), s * rx, fy + 0.013, fz + 0.18 + k * 0.18);
+        }
         for (const zc of [fz + 1.6, fz + 2.2]) {
           P.add('hullDetail', cylY(0.09, 0.09, 0.016, 12), s * rx, deckYAt(deck, zc) + 0.008, zc);
         }
@@ -3092,7 +3122,11 @@ function buildLeo2A6(P: TankBuilderPort) {
       // pin caps at 1.63 exactly); the narrower tub then puts the belly
       // floor at +-0.95 like the ref.
       bodyHW: 1.58, sponsonY: 1.30, trackW: 0.61, xc: 1.3075,
-      deck: [[2.05, 1.67], [-0.10, 1.67], [-0.24, 1.60], [-0.68, 1.60], [-0.95, 1.71], [-1.32, 1.79], [-2.45, 1.815], [-3.10, 1.825], [-3.60, 1.825]],
+      // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the engine deck climbs aft inside the
+      // reach of the turret's low front corners (1.86 m off the ring's axis, 3 cm over its deck), so a traverse ran
+      // them into it; the climb starts 8 cm later and a well under the turret's sweep holds the ring's level.
+      deck: [[2.05, 1.67], [-0.10, 1.67], [-0.24, 1.60], [-0.68, 1.60], [-1.03, 1.71], [-1.40, 1.79], [-2.45, 1.815], [-3.10, 1.825], [-3.60, 1.825]],
+      turretWell: { halfW: 1.36, z0: -0.90, z1: -1.78, y: 1.67 },
       // glacis re-read off the fresh probe: crease at 2.05, line falling 1.60
       // @2.35 -> 1.37 @3.13 (the old line rode +0.03..+0.06 over the whole run)
       glacis: [[2.05, 1.67], [2.35, 1.60], [2.64, 1.575], [3.13, 1.37], [3.60, 1.21]],
@@ -3201,7 +3235,7 @@ function buildLeo2A6(P: TankBuilderPort) {
       // glacis and rear-sponson seams; no hull, skirt, mudguard, suspension or
       // wheel geometry is removed.
       idler: { z: 3.44, y: 0.98, r: 0.22 }, sprocket: { z: -3.14, y: 1.01, r: 0.26 },
-      topY: 0.95, fans: { z: -2.55, x: 0.78, r: 0.38 },
+      topY: 0.95, fans: { z: -2.55, x: 0.78, r: 0.38 }, radiatorWellLength: 0.72,
       // tub undercut: ref belly rises from 0.44 over the sprocket bay
       tubZrear: -3.0, tubRearY: 0.80, tubWedgeEnd: -3.58,
       // jack block hoisted into the strap band: at the default yBot+0.08 it
@@ -3784,6 +3818,11 @@ function buildLeo2A6(P: TankBuilderPort) {
         { height: -0.12, inset: 0.90 },
         { height: 0.055, inset: 1.00 },
       ],
+      // (release 240: the pan ends under the aft walls, which sit on the engine deck's rise; its tail ran 2.4 m aft, buried
+      // in that rise at rest and out through it as the turret turned)
+      underbodyPlan: [
+        [-0.46, 1.58], [0.46, 1.58], [1.22, 0.92], [1.39, 0.42], [1.33, -1.48], [-1.33, -1.48], [-1.39, 0.42], [-1.22, 0.92],
+      ],
       seatRing: { r0: 1.08, r1: 1.12, h: 0.16, y: -0.045, z: -0.30 },
       // r9 contiguity: clamp the spaced-armor shadow wall's outboard reach —
       // its 0.97*crest fin (x to 1.397 L) stood proud of the 1.38 wall face
@@ -3803,7 +3842,7 @@ function buildLeo2A6(P: TankBuilderPort) {
         { x: 1.06, z0: -1.50, z1: -0.90, top: 0.835, xt: 0.88, vT: 0.735, y0: 0.30 }, // aft roof rise 2.60 (ref side 2.59-2.62 over -0.9..-1.2w)
         { x: 1.29, z0: -2.06, z1: -1.52, top: 0.62, y0: 0.07 }, // aft step walls (ref -1.71w; underside 1.84)
         { x: 0.98, z0: -1.77, z1: -1.54, top: 0.82, xt: 0.86, vT: 0.64, y0: 0.30 }, // aft roof V 2.59 (ends -1.42w: ref falls to 2.53 by -1.49)
-        { x: 1.10, z0: -2.43, z1: -2.06, top: 0.62, y0: 0.07 }, // bustle neck walls (underside 1.84)
+        { x: 1.10, z0: -2.43, z1: -2.06, top: 0.62, y0: 0.10 }, // bustle neck walls (underside 1.87; release 240: over the fans' rims, was 1.84)
         { x: 0.94, z0: -2.38, z1: -1.77, top: 0.76, xt: 0.86, vT: 0.64, y0: 0.30 }, // neck roof 2.53 carried fwd to -1.42w (ref 2.534@-1.49, 2.503@-1.73)
       ],
       // rack raised to the ref's stowed-load line (side band 1.83..2.41 over
@@ -3814,7 +3853,8 @@ function buildLeo2A6(P: TankBuilderPort) {
       // wedgeTurretV3) — with the r2 half-pitch densification layer deleted
       // below, the bustle rear reads solid backing + 2 dark panels, not a
       // cell lattice.
-      rack: { x: 1.03, z0: -2.43, z1: -3.02, top: 0.535, bot: 0.105, slats: true, cargo: false, wall: true },
+      // (release 240: the rack's bottom rails ride 1.5 cm higher, over the engine-deck fans' rims they stood in at rest)
+      rack: { x: 1.03, z0: -2.43, z1: -3.02, top: 0.535, bot: 0.12, slats: true, cargo: false, wall: true },
       // plan nose: ref fore reads 3.08w to |x| 0.26 (point0 widened: the
       // 0.32 plan col wants 3.084), 2.31 @1.26, holds 2.28 to 1.33, then
       // RAKES hard: 2.02w at the 1.42 col (the old [1.44,1.56] tip put the
@@ -3846,10 +3886,13 @@ function buildLeo2A6(P: TankBuilderPort) {
       // 1.481+ subcolumn where the ref has nothing — the ONLY-PROC 1.541
       // plan column; z1 1.70/1.92: the 1.36-1.42 plan columns' fronts are
       // the PAD noses — ref right 2.017, left 2.26, over the raked apex)
+      // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the pads' noses reach 2.24-2.40 m off
+      // the ring's axis at 1.73-1.79, and the engine deck within that reach stands 1.79-1.83 (its plates, the radiator
+      // wells), so the traverse ran them through it; their feet stand at 1.84 over it (bottoms 11 / 5 cm higher).
       tipPads: [
-        { s: 1, x: 1.462, x0: 1.32, z0: 0.31, z1: 1.70, y0: -0.04, y1: 0.06, yaw: 0 },
-        { s: -1, x: 1.53, x0: 1.44, z0: 0.29, z1: 1.51, y0: 0.02, y1: 0.26, yaw: 0 },
-        { s: -1, x: 1.44, x0: 1.32, z0: 0.29, z1: 1.92, y0: 0.02, y1: 0.26, yaw: 0 },
+        { s: 1, x: 1.462, x0: 1.32, z0: 0.31, z1: 1.70, y0: 0.07, y1: 0.15, yaw: 0 },
+        { s: -1, x: 1.53, x0: 1.44, z0: 0.29, z1: 1.51, y0: 0.07, y1: 0.26, yaw: 0 },
+        { s: -1, x: 1.44, x0: 1.32, z0: 0.29, z1: 1.92, y0: 0.07, y1: 0.26, yaw: 0 },
       ],
       // side armor bands (fresh frame): left rear -1.37w / fore 2.17w; right
       // rear -1.40w / fore 2.10w (ref plan col 1.42 ends -1.398 — the old
@@ -3907,9 +3950,12 @@ function buildLeo2A6(P: TankBuilderPort) {
       // commander (x 0.62, z -0.55) on the RIGHT roof slope (0.0793)
       const cyR = 0.735 + (0.62 - 0.10) * 0.0793;
       P.add('turretDetail', KIT.cylY(0.30, 0.30, 0.014, ringSeg), 0.62, cyR + 0.009, -0.55, 0, 0, 0.079);
-      P.add('turretDark', KIT.cylY(0.257, 0.257, 0.006, ringSeg), 0.62, cyR + 0.014, -0.55, 0, 0, 0.079);
+      // 2026-10-22 (polish lane, the "dark hatch ring"): the dark disc between the pale race and the pale ring was a 3.5 cm
+      // band round a dark lid, read as a groove round an unpainted lid. It is a 1.5 cm seam now (the two-tone rule
+      // holds), and the lid takes the hatch's camouflage paint as every hatch lid does.
+      P.add('turretDark', KIT.cylY(0.2375, 0.2375, 0.006, ringSeg), 0.62, cyR + 0.014, -0.55, 0, 0, 0.079);
       P.add('turretDetail', KIT.cylY(0.222, 0.222, 0.005, ringSeg), 0.62, cyR + 0.0185, -0.55, 0, 0, 0.079);
-      P.add('turretDark', KIT.cylY(0.155, 0.155, 0.010, P.q ? 24 : 16), 0.62, 0.806, -0.55);
+      P.add('turretHatch', KIT.cylY(0.155, 0.155, 0.010, P.q ? 24 : 16), 0.62, 0.806, -0.55);
       // 2026-10-21 (sealed ledger work order, "a real slit about 1 cm tall along the turret roof line"): the shared
       // hatch drum here is a 2 cm band (0.78..0.80) whose wall faced inward and showed between the disc stack
       // (0.797) and the dark lid (0.801). A collar just outside the drum, plan-interior to the 0.222 disc, carries
@@ -4117,8 +4163,9 @@ function buildLeo2A6(P: TankBuilderPort) {
       [0.0, 0.35, -2.62, 0.64, 0.365, 0.34],
       [0.03, 0.33, -2.90, 0.56, 0.33, 0.30],
     ]);
-    KIT.jerryCan(P, 'turretCloth', -0.235, 0.302, -2.49, 0.12);
-    KIT.ammoCan(P, 'turretDark', 0.26, 0.295, -2.485, -0.1);
+    // (release 240: the cans stood 2-3 cm into the engine-deck fans' rims under the basket; they ride 4 cm higher)
+    KIT.jerryCan(P, 'turretCloth', -0.235, 0.342, -2.49, 0.12);
+    KIT.ammoCan(P, 'turretDark', 0.26, 0.335, -2.485, -0.1);
     KIT.tarpRoll(P, 'turretCloth', 0, 0.44, -2.78, 0.62, 0.082, true, P.q ? 12 : 8);
     // r7 #2 TURRET REAR WALL: the certified turretCloth backing below IS the
     // solid wall (its bin-green read was r6-sampled at the ref wall family);
@@ -4220,7 +4267,7 @@ function buildLeo2A6(P: TankBuilderPort) {
     // ref rack bbox x -1.108..+1.158, rear -2.696 — the -1.144 plan column
     // reads the rack rear, and a 1.03-only left rail left it flapping
     // between -1.77 and -2.65 with the grid registration)
-    for (const y of [0.535, 0.105]) {
+    for (const y of [0.535, 0.12]) {
       P.add('turretDetail', box(0.045, 0.045, 0.60), 1.165, y, -2.73);
       P.add('turretDetail', box(0.14, 0.045, 0.045), 1.10, y, -2.99);
       P.add('turretDetail', box(0.045, 0.045, 0.60), -1.0875, y, -2.73);
@@ -4544,7 +4591,11 @@ export function buildLeo2A5(builder: object) {
       // deck staircase re-laid to the fresh 96-col trace (1.684 mid, the
       // −1.95..−2.29 dip at 1.768, 1.825 aft — the old flat-1.84 aft band and
       // the 1.81 upstand lip rode 0.06-0.13 over ~25 side columns)
-      deck: [[2.42, 1.665], [1.95, 1.685], [-1.02, 1.70], [-1.16, 1.765], [-1.68, 1.795], [-1.90, 1.77], [-2.32, 1.77], [-2.51, 1.825], [-3.34, 1.825]],
+      // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the engine deck climbs aft inside the
+      // reach of the turret's low front corners (2.02 m off the ring's axis, 3 cm over its deck), so a traverse ran
+      // them into it; the climb starts 17 cm later and a well under the turret's sweep holds the ring's level.
+      deck: [[2.42, 1.665], [1.95, 1.685], [-1.02, 1.70], [-1.19, 1.705], [-1.33, 1.765], [-1.68, 1.795], [-1.90, 1.77], [-2.32, 1.77], [-2.51, 1.825], [-3.34, 1.825]],
+      turretWell: { halfW: 1.36, z0: -1.15, z1: -1.80, y: 1.70 },
       glacis: [[2.42, 1.665], [2.66, 1.56], [2.95, 1.475], [3.62, 1.425], [3.88, 1.25]],
       // r4 TRACK-CONTAINMENT (owner law §B4, front 534 / rear 140 exact-voxels):
       // the idler wrap (crest 1.45 @ z 3.48) ran THROUGH the full-width glacis
@@ -4606,7 +4657,7 @@ export function buildLeo2A5(builder: object) {
       // and the resize warped the FRONT idler-wrap arc 0.11 below the ref bow
       // line (px-level bisect). Rear bottoms stay the certified baseline.
       idler: { z: 3.48, y: 1.11, r: 0.25 }, sprocket: { z: -3.19, y: 1.09, r: 0.295 },
-      topY: 0.97, fans: { z: -2.70, x: 0.78, r: 0.38 },
+      topY: 0.97, fans: { z: -2.70, x: 0.78, r: 0.38 }, radiatorWellLength: 0.88,
       // VISUAL r1: wider dark tire ring on the wheel faces (a6 r3 #1 wheel law); the tire/rim ring layers
       // left with the nation wheel standard (owner 2026-09-22: the Leopard 2A6 X paired dish draws this hull's wheel)
       dishR: 0.78,
@@ -5006,7 +5057,9 @@ export function buildLeo2A5(builder: object) {
     // 1466 vs 909): camo cover plates mute the radiator-well slat stacks
     // (the well slats already top fy+0.019, so the 1.8445 cover tops are
     // row-free); the fan recesses shrink+lighten via the fanWell branch.
-    for (const s2 of [-1, 1]) P.add('hull', box(0.40, 0.005, 1.02), s2 * 1.238, 1.842, -2.15);
+    // (release 240: the covers and the well under them start 12 cm further aft, outside the sweep of the turret's front lip,
+    // 2.15 m off the ring's axis at 1.81, which ran over their fore ends with the turret turned aft)
+    for (const s2 of [-1, 1]) P.add('hull', box(0.40, 0.005, 0.89), s2 * 1.238, 1.842, -2.215);
     P.decal('hull', 'number', 'Y-508', 0.26, [0.62, 1.35, -3.50], Math.PI, 0);
 
     // turret: pivot (0,1.78,0.30); roof 2.54 (h 0.76); measured wedge tables.
@@ -7112,7 +7165,7 @@ export function buildLeo2A4(builder: object) {
       P.add('hullDark', box(0.084, 0.012, 0.014), -0.70, 1.612, 2.586, 0.40, 0, 0);
     }, { reachM: 0.10 });
     // stepped-deck course seams (real deck-course panel joints, mask-interior)
-    P.add('hullDark', box(2.00, 0.005, 0.022), 0, 1.703, -1.00);
+    P.add('hullDark', box(2.00, 0.005, 0.022), 0, 1.5915, -1.00);                // release 240: was 113 mm over the 1.59 deck, in the turret's underside
     P.add('hullDark', box(2.00, 0.005, 0.022), 0, 1.6015, -2.40);                // 2026-10-19 (owner float sweep): was 90 mm over the 1.60 deck
     P.decal('hull', 'number', '414', 0.26, [0.62, 1.22, -3.79], Math.PI, 0);
 
@@ -7557,7 +7610,12 @@ function buildLeo2A7V(P: TankBuilderPort) {
   const buildLeo2A7VMarkingsStage1 = (): void => {
     leoHullV3(P, {
       bodyHW: 1.76, sponsonY: 1.24, trackW: 0.66, xc: 1.53,
-      deck: [[2.05, 1.60], [0.5, 1.62], [-1.0, 1.68], [-2.6, 1.69], [-3.40, 1.69], [-3.78, 1.69]],
+      // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the deck rose 6 cm from the ring aft
+      // under the turret's lower body, whose rear corners reach 2.38 m off the ring's axis 3 cm over the ring's deck, so
+      // a traverse ran them through it; it holds the ring's level out to that reach and steps up to the engine deck
+      // ahead of the fans (their discs lie on the engine deck's level).
+      deck: [[2.05, 1.60], [0.5, 1.62], [-2.10, 1.628], [-2.21, 1.69], [-2.6, 1.69], [-3.40, 1.69], [-3.78, 1.69]],
+      radiatorWellLength: 0.38,                                                  // the wells on the engine deck, behind its step
       // blunter, taller A7V prow (the frontal appliqué module identity) —
       // still ONE raked surface per segment (§B1).
       glacis: [[2.05, 1.60], [2.45, 1.50], [2.95, 1.44], [3.55, 1.40], [3.86, 1.26]],
@@ -7658,13 +7716,16 @@ function buildLeo2A7V(P: TankBuilderPort) {
     P.mats.rubber.color.setHex(0x33352b);
     // rear APU/cooling housings on the deck shoulders — §B3 bin grammar
     // (louvre ribs + lid seam + latches + intake mesh, never bare cuboids).
+    // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the housings' fronts stood 3-9 cm inside the
+    // turret's reach (the bustle rack's corners, r 3.54 off the ring's axis on the Improved's narrowed hull), so its
+    // traverse ran the rack through them; they start 5 cm aft of it now (front -3.08, the pedestal -3.09; same rear faces).
     for (const s of [-1, 1] as const) {
-      P.add('hull', box(0.34, 0.22, 0.74), s * 1.37, 2.03, -3.32);               // housing (top 2.14)
-      P.add('hull', box(0.28, 0.26, 0.60), s * 1.37, 1.81, -3.32);               // buried deck pedestal / cooling trunk
+      P.add('hull', box(0.34, 0.22, 0.61), s * 1.37, 2.03, -3.385);              // housing (top 2.14)
+      P.add('hull', box(0.28, 0.26, 0.53), s * 1.37, 1.81, -3.355);              // buried deck pedestal / cooling trunk
       for (let k = 0; k < 4; k++) {
-        P.add('hullDetail', box(0.28, 0.007, 0.055), s * 1.37, 2.143, -3.10 - k * 0.15); // louvre ribs
+        P.add('hullDetail', box(0.28, 0.007, 0.055), s * 1.37, 2.143, -3.13 - k * 0.15); // louvre ribs
       }
-      P.add('hullDark', box(0.30, 0.004, 0.010), s * 1.37, 2.142, -3.02);        // lid seam
+      P.add('hullDark', box(0.30, 0.004, 0.010), s * 1.37, 2.142, -3.092);       // lid seam
       P.add('hullDetail', box(0.014, 0.05, 0.06), s * 1.548, 2.06, -3.18);       // latch A
       P.add('hullDetail', box(0.014, 0.05, 0.06), s * 1.548, 2.06, -3.46);       // latch B
       P.add('hullDark', box(0.26, 0.16, 0.014), s * 1.37, 2.03, -3.697);         // rear intake mesh
@@ -8147,8 +8208,11 @@ function buildLeo2Proto(P: TankBuilderPort) {
   {
     const tc = FITTINGS.towCable({ mats: P.mats, pts: [[1.30, 1.675, -3.30], [1.34, 1.672, -1.60], [1.30, 1.675, 0.30]], r: 0.020, seed: 11 });
     P.hullG.add(tc);
-    P.add('hullDetail', box(0.62, 0.13, 0.24), -1.34, 1.745, -1.15);           // left sponson tool box
-    P.add('hullDark', box(0.62, 0.016, 0.02), -1.34, 1.788, -1.05);            // lid seam
+    // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the PT turret is one flat-bottomed loft, its
+    // bustle 3.5 cm over the deck out to 2.98 m off the ring's axis, and the box stood 11 cm tall half under it, so the
+    // turret's traverse ran through it; it rides the sponson aft of that sweep (3.08 m off the axis), clear of the fan.
+    P.add('hullDetail', box(0.56, 0.115, 0.24), -1.45, 1.7375, -2.42);         // left sponson tool box (under the rack's 1.81)
+    P.add('hullDark', box(0.56, 0.016, 0.02), -1.45, 1.773, -2.32);            // lid seam
   }
   P.mats.rubber.color.setHex(0x33352b);
   // §SRCFIX-0808 UNDER-NOSE BELLY CLOSURE (§5.18 procedure, a4 twin): the
@@ -8184,8 +8248,11 @@ function buildLeo2Proto(P: TankBuilderPort) {
   // Release 230 (the coordinator's ruling for the RWS clearance lane): the roof's OWS mount ring is a real well, as the
   // source shows. The FLW 200 sits in it (its M2's foot 0.19 m under the roof), so the receiver, which at full elevation
   // swung 16 cm through the roof, now sweeps within the well: 0.31 m to its corners, its floor under the gun's foot.
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the shell's foot sat 3.8 cm over the 1.70
+  // deck, so its bustle, out to 2.98 m off the ring's axis, ran through the rear fans' rims (1.744) as it traversed; it
+  // stands 5.3 cm over it.
   P.add('turret', recessClosedTurret(roofWell(polyMultiLoft(PT_PLAN, [
-    { height: 0.015, inset: 1.00 },
+    { height: 0.03, inset: 1.00 },
     { height: 0.40, inset: 0.995 },
     { height: 0.65, inset: 0.92 },
   ]), { cx: 0.02, cz: -1.58, radius: 0.31, segments: 24, floorY: 0.462, roofY: 0.65 }), { halfWidthM: .43, backZM: .68 }));
@@ -8425,8 +8492,10 @@ function buildLeo2RevolutionPrototype(P: TankBuilderPort) {
     deckBand(1.585, -0.95, -0.52);                                               // aft band (ref 1.578-1.592)
     deckBand(1.600, -1.18, -0.95);                                               // aft band 2 (ref 1.595-1.602)
     deckBand(1.655, -1.45, -1.18);                                               // engine riser 1 (ref 1.643-1.664)
-    deckBand(1.672, -1.78, -1.45);                                               // engine riser 2 (ref 1.667-1.674)
-    deckBand(1.694, -2.28, -1.78);                                               // engine flat (ref 1.694)
+    // (release 240: riser 2 runs 5 cm further aft, so the engine flat starts outside the turret's low rear corners, 2.26 m
+    // off the ring's axis at 1.68, which its front edge met as the turret traversed)
+    deckBand(1.672, -1.83, -1.45);                                               // engine riser 2 (ref 1.667-1.674)
+    deckBand(1.694, -2.28, -1.83);                                               // engine flat (ref 1.694)
     deckBand(1.701, -2.90, -2.28);                                               // tail flat, meets the 1.71 tail box (ref 1.701)
     deckBand(1.540, 1.32, 2.10);                                                 // bow deck (ref 1.527-1.568)
     deckBand(1.500, 2.10, 2.32);                                                 // bow step (ref 1.489-1.506)
@@ -13458,7 +13527,11 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
       bodyHW: 1.58, sponsonY: 1.30, trackW: 0.635, xc: 1.31,
       // family 2A6 deck cadence (same base hull as the resident — print
       // stations corroborate within a column); rear run holds 1.82.
+      // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the engine deck climbs aft inside the
+      // reach of the turret's low front corners (1.86 m off the ring's axis, 3 cm over its deck), so a traverse ran
+      // them into it; a well under the turret's sweep holds the ring's level.
       deck: [[2.05, 1.67], [-0.10, 1.67], [-0.24, 1.60], [-0.68, 1.60], [-0.95, 1.71], [-1.32, 1.79], [-2.45, 1.815], [-3.10, 1.82], [-3.60, 1.82]],
+      turretWell: { halfW: 1.36, z0: -0.75, z1: -1.68, y: 1.67 },
       glacis: [[2.05, 1.67], [2.35, 1.60], [2.64, 1.575], [3.13, 1.37], [3.60, 1.21]],
       glacisLaneCut: { x: 0.90, z0: 3.13 },
       // Match the base A6 containment shelf: the M-package retains the same
@@ -13491,7 +13564,7 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
       // its wrap far edge ~3.98 is the hullLengthM bow anchor.
       wheelR: 0.36, wheelY: 0.39, span: [2.53, -2.29],
       sprocket: { z: -3.11, y: 1.00, r: 0.26 }, idler: { z: 3.60, y: 0.98, r: 0.22 },
-      topY: 0.95, fans: { z: -2.55, x: 0.78, r: 0.38 },
+      topY: 0.95, fans: { z: -2.55, x: 0.78, r: 0.38 }, radiatorWellLength: 0.72,
       dishR: 0.78, splashArms: false,
     });
     addLeopardClosedShoulderMudguards(P, 'a6');
@@ -13618,11 +13691,15 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     }
     // ---- German fender grammar: bins, width rods, Bosch horn, pioneer kit.
     for (const s of [-1, 1] as const) {
-      for (const [bz, bl] of [[1.05, 1.10], [-1.55, 1.25]]) {
-        P.add('hullDetail', box(0.27, 0.16, bl), s * 1.50, 1.75, bz);           // sponson bins
-        P.add('hullDetail', box(0.29, 0.024, bl + 0.02), s * 1.50, 1.838, bz);  // lid lip
-        P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.632, 1.74, bz + bl * 0.28);
-        P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.632, 1.74, bz - bl * 0.28);
+      for (const [bz, bl] of [[1.05, 1.10], [-1.65, 1.05]]) {                 // (release 240: the rear pair starts 20 cm aft, outside the nose's sweep)
+        // (release 240: the rear pair's lids 1.5 cm lower, under the aft walls' 1.845 as the turret turns over them; the
+        // front pair, inside the sweep of the cheeks' lower edge (1.74), are low lockers under it)
+        const binH = bz > 0 ? 0.05 : 0.145;
+        P.add('hullDetail', box(0.27, binH, bl), s * 1.50, 1.67 + binH / 2, bz);  // sponson bins
+        P.add('hullDetail', box(0.29, 0.024, bl + 0.02), s * 1.50, 1.67 + binH + 0.008, bz); // lid lip
+        const latchH = Math.min(0.05, binH * 0.6), latchY = bz > 0 ? 1.67 + binH * 0.5 : 1.74;
+        P.add('hullDark', box(0.012, latchH, 0.08), s * 1.632, latchY, bz + bl * 0.28);
+        P.add('hullDark', box(0.012, latchH, 0.08), s * 1.632, latchY, bz - bl * 0.28);
       }
       // 2026-10-19 (owner float sweep): the rods stood 112 mm ahead of the 1.31 shelf's 3.30 edge; moved back onto it.
       P.add('hullDetail', cylY(0.008, 0.008, 0.30, 6), s * 1.60, 1.455, 3.29);  // seated width-indicator rods
@@ -13639,9 +13716,12 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     }
     P.add('hullDark', box(0.09, 0.07, 0.11), -1.30, 1.407, 3.30);               // Bosch horn; 2026-10-19 (owner float sweep): was 61 mm up
     P.add('hullDark', xform(cylZ(0.035, 0.02, 10), 0, 0, 0.062), -1.30, 1.407, 3.30);
-    shovelTool(P, -1.28, 1.825, -1.15);
-    P.add('hullWood', box(0.03, 0.022, 0.62), 1.30, 1.822, -1.60);              // axe helve
-    P.add('hullDark', box(0.05, 0.028, 0.15), 1.30, 1.824, -1.36);              // axe head
+    // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the shovel and axe lay on the engine deck's
+    // rise at |x| 1.28-1.30, inside the turret's sweep (its low front corners 1.86 m off the ring's axis, its aft walls
+    // 1.82 over the deck) and over the well now let into it; they ride the fender planks (top 1.665) aft of that reach.
+    shovelTool(P, -1.61, 1.681, -1.25);
+    P.add('hullWood', box(0.03, 0.022, 0.62), 1.61, 1.676, -1.60);              // axe helve
+    P.add('hullDark', box(0.05, 0.028, 0.15), 1.61, 1.679, -1.36);              // axe head
     P.add('hullDark', box(0.028, 0.024, 0.85), -1.36, 1.822, -2.35);            // crowbar
     towCable(P, [[-0.95, 1.62, 2.62], [0, 1.70, 1.95], [0.95, 1.62, 2.62]], 0.026);
     {
@@ -13672,6 +13752,10 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
       underbodyRings: [
         { height: -0.15, inset: 0.90 },
         { height: 0.055, inset: 1.00 },
+      ],
+      // (release 240: the pan ends under the aft walls, as on the A6 hull)
+      underbodyPlan: [
+        [-0.46, 1.58], [0.46, 1.58], [1.22, 0.92], [1.39, 0.42], [1.33, -1.48], [-1.33, -1.48], [-1.39, 0.42], [-1.22, 0.92],
       ],
       seatRing: { r0: 1.08, r1: 1.12, h: 0.18, y: -0.06, z: -0.30 },
       chamferY: 0.42, roofX: 1.02, wallShadowXCap: 1.335,
@@ -13713,8 +13797,10 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
       // Keep the compact right tip support. The two left-side plates at
       // x=-1.53/-1.44 were the exact owner-marked blockers and are retired so
       // the continuous chevron remains the visible armor surface.
+      // (release 240: the pad's foot stands at 1.87, over the sponson bin it sat in at rest and the engine deck's rise its
+      // nose crossed in traverse)
       tipPads: [
-        { s: 1, x: 1.462, x0: 1.32, z0: 0.31, z1: 1.70, y0: -0.04, y1: 0.06, yaw: 0 },
+        { s: 1, x: 1.462, x0: 1.32, z0: 0.31, z1: 1.70, y0: 0.07, y1: 0.15, yaw: 0 },
       ],
       sideMods: [
         { s: 1, x: 1.42, z0: -1.75, z1: 1.55, y0: 0.12, y1: 0.30 },
@@ -14349,10 +14435,14 @@ function wrapMirroredSlab(side: Side, lower: FourPointRing, upper: FourPointRing
 function wrapArmorCheeks(P: TankBuilderPort, options: WrapArmorCheekOptions = {}): void {
   const reach = options.reach || 1.54;
   const crest = options.crest || 0.65;
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the blocks' feet stood 3 cm over the
+  // ring's deck out to 2.2 m off its axis, so the traverse ran them through the fender bins and the engine deck's rise
+  // (1.79-1.85 within that reach); they stand 16 cm higher, over both.
+  const foot = 0.16;
   for (const side of [-1, 1] as const) {
     P.add('turret', wrapMirroredSlab(side, [
-      [0.22, 0.00, 1.94], [reach, 0.04, 1.48],
-      [reach + 0.04, 0.06, 0.54], [0.43, 0.00, 0.92],
+      [0.22, foot, 1.94], [reach, foot + 0.04, 1.48],
+      [reach + 0.04, foot + 0.06, 0.54], [0.43, foot, 0.92],
     ], [
       [0.20, 0.53, 1.78], [reach - 0.18, crest, 1.34],
       [reach - 0.10, crest - 0.04, 0.46], [0.40, 0.56, 0.82],
@@ -14446,7 +14536,11 @@ function buildLeo2A4M(P: TankBuilderPort) {
   const buildLeo2A4MHullStage1 = (): void => {
     leoHullV3(P, {
       bodyHW: 1.58, sponsonY: 1.30, trackW: 0.635, xc: 1.31,
-      deck: [[2.05, 1.67], [-0.10, 1.67], [-0.24, 1.60], [-0.68, 1.60], [-0.95, 1.71], [-1.32, 1.79], [-2.45, 1.815], [-3.10, 1.82], [-3.60, 1.82]],
+      // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the engine deck climbs aft inside the
+      // reach of the turret's low front corners (1.95 m off the ring's axis, 3 cm over its deck), so a traverse ran
+      // them into it; the climb starts 22 cm later and a well under the turret's sweep holds the ring's level.
+      deck: [[2.05, 1.67], [-0.10, 1.67], [-0.24, 1.60], [-0.68, 1.60], [-1.17, 1.71], [-1.54, 1.79], [-2.45, 1.815], [-3.10, 1.82], [-3.60, 1.82]],
+      turretWell: { halfW: 1.36, z0: -0.90, z1: -1.75, y: 1.67 },
       glacis: [[2.05, 1.67], [2.35, 1.60], [2.64, 1.575], [3.13, 1.37], [3.60, 1.21]],
       glacisLaneCut: { x: 0.90, z0: 3.13 },
       sponsonLaneLift: { z0: -3.62, z1: -2.88, x0: 0.90, y: 1.54, capZ0: -3.66, capY: 1.52 },
@@ -14473,7 +14567,7 @@ function buildLeo2A4M(P: TankBuilderPort) {
       // family cadence; idler wrap far edge ~3.98 = the bow dims anchor.
       wheelR: 0.36, wheelY: 0.39, span: [2.53, -2.29],
       sprocket: { z: -3.11, y: 1.00, r: 0.26 }, idler: { z: 3.60, y: 0.98, r: 0.22 },
-      topY: 0.95, fans: { z: -2.55, x: 0.78, r: 0.38 },
+      topY: 0.95, fans: { z: -2.55, x: 0.78, r: 0.38 }, radiatorWellLength: 0.70,
       // §5.345 hull-quality: certified a6-class fan WELLS (raised rim curb
       // over near-black recess + blades — the flat drawn-circle read
       // retired; silhouette-free by construction) + gunmetal jack (the
@@ -14683,11 +14777,12 @@ function buildLeo2A4M(P: TankBuilderPort) {
     }
     // ---- German fender grammar + pioneer kit
     for (const s of [-1, 1] as const) {
+      // (release 240: 4 cm outboard, clear of the turret's front lower body as it turns over them)
       for (const [bz, bl] of [[0.95, 1.15], [-1.60, 1.25]]) {
-        P.add('hullDetail', box(0.27, 0.16, bl), s * 1.50, 1.75, bz);
-        P.add('hullDetail', box(0.29, 0.024, bl + 0.02), s * 1.50, 1.838, bz);
-        P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.632, 1.74, bz + bl * 0.28);
-        P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.632, 1.74, bz - bl * 0.28);
+        P.add('hullDetail', box(0.27, 0.16, bl), s * 1.54, 1.75, bz);
+        P.add('hullDetail', box(0.29, 0.024, bl + 0.02), s * 1.54, 1.838, bz);
+        P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.672, 1.74, bz + bl * 0.28);
+        P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.672, 1.74, bz - bl * 0.28);
       }
       // 2026-10-19 (owner float sweep): the width rods stood 336 mm over the fore skirt rail (top 1.3345); seated on it
       // (the 2A6M seat class).
@@ -14930,7 +15025,8 @@ function buildLeo2A4M(P: TankBuilderPort) {
     }
     // full-width slatted bustle rack + strapped kit (the A4's rear basket).
     {
-      const rackZ = -2.70, rackT = 0.60, rackB = 0.06;
+      // (release 240: the bottom rail stood 5 cm into the engine deck's plates at rest; it rides 9 cm higher, over them)
+      const rackZ = -2.70, rackT = 0.60, rackB = 0.15;
       P.add('turretDetail', box(2.30, 0.045, 0.045), 0, rackT, rackZ);
       P.add('turretDetail', box(2.30, 0.045, 0.045), 0, (rackT + rackB) / 2, rackZ); // mid rail
       P.add('turretDetail', box(2.30, 0.045, 0.045), 0, rackB, rackZ);
