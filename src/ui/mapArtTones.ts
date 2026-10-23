@@ -8,7 +8,7 @@
 export const MAP_ART_TONES: Readonly<Record<string, readonly [string, string, string]>> = Object.freeze({
   verdant: ['#a3bed4', '#6c7a71', '#4e5240'],
   desert: ['#a0aeba', '#c6ad88', '#c1a87f'],
-  winter: ['#b2bdc7', '#acb3b5', '#9ea6a9'],
+  winter: ['#b5c8d2', '#b2b9b7', '#a0aaa9'],
   urban: ['#9fbbcf', '#716c62', '#636443'],
   coastal: ['#a1c2db', '#859487', '#6d8563'],
   autumn: ['#9bbdd9', '#949589', '#736539'],
@@ -16,18 +16,18 @@ export const MAP_ART_TONES: Readonly<Record<string, readonly [string, string, st
   railyard: ['#afbfc8', '#6b6b60', '#5f5e3d'],
   frontier: ['#b2c4d2', '#5c6b64', '#555540'],
   fjord: ['#a5c0d3', '#788a89', '#36433b'],
-  delta: ['#a6c4d8', '#607870', '#495e3f'],
+  delta: ['#aac0ce', '#6e7f6f', '#506339'],
   badlands: ['#8c9fb9', '#ad886e', '#b8825a'],
   monsoon: ['#9eafb6', '#626f65', '#4b523a'],
   alpine: ['#9eb0c1', '#a0aebf', '#8ea2bc'],
   caldera: ['#92b0c8', '#606d6a', '#323f37'],
-  foundry: ['#bac2cb', '#555653', '#3e3d36'],
-  ruinspires: ['#96b8d6', '#777e7e', '#5c5b54'],
+  foundry: ['#a9bdce', '#565c61', '#2e3235'],
+  ruinspires: ['#acacad', '#626261', '#3f3d39'],
   blackglass: ['#adbdcb', '#88827b', '#6c5f51'],
   titan_gorge: ['#989dac', '#ac9076', '#b7916b'],
   skybridge: ['#919ba8', '#a37a5e', '#a4744d'],
   polders: ['#aabfcd', '#818674', '#525a36'],
-  copper_mesa: ['#88a0b5', '#9b887b', '#9f8372'],
+  copper_mesa: ['#8a92a6', '#9d826f', '#a1816d'],
   airfield: ['#9bc0db', '#7d877d', '#5c614f'],
   oasis: ['#a6bfd8', '#ae9f85', '#9f8f6d'],
   whiteout: ['#9ea9b1', '#a1abb0', '#a1acb2'],
@@ -36,10 +36,10 @@ export const MAP_ART_TONES: Readonly<Record<string, readonly [string, string, st
   mangrove: ['#b3c9d5', '#708073', '#475839'],
   saltwind: ['#9baeb2', '#6a726e', '#5a584e'],
   reservoir: ['#9ab8ce', '#536763', '#404936'],
-  mars: ['#5e353d', '#b96944', '#b5613d'],
+  mars: ['#633840', '#975d44', '#8b523c'],
   moon: ['#040505', '#1a2024', '#6d7479'],
   cliffbridge: ['#8c8e81', '#9a8c71', '#796e52'],
 });
 
 /** The bands' mean over every battlefield: the gradient before the battlefield is known. */
-export const MAP_ART_TONE_DEFAULT: readonly [string, string, string] = ['#9aacbc', '#818075', '#716c56'];
+export const MAP_ART_TONE_DEFAULT: readonly [string, string, string] = ['#9aacbb', '#807f74', '#6f6a54'];

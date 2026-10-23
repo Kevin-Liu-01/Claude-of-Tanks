@@ -208,9 +208,10 @@ for (const group of ['plate', 'shape', 'button', 'chip', 'type-effect', 'hud', '
 for (const t of tokens.filter((x) => x.tier === 'component' && typeof x.raw === 'string')) {
   assert.doesNotMatch(t.raw, RAMP_REF, `component token --${t.name} reads a colour ramp; read a semantic token`);
 }
-// Hollow display type is the landing's (owner UI rule 5): no fill, the same 1.5 px stroke, the same shadow (which keeps
-// the outline readable over bright media).
-// The landing's span wears the type package's .t-hollow (src/ui/typeFaces.ts) and sets its own shadow (src/presentation/home.css).
+// Hollow display type is the landing's (owner UI rule 5, "love the outline text tho"): no fill, the token's stroke, the
+// token's shadow (which keeps the outline readable over bright media).
+// The Premiere landing (da5395c763): the headline's last line wears the type package's .t-hollow (src/ui/typeFaces.ts);
+// the h1 casts --hollow-shadow and its hollow line sets a 2 px stroke and drops the doubled shadow (src/presentation/home.css).
 const tHollow = /\.t-hollow\{color:transparent;-webkit-text-stroke:var\(--hollow-stroke,([\d.]+px)\)/.exec(read('src/ui/typeFaces.ts'));
 const landingHollow = /\.hero__title \.t-hollow\{--hollow-stroke:([\d.]+px);--hollow-ink:[^;]+;text-shadow:([^;}]+)\}/.exec(read('src/presentation/home.css'));
 assert.ok(tHollow && landingHollow, 'the landing headline keeps its hollow Latin line (.t-hollow) and its shadow');

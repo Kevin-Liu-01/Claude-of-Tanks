@@ -28,7 +28,7 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
 .cot-btn--primary{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-bevel)}
 .cot-btn--primary:hover{background:var(--btn-primary-hover)}
 .cot-btn--primary:active{background:var(--btn-primary-press);transform:translateY(var(--btn-press-drop))}
-.cot-btn--secondary{background:color-mix(in srgb,var(--graphite-950) 56%,transparent);border-color:var(--line-3)}
+.cot-btn--secondary{background:color-mix(in srgb,var(--surface-scene) 56%,transparent);border-color:var(--line-3)}
 .cot-btn--secondary:hover{border-color:var(--accent);color:var(--accent-hi)}
 .cot-btn--sm{--btn-h:var(--btn-h-s);padding:0 14px;gap:8px;font-size:var(--fs-13)}
 .cot-btn--sm .cot-i{width:16px;height:16px}
@@ -44,7 +44,7 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
 .public-skip:focus{transform:none}
 
 /* the bar: static chrome, sticky on every page (the landing floats it over its hero until the page scrolls) */
-.public-nav{position:sticky;top:0;z-index:var(--z-shell);height:var(--shell-nav-h);border-bottom:1px solid var(--line-1);background:color-mix(in srgb,var(--graphite-900) 94%,transparent);
+.public-nav{position:sticky;top:0;z-index:var(--z-shell);height:var(--shell-nav-h);border-bottom:1px solid var(--line-1);background:color-mix(in srgb,var(--surface-nav) 94%,transparent);
   -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
 .public-nav__inner{display:flex;align-items:center;gap:var(--s5);width:min(calc(100% - var(--shell-gutter) * 2),var(--shell-max));height:100%;margin-inline:auto}
 .public-nav__brand{display:inline-flex;align-items:center;gap:var(--s3);color:var(--ink-1);text-decoration:none}

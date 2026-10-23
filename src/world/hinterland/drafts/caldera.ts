@@ -19,6 +19,10 @@ const DRAFT: HinterlandConfig = {
     + '300–600 m high, wooded below and grassy along its level top; the central cones (Naka-dake, active, with its '
     + 'crater; Taka-dake; the jagged Neko-dake; Eboshi-dake; Kishima-dake; the little green Komezuka) across its middle',
   region: 'volcanicCaldera',
+  // (horizons-240: the battlefield's ground carried past the edge lost Caldera's round-2 blind pair, 6/3 for main — "the far
+  // road ends at the dip in a raised boxy ledge", "the road flares into a wide, stepped dark wedge"; Caldera keeps its own
+  // near band and roads until its follow-up wins: the owner's ship-all ruling, a change that lost stays out)
+  nearGround: false,
   landforms: [
     // the somma: one continuous ring round the floor, its centre 2.5 km south of the map's (the battlefield lies on
     // the northern floor): the rim's crest ~6 km out to the north, ~7.9 km east and west and ~11 km south, 620 m over
