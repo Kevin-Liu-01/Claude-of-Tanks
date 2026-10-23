@@ -425,10 +425,64 @@ function mergeRequired(
 // and deck, soot streaked up the sides, and patches of the paint the tank wore surviving low on its flanks.
 const WRECK_OXIDE: readonly [number, number, number] = [0.105, 0.052, 0.028];
 const WRECK_ASH: readonly [number, number, number] = [0.098, 0.094, 0.088];
+// (destruction core, 2026-10-10, wave 350: "orange rust smears painted onto an intact, blocky body", "a large X-shaped
+// streak on the turret face reads like crate bracing") the rust a long-dead hulk wears, muted to the char band's top
+// (the old rust branch reached 0.28 red on one corner in six, and every bright corner lit the triangles round it), and
+// the heat of the fire that killed it: the steel over the fighting compartment and the engine deck burnt to a cold,
+// faintly violet grey, ringed by a straw-bronze temper band, and soot climbing round them and over the deck's edges.
+const WRECK_RUST: readonly [number, number, number] = [0.138, 0.064, 0.032];
+const WRECK_HEAT: readonly [number, number, number] = [0.094, 0.09, 0.1];
+const WRECK_TEMPER: readonly [number, number, number] = [0.104, 0.074, 0.044];
 
-/** A coarse cell value (blotches a cell's size, blended across each triangle by the vertex colours). */
-function wreckCell(px: number, py: number, pz: number, scale: number, salt: number): number {
-  return hash3(Math.round(px * scale) * 0.73 + salt, Math.round(py * scale) * 0.61 - salt * 0.5, Math.round(pz * scale) * 0.79 + salt * 0.25);
+/**
+ * Where a hulk's fire burned, in the bake's root space: the deck's height (the hull plate's top) and the hot spots, as
+ * x, y, z triples (the fighting compartment under the ring, the engine deck behind it). Null when the hierarchy has no
+ * hull plate: the paint then keeps to char, oxide, rust and ash.
+ */
+interface WreckPaintFrame { deckY: number; hot: readonly number[] }
+
+function wreckPaintFrame(root: THREE.Object3D, rootInv: THREE.Matrix4): WreckPaintFrame | null {
+  const box = new THREE.Box3(), part = new THREE.Box3(), toRoot = new THREE.Matrix4();
+  root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh) || object.name !== 'hull' || !object.geometry?.attributes?.position) return;
+    if (!object.geometry.boundingBox) object.geometry.computeBoundingBox();
+    box.union(part.copy(object.geometry.boundingBox!).applyMatrix4(toRoot.multiplyMatrices(rootInv, object.matrixWorld)));
+  });
+  if (box.isEmpty()) return null;
+  const length = box.max.z - box.min.z, cx = (box.min.x + box.max.x) * 0.5, mid = (box.min.z + box.max.z) * 0.5;
+  // forward is +z: the ring a little ahead of the middle, the engine deck over the rear fifth
+  return { deckY: box.max.y, hot: [cx, box.max.y, mid + 0.06 * length, cx, box.max.y, box.min.z + 0.2 * length] };
+}
+
+/** An integer lattice point's value in [0, 1) (a multiply-xorshift hash: a few integer operations, no sine). */
+function latticeValue(x: number, y: number, z: number): number {
+  let h = Math.imul(x, 0x8da6b343) ^ Math.imul(y, 0xd8163841) ^ Math.imul(z, 0xcb1ab31f);
+  h = Math.imul(h ^ (h >>> 13), 0x5bd1e995);
+  h ^= h >>> 15;
+  return (h >>> 0) / 4294967296;
+}
+
+/**
+ * Smooth 3D value noise in [0, 1] (mean 0.5; a quarter of it past 0.6, one in twenty past 0.75): the lattice's values
+ * blended by a smoothstep, so a feature is as large as a lattice cell whatever the triangles under it. (The old fields
+ * were per-corner white noise: on the bake's bisected plates a dark or bright corner lit the eight triangles round it,
+ * and the paint drew the bisection's diagonals.)
+ */
+function valueNoise(x: number, y: number, z: number): number {
+  const xi = Math.floor(x), yi = Math.floor(y), zi = Math.floor(z);
+  const xf = x - xi, yf = y - yi, zf = z - zi;
+  const u = xf * xf * (3 - 2 * xf), v = yf * yf * (3 - 2 * yf), w = zf * zf * (3 - 2 * zf);
+  const a = latticeValue(xi, yi, zi), b = latticeValue(xi + 1, yi, zi), c = latticeValue(xi, yi + 1, zi);
+  const d = latticeValue(xi + 1, yi + 1, zi), e = latticeValue(xi, yi, zi + 1), f = latticeValue(xi + 1, yi, zi + 1);
+  const g = latticeValue(xi, yi + 1, zi + 1), h = latticeValue(xi + 1, yi + 1, zi + 1);
+  const ab = a + (b - a) * u, cd = c + (d - c) * u, ef = e + (f - e) * u, gh = g + (h - g) * u;
+  const near = ab + (cd - ab) * v, far = ef + (gh - ef) * v;
+  return near + (far - near) * w;
+}
+
+function smoothRamp(e0: number, e1: number, x: number): number {
+  const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+  return t * t * (3 - 2 * t);
 }
 
 function wreckVertexColor(
@@ -438,45 +492,63 @@ function wreckVertexColor(
   up: number,
   rustPhase: number,
   remnant: readonly [number, number, number] | null,
+  frame: WreckPaintFrame | null,
   color: [number, number, number],
 ): readonly [number, number, number] {
+  // a hair of panel drift in metre cells (subtle: never a pattern of its own)
   const panel = hash3(
-    Math.round(px * 2.4) * 0.5,
-    Math.round(py * 2.4) * 0.5,
-    Math.round(pz * 2.4) * 0.5,
+    Math.round(px * 0.9) * 0.5,
+    Math.round(py * 0.9) * 0.5,
+    Math.round(pz * 0.9) * 0.5,
   );
-  const grain = hash3(px * 9.1, py * 9.1, pz * 9.1);
-  const rust = hash3(px * 1.7 + rustPhase, py * 1.9, pz * 1.7 - rustPhase);
-  if (rust > 0.80 && up < 0.85) {
-    const level = 0.085 + grain * 0.075;
-    color[0] = level * 1.75;
-    color[1] = level * 0.9;
-    color[2] = level * 0.55;
-    return color;
-  }
-  const level = 0.046 + panel * 0.022 + grain * 0.017 + up * up * 0.020;
+  const mottle = valueNoise(px * 1.15 + rustPhase, py * 1.15, pz * 1.15 - rustPhase);
+  const level = 0.046 + mottle * 0.026 + panel * 0.004 + up * up * 0.020;
   let r = level * 1.05, g = level, b = level * 0.93;
   const mix = (target: readonly [number, number, number], t: number) => {
     r += (target[0] - r) * t; g += (target[1] - g) * t; b += (target[2] - b) * t;
   };
   // heat oxide in broad blotches down the flanks (less on the faces the sky sees)
-  const oxide = wreckCell(px, py, pz, 1.25, rustPhase);
-  if (oxide > 0.52) mix(WRECK_OXIDE, ((oxide - 0.52) / 0.48) * 0.85 * (1 - up * 0.6));
+  const oxide = valueNoise(px * 0.8 - rustPhase * 0.5, py * 0.8 + 3.1, pz * 0.8 + rustPhase * 0.5);
+  if (oxide > 0.42) mix(WRECK_OXIDE, smoothRamp(0.42, 0.75, oxide) * 0.85 * (1 - up * 0.6));
+  // rust blooms where the water stood and ran: coherent patches on the flanks, more of them low down, muted
+  const bloom = valueNoise(px * 1.4 + 7.7 + rustPhase, py * 1.6, pz * 1.4 - rustPhase);
+  if (bloom > 0.56 && up < 0.85) mix(WRECK_RUST, smoothRamp(0.56, 0.74, bloom) * 0.85 * (1 - up) * (py < 1.6 ? 1 : 0.6));
   // the paint it wore, surviving in patches low on the flanks where the fire ran thinnest
   if (remnant && up < 0.55 && py < 1.35) {
-    const keep = wreckCell(px, py, pz, 1.7, rustPhase * 0.37 + 5.1);
+    const keep = valueNoise(px * 1.7 + rustPhase * 0.37 + 5.1, py * 1.7, pz * 1.7);
     const low = py < 0.9 ? 1 : (1.35 - py) / 0.45;
     if (keep > 0.5) mix(remnant, Math.min(1, ((keep - 0.5) / 0.3)) * 0.9 * low);
   }
+  let soot = 0;
+  if (frame) {
+    // the fire's heat: the nearest hot spot (a little flattened: the fire spread along the deck), its rim broken up
+    let d2 = Infinity;
+    for (let i = 0; i < frame.hot.length; i += 3) {
+      const dx = px - frame.hot[i], dy = (py - frame.hot[i + 1]) * 1.3, dz = pz - frame.hot[i + 2];
+      d2 = Math.min(d2, dx * dx + dy * dy + dz * dz);
+    }
+    const d = Math.sqrt(d2) + (valueNoise(px * 2.1 - rustPhase, py * 2.1, pz * 2.1 + 4.4) - 0.5) * 0.6;
+    const heat = 1 - smoothRamp(0.35, 1.7, d);
+    if (heat > 0) {
+      mix(WRECK_TEMPER, heat * (1 - heat) * 4 * 0.4);
+      mix(WRECK_HEAT, heat * heat * 0.8);
+    }
+    // soot: climbing round the hot spots (thinner on the hottest steel, burnt clean), and run over the deck's edges
+    // down the top of the flanks and up the turret's skirt
+    const round = (1 - smoothRamp(0.6, 2.3, d)) * (1 - heat * 0.7);
+    const edge = up < 0.5
+      ? smoothRamp(frame.deckY - 1.0, frame.deckY - 0.05, py) * (1 - 0.5 * smoothRamp(frame.deckY + 0.05, frame.deckY + 0.9, py))
+      : 0;
+    soot = Math.max(round * 0.85, edge * 0.65);
+  }
   // burnt-off paint gone to grey ash on the roof and deck
   if (up > 0.7 && py > 1.2) {
-    const ash = wreckCell(px, py, pz, 2.1, rustPhase * 0.53 + 9.7);
-    if (ash > 0.55) mix(WRECK_ASH, ((ash - 0.55) / 0.45) * 0.55 * (up - 0.7) / 0.3);
+    const ash = valueNoise(px * 1.8 + rustPhase * 0.53 + 9.7, py * 1.8, pz * 1.8);
+    if (ash > 0.5) mix(WRECK_ASH, smoothRamp(0.5, 0.8, ash) * 0.55 * (up - 0.7) / 0.3);
   }
-  // soot streaked up the sides from the hatches and the engine deck
-  if (up < 0.3) {
-    const streak = hash3(Math.round(px * 7) * 0.31 + rustPhase, Math.round(py * 0.9) * 0.29, Math.round(pz * 7) * 0.37);
-    if (streak > 0.72) { const k = 1 - 0.38 * ((streak - 0.72) / 0.28); r *= k; g *= k; b *= k; }
+  if (soot > 0) {
+    const k = 1 - 0.5 * soot * (0.55 + 0.45 * valueNoise(px * 1.3 + 11, py * 1.3, pz * 1.3 - rustPhase));
+    r *= k; g *= k; b *= k;
   }
   color[0] = r;
   color[1] = g;
@@ -502,6 +574,7 @@ function* paintWreckGeometrySteps(
   merged: THREE.BufferGeometry,
   rustPhase: number,
   remnant: readonly [number, number, number] | null = null,
+  frame: WreckPaintFrame | null = null,
 ): Generator<WreckGeometryBuildSlice, void, void> {
   const position = merged.attributes.position;
   const normal = merged.attributes.normal;
@@ -517,6 +590,7 @@ function* paintWreckGeometrySteps(
       Math.max(0, normal.getY(i)),
       rustPhase,
       remnant,
+      frame,
       scratchColor,
     );
     colors[i * 3] = color[0];
@@ -683,6 +757,7 @@ function* buildTankWreckSteps(
     // ring its turret left: staged after the solids and the crumple plan (neither moves), merged into the one mesh; a
     // plain kill's turret still covers its ring, so its hulk keeps the deck as it was
     const ring = opts.pop && opts.ring !== false ? stageWreckRing(visual, root) : null;
+    const paintFrame = wreckPaintFrame(root, rootInv);
     yield { fine: true, stage: 'construct' };
     const collected = yield* collectWreckGeometrySteps(root, rootInv, owner, crumple, ring);
     if (ring) yield* finishWreckRingSteps(ring, collected, owner);
@@ -704,7 +779,7 @@ function* buildTankWreckSteps(
     // RGB is determined by these exact position/normal words. Paint only the
     // first-occurrence representatives, retaining the original corner index.
     const preparedForPaint = yield* compactWreckGeometryForPaintSteps(merged);
-    yield* paintWreckGeometrySteps(merged, rustPhase, remnantLinear(opts.remnant));
+    yield* paintWreckGeometrySteps(merged, rustPhase, remnantLinear(opts.remnant), paintFrame);
     if (!preparedForPaint) yield* compactWreckGeometrySteps(merged);
     const shadowGeo = yield* mergeShadowGeometrySteps(proxyGeos, owner);
     const result = wreckBakeResult(merged, shadowGeo, solids, shellSolids, burntAway, budgetTriDelta);
