@@ -189,12 +189,16 @@ interface TouchNoticePlan {
   bannerTop: number; bannerReady: boolean;
 }
 
-/** A label's cost in a least intrusive place, per px² (the footprint's is 1, a panel's or a control's 10), and a notice
- *  already placed (the countdown, the first of the detection and the alert). */
+/** A label's cost in a least intrusive place, per px² (the footprint's is 1, a panel's or a control's PANEL_WEIGHT), and a
+ *  notice already placed (the countdown, the first of the detection and the alert). */
 const LABEL_WEIGHT = 0.25;
 const PLACED_WEIGHT = 1000;
+/** A panel's or a control's cost per px²: more than a whole notice reaching into the footprint, so a notice covers none
+ *  while any place over the footprint alone remains (the module's rule; at 10, the shorter one-row objective sent the
+ *  detection 2 px onto a consumable at 568x256 rather than a little further into the footprint). */
+const PANEL_WEIGHT = 100;
 /** How much more a notice over a block costs than one in its gap (leastIntrusive), and the most a gap costs: a notice
- *  already placed weighs a hundred times a panel over it, never in its margin (at 568x256 the two notices fit side by
+ *  already placed weighs ten times a panel over it, never in its margin (at 568x256 the two notices fit side by
  *  side only touching, and a margin at its weight sent the second 10 px onto a consumable). */
 const OVER_FACTOR = 3;
 const MARGIN_WEIGHT = 10;
@@ -229,12 +233,12 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
     cleared: true, bannerTop: start, bannerReady: false };
   // (where nothing clears, a notice reaches into the footprint before it covers a panel or a control: the footprint is
   // modelled at full bloom, and the panels are there whole)
-  // (a notice already placed counts a hundred times a panel: the notices never stack on each other while any other place
+  // (a notice already placed counts ten times a panel: the notices never stack on each other while any other place
   // remains, r10g: at 568x256 the gap-wide costs set the detection on the alert)
   const sight = scope ? keep.slice(0, 1) : keep;
   const readouts = scope ? keep.slice(1) : [];
-  const layers = (extra: readonly TouchBox[]) => [[sight, 1], [readouts, READOUT_SCOPE_WEIGHT], [input.obstacles, 10], [input.soft, 10],
-    [map, scope ? MAP_SCOPE_WEIGHT : 10], [labels, LABEL_WEIGHT], [extra, PLACED_WEIGHT]] as const;
+  const layers = (extra: readonly TouchBox[]) => [[sight, 1], [readouts, READOUT_SCOPE_WEIGHT], [input.obstacles, PANEL_WEIGHT],
+    [input.soft, PANEL_WEIGHT], [map, scope ? MAP_SCOPE_WEIGHT : PANEL_WEIGHT], [labels, LABEL_WEIGHT], [extra, PLACED_WEIGHT]] as const;
   // the countdown first, over the crosshair and its rules panel under it (countdownPlace.ts, owner 2026-10-21:
   // "regardless it needs to be in center of screen"): the alert may show with it, the detection never (nothing spots the
   // player before the roll-out)

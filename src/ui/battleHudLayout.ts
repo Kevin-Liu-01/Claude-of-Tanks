@@ -3,7 +3,7 @@ import {
   mouseAlertBox, mouseMedalWaits, planMouseNotices, type MouseNoticeInput, type MouseNoticePlan, type PlanLane, type PlanRect,
 } from './mouseNoticePlan.ts';
 import { addSightFurniture, clearSightFurniture, setSightNotice, settleSightFurniture } from './sightFurniture.ts';
-import { planTouchNotices, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
+import { planTouchNotices, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
 
 /** A resize whose sizes arrive closer than this is still in progress. */
 const RESIZE_SETTLE_MS = 150;
@@ -115,9 +115,6 @@ const touchChipParked = (width: number, height: number) => (width > height && he
  *  the notices from under the score (at 568x290 the panel under the score left them no clear place). Where the column
  *  is too short (568x256) the panel stays under the score. battleHudLayout.css data-objective-seat. */
 const OBJECTIVE_COMPACT_H = 340;
-/** Half the centre column a touch landscape's kill lanes leave the notices (a compact notice and its gaps; the lanes'
- *  CSS width, battleHudLayout.css --hud-message-width, keeps the same 74 px). */
-const TOUCH_CENTRE_HALF = TOUCH_COMPACT_NOTICE.w / 2 + TOUCH_NOTICE_GAP;
 /** The layout variables that place an element on the centre line, written unrounded. */
 const CENTRING_VARS = new Set(['objective-top', 'objective-left', 'systems-left']);
 /** The side seat's gap under the map, and its least width: the parked warning chip's (battleHudLayout.css), one column. */
@@ -738,7 +735,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         }
       }
     }
-    const sideWidth = Math.min(400, width / 2 - (touch && width > height ? TOUCH_CENTRE_HALF : 24));
+    const sideWidth = Math.min(400, width / 2 - 24);
     const chat = !!read('.cot-room-chat:not([hidden])');
     const toastHost = root.querySelector<HTMLElement>('.cot-si-toasthost');
     const toastCount = toastHost?.childElementCount || 0;
@@ -940,7 +937,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       noticeTop = touchPlan.noticeTop;
       alertTop = touchPlan.alertTop;
     }
-    const touchNotices = touchPlan ? ['plan', touchPlan.noticeCompact ? 'notice-compact' : '', touchPlan.alertCompact ? 'alert-compact' : '',
+    const touchNotices = touchPlan ? ['plan', touchPlan.noticeCompact ? 'notice-compact' : '', touchPlan.alertCompact ? 'alert-compact' : '', touchPlan.alertNarrow ? 'alert-narrow' : '',
       touchPlan.cleared ? '' : 'uncleared'].filter(Boolean).join(' ') : '';
     if ((document.body.dataset.touchNotices ?? '') !== touchNotices) {
       if (touchNotices) document.body.dataset.touchNotices = touchNotices;
