@@ -1392,14 +1392,17 @@ function leoHullV3(P: TankBuilderPort, H: LeopardHullV3Config): void {
       for (const z of [TW.z0, TW.z1]) if (z < za && z > zb) zs.push(z);
       xs.sort((a, b) => (x0 < x1 ? a - b : b - a)); zs.sort((a, b) => b - a);
     }
+    const pieces: THREE.BufferGeometry[] = [];
     for (let k = 0; k + 1 < zs.length; k++) for (let i = 0; i + 1 < xs.length; i++) {
       const zf = zs[k], zr = zs[k + 1], xa = xs[i], xb = xs[i + 1];
       const inWell = !!TW && (zf + zr) / 2 < TW.z0 && (zf + zr) / 2 > TW.z1 && Math.abs((xa + xb) / 2) < TW.halfW;
       const yf = inWell ? Math.min(yAt(zf), TW!.y) : yAt(zf), yr = inWell ? Math.min(yAt(zr), TW!.y) : yAt(zr);
-      P.add('hull', slab(
+      pieces.push(slab(
         [xa, floor, zf], [xb, floor, zf], [xb, floor, zr], [xa, floor, zr],
         [xa, yf, zf], [xb, yf, zf], [xb, yr, zr], [xa, yr, zr]));
     }
+    // one part, as the unsplit slab was (the anatomy's body roof reads its parts by size)
+    P.add('hull', pieces.length === 1 ? pieces[0] : KIT.mergeAll(pieces));
   };
   // §B4 SHOE-ENVELOPE opt-ins (2026-08-06 blind-spot round, defaults undefined
   // -> byte-identical for every caller not passing them):
@@ -13688,7 +13691,7 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     }
     // ---- German fender grammar: bins, width rods, Bosch horn, pioneer kit.
     for (const s of [-1, 1] as const) {
-      for (const [bz, bl] of [[1.05, 1.10], [-1.60, 1.15]]) {                 // (release 240: the rear pair starts 10 cm aft, outside the cheeks' sweep)
+      for (const [bz, bl] of [[1.05, 1.10], [-1.65, 1.05]]) {                 // (release 240: the rear pair starts 20 cm aft, outside the nose's sweep)
         // (release 240: the rear pair's lids 1.5 cm lower, under the aft walls' 1.845 as the turret turns over them; the
         // front pair, inside the sweep of the cheeks' lower edge (1.74), are low lockers under it)
         const binH = bz > 0 ? 0.05 : 0.145;
