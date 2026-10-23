@@ -14,8 +14,6 @@ type PlanBox = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>;
 /** The scope flag hud.ts sets on the document element (not on the observed HUD root: a scope toggle relayouts nothing,
  *  unless a queued medal card waits on it). */
 const SCOPED_ATTRIBUTE = 'data-cot-scoped';
-/** A planned x rounded away from the screen's centre line: a place beside the scope's centre-line arm keeps its margin. */
-const outward = (x: number, width: number) => x < width / 2 ? Math.floor(x) : x > width / 2 ? Math.ceil(x) : x;
 
 /** Matches the scoreboard polygon; the objective clears each bottom corner by 8px. */
 export const SCORE_BOTTOM_INSET = 25;
@@ -121,8 +119,7 @@ const OBJECTIVE_COMPACT_H = 340;
  *  CSS width, battleHudLayout.css --hud-message-width, keeps the same 74 px). */
 const TOUCH_CENTRE_HALF = TOUCH_COMPACT_NOTICE.w / 2 + TOUCH_NOTICE_GAP;
 /** The layout variables that place an element on the centre line, written unrounded. */
-const CENTRING_VARS = new Set(['objective-top', 'objective-left', 'systems-left', 'touch-notice-cx', 'touch-alert-cx',
-  'touch-banner-cx', 'touch-countdown-cx']);
+const CENTRING_VARS = new Set(['objective-top', 'objective-left', 'systems-left']);
 /** The side seat's gap under the map, and its least width: the parked warning chip's (battleHudLayout.css), one column. */
 const OBJECTIVE_SEAT_GAP = 4;
 const PARKED_CHIP_W = 106;
@@ -520,17 +517,12 @@ export function installBattleHudLayout(root: HTMLElement): void {
     if (document.body.style.getPropertyValue(name) !== value) document.body.style.setProperty(name, value);
   }
   /** Writes the plan; the countdown, the revive count and the medal card only while they are up (`up`), as the plan
-   *  places those when first read. */
-  function writeMousePlan(plan: MouseNoticePlan, up: { countdown: boolean; revive: boolean; medal: boolean }, width: number,
+   *  places those when first read. Tops, widths and scales only: every element keeps to the window's centre line
+   *  (noticeCentreLine.ts; battleHudLayout.css centres them all). */
+  function writeMousePlan(plan: MouseNoticePlan, up: { countdown: boolean; revive: boolean; medal: boolean },
     medalWaits: boolean, medalFeedWait: boolean) {
-    const { detection, alert } = plan;
-    // (centres and inner edges round away from the centre line, never into a keep-out's margin)
-    setBodyVar('--hud-notice-x', `${outward(detection.x + detection.w / 2, width)}px`);
-    setBodyVar('--hud-alert-x', `${alert.anchor === 'start' ? Math.ceil(alert.x) : alert.anchor === 'end' ? Math.floor(alert.x) : outward(alert.x, width)}px`);
-    setBodyVar('--hud-alert-width', `${Math.floor(alert.w)}px`);
-    setBodyVar('--hud-alert-shift', alert.anchor === 'start' ? '0%' : alert.anchor === 'end' ? '-100%' : '-50%');
+    setBodyVar('--hud-alert-width', `${Math.floor((up.countdown ? plan.countdownAlert : plan.alert).w)}px`);
     const medal = up.medal ? plan.medal : null;
-    if (up.medal) setBodyVar('--hud-banner-x', medal ? `${outward(medal.x + medal.w / 2, width)}px` : '50%');
     // The keep-out each element clears (mouseNoticePlan.ts tiers: 2 everything the reticle draws, 1 the battle sight at
     // full bloom, 0 the resting sight, - none, ? not up; s: it shares a notice's place; w: the medal card waits, f: on a
     // kill row of a lane its place cuts), for the browser receipt.
@@ -542,7 +534,6 @@ export function installBattleHudLayout(root: HTMLElement): void {
       if (!up[name]) continue;
       const place = plan[name];
       setBodyVar(`--hud-${name}-top`, place ? `${Math.round(place.y)}px` : name === 'countdown' ? '22%' : '30%');
-      setBodyVar(`--hud-${name}-x`, place ? `${outward(place.x + place.w / 2, width)}px` : '50%');
       setBodyVar(`--hud-${name}-scale`, place ? String(place.scale) : '1');
     }
     // the countdown's rules panel on the centre line under the sight (its scale from its top centre)
@@ -849,7 +840,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     let leftEnd = leftBottom, rightEnd = Math.min(rightBottom, rightKillFloor);
     let wideLeft = Infinity, wideRight = Infinity;
     if (plan) {
-      const shown = [root.querySelector('.cot-sixth.on') && plan.detection, root.querySelector('.cot-alert.show') && plan.alert,
+      const alertSlot = countdown ? plan.countdownAlert : plan.alert;
+      const shown = [root.querySelector('.cot-sixth.on') && plan.detection, root.querySelector('.cot-alert.show') && alertSlot,
         countdown && plan.countdown, root.querySelector('.cot-revive.on') && plan.revive, medalReady && plan.medal];
       for (const place of shown) {
         if (!place) continue;
@@ -859,7 +851,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         if (rt === rt) rightAnchor = Math.max(rightAnchor, rt);
         if (rb === rb) rightEnd = Math.min(rightEnd, rb);
         if (!expanded) continue;
-        const box = place === plan.alert ? mouseAlertBox(plan.alert) : place;
+        const box = place === alertSlot ? mouseAlertBox(alertSlot) : place;
         if (earLeft && box.y < earLeft.bottom + 8 && box.y + box.h > earLeft.top - 8) wideLeft = Math.min(wideLeft, box.x - 8 - earLeft.left);
         if (earRight && box.y < earRight.bottom + 8 && box.y + box.h > earRight.top - 8) wideRight = Math.min(wideRight, earRight.right - box.x - box.w - 8);
       }
@@ -891,7 +883,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     let noticeTop: number, alertTop: number;
     if (plan) {
       noticeTop = plan.detection.y;
-      alertTop = plan.alert.y;
+      // (an alert raised before the roll-out keeps off the countdown: its own slot then)
+      alertTop = (countdown ? plan.countdownAlert : plan.alert).y;
     } else {
       // Center notices below the score. On narrow screens their horizontal
       // footprint also crosses the team feeds, so clear those occupied lanes.
@@ -1021,10 +1014,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
       'systems-top': systemsTop, 'systems-width': systemsWidth, 'systems-left': systemsLeft,
       'systems-beside-dy': systemsBeside && touchChrome ? touchChrome.top - systemsTop : 0,
       'notice-top': noticeTop, 'alert-top': alertTop,
-      // (the touch plan's own names: the mouse layout's planner writes its own, on its side of the split)
-      'touch-notice-cx': touchPlan?.noticeCx ?? width / 2, 'touch-alert-cx': touchPlan?.alertCx ?? width / 2,
-      'touch-alert-w': touchPlan?.alertW ?? width - 24, 'touch-banner-cx': touchPlan?.bannerCx ?? width / 2,
-      'touch-countdown-cx': touchPlan?.countdownCx ?? width / 2, 'touch-countdown-top': touchPlan?.countdownTop ?? top + 8,
+      // (the touch plan's own names: the mouse layout's planner writes its own, on its side of the split; tops and widths
+      // only, every element on the centre line: noticeCentreLine.ts)
+      'touch-alert-w': touchPlan?.alertW ?? width - 24, 'touch-countdown-top': touchPlan?.countdownTop ?? top + 8,
       'touch-rules-top': touchPlan?.rulesTop ?? height,
       'objective-top': objectivePlace.top, 'objective-bottom': top, 'banner-top': bannerTop, 'tray-shift': trayShift,
       'objective-width': objectivePlace.width, 'objective-left': objectivePlace.left,
@@ -1046,7 +1038,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         if (movesPlanInputs.has(name)) planInputs = true;
       }
     }
-    if (plan) writeMousePlan(plan, { countdown: !!countdown, revive: !!root.querySelector('.cot-revive.on'), medal: !!banner?.childElementCount }, width, medalWaiting, medalFeedWait);
+    if (plan) writeMousePlan(plan, { countdown: !!countdown, revive: !!root.querySelector('.cot-revive.on'), medal: !!banner?.childElementCount }, medalWaiting, medalFeedWait);
     // (the touch countdown's and its rules panel's scales and the top slot's buttons a row, unitless)
     const countdownScale = String(touchPlan?.countdownScale ?? 1);
     if (document.body.style.getPropertyValue('--hud-touch-countdown-scale') !== countdownScale) {

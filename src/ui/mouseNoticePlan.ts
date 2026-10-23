@@ -21,15 +21,17 @@
  * notices' own text, so nothing moves while kills arrive. A place that crosses a side lane carries that lane's band
  * while the element shows (`giveWay`: the lane's rows start below it or end above it); the lanes keep all their rows
  * while nothing is up, and a lane gives up its last row only where every place clear of the reticle crosses it whole
- * (a 768 px wide window). The detection and the alert take the cheapest of
- * - stack: detection over the alert, sharing a centre (main's arrangement, centred where it fits);
- * - flank: detection left of the scope's centre-line arm and the alert right of it, on one line (the band above the
- *   ring is tall enough for one notice but the arm splits it: 1000 to 1366 px wide at 600 to 768 px tall);
- * - split: each at its own place (narrow and short windows).
- * Cheapest is highest (from main's own top), then most central, then widest (fewest alert lines), with the rows a lane
- * yields while the notice shows priced in. The alert keeps main's type size everywhere (9 px only where main's own
- * small-window rule sets it). The countdown is the exception: it sits on the centre line just over the crosshair, its
- * rules panel under it (countdownPlace.ts, owner 2026-10-21: "regardless it needs to be in center of screen"). The revive
+ * (a 768 px wide window). Every element keeps to the window's centre line (noticeCentreLine.ts, owner 2026-10-22 on
+ * live 240, whose flank set the detection 135 px left of the centre and the alert 114 px right of it at 1280 x 720: "they
+ * are nnot actually centered in screen"): a place moves up or down, never sideways. The detection and the alert take
+ * the cheapest of
+ * - stack: detection over the alert (main's arrangement);
+ * - split: each at its own height (the band over the scope's centre-line arm holds one notice: the alert goes under the
+ *   sight, or both clear a reduced keep-out).
+ * Cheapest is highest (from main's own top), then widest (fewest alert lines), with the rows a lane yields while the
+ * notice shows priced in. The alert keeps main's type size everywhere (9 px only where main's own small-window rule sets
+ * it). The countdown sits just over the crosshair, its rules panel under it (countdownPlace.ts, owner 2026-10-21:
+ * "regardless it needs to be in center of screen"). The revive
  * count and the medal card then take one place each, off both notices' places (the revive count scaled down to 60 % where
  * it must, and never on a notice's place: an alert, or a detection lit before the death, can show with it). The medal
  * card is the full card wherever a place for it clears the keep-out (the compact card only where none does), and it
@@ -44,6 +46,7 @@
  */
 
 import { placeCountdown } from './countdownPlace.ts';
+import { noticeCentreX } from './noticeCentreLine.ts';
 
 export interface PlanRect { readonly x: number; readonly y: number; readonly w: number; readonly h: number }
 interface PlanDisc { readonly cx: number; readonly cy: number; readonly r: number }
@@ -81,8 +84,8 @@ export interface MouseNoticeInput {
 /** [left top, left bottom, right top, right bottom]: each side lane's band while the element shows (NaN: its own). */
 type PlanGiveWay = readonly [number, number, number, number];
 interface PlannedNotice { readonly x: number; readonly y: number; readonly w: number; readonly h: number; readonly giveWay: PlanGiveWay }
-/** The alert's slot: `x` is its anchor (centre, left edge or right edge), `w` its max-width, `h` the reserve. */
-interface PlannedAlert extends PlannedNotice { readonly anchor: 'centre' | 'start' | 'end'; readonly small: boolean }
+/** The alert's slot: `x` is its centre (the window's), `w` its max-width, `h` the reserve. */
+interface PlannedAlert extends PlannedNotice { readonly small: boolean }
 /** A box shown at `scale` of its natural size (x, y, w, h: the box as shown), clear of the keep-out at `clearance`;
  *  `sharesNotices`: it covers a notice's place (only where no other place exists). */
 interface PlannedScaled extends PlannedNotice { readonly scale: number; readonly clearance: 2 | 1 | 0; readonly sharesNotices: boolean }
@@ -100,17 +103,19 @@ export interface MouseMedalCompany {
 }
 
 export interface MouseNoticePlan {
-  readonly arrangement: 'stack' | 'flank' | 'split' | 'fallback';
+  readonly arrangement: 'stack' | 'split' | 'fallback';
   /** The keep-out the notices clear: 2 everything the reticle draws, 1 the battle sight at full bloom, 0 the resting
-   *  sight only, -1 none (the fallback: main's own places). */
+   *  sight only, -1 the fallback (the resting sight, reaching least far into the instruments; else main's own places). */
   readonly clearance: 2 | 1 | 0 | -1;
   /** The detection's box. */
   readonly detection: PlannedNotice;
   readonly alert: PlannedAlert;
-  /** null: no place clears even the resting sight, so the card waits (main showed it on the crosshair). These three are
+  /** null: no place clears even the resting sight, so the card waits (main showed it on the crosshair). These four are
    *  placed when first read. */
   readonly medal: PlannedMedal | null;
   readonly countdown: PlannedCountdown | null;
+  /** The alert's slot while the countdown shows (its own, or one off the dial and the rules panel; placed when read). */
+  readonly countdownAlert: PlannedAlert;
   readonly revive: PlannedScaled | null;
 }
 
@@ -506,9 +511,9 @@ export function alertReserve(w: number, small: boolean): number {
 const ALERT_WIDTHS_12 = [520, 409, 334, 260, 234, 180] as const;
 const ALERT_WIDTHS_9 = [340, 200, 159] as const;
 
-// Costs: a px down from main's top costs 1, a px up from it .5, a px sideways 1.5.
-const UP_COST = .5, SHIFT_COST = 1.5;
-const FLANK_COST = 24, SPLIT_COST = 60;
+// Costs: a px down from main's top costs 1, a px up from it .5 (a place never moves sideways: noticeCentreLine.ts).
+const UP_COST = .5;
+const SPLIT_COST = 60;
 /** What a lane yielding to an element costs while it shows: each kill row it gives up (of its rows clear of the battle
  *  sight), each px its rows move down, and the yield itself. The countdown runs before the first kill, while the lanes
  *  are empty (only chat can be up): it pays less. */
@@ -522,8 +527,6 @@ const MEDAL_LANES: LanePrice = { row: 2e6, px: .25, fixed: 40, empty: 6e6 };
 /** The band a lane needs to show one kill row: 26 px, or 62 beside the left lane's damage toasts (they take up to
  *  45 % of it, battleHudLayout.ts) where the lane is that tall at all. */
 const laneRowPx = (side: number, lane: PlanLane) => side === 0 && lane.bottom - lane.top >= 62 ? 62 : 26;
-/** The flank's inner edges sit this far either side of the centre line (the scope arm and its margin). */
-const HUG_PX = MOUSE_RETICLE.armHalfWidthPx + MOUSE_RETICLE_MARGIN_PX;
 /** The search's vertical step; the cheapest place is then refined to the px within a step of it. */
 const Y_STEP = 8;
 /** The countdown and revive count shrink in these steps, each 10 % costing as much as moving 80 px down; 60 % keeps the
@@ -538,20 +541,9 @@ const LAST_SCALE_COSTS = [...SCALE_COSTS, 2400, 3600] as const;
 /** The medal card waits (keeping its time) while anything shown meets its place (mouseMedalWaits), so sharing a notice's
  *  place costs only the wait: the alert's (2.4 s) a little; the detection's (its 8 s lamp; main showed the card at once
  *  just below it) more than any move down the centre line to a place clear of the reticle, so the card waits on the
- *  lamp only where no such place exists. A px sideways costs 4 (main's card is centred: it goes down the centre line
- *  before it goes aside). The full card in any place clear of a keep-out beats the compact card at that keep-out (main's
- *  look wherever the full card fits). */
-const MEDAL_SHARE_ALERT_COST = 60, MEDAL_SHARE_DETECTION_COST = 600, MEDAL_SHARE_BOTH_COST = 630, MEDAL_SHIFT_COST = 4;
-/* Where the card still waits on the lamp (2026-10-20; with these prices, MEDAL_LANES and MEDAL_COMPACT_COST): no place
-   down the centre line between the lamp and the aim point clears the keep-out, the instruments, both notices and the
-   kill lanes. "s": without an objective; the census at 7, 14 and 20 a side (mouseNoticePlan.selftest.mjs VIEWPORTS):
-     768 x 600, 1024 x 768, 1152 x 648, 1280 x 800, 1366 x 768, 1440 x 900, 1536 x 864 and 1600 x 900 (each with and
-     without an objective), 1280 x 720 s, and 390 x 844 and 844 x 390 (with and without);
-   the critics' off-census windows (synthesised from the census boxes, p229/critic-planner-harness/base.mjs synth):
-     500 x 900, 769 x 551, 800 x 600, 911 x 512, 960 x 600, 1242 x 698, 1280 x 689, 1309 x 818, 1440 x 789,
-     1463 x 823, 1536 x 864, 1680 x 939, 1707 x 960, 1745 x 982, 1920 x 940, 1920 x 970 (1080p browser windows),
-     1966 x 823 and 2293 x 960 (with and without), 1000 x 400 (with an objective), and 1093 x 614 s, 1097 x 617 s,
-     1152 x 720 s, 1280 x 720 s, 1366 x 625 s, 1366 x 657 s and 1536 x 753 s. */
+ *  lamp only where no such place exists. The full card in any place clear of a keep-out beats the compact card at that
+ *  keep-out (main's look wherever the full card fits). */
+const MEDAL_SHARE_ALERT_COST = 60, MEDAL_SHARE_DETECTION_COST = 600, MEDAL_SHARE_BOTH_COST = 630;
 const MEDAL_COMPACT_COST = 1e6;
 
 const rowsIn = (h: number) => Math.min(8, Math.max(0, Math.floor((h + 3) / 29)));
@@ -758,6 +750,13 @@ function freeIn(env: Env, code: number, half: number, lo: number, hi: number, ta
   if (typeof other === 'number') return freeNear(A, at(code), count(code), half, A, at(other), count(other), otherHalf, lo, hi, target);
   return freeNear(A, at(code), count(code), half, other, 0, other.length, otherHalf, lo, hi, target);
 }
+/** The window's centre (noticeCentreLine.ts) where a column `half` either side of it keeps off the band `code` (and off
+ *  `other`, its half `otherHalf`) and EDGE_PX off the screen's edges, else NaN: the only x a place takes. */
+function onCentre(env: Env, code: number, half: number, other: number | readonly number[] | null = null, otherHalf = 0): number {
+  const cx = noticeCentreX(env.input.width);
+  if (cx - Math.max(half, otherHalf) < EDGE_PX) return NaN;
+  return freeIn(env, code, half, cx, cx, cx, other, otherHalf);
+}
 
 /** How far down a lane's rows stay clear of the battle sight at full bloom (its ring, readouts and chip): main's rows
  *  below that already meet the ring, so a yielding lane is priced by the clear rows it gives up. */
@@ -867,15 +866,12 @@ const jointScratch: number[] = [NaN, NaN, NaN, NaN, NaN, NaN, NaN, NaN];
 const partnerScratch: number[] = [NaN, NaN, NaN, NaN];
 interface Single { y: number; x: number; cost: number; lane: number; readonly giveWay: number[] }
 const single = (): Single => ({ y: 0, x: 0, cost: Infinity, lane: 0, giveWay: [NaN, NaN, NaN, NaN] });
-/** The cheapest place for one `w` x `h` box (x: its centre) from `yPref` off `avoid`, sideways from `centre` at `shift` a
- *  px; its cost includes `base`
- *  (Infinity when none beats `bound`), `lane` the part the lanes' yielding makes up. */
+/** The cheapest place on the centre line for one `w` x `h` box (x: its centre) from `yPref` off `avoid`; its cost
+ *  includes `base` (Infinity when none beats `bound`), `lane` the part the lanes' yielding makes up. */
 function singleBest(env: Env, w: number, h: number, yPref: number, base: number, bound: number, out: Single,
-  avoid: readonly PlanRect[] = NONE, price: LanePrice = BATTLE_LANES, partner: readonly number[] | null = null, shift = SHIFT_COST,
-  edges = false, centre = env.input.width / 2): Single {
+  avoid: readonly PlanRect[] = NONE, price: LanePrice = BATTLE_LANES, partner: readonly number[] | null = null,
+  edges = false): Single {
   const { input } = env;
-  // (the line the box keeps to: the window's centre, or another place's centre)
-  const cx = centre;
   out.cost = Infinity; out.lane = 0;
   const hh = Math.ceil(h);
   // `edges`: the rows just clear of each blocking box (the fixed boxes and keep-out with their gaps, the discs, `avoid`),
@@ -904,7 +900,7 @@ function singleBest(env: Env, w: number, h: number, yPref: number, base: number,
       blockRects(avoidRaw, y, y + hh, avoid);
       if (avoidRaw.length) extra = sortMerge(avoidRaw, avoidMerged);
     }
-    const m = freeIn(env, band(env, y, hh), w / 2, EDGE_PX + w / 2, input.width - EDGE_PX - w / 2, cx, extra, w / 2);
+    const m = onCentre(env, band(env, y, hh), w / 2, extra, w / 2);
     if (Number.isNaN(m)) return;
     let lane = env.lanes === 'yield' ? yieldLanes(input, m - w / 2, y, w, h, yieldScratch, 0, price) : 0;
     // shown with `partner` (a placed box's lane bands): a lane the two leave without a row
@@ -912,7 +908,7 @@ function singleBest(env: Env, w: number, h: number, yPref: number, base: number,
       for (let i = 0; i < 4; i++) { jointScratch[i] = partner[i]; jointScratch[4 + i] = yieldScratch[i]; }
       lane += jointRows(input, jointScratch, price);
     }
-    const cost = base + yCost + shift * Math.abs(m - cx) + lane + (env.soft.length ? softCost(env, m - w / 2, y, w, h) : 0);
+    const cost = base + yCost + lane + (env.soft.length ? softCost(env, m - w / 2, y, w, h) : 0);
     if (cost < out.cost) {
       out.cost = cost; out.x = m; out.y = y; out.lane = lane;
       for (let i = 0; i < 4; i++) out.giveWay[i] = env.lanes === 'yield' ? yieldScratch[i] : NaN;
@@ -928,13 +924,13 @@ function singleBest(env: Env, w: number, h: number, yPref: number, base: number,
 function otherPlaces(env: Env, w: number, h: number, yPref: number, bound: number, k: number, skip: readonly Single[],
   out: number[]): number[] {
   const { input } = env;
-  const cx = input.width / 2, hh = Math.ceil(h);
+  const hh = Math.ceil(h);
   const found: number[] = [];
   walkY(yPref, Math.ceil(input.top + MOUSE_NOTICE_GAP_PX), input.height - EDGE_PX - hh, () => bound, (y, yCost) => {
-    const m = freeIn(env, band(env, y, hh), w / 2, EDGE_PX + w / 2, input.width - EDGE_PX - w / 2, cx);
+    const m = onCentre(env, band(env, y, hh), w / 2);
     if (Number.isNaN(m)) return;
     const lane = env.lanes === 'yield' ? yieldLanes(input, m - w / 2, y, w, h, yieldScratch, 0) : 0;
-    found.push(m, y, yCost + SHIFT_COST * Math.abs(m - cx) + lane);
+    found.push(m, y, yCost + lane);
   });
   const order: number[] = [];
   for (let i = 0; i < found.length; i += 3) order.push(i);
@@ -983,8 +979,7 @@ function configs(input: MouseNoticeInput): Config[] {
 /** The detection's and the alert's cheapest places in the spaces `envs` (one keep-out: the lanes blocking, then
  *  yielding), or null. */
 function searchPair(input: MouseNoticeInput, envs: readonly Env[]): PairResult | null {
-  const { width, height, top } = input;
-  const cx = width / 2;
+  const { height, top } = input;
   const yMin = Math.ceil(top + MOUSE_NOTICE_GAP_PX);
   const yPref = Math.max(yMin, Math.ceil(height * .12));
   const g = MOUSE_NOTICE_GAP_PX;
@@ -1008,7 +1003,7 @@ function searchPair(input: MouseNoticeInput, envs: readonly Env[]): PairResult |
         alert: { ...alert, giveWay: yielding ? giveWayOf(gw, 4) : NO_YIELD } };
     };
     const detFit = new Map<number, boolean>();
-    // stack and flank: every configuration at each y, cheapest y first
+    // stack: every configuration at each y, cheapest y first
     walkFine(yPref, yMin, height - EDGE_PX - 28, () => bestCost() - minBase, (y, yCost) => {
       // a y where a detection of some width has no place at all rules out every configuration with that width
       detFit.clear();
@@ -1017,34 +1012,17 @@ function searchPair(input: MouseNoticeInput, envs: readonly Env[]): PairResult |
         const { dw, dh, aw, ah } = c;
         let fits = detFit.get(dw);
         if (fits === undefined) {
-          fits = y + dh <= height - EDGE_PX && !Number.isNaN(freeIn(env, band(env, y, dh), dw / 2, EDGE_PX + dw / 2, width - EDGE_PX - dw / 2, cx));
+          fits = y + dh <= height - EDGE_PX && !Number.isNaN(onCentre(env, band(env, y, dh), dw / 2));
           detFit.set(dw, fits);
         }
         if (!fits) continue;
         if (y + dh + g + ah <= height - EDGE_PX) {
-          const half = Math.max(dw, aw) / 2;
-          const m = freeIn(env, band(env, y, dh), dw / 2, EDGE_PX + half, width - EDGE_PX - half, cx, band(env, y + dh + g, ah), aw / 2);
+          const m = onCentre(env, band(env, y, dh), dw / 2, band(env, y + dh + g, ah), aw / 2);
           if (!Number.isNaN(m)) {
             const ay = y + dh + g;
-            offer(c.base + yCost + SHIFT_COST * Math.abs(m - cx) + laneCost(m - dw / 2, y, dw, dh, m - aw / 2, ay, aw, ah), 'stack',
-              { x: m - dw / 2, y, w: dw, h: dh }, { x: m, y: ay, w: aw, h: ah, anchor: 'centre', small: input.smallAlert });
+            offer(c.base + yCost + laneCost(m - dw / 2, y, dw, dh, m - aw / 2, ay, aw, ah), 'stack',
+              { x: m - dw / 2, y, w: dw, h: dh }, { x: m, y: ay, w: aw, h: ah, small: input.smallAlert });
           }
-        }
-        if (y + Math.max(dh, ah) > height - EDGE_PX) continue;
-        for (let side = 0; side < 2; side++) {
-          const detLeft = side === 0;
-          const lb = c.base + yCost + FLANK_COST + side * 2;
-          if (lb >= bestCost()) break;
-          const dTarget = detLeft ? cx - HUG_PX - dw / 2 : cx + HUG_PX + dw / 2;
-          const aTarget = detLeft ? cx + HUG_PX + aw / 2 : cx - HUG_PX - aw / 2;
-          const md = freeIn(env, band(env, y, dh), dw / 2, EDGE_PX + dw / 2, width - EDGE_PX - dw / 2, dTarget);
-          if (Number.isNaN(md)) continue;
-          const ma = freeIn(env, band(env, y, ah), aw / 2, EDGE_PX + aw / 2, width - EDGE_PX - aw / 2, aTarget);
-          if (Number.isNaN(ma)) continue;
-          if (detLeft ? md + dw / 2 + g > ma - aw / 2 : ma + aw / 2 + g > md - dw / 2) continue;
-          offer(lb + SHIFT_COST * (Math.abs(md - dTarget) + Math.abs(ma - aTarget)) / 2 + laneCost(md - dw / 2, y, dw, dh, ma - aw / 2, y, aw, ah),
-            'flank', { x: md - dw / 2, y, w: dw, h: dh },
-            { x: detLeft ? ma - aw / 2 : ma + aw / 2, y, w: aw, h: ah, anchor: detLeft ? 'start' : 'end', small: input.smallAlert });
         }
       }
     }, () => best === null ? NaN : best.det.y);
@@ -1083,7 +1061,7 @@ function searchPair(input: MouseNoticeInput, envs: readonly Env[]): PairResult |
         if (!Number.isFinite(two.cost)) continue;
         // each search priced its own lanes; the pair is priced once more, as laneCost leaves both bands in gw
         offer(two.cost - two.lane + laneCost(detBox.x, detBox.y, c.dw, c.dh, two.x - c.aw / 2, two.y, c.aw, c.ah), 'split', detBox,
-          { x: two.x, y: two.y, w: c.aw, h: c.ah, anchor: 'centre', small: input.smallAlert });
+          { x: two.x, y: two.y, w: c.aw, h: c.ah, small: input.smallAlert });
       }
     }
   }
@@ -1092,16 +1070,16 @@ function searchPair(input: MouseNoticeInput, envs: readonly Env[]): PairResult |
 
 const placeScratch = single();
 /** A candidate box for placeOne: its size, base cost and the notice places it keeps off. */
-type Option = readonly [w: number, h: number, base: number, avoid: readonly PlanRect[], shift?: number, edges?: boolean, centre?: number];
+type Option = readonly [w: number, h: number, base: number, avoid: readonly PlanRect[], edges?: boolean];
 /** The cheapest place for any of `options` from `yPref` in `env` (its keep-out; the lanes blocking or yielding). */
 function placeOne(env: Env, options: readonly Option[], yPref: number, price: LanePrice, partner: readonly number[] | null,
   out: { cost: number; option: number; s: Single }): boolean {
   const one = placeScratch;
   out.cost = Infinity;
   for (let i = 0; i < options.length; i++) {
-    const [w, h, base, avoid, shift, edges, centre] = options[i];
+    const [w, h, base, avoid, edges] = options[i];
     if (base >= out.cost) continue;
-    singleBest(env, w, h, yPref, base, out.cost, one, avoid, price, partner, shift, edges, centre);
+    singleBest(env, w, h, yPref, base, out.cost, one, avoid, price, partner, edges);
     if (one.cost < out.cost) {
       out.cost = one.cost; out.option = i;
       out.s.x = one.x; out.s.y = one.y; out.s.cost = one.cost; out.s.lane = one.lane;
@@ -1111,28 +1089,40 @@ function placeOne(env: Env, options: readonly Option[], yPref: number, price: La
   return out.cost < Infinity;
 }
 
-/** main's own places: the detection under the score, the alert at bottom 23 % (the last resort). */
-function fallbackPair(input: MouseNoticeInput): PairResult {
+/**
+ * The last resort, where no place on the centre line clears even the resting sight and every instrument (narrow or
+ * short mouse windows: 540 x 720, 481 x 700, 844 x 390): the pair on the centre line clear of the resting sight, reaching
+ * least far into the instruments and the rest of the reticle (each px² of them priced as soft ink), the side lanes
+ * yielding as anywhere; main's own places (the detection under the score, the alert at bottom 23 %) only where even that
+ * finds none.
+ */
+function fallbackPair(input: MouseNoticeInput, resting: readonly PlanKeepOut[], full: readonly PlanKeepOut[]): PairResult {
+  const open: MouseNoticeInput = { ...input, obstacles: NONE };
+  const least = searchPair(open, [makeEnv(TIERS.length * 2 + 1, open, resting, input.lanes[0] || input.lanes[1] ? 'yield' : 'block',
+    [...full, ...input.obstacles])]);
+  if (least) return { ...least, arrangement: 'fallback' };
   const { width, height, top } = input;
   const dw = Math.min(248, width - 28), dh = detectionHeight(dw, input.compactDetection);
   const aw = Math.min(520, width - 32), ah = alertReserve(aw, input.smallAlert);
   const y = Math.max(top + MOUSE_NOTICE_GAP_PX, height * .12);
-  return { cost: Infinity, arrangement: 'fallback', det: { x: (width - dw) / 2, y, w: dw, h: dh, giveWay: NO_YIELD },
-    alert: { x: width / 2, y: height * .77 - ah, w: aw, h: ah, anchor: 'centre', small: input.smallAlert, giveWay: NO_YIELD } };
+  const cx = noticeCentreX(width);
+  return { cost: Infinity, arrangement: 'fallback', det: { x: cx - dw / 2, y, w: dw, h: dh, giveWay: NO_YIELD },
+    alert: { x: cx, y: height * .77 - ah, w: aw, h: ah, small: input.smallAlert, giveWay: NO_YIELD } };
 }
 
 /** The countdown on the centre line, over the crosshair, and its rules panel under it (countdownPlace.ts): both keep off
  *  the instruments and the rosters, never off the reticle's bloom or the notices' places (owner, 2026-10-21: "regardless
- *  it needs to be in center of screen"); a side lane either crosses (a chat: no kill comes before the roll-out) gives way
- *  to it while it shows. */
+ *  it needs to be in center of screen"; an alert raised before the roll-out takes its own place off them,
+ *  `countdownAlert`); a side lane either crosses (a chat: no kill comes before the roll-out) gives way to it while it
+ *  shows. */
 function centredCountdown(input: MouseNoticeInput, notices: readonly PlanRect[]): PlannedCountdown | null {
   const size = input.countdown, rulesSize = input.countdownRules ?? null;
   if (!size || size.w <= 0 || size.h <= 0) return null;
   const blocks = input.obstacles.map((r) => ({ x0: r.x, y0: r.y, x1: r.x + r.w, y1: r.y + r.h }));
   const place = placeCountdown(input.width, input.height, input.top, size, rulesSize, blocks, MOUSE_NOTICE_GAP_PX);
-  const w = size.w * place.scale, h = size.h * place.scale;
-  const dial: PlanRect = { x: (input.width - w) / 2, y: place.top, w, h };
-  const rules = place.rulesShown && rulesSize ? { x: (input.width - rulesSize.w * place.rulesScale) / 2, y: place.rulesTop,
+  const w = size.w * place.scale, h = size.h * place.scale, cx = noticeCentreX(input.width);
+  const dial: PlanRect = { x: cx - w / 2, y: place.top, w, h };
+  const rules = place.rulesShown && rulesSize ? { x: cx - rulesSize.w * place.rulesScale / 2, y: place.rulesTop,
     w: rulesSize.w * place.rulesScale, h: rulesSize.h * place.rulesScale, scale: place.rulesScale } : null;
   const giveWay = [NaN, NaN, NaN, NaN];
   for (let side = 0; side < 2; side++) {
@@ -1140,14 +1130,15 @@ function centredCountdown(input: MouseNoticeInput, notices: readonly PlanRect[])
     if (!lane) continue;
     for (const box of rules ? [dial, rules] : [dial]) {
       if (box.x >= lane.x + lane.w + MOUSE_NOTICE_GAP_PX || box.x + box.w <= lane.x - MOUSE_NOTICE_GAP_PX
-        || box.y >= lane.bottom || box.y + box.h <= lane.top) continue;
+        || box.y >= lane.bottom + MOUSE_NOTICE_GAP_PX || box.y + box.h <= lane.top - MOUSE_NOTICE_GAP_PX) continue;
       const end = box.y - MOUSE_NOTICE_GAP_PX, start = box.y + box.h + MOUSE_NOTICE_GAP_PX;
       // (the lane keeps the longer band: over the box or under it)
       if (end - lane.top >= lane.bottom - start) giveWay[side * 2 + 1] = Number.isNaN(giveWay[side * 2 + 1]) ? end : Math.min(giveWay[side * 2 + 1], end);
       else giveWay[side * 2] = Number.isNaN(giveWay[side * 2]) ? start : Math.max(giveWay[side * 2], start);
     }
   }
-  return { ...dial, scale: place.scale, clearance: 0, sharesNotices: overlapsAny(dial, notices), giveWay: giveWayOf(giveWay, 0), rules };
+  // (it shares a place it comes within the notices' gap of: it is not placed off them)
+  return { ...dial, scale: place.scale, clearance: 0, sharesNotices: notices.some((n) => meets(dial, n)), giveWay: giveWayOf(giveWay, 0), rules };
 }
 
 const TIERS = [2, 1, 0] as const;
@@ -1185,9 +1176,8 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
     pair = searchPair(input, envsAt(i));
     if (pair) clearance = TIERS[i];
   }
-  if (!pair) pair = fallbackPair(input);
-  const a = pair.alert;
-  const det = pair.det, alert: PlanRect = { x: a.anchor === 'centre' ? a.x - a.w / 2 : a.anchor === 'start' ? a.x : a.x - a.w, y: a.y, w: a.w, h: a.h };
+  if (!pair) pair = fallbackPair(input, keeps[TIERS.indexOf(0)], keeps[0]);
+  const det = pair.det, alert = mouseAlertBox(pair.alert);
   const notices: PlanRect[] = [det, alert], alertOnly = [alert];
   const found = { cost: Infinity, option: 0, s: single() };
   let chosen: readonly Option[] = [];
@@ -1216,12 +1206,16 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
     const ladder = (tier: number) => tier ? SCALES : LAST_SCALES;
     let tier = place((_share, t) => ladder(t).map((s, i) => [size.w * s, size.h * s, LAST_SCALE_COSTS[i], notices] as const),
       yPref, price, false);
-    // The last resorts (a window too small for any of those; the census never comes here): a place clear of the resting
-    // sight on either notice's place, then over an instrument or a lane, never main's own place on the aim point.
+    // The last resorts (a window too small for any of those: on the centre line, 540 x 720 and 481 x 700): a place clear
+    // of the resting sight off both notices reaching least far into the instruments (the player waits to revive), then on
+    // either notice's place, then over an instrument or a lane, never main's own place on the aim point.
     if (tier < 0) {
-      const envs = envsAt(TIERS.indexOf(0));
-      chosen = LAST_SCALES.map((s, i) => [size.w * s, size.h * s, LAST_SCALE_COSTS[i], NONE] as const);
-      if (!placeOne(envs[envs.length - 1], chosen, yPref, price, hasLanes ? both : null, found)
+      const envs = envsAt(TIERS.indexOf(0)), open = { ...input, obstacles: NONE };
+      chosen = LAST_SCALES.map((s, i) => [size.w * s, size.h * s, LAST_SCALE_COSTS[i], notices] as const);
+      const offNotices = placeOne(makeEnv(TIERS.length * 2 + 2, open, keeps[TIERS.indexOf(0)], hasLanes ? 'yield' : 'block',
+        [...keeps[0], ...input.obstacles]), chosen, yPref, price, hasLanes ? both : null, found);
+      if (!offNotices) chosen = LAST_SCALES.map((s, i) => [size.w * s, size.h * s, LAST_SCALE_COSTS[i], NONE] as const);
+      if (!offNotices && !placeOne(envs[envs.length - 1], chosen, yPref, price, hasLanes ? both : null, found)
         && !placeOne(makeEnv(TIERS.length * 2, { ...input, obstacles: NONE, lanes: [null, null] }, keeps[TIERS.indexOf(0)], 'block'),
           chosen, yPref, price, null, found)) return null;
       tier = 0;
@@ -1235,13 +1229,13 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
   const detOnly = [det];
   // (the card's search also tries the rows just clear of each blocking box: `edges`)
   const medalOptions = (): readonly Option[] => [
-    [full.w, full.h, 0, notices, MEDAL_SHIFT_COST, true], [full.w, full.h, MEDAL_SHARE_ALERT_COST, detOnly, MEDAL_SHIFT_COST, true],
-    [full.w, full.h, MEDAL_SHARE_DETECTION_COST, alertOnly, MEDAL_SHIFT_COST, true],
-    [full.w, full.h, MEDAL_SHARE_BOTH_COST, NONE, MEDAL_SHIFT_COST, true],
-    [compact.w, compact.h, MEDAL_COMPACT_COST, notices, MEDAL_SHIFT_COST, true],
-    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_ALERT_COST, detOnly, MEDAL_SHIFT_COST, true],
-    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_DETECTION_COST, alertOnly, MEDAL_SHIFT_COST, true],
-    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_BOTH_COST, NONE, MEDAL_SHIFT_COST, true]];
+    [full.w, full.h, 0, notices, true], [full.w, full.h, MEDAL_SHARE_ALERT_COST, detOnly, true],
+    [full.w, full.h, MEDAL_SHARE_DETECTION_COST, alertOnly, true],
+    [full.w, full.h, MEDAL_SHARE_BOTH_COST, NONE, true],
+    [compact.w, compact.h, MEDAL_COMPACT_COST, notices, true],
+    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_ALERT_COST, detOnly, true],
+    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_DETECTION_COST, alertOnly, true],
+    [compact.w, compact.h, MEDAL_COMPACT_COST + MEDAL_SHARE_BOTH_COST, NONE, true]];
   /** The card at the place `found` holds (its option in `chosen`), clear of the keep-out at `tier`. */
   const medalAt = (tier: number): PlannedMedal => {
     const [w, h, base] = chosen[found.option];
@@ -1280,19 +1274,44 @@ export function planMouseNotices(input: MouseNoticeInput): MouseNoticePlan {
   };
   const medal = later(placeMedal);
   const countdown = later(() => centredCountdown(input, notices));
+  // The alert while the countdown shows (H, R and E raise alerts before the roll-out): its own place where that keeps
+  // off the dial and the rules panel, else the cheapest on the centre line off them (the touch plan's order: the
+  // countdown first, the alert off it), over the fewest instruments where none clears them, else its own.
+  const countdownAlert = later((): PlannedAlert => {
+    const dial = countdown();
+    if (!dial) return pair.alert;
+    const off: PlanRect[] = dial.rules ? [dial, dial.rules] : [dial];
+    if (!off.some((r) => meets(r, alert))) return pair.alert;
+    const small = input.smallAlert, alertMin = small ? 28 : 38;
+    const options = (small ? ALERT_WIDTHS_9 : ALERT_WIDTHS_12).map((full) => {
+      const w = Math.min(full, input.width - 2 * EDGE_PX), h = alertReserve(w, small);
+      return [w, h, h - alertMin + (520 - full) * .02, off] as const;
+    });
+    const yPref = Math.max(Math.ceil(input.top + MOUSE_NOTICE_GAP_PX), Math.ceil(input.height * .12));
+    if (place(() => options, yPref, BATTLE_LANES, false) < 0) {
+      // (where none clears the instruments, over the fewest of them, clear of the resting sight: the alert is brief)
+      chosen = options;
+      const open = makeEnv(TIERS.length * 2 + 2, { ...input, obstacles: NONE }, keeps[TIERS.indexOf(0)], hasLanes ? 'yield' : 'block',
+        [...keeps[0], ...input.obstacles]);
+      if (!placeOne(open, chosen, yPref, BATTLE_LANES, hasLanes ? both : null, found)) return pair.alert;
+    }
+    const [w, h] = chosen[found.option];
+    return { x: found.s.x, y: found.s.y, w, h, small, giveWay: giveWayOf(found.s.giveWay, 0) };
+  });
   const revive = later(() => scaled(input.revive, .30, BATTLE_LANES));
   return {
     arrangement: pair.arrangement, clearance, detection: det, alert: pair.alert,
     // The card is optional: where it shares a notice's place it waits while that notice is up (keeping its time).
     get medal() { return medal(); },
     get countdown() { return countdown(); },
+    get countdownAlert() { return countdownAlert(); },
     get revive() { return revive(); },
   };
 }
 
-/** The alert's box from its slot (its anchor: centre, left edge or right edge). */
+/** The alert's box from its slot (centred on its `x`, the window's centre). */
 export function mouseAlertBox(a: MouseNoticePlan['alert']): PlanRect {
-  return { x: a.anchor === 'centre' ? a.x - a.w / 2 : a.anchor === 'start' ? a.x : a.x - a.w, y: a.y, w: a.w, h: a.h };
+  return { x: a.x - a.w / 2, y: a.y, w: a.w, h: a.h };
 }
 /** Two places closer than MOUSE_NOTICE_GAP_PX. */
 const meets = (a: PlanRect, b: PlanRect) => a.x < b.x + b.w + MOUSE_NOTICE_GAP_PX && a.x + a.w > b.x - MOUSE_NOTICE_GAP_PX
