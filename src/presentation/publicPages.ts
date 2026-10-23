@@ -106,55 +106,112 @@ function mountShotRail(rail: HTMLElement): void {
 
 document.querySelectorAll<HTMLElement>('[data-shot-rail]').forEach(mountShotRail);
 
-// The landing's versus wall (brand-ui BUI-W2): the time-of-day buttons show the duels filmed at that hour.
-function mountVersusFilter(section: HTMLElement): void {
-  const buttons = [...section.querySelectorAll<HTMLButtonElement>('[data-versus-filter]')];
-  const tiles = [...section.querySelectorAll<HTMLElement>('.vs-tile[data-hour]')];
-  for (const button of buttons) {
-    button.addEventListener('click', () => {
-      const hour = button.dataset.versusFilter || 'all';
-      for (const other of buttons) other.setAttribute('aria-pressed', String(other === button));
-      for (const tile of tiles) tile.hidden = hour !== 'all' && tile.dataset.hour !== hour;
+// The landing's segmented controls (the kit's cot-c-seg, a radio group): a click or an arrow key picks an option, the
+// group keeps one tab stop on the picked option.
+function mountSegment(group: HTMLElement, pick: (option: HTMLButtonElement) => void): void {
+  const options = [...group.querySelectorAll<HTMLButtonElement>('.cot-c-seg__opt')];
+  const choose = (option: HTMLButtonElement, focus = false): void => {
+    for (const other of options) {
+      other.setAttribute('aria-checked', String(other === option));
+      other.tabIndex = other === option ? 0 : -1;
+    }
+    if (focus) option.focus();
+    pick(option);
+  };
+  options.forEach((option, i) => {
+    option.tabIndex = option.getAttribute('aria-checked') === 'true' ? 0 : -1;
+    option.addEventListener('click', () => choose(option));
+    option.addEventListener('keydown', (event) => {
+      const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
+      if (!step) return;
+      event.preventDefault();
+      choose(options[(i + step + options.length) % options.length], true);
     });
-  }
+  });
+}
+
+// The landing's versus wall (02): the time-of-day options show the duels filmed at that hour.
+function mountVersusFilter(section: HTMLElement): void {
+  const group = section.querySelector<HTMLElement>('.cot-c-seg');
+  const tiles = [...section.querySelectorAll<HTMLElement>('.vs-tile[data-hour]')];
+  if (!group) return;
+  mountSegment(group, (option) => {
+    const hour = option.dataset.versusFilter || 'all';
+    for (const tile of tiles) tile.hidden = hour !== 'all' && tile.dataset.hour !== hour;
+  });
 }
 
 document.querySelectorAll<HTMLElement>('#versus').forEach(mountVersusFilter);
 
 interface FleetFeature {
   readonly name: string; readonly flag: string; readonly tier: string; readonly cal: number; readonly pen: number;
-  readonly poster: string; readonly gallery: string; readonly drive: string;
+  readonly tank: readonly [string, string]; readonly banner: readonly [string, string]; readonly place: string;
+  readonly anatomy: string; readonly drive: string;
 }
 
-// The landing's fleet wall: pointing at or focusing a tank's card shows its take, flag and facts in the feature panel;
-// the card itself opens the vehicle's Gallery dossier. The panel's box never changes size.
+// The landing's fleet wall (03): pointing at or focusing a tank's take shows its hero card, flag and facts on the
+// featured plate; the take itself opens the vehicle's Gallery dossier. The plate's box never changes size.
 function mountFleetFeature(section: HTMLElement): void {
-  const panel = section.querySelector<HTMLElement>('[data-fleet-feature]');
-  const cards = [...section.querySelectorAll<HTMLAnchorElement>('a[data-feature]')];
-  if (!panel || !cards.length) return;
-  const fact = <T extends Element>(name: string): T | null => panel.querySelector<T>(`[data-fact="${name}"]`);
-  const show = (card: HTMLAnchorElement): void => {
+  const plate = section.querySelector<HTMLElement>('[data-fleet-feature]');
+  const tiles = [...section.querySelectorAll<HTMLAnchorElement>('a[data-feature]')];
+  if (!plate || !tiles.length) return;
+  const fact = <T extends Element>(name: string): T | null => plate.querySelector<T>(`[data-fact="${name}"]`);
+  const show = (tile: HTMLAnchorElement): void => {
     let feature: FleetFeature;
-    try { feature = JSON.parse(card.dataset.feature || '') as FleetFeature; } catch { return; }
-    for (const other of cards) other.classList.toggle('is-featured', other === card);
-    const poster = fact<HTMLImageElement>('poster');
-    if (poster && poster.getAttribute('src') !== feature.poster) poster.src = feature.poster;
+    try { feature = JSON.parse(tile.dataset.feature || '') as FleetFeature; } catch { return; }
+    for (const other of tiles) other.classList.toggle('is-featured', other === tile);
+    fact<HTMLSourceElement>('banner-set')?.setAttribute('srcset', feature.banner[0]);
+    fact<HTMLImageElement>('banner')?.setAttribute('src', feature.banner[1]);
+    fact<HTMLSourceElement>('tank-set')?.setAttribute('srcset', feature.tank[0]);
+    const tank = fact<HTMLImageElement>('tank');
+    if (tank) { tank.setAttribute('src', feature.tank[1]); tank.setAttribute('style', feature.place); }
     const name = fact<HTMLElement>('name');
     if (name) name.textContent = feature.name;
-    panel.querySelector('.fleet-feature__flag use')?.setAttribute('href', `#f-${feature.flag}`);
+    plate.querySelector('.fleet-feature__flag use')?.setAttribute('href', `#f-${feature.flag}`);
     const values: Record<string, string> = { tier: feature.tier, caliber: String(feature.cal), penetration: String(feature.pen) };
     for (const [key, value] of Object.entries(values)) { const node = fact<HTMLElement>(key); if (node) node.textContent = value; }
-    fact<HTMLAnchorElement>('gallery')?.setAttribute('href', feature.gallery);
+    fact<HTMLAnchorElement>('anatomy')?.setAttribute('href', feature.anatomy);
     fact<HTMLAnchorElement>('drive')?.setAttribute('href', feature.drive);
   };
-  for (const card of cards) {
-    card.addEventListener('pointerenter', () => show(card));
-    card.addEventListener('focus', () => show(card));
+  for (const tile of tiles) {
+    tile.addEventListener('pointerenter', () => show(tile));
+    tile.addEventListener('focus', () => show(tile));
   }
-  cards[0].classList.add('is-featured');
+  tiles[0].classList.add('is-featured');
 }
 
 document.querySelectorAll<HTMLElement>('#fleet').forEach(mountFleetFeature);
+
+// The battlefields rail (03): the landscape options show the maps of that landscape, the first of them leading.
+function mountMapFilter(section: HTMLElement): void {
+  const group = section.querySelector<HTMLElement>('.cot-c-seg');
+  const rail = section.querySelector<HTMLElement>('[data-map-rail]');
+  const cards = [...section.querySelectorAll<HTMLElement>('.bf-card[data-regions]')];
+  if (!group || !rail) return;
+  mountSegment(group, (option) => {
+    const region = option.dataset.mapFilter || 'all';
+    let lead = true;
+    for (const card of cards) {
+      card.hidden = region !== 'all' && !(card.dataset.regions || '').split(' ').includes(region);
+      card.classList.toggle('is-lead', !card.hidden && lead);
+      if (!card.hidden) lead = false;
+    }
+    rail.scrollLeft = 0;
+  });
+}
+
+document.querySelectorAll<HTMLElement>('#battlefields').forEach(mountMapFilter);
+
+// Play now (Enter): Enter anywhere on the landing that is not a control follows the hero's Play link.
+const heroPlay = document.querySelector<HTMLAnchorElement>('[data-hero-play]');
+if (heroPlay) {
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter' || event.defaultPrevented || event.repeat || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const target = event.target instanceof Element ? event.target : null;
+    if (target && target !== document.body && target.closest('a,button,input,select,textarea,summary,video,[contenteditable],[tabindex]')) return;
+    heroPlay.click();
+  });
+}
 
 // The hero's trailer button plays the trailer where the trailers row shows it (a click, so it plays with its sound).
 document.querySelectorAll<HTMLAnchorElement>('[data-trailer-open]').forEach((link) => {

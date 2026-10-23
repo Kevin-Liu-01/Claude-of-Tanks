@@ -89,8 +89,10 @@ assert.match(TYPE_STACK.ui, /^'Cot UI','Cot Accents','Cot Symbols','Cot Fallback
 
 // Landing and README pictograms come from the one icon sprite (brand-ui BUI-F4): the page references its symbols, the
 // README shows the accent exports tools/gen-icon-sprite.mjs writes; the retired product-mark folders stay gone.
-const landingIcons = ['play', 'toolPhoto', 'vehicle', 'map', 'gpu', 'team', 'fireGun', 'layerModules', 'cameraPath',
-  'rocket', 'layerArmor'];
+// (242, the direction's pages: the section eyebrow pictograms went with the eyebrows; the walls carry the duel, map, time
+// and fact glyphs)
+const landingIcons = ['play', 'vehicle', 'map', 'gpu', 'team', 'fireGun', 'layerModules', 'cameraPath', 'gallery', 'star',
+  'globe', 'media'];
 for (const icon of landingIcons) {
   assert.ok(homeSource.includes(`href="#i-${icon}"`), `landing page must use the ${icon} glyph`);
 }

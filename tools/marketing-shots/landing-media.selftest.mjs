@@ -68,16 +68,20 @@ manifest.hero.forEach((slide, i) => {
   assert.notEqual(heroMap(slide), heroMap(next), `hero slides ${i + 1} and ${(i + 1) % manifest.hero.length + 1} show different battlefields`);
 });
 
-// (brand-ui BUI-W2, 2026-10-22) the landing opens on the living versus (the Premiere direction's 01): the newest
-// Steinburg duel still, preloaded as the page's LCP image with its size; the picks above stay the media lane's set
+// (brand-ui BUI-W2, 2026-10-22; 242, the direction's own page) the landing opens on the living versus, the Premiere
+// direction's 01: its own Steinburg still (the sky over the town for the headline, both tanks on the road), preloaded as
+// the page's LCP image with its size; beside it only the trailer button's thumbnail. The picks above stay the media
+// lane's set.
 const heroMarkup = home.match(/<!--home:hero-->([\s\S]*?)<!--\/home:hero-->/)?.[1] || '';
-const heroStill = versusById.get('f6-leo2a6-steinburg-r7');
+const heroStill = versusById.get('f6-leo2a6-steinburg-r6');
 assert.ok(heroStill, 'the hero still is a published versus still');
-assert.match(heroMarkup, new RegExp(`<img class="hero__still" src="${heroStill.path}" alt="[^"]+" data-i18n-alt="media\\.versus\\.title\\.f6Leo2a6SteinburgR7" width="1920" height="1080" fetchpriority="high"`),
+assert.match(heroMarkup, new RegExp(`<img class="hero__still" src="${heroStill.path}" alt="[^"]+" data-i18n-alt="media\\.versus\\.title\\.f6Leo2a6SteinburgR6" width="1920" height="1080" fetchpriority="high"`),
   'the hero still carries its size and priority');
 assert.equal(home.includes(`<link rel="preload" href="${heroStill.path}" as="image" type="image/webp" fetchpriority="high">`), true,
   'the hero still is the preloaded LCP image');
-assert.equal((heroMarkup.match(/<img /g) || []).length, 1, 'the hero holds its still, nothing else');
+assert.equal((heroMarkup.match(/<img /g) || []).length, 2, 'the hero holds its still and the trailer thumbnail, nothing else');
+assert.match(heroMarkup, /<a class="cot-c-btn cot-c-btn--64 hero__trailer" href="#trailers" data-trailer-open><span class="hero__thumb" aria-hidden="true"><img src="\/media\/site50-r14\/stills\/s225-verdant-duel-thumb\.webp" alt="" width="84" height="46"/,
+  'the trailer button shows a dimensioned thumbnail');
 
 // the screenshot rail: the picks in their order, the eleven of 2026-10-19 kept after the new ones
 const railMarkup = home.match(/<div class="v5-shot-rail"[^>]*>([\s\S]*?)<\/div>/)?.[1] || '';
@@ -139,8 +143,8 @@ for (const path of [manifest.featureReel.video, manifest.featureReel.poster]) {
 assert.equal('gameplay' in manifest, false, 'the retired duplicate gameplay block is absent from the landing contract');
 assert.equal(home.split('Watch tank combat in the game engine').length - 1, 1,
   'the combat heading appears once on the reel');
-assert.equal(home.split("Every vehicle, shot, impact, fire and wreck in this reel is the game's own, rendered by its engine at 4K.").length - 1, 1,
-  'the combat description appears once on the reel');
+// (242: the owner's 10-22 rule cut the section ledes; the reel shows its heading and its call only)
+assert.equal(home.includes('data-i18n="home.reel.lede"'), false, 'the reel carries no helper line');
 assert.equal(home.includes('Watch live tank combat'), false,
   'the reel no longer calls its offline 4K renders live combat');
 assert.equal(home.includes('See the complete game in one video'), false,
@@ -165,8 +169,11 @@ const videos = [...home.matchAll(/<source data-src="([^"]+\.(?:webm|mp4))"/g)].m
 assert.equal(new Set(videos).size, videos.length, 'landing videos do not repeat');
 // the site's seven loops and films, then (2026-10-22) the versus films, each with its own 540p phone file
 const versusFilms = wallFilms;
-const siteVideos = videos.filter((path) => !path.startsWith('/media/versus-films-r1/'));
-assert.equal(videos.length, 7 + versusFilms.length * 2, 'all landing videos remain source-gated until viewport activation');
+const siteVideos = videos.filter((path) => !path.startsWith('/media/versus-films-r1/') && !path.startsWith('/media/site50-r14/fleet/'));
+// (242, the direction's 03 fleet wall) each of the twelve fleet takes plays its own loop on hover
+const fleetLoops = videos.filter((path) => path.startsWith('/media/site50-r14/fleet/'));
+assert.equal(fleetLoops.length, 12, 'the fleet wall plays its twelve takes');
+assert.equal(videos.length, 7 + versusFilms.length * 2 + fleetLoops.length, 'all landing videos remain source-gated until viewport activation');
 assert.equal(siteVideos.length, 7, 'the seven site videos');
 assert.equal((home.match(/data-mobile-src="\/media\/web-video-r1\//g) || []).length, siteVideos.length,
   'every landing video supplies a lightweight mobile proxy');

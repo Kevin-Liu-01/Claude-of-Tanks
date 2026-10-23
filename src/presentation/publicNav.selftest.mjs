@@ -149,10 +149,13 @@ for (const [file, activeHref] of pages) {
 }
 
 const notFoundHtml = readFileSync(join(ROOT, '404.html'), 'utf8');
-assert.doesNotMatch(notFoundHtml, /publicNav\.(?:css|ts)|<nav class="public-nav"/,
-  'the intentionally minimal 404 must stay independent of the full public navigation');
+// brand-ui SPEC 12.3.4: the missing page carries the shared bar and footer (tools/public-shell.mjs lists it), and no
+// destination is current on it
+assert.match(notFoundHtml, /<link rel="stylesheet" href="\/src\/presentation\/publicNav\.css">/, 'the 404 links the shell sheet');
+assert.match(notFoundHtml, /<!--cot:nav--><a class="public-skip"[\s\S]*?<nav class="public-nav"/, 'the 404 carries the shared bar');
+assert.doesNotMatch(/<!--cot:nav-->([\s\S]*?)<!--\/cot:nav-->/.exec(notFoundHtml)?.[1] ?? '', /aria-current/, 'no destination is current on the 404');
 assert.match(notFoundHtml, /<script type="module" src="\/src\/presentation\/notFound\.ts"><\/script>/,
-  'the standalone 404 must keep its focused localization runtime');
+  'the 404 keeps its own runtime (it imports the shell\'s)');
 
 const gameHtml = readFileSync(join(ROOT, 'index.html'), 'utf8');
 assert.match(gameHtml,

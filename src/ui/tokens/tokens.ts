@@ -258,6 +258,19 @@ export const TOKENS = {
   'media-toggle-z': '4',
   'warn-hatch': '8px',
   'team-squad-ring': '0px',
+  'home-h1': 'clamp(76px,5.9vw,112px)',
+  'home-h2': 'clamp(60px,5vw,88px)',
+  'home-hero-grade': 'linear-gradient(180deg,rgba(5,6,8,.86) 0,rgba(5,6,8,.5) 9vh,rgba(5,6,8,0) 22vh),radial-gradient(60% 48% at 4% 18%,rgba(5,6,8,.86) 0,rgba(5,6,8,.5) 50%,rgba(5,6,8,0) 78%),linear-gradient(0deg,rgba(5,6,8,.94) 0,rgba(5,6,8,.62) 8vh,rgba(5,6,8,0) 17vh)',
+  'home-phone-grade': 'linear-gradient(180deg,rgba(5,6,8,.9) 0,rgba(5,6,8,.6) 30%,rgba(5,6,8,0) 46%),linear-gradient(0deg,rgba(11,14,17,1) 0,rgba(11,14,17,.6) 9%,rgba(11,14,17,0) 22%)',
+  'home-headline-shadow': '0 6px 40px rgba(5,6,8,.35)',
+  'home-vs-ring': 'inset 0 0 0 1px rgba(240,160,48,.5)',
+  'home-pick-ring': '0 0 0 2px #f0a030',
+  'home-inset-ring': '0 0 0 1px rgba(246,243,236,.35),0 4px 12px rgba(0,0,0,.5)',
+  'home-idx-ink': 'rgba(246,243,236,.75)',
+  'home-idx-shadow': '0 1px 2px rgba(0,0,0,.6)',
+  'home-bar-edge': '0 -1px 0 rgba(246,243,236,.13)',
+  'home-reddit': '#ff4208',
+  'home-card-z': '3',
 } as const;
 
 export type TokenName = keyof typeof TOKENS;
@@ -411,6 +424,7 @@ export const TOKEN_PRESETS = {
         'ring-2': 'inset 0 0 0 1px rgba(246,243,236,.38)',
         'ring-3': 'inset 0 0 0 1px rgba(246,243,236,.38)',
         'seg-on-shadow': '0 1px 0 rgba(255,255,255,.06) inset,0 0 0 1px rgba(246,243,236,.38)',
+        'home-bar-edge': '0 -1px 0 rgba(246,243,236,.38)',
       },
     },
   },

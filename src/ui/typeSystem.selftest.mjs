@@ -340,7 +340,7 @@ for (const path of [...SHIPPED_HTML, ...FIXTURE_HTML]) {
 const marker = (path) => parseTypeMarker(markersOf(read(path))[0]);
 assert.deepEqual(marker('index.html'), { families: ['ui', 'mono', 'body'], preload: ['display-700', 'body-500'], scale: false, fx: false },
   'the game page declares the shell, readout and prose-emphasis families and preloads the wordmark and UI-text faces');
-assert.deepEqual(marker('404.html').families, ['ui'], 'the 404 declares only the shell family (Medium included)');
+assert.deepEqual(marker('404.html').families, ['ui'], 'the 404 declares only the shell family (its kit voices read it: notFound.css)');
 // Preloads: Medium and Bold on the game page and home only (the type rules); every other document relies on its
 // metric-matched fallbacks, so a late face swaps in without moving text.
 const PRELOADERS = new Set(['index.html', 'site/home.html']);

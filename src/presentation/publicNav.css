@@ -6,6 +6,7 @@
    (src/ui/tokens/tokens.css, imported above, so every page that links this sheet has them). */
 @layer components{
 :root{--shell-gutter:clamp(16px,3.4vw,44px);--shell-max:1600px;--shell-nav-h:64px;--shell-wordmark-of:.52em}
+html,body{min-height:var(--cot-viewport-height,100dvh)}
 .cot-symbols{position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
 .cot-i{flex:none}
 .cot-si{fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:square;stroke-linejoin:miter}

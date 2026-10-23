@@ -212,11 +212,13 @@ for (const t of tokens.filter((x) => x.tier === 'component' && typeof x.raw === 
 // the outline readable over bright media).
 // The landing's span wears the type package's .t-hollow (src/ui/typeFaces.ts) and sets its own shadow (src/presentation/home.css).
 const tHollow = /\.t-hollow\{color:transparent;-webkit-text-stroke:var\(--hollow-stroke,([\d.]+px)\)/.exec(read('src/ui/typeFaces.ts'));
-const landingHollow = /\.v5-hero-copy h1 span\{--hollow-ink:[^;]+;text-shadow:([^;}]+)\}/.exec(read('src/presentation/home.css'));
-assert.ok(tHollow && landingHollow, 'the landing headline keeps its hollow Latin span (.t-hollow) and its shadow');
+const landingHollow = /\.hero__title \.t-hollow\{--hollow-stroke:([\d.]+px);--hollow-ink:[^;]+;text-shadow:([^;}]+)\}/.exec(read('src/presentation/home.css'));
+assert.ok(tHollow && landingHollow, 'the landing headline keeps its hollow Latin line (.t-hollow) and its shadow');
 assert.equal(TOKENS['hollow-fill'], 'transparent', 'hollow type is truly hollow, as on the landing');
-assert.equal(TOKENS['hollow-stroke'], tHollow[1], 'hollow stroke width equals the landing headline');
-assert.equal(norm(TOKENS['hollow-shadow']), norm(landingHollow[1]), 'hollow type casts the landing headline\'s shadow');
+assert.equal(TOKENS['hollow-stroke'], tHollow[1], 'the shared hollow stroke is the type package\'s default');
+// the hero sets the direction's heavier 2 px outline at its 76-112 px display size (01 h1 .line .fx-hollow)
+assert.equal(landingHollow[1], '2px', 'the landing headline draws the direction\'s 2 px outline');
+assert.equal(landingHollow[2], 'var(--hollow-shadow)', 'the landing headline casts the hollow shadow token');
 // Boot cost (SPEC 16.1): tokens.css at most 4 KB brotli (the shipped file is minified, so this bound is conservative).
 const tokensBrotli = brotliCompressSync(Buffer.from(generatedCss), { params: { [zlib.BROTLI_PARAM_QUALITY]: 11 } }).length;
 assert.ok(tokensBrotli <= 4096, `tokens.css is ${tokensBrotli} B brotli, over the 4 KB boot budget`);
