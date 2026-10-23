@@ -14,7 +14,7 @@ export type RockGeology = 'granite' | 'sandstone' | 'limestone' | 'slate' | 'bre
  * The rock forms: what made the rock decides its shape. The last three are rock that people shaped — a standing stone,
  * a clearance cairn, a granite calvary — built through the same pipeline so they weather with the map's rock.
  */
-export type RockForm = 'tor' | 'outcrop' | 'crag' | 'pavement' | 'scree' | 'hoodoo' | 'menhir' | 'cairn' | 'calvary' | 'blocks';
+export type RockForm = 'tor' | 'chaos' | 'outcrop' | 'crag' | 'pavement' | 'scree' | 'hoodoo' | 'menhir' | 'cairn' | 'calvary' | 'blocks';
 
 /** A rock formation as a map authors it. */
 interface SceneryRock {

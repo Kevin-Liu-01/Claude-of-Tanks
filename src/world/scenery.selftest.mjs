@@ -52,6 +52,8 @@ const noise = new SimplexNoise({ random: mulberry32(4242) });
 const FORMS = [
   // form, geology, radius, height, desktop triangle cap, mobile cap, standing
   ['tor', 'granite', 7, 5.5, 9000, 3000, true],
+  // (2026-10-23, item/maps-frontier-saltmere-242: the Léon's strand boulders, rounded corestones)
+  ['chaos', 'granite', 5.5, 6, 5000, 2000, true],
   ['outcrop', 'sandstone', 8, 4.5, 3000, 1600, true],
   ['outcrop', 'limestone', 7, 3.2, 3000, 1600, true],
   ['crag', 'slate', 6, 5, 4500, 2200, true],
