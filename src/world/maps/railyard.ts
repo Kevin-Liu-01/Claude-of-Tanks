@@ -99,13 +99,108 @@ const RAIL_SPURS = [
     coalStage: { side: -1 as const, fromM: 4, toM: 40 }, ballastShade: YARD_BALLAST },
 ];
 
-// Yard plan: the road frontages inside the yard take the sheds, rowhouses and ruins; the authored lots below take
-// the landmarks (engine shed, goods shed, water towers, station hall, gantries, stacks).
+// Yard plan: the road frontages inside the yard take the sheds and ruins; the authored lots below take the landmarks
+// (engine shed, goods shed, water towers, station hall, gantries, stacks). (Round 2: the miners live in the colonies'
+// terraces, so the plan's three loose cottage pairs are gone.)
 const PLAN = [
-  'warehouse', 'shed', 'containerRow', 'ruin', 'shed', 'rowhouse', 'containerRow', 'shed',
-  'warehouse', 'ruin', 'rowhouse', 'shed', 'containerRow', 'shed', 'ruin', 'containerRow',
-  'shed', 'warehouse', 'rowhouse', 'containerRow', 'shed', 'ruin',
+  'warehouse', 'shed', 'containerRow', 'ruin', 'shed', 'containerRow', 'shed',
+  'warehouse', 'ruin', 'shed', 'containerRow', 'shed', 'ruin', 'containerRow',
+  'shed', 'warehouse', 'containerRow', 'shed', 'ruin',
 ];
+
+// 2026-10-11 (the map-revival lane, Cinder Junction round 2; gauntlet wave 362, village-mid: "a thin scatter of clean
+// orange brick boxes on protruding slab plinths standing in wide empty dirt lots beside a uniformly tiled cobbled street
+// with no kerbs, pavements, gutters, street trees or clutter ... nothing like the dense, soot-darkened terraced streets
+// round a 1962 Ruhr junction"): a colliery colony (Zechenkolonie) behind each service road, as the pits built them for
+// their miners — two-storey brick terraces in rows along the service road and along a back street 52 m behind it, the
+// rows back to back over their gardens, two side streets cutting each colony into three blocks, kerbs and pavements on
+// every street. The southern colony stands east of the central road (alpha's side), its twin turned through 180° about
+// the station square west of it (bravo's side). The rows are the buildings lane's Ruhr terrace kit ('terrace': one site a
+// row, plot.w the frontage, 2-8 units of about 5.5 m; doors on the plot's +z edge, the pavement's outer edge).
+const SERVICE_ROAD_SOUTH: readonly (readonly [number, number])[] = [[-448, -96], [-400, -96], [-300, -88], [-200, -76],
+  [-100, -70], [0, -66], [100, -60], [200, -50], [300, -40], [400, -30], [448, -27]];
+/** A path's twin, turned through 180° about the station square (the point order kept, as roads 4 and 6 have it). */
+const twinPath = (path: readonly (readonly [number, number])[]): [number, number][] =>
+  path.map(([x, z]) => [-x, -z] as [number, number]);
+/** The service road's centre over easting x (the road runs west to east, once over every x). */
+function serviceZ(x: number): number {
+  const l = SERVICE_ROAD_SOUTH;
+  for (let i = 1; i < l.length; i++) {
+    if (x <= l[i][0]) return l[i - 1][1] + (l[i][1] - l[i - 1][1]) * (x - l[i - 1][0]) / (l[i][0] - l[i - 1][0]);
+  }
+  return l[l.length - 1][1];
+}
+const COLONY_BACK_M = 52;      // the back street's offset behind the service road
+const ROW_FRONT_M = 7.5;       // a row's doorsteps: the pavement's outer edge (kerb 5.05 m, walk 6.35 ± 1.1 m)
+const ROW_DEPTH_M = 11;        // the plot: the 8.2 m block and its wash-house additions
+const ROW_STRUCTURE = 'terrace';
+// the back street: off the central road (on its line at z -119.5) to the works road (on its line at t 0.551)
+const COLONY_BACK_SOUTH: [number, number][] = [-39.35, 0, 100, 165.71].map((x) => [x, +(serviceZ(x) - COLONY_BACK_M).toFixed(2)]);
+const COLONY_SIDE_X = [46, 112] as const;
+// (a side street authored every 6.5 m: the junction grading blends three nodes either side of a junction, and a
+// street of three nodes took its far end's grade at its near one — the back street's 2 m up the hill foot stood as a
+// step at the service road, 22 per cent over its first 4 m)
+const colonySideStreet = (x: number): [number, number][] =>
+  Array.from({ length: 9 }, (_, i) => [x, +(serviceZ(x) - COLONY_BACK_M * i / 8).toFixed(2)] as [number, number]);
+/**
+ * One terrace row fronting a street that runs west to east as z = streetZ(x), from easting xa to xb: on the street's
+ * south side facing north (side -1) or its north side facing south (side +1). Its plot runs along the chord between the
+ * street's points over xa and xb, its front on the pavement's outer edge.
+ */
+function terraceRow(streetZ: (x: number) => number, xa: number, xb: number, side: 1 | -1) {
+  const ax = xa, az = streetZ(xa), bx = xb, bz = streetZ(xb);
+  const len = Math.hypot(bx - ax, bz - az), ux = (bx - ax) / len, uz = (bz - az) / len;
+  const nx = -uz, nz = ux; // the street's left: north
+  const off = side * (ROW_FRONT_M + ROW_DEPTH_M / 2);
+  const fx = -side * nx, fz = -side * nz; // the doors face the street
+  return {
+    structure: ROW_STRUCTURE, x: +((ax + bx) / 2 + nx * off).toFixed(2), z: +((az + bz) / 2 + nz * off).toFixed(2),
+    yawDeg: +(Math.atan2(fx, fz) * 180 / Math.PI).toFixed(2), plot: { w: +len.toFixed(2), d: ROW_DEPTH_M }, terrace: true,
+  };
+}
+const backZ = (x: number): number => serviceZ(x) - COLONY_BACK_M;
+// The southern colony's blocks, west to east between the central road, the side streets and the works road: each a
+// row on the service road (facing north) and a row on the back street (facing south), back to back over their gardens.
+// A 5 m ginnel (a hull fits through) splits the first block; every row's gables stand clear of the cross streets'
+// pavements.
+const COLONY_BLOCKS_SOUTH: readonly { north: readonly [number, number]; south: readonly [number, number] }[] = [
+  { north: [-26, 2.5], south: [-26, 2.5] }, { north: [7.5, 36], south: [7.5, 36] },
+  { north: [56, 100], south: [56, 100] }, { north: [120, 142], south: [120, 152] },
+];
+const COLONY_ROWS_SOUTH = COLONY_BLOCKS_SOUTH.flatMap((b) => [
+  terraceRow(serviceZ, b.north[0], b.north[1], -1), terraceRow(backZ, b.south[0], b.south[1], 1)]);
+const twinSite = <T extends { x: number; z: number; yawDeg: number }>(site: T): T =>
+  ({ ...site, x: -site.x, z: -site.z, yawDeg: +(site.yawDeg + 180).toFixed(2) });
+const COLONY_ROWS = [...COLONY_ROWS_SOUTH, ...COLONY_ROWS_SOUTH.map(twinSite)];
+// The gardens behind the rows (props.gardenFences, the Ruhr colony's rough boards): a divider on every party wall and at
+// each gable, from the row's back edge to the block's middle, and the back fence along the middle, where the two rows'
+// gardens meet. The kit's unit rule (clamp(round(w / 5.5), 2, 8) units of w / units) sets the party walls.
+const GARDEN_M = (COLONY_BACK_M - 2 * (ROW_FRONT_M + ROW_DEPTH_M)) / 2;
+function rowGardenLines(row: (typeof COLONY_ROWS_SOUTH)[number]): [number, number, number, number][] {
+  const yaw = row.yawDeg * Math.PI / 180, c = Math.cos(yaw), sn = Math.sin(yaw);
+  const units = Math.min(8, Math.max(2, Math.round(row.plot.w / 5.5)));
+  const at = (lx: number, lz: number): [number, number] =>
+    [+(row.x + lx * c + lz * sn).toFixed(2), +(row.z - lx * sn + lz * c).toFixed(2)];
+  const lines: [number, number, number, number][] = [];
+  for (let k = 0; k <= units; k++) {
+    const lx = -row.plot.w / 2 + k * row.plot.w / units;
+    lines.push([...at(lx, -row.plot.d / 2), ...at(lx, -row.plot.d / 2 - GARDEN_M)]);
+  }
+  return lines;
+}
+const COLONY_GARDENS_SOUTH: [number, number, number, number][] = [
+  ...COLONY_ROWS_SOUTH.flatMap(rowGardenLines),
+  ...COLONY_BLOCKS_SOUTH.map((b): [number, number, number, number] => {
+    const x0 = Math.min(b.north[0], b.south[0]), x1 = Math.max(b.north[1], b.south[1]);
+    const mid = (x: number) => +(serviceZ(x) - COLONY_BACK_M / 2).toFixed(2);
+    return [x0, mid(x0), x1, mid(x1)];
+  }),
+];
+const COLONY_GARDENS = [...COLONY_GARDENS_SOUTH,
+  ...COLONY_GARDENS_SOUTH.map(([x0, z0, x1, z1]): [number, number, number, number] => [-x0, -z0, -x1, -z1])];
+// Poplars along the back streets' far verge, over the hill (vegetation.authoredTrees: donors from the procedural stands,
+// so no other tree's draw moves).
+const COLONY_POPLARS_SOUTH: [number, number][] = [[-30, backZ(-30) - 9], [100, backZ(100) - 9], [158, backZ(158) - 9]];
 
 export default {
   id: 'railyard',
@@ -133,13 +228,14 @@ export default {
       [[288, 448], [286, 400], [276, 280], [266, 150], [262, 40], [266, -80], [282, -220], [300, -360],
         [304, -448]],
       // 3 / 4 — the yard service roads, edge to edge along each side of the yard.
-      [[-448, -96], [-400, -96], [-300, -88], [-200, -76], [-100, -70], [0, -66], [100, -60], [200, -50],
-        [300, -40], [400, -30], [448, -27]],
-      [[448, 96], [400, 96], [300, 88], [200, 76], [100, 70], [0, 66], [-100, 60], [-200, 50],
-        [-300, 40], [-400, 30], [-448, 27]],
+      SERVICE_ROAD_SOUTH.map(([x, z]) => [x, z] as [number, number]),
+      twinPath(SERVICE_ROAD_SOUTH),
       // 5 / 6 — the works roads: off the service road, through the works gate, out to the crossing road.
       [[150, -55], [158, -90], [172, -118], [204, -150], [244, -184], [281, -210]],
       [[-150, 55], [-158, 90], [-172, 118], [-204, 150], [-244, 184], [-281, 210]],
+      // 7 / 8 — the colonies' back streets, central road to works road; 9-12 — their side streets (round 2)
+      COLONY_BACK_SOUTH, twinPath(COLONY_BACK_SOUTH),
+      ...COLONY_SIDE_X.flatMap((x) => [colonySideStreet(x), twinPath(colonySideStreet(x))]),
     ] },
     // The station square and the two level-crossing aprons: level paved ground the zone-control placement seats
     // its 30 m discs on (the crossings lie inside the yard's grading, so their roads reach them at a road grade).
@@ -206,6 +302,11 @@ export default {
     grassDensity: 0.45,
     bushCount: 0.7,
     bushSpecies: 'oak',
+    // round 2: the colonies' back streets lined with poplars on their far verge
+    authoredTrees: [
+      { id: 'colony-south-poplars', species: 'poplar', path: COLONY_POPLARS_SOUTH, count: 18, width: 0.5 },
+      { id: 'colony-north-poplars', species: 'poplar', path: COLONY_POPLARS_SOUTH.map(([x, z]) => [-x, -z] as [number, number]), count: 18, width: 0.5 },
+    ],
     grassTexTone: (h: number, s: number, l: number) => [0.14, clamp01(s * 0.55), clamp01(l * 0.95)],
     tuftTone: (h: number, s: number, l: number) => [0.135, clamp01(s * 0.6), clamp01(l * 0.88)],
     palettes: {
@@ -227,6 +328,15 @@ export default {
     // regional-buildings lane: the Ruhr colliery-junction kit (maps/regional/ruhr.ts)
     architecture: 'ruhr',
     plan: PLAN,
+    // round 2: the settlement the props dress reaches the colonies' back streets (the graded yard stays as it was), and
+    // every street in it has its kerbs and pavements
+    town: { x0: -270, x1: 270, z0: -128, z1: 128, cx: 0, cz: 0 },
+    curbs: true,
+    // round 2: a plan building the new streets leave standing in a carriageway steps clear of it; the colonies' gardens
+    gardenFences: { kind: 'fenceplank', lines: COLONY_GARDENS },
+    roadBuildingClearance: true,
+    // the crossing roads' corners with the service roads: a long roadside shed seated there reached into both roads
+    roadBuildingKeepouts: [{ x: 252, z: 96, r: 16 }, { x: -252, z: -96, r: 16 }],
     destructibleBuildings: ['quonsethut', 'transformershed', 'motorpool', 'guardpost'],
     // Rotational pairs about the station square, each at least 180 m from every other: a post covering each level
     // crossing from the open field beyond it, a gate at each works, a camp at the outer foot of each spoil bank.
@@ -280,6 +390,8 @@ export default {
       { structure: 'shed', x: -158, z: 132, yawDeg: 315 },
       { structure: 'rowhouse', x: 240, z: -165, yawDeg: 130.4 },
       { structure: 'rowhouse', x: -240, z: 165, yawDeg: 310.4 },
+      // round 2: the colonies' terraces (each from its own stream: every lot and the plan keep their draws)
+      ...COLONY_ROWS,
     ],
     // 2026-10-01: the hard-coded north-south siding fan (maps/mapKits.ts dressRailYard) gives way to the authored
     // main line and sidings above (terrain.railSpurs): no legacy rail kit.

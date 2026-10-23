@@ -626,6 +626,10 @@ interface PropsSettings {
    * such a place it stays. The plan places every building exactly as before (no draw or eligibility changes), so a
    * building that clears the carriageway stands where it always did. Opt-in: a map without it keeps every building. */
   roadBuildingClearance?: boolean;
+  /** The map-revival lane (2026-10-11, Cinder Junction round 2: the colliery colonies' gardens): authored fence lines,
+   * [x0, z0, x1, z1] each, laid as fence runs of `kind` (no gates) from a stream of their own after the roadside
+   * utilities, so every other destructible keeps its draws and seat. Default none. */
+  gardenFences?: { kind: string; lines: readonly (readonly [number, number, number, number])[] };
   /** Authored places for carriageway buildings (with `roadBuildingClearance`): a building packed as standing in a
    * carriageway whose recorded centre lies within 1.5 m of `from` moves to `to` instead of the nearest clear place,
    * when `to` passes the same checks (the road clearance, its ground fit, every other building and strongpoint); else
@@ -4854,6 +4858,7 @@ ${snowCap ? `
     z1: number,
     gateChance = 0.35,
     path?: readonly (readonly [number, number])[],
+    stream: Rng = drng,
   ): void {
     const curved = path ? fencePathSampler(path) : null;
     const along = curved?.length ?? Math.hypot(x1 - x0, z1 - z0);
@@ -4951,7 +4956,7 @@ ${snowCap ? `
       if (Math.max(Math.abs(cx), Math.abs(cz)) > 478) { if (pieceRule) endPiece(); openRun = false; continue; }
       if (heightField._roadDist(cx, cz) < 4.6 || noVeg(cx, cz)) {
         const stood = pieceRule ? endPiece() : true;
-        if (openRun && !gated && drng() < gateChance) {
+        if (openRun && !gated && stream() < gateChance) {
           // hang an open gate at the field entrance the road cuts
           const gy = heightField.getHeightAt(ax, az);
           // (the looks lane: the run's own family's gate — a picket wicket in a picket fence, a woven gate in wattle)
@@ -4963,11 +4968,11 @@ ${snowCap ? `
         openRun = false;
         continue;
       }
-      if (drng() < 0.05) { if (pieceRule) endPiece(); openRun = false; continue; } // the odd missing module
+      if (stream() < 0.05) { if (pieceRule) endPiece(); openRun = false; continue; } // the odd missing module
       const ya = heightField.getHeightAt(ax, az), yb = heightField.getHeightAt(bx, bz);
       const cy = Math.min(ya, yb);
       const tiltX = Math.atan2(yb - ya, FENCE_SEG) * 0.85;
-      const scale = 0.96 + drng() * 0.10, tiltZ = (drng() - 0.5) * 0.03;
+      const scale = 0.96 + stream() * 0.10, tiltZ = (stream() - 0.5) * 0.03;
       if (!underBridgeDeck(cx, cz) && clearOfBuildings(ax, az, bx, bz)) {
         if (pieceRule) piece.push([cx, cy - 0.06, cz, yaw, scale, tiltX, tiltZ]);
         else addDestructible(kind, cx, cy - 0.06, cz, yaw, scale, tiltX, tiltZ);
@@ -7494,6 +7499,13 @@ ${snowCap ? `
   utilityNetwork = placeRoadsideUtilities();
 
   yield { fine: true, stage: 'roadside-utilities' };
+
+  // --- authored garden fences (props.gardenFences): each line a gateless run from the gardens' own stream ---
+  if (P.gardenFences?.lines.length) {
+    const gardenRng = mulberry32((seed ^ 0x6a4de5) >>> 0);
+    for (const [x0, z0, x1, z1] of P.gardenFences.lines) placeFenceRun(P.gardenFences.kind, x0, z0, x1, z1, 0, undefined, gardenRng);
+    yield { fine: true, stage: 'garden-fences' };
+  }
 
   // --- rocks (instanced, 3 variants) ---
   // The r3/r7 displaced icosahedra (three noise octaves and a ridged crease octave) no longer draw: they are the legacy
