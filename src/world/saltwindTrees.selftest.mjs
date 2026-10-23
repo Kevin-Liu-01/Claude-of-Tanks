@@ -44,6 +44,11 @@ assert.equal(treeBiomeGrove('verdant'), null, 'a place without the entry plants 
 const ap = TREE_GROWTH_PROFILES.aleppoPine;
 assert.ok(ap.crownBase <= 0.35 && (ap.gnarl ?? 0) >= 0.3 && (ap.ragged ?? 0) >= 0.3 && ap.crownR >= 2.9,
   'the Aleppo pine low-crowned, crooked, ragged and spreading');
+// (2026-10-07, the coordinator: "a tall straight red-barked trunk" still read as Scots pine) its bole leans and its bark
+// is grey: the Scots pine's stays upright, its warm bark its own
+const sp = TREE_GROWTH_PROFILES.pine;
+assert.ok((ap.lean ?? 0) >= 0.1 && !(sp.lean ?? 0), 'the Aleppo pine leans; the Scots pine stands upright');
+assert.ok(Math.max(...ap.barkTint) - Math.min(...ap.barkTint) <= 0.08, `the Aleppo pine's bark grey (${ap.barkTint})`);
 
 const restore = canvasFixture();
 try {
