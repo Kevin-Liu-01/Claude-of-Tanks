@@ -36,7 +36,8 @@ export interface AmbienceKindDef {
   /** Height band above the ground under the camera (m). */
   readonly bandM: readonly [number, number];
   /** The clear zone round the lens (m): gone at the first, full at the second (scaled by the lens's zoom). A streak
-   * starts metres out, so blown snow and sand skim the ground ahead rather than raking past the camera. */
+   * starts metres out, so blown snow and sand skim the ground ahead rather than raking past the camera; a round speck
+   * (down, a flake, a glow) a metre or two, so it never swells into a soft disc that reads as a lens's bokeh. */
   readonly nearM: readonly [number, number];
   /** Card size (m): a speck's diameter (an emissive speck's glow, its hot core a fifth of it), a tumbling card's length,
    * a streak's width. */
@@ -81,7 +82,7 @@ const kind = (def: Partial<AmbienceKindDef> & Pick<AmbienceKindDef, 'motion' | '
 // barely see ambience"): a few near cards always in view, the far ones still a visible speck
 export const AMBIENCE_KINDS = Object.freeze({
   /** Thistle, dandelion and feather-grass down, catkin fluff: slow, buoyant, bright against the sun. */
-  fluff: kind({ motion: 'drift', shape: 'fluff', count: 1500, radiusM: 24, bandM: [0.3, 10], sizeM: [0.06, 0.11], fallMps: 0.07,
+  fluff: kind({ motion: 'drift', shape: 'fluff', count: 1500, radiusM: 24, bandM: [0.3, 10], nearM: [1.6, 3.6], sizeM: [0.06, 0.11], fallMps: 0.07,
     windShare: 0.85, wobbleM: 0.45, wobbleHz: 0.2, alpha: 0.95, scatter: 2.2 }),
   /** Broadleaf leaves: rocking, turning cards that fall a metre a second. */
   leaf: kind({ motion: 'tumble', shape: 'leaf', count: 900, radiusM: 18, bandM: [0, 12], sizeM: [0.09, 0.14], aspect: 0.66,
@@ -96,16 +97,16 @@ export const AMBIENCE_KINDS = Object.freeze({
   chaff: kind({ motion: 'tumble', shape: 'sliver', count: 1100, radiusM: 20, bandM: [0, 9], sizeM: [0.05, 0.09], aspect: 0.2,
     fallMps: 0.33, windShare: 0.95, wobbleM: 0.5, wobbleHz: 0.3, spinHz: 1.1, alpha: 0.95, scatter: 1.6, gain: 0.75 }),
   /** Light snowfall. */
-  snow: kind({ motion: 'drift', shape: 'flake', count: 9500, radiusM: 30, bandM: [-1, 22], sizeM: [0.04, 0.07], fallMps: 0.95,
+  snow: kind({ motion: 'drift', shape: 'flake', count: 9500, radiusM: 30, bandM: [-1, 22], nearM: [1.3, 3.2], sizeM: [0.04, 0.07], fallMps: 0.95,
     windShare: 0.55, wobbleM: 0.35, wobbleHz: 0.24, alpha: 1, scatter: 0.8 }),
   /** Diamond dust: ice crystals hanging in clear cold air, glinting as they turn. */
-  crystal: kind({ motion: 'drift', shape: 'disc', count: 2600, radiusM: 20, bandM: [0, 10], sizeM: [0.014, 0.024], fallMps: 0.16,
+  crystal: kind({ motion: 'drift', shape: 'disc', count: 2600, radiusM: 20, bandM: [0, 10], nearM: [1, 2.4], sizeM: [0.014, 0.024], fallMps: 0.16,
     windShare: 0.5, wobbleM: 0.3, wobbleHz: 0.18, alpha: 0.9, scatter: 4, blink: 'glint', additive: true }),
   /** Spindrift: snow blown low off the snowfields. */
   spindrift: kind({ motion: 'streak', shape: 'streak', count: 2200, radiusM: 28, bandM: [0, 1.3], nearM: [3.5, 8], sizeM: [0.025, 0.045], streakS: 0.15,
     fallMps: 0.12, windShare: 2.2, minWindMps: 5, wobbleM: 0.25, wobbleHz: 0.6, alpha: 0.3, scatter: 0.8 }),
   /** Dust motes: tiny specks that hang in the air and catch the sun. */
-  dust: kind({ motion: 'drift', shape: 'disc', count: 3000, radiusM: 18, bandM: [0, 9], sizeM: [0.012, 0.022], fallMps: 0.015,
+  dust: kind({ motion: 'drift', shape: 'disc', count: 3000, radiusM: 18, bandM: [0, 9], nearM: [0.9, 2.2], sizeM: [0.012, 0.022], fallMps: 0.015,
     windShare: 0.55, wobbleM: 0.35, wobbleHz: 0.14, alpha: 0.9, scatter: 3.2 }),
   /** Blown sand and grit skimming the ground. */
   sand: kind({ motion: 'streak', shape: 'streak', count: 2800, radiusM: 24, bandM: [0, 1.8], nearM: [2.5, 6], sizeM: [0.016, 0.03], streakS: 0.12,
@@ -114,22 +115,22 @@ export const AMBIENCE_KINDS = Object.freeze({
   ash: kind({ motion: 'tumble', shape: 'disc', count: 2000, radiusM: 22, bandM: [0, 14], sizeM: [0.024, 0.045], aspect: 0.8,
     fallMps: 0.28, windShare: 0.7, wobbleM: 0.5, wobbleHz: 0.24, spinHz: 0.45, alpha: 0.85, scatter: 0.3, gain: 0.6 }),
   /** Drifting embers: hot specks rising and cooling. */
-  ember: kind({ motion: 'drift', shape: 'disc', count: 700, radiusM: 26, bandM: [0, 14], sizeM: [0.05, 0.085], fallMps: -0.55,
+  ember: kind({ motion: 'drift', shape: 'disc', count: 700, radiusM: 26, bandM: [0, 14], nearM: [1.2, 2.8], sizeM: [0.05, 0.085], fallMps: -0.55,
     windShare: 0.8, wobbleM: 0.6, wobbleHz: 0.4, alpha: 1, emissive: 10, blink: 'flicker', additive: true }),
   /** Fireflies: slow wandering flashes low over the grass. */
-  firefly: kind({ motion: 'drift', shape: 'disc', count: 900, bandM: [0.6, 3.6], sizeM: [0.06, 0.09], fallMps: 0,
+  firefly: kind({ motion: 'drift', shape: 'disc', count: 900, bandM: [0.6, 3.6], nearM: [1.2, 2.8], sizeM: [0.06, 0.09], fallMps: 0,
     windShare: 0.05, wobbleM: 1.4, wobbleHz: 0.08, alpha: 1, emissive: 14, blink: 'pulse', additive: true }),
   /** Mist and humid motes: droplets glinting in damp air. */
-  mote: kind({ motion: 'drift', shape: 'disc', count: 2400, radiusM: 18, bandM: [0, 8], sizeM: [0.018, 0.035], fallMps: 0.01,
+  mote: kind({ motion: 'drift', shape: 'disc', count: 2400, radiusM: 18, bandM: [0, 8], nearM: [0.9, 2.2], sizeM: [0.018, 0.035], fallMps: 0.01,
     windShare: 0.35, wobbleM: 0.4, wobbleHz: 0.12, alpha: 0.7, scatter: 3 }),
   /** Midges and gnats: dark specks dancing in swarms. */
-  insect: kind({ motion: 'drift', shape: 'disc', count: 600, radiusM: 22, bandM: [0.5, 3], sizeM: [0.008, 0.013], fallMps: 0,
+  insect: kind({ motion: 'drift', shape: 'disc', count: 600, radiusM: 22, bandM: [0.5, 3], nearM: [0.8, 1.8], sizeM: [0.008, 0.013], fallMps: 0,
     windShare: 0.1, wobbleM: 0.45, wobbleHz: 0.18, jitterM: 0.3, cluster: 10, alpha: 0.9, scatter: 0.4 }),
   /** Light drizzle: thin falling streaks. */
   drizzle: kind({ motion: 'streak', shape: 'streak', count: 6000, radiusM: 24, bandM: [-1, 16], nearM: [1.5, 4], sizeM: [0.006, 0.01], streakS: 0.05,
     fallMps: 5.5, windShare: 0.5, wobbleM: 0.05, wobbleHz: 0.3, alpha: 0.4, scatter: 0.8 }),
   /** Salt spray: fine bright droplets carried inland on the sea wind. */
-  spray: kind({ motion: 'drift', shape: 'disc', count: 2000, radiusM: 20, bandM: [0, 8], sizeM: [0.015, 0.028], fallMps: 0.03,
+  spray: kind({ motion: 'drift', shape: 'disc', count: 2000, radiusM: 20, bandM: [0, 8], nearM: [0.9, 2.2], sizeM: [0.015, 0.028], fallMps: 0.03,
     windShare: 1, wobbleM: 0.5, wobbleHz: 0.2, alpha: 0.75, scatter: 3 }),
 } satisfies Record<string, AmbienceKindDef>);
 
