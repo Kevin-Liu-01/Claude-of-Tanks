@@ -121,6 +121,13 @@ for (const [key, recorded] of Object.entries(FURNITURE.sizes)) {
         for (const block of [...obstacles, ...soft, ...(map ? [map] : [])]) {
           assert.ok(apart(box, block) >= TOUCH_NOTICE_GAP - 1e-6, `${at}: ${name} keeps ${apart(box, block).toFixed(2)} px from ${block.name}`);
         }
+        // (the countdown's place is the centre line over the crosshair, owner 2026-10-21, countdownPlace.ts: it may lie on
+        // the idle sight's footprint, its top never under the aim point)
+        if (name === 'the countdown') {
+          assert.ok(Math.abs((box.x0 + box.x1) / 2 - width / 2) < 1e-6 && box.y0 <= height / 2 + 1e-6,
+            `${at}: the countdown stands on the centre line, its top at the aim point at the lowest`);
+          continue;
+        }
         for (const block of keep) {
           assert.ok(apart(box, block) >= 4 - 1e-6, `${at}: ${name} keeps ${apart(box, block).toFixed(2)} px from the reticle's footprint`);
         }

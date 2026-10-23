@@ -632,9 +632,11 @@ try {
         const pageCount=await page.evaluate(()=>Number(document.querySelector('.cot-vehicle-controls').dataset.pages)||1);
         let pressed=0;
         for(let index=0;index<pageCount;index++){
-          const buttons=page.locator('.cot-vehicle-controls > button:visible');
-          for(const button of await buttons.all()){
+          // (the page's tiles taken once: a relayout a press sets off must not shift a re-queried nth tile)
+          const buttons=await page.locator('.cot-vehicle-controls > button:visible').elementHandles();
+          for(const button of buttons){
             const box=await button.boundingBox();
+            if(!box)continue;
             if(box.width<44||box.height<(touch?44:32))errors.push(`${name}: vehicle control below touch target minimum`);
             if(touch&&(box.x<-.5||box.x+box.width>width+.5))errors.push(`${name}: vehicle control off the screen`);
             if(await button.evaluate(node=>node.classList.contains('cot-systems-more')))continue;

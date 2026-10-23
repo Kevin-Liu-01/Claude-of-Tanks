@@ -144,8 +144,7 @@ const CSS = `
 .cot-bl .thead{height:var(--bl-heading);display:flex;align-items:center;gap:9px;padding:0 8px 8px;
   border-bottom:1px solid rgba(146,164,180,.24);font-family:${FONT_COND};
   font-size:11px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;}
-.cot-bl .thead .flags{display:inline-flex;align-items:center;gap:3px;}
-.cot-bl .thead .flags i{font-style:normal;opacity:.6;font-size:10px;}
+.cot-bl .thead .flags{display:inline-flex;align-items:center;gap:4px;}
 .cot-bl .thead .flags .cot-flag{border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.35);}
 .cot-bl .team.ally .thead{color:#7fdc8a;border-bottom-color:rgba(127,220,138,.4);}
 .cot-bl .team.foe .thead{color:#f07a72;border-bottom-color:rgba(240,122,114,.4);}
@@ -394,7 +393,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     if (!nation) { host.innerHTML = ''; return; }
     void import('./flags.ts').then(({ flagIconHTML }) => {
       if (host.dataset.flagsPass !== pass) return; // a later roster took this side
-      host.innerHTML = flagIconHTML(nation, 18, 13) + fills.map((fill) => `<i>+</i>${flagIconHTML(fill, 14, 10)}`).join('');
+      host.innerHTML = flagIconHTML(nation, 18, 13) + fills.map((fill) => flagIconHTML(fill, 14, 10)).join('');
     });
   }
 

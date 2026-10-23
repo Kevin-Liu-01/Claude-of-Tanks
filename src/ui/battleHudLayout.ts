@@ -240,6 +240,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
   /** The window and mode the objective last left the side seat for: it stays under the score there, so a count that
    *  gains a digit (a Horde's rounds) moves it once at most, never back and forth. */
   let objectiveTopKey = '';
+  /** A side seat measured too tall while the HUD's faces were still loading: their arrival measures it again. */
+  let seatAwaitsFaces = false;
   /** Seats the objective (OBJECTIVE_COMPACT_H) and writes its seat and place before the pass reads it: the side seat is
    *  measured in its compact form under the map and kept where it ends over the joystick (the left lane's own floor
    *  reserves a short landscape's hidden second FIRE button). 'side', or '' (the panel under the score). */
@@ -257,6 +259,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       // (never kept from a measure the HUD's faces have not reached yet: a fallback face wraps wider)
       if (node.getBoundingClientRect().bottom <= floor) { seat = 'side'; objectivePlace = place; }
       else if (document.fonts?.status !== 'loading') objectiveTopKey = key;
+      else seatAwaitsFaces = true;
     }
     writeObjective(seat, objectivePlace);
     return seat;
@@ -1075,8 +1078,14 @@ export function installBattleHudLayout(root: HTMLElement): void {
   window.addEventListener('cot-hud-relayout', schedule);
   // Keyboard and toolbar changes of the visible height arrive here once responsiveLayout.ts has resized the root.
   window.addEventListener('cot:layoutchange', schedule);
-  // The HUD's faces arriving re-measure what a fallback face set (the objective's side seat among them).
-  document.fonts?.addEventListener?.('loadingdone', () => { planInputs = true; schedule(); });
+  // The HUD's faces arriving re-measure a side seat a fallback face set too tall (only then: a relayout the faces cause
+  // anywhere else is the observers').
+  document.fonts?.addEventListener?.('loadingdone', () => {
+    if (!seatAwaitsFaces) return;
+    seatAwaitsFaces = false;
+    planInputs = true;
+    schedule();
+  });
   // Transforms (notably the spectator tray's entrance) do not resize the
   // border box. Measure the settled position without polling its animation.
   // A pass that lands mid-fade measures the reticle's furniture where its fade has it, so the end of a furniture's own fade

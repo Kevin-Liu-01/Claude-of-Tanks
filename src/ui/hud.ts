@@ -1465,7 +1465,8 @@ const HUD_CSS = `
   background:linear-gradient(180deg,rgba(126,148,164,.11),rgba(2,5,8,.2));
   border-left:1px solid rgba(161,181,196,.16);border-right:1px solid rgba(161,181,196,.16);
   clip-path:polygon(0 0,100% 0,88% 100%,12% 100%);}
-.cot-top .tm-label{color:#798996;letter-spacing:.24em;}
+.cot-top .tm-label{color:#798996;}
+.cot-top .tm-label:empty{display:none;}
 .cot-top .tm{font-size:18px;font-weight:700;color:#e2ebf2;letter-spacing:.08em;
   font-family:${FONT_COND};text-shadow:0 1px 3px rgba(0,0,0,.9);
   line-height:1;}
@@ -2101,7 +2102,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const topPlate = el('div', 'cot-top', root);
   topPlate.innerHTML = `<div class="sc ally"><span class="team-label">${t('hud.team.ally')}</span>` +
     `<b class="fg">0</b></div>` +
-    `<div class="tm-block"><span class="tm-label">${t('hud.team.time')}</span><span class="tm num">15:00</span></div>` +
+    `<div class="tm-block"><span class="tm-label"></span><span class="tm num">15:00</span></div>` +
     `<div class="sc enemy"><span class="team-label">${t('hud.team.enemy')}</span>` +
     `<b class="fe">0</b></div>`;
   const fgEl = requireElement<HTMLElement>(topPlate, '.fg');
@@ -2112,9 +2113,8 @@ export function initHud(bus: EventBus): HudRuntime {
   const timerLabelEl = requireElement<HTMLElement>(topPlate, '.tm-label');
   const modeStatusEl = el('div', 'cot-mode-status', root);
   modeStatusEl.setAttribute('role', 'status');
-  modeStatusEl.innerHTML = `<span class="mi"></span><span class="mn"></span><span class="mv"></span>`;
+  modeStatusEl.innerHTML = `<span class="mi"></span><span class="mv"></span>`;
   const modeStatusIcon = requireElement<HTMLElement>(modeStatusEl, '.mi');
-  const modeStatusName = requireElement<HTMLElement>(modeStatusEl, '.mn');
   const modeStatusValue = requireElement<HTMLElement>(modeStatusEl, '.mv');
   let lastModeStatus = '';
   const standardModeStatus: HudMatchModeState = {id:'standard',target:0};
@@ -3271,14 +3271,11 @@ export function initHud(bus: EventBus): HudRuntime {
     }
   }
 
-  function modeTimerLabel(modeId: string, waiting: boolean, limitS: number | null, target?: number | null): string {
-    if (waiting) return t('hud.timer.nextWave');
-    if (isPracticeMode(modeId)) return t('hud.timer.range');
-    if (modeId === 'capture_the_flag') return t('hud.timer.capture', { target: String(target ?? RULESET_SCORE_TARGETS.capture_the_flag) });
-    if (modeId === 'zone_control' || modeId === 'mars') return t('hud.timer.first', { target: String(target ?? RULESET_SCORE_TARGETS.zone_control) });
-    if (modeId === 'turbo_ball') return t('hud.timer.first', { target: String(target ?? RULESET_SCORE_TARGETS.turbo_ball) });
-    if (modeId === 'frontline_assault') return t('hud.timer.takeLine');
-    return limitS == null ? t('hud.timer.survive') : t('hud.team.time');
+  /** The clock's label: only a wave's countdown, which the clock alone would read as the match's time. The others went
+   *  (owner 2026-10-22, "cut ... secondary labels"): the target ("First 750", "Capture 3") repeated the objective's
+   *  progress line, and "Time", "Elapsed", "Survive" and "Take the line" labelled what the clock and the objective show. */
+  function modeTimerLabel(waiting: boolean): string {
+    return waiting ? t('hud.timer.nextWave') : '';
   }
 
   function additionalModeStatusCopy(modeState: HudMatchModeState, ownScore: string | number): string | null {
@@ -3346,7 +3343,6 @@ export function initHud(bus: EventBus): HudRuntime {
     const modeId = normalizeGameMode(modeState.id);
     modeStatusEl.dataset.mode = modeId;
     modeStatusEl.title = t(`playMenu.matchMode.${modeId}.label`);
-    modeStatusName.textContent = t(`hud.objective.${modeId}`);
     setObjectiveValue(modeStatusValue, copy);
     modeStatusEl.classList.add('show');
     lastModeStatus = status;
@@ -3387,7 +3383,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const waitS = horde ? Math.ceil(horde.nextWaveInS || 0) : 0;
     const limitS = battleClockLimitS(frame, modeState.id);
     const timer = waitS > 0 ? `${waitS}s` : clockText(frame, limitS);
-    updateTimer(modeTimerLabel(modeState.id || '', waitS > 0, limitS, modeState.target), timer);
+    updateTimer(modeTimerLabel(waitS > 0), timer);
     updateModeStatus(modeState, ownScore);
   }
 
@@ -3407,7 +3403,7 @@ export function initHud(bus: EventBus): HudRuntime {
       lastScore = score;
     }
     const limitS = battleClockLimitS(frame, 'standard');
-    updateTimer(t(limitS == null ? 'hud.timer.elapsed' : 'hud.team.time'), clockText(frame, limitS));
+    updateTimer('', clockText(frame, limitS));
   }
 
   function updateTeams(frame: HudFrame): void {
