@@ -663,7 +663,7 @@ assert.match(read('index.html'), /body, button, input, select, textarea \{[^}]*f
 for (const [path, pattern] of [
   ['src/presentation/home.css', /(?:^|[}\s])body\{[^}]*font-family:var\(--font-ui\)/],
   ['src/docs/docs.css', /(?:^|[}\s])body\{[^}]*font:500 14px\/1\.68 var\(--font\)/],
-  ['src/gallery/gallery.css', /(?:^|[}\s])body\{[^}]*font:500 12px\/1\.45 var\(--font\)/],
+  ['src/gallery/gallery.css', /(?:^|[}\s])body\{[^}]*font:500 var\(--fs-12\)\/1\.45 var\(--font\)/],
   ['src/presentation/notFound.css', /body\.not-found-page\{[^}]*font-family:var\(--font-ui\)/],
 ]) assert.match(read(path), pattern, `${path}: the page body names the UI family`);
 for (const path of ['src/docs/docs.css', 'src/gallery/gallery.css']) {

@@ -123,8 +123,8 @@
   <link rel="icon" href="/favicon.ico" sizes="32x32">
   <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-  <!--cot:type ui mono-->
-  <link rel="stylesheet" href="/src/presentation/mediaArchive.css">
+  <!--cot:type ui mono display-->
+  <link rel="stylesheet" href="/src/ui/tokens/tokens.css">
   <link rel="stylesheet" href="/src/gallery/gallery.css">
   <link rel="stylesheet" href="/src/presentation/publicNav.css">
   <title>Tank Gallery — Inspect {{COT_PRODUCTION_VEHICLES}} Claude of Tanks Vehicles</title>
@@ -143,175 +143,170 @@
   </nav>
 
   <main class="gallery-shell">
-    <aside class="archive-panel" data-i18n-aria-label="gallery.archive.heading">
-      <header class="panel-heading">
-        <div class="workspace-group-head">
-          <span class="workspace-number">01</span>
-          <div><p class="workspace-title" data-i18n="gallery.archive.heading">Fleet archive</p><p class="workspace-subtitle" data-i18n="gallery.archive.subheading">Roster, search &amp; selection</p></div>
-        </div>
-        <div class="workspace-identity">
-          <svg class="cot-i" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false" data-icon="gallery" data-af="" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-gallery"/></svg>
-          <div><p class="eyebrow" data-i18n="gallery.archive.eyebrow">Playable vehicle registry</p><h1 data-i18n="gallery.archive.h1">Tank Gallery</h1></div>
-        </div>
-        <p data-i18n="gallery.archive.summary">The current first-party procedural fleet, available for direct technical inspection.</p>
-      </header>
-
-      <form class="archive-filters" id="archiveFilters" role="search">
+    <aside class="browse" data-i18n-aria-label="gallery.browse.aria">
+      <form class="browse-search" id="archiveFilters" role="search">
         <label class="search-field" for="gallerySearch">
-          <span data-i18n="gallery.archive.search">Search archive</span>
-          <input id="gallerySearch" type="search" data-i18n-placeholder="gallery.archive.searchPlaceholder" placeholder="Name, nation, class, role…" autocomplete="off" spellcheck="false">
-          <kbd data-i18n="gallery.archive.searchKey">/</kbd>
+          <svg class="cot-i" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false" data-icon="search" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-search"/></svg>
+          <input id="gallerySearch" type="search" data-i18n-placeholder="gallery.archive.searchPlaceholder" placeholder="Search" data-i18n-aria-label="fleet.filter.search" aria-label="Search vehicles" autocomplete="off" spellcheck="false">
+          <output class="search-count num" id="archiveCount" for="gallerySearch"></output>
+          <kbd class="cot-c-kbd" aria-hidden="true">/</kbd>
         </label>
-        <div class="filter-row">
-          <div class="gallery-filter"><span class="filter-label" id="nationFilterLabel" data-i18n="gallery.archive.filter.nation">Nation</span><select id="nationFilter" aria-labelledby="nationFilterLabel"><option value="all" data-i18n="gallery.archive.filter.allNations">All nations</option></select></div>
-          <div class="gallery-filter"><span class="filter-label" id="eraFilterLabel" data-i18n="gallery.archive.filter.era">Era</span><select id="eraFilter" aria-labelledby="eraFilterLabel"><option value="all" data-i18n="gallery.archive.filter.allEras">All eras</option></select></div>
-          <div class="gallery-filter"><span class="filter-label" id="classFilterLabel" data-i18n="fleet.filter.class">Class</span><select id="classFilter" aria-labelledby="classFilterLabel"><option value="all" data-i18n="fleet.filter.allClasses">All classes</option></select></div>
-          <div class="gallery-filter"><span class="filter-label" id="roleFilterLabel" data-i18n="fleet.filter.role">Role</span><select id="roleFilter" aria-labelledby="roleFilterLabel"><option value="all" data-i18n="fleet.filter.allRoles">All roles</option></select></div>
-        </div>
       </form>
-
-      <div class="archive-summary">
-        <span id="archiveCount" data-i18n="gallery.archive.countLoading">Loading registry…</span>
-        <span data-i18n="gallery.archive.emptyHint">Select a vehicle to inspect it</span>
+      <div class="facet facet--nation" id="nationFacets" role="group" data-i18n-aria-label="gallery.archive.filter.nation"></div>
+      <div class="facet facet--chips" id="classFacets" role="group" data-i18n-aria-label="fleet.filter.class"></div>
+      <div class="facet-icons">
+        <div class="facet facet--icons" id="eraFacets" role="group" data-i18n-aria-label="gallery.archive.filter.era"></div>
+        <div class="facet facet--icons" id="extraFacets" role="group" data-i18n-aria-label="gallery.facet.aria"></div>
+        <div class="facet facet--icons" id="roleFacets" role="group" data-i18n-aria-label="fleet.filter.role"></div>
+      </div>
+      <div class="browse-tools">
+        <label class="sort-field"><span class="sr-only" data-i18n="gallery.sort.aria">Sort</span><select id="gallerySort"></select></label>
+        <button type="button" class="icon-button" id="sortDirection" aria-pressed="true" data-i18n-aria-label="gallery.sort.descending" data-i18n-title="gallery.sort.descending"><svg class="cot-i" viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false" data-icon="chevronDown" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-chevronDown-s"/></svg></button>
+        <div class="layout-switch" role="radiogroup" data-i18n-aria-label="gallery.layout.aria">
+          <button type="button" role="radio" aria-checked="true" data-layout="list" data-i18n-aria-label="gallery.layout.list" data-i18n-title="gallery.layout.list"><svg class="cot-i" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" data-icon="menu" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-menu"/></svg></button>
+          <button type="button" role="radio" aria-checked="false" tabindex="-1" data-layout="grid" data-i18n-aria-label="gallery.layout.grid" data-i18n-title="gallery.layout.grid"><svg class="cot-i" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" data-icon="pixels" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-pixels"/></svg></button>
+        </div>
       </div>
       <div class="vehicle-list" id="vehicleList" role="listbox" data-i18n-aria-label="gallery.archive.listAria"></div>
-      <footer class="archive-footer">
-        <span><i></i> <span data-i18n="gallery.archive.footerCredit">Models by Kevin Liu</span></span>
-        <a href="/docs#vehicles" data-i18n="gallery.archive.footerLink">Read the vehicle contract →</a>
-      </footer>
     </aside>
 
-    <section class="viewer" id="viewport" aria-label="Interactive tank viewer">
-      <div class="viewer-head">
-        <div class="view-controls" role="group" data-i18n-aria-label="gallery.viewer.viewControlsAria">
-          <span class="view-controls-label"><svg class="cot-i" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false" data-icon="cameraPath" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-cameraPath"/></svg><span data-i18n="gallery.viewer.viewControlsLabel">Tank views</span></span>
-          <button type="button" data-view="hero" class="active" data-i18n="gallery.view.view.hero">Hero</button>
-          <button type="button" data-view="front" data-i18n="gallery.view.view.front">Front</button>
-          <button type="button" data-view="left" data-i18n="gallery.view.view.left">Left</button>
-          <button type="button" data-view="right" data-i18n="gallery.view.view.right">Right</button>
-          <button type="button" data-view="rear" data-i18n="gallery.view.view.rear">Rear</button>
-          <button type="button" data-view="top" data-i18n="gallery.view.view.top">Top</button>
-          <button type="button" data-view="elevated-left" data-i18n="gallery.view.view.elevatedLeft">Elev. L</button>
-          <button type="button" data-view="elevated-right" data-i18n="gallery.view.view.elevatedRight">Elev. R</button>
-          <button type="button" id="autoRotate" aria-pressed="false" data-i18n="gallery.view.auto">Auto</button>
-        </div>
+    <section class="stage" id="viewport" aria-label="Interactive tank viewer" data-i18n-aria-label="gallery.viewer.aria">
+      <div class="stage-layers" role="group" data-i18n-aria-label="gallery.view.modeDockAria">
+        <button type="button" class="active" data-mode="appearance" data-key="1"><svg class="cot-i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" data-icon="vehicle" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-vehicle"/></svg><span data-i18n="gallery.view.mode.appearance">Exterior</span><kbd class="cot-c-kbd" aria-hidden="true">1</kbd></button>
+        <button type="button" data-mode="armor" data-key="2"><svg class="cot-i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" data-icon="layerArmor" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-layerArmor"/></svg><span data-i18n="gallery.view.mode.armor">Armor</span><kbd class="cot-c-kbd" aria-hidden="true">2</kbd></button>
+        <button type="button" data-mode="modules" data-key="3"><svg class="cot-i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" data-icon="layerXray" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-layerXray"/></svg><span data-i18n="gallery.view.mode.modules">Modules</span><kbd class="cot-c-kbd" aria-hidden="true">3</kbd></button>
+        <button type="button" data-mode="crew" data-key="4"><svg class="cot-i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" data-icon="team" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-team"/></svg><span data-i18n="gallery.view.mode.crew">Crew</span><kbd class="cot-c-kbd" aria-hidden="true">4</kbd></button>
+        <button type="button" data-mode="markup" data-key="5"><svg class="cot-i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" data-icon="layerMarkup" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-layerMarkup"/></svg><span data-i18n="gallery.view.mode.markup">Markup</span><kbd class="cot-c-kbd" aria-hidden="true">5</kbd></button>
+      </div>
+
+      <div class="stage-views" role="group" data-i18n-aria-label="gallery.viewer.viewControlsAria">
+        <button type="button" data-view="hero" class="active" data-i18n="gallery.view.view.hero">Hero</button>
+        <button type="button" data-view="front" data-i18n="gallery.view.view.front">Front</button>
+        <button type="button" data-view="left" data-i18n="gallery.view.view.left">Left</button>
+        <button type="button" data-view="right" data-i18n="gallery.view.view.right">Right</button>
+        <button type="button" data-view="rear" data-i18n="gallery.view.view.rear">Rear</button>
+        <button type="button" data-view="top" data-i18n="gallery.view.view.top">Top</button>
+        <button type="button" data-view="elevated-left" data-i18n="gallery.view.view.elevatedLeft">Elev. L</button>
+        <button type="button" data-view="elevated-right" data-i18n="gallery.view.view.elevatedRight">Elev. R</button>
       </div>
 
       <div class="loading-state" id="loadingState" role="status">
-        <img src="/brand/logo-mark-metal.svg" alt="">
-        <span data-i18n="gallery.view.loading">Assembling vehicle</span>
+        <img src="/brand/logo-mark-metal.svg" alt="" width="44" height="52">
+        <span class="sr-only" data-i18n="gallery.view.loading">Assembling vehicle</span>
       </div>
 
       <div class="inspection-readout" id="inspectionReadout" hidden>
-        <div><span id="inspectionId" data-i18n="gallery.view.readoutIdDefault">H01</span><small id="inspectionOwner" data-i18n="gallery.view.readoutOwnerHull">Hull</small></div>
-        <strong id="inspectionTitle" data-i18n="gallery.view.readoutTitleDefault">Upper glacis</strong>
-        <p id="inspectionDetails" data-i18n="gallery.view.readoutDetailsDefault">Select a diagnostic volume for exact data.</p>
+        <div><span id="inspectionId">H01</span><small id="inspectionOwner"></small></div>
+        <strong id="inspectionTitle"></strong>
+        <p id="inspectionDetails"></p>
       </div>
 
       <div class="viewer-bottom-console">
         <div class="overlay-legend" id="overlayLegend" role="group" data-i18n-aria-label="gallery.legend.aria"></div>
-        <div class="mode-dock" role="group" data-i18n-aria-label="gallery.view.modeDockAria">
-          <p><i data-ui-icon="graphics"></i><span><span data-i18n="gallery.view.modeDockHeading">Diagnostic layers</span><small data-i18n="gallery.view.modeDockHint">Keys 1–5</small></span></p>
-          <button type="button" class="active" data-mode="appearance" data-key="1"><svg class="cot-i" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false" data-icon="vehicle" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-vehicle"/></svg><span><span data-i18n="gallery.view.mode.appearance">Exterior</span><small data-i18n="gallery.view.mode.appearanceHint">Rendered surface</small></span></button>
-          <button type="button" data-mode="armor" data-key="2"><svg class="cot-i" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false" data-icon="layerArmor" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-layerArmor"/></svg><span><span data-i18n="gallery.view.mode.armor">Armor</span><small data-i18n="gallery.view.mode.armorHint">Thickness map</small></span></button>
-          <button type="button" data-mode="modules" data-key="3"><svg class="cot-i" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false" data-icon="layerModules" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-layerModules"/></svg><span><span data-i18n="gallery.view.mode.modules">Modules</span><small data-i18n="gallery.view.mode.modulesHint">Internal systems</small></span></button>
-          <button type="button" data-mode="crew" data-key="4"><svg class="cot-i" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false" data-icon="team" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-team"/></svg><span><span data-i18n="gallery.view.mode.crew">Crew</span><small data-i18n="gallery.view.mode.crewHint">Crew stations</small></span></button>
-          <button type="button" data-mode="markup" data-key="5"><svg class="cot-i" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false" data-icon="cameraPath" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-cameraPath"/></svg><span><span data-i18n="gallery.view.mode.markup">Markup</span><small data-i18n="gallery.view.mode.markupHint">Select geometry</small></span></button>
-        </div>
-        <div class="viewer-footer-row">
-          <p class="viewer-help" id="viewerHelp"><span><i data-ui-icon="rematch"></i><span data-i18n="gallery.view.modeDockHelp">Orbit</span></span><span><i data-ui-icon="optics"></i><span data-i18n="gallery.view.modeDockHelpZoom">Zoom</span></span><span><i data-ui-icon="autoAim"></i><span data-i18n="gallery.view.modeDockHelpSelect">Select volume</span></span></p>
-          <span class="viewer-bay" data-i18n="gallery.view.bayLabel">Bay / G-01</span>
-        </div>
+      </div>
+
+      <figure class="stage-inset" id="stageInset">
+        <canvas id="stageScale" width="300" height="132"></canvas>
+      </figure>
+
+      <div class="stage-tools" role="group" data-i18n-aria-label="gallery.tool.aria">
+        <button type="button" id="autoRotate" aria-pressed="false"><svg class="cot-i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" data-icon="rematch" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-rematch"/></svg><span data-i18n="gallery.view.auto">Turntable</span></button>
+        <button type="button" id="photo"><svg class="cot-i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" data-icon="toolPhoto" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-toolPhoto"/></svg><span data-i18n="gallery.tool.photo">Photo</span></button>
       </div>
     </section>
 
     <aside class="dossier" data-i18n-aria-label="gallery.dossier.aria">
       <div class="dossier-scroll">
-        <header class="dossier-head">
-          <div class="workspace-group-head dossier-group-head">
-            <span class="workspace-number">02</span>
-            <div><p class="workspace-title" data-i18n="gallery.dossier.heading">Technical dossier</p></div>
-          </div>
-          <div class="dossier-actions">
-            <button type="button" id="testDrive" class="test-drive" data-i18n-title="gallery.dossier.testDriveTitle" data-i18n="gallery.dossier.testDrive">Proving ground</button>
-            <button type="button" id="copyLink" data-i18n-title="gallery.dossier.linkTitle" data-i18n="gallery.dossier.linkButton">Link</button>
-            <button type="button" id="copySpec" data-i18n-title="gallery.dossier.copyDataTitle" data-i18n="gallery.dossier.copyData">Copy data</button>
-          </div>
-          <div class="dossier-identity">
-            <div class="dossier-tank-frame"><img id="dossierTankIcon" alt=""></div>
-            <div><p class="eyebrow" id="dossierMeta" data-i18n="gallery.dossier.metaDefault">Nation // Era // Tier</p><h2 id="dossierName" data-i18n="gallery.dossier.nameDefault">Vehicle name</h2><p class="designation" id="dossierDesignation" data-i18n="gallery.dossier.designationDefault">Registry identifier</p></div>
-          </div>
-          <div class="dossier-index"><span id="dossierIndex">001</span><small data-i18n="gallery.dossier.fleetRecord">Fleet record</small></div>
-          <p class="model-author" id="dossierAuthor" data-i18n="gallery.dossier.authorLine" data-i18n-vars='{"creator":"Kevin B. Liu"}'>Original procedural model by Kevin B. Liu</p>
+        <header class="take" id="dossierTake">
+          <div class="take-media" id="takeMedia" role="group"><img class="take-still" id="takeStill" alt="" width="512" height="512" decoding="async"></div>
+          <span class="take-tier" id="dossierTier" aria-hidden="true"></span>
+          <div class="take-actions" id="takeActions"></div>
+          <div class="take-name"><img class="take-flag" id="dossierFlag" alt="" width="34" height="26"><h1 id="dossierName"></h1></div>
         </header>
+        <ul class="dossier-tags" id="dossierTags"></ul>
+        <div class="dossier-tabs" id="dossierTabs"></div>
 
-        <section class="dossier-section" aria-labelledby="ratingHeading">
-          <div class="section-label"><span id="ratingHeading" data-i18n="gallery.dossier.section.operational">Operational profile</span><small data-i18n="gallery.dossier.section.operationalSub">Normalized / 100</small></div>
-          <div class="rating-grid" id="ratingGrid"></div>
-        </section>
-
-        <section class="dossier-section" aria-labelledby="summaryHeading">
-          <div class="section-label"><span id="summaryHeading" data-i18n="gallery.dossier.section.summary">Technical summary</span><small data-i18n="gallery.dossier.section.summarySub">Current game data</small></div>
-          <div class="technical-brief" id="technicalBrief"></div>
-          <ul class="highlights" id="highlights"></ul>
-        </section>
-
-        <section class="dossier-section" aria-labelledby="articulationHeading">
-          <div class="section-label"><span id="articulationHeading" data-i18n="gallery.dossier.section.articulation">Articulation</span><small data-i18n="gallery.dossier.section.articulationSub">Current vehicle rig</small></div>
-          <label class="range-control" for="hullYaw"><span><span data-i18n="gallery.dossier.hullYaw">Hull yaw</span> <output id="hullYawValue">0°</output></span><input id="hullYaw" type="range" min="-180" max="180" value="0"></label>
-          <label class="range-control" for="turretYaw"><span><span data-i18n="gallery.dossier.turretYaw">Turret yaw</span> <output id="turretYawValue">0°</output></span><input id="turretYaw" type="range" min="-180" max="180" value="0"></label>
-          <label class="range-control" for="gunPitch"><span><span data-i18n="gallery.dossier.gunPitch">Gun elevation</span> <output id="gunPitchValue">0°</output></span><input id="gunPitch" type="range" min="-10" max="20" step="0.5" value="0"></label>
-        </section>
-
-        <section class="dossier-section surface-workbench" id="markupWorkbench" aria-labelledby="markupHeading" hidden>
-          <div class="section-label"><span id="markupHeading" data-i18n="gallery.dossier.section.markup">Surface markup</span><small data-i18n="gallery.dossier.section.markupSub">Review packet / 01</small></div>
-          <p class="markup-hint" data-i18n="gallery.dossier.markupHelp">Click a triangle to mark it. Drag still orbits; Shift-click adds another surface.</p>
-
-          <div class="markup-operation-grid" role="group" aria-label="Surface markup operation" data-i18n-aria-label="aria.surfacemarkupoperation">
-            <button type="button" data-markup-operation="inspect" data-i18n="gallery.markup.inspect">Inspect</button>
-            <button type="button" class="active" data-markup-operation="remove" aria-pressed="true" data-i18n="gallery.markup.remove">Remove</button>
-            <button type="button" data-markup-operation="reshape" data-i18n="gallery.markup.reshape">Reshape</button>
-            <button type="button" data-markup-operation="add" data-i18n="gallery.markup.add">Add here</button>
+        <section class="dossier-panel" id="dossier-overview" role="tabpanel">
+          <div class="facts" id="dossierFacts"></div>
+          <div class="ratings" id="ratingGrid"></div>
+          <ul class="features" id="dossierFeatures"></ul>
+          <div class="versus" id="versus">
+            <div class="versus-side" id="versusOwn"></div>
+            <div class="versus-mid" id="versusMid"></div>
+            <div class="versus-side versus-side--rival">
+              <label class="versus-pick"><span class="sr-only" data-i18n="gallery.versus.rival">Rival</span><select id="rivalSelect"></select></label>
+              <div id="versusRival"></div>
+            </div>
+            <canvas class="versus-scale" id="versusScale" width="360" height="72"></canvas>
           </div>
-
-          <div class="markup-control-grid">
-            <label for="markupScope"><span data-i18n="gallery.markup.scope">Selection scope</span><select id="markupScope"><option value="patch" data-i18n="gallery.markup.scope.patch">Coplanar patch</option><option value="face" data-i18n="gallery.markup.scope.face">Single triangle</option></select></label>
-            <label for="markupPatchAngle"><span data-i18n="gallery.markup.patchAngle">Patch angle</span><input id="markupPatchAngle" type="number" value="14" min="1" max="45" step="1"></label>
-          </div>
-
-          <label class="markup-field" for="markupNote"><span data-i18n="gallery.markup.note">Geometry instruction</span><textarea id="markupNote" data-i18n-placeholder="gallery.dossier.markup.hint" placeholder="Blend this cheek into the mantlet."></textarea></label>
-
-          <div class="markup-request" id="markupReshapeFields" hidden>
-            <span data-i18n="gallery.markup.suggestedOffset">Suggested offset / metres</span>
-            <div class="markup-vector"><input id="markupOffsetX" type="number" step="0.01" value="0" aria-label="X offset" data-i18n-aria-label="aria.xoffset"><input id="markupOffsetY" type="number" step="0.01" value="0" aria-label="Y offset" data-i18n-aria-label="aria.yoffset"><input id="markupOffsetZ" type="number" step="0.01" value="0" aria-label="Z offset" data-i18n-aria-label="aria.zoffset"></div>
-          </div>
-
-          <div class="markup-request" id="markupAddFields" hidden>
-            <label for="markupPrimitive"><span data-i18n="gallery.markup.primitive">Primitive</span><select id="markupPrimitive"><option data-i18n="gallery.markup.primitive.custom">custom</option><option data-i18n="gallery.markup.primitive.box">box</option><option data-i18n="gallery.markup.primitive.wedge">wedge</option><option data-i18n="gallery.markup.primitive.cylinder">cylinder</option><option data-i18n="gallery.markup.primitive.rail">rail</option><option data-i18n="gallery.markup.primitive.armor">armor</option></select></label>
-            <span>Size W × H × D / metres</span>
-            <div class="markup-vector"><input id="markupSizeW" type="number" step="0.01" value="0.20" aria-label="Width" data-i18n-aria-label="aria.width"><input id="markupSizeH" type="number" step="0.01" value="0.20" aria-label="Height" data-i18n-aria-label="aria.height"><input id="markupSizeD" type="number" step="0.01" value="0.20" aria-label="Depth" data-i18n-aria-label="aria.depth"></div>
-          </div>
-
-          <div class="markup-selection-head"><span data-i18n="gallery.markup.selections">Selections</span><output id="markupSelectionCount">0</output></div>
-          <div class="markup-selection-list" id="markupSelectionList"></div>
-          <div class="markup-action-row"><button type="button" id="markupUndo" data-i18n="gallery.markup.undo">Undo</button><button type="button" id="markupClear" data-i18n="gallery.markup.clear">Clear</button><button type="button" id="markupFocus" data-i18n="gallery.markup.focus">Focus</button></div>
-
-          <label class="markup-field" for="markupJson"><span data-i18n="gallery.markup.json">Review packet JSON</span><textarea id="markupJson" class="markup-json" readonly spellcheck="false"></textarea></label>
-          <div class="markup-action-row markup-action-row--export"><button type="button" id="markupCopy" data-i18n="gallery.markup.copyJson">Copy JSON</button><button type="button" id="markupDownload" data-i18n="gallery.markup.download">Download</button><button type="button" id="markupSavePng" data-i18n="gallery.markup.savePng">Save PNG</button></div>
-          <p class="markup-shortcuts" data-i18n="gallery.markup.shortcuts">Shift+1–4 operation · Cmd/Ctrl+Z undo · Delete selected</p>
         </section>
 
-        <section class="dossier-section" aria-labelledby="specHeading">
-          <div class="section-label"><span id="specHeading" data-i18n="gallery.dossier.section.specification">Specification</span><small data-i18n="gallery.dossier.section.specificationSub">Canonical values</small></div>
-          <dl class="spec-grid" id="specGrid"></dl>
+        <section class="dossier-panel" id="dossier-stats" role="tabpanel" hidden>
+          <div class="peer-switch" role="radiogroup" data-i18n-aria-label="gallery.peer.aria">
+            <button type="button" role="radio" aria-checked="true" data-peer="fleet" data-i18n="gallery.peer.fleet">Fleet</button>
+            <button type="button" role="radio" aria-checked="false" tabindex="-1" data-peer="class" data-i18n="gallery.peer.class">Class</button>
+          </div>
+          <div class="stat-groups" id="statGroups"></div>
         </section>
 
-        <section class="dossier-section" aria-labelledby="ammoHeading">
-          <div class="section-label"><span id="ammoHeading" data-i18n="gallery.dossier.section.ammunition">Ammunition suite</span><small data-i18n="gallery.dossier.section.ammunitionSub">At 1,000 m</small></div>
+        <section class="dossier-panel" id="dossier-ammo" role="tabpanel" hidden>
           <div class="ammunition-list" id="ammunitionList"></div>
         </section>
 
-        <p class="model-note" data-i18n="gallery.dossier.modelNote">Every selectable vehicle and diagnostic model is original procedural work by Kevin B. Liu. The displayed values describe the Claude of Tanks simulation and do not provide a real-world engineering or survivability assessment. Diagnostic overlays represent authored collision volumes.</p>
+        <section class="dossier-panel" id="dossier-anatomy" role="tabpanel" hidden>
+          <div class="diagram-switch" id="diagramSwitch" role="radiogroup" data-i18n-aria-label="gallery.diagram.aria"></div>
+          <figure class="diagram"><img id="diagramImage" alt="" width="512" height="256" decoding="async"></figure>
+          <div class="pose" id="pose">
+            <label class="range-control" for="hullYaw"><span data-i18n="gallery.dossier.hullYaw">Hull yaw</span><output id="hullYawValue" class="num">0°</output><input id="hullYaw" type="range" min="-180" max="180" value="0"></label>
+            <label class="range-control" for="turretYaw"><span data-i18n="gallery.dossier.turretYaw">Turret yaw</span><output id="turretYawValue" class="num">0°</output><input id="turretYaw" type="range" min="-180" max="180" value="0"></label>
+            <label class="range-control" for="gunPitch"><span data-i18n="gallery.dossier.gunPitch">Gun elevation</span><output id="gunPitchValue" class="num">0°</output><input id="gunPitch" type="range" min="-10" max="20" step="0.5" value="0"></label>
+          </div>
+        </section>
+
+        <section class="dossier-panel" id="dossier-damage" role="tabpanel" hidden></section>
+
+        <section class="dossier-panel" id="dossier-markup" role="tabpanel" hidden>
+          <section class="surface-workbench" id="markupWorkbench" hidden>
+            <div class="markup-operation-grid" role="group" aria-label="Surface markup operation" data-i18n-aria-label="aria.surfacemarkupoperation">
+              <button type="button" data-markup-operation="inspect" data-i18n="gallery.markup.inspect">Inspect</button>
+              <button type="button" class="active" data-markup-operation="remove" aria-pressed="true" data-i18n="gallery.markup.remove">Remove</button>
+              <button type="button" data-markup-operation="reshape" data-i18n="gallery.markup.reshape">Reshape</button>
+              <button type="button" data-markup-operation="add" data-i18n="gallery.markup.add">Add here</button>
+            </div>
+
+            <div class="markup-control-grid">
+              <label for="markupScope"><span data-i18n="gallery.markup.scope">Selection scope</span><select id="markupScope"><option value="patch" data-i18n="gallery.markup.scope.patch">Coplanar patch</option><option value="face" data-i18n="gallery.markup.scope.face">Single triangle</option></select></label>
+              <label for="markupPatchAngle"><span data-i18n="gallery.markup.patchAngle">Patch angle</span><input id="markupPatchAngle" type="number" value="14" min="1" max="45" step="1"></label>
+            </div>
+
+            <label class="markup-field" for="markupNote"><span data-i18n="gallery.markup.note">Geometry instruction</span><textarea id="markupNote"></textarea></label>
+
+            <div class="markup-request" id="markupReshapeFields" hidden>
+              <span data-i18n="gallery.markup.suggestedOffset">Suggested offset / metres</span>
+              <div class="markup-vector"><input id="markupOffsetX" type="number" step="0.01" value="0" aria-label="X offset" data-i18n-aria-label="aria.xoffset"><input id="markupOffsetY" type="number" step="0.01" value="0" aria-label="Y offset" data-i18n-aria-label="aria.yoffset"><input id="markupOffsetZ" type="number" step="0.01" value="0" aria-label="Z offset" data-i18n-aria-label="aria.zoffset"></div>
+            </div>
+
+            <div class="markup-request" id="markupAddFields" hidden>
+              <label for="markupPrimitive"><span data-i18n="gallery.markup.primitive">Primitive</span><select id="markupPrimitive"><option data-i18n="gallery.markup.primitive.custom">custom</option><option data-i18n="gallery.markup.primitive.box">box</option><option data-i18n="gallery.markup.primitive.wedge">wedge</option><option data-i18n="gallery.markup.primitive.cylinder">cylinder</option><option data-i18n="gallery.markup.primitive.rail">rail</option><option data-i18n="gallery.markup.primitive.armor">armor</option></select></label>
+              <span data-i18n="gallery.markup.size">Size W × H × D / metres</span>
+              <div class="markup-vector"><input id="markupSizeW" type="number" step="0.01" value="0.20" aria-label="Width" data-i18n-aria-label="aria.width"><input id="markupSizeH" type="number" step="0.01" value="0.20" aria-label="Height" data-i18n-aria-label="aria.height"><input id="markupSizeD" type="number" step="0.01" value="0.20" aria-label="Depth" data-i18n-aria-label="aria.depth"></div>
+            </div>
+
+            <div class="markup-selection-head"><span data-i18n="gallery.markup.selections">Selections</span><output id="markupSelectionCount" class="num">0</output></div>
+            <div class="markup-selection-list" id="markupSelectionList"></div>
+            <div class="markup-action-row"><button type="button" id="markupUndo" data-i18n="gallery.markup.undo">Undo</button><button type="button" id="markupClear" data-i18n="gallery.markup.clear">Clear</button><button type="button" id="markupFocus" data-i18n="gallery.markup.focus">Focus</button></div>
+
+            <label class="markup-field" for="markupJson"><span data-i18n="gallery.markup.json">Review packet JSON</span><textarea id="markupJson" class="markup-json" readonly spellcheck="false"></textarea></label>
+            <div class="markup-action-row"><button type="button" id="markupCopy" data-i18n="gallery.markup.copyJson">Copy JSON</button><button type="button" id="markupDownload" data-i18n="gallery.markup.download">Download</button><button type="button" id="markupSavePng" data-i18n="gallery.markup.savePng">Save PNG</button></div>
+          </section>
+        </section>
+      </div>
+
+      <div class="dossier-actions">
+        <button type="button" id="testDrive" class="cot-c-btn cot-c-btn--primary cot-c-btn--36" data-ui-sound="confirm"><svg class="cot-i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" data-icon="modeProving" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-modeProving"/></svg><span class="cot-c-btn__label" data-i18n="gallery.dossier.testDrive">Test Drive</span></button>
+        <button type="button" id="favourite" class="cot-c-btn cot-c-btn--secondary cot-c-btn--36 cot-c-btn--icon" aria-pressed="false" data-i18n-aria-label="gallery.dossier.favourite" data-i18n-title="gallery.dossier.favourite"><svg class="cot-i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" data-icon="star" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-star"/></svg></button>
+        <button type="button" id="copyLink" class="cot-c-btn cot-c-btn--secondary cot-c-btn--36 cot-c-btn--icon" data-i18n-aria-label="gallery.dossier.linkTitle" data-i18n-title="gallery.dossier.linkTitle"><svg class="cot-i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" data-icon="statChain" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-statChain"/></svg></button>
+        <button type="button" id="copySpec" class="cot-c-btn cot-c-btn--secondary cot-c-btn--36 cot-c-btn--icon" data-i18n-aria-label="gallery.dossier.copyDataTitle" data-i18n-title="gallery.dossier.copyDataTitle"><svg class="cot-i" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false" data-icon="copy" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square" stroke-linejoin="miter"><use href="#i-copy"/></svg></button>
       </div>
     </aside>
   </main>
