@@ -1,3 +1,4 @@
+import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { OLYMPUS_SETTLEMENT } from './marsSettlement.ts';
 import { TOWN_LIGHT_PLANS, TOWN_PLANS } from './townPlans.generated.ts';
 import { MARS_SKY_PRESET } from '../../engine/marsAtmosphere.ts';
@@ -40,8 +41,8 @@ export default {
     marshes: [],
     // the two outer zone yards, each the other's rotation about the station (apron bank law: docs/MAP-LAYOUT-BRIEF.md)
     hardstands: [
-      { x: -170, z: 120, width: 56, length: 56, yawDeg: 0, level: 3.1, grade: 0, bankM: 16 },
-      { x: 185, z: -80, width: 56, length: 56, yawDeg: 119, level: 5.4, grade: 0.08, bankM: 16 },
+      { x: -170, z: 120, width: 56, length: 56, yawDeg: 0, level: 3.1, grade: 0, bankM: 16, paint: WORN_YARD_PAINT },
+      { x: 185, z: -80, width: 56, length: 56, yawDeg: 119, level: 5.4, grade: 0.08, bankM: 16, paint: WORN_YARD_PAINT },
     ],
     // the station compound on the basin floor
     village: { x0: -110, x1: 110, z0: -80, z1: 120, cx: 0, cz: 20, feather: 44, flatten: 0.94 },

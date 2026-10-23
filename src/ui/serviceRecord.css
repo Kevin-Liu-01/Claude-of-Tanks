@@ -1,4 +1,6 @@
 /* Service Record content uses the shared modal shell, button and icon primitives. */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
 .cot-modal-root.cot-service-record{padding:clamp(8px,2vh,24px);place-items:center}
 .cot-modal-root.cot-service-record .cot-modal{width:min(1120px,100%);height:min(880px,96dvh);max-height:calc(100dvh - 16px);border-top-color:rgba(165,183,198,.28)}
 .cot-modal-root.cot-service-record .cot-modal::before{display:none}
@@ -98,3 +100,4 @@
 .cot-record-battle-num .cot-record-stat-label{gap:4px;font-size:11px;flex-wrap:wrap}.cot-record-battle-num .cot-record-stat-label svg{width:12px;height:12px}
 /* zh-CN labels sit one step up (the type rules) */
 :lang(zh-CN) .cot-service-record .cot-record-tabs button{font-size:13px}
+}

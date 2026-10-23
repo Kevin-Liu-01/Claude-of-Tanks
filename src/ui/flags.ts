@@ -38,5 +38,8 @@ export function flagIconHTML(nation: string, width = 24, height = 0): string {
   const w = Number.isFinite(width) && width > 0 ? Math.round(width) : 24;
   const h = Number.isFinite(height) && height > 0 ? Math.round(height) : Math.round(w * 0.75);
   return `<img class="cot-flag" src="${flagIconUrl(nation)}" width="${w}" height="${h}" ` +
-    `data-country-code="${code}" alt="" aria-hidden="true" draggable="false">`;
+    `data-country-code="${code}" alt="" aria-hidden="true" draggable="false" style="${NATION_CHIP}">`;
 }
+
+/** The nation chip (brand-ui BUI-F4): every flag shares the icon set's chamfered corner, at any rendered size. */
+const NATION_CHIP = 'clip-path:polygon(0 0,calc(100% - 2px) 0,100% 2px,100% 100%,2px 100%,0 calc(100% - 2px))';

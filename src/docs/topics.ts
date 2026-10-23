@@ -1,5 +1,6 @@
 import { mountDocsIcons, type DocsIconKey } from './docsIcons.ts';
 import { t } from '../ui/i18n.ts';
+import { pictureMarkup, stillDataSaver } from '../presentation/responsivePicture.ts';
 
 type TopicSection = readonly [string, ...string[]];
 type TopicMedia = readonly [string, string];
@@ -305,8 +306,76 @@ for (const [slug, count] of Object.entries(guideCounts)) {
   topic.sectionIcons = [...topic.sectionIcons, ...guides.map(() => topic.icon)];
 }
 
+/** Each figure's intrinsic size, so the page never shifts as a figure loads (tools/media-fallback.selftest.mjs reads
+ *  every file's own header against this table). */
+export const TOPIC_FIGURE_SIZES: Readonly<Record<string, readonly [number, number]>> = {
+  '/maps/autumn.webp': [3840, 2160],
+  '/maps/coastal.webp': [3840, 2160],
+  '/media/filming-r1/plan-view.webp': [2000, 594],
+  '/media/filming-r1/previz-sheet.webp': [1920, 720],
+  '/media/home/ui_roster.webp': [2000, 1224],
+  '/media/presentation-r1/ui_mobile.webp': [430, 932],
+  '/media/presentation-r1/ui_spectator_switcher.webp': [1440, 900],
+  '/media/presentation-r1/ui_spectator_switcher_mobile.webp': [390, 844],
+  '/media/presentation-r1/ui_tank_closeup_modern.webp': [1920, 1080],
+  '/media/showcase-r2/11_gallery_hero.webp': [1920, 1080],
+  '/media/showcase-r2/15_studio_workspace.webp': [1920, 1080],
+  '/media/showcase-r2/16_mobile_garage.webp': [860, 1864],
+  '/media/showcase-r2/17_live_player_hud.webp': [1920, 1080],
+  '/media/showcase-r2/19_live_sniper.webp': [1920, 1080],
+  '/media/showcase-r2/25_live_killcam_xray.webp': [1920, 1080],
+  '/media/site50-r14/frames/sheet-2.webp': [2400, 540],
+};
+const DEFAULT_FIGURE_SIZE = [1920, 1080] as const;
+/** A figure fills the article column (about 760 px; the full width on narrow screens). */
+const FIGURE_SIZES_ATTRIBUTE = '(max-width: 900px) 100vw, 760px';
+
 function mediaFigure([src, caption]: TopicMedia): string {
-  return `<figure class="topic-figure"><img src="${src}" alt="${caption}" loading="lazy"><figcaption>${caption}</figcaption></figure>`;
+  const [width, height] = TOPIC_FIGURE_SIZES[src] ?? DEFAULT_FIGURE_SIZE;
+  return `<figure class="topic-figure">${pictureMarkup({ src, width, height, alt: caption, sizes: FIGURE_SIZES_ATTRIBUTE })}<figcaption>${caption}</figcaption></figure>`;
+}
+
+/**
+ * The rungs a topic hero's take ships beyond its 1920 loop (brand-ui SPEC 8.3 video ladder): `r960`, the 960 x 540 VP9
+ * loop topic headers lead with (≤ 1.8 MB); `phone`, the 960 x 540 H.264 phone rung in web-video-r1, which is also the
+ * fallback for a browser without VP9. tools/media-fallback.selftest.mjs holds this table to the files on disk.
+ */
+export const TOPIC_HERO_RUNGS: Readonly<Record<string, { readonly r960?: true; readonly phone?: true }>> = {
+  's05-barn-advance': { r960: true, phone: true },
+  's07-lake-shellfire': { r960: true, phone: true },
+  's18-street-knockout': { r960: true, phone: true },
+  's26-minaret-fire': { r960: true, phone: true },
+};
+const LOOP_HERO = /^\/media\/site50-r14\/loops\/([\w-]+)\.webm$/;
+
+/**
+ * A topic header: its take's first frame as the page's LCP picture (a 640 still under data saving, which never plays),
+ * and the take's loop over it under the site's one playback policy (src/presentation/mediaPlayer.ts): the 960 rung
+ * first, the 1920 loop only on wide screens, the phone rung on phones, nothing by itself under reduced motion or data
+ * saving. A still header is the picture alone.
+ */
+export function topicHeroMarkup(hero: string, alt: string, saving = stillDataSaver()): string {
+  const take = LOOP_HERO.exec(hero)?.[1];
+  if (!take) {
+    const [width, height] = TOPIC_FIGURE_SIZES[hero] ?? (hero.startsWith('/maps/') ? [3840, 2160] : DEFAULT_FIGURE_SIZE);
+    return pictureMarkup({ src: hero, width, height, alt, eager: true, className: 'topic-hero-poster' }, saving);
+  }
+  const loops = '/media/site50-r14/loops';
+  const poster = pictureMarkup({
+    src: `${loops}/${take}.jpg`, rungs: [{ src: `${loops}/${take}.jpg`, width: 1920 }], width: 1920, height: 1080, alt,
+    eager: true, className: 'topic-hero-poster', tone: '#0b0e11',
+    // a phone and data saving show the take's 640 still (the phone pre-scroll budget, SPEC 8.3); the loop crossfades in
+    saveData: { src: `/media/site50-r14/stills/${take}-thumb.webp`, width: 640 },
+    phone: { src: `/media/site50-r14/stills/${take}-thumb.webp`, width: 640 },
+  }, saving);
+  const rungs = TOPIC_HERO_RUNGS[take] ?? {};
+  const sources = [
+    rungs.r960 ? `<source data-src="${loops}/${take}-960.webm" type="video/webm">` : '',
+    `<source data-src="${loops}/${take}.webm" type="video/webm"${rungs.r960 ? ' data-rung="wide"' : ''}>`,
+    rungs.phone ? `<source data-src="/media/web-video-r1/${take}-mobile.mp4" type="video/mp4" data-rung="phone">` : '',
+  ].join('');
+  const label = alt.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  return `${poster}<video data-media-player muted loop playsinline preload="none" aria-hidden="true" data-label="${label}">${sources}</video>`;
 }
 
 function formatText(text: string): string {
@@ -331,9 +400,7 @@ function renderTopicPage(): void {
   const root = document.querySelector<HTMLElement>('#topicRoot');
   if (!root) throw new Error('technical manual topic root is unavailable');
   const heroAlt = t('docs.topic.heroAlt', { label: topic.label });
-  const heroMarkup = /\.(webm|mp4)$/.test(topic.hero)
-    ? `<video autoplay muted loop playsinline preload="metadata" poster="${topic.hero.replace(/\.(webm|mp4)$/, '.jpg')}" aria-label="${heroAlt}"><source src="${topic.hero}" type="${topic.hero.endsWith('.mp4') ? 'video/mp4' : 'video/webm'}"></video>`
-    : `<img src="${topic.hero}" alt="${heroAlt}">`;
+  const heroMarkup = topicHeroMarkup(topic.hero, heroAlt);
   const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
   const sectionMap = topic.sections.map(([title], index) => `<a href="#${topicSectionId(index)}"><span data-doc-icon="${topic.sectionIcons[index] || topic.icon}"></span><b>${String(index + 1).padStart(2, '0')}</b><strong>${title}</strong></a>`).join('');
   root.innerHTML = `
@@ -341,6 +408,11 @@ function renderTopicPage(): void {
     <nav class="topic-nav" aria-label="${t('docs.topic.navAria')}"><div class="shell"><a href="/docs"><span class="topic-nav-icon" data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${topicNav}</div></nav>
     <div class="shell topic-layout"><article><nav class="topic-section-map" aria-label="${t('docs.topic.onThisPage')}">${sectionMap}${['vehicles','worlds','simulation'].includes(slug) ? `<a href="#reference"><strong>${t(`docs.reference.${slug}.title`)}</strong></a>` : ''}</nav>${topic.sections.map((section, index) => sectionMarkup(section, index, topic.sectionIcons[index] || topic.icon, topic.media[index === firstFigureAt ? 0 : index === secondFigureAt ? 1 : -1])).join('')}</article><aside><span class="topic-aside-icon" data-doc-icon="${topic.icon}"></span><p>${t('docs.topic.asideKicker')}</p><strong>${topic.label}</strong><span>${t('docs.topic.asideBody')}</span><a href="/docs">${t('docs.topic.asideLink')}</a></aside></div>`;
   mountDocsIcons(root);
+  const heroVideos = root.querySelectorAll<HTMLVideoElement>('video[data-media-player]');
+  if (heroVideos.length) {
+    void Promise.all([import('../presentation/mediaPlayer.ts'), import('../presentation/mediaPlayer.css')]).then(([{ mountMediaPlayers }]) => mountMediaPlayers(heroVideos,
+      (playing, video) => t(playing ? 'publicPages.video.pauseAria' : 'publicPages.video.playAria', { label: video.dataset.label || '' })));
+  }
   const article = root.querySelector<HTMLElement>('article');
   if (article && ['vehicles', 'worlds', 'simulation'].includes(slug)) {
     void import('./reference.ts').then(({mountReference}) => mountReference(article, slug));
