@@ -22,13 +22,13 @@
    "hostSweep": []
   },
   "amx10p": {
-   "inputHash": "e33e39824d735525",
+   "inputHash": "d90e75b370854313",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "amx10p_25": {
-   "inputHash": "c53691d02178383e",
+   "inputHash": "f02a4f5b38fbb520",
    "runs": [
     {
      "index": 0,
@@ -779,19 +779,19 @@
    "hostSweep": []
   },
   "cv90105_tml": {
-   "inputHash": "e28f0cec1480816c",
+   "inputHash": "84a8844ca32e3e9c",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "cv9040c": {
-   "inputHash": "56dc122059f83eac",
+   "inputHash": "89778f585575f8a7",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "cv90_mk4": {
-   "inputHash": "56fa6555280f62b2",
+   "inputHash": "a56e0abf95ebd0ae",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -803,7 +803,7 @@
    "hostSweep": []
   },
   "dardo": {
-   "inputHash": "bd9cb74b82c21f5d",
+   "inputHash": "e37c9edd5b899ab9",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1004,7 +1004,7 @@
    "hostSweep": []
   },
   "kf41_lynx": {
-   "inputHash": "57edde1544e5ebbb",
+   "inputHash": "09f98ffcfb3619e0",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1760,7 +1760,7 @@
    "hostSweep": []
   },
   "lrmv_lynx": {
-   "inputHash": "bc5c81a72fed9156",
+   "inputHash": "52c2ddcb8103c722",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2055,13 +2055,13 @@
    "hostSweep": []
   },
   "m551_sheridan": {
-   "inputHash": "886a2e57fc444a47",
+   "inputHash": "b2a950db795feec1",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "m551a1_tts": {
-   "inputHash": "0c3416ff9217d2e2",
+   "inputHash": "67b6aea5bf552d8b",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2143,7 +2143,7 @@
    "hostSweep": []
   },
   "marder2": {
-   "inputHash": "37bdd193dd487060",
+   "inputHash": "f4ff15dec66ba646",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2551,7 +2551,7 @@
    "hostSweep": []
   },
   "sabra_mk2": {
-   "inputHash": "159b6ac293d5d95f",
+   "inputHash": "0b5772419963ad7c",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3141,7 +3141,7 @@
    "hostSweep": []
   },
   "t80": {
-   "inputHash": "76ef39d6351c2dc0",
+   "inputHash": "f7f41721d6e05ff7",
    "runs": [
     {
      "index": 0,
@@ -3164,7 +3164,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.967,
-      "host": "hull<loftHull@profiles/russia.ts:504>"
+      "host": "hull<loftHull@profiles/russia.ts:510>"
      }
     }
    ],
@@ -3172,7 +3172,7 @@
    "hostSweep": []
   },
   "t80b": {
-   "inputHash": "b87d796b4a0691d9",
+   "inputHash": "1180a63650773df5",
    "runs": [
     {
      "index": 0,
@@ -3195,7 +3195,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.978,
-      "host": "hull<loftHull@profiles/russia.ts:504>"
+      "host": "hull<loftHull@profiles/russia.ts:510>"
      }
     }
    ],
@@ -3203,7 +3203,7 @@
    "hostSweep": []
   },
   "t80bv": {
-   "inputHash": "50324fda00f87465",
+   "inputHash": "0d87addbb966362e",
    "runs": [
     {
      "index": 0,
@@ -3226,7 +3226,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.967,
-      "host": "hull<loftHull@profiles/russia.ts:504>"
+      "host": "hull<loftHull@profiles/russia.ts:510>"
      }
     }
    ],
@@ -3824,7 +3824,7 @@
    "hostSweep": []
   },
   "type59": {
-   "inputHash": "a216bceee05c3fc6",
+   "inputHash": "b86b5a111ef3785f",
    "runs": [
     {
      "index": 0,
@@ -3845,7 +3845,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<loftHull@profiles/russia.ts:499>"
+      "host": "hull<loftHull@profiles/russia.ts:505>"
      }
     },
     {
@@ -3867,7 +3867,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<loftHull@profiles/russia.ts:499>"
+      "host": "hull<loftHull@profiles/russia.ts:505>"
      }
     }
    ],
@@ -4154,7 +4154,7 @@
    "hostSweep": []
   },
   "ztz85_iii": {
-   "inputHash": "7349d4d028cb4b00",
+   "inputHash": "c2f4d43893bc2382",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
