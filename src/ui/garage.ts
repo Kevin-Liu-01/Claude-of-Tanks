@@ -2732,7 +2732,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // The class glyph and name ride with the facet tables, loaded beside the stage (never in the boot graph); the slot
     // closes the row, so its arrival moves nothing.
     lowerClassFor = spec.id;
-    void Promise.all([import('../vehicles/vehicleFacets.ts'), import('./vehicleFacetIcons.ts')]).then(([facets, icons]) => {
+    // The class names live in the Filter panel's demand-loaded catalog slice (fleetStrings.ts), so they load here too.
+    void Promise.all([import('../vehicles/vehicleFacets.ts'), import('./vehicleFacetIcons.ts'),
+      import('./fleetStrings.ts').then((strings) => strings.ensureFleetStrings())]).then(([facets, icons]) => {
       if (lowerClassFor !== spec.id) return;
       const value = facets.vehicleClassForId(spec.id);
       const slot = lowerId.querySelector<HTMLElement>('.lt-class');

@@ -1168,13 +1168,16 @@ body[data-cot-height='tall'] .cot-featured{display:block;}
 body[data-cot-width='laptop'] .cot-garage{
   --cot-garage-sidebar-width:clamp(232px,20vw,272px);
 }
-body[data-cot-width='laptop'] .cot-header-nav .nv{width:34px;padding:0;justify-content:center;gap:0}
+/* Laptop keeps every destination labelled; GitHub and the locale fold to icons, and below 1280 px Home and Record do too. */
 body[data-cot-width='laptop'] .cot-header-nav :is(.cot-github,.cot-locale-switcher) .nav-label{display:none}
 body[data-cot-width='laptop'] .cot-header-nav .nv{padding-inline:var(--s2)}
 body[data-cot-width='laptop'] .cot-header-nav .cot-locale-switcher{width:34px;padding:0}
 body[data-cot-width='laptop'] .cot-header-nav .cot-locale-options{display:none}
-body[data-cot-width='laptop'] .cot-header-nav .record-badge{
-  position:absolute;right:-5px;top:-5px;min-width:14px;height:14px;padding:0 3px;font-size:11px;
+@media (max-width:1279px){
+  body[data-cot-width='laptop'] .cot-header-nav :is([data-nav='home'],.cot-record-trigger) .nav-label{display:none}
+  body[data-cot-width='laptop'] .cot-header-nav .record-badge{
+    position:absolute;right:-5px;top:-5px;min-width:14px;height:14px;padding:0 3px;font-size:var(--fs-11);
+  }
 }
 body[data-cot-width='laptop'] .cot-nav .github-stars{
   position:absolute;right:-7px;top:-6px;min-width:24px;height:14px;padding:0 3px;display:grid;place-items:center;
@@ -1281,9 +1284,9 @@ body[data-cot-panels='overlay'] .cot-battle{font-size:clamp(14px,1.8vw,17px);let
 body[data-cot-panels='overlay'] .cot-battle .battle-word{text-indent:0}
 /* folded: the Deploy button already shows the mode's glyph, so the toggle shows only its chevron (its name stays in aria-label) */
 body[data-cot-panels='overlay'] .cot-battle-mode span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-body[data-cot-panels='overlay'] .cot-battle{flex-basis:76%}
-body[data-cot-panels='overlay'] .cot-battle-mode{flex-basis:24%}
-body[data-cot-panels='overlay'] .cot-battle-mode{font-size:11px}
+body[data-cot-panels='overlay'] .cot-battle{flex:1 1 auto}
+body[data-cot-panels='overlay'] .cot-battle-mode{flex:0 0 52px;min-width:44px;padding:0;font-size:var(--fs-11)}
+body[data-cot-panels='overlay'] .cot-battle-control .cot-battle-mode::after{right:auto;left:50%;margin-left:-4px}
 body[data-cot-panels='overlay'] .cot-garage-tools{
   display:flex;left:max(var(--cot-overlay-edge),env(safe-area-inset-left));right:auto;
   top:calc(76px + var(--cot-room-row-space,0px));bottom:auto;width:var(--cot-compact-left-width);transform:none;
@@ -1528,7 +1531,7 @@ body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-p
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>svg,
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>.cot-info-trigger{display:none}
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>span{
-  font-size:11px;letter-spacing:0;
+  font:600 var(--fs-11)/1 var(--font-ui);letter-spacing:0;
 }
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-grid{grid-template-columns:1fr;gap:3px}
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .srow{
@@ -1670,6 +1673,8 @@ body[data-cot-panels='persistent'] .cot-garage .cot-technical-section .cot-dossi
 body[data-cot-panels='persistent'] .cot-garage .cot-technical-tabs{margin-right:var(--s6);}
 /* the nation rail rides over the roster's own box */
 body[data-cot-panels='persistent'] .cot-garage{--cot-garage-sidebar-bottom:250px;}
+/* the dossier column clears only the Deploy stack below it (Deploy, its mode row and Multiplayer), not the rail */
+body[data-cot-panels='persistent'] .cot-garage .stats{bottom:calc(22px + var(--btn-h-xl) + 2 * var(--btn-h-s) + var(--s2) + var(--s4));}
 body[data-cot-panels='persistent'] .cot-country-rail{left:34px;right:calc(22px + var(--cot-deploy-w) + var(--s4));width:auto;transform:none;}
 body[data-cot-panels='persistent'] .cot-lower-third{bottom:262px;}
 body[data-cot-panels='persistent'][data-cot-height='standard'] .cot-lt-name,
