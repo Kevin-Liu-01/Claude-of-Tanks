@@ -118,7 +118,7 @@ export const NATIONAL_CAMO_PATTERN_IDS = Object.freeze([
  * (camoCatalogProductionIndices.selftest.mjs).
  */
 const AUTHORED_PAINT_IDS_AFTER_GT = Object.freeze(['paint_m6_linebacker'] as const);
-/** Authored paints that joined after the release-233 Signatures, in the order they joined: the Type 10 (Dozer)'s JGSDF
+/** Authored paints that joined after the release-233 Signatures, in the order they joined: the Type 10 Kaitaku's JGSDF
  * digital came with that tank (2026-10-21). */
 const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number];
@@ -262,7 +262,7 @@ const BASE_CAMO_PATTERN_LABEL: Readonly<Record<typeof BASE_CAMO_PATTERN_IDS[numb
   sig_namer_ifv: 'Namer Sinai Field',
   sig_t84: 'T-84 Oplot',
   sig_ua_challenger2: 'UA Challenger 2',
-  sig_ua_t64bv: 'T-64BV Donbas',
+  sig_ua_t64bv: 'T-64BV mod. 2017',
   sig_ua_t80bv: 'UA T-80BV',
   sig_ua_t80u_kursk: 'T-80U Kursk',
   sig_ua_t84_oplot_m: 'T-84BM Oplot-M',

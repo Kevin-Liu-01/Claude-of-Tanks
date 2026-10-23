@@ -12,8 +12,9 @@ import { MAP_IDS } from '../world/maps/catalog.ts';
 // Frosthollow: a closed overcast since the 10-13 ruling's enforcement (Cinder Junction on cumulus 2026-10-16, Ironworks 2026-10-18) (a deck is closed or it
 // is cumulus: cloudsBan.selftest) — their far country stands to half the deck's depth, over the legacy 0.82 of its base
 const far = { ampM: 900 };
+// (2026-10-22, world-polish-240: Frosthollow went onto the owner's cumulus) the closed deck's cap on its old block
 for (const id of ['winter']) {
-  const cfg = getMapConfig(id);
+  const cfg = { ...getMapConfig(id), clouds: { regime: 'stratocumulus-deck', coverage: 0.92, nightGlow: 0.3, nightGlowHex: 0xffc080, deckBeam: 0.4 } };
   const b = resolveCloudBase(cfg);
   assert.equal(b.deck, true, `${id}: a deck`);
   assert.equal(b.closed, true, `${id}: closed (cover ${b.cover.toFixed(2)})`);
@@ -23,7 +24,7 @@ for (const id of ['winter']) {
   assert.ok(b.baseM < 1000 && b.topM > b.baseM, `${id}: a low deck (${b.baseM} m)`);
 }
 // Cinder Junction's hazy summer cumulus and Ironworks' (2026-10-18, the 228 census): their far country uncapped
-for (const id of ['railyard', 'foundry']) {
+for (const id of ['railyard', 'foundry', 'winter']) {
   const b = resolveCloudBase(getMapConfig(id));
   assert.ok(!b.deck && !b.closed && b.capM === CLOUD_BASE_NO_CAP_M, `${id}: cumulus, no cap`);
   assert.equal(resolveFarRangeAmp(far, CLOUD_BASE_NO_CAP_M), far.ampM);

@@ -272,6 +272,11 @@ const BLOOM_INPUT_CLAMP = 2.6;
 // blind critic: 70-81 % of a close hull white by day, 3-44 % at night). In the daylight lens, the intensifier and every
 // other camera the bloom is untouched.
 export const THERMAL_BLOOM_K = 0.25;
+/** (240, the coordinator: the 152 mm burst has "no clear bloom" in the heat lens) under the cut above, a pixel over `floor`
+ *  in the linear HDR buffer — over the hottest hull's emission (thermalVehicles.ts: an engine deck close up ~6.8; the heat
+ *  lens's media fire runs ~25 at a burst's core) — adds `gain` x its excess (at most `cap`) to the bloom's extraction, on
+ *  top of the clamped input every pixel gives: the sensor blooms on a detonation's fireball, never on a hull */
+const THERMAL_HOT_BLOOM = Object.freeze({ gain: 1, floor: 7, cap: 24 });
 /** How far the heat lens's bloom cut applies (0 none .. 1 full): 1 under a heat-imaging grade code, at every hour; with
  *  `dayToo` 0 (the QA hook's THERMAL_BLOOM_DAY, for a same-build A/B) only by the night level, as the 229 bloom item had it. */
 export function heatLensBloomCut(thermalCode: number, night: number, dayToo = 1): number {
@@ -2484,6 +2489,8 @@ export function createPost(
   let taaFrame = 0;
 
   const bloom = new UnrealBloomPass(size.clone(), BLOOM_STRENGTH, BLOOM_RADIUS, BLOOM_THRESHOLD);
+  /** (240) the heat lens's hot-source bloom: gain (0 off), the hulls' ceiling, the most a source adds (THERMAL_HOT_BLOOM) */
+  const hotBloom = { value: new THREE.Vector3(0, THERMAL_HOT_BLOOM.floor, THERMAL_HOT_BLOOM.cap) };
   {
     // Clamp the bloom extraction (see BLOOM_INPUT_CLAMP above).
     const hp = bloom.materialHighPassFilter;
@@ -2491,13 +2498,18 @@ export function createPost(
       HIGH_PASS_ANCHOR,
       // (2026-10-08, the owner's black screens) a NaN or Inf pixel never enters the blur pyramid (it would spread over
       // the whole frame): finite values only, then the clamp
+      // (240) under a heat lens a source far hotter than any hull (THERMAL_HOT_BLOOM: a 152 mm burst's fireball) adds its
+      // excess over the hulls' ceiling, so the sensor blooms on the burst while every hull extracts exactly as before
       `vec3 bloomIn = vec3( abs( texel.r ) < 6.0e4 ? texel.r : 0.0, abs( texel.g ) < 6.0e4 ? texel.g : 0.0, abs( texel.b ) < 6.0e4 ? texel.b : 0.0 );
-      gl_FragColor = mix( outputColor, vec4( min( max( bloomIn, vec3( 0.0 ) ), vec3( ${BLOOM_INPUT_CLAMP.toFixed(2)} ) ), texel.a ), alpha );`,
+      bloomIn = max( bloomIn, vec3( 0.0 ) );
+      vec3 hotIn = uHotBloom.x * min( max( bloomIn - uHotBloom.y, vec3( 0.0 ) ), vec3( uHotBloom.z ) );
+      gl_FragColor = mix( outputColor, vec4( min( bloomIn, vec3( ${BLOOM_INPUT_CLAMP.toFixed(2)} ) ) + hotIn, texel.a ), alpha );`,
     );
     if (patched === hp.fragmentShader) {
       throw new Error('post.ts: bloom high-pass clamp anchor not found in LuminosityHighPassShader');
     }
-    hp.fragmentShader = patched;
+    hp.fragmentShader = `uniform vec3 uHotBloom;\n${patched}`;
+    hp.uniforms.uHotBloom = hotBloom;
     hp.needsUpdate = true;
   }
   // Quality: scale the bloom chain input (its mip pyramid is already built
@@ -3002,6 +3014,9 @@ export function createPost(
     bloom.strength = lightTune('BLOOM_STRENGTH', BLOOM_STRENGTH) * (1 - 0.5 * scopeWeight) * (1 - (1 - THERMAL_BLOOM_K) * heatCut);
     bloom.threshold = lightTune('BLOOM_THRESHOLD', BLOOM_THRESHOLD);
     bloom.radius = lightTune('BLOOM_RADIUS', BLOOM_RADIUS) * (1 - heatCut);
+    // (240, the coordinator: "there's no clear 152 mm bloom" in the gunship's lens) under the same cut, what burns far over a
+    // hull's heat still blooms (the QA hook's THERMAL_HOT_BLOOM 0: none, as before)
+    hotBloom.value.x = heatCut * lightTune('THERMAL_HOT_BLOOM', THERMAL_HOT_BLOOM.gain);
     // (2026-10-15) the shoulder's defaults follow the look (tone r1 turns it on; TONE_R1 0 = off, as before)
     const shoulderTone = toneFor((scene.userData.lightModel as LightModel | undefined)?.night ?? 0);
     (grade.uniforms.uShoulder.value as THREE.Vector4).set(lightTune('GRADE_SHOULDER_SLOPE', shoulderTone.shoulderSlope),

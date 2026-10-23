@@ -790,7 +790,7 @@
   },
   "s184-ua-t64bv-frontier": {
    "map": "frontier",
-   "title": "A T-64BV Donbas fires on the move at Frontier Basin",
+   "title": "A T-64BV mod. 2017 fires on the move at Frontier Basin",
    "round": "deliver-fleet226",
    "current": true,
    "sound": true
@@ -1400,70 +1400,70 @@
   },
   {
    "path": "media/site50-r14/films/trailer-30-row.jpg",
-   "bytes": 127759,
-   "sha256": "068548de4f192f76634cd03dad0e8883a6b60ad8fdcd31c91737cc8ad4ff0a28",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-30.mp4",
+   "bytes": 127506,
+   "sha256": "ac914d407a6929d20957184806d2515c28091d52918d7613bf029248000c927c",
+   "source": "shots/media-r5/trailers-r8/deliver/trailer-30.mp4",
    "film": "trailer-30",
    "posterAtS": 14.2
   },
   {
    "path": "media/site50-r14/films/trailer-30.jpg",
-   "bytes": 103336,
-   "sha256": "0baff1ab6fb8ffd882480bf7d34fc2232f9c00d9012444c446152e27e11503bd",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-30.jpg",
+   "bytes": 101947,
+   "sha256": "95bdbb7b3aea503588b10fed92145ec4576891f6604b6f62b1c8f8f4b484b509",
+   "source": "shots/media-r5/trailers-r8/deliver/trailer-30.jpg",
    "film": "trailer-30"
   },
   {
    "path": "media/site50-r14/films/trailer-30.mp4",
-   "bytes": 13457059,
-   "sha256": "bf3dbd21f53c7d5cc06616a9123f4ee881b55e744a15c5c8712e8e81ba8a3867",
+   "bytes": 13342856,
+   "sha256": "bb291b5a8c7e0320db4bbc8adc985cbca7541c05703a6ea27901bd153d1536c2",
    "width": 1920,
    "height": 1080,
    "fps": 30,
    "seconds": 30,
    "audio": "aac",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-30.mp4",
+   "source": "shots/media-r5/trailers-r8/deliver/trailer-30.mp4",
    "film": "trailer-30",
    "encode": {
     "passes": 2,
-    "kbps": 3454,
-    "vmaf": 86.37,
-    "vmafMin": 67.59,
+    "kbps": 3422,
+    "vmaf": 86.08,
+    "vmafMin": 67.2,
     "capped": true
    }
   },
   {
    "path": "media/site50-r14/films/trailer-30.webm",
-   "bytes": 10881989,
-   "sha256": "e15e14a755a7977fdd4946be6eab362af734dda9d16a7344f95ad3cc42c2b245",
+   "bytes": 10903047,
+   "sha256": "04f7761142a9e7df233b9b55e131c73a346b5c488766b6825389b96874545938",
    "width": 1920,
    "height": 1080,
    "fps": 30,
    "seconds": 30.008,
    "audio": "opus",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-30.webm",
+   "source": "shots/media-r5/trailers-r8/deliver/trailer-30.webm",
    "film": "trailer-30",
    "encode": {
     "crf": 32,
-    "kbps": 2820,
-    "vmaf": 90.12,
-    "vmafMin": 49.89,
+    "kbps": 2816,
+    "vmaf": 88.97,
+    "vmafMin": 61.28,
     "capped": true
    }
   },
   {
    "path": "media/site50-r14/films/trailer-row.jpg",
-   "bytes": 133173,
-   "sha256": "da6ac95d20b4207ee853df01f9e7af2ff01d0ac02a9a77e2623591cf891a46ee",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer.mp4",
+   "bytes": 144517,
+   "sha256": "8418d573b15982663b56cbd8a09ac9883d9bd5d9fb458e82645535bf4bb24b6e",
+   "source": "shots/media-r5/trailers-r8/deliver/trailer.mp4",
    "film": "trailer",
-   "posterAtS": 52
+   "posterAtS": 51
   },
   {
    "path": "media/site50-r14/films/trailer-vertical-row.jpg",
    "bytes": 138688,
    "sha256": "f4804a5715beaca3c4746a5aefdab945d7f41342625c6c66ced9124fecd90766",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-vertical.mp4",
+   "source": "shots/media-r5/trailers-r8/deliver/trailer-vertical.mp4",
    "film": "trailer-vertical",
    "posterAtS": 13
   },
@@ -1471,7 +1471,7 @@
    "path": "media/site50-r14/films/trailer-vertical.jpg",
    "bytes": 121662,
    "sha256": "4febcfd6fa2ba4fab61254bc1f0a2cd93783a82ca0fd2ca76ce76051b7b319d5",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-vertical.jpg",
+   "source": "shots/media-r5/trailers-r8/deliver/trailer-vertical.jpg",
    "film": "trailer-vertical"
   },
   {
@@ -1483,7 +1483,7 @@
    "fps": 30,
    "seconds": 20,
    "audio": "aac",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-vertical.mp4",
+   "source": "shots/media-r5/trailers-r8/deliver/trailer-vertical.mp4",
    "film": "trailer-vertical",
    "encode": {
     "passes": 2,
@@ -1501,7 +1501,7 @@
    "fps": 30,
    "seconds": 20.008,
    "audio": "opus",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-vertical.webm",
+   "source": "shots/media-r5/trailers-r8/deliver/trailer-vertical.webm",
    "film": "trailer-vertical",
    "encode": {
     "crf": 32,
@@ -1513,46 +1513,46 @@
   },
   {
    "path": "media/site50-r14/films/trailer.jpg",
-   "bytes": 113358,
-   "sha256": "7eb74a345ad98c2ec73741dce567a4bbe19781dd11a868483dab166f25cdb299",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer.jpg",
+   "bytes": 87163,
+   "sha256": "0bb5dfce7bbaee2e2e98b20dfe255a43f2d330d1772f3bf838aede2e87bbc038",
+   "source": "shots/media-r5/trailers-r8/deliver/trailer.jpg",
    "film": "trailer"
   },
   {
    "path": "media/site50-r14/films/trailer.mp4",
-   "bytes": 24130246,
-   "sha256": "93021856f4e02d51bf3705eae6b0d937f99187ea61a7436c7b3b87dfe76ebd04",
+   "bytes": 24013003,
+   "sha256": "726ca8e253a5158d733910df2f6b2fe4a25b7138bef9e8cc73303cc7ec3eaeda",
    "width": 1600,
    "height": 900,
    "fps": 30,
    "seconds": 70,
    "audio": "aac",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer.mp4",
+   "source": "shots/media-r5/trailers-r8/deliver/trailer.mp4",
    "film": "trailer",
    "encode": {
     "passes": 2,
-    "kbps": 2623,
-    "vmaf": 82.01,
-    "vmafMin": 61.43,
+    "kbps": 2608,
+    "vmaf": 82.88,
+    "vmafMin": 62.08,
     "capped": true
    }
   },
   {
    "path": "media/site50-r14/films/trailer.webm",
-   "bytes": 21206776,
-   "sha256": "9b03b86f4df2618195577fa0c98172e49b44b887643ec73d04431b15312d4c53",
+   "bytes": 21237144,
+   "sha256": "837973de6a601dac5026a5eaf75e56fd5b215ed6d7eac4f4a10386f1434d1dc4",
    "width": 1600,
    "height": 900,
    "fps": 30,
    "seconds": 70.008,
    "audio": "opus",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer.webm",
+   "source": "shots/media-r5/trailers-r8/deliver/trailer.webm",
    "film": "trailer",
    "encode": {
     "crf": 31,
-    "kbps": 2343,
-    "vmaf": 87.67,
-    "vmafMin": 48.25,
+    "kbps": 2340,
+    "vmaf": 87.19,
+    "vmafMin": 44.34,
     "capped": true
    }
   },
@@ -2685,8 +2685,8 @@
   },
   {
    "path": "media/site50-r14/fleet/index.json",
-   "bytes": 95885,
-   "sha256": "2a93beb2c9c4d3092d62c42de82d6a9a59e34a74858e3fce95580ca9d27d99a5",
+   "bytes": 95897,
+   "sha256": "8e7247122e9309b38c696f9b5e6790c4df8c1441b82b308328cd77fa26a9a45e",
    "source": null,
    "vehicles": 185
   },
@@ -8278,8 +8278,8 @@
   },
   {
    "path": "media/site50-r14/scenes/index.json",
-   "bytes": 98524,
-   "sha256": "995c2e37e1bf71150f1edbc2fd7e56280e48ca819f2c137367396bcddc2b416d",
+   "bytes": 98536,
+   "sha256": "f7adae9ffbbec187f0480b5ab9cc3192873706c3442a39035f529e668394c3cd",
    "source": null,
    "takes": 193
   },
@@ -8819,8 +8819,8 @@
   },
   {
    "path": "media/site50-r14/scenes/s184-ua-t64bv-frontier.scene.json",
-   "bytes": 76265,
-   "sha256": "511efe7d8f808f71e49f7d6d9d33791278e60ce113c74439840e96da64f9c4f9",
+   "bytes": 76268,
+   "sha256": "ef55def7a7d19a753055b4f5d65414e166bcdbbeeebb7c7b6a248dca035f4a66",
    "source": "shots/media-r5/site50/deliver-fleet226/s184-ua-t64bv-frontier/s184-ua-t64bv-frontier.scene.json"
   },
   {

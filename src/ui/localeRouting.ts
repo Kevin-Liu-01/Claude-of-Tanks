@@ -68,7 +68,7 @@ interface LocalePathResolution {
 }
 
 function normalizePathname(pathname: string): string {
-  const raw = String(pathname || '/').split(/[?#]/, 1)[0] || '/';
+  const raw = (String(pathname || '/').split(/[?#]/, 1)[0] || '/').replace(/^\/{2,}/, '/');
   if (raw === '/') return raw;
   return raw.replace(/\/+$/, '') || '/';
 }

@@ -4,6 +4,11 @@
 //
 //   node tools/gen-combat-anatomy.mjs          # regenerate the full fleet
 //   node tools/gen-combat-anatomy.mjs --check  # fail when a tank changed
+//   node tools/gen-combat-anatomy.mjs --crew-only [--ids=a,b]  # re-seat the crew in the committed calibrations
+//
+// Every row carries its crew seats (235, tools/crew-seat-fit.mjs): a P50 body per crew station, seated in its role's
+// posture inside the shell this row measures. --crew-only refits them against the committed rows without rebuilding a
+// tank (the full regen writes the same seats for an unchanged tank).
 //
 // Both modes also hold every measured tank's belly pan, track bottom and combat hull box to
 // docs/geometry-gate/sim-floors.json (tools/anatomy-floor-ledger.mjs): a move over 5 cm fails, naming the parts
@@ -36,21 +41,27 @@ import {
 enableCombatAnatomyMeasurementMode();
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 const { ALL_TANK_IDS, TANK_SPECS } = await import('../src/vehicles/specs.ts');
+const { measureTurretRing, measureTurretSweep, turretRingRadius } = await import('../src/vehicles/turretRingWell.ts');
 const { captureChieftain10Collision } = await import('./chieftain10-collision.mjs');
 const { captureTos1aTagilCollision } = await import('./tos1a-tagil-collision.mjs');
 const { captureArieteC2Collision } = await import('./ariete-c2-collision.mjs');
+const { authoredCombatAnatomy, finalizeCombatAnatomy } = await import('../src/vehicles/combatAnatomy.ts');
+const { INTERNAL_LAYOUT_BY_TANK } = await import('../src/vehicles/internalLayoutRegistry.ts');
+const { fitCrewSeats } = await import('./crew-seat-fit.mjs');
 
 const outPath = resolve('src/vehicles/combatAnatomyCalibrations.ts');
 const groupOutputDir = resolve('src/vehicles/combatAnatomyGroups');
 const loaderOutputPath = resolve('src/vehicles/combatAnatomyLoaders.generated.ts');
 const check = process.argv.includes('--check');
+const crewOnly = process.argv.includes('--crew-only');
+if (check && crewOnly) throw new Error('[combat-anatomy] --crew-only writes seats: run --check after it');
 // --ids=a,b re-measures only those tanks and keeps every other row as generated (a targeted lane update; the full
 // regen and the gate's --check stay fleet-wide).
 const onlyIds = (() => {
   const arg = process.argv.find((a) => a.startsWith('--ids='));
   return arg ? new Set(uniqueIds(arg.slice(6).split(',').filter(Boolean), 'gen-combat-anatomy --ids')) : null;
 })();
-const COMBAT_ANATOMY_CALIBRATIONS = check || onlyIds
+const COMBAT_ANATOMY_CALIBRATIONS = check || onlyIds || crewOnly
   ? (await import('../src/vehicles/combatAnatomyCalibrations.ts')).COMBAT_ANATOMY_CALIBRATIONS
   : Object.freeze({});
 const round = (value) => Number(value.toFixed(4));
@@ -587,6 +598,14 @@ function receiptFor(id) {
     const hullRig = tank.root.getObjectByName('rig_hull');
     const turretRig = tank.root.getObjectByName('rig_turret');
     if (!hullRig || !turretRig) throw new Error(`${id}: articulation rigs missing`);
+    // The turret ring as built (turretRingWell.ts measureTurretRing, its exterior pass), in the live rig_hull frame the
+    // wreck compares it in, before the frame below is made rigid: the intact race (turretSeatRace.ts), a wreck's ring
+    // plate and a hulk's well are drawn from it (2026-10-22), and with it the hull the turret traverses over, which the
+    // turret's seat follows (measureTurretSweep).
+    const armor = TANK_SPECS[id]?.armor;
+    const ring = armor?.turretless ? null
+      : measureTurretRing(hullRig, turretRig, turretRingRadius(armor), { exterior: true });
+    const turretRing = ring ? { ...ring, ...measureTurretSweep(hullRig, turretRig, ring) } : null;
     // The Improved's narrowing lives on the hull rig's scale; combat coordinates have none (tools/rigid-hull-frame.mjs).
     rigidHullFrame(tank, id);
     // Only the explicitly structural armor buckets calibrate shell collision.
@@ -634,6 +653,7 @@ function receiptFor(id) {
         ? { externalWeapons: weaponCollisionReceipts(tank.root, hullRig, turretRig) } : {}),
       tracks: { left: trackL, right: trackR },
       trackContact: trackContactReceipt(tank.contactGeom, id),
+      ...(turretRing ? { turretRing } : {}),
     };
   } finally {
     if (stockCapture) stockCapture.dispose();
@@ -641,11 +661,27 @@ function receiptFor(id) {
   }
 }
 
+/** The crew seats of one measured row: the authored spec finalized against that row, then seated in its shell. */
+function crewSeatsFor(id, calibration) {
+  const probe = authoredCombatAnatomy(id);
+  if (!probe) throw new Error(`[combat-anatomy] ${id}: no authored combat anatomy to seat the crew in`);
+  finalizeCombatAnatomy(probe, calibration);
+  return fitCrewSeats(probe, INTERNAL_LAYOUT_BY_TANK[id]?.layoutKey ?? null);
+}
+
 const rows = {};
 for (const id of onlyIds ?? []) if (!ALL_TANK_IDS.includes(id)) throw new Error(`[combat-anatomy] unknown id ${id}`);
 for (const id of ALL_TANK_IDS) {
   if (onlyIds && !onlyIds.has(id) && COMBAT_ANATOMY_CALIBRATIONS[id]) { rows[id] = COMBAT_ANATOMY_CALIBRATIONS[id]; continue; }
-  rows[id] = receiptFor(id);
+  if (crewOnly) {
+    if (!COMBAT_ANATOMY_CALIBRATIONS[id]) throw new Error(`[combat-anatomy] ${id}: --crew-only needs a committed calibration`);
+    const { crewSeats: _previous, ...measured } = COMBAT_ANATOMY_CALIBRATIONS[id];
+    rows[id] = { ...measured, crewSeats: crewSeatsFor(id, measured) };
+    console.log(`[combat-anatomy] seated ${id}`);
+    continue;
+  }
+  const measured = receiptFor(id);
+  rows[id] = { ...measured, crewSeats: crewSeatsFor(id, measured) };
   console.log(`[combat-anatomy] measured ${id}`);
 }
 

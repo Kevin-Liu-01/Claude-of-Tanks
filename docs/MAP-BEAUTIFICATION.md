@@ -104,6 +104,9 @@ gameplay layout while developing a distinctive visual hierarchy.
 | Frontier Basin | Agricultural basin and checkpoint routes; branched gullies and patchy conifer uplands |
 | Tidegate Polders | The polders of the Scheldt estuary in the autumn of 1944 (the map-revival lane, 2026-10-06 to 2026-10-07): clay fields boxed by dykes standing as embankments, the main dyke's crossings ramped, the lanes on crowned banks; the vaart and its weteringen, the old creek's cut-off oxbow arm silting into reed; the brick tower mills on their molenbergen, Bosman windmotors on the basin banks and the white double-leaf lift bridge on the causeway (the landmarks lane, 2026-10-05); willow rows along the drains, poplars on the long dykes; a very low horizon |
 | Orchard Valley | The Chouf on Mount Lebanon below the Barouk's cedars (the map-revival lane, 2026-10-05 to 2026-10-07): olive rows on the valley's contour terraces held by grey dry-stone risers; the mountain village stacked on its own terraced hill west of the junction — the summit church and its campanile over a paved square, the two dar fronts with their triple arches flanking the stepped lane up from the cross road, the houses shoulder to shoulder on the benches under red tile and rolled earth, a mule stair climbing the south face on its graded track; the hammam on the bathhouse street, the Ottoman sabil on the junction's square; cedar and umbrella pine on the upper slopes |
+| Frontier Basin | Agricultural basin and checkpoint routes; branched gullies and patchy conifer uplands; on the square, the half-timbered Rathaus and the village church with its west tower and spire (the landmarks lane, 2026-10-05), the market's setts and the Marktbrunnen before the Rathaus and the walled churchyard on the church's south flank (round 2, 2026-10-06) |
+| Tidegate Polders | Drainage channels, straight human-made levees, field headlands and pump yards; very low horizon |
+| Orchard Valley | Orchard rows follow working terraces; packing courts and village lanes, distinct from wild forest |
 | Longleaf Crossing | Logging spur, cut blocks, timber yard and regrowth; visible forest-age variation |
 | Highland Reservoir | Pine catchments, exposed reservoir margin, waterworks and service roads; the valve tower standing in the lake and its arched footbridge from the bank (the landmarks lane, 2026-10-05) |
 | Olympus Basin | Rust regolith and mesas under a galaxy sky, a research station of domes, modules, masts and pads (Mars mode, 2026-09-18) |
@@ -4784,6 +4787,7 @@ map's props build (140–260 ms) whether or not the map places steel; Foundry's 
 | 52 | Saltwind Narrows' strand 12 → 20 m (owner decision 20): a pale beach now separates the bay from the grass along the whole shore; boat landings kept (beachedBoat / riverLandings unchanged) | map-view-probe A/B (bird-w-edge, shore-w-oblique, edge-w-low, w-wall-mid), badlandsRelief slice, shoreDirtMask / mangroveWaterPalette / villageWear re-pins, 17 shore receipts green; chain 73 |
 | 53 | The 4K showcase frames and the studio film of the redesigned maps: the fourteen `showcase-r1` frames of Frosthollow and Tarkhan (the landing hero 113, six mosaic tiles, the README's 69 / 84 / 97) regenerated through the campaign pipeline — templates 09 / 11 / 12 re-staged (pond, pass-road descent, crossroads from the crossing road), the generator made to reproduce the published campaign (`HAND_TUNED_ACTION`), a sightline pull-in for long-lens templates and three overridden foreground lenses (`HAND_TUNED_FOREGROUND`); the landing film re-recorded from the checked-in storyboard, its poster and mobile proxy from the publisher | eye check of 1280 px reductions of all fourteen 4K masters, the four contact sheets and four mp4 frames against the lens rule; grade 60 / 60 with 46 rows byte-identical to the Aug-19 report; showcase:publish moved only the fourteen renditions, four sheets and manifests; receipts showcase-r2, battle-campaign, landing-media, feature-evidence, hero-rails, loadingScreens, socialProof, showcase-library, feature-loops, og-images, public-repo-hygiene, attribution |
 | 54 | The last showcase media of the redesigned maps: `feature-loops-r1/03_winter_lake_duel`, the `hero-rails-r2` winter / steppe rails with their `web-video-r1` proxies, the `battle-reels-v3` reels 03 / 07 / 18 and `featured/f1_09_winter_lake_duel` regenerated through the repo's pipeline — the recorder's `battle-reels` collection (the library's pinned twenty-reel table, authored stages on the pond necks and the plain south of the wadi) and `--stills` framing mode, `publish-battle-reels.mjs`, subset modes for the rail / loop / featured publishers, rail proxies derived from the published WebM, the steppe rail's opening key moved off the wire-line berm | eye check of 1280 px reductions (four frames + poster per reel and rail, three per proxy, four + poster for the loop, the featured frame) after eight preview rounds against the lens rule; receipts feature-loops, hero-rails, showcase-r2, battle-campaign, landing-media, feature-evidence, loadingScreens, socialProof, showcase-library, battleReels, og-images, public-repo-hygiene, attribution; only the intended manifest rows moved |
+| map revival (2026-10-05) | Frontier Basin as the Hünfeld basin's Haufendorf: the roadside builder places nothing and twelve Hofreiten stand authored along the lanes out of the crossing (frontier.ts VILLAGE_HALF and its rotation), eleven of them walled courts through the yard hook's court flag (`maps/regional/yards.ts` planCourt, the Hessian kit only — every other kit byte-identical): the sandstone wall on the lane with the gate, the buildings round the rest, the farm clutter inside, the gardens and woodsheds behind the barns; the village ground in plots; the Gewann strips and the river floor's water meadows (`landUse.ts` frontier, the profile's new meadow band: every field whose centre lies within 60 m of the river's chord is hay or pasture, whole); oak rows on the lynchet banks, the river's line of leafy birch-form trees, the mills' ponds | typecheck, yards (court case), regionalArchitecture, fineDetailLod, propsScheduling, landUse, landUseBake, all-map collision drift (33/33 byte-identical), census [6073, 5970, 6296] → [6319, 6610, 6332]; layout metrics in band (coverMid 0.328 → 0.379, coverSector 0.179 → 0.321); pacing single-seed 248.0 → 248.7 s, full-run seed 222.5 → 182.6 s; cost (x4, load 43–54, p25 B − C): establishing +0.59 ± 0.30 ms, chase +0.44 ± 0.80 ms; draw census +2.2 % / +0.7 % triangles, −3 / −5 draws, no shader change — closed on the first hold (the ±3 % rule) |
 | 55 | Titan's fine wavy partings closed: the uniform-isolation probe flattens one layer normal map at a time (and no longer keeps flat normals after its first variant), uNrmR and then the coarse wall-plane R tap named — the bedded sandstone tile's seam notches printed a parting every 0.9–2.8 m of world height in the wall plane; an analytic buttress-and-rib crag replaces that tap on the bedded maps (`uBeddedR`, key v39). Fjord's cone hills: a per-map `outcrops` knob (gneiss knobs and scree through the turf below the treeline, stands opened, `uVOutcrop`, vista key r4). Coast ring tone: the ring forest runs the battlefield's matte canopy response and a mean-centred crown mottle (key `horizon-forest-canopy-v3`); the shore fade tried was pixel-identical and not landed | one-normal-at-a-time and gate-uniform isolation runs on Titan (sw-corner 59.0 % vs 60.4 % all-flat; the coarse tap 49.7 % of the wall box), stripe metric A/B (sw-corner top-1 % 0.535 → 0.734, std 28.5 → 28.3; e-wall 0.734 → 0.770), ground boxes unchanged; fjord boxes (w-wall-mid cone 47 % / mean 4.5, sky-w 37 % / 2.8) and 2× crops; per-side crown boxes on Saltmere's west edge (ring 114° / L 0.305 → 123° / 0.278 against the square's 120° / 0.199); receipts in the section |
 | 56 | The strands' wrack line and debris (owner decision 21): a high-water band of weed / kelp mats, bent sticks, pebble patches and shells along every authored shelf (Saltmere, Nordhavn's arm heads, Saltwind), with timber, a broken crate and a rope coil beside each landing — derived from the lake contour by a marched band law (water's edge → sand's end, ≤ 8.5 m, ≥ 2.2 m), lake-phased density, gated off water / banks / roads / pads / boats / jetties / footprints; soft dressing in the vertex-coloured `baked` and `wood` buckets, no new material, instance pool or collision record; the coastal driftwood re-derived onto the same band (it lay on the disc's plain 1.03–1.12 R circle — Nordhavn's 72 logs median 7.7 m up the ridges, nine in the water) | map-view-probe A/B on the round-47 shore views plus three new gameplay-height strand views (`strand-e-low`, `strand-fjord-low`, `strand-w-low`; table 31 → 34), 2× crops, `ab-diff` strand boxes 1.9–3.1 % moved, obliques 0.4–1.4 %, birds ≤ 0.2 %; headless three-seed audit; `strandWrack.selftest` (new), beachedBoat / winterLakeGeometry / riverLandings / map-probe-runtime re-pinned, the shore and world receipts green |
 | 57 | The rail spur kit: a map authors a siding as a path (`terrain.railSpurs`, `src/world/railSpurs.ts`), the layout carries it, one span layer lays ballast / rails / sleepers / buffer stops that follow the ground (4 m spans, least-squares plane per slab, cross-slope roll, a deep slab bedded into the folds) and the height field's `_noVeg` berth keeps vegetation and scattered props 3.6 m off the line; the four rail yards migrated onto the same layer byte-identically; Tarkhan's grain station gets its loading-face siding (x 144 → 440 at z −181, buffers at both ends, a level crossing over the east track, ending at the rim foot — the road climbs the rim at 24 %); the stale steppe shard recaptured | rail-part / dressing / draw digests of the four yards A = B at three seeds (railSpurs.selftest pins them); headless slab-corner probe (no gap under any corner, tops ≥ 0.06 m clear); map-view-probe A/B on four new views (yard frame noise ≤ 0.3 %; steppe 1.7–2.6 % moved) judged on 1280 px reductions; census and storage re-pins; battlePacing 14 / 124; the receipts in the section |
@@ -6109,6 +6113,19 @@ quiet, against −129 draws and −0.83 M triangles. Ready to run in the next qu
 `zsh $SP/r79/winter-quiet.sh w1 $SP/r79/snap-base $SP/r79/snap-d` (the six pairs), then `zsh $SP/r79/winter-chain.sh`
 (the attribution, only if ≥ 4 of 6 stay positive).
 
+### 2026-10-06 — Saltmere Bay round 2: the quay and the slipway, one harbour with the mole (the landmarks lane)
+
+With the map-revival lane's harbour step 2, one harbour with the mole: the quay along the south cove (its face on x 288
+from z −62 to −20, its paved top 1.4 m over the strand at −2.6, backed onto the turning court where the south shore lane
+comes down onto it; granite coping, the tide's weed band, fenders, ladders and bollards) and the slipway off its south
+end running east-south-east into the water, the basin's way out beside the quay — no pocket between the mole, the quay
+and the strand. The layout brief's in-water exception names the quay. Against the round-1 shard: the quay's record,
+floor panels and shell bands; no other record moved. Census [3670, 3648, 3626]. Pacing (seeds 25000–25003) 184 / 187 /
+263 / 218 s, the head's to the second. Receipts: the 74 selected for the round's seven maps (the landmarks library, the
+collision drift and pins, the layout brief, the maps' world and village receipts) green but the Delta plaster palette,
+whose fixture build times out under the machine's load (spawnSync ETIMEDOUT, a known flake). Cost (rule v3): census
+close at every view (the harbour's view +5 draws, +0.5 % triangles).
+
 ### 2026-10-01 — the layered sky (the clouds-and-skyboxes lane of the visual redesign)
 
 **Owner (2026-10-01): "redesign map and trees and horizon and skyboxes and clouds and light and literally everything …
@@ -7107,6 +7124,52 @@ moves it 0.8 — the water's own reflection at grazing incidence is: `shallowWat
   critics (`WATER_SPEC_CAP`). The edge-w view faces away from the sun, where no glitter belongs.
 - *GPU:* the old weight switched in-page, on / off / off / on: −1.3 and −0.3 ms (p25) — a constant.
 Frames: `$SP/p2/sea/pair/{saltwind,coastal}/{a,g}-<view>.png`, the glint `saltwind/{a,g,g~spec25,g~spec4}-glint.png`.
+
+### 2026-10-06 — Frontier Basin round 2: the market's setts, the Marktbrunnen and the churchyard (the landmarks lane)
+
+**The gauntlet's wave 156:** the Rathaus and the church "stand on bare mud with no market square or churchyard". Round 2
+sets them in their village, on the map-revival lane's round 3 (312dbd001, its walled Hofreiten), at the seats agreed with
+that lane:
+- the market's setts before the Rathaus (`path`, stone, 30 × 20 m over x −49..−19, z 9..29: half on the square's
+  hardstand, off the carriageways, south of the assault line's keep-out);
+- the Franconian Marktbrunnen (a column on an octagonal basin) at the setts' west end (−46, 18), clear of the road cores
+  (at the first seat, (−36, 20), the composer refused it as standing in the road);
+- the Rathaus's arcade open on the market, two stalls under it;
+- the churchyard on the church's south flank, east of the hunting blind: 17.5 × 14 m at (38.25, −53.45), its low stone
+  wall, the gate in its west side toward the road, ten headstones and Latin crosses, the path to the church;
+- the church's and the Rathaus's age (the library's spalled render, rain streaks under the eaves, cornices and sills);
+- the Rathaus's upper storey and the church tower's windows over its door, which stood blank: a wall column took only its
+  first opening (the library's archedFace, fixed for every piece; the Rathaus's storeys now one body each).
+
+**Every piece vetoes its ground** (`landmarks/types.ts` `ground: 'veto'`, new this round). With the default reserve, the
+pieces' keep-off discs sit in the props' placement list, and the yard clutter's spot search draws again round any disc.
+On the courts' shared stream that re-rolled every court's yard and both mills (about 240 records, the first build). A
+vetoed piece instead leaves the passes after it drawing as on the map without it. A destructible they would stand on its
+ground (its centre inside, or within half a metre of the edge) is left out, with its draws taken and no record, pool slot,
+body or contact made. An open surface (the setts) keeps what stands on it.
+
+**Against 312dbd001's shard:**
+- the church and the chapel give their plots to the Rathaus and the church;
+- a bench (33.0, −46.9) and a bale (36.4, −52.0) on the churchyard are left out;
+- three trees whose crowns reached the pieces are cleared;
+- every other record stands where it stood (a few fence pickets within 1 mm, the packing's rounding).
+
+Census [6393, 6690, 6331] → [6410, 6754, 6328]. Pacing on the fleet receipt's four seeds (29000–29003): 341 / 185 / 188 /
+176 s against the base's 214 / 185 / 188 / 182 s (none under 120 s). Receipts: the 30 selected (the landmarks library,
+the collision drift and pins, the map's land use, villages, roads and minimap) green.
+
+### 2026-10-05 — Frontier Basin: the Rathaus and the village church on the square (the landmarks lane)
+
+On the plots agreed with the map-revival lane (the old church's and the chapel's, each within 24 × 16 m; the two sites
+stay in the plan, vacated, so no planned building moves): the Rathaus of a Hessian market village, Alsfeld's kind — the
+stone arcade, two storeys of render in an oak frame, the framed gables, two corner turrets under slate spires, its front
+to the square (7 410 desktop triangles); the village church with its west tower, clock and spire toward the square, the
+nave and the chancel to the east (5 778). Census [6091, 6015, 6294]; the yards' own stream re-plans round the new
+footprints (three yard sheds moved, five stood). Pacing (4 seeds) 189/178/269/192 s against the head's 221/300/248/181
+s. Cost (rule v3): census close (v3) at every view — the establishing shot +4 draws and +1.25 % triangles, chase +3 and
++0.98 %, the square's view +6 and +1.47 % (the timing besides: the establishing shot −0.18 ± 0.46 ms; chase 1.06 ± 0.70,
+then 0.59 ± 0.45 in a quiet window; the square's view −0.48 ± 0.77, then −0.81 ± 0.34); no long task and no program
+compiled during a slot.
 
 ### 2026-10-04 — the cumulus item, shelved: what it learned (the skies lane)
 

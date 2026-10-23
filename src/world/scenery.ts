@@ -30,6 +30,7 @@ import { buildCastleRock } from './castleRock.ts';
 import { buildCaprockRim } from './caprockRim.ts';
 import { buildCanyonWall } from './canyonWall.ts';
 import { buildJebelSkin } from './jebelSkin.ts'; // the maps lane, 2026-10-14 (MA.12)
+import { buildGourSkin } from './gourSkin.ts';
 import { restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 import { buildConductor, buildPylon, SCENERY_DESTRUCTIBLE_TYPES } from './maps/sceneryKit.ts';
 import { buildFieldWorks, type FieldWorksBuilt, type FieldWorksKeepOut, type FieldWorksReceipt, type FieldWorksRect } from './fieldWorks.ts';
@@ -63,6 +64,8 @@ interface SceneryHeightField {
   getWaterMaskAt(x: number, z: number): number;
   _roadDist(x: number, z: number): number;
   _villageMask?(x: number, z: number): number;
+  /** The map's mesa weight (terrain.ts): the outliers' outline the gour skins trace. */
+  _mesaW?: ((x: number, z: number) => number) | null;
   /** The ground lane's land use (landUse.ts landUseAt through terrain.ts), when the world has one. */
   _landUseAt?(x: number, z: number, out: { active: number; edgeM: number; boundary: number; track: number; hedge: number }): { active: number; edgeM: number; boundary: number; track: number; hedge: number };
   /** The bridge decks (terrain.ts BridgeDeckPlane) and the field trenches the terrain carved. */
@@ -104,7 +107,7 @@ interface SceneryBuildContext {
 }
 
 interface SceneryFeatureReceipt {
-  family: 'rock' | 'rockField' | 'bedrock' | 'castle' | 'caprock' | 'canyonWall' | 'landmark' | 'powerLine';
+  family: 'rock' | 'rockField' | 'bedrock' | 'castle' | 'caprock' | 'canyonWall' | 'gour' | 'landmark' | 'powerLine';
   kind: string;
   name: string | null;
   x: number;
@@ -449,6 +452,20 @@ export function* composeScenery(ctx: SceneryBuildContext): Generator<SceneryBuil
   for (const [wi, arm] of (scenery.canyonWalls ?? []).entries()) {
     const feature: SceneryFeatureReceipt = { family: 'canyonWall', kind: 'canyon wall', name: arm.name ?? null, x: arm.x, z: arm.z, status: 'placed' };
     const built = buildCanyonWall(arm, ground, noise, mulberry32(ctx.seed + 17701 + 131 * wi), { mobile: ctx.mobile });
+    if (!built.geometry) { skip(feature, 'no wall'); yield { fine: true, progress: false, stage: 'scenery' }; continue; }
+    rockPieces.push(built.geometry);
+    feature.triangles = built.triangles;
+    receipt.rockTriangles += built.triangles;
+    receipt.placed++;
+    receipt.features.push(feature);
+    yield { fine: true, progress: false, stage: 'scenery' };
+  }
+
+  // ---- gour: a mesa outlier's wall in relief along its traced outline (gourSkin.ts), decor on the terrain's rock; one
+  // stream each
+  for (const [gi, gour] of (scenery.gours ?? []).entries()) {
+    const feature: SceneryFeatureReceipt = { family: 'gour', kind: 'gour', name: gour.name ?? null, x: (gour.x0 + gour.x1) / 2, z: (gour.z0 + gour.z1) / 2, status: 'placed' };
+    const built = buildGourSkin(gour, ground, noise, mulberry32(ctx.seed + 18101 + 131 * gi), { mobile: ctx.mobile });
     if (!built.geometry) { skip(feature, 'no wall'); yield { fine: true, progress: false, stage: 'scenery' }; continue; }
     rockPieces.push(built.geometry);
     feature.triangles = built.triangles;

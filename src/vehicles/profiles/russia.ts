@@ -1,7 +1,7 @@
 import type { SnapGroupOptions, TankBuilderPort } from '../tankFactoryCore.ts';
 import { withSeatRole, withSpareTrackRun } from '../spareTrackSeat.ts';
 import { spareLinkBlock } from '../spareLinkGeometry.ts';
-import { buildT64Modern } from './t64bvX.ts';
+import { buildT64BV1 } from './t64bvK1.ts';
 // Soviet/Russian modern family procedural profiles (fidelity oracles:
 // recovered T-62/T-64/T-72/T-90 variants + PT-91M). Owned by the
 // Russia-modern family agent.
@@ -132,12 +132,18 @@ interface T80CastTurretOptions {
   readonly roofTiltScale?: number;
   readonly reference?: string;
   readonly equipmentSeatRevision?: string;
+  readonly closeBase?: boolean;
 }
 
 interface CurvedDomeOptions {
   readonly capR?: number;
   readonly roofTiltScale?: number;
   readonly bucket?: string;
+  readonly closeBase?: boolean;
+}
+
+interface DomeOptions {
+  readonly closeBase?: boolean;
 }
 
 interface DomeBoxSeatOptions {
@@ -525,6 +531,7 @@ export function buildT80CastTurret(P: RussiaGeometryPort, {
   curved = false, capR = 1.60, roofTiltScale = 0.62,
   reference = 't80/t80b/ua_t80u_kursk',
   equipmentSeatRevision = 'reference-original',
+  closeBase = false,
 }: T80CastTurretOptions = {}) {
   const rawRings = T80_CAST_TURRET_RINGS;
   const firstRawRing = rawRings[0]!;
@@ -532,9 +539,9 @@ export function buildT80CastTurret(P: RussiaGeometryPort, {
   const baseY = firstRawRing[1];
   const rings = rawRings.map(([r, y]) => [r, baseY + (y - baseY) * scaleY]);
   if (curved) {
-    meshDomeCurved(P, rings, sz, cx, cz, { capR, roofTiltScale });
+    meshDomeCurved(P, rings, sz, cx, cz, { capR, roofTiltScale, closeBase });
   } else {
-    meshDome(P, rings, sz, cx, cz);
+    meshDome(P, rings, sz, cx, cz, { closeBase });
   }
   const lastRing = rings[rings.length - 1]!;
   const roofDrop = (lastRawRing[1] - baseY) * (1 - scaleY);
@@ -557,8 +564,21 @@ export function buildT80CastTurret(P: RussiaGeometryPort, {
 
 // Measured cast dome: lathe rings [[r, y]] (y=0 at the ring base, in the
 // turret frame), plan-stretched by sz = depth/width, centered (cx, cz).
-export function meshDome(P: RussiaGeometryPort, rings: readonly DomeRing[], sz: number, cx = 0, cz = 0): void {
+export function meshDome(
+  P: RussiaGeometryPort, rings: readonly DomeRing[], sz: number, cx = 0, cz = 0, o: DomeOptions = {},
+): void {
   P.add('turret', KIT.lathe(rings, P.q ? 30 : 16, sz), cx, 0, cz);
+  if (o.closeBase) addDomeBaseCap(P, 'turret', rings, P.q ? 30 : 16, sz, cx, cz);
+}
+
+// TANK-OPT companions (227): the lathe dome has no floor, so once a cook-off throws the turret a camera below it looks
+// up through the open base into the casting's inside. The cap is a downward disc on the dome's first ring, built by the
+// same lathe so its rim shares the dome's base vertices exactly. Opt-in per builder: every other dome keeps its bytes.
+function addDomeBaseCap(
+  P: RussiaGeometryPort, bucket: string, rings: readonly DomeRing[], segments: number, sz: number, cx: number, cz: number,
+): void {
+  const [r0, y0] = rings[0];
+  P.add(bucket, KIT.lathe([[0, y0], [r0, y0]], segments, sz), cx, 0, cz);
 }
 
 function curvedDomeVertexAngles(rings: readonly DomeRing[]): number[] {
@@ -677,6 +697,7 @@ export function meshDomeCurved(
   const geometry = KIT.lathe(profile.points, seg, sz);
   applyCurvedDomeNormals(geometry, profile.points, profile.angles, sz, o);
   P.add(o.bucket ?? 'turret', geometry, cx, 0, cz);
+  if (o.closeBase) addDomeBaseCap(P, 'turret', rings, seg, sz, cx, cz);
 }
 
 // Dome-skin radius at height y for a measured ring profile (fitting seats).
@@ -1559,8 +1580,10 @@ export function buildT62Obr1975(P: RussiaBuilderPort): void {
 // 2.008, sleeve r.122, muzzle 6.58.
 // Invisible width anchor: sub-pixel studs at the exact normalized half-width
 // (is7 precedent) so safeScale stays 1.0 and authored heights hold.
-export function widthAnchor(P: RussiaGeometryPort, halfW: number, y: number, z: number): void {
-  for (const s of [-1, 1]) P.add('hull', KIT.box(0.012, 0.02, 0.02), s * (halfW - 0.006), y, z);
+// 2026-10-22 (owner float calls): `innerX` is the face a stud stands on; the stud runs inboard to it, its outer face
+// still the width plane (the default is the old 12 mm stud).
+export function widthAnchor(P: RussiaGeometryPort, halfW: number, y: number, z: number, innerX = halfW - 0.012): void {
+  for (const s of [-1, 1]) P.add('hull', KIT.box(halfW - innerX, 0.02, 0.02), s * (halfW + innerX) / 2, y, z);
 }
 
 // ---- T-80 line: T-80 (1976) / T-80B / T-80BV ------------------------------
@@ -2379,7 +2402,7 @@ export function ruShtora(P: RussiaShtoraPort, p: ShtoraOptions, y: number): void
 // ---------------------------------------------------------------------------
 export const RUSSIA_PROFILES = {
   t62_1975: { build: buildT62Obr1975 },
-  t64bv1: { build: (P: TankBuilderPort) => buildT64Modern(P) },
+  t64bv1: { build: (P: TankBuilderPort) => buildT64BV1(P) },
   // type59 §5.304: builder moved to profiles/china.ts (buildType59 on the
   // widened obr-1975 chassis) — profiledProcedurals.ts keys it from
   // CHINA_PROFILES at the same carousel position.

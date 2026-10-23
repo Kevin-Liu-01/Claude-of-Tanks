@@ -372,8 +372,12 @@ export async function createMatchService({
       return true;
     }
     if (method === 'GET' && path === '/metrics') {
-      if (query.includes('gc=1') && bearerMatches(request, seatSecret) && typeof globalThis.gc === 'function') globalThis.gc();
-      json(response, 200, { service: stats(), actors: [...actors.values()].map((actor) => actor.stats()) });
+      const operator = bearerMatches(request, seatSecret);
+      if (operator && query.includes('gc=1') && typeof globalThis.gc === 'function') globalThis.gc();
+      // per-actor stats carry roomId (the room code, a room's only join gate): the operator bearer only
+      json(response, 200, operator
+        ? { service: stats(), actors: [...actors.values()].map((actor) => actor.stats()) }
+        : { service: stats() });
       return true;
     }
     if (path === '/rooms' || path.startsWith('/rooms/')) {

@@ -4,7 +4,8 @@
 //
 //  - the measure on a built hull and turret (the deck round the race's rim, the turret base, the skirt, the floor) and
 //    its exterior pass (a hull narrower than the ring under its deck: the well narrows to a ledge);
-//  - the anatomy: the turretRing volume (a sim module) keeps today's law whether or not a ring receipt is present;
+//  - the anatomy: the turretRing volume (a sim module) stands on the drawn ring: a ring receipt's seat and deck, else
+//    the turret's yaw axis (240);
 //  - the live cut: nothing of a hull face left inside the prism, every attribute and group carried, a long face past the
 //    rim split into its sectors, the cut faces' reach per side; the plate: faces up, its band out and in, the hull's dents
 //    at its vertices (its rim never under the field's bow), the burn clock's share; the well's shader;
@@ -118,21 +119,22 @@ const polygonArea = (r, sides) => 0.5 * sides * r * r * Math.sin((2 * Math.PI) /
   assert.equal(turretRingRadius({ modules: [] }), 0.85, 'no ring volume: the fleet median');
 }
 
-// ---- the anatomy: the ring's receipt never moves the sim's turretRing volume ----------------------------------------
+// ---- the anatomy: the turretRing volume on the drawn ring (240): the receipt's seat and deck, else the yaw axis -------
 {
   const source = getSpec('t72b3');
-  const ring = { module: 'turretRing', min: [-0.8, 1.2, -0.7], max: [0.8, 1.45, 0.9], turretLocal: false };
+  // authored off the axis, under a hull calibration that moves and stretches it with the hull's plates
+  const ring = { module: 'turretRing', min: [-0.8, 1.2, -0.9], max: [0.8, 1.45, 0.7], turretLocal: false };
   const fixture = (turretRing) => {
     const specimen = structuredClone(source);
     specimen.id = 'ring_fixture';
     specimen.armor.modules = [structuredClone(ring)];
     specimen.armor.crew = [];
-    specimen.armor.turretPivot = [0, 1.5, 0.1];
+    specimen.armor.turretPivot = [0.04, 1.5, 0.1];
     specimen.armor.hullPlates = [{ name: 'synthetic_hull', kind: 'main', physicalMm: 30, keMm: 30, ceMm: 30,
       verts: [[-1.5, 0.4, -3], [1.5, 0.4, -3], [1.5, 1.5, 3], [-1.5, 1.5, 3]] }];
     specimen.armor.turretPlates = [{ name: 'synthetic_base', kind: 'main', physicalMm: 30, keMm: 30, ceMm: 30,
       verts: [[-1, 0, -1], [1, 0, -1], [1, 0.7, 1], [-1, 0.7, 1]] }];
-    const calibration = { hull: { min: [-1.5, 0.4, -3], max: [1.5, 1.5, 3] }, turret: { min: [-1, -0.3, -1], max: [1, 0.7, 1] },
+    const calibration = { hull: { min: [-1.6, 0.4, -3.2], max: [1.6, 1.5, 3.4] }, turret: { min: [-1, -0.3, -1], max: [1, 0.7, 1] },
       tracks: { left: { min: [-1.8, 0, -3], max: [-1.4, 0.8, 3] }, right: { min: [1.4, 0, -3], max: [1.8, 0.8, 3] } },
       hullStructures: [], turretStructures: [], hullCollision: [], turretCollision: [], moduleShapes: [],
       ...(turretRing ? { turretRing } : {}) };
@@ -140,13 +142,18 @@ const polygonArea = (r, sides) => 0.5 * sides * r * r * Math.sin((2 * Math.PI) /
     return specimen.armor.modules.find((box) => box.module === 'turretRing');
   };
   const centre = (box, axis) => (box.min[axis] + box.max[axis]) / 2;
-  const legacy = fixture(null);
-  close(centre(legacy, 1), 1.5 - 0.3, 1e-9, 'without a receipt: the calibrated turret bottom plus the spec pivot (today)');
-  close(centre(legacy, 2), 0.1, 1e-9, 'and its authored centre');
+  const plain = fixture(null);
+  close(centre(plain, 1), 1.5 - 0.3, 1e-9, 'its base: the calibrated turret bottom plus the pivot');
+  close(centre(plain, 0), 0.04, 1e-9, '(240) centred on the turret\'s yaw axis (x)');
+  close(centre(plain, 2), 0.1, 1e-9, '(240) and (z), not where the hull\'s calibration carried the authored box');
+  close(plain.max[0] - plain.min[0], 1.6 * 3.2 / 3, 1e-9, 'at its calibrated width');
+  close(plain.max[2] - plain.min[2], 1.6 * 6.6 / 6, 1e-9, 'and length');
   const built = fixture({ seat: [0.02, 1.62, 0.45], deckY: 1.48, rimR: 0.86, skirt: 0.006, footR: 1.2, floorY: 0.55 });
-  for (let axis = 0; axis < 3; axis++) {
-    close(built.min[axis], legacy.min[axis], 1e-9, `a ring receipt leaves the volume as it was (min ${axis})`);
-    close(built.max[axis], legacy.max[axis], 1e-9, `a ring receipt leaves the volume as it was (max ${axis})`);
+  close(centre(built, 0), 0.02, 1e-9, 'with a ring receipt: on its seat\'s axis (x)');
+  close(centre(built, 2), 0.45, 1e-9, 'and (z), where the race is drawn and a wreck seats its plate');
+  close(centre(built, 1), 1.48, 1e-9, 'centred on the deck round the race');
+  for (const axis of [0, 1, 2]) {
+    close(built.max[axis] - built.min[axis], plain.max[axis] - plain.min[axis], 1e-9, `at the same size (axis ${axis})`);
   }
 }
 
@@ -416,8 +423,10 @@ const SEAT = { cx: 0.1, cz: 0.2, deckY: 1.5, openR: 0.78, rimR: 0.84, skirt: 0.0
     let swapped = 0;
     const turretSide = (mesh) => { for (let o = mesh.parent; o; o = o.parent) if (o === turret) return true; return false; };
     for (const [mesh, geometry] of before) {
-      // (the gun swaps its own meshes for bent copies at the kill: wreckDents.ts)
-      if (mesh.geometry === geometry || turretSide(mesh)) continue;
+      // (the gun swaps its own meshes for bent copies at the kill: wreckDents.ts; the interior fills swap their drawn
+      // surface for the closed boxes at the kill, interiorFills.ts / interiorFillWreck.selftest.mjs, and the ring never
+      // cuts a fill)
+      if (mesh.geometry === geometry || turretSide(mesh) || mesh.userData.interiorFill) continue;
       swapped++;
       assert.ok(mesh.geometry.userData.turretRingCut, 'a swapped mesh holds the ring\'s cut copy');
       const m = new THREE.Matrix4().multiplyMatrices(inv, mesh.matrixWorld);

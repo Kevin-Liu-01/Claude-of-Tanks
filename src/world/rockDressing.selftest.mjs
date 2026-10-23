@@ -21,7 +21,7 @@ import { acquireTerrainChunkIndex, terrainNearMeshHeightAt } from './terrain.ts'
 import {
   BED_SECTION_BINS, BED_SECTION_LEVELS, BOULDER_KINDS, BOULDER_SEAT_Y, ROCK_SHADOW_INSET_M, applyRockShaderHook, bedHash, beddingParting,
   boulderKindFor, boulderSectionRadius, boulderSections, boulderVariantForms, buildBoulderForm, createRockDepthMaterial, legacyRockVariant,
-  makeRockDetail, paintBoulder, projectsInsideHull, rockAngularityFor, rockDressingFor, rockLithologyFor,
+  makeRockDetail, paintBoulder, projectsInsideHull, rockAngularityFor, rockBaseToneFor, rockDressingFor, rockLithologyFor,
 } from './rockDressing.ts';
 import { terrainSourceText } from './terrainSourceText.mjs'; // (terrain.ts with roadSurfaceShader.ts's road chunks in place)
 
@@ -72,15 +72,63 @@ function closedWelded(position, index) {
 
 // --- the forms
 assert.deepEqual([...BOULDER_KINDS], ['block', 'rounded', 'slab']);
-const LITHOLOGIES = ['granite', 'gneiss', 'sandstone', 'limestone', 'slate', 'basalt', 'chalk'];
+const LITHOLOGIES = ['granite', 'gneiss', 'sandstone', 'limestone', 'slate', 'basalt', 'chalk', 'conglomerate', 'breccia'];
+// (2026-10-10, the map-revival lane) the bedded stones: the sedimentary rocks' beds, the conglomerate's thick ones and
+// the slate's steep cleavage
+const BEDDED = ['sandstone', 'limestone', 'slate', 'conglomerate'];
 const tri = new THREE.Vector3(), e1 = new THREE.Vector3(), e2 = new THREE.Vector3(), centroid = new THREE.Vector3();
 const meanLuma = {};
 /** The weathered mass, every rock and tier: a welded cube-sphere (closed, unfolded, its normals the surface's own and
  * facing out, none above the ground line apart from the triangles it shades), as tall as the legacy rock and inside its
  * hull above the ground line, its skirt deep; broken up by the weather (hollows), its faces and arrises both present. */
-function checkForm(form, label, hull, legacyTop, subdiv) {
+/**
+ * (rock round 2) A clastic stone's cobbles (BoulderForm.clast, after the weathered mass's own vertices and triangles,
+ * BoulderForm.base): at least ten on the desktop form, every cobble vertex flagged, every crown inside the legacy hull
+ * above the ground line and under the stone's top, their triangles wound out (their normals agree), the weathered mass
+ * with them inside the desktop budget for a cobbled stone; checked, the weathered mass is checked alone.
+ */
+function checkCobbles(form, label, hull, legacyTop) {
+  const g = form.geometry, p = g.attributes.position, n = g.attributes.normal, index = g.index.array, base = form.base;
+  assert.ok(base && form.clast && form.clast.length === p.count, `${label}: the cobbles' facts`);
+  const cobbleVerts = p.count - base.vertices, cobbleTris = index.length / 3 - base.triangles;
+  assert.ok(cobbleTris % 18 === 0 && cobbleVerts === (cobbleTris / 18) * 13, `${label}: whole domes (${cobbleTris} triangles)`);
+  assert.ok(cobbleTris / 18 >= 10, `${label}: cobbles in its faces (${cobbleTris / 18})`);
+  assert.ok(index.length / 3 <= 1300, `${label}: within a cobbled stone's budget (${index.length / 3})`);
+  for (let i = 0; i < p.count; i++) assert.equal(form.clast[i] > 0, i >= base.vertices, `${label}: the cobbles flagged, the matrix not`);
+  const out = [];
+  for (let i = base.vertices; i < p.count; i++) {
+    assert.ok(p.getY(i) <= legacyTop * 0.98 + 1e-5, `${label}: no cobble over the stone's top`);
+    if (p.getY(i) >= BOULDER_SEAT_Y) out.push(p.getX(i), 0, p.getZ(i));
+  }
+  const g2 = new THREE.BufferGeometry();
+  g2.setAttribute('position', new THREE.BufferAttribute(new Float32Array(out), 3));
+  assert.ok(projectsInsideHull(g2, hull), `${label}: the cobbles inside the legacy hull above the ground line`);
+  for (let t = base.triangles * 3; t < index.length; t += 3) {
+    const [a, b, c] = [index[t], index[t + 1], index[t + 2]];
+    e1.set(p.getX(b) - p.getX(a), p.getY(b) - p.getY(a), p.getZ(b) - p.getZ(a));
+    e2.set(p.getX(c) - p.getX(a), p.getY(c) - p.getY(a), p.getZ(c) - p.getZ(a));
+    tri.crossVectors(e1, e2).normalize();
+    assert.ok(tri.x * n.getX(c) + tri.y * n.getY(c) + tri.z * n.getZ(c) > 0, `${label}: a cobble's faces wound out`);
+  }
+}
+/** The weathered mass alone: the leading vertices and triangles of a form that carries cobbles after it. */
+function massOf(form) {
+  if (!form.base) return form;
+  const g = form.geometry, nv = form.base.vertices, nt = form.base.triangles;
+  const geometry = new THREE.BufferGeometry();
+  for (const key of ['position', 'normal', 'aRockFace']) {
+    const a = g.getAttribute(key);
+    geometry.setAttribute(key, new THREE.BufferAttribute(a.array.slice(0, nv * a.itemSize), a.itemSize));
+  }
+  geometry.setIndex(Array.from(g.index.array.slice(0, nt * 3)));
+  return { geometry, edge: form.edge.slice(0, nv), fresh: form.fresh.slice(0, nv), facet: form.facet.slice(0, nv), hollow: form.hollow.slice(0, nv) };
+}
+function checkForm(full, label, hull, legacyTop, subdiv, karst = false) {
+  if (full.base) checkCobbles(full, label, hull, legacyTop);
+  const form = massOf(full);
   const g = form.geometry, p = g.attributes.position, n = g.attributes.normal, index = g.index.array;
-  const cells = subdiv >= 6 ? 8 : 5;
+  // (rock round 2: a karst stone's desktop grid a cell finer, its runnels two cells across)
+  const cells = subdiv >= 6 ? (karst ? 9 : 8) : 5;
   assert.equal(index.length / 3, 10 * cells * cells + 4 * cells, `${label}: a cube-sphere's triangles, the buried floor a fan`);
   assert.ok(index.length / 3 <= (subdiv >= 6 ? 900 : 320), `${label}: within its budget (${index.length / 3})`);
   assert.equal(p.count, 6 * cells * cells + 2 - (cells - 1) ** 2 + 1, `${label}: welded (one vertex per grid point, shared normals)`);
@@ -151,6 +199,97 @@ function checkForm(form, label, hull, legacyTop, subdiv) {
   assert.ok(Math.abs(topFrac - 1) < 1e-3, `${label}: the height's share reaches 1 at the stone's top (${topFrac.toFixed(4)})`);
   return { p, n, face };
 }
+/**
+ * (rock round 2, 2026-10-11) A plated stone (the slate's): a stack of closed plates, every face flat and wound out (each
+ * plate its own welded component, its signed volume positive), its cleavage faces steep, at least five plates above the
+ * ground; as tall as the legacy rock and inside its hull above the ground line as the weathered form is, its buried part
+ * deep; the plate ends a fresh break above the ground; the material's facts per vertex.
+ */
+function checkPlatedForm(form, label, hull, legacyTop, subdiv) {
+  const g = form.geometry, p = g.attributes.position, n = g.attributes.normal, index = g.index.array;
+  assert.ok(index.length / 3 <= (subdiv >= 6 ? 900 : 320), `${label}: within its budget (${index.length / 3})`);
+  assert.ok([form.edge, form.fresh, form.facet, form.hollow].every((a) => a.length === p.count), `${label}: per-vertex facts`);
+  assert.ok(closedWelded(p, index), `${label}: every plate closed`);
+  // the plates: welded components (by position), each wound out (a positive signed volume)
+  const ids = new Map(), canon = new Int32Array(p.count);
+  for (let i = 0; i < p.count; i++) {
+    const key = `${Math.round(p.getX(i) * 1e4)},${Math.round(p.getY(i) * 1e4)},${Math.round(p.getZ(i) * 1e4)}`;
+    if (!ids.has(key)) ids.set(key, ids.size);
+    canon[i] = ids.get(key);
+  }
+  const parent = Array.from({ length: ids.size }, (_, i) => i);
+  const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+  for (let t = 0; t < index.length; t += 3) {
+    const a = find(canon[index[t]]);
+    for (const k of [1, 2]) { const b = find(canon[index[t + k]]); if (a !== b) parent[b] = a; }
+  }
+  const volume = new Map(), plateTop = new Map();
+  for (let t = 0; t < index.length; t += 3) {
+    const [a, b, c] = [index[t], index[t + 1], index[t + 2]];
+    const root = find(canon[a]);
+    const v = p.getX(a) * (p.getY(b) * p.getZ(c) - p.getZ(b) * p.getY(c)) - p.getY(a) * (p.getX(b) * p.getZ(c) - p.getZ(b) * p.getX(c))
+      + p.getZ(a) * (p.getX(b) * p.getY(c) - p.getY(b) * p.getX(c));
+    volume.set(root, (volume.get(root) ?? 0) + v / 6);
+    plateTop.set(root, Math.max(plateTop.get(root) ?? -Infinity, p.getY(a), p.getY(b), p.getY(c)));
+    e1.set(p.getX(b) - p.getX(a), p.getY(b) - p.getY(a), p.getZ(b) - p.getZ(a));
+    e2.set(p.getX(c) - p.getX(a), p.getY(c) - p.getY(a), p.getZ(c) - p.getZ(a));
+    tri.crossVectors(e1, e2);
+    if (tri.length() < 1e-9) continue;
+    tri.normalize();
+    // (above the ground, where the fit is a scale; under it the hull's soft hold bends a buried face a little)
+    if (Math.min(p.getY(a), p.getY(b), p.getY(c)) < BOULDER_SEAT_Y) continue;
+    for (const v2 of [a, b, c]) assert.ok(tri.x * n.getX(v2) + tri.y * n.getY(v2) + tri.z * n.getZ(v2) > 0.98, `${label}: every face flat above the ground, its normal its winding's`);
+  }
+  assert.ok([...volume.values()].every((v) => v > 0), `${label}: every plate wound out`);
+  const above = [...plateTop.values()].filter((y) => y > BOULDER_SEAT_Y + 0.05).length;
+  // (a phone's and the far form's plates are two beds thick: half as many)
+  assert.ok(above >= (subdiv >= 6 ? 5 : 3), `${label}: a stack of plates above the ground (${above})`);
+  let top = -Infinity, floor = Infinity, steepCaps = 0, caps = 0;
+  for (let i = 0; i < p.count; i++) {
+    top = Math.max(top, p.getY(i)); floor = Math.min(floor, p.getY(i));
+    assert.ok(Math.abs(Math.hypot(n.getX(i), n.getY(i), n.getZ(i)) - 1) < 1e-4, `${label}: unit normals`);
+    if (form.edge[i] === 0 && p.getY(i) > BOULDER_SEAT_Y) { caps++; if (Math.abs(n.getY(i)) < 0.6) steepCaps++; }
+  }
+  assert.ok(caps > 0 && steepCaps / caps > 0.9, `${label}: the cleavage faces steep (${(steepCaps / Math.max(1, caps) * 100).toFixed(0)} %)`);
+  assert.ok(Math.abs(top - legacyTop * 0.98) < 1e-5, `${label}: as tall as the legacy rock (its collider's cover)`);
+  assert.ok(floor < -1.2, `${label}: its plates run deep under the ground (${floor.toFixed(2)})`);
+  const band = (lo, hi) => {
+    const g2 = new THREE.BufferGeometry(), out = [];
+    for (let i = 0; i < p.count; i++) if (p.getY(i) >= lo && p.getY(i) < hi) out.push(p.getX(i), 0, p.getZ(i));
+    g2.setAttribute('position', new THREE.BufferAttribute(new Float32Array(out), 3));
+    return g2;
+  };
+  assert.ok(projectsInsideHull(band(BOULDER_SEAT_Y, Infinity), hull), `${label}: inside the legacy hull above the ground line`);
+  assert.ok(projectsInsideHull(band(BOULDER_SEAT_Y - 0.4, BOULDER_SEAT_Y), hull.map((c) => c * 1.04)), `${label}: within 4 % of it to 0.4 under the ground line`);
+  assert.ok(projectsInsideHull(band(-Infinity, BOULDER_SEAT_Y - 0.4), hull.map((c) => c * 1.16)), `${label}: within 16 % of it deeper down`);
+  assert.ok(form.fresh.every((f) => f >= 0 && f <= 1), `${label}: a bounded break share`);
+  let aboveN = 0, broken = 0;
+  for (let i = 0; i < p.count; i++) if (p.getY(i) > BOULDER_SEAT_Y) { aboveN++; if (form.fresh[i] > 0.3) broken++; }
+  assert.ok(broken / aboveN >= 0.1, `${label}: the plate ends a fresh break above the ground (${(broken / aboveN * 100).toFixed(0)} %)`);
+  const face = g.getAttribute('aRockFace');
+  assert.ok(face && face.itemSize === 4 && face.count === p.count, `${label}: a face fact for every vertex`);
+  let topFrac = -Infinity;
+  for (let i = 0; i < p.count; i++) {
+    topFrac = Math.max(topFrac, face.getY(i));
+    assert.ok(face.getY(i) >= -1 && face.getY(i) <= 1 && Math.abs(face.getZ(i) - form.fresh[i]) < 1e-6 && Math.abs(face.getW(i) - form.hollow[i]) < 1e-6,
+      `${label}: the height's share, the break and the hollow as the tone reads them`);
+  }
+  assert.ok(Math.abs(topFrac - 1) < 1e-3, `${label}: the height's share reaches 1 at the stone's top (${topFrac.toFixed(4)})`);
+  return { p, n, face };
+}
+// (rock round 2) the limestone's karren: its runnels and pans cut the mass (the same stone with the law's depth zeroed
+// is the uncut mass: the cut form lies inside it everywhere, and well inside it on a share of its flanks and its top)
+{
+  const legacy = legacyBoulder(2, 0), kind = boulderKindFor('limestone', 0);
+  const cut = buildBoulderForm(0, noise, mulberry32(2002 + 60), legacy.hull, 6, legacy.top, kind, 'limestone');
+  const p = cut.geometry.attributes.position;
+  let top = 0;
+  for (let i = 0; i < p.count; i++) top = Math.max(top, p.getY(i));
+  assert.ok(Math.abs(top - legacy.top * 0.98) < 1e-5, 'a karst stone as tall as the legacy rock');
+  const rockSource = readFileSync(new URL('./rockDressing.ts', import.meta.url), 'utf8');
+  assert.match(rockSource, /karren: \{ runnels: 10, depth: 0\.045, width: 0\.55, pits: 4, pitR: \[0\.08, 0\.15\], pitDepth: 0\.03 \}/, 'the limestone\'s karren law');
+  assert.match(rockSource, /const karrenSalt = Math\.floor\(salt \* 977\) % 4093;/, 'the karren take no draw of their own');
+}
 for (const lithology of LITHOLOGIES) {
   for (const seed of [2002, 77, 9001]) {
     for (const [detail, variant] of [[2, 0], [2, 1], [3, 2]]) {
@@ -159,17 +298,21 @@ for (const lithology of LITHOLOGIES) {
       for (const subdiv of [6, 4]) {
         const label = `${lithology} seed ${seed}, ${BOULDER_KINDS[kind]}, ${subdiv === 6 ? 'desktop' : 'phone'}`;
         const form = buildBoulderForm(variant, noise, mulberry32(seed + 60 + variant), legacy.hull, subdiv, legacy.top, kind, lithology);
-        const { p, n, face } = checkForm(form, label, legacy.hull, legacy.top, subdiv);
+        const plated = lithology === 'slate';
+        const { p, n, face } = plated ? checkPlatedForm(form, label, legacy.hull, legacy.top, subdiv)
+          : checkForm(form, label, legacy.hull, legacy.top, subdiv, lithology === 'limestone');
         // (b14) the bedding rides the sedimentary rocks only: several beds up a stone, none on the rest
         let bedLo = Infinity, bedHi = -Infinity;
         for (let i = 0; i < p.count; i++) if (p.getY(i) > BOULDER_SEAT_Y) { bedLo = Math.min(bedLo, face.getX(i)); bedHi = Math.max(bedHi, face.getX(i)); }
-        if (['sandstone', 'limestone'].includes(lithology)) assert.ok(bedHi - bedLo > 2, `${label}: beds up the stone (${(bedHi - bedLo).toFixed(2)})`);
+        if (BEDDED.includes(lithology)) assert.ok(bedHi - bedLo > (lithology === 'conglomerate' ? 1 : 2), `${label}: beds up the stone (${(bedHi - bedLo).toFixed(2)})`);
         else assert.ok(bedLo === 0 && bedHi === 0, `${label}: no bedding on ${lithology}`);
         const g = form.geometry;
         // broad faces and rounded arrises, both (the corestone is all arris)
         const faces = form.edge.filter((e) => e < 0.1).length / p.count, arrises = form.edge.filter((e) => e > 0.3).length / p.count;
         if (BOULDER_KINDS[kind] !== 'rounded') assert.ok(faces > (subdiv === 6 ? 0.1 : 0.05), `${label}: joint faces (${faces.toFixed(2)})`);
-        assert.ok(arrises > 0.05, `${label}: rounded arrises (${arrises.toFixed(2)})`);
+        // (a plated stone's arrises are its plates' ends: edge 0.25 on every end face)
+        if (plated) assert.ok(form.edge.filter((e) => e > 0.2).length / p.count > 0.3, `${label}: the plates' ends`);
+        else assert.ok(arrises > 0.05, `${label}: rounded arrises (${arrises.toFixed(2)})`);
         if (subdiv === 6) {
           const again = buildBoulderForm(variant, noise, mulberry32(seed + 60 + variant), legacy.hull, subdiv, legacy.top, kind, lithology);
           assert.equal(hashOf(again.geometry), hashOf(g), `${label}: a function of its seed`);
@@ -180,7 +323,7 @@ for (const lithology of LITHOLOGIES) {
         // rest, its hollows greyer
         paintBoulder(form, null, lithology);
         const col = g.attributes.color;
-        assert.ok(col && col.count === p.count, `${label}: a vertex tone`);
+        assert.ok(col && col.count === g.attributes.position.count, `${label}: a vertex tone`);
         let luma = 0, freshL = 0, freshN = 0, oldL = 0, oldN = 0, hollowS = 0, hollowN = 0, proudS = 0, proudN = 0;
         const hsl = { h: 0, s: 0, l: 0 }, c3 = new THREE.Color();
         for (let i = 0; i < p.count; i++) {
@@ -222,7 +365,8 @@ for (const lithology of LITHOLOGIES) {
     for (let i = 0; i < p.count; i++) legacyTop = Math.max(legacyTop, p.getY(i));
     for (const lithology of LITHOLOGIES) for (const subdiv of [6, 4]) {
       const label = `the props build's ${lithology} variant ${vi}, ${subdiv === 6 ? 'desktop' : 'phone'}`;
-      checkForm(buildBoulderForm(vi, propsNoise, mulberry32(2002 + 60 + vi), hull, subdiv, legacyTop, boulderKindFor(lithology, vi), lithology), label, hull, legacyTop, subdiv);
+      const form = buildBoulderForm(vi, propsNoise, mulberry32(2002 + 60 + vi), hull, subdiv, legacyTop, boulderKindFor(lithology, vi), lithology);
+      if (lithology === 'slate') checkPlatedForm(form, label, hull, legacyTop, subdiv); else checkForm(form, label, hull, legacyTop, subdiv, lithology === 'limestone');
     }
   }
 }
@@ -334,12 +478,13 @@ assert.notDeepEqual(rockDressingFor('coastal', null).lichenA, rockDressingFor('v
 // (b14) the bedding and the honeycomb: the sedimentary stone's partings and beds, the arid sandstone's tafoni
 for (const mapId of MAP_IDS) {
   const d = rockDressingFor(mapId, null), [partings, tones, tafoni, depth] = d.beds;
-  const bedded = ['sandstone', 'limestone'].includes(d.lithology);
+  const bedded = BEDDED.includes(d.lithology);
   assert.ok(bedded ? partings > 0 && tones > 0 : partings === 0 && tones === 0, `${mapId}: partings and beds on bedded stone only (${d.lithology})`);
   assert.ok(tafoni >= 0 && tafoni <= 1 && (d.lithology === 'sandstone' || tafoni === 0), `${mapId}: a honeycomb in sandstone only`);
   assert.ok(depth > 0 && depth <= 0.03, `${mapId}: a parting a couple of centimetres deep`);
 }
-assert.ok(['desert', 'badlands', 'oasis'].every((m) => rockDressingFor(m, null).beds[2] === 1), 'the arid sandstone honeycombed');
+// (item 46, 2026-10-22: Siwa's stone is the Miocene limestone, no tafoni; Monument Valley's De Chelly sandstone keeps them)
+assert.ok(['desert', 'badlands', 'titan_gorge'].every((m) => rockDressingFor(m, null).beds[2] === 1), 'the arid sandstone honeycombed');
 assert.equal(rockDressingFor('longleaf', null).beds[2], 0, 'the wet sandstone not');
 assert.notDeepEqual(rockDressingFor('railyard', (h, s, l) => [0.6, s, l]).soil, rockDressingFor('railyard', null).soil, 'the dirt tone law reaches the soil');
 // (b18; wave 121: Dahar's boulders "none of the horizontal bedding planes, cross-bedded laminae or coarse sand grain",
@@ -350,8 +495,30 @@ for (const mapId of MAP_IDS) {
   assert.ok(d.fabric.length === 4 && d.fabric.every((v) => v >= 0 && v <= 1), `${mapId}: a bounded fabric`);
   assert.ok(!(laminae > 0) || (d.lithology === 'sandstone' && d.beds[0] > 0), `${mapId}: laminae inside a sandstone's beds only`);
   assert.equal(foliation > 0 || veins > 0, d.lithology === 'gneiss', `${mapId}: the foliation and its veins the gneiss's`);
-  if (!['sandstone', 'gneiss', 'chalk'].includes(d.lithology)) assert.deepEqual([...d.fabric], [0, 0, 0, 0], `${mapId}: no new fabric on ${d.lithology}`);
+  if (!['sandstone', 'gneiss', 'chalk', 'conglomerate', 'breccia'].includes(d.lithology)) assert.deepEqual([...d.fabric], [0, 0, 0, 0], `${mapId}: no new fabric on ${d.lithology}`);
 }
+// (2026-10-10, the map-revival lane; gauntlet wave 346 on the rock cover: "Owen conglomerate needs rounded quartzite
+// pebbles and cobbles in a darker matrix", "lunar breccia", Eifel slate's "cleavage planes", Chouf limestone "fluted and
+// pitted") the second fabric: the conglomerate's rounded clasts, the breccia's angular ones, the slate's cleavage, the
+// limestone's karren — each its own stone's, none on the rest; and each map's own stone
+const FABRIC2 = { conglomerate: [1, 0, 0, 0], breccia: [0, 1, 0, 0], slate: [0, 0, 1, 0], limestone: [0, 0, 0, 1] };
+for (const mapId of MAP_IDS) {
+  const d = rockDressingFor(mapId, null);
+  assert.ok(d.fabric2.length === 4 && d.fabric2.every((v) => v >= 0 && v <= 1), `${mapId}: a bounded second fabric`);
+  assert.deepEqual([...d.fabric2], FABRIC2[d.lithology] ?? [0, 0, 0, 0], `${mapId}: the second fabric is its ${d.lithology}'s`);
+}
+assert.deepEqual(['copper_mesa', 'orchard', 'reservoir', 'mars', 'moon'].map((m) => rockLithologyFor(m)),
+  ['conglomerate', 'limestone', 'slate', 'basalt', 'basalt'], 'Queenstown\'s Owen conglomerate, the Chouf\'s limestone, the Eifel\'s slate, the Tharsis basalt; the Moon\'s boulders as Earthrise left them');
+// (item 46, 2026-10-22, MAP-01) each map's stone its own geology's: the Moselle's Jaumont limestone, the Naga Hills'
+// sandstones, the Saar's Buntsandstein, Siwa's Miocene limestone
+assert.deepEqual(['autumn', 'monsoon', 'foundry', 'oasis'].map((m) => rockLithologyFor(m)), ['limestone', 'sandstone', 'sandstone', 'limestone'],
+  'Amberford, Monsoon Ridge, Ironworks and Sunscar in their own stone');
+assert.ok(rockBaseToneFor('foundry')[0] < 0.06 && rockBaseToneFor('oasis')[2] > 0.6 && rockBaseToneFor('cliffbridge')[2] > 0.5,
+  'the Saar\'s red sandstone, Siwa\'s cream limestone, Ronda\'s buff calcarenite');
+assert.ok(['conglomerate', 'breccia'].every((l) => [0, 1, 2].every((v) => BOULDER_KINDS[boulderKindFor(l, v)] !== 'rounded')),
+  'the clastic rocks break as blocks and slabs (wave 346: "no egg domes")');
+assert.ok(rockBaseToneFor('reservoir')[0] < 0.15 && rockBaseToneFor('orchard')[2] > 0.45 && rockBaseToneFor('verdant') === null,
+  'the Eifel\'s brown-grey slate, the Chouf\'s pale limestone; a map without its own stone takes its lithology\'s');
 assert.deepEqual([...rockDressingFor('desert', null).fabric], [1, 0, 0, 1], 'Dahar\'s sandstone: its laminae and its grain');
 assert.deepEqual([...rockDressingFor('fjord', null).fabric], [0, 1, 1, 0], 'Fjord\'s gneiss: its foliation and its quartz veins');
 assert.ok(rockDressingFor('verdant', null).fabric[3] > 0, 'the chalk\'s grain');
@@ -411,8 +578,9 @@ const grimed = {
 const tile = new THREE.DataTexture(new Uint8Array(4), 1, 1);
 const shader = { uniforms: {}, vertexShader: grimed.vertexShader, fragmentShader: grimed.fragmentShader };
 applyRockShaderHook(shader, rockDressingFor('verdant', null), tile);
-assert.deepEqual(Object.keys(shader.uniforms).sort(), ['uRockBeds', 'uRockDust', 'uRockFabric', 'uRockLichen', 'uRockLichenA', 'uRockLichenB', 'uRockLichenTile', 'uRockMoss', 'uRockPhoto', 'uRockSoil', 'uRockStoneMean', 'uRockSurface', 'uRockVarnish']);
+assert.deepEqual(Object.keys(shader.uniforms).sort(), ['uRockBeds', 'uRockDust', 'uRockFabric', 'uRockFabric2', 'uRockLichen', 'uRockLichenA', 'uRockLichenB', 'uRockLichenTile', 'uRockMoss', 'uRockPhoto', 'uRockSoil', 'uRockStoneMean', 'uRockSurface', 'uRockVarnish']);
 assert.deepEqual(shader.uniforms.uRockFabric.value.toArray(), [...rockDressingFor('verdant', null).fabric], 'the lithology\'s fabric (b18)');
+assert.deepEqual(shader.uniforms.uRockFabric2.value.toArray(), [...rockDressingFor('verdant', null).fabric2], 'the lithology\'s second fabric (2026-10-10)');
 assert.deepEqual(shader.uniforms.uRockBeds.value.toArray(), [...rockDressingFor('verdant', null).beds], 'the lithology\'s bedding and honeycomb');
 assert.deepEqual(shader.uniforms.uRockSurface.value.toArray(), [...rockDressingFor('verdant', null).surface], 'the lithology\'s own surface');
 assert.deepEqual(shader.uniforms.uRockStoneMean.value.toArray(), [0.214, 0.214, 0.214], 'the stand-in\'s mid grey until the stone lands');
@@ -478,12 +646,62 @@ assert.match(shader.vertexShader, /vRockFace = aRockFace;/);
     && frag.indexOf('if (uRockFabric.w > 0.0) {') < frag.indexOf('float varnish =') && frag.indexOf('if (uRockFabric.w > 0.0) {') < frag.indexOf('float lichen ='),
     'after the beds, under the varnish and the lichen');
 }
+// (2026-10-10) the second fabric: after the first, under the varnish and the lichen; the clasts faded to their mean past
+// the near ground and where a cell crowds under a few pixels, the cleavage and the karren where their lines crowd
+{
+  const clasts = frag.slice(frag.indexOf('if (uRockFabric2.x > 0.0 || uRockFabric2.y > 0.0) {'), frag.indexOf('// desert varnish'));
+  assert.ok(clasts.length > 1500, 'the second fabric\'s block');
+  assert.ok(frag.indexOf('if (uRockFabric.w > 0.0) {') < frag.indexOf('if (uRockFabric2.x > 0.0 || uRockFabric2.y > 0.0) {')
+    && frag.indexOf('if (uRockFabric2.x > 0.0 || uRockFabric2.y > 0.0) {') < frag.indexOf('float varnish ='), 'after the first fabric, under the varnish');
+  assert.match(clasts, /float clastNear = \(1\.0 - smoothstep\(22\.0, 55\.0, length\(vViewPosition\)\)\) \* \(1\.0 - smoothstep\(0\.3, 0\.7, clastW\)\);/, 'the clasts near the eye, faded where they crowd');
+  assert.match(clasts, /diffuseColor\.rgb = mix\(diffuseColor\.rgb, mix\(clastFarC, clastNearC, clastNear\), clastK\);/, 'their mean past the near ground');
+  assert.match(clasts, /\* \(1\.0 - smoothstep\(0\.25, 0\.55, cleaveW\)\)/, 'the cleavage gone where it crowds');
+  assert.match(clasts, /\* \(1\.0 - smoothstep\(0\.3, 0\.6, karstW\)\)/, 'and the karren');
+  assert.match(frag, /vec3 cotClast\(vec2 p, float angular\) \{/, 'the clast field');
+}
 // (b14; wave 97: "no … varnish streaks") the varnish hung from the crown in streaks, darkest high, none on a break
 assert.match(frag, /float hang = smoothstep\(0\.05, 0\.75, vRockFace\.y\);/, 'the streaks darkest high');
 assert.match(frag, /\(1\.0 - 0\.85 \* vRockFace\.z\)\n\s*\* smoothstep\(0\.15, 0\.7, vRockAbove\);/, 'no varnish on a fresh break');
 assert.match(frag, /\* \(1\.0 - 0\.85 \* vRockFace\.z\);\n/, 'nor lichen');
-assert.match(frag, /float lichenRim = lichen \* \(1\.0 - smoothstep\(1\.0 - cover \+ edge, 1\.0 - cover \+ edge \+ cover \* 0\.3, lc\.x\)\);/,
+assert.match(frag, /float lichenRim = lichen \* \(1\.0 - smoothstep\(thr \+ edge, thr \+ edge \+ 0\.18 \* \(1\.0 - thr\), lc\.x\)\);/,
   'a colony\'s rim a shade darker than its heart (Sonnet, wave 97: "airbrushed")');
+// (rock round 2, 2026-10-11; gauntlet wave 415: "a pale, translucent ... smear or vertical rectangle" on the slate) the
+// colonies in 3D in the stone's space, so no facet's projection blend cuts one into a sheet; the coverage law is the
+// field's own, measured here on a port of the shader's function; the crust keeps to the grain's highs
+assert.match(frag, /vec2 cotColony3\(vec3 p\) \{/, 'the colony field');
+assert.match(frag, /vec2 lc = cotColony3\(vGrimeW \* 2\.4 \+ vRockSeed \* vec3\(17\.3, 5\.1, 11\.7\)\);/, 'the colonies in 3D, each boulder its own');
+assert.match(frag, /float thr = 1\.0 - pow\(clamp\(cover \/ 0\.416, 0\.0, 1\.0\), 0\.3333\);/, 'the field\'s coverage law');
+assert.match(frag, /lichen \*= 0\.35 \+ 0\.65 \* smoothstep\(0\.42, 0\.78, rockDetail\);/, 'a crust on the grain, not a film');
+assert.ok(!frag.includes('texture2D(uRockLichenTile, lPw.yz).rg'), 'no projected colony ranks');
+{
+  const fract = (x) => x - Math.floor(x);
+  const colony = (px, py, pz) => {
+    const gx = Math.floor(px - 0.5), gy = Math.floor(py - 0.5), gz = Math.floor(pz - 0.5);
+    let best = 0;
+    for (let k = 0; k < 8; k++) {
+      const ox = k % 2, oy = Math.floor(k / 2) % 2, oz = Math.floor(k / 4), cx = gx + ox, cy = gy + oy, cz = gz + oz;
+      const hx = fract(Math.sin(cx * 127.1 + cy * 311.7 + cz * 74.7) * 43758.5453);
+      const hy = fract(Math.sin(cx * 269.5 + cy * 183.3 + cz * 246.1) * 43758.5453);
+      const hz = fract(Math.sin(cx * 113.5 + cy * 271.9 + cz * 124.6) * 43758.5453);
+      const rx = ox + 0.15 + 0.7 * hx - (px - gx), ry = oy + 0.15 + 0.7 * hy - (py - gy), rz = oz + 0.15 + 0.7 * hz - (pz - gz);
+      const rad = 0.28 + 0.34 * fract(hx * 7.31 + hy * 3.17);
+      const lob = 1 + 0.16 * Math.sin((rx * hx + ry * hy + rz * hz) * 14 + hz * 40) + 0.09 * Math.sin((rz * hy + rx * hz + ry * hx) * 23 + hy * 17);
+      const q = Math.hypot(rx, ry, rz) / (rad * lob);
+      if (q < 1) best = Math.max(best, (0.2 + 0.8 * fract(hz * 13.7)) * (1 - q * q));
+    }
+    return best;
+  };
+  let seed = 9001;
+  const rnd = () => (seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 4294967296;
+  const N = 60000, vals = new Float64Array(N);
+  for (let i = 0; i < N; i++) vals[i] = colony(rnd() * 160, rnd() * 160, rnd() * 160);
+  const share = (t) => vals.reduce((n, v) => n + (v > t ? 1 : 0), 0) / N;
+  assert.ok(Math.abs(share(0) - 0.416) < 0.02, `the colonies fill 41.6 % of space (${(share(0) * 100).toFixed(1)} %)`);
+  for (const c of [0.05, 0.12, 0.25]) {
+    const thr = 1 - Math.pow(c / 0.416, 1 / 3);
+    assert.ok(Math.abs(share(thr) - c) < 0.25 * c + 0.01, `a cover ${c} takes ${(share(thr) * 100).toFixed(1)} % of the stone`);
+  }
+}
 assert.ok(frag.indexOf('#include <color_fragment>') < frag.indexOf('mossMask'), 'the dressing mixes after the vertex tone');
 assert.ok(frag.indexOf('rockDetail') < frag.indexOf('{ grime }'), 'the detail multiplies before the grime block');
 assert.ok(frag.indexOf('if (vRockSeed >= 0.0) {') < frag.indexOf('float lichen ='), 'the lichen on the boulders only');
@@ -507,7 +725,7 @@ assert.match(frag, /mat3 rockR = mat3\(1\.0\);\nvec3 rockPw = vGrimeW \* 0\.55;\
 assert.match(frag, /rockPw = rockR \* vGrimeW \* \(0\.44 \+ 0\.25 \* fract\(vRockSeed \* 3\.71\)\) \+ vRockSeed \* vec3\(31\.7, 7\.3, 19\.1\);/, 'its scale and phase');
 assert.match(frag, /vec3 rockTp = abs\(rockR \* vGrimeN\);/, 'the photo\'s weights in its frame');
 assert.ok(frag.includes('texture2D(map, rockPw.yz).rgb * rockTp.x') && frag.includes('rockPert = transpose(rockR) * rockPert;'), 'the stone and its relief drawn in that frame, the relief turned back');
-assert.ok(frag.includes('texture2D(uRockLichenTile, lPw.yz).rg * rockTw.x'), 'the lichen keeps the world frame');
+assert.ok(frag.includes('cotColony3(vGrimeW * 2.4'), 'the lichen keeps the world frame');
 // the carbonate surface (b12): the rind on the tops and the weather side, the flints in bands, the stain up the foot
 assert.match(frag, /float rind = uRockSurface\.y \* smoothstep\(0\.25, 0\.95, 0\.5 \+ 0\.45 \* vGrimeN\.y/, 'the rind');
 assert.match(frag, /float flint = uRockSurface\.x \* \(1\.0 - smoothstep\(0\.07, 0\.17, flintBand\)\)/, 'the flints in their bands');
@@ -528,7 +746,9 @@ const hullAt = source.indexOf('rockHulls.push(legacy.hull); // the collision pro
 // (the Redrock lane, round 10: the form takes the map's angularity too, RockClimate.angular; the hitbox lane, 2026-10-11:
 // the drawn, collision and far forms from one constructor, rockDressing.ts boulderVariantForms)
 assert.ok(hullAt > 0 && hullAt < source.indexOf('const forms = boulderVariantForms(vi, noi, () => mulberry32(seed + 60 + vi), legacy.hull, legacy.top, lithology, angular, mobileProps);'), 'the legacy hull is taken before the form is fitted inside it, as the map\'s rock breaks');
-assert.match(source, /paintBoulder\(forms\.drawn, P\.rockTone, lithology\);\n\s*rockGeos\.push\(forms\.drawn\.geometry\);/);
+// (item 46, 2026-10-22: painted from the map's own stone, rockBaseToneFor, before its lithology's; its mean tone over the
+// ground summed for the chips its foot sheds before the form is kept)
+assert.match(source, /paintBoulder\(forms\.drawn, P\.rockTone, lithology, rockBaseToneFor\(mapId\)\);\n\s*\/\/ \(rock round 2\) the stone's mean tone[\s\S]{0,500}?\n\s*rockGeos\.push\(forms\.drawn\.geometry\);/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockGround', new THREE\.InstancedBufferAttribute\(ground, 1\)\)/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockSlope', new THREE\.InstancedBufferAttribute\(slope, 2\)\)/, 'every boulder the slope of its ground');
 assert.match(source, /const rockContact = !snowCap && rockDressing\.dust < 0\.5;/, 'a contact patch round every boulder, but on snow and sand');
@@ -630,7 +850,7 @@ assert.match(source, /const heightM = \(box\.max\.y - Math\.max\(box\.min\.y, -0
 // the pools whole from the build, repartitioned with hysteresis when the camera has moved 8 m
 // (the hitbox lane, 2026-10-11: the forms from one constructor, rockDressing.ts boulderVariantForms) the desktop's far
 // form is the phone's drawn rock, vertex for vertex, on an angular map and a plain one
-assert.match(source, /if \(forms\.far\) \{\n\s*paintBoulder\(forms\.far, P\.rockTone, lithology\);\n\s*rockGeosFar\.push\(forms\.far\.geometry\);/,
+assert.match(source, /if \(forms\.far\) \{\n\s*paintBoulder\(forms\.far, P\.rockTone, lithology, rockBaseToneFor\(mapId\)\);\n\s*rockGeosFar\.push\(forms\.far\.geometry\);/,
   'the desktop draws its far form into the far pool');
 for (const mapId of ['badlands', 'verdant']) {
   const lith = rockLithologyFor(mapId), ang = rockAngularityFor(mapId);

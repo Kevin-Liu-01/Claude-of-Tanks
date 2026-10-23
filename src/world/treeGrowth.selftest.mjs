@@ -79,7 +79,12 @@ for (const species of GROWTH_SPECIES) {
       if (index === 0) return;
       const parent = skeleton.branches[branch.parent];
       assert.ok(parent && branch.parent < index, `${species}: a branch's parent grows before it`);
-      assert.ok(distanceToBranch(parent, branch.nodes[0]) <= parent.nodes[0].r + 0.02, `${species}/${variant}: branch ${index} rooted on its parent`);
+      // (the trees lane, round 2: a clump's culm roots in its rhizome base — the disc clumpR round the stem's foot — not on
+      // the stem)
+      if (profile.clump && branch.order === 1) {
+        assert.ok(branch.nodes[0].y < 0.6 && Math.hypot(branch.nodes[0].x, branch.nodes[0].z) <= (profile.clumpR ?? 0) + 0.05,
+          `${species}/${variant}: culm ${index} rooted in the clump's base`);
+      } else assert.ok(distanceToBranch(parent, branch.nodes[0]) <= parent.nodes[0].r + 0.02, `${species}/${variant}: branch ${index} rooted on its parent`);
       for (const node of branch.nodes) assert.ok(node.y >= 0.2 && node.y <= skeleton.height + 0.6, `${species}: wood within the tree's height`);
       if (branch.mesh && branch.order === 1 && profile.form === 'excurrent') {
         assert.ok(Math.min(...branch.nodes.map((n) => n.y)) >= GROWTH_LOWEST_WOOD_M - 1e-6, `${species}: no limb wood in the stem's collision band`);
@@ -247,6 +252,66 @@ assert.ok(shape.oak.aspect > shape.poplar.aspect * 1.6, 'the oak spreads where t
   assert.ok(shape.redPine.aspect > shape.pine.aspect && TREE_GROWTH_PROFILES.redPine.gnarl > 0,
     `the Japanese red pine broad and crooked (${JSON.stringify(shape.redPine)})`);
   for (const form of ['longleafPine', 'lebanonCedar', 'sugi', 'redPine']) assert.ok(GROWTH_SPECIES.includes(form), `${form} is a tree form`);
+  // the trees lane (2026-10-06, the gauntlet's wave 129 on Nordhavn: Scots pines "read as parasol or palm crowns"): the
+  // Scots pine's live crown on the upper third of its bole, flat-topped — its apex shoots spread round the leader's top,
+  // no spire — and narrower than the red pine's
+  {
+    const sp = TREE_GROWTH_PROFILES.pine;
+    assert.ok(sp.flatApex === true && sp.crownBase >= 0.6 && shape.pine.crownBase >= 0.6, `the Scots pine's crown on the upper third (${JSON.stringify(shape.pine)})`);
+    for (let variant = 0; variant < 3; variant++) {
+      const { skeleton } = grow('pine', variant);
+      const top = skeleton.branches[0].nodes.at(-1).y;
+      const apex = skeleton.leaves.filter((l) => l.y > top - 1.2 && l.branch === 0);
+      assert.ok(apex.length >= 3 && apex.every((l) => l.ay < 0.8), `pine/${variant}: a flat top, its apex shoots spread (the old spire's stood at 0.89-1.0) (${apex.map((l) => l.ay.toFixed(2)).join(' ')})`);
+    }
+  }
+  // the trees lane (2026-10-06, the gauntlet's wave 157 on Monsoon Ridge): the Naga Hills' forms — the Khasi pine taller
+  // and straighter than the red pine whose needles it paints, the bamboo a clump of culms from one rootstock, bare at the
+  // foot, never forking, arching out over the top, the same in a wood as in the open
+  {
+    const kp = TREE_GROWTH_PROFILES.khasiPine, rp = TREE_GROWTH_PROFILES.redPine, bb = TREE_GROWTH_PROFILES.bamboo;
+    for (const form of ['khasiPine', 'bamboo']) assert.ok(GROWTH_SPECIES.includes(form), `${form} is a tree form`);
+    assert.ok(kp.family === 'conifer' && kp.height > rp.height && (kp.gnarl ?? 0) < (rp.gnarl ?? 0) / 2,
+      'the Khasi pine stands taller and straighter than the red pine');
+    assert.ok(bb.clump === true && forestGrownProfile(bb) === bb, 'a clump keeps its own form in a wood');
+    for (let variant = 0; variant < 3; variant++) {
+      const { skeleton } = grow('bamboo', variant);
+      const culms = skeleton.branches.filter((b) => b.order === 1);
+      assert.ok(culms.length >= 10, `bamboo/${variant}: a clump of ${culms.length} culms`);
+      assert.ok(culms.every((c) => c.parent === 0), `bamboo/${variant}: no culm forks`);
+      let foot = 0, tip = 0;
+      for (const c of culms) {
+        const [n0, n1] = c.nodes, last = c.nodes.at(-1), prev = c.nodes.at(-2);
+        assert.ok(n0.y < 0.6 && Math.hypot(n0.x, n0.z) <= bb.clumpR + 0.05, `bamboo/${variant}: every culm from the rhizome base`);
+        foot += Math.atan2(Math.hypot(n1.x - n0.x, n1.z - n0.z), n1.y - n0.y) / culms.length;
+        tip += Math.atan2(Math.hypot(last.x - prev.x, last.z - prev.z), last.y - prev.y) / culms.length;
+      }
+      assert.ok(foot < 0.25 && tip > foot + 0.5, `bamboo/${variant}: upright at the foot (${foot.toFixed(2)} rad), arched at the tip (${tip.toFixed(2)})`);
+      // (round 2, the gauntlet's wave 179: "a single fountain" from one point) the culms rise from a broad base: their
+      // seats spread over the rhizome disc, a third of them past half its radius
+      const far = culms.filter((c) => Math.hypot(c.nodes[0].x, c.nodes[0].z) > bb.clumpR * 0.5).length;
+      assert.ok(culms.length >= 16 && far >= culms.length / 3, `bamboo/${variant}: ${culms.length} culms from a broad base (${far} past half its radius)`);
+      const lowest = Math.min(...skeleton.leaves.map((l) => l.y));
+      assert.ok(lowest > 0.25 * skeleton.height, `bamboo/${variant}: the culms bare at the foot (the lowest spray at ${lowest.toFixed(2)} m)`);
+    }
+    // (2026-10-07) the Naga Hills' chestnut-oak: the chestnut's crown — its dome, sprays, bark and leaf budget — on a
+    // lighter frame of side limbs and twigs, about a fifth less wood (Monsoon Ridge's forms inside cost rule v3's census)
+    const cs = TREE_GROWTH_PROFILES.castanopsis, ch = TREE_GROWTH_PROFILES.chestnut;
+    assert.ok(GROWTH_SPECIES.includes('castanopsis'), 'castanopsis is a tree form');
+    for (const k of ['family', 'height', 'trunkR', 'form', 'scaffolds', 'crownBase', 'crownR', 'envelope', 'leafPerM', 'spray', 'habit', 'bark']) {
+      assert.deepEqual(cs[k], ch[k], `castanopsis keeps the chestnut's ${k}`);
+    }
+    // (round 8, the gauntlet's wave 238: "thin grey trunks" — the chestnut-oak's bark darker than the chestnut's)
+    assert.ok(cs.barkTint.every((v, i) => v < ch.barkTint[i]), `castanopsis: darker bark (${cs.barkTint})`);
+    let woodCs = 0, woodCh = 0;
+    for (let variant = 0; variant < 3; variant++) {
+      const a = grow('castanopsis', variant), b = grow('chestnut', variant);
+      woodCs += a.wood.getAttribute('position').count / 3; woodCh += b.wood.getAttribute('position').count / 3;
+      assert.equal(a.skeleton.leaves.length, b.skeleton.leaves.length, `castanopsis/${variant}: the chestnut's sprays`);
+    }
+    assert.ok(cs.sidePerM < ch.sidePerM && cs.twigPerM < ch.twigPerM && woodCs <= 0.88 * woodCh,
+      `castanopsis: a lighter frame (${woodCs} wood triangles against the chestnut's ${woodCh})`);
+  }
   // the longleaf's grass stage: a shrub-only form (never a tree slot) whose sprays fan from a few seats on the ground
   assert.ok(!GROWTH_SPECIES.includes('longleafSeedling') && TREE_GROWTH_PROFILES.longleafSeedling.fountain, 'the grass stage is a shrub form');
   for (const kind of ['bush', 'understorey']) {
@@ -451,10 +516,12 @@ const shrubRows = [];
 // trees round 5 (2026-10-05, the coordinator's ruling on the gauntlet's wave 98: Frontier's woods "a single wall of
 // near-identical forked grey trunks", the savanna read): a tree grown inside a closed wood is forest-grown — its crown's
 // lowest sprays (the tenth of its seats lowest on the tree, against its height) never lower than the same tree's grown in
-// the open, and higher for a forking broadleaf (by over a fourteenth of its height) and a conifer whose open crown comes
-// down to its foot (a tenth); its crown no wider (its sprays' reach from the stem, a twentieth's play for the ragged whorls), the tree taller,
+// the open, and higher for a forking broadleaf and a conifer whose open crown comes down to its foot; the tree taller,
 // its stem slimmer for its height; deterministic and within the budgets; a palm, a snag and a grass-stage seedling keep
-// their own profile
+// their own profile. Round 8 (2026-10-07, the gauntlet's waves 236-238: the woods' "tall, pale, pole-straight trunks with
+// small sparse tufts at the top"): the lift a little — a forking broadleaf's by over a fortieth of its height, an open-
+// footed conifer's by a twentieth — and the crown as wide as in the open or wider by its larger sprays (between 0.94
+// and 1.25 of the open reach)
 {
   const quantile = (values, q) => { const v = [...values].sort((a, b) => a - b); return v[Math.min(v.length - 1, Math.floor(q * v.length))]; };
   const measure = (skeleton) => {
@@ -464,28 +531,40 @@ const shrubRows = [];
     return { base: quantile(seats, 0.1), reach, height: skeleton.height, girth: stem[Math.min(1, stem.length - 1)].r / skeleton.height };
   };
   const rows = [];
-  for (const species of ['oak', 'beech', 'chestnut', 'holmOak', 'birch', 'aspen', 'poplar', 'spruce', 'pine', 'fir', 'larch', 'eucalyptus']) {
-    const profile = TREE_GROWTH_PROFILES[species];
-    for (const variant of [0, 1]) {
-      const open = growTreeSkeleton(species, mulberry32(2001 + variant * 7), { variant, tier: 'desktop' });
-      const forest = growTreeSkeleton(species, mulberry32(2001 + variant * 7), { variant, tier: 'desktop', forest: true });
-      assert.deepEqual(forest, growTreeSkeleton(species, mulberry32(2001 + variant * 7), { variant, tier: 'desktop', forest: true }), `${species}: the forest form is deterministic`);
-      const a = measure(open), b = measure(forest);
-      const lift = profile.form === 'decurrent' ? 0.07 : profile.family === 'conifer' && a.base < 0.25 ? 0.1 : -0.02;
-      assert.ok(b.base >= a.base + lift, `${species} v${variant}: a forest tree's crown stands higher (its lowest sprays at ${b.base.toFixed(2)} of its height against ${a.base.toFixed(2)})`);
-      assert.ok(b.reach <= a.reach * 1.06, `${species} v${variant}: and no wider (${b.reach.toFixed(2)} m against ${a.reach.toFixed(2)})`);
-      assert.ok(b.height > a.height, `${species} v${variant}: taller (${b.height.toFixed(2)} against ${a.height.toFixed(2)})`);
-      assert.ok(b.girth < a.girth, `${species} v${variant}: its stem slimmer for its height`);
-      assert.ok(forest.leaves.length <= GROWTH_LEAF_BUDGET.desktop, `${species} v${variant}: within the spray budget`);
-      rows.push([species, variant, +a.base.toFixed(2), +b.base.toFixed(2), +a.reach.toFixed(2), +b.reach.toFixed(2)]);
+  // (the treescn lane, 2026-10-09: round 8 by place — a place without round 8's canopy form (every light-touch map) grows
+  // round 5's forest form exactly: its crown higher by over a fourteenth for a forking broadleaf and a tenth for an
+  // open-footed conifer, no wider; a place with it (treeBiomes.ts canopyForm) round 8's: lifted a little, as wide as in
+  // the open or wider by its larger sprays)
+  for (const round8 of [false, true]) {
+    for (const species of ['oak', 'beech', 'chestnut', 'holmOak', 'birch', 'aspen', 'poplar', 'spruce', 'pine', 'fir', 'larch', 'eucalyptus']) {
+      const profile = TREE_GROWTH_PROFILES[species];
+      for (const variant of [0, 1]) {
+        const opts = round8 ? { canopyForm: true } : {};
+        const open = growTreeSkeleton(species, mulberry32(2001 + variant * 7), { variant, tier: 'desktop', ...opts });
+        const forest = growTreeSkeleton(species, mulberry32(2001 + variant * 7), { variant, tier: 'desktop', forest: true, ...opts });
+        assert.deepEqual(forest, growTreeSkeleton(species, mulberry32(2001 + variant * 7), { variant, tier: 'desktop', forest: true, ...opts }), `${species}: the forest form is deterministic`);
+        const a = measure(open), b = measure(forest), tag = `${species} v${variant} (round ${round8 ? 8 : 5})`;
+        // (an excurrent broadleaf keeps its own crown base: its lowest tenth of seats wanders by the larger sprays' thinning)
+        const lift = round8
+          ? (profile.form === 'decurrent' ? 0.025 : profile.family === 'conifer' && a.base < 0.25 ? 0.05 : -0.04)
+          : (profile.form === 'decurrent' ? 0.07 : profile.family === 'conifer' && a.base < 0.25 ? 0.1 : -0.02);
+        assert.ok(b.base >= a.base + lift, `${tag}: a forest tree's crown stands higher (its lowest sprays at ${b.base.toFixed(2)} of its height against ${a.base.toFixed(2)})`);
+        if (round8) assert.ok(b.reach >= a.reach * 0.94 && b.reach <= a.reach * 1.25, `${tag}: as wide as in the open (${b.reach.toFixed(2)} m against ${a.reach.toFixed(2)})`);
+        else assert.ok(b.reach <= a.reach * 1.06, `${tag}: and no wider (${b.reach.toFixed(2)} m against ${a.reach.toFixed(2)})`);
+        assert.ok(b.height > a.height, `${tag}: taller (${b.height.toFixed(2)} against ${a.height.toFixed(2)})`);
+        assert.ok(b.girth < a.girth, `${tag}: its stem slimmer for its height`);
+        assert.ok(forest.leaves.length <= GROWTH_LEAF_BUDGET.desktop, `${tag}: within the spray budget`);
+        rows.push([round8 ? 8 : 5, species, variant, +a.base.toFixed(2), +b.base.toFixed(2), +a.reach.toFixed(2), +b.reach.toFixed(2)]);
+      }
     }
   }
   for (const species of ['palm', 'snag', 'longleafSeedling']) {
     assert.strictEqual(forestGrownProfile(TREE_GROWTH_PROFILES[species]), TREE_GROWTH_PROFILES[species], `${species}: no forest form`);
   }
   assert.strictEqual(forestGrownProfile(TREE_GROWTH_PROFILES.oak), forestGrownProfile(TREE_GROWTH_PROFILES.oak), 'one forest profile a species');
+  assert.strictEqual(forestGrownProfile(TREE_GROWTH_PROFILES.oak, true), forestGrownProfile(TREE_GROWTH_PROFILES.oak, true), 'one round-8 forest profile a species');
   assert.ok(GROWTH_FOREST_FORM.forkMax <= 0.6, 'a forest decurrent never forks past three fifths of its height');
-  console.log('forest form (species, variant, open base, forest base, open reach, forest reach):', JSON.stringify(rows));
+  console.log('forest form (round, species, variant, open base, forest base, open reach, forest reach):', JSON.stringify(rows));
 }
 
 // trees round 5 (the arid and volcanic lane's Monument Valley juniper: "multi-stemmed ... gnarled, twisted trunks ...

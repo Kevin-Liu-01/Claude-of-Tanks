@@ -126,6 +126,12 @@ export interface ArchitectureStyle {
    * `builders` as it is. The build streams and the plan keep the structure id (buildRegionalParts).
    */
   mapBuilders?: Readonly<Record<string, Readonly<Record<string, string>>>>;
+  /**
+   * (227, the looks lane; BLD-04) The builders the kit's houses come from where they stand on plots outside the
+   * building-detail census's dwelling class (tools/building-detail-census.mjs DWELLINGS): Page's ranch houses on
+   * Skybridge's depot and container-row plots. The census reads the kit's dwellings over them; nothing in a build reads it.
+   */
+  dwellings?: readonly string[];
   /** per-building tint palettes and weathering strengths (weather.ts DEFAULT_WEATHER when absent) */
   weather?: WeatherPalette;
   /** share of houses showing war damage: burnt or boarded windows, a stripped roof patch (house.ts; default 0.2) */
@@ -150,13 +156,36 @@ export interface ArchitectureStyle {
    * foot as round 9 laid it (Verdant's khatas, the owner's favourite village). Absent: on
    */
   groundCraft?: boolean;
+  /**
+   * The map-revival lane (2026-10-06, Frontier's round 3): the kit's own destructible kinds — a court's wall and gate
+   * the yard hook places (props.ts adds them to the map's local kinds; absent, a kit adds none).
+   */
+  destructibles?: Readonly<Record<string, RegionalDestructibleType>>;
 }
+
+/** A kit's own destructible kind: the props kit's (inhabitKit.ts DestructiblePropType) on any of the props' materials. */
+export type RegionalDestructibleType = Omit<import('../inhabitKit.ts').DestructiblePropType, 'mat'> & { mat: string };
 
 /**
  * What a kit puts in the free ground round its houses (yards.ts plans it, props.ts places it): a yard on the house's
  * freest side, enclosed by a run of the fence or wall destructible with a gate, an outbuilding in a far corner and
  * kitchen-garden beds, each only where it clears the roads, the other plots, the objectives and the spawn pads.
  */
+/** The map-revival lane (2026-10-05, Frontier's Hofreiten): the court a farmhouse keeps with its own outbuildings
+ * (yards.ts planCourt). */
+export interface YardCourtStyle {
+  /** the plan kinds that keep a court when one of their flanks faces a partner */
+  kinds: readonly string[];
+  /** the plot kinds that close a court (a barn behind it, a granary across it) */
+  partners: readonly string[];
+  /** the farthest the court runs out from the house wall, metres */
+  reach: number;
+  /** the destructible kind of the court's walls (the street end and any run no building closes) */
+  wall: string;
+  /** the destructible hung in the street end's gateway (the Hoftor), or none */
+  gate: string | null;
+}
+
 export interface YardStyle {
   /** the plan kinds that keep a yard */
   kinds: readonly string[];
@@ -181,6 +210,8 @@ export interface YardStyle {
    *  out of the gate's way: a flank yard's shed takes the corner away from its street gate, a back yard's the near
    *  corner where the far one stands behind the gate (yards.ts) */
   tidy?: boolean;
+  /** courts for the farmhouses that keep one (their yards then stand behind the court's barn); absent: none */
+  court?: YardCourtStyle;
 }
 
 export type RegionalGeometryBuckets = Record<string, THREE.BufferGeometry[]>;

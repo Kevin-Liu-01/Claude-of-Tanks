@@ -1,11 +1,7 @@
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
 import { t } from '../ui/i18n.ts';
 
-const responsiveLayout = installResponsiveLayout();
-const isCompactSurface = (): boolean => {
-  const widthBand = responsiveLayout.snapshot()?.widthBand;
-  return widthBand === 'phone' || widthBand === 'compact';
-};
+installResponsiveLayout();
 
 interface NetworkInformation extends EventTarget {
   saveData?: boolean;
@@ -51,68 +47,6 @@ if (document.querySelector('[data-media-archive]')) {
   ]).then(([, { autoMountMediaArchives }]) => autoMountMediaArchives());
 }
 
-function mountHeroRail(root: Element): void {
-  const slides = [...root.querySelectorAll<HTMLImageElement>('[data-hero-slide]')];
-  if (slides.length < 2) return;
-  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  const connection = networkConnection();
-  let handedOff = false;
-  const limitsMotion = (): boolean => handedOff || reducedMotion.matches || isCompactSurface() || savingData();
-  let activeIndex = Math.max(0, slides.findIndex((slide) => slide.classList.contains('is-active')));
-  let advanceTimer = 0;
-
-  const stopTimer = (): void => {
-    clearTimeout(advanceTimer);
-    advanceTimer = 0;
-  };
-
-  const expose = (index: number): void => {
-    slides.forEach((slide, slideIndex) => {
-      const active = slideIndex === index;
-      slide.classList.toggle('is-active', active);
-      slide.setAttribute('aria-hidden', String(!active));
-    });
-    activeIndex = index;
-  };
-
-  const hydrate = async (slide: HTMLImageElement | undefined): Promise<void> => {
-    if (!slide?.dataset.src || slide.currentSrc) return;
-    slide.src = slide.dataset.src;
-    delete slide.dataset.src;
-    try { await slide.decode(); } catch (_) {}
-  };
-
-  const scheduleAdvance = (): void => {
-    stopTimer();
-    if (limitsMotion() || document.hidden) return;
-    advanceTimer = window.setTimeout(advance, 5600);
-  };
-
-  const advance = async (): Promise<void> => {
-    stopTimer();
-    if (limitsMotion() || document.hidden) return;
-    const nextIndex = (activeIndex + 1) % slides.length;
-    await hydrate(slides[nextIndex]);
-    if (limitsMotion() || document.hidden) return;
-    expose(nextIndex);
-    scheduleAdvance();
-  };
-
-  const applyMotionPreference = (): void => {
-    stopTimer();
-    if (limitsMotion()) expose(0);
-    else scheduleAdvance();
-  };
-  reducedMotion.addEventListener('change', applyMotionPreference);
-  window.addEventListener('cot:layoutchange', applyMotionPreference);
-  connection?.addEventListener?.('change', applyMotionPreference);
-  document.addEventListener('visibilitychange', applyMotionPreference);
-  window.addEventListener('cot:media-handoff', () => { handedOff = true; stopTimer(); });
-  expose(activeIndex);
-  applyMotionPreference();
-}
-
-document.querySelectorAll('[data-hero-rail]').forEach(mountHeroRail);
 
 function mountShotRail(rail: HTMLElement): void {
   const section = rail.closest<HTMLElement>('.v5-authored');
@@ -171,6 +105,68 @@ function mountShotRail(rail: HTMLElement): void {
 }
 
 document.querySelectorAll<HTMLElement>('[data-shot-rail]').forEach(mountShotRail);
+
+// The landing's versus wall (brand-ui BUI-W2): the time-of-day buttons show the duels filmed at that hour.
+function mountVersusFilter(section: HTMLElement): void {
+  const buttons = [...section.querySelectorAll<HTMLButtonElement>('[data-versus-filter]')];
+  const tiles = [...section.querySelectorAll<HTMLElement>('.vs-tile[data-hour]')];
+  for (const button of buttons) {
+    button.addEventListener('click', () => {
+      const hour = button.dataset.versusFilter || 'all';
+      for (const other of buttons) other.setAttribute('aria-pressed', String(other === button));
+      for (const tile of tiles) tile.hidden = hour !== 'all' && tile.dataset.hour !== hour;
+    });
+  }
+}
+
+document.querySelectorAll<HTMLElement>('#versus').forEach(mountVersusFilter);
+
+interface FleetFeature {
+  readonly name: string; readonly flag: string; readonly tier: string; readonly cal: number; readonly pen: number;
+  readonly poster: string; readonly gallery: string; readonly drive: string;
+}
+
+// The landing's fleet wall: pointing at or focusing a tank's card shows its take, flag and facts in the feature panel;
+// the card itself opens the vehicle's Gallery dossier. The panel's box never changes size.
+function mountFleetFeature(section: HTMLElement): void {
+  const panel = section.querySelector<HTMLElement>('[data-fleet-feature]');
+  const cards = [...section.querySelectorAll<HTMLAnchorElement>('a[data-feature]')];
+  if (!panel || !cards.length) return;
+  const fact = <T extends Element>(name: string): T | null => panel.querySelector<T>(`[data-fact="${name}"]`);
+  const show = (card: HTMLAnchorElement): void => {
+    let feature: FleetFeature;
+    try { feature = JSON.parse(card.dataset.feature || '') as FleetFeature; } catch { return; }
+    for (const other of cards) other.classList.toggle('is-featured', other === card);
+    const poster = fact<HTMLImageElement>('poster');
+    if (poster && poster.getAttribute('src') !== feature.poster) poster.src = feature.poster;
+    const name = fact<HTMLElement>('name');
+    if (name) name.textContent = feature.name;
+    panel.querySelector('.fleet-feature__flag use')?.setAttribute('href', `#f-${feature.flag}`);
+    const values: Record<string, string> = { tier: feature.tier, caliber: String(feature.cal), penetration: String(feature.pen) };
+    for (const [key, value] of Object.entries(values)) { const node = fact<HTMLElement>(key); if (node) node.textContent = value; }
+    fact<HTMLAnchorElement>('gallery')?.setAttribute('href', feature.gallery);
+    fact<HTMLAnchorElement>('drive')?.setAttribute('href', feature.drive);
+  };
+  for (const card of cards) {
+    card.addEventListener('pointerenter', () => show(card));
+    card.addEventListener('focus', () => show(card));
+  }
+  cards[0].classList.add('is-featured');
+}
+
+document.querySelectorAll<HTMLElement>('#fleet').forEach(mountFleetFeature);
+
+// The hero's trailer button plays the trailer where the trailers row shows it (a click, so it plays with its sound).
+document.querySelectorAll<HTMLAnchorElement>('[data-trailer-open]').forEach((link) => {
+  link.addEventListener('click', (event) => {
+    const video = document.querySelector<HTMLVideoElement>('#trailers video[data-trailer]');
+    if (!video) return;
+    event.preventDefault();
+    video.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+    if (video.dataset.poster && !video.poster) video.poster = video.dataset.poster;
+    void video.play().catch(() => {});
+  });
+});
 
 // The landing page's trailers row: each trailer plays on a click (controls, preload none) with its sound, so nothing of
 // it loads before the row nears the viewport, when its poster does; starting one pauses the others.

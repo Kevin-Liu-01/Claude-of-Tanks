@@ -151,7 +151,7 @@ const CODE_RE = /[^A-Za-z0-9_.:-]+/g;
 
 function cleanText(value: unknown, max: number): string {
   // eslint-disable-next-line no-control-regex
-  return String(value ?? '').replace(/[\x00-\x1f\x7f]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, max);
+  return String(value ?? '').replace(/[\x00-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, max);
 }
 
 /** Bound an arbitrary code/reason string to the beacon alphabet. */

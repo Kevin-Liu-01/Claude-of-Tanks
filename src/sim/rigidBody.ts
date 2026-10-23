@@ -857,16 +857,56 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
     if (fpS[FP_DIST] > 1e-12) { fpS[FP_NX] = (x - bestX) / fpS[FP_DIST]; fpS[FP_NZ] = (z - bestZ) / fpS[FP_DIST]; } else { fpS[FP_NX] = maxNx; fpS[FP_NZ] = maxNz; }
   }
 
+  /** The footprint's plan box (minX, minZ, maxX, maxZ) into fbS: the record's own box, an obb's or a circle's extents, a
+   *  convex part's points'. */
+  const fbS = new Float64Array(4);
+  function footprintBox(part: SimpleCollisionShape | null, record: CollisionRecord): void {
+    if (part === null) { fbS[0] = record.min[0]; fbS[1] = record.min[2]; fbS[2] = record.max[0]; fbS[3] = record.max[2]; return; }
+    if (part.kind === 'obb') {
+      const sn = Math.abs(Math.sin(part.yaw)), cs = Math.abs(Math.cos(part.yaw));
+      const ex = cs * part.hw + sn * part.hl, ez = sn * part.hw + cs * part.hl;
+      fbS[0] = part.cx - ex; fbS[1] = part.cz - ez; fbS[2] = part.cx + ex; fbS[3] = part.cz + ez;
+      return;
+    }
+    if (part.kind === 'circle') { fbS[0] = part.cx - part.r; fbS[1] = part.cz - part.r; fbS[2] = part.cx + part.r; fbS[3] = part.cz + part.r; return; }
+    // a convex part: its points' box, when its turns all go one way (footprintClosest's inside is then the polygon, in the
+    // box); points in a line, none, or a turn the other way — what it calls inside may run past them: no box
+    const p = part.points, n = p.length >> 1;
+    let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity, turn = 0;
+    for (let a = 0; a < n; a++) {
+      const b = a + 1 < n ? a + 1 : 0, c = b + 1 < n ? b + 1 : 0;
+      const ax = p[2 * a], az = p[2 * a + 1];
+      if (ax < x0) x0 = ax; if (ax > x1) x1 = ax; if (az < z0) z0 = az; if (az > z1) z1 = az;
+      const cross = (p[2 * b] - ax) * (p[2 * c + 1] - p[2 * b + 1]) - (p[2 * b + 1] - az) * (p[2 * c] - p[2 * b]);
+      if (!(Math.abs(cross) > 1e-12)) continue;
+      const sign = cross > 0 ? 1 : -1;
+      if (turn === 0) turn = sign;
+      else if (sign !== turn) { turn = 2; break; }
+    }
+    if (turn === 0 || turn === 2) { fbS[0] = -Infinity; fbS[1] = -Infinity; fbS[2] = Infinity; fbS[3] = Infinity; return; }
+    fbS[0] = x0; fbS[1] = z0; fbS[2] = x1; fbS[3] = z1;
+  }
+  /** Slack (m) on the plan-box test: far over the rounding of the box and of footprintClosest's distance. */
+  const FOOTPRINT_BOX_SLACK_M = 1e-6;
+
   /** Body i's spheres against a static prism (its span y0..y1, friction and restitution in prS). */
   function prismContacts(i: number, part: SimpleCollisionShape | null, record: CollisionRecord): void {
     const y0 = prS[0], y1 = prS[1], friction = prS[2], restitution = prS[3];
     const shape = shapes[i]!;
     const base = sphereBase[i];
+    // (perf-240) a sphere whose centre stands off the footprint's plan box by more than its radius and the margin is off the
+    // footprint by more, and never in it: the closest-point read below would find no contact (a collapse's bodies met every
+    // part of every shell band round them so, sphere by sphere: half the pool's step)
+    footprintBox(part, record);
+    const fx0 = fbS[0], fz0 = fbS[1], fx1 = fbS[2], fz1 = fbS[3];
     for (let k = 0, n = shape.sphereCount; k < n; k++) {
       const j = (base + k) * 3;
       const x = sphereWorld[j], y = sphereWorld[j + 1], z = sphereWorld[j + 2];
       const r = shape.spheres[k * 4 + 3];
       if (y + r < y0 - CONTACT_MARGIN_M || y - r > y1 + CONTACT_MARGIN_M) continue;
+      const ox = x < fx0 ? fx0 - x : x > fx1 ? x - fx1 : 0, oz = z < fz0 ? fz0 - z : z > fz1 ? z - fz1 : 0;
+      const reach = r + CONTACT_MARGIN_M + FOOTPRINT_BOX_SLACK_M;
+      if (ox * ox + oz * oz > reach * reach) continue;
       qS[0] = x; qS[2] = z;
       footprintClosest(part, record);
       let nx: number, ny: number, nz: number, depth: number, cx0: number, cy0: number, cz0: number;
@@ -1260,11 +1300,24 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
     sphereSolids(j, i);
   }
 
+  /** sphereSolids' list of a's spheres inside b's box (perf-240). */
+  let nearSpheres = new Int32Array(64);
   function sphereSolids(a: number, b: number): void {
     const shapeA = shapes[a]!, shapeB = shapes[b]!;
+    const base = sphereBase[a];
+    // (perf-240) a's spheres inside b's box, read once (each of b's solids read every sphere against the same box): none,
+    // and no solid of b is carried into the world
+    if (nearSpheres.length < shapeA.sphereCount) nearSpheres = new Int32Array(shapeA.sphereCount);
+    let near = 0;
+    for (let k = 0, n = shapeA.sphereCount; k < n; k++) {
+      const j = (base + k) * 3;
+      const x = sphereWorld[j], y = sphereWorld[j + 1], z = sphereWorld[j + 2];
+      if (x < bminX[b] || x > bmaxX[b] || y < bminY[b] || y > bmaxY[b] || z < bminZ[b] || z > bmaxZ[b]) continue;
+      nearSpheres[near++] = k;
+    }
+    if (!near) return;
     const friction = Math.sqrt(shapeA.friction * shapeB.friction);
     const restitution = 0.5 * (shapeA.restitution + shapeB.restitution);
-    const base = sphereBase[a];
     const s = shapeB.solids;
     for (let o = 0; o < s.length; o += SOLID_STRIDE) {
       solidToWorld(b, s, o);
@@ -1275,10 +1328,10 @@ export function createRigidWorld(options: RigidWorldOptions = {}): RigidWorld {
         for (let m = 0; m < 9; m++) otherR[m] = solidRot[m];
         partState.fill(0);
       }
-      for (let k = 0, n = shapeA.sphereCount; k < n; k++) {
+      for (let q = 0; q < near; q++) {
+        const k = nearSpheres[q]!;
         const j = (base + k) * 3;
         const x = sphereWorld[j], y = sphereWorld[j + 1], z = sphereWorld[j + 2];
-        if (x < bminX[b] || x > bmaxX[b] || y < bminY[b] || y > bmaxY[b] || z < bminZ[b] || z > bmaxZ[b]) continue;
         qS[0] = x; qS[1] = y; qS[2] = z; qS[3] = shapeA.spheres[k * 4 + 3];
         const hit = box ? sphereBox(otherC, 0, otherR, 0, s, o + 8) : sphereCapsule(swS, SW_CX, swS, SW_BX, s, o + 7);
         if (!hit) continue;

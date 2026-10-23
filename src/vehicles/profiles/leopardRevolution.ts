@@ -119,8 +119,16 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
         [side * 1.95, yTop(front) - 0.17, front], [side * 1.64, yTop(front) - 0.015, front],
       ));
       for (const z of [rear + 0.13, front - 0.13]) {
-        P.addEquipment('hullDetail', box(0.025, 0.045, 0.12), side * 1.956, 1.24, z);
-        P.addEquipment('hullDark', cylX(0.016, 0.028, 8), side * 1.972, 1.24, z);
+        // 2026-10-22 (owner float calls): the brackets stood 5-7 mm off the module's raked outer face (on the front
+        // module, whose top falls with the glacis, above its top edge); each now leans with that face and sits on it,
+        // below the edge, its cap riding its outer face as before.
+        const t = (z - rear) / (front - rear), low = 0.77 + 0.05 * t, high = yTop(z) - 0.17;
+        const y = Math.min(1.24, high - 0.035);
+        const rake = Math.atan2(0.07, high - low), faceX = 1.88 + 0.07 * (y - low) / (high - low);
+        const cx = faceX + 0.0125 / Math.cos(rake);
+        P.addEquipment('hullDetail', box(0.025, 0.045, 0.12), side * cx, y, z, 0, 0, -side * rake);
+        P.addEquipment('hullDark', cylX(0.016, 0.028, 8), side * (cx + 0.016 * Math.cos(rake)), y - 0.016 * Math.sin(rake), z,
+          0, 0, -side * rake);
       }
     }
     // Broad front corner follows the same upper glacis angle, not a box
@@ -139,7 +147,9 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
       P.addEquipment('hullOpenLatticeDark', box(0.31, 0.038, 0.045), side * 1.83, 1.35, z);
       P.addEquipment('hullOpenLattice', box(0.036, 1.59 - low, 0.035), side * 1.984, (1.59 + low) / 2, z);
     }
-    for (let j = 0; j < 13; j++) {
+    // 2026-10-22 (owner float calls): the lowest course had no length (a 6 cm stub clamped on, 22 mm short of the first
+    // upright); the courses start at the second.
+    for (let j = 1; j < 13; j++) {
       const y = 0.735 + j * 0.069;
       const length = Math.max(0.06, Math.min(3.20, (y - 0.735) * 3.20 / 0.305));
       P.addEquipment('hullOpenLattice', box(0.03, 0.019, length), side * 1.984, y, -0.62 - length / 2);
@@ -150,8 +160,11 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
     P.addEquipment('hullDark', box(0.31, 0.16, 0.065), side * 0.72, 1.128, 3.68, -0.15);
     P.addEquipment('hullGlass', markVehicleNightLens(box(0.18, 0.098, 0.008), 'headlight'), side * 0.72, 1.136, 3.716, -0.15);
     P.addEquipment('hullDetail', box(0.33, 0.025, 0.125), side * 0.72, 1.218, 3.667, -0.15);
+    // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the eye beside the ring stood 8 cm over the
+    // deck inside the turret's low side (1.53 m off the ring's axis, 3 cm over the deck), so the traverse ran through it;
+    // it sits down in its socket to a 2.3 cm loop.
     for (const z of [2.8, 0.95, -1.20, -3.15]) {
-      P.addEquipment('hullDetail', torus(0.035, 0.012, 12, 6), side * 1.45, z > 2 ? 1.40 : 1.57, z, Math.PI / 2);
+      P.addEquipment('hullDetail', torus(0.035, 0.012, 12, 6), side * 1.45, z > 2 ? 1.40 : z === 0.95 ? 1.513 : 1.57, z, Math.PI / 2);
     }
     P.addEquipment('hullDark', box(0.54, 0.19, 0.05), side * 1.16, 1.04, -3.678);
     for (let j = 0; j < 8; j++) P.addEquipment('hullDetail', box(0.47, 0.013, 0.025), side * 1.16, 0.964 + j * 0.022, -3.711);
@@ -178,13 +191,15 @@ export function buildLeopardRevolution(P: TankBuilderPort): void {
     P.addEquipment('hullDark', cylZ(0.09, 0.075, 16), side * 0.89, 0.99, -3.67);
   }
   // Engine deck fans, fitted grilles and hatches are non-ballistic equipment.
+  // (release 240: the fans stand 4 cm lower, on the deck; their discs floated 2 cm over it and their rims stood 3 cm into
+  // the bustle's floor, 1.68, which passes over them as the turret turns)
   for (const x of [-0.60, 0.60]) {
-    P.addEquipment('hullDark', cylY(0.52, 0.52, 0.035, 40), x, 1.66, -2.83);
-    P.addEquipment('hullDetail', torus(0.51, 0.023, 40, 8), x, 1.687, -2.83);
+    P.addEquipment('hullDark', cylY(0.52, 0.52, 0.035, 40), x, 1.62, -2.83);
+    P.addEquipment('hullDetail', torus(0.51, 0.023, 40, 8), x, 1.647, -2.83);
     for (let n = -9; n <= 9; n++) {
       const z = n * 0.05;
       const width = 2 * Math.sqrt(Math.max(0, 0.49 ** 2 - z ** 2));
-      P.addEquipment('hullDetail', box(width, 0.014, 0.014), x, 1.684, -2.83 + z);
+      P.addEquipment('hullDetail', box(width, 0.014, 0.014), x, 1.644, -2.83 + z);
     }
   }
   P.addEquipment('hullDetail', box(0.74, 0.035, 0.56), 0.55, 1.539, 1.02);
