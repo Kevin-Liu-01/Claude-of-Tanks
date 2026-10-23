@@ -6,7 +6,7 @@
     "site/gallery.html": {"colour":3,"fontSize":1,"letterSpacing":0,"zIndex":1,"shadow":0,"duration":0,"important":0},
     "site/hud-preview.html": {"colour":0,"fontSize":0,"letterSpacing":0,"zIndex":0,"shadow":0,"duration":0,"important":2},
     "src/dev/colliderOverlay.ts": {"colour":0,"fontSize":0,"letterSpacing":0,"zIndex":1,"shadow":0,"duration":0,"important":0},
-    "src/docs/docs.css": {"colour":253,"fontSize":131,"letterSpacing":47,"zIndex":12,"shadow":10,"duration":26,"important":6},
+    "src/docs/docs.css": {"colour":0,"fontSize":0,"letterSpacing":0,"zIndex":10,"shadow":0,"duration":0,"important":6},
     "src/engine/cameraRig.ts": {"colour":1,"fontSize":0,"letterSpacing":0,"zIndex":1,"shadow":0,"duration":0,"important":0},
     "src/engine/deviceDiag.ts": {"colour":11,"fontSize":3,"letterSpacing":2,"zIndex":0,"shadow":0,"duration":0,"important":0},
     "src/engine/renderer.ts": {"colour":6,"fontSize":4,"letterSpacing":1,"zIndex":1,"shadow":0,"duration":0,"important":0},

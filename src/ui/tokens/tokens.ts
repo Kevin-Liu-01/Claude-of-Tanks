@@ -258,6 +258,16 @@ export const TOKENS = {
   'media-toggle-z': '4',
   'warn-hatch': '8px',
   'team-squad-ring': '0px',
+  'docs-banner-h1': 'clamp(44px,3.9vw,60px)',
+  'docs-h1': 'clamp(44px,5.1vw,76px)',
+  'docs-h2': 'clamp(28px,3.4vw,52px)',
+  'docs-fluid-1': 'clamp(18px,1.9vw,24px)',
+  'docs-fluid-2': 'clamp(20px,2.2vw,28px)',
+  'docs-banner-fade': 'linear-gradient(90deg,rgba(11,14,17,.92) 0,rgba(11,14,17,.6) 30%,rgba(11,14,17,0) 52%),linear-gradient(0deg,rgba(11,14,17,1) 0,rgba(11,14,17,0) 40%)',
+  'docs-side-edge': '1px 0 0 rgba(246,243,236,.07)',
+  'docs-side-on': 'inset 2px 0 0 #f0a030',
+  'docs-toc-on': '-2px 0 0 #f0a030',
+  'docs-banner-z': '2',
 } as const;
 
 export type TokenName = keyof typeof TOKENS;
@@ -411,6 +421,7 @@ export const TOKEN_PRESETS = {
         'ring-2': 'inset 0 0 0 1px rgba(246,243,236,.38)',
         'ring-3': 'inset 0 0 0 1px rgba(246,243,236,.38)',
         'seg-on-shadow': '0 1px 0 rgba(255,255,255,.06) inset,0 0 0 1px rgba(246,243,236,.38)',
+        'docs-side-edge': '1px 0 0 rgba(246,243,236,.38)',
       },
     },
   },

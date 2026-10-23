@@ -83,6 +83,11 @@
   --focus-bracket-dur:var(--dur-fast);
   --media-toggle-z:4;
   --warn-hatch:8px;--team-squad-ring:0px;
+  --docs-banner-h1:clamp(var(--fs-44),3.9vw,var(--fs-60));--docs-h1:clamp(var(--fs-44),5.1vw,var(--fs-76));
+  --docs-h2:clamp(var(--fs-28),3.4vw,var(--fs-52));--docs-fluid-1:clamp(var(--fs-18),1.9vw,var(--fs-24));
+  --docs-fluid-2:clamp(var(--fs-20),2.2vw,var(--fs-28));--docs-banner-fade:linear-gradient(90deg,rgba(11,14,17,.92) 0,rgba(11,14,17,.6) 30%,rgba(11,14,17,0) 52%),linear-gradient(0deg,rgba(11,14,17,1) 0,rgba(11,14,17,0) 40%);
+  --docs-side-edge:1px 0 0 var(--line-1);--docs-side-on:inset 2px 0 0 var(--accent);--docs-toc-on:-2px 0 0 var(--accent);
+  --docs-banner-z:2;
 }
 :root[data-cvd=deutan]{
   --team-enemy:#e69f00;--warn-hatch:4px;
