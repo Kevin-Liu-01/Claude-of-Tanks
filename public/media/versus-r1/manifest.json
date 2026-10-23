@@ -12,7 +12,7 @@
   "width": 1920,
   "height": 1080
  },
- "count": 12,
+ "count": 21,
  "items": [
   {
    "id": "f6-leo2a6-steinburg-r6",
@@ -415,6 +415,291 @@
    "width": 1920,
    "height": 1080,
    "source": "vs10-steppe-chieftain-t64-r6-1920.webp"
+  },
+  {
+   "id": "f6-leo2a6-steinburg-r7",
+   "round": 7,
+   "map": "urban",
+   "hour": "day",
+   "title": {
+    "en": "Steinburg, day: Leopard 2A6 v T-90M",
+    "zh": "斯泰因堡，白天：Leopard 2A6 对 T-90M"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leo2a6",
+     "displayName": "Leopard 2A6",
+     "paint": "urbanblock"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M",
+     "paint": "digital"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/f6-leo2a6-steinburg-r7.json",
+   "path": "/media/versus-r1/f6-leo2a6-steinburg-r7.webp",
+   "bytes": 335860,
+   "sha256": "260e51ea8e5aa45eb646138bd257d974ae9ae4d205910d70ccd9e75e1823b389",
+   "width": 1920,
+   "height": 1080,
+   "source": "f6-leo2a6-steinburg-r7-1920.webp"
+  },
+  {
+   "id": "vs04-railyard-leclerc-t14-r7",
+   "round": 7,
+   "map": "railyard",
+   "hour": "golden",
+   "title": {
+    "en": "Cinder Junction, golden hour: Leclerc SXXI v T-14 Armata",
+    "zh": "灰渣枢纽，黄金时刻：Leclerc SXXI 对 T-14 Armata"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leclerc_sxxi",
+     "displayName": "Leclerc SXXI",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "t14_armata",
+     "displayName": "T-14 Armata",
+     "paint": "factory"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs04-railyard-leclerc-t14-r7.json",
+   "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7.webp",
+   "bytes": 262478,
+   "sha256": "af90a339c6fc9580d13a4c24587fd291ec46ee79c208e9e36ed5f21005ce1003",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs04-railyard-leclerc-t14-r7-1920.webp"
+  },
+  {
+   "id": "vs06-coastal-type10-ztz99a2-r7",
+   "round": 7,
+   "map": "coastal",
+   "hour": "day",
+   "title": {
+    "en": "Saltmere Bay, day: Type 10 v ZTZ-99A2",
+    "zh": "盐沼湾，白天：Type 10 对 ZTZ-99A2"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "type10",
+     "displayName": "Type 10",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "ztz99a2",
+     "displayName": "ZTZ-99A2",
+     "paint": "factory"
+    },
+    {
+     "role": "wreck",
+     "id": "type10",
+     "displayName": "Type 10",
+     "paint": "factory"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs06-coastal-type10-ztz99a2-r7.json",
+   "path": "/media/versus-r1/vs06-coastal-type10-ztz99a2-r7.webp",
+   "bytes": 242844,
+   "sha256": "f5484e445176a841ca7261f1a3bbb57feb7afcd968ef4be84d080816d210909b",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs06-coastal-type10-ztz99a2-r7-1920.webp"
+  },
+  {
+   "id": "vs07-autumn-ariete-t62-r7",
+   "round": 7,
+   "map": "autumn",
+   "hour": "golden",
+   "title": {
+    "en": "Amberford, golden hour: C2 Ariete v T-62MV-1",
+    "zh": "安伯福，黄金时刻：C2 Ariete 对 T-62MV-1"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "c2_ariete",
+     "displayName": "C2 Ariete",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1",
+     "paint": "factory"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs07-autumn-ariete-t62-r7.json",
+   "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7.webp",
+   "bytes": 286084,
+   "sha256": "05f5b214f6d869683541b3f7861a09c541e1f6508ce5c04b1d8b133ef5eff6f7",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs07-autumn-ariete-t62-r7-1920.webp"
+  },
+  {
+   "id": "vs08-winter-cv90-bmp3-r7",
+   "round": 7,
+   "map": "winter",
+   "hour": "day",
+   "title": {
+    "en": "Frosthollow, day: CV90 Mk 4 v BMP-3",
+    "zh": "霜谷，白天：CV90 Mk 4 对 BMP-3"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "cv90_mk4",
+     "displayName": "CV90 Mk 4",
+     "paint": "winter"
+    },
+    {
+     "role": "foe",
+     "id": "bmp3",
+     "displayName": "BMP-3",
+     "paint": "winter"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs08-winter-cv90-bmp3-r7.json",
+   "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7.webp",
+   "bytes": 156424,
+   "sha256": "d2404ff9a8640b794d5959e74693346eb5916ef4fe62617407f0e75821cacf3c",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs08-winter-cv90-bmp3-r7-1920.webp"
+  },
+  {
+   "id": "vs09-alpine-strv122-t80bv-r7",
+   "round": 7,
+   "map": "alpine",
+   "hour": "day",
+   "title": {
+    "en": "Glacier Pass, day: Stridsvagn 122 v T-80BV",
+    "zh": "冰川关，白天：Stridsvagn 122 对 T-80BV"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "strv122",
+     "displayName": "Stridsvagn 122",
+     "paint": "winter"
+    },
+    {
+     "role": "foe",
+     "id": "t80bv",
+     "displayName": "T-80BV",
+     "paint": "winter"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs09-alpine-strv122-t80bv-r7.json",
+   "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7.webp",
+   "bytes": 208816,
+   "sha256": "7ddcf55b7c0c8cead0c3dd19ef4b9edce679bf98d0b1fabb1279e9a477e47f39",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs09-alpine-strv122-t80bv-r7-1920.webp"
+  },
+  {
+   "id": "vs10-steppe-chieftain-t64-r7",
+   "round": 7,
+   "map": "steppe",
+   "hour": "golden",
+   "title": {
+    "en": "Tarkhan Steppe, golden hour: Chieftain Mk 10 v T-64BV1",
+    "zh": "塔尔罕草原，黄金时刻：Chieftain Mk 10 对 T-64BV1"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "chieftain_mk10",
+     "displayName": "Chieftain Mk 10",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1",
+     "paint": "factory"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs10-steppe-chieftain-t64-r7.json",
+   "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7.webp",
+   "bytes": 359342,
+   "sha256": "f8bb7fb1d71da972668ff0c5a317559d28fff5e823ed8e3218eeee76e973cf4b",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs10-steppe-chieftain-t64-r7-1920.webp"
+  },
+  {
+   "id": "vs04-railyard-leclerc-t14-r7-top",
+   "round": 4,
+   "map": "railyard",
+   "hour": "golden",
+   "title": {
+    "en": "Cinder Junction, golden hour, from above: Leclerc SXXI v T-14 Armata",
+    "zh": "灰渣枢纽，黄金时刻，俯瞰：Leclerc SXXI 对 T-14 Armata"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leclerc_sxxi",
+     "displayName": "Leclerc SXXI",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "t14_armata",
+     "displayName": "T-14 Armata",
+     "paint": "factory"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs04-railyard-leclerc-t14-r7-top.json",
+   "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-top.webp",
+   "bytes": 461930,
+   "sha256": "5ace9f39b09a0067947b048abf2890080e3d6c3bfe7f3ea56c26df43544e9081",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs04-railyard-leclerc-t14-r7-top-1920.webp"
+  },
+  {
+   "id": "vs10-steppe-chieftain-t64-r7-top",
+   "round": 4,
+   "map": "steppe",
+   "hour": "golden",
+   "title": {
+    "en": "Tarkhan Steppe, golden hour, from above: Chieftain Mk 10 v T-64BV1",
+    "zh": "塔尔罕草原，黄金时刻，俯瞰：Chieftain Mk 10 对 T-64BV1"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "chieftain_mk10",
+     "displayName": "Chieftain Mk 10",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1",
+     "paint": "factory"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs10-steppe-chieftain-t64-r7-top.json",
+   "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top.webp",
+   "bytes": 470798,
+   "sha256": "5535cc26ca8d3d816c218645d816cb144af9d8a783527ef392b6189c713c6d2c",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs10-steppe-chieftain-t64-r7-top-1920.webp"
   }
  ]
 }

@@ -15,7 +15,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createCaptureLock, stampBehindWaiting, ticketAt } from './capture-lock.mjs';
+import { createCaptureLock, stampBehindWaiting, summarizeHoldLog, ticketAt } from './capture-lock.mjs';
 // acquire() lengthens its wait to COT_SHOTS_LOCK_TIMEOUT_MS inside a landing chain; this receipt pins the lock's own semantics.
 process.env.COT_SHOTS_LOCK_TIMEOUT_MS = '';
 
@@ -322,6 +322,141 @@ async function checkLongWaitFifo() {
   }
 }
 
+// 2026-10-22 (item 240): a waiter killed in the queue whose pid then names another process, or whose heartbeat stopped,
+// no longer stalls the head; an older copy's bare-pid ticket keeps the old rules.
+async function checkDeadWaiterIdentity() {
+  const dir = join(root, 'identity.queue'), lockAt = join(root, 'identity.lock');
+  mkdirSync(dir);
+  const logs = [];
+  const lock = createCaptureLock({ lockDir: lockAt, queueDir: dir, ticketSilentMs: 1_000, ticketRefreshMs: 50, log: (m) => logs.push(m) });
+  const ticket = (stamp, pid, meta) => {
+    const name = `${String(stamp).padStart(15, '0')}-000000000000-${pid}.t`;
+    writeFileSync(join(dir, name), meta ? JSON.stringify({ format: 'cot-capture-ticket/1', pid, ...meta }) : String(pid));
+    return name;
+  };
+  // the parent process is alive, but this ticket's owner started at another time: a reused pid
+  const reused = ticket(1, process.ppid, { procStart: 'Mon Jan 1 00:00:00 1990', refreshMs: 30_000, ready: true });
+  await lock.acquire(5_000);
+  assert.equal(existsSync(join(dir, reused)), false, 'a reused-pid ticket at the head is removed at once');
+  assert.ok(logs.some((m) => /removed the dead ticket .*now names another process/.test(m)), 'and the removal says why');
+  lock.release();
+  // a live process whose heartbeat stopped
+  const silent = ticket(2, process.ppid, { refreshMs: 50, ready: true });
+  const longAgo = new Date(Date.now() - 60_000);
+  utimesSync(join(dir, silent), longAgo, longAgo);
+  await lock.acquire(5_000);
+  assert.equal(existsSync(join(dir, silent)), false, 'a ticket whose heartbeat stopped is removed');
+  lock.release();
+  // an older copy's bare pid of a live process, 30 min without a heartbeat (under the old hour): still the head, never
+  // "silent" (that rule needs a declared heartbeat), so the waiter times out behind it
+  const older = ticket(3, process.ppid, null);
+  const halfHourAgo = new Date(Date.now() - 30 * 60_000);
+  utimesSync(join(dir, older), halfHourAgo, halfHourAgo);
+  await assert.rejects(lock.acquire(300), /cot-shots lock timeout/);
+  assert.equal(existsSync(join(dir, older)), true, "an older copy's live ticket is kept");
+  unlinkSync(join(dir, older));
+  rmSync(lockAt, { recursive: true, force: true });
+}
+
+// 2026-10-22 (item 240): acquire's `prepare` warms while the ticket waits; the queue serves the tickets behind it
+// meanwhile, waiting() leaves it out, and acquire resolves with prepare's result once it heads the queue.
+async function checkWarmingKeepsPlace() {
+  const dir = join(root, 'warm.queue'), lockAt = join(root, 'warm.lock'), logFile = join(root, 'warm.log');
+  const options = { lockDir: lockAt, queueDir: dir, ticketRefreshMs: 50, logFile };
+  const warmer = createCaptureLock(options), other = createCaptureLock(options), probe = createCaptureLock(options);
+  mkdirSync(lockAt); // a holder this test is not
+  let openGate;
+  const gate = new Promise((resolve) => { openGate = resolve; });
+  const order = [];
+  const warming = warmer.acquire(10_000, { prepare: async () => { await gate; return { pages: 2 }; } })
+    .then((value) => { order.push('warmer'); return value; });
+  await until('the warming ticket', () => existsSync(dir) && readdirSync(dir).length === 1);
+  const [warmTicket] = readdirSync(dir);
+  assert.equal(JSON.parse(readFileSync(join(dir, warmTicket), 'utf8')).ready, false, 'a warming ticket says so');
+  assert.ok(warmTicket.endsWith('.w'), 'and waits as .w, which older copies (they list *.t) never wait behind');
+  const later = other.acquire(10_000).then(() => { order.push('other'); });
+  await until('the second ticket', () => readdirSync(dir).length === 2);
+  assert.equal(probe.waiting(), 1, 'waiting() leaves a warming ticket out');
+  rmSync(lockAt, { recursive: true }); // the holder leaves
+  await later;
+  assert.deepEqual(order, ['other'], 'the ticket behind a warming one is served');
+  assert.equal(readdirSync(dir).includes(warmTicket), true, 'and the warming ticket keeps its place');
+  other.release();
+  openGate();
+  assert.deepEqual(await warming, { pages: 2 }, "acquire resolves with prepare's result");
+  assert.equal(warmer.lastTicket, warmTicket.replace(/\.w$/, '.t'), 'once ready it holds as .t at its first stamp');
+  assert.deepEqual(order, ['other', 'warmer']);
+  warmer.release();
+  const lines = readFileSync(logFile, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
+  assert.deepEqual(lines.map((line) => line.e), ['hold', 'release', 'hold', 'release'], 'every hold and release is logged');
+  assert.ok(lines[2].warmMs > 0 && lines[2].waitedMs >= lines[2].warmMs, 'a warmed hold records its warm and wait times');
+  assert.ok(Number.isFinite(lines[3].heldMs) && lines[3].released === true);
+  const stats = summarizeHoldLog(lines.map((line) => JSON.stringify(line)), { hours: 1 });
+  assert.deepEqual([stats.holds, stats.warmedHolds, stats.reaped], [2, 1, 0], 'the status summary counts holds and warmed holds');
+
+  // a prepare that throws leaves the queue; a wait that times out hands prepare's result back to close
+  await assert.rejects(warmer.acquire(5_000, { prepare: async () => { throw new Error('warm failed'); } }), /warm failed/);
+  assert.deepEqual(readdirSync(dir), [], 'a failed prepare removes its ticket');
+  mkdirSync(lockAt);
+  const timedOut = await warmer.acquire(200, { prepare: async () => ({ browser: 'b' }) }).then(() => null, (error) => error);
+  assert.match(String(timedOut?.message), /cot-shots lock timeout/);
+  assert.deepEqual(timedOut.prepared, { browser: 'b' }, "a timed-out wait carries prepare's result to clean up");
+  rmSync(lockAt, { recursive: true, force: true });
+}
+
+// 2026-10-22 (item 240): prepare starts just in time — once at most `warmAhead` live tickets are ahead — so a long queue
+// does not hold a warm browser per lane for hours.
+async function checkJustInTimeWarm() {
+  const dir = join(root, 'jit.queue'), lockAt = join(root, 'jit.lock');
+  const options = { lockDir: lockAt, queueDir: dir, ticketRefreshMs: 50 };
+  mkdirSync(lockAt);
+  const started = [], held = [];
+  const waiter = (name) => {
+    const lock = createCaptureLock(options);
+    return lock.acquire(20_000, { warmAhead: 1, prepare: async () => { started.push(name); return name; } })
+      .then((value) => { held.push(value); lock.release(); });
+  };
+  const runs = [];
+  for (const name of ['A', 'B', 'C']) {
+    runs.push(waiter(name));
+    await until(`ticket ${name}`, () => existsSync(dir) && readdirSync(dir).filter((n) => /\.[tw]$/.test(n)).length === runs.length);
+  }
+  await until('A and B warming', () => started.length === 2);
+  await new Promise((resolve) => setTimeout(resolve, 1_500));
+  assert.deepEqual(started, ['A', 'B'], 'the third ticket waits to warm while two are ahead');
+  const tickets = readdirSync(dir).filter((n) => /\.[tw]$/.test(n)).sort();
+  assert.deepEqual(tickets.map((n) => [n.slice(-2), JSON.parse(readFileSync(join(dir, n), 'utf8')).phase]),
+    [['.t', 'ready'], ['.t', 'ready'], ['.w', 'queued']], 'warm tickets are .t; the third waits as .w, queued to warm');
+  rmSync(lockAt, { recursive: true });
+  await Promise.all(runs);
+  assert.deepEqual(started, ['A', 'B', 'C']);
+  assert.deepEqual(held, ['A', 'B', 'C'], 'holds stay in queue order');
+}
+
+// 2026-10-22 (item 240): a job killed while it waited rejoins at its first run's stamp under the same `place` key; the
+// place is dropped once it holds.
+async function checkPlaceKey() {
+  const dir = join(root, 'place.queue'), lockAt = join(root, 'place.lock');
+  const options = { lockDir: lockAt, queueDir: dir };
+  mkdirSync(lockAt);
+  const first = createCaptureLock(options);
+  await assert.rejects(first.acquire(200, { place: 'lane 240/item' }), /cot-shots lock timeout/);
+  const stamp = first.lastTicket.slice(0, 15);
+  const second = createCaptureLock(options);
+  await assert.rejects(second.acquire(200, { place: 'lane 240/item' }), /cot-shots lock timeout/);
+  assert.equal(second.lastTicket.slice(0, 15), stamp, 'the second run rejoins at the first stamp');
+  rmSync(lockAt, { recursive: true });
+  const third = createCaptureLock(options);
+  await third.acquire(2_000, { place: 'lane 240/item' });
+  assert.equal(third.lastTicket.slice(0, 15), stamp);
+  assert.deepEqual(readdirSync(join(dir, 'places')), [], 'a held place is dropped');
+  third.release();
+  const fourth = createCaptureLock(options);
+  await fourth.acquire(2_000, { place: 'lane 240/item' });
+  assert.notEqual(fourth.lastTicket.slice(0, 15), stamp, 'a later job under the key queues anew');
+  fourth.release();
+}
+
 try {
   const lock = createCaptureLock({ lockDir, queueDir });
   await lock.acquire(100);
@@ -371,6 +506,10 @@ try {
   await checkLiveOwnerKept();
   await checkDeadOwnerReaped();
   await checkReapBehindHead();
+  await checkDeadWaiterIdentity();
+  await checkWarmingKeepsPlace();
+  await checkPlaceKey();
+  await checkJustInTimeWarm();
 
   // Gate P5 (2026-10-01): waiting() is a read-only count of live queued acquisitions.
   const probeQueue = join(root, 'probe.queue');
@@ -406,7 +545,7 @@ try {
   assert.equal(stampBehindWaiting(MEDIA, { queueDir: band, now: NOW, commandOf: () => 'node tools/media-production/cinema.mjs' }), MEDIA,
     'no perf ticket waiting: the lease keeps its place');
   assert.equal(stampBehindWaiting(MEDIA, { queueDir: join(root, 'no-such-queue'), now: NOW, commandOf }), MEDIA, 'no queue: its place');
-  console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, same-millisecond FIFO, long-wait FIFO, long-waiter place, restored ticket, stamped ticket, owner tokens (the A/B/C cascade, a live owner kept, dead and reused-pid owners reaped, reaping behind the head) and waiting() passed');
+  console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, same-millisecond FIFO, long-wait FIFO, long-waiter place, restored ticket, stamped ticket, owner tokens (the A/B/C cascade, a live owner kept, dead and reused-pid owners reaped, reaping behind the head), dead waiters (reused pid, silent heartbeat), warming tickets, just-in-time warming, place keys, the hold log and waiting() passed');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

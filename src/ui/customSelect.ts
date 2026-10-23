@@ -1,4 +1,4 @@
-import { ensureStyle } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { revealMenuSelectOption } from './menuSelectScroll.ts';
 
 let nextId = 0;
@@ -35,7 +35,7 @@ export function createCustomSelect(select: HTMLSelectElement, config: CustomSele
 .cot-custom-select-mark svg{width:18px;height:18px}
 @media(pointer:coarse){.cot-custom-select-trigger,.cot-custom-select-list [role=option]{min-height:44px}}
 .cot-custom-select-copy{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:normal;text-transform:none}
-`);
+`, 'surfaces');
   const trigger = document.createElement('button');
   trigger.type = 'button'; trigger.className = 'cot-custom-select-trigger';
   trigger.setAttribute('aria-haspopup', 'listbox'); trigger.setAttribute('aria-expanded', 'false');

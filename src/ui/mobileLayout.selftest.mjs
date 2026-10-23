@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { viewportQueryViolations } from './viewportQueries.test-support.mjs';
 
 
 const [
@@ -213,7 +214,7 @@ assert.match(hud,
   'phase changes must clear every transient combat-feedback surface together');
 assert.doesNotMatch(hud, /t\('hud\.aimWarning\.muzzleBlocked'/,
   'bore obstructions must not add a muzzle-block overlay');
-assert.match(hud, /--hud-layer-world:6;--hud-layer-sight:8;--hud-layer-status:18;[\s\S]*--hud-layer-controls:24;--hud-layer-score:30/,
+assert.match(hud, /--hud-layer-world:var\(--z-hud-world,6\);--hud-layer-sight:var\(--z-hud-sight,8\);--hud-layer-status:var\(--z-hud-status,18\);[\s\S]*--hud-layer-controls:var\(--z-hud-controls,24\);--hud-layer-score:var\(--z-hud-score,30\)/,
   'battle UI must declare one ordered layer contract with world indicators below fixed controls');
 assert.match(hud, /t\('hud\.sixth\.label'\)[\s\S]*t\('hud\.sixth\.sub'\)/,
   'sixth sense must present one explicit detection state with supporting copy');
@@ -288,7 +289,7 @@ assert.match(shotInfo,
   /if \(isTouchBattleLayout\(\)(?: \|\| logOpen)?\) return;[\s\S]*const card = buildCard/,
   'touch hits must skip hidden card and diagram construction instead of wasting mobile render work');
 assert.match(shotInfo,
-  /kv\('Angle',[^\n]*'w'\);[\s\S]*kv\('Armor',[\s\S]*kv\('Damage',[^\n]*'w'\);[\s\S]*const r = kv\('Pen'/,
+  /kv\('angle', t\('shotInfo\.angle'\),[^\n]*'w'\);[\s\S]*kv\('armor', t\('killcam\.stat\.armor'\),[\s\S]*kv\('damage', t\('killcam\.stat\.damage'\),[^\n]*'w'\);[\s\S]*const r = kv\('pen', t\('killcam\.stat\.pen'\)/,
   'the report must keep only angle, armor, damage, and penetration analysis rows');
 assert.doesNotMatch(shotInfo, /kv\('(?:Distance|Result)'/,
   'the compact report must not render distance or result rows');
@@ -313,7 +314,7 @@ assert.match(settings,
   /body\.cot-touch-layout \.cot-settings button\{min-height:44px;\}[\s\S]*\.cot-set-close\{width:44px;height:44px;\}/,
   'touch settings controls must retain a 44 px finger-target floor');
 assert.match(settings,
-  /range\.setAttribute\('aria-label', label\)[\s\S]*num\.setAttribute\('aria-label', `\$\{label\} value`\)/,
+  /range\.setAttribute\('aria-label', label\)[\s\S]*num\.setAttribute\('aria-label', t\('settings\.valueAria', \{ label \}\)\)/,
   'settings sliders and exact-value fields must expose their visible labels to assistive technology');
 assert.match(touch,
   /root\.setAttribute\('role', 'group'\)[\s\S]*aimLayer\.setAttribute\('role', 'group'\)[\s\S]*role="group" aria-label="\$\{t\('touch\.aimHint'\)\}"[\s\S]*role="toolbar" aria-label="\$\{t\('touch\.toolbar'\)\}"[\s\S]*role="group" aria-label="\$\{t\('touch\.joystick'\)\}"/,
@@ -347,12 +348,10 @@ assert.match(playMenu, /Object\.defineProperty\(control, 'disabled',[\s\S]*trigg
 assert.match(publicNav, /\.public-nav__links \.public-nav__github\{gap:9px;padding-inline:15px\}/,
   'the desktop GitHub star control needs comfortable internal spacing');
 
-assert.match(responsiveSurfaces,
-  /body\[data-cot-width='phone'\] \.cot-network-status\{[\s\S]*width:calc\(100vw - \(var\(--cot-edge\) \* 2\)\)[\s\S]*min-width:0/,
-  'phone reconnect banners must fit the safe viewport instead of retaining their desktop minimum');
-assert.match(responsiveSurfaces,
-  /body\[data-cot-width\] \.cot-network-diagnostics\{[\s\S]*white-space:pre-wrap;overflow-wrap:anywhere/,
-  'network diagnostics must wrap and scroll rather than escape narrow screens');
+// (2026-10-17, BUI-F1) the network status banner and diagnostics panel left the tree with the multiplayer cutover
+// (stage B, 509170998): their responsive overrides went with the boot CSS they no longer styled.
+assert.doesNotMatch(responsiveSurfaces, /\.cot-network-(?:status|diagnostics)\b|\.cot-info-popover\b/,
+  'boot CSS carries no rules for surfaces that no longer exist');
 assert.match(responsiveSurfaces,
   /body\[data-cot-width\] \.cot-trans \.core\{width:min\(680px,100%\)[\s\S]*body\[data-cot-width='phone'\] \.cot-trans \.title/,
   'state transitions must cap their core and recompose long titles on phones');
@@ -395,15 +394,22 @@ for (const [source, pattern, label] of [
   [pointerLockFeedback, /element\.className = 'cot-lock-toast'/, 'pointer-lock fallback'],
 ]) assert.match(source, pattern, `${label} surface must remain present while responsive composition owns its geometry`);
 
-const semanticSurfaceFiles = [
-  '../game/killcam.ts',
+// The public pages lay out at first paint, before or without JavaScript (brand-ui SPEC §5.5): their stylesheets read
+// media queries at responsiveLayout.ts's band edges instead of the body[data-cot-*] hooks the boot module writes.
+for (const relativePath of [
   '../gallery/gallery.css',
   '../presentation/mediaArchive.css',
   '../presentation/publicNav.css',
-  '../presentation/publicPages.ts',
   '../docs/docs.css',
+  '../presentation/home.css',
+]) {
+  const source = await readFile(new URL(relativePath, import.meta.url), 'utf8');
+  assert.deepEqual(viewportQueryViolations(source, relativePath), [], `${relativePath} keeps the one viewport contract at first paint`);
+}
+const semanticSurfaceFiles = [
+  '../game/killcam.ts',
+  '../presentation/publicPages.ts',
   '../docs/battleReels.ts',
-  '../../public/home.css',
   '../../index.html',
   './battleLoad.ts',
   './contextInfo.ts',
@@ -427,7 +433,7 @@ const semanticSurfaceFiles = [
 for (const relativePath of semanticSurfaceFiles) {
   const source = await readFile(new URL(relativePath, import.meta.url), 'utf8');
   assert.doesNotMatch(source,
-    /@media[^\n]*(?:max-width|min-width|orientation|max-height|min-height)|matchMedia\([^\n]*(?:max-width|min-width|orientation|max-height|min-height)/,
+    /@media[^{\n]*(?:max-width|min-width|orientation|max-height|min-height)|matchMedia\([^\n]*(?:max-width|min-width|orientation|max-height|min-height)/,
     `${relativePath} must not reintroduce an independent device-layout breakpoint`);
 }
 

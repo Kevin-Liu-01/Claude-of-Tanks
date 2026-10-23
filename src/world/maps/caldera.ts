@@ -38,6 +38,7 @@
 // longer zones the floor as pumice and ash); the sugi stand in closed blocks; the scrub is the grassland's low bushes,
 // not broadleaf sprays; the rim is a long, level, wooded and grassy wall with no far peaks over it.
 
+import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
@@ -137,8 +138,8 @@ export default {
     // (docs/MAP-LAYOUT-BRIEF.md, "Apron banks"): the sulphur yard follows the west road's grade beside it, and the
     // loading yard tilts 8 % with the lava slope it is cut into, with a 30 m bank.
     hardstands: [
-      { x: -332, z: 96, width: 50, length: 50, yawDeg: 0, grade: 'road' },
-      { x: 340, z: -200, width: 56, length: 56, yawDeg: -77, level: -1, grade: 0.08, bankM: 30 },
+      { x: -332, z: 96, width: 50, length: 50, yawDeg: 0, grade: 'road', paint: WORN_YARD_PAINT },
+      { x: 340, z: -200, width: 56, length: 56, yawDeg: -77, level: -1, grade: 0.08, bankM: 30, paint: WORN_YARD_PAINT },
     ],
     // the yards' worn ground: spoil, wheel wear and spilled ore round each yard in an irregular apron, so a yard reads as
     // a working place on its bank, not a ruled square (workedGroundMask.ts)

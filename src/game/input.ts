@@ -2,6 +2,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { createWheelNotcher } from './wheelNotches.ts';
 import { isCrewVoiceSetting, normalizeCrewVoiceSetting, type CrewVoiceSetting } from '../audio/crewVoice.ts';
 import { getLocale } from '../ui/i18n.ts';
+import { A11Y } from '../ui/accessibilityPreferences.ts';
 // src/game/input.ts — rebindable action-map input layer.
 //
 // Raw KeyboardEvent.code / mouse-button / mouse-wheel / gamepad events are
@@ -27,6 +28,12 @@ import { getLocale } from '../ui/i18n.ts';
 // and a squared response curve), buttons map to the same action ids as keys.
 // The mobile HUD feeds the same layer through the virtual-control methods at
 // the bottom of the public API; it never writes directly into simulation state.
+//
+// HOLD OR TOGGLE (brand-ui SPEC 14, PLAN BUI-F9): an action the player switched
+// to toggle (accessibilityPreferences HOLD_ACTIONS, read live from A11Y.toggles)
+// latches on one press and releases on the next, from any control (key, mouse,
+// pad, touch). Release of the physical control is ignored; menus, blur and a
+// player who cannot drive release every latch (setEnabled, releaseToggles).
 
 const BINDINGS_KEY = 'cot.bindings.v1'; // primary keyboard/mouse map (v1 compatible)
 const BINDINGS2_KEY = 'cot.bindings2.v1'; // secondary keyboard/mouse map
@@ -184,6 +191,8 @@ export interface InputLayer {
   isTouchLayout(): boolean;
   getSettings(): InputSettings;
   setSetting(key: keyof InputSettings, value: RuntimeValue): void;
+  /** Release every toggled hold action (hold-or-toggle): the player can no longer use them. */
+  releaseToggles(): void;
   consumeMouseDelta(out: InputVector, dt: number, sniper?: boolean): InputVector;
   setEnabled(enabled: boolean): void;
   isLocked(): boolean;
@@ -293,10 +302,11 @@ const DEFAULT_SETTINGS: InputSettings = {
   // hold/exit semantics (CamInput.aimHold).
   rmbMode: 'hold',
   aiDifficulty: 'normal', // bot tier for the NEXT battle: 'easy'|'normal'|'hard'
-  // FPS/ping readout (hud.ts cot-net top-right element). It is useful live
-  // connection/performance feedback, so new profiles start with it enabled;
-  // the Interface switch remains available as an explicit opt-out.
-  showPerfMeter: true,
+  // FPS/ping readout (hud.ts cot-net top-right element): a player choice in
+  // the Interface settings, off by default on every device (brand-ui SPEC
+  // 12.1.6). Profiles saved before SETTINGS_REVISION 2 stored the old default
+  // (on) with every other change, so their stored value is not read.
+  showPerfMeter: false,
   // The engineering dashboard is intentionally off for players and lazy-
   // loads only after an explicit Interface toggle or F8 press.
   showDebugHud: false,
@@ -354,6 +364,9 @@ const VOLUME_KEYS: readonly VolumeSettingKey[] = [
 // the shot that consumes the window starts a multi-second reload, and
 // tryFire refuses while reload.t > 0.
 const FIRE_PRESS_BUFFER_MS = 250;
+/** Revision of the stored settings record. 2: the perf meter default turned off, so revision-1 records (which saved the
+ *  old default along with any other change) keep the new default. */
+const SETTINGS_REVISION = 2;
 
 const AI_DIFFICULTIES: readonly AiDifficulty[] = ['easy', 'normal', 'hard'];
 const RMB_MODES: readonly RmbMode[] = ['hold', 'toggle', 'freelook']; // gunnery r1: see rmbMode
@@ -628,7 +641,9 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     if (typeof storedSettings.rmbMode === 'string' && isRmbMode(storedSettings.rmbMode)) {
       settings.rmbMode = storedSettings.rmbMode;
     }
-    if (typeof storedSettings.showPerfMeter === 'boolean') settings.showPerfMeter = storedSettings.showPerfMeter;
+    if (typeof storedSettings.showPerfMeter === 'boolean' && storedSettings.revision === SETTINGS_REVISION) {
+      settings.showPerfMeter = storedSettings.showPerfMeter;
+    }
     if (typeof storedSettings.hideBattleUi === 'boolean') settings.hideBattleUi = storedSettings.hideBattleUi;
     if (typeof storedSettings.isometricView === 'boolean') settings.isometricView = storedSettings.isometricView;
     if (typeof storedSettings.showDebugHud === 'boolean') settings.showDebugHud = storedSettings.showDebugHud;
@@ -666,6 +681,9 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   // action down for that one query even though the key is already up. Held
   // keys behave exactly as before (the latch is just cleared on first read).
   const pressLatch = new Set<ActionId>();
+  // hold actions latched on by a press in toggle mode, with the control family that latched them ('Pad', 'Touch' or
+  // '' for keys and mice): a latch keeps its family's fire lane live (padActive, virtualActive) as a held control does
+  const toggled = new Map<ActionId, string>();
   const virtualHeld = new Set<ActionId>(); // touch HUD buttons held this frame
   const virtualMove = { x: 0, y: 0 }; // x right, y forward, both -1..1
   let virtualMoveActive = false;
@@ -740,6 +758,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     if (nowMillis() - lastCanvasFirePressMs < FIRE_PRESS_BUFFER_MS) {
       firePressMs = lastCanvasFirePressMs; // re-arm the swallowed click
       fireHoldLegit = true; // a canvas press still held is full-auto too
+      if (togglesOn('fire')) toggled.set('fire', ''); // and a toggled one latches
     }
     if ((hard || lockDenyStreak >= LOCK_DENY_LATCH_STREAK) && !lockDenied) {
       lockDenied = true;
@@ -758,6 +777,15 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   const nowMillis = () =>
     (typeof performance !== 'undefined' ? performance.now() : Date.now());
 
+  const controlFamily = (code: string) => (code.startsWith('Pad') ? 'Pad' : code.startsWith('Touch') ? 'Touch' : '');
+  const latchedBy = (family: string) => {
+    for (const source of toggled.values()) if (source === family) return true;
+    return false;
+  };
+  /** Hold-or-toggle: the player set this action to toggle (RMB's own Toggle mode already toggles; never twice). */
+  const togglesOn = (actionId: ActionId) => A11Y.toggles.has(actionId) &&
+    !(actionId === 'freeCamera' && settings.rmbMode === 'toggle');
+
   function firePress(actionId: ActionId, code: string, evt?: Event) {
     // Latch the single-shot fire edge. Presses that could never fire anyway —
     // mouse clicks without pointer lock (menus, the lock-acquiring click
@@ -770,19 +798,29 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     // event target is the UI node, not the canvas. Key presses can't land on
     // overlays, so a keyboard-bound fire always latches in this mode (the
     // settings panel disables the whole layer while open).
+    const toggle = togglesOn(actionId);
     if (actionId === 'fire' &&
         (code.startsWith('Pad') || code.startsWith('Touch') || !lockElement ||
          document.pointerLockElement === lockElement ||
          (lockDenied && evt &&
           (evt.target === lockElement || evt.type === 'keydown')))) {
-      firePressMs = nowMillis();
-      fireHoldLegit = true; // holding from this press is full-auto
+      if (toggle && toggled.delete('fire')) {
+        fireHoldLegit = false; // the press that ends a toggled burst fires nothing
+      } else {
+        if (toggle) toggled.set('fire', controlFamily(code));
+        firePressMs = nowMillis();
+        fireHoldLegit = true; // holding (or a toggled latch) from this press is full-auto
+      }
     } else if (actionId === 'fire' && evt && evt.target === lockElement) {
       // content_breadth r6: canvas click before the no-lock latch — remember
       // it so noteLockDenied can re-arm the edge (see lastCanvasFirePressMs).
       lastCanvasFirePressMs = nowMillis();
+    } else if (toggle && actionId !== 'fire' && !toggled.delete(actionId)) {
+      toggled.set(actionId, controlFamily(code));
     }
-    pressLatch.add(actionId); // consumed by the next isDown(actionId) query
+    // A toggled action's level is its latch, so no sub-frame tap is queued for it (one would report the press that
+    // released the latch as one more frame held).
+    if (!toggle) pressLatch.add(actionId); // consumed by the next isDown(actionId) query
     const set = actionHandlers.get(actionId);
     if (!set) return;
     for (const cb of set) cb(code);
@@ -948,6 +986,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   const onBlurClear = () => {
     down.clear();
     pressLatch.clear();
+    toggled.clear();
     virtualHeld.clear();
     virtualMove.x = 0; virtualMove.y = 0; virtualMoveActive = false;
     resetPadState();
@@ -975,10 +1014,10 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     if (lockElement && document.pointerLockElement === lockElement) noteLockEngaged();
   });
 
-  const isHeld = (actionId: ActionId) =>
+  const isHeld = (actionId: ActionId) => (togglesOn(actionId) ? toggled.has(actionId) :
     (maps[0][actionId] !== null && down.has(maps[0][actionId])) ||
     (maps[1][actionId] !== null && down.has(maps[1][actionId])) ||
-    padHeld.has(actionId) || virtualHeld.has(actionId);
+    padHeld.has(actionId) || virtualHeld.has(actionId));
 
   const api: InputLayer = {
     /** Ordered action metadata for UI listings. */
@@ -1143,7 +1182,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     padActive() {
       pollPad();
       const nowMs = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-      return padConnected && nowMs - padLastActiveMs < PAD_ACTIVE_WINDOW_MS;
+      return padConnected && (nowMs - padLastActiveMs < PAD_ACTIVE_WINDOW_MS || latchedBy('Pad'));
     },
 
     /** Curved left-stick deflection for analog driving. @param {{x:number,y:number}} out */
@@ -1195,7 +1234,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
      *  button still held IS current activity — a static full-auto fire hold
      *  must not go stale after the 4 s window (belts empty in 10-100 s). */
     virtualActive() {
-      return virtualHeld.size > 0 || virtualMoveActive ||
+      return virtualHeld.size > 0 || virtualMoveActive || latchedBy('Touch') ||
         nowMillis() - virtualLastActiveMs < PAD_ACTIVE_WINDOW_MS;
     },
 
@@ -1257,7 +1296,13 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
         if (typeof value === 'string' && isRmbMode(value)) settings.rmbMode = value;
       }
       else if (VOLUME_KEYS.includes(key)) settings[key] = num(0, 0, 1);
-      saveJson(SETTINGS_KEY, settings);
+      saveJson(SETTINGS_KEY, { ...settings, revision: SETTINGS_REVISION });
+    },
+
+    releaseToggles() {
+      if (!toggled.size) return;
+      if (toggled.has('fire')) fireHoldLegit = false;
+      toggled.clear();
     },
 
     /**
@@ -1330,6 +1375,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       firePressMs = -Infinity;
       fireHoldLegit = false; // a hold never survives a menu open/close
       pressLatch.clear(); // taps must not queue across a menu open/close
+      toggled.clear(); // nor does a toggled hold survive one
       if (!enabled) {
         down.clear();
         padHeld.clear();

@@ -38,7 +38,7 @@ const expectedLinks = [
 ];
 const navCss = readFileSync(join(ROOT, 'src/presentation/publicNav.css'), 'utf8');
 const navSource = readFileSync(join(ROOT, 'src/presentation/publicNav.ts'), 'utf8');
-const homeCss = readFileSync(join(ROOT, 'public/home.css'), 'utf8');
+const homeCss = readFileSync(join(ROOT, 'src/presentation/home.css'), 'utf8');
 const docsCss = readFileSync(join(ROOT, 'src/docs/docs.css'), 'utf8');
 const galleryCss = readFileSync(join(ROOT, 'src/gallery/gallery.css'), 'utf8');
 assert.equal(formatGitHubStarCount(999), '999');
@@ -158,8 +158,8 @@ for (const [file, activeHref] of pages) {
   assert.deepEqual(actualLinks, expectedLinks, `${file} nav links drifted`);
   assert.deepEqual(activeLinks, activeHref ? [activeHref] : []);
   assert.ok(links.find(({ href }) => href === '/studio'), `${file} must link Scene Studio`);
-  assert.ok(linksBlock.includes('public-nav__icon--docs') && linksBlock.includes('/brand/nav/docs.svg'),
-    `${file} must use the shared Docs product mark`);
+  assert.ok(linksBlock.includes('public-nav__icon--docs') && linksBlock.includes('href="#i-manual"'),
+    `${file} must use the shared Field Manual glyph`);
   assert.ok(linksBlock.includes('public-nav__play-icon'), `${file} Play Now control must use the shared play mark`);
   const github = links.find(({ href }) => href.includes('github.com'));
   assert.ok(github?.attrs.includes('target="_blank"'), `${file} GitHub control opens the repository`);

@@ -167,7 +167,7 @@ try {
         await new Promise((resolve) => setTimeout(resolve, 250));
         await page.evaluate((videoIndex) => {
           const video = document.querySelectorAll('video')[videoIndex];
-          video?.parentElement?.querySelector('.v5-video-control')?.click();
+          video?.parentElement?.querySelector('.cot-media-toggle')?.click();
         }, index);
       }
       await new Promise((resolve) => setTimeout(resolve, mobile ? 2200 : 1600));
