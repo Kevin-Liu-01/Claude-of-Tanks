@@ -587,42 +587,44 @@
   "pick": "vs07-autumn-ariete-t62-r7-top:a",
   "restage": [
    "r7c: hero flash 6958 -> 6900 ms",
-   "r7d: foe turret -49.48 -> -39.48 (10° off centre, on the hero's front corner)",
+   "r7d: foe turret -49.48 -> -39.48 (10\u00b0 off centre, on the hero's front corner)",
    "r7e: lens [-208.73, 5, 26.09] fov 51.31 -> [-210.24, 11.8, 34.15] fov 50",
-   "r7f: lens {\"pos\":[-208.73,4,26.09],\"lookAt\":[-203.2,0.41,30.17],\"fov\":55.31,\"rollDeg\":6.220000000000001}"
-  ]
+   "r7f: lens {\"pos\":[-208.73,4,26.09],\"lookAt\":[-203.2,0.41,30.17],\"fov\":55.31,\"rollDeg\":6.220000000000001}",
+   "r7g: lens {\"pos\":[-213.56,7.5,22.53],\"lookAt\":[-202.06,0.41,31.8],\"fov\":51.31,\"rollDeg\":9.22}"
+  ],
+  "view": "top-down"
  },
  "camera": {
   "name": "a",
   "pos": [
-   -208.73,
-   4,
-   26.09
+   -213.56,
+   7.5,
+   22.53
   ],
   "lookAt": [
-   -203.2,
+   -202.06,
    0.41,
-   30.17
+   31.8
   ],
-  "fov": 55.31,
-  "rollDeg": 6.220000000000001,
+  "fov": 51.31,
+  "rollDeg": 9.22,
   "groundRel": true
  },
  "cameraVariants": [
   {
    "name": "a",
    "pos": [
-    -208.73,
-    4,
-    26.09
+    -213.56,
+    7.5,
+    22.53
    ],
    "lookAt": [
-    -203.2,
+    -202.06,
     0.41,
-    30.17
+    31.8
    ],
-   "fov": 55.31,
-   "rollDeg": 6.220000000000001,
+   "fov": 51.31,
+   "rollDeg": 9.22,
    "groundRel": true
   }
  ]

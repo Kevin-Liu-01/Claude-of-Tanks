@@ -664,8 +664,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs04-railyard-leclerc-t14-r7-top.json",
    "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-top.webp",
-   "bytes": 461930,
-   "sha256": "5ace9f39b09a0067947b048abf2890080e3d6c3bfe7f3ea56c26df43544e9081",
+   "bytes": 515168,
+   "sha256": "6a770889f68dc474443f9c044317ed05047fc396be9fab84afc817a9bb0ac731",
    "width": 1920,
    "height": 1080,
    "source": "vs04-railyard-leclerc-t14-r7-top-1920.webp"
@@ -695,8 +695,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs10-steppe-chieftain-t64-r7-top.json",
    "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top.webp",
-   "bytes": 470798,
-   "sha256": "5535cc26ca8d3d816c218645d816cb144af9d8a783527ef392b6189c713c6d2c",
+   "bytes": 523756,
+   "sha256": "031f15f8b77a065642a2405425f056e10785096f3dd7b14370ebd9525aa173fa",
    "width": 1920,
    "height": 1080,
    "source": "vs10-steppe-chieftain-t64-r7-top-1920.webp"
@@ -707,8 +707,8 @@
    "map": "urban",
    "hour": "day",
    "title": {
-    "en": "Steinburg, day: Leopard 2A6 v T-90M",
-    "zh": "斯泰因堡，白天：Leopard 2A6 对 T-90M"
+    "en": "Steinburg, day, from above: Leopard 2A6 v T-90M",
+    "zh": "斯泰因堡，白天，俯瞰：Leopard 2A6 对 T-90M"
    },
    "tanks": [
     {
@@ -726,8 +726,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/f6-leo2a6-steinburg-r7-top.json",
    "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-top.webp",
-   "bytes": 337728,
-   "sha256": "969d71efd49cd57c1aeaf1804ff9f713daf36455d858e5ef12417bdc54ab1fc0",
+   "bytes": 422008,
+   "sha256": "80a8944716c91e7260742260f16aa735d712c6cf9774469de58e93cb96f3a004",
    "width": 1920,
    "height": 1080,
    "source": "f6-leo2a6-steinburg-r7-top-1920.webp"
@@ -738,8 +738,8 @@
    "map": "autumn",
    "hour": "golden",
    "title": {
-    "en": "Amberford, golden hour: C2 Ariete v T-62MV-1",
-    "zh": "安伯福，黄金时刻：C2 Ariete 对 T-62MV-1"
+    "en": "Amberford, golden hour, from above: C2 Ariete v T-62MV-1",
+    "zh": "安伯福，黄金时刻，俯瞰：C2 Ariete 对 T-62MV-1"
    },
    "tanks": [
     {
@@ -757,8 +757,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs07-autumn-ariete-t62-r7-top.json",
    "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-top.webp",
-   "bytes": 445532,
-   "sha256": "a6b0dc03da5e8e881598e4afc4a9b88643e9c7849355c4221c18a284ec2e8d82",
+   "bytes": 546208,
+   "sha256": "93e75feff79dcafbdf96fd8c890c145e3a4b41aa54d61dc3e53cc3e19b50eac8",
    "width": 1920,
    "height": 1080,
    "source": "vs07-autumn-ariete-t62-r7-top-1920.webp"
@@ -769,8 +769,8 @@
    "map": "winter",
    "hour": "day",
    "title": {
-    "en": "Frosthollow, day: CV90 Mk 4 v BMP-3",
-    "zh": "霜谷，白天：CV90 Mk 4 对 BMP-3"
+    "en": "Frosthollow, day, from above: CV90 Mk 4 v BMP-3",
+    "zh": "霜谷，白天，俯瞰：CV90 Mk 4 对 BMP-3"
    },
    "tanks": [
     {
@@ -788,8 +788,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs08-winter-cv90-bmp3-r7-top.json",
    "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top.webp",
-   "bytes": 173788,
-   "sha256": "b62498b16b9be2943cc4c8b69f81f7b73c2c10dd9d69288c2f8bf3962949ce91",
+   "bytes": 253428,
+   "sha256": "17ba48c1261534e80add23e17df1c038d478b0063b8e7f7852f530c5aded7838",
    "width": 1920,
    "height": 1080,
    "source": "vs08-winter-cv90-bmp3-r7-top-1920.webp"
