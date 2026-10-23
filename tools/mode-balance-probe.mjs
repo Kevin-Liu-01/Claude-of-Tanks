@@ -80,6 +80,11 @@ function aggregate(rows) {
     hull: { human: Math.round(mean(rows.map((r) => r.alpha.avgMaxHp))), zombie: Math.round(mean(rows.map((r) => r.bravo.avgMaxHp))) },
     waves: { mean: +mean(rows.map((r) => r.maxWave)).toFixed(2), best: Math.max(...rows.map((r) => r.maxWave)) },
     ranDry: { human: rows.reduce((s, r) => s + r.alpha.ranDry, 0), zombie: rows.reduce((s, r) => s + r.bravo.ranDry, 0) },
+    // (240) Infected: the first conversion's time (rows from before 240 carry none)
+    ...(rows.some((r) => Number.isFinite(r.firstInfectionS)) ? { firstInfectionS: (() => {
+      const xs = rows.map((r) => r.firstInfectionS).filter(Number.isFinite);
+      return { mean: Math.round(mean(xs)), median: median(xs) };
+    })() } : {}),
     results: rows.map((r) => `${r.seed}:${r.result ?? 'none'}@${r.endS}`).join(' '),
   };
 }
@@ -228,6 +233,7 @@ const perShots = new Map();
 let maxWave = 0;
 let humanDeathS = null;
 let conversions = 0;
+let firstInfectionS = null;
 const waves = [];
 const inputs = new Map();
 const ticks = Math.round(capS / SIM_DT);
@@ -244,7 +250,10 @@ for (let tick = 0; tick < ticks; tick++) {
       const team = lastTeam.get(event.shooterId);
       if (team) shots[team]++;
       perShots.set(event.shooterId, (perShots.get(event.shooterId) || 0) + 1);
-    } else if (event.type === 'mode_infected') conversions++;
+    } else if (event.type === 'mode_infected') {
+      conversions++;
+      firstInfectionS ??= t;
+    }
     else if (event.type === 'mode_wave_started') {
       maxWave = Math.max(maxWave, event.wave ?? 0);
       if (waves.length < 12) waves.push([Math.round(t), event.wave, event.enemies]);
@@ -274,7 +283,7 @@ const report = {
   bravo: { n: bravoIds.length, avgMaxHp: avgMaxHp(bravoIds), killsPerMin: +(kills.bravo / minutes).toFixed(2), kills: kills.bravo, shotsPerMin: +(shots.bravo / minutes).toFixed(1),
     ranDry: dry(false).length, liveHullOfOwn: +mean(hostileHull).toFixed(3) },
   humanSurvivalS: Math.round(humanDeathS ?? endS), humanDied: humanDeathS != null,
-  conversions, maxWave, selfKills: kills.self, waves,
+  conversions, firstInfectionS: firstInfectionS == null ? null : Math.round(firstInfectionS), maxWave, selfKills: kills.self, waves,
   wallMs: Math.round(performance.now() - started),
   ...(flag('detail') ? { entities: match.entities.map((e) => ({ id: e.id, spec: e.specId, team0: start.get(e.id).team, shots: perShots.get(e.id) || 0, kills: e.kills,
     died: firstDeath.has(e.id) ? Math.round(firstDeath.get(e.id)) : null, maxHp: start.get(e.id).maxHp })) } : {}),

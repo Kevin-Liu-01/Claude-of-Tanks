@@ -27,6 +27,9 @@ export type GrowthSpecies = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus
   | 'longleafPine' | 'lebanonCedar' | 'sugi' | 'redPine'
   // the trees lane (2026-10-05): the Streuobst meadow orchard's fruit tree (Frontier Basin; its variants apple, pear, plum)
   | 'apple'
+  // the trees lane (2026-10-08, the gauntlet's wave 278 on Mangrove Reach): the Ca Mau coast's grey mangrove and the
+  // stemless nipa palm of its tidal creeks
+  | 'avicennia' | 'nipa'
   // the trees lane (2026-10-06, the gauntlet's wave 157 on Monsoon Ridge): the Naga Hills' Khasi pine and bamboo
   | 'khasiPine' | 'bamboo'
   // the trees lane (2026-10-07): the Naga Hills' chestnut-oak (Castanopsis), the chestnut's crown on a lighter frame
@@ -35,13 +38,16 @@ export type GrowthSpecies = 'oak' | 'poplar' | 'willow' | 'acacia' | 'eucalyptus
   | 'tortilis'
   // shrub-only forms (treeBiomes.ts `shrub`): the broom scrub of a volcanic upland; trees round 5: the longleaf's
   // grass-stage seedlings on a cutover — never a tree slot
-  | 'broom' | 'longleafSeedling' | 'buddleia';
+  | 'broom' | 'longleafSeedling' | 'buddleia'
+  // the trees lane (2026-10-08, the gauntlet's wave 278 on Saltmere Bay): the Breton coast's gorse, a wind-shorn cushion
+  | 'gorse';
 type Rng = () => number;
 
 export const GROWTH_SPECIES: readonly GrowthSpecies[] = Object.freeze([
   'oak', 'poplar', 'willow', 'acacia', 'eucalyptus', 'pine', 'spruce', 'fir', 'cedar', 'cypress', 'birch', 'aspen', 'palm', 'snag',
   'mangrove', 'beech', 'chestnut', 'holmOak', 'olive', 'canaryPine', 'aleppoPine', 'larch', 'juniper', 'pinyon',
-  'longleafPine', 'lebanonCedar', 'sugi', 'redPine', 'apple', 'khasiPine', 'bamboo', 'castanopsis', 'tortilis',
+  'longleafPine', 'lebanonCedar', 'sugi', 'redPine', 'apple', 'avicennia', 'nipa',
+  'khasiPine', 'bamboo', 'castanopsis', 'tortilis',
 ]);
 
 /** How a crown envelope narrows from its base (t = 0) to its top (t = 1): the radius fraction at t. */
@@ -114,6 +120,12 @@ interface GrowthProfile {
    */
   gnarl?: number;
   /**
+   * Trees lane (2026-10-07, the coordinator on the gauntlet's wave 177: Saltwind's pine "a tall straight red-barked
+   * trunk"): how far the bole leans, as the top's offset over its height (unset 0) — a curve from an upright foot, its
+   * way the bole's own crook; one draw of the tree's stream, a leaning form's alone.
+   */
+  lean?: number;
+  /**
    * Bark style column of the bark atlas (vegetation.ts): 0 furrowed (the legacy sheet), 1 plated, 2 smooth/banded,
    * 3 papery, 4 the grown trees' furrowed bark (trees round 4: meandering ridges and furrows, where style 0's parallel
    * zigzag fissures read as a tyre tread).
@@ -137,6 +149,12 @@ interface GrowthProfile {
    * needles, a few seedlings to a clump (growShrubSkeleton), where a shrub's mound of sprays stands on a shell.
    */
   fountain?: boolean;
+  /**
+   * The trees lane (2026-10-08, the gauntlet's wave 278 on Mangrove Reach: "no mangrove, nipa palm or shrimp-pond
+   * dykes"): a palm without a stem above the ground (the nipa's creeping rhizome stays in the mud) — its fronds rise
+   * from a stub at the ground, steep and only a little arched, the old ones lying out over the mud (growPalm).
+   */
+  stemless?: boolean;
   /**
    * The trees lane (2026-10-08, the gauntlet's waves 282/283a on Redrock Divide): the form's own share of the near leaf
    * budget (GROWTH_LEAF_BUDGET; unset, a conifer's GROWTH_CONIFER_LEAF_SHARE or a broadleaf's whole budget) — a sparse
@@ -162,6 +180,12 @@ interface GrowthProfile {
    */
   orchard?: boolean;
   /**
+   * The trees lane (2026-10-06, the gauntlet's wave 129 on Nordhavn: "Scots pines read as parasol or palm crowns"): an old
+   * pine's flat top — its last whorl reaches the top and its apex shoots spread outward round the leader's top, no spire
+   * (a shelved crown's top without its level plates).
+   */
+  flatApex?: boolean;
+  /**
    * Trees lane (2026-10-06): a clump of stems from one rootstock, not a tree (the bamboo's culms): its scaffolds rise
    * from a stub at the ground and never fork, and it grows the same in a wood and in the open (no forest-grown form).
    */
@@ -171,6 +195,16 @@ interface GrowthProfile {
    * radius (m) of a clump's rhizome base — each culm rises from its own seat on that disc, leaning out from it.
    */
   clumpR?: number;
+  /**
+   * The trees lane (2026-10-08, the gauntlet's wave 278 on Saltmere Bay: the shrubs "sparse clusters of flat cut-out leaf
+   * cards on bare sticks ... stickers rather than wind-pruned coastal scrub"): a shrub form grown as a clipped cushion
+   * (shrub-only; growShrubSkeleton) — `density` times a shrub's sprays at `size` times their length, the mound `height`
+   * times a shrub's, its shell clipped smooth (`clip` the superellipse exponent, a shrub's 2; `lobes` the share of its
+   * lobing kept), one or two broad low stools leaning out of it; `shorn` the salt wind's shear — the windward side (local
+   * -x) cut down and in, the crest swept to leeward (vegetation.ts turns each field cushion's +x to its place's leeward,
+   * treeBiomes.ts TreeBiome.wind; the understorey, sheltered under the wood, grows unshorn).
+   */
+  cushion?: Readonly<{ density: number; size: number; height: number; clip: number; lobes: number; shorn: number }>;
   /**
    * Trees lane: each near variant's own shape over the profile (the Streuobst form's plum, apple and pear), grown at the
    * variant's age as every profile is; unset, the variants are the profile at three ages.
@@ -257,13 +291,19 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     cardBend: 0.30, flatRoll: 0.6, flatDroop: 0.0, bark: 2, barkTint: [0.64, 0.60, 0.54], barkTopTint: [0.74, 0.72, 0.66],
     foliageValue: 1.3,
   }),
+  // the Scots pine. The trees lane (2026-10-06, the gauntlet's wave 129 on Nordhavn's headlands: "parasol or palm crowns" —
+  // long level limbs radiating from the bole with tufts at their tips): an old pine's live crown on the upper third of a
+  // long orange bole, narrower, irregular (its whorls each reaching its own share), its limbs rising and clumped along
+  // their outer half rather than tufted only at their tips, and a flat top (flatApex) — the instances, records and radii
+  // the slot's as before
   pine: P({
     family: 'conifer', height: 7.2, heightSpread: 0.12, trunkR: 0.25, form: 'excurrent',
-    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.50, crownR: 2.4,
-    envelope: 'flame', whorled: true, perWhorl: [3, 5], spacing: 0.62, angleLow: 1.45, angleHigh: 0.85,
-    droop: 0.25, upturn: 0.45, sidePerM: 1.2, sideAngle: 0.7, sideRatio: 0.45, sideDroop: 0.1, twigPerM: 0,
-    leafOrder: 1, leafPerM: 2.0, leafFrom: 0.55, spray: [0.72, 1.02], aspect: 0.9, habit: 'tuft', tipSprays: 3,
-    cardBend: 0.06, flatRoll: 0.6, flatDroop: 0.0, bark: 1, barkTint: [0.44, 0.33, 0.27], barkTopTint: [0.80, 0.52, 0.34], foliageValue: 1.04,
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.64, crownR: 2.0,
+    envelope: 'ellipsoid', whorled: true, perWhorl: [2, 4], spacing: 0.55, angleLow: 1.15, angleHigh: 0.7,
+    droop: 0.25, upturn: 0.45, sidePerM: 1.6, sideAngle: 0.7, sideRatio: 0.45, sideDroop: 0.1, twigPerM: 0,
+    leafOrder: 1, leafPerM: 2.4, leafFrom: 0.32, spray: [0.72, 1.02], aspect: 0.9, habit: 'tuft', tipSprays: 2,
+    cardBend: 0.06, flatRoll: 0.6, flatDroop: 0.0, ragged: 0.5, flatApex: true, bark: 1, barkTint: [0.44, 0.33, 0.27],
+    barkTopTint: [0.80, 0.52, 0.34], foliageValue: 1.04,
   }),
   spruce: P({
     family: 'conifer', height: 8.2, heightSpread: 0.10, trunkR: 0.19, form: 'excurrent',
@@ -329,6 +369,18 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     cardBend: 0.5, flatRoll: 0, flatDroop: 0, bark: 2, barkTint: [0.46, 0.41, 0.35], barkTopTint: [0.40, 0.35, 0.29],
     foliageValue: 0.45,
   }),
+  // the trees lane (2026-10-08, the gauntlet's wave 278 on Mangrove Reach): the nipa palm (Nypa fruticans, dừa nước) of
+  // the Ca Mau creeks — no stem above the mud: a clump of long pinnate fronds (spray: their length) rising steeply from
+  // a stub at the ground, a little arched, the old ones lying out over the mud (growPalm `stemless`)
+  nipa: P({
+    family: 'palm', height: 0.45, heightSpread: 0.1, trunkR: 0.22, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.5, crownR: 3.4,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 1, angleLow: 1, angleHigh: 1,
+    droop: 0, upturn: 0, sidePerM: 0, sideAngle: 0, sideRatio: 0, sideDroop: 0, twigPerM: 0,
+    leafOrder: 0, leafPerM: 0, leafFrom: 0, spray: [5.0, 6.6], aspect: 0.3, habit: 'upright', tipSprays: 0,
+    cardBend: 0.2, flatRoll: 0, flatDroop: 0, bark: 2, barkTint: [0.36, 0.32, 0.24], barkTopTint: null,
+    foliageValue: 0.55, stemless: true,
+  }),
   snag: P({
     family: 'dead', height: 5.6, heightSpread: 0.22, trunkR: 0.27, form: 'excurrent',
     forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.38, crownR: 2.0,
@@ -339,15 +391,32 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
   }),
   // the tidal mangrove (the Mangrove map's willow form, vegetation.ts): a short bole forking low into spreading
   // scaffolds under a broad, dense, rounded crown of leathery sprays; smooth grey-brown bark; the stilt roots are
-  // the builder's (vegetation.ts buildGrownTree, the reviewed bent-cone arches)
+  // the builder's (vegetation.ts buildGrownTree, the reviewed bent-cone arches). The trees lane (2026-10-08, the
+  // gauntlet's wave 278 on the Ca Mau coast: the bank "a treeline of generic temperate broadleaf trees ... no
+  // mangrove"): Rhizophora's — the crown down close over its stilts (the fork at a quarter, was a third), a fifth
+  // wider and a fifth denser so a bank's crowns close into one dark wall, its glossy leaves darker (foliage value 1.35
+  // read as a meadow tree's fresh green)
   mangrove: P({
     family: 'broadleaf', height: 6.2, heightSpread: 0.12, trunkR: 0.26, form: 'decurrent',
-    forkAt: [0.30, 0.38], scaffolds: [4, 6], scaffoldAngle: [0.75, 1.1], crownBase: 0.34, crownR: 3.35,
+    forkAt: [0.22, 0.29], scaffolds: [4, 6], scaffoldAngle: [0.75, 1.1], crownBase: 0.27, crownR: 4.0,
     envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.55, angleLow: 1.2, angleHigh: 0.7,
     droop: 0.32, upturn: 0.3, sidePerM: 2.4, sideAngle: 0.8, sideRatio: 0.66, sideDroop: 0.3, twigPerM: 1.6,
-    leafOrder: 1, leafPerM: 3.6, leafFrom: 0.3, spray: [0.62, 0.92], aspect: 0.82, habit: 'spray', tipSprays: 2,
+    leafOrder: 1, leafPerM: 4.4, leafFrom: 0.3, spray: [0.62, 0.92], aspect: 0.82, habit: 'spray', tipSprays: 3,
     cardBend: 0.12, flatRoll: 0.6, flatDroop: 0.0, bark: 2, barkTint: [0.42, 0.39, 0.34], barkTopTint: null,
-    foliageValue: 1.35,
+    foliageValue: 1.0,
+  }),
+  // the trees lane (2026-10-08, the gauntlet's wave 278 on Mangrove Reach): the grey mangrove of the Ca Mau coast
+  // (Avicennia, mấm) — a low tree forking near the mud into a few leaning stems under a broad, irregular, open crown of
+  // small leathery grey-green leaves (the tidal mangrove's leaf atlas in its own grey; vegetation.ts
+  // grownFormSprayKind), its pale grey bark smooth; its pencil roots stay under the mud's surface (no stilts)
+  avicennia: P({
+    family: 'broadleaf', height: 5.4, heightSpread: 0.14, trunkR: 0.2, form: 'decurrent',
+    forkAt: [0.12, 0.2], scaffolds: [3, 5], scaffoldAngle: [0.7, 1.05], crownBase: 0.3, crownR: 3.0,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.5, angleLow: 1.15, angleHigh: 0.7,
+    droop: 0.25, upturn: 0.35, sidePerM: 2.2, sideAngle: 0.8, sideRatio: 0.62, sideDroop: 0.25, twigPerM: 1.6,
+    leafOrder: 1, leafPerM: 3.4, leafFrom: 0.3, spray: [0.5, 0.74], aspect: 0.8, habit: 'spray', tipSprays: 2,
+    cardBend: 0.1, flatRoll: 0.6, flatDroop: 0.0, bark: 2, barkTint: [0.52, 0.50, 0.46], barkTopTint: null,
+    foliageValue: 1.15,
   }),
   // ---- trees round 2 (2026-10-03): the regional forms (treeBiomes.ts routes a map's species slots to them) ----
   // the European beech (Fulda, the Eifel): a tall smooth silver-grey bole forking high into steep limbs, a dense oval
@@ -419,15 +488,20 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     cardBend: 0.22, flatRoll: 0.6, flatDroop: 0.0, bark: 1, barkTint: [0.50, 0.32, 0.24], barkTopTint: [0.60, 0.40, 0.28],
     foliageValue: 1.12,
   }),
-  // the Aleppo pine (Dalmatia): a leaning grey-brown bole and a light, open, rounded crown of fine pale needles
+  // the Aleppo pine (Dalmatia): a leaning grey-brown bole and a light, open, rounded crown of fine pale needles. The trees
+  // lane (2026-10-06, the gauntlet's wave 177: "tall, straight red-barked trunks" — "Aleppo has a grey-red fissured bark
+  // and a spreading, irregular crown, not tall straight clear boles"): shorter, its crown from a third of its height, wider
+  // and ragged, its bole and limbs crooked, its bark the grown trees' furrows in grey with red-brown up into the crown.
+  // (2026-10-07, the coordinator: it still read as a Scots pine — "a tall straight red-barked trunk": its bole leans,
+  // a sixth of its height over at the top, and its bark is grey, a warm grey up into the crown)
   aleppoPine: P({
-    family: 'conifer', height: 7.2, heightSpread: 0.14, trunkR: 0.26, form: 'excurrent',
-    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.44, crownR: 2.7,
-    envelope: 'dome', whorled: true, perWhorl: [2, 4], spacing: 0.7, angleLow: 1.35, angleHigh: 0.8,
-    droop: 0.22, upturn: 0.5, sidePerM: 1.4, sideAngle: 0.75, sideRatio: 0.5, sideDroop: 0.1, twigPerM: 0,
-    leafOrder: 1, leafPerM: 2.2, leafFrom: 0.5, spray: [0.72, 1.0], aspect: 0.92, habit: 'tuft', tipSprays: 3,
-    cardBend: 0.08, flatRoll: 0.6, flatDroop: 0.0, bark: 4, barkTint: [0.46, 0.40, 0.36], barkTopTint: [0.58, 0.46, 0.38],
-    foliageValue: 1.18,
+    family: 'conifer', height: 6.6, heightSpread: 0.14, trunkR: 0.27, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.32, crownR: 3.0,
+    envelope: 'dome', whorled: true, perWhorl: [2, 3], spacing: 0.8, angleLow: 1.2, angleHigh: 0.75,
+    droop: 0.22, upturn: 0.5, sidePerM: 1.6, sideAngle: 0.75, sideRatio: 0.52, sideDroop: 0.1, twigPerM: 0,
+    leafOrder: 1, leafPerM: 2.3, leafFrom: 0.4, spray: [0.72, 1.0], aspect: 0.92, habit: 'tuft', tipSprays: 3,
+    cardBend: 0.08, flatRoll: 0.6, flatDroop: 0.0, gnarl: 0.45, ragged: 0.5, bark: 4, barkTint: [0.50, 0.47, 0.44],
+    barkTopTint: [0.56, 0.50, 0.45], foliageValue: 1.18, lean: 0.16,
   }),
   // trees round 5 (the cities lane's Ironworks, the Saar works): the buddleia of waste ground, slag heaps and rail sidings
   // — a ruderal shrub of arching canes, long narrow grey-green leaves and nodding purple flower spikes, only ever grown as
@@ -439,6 +513,18 @@ export const TREE_GROWTH_PROFILES: Readonly<Record<GrowthSpecies, Readonly<Growt
     droop: 0.3, upturn: 0.1, sidePerM: 1.2, sideAngle: 0.6, sideRatio: 0.5, sideDroop: 0.4, twigPerM: 0,
     leafOrder: 1, leafPerM: 4, leafFrom: 0, spray: [0.75, 1.1], aspect: 0.62, habit: 'spray', tipSprays: 1,
     cardBend: 0.42, flatRoll: 0.6, flatDroop: 0, bark: 2, barkTint: [0.44, 0.40, 0.34], barkTopTint: null,
+  }),
+  // the trees lane (2026-10-08, the gauntlet's wave 278 on Saltmere Bay): the gorse of the Breton coast (Ulex europaeus,
+  // the ajonc of the landes and the cliff tops) — a dense cushion of short prickly shoots, clipped smooth and swept to
+  // leeward by the salt wind, only ever grown as a shrub (growShrubSkeleton reads the cushion, the aspect, the bend)
+  gorse: P({
+    family: 'broadleaf', height: 1.6, heightSpread: 0.14, trunkR: 0.05, form: 'excurrent',
+    forkAt: [0, 0], scaffolds: [0, 0], scaffoldAngle: [0, 0], crownBase: 0.05, crownR: 1.2,
+    envelope: 'dome', whorled: false, perWhorl: [1, 1], spacing: 0.3, angleLow: 0.6, angleHigh: 0.3,
+    droop: 0.05, upturn: 0.3, sidePerM: 1.0, sideAngle: 0.4, sideRatio: 0.5, sideDroop: 0, twigPerM: 0,
+    leafOrder: 1, leafPerM: 4, leafFrom: 0, spray: [0.45, 0.65], aspect: 0.82, habit: 'upright', tipSprays: 1,
+    cardBend: 0.06, flatRoll: 0.6, flatDroop: 0, bark: 2, barkTint: [0.40, 0.36, 0.30], barkTopTint: null,
+    cushion: Object.freeze({ density: 1.6, size: 0.72, height: 0.78, clip: 3, lobes: 0.35, shorn: 0.5 }),
   }),
   // the broom scrub of Las Cañadas (retama del Teide, codeso): a shrub of leafless-looking green-grey switches, only ever
   // grown as a shrub (growShrubSkeleton reads the aspect, the bend and the family); the tree fields mirror the birch's
@@ -962,13 +1048,16 @@ function growStem(ctx: GrowContext, topY: number, r0: number, r1: number, segmen
   const { rng } = ctx;
   // trees round 4: a gnarled bole crooks further
   const crookA = rng() * Math.PI * 2, crook = (0.04 + rng() * 0.05) * (1 + 2.5 * (ctx.profile.gnarl ?? 0));
+  // (the trees lane: a leaning form's bole curves over from an upright foot — the draw is its alone)
+  const lean = ctx.profile.lean ? ctx.profile.lean * (0.6 + 0.8 * rng()) * (topY + 0.04) : 0;
   const nodes: GrowthNode[] = [];
   for (let i = 0; i <= segments; i++) {
     const t = i / segments;
     const y = -0.04 + (topY + 0.04) * t;
     // a soft S-crook (two phases) that leaves the base on the axis
     const sway = Math.sin(t * Math.PI * 1.3) * crook * t + Math.sin(t * Math.PI * 2.7 + 1.1) * crook * 0.35 * t;
-    const x = Math.cos(crookA) * sway, z = Math.sin(crookA) * sway;
+    const bow = lean * Math.pow(t, 1.6);
+    const x = Math.cos(crookA) * (sway + bow), z = Math.sin(crookA) * (sway + bow);
     // the stem tapers slowly through the bole and quickly through the crown (excurrent leaders go to a whip)
     const r = lerp(r0, r1, Math.pow(t, 1.15));
     const flex = t < 0.45 ? 0 : (t - 0.45) / 0.55 * 0.12;
@@ -1111,7 +1200,7 @@ function growPrimaries(ctx: GrowContext, stemIndex: number, variant: number): vo
   const { rng, profile } = ctx;
   const stem = ctx.branches[stemIndex];
   // (trees round 5: a shelved crown's top tier is its top — no leader stands over it)
-  const y0 = ctx.crownBaseY, y1 = ctx.crownTopY - (profile.envelope === 'shelf' ? 0.08 : profile.whorled ? 0.32 : 0.45);
+  const y0 = ctx.crownBaseY, y1 = ctx.crownTopY - (profile.envelope === 'shelf' || profile.flatApex ? 0.08 : profile.whorled ? 0.32 : 0.45);
   let y = y0 + rng() * profile.spacing * 0.5;
   let az = rng() * Math.PI * 2;
   const spacing = profile.spacing * (ctx.mobile ? 1.18 : 1);
@@ -1173,7 +1262,8 @@ function seatLeaves(ctx: GrowContext, leaves: LeafSite[]): void {
       const t = 0.985 - k * 0.032;
       const at = sampleAlong(stem.nodes, t);
       const spin = spin0 + k * 2.399 + (rng() - 0.5) * 0.4;
-      const lean = k === 0 ? 0.04 : 0.16 + 0.07 * k;
+      // (the trees lane: an old pine's flat top — its apex shoots spread outward round the leader's top, no spire)
+      const lean = profile.flatApex ? 0.85 + 0.12 * k : k === 0 ? 0.04 : 0.16 + 0.07 * k;
       // trees round 5: a shelved crown (the cedar of Lebanon) is flat-topped — its apex sprays lie level round the
       // leader's top, a last plate, no spire
       const axis = shelf ? norm(v3(Math.cos(spin), -0.03, Math.sin(spin))) : norm(v3(Math.cos(spin) * lean, 1, Math.sin(spin) * lean));
@@ -1324,7 +1414,7 @@ function growSnag(ctx: GrowContext): void {
  */
 function growPalm(ctx: GrowContext, leaves: LeafSite[], variant: number): void {
   const { rng, profile } = ctx;
-  const leanA = rng() * Math.PI * 2, lean = 0.35 + rng() * 0.5 + variant * 0.15;
+  const leanA = rng() * Math.PI * 2, lean = profile.stemless ? 0 : 0.35 + rng() * 0.5 + variant * 0.15;
   const segments = 9;
   const nodes: GrowthNode[] = [];
   for (let i = 0; i <= segments; i++) {
@@ -1340,7 +1430,9 @@ function growPalm(ctx: GrowContext, leaves: LeafSite[], variant: number): void {
   const golden = Math.PI * (3 - Math.sqrt(5)), az0 = rng() * Math.PI * 2;
   for (let k = 0; k < count; k++) {
     const age = k / (count - 1), dead = k >= count - 2;
-    const elev = age < 0.2 ? 1.0 - age * 1.6 : age < 0.75 ? 0.45 - (age - 0.2) * 0.8 : -0.05 - (age - 0.75) * 2.6;
+    // (a stemless palm's fronds rise steeply from the mud, 75° to 30°, its dead ones lying out over it)
+    const elev = profile.stemless ? (dead ? 0.12 + (count - 1 - k) * 0.1 : 1.3 - age * 0.8)
+      : age < 0.2 ? 1.0 - age * 1.6 : age < 0.75 ? 0.45 - (age - 0.2) * 0.8 : -0.05 - (age - 0.75) * 2.6;
     const az = az0 + k * golden + (rng() - 0.5) * 0.25;
     const ce = Math.cos(elev), se = Math.sin(elev);
     const axis = norm(v3(Math.cos(az) * ce, se, Math.sin(az) * ce));
@@ -1474,11 +1566,13 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
   const conifer = profile.family === 'conifer';
   // narrow sprays (birch, willow) come more to a shrub and a little wider, so its shell closes as a broad spray's does
   const narrow = Math.min(1, profile.aspect / 0.8);
-  const count = Math.round(GROWTH_SHRUB_SPRAYS[kind] * Math.min(4 / 3, 1 / narrow));
+  // the trees lane (2026-10-08, wave 278): a cushion form's denser, smaller sprays, lower clipped mound and its shear
+  const cushion = profile.cushion;
+  const count = Math.round(GROWTH_SHRUB_SPRAYS[kind] * Math.min(4 / 3, 1 / narrow) * (cushion?.density ?? 1));
   const widen = Math.sqrt(1 / Math.max(0.75, narrow));
   // the envelope: radius and height, its widest level; a conifer's top runs to a point (the superellipse exponent)
-  const R = (under ? 0.64 : 0.9) * (conifer ? 0.9 : 1), H = (under ? 0.98 : 1.36) * (conifer ? 1.1 : 1);
-  const c0 = conifer ? H * 0.22 : H * 0.32, Hc = H - c0, pow = conifer ? 1.25 : 2;
+  const R = (under ? 0.64 : 0.9) * (conifer ? 0.9 : 1), H = (under ? 0.98 : 1.36) * (conifer ? 1.1 : 1) * (cushion?.height ?? 1);
+  const c0 = conifer ? H * 0.22 : H * 0.32, Hc = H - c0, pow = conifer ? 1.25 : cushion?.clip ?? 2;
   const golden = Math.PI * (3 - Math.sqrt(5));
   const s0 = Math.sin(-0.4), s1 = Math.sin(1.5);
   // Ground lane (2026-10-03, the gauntlet: "bushes are near-identical round green balls"): a field bush is a union of
@@ -1491,10 +1585,12 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
   if (!under) {
     // trees round 4 (the gauntlet's wave 46: "lettuce heads", "topiary"): three to five stools of their own sizes and
     // heights, further out — a lumpier, lopsided thicket
-    const stools = 3 + ((rng() * 3) | 0), a0 = rng() * Math.PI * 2;
+    // (a cushion: one or two broad, low stools close in, the mound's own shoulders)
+    const stools = cushion ? 1 + ((rng() * 2) | 0) : 3 + ((rng() * 3) | 0), a0 = rng() * Math.PI * 2;
     for (let i = 0; i < stools; i++) {
       const a = a0 + i * (Math.PI * 2 / stools) + (rng() - 0.5) * 1.1;
-      const d = R * (0.46 + rng() * 0.36), r = R * (0.36 + rng() * 0.3), h = H * (0.42 + rng() * 0.5);
+      const d = R * (cushion ? 0.3 + rng() * 0.3 : 0.46 + rng() * 0.36), r = R * (cushion ? 0.55 + rng() * 0.25 : 0.36 + rng() * 0.3);
+      const h = H * (cushion ? 0.55 + rng() * 0.3 : 0.42 + rng() * 0.5);
       const cc0 = conifer ? h * 0.22 : h * 0.32;
       clumps.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, R: r, c0: cc0, Hc: h - cc0, lobe1: rng() * Math.PI * 2,
         lobe2: rng() * Math.PI * 2, az0: rng() * Math.PI * 2, n: 0 });
@@ -1524,7 +1620,9 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
       let P = v3(0, 0, 0), nOut = v3(0, 1, 0), cx = 1, cz = 0, elev = 0;
       for (let attempt = 0; attempt < 6; attempt++) {
         const az = q.az0 + j * golden + (rng() - 0.5) * (attempt ? 1.6 : 0.3);
-        const lobe = (1 + 0.11 * Math.sin(3 * az + q.lobe1) + 0.07 * Math.sin(5 * az + q.lobe2)) * (0.92 + rng() * 0.16);
+        // (a cushion's shell clipped smooth: its lobing at cushion.lobes)
+        const lobe = (cushion ? 1 + (0.11 * Math.sin(3 * az + q.lobe1) + 0.07 * Math.sin(5 * az + q.lobe2)) * cushion.lobes
+          : 1 + 0.11 * Math.sin(3 * az + q.lobe1) + 0.07 * Math.sin(5 * az + q.lobe2)) * (0.92 + rng() * 0.16);
         cx = Math.cos(az); cz = Math.sin(az);
         // the envelope point at the spray's elevation from the clump's heart (c0 up its axis): a (super)ellipse over c0,
         // a wall under it down to the ground; its outward normal (the gradient)
@@ -1552,6 +1650,17 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
           }
         }
       }
+      // the salt wind's shear (cushion.shorn; a field cushion, never the understorey under a wood): the windward side
+      // (local -x) cut down and in, the crest swept to leeward; the clipped face looks up the wind
+      if (cushion?.shorn && !under) {
+        // the top a wedge: full height at the leeward edge, falling across the mound to under half at the windward one
+        // (the wind clips a cushion's surface into one slope up from its windward foot); the windward side pulled in,
+        // the leeward a little out; the clipped surface's normal turned up the wind by its slope
+        const sh = cushion.shorn, w = Math.max(-1, Math.min(1, -P.x / R)), cut = Math.max(0, w), lee = Math.max(0, -w);
+        const wedge = (w + 1) / 2;
+        P = v3(P.x * (1 - 0.28 * sh * cut) * (1 + 0.12 * sh * lee), P.y * (1 - 0.9 * sh * wedge), P.z);
+        nOut = norm(v3(nOut.x - 0.6 * sh * wedge * Math.max(0, nOut.y), nOut.y + 0.25 * sh * wedge, nOut.z));
+      }
       let tUp = v3(up.x - nOut.x * nOut.y, up.y - nOut.y * nOut.y, up.z - nOut.z * nOut.y);
       tUp = Math.hypot(tUp.x, tUp.y, tUp.z) < 0.2 ? v3(-cz, 0, cx) : norm(tUp);
       tUp = norm(rotate(tUp, nOut, (rng() - 0.5) * (conifer ? 2.2 : 1.5)));
@@ -1561,7 +1670,8 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
         tUp.z * Math.cos(beta) + nOut.z * Math.sin(beta));
       if (conifer) axis = v3(axis.x, axis.y * 0.45 - 0.12, axis.z);
       axis = norm(axis);
-      const length = (under ? 0.55 : 0.72) * GROWTH_SHRUB_SPRAY_SCALE * (0.75 + rng() * 0.5) * (elev > 1.1 ? 0.86 : 1);
+      const length = (under ? 0.55 : 0.72) * GROWTH_SHRUB_SPRAY_SCALE * (0.75 + rng() * 0.5) * (elev > 1.1 ? 0.86 : 1)
+        * (cushion?.size ?? 1);
       const seat = v3(P.x - axis.x * length * 0.42 - nOut.x * 0.04, Math.max(-0.02, P.y - axis.y * length * 0.42 - nOut.y * 0.04),
         P.z - axis.z * length * 0.42 - nOut.z * 0.04);
       let face = v3(nOut.x - axis.x * dot(nOut, axis), nOut.y - axis.y * dot(nOut, axis), nOut.z - axis.z * dot(nOut, axis));

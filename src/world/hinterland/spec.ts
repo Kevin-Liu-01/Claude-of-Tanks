@@ -56,7 +56,21 @@ export interface HinterlandLandformConfig {
   /** A massif's main summit, authored: its place along the strike (-1..1 of the half-length) and its share of the
    * height (default 0.5), a shoulder either side of it; the crest falls from it to both ends — a mountain with its
    * summit and shoulders, not a table (round 4, Mont Froid from edge-w). */
-  peak?: { along: number; share?: number };
+  peak?: { along: number; share?: number;
+    /** One side of the summit steeper than the other by this factor (1 symmetric): an offset summit block, not a cone. */
+    asym?: number;
+    /** A gendarme: a rock tower on the summit's ridge a little way along the crest. */
+    gendarme?: boolean;
+    /** false: the mass keeps its level crest (a wall with its summit on it); default, the crest falls from the summit
+     * to both ends (a mountain with its shoulders). */
+    tent?: boolean };
+  /** A massif's headwall: on its side facing the map, a cliff band this tall rising from just above its talus apron
+   * (round 5, the critics: "a dark headwall over 60° in the lower 250–400 m behind Les Tavernettes"). */
+  headwall?: { heightM: number };
+  /** A massif's couloirs: this many snow-filled gullies down its face toward the map, each over a debris fan. */
+  couloirs?: number;
+  /** A ridge's crest notched into minor peaks and cols (round 5, edge-s: "the crest is flat at one height"). */
+  notched?: boolean;
   name?: string;
 }
 
@@ -89,6 +103,9 @@ export interface HinterlandWaterConfig {
   radiusM?: number;
   /** The water level (m, the map's datum). A flood fills every hollow under it inside its arc. */
   level?: number;
+  /** 0..1: a sea's ice cover — a polar sea's pack: snow-covered floes, grey new ice and dark leads between (HOR-05,
+   * Whiteout's Davis Strait); 0 open water. */
+  ice?: number;
   name?: string;
 }
 
@@ -132,7 +149,18 @@ export interface HinterlandConfig {
   /** The season the place is shown in (the trees' foliage: a November polder's crowns mostly bare). Default summer. */
   season?: HinterlandSeason;
   outland?: {
-    relief?: { riseM?: readonly [number, number]; wavelengthM?: number };
+    /** The outland's relief; `arcs` scale it on bearings (a quiet arc, scale < 1: Whiteout's plateau running smooth
+     * to its fall over Davis Strait, so the eye reaches the pack ice; HOR-05). */
+    relief?: { riseM?: readonly [number, number]; wavelengthM?: number; arcs?: readonly { azDeg: readonly [number, number]; scale: number }[] };
+    /** Term 2's hold and ease (m past the edge): the battlefield's own outland holds to the first, then eases into the
+     * region's relief by the second (default 700 / 1600). A draft whose square's old border stood walls or knolls past
+     * the edge shortens it so the region's own land comes in sooner (2026-10-17: Skybridge's 100-200 m mesa walls 0.6-1 km
+     * out, the old ring's, that hid its far country — HOR-06; DRAFTS-FOLLOWUP 9 and 21). */
+    nearHoldM?: readonly [number, number];
+    /** Where the region's relief sits (term 1 and 2's datum): 'handover' (default) the level the battlefield's outland
+     * holds 560-840 m past the edge; 'edge' the level at the edge itself (0-80 m past it) — for a square whose old border
+     * raised a plateau or walls out there that the place does not have; or a fixed level (m). */
+    datum?: 'handover' | 'edge' | number;
     settle?: {
       villages?: number; hamlets?: number; farms?: number; works?: number; town?: HinterlandTownConfig | null;
       /** Villages placed on the sightlines (each with its church: a landmark at middle distance for every eye view —
@@ -183,6 +211,11 @@ export interface HinterlandSpec {
   kit: string | null;
   outland: {
     riseM: readonly [number, number]; wavelengthM: number; flat: boolean;
+    reliefArcs: readonly { azDeg: readonly [number, number]; scale: number }[];
+    /** Term 2's hold and ease (m past the edge). */
+    nearHold: readonly [number, number];
+    /** Term 1 and 2's datum. */
+    datum: 'handover' | 'edge' | number;
     woods: number; hedges: number; fields: number; links: number;
     settle: HinterlandSettleSpec;
   };
@@ -242,6 +275,9 @@ export function resolveHinterlandSpec(cfg: HinterlandMapConfig | null | undefine
       riseM: o.relief?.riseM ?? region.outland.riseM,
       wavelengthM: o.relief?.wavelengthM ?? region.outland.wavelengthM,
       flat: region.outland.flat,
+      reliefArcs: o.relief?.arcs ?? [],
+      nearHold: o.nearHoldM ?? [700, 1600],
+      datum: o.datum ?? 'handover',
       woods: o.woods ?? region.vegetation.woods,
       hedges: o.hedges ?? region.vegetation.hedges,
       fields: o.fields ?? region.fields,

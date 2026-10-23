@@ -18,7 +18,12 @@
 //     held production 224's until 229)
 //                                                              → immutable for a year;
 //   - images, audio and fonts under textures/, icons/, fonts/, audio/, maps/, minimaps/ (same URL across deploys)
-//                                                              → max-age=3600, stale-while-revalidate=86400.
+//                                                              → max-age=3600, stale-while-revalidate=86400;
+//   - the public pages' images and videos under media/, brand/, field-guide/ (2026-10-22, nav-perf-240: a warm visit to
+//     /home, /docs or /gallery paid one revalidation round trip per still, poster and loop) → the same hour and day;
+//   - the JSON manifests the pages and the Garage fetch at run time under media/, icons/, field-guide/ (the archive,
+//     the fleet takes, the hero cards; the same for every visitor, changed only by a deploy)
+//                                                              → max-age=60, stale-while-revalidate=3600.
 //
 //   node tools/vercel-output-immutable.mjs [--output=.vercel/output] [--group=40]
 //   node tools/vercel-output-immutable.mjs --check     # exit 1 unless the config already covers every file
@@ -35,13 +40,18 @@ export const HASHED_ASSET_RE = /-[A-Za-z0-9_-]{8}\.[a-z0-9]+$/;
  * `<map>@<variant>.<sha256[0..12]>.json`, 2026-10-08); `index.json` names them and is not hashed.
  */
 const COLLISION_MANIFEST_RE = /^[a-z0-9_-]+(?:@[a-z0-9-]+)?\.[0-9a-f]{12}\.json$/;
-/** Public directories the game loads at runtime; only their images, audio and fonts take the moderate TTL. */
-const RUNTIME_DIRS = Object.freeze(['textures', 'icons', 'fonts', 'audio', 'maps', 'minimaps']);
-const RUNTIME_FILE_RE = /\.(?:png|webp|jpe?g|avif|gif|svg|ktx2|ogg|mp3|wav|m4a|opus|woff2?|ttf|otf)$/i;
+/** Same URL across deploys, changed only by a deploy: a minute fresh, an hour served stale while revalidating. */
+export const MANIFEST_CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=3600';
+/** Public directories the game and the public pages load at runtime; only their media files take the moderate TTL. */
+const RUNTIME_DIRS = Object.freeze(['textures', 'icons', 'fonts', 'audio', 'maps', 'minimaps', 'media', 'brand', 'field-guide']);
+const RUNTIME_FILE_RE = /\.(?:png|webp|jpe?g|avif|gif|svg|ktx2|ogg|mp3|wav|m4a|opus|woff2?|ttf|otf|webm|mp4)$/i;
+/** Directories whose JSON manifests a page fetches at run time (tool JSON elsewhere keeps the default). */
+const MANIFEST_DIRS = Object.freeze(['media', 'icons', 'field-guide']);
+const MANIFEST_FILE_RE = /\.json$/i;
 export const DEFAULT_GROUP = 40;
 /** Keep each route's `src` well under the 4,096-character source limit Vercel documents for routing rules. */
 const MAX_SOURCE_LENGTH = 3000;
-const MANAGED_PREFIXES = ['assets', 'mp-collision', 'mp-collision/v2', 'mp-collision/v3', ...RUNTIME_DIRS];
+const MANAGED_PREFIXES = ['assets', 'mp-collision', 'mp-collision/v2', 'mp-collision/v3', ...new Set([...RUNTIME_DIRS, ...MANIFEST_DIRS])];
 
 function walk(root, accept) {
   if (!existsSync(root)) return [];
@@ -69,20 +79,27 @@ export function listCollisionManifests(staticDir, route = 'mp-collision') {
   return walk(join(staticDir, route), (name) => COLLISION_MANIFEST_RE.test(name)).filter((path) => !path.includes('/'));
 }
 
-/** `{ dir: [paths relative to dir] }` for the runtime images, audio and fonts that exist. */
+/** `{ dir: [paths relative to dir] }` for the runtime images, video, audio and fonts that exist. */
 export function listRuntimeFiles(staticDir) {
   return Object.fromEntries(RUNTIME_DIRS.map((dir) => [dir, walk(join(staticDir, dir), (name) => RUNTIME_FILE_RE.test(name))]));
+}
+
+/** `{ dir: [paths relative to dir] }` for the JSON manifests that exist. */
+export function listManifestFiles(staticDir) {
+  return Object.fromEntries(MANIFEST_DIRS.map((dir) => [dir, walk(join(staticDir, dir), (name) => MANIFEST_FILE_RE.test(name))]));
 }
 
 /** The families the tool writes for an output directory: a URL prefix, its files and their Cache-Control. */
 export function cacheRoutePlan(staticDir) {
   const runtime = listRuntimeFiles(staticDir);
+  const manifests = listManifestFiles(staticDir);
   return [
     { prefix: 'assets', files: listHashedAssets(staticDir), cacheControl: IMMUTABLE_CACHE_CONTROL },
     { prefix: 'mp-collision', files: listCollisionManifests(staticDir), cacheControl: IMMUTABLE_CACHE_CONTROL },
     { prefix: 'mp-collision/v2', files: listCollisionManifests(staticDir, 'mp-collision/v2'), cacheControl: IMMUTABLE_CACHE_CONTROL },
     { prefix: 'mp-collision/v3', files: listCollisionManifests(staticDir, 'mp-collision/v3'), cacheControl: IMMUTABLE_CACHE_CONTROL },
     ...RUNTIME_DIRS.map((dir) => ({ prefix: dir, files: runtime[dir], cacheControl: RUNTIME_CACHE_CONTROL })),
+    ...MANIFEST_DIRS.map((dir) => ({ prefix: dir, files: manifests[dir], cacheControl: MANIFEST_CACHE_CONTROL })),
   ];
 }
 
@@ -106,7 +123,7 @@ export function isManagedCacheRoute(route) {
   if (isImmutableAssetRoute(route)) return true;
   if (!route || typeof route.src !== 'string' || typeof route.handle === 'string') return false;
   const cache = routeCacheControl(route);
-  return (cache === IMMUTABLE_CACHE_CONTROL || cache === RUNTIME_CACHE_CONTROL)
+  return (cache === IMMUTABLE_CACHE_CONTROL || cache === RUNTIME_CACHE_CONTROL || cache === MANIFEST_CACHE_CONTROL)
     && MANAGED_PREFIXES.some((prefix) => route.src.startsWith(`^/${escapeRegex(prefix)}/(?:`));
 }
 
@@ -177,16 +194,21 @@ function arg(name, fallback) {
 }
 
 function summary(plan, config) {
-  const routeCount = (prefix) => (config.routes || []).filter((route) => isManagedCacheRoute(route)
+  const routeCount = (prefix, cacheControl) => (config.routes || []).filter((route) => isManagedCacheRoute(route)
+    && routeCacheControl(route) === cacheControl
     && (prefix === 'assets' ? route.src.startsWith('^/assets') : route.src.startsWith(`^/${escapeRegex(prefix)}/(?:`))).length;
-  const family = (prefix) => plan.find((entry) => entry.prefix === prefix);
-  const runtimeFiles = RUNTIME_DIRS.reduce((sum, dir) => sum + family(dir).files.length, 0);
-  const runtimeRoutes = RUNTIME_DIRS.reduce((sum, dir) => sum + routeCount(dir), 0);
-  return `${family('assets').files.length} hashed files under /assets → ${routeCount('assets')} immutable routes; `
-    + `${family('mp-collision').files.length} collision manifests → ${routeCount('mp-collision')} immutable routes; `
-    + `${family('mp-collision/v2').files.length} v2 collision manifests → ${routeCount('mp-collision/v2')} immutable routes; `
-    + `${family('mp-collision/v3').files.length} v3 collision manifests → ${routeCount('mp-collision/v3')} immutable routes; `
-    + `${runtimeFiles} runtime files in ${RUNTIME_DIRS.join(', ')} → ${runtimeRoutes} routes (${RUNTIME_CACHE_CONTROL})`;
+  const family = (prefix, cacheControl) => plan.find((entry) => entry.prefix === prefix && (!cacheControl || entry.cacheControl === cacheControl));
+  const sum = (dirs, cacheControl, pick) => dirs.reduce((total, dir) => total + pick(dir, cacheControl), 0);
+  const runtimeFiles = sum(RUNTIME_DIRS, RUNTIME_CACHE_CONTROL, (dir, cache) => family(dir, cache).files.length);
+  const runtimeRoutes = sum(RUNTIME_DIRS, RUNTIME_CACHE_CONTROL, routeCount);
+  const manifestFiles = sum(MANIFEST_DIRS, MANIFEST_CACHE_CONTROL, (dir, cache) => family(dir, cache).files.length);
+  const manifestRoutes = sum(MANIFEST_DIRS, MANIFEST_CACHE_CONTROL, routeCount);
+  return `${family('assets').files.length} hashed files under /assets → ${routeCount('assets', IMMUTABLE_CACHE_CONTROL)} immutable routes; `
+    + `${family('mp-collision').files.length} collision manifests → ${routeCount('mp-collision', IMMUTABLE_CACHE_CONTROL)} immutable routes; `
+    + `${family('mp-collision/v2').files.length} v2 collision manifests → ${routeCount('mp-collision/v2', IMMUTABLE_CACHE_CONTROL)} immutable routes; `
+    + `${family('mp-collision/v3').files.length} v3 collision manifests → ${routeCount('mp-collision/v3', IMMUTABLE_CACHE_CONTROL)} immutable routes; `
+    + `${runtimeFiles} runtime files in ${RUNTIME_DIRS.join(', ')} → ${runtimeRoutes} routes (${RUNTIME_CACHE_CONTROL}); `
+    + `${manifestFiles} manifests in ${MANIFEST_DIRS.join(', ')} → ${manifestRoutes} routes (${MANIFEST_CACHE_CONTROL})`;
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

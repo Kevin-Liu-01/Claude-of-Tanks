@@ -14,6 +14,7 @@ import { CORE_MODULE_IDS, MODULE_IDS } from '../sim/moduleCatalog.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.ts';
 import { assertTos1aTagilTurretCells } from './tos1aTagilAnatomy.test-support.mjs';
+import { crewShell } from '../../tools/crew-seat-fit.mjs';
 import {
   INTERNAL_LAYOUT_BY_TANK,
   INTERNAL_LAYOUT_SOURCES,
@@ -142,6 +143,23 @@ export function createCombatAnatomyAudit() {
     ));
   }
 
+  // 235 crew fit: a seated crew member's body spans cells, and a turret crew member sits in the basket (below the
+  // turret, through the ring), so its shapes are held to the crew shell (tools/crew-seat-fit.mjs crewShell: armour at
+  // every turret yaw): every surface sample within 3 mm of it.
+  const SPHERE = [];
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (let k = -1; k <= 1; k++) {
+    if (i || j || k) SPHERE.push([i, j, k].map((value) => value / Math.hypot(i, j, k)));
+  }
+  function shapeSamples(shape) {
+    if (shape.kind === 'ellipsoid') return SPHERE.map((d) => shape.center.map((value, axis) => value + d[axis] * shape.radii[axis]));
+    const out = [];
+    for (let s = 0; s <= 8; s++) {
+      const c = shape.a.map((value, axis) => value + (shape.b[axis] - value) * s / 8);
+      for (const d of SPHERE) out.push(c.map((value, axis) => value + d[axis] * shape.radius));
+    }
+    return out;
+  }
+
   return {
     check(id, visual) {
       const spec = getSpec(id);
@@ -212,11 +230,23 @@ export function createCombatAnatomyAudit() {
       const fixedMount = COMBAT_ANATOMY_CALIBRATIONS[id].turret === null;
       assert.equal(names.includes('gunMount'), fixedMount, `${id}: fixed gun-mount applicability`);
       assert.equal(names.includes('turretRing'), !fixedMount, `${id}: turret-ring applicability`);
+      const ring = boxes.find((box) => box.module === 'turretRing');
+      if (ring) {
+        // (240) the ring's volume stands on the drawn ring: its receipt's seat where one is published, else the turret's
+        // yaw axis, the rig_turret seat (combatAnatomy.ts alignTurretRing)
+        const pivot = spec.armor.turretPivot, seat = calibration.turretRing?.seat ?? pivot;
+        const axis = ring.turretLocal ? seat.map((value, i) => value - pivot[i]) : seat;
+        for (const axisIndex of [0, 2]) {
+          assert(Math.abs((ring.min[axisIndex] + ring.max[axisIndex]) * 0.5 - axis[axisIndex]) < 1e-6,
+            `${id}: turret ring centred on the drawn ring's axis (${'xyz'[axisIndex]})`);
+        }
+      }
       if (fixedMount) {
         const calibration = COMBAT_ANATOMY_CALIBRATIONS[id];
         for (const crewBox of spec.armor.crew) {
           assert.equal(crewBox.turretLocal, false, `${id}/${crewBox.crew}: fixed-mount crew uses hull coordinates`);
-          assert(crewBox.min[1] >= calibration.hull.min[1]
+          // (a seated station is held to the crew shell below, its cupola included)
+          if (!crewBox.posture) assert(crewBox.min[1] >= calibration.hull.min[1]
             && crewBox.max[1] <= calibration.hull.max[1], `${id}/${crewBox.crew}: crew below casemate roof`);
         }
       }
@@ -236,8 +266,14 @@ export function createCombatAnatomyAudit() {
           if (box.external !== true && box.module !== 'trackL' && box.module !== 'trackR'
               && box.module !== 'gun' && box.module !== 'optics') {
             const cells = box.turretLocal ? shell.turret : shell.hull;
-            assert(cells.some((cell) => shapeInsideCell(shape, cell)),
-              `${id}/${box.module || box.crew}: precise internal shape stays inside closed armor`);
+            if (box.crew && box.posture) {
+              const crew = crewShell(spec.armor, box.turretLocal ? 'turret' : 'hull');
+              assert(shapeSamples(shape).every((point) => crew.inside(point, -0.003)),
+                `${id}/${box.crew}: seated crew shape stays inside closed armor`);
+            } else {
+              assert(cells.some((cell) => shapeInsideCell(shape, cell)),
+                `${id}/${box.module || box.crew}: precise internal shape stays inside closed armor`);
+            }
           }
         }
         if (!Array.isArray(box.parts)) continue;

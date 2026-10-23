@@ -58,6 +58,16 @@ const KIT_PALETTES: Readonly<Record<string, Readonly<Record<string, KitStyle>>>>
     granary: { wall: [176, 168, 150], roof: [128, 120, 100], wallH: 5, roofH: 4 },
     depot: { wall: [168, 160, 146], roof: [96, 92, 88], wallH: 6, roofH: 2 },
   },
+  // Sary-Arka's tselina (2026-10-17, BLD-03): whitewashed saman houses under low tarred-felt roofs, the long corrugated
+  // machine sheds and grain stores of the sovkhoz yard, the brigade camps' vagonchiki (small boarded huts painted pale)
+  tselina: {
+    default: { wall: [226, 220, 204], roof: [92, 88, 82], wallH: 2.8, roofH: 1.6, roofAlt: [132, 128, 120] },
+    cottage: { wall: [190, 206, 196], roof: [104, 102, 98], wallH: 2.6, roofH: 1.0 },
+    barn: { wall: [156, 152, 144], roof: [126, 124, 120], wallH: 5, roofH: 1.6 },
+    granary: { wall: [182, 172, 150], roof: [116, 110, 100], wallH: 4.5, roofH: 1.4 },
+    depot: { wall: [168, 162, 150], roof: [100, 98, 94], wallH: 6, roofH: 1.2 },
+    woodshed: { wall: [150, 128, 100], roof: [96, 92, 86], wallH: 2.6, roofH: 0.8 },
+  },
   // Savoy: rubble stone under big low roofs of slate or lauze
   savoyard: {
     default: { wall: [130, 124, 116], roof: [86, 84, 82], wallH: 6, roofH: 4 },
@@ -173,12 +183,15 @@ function beam(S: Shapes, f: Frame, a: V3, b: V3, t: number, color: V3): void {
 }
 
 /** A building of a kind on its footprint (its ridge along its longer side). */
-function addBuilding(S: Shapes, f: Frame, width: number, depth: number, style: KitStyle, tone: number, alt: boolean, kind: string): void {
+function addBuilding(S: Shapes, f: Frame, width: number, depth: number, style: KitStyle, tone: number, alt: boolean, kind: string, snowRoof = false): void {
   const long = width >= depth;
   const hu = (long ? width : depth) / 2, hw = (long ? depth : width) / 2;
   // (the frame turned a quarter when the footprint's long side runs along w)
   const g: Frame = long ? f : (u, v, w) => f(w, v, -u);
-  const wall = lin(style.wall.map((c) => c * tone)), roofC = lin((alt && style.roofAlt ? style.roofAlt : style.roof).map((c) => c * (0.92 + 0.16 * (tone - 0.9) / 0.2)));
+  const wall = lin(style.wall.map((c) => c * tone));
+  // (a snow-covered place's roofs carry their snow — the critics on round 4c: "snow-load the roofs")
+  const roofC = snowRoof ? lin([214, 222, 232].map((c) => c * (0.94 + 0.06 * (tone - 0.9) / 0.2)))
+    : lin((alt && style.roofAlt ? style.roofAlt : style.roof).map((c) => c * (0.92 + 0.16 * (tone - 0.9) / 0.2)));
   const wallH = style.wallH * (0.9 + 0.2 * (tone - 0.9) / 0.2);
   box(S, g, -hu, hu, -1.5, wallH, -hw, hw, wall, null);
   const rise = kind === 'depot' ? Math.min(style.roofH, hw * 0.35) : style.roofH * Math.min(1.25, hw / 4.5);
@@ -319,6 +332,68 @@ function addVertical(S: Shapes, f: Frame, kind: string, H: number, half: number,
       box(S, f, -r * 0.35, r * 0.35, -1.5, H, -r * 0.35, r * 0.35, STONE);
       return;
     }
+    case 'radome': {
+      // a radome (HOR-05): the white ball on its equipment building, read as a sphere, not the stone block the default
+      // drew — the DEW Line's and the North Warning System's mark on every station's skyline
+      const r = half, cy = H - r;
+      box(S, f, -r * 1.15, r * 1.15, -1.5, H * 0.36, -r * 1.15, r * 1.15, lin([206, 204, 198]), lin([150, 150, 148]));
+      const lats = [-0.42, -0.1, 0.25, 0.55, 0.8, 1.0, 1.25, Math.PI / 2];
+      for (let k = 0; k + 1 < lats.length; k++) {
+        prism(S, f, 14, r * Math.cos(lats[k]), r * Math.cos(lats[k + 1]), cy + r * Math.sin(lats[k]), cy + r * Math.sin(lats[k + 1]), WHITE);
+      }
+      return;
+    }
+    case 'tropoScatter': {
+      // the tropospheric-scatter billboards (the DEW Line's long links south): two great reflectors side by side,
+      // each bowed back toward its middle, on their steel frames, facing out along the frame's w
+      for (const side of [-1, 1]) {
+        const cu = side * half * 0.55, pw = half * 0.45;
+        for (let k = 0; k < 5; k++) {
+          const u0 = cu - pw + (2 * pw * k) / 5, u1 = cu - pw + (2 * pw * (k + 1)) / 5, um = (u0 + u1) / 2;
+          const bow = -0.22 * pw * (1 - ((um - cu) / pw) ** 2);
+          box(S, f, u0, u1, H * 0.14, H, bow - 0.35, bow + 0.35, lin([224, 226, 224]), null);
+        }
+        for (const lu of [cu - pw * 0.8, cu + pw * 0.8]) beam(S, f, [lu, -1, H * 0.22], [lu, H * 0.96, 0.6], 0.5, STEEL);
+        beam(S, f, [cu, -1, H * 0.3], [cu, H * 0.72, 0.6], 0.5, STEEL);
+        beam(S, f, [cu - pw * 0.8, H * 0.14, 0.4], [cu + pw * 0.8, H * 0.14, 0.4], 0.45, STEEL);
+      }
+      return;
+    }
+    case 'fuelTanks': {
+      // a fuel farm: squat white tanks in a bermed yard
+      for (const [u, w, s] of [[-0.62, -0.3, 1], [0.08, 0.36, 0.9], [0.66, -0.22, 1.05], [-0.1, -0.62, 0.8]] as const) {
+        const tr = half * 0.27 * s;
+        prism(S, (a, v, b) => f(a + u * half, v, b + w * half), 14, tr, tr, -1.5, H * s, lin([214, 216, 210]));
+        prism(S, (a, v, b) => f(a + u * half, v, b + w * half), 14, tr, tr * 0.86, H * s, H * s + tr * 0.12, lin([190, 192, 188]));
+      }
+      box(S, f, -half, half, -1.5, 1.2, -half, half, lin([120, 118, 112]), lin([150, 146, 138]));
+      return;
+    }
+    case 'decoTower': case 'pyramidTower': case 'clockTower': {
+      // the Bund's 1930s towers (Suzhou Creek, 1937): stone-faced blocks read at 2-4 km — Broadway Mansions' and the
+      // Park Hotel's setbacks, Sassoon House's copper pyramid, the Customs House's clock stage under its cupola
+      const face = lin([200, 190, 170]), shade = lin([150, 142, 128]), copper = lin([78, 116, 96]), dial = lin([40, 40, 38]);
+      if (kind === 'decoTower') {
+        const tiers: [number, number][] = [[1, 0.56], [0.8, 0.74], [0.6, 0.88], [0.4, 1]];
+        let y0 = -1.5;
+        for (const [w, top] of tiers) { box(S, f, -half * w, half * w, y0, H * top, -half * w * 0.8, half * w * 0.8, face, shade); y0 = H * top; }
+      } else if (kind === 'pyramidTower') {
+        box(S, f, -half, half, -1.5, H * 0.74, -half, half, face, shade);
+        prism(S, f, 4, half * 1.0, 0, H * 0.74, H, copper, Math.PI / 4);
+      } else {
+        box(S, f, -half * 1.3, half * 1.3, -1.5, H * 0.46, -half, half, face, shade);
+        const t = half * 0.5;
+        box(S, f, -t, t, H * 0.46, H * 0.86, -t, t, face, shade);
+        for (const [a, b] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const cu = a * (t + 0.05), cw = b * (t + 0.05), mid = H * 0.78, r = t * 0.62;
+          if (a) box(S, f, cu - 0.06, cu + 0.06, mid - r, mid + r, -r, r, dial);
+          else box(S, f, -r, r, mid - r, mid + r, cw - 0.06, cw + 0.06, dial);
+        }
+        prism(S, f, 8, t * 0.8, t * 0.5, H * 0.86, H * 0.93, face);
+        prism(S, f, 8, t * 0.5, 0, H * 0.93, H, shade);
+      }
+      return;
+    }
     default:
       box(S, f, -half, half, -1.5, H, -half, half, STONE);
   }
@@ -442,7 +517,7 @@ export function buildHinterlandOutlandGeometry(
   for (const b of plan.buildings) {
     drawn.add(b.settlement);
     const y = footBase(frame(b.x, 0, b.z, b.yaw), b.width / 2, b.depth / 2);
-    addBuilding(S, frame(b.x, y, b.z, b.yaw), b.width, b.depth, styleFor(kit, b.kind), 0.9 + 0.2 * hashXZ(b.x, b.z), hashXZ(b.x, b.z, 5) < 0.4, b.kind);
+    addBuilding(S, frame(b.x, y, b.z, b.yaw), b.width, b.depth, styleFor(kit, b.kind), 0.9 + 0.2 * hashXZ(b.x, b.z), hashXZ(b.x, b.z, 5) < 0.4, b.kind, snowy);
   }
   // a far settlement the plan counts but does not lay out: its houses about its core along its street and a cross lane
   for (const s of plan.settlements) {
@@ -459,7 +534,7 @@ export function buildHinterlandOutlandGeometry(
       const width = kind === 'barn' ? 22 + 10 * h3 : 9 + 5 * h3, depth = kind === 'barn' ? 12 + 4 * h1 : 7 + 3 * h1;
       const yaw = s.yaw + (lane ? Math.PI / 2 : 0) + (h3 - 0.5) * 0.2;
       const y = footBase(frame(p[0], 0, p[2], yaw), width / 2, depth / 2);
-      addBuilding(S, frame(p[0], y, p[2], yaw), width, depth, styleFor(kit, kind), 0.9 + 0.2 * h2, h1 < 0.4, kind);
+      addBuilding(S, frame(p[0], y, p[2], yaw), width, depth, styleFor(kit, kind), 0.9 + 0.2 * h2, h1 < 0.4, kind, snowy);
     }
   }
   for (const v of plan.verticals) {

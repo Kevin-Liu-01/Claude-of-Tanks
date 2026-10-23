@@ -472,10 +472,17 @@ function fnv1a(str: string): number {
   return h >>> 0;
 }
 
+/**
+ * Vehicles that dress exactly as another: the Type 10 Kaitaku is the modern Type 10 with a bow kit (owner 2026-10-22),
+ * so it takes the Type 10's manifest and seed; its kit reserves the bow (profiles/type10Dozer.ts), which keeps the bow
+ * shackles and chain off the blade.
+ */
+const DECOR_TWIN: ReadonlyMap<string, string> = new Map([['type10_dozer', 'type10']]);
+
 function decorIdentityFor(specId: string): string {
   // The kit is seeded from the id's schema-1 spelling, so an id rename never
   // moves a load (SSOT 2.19, tankIdAliases.ts).
-  const seedId = tankSeedId(specId);
+  const seedId = tankSeedId(DECOR_TWIN.get(specId) ?? specId);
   // Keep the prototype hull-kit seed stable across its turret redesign.
   // Both Revolution variants choose their explicit manifests below.
   return seedId === 'leo2_revolution_proto' ? 'leo2_revolution' : seedId;
@@ -1523,10 +1530,13 @@ function buildDecorMaterials(
     } : { color: equipmentPalette.steel, roughness: 0.86, metalness: 0.06, vertexColors: true, envMapIntensity: 0.35 }),
     // dark oily gunmetal: MGs, cables, tools, shackles, track links
     // 2026-10-06 (round 2): matte, oily steel; at 0.62 roughness and 0.35 metalness thin handles read as mirror chrome
+    // 2026-10-08 (round 5 per-material surfaces; wave 264: "nothing reads as steel, rubber or canvas"): the vehicle's
+    // own gunmetal response, a third metallic at 0.7 (was 0.78 / 0.16 / 0.35), so a tool head or a shackle takes a soft
+    // steel gleam; still a step rougher and less metallic than round 2's chrome handles.
     steel: () => painted({
-      color: equipmentPalette.steel, roughness: 0.78, metalness: 0.16,
+      color: equipmentPalette.steel, roughness: 0.7, metalness: 0.32,
       roughnessMap: canPaint ? getSharedRoughnessTexture(spec) : undefined,
-      vertexColors: true, envMapIntensity: 0.35,
+      vertexColors: true, envMapIntensity: 0.3,
     }),
     // round 4 (2026-10-07): matte, greyer, weathered issue-crate wood (was 0x97815f, roughness 0.9, a warm stain that
     // read as varnished mahogany): woodTex's grey-brown ground x a near-neutral multiplier, about #5f5648 in all
@@ -1534,17 +1544,20 @@ function buildDecorMaterials(
       map: woodTex(), color: 0xaca8a5, roughness: 0.96, metalness: 0.0,
       vertexColors: true, envMapIntensity: 0.08,
     }),
+    // round 5 (2026-10-08): woven cloth mirrors almost none of the sky (0.06, was 0.12 / 0.1), dead matte beside paint
     canvas: () => painted({
       map: weaveTex(), color: equipmentPalette.canvas, roughness: 0.96, metalness: 0.0,
-      vertexColors: true, envMapIntensity: 0.12,
+      vertexColors: true, envMapIntensity: 0.06,
     }),
     burlap: () => painted({
       map: weaveTex(), color: equipmentPalette.burlap, roughness: 0.98, metalness: 0.0,
-      vertexColors: true, envMapIntensity: 0.1,
+      vertexColors: true, envMapIntensity: 0.06,
     }),
+    // round 5 (259d9a19d, salvage 240): the vehicle tyres' rubber response, dark and sky-cut with a soft satin sheen
+    // (0.86, a third of the sky; was 0.94 / 0.04 / 0.12)
     rubber: () => ({
-      color: 0x232425, roughness: 0.94, metalness: 0.04,
-      vertexColors: true, envMapIntensity: 0.12,
+      color: 0x232425, roughness: 0.86, metalness: 0.0,
+      vertexColors: true, envMapIntensity: 0.3,
     }),
     cans: () => painted({ // authored-color hardware (jerrycans): tint baked per piece
       map: fieldHardwareTex(), color: 0xffffff, roughness: 0.82, metalness: 0.07,
@@ -1581,6 +1594,8 @@ function buildDecorMaterials(
         const def = { ...defs[key]() };
         if (!def.map) delete def.map; // node safety (no canvas available)
         const material = new THREE.MeshStandardMaterial(def);
+        // VH.05 (240): rubber stays rubber (owner 2026-10-21): the field-dust term (materials.ts) leaves it out
+        if (key === 'rubber') material.defines = { ...material.defines, COT_NO_FIELD_DUST: 1 };
         made[key] = material;
         setup(material);
         material.name = `Decor_${key}`;
@@ -2903,17 +2918,6 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
     { kit: 'shackles', p: 1, v: { v: 'shackle' }, slot: ['bowPair', {}] },
     { kit: 'tracks', p: 1, v: { n: 3, linkW: 0.42 }, slot: ['turretSidePlate', { side: -1 }] },
   ],
-  // the production kit; the dozer blade covers the bow, so no bow shackles
-  type10_dozer: () => [
-    { kit: 'basket', p: 1, v: { w: 1.3, d: 0.36, h: 0.28 }, slot: ['turretRearFrame', {}] },
-    { kit: 'packs', p: 1, v: { n: 2 }, slot: ['turretRear', { onBasket: true }] },
-    { kit: 'camonet', p: 1, v: { v: 'drape', len: 0.9, w: 0.8 }, slot: ['rearDeck', { center: true }] },
-    { kit: 'bin', p: 1, v: { v: 'steel', w: 0.5, h: 0.28, d: 0.36 }, slot: ['rearDeck', { corner: -1 }] },
-    { kit: 'cable', p: 1, v: { len: 2.0 }, slot: ['hullSideTop', { side: 1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_long' }, slot: ['turretRoof', { rear: true, side: -1 }] },
-    { kit: 'antenna', p: 1, v: { v: 'whip_short' }, slot: ['turretRoof', { rear: true, side: 1 }] },
-    { kit: 'tracks', p: 1, v: { n: 3, linkW: 0.42 }, slot: ['turretSidePlate', { side: -1 }] },
-  ],
   t90am: () => [
     { kit: 'log', p: 1, v: { len: 2.6 }, slot: ['hullRearLow', {}] },
     { kit: 'drums', p: 1, v: { v: 'twin' }, slot: ['hullRear', {}] },
@@ -2927,6 +2931,8 @@ const TANK_MANIFESTS: Record<string, DecorManifestBuilder> = {
 
 /** Resolve the manifest rows for one spec (curated table or era default). */
 export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRow[] {
+  const twin = DECOR_TWIN.get(spec.id);
+  if (twin) return decorManifestFor({ ...spec, id: twin }, rng);
   // These concepts own their complete stowage and mounts. Generic aft cargo
   // falls behind the native fuel drums, outside any physical support.
   if (NATIONAL_MODERNIZATION_IDS.some(id=>id===spec.id)||NATIONAL_LEGACY_IDS.some(id=>id===spec.id)) return [];
@@ -3071,6 +3077,12 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   if (spec.id === 'griffin_viper') {
     for (const row of base) if (row.kit === 'cable') { row.slot = ['hullSideCable', { side: 1 }]; row.p = 1; row.early = true; }
   }
+  // 2026-10-17 (227, VEH-01 step 1): the Namer's left turret side (+x) is faceted, and its front station carries a 15 cm
+  // band of wall at most, so the tarp roll drawn for it (fa5f7028e: no ledge) hangs on the right side, whose wall
+  // carries both arms. The side draw stays consumed; every other row is unchanged.
+  if (spec.id === 'namer_ifv') {
+    for (const row of base) if (row.kit === 'tarp' && row.slot[0] === 'turretSide') row.slot = ['turretSide', { ...row.slot[1], side: -1 }];
+  }
   // 2026-10-08 (coordinator ruling, "a visual refactor must not change a gameplay count incidentally"): the Type 89
   // Light Tiger's decor bank pair is curated on its roof front. Its cheek stations read their height off pivotTopY(),
   // and the old compact roof RWS raised that probe to 1.12 m, so the third station met a roof box and the pair stood
@@ -3154,6 +3166,14 @@ export function decorManifestFor(spec: FleetTankSpec, rng: Rng): DecorManifestRo
   // Release 233: the Longwei's terraced turret carries its own four four-tube banks on its side modules
   // (profiles/longwei.ts); a decor pair on its cheek bricks would double them.
   if (spec.id === 'ztz99_longwei') return manifest.filter(row => row.kit !== 'smoke');
+  // Release 240: the C2 Ariete prototype's roof net (ghillieFleetSuits.ts) is drawn up over every load stowed under it
+  // (ghillieDrape.ts). The fleet cargo's twin-can cradle found its seat on the turret roof's rear left and stands 0.45 m:
+  // the net drawn up over it rose into an arch off the roof beside the commander's sight, open underneath. The cradle
+  // keeps its other seats (the bustle, the deck, the turret side, the fender), never the roof under the net.
+  if (spec.id === 'c2_ariete_proto') return manifest.map((row) => (row.kit === 'cargo' && row.v?.v === 'twin-can-cradle'
+    && row.slot[0] === 'fleetCargo' && row.slot[1].routes
+    ? { ...row, slot: ['fleetCargo', { ...row.slot[1], routes: row.slot[1].routes.filter(([slot]) => slot !== 'turretRoof') }] }
+    : row));
   return manifest;
 }
 
@@ -3681,6 +3701,17 @@ const REAR_RACK_FOOT = 0.045;
 const SIDE_CLEAR_M = 0.008;
 /** ...and a ledge reaches at most this far past the probed wall to give it that (m). */
 const SIDE_PUSH_MAX_M = 0.32;
+/** How far a hung load walks along the turret side from its station to find a wall for both ledge arms (m; 227). */
+const LEDGE_WALK_M = [0.08, 0.16, 0.24, 0.32];
+/**
+ * 2026-10-22 (240, the coordinator): vehicles another lane holds keep main's hung loads, with no arm slide and no walk,
+ * until that lane lands and takes the re-seat. Drop an id to adopt it (its icons and hero card follow).
+ */
+const LEDGE_RESEAT_HELD: ReadonlySet<string> = new Set<string>([
+  // the held ids whose hung loads the re-seat moves (decor census, base 058ccfa242 vs this re-seat, 93 held ids)
+  'amx30b', 'hayate_ifv', 'm2a2_bradley', 'pt91a_twardy', 'puma_s1', 't64bv_donbas', 't72b_1987', 't72bu',
+  't72bu_1989', 't90a', 't90a_vladimir', 't90am', 't90m', 't90m_proryv', 't90sm_2013', 'ua_m2a3_bradley',
+]);
 
 /**
  * Turret-side carriage for a hung load (round 3, 2026-10-07), built in the piece's frame, where the turret wall lies
@@ -3693,29 +3724,26 @@ const SIDE_PUSH_MAX_M = 0.32;
  * moved dock seat the PT-91 Twardy's cleat crossed another piece and two Leopard 2A4 cleats stood clear of the wall. The
  * cleat now goes down the wall to where it is, or onto the arm's foot plate where only the foot has the wall; an arm
  * with no wall behind it at all makes no ledge (null), and the side slot tries its next station.
+ *
+ * 2026-10-17 (227): such an arm first slides in along the load to where the wall is, so the load keeps its station.
  */
 function sideLedgeParts(bb: THREE.Box3, wallZ: number, detail: 0 | 1, webbingRgb: RGB, load: THREE.Mesh[] = [],
-  wallAt?: (x: number, y: number) => { p: THREE.Vector3; n: THREE.Vector3 } | null): DecorPart[] | null {
+  wallAt?: (x: number, y: number) => { p: THREE.Vector3; n: THREE.Vector3 } | null, slide = true): DecorPart[] | null {
   const parts: DecorPart[] = [];
-  let seated = true;
   // round 4 (wave 217: racks of "flat pure-black square bars with no brackets, bolts or shading"): angle-stock arms in
   // shaded steel, the wall plates bolted, and the strap laid over the load's own surfaces (tiePath) where they answer
-  const steel = (geo: THREE.BufferGeometry) => parts.push({ mat: 'steel', geo: bakeShade(geo, RACK_STEEL_TONE) });
   const len = bb.max.x - bb.min.x;
   const arms = len > 0.5 ? [bb.min.x + len * 0.2, bb.max.x - len * 0.2] : [(bb.min.x + bb.max.x) / 2];
   const top = bb.max.y;
-  for (const x of arms) {
+  // One arm, its foot plate, strap and cleat at x; null where the wall is behind it nowhere from the foot up.
+  const arm = (x: number): DecorPart[] | null => {
+    const own: DecorPart[] = [];
+    const steel = (geo: THREE.BufferGeometry) => own.push({ mat: 'steel', geo: bakeShade(geo, RACK_STEEL_TONE) });
     // round 5: the wall foot lies on the wall where the slot finds it behind the arm (a leaning or curved turret side
     // tilts and moves it, a bin or a cloth cover stands it out), not on a plane at wallZ, below the arm's flange (the
     // load rests against the wall above it); the arm runs from that foot out under the load
     const wall = wallAt?.(x, -0.045) ?? null;
     const z0 = wall ? wall.p.z : wallZ;
-    const reach = Math.max(0.06, bb.max.z + 0.02 - z0);
-    steel(angleStock(reach, 'z', x, z0 + reach / 2, 1, 0.03));                        // arm under the load
-    steel(place(block(0.03, 0.05, 0.008), x, 0.025, z0 + reach - 0.004));             // upturned tip
-    steel(footPlate(x, -0.045, z0, 0.06, 0.08, detail, wall?.n ?? null));             // wall foot plate, bolted
-    if (detail) steel(roundBar([x, -0.075, z0 + 0.008], [x, -0.012, z0 + reach * 0.7], 0.009, 6)); // gusset strut
-    const band = (geo: THREE.BufferGeometry) => parts.push({ mat: 'cans', geo: bakeTint(geo, webbingRgb[0], webbingRgb[1], webbingRgb[2], 0.25) });
     const path = load.length ? tiePath(load, 'z', x, Math.max(z0, bb.min.z), bb.max.z, top) : null;
     // the wall cleat on the wall at the strap's height; the strap runs from it to the load's back edge and over. Where
     // the wall is not there at that height (the roof edge falls away above a tall load, a fitting stands out of it) the
@@ -3727,11 +3755,17 @@ function sideLedgeParts(bb: THREE.Box3, wallZ: number, detail: 0 | 1, webbingRgb
       if (cleatWall) cleatY = y;
     }
     // no wall anywhere above the arm's foot: the strap is made off at the foot plate where the foot is on the wall; an
-    // arm with no wall behind it at all makes no ledge
+    // arm with no wall behind it at all is not built here
     if (wallAt && !cleatWall) {
-      if (wall) cleatY = -0.045;
-      else seated = false;
+      if (!wall) return null;
+      cleatY = -0.045;
     }
+    const reach = Math.max(0.06, bb.max.z + 0.02 - z0);
+    steel(angleStock(reach, 'z', x, z0 + reach / 2, 1, 0.03));                        // arm under the load
+    steel(place(block(0.03, 0.05, 0.008), x, 0.025, z0 + reach - 0.004));             // upturned tip
+    steel(footPlate(x, -0.045, z0, 0.06, 0.08, detail, wall?.n ?? null));             // wall foot plate, bolted
+    if (detail) steel(roundBar([x, -0.075, z0 + 0.008], [x, -0.012, z0 + reach * 0.7], 0.009, 6)); // gusset strut
+    const band = (geo: THREE.BufferGeometry) => own.push({ mat: 'cans', geo: bakeTint(geo, webbingRgb[0], webbingRgb[1], webbingRgb[2], 0.25) });
     const cleatZ = (cleatWall ? cleatWall.p.z : z0) + 0.01;
     const lowered = cleatY < strapY;
     if (path) {
@@ -3743,10 +3777,38 @@ function sideLedgeParts(bb: THREE.Box3, wallZ: number, detail: 0 | 1, webbingRgb
       band(place(block(0.035, top, 0.006), x, top / 2, bb.max.z + 0.003));                           // down the outer face
     }
     steel(place(block(0.05, 0.03, 0.02), x, cleatY, cleatZ));                           // wall cleat
+    return own;
+  };
+  // 2026-10-17 (227, VEH-01 step 1): an arm with no wall behind it slides in along the load, 3 cm at a time, to the
+  // first place the wall is (a turret side that ends, steps in or carries a gap under the load's end), so the load is
+  // carried on the wall it has instead of losing its station (fa5f7028e had stopped placing 8 such loads). A pair's
+  // arms stay on their own half, at least 0.16 m apart; a lone arm looks both ways. Where the wall is behind no part
+  // of the arm's range the ledge is still not made (null), and the side slot tries its next station.
+  const mid = (bb.min.x + bb.max.x) / 2;
+  const placed: number[] = [];
+  for (const x0 of arms) {
+    let built = arm(x0);
+    let at = x0;
+    if (!built && wallAt && slide) {
+      const toward = arms.length > 1 ? Math.sign(mid - x0) : 0;
+      const limit = arms.length > 1 ? Math.abs(mid - x0) - 0.08 : len / 2 - 0.04;
+      for (let d = 0.03; !built && d <= limit + 1e-6; d += 0.03) {
+        for (const s of toward ? [toward] : [-1, 1]) {
+          const x = x0 + s * d;
+          if (placed.some((p) => Math.abs(p - x) < 0.16)) continue;
+          built = arm(x);
+          if (built) { at = x; break; }
+        }
+      }
+    }
+    if (!built) {
+      for (const part of parts) part.geo.dispose();
+      return null;
+    }
+    placed.push(at);
+    parts.push(...built);
   }
-  if (seated) return parts;
-  for (const part of parts) part.geo.dispose();
-  return null;
+  return parts;
 }
 
 // Round 3 (2026-10-07). The 5-point seat above seats a piece at the MAX height under a probe pattern capped at 0.42 m
@@ -6172,51 +6234,78 @@ export function* attachTankDecorationsSteps(
         // wall. Its turret prober falls back to the hull, so the side probe met a periscope dome on the roof and the
         // chest was hung on L-arms off it. A hung load needs a real turret wall; it goes on to its next route.
         if (hung && !turretTargets.length) { disposePartList(parts); return false; }
-        for (const z of sideStations) {
-          for (const yf of [0.35, 0.5]) {
-            const y = Math.max(0.18, pivotTopY() * yf);
-            const h = turP.side(y, z, side, W / 2 + 1);
-            if (!h || Math.abs(h.n.x) < 0.55) continue;
-            const candidate = clonePartList(parts);
-            const pos = V(h.p.x + side * out * 0.3, y - 0.06, z);
-            const rot = E(0, side > 0 ? Math.PI / 2 : -Math.PI / 2, (slotRng() - 0.5) * 0.1);
-            if (hung) {
-              // round 5: out until its back clears the turret's outermost surface behind it (sideClearance)
-              const push = sideClearance(bb, pos, rot, side);
-              if (push === null) { disposePartList(candidate); continue; }
-              pos.x += side * push;
-              const wallZ = -out * 0.3 - push;
-              // round 5: the wall behind each arm, probed at the arm's foot, in the piece's frame
-              const qr = new THREE.Quaternion().setFromEuler(rot), qi = qr.clone().invert();
-              const wallAt = (lx: number, ly: number): { p: THREE.Vector3; n: THREE.Vector3 } | null => {
-                const f = new THREE.Vector3(lx, ly, wallZ).applyQuaternion(qr).add(pos);
-                const hit = turP.side(f.y, f.z, side, W / 2 + 1);
-                if (!hit || Math.abs(hit.n.x) < 0.3) return null;
-                const p = hit.p.clone().sub(pos).applyQuaternion(qi);
-                // between a hand behind the probed wall and the load's own back (a bin or a cover stands out of it)
-                return p.z > wallZ - 0.12 && p.z < bb.min.z + 0.01 ? { p, n: hit.n.clone().applyQuaternion(qi).normalize() } : null;
-              };
-              const carry = (list: DecorPartList, detail: 0 | 1): boolean => {
-                for (let i = list.length - 1; i >= 0; i--) {
-                  if (list[i].role === 'pad') { list[i].geo.dispose(); list.splice(i, 1); }
-                }
-                const solid = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
-                // the strap rides the load's own surfaces, not the deck lashings a ledge drops (tieKept)
-                const load = list.filter((p) => p.role !== 'pad' && p.role !== 'lash').map((p) => new THREE.Mesh(p.geo, solid));
-                const ledge = sideLedgeParts(bb, wallZ, detail, webbingRgb, load, wallAt);
-                if (ledge) list.push(...ledge);
-                return !!ledge;
-              };
-              if (!carry(candidate, 1) || (candidate.coarse && !carry(candidate.coarse, 0))) { disposePartList(candidate); continue; }
+        // A hung load at station z: its ledge built against the wall (null where the clearance or the ledge fails).
+        const hangAt = (h: SurfaceHit, y: number, z: number, rot: THREE.Euler): { candidate: DecorPartList; pos: THREE.Vector3 } | 'clear' | 'ledge' => {
+          const pos = V(h.p.x + side * out * 0.3, y - 0.06, z);
+          // round 5: out until its back clears the turret's outermost surface behind it (sideClearance)
+          const push = sideClearance(bb, pos, rot, side);
+          if (push === null) return 'clear';
+          pos.x += side * push;
+          const wallZ = -out * 0.3 - push;
+          // round 5: the wall behind each arm, probed at the arm's foot, in the piece's frame
+          const qr = new THREE.Quaternion().setFromEuler(rot), qi = qr.clone().invert();
+          const wallAt = (lx: number, ly: number): { p: THREE.Vector3; n: THREE.Vector3 } | null => {
+            const f = new THREE.Vector3(lx, ly, wallZ).applyQuaternion(qr).add(pos);
+            const hit = turP.side(f.y, f.z, side, W / 2 + 1);
+            if (!hit || Math.abs(hit.n.x) < 0.3) return null;
+            const p = hit.p.clone().sub(pos).applyQuaternion(qi);
+            // between a hand behind the probed wall and the load's own back (a bin or a cover stands out of it)
+            return p.z > wallZ - 0.12 && p.z < bb.min.z + 0.01 ? { p, n: hit.n.clone().applyQuaternion(qi).normalize() } : null;
+          };
+          const candidate = clonePartList(parts);
+          const carry = (list: DecorPartList, detail: 0 | 1): boolean => {
+            for (let i = list.length - 1; i >= 0; i--) {
+              if (list[i].role === 'pad') { list[i].geo.dispose(); list.splice(i, 1); }
             }
-            if (commit(name, candidate, 'turret', pos, rot, placedTurret)) {
-              disposePartList(parts);
-              return true;
+            const solid = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+            // the strap rides the load's own surfaces, not the deck lashings a ledge drops (tieKept)
+            const load = list.filter((p) => p.role !== 'pad' && p.role !== 'lash').map((p) => new THREE.Mesh(p.geo, solid));
+            const ledge = sideLedgeParts(bb, wallZ, detail, webbingRgb, load, wallAt, !LEDGE_RESEAT_HELD.has(spec.id));
+            if (ledge) list.push(...ledge);
+            return !!ledge;
+          };
+          if (!carry(candidate, 1) || (candidate.coarse && !carry(candidate.coarse, 0))) { disposePartList(candidate); return 'ledge'; }
+          return { candidate, pos };
+        };
+        const seatOnSide = (): boolean => {
+          for (const z of sideStations) {
+            for (const yf of [0.35, 0.5]) {
+              const y = Math.max(0.18, pivotTopY() * yf);
+              const h = turP.side(y, z, side, W / 2 + 1);
+              if (!h || Math.abs(h.n.x) < 0.55) continue;
+              const rot = E(0, side > 0 ? Math.PI / 2 : -Math.PI / 2, (slotRng() - 0.5) * 0.1);
+              if (!hung) {
+                if (commit(name, clonePartList(parts), 'turret', V(h.p.x + side * out * 0.3, y - 0.06, z), rot, placedTurret)) return true;
+                continue;
+              }
+              const at = hangAt(h, y, z, rot);
+              if (at === 'clear') continue;
+              if (at !== 'ledge') {
+                if (commit(name, at.candidate, 'turret', at.pos, rot, placedTurret)) return true;
+                continue;
+              }
+              // 2026-10-17 (227, VEH-01 step 1): the wall behind the station does not carry both arms (the turret side
+              // ends or steps in under the load's end). The load walks along the side, 8 cm at a time toward the
+              // turret's middle first, to where the wall carries it, with the same roll (no further draw), and each
+              // place it reaches takes the full commit guards; it keeps its station instead of being dropped (fa5f7028e).
+              if (LEDGE_RESEAT_HELD.has(spec.id)) continue;
+              const toward = z < 0 ? 1 : -1;
+              for (const d of LEDGE_WALK_M) {
+                for (const dz of [toward * d, -toward * d]) {
+                  const hz = turP.side(y, z + dz, side, W / 2 + 1);
+                  if (!hz || Math.abs(hz.n.x) < 0.55) continue;
+                  const walked = hangAt(hz, y, z + dz, rot);
+                  if (walked === 'clear' || walked === 'ledge') continue;
+                  if (commit(name, walked.candidate, 'turret', walked.pos, rot, placedTurret)) return true;
+                }
+              }
             }
           }
-        }
+          return false;
+        };
+        const seated = seatOnSide();
         disposePartList(parts);
-        return false;
+        return seated;
       },
       turretSidePlate(args, parts, name) {
         const side = args.side ?? 1;

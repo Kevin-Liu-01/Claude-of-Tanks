@@ -78,6 +78,14 @@ function skirts(z0: number, z1: number, top: number, drop: number, out: number, 
     drop + (k % 2 ? -0.04 : 0.03), out, seed + 6 * k, {}, cutsFor));
 }
 
+/**
+ * The M1A2 X hulls' open net (2026-10-22, lane 240; critic: "camo-net patches on the skirts show a dark rectangular
+ * backing"). The issue field net is about 69 % olive cloth between its holes: hung over the sand ARAT skirts, each drape
+ * read as a dark rectangle with the boughs on it. At 0.55 of the garnish density the cloth covers about a third of the
+ * net, so the skirts' paint shows through the cord between the bunches and the boughs carry the cover.
+ */
+const M1A2_X_OPEN_NET = { netStripDensity: 0.55 } as const;
+
 /** A box [z0, z1, yLo, yHi] a flank drape is cut away over. */
 const cut = (z0: number, z1: number, lo: number, hi: number): readonly [number, number, number, number] => [z0, z1, lo, hi];
 
@@ -246,7 +254,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // flanks over the ARAT tiles outboard of the cage, a rear drape; both decks netted (the driver's hatch, the gun's arc
   // and the exhaust end bare), four drapes a side over the skirts.
   ua_m1a2_abrams: {
-    id: 'ua_m1a2_abrams', seed: 1103, style: 'leafy', ...DENSE, ...WOODLAND,
+    id: 'ua_m1a2_abrams', seed: 1103, style: 'leafy', ...DENSE, ...WOODLAND, ...M1A2_X_OPEN_NET,
     fieldClearanceM: 0.03, maxHalfWidth: 2.22, hemFloorM: 0.7,
     turret: {
       top: [
@@ -637,7 +645,7 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   // drapes down the flanks over the ARAT, a rear drape over the bustle rack; the UA Abrams' hull frame exactly (both
   // decks netted, the driver's hatch and the exhaust end bare), four drapes a side over the ARAT skirts.
   m1a2_abrams_tusk: {
-    id: 'm1a2_abrams_tusk', seed: 1305, style: 'leafy', ...DENSE, ...WOODLAND,
+    id: 'm1a2_abrams_tusk', seed: 1305, style: 'leafy', ...DENSE, ...WOODLAND, ...M1A2_X_OPEN_NET,
     fieldClearanceM: 0.03, maxHalfWidth: 2.22, hemFloorM: 0.7,
     turret: {
       top: [laid({ x0: -1.82, x1: 1.70, z0: -3.15, z1: 1.62, nx: 44, nz: 60, y: 0.92, garnishRiseM: 0.16, seed: 11 })],

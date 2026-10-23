@@ -128,7 +128,7 @@ function isRecord(value: unknown): value is JsonObject {
 
 export function cleanTelemetryText(value: unknown, max: number): string {
   // eslint-disable-next-line no-control-regex
-  return String(value ?? '').replace(/[\x00-\x1f\x7f]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, max);
+  return String(value ?? '').replace(/[\x00-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028-\u202e\u2066-\u2069\ufeff]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, max);
 }
 
 function boundedInt(value: unknown, max = 10_000_000): number | undefined {

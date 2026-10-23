@@ -1,8 +1,8 @@
 // src/world/maps/regional/bengal.ts — the Bengal kit (Jade River Delta: a market village on a char of the braided
 // Jamuna). Homesteads raised on earthen plinths (bhiti) above the flood line: houses walled and roofed with corrugated
 // iron sheet — galvanised, rust-streaked or painted — under four-slope (char-chala) or two-slope roofs, a third of the
-// small ones walled in bamboo and jute stick plastered with mud under a four-slope rice-straw thatch; a veranda (dawa) on
-// bamboo posts closed at its ends by sheet or woven bamboo mat screens, its mud steps down to the yard, the doors in carved frames under their lintel boards, the windows
+// small ones walled in bamboo and jute stick plastered with mud under a two-slope (do-chala) rice-straw thatch; a veranda (dawa) on
+// bamboo posts closed at its ends by sheet or mud screens, its mud steps down to the yard, the doors in carved frames under their lintel boards, the windows
 // in timber casings with iron grilles and plank shutters; the bari's yards fenced in bamboo round the rice granary and
 // the kitchen garden, the hand pump on its platform, the cow-dung cakes drying on a wall, the clay water pots, a bicycle;
 // the bazaar's long tin sheds on posts with shuttered stalls; brick shops with a flat roof, a corbelled cornice over
@@ -10,8 +10,8 @@
 // clay-and-bamboo rice granaries (gola) under conical thatch; the river ghat's boat sheds.
 import { PartSink, alongPlot, faceBox, facePoint, pick, plotAxes, rgb, shade, type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3 } from './geometry.ts';
 import { bevelSpan, orientedPrism } from './millWorks.ts';
-import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
-import { corrugatedCladding, matCladding } from './villageCraft.ts';
+import { buildHouse, emitRoof, roofGeometry, storeyFaces, windowRhythm, type HoleRect, type HouseDialect, type HouseFrame, type Opening, type RoofSpec } from './house.ts';
+import { corrugatedCladding } from './villageCraft.ts';
 import { doorUnit, rollerDoor, windowUnit, type WindowStyle } from './openings.ts';
 import { BAMBOO_MAT, GALVANISED, PAINTED_SHEET, RUSTED, WEATHERED_PLANK, ladder, veranda } from './vernacular.ts';
 import { dentilCornice, facadeOn, facadeRng, faceSlab, hash01, pilaster, plinthPaint, trimRun, windowHead } from './facade.ts';
@@ -20,8 +20,8 @@ import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from '.
 import { bengalBazaar } from './marketKits.ts'; // props #23: the char bazaar
 
 const SHUTTERS: readonly Rgb[] = [0x3f6f9a, 0x4f8a62, 0x8a4a3a, 0x6a5a46].map(rgb);
-/** the bamboo of the posts, the rafters and the screens' poles, and the woven mat (bera) */
-const BAMBOO = rgb(0x9a8a62), MAT_TONE = BAMBOO_MAT;
+/** the bamboo of the posts and the rafters */
+const BAMBOO = rgb(0x9a8a62);
 /** terracotta: the water pots */
 const TERRACOTTA: readonly Rgb[] = [0x8a5a44, 0x7a4e3a, 0x946650].map(rgb);
 /** the hand pumps' paint: a municipal green, a rust-brown, a dull grey */
@@ -30,6 +30,25 @@ const PUMP_IRON: readonly Rgb[] = [0x2f5a3e, 0x5a3a2a, 0x4a4e52].map(rgb);
 const ENAMEL: readonly Rgb[] = [0x141414, 0x1f3a2a, 0x4a1a1a].map(rgb);
 /** the veranda's depth, from the wall to the post line */
 const VERANDA_D = 1.5;
+/** (maps-stalled 240, r2's blind: the do-chala's gable "an oversized blank mud wall") the gable's vent: its opening's size
+ *  and its middle's height as a share of the gable's rise */
+const DO_CHALA_VENT = { w: 0.8, h: 0.44, at: 0.38 };
+
+/** The do-chala gable's vent (HouseDialect.gableOpenings): a square hole under the ridge, cut on every tier (the phones'
+ *  solids are the desktop's), where the gable stands tall and wide enough to hold it with a hand of mud round it. */
+const doChalaVent = (_face: Face, poly: Array<[number, number]>, frame: HouseFrame): HoleRect[] => {
+  const vent = doChalaVentRect(poly, frame);
+  return vent ? [vent] : [];
+};
+function doChalaVentRect(poly: ReadonlyArray<readonly [number, number]>, frame: HouseFrame): HoleRect | null {
+  const y0 = Math.min(...poly.map(([, y]) => y)), apex = Math.max(...poly.map(([, y]) => y)), hw = Math.max(...poly.map(([u]) => u));
+  const rise = apex - y0;
+  if (rise < 1.0 || frame.roof.ridgeY - frame.eaveY < 1.0) return null;
+  const vy = y0 + rise * DO_CHALA_VENT.at, top = vy + DO_CHALA_VENT.h / 2;
+  // the gable's half-width at the vent's head, the rake falling straight from the apex
+  if (hw * (apex - top) / rise < DO_CHALA_VENT.w / 2 + 0.15) return null;
+  return { u0: -DO_CHALA_VENT.w / 2, u1: DO_CHALA_VENT.w / 2, y0: vy - DO_CHALA_VENT.h / 2, y1: top };
+}
 
 function uvOffset(ctx: RegionalBuildContext): [number, number] {
   return [ctx.rng() * 7.31, ctx.rng() * 5.17];
@@ -100,22 +119,27 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
   };
   const front = turned ? 'left' : 'front';
   const openings: Opening[] = [
-    { face: front, storey: 0, kind: 'door', u: (turned ? D : W) * 0.15, w: 0.9, y0: 0, h: 1.95 },
+    // (r2) a mud house's door lower, under a plain lintel (the critic: its veranda roof ran into the carved head)
+    { face: front, storey: 0, kind: 'door', u: (turned ? D : W) * 0.15, w: 0.9, y0: 0, h: thatched ? 1.75 : 1.95 },
+    // (r2, the critic: "a blank plaster box") a window in the back wall too, its rear half left to the dung cakes
+    { face: 'back', storey: 0, kind: 'window', u: W * 0.24, w: 0.7, y0: 0.95, h: 0.7 },
     { face: 'front', storey: 0, kind: 'window', u: -W * 0.25, w: 0.7, y0: 0.95, h: 0.7 },
     { face: 'right', storey: 0, kind: 'window', u: -D * 0.2, w: 0.7, y0: 0.95, h: 0.7 },
     { face: 'right', storey: 0, kind: 'window', u: D * 0.2, w: 0.7, y0: 0.95, h: 0.7 },
     { face: 'left', storey: 0, kind: 'window', u: turned ? -D * 0.22 : 0, w: 0.7, y0: 0.95, h: 0.7 },
   ].filter((o, _i, all) => !(o.kind === 'window' && all.some((q) => q !== o && q.kind === 'door' && q.face === o.face && Math.abs(q.u - o.u) < 1.0))) as Opening[];
   // (the lift) deep eaves on bamboo rafters: the sheet's 0.7 m, the thatch's 0.75 m and a hand thick, its ridge rolled
-  // (a thatch is always the char-chala's four slopes; its eave one thick course, no course lips up the slope: lips a metre
-  // apart read as shingles in the round-1 pair)
-  const kind: RoofSpec['kind'] = rng() < 0.6 || thatched ? 'hip' : 'gable', pitch = rng();
+  // (a thatch is the do-chala's two slopes, the Bengal hut's own (r2: the four-slope's hip corners read as a jagged chunk);
+  // its eave one thick course, no course lips up the slope: lips a metre apart read as shingles in the round-1 pair)
+  const kindRoll = rng(), pitch = rng();
+  const kind: RoofSpec['kind'] = thatched ? 'gable' : kindRoll < 0.6 ? 'hip' : 'gable';
   const roof: RoofSpec = thatched
     ? { kind, pitchDeg: 34 + pitch * 6, eave: 0.75, verge: 0.6, thickness: 0.3, bucket: 'straw', ridge: 'round', thatch: 'nipa' }
     : { kind, pitchDeg: 24 + pitch * 6, eave: 0.7, verge: 0.6, thickness: 0.06, bucket: 'structureMetal', ridge: 'saddle' };
   const roofLivery = sheetColour(rng);
   const deck = plinth + 0.16;
   const dialect: HouseDialect = {
+    ...(thatched && kind === 'gable' ? { gableOpenings: doChalaVent } : {}),
     window: (s, face, o, y0) => windowUnit(s, face, o.u, y0 + o.y0, o.w, o.h, style, rng, 0.3),
     door: (s, face, o, y0) => {
       // (the lift) the door in its carved frame: the big homestead's panelled leaf, a small house's planks; the mud steps
@@ -123,7 +147,8 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
       // board over the frame (the facade craft)
       doorUnit(s, face, o.u, y0 + o.y0, o.w, o.h, { leaf: big ? shade(frame, 0.78) : shutter, frame: { bucket: 'structureWood', width: 0.12, out: 0.06, colour: casing },
         steps: { bucket: 'plaster3', start: VERANDA_D, rise: 0.24, tread: 0.3 }, leafKind: big ? 'panel' : 'plank' }, deck);
-      if (facadeOn()) {
+      if (facadeOn() && thatched) windowHead(s, face, o.u, y0 + o.y0 + o.h + 0.12, o.w + 0.24, { kind: 'lintel', bucket: 'structureWood', h: 0.1, out: 0.06, ext: 0.05, colour: shade(frame, 0.82) });
+      else if (facadeOn()) {
         const hy = y0 + o.y0 + o.h + 0.12;
         windowHead(s, face, o.u, hy, o.w + 0.24, { kind: 'hood', bucket: 'structureWood', h: 0.18, out: 0.075, ext: 0.06, colour: shade(frame, 0.82) });
         // the lintel's carving: a lozenge between two leaves cut on its frieze (near joinery)
@@ -158,6 +183,7 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
       }
     } finally { sink.paint = prior; }
   }
+  if (thatched && kind === 'gable') doChalaGables(sink, hf!);
   // the bhiti's edge slumped: a skirt of mud from its top edge out and down to the ground round it
   sink.dressing(mobile, () => {
     // (Lane C 2026-10-16, regionalArchitecture's ray audit: the skirt's quads were wound inward) each wound to face out and up
@@ -174,7 +200,7 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
   // (the lift) the veranda on round bamboo posts under a lean-to of the house's own covering, passing under its eave
   const lean = veranda(sink, frontFace, plinth, plinth + wallH - 0.1, width, VERANDA_D, BAMBOO,
     thatched ? { bucket: 'straw', thatch: 'nipa' } : { bucket: 'structureMetal', colour: verandaRoof }, false,
-    { eaveY: hf!.eaveY, eave: roof.eave, tanP: hf!.roof.tanP }, { round: true });
+    { eaveY: hf!.eaveY, eave: roof.eave, tanP: hf!.roof.tanP }, { round: true, ...(thatched ? { thickness: 0.2 } : {}) });
   verandaScreens(sink, frontFace, width, deck, lean.highY, lean.plateTop, lean.postTop, mobile, thatched ? null : { livery, frame });
   if (facadeOn()) homestead(sink, hf!, frontFace, { W, D, plinth, deck, bOut, width, big, thatched, door: openings[0] });
 }
@@ -182,15 +208,45 @@ function tinHouseBody(sink: PartSink, ctx: RegionalBuildContext, rng: () => numb
 /**
  * The veranda's ends closed by screens (the lift; the integrity census read the open raised veranda as sky through the
  * house, bengal/farmhouse gap 0 -> 1.38 m² on 226): on a sheet house the house's own corrugated sheets on their posts
- * and plate, on a mud house woven bamboo mat in its poles; from the deck to the post heads between the wall and the end
- * post, seen from outside and from the veranda, and over it the piece up to the lean-to's underside. Its draws are none;
- * a phone builds the panels without their ribs or weave.
+ * and plate, seen from outside and from the veranda; on a mud house a mud wall a hand thick (r2, the critic: its woven mat
+ * on the timber tile read as a plank cabin); from the deck to the post heads between the wall and the end post, and over
+ * it the piece up to the lean-to's underside. Its draws are none; a phone builds the sheets without their ribs.
  */
+function doChalaGables(sink: PartSink, hf: HouseFrame): void {
+  const poly = hf.roof.gable;
+  if (!poly) return;
+  const y0 = Math.min(...poly.map(([, y]) => y)), apex = Math.max(...poly.map(([, y]) => y)), hw = Math.max(...poly.map(([u]) => u));
+  const vent = doChalaVentRect(poly, hf), pole = shade(BAMBOO, 0.82), slat = shade(BAMBOO, 0.92);
+  // the tie's height and its half-length inside the rakes there, a hand short of them
+  const tie = y0 + 0.18, tieHalf = hw * (apex - tie) / (apex - y0) - 0.1;
+  for (const name of ['front', 'back'] as const) {
+    const face = hf.faces[name];
+    // the gable's bamboo frame on its mud: the tie across its foot (clear of the veranda's thatch where it meets the wall)
+    // and the king post up to the vent
+    faceBox(sink, 'structureWood', face, 0, tie, 0.03, 2 * tieHalf, 0.1, 0.1, { colour: pole, decor: true });
+    if (!vent || vent.y0 - tie < 0.2) continue;
+    faceBox(sink, 'structureWood', face, 0, (tie + 0.05 + vent.y0) / 2, 0.03, 0.08, vent.y0 - tie - 0.05, 0.08, { colour: pole, decor: true });
+    // the vent's bamboo lattice set back in its reveal: four upright slats and a rail through them
+    const vh = vent.y1 - vent.y0, vy = (vent.y0 + vent.y1) / 2, back = -hf.gableReveal * 0.5;
+    for (const u of [-0.27, -0.09, 0.09, 0.27]) faceBox(sink, 'structureWood', face, u, vy, back, 0.045, vh, 0.03, { colour: slat, decor: true, fine: true });
+    faceBox(sink, 'structureWood', face, 0, vy, back + 0.02, vent.u1 - vent.u0, 0.04, 0.03, { colour: pole, decor: true, fine: true });
+  }
+}
+
 function verandaScreens(sink: PartSink, front: Face, width: number, deck: number, highY: number, plateTop: number, postTop: number, mobile: boolean,
   tin: { livery: (k: number) => Rgb; frame: Rgb } | null): void {
-  const L = VERANDA_D - 0.1 - 0.07;
+  const L = VERANDA_D - 0.1 - 0.07, panelTop = postTop - 0.02;
+  const atL = highY + (plateTop - 0.01 - highY) * L / (VERANDA_D - 0.1);
   for (const s of [-1, 1] as const) {
     const uEnd = s * (width / 2 - 0.12);
+    if (!tin) {
+      // the mud wall: its slab from the deck to the lean-to's underside, its top falling with the roof (one prism, every
+      // face drawn), in the walls' own mud
+      const T = 0.1, at = (t: number, y: number): Vec3 => facePoint(front, uEnd - s * T / 2, y, t);
+      orientedPrism(sink, 'plaster2', [at(0, deck - 0.04), at(L, deck - 0.04), at(L, Math.max(panelTop + 0.01, atL - 0.02)), at(0, highY - 0.03)],
+        [front.u[0] * s, 0, front.u[2] * s], T, { decor: true });
+      continue;
+    }
     for (const side of [1, -1] as const) {
       // the screen's outer face (side 1: out of the veranda's end) and its inner face (side -1: into the veranda)
       const out: Vec3 = [front.u[0] * s * side, 0, front.u[2] * s * side];
@@ -199,15 +255,11 @@ function verandaScreens(sink: PartSink, front: Face, width: number, deck: number
       const face: Face = { origin: [mid[0], 0, mid[2]], u, out, width: L };
       // the face's u of a depth t out from the wall
       const fu = (t: number): number => (t - L / 2) * (u[0] * front.out[0] + u[2] * front.out[2]);
-      const panelTop = postTop - 0.02;
-      if (tin) corrugatedCladding(sink, face, { u0: -L / 2, u1: L / 2, y0: deck, y1: panelTop }, [], tin.livery, tin.frame, { mobile, casings: false });
-      else matCladding(sink, face, { u0: -L / 2, u1: L / 2, y0: deck, y1: panelTop }, [], (k) => shade(MAT_TONE, 0.84 + hash01(k, uEnd, side, 2.9) * 0.2), shade(BAMBOO, 0.88),
-        { mobile, bay: 0.8 });
-      // the mat over it, up to the lean-to's underside (from highY at the wall down to the plate over the post line)
-      const atL = highY + (plateTop - 0.01 - highY) * L / (VERANDA_D - 0.1);
+      corrugatedCladding(sink, face, { u0: -L / 2, u1: L / 2, y0: deck, y1: panelTop }, [], tin.livery, tin.frame, { mobile, casings: false });
+      // the sheet over it, up to the lean-to's underside (from highY at the wall down to the plate over the post line)
       if (highY - 0.03 - panelTop > 0.04) {
-        faceSlab(sink, tin ? 'structureMetal' : 'structureWood', face, [[fu(0), panelTop], [fu(L), panelTop], [fu(L), Math.max(panelTop + 0.01, atL - 0.02)], [fu(0), highY - 0.03]], 0.002, tin ? 0.012 : 0.016,
-          { colour: tin ? tin.livery(-1) : shade(MAT_TONE, 0.9) });
+        faceSlab(sink, 'structureMetal', face, [[fu(0), panelTop], [fu(L), panelTop], [fu(L), Math.max(panelTop + 0.01, atL - 0.02)], [fu(0), highY - 0.03]], 0.002, 0.012,
+          { colour: tin.livery(-1) });
       }
     }
   }
@@ -247,8 +299,8 @@ function homestead(sink: PartSink, hf: HouseFrame, front: Face, h: Homestead): v
   // the cow-dung cakes drying on the back wall (the face with no openings), low down
   if (f() < 0.6) {
     const back = faces.back;
-    const span = back.width / 2 - 0.4, a = -span + f() * span * 0.6, b = a + span * (0.9 + f() * 0.5);
-    dungCakes(sink, back, a, Math.min(span, b), h.plinth + 0.3, h.plinth + 0.3 + 0.81 + (f() < 0.5 ? 0.27 : 0), h.thatched ? 0.006 : 0.032);
+    const span = back.width / 2 - 0.4, a = -span + f() * span * 0.4, b = a + span * (0.9 + f() * 0.5);
+    dungCakes(sink, back, a, Math.min(h.W * 0.24 - 0.75, b), h.plinth + 0.3, h.plinth + 0.3 + 0.81 + (f() < 0.5 ? 0.27 : 0), h.thatched ? 0.006 : 0.032);
   }
   // the hand pump of the bari's tube well on its platform on the bhiti, by a back corner (one house of a bari has it)
   if (f() < (h.big ? 0.8 : 0.35)) {
@@ -539,9 +591,11 @@ export const BENGAL_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
     render: { kind: 'limewash', seed: 0x6b4e },
     tones: {
       plaster: (_h, s, l) => [0.12, Math.min(1, s * 0.25), Math.min(1, l * 1.25 + 0.1)],
-      plaster2: (_h, s, l) => [0.1, Math.min(1, s * 0.4 + 0.08), Math.min(1, l * 1.1 + 0.05)],
-      plaster3: (_h, s, l) => [0.075, Math.min(1, s * 0.6 + 0.18), Math.min(1, l * 0.78)],
-      straw: (h, s, l) => [h - 0.015, Math.min(1, s * 0.55), Math.min(1, l * 0.82)],
+      // (r2, the critic: "flat salmon-coloured slabs", "dark shingles") the mud walls a warm clay, the bhiti a grey-brown
+      // earth, the rice straw golden-grey as it weathers, not a timber brown
+      plaster2: (_h, s, l) => [0.09, Math.min(1, s * 0.45 + 0.12), Math.min(1, l * 0.96 + 0.02)],
+      plaster3: (_h, s, l) => [0.078, Math.min(1, s * 0.42 + 0.12), Math.min(1, l * 0.74)],
+      straw: (h, s, l) => [h - 0.008, Math.min(1, s * 0.6), Math.min(1, l * 0.98)],
     },
   },
   builders: BENGAL_BUILDERS,

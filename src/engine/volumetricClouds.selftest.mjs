@@ -344,7 +344,8 @@ for (const id of MAP_IDS) {
 assert.deepEqual(table, {
   verdant: { regime: 'fair-weather-cumulus', coverage: 0.51, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.45, cirrus: 0.12, farBand: 0.25, contrails: 2, rain: 0, virga: 0, fogBank: 0 },
   desert: { regime: 'cumulus-humilis', coverage: 0.14, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.5, farBand: 0.15, contrails: 2, rain: 0.3, virga: 0.85, fogBank: 0 },
-  winter: { regime: 'stratocumulus-deck', coverage: 0.92, baseM: 700, thicknessM: 420, shadow: false, streets: 0.2, cirrus: 0, farBand: 0.6, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
+  // (2026-10-22, world-polish-240: Frosthollow off its closed deck onto the owner's fair-weather cumulus)
+  winter: { regime: 'fair-weather-cumulus', coverage: 0.5, baseM: 1200, thicknessM: 760, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   // (2026-10-15: Steinburg's altocumulus, a broken 0.60 cell layer, moved to Verdant's cumulus — the coordinator's ruling)
   urban: { regime: 'fair-weather-cumulus', coverage: 0.38, baseM: 1400, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.3, farBand: 0.25, contrails: 4, rain: 0, virga: 0, fogBank: 0 },
   coastal: { regime: 'sea-streets', coverage: 0.32, baseM: 1100, thicknessM: 600, shadow: true, streets: 0.75, cirrus: 0.08, farBand: 0.65, contrails: 0, rain: 0, virga: 0, fogBank: 0.45 },
@@ -358,6 +359,7 @@ assert.deepEqual(table, {
   // (2026-10-13, the owner: "no more of the cloud type depicted in fjord" — fjord, polders and copper_mesa leave the broken
   // stratocumulus deck for Verdant's fair-weather cumulus tuned to their place; cloudsBan.selftest.mjs keeps it out)
   fjord: { regime: 'fair-weather-cumulus', coverage: 0.38, baseM: 1100, thicknessM: 760, shadow: true, streets: 0.4, cirrus: 0.15, farBand: 0.35, contrails: 0, rain: 0, virga: 0, fogBank: 0.4 },
+  // (2026-10-22, world-polish-240: the Delta's towering row read as a grey deck; fair-weather cumulus, some built taller)
   delta: { regime: 'towering-cumulus', coverage: 0.38, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3, contrails: 0, rain: 0.45, virga: 0.1, fogBank: 0 },
   badlands: { regime: 'cumulus-humilis', coverage: 0.18, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.35, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.9, fogBank: 0 },
   // (233: Monsoon's congestus at 2 km under the front's wind and rain — the front's 4.8 km towers drew a translucent box)
@@ -365,7 +367,9 @@ assert.deepEqual(table, {
   alpine: { regime: 'towering-cumulus', coverage: 0.26, baseM: 1900, thicknessM: 900, shadow: true, streets: 0, cirrus: 0.3, farBand: 0.5, contrails: 0, rain: 0.15, virga: 0.1, fogBank: 0 },
   caldera: { regime: 'cumulus-humilis', coverage: 0.22, baseM: 1500, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.45, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.85, fogBank: 0 },
   // (2026-10-18, the SKY lane's 228 census: Ironworks back on cumulus — the approved s146's lumpy cumulus over blue)
-  foundry: { regime: 'fair-weather-cumulus', coverage: 0.71, baseM: 1100, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
+  // (2026-10-22, world-polish-240: Ironworks' 0.71 field at 1100 m closed into a grey deck; 0.55 at 1350 m)
+  foundry: { regime: 'fair-weather-cumulus', coverage: 0.55, baseM: 1350, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
+  // (2026-10-22, world-polish-240: Ruinspires' smeared grey masses at 1100 m; Verdant's height, a little virga)
   ruinspires: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1100, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0.25, virga: 0.6, fogBank: 0 },
   // (2026-10-15: Suzhou Creek's ash veil, a low broken cell deck, moved to Verdant's cumulus — the 10-13 ruling on every map)
   blackglass: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1250, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
@@ -422,7 +426,10 @@ assert.deepEqual(table, {
   assert.deepEqual([monsoon.clearRadiusM, monsoon.anvil, monsoon.scud > 0, monsoon.towers, monsoon.typeRange, monsoon.fieldMix], [2500, 1, true, 1, [0.65, 1], 0.9], 'the front: wide masses of the broad field, clustered towers, anvils, scud, the sky over the camera open');
   const whiteout = deriveCloudLayerPreset(skyOf('whiteout'));
   assert.ok(whiteout.stratiform >= CLOUD_LAYER_RULES.sheetStratiform && whiteout.baseM === 180 && whiteout.fieldMix >= 0.8 && whiteout.scud === 0, 'whiteout: a closed ceiling, no rags at the camera');
-  const winter = deriveCloudLayerPreset(skyOf('winter'));
+  // (2026-10-22, world-polish-240: Frosthollow went onto the owner's cumulus — its row above) the stratocumulus deck's
+  // identity on its old block, the regime's closed deck as the map drew it until then
+  const winterDeckSky = { ...skyOf('winter'), cloudscape: { regime: 'stratocumulus-deck', coverage: 0.92, nightGlow: 0.3, nightGlowHex: 0xffc080, deckBeam: 0.4 } };
+  const winter = deriveCloudLayerPreset(winterDeckSky);
   assert.ok(winter.stratiform < CLOUD_LAYER_RULES.sheetStratiform && winter.typeRange[1] <= 0.45 && winter.coverage >= 0.8, 'winter: a lumpy closed deck, not a flat sheet');
   // round 76: the deck identities — winter's cells and transmitted lighting, foundry's and railyard's industrial
   // stratocumulus low under a smoggy horizon with a warm / dirty base tint, urban's altocumulus; whiteout keeps
@@ -441,14 +448,15 @@ assert.deepEqual(table, {
   const foundry = deriveCloudLayerPreset(skyOf('foundry'));
   // (2026-10-18, the 228 census: Ironworks under fair-weather cumulus — no deck structure, its clouds cast their shadows;
   // the smog keeps its warm-grey albedo on the cumulus)
-  assert.deepEqual([foundry.regime, foundry.cells, foundry.deckLight, foundry.shadow, foundry.baseM], ['fair-weather-cumulus', 0, 0, true, 1100], 'foundry: fair-weather cumulus, no deck');
+  // (2026-10-22, world-polish-240: the field at 0.55 under a 1350 m base)
+  assert.deepEqual([foundry.regime, foundry.cells, foundry.deckLight, foundry.shadow, foundry.baseM], ['fair-weather-cumulus', 0, 0, true, 1350], 'foundry: fair-weather cumulus, no deck');
   assert.ok(foundry.tint[0] > foundry.tint[2] && foundry.tint[0] > 0.75, 'foundry: the smog rides on the cumulus as a warm-grey albedo');
   const railyard = deriveCloudLayerPreset(skyOf('railyard'));
   // (2026-10-16: Cinder Junction under hazy fair-weather cumulus everywhere — no deck structure, its clouds cast their shadows)
   assert.deepEqual([railyard.regime, railyard.cells, railyard.deckLight, railyard.shadow], ['fair-weather-cumulus', 0, 0, true], 'railyard: fair-weather cumulus, no deck');
   // (2026-10-18, the s187 bisect) at sunset a deck keeps a grey albedo at the evening tint's level (Frosthollow's approved
   // grey evening sheet); an evening cumulus keeps the warm tint on its sunward faces
-  const evening = (id) => deriveCloudLayerPreset({ ...skyOf(id), sunElevationDeg: 7, skyIntensity: 0.72, cloudTintHex: 0xeab492 });
+  const evening = (id) => deriveCloudLayerPreset({ ...(id === 'winter' ? winterDeckSky : skyOf(id)), sunElevationDeg: 7, skyIntensity: 0.72, cloudTintHex: 0xeab492 });
   const wEve = evening('winter'), vEve = evening('verdant');
   // (229) a quarter of the evening tint's own hue over the grey: warm, at the tint's level, far from the tint itself
   const lumOf = (t) => 0.2126 * t[0] + 0.7152 * t[1] + 0.0722 * t[2];
@@ -468,6 +476,7 @@ assert.deepEqual(table, {
   assert.equal(+(coastal.windDirRad * 180 / Math.PI).toFixed(3), 190);
   assert.equal(+(coastal.cirrusAngleRad - coastal.windDirRad).toFixed(5), +CLOUD_LAYER_RULES.cirrusVeerRad.toFixed(5), 'the cirrus veers off the wind by the rule');
   // the towering regimes lean downwind by a share of their thickness; a lenticular cap is stationary and smooth
+  // (2026-10-22, world-polish-240: the Delta went onto fair-weather cumulus) the towering row's lean on its old block
   const delta = deriveCloudLayerPreset(skyOf('delta'));
   assert.equal(delta.shearM, 0.3 * 1500);
   const alpine = deriveCloudLayerPreset(skyOf('alpine'));

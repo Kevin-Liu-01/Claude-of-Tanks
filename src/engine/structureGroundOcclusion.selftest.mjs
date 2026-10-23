@@ -180,7 +180,8 @@ assert.match(layer, /deckBeam: clamp\(scape\.deckBeam \?\? 0, 0, 1\),/);
 
 // ---- 6. every map (2026-10-10: the owner's free hand lifted the protected maps): no map is held off by id
 assert.doesNotMatch(map, /PROTECTED_MAPS/, 'no per-map exclusion');
-assert.equal(getMapConfig('winter').clouds?.deckBeam, 0.4, 'Frosthollow\'s broken deck passes part of the beam');
+// (2026-10-22, world-polish-240: Frosthollow on the owner's cumulus — no deck, so no deck beam)
+assert.equal(getMapConfig('winter').clouds?.deckBeam, undefined, 'Frosthollow: cumulus, no deck beam');
 // (2026-10-16: Cinder Junction on cumulus — no deck, so no deck beam)
 assert.equal(getMapConfig('railyard').clouds?.deckBeam, undefined, 'Cinder Junction: cumulus, no deck beam');
 

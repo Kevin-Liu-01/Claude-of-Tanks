@@ -264,8 +264,8 @@ assert.deepEqual(['low', 'medium', 'high', 'ultra'].map(oceanFrameStride), [2, 2
     'group.userData.disposeWater = () => { disposeRipples?.(); disposeOcean(); };',
     'ocean?: OceanConfig;']) assert.ok(terrain.includes(line), `terrain: ${line}`);
   const seaMaps = MAP_IDS.filter((id) => { const c = getMapConfig(id); return c.splat?.seaLake && !c.terrain?.frozenMarshes; });
-  // 2026-10-05 (the map-revival lane): Suzhou Creek (blackglass) carries a water sheet
-  assert.deepEqual(seaMaps.sort(), ['autumn', 'blackglass', 'coastal', 'delta', 'fjord', 'mangrove', 'monsoon', 'oasis', 'polders', 'reservoir', 'saltwind', 'skybridge'],
+  // 2026-10-05 (the map-revival lane): Suzhou Creek (blackglass) carries a water sheet; (2026-10-06: Frontier's mill ponds became water)
+  assert.deepEqual(seaMaps.sort(), ['autumn', 'blackglass', 'coastal', 'delta', 'fjord', 'frontier', 'mangrove', 'monsoon', 'oasis', 'polders', 'reservoir', 'saltwind', 'skybridge'],
     'the twelve maps with a water sheet');
   const rows = [];
   for (const id of seaMaps) {

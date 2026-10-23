@@ -73,9 +73,12 @@ for (const id of MAP_IDS) {
 }
 // (233: a front's towers by the regime's own row under Monsoon's sky — the map draws its congestus since)
 const front = cloudStackOf(deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...getMapConfig('monsoon').sky, cloudscape: { regime: 'cumulonimbus-front', windDirDeg: 200 } }));
+// (2026-10-22, world-polish-240: Frosthollow went onto cumulus) the stratocumulus deck's laws on its old block, the
+// regime's closed deck as the map drew it until then
+const oldDeck = cloudStackOf(deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...getMapConfig('winter').sky, cloudscape: { regime: 'stratocumulus-deck', coverage: 0.92, nightGlow: 0.3, nightGlowHex: 0xffc080, deckBeam: 0.4 } }));
 assert.ok(front.lanes[0].channels[0] === 1 && front.lanes[0].envelope > 0.5, 'a front\'s towers gathered by the envelope, never the envelope\'s blobs');
 assert.ok(front.lanes[0].cover < 0.6, 'a front\'s towers stand apart');
-assert.ok(cloudBsmSlices(front) === 64 && cloudBsmSlices(stacks.winter) === 24, 'a front\'s towers take the most slices, a thin deck the least');
+assert.ok(cloudBsmSlices(front) === 64 && cloudBsmSlices(oldDeck) === 24, 'a front\'s towers take the most slices, a thin deck the least');
 assert.ok(Object.keys(stacks).length >= 30, `every shipped battlefield resolves a stack (${Object.keys(stacks).length})`);
 assert.ok(stacks.verdant.lanes.length === 1, 'a fair-weather sky: one cumulus lane at its condensation level (no confetti aloft)');
 // (round 9, 2026-10-07: a front sheds its debris aloft — wave 235's "hazy translucent smear over the sun and confetti-like
@@ -85,7 +88,7 @@ assert.ok(Math.abs(front.lanes[0].core - 0.74) < 1e-9 && stacks.verdant.lanes[0]
 // (2026-10-14, the SKY lane: the only stack with a lane aloft was the broken deck's thin veil, and the owner retired
 // broken-stratocumulus on 2026-10-13 — "no more of the cloud type depicted in fjord")
 assert.ok(Object.entries(stacks).every(([, s]) => s.lanes.length === 1), 'no battlefield carries a layer aloft');
-assert.ok(stacks.winter.lanes[0].cells > 0, 'a stratocumulus deck carries its cells');
+assert.ok(oldDeck.lanes[0].cells > 0, 'a stratocumulus deck carries its cells');
 // the closed decks closed (the skies lane, 2026-10-06): Whiteout's stratus — and every deck its map closes (coverage 0.95
 // and over) — admits every column at its own resolved coverage; a retune that reopens a hole fails here. (Titan Gorge's
 // dense overcast was one until the map-revival lane gave Monument Valley its fair-weather cumulus, 2026-10-05.)
@@ -146,14 +149,14 @@ assert.ok(stacks.winter.lanes[0].cells > 0, 'a stratocumulus deck carries its ce
   assert.ok(cloudGroundLight(0, 1e6, 0.99) <= 2.5 * 1e-4 + 1e-9, 'the bounce never revives a black cover');
   const w = stacks.whiteout.lanes[0];
   assert.equal(cloudDeckTau(stacks.whiteout), w.density * w.core * (w.topM - w.baseM) * CLOUD_COLUMN_SHARE);
-  assert.ok(cloudDeckTau(stacks.whiteout) > 10 && cloudDeckTau(stacks.winter) > 10, 'a closing deck is optically thick');
+  assert.ok(cloudDeckTau(stacks.whiteout) > 10 && cloudDeckTau(oldDeck) > 10, 'a closing deck is optically thick');
   // the law is the closing deck's (a broken deck keeps the old law and its grey bases over snow; a convective sky too)
-  assert.ok(stacks.whiteout.closing === 1 && stacks.winter.closing > 0.5, 'an overcast takes the light under the cover');
+  assert.ok(stacks.whiteout.closing === 1 && oldDeck.closing > 0.5, 'an overcast takes the light under the cover');
   assert.equal(stacks.railyard.closing, 0, 'Cinder Junction\'s cumulus keeps the old law (2026-10-16)');
   assert.equal(stacks.foundry.closing, 0, 'Ironworks\' cumulus keeps the old law (2026-10-18, the 228 census)');
   // (2026-10-15, the 10-13 ruling enforced on every map: Frosthollow's deck closed, 0.86 -> 0.92 — it takes the closing
   // law with Cinder Junction's and Ironworks')
-  assert.ok(stacks.winter.closing > 0.5, 'the closed cell deck takes the light under the cover');
+  assert.ok(oldDeck.closing > 0.5, 'the closed cell deck takes the light under the cover');
   assert.ok(stacks.fjord.closing === 0 && stacks.verdant.closing === 0 && stacks.monsoon.closing === 0, 'a convective sky keeps the old law');
 }
 
@@ -166,9 +169,9 @@ assert.ok(stacks.winter.lanes[0].cells > 0, 'a stratocumulus deck carries its ce
   u.uHeightRange = { value: new THREE.Vector2() };
   // (the packing over a stack of two lanes: Frosthollow's deck under a thin veil 2.4 km over it — no shipped map carries a
   // lane aloft since the broken deck's retirement, so the two-lane packing is pinned on this synthetic stack)
-  const deck = stacks.winter.lanes[0];
+  const deck = oldDeck.lanes[0];
   const veil = { ...deck, baseM: deck.topM + 2400, topM: deck.topM + 2750, cover: 0.1, density: 0.03 };
-  const stack = { ...stacks.winter, lanes: [deck, veil], highM: veil.topM };
+  const stack = { ...oldDeck, lanes: [deck, veil], highM: veil.topM };
   packCloudStack(stack, u);
   assert.equal(u.uLayerBase.value.x, stack.lanes[0].baseM);
   assert.equal(u.uLayerTop.value.y, stack.lanes[1].topM);

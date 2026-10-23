@@ -50,7 +50,7 @@ import { resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees, type AuthoredTreeFeature,
 } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeBare, treeBiomeCanopyForm, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeRiparian, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeSnagValue, treeBiomeSnow, treeBiomeSnowPalette, treeBiomeTransmission, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeBare, treeBiomeBlend, treeBiomeCanopyForm, treeBiomeColour, treeBiomeGrove, treeBiomeOpen, treeBiomePalette, treeBiomeRiparian, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeSnagValue, treeBiomeSnow, treeBiomeSnowPalette, treeBiomeTransmission, treeBiomeUpland, treeBiomeWindToward, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { SWARD_TONE, swardPatchAt, type SwardPatch } from './swardPatch.ts';
 import { createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees, type GroundCoverCraters } from './groundCoverCraters.ts';
@@ -259,6 +259,16 @@ interface VegetationConfig {
    * candidate. Absent = no balance (every other map).
    */
   coverHalvesAbout?: { x: number; z: number };
+  /**
+   * The map-revival lane (2026-10-11; Cinder Junction's fairness: every authored site, road, siding and cut of stock in
+   * rotational pairs, the random woods and shrubs not — alpha's approach came up through 43 trees in a 40 m cell whose twin
+   * was bare, and the halves' counts evened by coverHalvesAbout left 58 concealers against 11 within 150 m of the square):
+   * the playable square's procedural trees and bushes in 180-degree pairs about this point. A tree or bush whose seat lies
+   * in the half that faces the first deployment is refused; every one seated in the other half inside the playable square
+   * stands its twin turned about the point (the tree's own draws replayed, the bush's form turned), where the twin's site
+   * admits it. The map's authored rows keep their own pairs. Absent on every other map.
+   */
+  rotationalCover?: { x: number; z: number };
   /**
    * The Redrock lane (round 10, 2026-10-08; the gauntlet's wave 270 on Redrock's low sand view: "tall, flat cross-card
    * blades far out of scale", the nearest object a sprite): the map's tufts' height, a factor on every tuft's (a dry
@@ -2722,6 +2732,9 @@ export const BARE_SPRAY_KINDS: Readonly<Partial<Record<GrowthSpecies, SprayKind>
 export function grownFormSprayKind(growth: GrowthSpecies, palette: VegetationPalette = {}): SprayKind {
   if (palette.bare === true && BARE_SPRAY_KINDS[growth]) return BARE_SPRAY_KINDS[growth]!;
   if (growth === 'birch' || growth === 'aspen') return palette.birchLeaves === true ? growth : 'birch-bare';
+  // the trees lane (2026-10-08, wave 278): the grey mangrove paints the tidal mangrove's leathery leaves (its own grey
+  // from its biome colour, treeBiomes.ts)
+  if (growth === 'avicennia') return 'mangrove';
   // trees lane (2026-10-06): a form that paints another form's sprays — the Khasi pine the red pine's long needle tufts,
   // the bamboo the willow's narrow drooping lances (its own colour from its biome entry, treeBiomes.ts), the
   // chestnut-oak the chestnut's
@@ -4388,6 +4401,7 @@ function* vegetationBuildSteps(
   const _m4 = new THREE.Matrix4();
   const _q = new THREE.Quaternion();
   const _qLean = new THREE.Quaternion();
+  const _qTurn = new THREE.Quaternion(); // the map-revival lane: a twin bush's half turn (veg.rotationalCover)
   const _bushCast = new THREE.Color(); // ground lane: a shrub's own cast
   const _axLean = new THREE.Vector3();
   const _pv = new THREE.Vector3();
@@ -5793,13 +5807,25 @@ function* vegetationBuildSteps(
   function mangroveDefinition(legacy: SpeciesDefinition): SpeciesDefinition {
     if (!grownTrees) return legacy;
     sprayAtlasSpecies.add('willow');
+    // (the trees lane, 2026-10-08, the gauntlet's wave 278: the place's foliage colour where the map palette names none —
+    // the Ca Mau coast's Rhizophora a dark glossy green; a place without one keeps the palette as it was)
+    const placePal = (pal: VegetationPalette): VegetationPalette => treeBiomePalette(pal, null, false, treeBiomeColour(cfg?.id));
     return {
       texSeed: legacy.texSeed, nearSeed: legacy.nearSeed, farSeed: legacy.farSeed, grown: true,
-      tex: (r, pal) => makeSprayAtlas('mangrove', r, texSize(512), (pal.snow ?? 0) > 0.05 ? null : pal.texTone || null, pal.snow ?? 0),
-      near: (k, pal) => buildGrownTree('mangrove', seed + legacy.nearSeed + k * 7, k, pal),
+      tex: (r, pal) => {
+        const p = placePal(pal);
+        return makeSprayAtlas('mangrove', r, texSize(512), (p.snow ?? 0) > 0.05 ? null : p.texTone || null, p.snow ?? 0);
+      },
+      near: (k, pal) => buildGrownTree('mangrove', seed + legacy.nearSeed + k * 7, k, placePal(pal)),
       far: legacy.far,
     };
   }
+  // the trees lane (2026-10-08, the gauntlet's wave 278 on Mangrove Reach: "no mangrove, nipa palm"): a place's own palm
+  // form (treeBiomes.ts — the Ca Mau creeks' stemless nipa) grows on the desktop tiers in its slot colour; every other
+  // map's palm grows as it did
+  const palmForm = grownTrees ? formOf('palm') : null;
+  const palmPal = (pal: VegetationPalette): VegetationPalette => (palmForm
+    ? treeBiomePalette(pal, palmForm, false, treeBiomeColour(cfg?.id)) : pal);
   const SPECIES: Record<Species, SpeciesDefinition> = {
     pine: grownDefinition('pine', coniferDefinition(52, 61, 71, TREE_GEOMETRY_SCALE.pine)),
     spruce: grownDefinition('spruce', coniferDefinition(55, 91, 111, TREE_GEOMETRY_SCALE.spruce)),
@@ -5817,10 +5843,11 @@ function* vegetationBuildSteps(
       texSeed: 53, nearSeed: 81, farSeed: 75, grown: grownTrees,
       // p2 trees lane: the desktop palms keep their reviewed geometry and take a pinnate frond (the round-8 painter's
       // solid blade read as a banana leaf); the phones keep the round-8 frond
-      tex: (r, pal) => (grownTrees ? makePalmFrondAtlas(r, texSize(512), pal.texTone || null) : makePalmFrondTexture(r, pal.texTone || null)),
+      tex: (r, pal) => (grownTrees ? makePalmFrondAtlas(r, texSize(512), palmPal(pal).texTone || null) : makePalmFrondTexture(r, pal.texTone || null)),
       // p2 trees lane: the desktop palms grow (treeGrowth.ts growPalm: an arching stem and a fan of pinnate fronds);
       // the phones keep the round-8 palm
-      near: (k, pal) => (grownTrees ? buildGrownTree('palm', seed + 81 + k * 7, k, pal) : buildPalmGeometry(mulberry32(seed + 81 + k * 7), pal, PALM_VAR[k % 3])),
+      near: (k, pal) => (grownTrees ? buildGrownTree(palmForm?.form ?? 'palm', seed + 81 + k * 7, k, palmPal(pal))
+        : buildPalmGeometry(mulberry32(seed + 81 + k * 7), pal, PALM_VAR[k % 3])),
       far: (r, pal, k) => buildPalmFarGeometry(r, pal, k),
     },
     birch: grownDefinition('birch', {
@@ -6139,6 +6166,25 @@ function* vegetationBuildSteps(
     return (x - halvesAbout!.x) * halvesAxis[0] + (z - halvesAbout!.z) * halvesAxis[1] < 0 ? 0 : 1;
   }
   const _coverHalves = [0, 0];
+  // the map-revival lane (veg.rotationalCover): the half a procedural seat is kept in (the one facing the second
+  // deployment, across the line through the turning point square to the deployments' axis) and its twin's seat
+  const turnAbout = veg.rotationalCover ?? null;
+  const turnAxis = [0, 1];
+  if (turnAbout) {
+    const ex = L.spawns.enemies.reduce((acc, e) => acc + e.x, 0) / L.spawns.enemies.length - L.spawns.player.x;
+    const ez = L.spawns.enemies.reduce((acc, e) => acc + e.z, 0) / L.spawns.enemies.length - L.spawns.player.z;
+    if (Math.abs(ex) > Math.abs(ez)) { turnAxis[0] = Math.sign(ex); turnAxis[1] = 0; } else turnAxis[1] = Math.sign(ez) || 1;
+  }
+  /** True for a seat inside the playable square on the first deployment's side of the turning line (its twin's half). */
+  function inTurnedHalf(x: number, z: number): boolean {
+    if (!turnAbout || Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M) return false;
+    return (x - turnAbout.x) * turnAxis[0] + (z - turnAbout.z) * turnAxis[1] < 0;
+  }
+  /** True for a seat inside the playable square on the kept side (a seat there stands a twin). */
+  function inKeptHalf(x: number, z: number): boolean {
+    if (!turnAbout || Math.max(Math.abs(x), Math.abs(z)) > PLAYABLE_HALF_EXTENT_M) return false;
+    return (x - turnAbout.x) * turnAxis[0] + (z - turnAbout.z) * turnAxis[1] >= 0;
+  }
   // (symmetric deployments: the last evening counts without the trees the deployment clearings drop after it)
   function countTreeHalves(withoutClearings = false): void {
     _coverHalves[0] = 0; _coverHalves[1] = 0;
@@ -6196,6 +6242,9 @@ function* vegetationBuildSteps(
     // trees round 2b: a palm outside the map's palm sites grows as its fallback species (every path: stands, lone trees,
     // belts, the rim); no draw moves
     if (species === 'palm' && palmElsewhere && !palmSiteOk(x, z)) species = palmElsewhere;
+    // the trees lane (2026-10-06): a grove place's tree inside a field's walls on the terraced lowland grows as the grove's
+    // slot, whichever placement seats it (groveInterior; no draw moves)
+    if (grove && species !== 'palm' && groveInterior(x, z)) species = grove.slot;
     const y = heightField.getHeightAt(x, z);
     const sc = scMin + r() * (scMax - scMin);
     const archetype = TREE_ARCHETYPES[species];
@@ -6327,7 +6376,20 @@ function* vegetationBuildSteps(
     return uplandZoneAllows(uplandBand, TREE_GROWTH_PROFILES[form as GrowthSpecies]?.family === 'conifer', heightField.getHeightAt(x, z));
   }
   function addTree(x: number, z: number, species: Species, r: RandomSource = rng, spread = 1): boolean {
+    // (veg.rotationalCover: the twin's half takes no seat of its own)
+    if (turnAbout && inTurnedHalf(x, z)) return false;
     if (!siteOk(x, z, 0)) return false;
+    if (turnAbout && inKeptHalf(x, z)) {
+      // the tree, its draws kept, and its twin turned about the point on the same draws, where the twin's site admits it
+      const drawn: number[] = [];
+      pushTree(x, z, species, 0.95, 1.7, true, () => { const v = r(); drawn.push(v); return v; }, spread);
+      const tx = 2 * turnAbout.x - x, tz = 2 * turnAbout.z - z;
+      if (siteOk(tx, tz, 0)) {
+        let k = 0;
+        pushTree(tx, tz, species, 0.95, 1.7, true, () => (k < drawn.length ? drawn[k++] : r()), spread);
+      }
+      return true;
+    }
     pushTree(x, z, species, 0.95, 1.7, true, r, spread); // wide size spread per stand
     return true;
   }
@@ -6460,6 +6522,28 @@ function* vegetationBuildSteps(
     const at = arableLandAt(x, z, _arableLand);
     return at.active > 0 && at.crop !== 0 && at.edgeM > at.marginM;
   }
+  // the trees lane (2026-10-06, the gauntlet's wave 177 on Saltwind): a place's grove (treeBiomes.ts grove) — a tree whose
+  // seat lies in a field's interior (past its grass margin), on the terraced lowland (gentle and low: its slope and height
+  // share), grows as the grove's slot (pushTree), the olive grove inside its dry stone walls — and its blend (treeBiomes.ts
+  // blend), a share of one slot's stand trees growing as another by a hash of the seat. Both choose a species only: every
+  // draw keeps its seat.
+  const grove = treeBiomeGrove(cfg?.id), blend = treeBiomeBlend(cfg?.id);
+  const groveTop: number = grove ? (() => {
+    const heights: number[] = [];
+    for (let z = -430; z <= 430; z += 24) for (let x = -430; x <= 430; x += 24) heights.push(heightField.getHeightAt(x, z));
+    heights.sort((a, b) => a - b);
+    return heights[Math.min(heights.length - 1, Math.floor(heights.length * grove.maxHeightShare))];
+  })() : 0;
+  const groveMinNormalY = grove ? Math.cos(grove.maxSlopeDeg * Math.PI / 180) : 1;
+  const _groveLand: LandFieldSample = { active: 0, crop: 0, edgeM: 0, endM: 0, sU: 0, sV: 0, split: 1, alongU: 1, marginM: 0, track: 0, hedge: 0, rowX: 1, rowZ: 0, jitter: 0, id: 0,
+    boundary: 0, tintR: 0, tintG: 0, tintB: 0, sward: 1, cropHeight: 1, cropKeep: -1, weed: 0, urban: 0 };
+  function groveInterior(x: number, z: number): boolean {
+    const landAt = heightField._landUseAt;
+    if (!landAt) return false;
+    if (heightField.getHeightAt(x, z) > groveTop || heightField.getNormalAt(x, z).y < groveMinNormalY) return false;
+    landAt(x, z, _groveLand);
+    return _groveLand.active > 0 && _groveLand.edgeM > _groveLand.marginM + 2;
+  }
   function placeTreeClusters(): void {
     replayRoundOneStandDraws();
     const wrShared = mulberry32((seed ^ 0x30d1a7) >>> 0);
@@ -6533,9 +6617,12 @@ function* vegetationBuildSteps(
       for (let i = 0; i < n * (landscape ? 8 : 4) && placed < n; i++) {
         // the margin is denser than the heart (k ~ u^0.42), the stand thins in patches, a clearing stays open
         const a = wr() * Math.PI * 2, k = Math.pow(wr(), 0.42), keep = wr();
-        const sp = wr() < 0.8 ? species : pickSpecies(veg.loneMix, wr());
+        let sp = wr() < 0.8 ? species : pickSpecies(veg.loneMix, wr());
         const p = standPoint(index, disc, a, k);
         const px = p[0], pz = p[1];
+        // (the trees lane: a place's blend — a share of one slot's stand trees as another, by a hash of the seat; a grove
+        // place's tree inside the walls grows as the grove's slot whatever it was drawn as, pushTree)
+        if (blend && sp === blend.slot && treePositionNoise(px, pz, 21) < blend.share) sp = blend.into;
         if (clearing && Math.hypot(px - cx, pz - cz) < clearing.r) continue;
         // (the trees lane: a landscape map's wood keeps no thin patches — the draw is made all the same)
         if (!landscape && k < 0.85 && keep > 0.5 + 0.8 * woodlotDensity(px, pz)) continue;
@@ -7033,12 +7120,28 @@ function* vegetationBuildSteps(
         // Fjord and Alpine spawns; 20 m still clears the tank and the camera
         // (which sits ~12 m behind the spawn) and keeps the stand in view.
         if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M) || overTreeCeiling(x, z)) continue;
+        // (veg.rotationalCover: inside the playable square the twin's half takes no seat of its own)
+        if (turnAbout && inTurnedHalf(x, z)) continue;
         // (a hyper-arid border's trees are field trees in its hollows, not a forest ring's giants: round 3)
-        pushTree(x, z, tr() < 0.85 ? species : pickSpecies(veg.rimMix, tr()), aridRim ? 0.95 : 1.35, aridRim ? 1.5 : 2.2, false, tr);
+        const rimSpecies = tr() < 0.85 ? species : pickSpecies(veg.rimMix, tr());
+        const drawn: number[] = [];
+        pushTree(x, z, rimSpecies, aridRim ? 0.95 : 1.35, aridRim ? 1.5 : 2.2, false,
+          turnAbout ? () => { const v = tr(); drawn.push(v); return v; } : tr);
         placed++;
         if (dropRimTreeOutsideWoods(x, z)) continue;
         trees[trees.length - 1].wood = true;
         rimTrees.push(trees[trees.length - 1]);
+        // (and a kept tree its twin turned about the point on the same draws, the pair kept or dropped together)
+        if (turnAbout && inKeptHalf(x, z)) {
+          const tx = 2 * turnAbout.x - x, tz = 2 * turnAbout.z - z;
+          if (Math.max(Math.abs(tx), Math.abs(tz)) <= 506 && !noVeg(tx, tz) && !overTreeCeiling(tx, tz)
+            && isClearOfSpawns(tx, tz, protectedSpawns, RIM_SPAWN_CLEARANCE_M)) {
+            let k = 0;
+            pushTree(tx, tz, rimSpecies, aridRim ? 0.95 : 1.35, aridRim ? 1.5 : 2.2, false, () => (k < drawn.length ? drawn[k++] : tr()));
+            trees[trees.length - 1].wood = true;
+            rimTrees.push(trees[trees.length - 1]);
+          }
+        }
       }
       for (let i = b0; i < trees.length; i++) trees[i].tint.multiply(_standTint);
       if (placed >= 3) rimBlocks.push({ x: cx, z: cz, r: bw * 0.5 }); // round 77b: a block that stands
@@ -7056,10 +7159,24 @@ function* vegetationBuildSteps(
       if (Math.max(Math.abs(x), Math.abs(z)) > 506) continue;
       if (noVeg(x, z)) continue; // maps r1: see the rim-block note (sea rim)
       if (!isClearOfSpawns(x, z, protectedSpawns, RIM_SPAWN_CLEARANCE_M) || overTreeCeiling(x, z)) continue;
-      pushTree(x, z, pickSpecies(veg.rimMix, sr()), aridRim ? 0.9 : 1.2, aridRim ? 1.4 : 1.9, false, sr);
+      if (turnAbout && inTurnedHalf(x, z)) continue; // (veg.rotationalCover, as the rim blocks')
+      const saddleSpecies = pickSpecies(veg.rimMix, sr());
+      const drawn: number[] = [];
+      pushTree(x, z, saddleSpecies, aridRim ? 0.9 : 1.2, aridRim ? 1.4 : 1.9, false,
+        turnAbout ? () => { const v = sr(); drawn.push(v); return v; } : sr);
       if (dropRimTreeOutsideWoods(x, z)) continue;
       trees[trees.length - 1].wood = true;
       rimTrees.push(trees[trees.length - 1]);
+      if (turnAbout && inKeptHalf(x, z)) {
+        const tx = 2 * turnAbout.x - x, tz = 2 * turnAbout.z - z;
+        if (Math.max(Math.abs(tx), Math.abs(tz)) <= 506 && !noVeg(tx, tz) && !overTreeCeiling(tx, tz)
+          && isClearOfSpawns(tx, tz, protectedSpawns, RIM_SPAWN_CLEARANCE_M)) {
+          let k = 0;
+          pushTree(tx, tz, saddleSpecies, aridRim ? 0.9 : 1.2, aridRim ? 1.4 : 1.9, false, () => (k < drawn.length ? drawn[k++] : sr()));
+          trees[trees.length - 1].wood = true;
+          rimTrees.push(trees[trees.length - 1]);
+        }
+      }
     }
   }
   placeSaddleTrees();
@@ -7091,6 +7208,8 @@ function* vegetationBuildSteps(
         const sy = heightField.getHeightAt(sx, sz);
         let spS = pickSpecies(veg.clusterMix, roll);
         if (spS === 'palm' && palmElsewhere && !palmSiteOk(sx, sz)) spS = palmElsewhere;
+        // (the trees lane: a grove place's sapling inside a field's walls grows as the grove's slot, as pushTree's trees)
+        if (grove && spS !== 'palm' && groveInterior(sx, sz)) spS = grove.slot;
         // an upland place's sapling grows in its form's zone too (its draws already made)
         if (!uplandZoneOk(sx, sz, spS)) continue;
         const archetypeS = TREE_ARCHETYPES[spS];
@@ -7873,6 +7992,12 @@ function* vegetationBuildSteps(
     const shrubForm = grownTrees ? veg.shrubForm ?? treeBiomeShrub(cfg?.id) : null;
     const shrubGrowth: GrowthSpecies = bushSpecies === 'willow' && veg.willowForm === 'tidalMangrove' ? 'mangrove'
       : shrubForm ?? (grownTrees ? formOf(bushSpecies)?.form : null) ?? bushSpecies;
+    // the trees lane (2026-10-08, the gauntlet's wave 278 on Saltmere Bay): a wind-shorn cushion (treeGrowth.ts
+    // cushion.shorn) grows its leeward side on its local +x; each field cushion turns that side to its place's wind
+    // (treeBiomes.ts TreeBiome.wind), within ±14° — the yaw the bush always drew, so every seeded stream is unchanged
+    const windToward = grownTrees ? treeBiomeWindToward(cfg?.id) : null;
+    const shornYaw = windToward !== null && TREE_GROWTH_PROFILES[shrubGrowth]?.cushion?.shorn
+      ? THREE.MathUtils.degToRad(windToward) - Math.PI / 2 : null;
     // (trees lane, 2026-10-05: on a bare map a deciduous shrub stands bare, its winter twigs or canes)
     // (trees lane, 2026-10-08, the gauntlet's wave 260 on Hostomel's handcart: the near bush "flat olive-brown leaf cards
     // with dark outlines, a heap of paper cut-outs"): a shrub grown as its bush slot's own leafy form takes that form's
@@ -7936,6 +8061,7 @@ function* vegetationBuildSteps(
     function addBush(x: number, z: number, hedge = false, br: RandomSource = rng, planted = false): void {
       if (Math.max(Math.abs(x), Math.abs(z)) > 470) return;
       if (inAvoid(x, z) || inTreeClear(x, z)) return;
+      if (turnAbout && inTurnedHalf(x, z)) return; // (veg.rotationalCover: the twin's half takes no seat of its own)
       if (!planted && br() > veg.bushCount) return; // per-map density scale (a planted row keeps every station)
       // (the Redrock lane: no shrub on a dome's cap or a jebel's top either; veg.treeCeilingY, absent on every other map)
       if (overTreeCeiling(x, z)) return;
@@ -7986,7 +8112,8 @@ function* vegetationBuildSteps(
       // genuinely occluded (knee-high shrubs sold zero visual concealment)
       // r5: size keyed to the clump core — 2-3x spread, big growth at centers
       const sc = (1.6 + br() * 1.6) * (0.7 + clump * 0.45);
-      _q.setFromAxisAngle(_up, br() * Math.PI * 2);
+      const yawDraw = br();
+      _q.setFromAxisAngle(_up, shornYaw === null ? yawDraw * Math.PI * 2 : shornYaw + (yawDraw - 0.5) * 0.5);
       // ground lane (2026-10-03, the gauntlet: bushes were "near-identical round green balls"): each shrub its own shape —
       // an oval footprint (the across axis 72–100 % of the cover axis, so it never leaves its cover disc), a crown a
       // little lower or taller, and a lean of up to 6° about its own long axis; position-hashed, no seeded draw
@@ -7997,8 +8124,26 @@ function* vegetationBuildSteps(
       const variant=(br()*2)|0,keep=!newlyUnsafeRoadSite(x,z,6,.78);
       // a placed structure's clear ground takes no bush either: dropped after its draws, so every later bush stays
       if (placedClearances.length && overlapsStructureClearance(placedClearances, x, z, 2.5 * sc + 0.3)) return;
+      // (veg.rotationalCover: a seat its margin or a tree's foot moved into the twin's half is refused there too)
+      if (turnAbout && inTurnedHalf(x, z)) return;
       bushPlacements[variant].push(_m4.clone());bushKeep[variant].push(keep);
       if(keep)concealers.push({ x, z, r: 2.0 * sc, add: 0.35 }); // SPOTTING WIRING: bush cover
+      if (turnAbout && inKeptHalf(x, z)) {
+        // its twin, the same shrub turned about the point, where the twin's site admits a bush
+        const tx = 2 * turnAbout.x - x, tz = 2 * turnAbout.z - z;
+        if (Math.max(Math.abs(tx), Math.abs(tz)) > 470 || inAvoid(tx, tz) || overTreeCeiling(tx, tz)) return;
+        if (admission()._roadDist(tx, tz) < 6) return;
+        if (admission().getGroundType(tx, tz) === 'soft' || (noVeg(tx, tz) && !batterAdmits(tx, tz))) return;
+        if (!steepSeedOk(admission().getNormalAt(tx, tz).y, tx, tz)) return;
+        if (placedClearances.length && overlapsStructureClearance(placedClearances, tx, tz, 2.5 * sc + 0.3)) return;
+        const ty = heightField.getHeightAt(tx, tz);
+        _qTurn.setFromAxisAngle(_up, Math.PI);
+        _q.premultiply(_qTurn);
+        _m4.compose(_pv.set(tx, ty - 0.05, tz), _q, _sv);
+        const twinKeep = !newlyUnsafeRoadSite(tx, tz, 6, .78);
+        bushPlacements[variant].push(_m4.clone()); bushKeep[variant].push(twinKeep);
+        if (twinKeep) concealers.push({ x: tx, z: tz, r: 2.0 * sc, add: 0.35 });
+      }
     }
     // 2026-09-14 environment richness: desktop tiers seed 30 % more field bushes, clumps and
     // cluster fringe scrub than the authored counts (mobile keeps them). Read at build time,

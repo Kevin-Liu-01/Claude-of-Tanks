@@ -13,7 +13,8 @@ for(const size of [4,14,30,42])for(const solo of [false,true]){
  const names=solo?['player','enemy']:['alpha','bravo'];
  const entities=Array.from({length:size},(_,i)=>({id:`tank-${i}`,team:names[i<3?1:0],spec,bot:i!==3,
   state:{pos:new Vector3(i*12,0,i<3?100:-100),yaw:0,speed:0},combat:createCombatState(spec)}));
- const mode=createMatchModeController({mode:'infected',entities,ruleset:rules,revive(e,p){
+ // the clock out of the way (240: a three-minute round; 42 conversions at the respawn pace run some 260 s)
+ const mode=createMatchModeController({mode:'infected',entities,ruleset:{...rules,timeLimitS:3600},revive(e,p){
   e.combat=createCombatState(spec);e.state.pos.set(p.x,0,p.z);
  }});
  let time=0;

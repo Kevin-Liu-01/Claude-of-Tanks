@@ -1,30 +1,14 @@
 import type * as THREE from 'three';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
-import { scaledGroundSampler } from '../scaledGroundSampler.ts';
+import { scaleRunningGearMotion } from '../scaledGroundSampler.ts';
 import { ARIETE_X_FAMILY_SCALE as SCALE } from './arieteXFamilyFrame.ts';
 import { retainArieteXStructuralLod } from './arieteXStructuralLod.ts';
 
 function scaleGearMotion(P: TankBuilderPort): void {
-  const gear = P.gear;
-  if (!gear) return;
-  const update = gear.update.bind(gear), surface = gear.updateSurface?.bind(gear);
-  const conform = gear.conform.bind(gear);
-  let frame: Parameters<typeof conform>[0] | null = null;
-  let ground: Parameters<typeof conform>[1];
-  const sourceGround = scaledGroundSampler(SCALE, () => ground);
   // The unchanged canonical solver works in the source authoring frame.
   // Convert world motion/terrain into it, then the scaled children display
   // the solved wheel, band and shoe stock together in installed metres.
-  gear.update = (left, right, dt) => update(left / SCALE, right / SCALE, dt);
-  if (surface) gear.updateSurface = (left, right) => surface(left / SCALE, right / SCALE);
-  gear.conform = (state, sampler, pitch, roll, dt) => {
-    if (!frame) frame = { ...state, pos: { ...state.pos } };
-    frame.pos.x = state.pos.x / SCALE; frame.pos.y = state.pos.y / SCALE;
-    frame.pos.z = state.pos.z / SCALE;
-    frame.yaw = state.yaw; frame.visualPitch = state.visualPitch; frame.visualRoll = state.visualRoll;
-    ground = sampler;
-    return conform(frame, sourceGround, pitch, roll, dt);
-  };
+  if (P.gear) scaleRunningGearMotion(P.gear, SCALE);
 }
 
 /** Bake the complete authored metre frame once; keep simulation rig scales
