@@ -1,0 +1,81 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  // `npm run lint` (docs/DEVELOPMENT.md "Fast checks"): Oxlint's correctness category only, i.e. code
+  // that is wrong or useless. No style, pedantic or formatting rules. A rule that does not fit this
+  // codebase is turned off below with its reason; a real finding is fixed at the source.
+  "plugins": ["eslint", "typescript", "unicorn", "oxc"],
+  "categories": { "correctness": "error" },
+  "rules": {
+    // TypeScript owns unused symbols: `npm run typecheck` gates them in the core owners on purpose.
+    "eslint/no-unused-vars": "off",
+    // House idioms: calls through ternaries and commas, and spreads that drain step generators.
+    "eslint/no-unused-expressions": "off",
+    // The cleanup idiom rethrows a cleanup failure from `finally` only when the primary step succeeded.
+    "eslint/no-unsafe-finally": "off",
+    // The text sanitizers and ANSI strippers match control characters on purpose.
+    "eslint/no-control-regex": "off",
+    // A redundant escape matches the same text; no flagged site was a defect (2026-10-22).
+    "eslint/no-useless-escape": "off",
+    // Pinned measurements and physical constants are written past double precision and round as intended.
+    "eslint/no-loss-of-precision": "off",
+    // `term * 0` is how authors switch a tuning term off while keeping it in view.
+    "oxc/erasing-op": "off",
+    // `a < b || a > b` is a deliberate, readable not-equal.
+    "oxc/double-comparisons": "off",
+    // Style preferences, not defects.
+    "unicorn/prefer-string-starts-ends-with": "off",
+    "unicorn/no-useless-fallback-in-spread": "off",
+    "unicorn/no-useless-spread": "off",
+    "unicorn/no-new-array": "off",
+    "unicorn/prefer-set-size": "off",
+    "typescript/prefer-as-const": "off"
+  },
+  "overrides": [
+    {
+      // Receipts and repository tools.
+      "files": ["**/*.selftest.mjs", "**/*.test-support.mjs", "tools/**"],
+      "rules": {
+        // Trap getters fail through assert.fail, which never returns.
+        "eslint/getter-return": "off",
+        // Step-generator fixtures that finish or throw without yielding.
+        "eslint/require-yield": "off",
+        // Browser harnesses and receipts evaluate serialized functions on purpose.
+        "eslint/no-eval": "off",
+        // Thenable test doubles and IR nodes with a `then` branch.
+        "unicorn/no-thenable": "off"
+      }
+    },
+    {
+      // Its method is a parameter; a GET never carries a body here.
+      "files": ["tools/audio/elevenlabs.mjs"],
+      "rules": { "unicorn/no-invalid-fetch-options": "off" }
+    },
+    {
+      // A negative control that pins two constants.
+      "files": ["src/vehicles/staggeredTrackGround.selftest.mjs"],
+      "rules": { "eslint/no-constant-binary-expression": "off" }
+    },
+    {
+      // Line 1072's `damage >= 1` is redundant beside `damage >= 2`; left to the maps lane (reported 2026-10-22).
+      "files": ["src/world/maps/regional/skyline.ts"],
+      "rules": { "oxc/const-comparisons": "off" }
+    }
+  ],
+  // Build output, shipped assets, generated tables and the hash-pinned sources (AGENTS.md: vehicle
+  // profiles, terrain, sky, impact decals, the authority, match placement), whose bytes receipts compare.
+  "ignorePatterns": [
+    "dist/**",
+    "dist-*/**",
+    "public/**",
+    "**/*.generated.*",
+    "src/vehicles/combatAnatomyGroups/**",
+    "src/vehicles/interiorFillGroups/**",
+    "src/vehicles/vehicleMarkingSeatGroups/**",
+    "src/vehicles/profiles/**",
+    "src/world/terrain.ts",
+    "src/engine/sky.ts",
+    "src/fx/impactDecals.ts",
+    "server/match/matchActor.ts",
+    "src/sim/matchPlacement.ts"
+  ]
+}

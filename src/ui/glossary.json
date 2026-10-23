@@ -1,0 +1,189 @@
+{
+  "$description": "One name per thing, in both locales (SPEC 11.2, BUI-F8). The single source for game modes, play surfaces, ammunition, hit outcomes, crew roles and modules: tools/glossary-sync.mjs writes each term into every catalog key bound to it and its --check (src/ui/glossary.selftest.mjs, core suite) fails when a catalog drifts. A term binds keys three ways: `keys` take the term in both locales; `upper` take it in capitals in en-US (older HUD and Studio labels whose caps predate the CSS-only caps rule) and as written in zh-CN; `zh` bind only the zh-CN text (the en-US copy is a deliberately different form, such as a shorter HUD label). A `short` form is the one name for slots too narrow for the full one (48-64 px), with its own binding lists. `retired` names may not appear anywhere in that locale's catalog.",
+  "groups": {
+    "modes": {
+      "standard": {
+        "en-US": "Standard Battle", "zh-CN": "标准战斗",
+        "keys": ["playMenu.matchMode.standard.label", "garage.battle.soloLabel", "docs.reference.regular"],
+        "short": { "en-US": "Standard", "zh-CN": "标准", "keys": ["playMenu.matchMode.standard.short", "garage.battle.typeBots"] }
+      },
+      "capture_the_flag": {
+        "en-US": "Capture the Flag", "zh-CN": "夺旗战",
+        "keys": ["playMenu.matchMode.capture_the_flag.label", "garage.battle.ctfLabel", "garage.battle.modeFlag", "docs.reference.ctf", "docs.guide.simulation.2.t"],
+        "short": { "en-US": "CTF", "zh-CN": "夺旗", "keys": ["playMenu.matchMode.capture_the_flag.short"] }
+      },
+      "zone_control": {
+        "en-US": "Zone Control", "zh-CN": "区域控制",
+        "keys": ["playMenu.matchMode.zone_control.label", "garage.battle.zoneLabel", "garage.battle.modeZones", "docs.reference.zones"],
+        "short": { "en-US": "Zones", "zh-CN": "区域", "keys": ["playMenu.matchMode.zone_control.short"] }
+      },
+      "turbo_ball": {
+        "en-US": "Turbo Ball", "zh-CN": "极速球",
+        "keys": ["playMenu.matchMode.turbo_ball.label", "garage.battle.ballLabel", "garage.battle.modeTurbo", "docs.reference.ball", "docs.guide.simulation.4.t"],
+        "short": { "en-US": "Turbo", "zh-CN": "极速", "keys": ["playMenu.matchMode.turbo_ball.short"] }
+      },
+      "endless_horde": {
+        "en-US": "Endless Horde", "zh-CN": "无尽潮涌",
+        "keys": ["playMenu.matchMode.endless_horde.label", "garage.battle.hordeLabel", "garage.battle.modeHorde", "docs.reference.horde"],
+        "short": { "en-US": "Horde", "zh-CN": "潮涌", "keys": ["playMenu.matchMode.endless_horde.short"] }
+      },
+      "frontline_assault": {
+        "en-US": "Frontline Assault", "zh-CN": "前线突击",
+        "keys": ["playMenu.matchMode.frontline_assault.label", "garage.battle.frontLabel", "garage.battle.modeFront", "docs.reference.frontline"],
+        "short": { "en-US": "Frontline", "zh-CN": "前线", "keys": ["playMenu.matchMode.frontline_assault.short"] }
+      },
+      "mars": {
+        "en-US": "Gravity Mode", "zh-CN": "重力模式",
+        "keys": ["playMenu.matchMode.mars.label", "garage.battle.marsLabel", "garage.battle.modeMars", "docs.reference.gravity"],
+        "short": { "en-US": "Gravity", "zh-CN": "重力", "keys": ["playMenu.matchMode.mars.short"] }
+      },
+      "juggernaut": {
+        "en-US": "Juggernaut", "zh-CN": "重装巨兽",
+        "keys": ["playMenu.matchMode.juggernaut.label", "hud.objective.juggernaut"],
+        "short": { "en-US": "Juggernaut", "zh-CN": "巨兽", "keys": ["playMenu.matchMode.juggernaut.short"] }
+      },
+      "infected": {
+        "en-US": "Infected", "zh-CN": "感染模式",
+        "keys": ["playMenu.matchMode.infected.label", "hud.objective.infected"],
+        "short": { "en-US": "Infected", "zh-CN": "感染", "keys": ["playMenu.matchMode.infected.short"] }
+      },
+      "realistic": {
+        "en-US": "Realistic", "zh-CN": "真实模式",
+        "keys": ["playMenu.matchMode.realistic.label", "hud.objective.realistic"],
+        "short": { "en-US": "Realistic", "zh-CN": "真实", "keys": ["playMenu.matchMode.realistic.short"] }
+      },
+      "gun_game": {
+        "en-US": "Gun Game", "zh-CN": "武器进阶",
+        "keys": ["playMenu.matchMode.gun_game.label", "hud.objective.gun_game"],
+        "short": { "en-US": "Gun Game", "zh-CN": "进阶", "keys": ["playMenu.matchMode.gun_game.short"] }
+      },
+      "drone": {
+        "en-US": "Drone", "zh-CN": "无人机",
+        "keys": ["playMenu.matchMode.drone.label", "hud.objective.drone"],
+        "short": { "en-US": "Drone", "zh-CN": "无人机", "keys": ["playMenu.matchMode.drone.short"] }
+      },
+      "ac130": {
+        "en-US": "AC-130", "zh-CN": "AC-130",
+        "keys": ["playMenu.matchMode.ac130.label", "playMenu.matchMode.ac130.short", "flight.gunship"]
+      }
+    },
+    "surfaces": {
+      "solo": {
+        "en-US": "Solo vs bots", "zh-CN": "单人对战",
+        "keys": ["playMenu.mode.solo.name", "playMenu.solo.title"]
+      },
+      "private": {
+        "en-US": "Private room", "zh-CN": "私人房间",
+        "keys": ["garage.battle.privateLabel", "garage.battle.typePrivate", "playMenu.mode.private.name", "playMenu.private.title", "endScreen.private"]
+      },
+      "lan": {
+        "en-US": "Local network", "zh-CN": "局域网",
+        "keys": ["garage.battle.lanLabel", "garage.battle.typeLan", "garage.battle.lanShort", "playMenu.mode.lan.name", "playMenu.mode.lan.immediate", "playMenu.lan.title", "endScreen.lan"]
+      },
+      "campaign": {
+        "en-US": "Campaign", "zh-CN": "战役",
+        "keys": ["campaign.heading", "garage.record.campaign"]
+      }
+    },
+    "ammunition": {
+      "era": {
+        "en-US": "Explosive reactive armor", "zh-CN": "爆炸反应装甲",
+        "keys": [],
+        "short": { "en-US": "ERA", "zh-CN": "反应装甲", "keys": ["killcam.era", "gallery.legend.armor.era", "gallery.damage.kind.era"] }
+      },
+      "he": {
+        "en-US": "High explosive", "zh-CN": "高爆弹",
+        "keys": [],
+        "short": { "en-US": "HE", "zh-CN": "高爆弹", "keys": ["garage.shellType.HE"] }
+      },
+      "heat": {
+        "en-US": "High-explosive anti-tank", "zh-CN": "破甲弹",
+        "keys": [],
+        "short": { "en-US": "HEAT", "zh-CN": "破甲弹", "keys": ["garage.shellType.HEAT"] }
+      },
+      "apfsds": {
+        "en-US": "APFSDS", "zh-CN": "尾翼稳定脱壳穿甲弹",
+        "keys": [],
+        "short": { "en-US": "APFSDS", "zh-CN": "脱壳穿甲", "keys": ["garage.shellType.APFSDS"] }
+      }
+    },
+    "outcomes": {
+      "penetration": {
+        "en-US": "Penetration", "zh-CN": "击穿",
+        "keys": [], "upper": ["hud.hitOutcome.penetration"], "zh": ["studioPanel.fx.impactPen"]
+      },
+      "uncertain": { "en-US": "Uncertain", "zh-CN": "不确定", "keys": [] },
+      "noPenetration": {
+        "en-US": "No penetration", "zh-CN": "未击穿",
+        "keys": [], "zh": ["studioPanel.fx.nonPen"]
+      },
+      "ricochet": {
+        "en-US": "Ricochet", "zh-CN": "跳弹",
+        "keys": [], "upper": ["hud.hitOutcome.ricochet", "studioPanel.fx.ricochet"]
+      },
+      "overmatch": { "en-US": "Overmatch", "zh-CN": "碾压", "keys": [] },
+      "spall": { "en-US": "Spall", "zh-CN": "崩落", "keys": [] },
+      "ammoDetonation": {
+        "en-US": "Ammo detonation", "zh-CN": "弹药殉爆",
+        "keys": [], "zh": ["killcam.ammoRackDetonation", "hud.kill.ammorack"]
+      },
+      "fire": {
+        "en-US": "Fire", "zh-CN": "起火",
+        "keys": ["hud.kill.fire"], "upper": ["hud.fire"]
+      },
+      "track": {
+        "en-US": "Track", "zh-CN": "履带",
+        "keys": ["garage.module.track"]
+      }
+    },
+    "roles": {
+      "commander": {
+        "en-US": "Commander", "zh-CN": "车长",
+        "keys": ["garage.crew.commander", "gallery.legend.crew.commander"]
+      },
+      "gunner": {
+        "en-US": "Gunner", "zh-CN": "炮手",
+        "keys": ["garage.crew.gunner", "gallery.legend.crew.gunner"]
+      },
+      "loader": {
+        "en-US": "Loader", "zh-CN": "装填手",
+        "keys": ["garage.crew.loader", "gallery.legend.crew.loader", "fieldGuide.crew.2.label"]
+      },
+      "driver": {
+        "en-US": "Driver", "zh-CN": "驾驶员",
+        "keys": ["garage.crew.driver", "gallery.legend.crew.driver", "fieldGuide.crew.1.label"]
+      },
+      "radioOperator": {
+        "en-US": "Radio operator", "zh-CN": "无线电员",
+        "keys": ["garage.crew.radioOperator"]
+      }
+    },
+    "modules": {
+      "gun": { "en-US": "Gun", "zh-CN": "火炮", "keys": ["garage.module.gun", "garage.dossier.armament.gun"] },
+      "turretRing": { "en-US": "Turret ring", "zh-CN": "炮塔座圈", "keys": ["garage.module.turretRing"] },
+      "gunMount": { "en-US": "Gun mount", "zh-CN": "火炮摇架", "keys": ["garage.module.gunMount"] },
+      "autoloader": { "en-US": "Autoloader", "zh-CN": "自动装弹机", "keys": ["garage.module.autoloader"] },
+      "feedSystem": { "en-US": "Weapon feed", "zh-CN": "供弹机", "keys": ["garage.module.feedSystem"] },
+      "roofGun": { "en-US": "Roof gun", "zh-CN": "车顶机枪", "keys": ["garage.module.roofGun"] },
+      "missileRack": { "en-US": "Missile rack", "zh-CN": "导弹架", "keys": ["garage.module.missileRack"] },
+      "engine": {
+        "en-US": "Engine", "zh-CN": "发动机",
+        "keys": ["garage.module.engine", "gallery.legend.modules.engine", "fieldGuide.modules.1.label"], "upper": ["killcam.xray.engine"]
+      },
+      "transmission": { "en-US": "Transmission", "zh-CN": "变速箱", "keys": ["garage.module.transmission"] },
+      "fuelTank": { "en-US": "Fuel tank", "zh-CN": "油箱", "keys": ["garage.module.fuelTank"], "zh": ["killcam.xray.fuel"] },
+      "ammoRack": {
+        "en-US": "Ammo rack", "zh-CN": "弹药架",
+        "keys": ["garage.module.ammoRack", "boot.tip.ammorack.heading"], "zh": ["killcam.xray.ammo"]
+      },
+      "radio": { "en-US": "Radio", "zh-CN": "无线电", "keys": ["garage.module.radio"] },
+      "optics": { "en-US": "Optics", "zh-CN": "光学设备", "keys": ["garage.module.optics"] },
+      "trackL": { "en-US": "Track L", "zh-CN": "左侧履带", "keys": ["garage.module.trackL"] },
+      "trackR": { "en-US": "Track R", "zh-CN": "右侧履带", "keys": ["garage.module.trackR"] }
+    }
+  },
+  "retired": {
+    "en-US": ["Regular battle", "Private lobby", "LAN lobby"],
+    "zh-CN": ["常规战斗", "区域占领", "无尽浪潮", "无尽狂潮", "无尽围攻", "极速球赛", "时代切换", "破甲溅射", "单人 vs 机器人", "无线电操作员", "尾稳脱壳穿甲弹"]
+  }
+}

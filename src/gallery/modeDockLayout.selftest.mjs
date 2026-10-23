@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { viewportQueryViolations } from '../ui/viewportQueries.test-support.mjs';
 
 const css = readFileSync(new URL('./gallery.css', import.meta.url), 'utf8');
 
@@ -29,7 +30,7 @@ assert.match(
 );
 assert.match(
   css,
-  /:where\(body\[data-cot-width='laptop'\],[\s\S]*?\.viewer-bottom-console \.mode-dock\{grid-template-columns:150px repeat\(5,minmax\(0,1fr\)\)\}/,
+  /@media \(width < 1440px\)\{[^}]*\}[\s\S]*?\.viewer-bottom-console \.mode-dock\{grid-template-columns:150px repeat\(5,minmax\(0,1fr\)\)\}/,
   'compact desktop dock must retain a readable diagnostic label column',
 );
 assert.match(
@@ -42,11 +43,12 @@ assert.doesNotMatch(
   /(?:mode-dock button|vehicle-card|panel-heading|archive-filters|dossier-section|gallery-select-option\[aria-selected="true"\])(?:::[a-z]+|\.active::before)[^{]*\{[^}]*height:(?:12|15|16)px/,
   'selection states must not use clipped decorative border fragments',
 );
-assert.doesNotMatch(css, /@media[^\n]*(?:width|height|orientation)/,
-  'Gallery layout must consume semantic viewport attributes instead of device media queries');
-assert.match(css, /data-cot-width='phone'\] \.view-controls\{grid-template-columns:repeat\(5,minmax\(44px,1fr\)\);grid-template-rows:repeat\(2,44px\)/,
+// brand-ui SPEC §5.5: the page lays out at first paint from media queries at responsiveLayout.ts's band edges
+assert.deepEqual(viewportQueryViolations(css, 'gallery.css'), [],
+  'Gallery layout keeps the one viewport contract (the bands of responsiveLayout.ts) as media queries');
+assert.match(css, /@media \(width < 520px\)\{:root body \.view-controls\{grid-template-columns:repeat\(5,minmax\(44px,1fr\)\);grid-template-rows:repeat\(2,44px\)/,
   'phone controls must recompose all ten inspection actions into a two-row touch grid');
-assert.match(css, /data-cot-height='short'\]\[data-cot-orientation='landscape'\][\s\S]*\.viewer\{[\s\S]*height:calc\(var\(--cot-viewport-height,100dvh\) - 56px\);min-height:300px/,
+assert.match(css, /@media \(height < 520px\) and \(aspect-ratio >= 1\/1\)\{[\s\S]*\.viewer\{[\s\S]*height:calc\(var\(--cot-viewport-height,100dvh\) - 56px\);min-height:300px/,
   'short landscape Gallery viewports must fit the live viewer into the available height');
 
 console.log('modeDockLayout.selftest: diagnostic labels in their own columns (no clip, no overlap) and responsive dock widths pass');

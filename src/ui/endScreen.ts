@@ -33,7 +33,8 @@ import { containModalTab } from './modal.ts';
 import { createRichTooltip } from './richTooltip.ts';
 import { awardDetails } from './awardDetails.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
-import { createElement as el, ensureStyle } from './dom.ts';
+import { createElement as el } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { iconUrl, maskIcon } from './icons.ts';
 import { killSourceIdentity } from './killSourceIdentity.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -482,17 +483,9 @@ export function damageComparisonPercent(damage: RuntimeValue, maxDamage: Runtime
  */
 export function rosterRowDetails(row: Pick<EndScreenTeamRow, 'kills' | 'deaths'>, revives: boolean): string[] {
   const details: string[] = [];
-  if (row.kills > 0) {
-    details.push(t(row.kills === 1
-      ? 'endScreen.killsCountOne'
-      : 'endScreen.killsCountMany', { count: row.kills }));
-  }
+  if (row.kills > 0) details.push(t('endScreen.kills', { count: row.kills }));
   const deaths = Math.max(0, Math.floor(Number(row.deaths) || 0));
-  if (revives && deaths > 0) {
-    details.push(t(deaths === 1
-      ? 'endScreen.deathsCountOne'
-      : 'endScreen.deathsCountMany', { count: deaths }));
-  }
+  if (revives && deaths > 0) details.push(t('endScreen.deaths', { count: deaths }));
   return details;
 }
 
@@ -541,7 +534,7 @@ function vehicleName(specId: string | null | undefined): string {
  */
 export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRuntime {
   ensureFonts();
-  ensureStyle('cot-es-style', ES_CSS);
+  ensureStyle('cot-es-style', ES_CSS, 'surfaces');
   host.classList.add('cot-es');
   host.setAttribute('role', 'dialog');
   host.setAttribute('aria-modal', 'true');

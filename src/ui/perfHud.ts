@@ -2,7 +2,7 @@
 // explicitly enabled surface; input settings own persistence while this
 // module owns only presentation and bounded 4 Hz telemetry paint.
 
-import { ensureStyle } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { FONT_COND } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { t as tr } from './i18n.ts';
@@ -282,7 +282,7 @@ export function createPerfHud({
   trace?: PerfTracePort | null;
   readRenderFrame?: () => CompletedPostFrame | null;
 }) {
-  ensureStyle('cot-perfhud-style', PERF_HUD_CSS);
+  ensureStyle('cot-perfhud-style', PERF_HUD_CSS, 'surfaces');
   const el = document.createElement('aside');
   el.id = 'cot-perfhud';
   el.setAttribute('aria-label', tr('perfHud.ariaLabel'));
