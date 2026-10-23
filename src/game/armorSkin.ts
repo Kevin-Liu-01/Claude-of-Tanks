@@ -12,7 +12,6 @@
 export type SkinPoint = [number, number, number];
 
 interface SkinFace {
-  readonly indices: readonly number[];
   readonly normal: readonly number[];
   readonly constant: number;
   readonly plate?: unknown;
@@ -21,7 +20,6 @@ interface SkinFace {
 interface SkinCell {
   readonly min: readonly number[];
   readonly max: readonly number[];
-  readonly vertices: readonly (readonly number[])[];
   readonly faces: readonly SkinFace[];
 }
 
@@ -44,6 +42,18 @@ const MIN_PIECE_AREA_M2 = 2e-5;
 const COINCIDENT_DOT = 0.9995;
 
 const dot = (a: readonly number[], b: readonly number[]): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+/** Unsigned area of a planar polygon, whatever its plane. */
+function vectorArea(points: readonly SkinPoint[]): number {
+  let x = 0, y = 0, z = 0;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i], b = points[(i + 1) % points.length];
+    x += a[1] * b[2] - a[2] * b[1];
+    y += a[2] * b[0] - a[0] * b[2];
+    z += a[0] * b[1] - a[1] * b[0];
+  }
+  return Math.hypot(x, y, z) / 2;
+}
 
 function polygonArea(points: readonly SkinPoint[], normal: readonly number[]): number {
   let x = 0, y = 0, z = 0;
@@ -78,18 +88,76 @@ function clipPolygon(points: readonly SkinPoint[], plane: Plane, side: 1 | -1): 
   return out;
 }
 
-function cellPlanes(cell: SkinCell): Plane[] {
+interface CellShape {
+  /** The half-planes traceTank tests (one per distinct face plane), then the cell bounds. */
+  readonly planes: Plane[];
+  /** The cell's boundary as traceTank sees it: one convex polygon per face plane, with that plane's first plate. */
+  readonly polygons: Array<{ plane: Plane; plate: unknown; points: SkinPoint[] }>;
+}
+
+const planeKey = (n: readonly number[], c: number): string =>
+  `${Math.round(n[0] * 1000)},${Math.round(n[1] * 1000)},${Math.round(n[2] * 1000)}|${Math.round(c * 1000)}`;
+
+/**
+ * A cell exactly as traceTank tests it: its bounds cut by each face half-plane (n·x + c <= 0). Coplanar faces are one
+ * plane, reported with the first face's plate (intersectConvexCell keeps the first of equal entries). What still lies
+ * on the bounds has no face, so traceTank never reports it: it is left out. Built from the planes, not the hull
+ * triangles, so the drawn surface is the tested one even where the two disagree.
+ */
+function cellShape(cell: SkinCell): CellShape {
+  const [x0, y0, z0] = cell.min, [x1, y1, z1] = cell.max;
+  const corner = (x: number, y: number, z: number): SkinPoint => [x ? x1 : x0, y ? y1 : y0, z ? z1 : z0];
+  let polygons: Array<{ plane: Plane | null; plate: unknown; points: SkinPoint[] }> = [
+    [corner(1, 0, 0), corner(1, 1, 0), corner(1, 1, 1), corner(1, 0, 1)],
+    [corner(0, 0, 0), corner(0, 0, 1), corner(0, 1, 1), corner(0, 1, 0)],
+    [corner(0, 1, 0), corner(0, 1, 1), corner(1, 1, 1), corner(1, 1, 0)],
+    [corner(0, 0, 0), corner(1, 0, 0), corner(1, 0, 1), corner(0, 0, 1)],
+    [corner(0, 0, 1), corner(1, 0, 1), corner(1, 1, 1), corner(0, 1, 1)],
+    [corner(0, 0, 0), corner(0, 1, 0), corner(1, 1, 0), corner(1, 0, 0)],
+  ].map((points) => ({ plane: null, plate: undefined, points }));
   const planes: Plane[] = [];
   const seen = new Set<string>();
   for (const face of cell.faces) {
     const n = face.normal;
-    if (!n || !Number.isFinite(face.constant)) continue;
-    const key = `${Math.round(n[0] * 2000)},${Math.round(n[1] * 2000)},${Math.round(n[2] * 2000)},${Math.round(face.constant * 2000)}`;
+    if (!n || !Number.isFinite(face.constant) || Math.hypot(n[0], n[1], n[2]) < 1e-9) continue;
+    const key = planeKey(n, face.constant);
     if (seen.has(key)) continue;
     seen.add(key);
-    planes.push({ n: [n[0], n[1], n[2]], c: face.constant });
+    const plane: Plane = { n: [n[0], n[1], n[2]], c: face.constant };
+    planes.push(plane);
+    const cap: SkinPoint[] = [];
+    const next: typeof polygons = [];
+    for (const polygon of polygons) {
+      const clipped = clipPolygon(polygon.points, plane, 1);
+      for (const point of clipped) if (Math.abs(planeDistance(plane, point)) <= 1e-9) cap.push(point);
+      if (clipped.length >= 3 && vectorArea(clipped) > 1e-12) next.push({ ...polygon, points: clipped });
+    }
+    polygons = next;
+    const unique: SkinPoint[] = [];
+    for (const point of cap) if (!unique.some((other) => Math.hypot(point[0] - other[0], point[1] - other[1], point[2] - other[2]) < 1e-9)) unique.push(point);
+    if (unique.length < 3) continue;
+    const center = [0, 0, 0];
+    for (const point of unique) for (let axis = 0; axis < 3; axis++) center[axis] += point[axis] / unique.length;
+    const u = (() => {
+      const seed = Math.abs(plane.n[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+      const v = [seed[1] * plane.n[2] - seed[2] * plane.n[1], seed[2] * plane.n[0] - seed[0] * plane.n[2], seed[0] * plane.n[1] - seed[1] * plane.n[0]];
+      const size = Math.hypot(v[0], v[1], v[2]);
+      return [v[0] / size, v[1] / size, v[2] / size];
+    })();
+    const w = [plane.n[1] * u[2] - plane.n[2] * u[1], plane.n[2] * u[0] - plane.n[0] * u[2], plane.n[0] * u[1] - plane.n[1] * u[0]];
+    const angle = (point: SkinPoint) => Math.atan2(
+      (point[0] - center[0]) * w[0] + (point[1] - center[1]) * w[1] + (point[2] - center[2]) * w[2],
+      (point[0] - center[0]) * u[0] + (point[1] - center[1]) * u[1] + (point[2] - center[2]) * u[2]);
+    unique.sort((a, b) => angle(a) - angle(b));
+    if (vectorArea(unique) > 1e-12) polygons.push({ plane, plate: face.plate, points: unique });
   }
-  return planes;
+  // the bounds are half-planes too (intersectAABB rejects first)
+  planes.push({ n: [1, 0, 0], c: -x1 }, { n: [-1, 0, 0], c: x0 }, { n: [0, 1, 0], c: -y1 }, { n: [0, -1, 0], c: y0 },
+    { n: [0, 0, 1], c: -z1 }, { n: [0, 0, -1], c: z0 });
+  return {
+    planes,
+    polygons: polygons.filter((polygon): polygon is { plane: Plane; plate: unknown; points: SkinPoint[] } => !!polygon.plane),
+  };
 }
 
 function boundsOverlap(min: readonly number[], max: readonly number[], points: readonly SkinPoint[]): boolean {
@@ -159,40 +227,28 @@ export function armorSkinPanels(cells: readonly SkinCell[] | undefined): ArmorSk
 }
 
 function buildSkin(list: readonly SkinCell[]): ArmorSkinPanel[] {
-  const planes = list.map(cellPlanes);
+  const shapes = list.map(cellShape);
   const panels = new Map<string, { plate: unknown; normal: SkinPoint; constant: number; pieces: SkinPoint[][] }>();
   const plateKeys = new Map<unknown, number>();
-  list.forEach((cell, index) => {
-    // Coplanar faces of one cell are one plane to traceTank, which reports the first of them: so does the skin.
-    const planePlate = new Map<string, unknown>();
-    for (const face of cell.faces) {
-      if (!face.normal) continue;
-      const planeKey = `${Math.round(face.normal[0] * 1000)},${Math.round(face.normal[1] * 1000)},${Math.round(face.normal[2] * 1000)}|${Math.round(face.constant * 1000)}`;
-      if (!planePlate.has(planeKey)) planePlate.set(planeKey, face.plate);
-    }
-    for (const face of cell.faces) {
-      const points = face.indices.map((vertex) => cell.vertices[vertex]).filter(Boolean)
-        .map((point) => [point[0], point[1], point[2]] as SkinPoint);
-      if (points.length < 3 || !face.normal) continue;
-      let pieces: SkinPoint[][] = [points];
+  shapes.forEach((shape, index) => {
+    for (const polygon of shape.polygons) {
+      const normal = polygon.plane.n;
+      let pieces: SkinPoint[][] = [polygon.points];
       for (let other = 0; other < list.length && pieces.length; other++) {
         if (other === index) continue;
         const next: SkinPoint[][] = [];
         for (const piece of pieces) {
           if (!boundsOverlap(list[other].min, list[other].max, piece)) { next.push(piece); continue; }
-          subtractCell(piece, face.normal, planes[other], index < other, next);
+          subtractCell(piece, normal, shapes[other].planes, index < other, next);
         }
         pieces = next;
       }
       if (!pieces.length) continue;
-      const n = face.normal;
-      const planeKey = `${Math.round(n[0] * 1000)},${Math.round(n[1] * 1000)},${Math.round(n[2] * 1000)}|${Math.round(face.constant * 1000)}`;
-      const plate = planePlate.get(planeKey);
-      if (!plateKeys.has(plate)) plateKeys.set(plate, plateKeys.size);
-      const key = `${plateKeys.get(plate)}|${planeKey}`;
+      if (!plateKeys.has(polygon.plate)) plateKeys.set(polygon.plate, plateKeys.size);
+      const key = `${plateKeys.get(polygon.plate)}|${planeKey(normal, polygon.plane.c)}`;
       let panel = panels.get(key);
       if (!panel) {
-        panel = { plate, normal: [n[0], n[1], n[2]], constant: face.constant, pieces: [] };
+        panel = { plate: polygon.plate, normal: [normal[0], normal[1], normal[2]], constant: polygon.plane.c, pieces: [] };
         panels.set(key, panel);
       }
       panel.pieces.push(...pieces);
