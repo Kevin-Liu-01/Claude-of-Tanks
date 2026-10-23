@@ -325,6 +325,8 @@ export default {
       straw: null,
     },
     rockTone: (h: number, s: number, l: number) => [0.10, 0.08, clamp01(l * 1.02 + 0.04)], // grey shore boulders
+    // (2026-10-23: the props' wall picker as it was — its draws place the bourg's dressing; the Breton kit limewashes a
+    // third of its bourg houses on its own key, breton.ts stateFor)
     wallStoneChance: 0.85,
     wallRuns: [
       // the chapel's enclos (2026-10-06): its wall round three sides, open to the square
