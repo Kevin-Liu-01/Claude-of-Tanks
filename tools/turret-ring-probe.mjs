@@ -12,10 +12,25 @@
 //            by more than 1 cm); synthetic dents the planner can make (a roof dent near the rim, the same climbing, a
 //            side corner's climbing shear) and, with --stress, the deepest it makes (0.28 m) tight and wide round the ring
 //            pushing in flat and climbing — each through the runtime's own plate law (turretRingPlateDents); the exterior
-//            from 80 directions against the same wreck with its hull's meshes back on their geometry (a pixel deeper by
-//            2 cm whose first hit is not the plate is a hole the cut opened); the lifecycle and fingerprint;
+//            from 80 directions against the same wreck with its hull's meshes back on their geometry, both with the wreck's
+//            settled dents (a pixel deeper by 2 cm whose first hit is not the plate is a hole the cut opened, unless it is
+//            the dents' own reshaping: see below); with the player's build, the exterior's guard; the lifecycle and
+//            fingerprint;
 //   hulk     the cook-off hulk against its ring:false twin: the placement budget, the top view over the opening, and the
 //            exterior from 80 directions (a pixel deeper by 3 cm that never passed through the opening: a hole).
+//
+// The live exterior and its dents (release 240). The cut moves the new corners it gives a long face past the live dent
+// zone (turretRingWell.ts placeForDents, rimR + LIVE_ZONE_M) so that, dented, they land on the plane the face's own
+// corners bend to; inside the zone its split faces follow the dent field by design. Rasterised without dents (as this
+// pass first was), the cut wreck therefore differs from the uncut one by that compensation wherever a split face lies:
+// vt4a1 counted 19 735 "hole" pixels at dent share 0 and the same 19 735 at share 1, and its flagged deck face, cut
+// alone, keeps its whole area (0 of 1 891 samples outside the prism lost) — no opening, the compensation measured
+// undented. With both rasters dented (as the coverage passes are), seed 4242 counts 0, and seed 77 keeps 2-4 cm of
+// reshaping about 1.7 m out, where a long deck face reaches into the zone and bends with the field there. So a pixel no
+// more than EXT_TOL_M deeper whose first hit is on the same mesh as the uncut wreck's, within EXT_TOL_R_M of the rim
+// (LIVE_ZONE_M + 0.3), is that reshaping and not counted. The guard keeps the tolerance from hiding a real hole: a
+// GUARD_HALF_M-square opening cut through the deck inside that radius, and one outside it, must each add more than
+// GATE_EXT_PX hole pixels over the player's wreck without them, or --gate fails.
 //
 //   node tools/turret-ring-probe.mjs --ids=t90m_proryv,t72b3 [--seeds=77,4242,9001] [--stress] [--no-live] [--no-hulk]
 //        [--receipts=<receipts.json>] [--render=<dir>] --out=<rows.jsonl> [--gate]
@@ -254,6 +269,91 @@ function readDents(root) {
 
 // ------------------------------------------------------------------------------------------------ the live wreck
 const SHARE_AGES = [0, 0.175, 1000];
+// the live exterior's tolerance and its guard (see the header)
+const LIVE_ZONE_M = 0.36;                                    // turretRingWell.ts LIVE_ZONE_M
+const EXT_TOL_M = 0.05, EXT_TOL_R_M = LIVE_ZONE_M + 0.3;
+const GUARD_HALF_M = 0.03, GATE_EXT_PX = 20;
+
+/** A convex polygon's part (flat xyz) on one side of the vertical plane x (axis 0) or z (axis 2) = value, or null. */
+function clipAxis(poly, axis, value, keepLess) {
+  const out = [], n = poly.length / 3;
+  for (let i = 0; i < n; i++) {
+    const a = i * 3, b = ((i + 1) % n) * 3;
+    const da = keepLess ? value - poly[a + axis] : poly[a + axis] - value;
+    const db = keepLess ? value - poly[b + axis] : poly[b + axis] - value;
+    if (da >= 0) out.push(poly[a], poly[a + 1], poly[a + 2]);
+    if ((da >= 0) !== (db >= 0)) {
+      const t = da / (da - db);
+      for (let k = 0; k < 3; k++) out.push(poly[a + k] + t * (poly[b + k] - poly[a + k]));
+    }
+  }
+  return out.length >= 9 ? out : null;
+}
+
+/** The guard's opening: the triangles with a square (hull frame x0..x1, z0..z1) cut out of every face wholly over yMin,
+ *  that is through the deck, its fittings and whatever lies just under it. `removed`: the faces it opened. */
+function carveOpening(tris, hullWorld, box) {
+  const inv = hullWorld.clone().invert(), out = { pos: [], flags: [], names: [] }, v = new THREE.Vector3();
+  let removed = 0;
+  for (let t = 0; t < tris.flags.length; t++) {
+    const o = t * 9, local = [];
+    for (let k = 0; k < 3; k++) { v.set(tris.pos[o + 3 * k], tris.pos[o + 3 * k + 1], tris.pos[o + 3 * k + 2]).applyMatrix4(inv); local.push(v.x, v.y, v.z); }
+    const xs = [local[0], local[3], local[6]], zs = [local[2], local[5], local[8]];
+    if (Math.max(...xs) <= box.x0 || Math.min(...xs) >= box.x1 || Math.max(...zs) <= box.z0 || Math.min(...zs) >= box.z1
+      || Math.min(local[1], local[4], local[7]) < box.yMin || tris.names[t] === 'PLATE') {
+      for (let k = 0; k < 9; k++) out.pos.push(tris.pos[o + k]);
+      out.flags.push(tris.flags[t]); out.names.push(tris.names[t]);
+      continue;
+    }
+    removed++;
+    const mid = clipAxis(local, 0, box.x0, false), core = mid && clipAxis(mid, 0, box.x1, true);
+    const pieces = [clipAxis(local, 0, box.x0, true), clipAxis(local, 0, box.x1, false),
+      core && clipAxis(core, 2, box.z0, true), core && clipAxis(core, 2, box.z1, false)];
+    for (const poly of pieces) {
+      if (!poly) continue;
+      for (let i = 1; i + 1 < poly.length / 3; i++) {
+        for (const j of [0, i, i + 1]) { v.set(poly[j * 3], poly[j * 3 + 1], poly[j * 3 + 2]).applyMatrix4(hullWorld); out.pos.push(v.x, v.y, v.z); }
+        out.flags.push(tris.flags[t]); out.names.push(tris.names[t]);
+      }
+    }
+  }
+  return { tris: out, removed };
+}
+
+/** The live exterior: per view (the elevations x 16 azimuths) the pixels where the cut wreck shows something deeper by
+ *  2 cm than the uncut one, whose first hit is not the plate, nor the deck inside the race (the ring takes it by design:
+ *  the verifier's rule), nor the dents' reshaping (EXT_TOL_M on the same mesh within EXT_TOL_R_M of the rim). */
+function exteriorHoles(intactTris, destroyedTris, seat, hull, elevations, keepSamples = 10) {
+  let holes = 0, holesFar = 0, changed = 0, tolerated = 0;
+  const samples = [];
+  const toHull = hull.matrixWorld.clone().invert();
+  const centre = new THREE.Vector3(seat.cx, seat.deckY - 0.3, seat.cz).applyMatrix4(hull.matrixWorld);
+  for (const el of elevations) {
+    for (let az = 0; az < 16; az++) {
+      const a = (az / 16) * Math.PI * 2, e = (el * Math.PI) / 180;
+      const dir = new THREE.Vector3(-Math.sin(a) * Math.cos(e), -Math.sin(e), -Math.cos(a) * Math.cos(e));
+      const v = makeView(dir, centre.clone().addScaledVector(dir, -6), seat.rimR + 0.8, 0.02);
+      const A = raster(v, intactTris), B = raster(v, destroyedTris);
+      for (let p = 0; p < A.zFront.length; p++) {
+        if (!(B.zFront[p] > A.zFront[p] + 0.02)) continue;
+        changed++;
+        const now = B.triFront[p] >= 0 ? destroyedTris.names[B.triFront[p]] : null;
+        if (now === 'PLATE' || now === 'turretRingPlate') continue;
+        const q0 = pixelPoint(v, p, A.zFront[p]).applyMatrix4(toHull), r = Math.hypot(q0.x - seat.cx, q0.z - seat.cz);
+        if (r <= seat.rimR + 0.01 && q0.y >= seat.deckY - 0.03) continue;
+        const deeper = B.zFront[p] - A.zFront[p];
+        if (deeper < EXT_TOL_M && r <= seat.rimR + EXT_TOL_R_M && now === intactTris.names[A.triFront[p]]) { tolerated++; continue; }
+        holes++;
+        if (deeper > 0.2) holesFar++;
+        if (samples.length < keepSamples) {
+          const q = pixelPoint(v, p, A.zFront[p]), q1 = Number.isFinite(B.zFront[p]) ? pixelPoint(v, p, B.zFront[p]) : null;
+          samples.push({ el, az, at: [r4(q.x), r4(q.y), r4(q.z)], was: intactTris.names[A.triFront[p]], now, nowAt: q1 ? [r4(q1.x), r4(q1.y), r4(q1.z)] : null, deeper: r4(deeper) });
+        }
+      }
+    }
+  }
+  return { changedPx: changed, holePx: holes, holeFarPx: holesFar, toleratedPx: tolerated, samples };
+}
 function platesOf(root) { const l = []; root.traverse((o) => { if (o.userData?.turretRingPlate) l.push(o); }); return l; }
 function discTris(plate, positions) {
   const pg = plate.geometry, partA = pg.getAttribute('cotRingA'), idx = pg.index.array;
@@ -420,45 +520,42 @@ function liveProbe(id, buildName, camoSeed) {
         row.synthetic.push({ name: syn.name, at: syn.c.map(r4), dir: syn.dir, strict: coverage(view, P, HS, hull, seat, 0.0005, TS), cm: coverage(view, P, HS, hull, seat, 0.01) });
       }
     }
-    // the exterior: the cut hull with its plate (turret hidden) against the intact hull from 80 directions; a pixel
-    // deeper than the intact hull's by 2 cm whose first hit is not the plate is a hole the cut opened
+    // the exterior: the cut hull with its plate (turret hidden) against the intact hull from 80 directions, both dented as
+    // the settled wreck is (exteriorHoles: what counts as a hole); with the player's build, the guard's two openings
     {
       turret.visible = false;
       const swapped = [];
       root.traverse((o) => { if (o.isMesh && o.geometry?.userData?.turretRingCut && heldBefore.has(o)) { swapped.push([o, o.geometry]); o.geometry = heldBefore.get(o); } });
-      const intactTris = collect(root, new Set([turret, plate]));
+      const { burnU, list } = readDents(root);
+      const dent = list.length ? { burnU, hullWorld: hull.matrixWorld, list, share: turretRingDentShare(SHARE_AGES[SHARE_AGES.length - 1]) } : null;
+      const intactTris = collect(root, new Set([turret, plate]), dent);
       for (const [o, g] of swapped) o.geometry = g;
       row.cutMeshes = swapped.map(([o]) => o.name);
-      const destroyedTris = collect(root, new Set([turret]));
-      const plateStart = destroyedTris.flags.length;
+      const destroyedTris = collect(root, new Set([turret]), dent);
       const plateTris = geometryTris(plate.geometry, plate.matrixWorld, plate.material.side === THREE.DoubleSide ? 1 : 0);
       destroyedTris.pos.push(...plateTris.pos); destroyedTris.flags.push(...plateTris.flags); for (let i = 0; i < plateTris.flags.length; i++) destroyedTris.names.push('PLATE');
       turret.visible = true;
-      let holes = 0, holesFar = 0, changed = 0;
-      const samples = [];
-      const centre = new THREE.Vector3(seat.cx, seat.deckY - 0.3, seat.cz).applyMatrix4(hull.matrixWorld);
-      for (const el of [-10, 5, 20, 40, 65]) {
-        for (let az = 0; az < 16; az++) {
-          const a = (az / 16) * Math.PI * 2, e = (el * Math.PI) / 180;
-          const dir = new THREE.Vector3(-Math.sin(a) * Math.cos(e), -Math.sin(e), -Math.cos(a) * Math.cos(e));
-          const v = makeView(dir, centre.clone().addScaledVector(dir, -6), seat.rimR + 0.8, 0.02);
-          const A = raster(v, intactTris), B = raster(v, destroyedTris);
-          for (let p = 0; p < A.zFront.length; p++) {
-            if (!(B.zFront[p] > A.zFront[p] + 0.02)) continue;
-            changed++;
-            if (B.triFront[p] >= plateStart || destroyedTris.names[B.triFront[p]] === 'turretRingPlate') continue;
-            // the hull's own deck and fittings inside the race, over it (the ring takes them by design: the verifier's rule)
-            {
-              const q0 = pixelPoint(v, p, A.zFront[p]).applyMatrix4(hull.matrixWorld.clone().invert());
-              if (Math.hypot(q0.x - seat.cx, q0.z - seat.cz) <= seat.rimR + 0.01 && q0.y >= seat.deckY - 0.03) continue;
-            }
-            holes++;
-            if (B.zFront[p] > A.zFront[p] + 0.2) holesFar++;
-            if (samples.length < 10) { const q = pixelPoint(v, p, A.zFront[p]); const q1 = Number.isFinite(B.zFront[p]) ? pixelPoint(v, p, B.zFront[p]) : null; samples.push({ el, az, at: [r4(q.x), r4(q.y), r4(q.z)], was: intactTris.names[A.triFront[p]], now: B.triFront[p] >= 0 ? destroyedTris.names[B.triFront[p]] : null, nowAt: q1 ? [r4(q1.x), r4(q1.y), r4(q1.z)] : null, deeper: r4(B.zFront[p] - A.zFront[p]) }); }
+      row.exterior = exteriorHoles(intactTris, destroyedTris, seat, hull, [-10, 5, 20, 40, 65]);
+      if (buildName === 'player') {
+        // a GUARD_HALF_M-square opening through the deck behind (or beside, or ahead of) the ring, inside the tolerance's
+        // radius and outside it, seen from the upper views: each must count as a hole over the wreck without it
+        const top = [40, 65], base = exteriorHoles(intactTris, destroyedTris, seat, hull, top, 0).holePx;
+        row.exteriorGuard = [];
+        for (const [name, r] of [['inside', seat.rimR + 0.2], ['outside', seat.rimR + EXT_TOL_R_M + 0.06]]) {
+          const entry = { name, r: r4(r), bearingDeg: null, removed: 0, holePx: 0 };
+          for (const bearing of [Math.PI, Math.PI / 2, -Math.PI / 2, 0]) {
+            const x = seat.cx + Math.sin(bearing) * r, z = seat.cz + Math.cos(bearing) * r;
+            const box = { x0: x - GUARD_HALF_M, x1: x + GUARD_HALF_M, z0: z - GUARD_HALF_M, z1: z + GUARD_HALF_M, yMin: seat.deckY - 0.15 };
+            const carved = carveOpening(destroyedTris, hull.matrixWorld, box);
+            if (!carved.removed) continue;
+            entry.bearingDeg = Math.round((bearing * 180) / Math.PI);
+            entry.removed = carved.removed;
+            entry.holePx = exteriorHoles(intactTris, carved.tris, seat, hull, top, 0).holePx - base;
+            break;
           }
+          row.exteriorGuard.push(entry);
         }
       }
-      row.exterior = { changedPx: changed, holePx: holes, holeFarPx: holesFar, samples };
     }
     visual.resetDestroyed();
     row.platesAfterReset = platesOf(root).length;
@@ -617,7 +714,11 @@ if (args.includes('--gate')) {
         const stress = state.name.startsWith('stress');
         if (cm > (stress ? 0.001 : 0) || strict > (stress ? 0.002 : 0.001)) failures.push(`${tag} ${state.name}: the hull over the plate (strict ${strict}, >1 cm ${cm})`);
       }
-      if (row.exterior.holePx > 20) failures.push(`${tag}: ${row.exterior.holePx} exterior hole pixels`);
+      if (row.exterior.holePx > GATE_EXT_PX) failures.push(`${tag}: ${row.exterior.holePx} exterior hole pixels`);
+      for (const guard of row.exteriorGuard ?? []) {
+        if (!guard.removed) failures.push(`${tag}: the exterior guard found no deck to open ${guard.name} the tolerance's radius`);
+        else if (guard.holePx <= GATE_EXT_PX) failures.push(`${tag}: the exterior guard's opening ${guard.name} the tolerance's radius counted ${guard.holePx} px (the tolerance hid a real hole)`);
+      }
     } else if (row.kind === 'hulk') {
       if (!row.budgetHolds || !row.baseYConsistent) failures.push(`${tag}: placement budget or base`);
       if (row.exterior.holeFarPx > 100) failures.push(`${tag}: ${row.exterior.holeFarPx} exterior hole pixels`);
