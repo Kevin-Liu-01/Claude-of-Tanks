@@ -479,6 +479,8 @@
   "garage.deploy.seconds": "{value} 秒",
   "garage.deploy.none": "无",
   "garage.deploy.elimination": "全歼",
+  "garage.deploy.allMaps": "全部 {count}",
+  "garage.deploy.changeTank": "更换战车",
   "garage.deploy.difficulty": "难度 {value}/{max}",
   "garage.station.aria": "视角",
   "garage.station.overview": "总览",
