@@ -375,9 +375,14 @@ function addSaFit(P: AbramsIdentityPort): void {
     rack.name = 'm1a1sa_bustle_rack_extension';
     P.turretG.add(rack);
     // hanger brackets from the rack's floor rail and top rail into the extension
+    // 2026-10-22 (owner float calls): the top brackets stood at RACK_TOP_Y, 0.2 m over this rack's own rear top rail
+    // (centre 0.6075) and 6 cm over the extension; they now bridge that rail (two halves, x 0.18..1.07) and the
+    // extension's front face.
     for (const x of [-0.86, 0, 0.86]) {
       P.addEquipment('turretDetail', box(0.05, 0.04, 0.10), x, RACK_FLOOR_Y - 0.01, RACK_REAR_Z - 0.03);
-      P.addEquipment('turretDetail', box(0.05, 0.04, 0.10), x, RACK_TOP_Y - 0.04, RACK_REAR_Z - 0.03);
+    }
+    for (const x of [-0.86, -0.30, 0.30, 0.86]) {
+      P.addEquipment('turretDetail', box(0.05, 0.04, 0.10), x, 0.6075, RACK_REAR_Z - 0.03);
     }
   }, { reachM: 0.05 });
   // TUSK tank-infantry phone box on the right rear of the hull.

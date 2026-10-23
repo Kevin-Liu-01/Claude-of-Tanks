@@ -2298,8 +2298,11 @@ function buildType90HullStructure(P: MiscBuilderPort): void {
   // V splash board: proud strip riding the plateau (ref side 1.30 @ 3.03-3.16;
   // r6: pulled to z<=3.13 — the ref board ENDS 3.16 and the 3.20 col wants the
   // bare 1.172 plateau; the old 3.22 center piece printed 1.30 there, err 0.10)
-  for (const s of [-1, 1]) P.add('hull', box(0.46, 0.115, 0.055), s * 0.40, 1.235, 3.012, -0.18, s * 0.42, 0);
-  P.add('hull', box(0.14, 0.115, 0.055), 0, 1.245, 3.09, -0.18, 0, 0);
+  // 2026-10-22 (owner float calls): the boards rode 7-12 mm over the stepped bow (tub top 1.15, plateau 1.133, nose
+  // top 1.172); their lower edges now run down into the plate so each stands welded along its whole length, the top
+  // line unchanged.
+  for (const s of [-1, 1]) P.add('hull', box(0.46, 0.185, 0.055), s * 0.40, 1.20, 3.012, -0.18, s * 0.42, 0);
+  P.add('hull', box(0.14, 0.158, 0.055), 0, 1.2233, 3.09, -0.18, 0, 0);
   // front mudguard pods (plan 3.69-3.70 carried by the THIN flap/lip only —
   // the 12%-band front BODY col stays at ~3.59: pod band 0.30 ends 3.57 and
   // the 3.65 col union (flap 0.72..0.90 + lip) holds under the 0.283 cut)
@@ -2307,37 +2310,27 @@ function buildType90HullStructure(P: MiscBuilderPort): void {
     P.add('hull', slab(                                                        // (r6b §B4: pod band raised to 1.075-1.19 — the r6 idler raise put the wrap/top-run pads at 1.02-1.10 through the old 1.01-1.04 pod bottoms, 84 exact voxels)
       [s * 0.96, 1.15, 2.88], [s * 1.62, 1.15, 2.88], [s * 1.62, 1.075, 3.50], [s * 0.96, 1.075, 3.50],
       [s * 0.96, 1.19, 2.88], [s * 1.62, 1.19, 2.88], [s * 1.62, 1.105, 3.56], [s * 0.96, 1.105, 3.56]));
-    // r5 OUTER MUDGUARD TIP + widthM anchor: the ref's outermost plan column
-    // (x 1.690-1.812 window) is a LOW guard tip — z 3.365..3.48, front-view
-    // band 0.665..0.868 — NOT the skirt panels (its stations read 3.19 wide
-    // over the old panel zone). The tip's 1.715 face carries widthM 3.43.
-    // DEPTH 0.36: the widthM measure only counts plan columns with a
-    // >=0.35 m z-band (the 0.115 exact-match tip read widthM 3.38/-1.45%
-    // = -3.6 dims) — the certified price is ~0.12 err on the outer col.
-    P.add('hull', box(0.050, s > 0 ? 0.20 : 0.14, 0.36), s * 1.690, s > 0 ? 0.77 : 0.77, 3.41); // L tip band 0.14 (y 0.70-0.84): NON-body under the front_hull 12% cut (~0.177) so the R mirror alone owns the R body end — the r5b symmetric 0.20 bands left BOTH ±1.712 cols body and the dAlong stayed 0.019
-    P.add('hullDark', box(0.046, 0.03, 0.10), s * 1.689, s > 0 ? 0.86 : 0.80, 3.44); // guard-tip bolt strip (§B3 tell; outer 1.712 INSIDE the 1.715 WIDTH GUARD plane; L strip sits inside the thinned band)
-    if (s > 0) {
-      // FOLDED REAR-VIEW MIRROR on the RIGHT guard tip (identity cue — the
-      // JGSDF stows them folded on the front fenders) — AND the front-row
-      // REGISTRATION COUNTERWEIGHT: the official front reg reads dAlong
-      // +0.019 (the REF's front body span is 19 mm right-of-center), which
-      // half-phase-lerps EVERY front column against a symmetric build
-      // (official front mean 1.57 vs 0.98 grid-aligned). The mirror's
-      // y-band makes the R ±1.712 col BODY (band 0.46 > the ~0.293 cut)
-      // while the L tip stays non-body (0.20) — my body mid moves to
-      // +0.019 and the front grid aligns. One col pays ~0.13 (top 1.12 vs
-      // the ref's 0.868 tip line).
-      P.add('hullDetail', box(0.028, 0.22, 0.04), 1.700, 0.90, 3.40, 0.2, 0, 0); // folded mirror arm (r7: lowered — the ref's own R-tip col tops 0.871 and the 1.12 head paid 0.13; band [0.672..1.01] holds 0.34 > the ~0.293 body cut, so the dAlong counterweight stands)
-      P.add('hullDark', box(0.042, 0.11, 0.16), 1.6925, 0.945, 3.33);          // mirror head (folded flat, top 1.00)
+    // 2026-10-22 (owner float calls): the r5 gate anchors floated: the outer mudguard tips and their bolt strips (x
+    // 1.69, 55-104 mm off anything, beside the idler) and the §A front-anchor blocks (x 0.90, 0.14 m ahead of the
+    // nose). The anchor blocks are gone. The tip was the foot of the skirt's raked nose (the source carries the skirt
+    // on past the idler and down to it): the nose plate now runs from the front panel's 3.12 face, its top on the
+    // fender line, its raked front face down to the tip's 0.665..0.868 band at 3.48 (outer face 1.715 as before).
+    {
+      const nose = new THREE.Shape([[3.12, 0.608], [3.12, 1.19], [3.20, 1.19], [3.48, 0.868], [3.48, 0.665]]
+        .map(([z, y]) => new THREE.Vector2(z, y)));
+      P.add('hull', new THREE.ExtrudeGeometry(nose, { depth: 0.05, bevelEnabled: false, steps: 1 }).rotateY(-Math.PI / 2),
+        s > 0 ? 1.715 : -1.665, 0, 0);
     }
-    // §A FRONT ANCHOR: a low bracket block whose side-col union with the
-    // flap keeps the ~3.58 col a BODY col (hullLengthM front anchor). r5:
-    // narrowed to x 0.865-0.935 — the REF'S OWN bow reaches 3.546 exactly
-    // there (its 0.898 plan col) while the old 0.55-0.92 block printed
-    // 3.595 across six cols where the ref bow curve reads 3.23-3.30
-    // (0.19 err x6, the biggest non-island plan_hull block). At 1.0-1.45
-    // it sat inside the idler wrap's far quadrant (144 exact vox, r4d).
-    P.add('hull', box(0.07, 0.29, 0.05), s * 0.90, 0.745, 3.57);               // (face 3.595 clear of the 3.617 col boundary now the idler far edge is 3.58; r6b: band raised to 0.60-0.89 — the 0.44 bracket bottom printed the ±0.94 front cols under the ref's 0.599 skirt-band line; the ~3.58 side-col union band stays 0.50 > the 12% cut so hullLengthM holds)
+    // The folded right mirror (an identity cue) stood on the right tip; it now stands on the raked fender tip's top:
+    // a foot plate on the 22.6-degree rake, a stalk normal to it and the head folded flat on the stalk.
+    if (s > 0) {
+      const rake = Math.atan2(0.10, 0.24), ny = Math.cos(rake), nz = Math.sin(rake);
+      const footY = 1.19 - (3.30 - 3.20) * 0.10 / 0.24;                       // the tip's top at z 3.30
+      const onTip = (lift: number): [number, number, number] => [1.585, footY + ny * lift, 3.30 + nz * lift];
+      P.add('hullDetail', box(0.05, 0.02, 0.05), ...onTip(0.01), rake, 0, 0);   // mirror foot
+      P.add('hullDetail', box(0.022, 0.07, 0.022), ...onTip(0.055), rake, 0, 0); // stalk
+      P.add('hullDark', box(0.16, 0.03, 0.11), ...onTip(0.105), rake, 0, 0);    // folded head
+    }
     MUDGUARDS.add(P, {
       label: `misc-native-front-flap-${s}`, x: s * 1.36, y: 1.01, z: 3.56,
       thickness: 0.03, length: 0.59, height: 0.18, material: 'rubber',
@@ -2369,8 +2362,10 @@ function buildType90HullStructure(P: MiscBuilderPort): void {
   // engine deck furniture: FLUSH louvre fields (the ref deck line is clean)
   P.add('hullDark', box(1.90, 0.014, 1.30), 0, 1.444, -2.72);                  // r7: louvre field FLUSH (the 1.468-crown strips printed station i1 +0.016 over the ref's 1.468 deck read — real Type 90 louvres sit in the deck plane)
   for (let k = 0; k < 6; k++) P.add('hullDetail', box(1.80, 0.012, 0.05), 0, 1.4475, -3.18 + k * 0.17);
-  P.add('hullDark', box(1.85, 0.014, 0.85), 0, 1.427, -1.42);
-  for (const s of [-1, 1]) P.add('hullDetail', cylY(0.08, 0.08, 0.014, 12), s * 1.25, 1.432, -1.10);
+  // 2026-10-22 (owner float calls): the fore louvre field and the two deck caps hung 8-14 mm over the 1.4115 mid deck;
+  // they lie on it.
+  P.add('hullDark', box(1.85, 0.014, 0.85), 0, 1.4185, -1.42);
+  for (const s of [-1, 1]) P.add('hullDetail', cylY(0.08, 0.08, 0.014, 12), s * 1.25, 1.4185, -1.10);
   headlight(P, -1.22, 1.05, 3.44, -0.3, 0.05);
   headlight(P, 1.22, 1.05, 3.44, -0.3, 0.05);
   P.add('hullDetail', torus(0.08, 0.014, 10), -0.55, 0.62, 3.12, Math.PI / 2, 0, 0); // tow eyes on the under-nose (r6: pulled to 3.12 — their 3.395 plan fronts co-printed the ref's flat 3.222 center line with the old nose)
