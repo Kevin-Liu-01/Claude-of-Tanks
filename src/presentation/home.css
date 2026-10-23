@@ -248,9 +248,6 @@ html[lang^='zh'] :is(h1,h2,.v5-evidence h3,.v5-mode--hero h3){line-height:1.15}
 .hero__title{display:flex;flex-direction:column;margin:0;font:700 var(--home-h1)/.86 var(--font-display);letter-spacing:var(--track-title);text-transform:uppercase;color:var(--ink-1);text-shadow:var(--hollow-shadow)}
 .hero__title .t-hollow{--hollow-stroke:2px;text-shadow:none}
 .hero__ctas{display:flex;flex-wrap:wrap;gap:var(--s3);margin-top:var(--s6)}
-.hero__trailer{padding-left:8px}
-.hero__thumb{display:block;width:72px;height:40px;overflow:hidden;border-radius:var(--r1);outline:1px solid var(--line-3)}
-.hero__thumb img{width:100%;height:100%;object-fit:cover}
 .hero__matchup{grid-area:match;align-self:end;display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3) var(--s5);margin-bottom:var(--s5);--vs-name:var(--fs-24);--sil-w:74px;--sil-h:24px}
 .hero__matchup .cot-flag{width:30px;height:22.5px}
 .hero__matchup .vs-mark{padding:6px 10px;font-size:var(--fs-14)}
@@ -323,8 +320,6 @@ html[lang^='zh'] :is(h1,h2,.v5-evidence h3,.v5-mode--hero h3){line-height:1.15}
   .hero{grid-template-columns:minmax(0,1fr);grid-template-areas:"copy" "match" "scene" "stats";min-height:max(640px,100svh);padding-top:calc(var(--shell-nav-h) + var(--s5))}
   .hero__still{object-position:56% 50%}
   .hero__ctas .cot-btn--xl{--btn-h:var(--btn-h-l);padding:0 20px;font-size:var(--fs-16)}
-  .hero__thumb{display:none}
-  .hero__trailer{padding-left:20px}
   .hero__matchup{flex-direction:column;align-items:flex-start;gap:10px;margin-bottom:var(--s4);--vs-name:var(--fs-20);--sil-w:58px;--sil-h:19px}
   .hero__matchup .vs-duel{flex-direction:column;align-items:flex-start;gap:8px}
   .hero__matchup .vs-side--foe{flex-direction:row-reverse}

@@ -63,7 +63,7 @@ function heroBlock() {
     + `<div class="hero__grade" aria-hidden="true"></div>`
     + `<div class="hero__copy"><h1 class="hero__title" id="hero-title" lang="en"><span class="hero__line">Claude <span class="t-accent">of</span></span><span class="hero__line t-hollow">Tanks</span></h1>`
     + `<div class="hero__ctas"><a class="cot-btn cot-btn--primary cot-btn--xl" href="/">${play}${t('publicNav.playNow')}</a>`
-    + `<a class="cot-btn cot-btn--secondary cot-btn--xl hero__trailer" href="#trailers" data-trailer-open><span class="hero__thumb"><img src="/media/site50-r14/films/trailer-row.jpg" alt="" width="84" height="47" decoding="async"></span>${t('home.hero.trailer')}</a></div></div>`
+    + `<a class="cot-btn cot-btn--secondary cot-btn--xl" href="#trailers" data-trailer-open>${iconMarkup('media', 18)}${t('home.hero.trailer')}</a></div></div>`
     + `<div class="hero__matchup">${duel(a.id, b.id)}<span class="vs-where">${where(FILMS.get(HERO_ID).map, FILMS.get(HERO_ID).hour)}</span></div>`
     + `<div class="hero__scene"><a class="cot-btn cot-btn--secondary cot-btn--sm" href="${driveHref(a.id)}">${iconMarkup('vehicle', 16)}${t('home.testDrive')}</a>`
     + `<a class="cot-btn cot-btn--secondary cot-btn--sm" href="${studioHref(FILMS.get(HERO_ID).map)}">${iconMarkup('studio', 16)}${t('home.hero.openScene')}</a></div>`

@@ -77,7 +77,7 @@ assert.match(heroMarkup, new RegExp(`<img class="hero__still" src="${heroStill.p
   'the hero still carries its size and priority');
 assert.equal(home.includes(`<link rel="preload" href="${heroStill.path}" as="image" type="image/webp" fetchpriority="high">`), true,
   'the hero still is the preloaded LCP image');
-assert.equal((heroMarkup.match(/<img /g) || []).length, 2, 'the hero holds its still and the trailer thumbnail, nothing else');
+assert.equal((heroMarkup.match(/<img /g) || []).length, 1, 'the hero holds its still, nothing else');
 
 // the screenshot rail: the picks in their order, the eleven of 2026-10-19 kept after the new ones
 const railMarkup = home.match(/<div class="v5-shot-rail"[^>]*>([\s\S]*?)<\/div>/)?.[1] || '';
