@@ -645,7 +645,12 @@ try {
           }
           if(touch&&await page.evaluate(()=>{const row=document.querySelector('.cot-vehicle-controls');return row.scrollWidth>row.clientWidth+1;}))
             errors.push(`${name}: the touch row scrolls`);
-          if(index<pageCount-1)await page.locator('.cot-systems-more').click();
+          if(index<pageCount-1){
+            // (More sets the row's page at once; the layout hides the old page's tiles on its next frame)
+            await page.locator('.cot-systems-more').click();
+            await page.waitForFunction(i=>document.querySelector('.cot-vehicle-controls').dataset.page===String(i),index+1);
+            await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+          }
         }
         if(pageCount>1)await page.locator('.cot-systems-more').click();
         if(pressed!==5)errors.push(`${name}: expected all five vehicle controls (${pressed} reached)`);

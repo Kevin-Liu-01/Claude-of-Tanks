@@ -3,7 +3,7 @@ import {
   mouseAlertBox, mouseMedalWaits, planMouseNotices, type MouseNoticeInput, type MouseNoticePlan, type PlanLane, type PlanRect,
 } from './mouseNoticePlan.ts';
 import { addSightFurniture, clearSightFurniture, setSightNotice, settleSightFurniture } from './sightFurniture.ts';
-import { planTouchNotices, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
+import { planTouchNotices, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
 
 /** A resize whose sizes arrive closer than this is still in progress. */
 const RESIZE_SETTLE_MS = 150;
@@ -117,6 +117,12 @@ const touchChipParked = (width: number, height: number) => (width > height && he
  *  the notices from under the score (at 568x290 the panel under the score left them no clear place). Where the column
  *  is too short (568x256) the panel stays under the score. battleHudLayout.css data-objective-seat. */
 const OBJECTIVE_COMPACT_H = 340;
+/** Half the centre column a touch landscape's kill lanes leave the notices (a compact notice and its gaps; the lanes'
+ *  CSS width, battleHudLayout.css --hud-message-width, keeps the same 74 px). */
+const TOUCH_CENTRE_HALF = TOUCH_COMPACT_NOTICE.w / 2 + TOUCH_NOTICE_GAP;
+/** The layout variables that place an element on the centre line, written unrounded. */
+const CENTRING_VARS = new Set(['objective-top', 'objective-left', 'systems-left', 'touch-notice-cx', 'touch-alert-cx',
+  'touch-banner-cx', 'touch-countdown-cx']);
 /** The side seat's gap under the map, and its least width: the parked warning chip's (battleHudLayout.css), one column. */
 const OBJECTIVE_SEAT_GAP = 4;
 const PARKED_CHIP_W = 106;
@@ -271,7 +277,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     // (as the pass's own write formats them)
     setBodyVar('--hud-objective-top', `${place.top}px`);
-    setBodyVar('--hud-objective-left', `${Math.floor(place.left)}px`);
+    setBodyVar('--hud-objective-left', `${place.left}px`);
     setBodyVar('--hud-objective-width', `${Math.floor(place.width)}px`);
   }
   /** A node's box when it shows (laid out, not hidden or transparent), else null. */
@@ -609,8 +615,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const systemsElement = document.querySelector<HTMLElement>('.cot-vehicle-controls');
     const naturalWidth = systemsElement ? systemsElement.scrollWidth + 2 : 0;
     let dockWidth = Math.min(systemsWidth, naturalWidth);
+    // (centred on the tray by the row's own rendered width: the 2 px margin dockWidth carries would set it 1 px left)
     let systemsLeft = Math.max(12, Math.min(width - dockWidth - 12,
-      (ammo ? ammo.left + ammo.width / 2 : width / 2) - dockWidth / 2));
+      (ammo ? ammo.left + ammo.width / 2 : width / 2) - Math.min(dockWidth, Math.max(0, naturalWidth - 2)) / 2));
     if (touch && height < 550 && width > height) {
       // Landscape phones have a vertical ammo rail. Use the lower gap between
       // the driving instruments and aim buttons, above the health strip.
@@ -740,7 +747,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         }
       }
     }
-    const sideWidth = Math.min(400, width / 2 - 24);
+    const sideWidth = Math.min(400, width / 2 - (touch && width > height ? TOUCH_CENTRE_HALF : 24));
     const chat = !!read('.cot-room-chat:not([hidden])');
     const toastHost = root.querySelector<HTMLElement>('.cot-si-toasthost');
     const toastCount = toastHost?.childElementCount || 0;
@@ -940,7 +947,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       noticeTop = touchPlan.noticeTop;
       alertTop = touchPlan.alertTop;
     }
-    const touchNotices = touchPlan ? ['plan', touchPlan.noticeCompact ? 'notice-compact' : '', touchPlan.alertCompact ? 'alert-compact' : '', touchPlan.alertNarrow ? 'alert-narrow' : '',
+    const touchNotices = touchPlan ? ['plan', touchPlan.noticeCompact ? 'notice-compact' : '', touchPlan.alertCompact ? 'alert-compact' : '',
       touchPlan.cleared ? '' : 'uncleared'].filter(Boolean).join(' ') : '';
     if ((document.body.dataset.touchNotices ?? '') !== touchNotices) {
       if (touchNotices) document.body.dataset.touchNotices = touchNotices;
@@ -1031,7 +1038,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     };
     for (const [name, value] of Object.entries(properties)) {
       const property = `--hud-${name}`;
-      const pixels = `${name === 'objective-top' ? value : Math.floor(value)}px`;
+      // (a centre and a centred left are written exact: a floored one sets its element up to 1 px off the centre line)
+      const pixels = `${CENTRING_VARS.has(name) ? value : Math.floor(value)}px`;
       if (document.body.style.getPropertyValue(property) !== pixels) {
         document.body.style.setProperty(property, pixels);
         // an instrument the mouse plan keeps off moves with this write: the next relayout measures its inputs again
