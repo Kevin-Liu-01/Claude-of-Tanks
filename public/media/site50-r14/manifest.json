@@ -1402,7 +1402,7 @@
    "path": "media/site50-r14/films/trailer-30-row.jpg",
    "bytes": 127759,
    "sha256": "068548de4f192f76634cd03dad0e8883a6b60ad8fdcd31c91737cc8ad4ff0a28",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-30.mp4",
+   "source": "shots/media-r5/trailers-r8/deliver-241/trailer-30.mp4",
    "film": "trailer-30",
    "posterAtS": 14.2
   },
@@ -1410,7 +1410,7 @@
    "path": "media/site50-r14/films/trailer-30.jpg",
    "bytes": 103336,
    "sha256": "0baff1ab6fb8ffd882480bf7d34fc2232f9c00d9012444c446152e27e11503bd",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-30.jpg",
+   "source": "shots/media-r5/trailers-r8/deliver-241/trailer-30.jpg",
    "film": "trailer-30"
   },
   {
@@ -1422,7 +1422,7 @@
    "fps": 30,
    "seconds": 30,
    "audio": "aac",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-30.mp4",
+   "source": "shots/media-r5/trailers-r8/deliver-241/trailer-30.mp4",
    "film": "trailer-30",
    "encode": {
     "passes": 2,
@@ -1441,7 +1441,7 @@
    "fps": 30,
    "seconds": 30.008,
    "audio": "opus",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-30.webm",
+   "source": "shots/media-r5/trailers-r8/deliver-241/trailer-30.webm",
    "film": "trailer-30",
    "encode": {
     "crf": 32,
@@ -1453,17 +1453,17 @@
   },
   {
    "path": "media/site50-r14/films/trailer-row.jpg",
-   "bytes": 133173,
-   "sha256": "da6ac95d20b4207ee853df01f9e7af2ff01d0ac02a9a77e2623591cf891a46ee",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer.mp4",
+   "bytes": 144517,
+   "sha256": "8418d573b15982663b56cbd8a09ac9883d9bd5d9fb458e82645535bf4bb24b6e",
+   "source": "shots/media-r5/trailers-r8/deliver-241/trailer.mp4",
    "film": "trailer",
-   "posterAtS": 52
+   "posterAtS": 51
   },
   {
    "path": "media/site50-r14/films/trailer-vertical-row.jpg",
    "bytes": 138688,
    "sha256": "f4804a5715beaca3c4746a5aefdab945d7f41342625c6c66ced9124fecd90766",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-vertical.mp4",
+   "source": "shots/media-r5/trailers-r8/deliver-241/trailer-vertical.mp4",
    "film": "trailer-vertical",
    "posterAtS": 13
   },
@@ -1471,7 +1471,7 @@
    "path": "media/site50-r14/films/trailer-vertical.jpg",
    "bytes": 121662,
    "sha256": "4febcfd6fa2ba4fab61254bc1f0a2cd93783a82ca0fd2ca76ce76051b7b319d5",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-vertical.jpg",
+   "source": "shots/media-r5/trailers-r8/deliver-241/trailer-vertical.jpg",
    "film": "trailer-vertical"
   },
   {
@@ -1483,7 +1483,7 @@
    "fps": 30,
    "seconds": 20,
    "audio": "aac",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-vertical.mp4",
+   "source": "shots/media-r5/trailers-r8/deliver-241/trailer-vertical.mp4",
    "film": "trailer-vertical",
    "encode": {
     "passes": 2,
@@ -1501,7 +1501,7 @@
    "fps": 30,
    "seconds": 20.008,
    "audio": "opus",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer-vertical.webm",
+   "source": "shots/media-r5/trailers-r8/deliver-241/trailer-vertical.webm",
    "film": "trailer-vertical",
    "encode": {
     "crf": 32,
@@ -1513,46 +1513,46 @@
   },
   {
    "path": "media/site50-r14/films/trailer.jpg",
-   "bytes": 113358,
-   "sha256": "7eb74a345ad98c2ec73741dce567a4bbe19781dd11a868483dab166f25cdb299",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer.jpg",
+   "bytes": 87163,
+   "sha256": "0bb5dfce7bbaee2e2e98b20dfe255a43f2d330d1772f3bf838aede2e87bbc038",
+   "source": "shots/media-r5/trailers-r8/deliver-241/trailer.jpg",
    "film": "trailer"
   },
   {
    "path": "media/site50-r14/films/trailer.mp4",
-   "bytes": 24130246,
-   "sha256": "93021856f4e02d51bf3705eae6b0d937f99187ea61a7436c7b3b87dfe76ebd04",
+   "bytes": 24013003,
+   "sha256": "726ca8e253a5158d733910df2f6b2fe4a25b7138bef9e8cc73303cc7ec3eaeda",
    "width": 1600,
    "height": 900,
    "fps": 30,
    "seconds": 70,
    "audio": "aac",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer.mp4",
+   "source": "shots/media-r5/trailers-r8/deliver-241/trailer.mp4",
    "film": "trailer",
    "encode": {
     "passes": 2,
-    "kbps": 2623,
-    "vmaf": 82.01,
-    "vmafMin": 61.43,
+    "kbps": 2608,
+    "vmaf": 82.88,
+    "vmafMin": 62.08,
     "capped": true
    }
   },
   {
    "path": "media/site50-r14/films/trailer.webm",
-   "bytes": 21206776,
-   "sha256": "9b03b86f4df2618195577fa0c98172e49b44b887643ec73d04431b15312d4c53",
+   "bytes": 21237144,
+   "sha256": "34f4c0e927005c3d638a18f0cd1dc16e018e18aa639594b4c06c23f6ab1bbd5c",
    "width": 1600,
    "height": 900,
    "fps": 30,
    "seconds": 70.008,
    "audio": "opus",
-   "source": "shots/media-r5/trailers-r6/deliver/trailer.webm",
+   "source": "shots/media-r5/trailers-r8/deliver-241/trailer.webm",
    "film": "trailer",
    "encode": {
     "crf": 31,
-    "kbps": 2343,
-    "vmaf": 87.67,
-    "vmafMin": 48.25,
+    "kbps": 2340,
+    "vmaf": 87.19,
+    "vmafMin": 44.34,
     "capped": true
    }
   },
