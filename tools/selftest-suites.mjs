@@ -1986,6 +1986,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/treeCrownShading.selftest.mjs',
     // the trees lane (2026-10-08, the gauntlet's wave 278): the Ca Mau coast's Rhizophora, grey mangrove and stemless nipa
     'src/world/mangroveForms.selftest.mjs',
+    // the woods catch-up (item 41, 2026-10-22): Monsoon's Naga Hills forms, Wadi Rum's and the oasis's tortilis, Glacier
+    // Pass's April snow, round 8's canopy form by place
+    'src/world/woodsCatchup.selftest.mjs',
     // trees round 2b (2026-10-03): where trees stand: woodland edges and verges, Wadi Rum's groves, the palms' sites
     'src/world/treeSpacing.selftest.mjs',
     'src/world/hedgeTrees.selftest.mjs',

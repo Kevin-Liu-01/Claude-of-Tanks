@@ -16,7 +16,7 @@ import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { getMapConfig } from './maps/index.ts';
 import { applyLodShadowFadeDepth } from '../engine/lodShadowFade.ts';
 import { applyCrownDappleDepth, CROWN_DAPPLE_ATTRIBUTE, crownDappleTags } from './crownShadowDapple.ts';
-import { treeBiomeArid, treeBiomeBlend, treeBiomeGrove, treeBiomeOpen, treeBiomeRiparian, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeBlend, treeBiomeGrove, treeBiomeOpen, treeBiomeRiparian, treeBiomeSlot, treeBiomeSnagValue, treeBiomeSnow, treeBiomeSnowPalette, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
 import { TREE_GROWTH_PROFILES } from './treeGrowth.ts';
 import { resolveLandUseProfile } from './landUse.ts';
 import { markShadowOnly, setShadowCasterProfile } from '../engine/renderLayers.ts';
@@ -52,7 +52,13 @@ const dependencies = { THREE, mulberry32, TREE_ARCHETYPES, treeTrunkCollisionRad
   // (the maps lane, 228) a civic plan's trees and lawns (world/civic)
   civicTreeStations, civicLawnTest, civicPavedRooms,
   // the trees lane (2026-10-06): a place's grove and blend (Saltwind's olive groves, its holm oak woods' Aleppo pine)
-  treeBiomeGrove, treeBiomeBlend };
+  treeBiomeGrove, treeBiomeBlend,
+  // the trees lane (2026-10-06): a place's snag value (Monsoon's charred snags)
+  treeBiomeSnagValue,
+  // the woods catch-up (item 41, 2026-10-22): round 8's canopy form by place — off in the sandbox (the receipts' maps)
+  canopyForm: false, WOOD_MARGIN_K: 0.85, WOOD_INTERIOR_TRUNK_SHADE: 0.42, treeBiomeCanopyForm: () => false,
+  // (2026-10-08, wave 278: a place under snow lays its load on the slots' palettes)
+  treeBiomeSnow, treeBiomeSnowPalette };
 
 function compile(legacy) {
   const pools = legacy ? poolCode.replace(capacityLine, 'const capacity = trees.length;') : poolCode;
