@@ -1546,9 +1546,11 @@ function buildDecorMaterials(
       map: weaveTex(), color: equipmentPalette.burlap, roughness: 0.98, metalness: 0.0,
       vertexColors: true, envMapIntensity: 0.06,
     }),
+    // round 5 (259d9a19d, salvage 240): the vehicle tyres' rubber response, dark and sky-cut with a soft satin sheen
+    // (0.86, a third of the sky; was 0.94 / 0.04 / 0.12)
     rubber: () => ({
-      color: 0x232425, roughness: 0.94, metalness: 0.04,
-      vertexColors: true, envMapIntensity: 0.12,
+      color: 0x232425, roughness: 0.86, metalness: 0.0,
+      vertexColors: true, envMapIntensity: 0.3,
     }),
     cans: () => painted({ // authored-color hardware (jerrycans): tint baked per piece
       map: fieldHardwareTex(), color: 0xffffff, roughness: 0.82, metalness: 0.07,
