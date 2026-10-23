@@ -33,10 +33,10 @@
       "concealers": 2491
     },
     "coastal": {
-      "bytes": 1883772,
-      "sha256": "2a7b9354b98013e9558d38720d4abc16a1803acff5d09765fe9c8678c9512f27",
-      "obstacles": 4130,
-      "colliders": 4720,
+      "bytes": 1875105,
+      "sha256": "76a587ac24cf46ffba5a27f7a354a5d1426536a38f697047994144dedf5f2778",
+      "obstacles": 4141,
+      "colliders": 4707,
       "concealers": 3675
     },
     "autumn": {
@@ -267,10 +267,10 @@
         "concealers": 2491
       },
       "coastal": {
-        "bytes": 2129729,
-        "sha256": "b1382c9b13204c19be869db9d4adfe37e0c40eeffc62428d8e5676001611a8e9",
-        "obstacles": 4039,
-        "colliders": 4518,
+        "bytes": 2219257,
+        "sha256": "b39a1bba0cb3734a7abf7563ddfa0c3146fdd2d39641087c733656b76c2c7a83",
+        "obstacles": 4054,
+        "colliders": 4509,
         "concealers": 3436
       },
       "autumn": {

@@ -6,7 +6,7 @@
 // a chapel with a pierced bell gable.
 import { bretonGranary } from './bretonGranary.ts';
 import {
-  PartSink, faceBox, facePoint, pick, rgb, shade,
+  PartSink, faceBox, facePoint, hashSeed, pick, rgb, shade, streamFrom,
   type Face, type RegionalBucket, type RegionalParts, type Rgb, type Vec3,
 } from './geometry.ts';
 import {
@@ -35,13 +35,29 @@ interface BretonState {
   wall: RegionalBucket;
 }
 
+/**
+ * (2026-10-23, item/maps-frontier-saltmere-242) The bourg's choices that move a house's envelope — its storeys and its
+ * roof's pitch, so its height and the sight lines over it — and its shop, drawn from a key a house shares with its
+ * reflection across the map's axis (Saltmere Bay's bourg is mirrored across z = 22, coastal.ts mirrorSite): the two halves
+ * of a mirrored map keep the same skyline, so the variety favours neither team. A map not listed folds nothing.
+ */
+const MIRROR_AXIS_Z: Readonly<Record<string, number>> = Object.freeze({ coastal: 22 });
+function mirrorKey(ctx: RegionalBuildContext, salt: string): () => number {
+  const axis = MIRROR_AXIS_Z[ctx.mapId], z = ctx.z ?? 0;
+  return streamFrom(hashSeed(`breton:${salt}:${ctx.mapId}:${ctx.structureId}`, Math.round(ctx.x ?? 0), Math.round(axis === undefined ? z : Math.abs(z - axis))));
+}
+
 function stateFor(ctx: RegionalBuildContext): BretonState {
   const rng = ctx.rng;
   const paint = pick(rng, PAINTS);
   const shutters = rng() < 0.6;
+  // (2026-10-23) a bourg house limewashed over its granite about one time in three (a look choice on the kit's own key:
+  // the props' wall picker and its stream stay as they were)
+  const limewashed = ctx.wallBucket === 'stone' && ['cottage', 'tavern', 'cornershop'].includes(ctx.structureId)
+    && mirrorKey(ctx, 'limewash')() < 0.32;
   return {
     rng, paint,
-    wall: ctx.wallBucket === 'stone' ? 'stone' : (ctx.wallBucket as RegionalBucket),
+    wall: ctx.wallBucket === 'stone' ? (limewashed ? 'plaster' : 'stone') : (ctx.wallBucket as RegionalBucket),
     window: {
       frame: FRAME_WHITE, frameWidth: 0.06, frameOut: 0.05, bars: rng() < 0.6 ? 'six' : 'cross',
       surround: { bucket: 'stone', width: 0.22, out: 0.06, lintel: 0.3 }, sill: { bucket: 'stone', out: 0.1 },
@@ -220,11 +236,13 @@ function dwelling(ctx: RegionalBuildContext, opts: { longere?: boolean; storeys?
   const st = stateFor(ctx);
   const rng = st.rng, vary = ctx.variant;
   const W = Math.max(5.2, ctx.info.w - 0.3), plot = Math.max(6.8, ctx.info.d - 0.3);
-  const longere = opts.longere ?? rng() < 0.5;
+  // (2026-10-23) a longère or a bourg house on the mirrored key too: a house and its reflection the same form
+  const longere = opts.longere ?? mirrorKey(ctx, 'form')() < 0.5;
   // (2026-10-23, item/maps-frontier-saltmere-242; the blind critic on Saltmere's high street: "identical house models
   // (same gable and chimneys) repeat down both sides of the street") a bourg house of three storeys now and then, so the
   // eaves and ridges step by a storey, not by a hand
-  const count = longere ? 1 : (opts.storeys ?? 2) + (vary() < 0.3 ? 1 : 0);
+  const envelope = mirrorKey(ctx, 'envelope');
+  const count = longere ? 1 : (opts.storeys ?? 2) + (envelope() < 0.3 ? 1 : 0);
   // the odd lean-to on a deep plot: the house stands forward and leaves it the back of the plot
   const lean = plot >= 8.2 && vary() < 0.3 ? 1.9 + vary() * 0.6 : 0;
   const D = plot - lean;
@@ -282,7 +300,7 @@ function dwelling(ctx: RegionalBuildContext, opts: { longere?: boolean; storeys?
   const dormers = longere ? (vary() < 0.15 ? 0 : D > 8.5 ? 2 : 1) : vary() < 0.35 ? (D > 8.2 && vary() < 0.5 ? 2 : 1) : 0;
   const dormerSide: 1 | -1 = longere || vary() < 0.5 ? 1 : -1;
   // (2026-10-23) the slate's pitch from 42 to 54 degrees, house to house (was 46-52)
-  const pitch = 42 + vary() * 12;
+  const pitch = 42 + envelope() * 12;
   const body = (): void => {
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.12, out: 0.03, bucket: 'stone' }, storeys: sts,
@@ -804,7 +822,7 @@ const BRETON_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze
   cottage: (ctx) => dwelling(ctx),
   tavern: (ctx) => dwelling(ctx, { longere: false, storeys: 2 }),
   // (2026-10-23) a bourg house is a shop about one time in two: its window and fascia in the street gable
-  cornershop: (ctx) => dwelling(ctx, { longere: false, storeys: 2, shop: ctx.variant() < 0.5 }),
+  cornershop: (ctx) => dwelling(ctx, { longere: false, storeys: 2, shop: mirrorKey(ctx, 'shop')() < 0.5 }),
   farmhouse, barn, granary, chapel, ruin, tower,
   boatshed: boathouse,
   fishery: cannery,
