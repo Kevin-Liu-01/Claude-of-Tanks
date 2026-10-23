@@ -325,10 +325,9 @@ export default {
       straw: null,
     },
     rockTone: (h: number, s: number, l: number) => [0.10, 0.08, clamp01(l * 1.02 + 0.04)], // grey shore boulders
-    // (2026-10-23, item/maps-frontier-saltmere-242; wave 184 and the 241 blind critic: the bourg's houses one grey granite
-    // model down the street) four houses in ten rendered and limewashed over their granite dressings, as the Léon's bourgs
-    // stand (Brignogan, Plounéour), the rest bare granite (was 0.85)
-    wallStoneChance: 0.6,
+    // (2026-10-23: the props' wall picker as it was — its draws place the bourg's dressing; the Breton kit limewashes a
+    // third of its bourg houses on its own key, breton.ts stateFor)
+    wallStoneChance: 0.85,
     wallRuns: [
       // the chapel's enclos (2026-10-06): its wall round three sides, open to the square
       [122, 8, 150, 8, 2], [122, 36, 150, 36, 2], [122, 8, 122, 36, 2],
