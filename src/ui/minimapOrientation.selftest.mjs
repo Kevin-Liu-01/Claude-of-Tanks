@@ -195,7 +195,7 @@ assert.doesNotMatch(glyphSource, /\.rotate\(/, 'objective glyphs never rotate th
   const blipPainter = (playerRef) => hudPainter('pushTankMinimapBlip', 'collectMinimapTankBlips', {
     worldToMap: (x, z) => projectWorldToMinimap(x, z, worldSize, mapSize, painterPoint),
     pushLiveBlip, spotById: new Map([['enemy', { vis: true, ever: true }]]),
-    PEN_GREEN: '#7ee87e', PEN_RED: '#f05a5a', playerRef,
+    teamInk: () => ({ own: '#57b8ff', enemy: '#ff5a4e' }), playerRef,
     drawGhostMarker() { assert.fail('a spotted enemy is a live arrow, not a ghost'); }, mmCtx: {},
   });
   const pushTankBlip = blipPainter({ id: 'me', team: 'player' });
@@ -207,14 +207,14 @@ assert.doesNotMatch(glyphSource, /\.rotate\(/, 'objective glyphs never rotate th
   assert.deepEqual(pool.map((blip) => [blip.x, blip.y]), [expected, expected, expected],
     'co-located tanks put their arrows on exactly the same projected point (they overlap)');
   assert.deepEqual(pool.map((blip) => blip.yaw), [0.4, 2.9, -1.2], 'each arrow keeps its own hull heading');
-  assert.deepEqual(pool.map((blip) => blip.fill), ['#7ee87e', '#7ee87e', '#f05a5a']);
+  assert.deepEqual(pool.map((blip) => blip.fill), ['#57b8ff', '#57b8ff', '#ff5a4e'], 'arrows take the team inks');
   // Infected turns a player to the other side: allies are whoever shares the player's team now.
   const converted = blipPainter({ id: 'me', team: 'enemy' });
   const before = pool.length;
   converted({ id: 'infected-ally', team: 'enemy' }, { ...stacked, yaw: 0 });
   converted({ id: 'survivor', team: 'player' }, { ...stacked, yaw: 0 });
-  assert.deepEqual(pool.slice(before).map((blip) => blip.fill), ['#7ee87e'],
-    'after conversion the infected side is green and an unspotted survivor is not drawn');
+  assert.deepEqual(pool.slice(before).map((blip) => blip.fill), ['#57b8ff'],
+    'after conversion the infected side takes the own ink and an unspotted survivor is not drawn');
   pool.length = before;
 
   // the painter draws every pooled arrow where it was pushed (frame clamp only), player last
