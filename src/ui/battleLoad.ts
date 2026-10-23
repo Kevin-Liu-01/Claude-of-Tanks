@@ -167,7 +167,7 @@ const CSS = `
   border-right:2px solid transparent;}
 .cot-bl .team.ally .row{border-left-color:rgba(127,220,138,.42);}
 .cot-bl .team.foe .row{border-right-color:rgba(240,122,114,.42);}
-.cot-bl .row.slot{background:rgba(171,193,209,.025);}
+.cot-bl .row.slot{opacity:.5;}
 .cot-bl .row.me{background:linear-gradient(90deg,rgba(240,160,48,.20),rgba(240,160,48,.03));
   border-left-color:#f0a030;}
 .cot-bl .row .tier{flex:0 0 26px;text-align:center;font-family:${FONT_COND};

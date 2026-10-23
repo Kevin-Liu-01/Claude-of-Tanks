@@ -449,39 +449,42 @@
   "idea": "the rail crossing from above: a crane shot down onto the Leclerc lurching over the main line, gun swinging onto the firing T-14, the tank wagons burning beyond",
   "view": "top-down",
   "lens": "a",
-  "pick": "vs04-railyard-leclerc-t14-r7-top:a"
+  "pick": "vs04-railyard-leclerc-t14-r7-top:a",
+  "restage": [
+   "r7g: lens {\"pos\":[-148.47,10,-24.63],\"lookAt\":[-141.76,-0.05,-9.26],\"fov\":52,\"rollDeg\":-13}"
+  ]
  },
  "camera": {
   "name": "a",
   "pos": [
-   -146.25,
-   7,
-   -19.06
+   -148.47,
+   10,
+   -24.63
   ],
   "lookAt": [
-   -142.88,
+   -141.76,
    -0.05,
-   -10.59
+   -9.26
   ],
   "fov": 52,
-  "rollDeg": -10,
+  "rollDeg": -13,
   "groundRel": true
  },
  "cameraVariants": [
   {
    "name": "a",
    "pos": [
-    -146.25,
-    7,
-    -19.06
+    -148.47,
+    10,
+    -24.63
    ],
    "lookAt": [
-    -142.88,
+    -141.76,
     -0.05,
-    -10.59
+    -9.26
    ],
    "fov": 52,
-   "rollDeg": -10,
+   "rollDeg": -13,
    "groundRel": true
   }
  ]

@@ -30,7 +30,8 @@ function markingArmorMeshes(
   const meshes: VehicleMesh[] = [];
   owner.traverse((object) => {
     const eligible = names.has(object.name)
-      || (permanentHullArmor && ownerName === 'hull' && object.name === 'hullExternalArmor');
+      || (permanentHullArmor && ownerName === 'hull' && object.name === 'hullExternalArmor')
+      || object.userData.backsMarkingPaint === true;
     if (!isVehicleMesh(object) || isVehicleInstancedMesh(object) || !eligible
         || object.userData.materialOnlyPaintMigration === true
         || !markingObjectVisibleInTree(object, owner)) return;
@@ -147,6 +148,15 @@ function isSuitCloth(object: THREE.Object3D): boolean {
   return object.userData?.continuityRole === 'open-lattice' && /_ghillie_/.test(object.name);
 }
 
+/**
+ * A suit's net that carries its vehicle's markings (vehicleMarkings.ts vehicleMarkingPaintsOnSuit; 2026-10-23, the M1A1
+ * FEP: "Paint it on the drape"): a marking surface, and a sample whose first surface it is reads clear. Its garnish
+ * (the _leaves mesh) still hides paint.
+ */
+function backsMarkingPaint(object: THREE.Object3D): boolean {
+  return object.userData?.backsMarkingPaint === true;
+}
+
 function doubleSidedMarkingRaycastScope(meshes: readonly VehicleMesh[]): () => void {
   const originalSides = new Map<THREE.Material, THREE.Side>();
   for (const mesh of meshes) {
@@ -219,7 +229,7 @@ function boundedMarkingVisibilityReceipt(
     maximumSurfaceErrorM = Math.max(maximumSurfaceErrorM, surfaceErrorM);
     if (surfaceOffsetM >= -SURFACE_MARKING_STYLE.visibilityOcclusionToleranceM
         && surfaceOffsetM <= SURFACE_MARKING_STYLE.visibilityToleranceM
-        && !isSuitCloth(hit.object)) clearSamples += 1;
+        && (!isSuitCloth(hit.object) || backsMarkingPaint(hit.object))) clearSamples += 1;
   }
   return {
     visibilitySamples: MARKING_VISIBILITY_SAMPLE_GRID.length,

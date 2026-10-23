@@ -148,10 +148,13 @@ export function createMatchHostCore({
   let disposed = false;
   let bootGeneration = 0;
   const links = new Map<number, PortLink>();
-  const gates = new Map<number, { state: 'hello' | 'verifying' | 'attached'; queue: Uint8Array[]; timer: TimerHandle | null }>();
+  // playerId: the room-authenticated peer that opened the link; a HELLO may only claim that peer's own seat
+  const gates = new Map<number, { state: 'hello' | 'verifying' | 'attached'; queue: Uint8Array[]; timer: TimerHandle | null; playerId: string }>();
   // Links opened before the actor exists (peers offer the moment the room elects a host, before its boot is done):
   // their opens and frames wait here and replay once the actor runs.
-  const pendingOpens: Array<{ peer: number; label: string; frames: Uint8Array[] }> = [];
+  const pendingOpens: Array<{ peer: number; label: string; playerId: string; frames: Uint8Array[] }> = [];
+  // seats the room removed before the actor ran: revoked as soon as it boots
+  const pendingRevokes = new Set<string>();
   let housekeeping: TimerHandle | null = null;
   let lastReportMs = -Infinity;
   let lastReportPhase = '';
@@ -216,13 +219,13 @@ export function createMatchHostCore({
     };
   }
 
-  function openLink(peer: number, label: string): void {
-    if (!actor || !config) { pendingOpens.push({ peer, label, frames: [] }); return; }
+  function openLink(peer: number, label: string, playerId: string): void {
+    if (!actor || !config) { pendingOpens.push({ peer, label, playerId, frames: [] }); return; }
     const previous = links.get(peer);
     if (previous) previous.closedByMain();
     const link = createPortLink(peer, label);
     links.set(peer, link);
-    const gate = { state: 'hello' as 'hello' | 'verifying' | 'attached', queue: [] as Uint8Array[], timer: null as TimerHandle | null };
+    const gate = { state: 'hello' as 'hello' | 'verifying' | 'attached', queue: [] as Uint8Array[], timer: null as TimerHandle | null, playerId };
     gates.set(peer, gate);
     gate.timer = setTimer(() => {
       gate.timer = null;
@@ -255,6 +258,12 @@ export function createMatchHostCore({
       if (links.get(peer) !== link || gates.get(peer) !== gate || actor !== live) return;
       if (!verified.ok) {
         link.close(verified.reason === 'expired' ? CLOSE_REASON.TOKEN_EXPIRED : CLOSE_REASON.BAD_TOKEN, verified.reason);
+        return;
+      }
+      // the seat is the room-authenticated peer's own: a valid token for another seat (a former host still holds the
+      // per-match signing secret) would otherwise replace that seat's live link (security audit 2026-10-22)
+      if (verified.claims.playerId !== gate.playerId) {
+        link.close(CLOSE_REASON.BAD_TOKEN, 'seat is not the signaling peer');
         return;
       }
       if (gate.timer !== null) { clearTimer(gate.timer); gate.timer = null; }
@@ -476,8 +485,10 @@ export function createMatchHostCore({
     post({ type: 'ready', tick: created.tick, entities: created.authority.entities.length, resumed: !!resume });
     log('info', 'host actor booted', { tick: created.tick, entities: created.authority.entities.length, restored, destroyedRestored, resumed: !!resume, holdFor: awaited.length && resumeHoldMs > 0 ? awaited.length : 0,
       bootMs: Math.round(now() - bootStarted), prepared: bootedPrepared });
-    for (const { peer, label, frames } of pendingOpens.splice(0)) {
-      openLink(peer, label);
+    for (const playerId of pendingRevokes) created.revokeSeat(playerId);
+    pendingRevokes.clear();
+    for (const { peer, label, playerId, frames } of pendingOpens.splice(0)) {
+      openLink(peer, label, playerId);
       for (const frame of frames) admit(peer, frame);
     }
     report(created, now());
@@ -525,7 +536,12 @@ export function createMatchHostCore({
         });
         return;
       case 'prepare': prepare(message.prepare); return;
-      case 'link_open': openLink(message.peer, message.label); return;
+      case 'link_open': openLink(message.peer, message.label, typeof message.playerId === 'string' ? message.playerId : ''); return;
+      case 'seat_revoke':
+        if (typeof message.playerId !== 'string' || !message.playerId) return;
+        if (actor) actor.revokeSeat(message.playerId);
+        else pendingRevokes.add(message.playerId);
+        return;
       case 'link_frame': admit(message.peer, new Uint8Array(message.bytes)); return;
       case 'link_close': {
         const pendingIndex = pendingOpens.findIndex((entry) => entry.peer === message.peer);

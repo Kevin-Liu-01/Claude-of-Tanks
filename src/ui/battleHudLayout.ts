@@ -87,14 +87,14 @@ export function portraitSightClearTop(top: number, height: number, centerY: numb
  *  report, the open combat log and the centre notices are passing overlays the reticle never dodges, or its marks would
  *  jump as they come and go (only the vision switch keeps clear of the right lane's: seatScopeVision). */
 const SIGHT_FURNITURE = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .joy',
-  '.cot-touch.on .quick', '.cot-touch-aim.on .aimhint', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show',
+  '.cot-touch.on .quick', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show',
   '.cot-scope-vision', '.cot-aim-warning:not([hidden]):not([data-seat])', '.flight-identity', '.cot-ear'].join(',');
 /** What a touch layout's centre notices, countdown and medal card keep clear of besides the reticle's footprint
  *  (touchNoticePlan.ts): the controls, the ammunition and consumables, the instruments, the vision plate, the warning
  *  chip (seated or parked) and a shot report or open combat log (the systems row by its new place); and the score and
  *  the objective, the rosters, the network readouts and the feed lanes (`soft`; the map apart, touchNoticePlan `map`). */
 const TOUCH_NOTICE_OBSTACLES = '.cot-vehicle-controls>button,.cot-shell,.cot-con,.cot-touch.on .round,.cot-touch.on .joy,'
-  + '.cot-touch.on .quick,.cot-touch-aim.on .aimhint,.cot-dp,.cot-drive,.cot-scope-vision,'
+  + '.cot-touch.on .quick,.cot-dp,.cot-drive,.cot-scope-vision,'
   + '.cot-aim-warning:not([hidden]),.flight-identity,.cot-touch.on .mobile-chrome,.cot-touch.on .autoaim,'
   + '.cot-touch.on .scope,.cot-touch.on .fire,.cot-shells,.cot-cons,.cot-si-cardhost:not(:empty),.cot-si-log.open';
 /** The round buttons' labels hung under them (r10g: the alert sat on AUTO AIM and SCOPE at 375x667; touchNoticePlan
@@ -487,7 +487,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         : { x: nextKey[i], w: nextKey[i + 1], top: nextKey[i + 2], bottom: nextKey[i + 3] };
       const input: MouseNoticeInput = {
         width, height, top: nextKey[2], obstacles, furniture, lanes: [lane(boxesEnd), lane(boxesEnd + 4)],
-        smallAlert: height <= 550 || width <= 480, compactDetection: height <= 550,
+        smallAlert: height <= 550 || width <= 480,
         countdown: countdown ? { w: nextKey[3], h: nextKey[4] } : null,
         countdownRules: countdown && nextKey[7] > 0 ? { w: nextKey[7], h: nextKey[8] } : null,
         revive: revive ? { w: nextKey[5], h: nextKey[6] } : null,
@@ -628,7 +628,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const laneSystemsTop = systemsTop;
     if (touch && width < height && systemsHeight) {
       const floor = Math.min(read('.cot-drive')?.top ?? height, read('.cot-touch.on .fire.alt')?.top ?? height,
-        read('.cot-touch.on .joy')?.top ?? height, read('.cot-touch-aim.on .aimhint')?.top ?? height) - 8;
+        read('.cot-touch.on .joy')?.top ?? height) - 8;
       const ceiling = Math.max(map?.bottom ?? 0, touchChrome?.bottom ?? 0, top) + 8;
       const clearTop = portraitSightClearTop(systemsTop, systemsHeight, height / 2, floor, ceiling);
       if (clearTop !== systemsTop) {

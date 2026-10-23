@@ -7,6 +7,8 @@
 // terrain program is at its samplers' limit): the height atlas and this one, two samplers past three's own.
 import * as THREE from 'three';
 import { HL_EDGE_OFFSET_M, HL_EDGE_SCALE, type HinterlandWire } from './wire.ts';
+import { createClassicHinterlandSurface } from './materialClassic.ts';
+import { HINTERLAND_GROUND_APPLY, HINTERLAND_GROUND_PARS, hinterlandGroundUniforms, type HinterlandGround } from './groundDetail.ts';
 
 export interface HinterlandSurface {
   uniforms: Record<string, THREE.IUniform>; fragmentPars: string; albedo: string; roughness: string; normal: string;
@@ -44,8 +46,12 @@ function packSurface(levels: NonNullable<HinterlandWire['surface']>): { texture:
 }
 
 /** The land's surface from the worker's atlas; null (no atlas) draws the debug albedo by slope (mesh.ts). */
-export function createHinterlandSurface(wire: HinterlandWire, { lite = false }: { lite?: boolean } = {}): HinterlandSurface | null {
+export function createHinterlandSurface(wire: HinterlandWire, { lite = false, ground = null }: { lite?: boolean; ground?: HinterlandGround | null } = {}): HinterlandSurface | null {
   if (!wire.surface?.length) return null;
+  // (a region without snow keeps main's program: round 6's rock was made for Glacier's snow faces; materialClassic.ts)
+  if (!wire.rock?.snowy) return createClassicHinterlandSurface(wire, packSurface(wire.surface), lite, ground);
+  // (the battlefield's ground carried past the edge on the full tiers: groundDetail.ts)
+  const withGround = !!ground && !lite;
   const { texture, edges, blocks } = packSurface(wire.surface);
   const n = blocks.length;
   const rot = wire.landRot ?? [1, 0];
@@ -62,9 +68,11 @@ export function createHinterlandSurface(wire: HinterlandWire, { lite = false }: 
     uHlLandRot: { value: new THREE.Vector3(rot[0], rot[1], edges && wire.landRot ? 1 : 0) },
     uHlSBlock: { value: blocks.map((b) => new THREE.Vector4(b.x0, b.y0, b.n, b.texelM)) },
     uHlSHalf: { value: blocks.map((b) => b.halfM) },
+    ...(withGround ? hinterlandGroundUniforms(ground!) : {}),
   };
   const fragmentPars = /* glsl */`
 ${lite ? '#define HL_LITE' : ''}
+${withGround ? '#define HL_GROUND' : ''}
 uniform sampler2D uHlSurface;
 uniform sampler2D uHlEdges;
 uniform vec3 uHlLandRot; // the land-use grid's (cos, sin) heading; z: 1 where the edges are baked
@@ -200,7 +208,7 @@ vec3 hlRockAt( vec3 w, vec3 n, float eY, float eA, float share, out float snowOu
   vec3 snowC = vec3( 0.72, 0.79, 0.88 ) * ( 0.95 + 0.08 * hlNoise( q * 0.05 + 3.3 ) );
   return mix( rockC, snowC, snowOut );
 }
-`;
+${HINTERLAND_GROUND_PARS}`;
   const albedo = /* glsl */`{
     vec4 hlS = hlSurfaceAt( vHlWorld.xz );
     vec3 hlAlb = pow( hlS.rgb, vec3( 2.2 ) );
@@ -214,7 +222,7 @@ vec3 hlRockAt( vec3 w, vec3 n, float eY, float eA, float share, out float snowOu
       hlD += ( hlNoise( hlP * 0.11 ) - 0.5 ) * 0.5 * hlMid;
     }
     diffuseColor.rgb = hlAlb * clamp( 1.0 + hlD, 0.55, 1.5 );
-    // the rock and the snow per pixel (Glacier round 6): the atlas's rock and snow texels take their colour from the face
+${HINTERLAND_GROUND_APPLY}    // the rock and the snow per pixel (Glacier round 6): the atlas's rock and snow texels take their colour from the face
     // itself (hlRockAt: its bedding in the light, its snow where it holds), and so does any steep face past the region's
     // rock slope; the footprints taken here, in uniform control flow; none of it on the light tiers (HL_LITE)
 #ifndef HL_LITE
@@ -264,5 +272,5 @@ vec3 hlRockAt( vec3 w, vec3 n, float eY, float eA, float share, out float snowOu
     // the beds' relief in the light (round 6): up toward the sky on a bench, down under its overhang
     if ( hlStep != 0.0 ) normal = normalize( normal + ( viewMatrix * vec4( 0.0, 0.9 * hlStep, 0.0, 0.0 ) ).xyz );
   }`;
-  return { uniforms, fragmentPars, albedo, roughness, normal, key: lite ? 'lite' : 'full' };
+  return { uniforms, fragmentPars, albedo, roughness, normal, key: lite ? 'lite' : withGround ? 'full-ground' : 'full' };
 }

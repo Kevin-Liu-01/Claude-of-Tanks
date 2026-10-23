@@ -182,10 +182,14 @@ against committed rows with `--crew-only [--ids=…]`): a P50 1.75 m body (the
 Gallery mannequin's segment table) in its role's posture — modern MBT drivers
 recline, turret crew sit in the basket below the ring, a turret loader stands
 where the headroom allows — placed nearest its authored station inside the
-exact shell and off the powerplant, autoloader, gun and stowage. Its literal
-box, head, posture and hit shapes are what every client and authority read.
-`node tools/crew-fit-census.mjs` judges the fleet (box, shapes and body inside
-the shell; 0 failures expected).
+exact shell and off the powerplant, autoloader, gun and stowage. Its hit
+shapes stay inside armour proper: where the combat shells leave a gap between
+the hull roof and the turret floor (the Challenger 2 family, Leclerc, KF51 …),
+the piece of a body crossing it is cut out of the hit shapes, and HE splash
+strikes the body at three `blastPoints` (head, torso, lap). Its literal box,
+head, posture, hit shapes and blast points are what every client and authority
+read. `node tools/crew-fit-census.mjs` judges the fleet (box, hit shapes and
+body inside the shell; failures are the pinned trimmed stations).
 Procedural low-polygon shadow hulls are presentation-invisible proxies: route
 them with `markShadowOnly()` rather than relying on `colorWrite: false`, which
 still incurs a forward submission in Three.js.

@@ -140,7 +140,6 @@ import './ui/motion.css';
 import './ui/responsiveSurfaces.css';
 import './ui/components/components.css';
 import './ui/garage.css';
-import './ui/deploy.css';
 import './ui/showroom.css';
 import './ui/battleTimeChoices.css';
 import { createGarage } from './ui/garage.ts';
@@ -2458,7 +2457,7 @@ function importMultiplayerV2Modules() {
 }
 
 function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
-  return importMultiplayerV2Modules().then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE, loadObstacleIdentities }, { createRoomIceResolver }, { prewarmRosterVisuals }]) => {
+  return importMultiplayerV2Modules().then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE, loadObstacleIdentities }, { createRoomIceResolver }, { prewarmRosterVisuals, prebuildRosterVisuals }]) => {
     // The launch runs on the app's ports: the loader, the world, the warm owners, the activation.
     const options = multiplayerAppPorts();
     const activation = createActivationRuntime(options.activation);
@@ -2469,7 +2468,9 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
         // a world laid out otherwise than the host's manifest reads the destroyed list through the manifest's identities
         load: { ...options.load, loadAuthorityObstacles: (mapId, signal, variant) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal, variant }),
           // 2026-10-15 (the MP stream): the named seats' builders and textures beside the world load (the rejoin row)
-          prewarmRoster: (seats, signal) => prewarmRosterVisuals(seats, { anisotropy: engineCtx.anisotropy ?? 4, signal }) },
+          prewarmRoster: (seats, signal) => prewarmRosterVisuals(seats, { anisotropy: engineCtx.anisotropy ?? 4, signal }),
+          // 2026-10-23 (item/mp-rejoin-levers-242): and their vehicles themselves, built there too (the roster takes them)
+          prebuildRoster: (seats, signal) => prebuildRosterVisuals(seats, { engineCtx, anisotropy: engineCtx.anisotropy ?? 4, signal }) },
         roster: options.roster,
         scene: {
           engineCtx,

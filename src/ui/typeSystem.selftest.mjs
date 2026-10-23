@@ -617,9 +617,8 @@ assert.match(JSON.parse(read('src/ui/i18nCatalog.zh-CN.json'))['docs.hero.eyebro
 for (const path of SHIPPED_HTML) {
   assert.doesNotMatch(read(path), /<span>Claude <b>of Tanks<\/b><\/span>/, `${path}: the brand lockup is marked lang="en"`);
 }
-assert.match(read('src/ui/brandMark.ts'), /<span class="wm" lang="en">Claude <span class="of">of<\/span> Tanks<\/span>/, 'the wordmark is marked lang="en"');
+assert.match(read('src/ui/brandMark.ts'), /WORDMARK_WORDS[\s\S]*WORDMARK_OF/, 'the wordmark is the outlined master (SPEC 3.1: never live text)');
 assert.match(read('src/ui/garage.ts'), /\$\{BRAND_WORDMARK_HTML\}/, 'the garage bar sets the one wordmark');
-assert.match(read('src/ui/garage.css'), /\.cot-wordmark \.wm\[lang=en\]\{[^}]*letter-spacing:/, 'the garage wordmark tracks on its lang="en" span');
 assert.match(read('src/presentation/publicNav.css'), /\.public-nav__brand \[lang=en\]\{[^}]*letter-spacing:/, 'the public wordmark tracks on its lang="en" span');
 assert.match(read('index.html'), /<span class="l1" lang="en">CLAUDE<\/span>/, 'the boot wordmark is marked lang="en"');
 
