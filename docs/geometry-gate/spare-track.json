@@ -1869,7 +1869,7 @@
    "hostSweep": []
   },
   "m1a1ha": {
-   "inputHash": "d6bdcf231aa591a2",
+   "inputHash": "73d5127e795361dd",
    "runs": [
     {
      "index": 0,
@@ -1882,14 +1882,14 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.962,
-      "gap": 0.038,
+      "support": 0.946,
+      "gap": 0.054,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0,
+      "sunkMaxM": 0.001,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.989,
+      "exposure": 0.966,
       "host": "turret<tejasRoofKitModulesStage3@profiles/abrams.ts:3213>"
      }
     }

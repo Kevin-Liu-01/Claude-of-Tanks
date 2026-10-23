@@ -42,7 +42,7 @@ import { createRoomInviteUrl } from '../mp/session/roomInvite.ts';
 import { ensureFonts, FONT_STACK, FONT_COND } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
-import { ensureStyle } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { getLocale, t } from './i18n.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
 import {
@@ -742,7 +742,7 @@ export function createPlayMenu({
   reloadPage = () => { location.reload(); },
 }: PlayMenuOptions): PlayMenuRuntime {
   ensureFonts();
-  ensureStyle(STYLE_ID, CSS);
+  ensureStyle(STYLE_ID, CSS, 'surfaces');
   const root = document.createElement('div');
   root.className = 'cot-play multiplayer-entry';
   // campaign slice 4 (2026-09-12): the Frontline Assault card shows the campaign push
@@ -839,7 +839,7 @@ export function createPlayMenu({
       <div class="room-failure-actions">
         <button class="action" data-room-failure="retry" type="button">${t('playMenu.failure.retry')}</button>
         <button class="action alt" data-room-failure="code" type="button">${t('playMenu.failure.editCode')}</button>
-        <button class="action alt" data-room-failure="garage" type="button">${t('playMenu.failure.returnGarage')}</button>
+        <button class="action alt" data-room-failure="garage" data-ui-sound="back" type="button">${t('playMenu.failure.returnGarage')}</button>
       </div>
     </section><div class="lobby">
       <div class="roomhead"><div><div class="roommeta">${t('playMenu.advanced.roomCode')}</div><div class="code"></div></div>

@@ -27,6 +27,7 @@
 // the shelled houses — with the gardens walled behind the houses; stone calvaries stand at the bridgehead and the
 // cross lanes.
 
+import { TRODDEN_GREEN_PAINT } from '../hardstandSurface.ts';
 import { gully } from './geology.ts';
 import { createMarshChannel } from './marshChannel.ts';
 
@@ -190,15 +191,15 @@ export default {
     // seeds 2025 and 7719); the fair green stands at its ground's level. Each bank is wide enough to make no wall (maps
     // lane A's apron bank law).
     hardstands: [
-      { x: 22, z: -192, width: 56, length: 56, yawDeg: 76, grade: 'road', bankM: 24 },
+      { x: 22, z: -192, width: 56, length: 56, yawDeg: 76, grade: 'road', bankM: 24, paint: TRODDEN_GREEN_PAINT },
       // (2026-10-17, the maps lane; 227 backlog) the ford green stays where it was: zone 2 is played on its north half at
       // (144, 60), and the steep cells Lane C found within 4 m of that seat (2026-10-16) were the f3 hedge-bank's faces
       // (retired below), not the green's edge. Re-centring the green on the seat (60 m at 144, 60) was tried and backed
       // out: its south bank no longer held Pine Hollow's bog above the water (12.4 % wet, minimapLiquidWater) or eased
       // the ford approach (road grade 0.180 at 185, 27). The f3 seat on the north meadow (128, 96-106) is no seat for
       // zone 2 — graded level there, the drives read 534 m from alpha against 371 m from bravo (objective symmetry 1.44)
-      { x: 154, z: 54, width: 56, length: 56, yawDeg: -22, grade: 'road', bankM: 18 },
-      { x: 0, z: 102, width: 56, length: 56, yawDeg: 0, level: 4.5, grade: 0, bankM: 18 },
+      { x: 154, z: 54, width: 56, length: 56, yawDeg: -22, grade: 'road', bankM: 18, paint: TRODDEN_GREEN_PAINT },
+      { x: 0, z: 102, width: 56, length: 56, yawDeg: 0, level: 4.5, grade: 0, bankM: 18, paint: TRODDEN_GREEN_PAINT },
     ],
     clearMarshVeg: true, // keep the channel clear of tufts; reeds stay on the banks
     // the manor lake is liquid water like the river (bogged 'soft'), not an ice pan

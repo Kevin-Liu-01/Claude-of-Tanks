@@ -98,7 +98,8 @@ function mountMobileNavigation(): void {
   const garage = document.createElement('a');
   garage.className = 'public-nav__menu-item';
   garage.href = hrefForLocale('/', getLocale());
-  garage.innerHTML = `<img class="public-nav__icon public-nav__icon--home" src="/brand/nav/garage.svg" alt="">${t('publicNav.garage')}`;
+  garage.innerHTML = `<span class="public-nav__icon public-nav__icon--home" data-ui-icon="garage" aria-hidden="true"></span>${t('publicNav.garage')}`;
+  hydrateIcons(garage);
   menu.append(garage);
 
   for (const page of pageLinks) {
@@ -142,6 +143,19 @@ function mountMobileNavigation(): void {
   links.append(trigger, menu);
 }
 
+/**
+ * Public-page icons: the static `svg.cot-i` marks reference the shared sprite, and `[data-ui-icon]` slots (the home
+ * mode cards, script-built menu items) take their glyph from the shared set. Both load lazily, off the critical path.
+ */
+function hydrateIcons(root: ParentNode): void {
+  const slots = [...root.querySelectorAll<HTMLElement>('[data-ui-icon]')];
+  if (!slots.length && !root.querySelector('svg.cot-i')) return;
+  void import('../ui/uiIcons.ts').then(({ uiIconSVG }) => {
+    for (const slot of slots) slot.innerHTML = uiIconSVG(slot.dataset.uiIcon || '', 24);
+  });
+}
+
+hydrateIcons(document);
 mountLocaleSwitcher();
 mountMobileNavigation();
 

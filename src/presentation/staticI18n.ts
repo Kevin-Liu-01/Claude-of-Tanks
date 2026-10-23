@@ -22,51 +22,34 @@
 
 import { onLocaleChange, t } from '../ui/i18n.ts';
 
-type Attr = 'placeholder' | 'title' | 'aria-label' | 'alt';
-
-type Applier = {
-  attr: string;
-  mode: 'text' | 'html' | 'attr';
-  attrName?: Attr;
-  key: (el: HTMLElement) => string | null;
-};
-
-const APPLIERS: Applier[] = [
-  { attr: 'data-i18n', mode: 'text', key: (el) => el.dataset.i18n ?? null },
-  { attr: 'data-i18n-html', mode: 'html', key: (el) => el.dataset.i18nHtml ?? null },
-  { attr: 'data-i18n-placeholder', mode: 'attr', attrName: 'placeholder', key: (el) => el.dataset.i18nPlaceholder ?? null },
-  { attr: 'data-i18n-title', mode: 'attr', attrName: 'title', key: (el) => el.dataset.i18nTitle ?? null },
-  { attr: 'data-i18n-alt', mode: 'attr', attrName: 'alt', key: (el) => el.dataset.i18nAlt ?? null },
-  { attr: 'data-i18n-aria-label', mode: 'attr', attrName: 'aria-label', key: (el) => el.dataset.i18nAriaLabel ?? null },
-  { attr: 'data-i18n-aria', mode: 'attr', attrName: 'aria-label', key: (el) => el.dataset.i18nAria ?? null },
+/** Host attribute (its dataset name) and what it sets: `0` the text, `1` vetted HTML, else the named attribute. */
+const HOSTS: readonly (readonly [string, 0 | 1 | string])[] = [
+  ['i18n', 0], ['i18nHtml', 1], ['i18nPlaceholder', 'placeholder'], ['i18nTitle', 'title'], ['i18nAlt', 'alt'],
+  ['i18nAriaLabel', 'aria-label'], ['i18nAria', 'aria-label'],
 ];
+const SELECTOR = HOSTS.map(([name]) => `[data-${name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}]`).join();
 
 function varsFor(el: HTMLElement): Record<string, string | number> | undefined {
-  const raw = el.dataset.i18nVars;
-  if (!raw) return undefined;
   try {
-    return JSON.parse(raw) as Record<string, string | number>;
+    return el.dataset.i18nVars ? JSON.parse(el.dataset.i18nVars) as Record<string, string | number> : undefined;
   } catch (_) {
     return undefined;
   }
 }
 
 function applyToElement(el: HTMLElement): void {
-  for (const { mode, attrName, key } of APPLIERS) {
-    const translationKey = key(el);
-    if (!translationKey) continue;
-    const value = t(translationKey, varsFor(el));
-    if (mode === 'html') el.innerHTML = value;
-    else if (mode === 'attr' && attrName) el.setAttribute(attrName, value);
-    else el.textContent = value;
+  for (const [name, target] of HOSTS) {
+    const key = el.dataset[name];
+    if (!key) continue;
+    const value = t(key, varsFor(el));
+    if (target === 0) el.textContent = value;
+    else if (target === 1) el.innerHTML = value;
+    else el.setAttribute(target, value);
   }
 }
 
 function applyStaticI18n(root: ParentNode = document): void {
-  const elements = root.querySelectorAll<HTMLElement>(
-    '[data-i18n],[data-i18n-html],[data-i18n-placeholder],[data-i18n-title],[data-i18n-alt],[data-i18n-aria-label],[data-i18n-aria]',
-  );
-  for (const el of elements) applyToElement(el);
+  for (const el of root.querySelectorAll<HTMLElement>(SELECTOR)) applyToElement(el);
 }
 
 export function bindStaticI18nAuto(root: ParentNode = document): () => void {
