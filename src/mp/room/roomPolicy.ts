@@ -15,7 +15,7 @@ import { normalizeTeamArrangement, type TeamArrangement } from '../../sim/matchR
 import { resolveMapId } from '../../world/maps/mapIds.ts';
 import {
   ROOM_CAMO_RE, ROOM_CAMPAIGN_RE, ROOM_CODE_RE, ROOM_MAP_RE, ROOM_MAX_COOP_PLAYERS, ROOM_MAX_SEATS, ROOM_MAX_SPECTATORS,
-  ROOM_MAX_TEAM_SIZE, ROOM_MIN_TEAM_SIZE, ROOM_PROTOCOL_VERSION, ROOM_SPEC_RE, RoomError, cleanEquipment, cleanId, isRecord,
+  ROOM_MAX_TEAM_SIZE, ROOM_MIN_TEAM_SIZE, ROOM_PROTOCOL_VERSION, ROOM_SPEC_RE, RoomError, cleanEquipment, cleanId, cleanSeatId, isRecord,
   isRoomTeam, noElection, normalizePlayerName,
 } from './protocol.ts';
 import type {
@@ -260,7 +260,7 @@ export function defaultRoomSettings(settings: RoomCreateSettings | null | undefi
 export function createRoom({ roomCode, mode, creator, selection, settings, hostTransport = 'p2p', now }: CreateRoomOptions): RoomSnapshot {
   if (!ROOM_CODE_RE.test(roomCode)) throw new RoomError('invalid_room_code');
   if (mode !== 'private' && mode !== 'lan') throw new RoomError('invalid_payload', 'mode');
-  const id = cleanId(creator.id);
+  const id = cleanSeatId(creator.id);
   const room: RoomSnapshot = {
     v: ROOM_PROTOCOL_VERSION,
     roomCode,
@@ -284,7 +284,7 @@ export function createRoom({ roomCode, mode, creator, selection, settings, hostT
 /** Seat a new player (auto-balanced unless a team is requested and has room). */
 export function joinRoom(room: RoomSnapshot, { player, selection, team, now }: JoinRoomOptions): RoomPlayer {
   if (room.settings.locked) throw new RoomError('room_locked');
-  const id = cleanId(player.id);
+  const id = cleanSeatId(player.id);
   if (room.players.some((entry) => entry.id === id)) throw new RoomError('already_joined');
   const requested: RoomTeam = isCoopGameMode(room.settings.gameMode) ? 'alpha' : (team && isRoomTeam(team) ? team : autoTeam(room));
   const target = resolveJoinTeam(room, requested);

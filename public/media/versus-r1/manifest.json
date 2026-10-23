@@ -12,7 +12,7 @@
   "width": 1920,
   "height": 1080
  },
- "count": 21,
+ "count": 25,
  "items": [
   {
    "id": "f6-leo2a6-steinburg-r6",
@@ -664,8 +664,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs04-railyard-leclerc-t14-r7-top.json",
    "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-top.webp",
-   "bytes": 461930,
-   "sha256": "5ace9f39b09a0067947b048abf2890080e3d6c3bfe7f3ea56c26df43544e9081",
+   "bytes": 515168,
+   "sha256": "6a770889f68dc474443f9c044317ed05047fc396be9fab84afc817a9bb0ac731",
    "width": 1920,
    "height": 1080,
    "source": "vs04-railyard-leclerc-t14-r7-top-1920.webp"
@@ -695,11 +695,135 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs10-steppe-chieftain-t64-r7-top.json",
    "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top.webp",
-   "bytes": 470798,
-   "sha256": "5535cc26ca8d3d816c218645d816cb144af9d8a783527ef392b6189c713c6d2c",
+   "bytes": 523756,
+   "sha256": "031f15f8b77a065642a2405425f056e10785096f3dd7b14370ebd9525aa173fa",
    "width": 1920,
    "height": 1080,
    "source": "vs10-steppe-chieftain-t64-r7-top-1920.webp"
+  },
+  {
+   "id": "f6-leo2a6-steinburg-r7-top",
+   "round": 3,
+   "map": "urban",
+   "hour": "day",
+   "title": {
+    "en": "Steinburg, day, from above: Leopard 2A6 v T-90M",
+    "zh": "斯泰因堡，白天，俯瞰：Leopard 2A6 对 T-90M"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leo2a6",
+     "displayName": "Leopard 2A6",
+     "paint": "urbanblock"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M",
+     "paint": "digital"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/f6-leo2a6-steinburg-r7-top.json",
+   "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-top.webp",
+   "bytes": 422008,
+   "sha256": "80a8944716c91e7260742260f16aa735d712c6cf9774469de58e93cb96f3a004",
+   "width": 1920,
+   "height": 1080,
+   "source": "f6-leo2a6-steinburg-r7-top-1920.webp"
+  },
+  {
+   "id": "vs07-autumn-ariete-t62-r7-top",
+   "round": 4,
+   "map": "autumn",
+   "hour": "golden",
+   "title": {
+    "en": "Amberford, golden hour, from above: C2 Ariete v T-62MV-1",
+    "zh": "安伯福，黄金时刻，俯瞰：C2 Ariete 对 T-62MV-1"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "c2_ariete",
+     "displayName": "C2 Ariete",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1",
+     "paint": "factory"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs07-autumn-ariete-t62-r7-top.json",
+   "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-top.webp",
+   "bytes": 546208,
+   "sha256": "93e75feff79dcafbdf96fd8c890c145e3a4b41aa54d61dc3e53cc3e19b50eac8",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs07-autumn-ariete-t62-r7-top-1920.webp"
+  },
+  {
+   "id": "vs08-winter-cv90-bmp3-r7-top",
+   "round": 4,
+   "map": "winter",
+   "hour": "day",
+   "title": {
+    "en": "Frosthollow, day, from above: CV90 Mk 4 v BMP-3",
+    "zh": "霜谷，白天，俯瞰：CV90 Mk 4 对 BMP-3"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "cv90_mk4",
+     "displayName": "CV90 Mk 4",
+     "paint": "winter"
+    },
+    {
+     "role": "foe",
+     "id": "bmp3",
+     "displayName": "BMP-3",
+     "paint": "winter"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs08-winter-cv90-bmp3-r7-top.json",
+   "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top.webp",
+   "bytes": 253428,
+   "sha256": "17ba48c1261534e80add23e17df1c038d478b0063b8e7f7852f530c5aded7838",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs08-winter-cv90-bmp3-r7-top-1920.webp"
+  },
+  {
+   "id": "vs09-alpine-strv122-t80bv-r7-top",
+   "round": 4,
+   "map": "alpine",
+   "hour": "day",
+   "title": {
+    "en": "Glacier Pass, day, from above: Stridsvagn 122 v T-80BV",
+    "zh": "冰川关，白天，俯瞰：Stridsvagn 122 对 T-80BV"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "strv122",
+     "displayName": "Stridsvagn 122",
+     "paint": "winter"
+    },
+    {
+     "role": "foe",
+     "id": "t80bv",
+     "displayName": "T-80BV",
+     "paint": "winter"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs09-alpine-strv122-t80bv-r7-top.json",
+   "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-top.webp",
+   "bytes": 263860,
+   "sha256": "c359f6567f1f2628e4b1e4b5f4f3ccb2d415ede1ccb45c38af1a27421cca8ecf",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs09-alpine-strv122-t80bv-r7-top-1920.webp"
   }
  ]
 }
