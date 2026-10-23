@@ -258,13 +258,16 @@ export default {
       { structure: 'watertower', x: 196, z: -24, yawDeg: 180 },
       { structure: 'warehouse', x: -200, z: -50, yawDeg: 86.2 },
       { structure: 'warehouse', x: 200, z: 50, yawDeg: 266.2 },
-      // the container terminal east of the station on the north side, and its twin
+      // the goods (the freight rows: the period's crates, sheeted loads, steel and timber — maps/periodFreight.ts) by the
+      // station on the north side, and its twin; (round 3, 2026-10-11; gauntlet wave 396b: "the goods aren't at the
+      // stubs") the other two rows of each side at the loading stub, past its goods shed on the coal stage's side, where
+      // the wagons are loaded (were at x 110 and 150 off the stub's yard side)
       { structure: 'containerRow', x: 70, z: 40, yawDeg: -3.8 },
-      { structure: 'containerRow', x: 110, z: 42, yawDeg: -3.8 },
-      { structure: 'containerRow', x: 150, z: 45, yawDeg: -3.8 },
+      { structure: 'containerRow', x: -145, z: 29.6, yawDeg: -3.8 },
+      { structure: 'containerRow', x: -168, z: 29, yawDeg: -3.8 },
       { structure: 'containerRow', x: -70, z: -40, yawDeg: 176.2 },
-      { structure: 'containerRow', x: -110, z: -42, yawDeg: 176.2 },
-      { structure: 'containerRow', x: -150, z: -45, yawDeg: 176.2 },
+      { structure: 'containerRow', x: 145, z: -29.6, yawDeg: 176.2 },
+      { structure: 'containerRow', x: 168, z: -29, yawDeg: 176.2 },
       // the coal washeries at the foot of the spoil banks, between the service road and the bank
       { structure: 'warehouse', x: -130, z: -104, yawDeg: 0 },
       { structure: 'warehouse', x: 130, z: 104, yawDeg: 180 },
