@@ -40,7 +40,7 @@ import { createLeafDetailLibrary, LEAF_DETAIL_LAW, LEAF_DETAIL_NORMAL_SCALE } fr
 import { createTreeImpostorLibrary, type TreeImpostorLibrary, type TreeImpostorRenderer } from './treeImpostors.ts';
 // p2 trees lane (2026-10-01): the grown near trees — skeleton, wood, spray cards and crown shadow hull — and their
 // branch-spray atlases
-import {
+import { canopyFormProfile, GROWTH_CANOPY_DEPTH,
   canopySkyOcclusion, crownLobes, crownSurfaceNormal, emitBranchGeometry, GROWTH_CROWN_SHADING, emitCrownShadowHull, emitLeafCards, growShrubSkeleton, GROWTH_SHRUB_VALUE, growthCardRows, shrubStemSites, GROWTH_CROWN_STEM_WIDTH, growthCrownAttachments,
   growTreeSkeleton, GROWTH_BIRCH_FOOT, GROWTH_CANOPY_AO, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES, weldGrownGeometry, type CrownShadowMass, type GrowthSpecies,
 } from './treeGrowth.ts';
@@ -50,7 +50,7 @@ import { resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees, type AuthoredTreeFeature,
 } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeRiparian, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeBare, treeBiomeCanopyForm, treeBiomeColour, treeBiomeOpen, treeBiomePalette, treeBiomeRiparian, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeSnagValue, treeBiomeSnow, treeBiomeSnowPalette, treeBiomeTransmission, treeBiomeUpland, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { SWARD_TONE, swardPatchAt, type SwardPatch } from './swardPatch.ts';
 import { createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees, type GroundCoverCraters } from './groundCoverCraters.ts';
@@ -276,6 +276,14 @@ interface VegetationConfig {
    * count; the field trees keep the field law; unset, the woods stand as before.
    */
   landscapeWoods?: Readonly<{ zone: number; slopeDeg?: number; merge?: number }>;
+  /**
+   * Trees round 8 (2026-10-07, the gauntlet's waves 236-238: "open grass beneath" the woods, "a flat sunlit meadow" under
+   * Monsoon's spur wood): the stand floor the terrain draws under a closed canopy (the woods mask, _woodsMask, its
+   * applyWoodsMask: the ground lane's forest floor and no field under the trees). `'canopy'`: a wood tree's disc in the
+   * mask is the radius its drawn crown spreads (its pool's geometry at its scale), never less than its record's, so the
+   * floor runs where round 8's crowns meet; unset, every disc is its record's crown radius, as before.
+   */
+  standFloor?: 'canopy';
   authoredTrees?: AuthoredTreeFeature[];
   /**
    * Trees lane (2026-10-05, Kestrel's dispersal stands): the authored stands may stand inside the settlement rect. The rect
@@ -400,6 +408,19 @@ interface TreeRecord {
   civic?: boolean;
   /** Ground lane (crater-render-spec §C): the placement before a crater re-seated the trunk (base + offsetAt). */
   craterBase?: THREE.Matrix4;
+  /**
+   * Trees round 6 (on a place with round 8's canopy form): the tree stands in its wood's margin rank (the outer
+   * WOOD_MARGIN_K of its outline) or among the saplings past it — open to the light on the field's side, it keeps the
+   * open-grown form (assignTreeForms).
+   */
+  margin?: boolean;
+  /**
+   * Trees round 6: the share of its tint an interior wood tree's trunk keeps (its stand's shade on its stem: the crowns
+   * over it take the sky as well as the sun); unset, the trunk takes the tree's tint.
+   */
+  trunkShade?: number;
+  /** Trees round 6: the stand shade's density about the tree where it grew (0..1: its neighbours within 10 m, 8 full). */
+  standDensity?: number;
   /** Trees round 5: one of the field trees (placeLoneTrees), the field law's (addFieldTree). */
   field?: boolean;
   /** GND (2026-10-14): a tree over the red line the battlefield's tiers adopted (adoptOutlandTrees) — visual only, drawn
@@ -1682,6 +1703,8 @@ export function makeTwigTexture(rng: RandomSource, tone: ToneFunction | null = n
 // ---------------------------------------------------------------------------
 
 const _c = new THREE.Color();
+/** Trees round 6: the scratch an interior wood tree's shaded trunk tint is written through (treeSlotTint). */
+const _trunkShadeColor = new THREE.Color();
 const _v3 = new THREE.Vector3();
 const _e = new THREE.Euler();
 const _qq = new THREE.Quaternion();
@@ -2697,6 +2720,9 @@ export const BARE_SPRAY_KINDS: Readonly<Partial<Record<GrowthSpecies, SprayKind>
   oak: 'oak-bare', chestnut: 'oak-bare', poplar: 'poplar-bare', buddleia: 'buddleia-bare',
   // the Streuobst fruit trees' crooked spurs are the oak's habit
   apple: 'oak-bare',
+  // (2026-10-08, wave 278: the larch is the deciduous conifer — its winter crown the fine drooping twigs of the birch's
+  // lattice, on an Alpine April's col until its needles come in May)
+  larch: 'birch-bare',
 });
 
 /** Trees round 2: the spray atlas a grown form paints (treeBiomes.ts) — a birch-family form leafy only where the palette
@@ -2704,6 +2730,15 @@ export const BARE_SPRAY_KINDS: Readonly<Partial<Record<GrowthSpecies, SprayKind>
 export function grownFormSprayKind(growth: GrowthSpecies, palette: VegetationPalette = {}): SprayKind {
   if (palette.bare === true && BARE_SPRAY_KINDS[growth]) return BARE_SPRAY_KINDS[growth]!;
   if (growth === 'birch' || growth === 'aspen') return palette.birchLeaves === true ? growth : 'birch-bare';
+  // trees lane (2026-10-06): a form that paints another form's sprays — the Khasi pine the red pine's long needle tufts,
+  // the bamboo the willow's narrow drooping lances (its own colour from its biome entry, treeBiomes.ts), the
+  // chestnut-oak the chestnut's
+  if (growth === 'khasiPine') return 'redPine';
+  if (growth === 'bamboo') return 'willow';
+  if (growth === 'castanopsis') return 'chestnut'; // (the chestnut's sprays on the Naga Hills' lighter frame)
+  // the trees lane (2026-10-08, waves 282/283a): Wadi Rum's acacia paints the acacia's bipinnate leaflets (its own colour
+  // from its biome slot, treeBiomes.ts)
+  if (growth === 'tortilis') return 'acacia';
   return growth as SprayKind;
 }
 
@@ -2821,8 +2856,8 @@ export function grownTintLaw(family: string, leafy = false, bare = false): reado
  * palette's laden tiles on the sky-facing sprays. Cards only, welded: the shrub's stems stand inside its foliage.
  */
 function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: VegetationPalette, growth: GrowthSpecies,
-  shrubAtlas = false): THREE.BufferGeometry {
-  const profile = TREE_GROWTH_PROFILES[growth];
+  shrubAtlas = false, canopyForm = false): THREE.BufferGeometry {
+  const profile = canopyForm ? canopyFormProfile(growth) : TREE_GROWTH_PROFILES[growth];
   const skeleton = growShrubSkeleton(growth, kind, rng);
   // a snowy palette's load lies on the sprays facing the sky highest on the mound: a fixed share of the shrub's sprays
   // (by the load) takes the atlas' laden tiles in that order, every other one a bare tile — every shrub of a map
@@ -2852,8 +2887,21 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
   // connecting them to the ground"): a shrub on its shrub atlas stands on its stems — a card a stool from the ground into
   // its clump (treeGrowth.ts shrubStemSites), drawn in the bark's grey-brown
   if (shrubAtlas) skeleton.leaves.push(...shrubStemSites(skeleton, SHRUB_STEM_TILE, rng));
+  // trees round 8 (wave 275: the bushes' next step, the crowns' law): the mound's form leads its normals — about the
+  // ground under its centre, scaled to a hemisphere (its top to the sky, its sides to the sun or away, its back-lit side
+  // passing the light through: the canopy material's transmission) — and its sky by a cluster's height in it. (The
+  // treescn lane, 2026-10-09: a place with round 8's canopy form only — wave 307 read Verdant's bush against the sun a
+  // full point down; every other place keeps round 5's shrub: its lighter depth shade, its gain, the crown's normals.)
+  const moundTop = Math.max(0.3, skeleton.height);
+  const [topLo, topHi] = GROWTH_CROWN_SHADING.shrubTop;
+  const shrubGain = canopyForm ? GROWTH_CROWN_SHADING.shrubGain : GROWTH_CROWN_SHADING.shrubGainR5;
   const cards = emitLeafCards(skeleton, {
-    tiles: SPRAY_ATLAS_TILES, rng, rows: 2, depthShade: GROWTH_CROWN_SHADING.shrubDepthShade,
+    tiles: SPRAY_ATLAS_TILES, rng, rows: 2,
+    depthShade: canopyForm ? GROWTH_CROWN_SHADING.shrubDepthShade : GROWTH_CROWN_SHADING.shrubDepthShadeR5,
+    ...(canopyForm ? {
+      volume: GROWTH_CROWN_SHADING.shrubVolume, lobeShare: GROWTH_CROWN_SHADING.shrubLobeShare,
+      volumeCentre: { x: skeleton.crown.x, y: 0, z: skeleton.crown.z }, volumeYScale: skeleton.crown.r / moundTop,
+    } : {}),
     tint(shade, site, r) {
       const jitter = r();
       if (site.stem) {
@@ -2864,16 +2912,17 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
       const sk = snow > 0.05 && site.tile < SPRAY_ATLAS_TILES ? 0.85 + jitter * 0.15 : 0;
       _c.setHSL(hue0 + (r() - 0.5) * 0.06 + (0.585 - hue0) * sk, (sat0 + r() * 0.06) * (1 - sk * 0.85) + 0.02 * sk, 0.5,
         THREE.SRGBColorSpace);
-      const value = (0.55 + 0.45 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6) * (profile.foliageValue ?? 1) * (sk > 0 ? 1 : shrubValue)
-        * GROWTH_CROWN_SHADING.shrubGain;
+      const lit = (0.55 + 0.45 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6) * (profile.foliageValue ?? 1) * (sk > 0 ? 1 : shrubValue)
+        * shrubGain;
+      const value = canopyForm ? lit * (topLo + (topHi - topLo) * Math.max(0, Math.min(1, site.y / moundTop))) : lit;
       return [_c.r * gain * value, _c.g * gain * value, _c.b * gain * value];
     },
   });
   // the shrubs' normals keep the round-8 bush's positive-up floor: a skirt spray lights as the mound's side, never
-  // as a downward pole gone black
+  // as a downward pole gone black (round 8: 0.2 → 0.1 — the mound's normals point up of themselves now)
   const normal = cards.getAttribute('normal') as THREE.BufferAttribute;
   for (let i = 0; i < normal.count; i++) {
-    const nx = normal.getX(i), ny = Math.max(0.2, normal.getY(i)), nz = normal.getZ(i), l = Math.hypot(nx, ny, nz);
+    const nx = normal.getX(i), ny = Math.max(canopyForm ? 0.1 : 0.2, normal.getY(i)), nz = normal.getZ(i), l = Math.hypot(nx, ny, nz);
     normal.setXYZ(i, nx / l, ny / l, nz / l);
   }
   return weldGrownGeometry(cards);
@@ -2881,6 +2930,34 @@ function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: V
 
 /** Trees round 5: the forest-grown near variants of a wood's species (0 and 1; the third stays open-grown). */
 const FOREST_NEAR_VARIANTS = 2;
+/**
+ * Trees lane (2026-10-07, the gauntlet's wave 223 on Ironworks: "cloned roadside tree rows"): a wood species' field
+ * trees draw among three open-grown crowns — its open variant (FOREST_NEAR_VARIANTS) and the open-grown alternates of
+ * its two forest-grown ones, near pools of their own after the three (assignTreeForms). Since round 5 every field tree
+ * of such a species drew the one open variant, so a shelterbelt or a boundary row repeated one crown down its line.
+ */
+const FIELD_OPEN_ALTERNATES = FOREST_NEAR_VARIANTS;
+/**
+ * Trees round 6 (2026-10-05, the gauntlet's wave 122 on Frontier's wood edge: "the wood is a single row you can see
+ * through"; a beech-oak edge has depth — several ranks, an understorey, closed canopy behind), on a place with round 8's
+ * canopy form: a wood's margin rank, the trees seated in the outer share of its outline (k at or over this; about a third
+ * of a closed wood's trees: k is u^0.42), grows open-grown — its crown full and low on the stem toward the field, as a
+ * real wood's edge mantle does — and the forest-grown boles stand behind it.
+ */
+const WOOD_MARGIN_K = 0.85;
+/**
+ * Trees round 6: the understorey under a closed wood's canopy — young growth and shrubs between the boles, one to this
+ * many square metres of the wood's inner ground (inside its edge growth's 0.82), from 1 to about 2.4 m tall — so the
+ * floor between the trunks no longer reads open through the wood (a place with round 8's canopy form).
+ */
+const INNER_UNDERSTOREY_M2 = 70;
+/**
+ * Trees round 6 (the gauntlet's wave 122 on Frontier's wood: "the pale trunks under the canopy are lit as brightly as
+ * the open grass, so there is no shaded forest interior"): the share of its tint an interior wood tree's trunk gives up
+ * at its stand's full density (the stand shade's count), over the crown's own stand shade — under a closed canopy the
+ * crowns take the sky from a stem as well as the sun. The margin rank's trunks stand in the light and keep theirs.
+ */
+const WOOD_INTERIOR_TRUNK_SHADE = 0.42;
 /** Trees lane (2026-10-06): the grid (m) a map's hedge planting reads its land use on (plantHedgeTrees). */
 const HEDGE_SCAN_M = 1.5;
 /** Trees round 5: a shrub stem card's tint (the bark atlas tile's multiplier; buildGrownShrub). */
@@ -2900,17 +2977,20 @@ const FIELD_TREE_ROAD_VERGE_M = 18;
 /** Trees round 5: the least distance between two moved field trees' trunks (a hedgerow's standards, m). */
 const FIELD_TREE_SPACING_M = 5;
 
-function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, pal: VegetationPalette = {}, forest = false): TreeGeometryPair {
-  const profile = TREE_GROWTH_PROFILES[species];
+function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, pal: VegetationPalette = {}, forest = false,
+  canopyForm = false, open = false): TreeGeometryPair {
+  // (the treescn lane, 2026-10-09: round 8's canopy and form by place — treeBiomes.ts canopyForm, treeGrowth.ts
+  // canopyFormProfile; every other place grows round 5's trees)
+  const profile = canopyForm ? canopyFormProfile(species) : TREE_GROWTH_PROFILES[species];
   const rng = mulberry32(seed);
-  const skeleton = growTreeSkeleton(species, rng, { variant, tier: 'desktop', forest });
+  const skeleton = growTreeSkeleton(species, rng, { variant, tier: 'desktop', forest, ...(canopyForm ? { canopyForm, open } : {}) });
   const parts: THREE.BufferGeometry[] = [emitBranchGeometry(skeleton, {
-    tint: profile.barkTint, topTint: profile.barkTopTint, barkStyle: profile.bark, rng, tier: 'desktop',
+    tint: profile.barkTint, topTint: profile.barkTopTint, barkStyle: profile.bark, rng, tier: 'desktop', ...(canopyForm ? { canopyForm } : {}),
   })];
   const stem = skeleton.branches[0];
   const stemR = stem.nodes[Math.min(1, stem.nodes.length - 1)].r;
   // the flare and the root tongues stand in the crown's sky shade too (the stem's foot, canopySkyOcclusion)
-  const footShade = 1 - GROWTH_CANOPY_AO * canopySkyOcclusion(skeleton, 0, 0.3, 0);
+  const footShade = 1 - (canopyForm ? GROWTH_CANOPY_DEPTH.canopyAO : GROWTH_CANOPY_AO) * canopySkyOcclusion(skeleton, 0, 0.3, 0);
   // trees round 4: a birch's collar is its stem's black foot (treeGrowth.ts GROWTH_BIRCH_FOOT), not white bark
   const footDark = profile.bark === 3 ? 1 - GROWTH_BIRCH_FOOT.depth * 0.9 : 1;
   const footColor = new THREE.Color(profile.barkTint[0] * 0.80 * footShade * footDark, profile.barkTint[1] * 0.78 * footShade * footDark,
@@ -2918,10 +2998,17 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   // the tidal mangrove stands on the reviewed stilt roots (addRootButtresses' bent cones, tidalMangrove.ts) over the
   // two-ring eased collar; every other tree takes the fluted collar and its swept root tongues
   const tidal = species === 'mangrove';
-  parts.push(paintFlat(buildRootFlare(stemR, stemR * (tidal ? 1.13 : 1.36), 0.62, 10, rng() * Math.PI * 2, tidal ? 0 : 5), footColor, 0));
+  // (the trees lane, 2026-10-07: a clump — the bamboo's culms from one rootstock — has no stem foot to flare and no
+  // buttress roots: its flare and tongues are drawn and left out, every draw taken, so the clump's own stream keeps its
+  // seats; a quarter of its wood, and Monsoon Ridge's forms back inside their triangle budget)
+  const flare = paintFlat(buildRootFlare(stemR, stemR * (tidal ? 1.13 : 1.36), 0.62, 10, rng() * Math.PI * 2, tidal ? 0 : 5), footColor, 0);
+  if (!profile.clump) parts.push(flare);
+  else flare.dispose();
   const roots = profile.family === 'conifer' || profile.family === 'birch' ? 4 : 5;
   const rootFirst = parts.length;
-  addRootButtresses(parts, rng, footColor, tidal ? 0.38 : stemR * 1.28, roots, tidal);
+  const rootParts: THREE.BufferGeometry[] = profile.clump ? [] : parts;
+  addRootButtresses(rootParts, rng, footColor, tidal ? 0.38 : stemR * 1.28, roots, tidal);
+  for (const g of rootParts === parts ? [] : rootParts) g.dispose();
   const rootEnd = parts.length;
   if (tidal) {
     // the arches are drawn round the origin's axis: each joins the grown stem where it stands at the arch's collar
@@ -3070,6 +3157,8 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
   let cards = weldGrownGeometry(emitLeafCards(skeleton, {
     tiles: palm ? 1 : SPRAY_ATLAS_TILES, rng: mulberry32((seed ^ 0x5eed) >>> 0), rows: growthCardRows(profile.family),
     stemWidth: GROWTH_CROWN_STEM_WIDTH,
+    // (trees round 8 pass B: a place with the canopy form darkens a crown's heart, its gain keeping the lit shell)
+    ...(canopyForm ? { depthShade: GROWTH_CANOPY_DEPTH.depthShade } : {}),
     tint(shade, site, r) {
       const jitter = r();
       const sk = snow > 0.05 && site.tile < SPRAY_ATLAS_TILES ? 0.85 + jitter * 0.15 : 0;
@@ -3081,7 +3170,7 @@ function buildGrownTree(species: GrowthSpecies, seed: number, variant: number, p
       // with lobes darkens its cards by their depth in it (treeGrowth.ts emitLeafCards); the crown gain gives the lit
       // shell back what that darkening takes
       const value = (0.52 + 0.48 * shade) * (0.92 + r() * 0.16) * (1 + sk * 1.6) * (profile.foliageValue ?? 1)
-        * (skeleton.lobes ? GROWTH_CROWN_SHADING.crownGain : 1);
+        * (skeleton.lobes ? (canopyForm ? GROWTH_CANOPY_DEPTH.crownGain : GROWTH_CROWN_SHADING.crownGain) : 1);
       return [_c.r * gain * value, _c.g * gain * value, _c.b * gain * value];
     },
   }));
@@ -4336,6 +4425,20 @@ function* vegetationBuildSteps(
   const _contactNormal = { x: 0, y: 1, z: 0 };
   // ground lane: the canopy's cover (set once the trees are placed; null before — a tuft built earlier ignores it)
   let woodsCoverAt: ((x: number, z: number) => number) | null = null;
+  // Trees round 8 pass B (2026-10-07, the ground lane: "cull the midfield tufts under `standFloor: 'canopy'`, so the
+  // stand floor shows"): on a map whose stand floor spreads as the drawn crowns, the midfield tufts thin under the
+  // stands as the carpet's and the tall grass's do (0.85 of them under a closed canopy), so the forest floor the terrain
+  // draws there shows through the grass instead of a meadow under the trees. The carpet decides by its tuft's draw; a
+  // midfield chunk is built either before the trees stand (the first-view ring, every chunk of a capture build) or after
+  // (the deferred rest), so its rule is a hash of the tuft's stored place (float32, as its instance matrix holds it): the
+  // chunks built after the cover drop the tufts in makeTuft (after its draws: every stream keeps its draws), those built
+  // before drop the same tufts once the cover is set (cullMidfieldUnderStands) — no chunk line. Maps without the option
+  // keep every tuft.
+  const midfieldStandFloor = veg.standFloor === 'canopy';
+  const MIDFIELD_STAND_THIN = 0.85;
+  function midfieldUnderStand(x: number, z: number): boolean {
+    return woodsCoverAt !== null && treePositionNoise(x, z, 211) < woodsCoverAt(x, z) * MIDFIELD_STAND_THIN;
+  }
   // r5 terrain_environment: map-authored no-vegetation discs (desert uses one
   // to keep the establishing camera's foreground frame edge clear — a squat
   // palm sat clipped at the bottom-left of battlefield_desert.png)
@@ -4478,6 +4581,7 @@ function* vegetationBuildSteps(
     // before the trees stand (the first-view ring, every chunk in a capture build) and partly after (the deferred
     // rest) — the cover would split them at a chunk line
     if (carpet && woodsCoverAt !== null && clJ < woodsCoverAt(x, z) * 0.85) return null;
+    if (!carpet && midfieldStandFloor && midfieldUnderStand(Math.fround(x), Math.fround(z))) return null;
     // splat-aware thinning: drier + thinner on dirt patches, dense in meadows
     const sn = sampleSplatNoise(x, z, _splatScratch);
     // (thresholds track the shader's `worn` band — r4: 0.55/0.80 + warp)
@@ -5663,13 +5767,17 @@ function* vegetationBuildSteps(
   // probe's forest-form toggle swaps them in one page)
   const forestQuery = typeof location !== 'undefined' ? location.search ?? '' : '';
   // (trees lane, 2026-10-05: an orchard form's slot stays open-grown in a wood too, its variants its own species)
+  // (the treescn lane, 2026-10-09: round 8's canopy and form — its trees' form, its shrubs' law, its field crowns — on a
+  // place that grows it, treeBiomes.ts canopyForm; the owner's light-touch maps keep round 5's)
+  const canopyForm = treeBiomeCanopyForm(cfg?.id);
   const forestSpecies = new Set<Species>(grownTrees && treeBiomeWoodSpread(cfg?.id) > 1 && !/[?&]forestForm=0(&|$)/.test(forestQuery)
     ? veg.clusterMix.map(([sp]) => sp).filter((sp) => sp !== 'palm'
       && !TREE_GROWTH_PROFILES[(formOf(sp)?.form ?? sp) as GrowthSpecies]?.orchard) : []);
   const forestAB = forestSpecies.size > 0 && /[?&]forestAB=1(&|$)/.test(forestQuery);
   // trees lane (2026-10-05): a bare map's deciduous broadleaves and shrubs stand leafless (VegetationConfig `bare`;
-  // `?bare=1` stands any map's bare, the probes' same-build A/B)
-  const bareMap = grownTrees && (veg.bare === true || /[?&]bare=1(&|$)/.test(forestQuery));
+  // `?bare=1` stands any map's bare, the probes' same-build A/B; 2026-10-08, wave 278: a place bare in its season too —
+  // an Alpine April's larches, treeBiomes.ts TreeBiome.bare)
+  const bareMap = grownTrees && (veg.bare === true || treeBiomeBare(cfg?.id) || /[?&]bare=1(&|$)/.test(forestQuery));
   function grownDefinition(species: Exclude<Species, 'palm'>, legacy: SpeciesDefinition): SpeciesDefinition {
     if (!grownTrees) return legacy;
     sprayAtlasSpecies.add(species);
@@ -5694,8 +5802,11 @@ function* vegetationBuildSteps(
         const fp = formPal(pal);
         return makeSprayAtlas(grownFormSprayKind(growth, fp), r, texSize(512), (fp.snow ?? 0) > 0.05 ? null : fp.texTone || null, fp.snow ?? 0);
       },
-      near: (k, pal) => buildGrownTree(growth, seed + legacy.nearSeed + k * 7, k, formPal(pal), forestSpecies.has(species) && k < FOREST_NEAR_VARIANTS),
-      nearOpen: (k, pal) => buildGrownTree(growth, seed + legacy.nearSeed + k * 7, k, formPal(pal)),
+      // (trees round 6, on a place with round 8's canopy form: the open variant beside the forest-grown pair, and the field
+      // crowns, grow open-grown — broad and low, treeGrowth.ts GROWTH_OPEN_FORM)
+      near: (k, pal) => buildGrownTree(growth, seed + legacy.nearSeed + k * 7, k, formPal(pal), forestSpecies.has(species) && k < FOREST_NEAR_VARIANTS,
+        canopyForm, forestSpecies.has(species) && k >= FOREST_NEAR_VARIANTS),
+      nearOpen: (k, pal) => buildGrownTree(growth, seed + legacy.nearSeed + k * 7, k, formPal(pal), false, canopyForm, forestSpecies.has(species)),
       far: legacy.far,
     };
   }
@@ -5772,14 +5883,14 @@ function* vegetationBuildSteps(
   if (snagShare > 0) speciesList.push('snag' as Species);
   const bushSpecies = speciesList.includes(veg.bushSpecies) ? veg.bushSpecies : speciesList[0];
   if (!bushSpecies) throw new Error('world/vegetation: at least one species is required');
+  // trees lane (2026-10-08, the gauntlet's wave 278 on Glacier Pass: summer-green spruce on April's snow): a place under
+  // snow (treeBiomes.ts TreeBiome.snow) lays its load, and its needles' winter colour, on every slot whose palette names
+  // no snow of its own — the law Frosthollow's and Whiteout's palettes already carry
   const palOf = (sp: Species): VegetationPalette => {
-    const explicit = veg.palettes[sp];
-    if (explicit) return explicit;
     const family = TREE_ARCHETYPES[sp]?.family; // p2 trees lane: the snag has no archetype (it reads no palette)
-    if (family === 'conifer') return veg.palettes.pine || {};
-    if (family === 'birch') return veg.palettes.birch || {};
-    if (family === 'palm') return veg.palettes.palm || {};
-    return veg.palettes.oak || {};
+    const pal = veg.palettes[sp] || (family === 'conifer' ? veg.palettes.pine : family === 'birch' ? veg.palettes.birch
+      : family === 'palm' ? veg.palettes.palm : veg.palettes.oak) || {};
+    return treeBiomeSnowPalette(pal, family, treeBiomeSnow(cfg?.id));
   };
 
   /** GND (2026-10-15): a needle crown — its leaf-scale detail is needles (the grown form's family: a holm oak on a cedar
@@ -5808,7 +5919,7 @@ function* vegetationBuildSteps(
       // (canopyLighting.ts COT_GROWN_CROWN: the dark Saltmere and Frontier crowns against a low sun)
       // trees round 2: and their clusters turn to face the camera (COT_LEAF_BILLBOARD; the palms' fronds carry no frame)
       if (SPECIES[sp].grown) {
-        fm.defines = { ...(fm.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: GROWN_CROWN_TRANSMISSION.toFixed(2),
+        fm.defines = { ...(fm.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: (GROWN_CROWN_TRANSMISSION * treeBiomeTransmission(cfg?.id)).toFixed(2),
           COT_LEAF_BILLBOARD: GROWN_LEAF_BILLBOARD.toFixed(2) };
       }
       // GND (2026-10-15): a needle species' cards transmit the needles' dulled green (a uniform: the one program)
@@ -5869,6 +5980,19 @@ function* vegetationBuildSteps(
           (treeGeoOpen[sp] ??= [])[k] = open;
         }
       }
+      // (trees lane, 2026-10-07: a wood species' field crowns — the open-grown alternates of its forest-grown variants,
+      // near variants NEAR_VARIANTS and up, which only field trees draw; the far tier draws them as the open variant's
+      // impostor row, writeTreeSlot)
+      // (the treescn lane, 2026-10-09: a place with round 8's canopy form only; elsewhere every field tree draws the open
+      // variant, as before)
+      if (canopyForm && forestSpecies.has(sp) && SPECIES[sp].nearOpen) {
+        for (let k = 0; k < FIELD_OPEN_ALTERNATES; k++) {
+          const open = SPECIES[sp].nearOpen!(k, palOf(sp));
+          prepareTreeBarkSurface(open.trunk, barkTex.meanReflectance, barkTex.width);
+          treeGeo[sp].push(open);
+          yield { stage: 'treePrep', fine: true };
+        }
+      }
       treeGeoFar[sp] = [];
       for (let k = 0; k < FAR_VARIANTS; k++) {
         const geometry = SPECIES[sp].far(
@@ -5891,7 +6015,7 @@ function* vegetationBuildSteps(
   // species and far variant. The atlas gutters flood with the leaf atlases' mean opaque tone, so the mips of a tile
   // never average toward black.
   const treeImpostors: TreeImpostorLibrary | null = bakeRenderer ? createTreeImpostorLibrary({
-    rows: speciesList.filter(sp => (sp as string) !== 'snag').flatMap(sp => treeGeo[sp].map((pair, variant) => ({
+    rows: speciesList.filter(sp => (sp as string) !== 'snag').flatMap(sp => treeGeo[sp].slice(0, NEAR_VARIANTS).map((pair, variant) => ({
       species: sp, variant, trunk: pair.trunk, cards: pair.cards, foliage: foliageTex[sp], needle: needleCrown(sp),
     }))),
     bark: barkTex.albedo,
@@ -6446,6 +6570,8 @@ function* vegetationBuildSteps(
         if (addTree(px, pz, sp, wr, woodSpread)) {
           placed++;
           trees[trees.length - 1].wood = true;
+          // trees round 6: the margin rank keeps the open-grown form (WOOD_MARGIN_K; a place with the canopy form)
+          if (canopyForm && k >= WOOD_MARGIN_K) trees[trees.length - 1].margin = true;
           // a closed wood's interior (inside seven tenths of its outline) meets the far tier sooner (TreeRecord.nearScale)
           if (woodSpread > 1 && k < 0.7) trees[trees.length - 1].nearScale = 0.55;
         }
@@ -7014,7 +7140,7 @@ function* vegetationBuildSteps(
           dr: archetypeS.rootDecalRadiusM * Math.max(sapScaleX, sapScaleZ),
           fallH: archetypeS.fallHeightM * sapScaleY,
           fallR: archetypeS.fallRadiusM * Math.max(sapScaleX, sapScaleZ),
-          wood: true,
+          wood: true, ...(canopyForm ? { margin: true } : {}),
         });
         registerTreeInteraction(
           trees.length - 1,
@@ -7209,6 +7335,7 @@ function* vegetationBuildSteps(
       }
       const density = Math.min(1, neighbours / 8);
       t.tint.multiplyScalar(1 - 0.24 * density * density * (3 - 2 * density));
+      t.standDensity = density; // trees round 6: its trunk's shade reads it once every move is made (shadeInteriorTrunks)
     }
   }
 
@@ -7311,6 +7438,7 @@ function* vegetationBuildSteps(
   // decal. A snag is a look only: the obstacle and concealment records the simulation reads (collision, spotting,
   // the host's world) are the living tree's, the same on every tier and on `?legacyTrees=1` — the phones grow no
   // snags, and a mixed lobby must share one world.
+  const snagValueRange: readonly [number, number] = treeBiomeSnagValue(cfg?.id) ?? [0.62, 0.87];
   function convertSnags(): number {
     if (!(snagShare > 0)) return 0;
     const SNAG = { canopyCenterM: 3.4, canopyRadiusM: 1.4, fallHeightM: 5.4, fallRadiusM: 0.16, rootDecalRadiusM: 1.2 };
@@ -7330,7 +7458,8 @@ function* vegetationBuildSteps(
       t.fallH = SNAG.fallHeightM * sy;
       t.fallR = SNAG.fallRadiusM * sxz;
       t.dr = SNAG.rootDecalRadiusM * sxz;
-      const value = 0.62 + treePositionNoise(t.x, t.z, 10) * 0.25;
+      // (the trees lane: a place may char its snags darker — treeBiomes.ts snagValue — the hash and the count as before)
+      const value = snagValueRange[0] + treePositionNoise(t.x, t.z, 10) * (snagValueRange[1] - snagValueRange[0]);
       t.tint.setRGB(value, value * 0.96, value * 0.92);
       converted++;
     }
@@ -7470,20 +7599,40 @@ function* vegetationBuildSteps(
    * the two forest-grown near variants (its drawn variant, the open third's by a position hash); a field tree, the open
    * one. Only the pool a tree draws in moves: its records were registered at its seat, and every tier keeps its own.
    */
+  /**
+   * Trees round 6: an interior wood tree's trunk in its stand's shade (WOOD_INTERIOR_TRUNK_SHADE, by the density it
+   * grew in) — read after every move (the authored rows' and the tidal band's), so a tree a row took into the open keeps
+   * its full tint; only on a place with round 8's canopy form whose woods close.
+   */
+  function shadeInteriorTrunks(): void {
+    if (!canopyForm || treeBiomeWoodSpread(cfg?.id) <= 1) return;
+    for (const t of trees) {
+      if (!t.wood || t.margin || !t.standDensity) continue;
+      const d = t.standDensity;
+      t.trunkShade = 1 - WOOD_INTERIOR_TRUNK_SHADE * d * d * (3 - 2 * d);
+    }
+  }
   function assignTreeForms(): void {
     if (!forestSpecies.size) return;
     let forest = 0, open = 0;
+    const fieldCrowns = [0, 0, 0];
     for (const t of trees) {
       if (!forestSpecies.has(t.species)) continue;
-      if (t.wood) {
+      // (trees round 6: a wood's margin rank and its saplings keep the open-grown form, WOOD_MARGIN_K)
+      if (t.wood && !t.margin) {
         if (t.variant >= FOREST_NEAR_VARIANTS) t.variant = treePositionNoise(t.x, t.z, 97) < 0.5 ? 0 : 1;
         forest++;
       } else {
-        t.variant = FOREST_NEAR_VARIANTS;
+        // (trees lane, 2026-10-07: among the open variant and the open-grown alternates of the forest-grown two, where the
+        // species grows them; thirds by a position hash, so a row's neighbours differ and no draw moves)
+        const crowns = treeGeo[t.species].length - NEAR_VARIANTS;
+        const h = crowns > 0 ? treePositionNoise(t.x, t.z, 98) : 0;
+        t.variant = h < 1 / 3 ? FOREST_NEAR_VARIANTS : NEAR_VARIANTS + Math.min(crowns - 1, h < 2 / 3 ? 0 : 1);
+        fieldCrowns[t.variant - FOREST_NEAR_VARIANTS]++;
         open++;
       }
     }
-    group.userData.treeForms = { forest, open, species: [...forestSpecies] };
+    group.userData.treeForms = { forest, open, fieldCrowns: [...fieldCrowns], species: [...forestSpecies] };
   }
   /**
    * A grown tree's shadow proxy: its crown shadow hull, position-only, its crown masses' tags (each its own pattern and
@@ -7544,6 +7693,7 @@ function* vegetationBuildSteps(
         foliage.castShadow = false;
         foliage.receiveShadow = canopyShadowReceive; // round 77: received once per cluster, never per fragment
         foliage.userData.treeLod = 'near';
+        foliage.userData.treeSpecies = sp; // (trees lane, 2026-10-08: the pool's slot, for the receipts and probes)
         const pool: TreeMesh[] = [trunk, foliage];
         const open = treeGeoOpen[sp]?.[variant];
         if (open) { trunk.userData.formAlt = formAlternate(open.trunk, trunk.geometry); foliage.userData.formAlt = formAlternate(open.cards, foliage.geometry); }
@@ -7605,6 +7755,7 @@ function* vegetationBuildSteps(
     }
   }
   assignTreeForms();
+  shadeInteriorTrunks();
   createTreeMeshPools();
 
   yield { stage: 'treeRimAndMeshes' };
@@ -7723,7 +7874,7 @@ function* vegetationBuildSteps(
     });
     const tile = leafDetail.texture(leafDetail.classOf('oak', pal));
     if (tile) { material.normalMap = tile; material.normalScale.set(LEAF_DETAIL_NORMAL_SCALE, LEAF_DETAIL_NORMAL_SCALE); }
-    material.defines = { ...(material.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: GROWN_CROWN_TRANSMISSION.toFixed(2),
+    material.defines = { ...(material.defines ?? {}), COT_CARD_EDGE_FADE: '', COT_GROWN_CROWN: (GROWN_CROWN_TRANSMISSION * treeBiomeTransmission(cfg?.id)).toFixed(2),
       COT_LEAF_BILLBOARD: GROWN_LEAF_BILLBOARD.toFixed(2) };
     engineCtx.setupShadowMaterial(material, shrubFoliageHook);
     material.userData.cotShrubThin = uShrubThin; // the frame probe's same-page A/B (its shrub-thin toggle)
@@ -7800,8 +7951,8 @@ function* vegetationBuildSteps(
       return bushMatCache;
     };
     const bushGeos = sprayAtlasSpecies.has(bushSpecies)
-      ? [buildGrownShrub('bush', mulberry32(seed + 31), bushPal, shrubGrowth, shrubOnAtlas),
-        buildGrownShrub('bush', mulberry32(seed + 32), bushPal, shrubGrowth, shrubOnAtlas)]
+      ? [buildGrownShrub('bush', mulberry32(seed + 31), bushPal, shrubGrowth, shrubOnAtlas, canopyForm),
+        buildGrownShrub('bush', mulberry32(seed + 32), bushPal, shrubGrowth, shrubOnAtlas, canopyForm)]
       : [buildBushCards(mulberry32(seed + 31), bushPal), buildBushCards(mulberry32(seed + 32), bushPal)];
     const bushPlacements: [THREE.Matrix4[], THREE.Matrix4[]] = [[], []];
     const bushKeep: [boolean[],boolean[]]=[[],[]];
@@ -7977,6 +8128,9 @@ function* vegetationBuildSteps(
     const understoreyRng = mulberry32((seed ^ 0x77e5) >>> 0);
     const understoreyPlacements: THREE.Matrix4[] = [];
     const understoreyTints: THREE.Color[] = [];
+    // trees round 6: where the closed woods' inner understorey begins in the placements (the frame probe's same-page A/B
+    // draws the mesh short of it)
+    let innerUnderstoreyStart = -1;
     function placeUnderstorey(): void {
       if (mobileTier) return;
       // trees round 4 (2026-10-04, the coordinator's law for every shrub a player can drive up to): the understorey
@@ -8075,11 +8229,31 @@ function* vegetationBuildSteps(
           }
         });
       }
+      // trees round 6 (the gauntlet's wave 122: "the wood is a single row you can see through"; a place with round 8's
+      // canopy form whose woods close): under a closed wood's canopy, young growth and shrubs between the boles
+      // (INNER_UNDERSTOREY_M2), on their own stream (every other placement keeps its draws); dressing like the rest of
+      // the understorey — the wood's own discs conceal, and one out of their cover keeps its place as capped young growth
+      if (canopyForm && treeBiomeWoodSpread(cfg?.id) > 1) {
+        innerUnderstoreyStart = understoreyPlacements.length;
+        const innerRng = mulberry32((seed ^ 0x51d3) >>> 0);
+        clusters.forEach((stand, index) => {
+          const n = Math.round(Math.PI * (stand.r * 0.82) ** 2 / INNER_UNDERSTOREY_M2);
+          for (let i = 0; i < n; i++) {
+            const a = innerRng() * Math.PI * 2, rr = 0.82 * Math.sqrt(0.03 + innerRng() * 0.97);
+            const sc = 1.0 + innerRng() * 1.4, yaw = innerRng() * Math.PI * 2, hy = 0.9 + innerRng() * 0.4;
+            const tj = innerRng(), tr = innerRng(), tg = innerRng(), tb = innerRng();
+            if (innerRng() < 0.2) continue; // the floor's open patches
+            const at = standPoint(index, stand, a, rr), x = at[0], z = at[1];
+            if (!admitted(x, z, sc, 470)) continue;
+            seat(x, z, screensInTheOpen(x, z, sc, hy) ? cappedScale(x, z, hy) : sc, hy, yaw, tj * 0.8, tr, tg, tb);
+          }
+        });
+      }
     }
     function createUnderstoreyMesh(): void {
       const n = understoreyPlacements.length;
       if (n === 0) return;
-      const geometry = sprayAtlasSpecies.has(bushSpecies) ? buildGrownShrub('understorey', mulberry32(seed + 33), bushPal, shrubGrowth, shrubOnAtlas)
+      const geometry = sprayAtlasSpecies.has(bushSpecies) ? buildGrownShrub('understorey', mulberry32(seed + 33), bushPal, shrubGrowth, shrubOnAtlas, canopyForm)
         : buildUnderstoreyCards(mulberry32(seed + 33), bushPal);
       geometry.userData.understorey = true;
       geometry.setAttribute('aFadeI', new THREE.InstancedBufferAttribute(new Float32Array(n), 1));
@@ -8099,6 +8273,7 @@ function* vegetationBuildSteps(
       m.customDepthMaterial = shrubMats?.[1] ?? shrubDepthCache ?? foliageDepthMats[bushSpecies];
       m.userData.aoExclude = true;
       m.userData.understorey = true;
+      if (innerUnderstoreyStart >= 0) m.userData.innerUnderstoreyStart = innerUnderstoreyStart;
       m.name = 'understorey';
       m.computeBoundingSphere();
       group.add(m);
@@ -8315,7 +8490,7 @@ function* vegetationBuildSteps(
   const farSlots = {} as Record<Species, TreeRecord[][]>;
   function createPartitionSlots(): void {
     for (const sp of speciesList) {
-      nearSlots[sp] = Array.from({ length: NEAR_VARIANTS }, () => []);
+      nearSlots[sp] = Array.from({ length: treeGeo[sp].length }, () => []);
       farSlots[sp] = Array.from({ length: FAR_VARIANTS }, () => []);
     }
   }
@@ -8341,10 +8516,19 @@ function* vegetationBuildSteps(
     const ir = m.geometry.getAttribute('aImpRow') as THREE.BufferAttribute | undefined; // round 77b: the impostor row
     if (ir) { ir.addUpdateRange(slot, 1); ir.needsUpdate = true; }
   }
+  /** A tree's impostor row in its species' atlas rows: its near variant; a field tree's open crown past the three near
+   * variants draws the open variant's row (trees lane, 2026-10-07: FIELD_OPEN_ALTERNATES). */
+  function impostorRowOf(t: TreeRecord): number {
+    return t.variant < NEAR_VARIANTS ? t.variant : FOREST_NEAR_VARIANTS;
+  }
   /** Write tree t into `slot` of every mesh in the group. Far groups render
    * fade 0 (opaque): occlusion fade only ever applies inside camera range.
    * aa-r1: the LOD cross-fade share (t.lodF) rides along on the NEAR side —
    * far representations stay solid underneath the dissolve (see update()). */
+  /** A tree's instance colour in a pool: its tint, or on its trunk its stand's shade over it (trees round 6). */
+  function treeSlotTint(m: TreeMesh, t: TreeRecord): THREE.Color {
+    return t.trunkShade !== undefined && m.userData.treeTrunk ? _trunkShadeColor.copy(t.tint).multiplyScalar(t.trunkShade) : t.tint;
+  }
   function writeTreeSlot(
     meshes: TreeMesh[],
     slot: number,
@@ -8354,13 +8538,13 @@ function* vegetationBuildSteps(
   ): void {
     for (const m of meshes) {
       m.setMatrixAt(slot, t.mat);
-      m.setColorAt(slot, t.tint);
+      m.setColorAt(slot, treeSlotTint(m, t));
       const fa = m.geometry.getAttribute('aFadeI') as THREE.BufferAttribute | undefined;
       if (fa) fa.array[slot] = fade;
       const lf = m.geometry.getAttribute('aLodF') as THREE.BufferAttribute | undefined;
       if (lf) lf.array[slot] = lodF;
       const ir = m.geometry.getAttribute('aImpRow') as THREE.BufferAttribute | undefined; // round 77b
-      if (ir) ir.array[slot] = t.variant;
+      if (ir) ir.array[slot] = impostorRowOf(t);
       markSlotDirty(m, slot);
     }
   }
@@ -8516,7 +8700,7 @@ function* vegetationBuildSteps(
       slots.push(tree);
       for (const mesh of nearPoolOf(tree)) {
         mesh.setMatrixAt(tree.slot, tree.mat);
-        mesh.setColorAt(tree.slot, tree.tint);
+        mesh.setColorAt(tree.slot, treeSlotTint(mesh, tree));
         attribute(mesh.geometry, 'aFadeI').array[tree.slot] = tree.fade;
         const lodFade = mesh.geometry.getAttribute('aLodF') as THREE.BufferAttribute | undefined;
         if (lodFade) lodFade.array[tree.slot] = 0;
@@ -8529,13 +8713,13 @@ function* vegetationBuildSteps(
     slots.push(tree);
     for (const mesh of farPoolOf(tree)) {
       mesh.setMatrixAt(tree.fslot, tree.mat);
-      mesh.setColorAt(tree.fslot, tree.tint);
+      mesh.setColorAt(tree.fslot, treeSlotTint(mesh, tree));
       const fade = mesh.geometry.getAttribute('aFadeI') as THREE.BufferAttribute | undefined;
       if (fade) fade.array[tree.fslot] = 0;
       const lodFade = mesh.geometry.getAttribute('aLodF') as THREE.BufferAttribute | undefined;
       if (lodFade) lodFade.array[tree.fslot] = 0;
       const row = mesh.geometry.getAttribute('aImpRow') as THREE.BufferAttribute | undefined; // round 77b
-      if (row) row.array[tree.fslot] = tree.variant;
+      if (row) row.array[tree.fslot] = impostorRowOf(tree);
     }
   }
   function uploadNearPartition(species: Species, variant: number): void {
@@ -8588,7 +8772,7 @@ function* vegetationBuildSteps(
   }
   function uploadPartition(): void {
     for (const species of speciesList) {
-      for (let variant = 0; variant < NEAR_VARIANTS; variant += 1) {
+      for (let variant = 0; variant < nearMeshes[species].length; variant += 1) {
         uploadNearPartition(species, variant);
       }
       for (let variant = 0; variant < FAR_VARIANTS; variant += 1) {
@@ -8893,8 +9077,25 @@ function* vegetationBuildSteps(
   // harnesses compile the sections above on their own, the grass-work receipt its slices from dispose to the return).
   const woodsSize = 256, woodsCell = 1024 / 256;
   const woodsCrowns = new Float32Array(woodsSize * woodsSize);
+  // (trees round 8, `standFloor: 'canopy'`: a wood tree's disc spreads as its drawn crown — its pool's spray cards at its
+  // scale — never under its record's radius; the field trees and every map without the option keep the records')
+  const canopyFloor = veg.standFloor === 'canopy';
+  const poolCrownR = new Map<string, number>();
+  const drawnCrownR = (tree: TreeRecord): number => {
+    const key = `${tree.species}_${tree.variant}`;
+    let r = poolCrownR.get(key);
+    if (r === undefined) {
+      const cards = treeGeo[tree.species]?.[tree.variant]?.cards;
+      if (cards && !cards.boundingBox) cards.computeBoundingBox();
+      const b = cards?.boundingBox;
+      r = b ? Math.max(-b.min.x, b.max.x, -b.min.z, b.max.z) : 0;
+      poolCrownR.set(key, r);
+    }
+    const e = tree.mat.elements;
+    return r * Math.max(Math.hypot(e[0], e[1], e[2]), Math.hypot(e[8], e[9], e[10]));
+  };
   for (const tree of trees) {
-    const r = Math.max(1.5, tree.cr) * 1.15;
+    const r = Math.max(1.5, canopyFloor && tree.wood ? Math.max(tree.cr, drawnCrownR(tree)) : tree.cr) * 1.15;
     const i0 = Math.max(0, Math.floor((tree.x - r + 512) / woodsCell)), i1 = Math.min(woodsSize - 1, Math.floor((tree.x + r + 512) / woodsCell));
     const j0 = Math.max(0, Math.floor((tree.z - r + 512) / woodsCell)), j1 = Math.min(woodsSize - 1, Math.floor((tree.z + r + 512) / woodsCell));
     for (let j = j0; j <= j1; j++) {
@@ -8931,6 +9132,31 @@ function* vegetationBuildSteps(
     const b = woodsMask[k + woodsSize] + (woodsMask[k + woodsSize + 1] - woodsMask[k + woodsSize]) * fu;
     return a + (b - a) * fv;
   };
+  /** Trees round 8 pass B: the midfield chunks built before the cover drop the tufts under the stands (midfieldUnderStand). */
+  function cullMidfieldUnderStands(): number {
+    let dropped = 0;
+    for (const gc of grassChunks) {
+      if (!gc.built || !gc.meshes) continue;
+      for (const record of gc.meshes) {
+        const mesh = record.mesh, m = mesh.instanceMatrix.array as Float32Array, c = mesh.instanceColor!.array as Float32Array;
+        let k = 0;
+        for (let i = 0; i < record.total; i++) {
+          if (midfieldUnderStand(m[i * 16 + 12], m[i * 16 + 14])) continue;
+          if (k !== i) { m.copyWithin(k * 16, i * 16, i * 16 + 16); c.copyWithin(k * 3, i * 3, i * 3 + 3); }
+          k++;
+        }
+        if (k === record.total) continue;
+        dropped += record.total - k;
+        // (stable: the kept tufts keep their order, so the density rolloff's prefix stays a thinned field)
+        record.total = k;
+        mesh.count = Math.min(mesh.count, k);
+        mesh.instanceMatrix.needsUpdate = true;
+        mesh.instanceColor!.needsUpdate = true;
+      }
+    }
+    return dropped;
+  }
+  if (midfieldStandFloor) group.userData.midfieldStandFloor = { dropped: cullMidfieldUnderStands() };
   function setSniperFade(
     f: number,
     immediate = false,
