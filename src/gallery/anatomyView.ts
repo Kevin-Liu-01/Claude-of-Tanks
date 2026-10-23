@@ -25,6 +25,11 @@ const CORE_BADGE_MODULES = new Set(['engine', 'transmission', 'fuelTank', 'ammoR
 /** Layer for exterior meshes while an anatomy layer is on: off the main pass, drawn only by the ghost passes. */
 const EXTERIOR_LAYER = 3;
 
+function drawsNoColour(mesh: THREE.Mesh): boolean {
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+  return materials.every((material) => !material || material.colorWrite === false || (material.transparent && material.opacity === 0));
+}
+
 const DEFAULT_TOGGLES: Readonly<Record<AnatomyMode, ViewToggles>> = Object.freeze({
   armor: { armor: true, addOns: true, modules: false, crew: false, hits: false, exterior: true, labels: false },
   modules: { armor: false, addOns: false, modules: true, crew: true, hits: false, exterior: true, labels: true },
@@ -257,7 +262,9 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       if (!object.layers.test(host.camera.layers) || object.userData.shadowOnly) return;
       if (object instanceof THREE.Mesh) {
         hidden.set(object, { mask: object.layers.mask, visible: object.visible });
-        object.layers.set(EXTERIOR_LAYER);
+        // a mesh that paints nothing (depth-only stock, a fully transparent picker) would only draw as glass: it goes
+        if (drawsNoColour(object)) object.visible = false;
+        else object.layers.set(EXTERIOR_LAYER);
       } else if (object instanceof THREE.Line || object instanceof THREE.Points || object instanceof THREE.Sprite) {
         hidden.set(object, { mask: object.layers.mask, visible: object.visible });
         object.visible = false;
