@@ -258,6 +258,15 @@ export const TOKENS = {
   'media-toggle-z': '4',
   'warn-hatch': '8px',
   'team-squad-ring': '0px',
+  'studio-z': '58',
+  'studio-pop-z': '40',
+  'studio-track-mark': '.04em',
+  'studio-track-shelf': '.02em',
+  'studio-row-on': 'inset 2px 0 0 #f0a030',
+  'studio-knob-ring': '0 0 0 2px #0b0e11',
+  'studio-swatch-on': '0 0 0 2px #f0a030',
+  'studio-frame-mask': '0 0 0 1px oklch(from #f6f3ec l c h / .18),0 0 0 2000px rgba(5,6,8,.72)',
+  'studio-clip-fx': 'rgba(255,90,78,.16)',
 } as const;
 
 export type TokenName = keyof typeof TOKENS;
