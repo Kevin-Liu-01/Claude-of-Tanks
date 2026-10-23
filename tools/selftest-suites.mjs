@@ -1888,6 +1888,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/scenery.selftest.mjs',
     'src/world/jebelSkin.selftest.mjs', // 2026-10-14 (maps lane, MA.12): a dome's jointed face — all round, normals out, proud, in budget, no mass
     'src/world/sceneryTierIdentity.selftest.mjs', // 2026-10-11 the hitbox lane: a phone builds the desktop's formation masses
+    // the map-revival lane (Sirocco Wadi round 1, wave 235): the erg's seif draa and star dunes; the gour's caprock cliffs
+    'src/world/duneForms.selftest.mjs',
+    'src/world/gourSkin.selftest.mjs',
     // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
     'src/world/fieldStoneSurface.selftest.mjs',
     // the scenery lane (wave 20): the mud walls' worn render; the walls' feet, drifts and snow loads
@@ -1999,6 +2002,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/riparianTrees.selftest.mjs',
     // the horizons stream (2026-10-16): the Skybridge port moves no other map's heights
     'src/world/skybridgeArmIsolation.selftest.mjs',
+    // the trees lane (2026-10-06, wave 177): Saltwind's olive groves, holm oak and Aleppo pine, maquis
+    'src/world/saltwindTrees.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',
@@ -2084,6 +2089,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',
     'src/world/structureKit.selftest.mjs',
+    // the maps-restyle lane (2026-10-22, from the destructible-kits lane 2026-10-11): the roadside light buildings and
+    // random hulks in 180-degree twins on a map that declares its rotation centre (the fairness ask)
+    'src/world/roadsideTwins.selftest.mjs',
     'src/world/maps/marsSettlement.selftest.mjs',
     // (the Earthrise 228 rebuild, 2026-10-18) Taurus-Littrow Station's plan, set pieces and stock (maps/earthriseStation.ts)
     'src/world/maps/earthriseStation.selftest.mjs',

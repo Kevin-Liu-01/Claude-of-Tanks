@@ -292,6 +292,9 @@ import { deploymentClearings } from '../sim/matchPlacement.ts';
 import { MATCH_OBJECTIVE_LAYOUTS } from '../sim/matchObjectiveLayouts.ts';
 import { geologyBoulderSite, restsOnTalus, TALUS_DEG } from './landformGeology.ts';
 import { createPropCrushPresentation } from './propCrushPresentation.ts';
+
+/** A seated hulk's ground support: its track runs' plane (wrecks.ts seatHulk) or the footprint's grounded pose. */
+type WreckSupport = ReturnType<typeof planGroundedObbPose> | ReturnType<typeof seatHulk>;
 // Build-time-baked licensed models (see tools/bake-props-models.mjs +
 // docs/ATTRIBUTION.md). The exact float/index streams live in a gzip-packed
 // binary archive; createMapAsync starts it while terrain is being constructed.
@@ -513,6 +516,16 @@ interface PropsSettings {
    * building (they close a square between its houses), so the plan places exactly as it did without them. Unset: the
    * sites stand first, as before. */
   plannedSitesAfterPlan?: boolean;
+  /**
+   * The map-revival lane (2026-10-12; Cinder Junction's fairness: its planned sites stand in 180-degree pairs about the
+   * square, but each was built from its own draws — the shared stream's turn for the base build, its own pose's hash for
+   * the regional kit's form, variant and weather — so the two depots of a pair stood 20.3 and 17.8 m wide, the two goods
+   * sheds 17.9 and 15.4 m deep): a site whose rotational twin about this point stands earlier in the plan (the same
+   * structure, its place turned within a metre, its yaw within two degrees of the turn) is built as that twin was — the
+   * twin's base stream (its own, by the pair's first index) and the twin's pose for the kit's hashes and form choices,
+   * the ground under it its own — so the pair is one building turned about the point. Absent on every other map.
+   */
+  plannedSiteTwins?: { x: number; z: number };
   /** Maps lane B (2026-10-03, Nordhavn Fjord): the settlement the props dress — its roadside and block-fill buildings,
    * its plaza (the road crossing nearest cx, cz), street furniture and clutter — when it is not the whole ground the
    * terrain's village rect grades (a harbour town on the quay of a graded valley floor). Default: the village rect. */
@@ -535,6 +548,17 @@ interface PropsSettings {
   /** The map-revival lane (2026-10-06): a recorded light building's kind the map replaces at its recorded pose (a
    * kind out of place in the region: Ironworks' Nissen hut becomes a brick office), recorded kind → its stand-in. */
   townLightPlanSwaps?: Readonly<Record<string, string>>;
+  /**
+   * (the destructible-kits lane, 2026-10-11; the coordinator's fairness ask: map revival's railyard r3 failed fairness
+   * 26-14, its death cells on four untwinned roadside light buildings and two untwinned hulks near the centre) A map
+   * built as a 180-degree pair declares the point it turns about: its roadside light buildings
+   * (placeDestructibleBuildings) and its random hulks (placeTankWrecks: the road kills and their duels, not the beats'
+   * authored wrecks) are then placed in twins about it — the same kind (a hulk the same donor and pop), the pose turned
+   * half round — each pass drawing for half as many (rounded up: five kinds give three pairs) from its own stream, and a
+   * pair standing only where both of it pass every test the pass puts a single one to. A map without it draws exactly as
+   * before; a recorded townLightPlan still wins over the light buildings' pass.
+   */
+  rotationalCentre?: readonly [number, number];
   /** The street rows of a recorded settlement (maps/townPlans.generated.ts TOWN_ROW_PLANS; the map-revival lane,
    * 2026-10-05): each row building's pose, plot, wall, ruin and the props stream's state before its builder, and its
    * rubble's seat, size and the street stream's state before it. They stand there whatever the ground has become, and
@@ -622,6 +646,10 @@ interface PropsSettings {
    * such a place it stays. The plan places every building exactly as before (no draw or eligibility changes), so a
    * building that clears the carriageway stands where it always did. Opt-in: a map without it keeps every building. */
   roadBuildingClearance?: boolean;
+  /** The map-revival lane (2026-10-11, Cinder Junction round 2: the colliery colonies' gardens): authored fence lines,
+   * [x0, z0, x1, z1] each, laid as fence runs of `kind` (no gates) from a stream of their own after the roadside
+   * utilities, so every other destructible keeps its draws and seat. Default none. */
+  gardenFences?: { kind: string; lines: readonly (readonly [number, number, number, number])[] };
   /** Authored places for carriageway buildings (with `roadBuildingClearance`): a building packed as standing in a
    * carriageway whose recorded centre lies within 1.5 m of `from` moves to `to` instead of the nearest clear place,
    * when `to` passes the same checks (the road clearance, its ground fit, every other building and strongpoint); else
@@ -4747,6 +4775,22 @@ ${snowCap ? `
   const deploymentVetoed: Record<string, number> = {};
   const structureKinds = new Set([...Object.keys(DESTRUCTIBLE_BUILDING_TYPES),
     ...Object.values(REGIONAL_DESTRUCTIBLE_TYPES).flatMap((region) => Object.keys(region))]);
+  /** Whether addDestructible would veto a copy here (a set piece's ground, a deployment slot's clearing): counts nothing. */
+  function destructibleVetoed(kind: string, x: number, z: number, sc = 1): boolean {
+    const meta = resolveDestructibleMeta(destructibleContext, kind);
+    if (landmarkVetoes.length && !landmarkFurniture) {
+      const reach = Math.min(meta.r * sc, 0.5);
+      for (const v of landmarkVetoes) {
+        const dx = x - v.x, dz = z - v.z;
+        if (Math.abs(dx * v.c - dz * v.s) < v.hw + reach && Math.abs(dx * v.s + dz * v.c) < v.hd + reach) return true;
+      }
+    }
+    if (deploymentSlots.length && !landmarkFurniture && !structureKinds.has(kind)) {
+      const reach = DEPLOYMENT_CLEAR_M + meta.r * sc;
+      for (const slot of deploymentSlots) if ((x - slot.x) ** 2 + (z - slot.z) ** 2 < reach * reach) return true;
+    }
+    return false;
+  }
   function addDestructible(
     kind: string,
     x: number,
@@ -4836,6 +4880,7 @@ ${snowCap ? `
     z1: number,
     gateChance = 0.35,
     path?: readonly (readonly [number, number])[],
+    stream: Rng = drng,
   ): void {
     const curved = path ? fencePathSampler(path) : null;
     const along = curved?.length ?? Math.hypot(x1 - x0, z1 - z0);
@@ -4933,7 +4978,7 @@ ${snowCap ? `
       if (Math.max(Math.abs(cx), Math.abs(cz)) > 478) { if (pieceRule) endPiece(); openRun = false; continue; }
       if (heightField._roadDist(cx, cz) < 4.6 || noVeg(cx, cz)) {
         const stood = pieceRule ? endPiece() : true;
-        if (openRun && !gated && drng() < gateChance) {
+        if (openRun && !gated && stream() < gateChance) {
           // hang an open gate at the field entrance the road cuts
           const gy = heightField.getHeightAt(ax, az);
           // (the looks lane: the run's own family's gate — a picket wicket in a picket fence, a woven gate in wattle)
@@ -4945,11 +4990,11 @@ ${snowCap ? `
         openRun = false;
         continue;
       }
-      if (drng() < 0.05) { if (pieceRule) endPiece(); openRun = false; continue; } // the odd missing module
+      if (stream() < 0.05) { if (pieceRule) endPiece(); openRun = false; continue; } // the odd missing module
       const ya = heightField.getHeightAt(ax, az), yb = heightField.getHeightAt(bx, bz);
       const cy = Math.min(ya, yb);
       const tiltX = Math.atan2(yb - ya, FENCE_SEG) * 0.85;
-      const scale = 0.96 + drng() * 0.10, tiltZ = (drng() - 0.5) * 0.03;
+      const scale = 0.96 + stream() * 0.10, tiltZ = (stream() - 0.5) * 0.03;
       if (!underBridgeDeck(cx, cz) && clearOfBuildings(ax, az, bx, bz)) {
         if (pieceRule) piece.push([cx, cy - 0.06, cz, yaw, scale, tiltX, tiltZ]);
         else addDestructible(kind, cx, cy - 0.06, cz, yaw, scale, tiltX, tiltZ);
@@ -5390,7 +5435,8 @@ ${snowCap ? `
   const roadClearanceMoves: { kind: string; from: [number, number]; to: [number, number] | null }[] = [];
   if (P.roadBuildingClearance) group.userData.roadClearanceMoves = roadClearanceMoves;
   function placePlannedBuilding(px: number, pz: number, rot: number, roadSite?: RoadFrontageSite, explicitStructure?: string,
-    fromRoad = false, plot?: { w: number; d: number }, vacated = false, stream: Rng = rng): boolean {
+    fromRoad = false, plot?: { w: number; d: number }, vacated = false, stream: Rng = rng,
+    kitPose?: { x: number; z: number; rot: number }): boolean {
     let tmp: PropsBuckets = {
       plaster: [], plaster2: [], plaster3: [], stone: [], roof: [], wood: [], dark: [],
       glass: [], curtain: [], straw: [], baked: [], steel: [], structureMetal: [],
@@ -5519,9 +5565,11 @@ ${snowCap ? `
     const carriageway = fromRoad && P.roadBuildingClearance ? carriagewayFootprint(tmp, info, px, pz, rot) : null;
     if (regionalArchitecture && !regionalDonor) {
       // (a building a carriageway may still move takes no ground: its strip lies level)
+      // (props.plannedSiteTwins: a twin is built from its partner's pose — its hashes and form choices — on its own ground)
       const rebuilt = rebuildRegionalStructure(regionalArchitecture, structureId, tmp, info, wallBucket,
         { mapId, snowCap: structureContext.snowCap, seed, ...regionalSun,
-          ground: fromRoad && P.roadBuildingClearance ? undefined : regionalGround(px, pz, rot, fit.y + 0.05) }, px, pz, rot);
+          ground: fromRoad && P.roadBuildingClearance ? undefined : regionalGround(px, pz, rot, fit.y + 0.05) },
+        kitPose?.x ?? px, kitPose?.z ?? pz, kitPose?.rot ?? rot);
       if (rebuilt) {
         tmp = rebuilt;
         const b = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
@@ -5672,12 +5720,40 @@ ${snowCap ? `
     }
     bi = builders.length;
   }
+  // (props.plannedSiteTwins) each site's earlier rotational twin, by index
+  const plannedTwinOf = new Map<number, number>();
+  if (P.plannedSiteTwins && P.plannedSites) {
+    const { x: tx, z: tz } = P.plannedSiteTwins, sites = P.plannedSites;
+    for (let j = 0; j < sites.length; j++) {
+      for (let i = 0; i < j; i++) {
+        if (plannedTwinOf.has(i) || sites[i].structure !== sites[j].structure || !!sites[i].terrace !== !!sites[j].terrace) continue;
+        const turn = ((((sites[j].yawDeg - sites[i].yawDeg - 180) % 360) + 540) % 360) - 180;
+        if (Math.abs(sites[j].x - (2 * tx - sites[i].x)) < 1 && Math.abs(sites[j].z - (2 * tz - sites[i].z)) < 1 && Math.abs(turn) < 2) {
+          plannedTwinOf.set(j, i);
+          break;
+        }
+      }
+    }
+  }
+  /** A planned site's base stream and the pose its kit builds from (its twin's, under props.plannedSiteTwins). */
+  const plannedBuild = (index: number, site: NonNullable<PropsSettings['plannedSites']>[number]):
+    { stream: Rng; kitPose?: { x: number; z: number; rot: number } } => {
+    const twin = plannedTwinOf.get(index);
+    const lead = twin ?? index;
+    const paired = twin !== undefined || [...plannedTwinOf.values()].includes(index);
+    // a terrace house draws from a stream of its own (its index in the plan): every later placement keeps its seat; a
+    // twinned site from its pair's (the first's index)
+    const stream = site.terrace ? mulberry32(seed + 104729 * (lead + 1)) : paired ? mulberry32(seed + 7919 * (lead + 1)) : rng;
+    if (twin === undefined) return { stream };
+    const t = P.plannedSites![twin];
+    return { stream, kitPose: { x: t.x, z: t.z, rot: THREE.MathUtils.degToRad(t.yawDeg) } };
+  };
   for (const [index, site] of (P.townPlan?.length || P.plannedSitesAfterPlan ? [] : P.plannedSites ?? []).entries()) {
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
     if (!site.terrace && !isRoadBuildingSiteClear(site.x, site.z)) continue;
-    // a terrace house draws from a stream of its own (its index in the plan): every later placement keeps its seat
+    const build = plannedBuild(index, site);
     placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot,
-      site.vacated, site.terrace ? mulberry32(seed + 104729 * (index + 1)) : rng);
+      site.vacated, build.stream, build.kitPose);
     yield { fine: true };
   }
   yield* placeRoadBuildings();
@@ -5686,8 +5762,9 @@ ${snowCap ? `
   for (const [index, site] of (P.plannedSitesAfterPlan ? P.plannedSites ?? [] : []).entries()) {
     if (heightField._roadDist(site.x, site.z) < 7.5 || noVeg(site.x, site.z)) continue;
     if (!site.terrace && !isRoadBuildingSiteClear(site.x, site.z)) continue;
+    const build = plannedBuild(index, site);
     placePlannedBuilding(site.x, site.z, THREE.MathUtils.degToRad(site.yawDeg), undefined, site.structure, false, site.plot,
-      site.vacated, site.terrace ? mulberry32(seed + 104729 * (index + 1)) : rng);
+      site.vacated, build.stream, build.kitPose);
     yield { fine: true };
   }
   const afterPlanTo = buildingFeatures.length;
@@ -6255,6 +6332,52 @@ ${snowCap ? `
         return;
       }
     };
+    // (the destructible-kits lane, 2026-10-11: PropsMapConfig.rotationalCentre) a map built as a 180-degree pair: the
+    // first half of its kinds (rounded up), each with its twin turned about the centre; the same samples, a pair placed
+    // only where both clear every test above (and the twin, like a site off the road candidates, 7.5-48 m off a road)
+    if (P.rotationalCentre) {
+      const [cx, cz] = P.rotationalCentre;
+      const fitAt = (meta: typeof DESTRUCTIBLE_BUILDING_TYPES[string], x: number, z: number, rot: number, rr: number,
+        beside: PlacedRadius | null): ReturnType<typeof groundFit> | null => {
+        const margin = Math.max(meta.hw, meta.hl) + 2;
+        const outsideVillage = x < town.x0 + margin || x > town.x1 - margin
+          || z < town.z0 + margin || z > town.z1 - margin;
+        if (outsideVillage || Math.hypot(x - junction.x, z - junction.z) < 18 || noVeg(x, z)) return null;
+        const fit = groundFit(x, z, meta.hw * 2, meta.hl * 2, rot);
+        if (fit.spread > Math.max(P.maxSpread, 1.9)) return null;
+        if (placedB.some((placed) => Math.hypot(x - placed.x, z - placed.z) < placed.rr + rr + 2.0)) return null;
+        if (beside && Math.hypot(x - beside.x, z - beside.z) < beside.rr + rr + 2.0) return null;
+        return fit;
+      };
+      const placeDestructiblePair = (kind: string): void => {
+        const meta = DESTRUCTIBLE_BUILDING_TYPES[kind];
+        if (!meta) return;
+        const rr = Math.hypot(meta.hw, meta.hl) * 0.72;
+        for (let attempt = 0; attempt < 80; attempt++) {
+          const site = sampleDestructibleBuildingSite(attempt);
+          if (!site) continue;
+          const fit = fitAt(meta, site.x, site.z, site.rot, rr, null);
+          if (!fit || destructibleVetoed(kind, site.x, site.z)) continue;
+          const tx = 2 * cx - site.x, tz = 2 * cz - site.z, trot = site.rot + Math.PI;
+          const roadDistance = heightField._roadDist(tx, tz);
+          if (roadDistance < 7.5 || roadDistance > 48) continue;
+          const twinFit = fitAt(meta, tx, tz, trot, rr, { x: site.x, z: site.z, rr });
+          if (!twinFit || destructibleVetoed(kind, tx, tz)) continue;
+          for (const [x, z, rot, f] of [[site.x, site.z, site.rot, fit], [tx, tz, trot, twinFit]] as const) {
+            addDestructible(kind, x, f.y + 0.04, z, rot);
+            buildingFeatures.push({ x, z, w: meta.hw * 2, d: meta.hl * 2, rot });
+            placedB.push({ x, z, rr });
+          }
+          return;
+        }
+      };
+      const kinds = P.destructibleBuildings;
+      for (const kind of kinds.slice(0, Math.ceil(kinds.length / 2))) {
+        placeDestructiblePair(kind);
+        yield { fine: true };
+      }
+      return;
+    }
     for (const kind of P.destructibleBuildings) {
       placeDestructibleBuilding(kind);
       yield { fine: true };
@@ -7430,6 +7553,13 @@ ${snowCap ? `
   utilityNetwork = placeRoadsideUtilities();
 
   yield { fine: true, stage: 'roadside-utilities' };
+
+  // --- authored garden fences (props.gardenFences): each line a gateless run from the gardens' own stream ---
+  if (P.gardenFences?.lines.length) {
+    const gardenRng = mulberry32((seed ^ 0x6a4de5) >>> 0);
+    for (const [x0, z0, x1, z1] of P.gardenFences.lines) placeFenceRun(P.gardenFences.kind, x0, z0, x1, z1, 0, undefined, gardenRng);
+    yield { fine: true, stage: 'garden-fences' };
+  }
 
   // --- rocks (instanced, 3 variants) ---
   // The r3/r7 displaced icosahedra (three noise octaves and a ridged crease octave) no longer draw: they are the legacy
@@ -8871,6 +9001,17 @@ ${snowCap ? `
         yield { fine: true, tankBuilder: specId };
         const baked = yield* bakeFor(specId, pop);
         if (!baked) return false;
+        const seat = seatWreck(baked, x, z, yaw, false);
+        if (!seat) return false;
+        commitWreck(specId, baked, seat);
+        // A rejected slope/bake is not a placed wreck. Retry this donor on the
+        // next supported site instead of skipping it and later repeating one.
+        wreckPickSerial++;
+        return true;
+      }
+      /** The seat a hulk takes near (x, z) at `yaw`, or null where it may not stand; `exact`: at (x, z) or nowhere. */
+      function seatWreck(baked: WreckBake, x: number, z: number, yaw: number, exact: boolean):
+        { x: number; z: number; yaw: number; support: WreckSupport } | null {
         // The hulk's placement footprint (wrecks.ts placeHx/placeHz: its burnt-away camouflage suit keeps the seat it
         // always had, so every map seats its hulks where it did; hx/hz are the visible geometry's own envelope).
         const footHx = baked.placeHx ?? baked.hx, footHz = baked.placeHz ?? baked.hz;
@@ -8878,35 +9019,41 @@ ${snowCap ? `
         // moves straight off the road (up to 8 m), and one that cannot is not placed here.
         const seat = shiftClearOfRoadCore(heightField, x, z,
           (px, pz) => boxClearOfRoadCore(heightField, px, pz, footHx + 0.2, footHz + 0.2, yaw));
-        if (!seat) return false;
+        if (!seat) return null;
         if (seat[0] !== x || seat[1] !== z) {
+          if (exact) return null;
           [x, z] = seat;
           if (Math.max(Math.abs(x), Math.abs(z)) > 440
-            || placedB.some((building) => Math.hypot(x - building.x, z - building.z) < building.rr + 2)) return false;
+            || placedB.some((building) => Math.hypot(x - building.x, z - building.z) < building.rr + 2)) return null;
         }
-        if (!boxClearOfPoints(sharpBends, x, z, footHx + 0.2, footHz + 0.2, yaw, 10)) return false;
+        if (!boxClearOfPoints(sharpBends, x, z, footHx + 0.2, footHz + 0.2, yaw, 10)) return null;
         // the map-vehicles lane (2026-10-08, the placement audit over the merge): a hulk never stands inside a building,
         // a hut, a garage, a wall, a fence, a barrier or a boulder placed before it (Orchard's Merkava stood in a
         // checkpoint hut, Airfield's hulks in a quonset hut and a motor pool, Urban's T-72 2 m through a plank fence):
         // its footprint against every solid over half a metre tall, a hand's breadth of slack, nor with a tree through
         // it (Verdant's KV-2s); such a seat is refused and the donor tried at the next site (a hulk may still lie
         // against the low things, a kerb, a log, a crate on its side)
-        if (hulkMeetsTallSolid(x, z, footHx, footHz, yaw)) return false;
+        if (hulkMeetsTallSolid(x, z, footHx, footHz, yaw)) return null;
         // nor on a match objective's disc (the authored zone hints, 30 m, and the kickoff, 12 m, each with 3 m of margin,
         // as the field works keep them: scenery.ts fieldWorksKeepOut). Both authorities relocate a blocked hint by a
         // bounded search: a hulk seated 25 m from Steinburg's eastern zone sent it 280 m away and broke the layout's
         // symmetry (matchPlacement, mapLayoutBrief)
-        if (hulkOnObjective(x, z, Math.hypot(footHx, footHz))) return false;
+        if (hulkOnObjective(x, z, Math.hypot(footHx, footHz))) return null;
         // (Lane C, #8 r2) seated on its track runs (wrecks.ts seatHulk: the terrain over its ground contact alone, a
         // least-squares plane at most 4 cm over the deepest dip), not sunk under the lowest of nine samples plus 0.14 m
         // across a tossed turret's envelope (the census judge: hulks 0.42-0.90 m under the terrain)
-        const support = baked.contact
+        const support: WreckSupport = baked.contact
           ? seatHulk(heightField, x, z, yaw, baked.contact)
           : planGroundedObbPose(heightField, x, z, footHx, footHz, yaw, 0.14);
         // A rigid hulk cannot conform to a cliff lip or deep ditch. Reject
         // those candidates and let the seeded road pass find a supported
         // site instead of either floating a track or burying half the tank.
-        if (support.maxEmbed > (wCfg?.maxGroundEmbed ?? 1.1)) return false;
+        if (support.maxEmbed > (wCfg?.maxGroundEmbed ?? 1.1)) return null;
+        return { x, z, yaw, support };
+      }
+      /** A seated hulk into the world: its mesh, debris, shadow proxy, solids and records. */
+      function commitWreck(specId: string, baked: WreckBake,
+        { x, z, yaw, support }: { x: number; z: number; yaw: number; support: WreckSupport }): void {
         bakedTris += baked.budgetTris ?? baked.tris; // budget counts PLACED tris (clones render too; wrecks.ts budgetTris)
         const y = support.y;
         _quat.setFromUnitVectors(_upAxis,
@@ -8967,10 +9114,31 @@ ${snowCap ? `
           baseClearance: support.maxFloat,
           supportMin: support.min, supportMax: support.max,
         });
-        // A rejected slope/bake is not a placed wreck. Retry this donor on the
-        // next supported site instead of skipping it and later repeating one.
-        wreckPickSerial++;
-        return true;
+      }
+      // (the destructible-kits lane, 2026-10-11: PropsMapConfig.rotationalCentre) a hulk and its twin turned about the
+      // centre: the same donor and pop, the twin at exactly the first's seat turned (a twin the road core would move is
+      // no twin), both tested before either is placed; 2 placed, or 0
+      const twinCentre = P.rotationalCentre ?? null;
+      function* placeWreckPair(x: number, z: number, yaw: number, donors = 1): Generator<PropsBuildSlice, number, void> {
+        const [cx, cz] = twinCentre!;
+        for (let tries = 0; tries < donors; tries++) {
+          const specId = wCfg?.ids?.length
+            ? pool[(wreckPickSerial + tries) % pool.length]
+            : pool[(wrng() * pool.length) | 0];
+          const pop = wrng() < 0.45;
+          yield { fine: true, tankBuilder: specId };
+          const baked = yield* bakeFor(specId, pop);
+          if (!baked) continue;
+          const seat = seatWreck(baked, x, z, yaw, false);
+          if (!seat) continue;
+          const twin = seatWreck(baked, 2 * cx - seat.x, 2 * cz - seat.z, seat.yaw + Math.PI, true);
+          if (!twin || Math.hypot(seat.x - twin.x, seat.z - twin.z) < 2 * Math.hypot(baked.hx, baked.hz) + 2) continue;
+          commitWreck(specId, baked, seat);
+          commitWreck(specId, baked, twin);
+          wreckPickSerial += tries + 1;
+          return 2;
+        }
+        return 0;
       }
       const objectiveLayout = MATCH_OBJECTIVE_LAYOUTS[mapId];
       const objectiveDiscs: readonly (readonly [number, number, number])[] = [
@@ -9000,9 +9168,27 @@ ${snowCap ? `
       function* placeAuthoredWrecks(): Generator<PropsBuildSlice, void, void> {
         // Story-critical wrecks mark crossfires and failed assaults at authored
         // lane anchors before the seeded road pass supplies organic variation.
-        for (const beat of P.tacticalBeats || []) {
-          if (!beat.wreck || placedW >= wreckCount || bakedTris > WRECK_TRIS_BUDGET) continue;
+        // (on a map declaring its rotation centre, a beat and its paired beat — they pair about the centre — take one
+        // donor and pop, the second's wreck exactly the first's turned, the first donor down the cast that seats at
+        // both; where none does, each takes its own as before)
+        const beats = P.tacticalBeats || [];
+        const done = new Set<number>();
+        const pairOf = (k: number): number => {
+          if (!twinCentre) return -1;
+          const b = beats[k];
+          return beats.findIndex((o, j) => j > k && o.wreck
+            && Math.hypot(2 * twinCentre[0] - b.x - o.x, 2 * twinCentre[1] - b.z - o.z) < 1);
+        };
+        for (let k = 0; k < beats.length; k++) {
+          const beat = beats[k];
+          if (done.has(k) || !beat.wreck || placedW >= wreckCount || bakedTris > WRECK_TRIS_BUDGET) continue;
           const yawW = THREE.MathUtils.degToRad(beat.wreckYawDeg ?? beat.yawDeg ?? 0);
+          const pair = pairOf(k);
+          if (pair >= 0) {
+            const placed = yield* placeWreckPair(beat.x + (beat.wreckOffsetX || 0), beat.z + (beat.wreckOffsetZ || 0), yawW,
+              Math.max(1, pool.length));
+            if (placed) { done.add(pair); placedW += placed; yield { fine: true }; continue; }
+          }
           if (yield* placeWreck(beat.x + (beat.wreckOffsetX || 0),
             beat.z + (beat.wreckOffsetZ || 0), yawW)) {
             placedW++;
@@ -9035,7 +9221,13 @@ ${snowCap ? `
         const dd = 9 + wrng() * 5;
         const qx = px + Math.cos(da) * dd, qz = pz + Math.sin(da) * dd;
         if (!duelSpotIsClear(qx, qz)) return;
+        if (twinCentre && !duelSpotIsClear(2 * twinCentre[0] - qx, 2 * twinCentre[1] - qz)) return;
         const yaw = Math.atan2(px - qx, pz - qz) + (wrng() - 0.5) * 0.3;
+        if (twinCentre) {
+          const placed = yield* placeWreckPair(qx, qz, yaw);
+          if (placed) { placedW += placed; yield { fine: true }; }
+          return;
+        }
         if (yield* placeWreck(qx, qz, yaw)) {
           placedW++;
           yield { fine: true };
@@ -9055,9 +9247,16 @@ ${snowCap ? `
         const px = ax - ((bz - az) / length) * offset * side;
         const pz = az + ((bx - ax) / length) * offset * side;
         if (!wreckSpotIsClear(px, pz)) return;
+        if (twinCentre && !wreckSpotIsClear(2 * twinCentre[0] - px, 2 * twinCentre[1] - pz)) return;
         const yaw = Math.atan2(bx - ax, bz - az) + (wrng() - 0.5) * 0.9;
-        if (!(yield* placeWreck(px, pz, yaw))) return;
-        placedW++;
+        if (twinCentre) {
+          const placed = yield* placeWreckPair(px, pz, yaw);
+          if (!placed) return;
+          placedW += placed;
+        } else {
+          if (!(yield* placeWreck(px, pz, yaw))) return;
+          placedW++;
+        }
         yield { fine: true };
         yield* placePairedWreck(px, pz);
       }

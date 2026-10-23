@@ -63,7 +63,10 @@ export const ROAD_ENDPOINT_INTENTS: Readonly<Record<MapId, readonly RoadEnds[]>>
   steppe: [through, through, through, through, [{ junction: 1 }, 'shore']],
   // Cinder Junction redesign (2026-10-01): the central road, the two crossing roads and the two yard service roads all
   // run edge to edge; each works road leaves a service road and ends on a crossing road.
-  railyard: [through, through, through, through, through, join(3, 2), join(4, 1)],
+  // Cinder Junction round 2 (the map-revival lane, 2026-10-11): each colony's back street leaves the central road and
+  // ends on its works road; its two side streets leave the service road and end on the back street.
+  railyard: [through, through, through, through, through, join(3, 2), join(4, 1), join(0, 5), join(0, 6),
+    join(3, 7), join(4, 8), join(3, 7), join(4, 8)],
   // Frontier Basin redesign (2026-10-02): the main road and the valley road run edge to edge through the crossroads;
   // each farm lane enters from the edge past a ridge's end and ends on the valley road; each ridge lane leaves the main
   // road at a saddle and ends on the valley road at a mill.
