@@ -155,6 +155,15 @@ assert.equal(object.renderOrder, 1, 'the Hinterland draws after the battlefield'
   const ls = patched(land.material);
   assert.match(ls.fragmentShader, /hlStrataAt\( vHlWorld, hlNW, hlL \)/, 'a region without snow keeps the classic strata');
   assert.match(land.material.customProgramCacheKey(), /land-classic-/, 'the classic program has its own key');
+  // (horizons-240) handed the battlefield's ground, the land reads its grass and dirt sheets past the edge (groundDetail.ts)
+  const sheet = new THREE.Texture();
+  const groundLand = createHinterlandObject(copyHinterlandWire(wire), {}, { textures: [sheet, sheet, sheet],
+    layerMeans: { G: new THREE.Vector4(0.2, 0.25, 0.1, 1), D: new THREE.Vector4(0.25, 0.2, 0.15, 1) }, roadTint: [1.08, 1.04, 0.96] })
+    .getObjectByName('hinterland-land');
+  assert.match(groundLand.material.customProgramCacheKey(), /land-classic-ground-/, 'the ground variant has its own program');
+  const gs = patched(groundLand.material);
+  assert.match(gs.fragmentShader, /#define HL_GROUND/, 'the ground switched on');
+  assert.match(gs.fragmentShader, /hlGroundTile\( uHlGrass, uHlMeanG, hlUv \* 0\.240/, 'the sward at the battlefield\'s own scale');
   const snowyWire = copyHinterlandWire(wire);
   snowyWire.rock = { ...snowyWire.rock, snowy: true };
   const snowyLand = createHinterlandObject(snowyWire, {}).getObjectByName('hinterland-land');
