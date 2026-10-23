@@ -15,24 +15,23 @@ assert.match(css, /\.gallery-shell\{height:calc\(var\(--cot-viewport-height,100d
 const order = ['<aside class="browse"', '<section class="stage" id="viewport"', '<aside class="dossier"'].map((tag) => html.indexOf(tag));
 assert.ok(order.every((at, index) => at > 0 && (index === 0 || at > order[index - 1])), 'the markup reads browse, stage, dossier');
 
-// The stage's plates hold their own corners: layers top left, views top right, the scale inset bottom left, the tools
-// bottom centre, the legend bottom right.
+// The stage's plates hold their own corners: layers top left, views and tools stacked top right, the scale inset bottom
+// left, the legend bottom right.
 assert.match(css, /\.stage-layers\{left:var\(--s4\);top:var\(--s3\)/);
-assert.match(css, /\.stage-views\{right:var\(--s4\);top:var\(--s3\)/);
+assert.match(css, /\.stage-right\{position:absolute;right:var\(--s4\);top:var\(--s3\)/);
 assert.match(css, /\.stage-inset\{left:var\(--s4\);bottom:var\(--s4\)/);
-assert.match(css, /\.stage-tools\{left:50%;bottom:var\(--s4\)/);
 assert.match(css, /#viewport\.stage \.overlay-legend:not\(:empty\)\{right:var\(--s4\);bottom:var\(--s4\)/);
 // Five layers, each with its key; the label leaves the picture under 1440 px and stays in the button's name.
 assert.equal([...html.matchAll(/<button type="button"[^>]*data-mode="(appearance|armor|modules|crew|markup)" data-key="([1-5])"/g)].length, 5,
   'five layers, keys 1 to 5');
-assert.match(css, /@media \(width < 1440px\)\{\s*\.stage-layers button>span,\.stage-tools button>span\{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset\(50%\)\}/,
-  'narrow stages keep the layer and tool names as accessible names only');
+assert.match(css, /@media \(width < 1440px\)\{\s*\.stage-layers button>span\{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset\(50%\)\}/,
+  'narrow stages keep the layer names as accessible names only');
 assert.equal([...html.matchAll(/data-view="(?:hero|front|left|right|rear|top|elevated-left|elevated-right)"/g)].length, 8, 'eight camera views');
 
 // Below 1100 px the page scrolls: the stage spans the top and the panes share a row; below 768 px they stack, the views
 // become a bottom row and the fleet a strip of cards.
 assert.match(css, /@media \(width < 1100px\)\{[\s\S]*?grid-template-areas:"stage stage" "browse dossier"/);
-assert.match(css, /@media \(width < 768px\)\{[\s\S]*?grid-template-areas:"stage" "browse" "dossier"[\s\S]*?\.stage-views\{left:var\(--s2\);right:var\(--s2\);top:auto;bottom:var\(--s2\);flex-direction:row/);
+assert.match(css, /@media \(width < 768px\)\{[\s\S]*?grid-template-areas:"stage" "browse" "dossier"[\s\S]*?\.stage-views\{position:absolute;z-index:var\(--z-hud-controls\);left:var\(--s2\);right:var\(--s2\);top:auto;bottom:var\(--s2\);flex-direction:row/);
 assert.match(css, /@media \(width < 768px\)\{[\s\S]*?\.vehicle-list,\.vehicle-list\[data-layout=grid\]\{display:grid;grid-auto-flow:column/);
 
 // Selection states fill or outline whole controls: no clipped decorative fragments.

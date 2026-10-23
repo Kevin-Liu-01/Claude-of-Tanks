@@ -14,6 +14,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px}
 [hidden]{display:none!important}
+html:not(.gallery-ready) :is(.browse,.dossier-scroll,.stage-right){visibility:hidden}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .cot-i{flex:none}
 
@@ -103,7 +104,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .stage-layers .cot-c-kbd{min-width:0;height:auto;padding:0;border:0;color:var(--ink-4);font-size:var(--fs-11)}
 .stage-layers button.active{background:linear-gradient(0deg,var(--accent) 0 2px,var(--surface-hover) 2px);color:var(--ink-1)}
 .stage-layers button:disabled{color:var(--ink-4);cursor:not-allowed}
-.stage-views{right:var(--s4);top:var(--s3);display:flex;flex-direction:column;gap:2px;padding:3px}
+.stage-right{position:absolute;right:var(--s4);top:var(--s3);z-index:var(--z-hud-controls);display:flex;flex-direction:column;align-items:stretch;gap:var(--s2)}
+.stage-views,.stage-tools{position:static;display:flex;flex-direction:column;gap:2px;padding:3px}
 .stage-views button{height:30px;padding:0 var(--s3) 0 var(--s2);font:500 var(--fs-12)/1 var(--font-ui)}
 .stage-views .view-button-icon{display:grid;place-items:center;width:18px;height:18px}
 .stage-views .view-button-icon svg{width:18px;height:18px}
@@ -114,8 +116,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .camera-view-glyph__camera{fill:var(--accent);stroke:none}
 .camera-view-glyph__height{color:var(--accent)}
 .stage-views button.active,.stage-tools button[aria-pressed=true]{background:var(--surface-hover);color:var(--ink-1)}
-.stage-tools{left:50%;bottom:var(--s4);display:flex;gap:2px;padding:3px;transform:translateX(-50%)}
-.stage-tools button{height:34px;padding:0 var(--s3);color:var(--ink-2);font:500 var(--fs-13)/1 var(--font-ui)}
+.stage-tools button{height:30px;padding:0 var(--s3) 0 var(--s2);color:var(--ink-2);font:500 var(--fs-12)/1 var(--font-ui)}
 @media (hover:hover){
   .stage-layers button:not(:disabled):hover,.stage-views button:hover,.stage-tools button:hover{color:var(--ink-1)}
   .facet button:not(:disabled):hover,.icon-button:hover,.layout-switch button:hover,.sort-field select:hover{border-color:var(--line-3)}
@@ -137,12 +138,11 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .inspection-readout p{margin:0;color:var(--ink-2);font:400 var(--fs-12)/1.45 var(--font-ui)}
 /* the anatomy view's own controls (anatomyView.ts): its toggles under the layers, its legend bottom right */
 .viewer-bottom-console{display:contents}
-.stage .anatomy-bar{left:var(--s4);top:56px;width:auto;margin:0;padding:3px;justify-content:flex-start}
+.stage .anatomy-bar{left:var(--s4);top:56px;width:auto;max-width:calc(100% - 160px);margin:0;padding:3px;justify-content:flex-start}
 #viewport.stage .overlay-legend:not(:empty){right:var(--s4);bottom:var(--s4);max-width:min(340px,46%);padding:var(--s2) var(--s3);
   display:flex;flex-direction:column;align-items:flex-start;gap:var(--s1)}
 #viewport.stage .overlay-legend > span{display:inline-flex;align-items:center;gap:var(--s2);color:var(--ink-2);font:500 var(--fs-12)/1.2 var(--font-ui)}
 #viewport.stage .overlay-legend > span > i{width:10px;height:10px;background:var(--legend)}
-.stage:has(.overlay-legend:not(:empty)) .stage-tools{left:calc(50% - 60px)}
 
 /* ----------------------------------------------------------------------------------------------------- the dossier */
 .dossier{grid-area:dossier;display:flex;flex-direction:column;min-width:0;min-height:0;border-left:1px solid var(--line-1)}
@@ -198,8 +198,8 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .versus-side .cot-c-sil{width:64px;height:20px;color:var(--ink-2)}
 .versus-side b,.versus-pick select{font:700 var(--fs-14)/1.1 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
 .versus-side b{overflow-wrap:anywhere}
-.versus-pick{position:relative;width:100%}
-.versus-pick select{height:auto;min-height:32px;padding:var(--s1) var(--s5) var(--s1) var(--s2);text-align:right;text-align-last:right;border-color:var(--line-2)}
+.versus-pick{position:relative;grid-column:1/-1;width:100%}
+.versus-pick select{height:32px;padding:0 var(--s5) 0 var(--s2);color:var(--ink-2);font-size:var(--fs-12)}
 .versus-mid{display:flex;flex-direction:column;gap:6px;padding-top:var(--s1);color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-mono);text-align:center}
 .versus-mid>div{display:grid;grid-template-columns:52px 16px 52px;align-items:center;gap:var(--s1)}
 .versus-mid em{font-style:normal;color:var(--ink-2)}
@@ -286,7 +286,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 .markup-selection small{display:block;color:var(--ink-3)}
 .markup-action-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 
-.toast{position:fixed;z-index:var(--z-toast);left:calc(var(--g-browse) + (100vw - var(--g-browse) - var(--g-dossier)) / 2);bottom:72px;
+.toast{position:fixed;z-index:var(--z-toast);left:calc(var(--g-browse) + (100vw - var(--g-browse) - var(--g-dossier)) / 2);bottom:144px;
   max-width:calc(100vw - 24px);width:max-content;padding:var(--s2) var(--s3);border:1px solid var(--accent);border-radius:var(--control-radius);
   background:var(--surface-menu);color:var(--ink-1);font:500 var(--fs-12)/1.4 var(--font-ui);text-align:center;white-space:normal;
   overflow-wrap:anywhere;opacity:0;pointer-events:none;transform:translate(-50%,var(--s2));
@@ -298,7 +298,7 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .gallery-shell{height:calc(var(--cot-viewport-height,100dvh) - 56px)}
 }
 @media (width < 1440px){
-  .stage-layers button>span,.stage-tools button>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
+  .stage-layers button>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
   .stage-layers button{padding:0 var(--s2)}
   .stage-inset canvas{width:160px}
 }
@@ -332,16 +332,17 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
   .stage-layers{left:var(--s2);top:var(--s2)}
   .stage-layers button{height:40px;min-width:40px;justify-content:center}
   .stage-layers .cot-c-kbd{display:none}
-  .stage-views{left:var(--s2);right:var(--s2);top:auto;bottom:var(--s2);flex-direction:row;overflow-x:auto;scrollbar-width:none}
+  .stage-views{position:absolute;z-index:var(--z-hud-controls);left:var(--s2);right:var(--s2);top:auto;bottom:var(--s2);flex-direction:row;overflow-x:auto;scrollbar-width:none}
   .stage-views button{flex:1 0 auto;justify-content:center;height:40px;padding:0 var(--s2)}
   .stage-views button>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
-  .stage-tools{left:auto;right:var(--s2);top:var(--s2);bottom:auto;transform:none}
+  .stage-right{display:contents}
+  .stage-tools{position:absolute;right:var(--s2);top:var(--s2);z-index:var(--z-hud-controls);flex-direction:row}
+  .stage-tools button>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%)}
   .stage-tools button{height:40px;min-width:40px;justify-content:center;padding:0}
   .stage-inset{display:none}
   .stage .anatomy-bar{left:var(--s2);right:var(--s2);top:56px}
   #viewport.stage .overlay-legend:not(:empty){left:var(--s2);right:var(--s2);bottom:60px;max-width:none;flex-direction:row;flex-wrap:wrap}
   .inspection-readout{left:var(--s2);top:auto;bottom:60px;width:auto;right:var(--s2)}
-  .stage:has(.overlay-legend:not(:empty)) .stage-tools{left:auto}
   .take-name h1{font-size:calc(var(--fs-24) * var(--name-fit,1))}
   .take-tier{font-size:var(--fs-32)}
   .facts{grid-template-columns:repeat(2,minmax(0,1fr))}

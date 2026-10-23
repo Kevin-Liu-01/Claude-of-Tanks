@@ -882,7 +882,11 @@ function selectTab(tab: DossierTab, focus = false): void {
     const on = button.dataset.tab === tab;
     button.setAttribute('aria-selected', String(on));
     button.tabIndex = on ? 0 : -1;
-    if (on && focus) button.focus();
+    if (on && focus) button.focus({ preventScroll: true });
+    const list = button.parentElement;
+    if (on && list && (button.offsetLeft < list.scrollLeft || button.offsetLeft + button.offsetWidth > list.scrollLeft + list.clientWidth)) {
+      list.scrollLeft = button.offsetLeft - 16;
+    }
   }
   for (const id of DOSSIER_TABS) $<HTMLElement>(`#dossier-${id}`).hidden = id !== tab;
   const record = selectedId ? recordById.get(selectedId) : null;
@@ -1036,7 +1040,7 @@ function renderVersus(record: GalleryRecord): void {
   $('#versusOwn').innerHTML = `${vehicleIdentity(record, false)}<b>${esc(record.displayName)}</b>`;
   if (!rival) { $('#versusMid').innerHTML = ''; $('#versusRival').innerHTML = ''; return; }
   rivalSelect.value = rival.id;
-  $('#versusRival').innerHTML = vehicleIdentity(rival, true);
+  $('#versusRival').innerHTML = `${vehicleIdentity(rival, true)}<b>${esc(rival.displayName)}</b>`;
   const rows: Array<[IconId, string, number, number, number]> = [
     ['penetration', 'gallery.stat.penetration', record.metrics.bestPenetrationMm, rival.metrics.bestPenetrationMm, 1],
     ['reload', 'gallery.stat.reload', record.metrics.reloadS, rival.metrics.reloadS, -1],
@@ -1475,6 +1479,8 @@ const initialId = preferredId && recordById.has(preferredId)
 const initialRival = initial.get('vs');
 if (initialRival && recordById.has(initialRival) && initialRival !== initialId) { rivalId = initialRival; rivalPinned = true; }
 loadTank(initialId, { mode: initial.get('layer') || 'appearance' });
+// The browse pane, the dossier and the view labels fill synchronously above: they show at once, in place (no shift).
+document.documentElement.classList.add('gallery-ready');
 
 window.__TANK_GALLERY = {
   get ready() { return !!window.__TANK_GALLERY_READY; },
