@@ -30,6 +30,7 @@ import {
 import { isImagePreloaded, preloadImage } from './imagePreload.ts';
 import { currentViewport } from './mapBackdrop.ts';
 import { t } from './i18n.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { waitForOpaqueTransition } from './transitionCover.ts';
 
 const FADE_IN_MS = 190;
@@ -143,12 +144,7 @@ function requiredElement<T extends Element>(root: ParentNode, selector: string):
  * @returns {TransitionScreen}
  */
 export function createTransition(): TransitionScreen {
-  if (!document.getElementById('cot-trans-style')) {
-    const s = document.createElement('style');
-    s.id = 'cot-trans-style';
-    s.textContent = CSS;
-    document.head.appendChild(s);
-  }
+  ensureStyle('cot-trans-style', CSS, 'surfaces');
   const root = document.createElement('div');
   root.className = 'cot-trans';
   root.innerHTML =
