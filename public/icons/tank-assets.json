@@ -1984742,16 +1984742,18 @@
     },
     "type10_dozer": {
       "id": "type10_dozer",
-      "name": "Type 10 (Dozer)",
+      "name": "Type 10 Kaitaku",
       "label": {
         "id": "type10_dozer",
-        "displayName": "Type 10 (Dozer)",
-        "shortName": "Type 10 Dozer",
+        "displayName": "Type 10 Kaitaku",
+        "shortName": "Type 10 Kaitaku",
         "searchAliases": [
-          "Type 10 (Dozer)",
-          "Type 10 Dozer",
+          "Type 10 Kaitaku",
           "type10_dozer",
           "type10 dozer",
+          "Kaitaku",
+          "Type 10 (Dozer)",
+          "Type 10 Dozer",
           "Type 10 dozer blade",
           "Type 10 dozer kit"
         ],
@@ -2033662,12 +2033664,12 @@
               },
               {
                 "min": [
-                  0.59,
+                  -1.07,
                   0.2,
                   2.713
                 ],
                 "max": [
-                  1.07,
+                  -0.59,
                   0.68,
                   2.725
                 ]
@@ -2033807,17 +2033809,17 @@
           }
         ]
       },
-      "geometryHash": "b0bd791c",
-      "metadataHash": "15cf7634",
+      "geometryHash": "f3d8e5e3",
+      "metadataHash": "7fdb30ab",
       "presentationAnchor": {
         "xM": 0.0017,
-        "zM": 0.2485
+        "zM": 0.2565
       },
-      "presentationHash": "fb1e7704",
+      "presentationHash": "4bc748eb",
       "presentationProjection": {
         "centerYM": 2.0395,
-        "topHalfM": 5.7569,
-        "sideHalfM": 2.8784
+        "topHalfM": 5.7483,
+        "sideHalfM": 2.8742
       },
       "appearance": {
         "version": 1,
@@ -2033869,15 +2033871,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32894,
-          "sha256": "5a89eae0bb148803cb6ba124cadf68221a30bb7c22a4ee8a542cd8dab1f9219a",
+          "bytes": 33050,
+          "sha256": "f4e289dd754da0968ab446a74e94f681e66c97e0506d66b1b2b611c62dff849d",
           "thumbnail": {
             "file": "thumbs/type10_dozer_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 12968,
-            "sha256": "f48ba8effd041a9ecba3e6ba6fcbd72f9b9bf475addb76f4b2ccd2a76e5b2b08"
+            "bytes": 13210,
+            "sha256": "542010fc8cc0da3bd3f7b25bffce00a7f580ef8b97a4a80082188c0fef36d09c"
           }
         },
         "top": {
@@ -2033885,56 +2033887,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17604,
-          "sha256": "978ae73a2393947ce34774124b6b112d5c864480509c96eeb45643972ec7a39a"
+          "bytes": 17606,
+          "sha256": "92158c56d173f7028924cc5e7d3d6502ac90059ed75784fe428ca6cf120fb23f"
         },
         "side": {
           "file": "type10_dozer_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 14402,
-          "sha256": "0d0a9561c1fe5cef280d404bab56b8cee781a5b12137011342c37df1c9092d93"
+          "bytes": 13448,
+          "sha256": "24958e889ba65f25d47934e48dc075a534dd0ef15b0f762f6f960abda615eb07"
         },
         "topSilhouette": {
           "file": "type10_dozer_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1695,
-          "sha256": "c90bcc426c9d777343c95e3542dd8096aa2798ce47a32db172062cadce510526"
+          "bytes": 1707,
+          "sha256": "89742f1de3496b45ea6783b9310da138fca25dc98b5fb65d283c68f792e39321"
         },
         "sideSilhouette": {
           "file": "type10_dozer_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 6068,
-          "sha256": "35ae8b0e395c5e15e637ea75f176d807118742bed77f1e28f568564b9df87dc3"
+          "bytes": 6098,
+          "sha256": "b4fd234c237ab0a71a1f04744bf62fb17dfb486a024546af964c6ccb13b51105"
         },
         "armorSide": {
           "file": "type10_dozer_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 115547,
-          "sha256": "1b35e370f8b42ac562932303841441cdc3305840b43c0d92d4b39cd12d32dc97"
+          "bytes": 115670,
+          "sha256": "f088efa7454c0d8485e758613b7a5baaa78f1430c6e84c1aae0a275ac6256b18"
         },
         "modulesSide": {
           "file": "type10_dozer_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 116392,
-          "sha256": "c2fffebd00d3e5875a09453c0689c2b1533b3e728f155f5e33acd3aaf5cd6010"
+          "bytes": 116482,
+          "sha256": "cf88de03e997d9fb5c1d1d12bfaac9b043df0e566ed536dbb3508adac3959a6a"
         },
         "crewSide": {
           "file": "type10_dozer_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 100940,
-          "sha256": "bb601172d24250493f1c53ba26575db348b4dd58eb5ed68636fd8849914cb9ae"
+          "bytes": 100768,
+          "sha256": "beb2b19854366f7d64ab86aede3e17f9f30eced453fd787f36327cf469339008"
         },
         "markings": {
           "file": "type10_dozer_markings.png",
