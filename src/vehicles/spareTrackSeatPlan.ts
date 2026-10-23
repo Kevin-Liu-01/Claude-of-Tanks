@@ -118,9 +118,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "merkava2d": {
     "merkava-bow-links@hull(0.00,1.30,2.92)": [0.78431, -0.10117, 0.08335, 0.25238, 0.00018, -0.00113, 0.96763, 1],
   },
-  "merkava3_baz": {
-    "merkava-bow-links@hull(0.00,1.30,2.68)": [1.88484, -0.89724, 1.66069, 0.10325, -0.73756, -0.18172, 0.64212, 1],
-  },
   "merkava3c": {
     "merkava-bow-links@hull(0.00,1.34,2.61)": [0.78217, -0.74395, 1.18073, 0.17887, -0.68715, -0.18244, 0.6801, 1],
   },
