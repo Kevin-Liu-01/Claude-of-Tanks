@@ -15,13 +15,13 @@
 .cot-flag{flex:none;width:22px;height:16.5px;border-radius:var(--r1);outline:1px solid var(--line-2);outline-offset:-1px}
 
 /* the wordmark: CLAUDE —OF— TANKS in Chakra Petch Bold, the "of" in the accent between two rules */
-.cot-wordmark{display:inline-flex;align-items:center;gap:.36em;font:700 var(--fs-16)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;white-space:nowrap;color:var(--ink-1)}
+.cot-wordmark{display:inline-flex;align-items:center;gap:.36em;font:700 var(--fs-16)/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;white-space:nowrap;color:var(--ink-1)}
 .cot-wordmark__of{display:inline-flex;align-items:center;gap:.26em;font-size:var(--shell-wordmark-of);font-weight:500;letter-spacing:var(--track-label);color:var(--accent)}
 .cot-wordmark__of::before,.cot-wordmark__of::after{content:'';width:1em;height:1.5px;background:currentColor}
 
 /* buttons: one component for every public page (Title Case in the copy, caps in the display face) */
 .cot-btn{--btn-h:var(--btn-h-m);display:inline-flex;align-items:center;justify-content:center;gap:10px;height:var(--btn-h);padding:0 22px;border:1px solid transparent;border-radius:var(--control-radius);
-  font:700 var(--fs-14)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;white-space:nowrap;color:var(--ink-1);text-decoration:none;cursor:pointer;
+  font:700 var(--fs-14)/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;white-space:nowrap;color:var(--ink-1);text-decoration:none;cursor:pointer;
   transition:background-color var(--dur-fast) var(--ease-enter),border-color var(--dur-fast) var(--ease-enter),color var(--dur-fast) var(--ease-enter),transform var(--dur-instant) var(--ease-enter)}
 .cot-btn .cot-i{width:18px;height:18px}
 .cot-btn--primary{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-bevel)}
@@ -39,7 +39,7 @@
 
 @layer surfaces{
 .public-skip{position:fixed;left:var(--s4);top:var(--s3);z-index:var(--z-modal);padding:var(--s3) var(--s4);border-radius:var(--control-radius);background:var(--accent);color:var(--ink-on-accent);
-  font:700 var(--fs-14)/1 var(--font-display);text-decoration:none;transform:translateY(-300%)}
+  font:700 var(--fs-14)/1 var(--font-ui);text-decoration:none;transform:translateY(-300%)}
 .public-skip:focus{transform:none}
 
 /* the bar: static chrome, sticky on every page (the landing floats it over its hero until the page scrolls) */
@@ -47,15 +47,17 @@
   -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
 .public-nav__inner{display:flex;align-items:center;gap:var(--s5);width:min(calc(100% - var(--shell-gutter) * 2),var(--shell-max));height:100%;margin-inline:auto}
 .public-nav__brand{display:inline-flex;align-items:center;gap:var(--s3);color:var(--ink-1);text-decoration:none}
+/* the Latin wordmark keeps its tracking inside a Chinese page (its lang="en" span, past the zh-CN reset) */
+.public-footer__brand [lang=en],.public-nav__brand [lang=en]{letter-spacing:var(--track-label-s)}
 .public-nav__links{position:relative;display:flex;align-items:center;gap:var(--s6);margin-left:var(--s5)}
-.public-nav__links a,.public-nav__menu-links a{position:relative;display:inline-flex;align-items:center;gap:var(--s2);height:40px;font:500 var(--fs-14)/1 var(--font-body);color:var(--ink-2);text-decoration:none;
+.public-nav__links a,.public-nav__menu-links a{position:relative;display:inline-flex;align-items:center;gap:var(--s2);height:40px;font:500 var(--fs-14)/1 var(--font-ui);color:var(--ink-2);text-decoration:none;
   transition:color var(--dur-fast) var(--ease-enter)}
 .public-nav__links a:hover,.public-nav__links a[aria-current=page]{color:var(--ink-1)}
 .public-nav__links a[aria-current=page]::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent)}
 .public-nav__icon{opacity:.82}
 .public-nav__tools{display:flex;align-items:center;gap:var(--s2);margin-left:auto}
 .public-nav__lang,.public-footer__lang{display:inline-flex;height:36px;border:1px solid var(--line-2);border-radius:var(--control-radius);overflow:hidden}
-.public-nav__lang a,.public-footer__lang a{display:inline-flex;align-items:center;padding:0 11px;font:600 var(--fs-13)/1 var(--font-display);color:var(--ink-3);text-decoration:none;
+.public-nav__lang a,.public-footer__lang a{display:inline-flex;align-items:center;padding:0 11px;font:600 var(--fs-13)/1 var(--font-ui);color:var(--ink-3);text-decoration:none;
   transition:color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter)}
 .public-nav__lang a:hover,.public-footer__lang a:hover{color:var(--ink-1)}
 :root:not(:lang(zh)) :is(.public-nav__lang,.public-footer__lang) a[hreflang='en-US'],
@@ -68,7 +70,7 @@
 .public-nav__menu{position:fixed;inset:var(--shell-nav-h) 0 0;z-index:var(--z-menu);display:flex;flex-direction:column;gap:var(--s5);padding:var(--s5) var(--shell-gutter) calc(var(--s5) + env(safe-area-inset-bottom,0px));
   overflow:auto;background:var(--surface-page);border-top:1px solid var(--line-1)}
 .public-nav__menu-links{display:flex;flex-direction:column}
-.public-nav__menu-links a{height:60px;gap:var(--s3);font:600 var(--fs-24)/1 var(--font-display);color:var(--ink-1);border-bottom:1px solid var(--line-1)}
+.public-nav__menu-links a{height:60px;gap:var(--s3);font:600 var(--fs-24)/1 var(--font-ui);color:var(--ink-1);border-bottom:1px solid var(--line-1)}
 .public-nav__menu-links a[aria-current=page]{color:var(--accent)}
 .public-nav__menu-links .cot-i{width:22px;height:22px;color:var(--ink-3)}
 .public-nav__menu-tools{display:flex;align-items:center;gap:var(--s3)}
@@ -79,12 +81,12 @@
 .public-footer__inner{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:var(--s5) var(--s7);width:min(calc(100% - var(--shell-gutter) * 2),var(--shell-max));margin-inline:auto}
 .public-footer__brand{display:inline-flex;align-items:center;gap:var(--s3);color:var(--ink-1);text-decoration:none}
 .public-footer__links{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s5)}
-.public-footer__links a{display:inline-flex;align-items:center;gap:var(--s2);font:500 var(--fs-14)/1.4 var(--font-body);color:var(--ink-2);text-decoration:none}
+.public-footer__links a{display:inline-flex;align-items:center;gap:var(--s2);font:500 var(--fs-14)/1.4 var(--font-ui);color:var(--ink-2);text-decoration:none}
 .public-footer__links a:hover{color:var(--ink-1)}
-.public-footer__stars{min-width:3ch;font:500 var(--fs-13)/1 var(--font-mono);color:var(--ink-3)}
+.public-footer__stars{min-width:3ch;font:500 var(--fs-13)/1 var(--font-ui);color:var(--ink-3)}
 .public-footer__stars[data-github-stars-state='failed']{display:none}
 .public-footer__credit{grid-column:1 / -1;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s3);margin:0;padding-top:var(--s4);border-top:1px solid var(--line-1);
-  font:400 var(--fs-13)/1.4 var(--font-body);color:var(--ink-3)}
+  font:400 var(--fs-13)/1.4 var(--font-ui);color:var(--ink-3)}
 .public-footer__credit a{display:inline-flex;align-items:center;gap:var(--s2);color:var(--ink-3);text-decoration:none}
 .public-footer__credit a:hover{color:var(--ink-1)}
 .public-footer__credit img{border-radius:var(--r1)}
