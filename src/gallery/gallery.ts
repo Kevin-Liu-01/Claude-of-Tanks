@@ -907,7 +907,8 @@ function renderDiagram(): void {
   if (!selectedId) return;
   const record = recordById.get(selectedId);
   diagramImage.src = iconUrl(selectedId, diagram);
-  diagramImage.alt = `${record?.displayName || ''} ${t(DIAGRAMS.find(([view]) => view === diagram)?.[1] || '')}`.trim();
+  const labelKey = DIAGRAMS.find(([view]) => view === diagram)?.[1];
+  diagramImage.alt = `${record?.displayName || ''} ${labelKey ? t(labelKey) : ''}`.trim();
 }
 
 wireRoving($<HTMLElement>('.peer-switch'), (value) => {
