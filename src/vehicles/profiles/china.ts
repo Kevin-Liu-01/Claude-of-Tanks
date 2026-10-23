@@ -1578,7 +1578,8 @@ function buildType59(P: ChinaBuilderPort): void {
   // meshDomeCurved sz 1.03 ÷ 1.10 = 0.9364 keeps the plan CHORD byte-held
   // so the casting widens with the hull without lengthening.
   P.turretG.position.set(0, 1.4804, 0.676);
-  meshDomeCurved(P, rings59, 0.9364, 0, -0.21, { capR: 1.54 });
+  // closeBase (TANK-OPT companions, 227): the open base showed the casting's inside from below a thrown turret.
+  meshDomeCurved(P, rings59, 0.9364, 0, -0.21, { capR: 1.54, closeBase: true });
   // flank roof-shoulder pair: the T-54A flat shelf lives on the SIDES only
   // (outer face flush with the local dome skin).
   for (const s of [-1, 1]) P.add('turret', box(0.264, 0.15, 1.22), s * 1.232, 0.58, -0.25);
@@ -1586,7 +1587,7 @@ function buildType59(P: ChinaBuilderPort): void {
   // bottom ring buried under the dome skin / into the gun collar (§B2).
   const ringsBrow = [[0.726, 0.40], [0.715, 0.62], [0.682, 0.76], [0.572, 0.85], [0.022, 0.87]]
     .map(([r, y]) => [r, y - browDropM]);
-  meshDome(P, ringsBrow, 0.909, 0, 0.95);
+  meshDome(P, ringsBrow, 0.909, 0, 0.95, { closeBase: true });
   // closed race collar under the casting (the widened base ring).
   P.add('turret', cylY(0.748, 0.7865, 0.10, 20), 0, 0.025, -0.05);
   // commander cupola LEFT: ring + split-hatch lid — the lid crown carries

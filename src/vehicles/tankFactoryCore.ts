@@ -49,7 +49,7 @@ import { bendGeometry, dentSamples, planBend, planDents, wreckBarrelSpan, wreckR
 import type { TurretRingSeat, createTurretRingPresentation } from './turretRingWell.ts';
 import { loadTurretRingModule, turretRingModule } from './turretRingLoader.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
-import { applyInteriorFills } from './interiorFills.ts';
+import { applyInteriorFills, closedInteriorFillGeometry } from './interiorFills.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
 import { measureNearShadowCasterWork } from './shadowCasterWork.ts';
 import { materialOnlyPaintSourceBucket } from './profiles/fixedPaintedPanel.ts';
@@ -309,6 +309,11 @@ interface TrackLoopOptions {
   endWheels?: { front: GearEndpoint; rear: GearEndpoint } | null;
   /** Band-centreline clearance around the end wheels — trackWrapClearanceM(trackTh); defaults to the fleet standard band. */
   wrapClearanceM?: number;
+  /** A roller-carried upper run (fleet lane 2026-10-08): each span between its supports hangs by its own length
+   * (rollerSpanDip) instead of one fixed dip, never below `sagFloor`. */
+  rollerSag?: boolean;
+  /** The lowest band-centreline height the upper run may take over each road wheel it passes (z, y). */
+  sagFloor?: readonly TrackPoint[] | null;
 }
 
 interface WheelFaceLayer {
@@ -994,6 +999,10 @@ export interface TankBuilderPort extends GeometryAddPort, GunBuilderPort, Cupola
    * declaration still draws only the added ring + disc (never a carve), is clamped inside the
    * measured face, and cannot be combined with a physical bore. */
   muzzleMouth?: DeclaredMuzzleMouth;
+  /** 2026-10-17 (VEHICLES, TANK-OPT W-5): the recoil-frame height of a single centred tube that is authored off the
+   * gun's local axis (the T-80 line seats its 125 mm tube 54 mm below it). The fire anchor (rig_muzzle) sits on that
+   * axis, so the flash and the round leave the bore, and the measured mouth seats from it. */
+  muzzleAxisY?: number;
   /** Measured permanent armor that extends the profile's primary shell. */
   additionalShadowSources?: {
     hull?: readonly ('hullExternalArmor' | 'hullHatch' | 'hullCupola')[];
@@ -2559,12 +2568,39 @@ function topTrackSupports(
   return result;
 }
 
+// Fleet lane 2026-10-08 (the coordinator's track brief: "sag between return rollers"): a roller-carried upper run
+// hung one fixed 2.2 cm dip in every span, so a 0.7 m span between close rollers and a 2 m span on an Abrams read the
+// same ruler-straight line. A free span of track hangs by the square of its length (a shallow catenary): 2.5 cm a square
+// metre, so 1.0 m spans dip 2.5 cm, 1.4 m spans 4.9 cm, and the longest 6.5 cm, never closer to a road wheel's top than
+// the band's half thickness and 2 cm (sagFloor).
+const ROLLER_SAG_PER_M2 = 0.025;
+const ROLLER_SAG_MAX_M = 0.065;
+function rollerSpanDip(span: number): number {
+  return Math.min(ROLLER_SAG_MAX_M, ROLLER_SAG_PER_M2 * span * span);
+}
+
+/** The deepest dip a span from (z0, y0) to (z1, y1) may hang without passing below any floor point under it. */
+function floorLimitedDip(dip: number, z0: number, y0: number, z1: number, y1: number,
+  floor: readonly TrackPoint[] | null | undefined): number {
+  if (!floor?.length || dip <= 0) return dip;
+  const lo = Math.min(z0, z1), hi = Math.max(z0, z1);
+  for (const [zf, yf] of floor) {
+    if (zf <= lo || zf >= hi) continue;
+    const t = (zf - z0) / (z1 - z0), bow = Math.sin(t * Math.PI);
+    if (bow <= 1e-6) continue;
+    dip = Math.min(dip, Math.max(0, (y0 + (y1 - y0) * t - yf) / bow));
+  }
+  return dip;
+}
+
 function appendSaggingTopRun(
   points: TrackPoint[],
   supports: readonly TrackPoint[],
   sag: number,
   tautRearSpan: boolean,
   tautFrontSpan: boolean,
+  rollerSag = false,
+  sagFloor: readonly TrackPoint[] | null = null,
 ): void {
   for (let spanIndex = 0; spanIndex < supports.length - 1; spanIndex++) {
     const [z0, y0] = supports[spanIndex];
@@ -2572,7 +2608,9 @@ function appendSaggingTopRun(
     const span = Math.abs(z1 - z0);
     const taut = (tautRearSpan && spanIndex === 0)
       || (tautFrontSpan && spanIndex === supports.length - 2);
-    const dip = taut ? 0 : Math.min(sag, sag * span * 1.6);
+    const dip = taut ? 0 : rollerSag
+      ? floorLimitedDip(rollerSpanDip(span), z0, y0, z1, y1, sagFloor)
+      : Math.min(sag, sag * span * 1.6);
     const steps = Math.max(2, Math.min(6, Math.round(span * 5)));
     for (let step = spanIndex === 0 ? 0 : 1; step <= steps; step++) {
       const progress = step / steps;
@@ -2617,7 +2655,7 @@ function trackLoopPoints({
   idler, sprocket, botY, topY, sag = 0.03, supports = null, contact = null,
   frontArcSteps = 7, rearArcSteps = 7, tautFrontSpan = false,
   tautRearSpan = false, smoothRearTopTangent = false, endWheels = null,
-  wrapClearanceM: wrap = TRACK_WRAP_CLEARANCE_M,
+  wrapClearanceM: wrap = TRACK_WRAP_CLEARANCE_M, rollerSag = false, sagFloor = null,
 }: TrackLoopOptions): TrackPoint[] {
   const pts: TrackPoint[] = [];
   // CLEAR: the band rides OUTSIDE the sprocket teeth / idler rim — without
@@ -2642,7 +2680,7 @@ function trackLoopPoints({
   const topSupports = topTrackSupports(
     sprocket, idler, topY, supports, inner, rearExit.point, wrap,
   );
-  appendSaggingTopRun(pts, topSupports, sag, tautRearSpan, tautFrontSpan);
+  appendSaggingTopRun(pts, topSupports, sag, tautRearSpan, tautFrontSpan, rollerSag, sagFloor);
   // ground-contact span: only between the outer ROAD wheels does the run lie
   // flat at botY; outside it the band rises straight to its wrap tangents.
   // The previous clamp forced both ground-contact endpoints *inside* the end
@@ -3570,6 +3608,9 @@ function buildTrackCourse({
       tautFrontSpan: cfg.tautFrontSpan ?? false,
       tautRearSpan: cfg.tautRearSpan ?? false,
       smoothRearTopTangent: cfg.smoothRearTopTangent ?? false,
+      rollerSag: rollers.length > 0,
+      sagFloor: rollers.length ? wheelZs.map((z, index): TrackPoint => [
+        z, (wheelYs?.[index] ?? wheelY) + wheelR + trackTh / 2 + 0.02]) : null,
     });
 
   // Some high-resolution profile courses intentionally join a support point
@@ -8993,14 +9034,21 @@ function* createTankOwnedSteps(
   // ---- anchors ----
   const muzzle = new THREE.Object3D();
   muzzle.name = 'rig_muzzle';
-  muzzle.position.set(0, 0, P.muzzleZ);
+  const muzzleAxisY = P.muzzleAxisY ?? 0;
+  if (!Number.isFinite(muzzleAxisY) || Math.abs(muzzleAxisY) > 0.25) {
+    throw new RangeError('muzzleAxisY must be a finite recoil-frame height within 0.25 m of the gun axis');
+  }
+  if (muzzleAxisY !== 0 && (P.physicalMuzzleBore || authoredMuzzles.length)) {
+    throw new Error('muzzleAxisY seats one centred tube: it cannot be combined with a physical bore or twin muzzles');
+  }
+  muzzle.position.set(0, muzzleAxisY, P.muzzleZ);
   recoilG.add(muzzle);
   // Fleet physical bores preserve verified authored interiors. Legacy solid
   // tips are opened at their measured terminal face, with an inward wall and
   // recessed backstop. Old rim/disc helpers provide seating datums only:
   // retaining their front masks would cap the aperture or cause z-fighting.
   root.updateMatrixWorld(true);
-  const muzzleWorld = recoilG.localToWorld(new THREE.Vector3(0, 0, P.muzzleZ));
+  const muzzleWorld = recoilG.localToWorld(new THREE.Vector3(0, muzzleAxisY, P.muzzleZ));
   const authoredRims: THREE.Object3D[] = [];
   const authoredDiscs: THREE.Object3D[] = [];
   const legacyTipDots: THREE.Object3D[] = [];
@@ -9130,7 +9178,9 @@ function* createTankOwnedSteps(
       recoilZ: null,
       supportSource: null,
     };
-    const axisWorld = recoilG.localToWorld(new THREE.Vector3(boreX, boreY, P.muzzleZ));
+    // boreX/boreY are offsets from the fire anchor; an independent barrel's own axis is its group's
+    const axisWorld = recoilG.localToWorld(new THREE.Vector3(boreX,
+      boreY + (independentBarrel ? 0 : muzzleAxisY), P.muzzleZ));
     const isMouthSurface = (surface: THREE.Object3D): surface is VehicleMesh =>
       isVehicleMesh(surface)
       && surface.visible
@@ -9729,6 +9779,11 @@ export function* createTankRuntimeSteps(
     hide(): void { turretRingShown = false; turretRingImpl?.hide(); },
     dispose(): void { turretRingShown = false; turretRingImpl?.dispose(); },
   };
+  // (tank-opt HIDDEN, 2026-10-16) an intact tank draws its interior fills as their boundary surface (interiorFills.ts);
+  // a wreck draws the closed boxes it always drew, swapped in at the kill (before the gun's bend copies them) and back
+  // at a rematch, so its dents, its x-ray and its hulk are the fills' own
+  let interiorFillMeshes: THREE.Mesh[] = [];
+  const wreckFills: [mesh: THREE.Mesh, drawn: THREE.BufferGeometry, closed: THREE.BufferGeometry][] = [];
   // ammo-rack turret pop (physics arc + spin, settles askew on the hull)
   let popActive = false;
   let popT = 0;
@@ -9943,6 +9998,23 @@ export function* createTankRuntimeSteps(
       liveBentGun.push([object, object.geometry]);
       object.geometry = bent;
     });
+  }
+
+  function closeInteriorFills(): void {
+    for (const mesh of interiorFillMeshes) {
+      const closed = closedInteriorFillGeometry(mesh);
+      if (!closed) continue;
+      wreckFills.push([mesh, mesh.geometry, closed]);
+      mesh.geometry = closed;
+    }
+  }
+
+  function reopenInteriorFills(): void {
+    for (const [mesh, drawn, closed] of wreckFills) {
+      mesh.geometry = drawn;
+      closed.dispose();
+    }
+    wreckFills.length = 0;
   }
 
   function resetLiveCrumple(): void {
@@ -10706,6 +10778,7 @@ export function* createTankRuntimeSteps(
       // noise front with a glowing ignition edge (uniforms driven in
       // syncFromState), and ~30% of panels keep desaturated scorched paint.
       // Non-wrappable materials (rare) fall back to the shared burnt swap.
+      closeInteriorFills();
       applyWreckMaterials();
       planLiveCrumple(!!(opts && opts.pop));
       // the ring: the hull cut inside it and the plate on it, after the sweep captured the live materials (the plate keeps
@@ -10808,6 +10881,7 @@ export function* createTankRuntimeSteps(
       weaponDamage.reset();
       resetLiveCrumple();
       turretRing.hide();
+      reopenInteriorFills();
       if (destroyed) {
         destroyed = false;
         // restore the EXACT captured visibility (never a blanket `true` —
@@ -10890,6 +10964,7 @@ export function* createTankRuntimeSteps(
     dispose() {
       equipmentDamage.dispose();
       turretRing.dispose();
+      reopenInteriorFills();
       releaseBattleGeometry?.();
       releaseBattleGeometry=undefined;
       // Detached detail is intentionally outside root traversal while far.
@@ -11002,7 +11077,10 @@ export function* createTankRuntimeSteps(
 
     // Interior fills 2026-09-13 (owner: every hull and turret must hold water):
     // generated buried solids for this tank, if its fleet group is resident.
-    applyInteriorFills({ specId, hullG, turretG, gunG, material: mats.dark, disposables });
+    // 2026-10-16 (tank-opt HIDDEN): drawn as their conforming boundary surface (a wreck swaps the closed boxes back in,
+    // closeInteriorFills); a geometry-only build (a map hulk's bake, the workshop dressing) keeps the closed boxes, so
+    // its baked triangles and budgets are unchanged.
+    interiorFillMeshes = applyInteriorFills({ specId, hullG, turretG, gunG, material: mats.dark, disposables, closed: geometryOnly }).meshes;
     if (physicalBore) {
       // Final stock includes generated gun fills and fixed pitch-owned parts.
       // Neither may re-cap the recoil-owned aperture that was verified earlier.

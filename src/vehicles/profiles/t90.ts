@@ -183,6 +183,9 @@ function polyTurretVariableBase(
   inset: number,
   baseAtZ: (z: number) => number,
   breakZs: readonly number[] = [],
+  // TANK-OPT companions (227): close the stepped lower ring with an outward (downward) cap, for a shell whose open
+  // bottom shows from below once a cook-off throws the turret. Off by default: other callers keep their bytes.
+  closeBottom = false,
 ): THREE.BufferGeometry {
   const n = plan.length;
   const cx = plan.reduce((s, p) => s + p[0], 0) / n;
@@ -227,25 +230,44 @@ function polyTurretVariableBase(
   // The welded T-90 cheek outline has re-entrant front shoulders. A fan
   // from its arithmetic center crosses those notches; triangulate the actual
   // perimeter so the roof stays inside the authored silhouette.
-  const cap = THREE.ShapeUtils.triangulateShape(t.map(([x, , z]) => new THREE.Vector2(x, z)), []);
-  // Earcut may elide collinear roof stations inserted for the stepped floor.
-  // Reinsert each on its containing edge so roof and walls share exact edges.
-  for (let v = 0; v < t.length; v++) {
-    if (cap.some(face => face.includes(v))) continue;
-    let inserted = false;
-    for (let f = 0; f < cap.length && !inserted; f++) for (let e = 0; e < 3; e++) {
-      const face = cap[f], ai = face[e], bi = face[(e + 1) % 3], ci = face[(e + 2) % 3];
-      const a = t[ai], b2 = t[bi], p = t[v], dx = b2[0]-a[0], dz = b2[2]-a[2];
-      const length2 = dx*dx+dz*dz, along = ((p[0]-a[0])*dx+(p[2]-a[2])*dz)/length2;
-      if (along <= 1e-8 || along >= 1-1e-8 || Math.abs(dx*(p[2]-a[2])-dz*(p[0]-a[0])) > 1e-9) continue;
-      cap.splice(f,1,[ai,v,ci],[v,bi,ci]); inserted = true; break;
+  const perimeterCap = (ring: readonly MutableVec3[]): number[][] => {
+    const cap = THREE.ShapeUtils.triangulateShape(ring.map(([x, , z]) => new THREE.Vector2(x, z)), []);
+    // Earcut may elide collinear roof stations inserted for the stepped floor.
+    // Reinsert each on its containing edge so roof and walls share exact edges.
+    for (let v = 0; v < ring.length; v++) {
+      if (cap.some(face => face.includes(v))) continue;
+      let inserted = false;
+      for (let f = 0; f < cap.length && !inserted; f++) for (let e = 0; e < 3; e++) {
+        const face = cap[f], ai = face[e], bi = face[(e + 1) % 3], ci = face[(e + 2) % 3];
+        const a = ring[ai], b2 = ring[bi], p = ring[v], dx = b2[0]-a[0], dz = b2[2]-a[2];
+        const length2 = dx*dx+dz*dz, along = ((p[0]-a[0])*dx+(p[2]-a[2])*dz)/length2;
+        if (along <= 1e-8 || along >= 1-1e-8 || Math.abs(dx*(p[2]-a[2])-dz*(p[0]-a[0])) > 1e-9) continue;
+        cap.splice(f,1,[ai,v,ci],[v,bi,ci]); inserted = true; break;
+      }
+      if (!inserted) throw new Error('T-90 roof perimeter station is not triangulated');
     }
-    if (!inserted) throw new Error('T-90 roof perimeter station is not triangulated');
-  }
-  for (const [i, j, k] of cap) {
+    return cap;
+  };
+  for (const [i, j, k] of perimeterCap(t)) {
     const a = t[i], b2 = t[j], c = t[k];
     const ny = (b2[2] - a[2]) * (c[0] - a[0]) - (b2[0] - a[0]) * (c[2] - a[2]);
     if (ny > 0) tri(a, b2, c); else tri(b2, a, c);
+  }
+  if (closeBottom) {
+    // One flat floor at the highest point of the stepped lower ring, on the walls themselves (each floor vertex
+    // slides up its own wall edge to that height). Below it the lower walls stay a short open skirt. A floor that
+    // followed the step would close the slit between the deck and the shell's raised front into a pocket the
+    // watertight flood reads as a leak.
+    const floorY = Math.max(...b.map(([, y]) => y));
+    const floor = b.map((low, i): MutableVec3 => {
+      const high = t[i], u = (floorY - low[1]) / Math.max(1e-9, high[1] - low[1]);
+      return [low[0] + (high[0] - low[0]) * u, floorY, low[2] + (high[2] - low[2]) * u];
+    });
+    for (const [i, j, k] of perimeterCap(floor)) {
+      const a = floor[i], b2 = floor[j], c = floor[k];
+      const ny = (b2[2] - a[2]) * (c[0] - a[0]) - (b2[0] - a[0]) * (c[2] - a[2]);
+      if (ny < 0) tri(a, b2, c); else tri(b2, a, c);
+    }
   }
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
@@ -574,7 +596,7 @@ function addT90SternFaceKit(
 // leaving each variant free to author its own armor and combat equipment.
 function addT90SMTurretFoundation(
   P: T90BuilderPort,
-  { position = [0, 1.40, 0.09] }: { position?: Vec3Tuple } = {},
+  { position = [0, 1.40, 0.09], closeUnderside = false }: { position?: Vec3Tuple; closeUnderside?: boolean } = {},
 ): { tw: number; f: number; b: number; h: number } {
   const { box } = KIT;
   P.turretG.position.set(...position);
@@ -585,7 +607,7 @@ function addT90SMTurretFoundation(
     [1.44, -0.395], [1.09, b], [-1.09, b], [-1.44, -0.395],
     [-tw, 0.55], [-tw * 0.97, 1.12], [-1.4054, 1.27], [-1.2985, 1.377],
     [-1.19, 1.44], [-0.98, 1.26],
-  ], h, 1.02, 0.78, (z) => z <= 0.50 ? 0 : z >= 0.55 ? 0.08 : (z - 0.50) * 1.6, [0.50, 0.55]));
+  ], h, 1.02, 0.78, (z) => z <= 0.50 ? 0 : z >= 0.55 ? 0.08 : (z - 0.50) * 1.6, [0.50, 0.55], closeUnderside));
   // These are structural parts of the SM foundation, not variant dress-up:
   // the shelf closes the shell-to-bustle load path and the crown carries the
   // hatch/sight seats used by both family members.
@@ -1393,6 +1415,9 @@ function addT90ALegacyTurret(P: T90BuilderPort, {
   // exaggerated gap behind the shell.  This is a turret-group correction:
   // gun, ERA, optics and bustle retain their local construction and move as
   // one package in both yaw states.
+  // The A seat shows the shell's open underside to a camera below a thrown turret (TANK-OPT ring census, 8 % of the
+  // ring disc): `closeUnderside: true` closes it. Held for the gun-hull lane's T-90 batch (240): that lane flips it and
+  // regenerates. The SM's own seat is covered by its basket and keeps its bytes.
   addT90SMTurretFoundation(P, { position: [0, 1.335, turretSeatZ] });
   const rings = [[1.02, -0.022], [1.36, 0.097], [1.29, 0.28], [1.10, 0.35], [0.82, 0.405], [0.48, 0.445], [0.18, 0.47], [0.02, 0.475]];
   // TKN/cross-wind spike pair FIRST in the bucket (heightM p95 anchors +

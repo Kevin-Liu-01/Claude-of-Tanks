@@ -3,7 +3,8 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 // Polish amphibious Borsuk with the unmanned ZSSW-30 and twin Spike LR mount.
 import { KIT } from './kit.ts';
 import { sectionSolid } from './sectionSolid.ts';
-import { chassisLoft, armorLoft, sideWall, openTube, optic, antenna, turretEquipment, mirrorX } from './europeSourcePrimitives.ts';
+// 240: the pre-227 hollow sight box (opticFrame) until this vehicle's own lane adopts the solid optic() head
+import { chassisLoft, armorLoft, sideWall, openTube, opticFrame as optic, antenna, turretEquipment, mirrorX } from './europeSourcePrimitives.ts';
 import { launchCellParts, perforatedPlate } from './missileCanisterStock.ts';
 import { buildFleetTrackShoe } from './abramsSourceXTrackShoe.ts';
 import { weaponAssembly } from './weaponStock.ts';

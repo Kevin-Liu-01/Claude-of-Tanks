@@ -155,7 +155,8 @@ function liveWreck(id, config, receipt) {
       const turretSide = (mesh) => { for (let o = mesh.parent; o; o = o.parent) if (o === turret) return true; return false; };
       const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), m = new THREE.Matrix4();
       for (const [mesh, geometry] of held) {
-        if (mesh.geometry === geometry || turretSide(mesh)) continue;
+        // (a fill swaps its drawn surface for the closed boxes at the kill, interiorFills.ts; the ring never cuts a fill)
+        if (mesh.geometry === geometry || turretSide(mesh) || mesh.userData.interiorFill) continue;
         if (!mesh.geometry.userData?.turretRingCut) { foreign++; continue; }
         swapped++;
         const g = mesh.geometry, p = g.attributes.position, index = g.index;

@@ -221,6 +221,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/dragunHullFittings.selftest.mjs',
     'src/vehicles/profiles/dragunForwardRoofStock.selftest.mjs',
     'tools/interior-fill-body-policy.selftest.mjs',
+    // 2026-10-08: deep interior needs exact body cover over a voxel's whole footprint (or a narrow slot)
+    'tools/tank-voxel-body.selftest.mjs',
     'tools/m1a1-fill-clearance.selftest.mjs',
     'tools/track-lane-boxes.selftest.mjs',
     // 2026-10-03: declared physical bore air is open, never filled and reported apart from leaks
@@ -231,6 +233,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/watertightAudit.selftest.mjs',
     // 2026-10-16 (test-speed R7c): the gate's named carries (docs/geometry-gate/watertight-carry.json) and their rules
     'tools/watertight-carry.selftest.mjs',
+    // 2026-10-16 (tank-opt HIDDEN): fills drawn as their exact, conforming boundary surface; closed boxes bit-identical
+    'src/vehicles/interiorFillSurface.selftest.mjs',
+    // 2026-10-16 (tank-opt HIDDEN): a wreck draws the closed boxes again (setDestroyed), the rematch the surface
+    'src/vehicles/interiorFillWreck.selftest.mjs',
     'tools/barak-rear-bay-fill-policy.selftest.mjs',
     'src/vehicles/profiles/kurganetsRearDoorStock.selftest.mjs',
     'src/vehicles/profiles/kurganetsBowStock.selftest.mjs',
@@ -313,6 +319,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 229 perf: the allocation-free hypot the per-frame track paths use equals Math.hypot bit for bit
     'src/vehicles/scalarHypot.selftest.mjs',
     'src/vehicles/roadWheelTrackSpan.selftest.mjs',
+    'src/vehicles/trackRollerSag.selftest.mjs',
     'src/vehicles/runningGearGroundRun.selftest.mjs',
     'src/vehicles/restPoseBatchedGear.selftest.mjs',
     'src/vehicles/trackCarrierSections.selftest.mjs',
