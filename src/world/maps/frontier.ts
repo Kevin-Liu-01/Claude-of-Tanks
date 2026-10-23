@@ -240,7 +240,9 @@ export default {
     // (round 3, wave 138's chase view: a woodlot stood on the main road's southern approach once the mill ponds reseated
     // the tree stream) the main road's approach to the village, south and its rotation north, open ground
     avoid: [{ x: -20, z: -115, r: 40 }, { x: 20, z: 115, r: 40 }],
-    bushCount: 1.18, bushSpecies: 'oak',
+    // (2026-10-23, item/maps-frontier-saltmere-242; the blind critic: "a bush made of flat leaf cards fills the foreground and
+    // hides the village") fewer field bushes at the lanes' sides (was 1.18)
+    bushCount: 0.9, bushSpecies: 'oak',
     // the lynchet banks' field trees and the river's line (2026-10-05; LYNCHET_HEDGES, RIVER_TREES above)
     belts: [...LYNCHET_HEDGES, ...RIVER_TREES],
   },
