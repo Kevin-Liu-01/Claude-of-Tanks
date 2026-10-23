@@ -6158,7 +6158,9 @@ void splatCompute() {
         if (bnd > 2.5) {
           rows = 0.0;
           float bareVis = tileVis(1.5);
-          float bareG = uLandTier > 0.5 ? smoothstep(0.52, 0.72, nzq(uvW, 0.29, vec2(0.61, 0.17)).x) : 0.0;
+          // (2026-10-06, the land use's far field: the patches weigh bareVis, exactly zero past their tiles' visibility, so
+          // their read is skipped there, the result unchanged)
+          float bareG = uLandTier > 0.5 && bareVis > 0.0 ? smoothstep(0.52, 0.72, nzq(uvW, 0.29, vec2(0.61, 0.17)).x) : 0.0;
           vec3 redSoil = soilHue / max(reduxLuma(soilHue), 1e-3) * vec3(2.11, 1.24, 1.04) * 0.095 * bright;
           cropCol = mix(vec3(2.30, 2.10, 1.30) * baseL * bright, redSoil, bareG * 0.70 * bareVis + 0.20 * (1.0 - bareVis));
         }
@@ -6217,8 +6219,13 @@ void splatCompute() {
         // along its run (n1h, the high-frequency breaker the material already read); the soil layer's own clod relief
         // (the dirt normal, 0.93 m) lies on it near the tank, further down
         float soilHere = inField * landW;
-        float ridge = (cos(acrossP * 7.854) + 0.70 * cos(acrossP * 15.708) * stripeAA(0.4 * kP, acrossDir)) * (0.55 + 0.90 * n1h);
-        if (nrmOn) n.xy = mix(n.xy, vec2(0.5), soilHere) + acrossDir * ridge * 0.20 * furrowVis * soilHere;
+        // (2026-10-06, the land use's far field: the slice's relief weighs furrowVis, exactly zero once a furrow is under two
+        // pixels, so past that it is skipped, the result unchanged: the soil's flat relief)
+        if (nrmOn) n.xy = mix(n.xy, vec2(0.5), soilHere);
+        if (nrmOn && furrowVis > 0.0) {
+          float ridge = (cos(acrossP * 7.854) + 0.70 * cos(acrossP * 15.708) * stripeAA(0.4 * kP, acrossDir)) * (0.55 + 0.90 * n1h);
+          n.xy += acrossDir * ridge * 0.20 * furrowVis * soilHere;
+        }
         // (wave 86, Verdant's establishing view: "a smeared, streaky charcoal texture with no clods or furrow relief") past
         // the furrows' own reach the plough keeps its relief: the lands' low crowns, each 3.2 m land a gentle ridge lit and
         // shaded with the sun (2026-10-06, the cost trim: wave 88's clods — a near read of the noise — are gone again)

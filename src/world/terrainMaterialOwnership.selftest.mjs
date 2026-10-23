@@ -272,7 +272,9 @@ function checkLandUseCut(text) {
     ['if (luEdge && luNear > 0.001 && uLandTier > 1.5 && !luUrb) nEdge = mix(vec3(0.5), vec3(', 'nzq(uvW, 0.045, vec2(0.21, 0.83))'],
     ['if (soilRead && luNear > 0.001 && uLandTier > 1.5) soil = mix(uMeanD, ', 'groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB)'],
     ['float karstStone = 0.0; if (uLandTier > 0.5) { vec2 sq = ', 'nzq(uvW, 0.61, vec2(0.37, 0.71))'],
-    ['float bareG = uLandTier > 0.5 ? ', 'smoothstep(0.52, 0.72, nzq(uvW, 0.29'],
+    // (2026-10-06, the land use's far field: the garrigue's patches are read only while their tiles show — bareVis weighs
+    // them, exactly zero past that)
+    ['float bareG = uLandTier > 0.5 && bareVis > 0.0 ? ', 'smoothstep(0.52, 0.72, nzq(uvW, 0.29'],
     ['float bare = uLandTier > 0.5 ? ', 'smoothstep(0.52, 0.72, nzq(uvW, 0.11'],
     ['if (crop > 0.5 && crop < 3.5 && uLandTier > 0.5 && gFootM < 0.04) { vec2 uE = vec2(0.8090 * uv.x - 0.5878 * uv.y, 0.5878 * uv.x + 0.8090 * uv.y); float ear = ',
       'nz(uv, 1.7, vec2(0.31, 0.77))'],
@@ -283,6 +285,9 @@ function checkLandUseCut(text) {
     ['float stoneN = stoneVis > 0.001 ? ', 'nz(uv, 3.1, vec2(0.29, 0.61))'],
     ['if (nrmOn && uLandE.w > 1.5 && uLandTier > 1.5 && gFootM < 0.2) { vec2 tr = ', 'nz(uv, 0.53, vec2(0.37, 0.19))'],
   ]) assert.ok(compact(block).includes(compact(gate + read)), `${read}: read only behind ${gate}`);
+  // (the far field: the plough's slice relief weighs furrowVis, exactly zero once a furrow is under two pixels — skipped there)
+  assert.ok(compact(block).includes(compact('if (nrmOn && furrowVis > 0.0) { float ridge = (cos(acrossP * 7.854)')),
+    'the furrows\' relief is computed only while they show');
   assert.ok(compact(block).includes(compact('nzq(uvW, 0.031, vec2(0.11, 0.59)).y, nzq(uvW, 0.17, vec2(0.83, 0.37)).x), luNear);')),
     'the headland\'s width and the hedge bank\'s break are read in the wander\'s own gated round');
   for (const gate of ['if (uLandTier < 0.5) {', 'float rowsShow = uLandTier > 0.5 ?', '&& crop < 3.5 && uLandTier > 0.5) {',
