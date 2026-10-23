@@ -137,7 +137,7 @@
   "merkava4": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2c0378571411060c","gun":"b6b26f54c6858d84"}},
   "merkava4_barak": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c7c6be4af323ed42","gun":"4a5bd63065cd4347"}},
   "merkava4_trophy": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"622cad2e5b7b4481","gun":"6e65846b9ed3325a"}},
-  "merkava4b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d3915ff12b81c7bb","gun":"a32e832a6da98f30"}},
+  "merkava4b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"ade08aa140f9d0a4","gun":"a32e832a6da98f30"}},
   "namer_ifv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"470ba240be72a5ec","gun":"c41a67c6dfe45776"}},
   "object148_proto": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c2ece826c7ff5d60","gun":"70690af84fec42b4"}},
   "object695": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"c0b57b5d72c50af8","gun":"339e7790ffeb1282"}},
