@@ -9270,7 +9270,11 @@ function* terrainBuildSteps(
   // stands where the ring stood, the terrain's first child; the battlefield, its collision and the authority are untouched
   const hinterlandSource = hinterlandSupplyFor(cfg);
   function* hinterlandStage(): Generator<TerrainBuildProgress, void, void> {
-    const steps = hinterlandSource!.buildSteps({ engineCtx, heightField });
+    // (horizons-240) the battlefield's own sheets carried past the edge (hinterland/groundDetail.ts)
+    const ground = { textures: splatTextures, layerMeans: (mat.userData as { layerMeans?: unknown }).layerMeans,
+      roadTint: (cfg?.splat as { roadTint?: readonly number[] } | undefined)?.roadTint,
+      tints: ['tintA', 'tintB', 'tintC'].map((k) => (cfg?.splat as Record<string, readonly number[] | undefined> | undefined)?.[k]) };
+    const steps = hinterlandSource!.buildSteps({ engineCtx, heightField, ground });
     let step = steps.next();
     while (!step.done) {
       yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];

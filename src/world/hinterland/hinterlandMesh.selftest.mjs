@@ -150,17 +150,37 @@ assert.equal(object.renderOrder, 1, 'the Hinterland draws after the battlefield'
     material.onBeforeCompile(shader, null);
     return shader;
   };
+  // (horizons-240) a region without snow (the polders) draws main's program (materialClassic.ts: its strata); a snowy
+  // region's rock draws Glacier round 6's (hlRockAt), checked on the same wire marked snowy
   const ls = patched(land.material);
-  for (const [re, what] of [ [/hlSurfaceAt\( vHlWorld\.xz \)/, 'the surface'],
-    [/hinterlandSegmentDepth\( hlHazeD, hlDrawnR \)/, 'the remapped segment\'s haze'], [/hinterlandProjectDrawn\( vHlWorld/, 'the remapped projection'], [/#define HL_REMAP/, 'the remap switched on (no ?hlDepth=0 in Node)'],
-    [/hlTilt/, 'the ground\'s relief normal'], [/hlHazeTarget\(/, 'the dome-sky haze target'],
-    [/hlRockAt\( vHlWorld, hlNW, hlEY, hlFoot, hlShare, hlSnow \)/, 'the faces\' rock and snow per pixel'], [/0\.9 \* hlStep/, 'the beds\' relief in the light'],
-    [/#ifndef HL_LITE/, 'the light tiers\' variant']]) {
-    assert.match(ls.vertexShader + ls.fragmentShader, re, `the land's shader carries ${what}`);
+  assert.match(ls.fragmentShader, /hlStrataAt\( vHlWorld, hlNW, hlL \)/, 'a region without snow keeps the classic strata');
+  assert.match(land.material.customProgramCacheKey(), /land-classic-/, 'the classic program has its own key');
+  // (horizons-240) handed the battlefield's ground, the land reads its grass and dirt sheets past the edge (groundDetail.ts)
+  const sheet = new THREE.Texture();
+  const groundLand = createHinterlandObject(copyHinterlandWire(wire), {}, { textures: [sheet, sheet, sheet],
+    layerMeans: { G: new THREE.Vector4(0.2, 0.25, 0.1, 1), D: new THREE.Vector4(0.25, 0.2, 0.15, 1) }, roadTint: [1.08, 1.04, 0.96] })
+    .getObjectByName('hinterland-land');
+  assert.match(groundLand.material.customProgramCacheKey(), /land-classic-ground-/, 'the ground variant has its own program');
+  const gs = patched(groundLand.material);
+  assert.match(gs.fragmentShader, /#define HL_GROUND/, 'the ground switched on');
+  assert.match(gs.fragmentShader, /hlGroundTile\( uHlGrass, uHlMeanG, hlUv \* 0\.240/, 'the sward at the battlefield\'s own scale');
+  const snowyWire = copyHinterlandWire(wire);
+  snowyWire.rock = { ...snowyWire.rock, snowy: true };
+  const snowyLand = createHinterlandObject(snowyWire, {}).getObjectByName('hinterland-land');
+  const ss = patched(snowyLand.material);
+  for (const [re, what] of [[/hlRockAt\( vHlWorld, hlNW, hlEY, hlFoot, hlShare, hlSnow \)/, 'the faces\' rock and snow per pixel'],
+    [/0\.9 \* hlStep/, 'the beds\' relief in the light'], [/#ifndef HL_LITE/, 'the light tiers\' variant']]) {
+    assert.match(ss.vertexShader + ss.fragmentShader, re, `a snowy region's land shader carries ${what}`);
   }
   // (Glacier round 6, the critics on 5d's "evenly spaced horizontal white stripes": no periodic band along the height,
   // and no painted ledge snow; the beds are relief and the snow lies where the face holds it)
-  assert.doesNotMatch(ls.fragmentShader, /sin\( vHlWorld\.y \*|hlLedge|hlShoulderAt/, 'no painted bands or decal snowfields');
+  assert.doesNotMatch(ss.fragmentShader, /sin\( vHlWorld\.y \*|hlLedge|hlShoulderAt/, 'no painted bands or decal snowfields');
+  for (const [re, what] of [ [/hlSurfaceAt\( vHlWorld\.xz \)/, 'the surface'],
+    [/hinterlandSegmentDepth\( hlHazeD, hlDrawnR \)/, 'the remapped segment\'s haze'], [/hinterlandProjectDrawn\( vHlWorld/, 'the remapped projection'], [/#define HL_REMAP/, 'the remap switched on (no ?hlDepth=0 in Node)'],
+    [/hlTilt/, 'the ground\'s relief normal'], [/hlHazeTarget\(/, 'the dome-sky haze target'],
+    [/#ifndef HL_LITE/, 'the light tiers\' variant']]) {
+    assert.match(ls.vertexShader + ls.fragmentShader, re, `the land's shader carries ${what}`);
+  }
   // (the polders' rock travels; their ledges hold no snow)
   assert.ok(wire.rock && wire.rock.rgb.every((c) => c > 0 && c < 1) && wire.rock.snowy === false, 'the region\'s rock travels for the strata');
   const built = object.getObjectByName('hinterland-buildings');
