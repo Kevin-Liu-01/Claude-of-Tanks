@@ -12,7 +12,7 @@
  * public/icons/<id>_side_silhouette.png (tools/genIcons.mjs).
  */
 
-import { FONT_STACK, FONT_COND } from './fonts.ts';
+import { FONT_STACK } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { tierNumeral } from '../vehicles/tier.ts';
