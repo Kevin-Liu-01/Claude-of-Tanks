@@ -68,6 +68,7 @@ body[data-cot-panels='overlay'] .cot-garage .cot-overview-section{display:none;}
   font:600 var(--fs-14)/1 var(--font-display);}
 .cot-garage .cot-rival select option{background:var(--surface-menu);color:var(--ink-1);}
 .cot-garage .cot-rival:focus-within{border-color:var(--accent);}
+.cot-garage .cot-rival .vs{font:700 var(--fs-12)/1 var(--font-display);color:var(--accent);}
 .cot-garage .cot-headline{display:grid;gap:var(--s3);}
 .cot-garage .cot-hrow{display:grid;grid-template-columns:20px minmax(0,1fr) auto;grid-template-rows:auto auto;column-gap:var(--s3);
   row-gap:var(--s1);align-items:center;}

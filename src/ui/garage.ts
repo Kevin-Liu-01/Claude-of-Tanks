@@ -1086,7 +1086,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     };
     const peers = rival ? rivalPeers(spec) : [];
     const picker = rival
-      ? `<label class="cot-rival">${uiIconSVG('rematch', 16)}${flagIconHTML(rival.nation, 22, 16)}` +
+      ? `<label class="cot-rival"><span class="vs" aria-hidden="true">${t('teams.vs')}</span>${flagIconHTML(rival.nation, 22, 16)}` +
         `<select data-rival aria-label="${t('garage.rival.aria')}">${peers.map((other) =>
           `<option value="${other.id}"${other.id === rival.id ? ' selected' : ''}>${escapeHtmlAttribute(other.label?.displayName || other.name)}</option>`).join('')}` +
         `</select>${uiIconSVG('chevronDown', 14)}</label>`
@@ -2996,7 +2996,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<div class="eqrow">${slotBoxes}</div></section>`;
     statsEl.innerHTML =
       overviewSection(spec, eqM, shells) +
-      equipmentSection.replace('<section class="cot-stat-section', '<section data-stations="overview firepower" class="cot-stat-section') +
+      equipmentSection.replace('<section class="cot-stat-section', '<section data-stations="firepower mobility" class="cot-stat-section') +
       technicalSection.replace('<section class="cot-stat-section', '<section data-stations="protection crew" class="cot-stat-section') +
       `<section class="cot-stat-section cot-performance-section" data-stations="firepower">${statSectionTitle('gun', t('garage.station.firepower'), `${spec.gun.caliberMm} mm`, 'Performance')}` +
       `<div class="cot-performance-grid">` +

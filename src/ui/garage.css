@@ -1116,10 +1116,6 @@ body[data-cot-width='laptop'] .cot-header-nav .cot-locale-options{display:none}
     position:absolute;right:-5px;top:-5px;min-width:14px;height:14px;padding:0 3px;font-size:var(--fs-11);
   }
 }
-body[data-cot-width='laptop'] .cot-nav .github-stars{
-  position:absolute;right:-7px;top:-6px;min-width:24px;height:14px;padding:0 3px;display:grid;place-items:center;
-  border:1px solid #ffc46b;background:#f0a030;color:#1a1105;font-size:11px;line-height:1;letter-spacing:0;
-}
 body[data-cot-width='laptop'] .cot-leftcol{left:clamp(18px,2vw,30px)}
 body[data-cot-width='laptop'] .cot-garage-variant-menu{left:clamp(18px,2vw,30px)}
 body[data-cot-width='laptop'] .cot-featured{display:none}
