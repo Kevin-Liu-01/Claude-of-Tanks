@@ -144,6 +144,7 @@ __STUDIO.timeOfDay                  // the time as rendered (a space map renders
 __STUDIO.STUDIO_TIMES / .STUDIO_TIME_BANDS
 __STUDIO.setFxQuality('battle' | 'cinematic') / .fxQuality // scene FX quality (see Cinematic FX)
 __STUDIO.setTrackDust(on) / .trackDust                // dust + prints behind driven actors
+__STUDIO.setAmbience(on) / .ambience                  // the map's air (world/mapAmbience.ts), on by default
 __STUDIO.cinematicStats()                             // cinematic layer emitters / pool high-water
 __STUDIO.TANK_IDS / .MAP_IDS / .ACTOR_STATES / .EFFECT_TYPES / .CAMO_PATTERN_IDS
 __STUDIO.FX_QUALITIES / .FX_PARAMS                    // fx qualities, cinematic parameter schema
@@ -333,7 +334,8 @@ live preview at the native aspect, progress, time left and **Cancel**.
   "seed": 5000,                 // fx rng seed (default 5000)
   "fx": {                       // optional; omitted = the game's exact battle look
     "quality": "cinematic",     // battle (default) | cinematic
-    "trackDust": true           // default: true for cinematic, false for battle
+    "trackDust": true,          // default: true for cinematic, false for battle
+    "ambience": false           // the map's air (pollen, leaves, snow, dust, embers); written only when off
   },
 
   "actors": [
