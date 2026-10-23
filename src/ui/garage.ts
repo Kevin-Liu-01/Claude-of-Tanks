@@ -3301,7 +3301,22 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     battleModeBtn.setAttribute('aria-expanded', 'false');
     if (restoreFocus) battleModeBtn.focus();
   }
-  function openBattleMenu() {
+  // Deploy's sheet (deploy.css) rides off the game entry: it loads once the Garage is playable and idle, or at the first
+  // open, which waits for it, so the screen never paints unstyled (a failed load still opens it).
+  let deployStyles: Promise<void> | null = null;
+  let deployStyled = false;
+  const ensureDeployStyles = (): Promise<void> => (deployStyles ??= import('./deploy.css').then(() => { deployStyled = true; }));
+  const preloadDeployStyles = (): void => {
+    if (window.__GAME_READY !== true) { setTimeout(preloadDeployStyles, 250); return; }
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(() => { void ensureDeployStyles(); }, { timeout: 2000 });
+    else setTimeout(() => { void ensureDeployStyles(); }, 800);
+  };
+  preloadDeployStyles();
+  function openBattleMenu(): void {
+    if (!deployStyled) {
+      void ensureDeployStyles().then(openBattleMenu, () => { deployStyled = true; openBattleMenu(); });
+      return;
+    }
     closeMobileNavigation();
     setGaragePanel('');
     renderBattleOptions();
