@@ -315,7 +315,9 @@ function sightMarks(boxes: number[], width: number, height: number, r: number, s
       for (let i = 0; i < parts.length && !moved; i += 4) {
         const x0 = parts[i], x1 = parts[i + 2], up = y - parts[i + 1], foot = parts[i + 3] - y;
         for (const f of furniture) {
-          if (f.x - x1 >= g || x0 - (f.x + f.w) >= g || f.y + f.h + g <= y - up || f.y - g >= y + foot || f.y < y - up) continue;
+          // (a part hung under the line rises with it: hud.ts sniperRowRise)
+          if (f.x - x1 >= g || x0 - (f.x + f.w) >= g || f.y + f.h + g <= y - up || f.y - g >= y + foot
+            || f.y < y - Math.max(up, R.readoutAbovePx)) continue;
           y = f.y - g - foot; moved = true;
         }
       }

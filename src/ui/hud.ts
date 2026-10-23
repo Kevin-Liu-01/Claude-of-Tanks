@@ -4728,7 +4728,9 @@ export function initHud(bus: EventBus): HudRuntime {
       for (let part = 0; part < 3; part++) {
         if (!sniperRowPart(draw, part, mode)) continue;
         const p = sniperPartScratch;
-        y = Math.min(y, sightFurnitureRise(p.x0, p.x1, y, p.top, p.foot, SIGHT_MARK_RING_GAP));
+        // (a part hung under the line rises with it: what starts under the line's top is under the part too)
+        y = Math.min(y, sightFurnitureRise(p.x0, p.x1, y, p.top, p.foot, SIGHT_MARK_RING_GAP,
+          Math.max(p.top, sniperRowScratch.lineTop)));
       }
     }
     return y;
