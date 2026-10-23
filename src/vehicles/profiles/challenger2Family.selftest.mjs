@@ -31,9 +31,13 @@ for (const id of ['fv4034', 'challenger2', 'challenger2e', 'ua_challenger2']) {
   close(hull.scale.x, 1.10, `${id} hull width scale`);
   close(hull.scale.y, 1.10, `${id} hull height scale`);
   close(hull.scale.z, 1.10, `${id} hull length scale`);
-  close(turret.scale.x, 1.10, `${id} turret width scale`);
-  close(turret.scale.y, 1.54, `${id} enlarged turret height with authored shaping`);
-  close(turret.scale.z, 1.10, `${id} turret length scale`);
+  // 235: the finished build carries the turret's squash on its children (turretRigScale.ts); rig_turret pitches its gun
+  // in metres
+  assert.deepEqual(turret.scale.toArray(), [1, 1, 1], `${id} turret rig is a metre frame`);
+  const squash = turret.userData.turretSectionScale ?? [];
+  close(squash[0], 1.10, `${id} turret width scale`);
+  close(squash[1], 1.54, `${id} enlarged turret height with authored shaping`);
+  close(squash[2], 1.10, `${id} turret length scale`);
   close(turret.position.x, spec.armor.turretPivot[0] * 1.10,
     `${id} turret pivot x`);
   close(turret.position.y, spec.armor.turretPivot[1] * 1.10,

@@ -554,3 +554,10 @@ its row in the row's frame in any column (with `--accept-see-through` for the
 id, see-through and netting may move there; openings never). Open rows list
 their hole views: a hole in another view fails. Each appends the reason, who,
 when and the old values to the row's `accepts`.
+Turret squash (235): a builder may scale rig_turret non-uniformly while it builds (the T-90AM 0.95 x 0.65 x 0.913, the
+Strv 81, the Merkavas, the FV510s, the Challengers). The factory tail (`turretRigScale.ts`, after the decorations, the
+fills and the smoke-bank alignment) moves that squash onto rig_turret's children and rig_gun, so the finished rig_turret
+is a metre frame and the gun pitches rigidly about its drawn trunnion. Parts that sat at rig_turret's identity carry the
+squash as their own scale. `rig_turret.userData.turretSectionScale` names it, and the static batch, the P21 merge and
+the crumple's plate frame read it. A child whose rest rotation would shear under the squash sits in a `turretSection_*`
+group. Read a finished turret's squash from that key, never from `rig_turret.scale`.
