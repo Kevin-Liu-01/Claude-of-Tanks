@@ -191,6 +191,22 @@ interface SceneryCanyonWall {
 }
 
 /**
+ * A mesa outlier's wall in relief (gourSkin.ts buildGourSkin; Sirocco Wadi round 1): the outline of the map's mesa
+ * noise traced within the box, its caprock in jointed blocks over the marl slope's beds and rills, the fallen blocks on
+ * its talus. Decor: the terrain stays the rock.
+ */
+interface SceneryGour {
+  x0: number;
+  x1: number;
+  z0: number;
+  z1: number;
+  level?: number;
+  capTone?: readonly [number, number, number];
+  beds?: ReadonlyArray<readonly [number, number, number]>;
+  name?: string;
+}
+
+/**
  * The field boundaries' built works on the ground lane's land use (fieldWorks.ts): the dry stone walls of a karst's
  * wall boundaries, the earth banks under a bocage's hedge lines, on the very lines the terrain draws. Decor: no
  * collision. A world without the land-use hook (or a map without a field system) builds none.
@@ -216,6 +232,7 @@ export interface SceneryConfig {
   /** The maps lane (2026-10-14, MA.12): a jebel's jointed face drawn over a dome's wall (jebelSkin.ts); no mass. */
   jebelSkins?: readonly { x: number; z: number; radius: number; tone: readonly [number, number, number]; minGrade?: number;
     columnM?: readonly [number, number]; bulgeM?: number; name?: string }[];
+  gours?: readonly SceneryGour[];
   landmarks?: readonly SceneryLandmark[];
   powerLines?: readonly SceneryPowerLine[];
   fieldWorks?: SceneryFieldWorks;

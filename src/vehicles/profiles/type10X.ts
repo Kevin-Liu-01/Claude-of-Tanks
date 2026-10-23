@@ -55,9 +55,7 @@ function hull(P:TankBuilderPort):void {
     tubSection(1.75,1.376,.432),tubSection(2.50,1.370,.440),
     // Actual source lower bow has two planes, not a straight floor-to-tip
     // diagonal. Upper roofs remain on the previous exact interpolation.
-    tubSection(2.8980457874,1.3389330117,.4439975738),
-    tubSection(3.3136651848,1.3064944246,.7213660983),
-    tubSection(3.32,1.306,.7303013235),tubSection(3.615,1.166,1.1463973487),
+    ...TYPE10_X_BOW_SECTIONS.map(([z,top,bottom])=>tubSection(z,top,bottom)),
   ]));
   for(const side of [-1,1]) {
     const rows=[[-3.615,1.515,1.50],[-1.96,1.532,1.512],[-1.47,1.463,1.443],
@@ -77,6 +75,13 @@ function hull(P:TankBuilderPort):void {
   P.add('hull',cylinder(1.31519,.041,64),-.00276,1.485,.20655);
   deckEquipment(P);frontEquipment(P);
 }
+
+// The tub's bow stations [z, roof, floor]: the floor rises over the lower bow's two planes to the nose and the roof
+// falls over the beak. The dozer kit seats on them (type10Dozer.ts).
+export const TYPE10_X_BOW_SECTIONS=Object.freeze([
+  [2.8980457874,1.3389330117,.4439975738],[3.3136651848,1.3064944246,.7213660983],
+  [3.32,1.306,.7303013235],[3.615,1.166,1.1463973487],
+] as const);
 
 function sideArmor(P:TankBuilderPort,side:number):void {
   addType10Skirts(P,side);
@@ -326,7 +331,7 @@ function sightCavity(P:TankBuilderPort,x:number,y:number,z:number,w:number,h:num
   turret(P,'turretGlass',box(w-.070,h-.051,.006),x,y+h/2,glassZ-.003);
 }
 
-function roofEquipment(P:TankBuilderPort):void {
+function roofEquipment(P:TankBuilderPort,remoteM2:boolean):void {
   turret(P,'turretHatch',cylinder(.32747,.127,40),-.511,2.317,.271);
   // 2026-10-19 (owner float sweep): the cupola stood 42-49 mm over the roof; a collar ring carries it from the roof
   turret(P,'turretDetail',cylinder(.33,.058,40),-.511,2.2295,.271);
@@ -346,7 +351,8 @@ function roofEquipment(P:TankBuilderPort):void {
   turret(P,'turretDetail',pedestal,0,0,0);
   turret(P,'turretDetail',box(.240,.025,.235),-.976,2.505,-.501);
   addType10XRoofPanels(P,PIVOT);
-  roofWeapon(P);antennas(P);
+  if(remoteM2)roofWeapon(P);
+  antennas(P);
 }
 
 function roofWeapon(P:TankBuilderPort):void {
@@ -503,7 +509,12 @@ function mainGun(P:TankBuilderPort):void {
   P.muzzleZ=TYPE10_X_DATUMS.muzzleZ-GUN[2];
 }
 
-export function buildType10X(P:TankBuilderPort):void {
+interface Type10XBuildOptions {
+  /** False where a variant seats its own roof stations (the dozer's autocannons, type10DozerFieldKit.ts). */
+  readonly remoteM2?:boolean;
+}
+
+export function buildType10X(P:TankBuilderPort,{remoteM2=true}:Type10XBuildOptions={}):void {
   P.hullG.position.set(0,0,0);
   P.turretG.position.set(...PIVOT);
   P.gunG.position.set(GUN[0]-PIVOT[0],GUN[1]-PIVOT[1],GUN[2]-PIVOT[2]);
@@ -515,9 +526,9 @@ export function buildType10X(P:TankBuilderPort):void {
     returnRollerHullHalfWidthM:.878,
     topY:1.249,botY:.0805,paintedEnds:true,coveredTop:true,arms:true,
   });
-  turretArmor(P);rearRack(P);roofEquipment(P);mainGun(P);
+  turretArmor(P);rearRack(P);roofEquipment(P,remoteM2);mainGun(P);
   P.topY=2.989-PIVOT[1];
   P.hullG.userData.xRebuild={candidate:'type10',independent:true,sourceLocalOnly:true,datumVersion:1};
 }
 
-export const TYPE10_X_PROFILES={type10:{build:buildType10X}} as const;
+export const TYPE10_X_PROFILES={type10:{build:(P:TankBuilderPort)=>buildType10X(P)}} as const;

@@ -345,8 +345,8 @@ assert.match(responsiveSurfaces, /data-cot-width='compact'[\s\S]*menu-select--ma
   'the battlefield picker must collapse to one column on phones');
 assert.match(playMenu, /Object\.defineProperty\(control, 'disabled',[\s\S]*trigger\.disabled = disabled/,
   'custom room listboxes must preserve native disabled semantics for guests and ready states');
-assert.match(publicNav, /\.public-nav__links \.public-nav__github\{gap:9px;padding-inline:15px\}/,
-  'the desktop GitHub star control needs comfortable internal spacing');
+assert.match(publicNav, /\.public-nav__tools>\.public-nav__lang,\.public-nav__tools>\.public-nav__icon-link\{display:none\}/,
+  'the phone bar keeps the mark, Play and the menu; language and source move into the menu sheet');
 
 // (2026-10-17, BUI-F1) the network status banner and diagnostics panel left the tree with the multiplayer cutover
 // (stage B, 509170998): their responsive overrides went with the boot CSS they no longer styled.

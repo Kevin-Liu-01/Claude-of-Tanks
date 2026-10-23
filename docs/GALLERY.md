@@ -151,15 +151,18 @@ What is drawn is what the simulation tests:
   round count or capacity the data does not hold (a launcher whose form names
   its tube count draws that count, shared across its parts). Tracks are left
   to the exterior shell and the hit volumes.
-- **Crew** mannequins are never scaled to their station. The head centre sits
-  on the station's combat head shape; the pose comes from the role, tucked
-  (trunk reclined, hips and knees flexed) until the boots clear the floor (the
-  exact hull-shell floor, or the top of a stowage or powerplant module under
-  the station) and the knees, ankles and toes stay inside the hull shell.
-  Where no tuck keeps the legs inside, the figure slides along its station,
-  head still inside the combat station box. A station too small for a person
-  stays visible as one: the figure is not shrunk. Each figure is tinted by its
-  role, with the role's colour on the helmet band.
+- **Crew** mannequins are never scaled to their station. A seated station
+  (every playable vehicle since 235: the calibration's crew seats) gives the
+  mannequin the combat body's exact posture and head, so the figure is the
+  body whose head, torso, thighs and shins are the crew hit shapes. Otherwise
+  the head centre sits on the station's combat head shape and the pose comes
+  from the role, tucked (trunk reclined, hips and knees flexed) until the boots
+  clear the floor (the exact hull-shell floor, or the top of a stowage or
+  powerplant module under the station) and the knees, ankles and toes stay
+  inside the hull shell; where no tuck keeps the legs inside, the figure slides
+  along its station, head still inside the combat station box. A station too
+  small for a person stays visible as one: the figure is not shrunk. Each
+  figure is tinted by its role, with the role's colour on the helmet band.
 - **Hit volumes** draw every module, crew and barrel hit shape exactly.
 
 `src/gallery/anatomyFidelity.selftest.mjs` holds this for every vehicle:

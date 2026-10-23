@@ -41,7 +41,8 @@ interface GarageReturnSettingsPort {
 
 interface GarageReturnPresentationPort {
   setAdaptiveSuspended(suspended: boolean): void;
-  clearBattle(): void;
+  /** Release replay and aim state; `keepScreens` leaves the report and the HUD up for the veil to cover. */
+  clearBattle(options?: { readonly keepScreens?: boolean }): void;
   resetBattleTank(): void;
   suspendEffects(): void;
   setShotMode(enabled: boolean): void;
@@ -489,8 +490,10 @@ export function createGarageReturnRuntime<Visual = object>(
   };
 
   const leave = (): Promise<void> => beginTransition(async () => {
-    // Input state releases immediately; the scene swap remains under the veil.
-    presentation.clearBattle();
+    // Input state releases immediately; the scene swap remains under the veil. The report stays on screen until the
+    // veil covers it (enter() clears it there): hiding it first showed the bare battle for a few frames
+    // (2026-10-22, nav-perf-240).
+    presentation.clearBattle({ keepScreens: true });
     await transition.run(() => enter(), {
       kicker: t('transition.kicker.leavingBattle'),
       title: t('transition.title.garage'),

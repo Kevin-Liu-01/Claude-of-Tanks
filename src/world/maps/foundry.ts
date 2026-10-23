@@ -212,7 +212,11 @@ export default {
   // authored (1100 m, Cinder's): the regime's own is the legacy sky block's, which reads this smoggy block as an overcast
   // at 340 m. The field fuller (0.5 -> 0.71, the capture's CLOUD_CU_COVER 1.4: the s146 critics' "less cloud than the
   // reference"; blind WIN 3-0-1 / 4-0-0 against the reference strip, where 1.6 began to read as a smeared sheet)
-  clouds: { regime: 'fair-weather-cumulus', coverage: 0.71, baseM: 1100, tintHex: 0xd8cec0, nightGlow: 0.9, nightGlowHex: 0xff8a40 },
+  // 2026-10-22 (world-polish-240; the coordinator: Ironworks under a flat grey deck, not the owner's bar): at 0.71 under a
+  // 1100 m base and the warm-grey tint the field closed into lumpy grey masses, dark slabs at sunset. Verdant-scale cover
+  // a little fuller (0.55), its base higher (1350 m) and the smog tint lighter: big cumulus over blue with warm smoky
+  // bases; the furnace glow at night kept
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.55, baseM: 1350, tintHex: 0xf0e8dc, nightGlow: 0.9, nightGlowHex: 0xff8a40 },
   sky: {
     sunElevationDeg: 25, sunAzimuthDeg: 128, turbidity: 7.8, rayleigh: 1.35,
     // round 76 (2026-09-26, the deck pass): the industrial haze comes off the whole frame and onto the deck's base and

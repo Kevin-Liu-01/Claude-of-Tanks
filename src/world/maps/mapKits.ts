@@ -1868,6 +1868,8 @@ interface RailLay {
   washout: boolean;
   /** Skip a span whose middle this rejects, the same way: a map's gap in a yard line (maps/saarWorks.ts). */
   gap?: (x: number, z: number) => boolean;
+  /** The bed's and shoulders' tone as a share of the crushed stone's (RailSpurConfig.ballastShade); omitted = 1. */
+  shade?: number;
 }
 
 /** The 'full' lay's ground samples in the slab's own frame (along, across), each ±1 = the footprint's half-extent. */
@@ -1973,7 +1975,7 @@ function layRailSpan(
     for (let i = 0; i < n; i++) {
       // (wave 8, railyard establishing: the pale bed and bright heads read as "flat gray grid patches … solar-panel
       // arrays"): weathered, oil-dark crushed stone — between the old near-black and the first pale pass
-      const v = tones[i % 24];
+      const v = tones[i % 24] * (lay.shade ?? 1);
       col[i * 3] = v; col[i * 3 + 1] = v * 0.97; col[i * 3 + 2] = v * 0.92;
     }
     bal.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -1992,7 +1994,7 @@ function layRailSpan(
       const pos = shoulder.attributes.position, col = new Float32Array(pos.count * 3);
       for (let i = 0; i < pos.count; i++) {
         const foot = (pos.getX(i) * sideSign + slopeLen / 2) / slopeLen; // 0 at the bed's edge, 1 at the foot
-        const v = 0.072 - 0.016 * foot;
+        const v = (0.072 - 0.016 * foot) * (lay.shade ?? 1);
         col[i * 3] = v; col[i * 3 + 1] = v * (0.97 - 0.03 * foot); col[i * 3 + 2] = v * (0.90 - 0.06 * foot);
       }
       shoulder.setAttribute('color', new THREE.BufferAttribute(col, 3));
@@ -2135,7 +2137,7 @@ function dressRailSpurs(ctx: FocusedDressingContext, spurs: readonly RailSpurCon
   for (const spur of spurs) {
     const lay: RailLay = {
       gauge: spur.gauge ?? RAIL_SPUR_GAUGE_M, ballast: spur.ballast ?? RAIL_SPUR_BALLAST_M,
-      conform: 'full', washout: true,
+      conform: 'full', washout: true, ...(spur.ballastShade !== undefined ? { shade: spur.ballastShade } : {}),
     };
     const spans = resampleRailPath(spur.path, RAIL_SPUR_LAY_M, true);
     for (const span of spans) layRailSpan(buckets, rng, heightField, span.ax, span.az, span.bx, span.bz, lay);

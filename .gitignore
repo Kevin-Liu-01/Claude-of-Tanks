@@ -22,6 +22,12 @@ __pycache__/
 .env.*
 !.env.example
 !.env.*.example
+# operator secret files placed anywhere in the checkout (security audit 2026-10-22)
+.dev.vars
+.dev.vars.*
+*.pem
+*.key
+.npmrc
 public/models/tanks/**/*.glb
 
 # Local agent/task state and generated performance evidence

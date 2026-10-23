@@ -42,11 +42,6 @@ const KNOWN_DUPLICATES = Object.freeze({
       '/media/showcase-r2/25_live_killcam_xray': 2,
     },
   },
-  'site/home.html': {
-    task: 'the landing rebuild (BUI-W2: the 10-19 landing shows six versus stills in the hero rail and again on the versus wall)',
-    stills: Object.fromEntries(['vs01-desert-abrams-t90m-r6', 'vs02-verdant-challenger-t80u-r6', 'vs03-reservoir-k2-ztz99-r6',
-      'vs04-railyard-leclerc-t14-r6', 'vs05-oasis-merkava-t72b3-r6', 'vs06-coastal-type10-ztz99a2-r6'].map((id) => [`/media/versus-r1/${id}`, 2])),
-  },
 });
 /** Social cards that share one source today, each until its package re-sources it (BUI-W4: social cards). */
 const KNOWN_SHARED_CARDS = new Set(['studio|docs-studio', 'docs-ai|404']);

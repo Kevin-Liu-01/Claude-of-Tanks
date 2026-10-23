@@ -33,6 +33,7 @@ export {
   CLAUDE_CODE_MARK, CLAUDE_SPARK_MARK, fillHeightNormalRows, applyPatchRoughnessPixels,
 } from './materialPainter.ts';
 import { bindVehicleReadabilityUniform } from './vehicleReadability.ts';
+import { mapTintHex } from '../fx/mapPalette.ts';
 import { VEHICLE_ALPHA_TAG, tagUnlitVehiclePixels } from '../engine/vehicleOcclusion.ts';
 import { bindNightOwnGunUniforms, NIGHT_OWN_GUN_GLSL } from '../engine/nightLightingRuntime.ts';
 
@@ -2471,6 +2472,63 @@ function vehicleEnvScaleUniform(material: THREE.Material): { readonly value: num
   };
 }
 
+// VH.05 field wear, redesigned (VEHICLES 227; three flat waves of baked wear textures, 240, 264 and 292, retired the old
+// design): ONE shader term on every vehicle material, the earth a hull carries. Its colour is the dry track dust the
+// hull itself kicks up (effects.ts' medium-ground wake, laid over the map's ground hue by mapPalette.ts), so a hull on a
+// red badland carries red-tan dust and one in a green field brown earth. Its weight is
+//  - kicked-up dust: full on the running gear and the lowest plates, gone by FIELD_DUST_H1 up the hull's own axis
+//    (the ground reference every vehicle mesh binds before it draws: setVehicleGroundFromRoot);
+//  - settled dust: a thinner film on faces turned to the sky (decks, roofs, the glacis top);
+//  - broken up by two octaves of value noise in the part's own frame, so it clings to a moving, turning hull.
+// Dust is dull: it takes the roughness toward FIELD_DUST_ROUGH and the metal out. Glass, rubber (its own grime maps,
+// rubberSurface.ts; owner 2026-10-21: rubber stays rubber) and the burnt wreck opt out (COT_NO_FIELD_DUST); anything
+// drawn without a vehicle root (uVehGround.w 0: thumbnails, tooling) keeps its paint.
+const FIELD_DUST_TABLE_HEX = 0xa8a189;
+// Blind critic round 1 (240, the Leclerc S2's close track, top and quarter): the first weights washed the track pale
+// cream, the road wheels tan and the lower plates in a milky haze, and big soft blotches greyed the deck's camo. Round 2:
+// the track iron opts out (the band textures carry their own dirt), the kicked-up dust ramps from the ground contact
+// itself, the cover and the settled film are lighter, and the breakup is twice as fine.
+/** Kicked-up dust: full at FIELD_DUST_H0 m above the ground contact, none above FIELD_DUST_H1. */
+const FIELD_DUST_H0 = 0.0;
+const FIELD_DUST_H1 = 1.2;
+/** The settled film's weight on a face turned straight up (0..1 of the kicked-up dust's). */
+const FIELD_DUST_SETTLED = 0.25;
+/** How far the dust colour covers the paint at full weight. */
+const FIELD_DUST_COVER = 0.3;
+/** The whole term's weight (uCotFieldDust.w): 0 ships every vehicle without field dust. */
+const FIELD_DUST_WEIGHT = 1;
+const FIELD_DUST_ROUGH = 0.96;
+const fieldDustColor = new THREE.Color();
+const fieldDustValue = new THREE.Vector4();
+let fieldDustHex = -1;
+/** uCotFieldDust: rgb the map's dust (linear), a the term's weight (0 removes it). */
+const FIELD_DUST_UNIFORM = Object.freeze({
+  get value(): THREE.Vector4 {
+    const hex = mapTintHex(FIELD_DUST_TABLE_HEX);
+    if (hex !== fieldDustHex) {
+      fieldDustHex = hex;
+      fieldDustColor.setHex(hex);
+      fieldDustValue.set(fieldDustColor.r, fieldDustColor.g, fieldDustColor.b, FIELD_DUST_WEIGHT);
+    }
+    return fieldDustValue;
+  },
+});
+const FIELD_DUST_GLSL = /* glsl */ `
+float cotFdHash( vec3 p ) {
+	p = fract( p * 0.3183099 + 0.1 );
+	p *= 17.0;
+	return fract( p.x * p.y * p.z * ( p.x + p.y + p.z ) );
+}
+float cotFdNoise( vec3 x ) {
+	vec3 i = floor( x );
+	vec3 f = fract( x );
+	f = f * f * ( 3.0 - 2.0 * f );
+	return mix( mix( mix( cotFdHash( i ), cotFdHash( i + vec3( 1.0, 0.0, 0.0 ) ), f.x ),
+		mix( cotFdHash( i + vec3( 0.0, 1.0, 0.0 ) ), cotFdHash( i + vec3( 1.0, 1.0, 0.0 ) ), f.x ), f.y ),
+		mix( mix( cotFdHash( i + vec3( 0.0, 0.0, 1.0 ) ), cotFdHash( i + vec3( 1.0, 0.0, 1.0 ) ), f.x ),
+		mix( cotFdHash( i + vec3( 0.0, 1.0, 1.0 ) ), cotFdHash( i + vec3( 1.0, 1.0, 1.0 ) ), f.x ), f.y ), f.z );
+}`;
+
 /**
  * Shader hook: clamp `reflectedLight.indirectDiffuse` to an albedo-scaled,
  * view-dependent floor. Chain via `setupShadowMaterial(mat,
@@ -2485,7 +2543,30 @@ export function vehicleAmbientFloorHook(shader: MaterialShader): void {
   // the material's image-based-light scale (vehicleEnvScaleUniform): createTankMaterials binds each material's own;
   // anything compiled through the bare hook keeps the scene's full sky light, as before
   shader.uniforms.uVehEnvScale ??= { value: 1 };
-  shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\nuniform float uVehEnvScale;\n${shader.fragmentShader}`;
+  shader.uniforms.uCotFieldDust = FIELD_DUST_UNIFORM;
+  shader.fragmentShader = `uniform float uVehicleReadabilityScale;\nuniform vec4 uVehGround;\nuniform vec3 uVehUp;\nuniform float uVehEnvScale;\nuniform vec4 uCotFieldDust;\nvarying vec3 vCotFdPos;\n${FIELD_DUST_GLSL}\n${shader.fragmentShader}`;
+  // VH.05 field dust: the part's own-frame position carries the dust's breakup (it clings as the hull moves)
+  shader.vertexShader = `varying vec3 vCotFdPos;\n${shader.vertexShader}`.replace(
+    '#include <begin_vertex>', '#include <begin_vertex>\n\tvCotFdPos = transformed;');
+  shader.fragmentShader = shader.fragmentShader.replace(
+    '#include <emissivemap_fragment>',
+    `#include <emissivemap_fragment>
+#if defined( STANDARD ) && !defined( COT_NO_FIELD_DUST )
+	{
+		// VH.05 field dust (FIELD_DUST_*): kicked-up earth low on the hull, a settled film on sky-facing faces
+		vec3 fdWorld = cameraPosition + ( vec4( -vViewPosition, 0.0 ) * viewMatrix ).xyz;
+		float fdHeight = dot( fdWorld - uVehGround.xyz, uVehUp );
+		float fdUp = dot( inverseTransformDirection( normal, viewMatrix ), uVehUp );
+		float fdWeight = max( 1.0 - smoothstep( ${FIELD_DUST_H0.toFixed(3)}, ${FIELD_DUST_H1.toFixed(3)}, fdHeight ),
+			${FIELD_DUST_SETTLED.toFixed(3)} * smoothstep( 0.45, 0.95, fdUp ) );
+		float fdBreak = 0.62 * cotFdNoise( vCotFdPos * 4.6 ) + 0.38 * cotFdNoise( vCotFdPos * 18.0 + 7.0 );
+		float fd = saturate( fdWeight * ( 0.35 + 1.1 * fdBreak ) - 0.12 ) * uCotFieldDust.w * uVehGround.w;
+		diffuseColor.rgb = mix( diffuseColor.rgb, uCotFieldDust.rgb, fd * ${FIELD_DUST_COVER.toFixed(3)} );
+		roughnessFactor = mix( roughnessFactor, ${FIELD_DUST_ROUGH.toFixed(3)}, fd );
+		metalnessFactor *= 1.0 - fd;
+	}
+#endif`,
+  );
   // CN-7 (2026-10-20, "the main-gun barrel seen from the front shows as a bright white glowing tube"): a vehicle's own
   // lit lamps put none of their light on its own gun (nightLightingRuntime NIGHT_OWN_GUN_GLSL); the beams are unchanged
   bindNightOwnGunUniforms(shader.uniforms);
@@ -2904,6 +2985,58 @@ export function cloneVehicleMaterial<T extends THREE.Material>(source: T, config
   return clone;
 }
 
+/**
+ * A cloned visual's own copy of one of its source's materials (cloneTankVisual): the same parameters, defines, maps and
+ * user data, joined to the source's registration family (its own cascade entry and sky-light scale) under the source's
+ * whole compile chain as it stands now (the profile patches, the night-lens mask, the unlit tag) and its program key,
+ * so the two draw with one program while every uniform, burn mask and dent stays the copy's own. The source must be
+ * pristine: a burn mask a wreck installed belongs to its own visual.
+ */
+export function copyVehicleMaterial<T extends THREE.Material>(source: T): T {
+  if (source.userData.__burnU) throw new Error('a burnt vehicle material cannot be copied for another visual');
+  if (programVariantOrigin(source) !== source) throw new Error('a program-variant twin cannot be copied for another visual');
+  const clone = source.clone() as T;
+  const defines = (source as { defines?: Record<string, unknown> }).defines;
+  if (defines) (clone as { defines?: Record<string, unknown> }).defines = { ...defines };
+  const chain = source.onBeforeCompile, key = source.customProgramCacheKey();
+  const family = VEHICLE_REGISTRATION.get(source)?.family;
+  if (family) {
+    family.setup(clone);
+    clone.onBeforeCompile = function (this: THREE.Material, shader, renderer) {
+      const outer = vehicleCompileTarget;
+      // the compile hook names its own material to the family's shared setup for the duration of the call (not an alias)
+      // oxlint-disable-next-line typescript/no-this-alias
+      vehicleCompileTarget = this;
+      try { chain.call(this, shader, renderer); }
+      finally { vehicleCompileTarget = outer; }
+    };
+  } else {
+    // the cascade setup keys the shader it refreshes by the material in its hook's closure: outside a family a copy
+    // would take its source's entry over (reportUnregisteredCascadeClone)
+    if (defines && 'USE_CSM' in defines) throw new Error('an unregistered cascade material cannot be copied for another visual');
+    clone.onBeforeCompile = chain;
+  }
+  clone.customProgramCacheKey = () => key;
+  if (UNLIT_VEHICLE_TAGGED.has(source)) UNLIT_VEHICLE_TAGGED.add(clone);
+  return clone;
+}
+
+/**
+ * A cloned visual's hold on its vehicle's shared camouflage textures (the entry createTankMaterials acquires): taken
+ * at the clone's texture quality, so a closer clone promotes the entry in place as a fresh build would, and released
+ * with the clone.
+ */
+export function acquireTankTextureLease(
+  spec: MaterialTankSpec,
+  engineCtx: ShadowEngineContext | null | undefined,
+  quality: string,
+  camoPattern: string | null,
+): { release(): void } {
+  const shared = acquireSharedTextures(spec, engineCtx?.anisotropy || 8, normalizeMaterialTextureQuality(quality), camoPattern);
+  let held = true;
+  return { release() { if (held) { held = false; releaseSharedTextures(shared); } } };
+}
+
 /** The program key of a material compiled through the bare readability hook (the decorations', a profile's re-hook). */
 const VEHICLE_BARE_HOOK_KEY = 'veh-ambient-floor-v2';
 
@@ -3115,6 +3248,10 @@ export function createTankMaterials(
     normalScale: new THREE.Vector2(0.65, 0.65),
   })));
   rubber.userData.rubberSurface = true;
+  // VH.05 (240; owner 2026-10-21, "rubber all over the place ... need proper textures"): the rubber carries its own grime
+  // and dust in rubberSurface.ts's maps, so the field-dust term leaves it out; a second dust film would wash the tyres
+  // pale grey (launch night 2026-10-08: "dusty dark grey is right and pale grey is not").
+  rubber.defines = { ...rubber.defines, COT_NO_FIELD_DUST: 1 };
   // Fleet lane 2026-10-08: the wheel insets (lightening holes, hub wells, bolt heads in the well) take the rubber's paint
   // with a cavity's light (COT_GEAR_CAVITY) and little of the sky, so a hole reads as a hole in the Garage and the field.
   const rubberCavity = track(setup(new THREE.MeshStandardMaterial({
@@ -3188,9 +3325,12 @@ export function createTankMaterials(
   // elsewhere on the same vehicle"): 0x46423a link pads bounced to pale sand
   // under direct sun while the band texture stayed near-black — one run read
   // as two materials. Pads pulled down into the band's own tonal family.
+  // Round 5 per-material surfaces (2026-10-08): worn iron rather than painted plastic, a quarter metallic and a step
+  // smoother (0.84 x the map; was 0.95 / 0.08), so links, ribs and sprocket teeth take a dull steel sheen where the
+  // sun rakes them; the sky response stays cut (0.1) for the r10 / tank_models r1 blue-tint reasons above.
   const trackLink = track(setup(new THREE.MeshStandardMaterial({
-    color: 0x353634, roughness: 0.95, metalness: 0.08, roughnessMap: roughTex,
-    envMapIntensity: 0.08,
+    color: 0x353634, roughness: 0.84, metalness: 0.22, roughnessMap: roughTex,
+    envMapIntensity: 0.1,
   })));
   // Spare track links carried as stowage/armor: dark oily track steel — the
   // light-grey trackLink shade read as unpainted plastic sprue racked on the
@@ -3199,8 +3339,10 @@ export function createTankMaterials(
     // r3: roughness floor raised / metalness cut — with the multiplying
     // roughnessMap the 0.85 base dipped to sparkling flecks on idler/sprocket
     // recess faces (the T-90M "navy sparkle" read under the closeup key).
-    color: 0x353634, roughness: 0.94, metalness: 0.08, roughnessMap: roughTex,
-    envMapIntensity: 0.06,
+    // Round 5 (2026-10-08): the same worn iron as the live links (0.84 / 0.22 / 0.1, was 0.94 / 0.08 / 0.06), still
+    // well above the 0.85 base whose map dips sparkled.
+    color: 0x353634, roughness: 0.84, metalness: 0.22, roughnessMap: roughTex,
+    envMapIntensity: 0.1,
   })));
   // VEH-13 (2026-10-15; blind critics m1: spare links read as "flat untextured grey blocks with no grousers, pins,
   // paint or rust"): the stowed spare links, and only they (the live run, the running gear and the other track-steel
@@ -3224,6 +3366,7 @@ export function createTankMaterials(
   const glass = track(setup(new THREE.MeshStandardMaterial({
     color: 0x343b34, roughness: 0.58, metalness: 0.08, envMapIntensity: 0.16,
   })));
+  glass.defines = { ...glass.defines, COT_NO_FIELD_DUST: 1 }; // VH.05: lenses and vision blocks stay clear
   // Gun tube: painted in the vehicle scheme like the hull — crews paint the
   // tube, only the muzzle brake stays bare steel (routed to the dark bucket).
   // Uses the same box-projected camo map as the shell so it never reads as an
@@ -3246,8 +3389,11 @@ export function createTankMaterials(
     color: usesSchemeTintedCanvas
       ? new THREE.Color(cssRGB(canvasRgbOf(patVis)))
       : 0x42452f,
+    // Round 5 per-material surfaces (2026-10-08; wave 264: "no material difference between rubber, steel and canvas"):
+    // woven cotton duck scatters light and mirrors none of the sky, so cloth keeps a tenth of it (0.1, was 0.25, the
+    // painted fittings' own response): bags, tarps and bedrolls go dead matte beside the paint's soft grazing sheen.
     roughness: 0.97, metalness: 0.0,
-    bumpMap: roughTex, bumpScale: 0.5, envMapIntensity: 0.25,
+    bumpMap: roughTex, bumpScale: 0.5, envMapIntensity: 0.1,
     // sealed check 2026-09-13: cloth is thin and seen from both sides —
     // single-sided ghillie strips, tarps and aprons vanished from behind and
     // exposed the hull through the suit as the camera orbited.
@@ -3269,7 +3415,7 @@ export function createTankMaterials(
   // under the hull's value on Sinai Grey (#6f7566) so it reads as kit, not as a lit hull face.
   const canvasPale = track(setup(new THREE.MeshStandardMaterial({
     color: 0x66604a, roughness: 0.97, metalness: 0.0,
-    bumpMap: roughTex, bumpScale: 0.5, envMapIntensity: 0.25,
+    bumpMap: roughTex, bumpScale: 0.5, envMapIntensity: 0.1, // round 5: dead-matte cloth, as the OD canvas above
     side: THREE.DoubleSide,
   })));
   for (const rec of paintableRecs) shared.paintable.add(rec);
@@ -3302,6 +3448,7 @@ export function createTankMaterials(
     normalMap: normalTex, normalScale: new THREE.Vector2(0.9, 0.9),
     emissive: 0xff5a18, emissiveIntensity: 0.018, emissiveMap: null,
   })));
+  burnt.defines = { ...burnt.defines, COT_NO_FIELD_DUST: 1 }; // VH.05: the wreck keeps its char
   const prepareBurnt = () => {
     ensureBurntTextures(shared, aniso);
     if (!shared.burntTex || !shared.emberTex) {
@@ -3386,6 +3533,8 @@ vec4 burntTri( sampler2D m, vec3 p, vec3 n, float sc ) {
     map: trackTexL, bumpMap: trackTexL, bumpScale: 0.5, ...trackMatOpts })));
   const trackR = track(setup(new THREE.MeshStandardMaterial({
     map: trackTexR, bumpMap: trackTexR, bumpScale: 0.5, ...trackMatOpts })));
+  // VH.05 round 2 (240 blind critic): the track iron keeps its own dirt; the field-dust term washed it pale cream
+  for (const iron of [trackL, trackR, trackLink, spareTrack, spareLink]) iron.defines = { ...iron.defines, COT_NO_FIELD_DUST: 1 };
 
   const marking = vehicleMarkingRecord(spec);
   const decalCache = new Map<string, THREE.MeshStandardMaterial>();

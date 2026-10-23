@@ -33,7 +33,7 @@ import { containModalTab } from './modal.ts';
 import { createRichTooltip } from './richTooltip.ts';
 import { awardDetails } from './awardDetails.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
-import { createElement as el } from './dom.ts';
+import { createElement as el, escapeHtml } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
 import { iconUrl, maskIcon } from './icons.ts';
 import { killSourceIdentity } from './killSourceIdentity.ts';
@@ -778,8 +778,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const details: string[] = [vehicle, ...rosterRowDetails(result, revives)];
     row.innerHTML =
       '<span class="si"></span>' +
-      `<span class="identity"><span class="nm">${result.isPlayer ? `<b class="you">${t('endScreen.you')}</b>` : ''}${result.name || result.id}</span>` +
-      `<span class="veh">${details.filter(Boolean).join(' · ')}</span></span>` +
+      `<span class="identity"><span class="nm">${result.isPlayer ? `<b class="you">${t('endScreen.you')}</b>` : ''}${escapeHtml(result.name || result.id)}</span>` +
+      `<span class="veh">${details.filter(Boolean).map(escapeHtml).join(' · ')}</span></span>` +
       '<span class="output"><span class="ov"></span><span class="obar" aria-hidden="true"><i></i></span></span>' +
       `<span class="st">${uiIconSVG(result.dead ? 'skull' : 'check', 16)}</span>`;
     const damage = Math.max(0, Number(result.dmg) || 0);
@@ -873,7 +873,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     if (sum.finalBlow) {
       const blow = el('div', 'es-blow es-in', hero);
       blow.style.setProperty('--i', nextI());
-      blow.innerHTML = `${uiIconSVG(sum.finalBlow.cause === 'ammorack' ? 'ammoRack' : sum.finalBlow.cause === 'ram' ? 'killRam' : 'skull', 18)}<span>${finalBlowLine(sum.finalBlow)}</span>`;
+      blow.innerHTML = `${uiIconSVG(sum.finalBlow.cause === 'ammorack' ? 'ammoRack' : sum.finalBlow.cause === 'ram' ? 'killRam' : 'skull', 18)}<span>${escapeHtml(finalBlowLine(sum.finalBlow))}</span>`;
       host.dataset.finalBlow = `${sum.finalBlow.cause}:${sum.finalBlow.attacker || ''}>${sum.finalBlow.target}`;
     } else {
       delete host.dataset.finalBlow;
@@ -886,7 +886,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const meta = el('div', 'es-meta es-in', hero);
     meta.style.setProperty('--i', nextI());
     const bits: string[] = [];
-    if (sum.map) bits.push(`<span>${uiIconSVG('map', 14)}<b>${sum.map}</b></span>`);
+    if (sum.map) bits.push(`<span>${uiIconSVG('map', 14)}<b>${escapeHtml(sum.map)}</b></span>`);
     if (sum.timeS > 0) {
       bits.push(`<span>${uiIconSVG('clock', 14)}<b>${fmtTime(sum.timeS)}</b></span>`);
     }
@@ -990,7 +990,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     strip.innerHTML =
       `<span class="bk">${uiIconSVG('autoAim', 16)}<span>${t('endScreen.bestShot')}</span></span>` +
       `<span class="bd">${fmtN(bestShot.damage)}</span>` +
-      `<span class="bt"><b>${bestShot.targetName || t('endScreen.enemyVehicle')}</b><small>${details}</small></span>`;
+      `<span class="bt"><b>${escapeHtml(bestShot.targetName || t('endScreen.enemyVehicle'))}</b><small>${escapeHtml(details)}</small></span>`;
     host.dataset.bestShot = String(Math.round(bestShot.damage));
   }
 
@@ -1027,7 +1027,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     for (const kill of kills) {
       const row = el('div', 'es-kr', killList);
       row.innerHTML = '<span class="si"></span>' +
-        `<span class="nm">${kill.name || kill.id}</span>` +
+        `<span class="nm">${escapeHtml(kill.name || kill.id)}</span>` +
         `<span class="dm">${kill.dmg > 0 ? fmtN(kill.dmg) : ''}</span>`;
       maskIcon(requiredDescendant<HTMLElement>(row, '.si'), kill.specId || kill.id,
         'side_silhouette', 'rgba(255,209,102,.85)');

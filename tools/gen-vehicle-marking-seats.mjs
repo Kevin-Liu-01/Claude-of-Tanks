@@ -9,6 +9,7 @@ import { createTank } from '../src/vehicles/tankFactory.ts';
 import { ALL_TANK_IDS } from '../src/vehicles/specs.ts';
 import { FLEET_GROUP_BY_ID } from '../src/vehicles/fleetManifest.ts';
 import { measureSeatedMarkingVisibility } from '../src/vehicles/vehicleMarkingSeating.ts';
+import { preBakeLocalMatrix } from '../src/vehicles/turretRigScale.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const outputPath = path.join(root, 'src/vehicles/vehicleMarkingSeats.generated.ts');
@@ -43,11 +44,13 @@ for (const id of ALL_TANK_IDS) {
       unmatched.push(`${id}/${kind}: solved ${object.userData.visibilityClearSamples}/${object.userData.visibilitySamples}, `
         + `the finished build reads ${finished.visibilityClearSamples}/${finished.visibilitySamples}`);
     }
+    // 235: a turret decal is seated before the turret squash moves onto it (turretRigScale.ts): written in that frame
+    const preBake = preBakeLocalMatrix(object)?.elements;
     seats.push({
       kind,
       parent: object.userData.surfaceOwner,
-      size: round(object.scale.x),
-      pos: vector(object.position.toArray()),
+      size: round(preBake ? Math.hypot(preBake[0], preBake[1], preBake[2]) : object.scale.x),
+      pos: vector(preBake ? [preBake[12], preBake[13], preBake[14]] : object.position.toArray()),
       quaternion: vector(object.quaternion.toArray()),
       surfaceMesh: object.userData.surfaceMesh,
       anchorProfile: object.userData.markingAnchorProfile,

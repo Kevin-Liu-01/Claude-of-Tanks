@@ -8,6 +8,7 @@ import { sectionSolid } from './sectionSolid.ts';
 import { EASTERN_SOURCE_STUDIES } from '../easternSourceStudyData.ts';
 import { barrel, equipment, hatch, panel, openGunTube, hullStation, optic, smokeBank, turretStation } from './easternSourceKit.ts';
 import type { TankBuilderPort } from '../tankFactoryCore.ts';
+import { launchCellParts } from './missileCanisterStock.ts';
 const { box, cylX, cylY, cylZ } = KIT;
 /** Rear ramp rests on the measured raked wall, including its existing fittings. */
 function seatedRearRamp(P: TankBuilderPort): void {
@@ -411,6 +412,14 @@ function addK21Launcher(P: TankBuilderPort): void {
         housing.push(box(width, wall, front - back).translate(0, side * (height - wall) / 2, (front + back) / 2));
     }
     housing.push(box(width, height, wall).translate(0, 0, back + wall / 2));
+    // 2026-10-21 (owner: launch tubes "like the object 695, and tagil"): each aperture gains a proud rim collar whose
+    // dark liner runs back to the missile's nose cap, and the caps are unpainted dark stock. The housing is unchanged.
+    const dark: THREE.BufferGeometry[] = [];
+    for (const v of terminalV) {
+        const cell = launchCellParts({ bore: .071, wall: .018, proud: .022, behind: wall, depth: .03, terminal: false,
+            segments: [24, 12] }, P.q, -.01195, v - centerV, front);
+        housing.push(cell.rim); dark.push(cell.bore);
+    }
     for (const [i, v] of terminalV.entries()) {
         const offset = i * .0012817;
         // Closed convex caps: neither a painted disc nor an invented open bore.
@@ -419,10 +428,12 @@ function addK21Launcher(P: TankBuilderPort): void {
             [.0363, .38512 + offset], [.0196, .39102 + offset], [0, .39392255 + offset]];
         // Both qualities retain the source's twelve radial flats and −7.5° phase;
         // adding sectors here changes the finite cap profile between its flats.
-        housing.push(new THREE.LatheGeometry(section.map(([r, z]) => new THREE.Vector2(r, z)), 12)
+        dark.push(new THREE.LatheGeometry(section.map(([r, z]) => new THREE.Vector2(r, z)), 12)
             .rotateX(Math.PI / 2).rotateZ(-Math.PI / 24).translate(-.01195, v - centerV, 0));
     }
-    equipment(P, 'turret', 'Detail', KIT.mergeAll(housing), 1.254325, centerV * Math.cos(angle) - .0138, -centerV * Math.sin(angle), -angle);
+    const at = [1.254325, centerV * Math.cos(angle) - .0138, -centerV * Math.sin(angle), -angle] as const;
+    equipment(P, 'turret', 'Detail', KIT.mergeAll(housing), ...at);
+    equipment(P, 'turret', 'Dark', KIT.mergeAll(dark), ...at);
     // Existing finite receiver joins the measured housing to the turret shoulder.
     equipment(P, 'turret', 'Detail', box(.20, .30, .35), 1.10, 2.30, -1.21);
 }

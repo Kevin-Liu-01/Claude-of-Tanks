@@ -31,8 +31,12 @@ const DRAFT: HinterlandConfig = {
     // the Ronce shoulder and Mont Froid stand 0.8–1.5 km past the edge, their rock banded, snow on the ledges)
     // (round 3, the in-game frames against the ring: the wall looms at edge-n — 820 m, its crest 1.3 km past the edge —
     // and its foot is wooded, the spruce running up its apron to ~160 m; the rock bands above)
+    // (round 5, the critics on 4c: the ring's one close dark steep wall with the light spire before it beat the
+    // pyramid at edge-n — the wall a fifth taller, a dark headwall ~300 m over its apron behind Les Tavernettes, five
+    // snow-filled couloirs down it over their debris fans, an offset summit block with a gendarme on its crest)
     { kind: 'massif', at: { azDeg: 0, distM: 1850 }, heightM: 820, lengthM: 5000, widthM: 2000, strikeDeg: 90, name: 'the cirque wall',
-      geology: { snow: { lineM: 0 }, gullies: 0.9 }, cover: { forest: [0, 160] } },
+      geology: { snow: { lineM: 0 }, gullies: 0.9 }, cover: { forest: [0, 160] },
+      peak: { along: 0.02, share: 0.22, asym: 1.5, gendarme: true }, headwall: { heightM: 120 }, couloirs: 4 },
     { kind: 'massif', at: { azDeg: 330, distM: 2300 }, heightM: 700, lengthM: 2600, widthM: 2000, strikeDeg: 60, name: 'the Ronce shoulder',
       geology: { snow: { lineM: 0 }, gullies: 0.9, erosion: 0.9 }, cover: { forest: [0, 140] } },
     { kind: 'massif', at: { azDeg: 342, distM: 6400 }, heightM: 1520, lengthM: 7400, widthM: 6200, strikeDeg: 70, name: 'Pointe de Ronce',
@@ -46,17 +50,31 @@ const DRAFT: HinterlandConfig = {
       geology: { erosion: 0.8, gullies: 0.7, snow: { lineM: 0 } }, cover: { bare: true } },
     { kind: 'ridge', at: { azDeg: 148, distM: 1450 }, heightM: 190, lengthM: 1300, widthM: 520, strikeDeg: 148, name: 'the Variselle spur',
       geology: { erosion: 0.75, gullies: 0.6, snow: { lineM: 0 } }, cover: { bare: true } },
+    // (round 5, the critics: "lower the foreground snow mound so the church nave and house bases show" — the knoll's west
+    // shoulder at ~730 m stood 15-20 m between the edge-n eye and the west houses, hiding 10-17 m of them)
+    { kind: 'valley', at: { azDeg: 350, distM: 735 }, heightM: 14, lengthM: 320, widthM: 200, strikeDeg: 90, name: 'the hollow before Les Tavernettes' },
     // west: Mont Froid and the Petit Mont-Cenis; east: the slopes up to the Lamet
     // (round 4, the coordinator on edge-w: "Mont Froid reads as a flat-topped table mountain" — its summit stands just
     // north of the west view's middle, a shoulder either side, the crest falling from it to both ends)
-    { kind: 'massif', at: { azDeg: 282, distM: 2050 }, heightM: 620, lengthM: 3400, widthM: 2300, strikeDeg: 10, name: 'Mont Froid',
-      geology: { snow: { lineM: 0 } }, cover: { forest: [0, 150] }, peak: { along: -0.15, share: 0.5 } },
-    { kind: 'massif', at: { azDeg: 92, distM: 2500 }, heightM: 560, lengthM: 4200, widthM: 2600, strikeDeg: 170, name: 'the Lamet slopes',
-      geology: { snow: { lineM: 0 } }, cover: { forest: [0, 200] } },
+    // (round 5, the critics: "the same lone symmetrical cone is stamped on both edges; tie it into a range with asymmetry
+    // and foothills, and remove the hard dark plinth at its base" — each over a lower wooded spur in front, their forest
+    // belts kept low and broken; round 5's asymmetric single summits still read as cones, below)
+    // (round 6, the critics on 5d: "a lone low-poly cone ... reads as a cartoon volcano" at edge-e, "a single low-poly grey
+    // pyramid" at edge-w — an authored summit holding half the height made each mass one cone, 11-14° proud of its
+    // shoulders from the edge eyes; each is now a longer wall with its own summits and cols: from edge-w Mont Froid stands
+    // two summits ~16° high over a col at ~12°, from edge-e the Lamet three at 13-15° over cols at 11.5-12.5°)
+    { kind: 'massif', at: { azDeg: 282, distM: 2050 }, heightM: 560, lengthM: 5200, widthM: 2300, strikeDeg: 10, name: 'Mont Froid',
+      geology: { snow: { lineM: 0 } }, cover: { forest: [0, 110] } },
+    { kind: 'ridge', at: { azDeg: 262, distM: 1450 }, heightM: 150, lengthM: 1700, widthM: 620, strikeDeg: 170, name: 'the Mont Froid spur',
+      geology: { snow: { lineM: 0 }, gullies: 0.6 }, cover: { forest: [0, 110] }, notched: true },
+    { kind: 'massif', at: { azDeg: 92, distM: 2500 }, heightM: 520, lengthM: 5600, widthM: 2600, strikeDeg: 170, name: 'the Lamet slopes',
+      geology: { snow: { lineM: 0 } }, cover: { forest: [0, 110] } },
+    { kind: 'ridge', at: { azDeg: 104, distM: 1500 }, heightM: 130, lengthM: 1600, widthM: 560, strikeDeg: 10, name: 'the Lamet foothills',
+      geology: { snow: { lineM: 0 }, gullies: 0.6 }, cover: { forest: [0, 100] }, notched: true },
     // south: the col's own shoulder over the Grande Croix, wooded, standing over the rim so the south view keeps a dark
     // forested ridge with the Susa ranges over it (the ring's edge-s had one; the first frames' edge-s was empty sky)
     { kind: 'ridge', at: { azDeg: 188, distM: 1700 }, heightM: 300, lengthM: 2600, widthM: 900, strikeDeg: 98, name: 'the Grande Croix shoulder',
-      geology: { snow: { lineM: 0 }, gullies: 0.6 }, cover: { forest: [0, 240] } },
+      geology: { snow: { lineM: 0 }, gullies: 0.6 }, cover: { forest: [0, 240] }, notched: true },
     // south: the col falls away toward the Val di Susa — the valley drops some 1,500 m in 10 km between its walls (the
     // Rocciamelone's shoulder east, the Ambin's west), so from the col the eye runs down into it and over it to the
     // Italian ranges layered beyond

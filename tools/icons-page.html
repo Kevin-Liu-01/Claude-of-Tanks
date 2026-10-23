@@ -59,6 +59,28 @@ function capture(cam, w, h) {
   return out;
 }
 
+/**
+ * A WebP encoding of a transparent capture whose background keeps an alpha floor (2026-10-22, lane 240: "grey squares
+ * at antenna tips in 3/4 icons"). Chrome's lossy WebP encoder fills the colour of every fully transparent pixel in an
+ * 8 x 8 block that also holds a visible pixel with that block's average (libwebp's transparent-area cleanup): round a
+ * thin antenna tip the background took the antenna's grey, invisible wherever alpha is honoured but grey squares in any
+ * viewer or tool that drops alpha. A background pixel left at alpha 1/255 in black is no longer transparent to the
+ * encoder, so its colour is encoded as black; in every alpha-honouring view it adds 1/255 of black, below a step of the
+ * display. The portrait framing ignores it (portraitFraming.ts thresholds 8 and 48), and the canvas passed in is not
+ * changed (the audits read it as rendered).
+ */
+function encodeWebp(canvas, quality = 0.9) {
+  const out = document.createElement('canvas');
+  out.width = canvas.width; out.height = canvas.height;
+  const context = out.getContext('2d', { willReadFrequently: true });
+  context.drawImage(canvas, 0, 0);
+  const image = context.getImageData(0, 0, out.width, out.height);
+  const data = image.data;
+  for (let i = 3; i < data.length; i += 4) if (data[i] === 0) data[i] = 1;
+  context.putImageData(image, 0, 0);
+  return out.toDataURL('image/webp', quality);
+}
+
 function silhouette(srcCanvas, outW, outH) {
   const full = document.createElement('canvas');
   full.width = srcCanvas.width; full.height = srcCanvas.height;
@@ -803,14 +825,14 @@ function inspectOne(id, renderFiles, requestedViews = null) {
       const topCam = orthoCam(center, size, [0, 1, 0], [0, 0, 1],
         projection.topHalf, projection.topHalf);
       const topCanvas = capture(topCam, BASE, BASE);
-      if (wants('top')) files[tankAssetFile(id, 'top')] = topCanvas.toDataURL('image/webp', 0.9);
+      if (wants('top')) files[tankAssetFile(id, 'top')] = encodeWebp(topCanvas);
       if (wants('topSilhouette')) files[tankAssetFile(id, 'topSilhouette')] = silhouette(topCanvas, 128, 128).toDataURL('image/png');
     }
 
     if (wants('side') || wants('sideSilhouette')) {
       const sideCam = sideInspectionCamera(center, size, extentZ);
       const sideCanvas = capture(sideCam, BASE, BASE / 2);
-      if (wants('side')) files[tankAssetFile(id, 'side')] = sideCanvas.toDataURL('image/webp', 0.9);
+      if (wants('side')) files[tankAssetFile(id, 'side')] = encodeWebp(sideCanvas);
       if (wants('sideSilhouette')) files[tankAssetFile(id, 'sideSilhouette')] = silhouette(sideCanvas, 256, 128).toDataURL('image/png');
     }
     // Optional authoring-only orthographic front view. It is deliberately not
@@ -819,7 +841,7 @@ function inspectOne(id, renderFiles, requestedViews = null) {
     if (wants('front')) {
       const frontHalf = Math.max(size.x, size.y) * 0.5 * MARGIN;
       const frontCam = orthoCam(center, size, [0, 0, 1], [0, 1, 0], frontHalf, frontHalf);
-      files[`${id}_front.webp`] = capture(frontCam, BASE, BASE).toDataURL('image/webp', 0.9);
+      files[`${id}_front.webp`] = encodeWebp(capture(frontCam, BASE, BASE));
     }
     if (wants('armorSide') || wants('modulesSide') || wants('crewSide')) {
       const sideCam = technicalInspectionCamera(id, center, size, extentZ, box);
@@ -873,8 +895,8 @@ function inspectOne(id, renderFiles, requestedViews = null) {
       // Full dossier art and the Garage thumbnail are one atomic output. New
       // vehicle captures can no longer update one size while leaving the
       // other stale or hand-resized.
-      files[angleFile] = angleCanvas.toDataURL('image/webp', 0.9);
-      files[`thumbs/${angleFile}`] = thumbCanvas.toDataURL('image/webp', 0.9);
+      files[angleFile] = encodeWebp(angleCanvas);
+      files[`thumbs/${angleFile}`] = encodeWebp(thumbCanvas);
     }
     return { files, meta };
   } finally {

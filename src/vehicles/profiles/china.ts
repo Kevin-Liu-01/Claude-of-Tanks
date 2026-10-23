@@ -609,7 +609,10 @@ function crownRimTrim(
 // DISTINCT from the resident ztz99_longwei: longer/deeper cheek wedge, revised
 // roof optics, drum rack — and its own frame throughout.
 // The lofted hull's plate top line [z, y], stern to bow toe.
-const ZTZ99A2_DECK: readonly (readonly [number, number])[] = [[-4.05, 1.60], [-3.80, 1.68], [-2.05, 1.72],
+// release 240 (the gun-hull lane; the owner: "make sure all tank turrets are clear of hulls, esp tanks like the vt 4a1,
+// ztz 99a2, ztz 99a"): the rear deck's crest at 1.685 (the print's 1.72), so the three turrets on this hull, seated over
+// the deck round their rings at about 1.70 (turretSeatRace.ts), clear it and its fittings at every bearing
+const ZTZ99A2_DECK: readonly (readonly [number, number])[] = [[-4.05, 1.60], [-3.80, 1.68], [-2.05, 1.685],
   [-0.30, 1.68], [1.90, 1.64], [3.55, 1.02]];
 export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   const { box, cylY, cylZ, torus, buildRunningGear, headlight, periscope, towCable, liftEye } = KIT;
@@ -699,12 +702,15 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
       [s * 0.72, 1.08, 3.34], [s * 1.20, 1.22, 2.96], [s * 1.20, 1.16, 2.80], [s * 0.72, 1.00, 3.16]));
     P.add('hullDark', box(0.045, 0.045, 1.30), s * 0.91, 1.37, 2.22, -0.25, s * 0.22, 0);
   }
-  P.add('hull', box(1.90, 0.05, 0.22), 0, 1.63, 1.18, -0.30, 0, 0);
+  // (release 240: the crest course 3.5 cm lower, 1.1 cm over the chevron under it: the ZTZ-99A2's mantlet came down onto
+  // it at -3.2 degrees ahead)
+  P.add('hull', box(1.90, 0.05, 0.22), 0, 1.595, 1.18, -0.30, 0, 0);
   });
-  // driver center station behind the chevron crest
-  P.add('hull', box(0.54, 0.05, 0.46), 0, 1.685, 0.62);
-  P.add('hullDark', cylY(0.24, 0.24, 0.016, 14), 0, 1.715, 0.60);
-  [-0.17, 0.17].forEach((x) => periscope(P, 'hullDetail', x, 1.72, 0.86));
+  // driver center station behind the chevron crest (release 240: 3-5.5 cm lower, under the gun's cradle, which ran
+  // through its hatch and periscope heads at every pitch on the ZTZ-99A; inside the ring, under the turret at any yaw)
+  P.add('hull', box(0.54, 0.05, 0.46), 0, 1.655, 0.62);
+  P.add('hullDark', cylY(0.24, 0.24, 0.016, 14), 0, 1.685, 0.60);
+  [-0.17, 0.17].forEach((x) => periscope(P, 'hullDetail', x, 1.665, 0.86));
   // bow lights on riser pods + tow points + routed cable
   ([-1, 1] as const).forEach((s) => {
     mount(P, 'hull', FITTINGS.lightCluster({
@@ -776,10 +782,11 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
   };
   Array.from({ length: 7 }, (_, index) => index).forEach((i) => {
     louvre('hullDark', box(2.50, 0.018, 0.075), -2.10 - i * 0.24, 0.002 - 0.009);
-    louvre('hullDetail', box(2.50, 0.028, 0.026), -2.22 - i * 0.24, 0.014 - 0.002);
+    louvre('hullDetail', box(2.50, 0.020, 0.026), -2.22 - i * 0.24, 0.006);        // release 240: 16 mm proud (was 26), under the turrets' sweep
   });
+  // release 240: the two filler caps lie on the deck line (4 mm into it, 1 cm proud), under the turrets' sweep
   ([[-0.85, -1.75], [0.72, -1.88]] as const).forEach(([x, z]) => {
-    P.add('hullDetail', cylY(0.095, 0.095, 0.032, 10), x, 1.725, z);
+    P.add('hullDetail', cylY(0.095, 0.095, 0.014, 10), x, deckAt(z)[0] + 0.003, z);
   });
   P.add('hull', box(3.26, 0.94, 0.12), 0, 1.06, -3.99);
   P.add('hullDark', box(2.20, 0.50, 0.035), 0, 1.12, -4.055);
@@ -846,7 +853,9 @@ function buildZTZ99A2PrototypeTurret(P: ChinaBuilderPort): void {
   const inset99 = [0.52, 0.56, 0.80, 0.82, 0.88, 0.92, 0.92, 0.88, 0.82, 0.80, 0.56, 0.52];
   const crown99 = 0.89;
   addChineseThroatStock(P, KIT.polyMultiLoft(plan99, [
-    { height: 0.03, inset: 1.0 },
+    // release 240: the bustle's underside rises aft, as the production A2's does, to clear the engine deck's louvres as
+    // the turret traverses (it ran flat at 0.03, under the deck)
+    { height: [0.03, 0.03, 0.03, 0.03, 0.24, 0.24, 0.24, 0.24, 0.03, 0.03, 0.03, 0.03], inset: 1.0 },
     { height: 0.34, inset: 1.0 },
     { height: crown99, inset: inset99, centerHeight: 0.89 },
   ]));
@@ -1578,7 +1587,8 @@ function buildType59(P: ChinaBuilderPort): void {
   // meshDomeCurved sz 1.03 ÷ 1.10 = 0.9364 keeps the plan CHORD byte-held
   // so the casting widens with the hull without lengthening.
   P.turretG.position.set(0, 1.4804, 0.676);
-  meshDomeCurved(P, rings59, 0.9364, 0, -0.21, { capR: 1.54 });
+  // closeBase (TANK-OPT companions, 227): the open base showed the casting's inside from below a thrown turret.
+  meshDomeCurved(P, rings59, 0.9364, 0, -0.21, { capR: 1.54, closeBase: true });
   // flank roof-shoulder pair: the T-54A flat shelf lives on the SIDES only
   // (outer face flush with the local dome skin).
   for (const s of [-1, 1]) P.add('turret', box(0.264, 0.15, 1.22), s * 1.232, 0.58, -0.25);
@@ -1586,7 +1596,7 @@ function buildType59(P: ChinaBuilderPort): void {
   // bottom ring buried under the dome skin / into the gun collar (§B2).
   const ringsBrow = [[0.726, 0.40], [0.715, 0.62], [0.682, 0.76], [0.572, 0.85], [0.022, 0.87]]
     .map(([r, y]) => [r, y - browDropM]);
-  meshDome(P, ringsBrow, 0.909, 0, 0.95);
+  meshDome(P, ringsBrow, 0.909, 0, 0.95, { closeBase: true });
   // closed race collar under the casting (the widened base ring).
   P.add('turret', cylY(0.748, 0.7865, 0.10, 20), 0, 0.025, -0.05);
   // commander cupola LEFT: ring + split-hatch lid — the lid crown carries

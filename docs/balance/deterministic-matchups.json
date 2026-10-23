@@ -50,40 +50,6 @@
       "guidedWeapons": []
     },
     {
-      "id": "leclerc_s1",
-      "revision": "make headline reload match its magazine and establish assault-branch output",
-      "tier": 9,
-      "era": "modern",
-      "role": "mbt",
-      "hp": 2750,
-      "powerWeight": 26.36,
-      "speedKmh": [
-        68,
-        25
-      ],
-      "traverseDegS": [
-        50.6,
-        44.5
-      ],
-      "primary": {
-        "damage": 550,
-        "penetrationMm": [
-          916,
-          850,
-          750
-        ],
-        "reloadS": 14.5,
-        "sustainedDpm": 5351.35,
-        "accuracy": 0.296,
-        "aimTimeS": 1.6
-      },
-      "armorCeilingsMm": {
-        "hullKe": 720,
-        "turretKe": 780
-      },
-      "guidedWeapons": []
-    },
-    {
       "id": "bmp3_rok",
       "revision": "restore a complete Tier VIII cannon, missile and protection package",
       "tier": 8,
@@ -238,40 +204,6 @@
       "guidedWeapons": []
     },
     {
-      "id": "challenger3_proto",
-      "revision": "restore the base Challenger 3 firepower and mobility envelope",
-      "tier": 10,
-      "era": "next-generation",
-      "role": "mbt",
-      "hp": 2650,
-      "powerWeight": 22.73,
-      "speedKmh": [
-        62,
-        24
-      ],
-      "traverseDegS": [
-        35.7,
-        36.1
-      ],
-      "primary": {
-        "damage": 530,
-        "penetrationMm": [
-          880,
-          810,
-          730
-        ],
-        "reloadS": 5.9,
-        "sustainedDpm": 5389.83,
-        "accuracy": 0.226,
-        "aimTimeS": 1.57
-      },
-      "armorCeilingsMm": {
-        "hullKe": 500,
-        "turretKe": 650
-      },
-      "guidedWeapons": []
-    },
-    {
       "id": "challenger3",
       "revision": "retain a measured protection and fire-control step over the base vehicle",
       "tier": 10,
@@ -298,6 +230,40 @@
         "sustainedDpm": 5578.95,
         "accuracy": 0.207,
         "aimTimeS": 1.47
+      },
+      "armorCeilingsMm": {
+        "hullKe": 500,
+        "turretKe": 650
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "challenger3_proto",
+      "revision": "restore the base Challenger 3 firepower and mobility envelope",
+      "tier": 10,
+      "era": "next-generation",
+      "role": "mbt",
+      "hp": 2650,
+      "powerWeight": 22.73,
+      "speedKmh": [
+        62,
+        24
+      ],
+      "traverseDegS": [
+        35.7,
+        36.1
+      ],
+      "primary": {
+        "damage": 530,
+        "penetrationMm": [
+          880,
+          810,
+          730
+        ],
+        "reloadS": 5.9,
+        "sustainedDpm": 5389.83,
+        "accuracy": 0.226,
+        "aimTimeS": 1.57
       },
       "armorCeilingsMm": {
         "hullKe": 500,
@@ -369,7 +335,7 @@
       },
       "armorCeilingsMm": {
         "hullKe": 450,
-        "turretKe": 540
+        "turretKe": 771
       },
       "guidedWeapons": []
     },
@@ -415,40 +381,6 @@
           "velocityMps": 130
         }
       ]
-    },
-    {
-      "id": "xk2_black_panther",
-      "revision": "trade excess paper DPM for realized frontal protection and ammunition",
-      "tier": 9,
-      "era": "modern",
-      "role": "mbt",
-      "hp": 2700,
-      "powerWeight": 27.27,
-      "speedKmh": [
-        70,
-        25
-      ],
-      "traverseDegS": [
-        48.4,
-        38.2
-      ],
-      "primary": {
-        "damage": 520,
-        "penetrationMm": [
-          733,
-          667,
-          600
-        ],
-        "reloadS": 6.5,
-        "sustainedDpm": 4800,
-        "accuracy": 0.306,
-        "aimTimeS": 1.9
-      },
-      "armorCeilingsMm": {
-        "hullKe": 650,
-        "turretKe": 560
-      },
-      "guidedWeapons": []
     },
     {
       "id": "k2b",
@@ -515,6 +447,40 @@
       "armorCeilingsMm": {
         "hullKe": 75,
         "turretKe": 110
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "leclerc_s1",
+      "revision": "make headline reload match its magazine and establish assault-branch output",
+      "tier": 9,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2750,
+      "powerWeight": 26.36,
+      "speedKmh": [
+        68,
+        25
+      ],
+      "traverseDegS": [
+        50.6,
+        44.5
+      ],
+      "primary": {
+        "damage": 550,
+        "penetrationMm": [
+          916,
+          850,
+          750
+        ],
+        "reloadS": 14.5,
+        "sustainedDpm": 5351.35,
+        "accuracy": 0.296,
+        "aimTimeS": 1.6
+      },
+      "armorCeilingsMm": {
+        "hullKe": 720,
+        "turretKe": 780
       },
       "guidedWeapons": []
     },
@@ -587,36 +553,36 @@
       "guidedWeapons": []
     },
     {
-      "id": "leo2a4m_can",
-      "revision": "replace a Tier VIII penetration holdover and realize Tier IX protection",
+      "id": "leo2a4",
+      "revision": "exchange excess stationary protection for its intended mobile Tier IX identity",
       "tier": 9,
       "era": "modern",
       "role": "mbt",
-      "hp": 2500,
-      "powerWeight": 24.27,
+      "hp": 2300,
+      "powerWeight": 24.08,
       "speedKmh": [
         68,
-        31
+        25
       ],
       "traverseDegS": [
         44.9,
-        38.8
+        40.8
       ],
       "primary": {
-        "damage": 510,
+        "damage": 530,
         "penetrationMm": [
-          720,
-          665,
-          610
+          855,
+          778,
+          700
         ],
-        "reloadS": 6.2,
-        "sustainedDpm": 4935.48,
-        "accuracy": 0.3,
-        "aimTimeS": 1.67
+        "reloadS": 6.1,
+        "sustainedDpm": 5213.11,
+        "accuracy": 0.27,
+        "aimTimeS": 1.57
       },
       "armorCeilingsMm": {
-        "hullKe": 586,
-        "turretKe": 614
+        "hullKe": 484,
+        "turretKe": 546
       },
       "guidedWeapons": []
     },
@@ -655,36 +621,36 @@
       "guidedWeapons": []
     },
     {
-      "id": "leo2a4",
-      "revision": "exchange excess stationary protection for its intended mobile Tier IX identity",
+      "id": "leo2a4m_can",
+      "revision": "replace a Tier VIII penetration holdover and realize Tier IX protection",
       "tier": 9,
       "era": "modern",
       "role": "mbt",
-      "hp": 2300,
-      "powerWeight": 24.08,
+      "hp": 2500,
+      "powerWeight": 24.27,
       "speedKmh": [
         68,
-        25
+        31
       ],
       "traverseDegS": [
         44.9,
-        40.8
+        38.8
       ],
       "primary": {
-        "damage": 530,
+        "damage": 510,
         "penetrationMm": [
-          855,
-          778,
-          700
+          720,
+          665,
+          610
         ],
-        "reloadS": 6.1,
-        "sustainedDpm": 5213.11,
-        "accuracy": 0.27,
-        "aimTimeS": 1.57
+        "reloadS": 6.2,
+        "sustainedDpm": 4935.48,
+        "accuracy": 0.3,
+        "aimTimeS": 1.67
       },
       "armorCeilingsMm": {
-        "hullKe": 484,
-        "turretKe": 546
+        "hullKe": 586,
+        "turretKe": 614
       },
       "guidedWeapons": []
     },
@@ -940,7 +906,41 @@
       },
       "armorCeilingsMm": {
         "hullKe": 175,
-        "turretKe": 227
+        "turretKe": 212
+      },
+      "guidedWeapons": []
+    },
+    {
+      "id": "object148_proto",
+      "revision": "bring next-generation fire control above the severe peer floor",
+      "tier": 10,
+      "era": "next-generation",
+      "role": "mbt",
+      "hp": 2700,
+      "powerWeight": 27.27,
+      "speedKmh": [
+        75,
+        25
+      ],
+      "traverseDegS": [
+        43.7,
+        41.6
+      ],
+      "primary": {
+        "damage": 550,
+        "penetrationMm": [
+          977,
+          889,
+          800
+        ],
+        "reloadS": 6.5,
+        "sustainedDpm": 5076.92,
+        "accuracy": 0.296,
+        "aimTimeS": 1.73
+      },
+      "armorCeilingsMm": {
+        "hullKe": 900,
+        "turretKe": 300
       },
       "guidedWeapons": []
     },
@@ -1081,6 +1081,49 @@
       "guidedWeapons": []
     },
     {
+      "id": "raiju_ifv",
+      "revision": "close the next-generation IFV anti-armor and protection gap",
+      "tier": 10,
+      "era": "next-generation",
+      "role": "ifv",
+      "hp": 2700,
+      "powerWeight": 25.97,
+      "speedKmh": [
+        78,
+        32
+      ],
+      "traverseDegS": [
+        57.2,
+        80.6
+      ],
+      "primary": {
+        "damage": 120,
+        "penetrationMm": [
+          240,
+          220,
+          200
+        ],
+        "reloadS": 0.46,
+        "sustainedDpm": 15652.17,
+        "accuracy": 0.23,
+        "aimTimeS": 0.89
+      },
+      "armorCeilingsMm": {
+        "hullKe": 308,
+        "turretKe": 308
+      },
+      "guidedWeapons": [
+        {
+          "name": "Type 01 Jyu-MAT Kai",
+          "damage": 720,
+          "penetrationMm": 950,
+          "reloadS": 2.1,
+          "count": 12,
+          "velocityMps": 210
+        }
+      ]
+    },
+    {
       "id": "spz_puma",
       "revision": "balance the Tier VIII cannon and protection package against its peers",
       "tier": 9,
@@ -1167,40 +1210,6 @@
       ]
     },
     {
-      "id": "object148_proto",
-      "revision": "bring next-generation fire control above the severe peer floor",
-      "tier": 10,
-      "era": "next-generation",
-      "role": "mbt",
-      "hp": 2700,
-      "powerWeight": 27.27,
-      "speedKmh": [
-        75,
-        25
-      ],
-      "traverseDegS": [
-        43.7,
-        41.6
-      ],
-      "primary": {
-        "damage": 550,
-        "penetrationMm": [
-          977,
-          889,
-          800
-        ],
-        "reloadS": 6.5,
-        "sustainedDpm": 5076.92,
-        "accuracy": 0.296,
-        "aimTimeS": 1.73
-      },
-      "armorCeilingsMm": {
-        "hullKe": 900,
-        "turretKe": 300
-      },
-      "guidedWeapons": []
-    },
-    {
       "id": "t62_1975",
       "revision": "raise the early Cold War baseline without erasing its handling limits",
       "tier": 7,
@@ -1269,6 +1278,40 @@
       "guidedWeapons": []
     },
     {
+      "id": "t64bv_donbas",
+      "revision": "modernize the Ukrainian Tier VIII fire-control floor without erasing Soviet handling",
+      "tier": 8,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2050,
+      "powerWeight": 19.54,
+      "speedKmh": [
+        60,
+        12
+      ],
+      "traverseDegS": [
+        34.2,
+        31.2
+      ],
+      "primary": {
+        "damage": 510,
+        "penetrationMm": [
+          696,
+          633,
+          570
+        ],
+        "reloadS": 7.4,
+        "sustainedDpm": 4135.14,
+        "accuracy": 0.337,
+        "aimTimeS": 1.92
+      },
+      "armorCeilingsMm": {
+        "hullKe": 450,
+        "turretKe": 480
+      },
+      "guidedWeapons": []
+    },
+    {
       "id": "t72b3m_2022",
       "revision": "modernize the Tier IX fire-control floor without erasing Soviet handling",
       "tier": 9,
@@ -1285,20 +1328,20 @@
         31.2
       ],
       "primary": {
-        "damage": 510,
+        "damage": 560,
         "penetrationMm": [
-          696,
-          633,
-          570
+          855,
+          800,
+          720
         ],
-        "reloadS": 6.5,
-        "sustainedDpm": 4707.69,
-        "accuracy": 0.337,
-        "aimTimeS": 1.92
+        "reloadS": 6.4,
+        "sustainedDpm": 5250,
+        "accuracy": 0.316,
+        "aimTimeS": 1.73
       },
       "armorCeilingsMm": {
         "hullKe": 450,
-        "turretKe": 480
+        "turretKe": 700
       },
       "guidedWeapons": []
     },
@@ -1331,8 +1374,8 @@
         "aimTimeS": 1.92
       },
       "armorCeilingsMm": {
-        "hullKe": 477,
-        "turretKe": 509
+        "hullKe": 450,
+        "turretKe": 480
       },
       "guidedWeapons": []
     },
@@ -1643,49 +1686,6 @@
       "guidedWeapons": []
     },
     {
-      "id": "raiju_ifv",
-      "revision": "close the next-generation IFV anti-armor and protection gap",
-      "tier": 10,
-      "era": "next-generation",
-      "role": "ifv",
-      "hp": 2700,
-      "powerWeight": 25.97,
-      "speedKmh": [
-        78,
-        32
-      ],
-      "traverseDegS": [
-        57.2,
-        80.6
-      ],
-      "primary": {
-        "damage": 120,
-        "penetrationMm": [
-          240,
-          220,
-          200
-        ],
-        "reloadS": 0.46,
-        "sustainedDpm": 15652.17,
-        "accuracy": 0.23,
-        "aimTimeS": 0.89
-      },
-      "armorCeilingsMm": {
-        "hullKe": 308,
-        "turretKe": 308
-      },
-      "guidedWeapons": [
-        {
-          "name": "Type 01 Jyu-MAT Kai",
-          "damage": 720,
-          "penetrationMm": 950,
-          "reloadS": 2.1,
-          "count": 12,
-          "velocityMps": 210
-        }
-      ]
-    },
-    {
       "id": "type90_kyumaru",
       "revision": "make the base Type 90 the mobility alternative to the protected Type 90A",
       "tier": 9,
@@ -1763,36 +1763,79 @@
       ]
     },
     {
-      "id": "t64bv_donbas",
-      "revision": "modernize the Ukrainian Tier VIII fire-control floor without erasing Soviet handling",
-      "tier": 8,
+      "id": "warrior_tes_h",
+      "revision": "establish the Tier X Warrior TES(H) survivability and cannon envelope (TES(H) add-on armour; owner ruling 2026-10-12: new Warrior type at tier 10)",
+      "tier": 10,
       "era": "modern",
-      "role": "mbt",
-      "hp": 2050,
-      "powerWeight": 19.54,
+      "role": "ifv",
+      "hp": 2300,
+      "powerWeight": 22.89,
       "speedKmh": [
-        60,
-        12
+        68,
+        20
       ],
       "traverseDegS": [
-        34.2,
-        31.2
+        45.6,
+        67.2
       ],
       "primary": {
-        "damage": 510,
+        "damage": 88,
         "penetrationMm": [
-          696,
-          633,
-          570
+          150,
+          135,
+          120
         ],
-        "reloadS": 7.4,
-        "sustainedDpm": 4135.14,
-        "accuracy": 0.337,
-        "aimTimeS": 1.92
+        "reloadS": 0.6,
+        "sustainedDpm": 8800,
+        "accuracy": 0.29,
+        "aimTimeS": 1.22
       },
       "armorCeilingsMm": {
-        "hullKe": 450,
-        "turretKe": 480
+        "hullKe": 90,
+        "turretKe": 85
+      },
+      "guidedWeapons": [
+        {
+          "name": "MILAN guided missile",
+          "damage": 520,
+          "penetrationMm": 850,
+          "reloadS": 2.4,
+          "count": 6,
+          "velocityMps": 130
+        }
+      ]
+    },
+    {
+      "id": "xk2_black_panther",
+      "revision": "trade excess paper DPM for realized frontal protection and ammunition",
+      "tier": 9,
+      "era": "modern",
+      "role": "mbt",
+      "hp": 2700,
+      "powerWeight": 27.27,
+      "speedKmh": [
+        70,
+        25
+      ],
+      "traverseDegS": [
+        48.4,
+        38.2
+      ],
+      "primary": {
+        "damage": 520,
+        "penetrationMm": [
+          733,
+          667,
+          600
+        ],
+        "reloadS": 6.5,
+        "sustainedDpm": 4800,
+        "accuracy": 0.306,
+        "aimTimeS": 1.9
+      },
+      "armorCeilingsMm": {
+        "hullKe": 650,
+        "turretKe": 560
       },
       "guidedWeapons": []
     }
@@ -1816,15 +1859,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 5,
-      "bWins": 5,
-      "draws": 2,
+      "aWins": 6,
+      "bWins": 6,
+      "draws": 0,
       "aScore": 0.5,
-      "averageDurationS": 32.48,
-      "averageAEndHp": 182.67,
-      "averageBEndHp": 182.67,
-      "averageADamage": 2555.83,
-      "averageBDamage": 2555.83
+      "averageDurationS": 34.28,
+      "averageAEndHp": 397,
+      "averageBEndHp": 397,
+      "averageADamage": 2370.67,
+      "averageBDamage": 2370.67
     },
     {
       "id": "moving-mirror-control",
@@ -1848,11 +1891,11 @@
       "bWins": 6,
       "draws": 0,
       "aScore": 0.5,
-      "averageDurationS": 37.83,
-      "averageAEndHp": 365,
-      "averageBEndHp": 365,
-      "averageADamage": 2400.17,
-      "averageBDamage": 2400.17
+      "averageDurationS": 30.63,
+      "averageAEndHp": 402.83,
+      "averageBEndHp": 402.83,
+      "averageADamage": 2283.25,
+      "averageBDamage": 2283.25
     },
     {
       "id": "tier9-rifled-peers",
@@ -1872,15 +1915,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 8,
-      "bWins": 4,
+      "aWins": 0,
+      "bWins": 12,
       "draws": 0,
-      "aScore": 0.667,
-      "averageDurationS": 29.3,
-      "averageAEndHp": 460.33,
-      "averageBEndHp": 461.67,
-      "averageADamage": 2427,
-      "averageBDamage": 2021.08
+      "aScore": 0,
+      "averageDurationS": 27.46,
+      "averageAEndHp": 0,
+      "averageBEndHp": 1406.67,
+      "averageADamage": 1293.33,
+      "averageBDamage": 2695.83
     },
     {
       "id": "nextgen-challengers",
@@ -1904,11 +1947,11 @@
       "bWins": 8,
       "draws": 0,
       "aScore": 0.333,
-      "averageDurationS": 25.15,
-      "averageAEndHp": 247.75,
-      "averageBEndHp": 427.83,
-      "averageADamage": 2433.08,
-      "averageBDamage": 2628.75
+      "averageDurationS": 23.87,
+      "averageAEndHp": 116.17,
+      "averageBEndHp": 404.92,
+      "averageADamage": 2450.33,
+      "averageBDamage": 2716.92
     },
     {
       "id": "nextgen-abrams-peer",
@@ -1928,15 +1971,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 7,
-      "bWins": 5,
+      "aWins": 4,
+      "bWins": 8,
       "draws": 0,
-      "aScore": 0.583,
-      "averageDurationS": 44.18,
-      "averageAEndHp": 390.08,
-      "averageBEndHp": 344.08,
-      "averageADamage": 2560.92,
-      "averageBDamage": 2417.17
+      "aScore": 0.333,
+      "averageDurationS": 38.43,
+      "averageAEndHp": 302.58,
+      "averageBEndHp": 657.5,
+      "averageADamage": 2168.25,
+      "averageBDamage": 2662.5
     },
     {
       "id": "t90-export-step",
@@ -1956,15 +1999,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 5,
-      "bWins": 1,
-      "draws": 6,
+      "aWins": 7,
+      "bWins": 3,
+      "draws": 2,
       "aScore": 0.667,
-      "averageDurationS": 28.03,
-      "averageAEndHp": 267.42,
-      "averageBEndHp": 11.25,
-      "averageADamage": 2758.83,
-      "averageBDamage": 2393
+      "averageDurationS": 24.36,
+      "averageAEndHp": 258.5,
+      "averageBEndHp": 160.42,
+      "averageADamage": 2655.5,
+      "averageBDamage": 2422.5
     },
     {
       "id": "chieftain-tier8",
@@ -1984,15 +2027,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 7,
-      "bWins": 3,
-      "draws": 2,
-      "aScore": 0.667,
-      "averageDurationS": 75.57,
-      "averageAEndHp": 646.42,
-      "averageBEndHp": 213.83,
-      "averageADamage": 2059.67,
-      "averageBDamage": 1501.5
+      "aWins": 2,
+      "bWins": 2,
+      "draws": 8,
+      "aScore": 0.5,
+      "averageDurationS": 78.97,
+      "averageAEndHp": 806.08,
+      "averageBEndHp": 853,
+      "averageADamage": 1267.58,
+      "averageBDamage": 1325.58
     },
     {
       "id": "k2-tier9-peer",
@@ -2016,11 +2059,11 @@
       "bWins": 8,
       "draws": 0,
       "aScore": 0.333,
-      "averageDurationS": 30.9,
-      "averageAEndHp": 199.17,
-      "averageBEndHp": 524.25,
-      "averageADamage": 1824.83,
-      "averageBDamage": 2650.92
+      "averageDurationS": 33.52,
+      "averageAEndHp": 126.75,
+      "averageBEndHp": 585.83,
+      "averageADamage": 1835.08,
+      "averageBDamage": 2798.08
     },
     {
       "id": "k2-tier9-mobile-peer",
@@ -2040,15 +2083,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 7,
-      "bWins": 5,
+      "aWins": 2,
+      "bWins": 10,
       "draws": 0,
-      "aScore": 0.583,
-      "averageDurationS": 37.21,
-      "averageAEndHp": 414.92,
-      "averageBEndHp": 248.08,
-      "averageADamage": 2224.5,
-      "averageBDamage": 2406.33
+      "aScore": 0.167,
+      "averageDurationS": 29.6,
+      "averageAEndHp": 86.5,
+      "averageBEndHp": 758.17,
+      "averageADamage": 1590.83,
+      "averageBDamage": 2802.75
     },
     {
       "id": "k2b-cross-tier",
@@ -2068,15 +2111,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 5,
-      "bWins": 2,
-      "draws": 5,
-      "aScore": 0.625,
-      "averageDurationS": 20.36,
-      "averageAEndHp": 180.67,
-      "averageBEndHp": 17.67,
-      "averageADamage": 2803.58,
-      "averageBDamage": 2567.83
+      "aWins": 2,
+      "bWins": 6,
+      "draws": 4,
+      "aScore": 0.333,
+      "averageDurationS": 19.58,
+      "averageAEndHp": 100.83,
+      "averageBEndHp": 327.25,
+      "averageADamage": 2319.92,
+      "averageBDamage": 2715.67
     },
     {
       "id": "proryv-tier10-peer",
@@ -2096,15 +2139,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 5,
-      "bWins": 7,
+      "aWins": 2,
+      "bWins": 10,
       "draws": 0,
-      "aScore": 0.417,
-      "averageDurationS": 33.61,
-      "averageAEndHp": 434.25,
-      "averageBEndHp": 517.75,
-      "averageADamage": 2206.17,
-      "averageBDamage": 2625.67
+      "aScore": 0.167,
+      "averageDurationS": 32.56,
+      "averageAEndHp": 201.17,
+      "averageBEndHp": 1289.08,
+      "averageADamage": 1372.25,
+      "averageBDamage": 2925.42
     },
     {
       "id": "merkava-tier7-peer",
@@ -2124,15 +2167,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 6,
-      "bWins": 6,
+      "aWins": 8,
+      "bWins": 4,
       "draws": 0,
-      "aScore": 0.5,
-      "averageDurationS": 21.06,
-      "averageAEndHp": 221.83,
-      "averageBEndHp": 257.58,
-      "averageADamage": 1737.42,
-      "averageBDamage": 1442.58
+      "aScore": 0.667,
+      "averageDurationS": 21.13,
+      "averageAEndHp": 266.67,
+      "averageBEndHp": 108.42,
+      "averageADamage": 1858.42,
+      "averageBDamage": 1400.33
     },
     {
       "id": "puma-tier8-peer",
@@ -2156,11 +2199,11 @@
       "bWins": 3,
       "draws": 0,
       "aScore": 0.75,
-      "averageDurationS": 49.38,
-      "averageAEndHp": 251.08,
-      "averageBEndHp": 43.92,
-      "averageADamage": 1681,
-      "averageBDamage": 1755.17
+      "averageDurationS": 49.53,
+      "averageAEndHp": 238,
+      "averageBEndHp": 35.42,
+      "averageADamage": 1684.33,
+      "averageBDamage": 1763.58
     },
     {
       "id": "puma-s1-tier10-peer",
@@ -2372,15 +2415,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 4,
+      "aWins": 1,
       "bWins": 8,
-      "draws": 0,
-      "aScore": 0.333,
-      "averageDurationS": 43.1,
-      "averageAEndHp": 93.92,
-      "averageBEndHp": 366.5,
-      "averageADamage": 2563.42,
-      "averageBDamage": 2809.92
+      "draws": 3,
+      "aScore": 0.208,
+      "averageDurationS": 73.97,
+      "averageAEndHp": 220.67,
+      "averageBEndHp": 1536.92,
+      "averageADamage": 1344.58,
+      "averageBDamage": 2749.33
     },
     {
       "id": "leopard-tier9-peer",
@@ -2400,15 +2443,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 3,
-      "bWins": 5,
-      "draws": 4,
-      "aScore": 0.417,
-      "averageDurationS": 74.27,
-      "averageAEndHp": 457.58,
-      "averageBEndHp": 1071.25,
-      "averageADamage": 1292.17,
-      "averageBDamage": 2094.83
+      "aWins": 2,
+      "bWins": 0,
+      "draws": 10,
+      "aScore": 0.583,
+      "averageDurationS": 88.06,
+      "averageAEndHp": 854.33,
+      "averageBEndHp": 990.25,
+      "averageADamage": 1335.83,
+      "averageBDamage": 1645.67
     },
     {
       "id": "ifv-nextgen-peer",
@@ -2456,15 +2499,15 @@
         601
       ],
       "duels": 12,
-      "aWins": 9,
-      "bWins": 3,
+      "aWins": 10,
+      "bWins": 2,
       "draws": 0,
-      "aScore": 0.75,
-      "averageDurationS": 17.53,
-      "averageAEndHp": 531.67,
-      "averageBEndHp": 165.83,
-      "averageADamage": 2459.92,
-      "averageBDamage": 1785.92
+      "aScore": 0.833,
+      "averageDurationS": 16.65,
+      "averageAEndHp": 626.67,
+      "averageBEndHp": 108.08,
+      "averageADamage": 2540.75,
+      "averageBDamage": 1657.92
     }
   ]
 }

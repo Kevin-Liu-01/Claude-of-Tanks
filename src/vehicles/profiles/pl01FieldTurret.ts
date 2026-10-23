@@ -1,4 +1,4 @@
-import type { BufferGeometry, Group, Material } from 'three';
+import { SphereGeometry, type BufferGeometry, type Group, type Material } from 'three';
 import { FITTINGS, KIT, orientedSlab } from './kit.ts';
 import { beamBetween } from './measuredPrimitives.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
@@ -21,9 +21,13 @@ export function addPL01FieldTurret(P: FieldTurretPort, roofY: number,
   // roof line (a blind critic read the first, lower housings as lamps sunk into the armour), and the lens faces
   // forward toed out 8 degrees under a visor. The white lamp sits ahead and inboard, the IR lamp behind it and
   // outboard along the ridge, so neither blocks the other.
+  // 2026-10-22 (lane 240; the 233 critic: the seated drums win every night view but read smaller than the original
+  // drums by day): the head and lens are back to the original drums' size (r .125 / .10 against .13 / .103) on a
+  // pedestal widened to carry them, and the lens is a shallow convex dome, so by day it takes the sky in a highlight
+  // across its upper half instead of reading as a flat dark disc. The seat, the aim and the night emitter are unchanged.
   const seatLamp = (s: number, x0: number, z0: number, white: boolean): void => {
     const yaw = s * .14, fx = Math.sin(yaw), fz = Math.cos(yaw);   // lens axis
-    const w = .17, d = .17, head = .092, len = .20, r = .072;
+    const w = .20, d = .19, head = .125, len = .20, r = .10;
     const at = (u: number, v: number): [number, number] => [s * x0 + fz * u + fx * v, z0 - fx * u + fz * v];
     const foot = (u: number, v: number): number => {
       const [x, z] = at(u, v), y = shellTopY(x, z);
@@ -39,9 +43,12 @@ export function addPL01FieldTurret(P: FieldTurretPort, roofY: number,
     P.addEquipment('turretDetail', cylZ(head, len, 20), hx, headY, hz, 0, yaw, 0);
     const [fxp, fzp] = at(0, .01 + len / 2);
     P.addEquipment('turretDark', cylZ(r + .012, .012, 20), fxp + fx * .002, headY, fzp + fz * .002, 0, yaw, 0);
-    const lens = cylZ(r, .016, 20);
+    // a spherical cap .022 deep over the lens aperture, its rim on the bezel's face
+    const domeH = .022, domeR = (r * r + domeH * domeH) / (2 * domeH), cap = Math.asin(r / domeR);
+    const lens = new SphereGeometry(domeR, 24, 6, 0, Math.PI * 2, 0, cap).rotateX(Math.PI / 2)
+      .translate(0, 0, -domeR * Math.cos(cap));
     // Only the white lamp emits; the IR optic stays dark.
-    P.addEquipment('turretGlass', white ? markVehicleNightLens(lens, 'headlight') : lens,
+    P.addEquipment('turretGlass', white ? markVehicleNightLens(lens, 'headlight', { curvedAperture: true }) : lens,
       fxp + fx * .006, headY, fzp + fz * .006, 0, yaw, 0);
     const [vx, vz] = at(0, .01 + len / 2 - .02);
     P.addEquipment('turretDark', box(2 * head + .03, .016, .10), vx, headY + head + .006, vz, 0, yaw, 0);

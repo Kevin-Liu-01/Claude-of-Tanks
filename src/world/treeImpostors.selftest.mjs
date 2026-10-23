@@ -9,6 +9,7 @@
 import assert from 'node:assert/strict';
 import { createCanvas, ImageData } from '@napi-rs/canvas';
 import * as THREE from 'three';
+import { treeBiomeCanopyForm } from './treeBiomes.ts';
 import { createHeightField } from './terrain.ts';
 import { createVegetation, createGarageTreeKit } from './vegetation.ts';
 import {
@@ -120,12 +121,14 @@ function auditFarSlots(world, id) {
     far++;
     const mesh = meshes.find(m => m.name === `treeImpostor_${tree.species}_${tree.fv}`);
     assert.ok(mesh && mesh.count > tree.fslot, `${id}: the far slot is inside the live prefix`);
-    assert.equal(mesh.geometry.getAttribute('aImpRow').array[tree.fslot], tree.variant, `${id}: the slot carries its tree's near variant`);
+    // (the trees lane, 2026-10-07: a field tree's open crown past the three near variants draws the open variant's row)
+    const impVariant = tree.variant < TREE_IMPOSTOR_VARIANTS ? tree.variant : 2;
+    assert.equal(mesh.geometry.getAttribute('aImpRow').array[tree.fslot], impVariant, `${id}: the slot carries its tree's near variant`);
     const e = mesh.instanceMatrix.array;
     assert.ok(Math.abs(e[tree.fslot * 16 + 12] - tree.x) < 1e-3 && Math.abs(e[tree.fslot * 16 + 14] - tree.z) < 1e-3, `${id}: the slot carries its tree`);
-    assert.ok(tree.variant >= 0 && tree.variant < TREE_IMPOSTOR_VARIANTS);
-    const row = library.rowBase(tree.species) + (tree.variant % library.variants);
-    assert.equal(row, library.rows.findIndex(r => r.species === tree.species && r.variant === tree.variant % library.variants));
+    assert.ok(impVariant >= 0 && impVariant < TREE_IMPOSTOR_VARIANTS && (tree.variant < TREE_IMPOSTOR_VARIANTS || (tree.variant <= 4 && !tree.wood)));
+    const row = library.rowBase(tree.species) + (impVariant % library.variants);
+    assert.equal(row, library.rows.findIndex(r => r.species === tree.species && r.variant === impVariant % library.variants));
   }
   return far;
 }
@@ -165,8 +168,11 @@ try {
     assert.equal(world.group.children.filter(m => m.userData.treeLod === 'far' && !m.userData.treeImpostor && !m.userData.battleSnag).length, 0, `${id}: no lobe pool`);
     // (+ the battle snags' three near pools where the map has craters — vegetation.ts battleSnagShare)
     const nearSpecies = species.length + (world.group.userData.battleSnags?.share > 0 ? 1 : 0);
-    assert.equal(world.group.children.filter(m => m.userData.treeCanopyShadowProxy).length, nearSpecies * 3, `${id}: the near crown shadow proxies stay`);
-    assert.equal(world.group.children.filter(m => m.userData.treeFoliage).length, nearSpecies * 3);
+    // (+ the trees lane's two open crowns a wood species' field trees draw, 2026-10-07: vegetation.ts FIELD_OPEN_ALTERNATES;
+    // the treescn lane, 2026-10-09: on a place with round 8's canopy form only, treeBiomes.ts canopyForm)
+    const fieldCrownPools = treeBiomeCanopyForm(id) ? 2 * (world.group.userData.treeForms?.species.length ?? 0) : 0;
+    assert.equal(world.group.children.filter(m => m.userData.treeCanopyShadowProxy).length, nearSpecies * 3 + fieldCrownPools, `${id}: the near crown shadow proxies stay`);
+    assert.equal(world.group.children.filter(m => m.userData.treeFoliage).length, nearSpecies * 3 + fieldCrownPools);
     for (const mesh of impostorMeshes) {
       const [, sp, fv] = mesh.name.split('_');
       assert.ok(mesh.material === library.material);

@@ -18,7 +18,7 @@ registerHooks({
 });
 
 const {
-  button, chip, esc, keycap, scale20, scaleCells, segmented, statRow, tabs, tag, toggle, vehicle, wireRoving, ensureComponentStyles,
+  button, chip, esc, keycap, scale20, scaleCells, segmented, statRow, tabs, tag, toggle, vehicle, wireRoving,
 } = await import('./components.ts');
 
 /* 1. markup -------------------------------------------------------------------------------------------------- */
@@ -116,17 +116,16 @@ radios.listeners.keydown({ key: 'ArrowRight', preventDefault() {} });
 assert.equal(radios.items[1].getAttribute('aria-checked'), 'true', 'a radio group checks what it moves to');
 
 /* 3. styles -------------------------------------------------------------------------------------------------- */
-const injected = [];
-globalThis.document = {
-  getElementById: () => null, createElement: () => ({ tagName: 'STYLE' }), head: { appendChild: (node) => injected.push(node) },
-};
-ensureComponentStyles();
-assert.equal(injected.length, 1);
-assert.equal(injected[0].id, 'cot-components');
-assert.match(injected[0].textContent, /^@layer reset,tokens,base,components,surfaces,utilities,overrides;@layer components\{/,
+// A static sheet the page imports (src/main.ts), not a string the script injects: it paints with the first frame and
+// stays out of the boot script.
+const sheet = readFileSync(new URL('./components.css', import.meta.url), 'utf8');
+assert.match(sheet, /\*\/\n@layer reset,tokens,base,components,surfaces,utilities,overrides;\n@layer components\{/,
   'the kit declares into the components layer, below every surface');
-const source = readFileSync(new URL('./components.ts', import.meta.url), 'utf8');
-const css = /const CSS = `([\s\S]*?)`;/.exec(source)[1];
+assert.match(readFileSync(new URL('../../main.ts', import.meta.url), 'utf8'), /import '\.\/ui\/components\/components\.css';/,
+  'the game imports the sheet');
+assert.doesNotMatch(readFileSync(new URL('./components.ts', import.meta.url), 'utf8'), /ensureStyle|`\s*\.cot-c-/,
+  'no second copy of the sheet in the script');
+const css = sheet.replace(/\/\*[\s\S]*?\*\//g, '');
 assert.doesNotMatch(css, /#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i, 'no colour literal: tokens only');
 assert.doesNotMatch(css, /z-index:\s*\d|!important/, 'no z-index or !important');
 assert.doesNotMatch(css, /letter-spacing:\s*-?\.?\d/, 'tracking reads the tracking tokens');
