@@ -181,10 +181,95 @@ function addZhTypeFloor(html: string, route: PublicRouteRecord): string {
     : html.replace(/<\/head>/i, `${style}\n</head>`);
 }
 
+const escapeText = (value: string): string =>
+  value.replace(/[&<>]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[character] || character);
+const decodeAttribute = (value: string): string => value
+  .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+const VOID_ELEMENTS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']);
+/** The static-i18n attributes (src/presentation/staticI18n.ts) that set an attribute, and the attribute they set. */
+const ATTRIBUTE_HOSTS: readonly (readonly [string, string])[] = [
+  ['data-i18n-placeholder', 'placeholder'], ['data-i18n-title', 'title'], ['data-i18n-alt', 'alt'],
+  ['data-i18n-aria-label', 'aria-label'], ['data-i18n-aria', 'aria-label'],
+];
+
+/** Set one attribute on an opening tag (a whole-name match: `title` never touches `data-i18n-title`). */
+function setTagAttribute(tag: string, name: string, value: string): string {
+  const encoded = escapeAttribute(value);
+  const pattern = new RegExp(`(\\s${name}\\s*=\\s*)(?:"[^"]*"|'[^']*')`, 'i');
+  return pattern.test(tag)
+    ? tag.replace(pattern, (_, head: string) => `${head}"${encoded}"`)
+    : tag.replace(/\s*\/?>$/, (end) => ` ${name}="${encoded}"${end.trim()}`);
+}
+
+function attributeValue(tag: string, name: string): string | null {
+  const match = new RegExp(`\\s${name}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`, 'i').exec(tag);
+  return match ? decodeAttribute(match[1] ?? match[2] ?? '') : null;
+}
+
+/** Index just past the element's matching close tag, counting nested elements of the same name; -1 if unclosed. */
+function elementEnd(html: string, name: string, from: number): { contentEnd: number; end: number } | null {
+  const pattern = new RegExp(`<(/?)${name}\\b[^>]*>`, 'gi');
+  pattern.lastIndex = from;
+  for (let depth = 1, match; (match = pattern.exec(html));) {
+    if (match[1]) depth--;
+    else if (!match[0].endsWith('/>')) depth++;
+    if (!depth) return { contentEnd: match.index, end: pattern.lastIndex };
+  }
+  return null;
+}
+
 /**
- * Produce a crawl-time locale document. Visible body copy is still owned by
- * the runtime data-i18n pass; this owner localizes discovery metadata before
- * JavaScript and adds the canonical alternate-language graph.
+ * Build-time body localization (BUI-F8, SPEC 15): every static-i18n host in the document takes the locale's text before
+ * any script runs, exactly as the runtime pass (staticI18n.ts) would write it: `data-i18n` text (escaped), vetted
+ * `data-i18n-html`, and the attribute hosts, with `data-i18n-vars` placeholders and the ICU subset. A /cn page therefore
+ * ships Chinese body HTML: crawlers, no-script readers and the first paint see it, and the runtime pass rewrites the
+ * same strings.
+ */
+export function localizeBodyHtml(html: string, locale: SupportedLocale): string {
+  const bodyAt = html.search(/<body\b/i);
+  if (bodyAt < 0) return html;
+  let out = html.slice(0, bodyAt);
+  const tagPattern = /<([a-zA-Z][\w-]*)\b[^>]*>/g;
+  tagPattern.lastIndex = bodyAt;
+  let copied = bodyAt;
+  for (let match; (match = tagPattern.exec(html));) {
+    let tag = match[0];
+    const name = match[1].toLowerCase();
+    if (name === 'script' || name === 'style' || name === 'template') {
+      // markup inside a script, style or template is code, not the document
+      const end = html.toLowerCase().indexOf(`</${name}`, tagPattern.lastIndex);
+      if (end >= 0) tagPattern.lastIndex = end;
+      continue;
+    }
+    if (!/\sdata-i18n/i.test(tag)) continue;
+    let vars: Record<string, string | number> | undefined;
+    const rawVars = attributeValue(tag, 'data-i18n-vars');
+    if (rawVars) {
+      try { vars = JSON.parse(rawVars) as Record<string, string | number>; } catch (_) { vars = undefined; }
+    }
+    const text = (key: string): string => renderProductStats(catalogText(locale, key, vars));
+    for (const [hostAttribute, target] of ATTRIBUTE_HOSTS) {
+      const key = attributeValue(tag, hostAttribute);
+      if (key && localizedHas(key)) tag = setTagAttribute(tag, target, text(key));
+    }
+    out += html.slice(copied, match.index) + tag;
+    copied = tagPattern.lastIndex;
+    const textKey = attributeValue(tag, 'data-i18n');
+    const htmlKey = attributeValue(tag, 'data-i18n-html');
+    const key = textKey ?? htmlKey;
+    if (!key || !localizedHas(key) || VOID_ELEMENTS.has(name) || tag.endsWith('/>')) continue;
+    const close = elementEnd(html, name, copied);
+    if (!close) continue;
+    out += textKey ? escapeText(text(key)) : text(key);
+    copied = close.contentEnd;
+    tagPattern.lastIndex = close.contentEnd;
+  }
+  return out + html.slice(copied);
+}
+
+/**
+ * Produce a crawl-time locale document: discovery metadata, the canonical alternate-language graph, and (for a
+ * non-default locale) the body copy itself (localizeBodyHtml).
  */
 export function localizeHtmlDocument(
   html: string,
@@ -218,6 +303,7 @@ export function localizeHtmlDocument(
   output = replaceMeta(output, 'property', 'og:locale', locale.replace('-', '_'));
   output = addLocaleLinks(output, route);
   output = addLocaleCatalogPreload(output, locale);
+  if (locale !== DEFAULT_LOCALE) output = localizeBodyHtml(output, locale);
   // Chinese documents carry the zh-CN label floor (the type rules) right after their type head; English ones never do.
   if (locale === 'zh-CN') output = addZhTypeFloor(output, route);
   return localizeStructuredData(output, route, locale);

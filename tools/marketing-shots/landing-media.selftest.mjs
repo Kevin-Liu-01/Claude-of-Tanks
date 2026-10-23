@@ -8,7 +8,7 @@ const site50 = `/media/${picks.collection}`;
 const manifest = JSON.parse(await readFile(resolve(root, 'public/media/landing-r1/manifest.json'), 'utf8'));
 const mobileVideoManifest = JSON.parse(await readFile(resolve(root, 'public/media/web-video-r1/manifest.json'), 'utf8'));
 const home = await readFile(resolve(root, 'site/home.html'), 'utf8');
-const presentation = await readFile(resolve(root, 'public/home.css'), 'utf8');
+const presentation = await readFile(resolve(root, 'src/presentation/home.css'), 'utf8');
 const threeMark = await readFile(resolve(root, 'public/brand/threejs-mark.svg'), 'utf8');
 const publicPages = await readFile(resolve(root, 'src/presentation/publicPages.ts'), 'utf8');
 const main = home.match(/<main>([\s\S]*?)<\/main>/)?.[1] || '';
@@ -172,10 +172,16 @@ assert.equal(home.split(manifest.destructionRail).length - 1, 1,
 
 const videos = [...home.matchAll(/<source data-src="([^"]+\.(?:webm|mp4))"/g)].map((match) => match[1]);
 assert.equal(new Set(videos).size, videos.length, 'landing videos do not repeat');
-assert.equal(videos.length, 7, 'all landing videos remain source-gated until viewport activation');
-assert.equal((home.match(/data-mobile-src="\/media\/web-video-r1\//g) || []).length, videos.length,
+// the site's seven loops and films, then (2026-10-22) the versus films, each with its own 540p phone file
+const versusFilms = picks.home.versusFilms ?? [];
+const siteVideos = videos.filter((path) => !path.startsWith('/media/versus-films-r1/'));
+assert.equal(videos.length, 7 + versusFilms.length, 'all landing videos remain source-gated until viewport activation');
+assert.equal(siteVideos.length, 7, 'the seven site videos');
+assert.equal((home.match(/data-mobile-src="\/media\/web-video-r1\//g) || []).length, siteVideos.length,
   'every landing video supplies a lightweight mobile proxy');
-assert.equal(mobileVideoManifest.files.length, videos.length, 'mobile proxy manifest covers every landing video');
+assert.equal((home.match(/data-mobile-src="\/media\/versus-films-r1\/[a-z0-9-]+-mobile\.mp4"/g) || []).length, versusFilms.length,
+  'every versus film supplies its phone file');
+assert.equal(mobileVideoManifest.files.length, siteVideos.length, 'mobile proxy manifest covers every landing video');
 assert.ok(mobileVideoManifest.files.reduce((total, file) => total + file.bytes, 0) < 9_000_000,
   'the complete mobile proxy library stays below the nine-megabyte transfer budget');
 for (const proxy of mobileVideoManifest.files) {

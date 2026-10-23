@@ -14,6 +14,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { messageArguments, parseMessage } from '../../tools/i18n-catalog-shape.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -54,17 +55,15 @@ for (const key of zhKeys) {
   assert.ok(enKeys.has(key), 'en-US missing key: ' + key);
 }
 
-const placeholderRegex = /\{(\w+)\}/g;
-
+// Arguments are read ICU-aware (tools/i18n-catalog-shape.mjs): `{count}` and `{count, plural, one {…} other {…}}` name
+// the argument `count`; a plural or select branch body is a message, never an argument.
 function checkPlaceholders(table, label) {
   for (const [key, value] of table) {
     assert.equal(typeof value, 'string', label + ' ' + key + ': not a string');
     assert.ok(value.length > 0, label + ' ' + key + ': empty translation');
-    let match;
-    const seen = new Set();
-    placeholderRegex.lastIndex = 0;
-    while ((match = placeholderRegex.exec(value))) seen.add(match[1]);
-    for (const ph of seen) {
+    const { args, errors } = parseMessage(value);
+    assert.deepEqual(errors, [], label + ' ' + key + ': ICU syntax');
+    for (const ph of args) {
       assert.ok(/^[a-zA-Z][a-zA-Z0-9_]*$/.test(ph),
         label + ' ' + key + ': bad placeholder {' + ph + '}');
     }
@@ -90,16 +89,16 @@ for (const k of SAMPLE_KEYS) {
     'translation is identical for ' + k + ' (likely a copy-paste oversight)');
 }
 
-// Placeholder smoke test: every translation that mentions {n} or {rating}
-// must include the same key in its English peer (cross-locale consistency).
+// Placeholder smoke test: every argument an English message names (plain or ICU) appears in its Chinese peer.
 for (const [key, value] of en) {
-  const matches = value.match(placeholderRegex);
-  if (!matches) continue;
+  const args = messageArguments(value);
+  if (!args.size) continue;
   const peer = zh.get(key);
   assert.ok(peer, 'zh-CN missing key ' + key + ' (placeholder sync check)');
-  for (const ph of matches) {
-    assert.ok(peer.includes(ph),
-      'placeholder ' + ph + ' in en-US:' + key + ' missing from zh-CN peer');
+  const peerArgs = messageArguments(peer);
+  for (const ph of args) {
+    assert.ok(peerArgs.has(ph),
+      'placeholder {' + ph + '} in en-US:' + key + ' missing from zh-CN peer');
   }
 }
 

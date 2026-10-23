@@ -229,7 +229,11 @@ dom.intersect(gated, 0.9);
 assert.equal(gated.children[0].src, '', 'the surface\'s gate holds the loop');
 playable = true;
 gatedPlayer.sync();
-assert.equal(gated.children[0].src, S21.loop, 'sync applies the opened gate');
+// One transfer at a time (brand-ui SPEC 8.3): the first frame's loop is still downloading, so the opened gate waits
+// with its poster; the first transfer buffering through hands the slot to the waiting frame.
+assert.equal(gated.children[0].src, '', 'one transfer at a time: the second frame waits while the first downloads');
+video.dispatchEvent({ type: 'canplaythrough' });
+assert.equal(gated.children[0].src, S21.loop, 'sync applies the opened gate once the transfer slot frees');
 gatedPlayer.dispose();
 assert.equal(gated.children.length, 0, 'dispose removes the player');
 assert.ok(dom.observersOf(gated).length === 0, 'and disconnects its observers');
@@ -274,6 +278,8 @@ if (existsSync(shipped)) {
 
 // At most two loops play at once on a page (the coordinator, 2026-10-13): a third pauses the one playing longest, which
 // resumes once a slot frees while still in view, and the viewer's own play always wins a slot.
+// (the policy is one per page, src/presentation/mediaPlayer.ts: the frame above leaves the page first)
+player.dispose();
 {
   const capped = await freshModule();
   const frames = [0, 1, 2].map(() => dom.document.createElement('div'));
@@ -283,6 +289,8 @@ if (existsSync(shipped)) {
     p.show(take);
     dom.intersect(frames[i], 0, true);
     dom.intersect(frames[i], 0.6);
+    assert.equal(videos[i].paused, false, `loop ${i + 1} starts: no other transfer is in flight`);
+    videos[i].dispatchEvent({ type: 'canplaythrough' }); // its transfer buffers through: the slot frees for the next
   }
   assert.deepEqual(videos.map((v) => v.paused), [true, false, false], 'a third loop pauses the one playing longest');
   dom.intersect(frames[1], 0, true);
