@@ -1461,6 +1461,15 @@ export function rulesetVerdictSide(ruleset: Pick<MatchRuleset, 'infection'>, cur
   return ruleset.infection ? 'alpha' : current;
 }
 
+/**
+ * The modes whose roles light a tank's own surfaces (the Juggernaut, a flag carrier, the infected: game/juggernautVisual.ts).
+ * Any tank of their battles can take a role, so every one wears its energy skin from its staging, dormant until a role
+ * lights it (mode-sheen-perf-243: the skin's programs compile behind the cover, never on the frame a tank first glows).
+ */
+export function modeLightsTanks(mode: string | null | undefined): boolean {
+  return mode === 'juggernaut' || mode === 'capture_the_flag' || mode === 'infected';
+}
+
 /** The wave modes: their enemy side is a pool drawn per wave (Horde) or per sector (Frontline). */
 export function isWaveMode(mode: GameModeId): mode is 'endless_horde' | 'frontline_assault' {
   return mode === 'endless_horde' || mode === 'frontline_assault';
