@@ -40,7 +40,7 @@ import { equipmentHoverPreview, projectEquipmentLoadout } from './equipmentPrevi
 import { equipIconSVG } from './equipIcons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { keycap, scale20, wireRoving } from './components/components.ts';
-import { campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
+import { CAMPAIGN_OPERATIONS, campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
 import { shellIconSVG } from './shellIcons.ts';
 import {
@@ -3352,8 +3352,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function renderDeployChips(): void {
     for (const row of battleMenu.querySelectorAll<HTMLElement>('[data-deploy-chips]')) {
       const facts = deployFacts(normalizeGameMode(row.dataset.deployChips));
-      const card = row.closest('.cot-deploy-card') !== null;
-      const shown = (['teams', 'clock', 'respawn', 'victory'] as const).filter((key) => facts[key] != null).slice(0, card ? 3 : 2);
+      const shown = (['teams', 'clock', 'respawn', 'victory'] as const).filter((key) => facts[key] != null).slice(0, 2);
       row.innerHTML = shown.map((key) => `<span>${uiIconSVG(DEPLOY_FACT_ICON[key], 14)}${facts[key]}</span>`).join('');
     }
   }
@@ -3393,6 +3392,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         `<span>${uiIconSVG('map', 14)}${t(`map.${operation.mapId}`)}</span><span>${uiIconSVG('clock', 14)}${clockText(operation.timeLimitS)}</span>` +
         `<span class="cot-deploy-op-stars" role="img" aria-label="${escapeHtmlAttribute(t('campaign.starsAria', { stars, max: 3 }))}">${
           [0, 1, 2].map((slot) => `<i class="${slot < stars ? 'on' : ''}">${uiIconSVG('star', 14)}</i>`).join('')}</span>` +
+        `<span class="cot-deploy-op-diff" role="img" aria-label="${escapeHtmlAttribute(t('garage.deploy.difficulty', { value: operation.difficulty, max: CAMPAIGN_OPERATIONS.length }))}">${
+          CAMPAIGN_OPERATIONS.map((_, slot) => `<i class="${slot < operation.difficulty ? 'on' : ''}"></i>`).join('')}</span>` +
         (progress ? `<span>${t('campaign.best', { best: progress.bestLine, total: progress.total })}</span>` : '') +
         `</span></span>${action}</article>`;
     }).join('');

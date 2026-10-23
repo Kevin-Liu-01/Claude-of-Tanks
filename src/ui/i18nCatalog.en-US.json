@@ -494,6 +494,7 @@
   "garage.deploy.seconds": "{value} s",
   "garage.deploy.none": "None",
   "garage.deploy.elimination": "Elimination",
+  "garage.deploy.difficulty": "Difficulty {value} of {max}",
   "garage.deploy.ammo.spec": "Standard",
   "garage.deploy.ammo.he_only": "HE only",
   "garage.deploy.ammo.unlimited": "Unlimited",

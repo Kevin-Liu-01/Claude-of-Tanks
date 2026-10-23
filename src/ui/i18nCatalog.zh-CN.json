@@ -494,6 +494,7 @@
   "garage.deploy.seconds": "{value} 秒",
   "garage.deploy.none": "无",
   "garage.deploy.elimination": "全歼",
+  "garage.deploy.difficulty": "难度 {value}/{max}",
   "garage.deploy.ammo.spec": "标准",
   "garage.deploy.ammo.he_only": "仅高爆弹",
   "garage.deploy.ammo.unlimited": "无限",
