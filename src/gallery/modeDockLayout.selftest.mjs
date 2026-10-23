@@ -1,7 +1,8 @@
-// modeDockLayout.selftest.mjs — the Tank Gallery's layout contract (brand-ui SPEC 12.5, the Premiere 07-gallery port):
-// three panes on a desktop, the stage's plates in their own corners, the layer and view labels leaving the picture but
-// not the accessible names when the stage narrows, one scrolling page below 1100 px and a stacked phone layout, all on
-// the media-query bands of responsiveLayout.ts and the design tokens.
+// modeDockLayout.selftest.mjs — the Tank Gallery's layout contract (brand-ui SPEC 12.5, the Premiere direction's own
+// page 07-gallery.html): three panes on a desktop, the stage's plates where the page puts them (layers top left, views
+// top right, tools bottom centre, the scale inset bottom left, the legend bottom right), the layer and view labels
+// leaving the picture but not the accessible names when the stage narrows, one scrolling page below 1100 px and a
+// stacked phone layout, all on the media-query bands of responsiveLayout.ts and the design tokens.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { viewportQueryViolations } from '../ui/viewportQueries.test-support.mjs';
@@ -15,24 +16,31 @@ assert.match(css, /\.gallery-shell\{height:calc\(var\(--cot-viewport-height,100d
 const order = ['<aside class="browse"', '<section class="stage" id="viewport"', '<aside class="dossier"'].map((tag) => html.indexOf(tag));
 assert.ok(order.every((at, index) => at > 0 && (index === 0 || at > order[index - 1])), 'the markup reads browse, stage, dossier');
 
-// The stage's plates hold their own corners: layers top left, views and tools stacked top right, the scale inset bottom
-// left, the legend bottom right.
-assert.match(css, /\.stage-layers\{left:var\(--s4\);top:var\(--s3\)/);
-assert.match(css, /\.stage-right\{position:absolute;right:var\(--s4\);top:var\(--s3\)/);
-assert.match(css, /\.stage-inset\{left:var\(--s4\);bottom:var\(--s4\)/);
-assert.match(css, /#viewport\.stage \.overlay-legend:not\(:empty\)\{right:var\(--s4\);bottom:var\(--s4\)/);
+// The page's own structure: search, flags, toggles and the fleet in browse; the take, tabs, facts, versus card and
+// actions in the dossier.
+for (const part of ['<form class="search"', '<div class="flags"', '<div class="toggles"', '<div class="fam" id="vehicleList"',
+  '<header class="take"', '<div class="nm">', '<div class="dz-tabs"', '<div class="facts"', '<div class="vsc"', '<div class="acts">']) {
+  assert.ok(html.includes(part), `the Gallery carries the direction's ${part}`);
+}
+
+// The stage's plates hold the page's places.
+assert.match(css, /\.layers\{left:16px;top:14px;display:flex;gap:2px;padding:3px\}/);
+assert.match(css, /\.views\{right:16px;top:14px;display:flex;flex-direction:column;gap:2px;padding:3px\}/);
+assert.match(css, /\.tools\{left:50%;bottom:16px;transform:translateX\(-50%\)/);
+assert.match(css, /\.inset\{left:16px;bottom:16px;width:150px/);
+assert.match(css, /#viewport \.legend:not\(:empty\)\{right:16px;bottom:16px/);
 // Five layers, each with its key; the label leaves the picture under 1440 px and stays in the button's name.
 assert.equal([...html.matchAll(/<button type="button"[^>]*data-mode="(appearance|armor|modules|crew|markup)" data-key="([1-5])"/g)].length, 5,
   'five layers, keys 1 to 5');
-assert.match(css, /@media \(width < 1440px\)\{\s*\.stage-layers button>span\{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset\(50%\)\}/,
+assert.match(css, /@media \(width < 1440px\)\{\s*\.layers button>span\{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset\(50%\)\}/,
   'narrow stages keep the layer names as accessible names only');
 assert.equal([...html.matchAll(/data-view="(?:hero|front|left|right|rear|top|elevated-left|elevated-right)"/g)].length, 8, 'eight camera views');
 
 // Below 1100 px the page scrolls: the stage spans the top and the panes share a row; below 768 px they stack, the views
 // become a bottom row and the fleet a strip of cards.
 assert.match(css, /@media \(width < 1100px\)\{[\s\S]*?grid-template-areas:"stage stage" "browse dossier"/);
-assert.match(css, /@media \(width < 768px\)\{[\s\S]*?grid-template-areas:"stage" "browse" "dossier"[\s\S]*?\.stage-views\{position:absolute;z-index:var\(--z-hud-controls\);left:var\(--s2\);right:var\(--s2\);top:auto;bottom:var\(--s2\);flex-direction:row/);
-assert.match(css, /@media \(width < 768px\)\{[\s\S]*?\.vehicle-list,\.vehicle-list\[data-layout=grid\]\{display:grid;grid-auto-flow:column/);
+assert.match(css, /@media \(width < 768px\)\{[\s\S]*?grid-template-areas:"stage" "browse" "dossier"[\s\S]*?\.views\{position:absolute;z-index:var\(--z-hud-controls\);left:8px;right:8px;top:auto;bottom:8px;flex-direction:row/);
+assert.match(css, /@media \(width < 768px\)\{[\s\S]*?\.fam,\.fam\[data-layout=grid\]\{display:grid;grid-auto-flow:column/);
 
 // Selection states fill or outline whole controls: no clipped decorative fragments.
 assert.doesNotMatch(css, /::(?:before|after)\{[^}]*height:(?:12|15|16)px/, 'no decorative border fragments');
@@ -42,5 +50,5 @@ assert.deepEqual(viewportQueryViolations(css, 'gallery.css'), [],
 // Short landscape viewports keep the shell inside the visual viewport below the shorter navigation.
 assert.match(css, /@media \(\(height < 520px\) or \(width < 900px\) or \(\(width < 1440px\) and \(\(pointer: coarse\) or \(hover: none\)\)\)\)\{\s*\.gallery-shell\{height:calc\(var\(--cot-viewport-height,100dvh\) - 56px\)\}/);
 
-console.log('modeDockLayout.selftest: three panes, the stage plates in their corners, layer names kept as accessible names, '
-  + 'the scrolling and stacked layouts on the responsiveLayout bands pass');
+console.log('modeDockLayout.selftest: three panes, the direction page\'s structure, the stage plates in its places, layer names kept '
+  + 'as accessible names, the scrolling and stacked layouts on the responsiveLayout bands pass');
