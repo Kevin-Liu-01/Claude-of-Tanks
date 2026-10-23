@@ -78,6 +78,8 @@ function fixture({ closeThrows = false } = {}) {
   const compile = new Function('THREE', 'SimplexNoise', 'torusNoise', 'canvasToTexture',
     'layer', 'own', 'state', 'closeThrows', 'groundReduxUniformValues', 'resolveGroundReduxProfile', 'landUseUniformValues', 'resolveLandUseProfile', 'bakeLandUseSteps', 'landUseTierOf', 'LAND_BAKE_LAYERS', stripTypeScriptTypes(`
     const attachTerrainLandUse = () => {};
+    // (2026-10-13, item/perf-terrain-fold) a sandbox build compiles no shader: the uniform fold stays off and keys nothing
+    const splatFoldEnabled = () => false;
     const SPLAT_FIELD_S = 256, CHUNKS = 8, CHUNK_SIZE = 128, HALF = 512;
     const LOD_SEGS = [96,48,24], SPLAT_COMMON_FRAG = '', SPLAT_NORMAL_FRAG = '', SNOW_ROCK_HOLD_LINE = '';
     let _splatFields = null;

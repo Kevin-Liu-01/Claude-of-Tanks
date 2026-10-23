@@ -81,6 +81,8 @@ import { LAND_BAKE_LAYERS, LAND_USE_GLSL, bakeLandUseSteps, landUseAt, landUseTi
 import { drawIceCracks } from './iceCracks.ts';
 import { civicLawns, civicPavedRooms } from './civic/plans/index.ts';
 import type { CivicRect } from './civic/types.ts';
+import { foldSplatUniforms, splatFoldEnabled, splatFoldSignature } from './terrainSplatFold.ts';
+import { pruneFoldedSplatBranches, splatPruneEnabled } from './terrainSplatPrune.ts';
 import {
   normalTextureFromHeight as normalFromHeight,
   textureFromRgbaPixels as canvasToTexture,
@@ -8436,6 +8438,20 @@ function* createSplatMaterialSteps(
     mat.userData.splatUniforms = shader.uniforms;
     shader.uniforms.uGroundTime = groundClock;
   }
+  // the perf stream (2026-10-12): the folded values' signature keys the program (two maps never share a folded program);
+  // computed once from the same assignments the compile makes, with their userData side effects put back
+  const splatFold = splatFoldEnabled();
+  // the perf lane (2026-10-15): and the folded program's off features removed from its source (terrainSplatPrune.ts)
+  const splatPrune = splatFold && splatPruneEnabled();
+  const splatFoldKey = splatFold ? ((): string => {
+    const probe = { uniforms: {} } as unknown as MaterialShader;
+    const hadSun = Object.prototype.hasOwnProperty.call(mat.userData, 'sunDirUniform');
+    const sun = mat.userData.sunDirUniform, live = mat.userData.splatUniforms;
+    assignSplatTextureUniforms(probe); assignSplatToneUniforms(probe); assignSplatBiomeUniforms(probe);
+    if (hadSun) mat.userData.sunDirUniform = sun; else delete mat.userData.sunDirUniform;
+    if (live === undefined) delete mat.userData.splatUniforms; else mat.userData.splatUniforms = live;
+    return `-${splatFoldSignature(probe.uniforms as Record<string, { value: unknown }>)}`;
+  })() : '';
   const splatHook: MaterialShaderHook = (shader) => {
     assignSplatTextureUniforms(shader);
     assignSplatToneUniforms(shader);
@@ -8482,6 +8498,18 @@ function* createSplatMaterialSteps(
       // over the red; dry sandstone is matte — a jebel face keeps a tenth of its specular light (gJebelMatte)
       + '\nreflectedLight.directSpecular *= 1.0 - 0.9 * gJebelMatte; reflectedLight.indirectSpecular *= 1.0 - 0.9 * gJebelMatte;');
     if (seaOpenings.length) shader.fragmentShader = fadeDistantCoastShadows(shader.fragmentShader, 'vWPos');
+    // the perf stream (2026-10-12): the map's constant terms folded into the program (terrainSplatFold.ts) — the off
+    // features compile out instead of holding registers for every pixel
+    if (splatFold) shader.fragmentShader = foldSplatUniforms(shader.fragmentShader, shader.uniforms).source;
+    // the perf lane (2026-10-15): the gated blocks whose conditions are false over those constants leave the source (a map
+    // without fields sends no land use to the compiler; terrainSplatPrune.ts proves each removal a no-op)
+    if (splatPrune) {
+      const result = pruneFoldedSplatBranches(shader.fragmentShader);
+      shader.fragmentShader = result.source;
+      // (diagnostics: the final pass's per-map census reads what left each map's program)
+      mat.userData.splatPrune = { blocks: result.pruned.length, chars: result.pruned.reduce((n, p) => n + p.chars, 0),
+        conditions: result.pruned.map((p) => p.condition) };
+    }
   };
   // the scenery lane (visual/shadow-bias, 2026-10-04): the ground casts no shadow (its chunks and the horizon ring that
   // draws its faces with this material keep castShadow false), so it takes no caster's acne bias: its shadows meet each
@@ -8489,7 +8517,7 @@ function* createSplatMaterialSteps(
   mat.userData.cotShadowReceiverOnly = true;
   engineCtx.setupShadowMaterial(mat, splatHook);
   // (a map's own snow-on-rock law compiles its own source, so it keys its own program; every other map keeps the key)
-  mat.customProgramCacheKey = () => `world-terrain-splat-v54-${seaOpenings.length ? 'coast' : 'land'}${snowHold ? `-${snowHold.replace(/[^0-9.]+/g, '_')}` : ''}`; // terrain v3 (2026-10-02): v54
+  mat.customProgramCacheKey = () => `world-terrain-splat-v54-${seaOpenings.length ? 'coast' : 'land'}${snowHold ? `-${snowHold.replace(/[^0-9.]+/g, '_')}` : ''}${splatFoldKey}${splatPrune ? '-p1' : ''}`; // terrain v3 (2026-10-02): v54; the perf stream: + the folded values' signature
   mat.userData.sourcedTexturesReady = sourcedTexturesReady;
   mat.userData.formationUniform = formationUniform;
   mat.userData.formationLowUniform = formationLowUniform;
