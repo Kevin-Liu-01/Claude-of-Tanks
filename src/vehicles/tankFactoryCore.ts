@@ -50,6 +50,7 @@ import type { TurretRingSeat, createTurretRingPresentation } from './turretRingW
 import { loadTurretRingModule, turretRingModule } from './turretRingLoader.ts';
 import { normalizeTankAppearance, tagVehicleMaterial } from './appearanceAudit.ts';
 import { applyInteriorFills, closedInteriorFillGeometry } from './interiorFills.ts';
+import { applyTurretSeatRace, seatTurretOverDeck } from './turretSeatRace.ts';
 import { verifyPhysicalMuzzleBore, type PhysicalMuzzleBore } from './physicalMuzzleBore.ts';
 import { measureNearShadowCasterWork } from './shadowCasterWork.ts';
 import { materialOnlyPaintSourceBucket } from './profiles/fixedPaintedPanel.ts';
@@ -8952,6 +8953,10 @@ function* createTankOwnedSteps(
   if (typeof P.postAssemble === 'function') {
     P.postAssemble({ root, hullG, turretG, gunG, recoilG });
   }
+  // The turret seated over the deck round its ring (2026-10-22; the owner: "make sure all tank turrets are clear of hulls
+  // ... and have a proper turret ring/attachment area"), from the calibration's ring receipt (turretSeatRace.ts). Here,
+  // on the finished armour: the markings' solver, a suit and the decor all lay against the seated turret.
+  seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables });
   // Equipment laid against the finished armour (a camouflage suit or field net) is built after the core, in slices of its
   // own, against the vehicle exactly as it stands here (runDeferredAssembly).
   // 2026-10-21 (the M1A1 Abrams FEP's marking row, stale since the deferral): the live marking solver below measures
@@ -11075,12 +11080,15 @@ export function* createTankRuntimeSteps(
     }, legacyDecoration);
     const tailDecorFinishedAt = performance.now();
 
+    // The ring's race in the seam under the seated turret (seatTurretOverDeck, after the core), from the calibration's
+    // ring receipt (turretSeatRace.ts), so it shares its axis and seat with the wreck's ring plate.
     // Interior fills 2026-09-13 (owner: every hull and turret must hold water):
     // generated buried solids for this tank, if its fleet group is resident.
     // 2026-10-16 (tank-opt HIDDEN): drawn as their conforming boundary surface (a wreck swaps the closed boxes back in,
     // closeInteriorFills); a geometry-only build (a map hulk's bake, the workshop dressing) keeps the closed boxes, so
     // its baked triangles and budgets are unchanged.
     interiorFillMeshes = applyInteriorFills({ specId, hullG, turretG, gunG, material: mats.dark, disposables, closed: geometryOnly }).meshes;
+    applyTurretSeatRace({ specId, hullG, material: mats.dark, high: geometryQuality !== 'low', disposables });
     if (physicalBore) {
       // Final stock includes generated gun fills and fixed pitch-owned parts.
       // Neither may re-cap the recoil-owned aperture that was verified earlier.

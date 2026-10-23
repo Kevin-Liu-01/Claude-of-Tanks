@@ -19,6 +19,12 @@ const CHINESE_FRONTLINE_SPECS = {
     terrainResistance: { hard: 0.70, medium: 0.80, soft: 1.45 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 40, gunPitchDegS: 31, gunElevationDeg: 14, gunDepressionDeg: 7,
+    // Release 240 (gun-hull fleet, tools/gun-depression-sweep.mjs --no-suit at 26 mm): the gun's measured stop by turret
+    // yaw; ahead the full 7 degrees, over the front quarters' ERA and fittings -3.8 to -6, over the stern kit +4.9.
+    gunPitchByYawDeg: [[0, -7], [20, -7], [21, -6.5], [22, -6.3], [25, -6.3], [27, -7], [29, -7], [31, -4.7], [32, -4.1],
+      [33, -3.8], [38, -3.8], [44, -4.2], [45, -3.9], [51, -3.8], [59, -4.9], [61, -4.9], [66, -6], [94, -6], [126, -3.5],
+      [127, -2.7], [128, -2.4], [129, -2.2], [133, -2], [142, -2], [143, -1.6], [144, -1.4], [146, -1.3], [154, -1],
+      [163, -0.8], [164, 2.5], [165, 4.3], [167, 4.8], [170, 4.9], [180, 4.9]],
     gun: {
       caliberMm: 125, reloadS: 6.4, baseAccuracy: 0.29, aimTimeS: 1.85,
       bloom: { move: 0.055, hullRot: 0.075, turret: 0.055, afterShot: 2.1 },
