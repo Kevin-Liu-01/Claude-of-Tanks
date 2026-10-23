@@ -742,6 +742,10 @@ rounds recorded (Infected 1-16 and 101-108, Horde 1-8 and 101-108, the before ro
 | Endless Horde, round 2, hold-out (16) | 0 / 16 | 435 s | 435 s / 450 s | 9.65 | 0.58 | 16.71 | 5.5 (7) |
 | Endless Horde, round 2 final (32 seeds; the approach out of sight, reload ×2.2) | 0 / 32 | 465 s | 465 s / 483 s | 9.27 | 0.58 | 15.88 | 5.31 (8) |
 | Endless Horde, round 2 final, hold-out (16) | 0 / 16 | 496 s | 496 s / 530 s | 9.22 | 0.53 | 17.50 | 5.5 (8) |
+| Infected, 240 re-measure (48 seeds; 233's pack hunt, 130 % survivors) | 0 / 48 | 157 s | 105 s / 101 s | 11.28 | 4.05 | 2.79 | — |
+| Infected, 240 re-measure, hold-out (32) | 0 / 32 | 162 s | 110 s / — | — | — | 2.89 | — |
+| Endless Horde, 240 re-measure (32 seeds) | 0 / 32 | 324 s | 324 s / 298 s | — | — | 10.39 | 4.16 (7) |
+| Endless Horde, 240 re-measure, hold-out (16) | 0 / 16 | 296 s | 296 s / 274 s | — | — | 10.68 | 3.94 |
 
 The humans now cut through the zombies — four to ten zombies for every human lost — and the numbers still decide:
 the outbreak takes two rounds in three (the survivors won 6 of the 16 tuning seeds, 16 of 48 on seeds 17-64 and 2 of 8
@@ -779,6 +783,15 @@ controller; `metrics/round2/final/zombie-balance`; six seeds hit the probe's
 zombies a loss, every run overrun (hold-out 8:16, 5.5 rounds). The Infected record stands on its rules, which did not
 move; the controller change since (the no-ram lane after the terrain escape) kept the harness's Infected results seed
 for seed (survivors 7 of the critic's 16 both before and after it, the mean round 256 s, the first conversion 114 -> 105 s).
+
+The 240 re-measure (2026-10-22, on 058ccfa242's rules: gameplay-modes-233's pack hunt, the survivors at 130 %, the
+first infection about 27 s on the 233 harness and a median 38 s on these seeds) records the band
+zombieBalance.selftest now fails on: the outbreak takes every Infected round (0 of 48, the latest at 5:18, median 2:29;
+2.79 infected a survivor lost), so Infected misses all three targets; the Horde holds all four (5:24 and 4.2 rounds a
+run, 10.4 zombies a loss, every run overrun). Seed 108 hit the 90-minute wall cap under a load of 300 and was re-run
+with a four-hour cap. A screen of single rule changes on seeds 1-6 (infected respawn 10 s and 15 s, their reload
+x1.6, survivors at 180 %) gave the survivors no round either (the best, a 15 s respawn: median end 3:44, 4.1 a loss)
+while each slowed the first infection to 60-77 s: the fix is open (`.qa-dev` screen rows on the 240 lane).
 
 Re-measure (about 1.5-4 minutes of wall time per seed under load; gate on `headroom can-start`):
 
