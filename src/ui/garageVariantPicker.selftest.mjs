@@ -51,8 +51,7 @@ assert.match(garageCss,
 assert.match(garageCss,
   /body\[data-cot-width='compact'\] \.cot-garage-variant-menu,[\s\S]*?grid-template-columns:1fr;/,
   'compact screens retain the existing single-column staging gallery');
-assert.match(garageCss,
-  /\.cot-wordmark \.wm\[lang=en\]\{letter-spacing:\.08em\}/,
-  'the Claude of Tanks wordmark keeps its own tracking in every locale');
+assert.doesNotMatch(garageCss, /\.cot-wordmark \.wm\[lang=en\]/,
+  'the Claude of Tanks wordmark is the outlined master (brandWordmark.ts): it tracks the same in every locale');
 
 console.log('garageVariantPicker.selftest: ok');
