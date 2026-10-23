@@ -3,7 +3,7 @@ import {
   mouseAlertBox, mouseMedalWaits, planMouseNotices, type MouseNoticeInput, type MouseNoticePlan, type PlanLane, type PlanRect,
 } from './mouseNoticePlan.ts';
 import { addSightFurniture, clearSightFurniture, setSightNotice, settleSightFurniture } from './sightFurniture.ts';
-import { planTouchNotices, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
+import { planTouchNotices, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
 
 /** A resize whose sizes arrive closer than this is still in progress. */
 const RESIZE_SETTLE_MS = 150;
@@ -117,6 +117,12 @@ const touchChipParked = (width: number, height: number) => (width > height && he
  *  the notices from under the score (at 568x290 the panel under the score left them no clear place). Where the column
  *  is too short (568x256) the panel stays under the score. battleHudLayout.css data-objective-seat. */
 const OBJECTIVE_COMPACT_H = 340;
+/** Half the centre column a touch landscape's kill lanes leave the notices (a compact notice and its gaps; the lanes'
+ *  CSS width, battleHudLayout.css --hud-message-width, keeps the same 74 px). */
+const TOUCH_CENTRE_HALF = TOUCH_COMPACT_NOTICE.w / 2 + TOUCH_NOTICE_GAP;
+/** The layout variables that place an element on the centre line, written unrounded. */
+const CENTRING_VARS = new Set(['objective-top', 'objective-left', 'systems-left', 'touch-notice-cx', 'touch-alert-cx',
+  'touch-banner-cx', 'touch-countdown-cx']);
 /** The side seat's gap under the map, and its least width: the parked warning chip's (battleHudLayout.css), one column. */
 const OBJECTIVE_SEAT_GAP = 4;
 const PARKED_CHIP_W = 106;
@@ -240,6 +246,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
   /** The window and mode the objective last left the side seat for: it stays under the score there, so a count that
    *  gains a digit (a Horde's rounds) moves it once at most, never back and forth. */
   let objectiveTopKey = '';
+  /** A side seat measured too tall while the HUD's faces were still loading: their arrival measures it again. */
+  let seatAwaitsFaces = false;
   /** Seats the objective (OBJECTIVE_COMPACT_H) and writes its seat and place before the pass reads it: the side seat is
    *  measured in its compact form under the map and kept where it ends over the joystick (the left lane's own floor
    *  reserves a short landscape's hidden second FIRE button). 'side', or '' (the panel under the score). */
@@ -257,6 +265,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       // (never kept from a measure the HUD's faces have not reached yet: a fallback face wraps wider)
       if (node.getBoundingClientRect().bottom <= floor) { seat = 'side'; objectivePlace = place; }
       else if (document.fonts?.status !== 'loading') objectiveTopKey = key;
+      else seatAwaitsFaces = true;
     }
     writeObjective(seat, objectivePlace);
     return seat;
@@ -268,7 +277,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     // (as the pass's own write formats them)
     setBodyVar('--hud-objective-top', `${place.top}px`);
-    setBodyVar('--hud-objective-left', `${Math.floor(place.left)}px`);
+    setBodyVar('--hud-objective-left', `${place.left}px`);
     setBodyVar('--hud-objective-width', `${Math.floor(place.width)}px`);
   }
   /** A node's box when it shows (laid out, not hidden or transparent), else null. */
@@ -606,8 +615,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const systemsElement = document.querySelector<HTMLElement>('.cot-vehicle-controls');
     const naturalWidth = systemsElement ? systemsElement.scrollWidth + 2 : 0;
     let dockWidth = Math.min(systemsWidth, naturalWidth);
+    // (centred on the tray by the row's own rendered width: the 2 px margin dockWidth carries would set it 1 px left)
     let systemsLeft = Math.max(12, Math.min(width - dockWidth - 12,
-      (ammo ? ammo.left + ammo.width / 2 : width / 2) - dockWidth / 2));
+      (ammo ? ammo.left + ammo.width / 2 : width / 2) - Math.min(dockWidth, Math.max(0, naturalWidth - 2)) / 2));
     if (touch && height < 550 && width > height) {
       // Landscape phones have a vertical ammo rail. Use the lower gap between
       // the driving instruments and aim buttons, above the health strip.
@@ -737,7 +747,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         }
       }
     }
-    const sideWidth = Math.min(400, width / 2 - 24);
+    const sideWidth = Math.min(400, width / 2 - (touch && width > height ? TOUCH_CENTRE_HALF : 24));
     const chat = !!read('.cot-room-chat:not([hidden])');
     const toastHost = root.querySelector<HTMLElement>('.cot-si-toasthost');
     const toastCount = toastHost?.childElementCount || 0;
@@ -937,7 +947,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       noticeTop = touchPlan.noticeTop;
       alertTop = touchPlan.alertTop;
     }
-    const touchNotices = touchPlan ? ['plan', touchPlan.noticeCompact ? 'notice-compact' : '', touchPlan.alertCompact ? 'alert-compact' : '', touchPlan.alertNarrow ? 'alert-narrow' : '',
+    const touchNotices = touchPlan ? ['plan', touchPlan.noticeCompact ? 'notice-compact' : '', touchPlan.alertCompact ? 'alert-compact' : '',
       touchPlan.cleared ? '' : 'uncleared'].filter(Boolean).join(' ') : '';
     if ((document.body.dataset.touchNotices ?? '') !== touchNotices) {
       if (touchNotices) document.body.dataset.touchNotices = touchNotices;
@@ -1028,7 +1038,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     };
     for (const [name, value] of Object.entries(properties)) {
       const property = `--hud-${name}`;
-      const pixels = `${name === 'objective-top' ? value : Math.floor(value)}px`;
+      // (a centre and a centred left are written exact: a floored one sets its element up to 1 px off the centre line)
+      const pixels = `${CENTRING_VARS.has(name) ? value : Math.floor(value)}px`;
       if (document.body.style.getPropertyValue(property) !== pixels) {
         document.body.style.setProperty(property, pixels);
         // an instrument the mouse plan keeps off moves with this write: the next relayout measures its inputs again
@@ -1075,8 +1086,14 @@ export function installBattleHudLayout(root: HTMLElement): void {
   window.addEventListener('cot-hud-relayout', schedule);
   // Keyboard and toolbar changes of the visible height arrive here once responsiveLayout.ts has resized the root.
   window.addEventListener('cot:layoutchange', schedule);
-  // The HUD's faces arriving re-measure what a fallback face set (the objective's side seat among them).
-  document.fonts?.addEventListener?.('loadingdone', () => { planInputs = true; schedule(); });
+  // The HUD's faces arriving re-measure a side seat a fallback face set too tall (only then: a relayout the faces cause
+  // anywhere else is the observers').
+  document.fonts?.addEventListener?.('loadingdone', () => {
+    if (!seatAwaitsFaces) return;
+    seatAwaitsFaces = false;
+    planInputs = true;
+    schedule();
+  });
   // Transforms (notably the spectator tray's entrance) do not resize the
   // border box. Measure the settled position without polling its animation.
   // A pass that lands mid-fade measures the reticle's furniture where its fade has it, so the end of a furniture's own fade

@@ -6,7 +6,11 @@
  * and objective would meet it; the rules panel sits on the same line under the sight's marks (or, where they leave it no
  * place, under the resting sight), sliding down, then shrinking to the 11 px type floor, and stays hidden where nothing
  * clears it (a phone's touch controls leave it no centred place: the play menu's mode card lists the same rules).
- * Neither ever leaves the centre line.
+ * On touch (`overSight`), where nothing over the sight clears it (a short landscape between its objective and its
+ * controls row, a narrow phone under its top row), the dial comes down over the crosshair, idle before the roll-out, as
+ * far as its top at the aim point and as small as a 26 px numeral; where even that meets a panel, it takes the place
+ * that covers least of them, never the ceiling place over the map and the controls. Neither ever leaves the centre
+ * line.
  *
  * DOM-free and deterministic: mouseNoticePlan.ts and touchNoticePlan.ts call it with their own blocks.
  */
@@ -17,7 +21,7 @@ export interface CountdownSize { readonly w: number; readonly h: number }
 export interface CountdownPlace {
   /** The dial's top and scale (its centre is the window's; the CSS scales it from its top centre). */
   top: number; scale: number;
-  /** false: no place on the centre line kept clear of the blocks, so it took the lowest that fits the band. */
+  /** false: no place on the centre line kept clear of the blocks, so it took the one that covers least of them. */
   cleared: boolean;
   /** The rules panel's top and scale (from its top centre); hidden where no place under the sight keeps clear. */
   rulesTop: number; rulesScale: number; rulesShown: boolean;
@@ -31,6 +35,8 @@ const MARKS_BELOW_PX = 76;
 /** The dial's bottom over the aim point, as a share of the height. */
 const LIFT = 0.05;
 const DIAL_SCALES = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.45, 0.4] as const;
+/** Over the sight, smaller still: a 100 px numeral at 26 px at the least (568x256 leaves the centre line 43 px). */
+const OVER_SIGHT_SCALES = [...DIAL_SCALES, 0.35, 0.3, 0.26] as const;
 /** 13 px type (11 px on touch's 12 px) at the last: the type floor. */
 const RULES_SCALES = [1, 0.92, 0.85] as const;
 const STEP_PX = 4;
@@ -42,12 +48,21 @@ const clearOf = (x0: number, y0: number, x1: number, y1: number, blocks: readonl
   return true;
 };
 
+/** The area of the blocks, each grown by `gap`, a box covers. */
+const coveredBy = (x0: number, y0: number, x1: number, y1: number, blocks: readonly CountdownBox[], gap: number) => {
+  let area = 0;
+  for (const b of blocks) {
+    area += Math.max(0, Math.min(x1, b.x1 + gap) - Math.max(x0, b.x0 - gap)) * Math.max(0, Math.min(y1, b.y1 + gap) - Math.max(y0, b.y0 - gap));
+  }
+  return area;
+};
+
 /**
  * The dial's and the rules panel's places (see the module's note). `top`: the bottom of the score and objective;
  * `blocks`: the panels, controls and readouts each keeps `gap` from (never the reticle: the centre line is its place).
  */
 export function placeCountdown(width: number, height: number, top: number, dial: CountdownSize, rules: CountdownSize | null,
-  blocks: readonly CountdownBox[], gap: number): CountdownPlace {
+  blocks: readonly CountdownBox[], gap: number, overSight = false): CountdownPlace {
   const cx = width / 2, cy = height / 2;
   const ceiling = Math.ceil(top + gap);
   const lowest = Math.floor(cy - SIGHT_CLEAR_PX - gap);
@@ -64,12 +79,39 @@ export function placeCountdown(width: number, height: number, top: number, dial:
     }
     if (found) break;
   }
-  if (!found) {
+  // (touch, `overSight`) nothing over the sight clears: down over the crosshair, its top at the aim point at the lowest,
+  // the largest that clears
+  for (const s of overSight ? OVER_SIGHT_SCALES : []) {
+    if (found) break;
+    const w = dial.w * s, h = dial.h * s;
+    if (w + 2 * gap > width || ceiling + h > height - gap) continue;
+    // (the rows nearest its own place, its bottom a twentieth over the aim point, first)
+    const ideal = Math.floor(bottom - h);
+    const rows: number[] = [];
+    for (let y = ceiling; y <= Math.floor(cy); y += STEP_PX) rows.push(y);
+    rows.sort((a, b) => Math.abs(a - ideal) - Math.abs(b - ideal));
+    for (const y of rows) {
+      if (!clearOf(cx - w / 2, y, cx + w / 2, y + h, blocks, gap)) continue;
+      place.top = y; place.scale = s; place.cleared = found = true;
+      break;
+    }
+  }
+  if (!found && !overSight) {
     // nothing clears: the largest dial the band between the objective and the sight holds, as low as it goes
     const band = Math.max(0, lowest - ceiling);
     const s = DIAL_SCALES.find((k) => dial.h * k <= band && dial.w * k + 2 * gap <= width) ?? DIAL_SCALES[DIAL_SCALES.length - 1];
     place.scale = s;
     place.top = Math.max(ceiling, Math.floor(bottom - dial.h * s));
+  } else if (!found) {
+    // nothing clears anywhere on the line: the smallest dial where it covers least of the blocks
+    const s = OVER_SIGHT_SCALES[OVER_SIGHT_SCALES.length - 1];
+    const w = dial.w * s, h = dial.h * s;
+    let least = Infinity;
+    for (let y = ceiling; y <= Math.floor(cy); y += STEP_PX) {
+      const covered = coveredBy(cx - w / 2, y, cx + w / 2, y + h, blocks, gap);
+      if (covered < least) { least = covered; place.top = y; }
+    }
+    place.scale = s;
   }
   if (!rules || rules.w <= 0 || rules.h <= 0) return place;
   const dialBox: CountdownBox = { x0: cx - dial.w * place.scale / 2, y0: place.top, x1: cx + dial.w * place.scale / 2, y1: place.top + dial.h * place.scale };

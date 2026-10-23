@@ -59,11 +59,12 @@ body[data-cot-width='compact']:not(.cot-touch-layout) .cot-minimap{
   bottom:auto;width:104px!important;height:104px!important;
 }
 body[data-cot-width='phone']:not(.cot-touch-layout) .cot-dp{transform:scale(.7);transform-origin:left bottom}
-body[data-cot-width='laptop'] .cot-spec,
+/* (the centre line: on a laptop the spectator bar narrows by the minimap's corner, 252 px, on both sides and stays centred;
+   a tablet's leaves it too little room there, so it stands left of the minimap) */
+body[data-cot-width='laptop'] .cot-spec{width:min(620px,calc(100vw - 504px))}
 body[data-cot-width='tablet'] .cot-spec{
   left:16px;right:auto;width:min(620px,calc(100vw - 268px));transform:translateY(12px);
 }
-body[data-cot-width='laptop'] .cot-spec.in,
 body[data-cot-width='tablet'] .cot-spec.in{transform:translateY(0)}
 body[data-cot-width='compact'] .cot-spec,
 body[data-cot-width='phone'] .cot-spec{bottom:252px}
@@ -554,11 +555,12 @@ body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape']
 }
 body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch-aim .aimhint{right:20%;bottom:27%}
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-minimap{width:106px!important;height:106px!important}
-/* The two 106 px corner instruments leave a deliberately bounded center
-   lane on small landscape phones. Compress and bias the score plate into
-   that lane so neither the minimap nor the three global controls cover it. */
+/* The centre line (owner 2026-10-22: "a bunch of ui elements ... are not centered in screen"): a centred element stays on
+   the viewport's centre and narrows by the wider corner's reserve on both sides where a corner panel would reach it, never
+   shifts off the line. On a short landscape phone the three global controls (140 px, 10 px in) are that corner: the score
+   plate keeps 6 px from them at 568 px wide (256 px), 294 px where it fits (it was biased 18 px left). */
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-top{
-  left:calc(50% - 18px);width:294px;padding:5px 18px 7px;
+  left:50%;width:min(294px,calc(100vw - 2 * (max(10px,env(safe-area-inset-right)) + 146px)));padding:5px 18px 7px;
   grid-template-columns:minmax(62px,1fr) 72px minmax(62px,1fr);
 }
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-net{
