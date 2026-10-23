@@ -291,6 +291,21 @@ only:
 - **The meter.** Every hold, release and reap appends a line to `/tmp/cot-shots.log`. `node tools/capture-lock.mjs
   --status [--hours=N]` prints the holder, the queue (ready, warming, dead) and holds per hour. Holds taken through
   an older copy of the lock are not logged.
+- **Frozen pages that reload (2026-10-23).** A page on a Vite dev server keeps the Vite client's HMR socket. When that
+  socket closed (another lane's server on the same port, or a re-bundle broadcast during a ~50-minute freeze), the
+  client reloaded the page at the thaw ("Execution context was destroyed") and world-polish's hold shot nothing.
+  `warmPage` (and `stubViteSocket` for pages a tool loads itself) replaces a socket opened with Vite's protocols with
+  one that never opens or closes, and `startViteChild` dev servers run with `ws: false`. A tool that passes its own
+  dev config gives it `server: { hmr: false, ws: false }`. Every page is checked after the thaw: does its context
+  answer, does it still carry the token its warm-up left (a reload drops it), and does its `ready` hold? A page that
+  fails is loaded again from its warm record (`warmPage`, or `rememberWarm` for a page a tool loads itself) before
+  `shoot` sees it. A page frozen longer than `maxFrozenMinutes` (default 20) gets the same check while still queued,
+  so the re-warm costs no hold time. Measured on a Vite dev server, a full-reload broadcast during the freeze reloaded
+  an unstubbed page at the thaw; the check caught it and the re-warm restored it. A stubbed page did not reload.
+- **Cinema leases.** `tools/media-production/cinema.mjs` holds every lease to the 18-minute cap unless `--lease-min`
+  asks for less: 0, and longer values such as site50-finals' 45, become the cap. A take still running two minutes past
+  the cap stops at its next frame and exits 75, so a resumed batch renders it again. One cinema hold had run 44
+  minutes.
 - **Adopted.** `genHeroCards` warms its Vite child, Chrome, the page and `__HERO_WARM` while queued, and the hold only
   renders. `withIsolatedCaptureBrowser(..., { capture: { lock, waitMs, warm } })` opens the cache, server and browser
   while queued and releases once the browser closes. `tank-standard-check` and `track-clip-audit` use it, and the

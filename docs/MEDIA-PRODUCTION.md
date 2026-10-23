@@ -112,7 +112,9 @@ renders again from its first frame (frames depend on the whole shutter history, 
 never stitched from two runs). The shared capture lock serializes GPU work. A batch too long for
 one lease runs as several: `--lease-min=<minutes>` ends the lease before a film that would carry
 it past the budget (the estimate is the longest take so far, a film with the stills after it) and
-exits 75, and a `--resume=true` re-run renders the rest; `--ticket-stamp=<ms>` joins the capture
+exits 75, and a `--resume=true` re-run renders the rest. Since 2026-10-23 the budget is the
+18-minute hold cap unless `--lease-min` asks for less (0 and longer values are the cap), and a take
+still running two minutes past it stops at its next frame, exit 75, to render again on resume; `--ticket-stamp=<ms>` joins the capture
 queue at that place, so every lease of the batch rejoins at its first ticket's place, behind the
 holds it yielded to (`tools/media-r5/site50-finals.mjs --keep-place --yield-holds=2`: after each
 lease two other holds take and release the lock first, the coordinator's share for the finals of
