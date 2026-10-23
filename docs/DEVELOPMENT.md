@@ -259,6 +259,44 @@ only the queue head claims. A caller that must not keep results from a hold it l
 returns `true` before saving them. `tools/visual-census-lock.mjs` uses the same owned holds, and so does capture lane
 2's copy (`~/cot-launch-state/tools/capture-lock-lane2.mjs`).
 
+### Warm capture holds (2026-10-22)
+
+On 2026-10-22 the queue served about one hold per 45 minutes, with 30-plus tickets waiting. The holds were spent
+loading pages. At load 200-600 a Studio map took 1-9 minutes to come up inside the hold, and each shot took 2-5 s.
+In one world-polish hold, three maps' page loads took 1,070 s of 1,142 s before the cap. Hero-card holds spent
+70-143 s of 103-212 s starting Vite, Chrome and the page. Meanwhile the holder used under 1 % of the GPU, while
+processes outside the lock used 24-38 %. A hold should serve shots only:
+
+- **`tools/capture-hold.mjs` `runWarmHold({ warm, shoot })`.** `warm` starts the servers and the browser and loads
+  every page to ready while the ticket waits. Its pages are then frozen (Chrome's page lifecycle: no timers and no
+  frames, so nothing draws during other holds). At the hold they are thawed, `shoot` runs, and they are frozen again
+  before the release. `holdMinutes` (default 18) aborts `shoot`'s signal; past `graceSeconds` the browser is closed
+  before the release. A signal releases the lock, closes the browser and exits.
+- **Helpers in the same module.** `startViteChild` runs Vite in a child process that exits with its parent: `preview`
+  serves a built `dist` with no transforms, and `dev` serves the sources. `warmPage` waits, within bounds, for a ready
+  expression, eager images and fonts. Studio, Garage and the public pages all serve from a dist (`vite build --outDir
+  <dir>` outside the lock; one dist per side of a before/after pair).
+- **Warming starts just in time.** `acquire(ms, { prepare })` starts `prepare` once at most `warmAhead` live tickets
+  are ahead (`COT_SHOTS_WARM_AHEAD`, default 2), so a long queue never holds one warm browser per lane. Until
+  `prepare` resolves, the ticket keeps its place and the queue serves the tickets behind it. Tickets record their
+  phase: queued, warming or ready.
+- **Dead waiters.** A ticket now carries its owner's process start time and heartbeat. A pid reused by another
+  process, a zombie, or a heartbeat silent for 10 minutes is removed at once, and the removal is logged. Before, a
+  killed waiter whose pid came back could stall the head for an hour.
+- **Places.** `acquire(ms, { place: '<lane>-<item>' })` (genHeroCards `--place=`) puts a run killed while it waited
+  back at its first run's stamp, for up to 12 hours. Size wall-clock alarms for the hold, never the wait.
+- **The meter.** Every hold, release and reap appends a line to `/tmp/cot-shots.log`. `node tools/capture-lock.mjs
+  --status [--hours=N]` prints the holder, the queue (ready, warming, dead) and holds per hour. Holds taken through
+  an older copy of the lock are not logged.
+- **Adopted.** `genHeroCards` warms its Vite child, Chrome, the page and `__HERO_WARM` while queued, and the hold only
+  renders. `withIsolatedCaptureBrowser(..., { capture: { lock, waitMs, warm } })` opens the cache, server and browser
+  while queued and releases once the browser closes. `tank-standard-check` and `track-clip-audit` use it, and the
+  standard check's contiguity stage, which is CPU-only, now runs after the release.
+
+A second concurrent capture lane for stills (parked 2026-10-15) is not needed for throughput. The GPU sits idle
+during holds; the time goes to CPU-bound page loads, which now happen before the hold. Timing jobs still need the GPU
+alone.
+
 ### The rooms Worker's TypeScript program (2026-09-28)
 
 `cloudflare/rooms/tsconfig.json` compiles the Worker with `lib: ["ES2022"]` and no DOM, and a **type-only** import still joins a
