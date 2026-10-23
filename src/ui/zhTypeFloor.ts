@@ -28,10 +28,8 @@ const SHELL: readonly string[] = [
   '.cot-garage .eqslot .sl', '.cot-system-control>span',
   '.cot-technical-figure figcaption', '.cot-technical-expand-label', '.cot-technical-gallery span',
   // Deploy
-  '.cot-battle-choice .choice-name', '.cot-battle-choice .choice-description', '.cot-sides-choice', '.cot-time-name',
-  '.cot-battle-menu .cot-battle-times legend', '.cot-battle-menu .cot-battle-times small', '.cot-nation-field span',
-  '.cot-custom-select-copy', '.cot-battle-preview small', '.cot-battle-preview p', '.cot-battle-menu-foot>span',
-  '.cot-battle-menu-foot button',
+  '.cot-settings .cot-time-name', '.cot-battle-menu .cot-battle-times legend', '.cot-nation-field span',
+  '.cot-custom-select-copy',
   // settings
   '.cot-set-group', '.cot-set-colhdr span', '.lb .cot-setting-label-text', '.cot-set-btn', '.cot-set-btn.resume',
   // service record

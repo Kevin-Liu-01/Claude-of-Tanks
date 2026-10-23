@@ -3,6 +3,7 @@ import '../../src/ui/motion.css';
 import '../../src/ui/responsiveSurfaces.css';
 import '../../src/ui/components/components.css';
 import '../../src/ui/garage.css';
+import '../../src/ui/deploy.css';
 import { createCustomSelect } from '../../src/ui/customSelect.ts';
 import { createBattleArrangementPanel } from '../../src/ui/battleArrangementPanel.ts';
 import { readTeamArrangement } from '../../src/game/teamArrangement.ts';

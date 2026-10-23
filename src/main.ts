@@ -141,6 +141,7 @@ import './ui/motion.css';
 import './ui/responsiveSurfaces.css';
 import './ui/components/components.css';
 import './ui/garage.css';
+import './ui/deploy.css';
 import './ui/battleTimeChoices.css';
 import { createGarage } from './ui/garage.ts';
 import { battleOrdinalBase, installBattleRecords } from './game/profile.ts';
@@ -2915,7 +2916,8 @@ function beginBattleEntry(
   // batch 19 (2026-09-14): the Garage BATTLE button is a free sortie in the chosen rules — a Frontline
   // Assault pick carves the trenches like a ladder launch does (it used to reach the field without them)
   pendingTerrainVariant = terrainVariantFor(options?.gameMode); // the mode's battlefield, as the authority builds it
-  pendingCampaignOperationId = null;
+  // a campaign operation launched from the Deploy screen names its sortie (its brief and its map)
+  pendingCampaignOperationId = options?.gameMode === 'frontline_assault' ? options.campaignOperationId ?? null : null;
   return soloBattleEntry.begin(specId, mapId, options);
 }
 
