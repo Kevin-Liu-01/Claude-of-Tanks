@@ -94,7 +94,7 @@ function createViewer(): Viewer {
   dialog.className = 'media-library-viewer';
   dialog.setAttribute('aria-label', t('mediaLibrary.viewerAria'));
   dialog.innerHTML = `<figure><div class="media-library-stage"><img alt=""><p class="media-library-wait" hidden></p></div>`
-    + `<figcaption><div><span data-library-where></span><strong data-library-name></strong><p data-library-about></p><small data-library-size></small></div>`
+    + `<figcaption><div><strong data-library-name></strong><p data-library-about></p></div>`
     + `<div class="media-library-controls"><button type="button" data-library-step="-1" aria-label="${t('mediaLibrary.previousAria')}">‹</button>`
     + `<output data-library-position></output>`
     + `<button type="button" data-library-step="1" aria-label="${t('mediaLibrary.nextAria')}">›</button>`
@@ -102,23 +102,18 @@ function createViewer(): Viewer {
   document.body.appendChild(dialog);
   const image = dialog.querySelector<HTMLImageElement>('img')!;
   const wait = dialog.querySelector<HTMLElement>('.media-library-wait')!;
-  const where = dialog.querySelector<HTMLElement>('[data-library-where]')!;
   const name = dialog.querySelector<HTMLElement>('[data-library-name]')!;
   const about = dialog.querySelector<HTMLElement>('[data-library-about]')!;
-  const size = dialog.querySelector<HTMLElement>('[data-library-size]')!;
   const position = dialog.querySelector<HTMLOutputElement>('[data-library-position]')!;
   let current: { collection: LibraryCollection; set: LibrarySet; index: number } | null = null;
   let request = 0;
 
   const caption = (): void => {
     if (!current) return;
-    const { collection, set, index } = current;
-    const item = set.items[index];
-    const [, aboutText, shot] = set.captions?.[index] ?? [];
-    where.textContent = `${say(collection.title)} // ${say(set.title)}`;
+    const { set, index } = current;
+    const [, aboutText] = set.captions?.[index] ?? [];
     name.textContent = pictureTitle(set, index);
     about.textContent = say(aboutText);
-    size.textContent = [say(shot), `${item[1]} × ${item[2]}`].filter(Boolean).join(' · ');
     position.value = `${index + 1} / ${set.items.length}`;
     image.alt = [pictureTitle(set, index), say(aboutText)].filter(Boolean).join(': ');
   };
@@ -172,9 +167,7 @@ function setSection(collection: LibraryCollection, set: LibrarySet, viewer: View
   section.className = 'media-library-set';
   section.dataset.kind = set.kind;
   const heading = document.createElement('h4');
-  heading.innerHTML = `<span></span><output></output>`;
-  heading.querySelector('span')!.textContent = say(set.title);
-  heading.querySelector('output')!.value = String(set.items.length);
+  heading.textContent = say(set.title);
   const grid = document.createElement('div');
   grid.className = 'media-library-grid';
   grid.setAttribute('role', 'list');
@@ -219,15 +212,13 @@ export async function mountMediaLibrary(root: HTMLElement | null | undefined): P
   const viewer = createViewer();
   const head = document.createElement('div');
   head.className = 'media-library-head';
-  const total = document.createElement('output');
-  total.className = 'media-library-total';
   const tabs = document.createElement('div');
   tabs.className = 'media-library-tabs';
   tabs.setAttribute('role', 'tablist');
   const panel = document.createElement('div');
   panel.className = 'media-library-panel';
   panel.setAttribute('role', 'tabpanel');
-  head.append(total, tabs);
+  head.append(tabs);
   root.replaceChildren(head, panel);
   let active = '';
   const select = (key: string, again = false): void => {
@@ -242,15 +233,7 @@ export async function mountMediaLibrary(root: HTMLElement | null | undefined): P
     loadCollection(key).then((collection) => {
       if (active !== key) return;
       const scale = thumbScale(panel.clientWidth);
-      const intro = document.createElement('header');
-      intro.className = 'media-library-intro';
-      intro.innerHTML = `<h3></h3><p></p><output></output>`;
-      intro.querySelector('h3')!.textContent = say(collection.title);
-      intro.querySelector('p')!.textContent = say(collection.blurb);
-      intro.querySelector('output')!.value = t('mediaLibrary.collectionCount', {
-        count: collection.count.toLocaleString('en-US'), sets: String(collection.sets.length),
-      });
-      panel.replaceChildren(intro, ...collection.sets.map((set) => setSection(collection, set, viewer, scale)));
+      panel.replaceChildren(...collection.sets.map((set) => setSection(collection, set, viewer, scale)));
       panel.removeAttribute('aria-busy');
     }).catch((error: unknown) => {
       if (active !== key) return;
@@ -265,19 +248,14 @@ export async function mountMediaLibrary(root: HTMLElement | null | undefined): P
     button.type = 'button';
     button.setAttribute('role', 'tab');
     button.dataset.collection = summary.key;
-    button.innerHTML = `<span></span><small></small>`;
-    button.querySelector('small')!.textContent = summary.count.toLocaleString('en-US');
     button.addEventListener('click', () => select(summary.key));
     tabs.appendChild(button);
   }
   // the words in the current locale; a language switch re-words the head, the open collection and the viewer
   const words = (): void => {
-    total.value = t('mediaLibrary.total', {
-      count: index.count.toLocaleString('en-US'), collections: String(index.collections.length),
-    });
     tabs.setAttribute('aria-label', t('mediaLibrary.tabsAria'));
     index.collections.forEach((summary, k) => {
-      tabs.children[k].querySelector('span')!.textContent = say(summary.title);
+      tabs.children[k].textContent = say(summary.title);
     });
   };
   words();

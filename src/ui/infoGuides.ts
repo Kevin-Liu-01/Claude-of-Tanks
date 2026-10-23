@@ -2,6 +2,7 @@ import { createGuidePhoto } from './infoGuidePhoto.ts';
 import { VEHICLE_TECHNICAL_GUIDES } from './infoGuideCaptures.ts';
 import { iconUrl } from './icons.ts';
 import { t } from './i18n.ts';
+import { ensureStyle } from './styleLayers.ts';
 import type { InfoGuideId } from './infoGuideTypes.ts';
 import { INFO_GUIDE_DIAGRAMS } from './infoGuideCatalog.ts';
 
@@ -89,9 +90,7 @@ export function guideDiagram(id: InfoGuideId): string {
 
 let sequence = 0;
 export function createInfoGuide(id: InfoGuideId, vehicle: { id: string; name: string } | null = null): HTMLElement {
-  if (!document.getElementById('cot-info-guide-css')) {
-    const style = document.createElement('style'); style.id = 'cot-info-guide-css'; style.textContent = CSS; document.head.append(style);
-  }
+  ensureStyle('cot-info-guide-css', CSS, 'surfaces');
   const root = document.createElement('section'); root.className = 'cot-guide'; root.dataset.guide = id;
   const overview = document.createElement('p'); overview.className = 'cot-guide__overview'; overview.textContent = t(`fieldGuide.${id}.overview`);
   const photo = createGuidePhoto(id, index => choose(index));

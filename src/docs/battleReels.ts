@@ -62,6 +62,19 @@ export function mountBattleReels(scope: Document = document): void {
   const map = root.querySelector<HTMLElement>('[data-battle-reel-map]');
   const count = root.querySelector<HTMLElement>('[data-battle-reel-count]');
   if (!video || !source || !grid || !title || !map || !count) return;
+  // The player sits far below the fold: its poster loads as it nears the viewport, never before a scroll (SPEC 8.3).
+  const deferredPoster = video.dataset.poster;
+  if (deferredPoster && !video.poster) {
+    if (typeof IntersectionObserver !== 'function') video.poster = deferredPoster;
+    else {
+      const near = new IntersectionObserver((entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        if (!video.poster) video.poster = deferredPoster;
+        near.disconnect();
+      }, { rootMargin: '25% 0px' });
+      near.observe(video);
+    }
+  }
 
   grid.innerHTML = BATTLE_REELS.map((reel, index) => `
     <button class="battle-reel-card" type="button" data-battle-reel-index="${index}" aria-pressed="${index === 0}">

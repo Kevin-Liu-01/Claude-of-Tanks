@@ -115,6 +115,10 @@ const redirects = {
     export async function acquireCaptureLock() { note('lock.txt', 'acquire'); }
     export function refreshCaptureLock() {}
     export function releaseCaptureLock() {}
+    export function createCaptureLock() {
+      return { async acquire(_ms, { prepare } = {}) { if (prepare) await prepare(); note('lock.txt', 'acquire'); },
+        refresh() { return true; }, release() { return true; } };
+    }
   `),
   [toolUrl('capture-command.mjs')]: stub('capture-command.mjs', `
     import { spawn } from 'node:child_process'; import { appendFileSync } from 'node:fs'; import path from 'node:path'; ${appendLine}
@@ -129,8 +133,10 @@ const redirects = {
   `),
   [toolUrl('isolated-capture-browser.mjs')]: stub('isolated-capture-browser.mjs', `
     import { appendFileSync, readFileSync } from 'node:fs'; import path from 'node:path'; ${appendLine}
-    export async function withIsolatedCaptureBrowser(serverOptions, launchOptions, run) {
+    export async function withIsolatedCaptureBrowser(serverOptions, launchOptions, run, { capture = null } = {}) {
       const scenario = JSON.parse(readFileSync(path.join(process.cwd(), 'scenario.json'), 'utf8'));
+      // the capture hold (2026-10-22): the tool queues through the helper, which opens the server while queued
+      if (capture) await capture.lock.acquire(capture.waitMs, { prepare: async () => {} });
       if (scenario.renderThrows) throw new Error('vite failed to start (stub)');
       let id = null;
       const page = {

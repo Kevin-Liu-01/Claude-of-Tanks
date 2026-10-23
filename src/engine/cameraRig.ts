@@ -23,6 +23,7 @@ import { createAerialCamera } from './aerialCamera.ts';
 import type { AerialView } from '../sim/aerialCombat.ts';
 import { createIsometricCamera } from './isometricCamera.ts';
 import { staticMergePartMatrixWorld, staticMergePartsOf } from '../vehicles/staticMergeParts.ts';
+import { A11Y } from '../ui/accessibilityPreferences.ts';
 
 const ORBIT_STEPS = [24, 18, 13, 9, 6, 4]; // meters, wheel-in moves toward the end
 const SNIPER_ZOOMS_BASE = [2, 4, 8];
@@ -853,16 +854,18 @@ export function createCameraRig(
     updateAutoAim(player, dt, camInput.autoAimPoint);
   }
 
+  // Every camera motion the player does not steer (sight sway, trauma shake, recoil kick, FOV punch) is scaled by the
+  // Accessibility camera-shake setting (A11Y.shake, 0-1): at 0 the camera moves only as the player aims it.
   function applyIdleCameraMotion(): void {
-    if (rig.mode !== 'SNIPER') return;
-    camera.rotation.x += 0.0011 * noise.noise(shakeT * 0.45, 11.7, 0) +
-      0.0004 * Math.sin(shakeT * 1.9);
-    camera.rotation.y += 0.0013 * noise.noise(4.2, shakeT * 0.38, 0);
+    if (rig.mode !== 'SNIPER' || A11Y.shake <= 0) return;
+    camera.rotation.x += A11Y.shake * (0.0011 * noise.noise(shakeT * 0.45, 11.7, 0) +
+      0.0004 * Math.sin(shakeT * 1.9));
+    camera.rotation.y += A11Y.shake * 0.0013 * noise.noise(4.2, shakeT * 0.38, 0);
   }
 
   function applyTraumaMotion(): void {
-    if (trauma <= 0) return;
-    const scale = Math.pow(trauma, 1.6) *
+    if (trauma <= 0 || A11Y.shake <= 0) return;
+    const scale = Math.pow(trauma, 1.6) * A11Y.shake *
       (rig.mode === 'SNIPER' ? SNIPER_SHAKE_SCALE : 1);
     camera.rotation.x += SHAKE_AMP_XY * scale * noise.noise(shakeT * SHAKE_FREQ, 0, 0);
     camera.rotation.y += SHAKE_AMP_XY * scale * noise.noise(0, shakeT * SHAKE_FREQ, 0);
@@ -874,14 +877,14 @@ export function createCameraRig(
       recoil = 0;
       return;
     }
-    camera.rotation.x += recoil * (rig.mode === 'SNIPER' ? 0.55 : 1);
+    camera.rotation.x += recoil * A11Y.shake * (rig.mode === 'SNIPER' ? 0.55 : 1);
     recoil *= Math.exp(-dt / 0.09);
   }
 
   function applyFovKick(dt: number): void {
     if (fovKick > 0.02) {
       const base = lastFov;
-      setFov(base * (1 + 0.075 * fovKick * (rig.mode === 'SNIPER' ? 0.25 : 1)));
+      setFov(base * (1 + 0.075 * fovKick * A11Y.shake * (rig.mode === 'SNIPER' ? 0.25 : 1)));
       lastFov = base;
       fovKick *= Math.exp(-dt / 0.08);
       return;

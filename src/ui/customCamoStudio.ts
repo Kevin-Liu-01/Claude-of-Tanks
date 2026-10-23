@@ -195,7 +195,7 @@ export function createCustomCamoStudio({
     control.type = 'button';
     control.className = 'cot-custom-tool';
     control.dataset.customAsset = asset;
-    control.innerHTML = `${uiIconSVG(assetIcons[asset], 18)}<span>${asset}</span>`;
+    control.innerHTML = `${uiIconSVG(assetIcons[asset], 18)}<span>${t(`customCamo.asset.${asset}`)}</span>`;
     control.addEventListener('click', () => { customAsset = asset; customBrush = 'stamp'; syncControls(); });
     assets.appendChild(control);
   }
@@ -346,6 +346,7 @@ export function createCustomCamoStudio({
   const cancel = document.createElement('button');
   cancel.type = 'button';
   cancel.className = 'cot-modal__button';
+  cancel.dataset.uiSound = 'back';
   cancel.textContent = t('customCamo.close');
   cancel.addEventListener('click', () => modal.close());
   const apply = document.createElement('button');
