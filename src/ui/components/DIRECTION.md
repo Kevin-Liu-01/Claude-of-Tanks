@@ -82,3 +82,27 @@ load for boot, and the landing for the 404.
 | `heroIcon(id)` | the hero card |
 | `use('i-…')` | `icon(id)` (`src/ui/icons/icon.ts`; the ids are listed in `spriteIndex.ts`) |
 | `fmt(n)` | the catalogs' ICU number formats, never a hard-coded locale |
+
+## The identity
+
+Decided on 10-23, carrying the direction forward. The name stays Claude of Tanks; the crest and the mascot are retired.
+
+| Tier | Asset | Uses |
+|---|---|---|
+| Wordmark | CLAUDE —of— TANKS, Chakra Petch outlined to paths: `public/brand/wordmark.svg`, `-paper`, `-mono`, `-stacked`; inline as `BRAND_WORDMARK_HTML` (`src/ui/brandMark.ts` over `src/ui/brandWordmark.ts`) | Every lockup; never live text |
+| Lockup | `public/brand/lockup.svg` (`-paper`): the mark, a gap and the wordmark, as the direction's nav sets them | Nav, cards, OG |
+| Ceremonial | `public/brand/title-card.svg`: the chevron over the stacked wordmark (the crest's old place) | Boot, end cards, film bumpers, press |
+| Badge | `public/brand/mark.svg`, `brandMarkSVG()`: the Bracket Chevron | Game bar, rails, the transition stamp, loaders |
+| Monogram | `public/brand/favicon.svg`: brackets at 2.5 units on graphite | Tabs, `favicon.ico`, PNG 32/192 |
+| App icon | `public/brand/app-icon.svg`: the chevron at 60 % on graphite | `apple-touch-icon.png`, maskable 192/512 |
+
+- **Colour:** paper words with the tungsten "of" on graphite; graphite words with tungsten-600 on paper; one ink for
+  watermarks.
+- **Regenerating:** `node tools/brand/wordmark-layout.mjs > layout.json`, then
+  `python3 tools/brand/wordmark.py layout.json <ChakraPetch-Bold.ttf> <ChakraPetch-Medium.ttf>`. The icons come from
+  `tools/brand-render.mjs export` and `ico`.
+- **Social cards:** they come from `tools/marketing-shots/generate-og-images.mjs`, with the lockup clear of every tank.
+  The game page also carries `og:video` (`public/brand/og/game.mp4`): the f6 Steinburg film with the lockup.
+- **Archived** in `docs/references/brand/`: `v1`, `v2-roundel` and `og-logo.png`. Three consumers still use the crest
+  files (`logo-*`, `v3-shield`): the boot screen, the garage signage atlas and the film tools. They retire as those
+  consumers move.
