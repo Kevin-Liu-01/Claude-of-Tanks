@@ -221,7 +221,10 @@ export default {
     forestHex: 0x244b2b, rockHex: 0x69705d, haze: 0.96, grain: 0.72,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'towering-cumulus', windDirDeg: 110 },
+  // 2026-10-22 (world-polish-240; the coordinator: Jade River Delta under a flat grey deck, not the owner's bar): the
+  // towering row's broad stratiform field (fieldMix 0.45) and its rain greyed the sky into a deck under the grey-green
+  // tint. Fair-weather cumulus at Verdant's height, some built taller in the humid air (towers 0.3, 1000 m deep)
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.5, baseM: 1400, thicknessM: 1000, towers: 0.3, windDirDeg: 110, tintHex: 0xf6f8f6 },
   sky: {
     sunElevationDeg: 38, sunAzimuthDeg: 104, turbidity: 6.2, rayleigh: 1.75,
     mieCoefficient: 0.0085, mieDirectionalG: 0.84, fogDensity: 0.00076,
