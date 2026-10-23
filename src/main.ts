@@ -125,7 +125,6 @@ import { currentViewport, mapBackdropFor } from './ui/mapBackdrop.ts';
 import { preloadImageWhenIdle } from './ui/imagePreload.ts';
 import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
-import type { SeatVisualOptions } from './mp/presentation/seatVisualOptions.ts';
 import {
   createTank, createTankSteps, ensureFullFleet, ensureTankBuilder, ensureTankBuilders,
 } from './vehicles/fleetFactory.ts';
@@ -135,7 +134,7 @@ import {
   getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection,
   setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked,
   clearCamoOverrides, warmWreckTextures,
-  prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures, resolveMultiplayerCamoPattern,
+  prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
 } from './vehicles/materials.ts';
 import './ui/motion.css';
 import './ui/responsiveSurfaces.css';
@@ -310,92 +309,21 @@ const REMEMBERED_ROUND_KEY = 'cot.mp.rememberedRound.v1';
  * it must not cancel the returning tab's battlefield (the 229 block: every returning build was cancelled there).
  */
 let garageBootDone = false;
-/**
- * 2026-10-21 (item/mp-rejoin-232, lever 5): a tab returning to its remembered round skipped the boot's showroom hero
- * (2.7-3.4 s of every 231 rejoin's boot, a hero the tab never shows). The pedestal's resync watchdog leaves it unbuilt
- * while that tab's battle entry runs and for HERO_DEFER_AFTER_READY_MS after the boot; a Garage the match never took
- * (it had ended) builds its hero then, and a return from the battle adopts the battle tank as before.
- */
-let returningSkippedHero = false;
-let heroDeferUntil = Number.POSITIVE_INFINITY;
-const HERO_DEFER_AFTER_READY_MS = 15_000;
-/**
- * 2026-10-22 (item/mp-rejoin-seat-241, lever 5b): lever 5 was reverted because the entry then linked the viewer's vehicle
- * programs the hero had warmed (499b59740e: compile 2.1 s + retry 2.9 s, combatWarm 8.8 s). The returning tab's boot now
- * builds the remembered seat's own battle vehicle where the hero stands, so the post stage warms its programs, shadows
- * and buffers in the Garage's light set as it warmed the hero's. It leaves the scene after that warm, and the roster takes
- * it for the viewer's seat (takeViewerVisual) instead of building it. A Garage the match never took drops it when its
- * hero builds; a round without a remembered seat keeps the hero.
- */
-type ReturningSeatVisual = ReturnType<typeof createTank>;
-let returningSeat: { visual: ReturningSeatVisual; specId: string; options: SeatVisualOptions } | null = null;
-function releaseReturningSeat(): void {
-  const seat = returningSeat;
-  returningSeat = null;
-  seat?.visual.dispose();
-}
-/** The roster's viewer seat takes the boot's vehicle once, if it is the vehicle these options name; any other drops it. */
-function takeReturningSeat(specId: string, options: { camoSeed: number; camoPattern: string; quality: string }): ReturningSeatVisual | null {
-  const seat = returningSeat;
-  if (!seat) return null;
-  returningSeat = null;
-  // (the paint as the roster resolves it now, under the round's battlefield: the boot built its 'auto' pick outright)
-  const paint = resolveMultiplayerCamoPattern(specId, options.camoPattern);
-  const same = seat.options.camoSeed === options.camoSeed && seat.options.camoPattern === paint && seat.options.quality === options.quality;
-  if (seat.specId === specId && same && !seat.visual.root.parent) return seat.visual;
-  seat.visual.dispose();
-  return null;
-}
-type RememberedSeat = { specId: string; camo: string; playerId: string };
 const REMEMBERED_ROUND_MAX_AGE_MS = 20 * 60 * 1000;
-function rememberRound(round: { roomCode: string; matchId: string; mapId: string; terrainVariant: 'assault-trenches' | null; seat: RememberedSeat | null } | null): void {
+function rememberRound(round: { roomCode: string; matchId: string; mapId: string; terrainVariant: 'assault-trenches' | null } | null): void {
   try {
     if (round) localStorage.setItem(REMEMBERED_ROUND_KEY, JSON.stringify({ ...round, at: Date.now() }));
     else localStorage.removeItem(REMEMBERED_ROUND_KEY);
   } catch { /* storage unavailable: a reload only loses the head start */ }
 }
-function rememberedRoundFor(roomCode: string): { mapId: string; terrainVariant: 'assault-trenches' | null; seat: RememberedSeat | null } | null {
+function rememberedRoundFor(roomCode: string): { mapId: string; terrainVariant: 'assault-trenches' | null } | null {
   try {
     const raw = localStorage.getItem(REMEMBERED_ROUND_KEY);
-    const round = raw ? JSON.parse(raw) as { roomCode?: unknown; mapId?: unknown; terrainVariant?: unknown; at?: unknown; seat?: Partial<RememberedSeat> | null } : null;
+    const round = raw ? JSON.parse(raw) as { roomCode?: unknown; mapId?: unknown; terrainVariant?: unknown; at?: unknown } : null;
     if (!round || round.roomCode !== roomCode || typeof round.mapId !== 'string' || !(MAP_IDS as readonly string[]).includes(round.mapId)) return null;
     if (typeof round.at !== 'number' || !(Date.now() - round.at < REMEMBERED_ROUND_MAX_AGE_MS)) return null;
-    const seat = round.seat;
-    return {
-      mapId: round.mapId, terrainVariant: round.terrainVariant === 'assault-trenches' ? 'assault-trenches' : null,
-      seat: seat && typeof seat.specId === 'string' && typeof seat.camo === 'string' && typeof seat.playerId === 'string'
-        && (VISIBLE_TANK_IDS as readonly string[]).includes(seat.specId)
-        ? { specId: seat.specId, camo: seat.camo, playerId: seat.playerId } : null,
-    };
+    return { mapId: round.mapId, terrainVariant: round.terrainVariant === 'assault-trenches' ? 'assault-trenches' : null };
   } catch { return null; }
-}
-/**
- * Lever 5b: the remembered seat's battle vehicle, built with the roster's own options (seatVisualOptions) and stood where
- * the hero stands for the post stage's warm. False (nothing left behind) when it cannot be built: the boot builds its hero.
- */
-async function buildReturningSeat(seat: RememberedSeat, mapId: string, yieldForBudget: () => Promise<void>): Promise<boolean> {
-  let visual: ReturningSeatVisual | null = null;
-  try {
-    // (only a returning tab reads the roster's option derivation: an ordinary boot loads none of it)
-    const { seatVisualOptions } = await import('./mp/presentation/seatVisualOptions.ts');
-    // the paint the round will resolve: an 'auto' seat wears the round's battlefield pick, not the Garage's map's
-    const paint = resolveMultiplayerCamoPattern(seat.specId, seat.camo, mapId);
-    const options = seatVisualOptions(seat.playerId, paint, true);
-    await Promise.all([
-      ensureTankBuilder(seat.specId),
-      prebakeSharedTextures(getSpec(seat.specId), engineCtx.anisotropy ?? 4, options.quality, yieldForBudget, paint),
-    ]);
-    visual = createTank(seat.specId, engineCtx, options);
-    visual.root.rotation.set(0, GARAGE_TRACK_AXIS_YAW_RAD, 0, 'YXZ');
-    visual.root.position.set(GARAGE_POS.x, GARAGE_POS.y + GARAGE_PODIUM_TOP_Y_M, GARAGE_POS.z);
-    scene.add(visual.root);
-    returningSeat = { visual, specId: seat.specId, options };
-    return true;
-  } catch (error) {
-    visual?.dispose();
-    console.warn('[boot] the returning seat\'s vehicle could not be built ahead; the boot builds its hero', error);
-    return false;
-  }
 }
 // FE-P13: battle loading art follows the viewport (a 1280 card on small and medium screens, else the 4K hero).
 const battleBackdrop = (mapId: string): string => mapBackdropFor(mapId, currentViewport());
@@ -1142,12 +1070,6 @@ const pedestal = createGaragePedestalRuntime({
   getDeviceTier,
   getPhase: () => game.phase,
   isBootComplete: () => bootComplete,
-  deferWatchdog: () => {
-    const deferred = returningSkippedHero && (battleEntryLifecycle.pending || performance.now() < heroDeferUntil);
-    // (lever 5b) the Garage the match never took builds its hero now: the seat's vehicle built for that match goes
-    if (!deferred && returningSeat) releaseReturningSeat();
-    return deferred;
-  },
   getSelectedId: () => selectedVehicle.id,
   getNeighborIds: () => garage?.getNeighborIds?.(2) || [],
   // FSP-01 R2: the two adjacent cards are built ahead in the quiet window.
@@ -1224,10 +1146,6 @@ await bootStage('vehicle', async () => {
   // bounded cadence, but do not charge one entire display frame for every
   // procedural texture checkpoint in the selected hero's cold bake.
   const bootVehicleYield = createOpaqueLoadingYielder(12, 80);
-  // levers 5 and 5b: a tab returning to its remembered round goes into that match, not the Garage: its seat's own vehicle
-  // stands in for the hero (returningSeat above)
-  const round = await returningRound;
-  if (round?.seat && await buildReturningSeat(round.seat, round.mapId, bootVehicleYield)) { returningSkippedHero = true; return; }
   await pedestal.prepareInitial(selectedVehicle.id, {
     builderReady: bootSelectedBuilderP,
     yieldForBudget: bootVehicleYield,
@@ -2666,7 +2584,6 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
           ),
           recordTrace: (trace) => { window.__NETWORK_LOAD = trace; },
           rememberRound,
-          takeViewerVisual: (specId, options) => takeReturningSeat(specId, options) as never,
           recordEntryFailure: (failure) => {
             window.__NETWORK_ENTRY_FAILURE = failure;
             // A null clears the diagnostic at entry start; a diagnostic is a failed network entry (the funnel's beacon).
@@ -3576,11 +3493,6 @@ await bootStage('post', async () => {
     simDt: SIM_DT,
   });
 });
-// lever 5b: the seat's vehicle was in the warm; the roster adds it to the battle (a clone source must be out of the scene)
-if (returningSeat) {
-  scene.remove(returningSeat.visual.root);
-  lighting.invalidateShadowMaps?.();
-}
 // PERF (performance_budget r1): the combat-pipeline warms below are needed
 // before FIRST COMBAT, not before readiness — they used to run synchronously
 // ahead of __GAME_READY and billed ~120 ms straight onto load-to-ready.
@@ -3874,7 +3786,6 @@ if (!STUDIO_BOOT_INTENT && !pendingRoomInvitePromise) {
   }));
 }
 garageBootDone = true;
-if (returningSkippedHero) heroDeferUntil = performance.now() + HERO_DEFER_AFTER_READY_MS;
 window.__GAME_READY = true;
 studioBoot.scene?.open(STUDIO_BOOT_MAP).catch((error: unknown) => console.error('[studio] boot scene failed', error));
 // 2026-10-12 (the perf stream): the pending battlefield's loading art, in idle time (onMapSelect does it for a new pick)

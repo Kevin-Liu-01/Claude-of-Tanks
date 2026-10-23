@@ -6,7 +6,6 @@ import { ENTITY_FLAGS, NO_ENTITY, PHASE, TEAM, VERDICT, eraPlateNames, quantizeP
 import { createEntitySample } from '../match/interpolation.ts';
 import { RecordingPresentation, createBattlePresentation } from './index.ts';
 import { prewarmRosterVisuals } from './battlePresentation.ts';
-import { seatVisualOptions } from './seatVisualOptions.ts';
 
 // ------------------------------------------------------------ fixtures
 const visuals = [];
@@ -607,22 +606,3 @@ console.log('mp battle presentation: roster → hidden visuals, frames → game 
   assert.deepEqual(stopped, [specA], 'an aborted round stops warming');
 }
 
-// ---- lever 5b (2026-10-22, item/mp-rejoin-seat-241): the viewer's seat takes the vehicle the app built ahead (a returning
-// tab's boot) when the roster's own options name it; it is then the source its group's copies come from, nothing builds
-// it, and the other seats never ask
-{
-  const state = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0 };
-  const asked = [], built = [], copiedFrom = [];
-  const ahead = fakeVisual('m1a1_abrams_hc', null, { eraVisualBindingReceipt: false });
-  const p = createBattlePresentation({ engineCtx: { scene, anisotropy: 1 }, game: state, bus: { emit() {} },
-    createTankVisual: (id, ...rest) => { built.push(id); return fakeVisual(id, ...rest); },
-    cloneTankVisual: (source, _engineCtx, opts) => { copiedFrom.push(source); return fakeVisual(roster[0].specId, null, opts); },
-    takeViewerVisual: (specId, opts) => { asked.push([specId, opts]); return ahead; },
-    camoFor: () => 'summer', prepareVisualTextures: async () => {}, clock: () => nowMs });
-  await p.applyRoster([roster[0], roster[2], roster[1]], context);
-  assert.deepEqual(asked, [[roster[0].specId, seatVisualOptions('me', 'summer', true)]], 'only the viewer asks, with the roster\'s own options');
-  assert.equal(p.actors.get('me').visual, ahead, 'the viewer\'s seat wears the vehicle built ahead');
-  assert.deepEqual(copiedFrom, [ahead, ahead], 'its group\'s copies come from it');
-  assert.deepEqual(built, [], 'nothing builds it again');
-  p.dispose();
-}
