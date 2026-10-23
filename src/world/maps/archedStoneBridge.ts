@@ -746,9 +746,11 @@ export function addArchedStoneBridge(
     rondaBody.push(alignWidth(g.body, ux, uz).translate(cx, 0, cz));
     rondaTrim.push(alignWidth(g.trim, ux, uz).translate(cx, 0, cz));
     buckets.dark.push(alignWidth(g.iron, ux, uz).translate(cx, 0, cz));
-    // one geometry in the regional stone (a bucket set without it, a receipt's: the stone bucket, untoned)
+    // one geometry in the bridge's own ashlar (2026-10-22: props.ts bridgeStone), else the regional stone (a bucket set
+    // without either, a receipt's: the stone bucket, untoned)
     const toned = mergeStone([...rondaBody.map((p) => toneRondaBody(p, bottom, seed)), ...rondaTrim.map((p) => toneRondaTrim(p, bottom))], true);
-    if (buckets.regionalStone) buckets.regionalStone.push(toned);
+    const masonry = buckets.bridgeStone ?? buckets.regionalStone;
+    if (masonry) masonry.push(toned);
     else { toned.deleteAttribute('color'); buckets.stone.push(toned); }
   }
   if (style === 'norman') {
