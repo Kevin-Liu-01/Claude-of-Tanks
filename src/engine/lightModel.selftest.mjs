@@ -133,8 +133,8 @@ assert.ok(overcastModel.exposure / clear.exposure < clear.illuminance / overcast
   assert.equal(resolveDeckClosure(scape('stratocumulus-deck', 0.8), false), 1, 'no layer (the phones): the uniform cut');
   assert.equal(resolveDeckClosure({ ...verdantSky, lighting: { overcast: 0.8 } }, true), 1, 'an authored overcast: the uniform cut');
   assert.equal(resolveDeckClosure(scape('fair-weather-cumulus', 0.36), true), 1, 'a cumulus: its own map, the rule unchanged');
-  // the model: Frosthollow's deck with and without the pattern
-  const winterSky = { ...DEFAULT_SKY_PRESET, ...getMapConfig('winter').sky, cloudscape: getMapConfig('winter').clouds };
+  // the model: Frosthollow's deck with and without the pattern (2026-10-22: its old deck block — the map is on cumulus)
+  const winterSky = { ...DEFAULT_SKY_PRESET, ...getMapConfig('winter').sky, cloudscape: { regime: 'stratocumulus-deck', coverage: 0.92, nightGlow: 0.3, nightGlowHex: 0xffc080, deckBeam: 0.4 } };
   const winterAtmo = skyPresetToAtmosphere(winterSky);
   const uniform = resolveLightModel(winterSky, winterAtmo, { irradianceRaw: irr }, null, false);
   const spatial = resolveLightModel(winterSky, winterAtmo, { irradianceRaw: irr }, null, true);
