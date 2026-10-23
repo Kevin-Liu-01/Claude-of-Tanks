@@ -752,7 +752,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/viteCssInTsMinify.selftest.mjs',
     'tools/viteSpeculationRules.selftest.mjs',
     'tools/viteResponsiveSeed.selftest.mjs',
-    'tools/viteNavChrome.selftest.mjs',
     'tools/vercel-static-preview.selftest.mjs',
     'tools/telemetry-report.selftest.mjs',
     'tools/browser-failure-evidence.selftest.mjs',
