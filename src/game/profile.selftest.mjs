@@ -9,6 +9,7 @@ globalThis.localStorage = {
 const {
   getLastBattleRecord,
   getPlayerRecord,
+  getRecentBattles,
   installBattleRecords,
   recordBattleResult,
 } = await import('./profile.ts');
@@ -26,7 +27,7 @@ const bus = {
 
 assert.deepEqual(getPlayerRecord(), {
   version: 2, matches: 0, wins: 0, losses: 0, draws: 0,
-  kills: 0, damage: 0, bestDamage: 0, lastBattle: null,
+  kills: 0, damage: 0, bestDamage: 0, lastBattle: null, recentBattles: [],
 });
 
 installBattleRecords(bus);
@@ -43,18 +44,24 @@ assert.deepEqual(getLastBattleRecord(), {
 });
 assert.deepEqual(getPlayerRecord(), {
   version: 2, matches: 1, wins: 1, losses: 0, draws: 0,
-  kills: 1, damage: 431, bestDamage: 431, lastBattle: getLastBattleRecord(),
+  kills: 1, damage: 431, bestDamage: 431, lastBattle: getLastBattleRecord(), recentBattles: [getLastBattleRecord()],
 });
 
 recordBattleResult({ result: 'draw', kills: 2, damage: 1000, completedAt: 42 });
 recordBattleResult({ result: 'unknown', damage: -10, completedAt: 43 });
+const defeat = { result: 'defeat', kills: 0, damage: 0, vehicleId: '', mapId: '', durationS: 0, completedAt: 43 };
 assert.deepEqual(getPlayerRecord(), {
   version: 2, matches: 3, wins: 1, losses: 1, draws: 1,
-  kills: 3, damage: 1431, bestDamage: 1000, lastBattle: {
-    result: 'defeat', kills: 0, damage: 0, vehicleId: '', mapId: '',
-    durationS: 0, completedAt: 43,
-  },
+  kills: 3, damage: 1431, bestDamage: 1000, lastBattle: defeat,
+  recentBattles: getRecentBattles(),
 });
+// the Deploy screen's recent battles: the newest three, newest first
+recordBattleResult({ result: 'victory', kills: 5, damage: 3310, vehicleId: 'leo2a6', mapId: 'amberford', completedAt: 44 });
+assert.deepEqual(getRecentBattles().map((battle) => battle.completedAt), [44, 43, 42], 'the newest three battles, newest first');
+// a profile saved before the list existed seeds it with its last battle
+store.set([...store.keys()].find((key) => key !== 'cot_progress_v1'), JSON.stringify({ version: 2, matches: 1, lastBattle: defeat }));
+const { getRecentBattles: reload } = await import(`./profile.ts?legacy`);
+assert.deepEqual(reload().map((battle) => battle.completedAt), [43], 'an older profile keeps its last battle as its recent one');
 assert.equal(store.has('cot_progress_v1'), false, 'obsolete wallet is never read or rewritten');
 
 console.log('profile.selftest: real local match history passed');
