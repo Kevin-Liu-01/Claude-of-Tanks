@@ -127,7 +127,7 @@ for (const [file, activeHref] of pages) {
   assert.doesNotMatch(html, /logo-mark(?:-metal|-bw)?\.svg/, `${file} must not show the retired crest`);
   const nav = /<!--cot:nav-->([\s\S]*?)<!--\/cot:nav-->/.exec(html)?.[1];
   assert.ok(nav, `${file} must carry the shared public nav`);
-  assert.match(nav, /<a class="public-nav__brand" href="\/home"[^>]*><svg class="cot-mark"[\s\S]*?<span class="cot-wordmark" lang="en">Claude <span class="cot-wordmark__of">of<\/span> Tanks<\/span><\/a>/,
+  assert.match(nav, /<a class="public-nav__brand" href="\/home"[^>]*><svg class="cot-mark"[\s\S]*?<span class="cot-wordmark"><svg class="wm" viewBox="[^"]+" aria-hidden="true" focusable="false">[\s\S]*?<\/svg><\/span><\/a>/,
     `${file} bar opens with the mark and the wordmark`);
   const linksBlock = /<div class="public-nav__links">([\s\S]*?)<\/div>/.exec(nav)?.[1] ?? '';
   const links = [...linksBlock.matchAll(/<a href="([^"]+)"([^>]*)>([\s\S]*?)<\/a>/g)].map((m) => ({

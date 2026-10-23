@@ -4,9 +4,12 @@
    writes the hero, versus, fleet and battlefield markup; the sections under them speak the same grammar: a display
    headline, picture cards with their fade, kit buttons. Tokens only; the page's own values are the surface-home group. */
 @import url('../ui/components/components.css');
+/* the manual-start block and the hero card layers ride in this one sheet: no extra stylesheet on the path to first paint */
+@import url('./manualStart.css');
+@import url('../ui/heroCard.css');
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
-:root{--home-gutter:clamp(16px,4.45vw,64px);--home-x:max(var(--home-gutter),calc((100% - var(--shell-max)) / 2));--gold:var(--text-accent)}
+:root{--home-h1:clamp(var(--fs-76),5.9vw,var(--fs-112));--home-h2:clamp(var(--fs-60),5vw,var(--fs-88));--home-gutter:clamp(16px,4.45vw,64px);--home-x:max(var(--home-gutter),calc((100% - var(--shell-max)) / 2));--gold:var(--text-accent)}
 *{box-sizing:border-box}
 html{scroll-behavior:smooth;scroll-padding-top:calc(var(--shell-nav-h) + var(--s4));background:var(--surface-page)}
 /* the page declares only the shell's weight-voiced family (Chakra Petch from 550, IBM Plex Sans below): the kit's display,
@@ -33,7 +36,7 @@ button{font:inherit;color:inherit}
 /* ---- the section grammar (02 header, 03 header): a display headline, the accent count, the hollow noun ---- */
 .home-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s4) var(--s5);margin-bottom:var(--s5)}
 .home-h2{margin:0;font:700 var(--home-h2)/.88 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
-.home-h2 .t-hollow{--hollow-stroke:1.8px;--hollow-ink:var(--ink-1)}
+.home-h2 .t-hollow{--hollow-stroke:1.8px;--hollow-ink:var(--ink-1);text-shadow:var(--hollow-shadow)}
 
 /* ---- vehicle identity: flag, silhouette, name (direction .flag, .silm; the kit's cot-c-flag, cot-c-sil) ---- */
 .vs-duel{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:nowrap}
@@ -52,9 +55,9 @@ button{font:inherit;color:inherit}
 .hero__still{position:absolute;left:0;right:0;bottom:0;z-index:-2;width:100%;height:max(100%,56.25vw);max-width:none;object-fit:cover;object-position:50% 100%}
 .hero__grade{position:absolute;inset:0;z-index:-1;pointer-events:none;background:var(--home-hero-grade)}
 .hero__card{grid-area:card;align-self:start;max-width:min(1000px,72vw)}
-.hero__title{display:flex;flex-direction:column;margin:0;font:700 var(--home-h1)/.86 var(--font-display);text-transform:uppercase;color:var(--ink-1);text-shadow:var(--home-headline-shadow)}
-.hero__line{display:block;white-space:nowrap}
-.hero__title .t-hollow{--hollow-stroke:2px;--hollow-ink:var(--ink-1);text-shadow:var(--hollow-shadow)}
+/* the H1 is the horizontal lockup (SPEC 3.1), set at display size in the sky */
+.hero__title{margin:0;line-height:0;color:var(--ink-1);filter:var(--home-lockup-shadow)}
+.hero__lockup{display:block;width:clamp(520px,60vw,940px);max-width:100%;height:auto}
 .hero__ctas{display:flex;align-items:center;gap:14px;margin-top:26px}
 .hero__trailer{padding-left:8px}
 .hero__thumb{position:relative;display:block;flex:none;width:84px;height:46px;overflow:hidden;border-radius:var(--r1);outline:1px solid var(--line-3);outline-offset:-1px}
@@ -320,6 +323,10 @@ button{font:inherit;color:inherit}
 .v5-mode--hero p{max-width:520px;font-size:var(--fs-15)}
 .v5-modes>header>div:last-child>.cot-c-btn,.v5-multiplayer>header>div:last-child>.cot-c-btn{margin-top:0}
 :is(.v5-film,.v5-trailers,.v5-split,.v5-multiplayer,.v5-destruction,.v5-rails,.v5-modes,.v5-mechanics,.v5-evidence,.v5-mosaic,.v5-cta){content-visibility:auto;contain-intrinsic-size:auto 1100px}
+/* the walls under the hero lay out only as they near the screen: the first frame draws the hero alone */
+.versus{content-visibility:auto;contain-intrinsic-size:auto 1200px}
+.fleet{content-visibility:auto;contain-intrinsic-size:auto 1300px}
+:is(.manual-start,.v5-social-proof,.v5-authored){content-visibility:auto;contain-intrinsic-size:auto 900px}
 
 /* Chinese headlines: solid ink (no outline type on CJK, the shared .t-hollow rule) and roomier lines: CJK glyphs fill the
    em box, so the Latin display leading would make two lines touch */
@@ -360,8 +367,7 @@ html[lang^='zh'] :is(h1,h2,h3,.v5-mode--hero h3){line-height:1.15}
     min-height:0;padding:calc(var(--shell-nav-h) + 18px) var(--s4) var(--s4);background:var(--surface-page)}
   .hero__still{top:0;bottom:auto;height:640px;object-position:54% 50%}
   .hero__grade{bottom:auto;height:641px;background:var(--home-phone-grade)}
-  .hero__title{font-size:var(--fs-44);line-height:.88}
-  .hero__title .t-hollow{--hollow-stroke:1.4px}
+  .hero__lockup{width:100%}
   .hero__ctas{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-shell);margin:0;padding:12px var(--s4) calc(12px + env(safe-area-inset-bottom,0px));gap:10px;background:var(--side-plate);box-shadow:var(--home-bar-edge)}
   .hero__play{flex:1;--h:58px;font-size:var(--fs-18)}
   .hero__trailer{--h:58px;width:58px;padding:0}
@@ -373,6 +379,7 @@ html[lang^='zh'] :is(h1,h2,h3,.v5-mode--hero h3){line-height:1.15}
   .hero__matchup .vs-side{gap:10px}
   .hero__matchup .vs-side--foe{flex-direction:row-reverse}
   .hero__matchup .vs-mark{position:absolute;right:0;top:12px;padding:0;box-shadow:none;font-size:var(--fs-24);color:transparent;-webkit-text-stroke:1.2px var(--accent)}
+  :lang(zh-CN) .hero__matchup .vs-mark{color:var(--accent);-webkit-text-stroke:0}
   .hero__matchup .vs-where{margin:0;padding:0;border:0;gap:8px;font-size:var(--fs-13)}
   .hero__matchup .vs-where .cot-i{width:15px;height:15px}
   .hero__scene{justify-content:flex-start;margin:var(--s4) 0 0}

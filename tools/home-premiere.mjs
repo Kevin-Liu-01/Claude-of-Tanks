@@ -27,6 +27,17 @@ const FILMS = new Map(json('public/media/versus-films-r1/manifest.json').items.m
 const STILLS = new Map(json('public/media/versus-r1/manifest.json').items.map((item) => [item.id, item]));
 const TAKES = json('public/media/site50-r14/fleet/index.json');
 const SITE = json('public/media/site50-r14/manifest.json');
+// The horizontal lockup (public/brand/lockup.svg: the Bracket Chevron and the outlined wordmark, SPEC 3.1), inline so it
+// paints with the document: the words and brackets take the ink, the chevron and the "of" the accent.
+const LOCKUP = readFileSync(join(ROOT, 'public/brand/lockup.svg'), 'utf8');
+function lockupMarkup(titleId) {
+  const viewBox = /viewBox="([^"]+)"/.exec(LOCKUP)?.[1];
+  const body = LOCKUP.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '').replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/stroke="#f6f3ec"/g, 'stroke="currentColor"').replace(/stroke="#f0a030"/g, 'style="stroke:var(--accent)"')
+    .replace(/fill="#f6f3ec"/g, 'fill="currentColor"').replace(/fill="#f0a030"/g, 'style="fill:var(--accent)"');
+  if (!viewBox || /#[0-9a-f]{3,8}\b/i.test(body)) throw new Error('home-premiere: public/brand/lockup.svg is not the two-ink lockup');
+  return `<svg class="hero__lockup" viewBox="${viewBox}" role="img" aria-labelledby="${titleId}"><title id="${titleId}">Claude of Tanks</title>${body}</svg>`;
+}
 const STAMP = TANK_IDS.linkParam();
 
 const esc = (value) => String(value).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -77,7 +88,7 @@ function heroBlock() {
   return `<header class="hero" aria-labelledby="hero-title">`
     + `<img class="hero__still" src="${still.path}" alt="${esc(text(titleKey))}" data-i18n-alt="${titleKey}" width="${still.width}" height="${still.height}" fetchpriority="high" decoding="async">`
     + `<div class="hero__grade" aria-hidden="true"></div>`
-    + `<div class="hero__card"><h1 class="hero__title" id="hero-title" lang="en"><span class="hero__line">Claude <span class="t-accent">of</span></span><span class="hero__line t-hollow">Tanks</span></h1>`
+    + `<div class="hero__card"><h1 class="hero__title" id="hero-title">${lockupMarkup('hero-title-name')}</h1>`
     + `<div class="hero__ctas"><a class="${btn('primary', '64')} hero__play" href="/" data-hero-play>${play}${t('publicNav.playNow')}<kbd class="cot-c-kbd" lang="en">Enter</kbd></a>`
     + `<a class="${btn('', '64')} hero__trailer" href="#trailers" data-trailer-open><span class="hero__thumb" aria-hidden="true">`
     + `<img src="${TRAILER_THUMB}" alt="" width="84" height="46" decoding="async">${play}</span>${t('home.hero.trailer')}`

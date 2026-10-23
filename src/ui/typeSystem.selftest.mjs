@@ -561,7 +561,8 @@ assert.ok(tokens.includes(':lang(zh-CN){letter-spacing:0!important}'), 'zh-CN: n
 assert.doesNotMatch(tokens, /text-transform:none/, 'zh-CN keeps case transforms (they only ever touch Latin)');
 assert.ok(scaled.includes(':lang(zh-CN) .t-hollow{color:var(--hollow-ink,#eef4f8);-webkit-text-stroke:0;opacity:.72}'), 'zh-CN: no outline type (a quieter solid ink keeps the hierarchy)');
 assert.match(scaled, /\.t-hollow\{color:transparent;-webkit-text-stroke:/, 'the hollow display treatment (owner UI rule 5)');
-assert.match(read('site/home.html'), /<h1 class="hero__title"[^>]*><span class="hero__line">Claude <span class="t-accent">of<\/span><\/span><span class="hero__line t-hollow">Tanks<\/span><\/h1>/, 'the landing headline uses the shared treatments');
+assert.match(read('site/home.html'), /<h1 class="hero__title" id="hero-title"><svg class="hero__lockup"[^>]*><title id="hero-title-name">Claude of Tanks<\/title>/, 'the landing headline is the outlined lockup (SPEC 3.1)');
+assert.match(read('site/home.html'), /<h2 class="home-h2" id="versus-title"><span class="t-accent">\d+<\/span> <span class="t-hollow" data-i18n="home\.versus\.duels">/, 'the landing\'s section headlines use the shared treatments');
 // Every hollow (outline) treatment in a shipped stylesheet turns solid for Chinese (the type rules: no outline type on CJK).
 // The 404 numeral is digits in every locale.
 const HOLLOW_DIGITS_ONLY = new Set(['.not-found h1', '.cot-facet-tally>.num:not(b)']);
@@ -619,7 +620,7 @@ for (const path of SHIPPED_HTML) {
 }
 assert.match(read('src/ui/brandMark.ts'), /WORDMARK_WORDS[\s\S]*WORDMARK_OF/, 'the wordmark is the outlined master (SPEC 3.1: never live text)');
 assert.match(read('src/ui/garage.ts'), /\$\{BRAND_WORDMARK_HTML\}/, 'the garage bar sets the one wordmark');
-assert.match(read('src/presentation/publicNav.css'), /\.public-nav__brand \[lang=en\]\{[^}]*letter-spacing:/, 'the public wordmark tracks on its lang="en" span');
+assert.match(read('src/presentation/publicShell.ts'), /WORDMARK = `<span class="cot-wordmark">\$\{BRAND_WORDMARK_HTML\}<\/span>`/, 'the public bar and footer set the one wordmark (no live text to track)');
 assert.match(read('index.html'), /<span class="l1" lang="en">CLAUDE<\/span>/, 'the boot wordmark is marked lang="en"');
 
 // The zh-CN label floor (the type rules: Chinese labels one step up, 13 px floor) ships only inside Chinese documents, right

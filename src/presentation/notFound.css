@@ -4,6 +4,8 @@
 @import url('../ui/components/components.css');
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
+/* the landing's display sizes (home.css), on the type steps so the reader's text scale reaches them */
+:root{--home-h1:clamp(var(--fs-76),5.9vw,var(--fs-112));--home-h2:clamp(var(--fs-60),5vw,var(--fs-88))}
 *{box-sizing:border-box}
 html{min-width:280px;background:var(--surface-scene)}
 /* the page declares only the shell's weight-voiced family (Chakra Petch from 550, IBM Plex Sans below): the kit's display

@@ -12,8 +12,9 @@
  *   <!--cot:nav-->…<!--/cot:nav-->          skip link, bar (mark, wordmark, pages, language, source, Play), menu sheet
  *   <!--cot:footer-->…<!--/cot:footer-->    (optional) mark, pages, language, source with its star count, credit line
  *
- * Dependency-free apart from the sprite index: the tool and the receipts pass the catalog text in.
+ * Dependency-free apart from the sprite index and the wordmark master: the tool and the receipts pass the catalog text in.
  */
+import { BRAND_WORDMARK_HTML } from '../ui/brandMark.ts';
 import { ACTIVE_MASTERS, SMALL_MASTERS } from '../ui/icons/spriteIndex.ts';
 
 export type PublicPageKey = 'home' | 'gallery' | 'docs' | 'studio' | 'media';
@@ -65,8 +66,9 @@ export function markMarkup(size = 28): string {
     + '<path d="M6.5 16.5 12 8.2l5.5 8.3" fill="none" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="miter" style="stroke:var(--accent)"/></svg>';
 }
 
-/** The wordmark, set as text in Chakra Petch: CLAUDE —OF— TANKS. Latin in every locale. */
-export const WORDMARK = '<span class="cot-wordmark" lang="en">Claude <span class="cot-wordmark__of">of</span> Tanks</span>';
+/** The wordmark, CLAUDE —of— TANKS, as the outlined master (src/ui/brandMark.ts; SPEC 3.1: never live text). Its
+ * link names the game, so the drawing is decorative. */
+export const WORDMARK = `<span class="cot-wordmark">${BRAND_WORDMARK_HTML}</span>`;
 
 const localeHref = (path: string, chinese: boolean): string => (chinese ? (path === '/' ? '/cn/' : `/cn${path}`) : path);
 

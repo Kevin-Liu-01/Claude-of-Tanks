@@ -43,7 +43,7 @@ assert.match(html, /<img class="not-found__still" src="\/media\/site50-r14\/stil
   'the branded 404 must use an in-engine battle capture, dimensioned');
 assert.match(css, /@import url\('\.\.\/ui\/components\/components\.css'\)/, 'the 404 wears the shared kit');
 assert.match(css, /\.not-found__grade\{[^}]*background:var\(--home-hero-grade\)/, 'the hero\'s grade');
-assert.doesNotMatch(css, /overflow:hidden;[^}]*\}\s*$|body[^{]*\{[^}]*overflow:hidden/m, 'no overflow trap on the page');
+assert.doesNotMatch(css, /(?:^|\})\s*(?:html|body)\b[^{}]*\{[^}]*overflow:hidden/m, 'no overflow trap on the page (the root and body scroll)');
 assert.match(vite, /notFound: resolve\(process\.cwd\(\), '404\.html'\)/,
   'the 404 page must ship as a production build entry');
 assert.match(vite, /function forceNotFoundStatus\([\s\S]*?res\.statusCode = 404;[\s\S]*?args\[0\] = 404;/,
