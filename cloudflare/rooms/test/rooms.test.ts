@@ -31,6 +31,13 @@ describe('cot-rooms Worker: the room lifecycle (the deployed shape)', () => {
     expect((await exports.default.fetch('https://room.test/rooms/ABCDEF', { headers: { Upgrade: 'websocket', Origin: `${origin}.evil` } })).status).toBe(403);
     expect((await exports.default.fetch('https://room.test/rooms/ABCDEF', { headers: { Origin: origin } })).status).toBe(426);
     expect((await exports.default.fetch('https://room.test/rooms/ABCDEF/match', { headers: { Origin: origin } })).status).toBe(426);
+    // anonymous junk never reaches the limiter or a room (Workers Free, 2026-10-23): the method first
+    for (const method of ['POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS']) {
+      const refused = await exports.default.fetch('https://room.test/rooms/ABCDEF', { method, headers: { Upgrade: 'websocket', Origin: origin } });
+      expect(refused.status).toBe(405);
+      expect(refused.headers.get('allow')).toBe('GET');
+    }
+    expect((await exports.default.fetch('https://room.test/rooms/ABCDEF/match', { headers: { Upgrade: 'websocket', Origin: origin } })).status).toBe(503);
   });
 
   it('creates, joins with auto-balance, refuses the wrong code, and keeps capabilities as hashes only', async () => {

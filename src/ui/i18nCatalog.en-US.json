@@ -2388,6 +2388,8 @@
   "playMenu.failure.returnGarage": "Return to garage",
   "playMenu.roomFailure.roomServiceUnavailable.title": "Room service unavailable",
   "playMenu.roomFailure.roomServiceUnavailable.detail": "We could not reach the room service. Check your connection, then try again once the service is back.",
+  "playMenu.roomFailure.roomServiceLimited.title": "Multiplayer is at today's limit",
+  "playMenu.roomFailure.roomServiceLimited.detail": "The free room service has used today's allowance. Practice, bots and LAN play still work. Rooms open again after 00:00 UTC.",
   "playMenu.roomFailure.invalidRoomCode.title": "Check the room code",
   "playMenu.roomFailure.invalidRoomCode.detail": "Enter the six-character code from your host, or open their complete invite link.",
   "playMenu.roomFailure.expired.title": "Room not found or expired",
