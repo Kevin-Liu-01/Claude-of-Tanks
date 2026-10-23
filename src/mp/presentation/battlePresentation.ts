@@ -29,6 +29,7 @@ import type { MatchRuleset } from '../../sim/matchRuleset.ts';
 import { normalizeGameMode } from '../../sim/gameModeCatalog.ts';
 import { createTank, ensureTankBuilder } from '../../vehicles/fleetFactory.ts';
 import { cloneTankVisual } from '../../vehicles/tankVisualClone.ts';
+import { seatTextureQuality as textureQuality, seatVisualOptions } from './seatVisualOptions.ts';
 import { prebakeSharedTextures } from '../../vehicles/materials.ts';
 import type { FleetTankSpec } from '../../vehicles/specContracts.ts';
 import { getSpec } from '../../vehicles/specs.ts';
@@ -198,6 +199,11 @@ export interface BattlePresentationOptions {
   worldCollision?: WorldCollisionLike | null;
   createTankVisual?: CreateTankVisual;
   cloneTankVisual?: CloneTankVisual;
+  /**
+   * 2026-10-22 (item/mp-rejoin-seat-241): the viewer's own vehicle when the app built it ahead (a returning tab's boot,
+   * main.ts), handed over once: the visual if it is the vehicle these options name, else null and the seat builds.
+   */
+  takeViewerVisual?: (specId: string, options: TankVisualOptions) => TankVisual | null;
   prepareVisualTextures?: PrepareVisualTextures;
   rosterScheduling?: FrameSchedulerOptions;
   clearVehicleDecals?: ((visual: TankVisual) => void) | null;
@@ -244,19 +250,6 @@ const LOCAL_PLAYER_EVENT_KINDS: ReadonlySet<string> = new Set([
   'consumable_used', 'consumable_denied', 'magazine_reload', 'magazine_reload_denied', 'special_action',
   'special_action_denied', 'ammo_empty', 'ammo_selection_denied', 'ammo_depleted', 'tank_self_right',
 ]);
-
-function hashString(value: string): number {
-  let hash = 2166136261;
-  for (const char of value) {
-    hash ^= char.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
-}
-
-function textureQuality(isViewer: boolean): 'high' | 'ai' {
-  return isViewer ? 'high' : 'ai';
-}
 
 /** A seat the room already names before the WELCOME (its vehicle, its paint, whether it is this viewer's). */
 export interface RosterPrewarmSeat {
@@ -309,6 +302,7 @@ export function createBattlePresentation({
   worldCollision = null,
   createTankVisual = createTank as CreateTankVisual,
   cloneTankVisual: cloneVisual = cloneTankVisual as unknown as CloneTankVisual,
+  takeViewerVisual = () => null,
   prepareVisualTextures = prebakeSharedTextures as PrepareVisualTextures,
   rosterScheduling,
   clearVehicleDecals = null,
@@ -375,13 +369,13 @@ export function createBattlePresentation({
   // ------------------------------------------------------------ roster
 
   function visualOptions(entry: RosterEntry, isViewer: boolean): TankVisualOptions {
-    return {
-      camoSeed: 4000 + (hashString(entry.playerId) % 100000),
-      camoPattern: camoFor(entry),
-      quality: textureQuality(isViewer),
-      // Generated anatomy and live strip/reset clusters already own gameplay; the authoring audit stays off.
-      eraVisualBindingReceipt: false,
-    };
+    return seatVisualOptions(entry.playerId, camoFor(entry), isViewer);
+  }
+
+  /** A seat's own build: the viewer's is the one the app made ahead when it has it (takeViewerVisual). */
+  function buildVisual(specId: string, entry: RosterEntry, isViewer: boolean): TankVisual {
+    const options = visualOptions(entry, isViewer);
+    return (isViewer ? takeViewerVisual(specId, options) : null) ?? createTankVisual(specId, engineCtx, options);
   }
 
   /**
@@ -402,7 +396,7 @@ export function createBattlePresentation({
     try { await prepareVisualTextures(getSpec(sourceEntry.specId), engineCtx.anisotropy ?? 4, textureQuality(sourceViewer), textureTick, camo); }
     catch { /* createTank keeps its synchronous compatibility path */ }
     assertActive();
-    const source = createTankVisual(sourceEntry.specId, engineCtx, visualOptions(sourceEntry, sourceViewer));
+    const source = buildVisual(sourceEntry.specId, sourceEntry, sourceViewer);
     preparedVisuals.set(sourceEntry.playerId, source);
     for (const entry of group) {
       if (entry === sourceEntry) continue;
@@ -425,7 +419,7 @@ export function createBattlePresentation({
     const prepared = preparedVisuals.get(entry.playerId);
     preparedVisuals.delete(entry.playerId);
     const visual = gunship ? createGunshipBattleVisual(spec.id)
-      : prepared ?? createTankVisual(spec.id, engineCtx, visualOptions(entry, isViewer));
+      : prepared ?? buildVisual(spec.id, entry, isViewer);
     engineCtx.scene.add(visual.root);
     visual.setVisible(false);
     const actor: MatchActor = {
