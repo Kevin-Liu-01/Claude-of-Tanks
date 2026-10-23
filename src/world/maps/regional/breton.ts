@@ -19,11 +19,13 @@ import { boatHull, bollard, copingRun, hungNet, leantPole, netRack, slipway, tre
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
 import { hallStalls, timberHalle, type HalleSpec } from './marketHall.ts';
-import { dressedQuoin, hash01 } from './facade.ts'; // the dressed quoins (facade craft, desktop)
+import { dressedQuoin, facadeOn, facadeRng, hash01, shopDisplay, shopfrontJoinery } from './facade.ts'; // the dressed quoins, the shopfronts (facade craft, desktop)
 import { phare } from './phare.ts'; // the light on its keeper's house (props census #5, lane B)
 
 const PAINTS: readonly Rgb[] = [0x3f78a6, 0x4f88aa, 0x3f7a60, 0x9a3a32, 0x7a8890, 0x3e6688].map(rgb);
 const FRAME_WHITE = rgb(0xd2cec4);
+/** The bourg's shop paints: the Breton blues and greens, an oxblood, a cream (2026-10-23). */
+const SHOP_PAINTS: readonly Rgb[] = [0x2f5f86, 0x2f6a52, 0x7a2e2a, 0xd8cfb4, 0x37506a].map(rgb);
 
 interface BretonState {
   rng: () => number;
@@ -56,6 +58,19 @@ function dialect(st: BretonState): HouseDialect {
     door: (sink, face, o, y0, frame) => {
       if (o.kind === 'gate') {
         gateUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, shade(st.paint, 0.8), { bucket: 'stone', width: 0.3, out: 0.07 });
+        return;
+      }
+      if (o.kind === 'shopfront') {
+        // (2026-10-23, the bourg's shops: the Léon's épiceries, cafés and the baker) the shop window in its dressed granite
+        // surround over a stall riser, glazed in divided lights, the fascia over it in the house's own paint, the goods
+        // in the window (the Hessian kit's shopfront craft, desktop)
+        windowUnit(sink, face, o.u, y0 + o.y0 + 0.55, o.w, o.h - 0.55, { ...st.window, bars: 'two', shutters: null,
+          surround: { bucket: 'stone', width: 0.24, out: 0.1, lintel: 0.32 } }, st.rng, 0);
+        if (facadeOn()) {
+          shopfrontJoinery(sink, face, o.u, y0 + o.y0 + 0.55, o.w, o.h - 0.55, 0.55, -sink.recess, pick(facadeRng(), SHOP_PAINTS),
+            st.window.frame, 0.24, frame.bodies[o.storey].y1);
+          shopDisplay(sink, face, o.u, y0 + o.y0 + 0.55, o.w, o.h - 0.55, -sink.recess);
+        }
         return;
       }
       doorUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, {
@@ -200,13 +215,16 @@ function leanTo(sink: PartSink, st: BretonState, W: number, plotBack: number, le
  * houses and now and then a lean-to against the back gable. These choices draw from the look stream (ctx.variant), not
  * the build stream.
  */
-function dwelling(ctx: RegionalBuildContext, opts: { longere?: boolean; storeys?: number } = {}): RegionalParts {
+function dwelling(ctx: RegionalBuildContext, opts: { longere?: boolean; storeys?: number; shop?: boolean } = {}): RegionalParts {
   const sink = new PartSink(uvOffset(ctx));
   const st = stateFor(ctx);
   const rng = st.rng, vary = ctx.variant;
   const W = Math.max(5.2, ctx.info.w - 0.3), plot = Math.max(6.8, ctx.info.d - 0.3);
   const longere = opts.longere ?? rng() < 0.5;
-  const count = longere ? 1 : (opts.storeys ?? 2);
+  // (2026-10-23, item/maps-frontier-saltmere-242; the blind critic on Saltmere's high street: "identical house models
+  // (same gable and chimneys) repeat down both sides of the street") a bourg house of three storeys now and then, so the
+  // eaves and ridges step by a storey, not by a hand
+  const count = longere ? 1 : (opts.storeys ?? 2) + (vary() < 0.3 ? 1 : 0);
   // the odd lean-to on a deep plot: the house stands forward and leaves it the back of the plot
   const lean = plot >= 8.2 && vary() < 0.3 ? 1.9 + vary() * 0.6 : 0;
   const D = plot - lean;
@@ -218,9 +236,16 @@ function dwelling(ctx: RegionalBuildContext, opts: { longere?: boolean; storeys?
   const openings: Opening[] = [];
   const doorFace = longere ? 'right' : 'front';
   const centred = (rng() - 0.5) * W * 0.3;
-  const doorU = doorFace === 'right' ? (vary() - 0.5) * D * 0.35
-    : vary() < 0.45 ? centred : (vary() < 0.5 ? -1 : 1) * (W / 2 - 1.25 - vary() * 0.3);
+  // (a shop's door to one side of its window, both in the street gable)
+  const shopSide = vary() < 0.5 ? -1 : 1;
+  const doorU = opts.shop && !longere ? shopSide * (W / 2 - 1.15)
+    : doorFace === 'right' ? (vary() - 0.5) * D * 0.35
+      : vary() < 0.45 ? centred : (vary() < 0.5 ? -1 : 1) * (W / 2 - 1.25 - vary() * 0.3);
   openings.push({ face: doorFace, storey: 0, kind: 'door', u: doorU, w: 0.95, y0: 0, h: 2.05 });
+  if (opts.shop && !longere) {
+    const sw = Math.min(2.5, W * 0.38), su = doorU - shopSide * (0.475 + 0.45 + sw / 2);
+    if (Math.abs(su) + sw / 2 <= W / 2 - 0.55) openings.push({ face: 'front', storey: 0, kind: 'shopfront', u: su, w: sw, y0: 0, h: 2.35 });
+  }
   const bayCount: Record<FaceName, number> = {
     front: longere ? 0 : W >= 6.3 && vary() < 0.35 ? 3 : vary() < 0.2 ? 1 : 2,
     back: longere ? 0 : vary() < 0.5 ? 1 : 2,
@@ -256,10 +281,12 @@ function dwelling(ctx: RegionalBuildContext, opts: { longere?: boolean; storeys?
   const stacks = two ? [stack(0), stack(1)] : [stack(vary() < 0.5 ? 0 : 1)];
   const dormers = longere ? (vary() < 0.15 ? 0 : D > 8.5 ? 2 : 1) : vary() < 0.35 ? (D > 8.2 && vary() < 0.5 ? 2 : 1) : 0;
   const dormerSide: 1 | -1 = longere || vary() < 0.5 ? 1 : -1;
+  // (2026-10-23) the slate's pitch from 42 to 54 degrees, house to house (was 46-52)
+  const pitch = 42 + vary() * 12;
   const body = (): void => {
     const frame = buildHouse(sink, {
       w: W, d: D, plinth: { h: 0.12, out: 0.03, bucket: 'stone' }, storeys: sts,
-      roof: slate(46 + rng() * 6), gableBucket: st.wall, openings, chimneys: [], gutters: rng() < 0.3 ? { colour: rgb(0x5a5e60) } : null, verge: null,
+      roof: slate(pitch), gableBucket: st.wall, openings, chimneys: [], gutters: rng() < 0.3 ? { colour: rgb(0x5a5e60) } : null, verge: null,
       reveal: 0.34,
     }, dialect(st));
     gableParapets(sink, frame, stacks, rng);
@@ -776,7 +803,8 @@ const netYard: RegionalBuilder = (ctx) => {
 const BRETON_BUILDERS: Readonly<Record<string, RegionalBuilder>> = Object.freeze({
   cottage: (ctx) => dwelling(ctx),
   tavern: (ctx) => dwelling(ctx, { longere: false, storeys: 2 }),
-  cornershop: (ctx) => dwelling(ctx, { longere: false, storeys: 2 }),
+  // (2026-10-23) a bourg house is a shop about one time in two: its window and fascia in the street gable
+  cornershop: (ctx) => dwelling(ctx, { longere: false, storeys: 2, shop: ctx.variant() < 0.5 }),
   farmhouse, barn, granary, chapel, ruin, tower,
   boatshed: boathouse,
   fishery: cannery,
