@@ -192,9 +192,10 @@ varying float vDepth;
 float tmHash(float n) { return fract(sin(n * 127.1) * 43758.5453); }
 float tmNoise(float x) { float i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f); return mix(tmHash(i), tmHash(i + 1.0), f); }
 // the rut's profile across the track, a = |u| · BERM (0 at the middle, 1 at the track's edge, BERM at the berm's foot):
-// the floor at −1, the wall rising over the track's outer fifth, the berm's crest just past the edge
-float tmProfile(float a, float berm) {
-  return -(1.0 - smoothstep(0.78, 1.02, a)) + berm * smoothstep(0.92, 1.1, a) * (1.0 - smoothstep(1.12, 1.45, a));
+// the floor at −1, the wall rising over the track's outer fifth (wider and slumped on a soft ground), the berm's crest
+// just past the edge
+float tmProfile(float a, float berm, float soft) {
+  return -(1.0 - smoothstep(0.8 - 0.22 * soft, 1.02, a)) + berm * smoothstep(0.9, 1.1, a) * (1.0 - smoothstep(1.12, 1.45, a));
 }
 // a grouser's groove along the track (f: the place in its pitch, 0..1): pressed in over its middle third
 float tmGroove(float f) { return smoothstep(0.22, 0.38, f) * (1.0 - smoothstep(0.54, 0.7, f)); }
@@ -204,8 +205,12 @@ void main() {
   float v = vMark.y;
   // (the lab's frames, 2026-10-08: crisp, even stripes read as lines painted on the ground) the edge wanders a few
   // centimetres and tears, the pressing comes and goes along the strip
-  float a = (abs(vMark.x) + (tmNoise(v * 2.3) - 0.5) * 0.08 + (tmNoise(v * 7.1 + 3.7) - 0.5) * 0.05) * uStrip.x;
-  float press = 0.7 + 0.3 * tmNoise(v * 0.59 + 11.3);
+  // (CPU previews, 2026-10-22: even edges and an even press read as painted stripes) each side's edge its own wander,
+  // torn finer where it breaks, the press coming and going over a few metres
+  float side = vMark.x < 0.0 ? 0.0 : 17.0;
+  float a = (abs(vMark.x) + (tmNoise(v * 1.7 + side) - 0.5) * 0.14 + (tmNoise(v * 6.3 + 3.7 + side) - 0.5) * 0.08
+    + (tmNoise(v * 19.0 + side) - 0.5) * 0.04) * uStrip.x;
+  float press = 0.55 + 0.45 * tmNoise(v * 0.47 + 11.3) * (0.75 + 0.25 * tmNoise(v * 2.1 + 5.1));
   // the ground's look: its depth (m at depth 1), its berm's height (of the depth), the bars' share, the floor's and the
   // berm's albedo ratios, and how soft its edges are
   float depthM, bermK, barK, soft;
@@ -230,11 +235,13 @@ void main() {
     floorC = vec3(0.8, 0.77, 0.74); bermC = vec3(1.06, 1.04, 1.02); scarC = vec3(0.7, 0.67, 0.64);
   }
   float depth = depthM * vDepth * press;
+  // the berm heaped unevenly: thicker where the shoes threw more, nearly gone between
+  bermK *= 0.45 + 1.1 * tmNoise(v * 0.83 + side * 1.7 + 2.9);
   // the relief fades into an albedo smudge with distance (its bars alias first)
   float nearK = 1.0 - smoothstep(25.0, 110.0, dist);
   // across: the profile's slope (per metre across: the track's half width is (strip half width) / BERM)
   float e = 0.03;
-  float dh = (tmProfile(a + e, bermK) - tmProfile(max(a - e, 0.0), bermK)) / (a < e ? a + e : 2.0 * e);
+  float dh = (tmProfile(a + e, bermK, soft) - tmProfile(max(a - e, 0.0), bermK, soft)) / (a < e ? a + e : 2.0 * e);
   float halfTrackM = max(0.1, length(vAcross));
   float sAcross = dh * depth / halfTrackM * sign(vMark.x);
   // along: the grousers' grooves every pitch, a third of it wide, faded before they alias, smeared by the scrub and in
@@ -248,9 +255,9 @@ void main() {
   vec3 n = normalize(vec3(0.0, 1.0, 0.0) - across * sAcross * nearK - along * sAlong * nearK);
   vec3 sun = normalize(uSun + vec3(0.0, 1e-4, 0.0));
   float level = max(sun.y, 0.12);
-  float lit = clamp(max(dot(n, sun), 0.0) / level, 0.45, 1.7);
+  float lit = clamp(max(dot(n, sun), 0.0) / level, 0.55, 1.45);
   // the sun's share of the ground's light (low at night and at a low sun, where the relief reads by its hollows)
-  float direct = 0.55 * smoothstep(0.02, 0.25, sun.y);
+  float direct = 0.5 * smoothstep(0.02, 0.25, sun.y);
   float relief = mix(1.0, lit, direct);
   // the hollow: the floor and the grooves a little darker, as much as the rut is deep
   float floorK = 1.0 - smoothstep(0.7, 1.0, a);
