@@ -6,10 +6,12 @@
  * and objective would meet it; the rules panel sits on the same line under the sight's marks (or, where they leave it no
  * place, under the resting sight), sliding down, then shrinking to the 11 px type floor, and stays hidden where nothing
  * clears it (a phone's touch controls leave it no centred place: the play menu's mode card lists the same rules).
- * Neither ever leaves the centre line.
+ * Neither ever leaves the centre line (noticeCentreLine.ts: every centre notice keeps to it).
  *
  * DOM-free and deterministic: mouseNoticePlan.ts and touchNoticePlan.ts call it with their own blocks.
  */
+
+import { noticeCentreX } from './noticeCentreLine.ts';
 
 export interface CountdownBox { readonly x0: number; readonly y0: number; readonly x1: number; readonly y1: number }
 export interface CountdownSize { readonly w: number; readonly h: number }
@@ -24,10 +26,10 @@ export interface CountdownPlace {
 }
 
 /** The resting sight: the dispersion ring at its floor (11 px), its dashed stroke and halo, and the reticle margin. */
-const SIGHT_CLEAR_PX = 20;
+export const SIGHT_CLEAR_PX = 20;
 /** Under the aim point: the column of marks under the marker (the rack, the struck round, the reload count) and the
  *  gun-limit chip at 50 % + 48 px (battleHudLayout.css .cot-aim-warning, 24 px tall). */
-const MARKS_BELOW_PX = 76;
+export const MARKS_BELOW_PX = 76;
 /** The dial's bottom over the aim point, as a share of the height. */
 const LIFT = 0.05;
 const DIAL_SCALES = [1, 0.9, 0.8, 0.7, 0.6, 0.5, 0.45, 0.4] as const;
@@ -48,7 +50,7 @@ const clearOf = (x0: number, y0: number, x1: number, y1: number, blocks: readonl
  */
 export function placeCountdown(width: number, height: number, top: number, dial: CountdownSize, rules: CountdownSize | null,
   blocks: readonly CountdownBox[], gap: number): CountdownPlace {
-  const cx = width / 2, cy = height / 2;
+  const cx = noticeCentreX(width), cy = height / 2;
   const ceiling = Math.ceil(top + gap);
   const lowest = Math.floor(cy - SIGHT_CLEAR_PX - gap);
   const bottom = Math.min(lowest, Math.floor(cy - Math.max(SIGHT_CLEAR_PX + gap, height * LIFT)));
