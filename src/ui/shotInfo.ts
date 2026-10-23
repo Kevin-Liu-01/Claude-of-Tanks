@@ -19,7 +19,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 import { MAX_BATTLE_NOTIFICATIONS } from './battleHudLayout.ts';
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
-import { createElement as el } from './dom.ts';
+import { createElement as el, escapeHtml } from './dom.ts';
 import { ensureStyle } from './styleLayers.ts';
 import {
   hitOutcomeFor, nominalPenFor, shellDisplayName, zoneLabel,
@@ -749,9 +749,9 @@ function appendShotCardSubtitle(card: HTMLDivElement, ev: ShotHitEvent): void {
   const typeColor = SHELL_TYPE_COLOR[ev.shellType] || '#9fb0bf';
   const missile = weaponHitKind(ev) === 'missile';
   subtitle.innerHTML =
-    `<span><span class="ty${missile ? ' missile' : ''}" style="color:${typeColor}">${missile ? uiIconSVG('missileRack', 10) : GLYPH.shell}${ev.shellType}</span>` +
-    `<span class="cot-si-subtext">${shellDisplayName(ev)}</span></span>` +
-    `<span>${GLYPH.target}<span class="cot-si-subtext">${ev.targetName || ''}</span></span>`;
+    `<span><span class="ty${missile ? ' missile' : ''}" style="color:${typeColor}">${missile ? uiIconSVG('missileRack', 10) : GLYPH.shell}${escapeHtml(ev.shellType)}</span>` +
+    `<span class="cot-si-subtext">${escapeHtml(shellDisplayName(ev))}</span></span>` +
+    `<span>${GLYPH.target}<span class="cot-si-subtext">${escapeHtml(ev.targetName || '')}</span></span>`;
 }
 
 function armorPresentation(ev: ShotHitEvent): string {
@@ -1321,7 +1321,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       r.innerHTML =
         `<span class="b" style="color:${it.cls.color}">${it.cls.label}</span>` +
         `<span class="d">${(it.ev.damage || 0) > 0 ? `−${Math.round(it.ev.damage)}` : '·'}</span>` +
-        `<span class="n">${it.ev.targetName || it.ev.targetId || ''}</span>` +
+        `<span class="n">${escapeHtml(it.ev.targetName || it.ev.targetId || '')}</span>` +
         `<span class="z">${zoneLabel(it.ev.zone)} · ${Math.round(it.ev.flightDistM || 0)}m</span>`;
     }
     const total = receivedLog.reduce((a, e) => a + e.dmg, 0);
@@ -1335,8 +1335,8 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
         `<span class="b" style="color:${e.dmg > 0 ? COL.red : e.outcome.color}">` +
         `${e.dmg > 0 ? fmtTime(e.t) : e.outcome.label}</span>` +
         `<span class="d">${e.dmg > 0 ? `−${Math.round(e.dmg)}` : '·'}</span>` +
-        `<span class="n">${e.attacker}</span>` +
-        `<span class="z">${e.shellType}${e.mods ? ' · ' + e.mods : ''}</span>`;
+        `<span class="n">${escapeHtml(e.attacker)}</span>` +
+        `<span class="z">${escapeHtml(e.shellType)}${e.mods ? ' · ' + escapeHtml(e.mods) : ''}</span>`;
     }
   }
 
