@@ -53,6 +53,8 @@ const dependencies = { THREE, mulberry32, TREE_ARCHETYPES, treeTrunkCollisionRad
   civicTreeStations, civicLawnTest, civicPavedRooms,
   // the trees lane (2026-10-06): a place's snag value (Monsoon's charred snags)
   treeBiomeSnagValue,
+  // the woods catch-up (item 41, 2026-10-22): round 8's canopy form by place — off in the sandbox (the receipts' maps)
+  canopyForm: false, WOOD_MARGIN_K: 0.85, WOOD_INTERIOR_TRUNK_SHADE: 0.42, treeBiomeCanopyForm: () => false,
   // (2026-10-08, wave 278: a place under snow lays its load on the slots' palettes)
   treeBiomeSnow, treeBiomeSnowPalette };
 

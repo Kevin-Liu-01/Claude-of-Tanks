@@ -44,6 +44,8 @@ const dependencies = { THREE, mulberry32, treeRichness, TREE_ARCHETYPES, treeTru
   treeBiomeSlot, TREE_GROWTH_PROFILES, resolveLandUseProfile,
   // the trees lane (2026-10-06): a place's snag value (Monsoon's charred snags)
   treeBiomeSnagValue,
+  // the woods catch-up (item 41, 2026-10-22): round 8's canopy form by place — off in the sandbox (the receipts' maps)
+  canopyForm: false, WOOD_MARGIN_K: 0.85, WOOD_INTERIOR_TRUNK_SHADE: 0.42, treeBiomeCanopyForm: () => false,
   // trees lane (2026-10-05): an opted-in map's stands inside its settlement rect (vegetation.ts authoredInSettlement)
   insideClearPolygon, plannedSiteClearances,
   // symmetric deployments (modes lane 2026-10-08): the slots' clearings, the trees in them dropped after placement

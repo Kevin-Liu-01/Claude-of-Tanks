@@ -292,9 +292,8 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   monsoon: Object.freeze({ ...B('Kohima, the Naga Hills', { pine: { form: 'khasiPine' }, eucalyptus: { form: 'castanopsis' },
     willow: { form: 'holmOak' }, oak: { form: 'bamboo', colour: BAMBOO_FOLIAGE } }, 'holmOak'),
     // (round 2: the shell-killed trunks charred near-black, not the pale poles wave 179 read as eucalyptus)
-    snagValue: Object.freeze([0.16, 0.26] as const),
-    // (the treescn lane, 2026-10-09: round 8's canopy and form — Monsoon Ridge's spur woods closed, not parkland)
-    canopyForm: true as const }),
+    // (round 8's canopy form for its woods waits on its blind critic: item 41, 2026-10-22)
+    snagValue: Object.freeze([0.16, 0.26] as const) }),
   // Queenstown under Mount Lyell, Tasmania (the map-revival lane, 2026-10-05): eucalypt regrowth where the map plants its
   // acacias and cedars, the radiata plantations' pines as pines, the bushes the tea-tree and myrtle scrub in the holm
   // oak's dark leaf (no 'snag' for the fume-killed stumps: its slot would keep a concealing crown it does not draw);
