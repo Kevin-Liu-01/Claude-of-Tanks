@@ -1,9 +1,87 @@
 {
   "version": 1,
-  "created": "2026-10-22T23:14:22.553Z",
-  "sourceDigest": "e2a1d5aa3324edab5af2a95c1ba93e836c7b94fccfd552b4df4264fee0c071d9",
-  "revision": "058ccfa2420af6493d5fb31c846541853b6d23dd",
+  "created": "2026-10-23T20:08:57.877Z",
+  "sourceDigest": "717b8d85b7255a2392c36246c6d55f92a6f29abe1ed87b0961586029d60b0610",
+  "revision": "3e8c32658d9293e536da0fe4a4897360cd05537c",
   "shots": [
+    {
+      "src": "/maps/copper_mesa.webp",
+      "previewSrc": "/maps/cards/copper_mesa.webp",
+      "alt": "copper mesa battlefield overview",
+      "title": "copper mesa",
+      "map": "copper_mesa",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 1
+    },
+    {
+      "src": "/maps/ruinspires.webp",
+      "previewSrc": "/maps/cards/ruinspires.webp",
+      "alt": "ruinspires battlefield overview",
+      "title": "ruinspires",
+      "map": "ruinspires",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 2
+    },
+    {
+      "src": "/maps/foundry.webp",
+      "previewSrc": "/maps/cards/foundry.webp",
+      "alt": "foundry battlefield overview",
+      "title": "foundry",
+      "map": "foundry",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 3
+    },
+    {
+      "src": "/maps/winter.webp",
+      "previewSrc": "/maps/cards/winter.webp",
+      "alt": "winter battlefield overview",
+      "title": "winter",
+      "map": "winter",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 4
+    },
+    {
+      "src": "/maps/delta.webp",
+      "previewSrc": "/maps/cards/delta.webp",
+      "alt": "delta battlefield overview",
+      "title": "delta",
+      "map": "delta",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 5
+    },
+    {
+      "src": "/maps/mars.webp",
+      "previewSrc": "/maps/cards/mars.webp",
+      "alt": "mars battlefield overview",
+      "title": "mars",
+      "map": "mars",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 6
+    },
     {
       "src": "/maps/desert.webp",
       "previewSrc": "/maps/cards/desert.webp",
@@ -317,45 +395,6 @@
       "sequence": 17
     },
     {
-      "src": "/maps/copper_mesa.webp",
-      "previewSrc": "/maps/cards/copper_mesa.webp",
-      "alt": "copper mesa battlefield overview",
-      "title": "copper mesa",
-      "map": "copper_mesa",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 3
-    },
-    {
-      "src": "/maps/winter.webp",
-      "previewSrc": "/maps/cards/winter.webp",
-      "alt": "winter battlefield overview",
-      "title": "winter",
-      "map": "winter",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 3
-    },
-    {
-      "src": "/maps/delta.webp",
-      "previewSrc": "/maps/cards/delta.webp",
-      "alt": "delta battlefield overview",
-      "title": "delta",
-      "map": "delta",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 10
-    },
-    {
       "src": "/maps/caldera.webp",
       "previewSrc": "/maps/cards/caldera.webp",
       "alt": "caldera battlefield overview",
@@ -367,32 +406,6 @@
         "daylight"
       ],
       "sequence": 14
-    },
-    {
-      "src": "/maps/foundry.webp",
-      "previewSrc": "/maps/cards/foundry.webp",
-      "alt": "foundry battlefield overview",
-      "title": "foundry",
-      "map": "foundry",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 15
-    },
-    {
-      "src": "/maps/ruinspires.webp",
-      "previewSrc": "/maps/cards/ruinspires.webp",
-      "alt": "ruinspires battlefield overview",
-      "title": "ruinspires",
-      "map": "ruinspires",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 16
     },
     {
       "src": "/maps/airfield.webp",
@@ -419,50 +432,19 @@
         "daylight"
       ],
       "sequence": 28
-    },
-    {
-      "src": "/maps/mars.webp",
-      "previewSrc": "/maps/cards/mars.webp",
-      "alt": "mars battlefield overview",
-      "title": "mars",
-      "map": "mars",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 30
     }
   ],
   "films": [],
   "media": {
-    "/maps/winter.webp": "production-map-winter",
-    "/maps/cards/winter.webp": "production-map-winter",
-    "/maps/thumbs/winter.webp": "production-map-winter",
-    "/maps/delta.webp": "production-map-delta",
-    "/maps/cards/delta.webp": "production-map-delta",
-    "/maps/thumbs/delta.webp": "production-map-delta",
     "/maps/caldera.webp": "production-map-caldera",
     "/maps/cards/caldera.webp": "production-map-caldera",
     "/maps/thumbs/caldera.webp": "production-map-caldera",
-    "/maps/foundry.webp": "production-map-foundry",
-    "/maps/cards/foundry.webp": "production-map-foundry",
-    "/maps/thumbs/foundry.webp": "production-map-foundry",
-    "/maps/ruinspires.webp": "production-map-ruinspires",
-    "/maps/cards/ruinspires.webp": "production-map-ruinspires",
-    "/maps/thumbs/ruinspires.webp": "production-map-ruinspires",
     "/maps/airfield.webp": "production-map-airfield",
     "/maps/cards/airfield.webp": "production-map-airfield",
     "/maps/thumbs/airfield.webp": "production-map-airfield",
     "/maps/saltwind.webp": "production-map-saltwind",
     "/maps/cards/saltwind.webp": "production-map-saltwind",
     "/maps/thumbs/saltwind.webp": "production-map-saltwind",
-    "/maps/mars.webp": "production-map-mars",
-    "/maps/cards/mars.webp": "production-map-mars",
-    "/maps/thumbs/mars.webp": "production-map-mars",
-    "/maps/copper_mesa.webp": "production-map-copper_mesa",
-    "/maps/cards/copper_mesa.webp": "production-map-copper_mesa",
-    "/maps/thumbs/copper_mesa.webp": "production-map-copper_mesa",
     "/maps/verdant.webp": "production-map-verdant",
     "/maps/cards/verdant.webp": "production-map-verdant",
     "/maps/thumbs/verdant.webp": "production-map-verdant",
@@ -534,53 +516,27 @@
     "/maps/thumbs/alpine.webp": "production-map-alpine",
     "/maps/oasis.webp": "production-map-oasis",
     "/maps/cards/oasis.webp": "production-map-oasis",
-    "/maps/thumbs/oasis.webp": "production-map-oasis"
+    "/maps/thumbs/oasis.webp": "production-map-oasis",
+    "/maps/copper_mesa.webp": "production-map-copper_mesa",
+    "/maps/cards/copper_mesa.webp": "production-map-copper_mesa",
+    "/maps/thumbs/copper_mesa.webp": "production-map-copper_mesa",
+    "/maps/ruinspires.webp": "production-map-ruinspires",
+    "/maps/cards/ruinspires.webp": "production-map-ruinspires",
+    "/maps/thumbs/ruinspires.webp": "production-map-ruinspires",
+    "/maps/foundry.webp": "production-map-foundry",
+    "/maps/cards/foundry.webp": "production-map-foundry",
+    "/maps/thumbs/foundry.webp": "production-map-foundry",
+    "/maps/winter.webp": "production-map-winter",
+    "/maps/cards/winter.webp": "production-map-winter",
+    "/maps/thumbs/winter.webp": "production-map-winter",
+    "/maps/delta.webp": "production-map-delta",
+    "/maps/cards/delta.webp": "production-map-delta",
+    "/maps/thumbs/delta.webp": "production-map-delta",
+    "/maps/mars.webp": "production-map-mars",
+    "/maps/cards/mars.webp": "production-map-mars",
+    "/maps/thumbs/mars.webp": "production-map-mars"
   },
   "recipes": {
-    "production-map-winter": {
-      "map": "winter",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -236,
-          75.71023250197422,
-          -318
-        ],
-        "lookAt": [
-          46,
-          -3.1783953524814694,
-          40
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-delta": {
-      "map": "delta",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          248,
-          74.14634674468623,
-          -274
-        ],
-        "lookAt": [
-          -34,
-          -2.2612647733302884,
-          72
-        ],
-        "fov": 55
-      }
-    },
     "production-map-caldera": {
       "map": "caldera",
       "timeOfDay": "day",
@@ -599,50 +555,6 @@
           42,
           8.673138276748638,
           66
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-foundry": {
-      "map": "foundry",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -244,
-          73.57953887129449,
-          -248
-        ],
-        "lookAt": [
-          54,
-          3.9351943684459725,
-          72
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-ruinspires": {
-      "map": "ruinspires",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -244,
-          58.21109091733949,
-          -274
-        ],
-        "lookAt": [
-          36,
-          12.870586918940464,
-          46
         ],
         "fov": 55
       }
@@ -687,50 +599,6 @@
           -260,
           -5.651393170117241,
           -15
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-mars": {
-      "map": "mars",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -90,
-          70.26822893421566,
-          -170
-        ],
-        "lookAt": [
-          50,
-          6.129426266709305,
-          160
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-copper_mesa": {
-      "map": "copper_mesa",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -284,
-          98.73237693106759,
-          -282
-        ],
-        "lookAt": [
-          -30,
-          -7.45084991533119,
-          90
         ],
         "fov": 55
       }
@@ -1262,9 +1130,213 @@
         ],
         "fov": 55
       }
+    },
+    "production-map-copper_mesa": {
+      "map": "copper_mesa",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -284,
+          98.73237693106759,
+          -282
+        ],
+        "lookAt": [
+          -30,
+          -7.45084991533119,
+          90
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-ruinspires": {
+      "map": "ruinspires",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -244,
+          58.21109091733949,
+          -274
+        ],
+        "lookAt": [
+          36,
+          12.870586918940464,
+          46
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-foundry": {
+      "map": "foundry",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -244,
+          73.57953887129449,
+          -248
+        ],
+        "lookAt": [
+          54,
+          3.9351943684459725,
+          72
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-winter": {
+      "map": "winter",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -236,
+          75.71023250197422,
+          -318
+        ],
+        "lookAt": [
+          46,
+          -0.10379865127273025,
+          40
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-delta": {
+      "map": "delta",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          248,
+          74.14634674468623,
+          -274
+        ],
+        "lookAt": [
+          -34,
+          -2.2612647733302884,
+          72
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-mars": {
+      "map": "mars",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -90,
+          70.26822893421566,
+          -170
+        ],
+        "lookAt": [
+          50,
+          6.129426266709305,
+          160
+        ],
+        "fov": 55
+      }
     }
   },
   "assets": [
+    {
+      "src": "/maps/copper_mesa.webp",
+      "sha256": "b3ee8b17a03d3a87ac92bde8d74b75646f51d3d87e8973927f6ccf0ef53db73f"
+    },
+    {
+      "src": "/maps/cards/copper_mesa.webp",
+      "sha256": "d46fedbaa05ea220437da3eb2ce250df164c07741114a347ae5b55f62f04899b"
+    },
+    {
+      "src": "/maps/thumbs/copper_mesa.webp",
+      "sha256": "afa3f2579f92eb9acb20dd5157ba328cb6028a506e1b67c3ae90afb64508d5aa"
+    },
+    {
+      "src": "/maps/ruinspires.webp",
+      "sha256": "ba620f4add3faf97f8eb1836dac6d72a3edfeb3d85ffe7a234119ff86c306d44"
+    },
+    {
+      "src": "/maps/cards/ruinspires.webp",
+      "sha256": "9a329b134e2c3151de5539b60bca311ddb9d835be65d8a0df56ce124560858d2"
+    },
+    {
+      "src": "/maps/thumbs/ruinspires.webp",
+      "sha256": "448dc0d6da2ea85916e59c144c9f1e552c539cf864097d023b8bd01d2032737a"
+    },
+    {
+      "src": "/maps/foundry.webp",
+      "sha256": "d9a6fee659e03c69a745648f1b43458a9ff81f086a9a0abb93b736a5587079dc"
+    },
+    {
+      "src": "/maps/cards/foundry.webp",
+      "sha256": "430010c04e2d812d860c3c8a0c4d55adaf55acd791cc76b01db90b35ba9509bc"
+    },
+    {
+      "src": "/maps/thumbs/foundry.webp",
+      "sha256": "8fed66f86d6125fd5a54ece4726629a1a38adc92734e21cff34c14cb731289e5"
+    },
+    {
+      "src": "/maps/winter.webp",
+      "sha256": "3b200338f9bf544563ef99e18995928047163ae45fab6396268f414fb0ad6379"
+    },
+    {
+      "src": "/maps/cards/winter.webp",
+      "sha256": "53869f8231d413c4528874454e1902caa01987c6b8d73826af132466875e5392"
+    },
+    {
+      "src": "/maps/thumbs/winter.webp",
+      "sha256": "0553ec66e1d26c0aec55838fd7e5d3a51c1e54b2a8fed55a077b07daa30866f3"
+    },
+    {
+      "src": "/maps/delta.webp",
+      "sha256": "132e81e3b9b21fc7b2c671e5aa7ab66c300aff689a387a36adc91c1387c248c8"
+    },
+    {
+      "src": "/maps/cards/delta.webp",
+      "sha256": "1faa01f9756fc79707ad188f90291a2ade983183ff15dd2810ee78d22164d5c7"
+    },
+    {
+      "src": "/maps/thumbs/delta.webp",
+      "sha256": "b2135c8b78860c1a7786fe8758d6ab8b24e36c9f489eba677e4060faf1571cd4"
+    },
+    {
+      "src": "/maps/mars.webp",
+      "sha256": "74d70b764b9d422e7fe83cae822a9da37b704d27cd5fec3964e83d5223e14b36"
+    },
+    {
+      "src": "/maps/cards/mars.webp",
+      "sha256": "cb8fca5ccb7dd5a18deac825cee28b6604011ce324ad332676c4e9ebfacbcae7"
+    },
+    {
+      "src": "/maps/thumbs/mars.webp",
+      "sha256": "c42071fb07d692074237f65e10cfb70c71a66d9669de4b74e304f2cb1c320dcb"
+    },
     {
       "src": "/maps/desert.webp",
       "sha256": "eaa71dcf52f6560193c871bce35b83c614673e323409dc20c3a59eb5e939e85b"
@@ -1554,42 +1626,6 @@
       "sha256": "925aa16feb54499c0be5ded5955d7b15832d8825fff735207c88e179054ad811"
     },
     {
-      "src": "/maps/copper_mesa.webp",
-      "sha256": "6da0fa22f9f7a06be78c878eba71efcf97be083000fa862281684a4a6a961eeb"
-    },
-    {
-      "src": "/maps/cards/copper_mesa.webp",
-      "sha256": "d2707ce6554c120376232e9d0b7f5121e069915dceca08c349bc53d24829aa77"
-    },
-    {
-      "src": "/maps/thumbs/copper_mesa.webp",
-      "sha256": "531faf794f4a03bf7ff7bb1be3322e1edd2ee34dcf2ea05656cc6e29c2b9c1e9"
-    },
-    {
-      "src": "/maps/winter.webp",
-      "sha256": "056c904069cae1b51f00b45c43e6ccb0ab70137a32d821e47184623f35ba2e20"
-    },
-    {
-      "src": "/maps/cards/winter.webp",
-      "sha256": "31bbde8371a92948322cd3a903db501375b12756913b50f542b410db86a3b963"
-    },
-    {
-      "src": "/maps/thumbs/winter.webp",
-      "sha256": "964c4d6fa20b7f566c40f2dfa412d71e92d420dadbd3ffb3266a6c64ed7e31f7"
-    },
-    {
-      "src": "/maps/delta.webp",
-      "sha256": "fb5352be1b135a336201ccb458fc329932a7f159f7ae4df12fe4ab7cbac9d4de"
-    },
-    {
-      "src": "/maps/cards/delta.webp",
-      "sha256": "73a33378c400dd3e1c63ad4bf6feafd7e1b53520e829cd66bf5f58e4153176dc"
-    },
-    {
-      "src": "/maps/thumbs/delta.webp",
-      "sha256": "a76e2672963250197d3009f0ae662d0f7f89bc311fd875a8abaa53f807cde2b6"
-    },
-    {
       "src": "/maps/caldera.webp",
       "sha256": "59e8914c8018ea78f681ef8879bb090c5272d0ebce939e043a7476a01fa94307"
     },
@@ -1600,30 +1636,6 @@
     {
       "src": "/maps/thumbs/caldera.webp",
       "sha256": "82c1b10274d68c08ddee222907aadf75ed28810e9b77c9b17a3154948d17f1e6"
-    },
-    {
-      "src": "/maps/foundry.webp",
-      "sha256": "2fc5cb57b42dba8c6a293fa8f59914e878cf7e79d8adc907d530bd087ced6341"
-    },
-    {
-      "src": "/maps/cards/foundry.webp",
-      "sha256": "5fc0a8e3b953f38911a7992f85347afb34ee3390edd6bd6f9035ce404f0c6186"
-    },
-    {
-      "src": "/maps/thumbs/foundry.webp",
-      "sha256": "e2676347640030a6165c68ea4607836787e3f3800efeba771cec02b7e0ab8e55"
-    },
-    {
-      "src": "/maps/ruinspires.webp",
-      "sha256": "065464ec73b932048571fdae4e47f6ae8bd433b1aecd21b8d8ce71799c61f521"
-    },
-    {
-      "src": "/maps/cards/ruinspires.webp",
-      "sha256": "53fc10af5b1f5c053f20846955583529cd1e30f2dd867d37a8508230288ce6d2"
-    },
-    {
-      "src": "/maps/thumbs/ruinspires.webp",
-      "sha256": "6cc405f31e13e9cbae576db7af000f6e990a0de916e7b116829e47e25f705dd6"
     },
     {
       "src": "/maps/airfield.webp",
@@ -1648,65 +1660,53 @@
     {
       "src": "/maps/thumbs/saltwind.webp",
       "sha256": "bdf49fc512dd153379e9787854b5c5d7a2d55946ca4fd340915f93b883b91b43"
-    },
-    {
-      "src": "/maps/mars.webp",
-      "sha256": "80acd544060e53872a2fd88737f927ce906f8e810cee8a81f8f1045158dda593"
-    },
-    {
-      "src": "/maps/cards/mars.webp",
-      "sha256": "3ef1ef6c547cbde9392dd90fdb781d00f23273cbe518ce7e39f216e01ff20cb0"
-    },
-    {
-      "src": "/maps/thumbs/mars.webp",
-      "sha256": "823145aaf69a2042e1703965ac481b3d6a2f2302392a8ed0adfea56908d897f1"
     }
   ],
   "review": {
-    "reviewedAt": "2026-10-22T23:14:07+00:00",
-    "notes": "Maps 235: the battlefield frames redone on main 058ccfa242 (the 233 sky and world fixes), each looked at beside its live picture. This batch holds the six as good as or better than live; airfield, caldera and mars keep their live pictures.",
+    "reviewedAt": "2026-10-23T19:53:19+00:00",
+    "notes": "Maps 240: the six battlefield pictures re-shot on world-polish-240 (3e8c32658d, on main), each looked at beside its live picture; they show the world as main now draws it (the owner, 10-23: \"just ship it all\").",
     "maps": {
-      "desert": {
+      "copper_mesa": {
         "accepted": true,
         "hashes": [
-          "6cf552dd2e3f789b1cc465fac298717c3f866e344845ca7e71e719d4248073e0"
+          "49b30b2ac53908b84295b51c3be07e127a49a61d8d8bc22485f096a1555fc8b8"
         ],
-        "notes": "Looked at beside the live picture 2026-10-22: as good or better (the 233 sky and world fixes)."
+        "notes": "Re-shot on main's world (world-polish-240): looked at beside the live picture, 2026-10-23."
       },
-      "longleaf": {
+      "ruinspires": {
         "accepted": true,
         "hashes": [
-          "a1aa9db3aa31e77622779ebedf002f1da5e3ffd89d827cb9ac52a401c7b1b1b3"
+          "a1fe73850b90ebfa2fa45040b111dc8878ed0ad18744f832beb4f782c57a1ccd"
         ],
-        "notes": "Looked at beside the live picture 2026-10-22: as good or better (the 233 sky and world fixes)."
+        "notes": "Re-shot on main's world (world-polish-240): looked at beside the live picture, 2026-10-23."
       },
-      "monsoon": {
+      "foundry": {
         "accepted": true,
         "hashes": [
-          "777a33254849e8679230d9219852763b120cb795944fb1429ef5461986531751"
+          "bc5e72fa0b1fe3fd37b4d4cffd48b5459c8c7c469079ce4df175d058fa0543fc"
         ],
-        "notes": "Looked at beside the live picture 2026-10-22: as good or better (the 233 sky and world fixes)."
+        "notes": "Re-shot on main's world (world-polish-240): looked at beside the live picture, 2026-10-23."
       },
-      "reservoir": {
+      "winter": {
         "accepted": true,
         "hashes": [
-          "5242ab01b503d8cb1a09666f17813537c6c7feca36432f0a72c5c64a7c376916"
+          "b2334bb660d9517822b06e6dca2b4033bc61ce58cd9d7652df3f1c12db6acc10"
         ],
-        "notes": "Looked at beside the live picture 2026-10-22: as good or better (the 233 sky and world fixes)."
+        "notes": "Re-shot on main's world (world-polish-240): looked at beside the live picture, 2026-10-23."
       },
-      "alpine": {
+      "delta": {
         "accepted": true,
         "hashes": [
-          "6f143e04a05f6babd793e959e6bad1a78a74d4cc60460159c1d27197c9b825ac"
+          "e7e9e421d6ea9a2cf21049fa2cc7c886c1f0b5b4e643c36e91e93ddc092b320b"
         ],
-        "notes": "Looked at beside the live picture 2026-10-22: as good or better (the 233 sky and world fixes)."
+        "notes": "Re-shot on main's world (world-polish-240): looked at beside the live picture, 2026-10-23."
       },
-      "oasis": {
+      "mars": {
         "accepted": true,
         "hashes": [
-          "0768501c959371ecbe131b184801c5cc732da124988652ac673433eeacd8a378"
+          "37dfbb0c0fc113f68a63d34afb3ae8d56d7a18f4a8fa960b506b2446f8ed381f"
         ],
-        "notes": "Looked at beside the live picture 2026-10-22: as good or better (the 233 sky and world fixes)."
+        "notes": "Re-shot on main's world (world-polish-240): looked at beside the live picture, 2026-10-23."
       }
     }
   },
@@ -1947,30 +1947,6 @@
       },
       "assets": [
         {
-          "src": "/maps/winter.webp",
-          "sha256": "056c904069cae1b51f00b45c43e6ccb0ab70137a32d821e47184623f35ba2e20"
-        },
-        {
-          "src": "/maps/cards/winter.webp",
-          "sha256": "31bbde8371a92948322cd3a903db501375b12756913b50f542b410db86a3b963"
-        },
-        {
-          "src": "/maps/thumbs/winter.webp",
-          "sha256": "964c4d6fa20b7f566c40f2dfa412d71e92d420dadbd3ffb3266a6c64ed7e31f7"
-        },
-        {
-          "src": "/maps/delta.webp",
-          "sha256": "fb5352be1b135a336201ccb458fc329932a7f159f7ae4df12fe4ab7cbac9d4de"
-        },
-        {
-          "src": "/maps/cards/delta.webp",
-          "sha256": "73a33378c400dd3e1c63ad4bf6feafd7e1b53520e829cd66bf5f58e4153176dc"
-        },
-        {
-          "src": "/maps/thumbs/delta.webp",
-          "sha256": "a76e2672963250197d3009f0ae662d0f7f89bc311fd875a8abaa53f807cde2b6"
-        },
-        {
           "src": "/maps/caldera.webp",
           "sha256": "59e8914c8018ea78f681ef8879bb090c5272d0ebce939e043a7476a01fa94307"
         },
@@ -1981,30 +1957,6 @@
         {
           "src": "/maps/thumbs/caldera.webp",
           "sha256": "82c1b10274d68c08ddee222907aadf75ed28810e9b77c9b17a3154948d17f1e6"
-        },
-        {
-          "src": "/maps/foundry.webp",
-          "sha256": "2fc5cb57b42dba8c6a293fa8f59914e878cf7e79d8adc907d530bd087ced6341"
-        },
-        {
-          "src": "/maps/cards/foundry.webp",
-          "sha256": "5fc0a8e3b953f38911a7992f85347afb34ee3390edd6bd6f9035ce404f0c6186"
-        },
-        {
-          "src": "/maps/thumbs/foundry.webp",
-          "sha256": "e2676347640030a6165c68ea4607836787e3f3800efeba771cec02b7e0ab8e55"
-        },
-        {
-          "src": "/maps/ruinspires.webp",
-          "sha256": "065464ec73b932048571fdae4e47f6ae8bd433b1aecd21b8d8ce71799c61f521"
-        },
-        {
-          "src": "/maps/cards/ruinspires.webp",
-          "sha256": "53fc10af5b1f5c053f20846955583529cd1e30f2dd867d37a8508230288ce6d2"
-        },
-        {
-          "src": "/maps/thumbs/ruinspires.webp",
-          "sha256": "6cc405f31e13e9cbae576db7af000f6e990a0de916e7b116829e47e25f705dd6"
         },
         {
           "src": "/maps/airfield.webp",
@@ -2029,64 +1981,6 @@
         {
           "src": "/maps/thumbs/saltwind.webp",
           "sha256": "bdf49fc512dd153379e9787854b5c5d7a2d55946ca4fd340915f93b883b91b43"
-        },
-        {
-          "src": "/maps/mars.webp",
-          "sha256": "80acd544060e53872a2fd88737f927ce906f8e810cee8a81f8f1045158dda593"
-        },
-        {
-          "src": "/maps/cards/mars.webp",
-          "sha256": "3ef1ef6c547cbde9392dd90fdb781d00f23273cbe518ce7e39f216e01ff20cb0"
-        },
-        {
-          "src": "/maps/thumbs/mars.webp",
-          "sha256": "823145aaf69a2042e1703965ac481b3d6a2f2302392a8ed0adfea56908d897f1"
-        }
-      ]
-    },
-    {
-      "created": "2026-10-14T23:59:51.820Z",
-      "revision": "627f06dc074e3b34b4358b9ec18f386cbe2d8199",
-      "sourceDigest": "33d2cadd02643ae874cae6a3f0891a66456ebe2bdd73c9cd5af0df98095e1b6f",
-      "review": {
-        "reviewedAt": "2026-10-14T23:59:47.326Z",
-        "notes": "MED-04 (the coordinator, 2026-10-14): the three maps whose site art still showed the banned broken-stratocumulus deck, captured again as day overviews on main 9c511dd48 + media/ui-maps 627f06dc0 (fair-weather cumulus). Masters inspected at full size and in the old-vs-new sheets; r1's Fjord frame was rejected by the coordinator and re-framed for r2; Polders and Copper Mesa checked against r1 by PSNR.",
-        "maps": {
-          "fjord": {
-            "accepted": true,
-            "notes": "The new framing (recipes.mjs mapScene override, lab candidate c of six): from above the west road, 50 m up, across the village on the shore, a house near-left, the road leading in, the fjord with its cliff headland and lighthouse, the peaks behind. Fair-weather cumulus; no broken deck. The near grass is darker than in the 208 hero (the map's current look). Interim until the maps lane re-authors fjord.ts's overview camera.",
-            "hashes": [
-              "5da24e09cdcbb006d8031dfcc698b44be3f7866b0ee17068afddcb3c97216404"
-            ]
-          },
-          "polders": {
-            "accepted": true,
-            "notes": "The authored frame of the 208 hero under fair-weather cumulus (the banned deck gone); the windmill, farms, pylon and the canals read.",
-            "hashes": [
-              "77324206c96ea3f758b024c3ac9ec108a8b4b116049cf9b07744814f922b2ae3"
-            ]
-          },
-          "copper_mesa": {
-            "accepted": true,
-            "notes": "The authored frame of the 208 hero under fair-weather cumulus; warmer ground and more mine works. Published with --min-quality=67 (the coordinator's ruling: its old bytes hold at q73 hero, q67 card, q70 thumb; the q67 card matched q76 at 1:1).",
-            "hashes": [
-              "c90186ab151176a706ecd92d6d7b55a33a0d9ccbdf99e4c2c85ad41bc91246cf"
-            ]
-          }
-        }
-      },
-      "assets": [
-        {
-          "src": "/maps/copper_mesa.webp",
-          "sha256": "6da0fa22f9f7a06be78c878eba71efcf97be083000fa862281684a4a6a961eeb"
-        },
-        {
-          "src": "/maps/cards/copper_mesa.webp",
-          "sha256": "d2707ce6554c120376232e9d0b7f5121e069915dceca08c349bc53d24829aa77"
-        },
-        {
-          "src": "/maps/thumbs/copper_mesa.webp",
-          "sha256": "531faf794f4a03bf7ff7bb1be3322e1edd2ee34dcf2ea05656cc6e29c2b9c1e9"
         }
       ]
     },
@@ -2455,6 +2349,133 @@
         {
           "src": "/maps/thumbs/polders.webp",
           "sha256": "b35c7cf5e7693caf0560d5eb67631ab121fe04dab66a5c6b4226870d8edb6ccc"
+        }
+      ]
+    },
+    {
+      "created": "2026-10-22T23:14:22.553Z",
+      "revision": "058ccfa2420af6493d5fb31c846541853b6d23dd",
+      "sourceDigest": "e2a1d5aa3324edab5af2a95c1ba93e836c7b94fccfd552b4df4264fee0c071d9",
+      "review": {
+        "reviewedAt": "2026-10-22T23:14:07+00:00",
+        "notes": "Maps 235: the battlefield frames redone on main 058ccfa242 (the 233 sky and world fixes), each looked at beside its live picture. This batch holds the six as good as or better than live; airfield, caldera and mars keep their live pictures.",
+        "maps": {
+          "desert": {
+            "accepted": true,
+            "hashes": [
+              "6cf552dd2e3f789b1cc465fac298717c3f866e344845ca7e71e719d4248073e0"
+            ],
+            "notes": "Looked at beside the live picture 2026-10-22: as good or better (the 233 sky and world fixes)."
+          },
+          "longleaf": {
+            "accepted": true,
+            "hashes": [
+              "a1aa9db3aa31e77622779ebedf002f1da5e3ffd89d827cb9ac52a401c7b1b1b3"
+            ],
+            "notes": "Looked at beside the live picture 2026-10-22: as good or better (the 233 sky and world fixes)."
+          },
+          "monsoon": {
+            "accepted": true,
+            "hashes": [
+              "777a33254849e8679230d9219852763b120cb795944fb1429ef5461986531751"
+            ],
+            "notes": "Looked at beside the live picture 2026-10-22: as good or better (the 233 sky and world fixes)."
+          },
+          "reservoir": {
+            "accepted": true,
+            "hashes": [
+              "5242ab01b503d8cb1a09666f17813537c6c7feca36432f0a72c5c64a7c376916"
+            ],
+            "notes": "Looked at beside the live picture 2026-10-22: as good or better (the 233 sky and world fixes)."
+          },
+          "alpine": {
+            "accepted": true,
+            "hashes": [
+              "6f143e04a05f6babd793e959e6bad1a78a74d4cc60460159c1d27197c9b825ac"
+            ],
+            "notes": "Looked at beside the live picture 2026-10-22: as good or better (the 233 sky and world fixes)."
+          },
+          "oasis": {
+            "accepted": true,
+            "hashes": [
+              "0768501c959371ecbe131b184801c5cc732da124988652ac673433eeacd8a378"
+            ],
+            "notes": "Looked at beside the live picture 2026-10-22: as good or better (the 233 sky and world fixes)."
+          }
+        }
+      },
+      "assets": [
+        {
+          "src": "/maps/desert.webp",
+          "sha256": "eaa71dcf52f6560193c871bce35b83c614673e323409dc20c3a59eb5e939e85b"
+        },
+        {
+          "src": "/maps/cards/desert.webp",
+          "sha256": "723243df055fef583fce999059578f3d61a276e32dfbc0f143d3b17e8b7640a3"
+        },
+        {
+          "src": "/maps/thumbs/desert.webp",
+          "sha256": "28f0d1106b156d54e6cb3bee28bdc84ea798974d3ac5bffd0ceb4c57d392f610"
+        },
+        {
+          "src": "/maps/longleaf.webp",
+          "sha256": "9d846d6d0264f50e6d0a00f1785eabfb70ac727144c1bc9b9cec1a30cdbecb52"
+        },
+        {
+          "src": "/maps/cards/longleaf.webp",
+          "sha256": "d9725b73fe3b3f985cf68ab07c1e40d43cd751bfa3ef35d037fde6479d0d47f9"
+        },
+        {
+          "src": "/maps/thumbs/longleaf.webp",
+          "sha256": "2f17eff5787465e10f67278a38252d89f50eef39d9a67c86aa56b7a2bdddc516"
+        },
+        {
+          "src": "/maps/monsoon.webp",
+          "sha256": "c9ccea923effe7383e0f12e23e712635f71dbeffc71949703ce3946aae30965c"
+        },
+        {
+          "src": "/maps/cards/monsoon.webp",
+          "sha256": "161ea98a32865bb97663532e69a26e3379601257a743fde1ada8c5eb6a2d24fc"
+        },
+        {
+          "src": "/maps/thumbs/monsoon.webp",
+          "sha256": "84d631ebba1b0f455a62692c73db2f139228441671b44d43d708d07e57211130"
+        },
+        {
+          "src": "/maps/reservoir.webp",
+          "sha256": "7d6d19cf27ddab340edfb7a4d45f8d53e0b7f23ad8d3552e0f4b1e256c9d3ff0"
+        },
+        {
+          "src": "/maps/cards/reservoir.webp",
+          "sha256": "ae54ab1962d30f403f831264b62d7567c9674bee7f545b5cb980172b7860fdc5"
+        },
+        {
+          "src": "/maps/thumbs/reservoir.webp",
+          "sha256": "7a823122ceb1918c21d7e5422e89def4a9d4002be1e6866fc8ba4d9d8a707ad5"
+        },
+        {
+          "src": "/maps/alpine.webp",
+          "sha256": "06fc9a4e8e9c19db6095e98e2e9ef43bb12dca5a1b99932cf9bf0c4002ffeb44"
+        },
+        {
+          "src": "/maps/cards/alpine.webp",
+          "sha256": "6c403029ffd7c9a7366758e56b983a07a23c3acf260ef690171b99625b6a9830"
+        },
+        {
+          "src": "/maps/thumbs/alpine.webp",
+          "sha256": "57a2e130cbd7c15e1a80b90d7556049f2df043ca0a975c6495c556659fbba084"
+        },
+        {
+          "src": "/maps/oasis.webp",
+          "sha256": "5089400e6c4cb57e04e48fdadf9d72869dc01b96f8cd5bf5aa46e28d62b4ce86"
+        },
+        {
+          "src": "/maps/cards/oasis.webp",
+          "sha256": "0901240e38743333f86d0156f37a0545e9d6c0b6eaf7fe1c08edfac8caf6d8e6"
+        },
+        {
+          "src": "/maps/thumbs/oasis.webp",
+          "sha256": "41c476345be4edd49f32819ce5baa3ae1882a45d5b8b87c921f256a6016bb7d0"
         }
       ]
     }
