@@ -1431,6 +1431,10 @@ const HUD_CSS = `
 .cot-hud{position:fixed;inset:0;pointer-events:none;z-index:40;font-family:${FONT_STACK};isolation:isolate;
   --hud-panel:var(--hud-plate,rgba(13,16,20,.92));--hud-edge:var(--line-3,rgba(246,243,236,.24));
   --hud-muted:var(--ink-3,#9a9a95);--hud-text:var(--ink-1,#f6f3ec);--hud-action:var(--accent,#f0a030);--hud-danger:#f05a5a;
+  /* the consumables' tile, which the touch vehicle-controls row shares (battleHudLayout.css), and its corner count */
+  --hud-tile-fill:linear-gradient(180deg,rgba(14,19,24,.92),rgba(8,11,14,.95));--hud-tile-edge:rgba(146,164,180,.28);
+  --hud-tile-shadow:inset 0 1px rgba(255,255,255,.035),0 4px 13px rgba(0,0,0,.26);
+  --hud-count-ink:#cfd9e2;--hud-count-shadow:0 1px 2px rgba(0,0,0,.9);--hud-count-tracking:-.01em;
   --hud-layer-world:var(--z-hud-world,6);--hud-layer-sight:var(--z-hud-sight,8);--hud-layer-status:var(--z-hud-status,18);
   --hud-layer-controls:var(--z-hud-controls,24);--hud-layer-score:var(--z-hud-score,30);
   -webkit-user-select:none;user-select:none;color:var(--hud-text);overflow:hidden;}
@@ -1883,10 +1887,10 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
    stay direct flex items of the tray, pixel-identical to the old markup. */
 .cot-cons{display:contents;}
 .cot-con{width:64px;height:64px;position:relative;cursor:pointer;
-  background:linear-gradient(180deg,rgba(14,19,24,.92),rgba(8,11,14,.95));
-  border:1px solid rgba(146,164,180,.28);border-bottom:2px solid rgba(146,164,180,.28);
+  background:var(--hud-tile-fill);
+  border:1px solid var(--hud-tile-edge);border-bottom:2px solid var(--hud-tile-edge);
   appearance:none;color:inherit;font:inherit;padding:0;display:flex;align-items:center;justify-content:center;
-  box-shadow:inset 0 1px rgba(255,255,255,.035),0 4px 13px rgba(0,0,0,.26);
+  box-shadow:var(--hud-tile-shadow);
   transition:border-color .12s,transform .1s ease-out;}
 .cot-con svg{width:26px;height:26px;display:block;}
 .cot-con:active{transform:scale(.97);}
@@ -1895,8 +1899,8 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
   font-family:${FONT_COND};letter-spacing:-.01em;
   border:1px solid rgba(146,164,180,.4);padding:0 3px;line-height:12px;z-index:2;}
 .cot-con .cnt{position:absolute;bottom:2px;right:4px;font-size:11px;font-weight:700;
-  font-family:${FONT_COND};letter-spacing:-.01em;color:#cfd9e2;
-  text-shadow:0 1px 2px rgba(0,0,0,.9);z-index:2;}
+  font-family:${FONT_COND};letter-spacing:var(--hud-count-tracking);color:var(--hud-count-ink);
+  text-shadow:var(--hud-count-shadow);z-index:2;}
 .cot-con .cool{position:absolute;inset:0;display:none;
   background:conic-gradient(rgba(4,6,9,.82) var(--cool,0%),transparent 0);z-index:1;pointer-events:none;}
 .cot-con.cooling{border-color:rgba(118,137,153,.38);cursor:not-allowed;}
@@ -2552,7 +2556,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const moreButton = el('button', 'cot-systems-more', controlsRow);
   moreButton.type = 'button';
   moreButton.hidden = true;
-  moreButton.innerHTML = `<span class="si next">${uiIconSVG('chevronRight', 18)}</span><span class="si back">${uiIconSVG('chevronLeft', 18)}</span>`;
+  moreButton.innerHTML = `<span class="si">${uiIconSVG('chevronRight', 18)}</span>`;
   moreButton.setAttribute('aria-label', t('systems.more'));
   const setControlsPage = (page: number): void => {
     if (controlsRow.dataset.page === String(page)) return;
