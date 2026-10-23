@@ -442,9 +442,6 @@ interface TerrainSettings {
 }
 
 interface SplatConfig {
-  /** Ground lane (2026-10-07): set by the world's build from the map's vegetation.standFloor ('canopy', the trees lane's
-   * round 8): the woods mask's discs are the drawn crowns, and the material lays the deeper stand floor under them. */
-  standFloorCanopy?: boolean;
   sourcedPalette?: TerrainPaletteId;
   grassTone?: ToneFunction | null;
   dirtTone?: ToneFunction | null;
@@ -4496,7 +4493,6 @@ uniform vec4 uFormationLow; // the lower formation: a tint on the rock's luminan
 uniform vec4 uFormationUp;  // the upper formation: likewise
 uniform float uCliffStrata; // ground lane (2026-10-15): the beds every sheer face carries (splat.cliffStrata)
 uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoulderDirt, uLaneK, uIceDrift, uMidRelief, uFieldPatch;
-uniform float uStandFloor; // ground lane (2026-10-07): 1 = the map's woods mask is its drawn crowns (vegetation standFloor 'canopy')
 uniform vec2 uWallWeather; // the Redrock lane: the joint blocks' tone step and the varnish streaks' darkening (default 0.26, 0.50)
 uniform vec4 uJebelFace;   // the Redrock lane, round 9: x on (1) / off (0); y flutes, z tafoni, w varnish (splat.jebelFace)
 uniform float uRippleNear; // the Redrock lane, round 10: the near ripple trains' strength (splat.rippleNear; rippleAmp's by default)
@@ -6617,16 +6613,6 @@ void splatCompute() {
     vec3 soilF = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB).rgb;
     if (uReduxD.y > 1.5) {
       a.rgb = mix(a.rgb, soilF * vec3(0.80, 0.70, 0.62), floorW * smoothstep(0.55, 0.95, woods) * smoothstep(0.35, 0.75, gap) * 0.55);
-    } else if (uStandFloor > 0.5) {
-      // (2026-10-07, the trees lane's round 8: a wood's mask is its drawn crowns, the canopy closed over it) the stand
-      // floor under a closed canopy: deeper and damper than a copse's — dark soil under a mat of leaf litter, paler drifts
-      // of the year's leaves on it (a metre or two), moss in the wet hollows, and the sward only in the few light gaps
-      float leaves = smoothstep(0.42, 0.72, nz(uvW, 0.55, vec2(0.61, 0.17)).r) * tileVis(1.8);
-      vec3 damp = soilF * vec3(0.92, 0.74, 0.56) * (0.90 + 0.12 * n1h);
-      vec3 litter = mix(damp, soilF * vec3(1.22, 0.98, 0.70), leaves * 0.55);
-      litter = mix(litter, a.rgb * vec3(0.62, 0.78, 0.52), smoothstep(0.30, 0.65, smoothstep(0.06, 0.50, vFold)) * 0.30);
-      vec3 floorCol = mix(litter, a.rgb * vec3(0.78, 0.96, 0.66), smoothstep(0.70, 0.90, gap) * 0.5);
-      a.rgb = mix(a.rgb, floorCol, smoothstep(0.10, 0.55, woods) * (1.0 - 0.8 * fR) * (1.0 - roadCore) * (uReduxD.y < 0.5 ? 0.94 : 0.6));
     } else {
       vec3 litter = soilF * vec3(1.06, 0.86, 0.64) * (0.92 + 0.16 * n1h);
       vec3 floorCol = mix(litter, a.rgb * vec3(0.78, 0.96, 0.66), smoothstep(0.55, 0.80, gap) * 0.7);
@@ -8369,7 +8355,6 @@ function* createSplatMaterialSteps(
     // r2: agrarian field patchwork — only sensible on temperate farmland maps
     // ground lane (2026-10-03): a map with a land-use row (landUse.ts) draws its real fields instead
     shader.uniforms.uFieldPatch = { value: landUseProfile ? 0 : S.fieldPatch ?? 0 };
-    shader.uniforms.uStandFloor = { value: S.standFloorCanopy ? 1 : 0 }; // ground lane (2026-10-07): the deeper stand floor
     shader.uniforms.uLandA = { value: new THREE.Vector4(...landUse.landA) };
     shader.uniforms.uLandB = { value: new THREE.Vector4(...landUse.landB) };
     shader.uniforms.uLandC = { value: new THREE.Vector4(...landUse.landC) };
@@ -9002,8 +8987,7 @@ function* terrainBuildSteps(
   const materialSteps = createSplatMaterialSteps(
     engineCtx,
     heightField._layout,
-    // (ground lane, 2026-10-07: the map's stand floor rides with its splat — the trees lane's vegetation.standFloor)
-    cfg ? { ...cfg.splat, standFloorCanopy: (cfg as { vegetation?: { standFloor?: string } }).vegetation?.standFloor === 'canopy' } : null,
+    cfg ? cfg.splat : null,
     (cfg && cfg.id) || 'verdant',
     heightField._mesaW || null,
     heightField._waterWetnessAt || null,

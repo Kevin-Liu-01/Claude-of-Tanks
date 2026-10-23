@@ -225,7 +225,8 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // (Caldera round 2, wave 114: the holm oak's big leaf sprays read at shrub size as "a tropical fern or palm-like
   // shrub", and the sugi stood in open groves: the bushes are now the grassland's low twiggy scrub (the broom form: bush
   // clover, Miyama-kirishima azalea) and the sugi stand in closed blocks)
-  // (round 8's canopy form for the sugi and red pine woods waits on its blind critic: item 41, 2026-10-22)
+  // (item 41, 2026-10-23: round 8's canopy form dropped here — the blind critic's 2 wins, 3 losses, 2 ties, mean -0.14:
+  // the sugi grove's crowns "lighter and separated", its pines "spindly", sky through the crowns over bare trunks)
   caldera: B('the Aso caldera, Kyushu', { pine: { form: 'sugi' }, cypress: { form: 'sugi' }, acacia: { form: 'redPine' } }, 'broom'),
   // the Dalmatian coast: Aleppo pine, holm oak and olive (and cypress, which the map names directly)
   saltwind: B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak', colour: HOLM_OAK_FOLIAGE },
@@ -281,9 +282,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   fjord: B('a Norwegian fjord', { birch: { form: 'birch', leaves: true } }),
   // the Alps: spruce and larch. (The trees lane, 2026-10-08, the gauntlet's wave 278: April on the col — the spruce under
   // the snow's load, the larches bare until their needles come in May)
-  // (round 8's canopy form for the spruce woods waits on its blind critic: item 41, 2026-10-22)
+  // (item 41, 2026-10-23: the April snow with round 8's canopy form against main's summer-green spruce — the blind
+  // critic's 8 of 8, mean +1.63: "crowns visibly carry white snow on the branches")
   alpine: Object.freeze({ ...B('an Alpine pass', { fir: { form: 'larch' }, pine: { form: 'larch' } }), snow: ALPINE_APRIL_SNOW,
-    bare: true as const }),
+    bare: true as const, canopyForm: true as const }),
   // Kohima in the Naga Hills (the trees lane, 2026-10-06, the gauntlet's wave 157: "built almost entirely from one
   // repeating tropical fan-palm", the wrong flora for a hill station on a saddle at about 1,450 m): Khasi pine on the
   // ridges (the map's pine slot, which took the palm's share), the montane evergreen forest of chestnut-oaks
@@ -292,14 +294,17 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   monsoon: Object.freeze({ ...B('Kohima, the Naga Hills', { pine: { form: 'khasiPine' }, eucalyptus: { form: 'castanopsis' },
     willow: { form: 'holmOak' }, oak: { form: 'bamboo', colour: BAMBOO_FOLIAGE } }, 'holmOak'),
     // (round 2: the shell-killed trunks charred near-black, not the pale poles wave 179 read as eucalyptus)
-    // (round 8's canopy form for its woods waits on its blind critic: item 41, 2026-10-22)
-    snagValue: Object.freeze([0.16, 0.26] as const) }),
+    // (item 41, 2026-10-23: round 8's canopy form, with the Naga Hills forms, against main's palms: the blind critic's
+    // 4 wins, 2 losses, 2 ties, mean +0.75, "wins every overview and woods-interior pose by a wide margin")
+    snagValue: Object.freeze([0.16, 0.26] as const), canopyForm: true as const }),
   // Queenstown under Mount Lyell, Tasmania (the map-revival lane, 2026-10-05): eucalypt regrowth where the map plants its
   // acacias and cedars, the radiata plantations' pines as pines, the bushes the tea-tree and myrtle scrub in the holm
   // oak's dark leaf (no 'snag' for the fume-killed stumps: its slot would keep a concealing crown it does not draw);
   // the placement stays the map's
-  // (round 8's canopy form for the regrowth woods waits on its blind critic: item 41, 2026-10-22)
-  copper_mesa: B('Queenstown under Mount Lyell, Tasmania', { acacia: { form: 'eucalyptus' }, cedar: { form: 'eucalyptus' } }, 'holmOak'),
+  // (item 41, 2026-10-23: round 8's canopy form for the regrowth woods — the blind critic's 8 of 8, mean +1.0: "larger
+  // crowns that close into one canopy mass")
+  copper_mesa: Object.freeze({ ...B('Queenstown under Mount Lyell, Tasmania', { acacia: { form: 'eucalyptus' }, cedar: { form: 'eucalyptus' } }, 'holmOak'),
+    canopyForm: true as const }),
   // the Scheldt polders: poplar and willow rows (the map's own slots already); the trees lane (2026-10-07, the gauntlet's
   // wave 205: "an agave-like plant" on a dyke crest — the willow's long lances fanned from the ground as a shrub read as a
   // yucca rosette): the dykes' and ditches' scrub the oak's small lobed leaves, a hawthorn's thicket
