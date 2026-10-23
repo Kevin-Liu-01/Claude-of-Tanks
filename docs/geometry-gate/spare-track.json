@@ -2289,7 +2289,7 @@
    "hostSweep": []
   },
   "merkava3_baz": {
-   "inputHash": "5657c77c195d45c4",
+   "inputHash": "5d853437f87cf989",
    "runs": [
     {
      "index": 0,
@@ -2307,12 +2307,12 @@
       "support": 1,
       "gap": 0,
       "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.019,
+      "hidden": 0.052,
+      "sunkMaxM": 0.018,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.824,
-      "host": "hull<addClearanceCenterSlab@profiles/merkava.ts:389>"
+      "exposure": 0.75,
+      "host": "hull<addClearanceCenterSlab@profiles/merkava.ts:390>"
      }
     }
    ],
