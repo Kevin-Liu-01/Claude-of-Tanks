@@ -67,7 +67,9 @@ assert.ok(Math.abs(starDuneHeight(star, 0, 0) - 27) < 1.5, 'the peak stands at t
 // 3. on the map
 const cfg = getMapConfig('desert');
 const forms = cfg.terrain.landforms.filter((l) => l.dune);
-assert.equal(forms.filter((l) => l.dune.kind === 'star').length, 2, 'the Erg Dune and the Gara Dune are star dunes');
+// (the maps-restyle lane, 2026-10-23: the Erg Dune and the Gara Dune keep their smooth knolls — a star dune against a mesa
+// across the ford tilted the field — so the map's dunes are its draa, the seifs; the star form is pinned on its own above)
+assert.equal(forms.filter((l) => l.dune.kind === 'star').length, 0, 'the knolls keep their smooth form (fairness)');
 assert.ok(forms.filter((l) => l.dune.kind === 'seif').length >= 12, 'the draa and the Erg Dune\'s arms are seifs');
 for (const id of MAP_IDS) if (id !== 'desert') assert.ok(!getMapConfig(id).terrain?.landforms?.some?.((l) => l.dune), `${id} authors no dune forms`);
 const f = createHeightField(1337, cfg);

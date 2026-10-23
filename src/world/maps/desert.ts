@@ -108,8 +108,11 @@ export default {
       // (the map-revival lane, 2026-10-07, round 1; gauntlet wave 235: "soft, low, banded mesas") the Dahar's gour: a
       // caprock of hard dolomite standing as a cliff at the cap's edge, the soft marls and sandstones below it a steep
       // slope over the talus — the wall's top fifth a near-vertical step over a twenty-fifth of its run (three tenths
-      // shortened the layout brief's long views with the seifs' crests: SEIF above)
-      capCliff: { share: 0.2, from: 0.88, to: 0.92 },
+      // shortened the layout brief's long views with the seifs' crests: SEIF above). (The maps-restyle lane, 2026-10-23:
+      // NOT declared. A mesa's counterpart across the ford is a dune — the Gara's the Erg Dune, the North Mesa's the Gara
+      // Dune — so a cliff on the mesas alone tilted the field: 14 mirrored bots over 40 games with the deployments
+      // exchanged, 27/40 to the north with it (the star dunes off), 22/40 without; the scarps wait for a paired design.
+      // terrain.ts keeps capCliff for it.)
     },
     marshes: takyrCrusts(),
     clearMarshVeg: true,
@@ -161,14 +164,16 @@ export default {
         { kind: 'knoll', x, z, rx: 26, rz: 12, height: 2.6, yawDeg: yaw, wetScale: 1 },
         { kind: 'knoll', x: -x, z: -z, rx: 26, rz: 12, height: 2.6, yawDeg: yaw, wetScale: 1 },
       ]),
+      // (The maps-restyle lane, 2026-10-23: the two knolls keep their smooth form, not duneForms.ts's star — a star dune
+      // against a mesa across the ford tilted the field, 25/40 to the north with them and no cliff, 22/40 without.)
       // The Erg Dune: a steep star dune north-east of the ksar, the Gara's counterpart across the ford. A tall
       // knoll whose sand flanks (rock stays gated to the mesa weight on this map) a hull cannot climb, with two
       // lower arms reaching south-west and north-east.
-      { kind: 'knoll', x: 128, z: 148, rx: 96, rz: 82, height: 27, yawDeg: 34, dune: { kind: 'star', arms: 4 } },
+      { kind: 'knoll', x: 128, z: 148, rx: 96, rz: 82, height: 27, yawDeg: 34 },
       { kind: 'ridge', x: 70, z: 96, length: 150, width: 64, height: 7.5, yawDeg: 34, dune: SEIF },
       { kind: 'ridge', x: 196, z: 214, length: 160, width: 66, height: 8.0, yawDeg: 38, dune: SEIF },
       // The Gara Dune: the south-east star dune, the North Mesa's counterpart.
-      { kind: 'knoll', x: 300, z: -356, rx: 100, rz: 78, height: 24, yawDeg: 30, dune: { kind: 'star', arms: 5 } },
+      { kind: 'knoll', x: 300, z: -356, rx: 100, rz: 78, height: 24, yawDeg: 30 },
       // Draa ridges across the open basin, aligned with the wind (the dune field's rippleDir 0.8 / 0.6, about 37°):
       // hull-down crests and sight breaks, each with its rotated twin.
       { kind: 'ridge', x: 150, z: 22, length: 170, width: 62, height: 5.5, yawDeg: 37, dune: SEIF },
@@ -515,7 +520,7 @@ export default {
   scenery: {
     // (the map-revival lane, 2026-10-07, round 1; gauntlet wave 235: "soft, low, banded mesas", "a stretched,
     // vertically streaked texture on the steep slope") the two outliers' walls in relief (gourSkin.ts): the dolomite
-    // caprock in jointed blocks over the terrain's cliff (mesas capCliff), a dark notch under it, the marl slope's red,
+    // caprock in jointed blocks over the terrain's wall (the mesas' capCliff when a paired design declares it), a dark notch under it, the marl slope's red,
     // ochre, green-grey and gypsum beds cut by rills, the fallen caprock on the talus
     gours: [
       { x0: -470, x1: -110, z0: 230, z1: 470, name: 'the North Mesa' },
