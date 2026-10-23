@@ -12,27 +12,33 @@ export interface StudioFxSettings {
   quality: StudioFxQuality;
   /** Distance-keyed dust + prints behind actors driven by timeline tracks. */
   trackDust: boolean;
+  /** The map's air (world/mapAmbience.ts: pollen, leaves, snow, dust, embers); on unless a scene turns it off. */
+  ambience: boolean;
 }
 
 interface StudioFxInput {
   quality?: unknown;
   trackDust?: unknown;
+  ambience?: unknown;
 }
 
 /** Normalize a scene `fx` block. Missing/invalid = the historical battle look. */
 export function normalizeStudioFx(input: StudioFxInput | null | undefined): StudioFxSettings {
   const quality: StudioFxQuality = input?.quality === 'cinematic' ? 'cinematic' : 'battle';
   const trackDust = typeof input?.trackDust === 'boolean' ? input.trackDust : quality === 'cinematic';
-  return { quality, trackDust };
+  return { quality, trackDust, ambience: input?.ambience !== false };
 }
 
 /** Serialized `fx` block, or null when it equals the default (round-trip identity). */
-export function studioFxState(settings: StudioFxSettings): { quality: StudioFxQuality; trackDust?: boolean } | null {
+export function studioFxState(settings: StudioFxSettings):
+  { quality: StudioFxQuality; trackDust?: boolean; ambience?: false } | null {
   const implied = settings.quality === 'cinematic';
-  if (settings.quality === 'battle' && !settings.trackDust) return null;
+  // the air is written only when a scene turns it off (scenes saved before it keep their JSON)
+  const air = settings.ambience === false ? { ambience: false as const } : {};
+  if (settings.quality === 'battle' && !settings.trackDust && settings.ambience !== false) return null;
   return settings.trackDust === implied
-    ? { quality: settings.quality }
-    : { quality: settings.quality, trackDust: settings.trackDust };
+    ? { quality: settings.quality, ...air }
+    : { quality: settings.quality, trackDust: settings.trackDust, ...air };
 }
 
 interface StudioFxParamDef {

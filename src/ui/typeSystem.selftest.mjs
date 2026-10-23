@@ -241,7 +241,7 @@ const SHIPPED_HTML = ['index.html', '404.html', ...walk('site', (path) => path.e
 const FIXTURE_HTML = walk('tools/fixtures', (path) => path.endsWith('.html'));
 const SHIPPED_CODE = [
   ...walk('src', (path) => /\.(ts|css|js|mjs)$/.test(path) && !/\.(selftest|browser|test-support)\.|\.d\.ts$/.test(path)),
-  'public/home.css',
+  'src/presentation/home.css',
   ...SHIPPED_HTML,
 ];
 // Code, not commentary: the history notes in comments may name the retired faces and the rules they replaced.
@@ -287,7 +287,8 @@ for (const [path, text] of sources) {
 // (item/ui-hero-name-overlay-230) renames it to the tokens, and this exemption goes with that landing.
 const FACE_NAMES_PENDING = new Set(['src/ui/heroCardPolicy.ts']);
 for (const [path, text] of sources) {
-  if (path === 'src/ui/typeFaces.ts' || FACE_NAMES_PENDING.has(path)) continue;
+  // The token package holds the stacks as data equal to TYPE_STACK (src/ui/tokens/tokens.selftest.mjs pins them).
+  if (path === 'src/ui/typeFaces.ts' || path.startsWith('src/ui/tokens/') || FACE_NAMES_PENDING.has(path)) continue;
   const code = path.endsWith('.html') ? text.replace(/<!--[\s\S]*?-->/g, '') : text;
   assert.doesNotMatch(code, /['"](?:Chakra Petch|IBM Plex Sans|IBM Plex Mono)['"]/, `${path} names a face family; use 'Cot UI' or a --font-* token`);
 }
@@ -300,8 +301,9 @@ const needsType = (html) => /\/src\/|var\(--font-/.test(html);
 // 190 brotli) and its two preload links; it includes the marks face (two unicode-range rules and its stack name, +373
 // raw / +66 brotli on the game page), the readouts' plain zero (+29 raw) and the accents face (three unicode-range rules
 // and its stack name, +494 raw / +47 brotli). Measured with the two preload links: the game head is 4,361 raw / 868
-// brotli.
-const HEAD_BUDGET = Object.freeze({ game: { raw: 4400, brotli: 880 }, page: { raw: 4400, brotli: 880 } });
+// brotli. The cascade-layer wrapper (brand-ui BUI-F3: the order statement and @layer surfaces{}) adds 82 raw / 27
+// brotli: the game head measures 4,443 raw / 895 brotli.
+const HEAD_BUDGET = Object.freeze({ game: { raw: 4480, brotli: 905 }, page: { raw: 4480, brotli: 905 } });
 const consumes = (path, pattern) => {
   const html = read(path);
   const linked = [...html.matchAll(/href="\/((?:src|public)?[^"]+\.css)"/g)].map((match) => match[1])
@@ -559,7 +561,7 @@ assert.ok(tokens.includes(':lang(zh-CN){letter-spacing:0!important}'), 'zh-CN: n
 assert.doesNotMatch(tokens, /text-transform:none/, 'zh-CN keeps case transforms (they only ever touch Latin)');
 assert.ok(scaled.includes(':lang(zh-CN) .t-hollow{color:var(--hollow-ink,#eef4f8);-webkit-text-stroke:0;opacity:.72}'), 'zh-CN: no outline type (a quieter solid ink keeps the hierarchy)');
 assert.match(scaled, /\.t-hollow\{color:transparent;-webkit-text-stroke:/, 'the hollow display treatment (owner UI rule 5)');
-assert.match(read('site/home.html'), /<em class="t-accent"[^>]*>[^<]*<\/em> <b[^>]*>[^<]*<\/b><br><span class="t-hollow"/, 'the landing headline uses the shared treatments');
+assert.match(read('site/home.html'), /<h1 class="hero__title"[^>]*><span class="hero__line">Claude <span class="t-accent">of<\/span><\/span><span class="hero__line t-hollow">Tanks<\/span><\/h1>/, 'the landing headline uses the shared treatments');
 // Every hollow (outline) treatment in a shipped stylesheet turns solid for Chinese (the type rules: no outline type on CJK).
 // The 404 numeral is digits in every locale.
 const HOLLOW_DIGITS_ONLY = new Set(['.not-found h1', '.cot-facet-tally>.num:not(b)']);
@@ -578,7 +580,7 @@ for (const [path, text] of sources) {
 // html[lang^='zh'], directly or through an :is() list, by selector or by its heading tag) at 1.1 or more. The 404 numeral
 // is digits in every locale.
 const ZH_DISPLAY_EXEMPT = new Set(['.not-found h1']);
-for (const path of ['public/home.css', 'src/docs/docs.css', 'src/gallery/gallery.css', 'src/presentation/notFound.css',
+for (const path of ['src/presentation/home.css', 'src/docs/docs.css', 'src/gallery/gallery.css', 'src/presentation/notFound.css',
   'src/presentation/mediaArchive.css', 'src/presentation/manualStart.css', 'src/presentation/publicNav.css']) {
   const css = stripComments(path, read(path));
   const covered = new Set();
@@ -615,8 +617,9 @@ assert.match(JSON.parse(read('src/ui/i18nCatalog.zh-CN.json'))['docs.hero.eyebro
 for (const path of SHIPPED_HTML) {
   assert.doesNotMatch(read(path), /<span>Claude <b>of Tanks<\/b><\/span>/, `${path}: the brand lockup is marked lang="en"`);
 }
-assert.match(read('src/ui/garage.ts'), /<span lang="en">CLAUDE <b>OF TANKS<\/b><\/span>/, 'the garage wordmark is marked lang="en"');
-assert.match(read('src/ui/garage.css'), /\.cot-brand-rail \.title \[lang=en\]\{[^}]*letter-spacing:/, 'the garage wordmark tracks on its lang="en" span');
+assert.match(read('src/ui/brandMark.ts'), /<span class="wm" lang="en">Claude <span class="of">of<\/span> Tanks<\/span>/, 'the wordmark is marked lang="en"');
+assert.match(read('src/ui/garage.ts'), /\$\{BRAND_WORDMARK_HTML\}/, 'the garage bar sets the one wordmark');
+assert.match(read('src/ui/garage.css'), /\.cot-wordmark \.wm\[lang=en\]\{[^}]*letter-spacing:/, 'the garage wordmark tracks on its lang="en" span');
 assert.match(read('src/presentation/publicNav.css'), /\.public-nav__brand \[lang=en\]\{[^}]*letter-spacing:/, 'the public wordmark tracks on its lang="en" span');
 assert.match(read('index.html'), /<span class="l1" lang="en">CLAUDE<\/span>/, 'the boot wordmark is marked lang="en"');
 
@@ -659,9 +662,9 @@ for (const route of PUBLIC_ROUTE_RECORDS) {
 // An explicit body family on every page (no Times fallback anywhere).
 assert.match(read('index.html'), /body, button, input, select, textarea \{[^}]*font-family: var\(--font-ui\);/, 'game page: explicit body family');
 for (const [path, pattern] of [
-  ['public/home.css', /(?:^|[}\s])body\{[^}]*font-family:var\(--font-ui\)/],
+  ['src/presentation/home.css', /(?:^|[}\s])body\{[^}]*font-family:var\(--font-ui\)/],
   ['src/docs/docs.css', /(?:^|[}\s])body\{[^}]*font:500 14px\/1\.68 var\(--font\)/],
-  ['src/gallery/gallery.css', /(?:^|[}\s])body\{[^}]*font:500 12px\/1\.45 var\(--font\)/],
+  ['src/gallery/gallery.css', /(?:^|[}\s])body\{[^}]*font:500 var\(--fs-12\)\/1\.45 var\(--font\)/],
   ['src/presentation/notFound.css', /body\.not-found-page\{[^}]*font-family:var\(--font-ui\)/],
 ]) assert.match(read(path), pattern, `${path}: the page body names the UI family`);
 for (const path of ['src/docs/docs.css', 'src/gallery/gallery.css']) {

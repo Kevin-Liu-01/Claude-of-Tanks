@@ -23,6 +23,9 @@
 //   translation to positions (normals, tangents, UVs and colours untouched),
 //   which saves more draws but rounds positions differently from the GPU's
 //   own model-matrix product: up to 1,615 px moved in the P21 captures.
+//   A baked turret squash (turretRigScale.ts, 235) leaves every part that sat
+//   at rig_turret's identity at the squash frame instead: those merge
+//   byte-for-byte in that frame, and the merged draw takes it.
 // - Running gear, ERA/equipment/weapon damage buffers, proxies, markings,
 //   transparent or multi-material draws, instanced and batched meshes and
 //   anything with its own render hooks never merge.
@@ -35,6 +38,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { isVehicleInstancedMesh, isVehicleMesh, type VehicleMesh } from './vehicleMesh.ts';
 import { STATIC_MERGE_PARTS_KEY, type StaticMergePart } from './staticMergeParts.ts';
+import { isTurretSectionFrame } from './turretRigScale.ts';
 
 /** One color-pass mesh with the coplanar depth layer it would receive. */
 export interface CoplanarLayerRecord {
@@ -140,6 +144,8 @@ interface Candidate {
   key: string;
   owner: Owner;
   matrix: THREE.Matrix4;
+  /** At its owner's turret squash frame (isTurretSectionFrame): merged in that frame. */
+  section: boolean;
 }
 
 function candidateFor(record: CoplanarLayerRecord, options: StaticMergeOptions): Candidate | null {
@@ -165,14 +171,15 @@ function candidateFor(record: CoplanarLayerRecord, options: StaticMergeOptions):
   if (!owner || !owner.owner.visible) return null;
   const matrix = localMatrix(mesh).clone();
   const identity = matrix.equals(IDENTITY);
-  if (!identity && !(options.bakeTranslations && isPureTranslation(matrix))) return null;
+  const section = !identity && !owner.wrapper && isTurretSectionFrame(owner.owner, matrix);
+  if (!identity && !section && !(options.bakeTranslations && isPureTranslation(matrix))) return null;
   const key = [
     owner.owner.uuid, owner.signature, material.uuid, layout,
     mesh.castShadow ? 1 : 0, mesh.receiveShadow ? 1 : 0, mesh.renderOrder, mesh.layers.mask,
     mesh.frustumCulled ? 1 : 0, options.nearShadow.has(mesh) ? 1 : 0, options.detail.has(mesh) ? 1 : 0,
-    options.isShareable(mesh) ? 1 : 0,
+    options.isShareable(mesh) ? 1 : 0, ...(section ? ['section'] : []),
   ].join('|');
-  return { record, key, owner, matrix };
+  return { record, key, owner, matrix, section };
 }
 
 function translatedCopy(geometry: THREE.BufferGeometry, matrix: THREE.Matrix4): THREE.BufferGeometry {
@@ -208,9 +215,9 @@ interface GeometryOwnerList {
 function mergeRun(run: readonly Candidate[], index: number, disposables: GeometryOwnerList,
   options: StaticMergeOptions): VehicleMesh | null {
   const temporary: THREE.BufferGeometry[] = [];
-  const geometries = run.map(({ record, matrix }) => {
+  const geometries = run.map(({ record, matrix, section }) => {
     const geometry = record.object.geometry;
-    if (matrix.equals(IDENTITY)) return geometry;
+    if (section || matrix.equals(IDENTITY)) return geometry;
     const copy = translatedCopy(geometry, matrix);
     temporary.push(copy);
     return copy;
@@ -225,6 +232,7 @@ function mergeRun(run: readonly Candidate[], index: number, disposables: Geometr
   const first = sources[0];
   const mesh = new THREE.Mesh(merged, first.material) as VehicleMesh;
   mesh.name = `staticMerge_${index}`;
+  if (run[0].section) mesh.scale.copy(first.scale);
   mesh.castShadow = first.castShadow;
   mesh.receiveShadow = first.receiveShadow;
   mesh.renderOrder = first.renderOrder;

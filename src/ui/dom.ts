@@ -1,15 +1,3 @@
-/** Inject a stylesheet once and return the canonical style element. */
-export function ensureStyle(id: string, css: string): HTMLStyleElement {
-  const existing = document.getElementById(id);
-  if (existing?.tagName === 'STYLE') return existing as HTMLStyleElement;
-
-  const style = document.createElement('style');
-  style.id = id;
-  style.textContent = css;
-  document.head.appendChild(style);
-  return style;
-}
-
 /** Create an element, optionally assign its class and append it to a parent. */
 export function createElement<Tag extends keyof HTMLElementTagNameMap>(
   tag: Tag,
@@ -20,4 +8,11 @@ export function createElement<Tag extends keyof HTMLElementTagNameMap>(
   if (className) element.className = className;
   if (parent) parent.appendChild(element);
   return element;
+}
+
+const HTML_ESCAPES: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+
+/** Escape text for an HTML template string: player names and host event fields are peer-chosen, never markup. */
+export function escapeHtml(value: unknown): string {
+  return String(value ?? '').replace(/[&<>"']/g, (ch) => HTML_ESCAPES[ch]!);
 }

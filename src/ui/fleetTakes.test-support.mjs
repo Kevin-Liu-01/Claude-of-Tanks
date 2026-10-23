@@ -30,6 +30,8 @@ export function createFakeDom() {
     nextTimer: 1,
     observers: [],
     mediaLists: new Map(),
+    // media queries a test sets by hand (the phone and wide layouts); reduced motion keeps its own switch
+    queries: new Map(),
     fetches: [],
     responses: new Map(),
   };
@@ -48,6 +50,7 @@ export function createFakeDom() {
       this.hidden = false;
       this.disabled = false;
     }
+    get parentElement() { return this.parentNode instanceof FakeElement ? this.parentNode : null; }
     get className() { return this.attributeMap.get('class') ?? ''; }
     set className(value) { this.attributeMap.set('class', String(value)); }
     get id() { return this.attributeMap.get('id') ?? ''; }
@@ -263,7 +266,9 @@ export function createFakeDom() {
       const listeners = new Set();
       state.mediaLists.set(query, {
         media: query,
-        get matches() { return query.includes('prefers-reduced-motion') && state.reducedMotion; },
+        get matches() {
+          return state.queries.has(query) ? state.queries.get(query) : query.includes('prefers-reduced-motion') && state.reducedMotion;
+        },
         addEventListener(type, listener) { if (type === 'change') listeners.add(listener); },
         removeEventListener(type, listener) { if (type === 'change') listeners.delete(listener); },
         listeners,
@@ -325,6 +330,12 @@ export function createFakeDom() {
     setHidden(hidden) {
       document.hidden = hidden;
       for (const entry of [...document.listeners]) if (entry.type === 'visibilitychange') entry.listener({ type: 'visibilitychange' });
+    },
+    /** Set any media query's answer (the phone or wide layout) and tell its listeners. */
+    setQuery(query, matches) {
+      state.queries.set(query, matches);
+      const list = mediaList(query);
+      for (const listener of [...list.listeners]) listener({ matches });
     },
     setReducedMotion(reduce) {
       state.reducedMotion = reduce;

@@ -259,6 +259,63 @@ only the queue head claims. A caller that must not keep results from a hold it l
 returns `true` before saving them. `tools/visual-census-lock.mjs` uses the same owned holds, and so does capture lane
 2's copy (`~/cot-launch-state/tools/capture-lock-lane2.mjs`).
 
+### Warm capture holds (2026-10-22)
+
+On 2026-10-22 the queue served about one hold per 45 minutes, with 30-plus tickets waiting. The holds were spent
+loading pages. At load 200-600 a Studio map took 1-9 minutes to come up inside the hold, and each shot took 2-5 s.
+In one world-polish hold, three maps' page loads took 1,070 s of 1,142 s before the cap. Hero-card holds spent
+70-143 s of 103-212 s starting Vite, Chrome and the page. An mbt70 Garage before/after hold waited 219 minutes,
+then reached the cap with both sides failing and no shots. Per-process GPU time (`ioreg` AGXDeviceUserClient
+`accumulatedGPUTime`) showed holders using 0-15 % of the GPU. The largest GPU user was outside every Claude of Tanks
+lock: another project's iOS Simulator (SimMetal, about 44 %), plus Playwright browsers. A hold should serve shots
+only:
+
+- **`tools/capture-hold.mjs` `runWarmHold({ warm, shoot })`.** `warm` starts the servers and the browser and loads
+  every page to ready while the ticket waits. Its pages are then frozen (Chrome's page lifecycle: no timers and no
+  frames, so nothing draws during other holds). At the hold they are thawed, `shoot` runs, and they are frozen again
+  before the release. `holdMinutes` (default 18) aborts `shoot`'s signal; past `graceSeconds` the browser is closed
+  before the release. A signal releases the lock, closes the browser and exits.
+- **Helpers in the same module.** `startViteChild` runs Vite in a child process that exits with its parent: `preview`
+  serves a built `dist` with no transforms, and `dev` serves the sources. `warmPage` waits, within bounds, for a ready
+  expression, eager images and fonts. Studio, Garage and the public pages all serve from a dist (`vite build --outDir
+  <dir>` outside the lock; one dist per side of a before/after pair).
+- **Warming starts just in time.** `acquire(ms, { prepare })` starts `prepare` once at most `warmAhead` live tickets
+  are ahead (`COT_SHOTS_WARM_AHEAD`, default 2), so a long queue never holds one warm browser per lane. Until
+  `prepare` resolves, the ticket keeps its place and the queue serves the tickets behind it. Tickets record their
+  phase: queued, warming or ready.
+- **Dead waiters.** A ticket now carries its owner's process start time and heartbeat. A pid reused by another
+  process, a zombie, or a heartbeat silent for 10 minutes is removed at once, and the removal is logged. Before, a
+  killed waiter whose pid came back could stall the head for an hour.
+- **Places.** `acquire(ms, { place: '<lane>-<item>' })` (genHeroCards `--place=`) puts a run killed while it waited
+  back at its first run's stamp, for up to 12 hours. Size wall-clock alarms for the hold, never the wait.
+- **The meter.** Every hold, release and reap appends a line to `/tmp/cot-shots.log`. `node tools/capture-lock.mjs
+  --status [--hours=N]` prints the holder, the queue (ready, warming, dead) and holds per hour. Holds taken through
+  an older copy of the lock are not logged.
+- **Frozen pages that reload (2026-10-23).** A page on a Vite dev server keeps the Vite client's HMR socket. When that
+  socket closed (another lane's server on the same port, or a re-bundle broadcast during a ~50-minute freeze), the
+  client reloaded the page at the thaw ("Execution context was destroyed") and world-polish's hold shot nothing.
+  `warmPage` (and `stubViteSocket` for pages a tool loads itself) replaces a socket opened with Vite's protocols with
+  one that never opens or closes, and `startViteChild` dev servers run with `ws: false`. A tool that passes its own
+  dev config gives it `server: { hmr: false, ws: false }`. Every page is checked after the thaw: does its context
+  answer, does it still carry the token its warm-up left (a reload drops it), and does its `ready` hold? A page that
+  fails is loaded again from its warm record (`warmPage`, or `rememberWarm` for a page a tool loads itself) before
+  `shoot` sees it. A page frozen longer than `maxFrozenMinutes` (default 20) gets the same check while still queued,
+  so the re-warm costs no hold time. Measured on a Vite dev server, a full-reload broadcast during the freeze reloaded
+  an unstubbed page at the thaw; the check caught it and the re-warm restored it. A stubbed page did not reload.
+- **Cinema leases.** `tools/media-production/cinema.mjs` holds every lease to the 18-minute cap unless `--lease-min`
+  asks for less: 0, and longer values such as site50-finals' 45, become the cap. A take still running two minutes past
+  the cap stops at its next frame and exits 75, so a resumed batch renders it again. One cinema hold had run 44
+  minutes.
+- **Adopted.** `genHeroCards` warms its Vite child, Chrome, the page and `__HERO_WARM` while queued, and the hold only
+  renders. `withIsolatedCaptureBrowser(..., { capture: { lock, waitMs, warm } })` opens the cache, server and browser
+  while queued and releases once the browser closes. `tank-standard-check` and `track-clip-audit` use it, and the
+  standard check's contiguity stage, which is CPU-only, now runs after the release.
+
+A second concurrent capture lane for stills (parked 2026-10-15) is not the lever. Holds were long because of
+CPU-bound page loads, which now happen before the hold, and the GPU is already 65-80 % busy with other projects'
+work. Timing jobs still need the GPU alone, and that holds only while nothing outside the lock draws: on 2026-10-22
+the iOS Simulator did.
+
 ### The rooms Worker's TypeScript program (2026-09-28)
 
 `cloudflare/rooms/tsconfig.json` compiles the Worker with `lib: ["ES2022"]` and no DOM, and a **type-only** import still joins a
@@ -283,7 +340,7 @@ wait is stale by the time the lock arrives — re-read it after `acquire()` and 
 
 ### Asset caching (2026-09-25)
 
-**Asset caching (2026-09-25).** Vite emits content-hashed files under `/assets/`. Do NOT add a header rule for `/assets/(.*)` in `vercel.json`: a `headers` rule applies to every response on the path including a 404, and Vercel's edge then caches that 404 for the rule's lifetime — under deploy 89's immutable rule one transient miss during a promotion became a permanent "A game file failed to download" for every player on that edge node (`tools/vercel-config.selftest.mjs` and `src/gallery/chunkRecovery.selftest.mjs` refuse the rule). The year-long header comes from the deploy step instead: `node tools/vercel-output-immutable.mjs` runs between `vercel build` and `vercel deploy --prebuilt` and writes immutable, case-sensitive header routes for exactly the hashed files that exist in `.vercel/output/static/assets` (groups of 40 names per route, ahead of the filesystem handle; `--check` verifies coverage; `tools/vercel-output-immutable.selftest.mjs`). A path that is not in the build matches no rule, keeps Vercel's default `public, max-age=0, must-revalidate` answer and heals on the next request; documents keep that default too. Since 2026-10-01 the same per-file routes make the content-addressed collision manifests (`/mp-collision/<map>.<sha12>.json`; the index stays default) immutable and give the existing images, audio and fonts under `/textures`, `/icons`, `/fonts`, `/audio`, `/maps` and `/minimaps` `public, max-age=3600, stale-while-revalidate=86400` (they keep their URL across deploys, so an hour fresh and a day served stale while revalidating); `--check` covers all three families (deploy 163's output: 949 + 33 + 2,480 files, 90 routes, config.json 39 → 119 KB). Deploy 94 also re-encoded every chunk hash as base36 (`build.rollupOptions.output.hashCharacters`), so every `/assets` URL changed once and an edge node that had cached 404s for deploy-93 chunks (a browser's boot-retry loop during the promotion, answered by the old config) never serves them again. Every deploy's verify step then sweeps the served index's chunks (all must answer 200), checks that a missing `/assets` path is not cacheable and boots the alias headless before the DEPLOYS.md row is written.
+**Asset caching (2026-09-25).** Vite emits content-hashed files under `/assets/`. Do NOT add a header rule for `/assets/(.*)` in `vercel.json`: a `headers` rule applies to every response on the path including a 404, and Vercel's edge then caches that 404 for the rule's lifetime — under deploy 89's immutable rule one transient miss during a promotion became a permanent "A game file failed to download" for every player on that edge node (`tools/vercel-config.selftest.mjs` and `src/gallery/chunkRecovery.selftest.mjs` refuse the rule). The year-long header comes from the deploy step instead: `node tools/vercel-output-immutable.mjs` runs between `vercel build` and `vercel deploy --prebuilt` and writes immutable, case-sensitive header routes for exactly the hashed files that exist in `.vercel/output/static/assets` (groups of 40 names per route, ahead of the filesystem handle; `--check` verifies coverage; `tools/vercel-output-immutable.selftest.mjs`). A path that is not in the build matches no rule, keeps Vercel's default `public, max-age=0, must-revalidate` answer and heals on the next request; documents keep that default too. Since 2026-10-01 the same per-file routes make the content-addressed collision manifests (`/mp-collision/<map>.<sha12>.json`; the index stays default) immutable and give the existing images, audio and fonts under `/textures`, `/icons`, `/fonts`, `/audio`, `/maps` and `/minimaps` `public, max-age=3600, stale-while-revalidate=86400` (they keep their URL across deploys, so an hour fresh and a day served stale while revalidating); `--check` covers all three families (deploy 163's output: 949 + 33 + 2,480 files, 90 routes, config.json 39 → 119 KB). Since 2026-10-22 (nav-perf-240) the public pages' images and videos under `/media`, `/brand` and `/field-guide` take the same hour and day, and the JSON manifests the pages and the Garage fetch at run time (`/media/**.json`, `/icons/**.json`, `/field-guide/**.json`) take `public, max-age=60, stale-while-revalidate=3600`: a warm visit to `/home`, `/docs` or `/gallery` no longer revalidates every still, poster and manifest (the 058ccfa24 build: 1,517 media files and 228 manifests, 241 routes, config.json about 334 KB). `node tools/vercel-static-preview.mjs --dist=dist` serves a local build with these headers, vercel.json's routes, 304s and brotli, for recordings such as `tools/nav-timeline.mjs`. Deploy 94 also re-encoded every chunk hash as base36 (`build.rollupOptions.output.hashCharacters`), so every `/assets` URL changed once and an edge node that had cached 404s for deploy-93 chunks (a browser's boot-retry loop during the promotion, answered by the old config) never serves them again. Every deploy's verify step then sweeps the served index's chunks (all must answer 200), checks that a missing `/assets` path is not cacheable and boots the alias headless before the DEPLOYS.md row is written.
 
 **Versioned runtime audio (2026-10-02, withdrawn the same day).** A build-only plugin served the old engine's 111 sound files from content-hashed `/assets/audio` copies so returning visitors skipped their revalidations. The SFX engine redesign (main 0924ef281) replaced that engine and its files with 2,868 `.webm` assets fetched by `src/audio/assetLibrary.ts`, so the plugin and `src/runtimeFiles.ts` were removed rather than left copying nothing. Versioned URLs for the new engine's assets are a follow-up for its owner (the removed plugin is in PR #9's history).
 
@@ -361,9 +418,11 @@ Run the complete Node self-test suite:
 
     npm test
 
-Run strict TypeScript validation for migrated modules:
+Run strict TypeScript validation (TypeScript 7, with Oxlint beside it) and,
+on its own, the linter:
 
     npm run typecheck
+    npm run lint
 
 The application, Vercel middleware, Vite configuration, and browser tooling
 are strict TypeScript. `allowJs` is disabled, so a JavaScript application module
@@ -377,9 +436,10 @@ public documentation tree.
 
 The same command also rejects unused symbols in the composition root and the
 application, network, simulation, interface, engine, FX, audio, and top-level
-world owners. Procedural fleet builders and declarative map callbacks remain a
-separate cleanup lane because their intentionally uniform factory signatures
-must be changed family-by-family with geometry receipts, not mechanically.
+world owners, in the same compile ("Fast checks" below). Procedural fleet
+builders and declarative map callbacks remain a separate cleanup lane because
+their intentionally uniform factory signatures must be changed family-by-family
+with geometry receipts, not mechanically.
 
 Node CLI, generator, and self-test entrypoints intentionally retain `.mjs`
 where they are executable harnesses rather than shipped application modules.
@@ -415,6 +475,33 @@ of shell commands.
 inputs are byte-identical to its last PASS prints a SKIP line (`COT_SELFTEST_CACHE=0 npm test` runs
 everything). Every failure in a group is reported in one run; `COT_SELFTEST_FAIL_FAST=1` stops at the first. Result reuse is specified in
 "Test gate and result reuse" below.
+
+**Typecheck, lint and the build's post-build steps (2026-10-22).** Timings are before → after, A/B-interleaved on
+one tree at load 160-410 (medians of three runs; CPU is user+sys, the load-free cost):
+
+- `npm run typecheck` (`tools/typecheck.mjs`, 308 → 147 s, CPU 73 → 40 s) is one TypeScript 7 compile with
+  `--noUnusedLocals --noUnusedParameters`. Any other diagnostic fails, as a plain `tsc --noEmit` would. Unused
+  symbols fail only in the core owners. A killed compiler, or output that is not a diagnostic list, fails too. It
+  used to be two full compiles. Oxlint runs beside the compiler and adds no wall time. A `node_modules` cloned
+  before Oxlint was added skips it with a notice until `npm ci`.
+- `npm run lint` (about 2 s) is Oxlint 1.87.0's correctness category (`.oxlintrc.json`), with no style rules and
+  no formatter. Fix a finding at its source. When a rule flags a deliberate idiom, turn it off in `.oxlintrc.json`
+  with a one-line reason (an `overrides` entry for one file). Never edit a hash-pinned source, or change
+  simulation behaviour, to satisfy a rule without proving the bug. dist, public/, generated tables and the
+  hash-pinned sources are ignored.
+- `tools/asset-provenance.mjs` (363 → 39 s, CPU 10.9 → 4.2 s) hashes the ~10,900 files (1.2 GB) of its scope 16 at
+  a time.
+- `tools/strip-nc-assets.mjs` (30 → 1-3 s; 37 s on a cold probe) reuses its registry probe's result while every
+  file the probe loaded, the probe, the lockfile and Node are byte-identical (`node_modules/.cache/cot-strip-nc`;
+  `COT_STRIP_NC_PROBE_CACHE=0` probes anyway). A probe that runs (about 3 s of CPU, 60-90 s at load 200+) gets 10
+  minutes (`COT_STRIP_NC_PROBE_TIMEOUT_MS`), where 120 s used to trip at load ~100.
+- `npm run check:bundle` (155 → 14 s, CPU 9.4 → 1.3 s; 111 s cold) reuses each file's compressed sizes by content
+  digest (`node_modules/.cache/cot-bundle-budget`) and compresses the rest on the thread pool.
+- `tools/generate-localized-pages.mjs` takes about 2 s and is unchanged.
+
+The build output is byte-identical: each run diffs the old and new steps' `dist/` from the same Vite output. The
+integrator's pre-deploy light pass is `npm run typecheck` (with lint), `npm run build` and `npm run check:bundle`.
+Lanes get lint through typecheck, or run `npm run lint` on its own.
 
 `npm run tank:release:check -- --ids=<ids> [--gate]` runs two stages (`tools/tank-release-plan.mjs`):
 the load-sensitive browser scoring (standard, sealed, source fidelity) one step at a time, then the
@@ -1219,10 +1306,18 @@ registered fleet, maps, and game modes. After changing the totals, run
 `node tools/sync-product-summary.mjs` to refresh the README summary. Use its explicit
 `--github` option when publishing that summary to the repository About field.
 
-The 16 colored navigation and feature marks share native SVG artwork generated by
-`node tools/generate-product-icons.mjs`. Their existing URLs serve the game, public
-pages, and README. `node tools/product-icon-sheet.mjs` renders a CPU-only review
-sheet at large, 32 px, and 24 px sizes; the UI icon selftest rejects stale exports.
+### UI icons (brand-ui BUI-F4)
+
+Every UI glyph lives once, as a `<symbol>` in `src/ui/icons/sprite.svg`: 24-unit masters
+(`i-<id>`) plus 16-unit optical masters (`i-<id>-s`) for the glyphs drawn at 18 px and
+below. `icon(id, options)` in `src/ui/icons/icon.ts` returns the host `<svg>` that carries
+the viewBox, the one stroke per optical size (1.5 / 1.25), square caps, mitre joins and
+`currentColor`; the boot slice mounts synchronously and the full sprite from its own lazy
+chunk. `uiIconSVG` (`src/ui/uiIcons.ts`) is the compatibility call for surfaces not yet
+rebuilt. After editing the sprite run `node tools/gen-icon-sprite.mjs` (ids, small and
+active sets, boot slice, the Studio tab mark and the README pictograms) and
+`node tools/icon-stroke-census.mjs`; `node tools/icon-sheet.mjs` renders a CPU-only
+review sheet at 64, 24 and 16 px.
 
 ### Tank and wreck collision clearance
 

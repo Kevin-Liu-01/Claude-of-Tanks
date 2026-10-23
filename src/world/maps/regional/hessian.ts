@@ -20,6 +20,7 @@ import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts'
 import { launder, millAxle, trestle, waterWheel } from './millWorks.ts';
 import { doorCanopy, dressedQuoin, facadeOn, facadeRng, innEmblem, renderedShaft, roofDormers, shopDisplay, shopfrontJoinery, windowHead } from './facade.ts';
 import type { ArchitectureStyle, RegionalBuildContext, RegionalBuilder } from './types.ts';
+import { HESSIAN_COURT_TYPES } from './hessianCourt.ts';
 
 // oak framing: dark brown, oxblood (Ochsenblut), weathered grey, black-brown, ochre-red; sRGB, kept above ~6 % linear
 // reflectance so the frame still reads in shade
@@ -1056,8 +1057,16 @@ export const HESSIAN_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>
     damp: 0.85, moss: 0.55,
   },
   wear: 0.22,
-  // the farmyards: a picket fence round a kitchen garden and the woodshed, a gate to the lane (yards.ts)
-  yard: { kinds: ['cottage', 'farmhouse'], fence: 'fencepicket', gate: 'gatepicket', shed: 'woodshed', shedSize: [4.2, 5.1], garden: true },
+  // the farmyards: a board fence (the Hessian Staketenzaun of rough boards, not the white picket the gauntlet read as
+  // American, waves 183–184) round a kitchen garden and the woodshed, a gate to the lane (yards.ts)
+  // the map-revival lane (2026-10-05, Frontier's Hofreiten; the coordinator approved the flag): a farmhouse whose flank
+  // faces its own barn or granary keeps the court between them (yards.ts planCourt) — the sandstone wall on the lane with
+  // the gate in it, the buildings round the rest — and its kitchen garden and woodshed stand behind the barn
+  yard: { kinds: ['cottage', 'farmhouse'], fence: 'fenceplank', gate: 'gate', shed: 'woodshed', shedSize: [4.2, 5.1], garden: true,
+    // (round 3, gauntlet wave 138: the courts did not read) the court's street side is the kit's own: the red sandstone
+    // wall two metres to its coping and the Hoftor under its roof (hessianCourt.ts)
+    court: { kinds: ['farmhouse'], partners: ['barn', 'granary'], reach: 16, wall: 'hessiancourtwall', gate: 'hoftor' } },
+  destructibles: HESSIAN_COURT_TYPES,
 });
 
 export { hashSeed };

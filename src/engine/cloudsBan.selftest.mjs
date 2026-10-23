@@ -146,14 +146,16 @@ for (const [id, sky] of Object.entries(GARAGE_SKY_PRESETS)) {
 // or without a cell deck; and the vocabulary's cell-deck rows cannot be authored back into breaks by their own defaults
 {
   const closedDecks = skyMaps.filter((id) => cloudStackOf(dayLayer[id]).lanes.some((lane) => lane.cells >= 0.5 && lane.baseM < 2000));
-  assert.deepEqual(closedDecks.sort(), ['whiteout', 'winter'], 'the closed cell decks (Cinder Junction on cumulus 2026-10-16, Ironworks 2026-10-18)');
+  assert.deepEqual(closedDecks.sort(), ['whiteout'], 'the closed cell decks (Cinder Junction on cumulus 2026-10-16, Ironworks 2026-10-18, Frosthollow 2026-10-22)');
   assert.equal(CLOUD_DECK_TUNE.CLOUD_DECK_COVER, 1, 'the render tune never opens a deck into breaks');
   // the negative control: Frosthollow's old 0.86 deck, and a stratocumulus deck at 0.7, are what the check catches
   for (const coverage of [0.86, 0.7]) {
-    const old = layerOf({ ...getMapConfig('winter').sky, cloudscape: { ...getMapConfig('winter').clouds, coverage } });
+    // (Frosthollow's own block is cumulus since 2026-10-22: its old deck by its regime)
+    const old = layerOf({ ...getMapConfig('winter').sky, cloudscape: { regime: 'stratocumulus-deck', nightGlow: 0.3, nightGlowHex: 0xffc080, deckBeam: 0.4, coverage } });
     assert.ok(brokenDecks(old).length > 0, `the check sees a broken cell deck at ${coverage}`);
   }
-  for (const id of ['winter']) assert.equal(getMapConfig(id).clouds.coverage, 0.92, `${id}: closed (0.86 / 0.88 left the banned breaks)`);
+  // (2026-10-22, world-polish-240; the coordinator: Frosthollow's closed grey deck is not the owner's bar either)
+  assert.equal(getMapConfig('winter').clouds.regime, 'fair-weather-cumulus', 'Frosthollow: off its closed deck onto the owner\'s cumulus');
   assert.equal(getMapConfig('blackglass').clouds.regime, 'fair-weather-cumulus', 'Suzhou Creek: its ash veil was a low broken cell deck');
   assert.equal(getMapConfig('urban').clouds.regime, 'fair-weather-cumulus', 'Steinburg (urban): its broken altocumulus read as the banned deck in stills (coordinator, 2026-10-15)');
 }

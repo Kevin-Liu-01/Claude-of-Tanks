@@ -1,0 +1,503 @@
+{
+ "map": "coastal",
+ "timeOfDay": "day",
+ "seed": 1976,
+ "light": {
+  "sunAzimuthDeg": 177.85,
+  "sunElevationDeg": 36
+ },
+ "actors": [
+  {
+   "id": "type10_x",
+   "name": "hero",
+   "pos": [
+    341.59,
+    -192.18
+   ],
+   "facingDeg": 172.65,
+   "turretDeg": 33.69,
+   "gunDeg": 1,
+   "camo": "factory",
+   "camoSeed": 7106
+  },
+  {
+   "id": "ztz99a2",
+   "name": "foe0",
+   "pos": [
+    330.33,
+    -188.4
+   ],
+   "facingDeg": 127.29,
+   "turretDeg": -18.73,
+   "gunDeg": -4.33,
+   "camo": "factory",
+   "camoSeed": 7107,
+   "recoilAgeS": 0.075
+  },
+  {
+   "id": "type10_x",
+   "name": "wreck0",
+   "pos": [
+    342.89,
+    -178.96
+   ],
+   "facingDeg": 250,
+   "turretDeg": 40,
+   "gunDeg": -4,
+   "state": "wrecked-burnt",
+   "stateAgeS": 45,
+   "camo": "factory",
+   "camoSeed": 7306
+  }
+ ],
+ "effects": [
+  {
+   "type": "dust",
+   "at": [
+    337.91,
+    -174.25
+   ],
+   "tMs": 5500,
+   "params": {
+    "count": 24,
+    "intensity": 1.3,
+    "dirDeg": 172.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    340.6,
+    -173.9
+   ],
+   "tMs": 5500,
+   "params": {
+    "count": 24,
+    "intensity": 1.3,
+    "dirDeg": 172.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    338.42,
+    -178.22
+   ],
+   "tMs": 5900,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 172.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    341.11,
+    -177.87
+   ],
+   "tMs": 5900,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 172.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    338.87,
+    -181.69
+   ],
+   "tMs": 6250,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 172.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    341.56,
+    -181.34
+   ],
+   "tMs": 6250,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 172.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    339.25,
+    -184.66
+   ],
+   "tMs": 6550,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 172.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    341.94,
+    -184.32
+   ],
+   "tMs": 6550,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 172.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    339.51,
+    -186.65
+   ],
+   "tMs": 6750,
+   "params": {
+    "count": 24,
+    "intensity": 1.3,
+    "dirDeg": 172.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    342.2,
+    -186.3
+   ],
+   "tMs": 6750,
+   "params": {
+    "count": 24,
+    "intensity": 1.3,
+    "dirDeg": 172.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    339.67,
+    -187.94
+   ],
+   "tMs": 6880,
+   "params": {
+    "count": 21,
+    "intensity": 1.3,
+    "dirDeg": 172.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    342.36,
+    -187.59
+   ],
+   "tMs": 6880,
+   "params": {
+    "count": 21,
+    "intensity": 1.3,
+    "dirDeg": 172.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    339.76,
+    -188.63
+   ],
+   "tMs": 6950,
+   "params": {
+    "count": 15,
+    "intensity": 1.3,
+    "dirDeg": 172.65
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    342.45,
+    -188.28
+   ],
+   "tMs": 6950,
+   "params": {
+    "count": 15,
+    "intensity": 1.3,
+    "dirDeg": 172.65
+   }
+  },
+  {
+   "type": "muzzle_flash",
+   "actor": "foe0",
+   "tMs": 6928,
+   "params": {
+    "caliberMm": 125,
+    "quality": "battle"
+   }
+  },
+  {
+   "type": "impact",
+   "at": [
+    339.02,
+    -2.18,
+    -191.32
+   ],
+   "tMs": 6760,
+   "params": {
+    "kind": "ricochet",
+    "caliberMm": 125,
+    "normal": [
+     0.04,
+     -0.5,
+     0.7
+    ]
+   }
+  },
+  {
+   "type": "sparks",
+   "at": [
+    339.02,
+    -2.18,
+    -191.32
+   ],
+   "tMs": 6780,
+   "params": {
+    "caliberMm": 120,
+    "normal": [
+     0.04,
+     -0.5,
+     0.7
+    ]
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    339.02,
+    -2.18,
+    -191.32
+   ],
+   "tMs": 6770,
+   "params": {
+    "count": 12,
+    "speedMps": 7,
+    "hot": 0.8,
+    "scale": 0.45
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    345.93,
+    -173.33
+   ],
+   "tMs": 6400,
+   "params": {
+    "size": "small",
+    "munition": "he",
+    "cause": "shot"
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    345.93,
+    -2.6,
+    -173.33
+   ],
+   "tMs": 6420,
+   "params": {
+    "count": 40,
+    "speedMps": 15,
+    "hot": 0.45,
+    "scale": 1.3
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    304.43,
+    -168.67
+   ],
+   "tMs": 6000,
+   "params": {
+    "size": "small",
+    "munition": "he",
+    "cause": "shot"
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    304.43,
+    -2.6,
+    -168.67
+   ],
+   "tMs": 6020,
+   "params": {
+    "count": 30,
+    "speedMps": 13,
+    "hot": 0.4,
+    "scale": 1.2
+   }
+  },
+  {
+   "type": "burning",
+   "actor": "wreck0",
+   "tMs": 0,
+   "params": {}
+  },
+  {
+   "type": "embers",
+   "at": [
+    342.89,
+    -178.96
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 3,
+    "rate": 45,
+    "durationS": 20,
+    "rise": 3
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    341.73,
+    -166.98
+   ],
+   "tMs": 0,
+   "params": {
+    "size": "huge",
+    "cause": "shot"
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    342.33,
+    -166.38
+   ],
+   "tMs": 1000,
+   "params": {
+    "size": "huge",
+    "cause": "shot"
+   }
+  }
+ ],
+ "fxTime": 7000,
+ "timeScale": 0,
+ "storyboard": {
+  "version": 1,
+  "durationMs": 8500,
+  "shots": [],
+  "actorTracks": [
+   {
+    "actor": "hero",
+    "keys": [
+     {
+      "id": "hero-0",
+      "tMs": 4400,
+      "pos": [
+       338.26,
+       -166.39
+      ],
+      "facingDeg": 172.65,
+      "turretDeg": 33.69,
+      "gunDeg": 1,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-1",
+      "tMs": 7400,
+      "pos": [
+       342.1,
+       -196.15
+      ],
+      "facingDeg": 172.65,
+      "turretDeg": 33.69,
+      "gunDeg": 1,
+      "transition": "linear"
+     }
+    ]
+   }
+  ]
+ },
+ "picture": {
+  "grain": {
+   "amount": 0.05,
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
+  "vignette": {
+   "amount": 0.36,
+   "roundness": 0.55,
+   "softness": 0.6
+  },
+  "dof": {
+   "enabled": false
+  },
+  "chromaticAberration": 0,
+  "exposure": 0.3,
+  "vibrance": 0.14,
+  "contrast": 1.05
+ },
+ "fx": {
+  "quality": "cinematic",
+  "trackDust": true
+ },
+ "autoPlace": false,
+ "meta": {
+  "id": "vs06-coastal-type10-ztz99a2-r7",
+  "kind": "versus-still",
+  "pair": "type10_x v ztz99a2",
+  "round": 7,
+  "pass": 3,
+  "idea": "the beach landing: the Type 10 charges up the dry strand straight at a low lens, its turret face and gun swung toward the ZTZ-99A2 firing at it from the strand",
+  "lens": "a",
+  "pick": "vs06-coastal-type10-ztz99a2-r7:a"
+ },
+ "camera": {
+  "name": "a",
+  "pos": [
+   341.72,
+   1.07,
+   -200.52
+  ],
+  "lookAt": [
+   334.39,
+   4.82,
+   -171.43
+  ],
+  "fov": 50.41,
+  "rollDeg": -6.33,
+  "groundRel": true
+ },
+ "cameraVariants": [
+  {
+   "name": "a",
+   "pos": [
+    341.72,
+    1.07,
+    -200.52
+   ],
+   "lookAt": [
+    334.39,
+    4.82,
+    -171.43
+   ],
+   "fov": 50.41,
+   "rollDeg": -6.33,
+   "groundRel": true
+  }
+ ]
+}

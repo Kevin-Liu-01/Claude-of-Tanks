@@ -15,12 +15,14 @@
 //
 // The capture-lock wait is bounded by COT_SHOTS_LOCK_TIMEOUT_MS; the hold's own
 // alarm (--hold-minutes, default 18) starts only once the lock is taken.
+// The Vite server (a child process), Chrome, the page and the tanks' warm-up run while the ticket waits
+// (tools/capture-hold.mjs, 2026-10-22): the hold renders only. Before, 70-143 s of each 103-212 s hold was setup.
 
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { createServer } from 'vite';
 import puppeteer from 'puppeteer';
-import { acquireCaptureLock, refreshCaptureLock, releaseCaptureLock, ticketAt } from './capture-lock.mjs';
+import { ticketAt } from './capture-lock.mjs';
+import { rememberWarm, rewarmPage, runWarmHold, startViteChild, stubViteSocket } from './capture-hold.mjs';
 import { fleetIds, planHeroCards, tankPolicyKey } from './hero-cards-plan.mjs';
 import { uniqueIds } from './id-list.mjs';
 
@@ -69,68 +71,91 @@ const ids = [...new Set(jobs.map((job) => job.id))];
 const policyKey = tankPolicyKey();
 
 const lockWait = Number(process.env.COT_SHOTS_LOCK_TIMEOUT_MS) || 4 * 3600 * 1000;
-console.log(`[hero-cards] ${jobs.length} jobs over ${ids.length} ids; waiting for the capture lock (<= ${Math.round(lockWait / 60000)} min)`);
+console.log(`[hero-cards] ${jobs.length} jobs over ${ids.length} ids; warming, then waiting for the capture lock (<= ${Math.round(lockWait / 60000)} min)`);
 const queueStamp = Number(opt('queue-stamp', '0'));
-await acquireCaptureLock(lockWait, queueStamp ? { ticket: ticketAt(queueStamp) } : {});
-const heldAt = Date.now();
-console.log(`[hero-cards] lock taken ${new Date(heldAt).toISOString()}`);
-const refresher = setInterval(refreshCaptureLock, 30_000);
-let server = null;
-let browser = null;
 const viteCacheDir = resolve('/tmp', `cot-hero-vite-${process.pid}`);
-const alarm = setTimeout(() => {
-  console.error(`[hero-cards] hold alarm: ${holdMinutes} min reached; releasing the lock`);
-  releaseCaptureLock();
-  process.exit(3);
-}, holdMinutes * 60 * 1000);
+const pageErrors = [];
 
 let failed = false;
+let stopped = false;
 try {
-  server = await createServer({
-    root: process.cwd(), configFile: false, cacheDir: viteCacheDir, logLevel: 'error',
-    optimizeDeps: { noDiscovery: true },
-    server: { host: '127.0.0.1', port: 7600 + (process.pid % 200), strictPort: true, hmr: false, watch: null },
+  await runWarmHold({
+    label: 'hero-cards',
+    holdMinutes,
+    waitHours: lockWait / 3600 / 1000,
+    ticket: queueStamp ? ticketAt(queueStamp) : null,
+    place: opt('place') || null,
+    warm: async () => {
+      const server = await startViteChild({
+        mode: 'dev',
+        config: {
+          root: process.cwd(), configFile: false, cacheDir: viteCacheDir, logLevel: 'error',
+          optimizeDeps: { noDiscovery: true },
+          // no HMR socket: a frozen page must not take a Vite reload at the thaw (capture-hold.mjs, 2026-10-23)
+          server: { host: '127.0.0.1', port: 7600 + (process.pid % 200), strictPort: false, hmr: false, ws: false, watch: null },
+        },
+      });
+      let browser = null;
+      try {
+        browser = await puppeteer.launch({
+          headless: 'new',
+          timeout: 180_000,
+          protocolTimeout: 15 * 60 * 1000,
+          args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+        });
+        const page = await browser.newPage();
+        page.on('pageerror', (error) => pageErrors.push(String(error)));
+        page.on('console', (message) => {
+          if (message.type() === 'error' && !/favicon|404/.test(message.text())) pageErrors.push(message.text());
+        });
+        await stubViteSocket(page);
+        // loaded through the shared warm record, so the hold checks the page after the thaw and loads it again
+        // (__HERO_WARM included) if it lost its context
+        rememberWarm(page, { url: `${server.url}/tools/hero-cards-page.html`, ready: 'window.__HERO_READY === true',
+          after: (warmed) => warmed.evaluate((list) => window.__HERO_WARM(list), ids) });
+        await rewarmPage(page);
+        const close = async () => {
+          try { await browser.close(); } catch { /* closed */ }
+          await server.close();
+        };
+        return { pages: [page], page, close };
+      } catch (error) {
+        try { if (browser) await browser.close(); } catch { /* closed */ }
+        await server.close();
+        throw error;
+      }
+    },
+    shoot: async ({ page, signal, heldAt }) => {
+      const meta = {};
+      // One evaluation per job keeps each data URL transfer small and lets a long board finish
+      // inside the hold even when one vehicle fails.
+      for (const job of jobs) {
+        if (signal.aborted) {
+          stopped = true;
+          console.error(`[hero-cards] hold alarm: ${holdMinutes} min reached; the rest continues with --resume`);
+          break;
+        }
+        const [result] = await page.evaluate((one) => window.__HERO_RENDER([one]), job);
+        if (result.error) {
+          failed = true;
+          console.error(`[hero-cards] ${job.name}: ${result.error}`);
+          continue;
+        }
+        if (!job.overrides) result.meta.policyKey = policyKey;
+        const file = resolve(outDir, `${job.name}.png`);
+        writeFileSync(file, Buffer.from(result.dataUrl.split(',')[1], 'base64'));
+        writeFileSync(resolve(outDir, `${job.name}.json`), `${JSON.stringify(result.meta, null, 1)}\n`);
+        meta[job.name] = result.meta;
+        console.log(`[hero-cards] wrote ${job.name}.png${result.meta.clipped ? '  CLIPPED' : ''}  (${((Date.now() - heldAt) / 1000).toFixed(0)} s into the hold)`);
+      }
+      // Every layer's meta in the directory (earlier parts and resumed holds included).
+      const all = {};
+      for (const name of readdirSync(outDir).filter((f) => f.endsWith('.json') && f !== 'tank-layers.json').sort()) {
+        try { all[name.slice(0, -5)] = JSON.parse(readFileSync(resolve(outDir, name), 'utf8')); } catch { /* partial write */ }
+      }
+      writeFileSync(resolve(outDir, 'tank-layers.json'), `${JSON.stringify({ ...all, ...meta }, null, 1)}\n`);
+    },
   });
-  await server.listen();
-  const address = server.httpServer.address();
-  const url = `http://127.0.0.1:${address.port}/tools/hero-cards-page.html`;
-  browser = await puppeteer.launch({
-    headless: 'new',
-    protocolTimeout: 15 * 60 * 1000,
-    args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
-  });
-  const page = await browser.newPage();
-  const pageErrors = [];
-  page.on('pageerror', (error) => pageErrors.push(String(error)));
-  page.on('console', (message) => {
-    if (message.type() === 'error' && !/favicon|404/.test(message.text())) pageErrors.push(message.text());
-  });
-  await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 300000 });
-  await page.waitForFunction('window.__HERO_READY === true', { timeout: 300000 });
-  await page.evaluate((list) => window.__HERO_WARM(list), ids);
-  const meta = {};
-  // One evaluation per job keeps each data URL transfer small and lets a long board finish
-  // inside the hold even when one vehicle fails.
-  for (const job of jobs) {
-    const [result] = await page.evaluate((one) => window.__HERO_RENDER([one]), job);
-    if (result.error) {
-      failed = true;
-      console.error(`[hero-cards] ${job.name}: ${result.error}`);
-      continue;
-    }
-    if (!job.overrides) result.meta.policyKey = policyKey;
-    const file = resolve(outDir, `${job.name}.png`);
-    writeFileSync(file, Buffer.from(result.dataUrl.split(',')[1], 'base64'));
-    writeFileSync(resolve(outDir, `${job.name}.json`), `${JSON.stringify(result.meta, null, 1)}\n`);
-    meta[job.name] = result.meta;
-    console.log(`[hero-cards] wrote ${job.name}.png${result.meta.clipped ? '  CLIPPED' : ''}  (${((Date.now() - heldAt) / 1000).toFixed(0)} s into the hold)`);
-  }
-  // Every layer's meta in the directory (earlier parts and resumed holds included).
-  const all = {};
-  for (const name of readdirSync(outDir).filter((f) => f.endsWith('.json') && f !== 'tank-layers.json').sort()) {
-    try { all[name.slice(0, -5)] = JSON.parse(readFileSync(resolve(outDir, name), 'utf8')); } catch { /* partial write */ }
-  }
-  writeFileSync(resolve(outDir, 'tank-layers.json'), `${JSON.stringify({ ...all, ...meta }, null, 1)}\n`);
   if (pageErrors.length) {
     console.error(`[hero-cards] page errors (${pageErrors.length}):`);
     for (const error of pageErrors.slice(0, 20)) console.error(`  ${error}`);
@@ -139,12 +164,7 @@ try {
   failed = true;
   console.error(`[hero-cards] FAILED: ${error && error.stack || error}`);
 } finally {
-  clearTimeout(alarm);
-  clearInterval(refresher);
-  try { if (browser) await browser.close(); } catch { /* closed */ }
-  try { if (server) await server.close(); } catch { /* closed */ }
-  releaseCaptureLock();
-  console.log(`[hero-cards] lock released after ${((Date.now() - heldAt) / 1000).toFixed(0)} s`);
   rmSync(viteCacheDir, { recursive: true, force: true });
 }
+if (stopped) process.exit(3);
 process.exit(failed ? 1 : 0);

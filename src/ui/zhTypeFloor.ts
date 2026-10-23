@@ -13,10 +13,13 @@
  * Keep this module dependency-free: the build's document transform imports it.
  */
 
+/** styleLayers.ts STYLE_LAYER_ORDER, repeated so this module stays dependency-free (styleLayers.selftest pins it). */
+const LAYER_ORDER = '@layer reset,tokens,base,components,surfaces,utilities,overrides;';
+
 /** The Garage, Deploy, settings, service record and mission brief (the game document and the Studio's). */
 const SHELL: readonly string[] = [
   // game bar and garage
-  '.nv .nav-label', '.cot-locale-options span', '.cot-battle-mode span', '.cot-multiplayer-entry span', '.cot-garage .hint',
+  '.nv .nav-label', '.cot-locale-options span', '.cot-battle-mode span', '.cot-multiplayer-entry span',
   '.cot-garage-variant-trigger-copy strong', '.cot-garage-variant-trigger-copy small span', '.cot-garage-variant-action span',
   '.cot-sidebar-section-title span',
   "body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-performance-section .cot-stat-title>span",
@@ -25,10 +28,8 @@ const SHELL: readonly string[] = [
   '.cot-garage .eqslot .sl', '.cot-system-control>span',
   '.cot-technical-figure figcaption', '.cot-technical-expand-label', '.cot-technical-gallery span',
   // Deploy
-  '.cot-battle-choice .choice-name', '.cot-battle-choice .choice-description', '.cot-sides-choice', '.cot-time-name',
-  '.cot-battle-menu .cot-battle-times legend', '.cot-battle-menu .cot-battle-times small', '.cot-nation-field span',
-  '.cot-custom-select-copy', '.cot-battle-preview small', '.cot-battle-preview p', '.cot-battle-menu-foot>span',
-  '.cot-battle-menu-foot button',
+  '.cot-settings .cot-time-name', '.cot-battle-menu .cot-battle-times legend', '.cot-nation-field span',
+  '.cot-custom-select-copy',
   // settings
   '.cot-set-group', '.cot-set-colhdr span', '.lb .cot-setting-label-text', '.cot-set-btn', '.cot-set-btn.resume',
   // service record
@@ -41,8 +42,7 @@ const SHELL: readonly string[] = [
 
 /** The public navigation every public page shares. */
 const PUBLIC_NAV: readonly string[] = [
-  '.public-nav__links a', "body[data-cot-panels='overlay'] .public-nav__links a", "body[data-cot-width='phone'] .public-nav__links a",
-  '.public-nav__links .public-nav__menu a', '.public-nav__locale', "body[data-cot-width='phone'] .public-nav__locale",
+  '.public-nav__links a', '.public-nav__lang a', '.public-footer__links a', '.public-footer__credit',
 ];
 
 /** The field manual's overview and topic pages (src/docs/docs.css). */
@@ -56,10 +56,10 @@ const DOCS: readonly string[] = [
   '.topic-layout>aside>span:not(.topic-aside-icon)', '.topic-layout>aside a', '.footer-links a', '.footer-mark',
 ];
 
-/** The landing page (public/home.css). */
+/** The landing page (src/presentation/home.css). */
 const HOME: readonly string[] = [
   ...PUBLIC_NAV,
-  '.btn', '.v5-maker', '.v5-social-proof__signals dt', '.v5-social-card__identity em', '.v5-social-proof__reddit>header small',
+  '.btn', '.v5-social-proof__signals dt', '.hero__stats li', '.vs-where', '.fleet-facts dt', '.v5-social-card__identity em', '.v5-social-proof__reddit>header small',
   '.v5-social-proof__reddit>header p', '.v5-social-proof__snapshot',
 ];
 
@@ -99,5 +99,6 @@ export function zhTypeFloorCss(routeId: string): string {
 
 /** The block a zh-CN document's head carries. */
 export function zhTypeFloorStyle(routeId: string): string {
-  return `<style id="cot-zh-type">${zhTypeFloorCss(routeId)}</style>`;
+  // In the surfaces layer with the rules it lifts (src/ui/styleLayers.ts), so specificity still decides between them.
+  return `<style id="cot-zh-type">${LAYER_ORDER}@layer surfaces{${zhTypeFloorCss(routeId)}}</style>`;
 }

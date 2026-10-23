@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { createHash, createPrivateKey, createPublicKey, sign, verify } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { lstat, realpath } from 'node:fs/promises';
-import { resolve, sep } from 'node:path';
+import { lstat, readFile, realpath } from 'node:fs/promises';
+import { basename, dirname, join, resolve, sep } from 'node:path';
 import { PROJECT_CREATOR, PROJECT_COPYRIGHT } from '../src/authorship.ts';
 
 // Reviewed project-owned source/output families. References, fonts, external
@@ -18,19 +18,40 @@ export function coveredPath(path) {
   return !path.includes('..') && !path.includes('\\') && !path.startsWith('/')
     && (POLICY_FILES.includes(path) || CONTENT_ROOTS.some(root => path.startsWith(root)));
 }
-async function fileReceipt(root, path) {
+// The scope is ~11,000 files and 1.2 GB. Hashed one at a time it took 330 s at load ~225 (2026-10-22), waiting on
+// one read after another; HASH_WINDOW files are in flight at once, a file up to WHOLE_READ_BYTES is one read, and
+// each directory's real path is resolved once.
+const HASH_WINDOW = 16;
+const WHOLE_READ_BYTES = 8 * 1024 * 1024;
+async function fileReceipt(root, realRoot, realDirs, path) {
   assert.ok(coveredPath(path), `Path outside reviewed scope: ${path}`);
-  const full = resolve(root, path), realRoot = await realpath(root);
+  const full = resolve(root, path);
   const info = await lstat(full);
   assert.ok(info.isFile() && !info.isSymbolicLink(), `Expected ordinary file: ${path}`);
-  assert.ok((await realpath(full)).startsWith(realRoot + sep), `Path escapes repository: ${path}`);
+  // An ordinary file's real path is its directory's real path plus its name.
+  const dir = dirname(full);
+  if (!realDirs.has(dir)) realDirs.set(dir, realpath(dir));
+  assert.ok(join(await realDirs.get(dir), basename(full)).startsWith(realRoot + sep), `Path escapes repository: ${path}`);
   const hash = createHash('sha256');
-  for await (const chunk of createReadStream(full)) hash.update(chunk);
+  if (info.size <= WHOLE_READ_BYTES) hash.update(await readFile(full));
+  else for await (const chunk of createReadStream(full, { highWaterMark: 1024 * 1024 })) hash.update(chunk);
   return { path, bytes: info.size, sha256: hash.digest('hex') };
 }
 export async function createReceipt(root, paths, revision) {
-  const files = [];
-  for (const path of [...new Set(paths.filter(coveredPath))].sort()) files.push(await fileReceipt(root, path));
+  const scope = [...new Set(paths.filter(coveredPath))].sort();
+  const realRoot = await realpath(root), realDirs = new Map();
+  // Paths start in order; after a failure no new one starts, the ones in flight finish, and the first failure in
+  // path order is thrown, as the one-at-a-time loop threw it.
+  const files = new Array(scope.length), failures = [];
+  let next = 0;
+  const worker = async () => {
+    while (next < scope.length && !failures.length) {
+      const index = next++;
+      try { files[index] = await fileReceipt(root, realRoot, realDirs, scope[index]); } catch (error) { failures.push({ index, error }); }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(HASH_WINDOW, scope.length) }, worker));
+  if (failures.length) throw failures.sort((a, b) => a.index - b.index)[0].error;
   assert.ok(files.length, 'No files in provenance scope');
   return {
     schema: 'cot-asset-provenance-v1', project: 'Claude of Tanks',

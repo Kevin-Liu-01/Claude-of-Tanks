@@ -147,7 +147,8 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   stb1: { displayName: 'STB-1', shortName: 'STB-1', searchAliases: ['STB 1 Japan'] },
   type90a: { displayName: 'Type 90A', shortName: 'Type 90A', searchAliases: ['Type 90 Kai'] },
   type10b: { displayName: 'Type 10B', shortName: 'Type 10B', searchAliases: ['Type 10 Kai'] },
-  type10_dozer: { displayName: 'Type 10 (Dozer)', shortName: 'Type 10 Dozer', searchAliases: ['Type 10 dozer blade', 'Type 10 dozer kit'] },
+  // owner 2026-10-22: "give this a unique name for a variannt instad of just 'dozer'" (開拓, land-clearing)
+  type10_dozer: { displayName: 'Type 10 Kaitaku', shortName: 'Type 10 Kaitaku', searchAliases: ['Kaitaku', 'Type 10 (Dozer)', 'Type 10 Dozer', 'Type 10 dozer blade', 'Type 10 dozer kit'] },
   leo2a3: {
     displayName: 'Leopard 2A3', shortName: 'Leopard 2A3',
     searchAliases: ['Leopard 2A4 OTCO', '2A3'],
@@ -284,7 +285,9 @@ const LABEL_OVERRIDES: Readonly<Record<string, TankLabelOverride>> = Object.free
   c2_ariete_proto: { displayName: 'C2 Ariete Prototype', shortName: 'C2 Prototype' },
   c1_ariete: { displayName: 'C1 Ariete', shortName: 'C1 Ariete' },
   c2_ariete: { displayName: 'C2 Ariete', shortName: 'C2 Ariete' },
-  t64bv_donbas: { displayName: 'T-64BV Donbas', shortName: 'T-64BV Donbas' },
+  // owner 2026-10-22: the Ukrainian Army's 2017 T-64BV modernisation (T-64BV zrazka 2017 roku); "Donbas" was the
+  // kitbash source's label. The id stays.
+  t64bv_donbas: { displayName: 'T-64BV mod. 2017', shortName: 'T-64BV mod. 2017', searchAliases: ['T-64BV Donbas'] },
   ua_t80bv: { displayName: 'T-80BV (Ukraine)', shortName: 'T-80BV UA' },
   t80u_kursk: { displayName: 'T-80U Kursk', shortName: 'T-80U Kursk' },
   t84bm_oplot_m: { displayName: 'T-84BM Oplot-M', shortName: 'Oplot-M' },

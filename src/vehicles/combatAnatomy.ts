@@ -1107,9 +1107,26 @@ function alignTurretRing(armor: ArmorAnatomy, calibration: CombatAnatomyCalibrat
   const ring = (armor.modules || []).find((box) => box.module === 'turretRing');
   if (!ring || !calibration?.turret) return;
   const thickness = Math.max(0.14, ring.max[1] - ring.min[1]);
-  const baseY = calibration.turret.min[1] + (ring.turretLocal ? 0 : armor.turretPivot[1]);
-  ring.min[1] = baseY - thickness * 0.5;
-  ring.max[1] = baseY + thickness * 0.5;
+  // (240) on the drawn ring. The hull's calibration maps the authored box with the hull's plates, which carried it off
+  // the ring (211 of 217 turreted tanks, up to 1.65 m). The box keeps its calibrated size and centres on the ring's
+  // receipt where the generator publishes one (the rig_turret seat and the deck round the race, in the hull's frame:
+  // where turretSeatRace.ts draws the race and a wreck seats its plate); else on the turret's yaw axis, the pivot where
+  // the builder seats rig_turret (applyCombatGunRig), at the calibrated turret bottom. A turret-local box reads both
+  // from its pivot.
+  const origin = ring.turretLocal ? armor.turretPivot : [0, 0, 0];
+  const drawn = calibration.turretRing;
+  const centre = drawn && drawn.seat?.length === 3 && Number.isFinite(drawn.deckY)
+    ? [drawn.seat[0] - origin[0], drawn.deckY - origin[1], drawn.seat[2] - origin[2]]
+    : [armor.turretPivot[0] - origin[0], calibration.turret.min[1] + armor.turretPivot[1] - origin[1],
+      armor.turretPivot[2] - origin[2]];
+  const delta = [0, 1, 2].map((axis) => centre[axis] - (ring.min[axis] + ring.max[axis]) * 0.5);
+  for (const part of ring.parts || []) {
+    for (let axis = 0; axis < 3; axis++) { part.min[axis] += delta[axis]; part.max[axis] += delta[axis]; }
+  }
+  ring.min[0] += delta[0]; ring.max[0] += delta[0];
+  ring.min[2] += delta[2]; ring.max[2] += delta[2];
+  ring.min[1] = centre[1] - thickness * 0.5;
+  ring.max[1] = centre[1] + thickness * 0.5;
 }
 
 function moveBoxToPlacement(

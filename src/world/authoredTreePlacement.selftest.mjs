@@ -15,7 +15,7 @@ import { deploymentClearings } from '../sim/matchPlacement.ts';
 import { DESTRUCTIBLE_BUILDING_TYPES } from './maps/structureKit.ts';
 import { authoredTreeStations, insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees } from './authoredTreePlacement.ts';
 import { SHORELINE_SEGMENTS, shorelineDistance, shorelineRadiusAt } from './shoreline.ts';
-import { treeBiomeArid, treeBiomeOpen, treeBiomeRiparian, treeBiomeSlot, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeBlend, treeBiomeGrove, treeBiomeOpen, treeBiomeRiparian, treeBiomeSlot, treeBiomeSnagValue, treeBiomeUpland, treeBiomeWoodSpread } from './treeBiomes.ts';
 import { TREE_GROWTH_PROFILES } from './treeGrowth.ts';
 import { resolveLandUseProfile } from './landUse.ts';
 import { civicLawnTest, civicPavedRooms, civicTreeStations } from './civic/plans/index.ts';
@@ -42,12 +42,18 @@ const dependencies = { THREE, mulberry32, treeRichness, TREE_ARCHETYPES, treeTru
   treeBiomeArid, treeBiomeOpen, treeBiomeUpland, treeBiomeWoodSpread, treeBiomeRiparian, // (integ/226: Skybridge's riparian cottonwoods)
   // trees round 5: the field law's conifer forms (vegetation.ts coniferForm)
   treeBiomeSlot, TREE_GROWTH_PROFILES, resolveLandUseProfile,
+  // the trees lane (2026-10-06): a place's snag value (Monsoon's charred snags)
+  treeBiomeSnagValue,
+  // the woods catch-up (item 41, 2026-10-22): round 8's canopy form by place — off in the sandbox (the receipts' maps)
+  canopyForm: false, WOOD_MARGIN_K: 0.85, WOOD_INTERIOR_TRUNK_SHADE: 0.42, treeBiomeCanopyForm: () => false,
   // trees lane (2026-10-05): an opted-in map's stands inside its settlement rect (vegetation.ts authoredInSettlement)
   insideClearPolygon, plannedSiteClearances,
   // symmetric deployments (modes lane 2026-10-08): the slots' clearings, the trees in them dropped after placement
-  deploymentClearings, excludeVegetation,
+  deploymentClearings,
   // (the maps lane, 228) a civic plan's trees and lawns (world/civic)
-  civicTreeStations, civicLawnTest, civicPavedRooms };
+  civicTreeStations, civicLawnTest, civicPavedRooms,
+  // the trees lane (2026-10-06): a place's grove and blend (Saltwind's olive groves, its holm oak woods' Aleppo pine)
+  treeBiomeGrove, treeBiomeBlend };
 const builder = new Function(...Object.keys(dependencies), `return ${stripTypeScriptTypes(`function* placement(heightField, cfg) {
   const seed = 2001, rng = mulberry32(seed), group = new THREE.Group();
   // trees round 5: the field law's constants (vegetation.ts module scope), read from the source

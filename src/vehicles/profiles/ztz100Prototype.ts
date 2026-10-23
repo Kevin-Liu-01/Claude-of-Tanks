@@ -22,8 +22,8 @@ function part(geometry: THREE.BufferGeometry, name: string): THREE.BufferGeometr
 
 // ---------------------------------------------------------------------------------------------- measured frame
 export const ZTZ100_PROTOTYPE_DATUMS = Object.freeze({
-  widthM: 3.734, hullLengthM: 6.94, overallLengthM: 7.70, roofHeightM: 1.41, turretRoofM: 1.90, overallHeightM: 2.74,
-  turretPivot: [0, 1.41, -0.55] as const, trunnion: [0, 2.05, .25] as const, muzzleZ: 1.70,
+  widthM: 3.734, hullLengthM: 6.94, overallLengthM: 7.825, roofHeightM: 1.41, turretRoofM: 1.90, overallHeightM: 2.74,
+  turretPivot: [0, 1.41, -0.55] as const, trunnion: [0, 2.05, .25] as const, muzzleZ: 3.75,
   wheelStations: [-2.3375, -1.6015, -0.8655, -0.1295, 0.6065, 1.4345, 2.1705] as const,
   wheelR: 0.3135, wheelY: 0.374, trackW: 0.515, trackX: 1.2485,
   sprocket: { z: -2.961, y: 0.658, r: 0.311 } as const,
@@ -256,7 +256,10 @@ function runningGear(P: TankBuilderPort): void {
 // ----------------------------------------------------------------------------------------------------- turret
 // Owner-directed missile-carrier concept. Dimensions are design decisions,
 // not measurements of the superseded historical MBT turret.
-const T = { roof: .49, gunY: .64, gunZ: .80, gunLen: 1.45, pivotY: 1.41, pivotZ: -.55 } as const;
+// 2026-10-22 (lane 240; the owner approved the spec change): the backup gun is a calibre-true 35 mm L/90, its tube 3.15 m
+// from the breech face (z .35, inside the receiver) to the muzzle (3.50 ahead of the trunnion), where the old stub
+// stopped at 1.45.
+const T = { roof: .49, gunY: .64, gunZ: .80, gunLen: 3.50, breechZ: .35, pivotY: 1.41, pivotZ: -.55 } as const;
 // 2026-10-21 (owner: "follow that of the object 695, and tagil"): the two armored box banks became open pods of round
 // 152 mm HJ-P9 canisters on a 0.30 m pitch, the Object 695 vocabulary; the upper row keeps its height, the lower row
 // rises 0.10 m to sit just above the pitch axis. outerRadius/innerRadius are the collar and the dark-lined bore.
@@ -265,7 +268,7 @@ export const ZTZ100_PROTOTYPE_LAUNCHER = Object.freeze({
   columns: [-1.23, -.93, .93, 1.23] as const, rows: [.12, .42] as const,
   rear: -1.10, mouth: 1.00, outerRadius: .143, innerRadius: .112, frames: [-.62, .66] as const,
   gunPivot: [0, T.gunY, T.gunZ] as const, backupLength: T.gunLen,
-  backupOuterRadius: .045, backupInnerRadius: .0175, backupDepth: .09,
+  backupOuterRadius: .0655, backupInnerRadius: .0175, backupDepth: .09,
 });
 const L = ZTZ100_PROTOTYPE_LAUNCHER;
 export const ZTZ100_PROTOTYPE_CANISTER: LaunchCanister = Object.freeze({
@@ -331,12 +334,34 @@ function pod(P: TankBuilderPort, side: number): void {
   P.addEquipment('gunMountDark', part(cylX(.13, .16, n), 'bank-pitch-journal'), side * .645, 0, 0);
 }
 
+/** The 35 mm L/90 backup gun (2026-10-22, lane 240), the Type 89's KDE vocabulary at this mount: a stepped tube
+ * through a recoil jacket to a conical flash hider with vent rings, its bore open at the hider's face. The mount that
+ * carries 3.15 m of tube: the mantlet block and slide bearing, a cradle under the receiver with a recoil buffer either
+ * side, and a guide collar round the receiver's front, all on the pitching mount (the recoiling parts clear them by a
+ * centimetre or more). */
 function backupCannon(P: TankBuilderPort): void {
-  const D = ZTZ100_PROTOTYPE_LAUNCHER, n = P.q ? 32 : 16;
+  const D = ZTZ100_PROTOTYPE_LAUNCHER, n = P.q ? 32 : 16, m = P.q ? 20 : 12;
   P.addEquipment('gunMount', part(box(.34, .29, .43), 'backup-mantlet'), 0, 0, -.04);
   P.addEquipment('gunMount', part(cylZ(.092, .28, n), 'backup-slide-bearing'), 0, 0, .30);
+  // the cradle's top 8 mm under the receiver, its tail in the mantlet block; the buffers ride its upper corners
+  P.addEquipment('gunMount', part(box(.17, .07, .62), 'backup-cradle'), 0, -.105, .44);
+  for (const s of [-1, 1]) {
+    P.addEquipment('gunMountDark', part(cylZ(.028, .52, m), 'backup-recoil-buffer'), s * .075, -.07, .43);
+  }
+  P.addEquipment('gunMount', part(cylZ(.078, .08, n), 'backup-guide-collar'), 0, -.004, .78);
   P.add('gun', part(cylZ(.062, .80, n), 'backup-receiver'), 0, 0, .45);
-  P.add('gun', part(new THREE.CylinderGeometry(.045, .045, .68, n, 1, true).rotateX(Math.PI / 2), 'backup-barrel'), 0, 0, 1.11);
+  P.add('gun', part(cylZ(.056, .80, n, .062), 'backup-jacket'), 0, 0, 1.25);
+  P.add('gun', part(cylZ(.044, 1.65, m), 'backup-barrel'), 0, 0, 2.465);
+  // the flash hider: an open cone (its face is the mouth ring), closed behind by an annulus onto the tube
+  const hiderLen = .22, hiderZ = T.gunLen - hiderLen / 2;
+  P.add('gun', part(new THREE.CylinderGeometry(D.backupOuterRadius, .048, hiderLen, n, 1, true).rotateX(Math.PI / 2),
+    'backup-flash-hider'), 0, 0, hiderZ);
+  P.add('gun', part(new THREE.RingGeometry(.040, .048, n).rotateY(Math.PI), 'backup-flash-hider-heel'), 0, 0, T.gunLen - hiderLen);
+  // vent rings: closed bands round the cone (their inner faces inside its wall, the bore left open)
+  const band = new THREE.LatheGeometry([new THREE.Vector2(.045, -.008), new THREE.Vector2(.071, -.008),
+    new THREE.Vector2(.071, .008), new THREE.Vector2(.045, .008), new THREE.Vector2(.045, -.008)], n).rotateX(Math.PI / 2);
+  for (const z of [.055, .115, .175]) P.add('gunDark', part(band.clone(), 'backup-vent-ring'), 0, 0, T.gunLen - z);
+  band.dispose();
   const throat = new THREE.CylinderGeometry(D.backupInnerRadius, D.backupInnerRadius, D.backupDepth, n, 1, true).rotateX(Math.PI / 2);
   const index = throat.index!;
   for (let i = 0; i < index.count; i += 3) {

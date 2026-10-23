@@ -26,6 +26,15 @@ fleet release gate.
 `internalAnatomyVisuals.ts` is the strict shared geometry owner for Gallery and
 killcam module, crew, and drivetrain presentation; keep both consumers on its
 volume and resource-lifetime contracts.
+A built visual's runtime (its per-actor state and methods, `createTankRuntimeSteps`) and each running-gear unit's
+(`createRunningGearRuntime`) read only the explicit record their build hands them (`TankRuntimeEnv`,
+`RunningGearRuntimeEnv`): a new runtime value goes into that record, never a capture of a build local. That is what
+lets `cloneTankVisual` (232, the MP roster's repeated vehicles: a few ms instead of a 1-1.5 s build) copy a pristine
+visual (`vehicleGraphClone.ts`) and run the same runtimes over the copy: shared stock and camouflage textures, its own
+materials (`copyVehicleMaterial`), written buffers, gear state, burn, dents and lamps (`copyVehicleNightLighting`). A
+profile that patches the finished gear does it through a recorded helper the clone replays
+(`scaleRunningGearMotion`); a clone refuses (throws, the caller builds) any hook, callback, object kind or gear patch
+it does not know.
 The factory core's read-only analyses live beside it (round 46,
 `docs/CLEANUP-2026-09-23-structure.md`): `eraSurfaceFrame.ts` (ERA plate frames
 and PCA fit), `muzzleCapProfiles.ts` (barrel cap/mouth-edge walkers),
@@ -219,7 +228,8 @@ deck's outline; a geometry-only hulk build adds the exterior pass, the floor and
 the well's wall clear of the hull's skin). A calibration `turretRing` receipt
 can stand in for it, but the generator does not publish one: the ring is
 presentation only, and the anatomy's turretRing volume (a sim module) keeps its
-own law. A cook-off hulk's
+own law: centred on the receipt's seat and deck where one is published, else on
+the turret pivot, the rig_turret seat (`alignTurretRing`, 240). A cook-off hulk's
 bake cuts its hull-side parts exactly after the crumple and merges the well's
 real geometry with its placement budget unchanged. `node tools/turret-ring-census.mjs
 --all --gate` is the fleet receipt; `node tools/turret-ring-probe.mjs --ids=… --gate`
@@ -568,3 +578,10 @@ its row in the row's frame in any column (with `--accept-see-through` for the
 id, see-through and netting may move there; openings never). Open rows list
 their hole views: a hole in another view fails. Each appends the reason, who,
 when and the old values to the row's `accepts`.
+Turret squash (235): a builder may scale rig_turret non-uniformly while it builds (the T-90AM 0.95 x 0.65 x 0.913, the
+Strv 81, the Merkavas, the FV510s, the Challengers). The factory tail (`turretRigScale.ts`, after the decorations, the
+fills and the smoke-bank alignment) moves that squash onto rig_turret's children and rig_gun, so the finished rig_turret
+is a metre frame and the gun pitches rigidly about its drawn trunnion. Parts that sat at rig_turret's identity carry the
+squash as their own scale. `rig_turret.userData.turretSectionScale` names it, and the static batch, the P21 merge and
+the crumple's plate frame read it. A child whose rest rotation would shear under the squash sits in a `turretSection_*`
+group. Read a finished turret's squash from that key, never from `rig_turret.scale`.

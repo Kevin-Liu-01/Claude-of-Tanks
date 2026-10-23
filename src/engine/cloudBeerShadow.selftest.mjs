@@ -66,9 +66,10 @@ assert.ok(shaders.includes('return m - log( max( dot( w, exp( m - od ) ), 1e-6 )
 // ---- Frosthollow's stack and sun
 const config = getMapConfig('winter');
 assert.equal(config.name, 'Frosthollow');
-assert.equal(config.clouds.coverage, 0.92, 'Frosthollow\'s own deck is closed (cloudsBan.selftest)');
-// the case's deck: Frosthollow's stack at its former 0.86 cover, the gaps the shade map must follow
-const preset = deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...config.sky, cloudscape: { ...config.clouds, coverage: 0.86 } });
+// (2026-10-22, world-polish-240: Frosthollow's own sky is the owner's cumulus since — cloudsBan.selftest)
+assert.equal(config.clouds.regime, 'fair-weather-cumulus', 'Frosthollow\'s own sky: cumulus (cloudsBan.selftest)');
+// the case's deck: Frosthollow's old stratocumulus deck at its former 0.86 cover, the gaps the shade map must follow
+const preset = deriveCloudLayerPreset({ ...DEFAULT_SKY_PRESET, ...config.sky, cloudscape: { ...{ regime: 'stratocumulus-deck', coverage: 0.92, nightGlow: 0.3, nightGlowHex: 0xffc080, deckBeam: 0.4 }, coverage: 0.86 } });
 const stack = cloudStackOf(preset);
 const lane = stack.lanes[0];
 // the layer's shade law (volumetricClouds.ts updateFarShade): a deck with gaps draws its pattern under the deck's core

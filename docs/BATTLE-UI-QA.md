@@ -585,9 +585,9 @@ more than the map while a notice shows. The fallback weights there are:
 - the readout rows and the range tag: 5;
 - a panel or a control: 10.
 
-The alert may also lie over the map at the map's width, 58 px tall at most, in
-the `alert-narrow` form. That happens where the map leaves room under the
-notices' first row. At 320x568 with both notices up at full bloom, the
+The alert could also lie over the map at the map's width, 58 px tall at most, in
+the `alert-narrow` form (retired by the centre line below). That happened where
+the map left room under the notices' first row. At 320x568 with both notices up at full bloom, the
 detection now takes the free band over the map, and the alert lies over the
 map. Before, the alert covered "0 APFSDS" and the "×" of the zoom plate. A
 short landscape's map sits beside the score, over the notices' first row, so
@@ -600,6 +600,24 @@ measures every notice against the controls, their labels, the panels, the map
 and the score. The uncleared windows are 320x568 in
 every scene, the pre-battle countdown at 360x640, 375x667 and 768x1024, the
 568 px landscapes, and the scope at 640x360 and 667x375.
+
+### Centre line (hotfix 240h)
+
+Owner on live 240, 2026-10-22: "notifiations in 240 still arent fixed /
+centered, for example spotting or broken equipment stuff, they are nnot actually
+centered in screen". The planners chose an x for each notice. At 1280 x 720 the
+mouse flank set the detection 135 px left of the centre and the alert 114 px
+right; at 844 x 390 touch put the detection 172 px right.
+
+Every centre notice now sits on the window's centre line
+(`src/ui/noticeCentreLine.ts`): the detection, the alert, the countdown and its
+rules, the revive count and the medal card. The planners move a notice up or
+down, shrink it or hold it back, never sideways. They write tops, widths and
+scales only, and one rule at the end of `battleHudLayout.css` centres them all
+(a part moved in the HUD editor keeps its own place). An alert raised before the
+roll-out takes its own place off the countdown (`countdownAlert`). Where no
+centred place clears the reticle and the instruments, the notices clear the
+resting sight and reach least far into the instruments.
 
 ### Scope skeleton and polish (r10f, r10g)
 

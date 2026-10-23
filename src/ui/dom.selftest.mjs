@@ -17,12 +17,14 @@ globalThis.document = {
   },
 };
 
-const { createElement, ensureStyle } = await import('./dom.ts');
+const { createElement } = await import('./dom.ts');
+const { ensureStyle } = await import('./styleLayers.ts');
 
-const style = ensureStyle('test-style', '.test{}');
+// Style injection lives in styleLayers.ts (brand-ui SPEC §5: one helper, a cascade layer per sheet).
+const style = ensureStyle('test-style', '.test{}', 'components');
 assert.equal(style.id, 'test-style');
-assert.equal(style.textContent, '.test{}');
-assert.equal(ensureStyle('test-style', '.replacement{}'), style);
+assert.equal(style.textContent, '@layer reset,tokens,base,components,surfaces,utilities,overrides;@layer components{.test{}}');
+assert.equal(ensureStyle('test-style', '.replacement{}', 'surfaces'), style);
 assert.equal(appendedStyles.length, 1, 'style injection is idempotent by id');
 
 const parent = document.createElement('section');

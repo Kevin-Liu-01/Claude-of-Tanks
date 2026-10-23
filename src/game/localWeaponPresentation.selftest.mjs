@@ -39,6 +39,10 @@ const audioBindings = {
   // The route log's range and level fields.
   listenerValid: true,
   distanceTo: () => 120,
+  // The caption stream (BUI-F9): a remote cannon heard close by is captioned with its direction.
+  playerId: 'player',
+  sameTeam: (a, b) => a === b,
+  caption: (id) => calls.push(['caption', id]),
   distanceAttenuationDb: () => -20,
   dbToGain: (db) => 10 ** (db / 20),
 };
@@ -55,6 +59,7 @@ confirmAudio({ ...shot, shellId: 11 });
 confirmAudio({ ...shot, shellId: 12, isPlayer: false, shooterId: 'enemy' });
 assert.equal(calls.filter(([kind]) => kind === 'report').length, 3, 'ordinary own and remote reports survive');
 assert.equal(calls.filter(([kind]) => kind === 'whizz').length, 1, 'only remote confirmed shot schedules a whizz');
+assert.deepEqual(calls.filter(([kind]) => kind === 'caption'), [['caption', 'gunfire']], 'and only it is captioned (our own shots are not)');
 const reportCount = calls.length;
 for (const change of [{ ctx: null }, { phase: 'garage' }, { battleOver: true }, { listenerOwnerId: null }]) {
   const denied = await receiver('../audio/audioEngine.ts', namedFunction('onPredictedWeapon'), { ...audioBindings, ...change });

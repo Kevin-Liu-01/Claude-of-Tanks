@@ -29,9 +29,39 @@ const cases = [
   // the HUD's out-of-ammo marks among its furniture (r10, tools/fixtures/hud-sight-furniture.json): a mid ring's marks
   // reach the consumables at 800 x 400, and at 1280 x 431 the controls row sends the gun-limit chip over the sight
   ...[[800,400],[1280,431]].map(([w,h])=>[`mouse-${w}x${h}`,w,h,false,'en-US',{lite:true}]),
+  // BUI-F8 pseudo-locale: English about 40 % longer and accented (src/ui/i18nPseudo.ts, dev server ?pseudo=1). These
+  // and the Chinese cases also fail on clipped text (copy cut by its own box or a clipping ancestor).
+  ['pseudo-desktop',1920,1080,false,'en-US',{pseudo:true}],['pseudo-laptop',1366,768,false,'en-US',{pseudo:true}],
+  ['pseudo-phone',390,844,true,'en-US',{pseudo:true}],['pseudo-landscape',844,390,true,'en-US',{pseudo:true}],
 ];
 const states = ['idle','feed-burst','notifications','countdown','reports','log','chat','combined','spectator','settings','sniper','large-map','ammo-expanded','special','mode-standard','mode-capture_the_flag','mode-zone_control','mode-turbo_ball','mode-endless_horde','mode-frontline_assault','mode-mars','ended'];
 const reports=[];const errors=[];
+// Clipped copy (pseudo and Chinese cases): a text element whose own content overflows a box that hides overflow, or
+// whose text ends outside the nearest ancestor that clips. Only catalog copy counts — pseudo text (accented Latin-1 or
+// its middle-dot padding) or CJK — so names a design ellipsizes on purpose (players, vehicles) stay out of it. Kept out
+// of measure(), whose success path reads no styles.
+function clippedText(){
+  const localized=/[åçðéïñöþüýÅÇÐÉÏÑÖÞÜÝ·]|[\u3400-\u9fff]/;
+  const roots=[...document.querySelectorAll('.cot-hud,.cot-settings,.cot-es,.cot-end,.cot-touch,.cot-dp,.cot-minimap,.cot-si-toasthost,.cot-si-cardhost,.cot-kill-lane')];
+  const seen=new Set();const found=[];
+  const clips=(style)=>/(hidden|clip)/.test(style.overflowX+' '+style.overflow)||style.textOverflow==='ellipsis';
+  for(const root of roots)for(const el of root.querySelectorAll('*')){
+    if(seen.has(el))continue;seen.add(el);
+    const own=[...el.childNodes].filter(node=>node.nodeType===3&&node.nodeValue.trim()).map(node=>node.nodeValue.trim()).join(' ');
+    if(!own||!localized.test(own)||!el.checkVisibility({checkOpacity:true,checkVisibilityCSS:true}))continue;
+    const style=getComputedStyle(el);
+    if(clips(style)&&el.scrollWidth>el.clientWidth+1){found.push(`clipped text: ${el.className||el.tagName} "${own.slice(0,48)}"`);continue;}
+    const range=document.createRange();range.selectNodeContents(el);const r=range.getBoundingClientRect();
+    if(r.width<1)continue;
+    for(let at=el.parentElement;at&&at!==document.body;at=at.parentElement){
+      if(!/(hidden|clip)/.test(getComputedStyle(at).overflowX))continue;
+      const box=at.getBoundingClientRect();
+      if(r.right>box.right+1||r.left<box.left-1){found.push(`clipped text: ${el.className||el.tagName} "${own.slice(0,48)}" cut by ${at.className||at.tagName}`);}
+      break;
+    }
+  }
+  return found;
+}
 // MOUSE CENTRE NOTICES (desk-notices, 2026-10-16: "Keep desktop centre notices off the crosshair"). On every mouse case
 // the detection, the alert (all 27 kinds; the four longest in every context), the countdown, the medal card and the
 // revive count are staged with 0 and 3 kill rows, in a kill burst, with 14 v 14 rosters, without an objective and in
@@ -347,10 +377,11 @@ function measure(state){
       timing:animation.effect?.getComputedTiming(),
     })),
   })):undefined;
-  return {failures,rects,body:document.body.dataset,ammoTransitions};
+  return {failures,rects,body:document.body.dataset,seat:document.body.dataset.objectiveSeat||'',ammoTransitions};
 }
 try {
   for (const [name,width,height,touch,locale='en-US',options={}] of cases) {
+    const pseudo=!!options.pseudo;
     if(arg('case','')&&!arg('case','').split(',').includes(name))continue;
     if(recordMain&&touch)continue;
     const context = await browser.newContext({viewport:{width,height},hasTouch:touch,isMobile:touch,
@@ -361,7 +392,7 @@ try {
       window.setTimeout=function(fn,ms,...rest){if(window.__stretchTimers&&[2400,3400,5200,6200].includes(ms))ms*=50;return later.call(this,fn,ms,...rest);};});
     const page=await context.newPage();
     page.on('pageerror',error=>errors.push(`${name}: ${error.message}`));
-    await page.goto(`${arg('url','http://127.0.0.1:5189')}/tools/fixtures/battle-hud-layout.html?locale=${locale}`,{waitUntil:'networkidle'});
+    await page.goto(`${arg('url','http://127.0.0.1:5189')}/tools/fixtures/battle-hud-layout.html?locale=${locale}${pseudo?'&pseudo=1':''}`,{waitUntil:'networkidle'});
     await page.waitForFunction(()=>!!window.__HUD_LAYOUT);
     // Exercise the real DOMTokenList/MutationObserver path. Removing a class
     // which is already absent still produces mutation records in browsers.
@@ -496,11 +527,19 @@ try {
     if(!touch&&(recordMain||options.lite||noticesOnly)){await centreNotices();await context.close();continue;}
     async function check(state){
       const result=await page.evaluate(measure,state);
+      if(pseudo||locale!=='en-US')result.failures.push(...await page.evaluate(clippedText));
       const score=result.rects.find(r=>r.name==='cot-top');
       const objective=result.rects.find(r=>r.name==='cot-mode-status show');
-      if(score&&objective&&(objective.x<=score.x+25 || objective.right>=score.right-25))
-        result.failures.push('objective must fit inside the scoreboard bottom edge');
-      if(score&&objective&&Math.abs(objective.y-score.bottom)>.5) result.failures.push('objective must touch the scoreboard');
+      // a short landscape's side seat (battleHudLayout.ts OBJECTIVE_COMPACT_H): the compact objective in the map's column
+      const map=result.rects.find(r=>r.name.split(' ').includes('cot-minimap'));
+      if(objective&&result.seat==='side'){
+        if(!map||Math.abs(objective.x-map.x)>.5||Math.abs(objective.y-map.bottom-4)>.5)
+          result.failures.push('the side-seated objective must sit 4px under the map, in its column');
+      }else{
+        if(score&&objective&&(objective.x<=score.x+25 || objective.right>=score.right-25))
+          result.failures.push('objective must fit inside the scoreboard bottom edge');
+        if(score&&objective&&Math.abs(objective.y-score.bottom)>.5) result.failures.push('objective must touch the scoreboard');
+      }
       const compactNotices=await page.locator('.cot-si-toast').evaluateAll(nodes=>nodes.filter(node=>node.checkVisibility({checkVisibilityCSS:true})).map(node=>({
         height:node.getBoundingClientRect().height,secondary:!!node.querySelector('.l2'),
       })));
@@ -549,7 +588,11 @@ try {
       if(state.startsWith('mode-')) {
         if(await page.locator('.cot-mode-status button').count())result.failures.push('objective must not contain a Brief button');
         const detected=result.rects.find(r=>r.name==='cot-sixth on');
-        if(!detected||(state==='mode-standard'?!!objective:!objective||detected.y<objective.bottom+7))result.failures.push('detection must clear the objective by at least 7px');
+        // (a short landscape's side seat stands the objective under the map, and the detection takes the band under the
+        // score beside it: there it keeps the notice planner's 6 px from the seat, TOUCH_NOTICE_GAP)
+        const apart=(a,b)=>Math.max(a.x-b.right,b.x-a.right,a.y-b.bottom,b.y-a.bottom);
+        if(!detected||(state==='mode-standard'?!!objective:!objective||(result.seat==='side'?apart(detected,objective)<6:detected.y<objective.bottom+7)))
+          result.failures.push(result.seat==='side'?'detection must keep 6px from the side-seated objective':'detection must clear the objective by at least 7px');
       }
       if(state.startsWith('notifications')) {
         const hexagons=await page.locator('.cot-sixth.on,.cot-alert.show').evaluateAll(nodes=>nodes.map(node=>getComputedStyle(node).clipPath));
@@ -569,7 +612,7 @@ try {
       }
       if(state==='notifications'||state==='combined'||state==='spectator'||state==='feed-burst'||result.failures.length)
         await page.screenshot({path:resolve(out,`${name}-${state}.png`)});
-      reports.push({name,...page.viewportSize(),touch,locale,state,...result});
+      reports.push({name,...page.viewportSize(),touch,locale,pseudo,state,...result});
       if(result.failures.length)console.log(`${name}/${state}: ${result.failures.join('; ')}`);
     }
     for(const state of states){
@@ -611,19 +654,38 @@ try {
         }
       }
       if(state==='idle'){
-        // The full Gravity + ATGM kit must remain usable after moving to a side lane.
-        const buttons=page.locator('.cot-vehicle-controls > button:visible');
-        if(await buttons.count()!==5)errors.push(`${name}: expected all five vehicle controls`);
+        // The full Gravity + ATGM kit must remain usable after moving to a side lane. On touch the row is whole 44 px tiles
+        // that never scroll, and a row that cannot hold them all pages through the rest behind its More tile (UI-06).
         await page.evaluate(()=>{
           window.__controlEvents=[];
           for(const event of ['ui:specialAction','ui:selfRight','ui:smoke','ui:lightsToggle','ui:roofGun'])
             window.__HUD_LAYOUT.bus.on(event,()=>window.__controlEvents.push(event));
         });
-        for(const button of await buttons.all()){
-          const box=await button.boundingBox();
-          if(box.width<44||box.height<(touch?44:32))errors.push(`${name}: vehicle control below touch target minimum`);
-          await button.click();
+        const pageCount=await page.evaluate(()=>Number(document.querySelector('.cot-vehicle-controls').dataset.pages)||1);
+        let pressed=0;
+        for(let index=0;index<pageCount;index++){
+          // (the page's tiles taken once: a relayout a press sets off must not shift a re-queried nth tile)
+          const buttons=await page.locator('.cot-vehicle-controls > button:visible').elementHandles();
+          for(const button of buttons){
+            const box=await button.boundingBox();
+            if(!box)continue;
+            if(box.width<44||box.height<(touch?44:32))errors.push(`${name}: vehicle control below touch target minimum`);
+            if(touch&&(box.x<-.5||box.x+box.width>width+.5))errors.push(`${name}: vehicle control off the screen`);
+            if(await button.evaluate(node=>node.classList.contains('cot-systems-more')))continue;
+            await button.click();
+            pressed++;
+          }
+          if(touch&&await page.evaluate(()=>{const row=document.querySelector('.cot-vehicle-controls');return row.scrollWidth>row.clientWidth+1;}))
+            errors.push(`${name}: the touch row scrolls`);
+          if(index<pageCount-1){
+            // (More sets the row's page at once; the layout hides the old page's tiles on its next frame)
+            await page.locator('.cot-systems-more').click();
+            await page.waitForFunction(i=>document.querySelector('.cot-vehicle-controls').dataset.page===String(i),index+1);
+            await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+          }
         }
+        if(pageCount>1)await page.locator('.cot-systems-more').click();
+        if(pressed!==5)errors.push(`${name}: expected all five vehicle controls (${pressed} reached)`);
         const events=await page.evaluate(()=>window.__controlEvents);
         // Mars is a jump mode: the jump leads the row (vehicleControlOrder.ts), then the loadout in its own order.
         if(events.join(',')!=='ui:selfRight,ui:specialAction,ui:smoke,ui:lightsToggle,ui:roofGun')

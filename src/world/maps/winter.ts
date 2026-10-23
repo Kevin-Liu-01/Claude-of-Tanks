@@ -34,6 +34,7 @@
 // sawmill shed and its board store, the woodsheds, the burnt houses; the strongpoints' sauna hut is a bacówka. The
 // yards are plank-fenced with their woodsheds. Every building stands where it stood.
 
+import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { gully, talusFan } from './geology.ts';
 import { createMarshChannel } from './marshChannel.ts';
 
@@ -75,8 +76,8 @@ export default {
     // its road's height and grade, with a bank that makes no wall (maps lane A's apron bank law). With the terrace
     // hay meadow behind the sawmill they put the three zones across the valley's waist at equal drives.
     hardstands: [
-      { x: 95, z: -5, width: 56, length: 56, yawDeg: 107, grade: 'road', bankM: 18 },
-      { x: 190, z: -40, width: 56, length: 56, yawDeg: 95, grade: 'road', bankM: 18 },
+      { x: 95, z: -5, width: 56, length: 56, yawDeg: 107, grade: 'road', bankM: 18, paint: WORN_YARD_PAINT },
+      { x: 190, z: -40, width: 56, length: 56, yawDeg: 95, grade: 'road', bankM: 18, paint: WORN_YARD_PAINT },
     ],
     roads: { paths: [
       // 0 — the valley road on the west terrace (the utility line, the
@@ -429,7 +430,10 @@ export default {
   // 1.13 : 1 under a cell): a broken stratocumulus passes part of the beam through its thinner cells (cloudscapes.ts deckBeam)
   // 2026-10-15 (the SKY lane; the owner's 10-13 ruling enforced on every map: no broken stratocumulus): the flat overcast
   // closed (0.86 left breaks: the banned deck), its relief from the deck tune's cells, lumps and rolls under the sheet
-  clouds: { regime: 'stratocumulus-deck', coverage: 0.92, nightGlow: 0.3, nightGlowHex: 0xffc080, deckBeam: 0.4 },
+  // 2026-10-22 (world-polish-240; the coordinator: Frosthollow's flat grey overcast deck is not the owner's bar —
+  // fair-weather cumulus like Verdant): a cold clear winter day — cumulus in rows off the ridges at 1200 m, a little
+  // flatter than summer's, a cold white with blue-grey bases; the village's glow on them at night kept
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.5, baseM: 1200, thicknessM: 760, tintHex: 0xf4f7fa, streets: 0.35, nightGlow: 0.3, nightGlowHex: 0xffc080 },
   sky: {
     // FLAT OVERCAST: higher-but-weak sun (no warm horizon glow), heavy grey
     // cloud deck, raised ambient/env fill so light reads diffuse

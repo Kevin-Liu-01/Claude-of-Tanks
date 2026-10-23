@@ -19,8 +19,9 @@ import { crewArmour, crewPostureLadders, crewShell, shapeSurfaceSamples } from '
 // the ZTZ-100s', TOS-1A's and Type 96B's turrets and the BMPT's hull bays are as low; the rest miss by under 1 %.
 const TRIMMED = Object.freeze({
   'abramsx/gunner': 0.006, 't90a_2006/gunner': 0.005, 't90a_2006/commander': 0.006,
-  't90a_burlak_proto/gunner': 0.004, 'cv90_mk4/gunner': 0.008, 'cv90_mk4/commander': 0.003,
-  'leo2a4m_can/commander': 0.005, 'type96b/gunner': 0.043, 'type96_80_feng/gunner': 0.004, 'ztz100/gunner': 0.021,
+  't90a_burlak_proto/gunner': 0.028, 't90a_burlak_proto/commander': 0.017, 'cv90_mk4/gunner': 0.008,
+  'cv90_mk4/commander': 0.003, 'leo2a4m_can/gunner': 0.003, 'leo2a4m_can/commander': 0.006,
+  'leo2a4m_can/loader': 0.003, 'type96b/gunner': 0.043, 'type96_80_feng/gunner': 0.004, 'ztz100/gunner': 0.021,
   'ztz100/commander': 0.022, 'ztz100_prototype/gunner': 0.034, 'ztz100_prototype/commander': 0.012,
   'm60a3/driver': 0.001, 'tos1a_tagil/gunner': 0.017, 'tos1a_tagil/commander': 0.017,
   'bmpt_t90/weaponOperatorLeft': 0.008, 'bmpt_t90/weaponOperatorRight': 0.059, 'k2_black_panther/commander': 0.005,

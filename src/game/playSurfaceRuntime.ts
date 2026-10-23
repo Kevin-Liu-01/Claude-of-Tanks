@@ -45,6 +45,8 @@ interface PlaySurfaceRuntimeOptions {
 
 export interface PlaySurfaceRuntime {
   preload(mode?: PlayMode): void;
+  /** Build the play menu hidden, ahead of a click (the Garage's quiet idle after the entry gate). */
+  prepareMenu(): void;
   open(request?: PlaySurfaceRequest): Promise<void>;
   hideForBattle(): void;
   showCurrentRoom(): Promise<boolean>;
@@ -149,6 +151,10 @@ export function createPlaySurfaceRuntime({
 
   return {
     preload,
+
+    prepareMenu() {
+      observe(ensureMenu, 'play menu prepare failed', reportError);
+    },
 
     async open(request = {}) {
       // A room the menu holds or the battle composition attached to it shows itself instead of the picker.

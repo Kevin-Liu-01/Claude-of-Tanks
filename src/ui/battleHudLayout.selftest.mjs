@@ -343,40 +343,42 @@ try {
           '.cot-drive':node([],rect(184,648,108,108)),'.cot-vehicle-controls':node([],rect(491,648,382,32)),'.cot-shells':node([],rect(467,688,433,64)),
           '.cot-si-cardhost':node([],rect(1050,260,300,260)),'.cot-net':node([],rect(1229,8,127,28)),'.cot-minimap':node([],rect(1130,532,220,220))};}});
       run.settle();return run;};
-    const placed=h=>['revive-x','revive-top','revive-scale','notice-x','notice-top','alert-x','alert-top'].map(k=>h.properties.get(`--hud-${k}`)).join(' ');
+    const placed=h=>['revive-top','revive-scale','notice-top','alert-top','alert-width'].map(k=>h.properties.get(`--hud-${k}`)).join(' ');
     const tab=(h,on)=>{if(on)h.root.classList.add('rosters-expanded');else h.root.classList.remove('rosters-expanded');
       h.mutate([{type:'attributes',target:h.root,attributeName:'class'}]);};
     const rest=tabRun(false),still=placed(rest);
-    // the plan's resting rosters are the real resting ones: the left lane (from 250 px: the resting roster's 52 + 190, and
-    // 8) gives way to the revive count from 292 px; the held height in the plan (52 + 232) would leave the count no band
-    // and start the rows at 250, under it
-    assert.equal(rest.properties.get('--hud-kill-left-top'),'292px','the left kill rows give way to the revive count at rest');
+    // the plan's resting rosters are the real resting ones: the left lane never starts under the held height (52 + 232
+    // + 8; the revive count on the centre line crosses neither lane), and starts under the resting roster after a release
+    assert.notEqual(rest.properties.get('--hud-kill-left-top'),`${52+232+8}px`,'the left kill rows never start under the held roster at rest');
     tab(rest,true);rest.flush();assert.equal(placed(rest),still,'pressing Tab moves no notice (its first relayout)');
     rest.settle();assert.equal(placed(rest),still,'nor once the held rosters have resized');
     tab(rest,false);rest.flush();assert.equal(placed(rest),still,'releasing Tab moves no notice (its first relayout still measures the held height)');
     rest.settle();assert.equal(placed(rest),still,'nor once the rosters are back at rest');
-    assert.equal(rest.properties.get('--hud-kill-left-top'),'292px','and the left kill rows give way to it again after the release');
+    assert.equal(rest.properties.get('--hud-kill-left-top'),`${52+parseFloat(rest.properties.get('--hud-roster-left-height'))+8}px`,
+      'and the left kill rows start under the resting roster after the release');
     const held=tabRun(true);
     assert.equal(held.root.classList.contains('rosters-expanded'),true,'the class is back on after the resting read');
     assert.equal(placed(held),still,'the plan made while Tab is held from the first pass is the resting one');
     tab(held,false);held.flush();assert.equal(placed(held),still,'and releasing it moves nothing');
-    // Planned places round away from the centre line (writeMousePlan): 1366 x 768's flank puts the detection's centre at
-    // 548.5, its right edge on the scope arm's 4 px margin (672.5); the nearest px (549) would sit 0.5 px inside it.
+    // Every planned element keeps to the centre line (noticeCentreLine.ts): 1366 x 768, whose flank set the detection
+    // left of the scope's arm, writes tops and widths only, never an x or an anchor shift.
     {
       const run=harness({extra:node=>({'.cot-mode-status.show':node([],rect(544,62,278,41)),'.cot-dp':node([],rect(12,573,160,183)),
         '.cot-drive':node([],rect(184,648,108,108)),'.cot-vehicle-controls':node([],rect(491,648,382,32)),'.cot-shells':node([],rect(467,688,433,64)),
         '.cot-si-cardhost':node([],rect(1050,260,300,260)),'.cot-net':node([],rect(1229,8,127,28)),'.cot-minimap':node([],rect(1130,532,220,220))})});
-      assert.equal(run.properties.get('--hud-alert-shift'),'0%','1366 x 768 flanks the arm (the detection left of it)');
-      assert.equal(run.properties.get('--hud-notice-x'),'548px','the detection\'s centre 548.5 rounds away from the centre line');
+      for(const name of ['notice-x','alert-x','alert-shift','banner-x','revive-x','countdown-x'])
+        assert.equal(run.properties.has(`--hud-${name}`),false,`1366 x 768 writes no --hud-${name}`);
+      assert.ok(run.properties.has('--hud-notice-top')&&run.properties.has('--hud-alert-top'),'and writes the notices\' tops');
     }
-    // A queued card placed clear of the battle sight only (a cramped 800 x 380 window: tier 0) waits while the scope is up:
-    // the scope flag on the document element relayouts then, and only then (above: no such card, no relayout).
+    // A queued card placed clear of the battle sight only (a cramped 1000 x 551 window, the census's: on the centre line
+    // tier 1) waits while the scope is up: the scope flag on the document element relayouts then, and only then (above:
+    // no such card, no relayout).
     {
       let banner;
-      const run=harness({width:800,height:380,extra:node=>({'.cot-medal-toasts':(banner=node(),banner.childElementCount=1,banner),
-        '.cot-mode-status.show':node([],rect(261,62,278,41)),'.cot-dp':node([],rect(12,185,160,183)),'.cot-drive':node([],rect(184,260,108,108)),
-        '.cot-vehicle-controls':node([],rect(208,260,382,32)),'.cot-shells':node([],rect(184,300,433,64)),'.cot-si-cardhost':node([],rect(480,110,300,150)),
-        '.cot-net':node([],rect(663,8,127,28)),'.cot-minimap':node([],rect(564,144,220,220))})});
+      const run=harness({width:1000,height:551,extra:node=>({'.cot-medal-toasts':(banner=node(),banner.childElementCount=1,banner),
+        '.cot-mode-status.show':node([],rect(370,62,260,41)),'.cot-dp':node([],rect(12,356,160,183)),'.cot-drive':node([],rect(184,431,108,108)),
+        '.cot-vehicle-controls':node([],rect(308,431,382,32)),'.cot-shells':node([],rect(284,471,433,64)),'.cot-si-cardhost':node([],rect(684,196,300,151)),
+        '.cot-net':node([],rect(863,8,127,28)),'.cot-minimap':node([],rect(808,359,176,176))})});
       assert.match(run.body.dataset.hudNoticeTiers,/ m[01]/,'the card here clears less than the whole reticle');
       assert.equal(banner.dataset.placement,'ready','and shows with the scope down');
       const scope=on=>{run.html.toggleAttribute('data-cot-scoped',on);run.mutate([{type:'attributes',target:run.html,attributeName:'data-cot-scoped'}]);};
@@ -390,8 +392,8 @@ try {
     }
     // The layout marks a wait on the feed ('f') only where the card's place cuts the lane that shows a row: at 390 x 844
     // (the phone's census boxes, the bottom filled by a stretched ammunition rail so that, as on the census, every place
-    // for the card cuts the right lane) a right-lane kill row holds the card, marked, and a left-lane row alone neither
-    // holds nor marks it (the receipt's medalWaitCause trusts this mark).
+    // for the card cuts a lane; on the centre line it cuts both) a kill row in either lane holds the card, marked, and an
+    // empty feed neither holds nor marks it (the receipt's medalWaitCause trusts this mark).
     {
       const feed=(left,right,detected=false)=>{
         let banner;const lane=n=>({childElementCount:n,children:Array.from({length:n},()=>({hidden:false})),classList:{contains:()=>false}});
@@ -406,15 +408,15 @@ try {
       const [right,rightPlace]=feed(0,3),[left,leftPlace]=feed(3,0),[none,nonePlace]=feed(0,0);
       assert.match(right,/^m\d\w*wf$/,`a right-lane kill row holds the card, marked as the feed's (${right})`);
       assert.equal(rightPlace,'deferred');
-      assert.ok(!/w/.test(left)&&leftPlace==='ready',`a left-lane row alone neither holds nor marks it (${left}, ${leftPlace})`);
-      assert.ok(!/w/.test(none)&&nonePlace==='ready','nor does an empty feed');
-      // with the detection lit while only the lane it leaves whole shows rows: it waits exactly where its written place meets
-      // the detection's, never marked as the feed's (before the HUD's out-of-ammo marks moved the scope-vision toggle beside
-      // the sight its place here was the detection's; it now has one of its own above it, so it shows)
-      const [lit,litPlace,props,size]=feed(3,0,true);
+      assert.match(left,/^m\d\w*wf$/,`a left-lane kill row holds the centred card too, marked as the feed's (${left})`);
+      assert.equal(leftPlace,'deferred');
+      assert.ok(!/w/.test(none)&&nonePlace==='ready','an empty feed neither holds nor marks it');
+      // with the detection lit and no kill row: it waits exactly where its written place meets the detection's, never
+      // marked as the feed's
+      const [lit,litPlace,props,size]=feed(0,0,true);
       const px=v=>parseFloat(props.get(v)),dw=px('--hud-center-notice-width'),cw=size==='compact'?250:Math.min(380,390-32);
-      const det={x:px('--hud-notice-x')-dw/2,y:px('--hud-notice-top'),w:dw,h:detectionHeight(dw,false)};
-      const card={x:px('--hud-banner-x')-cw/2,y:px('--hud-banner-top'),w:cw,h:size==='compact'?40:76},g=MOUSE_NOTICE_GAP_PX;
+      const det={x:390/2-dw/2,y:px('--hud-notice-top'),w:dw,h:detectionHeight(dw,false)};
+      const card={x:390/2-cw/2,y:px('--hud-banner-top'),w:cw,h:size==='compact'?40:76},g=MOUSE_NOTICE_GAP_PX;
       const meets=card.x<det.x+det.w+g&&card.x+card.w>det.x-g&&card.y<det.y+det.h+g&&card.y+card.h>det.y-g;
       assert.ok(!/f$/.test(lit)&&(litPlace==='deferred')===meets&&/w$/.test(lit)===meets,
         `the lit detection holds the card exactly where their places meet, never marked as the feed's (${lit}, ${litPlace}, meets ${meets})`);
@@ -429,8 +431,8 @@ try {
         extra:node=>{banner=node();banner.childElementCount=1;return {'.cot-medal-toasts':banner};}});
       const P=k=>run.properties.get(`--hud-${k}`);
       const compact=banner.dataset.size==='compact',cw=compact?Math.min(250,w-24):Math.min(380,w-32),ch=compact?40:(w>640?85:76);
-      const card={x:px(P('banner-x'))-cw/2,y:px(P('banner-top')),w:cw,h:ch};
-      const s=Number(P('revive-scale')),count={x:px(P('revive-x'))-revive.offsetWidth*s/2,y:px(P('revive-top')),w:revive.offsetWidth*s,h:revive.offsetHeight*s};
+      const card={x:w/2-cw/2,y:px(P('banner-top')),w:cw,h:ch};
+      const s=Number(P('revive-scale')),count={x:w/2-revive.offsetWidth*s/2,y:px(P('revive-top')),w:revive.offsetWidth*s,h:revive.offsetHeight*s};
       const meet=card.x<count.x+count.w+8&&card.x+card.w>count.x-8&&card.y<count.y+count.h+8&&card.y+card.h>count.y-8;
       if(meet)met++;else apart++;
       assert.equal(banner.dataset.placement,meet?'deferred':'ready',`${w}x${h}: the medal card ${meet?'waits on':'shows beside'} the revive count`);

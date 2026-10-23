@@ -151,6 +151,10 @@ interface AbramsHullConfig {
   readonly periH?: number;
   readonly periHump?: number;
   readonly periHumpH?: number;
+  /** No hull driver: the driver's periscopes are left off the glacis crest (the MBT-70's driver rides in the turret). */
+  readonly noDriverPeriscopes?: boolean;
+  /** No V splash board on the glacis (the MBT-70 carries its glacis armour array there). */
+  readonly noGlacisBoard?: boolean;
   readonly deckInset?: number;
   readonly trackXc: number;
   readonly trackW: number;
@@ -271,6 +275,12 @@ interface BareHullOptions {
   readonly returnRollerZs?: readonly number[];
   readonly returnTrackTopY?: number;
   readonly returnRollerR?: number;
+  /** The drive sprocket's axle height, in place of the donor's raised M1 station. */
+  readonly sprocketY?: number;
+  /** The deck profile, in place of the donor M1's (its driver's periscope shelf and splash band). */
+  readonly deck?: readonly Vec2Tuple[];
+  readonly noDriverPeriscopes?: boolean;
+  readonly noGlacisBoard?: boolean;
 }
 
 interface BrowningOptions {
@@ -1567,7 +1577,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
   const boardY = deckAt(g, boardZ);
   const abramsHullHullStage7 = (): void => {
     for (const side of [-1, 1]) {
-      P.add('hullDetail', box(0.8 * s, 0.03, 0.06), side * 0.38 * s, boardY + 0.002, boardZ, -0.18, side * 0.38, 0);
+      if (!g.noGlacisBoard) P.add('hullDetail', box(0.8 * s, 0.03, 0.06), side * 0.38 * s, boardY + 0.002, boardZ, -0.18, side * 0.38, 0);
       P.add('hullDetail', cylY(0.085 * s, 0.085 * s, 0.03, 12), side * 1.1 * s, deckAt(g, glacisTopZ - 0.5) + 0.015, glacisTopZ - 0.5);
       P.add('hullDetail', box(0.2 * s, 0.1 * s, 0.12), side * bowLightX, noseTipY - 0.14, bowLightZ - 0.3);
       headlight(P, side * bowLightX, noseTipY - 0.12, bowLightZ - 0.21, -0.12, 0.045 * s, !g.authoredBowLights);
@@ -1608,7 +1618,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
     if (g.periHump) {
       P.add('hull', frustum(0.4 * s, humpZ + 0.24 * s, humpZ - 0.2 * s, 0.32 * s, humpZ + 0.14 * s, humpZ - 0.16 * s, humpY - 0.02, humpY + (g.periHumpH ?? 0.07)), humpX, 0, 0);
     }
-    for (const px of [-0.2, 0, 0.2]) {
+    if (!g.noDriverPeriscopes) for (const px of [-0.2, 0, 0.2]) {
       periscope(P, 'hullDetail', humpX + px * s, humpY + (g.periHump ? (g.periHumpH ?? 0.07) : 0.008), humpZ + 0.04 * s);
     }
     // g.noCable (visual r2, tejas): the dark tube arcing across the glacis read
@@ -2301,11 +2311,15 @@ const TEJAS_TURRET = {
 // second approximate Abrams hull, while deliberately omitting the deep skirt
 // wall so its wheels and track return remain exposed.
 export function buildM1A1BareHull(builder: RuntimeValue, {
-  returnRollerZs, returnTrackTopY, returnRollerR,
+  returnRollerZs, returnTrackTopY, returnRollerR, sprocketY, deck, noDriverPeriscopes, noGlacisBoard,
 }: BareHullOptions = {}): void {
   const P = requireAbramsBuilder(builder);
   abramsHull(P, {
     ...TEJAS_HULL,
+    ...(sprocketY === undefined ? {} : { sprocketY }),
+    ...(deck === undefined ? {} : { deck }),
+    ...(noDriverPeriscopes ? { noDriverPeriscopes } : {}),
+    ...(noGlacisBoard ? { noGlacisBoard } : {}),
     hollowRoadWheels: false, // the MBT-70 draws its nation wheel (Germany: the Leopard 2A6 X paired dish, owner 2026-09-22) into the envelope of this solid stock
     // This donor omits the exposed Tejas pod stage. The MBT-70 assembled
     // hull requires 150 mm travel; its lens then clears the bow by 7.7 mm.
@@ -4743,25 +4757,21 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
             pts: [[1.564, 1.20, -3.945], [1.60, 1.10, -3.965], [1.57, 1.00, -3.985], [1.52, 0.955, -3.99]] });
           P.hullG.add(tipCable);
         }
-        // Belly-armor lip at the lower-plate toe (TUSK belly kit).  Its upper
-        // face now meets the belly pan exactly at the pan's forward edge instead
-        // of floating 73 mm below it.  Keep the authored rake: flattening the lip
-        // would erase the lower-bow break, while lifting it blindly would drive
-        // the forward end into the glacis.  Solving the rotated upper face at the
-        // actual belly/core endpoint produces a clean line contact with no
-        // coplanar overlap and keeps the complete part in the canonical hull rig.
+        // Belly-armor lip at the lower-plate toe (TUSK belly kit).
+        // 2026-10-22 (owner float calls): the lip's "contact" was solved at g.belly 0.25 m up the nose rake, where the
+        // hull's underside already stands 40 mm higher (the rake leaves the belly at noseRake[0], not at g.belly), so
+        // the whole plate hung 36 mm under the bow and its bar 116 mm. The plate now lies on the lower bow's first
+        // rake segment (pitched to it; its upper face IS that plane, so it meets the belly pan's forward edge
+        // noseRake[0] exactly), and the bar is bolted under its leading edge.
         const bellyLipHeight = 0.06;
         const bellyLipDepth = 0.35;
-        const bellyLipZ = 2.75;
-        const bellyLipPitch = -0.16;
-        const bellyFloorFrontZ = g.noseRake[0][0] + 0.25;
-        const lipTopLocalY = bellyLipHeight / 2;
-        const lipTopLocalZAtContact = (
-          bellyFloorFrontZ - bellyLipZ - lipTopLocalY * Math.sin(bellyLipPitch)
-        ) / Math.cos(bellyLipPitch);
-        const lipTopOffsetYAtContact = lipTopLocalY * Math.cos(bellyLipPitch)
-          - lipTopLocalZAtContact * Math.sin(bellyLipPitch);
-        const bellyLipY = g.belly - lipTopOffsetYAtContact;
+        const [bellyFloorFrontZ, bellyFloorY] = g.noseRake[0];
+        const rakeSlope = (g.noseRake[1][1] - bellyFloorY) / (g.noseRake[1][0] - bellyFloorFrontZ);
+        const bellyLipPitch = -Math.atan(rakeSlope);
+        const lipFaceZ = bellyFloorFrontZ + 0.15;                     // the upper face's centre on the rake plane
+        const lipFaceY = bellyFloorY + rakeSlope * (lipFaceZ - bellyFloorFrontZ);
+        const bellyLipY = lipFaceY - Math.cos(bellyLipPitch) * bellyLipHeight / 2;
+        const bellyLipZ = lipFaceZ - Math.sin(bellyLipPitch) * bellyLipHeight / 2;
         P.add('hull', box(1.8, bellyLipHeight, bellyLipDepth),
           0, bellyLipY, bellyLipZ, bellyLipPitch, 0, 0);
         if (P.geometryReceipt) {
@@ -4774,14 +4784,20 @@ function buildTejasFamily(P: AbramsBuilderPort, p: AbramsProfileOptions): void {
               height: bellyLipHeight,
               depth: bellyLipDepth,
               pitch: bellyLipPitch,
-              bellyFloorY: g.belly,
+              bellyFloorY,
               bellyFloorFrontZ,
-              upperFaceYAtContact: bellyLipY + lipTopOffsetYAtContact,
+              upperFaceYAtContact: lipFaceY + rakeSlope * (bellyFloorFrontZ - lipFaceZ),
             });
           };
           buildTejasFamilyHullCourse9();
         }
-        P.add('hullDetail', box(1.76, 0.024, 0.024), 0, 0.27, 2.9);
+        {
+          // the bar under the leading edge: its top on the lip's underside at the bar's rear edge
+          const barZ = bellyLipZ + Math.cos(bellyLipPitch) * bellyLipDepth / 2 - 0.03;
+          const underZ = bellyLipZ - Math.sin(bellyLipPitch) * bellyLipHeight / 2;  // a point of the underside plane
+          const underY = bellyLipY - Math.cos(bellyLipPitch) * bellyLipHeight / 2 + rakeSlope * (barZ - 0.012 - underZ);
+          P.add('hullDetail', box(1.76, 0.024, 0.024), 0, underY - 0.012, barZ);
+        }
         // ---- Urban lights: guarded IR/white driving pods on both fender wings
         // (bracket posts weld them to the fender strips) + mirrors on masts —
         // the city-traffic kit. Everything x <= 1.66, tops <= 1.56 (bow zone).

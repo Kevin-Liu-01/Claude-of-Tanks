@@ -102,9 +102,12 @@ function endSheets(P:TankBuilderPort,side:number):void {
   }
   P.addMudguard('type90-x-rear-flat-sheet','hullRubber',box(.735774,.388895,.010468),
     side*1.376871,.9092,-3.494915);
-  const rearFold=sectionSolid([[-3.668232,1.156132],[-3.50,1.156132],[-3.437043,1.336]].map(([z,bottom])=>{
-    const ring:[number,number][]=[[1.003795,bottom],[1.61867,bottom],[1.61867,1.347508],
-      [1.15616,1.347508],[1.003795,1.198285]];
+  // 2026-10-22 (owner float calls): the fold's flat 1.3475 top stood 4.6-66 mm under the shoulder's rising underside;
+  // its top now follows that underside station by station (1.3522 at -3.437 up to 1.4135 at -3.668).
+  const rearFold=sectionSolid([[-3.668232,1.156132,1.4135],[-3.50,1.156132,1.3642],[-3.437043,1.336,1.3522]]
+    .map(([z,bottom,top])=>{
+    const ring:[number,number][]=[[1.003795,bottom],[1.61867,bottom],[1.61867,top],
+      [1.15616,top],[1.003795,1.198285]];
     if(bottom>1.198285)ring[4][1]=bottom+.004;
     return{z,ring:side<0?ring.map(([x,y])=>[-x,y] as [number,number]).reverse():ring};
   }));
@@ -141,7 +144,10 @@ function frontEquipment(P:TankBuilderPort):void {
     for(const [x,y,z]of[[.819851,.93502,3.689617],[.630664,1.15166,3.571928]]) {
       const eye=new THREE.TorusGeometry(.052,.017,8,24);eye.rotateY(Math.PI/2);
       P.addEquipment('hullDetail',eye,side*x,y,z);
-      P.addEquipment('hullDetail',box(.041955,.10,.06),side*x,y-.028,z-.048);
+      // 2026-10-22 (owner float calls): the lower eye's lug stood 42 mm proud of the 3.570 nose face; it now runs back
+      // onto the face and stops at the face's .902 lower edge.
+      if(z>3.6)P.addEquipment('hullDetail',box(.041955,.055,z-.018-3.570),side*x,.9295,(z-.018+3.570)/2);
+      else P.addEquipment('hullDetail',box(.041955,.10,.06),side*x,y-.028,z-.048);
     }
   }
 }

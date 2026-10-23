@@ -19,6 +19,7 @@
 // The middle zone and the turbo-ball kickoff stand on the deployments' perpendicular bisector by the town, where the
 // houses leave a disc clear.
 
+import { TRODDEN_GREEN_PAINT } from '../hardstandSurface.ts';
 import { DEFAULT_GARAGE_SKY } from './catalog.ts';
 
 export default {
@@ -55,9 +56,9 @@ export default {
     // seats its 30 m discs on, each clear of the country roads.
     hardstands: [
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): 24 m north onto flatter ground, a 16 m bank
-      { x: -250, z: -126, width: 60, length: 60, yawDeg: 0, level: 1.0, grade: 0, bankM: 16 },
+      { x: -250, z: -126, width: 60, length: 60, yawDeg: 0, level: 1.0, grade: 0, bankM: 16, paint: TRODDEN_GREEN_PAINT },
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): 24 m south onto flatter ground, a 16 m bank
-      { x: 270, z: 166, width: 60, length: 60, yawDeg: 0, level: 1.5, grade: 0, bankM: 16 },
+      { x: 270, z: 166, width: 60, length: 60, yawDeg: 0, level: 1.5, grade: 0, bankM: 16, paint: TRODDEN_GREEN_PAINT },
     ],
     landforms: [
       // The swells: the southern one broken at the north-south road (x -25..50); the northern one is its rotation.
@@ -176,20 +177,32 @@ export default {
     // to the country road; the arch's banner lettered КОЛХОЗ «КРАСНЫЙ ОКТЯБРЬ» on both faces and a picket fence run off
     // each pillar; the memorial's plaque inscribed БОРЦАМ ЗА ВЛАСТЬ СОВЕТОВ 1918–1920. The pieces themselves age
     // (landmarks/age.ts): the render fallen from the church's brick, the grime run down from the cornices and sills.
+    // Round 3 (2026-10-07; gauntlet wave 201: "worn approach paths and trodden ground at the entrances" where the pieces
+    // stood "spotless … set onto lawn"): the trodden ground at their doors — beaten earth at the church's two porticos, the
+    // mills' doors and the water tower's, gravel at the station's town door and along the grain store's three loading
+    // doors — each the door's width and 2 m more, and a worn path on from it to the road it faces where the way is open
+    // (landmarks/types.ts approaches: paving only; no record, height, tree or prop moves).
     landmarks: [
-      { kind: 'church', x: -30, z: 96, yawDeg: -90, name: 'the village church' },
+      { kind: 'church', x: -30, z: 96, yawDeg: -90, name: 'the village church',
+        approaches: [{ side: 'right', u: -3.8, width: 1.5 }, { side: 'left', u: -3.8, width: 1.5 }] },
       { kind: 'churchyard', x: -51.4, z: 96, yawDeg: -90, name: 'the churchyard', params: { width: 25, depth: 12, graves: 12 } },
       { kind: 'path', x: -56.55, z: 81.1, yawDeg: -8.8, name: 'the path from the churchyard gate to the road', params: { length: 29.4, width: 1.6 } },
-      { kind: 'stationHall', x: 128, z: 66.2, yawDeg: -2.57, name: 'Prokhorovka station' },
-      { kind: 'waterTower', x: 97.5, z: 68, yawDeg: -5.14, params: { style: 'railway' }, name: 'the station water tower' },
-      { kind: 'granary', x: -90, z: -29, yawDeg: -3, name: 'the kolkhoz grain store' },
+      { kind: 'stationHall', x: 128, z: 66.2, yawDeg: -2.57, name: 'Prokhorovka station',
+        approaches: [{ side: 'back', width: 2.0, inset: 4.9, surface: 'gravel' }] },
+      { kind: 'waterTower', x: 97.5, z: 68, yawDeg: -5.14, params: { style: 'railway' }, name: 'the station water tower',
+        approaches: [{ side: 'front', width: 1.3, inset: 0.95 }] },
+      { kind: 'granary', x: -90, z: -29, yawDeg: -3, name: 'the kolkhoz grain store',
+        approaches: [{ side: 'front', width: 2.6, surface: 'gravel' }, { side: 'front', u: -10, width: 2.6, surface: 'gravel', path: false },
+          { side: 'front', u: 10, width: 2.6, surface: 'gravel', path: false }] },
       { kind: 'waterTower', x: -65, z: 2, yawDeg: 0, params: { style: 'trestle', height: 15 }, name: 'the kolkhoz water tower' },
       { kind: 'kolkhozArch', x: -70, z: 60.6, yawDeg: 83.7, name: 'the kolkhoz arch', params: { wings: 6 } },
       { kind: 'parkSquare', x: 43, z: 55, yawDeg: 0, name: 'the Civil War memorial',
         params: { width: 16, depth: 14, paths: 'cross', railing: 'iron', benches: 2, lamps: 0, centre: 'obelisk', centreHeight: 5.5,
           inscription: 'БОРЦАМ ЗА|ВЛАСТЬ|СОВЕТОВ|1918 – 1920' } },
-      { kind: 'windmill', x: -231, z: -246, yawDeg: 210, params: { style: 'post' }, name: 'the post mill on the southern swell' },
-      { kind: 'windmill', x: 267, z: 288, yawDeg: 225, params: { style: 'smock' }, name: 'the smock mill on the northern swell' },
+      { kind: 'windmill', x: -231, z: -246, yawDeg: 210, params: { style: 'post' }, name: 'the post mill on the southern swell',
+        approaches: [{ side: 'back', width: 1.2, inset: 3.5 }] },
+      { kind: 'windmill', x: 267, z: 288, yawDeg: 225, params: { style: 'smock' }, name: 'the smock mill on the northern swell',
+        approaches: [{ side: 'front', width: 1.2, inset: 4.9 }] },
     ],
     well: true, hayCrates: true, fences: true, telegraph: true, carts: true, logs: true,
     // r2: more midfield material breakup (craters/haystacks) — the open

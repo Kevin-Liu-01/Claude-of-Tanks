@@ -1,5 +1,5 @@
 import type { CombatState } from '../sim/damage.ts';
-import { ensureStyle } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { createRichTooltip } from './richTooltip.ts';
@@ -34,7 +34,7 @@ function detail(status: VehicleStatus): string {
 }
 /** A bounded child of the damage panel: follows HUD editing, scaling and visibility. */
 export function createVehicleStatusStrip() {
-  ensureStyle('cot-vehicle-status-style',CSS);
+  ensureStyle('cot-vehicle-status-style',CSS,'surfaces');
   const root=document.createElement('div');root.className='cot-vehicle-status';root.hidden=true;
   root.setAttribute('role','group');root.setAttribute('aria-label',t('hud.status.title'));
   const read=createVehicleStatusReader();let active:readonly VehicleStatus[]=[];

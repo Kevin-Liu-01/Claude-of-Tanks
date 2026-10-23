@@ -1,5 +1,7 @@
 /* One event-measured lane per side: rosters above, driving controls below.
    These selectors intentionally outrank battle-lazy injected component CSS. */
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
 body[data-cot-battle-layout][data-cot-width][data-cot-height]{--hud-side-width:min(300px,calc(50vw - 24px));--hud-feed-width:min(240px,calc(50vw - 24px));--hud-message-width:min(400px,calc(50vw - 24px))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-drive{left:184px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-minimap{
@@ -158,24 +160,32 @@ body.cot-spectating .cot-vehicle-controls{display:none!important;}
 
 
 
-/* Objectives share the score's center column; kill notices have bounded side lanes. */
+/* Objectives share the score's center column; kill notices have bounded side lanes. The objective is its icon and its
+   progress (owner 2026-10-22, "cut taglines": the mode's line is the panel's title and the pre-battle rules), one row
+   that breaks only between the progress's parts. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status{
   --objective-accent:#efb84e;left:var(--hud-objective-left,50%);top:var(--hud-objective-top,64px);width:var(--hud-objective-width,278px);
-  box-sizing:border-box;min-height:40px;padding:5px 22px;gap:2px 9px;
-  grid-template-columns:18px minmax(0,1fr);grid-template-rows:14px 12px;
+  box-sizing:border-box;min-height:30px;padding:4px 22px 5px;gap:0 8px;align-items:center;
+  grid-template-columns:18px minmax(0,1fr);grid-template-rows:auto;
   clip-path:polygon(0 0,100% 0,calc(100% - 13px) 100%,13px 100%);
   border:0;border-top:2px solid var(--objective-accent);border-bottom:1px solid #52616a;
   background:linear-gradient(110deg,#101c24f5,#070e14f5);white-space:normal;
-  font:700 10px/1.2 var(--hud-font,system-ui);letter-spacing:.025em;
+  font:700 11px/13px var(--hud-font,system-ui);letter-spacing:.02em;
 }
 body[data-cot-battle-layout] .cot-mode-status.show{display:grid}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status[data-mode='mars']{--objective-accent:#c3a3ff}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status[data-mode='capture_the_flag']{--objective-accent:#6cccf2}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status[data-mode='zone_control']{--objective-accent:#79d7ad}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status[data-mode='endless_horde']{--objective-accent:#ef9485}
-body[data-cot-battle-layout] .cot-mode-status .mi{grid-column:1;grid-row:1/3;color:var(--objective-accent)}
-body[data-cot-battle-layout] .cot-mode-status .mn{grid-column:2;grid-row:1;color:var(--objective-accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-body[data-cot-battle-layout] .cot-mode-status .mv{grid-column:2;grid-row:2;white-space:nowrap;font-size:9px;letter-spacing:0}
+body[data-cot-battle-layout] .cot-mode-status .mi{grid-column:1;grid-row:1;color:var(--objective-accent)}
+body[data-cot-battle-layout] .cot-mode-status .mv{grid-column:2;grid-row:1;min-width:0}
+body[data-cot-battle-layout] .cot-mode-status .seg{white-space:nowrap}
+/* A short landscape's side seat (battleHudLayout.ts OBJECTIVE_COMPACT_H): the objective under the map, each part of its
+   progress on its own line */
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-objective-seat='side'] .cot-mode-status{
+  min-height:0;clip-path:none;padding:4px 6px;gap:0 6px;grid-template-columns:15px minmax(0,1fr);box-shadow:0 4px 12px #0007}
+body[data-cot-battle-layout][data-objective-seat='side'] .cot-mode-status .sep{display:none}
+body[data-cot-battle-layout][data-objective-seat='side'] .cot-mode-status .seg{display:block;white-space:normal}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-touch .mobile-chrome{top:calc(var(--hud-objective-bottom,64px) + 8px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-killfeed{display:contents}
 body[data-cot-battle-layout] .cot-kill-lane{
@@ -194,7 +204,23 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-minimap{top:calc(var(--hud-objective-bottom,72px) + 8px)}
 
-body.cot-touch-layout .cot-vehicle-controls>button{height:44px!important;min-height:44px;grid-template-rows:1fr;padding-block:5px}
+/* UI-06 (owner 2026-10-14: "a better way to show the stuff u can do row on mobile"): on touch the row is 44 px tiles in
+   the consumables' form that never scroll, each its icon alone (its name is its label; a keycap means nothing on glass),
+   with a count in its corner while it has one (a cooldown, the smoke charges); the More tile pages through what the row
+   cannot hold (battleHudLayout.ts data-off, hud.ts) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls{overflow:visible;gap:3px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button{flex:0 0 44px;width:44px!important;min-width:44px;height:44px!important;min-height:44px;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);place-items:center;padding:0;border:1px solid #92a4b447;border-bottom:2px solid #92a4b447;background:linear-gradient(180deg,#0e1318eb,#080b0ef2);box-shadow:inset 0 1px #ffffff09,0 4px 13px #00000042}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button.active{border-color:#c89a50;box-shadow:inset 0 -2px #efb84e}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button.empty{border-bottom-color:var(--hud-danger)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button[data-off]{display:none!important}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button .si{grid-column:1;grid-row:1}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls .si svg{width:22px!important;height:22px!important}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button :is(.sl,.sk,.system-status){display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button :is(.sl[data-count],.system-status:not(:empty)){display:block;grid-column:1;grid-row:1;align-self:end;justify-self:end;margin:0 3px 2px 0;font:700 11px/1 var(--hud-font,system-ui);letter-spacing:-.01em;color:#cfd9e2;text-shadow:0 1px 2px #000e}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button .sl[data-count]~.system-status{display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>.cot-systems-more:not([hidden]){display:grid}
+.cot-systems-more .back,.cot-systems-more.last .next{display:none!important}
+.cot-systems-more.last .back{display:flex!important}
 body[data-cot-battle-layout] .cot-kill-lane.r .cot-kf{border-left:0;border-right:2px solid #f05a5a;background:linear-gradient(90deg,transparent,rgba(8,12,16,.82) 26%)}
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] :is(.cot-dp,.cot-drive){bottom:128px}
@@ -241,7 +267,6 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag svg.o
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid) .cot-er{container:roster-row / size}
 @container roster-row (max-height:22px){.cot-hud .cot-ear .cot-er .n .veh{display:none}.cot-hud .cot-ear .cot-er .n .nick{font-size:9px;line-height:1.1}}
 
-body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-report,.tight-shot-report) .cot-si-kicker{display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-report,.tight-shot-report) .cot-si-hd{min-height:26px;padding-block:3px}
 
 /* Short landscape is a height budget, not a miniature desktop. Leave the
@@ -265,18 +290,19 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.cot-si-toast,
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .cot-kf{padding-right:max(6px,env(safe-area-inset-right))}
 
 /* A browser toolbar can leave less than 300 CSS pixels of landscape height.
-   Keep one fire button, and give ammo and consumables separate 44px rows. */
+   Keep one fire button, and give ammo and consumables separate 44px rows. FIRE stands as low as its label, 15 px under
+   it, stays on the screen (at 8 px the label ran off the bottom edge at 568x290), 3 px under the consumables at 568x256. */
 @media (max-height:299px) and (orientation:landscape){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire.alt{display:none}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire:not(.alt){bottom:8px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire:not(.alt){bottom:17px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shells{top:66px;bottom:auto!important}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell{height:44px}
   /* (its 44 px wide slot steps the dart 3 px left, clear of the corner count: r7 capture, 1.7 px at 568x290) */
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-shell:not(.wide) canvas{transform:translateX(calc(-50% - 3px)) scale(.6)}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-cons{top:116px;bottom:auto!important}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-con{height:44px}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{left:122px;transform:none;width:136px;min-height:32px;font-size:9px}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-alert{box-sizing:border-box;font-size:8px;line-height:1.2;padding:4px 12px;top:var(--hud-notice-top);left:266px;transform:none;width:134px;max-width:134px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{width:136px;min-height:32px;font-size:9px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-alert{box-sizing:border-box;font-size:8px;line-height:1.2;padding:4px 12px;width:134px;max-width:134px}
 }
 @media (max-width:340px) and (orientation:portrait){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{width:180px}
@@ -304,7 +330,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
 }
 
 @media (max-height:549px) and (orientation:landscape){
-  .cot-aim-warning{left:8px;top:var(--hud-aim-warning-top,118px);transform:none;width:106px;font-size:9px;line-height:10px;padding:2px 10px}
+  .cot-aim-warning{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:106px;font-size:9px;line-height:10px;padding:2px 10px}
 }
 @media (max-height:340px) and (orientation:landscape){
   .cot-touch-aim .aimhint{display:none}
@@ -345,30 +371,30 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
   body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-sixth .sub{display:none}
 }
 
-/* Mouse centre notices: battleHudLayout.ts places each from mouseNoticePlan.ts, off everything the reticle draws in
-   the battle sight and the scope at any bloom and off the fixed instruments; a side lane it crosses yields while it
-   shows. The alert keeps main's type size and wraps inside its slot (never clamped); its anchor is its centre, or its
-   inner edge beside the scope's centre-line arm. The countdown and the revive count scale from their top centre.
+/* Mouse centre notices: battleHudLayout.ts sets each one's top (and the alert's width) from mouseNoticePlan.ts, off
+   everything the reticle draws in the battle sight and the scope at any bloom and off the fixed instruments; a side
+   lane it crosses yields while it shows. Each keeps to the centre line (the shared rule below). The alert keeps main's
+   type size and wraps inside its slot (never clamped). The countdown and the revive count scale from their top centre.
    Touch keeps its own rules. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-sixth{
-  top:var(--hud-notice-top);left:var(--hud-notice-x,50%);width:var(--hud-center-notice-width,248px);max-width:none;
+  top:var(--hud-notice-top);width:var(--hud-center-notice-width,248px);max-width:none;
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-alert{
-  top:var(--hud-alert-top);bottom:auto;left:var(--hud-alert-x,50%);width:max-content;max-width:var(--hud-alert-width,calc(100vw - 32px));
-  white-space:normal;transform:translate(var(--hud-alert-shift,-50%),7px);
+  top:var(--hud-alert-top);bottom:auto;width:max-content;max-width:var(--hud-alert-width,calc(100vw - 32px));
+  white-space:normal;transform:translate(-50%,7px);
 }
-body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-alert.show{transform:translate(var(--hud-alert-shift,-50%),0)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-alert.show{transform:translate(-50%,0)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-alert-copy{overflow-wrap:anywhere}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-prebattle{
-  top:var(--hud-countdown-top,22%);left:var(--hud-countdown-x,50%);transform:translateX(-50%) scale(var(--hud-countdown-scale,1));transform-origin:50% 0;
+  top:var(--hud-countdown-top,22%);transform:translateX(-50%) scale(var(--hud-countdown-scale,1));transform-origin:50% 0;
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-prebattle-rules{
   top:var(--hud-countdown-rules-top,calc(50% + 84px));transform:translateX(-50%) scale(var(--hud-countdown-rules-scale,1));
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-revive{
-  top:var(--hud-revive-top,30%);left:var(--hud-revive-x,50%);transform:translateX(-50%) scale(var(--hud-revive-scale,1));transform-origin:50% 0;
+  top:var(--hud-revive-top,30%);transform:translateX(-50%) scale(var(--hud-revive-scale,1));transform-origin:50% 0;
 }
-body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-medal-toasts{left:var(--hud-banner-x,50%);width:max-content}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-medal-toasts{width:max-content}
 /* Held Tab rosters widen as before but stop short of any planned notice shown beside them (battleHudLayout.ts). */
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .rosters-expanded .cot-ear.l{width:min(320px,calc(50vw - 184px),var(--hud-roster-wide-left,320px))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .rosters-expanded .cot-ear.r{width:min(320px,calc(50vw - 184px),var(--hud-roster-wide-right,320px))}
@@ -391,26 +417,25 @@ body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-kill-cause=ammorack]{ba
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-kill-cause=ammorack] .d{color:#ffbc83;font-weight:800}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-relation=friendly] .relation{color:#ffb25e}
 
-/* r10e: a touch layout's centre notices and medal card take the places battleHudLayout finds off the reticle's footprint
-   and the HUD's panels (touchNoticePlan.ts): each one's centre and top, the alert's slot width, the compact pair (the short
-   landscapes' 136 px notice) where only that keeps clear. Their entry slides stay vertical. */
-/* (one layer over the controls and the map: where nothing clears a notice covers the map through the scope, the
+/* r10e: a touch layout's centre notices and medal card take the heights battleHudLayout finds off the reticle's
+   footprint and the HUD's panels (touchNoticePlan.ts) on the centre line (the shared rule below): each one's top, the
+   alert's slot width, the compact pair (the short landscapes' 136 px notice) where only that keeps clear. Their entry
+   slides stay vertical. */
+/* (one layer over the controls and the map: where nothing clears a notice may cover the map through the scope, the
    coordinator's ruling, and at the controls' layer the map, later in the page, painted over it, r10g) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] :is(.cot-sixth,.cot-alert){z-index:calc(var(--hud-layer-controls) + 1)}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-sixth{left:var(--hud-touch-notice-cx,50%);top:var(--hud-notice-top);transform:translate(-50%,-6px)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-sixth{top:var(--hud-notice-top);transform:translate(-50%,-6px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-sixth.on{transform:translate(-50%,0)}
-/* (max-content, as the medal card: an auto width shrank to the room right of its centre, and a 150 px alert centred at
-   237 of 320 px set five lines 96 px wide onto the ammo slot, r10g) */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{left:var(--hud-touch-alert-cx,50%);top:var(--hud-alert-top);bottom:auto;width:max-content;max-width:var(--hud-touch-alert-w,214px);transform:translate(-50%,7px)}
+/* (max-content, as the medal card: an auto width shrank to the room right of its left edge, and a 150 px alert set five
+   lines 96 px wide onto the ammo slot, r10g) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{top:var(--hud-alert-top);bottom:auto;width:max-content;max-width:var(--hud-touch-alert-w,214px);transform:translate(-50%,7px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert.show{transform:translate(-50%,0)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='notice-compact'] .cot-sixth{width:136px;min-height:32px;padding-block:4px;font-size:9px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='notice-compact'] .cot-sixth .sub{display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-compact'] .cot-alert{box-sizing:border-box;font-size:8px;line-height:1.2;padding:4px 12px;min-height:28px}
-/* r10g (the coordinator's ruling): through the scope, where nothing clears, the alert may lie over the map at its width */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-narrow'] .cot-alert{padding:4px 8px}
-/* (the card's own width wherever it sits: a fixed box shrinks to the room right of its left edge, and the plan measures it) */
-body.cot-touch-layout[data-touch-notices] .cot-medal-toasts{left:var(--hud-touch-banner-cx,50%);width:max-content}
-body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation].cot-touch-layout[data-touch-notices] .cot-prebattle{left:var(--hud-touch-countdown-cx,50%);top:var(--hud-touch-countdown-top);transform:translateX(-50%) scale(var(--hud-touch-countdown-scale,1));transform-origin:50% 0}
+/* (the card's own width: a fixed box shrinks to the room right of its left edge, and the plan measures it) */
+body.cot-touch-layout[data-touch-notices] .cot-medal-toasts{width:max-content}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation].cot-touch-layout[data-touch-notices] .cot-prebattle{top:var(--hud-touch-countdown-top);transform:translateX(-50%) scale(var(--hud-touch-countdown-scale,1));transform-origin:50% 0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation].cot-touch-layout[data-touch-notices] .cot-prebattle-rules{top:var(--hud-touch-rules-top);transform:translateX(-50%) scale(var(--hud-touch-rules-scale,1))}
 /* (a touch screen's rules in 12 px: the planner may take them to 92 %, the 11 px floor) */
 body.cot-touch-layout .cot-prebattle-rules{max-width:calc(100vw - 24px);gap:5px 14px;padding:8px 14px;font-size:12px}
@@ -424,13 +449,17 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
    the band the scope's marks take over the sight): on a portrait phone under 720 px tall the layout seats the row in the
    top slot right of the map (data-systems-slot), compact: the slot's width shared by its buttons, --hud-systems-per-row a
    row (the layout's count: a five-control kit at 320 wide wraps to two rows), each 44 px tall and wide at the least (the
-   touch target), its icon over its label, without the keyboard's key badges a touch screen has no use for */
+   touch target), each a tile as everywhere on touch */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls{width:var(--hud-systems-width);overflow:visible;flex-wrap:wrap}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button{flex:1 1 calc((100% - (var(--hud-systems-per-row,3) - 1) * 3px) / var(--hud-systems-per-row,3));width:auto!important;min-width:44px;height:44px!important;min-height:44px;grid-template-columns:minmax(0,1fr);grid-template-rows:17px 13px;row-gap:2px;padding:5px 1px 6px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button{flex:1 1 calc((100% - (var(--hud-systems-per-row,3) - 1) * 3px) / var(--hud-systems-per-row,3));width:auto!important;min-width:44px}
 /* ...and what one row cannot hold sits beside the touch chrome, left of it and level with it (the layout's data-slot-beside
    index and the chrome's offset: a five-control kit at 320 wide, whose second row met the ammo drawer's open shells) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button[data-slot-beside]{position:absolute!important;flex:none;width:44px!important;min-width:44px;top:var(--hud-systems-beside-dy);left:0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button[data-slot-beside='1']{left:47px}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .si{grid-column:1;grid-row:1}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .sl{grid-column:1;grid-row:2;max-width:100%;overflow:hidden;text-overflow:ellipsis;font-size:8px}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-systems-slot='top'] .cot-vehicle-controls>button .sk{display:none}
+}
+
+/* Every battle centre notice on the window's centre line, on both layouts (noticeCentreLine.ts; owner 2026-10-22 on live
+   240: "for example spotting or broken equipment stuff, they are nnot actually centered in screen"): each is placed at
+   50 % and translated back by half its own width (its rules above), and the planners move it only up or down. No other
+   rule sets one aside; a part the player moved in the HUD editor keeps its own place (hudCustomization.css). */
+body[data-cot-battle-layout] :is(.cot-sixth,.cot-alert,.cot-prebattle,.cot-prebattle-rules,.cot-revive,.cot-medal-toasts):not([data-hud-positioned]){left:50%!important;right:auto!important}

@@ -29,7 +29,7 @@ export const iconUrl = (id: string, view: string): string => `/icons/${id}_${vie
  * @param {string} color css background color (the tint)
  */
 export function maskIcon(el: HTMLElement, id: string, view: string, color: string): void {
-  const u = `url(${iconUrl(id, view)})`;
+  const u = `url(${JSON.stringify(iconUrl(id, view))})`;
   const s = el.style;
   s.webkitMaskImage = u; s.maskImage = u;
   s.webkitMaskSize = 'contain'; s.maskSize = 'contain';

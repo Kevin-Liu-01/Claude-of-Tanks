@@ -25,14 +25,14 @@ export function createDamageWorkbench(host: HTMLElement, callbacks: {
   let lab: DamageLab | null = null;
   let kind: DamageTarget['kind'] = 'era';
   let hitboxes = false, probe = false;
-  const panel = document.createElement('section'); panel.className = 'dossier-section damage-workbench';
-  panel.innerHTML = `<div class="section-label"><span>${t('gallery.damage.heading')}</span></div><p class="damage-help"></p><div class="damage-kinds"></div><div class="damage-targets"></div><p class="damage-condition" role="status" aria-live="polite"></p><div class="damage-actions"></div><div class="damage-tools"></div><ol class="damage-ray" aria-live="polite"></ol>`;
+  const panel = document.createElement('section'); panel.className = 'damage-workbench';
+  panel.setAttribute('aria-label', t('gallery.tab.damage'));
+  panel.innerHTML = `<div class="damage-kinds"></div><div class="damage-targets"></div><p class="damage-condition" role="status" aria-live="polite"></p><div class="damage-actions"></div><div class="damage-tools"></div><ol class="damage-ray" aria-live="polite"></ol>`;
   host.append(panel);
   const find = <T extends HTMLElement>(selector: string) => panel.querySelector<T>(selector)!;
-  const help = find('.damage-help'), tabs = find('.damage-kinds'), targets = find('.damage-targets');
+  const tabs = find('.damage-kinds'), targets = find('.damage-targets');
   const status = find('.damage-condition'), actions = find('.damage-actions'), tools = find('.damage-tools'), ray = find('.damage-ray');
   function refresh(): void {
-    help.textContent = t(probe ? 'gallery.damage.probeHelp' : 'gallery.damage.help');
     if (!lab) { panel.hidden = true; return; }
     panel.hidden = false;
     const activeKey = (document.activeElement as HTMLElement | null)?.dataset.damageAction;

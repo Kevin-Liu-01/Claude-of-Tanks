@@ -82,7 +82,10 @@ const CAR = { belly: 0.45, track: 0.34, floor: 0.85, floorMax: 0.5, heavyTop: 2.
  *  metre (233's blind critic: the uncrossed rear of a box still rose as "a slanted panel ... a ramp" at the props' own
  *  slope): the box stands where no hull crossed it, its fold to the crush short and buckled (r2's steeper fold stood as
  *  "a billboard" when it was one smooth sheet). */
-const TALL = { from: 1.9, to: 2.5, fold: 0.24, sunk: 1.4, upK: 1.3, alongK: 0.9, acrossK: 1.6, droop: 2.0 } as const;
+const TALL = { from: 1.9, to: 2.5, fold: 0.24, sunk: 1.4, upK: 1.3, alongK: 0.9, acrossK: 1.6, droop: 2.0,
+  /** the share of its footprint crossed (pressed under half its height) from which its droop eases to a car's, and the
+   *  share at which it is a car's (world-polish-240: a near-full crush leaves no thin wall standing) */
+  slumpFrom: 0.4, slumpTo: 0.7 } as const;
 
 /** A crush copy's bend segments (the car-wreck lane, 233; r3's critics: a box truck crossed in part stood its box as "a flat
  *  ramp" with "thin straight lines" to it): its frame rails, its box's floor and the trims along its edges are each one
@@ -475,7 +478,26 @@ export function pressField(f: CrushField, cx: number, cz: number, fx: number, fz
 function settleField(f: CrushField): void {
   const { nx, nz, cap, eff } = f;
   eff.set(cap);
-  const slope = f.cloth ? CLOTH.droop : f.vehicle ? f.vehicle.droop : DROOP_SLOPE;
+  let slope = f.cloth ? CLOTH.droop : f.vehicle ? f.vehicle.droop : DROOP_SLOPE;
+  // (2026-10-22, world-polish-240: "a thin wall left standing after a near-full crush") a tall body stands where no hull
+  // crossed it only while enough of it is left to stand: crossed over most of its footprint, its few uncrossed metres lose
+  // their bracing and slump toward the crush at a car's slope, not the box's (a metre of a van's box stood two metres tall)
+  if (f.vehicle && f.vehicle.tall > 0) {
+    const hw = -f.x0 - MARGIN_M, hl = -f.z0 - MARGIN_M, deep = f.top * 0.5;
+    let body = 0, crossed = 0;
+    for (let j = 0; j < nz; j++) {
+      const z = f.z0 + j * f.cell;
+      if (z < -hl || z > hl) continue;
+      for (let i = 0; i < nx; i++) {
+        const x = f.x0 + i * f.cell;
+        if (x < -hw || x > hw) continue;
+        body++;
+        if (cap[j * nx + i] < deep) crossed++;
+      }
+    }
+    const share = body ? crossed / body : 0, k = Math.max(0, Math.min(1, (share - TALL.slumpFrom) / (TALL.slumpTo - TALL.slumpFrom)));
+    slope -= (slope - CAR.droop) * k * k * (3 - 2 * k);
+  }
   const d1 = slope * f.cell, d2 = slope * f.cell * Math.SQRT2;
   for (let j = 0; j < nz; j++) {
     for (let i = 0; i < nx; i++) {

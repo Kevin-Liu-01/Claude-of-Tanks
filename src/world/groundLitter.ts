@@ -71,6 +71,13 @@ interface GroundLitterOptions {
    */
   setupMaterial?: ((material: THREE.MeshStandardMaterial, hook: GroundLitterMaterialHook) => void) | null;
   releaseMaterial?: ((material: THREE.Material) => void) | null;
+  /**
+   * (rock round 2, 2026-10-11, the map-revival lane; gauntlet wave 415: "soil, tufts and rubble at its foot") the
+   * boulders' feet (props.ts group.userData.rockFeet: centre and mean radius): each sheds a few chips of its own stone
+   * round its foot, most on its downhill side, in the stone pool under `rockChipTint` (linear rgb, the boulders' mean).
+   */
+  rockFeet?: ReadonlyArray<{ x: number; z: number; r: number }> | null;
+  rockChipTint?: readonly [number, number, number] | null;
 }
 
 interface GroundLitterState {
@@ -183,8 +190,10 @@ const LITTER_PROFILES: Readonly<Record<string, GroundLitterConfig>> = Object.fre
   delta: { density: 0.9, stones: 0.6, clods: 0.7, splinters: 0.7 },
   mangrove: { density: 0.9, stones: 0.6, clods: 0.7, splinters: 0.7 },
   polders: { density: 0.8 },
-  // a limestone coast: pale stone, warm rather than grey-blue
-  coastal: { stones: 1.1, splinters: 0.3, stoneTint: [0.165, 0.152, 0.132] },
+  // (2026-10-07, the map-revival lane; gauntlet wave 184: "black pebble-dot decals") the Léon's granite clasts in the
+  // turf: fewer, and the granite's grey as pale as the stone-dark law allows (the limestone's dark warm tint read black on
+  // the sward)
+  coastal: { stones: 0.7, splinters: 0.3, stoneTint: [0.24, 0.235, 0.22] },
   saltwind: { stones: 1.1, splinters: 0.3, stoneTint: [0.165, 0.152, 0.132] },
 });
 
@@ -429,12 +438,21 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
   const _n = new THREE.Vector3();
   const _q = new THREE.Quaternion();
   const _up = new THREE.Vector3(0, 1, 0);
+  const _chipTurn = new THREE.Quaternion(); // (rock round 2) a chip's own turn about the up axis
   const _p = new THREE.Vector3();
   const _s = new THREE.Vector3();
   const _m = new THREE.Matrix4();
   const scratch: number[][] = [[], [], []];
   let builds = 0;
   let publishes = 0;
+  // (rock round 2) the feet by the cell their centre lies in: each foot is dressed once, by its own cell
+  const feetByCell = new Map<string, Array<{ x: number; z: number; r: number }>>();
+  for (const foot of options.rockFeet ?? []) {
+    const key = `${Math.floor(foot.x / GROUND_LITTER.cellM)},${Math.floor(foot.z / GROUND_LITTER.cellM)}`;
+    const list = feetByCell.get(key);
+    if (list) list.push(foot); else feetByCell.set(key, [foot]);
+  }
+  const chipTint = options.rockChipTint ?? cfg.stoneTint;
 
   function buildCell(ix: number, iz: number): [Float32Array, Float32Array, Float32Array] {
     const rng = mulberry32(cellSeed(seed, ix, iz));
@@ -524,6 +542,36 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
       const list = scratch[kind];
       list.push(x, y + lift, z, _q.x, _q.y, _q.z, _q.w, sx, sy, sz,
         Math.min(1, tint[0] * shade * (1 + warm)), Math.min(1, tint[1] * shade), Math.min(1, tint[2] * shade * (1 - warm * 0.5)));
+    }
+    // (rock round 2) the chips each boulder whose centre lies in this cell has shed round its foot: three to eight, more
+    // round a bigger stone, just past its foot, two in three on its downhill side; flat fragments of its own stone, a
+    // hand to a foot across, bedded in the soil; their own stream (the foot's place), so no other litter moves
+    if (cfg.density > 0) {
+      for (const foot of feetByCell.get(`${ix},${iz}`) ?? []) {
+        const frng = mulberry32(cellSeed(seed ^ 0x51ab7, Math.round(foot.x * 10), Math.round(foot.z * 10)));
+        const n = 3 + Math.floor(frng() * Math.min(5, 2 + 3 * foot.r));
+        let fallX = 0, fallZ = 0;
+        if (field.getNormalAt) { const nf = field.getNormalAt(foot.x, foot.z); fallX = nf.x; fallZ = nf.z; }
+        const fall = Math.hypot(fallX, fallZ), downhill = Math.atan2(fallZ, fallX);
+        for (let k = 0; k < n; k++) {
+          const a = fall > 0.04 && frng() < 0.66 ? downhill + (frng() - 0.5) * 1.7 : frng() * Math.PI * 2;
+          const rr = foot.r * (1.02 + 0.5 * frng() * frng()) + 0.08;
+          const x = foot.x + Math.cos(a) * rr, z = foot.z + Math.sin(a) * rr;
+          const jitterA = frng(), jitterB = frng(), jitterC = frng();
+          if (field.getWaterMaskAt && field.getWaterMaskAt(x, z) > 0.2) continue;
+          const size = 1.3 + 2.4 * jitterA * jitterA;
+          const sx = size * (0.8 + jitterB * 0.5), sz = size * (0.7 + jitterC * 0.5), sy = size * (0.32 + jitterB * 0.22);
+          const radius = 0.075 * Math.max(sx, sz);
+          const y = heightAt(x, z);
+          if (blocked && blocked(x, y, z, 0.12, radius * 0.6)) continue;
+          if (field.getNormalAt) { const normal = field.getNormalAt(x, z); _n.set(normal.x, normal.y, normal.z); } else _n.set(0, 1, 0);
+          _q.setFromUnitVectors(_up, _n.normalize());
+          _q.multiply(_chipTurn.setFromAxisAngle(_up, jitterC * Math.PI * 2 + jitterA));
+          const shade = 0.78 + 0.34 * jitterB;
+          scratch[0].push(x, y + 0.075 * sy * 0.1, z, _q.x, _q.y, _q.z, _q.w, sx, sy, sz,
+            Math.min(1, chipTint[0] * shade), Math.min(1, chipTint[1] * shade), Math.min(1, chipTint[2] * shade));
+        }
+      }
     }
     builds++;
     return [Float32Array.from(scratch[0]), Float32Array.from(scratch[1]), Float32Array.from(scratch[2])];

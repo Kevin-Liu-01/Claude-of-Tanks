@@ -462,8 +462,16 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
       const x = from[v * 3], y = from[v * 3 + 1], z = from[v * 3 + 2], ny = na[v * 3 + 1];
       const rough = surf0[v * 3] / scale, metal = surf0[v * 3 + 1] / scale;
       const soft = metal < 0.05 && sa[v * 3 + 2] / scale < 0.05 && (rough < 0.12 || rough > 0.8);
+      // (2026-10-22, world-polish-240; 233's blind critic: "dark tyres still sit on the wheels") a tyre burns away to its
+      // rim: what is left of it (drawn in to the rim's radius above) is the bare steel wheel, heat-oxidised
+      const rim = soft && rough > 0.8 && car.wheelOf[v] >= 0;
       let bare = 0;
-      if (soft) { _burnt[0] = SOOT[0]; _burnt[1] = SOOT[1]; _burnt[2] = SOOT[2]; }
+      if (rim) {
+        const ox = smoothstep(0.35, 0.75, noise3(x * 4.3, y * 4.3, z * 4.3, 313));
+        _burnt[0] = STEEL[0] * 0.8; _burnt[1] = STEEL[1] * 0.8; _burnt[2] = STEEL[2] * 0.8;
+        mixInto(_burnt, OXIDE, 0.35 + 0.5 * ox);
+        bare = 0.6 * (1 - ox);
+      } else if (soft) { _burnt[0] = SOOT[0]; _burnt[1] = SOOT[1]; _burnt[2] = SOOT[2]; }
       else {
         _burnt[0] = CHARRED[0]; _burnt[1] = CHARRED[1]; _burnt[2] = CHARRED[2];
         // how hot the fire ran here: over the waist most, in broad blooms
@@ -492,7 +500,7 @@ export function createPropCrushPresentation(host: PropCrushHost): PropCrushPrese
       const shade = (0.62 + 0.38 * smoothstep(0, 0.85, y)) * (ny < 0 ? 1 + 0.55 * ny : 1);
       col1[v * 3] = _burnt[0] * shade; col1[v * 3 + 1] = _burnt[1] * shade; col1[v * 3 + 2] = _burnt[2] * shade;
       // matte char and oxide; the bared steel smoother and a little metallic
-      surf1[v * 3] = soft ? 250 : Math.round(235 - 95 * bare); surf1[v * 3 + 1] = soft ? 0 : Math.round(10 + 110 * bare); surf1[v * 3 + 2] = 0;
+      surf1[v * 3] = soft && !rim ? 250 : Math.round(235 - 95 * bare); surf1[v * 3 + 1] = soft && !rim ? 0 : Math.round(10 + 110 * bare); surf1[v * 3 + 2] = 0;
     }
     // its canvas (a tilt, a hood: matte cloth over the waist) burns away as the fire takes it (r1c: a burnt tilt read as
     // "a smooth black balloon")

@@ -257,6 +257,9 @@ export function buildHardstandDressing(strips: readonly HardstandConfig[] | unde
     if (!hardstandIsPaved(splat, s.x, s.z, town)) continue;
     // (the maps lane, 228) a pad a civic area dresses as a town square (civic/plans): no airfield lip, gullies or patches
     if (undressed.has(i)) continue;
+    // (apron paint 234) a softened pad (hardstandSurface.ts paint.ragged) is worn ground, no slab: no concrete lip round
+    // a square that is no longer there (the owner, 2026-10-22: "just get rid of thes square broders"), no gullies or patches
+    if ((s.paint?.ragged ?? 0) > 0) continue;
     const own = Math.floor(hash(Math.round(s.x), Math.round(s.z), seed) * 0x7fffffff);
     const other = onOtherStrip(strips, i);
     lip(w, s, roads, other, own);

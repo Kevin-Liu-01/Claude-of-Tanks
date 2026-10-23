@@ -9,6 +9,7 @@
 // and ore bins, the concentrator stepping down its slope, the smelters' brick power house and its stack, the railway's
 // engine shed, the water tank on its trestle, the Empire Hotel behind its two-storey verandah of cast-iron lace, and
 // rows of weatherboard cottages under corrugated iron with their bullnose verandahs and picket fences.
+import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { makeRealisticCityBuildingTones } from './buildingTonePresets.ts';
 import { roundRoadBends } from './roadBends.ts';
 
@@ -68,7 +69,7 @@ export default {
     // (2026-10-06, the batch-4 integration: round 2's gullied hills set nine cells of zone 1's 30 m disc past the seat's
     // 0.94 slope, so the match placement moved it 24 m off its hint, and zone 3 8 m off its own to keep clear of it; an
     // apron under zone 1 levels its disc, sited by tools/hardstand-site.mjs under the apron bank law)
-    hardstands: [{ x: 95.76, z: 25.16, width: 56, length: 56, yawDeg: 0, level: 1.2, grade: 0, bankM: 20 }],
+    hardstands: [{ x: 95.76, z: 25.16, width: 56, length: 56, yawDeg: 0, level: 1.2, grade: 0, bankM: 20, paint: WORN_YARD_PAINT }],
     workedGround: QUEENSTOWN_STREETS,
     roads: { paths: roundRoadBends([
       // A stepped loading apron on the eastern shelf puts the gantries and
@@ -291,8 +292,12 @@ export default {
   layoutBrief: { bands: {
     sightLongShare: { band: [0.024, 0.15], reason: 'the Mount Lyell works, Queenstown and the open cut\'s rim close the basin\'s long lines by design (the works passed wave 358a; main\'s 0.031 had none of them)' },
   } },
+  // (2026-10-22, world-polish-240; the owner's "pale haze slab" on the horizon) the far country behind the ring rises to
+  // just under the ring's skyline, so an elevated view sees a broad band of it over the crest; with the default fill that
+  // band was one lit ground tone pushed a third to two thirds toward the fog tint, a pale card brighter than the ranges.
+  // The fill law (Saltwind's and Redrock's): the band is the country's own cover under the air over its own reach
   horizon: { baseHex: 0x6a625c, amp: 1.35, style: 'alpine', treeline: 0.38, snowline: 2, bareRock: 0.7, outcrops: 0.5,
-    panorama: { regional: 'ridges' }, forestHex: 0x22392b, rockHex: 0x8c8884, haze: 0.88, grain: 0.6 },
+    panorama: { regional: 'ridges', fillLaw: 1 }, forestHex: 0x22392b, rockHex: 0x8c8884, haze: 0.88, grain: 0.6 },
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): the haze a step cooler than the 0xffe0b6 sun
   // (0xaa9b89 -> 0xa8a49c), broken altocumulus (0.68 / 0.35 -> 0.80 / 0.50) on an explicit 880 m deck that keeps its
   // texture at 2-12°, and patchy light across the benches (cloudShadowAmp 0.30)

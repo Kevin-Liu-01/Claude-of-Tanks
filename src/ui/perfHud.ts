@@ -2,7 +2,7 @@
 // explicitly enabled surface; input settings own persistence while this
 // module owns only presentation and bounded 4 Hz telemetry paint.
 
-import { ensureStyle } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { FONT_COND } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { t as tr } from './i18n.ts';
@@ -56,6 +56,8 @@ interface WorldTelemetry {
   wrecks?: number | string;
   looseActive?: number | string;
   looseTotal?: number | string;
+  /** The map's air (world/mapAmbience.ts): its layers' instances and draws. */
+  ambience?: string | null;
 }
 
 interface ShadowCascadeTelemetry {
@@ -239,7 +241,8 @@ function simulationText(simulation: SimulationTelemetry, gamePhase: string): str
 function worldText(world: WorldTelemetry): string {
   return `${world.obstacles ?? '—'} obstacles   ${world.colliders ?? '—'} colliders\n` +
     `${world.concealers ?? '—'} conceal   ${world.destructibles ?? '—'} destruct\n` +
-    `${world.wrecks ?? '—'} wreck sites   loose ${world.looseActive ?? '—'}/${world.looseTotal ?? '—'} awake`;
+    `${world.wrecks ?? '—'} wreck sites   loose ${world.looseActive ?? '—'}/${world.looseTotal ?? '—'} awake` +
+    (world.ambience ? `\nair ${world.ambience}` : '');
 }
 
 function cascadeText(cascades: readonly ShadowCascadeTelemetry[]): string {
@@ -282,7 +285,7 @@ export function createPerfHud({
   trace?: PerfTracePort | null;
   readRenderFrame?: () => CompletedPostFrame | null;
 }) {
-  ensureStyle('cot-perfhud-style', PERF_HUD_CSS);
+  ensureStyle('cot-perfhud-style', PERF_HUD_CSS, 'surfaces');
   const el = document.createElement('aside');
   el.id = 'cot-perfhud';
   el.setAttribute('aria-label', tr('perfHud.ariaLabel'));

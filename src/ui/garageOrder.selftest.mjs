@@ -110,7 +110,8 @@ assert.deepEqual(
 const nationalShowcaseCases = [
   {
     nation: 'Japan', filler: 'type90a',
-    expected: ['type10', 'type10b', 'raiju_ifv', 'type89', 'type90'],
+    // owner 2026-10-22: the Type 10 Kaitaku (type10_dozer) leads Japan
+    expected: ['type10_dozer', 'type10', 'type10b', 'raiju_ifv', 'type89', 'type90'],
   },
   {
     nation: 'Sweden', filler: 'strv81',

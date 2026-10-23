@@ -341,7 +341,9 @@ for (const [
 
 const merkavaProgression = [
   ['merkava2b', 8, 2200, 1000, 18, 30.4, 6.9, 525, 794, 650, 500, 650],
-  ['merkava3c', 9, 2450, 1200, 20, 34.2, 6.2, 540, 830, 680, 540, 700],
+  // 235: the Merkava 3C's true (unsquashed) wedge slope stops more of a frontal round, so its wedge plates carry less
+  // (fleetBalancePass TURRET_FRONT_COMPENSATION x0.852 keeps its frontal protection where it was)
+  ['merkava3c', 9, 2450, 1200, 20, 34.2, 6.2, 540, 830, 680, 540, 596],
   ['merkava3_baz', 9, 2500, 1200, 20, 36.1, 6.2, 560, 830, 680, 600, 780],
   ['merkava4b', 9, 2550, 1500, 25, 38, 6.5, 520, 794, 650, 650, 850],
 ];

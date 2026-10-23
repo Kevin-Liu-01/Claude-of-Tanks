@@ -219,6 +219,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/profiles/dragunHullFittings.selftest.mjs',
     'src/vehicles/profiles/dragunForwardRoofStock.selftest.mjs',
     'tools/interior-fill-body-policy.selftest.mjs',
+    // 2026-10-08: deep interior needs exact body cover over a voxel's whole footprint (or a narrow slot)
+    'tools/tank-voxel-body.selftest.mjs',
     'tools/m1a1-fill-clearance.selftest.mjs',
     'tools/track-lane-boxes.selftest.mjs',
     // 2026-10-03: declared physical bore air is open, never filled and reported apart from leaks
@@ -229,6 +231,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/watertightAudit.selftest.mjs',
     // 2026-10-16 (test-speed R7c): the gate's named carries (docs/geometry-gate/watertight-carry.json) and their rules
     'tools/watertight-carry.selftest.mjs',
+    // 2026-10-16 (tank-opt HIDDEN): fills drawn as their exact, conforming boundary surface; closed boxes bit-identical
+    'src/vehicles/interiorFillSurface.selftest.mjs',
+    // 2026-10-16 (tank-opt HIDDEN): a wreck draws the closed boxes again (setDestroyed), the rematch the surface
+    'src/vehicles/interiorFillWreck.selftest.mjs',
     'tools/barak-rear-bay-fill-policy.selftest.mjs',
     'src/vehicles/profiles/kurganetsRearDoorStock.selftest.mjs',
     'src/vehicles/profiles/kurganetsBowStock.selftest.mjs',
@@ -311,6 +317,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // 229 perf: the allocation-free hypot the per-frame track paths use equals Math.hypot bit for bit
     'src/vehicles/scalarHypot.selftest.mjs',
     'src/vehicles/roadWheelTrackSpan.selftest.mjs',
+    'src/vehicles/trackRollerSag.selftest.mjs',
     'src/vehicles/runningGearGroundRun.selftest.mjs',
     'src/vehicles/restPoseBatchedGear.selftest.mjs',
     'src/vehicles/trackCarrierSections.selftest.mjs',
@@ -721,17 +728,32 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/media-r5/films/restore.selftest.mjs',
     'tools/media-r5/fleet-media.selftest.mjs',
     'tools/media-r5/site-video-budget.selftest.mjs',
+    // brand-ui BUI-F7: the site's one playback policy and still helper, and the media receipts (fallbacks, rounds,
+    // one still per page)
+    'src/presentation/mediaPlayer.selftest.mjs',
+    'src/presentation/responsivePicture.selftest.mjs',
+    'tools/media-fallback.selftest.mjs',
+    'tools/media-freshness.selftest.mjs',
+    'tools/media-page-unique.selftest.mjs',
+    'tools/viteGameEntryMeta.selftest.mjs',
     'tools/media-r5/fleet.selftest.mjs',
     'tools/media-r5/fleet-rekey.selftest.mjs',
     'tools/media-r5/combat.selftest.mjs',
     'tools/media-r5/master-filter.selftest.mjs',
     'tools/public-repo-hygiene.selftest.mjs',
     'tools/tool-only-public-files.selftest.mjs',
+    'tools/strip-nc-probe-cache.selftest.mjs',
     'server/processShutdown.selftest.mjs',
     'tools/local-import-integrity.selftest.mjs',
     'tools/bundle-budget.selftest.mjs',
     'tools/viteSharedWorkers.selftest.mjs',
     'tools/viteGlslMinify.selftest.mjs',
+    // 2026-10-18 (brand-ui BUI-F3): the CSS-in-TS minifier keeps every literal the same stylesheet (Lightning CSS)
+    'tools/viteCssInTsMinify.selftest.mjs',
+    'tools/viteSpeculationRules.selftest.mjs',
+    'tools/viteResponsiveSeed.selftest.mjs',
+    'tools/viteNavChrome.selftest.mjs',
+    'tools/vercel-static-preview.selftest.mjs',
     'tools/telemetry-report.selftest.mjs',
     'tools/browser-failure-evidence.selftest.mjs',
     'tools/battle-entry-sweep.selftest.mjs',
@@ -751,6 +773,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/fleetSweep.selftest.mjs',
     'tools/code-quality-metrics.selftest.mjs',
     'tools/capture-lock.selftest.mjs',
+    'tools/capture-hold.selftest.mjs',
     // 2026-10-05: the polite lock's patient head — the older waiter of one session keeps the head while the session mutex
     // is busy and takes it when it frees (the old step-behind rule handed it to the newer); the cap; no FIFO lock waiting
     'tools/visual-census-lock.selftest.mjs',
@@ -776,6 +799,12 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/i18nLazyCatalog.selftest.mjs',
     // 2026-10-16 (test-speed): the registry's chunk import keeps the locale runtime's receipts reusable
     'src/ui/i18nChunkImport.selftest.mjs',
+    // 2026-10-18 BUI-F8: ICU/Intl formatting, the pseudo-locale and the catalog-shape check; the glossary as the single
+    // source of SPEC 11.2 names; the literal-ban lint's ratchet; build-time /cn body localization.
+    'src/ui/i18nFormat.selftest.mjs',
+    'src/ui/glossary.selftest.mjs',
+    'tools/i18n-literal-lint.selftest.mjs',
+    'src/presentation/localizedBody.selftest.mjs',
     'tools/i18n-page-catalogs.selftest.mjs',
     'src/dev/mapCaptureReadiness.selftest.mjs',
     'src/dev/debugTelemetry.selftest.mjs',
@@ -934,6 +963,23 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/pinch-zoom-probe.selftest.mjs',
     'src/ui/hudEditorPreview.selftest.mjs',
     'src/ui/runtimeStyles.selftest.mjs',
+    // 2026-10-17 (brand-ui BUI-F1): tokens.json -> tokens.css + tokens.ts in sync; SPEC 4.4 contrast and 4.5
+    // colour-vision floors from the token values; the legacy names alias the tokens
+    'src/ui/tokens/tokens.selftest.mjs',
+    // 2026-10-18 (brand-ui BUI-F3): every stylesheet declares into the cascade layers, CSS-in-TS only through
+    // ensureStyle(), every linked stylesheet hashed; the style-literal ratchet (counts may only fall)
+    'src/ui/styleLayers.selftest.mjs',
+    // 2026-10-22 (brand-ui BUI-F5): the shared component kit (markup, ARIA, roving focus, one tokens-only sheet)
+    'src/ui/components/components.selftest.mjs',
+    'tools/style-literal-census.selftest.mjs',
+    // 2026-10-18 (brand-ui BUI-F9): the accessibility core — the record, :root as its runtime source (the head seed and
+    // applyAccessibility agree), text and HUD scale, colour presets through tokens.ts, Custom pairs under the floors
+    // refused, Reduce motion over the OS both ways, shake/flash/static consumers, the 1 KB boot reader; hold or toggle
+    // and the perf meter default; the caption stream for radio, alarms and key sounds
+    'src/ui/accessibilityPreferences.selftest.mjs',
+    'src/ui/colorVision.selftest.mjs',
+    'src/game/inputHoldToggle.selftest.mjs',
+    'src/audio/captions.selftest.mjs',
     'src/ui/topAccentBorders.selftest.mjs',
     'src/vehicles/camoPolicy.selftest.mjs',
     // 2026-10-09 (fix/camo-defaults): production's camouflage system, row for row (R113; the owner's 10-09 messages)
@@ -1082,6 +1128,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/fx/structureHanging.selftest.mjs',
     // destruction-slabs 227 round 4: no debris plate rests on its edge, no remnant stands over the building as drawn
     'src/fx/uprightPlates.selftest.mjs',
+    'src/fx/millimetreWeld.selftest.mjs', // perf-240: the destruction welds' integer keys weld as their string keys did
     'src/fx/structureStagesPieceHides.selftest.mjs', // 2026-10-16 props lane B (227 co-hold): a live run's named-piece hides wait for its wreck's birth, a settled run's apply at once
     'src/fx/structureDebris.selftest.mjs', // 2026-10-12: thrown pieces lie where their flight meets the ground; still pieces belong to their building
     'src/fx/rubbleBodies.selftest.mjs', // 2026-10-12: a building's larger falling pieces are bodies of the one physics engine
@@ -1769,6 +1816,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/roadDistanceField.selftest.mjs',
     'src/world/fieldTrenchTerrain.selftest.mjs',
     'src/world/frontlineAtmosphere.selftest.mjs',
+    // 2026-10-22: the map's air — the per-map table, tier and time gates, seeded cards, the pinned frame
+    'src/world/mapAmbience.selftest.mjs',
     'src/world/flyoverAircraft.selftest.mjs',
     'src/world/groundLitter.selftest.mjs',
     // round 73 (2026-09-25): the ground redux — the profile table and material contract, the pressure field, the tall-grass tier
@@ -1779,6 +1828,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/terrainMaterialV2.selftest.mjs',
     'src/world/steepFaces.selftest.mjs', // ground lane (2026-10-15): sheer faces bedded on every map, steep normals over three spans
     'src/world/groundPressure.selftest.mjs',
+    'src/world/trackMarks.selftest.mjs',
     'src/world/tallGrass.selftest.mjs',
     'src/world/swardPatch.selftest.mjs', // grass r2 (2026-10-15): the sward's patches, one field for the blades and the tufts
     'src/world/cinderYard.selftest.mjs', // ground lane (2026-10-08, wave 260): Cinder Junction's cinder yard and its weed clumps
@@ -1833,6 +1883,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/scenery.selftest.mjs',
     'src/world/jebelSkin.selftest.mjs', // 2026-10-14 (maps lane, MA.12): a dome's jointed face — all round, normals out, proud, in budget, no mass
     'src/world/sceneryTierIdentity.selftest.mjs', // 2026-10-11 the hitbox lane: a phone builds the desktop's formation masses
+    // the map-revival lane (Sirocco Wadi round 1, wave 235): the erg's seif draa and star dunes; the gour's caprock cliffs
+    'src/world/duneForms.selftest.mjs',
+    'src/world/gourSkin.selftest.mjs',
     // the scenery lane (2026-10-03): the dry-stone field walls' own rubble print
     'src/world/fieldStoneSurface.selftest.mjs',
     // the scenery lane (wave 20): the mud walls' worn render; the walls' feet, drifts and snow loads
@@ -1931,6 +1984,13 @@ export const SELFTEST_SUITES = Object.freeze({
     // p2 trees lane (2026-10-01): the grown near trees, their branch-spray atlases and the build's routing
     'src/world/treeGrowth.selftest.mjs',
     'src/world/treeCrownShading.selftest.mjs',
+    // the trees lane (2026-10-08, the gauntlet's wave 278): the Ca Mau coast's Rhizophora, grey mangrove and stemless nipa
+    'src/world/mangroveForms.selftest.mjs',
+    // the woods catch-up (item 41, 2026-10-22): Monsoon's Naga Hills forms, Wadi Rum's and the oasis's tortilis, Glacier
+    // Pass's April snow, round 8's canopy form by place
+    'src/world/woodsCatchup.selftest.mjs',
+    // the trees lane (2026-10-08, the gauntlet's wave 278): Saltmere's shrubs the coast's gorse, swept inland by the wind
+    'src/world/coastalScrub.selftest.mjs',
     // trees round 2b (2026-10-03): where trees stand: woodland edges and verges, Wadi Rum's groves, the palms' sites
     'src/world/treeSpacing.selftest.mjs',
     'src/world/hedgeTrees.selftest.mjs',
@@ -1942,6 +2002,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/riparianTrees.selftest.mjs',
     // the horizons stream (2026-10-16): the Skybridge port moves no other map's heights
     'src/world/skybridgeArmIsolation.selftest.mjs',
+    // the trees lane (2026-10-06, wave 177): Saltwind's olive groves, holm oak and Aleppo pine, maquis
+    'src/world/saltwindTrees.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',
@@ -2027,6 +2089,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/maps/winterLakeGeometry.selftest.mjs',
     'src/world/propsModelStore.selftest.mjs',
     'src/world/structureKit.selftest.mjs',
+    // the maps-restyle lane (2026-10-22, from the destructible-kits lane 2026-10-11): the roadside light buildings and
+    // random hulks in 180-degree twins on a map that declares its rotation centre (the fairness ask)
+    'src/world/roadsideTwins.selftest.mjs',
     'src/world/maps/marsSettlement.selftest.mjs',
     // (the Earthrise 228 rebuild, 2026-10-18) Taurus-Littrow Station's plan, set pieces and stock (maps/earthriseStation.ts)
     'src/world/maps/earthriseStation.selftest.mjs',
@@ -2144,6 +2209,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-14 (owner): a jump mode puts the jump farthest left in the vehicle-controls row, for every loadout
     'src/ui/vehicleControlOrder.selftest.mjs',
     'src/ui/battleHudLayout.selftest.mjs',
+    // the security audit's receipt (item/security-audit-240)
+    'src/ui/htmlEscape.selftest.mjs',
     // 2026-10-16 (desk notices): the mouse centre notices clear the reticle, the instruments and the lanes on every census size.
     'src/ui/mouseNoticePlan.selftest.mjs',
     // r10e: a touch layout's centre notices keep off the reticle's footprint and the HUD's panels
@@ -2161,6 +2228,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/entry/telemetry.selftest.mjs',
     'src/entry/inlineWatchdogSink.selftest.mjs',
     'src/ui/icons.selftest.mjs',
+    // 2026-10-18 (brand-ui BUI-F4): the one icon sprite: drawing rules, one stroke per optical size, the 10 KB sprite
+    // and 3 KB boot-slice budgets, the generated index in sync, the icon() host markup, no retired product marks
+    'src/ui/icons/icon.selftest.mjs',
     'src/ui/flags.selftest.mjs',
     'src/ui/garageLocaleNavigation.selftest.mjs',
     'src/ui/garageVariantPicker.selftest.mjs',

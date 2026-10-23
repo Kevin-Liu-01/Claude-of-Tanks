@@ -47,6 +47,15 @@ export function isDressingPiece(placement: LandmarkPlacement): boolean {
 
 const num = (p: LandmarkParams, key: string): number => Number(p[key]);
 
+/** The props' modules a drift fence is strung from, and each one's length along the run (inhabitKit.ts hl × 2). */
+const DRIFT_MODULES: Readonly<Record<string, number>> = Object.freeze({ fenceplank: 2.5, barbedwire: 2.64 });
+/** A drift fence's module (stations.ts snowFence: the plank fence, or the wire a polar map dresses as its slatted drift
+ * fence) and its pitch; the footprint and the builder agree on it. */
+export function driftFenceModule(params: LandmarkParams): { kind: string; pitch: number } {
+  const kind = typeof params.module === 'string' && params.module in DRIFT_MODULES ? params.module : 'fenceplank';
+  return { kind, pitch: DRIFT_MODULES[kind] };
+}
+
 /** A town gate's two wall stubs, -x and +x of its passage (m): each its own length, else `walls`. */
 export function gateStubs(p: LandmarkParams): readonly [number, number] {
   const walls = Math.max(0, num(p, 'walls')), own = (key: string): number => (num(p, key) >= 0 ? num(p, key) : walls);
@@ -63,7 +72,9 @@ export function gateStubs(p: LandmarkParams): readonly [number, number] {
 export function harbourLayout(p: LandmarkParams) {
   const L1 = Math.max(16, num(p, 'length')), L2 = Math.max(0, num(p, 'arm')), t = Math.max(0, Math.min(100, num(p, 'turn'))) * Math.PI / 180;
   const W = Math.max(5, num(p, 'width')), b = p.basin === 'left' ? -1 : 1, m = (W / 2) * Math.tan(t / 2);
-  const dx = Math.sin(t), dz = Math.cos(t), head: readonly [number, number] = [dx * L2, L1 + dz * L2], Rh = W / 2 + 1.6;
+  // (round 4, gauntlet wave 247: the head "drum-like": a musoir rounding the arm's end, 0.7 m proud of its faces, not a
+  // drum 1.6 m wider than the arm)
+  const dx = Math.sin(t), dz = Math.cos(t), head: readonly [number, number] = [dx * L2, L1 + dz * L2], Rh = W / 2 + 0.7;
   const slip = Math.max(0, num(p, 'slip')), slipTop = 6;
   // (the boats' berths in the basin reach as far as the head or 19 m past the slipway, whichever is the farther)
   const across = Math.max(W / 2 + slip + 19, head[0] + Rh, head[0] + 3 + W / 2) + 0.8;
@@ -327,7 +338,7 @@ export const LANDMARK_KINDS: Readonly<Record<LandmarkKind, LandmarkKindSpec>> = 
     footprint: (p) => [num(p, 'width') / 2 + 10, num(p, 'length') / 2 + 1.5] },
   stripShack: { family: 'works', drapes: true, defaults: {}, footprint: (): [number, number] => [4.6, 4.2] },
   snowFence: { family: 'works', drapes: true, dressing: () => true, defaults: { length: 60 },
-    footprint: (p) => [Math.max(2.5, Math.floor(num(p, 'length') / 2.5) * 1.25) + 0.2, 0.6] },
+    footprint: (p) => { const m = driftFenceModule(p).pitch; return [Math.max(m, Math.floor(num(p, 'length') / m) * m / 2) + 0.2, 0.6]; } },
   // a mine's works (mineWorks.ts): the headframe stands over its shaft with its winding house behind (the piece centred on
   // both); the conveyor's bents and end houses are its movement record, so it spans the ground between them
   headframe: { family: 'works', drapes: true, defaults: { height: 20, paint: 'oxide' },

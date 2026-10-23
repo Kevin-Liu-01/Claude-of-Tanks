@@ -1,11 +1,7 @@
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
 import { t } from '../ui/i18n.ts';
 
-const responsiveLayout = installResponsiveLayout();
-const isCompactSurface = (): boolean => {
-  const widthBand = responsiveLayout.snapshot()?.widthBand;
-  return widthBand === 'phone' || widthBand === 'compact';
-};
+installResponsiveLayout();
 
 interface NetworkInformation extends EventTarget {
   saveData?: boolean;
@@ -16,12 +12,31 @@ interface NavigatorWithDeviceHints extends Navigator {
   connection?: NetworkInformation;
   mozConnection?: NetworkInformation;
   webkitConnection?: NetworkInformation;
-  deviceMemory?: number;
 }
 
 const deviceNavigator = navigator as NavigatorWithDeviceHints;
 const networkConnection = (): NetworkInformation | undefined =>
   deviceNavigator.connection || deviceNavigator.mozConnection || deviceNavigator.webkitConnection;
+// Data saving (Save-Data or a 2g/3g link; brand-ui SPEC 8.3): no video source, the 640 stills, no rotation prefetch.
+const savingData = (): boolean => {
+  const connection = networkConnection();
+  return !!connection?.saveData || /^(?:slow-2g|2g|3g)$/.test(connection?.effectiveType || '');
+};
+
+// The site's one playback policy (mediaPlayer.ts) and the data-saving stills (responsivePicture.ts) load beside the
+// page, never in its first bytes: a page with no video, and a visitor not saving data, fetch neither.
+type MediaPlayerModule = typeof import('./mediaPlayer.ts');
+let media: MediaPlayerModule | null = null;
+const pageVideos = document.querySelectorAll<HTMLVideoElement>('video[data-media-player], video[data-autoplay-video]');
+if (pageVideos.length) {
+  void Promise.all([import('./mediaPlayer.ts'), import('./mediaPlayer.css')]).then(([module]) => {
+    media = module;
+    module.mountMediaPlayers(pageVideos, (playing, video) => t(playing ? 'publicPages.video.pauseAria'
+      : 'publicPages.video.playAria', { label: video.dataset.i18nLabel ? t(video.dataset.i18nLabel) : video.dataset.label || '' }));
+  });
+}
+const savingPictures = savingData() ? import('./responsivePicture.ts') : null;
+void savingPictures?.then(({ applyDataSaverStills }) => applyDataSaverStills(document, true));
 
 // The media archive is used by docs, not the landing page. Keep its manifest,
 // rendering code, and CSS out of the home critical path.
@@ -32,66 +47,6 @@ if (document.querySelector('[data-media-archive]')) {
   ]).then(([, { autoMountMediaArchives }]) => autoMountMediaArchives());
 }
 
-function mountHeroRail(root: Element): void {
-  const slides = [...root.querySelectorAll<HTMLImageElement>('[data-hero-slide]')];
-  if (slides.length < 2) return;
-  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  const connection = networkConnection();
-  const limitsMotion = (): boolean => reducedMotion.matches || isCompactSurface() || !!connection?.saveData;
-  let activeIndex = Math.max(0, slides.findIndex((slide) => slide.classList.contains('is-active')));
-  let advanceTimer = 0;
-
-  const stopTimer = (): void => {
-    clearTimeout(advanceTimer);
-    advanceTimer = 0;
-  };
-
-  const expose = (index: number): void => {
-    slides.forEach((slide, slideIndex) => {
-      const active = slideIndex === index;
-      slide.classList.toggle('is-active', active);
-      slide.setAttribute('aria-hidden', String(!active));
-    });
-    activeIndex = index;
-  };
-
-  const hydrate = async (slide: HTMLImageElement | undefined): Promise<void> => {
-    if (!slide?.dataset.src || slide.currentSrc) return;
-    slide.src = slide.dataset.src;
-    delete slide.dataset.src;
-    try { await slide.decode(); } catch (_) {}
-  };
-
-  const scheduleAdvance = (): void => {
-    stopTimer();
-    if (limitsMotion() || document.hidden) return;
-    advanceTimer = window.setTimeout(advance, 5600);
-  };
-
-  const advance = async (): Promise<void> => {
-    stopTimer();
-    if (limitsMotion() || document.hidden) return;
-    const nextIndex = (activeIndex + 1) % slides.length;
-    await hydrate(slides[nextIndex]);
-    if (limitsMotion() || document.hidden) return;
-    expose(nextIndex);
-    scheduleAdvance();
-  };
-
-  const applyMotionPreference = (): void => {
-    stopTimer();
-    if (limitsMotion()) expose(0);
-    else scheduleAdvance();
-  };
-  reducedMotion.addEventListener('change', applyMotionPreference);
-  window.addEventListener('cot:layoutchange', applyMotionPreference);
-  connection?.addEventListener?.('change', applyMotionPreference);
-  document.addEventListener('visibilitychange', applyMotionPreference);
-  expose(activeIndex);
-  applyMotionPreference();
-}
-
-document.querySelectorAll('[data-hero-rail]').forEach(mountHeroRail);
 
 function mountShotRail(rail: HTMLElement): void {
   const section = rail.closest<HTMLElement>('.v5-authored');
@@ -151,6 +106,68 @@ function mountShotRail(rail: HTMLElement): void {
 
 document.querySelectorAll<HTMLElement>('[data-shot-rail]').forEach(mountShotRail);
 
+// The landing's versus wall (brand-ui BUI-W2): the time-of-day buttons show the duels filmed at that hour.
+function mountVersusFilter(section: HTMLElement): void {
+  const buttons = [...section.querySelectorAll<HTMLButtonElement>('[data-versus-filter]')];
+  const tiles = [...section.querySelectorAll<HTMLElement>('.vs-tile[data-hour]')];
+  for (const button of buttons) {
+    button.addEventListener('click', () => {
+      const hour = button.dataset.versusFilter || 'all';
+      for (const other of buttons) other.setAttribute('aria-pressed', String(other === button));
+      for (const tile of tiles) tile.hidden = hour !== 'all' && tile.dataset.hour !== hour;
+    });
+  }
+}
+
+document.querySelectorAll<HTMLElement>('#versus').forEach(mountVersusFilter);
+
+interface FleetFeature {
+  readonly name: string; readonly flag: string; readonly tier: string; readonly cal: number; readonly pen: number;
+  readonly poster: string; readonly gallery: string; readonly drive: string;
+}
+
+// The landing's fleet wall: pointing at or focusing a tank's card shows its take, flag and facts in the feature panel;
+// the card itself opens the vehicle's Gallery dossier. The panel's box never changes size.
+function mountFleetFeature(section: HTMLElement): void {
+  const panel = section.querySelector<HTMLElement>('[data-fleet-feature]');
+  const cards = [...section.querySelectorAll<HTMLAnchorElement>('a[data-feature]')];
+  if (!panel || !cards.length) return;
+  const fact = <T extends Element>(name: string): T | null => panel.querySelector<T>(`[data-fact="${name}"]`);
+  const show = (card: HTMLAnchorElement): void => {
+    let feature: FleetFeature;
+    try { feature = JSON.parse(card.dataset.feature || '') as FleetFeature; } catch { return; }
+    for (const other of cards) other.classList.toggle('is-featured', other === card);
+    const poster = fact<HTMLImageElement>('poster');
+    if (poster && poster.getAttribute('src') !== feature.poster) poster.src = feature.poster;
+    const name = fact<HTMLElement>('name');
+    if (name) name.textContent = feature.name;
+    panel.querySelector('.fleet-feature__flag use')?.setAttribute('href', `#f-${feature.flag}`);
+    const values: Record<string, string> = { tier: feature.tier, caliber: String(feature.cal), penetration: String(feature.pen) };
+    for (const [key, value] of Object.entries(values)) { const node = fact<HTMLElement>(key); if (node) node.textContent = value; }
+    fact<HTMLAnchorElement>('gallery')?.setAttribute('href', feature.gallery);
+    fact<HTMLAnchorElement>('drive')?.setAttribute('href', feature.drive);
+  };
+  for (const card of cards) {
+    card.addEventListener('pointerenter', () => show(card));
+    card.addEventListener('focus', () => show(card));
+  }
+  cards[0].classList.add('is-featured');
+}
+
+document.querySelectorAll<HTMLElement>('#fleet').forEach(mountFleetFeature);
+
+// The hero's trailer button plays the trailer where the trailers row shows it (a click, so it plays with its sound).
+document.querySelectorAll<HTMLAnchorElement>('[data-trailer-open]').forEach((link) => {
+  link.addEventListener('click', (event) => {
+    const video = document.querySelector<HTMLVideoElement>('#trailers video[data-trailer]');
+    if (!video) return;
+    event.preventDefault();
+    video.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+    if (video.dataset.poster && !video.poster) video.poster = video.dataset.poster;
+    void video.play().catch(() => {});
+  });
+});
+
 // The landing page's trailers row: each trailer plays on a click (controls, preload none) with its sound, so nothing of
 // it loads before the row nears the viewport, when its poster does; starting one pauses the others.
 function mountTrailerRow(row: HTMLElement): void {
@@ -178,9 +195,11 @@ document.querySelectorAll<HTMLElement>('[data-trailer-row]').forEach(mountTraile
 function mountDeferredImage(image: HTMLImageElement): void {
   const observer = new IntersectionObserver(([entry]) => {
     if (!entry.isIntersecting) return;
-    image.src = image.dataset.src || '';
+    const src = image.dataset.src || '';
     delete image.dataset.src;
     observer.disconnect();
+    if (savingPictures) void savingPictures.then(({ dataSaverSrc }) => { image.src = dataSaverSrc(src); });
+    else image.src = src;
   }, { rootMargin: '80px 20%' });
   observer.observe(image);
 }
@@ -191,127 +210,36 @@ document.querySelectorAll<HTMLImageElement>('img[data-deferred-src]').forEach((i
   mountDeferredImage(image);
 });
 
-// The home page's mode cards carry the battle setup's own mode icons (src/ui/uiIcons.ts, as GAME_MODE_DEFINITIONS in
-// src/sim/matchModes.ts names them), so the page draws none of its own; the icon set loads only where a card asks.
-const uiIconSlots = [...document.querySelectorAll<HTMLElement>('[data-ui-icon]')];
-if (uiIconSlots.length) {
-  void import('../ui/uiIcons.ts').then(({ uiIconSVG }) => {
-    for (const slot of uiIconSlots) slot.innerHTML = uiIconSVG(slot.dataset.uiIcon || '', 26);
-  });
-}
+// The home page's mode cards carry the battle setup's own mode icons (as GAME_MODE_DEFINITIONS in src/sim/matchModes.ts
+// names them) in [data-ui-icon] slots, which the shared public nav (publicNav.ts) fills from the shared icon set.
 
-function mountViewportVideo(video: HTMLVideoElement): void {
-  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  const connection = networkConnection();
-  const source = video.querySelector<HTMLSourceElement>('source[data-src]');
-  if (!source) return;
-
-  const lowPowerDevice = typeof deviceNavigator.deviceMemory === 'number'
-    && Number.isFinite(deviceNavigator.deviceMemory) && deviceNavigator.deviceMemory <= 4;
-  const releaseGraceMs = (): number => {
-    if (document.hidden) return 5000;
-    if (lowPowerDevice || connection?.saveData) return 8000;
-    return isCompactSurface() ? 15000 : 30000;
-  };
-  const manualPlayback = (): boolean => reducedMotion.matches || !!connection?.saveData
-    || /(^|-)2g$/.test(connection?.effectiveType || '')
-    || (isCompactSurface() && lowPowerDevice);
-  let visible = false;
-  let loaded = false;
-  let releaseTimer = 0;
-  let control: HTMLButtonElement | null = null;
-
-  const setControlVisible = (show: boolean): void => {
-    if (control) control.hidden = !show;
-  };
-
-  /** The file to load: a phone's own mp4; else the desktop file, or its fallback (data-fallback-src, else the phone's
-   *  mp4) where the browser plays no VP9, so a WebM never leaves a blank frame. */
-  const pickSource = (): [string, string] => {
-    const d = source.dataset;
-    if (isCompactSurface() && d.mobileSrc) return [d.mobileSrc, d.mobileType || 'video/mp4'];
-    if (d.type && video.canPlayType(d.type) === '') {
-      if (d.fallbackSrc) return [d.fallbackSrc, d.fallbackType || 'video/mp4'];
-      if (d.mobileSrc) return [d.mobileSrc, d.mobileType || 'video/mp4'];
-    }
-    return [d.src || '', d.type || ''];
-  };
-
-  const loadSource = (): void => {
-    if (loaded) return;
-    [source.src, source.type] = pickSource();
-    video.load();
-    loaded = true;
-  };
-
-  const releaseSource = (): void => {
-    clearTimeout(releaseTimer);
-    releaseTimer = 0;
-    video.pause();
-    source.removeAttribute('src');
-    video.load();
-    loaded = false;
-    video.classList.remove('is-playing');
-    setControlVisible(manualPlayback());
-  };
-
-  const sync = (): void => {
-    clearTimeout(releaseTimer);
-    releaseTimer = 0;
-    if (!visible || document.hidden) {
-      video.pause();
-      // A 1.2 s teardown made normal scroll reversals repeatedly reset the
-      // fetch/demux/decode pipeline. Retain the paused source through a human
-      // scroll-back window, then reclaim it sooner on constrained devices.
-      if (loaded) releaseTimer = window.setTimeout(releaseSource, releaseGraceMs());
-      return;
-    }
-    if (manualPlayback()) {
-      setControlVisible(!loaded || video.paused);
-      return;
-    }
-    loadSource();
-    video.play().catch(() => {});
-  };
-
-  const warmObserver = new IntersectionObserver(([entry]) => {
-    if (!entry.isIntersecting) return;
-    if (video.dataset.poster && !video.poster) {
-      video.poster = video.dataset.poster;
-    }
-    // Begin transfer just before the section reaches the viewport, but keep
-    // playback on the separate true-viewport observer below. One expanded
-    // observer cannot do both: its threshold may be crossed before the real
-    // viewport and never fire again at the screen edge.
-    if (!loaded && !manualPlayback()) loadSource();
-  }, { rootMargin: '25% 0px', threshold: 0 });
-
-  const observer = new IntersectionObserver(([entry]) => {
-    visible = entry.isIntersecting && entry.intersectionRatio >= 0.12;
-    sync();
-  }, { threshold: [0, 0.12, 0.55] });
-
-  if (manualPlayback()) {
-    control = document.createElement('button');
-    control.type = 'button';
-    control.className = 'v5-video-control';
-    control.textContent = t('publicPages.video.playButton');
-    const videoLabel = video.dataset.label || 'video';
-    control.setAttribute('aria-label', t('publicPages.video.playAria', { label: videoLabel }));
-    control.addEventListener('click', () => {
-      loadSource();
-      video.play().then(() => setControlVisible(false)).catch(() => setControlVisible(true));
-    });
-    video.parentElement?.append(control);
+// The Play hand-off (brand-ui SPEC 8.3): a plain click on a link into the game (/ or /cn/) stops every media transfer
+// before the navigation starts, so the game's boot gets the whole pipe; hover or focus on one prefetches the game's
+// entry chunk (named at build in <meta name="cot-game-entry">), never while a video downloads or data is saved.
+const gameEntryChunk = document.querySelector<HTMLMetaElement>('meta[name="cot-game-entry"]')?.content || '';
+const gameLink = (target: EventTarget | null): HTMLAnchorElement | null => {
+  const link = target instanceof Element ? target.closest<HTMLAnchorElement>('a[href]') : null;
+  if (!link || (link.target && link.target !== '_self')) return null;
+  const url = new URL(link.href, location.href);
+  return url.origin === location.origin && /^\/(?:cn\/?)?$/.test(url.pathname) ? link : null;
+};
+let gameEntryPrefetched = false;
+const prefetchGameEntry = (event: Event): void => {
+  if (gameEntryPrefetched || !gameEntryChunk || !gameLink(event.target)) return;
+  if (media ? !media.prefetchGameEntry(gameEntryChunk) : savingData()) return;
+  if (!media) {
+    const link = document.createElement('link');
+    link.rel = 'prefetch';
+    link.href = gameEntryChunk;
+    document.head.append(link);
   }
-
-  warmObserver.observe(video);
-  observer.observe(video);
-  video.addEventListener('play', () => video.classList.add('is-playing'));
-  video.addEventListener('pause', () => video.classList.remove('is-playing'));
-  reducedMotion.addEventListener('change', sync);
-  window.addEventListener('cot:layoutchange', sync);
-  document.addEventListener('visibilitychange', sync);
-}
-
-document.querySelectorAll<HTMLVideoElement>('[data-autoplay-video]').forEach(mountViewportVideo);
+  gameEntryPrefetched = true;
+};
+document.addEventListener('pointerover', prefetchGameEntry, { passive: true });
+document.addEventListener('focusin', prefetchGameEntry);
+document.addEventListener('click', (event) => {
+  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  if (!gameLink(event.target)) return;
+  if (media) media.abortPageMedia();
+  else window.dispatchEvent(new Event('cot:media-handoff'));
+});
