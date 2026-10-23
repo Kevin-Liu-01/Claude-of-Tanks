@@ -24,7 +24,7 @@ import { DAMAGE_PANEL_CSS } from './damagePanelStyle.ts';
 
 import { ensureFonts } from './fonts.ts';
 import { telemetryTankId } from '../game/tankIdBoundaries.ts';
-import { ensureStyle } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { t } from './i18n.ts';
 import {
   getTopDownMasks,
@@ -501,7 +501,7 @@ export function layoutDamagePanelCrewAnchors(
  */
 export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanelController {
   ensureFonts();
-  ensureStyle('cot-dp-style', DAMAGE_PANEL_CSS);
+  ensureStyle('cot-dp-style', DAMAGE_PANEL_CSS, 'surfaces');
   const maskSource: DamagePanelMaskSource = options.maskSource
     ?? { get: getTopDownMasks, prepare: prepareTopDownMasks };
   const telemetry = options.telemetry;
@@ -513,7 +513,7 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
   root.innerHTML =
     `<div class="hprow"><span class="hplabel">HP</span><span class="hpnum num">—</span></div>` +
     `<div class="hptrack"><div class="hpfill"></div></div>` +
-    `<div class="fire">ON FIRE</div>`;
+    `<div class="fire">${t('damagePanel.onFire')}</div>`;
   const hpNum = requiredElement<HTMLElement>(root, '.hpnum');
   const hpFill = requiredElement<HTMLElement>(root, '.hpfill');
   const fireEl = requiredElement<HTMLElement>(root, '.fire');

@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { brotliCompressSync, constants, gzipSync } from 'node:zlib';
 import {
-  BUNDLE_PAGES, budgetMetrics, budgetViolations, budgetsFrom, htmlResources, measureDist, measurePage,
+  BUNDLE_PAGES, budgetMetrics, budgetViolations, budgetsFrom, htmlResources, measureDist, measureDistAsync, measurePage,
   staticImportSpecifiers,
 } from './bundle-budget.mjs';
 
@@ -84,6 +84,24 @@ try {
 
   const both = measureDist(dist, { game: 'index.html', cn: 'cn/index.html' });
   assert.deepEqual(both.game, game, 'the shared per-file cache does not change a page result');
+
+  // The command's path: sizes found ahead on the thread pool, then reused by content digest (2026-10-22).
+  const pages = { game: 'index.html', cn: 'cn/index.html' };
+  const sizeCache = join(dist, '.cache', 'sizes.json');
+  const fresh = await measureDistAsync(dist, pages, { sizeCache });
+  assert.deepEqual([fresh.measures, fresh.files, fresh.reused], [both, 6, 0], 'thread-pool sizes are the measured sizes');
+  const again = await measureDistAsync(dist, pages, { sizeCache });
+  assert.deepEqual([again.measures, again.reused], [both, 6], 'unchanged files reuse their sizes');
+  const cached = JSON.parse(readFileSync(sizeCache, 'utf8'));
+  writeFileSync(sizeCache, JSON.stringify({ ...cached, key: 'zlib 0, brotli 0' }));
+  assert.equal((await measureDistAsync(dist, pages, { sizeCache })).reused, 0, 'another zlib or brotli compresses again');
+  write('assets/reexp-dddd4444.js', 'export const r=3;');
+  const edited = await measureDistAsync(dist, pages, { sizeCache });
+  assert.equal(edited.reused, 5, 'a changed file is compressed again');
+  assert.deepEqual(edited.measures, measureDist(dist, pages));
+  writeFileSync(sizeCache, '{"key":');
+  assert.equal((await measureDistAsync(dist, pages, { sizeCache })).reused, 0, 'a damaged cache compresses everything');
+  write('assets/reexp-dddd4444.js', 'export const r=2;');
 
   const budgets = budgetsFrom(both);
   assert.equal(budgets.game.requests, Math.ceil(4 * 1.03));

@@ -19,7 +19,8 @@ import { auxiliaryCapabilities } from '../vehicles/auxiliaryInventory.ts';
 // Contract: docs/ARCHITECTURE.md §3.7.1.
 import * as THREE from 'three';
 import { captureMinimapScene, requireSceneMinimap, type MinimapCaptureReceipt } from './minimapCapturePolicy.ts';
-import { createElement as el, ensureStyle } from './dom.ts';
+import { createElement as el } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { isAnyModalOpen } from './modal.ts';
 import { installBattleHudLayout, SCORE_BOTTOM_INSET, MAX_BATTLE_NOTIFICATIONS } from './battleHudLayout.ts';
 import { createPreBattleOverlay } from './preBattleOverlay.ts';
@@ -1154,6 +1155,7 @@ const RET_CEIL_FRAC = 0.15;
 // Shared type system (see src/ui/fonts.ts): FONT_COND drives the numeral/label
 // hierarchy (weight floor 500); readouts that tick in place take the .num class.
 import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
+import { A11Y } from './accessibilityPreferences.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import {
   CONSUMABLE_READY_MARK, CONSUMABLE_RULES, cooldownRemaining,
@@ -1427,10 +1429,10 @@ function drawShellIcon(canvas: HTMLCanvasElement, type: string): void {
 
 const HUD_CSS = `
 .cot-hud{position:fixed;inset:0;pointer-events:none;z-index:40;font-family:${FONT_STACK};isolation:isolate;
-  --hud-panel:rgba(7,11,15,.92);--hud-edge:rgba(181,199,212,.32);
-  --hud-muted:#93a3af;--hud-text:#e8f0f5;--hud-action:#f0a030;--hud-danger:#f05a5a;
-  --hud-layer-world:6;--hud-layer-sight:8;--hud-layer-status:18;
-  --hud-layer-controls:24;--hud-layer-score:30;
+  --hud-panel:var(--hud-plate,rgba(13,16,20,.92));--hud-edge:var(--line-3,rgba(246,243,236,.24));
+  --hud-muted:var(--ink-3,#9a9a95);--hud-text:var(--ink-1,#f6f3ec);--hud-action:var(--accent,#f0a030);--hud-danger:#f05a5a;
+  --hud-layer-world:var(--z-hud-world,6);--hud-layer-sight:var(--z-hud-sight,8);--hud-layer-status:var(--z-hud-status,18);
+  --hud-layer-controls:var(--z-hud-controls,24);--hud-layer-score:var(--z-hud-score,30);
   -webkit-user-select:none;user-select:none;color:var(--hud-text);overflow:hidden;}
 .cot-hud *{box-sizing:border-box;margin:0;padding:0;}
 .cot-ret{position:absolute;z-index:var(--hud-layer-sight);inset:0;width:100%;height:100%;display:block;}
@@ -2021,6 +2023,19 @@ function fmtTimer(s: number): string {
  * The Horde's status line under the live ruleset (else the mode's own table): unlimited rounds drop the ammunition
  * count, which could only read full.
  */
+/** How far a touch may travel on a vehicle-row tile and still act on its lift (UI-06: farther is a swipe to aim). */
+const TAP_SLOP_PX = 10;
+
+/** The objective's progress as its " · " parts, each count's figures held together: a short landscape's compact form
+ *  stacks the parts in the side seat (battleHudLayout.css data-objective-seat). */
+function setObjectiveValue(target: HTMLElement, copy: string): void {
+  target.replaceChildren();
+  copy.split(' · ').forEach((part, index) => {
+    if (index) target.append(Object.assign(document.createElement('span'), { className: 'sep', textContent: '\u00a0· ' }));
+    target.append(Object.assign(document.createElement('span'), { className: 'seg', textContent: part.replace(/ \/ /g, ' / ') }));
+  });
+}
+
 export function hordeStatusCopy(modeState: HudMatchModeState, liveRuleset: MatchRuleset | null): string {
   const horde = modeState.horde;
   const wave = String(horde?.wave || 1), alive = String(horde?.remaining ?? horde?.alive ?? 0);
@@ -2038,7 +2053,7 @@ export function hordeStatusCopy(modeState: HudMatchModeState, liveRuleset: Match
  */
 export function initHud(bus: EventBus): HudRuntime {
   ensureFonts();
-  ensureStyle('cot-hud-style', HUD_CSS);
+  ensureStyle('cot-hud-style', HUD_CSS, 'surfaces');
 
   const root = el('div', 'cot-hud');
   document.body.appendChild(root);
@@ -2054,9 +2069,6 @@ export function initHud(bus: EventBus): HudRuntime {
   let markShown = false, markX = NaN, markY = NaN;
   const on = (event: string, listener: (payload: HudEventPayload) => void): (() => void) =>
     bus.on(event, (payload) => listener(payload as HudEventPayload));
-  const reducedMotionQuery = typeof window.matchMedia === 'function'
-    ? window.matchMedia('(prefers-reduced-motion: reduce)')
-    : null;
   const hpLayer = el('div', 'cot-hpbars', root);
   const dmgLayer = el('div', 'cot-dmglayer', root);
 
@@ -2126,12 +2138,11 @@ export function initHud(bus: EventBus): HudRuntime {
   let netLastMs = 0;       // wall-clock of previous update (fps EMA only)
   let netLastPaintMs = 0;  // DOM values update at 4 Hz, not every render frame
   let netEmaDt = 1 / 60;
-  // Desktop keeps the player's Interface preference. Mobile always shows the
-  // compact readout directly below its top-right control row.
+  // The player's Interface preference on every device (off by default, brand-ui SPEC 12.1.6): touch layouts no longer
+  // force the readout on.
   let netOptIn = false;
   function updateNetReadout(frame: HudFrame): void {
-    const mobileRequired = document.body.classList.contains('cot-touch-layout');
-    if (!netOptIn && !mobileRequired) return;
+    if (!netOptIn) return;
     const now = performance.now();
     if (netLastMs > 0) {
       const dt = Math.min(0.25, (now - netLastMs) / 1000);
@@ -2265,14 +2276,16 @@ export function initHud(bus: EventBus): HudRuntime {
   /** (ac130-fx-228) the combatants flying the gunship: their vehicle is the AC-130 (its icon in the silhouette's place) */
   const aircraftById = new Set<string>();
   const earRows = new Map<string, EarRow>(); // tank id -> { root, hp, dead, name }
+  // Tab holds the rosters open, or toggles them when the player chose toggle for it (hold-or-toggle, Accessibility).
   window.addEventListener('keydown', event => {
     if (event.code !== 'Tab' || mode === 'hidden' || isAnyModalOpen() || document.querySelector('.cot-settings.open') ||
         (event.target instanceof Element && event.target.closest('input,textarea,select,[contenteditable="true"],.cot-room-chat'))) return;
     event.preventDefault();
-    root.classList.add('rosters-expanded');
+    if (!A11Y.toggles.has('rosters')) root.classList.add('rosters-expanded');
+    else if (!event.repeat) root.classList.toggle('rosters-expanded');
   }, true);
   const collapseRosters = (): void => { root.classList.remove('rosters-expanded'); };
-  window.addEventListener('keyup', event => { if (event.code === 'Tab') collapseRosters(); }, true);
+  window.addEventListener('keyup', event => { if (event.code === 'Tab' && !A11Y.toggles.has('rosters')) collapseRosters(); }, true);
   window.addEventListener('blur', collapseRosters);
 
   const killfeed = el('div', 'cot-killfeed', root);
@@ -2454,32 +2467,41 @@ export function initHud(bus: EventBus): HudRuntime {
   // --- shell selector + consumables ---
   const controlsRow = el('div', 'cot-vehicle-controls', root);
   controlsRow.setAttribute('role','group'); controlsRow.setAttribute('aria-label',t('systems.title'));
+  /** Binds a control of the row. A mouse acts on its press and suppresses the compatibility mouse event: while the
+   *  game owns pointer lock a bubbled Mouse0 is the fire binding, and a click reaching window would fire the cannon
+   *  alongside the action. A touch acts on its lift within TAP_SLOP_PX of where it began (UI-06): a swipe to aim that
+   *  starts on a tile acts on nothing. Keyboard activation is a click with detail 0 and no press. */
+  const bindControl = (button: HTMLButtonElement, act: () => void): void => {
+    let touchId = -1, touchX = 0, touchY = 0;
+    button.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (event.pointerType === 'mouse') { act(); return; }
+      touchId = event.pointerId; touchX = event.clientX; touchY = event.clientY;
+    });
+    button.addEventListener('pointerup', (event) => {
+      if (event.pointerId !== touchId) return;
+      touchId = -1;
+      event.stopPropagation();
+      if (Math.hypot(event.clientX - touchX, event.clientY - touchY) <= TAP_SLOP_PX) act();
+    });
+    button.addEventListener('pointercancel', () => { touchId = -1; });
+    button.addEventListener('click', (event) => { event.stopPropagation(); if (event.detail === 0) act(); });
+  };
   const specialButton = el('button', 'cot-special', controlsRow);
   specialButton.type = 'button';
   specialButton.hidden = true;
   specialButton.innerHTML = '<span class="si"></span><span class="sl"></span><span class="sk">E</span><small class="system-status"></small>';
-  // Act on pointerdown and suppress the compatibility mouse event. While the
-  // game owns pointer lock, a bubbled Mouse0 is the fire binding; letting a
-  // touch/click reach window would fire the cannon alongside this action.
-  specialButton.addEventListener('pointerdown', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (!specialButton.hidden && !specialButton.disabled) bus.emit('ui:specialAction', {});
-  });
-  // Keyboard activation produces click(detail=0) without pointerdown.
-  specialButton.addEventListener('click', (event) => {
-    event.stopPropagation();
-    if (event.detail === 0 && !specialButton.hidden && !specialButton.disabled) bus.emit('ui:specialAction', {});
-  });
+  bindControl(specialButton, () => { if (!specialButton.hidden && !specialButton.disabled) bus.emit('ui:specialAction', {}); });
   // Owner (2026-09-16, Turbo Ball): the jump keycap shows only in rulesets with a jump launch.
   const jumpHint = el('button', 'cot-jump', controlsRow);
   jumpHint.type = 'button';
-  jumpHint.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();bus.emit('ui:selfRight',{});});
-  jumpHint.addEventListener('click',e=>{e.stopPropagation();if(e.detail===0)bus.emit('ui:selfRight',{});});
+  bindControl(jumpHint, () => bus.emit('ui:selfRight', {}));
   // round 30 (owner 2026-09-20): a rocket marks the jump — it is a boost now, on the ground or in the air
   jumpHint.innerHTML = `<span class="si">${uiIconSVG('rocket', 18)}</span><span class="sl"></span><span class="sk">F</span><small class="system-status"></small>`;
   const jumpLabel = requireElement<HTMLElement>(jumpHint, '.sl');
   jumpLabel.textContent=t('hud.jump');
+  jumpHint.setAttribute('aria-label', t('hud.jump'));
   const jumpKey = requireElement<HTMLElement>(jumpHint, '.sk');
   const specialIcon = requireElement<HTMLElement>(specialButton, '.si');
   const specialLabel = requireElement<HTMLElement>(specialButton, '.sl');
@@ -2490,12 +2512,11 @@ export function initHud(bus: EventBus): HudRuntime {
   const droneButton = el('button', 'cot-auxiliary cot-drone-control', controlsRow); droneButton.type = 'button'; droneButton.hidden = true;
   droneButton.innerHTML = `<span class="si">${uiIconSVG('modeDrone',18)}</span><span class="sl"></span><span class="sk">V</span>`;
   droneButton.setAttribute('aria-label', t('systems.drone.help'));
-  droneButton.addEventListener('pointerdown', event => { event.preventDefault(); event.stopPropagation(); if (!droneButton.disabled) bus.emit('ui:drone', {}); });
-  droneButton.addEventListener('click', event => { event.stopPropagation(); if (event.detail === 0 && !droneButton.disabled) bus.emit('ui:drone', {}); });
+  bindControl(droneButton, () => { if (!droneButton.disabled) bus.emit('ui:drone', {}); });
   // The drone altimeter reads the same terrain height field as the spotting line-of-sight tests (set on map load).
   const aerialHud = createAerialHud(root,bus,() => heightFieldRef);
   const missileButton=el('button','cot-auxiliary',controlsRow);missileButton.type='button';missileButton.hidden=true;
-  missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">ATGM</span><span class="sk"></span><small class="system-status"></small>`;
+  missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">${t('systems.atgm')}</span><span class="sk"></span><small class="system-status"></small>`;
   let missilePlayer:HudTank|null|undefined=null,previousConventionalSlot=0;
   function toggleExtraMissile(){
     if(missileButton.hidden||missileButton.disabled||!missilePlayer)return;
@@ -2503,16 +2524,14 @@ export function initHud(bus: EventBus): HudRuntime {
     if(slot<0)return;
     bus.emit('ui:shellSelect',{slot:(missilePlayer.input?.shellSlot??missilePlayer.combat?.shellSlot)===slot?previousConventionalSlot:slot});
   }
-  missileButton.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();toggleExtraMissile();});
-  missileButton.addEventListener('click',e=>{e.stopPropagation();if(e.detail===0)toggleExtraMissile();});
+  bindControl(missileButton, toggleExtraMissile);
   let defaultLightsOn=false;
   bus.on('auxiliary:defaultLights',payload=>{defaultLightsOn=!!(payload as {on:boolean}).on;});
   const auxiliaryButtons = (['smoke','lights','roofGun'] as const).map(action=>{
     const button=el('button','cot-auxiliary',controlsRow);button.type='button';button.hidden=true;
     button.innerHTML=`<span class="si">${uiIconSVG(action==='lights'?'lightbulb':action,18)}</span><span class="sl">${t(`systems.${action}`)}</span><span class="sk"></span><small class="system-status"></small>`;
     button.title=t(`systems.${action}.help`);button.setAttribute('aria-label',button.title);
-    button.addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();if(!button.disabled)bus.emit(`ui:${action==='lights' ? 'lightsToggle' : action}`,{});});
-    button.addEventListener('click',e=>{e.stopPropagation();if(e.detail===0&&!button.disabled)bus.emit(`ui:${action==='lights' ? 'lightsToggle' : action}`,{});});
+    bindControl(button, () => { if (!button.disabled) bus.emit(`ui:${action==='lights' ? 'lightsToggle' : action}`, {}); });
     return {action,button,label:button.querySelector<HTMLElement>('.sl')!,status:button.querySelector('small')!,key:button.querySelector<HTMLElement>('.sk')!};
   });
   // Owner (2026-10-14): one ordering for the row (vehicleControlOrder.ts); a jump mode puts the jump farthest left.
@@ -2527,6 +2546,27 @@ export function initHud(bus: EventBus): HudRuntime {
     arrangeVehicleControls(controlsRow,vehicleControls,on);
   }
   setControlsJumpMode(false);
+  // UI-06: where a touch row holds fewer whole tiles than its controls, its last place pages through the rest
+  // (battleHudLayout.ts writes the pages); a tap anywhere off the row returns it to its first page.
+  const moreButton = el('button', 'cot-systems-more', controlsRow);
+  moreButton.type = 'button';
+  moreButton.hidden = true;
+  moreButton.innerHTML = `<span class="si next">${uiIconSVG('chevronRight', 18)}</span><span class="si back">${uiIconSVG('chevronLeft', 18)}</span>`;
+  moreButton.setAttribute('aria-label', t('systems.more'));
+  const setControlsPage = (page: number): void => {
+    if (controlsRow.dataset.page === String(page)) return;
+    controlsRow.dataset.page = String(page);
+    window.dispatchEvent(new Event('cot-hud-relayout'));
+  };
+  bindControl(moreButton, () => setControlsPage((Number(controlsRow.dataset.page) + 1) % Math.max(1, Number(controlsRow.dataset.pages) || 1)));
+  window.addEventListener('pointerdown', (event) => {
+    if (Number(controlsRow.dataset.page) > 0 && !controlsRow.contains(event.target as Node)) setControlsPage(0);
+  }, true);
+  /** A control's caption: its name, or a count it is showing (a cooldown), which a touch tile shows alone. */
+  const setControlText = (label: Element, text: string, count: boolean): void => {
+    label.textContent = text;
+    label.toggleAttribute('data-count', count);
+  };
   const reloadForSlot=createVehicleCooldownReader();
   function updateSpecialAction(player: HudTank | null | undefined, aim: HudAimInput | null | undefined = null): void {
     const canControl=!!player?.combat&&!player.combat.destroyed;
@@ -2541,7 +2581,8 @@ export function initHud(bus: EventBus): HudRuntime {
     droneButton.dataset.phase = drone.phase;
     droneButton.classList.toggle('active', !!flight?.active);
     droneButton.setAttribute('aria-pressed', String(!!flight?.active));
-    droneButton.querySelector('.sl')!.textContent = flight?.active ? t('systems.drone.return') : (flight?.cooldownS ?? 0) > 0 ? `${Math.ceil(flight!.cooldownS)}s` : t('systems.drone');
+    const droneWait = !flight?.active && (flight?.cooldownS ?? 0) > 0;
+    setControlText(droneButton.querySelector('.sl')!, flight?.active ? t('systems.drone.return') : droneWait ? `${Math.ceil(flight!.cooldownS)}s` : t('systems.drone'), droneWait);
 
     root.classList.toggle('aerial-active', !!flight?.active);
     root.classList.toggle('aerial-drone', flight?.kind === 'drone' && flight.active);
@@ -2553,8 +2594,9 @@ export function initHud(bus: EventBus): HudRuntime {
       button.classList.toggle('active',active);
       if(action!=='smoke')button.setAttribute('aria-pressed',String(active));
       button.disabled=!canControl||(action==='roofGun'&&player?.combat?.modules?.roofGun?.state==='red')||(action==='smoke'&&(cooldown>0||state?.smokeCharges===0));
-      label.textContent=action==='smoke' && state?.smokeCharges===0 ? '0/3'
-        : action==='smoke' && cooldown ? t('systems.cooldown',{seconds:cooldown}) : t(`systems.${action}`);
+      const smokeWait=action==='smoke'&&state?.smokeCharges!==0&&cooldown>0;
+      setControlText(label,action==='smoke' && state?.smokeCharges===0 ? '0/3'
+        : smokeWait ? t('systems.cooldown',{seconds:cooldown}) : t(`systems.${action}`),smokeWait);
       status.textContent=action==='smoke'?`${state?.smokeCharges??3}/3`:'';
       if(action==='smoke')button.setAttribute('aria-label',`${t('systems.smoke.help')} ${status.textContent}${cooldown?' · '+label.textContent:''}`);
     }
@@ -2594,8 +2636,8 @@ export function initHud(bus: EventBus): HudRuntime {
       ? Number(action?.missileSlot) : -1;
     // Weapon channels keep the missile timer accurate even while the cannon is selected.
     const missileWait=extraMissileSlot>=0?Math.ceil(reloadForSlot(combat,extraMissileSlot,lastTimeS) || 0):0;
-    missileButton.querySelector('.sl')!.textContent=!missileEmpty&&missileWait>0?t('systems.cooldown',{seconds:missileWait}):'ATGM';
-    missileButton.setAttribute('aria-label', emptyMissileLabel ? `ATGM ${emptyMissileLabel}` : 'ATGM');
+    setControlText(missileButton.querySelector('.sl')!,!missileEmpty&&missileWait>0?t('systems.cooldown',{seconds:missileWait}):t('systems.atgm'),!missileEmpty&&missileWait>0);
+    missileButton.setAttribute('aria-label', emptyMissileLabel ? `${t('garage.shellType.ATGM')} ${emptyMissileLabel}` : t('garage.shellType.ATGM'));
     const specialMissileEmpty=specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE&&missileEmpty;
     // A magazine reload with nothing stowed to load is spent too: no countdown, no pointless reload.
     // This frame's cards (the tray reads them after this update): the ruleset's unlimited mark never reads spent.
@@ -2604,7 +2646,7 @@ export function initHud(bus: EventBus): HudRuntime {
       &&magazineFeedEmpty(combat,player?.spec,cards?.[aim?.shellSlot??localSlot]?.unlimited===true));
     const wait=specialEmpty?0:specialKind===SPECIAL_ACTION_KINDS.GUIDED_MISSILE?Math.ceil(reloadForSlot(combat,missileSlot,lastTimeS)||0)
       :specialKind===SPECIAL_ACTION_KINDS.MAGAZINE_RELOAD?Math.ceil(combat?.gunReload?.t??combat?.reload.t??0):0;
-    specialLabel.textContent=wait>0?t('systems.cooldown',{seconds:wait}):specialLabel.dataset.short||'';
+    setControlText(specialLabel,wait>0?t('systems.cooldown',{seconds:wait}):specialLabel.dataset.short||'',wait>0);
     specialButton.setAttribute('aria-label', specialMissileEmpty ? `${specialButton.title} ${emptyMissileLabel}` : specialButton.title || t('hud.special.unavailable'));
     specialButton.querySelector('small')!.textContent='';
     specialButton.classList.toggle('empty', specialEmpty);
@@ -3284,7 +3326,8 @@ export function initHud(bus: EventBus): HudRuntime {
     if (modeId === 'standard') return 'modeStandard';
     if (modeId === 'capture_the_flag') return 'modeFlag';
     if (modeId === 'mars') return 'modeMars';
-    if (modeId === 'zone_control' || modeId === 'frontline_assault') return 'modeZones';
+    if (modeId === 'zone_control') return 'modeZones';
+    if (modeId === 'frontline_assault') return 'modeFrontline';
     if (modeId === 'turbo_ball') return 'modeTurbo';
     return 'modeHorde';
   }
@@ -3305,7 +3348,7 @@ export function initHud(bus: EventBus): HudRuntime {
     modeStatusEl.dataset.mode = modeId;
     modeStatusEl.title = t(`playMenu.matchMode.${modeId}.label`);
     modeStatusName.textContent = t(`hud.objective.${modeId}`);
-    modeStatusValue.textContent = copy;
+    setObjectiveValue(modeStatusValue, copy);
     modeStatusEl.classList.add('show');
     lastModeStatus = status;
   }
@@ -3805,8 +3848,9 @@ export function initHud(bus: EventBus): HudRuntime {
       1,
       paint.rimHalfAngle,
     );
-    if (paint.age < 0.25) {
-      const flash = 1 - paint.age / 0.25;
+    if (paint.age < 0.25 && A11Y.flash > 0) {
+      // the white bloom of a fresh hit, scaled by the player's flash intensity (Accessibility)
+      const flash = (1 - paint.age / 0.25) * A11Y.flash;
       ctx.globalCompositeOperation = 'lighter';
       strokeHitIndicatorArc(
         frame,
@@ -3876,7 +3920,10 @@ export function initHud(bus: EventBus): HudRuntime {
       const critRadius = valueRadius + fontPx + 5;
       const critFontPx = Math.max(9, Math.round(fontPx * 0.55));
       ctx.font = `700 ${critFontPx}px ${FONT_COND}`;
-      const critHalf = ctx.measureText('CRIT').width / 2;
+      // A localized word behind a drawn diamond (never a Latin-only code; BUI-F8): 暴击 in zh, CRIT in en.
+      const crit = t('hud.dmg.crit');
+      const mark = critFontPx * 0.32;
+      const critHalf = ctx.measureText(crit).width / 2 + mark * 1.4;
       const critX = Math.min(Math.max(
         frame.centerX + Math.cos(paint.angle) * critRadius,
         critHalf + 8,
@@ -3886,9 +3933,17 @@ export function initHud(bus: EventBus): HudRuntime {
         critFontPx + 8,
       ), h - critFontPx - 8);
       ctx.lineWidth = 3.4;
-      ctx.strokeText('CRIT', critX, critY);
+      const wordX = critX + mark * 1.4;
+      const markX = critX - critHalf + mark;
+      ctx.strokeText(crit, wordX, critY);
       ctx.fillStyle = '#ffd0a8';
-      ctx.fillText('CRIT', critX, critY);
+      ctx.fillText(crit, wordX, critY);
+      ctx.beginPath();
+      ctx.moveTo(markX, critY - mark); ctx.lineTo(markX + mark, critY);
+      ctx.lineTo(markX, critY + mark); ctx.lineTo(markX - mark, critY); ctx.closePath();
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fill();
     }
     ctx.restore();
   }
@@ -3915,8 +3970,8 @@ export function initHud(bus: EventBus): HudRuntime {
   function drawHitMark(g: CanvasRenderingContext2D, cx: number, cy: number, timeS: number): void {
     if (!hitMark) return;
     const age = timeS - hitMark.t0;
-    const visual = hitConfirmVisualState(
-      age, !!reducedMotionQuery?.matches, hitConfirmScratch);
+    // Reduce motion is the player's choice or the OS while they follow it (accessibilityPreferences.ts).
+    const visual = hitConfirmVisualState(age, A11Y.reduceMotion, hitConfirmScratch);
     if (!visual.visible) { hitMark = null; return; }
 
     const baseColor = hitMark.bounced ? '202,218,232' : '255,166,48';
@@ -3966,8 +4021,8 @@ export function initHud(bus: EventBus): HudRuntime {
 
     // Brief center spark marks the exact impact acknowledgement. It vanishes
     // before the hold phase and is disabled entirely under reduced motion.
-    if (visual.flash > 0.001) {
-      const sparkAlpha = visual.opacity * visual.flash;
+    if (visual.flash * A11Y.flash > 0.001) {
+      const sparkAlpha = visual.opacity * visual.flash * A11Y.flash;
       const sparkR = 3.5 + 2.5 * visual.flash;
       g.strokeStyle = `rgba(5,8,12,${(sparkAlpha * 0.75).toFixed(3)})`;
       g.lineWidth = 3.2;
@@ -5203,7 +5258,7 @@ export function initHud(bus: EventBus): HudRuntime {
       slotPresentations[i].render(shells?.[i] || DEFAULT_SHELLS[i], i === slot, pending);
     }
     if (ammoSwitchingStatus.hidden === pending) {
-      ammoSwitchingStatus.textContent = pending ? 'SWITCHING' : '';
+      ammoSwitchingStatus.textContent = pending ? t('hud.ammo.switching') : '';
       ammoSwitchingStatus.hidden = !pending;
     }
     setTouchAmmoOpen(touchAmmoOpen);
@@ -7089,7 +7144,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // (with the repair), respawns, the flag changing hands, caches dropping
   on('mode:line_advanced', ({ line, total }) => {
     showAlert(t('hud.alert.lineTaken', { line: Math.max(1, Number(line) || 1), total: Math.max(1, Number(total) || 3) }), {
-      icon: 'modeZones', tone: 'success',
+      icon: 'modeFrontline', tone: 'success',
     });
   });
   on('mode:wave_cleared', ({ wave, nextWaveInS }) => {

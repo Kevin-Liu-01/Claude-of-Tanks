@@ -8,6 +8,7 @@ import { createModal } from './modal.ts';
 import type { ModalController, ModalSize } from './modal.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
+import { ensureStyle } from './styleLayers.ts';
 
 type LiveValue<T> = T | (() => T);
 type InfoImageFit = 'cover' | 'contain';
@@ -101,11 +102,7 @@ body[data-cot-width='phone'] .cot-info-modal__media[data-count='3'] figure:first
 `;
 
 function ensureCss() {
-  if (document.getElementById('cot-context-info-css')) return;
-  const style = document.createElement('style');
-  style.id = 'cot-context-info-css';
-  style.textContent = CSS;
-  document.head.appendChild(style);
+  ensureStyle('cot-context-info-css', CSS, 'surfaces');
 }
 
 function clipboardWrite(value: string): Promise<void> {

@@ -49,11 +49,11 @@ document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((button) => 
     try {
       await navigator.clipboard.writeText(target.textContent.trim());
       const original = button.textContent;
-      button.textContent = 'Copied';
-      announce('Copied to clipboard');
+      button.textContent = t('contextInfo.copied');
+      announce(t('contextInfo.copied'));
       setTimeout(() => { button.textContent = original; }, 1400);
     } catch (_) {
-      announce('Clipboard permission unavailable');
+      announce(t('gallery.toast.clipboardUnavailable'));
     }
   });
 });
@@ -87,20 +87,21 @@ function mountArchiveMotionInfo(): void {
   ]).then(async ([{ loadCaptureRecipes, recipeForMedia }, { createInfoButton }]) => {
     const catalog = await loadCaptureRecipes();
     archiveDialog?.querySelectorAll<HTMLVideoElement>('.docs-motion-grid video').forEach((video) => {
-      if (video.parentElement?.classList.contains('docs-motion-item')) return;
-      const source = video.currentSrc || video.querySelector('source')?.src || video.poster;
+      const item = video.closest<HTMLElement>('.docs-motion-item');
+      if (!item || item.dataset.recipeInfo !== undefined) return;
+      const source = video.currentSrc || video.querySelector<HTMLSourceElement>('source')?.dataset.src
+        || video.dataset.poster || video.poster;
       const recipe = recipeForMedia(catalog, source);
       if (!recipe) return;
-      const wrap = document.createElement('div');
-      wrap.className = 'docs-motion-item';
-      video.replaceWith(wrap);
-      wrap.append(video, createInfoButton({
+      item.dataset.recipeInfo = '';
+      const poster = video.poster || video.dataset.poster || '';
+      item.append(createInfoButton({
         label: t('fieldGuide.recipeLabel', { name: t('fieldGuide.videoTitle') }),
         title: t('fieldGuide.videoTitle'),
         guide: 'recipe',
         json: recipe,
-        image: video.poster ? {
-          src: video.poster,
+        image: poster ? {
+          src: poster,
           fit: 'contain',
           alt: t('fieldGuide.videoFrame'),
           caption: t('fieldGuide.videoFrame'),
@@ -115,10 +116,9 @@ function mountArchiveMotionInfo(): void {
 
 archiveOpen?.addEventListener('click', () => {
   if (!archiveDialog) return;
+  // The dialog's loops play under the site's one policy (publicPages.ts mounts them through mediaPlayer.ts): once the
+  // dialog shows them, two at most, one transfer at a time, never under reduced motion or data saving.
   archiveDialog.showModal();
-  archiveDialog.querySelectorAll<HTMLVideoElement>('video').forEach((video) => {
-    video.play().catch(() => {});
-  });
   archiveMountPromise ??= import('../presentation/mediaArchive.ts')
     .then(({ mountMediaArchive }) => mountMediaArchive(
       document.querySelector('#docsArchiveBody'),
