@@ -177,8 +177,8 @@ assert.doesNotMatch(garageCss, /content\s*:\s*['"]Combat stats['"]/i,
   'garage.css: compact dossier heading must use the locale-backed CSS variable');
 
 const gallerySource = fs.readFileSync(path.join(REPO, 'src/gallery/gallery.ts'), 'utf8');
-assert.match(gallerySource, /labelElement\?\.dataset\.i18n/,
-  'gallery contextual help must use stable translation keys instead of rendered headings');
+// The Gallery's per-section help buttons left with the Premiere port (less is more, 2026-10-22); none may come back keyed
+// by rendered text.
 assert.doesNotMatch(gallerySource, /GALLERY_SECTION_INFO\[['"]?label/,
   'gallery contextual help must not index help content by translated display text');
 

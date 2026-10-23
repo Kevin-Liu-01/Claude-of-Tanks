@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -7,6 +7,7 @@ import {
   mountGitHubStars,
   repositoryStatsEndpointAvailable,
 } from '../ui/githubStars.ts';
+import { staleEntries } from '../../tools/public-shell.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const pages = [
@@ -26,21 +27,11 @@ const pages = [
   ['site/docs-audio.html', '/docs'],
   ['site/docs-interface.html', '/docs'],
   ['site/docs-studio.html', '/docs'],
-  ['site/docs-filming.html', '/docs'],
-];
-const expectedLinks = [
-  ['/home', 'Home'],
-  ['/studio', 'Studio'],
-  ['/gallery', 'Gallery'],
-  ['/docs', 'Docs'],
-  ['https://github.com/Kevin-Liu-01/claude-of-tanks', 'GitHub'],
-  ['/', 'Play Now'],
+  ['site/docs-filming.html', '/docs/filming#library'],
 ];
 const navCss = readFileSync(join(ROOT, 'src/presentation/publicNav.css'), 'utf8');
 const navSource = readFileSync(join(ROOT, 'src/presentation/publicNav.ts'), 'utf8');
-// The bar's switch and menu button markup (2026-10-22, nav-perf-240): the build writes it into every page
-// (tools/viteNavChrome.ts) and publicNav.ts binds it, or mounts it on a page without it.
-const navChromeSource = readFileSync(join(ROOT, 'src/presentation/publicNavChrome.ts'), 'utf8');
+const shellSource = readFileSync(join(ROOT, 'src/presentation/publicShell.ts'), 'utf8');
 const homeCss = readFileSync(join(ROOT, 'src/presentation/home.css'), 'utf8');
 const docsCss = readFileSync(join(ROOT, 'src/docs/docs.css'), 'utf8');
 const galleryCss = readFileSync(join(ROOT, 'src/gallery/gallery.css'), 'utf8');
@@ -97,39 +88,22 @@ assert.equal(githubStarProbe.textContent, '321');
 assert.equal(githubStarAttributes.get('aria-label'), '321 GitHub stars');
 assert.equal(githubControlAttributes.get('aria-label'), 'Claude of Tanks on GitHub, 321 stars');
 globalThis.fetch = originalFetch;
-assert.match(navCss, /\.public-nav__links\{position:relative;display:flex;align-items:center;gap:8px\}/,
-  'desktop navigation controls must retain visible spacing');
+
+// The shared shell (brand-ui BUI-W1): one bar, written into every public entry from src/presentation/publicShell.ts.
+assert.deepEqual(staleEntries(), [], 'every public entry carries the current shell (node tools/public-shell.mjs --write)');
+assert.match(navCss, /\.public-nav__links\{position:relative;display:flex;align-items:center;gap:var\(--s6\)/,
+  'desktop navigation links keep visible spacing');
 assert.doesNotMatch(navCss, /\.public-nav__links\{[^}]*align-items:stretch/,
   'navigation controls must not stretch from the top to the bottom of the bar');
-assert.match(navCss,
-  /\[data-github-stars\]\[data-github-stars-state='loading'\]::before\{[^}]*animation:cot-github-star-spin/,
-  'the shared public surface must render a compact loading indicator instead of a numeric guess');
-assert.match(navCss, /\.public-nav__links>a:not\(\.public-nav__github\):not\(\.public-nav__cta\)\{display:none\}/,
-  'mobile public navigation must collapse page links while retaining GitHub and Play Now');
-assert.match(navChromeSource, /class="public-nav__menu-trigger"/,
-  'public pages must mount a shared mobile menu trigger');
-assert.match(navSource, /createContextualFragment\(MENU_TRIGGER_MARKUP\)/,
-  'a page built without the menu trigger still gets the shared one');
-assert.match(navSource, /garage\.href = hrefForLocale\('\/', getLocale\(\)\)/,
-  'the public mobile menu must expose the locale-matched Garage alongside every public page');
-assert.match(navSource, /resolveLocalePath\(node\.getAttribute\('href'\)/,
-  'the mobile Home control must survive localized link rewriting');
-assert.match(navSource, /event\.code !== 'Escape'/,
-  'the public mobile navigation must close with Escape');
-assert.match(navChromeSource, /class="public-nav__locale"/,
-  'public pages must expose a visible locale switcher in the shared navigation');
-assert.match(navSource, /createContextualFragment\(localeSwitchMarkup\(current\)\)/,
-  'a page built without the locale switcher still gets the shared one');
-assert.match(navSource, /className = 'public-nav__locale-credit'/,
-  'the public locale switcher must expose General Translation attribution');
-assert.match(navSource, /\/brand\/partners\/general-translation\.png/,
-  'the public locale attribution must use the packaged GT mark');
-assert.match(navSource, /setLocale\(next\)/,
-  'the public locale switcher must persist through the canonical i18n owner');
-assert.match(navCss, /\.public-nav__locale\{[^}]*display:flex;[^}]*height:34px;/,
-  'the public locale switcher must be a first-class desktop navigation control');
-assert.match(navCss, /\.public-nav__locale-wrap:hover \.public-nav__locale-credit,[\s\S]*?\.public-nav__locale-wrap:focus-within \.public-nav__locale-credit/,
-  'the GT credit must appear for both pointer hover and keyboard focus');
+assert.match(navCss, /@media \(width < 1100px\)\{\s*\.public-nav__links\{display:none\}\s*\.public-nav__menu-trigger\{display:inline-grid\}/,
+  'below the laptop band the page links collapse into the menu sheet');
+assert.match(navCss, /^@import url\('\.\.\/ui\/tokens\/tokens\.css'\);/, 'the shell reads the design tokens on every public page');
+assert.match(shellSource, /class="public-nav__menu-trigger" type="button" aria-expanded="false" aria-controls="public-nav-menu"/,
+  'the phone menu trigger is static markup');
+assert.match(navSource, /event\.code !== 'Escape'/, 'the menu sheet closes with Escape');
+assert.match(navSource, /setLocale\(locale\)/, 'the language links persist the choice through the canonical i18n owner');
+assert.match(shellSource, /\/brand\/partners\/general-translation\.png/, 'the footer credits General Translation with its packaged mark');
+assert.ok(existsSync(join(ROOT, 'public/brand/mark.svg')), 'the Bracket Chevron mark ships for the public pages');
 for (const [surface, css] of [
   ['shared public navigation', navCss],
   ['Home', homeCss],
@@ -140,41 +114,38 @@ for (const [surface, css] of [
     `${surface} must leave the warning-tape motif exclusively to the 404 page`);
 }
 
+const expectedLinks = [
+  ['/gallery', 'Tank Gallery'],
+  ['/docs', 'Field Manual'],
+  ['/studio', 'Studio'],
+  ['/docs/filming#library', 'Media'],
+];
 for (const [file, activeHref] of pages) {
   const html = readFileSync(join(ROOT, file), 'utf8');
   assert.match(html, /<link rel="stylesheet" href="\/src\/presentation\/publicNav\.css">/);
   assert.match(html, /<script type="module" src="\/src\/presentation\/publicNav\.ts"><\/script>/);
-  const nav = /<nav class="public-nav"[\s\S]*?<\/nav>/.exec(html)?.[0];
-  assert.ok(nav, `${file} must contain the shared public nav`);
-  const linksBlock = /<div class="public-nav__links">([\s\S]*?)<\/div>/.exec(nav)?.[1];
-  assert.ok(linksBlock, `${file} must contain the shared public nav links`);
-  const links = [];
-  for (const match of linksBlock.matchAll(/<a([^>]*)href="([^"]+)"([^>]*)>([\s\S]*?)<\/a>/g)) {
-    links.push({
-      attrs: `${match[1]}${match[3]}`,
-      href: match[2],
-      label: match[4].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
-    });
+  assert.doesNotMatch(html, /logo-mark(?:-metal|-bw)?\.svg/, `${file} must not show the retired crest`);
+  const nav = /<!--cot:nav-->([\s\S]*?)<!--\/cot:nav-->/.exec(html)?.[1];
+  assert.ok(nav, `${file} must carry the shared public nav`);
+  assert.match(nav, /<a class="public-nav__brand" href="\/home"[^>]*><svg class="cot-mark"[\s\S]*?<span class="cot-wordmark" lang="en">Claude <span class="cot-wordmark__of">of<\/span> Tanks<\/span><\/a>/,
+    `${file} bar opens with the mark and the wordmark`);
+  const linksBlock = /<div class="public-nav__links">([\s\S]*?)<\/div>/.exec(nav)?.[1] ?? '';
+  const links = [...linksBlock.matchAll(/<a href="([^"]+)"([^>]*)>([\s\S]*?)<\/a>/g)].map((m) => ({
+    href: m[1], attrs: m[2], label: m[3].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim(),
+  }));
+  assert.deepEqual(links.map(({ href, label }) => [href, label]), expectedLinks, `${file} nav links drifted`);
+  const active = links.filter(({ attrs }) => attrs.includes('aria-current="page"')).map(({ href }) => href);
+  assert.deepEqual(active, activeHref === '/home' ? [] : [activeHref], `${file} marks its own destination`);
+  if (activeHref === '/home') assert.match(nav, /class="public-nav__brand" href="\/home" aria-current="page"/, 'the landing marks the brand link');
+  assert.match(linksBlock, /href="#i-manual(?:-s)?"/, `${file} must use the shared Field Manual glyph`);
+  assert.match(nav, /<a class="cot-btn cot-btn--primary cot-btn--sm public-nav__cta" href="\/">[\s\S]*?Play Now/, `${file} has one primary Play Now`);
+  assert.match(nav, /class="public-nav__icon-link public-nav__github" href="https:\/\/github\.com\/Kevin-Liu-01\/claude-of-tanks" target="_blank"/,
+    `${file} GitHub control opens the repository`);
+  assert.match(nav, /hreflang="en-US"[^>]*>EN<\/a><a href="\/cn[^"]*" hreflang="zh-CN"/, `${file} names both locales`);
+  const symbols = /<!--cot:symbols-->([\s\S]*?)<!--\/cot:symbols-->/.exec(html)?.[1] ?? '';
+  for (const [, id] of nav.matchAll(/href="#(i-[A-Za-z0-9-]+)"/g)) {
+    assert.ok(symbols.includes(`<symbol id="${id}"`), `${file} inlines ${id} so the bar paints without the sprite chunk`);
   }
-  const actualLinks = [];
-  const activeLinks = [];
-  for (const link of links) {
-    actualLinks.push([link.href, link.label]);
-    if (link.attrs.includes('aria-current="page"')) activeLinks.push(link.href);
-  }
-  assert.deepEqual(actualLinks, expectedLinks, `${file} nav links drifted`);
-  assert.deepEqual(activeLinks, activeHref ? [activeHref] : []);
-  assert.ok(links.find(({ href }) => href === '/studio'), `${file} must link Scene Studio`);
-  assert.ok(linksBlock.includes('public-nav__icon--docs') && linksBlock.includes('href="#i-manual"'),
-    `${file} must use the shared Field Manual glyph`);
-  assert.ok(linksBlock.includes('public-nav__play-icon'), `${file} Play Now control must use the shared play mark`);
-  const github = links.find(({ href }) => href.includes('github.com'));
-  assert.ok(github?.attrs.includes('target="_blank"'), `${file} GitHub control opens the repository`);
-  assert.ok(linksBlock.includes('data-github-stars'), `${file} GitHub control exposes the live star count`);
-  assert.ok(linksBlock.includes('data-github-stars-state="loading"'),
-    `${file} GitHub control starts in the shared loading state`);
-  assert.doesNotMatch(linksBlock, /data-github-stars[^>]*>\s*\d+\s*<\/span>/,
-    `${file} GitHub control must not ship a stale numeric fallback`);
 }
 
 const notFoundHtml = readFileSync(join(ROOT, '404.html'), 'utf8');
@@ -233,11 +204,11 @@ assert.match(garageSource,
 assert.doesNotMatch(garageSource, /data-github-stars[^>]*>\s*\d+\s*<\/span>/,
   'garage GitHub control must not ship a stale numeric fallback');
 
-for (const file of ['site/home.html', 'site/docs.html']) {
+for (const file of ['site/home.html']) {
   const html = readFileSync(join(ROOT, file), 'utf8');
   const repositoryLinks = [...html.matchAll(/<a[^>]+href="https:\/\/github\.com\/Kevin-Liu-01\/(?:Claude-of-Tanks|claude-of-tanks)"[^>]*>([\s\S]*?)<\/a>/g)];
   assert.ok(repositoryLinks.length >= 2, `${file} must retain navbar and footer repository controls`);
-  for (const [, contents] of repositoryLinks) {
+  for (const [, contents] of repositoryLinks.filter(([tag]) => !tag.includes('public-nav__github'))) {
     assert.ok(contents.includes('data-github-stars'), `${file} repository control is missing its star count`);
     assert.ok(contents.includes('data-github-stars-state="loading"'),
       `${file} repository control must render the shared loading state`);

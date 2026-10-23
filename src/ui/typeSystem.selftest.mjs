@@ -561,7 +561,7 @@ assert.ok(tokens.includes(':lang(zh-CN){letter-spacing:0!important}'), 'zh-CN: n
 assert.doesNotMatch(tokens, /text-transform:none/, 'zh-CN keeps case transforms (they only ever touch Latin)');
 assert.ok(scaled.includes(':lang(zh-CN) .t-hollow{color:var(--hollow-ink,#eef4f8);-webkit-text-stroke:0;opacity:.72}'), 'zh-CN: no outline type (a quieter solid ink keeps the hierarchy)');
 assert.match(scaled, /\.t-hollow\{color:transparent;-webkit-text-stroke:/, 'the hollow display treatment (owner UI rule 5)');
-assert.match(read('site/home.html'), /<em class="t-accent"[^>]*>[^<]*<\/em> <b[^>]*>[^<]*<\/b><br><span class="t-hollow"/, 'the landing headline uses the shared treatments');
+assert.match(read('site/home.html'), /<h1 class="hero__title"[^>]*><span class="hero__line">Claude <span class="t-accent">of<\/span><\/span><span class="hero__line t-hollow">Tanks<\/span><\/h1>/, 'the landing headline uses the shared treatments');
 // Every hollow (outline) treatment in a shipped stylesheet turns solid for Chinese (the type rules: no outline type on CJK).
 // The 404 numeral is digits in every locale.
 const HOLLOW_DIGITS_ONLY = new Set(['.not-found h1', '.cot-facet-tally>.num:not(b)']);
@@ -664,7 +664,7 @@ assert.match(read('index.html'), /body, button, input, select, textarea \{[^}]*f
 for (const [path, pattern] of [
   ['src/presentation/home.css', /(?:^|[}\s])body\{[^}]*font-family:var\(--font-ui\)/],
   ['src/docs/docs.css', /(?:^|[}\s])body\{[^}]*font:500 14px\/1\.68 var\(--font\)/],
-  ['src/gallery/gallery.css', /(?:^|[}\s])body\{[^}]*font:500 12px\/1\.45 var\(--font\)/],
+  ['src/gallery/gallery.css', /(?:^|[}\s])body\{[^}]*font:500 var\(--fs-12\)\/1\.45 var\(--font\)/],
   ['src/presentation/notFound.css', /body\.not-found-page\{[^}]*font-family:var\(--font-ui\)/],
 ]) assert.match(read(path), pattern, `${path}: the page body names the UI family`);
 for (const path of ['src/docs/docs.css', 'src/gallery/gallery.css']) {

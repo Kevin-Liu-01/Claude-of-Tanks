@@ -15,17 +15,12 @@ import { testDriveHref } from '../game/testDriveLink.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
 import { migrateStoredTankIds } from '../game/tankIdStorageMigration.ts';
 import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.ts';
-import {
-  buildGalleryRecords,
-  filterGalleryRecords,
-  serializeGallerySpec,
-  technicalLabel,
-} from './catalog.ts';
+import { tankLabelRecord } from '../vehicles/tankLabels.ts';
+import { buildGalleryRecords, filterGalleryRecords, serializeGallerySpec } from './catalog.ts';
 import type { GalleryRecord, GalleryVehicleSpec } from './catalog.ts';
 import type { HeroManifest } from '../ui/heroCard.ts';
 import { compareVehicleEras, isPostwarVehicleEra, VEHICLE_ERAS } from '../vehicles/taxonomy.ts';
 import {
-  CONCEPT_PROTOTYPE_CLASS_FILTER,
   CONCEPT_PROTOTYPE_FILTER_META,
   VEHICLE_BATTLE_ROLE_META,
   VEHICLE_BATTLE_ROLE_ORDER,
@@ -33,22 +28,26 @@ import {
   VEHICLE_CLASS_ORDER,
   vehicleFacetLabel,
 } from '../vehicles/vehicleFacets.ts';
-import { vehicleClassGlyphSVG, vehicleRoleGlyphSVG } from '../ui/vehicleFacetIcons.ts';
 import {
   createSurfaceMarkup,
   MARKUP_OPERATIONS,
   type SurfaceInspectionInfo,
 } from './surfaceMarkup.ts';
-import { uiIconSVG } from '../ui/uiIcons.ts';
 import { flagIconUrl } from '../ui/flags.ts';
-import { createInfoButton } from '../ui/contextInfo.ts';
-import type { InfoButtonOptions } from '../ui/contextInfo.ts';
+import { flagIconCode } from '../ui/flagCodes.ts';
+import { iconUrl } from '../ui/icons.ts';
+import { icon, type IconId } from '../ui/icons/icon.ts';
+import {
+  ensureComponentStyles, esc, flag, scale20, scaleCells, silhouette, statRow, tabs, wireRoving,
+} from '../ui/components/components.ts';
 import { cameraViewGlyphSVG } from './viewGlyphs.ts';
-import { t, onLocaleChange, getLocale, formatNumber } from '../ui/i18n.ts';
+import { drawTrueScale } from './trueScale.ts';
+import { t, getLocale, formatNumber } from '../ui/i18n.ts';
 import { bindStaticI18nAuto } from '../presentation/staticI18n.ts';
 import { applyGalleryCameraRange, galleryFitDistance, resizeGalleryCamera } from './cameraFit.ts';
 
 type GalleryMode = 'appearance' | AnatomyMode | 'markup';
+const GALLERY_MODES: readonly GalleryMode[] = ['appearance', 'armor', 'modules', 'crew', 'markup'];
 const ANATOMY_MODES: readonly GalleryMode[] = ['armor', 'modules', 'crew'];
 const isAnatomyMode = (mode: GalleryMode): mode is AnatomyMode => ANATOMY_MODES.includes(mode);
 type GalleryView = 'hero' | 'front' | 'left' | 'right' | 'rear' | 'top'
@@ -60,11 +59,6 @@ interface GalleryVisual extends DamageLabVisual {
   centerOnPresentationPoint?(x: number, z: number): void;
   seatOnFloor?(floorY: number): void;
   presentationAnchorWorld?(target: THREE.Vector3): RuntimeValue;
-}
-
-interface GallerySelectController {
-  control: HTMLElement;
-  close(restoreFocus?: boolean): void;
 }
 
 interface GalleryLoadOptions {
@@ -88,73 +82,26 @@ const $ = <T extends HTMLElement = HTMLInputElement>(selector: string): T => {
   return element;
 };
 
-const GALLERY_SECTION_INFO_KEYS = Object.freeze({
-  'gallery.dossier.section.operational': 'gallery.dossier.ratingHint',
-  'gallery.dossier.section.summary': 'gallery.dossier.summaryHint',
-  'gallery.dossier.section.articulation': 'gallery.dossier.articulationHint',
-  'gallery.dossier.section.markup': 'gallery.dossier.markupHint',
-  'gallery.dossier.section.specification': 'gallery.dossier.specificationHint',
-  'gallery.dossier.section.ammunition': 'gallery.dossier.ammunitionHint',
-});
-
-function appendGalleryInfo(
-  target: Element | null | undefined,
-  options: InfoButtonOptions,
-): void {
-  if (target && !target.querySelector(':scope > .cot-info-trigger')) {
-    target.appendChild(createInfoButton(options));
-  }
+/** Per-viewer conveniences (sort, layout, peer scale, favourites); blocked storage leaves the defaults. */
+const STORE_KEY = 'cot.gallery.v2';
+interface StoredPrefs { sort?: string; descending?: boolean; layout?: 'list' | 'grid'; peer?: 'fleet' | 'class'; favourites?: string[] }
+function readPrefs(): StoredPrefs {
+  try { return JSON.parse(globalThis.localStorage?.getItem(STORE_KEY) || '{}') as StoredPrefs; } catch { return {}; }
+}
+function writePrefs(): void {
+  try {
+    globalThis.localStorage?.setItem(STORE_KEY, JSON.stringify({
+      sort: browse.sort, descending: browse.descending, layout: browse.layout, peer: peerScale, favourites: [...favourites],
+    }));
+  } catch { /* storage may be blocked */ }
 }
 
-function mountGalleryInfo(): void {
-  const workspaceHeads = document.querySelectorAll('.workspace-group-head');
-  appendGalleryInfo(workspaceHeads[0], {
-    label: t('gallery.about.fleet'), title: t('gallery.about.fleetTitle'),
-    text: t('gallery.about.fleetText'),
-    guide: 'dossier',
-  });
-  appendGalleryInfo(workspaceHeads[1], {
-    label: t('gallery.about.dossier'), title: t('gallery.about.dossierTitle'),
-    text: t('gallery.about.dossierText'),
-    guide: 'dossier',
-  });
-  appendGalleryInfo(document.querySelector('.view-controls-label'), {
-    label: t('gallery.about.camera'), title: t('gallery.about.cameraTitle'),
-    text: t('gallery.about.cameraText'),
-    guide: 'camera',
-  });
-  appendGalleryInfo(document.querySelector('.mode-dock > p'), {
-    label: t('gallery.about.layers'), title: t('gallery.about.layersTitle'),
-    text: t('gallery.about.layersText'),
-    guide: 'layers',
-  });
-  document.querySelectorAll('.section-label').forEach((heading) => {
-    const labelElement = heading.querySelector<HTMLElement>('[data-i18n]');
-    const labelKey = labelElement?.dataset.i18n || '';
-    const helpKey = GALLERY_SECTION_INFO_KEYS[labelKey as keyof typeof GALLERY_SECTION_INFO_KEYS];
-    if (helpKey) {
-      const label = t(labelKey);
-      appendGalleryInfo(heading, {
-      label: `${t('gallery.about.layersTitle')} · ${label}`,
-      title: label, text: t(helpKey),
-      guide: ({
-        'gallery.dossier.section.operational': 'performance',
-        'gallery.dossier.section.summary': 'dossier',
-        'gallery.dossier.section.articulation': 'armament',
-        'gallery.dossier.section.markup': 'markup',
-        'gallery.dossier.section.specification': 'dossier',
-        'gallery.dossier.section.ammunition': 'ammunition',
-      } as const)[labelKey as keyof typeof GALLERY_SECTION_INFO_KEYS],
-    });
-    }
-  });
-}
-
-mountGalleryInfo();
+ensureComponentStyles();
 bindStaticI18nAuto();
 const viewport = $<HTMLElement>('#viewport');
 const vehicleList = $<HTMLElement>('#vehicleList');
 const loadingState = $<HTMLElement>('#loadingState');
+const takeMedia = $<HTMLElement>('#takeMedia');
 const modeButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-mode]')];
 const viewButtons = [...document.querySelectorAll<HTMLButtonElement>('[data-view]')];
 const viewLabelKey: Record<string, string> = {
@@ -167,34 +114,21 @@ const viewLabelKey: Record<string, string> = {
   'elevated-left': 'gallery.view.view.elevatedLeft',
   'elevated-right': 'gallery.view.view.elevatedRight',
 };
-function refreshViewButtonLabels(): void {
-  for (const button of viewButtons) {
-    const key = viewLabelKey[button.dataset.view || 'hero'];
-    const label = key ? t(key) : button.dataset.view || '';
-    button.replaceChildren();
-    button.insertAdjacentHTML('beforeend',
-      `<i class="view-button-icon">${cameraViewGlyphSVG(button.dataset.view || 'hero')}</i><span>${label}</span>`);
-    button.title = t('gallery.view.viewTitle', { name: label });
-  }
+for (const button of viewButtons) {
+  const key = viewLabelKey[button.dataset.view || 'hero'];
+  const label = key ? t(key) : button.dataset.view || '';
+  button.replaceChildren();
+  button.insertAdjacentHTML('beforeend',
+    `<i class="view-button-icon">${cameraViewGlyphSVG(button.dataset.view || 'hero')}</i><span>${esc(label)}</span>`);
+  button.setAttribute('aria-pressed', String(button.classList.contains('active')));
 }
-refreshViewButtonLabels();
-const autoRotateButton = $('#autoRotate');
-function refreshAutoRotate(): void {
-  autoRotateButton.replaceChildren();
-  autoRotateButton.insertAdjacentHTML('beforeend',
-    `<i class="view-button-icon">${cameraViewGlyphSVG('auto')}</i><span>${t('gallery.view.auto')}</span>`);
-  autoRotateButton.title = t('gallery.view.autoTitle');
-}
-refreshAutoRotate();
-document.querySelectorAll<HTMLElement>('[data-ui-icon]').forEach((element) => {
-  element.innerHTML = uiIconSVG(element.dataset.uiIcon || 'info', 16);
-});
-const viewerHelpItem = (icon: string, label: string): string =>
-  `<span><i>${uiIconSVG(icon, 11)}</i>${label}</span>`;
+
 const records = buildGalleryRecords(
   VISIBLE_TANK_IDS.map((id) => getSpec(id) as GalleryVehicleSpec),
 );
 const recordById = new Map(records.map((record) => [record.id, record]));
+
+/* ------------------------------------------------------------------------------------------------ the 3D stage */
 
 const renderer = new THREE.WebGLRenderer({
   antialias: true,
@@ -228,11 +162,13 @@ controls.maxDistance = 38;
 controls.target.set(0, 1.3, 0);
 controls.update();
 
-scene.add(new THREE.HemisphereLight(0xdbe6ea, 0x25221d, 1.55));
+// Lookdev (brand-ui SPEC 12.5): a neutral key, fill and rim over a plain plinth; the sci-fi grid, neon rings and the
+// teal rim are retired.
+scene.add(new THREE.HemisphereLight(0xdbe2e6, 0x25221d, 1.55));
 const keyLight = new THREE.DirectionalLight(0xffe2bb, 3.15);
 keyLight.position.set(-9, 13, 11);
 scene.add(keyLight);
-const rimLight = new THREE.DirectionalLight(0x6ac8db, 2.2);
+const rimLight = new THREE.DirectionalLight(0xc9d3da, 1.6);
 rimLight.position.set(10, 7, -8);
 scene.add(rimLight);
 const fillLight = new THREE.DirectionalLight(0x8ea2b0, 0.95);
@@ -242,28 +178,11 @@ scene.add(fillLight);
 const GALLERY_FLOOR_Y_M = -0.025;
 const ground = new THREE.Mesh(
   new THREE.CircleGeometry(13, 96),
-  new THREE.MeshStandardMaterial({ color: 0x11171a, roughness: 0.93, metalness: 0.13 }),
+  new THREE.MeshStandardMaterial({ color: 0x101418, roughness: 0.95, metalness: 0.08 }),
 );
 ground.rotation.x = -Math.PI / 2;
 ground.position.y = GALLERY_FLOOR_Y_M;
 scene.add(ground);
-const grid = new THREE.GridHelper(25, 25, 0x775a36, 0x283137);
-grid.position.y = -0.015;
-grid.material.transparent = true;
-grid.material.opacity = 0.32;
-scene.add(grid);
-for (const [inner, outer, color, opacity] of [
-  [6.85, 6.9, 0xe9a346, 0.58],
-  [7.55, 7.58, 0x64cfdb, 0.22],
-]) {
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(inner, outer, 128),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, toneMapped: false }),
-  );
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.y = -0.008;
-  scene.add(ring);
-}
 
 const engineCtx = {
   setupShadowMaterial: (material: THREE.Material): THREE.Material => material,
@@ -284,14 +203,14 @@ const damagePoint = new THREE.Vector3();
 const damageEnd = new THREE.Vector3();
 let selectedId: string | null = null;
 let activeMode: GalleryMode = 'appearance';
-let filteredRecords: GalleryRecord[] = records;
+let activeView: GalleryView = 'hero';
 let pointerStart: { x: number; y: number } | null = null;
 let loadVersion = 0;
 let toastTimer: ReturnType<typeof setTimeout> | undefined;
 
 const damageHost = document.createElement('div');
 damageHost.className = 'damage-workbench-host';
-$('#articulationHeading').closest('section')!.after(damageHost);
+$('#dossier-damage').append(damageHost);
 const damageWorkbench = createDamageWorkbench(damageHost, {
   select(target) {
     setMode(target.plate ? 'armor' : target.kind === 'crew' ? 'crew' : 'modules', false);
@@ -305,6 +224,7 @@ const damageWorkbench = createDamageWorkbench(damageHost, {
     if (action === 'reset') { damageBurst.clear(); updateArticulation(); }
     setMode(activeMode, false);
     emphasizeDamageTarget();
+    viewport.classList.toggle('is-probing', damageWorkbench.probe);
   },
   overlay() {
     if (!isAnatomyMode(activeMode) || activeMode === 'armor') setMode('modules', false);
@@ -315,16 +235,15 @@ const damageWorkbench = createDamageWorkbench(damageHost, {
 });
 // The damage lab is the gallery's heaviest graph — the sim's damage, movement and armour and the auxiliary weapons table,
 // about 495 kB raw in 9 requests (main 395305d45) — so it loads after the first tank is on screen (2026-10-07, push 3b:
-// the owner's load-time priority). The workbench shows a short loading state when the module takes more than 200 ms; a
-// failed load is retried by the next tank load.
+// the owner's load-time priority). The Damage lab tab holds a placeholder of its size while the module takes more than
+// 200 ms; a failed load is retried by the next tank load.
 type DamageLabModule = typeof import('./damageLab.ts');
 let damageLabModule: Promise<DamageLabModule> | null = null;
 function loadDamageLab(): Promise<DamageLabModule> {
   if (damageLabModule) return damageLabModule;
-  const pending = document.createElement('section');
-  pending.className = 'dossier-section damage-workbench';
+  const pending = document.createElement('div');
+  pending.className = 'damage-workbench';
   pending.setAttribute('aria-busy', 'true');
-  pending.innerHTML = `<div class="section-label"><span>${t('gallery.damage.heading')}</span></div><p class="damage-help" role="status">…</p>`;
   const slow = setTimeout(() => damageHost.append(pending), 200);
   damageLabModule = import('./damageLab.ts').then(
     (module) => { clearTimeout(slow); pending.remove(); return module; },
@@ -332,18 +251,19 @@ function loadDamageLab(): Promise<DamageLabModule> {
   );
   return damageLabModule;
 }
-// In action (owner 2026-10-12): the selected vehicle's own take, between the technical summary and the articulation
-// controls. Its module and the fleet index load once the first tank is on screen; a vehicle the index lacks shows no
-// block, and a failed load leaves the dossier as it was (the next tank tries again).
-const inActionHost = document.createElement('div');
-inActionHost.className = 'fleet-take-host';
-$('#summaryHeading').closest('section')!.after(inActionHost);
+// The take (owner 2026-10-12, brand-ui SPEC 12.5): the selected vehicle's own newest take is the dossier's hero media.
+// Its module and the fleet index load once the first tank is on screen; until then, and for a vehicle the index lacks,
+// the frame keeps the vehicle's hero card.
 let inAction: InActionBlock | null = null;
 let inActionLoad: Promise<void> | null = null;
+let takeIds: ReadonlySet<string> | null = null;
 function showInAction(id: string): void {
   if (inAction) { inAction.show(id); return; }
   inActionLoad ??= import('./inAction.ts').then(
-    ({ mountInAction }) => { inAction = mountInAction(inActionHost); },
+    ({ mountInAction }) => {
+      inAction = mountInAction(takeMedia, $<HTMLElement>('#takeActions'));
+      void inAction.ids.then((ids) => { takeIds = ids; renderFacets(); });
+    },
     () => { inActionLoad = null; },
   );
   void inActionLoad.then(() => { if (selectedId === id) inAction?.show(id); });
@@ -484,6 +404,7 @@ function frameView(requestedName = 'hero'): void {
   if (!visual) return;
   const name: GalleryView = requestedName in VIEW_DIRECTIONS
     ? requestedName as GalleryView : 'hero';
+  activeView = name;
   const bounds = visibleBox(visual.root);
   bounds.getCenter(currentCenter);
   // Keep the platform and rendered body mass at the view center. Full visible
@@ -502,7 +423,11 @@ function frameView(requestedName = 'hero'): void {
   controls.target.copy(currentCenter);
   applyGalleryCameraRange(camera, controls, galleryFog, bounds, distance);
   controls.update();
-  viewButtons.forEach((button) => button.classList.toggle('active', button.dataset.view === name));
+  viewButtons.forEach((button) => {
+    const on = button.dataset.view === name;
+    button.classList.toggle('active', on);
+    button.setAttribute('aria-pressed', String(on));
+  });
 }
 
 function showToast(message: string): void {
@@ -556,6 +481,8 @@ function updateUrl(): void {
   const metric = anatomyView?.state().metric || armorMetric;
   if (activeMode === 'armor' && metric !== 'ke') url.searchParams.set('metric', String(metric));
   else url.searchParams.delete('metric');
+  if (rivalPinned && rivalId) url.searchParams.set('vs', rivalId);
+  else url.searchParams.delete('vs');
   history.replaceState({ id: selectedId, layer: activeMode }, '', `${url.pathname}${url.search}`);
 }
 
@@ -565,8 +492,8 @@ function renderLegend(): void {
   root.classList.remove('anatomy-legend');
   const legend: ReadonlyArray<readonly [string, string]> = activeMode === 'markup'
     ? [
-        [t('gallery.legend.markup.selected'), '#ff5a5f'],
-        [t('gallery.legend.markup.hover'), '#65a9ff'],
+        [t('gallery.legend.markup.selected'), 'var(--team-enemy)'],
+        [t('gallery.legend.markup.hover'), 'var(--team-own)'],
       ]
     : [];
   root.replaceChildren(...legend.map(([label, color]) => {
@@ -578,73 +505,111 @@ function renderLegend(): void {
   }));
 }
 
-let heroCards: { module: typeof import('../ui/heroCard.ts'); manifest: HeroManifest } | null = null;
-Promise.all([import('../ui/heroCard.ts'), import('../ui/heroCard.css')])
-  .then(async ([module]) => {
-    const manifest = await module.loadHeroManifest();
-    if (!manifest) return;
-    heroCards = { module, manifest };
-    vehicleList.style.setProperty('--hc-flag-mask', module.heroCardFlagMask(manifest));
-    renderRoster();
-  })
-  .catch(() => { /* the packaged angle icons stay */ });
+/* ------------------------------------------------------------------------------------------- facets and the fleet */
 
-function renderRoster(): void {
-  const fragment = document.createDocumentFragment();
-  for (const record of filteredRecords) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = `vehicle-card${record.id === selectedId ? ' active' : ''}`;
-    button.dataset.id = record.id;
-    button.role = 'option';
-    button.setAttribute('aria-selected', String(record.id === selectedId));
+const prefs = readPrefs();
+const favourites = new Set((Array.isArray(prefs.favourites) ? prefs.favourites : []).filter((id) => recordById.has(id)));
+let peerScale: 'fleet' | 'class' = prefs.peer === 'class' ? 'class' : 'fleet';
+let rivalId: string | null = null;
+let rivalPinned = false;
 
-    const image = document.createElement('img');
-    image.src = record.image;
-    image.alt = '';
-    image.loading = 'lazy';
-    image.addEventListener('error', () => { image.style.visibility = 'hidden'; }, { once: true });
-    // The tank hero card (3/4 render over the nation's waving flag) once the lazy hero chunk has its
-    // manifest; the packaged angle icon until then, and for any vehicle without a hero row.
-    const thumb = document.createElement('span');
-    thumb.className = 'vehicle-thumb';
-    thumb.append(image);
-    if (heroCards?.module.decorateHeroCard(thumb, record.id, heroCards.manifest, { tankSizes: '90px', flagSizes: '110px' })) image.remove();
-    const copy = document.createElement('span');
-    const meta = document.createElement('small');
-    meta.textContent = `${nationName(record.nation)} · ${record.era}`;
-    if (record.developmentOnly) {
-      const devTag = document.createElement('b');
-      devTag.className = 'vehicle-dev-tag';
-      devTag.textContent = record.rosterTag || t('garage.card.devTag');
-      meta.append(' ', devTag);
-    }
-    const title = document.createElement('strong');
-    title.textContent = record.displayName;
-    // Class and role read under the name (nation and era already head the card).
-    const facets = document.createElement('small');
-    facets.textContent = [record.vehicleClass?.shortLabel, record.battleRole?.label].filter(Boolean).join(' · ')
-      || record.era;
-    copy.append(meta, title, facets);
-    const tier = document.createElement('span');
-    tier.className = 'vehicle-tier';
-    tier.textContent = record.tierNumeral;
-    button.append(thumb, copy, tier);
-    button.addEventListener('click', () => loadTank(record.id));
-    fragment.append(button);
-  }
-  vehicleList.replaceChildren(fragment);
-  if (!filteredRecords.length) {
-    const empty = document.createElement('p');
-    empty.className = 'empty-roster';
-    empty.textContent = t('gallery.empty.noMatch');
-    vehicleList.append(empty);
-  }
-  $('#archiveCount').textContent = t('gallery.count', {
-    shown: filteredRecords.length,
-    total: records.length,
-  });
+/** One number a vehicle can be read, compared and sorted by (better: 1 more is better, -1 less is, 0 a size). */
+interface StatDef {
+  readonly key: string;
+  readonly label: string;
+  readonly icon: IconId;
+  readonly unit: string;
+  readonly better: 1 | -1 | 0;
+  readonly digits: number;
+  readonly group: 'firepower' | 'protection' | 'mobility' | 'size';
+  readonly value: (record: GalleryRecord) => number;
 }
+const gunArcs = new Map(records.map((record) => {
+  const spec = getSpec(record.id) as GalleryVehicleSpec;
+  return [record.id, { depression: Math.abs(Number(spec.gunDepressionDeg || 0)), elevation: Math.abs(Number(spec.gunElevationDeg || 0)) }];
+}));
+const STATS: readonly StatDef[] = Object.freeze([
+  { key: 'penetration', label: 'gallery.stat.penetration', icon: 'penetration', unit: 'gallery.unit.mm', better: 1, digits: 0, group: 'firepower', value: (r) => r.metrics.bestPenetrationMm },
+  { key: 'dpm', label: 'gallery.stat.dpm', icon: 'damage', unit: '', better: 1, digits: 0, group: 'firepower', value: (r) => r.metrics.dpm },
+  { key: 'reload', label: 'gallery.stat.reload', icon: 'reload', unit: 'gallery.unit.s', better: -1, digits: 1, group: 'firepower', value: (r) => r.metrics.reloadS },
+  { key: 'caliber', label: 'gallery.stat.caliber', icon: 'gun', unit: 'gallery.unit.mm', better: 1, digits: 0, group: 'firepower', value: (r) => r.metrics.caliberMm },
+  { key: 'aim', label: 'gallery.stat.aim', icon: 'scope', unit: 'gallery.unit.s', better: -1, digits: 1, group: 'firepower', value: (r) => r.metrics.aimTimeS },
+  { key: 'turretTraverse', label: 'gallery.stat.turretTraverse', icon: 'turretRing', unit: 'gallery.unit.degS', better: 1, digits: 0, group: 'firepower', value: (r) => r.metrics.turretTraverseDegS },
+  { key: 'depression', label: 'gallery.stat.depression', icon: 'moveBack', unit: 'gallery.unit.deg', better: 1, digits: 0, group: 'firepower', value: (r) => gunArcs.get(r.id)?.depression ?? 0 },
+  { key: 'elevation', label: 'gallery.stat.elevation', icon: 'moveForward', unit: 'gallery.unit.deg', better: 1, digits: 0, group: 'firepower', value: (r) => gunArcs.get(r.id)?.elevation ?? 0 },
+  { key: 'hp', label: 'gallery.dossier.spec.hp', icon: 'shield', unit: '', better: 1, digits: 0, group: 'protection', value: (r) => r.metrics.hp },
+  { key: 'ke', label: 'gallery.stat.ke', icon: 'layerArmor', unit: 'gallery.unit.mm', better: 1, digits: 0, group: 'protection', value: (r) => r.metrics.bestKeMm },
+  { key: 'ce', label: 'gallery.stat.ce', icon: 'armorFlashlight', unit: 'gallery.unit.mm', better: 1, digits: 0, group: 'protection', value: (r) => r.metrics.bestCeMm },
+  { key: 'speed', label: 'gallery.stat.speed', icon: 'speed', unit: 'gallery.unit.kmh', better: 1, digits: 0, group: 'mobility', value: (r) => r.metrics.topSpeedKmh },
+  { key: 'reverse', label: 'gallery.stat.reverse', icon: 'moveBack', unit: 'gallery.unit.kmh', better: 1, digits: 0, group: 'mobility', value: (r) => r.metrics.reverseSpeedKmh },
+  { key: 'powerWeight', label: 'gallery.dossier.spec.powerWeight', icon: 'performance', unit: 'gallery.unit.hpt', better: 1, digits: 1, group: 'mobility', value: (r) => r.metrics.powerToWeight },
+  { key: 'engine', label: 'gallery.dossier.spec.engine', icon: 'engine', unit: 'gallery.unit.hp', better: 1, digits: 0, group: 'mobility', value: (r) => r.metrics.enginePowerHp },
+  { key: 'hullTraverse', label: 'gallery.dossier.spec.hullTraverse', icon: 'steerLeft', unit: 'gallery.unit.degS', better: 1, digits: 0, group: 'mobility', value: (r) => r.metrics.hullTraverseDegS },
+  { key: 'weight', label: 'gallery.dossier.spec.weight', icon: 'track', unit: 'gallery.unit.t', better: 0, digits: 1, group: 'mobility', value: (r) => r.metrics.weightTons },
+  { key: 'length', label: 'gallery.stat.length', icon: 'statRange', unit: 'gallery.unit.m', better: 0, digits: 2, group: 'size', value: (r) => r.dimensions.overallLengthM },
+  { key: 'width', label: 'gallery.stat.width', icon: 'statRange', unit: 'gallery.unit.m', better: 0, digits: 2, group: 'size', value: (r) => r.dimensions.widthM },
+  { key: 'height', label: 'gallery.stat.height', icon: 'altitude', unit: 'gallery.unit.m', better: 0, digits: 2, group: 'size', value: (r) => r.dimensions.heightM },
+] satisfies StatDef[]);
+const STAT_GROUPS = Object.freeze([
+  ['firepower', 'gallery.stat.firepower', 'gun'],
+  ['protection', 'gallery.stat.protection', 'shield'],
+  ['mobility', 'gallery.stat.mobility', 'speed'],
+  ['size', 'gallery.stat.size', 'statRange'],
+] as const);
+const RATINGS = Object.freeze([
+  ['firepower', 'gallery.stat.firepower', 'damage'],
+  ['protection', 'gallery.stat.protection', 'shield'],
+  ['mobility', 'gallery.stat.mobility', 'speed'],
+  ['survivability', 'gallery.stat.survivability', 'crew'],
+] as const);
+const statByKey = new Map(STATS.map((stat) => [stat.key, stat]));
+
+/** The low and high of every stat across a peer set (the fleet, or one class), computed once per set. */
+const rangeCache = new Map<string, Map<string, readonly [number, number]>>();
+function peerRanges(record: GalleryRecord): Map<string, readonly [number, number]> {
+  const key = peerScale === 'class' ? `class:${record.vehicleClass?.id || ''}` : 'fleet';
+  let ranges = rangeCache.get(key);
+  if (ranges) return ranges;
+  const peers = peerScale === 'class' ? records.filter((other) => other.vehicleClass?.id === record.vehicleClass?.id) : records;
+  ranges = new Map(STATS.map((stat) => {
+    const values = peers.map(stat.value).filter((value) => Number.isFinite(value) && value > 0);
+    return [stat.key, [values.length ? Math.min(...values) : 0, values.length ? Math.max(...values) : 0] as const];
+  }));
+  rangeCache.set(key, ranges);
+  return ranges;
+}
+function statCells(stat: StatDef, value: number, range: readonly [number, number]): number {
+  const [low, high] = range;
+  return stat.better < 0 ? scaleCells(value, high, low) : scaleCells(value, low, high);
+}
+const formatStat = (stat: StatDef, value: number): string =>
+  formatNumber(value, { maximumFractionDigits: stat.digits, minimumFractionDigits: stat.digits && value % 1 ? 1 : 0 });
+
+type SortKey = 'tier' | 'name' | 'nation' | 'era' | 'firepower' | 'protection' | 'mobility' | 'survivability' | string;
+interface BrowseState {
+  query: string;
+  nation: string;
+  era: string;
+  vehicleClass: string;
+  role: string;
+  autoloader: boolean;
+  take: boolean;
+  concept: boolean;
+  favourite: boolean;
+  sort: SortKey;
+  descending: boolean;
+  layout: 'list' | 'grid';
+}
+const SORTS: readonly SortKey[] = ['tier', 'name', 'nation', 'era', ...RATINGS.map(([key]) => key), ...STATS.map((stat) => stat.key)];
+const browse: BrowseState = {
+  query: '', nation: '', era: '', vehicleClass: '', role: '', autoloader: false, take: false, concept: false, favourite: false,
+  sort: SORTS.includes(prefs.sort || '') ? prefs.sort as SortKey : 'tier',
+  descending: prefs.descending !== false,
+  layout: prefs.layout === 'grid' ? 'grid' : 'list',
+};
+const phoneQuery = globalThis.matchMedia?.('(width < 768px)');
+const effectiveLayout = (): 'list' | 'grid' => (phoneQuery?.matches ? 'grid' : browse.layout);
+let filteredRecords: GalleryRecord[] = records;
 
 /** A nation id's localized name (`nation.<id>`), or the id itself when the catalog has none. */
 function nationName(nation: string): string {
@@ -652,99 +617,490 @@ function nationName(nation: string): string {
   const name = t(key);
   return name === key ? nation : name;
 }
+/** One flag per nation: the USSR, Russia and USSR/Russia vehicles share one taxonomy (SPEC 12.5). */
+const nationsByFlag = new Map<string, string[]>();
+for (const record of records) {
+  const code = flagIconCode(record.nation);
+  const list = nationsByFlag.get(code) ?? [];
+  if (!list.includes(record.nation)) list.push(record.nation);
+  nationsByFlag.set(code, list);
+}
+const flagLabel = (code: string): string => [...new Set((nationsByFlag.get(code) ?? []).map(nationName))].join(' / ');
+const flagCodes = [...nationsByFlag.keys()].sort((a, b) =>
+  records.filter((r) => flagIconCode(r.nation) === b).length - records.filter((r) => flagIconCode(r.nation) === a).length
+  || flagLabel(a).localeCompare(flagLabel(b)));
+
+const GALLERY_ERA_ICONS: Readonly<Record<string, IconId>> = Object.freeze({
+  [VEHICLE_ERAS.INTERWAR]: 'eraInterwar',
+  [VEHICLE_ERAS.WORLD_WAR_II]: 'eraWorldWarII',
+  [VEHICLE_ERAS.COLD_WAR]: 'eraColdWar',
+  [VEHICLE_ERAS.MODERN]: 'eraModern',
+  [VEHICLE_ERAS.NEXT_GENERATION]: 'eraNextGeneration',
+});
+const CLASS_ICONS: Readonly<Record<string, IconId>> = Object.freeze({
+  mbt: 'classMbt', medium: 'classMedium', heavy: 'classHeavy', light: 'classLight', ifv: 'classIfv', apc: 'classApc',
+  td: 'classTd', spaa: 'classSpaa', 'fire-support': 'classFireSupport',
+});
+const ROLE_ICONS: Readonly<Record<string, IconId>> = Object.freeze({
+  breakthrough: 'roleBreakthrough', frontline: 'roleFrontline', flanker: 'roleFlanker', sniper: 'roleSniper',
+  scout: 'roleScout', support: 'roleSupport',
+});
+const eras = [...new Map(records.map((record) => [record.eraKey || '', record.era])).entries()]
+  .filter(([key]) => key)
+  .sort((a, b) => compareVehicleEras(a[0] as Parameters<typeof compareVehicleEras>[0], b[0] as Parameters<typeof compareVehicleEras>[1]));
+const classes = VEHICLE_CLASS_ORDER.filter((id) => records.some((record) => record.vehicleClass?.id === id));
+const roles = VEHICLE_BATTLE_ROLE_ORDER.filter((id) => records.some((record) => record.battleRole?.id === id));
+
+function facetButton(attrs: string, pressed: boolean, label: string, content: string, disabled = false): string {
+  return `<button type="button" ${attrs} aria-pressed="${pressed}" aria-label="${esc(label)}" title="${esc(label)}"${disabled ? ' disabled' : ''}>${content}</button>`;
+}
+function renderFacets(): void {
+  $('#nationFacets').innerHTML = facetButton('data-facet="nation" data-value=""', !browse.nation, t('gallery.archive.filter.allNations'),
+    icon('pixels', { size: 16 }))
+    + flagCodes.map((code) => facetButton(`data-facet="nation" data-value="${esc(code)}"`, browse.nation === code, flagLabel(code),
+      `<img class="cot-c-flag" src="${esc(flagIconUrl(nationsByFlag.get(code)?.[0] || ''))}" alt="" width="20" height="15" draggable="false">`)).join('');
+  $('#classFacets').innerHTML = classes.map((id) => {
+    const meta = VEHICLE_CLASS_META[id];
+    return facetButton(`data-facet="vehicleClass" data-value="${esc(id)}"`, browse.vehicleClass === id, vehicleFacetLabel(meta, t),
+      esc(vehicleFacetLabel(meta, t, { short: true })));
+  }).join('');
+  $('#eraFacets').innerHTML = eras.map(([key, label]) => facetButton(`data-facet="era" data-value="${esc(key)}"`, browse.era === key, label,
+    icon(GALLERY_ERA_ICONS[key] || 'clock', { size: 18 }))).join('');
+  $('#roleFacets').innerHTML = roles.map((id) => facetButton(`data-facet="role" data-value="${esc(id)}"`, browse.role === id,
+    vehicleFacetLabel(VEHICLE_BATTLE_ROLE_META[id], t), icon(ROLE_ICONS[id] || 'vehicle', { size: 18 }))).join('');
+  $('#extraFacets').innerHTML = [
+    facetButton('data-facet="autoloader"', browse.autoloader, t('gallery.facet.autoloader'), icon('autoloader', { size: 18 })),
+    facetButton('data-facet="take"', browse.take, t('gallery.facet.take'), icon('play', { size: 18 }), !takeIds),
+    facetButton('data-facet="concept"', browse.concept, vehicleFacetLabel(CONCEPT_PROTOTYPE_FILTER_META, t), icon('lightbulb', { size: 18 })),
+    facetButton('data-facet="favourite"', browse.favourite, t('gallery.facet.favourite'), icon('star', { size: 18 }), !favourites.size && !browse.favourite),
+  ].join('');
+}
+function onFacet(event: Event): void {
+  const button = (event.target as Element | null)?.closest<HTMLButtonElement>('button[data-facet]');
+  if (!button || button.disabled) return;
+  const facet = button.dataset.facet as keyof BrowseState;
+  const value = button.dataset.value ?? '';
+  if (facet === 'nation' || facet === 'era' || facet === 'vehicleClass' || facet === 'role') {
+    browse[facet] = browse[facet] === value ? '' : value;
+  } else if (facet === 'autoloader' || facet === 'take' || facet === 'concept' || facet === 'favourite') {
+    browse[facet] = !browse[facet];
+  }
+  renderFacets();
+  document.querySelector<HTMLElement>(`button[data-facet="${facet}"]${value ? `[data-value="${CSS.escape(value)}"]` : ''}`)?.focus();
+  applyFilters();
+}
+
+function sortLabel(key: SortKey): string {
+  if (key === 'tier') return t('gallery.sort.tier');
+  if (key === 'name') return t('gallery.sort.name');
+  if (key === 'nation') return t('gallery.archive.filter.nation');
+  if (key === 'era') return t('gallery.archive.filter.era');
+  const rating = RATINGS.find(([ratingKey]) => ratingKey === key);
+  if (rating) return t(rating[1]);
+  const stat = statByKey.get(key);
+  return stat ? t(stat.label) : key;
+}
+function sortValue(record: GalleryRecord, key: SortKey): number | string {
+  if (key === 'tier') return record.tier;
+  if (key === 'name') return record.displayName;
+  if (key === 'nation') return flagLabel(flagIconCode(record.nation));
+  if (key === 'era') return eras.findIndex(([eraKey]) => eraKey === record.eraKey);
+  if (key in record.ratings) return record.ratings[key as keyof GalleryRecord['ratings']];
+  return statByKey.get(key)?.value(record) ?? 0;
+}
+function sortRecords(list: GalleryRecord[]): GalleryRecord[] {
+  const direction = browse.descending ? -1 : 1;
+  const textSort = browse.sort === 'name' || browse.sort === 'nation';
+  return [...list].sort((a, b) => {
+    const left = sortValue(a, browse.sort);
+    const right = sortValue(b, browse.sort);
+    const primary = typeof left === 'string' || typeof right === 'string'
+      ? String(left).localeCompare(String(right), getLocale()) * (textSort ? -direction : direction)
+      : (Number(left) - Number(right)) * direction;
+    return primary || b.tier - a.tier || a.displayName.localeCompare(b.displayName, getLocale());
+  });
+}
+/** The value the list shows at a row's end: the sort's own value, or the era / tier when the group names the other. */
+function rowValue(record: GalleryRecord): string {
+  const key = browse.sort;
+  if (key === 'tier') return record.era;
+  if (key === 'name' || key === 'nation' || key === 'era') return record.tierNumeral;
+  if (key in record.ratings) return formatNumber(record.ratings[key as keyof GalleryRecord['ratings']]);
+  const stat = statByKey.get(key);
+  if (!stat) return '';
+  const unit = stat.unit ? ` ${t(stat.unit)}` : '';
+  return `${formatStat(stat, stat.value(record))}${unit}`;
+}
+interface RosterGroup { key: string; label: string; lead: string; rows: GalleryRecord[] }
+function groupRecords(list: GalleryRecord[]): RosterGroup[] {
+  const key = browse.sort;
+  if (key !== 'tier' && key !== 'nation' && key !== 'era') return [{ key: '', label: '', lead: '', rows: list }];
+  const groups = new Map<string, RosterGroup>();
+  for (const record of list) {
+    const code = flagIconCode(record.nation);
+    const groupKey = key === 'tier' ? String(record.tier) : key === 'nation' ? code : record.eraKey || '';
+    let group = groups.get(groupKey);
+    if (!group) {
+      group = key === 'tier'
+        ? { key: groupKey, label: t('gallery.tier', { tier: record.tierNumeral }), lead: '', rows: [] }
+        : key === 'nation'
+          ? { key: groupKey, label: flagLabel(code), lead: flag(record.nation, 'sm'), rows: [] }
+          : { key: groupKey, label: record.era, lead: icon(GALLERY_ERA_ICONS[groupKey] || 'clock', { size: 16 }), rows: [] };
+      groups.set(groupKey, group);
+    }
+    group.rows.push(record);
+  }
+  return [...groups.values()];
+}
+
+let heroCards: { module: typeof import('../ui/heroCard.ts'); manifest: HeroManifest } | null = null;
+Promise.all([import('../ui/heroCard.ts'), import('../ui/heroCard.css')])
+  .then(async ([module]) => {
+    const manifest = await module.loadHeroManifest();
+    if (!manifest) return;
+    heroCards = { module, manifest };
+    const mask = module.heroCardFlagMask(manifest);
+    vehicleList.style.setProperty('--hc-flag-mask', mask);
+    takeMedia.style.setProperty('--hc-flag-mask', mask);
+    if (effectiveLayout() === 'grid') renderRoster();
+    if (selectedId) decorateTake(selectedId);
+  })
+  .catch(() => { /* the packaged angle icons stay */ });
+
+function rowMarkup(record: GalleryRecord): string {
+  const selected = record.id === selectedId;
+  const dev = record.developmentOnly ? `<b class="vl-dev">${esc(record.rosterTag || t('garage.card.devTag'))}</b>` : '';
+  return `<button type="button" class="vl-row" role="option" data-id="${esc(record.id)}" aria-selected="${selected}" tabindex="-1">`
+    + `<span class="vl-art"></span>${flag(record.nation, 'sm')}${silhouette(record.id)}`
+    + `<span class="vl-name">${esc(record.displayName)}${dev}</span><span class="vl-value">${esc(rowValue(record))}</span></button>`;
+}
+function renderRoster(): void {
+  const layout = effectiveLayout();
+  const focusedId = (document.activeElement as HTMLElement | null)?.closest?.<HTMLElement>('.vl-row')?.dataset.id;
+  vehicleList.dataset.layout = layout;
+  const groups = groupRecords(filteredRecords);
+  vehicleList.innerHTML = groups.map((group) => (group.label
+    ? `<div class="vl-section" role="group" aria-label="${esc(group.label)}"><div class="vl-group" aria-hidden="true">${group.lead}`
+      + `<span>${esc(group.label)}</span><span class="vl-group-count">${formatNumber(group.rows.length)}</span></div>`
+    : '<div class="vl-section">') + group.rows.map(rowMarkup).join('') + '</div>').join('');
+  if (!filteredRecords.length) {
+    vehicleList.innerHTML = `<div class="vl-empty"><span>${esc(t('gallery.empty.noMatch'))}</span>`
+      + `<button type="button" class="cot-c-btn cot-c-btn--secondary cot-c-btn--36" data-clear-filters>${esc(t('gallery.empty.clear'))}</button></div>`;
+  }
+  if (layout === 'grid' && heroCards) {
+    for (const row of vehicleList.querySelectorAll<HTMLElement>('.vl-row')) {
+      const art = row.querySelector<HTMLElement>('.vl-art');
+      const id = row.dataset.id || '';
+      if (art) heroCards.module.decorateHeroCard(art, id, heroCards.manifest, { tankSizes: '180px', flagSizes: '240px', priority: id === selectedId });
+    }
+  }
+  const tabStop = vehicleList.querySelector<HTMLElement>('.vl-row[aria-selected=true]') ?? vehicleList.querySelector<HTMLElement>('.vl-row');
+  if (tabStop) tabStop.tabIndex = 0;
+  if (focusedId) vehicleList.querySelector<HTMLElement>(`.vl-row[data-id="${CSS.escape(focusedId)}"]`)?.focus({ preventScroll: true });
+  const count = $<HTMLOutputElement>('#archiveCount');
+  count.textContent = filteredRecords.length === records.length
+    ? formatNumber(records.length) : `${formatNumber(filteredRecords.length)}/${formatNumber(records.length)}`;
+  count.setAttribute('aria-label', t('gallery.count', { shown: filteredRecords.length, total: records.length }));
+}
+/** Scroll the fleet list itself (never the page) so a row is in view. */
+function revealRow(row: HTMLElement | null): void {
+  if (!row) return;
+  const list = vehicleList.getBoundingClientRect();
+  const box = row.getBoundingClientRect();
+  if (box.top < list.top) vehicleList.scrollTop += box.top - list.top - 8;
+  else if (box.bottom > list.bottom) vehicleList.scrollTop += box.bottom - list.bottom + 8;
+  if (box.left < list.left) vehicleList.scrollLeft += box.left - list.left - 12;
+  else if (box.right > list.right) vehicleList.scrollLeft += box.right - list.right + 12;
+}
+function markSelectedRow(): void {
+  for (const row of vehicleList.querySelectorAll<HTMLElement>('.vl-row')) {
+    const on = row.dataset.id === selectedId;
+    row.setAttribute('aria-selected', String(on));
+    row.tabIndex = on ? 0 : -1;
+  }
+  revealRow(vehicleList.querySelector<HTMLElement>('.vl-row[aria-selected=true]'));
+}
+function applyFilters(): void {
+  const code = browse.nation;
+  const list = filterGalleryRecords(records, {
+    query: $('#gallerySearch').value,
+    era: browse.era || 'all',
+    vehicleClass: browse.vehicleClass || 'all',
+    battleRole: browse.role || 'all',
+  }).filter((record) => (!code || flagIconCode(record.nation) === code)
+    && (!browse.autoloader || record.metrics.autoloader)
+    && (!browse.take || !takeIds || takeIds.has(record.id))
+    && (!browse.concept || (!!record.designStatus && record.designStatus.id !== 'service'))
+    && (!browse.favourite || favourites.has(record.id)));
+  filteredRecords = sortRecords(list);
+  renderRoster();
+}
+function populateSort(): void {
+  const select = $<HTMLSelectElement>('#gallerySort');
+  select.replaceChildren(...SORTS.map((key) => new Option(sortLabel(key), key, false, key === browse.sort)));
+  select.setAttribute('aria-label', t('gallery.sort.aria'));
+  syncSortDirection();
+}
+function syncSortDirection(): void {
+  const button = $('#sortDirection');
+  const label = t(browse.descending ? 'gallery.sort.descending' : 'gallery.sort.ascending');
+  button.setAttribute('aria-pressed', String(browse.descending));
+  button.setAttribute('aria-label', label);
+  button.title = label;
+}
+function syncLayoutSwitch(): void {
+  for (const button of document.querySelectorAll<HTMLElement>('[data-layout]')) {
+    const on = button.dataset.layout === browse.layout;
+    button.setAttribute('aria-checked', String(on));
+    button.tabIndex = on ? 0 : -1;
+  }
+}
+
+/* --------------------------------------------------------------------------------------------------- the dossier */
+
+const DOSSIER_TABS = ['overview', 'stats', 'ammo', 'anatomy', 'damage', 'markup'] as const;
+type DossierTab = typeof DOSSIER_TABS[number];
+let activeTab: DossierTab = 'overview';
+const tabsHost = $<HTMLElement>('#dossierTabs');
+tabsHost.innerHTML = tabs({
+  label: t('gallery.dossier.aria'),
+  selected: activeTab,
+  panelPrefix: 'dossier',
+  tabs: [
+    { id: 'overview', label: t('gallery.tab.overview') },
+    { id: 'stats', label: t('gallery.tab.stats') },
+    { id: 'ammo', label: t('gallery.tab.ammo') },
+    { id: 'anatomy', label: t('gallery.tab.anatomy') },
+    { id: 'damage', label: t('gallery.tab.damage') },
+    { id: 'markup', label: t('gallery.view.mode.markup') },
+  ],
+});
+const markupTab = $<HTMLButtonElement>('#dossierTabs [data-tab="markup"]');
+function selectTab(tab: DossierTab, focus = false): void {
+  activeTab = tab;
+  for (const button of tabsHost.querySelectorAll<HTMLElement>('[role=tab]')) {
+    const on = button.dataset.tab === tab;
+    button.setAttribute('aria-selected', String(on));
+    button.tabIndex = on ? 0 : -1;
+    if (on && focus) button.focus({ preventScroll: true });
+    const list = button.parentElement;
+    if (on && list && (button.offsetLeft < list.scrollLeft || button.offsetLeft + button.offsetWidth > list.scrollLeft + list.clientWidth)) {
+      list.scrollLeft = button.offsetLeft - 16;
+    }
+  }
+  for (const id of DOSSIER_TABS) $<HTMLElement>(`#dossier-${id}`).hidden = id !== tab;
+  const record = selectedId ? recordById.get(selectedId) : null;
+  if (tab === 'overview' && record) renderVersus(record); // its canvas measures its box once it shows
+}
+wireRoving(tabsHost, (value) => selectTab(value as DossierTab));
+
+const DIAGRAMS = [['armor_side', 'garage.dossier.image.armorSide'], ['modules_side', 'garage.dossier.image.modulesSide'],
+  ['crew_side', 'garage.dossier.image.crewSide']] as const;
+let diagram: typeof DIAGRAMS[number][0] = 'armor_side';
+$<HTMLElement>('#diagramSwitch').innerHTML = DIAGRAMS.map(([view, key]) => `<button type="button" role="radio" data-value="${view}"`
+  + ` aria-checked="${view === diagram}" tabindex="${view === diagram ? 0 : -1}">${esc(t(key))}</button>`).join('');
+wireRoving($<HTMLElement>('#diagramSwitch'), (value) => { diagram = value as typeof diagram; renderDiagram(); });
+const diagramImage = $<HTMLImageElement>('#diagramImage');
+diagramImage.addEventListener('error', () => { diagramImage.closest('figure')!.hidden = true; });
+diagramImage.addEventListener('load', () => { diagramImage.closest('figure')!.hidden = false; });
+function renderDiagram(): void {
+  if (!selectedId) return;
+  const record = recordById.get(selectedId);
+  diagramImage.src = iconUrl(selectedId, diagram);
+  const labelKey = DIAGRAMS.find(([view]) => view === diagram)?.[1];
+  diagramImage.alt = `${record?.displayName || ''} ${labelKey ? t(labelKey) : ''}`.trim();
+}
+
+wireRoving($<HTMLElement>('.peer-switch'), (value) => {
+  peerScale = value === 'class' ? 'class' : 'fleet';
+  writePrefs();
+  if (selectedId) renderStats(recordById.get(selectedId)!);
+});
+for (const button of document.querySelectorAll<HTMLElement>('.peer-switch [data-peer]')) {
+  const on = button.dataset.peer === peerScale;
+  button.setAttribute('aria-checked', String(on));
+  button.tabIndex = on ? 0 : -1;
+}
+
+function decorateTake(id: string): void {
+  const still = $<HTMLImageElement>('#takeStill');
+  const record = recordById.get(id);
+  still.src = record?.image || '';
+  for (const layer of takeMedia.querySelectorAll(':scope > picture')) layer.remove();
+  takeMedia.classList.remove('cot-hc', 'hc-loaded');
+  if (heroCards) heroCards.module.decorateHeroCard(takeMedia, id, heroCards.manifest, { tankSizes: '480px', flagSizes: '480px', priority: true });
+}
+
+function delta(stat: StatDef | null, own: number, rival: number, digits = 0): { delta?: string; better?: boolean } {
+  const diff = own - rival;
+  if (!Number.isFinite(diff) || Math.abs(diff) < 10 ** -Math.max(1, digits) / 2 || stat?.better === 0) return {};
+  const text = `${diff > 0 ? '+' : '−'}${formatNumber(Math.abs(diff), { maximumFractionDigits: digits })}`;
+  return { delta: text, better: (stat ? stat.better : 1) * diff > 0 };
+}
+function renderOverview(record: GalleryRecord): void {
+  const unit = (key: string): string => `<small>${esc(t(key))}</small>`;
+  $('#dossierFacts').innerHTML = [
+    ['gun', formatNumber(record.metrics.caliberMm), unit('gallery.unit.mm'), t('gallery.stat.caliber')],
+    ['team', formatNumber(record.metrics.crewCount), unit('gallery.unit.crew'), t('gallery.stat.crew')],
+    ['track', formatNumber(record.metrics.weightTons, { maximumFractionDigits: 1 }), unit('gallery.unit.t'), t('gallery.dossier.spec.weight')],
+    ['shield', formatNumber(record.metrics.hp), '', t('gallery.dossier.spec.hp')],
+  ].map(([glyph, value, suffix, label]) => `<div title="${esc(label)}">${icon(glyph as IconId, { size: 16 })}`
+    + `<b class="num">${value}${suffix}</b><span class="sr-only">${esc(label)}</span></div>`).join('');
+  const rival = rivalId ? recordById.get(rivalId) : null;
+  $('#ratingGrid').innerHTML = RATINGS.map(([key, label, glyph]) => {
+    const value = record.ratings[key];
+    const rivalValue = rival?.ratings[key];
+    return statRow({
+      label: t(label), value: formatNumber(value), unit: '/100', icon: glyph,
+      cells: scaleCells(value, 0, 100), rivalCells: rivalValue === undefined ? undefined : scaleCells(rivalValue, 0, 100),
+      ...(rivalValue === undefined ? {} : delta(null, value, rivalValue)),
+    });
+  }).join('');
+  const spec = getSpec(record.id) as GalleryVehicleSpec;
+  const plates = [...(spec.armor?.hullPlates || []), ...(spec.armor?.turretPlates || [])];
+  const features: string[] = [];
+  if (plates.some((plate) => plate.kind === 'era' || plate.era)) features.push(`<li>${icon('armorFlashlight', { size: 16 })}${esc(t('gallery.legend.armor.era'))}</li>`);
+  if (plates.some((plate) => plate.kind === 'composite')) features.push(`<li>${icon('layerArmor', { size: 16 })}${esc(t('gallery.feature.composite'))}</li>`);
+  if (plates.some((plate) => plate.kind === 'spaced')) features.push(`<li>${icon('shield', { size: 16 })}${esc(t('gallery.feature.spaced'))}</li>`);
+  if (record.metrics.autoloader) {
+    features.push(`<li>${icon('autoloader', { size: 16 })}<span class="num">${formatNumber(record.metrics.magazineSize)} × ${formatNumber(record.metrics.intraClipS, { maximumFractionDigits: 1 })} ${esc(t('gallery.unit.s'))}</span></li>`);
+  }
+  const noteKey = tankLabelRecord(spec).noteKey;
+  const note = noteKey ? t(noteKey) : '';
+  if (note && note !== noteKey) features.push(`<li class="note">${esc(note.trim())}</li>`);
+  $('#dossierFeatures').innerHTML = features.join('');
+  renderVersus(record);
+}
+function renderStats(record: GalleryRecord): void {
+  const ranges = peerRanges(record);
+  const rival = rivalId ? recordById.get(rivalId) : null;
+  $('#statGroups').innerHTML = STAT_GROUPS.map(([group, label, glyph]) => {
+    const rows = STATS.filter((stat) => stat.group === group).map((stat) => {
+      const value = stat.value(record);
+      if (!Number.isFinite(value) || (value <= 0 && stat.key !== 'turretTraverse')) return '';
+      const range = ranges.get(stat.key) ?? [0, 0];
+      const rivalValue = rival ? stat.value(rival) : undefined;
+      return statRow({
+        label: t(stat.label), value: formatStat(stat, value), unit: stat.unit ? t(stat.unit) : undefined, icon: stat.icon,
+        cells: statCells(stat, value, range),
+        rivalCells: rivalValue && rivalValue > 0 ? statCells(stat, rivalValue, range) : undefined,
+        ...(rivalValue && rivalValue > 0 ? delta(stat, value, rivalValue, stat.digits) : {}),
+      });
+    }).join('');
+    return rows ? `<section class="stat-group"><h2>${icon(glyph, { size: 16 })}${esc(t(label))}</h2>${rows}</section>` : '';
+  }).join('');
+}
+const SHELL_ICONS: Readonly<Record<string, IconId>> = Object.freeze({
+  AP: 'shellAp', APC: 'shellAp', APBC: 'shellAp', APCBC: 'shellAp', APHE: 'shellAp', APCR: 'shellApcr', HVAP: 'shellApcr',
+  APDS: 'shellApfsds', APFSDS: 'shellApfsds', HEAT: 'shellHeat', 'HEAT-FS': 'shellHeat', HESH: 'shellHe', HE: 'shellHe', ATGM: 'shellAtgm',
+});
+function renderAmmo(record: GalleryRecord): void {
+  const best = Math.max(1, ...records.flatMap((other) => other.shells.map((shell) => shell.penetrationMm)));
+  $('#ammunitionList').innerHTML = record.shells.map((shell) => {
+    const type = String(shell.type || '').toUpperCase();
+    const glyph = SHELL_ICONS[type] || (/ATGM|MISSILE/.test(type) ? 'shellAtgm' : /HEAT/.test(type) ? 'shellHeat' : /FSDS/.test(type) ? 'shellApfsds' : 'shell');
+    return `<div class="shell">${icon(glyph, { size: 24 })}<span class="shell-id"><b>${esc(shell.name || shell.type)}</b><small>${esc(shell.type)}</small></span>`
+      + `<span class="shell-nums"><span title="${esc(t('gallery.stat.penetration'))}"><b class="num">${formatNumber(shell.penetrationMm)}</b>${esc(t('gallery.unit.mm'))}</span>`
+      + `<span title="${esc(t('gallery.stat.damage'))}">${icon('damage', { size: 14 })}<b class="num">${formatNumber(shell.damage)}</b></span>`
+      + `<span title="${esc(t('gallery.stat.velocity'))}">${icon('speed', { size: 14 })}<b class="num">${formatNumber(shell.velocityMps)}</b>${esc(t('gallery.unit.mps'))}</span></span>`
+      + `<span class="sr-only">${esc(t('gallery.stat.penetration'))}</span>`
+      + `${scale20(scaleCells(shell.penetrationMm, 0, best))}</div>`;
+  }).join('');
+}
+
+/* the versus card: any rival, three head-to-head numbers and both vehicles at true scale */
+function defaultRival(record: GalleryRecord): string | null {
+  const own = flagIconCode(record.nation);
+  const score = (other: GalleryRecord): number => Math.abs(other.tier - record.tier) * 1000
+    + (other.vehicleClass?.id === record.vehicleClass?.id ? 0 : 500)
+    + Math.abs(other.ratings.firepower + other.ratings.protection + other.ratings.mobility
+      - record.ratings.firepower - record.ratings.protection - record.ratings.mobility);
+  const candidates = records.filter((other) => other.id !== record.id && flagIconCode(other.nation) !== own);
+  return candidates.sort((a, b) => score(a) - score(b) || a.id.localeCompare(b.id))[0]?.id ?? null;
+}
+const rivalSelect = $<HTMLSelectElement>('#rivalSelect');
+function populateRivals(): void {
+  const byNation = new Map<string, GalleryRecord[]>();
+  for (const record of [...records].sort((a, b) => a.displayName.localeCompare(b.displayName, getLocale()))) {
+    const code = flagIconCode(record.nation);
+    byNation.set(code, [...(byNation.get(code) ?? []), record]);
+  }
+  rivalSelect.replaceChildren(...flagCodes.map((code) => {
+    const group = document.createElement('optgroup');
+    group.label = flagLabel(code);
+    group.append(...(byNation.get(code) ?? []).map((record) => new Option(record.displayName, record.id)));
+    return group;
+  }));
+}
+/** Flag and silhouette; the silhouettes are drawn gun to the right, so the rival's is mirrored to face the selection. */
+function vehicleIdentity(record: GalleryRecord, mirrored: boolean): string {
+  return `<span class="vs-id">${flag(record.nation, 'sm')}${silhouette(record.id, mirrored ? 'right' : 'left')}</span>`;
+}
+function renderVersus(record: GalleryRecord): void {
+  const rival = rivalId ? recordById.get(rivalId) : null;
+  $('#versusOwn').innerHTML = `${vehicleIdentity(record, false)}<b>${esc(record.displayName)}</b>`;
+  if (!rival) { $('#versusMid').innerHTML = ''; $('#versusRival').innerHTML = ''; return; }
+  rivalSelect.value = rival.id;
+  $('#versusRival').innerHTML = `${vehicleIdentity(rival, true)}<b>${esc(rival.displayName)}</b>`;
+  const rows: Array<[IconId, string, number, number, number]> = [
+    ['penetration', 'gallery.stat.penetration', record.metrics.bestPenetrationMm, rival.metrics.bestPenetrationMm, 1],
+    ['reload', 'gallery.stat.reload', record.metrics.reloadS, rival.metrics.reloadS, -1],
+    ['shield', 'gallery.dossier.spec.hp', record.metrics.hp, rival.metrics.hp, 1],
+  ];
+  $('#versusMid').innerHTML = rows.map(([glyph, label, own, other, better]) => {
+    const ownBetter = (own - other) * better > 0;
+    const otherBetter = (other - own) * better > 0;
+    const digits = glyph === 'reload' ? 1 : 0;
+    return `<div title="${esc(t(label))}"><em class="num${ownBetter ? ' is-better' : ''}">${formatNumber(own, { maximumFractionDigits: digits })}</em>`
+      + `${icon(glyph, { size: 16, label: t(label) })}<em class="num${otherBetter ? ' is-better' : ''}">${formatNumber(other, { maximumFractionDigits: digits })}</em></div>`;
+  }).join('');
+  void drawTrueScale($<HTMLCanvasElement>('#versusScale'), [
+    { id: record.id, lengthM: record.dimensions.overallLengthM, tone: '--ink-1', facing: 'right' },
+    { id: rival.id, lengthM: rival.dimensions.overallLengthM, tone: '--ink-3', facing: 'left' },
+  ], { layout: 'apart', label: `${record.displayName} · ${rival.displayName}` });
+}
+function drawStageScale(record: GalleryRecord): void {
+  const rival = rivalId ? recordById.get(rivalId) : null;
+  void drawTrueScale($<HTMLCanvasElement>('#stageScale'), [
+    ...(rival ? [{ id: rival.id, lengthM: rival.dimensions.overallLengthM, tone: '--ink-4', facing: 'right' as const }] : []),
+    { id: record.id, lengthM: record.dimensions.overallLengthM, tone: '--ink-2', facing: 'right' },
+  ], { layout: 'overlay', human: true, label: t('gallery.inset.aria', { name: record.displayName }) });
+}
+function setRival(id: string | null, pinned: boolean): void {
+  rivalId = id && recordById.has(id) && id !== selectedId ? id : null;
+  rivalPinned = pinned && !!rivalId;
+  const record = selectedId ? recordById.get(selectedId) : null;
+  if (!record) return;
+  renderOverview(record);
+  renderStats(record);
+  drawStageScale(record);
+  updateUrl();
+}
 
 function renderDossier(record: GalleryRecord): void {
-  const allIndex = records.findIndex((item) => item.id === record.id) + 1;
-  $('#dossierIndex').textContent = String(allIndex).padStart(3, '0');
-  $('#dossierMeta').textContent = [t('gallery.dossier.meta', { nation: nationName(record.nation), era: record.era, tier: record.tierNumeral }),
-    record.vehicleClass?.label].filter(Boolean).join(' · ');
   $('#dossierName').textContent = record.displayName;
-  $('#dossierDesignation').textContent = record.era;
-  $('#dossierAuthor').textContent = t('gallery.dossier.authorLine', {
-    creator: record.authorship?.creator || 'Kevin B. Liu',
-  });
-  $('#dossierTankIcon').src = record.image;
-  $('#dossierTankIcon').alt = t('gallery.dossier.iconAlt', { name: record.displayName });
-  const ratingPresentation: Readonly<Record<string, { tone: string; icon: string; key: string }>> = {
-    firepower: { tone: '#e9a346', icon: 'damage', key: 'gallery.dossier.rating.firepower' },
-    protection: { tone: '#67d19a', icon: 'shield', key: 'gallery.dossier.rating.protection' },
-    mobility: { tone: '#64cfdb', icon: 'speed', key: 'gallery.dossier.rating.mobility' },
-    survivability: { tone: '#c18cff', icon: 'crew', key: 'gallery.dossier.rating.survivability' },
-  };
-  $('#ratingGrid').innerHTML = Object.entries(record.ratings).map(([name, value]) => {
-    const presentation = ratingPresentation[name];
-    return `<div class="rating" data-rating="${name}" style="--rating:${value};--tone:${presentation.tone}">` +
-      `<span class="rating-icon">${uiIconSVG(presentation.icon, 22)}</span>` +
-      `<span class="rating-metric"><small>${t(presentation.key)}</small><strong>${value}<span> / 100</span></strong></span></div>`;
-  }).join('');
-
-  const brief = $('#technicalBrief');
-  brief.replaceChildren(...record.brief.map((copy) => {
-    const paragraph = document.createElement('p');
-    paragraph.textContent = copy;
-    return paragraph;
-  }));
-  $('#highlights').replaceChildren(...record.highlights.map((copy) => {
-    const item = document.createElement('li');
-    item.textContent = copy;
-    return item;
-  }));
-
-  const numberLocale = getLocale();
-  const fmt = (value: number): string => new Intl.NumberFormat(numberLocale).format(value);
-  const loadingMetrics: Array<[string, string]> = record.metrics.autoloader
-    ? [
-        [
-          t('gallery.dossier.spec.magazine'),
-          t('gallery.dossier.spec.magazineAuto', {
-            size: record.metrics.magazineSize,
-            damage: record.shells[0]?.damage || 0,
-            cycle: record.metrics.intraClipS,
-          }),
-        ],
-        [
-          t('gallery.dossier.spec.fullReload'),
-          t('gallery.dossier.spec.reloadValue', { reload: record.metrics.reloadS, dpm: fmt(record.metrics.dpm) }),
-        ],
-      ]
-    : [
-        [
-          t('gallery.dossier.spec.reload'),
-          t('gallery.dossier.spec.reloadValue', { reload: record.metrics.reloadS, dpm: fmt(record.metrics.dpm) }),
-        ],
-      ];
-  const metricRows: Array<[string, string]> = [
-    [t('gallery.dossier.spec.hp'), fmt(record.metrics.hp)],
-    [t('gallery.dossier.spec.weight'), t('gallery.dossier.spec.weightValue', { value: record.metrics.weightTons })],
-    [t('gallery.dossier.spec.engine'), t('gallery.dossier.spec.engineValue', { value: fmt(record.metrics.enginePowerHp) })],
-    [t('gallery.dossier.spec.powerWeight'), t('gallery.dossier.spec.powerWeightValue', { value: record.metrics.powerToWeight })],
-    [t('gallery.dossier.spec.forwardReverse'), t('gallery.dossier.spec.forwardReverseValue', { forward: record.metrics.topSpeedKmh, reverse: record.metrics.reverseSpeedKmh })],
-    [t('gallery.dossier.spec.hullTraverse'), t('gallery.dossier.spec.hullTraverseValue', { value: record.metrics.hullTraverseDegS })],
-    [t('gallery.dossier.spec.primaryCaliber'), t('gallery.dossier.spec.primaryCaliberValue', { value: record.metrics.caliberMm })],
-    ...loadingMetrics,
-    [t('gallery.dossier.spec.peakKeCe'), t('gallery.dossier.spec.peakKeCeValue', { ke: record.metrics.bestKeMm, ce: record.metrics.bestCeMm })],
-    [t('gallery.dossier.spec.envelope'), t('gallery.dossier.spec.envelopeValue', { length: record.dimensions.overallLengthM, width: record.dimensions.widthM, height: record.dimensions.heightM })],
+  $('#dossierName').style.setProperty('--name-fit', String(Math.max(0.62, Math.min(1, 15 / Math.max(1, record.displayName.length)))));
+  const flagImage = $<HTMLImageElement>('#dossierFlag');
+  flagImage.src = flagIconUrl(record.nation);
+  flagImage.title = nationName(record.nation);
+  $('#dossierTier').textContent = record.tierNumeral;
+  const tags = [
+    `<li>${esc(t('gallery.tier', { tier: record.tierNumeral }))}</li>`,
+    record.vehicleClass ? `<li>${icon(CLASS_ICONS[record.vehicleClass.id] || 'vehicle', { size: 16 })}${esc(record.vehicleClass.shortLabel)}</li>` : '',
+    record.battleRole ? `<li>${icon(ROLE_ICONS[record.battleRole.id] || 'vehicle', { size: 16 })}${esc(record.battleRole.label)}</li>` : '',
+    `<li>${icon(GALLERY_ERA_ICONS[record.eraKey || ''] || 'clock', { size: 16 })}${esc(record.era)}</li>`,
+    record.developmentOnly ? `<li class="is-dev">${esc(record.rosterTag || t('garage.card.devTag'))}</li>` : '',
   ];
-  $('#specGrid').innerHTML = metricRows.map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join('');
-
-  const ammunition = $('#ammunitionList');
-  ammunition.replaceChildren(...record.shells.map((shell) => {
-    const row = document.createElement('div');
-    row.className = 'ammunition';
-    const identity = document.createElement('span');
-    const name = document.createElement('strong');
-    name.textContent = shell.name || shell.type;
-    const type = document.createElement('small');
-    type.textContent = t('gallery.dossier.shellTypeVelocity', { type: shell.type, velocity: fmt(shell.velocityMps) });
-    identity.append(name, type);
-    const performance = document.createElement('span');
-    performance.textContent = t('gallery.dossier.shellPenetration', { value: shell.penetrationMm });
-    const damage = document.createElement('small');
-    damage.textContent = t('gallery.dossier.shellDamage', { value: shell.damage });
-    performance.append(damage);
-    row.append(identity, performance);
-    return row;
-  }));
+  $('#dossierTags').innerHTML = tags.join('');
+  decorateTake(record.id);
+  if (!rivalPinned || rivalId === record.id) { rivalId = defaultRival(record); rivalPinned = false; }
+  renderOverview(record);
+  renderStats(record);
+  renderAmmo(record);
+  renderDiagram();
+  drawStageScale(record);
+  const favourite = $('#favourite');
+  favourite.setAttribute('aria-pressed', String(favourites.has(record.id)));
 }
 
 function updateArticulation(): void {
@@ -789,28 +1145,31 @@ function configureArticulation(spec: GalleryVehicleSpec): void {
 }
 
 function setMode(requestedMode: string | undefined, announce = true): void {
-  const nextMode: GalleryMode = !damageLab?.combat.destroyed && ['appearance', 'armor', 'modules', 'crew', 'markup']
-    .includes(requestedMode || '') ? requestedMode as GalleryMode : 'appearance';
+  const nextMode: GalleryMode = !damageLab?.combat.destroyed && GALLERY_MODES
+    .includes((requestedMode || '') as GalleryMode) ? requestedMode as GalleryMode : 'appearance';
   const previousMode = activeMode;
   activeMode = nextMode;
   if (isAnatomyMode(activeMode)) showAnatomy(activeMode, announce);
   else anatomyView?.hide();
   surfaceMarkup.setActive(activeMode === 'markup');
-  modeButtons.forEach((button) => { button.classList.toggle('active', button.dataset.mode === activeMode); button.disabled = !!damageLab?.combat.destroyed && button.dataset.mode !== 'appearance'; });
+  modeButtons.forEach((button) => {
+    const on = button.dataset.mode === activeMode;
+    button.classList.toggle('active', on);
+    button.setAttribute('aria-pressed', String(on));
+    button.disabled = !!damageLab?.combat.destroyed && button.dataset.mode !== 'appearance';
+  });
   if (previousMode !== activeMode || !isAnatomyMode(activeMode)) $('#inspectionReadout').hidden = true;
-  $('#viewerHelp').innerHTML = activeMode === 'markup'
-    ? `${viewerHelpItem('rematch', t('gallery.view.modeDockHelp'))}${viewerHelpItem('check', t('gallery.view.modeDockHelpShift'))}${viewerHelpItem('autoAim', t('gallery.view.modeDockHelpMarkup'))}`
-    : `${viewerHelpItem('rematch', t('gallery.view.modeDockHelp'))}${viewerHelpItem('optics', t('gallery.view.modeDockHelpZoom'))}${viewerHelpItem('autoAim', t('gallery.view.modeDockHelpSelect'))}`;
+  markupTab.hidden = activeMode !== 'markup';
+  markupTab.disabled = activeMode !== 'markup';
+  if (activeMode === 'markup' && previousMode !== 'markup') selectTab('markup');
+  else if (activeMode !== 'markup' && activeTab === 'markup') selectTab('overview');
   if (activeMode === 'markup') {
     controls.autoRotate = false;
     $('#autoRotate').setAttribute('aria-pressed', 'false');
   }
   renderLegend();
   updateUrl();
-  if (announce) {
-    if (activeMode === 'appearance') showToast(t('gallery.view.toast.appearanceRestored'));
-    else if (activeMode === 'markup') showToast(t('gallery.view.toast.markupReady', { count: surfaceMarkup.getState().selectableMeshes }));
-  }
+  if (announce && activeMode === 'markup') showToast(t('gallery.view.toast.markupReady', { count: surfaceMarkup.getState().selectableMeshes }));
 }
 
 function disposeTank(): void {
@@ -839,18 +1198,17 @@ async function loadTank(
   if (!id) return;
   const version = ++loadVersion;
   window.__TANK_GALLERY_READY = false;
+  selectedId = id;
+  const record = recordById.get(id);
+  if (!record) throw new Error(`Missing Gallery record for ${id}`);
+  // the dossier and the list answer at once; the model follows
+  renderDossier(record);
+  markSelectedRow();
   loadingState.classList.remove('hidden');
   await nextFrame();
   if (version !== loadVersion) return;
 
   disposeTank();
-  selectedId = id;
-  const record = recordById.get(id);
-  if (!record) throw new Error(`Missing Gallery record for ${id}`);
-  // The dossier and the active card are the record's own data: they answer the click at once, and the tank builds
-  // behind them (2026-10-22, nav-perf-240: the old dossier stayed up until the builder chunk and the build finished).
-  renderDossier(record);
-  renderRoster();
   await ensureTankBuilder(id);
   if (version !== loadVersion) return;
   const spec = getSpec(id) as GalleryVehicleSpec;
@@ -891,217 +1249,6 @@ function pickInspection(clientX: number, clientY: number): void {
   anatomyView?.pickAt(clientX, clientY);
 }
 
-function applyFilters(): void {
-  filteredRecords = filterGalleryRecords(records, {
-    query: $('#gallerySearch').value,
-    nation: $('#nationFilter').value,
-    era: $('#eraFilter').value,
-    vehicleClass: $('#classFilter').value,
-    battleRole: $('#roleFilter').value,
-  });
-  renderRoster();
-}
-
-const gallerySelects: GallerySelectController[] = [];
-
-const GALLERY_ERA_ICONS: Readonly<Record<string, string>> = Object.freeze({
-  [VEHICLE_ERAS.INTERWAR]: 'eraInterwar',
-  [VEHICLE_ERAS.WORLD_WAR_II]: 'eraWorldWarII',
-  [VEHICLE_ERAS.COLD_WAR]: 'eraColdWar',
-  [VEHICLE_ERAS.MODERN]: 'eraModern',
-  [VEHICLE_ERAS.NEXT_GENERATION]: 'eraNextGeneration',
-});
-
-function createGallerySelectIcon(
-  select: HTMLSelectElement,
-  option: HTMLOptionElement,
-): HTMLSpanElement {
-  const icon = document.createElement('span');
-  icon.className = 'gallery-select-icon';
-  icon.setAttribute('aria-hidden', 'true');
-  if (select.id === 'nationFilter' && option.value !== 'all') {
-    const flag = document.createElement('img');
-    flag.className = 'gallery-select-flag';
-    flag.src = flagIconUrl(option.value);
-    flag.alt = '';
-    flag.draggable = false;
-    icon.append(flag);
-    return icon;
-  }
-  // Class and role options show the fleet glyphs (constant markup, keyed by the option's facet id).
-  const facetGlyph = option.value === 'all' ? ''
-    : select.id === 'classFilter' ? vehicleClassGlyphSVG(option.value)
-      : select.id === 'roleFilter' ? vehicleRoleGlyphSVG(option.value) : '';
-  if (facetGlyph) {
-    if (select.id === 'classFilter') icon.classList.add('gallery-select-icon--wide');
-    icon.insertAdjacentHTML('beforeend', facetGlyph);
-    return icon;
-  }
-  const iconId = select.id === 'eraFilter' ? (GALLERY_ERA_ICONS[option.value] || 'clock') : 'globe';
-  icon.insertAdjacentHTML('beforeend', uiIconSVG(iconId, 16));
-  return icon;
-}
-
-function renderGallerySelectChoice(
-  target: HTMLElement,
-  select: HTMLSelectElement,
-  option: HTMLOptionElement | undefined,
-): void {
-  target.replaceChildren();
-  if (!option) return;
-  const choice = document.createElement('span');
-  choice.className = 'gallery-select-choice';
-  const text = document.createElement('span');
-  text.className = 'gallery-select-choice-label';
-  text.textContent = option.textContent;
-  choice.append(createGallerySelectIcon(select, option), text);
-  target.append(choice);
-}
-
-function mountGallerySelect(select: HTMLSelectElement): GallerySelectController | null {
-  const field = select.closest('.gallery-filter');
-  const label = field?.querySelector('.filter-label');
-  if (!field || !label) return null;
-
-  const control = document.createElement('div');
-  control.className = 'gallery-select';
-  const trigger = document.createElement('button');
-  trigger.type = 'button';
-  trigger.className = 'gallery-select-trigger';
-  trigger.setAttribute('aria-haspopup', 'listbox');
-  trigger.setAttribute('aria-expanded', 'false');
-  const valueLabel = document.createElement('span');
-  valueLabel.className = 'gallery-select-value';
-  valueLabel.id = `${select.id}Value`;
-  trigger.setAttribute('aria-labelledby', `${label.id} ${valueLabel.id}`);
-  trigger.append(valueLabel);
-
-  const list = document.createElement('div');
-  list.className = 'gallery-select-list';
-  list.id = `${select.id}List`;
-  list.role = 'listbox';
-  list.setAttribute('aria-labelledby', label.id);
-  trigger.setAttribute('aria-controls', list.id);
-  const options = [...select.options];
-  const optionButtons = options.map((option) => {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'gallery-select-option';
-    button.role = 'option';
-    button.tabIndex = -1;
-    button.dataset.value = option.value;
-    renderGallerySelectChoice(button, select, option);
-    list.append(button);
-    return button;
-  });
-
-  function selectedIndex(): number {
-    const index = optionButtons.findIndex((button) => button.dataset.value === select.value);
-    return index < 0 ? 0 : index;
-  }
-
-  function syncSelection(): void {
-    const index = selectedIndex();
-    renderGallerySelectChoice(valueLabel, select, options[index]);
-    optionButtons.forEach((button, buttonIndex) => {
-      button.setAttribute('aria-selected', String(buttonIndex === index));
-    });
-  }
-
-  function close(restoreFocus = false): void {
-    if (!control.classList.contains('open')) return;
-    control.classList.remove('open');
-    trigger.setAttribute('aria-expanded', 'false');
-    if (restoreFocus) trigger.focus();
-  }
-
-  function open(index = selectedIndex()): void {
-    for (const item of gallerySelects) {
-      if (item.control !== control) item.close();
-    }
-    control.classList.add('open');
-    trigger.setAttribute('aria-expanded', 'true');
-    optionButtons[Math.max(0, Math.min(optionButtons.length - 1, index))]?.focus();
-  }
-
-  function choose(button: HTMLButtonElement): void {
-    select.value = button.dataset.value || '';
-    syncSelection();
-    select.dispatchEvent(new Event('change', { bubbles: true }));
-    close(true);
-  }
-
-  trigger.addEventListener('click', () => {
-    if (control.classList.contains('open')) close();
-    else open();
-  });
-  trigger.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      close();
-    } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      open();
-    } else if (event.key === 'Home' || event.key === 'End') {
-      event.preventDefault();
-      open(event.key === 'Home' ? 0 : optionButtons.length - 1);
-    }
-  });
-  optionButtons.forEach((button, index) => {
-    button.addEventListener('click', () => choose(button));
-    button.addEventListener('keydown', (event) => {
-      let nextIndex = index;
-      if (event.key === 'ArrowDown') nextIndex = (index + 1) % optionButtons.length;
-      else if (event.key === 'ArrowUp') nextIndex = (index - 1 + optionButtons.length) % optionButtons.length;
-      else if (event.key === 'Home') nextIndex = 0;
-      else if (event.key === 'End') nextIndex = optionButtons.length - 1;
-      else if (event.key === 'Escape') {
-        event.preventDefault();
-        close(true);
-        return;
-      } else if (event.key === 'Tab') {
-        close();
-        return;
-      } else return;
-      event.preventDefault();
-      optionButtons[nextIndex]?.focus();
-    });
-  });
-  select.addEventListener('change', syncSelection);
-  select.hidden = true;
-  select.tabIndex = -1;
-  select.setAttribute('aria-hidden', 'true');
-  control.append(trigger, list);
-  field.append(control);
-  syncSelection();
-  const api = { control, close };
-  gallerySelects.push(api);
-  return api;
-}
-
-function populateFilters(): void {
-  const nations = [...new Set(records.map((record) => record.nation))].sort();
-  const eras = [...new Map(records.map((record) => [record.eraKey, record.era])).entries()]
-    .sort((a, b) => compareVehicleEras(
-      a[0] as Parameters<typeof compareVehicleEras>[0],
-      b[0] as Parameters<typeof compareVehicleEras>[1],
-    ));
-  // Class and role list only the values the registry holds, in the facet table's order.
-  const classes = VEHICLE_CLASS_ORDER.filter((id) => records.some((record) => record.vehicleClass?.id === id));
-  const roles = VEHICLE_BATTLE_ROLE_ORDER.filter((id) => records.some((record) => record.battleRole?.id === id));
-  $('#nationFilter').append(...nations.map((nation) => new Option(nation, nation)));
-  $('#eraFilter').append(...eras.map(([key, label]) => new Option(label, key)));
-  $('#classFilter').append(
-    ...classes.map((id) => new Option(vehicleFacetLabel(VEHICLE_CLASS_META[id], t), id)),
-    new Option(vehicleFacetLabel(CONCEPT_PROTOTYPE_FILTER_META, t), CONCEPT_PROTOTYPE_CLASS_FILTER),
-  );
-  $('#roleFilter').append(...roles.map((id) => new Option(vehicleFacetLabel(VEHICLE_BATTLE_ROLE_META[id], t), id)));
-  mountGallerySelect($<HTMLSelectElement>('#nationFilter'));
-  mountGallerySelect($<HTMLSelectElement>('#eraFilter'));
-  mountGallerySelect($<HTMLSelectElement>('#classFilter'));
-  mountGallerySelect($<HTMLSelectElement>('#roleFilter'));
-}
-
 async function writeClipboard(text: string, successMessage: string): Promise<void> {
   try {
     await navigator.clipboard.writeText(text);
@@ -1109,6 +1256,24 @@ async function writeClipboard(text: string, successMessage: string): Promise<voi
   } catch (_) {
     showToast(t('gallery.toast.clipboardUnavailable'));
   }
+}
+
+function renderFrame(): void {
+  if (anatomyView?.mode) anatomyView.render();
+  else renderer.render(scene, camera);
+}
+function savePhoto(): void {
+  if (!selectedId) return;
+  renderFrame();
+  renderer.domElement.toBlob((blob) => {
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `claude-of-tanks-${selectedId}-${activeView}.png`;
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }, 'image/png');
 }
 
 function resize(): void {
@@ -1126,15 +1291,74 @@ function resize(): void {
   controls.update();
 }
 
+/** The next or previous vehicle of the filtered list. */
+function stepVehicle(step: number): void {
+  if (!filteredRecords.length) return;
+  const at = filteredRecords.findIndex((record) => record.id === selectedId);
+  const next = filteredRecords[(at + step + filteredRecords.length) % filteredRecords.length];
+  if (next) void loadTank(next.id);
+}
+
 $('#gallerySearch').addEventListener('input', applyFilters);
-$('#nationFilter').addEventListener('change', applyFilters);
-$('#eraFilter').addEventListener('change', applyFilters);
-$('#classFilter').addEventListener('change', applyFilters);
-$('#roleFilter').addEventListener('change', applyFilters);
-// A card under the pointer fetches its vehicle's builder chunks, so the click only builds (nav-perf-240).
+$('#archiveFilters').addEventListener('submit', (event) => event.preventDefault());
+for (const id of ['#nationFacets', '#classFacets', '#eraFacets', '#roleFacets', '#extraFacets']) $(id).addEventListener('click', onFacet);
+$<HTMLSelectElement>('#gallerySort').addEventListener('change', (event) => {
+  browse.sort = (event.target as HTMLSelectElement).value;
+  browse.descending = !(browse.sort === 'name' || browse.sort === 'nation' || statByKey.get(browse.sort)?.better === -1);
+  syncSortDirection();
+  writePrefs();
+  applyFilters();
+});
+$('#sortDirection').addEventListener('click', () => {
+  browse.descending = !browse.descending;
+  syncSortDirection();
+  writePrefs();
+  applyFilters();
+});
+wireRoving($<HTMLElement>('.layout-switch'), (value) => {
+  browse.layout = value === 'grid' ? 'grid' : 'list';
+  writePrefs();
+  renderRoster();
+  markSelectedRow();
+});
+phoneQuery?.addEventListener?.('change', () => { renderRoster(); markSelectedRow(); });
+vehicleList.addEventListener('click', (event) => {
+  const target = event.target as Element | null;
+  if (target?.closest('[data-clear-filters]')) {
+    Object.assign(browse, { nation: '', era: '', vehicleClass: '', role: '', autoloader: false, take: false, concept: false, favourite: false });
+    $('#gallerySearch').value = '';
+    renderFacets();
+    applyFilters();
+    return;
+  }
+  const row = target?.closest<HTMLElement>('.vl-row');
+  if (row?.dataset.id) void loadTank(row.dataset.id);
+});
+vehicleList.addEventListener('keydown', (event) => {
+  const row = (event.target as Element | null)?.closest<HTMLElement>('.vl-row');
+  if (!row) return;
+  const rows = [...vehicleList.querySelectorAll<HTMLElement>('.vl-row')];
+  const at = rows.indexOf(row);
+  const columns = effectiveLayout() === 'grid' && !phoneQuery?.matches ? 2 : 1;
+  const steps: Readonly<Record<string, number>> = phoneQuery?.matches
+    ? { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -1, ArrowDown: 1 }
+    : { ArrowUp: -columns, ArrowDown: columns, ArrowLeft: columns > 1 ? -1 : 0, ArrowRight: columns > 1 ? 1 : 0 };
+  let to = -1;
+  if (event.key === 'Home') to = 0;
+  else if (event.key === 'End') to = rows.length - 1;
+  else if (steps[event.key]) to = Math.max(0, Math.min(rows.length - 1, at + steps[event.key]));
+  if (to < 0) return;
+  event.preventDefault();
+  row.tabIndex = -1;
+  rows[to].tabIndex = 0;
+  rows[to].focus({ preventScroll: true });
+  revealRow(rows[to]);
+});
+rivalSelect.addEventListener('change', () => setRival(rivalSelect.value, true));
+// A row under the pointer fetches its vehicle's builder chunks, so the click only builds (nav-perf-240).
 const warmedBuilders = new Set<string>();
 vehicleList.addEventListener('pointerover', (event) => {
-  const id = event.target instanceof Element ? event.target.closest<HTMLElement>('.vehicle-card')?.dataset.id : undefined;
+  const id = event.target instanceof Element ? event.target.closest<HTMLElement>('.vl-row')?.dataset.id : undefined;
   if (!id || warmedBuilders.has(id)) return;
   warmedBuilders.add(id);
   ensureTankBuilder(id).catch(() => warmedBuilders.delete(id));
@@ -1148,14 +1372,20 @@ $('#autoRotate').addEventListener('click', () => {
   controls.autoRotate = !controls.autoRotate;
   controls.autoRotateSpeed = 0.75;
   $('#autoRotate').setAttribute('aria-pressed', String(controls.autoRotate));
-  showToast(controls.autoRotate
-    ? t('gallery.toast.turntableOn')
-    : t('gallery.toast.turntableOff'));
 });
+$('#photo').addEventListener('click', savePhoto);
 // the proving ground (v2 progression, 2026-10-17): this vehicle on the game's measured range (game/testDriveLink.ts)
 $('#testDrive').addEventListener('click', () => {
   if (!selectedId) return;
   location.href = hrefForLocale(testDriveHref(selectedId), getLocale());
+});
+$('#favourite').addEventListener('click', () => {
+  if (!selectedId) return;
+  if (favourites.has(selectedId)) favourites.delete(selectedId); else favourites.add(selectedId);
+  $('#favourite').setAttribute('aria-pressed', String(favourites.has(selectedId)));
+  writePrefs();
+  renderFacets();
+  if (browse.favourite) applyFilters();
 });
 $('#copyLink').addEventListener('click', () => writeClipboard(
   location.href,
@@ -1196,20 +1426,24 @@ renderer.domElement.addEventListener('pointermove', (event) => {
 renderer.domElement.addEventListener('pointerleave', () => { surfaceMarkup.clearHover(); anatomyView?.clearHover(); });
 
 document.addEventListener('keydown', (event) => {
-  const editing = /input|select|textarea/i.test(document.activeElement?.tagName || '')
-    || !!document.activeElement?.closest('.gallery-select');
+  const editing = /input|select|textarea/i.test(document.activeElement?.tagName || '');
   if (event.key === '/' && !editing) {
     event.preventDefault();
     $('#gallerySearch').focus();
     return;
   }
-  if (editing) return;
+  if (editing || event.altKey) return;
   if (event.shiftKey && /^[1-4]$/.test(event.key) && activeMode === 'markup') {
     surfaceMarkup.setOperation(MARKUP_OPERATIONS[Number(event.key) - 1], true);
     return;
   }
-  if (/^[1-5]$/.test(event.key)) {
-    setMode(['appearance', 'armor', 'modules', 'crew', 'markup'][Number(event.key) - 1]);
+  if (!event.ctrlKey && !event.metaKey && /^[1-5]$/.test(event.key)) {
+    setMode(GALLERY_MODES[Number(event.key) - 1]);
+    return;
+  }
+  if (!event.ctrlKey && !event.metaKey && (event.key === '[' || event.key === ']')) {
+    event.preventDefault();
+    stepVehicle(event.key === ']' ? 1 : -1);
     return;
   }
   if ((event.ctrlKey || event.metaKey) && event.code === 'KeyZ' && activeMode === 'markup') {
@@ -1218,11 +1452,6 @@ document.addEventListener('keydown', (event) => {
     return;
   }
   if (event.code === 'Delete' && activeMode === 'markup') surfaceMarkup.deleteSelected();
-});
-document.addEventListener('pointerdown', (event) => {
-  for (const item of gallerySelects) {
-    if (!(event.target instanceof Node) || !item.control.contains(event.target)) item.close();
-  }
 });
 
 window.addEventListener('popstate', () => {
@@ -1237,13 +1466,15 @@ function animate() {
   damageLab?.update(dt); damageBurst.update(dt);
   controls.update();
   anatomyView?.update();
-  if (anatomyView?.mode) anatomyView.render();
-  else renderer.render(scene, camera);
+  renderFrame();
   requestAnimationFrame(animate);
 }
 
-populateFilters();
-renderRoster();
+renderFacets();
+populateSort();
+syncLayoutSwitch();
+populateRivals();
+applyFilters();
 resize();
 animate();
 
@@ -1254,7 +1485,11 @@ const preferredId = linkTankId(initial);
 const initialId = preferredId && recordById.has(preferredId)
   ? preferredId
   : (recordById.has('m1a1_abrams_hc') ? 'm1a1_abrams_hc' : records[0]?.id);
+const initialRival = initial.get('vs');
+if (initialRival && recordById.has(initialRival) && initialRival !== initialId) { rivalId = initialRival; rivalPinned = true; }
 loadTank(initialId, { mode: initial.get('layer') || 'appearance' });
+// The browse pane, the dossier and the view labels fill synchronously above: they show at once, in place (no shift).
+document.documentElement.classList.add('gallery-ready');
 
 window.__TANK_GALLERY = {
   get ready() { return !!window.__TANK_GALLERY_READY; },
@@ -1271,13 +1506,18 @@ window.__TANK_GALLERY = {
   },
   getState: () => ({
     selectedId,
+    rivalId,
     mode: activeMode,
+    tab: activeTab,
+    shown: filteredRecords.length,
     overlayCount: anatomyView?.mode ? anatomyView.count : 0,
     anatomy: anatomyView?.state() || null,
     damage: damageLab?.snapshot(),
     markup: surfaceMarkup.getState(),
     camera: { position: camera.position.toArray(), target: controls.target.toArray() },
   }),
+  selectTab: (tab: DossierTab) => selectTab(tab),
+  setRival: (id: string | null) => setRival(id, true),
   damageAction: (action: string, key?: string) => {
     const changed = damageLab?.apply(action as import('./damageLab.ts').DamageAction, key);
     if (changed) { setMode(activeMode, false); damageWorkbench.refresh(); }

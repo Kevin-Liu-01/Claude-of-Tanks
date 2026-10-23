@@ -48,9 +48,10 @@ assert.ok(filterGalleryRecords(records, { query: 'tank destroyer' }).length >= t
 assert.deepEqual(filterGalleryRecords(records, { vehicleClass: 'td', battleRole: 'flanker' }), [], 'filters AND');
 assert.deepEqual(filterGalleryRecords(records, { vehicleClass: 'all', battleRole: 'all' }), records);
 const galleryHtml = readFileSync(new URL('../../site/gallery.html', import.meta.url), 'utf8');
-for (const [id, key] of [['classFilter', 'fleet.filter.allClasses'], ['roleFilter', 'fleet.filter.allRoles']]) {
-  assert.match(galleryHtml, new RegExp(`<select id="${id}"[^>]*><option value="all" data-i18n="${key}">`),
-    `the archive offers the ${id} select`);
+// The browse pane offers every facet the filter reads: nation flags, class chips, era and role glyphs (gallery.ts fills them).
+for (const [id, key] of [['nationFacets', 'gallery.archive.filter.nation'], ['classFacets', 'fleet.filter.class'],
+  ['eraFacets', 'gallery.archive.filter.era'], ['roleFacets', 'fleet.filter.role']]) {
+  assert.match(galleryHtml, new RegExp(`id="${id}" role="group" data-i18n-aria-label="${key}"`), `the browse pane offers the ${id} group`);
 }
 
 const serialized = serializeGallerySpec(getSpec(first.id));
