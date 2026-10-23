@@ -1394,7 +1394,7 @@
    "hostSweep": []
   },
   "leo2a4_otco": {
-   "inputHash": "050b581ddb541ff6",
+   "inputHash": "a5e08d316f0943ba",
    "runs": [
     {
      "index": 0,
@@ -1415,7 +1415,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.92,
-      "host": "hull<cutSlab@profiles/leopard.ts:1610>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1611>"
      }
     }
    ],
@@ -1628,7 +1628,7 @@
    "hostSweep": []
   },
   "leo2a4m_can": {
-   "inputHash": "aede191d44752f7f",
+   "inputHash": "80cda3a456aeb413",
    "runs": [
     {
      "index": 0,
@@ -1649,7 +1649,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<leoHullV3HullStage3@profiles/leopard.ts:1600>"
+      "host": "hull<leoHullV3HullStage3@profiles/leopard.ts:1601>"
      }
     },
     {
@@ -1658,27 +1658,20 @@
      "source": "strip",
      "frame": "turret",
      "registered": true,
-     "classes": [
-      "HANGING"
-     ],
-     "primary": "HANGING",
-     "why": {
-      "HANGING": [
-       "94% over air",
-       "only 6% supported"
-      ]
-     },
+     "classes": [],
+     "primary": "OK",
+     "why": {},
      "notes": [],
      "measures": {
-      "support": 0.06,
-      "gap": 0,
-      "air": 0.94,
+      "support": 0.94,
+      "gap": 0.06,
+      "air": 0,
       "hidden": 0,
       "sunkMaxM": 0.003,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.989,
-      "host": "turretDark<buildLeo2A4MMarkingsStage1@profiles/leopard.ts:15020>"
+      "exposure": 0.897,
+      "host": "turret<buildLeo2A4MTurretStage1@profiles/leopard.ts:14871>"
      }
     }
    ],
@@ -1686,13 +1679,13 @@
    "hostSweep": []
   },
   "leo2a5": {
-   "inputHash": "5f8f8b088cad79dc",
+   "inputHash": "af88ec0c03e2b8ee",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "leo2a5m": {
-   "inputHash": "dbbdac1da2305e79",
+   "inputHash": "84c5b90ab415f81b",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1704,7 +1697,7 @@
    "hostSweep": []
   },
   "leo2a6_ua": {
-   "inputHash": "020276d5b20f77d7",
+   "inputHash": "7754b75e020a1d96",
    "runs": [
     {
      "index": 0,
@@ -1725,7 +1718,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.888,
-      "host": "hull<leoHullV3HullStage3@profiles/leopard.ts:1600>"
+      "host": "hull<leoHullV3HullStage3@profiles/leopard.ts:1601>"
      }
     }
    ],
@@ -1733,7 +1726,7 @@
    "hostSweep": []
   },
   "leo2a6m": {
-   "inputHash": "25c6978282dbc4f2",
+   "inputHash": "42afd9e16d94dece",
    "runs": [
     {
      "index": 0,
@@ -1741,19 +1734,25 @@
      "source": "decor",
      "frame": "turret",
      "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
+     "classes": [
+      "HANGING"
+     ],
+     "primary": "HANGING",
+     "why": {
+      "HANGING": [
+       "34% over air"
+      ]
+     },
      "notes": [],
      "measures": {
-      "support": 0.879,
-      "gap": 0.12,
-      "air": 0.001,
+      "support": 0.574,
+      "gap": 0.083,
+      "air": 0.343,
       "hidden": 0,
       "sunkMaxM": 0.006,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.956,
+      "exposure": 0.978,
       "host": "turret<addLeopardTurretWithGunOpening@profiles/leopardGunOpening.ts:50>"
      }
     }
@@ -1762,7 +1761,7 @@
    "hostSweep": []
   },
   "leo2a7v": {
-   "inputHash": "c6db698b5c556ba4",
+   "inputHash": "32a5c3da93521f58",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
