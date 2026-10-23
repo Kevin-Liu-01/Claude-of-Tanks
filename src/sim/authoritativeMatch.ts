@@ -2692,6 +2692,7 @@ export function createAuthoritativeMatch({
    */
   function viewerWorldEvent(viewer: AuthoritativeEntity | undefined, event: AuthoritativeEvent): AuthoritativeEvent {
     if (!viewer) return event;
+    if (event.type === 'shell_hit') return viewerShotEvent(viewer, event);
     const fields = WITHHELD_WORLD_FIELDS[String(event.type)];
     if (!fields) return event;
     const sourceId = eventSources.get(event);
@@ -2700,6 +2701,36 @@ export function createAuthoritativeMatch({
     if (!copy) {
       copy = { ...event };
       for (const field of fields) delete (copy as Record<string, RuntimeValue>)[field];
+      withheldCopies.set(event, copy);
+    }
+    return copy;
+  }
+
+  /** shell_hit fields that place a shooter: the shell's path length from the muzzle and the exact incoming direction
+   * (security audit 2026-10-22). The pen rolls stay: a once-per-shot ±25% roll is a noisy hint, not a range. */
+  const WITHHELD_SHOT_FIELDS: readonly string[] = Object.freeze(['flightDistM', 'impactLocalDir']);
+  const HIT_BEARING_SECTOR = Math.PI / 4;
+  /**
+   * A hit as `viewer` may read it: whole when the viewer sees the shooter (or the shooter is no hull of this match);
+   * else one shared copy without WITHHELD_SHOT_FIELDS whose localDir is the horizontal incoming bearing snapped to a
+   * 45 degree sector — enough for the hit arc and the decal, never enough to place a hidden shooter from the struck
+   * hull's pose (AGENTS.md: spotting filters before serialization).
+   */
+  function viewerShotEvent(viewer: AuthoritativeEntity, event: AuthoritativeEvent): AuthoritativeEvent {
+    const shooterId = typeof event.shooterId === 'string' ? event.shooterId : '';
+    if (!shooterId || !entityById.has(shooterId) || canObserveEntity(viewer, shooterId)) return event;
+    let copy = withheldCopies.get(event);
+    if (!copy) {
+      copy = { ...event };
+      const record = copy as Record<string, RuntimeValue>;
+      for (const field of WITHHELD_SHOT_FIELDS) delete record[field];
+      const dir = Array.isArray(event.localDir) ? event.localDir as number[] : null;
+      if (dir && Number.isFinite(dir[0]) && Number.isFinite(dir[2]) && (dir[0] !== 0 || dir[2] !== 0)) {
+        const bearing = Math.round(Math.atan2(dir[0]!, dir[2]!) / HIT_BEARING_SECTOR) * HIT_BEARING_SECTOR;
+        record.localDir = [Math.sin(bearing), 0, Math.cos(bearing)];
+      } else {
+        delete record.localDir;
+      }
       withheldCopies.set(event, copy);
     }
     return copy;
