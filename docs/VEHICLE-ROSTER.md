@@ -139,7 +139,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 129 | PROD | `m46_patton` | M46 Patton | USA | VII | Cold War | Production |
 | 130 | PROD | `m47_patton` | M47 Patton | USA | VII | Cold War | Production |
 | 131 | PROD | `m60a3` | M60A3 | USA | VIII | Cold War | Production |
-| 132 | PROD | `t64bv_donbas` | T-64BV Donbas | Ukraine | VIII | Modern | Production |
+| 132 | PROD | `t64bv_donbas` | T-64BV mod. 2017 | Ukraine | VIII | Modern | Production |
 | 133 | PROD | `ua_t80bv` | T-80BV (Ukraine) | Ukraine | IX | Modern | Production |
 | 134 | PROD | `t80u_kursk` | T-80U Kursk | Ukraine | IX | Modern | Production |
 | 135 | PROD | `t84bm_oplot_m` | T-84BM Oplot-M | Ukraine | X | Modern | Production |

@@ -109,8 +109,8 @@ export const WHEEL_DONORS: Readonly<Record<WheelDonorId, NationWheelDonor>> = Ob
     note: 'Fleet armoured-hub six-fastener disc (t14X.ts draws the generic stock); no other Russian next-generation MBT hull exists.' }),
   // Owner 2026-10-21 ("make the t64bv1 look a lot different from the t72b3, rn they look identical"): the T-64 family's
   // small steel-tyred dual wheel with internal shock absorbers is its identity, not the T-90's rubber-tyred pressed face.
-  t64bv1: Object.freeze({ donor: 't64bv1', self: ['t64bv1', 't64bv_donbas'], pattern: 'flanged-twelve', construction: 't64-steel-tyred-pair',
-    note: 'Two stamped halves round the guide channel: steel tyre ring over the internal shock-absorbing rubber, twelve-bolt clamp disc, pressed dish and hub (t64bvX.ts); only the T-64 hulls draw it.' }),
+  t64bv1: Object.freeze({ donor: 't64bv1', self: ['t64bv1'], pattern: 'flanged-twelve', construction: 't64-steel-tyred-pair',
+    note: 'Two stamped halves round the guide channel: steel tyre ring over the internal shock-absorbing rubber, twelve-bolt clamp disc, pressed dish and hub (t64bvX.ts); only the T-64BV1 draws it (the T-64BV mod. 2017 keeps the T-72B3 study, owner 2026-10-22).' }),
   bmp3m_dragun125: Object.freeze({ donor: 'bmp3m_dragun125', self: ['bmp3m_dragun125'], pattern: 'armored-hub-six', construction: 'dragun-rolled-lip',
     note: 'Source hub, web and rolled outer lip over separated paired tire bands (bmp3mDragun125X.ts).' }),
   kf51_evo: Object.freeze({ donor: 'kf51_evo', self: ['kf51_evo', 'kf51_u', 'kf51_panther'], pattern: 'plain-dish-twelve', construction: 'kf51-forged-face',
@@ -219,6 +219,7 @@ export const WHEEL_STANDARD_EXCEPTIONS: Readonly<Record<string, WheelStandardExc
   bmpt_terminator2: { donor: 't90am', reason: 'T-72/T-90 MBT hull under an IFV role → T-90M wheel' },
   bmpt_t90: { donor: 't90am', reason: 'T-90 MBT hull under an IFV role → T-90M wheel' },
   bmp2: { donor: 'bmp3m_dragun125', reason: 'nation USSR, cold-war IFV → the Russia light set' },
+  t64bv_donbas: { donor: 't90_1992', reason: 'Ukraine: T-64 base hull → Russia older T-series donor' },
   ua_t80bv: { donor: 't90_1992', reason: 'Ukraine: T-80 base hull → Russia older T-series donor' },
   t80u_kursk: { donor: 't90_1992', reason: 'Ukraine: T-80U base hull → Russia older T-series donor' },
   t84: { donor: 't90_1992', reason: 'Ukraine: T-84 (T-80UD family) base hull → Russia older T-series donor' },
