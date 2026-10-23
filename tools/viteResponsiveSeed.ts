@@ -15,7 +15,8 @@ const SEED_ENTRY = 'src/ui/responsiveSeed.ts';
 /** The marker the inline script carries, so a document is seeded once. */
 const SEED_ID = 'cot-responsive-seed';
 
-async function bundleSeed(root: string): Promise<string> {
+/** The seed's inline code: the same bundle the build inlines, so tools/contentSecurityPolicy.mjs can hash it. */
+export async function bundleSeed(root: string): Promise<string> {
   const result = await build({
     input: resolve(root, SEED_ENTRY),
     write: false,

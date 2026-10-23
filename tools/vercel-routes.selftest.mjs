@@ -12,6 +12,7 @@ import { readFileSync } from 'node:fs';
 import { ALIAS_HOSTS, CANONICAL_ORIGIN, OFFICIAL_SITE_HOST, PROTECTED_PRODUCTION_HOST } from '../api/_lib/policy.ts';
 import { PUBLIC_ROUTE_RECORDS } from '../src/ui/localeRouting.ts';
 import { resolveVercelRequest, vercelJsonRoutes } from './vercelRoutes.test-support.mjs';
+import { contentSecurityPolicy } from './contentSecurityPolicy.mjs';
 
 const config = JSON.parse(readFileSync(new URL('../vercel.json', import.meta.url), 'utf8'));
 const GALLERY_CACHE = 'private, no-store, max-age=0';
@@ -20,13 +21,15 @@ const GALLERY_CACHE = 'private, no-store, max-age=0';
 // same-origin and X-Frame-Options SAMEORIGIN were checked against the code first: no window.open or opener use (every
 // external link is target=_blank rel="noopener noreferrer"), no OAuth or payment popup, no iframe, player card or
 // portal that embeds the site from another origin (same-origin framing stays allowed). The Permissions-Policy denies
-// devices the game never asks for (it uses pointer lock, gamepads and the clipboard, none listed). No enforced CSP yet.
+// devices the game never asks for (it uses pointer lock, gamepads and the clipboard, none listed). The script-src
+// policy (tools/contentSecurityPolicy.mjs, security audit 2026-10-22) is report-only for one round, then enforced.
 const SECURITY_HEADERS = {
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'strict-origin-when-cross-origin',
   'permissions-policy': 'camera=(), microphone=(), geolocation=(), payment=(), usb=(), serial=(), hid=(), bluetooth=()',
   'x-frame-options': 'SAMEORIGIN',
   'cross-origin-opener-policy': 'same-origin',
+  'content-security-policy-report-only': await contentSecurityPolicy(),
 };
 const securityHeadersOf = (headers) => Object.fromEntries(Object.keys(SECURITY_HEADERS).map((name) => [name, headers[name]]));
 
@@ -138,7 +141,7 @@ assert.deepEqual(securityHeadersOf(resolve('/').headers), SECURITY_HEADERS, 'the
 assert.deepEqual(securityHeadersOf(resolve('/assets/missing-abcdefgh.js').headers), SECURITY_HEADERS, 'a 404');
 assert.deepEqual(securityHeadersOf(resolve('/api/jev').headers), SECURITY_HEADERS, 'an API path');
 assert.ok(!config.headers.some((rule) => rule.headers.some(({ key }) => /^content-security-policy$/i.test(key))),
-  'no enforced Content-Security-Policy in this wave (it needs build-time inline-script hashes)');
+  'the script-src policy is report-only this round (deploy 243); enforcement follows once no page reports a violation');
 
 // INFRA-P5 (2026-10-01): the alias domains answer 308 to the canonical origin with path and query — 18 % of document
 // loads arrived there, where multiplayer is unavailable (the rooms Worker admits cot.kevinliu.studio alone). The
