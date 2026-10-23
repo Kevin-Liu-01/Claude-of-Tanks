@@ -919,7 +919,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const touchRules = touchCountdown && rulesNode?.offsetWidth ? { w: rulesNode.offsetWidth, h: rulesNode.offsetHeight } : null;
       // (the alert's slot is the detection's width; its wrapped height measured there, while it shows in that form)
       const compactNow = document.body.dataset.touchNotices ?? '';
-      const noticeSize: TouchSize = !compactNow.includes('notice-compact') && notice ? { w: notice.width, h: notice.height } : { w: 214, h: 48 };
+      // (its full size while it shows compact: one 32 px row, hud.ts .cot-sixth)
+      const noticeSize: TouchSize = !compactNow.includes('notice-compact') && notice ? { w: notice.width, h: notice.height } : { w: 214, h: 32 };
       const alertBox = compactNow.includes('alert-compact') ? null : read('.cot-alert.show');
       // (the card's layout box: it enters scaled)
       const bannerBox = banner?.childElementCount ? { width: banner.offsetWidth, height: banner.offsetHeight } : null;
