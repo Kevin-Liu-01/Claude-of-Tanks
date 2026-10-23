@@ -252,6 +252,9 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
   function hideExterior(root: THREE.Object3D): void {
     root.traverse((object) => {
       if (object === anatomy?.frames.root || hidden.has(object)) return;
+      // The glass shell is what the camera draws: shadow casters stay off both passes (243: the gun's convex shadow
+      // proxy, mantlet and barrel in one hull, drew as a grey wedge over every barrel).
+      if (!object.layers.test(host.camera.layers) || object.userData.shadowOnly) return;
       if (object instanceof THREE.Mesh) {
         hidden.set(object, { mask: object.layers.mask, visible: object.visible });
         object.layers.set(EXTERIOR_LAYER);

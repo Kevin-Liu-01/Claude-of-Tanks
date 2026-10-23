@@ -1876,22 +1876,51 @@ const SHADOW_SUPPORT_DIRECTIONS = (() => {
 // object properties for every dot product was measurable cold garage/battle
 // build work on constrained CPUs; packed numeric lanes preserve the exact
 // IEEE-754 operation order and therefore the exact selected support points.
-const SHADOW_SUPPORT_X = new Float64Array(SHADOW_SUPPORT_DIRECTIONS.length);
-const SHADOW_SUPPORT_Y = new Float64Array(SHADOW_SUPPORT_DIRECTIONS.length);
-const SHADOW_SUPPORT_Z = new Float64Array(SHADOW_SUPPORT_DIRECTIONS.length);
-for (let i = 0; i < SHADOW_SUPPORT_DIRECTIONS.length; i++) {
-  const direction = SHADOW_SUPPORT_DIRECTIONS[i];
-  SHADOW_SUPPORT_X[i] = direction.x;
-  SHADOW_SUPPORT_Y[i] = direction.y;
-  SHADOW_SUPPORT_Z[i] = direction.z;
+interface ShadowSupportSet {
+  readonly x: Float64Array;
+  readonly y: Float64Array;
+  readonly z: Float64Array;
+  readonly count: number;
 }
+
+function packShadowSupports(directions: readonly THREE.Vector3[]): ShadowSupportSet {
+  const set = {
+    x: new Float64Array(directions.length),
+    y: new Float64Array(directions.length),
+    z: new Float64Array(directions.length),
+    count: directions.length,
+  };
+  directions.forEach((direction, i) => {
+    set.x[i] = direction.x;
+    set.y[i] = direction.y;
+    set.z[i] = direction.z;
+  });
+  return set;
+}
+
+const SHADOW_SUPPORTS = packShadowSupports(SHADOW_SUPPORT_DIRECTIONS);
+// 243: a barrel is a tube along +Z of the gun group. Eight radial supports at
+// its breech and muzzle rings and at its widest station, plus the two axial
+// ones, hold its taper, sleeve and brake in at most 48 triangles, so the
+// mantlet's hull and the barrel's share the one proxy draw's 120.
+const BARREL_SHADOW_SUPPORTS = packShadowSupports((() => {
+  const directions = [new THREE.Vector3(0, 0, 1), new THREE.Vector3(0, 0, -1)];
+  for (const tilt of [-0.45, 0, 0.45]) {
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      directions.push(new THREE.Vector3(Math.cos(angle), Math.sin(angle), tilt).normalize());
+    }
+  }
+  return directions;
+})());
 
 function uniqueShadowSupportPoints(
   bestDots: Float64Array,
   bestPoints: Float64Array,
+  supports: ShadowSupportSet,
 ): Map<string, THREE.Vector3> {
   const unique = new Map<string, THREE.Vector3>();
-  for (let index = 0; index < SHADOW_SUPPORT_DIRECTIONS.length; index++) {
+  for (let index = 0; index < supports.count; index++) {
     if (!Number.isFinite(bestDots[index])) continue;
     const offset = index * 3;
     const x = bestPoints[offset];
@@ -1942,6 +1971,7 @@ function authoredShadowHull(
   owner: THREE.Object3D,
   sourceMeshes: readonly (THREE.Object3D | undefined)[],
   insetM: number,
+  supports: ShadowSupportSet = SHADOW_SUPPORTS,
 ): THREE.BufferGeometry | null {
   const sources = sourceMeshes.filter((mesh): mesh is VehicleMesh =>
     !!mesh && isVehicleMesh(mesh) && !isVehicleInstancedMesh(mesh)
@@ -1951,9 +1981,10 @@ function authoredShadowHull(
   const ownerInverse = new THREE.Matrix4().copy(owner.matrixWorld).invert();
   const localMatrix = new THREE.Matrix4();
   const point = new THREE.Vector3();
-  const bestDots = new Float64Array(SHADOW_SUPPORT_DIRECTIONS.length);
+  const bestDots = new Float64Array(supports.count);
   bestDots.fill(-Infinity);
-  const bestPoints = new Float64Array(SHADOW_SUPPORT_DIRECTIONS.length * 3);
+  const bestPoints = new Float64Array(supports.count * 3);
+  const supportX = supports.x, supportY = supports.y, supportZ = supports.z;
   let sourceTriangles = 0;
   for (const mesh of sources) {
     mesh.updateWorldMatrix(true, false);
@@ -1982,11 +2013,11 @@ function authoredShadowHull(
         pz = point.z;
       }
       for (let directionIndex = 0;
-        directionIndex < SHADOW_SUPPORT_DIRECTIONS.length;
+        directionIndex < supports.count;
         directionIndex++) {
-        const dot = px * SHADOW_SUPPORT_X[directionIndex]
-          + py * SHADOW_SUPPORT_Y[directionIndex]
-          + pz * SHADOW_SUPPORT_Z[directionIndex];
+        const dot = px * supportX[directionIndex]
+          + py * supportY[directionIndex]
+          + pz * supportZ[directionIndex];
         if (dot <= bestDots[directionIndex]) continue;
         bestDots[directionIndex] = dot;
         const offset = directionIndex * 3;
@@ -1997,8 +2028,27 @@ function authoredShadowHull(
     }
   }
 
-  const supportPoints = uniqueShadowSupportPoints(bestDots, bestPoints);
+  const supportPoints = uniqueShadowSupportPoints(bestDots, bestPoints, supports);
   return finalizeAuthoredShadowHull(supportPoints, sourceTriangles, insetM);
+}
+
+/** Several convex shadow hulls as one proxy geometry (one draw), keeping the hull provenance its receipts read. */
+function joinShadowHulls(hulls: readonly (THREE.BufferGeometry | null)[]): THREE.BufferGeometry | null {
+  const parts = hulls.filter((hull): hull is THREE.BufferGeometry => !!hull);
+  if (parts.length < 2) return parts[0] ?? null;
+  const geometry = mergeGeometries(parts, false);
+  if (!geometry) return parts[0];
+  const scales = parts.map((part) => part.userData.shadowAxisScale as number[]);
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  geometry.userData.authoredShadowHull = true;
+  geometry.userData.shadowHulls = parts.length;
+  geometry.userData.shadowSourceTriangles = parts.reduce((sum, part) => sum + part.userData.shadowSourceTriangles, 0);
+  geometry.userData.shadowSupportPoints = parts.reduce((sum, part) => sum + part.userData.shadowSupportPoints, 0);
+  geometry.userData.shadowInsetM = parts[0].userData.shadowInsetM;
+  geometry.userData.shadowAxisScale = [0, 1, 2].map((axis) => Math.min(...scales.map((scale) => scale[axis])));
+  for (const part of parts) part.dispose();
+  return geometry;
 }
 
 /**
@@ -2135,17 +2185,22 @@ function installProceduralShadowProxies(
       'hullFixedPaintedBodywork', ...(additionalSources?.hull ?? [])]), PROC_SHADOW_BODY_INSET_M);
   const turretGeo = authoredShadowHull(turretG, find(turretG,
     ['turret', ...(additionalSources?.turret ?? [])]), PROC_SHADOW_BODY_INSET_M);
-  // Mantlet + barrel share gun pitch. Merge their authored support points in
-  // gunG coordinates; recoil travel is deliberately omitted from the shadow
-  // proxy to preserve the three-draw budget during the short firing kick.
-  const gunGeo = authoredShadowHull(gunG, [
-    ...find(gunG, ['gunMount']),
-    // Source-study receivers moved from gunDark to the stationary pitching
-    // mount. Preserve exactly that stock's historical shadow participation;
-    // unrelated legacy dark detail keeps its existing caster behavior.
-    ...find(gunG, ['gunMountDark']).filter(mesh => mesh.userData.preserveRecoilShadowSource),
-    ...find(recoilG, ['gun', 'gunDark']),
-  ], PROC_SHADOW_GUN_INSET_M);
+  // Mantlet + barrel share gun pitch, in gunG coordinates; recoil travel is
+  // deliberately omitted from the shadow proxy to preserve the three-draw
+  // budget during the short firing kick. 243: each is its own convex hull,
+  // joined in the one proxy draw. A single hull over both ran from the wide
+  // mantlet to the slim muzzle: the gun's shadow (and the Gallery's glass
+  // shell, which drew the proxy) was a wedge several barrels wide.
+  const gunGeo = joinShadowHulls([
+    authoredShadowHull(gunG, [
+      ...find(gunG, ['gunMount']),
+      // Source-study receivers moved from gunDark to the stationary pitching
+      // mount. Preserve exactly that stock's historical shadow participation;
+      // unrelated legacy dark detail keeps its existing caster behavior.
+      ...find(gunG, ['gunMountDark']).filter(mesh => mesh.userData.preserveRecoilShadowSource),
+    ], PROC_SHADOW_GUN_INSET_M),
+    authoredShadowHull(gunG, find(recoilG, ['gun', 'gunDark']), PROC_SHADOW_GUN_INSET_M, BARREL_SHADOW_SUPPORTS),
+  ]);
 
   const add = (parent: THREE.Object3D, geo: THREE.BufferGeometry, name: string): void => {
     disposables.push(geo);
