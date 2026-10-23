@@ -49,9 +49,10 @@ export interface AnatomyEraPlateReceipt extends Record<string, RuntimeValue> {
  * The turret ring as built (tools/gen-combat-anatomy.mjs, turretRingWell.ts measureTurretRing), in the rig_hull frame:
  * the rig_turret seat, the deck top under the ring, the hull-side race's outer radius (inside the turret base), how far
  * the deck falls away under the race's rim, the turret base's inscribed radius over the deck and the well's floor. A
- * wreck's ring plate and a hulk's well are sized from it; it is presentation only (the anatomy's turretRing volume, a
- * sim module, keeps its own law). The generator does not publish it yet (233: a fleet anatomy update would be needed):
- * a visual without one measures its own build once (turretRingWell.ts measureTurretRing).
+ * wreck's ring plate and a hulk's well are sized from it, and the anatomy's turretRing volume (a sim module) centres on
+ * its seat and deck (combatAnatomy.ts alignTurretRing, 240). The generator does not publish it yet (233: a fleet anatomy
+ * update would be needed): a visual without one measures its own build once (turretRingWell.ts measureTurretRing), and
+ * the volume stands on the turret pivot's axis.
  */
 export interface AnatomyTurretRingReceipt extends Record<string, RuntimeValue> {
   readonly seat: readonly number[];

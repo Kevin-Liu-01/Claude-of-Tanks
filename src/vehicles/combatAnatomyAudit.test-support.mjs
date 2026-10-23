@@ -212,6 +212,17 @@ export function createCombatAnatomyAudit() {
       const fixedMount = COMBAT_ANATOMY_CALIBRATIONS[id].turret === null;
       assert.equal(names.includes('gunMount'), fixedMount, `${id}: fixed gun-mount applicability`);
       assert.equal(names.includes('turretRing'), !fixedMount, `${id}: turret-ring applicability`);
+      const ring = boxes.find((box) => box.module === 'turretRing');
+      if (ring) {
+        // (240) the ring's volume stands on the drawn ring: its receipt's seat where one is published, else the turret's
+        // yaw axis, the rig_turret seat (combatAnatomy.ts alignTurretRing)
+        const pivot = spec.armor.turretPivot, seat = calibration.turretRing?.seat ?? pivot;
+        const axis = ring.turretLocal ? seat.map((value, i) => value - pivot[i]) : seat;
+        for (const axisIndex of [0, 2]) {
+          assert(Math.abs((ring.min[axisIndex] + ring.max[axisIndex]) * 0.5 - axis[axisIndex]) < 1e-6,
+            `${id}: turret ring centred on the drawn ring's axis (${'xyz'[axisIndex]})`);
+        }
+      }
       if (fixedMount) {
         const calibration = COMBAT_ANATOMY_CALIBRATIONS[id];
         for (const crewBox of spec.armor.crew) {
