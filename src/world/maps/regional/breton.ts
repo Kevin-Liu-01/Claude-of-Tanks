@@ -821,7 +821,17 @@ export const BRETON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
   surfaces: {
     roof: { kind: 'slate', tint: [0.31, 0.32, 0.34] },
     stone: { kind: 'granite', tint: [0.58, 0.55, 0.5] },
-    sourced: { plaster: true, wood: true },
+    // (2026-10-23, item/maps-frontier-saltmere-242; the blind critic on the bourg's rendered fronts: "a noisy, bumpy procedural
+    // texture that looks like crumpled paper or foil, not granite rubble or render") the Léon's houses limewashed over
+    // their rubble, not roughcast: the region's limewash painted on the kit's walls (regionalSurfaces.ts paintLimewash) as
+    // a skin, fine and shallow, white, a cream and a pale grey from house to house; the sourced scan's coarse relief gone
+    sourced: { plaster: false, wood: true },
+    render: { kind: 'limewash', seed: 0x6b2c },
+    relief: { plasterUv: 1.8, normal: 0.22, ao: 0.32 },
+    tones: {
+      plaster2: (_h, s, l) => [0.11, Math.min(1, 0.12 + s * 0.2), Math.min(1, l * 0.3 + 0.62)],
+      plaster3: (_h, s, l) => [0.58, Math.min(1, 0.03 + s * 0.1), Math.min(1, l * 0.3 + 0.58)],
+    },
   },
   builders: BRETON_BUILDERS,
   // granite greys, limewash, slates from blue-black to lichen-crusted: the Atlantic's orange-yellow lichen and damp
