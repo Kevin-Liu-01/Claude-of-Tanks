@@ -1115,7 +1115,7 @@
     },
     {
       "id": "type10_dozer",
-      "name": "Type 10 (Dozer)",
+      "name": "Type 10 Kaitaku",
       "nation": "Japan",
       "role": "mbt",
       "tier": 10,
@@ -2753,7 +2753,7 @@
     },
     {
       "id": "t64bv_donbas",
-      "name": "T-64BV Donbas",
+      "name": "T-64BV mod. 2017",
       "nation": "Ukraine",
       "role": "mbt",
       "tier": 8,
@@ -5002,7 +5002,7 @@
         "target": 0,
         "gravity": 1,
         "minutes": 7,
-        "survivorHp": 150,
+        "survivorHp": 130,
         "infectedHp": 25,
         "killsPerWeapon": 0,
         "weapons": 5

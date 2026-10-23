@@ -32,9 +32,11 @@ for (const [id, expectedScale, expectedFamily] of [
   assert(close(hullRig.scale.x, 1) && close(hullRig.scale.y, 1)
       && close(hullRig.scale.z, 1),
   `${id}: hull owner remains an identity-scale metre frame`);
-  assert(close(turretRig.scale.x, 1) && close(turretRig.scale.z, 1),
+  // 235: a turret-height squash rides on the turret's children once the build is finished (turretRigScale.ts)
+  const squash = turretRig.userData.turretSectionScale ?? turretRig.scale.toArray();
+  assert(close(turretRig.scale.x, 1) && close(turretRig.scale.y, 1) && close(turretRig.scale.z, 1),
   `${id}: turret owner does not carry a late uniform render scale`);
-  assert(close(turretRig.scale.y, id.startsWith('fv510') ? 0.84 : 1),
+  assert(close(squash[0], 1) && close(squash[2], 1) && close(squash[1], id.startsWith('fv510') ? 0.84 : 1),
     `${id}: pre-existing turret-height shaping remains intact`);
 
   tank.dispose();

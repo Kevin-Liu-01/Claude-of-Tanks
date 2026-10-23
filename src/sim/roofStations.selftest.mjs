@@ -12,6 +12,8 @@ import { auxiliaryWeaponProfile } from '../vehicles/auxiliaryWeapons.ts';
 import { auxiliaryShot, auxiliaryState, createAuxiliaryState, defeatableShare, requestAuxiliary, roofStationCount, stepRoofGun, stepRoofStation, thinnestVerticalArmourMm } from './auxiliarySystems.ts';
 import { penAtDistanceMm } from './ballistics.ts';
 import { stationDepression, stationProbe } from '../../tools/roof-station-arcs.mjs';
+import { ensureAuthorityFleet } from '../vehicles/authorityFleet.ts';
+import { getSpec } from '../vehicles/specs.ts';
 
 const ID = 'm551a1_tts', kit = AUXILIARY_INVENTORY[ID];
 const [cannon, mg] = kit.guns;
@@ -197,4 +199,34 @@ function run({ shooter, context }, seconds = 12, each = () => {}) {
   for (const id of ['t62_1975', 'type59']) assert.ok(missionAttachmentMotionClear(TANK_SPECS[id], MISSION_ATTACHMENT_SEATS[id]),
     `${id}: the drone stand clears its DShK (whole sweep docked, at rest launching)`);
 }
-console.log('roofStations: the TTS 30 mm and roof M2 both fire, each in its arc (30 mm -148..35°, M2 -56..12°), never across each other, and the 30 mm above the roof front; one toggle and one module; arcs measured against the stock; and (VH.14) a station engages only a vehicle its round can hurt where the round lands; the launch interlock parks every station while its drone launches');
+// 10. VH.14 hold fire, the stations' side of it (lane 235, 2026-10-22: this receipt passed in full on the module before
+//     hold fire — the 229 critic's r5 and r6 runs, 13,193 assertions and none failing — so it guarded none of a
+//     refusal's mechanics). The TTS on a BMP-2 head-on at 100 m and 20 degrees off it: the share rule engages it, but
+//     the 30 mm's round at its centre meets a glacis it cannot defeat, so that round is never fired (no flash, the burst
+//     clock untouched) and the station lays on a point of the front it hurts and fires there: no round passes within
+//     0.4 m of the centre (the old station fired every round down the centre line, 0.14 m off it by the muzzle's
+//     offset, from its first tick); the M2 holds (the share rule).
+{
+  await ensureAuthorityFleet(['bmp2']);
+  for (const aspectDeg of [0, 20]) {
+    const shooter = { id: 'tts', team: 'blue', spec: TANK_SPECS[ID], state: { pos: { x: 0, y: 0, z: 0 }, yaw: 0, turretYaw: 0 }, combat: { modules: {} } };
+    const ifv = getSpec('bmp2'), target = { id: 'bmp', team: 'red', spec: ifv, state: { pos: { x: 0, y: 0, z: 100 }, yaw: Math.PI + aspectDeg * DEG, turretYaw: 0 }, combat: {} };
+    const context = { entities: [shooter, target], visible: () => true, clear: () => true };
+    const centre = new THREE.Vector3(0, ifv.dims.heightM * .5, 100), misses = [], m2 = [];
+    let first = -1;
+    for (let i = 0; i < 6 * 60; i++) {
+      if (stepRoofGun(shooter, i / 60, 1 / 60, context)) {
+        const origin = auxiliaryShot.origin, direction = auxiliaryShot.direction.clone().normalize();
+        misses.push(origin.clone().addScaledVector(direction, centre.clone().sub(origin).dot(direction)).distanceTo(centre));
+        if (first < 0) first = i;
+      }
+      if (stepRoofStation(shooter, 1, i / 60, 1 / 60, context)) m2.push(i);
+    }
+    const label = `the TTS on a BMP-2 ${aspectDeg ? `${aspectDeg} degrees off head-on` : 'head-on'} at 100 m`;
+    assert.ok(misses.length >= 6, `${label}: the 30 mm fires (${misses.length})`);
+    assert.ok(Math.min(...misses) >= .4, `${label}: no 30 mm round down the centre line it cannot hurt (nearest ${Math.min(...misses).toFixed(2)} m)`);
+    assert.ok(first > 0 && shooter.combat.auxiliary.shots === misses.length, `${label}: the refused round leaves the clock untouched (first round on tick ${first})`);
+    assert.equal(m2.length, 0, `${label}: the M2 holds`);
+  }
+}
+console.log('roofStations: the TTS 30 mm and roof M2 both fire, each in its arc (30 mm -148..35°, M2 -56..12°), never across each other, and the 30 mm above the roof front; one toggle and one module; arcs measured against the stock; and (VH.14) a station engages only a vehicle its round can hurt where the round lands, a round refused at the centre is never fired and the station lays where its round hurts; the launch interlock parks every station while its drone launches');

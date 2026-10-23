@@ -157,6 +157,9 @@ const CHINESE_FRONTLINE_SPECS = {
     terrainResistance: { hard: 0.66, medium: 0.76, soft: 1.30 },
     pivotStyle: 'neutral',
     turretTraverseDegS: 40, gunPitchDegS: 32, gunElevationDeg: 20, gunDepressionDeg: 6,
+    // Measured (tools/gun-depression-sweep.mjs, 2026-10-22, lane 240): the 35 mm L/90 keeps its full depression to 155 deg
+    // of yaw; over the engine deck its tube rides above the rear-deck stowage.
+    gunPitchByYawDeg: [[0, -6], [155, -6], [156, 4.6], [157, 5.5], [159, 6.4], [162, 6.4], [163, 6], [164, 5.4], [173, 6], [180, 6]],
     gun: {
       caliberMm: 35, reloadS: 12, baseAccuracy: 0.30, aimTimeS: 1.7,
       launcherSalvo: { rounds: 2, intervalS: .35 },
@@ -173,11 +176,13 @@ const CHINESE_FRONTLINE_SPECS = {
           { pen2000Mm: 112, reloadS: 0.30, count: 180, soundProfile: 'kde-35' }),
       ],
     },
-    dims: { hullLengthM: 6.94, overallLengthM: 7.70, widthM: 3.734, heightM: 1.90, silhouetteHeightM: 2.64 },
+    // 2026-10-22 (lane 240, owner-approved): the backup gun's calibre-true 35 mm L/90 tube carries the muzzle 2.05 m
+    // further forward (3.75 m ahead of the hull datum), past the bow.
+    dims: { hullLengthM: 6.94, overallLengthM: 7.825, widthM: 3.734, heightM: 1.90, silhouetteHeightM: 2.64 },
     armor: modernArmor({
       hl: 3.47, hw: 1.85, inW: 1.15, floor: 0.35, trkTop: 1.05, roofY: 1.41,
       turretPivot: [0, 1.41, -0.55], gunPivot: [0, 0.64, 0.80],
-      barrelLenM: 1.45, barrelRadM: 0.045,
+      barrelLenM: 3.50, barrelRadM: 0.045,
       glacis: [90, 540, 740], lower: [70, 340, 460], side: [55, 240, 360],
       skirt: [35, 110, 240], rear: 40, roof: 38,
       tw: 1.50, tFrontZ: 1.15, tRearZ: -1.25, tH: 0.50,

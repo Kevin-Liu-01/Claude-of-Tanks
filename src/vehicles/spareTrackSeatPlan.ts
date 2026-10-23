@@ -115,9 +115,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "merkava2d": {
     "merkava-bow-links@hull(0.00,1.30,2.92)": [0.78431, -0.10117, 0.08335, 0.25238, 0.00018, -0.00113, 0.96763, 1],
   },
-  "merkava3_baz": {
-    "merkava-bow-links@hull(0.00,1.30,2.68)": [1.88484, -0.89724, 1.66069, 0.10325, -0.73756, -0.18172, 0.64212, 1],
-  },
   "merkava3c": {
     "merkava-bow-links@hull(0.00,1.34,2.61)": [0.78217, -0.74395, 1.18073, 0.17887, -0.68715, -0.18244, 0.6801, 1],
   },
@@ -174,10 +171,6 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
   "t90a_burlak_proto": {
     "fitting@hull(0.58,1.48,0.58)": [0.4976, 0.54584, -2.8502, 0.64984, -0.27875, 0.64984, -0.27875, 1],
   },
-  "type10_dozer": {
-    "fitting@hull(-1.12,1.79,-3.15)": [-1.70105, 1.01835, -2.658, 0.5, -0.5, 0.5, 0.5, 1],
-    "type10-rear-links@hull(1.12,1.17,-3.77)": [-0.574, 0.2941, -0.00225, -0.70711, 0, 0, 0.70711, 0],
-  },
   "type10_tk_x": {
     "fitting@hull(-1.12,1.79,-3.15)": [-1.70105, 1.01835, -2.658, 0.5, -0.5, 0.5, 0.5, 1],
     "type10-rear-links@hull(1.12,1.17,-3.77)": [-0.574, 0.2941, -0.00225, -0.70711, 0, 0, 0.70711, 0],
@@ -193,7 +186,7 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
     "t62-aft-links-R@hull(0.58,1.42,-2.61)": [0, 0.006, -0.09982, 0.03, 0, 0, 0.99955, 1],
   },
   "ua_m1a1": {
-    "fitting@turret(0.30,0.35,-3.22)": [0.254, 0.8165, -2.08, 0, 0.70711, 0, 0.70711, 0],
+    "fitting@turret(0.30,0.35,-3.22)": [0.404, 0.8165, -2.022, 0, 0, 0, 1, 0],
   },
   "ua_m1a2_abrams": {
     "ua-abrams-rear-deck-shoes@hull(0.00,1.76,-3.55)": [0.139, 5.057, -3.46558, 0.5, 0.5, 0.5, -0.5, 1],

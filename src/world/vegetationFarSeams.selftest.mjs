@@ -9,7 +9,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import ts from 'typescript-compiler-api';
 import { TREE_ARCHETYPES, TREE_GEOMETRY_SCALE, TREE_SPECIES } from './treeSpecies.ts';
 import { bendMangroveRoot, shapeMangroveFarStem } from './tidalMangrove.ts';
-import { treeBiomeColour, treeBiomePalette, treeBiomeSlot, treeBiomeWoodSpread } from './treeBiomes.ts';
+import { treeBiomeBare, treeBiomeCanopyForm, treeBiomeColour, treeBiomePalette, treeBiomeSlot, treeBiomeSnow, treeBiomeSnowPalette, treeBiomeTransmission, treeBiomeWoodSpread } from './treeBiomes.ts';
 import { MAP_IDS, getMapConfig } from './maps/index.ts';
 import { HORIZON_FOREST_IMPOSTOR_SKY_FILL, HORIZON_FOREST_IMPOSTOR_THIN, HORIZON_FOREST_IMPOSTOR_WRAP } from './horizonForestImpostors.ts';
 import * as growth from './treeGrowth.ts';
@@ -126,8 +126,14 @@ function compile(input = text, mode = 'current') {
     GROWTH_CROWN_STEM_WIDTH: growth.GROWTH_CROWN_STEM_WIDTH,
     // trees round 2 (2026-10-03): the crowns' lobes and hull normal (the shrubs' shade, the snow load) and the map's biome
     crownLobes: growth.crownLobes, crownSurfaceNormal: growth.crownSurfaceNormal, treeBiomeSlot, treeBiomePalette, treeBiomeColour,
+    // (the treescn lane, 2026-10-09: round 8 by place, and its profiles)
+    treeBiomeCanopyForm, canopyFormProfile: growth.canopyFormProfile,
     // trees round 5: a closed wood's species grow forest-grown near variants (the wood spread opens the rule)
     treeBiomeWoodSpread,
+    // (2026-10-08: a place's leaf transmission)
+    treeBiomeTransmission,
+    // (2026-10-08, wave 278: a place under snow and bare in its season)
+    treeBiomeBare, treeBiomeSnow, treeBiomeSnowPalette,
     GROWTH_CROWN_SHADING: growth.GROWTH_CROWN_SHADING,
     // trees round 4: a birch's dark collar (its stem's foot)
     GROWTH_BIRCH_FOOT: growth.GROWTH_BIRCH_FOOT,

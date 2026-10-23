@@ -74,6 +74,10 @@ export interface LandUseProfile {
    * at Jade River Delta's spawn. Absent (a sandboxed receipt, a map without paddies): the rotation's crop unchanged.
    */
   floodIds?: ReadonlySet<number> | null;
+  /** The map-revival lane (2026-10-05, Frontier Basin): a river floor's water meadows — every field whose centre lies
+   * within `halfWidthM` of the segment (ax, az)–(bx, bz) is a hay meadow or a pasture (by the field's hash), whatever
+   * the block's rotation; a whole field, never a band cut across one. Absent: none. */
+  meadow?: { ax: number; az: number; bx: number; bz: number; halfWidthM: number };
 }
 
 /** A zone of a zoned land use (Ruinspires): a band of |z| (an x range), a rectangle or a disc, `mirror` adding its
@@ -328,8 +332,12 @@ const PROFILES: Readonly<Record<string, LandUseProfile>> = Object.freeze({
   },
   // Frontier (the Fulda gap): mixed central-European farming between the woods — medium fields, grain and pasture
   frontier: {
-    strength: 1, heading: 0.95, blockU: 180, blockV: 120, maxSplit: 3, marginM: 2.0, trackShare: 0.45, hedgeShare: 0.4,
-    warpM: 22, region: 'temperate', salt: 41,
+    // (the map-revival lane, 2026-10-05, through the coordinator: the Hünfeld basin's Gewannflur) long strips in blocks
+    // off the lanes, hedges on many short ends (the lynchet banks carry their own), and the river's floor in water meadows
+    // (round 4, wave 178: "open strip fields ... don't read from that height") the strips' grass margins wider (1.6 m)
+    strength: 1, heading: 0.95, blockU: 200, blockV: 45, maxSplit: 4, marginM: 2.4, trackShare: 0.5, hedgeShare: 0.55,
+    warpM: 18, region: 'strip', salt: 41,
+    meadow: { ax: -512, az: 34, bx: 512, bz: -34, halfWidthM: 60 },
   },
   // 2026-10-03, the rebuilt maps' regions (the maps lane through the coordinator). Each heading follows the map's own
   // roads (the length-weighted dominant road direction inside the square), so the fields line up with the lanes.
@@ -763,6 +771,20 @@ export function landUseAt(profile: LandUseProfile | null, x: number, z: number, 
   const fieldId = U32(Math.imul(fieldA + 4096, 65537) ^ (fieldB + 4096)) % 1000003;
   // a flooded paddy holds water only on a level floor (LandUseProfile.floodIds); elsewhere its rice grows green
   if (crop === LAND_CROP.paddyWater && profile.floodIds && !profile.floodIds.has(fieldId)) crop = LAND_CROP.paddyGreen;
+  const meadow = profile.meadow;
+  if (meadow) {
+    // the field's centre in the block frame (its block's row, its column's cut k), back through the grid's rotation to
+    // the warped plane (the warp's few metres are left aside: the test is the field's, so every point of it agrees)
+    const w = (alongU ? blockU : blockV) / split;
+    const uc = (alongU ? col * blockU + (k + 0.5) * w : (col + 0.5) * blockU) - shift;
+    const vc = alongU ? (row + 0.5) * blockV : row * blockV + (k + 0.5) * w;
+    const cx = ch * uc - sh * vc, cz = sh * uc + ch * vc;
+    const ex = meadow.bx - meadow.ax, ez = meadow.bz - meadow.az, len2 = ex * ex + ez * ez;
+    const t = len2 > 0 ? Math.max(0, Math.min(1, ((cx - meadow.ax) * ex + (cz - meadow.az) * ez) / len2)) : 0;
+    if (Math.hypot(cx - meadow.ax - ex * t, cz - meadow.az - ez * t) < meadow.halfWidthM) {
+      crop = (luRand(fieldA, fieldB, salt + 53) < 0.6 ? LAND_CROP.hay : LAND_CROP.pasture) as LandCropId;
+    }
+  }
   // a long boundary (the row line) carries a track by its own line index and 120 m segment along it, so both blocks
   // either side agree; the short boundaries (block ends and the cuts) carry hedges by the block and cut index
   const lineIdx = lv < blockV * 0.5 ? row : row + 1;

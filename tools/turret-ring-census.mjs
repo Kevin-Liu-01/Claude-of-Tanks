@@ -155,7 +155,8 @@ function liveWreck(id, config, receipt) {
       const turretSide = (mesh) => { for (let o = mesh.parent; o; o = o.parent) if (o === turret) return true; return false; };
       const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3(), m = new THREE.Matrix4();
       for (const [mesh, geometry] of held) {
-        if (mesh.geometry === geometry || turretSide(mesh)) continue;
+        // (a fill swaps its drawn surface for the closed boxes at the kill, interiorFills.ts; the ring never cuts a fill)
+        if (mesh.geometry === geometry || turretSide(mesh) || mesh.userData.interiorFill) continue;
         if (!mesh.geometry.userData?.turretRingCut) { foreign++; continue; }
         swapped++;
         const g = mesh.geometry, p = g.attributes.position, index = g.index;
@@ -231,8 +232,8 @@ for (const id of ids) {
     receipt ??= measureTurretRing(hull, turret, turretRingRadius(spec.armor), { exterior: true });
   } finally { receiptVisual.dispose(); }
   row.receipt = receipt;
-  // the anatomy's turretRing volume today against the built ring (informational: were it re-centred on the seat's axis
-  // and the deck, a sim change the 233 landing does not make)
+  // the anatomy's turretRing volume against the built ring (informational: since 240 it centres on a published receipt's
+  // seat and deck, and without one on the turret pivot's axis at the calibrated turret bottom)
   const box = spec.armor.modules?.find((module) => module.module === 'turretRing');
   if (box && receipt) {
     const origin = box.turretLocal ? spec.armor.turretPivot : [0, 0, 0];

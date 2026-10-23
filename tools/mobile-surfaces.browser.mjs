@@ -64,7 +64,7 @@ for(const [name,width,height,locale='en-US',pseudo=false] of [
   await tap('.cot-battle-mode');
   for(const mode of ['standard','capture_the_flag','zone_control','turbo_ball','endless_horde','frontline_assault','mars']){
     await tap(mode==='standard'?'.cot-battle-regular':`.cot-battle-choice[data-game-mode="${mode}"]`);
-    await check(`setup-${mode}`,['.cot-battle-menu','.cot-battle-menu-head','.cot-battle-menu-foot']);
+    await check(`setup-${mode}`,['.cot-battle-menu','.cot-deploy-head','.cot-battle-menu-foot']);
     for(const field of await page.locator('.cot-battle-details .cot-custom-select-trigger').all()){
       if(!await field.isVisible())continue;
       await field.tap();

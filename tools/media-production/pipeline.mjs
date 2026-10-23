@@ -20,6 +20,16 @@ export function sourceDigest(root = process.cwd()) {
   for (const path of ['index.html','package-lock.json','vite.config.ts']) {hash.update(path);hash.update(readFileSync(join(root,path)));}
   return hash.digest('hex');
 }
+/** A cinema lease's budget (2026-10-23, the coordinator: a cinema hold ran 44 min against the 18-min house cap): the cap,
+ * unless --lease-min asks for less. 0 (no budget, before) and anything over the cap are the cap. */
+export const CINEMA_LEASE_CAP_MIN = 18;
+export function cinemaLeaseMs(requested) {
+  if (requested === undefined) return CINEMA_LEASE_CAP_MIN * 60000;
+  const minutes = Number(requested);
+  if (!(minutes >= 0)) throw Error(`--lease-min=${requested}: expected minutes`);
+  return Math.min(minutes > 0 ? minutes : CINEMA_LEASE_CAP_MIN, CINEMA_LEASE_CAP_MIN) * 60000;
+}
+
 /** cinema --lease-min (2026-10-07): endBefore() is asked before each film and says the lease ends there. Its estimate is
  *  the longest take so far (a film and the still-only jobs after it), so a lease never ends between a film and its stills
  *  and always renders at least one film. */

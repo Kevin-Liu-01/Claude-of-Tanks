@@ -138,7 +138,10 @@ import {
 } from './vehicles/materials.ts';
 import './ui/motion.css';
 import './ui/responsiveSurfaces.css';
+import './ui/components/components.css';
 import './ui/garage.css';
+import './ui/deploy.css';
+import './ui/showroom.css';
 import './ui/battleTimeChoices.css';
 import { createGarage } from './ui/garage.ts';
 import { battleOrdinalBase, installBattleRecords } from './game/profile.ts';
@@ -2831,7 +2834,8 @@ function beginBattleEntry(
   // batch 19 (2026-09-14): the Garage BATTLE button is a free sortie in the chosen rules — a Frontline
   // Assault pick carves the trenches like a ladder launch does (it used to reach the field without them)
   pendingTerrainVariant = terrainVariantFor(options?.gameMode); // the mode's battlefield, as the authority builds it
-  pendingCampaignOperationId = null;
+  // a campaign operation launched from the Deploy screen names its sortie (its brief and its map)
+  pendingCampaignOperationId = options?.gameMode === 'frontline_assault' ? options.campaignOperationId ?? null : null;
   return soloBattleEntry.begin(specId, mapId, options);
 }
 
@@ -2897,11 +2901,12 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
   getSelectedSpecId: () => selectedVehicle.id,
   presentation: {
     setAdaptiveSuspended: (suspended: boolean) => post.setAdaptiveSuspended(suspended),
-    clearBattle: () => {
+    clearBattle: ({ keepScreens = false }: { readonly keepScreens?: boolean } = {}) => {
       armorAimOverlay.clear();
       battleResultPresentation.clearPending();
       killcam.cancel();
       if (killcam.spectate?.active) killcam.spectate.stop(true);
+      if (keepScreens) return;
       veilHud(false);
       // cancel() can flush a buffered report, so hide battle UI afterward.
       currentHud()?.setMode?.('hidden');
@@ -3769,6 +3774,16 @@ if (testDriveSpecId) {
   void entryReady.then(() => {
     if (game.phase === 'garage' && !battleEntryLifecycle.pending) garage.testDrive(testDriveSpecId);
   }).catch((error) => console.error('[test-drive] failed to launch', error));
+}
+// 2026-10-22 (nav-perf-240): the two Garage panels a click opens, the settings and the play menu, are built hidden in
+// the first quiet idle after the entry gate (their chunks are about 16 + 22 kB gzip), so neither click waits on a
+// download or on building the panel; a phone has no hover to warm them.
+if (!STUDIO_BOOT_INTENT && !pendingRoomInvitePromise) {
+  void entryReady.then(() => requestQuietIdle(() => {
+    if (game.phase !== 'garage' || battleEntryLifecycle.pending) return;
+    settings.preload().catch((error) => console.warn('[settings] idle preload failed', error));
+    playSurface.prepareMenu();
+  }));
 }
 garageBootDone = true;
 window.__GAME_READY = true;

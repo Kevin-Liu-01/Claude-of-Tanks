@@ -94,7 +94,9 @@ const health = await (await fetch(`http://127.0.0.1:${service.address.port}/heal
 assert.equal(health.ok, true);
 assert.equal(health.actors, 1);
 assert.equal(health.clients, 2);
-const metrics = await (await fetch(`http://127.0.0.1:${service.address.port}/metrics`)).json();
+const publicMetrics = await (await fetch(`http://127.0.0.1:${service.address.port}/metrics`)).json();
+assert.ok(publicMetrics.service && !('actors' in publicMetrics), 'bearer-less /metrics carries no per-room stats (room codes are join gates)');
+const metrics = await (await fetch(`http://127.0.0.1:${service.address.port}/metrics`, { headers: { authorization: `Bearer ${secret}` } })).json();
 assert.equal(metrics.actors.length, 1);
 assert.ok(metrics.actors[0].tickMs.p95 >= 0 && metrics.service.rssMb > 0 && metrics.actors[0].snapshots > 40);
 assert.equal((await fetch(`http://127.0.0.1:${service.address.port}/nope`)).status, 404);

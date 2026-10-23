@@ -5,36 +5,36 @@
       "standard": {
         "en-US": "Standard Battle", "zh-CN": "标准战斗",
         "keys": ["playMenu.matchMode.standard.label", "garage.battle.soloLabel", "docs.reference.regular"],
-        "short": { "en-US": "Standard", "zh-CN": "标准", "keys": ["playMenu.matchMode.standard.short", "garage.battle.typeBots"] }
+        "short": { "en-US": "Standard", "zh-CN": "标准", "keys": ["playMenu.matchMode.standard.short"] }
       },
       "capture_the_flag": {
         "en-US": "Capture the Flag", "zh-CN": "夺旗战",
-        "keys": ["playMenu.matchMode.capture_the_flag.label", "garage.battle.ctfLabel", "garage.battle.modeFlag", "docs.reference.ctf", "docs.guide.simulation.2.t"],
+        "keys": ["playMenu.matchMode.capture_the_flag.label", "garage.battle.ctfLabel", "docs.reference.ctf", "docs.guide.simulation.2.t"],
         "short": { "en-US": "CTF", "zh-CN": "夺旗", "keys": ["playMenu.matchMode.capture_the_flag.short"] }
       },
       "zone_control": {
         "en-US": "Zone Control", "zh-CN": "区域控制",
-        "keys": ["playMenu.matchMode.zone_control.label", "garage.battle.zoneLabel", "garage.battle.modeZones", "docs.reference.zones"],
+        "keys": ["playMenu.matchMode.zone_control.label", "garage.battle.zoneLabel", "docs.reference.zones"],
         "short": { "en-US": "Zones", "zh-CN": "区域", "keys": ["playMenu.matchMode.zone_control.short"] }
       },
       "turbo_ball": {
         "en-US": "Turbo Ball", "zh-CN": "极速球",
-        "keys": ["playMenu.matchMode.turbo_ball.label", "garage.battle.ballLabel", "garage.battle.modeTurbo", "docs.reference.ball", "docs.guide.simulation.4.t"],
+        "keys": ["playMenu.matchMode.turbo_ball.label", "garage.battle.ballLabel", "docs.reference.ball", "docs.guide.simulation.4.t"],
         "short": { "en-US": "Turbo", "zh-CN": "极速", "keys": ["playMenu.matchMode.turbo_ball.short"] }
       },
       "endless_horde": {
         "en-US": "Endless Horde", "zh-CN": "无尽潮涌",
-        "keys": ["playMenu.matchMode.endless_horde.label", "garage.battle.hordeLabel", "garage.battle.modeHorde", "docs.reference.horde"],
+        "keys": ["playMenu.matchMode.endless_horde.label", "garage.battle.hordeLabel", "docs.reference.horde"],
         "short": { "en-US": "Horde", "zh-CN": "潮涌", "keys": ["playMenu.matchMode.endless_horde.short"] }
       },
       "frontline_assault": {
         "en-US": "Frontline Assault", "zh-CN": "前线突击",
-        "keys": ["playMenu.matchMode.frontline_assault.label", "garage.battle.frontLabel", "garage.battle.modeFront", "docs.reference.frontline"],
+        "keys": ["playMenu.matchMode.frontline_assault.label", "garage.battle.frontLabel", "docs.reference.frontline"],
         "short": { "en-US": "Frontline", "zh-CN": "前线", "keys": ["playMenu.matchMode.frontline_assault.short"] }
       },
       "mars": {
         "en-US": "Gravity Mode", "zh-CN": "重力模式",
-        "keys": ["playMenu.matchMode.mars.label", "garage.battle.marsLabel", "garage.battle.modeMars", "docs.reference.gravity"],
+        "keys": ["playMenu.matchMode.mars.label", "garage.battle.marsLabel", "docs.reference.gravity"],
         "short": { "en-US": "Gravity", "zh-CN": "重力", "keys": ["playMenu.matchMode.mars.short"] }
       },
       "juggernaut": {

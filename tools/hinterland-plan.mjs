@@ -9,6 +9,7 @@
 //     band; and the owner's eight EYE8 views, each over its own 100° of compass.
 //
 //   node tools/hinterland-plan.mjs --map=polders [--out=dir]    (a map's block, or its lab draft)
+//   node tools/hinterland-plan.mjs --map=whiteout --eyes=edge-e,corner-se,edge-n,edge-w   (other EYE8 rows)
 import { createCanvas } from '@napi-rs/canvas';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -362,7 +363,7 @@ export async function renderEyes(id, build, ground, outDir, { fog, names = ['edg
   return file;
 }
 
-export async function renderPlan(id, { outDir, draft = true, eyeViews = true } = {}) {
+export async function renderPlan(id, { outDir, draft = true, eyeViews = true, eyeNames = null } = {}) {
   const world = await loadWorld();
   const [{ resolveHinterlandSpec }, { withSelectedHinterland }, { buildHinterland }, { samplePyramid }] = await Promise.all([
     import('../src/world/hinterland/spec.ts'), import('../src/world/hinterland/select.ts'),
@@ -416,7 +417,7 @@ export async function renderPlan(id, { outDir, draft = true, eyeViews = true } =
   writeFileSync(file, canvas.toBuffer('image/png'));
   if (eyeViews) {
     const tall = build.plan && spec.landforms.some((l) => l.heightM > 200);
-    await renderEyes(id, build, ground, outDir, { fog: spec.fogDensity, elev: tall ? [-3, 22] : [-1.5, 6] });
+    await renderEyes(id, build, ground, outDir, { fog: spec.fogDensity, elev: tall ? [-3, 22] : [-1.5, 6], ...(eyeNames ? { names: eyeNames } : {}) });
   }
   return { file, row, ring, build: { ms: build.ms, settlements: build.plan.settlements.length, buildings: build.plan.buildings.length, verticals: build.plan.verticals.length } };
 }
@@ -427,7 +428,8 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   const outDir = arg('out') ?? path.join(process.env.HOME, 'cot-launch-state/streams/horizons');
   mkdirSync(outDir, { recursive: true });
   for (const id of ids) {
-    const { file, row, ring, build } = await renderPlan(id, { outDir });
+    // (--eyes=edge-e,corner-se: other EYE8 rows than the default four, for a map whose story faces elsewhere)
+    const { file, row, ring, build } = await renderPlan(id, { outDir, eyeNames: arg('eyes')?.split(',') ?? null });
     console.log(`${id}: ${file} — C1 new ${row.centre.p50.toFixed(2)}° old ${ring.centre.p50.toFixed(2)}°, C2 ${row.outlandRise.toFixed(1)} m, C4 ${row.centre.summits}, C6 ${(row.c6 * 100).toFixed(0)}%; ${JSON.stringify(build)}`);
   }
 }

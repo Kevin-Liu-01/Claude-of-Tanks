@@ -49,11 +49,15 @@ function mountBase(parts: LoaderStock[]): void {
     [2, -.0285, -.16958], [3, .0331, -.16963]]) {
     add(parts, `BaseHead98_${i}`, KIT.cylY(.0109, .0109, .01013, 6).translate(x, -.27756, z));
   }
-  const arm: XY[] = [[-.0381, -.2586], [.0558, -.2158], [.0705, -.2104],
-    [.0795, -.2357], [.0562, -.2441], [.0416, -.2494], [.0284, -.2437], [-.0357, -.2654]];
+  // 2026-10-22 (owner float calls): the lever's root stood 4 mm ahead of the bearing; it now reaches the bearing's
+  // faceted front (z -.0440 at the lever's mid x).
+  const arm: XY[] = [[-.0440, -.2586], [.0558, -.2158], [.0705, -.2104],
+    [.0795, -.2357], [.0562, -.2441], [.0416, -.2494], [.0284, -.2437], [-.0440, -.2654]];
   add(parts, 'BaseLever98', sideProfile(arm, -.0092, .0009));
   add(parts, 'BaseRearHandle98', roundMember([.022, -.2447, -.146], [.160, -.2447, -.214], .0083, 10));
-  box(parts, 'BaseRearHandleSeat98', [-.0265, -.26815, -.16958], [.0317, -.235825, -.10958]);
+  // 2026-10-22 (owner float calls): the handle seat stood 14 mm over the base plate; it stands on the plate's -.281916
+  // top.
+  box(parts, 'BaseRearHandleSeat98', [-.0265, -.281916, -.16958], [.0317, -.235825, -.10958]);
 }
 
 function mountingFork(parts: LoaderStock[]): void {
@@ -136,8 +140,10 @@ function foldedLugs(parts: LoaderStock[]): void {
   for (const side of [-1, 1]) {
     const x = side < 0 ? -.09506 : .09392;
     add(parts, `RearHandle99_${side}`, roundMember([x, -.0480, -.3025], [x, .0340, -.3093], .0124, 12));
-    add(parts, `RearHandleArm99_${side}`, roundMember([side * .048, -.0648, -.222],
-      [x, -.0658, -.296], .0068, 10));
+    // 2026-10-22 (owner float calls): the arms hung in the air 12-47 mm short of both the rear saddle and their grips;
+    // each now runs from the saddle's rear face to its grip's foot.
+    add(parts, `RearHandleArm99_${side}`, roundMember([side * .048, -.0648, -.194528],
+      [x, -.0480, -.3025], .0068, 10));
   }
 }
 
