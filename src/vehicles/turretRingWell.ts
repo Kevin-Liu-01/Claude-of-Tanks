@@ -49,6 +49,7 @@ import {
   resetVehicleGround, setVehicleGroundFromRoot, supportsShadowHook, vehicleAmbientFloorHook,
 } from './materials.ts';
 import { programVariantOrigin } from '../engine/programVariants.ts';
+import { TURRET_SWEEP_BIN_M, TURRET_SWEEP_FLOOR_M } from './turretSeatRace.ts';
 
 const TURRET_RING_WELL_ASSET_ID = 'urn:claude-of-tanks:vehicle-helper:turret-ring-well';
 /** The plate's object name (the census and the bake find it by it). */
@@ -422,6 +423,80 @@ export function measureTurretRing(
     floorY: round4(floorY),
     ...(skin ? { wellR: round4(skin.wellR), ...(Number.isFinite(skin.skinR) ? { skinR: round4(skin.skinR) } : {}) } : {}),
   };
+}
+
+/** The swept deck's highest recorded value over the deck round the ring (m). */
+const TURRET_SWEEP_CEIL_M = 0.25;
+
+/**
+ * The hull a turret traverses over, for the seat (turretSeatRace.ts): per TURRET_SWEEP_BIN_M band of radius from the
+ * ring's axis, from the race's rim out to the turret's reach (rig_gun and the camouflage suits left out), the highest
+ * top of the hull on any bearing (its up-facing opaque faces on a 2.5 cm grid, its suits left out too), in metres
+ * over the receipt's deck: no higher than TURRET_SWEEP_CEIL_M, no lower than TURRET_SWEEP_FLOOR_M (no hull at that
+ * radius on any bearing). The seat holds the turret's surfaces over it at every radius, within its own rise.
+ */
+export function measureTurretSweep(
+  hullRig: THREE.Object3D,
+  turretRig: THREE.Object3D,
+  receipt: AnatomyTurretRingReceipt,
+): { sweepR0: number; sweepDy: number[] } | null {
+  hullRig.updateWorldMatrix(true, true);
+  turretRig.updateWorldMatrix(true, true);
+  const hullInverse = hullRig.matrixWorld.clone().invert();
+  const cx = receipt.seat[0], cz = receipt.seat[2], deckY = receipt.deckY;
+  const suit = (mesh: THREE.Object3D): boolean => /_ghillie_/.test(mesh.name);
+  const gun = turretRig.getObjectByName('rig_gun') ?? null;
+  const v = new THREE.Vector3();
+  let reach = 0;
+  visitMeshes(turretRig, hullInverse, gun, (mesh, toHull) => {
+    if (suit(mesh)) return;
+    const position = mesh.geometry.getAttribute('position');
+    for (let i = 0; i < position.count; i++) {
+      v.fromBufferAttribute(position, i).applyMatrix4(toHull);
+      reach = Math.max(reach, Math.hypot(v.x - cx, v.z - cz));
+    }
+  });
+  const bin = TURRET_SWEEP_BIN_M, r0 = Math.floor(receipt.rimR / bin) * bin, rMax = reach + bin;
+  if (!(rMax > r0 + bin)) return null;
+  const bins = Math.ceil((rMax - r0) / bin);
+  const sweep = new Float64Array(bins).fill(-Infinity);
+  const cell = 0.025, n = Math.ceil((2 * rMax) / cell), x0 = cx - rMax, z0 = cz - rMax;
+  visitMeshes(hullRig, hullInverse, turretRig, (mesh, toHull) => {
+    if (suit(mesh)) return;
+    visitTriangles(mesh, toHull, (ax, ay, az, bx, by, bz, qx, qy, qz, flip, twoSided) => {
+      const minX = Math.min(ax, bx, qx), maxX = Math.max(ax, bx, qx);
+      const minZ = Math.min(az, bz, qz), maxZ = Math.max(az, bz, qz);
+      if (maxX < x0 || minX > x0 + 2 * rMax || maxZ < z0 || minZ > z0 + 2 * rMax) return;
+      const e1x = bx - ax, e1y = by - ay, e1z = bz - az, e2x = qx - ax, e2y = qy - ay, e2z = qz - az;
+      let ny = e1z * e2x - e1x * e2z;
+      const length = Math.hypot(e1y * e2z - e1z * e2y, ny, e1x * e2y - e1y * e2x);
+      if (!(length > 1e-12)) return;
+      if (flip) ny = -ny;
+      if ((twoSided ? Math.abs(ny) : ny) < 0.02 * length) return;
+      const d = (bz - qz) * (ax - qx) + (qx - bx) * (az - qz);
+      if (Math.abs(d) < 1e-14) return;
+      const i0 = Math.max(0, Math.floor((minX - x0) / cell)), i1 = Math.min(n - 1, Math.floor((maxX - x0) / cell));
+      const j0 = Math.max(0, Math.floor((minZ - z0) / cell)), j1 = Math.min(n - 1, Math.floor((maxZ - z0) / cell));
+      for (let j = j0; j <= j1; j++) {
+        const z = z0 + (j + 0.5) * cell;
+        for (let i = i0; i <= i1; i++) {
+          const x = x0 + (i + 0.5) * cell;
+          const w0 = ((bz - qz) * (x - qx) + (qx - bx) * (z - qz)) / d;
+          if (w0 < -1e-7) continue;
+          const w1 = ((qz - az) * (x - qx) + (ax - qx) * (z - qz)) / d;
+          if (w1 < -1e-7 || w0 + w1 > 1 + 1e-7) continue;
+          const r = Math.hypot(x - cx, z - cz);
+          if (r < r0 || r >= rMax) continue;
+          const b = Math.min(bins - 1, Math.floor((r - r0) / bin));
+          const y = w0 * ay + w1 * by + (1 - w0 - w1) * qy;
+          if (y > sweep[b]) sweep[b] = y;
+        }
+      }
+    });
+  });
+  const sweepDy = Array.from(sweep, (y) => (Number.isFinite(y)
+    ? Math.round(clamp(y - deckY, TURRET_SWEEP_FLOOR_M, TURRET_SWEEP_CEIL_M) * 1e3) / 1e3 : TURRET_SWEEP_FLOOR_M));
+  return { sweepR0: round4(r0), sweepDy };
 }
 
 /** The floor's lowest reach under the deck: the race's lip and a hand's breadth of wall (m). */

@@ -8741,6 +8741,10 @@ function* createTankOwnedSteps(
   if (typeof P.postAssemble === 'function') {
     P.postAssemble({ root, hullG, turretG, gunG, recoilG });
   }
+  // The turret seated over the deck round its ring (2026-10-22; the owner: "make sure all tank turrets are clear of hulls
+  // ... and have a proper turret ring/attachment area"), from the calibration's ring receipt (turretSeatRace.ts). Here,
+  // on the finished armour: the markings' solver, a suit and the decor all lay against the seated turret.
+  seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables });
   // Equipment laid against the finished armour (a camouflage suit or field net) is built after the core, in slices of its
   // own, against the vehicle exactly as it stands here (runDeferredAssembly).
   // 2026-10-21 (the M1A1 Abrams FEP's marking row, stale since the deferral): the live marking solver below measures
@@ -10732,10 +10736,8 @@ function* createTankOwnedSteps(
     }, legacyDecoration);
     const tailDecorFinishedAt = performance.now();
 
-    // The turret seated over the deck round its ring and the ring's race in the seam (2026-10-22; the owner: "make sure
-    // all tank turrets are clear of hulls ... and have a proper turret ring/attachment area"), both from the
-    // calibration's ring receipt (turretSeatRace.ts), so they share their axis and seat with the wreck's ring plate.
-    seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables });
+    // The ring's race in the seam under the seated turret (seatTurretOverDeck, after the core), from the calibration's
+    // ring receipt (turretSeatRace.ts), so it shares its axis and seat with the wreck's ring plate.
     // Interior fills 2026-09-13 (owner: every hull and turret must hold water):
     // generated buried solids for this tank, if its fleet group is resident.
     applyInteriorFills({ specId, hullG, turretG, gunG, material: mats.dark, disposables });

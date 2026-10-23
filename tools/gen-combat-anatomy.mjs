@@ -36,7 +36,7 @@ import {
 enableCombatAnatomyMeasurementMode();
 const { createTank } = await import('../src/vehicles/tankFactory.ts');
 const { ALL_TANK_IDS, TANK_SPECS } = await import('../src/vehicles/specs.ts');
-const { measureTurretRing, turretRingRadius } = await import('../src/vehicles/turretRingWell.ts');
+const { measureTurretRing, measureTurretSweep, turretRingRadius } = await import('../src/vehicles/turretRingWell.ts');
 const { captureChieftain10Collision } = await import('./chieftain10-collision.mjs');
 const { captureTos1aTagilCollision } = await import('./tos1a-tagil-collision.mjs');
 const { captureArieteC2Collision } = await import('./ariete-c2-collision.mjs');
@@ -590,10 +590,12 @@ function receiptFor(id) {
     if (!hullRig || !turretRig) throw new Error(`${id}: articulation rigs missing`);
     // The turret ring as built (turretRingWell.ts measureTurretRing, its exterior pass), in the live rig_hull frame the
     // wreck compares it in, before the frame below is made rigid: the intact race (turretSeatRace.ts), a wreck's ring
-    // plate and a hulk's well are drawn from it (2026-10-22).
+    // plate and a hulk's well are drawn from it (2026-10-22), and with it the hull the turret traverses over, which the
+    // turret's seat follows (measureTurretSweep).
     const armor = TANK_SPECS[id]?.armor;
-    const turretRing = armor?.turretless ? null
+    const ring = armor?.turretless ? null
       : measureTurretRing(hullRig, turretRig, turretRingRadius(armor), { exterior: true });
+    const turretRing = ring ? { ...ring, ...measureTurretSweep(hullRig, turretRig, ring) } : null;
     // The Improved's narrowing lives on the hull rig's scale; combat coordinates have none (tools/rigid-hull-frame.mjs).
     rigidHullFrame(tank, id);
     // Only the explicitly structural armor buckets calibrate shell collision.

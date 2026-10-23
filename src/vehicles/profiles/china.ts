@@ -702,12 +702,15 @@ export function buildZTZ99A2Hull(P: ChinaBuilderPort): void {
       [s * 0.72, 1.08, 3.34], [s * 1.20, 1.22, 2.96], [s * 1.20, 1.16, 2.80], [s * 0.72, 1.00, 3.16]));
     P.add('hullDark', box(0.045, 0.045, 1.30), s * 0.91, 1.37, 2.22, -0.25, s * 0.22, 0);
   }
-  P.add('hull', box(1.90, 0.05, 0.22), 0, 1.63, 1.18, -0.30, 0, 0);
+  // (release 240: the crest course 3.5 cm lower, 1.1 cm over the chevron under it: the ZTZ-99A2's mantlet came down onto
+  // it at -3.2 degrees ahead)
+  P.add('hull', box(1.90, 0.05, 0.22), 0, 1.595, 1.18, -0.30, 0, 0);
   });
-  // driver center station behind the chevron crest
-  P.add('hull', box(0.54, 0.05, 0.46), 0, 1.685, 0.62);
-  P.add('hullDark', cylY(0.24, 0.24, 0.016, 14), 0, 1.715, 0.60);
-  [-0.17, 0.17].forEach((x) => periscope(P, 'hullDetail', x, 1.72, 0.86));
+  // driver center station behind the chevron crest (release 240: 3-5.5 cm lower, under the gun's cradle, which ran
+  // through its hatch and periscope heads at every pitch on the ZTZ-99A; inside the ring, under the turret at any yaw)
+  P.add('hull', box(0.54, 0.05, 0.46), 0, 1.655, 0.62);
+  P.add('hullDark', cylY(0.24, 0.24, 0.016, 14), 0, 1.685, 0.60);
+  [-0.17, 0.17].forEach((x) => periscope(P, 'hullDetail', x, 1.665, 0.86));
   // bow lights on riser pods + tow points + routed cable
   ([-1, 1] as const).forEach((s) => {
     mount(P, 'hull', FITTINGS.lightCluster({

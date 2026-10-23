@@ -65,6 +65,10 @@ export interface AnatomyTurretRingReceipt extends Record<string, RuntimeValue> {
   readonly wellR?: number;
   /** The nearest the hull's skin comes to the ring's axis under the lip, when within a hulk crumple's reach of it. */
   readonly skinR?: number;
+  /** The hull the turret traverses over (turretRingWell.ts measureTurretSweep): the first band's inner radius (m). */
+  readonly sweepR0?: number;
+  /** Per TURRET_SWEEP_BIN_M band out from sweepR0, the hull's highest top on any bearing over the deck (m). */
+  readonly sweepDy?: readonly number[];
 }
 
 export interface CombatAnatomyCalibration extends Record<string, RuntimeValue> {
