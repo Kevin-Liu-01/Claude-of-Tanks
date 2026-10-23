@@ -1980,6 +1980,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/riparianTrees.selftest.mjs',
     // the horizons stream (2026-10-16): the Skybridge port moves no other map's heights
     'src/world/skybridgeArmIsolation.selftest.mjs',
+    // the trees lane (2026-10-06, wave 177): Saltwind's olive groves, holm oak and Aleppo pine, maquis
+    'src/world/saltwindTrees.selftest.mjs',
     'src/world/foliageAtlasPadding.selftest.mjs',
     'src/world/broadleafBranchlets.selftest.mjs',
     'src/world/structureSurface.selftest.mjs',

@@ -440,7 +440,13 @@ assert.ok(!GROWTH_SPECIES.includes('broom'), 'the broom is a shrub form, never a
   assert.equal(pal.cardSat, ash.cardSat, 'the shrub colour wins over the slot palette\'s named saturation');
   assert.strictEqual(pal.texTone, ash.texTone, 'and its tone');
   assert.equal(treeBiomeShrubColour('caldera'), null, 'Aso\'s grassland scrub keeps the slot\'s green');
-  assert.deepEqual(MAP_IDS.filter((id) => treeBiomeShrubColour(id)), [], 'no place names a shrub colour');
+  // a place names a shrub colour only for a shrub form of its own (the trees lane, 2026-10-06, ported 2026-10-22:
+  // Saltwind's maquis, the evergreen oak's shrubs)
+  for (const id of MAP_IDS.filter((mapId) => treeBiomeShrubColour(mapId))) {
+    assert.ok(treeBiomeShrub(id), `${id}: its shrub colour paints its own shrub form`);
+  }
+  assert.deepEqual(MAP_IDS.filter((id) => treeBiomeShrubColour(id)), ['saltwind'], 'Saltwind alone names a shrub colour');
+  assert.ok(treeBiomeShrub('saltwind') === 'holmOak', 'Saltwind names its maquis');
 }
 
 // trees round 5 (2026-10-05, the gauntlet's wave 98 on the near field bush: "lobed leaf cards two to four times life
