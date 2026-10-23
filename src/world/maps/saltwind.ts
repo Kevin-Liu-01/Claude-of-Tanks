@@ -18,6 +18,7 @@
 // behind the southern terrace flight, and bravo on the northern upland behind the northern flight, so the pads cannot
 // see each other. The three zone-control objectives stand on the axis: the village square, the market crossroads and
 // the karst spine's saddle.
+import { TRODDEN_GREEN_PAINT } from '../hardstandSurface.ts';
 import coastal from './coastal.ts';
 import { roundRoadBends } from './roadBends.ts';
 export default {
@@ -71,7 +72,7 @@ export default {
     // road channel under the activity-patch wear).
     hardstands: [
       // apron bank law (docs/MAP-LAYOUT-BRIEF.md): 16 m north, at its ground's median height, a 24 m bank
-      { x: 230, z: 26, width: 60, length: 60, yawDeg: 0, level: 2.4, grade: 0, bankM: 24 },
+      { x: 230, z: 26, width: 60, length: 60, yawDeg: 0, level: 2.4, grade: 0, bankM: 24, paint: TRODDEN_GREEN_PAINT },
     ],
     landforms: [
       // the village's hill under the market street, on the axis

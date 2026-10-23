@@ -24,8 +24,10 @@ import { resolveTankId } from './tankIdAliases.ts';
 // m60a3 in schema-1 spelling), plus the Factory and Signature selections, which the baseline resolves on the
 // m1a1_abrams_hc reference hull (factory 130188c39662f598 -> cdeb9d9dad770dc5, signature 0d9b13b723f61536 ->
 // 8e14071f076cca31).
-const RELEASE_233_SIGNATURES = ['sig_m1a1ha', 'sig_m1a1_abrams_hc', 'sig_m1a1_abrams_aim', 'sig_m1a1_abrams_fep',
-  'sig_m1a1_abrams_sa', 'sig_m60a1', 'sig_m60a3'];
+// Re-pinned 2026-10-22 (owner: "i dont like the monnocolor flat camos, just use the default americann desert for those
+// kinds of cases"): the four flat coats (HA, AIM, SA, M60A1) are gone; m1a1ha, m1a2_tusk, m1a2_sepv2 and m60a1 are back
+// on their production rows byte for byte, and the three patterned Signatures (HC, FEP, M60A3) stay.
+const RELEASE_233_SIGNATURES = ['sig_m1a1_abrams_hc', 'sig_m1a1_abrams_fep', 'sig_m60a3'];
 const baseline = JSON.parse(readFileSync(new URL('./camoProductionBaseline.json', import.meta.url), 'utf8'));
 const now = camoBaselineRows({ specs, policy, materials });
 
