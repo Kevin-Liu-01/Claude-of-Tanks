@@ -164,6 +164,12 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
   'far-earth-null': Object.freeze({
     on: `(() => { let n = 0; window.__DEBUG.scene.traverse((o) => { const a = o.userData && o.userData.panoAir; if (!a) return; a.nullControl = 1; n++; }); return { shells: n }; })()`,
     off: `(() => { let n = 0; window.__DEBUG.scene.traverse((o) => { const a = o.userData && o.userData.panoAir; if (!a) return; a.nullControl = 0; n++; }); return { shells: n }; })()` }),
+  // the trees lane (2026-10-07, the coordinator's vegetation perf step 0): the near tree pools culled to the main
+  // camera's view and their shadows' reach (vegetation.ts updateNearViewCull, opt-in since 2026-10-23); off draws every
+  // near tree. The A/B that decides the cull's default
+  'tree-cull': Object.freeze({
+    on: `(() => { window.__TREE_DEBUG = Object.assign(window.__TREE_DEBUG || {}, { noViewCull: false }); return { noViewCull: false }; })()`,
+    off: `(() => { window.__TREE_DEBUG = Object.assign(window.__TREE_DEBUG || {}, { noViewCull: true }); return { noViewCull: true }; })()` }),
 });
 
 /** The in-page switch of the cache's depth copy (the shadow-cache-copy2 toggle): copy each depth texture twice, or once. */

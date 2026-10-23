@@ -300,6 +300,7 @@ export interface WorldRuntime {
     cameraPosition: THREE.Vector3,
     cameraForward?: THREE.Vector3 | null,
     focusPosition?: THREE.Vector3 | null,
+    viewCamera?: THREE.Camera | null,
   ): void;
   warmTerrainLookahead(cameraPosition: THREE.Vector3, maxJobs?: number): number;
   /** Round 77c: bake the vegetation's impostor atlas under cover (the activation / solo loading warm). */
@@ -1052,12 +1053,15 @@ function assembleWorld(
      *   scoped grass center-cone clear-out
      * @param {THREE.Vector3|null} [focusPos] chase-camera focus — non-null
      *   enables the tree occlusion fade along focus→camera
+     * @param {THREE.Camera|null} [viewCamera] trees perf (2026-10-07): the camera
+     *   this frame's main pass renders with — its view culls the near tree pools
      */
     update(
       dt: number,
       cameraPos: THREE.Vector3,
       cameraFwd: THREE.Vector3 | null = null,
       focusPos: THREE.Vector3 | null = null,
+      viewCamera: THREE.Camera | null = null,
     ) {
       terrain.userData.updateLOD(cameraPos);
       // ground lane (crater-render-spec §C): the cover in a crater's reach, after the terrain took the same stamps
@@ -1068,7 +1072,7 @@ function assembleWorld(
       // water pass 8: the reactive field's window follows the chase focus (the camera when there is none)
       const waterAnchor = focusPos ?? cameraPos;
       terrain.userData.updateWater?.(dt, waterAnchor.x, waterAnchor.z);
-      vegetation.update(dt, cameraPos, cameraFwd, focusPos);
+      vegetation.update(dt, cameraPos, cameraFwd, focusPos, viewCamera);
       bakePanorama(); // a no-op once baked
       litter.update(cameraPos);
       tallGrass.update(dt, cameraPos, focusPos, cameraFwd); // round 73: the sward's ring, wind and press
