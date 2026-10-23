@@ -484,7 +484,8 @@ export const aircraftWreck: LandmarkBuilder = (ctx) => {
   // brought down — gone where a purlin sags or a sheet hangs loose from it and here and there burnt through, every edge
   // at a gap torn ragged. A panel spans two of the rib's lengths and half the bay, lying on the top chord's bars, its
   // outside burnt to soot and bare steel under the ash, its underside black. Dressing.
-  const skinLift = 0.3, skinStep = 2 / steps, panels = Math.round(1 / skinStep);
+  // (242, kitConnectivity: a lone panel stood 2.2 cm clear of its chords) lifted to the 0.55 m top chord's face, on it
+  const skinLift = 0.28, skinStep = 2 / steps, panels = Math.round(1 / skinStep);
   // the skin at a bay's share f between rib r and r + 1, t along the arch: on the top chord, lifted off it radially
   const skinAt = (r: number, f: number, t: number): Vec3 => {
     const a = drawnAt(r, t), b = drawnAt(r + 1, t);
