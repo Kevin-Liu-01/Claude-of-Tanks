@@ -76,10 +76,11 @@ function checkLaunchMouths(root, frame) {
 function checkBackup(root, frame) {
   for (let i = 0; i < 8; i++) {
     const a = (i + .173) * Math.PI / 4;
-    const back = cast(root, frame, [Math.cos(a) * .015, Math.sin(a) * .015, 1.47], [0, 0, -1], .2);
-    assert.ok(back); near(frame.worldToLocal(back.point.clone()).z, 1.36, .001, 'open 35 mm backup bore');
-    const rim = cast(root, frame, [Math.cos(a) * .03, Math.sin(a) * .03, 1.47], [0, 0, -1], .04);
-    assert.ok(rim); near(frame.worldToLocal(rim.point.clone()).z, 1.45, .001, 'backup seated annulus');
+    // 2026-10-22 (lane 240): the 35 mm L/90 tube's mouth at L.backupLength (3.50), its bore L.backupDepth deep
+    const back = cast(root, frame, [Math.cos(a) * .015, Math.sin(a) * .015, L.backupLength + .02], [0, 0, -1], .2);
+    assert.ok(back); near(frame.worldToLocal(back.point.clone()).z, L.backupLength - L.backupDepth, .001, 'open 35 mm backup bore');
+    const rim = cast(root, frame, [Math.cos(a) * .03, Math.sin(a) * .03, L.backupLength + .02], [0, 0, -1], .04);
+    assert.ok(rim); near(frame.worldToLocal(rim.point.clone()).z, L.backupLength, .001, 'backup seated annulus');
   }
 }
 function checkOptics(root, gun, turret) {

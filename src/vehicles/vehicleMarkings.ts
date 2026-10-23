@@ -321,7 +321,9 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   fv510_milan: anchor('hull', 'left', 0.38, 0.62, 0.22, 1),
   m1a1ha: anchor('turret', 'left', 0.42, 0.44, 0.27, 1),
   m1a1_abrams_aim: anchor('turret', 'right', 0.40, 0.43, 0.27, -1),
-  m1a1_abrams_fep: anchor('turret', 'left', 0.39, 0.44, 0.27, 1),
+  // 2026-10-21 (the owner: "the FEP's star should be on the turret, not the hull"): the right turret flank ahead of the
+  // add-on side armour, in the window its ULCANS drape leaves (ghillieSuit.ts); the designation keeps the left flank
+  m1a1_abrams_fep: anchor('turret', 'right', 0.48, 0.44, 0.27, 1),
   m1a3: anchor('hull', 'right', 0.48, 0.62, 0.26, -1),
   m60a1: anchor('turret', 'right', 0.44, 0.48, 0.25, -1),
   merkava1b: anchor('turret', 'left', 0.40, 0.45, 0.25, 1),

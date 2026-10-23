@@ -189,7 +189,7 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
     "t62-aft-links-R@hull(0.58,1.42,-2.61)": [0, 0.006, -0.09982, 0.03, 0, 0, 0.99955, 1],
   },
   "ua_m1a1": {
-    "fitting@turret(0.30,0.35,-3.22)": [0.254, 0.8165, -2.08, 0, 0.70711, 0, 0.70711, 0],
+    "fitting@turret(0.30,0.35,-3.22)": [0.404, 0.8165, -2.022, 0, 0, 0, 1, 0],
   },
   "ua_m1a2_abrams": {
     "ua-abrams-rear-deck-shoes@hull(0.00,1.76,-3.55)": [0.139, 5.057, -3.46558, 0.5, 0.5, 0.5, -0.5, 1],

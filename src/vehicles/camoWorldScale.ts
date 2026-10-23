@@ -26,3 +26,10 @@ export function camoPatchWorldScale(camoScale: number | null | undefined): numbe
     ? camoScale : CAMO_UV_REPEATS_PER_M;
   return Math.min(1, CAMO_UV_REPEATS_PER_M / density);
 }
+
+/**
+ * Hulls whose small plate-like parts take their plate's projection on every face (factoryGeometry.ts thinPartBoxUV;
+ * 2026-10-22, lane 240: the M1A1 HC's XM32 cassette skirts and armour tiles broke its three-tone into straight-edged
+ * blocks at every module's ends and top).
+ */
+export const CAMO_THIN_PART_PROJECTION_IDS: ReadonlySet<string> = new Set(['m1a1_abrams_hc']);

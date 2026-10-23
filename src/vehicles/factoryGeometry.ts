@@ -516,6 +516,44 @@ export function faceBoxUV(geometry: THREE.BufferGeometry, scale = 0.35): THREE.B
   return geometry;
 }
 
+/**
+ * The camouflage projection of a merged bucket's plate-like parts (2026-10-22, lane 240; critic on the M1A1 HC's
+ * three-tone: "camo patches with hard straight edges"). faceBoxUV projects each triangle along its own normal, so the
+ * narrow faces of a plate or a cassette (a skirt module's ends and top, a rib's edge, an armour tile's sides) sample
+ * the tile along a single line: bars of whatever colour that line crosses, cut square at the module's corners, and a
+ * skirt of cassettes reads as blocks of black and brown. A part that is plate-like (its thinnest dimension under
+ * `plateK` of its middle one) and either thinner than `thinM` or small (at most `plateM` thick and `smallM` long) is
+ * projected whole along its thin axis, so its edges carry on the paint of its face round the corner, as sprayed paint
+ * does. Larger parts (hull and turret shells, long panels), blocks and rods keep their per-face projection. Parts are
+ * in merge order (mergeAll).
+ */
+export function thinPartBoxUV(parts: readonly THREE.BufferGeometry[], merged: THREE.BufferGeometry, scale = 0.35,
+  thinM = 0.06, plateM = 0.2, smallM = 1.2, plateK = 0.6): void {
+  const position = merged.getAttribute('position'), uv = merged.getAttribute('uv');
+  if (!position || !uv) return;
+  const box = new THREE.Box3(), size = new THREE.Vector3();
+  let offset = 0, changed = false;
+  for (const part of parts) {
+    const count = part.index ? part.index.count : (part.getAttribute('position')?.count || 0);
+    const partPosition = part.getAttribute('position');
+    if (!partPosition) { offset += count; continue; }
+    box.setFromBufferAttribute(partPosition as THREE.BufferAttribute).getSize(size);
+    const dims = [size.x, size.y, size.z].sort((a, b) => a - b);
+    // a plate has one thin axis: a rod (two thin axes alike) keeps its per-face projection, having no face to follow
+    const plate = dims[0] <= plateK * dims[1] && (dims[0] < thinM || (dims[0] <= plateM && dims[2] <= smallM));
+    if (plate && count) {
+      const axis = size.y === dims[0] ? 1 : size.x === dims[0] ? 0 : 2;
+      for (let i = offset; i < offset + count && i < position.count; i++) {
+        const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
+        uv.setXY(i, (axis === 0 ? z : x) * scale, (axis === 1 ? z : y) * scale);
+      }
+      changed = true;
+    }
+    offset += count;
+  }
+  if (changed) uv.needsUpdate = true;
+}
+
 export function mergeAll(geometries: readonly THREE.BufferGeometry[]): THREE.BufferGeometry {
   const flat = geometries.map((geometry) => geometry.index ? geometry.toNonIndexed() : geometry);
   const merged = mergeGeometries(flat, false);
