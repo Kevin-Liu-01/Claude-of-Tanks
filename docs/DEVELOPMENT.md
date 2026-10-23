@@ -264,8 +264,11 @@ returns `true` before saving them. `tools/visual-census-lock.mjs` uses the same 
 On 2026-10-22 the queue served about one hold per 45 minutes, with 30-plus tickets waiting. The holds were spent
 loading pages. At load 200-600 a Studio map took 1-9 minutes to come up inside the hold, and each shot took 2-5 s.
 In one world-polish hold, three maps' page loads took 1,070 s of 1,142 s before the cap. Hero-card holds spent
-70-143 s of 103-212 s starting Vite, Chrome and the page. Meanwhile the holder used under 1 % of the GPU, while
-processes outside the lock used 24-38 %. A hold should serve shots only:
+70-143 s of 103-212 s starting Vite, Chrome and the page. An mbt70 Garage before/after hold waited 219 minutes,
+then reached the cap with both sides failing and no shots. Per-process GPU time (`ioreg` AGXDeviceUserClient
+`accumulatedGPUTime`) showed holders using 0-15 % of the GPU. The largest GPU user was outside every Claude of Tanks
+lock: another project's iOS Simulator (SimMetal, about 44 %), plus Playwright browsers. A hold should serve shots
+only:
 
 - **`tools/capture-hold.mjs` `runWarmHold({ warm, shoot })`.** `warm` starts the servers and the browser and loads
   every page to ready while the ticket waits. Its pages are then frozen (Chrome's page lifecycle: no timers and no
@@ -293,9 +296,10 @@ processes outside the lock used 24-38 %. A hold should serve shots only:
   while queued and releases once the browser closes. `tank-standard-check` and `track-clip-audit` use it, and the
   standard check's contiguity stage, which is CPU-only, now runs after the release.
 
-A second concurrent capture lane for stills (parked 2026-10-15) is not needed for throughput. The GPU sits idle
-during holds; the time goes to CPU-bound page loads, which now happen before the hold. Timing jobs still need the GPU
-alone.
+A second concurrent capture lane for stills (parked 2026-10-15) is not the lever. Holds were long because of
+CPU-bound page loads, which now happen before the hold, and the GPU is already 65-80 % busy with other projects'
+work. Timing jobs still need the GPU alone, and that holds only while nothing outside the lock draws: on 2026-10-22
+the iOS Simulator did.
 
 ### The rooms Worker's TypeScript program (2026-09-28)
 
