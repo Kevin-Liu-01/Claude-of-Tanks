@@ -258,6 +258,21 @@ export const TOKENS = {
   'media-toggle-z': '4',
   'warn-hatch': '8px',
   'team-squad-ring': '0px',
+  'battle-plate-shadow': '0 0 0 1px rgba(246,243,236,.07),0 6px 18px rgba(0,0,0,.35)',
+  'battle-edge-own': 'inset 3px 0 0 #f0a030,0 0 0 1px oklch(from #f0a030 l c h / .35),0 6px 18px rgba(0,0,0,.35)',
+  'battle-veil': 'rgba(5,6,8,.6)',
+  'battle-ring-ammo': 'inset 0 0 0 1px oklch(from #c4573f l c h / .6)',
+  'battle-chip-danger': 'inset 3px 0 0 #ff5a4e,inset 0 0 0 1px oklch(from #ff5a4e l c h / .35),0 0 0 1px rgba(246,243,236,.07),0 6px 18px rgba(0,0,0,.35)',
+  'battle-chip-warn': 'inset 3px 0 0 #ffd15c,inset 0 0 0 1px oklch(from #ffd15c l c h / .3),0 0 0 1px rgba(246,243,236,.07),0 6px 18px rgba(0,0,0,.35)',
+  'battle-chip-ok': 'inset 3px 0 0 #5bd69b,inset 0 0 0 1px oklch(from #5bd69b l c h / .3),0 0 0 1px rgba(246,243,236,.07),0 6px 18px rgba(0,0,0,.35)',
+  'battle-fs-11': '11px',
+  'battle-fs-12': '12px',
+  'battle-fs-13': '13px',
+  'battle-fs-14': '14px',
+  'battle-fs-15': '15px',
+  'battle-fs-18': '18px',
+  'battle-fs-20': '20px',
+  'battle-fs-28': '28px',
 } as const;
 
 export type TokenName = keyof typeof TOKENS;
@@ -314,6 +329,14 @@ export const TOKEN_PX = {
   'focus-bracket-travel': 6,
   'warn-hatch': 8,
   'team-squad-ring': 0,
+  'battle-fs-11': 11,
+  'battle-fs-12': 12,
+  'battle-fs-13': 13,
+  'battle-fs-14': 14,
+  'battle-fs-15': 15,
+  'battle-fs-18': 18,
+  'battle-fs-20': 20,
+  'battle-fs-28': 28,
 } as const;
 
 /** Duration tokens in milliseconds (collapse to 1 under the reduce-motion preset). */
@@ -411,6 +434,10 @@ export const TOKEN_PRESETS = {
         'ring-2': 'inset 0 0 0 1px rgba(246,243,236,.38)',
         'ring-3': 'inset 0 0 0 1px rgba(246,243,236,.38)',
         'seg-on-shadow': '0 1px 0 rgba(255,255,255,.06) inset,0 0 0 1px rgba(246,243,236,.38)',
+        'battle-plate-shadow': '0 0 0 1px rgba(246,243,236,.38),0 6px 18px rgba(0,0,0,.35)',
+        'battle-chip-danger': 'inset 3px 0 0 #ff5a4e,inset 0 0 0 1px oklch(from #ff5a4e l c h / .35),0 0 0 1px rgba(246,243,236,.38),0 6px 18px rgba(0,0,0,.35)',
+        'battle-chip-warn': 'inset 3px 0 0 #ffd15c,inset 0 0 0 1px oklch(from #ffd15c l c h / .3),0 0 0 1px rgba(246,243,236,.38),0 6px 18px rgba(0,0,0,.35)',
+        'battle-chip-ok': 'inset 3px 0 0 #5bd69b,inset 0 0 0 1px oklch(from #5bd69b l c h / .3),0 0 0 1px rgba(246,243,236,.38),0 6px 18px rgba(0,0,0,.35)',
       },
     },
   },
