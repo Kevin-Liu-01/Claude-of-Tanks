@@ -56,6 +56,15 @@ export function fxNow(): number | null {
   return clockFn ? clockFn() - shiftS : null;
 }
 
+/**
+ * The registered clock itself (seconds), without the rebase shift: the value the Studio's timeline (resetClock) and a
+ * frozen shot (setFrozen) pin, so a layer animated on it films the same frame on every page (the map's air,
+ * world/mapAmbience.ts). Null before an fx system registers.
+ */
+export function fxClockNow(): number | null {
+  return clockFn ? clockFn() : null;
+}
+
 // ---------------------------------------------------------------------------
 // Turret-pop smoke/ember trail bridge (effects_combat r6)
 // ---------------------------------------------------------------------------
