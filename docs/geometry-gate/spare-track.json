@@ -1904,7 +1904,7 @@
    "hostSweep": []
   },
   "m1a2_abrams_sepv2": {
-   "inputHash": "8dec0b1f905c4fc0",
+   "inputHash": "ab3db38359879fd6",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3891,7 +3891,7 @@
    "hostSweep": []
   },
   "ua_m1a1": {
-   "inputHash": "48a7a33a6b0105e9",
+   "inputHash": "be084fd167438a5a",
    "runs": [
     {
      "index": 0,
@@ -3912,7 +3912,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.989,
-      "host": "turret<tejasRoofKitModulesStage3@profiles/abrams.ts:3212>"
+      "host": "turret<tejasRoofKitModulesStage3@profiles/abrams.ts:3213>"
      }
     }
    ],
@@ -3920,7 +3920,7 @@
    "hostSweep": []
   },
   "ua_m1a2_abrams": {
-   "inputHash": "15754a7f859fa161",
+   "inputHash": "9717186f26864ce4",
    "runs": [
     {
      "index": 0,
@@ -3931,11 +3931,13 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [],
+     "notes": [
+      "carried on its rack"
+     ],
      "measures": {
-      "support": 0.635,
-      "gap": 0.347,
-      "air": 0.018,
+      "support": 0.215,
+      "gap": 0.774,
+      "air": 0.011,
       "hidden": 0,
       "sunkMaxM": 0,
       "sweepM": 0,
