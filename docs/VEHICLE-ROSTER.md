@@ -61,7 +61,7 @@ To inspect every playable saved model locally, copy `.env.example` to `.env.loca
 | 51 | PROD | `type90_kyumaru` | Type 90 Kyū-maru | Japan | IX | Cold War | Production |
 | 52 | PROD | `type90a` | Type 90A | Japan | IX | Cold War | Production |
 | 53 | PROD | `type10_tk_x` | Type 10 (TK-X) | Japan | X | Modern | Production |
-| 54 | PROD | `type10_dozer` | Type 10 (Dozer) | Japan | X | Modern | Production |
+| 54 | PROD | `type10_dozer` | Type 10 Kaitaku | Japan | X | Modern | Production |
 | 55 | PROD | `type10b` | Type 10B | Japan | X | Next Generation | Production |
 | 56 | PROD | `m2a2_bradley` | M2A2 Bradley | USA | VIII | Cold War | Production |
 | 57 | PROD | `bmp2` | BMP-2 | USSR | VII | Cold War | Production |

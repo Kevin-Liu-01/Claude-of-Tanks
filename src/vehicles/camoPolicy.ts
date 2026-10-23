@@ -118,7 +118,7 @@ export const NATIONAL_CAMO_PATTERN_IDS = Object.freeze([
  * (camoCatalogProductionIndices.selftest.mjs).
  */
 const AUTHORED_PAINT_IDS_AFTER_GT = Object.freeze(['paint_m6_linebacker'] as const);
-/** Authored paints that joined after the release-233 Signatures, in the order they joined: the Type 10 (Dozer)'s JGSDF
+/** Authored paints that joined after the release-233 Signatures, in the order they joined: the Type 10 Kaitaku's JGSDF
  * digital came with that tank (2026-10-21). */
 const AUTHORED_PAINT_IDS_AFTER_233 = Object.freeze(['paint_type10_dozer'] as const);
 type AuthoredPaintIdAfterGt = typeof AUTHORED_PAINT_IDS_AFTER_GT[number] | typeof AUTHORED_PAINT_IDS_AFTER_233[number];

@@ -50,6 +50,7 @@ import { synchronizeSecondWaveXCombatMetadata } from './sourceXSecondWaveSpecs.t
 import { synchronizeAbramsSourceXCombatMetadata } from './abramsSourceXSpecs.ts';
 import './merkavaModernSpecs.ts';
 import './arieteModernSpecs.ts';
+import './type10DozerSpecs.ts';
 import './tos1aTagilSpecs.ts';
 import './griffinViperSpecs.ts';
 import { synchronizeIfvReplicaCombatMetadata } from './ifvReplicaSpecs.ts';
