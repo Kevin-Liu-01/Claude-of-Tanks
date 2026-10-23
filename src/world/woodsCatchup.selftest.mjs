@@ -3,7 +3,7 @@
 // Ridge's Naga Hills forms and no palm; Wadi Rum's and the oasis's Acacia tortilis, half the savanna acacia's sprays
 // under one flat umbrella, their leaflets passing two fifths of the back-lit gain; Glacier Pass's April snow on its
 // spruce and its larches bare; round 8's canopy form (the forest-grown form, the open-grown form, the age's girth, the
-// crowns' inner wood) on the four places that grow it, and every other place — Verdant's woods, the bar, among them —
+// crowns' inner wood) on the places that grow it (Monsoon Ridge), and every other place — Verdant's woods, the bar, among them —
 // growing round 5's trees exactly. A construction receipt: the pictures and the cost live in the lane's captures.
 import assert from 'node:assert/strict';
 import {
@@ -62,7 +62,9 @@ function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; le
 // round 8's canopy form by place: the four places that grow it, round 5's trees everywhere else
 {
   const canopy = Object.keys(TREE_BIOMES).filter((id) => treeBiomeCanopyForm(id)).sort();
-  assert.deepEqual(canopy, ['alpine', 'caldera', 'copper_mesa', 'monsoon'], JSON.stringify(canopy));
+  // (Monsoon Ridge's woods, judged with its Naga Hills forms; Glacier Pass's, Obsidian Caldera's and Copper Mesa's wait on
+  // their critic)
+  assert.deepEqual(canopy, ['monsoon'], JSON.stringify(canopy));
   for (const id of canopy) assert.ok(treeBiomeWoodSpread(id) > 1, `${id}: its woods close (the forest form's maps)`);
   for (const id of ['verdant', 'frontier', 'reservoir', 'coastal']) assert.ok(!treeBiomeCanopyForm(id), `${id} keeps round 5's woods`);
   const oak = TREE_GROWTH_PROFILES.oak, r5 = forestGrownProfile(oak), r8 = forestGrownProfile(oak, true);
