@@ -1,4 +1,4 @@
-// The Type 10 (Dozer)'s bolted appliqué (owner 2026-10-22: "side armor and turret armor"): the module datums the
+// The Type 10 Kaitaku's bolted appliqué (owner 2026-10-22: "side armor and turret armor"): the module datums the
 // builder draws (profiles/type10DozerFieldKit.ts) and the spaced plates its spec carries (type10DozerSpecs.ts), from one
 // table. Boot-light: plain data, no geometry. Hull modules in the hull frame, turret modules in the turret frame (its
 // pivot at the origin). The faces they bolt to are the modern Type 10's (type10X.ts): the skirt face at x 1.575, the

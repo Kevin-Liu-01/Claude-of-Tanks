@@ -473,7 +473,7 @@ function fnv1a(str: string): number {
 }
 
 /**
- * Vehicles that dress exactly as another: the Type 10 (Dozer) is the modern Type 10 with a bow kit (owner 2026-10-22),
+ * Vehicles that dress exactly as another: the Type 10 Kaitaku is the modern Type 10 with a bow kit (owner 2026-10-22),
  * so it takes the Type 10's manifest and seed; its kit reserves the bow (profiles/type10Dozer.ts), which keeps the bow
  * shackles and chain off the blade.
  */

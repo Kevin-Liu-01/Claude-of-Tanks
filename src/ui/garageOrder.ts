@@ -51,9 +51,10 @@ export const GARAGE_LEADING_VEHICLE_IDS_BY_NATION = Object.freeze({
     'm6_linebacker', 'griffin50mm', 'griffin_viper', 'm3a3_bradley',
   ]),
   Japan: Object.freeze([
+    // owner 2026-10-22: "make this the first tannk u see in japannnn" (the Type 10 Kaitaku)
+    'type10_dozer',
     'type10',
     'type10b',
-    'type10_dozer',
     'raiju_ifv', 'type89',
     'type90',
   ]),

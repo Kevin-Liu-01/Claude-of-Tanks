@@ -1,4 +1,4 @@
-// The Type 10 (Dozer): the modern Type 10 (`type10`, the independent X build of sourceXSecondWaveSpecs.ts) carrying the
+// The Type 10 Kaitaku (開拓, land-clearing; the id keeps its first name, type10_dozer): the modern Type 10 (`type10`, the independent X build of sourceXSecondWaveSpecs.ts) carrying the
 // JGSDF dozer kit (profiles/type10Dozer.ts). Owner 2026-10-22: the kit belongs on the modern Type 10, not on the
 // TK-X ("u applied it to the wrong next gen moodel instead of the 'modern' model"). Japan's pack registers before the
 // second-wave X builds, so the dozer clones `type10` here, once it exists: type10's armour, frame and gun rig, with the
@@ -13,7 +13,7 @@ const registries = bindFleetRegistries(TANK_SPECS, MODEL_SOURCE, ALL_TANK_IDS);
 // Owner order 2026-10-21: the Type 10 fitted with the JGSDF dozer kit (ドーザ装置付き). Same gun, fire control and armour
 // as the Type 10; the 2 t blade and its rams cost a little speed and pivot, and the bow blade makes it the family's
 // breaching tank. Paint: the green digital of the owner's reference render (plate 99-0239).
-const spec = cloneFleetVariant(registries.tankSpecs, 'type10_dozer', 'type10', { name: 'Type 10 (Dozer)', nation: 'Japan' });
+const spec = cloneFleetVariant(registries.tankSpecs, 'type10_dozer', 'type10', { name: 'Type 10 Kaitaku', nation: 'Japan' });
 delete spec.balancePeerOf;
 delete spec.publicVisualFallback;
 delete spec.label;

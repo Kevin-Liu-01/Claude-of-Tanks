@@ -3627,7 +3627,7 @@
    "hostSweep": []
   },
   "type10_dozer": {
-   "inputHash": "6390e69da008be06",
+   "inputHash": "cb46d7791ae19a02",
    "runs": [
     {
      "index": 0,
@@ -3647,7 +3647,7 @@
       "sunkMaxM": 0.001,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.831,
+      "exposure": 0.88,
       "host": "hull<hull@profiles/type10X.ts:50>"
      }
     },
@@ -3691,7 +3691,7 @@
       "sunkMaxM": 0.001,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.771,
+      "exposure": 0.795,
       "host": "hull<hull@profiles/type10X.ts:50>"
      }
     },

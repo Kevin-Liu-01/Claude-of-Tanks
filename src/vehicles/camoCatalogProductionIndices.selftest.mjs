@@ -34,7 +34,7 @@ const now = camoBaselineRows({ specs, policy, materials });
 assert.equal(baseline.ids.length, 170, 'production (deploy 206) lists 170 pattern ids');
 assert.deepEqual(now.ids.slice(0, baseline.ids.length), baseline.ids, 'every production index holds the same id');
 assert.deepEqual(now.ids.slice(baseline.ids.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer'],
-  'only the M6 Linebacker paint, the release-233 Signatures and the Type 10 (Dozer) paint append, after GT');
+  'only the M6 Linebacker paint, the release-233 Signatures and the Type 10 Kaitaku paint append, after GT');
 assert.deepEqual(now.catalog.slice(0, baseline.catalog.length), baseline.catalog, 'the garage picker lists production\'s schemes in order');
 assert.deepEqual(now.catalog.slice(baseline.catalog.length), ['paint_m6_linebacker', ...RELEASE_233_SIGNATURES, 'paint_type10_dozer']);
 

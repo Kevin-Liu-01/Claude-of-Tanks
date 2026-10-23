@@ -1,4 +1,4 @@
-// Type 10 (Dozer): the JGSDF ドーザ装置 (dozer kit) on the modern Type 10 (type10X.ts; owner 2026-10-22).
+// Type 10 Kaitaku: the JGSDF ドーザ装置 (dozer kit) on the modern Type 10 (type10X.ts; owner 2026-10-22).
 // First-party procedural geometry: Kevin B. Liu (NOTICE.md). No source model; the kit follows the JGSDF arrangement:
 // a full-width moldboard on two push arms pinned to clevises on the lower bow, raised and lowered by two hydraulic rams
 // that the crew works from inside (hoses run through the bow plate). It lifts and lowers only; it cannot angle or tilt.
@@ -58,7 +58,9 @@ const BLADE_HALF_W = 1.62;          // moldboard x +-1.62; end plates carry it t
 const BLADE_H = 0.84;               // moldboard height along its own face
 const PLATE_T = 0.032;              // moldboard plate
 const STOWED_LEAN = 32 * Math.PI / 180; // the raised blade tips back toward the bow; lowered it stands 10 degrees back
-const STOWED_EDGE: [number, number] = [0.52, 4.50];  // [y, z] of the cutting-edge datum, stowed
+// [y, z] of the cutting-edge datum, stowed: far enough out that the arms and rams show between the blade and the bow
+// (the blind critic's round: at z 4.50 the raised blade read as a plate pressed on the nose)
+const STOWED_EDGE: [number, number] = [0.52, 4.62];
 const LOWERED_EDGE_Y = 0.04;        // the cutting edge just off the ground, lowered
 const HINGE_S = PLATE_A.sAt(0.62);  // the arm clevis on plate A, its pad clear of the plate's foot and of the crease
 const HINGE_OUT = 0.065;            // pin centre off the plate

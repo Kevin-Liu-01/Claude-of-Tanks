@@ -1,7 +1,7 @@
-// Type 10 (Dozer) field kit (owner 2026-10-22, verbatim: "make it have 2 unique auto cannnonn turrets, a bunch of new
+// Type 10 Kaitaku field kit (owner 2026-10-22, verbatim: "make it have 2 unique auto cannnonn turrets, a bunch of new
 // cages and side armor and turret armor and lights and equipment", then "sorry they should be machine guns not
-// autocannons" and "also add a giant flootlight next to gun to left of it"). First-party procedural geometry: Kevin B.
-// Liu (NOTICE.md). It rides the modern Type 10 (type10X.ts, built without its 12.7 mm station) beside the dozer kit
+// autocannons", "also add a giant flootlight next to gun to left of it", then "put thee flood light on other side of
+// gun"). First-party procedural geometry: Kevin B. Liu (NOTICE.md). It rides the modern Type 10 (type10X.ts, built without its 12.7 mm station) beside the dozer kit
 // (type10Dozer.ts). Authored in the hull frame; turret stock is taken into the turret's frame at its pivot.
 //
 // - Two remote machine-gun turrets, each its own design and each a working auxiliary station at its true calibre
@@ -9,7 +9,7 @@
 //   an enclosed mini-turret with a boresighted searchlight on the rear right roof, both on raised rings. Each covers the
 //   front and its own side; the barrels sweep over the commander's cupola and sights, and each station's traverse keeps
 //   clear of the other station.
-// - A giant floodlight beside the main gun on its left (+x), on a yoke bolted to the left cheek.
+// - A giant floodlight beside the main gun on its right (-x), on a yoke bolted to the right cheek.
 // - Cages: the modern field cage on the turret's rear two thirds (modernFieldCage.ts) and slat screens over the hull's
 //   rear flanks.
 // - Bolted appliqué (type10DozerArmor.ts, whose spaced plates the spec carries): four modules a side on the hull skirts,
@@ -249,44 +249,47 @@ function workLamp(P: TankBuilderPort, x: number, y: number, z: number, back = fa
   turretBar(P, 'turretDark', [x - .07, y + .18, z + d * .09], [x + .07, y + .18, z + d * .09], .006);
 }
 
-// ---- the floodlight left of the main gun -------------------------------------------------------------------------------
-// Turret frame. The left cheek's front face rakes back from z 2.28 (x 0.48-0.64) to 1.97 (x 1.04) at the gun's height,
-// and its top falls from 0.58 (z 1.84) to 0.39 (z 2.24). The drum stands just ahead of the face on a yoke whose arms run
-// back to pads bolted on the face, a cross brace below and a stay to the cheek's top: a 0.54 m drum, its inner edge 0.38 m
-// off the mantlet and its top under the commander's sight window.
-const FLOOD = { x: .83, y: .44, z: 2.53, r: .27, len: .34 } as const;
+// ---- the floodlight beside the main gun, on its right ----------------------------------------------------------------
+// Owner 2026-10-22: "put thee flood light on other side of gun" (from the left cheek to the right, -x; the coaxial gun's
+// port is on the left). Turret frame. The right cheek's front face rakes back from z 2.28 (|x| 0.16-0.64) to 1.91
+// (|x| 1.12) at the gun's height, and its top falls from 0.58 (z 1.84) to 0.39 (z 2.24). The drum stands just ahead of
+// the face on a yoke whose arms run back to pads bolted on the face, a cross brace below and a stay to the cheek's top:
+// a 0.54 m drum, its inner edge 0.38 m off the mantlet and its top under the commander's sight line.
+const FLOOD = { side: -1, x: .83, y: .44, z: 2.53, r: .27, len: .34 } as const;
 
 function floodlight(P: TankBuilderPort): void {
-  const F = FLOOD, seg = P.q ? 40 : 24, add = (slot: string, g: THREE.BufferGeometry, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0) =>
+  const F = FLOOD, S = F.side, X = S * F.x, seg = P.q ? 40 : 24;
+  const add = (slot: string, g: THREE.BufferGeometry, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0) =>
     P.addEquipment(slot, g, x, y, z, rx, ry, rz);
   const front = F.z + F.len / 2;
-  add('turretDetail', cylZ(F.r, F.len, seg), F.x, F.y, F.z);                                       // drum
-  add('turretDark', cylZ(F.r + .016, .04, seg), F.x, F.y, front + .01);                             // bezel
-  add('turretGlass', markVehicleNightLens(cylZ(F.r - .03, .012, seg), 'headlight', { tint: 'cool' }), F.x, F.y, front + .019);
-  for (const rz of [Math.PI / 4, -Math.PI / 4]) add('turretDark', box(2 * F.r - .02, .012, .012), F.x, F.y, front + .036, 0, 0, rz); // guard
-  add('turretDetail', cylZ(F.r - .02, .08, seg, F.r - .09), F.x, F.y, F.z - F.len / 2 - .04);       // rear cap
-  if (P.q) for (const dz of [-.10, -.06, -.02]) add('turretDark', cylZ(F.r + .006, .008, seg), F.x, F.y, F.z + dz); // fins
+  add('turretDetail', cylZ(F.r, F.len, seg), X, F.y, F.z);                                         // drum
+  add('turretDark', cylZ(F.r + .016, .04, seg), X, F.y, front + .01);                               // bezel
+  add('turretGlass', markVehicleNightLens(cylZ(F.r - .03, .012, seg), 'headlight', { tint: 'cool' }), X, F.y, front + .019);
+  for (const rz of [Math.PI / 4, -Math.PI / 4]) add('turretDark', box(2 * F.r - .02, .012, .012), X, F.y, front + .036, 0, 0, rz); // guard
+  add('turretDetail', cylZ(F.r - .02, .08, seg, F.r - .09), X, F.y, F.z - F.len / 2 - .04);         // rear cap
+  if (P.q) for (const dz of [-.10, -.06, -.02]) add('turretDark', cylZ(F.r + .006, .008, seg), X, F.y, F.z + dz); // fins
   // armoured doors swung open to the sides
-  for (const s of [-1, 1]) add('turretDetail', box(.012, 2 * F.r * .9, F.r * .95), F.x + s * (F.r + .03), F.y, front + F.r * .40, 0, s * .55, 0);
+  for (const s of [-1, 1]) add('turretDetail', box(.012, 2 * F.r * .9, F.r * .95), X + s * (F.r + .03), F.y, front + F.r * .40, 0, s * .55, 0);
   // carry handle
-  for (const dz of [-.08, .08]) add('turretDark', cylY(.010, .010, .07, 8), F.x, F.y + F.r + .035, F.z + dz);
-  add('turretDark', cylZ(.010, .19, 8), F.x, F.y + F.r + .07, F.z);
-  // the yoke: trunnion bosses, arms back to pads on the raked face, a brace under the drum, a stay to the cheek's top
-  const feet: Point[] = [[F.x - F.r - .025, .34, 2.2925], [F.x + F.r + .025, .34, 1.922]];   // pads 3-4 mm into the face
+  for (const dz of [-.08, .08]) add('turretDark', cylY(.010, .010, .07, 8), X, F.y + F.r + .035, F.z + dz);
+  add('turretDark', cylZ(.010, .19, 8), X, F.y + F.r + .07, F.z);
+  // the yoke: trunnion bosses, arms back to pads 3-4 mm into the face (the outer pad square to its rake), a brace under
+  // the drum just proud of the face, a stay to a pad on the cheek's top where it is flattest
+  const feet: Point[] = [[S * (F.x - F.r - .025), .34, 2.2925], [S * (F.x + F.r + .025), .34, 1.922]];
   for (const [i, foot] of feet.entries()) {
-    const sx = i === 0 ? -1 : 1, boss: Point = [F.x + sx * (F.r + .025), F.y, F.z];
+    const boss: Point = [X + (i === 0 ? -S : S) * (F.r + .025), F.y, F.z];
     add('turretDark', cylX(.042, .04, 16), boss[0], boss[1], boss[2]);
     P.addEquipment('turretDetail', beamBetween(boss, foot, .028, 10));
-    add('turretDetail', box(.12, .14, .025), foot[0], foot[1], foot[2] - .004, 0, i === 0 ? 0 : .6435, 0);
+    add('turretDetail', box(.12, .14, .025), foot[0], foot[1], foot[2] - .004, 0, i === 0 ? 0 : S * .6435, 0);
   }
   P.addEquipment('turretDetail', beamBetween([feet[0][0], .26, 2.335], [feet[1][0], .26, 1.965], .022, 10));
-  P.addEquipment('turretDetail', beamBetween([F.x, F.y + F.r - .02, F.z - .10], [F.x, .475, 2.07], .018, 10));
-  add('turretDark', box(.10, .02, .10), F.x, .473, 2.07, .444, 0, 0);                               // stay's foot on the top
+  P.addEquipment('turretDetail', beamBetween([X, F.y + F.r - .02, F.z - .10], [S * .78, .545, 1.95], .018, 10));
+  add('turretDark', box(.10, .02, .10), S * .78, .542, 1.95, .4636, 0, 0);                          // stay's foot on the top
   // the lamp's cable back into the turret
-  const cable = new THREE.CatmullRomCurve3([new THREE.Vector3(F.x + .06, F.y - .06, F.z - F.len / 2 - .08),
-    new THREE.Vector3(F.x + .14, F.y - .02, 2.22), new THREE.Vector3(F.x + .18, .46, 2.06)], false, 'centripetal');
+  const cable = new THREE.CatmullRomCurve3([new THREE.Vector3(X + S * .06, F.y - .06, F.z - F.len / 2 - .08),
+    new THREE.Vector3(X + S * .14, F.y - .02, 2.22), new THREE.Vector3(X + S * .18, .46, 2.06)], false, 'centripetal');
   P.addEquipment('turretDark', new THREE.TubeGeometry(cable, 12, .011, 6, false));
-  reserveDecorVolume(P.turretG, [F.x - F.r - .08, .08, 1.90], [F.x + F.r + .08, F.y + F.r + .12, front + .26]);
+  reserveDecorVolume(P.turretG, [X - F.r - .08, .08, 1.90], [X + F.r + .08, F.y + F.r + .12, front + .26]);
 }
 
 // ---- the equipment light on the original Type 10's 12.7 mm seat ---------------------------------------------------------
