@@ -218,6 +218,14 @@ const COLONY_GARDENS = [...COLONY_GARDENS_SOUTH,
 // so no other tree's draw moves).
 const COLONY_POPLARS_SOUTH: [number, number][] = [[-30, backZ(-30) - 9], [100, backZ(100) - 9], [158, backZ(158) - 9]];
 
+/** The light buildings the roadside pass seated on round 3's tree (kind, pose; rot in radians), pinned with their twins. */
+const LIGHT_BUILDINGS = [
+  { kind: 'quonsethut', x: 100.88, z: 52.34, rot: -89.04 * Math.PI / 180 },
+  { kind: 'transformershed', x: 50.69, z: 50.85, rot: -96.59 * Math.PI / 180 },
+  { kind: 'motorpool', x: -167.03, z: 118.65, rot: -91.29 * Math.PI / 180 },
+  { kind: 'guardpost', x: -253.74, z: -95.37, rot: -0.02 * Math.PI / 180 },
+] as const;
+
 export default {
   id: 'railyard',
   name: 'Cinder Junction',
@@ -354,13 +362,25 @@ export default {
     // the crossing roads' corners with the service roads: a long roadside shed seated there reached into both roads
     roadBuildingKeepouts: [{ x: 252, z: 96, r: 16 }, { x: -252, z: -96, r: 16 }],
     destructibleBuildings: ['quonsethut', 'transformershed', 'motorpool', 'guardpost'],
+    // (the maps-restyle lane, 2026-10-22: the fairness ask's twin law, props.ts PropsMapConfig.rotationalCentre) the layout
+    // turns about the station square: the random hulks stand in twins about it (the light buildings are pinned below)
+    rotationalCentre: [0, 0],
+    // (2026-10-11, the map-revival lane, round 3's fairness: alpha won 26-14 at 40 all-bot games, the north team dying
+    // round the centre under fire from the south-east quarter) the light buildings stand in rotational pairs about the
+    // centre: the four the roadside pass seated (a quonset hut and a transformer shed in the north-east quarter by the
+    // centre, a motor pool to the north-west, a guard post to the south-west), each with its twin turned through 180
+    // degrees, pinned (the pass draws nothing: its own stream, so no other draw moves)
+    townLightPlan: [
+      ...LIGHT_BUILDINGS,
+      ...LIGHT_BUILDINGS.map(({ kind, x, z, rot }) => ({ kind, x: -x, z: -z, rot: rot + Math.PI })),
+    ],
     // Rotational pairs about the station square, each at least 180 m from every other: a post covering each level
     // crossing from the open field beyond it, a gate at each works, a camp at the outer foot of each spoil bank.
     tacticalBeats: [
       { id: 'west-crossing-post', role: 'brawl', x: -310, z: -66, yawDeg: 40,
-        structure: 'guardpost', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: -15 },
+        structure: 'guardpost', redoubt: true, outcrop: { count: 5, radius: 9 } },
       { id: 'east-crossing-post', role: 'brawl', x: 310, z: 66, yawDeg: 220,
-        structure: 'guardpost', redoubt: true, outcrop: { count: 5, radius: 9 }, wreck: true, wreckOffsetX: 15 },
+        structure: 'guardpost', redoubt: true, outcrop: { count: 5, radius: 9 } },
       { id: 'south-works-gate', role: 'support', x: 198, z: -112, yawDeg: 135,
         structure: 'transformershed', redoubt: true, outcrop: { count: 5, radius: 9 } },
       { id: 'north-works-gate', role: 'support', x: -198, z: 112, yawDeg: 315,
@@ -445,6 +465,10 @@ export default {
     // the armor that fought over the railhead
     // the map-vehicles lane (2026-10-06, the period ruling): a German coalfield junction in the 1960s: the
     // Bundeswehr's M48s and M47s, the Rhine Army's Centurions
+    // (round 3's fairness: two random hulks stood by the centre in the north-east quarter with no twins) the hulks stand
+    // in twins about the station square (props.rotationalCentre below; the maps-restyle lane, 2026-10-22, in place of
+    // round 3b's count 0); the crossing posts' own wrecks are off (the east post's never found ground, so the west one
+    // stood alone)
     tankWrecks: { era: 'cold-war', count: 6, debris: true, ids: ['m48a5_patton', 'centurion5_2', 'm47_patton'] },
     sandbagLines: 10,
     // world-dressing r1: brick yard walls; industrial inhabitants — oil-drum

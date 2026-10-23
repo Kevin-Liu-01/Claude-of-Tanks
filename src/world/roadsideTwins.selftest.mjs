@@ -17,14 +17,19 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // the declarations, each at the point its beats pair about (the maps-restyle lane, 2026-10-22: Sirocco Wadi first, its
 // item 77 pass; the other paired maps declare with their own passes)
 const declared = MAP_IDS.filter((id) => getMapConfig(id).props?.rotationalCentre);
-for (const id of ['desert']) assert.ok(declared.includes(id), `${id} declares its rotation centre`);
+for (const id of ['desert', 'railyard']) assert.ok(declared.includes(id), `${id} declares its rotation centre`);
 for (const id of declared) {
   const cfg = getMapConfig(id), [cx, cz] = cfg.props.rotationalCentre;
   const beats = cfg.props.tacticalBeats ?? [];
   for (const b of beats) {
     assert.ok(beats.some((o) => Math.hypot(2 * cx - b.x - o.x, 2 * cz - b.z - o.z) < 1), `${id}: its beats pair about [${cx}, ${cz}]`);
   }
-  assert.ok(!cfg.props.townLightPlan, `${id}: a recorded light plan would win over the twin pass (none here)`);
+  // a recorded light plan wins over the twin pass, so a declaring map's own plan is itself twinned (Cinder Junction pins
+  // its four light buildings and their twins: the map-revival lane's round 3b)
+  for (const r of cfg.props.townLightPlan ?? []) {
+    assert.ok(cfg.props.townLightPlan.some((o) => o.kind === r.kind && Math.hypot(o.x - (2 * cx - r.x), o.z - (2 * cz - r.z)) < 0.05
+      && Math.abs(wrap(o.rot - r.rot - Math.PI)) < 1e-6), `${id}: its pinned ${r.kind} at ${r.x}, ${r.z} has its twin`);
+  }
 }
 
 // one map built: every light building of the roadside pass and every hulk twinned
