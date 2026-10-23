@@ -192,7 +192,7 @@ for (const id of ids) {
     // profiles/donbasFieldCover.ts) replaced the deck-wide blanket with supported flank drapes over the five side
     // ERA cassettes (z -1.9..1.7 on the t72b3 hull) and a bustle cover behind the open sights and hatches. 2026-10-22:
     // back on the t72b3 hull with the T-64BV mod. 2017's previous build (owner: "its previous model"), its flanks now
-    // carrying Kontakt-1 containers on the leading skirt panels (t64bv2017.ts); the drapes now stop behind the first
+    // carrying Kontakt-1 containers on the leading skirt panels (t64bvK1.ts); the drapes now stop behind the first
     // of them (z -2.22..0.92) so the K-1 row stays in sight.
     const cover = turretRig.userData.fieldCover;
     assert.deepEqual(cover, { supported: true, sightsOpen: true, hatchesOpen: true, revision: 1 },

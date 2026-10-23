@@ -1,16 +1,18 @@
-// The Ukrainian Army's T-64BV mod. 2017 (t64bv_donbas; "Donbas" was the kitbash source's label). Owner 2026-10-22,
-// verbatim: "the ukranian t64bv1 should just be its previous model with an updated name", then "make our donbas version
-// take cues from a lot of aesthetic ennnhancemennts and the era layout from our newer one tho".
-// The previous model stays: the T-72B3 study's hull, turret, running gear, drums, roof NSVT and antennas, with the rear
-// cage, the service bins and whips and the Donbas field cover. From the T-64BV1's own build (t64bvX.ts) it takes the
-// Kontakt-1 layout in place of the B3's Kontakt-5: four staggered courses on the glacis below a V splash board,
-// containers on the leading skirt sections, the two-tier horseshoe round the turret front and a roof row ahead of the
-// hatches; and the L-2G searchlight left of the gun and the self-entrenching blade on the lower nose plate.
+// The T-64BV pair on the T-72B3 study under the Kontakt-1 layout. Owner 2026-10-22, verbatim: "the ukranian t64bv1
+// should just be its previous model with an updated name", then "make our donbas version take cues from a lot of
+// aesthetic ennnhancemennts and the era layout from our newer one tho", then "now redesignn the russian t64bv1 to be
+// based on the ukranian t64bv donbas".
+// The body is the Ukrainian T-64BV mod. 2017's (t64bv_donbas; "Donbas" was the kitbash source's label): the T-72B3
+// study's hull, turret, running gear, drums, roof NSVT and antennas, with the Kontakt-1 layout of release 237's own T-64
+// build in place of the B3's Kontakt-5 (four staggered courses on the glacis below a V splash board, containers on the
+// leading skirt sections, the two-tier horseshoe round the turret front and a roof row ahead of the hatches), the L-2G
+// searchlight left of the gun and the self-entrenching blade on the lower nose plate. The mod. 2017 carries the Donbas
+// field kit and cover; the Russian T-64BV1 its sensor, turret cage and pack, and the OPVT snorkel on the bustle box.
 import * as THREE from 'three';
 import {KIT} from './kit.ts';
 import {beamBetween,type Point3} from './measuredPrimitives.ts';
+import {markEraHitFaces,markEraFurniture} from './eraHitFaces.ts';
 import {buildT72B3X,t72b3XCastingContains} from './t72b3X.ts';
-import {k1Brick} from './t64bvX.ts';
 import {T72B3_X_SOURCE_DATUMS} from '../t72b3XArmor.ts';
 import {addDonbasFieldCover} from './donbasFieldCover.ts';
 import {attachedCage,supportedSensor,strappedPack} from './modernizationFittings.ts';
@@ -19,6 +21,17 @@ import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {box,cylZ,torus}=KIT;
 const YAW=T72B3_X_SOURCE_DATUMS.turretPivot,RING=new THREE.Vector3(...YAW);
 const UP=new THREE.Vector3(0,1,0);
+
+/** One Kontakt-1 container: the reactive body (its +Y face is the hit face) and its bolted lid, oriented by `basis`. */
+function k1Brick(P:TankBuilderPort,owner:'hull'|'turret',sector:string,basis:THREE.Matrix4,size:Point3):void {
+  const [w,th,len]=size;
+  // HIGH draws the container's rounded edges; LOW the plain block (the fleet LOW tier's cost rule)
+  const body=P.q?box(w,th,len):new THREE.BoxGeometry(w,th,len);
+  P.destructibleCluster(sector,()=>{
+    P.addExternalArmor(owner,markEraHitFaces(body,[0,1,0]).applyMatrix4(basis));
+    P.addExternalArmor(owner,markEraFurniture(box(w*.86,.010,len*.86)).translate(0,th/2+.004,0).applyMatrix4(basis));
+  });
+}
 
 // ---------------------------------------------------------------- hull (hull frame: ground y = 0, +Z forward)
 // The B3's upper glacis plate (t72b3X.ts hull sections) runs from (z 2.20, y 1.3078) to the nose (3.17815, 0.8215);
@@ -81,7 +94,7 @@ function castFrame(t:number,y:number):{p:THREE.Vector3;n:THREE.Vector3} {
 }
 
 /** One container on the casting: one tilt per tier (pitch up from the horizontal outward normal), let 4 mm into the
- * shell at its nearest corner, on stand-off struts where it stands clear of it (t64bvX.ts turretEra). */
+ * shell at its nearest corner, on stand-off struts where it stands clear of it (release 237's T-64 turret, a0711ff866). */
 function seat(P:TankBuilderPort,p:THREE.Vector3,outward:THREE.Vector3,size:Point3,pitch:number):void {
   const [w,th,len]=size;
   const out=new THREE.Vector3(outward.x,0,outward.z).normalize(),tangent=new THREE.Vector3().crossVectors(UP,out).normalize();
@@ -136,8 +149,8 @@ function searchlight(P:TankBuilderPort):void {
   P.addEquipment('turretDetail',beamBetween([x-YAW[0],low-YAW[1],face(low)-.01-YAW[2]],[...at(0,-.14,-.06)],.02,8));
 }
 
-// ---------------------------------------------------------------- the previous model's own fittings (turret frame)
-function fieldFittings(P:TankBuilderPort):void {
+// ---------------------------------------------------------------- each vehicle's own fittings (turret frame)
+function donbasFittings(P:TankBuilderPort):void {
   supportedSensor(P,[.40,.88,-.49],.66);
   // 2026-10-19 (owner float sweep): the T-64 turret's rear wall stands 0.35 m forward of the T-72's, so the cage hung in
   // the air behind it; it moves 0.25 m forward and its brackets reach the wall
@@ -151,12 +164,38 @@ function fieldFittings(P:TankBuilderPort):void {
   }
 }
 
-export function buildT64BV2017(P:TankBuilderPort):void {
+function bv1Fittings(P:TankBuilderPort):void {
+  // The pre-237 T-64BV1's kit on the same turret: the sensor, the rear cage and its pack on the right of it.
+  supportedSensor(P,[.40,.88,-.49],.66);
+  attachedCage(P,'turret',[0,.31,-1.64],1.82,.46,.53);
+  strappedPack(P,'turret',[.38,.39,-1.39],[.55,.24,.32]);
+  // The OPVT snorkel tube strapped across the bustle box's lid (release 237's T-64 build carried it on its locker lid):
+  // the B3's case lid runs x -0.39..0.46 at y 2.157, z -1.58..-1.36 (t72b3XEquipment.ts rearCase), the tube let 4 mm
+  // into it, clear of the NSVT bracket ending at z -1.30.
+  const lidY=2.157,z=-1.47,r=.12,cx=.035;
+  const at=(x:number,y:number)=>[x-YAW[0],y-YAW[1],z-YAW[2]] as const;
+  P.addEquipment('turretDetail',KIT.cylX(r,.95,P.q?20:12),...at(cx,lidY+r-.004));
+  for(const dx of [-.30,.30])P.addEquipment('turretDark',torus(r+.004,.012,P.q?20:10,P.q?6:4).rotateY(Math.PI/2),...at(cx+dx,lidY+r-.004));
+}
+
+/** The shared body: the T-72B3 study without its Kontakt-5, under the Kontakt-1 layout, the searchlight and the blade. */
+function buildT64BVBody(P:TankBuilderPort):void {
   buildT72B3X(P,{kontakt5:false});
   glacisEra(P);for(const side of [-1,1])skirtEra(P,side);blade(P);
   turretEra(P);searchlight(P);
-  fieldFittings(P);
+}
+
+export function buildT64BV2017(P:TankBuilderPort):void {
+  buildT64BVBody(P);
+  donbasFittings(P);
   addDonbasFieldCover(P);
   P.hullG.userData.familyRebuild={donor:'t72b3',revision:3,variant:'donbas',
     features:['k1-glacis','k1-skirt','k1-horseshoe','k1-roof-row','l2g-searchlight','dozer-blade','field-cover']};
+}
+
+export function buildT64BV1(P:TankBuilderPort):void {
+  buildT64BVBody(P);
+  bv1Fittings(P);
+  P.hullG.userData.familyRebuild={donor:'t72b3',revision:3,variant:'bv1',
+    features:['k1-glacis','k1-skirt','k1-horseshoe','k1-roof-row','l2g-searchlight','dozer-blade','opvt-snorkel']};
 }

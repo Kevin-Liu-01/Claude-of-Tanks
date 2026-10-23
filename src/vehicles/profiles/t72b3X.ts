@@ -212,7 +212,7 @@ function casting(P:TankBuilderPort):void {
 }
 
 /** True for a world-frame point inside the cast shell or its cheek blocks (the analytic courses the sections sample),
- * for fittings seated on the casting by another build (t64bv2017.ts). */
+ * for fittings seated on the casting by another build (t64bvK1.ts). */
 export function t72b3XCastingContains(x:number,y:number,z:number):boolean {
   if(y<CASTING_LOW)return false;
   for(const side of [-1,1]){
@@ -382,7 +382,7 @@ function mainGun(P:TankBuilderPort):void {
 }
 
 /** Options for a build on the whole B3 study. A vehicle that carries another reactive-armour layout (the T-64BV mod.
- * 2017's Kontakt-1, t64bv2017.ts) leaves out the B3's Kontakt-5 glacis cells, side cassettes and turret cassettes. */
+ * 2017's and the T-64BV1's Kontakt-1, t64bvK1.ts) leaves out the B3's Kontakt-5 glacis cells, side cassettes and turret cassettes. */
 export interface T72B3XOptions { kontakt5?:boolean }
 
 export function buildT72B3XHull(P:TankBuilderPort,options:T72B3XOptions={}):void {
@@ -413,10 +413,6 @@ export function buildT72B3XTurret(P:TankBuilderPort,options:T72B3XTurretOptions=
   roofEquipment(P);if(options.antennae!==false)antennae(P);smoke(P);if(options.commanderGun!==false)machineGun(P);mainGun(P);
 }
 export const T72B3_X_PROFILES={t72b3:{build:buildT72B3X}} as const;
-
-/** The B3's 2A46 tube and mantlet cover at its own trunnion, for a hull that keeps the B3 gun datum (t64bvX.ts).
- * The caller places P.gunG on that trunnion. */
-export function buildT72B3XMainGun(P:TankBuilderPort):void { mainGun(P); }
 
 /** Native mechanical foundation for owner-authorized complete hull rebuilds. */
 export function buildT72B3XRunningGear(P:TankBuilderPort):void { runningGear(P); }
