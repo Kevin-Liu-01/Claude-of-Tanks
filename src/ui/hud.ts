@@ -1669,7 +1669,7 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-kf.out{opacity:0;}
 .cot-kf .k,.cot-kf .v{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* callsigns in the display voice at the row's size; the docked desktop feed sets the direction's 13 px */
-.cot-kf .k,.cot-kf .v{font:600 1em/1 var(--font-display);letter-spacing:.02em;}
+.cot-kf .k,.cot-kf .v{font-family:${FONT_COND};font-weight:600;line-height:1;}
 body:is([data-cot-width='laptop'],[data-cot-width='desktop']):not(.cot-touch-layout) .cot-kf :is(.k,.v){font-size:13px;}
 .cot-kill-lane.l .cot-kf .k,.cot-kill-lane.r .cot-kf .v{color:var(--text-own);}
 .cot-kill-lane.r .cot-kf .k,.cot-kill-lane.l .cot-kf .v{color:var(--text-enemy);}
@@ -6324,16 +6324,17 @@ export function initHud(bus: EventBus): HudRuntime {
     if (!an || !en) return;
     // r4: each base carries a team-tinted cap fill so BOTH bases read on the
     // map (the old white 7% fill made the own-base marker invisible under
-    // the ally blip cluster at spawn — the map read one-sided).
+    // the ally blip cluster at spawn — the map read one-sided). The tints are
+    // the team inks every blip and objective glyph shares (brand-ui H1).
     spawnFlags = [
-      { x: ax / an, z: az / an, color: '#8df08d', fill: 'rgba(126,232,126,0.30)' },
-      { x: ex / en, z: ez / en, color: '#f26e64', fill: 'rgba(240,90,90,0.30)' },
+      { x: ax / an, z: az / an, color: sideColor('own'), fill: sideFill('own') },
+      { x: ex / en, z: ez / en, color: sideColor('enemy'), fill: sideFill('enemy') },
     ];
   }
 
   // minimap blip: WoT's vanilla marker language is ARROWS — a directional
   // vehicle arrow (nose forward, swept tail notch) rotated to hull heading.
-  // Player = larger white arrow, allies = green, enemies = red (r3: tinted
+  // Player = larger white arrow, allies and enemies in their team inks (r3: tinted
   // top-down silhouettes at 15 px read as directionless discs).
   function drawArrowBlip(
     c: CanvasRenderingContext2D,
