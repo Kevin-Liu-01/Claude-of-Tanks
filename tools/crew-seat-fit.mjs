@@ -528,6 +528,21 @@ function trimShape(shape, shell) {
   return lo > 0.15 ? scaled(lo) : null;
 }
 
+/** A head the trim would lose (its centre over a low roof) slides down, 2 cm at a time up to 30 cm, and shrinks to fit. */
+function lowerHead(shape, shell) {
+  let best = null;
+  for (let drop = 0.02; drop <= 0.3 + 1e-9; drop += 0.02) {
+    const moved = translate(shape, [0, -drop, 0]);
+    const scaled = (s) => ({ kind: 'ellipsoid', center: moved.center.slice(), radii: moved.radii.map((value) => value * s) });
+    const fits = (candidate) => shapeSurfaceSamples(candidate).every((p) => shell.inside(p, 0.006));
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 14; i++) { const mid = (lo + hi) / 2; if (fits(scaled(mid))) lo = mid; else hi = mid; }
+    if (lo > 0 && (!best || lo > best.lo + 1e-9)) best = { lo, shape: scaled(lo) };
+    if (lo >= 0.5) break;
+  }
+  return best?.shape ?? null;
+}
+
 const roundShape = (shape) => shape.kind === 'ellipsoid'
   ? { kind: 'ellipsoid', center: shape.center.map(ROUND), radii: shape.radii.map(ROUND) }
   : { kind: 'capsule', a: shape.a.map(ROUND), b: shape.b.map(ROUND), radius: ROUND(shape.radius) };
@@ -655,8 +670,14 @@ function finishSeat({ candidate, py, shell, relaxed, trimmed }) {
   const { body, px, pz } = candidate;
   const offset = [px, py, pz];
   let shapes = body.parts.shapes.map((shape) => translate(shape, offset));
-  if (trimmed !== null) shapes = shapes.map((shape) => trimShape(shape, shell)).filter(Boolean);
-  const head = body.parts.head.map((value, axis) => value + offset[axis]);
+  let head = body.parts.head.map((value, axis) => value + offset[axis]);
+  if (trimmed !== null) {
+    // the head is never dropped: the Gallery pins the mannequin's head inside it
+    const trimmedHead = trimShape(shapes[0], shell);
+    const lowered = trimmedHead ? null : lowerHead(shapes[0], shell);
+    if (lowered) head = lowered.center.slice();
+    shapes = [trimmedHead ?? lowered, ...shapes.slice(1).map((shape) => trimShape(shape, shell))].filter(Boolean);
+  }
   const bounds = boundsOf([...shapes, ...body.parts.boots.map((shape) => translate(shape, offset))]);
   const torso = body.parts.shapes[1];
   const seed = torso.a.map((value, axis) => (value + body.parts.shapes[2].b[axis]) / 2 + offset[axis]);
