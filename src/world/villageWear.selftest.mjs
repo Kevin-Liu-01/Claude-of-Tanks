@@ -16,8 +16,8 @@ const pilots = ['coastal', 'saltwind'];
 const activityMaps = ['coastal', 'caldera', 'foundry', 'saltwind', 'moon', 'cliffbridge'];
 // ground lane (the farmland, 2026-10-04): Verdant lays its village's ground out as plots (terrain.villageWear 'plots') —
 // the terrain material's mask alone, no CPU twin, grading, collision or grass input reads it; the map-revival lane:
-// Orchard Valley's walled yards and threshing floors (2026-10-05)
-const plotMaps = ['verdant', 'orchard'];
+// Orchard Valley's walled yards and threshing floors (2026-10-05) and Frontier Basin's Hofreiten (2026-10-05)
+const plotMaps = ['verdant', 'frontier', 'orchard'];
 // 2026-10-01 (frozen pins retired): the all28 parent mask digests (desktop/mobile, baked on historical road, shoreline,
 // exit, Badlands and Foundry inputs), the archived pilot masks, the parent config digest and the literal Alpine/Autumn/
 // Foundry config pins were change detectors of past outputs and authored data. Every comparison below is live: each
