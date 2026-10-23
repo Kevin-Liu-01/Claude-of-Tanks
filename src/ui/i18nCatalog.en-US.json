@@ -5032,5 +5032,6 @@
   "studio.director.ui.preset.desert-crossfire.title": "Desert crossfire",
   "studio.director.ui.preset.desert-crossfire.description": "A sunset engagement: approach, recoil and tracer, then the impact aftermath.",
   "studio.director.ui.preset.coast-recon.title": "Coastal reconnaissance",
-  "studio.director.ui.preset.coast-recon.description": "A moving coastal patrol with a rear follow, side portrait and sea-facing reveal."
+  "studio.director.ui.preset.coast-recon.description": "A moving coastal patrol with a rear follow, side portrait and sea-facing reveal.",
+  "studio.ws.shotDefault": "Shot {n}"
 }

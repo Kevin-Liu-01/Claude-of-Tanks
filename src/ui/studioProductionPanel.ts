@@ -44,6 +44,15 @@ export function productionLabel(key: CopyKey): string {
   return t(`studio.director.ui.${key}`);
 }
 
+/**
+ * A camera shot's name as the reader sees it: the timeline names an unnamed key "Shot N" in the scene file
+ * (studioTimeline.ts), and that default reads in the reader's language; a name someone gave a shot stays as written.
+ */
+export function shotLabel(label: string): string {
+  const unnamed = /^Shot (\d+)$/.exec(label);
+  return unnamed ? t('studio.ws.shotDefault', { n: unnamed[1] }) : label;
+}
+
 /** A curated sequence's title or description in the reader's language (the preset's own English when the catalog has none). */
 function presetText(id: string, field: 'title' | 'description', fallback: string): string {
   const key = `studio.director.ui.preset.${id}.${field}`;
@@ -435,7 +444,7 @@ export function mountStudioProductionPanel(
       storyboard.shots.forEach((shot, index) => {
         const entry = button('', () => { S.pause(); S.seek(shot.tMs); S.selectCameraShot(shot.id); refreshAll(); }, 'production-shot');
         entry.dataset.productionShot = shot.id;
-        entry.append(node('span', '', String(index + 1).padStart(2, '0')), node('span', '', shot.label), node('span', '', `${(shot.tMs / 1000).toFixed(1)}s`));
+        entry.append(node('span', '', String(index + 1).padStart(2, '0')), node('span', '', shotLabel(shot.label)), node('span', '', `${(shot.tMs / 1000).toFixed(1)}s`));
         shots.append(entry);
       });
     }

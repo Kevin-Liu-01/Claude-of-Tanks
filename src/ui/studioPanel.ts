@@ -2,7 +2,7 @@ import { STUDIO_TIMES, type StudioLight, type StudioTimeOfDay } from '../game/st
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { galleryHref } from '../game/tankIdBoundaries.ts';
 import type { ProductionFormat, ProductionRigId } from '../game/studioProduction.ts';
-import { mountStudioProductionPanel, productionLabel, type WorkspaceId } from './studioProductionPanel.ts';
+import { mountStudioProductionPanel, productionLabel, shotLabel, type WorkspaceId } from './studioProductionPanel.ts';
 import { mountStudioPicturePanel, type StudioPicturePanelApi } from './studioPicturePanel.ts';
 /**
  * studioPanel.ts — the Studio's interface (src/game/studio.ts's UI): the Premiere direction's page 09 on the live kit
@@ -13,6 +13,7 @@ import { iconUrl } from './icons.ts';
 import { type IconId } from './icons/icon.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { flagIconUrl } from './flags.ts';
+import { brandMarkSVG } from './brandMark.ts';
 import { MAP_HEROES, MAP_THUMBS } from './mapThumbs.ts';
 import { mountMediaArchive } from '../presentation/mediaArchive.ts';
 import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
@@ -319,9 +320,9 @@ interface StudioPanelRuntime {
   tick(dt: number): void;
 }
 
-/** Glyphs the sprite does not draw (step back, pause, step forward, add) and the mark, in its stroke: constant markup. */
+/** Glyphs the sprite does not draw (step back, pause, step forward, add) and the brand's badge: constant markup. */
 const STUDIO_GLYPHS = Object.freeze({
-  mark: '<svg class="cot-mark" viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" focusable="false"><path d="M2 8V2h6M16 2h6v6M22 16v6h-6M8 22H2v-6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M6.5 16.5 12 8.2l5.5 8.3" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="miter"/></svg>',
+  mark: brandMarkSVG(24),
   stepBack: '<svg class="cot-i" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M6 5v14M18 5 9 12l9 7Z"/></svg>',
   pause: '<svg class="cot-i" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M8 5v14M16 5v14"/></svg>',
   stepForward: '<svg class="cot-i" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M18 5v14M6 5l9 7-9 7Z"/></svg>',
@@ -1963,26 +1964,27 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const cameraLane = timelineLane(t('studio.ws.laneCamera'), 'toolPhoto');
     board.shots.forEach((shot, index) => {
       const selected = shot.id === S.selectedShotId;
+      const name = shotLabel(shot.label);
       const next = board.shots[index + 1]?.tMs ?? S.durationMs;
-      const clip = el('button', 'clip', shot.label);
+      const clip = el('button', 'clip', name);
       clip.type = 'button';
       clip.style.left = pct(shot.tMs);
       clip.style.width = `calc(${pct(Math.max(0, next - shot.tMs))} - 3px)`;
       clip.setAttribute('aria-pressed', String(selected));
-      clip.title = t('studioPanel.shot.timelineMarkerTitle', { label: shot.label, t: (shot.tMs / 1000).toFixed(2) });
+      clip.title = t('studioPanel.shot.timelineMarkerTitle', { label: name, t: (shot.tMs / 1000).toFixed(2) });
       clip.addEventListener('click', (event) => { event.stopPropagation(); S.selectCameraShot(shot.id); });
       cameraLane.appendChild(clip);
       const card = el('div', `shotcard${selected ? ' sel' : ''}`);
       card.appendChild(el('div', 'num', String(index + 1).padStart(2, '0')));
       const copy = el('div', 'copy');
       copy.append(
-        el('div', 'name', shot.label),
+        el('div', 'name', name),
         el('div', 'time', `${seconds(shot.tMs)} · ${Math.round(shot.fov)}°`),
       );
       copy.addEventListener('click', () => S.selectCameraShot(shot.id));
       card.appendChild(copy);
       const transition = document.createElement('select');
-      transition.setAttribute('aria-label', t('studioPanel.shot.transitionAria', { label: shot.label }));
+      transition.setAttribute('aria-label', t('studioPanel.shot.transitionAria', { label: name }));
       for (const id of SHOT_TRANSITIONS) {
         const option = document.createElement('option');
         option.value = id;
@@ -1995,15 +1997,15 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       }));
       card.appendChild(transition);
       card.appendChild(createInfoButton({
-        label: t('studioPanel.shot.showJsonLabel', { label: shot.label }),
-        title: t('studioPanel.shot.replicateTitle', { label: shot.label }),
+        label: t('studioPanel.shot.showJsonLabel', { label: name }),
+        title: t('studioPanel.shot.replicateTitle', { label: name }),
         json: () => ({ ...S.state(), fxTime: shot.tMs, timeScale: 0 }),
         guide: 'recipe',
       }));
       const del = el('button', 'x');
       del.type = 'button';
       del.innerHTML = uiIconSVG('close', 14);
-      del.title = t('studioPanel.shot.removeTitle', { label: shot.label });
+      del.title = t('studioPanel.shot.removeTitle', { label: name });
       del.setAttribute('aria-label', del.title);
       del.addEventListener('click', () => S.removeCameraShot(shot.id));
       card.appendChild(del);
@@ -2012,7 +2014,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const line = outlineRow(() => { productionPanel.activate('cinematics'); S.selectCameraShot(shot.id); });
       line.row.setAttribute('aria-current', String(selected));
       line.pick.innerHTML = uiIconSVG('toolPhoto', 16);
-      line.pick.append(el('span', 'nm', shot.label), el('span', 'd', seconds(Math.max(0, next - shot.tMs))));
+      line.pick.append(el('span', 'nm', name), el('span', 'd', seconds(Math.max(0, next - shot.tMs))));
       shotRows.appendChild(line.row);
     });
     // a lane per tank with keys: its flag, silhouette and name, a diamond per pose key
@@ -2231,7 +2233,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const board = S.getStoryboard();
       const shotIndex = board.shots.findIndex((shot) => shot.id === S.selectedShotId);
       setLabel(shotChip, shotIndex < 0 ? t('studio.ws.noShot')
-        : t('studio.ws.shot', { n: String(shotIndex + 1).padStart(2, '0'), label: board.shots[shotIndex].label }));
+        : t('studio.ws.shot', { n: String(shotIndex + 1).padStart(2, '0'), label: shotLabel(board.shots[shotIndex].label) }));
       if (planShown) planView.refreshPlan();
       api.refreshTime();
     },

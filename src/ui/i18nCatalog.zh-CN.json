@@ -5032,5 +5032,6 @@
   "studio.director.ui.preset.desert-crossfire.title": "沙漠交火",
   "studio.director.ui.preset.desert-crossfire.description": "日落交战：逼近、后坐与曳光，随后是命中后的余波。",
   "studio.director.ui.preset.coast-recon.title": "海岸侦察",
-  "studio.director.ui.preset.coast-recon.description": "沿海岸行进的巡逻：后方跟拍、侧面特写与面向大海的揭示。"
+  "studio.director.ui.preset.coast-recon.description": "沿海岸行进的巡逻：后方跟拍、侧面特写与面向大海的揭示。",
+  "studio.ws.shotDefault": "镜头 {n}"
 }
