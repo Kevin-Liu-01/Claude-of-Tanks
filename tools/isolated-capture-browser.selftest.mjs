@@ -148,6 +148,40 @@ finishFirst();
 assert.equal(await firstRun, first.value);
 assert.deepEqual(first.resources, { cache:null, server:null, browser:null });
 
+// capture (2026-10-22, tools/capture-hold.mjs): the cache, server, browser and warm open while the ticket waits (the
+// lock's prepare); the lock is released after the browser closes and before the server and cache.
+{
+  const fakeLock = (events, { failAcquire = false } = {}) => ({
+    async acquire(_ms, { prepare }) {
+      events.push('lock:queue');
+      await prepare();
+      if (failAcquire) throw new Error('cot-shots lock timeout');
+      events.push('lock:hold');
+    },
+    refresh() { return true; },
+    release() { events.push('lock:release'); return true; },
+  });
+  const held = fixture();
+  const warm = async (received) => { assert.deepEqual(received, { server:held.server, browser:held.browser }); held.events.push('warm'); };
+  held.dependencies.capture = { lock:fakeLock(held.events), warm };
+  assert.equal(await withIsolatedCaptureBrowser(options, launchOptions, held.callback, held.dependencies), held.value);
+  assert.deepEqual(held.events, ['lock:queue', 'tmpdir', 'cache:create', 'server:create', 'server:listen', 'browser:launch', 'warm',
+    'lock:hold', 'callback', 'browser:close', 'lock:release', 'server:close', 'cache:close'],
+  'open and warm while queued; release after the browser closes and before the server and cache');
+
+  const failed = fixture('browser:launch');
+  failed.dependencies.capture = { lock:fakeLock(failed.events) };
+  await assert.rejects(withIsolatedCaptureBrowser(options, launchOptions, failed.callback, failed.dependencies),
+    error => error === failed.primary, 'a failure while warming is the primary error');
+  assert.equal(failed.events.includes('lock:release'), false, 'nothing was held, so nothing is released');
+  assert.deepEqual(failed.resources, { cache:null, server:null, browser:null });
+
+  const timedOut = fixture();
+  timedOut.dependencies.capture = { lock:fakeLock(timedOut.events, { failAcquire:true }) };
+  await assert.rejects(withIsolatedCaptureBrowser(options, launchOptions, timedOut.callback, timedOut.dependencies), /lock timeout/);
+  assert.deepEqual(timedOut.resources, { cache:null, server:null, browser:null }, 'a wait that times out closes what it warmed');
+}
+
 for (const name of ['geometry-gate', 'track-clip-audit', 'tank-standard-check',
   'module-visual-align-probe', 'track-duplicate-audit']) {
   const source = readFileSync(new URL(`./${name}.mjs`, import.meta.url), 'utf8');
@@ -158,4 +192,4 @@ for (const name of ['geometry-gate', 'track-clip-audit', 'tank-standard-check',
     `${name}: no unguarded shared-cache acquisition`);
 }
 
-console.log('isolated-capture-browser: startup/callback failures, independent cleanup, primary errors, unchanged options, concurrent ownership and five release callers pass');
+console.log('isolated-capture-browser: startup/callback failures, independent cleanup, primary errors, unchanged options, concurrent ownership, capture holds (warm while queued) and five release callers pass');

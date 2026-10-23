@@ -236,7 +236,8 @@ for (const [name, { pages: catalogPages, modules, keys, lazyKeys, lazy }] of Obj
   if (lazyKeys.length) assert.ok(lazy.length, `${name}: lazy keys come from lazy boundaries`);
   for (const module of lazy) assert.ok(modules.includes(module), `${name}: the lazy boundary ${module} is scanned`);
   assert.deepEqual(Object.keys(catalogSubset(zh, lazyKeys)), lazyKeys, `${name}: every lazy key has its zh-CN string`);
-  assert.ok(keys.includes('garage.tools.stagingAreas'), `${name}: the runtime's locale CSS label`);
+  // (BUI-F8: the runtime reads no catalog key itself any more: the Garage's staging-areas heading is an attribute the
+  // Garage writes, so a page carries that label only when its own graph reaches the Garage.)
   assert.ok(modules.includes('src/ui/i18n.ts'), `${name}: reaches the runtime`);
   assert.ok(!modules.some((module) => /^src\/ui\/i18nCatalog/.test(module)), `${name}: no catalog module in the scan`);
   for (const page of catalogPages) {

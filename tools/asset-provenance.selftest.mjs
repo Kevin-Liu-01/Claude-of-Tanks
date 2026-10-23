@@ -27,6 +27,12 @@ try {
   assert.equal(coveredPath('src/vehicles/../../../secret'),false);
   await symlink(join(root,file),join(root,'src/vehicles/link.ts'));
   await assert.rejects(()=>createReceipt(root,['src/vehicles/link.ts'],'a'.repeat(40)),/ordinary file/);
+  // The hashing window keeps path order and still throws the first failure in path order (2026-10-22).
+  const many=Array.from({length:40},(_,i)=>`src/vehicles/w${String(i).padStart(2,'0')}.ts`);
+  for(const path of many)await writeFile(join(root,path),path);
+  assert.deepEqual((await createReceipt(root,[...many].reverse(),'a'.repeat(40))).files.map(f=>f.path),many,'sorted receipt');
+  await assert.rejects(()=>createReceipt(root,[...many,'src/vehicles/w99-missing.ts','src/vehicles/link.ts'],'a'.repeat(40)),/ordinary file/);
+  await assert.rejects(()=>createReceipt(root,[...many,'src/vehicles/a-missing.ts','src/vehicles/link.ts'],'a'.repeat(40)),{code:'ENOENT'});
   const model=vehicleProvenance('m1a1_abrams_hc');assert.equal(model.creator,'Kevin B. Liu');
   assert.equal(model.assetId,'urn:claude-of-tanks:vehicle:m1a1_abrams_hc');
   assert.deepEqual(JSON.parse(JSON.stringify(model)),model,'model metadata survives JSON/glTF extras');

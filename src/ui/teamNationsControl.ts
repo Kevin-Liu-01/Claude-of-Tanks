@@ -6,7 +6,7 @@
  * lobby the host edits it and the guests see it locked. It reads and writes through the callers (the per-player
  * preference solo, the room's arrangement in a lobby).
  */
-import { ensureStyle } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { flagIconHTML } from './flags.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
@@ -38,11 +38,11 @@ export function createTeamNationsControl(options: TeamNationsControlOptions): { 
 .cot-teams button:disabled{cursor:default;opacity:.62}
 .cot-teams button:focus-visible{outline:2px solid #e8c15a;outline-offset:-2px}
 .cot-teams .cot-flag{border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
-.cot-teams .vs{opacity:.55;font-size:10px}
+.cot-teams .vs{opacity:.55;font-size:11px}
 .cot-teams .globe{display:inline-flex;width:18px;height:18px}
 .cot-teams .globe svg{width:18px;height:18px}
 @media(max-width:480px){.cot-teams button{padding:7px 9px}}
-`);
+`, 'surfaces');
   const root = document.createElement('div');
   root.className = 'cot-teams';
   root.dataset.teamNations = '';

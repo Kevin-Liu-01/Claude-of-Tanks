@@ -1,0 +1,612 @@
+{
+ "libraryId": "claude-of-tanks-versus-films-r1",
+ "schemaVersion": 1,
+ "author": "Kevin B. Liu",
+ "copyright": "Copyright © 2026 Kevin B. Liu",
+ "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
+ "description": "The versus films: each versus scene's moving take, staged in the Scene Studio and filmed by the game engine, played muted on the landing page.",
+ "generatedBy": "tools/media-r5/versus/versus-films.mjs",
+ "count": 12,
+ "items": [
+  {
+   "id": "f6-leo2a6-steinburg-r7",
+   "map": "urban",
+   "hour": "day",
+   "title": {
+    "en": "Steinburg, day: Leopard 2A6 v T-90M",
+    "zh": "斯泰因堡，白天：Leopard 2A6 对 T-90M"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leo2a6",
+     "displayName": "Leopard 2A6",
+     "paint": "urbanblock"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M",
+     "paint": "digital"
+    }
+   ],
+   "film": {
+    "path": "/media/versus-films-r1/f6-leo2a6-steinburg-r7.mp4",
+    "bytes": 3760243,
+    "sha256": "1288fb1b62e65b79008a77924a2a79ae304ae36ff05864903857b001fb201e4d",
+    "width": 1280,
+    "height": 720,
+    "seconds": 8.5
+   },
+   "mobile": {
+    "path": "/media/versus-films-r1/f6-leo2a6-steinburg-r7-mobile.mp4",
+    "bytes": 1681753,
+    "sha256": "d4e48019673f0f6bf70b63ce93ffcc998b54184b83f3edd05e6b642a0268225a",
+    "width": 960,
+    "height": 540,
+    "seconds": 8.5
+   },
+   "poster": {
+    "path": "/media/versus-films-r1/f6-leo2a6-steinburg-r7.jpg",
+    "bytes": 190520,
+    "sha256": "530ef95d67e9d9ca0559599418a0ea1515793fcf6fb2c9981413e0a93332c365",
+    "width": 1280,
+    "height": 720,
+    "seconds": 0.04
+   }
+  },
+  {
+   "id": "f7-t90m-column-r5",
+   "map": "frontier",
+   "hour": "day",
+   "title": {
+    "en": "Frontier Basin, day: T-90M v Leopard 2A6",
+    "zh": "边疆盆地，白天：T-90M 对 Leopard 2A6"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "t90m",
+     "displayName": "T-90M",
+     "paint": "digital"
+    },
+    {
+     "role": "foe",
+     "id": "leo2a6",
+     "displayName": "Leopard 2A6",
+     "paint": "service_leo2a6m"
+    },
+    {
+     "role": "ally",
+     "id": "t90a",
+     "displayName": "T-90A",
+     "paint": "service_t90m"
+    },
+    {
+     "role": "wreck",
+     "id": "leo2a6",
+     "displayName": "Leopard 2A6",
+     "paint": "service_leo2a6m"
+    },
+    {
+     "role": "wreck",
+     "id": "m1a2_abrams_sepv3",
+     "displayName": "M1A2 Abrams SEPv3",
+     "paint": "service_leo2a6m"
+    },
+    {
+     "role": "wreck",
+     "id": "leo2a7v",
+     "displayName": "Leopard 2A7V",
+     "paint": "service_leo2a6m"
+    }
+   ],
+   "film": {
+    "path": "/media/versus-films-r1/f7-t90m-column-r5.mp4",
+    "bytes": 4197098,
+    "sha256": "521c72c244919a0ed50c7a3f4443fb732e6cb85a0515ee438b3b0d8751a4f4a9",
+    "width": 1280,
+    "height": 720,
+    "seconds": 10.5
+   },
+   "mobile": {
+    "path": "/media/versus-films-r1/f7-t90m-column-r5-mobile.mp4",
+    "bytes": 1677846,
+    "sha256": "a1af60ed9b43b2c9c65573816c428fdb478f0ec33ba5bcce6805b0238f0ab494",
+    "width": 960,
+    "height": 540,
+    "seconds": 10.5
+   },
+   "poster": {
+    "path": "/media/versus-films-r1/f7-t90m-column-r5.jpg",
+    "bytes": 162859,
+    "sha256": "cade1a66dcdde5b838e57b7051742862d7b04af24e02185c9f5086583546db10",
+    "width": 1280,
+    "height": 720,
+    "seconds": 0.04
+   }
+  },
+  {
+   "id": "vs01-desert-abrams-t90m-r6",
+   "map": "desert",
+   "hour": "day",
+   "title": {
+    "en": "Sirocco Wadi, day: M1A2 Abrams SEPv3 v T-90M",
+    "zh": "西罗科旱谷，白天：M1A2 Abrams SEPv3 对 T-90M"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "m1a2_abrams_sepv3",
+     "displayName": "M1A2 Abrams SEPv3",
+     "paint": "service_usa_desert"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M",
+     "paint": "service_t90m"
+    }
+   ],
+   "film": {
+    "path": "/media/versus-films-r1/vs01-desert-abrams-t90m-r6.mp4",
+    "bytes": 2375989,
+    "sha256": "f32f28016eb959f54841fd5360cceeda15af3510fbfe1d241a39a7001d3e1e8a",
+    "width": 1280,
+    "height": 720,
+    "seconds": 8.5
+   },
+   "mobile": {
+    "path": "/media/versus-films-r1/vs01-desert-abrams-t90m-r6-mobile.mp4",
+    "bytes": 973115,
+    "sha256": "dea234db9f200ccdc6cb53b70e2b8b425a2122fcea97f0ea2c52bb68132dd568",
+    "width": 960,
+    "height": 540,
+    "seconds": 8.5
+   },
+   "poster": {
+    "path": "/media/versus-films-r1/vs01-desert-abrams-t90m-r6.jpg",
+    "bytes": 103074,
+    "sha256": "541b23fc2071e70af8100b856a85ee0c1565191ddc3d117f4f3994fa5d8c500c",
+    "width": 1280,
+    "height": 720,
+    "seconds": 0.04
+   }
+  },
+  {
+   "id": "vs02-verdant-challenger-t80u-r6",
+   "map": "verdant",
+   "hour": "day",
+   "title": {
+    "en": "Verdant Fields, day: Challenger 3 v T-80U",
+    "zh": "翠野原，白天：Challenger 3 对 T-80U"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "challenger3",
+     "displayName": "Challenger 3",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "t80u",
+     "displayName": "T-80U",
+     "paint": "factory"
+    }
+   ],
+   "film": {
+    "path": "/media/versus-films-r1/vs02-verdant-challenger-t80u-r6.mp4",
+    "bytes": 3309308,
+    "sha256": "630f2d6f21f1d3b0910c44508eed9a3c88f4bea0a47198a6fc492f0e1067097c",
+    "width": 1280,
+    "height": 720,
+    "seconds": 8.5
+   },
+   "mobile": {
+    "path": "/media/versus-films-r1/vs02-verdant-challenger-t80u-r6-mobile.mp4",
+    "bytes": 1345696,
+    "sha256": "e9de0b73462732a79b52dd2885b8b5a13663d3ff1d5c5003faf8c1852dbbd465",
+    "width": 960,
+    "height": 540,
+    "seconds": 8.5
+   },
+   "poster": {
+    "path": "/media/versus-films-r1/vs02-verdant-challenger-t80u-r6.jpg",
+    "bytes": 141687,
+    "sha256": "9e64489798aed3d7263b7129ae07c7b572b5706afba73f84ea8c19c4f30307a6",
+    "width": 1280,
+    "height": 720,
+    "seconds": 0.04
+   }
+  },
+  {
+   "id": "vs03-reservoir-k2-ztz99-r6",
+   "map": "reservoir",
+   "hour": "golden",
+   "title": {
+    "en": "Highland Reservoir, golden hour: K2 Black Panther v ZTZ-99 Longwei",
+    "zh": "高地水库，黄金时刻：K2 Black Panther 对 ZTZ-99 Longwei"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "k2_black_panther",
+     "displayName": "K2 Black Panther",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "ztz99_longwei",
+     "displayName": "ZTZ-99 Longwei",
+     "paint": "factory"
+    }
+   ],
+   "film": {
+    "path": "/media/versus-films-r1/vs03-reservoir-k2-ztz99-r6.mp4",
+    "bytes": 3439340,
+    "sha256": "4f180718968bae8201cc70d3656325884e82f4588f716ee27109b33df334b980",
+    "width": 1280,
+    "height": 720,
+    "seconds": 8.5
+   },
+   "mobile": {
+    "path": "/media/versus-films-r1/vs03-reservoir-k2-ztz99-r6-mobile.mp4",
+    "bytes": 1463329,
+    "sha256": "85efa098b4eaa86468255214ba0743752501c65aa35d50712722c527ad470e46",
+    "width": 960,
+    "height": 540,
+    "seconds": 8.5
+   },
+   "poster": {
+    "path": "/media/versus-films-r1/vs03-reservoir-k2-ztz99-r6.jpg",
+    "bytes": 121210,
+    "sha256": "100eecb1d9c2218f1a61d769ce39a6f92338e460bd591ddbb40d61c108dc53a4",
+    "width": 1280,
+    "height": 720,
+    "seconds": 0.04
+   }
+  },
+  {
+   "id": "vs04-railyard-leclerc-t14-r7",
+   "map": "railyard",
+   "hour": "golden",
+   "title": {
+    "en": "Cinder Junction, golden hour: Leclerc SXXI v T-14 Armata",
+    "zh": "灰渣枢纽，黄金时刻：Leclerc SXXI 对 T-14 Armata"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leclerc_sxxi",
+     "displayName": "Leclerc SXXI",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "t14_armata",
+     "displayName": "T-14 Armata",
+     "paint": "factory"
+    }
+   ],
+   "film": {
+    "path": "/media/versus-films-r1/vs04-railyard-leclerc-t14-r7.mp4",
+    "bytes": 2918899,
+    "sha256": "6492b86153de09c62846d7e5cc81ba046f0b13090871daae565d6562452f9af4",
+    "width": 1280,
+    "height": 720,
+    "seconds": 8.5
+   },
+   "mobile": {
+    "path": "/media/versus-films-r1/vs04-railyard-leclerc-t14-r7-mobile.mp4",
+    "bytes": 1227171,
+    "sha256": "9a7d9f4395c8cc21c3fe6104371dd2801cf0af86f9553d0b901a7d7b9bce2c50",
+    "width": 960,
+    "height": 540,
+    "seconds": 8.5
+   },
+   "poster": {
+    "path": "/media/versus-films-r1/vs04-railyard-leclerc-t14-r7.jpg",
+    "bytes": 123366,
+    "sha256": "291988fd23601f897156179ba302b2a304cf948b464b478d2b25df6fedf87784",
+    "width": 1280,
+    "height": 720,
+    "seconds": 0.04
+   }
+  },
+  {
+   "id": "vs05-oasis-merkava-t72b3-r6",
+   "map": "oasis",
+   "hour": "day",
+   "title": {
+    "en": "Sunscar Oasis, day: Merkava Mk 4 v T-72B3",
+    "zh": "日痕绿洲，白天：Merkava Mk 4 对 T-72B3"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "merkava4",
+     "displayName": "Merkava Mk 4",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "t72b3",
+     "displayName": "T-72B3",
+     "paint": "factory"
+    },
+    {
+     "role": "wreck",
+     "id": "t72b3",
+     "displayName": "T-72B3",
+     "paint": "factory"
+    }
+   ],
+   "film": {
+    "path": "/media/versus-films-r1/vs05-oasis-merkava-t72b3-r6.mp4",
+    "bytes": 3967719,
+    "sha256": "707c26d70246d1ce807ff9f07602eb245161a76be10777619ab20b6ac77e6d0d",
+    "width": 1280,
+    "height": 720,
+    "seconds": 8.5
+   },
+   "mobile": {
+    "path": "/media/versus-films-r1/vs05-oasis-merkava-t72b3-r6-mobile.mp4",
+    "bytes": 1707102,
+    "sha256": "200c0b3e9923ac0fbbb779d03a626679dba9948d873553547b553a3438dfd961",
+    "width": 960,
+    "height": 540,
+    "seconds": 8.5
+   },
+   "poster": {
+    "path": "/media/versus-films-r1/vs05-oasis-merkava-t72b3-r6.jpg",
+    "bytes": 124055,
+    "sha256": "2ee37c820dcbba341006aa35fe4bf019f641d1005ca25a0df6c6e307aa62cfa4",
+    "width": 1280,
+    "height": 720,
+    "seconds": 0.04
+   }
+  },
+  {
+   "id": "vs06-coastal-type10-ztz99a2-r7",
+   "map": "coastal",
+   "hour": "day",
+   "title": {
+    "en": "Saltmere Bay, day: Type 10 v ZTZ-99A2",
+    "zh": "盐沼湾，白天：Type 10 对 ZTZ-99A2"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "type10",
+     "displayName": "Type 10",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "ztz99a2",
+     "displayName": "ZTZ-99A2",
+     "paint": "factory"
+    },
+    {
+     "role": "wreck",
+     "id": "type10",
+     "displayName": "Type 10",
+     "paint": "factory"
+    }
+   ],
+   "film": {
+    "path": "/media/versus-films-r1/vs06-coastal-type10-ztz99a2-r7.mp4",
+    "bytes": 2983055,
+    "sha256": "c195fde73f03bad3ce0fdf921a7224eb507a586215c7d57f9641dcdd6ac19d2c",
+    "width": 1280,
+    "height": 720,
+    "seconds": 8.5
+   },
+   "mobile": {
+    "path": "/media/versus-films-r1/vs06-coastal-type10-ztz99a2-r7-mobile.mp4",
+    "bytes": 1265027,
+    "sha256": "afc817ff5d9c911e607cdf28fa7bab4f3874b3e211b3aebd419c58fa37d3efa0",
+    "width": 960,
+    "height": 540,
+    "seconds": 8.5
+   },
+   "poster": {
+    "path": "/media/versus-films-r1/vs06-coastal-type10-ztz99a2-r7.jpg",
+    "bytes": 95990,
+    "sha256": "a76e8a7de5bf03a99f477a3e10a8e3dfb24d166243711d428ff0503d436a1b50",
+    "width": 1280,
+    "height": 720,
+    "seconds": 0.04
+   }
+  },
+  {
+   "id": "vs07-autumn-ariete-t62-r7",
+   "map": "autumn",
+   "hour": "golden",
+   "title": {
+    "en": "Amberford, golden hour: C2 Ariete v T-62MV-1",
+    "zh": "安伯福，黄金时刻：C2 Ariete 对 T-62MV-1"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "c2_ariete",
+     "displayName": "C2 Ariete",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1",
+     "paint": "factory"
+    }
+   ],
+   "film": {
+    "path": "/media/versus-films-r1/vs07-autumn-ariete-t62-r7.mp4",
+    "bytes": 3650640,
+    "sha256": "aaae4f812d03192a5e3a847a9eea5eee0c597495f452d62b358c498379c2f628",
+    "width": 1280,
+    "height": 720,
+    "seconds": 8.5
+   },
+   "mobile": {
+    "path": "/media/versus-films-r1/vs07-autumn-ariete-t62-r7-mobile.mp4",
+    "bytes": 1555285,
+    "sha256": "4e228a307c2100b9d9892a79f77ea8f87bab493866fe1a31b0b9510840da0de0",
+    "width": 960,
+    "height": 540,
+    "seconds": 8.5
+   },
+   "poster": {
+    "path": "/media/versus-films-r1/vs07-autumn-ariete-t62-r7.jpg",
+    "bytes": 166534,
+    "sha256": "30d1d64b59806b2b660f177f0511298f0fb6ba5b8fae9d398340a0a987b592bd",
+    "width": 1280,
+    "height": 720,
+    "seconds": 0.04
+   }
+  },
+  {
+   "id": "vs08-winter-cv90-bmp3-r7",
+   "map": "winter",
+   "hour": "day",
+   "title": {
+    "en": "Frosthollow, day: CV90 Mk 4 v BMP-3",
+    "zh": "霜谷，白天：CV90 Mk 4 对 BMP-3"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "cv90_mk4",
+     "displayName": "CV90 Mk 4",
+     "paint": "winter"
+    },
+    {
+     "role": "foe",
+     "id": "bmp3",
+     "displayName": "BMP-3",
+     "paint": "winter"
+    }
+   ],
+   "film": {
+    "path": "/media/versus-films-r1/vs08-winter-cv90-bmp3-r7.mp4",
+    "bytes": 2033065,
+    "sha256": "a79f974481f5d97b05d7a3653abbdea5f6dcbc9f51b0939f552ce0d34034d9c6",
+    "width": 1280,
+    "height": 720,
+    "seconds": 8.5
+   },
+   "mobile": {
+    "path": "/media/versus-films-r1/vs08-winter-cv90-bmp3-r7-mobile.mp4",
+    "bytes": 877259,
+    "sha256": "cc270690357ac08cce3b3dd88580f9e8f5562e8a5dcbf53129cb1627e69200d2",
+    "width": 960,
+    "height": 540,
+    "seconds": 8.5
+   },
+   "poster": {
+    "path": "/media/versus-films-r1/vs08-winter-cv90-bmp3-r7.jpg",
+    "bytes": 83357,
+    "sha256": "cb4594ba62eee9036ff3dc2f097bbea89f729e0d1f598c258aa4ae50f96f1d29",
+    "width": 1280,
+    "height": 720,
+    "seconds": 0.04
+   }
+  },
+  {
+   "id": "vs09-alpine-strv122-t80bv-r7",
+   "map": "alpine",
+   "hour": "day",
+   "title": {
+    "en": "Glacier Pass, day: Stridsvagn 122 v T-80BV",
+    "zh": "冰川关，白天：Stridsvagn 122 对 T-80BV"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "strv122",
+     "displayName": "Stridsvagn 122",
+     "paint": "winter"
+    },
+    {
+     "role": "foe",
+     "id": "t80bv",
+     "displayName": "T-80BV",
+     "paint": "winter"
+    }
+   ],
+   "film": {
+    "path": "/media/versus-films-r1/vs09-alpine-strv122-t80bv-r7.mp4",
+    "bytes": 2410308,
+    "sha256": "ed8ab02eb0011e7c4b2be48531ecc715015694744bd9c3aba51801c3d1e95fcb",
+    "width": 1280,
+    "height": 720,
+    "seconds": 8.5
+   },
+   "mobile": {
+    "path": "/media/versus-films-r1/vs09-alpine-strv122-t80bv-r7-mobile.mp4",
+    "bytes": 1012270,
+    "sha256": "6e4f1ba397df6eda8ae79734e8c456c512ba92999a2d3a55292d1482e0984d87",
+    "width": 960,
+    "height": 540,
+    "seconds": 8.5
+   },
+   "poster": {
+    "path": "/media/versus-films-r1/vs09-alpine-strv122-t80bv-r7.jpg",
+    "bytes": 65411,
+    "sha256": "fbb672a9f8fb2eb00740063928726d8b1525bdb245db943b89dcc2c2ac87d047",
+    "width": 1280,
+    "height": 720,
+    "seconds": 0.04
+   }
+  },
+  {
+   "id": "vs10-steppe-chieftain-t64-r7",
+   "map": "steppe",
+   "hour": "golden",
+   "title": {
+    "en": "Tarkhan Steppe, golden hour: Chieftain Mk 10 v T-64BV1",
+    "zh": "塔尔罕草原，黄金时刻：Chieftain Mk 10 对 T-64BV1"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "chieftain_mk10",
+     "displayName": "Chieftain Mk 10",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "t64bv1",
+     "displayName": "T-64BV1",
+     "paint": "factory"
+    }
+   ],
+   "film": {
+    "path": "/media/versus-films-r1/vs10-steppe-chieftain-t64-r7.mp4",
+    "bytes": 3993275,
+    "sha256": "4c0a126b8b4d9ff2f91e6a859d75a940dfc4d4861cd44a2ef2d34e2c0181a86e",
+    "width": 1280,
+    "height": 720,
+    "seconds": 8.5
+   },
+   "mobile": {
+    "path": "/media/versus-films-r1/vs10-steppe-chieftain-t64-r7-mobile.mp4",
+    "bytes": 1830533,
+    "sha256": "ab14d3ac9f6578e648a51a03975d202476637940b8a5157f664d40fe20f96965",
+    "width": 960,
+    "height": 540,
+    "seconds": 8.5
+   },
+   "poster": {
+    "path": "/media/versus-films-r1/vs10-steppe-chieftain-t64-r7.jpg",
+    "bytes": 214488,
+    "sha256": "28eb88e6435341076ac58e83a2c6beb2fe1219e0b071856cb0bfdb780781b91f",
+    "width": 1280,
+    "height": 720,
+    "seconds": 0.04
+   }
+  }
+ ]
+}

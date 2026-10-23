@@ -3,10 +3,12 @@
 // copy drift between screenshot, audio, Studio, and marketing verification.
 
 import {
+  appendFileSync,
   lstatSync,
   mkdirSync,
   readFileSync,
   readdirSync,
+  realpathSync,
   renameSync,
   rmdirSync,
   statSync,
@@ -17,6 +19,7 @@ import {
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const DEFAULT_LOCK_DIR = '/tmp/cot-shots.lock';
 const DEFAULT_QUEUE_DIR = '/tmp/cot-shots.queue';
@@ -28,35 +31,95 @@ const DEFAULT_LOCK_STALE_MS = 5 * 60 * 1000;
 const DEFAULT_TICKET_STALE_MS = 60 * 60 * 1000;
 
 function ticketPid(name) {
-  const match = name.match(/-(\d+)\.t$/);
+  const match = name.match(/-(\d+)\.[tw]$/);
   return match ? parseInt(match[1], 10) : -1;
-}
-
-function ticketAlive(name) {
-  return pidAlive(ticketPid(name));
 }
 
 function readQueue(queueDir, ownTicket) {
   try {
-    return readdirSync(queueDir).filter((name) => name.endsWith('.t')).sort();
+    return readdirSync(queueDir).filter((name) => name.endsWith('.t') || name.endsWith('.w')).sort();
   } catch {
     return [ownTicket];
   }
 }
 
-function ticketStale(queueDir, name, staleMs) {
+// ---- ticket identity (2026-10-22, item 240) -------------------------------------------------------------------------
+// A ticket held only its pid, so a waiter killed in the queue (a lane's alarm) whose pid the kernel then reused looked
+// alive: at the head it stalled the queue until its ticket aged out (an hour). Tickets now carry their owner's process
+// start time, their heartbeat period and whether they are ready to hold. A ticket whose pid names another process (or a
+// zombie), or whose heartbeat stopped for `ticketSilentMs`, is dead at once. A ticket not ready to hold (acquire's
+// `prepare` not done) waits as `<name>.w`, which older copies of this module never read (they list `*.t`), so they never
+// wait behind it; it keeps its place among this copy's tickets and becomes `<name>.t`, at the same stamp, once ready.
+// Tickets written by an older copy (the bare pid, no heartbeat period) keep the old rules exactly: pid alive and an
+// hour without a heartbeat, never the silent rule.
+const TICKET_FORMAT = 'cot-capture-ticket/1';
+const DEFAULT_TICKET_SILENT_MS = 10 * 60 * 1000;
+
+function ticketText(refreshMs, ready, phase) {
+  return `${JSON.stringify({ format: TICKET_FORMAT, pid: process.pid, procStart: ownProcessStart(), refreshMs, ready, phase,
+    command: process.argv.slice(1).join(' ').slice(0, 200) })}\n`;
+}
+
+/** A ticket's owner record, or null for an older copy's bare pid (or an unreadable file). */
+function readTicketMeta(queueDir, name) {
   try {
-    return Date.now() - statSync(join(queueDir, name)).mtimeMs > staleMs;
+    const text = readFileSync(join(queueDir, name), 'utf8');
+    if (!text.startsWith('{')) return null;
+    const meta = JSON.parse(text);
+    return meta && meta.format === TICKET_FORMAT ? meta : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
-function queueHead(queueDir, names, ownTicket, staleMs) {
+function ticketAgeMs(queueDir, name) {
+  try {
+    return Date.now() - statSync(join(queueDir, name)).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
+const ticketIdentityCache = new Map();
+/** Whether a ticket's owner lives: { live, ready, why }. `staleMs` ages out an older copy's ticket; `silentMs` a new one
+ *  whose heartbeat stopped; `ignoreAge` counts every ticket of a live process (waiting()). */
+function ticketLiveness(queueDir, name, { staleMs, silentMs, ignoreAge = false }) {
+  const pid = ticketPid(name);
+  if (!pidAlive(pid)) return { live: false, why: `its pid ${pid} is dead` };
+  const meta = readTicketMeta(queueDir, name);
+  const ageMs = ignoreAge ? 0 : ticketAgeMs(queueDir, name);
+  if (!meta) return ageMs > staleMs ? { live: false, why: `no heartbeat for ${Math.round(ageMs / 60_000)} min` } : { live: true, ready: true };
+  if (meta.pid === pid && typeof meta.procStart === 'string') {
+    let seen = ticketIdentityCache.get(name);
+    if (!seen || Date.now() - seen.at > IDENTITY_CACHE_MS) {
+      if (ticketIdentityCache.size > 256) ticketIdentityCache.clear();
+      seen = { at: Date.now(), identity: processIdentity(pid) };
+      ticketIdentityCache.set(name, seen);
+    }
+    const { identity } = seen;
+    if (identity && identity.start !== meta.procStart) return { live: false, why: `its pid ${pid} now names another process` };
+    if (identity && /^Z/.test(identity.state)) return { live: false, why: `its pid ${pid} has exited (a zombie)` };
+  }
+  if (Number(meta.refreshMs) > 0 && ageMs > Math.max(silentMs, 10 * Number(meta.refreshMs))) {
+    return { live: false, why: `its heartbeat stopped ${Math.round(ageMs / 60_000)} min ago` };
+  }
+  return { live: true, ready: meta.ready !== false && !name.endsWith('.w') };
+}
+
+/** The first live ticket ready to hold, or `ownTicket` when none is ahead of it. Dead tickets ahead are removed (and
+ *  logged); a warming ticket ahead keeps its place and is passed over. */
+function queueHead(queueDir, names, ownTicket, { staleMs, silentMs, log }) {
   for (const name of names) {
     if (name === ownTicket) return name;
-    if (!ticketStale(queueDir, name, staleMs) && ticketAlive(name)) return name;
-    try { unlinkSync(join(queueDir, name)); } catch { /* raced */ }
+    const state = ticketLiveness(queueDir, name, { staleMs, silentMs });
+    if (state.live) {
+      if (state.ready) return name;
+      continue;
+    }
+    try {
+      unlinkSync(join(queueDir, name));
+      log(`[capture-lock] removed the dead ticket ${name}: ${state.why}`);
+    } catch { /* raced */ }
   }
   return ownTicket;
 }
@@ -368,7 +431,8 @@ function noteOnce(key, message, log) {
  * the path is free afterwards (removed here or already gone), so a head can claim at once. `note` logs (once per hold)
  * why a lock that looks stale is kept.
  */
-export function reapDeadLock(lockDir, { lockStaleMs = DEFAULT_LOCK_STALE_MS, orphanStaleMs = 4 * lockStaleMs, log = stderrLog, note = false } = {}) {
+export function reapDeadLock(lockDir, { lockStaleMs = DEFAULT_LOCK_STALE_MS, orphanStaleMs = 4 * lockStaleMs, log = stderrLog, note = false,
+  logFile = null } = {}) {
   const options = { lockStaleMs, orphanStaleMs };
   const first = inspectLock(lockDir, options);
   if (first.verdict === 'absent') return true;
@@ -402,33 +466,48 @@ export function reapDeadLock(lockDir, { lockStaleMs = DEFAULT_LOCK_STALE_MS, orp
     log(again.verdict === 'dead'
       ? `[capture-lock] reaped ${lockDir} of ${describeToken(again.token)}: ${again.why}`
       : `[capture-lock] reaped ${lockDir}: an unreadable owner token and no refresh for ${Math.round(again.ageMs / 60_000)} min`);
+    if (again.verdict === 'dead') {
+      appendHoldLog(logFile, { e: 'reap', pid: again.token.pid, ticket: again.token.ticket ?? null, why: again.why,
+        heldMs: Date.now() - Date.parse(again.token.startedAt ?? '') || null });
+    }
     clearTomb(tomb, log);
     return true;
   });
   return result === true;
 }
 
-/** Renew a waiting ticket; restore it under the same name (so the same place) when a process on an older copy of
- *  this module reaped it while we were still waiting. */
-function keepTicket(path) {
+/** Renew a waiting ticket; restore it under the same name (so the same place) when another waiter removed it while we
+ *  were still waiting (an older copy of this module, or a heartbeat this process missed). */
+function keepTicket(path, text) {
   const now = new Date();
   try {
     utimesSync(path, now, now);
   } catch (error) {
     if (error.code !== 'ENOENT') return;
-    try { writeFileSync(path, String(process.pid), { flag: 'wx' }); } catch { /* raced */ }
+    try { writeFileSync(path, text(), { flag: 'wx' }); } catch { /* raced */ }
+  }
+}
+
+/** Replace a ticket's text in one step (a reader sees the old record or the new one, never half of one). */
+function rewriteTicket(path, text) {
+  const temporary = `${path}.w${process.pid}`;
+  try {
+    writeFileSync(temporary, text);
+    renameSync(temporary, path);
+  } catch {
+    try { unlinkSync(temporary); } catch { /* gone */ }
   }
 }
 
 // Distinguish acquisitions launched by concurrent workers in one process.
 // Keep the PID last for legacy ticket liveness checks and use exclusive creation.
 let nextTicketSequence = 0;
-function reserveTicket(queueDir) {
+function reserveTicket(queueDir, text, suffix = '.t') {
   for (;;) {
     const sequence = String(nextTicketSequence++).padStart(12, '0');
-    const name = `${String(Date.now()).padStart(15, '0')}-${sequence}-${process.pid}.t`;
+    const name = `${String(Date.now()).padStart(15, '0')}-${sequence}-${process.pid}${suffix}`;
     try {
-      writeFileSync(join(queueDir, name), String(process.pid), { flag: 'wx' });
+      writeFileSync(join(queueDir, name), text, { flag: 'wx' });
       return name;
     } catch (error) {
       if (error.code !== 'EEXIST') throw error;
@@ -437,10 +516,46 @@ function reserveTicket(queueDir) {
 }
 
 /** Re-enter the queue under a ticket this process was issued before (its place); a present copy is kept. */
-function restoreTicket(queueDir, name) {
-  if (!/^\d{15}-\d{12}-\d+\.t$/.test(name) || ticketPid(name) !== process.pid) throw new Error(`not this process's ticket: ${name}`);
-  try { writeFileSync(join(queueDir, name), String(process.pid), { flag: 'wx' }); } catch (error) { if (error.code !== 'EEXIST') throw error; }
+function restoreTicket(queueDir, name, text = String(process.pid)) {
+  if (!/^\d{15}-\d{12}-\d+\.[tw]$/.test(name) || ticketPid(name) !== process.pid) throw new Error(`not this process's ticket: ${name}`);
+  try { writeFileSync(join(queueDir, name), text, { flag: 'wx' }); } catch (error) { if (error.code !== 'EEXIST') throw error; }
   return name;
+}
+
+// ---- places (2026-10-22, item 240) -----------------------------------------------------------------------------------
+// A lane's alarm that killed a waiter sent its next run to the back of a two-hour queue. acquire's `place` (a key the
+// job chooses, e.g. "<lane>-<item>") records the stamp of its first ticket; a later run under the same key, within
+// PLACE_MAX_AGE_MS, rejoins at that stamp. The record is dropped once the job holds the lock.
+const PLACE_MAX_AGE_MS = 12 * 3600 * 1000;
+const placePath = (queueDir, key) => join(queueDir, 'places', `${String(key).replace(/[^A-Za-z0-9._-]+/g, '_').slice(0, 120)}.json`);
+
+function placeStamp(queueDir, key) {
+  const path = placePath(queueDir, key);
+  try {
+    const { stamp } = JSON.parse(readFileSync(path, 'utf8'));
+    if (Number.isSafeInteger(stamp) && stamp > 0 && Date.now() - stamp < PLACE_MAX_AGE_MS) return stamp;
+  } catch { /* none yet */ }
+  const stamp = Date.now();
+  try {
+    mkdirSync(join(queueDir, 'places'), { recursive: true });
+    writeFileSync(path, `${JSON.stringify({ stamp, pid: process.pid, at: new Date(stamp).toISOString() })}\n`);
+  } catch { /* the place is kept for this run only */ }
+  return stamp;
+}
+
+// ---- the hold log (2026-10-22, item 240) -----------------------------------------------------------------------------
+// One JSON line per hold, release and reap in `logFile` (`/tmp/cot-shots.log`): `node tools/capture-lock.mjs --status`
+// reads holds per hour, hold lengths and waits from it. Bounded: past LOG_MAX_BYTES it moves to `<logFile>.1`.
+const DEFAULT_LOG_FILE = '/tmp/cot-shots.log';
+const LOG_MAX_BYTES = 4 * 1024 * 1024;
+function appendHoldLog(logFile, record) {
+  if (!logFile) return;
+  try {
+    if (statSync(logFile).size > LOG_MAX_BYTES) renameSync(logFile, `${logFile}.1`);
+  } catch { /* none yet */ }
+  try {
+    appendFileSync(logFile, `${JSON.stringify({ at: new Date().toISOString(), ...record })}\n`);
+  } catch { /* the meter misses a line; the lock is unaffected */ }
 }
 
 /** This process's ticket at `stamp` (ms since the epoch), for acquire's `ticket` (2026-10-07): a run split over several
@@ -485,52 +600,113 @@ export function createCaptureLock({
   lockStaleMs = DEFAULT_LOCK_STALE_MS,
   ticketStaleMs = DEFAULT_TICKET_STALE_MS,
   ticketRefreshMs = Math.max(1, Math.min(30_000, ticketStaleMs / 3)),
+  ticketSilentMs = Math.max(DEFAULT_TICKET_SILENT_MS, 10 * ticketRefreshMs),
   orphanStaleMs = 4 * lockStaleMs,
+  logFile = lockDir === DEFAULT_LOCK_DIR ? DEFAULT_LOG_FILE : null,
   log = stderrLog,
 } = {}) {
   let hold = null;
   let lastTicket = null;
+  const queueRules = { staleMs: ticketStaleMs, silentMs: ticketSilentMs, log };
 
   /**
    * Wait for the FIFO head, then take the lock. `ticket` (2026-10-02): re-enter under a ticket this process was issued
    * by an earlier acquire (\`lastTicket\`) — its original place — for a caller that gave its turn back because a lock
    * of its own was held by someone queued behind it, and re-enters once that holder is done.
+   * `prepare` (2026-10-22): an async function run while the ticket waits, so warming (servers, browser, pages) costs
+   * no hold time. It starts just in time, once at most `warmAhead` live tickets are ahead (COT_SHOTS_WARM_AHEAD,
+   * default 2): every queued lane warming at once would hold a browser each for hours. Until it resolves the ticket
+   * keeps its place but is passed over; acquire then resolves with its result once this ticket heads the queue. A
+   * `prepare` that throws leaves the queue and rethrows.
+   * `place` (2026-10-22): a job key; a run killed while it waited rejoins at its first run's stamp (see placeStamp).
    */
-  async function acquire(timeoutMs = 10 * 60 * 1000, { ticket = null } = {}) {
+  async function acquire(timeoutMs = 10 * 60 * 1000, { ticket = null, prepare = null, place = null,
+    warmAhead = Number(process.env.COT_SHOTS_WARM_AHEAD) >= 0 && process.env.COT_SHOTS_WARM_AHEAD !== '' ? Number(process.env.COT_SHOTS_WARM_AHEAD) : 2 } = {}) {
     // A landing chain exports COT_SHOTS_LOCK_TIMEOUT_MS (three hours) so every waiter it spawns — the suite runner and
     // the browser receipts that take the lock themselves — outlasts other sessions' captures (2026-09-25: a probe receipt
     // died at its own 45-minute wait while the runner would have waited three hours).
     const chainWait = Number(process.env.COT_SHOTS_LOCK_TIMEOUT_MS);
     if (Number.isFinite(chainWait) && chainWait > timeoutMs) timeoutMs = chainWait;
     mkdirSync(queueDir, { recursive: true });
-    const ownTicket = ticket ? restoreTicket(queueDir, ticket) : reserveTicket(queueDir);
+    let ready = typeof prepare !== 'function';
+    let preparing = null;
+    const text = () => ticketText(ticketRefreshMs, ready, ready ? 'ready' : preparing ? 'warming' : 'queued');
+    if (!ticket && place) ticket = ticketAt(placeStamp(queueDir, place));
+    // not ready yet: wait as `.w`, out of older copies' sight (see ticket identity above)
+    const suffix = ready ? '.t' : '.w';
+    if (ticket) ticket = ticket.replace(/\.[tw]$/, suffix);
+    let ownTicket = ticket ? restoreTicket(queueDir, ticket, text()) : reserveTicket(queueDir, text(), suffix);
+    if (ticket) rewriteTicket(join(queueDir, ownTicket), text());
     lastTicket = ownTicket;
-    const ownPath = join(queueDir, ownTicket);
+    let ownPath = join(queueDir, ownTicket);
     const startedAt = Date.now();
     // A legitimate capture ahead of us can outlast ticketStaleMs. Keep our waiting ticket alive without changing its
     // filename or FIFO position, and restore it if an older copy of this module reaped it anyway.
-    const ticketHeartbeat = setInterval(() => keepTicket(ownPath), ticketRefreshMs);
+    const ticketHeartbeat = setInterval(() => keepTicket(ownPath, text), ticketRefreshMs);
     ticketHeartbeat.unref();
+    let prepared, prepareError = null, warmMs = 0;
+    const startPrepare = () => {
+      const warmFrom = Date.now();
+      preparing = (async () => prepare())();
+      rewriteTicket(ownPath, text());
+      preparing = preparing.then(
+        (value) => {
+          prepared = value;
+          warmMs = Date.now() - warmFrom;
+          ready = true;
+          // ready: the same stamp as `.t`, where every copy of this module sees it
+          rewriteTicket(ownPath, text());
+          const readyTicket = ownTicket.replace(/\.w$/, '.t');
+          try {
+            renameSync(ownPath, join(queueDir, readyTicket));
+          } catch {
+            writeFileSync(join(queueDir, readyTicket), text()); // removed meanwhile: re-enter at the same stamp
+          }
+          ownTicket = readyTicket;
+          ownPath = join(queueDir, readyTicket);
+          lastTicket = readyTicket;
+        },
+        (error) => { prepareError = error; });
+    };
     try {
       for (;;) {
-        const head = queueHead(queueDir, readQueue(queueDir, ownTicket), ownTicket, ticketStaleMs);
+        if (prepareError) throw prepareError;
+        const names = readQueue(queueDir, ownTicket);
+        const head = queueHead(queueDir, names, ownTicket, queueRules);
+        if (!ready && !preparing) {
+          const ahead = names.slice(0, Math.max(0, names.indexOf(ownTicket)))
+            .filter((name) => ticketLiveness(queueDir, name, queueRules).live).length;
+          if (ahead <= warmAhead) startPrepare();
+        }
         const atHead = head === ownTicket;
-        if (atHead) {
+        if (atHead && ready) {
           const claimed = claimOwnedLock(lockDir, { ticket: ownTicket });
           if (claimed) {
             hold = claimed;
-            return;
+            if (place) { try { unlinkSync(placePath(queueDir, place)); } catch { /* gone */ } }
+            appendHoldLog(logFile, { e: 'hold', pid: process.pid, ticket: ownTicket, waitedMs: Date.now() - startedAt, warmMs,
+              command: process.argv.slice(1).join(' ').slice(0, 300) });
+            return prepared;
           }
         }
         // Every waiter, not only the head, clears a dead owner's lock: a head on an older copy of this module cannot
         // remove a directory that holds an owner token, and must not wait behind a dead one. Only the head claims.
-        if (reapDeadLock(lockDir, { lockStaleMs, orphanStaleMs, log, note: atHead }) && atHead) continue;
+        if (reapDeadLock(lockDir, { lockStaleMs, orphanStaleMs, log, logFile, note: atHead && ready }) && atHead && ready) continue;
         if (Date.now() - startedAt > timeoutMs) throw new Error('cot-shots lock timeout');
-        await new Promise((resolve) => setTimeout(resolve, head === ownTicket ? 300 : 1000));
+        await new Promise((resolve) => setTimeout(resolve, atHead && ready ? 300 : 1000));
       }
+    } catch (error) {
+      // A wait that ends without a hold still lets `prepare` finish, and hands its result to the caller to close.
+      if (preparing) {
+        await preparing;
+        if (prepared !== undefined && error && typeof error === 'object') error.prepared = prepared;
+      }
+      throw error;
     } finally {
       clearInterval(ticketHeartbeat);
-      try { unlinkSync(join(queueDir, ownTicket)); } catch { /* already removed */ }
+      for (const name of new Set([ownTicket, ownTicket.replace(/\.[tw]$/, '.t'), ownTicket.replace(/\.[tw]$/, '.w')])) {
+        try { unlinkSync(join(queueDir, name)); } catch { /* already removed */ }
+      }
     }
   }
 
@@ -542,7 +718,10 @@ export function createCaptureLock({
     if (!hold) return false;
     const releasing = hold;
     hold = null;
-    return releaseOwnedLock(releasing, { log });
+    const released = releaseOwnedLock(releasing, { log });
+    appendHoldLog(logFile, { e: 'release', pid: process.pid, ticket: releasing.ticket, released,
+      heldMs: Date.now() - Date.parse(releasing.token.startedAt) });
+    return released;
   }
 
   // Read-only count of acquisitions queued behind the owner (2026-10-01, gate P5). An owner's own
@@ -550,6 +729,8 @@ export function createCaptureLock({
   // A ticket is counted while its process lives, even past the reaping age (a waiter on an older copy of this
   // module does not renew its ticket): a long batch must yield to a long waiter. Nothing is reaped here. An unreadable
   // queue reports one waiter, so a caller that yields to waiters keeps the draining behaviour.
+  // A warming ticket (acquire's `prepare` still running) is not counted: a batch that yields to it would leave the lock
+  // idle while it warms.
   function waiting() {
     let names;
     try {
@@ -557,7 +738,11 @@ export function createCaptureLock({
     } catch (error) {
       return error.code === 'ENOENT' ? 0 : 1;
     }
-    return names.filter((name) => name.endsWith('.t') && ticketAlive(name)).length;
+    return names.filter((name) => {
+      if (!name.endsWith('.t')) return false; // a `.w` ticket is not ready to hold
+      const state = ticketLiveness(queueDir, name, { ...queueRules, ignoreAge: true });
+      return state.live && state.ready;
+    }).length;
   }
 
   return { acquire, refresh, release, waiting, get lastTicket() { return lastTicket; } };
@@ -579,3 +764,59 @@ export function selftestLockTimeoutMs(env = { COT_SHOTS_LOCK_TIMEOUT_MS: process
   return Number.isFinite(value) && value > 0 ? value : DEFAULT_SELFTEST_LOCK_TIMEOUT_MS;
 }
 export const releaseCaptureLock = sharedCaptureLock.release;
+
+/** Holds per hour, hold lengths and waits over the last `hours` from hold-log lines (`--status`). */
+export function summarizeHoldLog(lines, { now = Date.now(), hours = 6 } = {}) {
+  const since = now - hours * 3600 * 1000;
+  const records = lines.map((line) => { try { return JSON.parse(line); } catch { return null; } })
+    .filter((record) => record && Date.parse(record.at) >= since);
+  const quantile = (values, q) => {
+    if (!values.length) return null;
+    const sorted = [...values].sort((a, b) => a - b);
+    return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
+  };
+  const holds = records.filter((record) => record.e === 'hold');
+  const ends = records.filter((record) => (record.e === 'release' || record.e === 'reap') && Number.isFinite(record.heldMs));
+  const heldMin = ends.map((record) => record.heldMs / 60_000), waitedMin = holds.map((record) => record.waitedMs / 60_000);
+  const warmMin = holds.filter((record) => record.warmMs > 0).map((record) => record.warmMs / 60_000);
+  return {
+    hours, holds: holds.length, perHour: holds.length / hours, reaped: records.filter((record) => record.e === 'reap').length,
+    heldMedianMin: quantile(heldMin, 0.5), heldP90Min: quantile(heldMin, 0.9),
+    waitedMedianMin: quantile(waitedMin, 0.5), warmedHolds: warmMin.length, warmMedianMin: quantile(warmMin, 0.5),
+  };
+}
+
+// `node tools/capture-lock.mjs --status [--hours=6]`: who holds the lock, who waits (ready, warming, dead) and, from the
+// hold log, holds per hour. Read-only: it removes nothing. Holds by tools on an older copy of this module are not logged.
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url) && process.argv.includes('--status')) {
+  const hours = Number(process.argv.find((arg) => arg.startsWith('--hours='))?.slice(8)) || 6;
+  const minutes = (ms) => `${(ms / 60_000).toFixed(1)} min`;
+  const owner = readOwner(DEFAULT_LOCK_DIR);
+  if (owner.state === 'ok') {
+    const heldMs = Date.now() - Date.parse(owner.token.startedAt);
+    console.log(`held ${minutes(heldMs)} by pid ${owner.token.pid}${pidAlive(owner.token.pid) ? '' : ' (dead)'}: ${owner.token.command ?? '?'}`);
+  } else {
+    let present = false;
+    try { lstatSync(DEFAULT_LOCK_DIR); present = true; } catch { /* free */ }
+    console.log(present ? `held by an older copy of the lock (no owner token)` : 'free');
+  }
+  let names = [];
+  try { names = readQueue(DEFAULT_QUEUE_DIR, null).filter(Boolean); } catch { /* no queue */ }
+  const rules = { staleMs: DEFAULT_TICKET_STALE_MS, silentMs: DEFAULT_TICKET_SILENT_MS };
+  const states = names.map((name) => ({ name, ...ticketLiveness(DEFAULT_QUEUE_DIR, name, rules), meta: readTicketMeta(DEFAULT_QUEUE_DIR, name) }));
+  const ready = states.filter((state) => state.live && state.ready), warming = states.filter((state) => state.live && !state.ready);
+  console.log(`queue: ${ready.length} ready, ${warming.length} warming or waiting to warm, ${states.length - ready.length - warming.length} dead`);
+  for (const state of [...ready, ...warming].slice(0, 12)) {
+    const age = Date.now() - Number(state.name.slice(0, 15));
+    const phase = state.ready ? 'ready' : state.meta?.phase ?? 'warming';
+    console.log(`  ${minutes(age).padStart(10)}  ${phase.padEnd(7)}  ${(state.meta?.command ?? `pid ${ticketPid(state.name)} (older copy)`).slice(0, 110)}`);
+  }
+  let lines = [];
+  for (const file of [`${DEFAULT_LOG_FILE}.1`, DEFAULT_LOG_FILE]) {
+    try { lines = lines.concat(readFileSync(file, 'utf8').split('\n').filter(Boolean)); } catch { /* none */ }
+  }
+  const stats = summarizeHoldLog(lines, { hours });
+  const fmt = (value) => value === null ? '—' : `${value.toFixed(1)} min`;
+  console.log(`last ${hours} h: ${stats.holds} holds (${stats.perHour.toFixed(2)}/h), ${stats.reaped} reaped; held median ${fmt(stats.heldMedianMin)}, `
+    + `p90 ${fmt(stats.heldP90Min)}; waited median ${fmt(stats.waitedMedianMin)}; warmed while queued ${stats.warmedHolds} (median ${fmt(stats.warmMedianMin)})`);
+}

@@ -4,7 +4,7 @@ import {FLEET_GROUP_BY_ID} from '../src/vehicles/fleetManifest.ts';
 import {readConceptDesign} from './first-party-concept-record.mjs';
 import {firstPartyConcept,partitionConceptIds,validateSelectedIds,conceptReceiptPassed} from './first-party-concept-policy.mjs';
 import {boundOrigin, toolServerOptions} from './tool-page-load.mjs';
-import { acquireCaptureLock as acquireLock, refreshCaptureLock, releaseCaptureLock as releaseLock } from './capture-lock.mjs';
+import { createCaptureLock } from './capture-lock.mjs';
 import { strictTrackClipPassed } from './track-clip-result.mjs';
 import { geometryReceiptPassed } from './geometry-gate-policy.mjs';
 import { roofEquipmentVerdict } from './source-equipment-policy.mjs';
@@ -97,7 +97,10 @@ async function runChild(tool, args) {
 
 // --- exclusive render lock (same protocol as tools/screenshot.mjs) ----------
 
-process.on('exit', releaseLock);
+// The server and browser start while the ticket waits, and the contiguity stage runs after the release
+// (2026-10-22, capture-hold): the hold covers the renders only.
+const captureLock = createCaptureLock();
+process.on('exit', () => captureLock.release());
 
 // --- phase 0: optional fresh gate run (serialized around its browser child) -
 // A forced run requires every registered comparison oracle to be present and
@@ -187,10 +190,7 @@ const standard = new Map(); // id -> { census, holes } | { error }
 const hiddenLedger = readHiddenLedger();
 let fixture = null;
 if ((ids.length && !noRender) || wantFixture) await stages.run('render', async () => {
-  await acquireLock(20 * 60 * 1000);
-  const lockRefresher = setInterval(() => { refreshCaptureLock(); }, 60 * 1000);
-  lockRefresher.unref();
-  try {
+  {
     await withIsolatedCaptureBrowser({
     root: process.cwd(), logLevel: 'error',
     // R4c (2026-10-16): 127.0.0.1 and the address really bound, never `localhost` (an IPv6 bind can leave 127.0.0.1 to another server)
@@ -225,7 +225,7 @@ if ((ids.length && !noRender) || wantFixture) await stages.run('render', async (
       await page.waitForFunction('window.__FIXTURE_READY === true', { polling: 50 });
       fixture = await page.evaluate('window.__FIXTURE');
     }
-    });
+    }, { capture: { lock: captureLock, waitMs: 20 * 60 * 1000 } });
     // --stages: one id's source verification failing leaves every other id's B2/B3 evidence intact.
     for (const id of ids) await stages.run('contiguity', async () => {
       const configuration = configurations[id];
@@ -255,9 +255,6 @@ if ((ids.length && !noRender) || wantFixture) await stages.run('render', async (
         continuity:openingReports.get(id),
       },null,2)+'\n');
     }, id);
-  } finally {
-    clearInterval(lockRefresher);
-    releaseLock();
   }
 });
 

@@ -1,3 +1,5 @@
+@layer reset,tokens,base,components,surfaces,utilities,overrides;
+@layer surfaces{
 .cot-battle-times{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0;padding:8px;border:1px solid #394853;min-width:0;}
 .cot-battle-times legend{color:#b8c7d1;font-size:11px;padding:0 5px;}
 .cot-time-choice{position:relative;flex:1;min-width:88px;cursor:pointer;}
@@ -18,3 +20,4 @@
 .cot-settings .cot-battle-times{margin:10px 0 0;padding:8px;}
 .cot-settings .cot-battle-times legend{padding:0 5px;}
 .cot-settings .cot-time-content{padding:6px;}
+}
