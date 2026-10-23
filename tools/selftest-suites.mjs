@@ -767,6 +767,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // is busy and takes it when it frees (the old step-behind rule handed it to the newer); the cap; no FIFO lock waiting
     'tools/visual-census-lock.selftest.mjs',
     'tools/frame-budget-probe.selftest.mjs',
+    'tools/pr-census.selftest.mjs', // 2026-10-07 (the perf census lane, ported 2026-10-23): the whole-PR draw census's report, batches, FIFO hold and terrain settle
     'tools/capture-command.selftest.mjs',
     'tools/tank-release-plan.selftest.mjs',
     // 2026-10-16 (227, owner: "no regenerating for tanks or anything else that didn't change"): the changed-only

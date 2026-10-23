@@ -36,10 +36,17 @@
 // --scene-check=off turns the gate off (a change that adds or removes draws on purpose).
 //
 // --hide-bots (cost rule v3, amended 2026-10-07; the mr2 draw census): every bot's vehicle is taken out of the frame
-// (its render root hidden, every layer of it off, so no camera nor shadow camera draws it) once the battle is frozen.
+// (its render root hidden, every layer of it off, so no camera nor shadow camera draws it, and its near-shadow detail
+// record cleared, so it takes no near-vehicle shadow slot from the player's hull) once the battle is frozen.
 // The frozen bots stand wherever their routes put them at entry, and a build that changes a map's routes put a 62-draw
 // ally in its chase frame in every cycle: tank draws, not the map's cost. Default on for map holds (the default staging
 // --spec) and off for a vehicle hold (one that names its own --spec); =0 / =1 overrides. Each slot records the count.
+//
+// The terrain's LOD stream (2026-10-07, mr3; the whole-PR census): a staged map keeps building its fine terrain grids for
+// ~10 s or more (terrain.ts updateLOD: 9,801 height samples a chunk, up to ~2 ms a frame until every chunk is done), longer
+// on a map with costlier heights, so the pages of a hold sampled different loads. Every still pose now settles the stream
+// first (world-residency-acquisition's settleResidencyTerrain: the lookahead built job by job until none is pending at the
+// camera), and every sample records the geometries streamed while it ran (streamedDuring: 0 when the settle held).
 
 import path from 'node:path';
 import os from 'node:os';
@@ -53,6 +60,7 @@ import {
 } from './map-probe-runtime.mjs';
 import { selectMapViews } from './map-view-probe-views.mjs';
 import { CAPTURE_QUEUE_DIR, createCaptureLock } from './capture-lock.mjs';
+import { settleResidencyTerrain } from './world-residency-acquisition.mjs';
 import { captureLuminance, encodeLum } from './frame-capture-compare.mjs';
 import {
   FRAME_PASS_TIMER_PROTOCOL, MID_RANGE_PROXIES, installFramePassTimer, pairDeltas, projectFrameMs, proxyRatios,
@@ -79,6 +87,10 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
   // the static shadow-caster cache (engine/shadowStaticCache.ts): off forces every caster every frame
   'shadow-cache': Object.freeze({ on: 'window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: false })',
     off: 'window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: true })' }),
+  // the cache's depth copy (2026-10-08, the perf lane: what one copy costs): the cache on both sides; on copies every depth
+  // texture twice (the same texels again, so the picture holds), off once — the delta is one copy per copy the cache made
+  // (the block's cache record counts them). The wrapper is installed by the first switch and stays, so both sides run it.
+  'shadow-cache-copy2': Object.freeze({ on: shadowCacheCopyToggle(true), off: shadowCacheCopyToggle(false) }),
   // the scenery lane's field walls and everything on them (gauntlet wave 34): the wall pools (their modules carry a snow
   // map's snow load), the field prints' buckets (the run heads, the foot stones, the breaches, the mud aprons) and the
   // snow drifts; off hides them all, so the delta is the walls' whole frame cost (an upper bound on what the dressing
@@ -153,6 +165,24 @@ const FRAME_PROBE_TOGGLES = Object.freeze({
     on: `(() => { let n = 0; window.__DEBUG.scene.traverse((o) => { const a = o.userData && o.userData.panoAir; if (!a) return; a.nullControl = 1; n++; }); return { shells: n }; })()`,
     off: `(() => { let n = 0; window.__DEBUG.scene.traverse((o) => { const a = o.userData && o.userData.panoAir; if (!a) return; a.nullControl = 0; n++; }); return { shells: n }; })()` }),
 });
+
+/** The in-page switch of the cache's depth copy (the shadow-cache-copy2 toggle): copy each depth texture twice, or once. */
+export function shadowCacheCopyToggle(twice) {
+  return `(() => {
+    const R = window.__DEBUG.renderer;
+    window.__SHADOW_DEBUG = Object.assign(window.__SHADOW_DEBUG || {}, { noStaticCache: false });
+    if (!R.__fbpCopyOnce) {
+      const once = R.copyTextureToTexture;
+      R.__fbpCopyOnce = once;
+      R.copyTextureToTexture = function (src, dst, ...rest) {
+        once.call(this, src, dst, ...rest);
+        if (R.__fbpCopyTwice && src && src.isDepthTexture) once.call(this, src, dst, ...rest);
+      };
+    }
+    R.__fbpCopyTwice = ${twice ? 'true' : 'false'};
+    return { copies: ${twice ? 2 : 1} };
+  })()`;
+}
 
 /**
  * The in-page switch for the border additions: shows or hides the farmsteads and the hedgerows, and draws each ring
@@ -339,14 +369,24 @@ export function freezeBattle(governor) {
   return { roster, dynScale: P.dynScale, perfTrim: P.perfTrim };
 }
 
-/** --hide-bots: every vehicle but the player's out of the frame (root hidden, all its layers off); the count hidden. */
-function hideOtherVehicles() {
+/**
+ * --hide-bots: every vehicle but the player's out of the frame (root hidden, all its layers off); the count hidden.
+ *
+ * (2026-10-07, the whole-PR census) The hidden hulls also leave the near-vehicle shadow policy
+ * (engine/nearVehicleShadowDetail.ts): it gives its slots to the nearest scene-child hulls that are `visible` and carry
+ * `userData.nearShadowDetail` (VEHICLE_SHADOW_DETAIL_KEY), and battlePresentationRuntime sets every ally's root visible
+ * again each frame, so hidden allies spawned nearer the camera took the slots and the player's hull cast through its convex
+ * proxies — on one build and not the other wherever a layout moved the spawns (±16–19 shadow draws in the player's
+ * cascades). Clearing the hidden hulls' detail record keeps the player in its slot on every build.
+ */
+export function hideOtherVehicles() {
   let hidden = 0;
   for (const e of window.__DEBUG.game.tanks) {
     const root = e.isPlayer ? null : e.visual?.root;
     if (!root) continue;
     root.visible = false;
     root.traverse((o) => o.layers.disableAll());
+    if (root.userData) delete root.userData.nearShadowDetail;
     hidden++;
   }
   return hidden;
@@ -392,6 +432,17 @@ function sceneCensus() {
     else visit(top, name(top));
   }
   return out;
+}
+
+/** Geometries the terrain LOD stream built while a sample ran (null when either reading is missing). */
+export function streamedDuring(before, after) {
+  const a = before?.terrainStreamed, b = after?.terrainStreamed;
+  return Number.isFinite(a) && Number.isFinite(b) ? b - a : null;
+}
+
+/** Settle the terrain LOD stream at the current pose (a page without the API reports why instead of failing the slot). */
+async function settleTerrainStream(page) {
+  return page.evaluate(settleResidencyTerrain).catch((error) => ({ error: String(error?.message ?? error).slice(0, 200) }));
 }
 
 /** A summary's scene pass counts (the draws and triangles the agreement reads) and the frame's draws. */
@@ -484,6 +535,8 @@ function graphicsState() {
     perfTrim: D.post.perfTrim, postAa: c.dataset.postAa || null, lightFx: c.dataset.lightFx || null,
     shadowSizes: t ? t.cascades.map((x) => x.size) : null, shadowMaxFar: t?.maxFar ?? null,
     programs: D.renderer.info.programs?.length ?? null,
+    // the terrain LOD stream's running count of streamed geometries (the sample's streamedDuring is its after − before)
+    terrainStreamed: D.world?.group?.children?.find?.((c) => c.name === 'terrain')?.userData?.streamingStats?.streamedGeometryCount ?? null,
     // the static shadow-caster cache's running counts (null on a build without it): a sample's paths are the
     // difference of its graphics and graphicsAfter readings
     staticCache: t?.staticCache ? {
@@ -808,12 +861,105 @@ async function sampleView(page, options, { moving = false } = {}) {
         cacheReuses: c ? (c.reuses || []).reduce((a, v) => a + (v || 0), 0) : null, cacheRebuilds: c ? (c.rebuilds || []).reduce((a, v) => a + (v || 0), 0) : null };
     });
     // a toggle block's frames rotate through a few prefix checkpoints: the simulations' step, the shadow maps' step,
-    // the scene's and the whole frame (the last checkpoint), each from the same block of one pose
-    blocks.push({ side, state, switched: switched ?? null, result: await sample(half, ['prefix'], TOGGLE_CHECKPOINTS) });
+    // the scene's and the whole frame (the last checkpoint), each from the same block of one pose; the static shadow
+    // cache's own record of the block beside them (cacheTrace: its rebuilds, reuses and copies frame by frame, and why)
+    await page.evaluate(cacheTrace, 'start');
+    const result = await sample(half, ['prefix'], TOGGLE_CHECKPOINTS);
+    const cache = await page.evaluate(cacheTrace, 'stop');
+    blocks.push({ side, state, switched: switched ?? null, result, cache });
     previous = side;
   }
   await page.evaluate(t.on);
   return { toggle: options.toggle, blocks };
+}
+
+/**
+ * The static shadow cache's record of a sample (engine/shadowStaticCache.ts telemetry, read every frame from rAF; the
+ * 2026-10-08 cache question): per cascade the rebuilds and the reuses, the ordinary renders (and those of a cascade whose
+ * pose had not settled), the copies, the content changes and promotions, the rebuilds by reason, the hash's time, and the
+ * first frames as a pattern (R a rebuild, . reuses only, u reuses beside ordinary renders, f ordinary renders only, - no
+ * cascade rendered). A build with the cache's frame record (the telemetry's `reasons` and `contentKinds`, lighting's
+ * `staticCacheFrame`) gives the rebuilds by their own reasons, the content changes by kind and the first changed casters,
+ * and each cascade's pose moves; a build without it charges a frame's rebuilds to the last reason it gave. Serialized into
+ * the page: 'start' arms it, 'stop' returns the record.
+ */
+export function cacheTrace(cmd) {
+  const lighting = () => window.__DEBUG.lighting;
+  const tel = () => lighting()?.getShadowTelemetry?.()?.staticCache ?? null;
+  let T = window.__FBP_CACHE_TRACE;
+  if (!T) {
+    T = window.__FBP_CACHE_TRACE = { active: false, last: null, update: -1, frames: [] };
+    const grew = (now, before) => {
+      if (!now) return null;
+      const out = {};
+      for (const k of Object.keys(now)) { const d = now[k] - ((before && before[k]) || 0); if (d) out[k] = d; }
+      return out;
+    };
+    const step = () => {
+      if (T.active) {
+        const t = tel();
+        if (t && T.last) {
+          const n = Math.max(t.rebuilds.length, t.reuses.length, T.last.rebuilds.length, T.last.reuses.length);
+          const rb = [], ru = [];
+          for (let i = 0; i < n; i++) {
+            rb.push((t.rebuilds[i] || 0) - (T.last.rebuilds[i] || 0));
+            ru.push((t.reuses[i] || 0) - (T.last.reuses[i] || 0));
+          }
+          // the frame record of the lighting update this frame ran (none on a dormant frame: the record keeps the last one's)
+          const r = lighting()?.staticCacheFrame ?? null;
+          const fresh = !!r && r.frame !== T.update;
+          if (r) T.update = r.frame;
+          T.frames.push({ rb, ru, copies: t.copies - T.last.copies, full: t.fullRenders - T.last.fullRenders,
+            unsettled: t.unsettled - T.last.unsettled, content: t.contentChanges - T.last.contentChanges,
+            promotions: t.promotions - T.last.promotions, demotions: t.demotions - T.last.demotions,
+            reason: t.lastRebuildReason, hashMs: t.hashMs, reasons: grew(t.reasons, T.last.reasons), kinds: grew(t.contentKinds, T.last.contentKinds),
+            moveMask: fresh ? r.moveMask : 0, changed: fresh && r.content ? `${r.content}:${r.changed}` : '' });
+        }
+        T.last = t;
+      }
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+  if (cmd === 'start') {
+    T.frames = []; T.last = tel(); T.update = lighting()?.staticCacheFrame?.frame ?? -1; T.active = true;
+    return T.last ? { enabled: T.last.enabled } : null;
+  }
+  T.active = false;
+  const end = tel();
+  if (!end) return null;
+  const f = T.frames;
+  const total = (xs) => xs.reduce((a, v) => a + v, 0);
+  const sum = (get) => f.reduce((a, x) => a + get(x), 0);
+  const record = f.some((x) => x.reasons);
+  const cascades = f.reduce((m, x) => Math.max(m, x.rb.length), 0);
+  const perCascade = [];
+  for (let i = 0; i < cascades; i++) {
+    perCascade.push({ rebuilds: sum((x) => x.rb[i] || 0), reuses: sum((x) => x.ru[i] || 0), ...(record ? { moves: sum((x) => (x.moveMask >> i) & 1) } : {}) });
+  }
+  const reasons = {}, contentKinds = {}, changed = [];
+  for (const x of f) {
+    if (record) for (const [k, v] of Object.entries(x.reasons || {})) reasons[k] = (reasons[k] || 0) + v;
+    else {
+      const r = total(x.rb);
+      if (r > 0) reasons[x.reason || '?'] = (reasons[x.reason || '?'] || 0) + r;
+    }
+    for (const [k, v] of Object.entries(x.kinds || {})) contentKinds[k] = (contentKinds[k] || 0) + v;
+    if (x.changed && changed.length < 8 && !changed.includes(x.changed)) changed.push(x.changed);
+  }
+  const hash = f.map((x) => x.hashMs).filter(Number.isFinite).sort((a, b) => a - b);
+  const pattern = f.slice(0, 60).map((x) => {
+    const r = total(x.rb), u = total(x.ru);
+    return r ? 'R' : u ? (x.full ? 'u' : '.') : x.full ? 'f' : '-';
+  }).join('');
+  return {
+    frames: f.length, enabled: end.enabled, failed: end.failed, perCascade,
+    rebuilds: sum((x) => total(x.rb)), reuses: sum((x) => total(x.ru)), full: sum((x) => x.full), unsettled: sum((x) => x.unsettled),
+    copies: sum((x) => x.copies), contentChanges: sum((x) => x.content), promotions: sum((x) => x.promotions),
+    demotions: sum((x) => x.demotions), promoted: end.promoted, staticCasters: end.staticCasters, reasons, exactReasons: record,
+    ...(record ? { contentKinds, changed, moves: sum((x) => (x.moveMask ? 1 : 0)) } : {}),
+    hashMsMed: hash.length ? hash[Math.floor((hash.length - 1) / 2)] : null, pattern, targetBytes: end.targetBytes,
+  };
 }
 
 /** A slot the pages' agreement sends back to be staged again before it measures. */
@@ -866,6 +1012,7 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }, g
     await poseView(page, options.views[0].split('@')[0]);
     await sleep(1200);
     await page.waitForFunction(grassSettled, { timeout: 20000, polling: 250 }).catch(() => {});
+    await settleTerrainStream(page);
     const read = await page.evaluate((cfg) => window.__FRAME_PASS_TIMER.sample(cfg),
       { frames: 30, block: options.block, modes: ['whole'], flush: !options.noFlush, timeoutMs: 60000 });
     staged = { ...sceneOf(summarizePassFrames(read)), census: await page.evaluate(sceneCensus).catch(() => null) };
@@ -890,6 +1037,7 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }, g
       if (moving) pose.mover = await page.evaluate(installMover, Number(speedText));
       await sleep(1200);
       await page.waitForFunction(grassSettled, { timeout: 20000, polling: 250 }).catch(() => {});
+      const terrainSettle = moving ? null : await settleTerrainStream(page);
       if (options.governor === 'live') await sleep(Math.max(0, options.settleMs * 3)); // let the governor walk
       for (const scale of options.scales ?? [null]) {
         if (scale !== null) { await page.evaluate((v) => window.__DEBUG.post.pinDynScale(v), scale); await sleep(1200); }
@@ -905,7 +1053,8 @@ async function measureOnPage(page, options, slot, { w0, h0, allies, enemies }, g
           writeFileSync(`${stem}.lum`, encodeLum(await page.evaluate(captureLuminance)));
         }
         const emulation = options.emulate ? await page.evaluate(() => ({ ...window.__FBP_EMULATOR?.state })) : null;
-        samples.push({ viewport, view: `${view}${suffix}`, scale, pose, graphics, graphicsAfter: after, emulation, ...measured });
+        samples.push({ viewport, view: `${view}${suffix}`, scale, pose, graphics, graphicsAfter: after, emulation, terrainSettle,
+          streamedDuring: streamedDuring(graphics, after), ...measured });
       }
       if (moving) await page.evaluate(() => window.__FBP_MOVER.uninstall());
       if (options.scales) await page.evaluate(() => window.__DEBUG.post.pinDynScale(1));
@@ -1094,6 +1243,30 @@ function readSlotRecords(dirs) {
 const slotIndex = (record) => Number(/-s(\d+)-/.exec(record.key)?.[1] ?? 0);
 
 /**
+ * The static shadow cache's records of a side's blocks (cacheTrace), per frame: what it rebuilt, reused and copied, the
+ * rebuilds by reason and (a build with the frame record) the content changes by kind, the frames whose cascades moved and
+ * the first changed casters.
+ */
+export function cacheOfUnits(units) {
+  const records = units.map((u) => u.cache).filter((c) => c && c.frames > 0);
+  if (!records.length) return null;
+  const frames = records.reduce((a, c) => a + c.frames, 0);
+  const per = (k) => +(records.reduce((a, c) => a + (c[k] || 0), 0) / frames).toFixed(3);
+  const reasons = {}, contentKinds = {}, changed = [];
+  for (const c of records) {
+    for (const [k, v] of Object.entries(c.reasons || {})) reasons[k] = (reasons[k] || 0) + v;
+    for (const [k, v] of Object.entries(c.contentKinds || {})) contentKinds[k] = (contentKinds[k] || 0) + v;
+    for (const x of c.changed || []) if (changed.length < 8 && !changed.includes(x)) changed.push(x);
+  }
+  const record = records.some((c) => c.exactReasons);
+  const hash = records.map((c) => c.hashMsMed).filter(Number.isFinite).sort((a, b) => a - b);
+  return { frames, enabled: records.some((c) => c.enabled), rebuilds: per('rebuilds'), reuses: per('reuses'), full: per('full'),
+    unsettled: per('unsettled'), copies: per('copies'), contentChanges: per('contentChanges'), promotions: per('promotions'), reasons,
+    exactReasons: record, ...(record ? { contentKinds, changed, moves: per('moves') } : {}),
+    hashMs: hash.length ? hash[Math.floor((hash.length - 1) / 2)] : null, patterns: records.map((c) => c.pattern) };
+}
+
+/**
  * One table per map × viewport × view (and per toggle): per step the median GPU ms of each label (median over that
  * label's slots or blocks) from the prefix decomposition, the CPU ms and draw calls of the labels the step covers, and
  * for two labels the A B B A pair deltas with their spread; frame totals (the whole-frame query), CPU, draws.
@@ -1117,7 +1290,8 @@ export function buildFrameReport(records, labels = null, sceneTolerances = {}) {
         cpu: sumLabels(summary, names, 'cpu'), calls: sumLabels(summary, names, 'calls') };
     }
     return { steps, gpuFrame: summary?.gpuFrame?.med ?? null, gpuFrameP25: summary?.gpuFrame?.p25 ?? null,
-      cpuFrame: summary?.cpuFrame?.med ?? null, calls: summary?.calls?.med ?? null, tris: summary?.tris?.med ?? null };
+      cpuFrame: summary?.cpuFrame?.med ?? null, calls: summary?.calls?.med ?? null, tris: summary?.tris?.med ?? null,
+      interval: summary?.interval?.med ?? null };
   };
   // a slot the agreement voided before it measured (no samples) voids every row of its map
   const mapVoids = {};
@@ -1127,7 +1301,7 @@ export function buildFrameReport(records, labels = null, sceneTolerances = {}) {
       if (s.blocks?.length) {
         const k = `${r.mapId} ${s.viewport} ${s.view} toggle:${s.toggle ?? r.toggle ?? '?'}`;
         const row = (out[k] ||= { mapId: r.mapId, viewport: s.viewport, view: s.view, toggle: s.toggle ?? null, units: [] });
-        s.blocks.forEach((b, i) => { if (b.summary) row.units.push({ label: b.side, order: slotIndex(r) * 10 + i, unit: unitOf(b.summary, b.summary), state: b.state }); });
+        s.blocks.forEach((b, i) => { if (b.summary) row.units.push({ label: b.side, order: slotIndex(r) * 10 + i, unit: unitOf(b.summary, b.summary), state: b.state, cache: b.cache ?? null }); });
         continue;
       }
       if (!s.summary) continue;
@@ -1161,6 +1335,8 @@ export function buildFrameReport(records, labels = null, sceneTolerances = {}) {
         n: units.length,
         gpuFrame: median(units.map((u) => u.gpuFrame)), gpuFrameP25: median(units.map((u) => u.gpuFrameP25)),
         cpuFrame: median(units.map((u) => u.cpuFrame)), calls: median(units.map((u) => u.calls)), tris: median(units.map((u) => u.tris)),
+        interval: median(units.map((u) => u.interval)),
+        cache: cacheOfUnits(row.units.filter((u) => u.label === label)),
         steps: Object.fromEntries(stepNames.map((p) => [p, {
           gpu: median(units.map((u) => u.steps[p]?.gpu)), cpu: median(units.map((u) => u.steps[p]?.cpu)), calls: median(units.map((u) => u.steps[p]?.calls)),
         }])),
@@ -1172,6 +1348,7 @@ export function buildFrameReport(records, labels = null, sceneTolerances = {}) {
       row.deltas = {
         gpuFrame: pairDeltas(seq((u) => u.gpuFrame), a, b), gpuFrameP25: pairDeltas(seq((u) => u.gpuFrameP25), a, b),
         cpuFrame: pairDeltas(seq((u) => u.cpuFrame), a, b), calls: pairDeltas(seq((u) => u.calls), a, b),
+        interval: pairDeltas(seq((u) => u.interval), a, b),
         steps: Object.fromEntries(stepNames.map((p) => [p, {
           gpu: pairDeltas(seq((u) => u.steps[p]?.gpu ?? null), a, b), cpu: pairDeltas(seq((u) => u.steps[p]?.cpu ?? null), a, b),
           calls: pairDeltas(seq((u) => u.steps[p]?.calls ?? null), a, b),
@@ -1217,9 +1394,16 @@ function formatFrameReport(report, { proxy = 'rtx4050-laptop' } = {}) {
       const cell = (l, f) => row.byLabel[l].steps[p]?.[f] ?? '';
       lines.push(`| ${p} | ${labels.map((l) => cell(l, 'gpu')).join(' | ')} | ${delta(row.deltas?.steps[p]?.gpu)} | ${labels.map((l) => cell(l, 'cpu')).join(' | ')} | ${labels.map((l) => cell(l, 'calls')).join(' | ')} |`);
     }
-    for (const [name, key] of [['frame GPU (whole-frame query)', 'gpuFrame'], ['frame GPU p25', 'gpuFrameP25'], ['main-thread CPU (render path)', 'cpuFrame'], ['draw calls', 'calls']]) {
+    for (const [name, key] of [['frame GPU (whole-frame query)', 'gpuFrame'], ['frame GPU p25', 'gpuFrameP25'], ['main-thread CPU (render path)', 'cpuFrame'], ['draw calls', 'calls'], ['frame interval (presented)', 'interval']]) {
       lines.push(`| **${name}** | ${labels.map((l) => row.byLabel[l][key] ?? '').join(' | ')} | ${delta(row.deltas?.[key])} | | |`);
     }
+    // the static shadow cache's own record of each side's blocks (cacheTrace), per frame
+    const counts = (o) => Object.entries(o).map(([k, v]) => `${k} ${v}`).join(', ');
+    const cacheCell = (c) => (c ? `${c.rebuilds} rebuilds, ${c.reuses} reuses, ${c.full} ordinary (${c.unsettled} unsettled), ${c.copies} copies, `
+      + `${c.contentChanges} content changes a frame; hash ${c.hashMs} ms${Object.keys(c.reasons).length ? `; rebuilt for ${counts(c.reasons)}${c.exactReasons ? '' : ' (by the frame\'s last reason)'}` : ''}`
+      + `${c.contentKinds && Object.keys(c.contentKinds).length ? `; content ${counts(c.contentKinds)}${c.changed?.length ? ` (${c.changed.join(', ')})` : ''}` : ''}`
+      + `${c.moves ? `; a cascade pose moved on ${+(c.moves * 100).toFixed(1)} % of frames` : ''}` : '');
+    if (labels.some((l) => row.byLabel[l].cache)) lines.push(`| **static shadow cache** | ${labels.map((l) => cacheCell(row.byLabel[l].cache)).join(' | ')} | | | |`);
     const proj = labels.map((l) => projectFrameMs({ gpuMs: row.byLabel[l].gpuFrameP25 ?? row.byLabel[l].gpuFrame, cpuMs: row.byLabel[l].cpuFrame }, ratios));
     lines.push(`| **projected ${proxy} frame (p25 GPU)** | ${proj.map((p) => `${p.frameMs} ms (${p.bound})`).join(' | ')} | | | |`, '');
   }
