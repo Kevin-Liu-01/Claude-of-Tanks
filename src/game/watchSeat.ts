@@ -33,7 +33,7 @@ export interface WatchSeatEntity<TController = unknown> {
   isPlayer: boolean;
   aiCtl: TController | null;
   input: WatchSeatInput;
-  combat: { destroyed?: boolean };
+  combat: { destroyed?: boolean } | null;
   modeActive?: boolean;
   aerial?: { kind?: string } | null;
 }
@@ -116,7 +116,7 @@ export function watchSeatRefusal<TEntity extends WatchSeatEntity<TController>, T
   if (!game.ruleset.watch?.takeControl) return 'no-take-control';
   if (watch.takenId) return 'already-driving';
   if (!entity) return 'no-hull';
-  if (entity.combat.destroyed) return 'destroyed';
+  if (!entity.combat || entity.combat.destroyed) return 'destroyed';
   if (entity.modeActive === false) return 'inactive';
   if (!entity.aiCtl) return 'no-brain';
   if (entity.aerial?.kind === 'gunship') return 'aircraft';
@@ -160,6 +160,18 @@ export function leaveWatchSeat<TEntity extends WatchSeatEntity<TController>, TCo
   }
   if (game.player === entity) game.player = null;
   return entity;
+}
+
+/**
+ * The local view shows every hull: a watched battle, opened, with no seat taken (nothing to hide from a watcher with
+ * no side). A taken seat sees as its side does, spotting and all.
+ */
+export function watchRevealsAll(game: {
+  player: unknown;
+  ruleset?: { readonly watch?: { readonly revealAll: boolean } | null } | null;
+  watch?: { readonly opened: boolean } | null;
+}): boolean {
+  return !!game.ruleset?.watch?.revealAll && !!game.watch?.opened && !game.player;
 }
 
 /** The verdict's reference seat in a watched battle (the human seat, whoever drives it); else the player. */

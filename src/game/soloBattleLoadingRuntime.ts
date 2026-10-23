@@ -110,6 +110,8 @@ export interface SoloBattleLoadingRuntimeOptions {
   preloadBattleWarm(): AsyncLoadResult;
   preloadBattleStart(): AsyncLoadResult;
   ensureKillcam(): AsyncLoadResult;
+  /** Watch mode's camera, controller and bar, loaded with a watched battle's other covered work. */
+  ensureWatch?(): AsyncLoadResult;
   ensureFx(): Promise<FxRuntime>;
   startBattle(
     specId: string,
@@ -120,6 +122,7 @@ export interface SoloBattleLoadingRuntimeOptions {
       randomRoster: boolean;
       gameMode?: string;
       campaignOperationId?: string | null;
+      watch?: boolean;
     },
   ): void;
   prepareBattleWorldServices(world: WorldRuntime): void;
@@ -163,6 +166,8 @@ export interface SoloBattleLoadingStartOptions {
   gameMode?: string;
   /** Campaign ladder operation (Frontline Assault): its difficulty and clock fold into the ruleset. */
   campaignOperationId?: string | null;
+  /** Watch mode (sim/matchRuleset.ts WATCH_RULES): every seat a bot's. */
+  watch?: boolean;
 }
 
 export function soloBattleLoadingModeLabel(gameMode: string, requestedMapId: string | null): string {
@@ -323,6 +328,7 @@ export function createSoloBattleLoadingRuntime(
   preloadBattleWarm,
   preloadBattleStart,
   ensureKillcam,
+  ensureWatch,
   ensureFx,
   startBattle,
   prepareBattleWorldServices,
@@ -347,7 +353,7 @@ export function createSoloBattleLoadingRuntime(
   const host = globalThis as LoadingHost;
 
   return {
-    async begin(specId, mapId = null, { randomRoster = true, gameMode = 'standard', campaignOperationId = null } = {}) {
+    async begin(specId, mapId = null, { randomRoster = true, gameMode = 'standard', campaignOperationId = null, watch = false } = {}) {
       // Debug/API entry can bypass the Garage's ui:battleStart event.
       post.setAdaptiveSuspended(true);
       const shownAt = now();
@@ -450,6 +456,7 @@ export function createSoloBattleLoadingRuntime(
         () => audio.warmBattleEvents(plannedRoster),
         () => fxTexture,
         () => ensureKillcam(),
+        () => (watch && ensureWatch ? ensureWatch() : Promise.resolve(null)),
         () => rosterTexture,
         ]);
       } catch (error) {
@@ -484,6 +491,7 @@ export function createSoloBattleLoadingRuntime(
         randomRoster,
         ...(normalizedGameMode === 'standard' ? {} : { gameMode: normalizedGameMode }),
         ...(campaignOperationId ? { campaignOperationId } : {}),
+        ...(watch ? { watch } : {}),
       });
       battleLoad.progress(0.565, 'Drawing tactical map');
       prepareBattleWorldServices(getWorld());

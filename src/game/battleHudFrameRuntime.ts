@@ -48,6 +48,19 @@ interface CameraRigView {
   mode: string;
 }
 
+/** Watch mode (watch-mode-243; game/watchController.ts): whose HUD a watcher sees, read-only. */
+interface WatchHudView<TEntity> {
+  /** The hull ridden along (or, flying, the human seat the frame is anchored to); null outside a watched battle. */
+  focus(): TEntity | null;
+  /** Flying the drone: the focus is only the frame's anchor, no tank is the HUD's own. */
+  flying(): boolean;
+  /** The ride-along's gunner sight and its zoom. */
+  sight(): boolean;
+  zoom(): number;
+  /** No driver in a watched battle: every hull is shown. */
+  revealAll(): boolean;
+}
+
 function isHudTankEntity(value: RuntimeValue): value is HudTankEntity {
   return !!value && typeof value === 'object'
     && typeof Reflect.get(value, 'id') === 'string'
@@ -104,6 +117,7 @@ interface BattleHudFrameRuntimeOptions<TEntity extends HudTankEntity> {
   now?: () => number;
   /** A measured round trip from the multiplayer status model (null outside a network round). */
   pingMs?: () => number | null;
+  watch?: WatchHudView<TEntity> | null;
 }
 
 export interface BattleHudFrameRuntime<TEntity extends HudTankEntity = HudTankEntity> {
@@ -133,6 +147,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
   getDamagePanel,
   now = () => performance.now(),
   pingMs = () => null,
+  watch = null,
 }: BattleHudFrameRuntimeOptions<TEntity>): BattleHudFrameRuntime<TEntity> {
   const required = [aimController?.update, armorAimOverlay?.update,
     armorAimOverlay?.hide, killcam?.isActive, getHud, getDamagePanel, now];
@@ -190,6 +205,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     receiver: null,
     isSpotted(id) {
       const spotting = game.spotting;
+      if (watch?.revealAll()) return true;
       return spotting
         ? spotting.isSpotted(id, (spotFrame.receiver || player())?.team ?? 'player', spotFrame.receiver || player())
         : true;
@@ -240,7 +256,8 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     frameInfo.timeS = game.timeS;
     const rttMs = pingMs();
     frameInfo.pingMs = Number.isFinite(Number(rttMs)) ? Number(rttMs) : 0;
-    frameInfo.mode = rig.mode === 'SNIPER' ? 'sniper' : 'battle';
+    const watched = !player() && !!watch?.focus();
+    frameInfo.mode = (watched ? watch!.sight() : rig.mode === 'SNIPER') ? 'sniper' : 'battle';
     frameInfo.player = focus;
     frameInfo.tanks = game.tanks;
     frameInfo.rosterTanks = game.rosterTanks ?? game.tanks;
@@ -295,7 +312,8 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
 
   const update = (inBattle: boolean, killcamActive: boolean): void => {
     const observer = observerFocus();
-    const focus = player() || observer;
+    const watched = watch?.focus() ?? null;
+    const focus = player() || watched || observer;
 
     // Use both the frame-top latch and the live state. A replay can begin in
     // the simulation step immediately before this operation.
@@ -307,6 +325,9 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     writeFrameInfo(focus);
     const localPlayer = player();
     if (localPlayer) aimController.update(frameInfo.aim);
+    else if (watched && watch && !watch.flying()) {
+      aimController.observe(frameInfo.aim, watched, { sight: watch.sight(), zoom: watch.zoom() });
+    }
     requireHud().update(frameInfo);
     updateArmorOverlay(localPlayer);
     if (focus.combat) requireDamagePanel().update(focus.combat);

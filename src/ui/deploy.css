@@ -182,6 +182,16 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
 .cot-garage .cot-battle-menu.open [data-battle-launch]:hover{background:var(--btn-primary-hover);}
 .cot-garage .cot-battle-menu.open [data-battle-launch] .cot-c-kbd{margin-left:auto;height:26px;padding:0 var(--s2);
   color:var(--btn-primary-ink);border-color:currentColor;}
+/* Watch (watch-mode-243): the secondary beside Deploy, its height, the selected mode and map with every seat a bot's */
+.cot-garage .cot-battle-menu.open .cot-battle-menu-foot{grid-template-columns:auto minmax(0,1fr);}
+.cot-garage .cot-battle-menu.open .cot-battle-menu-foot>.cot-deploy-pick{grid-column:1/-1;}
+.cot-garage .cot-battle-menu.open [data-battle-watch]{height:var(--btn-h-xl);display:flex;align-items:center;gap:var(--s2);
+  padding:0 var(--s4);border:0;border-radius:var(--control-radius);background:var(--btn-secondary-fill);
+  box-shadow:inset 0 0 0 1px var(--btn-secondary-edge);color:var(--ink-1);cursor:pointer;
+  font:700 var(--fs-16)/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;}
+.cot-garage .cot-battle-menu.open [data-battle-watch]:hover:not(:disabled){box-shadow:inset 0 0 0 1px var(--ink-2);}
+.cot-garage .cot-battle-menu.open [data-battle-watch]:disabled{opacity:.4;cursor:default;}
+.cot-garage .cot-battle-menu.open[data-deploy-tab='campaign'] [data-battle-watch]{display:none;}
 .cot-garage .cot-battle-menu.open .cot-battle-galaxy{display:flex;align-items:center;gap:var(--s3);padding:var(--s3);
   border:1px solid var(--line-1);border-radius:var(--control-radius);color:var(--ink-1);font:600 var(--fs-14)/1.2 var(--font-display);}
 .cot-garage .cot-battle-menu.open .cot-battle-galaxy[hidden]{display:none;}

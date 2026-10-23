@@ -591,8 +591,16 @@ interface ShellSlotButton extends HTMLButtonElement {
 
 interface AlertOptions { tone?: string; icon?: string }
 
+/** Watch mode's drone on the minimap (watch-mode-243): its ground point and the lens's heading. */
+export interface HudWatchDrone {
+  x: number;
+  z: number;
+}
+
 export interface HudRuntime {
   root: HTMLDivElement;
+  /** Watch mode: the drone's pose while flying (no tank is the HUD's own), null while riding, driving or playing. */
+  setWatchDrone(pose: HudWatchDrone | null): void;
   shotInfo: ShotInfoRuntime;
   forceHitMark(bounced?: boolean): void;
   getHitArcs(): Array<{
@@ -5279,7 +5287,7 @@ export function initHud(bus: EventBus): HudRuntime {
   function shouldShowHpBar(tank: HudTank | null | undefined): tank is HudTank & {
     combat: CombatState;
   } {
-    if (!tank || tank.isPlayer || !tank.combat || tank.combat.destroyed) return false;
+    if (!tank || isSelf(tank) || !tank.combat || tank.combat.destroyed) return false;
     if (tank.id === aimTargetId) return false;
     // the proving ground: the lanes stand in a row down the sightline, so their plates would stack; the range card names
     // every hull and the laid one keeps its own target plate
@@ -5383,7 +5391,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // never lights up. Live battles additionally require the target to be
   // spotted; forced screenshot stills trust the recipe (vehicle is rendered).
   function isAimTargetCandidate(tank: HudTank | null | undefined): tank is HudTargetTank {
-    if (!tank || tank.isPlayer || !tank.state || !tank.combat || tank.combat.destroyed) return false;
+    if (!tank || isSelf(tank) || !tank.state || !tank.combat || tank.combat.destroyed) return false;
     if (tank.team === (playerRef?.team ?? 'player')) return false;
     return forcedStill || isSpotted(tank.id);
   }
@@ -6543,7 +6551,7 @@ export function initHud(bus: EventBus): HudRuntime {
     for (let i = 0; i < tanks.length; i++) {
       const tank = tanks[i];
       const state = tank?.state;
-      if (!tank || !state || tank.isPlayer || tank.modeActive === false) continue;
+      if (!tank || !state || isSelf(tank) || tank.modeActive === false) continue;
       if (tank.combat?.destroyed) {
         drawDestroyedMinimapTank(state);
         continue;
@@ -6606,6 +6614,33 @@ export function initHud(bus: EventBus): HudRuntime {
       1,
       true,
     );
+  }
+
+  /** Watch mode's drone: the lens's view wedge over a small diamond at its ground point (no tank of its own). */
+  function drawWatchDroneMarker(pose: HudWatchDrone, camera: THREE.PerspectiveCamera | null | undefined): void {
+    const point = worldToMap(pose.x, pose.z);
+    const x = point[0], y = point[1];
+    if (camera) {
+      _fwd.set(0, 0, -1).transformDirection(camera.matrixWorld);
+      const angle = minimapAngleForDirection(_fwd.x, _fwd.z);
+      mmCtx.fillStyle = 'rgba(235,245,255,0.18)';
+      mmCtx.beginPath();
+      mmCtx.moveTo(x, y);
+      mmCtx.arc(x, y, 44, angle - 0.55, angle + 0.55);
+      mmCtx.closePath();
+      mmCtx.fill();
+    }
+    mmCtx.fillStyle = '#f2f8ff';
+    mmCtx.strokeStyle = 'rgba(8,12,16,0.9)';
+    mmCtx.lineWidth = 1.4;
+    mmCtx.beginPath();
+    mmCtx.moveTo(x, y - 5.5);
+    mmCtx.lineTo(x + 5.5, y);
+    mmCtx.lineTo(x, y + 5.5);
+    mmCtx.lineTo(x - 5.5, y);
+    mmCtx.closePath();
+    mmCtx.stroke();
+    mmCtx.fill();
   }
 
   // Every arrow is drawn exactly where its tank projects (clamped only at the
@@ -6673,7 +6708,8 @@ export function initHud(bus: EventBus): HudRuntime {
     // render-range SQUARE is gone — at 500 m on a 1 km map its edges sliced
     // across the terrain and read as a stray playable-bounds frame floating
     // inset from the map border (the panel frame IS the map bound).
-    if (player?.state && !player.aerial?.active) drawPlayerMinimapOverlay(player.state, frame.camera);
+    if (watchDrone) drawWatchDroneMarker(watchDrone, frame.camera);
+    else if (player?.state && !player.aerial?.active) drawPlayerMinimapOverlay(player.state, frame.camera);
     // clamp inside the map frame and draw the player arrow LAST so it always
     // sits on top.
     paintMinimapBlips();
@@ -6933,6 +6969,10 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   let playerRef: HudTank | null = null;
+  // watch mode (watch-mode-243): flying the drone, no tank is the HUD's own; riding along, the ridden one is
+  let watchDrone: HudWatchDrone | null = null;
+  /** The HUD's own tank: the player's, or the one a watcher rides (the frame's player), never one while flying. */
+  const isSelf = (tank: HudTank): boolean => !!tank.isPlayer || (!watchDrone && tank === playerRef);
   on('tank:destroyed', (p) => {
     if (!p.id || !killLedger.record(p.id, p.killerId, teamById.get(p.id), teamById.get(p.killerId || ''))) return;
     spotById.delete(p.id);
@@ -7726,6 +7766,14 @@ export function initHud(bus: EventBus): HudRuntime {
     },
 
     getMinimapCaptureReceipt: () => mmCaptureReceipt ? { ...mmCaptureReceipt } : null,
+
+    setWatchDrone(pose: HudWatchDrone | null) {
+      if (!pose) { if (watchDrone) { watchDrone = null; mmDirty = true; } return; }
+      // the pose moves in place at the minimap's own cadence; only taking off repaints at once
+      if (!watchDrone) { watchDrone = { x: pose.x, z: pose.z }; mmDirty = true; return; }
+      watchDrone.x = pose.x;
+      watchDrone.z = pose.z;
+    },
 
     exportMinimapBackground(type = 'image/webp', quality = 0.92, requireTextured = false) {
       if (requireTextured) requireSceneMinimap(mmCaptureReceipt, mmBuildGeneration);
