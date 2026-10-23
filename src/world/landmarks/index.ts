@@ -25,7 +25,7 @@ interface LandmarkRow {
 const LANDMARK_TABLE: Readonly<Record<string, LandmarkRow>> = Object.freeze({
   aircraftWreck: { load: () => import('./wrecks.ts') },
   airstrip: { load: () => import('./stations.ts'),
-    spawns: () => [{ kind: 'stripShack' }] },
+    spawns: () => [{ kind: 'stripShack' as LandmarkKind }] },
   baileyBridge: { load: () => import('./bridges.ts') },
   bandstand: { load: () => import('./parks.ts') },
   belfry: { load: () => import('./towers.ts') },
