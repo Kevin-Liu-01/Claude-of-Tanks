@@ -136,6 +136,10 @@ export default {
     // textured crates") the fieldstone field walls are gone from the station (drift fences stand on their lines, in the
     // landmarks below), and with them the brick rubble heaps; fewer crates in the yards, more of the station's drums
     snowCap: true, extraKits: ['winterLake'], wallStyle: 'fieldstone', wallStoneChance: 0.78,
+    // the map-revival lane (round 2, 2026-10-09; 2b after wave 335; ported 2026-10-22, maps-stalled 240): the station's
+    // buildings banked in drifts, its corridors ploughed — and of the set pieces only the closed shells on the ground (the
+    // module train, the radome tower's base, the Jamesway huts): no bank round a mast, a frame or a bunded tank farm
+    buildingDrifts: true, ploughBanks: true, driftLandmarks: ['moduleTrain', 'radomeTower', 'jamesway'],
     wallRuns: [],
     // (L2, gauntlet wave 358a, both critics: "sandbags and barbed wire don't belong at a 1985 radar station"; the
     // coordinator's ruling: the owner's works on every map keep their cover and seats in the region's materials) the
