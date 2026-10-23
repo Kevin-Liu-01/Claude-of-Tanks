@@ -2904,6 +2904,56 @@ export function cloneVehicleMaterial<T extends THREE.Material>(source: T, config
   return clone;
 }
 
+/**
+ * A cloned visual's own copy of one of its source's materials (cloneTankVisual): the same parameters, defines, maps and
+ * user data, joined to the source's registration family (its own cascade entry and sky-light scale) under the source's
+ * whole compile chain as it stands now (the profile patches, the night-lens mask, the unlit tag) and its program key,
+ * so the two draw with one program while every uniform, burn mask and dent stays the copy's own. The source must be
+ * pristine: a burn mask a wreck installed belongs to its own visual.
+ */
+export function copyVehicleMaterial<T extends THREE.Material>(source: T): T {
+  if (source.userData.__burnU) throw new Error('a burnt vehicle material cannot be copied for another visual');
+  if (programVariantOrigin(source) !== source) throw new Error('a program-variant twin cannot be copied for another visual');
+  const clone = source.clone() as T;
+  const defines = (source as { defines?: Record<string, unknown> }).defines;
+  if (defines) (clone as { defines?: Record<string, unknown> }).defines = { ...defines };
+  const chain = source.onBeforeCompile, key = source.customProgramCacheKey();
+  const family = VEHICLE_REGISTRATION.get(source)?.family;
+  if (family) {
+    family.setup(clone);
+    clone.onBeforeCompile = function (this: THREE.Material, shader, renderer) {
+      const outer = vehicleCompileTarget;
+      vehicleCompileTarget = this;
+      try { chain.call(this, shader, renderer); }
+      finally { vehicleCompileTarget = outer; }
+    };
+  } else {
+    // the cascade setup keys the shader it refreshes by the material in its hook's closure: outside a family a copy
+    // would take its source's entry over (reportUnregisteredCascadeClone)
+    if (defines && 'USE_CSM' in defines) throw new Error('an unregistered cascade material cannot be copied for another visual');
+    clone.onBeforeCompile = chain;
+  }
+  clone.customProgramCacheKey = () => key;
+  if (UNLIT_VEHICLE_TAGGED.has(source)) UNLIT_VEHICLE_TAGGED.add(clone);
+  return clone;
+}
+
+/**
+ * A cloned visual's hold on its vehicle's shared camouflage textures (the entry createTankMaterials acquires): taken
+ * at the clone's texture quality, so a closer clone promotes the entry in place as a fresh build would, and released
+ * with the clone.
+ */
+export function acquireTankTextureLease(
+  spec: MaterialTankSpec,
+  engineCtx: ShadowEngineContext | null | undefined,
+  quality: string,
+  camoPattern: string | null,
+): { release(): void } {
+  const shared = acquireSharedTextures(spec, engineCtx?.anisotropy || 8, normalizeMaterialTextureQuality(quality), camoPattern);
+  let held = true;
+  return { release() { if (held) { held = false; releaseSharedTextures(shared); } } };
+}
+
 /** The program key of a material compiled through the bare readability hook (the decorations', a profile's re-hook). */
 const VEHICLE_BARE_HOOK_KEY = 'veh-ambient-floor-v2';
 
