@@ -281,6 +281,15 @@ export const TOKENS = {
   'gallery-take-fade': 'linear-gradient(0deg,#0b0e11 0,oklch(from #0b0e11 l c h / .5) 30%,oklch(from #0b0e11 l c h / 0) 55%)',
   'gallery-callout-on': 'rgba(30,20,6,.95)',
   'gallery-dot-ring': '0 0 0 3px #0b0e11',
+  'studio-z': '58',
+  'studio-pop-z': '40',
+  'studio-track-mark': '.04em',
+  'studio-track-shelf': '.02em',
+  'studio-row-on': 'inset 2px 0 0 #f0a030',
+  'studio-knob-ring': '0 0 0 2px #0b0e11',
+  'studio-swatch-on': '0 0 0 2px #f0a030',
+  'studio-frame-mask': '0 0 0 1px oklch(from #f6f3ec l c h / .18),0 0 0 2000px rgba(5,6,8,.72)',
+  'studio-clip-fx': 'rgba(255,90,78,.16)',
 } as const;
 
 export type TokenName = keyof typeof TOKENS;
