@@ -3597,14 +3597,6 @@ interface RelayForm {
   dish: boolean;
   /** sandbags at the door and the flank, a split air-conditioner on its brackets, a fuel tank on cradles, a solar panel */
   extra?: 'sandbags' | 'aircon' | 'tank' | 'solar';
-  /**
-   * (the buildings lane's round 6, gauntlet wave 418a: "the lattice mast stands on the hut's roof with every guy wire
-   * ending on a turnbuckle at the roof edge ... the hut is doing the bracing"; ported to the r2 relay 2026-10-22,
-   * maps-stalled 240) 'tower': the hut narrower (RELAY_TOWER_HUT) beside a self-supporting galvanised lattice tower on
-   * three concrete footings of its own, tapering to its head, inside the placement box; the feeders down its inner leg
-   * and over a cable bridge to the hut's entry box. Absent: the guyed mast on the roof.
-   */
-  mast?: 'tower';
 }
 const RELAY_DEFAULT: RelayForm = { walls: 'sheet', vents: 2, windows: 1, dish: true };
 const RELAY_FORMS: Readonly<Record<string, RelayForm>> = {
@@ -3621,8 +3613,7 @@ const RELAY_FORMS: Readonly<Record<string, RelayForm>> = {
   // Glen Canyon: a sheet hut in the desert, blind walls, a solar panel on the deck
   glencanyon: { walls: 'sheet', vents: 2, windows: 0, dish: false, extra: 'solar' },
   // the arctic station: the red hut, one louvre against the drift, one window, the dish, its fuel tank on cradles
-  // (maps-stalled 240) the DEW station's relay: its tower beside the hut, as a main station's stood
-  arctic: { walls: 'sheet', vents: 1, windows: 1, dish: true, extra: 'tank', mast: 'tower' },
+  arctic: { walls: 'sheet', vents: 1, windows: 1, dish: true, extra: 'tank' },
   franconian: { walls: 'sheet', vents: 2, windows: 2, dish: false },
 };
 
@@ -3663,19 +3654,10 @@ function sheetSkinAround(width: number, y0: number, y1: number, holes: readonly 
  * triangles stay one run for the fracture (userData.fracture). It paints from the 260 values the old build drew (the
  * kit's stream keeps its seat); the region's form (RelayForm) draws nothing.
  */
-/** (the tower form) the hut 4.2 m across, its centre 1.0 m to the -x side of the placement's, the tower beside it */
-const RELAY_TOWER_HUT = { w: 4.2, x: -1.0 } as const;
-/** (the tower form) the tower's axis in the relay's frame, its footings and lowest section inside the placement box
- *  (+-3.38 x +-3.68) and clear of the hut's plinth; its footings' tops, its lattice's height, its face at the base and the
- *  head, its sections */
-const RELAY_TOWER_AXIS: readonly [number, number] = [2.4, 0];
-const RELAY_TOWER = { footingTop: 0.33, footing: 0.56, height: 10.6, face: 1.5, topFace: 0.55, sections: 4 } as const;
-
 function makeRelayStation(rng: Rng, style?: Palette, form: RelayForm = RELAY_DEFAULT): THREE.BufferGeometry {
   const paint = seatedStream(rng, RELAY_STREAM_DRAWS);
   const out: THREE.BufferGeometry[] = [], pieces: string[] = [];
-  const tower = form.mast === 'tower';
-  const p = style ?? PAL.urbanSteel, w = tower ? RELAY_TOWER_HUT.w : RELAY_W, d = RELAY_D, h = RELAY_H, y0 = RELAY_PLINTH_TOP;
+  const p = style ?? PAL.urbanSteel, w = RELAY_W, d = RELAY_D, h = RELAY_H, y0 = RELAY_PLINTH_TOP;
   const put = (geo: THREE.BufferGeometry, color: number, piece: string, jitter = 0.04): THREE.BufferGeometry => {
     colored(out, geo, color, paint, jitter);
     pieces.push(piece);
@@ -3779,9 +3761,7 @@ function makeRelayStation(rng: Rng, style?: Palette, form: RelayForm = RELAY_DEF
   }
   for (const sz of [-1, 1]) put(box(w + 0.65, 0.3, 0.05).translate(0, h + 0.0, sz * (d / 2 + 0.325)), p[2], 'hut-roof', 0.02);
   for (const sx of [-1, 1]) put(box(0.025, 0.17, d + 0.65).translate(sx * (w / 2 + 0.3125), h + 0.04, 0), p[1], 'hut-roof', 0.02);
-  // the conduit from the eave down the front to the entry box (the cable runs in the roof: props #1's 2.5k); a tower's
-  // feeders come over its cable bridge instead
-  if (!tower) {
+  // the conduit from the eave down the front to the entry box (the cable runs in the roof: props #1's 2.5k)
   put(box(0.07, h - 2.72, 0.07).translate(2.75, 2.72 + (h - 2.72) / 2, d / 2 + 0.035), 0x4f5559, 'hut-cable', 0.02);
   put(box(0.32, 0.34, 0.14).translate(2.75, 2.55, d / 2 + 0.07), 0x4f5559, 'hut-cable', 0.02);
   // the mast's concrete pad on the deck, then the mast itself
@@ -3810,7 +3790,6 @@ function makeRelayStation(rng: Rng, style?: Palette, form: RelayForm = RELAY_DEF
     }), levels: [0.9] },
     ...(form.dish ? { dish: { leg: 1, level: 0.72, radius: 0.42 } } : {}),
   }, (geo, color, piece) => put(geo.rotateY(-RELAY_MAST_YAW), color, piece, 0.025));
-  }
   // the barred windows in the side walls, their glass set back in the cut (the hut is unmanned: its glass stays dark at
   // night, no aperture mark; the beacon alone glows, worldNightFixtureInstances)
   for (const side of [-1, 1] as const) for (const o of windowAt(side)) {
@@ -3822,11 +3801,10 @@ function makeRelayStation(rng: Rng, style?: Palette, form: RelayForm = RELAY_DEF
   put(pitchSkillionRoof(mroof(hw, 0.1, hood), 'z', 1, 0.16).translate(0, 3.1, d / 2 + hood / 2), p[1], 'hut-hood', 0.03);
   put(box(hw + 0.04, 0.18, 0.05).translate(0, style ? 3.1 - Math.tan(0.16) * hood / 2 - 0.08 : 2.98, d / 2 + hood + 0.01), p[2], 'hut-hood', 0.02);
   for (const x of [-hw / 2 + 0.2, hw / 2 - 0.25]) put(bar([x, 2.6, d / 2 + 0.01], [x, 3.02, d / 2 + hood - 0.07], 0.06, 0.06), p[2], 'hut-hood', 0.02);
-  // the warning plate and the meter cabinet on the front by the entry box (a tower's narrower hut: by its -x corner)
-  const plateX = tower ? -(w / 2 - 0.35) : -2.75, cabinetX = tower ? -(w / 2 - 0.4) : -2.7;
-  put(box(0.5, 0.36, 0.02).translate(plateX, 2.2, d / 2 + 0.01), 0xd8b02a, 'hut-hood', 0.02);
-  put(box(0.6, 0.9, 0.3).translate(cabinetX, y0 + 0.45, d / 2 + 0.19), 0x4f5559, 'hut-hood', 0.02);
-  put(scaleUV(box(0.72, y0, 0.42), 0.08, 0.08).translate(cabinetX, y0 / 2, d / 2 + 0.2), RELAY_CONCRETE, 'hut-hood', 0.04);
+  // the warning plate and the meter cabinet on the front by the entry box
+  put(box(0.5, 0.36, 0.02).translate(-2.75, 2.2, d / 2 + 0.01), 0xd8b02a, 'hut-hood', 0.02);
+  put(box(0.6, 0.9, 0.3).translate(-2.7, y0 + 0.45, d / 2 + 0.19), 0x4f5559, 'hut-hood', 0.02);
+  put(scaleUV(box(0.72, y0, 0.42), 0.08, 0.08).translate(-2.7, y0 / 2, d / 2 + 0.2), RELAY_CONCRETE, 'hut-hood', 0.04);
   // the region's own work round it
   const bag = 0x8e7f5e, steel = 0x5a6064;
   if (form.extra === 'sandbags') {
@@ -3850,78 +3828,14 @@ function makeRelayStation(rng: Rng, style?: Palette, form: RelayForm = RELAY_DEF
     put(panel.translate(-1.9, roofTop + 0.6, 1.65), 0x24304a, 'site-solar', 0.02);
     for (const x of [-2.75, -1.05]) for (const [z, hgt] of [[1.25, 0.8], [2.05, 0.36]] as const) put(box(0.05, hgt, 0.05).translate(x, roofTop + hgt / 2, z), steel, 'site-solar', 0.02);
   }
-  if (tower) relayTower(out, put, w, form);
   // (props #1: the merge's own anatomy stands — the version-0 hooks were read over the parts in their build order, which
   // the merge's pieces reorder)
   return mergeConnectedStructure('relaystation', out);
 }
 
-/**
- * (the tower form) The hut built so far moved to its seat beside the tower; then the tower: three concrete footings, the
- * tapering lattice on them (maps/mastKit.ts, footed), its head, beacon and dish on an arm turned away from the hut; the
- * feeders down its inner leg and over a ladder tray to the entry box on the hut's +x wall. The lattice over its lowest
- * section, its head and dish and the cable bridge are dressing (userData.noCollision: an open lattice a shell passes
- * through); the hut, its plinth, the footings and the tower's foot collide.
- */
-function relayTower(out: THREE.BufferGeometry[], put: (geo: THREE.BufferGeometry, color: number, piece: string, jitter?: number) => THREE.BufferGeometry,
-  w: number, form: RelayForm): void {
-  for (const part of out) part.translate(RELAY_TOWER_HUT.x, 0, 0);
-  const [tx, tz] = RELAY_TOWER_AXIS, T = RELAY_TOWER, foot = T.footingTop + 0.03;
-  const dressing = (geo: THREE.BufferGeometry): THREE.BufferGeometry => { geo.userData.noCollision = true; return geo; };
-  // leg 0 toward the hut (-x), legs 1 and 2 outboard: the lattice built square at the origin and turned whole as it is put
-  // (mastKit's plates turn the other way to its legs under its own yaw)
-  const turn = -Math.PI / 2;
-  const r0 = T.face / Math.sqrt(3), legDir = (i: number): [number, number] => {
-    const a = Math.PI / 2 + (i * 2 * Math.PI) / 3, x = Math.cos(a), z = Math.sin(a);
-    return [x * Math.cos(turn) + z * Math.sin(turn), -x * Math.sin(turn) + z * Math.cos(turn)];
-  };
-  for (let i = 0; i < 3; i++) {
-    const [ux, uz] = legDir(i);
-    put(scaleUV(box(T.footing, 0.5 + T.footingTop, T.footing), 0.08, 0.08).translate(tx + ux * r0, (T.footingTop - 0.5) / 2, tz + uz * r0), RELAY_CONCRETE, 'tower-footing', 0.05);
-  }
-  buildLatticeMast({
-    x: 0, z: 0, baseY: T.footingTop, height: T.height, face: T.face, topFace: T.topFace, section: T.height / T.sections,
-    pole: 1.25, footed: true, legRadius: 0.045, braceRadius: 0.019,
-    beacon: (lens) => markWorldBeacon(lens),
-    ...(form.dish ? { dish: { leg: 1, level: 0.7, radius: 0.5 } } : {}),
-  }, (geo, color, piece) => {
-    const placed = geo.rotateY(turn).translate(tx, 0, tz);
-    return put(piece === 'mast-base' || piece === 'mast-section-0' ? placed : dressing(placed), color, piece, 0.025);
-  });
-  // the feeders: down the inner leg's face toward the hut from the head to the bridge, and over the bridge (a ladder tray
-  // from a bracket on the hut's +x wall to the leg) to the entry box on the wall under its end
-  const radiusAt = (y: number) => (T.face + (T.topFace - T.face) * Math.max(0, Math.min(1, (y - foot) / T.height))) / Math.sqrt(3);
-  const bridgeY = 2.75, headY = foot + T.height - 0.4, wallX = RELAY_TOWER_HUT.x + w / 2;
-  const legX = tx - radiusAt(bridgeY), headLegX = tx - radiusAt(headY);
-  put(dressing(bar([headLegX - 0.06, headY, tz], [legX - 0.06, bridgeY + 0.05, tz], 0.06, 0.05)), 0x2d3134, 'hut-cable', 0.02);
-  const bx0 = wallX + 0.02, bx1 = legX - 0.05;
-  for (const sz of [-1, 1]) put(dressing(box(bx1 - bx0, 0.05, 0.04).translate((bx0 + bx1) / 2, bridgeY, tz + sz * 0.2)), 0x5b6165, 'hut-cable', 0.02);
-  for (let k = 0; k < 3; k++) put(dressing(box(0.04, 0.03, 0.44).translate(bx0 + 0.05 + (k * (bx1 - bx0 - 0.1)) / 2, bridgeY - 0.01, tz)), 0x5b6165, 'hut-cable', 0.02);
-  put(dressing(box(bx1 - bx0 + 0.04, 0.05, 0.12).translate((bx0 + bx1) / 2, bridgeY + 0.05, tz + 0.04)), 0x2d3134, 'hut-cable', 0.02);
-  put(box(0.08, 0.3, 0.5).translate(wallX + 0.04, bridgeY - 0.12, tz), 0x4f5559, 'hut-cable', 0.02);
-  put(box(0.14, 0.42, 0.36).translate(wallX + 0.07, bridgeY - 0.5, tz), 0x4f5559, 'hut-cable', 0.02);
-}
-
 
 /** The relay mast's turn (its guys' straps clear of the vents, the door and the corners). */
 const RELAY_MAST_YAW = Math.PI / 12;
-
-/** (the tower form) The wreck's hut moved to its seat; the tower's footings with their shoes, and its lower lattice
- *  fallen from them beside the hut (its head and upper sections the shared debris's). */
-function relayTowerWreck(parts: THREE.BufferGeometry[], own: Rng): THREE.BufferGeometry {
-  for (const part of parts) part.translate(RELAY_TOWER_HUT.x, 0, 0);
-  const [tx, tz] = RELAY_TOWER_AXIS, T = RELAY_TOWER, r0 = T.face / Math.sqrt(3);
-  for (let i = 0; i < 3; i++) {
-    const a = Math.PI + (i * 2 * Math.PI) / 3, fx = tx + Math.cos(a) * r0, fz = tz + Math.sin(a) * r0;
-    colored(parts, scaleUV(box(T.footing, 0.5 + T.footingTop, T.footing), 0.08, 0.08).translate(fx, (T.footingTop - 0.5) / 2, fz), RELAY_CONCRETE, own, 0.05);
-    colored(parts, box(0.3, 0.03, 0.3).translate(fx, T.footingTop + 0.015, fz), 0x5f6569, own, 0.03);
-  }
-  // (the tower's lattice at its own gauge, three sections down from its footings past the hut's +x side and out beyond
-  // its end, kinked at each joint where it struck, clear of the hut's broken walls)
-  buildFallenMast({ x: tx + 0.2, z: tz + 0.6, heading: 0.22, face: 1.1, sections: 3, section: 2.2, kink: 0.2,
-    legRadius: 0.045, braceRadius: 0.019 }, (geo, color) => colored(parts, geo, color, own, 0.03));
-  return merge(parts.map(ensureWorldNightEmissionMask));
-}
 /** Where each of the relay mast's three guys meets the hut's wall head: its point and the wall's outward normal. */
 function relayAnchors(w: number, d: number): Array<{ x: number; z: number; nx: number; nz: number }> {
   return [0, 1, 2].map((i) => {
@@ -3942,8 +3856,7 @@ function relayAnchors(w: number, d: number): Array<{ x: number; z: number; nx: n
 function makeRelayStationBroken(rng: Rng, style?: Palette, form: RelayForm = RELAY_DEFAULT): THREE.BufferGeometry {
   debris({ hw: 3.38, hl: 3.68, h: 12.9 }, PAL.urbanSteel, rng, 'metal').dispose();
   const own = forkedRng(0.6180339887), parts: THREE.BufferGeometry[] = [];
-  const tower = form.mast === 'tower';
-  const p = style ?? PAL.urbanSteel, w = tower ? RELAY_TOWER_HUT.w : RELAY_W, d = RELAY_D, y0 = RELAY_PLINTH_TOP, t = form.walls === 'sheet' ? 0.2 : 0.28;
+  const p = style ?? PAL.urbanSteel, w = RELAY_W, d = RELAY_D, y0 = RELAY_PLINTH_TOP, t = form.walls === 'sheet' ? 0.2 : 0.28;
   colored(parts, scaleUV(box(w, y0 + 0.04, d), 0.08, 0.08).translate(0, (y0 - 0.04) / 2, 0), RELAY_CONCRETE, own, 0.05);
   // the walls to their broken heads, three runs a wall (the +x wall level under the fallen deck)
   const HEADS: ReadonlyArray<readonly [number, number, number]> = [[2.1, 1.3, 1.8], [1.5, 2.3, 1.1], [1.6, 1.6, 1.6], [1.2, 2.0, 1.45]];
@@ -3962,7 +3875,6 @@ function makeRelayStationBroken(rng: Rng, style?: Palette, form: RelayForm = REL
   const deck = mslab(Math.hypot(x2 - x1, rise), 0.1, d - 2 * t - 0.1);
   deck.rotateZ(Math.atan2(rise, x2 - x1));
   colored(parts, deck.translate((x1 + x2) / 2, y0 + 0.05 + rise / 2, 0), RELAY_ROOF, own, 0.05);
-  if (tower) return relayTowerWreck(parts, own);
   // the mast down along the -x flank, its pad thrown beside it
   const mx = -w / 2 - 0.42, mz = -d / 2 + 0.2, heading = 0.05;
   buildFallenMast({ x: mx, z: mz, heading, face: 0.42, sections: 2, section: 1.75, kink: 0.24 },

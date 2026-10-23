@@ -173,17 +173,17 @@
       "concealers": 874
     },
     "whiteout": {
-      "bytes": 1529424,
-      "sha256": "7ba12c0165e6036990565958d5c620de1ebdf1a5684b28095e75ac3fdd4a906e",
+      "bytes": 1527880,
+      "sha256": "4e6df6ed64bb7f7637b65e1807844dd38ace4c8f55c2719408d52704e8e59326",
       "obstacles": 1115,
       "colliders": 1408,
       "concealers": 0
     },
     "orchard": {
-      "bytes": 1390219,
-      "sha256": "df9aa72bff7c2bd0346bea71ce686b64438408de2c81b115995ba24618939604",
+      "bytes": 1376081,
+      "sha256": "84228189cefc7f4c48b813fa7d294007e2c33a98b5276842c0dd36c7311a2db6",
       "obstacles": 4542,
-      "colliders": 4674,
+      "colliders": 4656,
       "concealers": 4807
     },
     "longleaf": {
@@ -407,17 +407,17 @@
         "concealers": 878
       },
       "whiteout": {
-        "bytes": 1704505,
-        "sha256": "e14683f88efa9afdb8eba9d662c525dc01936a0178abe442a1107f4d89eae853",
+        "bytes": 1702961,
+        "sha256": "70714453ac25e272e89b1a5017052f2d0757250777e9ed03140b2e3816345ccd",
         "obstacles": 1255,
         "colliders": 1459,
         "concealers": 0
       },
       "orchard": {
-        "bytes": 1395767,
-        "sha256": "95ec846de83426a8cb8982dcdc55b7b542b6695ca2ac20047798359e809c09f4",
+        "bytes": 1381654,
+        "sha256": "969c2eeaff1161132cf64987ff95650ae0512a43baeb7e91669f9ac3b0f4687c",
         "obstacles": 4609,
-        "colliders": 4656,
+        "colliders": 4638,
         "concealers": 4705
       },
       "longleaf": {
