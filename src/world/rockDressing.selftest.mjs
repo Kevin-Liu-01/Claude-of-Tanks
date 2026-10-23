@@ -746,8 +746,9 @@ const hullAt = source.indexOf('rockHulls.push(legacy.hull); // the collision pro
 // (the Redrock lane, round 10: the form takes the map's angularity too, RockClimate.angular; the hitbox lane, 2026-10-11:
 // the drawn, collision and far forms from one constructor, rockDressing.ts boulderVariantForms)
 assert.ok(hullAt > 0 && hullAt < source.indexOf('const forms = boulderVariantForms(vi, noi, () => mulberry32(seed + 60 + vi), legacy.hull, legacy.top, lithology, angular, mobileProps);'), 'the legacy hull is taken before the form is fitted inside it, as the map\'s rock breaks');
-// (item 46, 2026-10-22: painted from the map's own stone, rockBaseToneFor, before its lithology's)
-assert.match(source, /paintBoulder\(forms\.drawn, P\.rockTone, lithology, rockBaseToneFor\(mapId\)\);\n\s*rockGeos\.push\(forms\.drawn\.geometry\);/);
+// (item 46, 2026-10-22: painted from the map's own stone, rockBaseToneFor, before its lithology's; its mean tone over the
+// ground summed for the chips its foot sheds before the form is kept)
+assert.match(source, /paintBoulder\(forms\.drawn, P\.rockTone, lithology, rockBaseToneFor\(mapId\)\);\n\s*\/\/ \(rock round 2\) the stone's mean tone[\s\S]{0,500}?\n\s*rockGeos\.push\(forms\.drawn\.geometry\);/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockGround', new THREE\.InstancedBufferAttribute\(ground, 1\)\)/);
 assert.match(source, /rockGeos\[vi\]\.setAttribute\('aRockSlope', new THREE\.InstancedBufferAttribute\(slope, 2\)\)/, 'every boulder the slope of its ground');
 assert.match(source, /const rockContact = !snowCap && rockDressing\.dust < 0\.5;/, 'a contact patch round every boulder, but on snow and sand');
@@ -849,7 +850,7 @@ assert.match(source, /const heightM = \(box\.max\.y - Math\.max\(box\.min\.y, -0
 // the pools whole from the build, repartitioned with hysteresis when the camera has moved 8 m
 // (the hitbox lane, 2026-10-11: the forms from one constructor, rockDressing.ts boulderVariantForms) the desktop's far
 // form is the phone's drawn rock, vertex for vertex, on an angular map and a plain one
-assert.match(source, /if \(forms\.far\) \{\n\s*paintBoulder\(forms\.far, P\.rockTone, lithology\);\n\s*rockGeosFar\.push\(forms\.far\.geometry\);/,
+assert.match(source, /if \(forms\.far\) \{\n\s*paintBoulder\(forms\.far, P\.rockTone, lithology, rockBaseToneFor\(mapId\)\);\n\s*rockGeosFar\.push\(forms\.far\.geometry\);/,
   'the desktop draws its far form into the far pool');
 for (const mapId of ['badlands', 'verdant']) {
   const lith = rockLithologyFor(mapId), ang = rockAngularityFor(mapId);

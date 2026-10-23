@@ -436,6 +436,7 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
   const _n = new THREE.Vector3();
   const _q = new THREE.Quaternion();
   const _up = new THREE.Vector3(0, 1, 0);
+  const _chipTurn = new THREE.Quaternion(); // (rock round 2) a chip's own turn about the up axis
   const _p = new THREE.Vector3();
   const _s = new THREE.Vector3();
   const _m = new THREE.Matrix4();
@@ -563,7 +564,7 @@ export function createGroundLitter(field: GroundLitterField, options: GroundLitt
           if (blocked && blocked(x, y, z, 0.12, radius * 0.6)) continue;
           if (field.getNormalAt) { const normal = field.getNormalAt(x, z); _n.set(normal.x, normal.y, normal.z); } else _n.set(0, 1, 0);
           _q.setFromUnitVectors(_up, _n.normalize());
-          _q.multiply(new THREE.Quaternion().setFromAxisAngle(_up, jitterC * Math.PI * 2 + jitterA));
+          _q.multiply(_chipTurn.setFromAxisAngle(_up, jitterC * Math.PI * 2 + jitterA));
           const shade = 0.78 + 0.34 * jitterB;
           scratch[0].push(x, y + 0.075 * sy * 0.1, z, _q.x, _q.y, _q.z, _q.w, sx, sy, sz,
             Math.min(1, chipTint[0] * shade), Math.min(1, chipTint[1] * shade), Math.min(1, chipTint[2] * shade));
