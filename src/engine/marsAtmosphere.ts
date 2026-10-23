@@ -4,20 +4,27 @@ import type { MapSkyConfig } from '../world/maps/horizon.ts';
 export const MARS_SKY_PRESET = Object.freeze({
   // galaxy sky: the dimmed dome carries the night starfield with a wide band, nebula clouds and a planet (the owner's mode
   // design, 2026-09-18: "make it look like a proper galaxy map")
-  // (2026-10-10, the map-revival lane; gauntlet wave 346: "a magenta-purple nebula starfield") the owner's galaxy sky kept,
-  // its look nearer a photograph's: the nebula's magenta (0x9a4c88) a dust-rose, and the band (galaxy 1.9 -> 1.1) narrower
-  // and sparser, so its stars stop crowding into a candy-bright river (presence along its core 0.91 -> 0.57 of the cells)
-  skyIntensity: 0.06, nightSky: 1, galaxy: 1.1, nebulaHex: 0x7a5448, planetDeg: 3.4, planetHex: 0xd2e0ff,
+  // (2026-10-22, world-polish-240; the coordinator, on media's maps-235 A/B: "the bright sky is gone") the owner's galaxy
+  // as the site's photograph shows it: the magenta nebula (0x9a4c88) and the wide band (galaxy 1.9) back. The map-revival
+  // lane's photographic toning (2026-10-10: a dust-rose 0x7a5448, galaxy 1.1) came after that photograph and went against
+  // the 10-11 ruling that this sky is the owner's order
+  skyIntensity: 0.06, nightSky: 1, galaxy: 1.9, nebulaHex: 0x9a4c88, planetDeg: 3.4, planetHex: 0xd2e0ff,
   sunElevationDeg: 24, sunAzimuthDeg: 122,
   turbidity: 2.2, rayleigh: 0.35, mieCoefficient: 0.0045, mieDirectionalG: 0.78,
   // round 47 (owner 2026-09-23, "the skybox and mountains are too bland"): thin dust decks over the galaxy. The decks are not
   // dimmed with the dome, so they carry a dark rust tint and read as dust bands occluding the stars — a low 700 m
   // veil of long 4200 m streaks and a thinner high sheet — and the haze they melt into is a shade more rust
   // (0x3b2a33 -> 0x46302c: the dust band along the horizon); dust casts no shadow (cloudShadowAmp 0.05)
-  fogDensity: 0.00022, fogTintHex: 0x46302c, fogMix: 0.72, envIntensity: 0.34,
+  // (2026-10-09, the skies lane: envIntensity 0.34 → 0.24 with the fill below — see sunIntensity)
+  fogDensity: 0.00022, fogTintHex: 0x46302c, fogMix: 0.72, envIntensity: 0.24,
   cloudOpacity: 0.3, cloudOpacity2: 0.15, cloudTintHex: 0x2c1c1e,
   cloudAltM: 700, cloudHazeK: 0.0002, cloudUvM: 4200, cloudShadowAmp: 0.05,
-  sunIntensity: 3.2, sunColorHex: 0xe4ebff, hemiIntensity: 0.56, fillIntensity: 0.36,
+  // 2026-10-09 (the skies lane; the owner's brief: keep the galaxy sky, light the ground consistently with it): under a
+  // dark starry dome the shade had a daylight sky's fill — hemisphere 0.56, fill 0.36, environment 0.34 — so the basin read
+  // as a sunny day pasted under a night sky. The key stays; the sky's share of the shade drops (hemisphere 0.34, fill 0.20,
+  // environment 0.24), its hue still the dust's butterscotch (lighting.ts takes the hemisphere's colour from the dust sky's
+  // irradiance): hard sunlit faces over deeper, warmer shade, as under a thin dusty sky
+  sunIntensity: 3.2, sunColorHex: 0xe4ebff, hemiIntensity: 0.34, fillIntensity: 0.20,
   postExposure: 1.04,
   // round 65 (2026-09-24): Olympus Basin keeps its thin CO2 atmosphere under the physically based sky —
   // Rayleigh at 3 % of Earth's (0.6 % of the pressure, CO2's 2.5× cross-section, the taller scale height),

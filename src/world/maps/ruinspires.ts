@@ -241,7 +241,11 @@ export default {
     forestHex: 0x2f3937, rockHex: 0x5c5e5c, haze: 0.95, grain: 0.60,
   },
   // round 71 (2026-09-25): the volumetric layer's cloudscape (engine/cloudscapes.ts; opt-in, ?clouds=volumetric)
-  clouds: { regime: 'fair-weather-cumulus', coverage: 0.42, streets: 0.3, baseM: 1100, virga: 0.6, rain: 0.25 },
+  // 2026-10-22 (world-polish-240; the coordinator: a flat grey overcast deck, not the owner's bar — fair-weather cumulus
+  // like Verdant, no broken stratocumulus): at an 1100 m base under the sky block's grey deck tint (0xd0d1ce) the field
+  // stood as wide smeared grey masses with streaked bases. Verdant's height and a warm white: separate cumulus with soft
+  // grey bases over the valley; a little virga keeps its showery Balkan character, the rain shafts gone
+  clouds: { regime: 'fair-weather-cumulus', coverage: 0.44, streets: 0.3, baseM: 1450, tintHex: 0xf2f0ec, virga: 0.2 },
   sky: {
     sunElevationDeg: 24, sunAzimuthDeg: 118, turbidity: 7.0, rayleigh: 1.15,
     mieCoefficient: 0.010, mieDirectionalG: 0.86, fogDensity: 0.00068,
