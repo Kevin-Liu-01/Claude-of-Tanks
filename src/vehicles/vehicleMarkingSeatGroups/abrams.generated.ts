@@ -256,28 +256,6 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
     "seats": [
       {
         "kind": "insignia",
-        "parent": "hull",
-        "size": 0.2376,
-        "pos": [
-          1.736228,
-          1.5698255,
-          -1.7328068
-        ],
-        "quaternion": [
-          -0.0203154,
-          0.7048534,
-          0.0204282,
-          0.7087677
-        ],
-        "surfaceMesh": "hull",
-        "anchorProfile": "m1a1_abrams_fep",
-        "visibilitySamples": 9,
-        "visibilityClearSamples": 9,
-        "visibilityRatio": 1,
-        "maximumSurfaceErrorM": 0.0003527
-      },
-      {
-        "kind": "designation",
         "parent": "turret",
         "size": 0.27,
         "pos": [
@@ -297,6 +275,28 @@ export const VEHICLE_MARKING_SEATS: Readonly<Record<string, VehicleMarkingSeatRe
         "visibilityClearSamples": 9,
         "visibilityRatio": 1,
         "maximumSurfaceErrorM": 0
+      },
+      {
+        "kind": "designation",
+        "parent": "turret",
+        "size": 0.27,
+        "pos": [
+          -1.6096511,
+          0.3025927,
+          -0.0112999
+        ],
+        "quaternion": [
+          -0.114204,
+          -0.6978234,
+          -0.114204,
+          0.6978234
+        ],
+        "surfaceMesh": "turret",
+        "anchorProfile": "m1a1_abrams_fep",
+        "visibilitySamples": 9,
+        "visibilityClearSamples": 9,
+        "visibilityRatio": 1,
+        "maximumSurfaceErrorM": 0.0009478
       }
     ]
   },
