@@ -467,14 +467,22 @@ const ROAD_COLOR: Readonly<Record<string, V3>> = Object.fromEntries(Object.entri
 function addRoad(S: Shapes, xs: readonly number[], zs: readonly number[], widthM: number, color: V3, ground: (x: number, z: number) => number): void {
   const half = Math.max(1.5, widthM / 2);
   const up = (): V3 => [0, 1, 0];
+  // (horizons-240, Caldera's round-2 pair: "the far road ends at the dip in a raised boxy ledge", "the road flares into a
+  // wide, stepped dark wedge") a road's last 60 m narrow to a sixth and settle onto the land, so it ends as a track
+  // petering out, never a lifted slab's end; at a bend the strip takes the bisector of its two legs, so it never twists
+  // into a bow-tie where its legs turn
+  let total = 0;
+  for (let i = 0; i + 1 < xs.length; i++) total += Math.hypot(xs[i + 1] - xs[i], zs[i + 1] - zs[i]);
+  const TAPER_M = Math.min(60, total * 0.25);
   let px = NaN, pz = NaN, pl: V3 | null = null, pr: V3 | null = null;
-  const emit = (x: number, z: number, dx: number, dz: number): void => {
+  const emit = (x: number, z: number, dx: number, dz: number, along: number): void => {
     const d = Math.hypot(x, z);
     // (horizons-240: from the edge itself, where the battlefield's own road ends — at 516 m the land's blurred road
     // texels stood alone over the last metres, the critics' "pale smear" at the seam)
     if (Math.max(Math.abs(x), Math.abs(z)) < 512) { pl = pr = null; return; }
-    const l = Math.hypot(dx, dz) || 1, nx = -dz / l * half, nz = dx / l * half;
-    const lift = 0.25 + d * 0.00035;
+    const k = TAPER_M > 0 ? Math.min(1, Math.max(0, (total - along) / TAPER_M)) : 1;
+    const l = Math.hypot(dx, dz) || 1, w = half * (0.15 + 0.85 * k), nx = -dz / l * w, nz = dx / l * w;
+    const lift = 0.25 + d * 0.00035 * k;
     const L: V3 = [x + nx, ground(x + nx, z + nz) + lift, z + nz], R: V3 = [x - nx, ground(x - nx, z - nz) + lift, z - nz];
     if (pl && pr) {
       const inside: V3 = [(x + px) / 2, -1e6, (z + pz) / 2];
@@ -482,6 +490,7 @@ function addRoad(S: Shapes, xs: readonly number[], zs: readonly number[], widthM
     }
     pl = L; pr = R; px = x; pz = z;
   };
+  let along = 0;
   for (let i = 0; i + 1 < xs.length; i++) {
     const ax = xs[i], az = zs[i], bx = xs[i + 1], bz = zs[i + 1];
     const len = Math.hypot(bx - ax, bz - az);
@@ -489,11 +498,18 @@ function addRoad(S: Shapes, xs: readonly number[], zs: readonly number[], widthM
     let t = 0;
     while (t < len) {
       const x = ax + (bx - ax) * (t / len), z = az + (bz - az) * (t / len);
-      emit(x, z, bx - ax, bz - az);
+      // (the leg's first sample sits on the vertex: the bisector of the leg before and this one)
+      let dx = (bx - ax) / len, dz = (bz - az) / len;
+      if (t === 0 && i > 0) {
+        const qx = ax - xs[i - 1], qz = az - zs[i - 1], ql = Math.hypot(qx, qz);
+        if (ql > 1e-3) { dx += qx / ql; dz += qz / ql; }
+      }
+      emit(x, z, dx, dz, along + t);
       t += Math.max(6, Math.hypot(x, z) * 0.01);
     }
+    along += len;
   }
-  if (xs.length >= 2) { const n = xs.length - 1; emit(xs[n], zs[n], xs[n] - xs[n - 1], zs[n] - zs[n - 1]); }
+  if (xs.length >= 2) { const n = xs.length - 1; emit(xs[n], zs[n], xs[n] - xs[n - 1], zs[n] - zs[n - 1], total); }
 }
 
 /** Build the outland's geometry over the drawn land (the worker's side). */
