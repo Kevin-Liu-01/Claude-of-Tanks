@@ -99,13 +99,29 @@ const RAIL_SPURS = [
     coalStage: { side: -1 as const, fromM: 4, toM: 40 }, ballastShade: YARD_BALLAST },
 ];
 
-// Yard plan: the road frontages inside the yard take the sheds and ruins; the authored lots below take the landmarks
-// (engine shed, goods shed, water towers, station hall, gantries, stacks). (Round 2: the miners live in the colonies'
-// terraces, so the plan's three loose cottage pairs are gone.)
-const PLAN = [
-  'warehouse', 'shed', 'containerRow', 'ruin', 'shed', 'containerRow', 'shed',
-  'warehouse', 'ruin', 'shed', 'containerRow', 'shed', 'ruin', 'containerRow',
-  'shed', 'warehouse', 'containerRow', 'shed', 'ruin',
+// Yard plan: the authored lots below take the landmarks (engine shed, goods shed, water towers, station hall, gantries,
+// stacks). (Round 2: the miners live in the colonies' terraces, so the plan's three loose cottage pairs went.)
+// (Round 3, 2026-10-11: the r2 fairness read 16-4 to alpha at 20 games. The roadside plan seated its sheds, ruins and
+// container rows where its stream put them — 13 in alpha's half and 6 in bravo's — so alpha came to the yard through
+// twice the cover. The plan is frozen as it last placed them in the southern half, each building with its twin turned
+// through 180 degrees about the station square (FROZEN_FRONTAGE below): the rotational symmetry the map's layout keeps
+// for every authored lot now holds for every building. No generated plan.)
+const PLAN: string[] = [];
+// The southern half's frontage buildings as the r2 plan placed them (structure, pose); their twins are made below.
+const FROZEN_FRONTAGE_SOUTH: readonly { structure: string; x: number; z: number; yawDeg: number }[] = [
+  { structure: 'shed', x: -248.31, z: -68.03, yawDeg: 1.13 },
+  { structure: 'shed', x: -226.86, z: -63.53, yawDeg: 80.52 },
+  { structure: 'ruin', x: -223.1, z: -94.82, yawDeg: 81.58 },
+  { structure: 'containerRow', x: -175.79, z: -61.36, yawDeg: 86.17 },
+  { structure: 'shed', x: -125.79, z: -58.33, yawDeg: 89.31 },
+  { structure: 'ruin', x: -99.24, z: -85.14, yawDeg: 88.68 },
+  { structure: 'containerRow', x: -74.4, z: -83.98, yawDeg: 85.88 },
+  { structure: 'warehouse', x: -54.64, z: -107.67, yawDeg: 3.76 },
+  { structure: 'shed', x: 176.54, z: -67.91, yawDeg: 82.72 },
+  { structure: 'warehouse', x: 201.46, z: -64.63, yawDeg: 83.61 },
+  { structure: 'containerRow', x: 223.71, z: -34.64, yawDeg: 82.26 },
+  { structure: 'warehouse', x: 250.71, z: -20.44, yawDeg: 177.73 },
+  { structure: 'shed', x: 251.23, z: -57.3, yawDeg: 84 },
 ];
 
 // 2026-10-11 (the map-revival lane, Cinder Junction round 2; gauntlet wave 362, village-mid: "a thin scatter of clean
@@ -392,11 +408,14 @@ export default {
       { structure: 'rowhouse', x: -240, z: 165, yawDeg: 310.4 },
       // round 2: the colonies' terraces (each from its own stream: every lot and the plan keep their draws)
       ...COLONY_ROWS,
+      // round 3: the yard's frontage buildings, the southern half's and their twins (each from its own stream and past the
+      // spacing check, as the terraces: their poses are the plan's own, which kept them apart)
+      ...[...FROZEN_FRONTAGE_SOUTH, ...FROZEN_FRONTAGE_SOUTH.map(twinSite)].map((site) => ({ ...site, terrace: true })),
     ],
     // 2026-10-01: the hard-coded north-south siding fan (maps/mapKits.ts dressRailYard) gives way to the authored
     // main line and sidings above (terrain.railSpurs): no legacy rail kit.
     extraKits: [],
-    blockFill: true, // r3: leftover plan slots fill the block interiors
+    blockFill: false, // (round 3: no generated plan, nothing to fill — was true)
     sideSkip: 0.08, spacingPad: 6,
     buildingLat: [12, 5], maxSpread: 2.4,
     tones: {
