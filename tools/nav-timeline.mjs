@@ -133,6 +133,13 @@ const JOURNEYS = [
     { id: 'docs-to-topic', act: click('a[href="/docs/build"]'), window: 3000,
       content: when(`location.pathname === '/docs/build' && visible('#topicRoot h1')`) },
   ] },
+  // The landing page to the manual and a topic, without the Gallery's WebGL in between.
+  { id: 'manual', group: 'public', start: '/home', startReady: `visible('.v5-hero h1, .hero__title')`, steps: [
+    { id: 'home-to-docs', act: navLink('/docs'), window: 3000,
+      content: when(`location.pathname === '/docs' && visible('h1')`) },
+    { id: 'manual-to-topic', act: click('a[href="/docs/simulation"]'), window: 3000,
+      content: when(`location.pathname === '/docs/simulation' && visible('#topicRoot h1')`) },
+  ] },
   { id: 'docs', group: 'public', start: '/docs', startReady: `visible('h1')`, steps: [
     { id: 'docs-archive', act: click('#docsArchiveOpen'), window: 2500,
       content: when(`visible('#docsArchive h2') && document.querySelector('#docsArchive .media-archive-card')`),
@@ -199,6 +206,11 @@ const PROBE = `(() => {
   if (window.__navProbe) return;
   Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false, configurable: true });
   const probe = window.__navProbe = { shifts: [], contentAt: null, readyAt: null, inputAt: null, spec: window.__navSpec || null, lcp: null };
+  // A prerendered page (tools/viteSpeculationRules.ts) was built before the click and shown at its activation; the probe
+  // reaches it only once it is shown (late), and its content counts from the activation.
+  const navigation = performance.getEntriesByType('navigation')[0];
+  probe.activation = navigation && navigation.activationStart > 0 ? performance.timeOrigin + navigation.activationStart : null;
+  probe.late = window.__navLate === true;
   const onInput = () => { if (probe.spec && probe.inputAt === null) { probe.inputAt = performance.timeOrigin + performance.now(); console.timeStamp('nav:input'); } };
   for (const type of ['pointerdown', 'touchstart', 'keydown']) addEventListener(type, onInput, { capture: true, passive: true });
   const describe = (node) => { if (!node || node.nodeType !== 1) return node ? node.nodeName : null;
@@ -221,8 +233,10 @@ const PROBE = `(() => {
     const spec = probe.spec || window.__navSpec;
     if (spec) {
       const now = performance.timeOrigin + performance.now();
-      if (probe.contentAt === null && check(spec.content)) { probe.contentAt = now; console.timeStamp('nav:content'); }
-      if (probe.contentAt !== null && probe.readyAt === null && (!spec.ready || check(spec.ready))) probe.readyAt = now;
+      const at = probe.late && probe.activation ? probe.activation : now;
+      if (probe.contentAt === null && check(spec.content)) { probe.contentAt = at; console.timeStamp('nav:content'); }
+      if (probe.contentAt !== null && probe.readyAt === null && (!spec.ready || check(spec.ready))) probe.readyAt = at;
+      probe.late = false;
     }
     requestAnimationFrame(tick);
   };
@@ -298,9 +312,37 @@ async function filmstrip(helper, picks, portrait, heading) {
   }, picks, portrait, heading);
 }
 
-function traceEvents(buffer) {
-  const parsed = JSON.parse(Buffer.from(buffer).toString('utf8'));
-  return Array.isArray(parsed) ? parsed : parsed.traceEvents || [];
+/**
+ * A trace on the browser's own session, not the page's: a navigation that activates a prerendered page swaps the
+ * page's target (tools/viteSpeculationRules.ts), and a page-session trace ends on a session that never started it.
+ */
+let openTrace = null;
+async function startTrace(browser) {
+  // A step that failed between start and stop left the browser tracing: end that trace first.
+  if (openTrace) await openTrace().catch(() => {});
+  const session = await browser.target().createCDPSession();
+  await session.send('Tracing.start', {
+    transferMode: 'ReturnAsStream',
+    traceConfig: { includedCategories: ['devtools.timeline', 'disabled-by-default-devtools.screenshot'], excludedCategories: ['*'] },
+  });
+  const stop = async () => {
+    openTrace = null;
+    const done = new Promise((resolve) => session.once('Tracing.tracingComplete', resolve));
+    await session.send('Tracing.end');
+    const { stream } = await done;
+    const chunks = [];
+    for (;;) {
+      const { data, base64Encoded, eof } = await session.send('IO.read', { handle: stream, size: 1 << 22 });
+      chunks.push(Buffer.from(data, base64Encoded ? 'base64' : 'utf8'));
+      if (eof) break;
+    }
+    await session.send('IO.close', { handle: stream }).catch(() => {});
+    await session.detach().catch(() => {});
+    const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    return Array.isArray(parsed) ? parsed : parsed.traceEvents || [];
+  };
+  openTrace = stop;
+  return stop;
 }
 
 async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
@@ -312,6 +354,12 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
     await page.waitForSelector(step.act.target, { visible: true, timeout: 120000 }).catch(() => {});
     await page.evaluate((sel) => document.querySelector(sel)?.scrollIntoView({ block: 'center', behavior: 'instant' }), step.act.target).catch(() => {});
     await new Promise((r) => setTimeout(r, 500));
+    // A mouse reaches a link before it presses it: 300 ms over the control, as a visitor's pointer rests on it
+    // (what a hover-time prerender works with; a touch has no hover).
+    if (!ctx.touch && step.act.hover !== false) {
+      await page.hover(step.act.target).catch(() => {});
+      await new Promise((r) => setTimeout(r, 300));
+    }
   }
   await page.evaluate((value) => {
     if (!window.__navProbe) return;
@@ -319,15 +367,23 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
   }, spec).catch(() => {});
   // The frame on screen before the input: the reference the first response is measured against.
   const before = await page.screenshot({ type: 'jpeg', quality: 40, optimizeForSpeed: true, encoding: 'base64' }).catch(() => null);
-  await page.tracing.start({ screenshots: true, categories: ['devtools.timeline', 'disabled-by-default-devtools.screenshot'] });
+  const stopTrace = await startTrace(page.browser());
   let clickAt = await page.evaluate(() => { console.timeStamp('nav:click'); return performance.timeOrigin + performance.now(); });
   const wallStart = Date.now();
   let error = null;
   await step.act(page, ctx).catch((cause) => { error = String(cause?.message || cause).split('\n')[0]; });
   const deadline = Date.now() + (step.timeoutMs || 90000);
   let seen = null;
+  let lateProbe = false;
   while (Date.now() < deadline) {
-    seen = await page.evaluate(() => window.__navProbe && { content: window.__navProbe.contentAt, ready: window.__navProbe.readyAt }).catch(() => null);
+    seen = await page.evaluate(() => (window.__navProbe ? { content: window.__navProbe.contentAt, ready: window.__navProbe.readyAt }
+      : document.readyState === 'loading' ? null : 'unprobed')).catch(() => null);
+    if (seen === 'unprobed') {
+      // A document the new-document scripts never reached: an activated prerender. Its times come from the trace.
+      await page.evaluate(`window.__navLate = true; window.__navSpec = ${JSON.stringify(spec)}; ${PROBE}`).catch(() => {});
+      lateProbe = true;
+      seen = null;
+    }
     if (seen?.ready) break;
     await new Promise((r) => setTimeout(r, 120));
   }
@@ -347,8 +403,15 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
     await new Promise((r) => setTimeout(r, 150));
   }
   const final = await page.evaluate(() => ({ shifts: window.__navProbe?.shifts || [], lcp: window.__navProbe?.lcp ?? null,
-    fcp: window.__navProbe?.fcp ?? null, path: location.pathname + location.search })).catch(() => ({ shifts: [], lcp: null, fcp: null, path: null }));
-  const trace = traceEvents(await page.tracing.stop());
+    fcp: window.__navProbe?.fcp ?? null, activation: window.__navProbe?.activation ?? null, path: location.pathname + location.search }))
+    .catch(() => ({ shifts: [], lcp: null, fcp: null, activation: null, path: null }));
+  // An activated prerender painted before it was shown: a visitor sees its paints and shifts from the activation on.
+  if (final.activation) {
+    final.shifts = final.shifts.filter((entry) => entry.at >= final.activation);
+    if (final.fcp) final.fcp = Math.max(final.fcp, final.activation);
+    if (final.lcp) final.lcp = Math.max(final.lcp, final.activation);
+  }
+  const trace = await stopTrace();
   await page.removeScriptToEvaluateOnNewDocument(specScript.identifier).catch(() => {});
 
   const stamp = (message) => trace.find((e) => e.name === 'TimeStamp' && e.args?.data?.message === message)?.ts;
@@ -375,8 +438,11 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
     if (delta >= 0.04) abrupt.push({ t: shots[i].t, delta: Number(delta.toFixed(3)) });
   }
   const rel = (at) => (at ? Math.round(at - clickAt) : null);
-  const content = rel(seen?.content);
-  const ready = rel(seen?.ready);
+  // A late probe saw the page only once it was shown: without an activation time, the first changed frame is when it
+  // was shown and its content with it.
+  const shownAt = lateProbe && !final.activation ? response : null;
+  const content = shownAt ?? rel(seen?.content);
+  const ready = shownAt ?? rel(seen?.ready);
   const after = final.shifts.filter((s) => s.at >= clickAt - 5);
   const cls = after.filter((s) => !s.recent).reduce((sum, s) => sum + s.value, 0);
   const shift = after.reduce((sum, s) => sum + s.value, 0);
@@ -387,7 +453,7 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
   const result = {
     // `blocked`: how long the old view stayed up. A new document's first contentful paint ends it (the trace's frames
     // can trail the compositor by a second under load); within a document, the first frame that changed.
-    step: step.id, path: final.path, error, blocked: final.fcp && final.fcp > clickAt ? Math.round(final.fcp - clickAt) : response,
+    step: step.id, path: final.path, error, prerendered: !!final.activation || lateProbe, blocked: final.fcp && final.fcp > clickAt ? Math.round(final.fcp - clickAt) : response,
     response, content, ready, settled,
     fcp: final.fcp && final.fcp > clickAt ? Math.round(final.fcp - clickAt) : null,
     lcp: final.lcp && final.lcp > clickAt ? Math.round(final.lcp - clickAt) : null,
