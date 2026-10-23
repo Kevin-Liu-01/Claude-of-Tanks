@@ -33,9 +33,11 @@ const LEGACY = ['verdant', 'desert', 'winter', 'urban',
 const CLUTTER_FAMILIES = ['barrier', 'roadsign', 'cone', 'transformer', 'cablespool'];
 // (2026-10-07, the map-revival lane; the coordinator after gauntlet waves 184 and 204): a map set in its period leaves out
 // the families that period never saw — Tarkhan Steppe is a Virgin Lands sovkhoz of the 1950s (its mix is Glacier Pass's
-// and Nordhavn's: cable reels and direction signs)
+// and Nordhavn's: cable reels and direction signs); Saltmere Bay is the Léon in late summer 1944 (wave 184: "a modern
+// traffic cone in a 1944 street")
 const PERIOD_FREE_CLUTTER = Object.freeze({
   steppe: ['barrier', 'cone', 'transformer'],
+  coastal: ['cone'],
 });
 const LAYERED_TREELINES = new Map([
   ['cliffbridge', 2], ['verdant', 2], ['coastal', 2], ['autumn', 2],

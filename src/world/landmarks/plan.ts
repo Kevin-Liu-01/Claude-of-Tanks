@@ -63,7 +63,9 @@ export function gateStubs(p: LandmarkParams): readonly [number, number] {
 export function harbourLayout(p: LandmarkParams) {
   const L1 = Math.max(16, num(p, 'length')), L2 = Math.max(0, num(p, 'arm')), t = Math.max(0, Math.min(100, num(p, 'turn'))) * Math.PI / 180;
   const W = Math.max(5, num(p, 'width')), b = p.basin === 'left' ? -1 : 1, m = (W / 2) * Math.tan(t / 2);
-  const dx = Math.sin(t), dz = Math.cos(t), head: readonly [number, number] = [dx * L2, L1 + dz * L2], Rh = W / 2 + 1.6;
+  // (round 4, gauntlet wave 247: the head "drum-like": a musoir rounding the arm's end, 0.7 m proud of its faces, not a
+  // drum 1.6 m wider than the arm)
+  const dx = Math.sin(t), dz = Math.cos(t), head: readonly [number, number] = [dx * L2, L1 + dz * L2], Rh = W / 2 + 0.7;
   const slip = Math.max(0, num(p, 'slip')), slipTop = 6;
   // (the boats' berths in the basin reach as far as the head or 19 m past the slipway, whichever is the farther)
   const across = Math.max(W / 2 + slip + 19, head[0] + Rh, head[0] + 3 + W / 2) + 0.8;
