@@ -144,6 +144,18 @@ async function helloCase({ label, holdHelloMs, helloTimeoutMs, scenario = null }
     after = { aliceWelcomes: aliceWelcomes.length, alicePhase: aliceClient.phase, aliceServerErrors: aliceClient.stats().serverErrors,
       bobWelcomes: bobWelcomes.length, bobPhase: bobClient.phase, bobNewCloses: closes.slice(closesBefore) };
   }
+  // an impostor (security audit 2026-10-22): a room member who holds a valid token for bob's seat — a former host keeps
+  // the per-match signing secret — offers under its own room identity; the gate binds the seat to that identity
+  if (scenario === 'impostor' && bobClient.welcome) {
+    const malloryRtc = new WebRtcTransport({ signaler: relay.signalerFor('mallory'), createPeerConnection: world.createPeerConnection, clock: time.clock, setTimer: time.setTimer, clearTimer: time.clearTimer, random: () => 0.5 });
+    const mallory = new MatchClient({ transport: malloryRtc, token: tokenFor(1, 'bob', 'alpha', 't90am'), clock: time.clock, controls: idle });
+    clients.push(mallory);
+    const closesBefore = closes.length;
+    mallory.connect();
+    for (let elapsed = 0; elapsed < 8_000 && !mallory.welcome && mallory.phase !== 'closed'; elapsed += 100) await advance(100);
+    await advance(500);
+    after = { malloryWelcomed: !!mallory.welcome, malloryClose: mallory.lastCloseReason, bobPhase: bobClient.phase, bobNewCloses: closes.slice(closesBefore) };
+  }
   const result = {
     label, welcomed: !!bobClient.welcome, closes, phase: bobClient.phase, after,
     lastCloseReason: bobClient.lastCloseReason, helloRetries: bobClient.stats().helloRetries ?? 0, coreStats: cores[0].stats(),
@@ -186,5 +198,13 @@ const stale = await helloCase({ label: 'stale offer', holdHelloMs: 1_000, scenar
 assert.ok(stale.welcomed, `stale offer: bob is welcomed on a fresh link (closes ${JSON.stringify(stale.closes)}, retries ${stale.helloRetries})`);
 assert.ok(stale.helloRetries >= 1, `stale offer: bob re-offered after "peer offered again" (${stale.helloRetries})`);
 assert.equal(stale.phase, 'live', `stale offer: bob is live (${stale.phase})`);
+
+// ---- an impostor's valid token for another seat is refused: the seat is the room-authenticated signaling peer's own
+const impostor = await helloCase({ label: 'impostor', holdHelloMs: 0, scenario: 'impostor' });
+assert.ok(impostor.after, 'impostor: bob was in before the impostor offered');
+assert.equal(impostor.after.malloryWelcomed, false, `impostor: never welcomed into bob's seat (${JSON.stringify(impostor.after)})`);
+assert.equal(impostor.after.malloryClose, CLOSE_REASON.BAD_TOKEN, `impostor: closed BAD_TOKEN (${impostor.after.malloryClose})`);
+assert.equal(impostor.after.bobPhase, 'live', 'impostor: bob stays live');
+assert.deepEqual(impostor.after.bobNewCloses, [], 'impostor: bob was never replaced');
 
 console.log(`helloGate.selftest: a HELLO 8 s late is admitted (window ${HELLO_TIMEOUT_MS} ms); a silent link is closed at its deadline; a seat closed with "hello timeout" re-offers and is welcomed (${retried.helloRetries} retry); the host's own seat is welcomed again after a loopback reconnect; a seat a stale offer of its own replaced re-offers and is welcomed`);
