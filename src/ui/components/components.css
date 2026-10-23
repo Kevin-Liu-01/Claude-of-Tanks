@@ -32,7 +32,8 @@
   border:1px solid var(--line-3);border-radius:var(--control-radius);font:500 var(--fs-11)/1 var(--font-mono);letter-spacing:normal;
   text-transform:none;color:var(--ink-2)}
 .cot-c-btn--primary .cot-c-kbd{color:var(--btn-primary-ink);border-color:currentColor}
-body.cot-touch-layout .cot-c-kbd{display:none}
+body:is(.cot-touch-layout,[data-cot-panels='overlay']) .cot-c-kbd{display:none}
+@media (hover:none),(pointer:coarse){.cot-c-kbd{display:none}}
 .cot-c-chip{box-sizing:border-box;display:inline-flex;align-items:center;gap:var(--s2);height:32px;padding:0 var(--s3);
   border:1px solid var(--chip-edge);border-radius:var(--chip-radius);background:var(--chip-fill);color:var(--ink-2);
   font:500 var(--fs-13)/1 var(--font-ui);white-space:nowrap}

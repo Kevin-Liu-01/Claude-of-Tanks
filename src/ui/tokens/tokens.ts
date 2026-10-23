@@ -211,6 +211,8 @@ export const TOKENS = {
   'hollow-fill': 'transparent',
   'hollow-accent': '#f0a030',
   'hollow-shadow': '0 8px 28px rgba(0,0,0,.32)',
+  'stage-halo': '0 1px 2px rgba(0,0,0,.85),0 0 18px rgba(0,0,0,.55)',
+  'stage-scrim': 'radial-gradient(closest-side,rgba(5,6,8,.62),rgba(5,6,8,.34) 55%,rgba(5,6,8,0))',
   'hud-plate': 'rgba(13,16,20,.92)',
   'hud-plate-strong': 'rgba(13,16,20,.96)',
   'hud-font': "'Cot UI','Cot Accents','Cot Symbols','Cot Fallback','PingFang SC','Hiragino Sans GB','Microsoft YaHei','Noto Sans CJK SC',sans-serif",

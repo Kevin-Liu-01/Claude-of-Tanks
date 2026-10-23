@@ -146,7 +146,8 @@
 .cot-nav [data-github-stars][data-github-stars-state='loading']::before{
   width:7px;height:7px;box-sizing:border-box;border:1px solid currentColor;border-right-color:transparent;
   border-radius:50%;content:'';animation:cot-github-star-spin .7s linear infinite;}
-.cot-nav [data-github-stars][data-github-stars-state='unavailable']::before{content:'\2014';opacity:.48;}
+/* no count, no mark: an unreachable count keeps its box (nothing moves) and shows nothing */
+.cot-nav [data-github-stars][data-github-stars-state='unavailable']{visibility:hidden;}
 @keyframes cot-github-star-spin{to{transform:rotate(1turn)}}
 .cot-nav .cot-settings-slot{width:34px;height:34px;flex:0 0 auto;}
 .cot-nav .cot-gear{position:static;width:34px;height:34px;min-height:34px;z-index:auto;
@@ -685,9 +686,9 @@ body[data-cot-panels='persistent'] .cot-garage .srow .lr b.stat-comparison{displ
 .cot-maps,.cot-camos{box-sizing:border-box;width:100%;height:var(--cot-sidebar-panel-height,280px);
   flex:0 1 var(--cot-sidebar-panel-height,280px);min-height:108px;
   background:var(--plate-highlight),var(--surface-plate);border:1px solid var(--line-1);padding:var(--s2) var(--s2) var(--s2);}
-.cot-maps .mtitle,.cot-camos .ctitle,.cot-featured .ftitle > span:first-child{
+.cot-maps .mtitle,.cot-camos .ctitle{
   display:flex;align-items:center;gap:7px;}
-.cot-maps .mtitle svg,.cot-camos .ctitle svg,.cot-featured .ftitle > span:first-child svg{
+.cot-maps .mtitle svg,.cot-camos .ctitle svg{
   width:14px;height:14px;flex:0 0 auto;color:var(--ink-3);}
 .cot-maps{position:static;overflow:hidden;display:flex;flex-direction:column;pointer-events:auto;}
 /* half-cut last row + fade = "more below" affordance instead of a broken
@@ -1052,16 +1053,14 @@ body[data-cot-height='tall'] .cot-featured{display:block;}
 .cot-featured .fnav:hover{border-color:rgba(240,176,74,.7);color:#ffd27a;}
 .cot-featured .fnav.prev{left:0;}
 .cot-featured .fnav.next{right:0;}
-.cot-featured .ftitle{font-size:11px;font-weight:700;letter-spacing:.16em;color:#8a97a3;
-  text-transform:uppercase;margin-bottom:2px;display:flex;justify-content:space-between;
-  align-items:baseline;}
-.cot-featured .ftitle > span:first-child{flex:0 0 auto;white-space:nowrap;}
+/* the rotation's marks ride on the picture, after it in the order, so above it */
+.cot-featured .ftitle{position:absolute;right:var(--s2);bottom:var(--s2);display:flex;}
 .cot-featured .fdots{display:flex;gap:2px;flex:0 0 auto;}
 .cot-featured .fdots span{width:3px;height:6px;flex:0 0 3px;background:rgba(146,164,180,.35);
   transition:background .2s;cursor:pointer;}
 .cot-featured .fdots span:hover{background:rgba(210,225,240,.7);}
 .cot-featured .fdots span.on{background:#f0a030;}
-.cot-featured .fshot{position:relative;width:100%;height:104px;overflow:hidden;
+.cot-featured .fshot{position:relative;isolation:isolate;width:100%;height:104px;overflow:hidden;
   border:1px solid rgba(146,164,180,.28);cursor:pointer;background:#0a0e12;
   box-shadow:0 6px 20px rgba(0,0,0,.45);transition:border-color .15s;}
 .cot-featured .fshot:hover{border-color:rgba(240,176,74,.6);}
@@ -1069,7 +1068,7 @@ body[data-cot-height='tall'] .cot-featured{display:block;}
   opacity:0;transform:scale(1.025);transition:opacity var(--cot-motion-scene) var(--cot-ease-out);}
 .cot-featured .fly.on{opacity:1;transform:scale(1);
   transition:opacity var(--cot-motion-scene) var(--cot-ease-out),transform 7s linear;}
-.cot-featured .fcap{position:absolute;left:0;right:0;bottom:0;padding:14px 8px 5px;
+.cot-featured .fcap{position:absolute;left:0;right:0;bottom:0;padding:14px var(--s7) 5px 8px;
   font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:#d9e3ec;
   background:linear-gradient(0deg,rgba(5,8,11,.9),rgba(5,8,11,0));white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;}
@@ -1615,11 +1614,17 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-name{font-
 body[data-cot-panels='persistent'] .cot-lower-third{position:absolute;display:flex;flex-direction:column;gap:var(--s3);
   left:calc(34px + var(--cot-garage-sidebar-width) + var(--s6));right:calc(22px + var(--cot-garage-sidebar-width) + var(--s6));
   bottom:252px;pointer-events:none;}
+/* the name and its identity sit straight on the stage: a local shade under the words (the box bleeds past them by its
+   padding and takes it back in margin, so the words keep their place) and a halo on each glyph keep them readable over
+   the turntable's bright rim */
+body[data-cot-panels='persistent'] .cot-lower-third{padding:var(--s7) var(--s8) var(--s5);
+  margin:calc(-1 * var(--s7)) calc(-1 * var(--s8)) calc(-1 * var(--s5));background:var(--stage-scrim);}
 .cot-lt-name{font:700 var(--fs-88)/.9 var(--font-display);letter-spacing:var(--track-title);text-transform:uppercase;
-  color:var(--ink-1);text-wrap:balance;}
+  color:var(--ink-1);text-wrap:balance;text-shadow:var(--stage-halo);}
 .cot-lt-name.is-long{font-size:var(--fs-60);}
 .cot-lt-name .acc{color:var(--accent);}
-.cot-lt-id{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s5);font:500 var(--fs-16)/1 var(--font-ui);color:var(--ink-2);}
+.cot-lt-id{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s5);font:500 var(--fs-16)/1 var(--font-ui);color:var(--ink-2);
+  text-shadow:var(--stage-halo);}
 .cot-lt-id>span{display:inline-flex;align-items:center;gap:var(--s2);}
 .cot-lt-id .cot-i,.cot-lt-id .lt-class svg{color:var(--ink-3);}
 .cot-lt-id .cot-flag{width:32px;height:24px;border-radius:var(--control-radius);}
