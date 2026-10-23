@@ -135,7 +135,7 @@ import {
   getCustomCamoSelection, setCustomCamoSelection, getMultiplayerCamoSelection,
   setCamoBiome, setCamoOverride, applyCamoPatterns, applyCamoPatternsChunked,
   clearCamoOverrides, warmWreckTextures,
-  prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures,
+  prebakeSharedTextures, prebakeBurntSteps, discardPrebakedSharedTextures, resolveMultiplayerCamoPattern,
 } from './vehicles/materials.ts';
 import './ui/motion.css';
 import './ui/responsiveSurfaces.css';
@@ -335,7 +335,9 @@ function takeReturningSeat(specId: string, options: { camoSeed: number; camoPatt
   const seat = returningSeat;
   if (!seat) return null;
   returningSeat = null;
-  if (seat.specId === specId && sameSeatVisual(seat.options, options) && !seat.visual.root.parent) return seat.visual;
+  // (the paint as the roster resolves it now, under the round's battlefield: the boot built its 'auto' pick outright)
+  const paint = { ...options, camoPattern: resolveMultiplayerCamoPattern(specId, options.camoPattern) };
+  if (seat.specId === specId && sameSeatVisual(seat.options, paint) && !seat.visual.root.parent) return seat.visual;
   seat.visual.dispose();
   return null;
 }
@@ -366,13 +368,15 @@ function rememberedRoundFor(roomCode: string): { mapId: string; terrainVariant: 
  * Lever 5b: the remembered seat's battle vehicle, built with the roster's own options (seatVisualOptions) and stood where
  * the hero stands for the post stage's warm. False (nothing left behind) when it cannot be built: the boot builds its hero.
  */
-async function buildReturningSeat(seat: RememberedSeat, yieldForBudget: () => Promise<void>): Promise<boolean> {
+async function buildReturningSeat(seat: RememberedSeat, mapId: string, yieldForBudget: () => Promise<void>): Promise<boolean> {
   let visual: ReturningSeatVisual | null = null;
   try {
-    const options = seatVisualOptions(seat.playerId, seat.camo, true);
+    // the paint the round will resolve: an 'auto' seat wears the round's battlefield pick, not the Garage's map's
+    const paint = resolveMultiplayerCamoPattern(seat.specId, seat.camo, mapId);
+    const options = seatVisualOptions(seat.playerId, paint, true);
     await Promise.all([
       ensureTankBuilder(seat.specId),
-      prebakeSharedTextures(getSpec(seat.specId), engineCtx.anisotropy ?? 4, options.quality, yieldForBudget, seat.camo),
+      prebakeSharedTextures(getSpec(seat.specId), engineCtx.anisotropy ?? 4, options.quality, yieldForBudget, paint),
     ]);
     visual = createTank(seat.specId, engineCtx, options);
     visual.root.rotation.set(0, GARAGE_TRACK_AXIS_YAW_RAD, 0, 'YXZ');
@@ -1208,7 +1212,7 @@ await bootStage('vehicle', async () => {
   // levers 5 and 5b: a tab returning to its remembered round goes into that match, not the Garage: its seat's own vehicle
   // stands in for the hero (returningSeat above)
   const round = await returningRound;
-  if (round?.seat && await buildReturningSeat(round.seat, bootVehicleYield)) { returningSkippedHero = true; return; }
+  if (round?.seat && await buildReturningSeat(round.seat, round.mapId, bootVehicleYield)) { returningSkippedHero = true; return; }
   await pedestal.prepareInitial(selectedVehicle.id, {
     builderReady: bootSelectedBuilderP,
     yieldForBudget: bootVehicleYield,
