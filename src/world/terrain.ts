@@ -9213,7 +9213,8 @@ function* terrainBuildSteps(
   function* hinterlandStage(): Generator<TerrainBuildProgress, void, void> {
     // (horizons-240) the battlefield's own sheets carried past the edge (hinterland/groundDetail.ts)
     const ground = { textures: splatTextures, layerMeans: (mat.userData as { layerMeans?: unknown }).layerMeans,
-      roadTint: (cfg?.splat as { roadTint?: readonly number[] } | undefined)?.roadTint };
+      roadTint: (cfg?.splat as { roadTint?: readonly number[] } | undefined)?.roadTint,
+      tints: ['tintA', 'tintB', 'tintC'].map((k) => (cfg?.splat as Record<string, readonly number[] | undefined> | undefined)?.[k]) };
     const steps = hinterlandSource!.buildSteps({ engineCtx, heightField, ground });
     let step = steps.next();
     while (!step.done) {

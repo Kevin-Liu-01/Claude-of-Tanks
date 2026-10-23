@@ -148,6 +148,9 @@ export interface HinterlandConfig {
   lab?: boolean;
   /** The season the place is shown in (the trees' foliage: a November polder's crowns mostly bare). Default summer. */
   season?: HinterlandSeason;
+  /** The snow line (m) where the place's season differs from its region's (horizons-240: Kestrel keeps its growing season
+   * in the Kyiv pinelands, a region snow-covered for the February of 2022; its pair read "a wrong-season snow blanket"). */
+  snowLineM?: number;
   outland?: {
     /** The outland's relief; `arcs` scale it on bearings (a quiet arc, scale < 1: Whiteout's plateau running smooth
      * to its fall over Davis Strait, so the eye reaches the pack ice; HOR-05). */
@@ -292,7 +295,7 @@ export function resolveHinterlandSpec(cfg: HinterlandMapConfig | null | undefine
         villagesAt: settle.villagesAt ?? [],
       },
     },
-    geology: region.geology,
+    geology: block.snowLineM === undefined ? region.geology : { ...region.geology, snow: { ...region.geology.snow, lineM: block.snowLineM } },
     landforms: block.landforms ?? [],
     water: block.water ?? [],
     far: block.far ?? [{ azDeg: [0, 360], distKm: region.far.distKm, reliefM: region.far.reliefM, form: region.far.form, layers: region.far.layers }],

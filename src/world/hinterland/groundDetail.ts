@@ -20,15 +20,21 @@ export interface HinterlandGround {
   meanD: THREE.Vector4;
   /** The map's road tint (splat.roadTint). */
   roadTint: readonly [number, number, number];
+  /** The sward's meadow tints A, B, C (splat.tintA/B/C: the dry straw, the dark clover, the third patch). */
+  tints: readonly (readonly [number, number, number])[];
 }
 
 /** The terrain build's splat material and textures as the Hinterland's ground (null when any piece is missing). */
 export function hinterlandGroundFrom(source: unknown): HinterlandGround | null {
-  const s = source as { textures?: THREE.Texture[]; layerMeans?: { G?: THREE.Vector4; D?: THREE.Vector4 }; roadTint?: readonly number[] } | null;
+  const s = source as { textures?: THREE.Texture[]; layerMeans?: { G?: THREE.Vector4; D?: THREE.Vector4 }; roadTint?: readonly number[];
+    tints?: readonly (readonly number[] | undefined)[] } | null;
   const grass = s?.textures?.[0], dirt = s?.textures?.[2], meanG = s?.layerMeans?.G, meanD = s?.layerMeans?.D;
   if (!grass || !dirt || !meanG || !meanD) return null;
   const t = s?.roadTint && s.roadTint.length === 3 ? s.roadTint : [1.08, 1.04, 0.96];
-  return { grass, dirt, meanG, meanD, roadTint: [t[0], t[1], t[2]] };
+  // (terrain.ts createSplatMaterialSteps' defaults where the map authors none)
+  const TINTS = [[1.16, 1.08, 0.76], [0.78, 0.90, 0.72], [1.10, 1.04, 0.84]];
+  const tints = TINTS.map((d, i) => { const v = s?.tints?.[i]; return (v && v.length === 3 ? [v[0], v[1], v[2]] : d) as [number, number, number]; });
+  return { grass, dirt, meanG, meanD, roadTint: [t[0], t[1], t[2]], tints };
 }
 
 /** The battlefield's packed-earth road colour (linear; terrain.ts roadCol: the dirt toward the field beside it, tinted). */
@@ -45,6 +51,9 @@ export function hinterlandGroundUniforms(g: HinterlandGround): Record<string, TH
     uHlMeanG: { value: g.meanG },
     uHlMeanD: { value: g.meanD },
     uHlRoadTint: { value: new THREE.Vector3(g.roadTint[0], g.roadTint[1], g.roadTint[2]) },
+    uHlTintA: { value: new THREE.Vector3(...g.tints[0]) },
+    uHlTintB: { value: new THREE.Vector3(...g.tints[1]) },
+    uHlTintC: { value: new THREE.Vector3(...g.tints[2]) },
   };
 }
 
@@ -56,6 +65,7 @@ uniform sampler2D uHlDirt;
 uniform vec4 uHlMeanG;
 uniform vec4 uHlMeanD;
 uniform vec3 uHlRoadTint;
+uniform vec3 uHlTintA, uHlTintB, uHlTintC;
 const mat2 HL_TILEROT = mat2( 0.7431, 0.6691, -0.6691, 0.7431 );
 float hlLumaG( vec3 c ) { return dot( c, vec3( 0.2126, 0.7152, 0.0722 ) ); }
 // a sheet as the battlefield samples it (terrain.ts splatSamp / groundSamp, reduced): near, the tile and its 42° twin
@@ -75,6 +85,16 @@ vec3 hlGroundTile( sampler2D t, vec4 mean, vec2 uv, float camD, float rot ) {
     s = mix( s, f, df );
   }
   return s;
+}
+// the battlefield's meadow patchwork over its sward (terrain.ts gMeadowTint: the dry straw, the dark clover and the third
+// tint in ragged patches of ~80-130, ~230 and ~600 m), at its own scales on value noise
+vec3 hlMeadowTint( vec2 p ) {
+  float mA = hlNoise( p * 0.0121 + vec2( 0.63, 0.29 ) ) * 0.62 + hlNoise( p * 0.00779 + vec2( 0.19, 0.71 ) ) * 0.38;
+  float mB = hlNoise( p * 0.0043 + vec2( 0.11, 0.87 ) ), mC = hlNoise( p * 0.0016 + vec2( 0.37, 0.55 ) );
+  float n1 = hlNoise( p * 0.09 + vec2( 5.1, 2.3 ) );
+  return mix( vec3( 1.0 ), uHlTintA, smoothstep( 0.52, 0.80, mA ) * ( 0.33 + 0.20 * n1 ) )
+    * mix( vec3( 1.0 ), uHlTintB, smoothstep( 0.58, 0.85, 1.0 - mB ) * ( 0.17 + 0.09 * n1 ) )
+    * mix( vec3( 1.0 ), uHlTintC, smoothstep( 0.52, 0.9, mC ) * ( 0.21 + 0.16 * n1 ) ) * ( 0.93 + mC * 0.14 );
 }
 #endif
 `;
@@ -105,9 +125,13 @@ export const HINTERLAND_GROUND_APPLY = /* glsl */`
             hlG = hlAlb * clamp( hlLumaG( d ) / max( 1e-3, hlLumaG( uHlMeanD.rgb ) ), 0.55, 1.6 );
           }
         } else {
-          // a field, a pasture, a heath: the atlas's colour times the sward's own luminance (the ring's border parcels)
+          // a field's parcel: its crop's colour times the sward's own luminance (the ring's border parcels); the open land
+          // between (a pasture, a heath, the region's sand or scree): the battlefield's own sward under its meadow tints,
+          // easing to the region's palette by ~1.1 km past the edge (the pairs' "wrong biome": the atlas's class colours —
+          // green pasture on Mars and Titan, tan dunes on the Moon — stood against the battlefield's own ground at the seam)
           vec3 g = hlGroundTile( uHlGrass, uHlMeanG, hlUv * 0.240, hlCamD, hlRot );
-          hlG = hlAlb * clamp( hlLumaG( g ) / max( 1e-3, hlLumaG( uHlMeanG.rgb ) ), 0.55, 1.6 );
+          vec3 hlCrop = hlAlb * clamp( hlLumaG( g ) / max( 1e-3, hlLumaG( uHlMeanG.rgb ) ), 0.55, 1.6 );
+          hlG = hlEdgeDist < 1e5 ? hlCrop : mix( g * hlMeadowTint( hlUv ), hlCrop, smoothstep( 300.0, 1100.0, hlPast ) );
         }
         diffuseColor.rgb = mix( diffuseColor.rgb, hlG, hlGW );
       }
