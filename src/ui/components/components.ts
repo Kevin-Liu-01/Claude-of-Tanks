@@ -302,6 +302,17 @@ export function vehicle(options: VehicleOptions): string {
     + `${silhouette(options.id, options.facing)}<b>${esc(options.name)}</b></span>`;
 }
 
+/* ---------------------------------------------------------------------------------------------------- rules */
+
+/**
+ * The data voice's inline facts, a glyph and a value each (the direction's `.rules`: "7 v 7", "15:00", "750"). Each
+ * glyph is decorative; give the row an accessible name where the values need one.
+ */
+export function rules(items: readonly (readonly [IconId, string])[], className = ''): string {
+  return `<span class="cot-c-rules${className ? ` ${esc(className)}` : ''}">`
+    + items.map(([glyph, value]) => `<span>${icon(glyph, { size: 14 })}${esc(value)}</span>`).join('') + '</span>';
+}
+
 /* -------------------------------------------------------------------------------------------------- skeleton */
 
 /**
