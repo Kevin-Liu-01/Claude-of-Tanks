@@ -5495,7 +5495,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         ? s.roster as Record<string, RuntimeValue>
         : null;
       return {
-        id: s.id, name: s.name, era: s.era,
+        id: s.id, name: s.name, era: s.era, nation: s.nation,
         developmentOnly: Boolean(roster?.developmentOnly),
         rosterTag: typeof roster?.tag === 'string' ? roster.tag : '',
         gunElevationDeg: s.gunElevationDeg, gunDepressionDeg: s.gunDepressionDeg,

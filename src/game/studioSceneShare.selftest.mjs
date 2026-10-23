@@ -567,7 +567,8 @@ for (const none of ['', '#', '#other=1', null, undefined, 7]) assert.equal(scene
   const files = execFileSync('git', ['ls-files', 'src/game/studio*.ts', 'src/ui/studio*.ts'], { cwd: ROOT, encoding: 'utf8' })
     .trim().split('\n').filter((file) => !file.endsWith('.selftest.mjs'));
   assert.ok(files.length >= 20, `the Studio's sources are found (${files.length})`);
-  const constantMarkup = /^(?:''|SCENE_LINK_GLYPHS\.[a-z]+|tone === 'error' \? SCENE_LINK_GLYPHS\.broken : SCENE_LINK_GLYPHS\.done|uiIconSVG\([^)]*\)|`[^`]*`)$/;
+  // (STUDIO_GLYPHS is studioPanel.ts's constant table: the transport glyphs the sprite lacks and the mark)
+  const constantMarkup = /^(?:''|SCENE_LINK_GLYPHS\.[a-z]+|STUDIO_GLYPHS\.[a-zA-Z]+|tone === 'error' \? SCENE_LINK_GLYPHS\.broken : SCENE_LINK_GLYPHS\.done|uiIconSVG\([^)]*\)|`[^`]*`)$/;
   let sinks = 0;
   for (const file of files) {
     const source = read(file);
