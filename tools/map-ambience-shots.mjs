@@ -1,7 +1,7 @@
 // tools/map-ambience-shots.mjs — the map's air (src/world/mapAmbience.ts) off and on, staged identically.
 //
 //   node tools/map-ambience-shots.mjs --out=<dir> [--maps=a,b] [--times=day,night] [--root=<checkout>]
-//        [--width=1600] [--height=900] [--pages=4] [--wait-hours=10]
+//        [--width=1600] [--height=900] [--pages=4] [--wait-hours=10] [--dist=<built dist, default <root>/dist>]
 //
 // Holds serve shots only (tools/capture-hold.mjs runWarmHold): while the ticket waits in the cot-shots FIFO, a vite
 // preview of <root>/dist and one Chrome come up and each of at most --pages maps is loaded in its own page, staged on its
@@ -27,7 +27,7 @@ const TOOL = 'map-ambience-shots';
 
 function parse(argv) {
   const out = { maps: null, times: ['day', 'night'], root: process.cwd(), width: 1600, height: 900, pages: 4,
-    waitHours: 10, out: null };
+    waitHours: 10, dist: null, out: null };
   for (const arg of argv) {
     const m = /^--([a-z-]+)=(.*)$/.exec(arg);
     if (!m) throw new Error(`unknown argument ${arg}`);
@@ -40,12 +40,15 @@ function parse(argv) {
     else if (key === 'height') out.height = Number(value);
     else if (key === 'pages') out.pages = Math.max(1, Math.min(4, Number(value)));
     else if (key === 'wait-hours') out.waitHours = Number(value);
+    // a copy of a build kept outside the tree, so a rebuild cannot change it under a queued run
+    else if (key === 'dist') out.dist = path.resolve(value);
     else throw new Error(`unknown flag --${key}`);
   }
   if (!out.out) throw new Error('--out=<dir> is required');
   for (const id of out.maps ?? []) if (!MAP_IDS.includes(id)) throw new Error(`unknown map ${id}`);
   for (const t of out.times) if (!['day', 'sunset', 'night'].includes(t)) throw new Error(`unknown time ${t}`);
-  if (!existsSync(path.join(out.root, 'dist', 'index.html'))) throw new Error(`${out.root}/dist has no build: npm run build first`);
+  out.dist ??= path.join(out.root, 'dist');
+  if (!existsSync(path.join(out.dist, 'index.html'))) throw new Error(`${out.dist} has no build: npm run build first`);
   return out;
 }
 
@@ -153,7 +156,7 @@ async function main(argv) {
       place: `${TOOL}:${path.basename(options.out)}:${batch.join(',')}`,
       waitHours: options.waitHours,
       warm: async () => {
-        const server = await startViteChild({ root: options.root, mode: 'preview' });
+        const server = await startViteChild({ root: options.root, mode: 'preview', outDir: options.dist });
         const browser = await puppeteer.launch({ ...mapProbeLaunchOptions({ width: options.width, height: options.height, protocolTimeout: 900000 }), timeout: 180000 });
         const close = async () => { await browser.close(); await server.close(); };
         try {
