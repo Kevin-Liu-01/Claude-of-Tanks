@@ -7,6 +7,7 @@
 // terrain program is at its samplers' limit): the height atlas and this one, two samplers past three's own.
 import * as THREE from 'three';
 import { HL_EDGE_OFFSET_M, HL_EDGE_SCALE, type HinterlandWire } from './wire.ts';
+import { createClassicHinterlandSurface } from './materialClassic.ts';
 
 export interface HinterlandSurface {
   uniforms: Record<string, THREE.IUniform>; fragmentPars: string; albedo: string; roughness: string; normal: string;
@@ -46,6 +47,8 @@ function packSurface(levels: NonNullable<HinterlandWire['surface']>): { texture:
 /** The land's surface from the worker's atlas; null (no atlas) draws the debug albedo by slope (mesh.ts). */
 export function createHinterlandSurface(wire: HinterlandWire, { lite = false }: { lite?: boolean } = {}): HinterlandSurface | null {
   if (!wire.surface?.length) return null;
+  // (a region without snow keeps main's program: round 6's rock was made for Glacier's snow faces; materialClassic.ts)
+  if (!wire.rock?.snowy) return createClassicHinterlandSurface(wire, packSurface(wire.surface), lite);
   const { texture, edges, blocks } = packSurface(wire.surface);
   const n = blocks.length;
   const rot = wire.landRot ?? [1, 0];
