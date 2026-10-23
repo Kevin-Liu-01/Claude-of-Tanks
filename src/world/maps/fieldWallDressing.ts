@@ -18,7 +18,7 @@ import { dressedCourse } from './coursedWallKit.ts';
 export interface DressingGround { getHeightAt(x: number, z: number): number }
 
 /** The winter maps' wind, toward which the snow lenses trail (maps/mapKits.ts WINTER_WIND_YAW): downwind (cos, -sin). */
-export const SNOW_WIND_YAW = -0.6;
+const SNOW_WIND_YAW = -0.6;
 
 export function dressingRng(seed: number): () => number {
   let a = seed | 0;
