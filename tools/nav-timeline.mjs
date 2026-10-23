@@ -76,6 +76,19 @@ const tapOrClick = async (page, ctx, selector) => {
   else await page.click(selector);
 };
 const click = (selector) => Object.assign((page, ctx) => tapOrClick(page, ctx, selector), { target: selector });
+/** A top-bar link: on a phone the bar folds its pages into a menu, opened before the recording starts. */
+const navLink = (href) => Object.assign(async (page, ctx) => {
+  const inMenu = await page.$eval('.public-nav__menu', (menu) => !menu.hidden).catch(() => false);
+  await tapOrClick(page, ctx, inMenu ? `.public-nav__menu a[href="${href}"]` : `.public-nav__links > a[href="${href}"]`);
+}, {
+  target: '.public-nav',
+  before: async (page, ctx) => {
+    const folded = await page.$eval(`.public-nav__links > a[href="${href}"]`, (a) => getComputedStyle(a).display === 'none').catch(() => true);
+    if (!folded) return;
+    await tapOrClick(page, ctx, '.public-nav__menu-trigger');
+    await page.waitForSelector(`.public-nav__menu a[href="${href}"]`, { visible: true, timeout: 30000 });
+  },
+});
 /** An address-bar navigation: the recording starts with it, so it is not awaited. */
 const direct = (path) => async (page, ctx) => {
   page.goto(new URL(path, ctx.base).href, { waitUntil: 'domcontentloaded', timeout: 240000 }).catch(() => {});
@@ -103,12 +116,14 @@ const JOURNEYS = [
   { id: 'home', group: 'public', steps: [
     { id: 'home-load', act: direct('/home'), window: 3000,
       content: when(`visible('.v5-hero h1') && decoded('.v5-hero-rail img.is-active')`) },
-    { id: 'home-to-gallery', act: click('.public-nav__links a[href="/gallery"]'), window: 3000,
+    { id: 'home-to-gallery', act: navLink('/gallery'), window: 3000,
       content: when(`location.pathname === '/gallery' && any('#vehicleList .vehicle-card')`),
       ready: when(`location.pathname === '/gallery' && window.__TANK_GALLERY_READY === true`) },
-    { id: 'gallery-dossier', act: click('#vehicleList .vehicle-card:not(.active)'), window: 2500,
-      content: when(`document.querySelector('#vehicleList .vehicle-card.active')?.dataset.id !== 'm1a1_abrams_hc' && document.getElementById('loadingState')?.hidden === true`) },
-    { id: 'gallery-to-docs', act: click('.public-nav__links a[href="/docs"]'), window: 3000,
+    { id: 'gallery-dossier', act: click('#vehicleList .vehicle-card:not(.active)'), window: 2500, timeoutMs: SHOW_TIMEOUT,
+      content: when(`(() => { const id = document.querySelector('#vehicleList .vehicle-card.active')?.dataset.id;
+        return !!id && id !== 'm1a1_abrams_hc' && document.getElementById('dossierDesignation')?.textContent.includes(id); })()`),
+      ready: when(`window.__TANK_GALLERY_READY === true && document.getElementById('loadingState')?.classList.contains('hidden')`) },
+    { id: 'gallery-to-docs', act: navLink('/docs'), window: 3000,
       content: when(`location.pathname === '/docs' && visible('h1')`) },
     { id: 'docs-to-topic', act: click('a[href="/docs/build"]'), window: 3000,
       content: when(`location.pathname === '/docs/build' && visible('#topicRoot h1')`) },
@@ -124,7 +139,7 @@ const JOURNEYS = [
       content: when(`visible('.v5-hero h1') && decoded('.v5-hero-rail img.is-active')`) },
   ] },
   { id: 'studio', group: 'game', start: '/home', startReady: `visible('.v5-hero h1')`, steps: [
-    { id: 'home-to-studio', act: click('.public-nav__links a[href="/studio"]'), window: 3000, timeoutMs: SHOW_TIMEOUT,
+    { id: 'home-to-studio', act: navLink('/studio'), window: 3000, timeoutMs: SHOW_TIMEOUT,
       content: when(`location.pathname === '/studio' && ${HERO_DECODED}`),
       ready: when(`visible('.cot-studio') || visible('#cot-boot-gate.on')`) },
   ] },
@@ -286,6 +301,7 @@ function traceEvents(buffer) {
 async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
   const spec = { content: step.content, ready: step.ready || null };
   const specScript = await page.evaluateOnNewDocument((value) => { window.__navSpec = value; }, spec);
+  if (step.act.before) await step.act.before(page, ctx).catch(() => {});
   if (step.act.target) {
     // A player scrolls to a control before pressing it: the scroll is not part of the navigation.
     await page.waitForSelector(step.act.target, { visible: true, timeout: 120000 }).catch(() => {});
