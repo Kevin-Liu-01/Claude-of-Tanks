@@ -1264,6 +1264,8 @@ const relayCode = (h, socket, requestId) => { const m = relayOf(h, socket, reque
   assert.equal(h.actor.snapshot.host.hostId, 'admin', 'the guest\'s claim aged out and the others never counted: the lease runs (a blip)');
   assert.equal(h.last('g', 'host_changed') ?? null, null);
   await claim('t');
+  assert.equal(h.actor.snapshot.host.hostId, 'admin', 'one of two connected commanders is no majority: the lease runs (security audit 2026-10-22)');
+  await claim('g');
   assert.deepEqual(h.last('t', 'host_changed')?.payload, { hostId: 'guest', generation: 2, resumeTick: 300, reason: 'timeout', detail: 'socket_lease',
     passedOver: [{ playerId: 'third', why: 'ranked_lower' }] }, 'a fresh claim with the socket gone: elected at once (the detail older tabs know)');
   assert.ok(isRoomHostChangedPayload(h.last('g', 'host_changed').payload), 'the payload validates for every tab');
@@ -1276,10 +1278,25 @@ const relayCode = (h, socket, requestId) => { const m = relayOf(h, socket, reque
   await h.command('a', { type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 120 });
   h.drain('g'); h.drain('t');
   await h.command('t', { type: 'host_unreachable', generation: 1, silentMs: 2400 });
+  await h.command('g', { type: 'host_unreachable', generation: 1, silentMs: 2400 });
   await h.advance(1000);
   h.actor.handleClose('a');
-  assert.equal(h.actor.snapshot.host.hostId, 'guest', 'the drop follows a fresh claim: no lease');
+  assert.equal(h.actor.snapshot.host.hostId, 'guest', 'the drop follows fresh claims from a majority: no lease');
   assert.equal(h.last('g', 'host_changed').payload.detail, 'socket_lease');
+}
+
+
+{
+  // one unverified claim no longer moves a healthy match (security audit 2026-10-22): the last-ranked commander claims,
+  // the host blips its room socket, and the room waits out the lease; a claim the host's next report answered does not count
+  const { h, matchId } = await startedP2pRoom({ third: true });
+  await h.command('a', { type: 'match_report', matchId, generation: 1, phase: 'playing', tick: 200 });
+  h.drain('g'); h.drain('t');
+  await h.command('t', { type: 'host_unreachable', generation: 1, silentMs: 2400 });
+  await h.advance(500);
+  h.actor.handleClose('a');
+  assert.equal(h.actor.snapshot.host.hostId, 'admin', 'a lone claim with the socket gone: the lease runs');
+  assert.equal(h.last('g', 'host_changed') ?? null, null);
 }
 
 console.log('roomActor: PASS');

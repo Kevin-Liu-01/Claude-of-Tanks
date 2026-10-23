@@ -2,10 +2,13 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from '../tankFactory.ts';
 
+// Release 240: the Leopards hold published ring receipts, so the turret seat (turretSeatRace.ts) stands their undersides
+// (the lower pans with them) on one plane, the seam over the deck round the ring, closed inside the rim by the turret's
+// collar; their closure is that seated underside, not a pan buried in the deck.
 const CASES = [
-  { id: 'leo2a4', y: [-0.125, -0.105], samples: [[0.92, 0.38], [-0.92, 0.38], [0.92, -0.72], [-0.92, -0.72]] },
-  { id: 'leo2a4_otco', y: [-0.155, -0.135], samples: [[0.92, 0.38], [-0.92, 0.38], [0.92, -0.72], [-0.92, -0.72]] },
-  { id: 'leo2a4m_can', y: [-0.130, -0.065], samples: [[0.82, 0.48], [-0.82, 0.48], [0.82, -0.72], [-0.82, -0.72]] },
+  { id: 'leo2a4', y: [-0.050, -0.034], samples: [[0.92, 0.38], [-0.92, 0.38], [0.92, -0.72], [-0.92, -0.72]] },
+  { id: 'leo2a4_otco', y: [-0.068, -0.052], samples: [[0.92, 0.38], [-0.92, 0.38], [0.92, -0.72], [-0.92, -0.72]] },
+  { id: 'leo2a4m_can', y: [0.022, 0.038], samples: [[0.82, 0.48], [-0.82, 0.48], [0.82, -0.72], [-0.82, -0.72]] },
   { id: 'm2a2_bradley', y: [-0.075, -0.055], samples: [[0.62, 0.26], [-0.62, 0.26], [0.58, -0.58], [-0.58, -0.58]] },
   { id: 'm3a3_bradley', y: [-0.075, -0.055], samples: [[0.62, 0.26], [-0.62, 0.26], [0.58, -0.58], [-0.58, -0.58]] },
   { id: 'ua_m2a3_bradley', y: [-0.075, -0.055], samples: [[0.62, 0.26], [-0.62, 0.26], [0.58, -0.58], [-0.58, -0.58]] },
@@ -29,7 +32,7 @@ for (const { id, y: [minY, maxY], samples } of CASES) {
         assert.ok(hit, `${id} closes the turret underside at (${x}, ${z}) through yaw ${yaw}`);
         const localHit = turretRig.worldToLocal(hit.point.clone());
         assert.ok(localHit.y >= minY && localHit.y <= maxY,
-          `${id} closure is the deck-overlapping lower armor pan at (${x}, ${z}): ${localHit.y}`);
+          `${id} closure is the seated underside (or the deck-overlapping lower armor pan) at (${x}, ${z}): ${localHit.y}`);
       }
     }
   } finally {

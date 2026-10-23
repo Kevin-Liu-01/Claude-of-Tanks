@@ -1370,8 +1370,14 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // packFire) — and the survivors stand at 130 % hull (was 150 %). The A/B on seeds 401, 403, 404, 408: the first
   // infection 92 / 90 / 88 s -> 28 / 25 / 26 s on Steinburg, Desert and Coastal; Verdant (a WWII E-100 pick, the
   // survivors' 128 mm rounds ~1040 a hit against a 313 hp infected) stays the survivors' round. A 3 s respawn was worse.
-  infected: Object.freeze({ ...STANDARD, mode: 'infected', ammo: 'unlimited', allies: 9, enemies: 5, respawnS: 5, timeLimitS: 420,
-    infection: Object.freeze({ infectedSpeed: 1.3, survivorHpScale: 1.3, infectedHpScale: .25, infectedReloadScale: 1, hunt: true }),
+  // 240 (the coordinator: survivors could never win; zombieBalance re-measured on 233's rules, 48 seeds: 0 survivor
+  // rounds, the outbreak done by a median 2:29, 2.79 infected a survivor lost): the round is three minutes (was seven)
+  // and the infected stand at a fifth of their hull (was a quarter), the pack hunt and its opening untouched. Over seeds
+  // 1-48: survivors 17 of 48 (hold-out 12 of 32), a median end 2:43, 3.92 infected a loss; the first infection 40 -> 41 s
+  // on seeds 1-8. A longer respawn (10 or 15 s), a x1.6 reload or 150-180 % survivors won no round at seven minutes and
+  // slowed the first infection to 50-77 s; at 15 % and 3:30 the survivors won 5 of 48.
+  infected: Object.freeze({ ...STANDARD, mode: 'infected', ammo: 'unlimited', allies: 9, enemies: 5, respawnS: 5, timeLimitS: 180,
+    infection: Object.freeze({ infectedSpeed: 1.3, survivorHpScale: 1.3, infectedHpScale: .2, infectedReloadScale: 1, hunt: true }),
     bots: Object.freeze({ bravo: INFECTED_DOCTRINE, alpha: SURVIVOR_DOCTRINE }),
     infectionBots: Object.freeze({ survivorRallyM: 90, packPullM: 60, arrival: Object.freeze({
       spawnRingM: Object.freeze([70, 120] as const), fallbackRingM: Object.freeze([120, 200] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,

@@ -15,92 +15,20 @@
   "floating": 1,
   "dangling": 0
  },
- "kit:chouf:farmhouse": {
-  "floating": 14,
-  "dangling": 0
- },
- "kit:chouf:marketRow": {
-  "floating": 8,
-  "dangling": 0
- },
- "kit:chouf:rangerlodge": {
-  "floating": 14,
-  "dangling": 0
- },
  "kit:chouf:ruin": {
   "floating": 1,
   "dangling": 0
  },
- "kit:hostomel:ruin": {
-  "floating": 0,
-  "dangling": 1
- },
  "kit:kyushu:factory": {
   "floating": 4,
-  "dangling": 0
- },
- "kit:navajo:watertower": {
-  "floating": 12,
-  "dangling": 0
- },
- "kit:sarajevo:broadcasttower": {
-  "floating": 4,
-  "dangling": 0
- },
- "kit:sarajevo:factory": {
-  "floating": 6,
-  "dangling": 0
- },
- "kit:sarajevo:megatower": {
-  "floating": 88,
-  "dangling": 0
- },
- "kit:sarajevo:parkingdeck": {
-  "floating": 24,
-  "dangling": 0
- },
- "kit:sarajevo:terracetower": {
-  "floating": 92,
-  "dangling": 0
- },
- "kit:savoyard:chapel": {
-  "floating": 1,
   "dangling": 0
  },
  "kit:savoyard:tavern": {
   "floating": 1,
   "dangling": 0
  },
- "kit:shanghai:firestation": {
-  "floating": 8,
-  "dangling": 0
- },
- "kit:shanghai:warehouse": {
-  "floating": 1,
-  "dangling": 0
- },
- "landmark:aircraftWreck": {
-  "floating": 0,
-  "dangling": 1
- },
- "light:greenhouse/broken": {
-  "floating": 6,
-  "dangling": 0
- },
- "light:solararray/intact": {
-  "floating": 3,
-  "dangling": 0
- },
  "regional-light:kohima:longhouse/intact": {
-  "floating": 2,
+  "floating": 0,
   "dangling": 2
- },
- "regional-light:mekong:fishershack/intact": {
-  "floating": 1,
-  "dangling": 0
- },
- "regional-light:mekong:stilthouse/intact": {
-  "floating": 4,
-  "dangling": 0
  }
 }

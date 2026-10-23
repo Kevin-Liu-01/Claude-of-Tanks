@@ -175,8 +175,11 @@ void main() {
   mvPosition = viewMatrix * vec4( wp, 1.0 );
 #elif defined( MOTION_STREAK )
   vec3 vel = cls < 0.5 ? uVel * 0.8 : ( cls < 1.5 ? uVel : uVel * 1.22 );
+  // wisps, not a dash field: each streak its own length and weight, and a slow gust swelling and fading it
+  float lenK = 0.45 + 1.1 * fract( aRand.x * 5.3 + aSeed.w );
+  a *= ( 0.45 + 0.55 * fract( aRand.y * 3.7 ) ) * ( 0.3 + 0.7 * smoothstep( -0.2, 0.9, sin( t * ( 0.6 + aSeed.w ) + ph * 3.0 ) ) );
   vec4 head = viewMatrix * vec4( p, 1.0 );
-  vec4 tail = viewMatrix * vec4( p - vel * uStreakS, 1.0 );
+  vec4 tail = viewMatrix * vec4( p - vel * uStreakS * lenK, 1.0 );
   vec2 d2 = head.xy / max( -head.z, 0.05 ) - tail.xy / max( -tail.z, 0.05 );
   vec2 sd = dot( d2, d2 ) > 1e-12 ? normalize( d2 ) : vec2( 0.0, 1.0 );
   float px = size * uPixel / max( -head.z, 0.05 );

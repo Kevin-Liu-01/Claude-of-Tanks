@@ -9,6 +9,9 @@ const cast = (mesh, origin, direction, far = 8) => new THREE.Raycaster(
 
 // Independent held-out canonical-source rays: these are not the radial
 // stations used by the new cover primitive, nor any candidate-derived fit.
+// (release 240: the covers stand 0.35 m aft of their source stations, out of the turret's sweep; the source surface
+// witnesses move with them)
+const COVER_AFT_M = .35;
 const coverWitnesses = [
   ['Right',.70,-1.48,1.81869638], ['Right',.84,-1.24,1.80607933],
   ['Right',.97,-1.33,1.80930620], ['Right',.61,-1.58,1.79983345],
@@ -149,9 +152,9 @@ for (const quality of ['high','low']) {
       fixture(name).geometry.addEventListener('dispose',()=>disposed.set(name,disposed.get(name)+1));
     }
     for (const [side,x,z,y] of coverWitnesses)
-      near(cast(fixture(`ServiceCover${side}`),[x,3,z],[0,-1,0])?.point.y,y,.004,
+      near(cast(fixture(`ServiceCover${side}`),[x,3,z-COVER_AFT_M],[0,-1,0])?.point.y,y,.004,
         `${quality}: held-out source rounded service-cover surface`);
-    for (const [side,x,z] of [['Right',.776058,-1.378049],['Left',-.765934,-1.365959]]) {
+    for (const [side,x,z] of [['Right',.776058,-1.378049-COVER_AFT_M],['Left',-.765934,-1.365959-COVER_AFT_M]]) {
       const cover=fixture(`ServiceCover${side}`);
       assert.ok(cover.parent === get('rig_hull'),'service covers stay on the permanent hull');
       assert.equal(cover.userData.combatHitboxRole,'equipment');

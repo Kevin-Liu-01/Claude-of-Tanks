@@ -20,6 +20,8 @@ const STUDIO_KEY_PREFIXES = Object.freeze([
   'studio.director.',
   // shared scene links: copy and open (studioSceneLinkUi.ts, 2026-10-17)
   'studio.sceneLink.',
+  // the Premiere workspace: header, outliner, inspector, shelf and timeline (studioPanel.ts, brand-ui 242)
+  'studio.ws.',
 ]);
 // single keys it added beside older Studio families
 const STUDIO_KEYS = new Set([

@@ -102,6 +102,12 @@ export interface TreeBiome {
    * do (VegetationConfig `bare`; vegetation.ts BARE_SPRAY_KINDS) — an Alpine April's larches before their needles.
    */
   bare?: true;
+  /**
+   * The trees lane (2026-10-08, the gauntlet's wave 278 on Saltmere Bay): the place's prevailing wind — the compass
+   * bearing it blows toward (0 = +z, 90 = +x) — that a wind-shorn shrub form's field cushions lean along (treeGrowth.ts
+   * cushion.shorn; vegetation.ts turns each one's leeward side to it, within a few degrees).
+   */
+  wind?: Readonly<{ towardDeg: number }>;
 }
 
 /**
@@ -184,6 +190,15 @@ const SONORAN_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
 });
 
 /** The holm oak's dull dark grey-green (its leaves' felted grey undersides): two thirds of a leaf's saturation. */
+/**
+ * The trees lane (2026-10-08, wave 278): the gorse's dark, faintly blue green — the card tint at a low saturation over the
+ * atlas's own spines and flowers (its tone untouched: the bush slot's oak palette would yellow them).
+ */
+const GORSE_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
+  cardHue: 0.27, cardSat: 0.15,
+  texTone: (h: number, s: number, l: number): [number, number, number] => [h, s, l],
+});
+
 const HOLM_OAK_FOLIAGE: Readonly<TreeBiomeColour> = Object.freeze({
   cardHue: 0.25, cardSat: 0.09,
   texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.68), l],
@@ -220,15 +235,6 @@ export interface TreeBiomeGrove {
   maxSlopeDeg: number;
   maxHeightShare: number;
 }
-
-/**
- * The trees lane (2026-10-06, wave 177): the maquis (mastic, myrtle, kermes oak) under Saltwind's trees — the evergreen
- * oak's shrubs a little lighter and greener than the holm oak's dark crowns over them.
- */
-const MAQUIS_SCRUB: Readonly<TreeBiomeColour> = Object.freeze({
-  cardHue: 0.27, cardSat: 0.12,
-  texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.8), Math.min(1, l * 1.1)],
-});
 
 /**
  * Trees lane (2026-10-06): the bamboo's fresh yellow-green (the willow's lances it paints are a greyer green): the hue
@@ -272,14 +278,16 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // (Caldera round 2, wave 114: the holm oak's big leaf sprays read at shrub size as "a tropical fern or palm-like
   // shrub", and the sugi stood in open groves: the bushes are now the grassland's low twiggy scrub (the broom form: bush
   // clover, Miyama-kirishima azalea) and the sugi stand in closed blocks)
-  // (round 8's canopy form for the sugi and red pine woods waits on its blind critic: item 41, 2026-10-22)
+  // (item 41, 2026-10-23: round 8's canopy form dropped here — the blind critic's 2 wins, 3 losses, 2 ties, mean -0.14:
+  // the sugi grove's crowns "lighter and separated", its pines "spindly", sky through the crowns over bare trunks)
   caldera: B('the Aso caldera, Kyushu', { pine: { form: 'sugi' }, cypress: { form: 'sugi' }, acacia: { form: 'redPine' } }, 'broom'),
   // the Dalmatian coast: Aleppo pine, holm oak and olive (and cypress, which the map names directly)
   // (the trees lane, 2026-10-06, the gauntlet's wave 177: the olive groves inside the dry stone walls — a stand centred
-  // in a field's interior leads with the olive; the holm oak woods on the slopes three in ten Aleppo pine; the maquis the
-  // evergreen oak's shrubs)
+  // in a field's interior leads with the olive; the holm oak woods on the slopes three in ten Aleppo pine. The maquis
+  // shrubs of that round (the evergreen oak's form) are not taken: the 2026-10-23 blind pair read them as dense,
+  // near-black blue-green clumps of leaf cards, and preferred the slot's own shrubs)
   saltwind: Object.freeze({ ...B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak', colour: HOLM_OAK_FOLIAGE },
-    acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }, 'holmOak'), shrubColour: MAQUIS_SCRUB,
+    acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }),
     grove: Object.freeze({ slot: 'acacia' as const, maxSlopeDeg: 10, maxHeightShare: 0.7 }), blend: Object.freeze({ slot: 'cedar' as const, into: 'pine' as const, share: 0.3 }) }),
   // Longleaf, Louisiana (the map-revival lane, 2026-10-05; the trees lane's row for round 2, gauntlet wave 124): the Gulf
   // coastal plain's longleaf pine flatwoods — tall, straight, clear boles under small tufted crowns, in open groves over
@@ -293,7 +301,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   orchard: B('the Chouf, Mount Lebanon', { cedar: { form: 'lebanonCedar' }, pine: { form: 'aleppoPine' },
     oak: { form: 'olive', colour: OLIVE_FOLIAGE } }),
   // the Breton bocage: oak and sweet chestnut along the hedgebanks (the maritime pine stays a pine)
-  coastal: B('the Breton bocage, Brittany', { cedar: { form: 'chestnut' } }),
+  // (the trees lane, 2026-10-08, the gauntlet's wave 278: the shrubs "stickers rather than wind-pruned coastal scrub" —
+  // the coast's gorse, dark and prickly, clipped into cushions and swept inland by the wind off the bay on the east edge)
+  coastal: Object.freeze({ ...B('the Breton bocage, Brittany', { cedar: { form: 'chestnut' } }, 'gorse'),
+    shrubColour: GORSE_FOLIAGE, wind: Object.freeze({ towardDeg: 270 }) }),
   // the Fulda Gap: beech woods with spruce, oak and birch
   frontier: B('the Fulda Gap, Hesse', { pine: { form: 'beech' }, aspen: { form: 'birch', leaves: true } }),
   // Prokhorovka: birch and oak shelterbelts, poplars along the tracks (the map's willow and pine slots grow as birches:
@@ -338,9 +349,10 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
     palm: { form: 'nipa', colour: NIPA_FOLIAGE } }, undefined, RHIZOPHORA_FOLIAGE),
   // the Alps: spruce and larch. (The trees lane, 2026-10-08, the gauntlet's wave 278: April on the col — the spruce under
   // the snow's load, the larches bare until their needles come in May)
-  // (round 8's canopy form for the spruce woods waits on its blind critic: item 41, 2026-10-22)
+  // (item 41, 2026-10-23: the April snow with round 8's canopy form against main's summer-green spruce — the blind
+  // critic's 8 of 8, mean +1.63: "crowns visibly carry white snow on the branches")
   alpine: Object.freeze({ ...B('an Alpine pass', { fir: { form: 'larch' }, pine: { form: 'larch' } }), snow: ALPINE_APRIL_SNOW,
-    bare: true as const }),
+    bare: true as const, canopyForm: true as const }),
   // Kohima in the Naga Hills (the trees lane, 2026-10-06, the gauntlet's wave 157: "built almost entirely from one
   // repeating tropical fan-palm", the wrong flora for a hill station on a saddle at about 1,450 m): Khasi pine on the
   // ridges (the map's pine slot, which took the palm's share), the montane evergreen forest of chestnut-oaks
@@ -349,14 +361,17 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   monsoon: Object.freeze({ ...B('Kohima, the Naga Hills', { pine: { form: 'khasiPine' }, eucalyptus: { form: 'castanopsis' },
     willow: { form: 'holmOak' }, oak: { form: 'bamboo', colour: BAMBOO_FOLIAGE } }, 'holmOak'),
     // (round 2: the shell-killed trunks charred near-black, not the pale poles wave 179 read as eucalyptus)
-    // (round 8's canopy form for its woods waits on its blind critic: item 41, 2026-10-22)
-    snagValue: Object.freeze([0.16, 0.26] as const) }),
+    // (item 41, 2026-10-23: round 8's canopy form, with the Naga Hills forms, against main's palms: the blind critic's
+    // 4 wins, 2 losses, 2 ties, mean +0.75, "wins every overview and woods-interior pose by a wide margin")
+    snagValue: Object.freeze([0.16, 0.26] as const), canopyForm: true as const }),
   // Queenstown under Mount Lyell, Tasmania (the map-revival lane, 2026-10-05): eucalypt regrowth where the map plants its
   // acacias and cedars, the radiata plantations' pines as pines, the bushes the tea-tree and myrtle scrub in the holm
   // oak's dark leaf (no 'snag' for the fume-killed stumps: its slot would keep a concealing crown it does not draw);
   // the placement stays the map's
-  // (round 8's canopy form for the regrowth woods waits on its blind critic: item 41, 2026-10-22)
-  copper_mesa: B('Queenstown under Mount Lyell, Tasmania', { acacia: { form: 'eucalyptus' }, cedar: { form: 'eucalyptus' } }, 'holmOak'),
+  // (item 41, 2026-10-23: round 8's canopy form for the regrowth woods — the blind critic's 8 of 8, mean +1.0: "larger
+  // crowns that close into one canopy mass")
+  copper_mesa: Object.freeze({ ...B('Queenstown under Mount Lyell, Tasmania', { acacia: { form: 'eucalyptus' }, cedar: { form: 'eucalyptus' } }, 'holmOak'),
+    canopyForm: true as const }),
   // the Scheldt polders: poplar and willow rows (the map's own slots already); the trees lane (2026-10-07, the gauntlet's
   // wave 205: "an agave-like plant" on a dyke crest — the willow's long lances fanned from the ground as a shrub read as a
   // yucca rosette): the dykes' and ditches' scrub the oak's small lobed leaves, a hawthorn's thicket
@@ -553,4 +568,9 @@ export function treeBiomeSnowPalette<P extends TreeBiomeSnowTerms>(pal: P, famil
 /** Trees round 4: the colour of a place's shrubs over the bush slot's palette (TreeBiome.shrubColour), or none. */
 export function treeBiomeShrubColour(mapId: string | null | undefined): Readonly<TreeBiomeColour> | null {
   return (mapId ? TREE_BIOMES[mapId]?.shrubColour : null) ?? null;
+}
+
+/** The trees lane (2026-10-08, wave 278): the bearing a place's wind blows toward (TreeBiome.wind), or null. */
+export function treeBiomeWindToward(mapId: string | null | undefined): number | null {
+  return (mapId ? TREE_BIOMES[mapId]?.wind?.towardDeg : null) ?? null;
 }

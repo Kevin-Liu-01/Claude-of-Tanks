@@ -42,6 +42,20 @@ const CHIP_ICONS: Readonly<Record<AnatomyToggle, string>> = Object.freeze({
   armor: 'shield', addOns: 'armorFlashlight', modules: 'engine', crew: 'crew', hits: 'graphics', exterior: 'gallery', labels: 'info',
 });
 
+/** The legend's glyphs: each system keys with its module glyph and each crew role with its seat (07-gallery .legend). */
+const SYSTEM_GLYPHS: Readonly<Record<string, string>> = Object.freeze({
+  mobility: 'engine', ammunition: 'ammoRack', fuel: 'fuelTank', firepower: 'gun', electronics: 'radio',
+});
+const ROLE_GLYPHS: Readonly<Record<string, string>> = Object.freeze({
+  commander: 'crewCommander', gunner: 'crewGunner', loader: 'crewLoader', driver: 'crewDriver', radio: 'radio',
+});
+/** Callout geometry in px: the first leader, each deeper step, and the label box the separation pass keeps apart. */
+const CALLOUT_LEADER_PX = 56;
+const CALLOUT_STEP_PX = 22;
+const CALLOUT_MIN_PX = 14;
+const CALLOUT_WIDTH_PX = 150;
+const CALLOUT_HEIGHT_PX = 28;
+
 export interface AnatomyVehicle {
   id: string;
   /** Cache key: the vehicle and the specimen's armor state (stripped plates). */
@@ -65,53 +79,48 @@ export interface AnatomyHost {
   onToggle(): void;
 }
 
+// The direction's own rules (07-gallery .subs, .legend, .co and its crew rings) on the kit and tokens; the chips and the
+// metric switch are the kit's (.cot-c-chip, .cot-c-seg), which the Gallery page loads with components.css.
 const STYLE = `
-.anatomy-bar{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;width:min(800px,100%);margin:0 auto 6px;pointer-events:auto}
-.anatomy-bar[hidden]{display:none}
-.anatomy-chip,.anatomy-seg button{display:inline-flex;align-items:center;gap:6px;min-height:30px;padding:5px 10px;border:1px solid rgba(174,190,197,.24);background:rgba(5,9,11,.9);color:#aeb8bb;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;backdrop-filter:blur(10px)}
-.anatomy-chip svg,.anatomy-seg svg{width:14px;height:14px;flex:none}
-.anatomy-chip[aria-pressed="true"]{border-color:rgba(255,189,92,.7);background:rgba(74,46,10,.88);color:#ffd08a}
-.anatomy-chip:hover,.anatomy-seg button:hover{border-color:rgba(255,189,92,.5);color:#ffe2b4}
-.anatomy-seg{display:inline-flex;border:1px solid rgba(174,190,197,.24)}
-.anatomy-seg button{border:0;border-left:1px solid rgba(174,190,197,.18);min-width:58px;justify-content:center}
-.anatomy-seg button:first-child{border-left:0}
-.anatomy-seg button[aria-checked="true"]{background:rgba(74,46,10,.9);color:#ffd08a;box-shadow:inset 0 -2px 0 #f0a030}
-#viewport .overlay-legend.anatomy-legend{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 10px}
-#viewport .anatomy-legend .anatomy-ramp{display:grid;grid-template-columns:auto minmax(180px,300px);align-items:center;gap:8px;padding:5px 9px;background:rgba(5,9,11,.92);border:1px solid rgba(174,190,197,.2)}
-#viewport .anatomy-legend .anatomy-ramp b{color:#d9dfe1;font-size:11px;letter-spacing:.03em;white-space:nowrap}
-#viewport .anatomy-legend .anatomy-ramp-bar{position:relative;height:9px;border:1px solid rgba(0,0,0,.6)}
-#viewport .anatomy-legend .anatomy-ramp-ticks{position:relative;height:12px;margin-top:3px}
-#viewport .anatomy-legend .anatomy-ramp-ticks span{position:absolute;display:block;min-height:0;padding:0;border:0;background:none;transform:translateX(-50%);color:#9aa5a9;font:500 11px/1 var(--font-mono);letter-spacing:0;text-transform:none;white-space:nowrap}
+.subs{display:flex;flex-wrap:wrap;gap:6px;pointer-events:auto}
+.subs[hidden]{display:none}
+.subs .cot-c-chip{height:28px;font-size:var(--fs-12);background:var(--hud-plate)}
+.subs .cot-c-seg{padding:2px;background:var(--hud-plate)}
+.subs .cot-c-seg__opt{height:24px;padding:0 10px;font-size:var(--fs-12)}
+#viewport .legend.anatomy-legend{gap:6px}
+#viewport .anatomy-legend .anatomy-ramp{display:grid;grid-template-columns:auto minmax(160px,260px);align-items:center;gap:8px}
+#viewport .anatomy-legend .anatomy-ramp b{color:var(--ink-2);font:500 var(--fs-12)/1 var(--font-body);white-space:nowrap}
+#viewport .anatomy-legend .anatomy-ramp-bar{position:relative;height:8px;box-shadow:var(--ring-1)}
+#viewport .anatomy-legend .anatomy-ramp-ticks{position:relative;height:12px;margin-top:4px}
+#viewport .anatomy-legend .anatomy-ramp-ticks span{position:absolute;transform:translateX(-50%);color:var(--ink-3);font:500 var(--fs-11)/1 var(--font-data);
+  white-space:nowrap}
 #viewport .anatomy-legend .anatomy-ramp-ticks span:first-child{transform:none}
 #viewport .anatomy-legend .anatomy-ramp-ticks span:last-child{transform:translateX(-100%)}
-#viewport .anatomy-legend .anatomy-key{display:inline-flex;align-items:center;gap:6px;min-height:22px;padding:4px 8px;background:rgba(5,9,11,.92);border:1px solid rgba(174,190,197,.2);color:#b5bfc2;font-size:11px;letter-spacing:.02em;text-transform:uppercase}
-#viewport .anatomy-legend .anatomy-key i{width:10px;height:10px;background:var(--key);box-shadow:0 0 0 1px rgba(0,0,0,.5)}
-#viewport .anatomy-legend .anatomy-key svg{width:13px;height:13px;color:var(--key)}
-.anatomy-badges{position:absolute;inset:0;z-index:3;pointer-events:none;overflow:hidden}
+#viewport .anatomy-legend .anatomy-key{display:flex;align-items:center;gap:8px;color:var(--ink-2);font:500 var(--fs-12)/1 var(--font-body)}
+#viewport .anatomy-legend .anatomy-key i{width:10px;height:10px;background:var(--key);box-shadow:var(--flag-ring)}
+#viewport .anatomy-legend .anatomy-key svg{width:15px;height:15px;color:var(--key)}
+.anatomy-badges{position:absolute;inset:0;z-index:var(--z-hud-world);pointer-events:none;overflow:hidden}
 .anatomy-badges[hidden]{display:none}
-.anatomy-badge{position:absolute;left:0;top:0;display:grid;place-items:center;width:26px;height:26px;margin:-13px 0 0 -13px;padding:0;border:2px solid var(--badge);border-radius:50%;background:rgba(6,9,11,.86);color:var(--badge);font:500 11px/1 var(--font-mono);pointer-events:auto;will-change:transform;box-shadow:0 2px 10px rgba(0,0,0,.5)}
-.anatomy-badge svg{width:14px;height:14px}
-.anatomy-badge[aria-pressed="true"]{background:#f0a030;border-color:#ffd08a;color:#1c1204}
-.anatomy-badge.is-off{display:none}
-@media (pointer:coarse){.anatomy-chip,.anatomy-seg button{min-height:40px;padding:6px 11px}.anatomy-badge{width:32px;height:32px;margin:-16px 0 0 -16px}}
-body[data-cot-width='phone'] .anatomy-chip span,body[data-cot-width='compact'] .anatomy-chip span{display:none}
-body[data-cot-width='phone'] .anatomy-bar,body[data-cot-width='compact'] .anatomy-bar{gap:3px;margin-bottom:4px}
-body[data-cot-width='phone'] .anatomy-chip,body[data-cot-width='compact'] .anatomy-chip,
-body[data-cot-width='phone'] .anatomy-seg button,body[data-cot-width='compact'] .anatomy-seg button{min-height:32px;padding:4px 7px;font-size:11px;letter-spacing:.01em}
-body[data-cot-width='phone'] .anatomy-seg button,body[data-cot-width='compact'] .anatomy-seg button{min-width:0}
-/* a phone keys five or more layers in an even grid (the Gallery follow-up of 2026-10-21: they wrapped into ragged centred
-   rows with an orphan); fewer keep their one centred row, and the armour ramp keeps its own full row */
-body[data-cot-width='phone'] #viewport .overlay-legend.anatomy-legend{gap:3px 4px}
-body[data-cot-width='phone'] #viewport .overlay-legend.anatomy-legend:has(> .anatomy-key:nth-of-type(5)){display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr))}
-body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp{grid-column:1/-1}
-body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-key{min-width:0;justify-content:flex-start;white-space:nowrap}
-body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp{grid-template-columns:auto minmax(0,1fr);gap:6px;width:100%;padding:3px 7px}
-body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp b{font-size:11px;letter-spacing:0}
-body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp-ticks span{font-size:11px}
-body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-ramp-ticks span[data-minor]{display:none}
-body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-key{min-height:18px;gap:4px;padding:2px 5px;font-size:11px;letter-spacing:0}
-body[data-cot-width='phone'] #viewport .anatomy-legend .anatomy-key i{width:8px;height:8px}
+.co,.co-crew{position:absolute;left:0;top:0;padding:0;border:0;pointer-events:auto;will-change:transform}
+.co{display:flex;align-items:center;gap:7px;height:28px;padding:0 9px;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--e1);
+  color:var(--ink-1);font:600 var(--fs-12)/1 var(--font-display);white-space:nowrap;translate:-50% calc(-100% - var(--co-len))}
+.co svg{width:15px;height:15px;color:var(--co-tone)}
+.co::before{content:'';position:absolute;left:50%;top:100%;width:1px;height:var(--co-len);background:var(--ink-3)}
+.co::after{content:'';position:absolute;left:50%;top:calc(100% + var(--co-len));width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;
+  background:var(--ink-1);box-shadow:var(--gallery-dot-ring)}
+.co.co--down{translate:-50% var(--co-len)}
+.co.co--down::before{top:auto;bottom:100%}
+.co.co--down::after{top:auto;bottom:calc(100% + var(--co-len));margin:0 0 -5px -5px}
+.co[aria-pressed="true"]{background:var(--gallery-callout-on);box-shadow:var(--ring-accent)}
+.co[aria-pressed="true"]::after{background:var(--accent)}
+.co-crew{display:grid;place-items:center;width:26px;height:26px;margin:-13px 0 0 -13px;border:2px solid var(--co-tone);border-radius:50%;
+  background:var(--hud-plate);color:var(--co-tone);font:500 var(--fs-11)/1 var(--font-data)}
+.co-crew[aria-pressed="true"]{background:var(--accent);border-color:var(--accent-hi);color:var(--ink-on-accent)}
+.co.is-off,.co-crew.is-off{display:none}
+@media (pointer:coarse){.subs .cot-c-chip{height:40px}.co-crew{width:32px;height:32px;margin:-16px 0 0 -16px}}
+@media (width < 768px){.subs .cot-c-chip{width:36px;padding:0;justify-content:center}.subs .cot-c-chip span{display:none}
+  #viewport .anatomy-legend .anatomy-ramp{grid-column:1/-1;grid-template-columns:auto minmax(0,1fr);width:100%}
+  #viewport .anatomy-legend .anatomy-ramp-ticks span[data-minor]{display:none}}
 `;
 
 // Plate and station ids as words (catalog.ts's technicalLabel, kept local: importing catalog.ts here would split it
@@ -220,7 +229,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
   const style = ensureStyle('cot-gallery-anatomy-style', STYLE, 'surfaces');
   style.dataset.galleryAnatomy = '';
   const bar = document.createElement('div');
-  bar.className = 'anatomy-bar';
+  bar.className = 'subs';
   bar.setAttribute('role', 'toolbar');
   bar.setAttribute('aria-label', t('gallery.anatomy.toolbarAria'));
   bar.hidden = true;
@@ -247,7 +256,9 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
   let hoverPending: { x: number; y: number } | null = null;
   let visiblePickables: THREE.Object3D[] = [];
   const hidden = new Map<THREE.Object3D, { mask: number; visible: boolean }>();
-  const badgeItems: Array<{ element: HTMLButtonElement; anchor: AnatomyScene['anchors'][number]; kind: 'module' | 'crew' }> = [];
+  // `length` is the callout's leader in px as last written (0: not yet), so a frame only writes the ones that move
+  const badgeItems: Array<{ element: HTMLButtonElement; anchor: AnatomyScene['anchors'][number]; kind: 'module' | 'crew'; length: number }> = [];
+  const placed: Array<{ item: typeof badgeItems[number]; x: number; y: number; up: boolean; length: number }> = [];
 
   function hideExterior(root: THREE.Object3D): void {
     root.traverse((object) => {
@@ -299,14 +310,17 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
     const items: HTMLElement[] = [];
     if (mode === 'armor') {
       const seg = document.createElement('div');
-      seg.className = 'anatomy-seg';
+      seg.className = 'cot-c-seg';
       seg.setAttribute('role', 'radiogroup');
       seg.setAttribute('aria-label', t('gallery.anatomy.metricAria'));
       for (const value of ARMOR_METRICS) {
         const button = document.createElement('button');
         button.type = 'button';
+        button.className = 'cot-c-seg__opt';
         button.setAttribute('role', 'radio');
         button.setAttribute('aria-checked', String(metric === value));
+        button.tabIndex = metric === value ? 0 : -1;
+        button.dataset.uiSound = 'select';
         button.dataset.anatomyMetric = value;
         button.title = t(`gallery.anatomy.metricTitle.${value}`);
         button.textContent = t(`gallery.anatomy.metric.${value}`);
@@ -317,11 +331,12 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
     for (const toggle of ANATOMY_CHIPS[mode]) {
       const button = document.createElement('button');
       button.type = 'button';
-      button.className = 'anatomy-chip';
+      button.className = 'cot-c-chip';
       button.dataset.anatomyToggle = toggle;
+      button.dataset.uiSound = 'toggle';
       button.setAttribute('aria-pressed', String(view[toggle]));
       button.title = t(`gallery.anatomy.toggle.${toggle}`);
-      button.innerHTML = uiIconSVG(CHIP_ICONS[toggle], 14);
+      button.innerHTML = uiIconSVG(CHIP_ICONS[toggle], 15);
       const label = document.createElement('span');
       label.textContent = t(`gallery.anatomy.toggle.${toggle}`);
       button.append(label);
@@ -343,7 +358,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       const item = document.createElement('span');
       item.className = 'anatomy-key';
       item.style.setProperty('--key', color);
-      if (icon) item.innerHTML = uiIconSVG(icon, 13); else item.append(document.createElement('i'));
+      if (icon) item.innerHTML = uiIconSVG(icon, 15); else item.append(document.createElement('i'));
       item.append(label);
       return item;
     };
@@ -378,13 +393,13 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       const present = new Set(anatomy?.parts.filter((part) => !TRACK_MODULES.has(part.module)).map((part) => part.system) || []);
       for (const system of ANATOMY_SYSTEMS) {
         if (system === 'crew' || !view.modules || !present.has(system)) continue;
-        entries.push(key(t(`gallery.anatomy.system.${system}`), SYSTEM_COLORS[system]));
+        entries.push(key(t(`gallery.anatomy.system.${system}`), SYSTEM_COLORS[system], SYSTEM_GLYPHS[system]));
       }
       if (view.crew) {
         // The Crew layer keys its role colours (helmet bands and tinted figures), one key per role on board.
         const roles = [...new Set(anatomy?.stations.map((station) => station.role) || [])];
         for (const role of (['commander', 'gunner', 'loader', 'driver', 'radio'] as const).filter((entry) => roles.includes(entry))) {
-          entries.push(key(t(`gallery.anatomy.role.${role}`), CREW_ROLE_COLORS[role]));
+          entries.push(key(t(`gallery.anatomy.role.${role}`), CREW_ROLE_COLORS[role], ROLE_GLYPHS[role]));
         }
       }
       if (view.hits) entries.push(key(t('gallery.anatomy.toggle.hits'), HIT_VOLUME_COLOR));
@@ -407,16 +422,18 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       seen.add(logical);
       const element = document.createElement('button');
       element.type = 'button';
-      element.className = 'anatomy-badge';
       element.dataset.anatomyPart = logical;
       element.setAttribute('aria-pressed', 'false');
       if (pick.kind === 'module') {
-        element.style.setProperty('--badge', SYSTEM_COLORS[pick.part.system]);
-        element.innerHTML = uiIconSVG(/^track[LR]$/.test(pick.part.module) ? 'track' : pick.part.module, 14);
-        element.setAttribute('aria-label', moduleName(pick.part.module));
-        element.title = moduleName(pick.part.module);
+        // a module's callout (07-gallery .co): its system-tinted glyph and its name on a plate, on a leader off its anchor
+        element.className = 'co';
+        element.style.setProperty('--co-tone', SYSTEM_COLORS[pick.part.system]);
+        element.innerHTML = uiIconSVG(/^track[LR]$/.test(pick.part.module) ? 'track' : pick.part.module, 15);
+        element.append(moduleName(pick.part.module));
       } else {
-        element.style.setProperty('--badge', CREW_ROLE_COLORS[pick.station.role]);
+        // a crew station: the direction's ring, in its role's colour round the role's letter
+        element.className = 'co-crew';
+        element.style.setProperty('--co-tone', CREW_ROLE_COLORS[pick.station.role]);
         // A second crew member in one role (assistant loader, second weapon operator) reads L2, G2.
         const count = (roleCount.get(pick.station.role) || 0) + 1;
         roleCount.set(pick.station.role, count);
@@ -425,7 +442,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         element.title = crewName(pick.station.crew);
       }
       badges.append(element);
-      badgeItems.push({ element, anchor, kind: pick.kind });
+      badgeItems.push({ element, anchor, kind: pick.kind, length: 0 });
     }
   }
 
@@ -482,18 +499,18 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
     bar.querySelector<HTMLElement>(`[data-anatomy-metric="${metric}"]`)?.focus();
   });
   badges.addEventListener('click', (event) => {
-    const button = (event.target as Element).closest<HTMLButtonElement>('.anatomy-badge');
+    const button = (event.target as Element).closest<HTMLButtonElement>('[data-anatomy-part]');
     if (!button) return;
     const pick = findPick(button.dataset.anatomyPart || null);
     setSelected(pickKey(selected) === button.dataset.anatomyPart ? null : pick);
   });
   badges.addEventListener('pointerover', (event) => {
-    const button = (event.target as Element).closest<HTMLButtonElement>('.anatomy-badge');
+    const button = (event.target as Element).closest<HTMLButtonElement>('[data-anatomy-part]');
     anatomy?.isolate(button ? findPick(button.dataset.anatomyPart || null) : null);
   });
   badges.addEventListener('pointerout', () => anatomy?.isolate(null));
   badges.addEventListener('focusin', (event) => {
-    const button = (event.target as Element).closest<HTMLButtonElement>('.anatomy-badge');
+    const button = (event.target as Element).closest<HTMLButtonElement>('[data-anatomy-part]');
     anatomy?.isolate(button ? findPick(button.dataset.anatomyPart || null) : null);
   });
   badges.addEventListener('focusout', () => anatomy?.isolate(null));
@@ -576,14 +593,37 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       }
       if (badges.hidden) return;
       const width = host.renderer.domElement.clientWidth, height = host.renderer.domElement.clientHeight;
+      placed.length = 0;
+      let callout = 0;
       for (const item of badgeItems) {
         if (item.element.classList.contains('is-off')) continue;
         scratch.copy(item.anchor.local).applyMatrix4(item.anchor.object.matrixWorld).project(host.camera);
         const visible = scratch.z > -1 && scratch.z < 1 && Math.abs(scratch.x) < 1.1 && Math.abs(scratch.y) < 1.1;
         item.element.style.visibility = visible ? '' : 'hidden';
-        if (visible) {
-          item.element.style.transform = `translate(${((scratch.x + 1) / 2 * width).toFixed(1)}px, ${((1 - scratch.y) / 2 * height).toFixed(1)}px)`;
+        if (!visible) continue;
+        const x = (scratch.x + 1) / 2 * width, y = (1 - scratch.y) / 2 * height;
+        item.element.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+        if (item.kind !== 'module') continue;
+        // the direction's leaders: alternate callouts above and below their anchors, three lengths deep
+        const up = callout % 2 === 0;
+        placed.push({ item, x, y, up, length: CALLOUT_LEADER_PX + (callout % 3) * CALLOUT_STEP_PX });
+        callout++;
+      }
+      // and its greedy separation, top to bottom: a label that would overlap one placed above it moves down (a label above
+      // its anchor shortens its leader, one below lengthens it)
+      const labelY = (entry: typeof placed[number]): number => entry.y + (entry.up ? -1 : 1) * (entry.length + CALLOUT_HEIGHT_PX / 2);
+      placed.sort((a, b) => labelY(a) - labelY(b));
+      for (let i = 0; i < placed.length; i++) {
+        for (let j = 0; j < i; j++) {
+          const dy = labelY(placed[i]) - labelY(placed[j]);
+          if (Math.abs(placed[i].x - placed[j].x) >= CALLOUT_WIDTH_PX || dy >= CALLOUT_HEIGHT_PX + 6) continue;
+          const push = CALLOUT_HEIGHT_PX + 6 - dy;
+          placed[i].length = placed[i].up ? Math.max(CALLOUT_MIN_PX, placed[i].length - push) : placed[i].length + push;
         }
+        const { item, up, length } = placed[i];
+        const rounded = Math.round(length);
+        if (rounded !== item.length) { item.length = rounded; item.element.style.setProperty('--co-len', `${rounded}px`); }
+        item.element.classList.toggle('co--down', !up);
       }
     },
     pickAt(clientX, clientY) {
