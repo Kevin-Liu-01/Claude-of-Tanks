@@ -464,7 +464,8 @@ const ROAD_COLOR: Readonly<Record<string, V3>> = Object.fromEntries(Object.entri
  * lifted a little over the land (more with distance, where the land's patches are coarser than its samples), its
  * normal up. Nothing inside the battlefield's square (its own roads run there).
  */
-function addRoad(S: Shapes, xs: readonly number[], zs: readonly number[], widthM: number, color: V3, ground: (x: number, z: number) => number): void {
+function addRoad(S: Shapes, xs: readonly number[], zs: readonly number[], widthM: number, color: V3, ground: (x: number, z: number) => number,
+  nearGround = true): void {
   const half = Math.max(1.5, widthM / 2);
   const up = (): V3 => [0, 1, 0];
   // (horizons-240, Caldera's round-2 pair: "the far road ends at the dip in a raised boxy ledge", "the road flares into a
@@ -473,13 +474,14 @@ function addRoad(S: Shapes, xs: readonly number[], zs: readonly number[], widthM
   // into a bow-tie where its legs turn
   let total = 0;
   for (let i = 0; i + 1 < xs.length; i++) total += Math.hypot(xs[i + 1] - xs[i], zs[i + 1] - zs[i]);
-  const TAPER_M = Math.min(60, total * 0.25);
+  // (without the near band's ground the worker's old ribbon: from 516 m, square-ended, a leg's own normal)
+  const TAPER_M = nearGround ? Math.min(60, total * 0.25) : 0, FROM_M = nearGround ? 512 : 516;
   let px = NaN, pz = NaN, pl: V3 | null = null, pr: V3 | null = null;
   const emit = (x: number, z: number, dx: number, dz: number, along: number): void => {
     const d = Math.hypot(x, z);
     // (horizons-240: from the edge itself, where the battlefield's own road ends — at 516 m the land's blurred road
     // texels stood alone over the last metres, the critics' "pale smear" at the seam)
-    if (Math.max(Math.abs(x), Math.abs(z)) < 512) { pl = pr = null; return; }
+    if (Math.max(Math.abs(x), Math.abs(z)) < FROM_M) { pl = pr = null; return; }
     const k = TAPER_M > 0 ? Math.min(1, Math.max(0, (total - along) / TAPER_M)) : 1;
     const l = Math.hypot(dx, dz) || 1, w = half * (0.15 + 0.85 * k), nx = -dz / l * w, nz = dx / l * w;
     const lift = 0.25 + d * 0.00035 * k;
@@ -500,7 +502,7 @@ function addRoad(S: Shapes, xs: readonly number[], zs: readonly number[], widthM
       const x = ax + (bx - ax) * (t / len), z = az + (bz - az) * (t / len);
       // (the leg's first sample sits on the vertex: the bisector of the leg before and this one)
       let dx = (bx - ax) / len, dz = (bz - az) / len;
-      if (t === 0 && i > 0) {
+      if (nearGround && t === 0 && i > 0) {
         const qx = ax - xs[i - 1], qz = az - zs[i - 1], ql = Math.hypot(qx, qz);
         if (ql > 1e-3) { dx += qx / ql; dz += qz / ql; }
       }
@@ -520,6 +522,8 @@ export function buildHinterlandOutlandGeometry(
   trees: readonly (HinterlandTree & { y?: number; woods?: boolean })[] = plan.trees,
   /** A snow-covered place (its roads packed snow). */
   snowy = false,
+  /** The battlefield's ground carried past the edge (spec.nearGround): roads from the edge, tapered, mitred. */
+  nearGround = true,
 ): HinterlandOutlandGeometry {
   const t0 = performance.now();
   const ground = (x: number, z: number): number => samplePyramid(pyramid, x, z);
@@ -560,7 +564,7 @@ export function buildHinterlandOutlandGeometry(
   }
   // ---- the roads: ribbons draped on the drawn land (the atlas alone smudges a 6 m road over two 8 m texels)
   let roadTris = S.triangles;
-  for (const road of plan.roads ?? []) addRoad(S, road.xs, road.zs, road.widthM, snowy ? SNOW_ROAD_COLOR : ROAD_COLOR[road.kind] ?? ROAD_COLOR.road, ground);
+  for (const road of plan.roads ?? []) addRoad(S, road.xs, road.zs, road.widthM, snowy ? SNOW_ROAD_COLOR : ROAD_COLOR[road.kind] ?? ROAD_COLOR.road, ground, nearGround);
   roadTris = S.triangles - roadTris;
   // ---- the trees: near (the impostors may draw them instead) and far
   const near = new Shapes(), far = new Shapes();

@@ -151,6 +151,10 @@ export interface HinterlandConfig {
   /** The snow line (m) where the place's season differs from its region's (horizons-240: Kestrel keeps its growing season
    * in the Kyiv pinelands, a region snow-covered for the February of 2022; its pair read "a wrong-season snow blanket"). */
   snowLineM?: number;
+  /** false: the near band keeps its own atlas and the worker's roads (5.5 m from 516 m, square-ended), not the
+   * battlefield's ground carried past the edge (groundDetail.ts) — a map where that lost its blind pair (horizons-240:
+   * Caldera's round 2, 6/3 for main). Default true. */
+  nearGround?: boolean;
   outland?: {
     /** The outland's relief; `arcs` scale it on bearings (a quiet arc, scale < 1: Whiteout's plateau running smooth
      * to its fall over Davis Strait, so the eye reaches the pack ice; HOR-05). */
@@ -210,6 +214,8 @@ export interface HinterlandSpec {
   region: HinterlandRegion;
   lab: boolean;
   season: HinterlandSeason;
+  /** The battlefield's ground carried past the edge and its roads (HinterlandConfig.nearGround). */
+  nearGround: boolean;
   /** The building kit the settlements use (the map's own `props.architecture` first, then the region's). */
   kit: string | null;
   outland: {
@@ -272,6 +278,7 @@ export function resolveHinterlandSpec(cfg: HinterlandMapConfig | null | undefine
     region,
     lab: block.lab === true,
     season: block.season ?? 'summer',
+    nearGround: block.nearGround !== false,
     kit: (typeof (cfg?.props as { architecture?: unknown } | undefined)?.architecture === 'string'
       ? (cfg!.props as { architecture: string }).architecture : null) ?? region.kit,
     outland: {

@@ -222,7 +222,7 @@ export function planHinterlandOutland(spec: HinterlandSpec, seed: number, inputs
     }
     // (a road that ends at once still runs its own line to where it stopped)
     if (xs.length > n || n < exit.xs.length) {
-      roads.push({ kind: pattern === 'dykeVillage' ? 'dikeRoad' : 'road', xs, zs, widthM: 7, from: `exit:${index}`, to: 'far' });
+      roads.push({ kind: pattern === 'dykeVillage' ? 'dikeRoad' : 'road', xs, zs, widthM: spec.nearGround ? 7 : 5.5, from: `exit:${index}`, to: 'far' });
       for (let i = n; i < xs.length; i++) roadPts.push({ x: xs[i], z: zs[i] });
     }
   });

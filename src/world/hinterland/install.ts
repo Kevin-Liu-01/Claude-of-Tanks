@@ -26,7 +26,8 @@ export function createHinterlandObject(wire: HinterlandWire, engineCtx: unknown,
   // (the light tiers — a phone, the light presets — draw the land without its bedding, shoulders and ground bump: the
   // coordinator, "nothing at the phone/Ultra Low tiers"; read at the world's build, as the presets' light world is)
   const lite = engine.getDeviceTier?.() === 'mobile' || presetLightWorld();
-  const battlefieldGround = hinterlandGroundFrom(ground);
+  // (a map whose pair the carried ground lost keeps the near band's own atlas: wire.nearGround, spec.ts)
+  const battlefieldGround = wire.nearGround === false ? null : hinterlandGroundFrom(ground);
   const surface = createHinterlandSurface(wire, { lite, ground: battlefieldGround });
   // (one air for the land and the outland: their far haze ends in the dome's own sky)
   const air = createHinterlandAir(wire.air ?? 1);
