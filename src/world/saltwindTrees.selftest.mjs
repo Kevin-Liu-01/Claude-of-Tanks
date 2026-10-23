@@ -39,7 +39,7 @@ function canvasFixture() {
 const grove = treeBiomeGrove('saltwind'), blend = treeBiomeBlend('saltwind');
 assert.ok(grove && grove.slot === 'acacia' && treeBiomeSlot('saltwind', 'acacia')?.form === 'olive', "Saltwind's groves are olives");
 assert.ok(blend && blend.slot === 'cedar' && blend.into === 'pine' && blend.share > 0 && blend.share < 0.5, 'its holm oak woods take some Aleppo pine');
-assert.equal(treeBiomeShrub('saltwind'), 'holmOak', "its maquis the evergreen oak's shrubs");
+assert.equal(treeBiomeShrub('saltwind'), null, "its shrubs the slot's own (the maquis form left out on the 2026-10-23 blind pair)");
 assert.equal(treeBiomeGrove('verdant'), null, 'a place without the entry plants no grove');
 const ap = TREE_GROWTH_PROFILES.aleppoPine;
 assert.ok(ap.crownBase <= 0.35 && (ap.gnarl ?? 0) >= 0.3 && (ap.ragged ?? 0) >= 0.3 && ap.crownR >= 2.9,
@@ -85,4 +85,4 @@ try {
     world.dispose(); disposeObject3DResources(world.group);
   }
 } finally { restore(); }
-console.log("saltwindTrees.selftest: Saltwind's olive groves inside its walls on the terraced lowland, holm oak and Aleppo pine on its slopes, maquis shrubs; species only, every seat kept PASS");
+console.log("saltwindTrees.selftest: Saltwind's olive groves inside its walls on the terraced lowland, holm oak and Aleppo pine on its slopes; species only, every seat kept PASS");

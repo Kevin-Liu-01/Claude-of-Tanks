@@ -237,15 +237,6 @@ export interface TreeBiomeGrove {
 }
 
 /**
- * The trees lane (2026-10-06, wave 177): the maquis (mastic, myrtle, kermes oak) under Saltwind's trees — the evergreen
- * oak's shrubs a little lighter and greener than the holm oak's dark crowns over them.
- */
-const MAQUIS_SCRUB: Readonly<TreeBiomeColour> = Object.freeze({
-  cardHue: 0.27, cardSat: 0.12,
-  texTone: (h: number, s: number, l: number): [number, number, number] => [h, Math.min(1, s * 0.8), Math.min(1, l * 1.1)],
-});
-
-/**
  * Trees lane (2026-10-06): the bamboo's fresh yellow-green (the willow's lances it paints are a greyer green): the hue
  * turned a little toward green and a third again of the leaves' saturation.
  */
@@ -291,10 +282,11 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   caldera: B('the Aso caldera, Kyushu', { pine: { form: 'sugi' }, cypress: { form: 'sugi' }, acacia: { form: 'redPine' } }, 'broom'),
   // the Dalmatian coast: Aleppo pine, holm oak and olive (and cypress, which the map names directly)
   // (the trees lane, 2026-10-06, the gauntlet's wave 177: the olive groves inside the dry stone walls — a stand centred
-  // in a field's interior leads with the olive; the holm oak woods on the slopes three in ten Aleppo pine; the maquis the
-  // evergreen oak's shrubs)
+  // in a field's interior leads with the olive; the holm oak woods on the slopes three in ten Aleppo pine. The maquis
+  // shrubs of that round (the evergreen oak's form) are not taken: the 2026-10-23 blind pair read them as dense,
+  // near-black blue-green clumps of leaf cards, and preferred the slot's own shrubs)
   saltwind: Object.freeze({ ...B('the Dalmatian coast, Croatia', { pine: { form: 'aleppoPine' }, cedar: { form: 'holmOak', colour: HOLM_OAK_FOLIAGE },
-    acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }, 'holmOak'), shrubColour: MAQUIS_SCRUB,
+    acacia: { form: 'olive', colour: OLIVE_FOLIAGE } }),
     grove: Object.freeze({ slot: 'acacia' as const, maxSlopeDeg: 10, maxHeightShare: 0.7 }), blend: Object.freeze({ slot: 'cedar' as const, into: 'pine' as const, share: 0.3 }) }),
   // Longleaf, Louisiana (the map-revival lane, 2026-10-05; the trees lane's row for round 2, gauntlet wave 124): the Gulf
   // coastal plain's longleaf pine flatwoods — tall, straight, clear boles under small tufted crowns, in open groves over
