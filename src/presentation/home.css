@@ -263,8 +263,8 @@ html[lang^='zh'] :is(h1,h2,.v5-evidence h3,.v5-mode--hero h3){line-height:1.15}
 .vs-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-flow:dense;gap:12px}
 .vs-tile{position:relative;isolation:isolate;margin:0;overflow:hidden;aspect-ratio:16/9;border-radius:var(--r1);background:var(--surface-raised);box-shadow:var(--e1);--sil-w:34px;--sil-h:11px;--vs-name:var(--fs-13)}
 .vs-tile[hidden]{display:none}
-.vs-tile--big{grid-column:span 8;grid-row:span 2;aspect-ratio:auto;--sil-w:74px;--sil-h:24px;--vs-name:var(--fs-32)}
-.vs-tile--mid{grid-column:span 4;--sil-w:46px;--sil-h:15px;--vs-name:var(--fs-16)}
+.vs-tile--big{grid-column:span 8;grid-row:span 2;aspect-ratio:auto;--sil-w:74px;--sil-h:24px;--vs-name:var(--fs-24)}
+.vs-tile--mid{grid-column:span 4;--sil-w:40px;--sil-h:13px;--vs-name:var(--fs-14)}
 .vs-tile--sm{grid-column:span 3}
 .vs-tile__still,.vs-tile__film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .vs-tile__film{opacity:0;transition:opacity var(--dur-screen) var(--ease-enter)}
@@ -276,6 +276,11 @@ html[lang^='zh'] :is(h1,h2,.v5-evidence h3,.v5-mode--hero h3){line-height:1.15}
 .vs-tile--big .vs-where{font-size:var(--fs-14)}
 .vs-acts{display:flex;flex-wrap:wrap;gap:var(--s2)}
 .vs-tile .cot-media-toggle{top:12px;bottom:auto}
+.vs-tile--mid .cot-media-toggle,.vs-tile--sm .cot-media-toggle{display:none}
+.vs-tile--mid .vs-duel,.vs-tile--sm .vs-duel{gap:6px}
+.vs-tile--mid .vs-side,.vs-tile--sm .vs-side{gap:6px}
+.vs-tile--mid .cot-flag,.vs-tile--sm .cot-flag{width:16px;height:12px}
+.vs-tile--sm .vs-mark{padding:3px 4px;font-size:var(--fs-11)}
 
 /* 03 the fleet wall: the tank hero cards beside the featured vehicle's take and facts */
 .fleet{padding:var(--s8) 0 var(--s9)}
@@ -317,6 +322,7 @@ html[lang^='zh'] :is(h1,h2,.v5-evidence h3,.v5-mode--hero h3){line-height:1.15}
 }
 @media (width < 768px){
   :root{--home-h1:clamp(var(--fs-44),13vw,var(--fs-60))}
+  .home .public-nav__tools>.public-nav__cta{display:none}
   .hero{grid-template-columns:minmax(0,1fr);grid-template-areas:"copy" "match" "scene" "stats";min-height:max(640px,100svh);padding-top:calc(var(--shell-nav-h) + var(--s5))}
   .hero__still{object-position:56% 50%}
   .hero__ctas .cot-btn--xl{--btn-h:var(--btn-h-l);padding:0 20px;font-size:var(--fs-16)}

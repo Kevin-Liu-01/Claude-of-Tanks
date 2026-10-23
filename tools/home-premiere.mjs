@@ -110,8 +110,9 @@ function versusBlock() {
 }
 
 // ---- 03: the fleet wall -------------------------------------------------------------------------------------------
+// twelve nations, one take each (the newest fleet round); twelve fill four columns and three alike
 const FLEET = ['t14', 'leo2a7v', 'm1a2_x', 'challenger1', 'strv122', 'type99a', 'type90', 'merkava2d', 'ua_t80u_kursk', 'amx40_x',
-  'dardo', 'pt91m', 'ztz99a2', 'bmpt_terminator2', 'strv103a', 'namer_ifv', 'pl_t72b3m_modern', 'm3a3_bradley'];
+  'dardo', 'pl_t72b3m_modern'];
 const v = (hash) => (hash ? `?v=${hash.slice(0, 8)}` : '');
 function heroLayers(id, a) {
   const row = HERO.tanks[id];
