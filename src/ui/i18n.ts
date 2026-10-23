@@ -9,7 +9,17 @@
  * - Missing translations silently fall back to English (no throws).
  * - Locale changes broadcast a `cot:locale-changed` CustomEvent on `window`.
  * - `formatNumber` / `formatDate` route through `Intl` with the active locale,
- *   so zh-CN no longer shows English commas in the HUD or end overlay.
+ *   so zh-CN no longer shows English commas in the HUD or end overlay; units go
+ *   through `formatNumber(value, { style: 'unit', unit })`.
+ * - Messages may use the ICU subset (`{n, plural, one {# kill} other {# kills}}`,
+ *   `select`, `{d, date, long}`), formatted through Intl by
+ *   i18nDictionaries.ts; tools/i18n-catalog-shape.mjs keeps the catalogs in that
+ *   shape. Names that SPEC 11.2 fixes come from src/ui/glossary.json
+ *   (tools/glossary-sync.mjs), and tools/i18n-literal-lint.mjs bans English
+ *   literals at player-facing sinks (BUI-F8).
+ * - A dev-server document with `?pseudo=1` reads the pseudo-locale (English
+ *   about 40 % longer and accented, i18nPseudo.ts) for the layout probes;
+ *   production builds compile that branch out.
  *
  * This module never writes the DOM or storage at import time: `getLocale()`
  * persists and mirrors the locale when first called. Module evaluation only
@@ -20,7 +30,7 @@
  * only its own page catalog (i18nDictionaries.ts).
  */
 
-import { catalogText, loadLocaleDictionary, localeDictionary } from './i18nDictionaries.ts';
+import { catalogText, loadLocaleDictionary, localeDictionary, registerLocaleDictionary } from './i18nDictionaries.ts';
 import {
   DEFAULT_LOCALE as FALLBACK_LOCALE,
   resolveLocalePath,
@@ -133,19 +143,13 @@ export function setLocale(locale: SupportedLocale): Promise<void> {
   }, () => { /* offline or removed chunk: English until the next document retries */ });
 }
 
-/**
- * Mirror locale-dependent CSS variables onto `document.documentElement` so
- * CSS `content: var(--cot-garage-variant-label, ...)` pseudo-elements follow
- * the active locale. Kept here so the sync runs once per setLocale() rather
- * than requiring every consumer to subscribe.
- */
+/** Mirror the locale onto the document (`lang`, `dir`); the next setLocale() retries if the DOM is unavailable. Locale
+ *  text in CSS reads an attribute the surface writes (`content: attr(data-heading)`), never a root variable. */
 function syncLocaleCssVariables(): void {
   if (typeof document === 'undefined') return;
-  const root = document.documentElement;
   try {
-    root.lang = currentLocale;
-    root.dir = 'ltr';
-    root.style.setProperty('--cot-garage-variant-label', JSON.stringify(t('garage.tools.stagingAreas')));
+    document.documentElement.lang = currentLocale;
+    document.documentElement.dir = 'ltr';
   } catch (_) {
     /* DOM may be temporarily unavailable; the next setLocale() will retry. */
   }
@@ -219,6 +223,12 @@ if (typeof window !== 'undefined') {
     loadLocaleDictionary(FALLBACK_LOCALE),
     loadLocaleDictionary(detectLocale()).catch(() => { /* English fallback (an English boot shares one request) */ }),
   ]);
+  // The pseudo-locale (BUI-F8): a dev-server document with ?pseudo=1 reads English about 40 % longer and accented
+  // (i18nPseudo.ts), for the layout probes. Production builds drop this branch (import.meta.env.DEV is false there).
+  if (import.meta.env?.DEV && /[?&]pseudo=1\b/.test(window.location?.search || '')) {
+    const { pseudoDictionary } = await import('./i18nPseudo.ts');
+    registerLocaleDictionary(FALLBACK_LOCALE, pseudoDictionary(localeDictionary(FALLBACK_LOCALE) ?? {}));
+  }
 } else if (!import.meta.env) {
   await loadLocaleDictionary(FALLBACK_LOCALE);
 }

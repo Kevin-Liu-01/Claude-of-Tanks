@@ -1,0 +1,487 @@
+{
+ "map": "railyard",
+ "timeOfDay": "golden",
+ "seed": 1974,
+ "light": {
+  "sunAzimuthDeg": 205,
+  "sunElevationDeg": 11
+ },
+ "actors": [
+  {
+   "id": "leclerc_xlr",
+   "name": "hero",
+   "pos": [
+    -146.55,
+    -11.57
+   ],
+   "facingDeg": 183.74,
+   "turretDeg": -55.25,
+   "gunDeg": 3.21,
+   "camo": "factory",
+   "camoSeed": 7104
+  },
+  {
+   "id": "t14_x",
+   "name": "foe0",
+   "pos": [
+    -135.35,
+    -8.25
+   ],
+   "facingDeg": 218.11,
+   "turretDeg": 35.38,
+   "gunDeg": -0.51,
+   "camo": "factory",
+   "camoSeed": 7204,
+   "recoilAgeS": 0.075
+  }
+ ],
+ "effects": [
+  {
+   "type": "dust",
+   "at": [
+    -146.82,
+    6.58
+   ],
+   "tMs": 5500,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 183.74
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -143.92,
+    6.39
+   ],
+   "tMs": 5500,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 183.74
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -147.08,
+    2.59
+   ],
+   "tMs": 5900,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 183.74
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -144.18,
+    2.4
+   ],
+   "tMs": 5900,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 183.74
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -147.31,
+    -0.9
+   ],
+   "tMs": 6250,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 183.74
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -144.41,
+    -1.09
+   ],
+   "tMs": 6250,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 183.74
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -147.51,
+    -3.9
+   ],
+   "tMs": 6550,
+   "params": {
+    "count": 24,
+    "intensity": 1.3,
+    "dirDeg": 183.74
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -144.6,
+    -4.09
+   ],
+   "tMs": 6550,
+   "params": {
+    "count": 24,
+    "intensity": 1.3,
+    "dirDeg": 183.74
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -147.66,
+    -6.19
+   ],
+   "tMs": 6780,
+   "params": {
+    "count": 21,
+    "intensity": 1.3,
+    "dirDeg": 183.74
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -144.75,
+    -6.38
+   ],
+   "tMs": 6780,
+   "params": {
+    "count": 21,
+    "intensity": 1.3,
+    "dirDeg": 183.74
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -147.74,
+    -7.49
+   ],
+   "tMs": 6910,
+   "params": {
+    "count": 15,
+    "intensity": 1.3,
+    "dirDeg": 183.74
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -144.84,
+    -7.68
+   ],
+   "tMs": 6910,
+   "params": {
+    "count": 15,
+    "intensity": 1.3,
+    "dirDeg": 183.74
+   }
+  },
+  {
+   "type": "muzzle_flash",
+   "actor": "foe0",
+   "tMs": 6925,
+   "params": {
+    "caliberMm": 125
+   }
+  },
+  {
+   "type": "impact",
+   "at": [
+    -145.02,
+    4.52,
+    -11.12
+   ],
+   "tMs": 6932,
+   "params": {
+    "kind": "ricochet",
+    "caliberMm": 125,
+    "normal": [
+     0.48,
+     0.85,
+     0.14
+    ]
+   }
+  },
+  {
+   "type": "sparks",
+   "at": [
+    -145.02,
+    4.52,
+    -11.12
+   ],
+   "tMs": 6934,
+   "params": {
+    "caliberMm": 120,
+    "normal": [
+     0.48,
+     0.85,
+     0.14
+    ]
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -145.02,
+    4.52,
+    -11.12
+   ],
+   "tMs": 6933,
+   "params": {
+    "count": 12,
+    "speedMps": 9,
+    "hot": 0.9,
+    "scale": 0.4
+   }
+  },
+  {
+   "type": "fire_field",
+   "at": [
+    -117.5,
+    1.2
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 4.5,
+    "durationS": 40,
+    "intensity": 1.15,
+    "smoke": true
+   }
+  },
+  {
+   "type": "embers",
+   "at": [
+    -117.5,
+    1.2
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 4.5,
+    "rate": 60,
+    "durationS": 20,
+    "rise": 3.4
+   }
+  },
+  {
+   "type": "fire_field",
+   "at": [
+    -108.5,
+    1.8
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 4.5,
+    "durationS": 40,
+    "intensity": 1.15,
+    "smoke": true
+   }
+  },
+  {
+   "type": "embers",
+   "at": [
+    -108.5,
+    1.8
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 4.5,
+    "rate": 60,
+    "durationS": 20,
+    "rise": 3.4
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -113,
+    1.5
+   ],
+   "tMs": 0,
+   "params": {
+    "size": "huge"
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -112.4,
+    2.1
+   ],
+   "tMs": 1000,
+   "params": {
+    "size": "huge"
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -113,
+    5.65,
+    1.5
+   ],
+   "tMs": 5800,
+   "params": {
+    "count": 40,
+    "speedMps": 16,
+    "hot": 0.85,
+    "scale": 1.2
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -146.98,
+    8.21
+   ],
+   "tMs": 6200,
+   "params": {
+    "munition": "howitzer"
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -146.98,
+    3.87,
+    8.21
+   ],
+   "tMs": 6220,
+   "params": {
+    "count": 36,
+    "speedMps": 15,
+    "hot": 0.45,
+    "scale": 1.3
+   }
+  }
+ ],
+ "fxTime": 7000,
+ "timeScale": 0,
+ "storyboard": {
+  "version": 1,
+  "durationMs": 8500,
+  "shots": [],
+  "actorTracks": [
+   {
+    "actor": "hero",
+    "keys": [
+     {
+      "id": "hero-0",
+      "tMs": 5400,
+      "pos": [
+       -145.51,
+       4.4
+      ],
+      "facingDeg": 183.74,
+      "turretDeg": -55.25,
+      "gunDeg": 3.21,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-1",
+      "tMs": 7400,
+      "pos": [
+       -146.81,
+       -15.56
+      ],
+      "facingDeg": 183.74,
+      "turretDeg": -55.25,
+      "gunDeg": 3.21,
+      "transition": "linear"
+     }
+    ]
+   }
+  ]
+ },
+ "picture": {
+  "grain": {
+   "amount": 0.05,
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
+  "vignette": {
+   "amount": 0.36,
+   "roundness": 0.55,
+   "softness": 0.6
+  },
+  "dof": {
+   "enabled": false
+  },
+  "chromaticAberration": 0,
+  "exposure": 0.3,
+  "vibrance": 0.14,
+  "contrast": 1.05,
+  "temperature": 14,
+  "split": {
+   "shadowHue": 215,
+   "shadowAmount": 0.18,
+   "highlightHue": 32,
+   "highlightAmount": 0.32,
+   "balance": -0.05
+  }
+ },
+ "fx": {
+  "quality": "cinematic",
+  "trackDust": true
+ },
+ "autoPlace": false,
+ "meta": {
+  "id": "vs04-railyard-leclerc-t14-r7",
+  "kind": "versus-still",
+  "pair": "leclerc_xlr v t14_x",
+  "round": 7,
+  "idea": "the rail crossing: the Leclerc lurches over the main line at a low lens, gun swinging onto the T-14 beyond, which fires; the tank wagons burn behind",
+  "lens": "a",
+  "pick": "vs04-railyard-leclerc-t14-r7:a"
+ },
+ "camera": {
+  "name": "a",
+  "pos": [
+   -148,
+   0.85,
+   -20
+  ],
+  "lookAt": [
+   -135.32,
+   4,
+   7.19
+  ],
+  "fov": 44,
+  "rollDeg": 8,
+  "groundRel": true
+ },
+ "cameraVariants": [
+  {
+   "name": "a",
+   "pos": [
+    -148,
+    0.85,
+    -20
+   ],
+   "lookAt": [
+    -135.32,
+    4,
+    7.19
+   ],
+   "fov": 44,
+   "rollDeg": 8,
+   "groundRel": true
+  }
+ ]
+}

@@ -10,6 +10,8 @@
 // for is a real face (the type lint holds code to those four). Readouts that tick in place take the `.num` class
 // (IBM Plex Mono, tabular figures); nothing else sets tabular figures.
 
+import { ensureStyle } from './styleLayers.ts';
+
 /**
  * Primary UI stack, canvas-safe (canvas text cannot read var()). Equal to TYPE_STACK.ui in src/ui/typeFaces.ts and
  * to the --font-ui token; src/ui/typeSystem.selftest.mjs holds the three together.
@@ -38,12 +40,7 @@ let warmed = false;
  * metric-matched fallback. Warm each physical file once, without blocking startup. Safe to call from every UI module.
  */
 export function ensureFonts(): void {
-  if (!document.getElementById('cot-fonts')) {
-    const s = document.createElement('style');
-    s.id = 'cot-fonts';
-    s.textContent = FONT_CSS;
-    document.head.appendChild(s);
-  }
+  ensureStyle('cot-fonts', FONT_CSS, 'surfaces');
   if (!warmed && document.fonts && document.fonts.load) {
     warmed = true;
     for (const w of WEIGHTS) {

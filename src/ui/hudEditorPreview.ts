@@ -11,7 +11,7 @@ import { initHud, type HudFrame, type HudTank } from './hud.ts';
 import { installResponsiveLayout } from './responsiveLayout.ts';
 import { createTouchControls } from './touchControls.ts';
 import { DAMAGE_PANEL_CSS } from './damagePanelStyle.ts';
-import { ensureStyle } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { ensureFonts } from './fonts.ts';
 
 const params = new URLSearchParams(location.search);
@@ -28,7 +28,7 @@ async function imageAt(src: string): Promise<HTMLImageElement> {
 }
 
 async function healthPanel(parent: HTMLElement): Promise<void> {
-  ensureStyle('cot-dp-style', DAMAGE_PANEL_CSS);
+  ensureStyle('cot-dp-style', DAMAGE_PANEL_CSS, 'surfaces');
   const panel = document.createElement('div'); panel.className = 'cot-dp'; panel.style.width = '160px';
   panel.innerHTML = '<div class="hprow"><span class="hplabel">HP</span><span class="hpnum">2,750 / 2,750</span></div><div class="hptrack"><div class="hpfill" style="background:#7ee87e"></div></div>';
   const canvas = document.createElement('canvas'); canvas.width = 284; canvas.height = 276;

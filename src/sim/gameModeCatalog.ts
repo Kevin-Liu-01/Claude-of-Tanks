@@ -85,7 +85,7 @@ export const GAME_MODE_DEFINITIONS: Readonly<Record<GameModeId, GameModeDefiniti
     // trench sectors along the axis to the enemy; each one taken brings the
     // next counter-attack wave and pushes the frontline atmosphere closer.
     frontline_assault: Object.freeze({
-      id: 'frontline_assault', label: 'Frontline Assault', shortLabel: 'FRONT', icon: 'modeZones',
+      id: 'frontline_assault', label: 'Frontline Assault', shortLabel: 'FRONT', icon: 'modeFrontline',
       description: 'Break the enemy line: take three trench sectors in turn against escalating counter-attacks, then hold the last one.',
       respawns: false,
     }),
