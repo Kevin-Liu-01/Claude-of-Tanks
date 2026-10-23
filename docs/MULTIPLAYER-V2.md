@@ -418,7 +418,8 @@ after the shooter looked is missed live and hit rewound.
 
 - A `NO_TICK` acknowledgement (INPUT, PING or `SNAPSHOT_ACK`) drops the viewer's baseline and
   latches a keyframe for the next snapshot when the viewer held one; a viewer that never
-  acknowledged is already on keyframes until it does.
+  acknowledged is already on keyframes until it does. (2026-10-23: such forced keyframes draw on a burst of eight,
+  then one per 500 ms, §13.28.)
 - The first control applied after admission or a seat replacement seeds `fireSeq` /
   `actionSeq` without an edge — no stray shot on reconnect.
 - A new `actionSeq` skips bits the previous sequence applied within 500 ms, so a union of two
@@ -2436,6 +2437,42 @@ rooms Worker bundle imports `roomPolicy` → `roomBots` → `teamNations` / `nat
 Worker (cot-rooms, 2026-10-13 at 5797d9750) keeps the old `planStart` bots and drops `teamNations` (MONO) until a
 `node tools/release.mjs workers <sha> --only=rooms` release after this lands (docs/DEPLOYS.md); the Vercel deploy does
 not ship the Worker. No protocol or room version moves.
+
+### 13.28 Security audit findings in the match protocol (round 243, 2026-10-23)
+
+**Forced keyframes draw on a bucket (NV-11).** The publisher sent a keyframe whenever the viewer had no usable
+acknowledged baseline or asked for one with `NO_TICK`, with no limit. So a seat or spectator that never acknowledged,
+or that retracted every acknowledgement, drew a full keyframe on every 20 Hz snapshot. The audit measured 100 of 100
+snapshots as keyframes, about 8x an honest stream, all on the host player's home uplink.
+
+Now keyframes the viewer forces draw on a bucket (`server/match/publisher.ts`):
+- the bucket holds `FORCED_KEYFRAME_BURST` = 8;
+- one token returns every `FORCED_KEYFRAME_REFILL_TICKS` = 30 ticks (500 ms);
+- with the bucket empty the viewer gets nothing, since without a baseline it has nothing to apply a delta to.
+
+The burst covers an honest viewer's first round trip after a join or a recovery, up to about 400 ms at 20 Hz. The 2 s
+cadence never draws on it.
+
+- `forcedKeyframes.selftest` covers four viewers:
+  - a silent viewer and a retracting viewer each get 1 + 8 keyframes, then 2/s (about 18 in 5 s, down from 100);
+  - a viewer that acknowledges 300 ms late loses no snapshot while it joins;
+  - two honest recoveries in a row are each answered with the next snapshot.
+- `matchActor.selftest` first exposed a plain 500 ms floor: its viewers acknowledge 100 ms late and lost their first
+  round trip of snapshots. The bucket replaced the floor before landing. Its spectator and its replacement link now
+  acknowledge as the shipped client does (`matchClient` `maintainAcks`, a seat's INPUT). A silent viewer is the case
+  `forcedKeyframes.selftest` owns.
+- No wire or protocol version moved.
+
+**A demoted host keeps the per-match secret (C7): accepted for now.** `hostSecret` is derived per match, not per
+host generation. A former host therefore still holds the key that seals the migration keyframes, and could open a
+successor's sealed keyframe, which carries every entity, hidden enemies included. The coordinator accepted this on
+2026-10-23 under the trade-off in §13.3: the host is a player, and the same principal already held host authority
+over that match. The seat-takeover half of the finding is closed: the host's HELLO gate binds the seat to the
+room-authenticated signaling peer (round 242).
+
+The remedy waits for the next migration-format change. It is a per-generation key,
+`sha256(MATCH_SEAT_SECRET:matchId:generation)`, plus a successor that opens the previous generation's blob with a
+key the room hands only to the newly elected host. Log the change here when it lands.
 
 ## 10. Decisions for the owner
 

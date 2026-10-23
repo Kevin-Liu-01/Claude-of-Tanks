@@ -776,7 +776,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
         totals.droppedSnapshots++;
         continue;
       }
-      let published: { bytes: Uint8Array; keyframe: boolean };
+      let published: { bytes: Uint8Array; keyframe: boolean } | null;
       try {
         published = client.publisher.publish(buildFrame(client, tick), nowMs);
       } catch (error) {
@@ -789,6 +789,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
         }
         continue;
       }
+      if (!published) continue; // a forced keyframe inside its minimum interval (publisher.ts)
       if (send(client, published.bytes)) {
         totals.snapshots++;
         if (published.keyframe) totals.keyframes++;
