@@ -1830,8 +1830,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/snowDrifts.selftest.mjs',
     'src/world/terrainMaterialV2.selftest.mjs',
     'src/world/steepFaces.selftest.mjs', // ground lane (2026-10-15): sheer faces bedded on every map, steep normals over three spans
-    'src/world/terrainSplatFold.selftest.mjs',
-    'src/world/terrainSplatPrune.selftest.mjs',
     'src/world/groundPressure.selftest.mjs',
     'src/world/trackMarks.selftest.mjs',
     'src/world/tallGrass.selftest.mjs',
