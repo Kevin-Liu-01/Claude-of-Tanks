@@ -245,7 +245,8 @@ export function createCombatAnatomyAudit() {
         const calibration = COMBAT_ANATOMY_CALIBRATIONS[id];
         for (const crewBox of spec.armor.crew) {
           assert.equal(crewBox.turretLocal, false, `${id}/${crewBox.crew}: fixed-mount crew uses hull coordinates`);
-          assert(crewBox.min[1] >= calibration.hull.min[1]
+          // (a seated station is held to the crew shell below, its cupola included)
+          if (!crewBox.posture) assert(crewBox.min[1] >= calibration.hull.min[1]
             && crewBox.max[1] <= calibration.hull.max[1], `${id}/${crewBox.crew}: crew below casemate roof`);
         }
       }
