@@ -2998,6 +2998,8 @@ export function copyVehicleMaterial<T extends THREE.Material>(source: T): T {
     family.setup(clone);
     clone.onBeforeCompile = function (this: THREE.Material, shader, renderer) {
       const outer = vehicleCompileTarget;
+      // the compile hook names its own material to the family's shared setup for the duration of the call (not an alias)
+      // oxlint-disable-next-line typescript/no-this-alias
       vehicleCompileTarget = this;
       try { chain.call(this, shader, renderer); }
       finally { vehicleCompileTarget = outer; }
