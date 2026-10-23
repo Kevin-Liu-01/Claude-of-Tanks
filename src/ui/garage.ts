@@ -3521,7 +3521,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const facts: DeployFacts = deployFacts(battleGameMode);
     deployRules.innerHTML = (['teams', 'clock', 'respawn', 'victory', 'equipment', 'ammo'] as const).map((key) =>
       `<div class="cot-deploy-rule">${uiIconSVG(DEPLOY_FACT_ICON[key], 18)}<dt>${t(`garage.deploy.rule.${key}`)}</dt>` +
-      `<dd>${facts[key] ?? (key === 'victory' ? t('garage.deploy.elimination') : t('garage.deploy.none'))}</dd></div>`).join('');
+      `<dd class="num">${facts[key] ?? (key === 'victory' ? t('garage.deploy.elimination') : t('garage.deploy.none'))}</dd></div>`).join('');
   }
   // the selected tank under the rules: its roster card (hero render over its flag) and its name
   function renderDeployTank(): void {

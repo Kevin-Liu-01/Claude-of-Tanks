@@ -22,15 +22,6 @@
 .cot-gbar{display:flex;align-items:stretch;gap:var(--s1);height:38px;}
 .cot-nav{top:var(--s4);height:44px;align-items:center;}
 body[data-cot-panels='overlay'] .cot-gbar,body[data-cot-panels='overlay'] .cot-wordmark .wm{display:none;}
-/* keys answer intent: a destination shows its key under it, a station at its end, the search its slash, while the
-   pointer or focus is on it; the boxes stay put, so nothing moves */
-.cot-brand-rail .cot-gbar .nv{position:relative;}
-.cot-brand-rail .cot-gbar .nv .cot-c-kbd{position:absolute;left:50%;top:calc(100% + var(--s1));margin:0;transform:translateX(-50%);
-  background:var(--surface-plate);}
-.cot-garage :is(.cot-gbar .nv,.cot-station,.cot-deploy-back,.cot-roster-search) .cot-c-kbd{opacity:0;
-  transition:opacity var(--dur-fast) var(--ease-enter);}
-.cot-garage :is(.cot-gbar .nv,.cot-station,.cot-deploy-back):is(:hover,:focus-visible) .cot-c-kbd,
-.cot-garage .cot-roster-search:is(:hover,:focus-within) .cot-c-kbd{opacity:1;}
 
 /* ---- the docked layout's measures ---- */
 body[data-cot-panels='persistent'] .cot-garage{--edge:22px;--rail-w:184px;--dossier-w:clamp(340px,26vw,400px);
@@ -111,7 +102,7 @@ body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale{margin-top:va
 .cot-garage .cot-ammo-tile b{font:700 var(--fs-18)/1 var(--font-display);color:var(--ink-1);}
 .cot-garage .cot-ammo-tile b small{margin-left:2px;font:500 var(--fs-11)/1 var(--font-mono);color:var(--ink-3);}
 .cot-garage .cot-ammo-tile .ft{display:flex;justify-content:space-between;gap:var(--s1);min-width:0;white-space:nowrap;
-  font:400 var(--fs-11)/1 var(--font-ui);color:var(--ink-3);}
+  font:400 var(--fs-11)/1 var(--font-mono);color:var(--ink-3);}
 .cot-garage .cot-ammo-tile .ft>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;}
 
 /* Appearance: the paint and the staging area take the dossier's column; the battlefield lives in Deploy */
@@ -166,7 +157,7 @@ body[data-cot-panels='overlay'] .cot-roster-search{display:none;}
 body[data-cot-panels='persistent'] .cot-garage{--cot-deploy-w:var(--deploy-w);}
 body[data-cot-panels='persistent'] .cot-battle-control{right:var(--edge);bottom:var(--edge);width:var(--deploy-w);
   height:var(--card-h);grid-template-rows:minmax(0,1fr) auto;}
-body[data-cot-panels='persistent'] .cot-battle{align-items:center;padding:0 var(--s4);
+body[data-cot-panels='persistent'] .cot-battle{align-items:flex-start;padding:var(--s4) var(--s4) 0;
   font:700 var(--fs-32)/1 var(--font-display);letter-spacing:var(--track-label);}
 body[data-cot-panels='persistent'] .cot-battle .battle-active-icon{display:none;}
 body[data-cot-panels='persistent'] .cot-battle-mode{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s1) var(--s2);min-width:0;height:auto;
