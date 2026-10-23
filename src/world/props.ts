@@ -283,7 +283,7 @@ export interface WorldStructureDamage {
   style: string | null;
   anatomy: StructureDamageAnatomy;
 }
-import { YARD_SHED, gardenParts, planYard, yardKeepOut, type YardWorld } from './maps/regional/yards.ts';
+import { YARD_SHED, gardenParts, planCourt, planYard, yardBackSide, yardKeepOut, type YardPlan, type YardPlot, type YardWorld } from './maps/regional/yards.ts';
 import { hashSeed, streamFrom } from './maps/regional/geometry.ts';
 import type { RegionalBuildContext, RegionalGround } from './maps/regional/types.ts';
 import { makeRegionalConcrete, makeRegionalRoof, makeRegionalStone } from './regionalSurfaces.ts';
@@ -492,6 +492,12 @@ interface PropsSettings {
   sourcedPalette?: BuildingPaletteId;
   /** The map-revival lane (2026-10-06): scattered rocks and outcrops keep off the zone-control hints' discs. */
   rocksKeepOffZones?: boolean;
+  /**
+   * The map-revival lane (2026-10-06, Frontier's round 3; the facades lane, wave 150: "the church stands on a flat
+   * bare-dirt pad"): the trodden-earth disc under each building (radius max(w, d) × 1.2) scaled by `scale`, and none under
+   * the `none` structures (a church in its churchyard turf). Absent, every building keeps the 1.2 disc.
+   */
+  foundationDiscs?: { scale?: number; none?: readonly string[] };
   /** regional-buildings lane: the regional architecture kit of this map's settlements (maps/regional/index.ts). */
   architecture?: string;
   bathhouseStyle?: 'timber';
@@ -4692,6 +4698,8 @@ ${snowCap ? `
       if (!variant) throw new Error(`world/props: unknown structure variant ${name} for ${key}`);
       return [key, variant];
     })),
+    // the map-revival lane (2026-10-06): a kit's own destructible kinds (the Hessian court's wall and Hoftor)
+    ...(regionalArchitecture?.destructibles ?? {}),
   };
   /** (E1) the kinds whose broken builder is their own on this map: its structure variants and the pillbox of its make */
   const ownBroken = new Set<string>([...Object.keys(P.structureVariants ?? {}), ...(fort ? ['bunker'] : [])]);
@@ -9367,7 +9375,7 @@ ${snowCap ? `
     const fenceMeta = resolveDestructibleMeta(destructibleContext, yard.fence);
     const seg = fenceMeta.wall ? WALL_SEG : FENCE_SEG, sink = fenceMeta.wall ? 0.1 : 0.06;
     // the stage's counts on the props group (receipts and captures read them)
-    const stats = { houses: houses.length, yards: 0, streetYards: 0, modules: 0, gates: 0, sheds: 0, gardens: 0 };
+    const stats = { houses: houses.length, yards: 0, streetYards: 0, modules: 0, gates: 0, sheds: 0, gardens: 0, courts: 0 };
     group.userData.regionalYards = stats;
     // a yard's ground grows no crop, tall grass or litter (map.ts holds these holes with the scenery's): discs over the
     // enclosure, from the house wall to its outer run (the close yard pairs of 2026-10-03: a Hessian farmyard full of
@@ -9376,9 +9384,9 @@ ${snowCap ? `
     group.userData.regionalYardHoles = holes;
     /** each yard's enclosure in its house's frame (the sown rows stop at it, trimCropRowsInYards) */
     const rects: Array<{ x: number; z: number; c: number; s: number; x0: number; x1: number; z0: number; z1: number }> = [];
-    for (const house of houses) {
-      const plan = planYard(house, world, yard, yrngYard, seg, regionalBodies.get(house));
-      if (!plan) continue;
+    // one yard plan placed round its anchor plot: its modules (`fenceKind`, `pitch` apart, sunk `drop`), the gate, the
+    // outbuilding the kit builds and the beds, each where the plan put it (the stream's draws in their old order)
+    const placePlan = (house: YardPlot, plan: YardPlan, fenceKind: string, gateKind: string | null, pitch: number, drop: number): void => {
       stats.yards++;
       {
         const c = Math.cos(house.rot), s = Math.sin(house.rot);
@@ -9399,21 +9407,22 @@ ${snowCap ? `
       }
       if (plan.street) stats.streetYards++;
       stats.modules += plan.modules.length;
-      if (plan.gate && yard.gate) stats.gates++;
+      if (plan.gate && gateKind) stats.gates++;
       for (const m of plan.modules) {
         // (a tidy yard: YardStyle.tidy) the module scaled to its slot, its own tone of scale under it
-        const span = seg * (m.s ?? 1);
+        const span = pitch * (m.s ?? 1);
         const ya = heightField.getHeightAt(m.x - Math.sin(m.yaw) * span / 2, m.z - Math.cos(m.yaw) * span / 2);
         const yb = heightField.getHeightAt(m.x + Math.sin(m.yaw) * span / 2, m.z + Math.cos(m.yaw) * span / 2);
         const sc = m.s === undefined ? 0.96 + yrngYard() * 0.08 : m.s * (0.96 + yrngYard() * 0.04);
-        addDestructible(yard.fence, m.x, Math.min(ya, yb) - sink, m.z, m.yaw, sc, Math.atan2(yb - ya, span) * 0.85);
+        addDestructible(fenceKind, m.x, Math.min(ya, yb) - drop, m.z, m.yaw, sc, Math.atan2(yb - ya, span) * 0.85);
       }
-      if (plan.gate && yard.gate) {
+      if (plan.gate && gateKind) {
         // (the looks lane) a family gate fills its slot from the slot's start (gateKit.ts: its hanging post or pier at
-        // z = 0, the gap to z = width); the farm gate stood at the slot's middle, half over the next module
-        const half = ((GATE_WIDTH as Record<string, number>)[yard.gate] ?? 0) / 2 * (plan.gate.s ?? 1);
+        // z = 0, the gap to z = width); the farm gate stood at the slot's middle, half over the next module (a kit's own
+        // gate, the Hessian court's Hoftor, keeps the middle)
+        const half = ((GATE_WIDTH as Record<string, number>)[gateKind] ?? 0) / 2 * (plan.gate.s ?? 1);
         const gx = plan.gate.x - Math.sin(plan.gate.yaw) * half, gz = plan.gate.z - Math.cos(plan.gate.yaw) * half;
-        addDestructible(yard.gate, gx, heightField.getHeightAt(plan.gate.x, plan.gate.z) - 0.06, gz, plan.gate.yaw, plan.gate.s ?? 1);
+        addDestructible(gateKind, gx, heightField.getHeightAt(plan.gate.x, plan.gate.z) - 0.06, gz, plan.gate.yaw, plan.gate.s ?? 1);
       }
       if (plan.shed && yard.shed && style.builders[yard.shed]) {
         const { x, z, yaw, w: sw, d: sd } = plan.shed;
@@ -9465,6 +9474,37 @@ ${snowCap ? `
           stats.gardens++;
         }
       }
+    };
+    // the map-revival lane (2026-10-05, Frontier's Hofreiten): the courts (the kit's court flag). A farmhouse facing a
+    // barn or granary of its own court keeps the court between them, walled on the street with the gate in the wall
+    // (yards.ts planCourt); its yard (fence, outbuilding, beds) then stands behind the court's barn. Without the flag
+    // every house plans and places its yard exactly as before.
+    const court = yard.court;
+    const courtMeta = court ? resolveDestructibleMeta(destructibleContext, court.wall) : null;
+    const courtSeg = courtMeta?.wall ? WALL_SEG : FENCE_SEG, courtSink = courtMeta?.wall ? 0.1 : 0.06;
+    // every court first (their ground before any garden's), then the gardens behind the courts' barns, then the yards
+    const courted = new Set<YardPlot>();
+    const barns: YardPlot[] = [];
+    if (court) {
+      for (const house of houses) {
+        if (!house.kind || !court.kinds.includes(house.kind)) continue;
+        const planned = planCourt(house, world, court, courtSeg, regionalBodies.get(house));
+        if (!planned) continue;
+        placePlan(house, planned.plan, court.wall, court.gate, courtSeg, courtSink);
+        stats.courts++;
+        courted.add(house);
+        barns.push(planned.partner);
+      }
+      for (const barn of barns) {
+        const behind = planYard(barn, world, yard, yrngYard, seg, regionalBodies.get(barn), yardBackSide(barn, world));
+        if (behind) placePlan(barn, behind, yard.fence, yard.gate, seg, sink);
+      }
+    }
+    for (const house of houses) {
+      if (courted.has(house)) continue;
+      const plan = planYard(house, world, yard, yrngYard, seg, regionalBodies.get(house));
+      if (!plan) continue;
+      placePlan(house, plan, yard.fence, yard.gate, seg, sink);
     }
     trimCropRowsInYards(rects);
     if (yard.tidy) paveSlots(houses, rects, holes);
@@ -10049,14 +10089,17 @@ ${snowCap ? `
       dirtDiscs: THREE.BufferGeometry[],
       apronGeos: THREE.BufferGeometry[],
     ): Generator<PropsBuildSlice, void, void> {
+      // (a foundry-donor map keeps every disc at 1.2: its reconform below indexes the discs by building)
+      const discs = foundryDonors ? undefined : P.foundationDiscs;
+      const discScale = 1.2 * (discs?.scale ?? 1), discNone = discs?.none ?? [];
       for (const building of buildingFeatures) {
         if (building.landmark) continue; // a set piece is grounded by its own plinths
         if (P.streetRows) {
           apronGeos.push(conformedRect(building.x, building.z,
             building.w / 2 + 2.8, building.d / 2 + 2.8, building.rot || 0));
-        } else {
+        } else if (!building.kind || !discNone.includes(building.kind)) {
           dirtDiscs.push(conformedDisc(building.x, building.z,
-            Math.max(building.w, building.d) * 1.2, [0.05, 0.05, 0.05, 0.04], false, FULL_PATCH, CONTACT_STRENGTH.foundation));
+            Math.max(building.w, building.d) * discScale, [0.05, 0.05, 0.05, 0.04], false, FULL_PATCH, CONTACT_STRENGTH.foundation));
         }
         yield { fine: true, progress: false, stage: 'ground-foundation-instances' };
       }
