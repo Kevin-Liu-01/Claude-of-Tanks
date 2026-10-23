@@ -15,24 +15,13 @@
   background:linear-gradient(270deg,rgba(5,8,11,.85) 0%,rgba(5,8,11,.35) 60%,rgba(5,8,11,0) 100%);}
 .cot-brand-rail{position:absolute;top:20px;left:34px;height:36px;display:flex;align-items:center;
   gap:14px;pointer-events:auto;}
-.cot-garage .title{position:static;font:700 var(--fs-18)/1 var(--font-display);
-  letter-spacing:var(--track-label);color:var(--ink-1);text-transform:uppercase;
-  display:flex;align-items:center;gap:var(--s3);}
-.cot-garage .title b{color:var(--accent);}
-/* the Latin wordmark keeps its tracking inside a Chinese page (the zh-CN reset zeroes the parent) */
-.cot-brand-rail .title [lang=en]{letter-spacing:.18em}
-/* garage_ui: compact brand badge (v3 colored crest, tank + Claude Code
-   commander, same art as the boot splash; public/brand/logo-mark.svg)
-   instead of bare text */
-.cot-garage .title .mark{display:block;width:36px;height:36px;flex:0 0 auto;
-  filter:drop-shadow(0 2px 4px rgba(0,0,0,.55));}
+/* the Latin wordmark keeps its tracking inside a Chinese page, where the tracking tokens are zero */
+.cot-wordmark .wm[lang=en]{letter-spacing:.08em}
 /* Vehicle identity remains solely on the stats card; the brand rail is
    reserved for product identity and quiet player-level destinations. */
 /* Header hierarchy: personal destinations sit with the brand at left, while
    workspace navigation stays at right and BATTLE owns the center. This keeps
    the primary action legible without compressing every destination together. */
-.cot-brand-utilities{height:36px;display:flex;align-items:stretch;gap:2px;padding-left:var(--s3);
-  border-left:1px solid var(--line-2);}
 .cot-nav{position:absolute;top:20px;right:26px;display:flex;align-items:stretch;gap:2px;
   height:36px;pointer-events:auto;z-index:8;}
 /* Tabs, not boxes (brand-ui S2): the display voice, the current destination on an accent underline. */
@@ -1127,10 +1116,6 @@ body[data-cot-width='laptop'] .cot-header-nav .cot-locale-options{display:none}
     position:absolute;right:-5px;top:-5px;min-width:14px;height:14px;padding:0 3px;font-size:var(--fs-11);
   }
 }
-body[data-cot-width='laptop'] .cot-nav .github-stars{
-  position:absolute;right:-7px;top:-6px;min-width:24px;height:14px;padding:0 3px;display:grid;place-items:center;
-  border:1px solid #ffc46b;background:#f0a030;color:#1a1105;font-size:11px;line-height:1;letter-spacing:0;
-}
 body[data-cot-width='laptop'] .cot-leftcol{left:clamp(18px,2vw,30px)}
 body[data-cot-width='laptop'] .cot-garage-variant-menu{left:clamp(18px,2vw,30px)}
 body[data-cot-width='laptop'] .cot-featured{display:none}
@@ -1193,9 +1178,6 @@ body[data-cot-panels='overlay'] .cot-brand-rail{
   top:max(12px,env(safe-area-inset-top));left:max(var(--cot-overlay-edge),env(safe-area-inset-left));
   height:44px;gap:9px;z-index:13;
 }
-body[data-cot-panels='overlay'] .cot-garage .title{font-size:12px;letter-spacing:.18em;gap:8px}
-body[data-cot-panels='overlay'] .cot-garage .title .mark{width:28px;height:28px}
-body[data-cot-panels='overlay'] .cot-brand-utilities,
 body[data-cot-panels='overlay'] .cot-nav .cot-nav-desktop{display:none}
 body[data-cot-panels='overlay'] .cot-nav{
   top:max(12px,env(safe-area-inset-top));right:max(var(--cot-overlay-edge),env(safe-area-inset-right));
@@ -1399,8 +1381,6 @@ body[data-cot-panels='overlay'] .cot-card .ti{width:98px;height:52px;left:4px;to
   transform:translate(var(--cot-thumb-x,-10px),var(--cot-thumb-y,-6px))
     scale(var(--cot-thumb-scale,1.2))}
 
-body[data-cot-width='phone'] .cot-garage .title span,
-body[data-cot-width='compact'] .cot-garage .title span{display:none}
 body[data-cot-width='compact'] .cot-garage-variant-trigger,
 body[data-cot-width='phone'] .cot-garage-variant-trigger{display:none;}
 body[data-cot-width='compact'] .cot-garage-variant-menu,

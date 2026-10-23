@@ -9,6 +9,7 @@ import '../../src/ui/responsiveSurfaces.css';
 import '../../src/ui/components/components.css';
 import '../../src/ui/garage.css';
 import '../../src/ui/deploy.css';
+import '../../src/ui/showroom.css';
 import '../../src/ui/endScreenPresentation.css';
 import '../../src/ui/richTooltip.css';
 import { installResponsiveLayout } from '../../src/ui/responsiveLayout.ts';
