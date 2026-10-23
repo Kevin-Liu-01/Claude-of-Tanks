@@ -664,8 +664,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs04-railyard-leclerc-t14-r7-top.json",
    "path": "/media/versus-r1/vs04-railyard-leclerc-t14-r7-top.webp",
-   "bytes": 515168,
-   "sha256": "6a770889f68dc474443f9c044317ed05047fc396be9fab84afc817a9bb0ac731",
+   "bytes": 461930,
+   "sha256": "5ace9f39b09a0067947b048abf2890080e3d6c3bfe7f3ea56c26df43544e9081",
    "width": 1920,
    "height": 1080,
    "source": "vs04-railyard-leclerc-t14-r7-top-1920.webp"
@@ -695,8 +695,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs10-steppe-chieftain-t64-r7-top.json",
    "path": "/media/versus-r1/vs10-steppe-chieftain-t64-r7-top.webp",
-   "bytes": 523756,
-   "sha256": "031f15f8b77a065642a2405425f056e10785096f3dd7b14370ebd9525aa173fa",
+   "bytes": 470798,
+   "sha256": "5535cc26ca8d3d816c218645d816cb144af9d8a783527ef392b6189c713c6d2c",
    "width": 1920,
    "height": 1080,
    "source": "vs10-steppe-chieftain-t64-r7-top-1920.webp"
