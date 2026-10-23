@@ -62,6 +62,19 @@ wreck.combat.destroyed = false; frame(true, 300);
 wreck.combat.destroyed = true; frame(false, 310);
 const again = frame(true, 310)[1];
 assert.ok(again !== source && scaleOf(again) === 1, 'a hull destroyed again is hot again at its new kill');
+// (240) a mesh the kill adds (the turret ring's plate, turretRingWell.ts) takes the wreck's heat too: the hull's meshes are
+// listed again when it is first seen destroyed (it drew in its own cold material, a black disc on a hot hull)
+const fresh = actor('fresh', 'enemy', false);
+heat.begin([fresh], true, 'ally', 400); heat.end();
+const plateMat = new MeshStandardMaterial({ color: 0x333333 }), plate = new Mesh(new BoxGeometry(), plateMat);
+fresh.visual.root.add(plate);
+fresh.combat.destroyed = true;
+heat.begin([fresh], true, 'ally', 401);
+const plateSeen = plate.material, hullSeen = fresh.mesh.material;
+heat.end();
+assert.ok(plateSeen !== plateMat && hullSeen !== source, 'the kill\'s new mesh glows with its hull');
+assert.equal(uniformsOf(plateSeen).uHeatEng1.value.w, 1, 'as a wreck: its heat walks down the lens\'s window');
+assert.ok(plate.material === plateMat, 'and its own material is back after the frame');
 // a friendly hull: the old friendly share
 const friend = actor('friend', 'ally', false);
 heat.begin([friend], true, 'ally', 311); const friendly = friend.mesh.material; heat.end();
