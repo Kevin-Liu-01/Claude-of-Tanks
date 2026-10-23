@@ -9,6 +9,10 @@
   transform:none;margin:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);border:0;border-radius:0;box-shadow:none;clip-path:none;
   background:var(--surface-page);color:var(--ink-1);font-family:var(--font-ui);overflow:hidden;}
 body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right:0;bottom:0;left:0;max-height:none;}
+/* The Garage shell passes the pointer through (.cot-garage is pointer-events:none, its controls opt in). The open
+   screen takes every press itself: without this, Back hit the Garage's wordmark under it and left for /home, and every
+   card and tab hit the Garage beneath (nav-perf-242 recording, 2026-10-23). */
+.cot-garage .cot-battle-menu.open{pointer-events:auto;}
 
 /* head: back to the Garage, the title, the four ways to play */
 .cot-garage .cot-deploy-head{grid-column:1/-1;display:flex;align-items:center;gap:var(--s6);min-height:72px;
