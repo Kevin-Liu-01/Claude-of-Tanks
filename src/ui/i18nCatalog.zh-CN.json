@@ -4814,7 +4814,6 @@
   "garage.module.track": "履带",
   "settings.valueAria": "{label}数值",
   "hud.ammo.switching": "正在切换弹药",
-  "touch.landscapeHint": "建议横屏",
   "endOverlay.kills": "{count, plural, other {# 击杀}}",
   "customCamo.asset.star": "星形",
   "customCamo.asset.chevron": "人字纹",
