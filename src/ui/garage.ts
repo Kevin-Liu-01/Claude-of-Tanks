@@ -60,7 +60,7 @@ import { tankTier, tierNumeral } from '../vehicles/tier.ts';
 import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
 import { getPlayerRecord, getRecentBattles } from '../game/profile.ts';
 import { minimapAssetUrl } from './minimapAssetUrl.ts';
-import { createGarageHotspots } from './garageHotspots.ts';
+import type { GarageHotspots, HotspotFacts } from './garageHotspots.ts';
 import type { Object3D, PerspectiveCamera } from 'three';
 import { mountGitHubStars } from './githubStars.ts';
 import {
@@ -2889,8 +2889,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   });
   const lowerThird = requiredElement<HTMLElement>(root, '.cot-lower-third');
   // the stage's numbered hotspots (the direction's 05-garage page): the selected tank's gun, turret, powerpack and
-  // running gear, each with its real values, on the tank itself
-  const hotspots = createGarageHotspots(root);
+  // running gear, each with its real values, on the tank itself. The module loads off the entry once the Garage is
+  // playable and idle; the latest facts wait for it.
+  let hotspots: GarageHotspots | null = null;
+  let hotspotFacts: HotspotFacts | null = null;
+  const setHotspotFacts = (facts: HotspotFacts | null): void => { hotspotFacts = facts; hotspots?.setFacts(facts); };
+  const loadHotspots = (): void => {
+    if (window.__GAME_READY !== true) { setTimeout(loadHotspots, 300); return; }
+    const load = () => void import('./garageHotspots.ts').then(({ createGarageHotspots }) => {
+      hotspots = createGarageHotspots(root);
+      hotspots.setFacts(hotspotFacts);
+    }, () => undefined);
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(load, { timeout: 2500 }); else setTimeout(load, 900);
+  };
+  loadHotspots();
   const lowerName = requiredElement<HTMLElement>(lowerThird, '.cot-lt-name');
   const lowerId = requiredElement<HTMLElement>(lowerThird, '.cot-lt-id');
   let lowerClassFor = '';
@@ -2969,7 +2981,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const magazineSpec = magazineDescription(spec.gun, reloadS, eqM.reload);
     const aimS = spec.gun.aimTimeS * eqM.aimTime;
     const head = headlineOf(spec, eqM.reload, eqM.turret);
-    hotspots.setFacts({
+    setHotspotFacts({
       gun: { lead: `${spec.gun.caliberMm} mm`, more: t('garage.hotspot.reload', { value: head.reload.toFixed(1) }) },
       turret: { lead: `${head.turret.toFixed(0)}°/s`, more: `+${spec.gunElevationDeg} / −${spec.gunDepressionDeg}°` },
       engine: { lead: `${Math.round(spec.enginePowerHp)} hp`, more: `${head.hpt.toFixed(1)} hp/t` },
@@ -3967,7 +3979,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     isOpen: false,
     // the hotspots show on the docked overview, never over Deploy, a panel or a folded layout
     frameHotspots(camera, model) {
-      hotspots.frame(camera, model, api.isOpen && document.body.dataset.cotPanels === 'persistent'
+      hotspots?.frame(camera, model, api.isOpen && document.body.dataset.cotPanels === 'persistent'
         && root.dataset.station === 'overview' && !battleMenu.classList.contains('open'));
     },
 
