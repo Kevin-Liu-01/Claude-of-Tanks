@@ -573,6 +573,7 @@ export function sanitizeSharedScene(raw: unknown): SceneSanitized {
       const fx = fields(record(fxBlock, 'scene.fx'), 'scene.fx', {
         quality: (value, path) => oneOf(value, path, STUDIO_FX_QUALITIES),
         trackDust: bool,
+        ambience: bool,
       });
       const state = studioFxState(normalizeStudioFx(fx));
       if (state) scene.fx = state;

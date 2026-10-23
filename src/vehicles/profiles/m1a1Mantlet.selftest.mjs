@@ -12,8 +12,11 @@ const ids=['m1a1','m1a1ha','m1a1_abrams_hc','m1a1_abrams_sa','m1a1_abrams_aim','
 assert.deepEqual(ALL_TANK_IDS.filter(id=>/^M1A1\b/.test(getSpec(id).name)).sort(),[...ids].sort(),
   'Every playable M1A1 configuration participates in the fit checks');
 assert.deepEqual(Object.keys(M1A1_GUN_PITCH_BY_YAW).sort(),[...ids].sort());
+// 2026-10-22 (release 240): these frames may publish their own measured curves (the M1A2 X family since the gun-hull
+// lane's batch 3, the MBT-70 since its rebuild); what must hold is that none carries one of the M1A1 donor's curves.
+const donorCurves=Object.values(M1A1_GUN_PITCH_BY_YAW).map(curve=>JSON.stringify(curve));
 for(const id of ['m1a2_abrams','m1a2_abrams_tusk','m1a2_abrams_sepv2','m1a2_abrams_sepv3','ua_m1a2_abrams','abramsx','m1a3','mbt70'])
-  assert.equal(getSpec(id).gunPitchByYawDeg,undefined,`${id}: legacy donor stops do not leak to unrelated frames`);
+  assert.ok(!donorCurves.includes(JSON.stringify(getSpec(id).gunPitchByYawDeg)),`${id}: legacy donor stops do not leak to unrelated frames`);
 const flatField={getHeightAt:()=>-20,getGroundType:()=>'dirt',getNormalAt:()=>new Vector3(0,1,0)};
 const mat=new MeshBasicMaterial({side:DoubleSide});
 const ray=new Raycaster(), point=new Vector3();
