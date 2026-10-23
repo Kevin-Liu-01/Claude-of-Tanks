@@ -399,6 +399,34 @@ async function checkWarmingKeepsPlace() {
   rmSync(lockAt, { recursive: true, force: true });
 }
 
+// 2026-10-22 (item 240): prepare starts just in time — once at most `warmAhead` live tickets are ahead — so a long queue
+// does not hold a warm browser per lane for hours.
+async function checkJustInTimeWarm() {
+  const dir = join(root, 'jit.queue'), lockAt = join(root, 'jit.lock');
+  const options = { lockDir: lockAt, queueDir: dir, ticketRefreshMs: 50 };
+  mkdirSync(lockAt);
+  const started = [], held = [];
+  const waiter = (name) => {
+    const lock = createCaptureLock(options);
+    return lock.acquire(20_000, { warmAhead: 1, prepare: async () => { started.push(name); return name; } })
+      .then((value) => { held.push(value); lock.release(); });
+  };
+  const runs = [];
+  for (const name of ['A', 'B', 'C']) {
+    runs.push(waiter(name));
+    await until(`ticket ${name}`, () => existsSync(dir) && readdirSync(dir).filter((n) => n.endsWith('.t')).length === runs.length);
+  }
+  await until('A and B warming', () => started.length === 2);
+  await new Promise((resolve) => setTimeout(resolve, 1_500));
+  assert.deepEqual(started, ['A', 'B'], 'the third ticket waits to warm while two are ahead');
+  const phases = readdirSync(dir).filter((n) => n.endsWith('.t')).sort().map((n) => JSON.parse(readFileSync(join(dir, n), 'utf8')).phase);
+  assert.deepEqual(phases, ['ready', 'ready', 'queued'], 'its ticket says it is queued to warm');
+  rmSync(lockAt, { recursive: true });
+  await Promise.all(runs);
+  assert.deepEqual(started, ['A', 'B', 'C']);
+  assert.deepEqual(held, ['A', 'B', 'C'], 'holds stay in queue order');
+}
+
 // 2026-10-22 (item 240): a job killed while it waited rejoins at its first run's stamp under the same `place` key; the
 // place is dropped once it holds.
 async function checkPlaceKey() {
@@ -475,6 +503,7 @@ try {
   await checkDeadWaiterIdentity();
   await checkWarmingKeepsPlace();
   await checkPlaceKey();
+  await checkJustInTimeWarm();
 
   // Gate P5 (2026-10-01): waiting() is a read-only count of live queued acquisitions.
   const probeQueue = join(root, 'probe.queue');
@@ -510,7 +539,7 @@ try {
   assert.equal(stampBehindWaiting(MEDIA, { queueDir: band, now: NOW, commandOf: () => 'node tools/media-production/cinema.mjs' }), MEDIA,
     'no perf ticket waiting: the lease keeps its place');
   assert.equal(stampBehindWaiting(MEDIA, { queueDir: join(root, 'no-such-queue'), now: NOW, commandOf }), MEDIA, 'no queue: its place');
-  console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, same-millisecond FIFO, long-wait FIFO, long-waiter place, restored ticket, stamped ticket, owner tokens (the A/B/C cascade, a live owner kept, dead and reused-pid owners reaped, reaping behind the head), dead waiters (reused pid, silent heartbeat), warming tickets, place keys, the hold log and waiting() passed');
+  console.log('capture-lock.selftest: acquire, refresh, release, recovery, timeout, same-millisecond FIFO, long-wait FIFO, long-waiter place, restored ticket, stamped ticket, owner tokens (the A/B/C cascade, a live owner kept, dead and reused-pid owners reaped, reaping behind the head), dead waiters (reused pid, silent heartbeat), warming tickets, just-in-time warming, place keys, the hold log and waiting() passed');
 } finally {
   rmSync(root, { recursive: true, force: true });
 }

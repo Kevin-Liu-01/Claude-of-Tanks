@@ -53,8 +53,8 @@ function readQueue(queueDir, ownTicket) {
 const TICKET_FORMAT = 'cot-capture-ticket/1';
 const DEFAULT_TICKET_SILENT_MS = 10 * 60 * 1000;
 
-function ticketText(refreshMs, ready) {
-  return `${JSON.stringify({ format: TICKET_FORMAT, pid: process.pid, procStart: ownProcessStart(), refreshMs, ready,
+function ticketText(refreshMs, ready, phase) {
+  return `${JSON.stringify({ format: TICKET_FORMAT, pid: process.pid, procStart: ownProcessStart(), refreshMs, ready, phase,
     command: process.argv.slice(1).join(' ').slice(0, 200) })}\n`;
 }
 
@@ -612,11 +612,14 @@ export function createCaptureLock({
    * by an earlier acquire (\`lastTicket\`) — its original place — for a caller that gave its turn back because a lock
    * of its own was held by someone queued behind it, and re-enters once that holder is done.
    * `prepare` (2026-10-22): an async function run while the ticket waits, so warming (servers, browser, pages) costs
-   * no hold time. The ticket keeps its place but is passed over until `prepare` resolves; acquire then resolves with
-   * its result once this ticket heads the queue. A `prepare` that throws leaves the queue and rethrows.
+   * no hold time. It starts just in time, once at most `warmAhead` live tickets are ahead (COT_SHOTS_WARM_AHEAD,
+   * default 2): every queued lane warming at once would hold a browser each for hours. Until it resolves the ticket
+   * keeps its place but is passed over; acquire then resolves with its result once this ticket heads the queue. A
+   * `prepare` that throws leaves the queue and rethrows.
    * `place` (2026-10-22): a job key; a run killed while it waited rejoins at its first run's stamp (see placeStamp).
    */
-  async function acquire(timeoutMs = 10 * 60 * 1000, { ticket = null, prepare = null, place = null } = {}) {
+  async function acquire(timeoutMs = 10 * 60 * 1000, { ticket = null, prepare = null, place = null,
+    warmAhead = Number(process.env.COT_SHOTS_WARM_AHEAD) >= 0 && process.env.COT_SHOTS_WARM_AHEAD !== '' ? Number(process.env.COT_SHOTS_WARM_AHEAD) : 2 } = {}) {
     // A landing chain exports COT_SHOTS_LOCK_TIMEOUT_MS (three hours) so every waiter it spawns — the suite runner and
     // the browser receipts that take the lock themselves — outlasts other sessions' captures (2026-09-25: a probe receipt
     // died at its own 45-minute wait while the runner would have waited three hours).
@@ -624,7 +627,8 @@ export function createCaptureLock({
     if (Number.isFinite(chainWait) && chainWait > timeoutMs) timeoutMs = chainWait;
     mkdirSync(queueDir, { recursive: true });
     let ready = typeof prepare !== 'function';
-    const text = () => ticketText(ticketRefreshMs, ready);
+    let preparing = null;
+    const text = () => ticketText(ticketRefreshMs, ready, ready ? 'ready' : preparing ? 'warming' : 'queued');
     if (!ticket && place) ticket = ticketAt(placeStamp(queueDir, place));
     const ownTicket = ticket ? restoreTicket(queueDir, ticket, text()) : reserveTicket(queueDir, text());
     if (ticket) rewriteTicket(join(queueDir, ownTicket), text());
@@ -636,13 +640,24 @@ export function createCaptureLock({
     const ticketHeartbeat = setInterval(() => keepTicket(ownPath, text), ticketRefreshMs);
     ticketHeartbeat.unref();
     let prepared, prepareError = null, warmMs = 0;
-    const preparing = ready ? null : (async () => prepare())().then(
-      (value) => { prepared = value; warmMs = Date.now() - startedAt; ready = true; rewriteTicket(ownPath, text()); },
-      (error) => { prepareError = error; });
+    const startPrepare = () => {
+      const warmFrom = Date.now();
+      preparing = (async () => prepare())();
+      rewriteTicket(ownPath, text());
+      preparing = preparing.then(
+        (value) => { prepared = value; warmMs = Date.now() - warmFrom; ready = true; rewriteTicket(ownPath, text()); },
+        (error) => { prepareError = error; });
+    };
     try {
       for (;;) {
         if (prepareError) throw prepareError;
-        const head = queueHead(queueDir, readQueue(queueDir, ownTicket), ownTicket, queueRules);
+        const names = readQueue(queueDir, ownTicket);
+        const head = queueHead(queueDir, names, ownTicket, queueRules);
+        if (!ready && !preparing) {
+          const ahead = names.slice(0, Math.max(0, names.indexOf(ownTicket)))
+            .filter((name) => ticketLiveness(queueDir, name, queueRules).live).length;
+          if (ahead <= warmAhead) startPrepare();
+        }
         const atHead = head === ownTicket;
         if (atHead && ready) {
           const claimed = claimOwnedLock(lockDir, { ticket: ownTicket });
@@ -768,10 +783,11 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
   const rules = { staleMs: DEFAULT_TICKET_STALE_MS, silentMs: DEFAULT_TICKET_SILENT_MS };
   const states = names.map((name) => ({ name, ...ticketLiveness(DEFAULT_QUEUE_DIR, name, rules), meta: readTicketMeta(DEFAULT_QUEUE_DIR, name) }));
   const ready = states.filter((state) => state.live && state.ready), warming = states.filter((state) => state.live && !state.ready);
-  console.log(`queue: ${ready.length} ready, ${warming.length} warming, ${states.length - ready.length - warming.length} dead`);
+  console.log(`queue: ${ready.length} ready, ${warming.length} warming or waiting to warm, ${states.length - ready.length - warming.length} dead`);
   for (const state of [...ready, ...warming].slice(0, 12)) {
     const age = Date.now() - Number(state.name.slice(0, 15));
-    console.log(`  ${minutes(age).padStart(10)}  ${state.ready ? 'ready  ' : 'warming'}  ${(state.meta?.command ?? `pid ${ticketPid(state.name)} (older copy)`).slice(0, 110)}`);
+    const phase = state.ready ? 'ready' : state.meta?.phase ?? 'warming';
+    console.log(`  ${minutes(age).padStart(10)}  ${phase.padEnd(7)}  ${(state.meta?.command ?? `pid ${ticketPid(state.name)} (older copy)`).slice(0, 110)}`);
   }
   let lines = [];
   for (const file of [`${DEFAULT_LOG_FILE}.1`, DEFAULT_LOG_FILE]) {
