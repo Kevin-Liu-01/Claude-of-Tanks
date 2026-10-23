@@ -28,6 +28,28 @@ function armor(registry: TankSpecRegistry, id: string, factor: number): void {
   scaleNonExternalArmor(spec(registry, id), factor);
 }
 
+/**
+ * 235 (turretRigScale.ts): these turrets' combat cells were measured at 1/scale until the builders' turret squash moved
+ * off rig_turret. The cells now match the drawn turret, and its true face slopes change how much of a frontal shot the
+ * turret stops. Each factor scales the turret's frontal zones (the main cheek, wedge, front, mantlet and gun-notch
+ * plates, KE and CE), so that the share of frontal turret hits a tier-typical APFSDS fails to penetrate is back within
+ * 10 % of what it was (0.8, 1.0 and 1.2 x the tier's median MBT pen100). Side plates are left as they were: the side-on
+ * gains come from ricochets on the true cheek slopes, and thinner sides would not undo them.
+ */
+const TURRET_FRONT_COMPENSATION: Readonly<Record<string, number>> = Object.freeze({
+  t90am: 0.857, fv4034: 1.427, challenger2: 1.251, challenger2e: 1.361, ua_challenger2: 1.361,
+  merkava1b: 0.932, merkava3c: 0.852,
+});
+const TURRET_FRONT_ZONE = /cheek|wedge|front|mantlet|gun_notch/i;
+
+function turretFront(registry: TankSpecRegistry, id: string, factor: number): void {
+  for (const plate of spec(registry, id).armor.turretPlates) {
+    if (plate.kind !== 'main' || !TURRET_FRONT_ZONE.test(plate.name) || /side|cupola/i.test(plate.name)) continue;
+    plate.keMm = Math.round(plate.keMm * factor);
+    plate.ceMm = Math.round(plate.ceMm * factor);
+  }
+}
+
 /** Apply the reviewed 2026-09 full-fleet balance revision exactly once. */
 export function applyFleetBalancePass(registry: TankSpecRegistry): void {
   if (appliedRegistries.has(registry)) return;
@@ -321,4 +343,7 @@ export function applyFleetBalancePass(registry: TankSpecRegistry): void {
     Object.assign(spec(registry, id).gun, { baseAccuracy: 0.33, aimTimeS: 2 });
   }
   Object.assign(spec(registry, 'object148_proto').gun, { baseAccuracy: 0.29, aimTimeS: 1.8 });
+
+  // Last, over every armour scale above: the turret shapes 235 corrected keep their frontal protection.
+  for (const [id, factor] of Object.entries(TURRET_FRONT_COMPENSATION)) turretFront(registry, id, factor);
 }
