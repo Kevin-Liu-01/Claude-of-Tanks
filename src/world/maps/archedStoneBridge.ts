@@ -277,6 +277,21 @@ const RONDA_LIFT_M = 2.4;
 const RONDA_BODY: Rgb = [0.9, 0.84, 0.76];
 const RONDA_TRIM: Rgb = [1.1, 1.07, 1.01];
 const RONDA_FLAGS: Rgb = [0.84, 0.83, 0.82];
+/** (2026-10-22, world-polish-240; a blind critic saw no change from the bridge's own ashlar, and the frames showed why:
+ *  on the piers' faces under the arches the courses stood on end, stacked like books) the body's extrusion takes three's
+ *  world UVs with its side walls turned a quarter: three runs u along the wall's contour (up a pier's face) and v through
+ *  the depth, so the stone's courses ran up the piers and round the vaults; turned, they lie level on the piers and run
+ *  along the vaults' axis, as a coursed barrel vault's do. The spandrel faces (the caps) keep three's x-y. */
+const RONDA_EXTRUDE_UV: THREE.UVGenerator = {
+  generateTopUV(_g, v, a, b, c) {
+    return [a, b, c].map((i) => new THREE.Vector2(v[i * 3], v[i * 3 + 1]));
+  },
+  generateSideWallUV(_g, v, a, b, c, d) {
+    // three's choice of axis along the contour: x where the wall runs along it, else y
+    const along = Math.abs(v[a * 3 + 1] - v[b * 3 + 1]) < Math.abs(v[a * 3] - v[b * 3]) ? 0 : 1;
+    return [a, b, c, d].map((i) => new THREE.Vector2(v[i * 3 + 2], v[i * 3 + along]));
+  },
+};
 
 /** A face's weathering at height h over the footing, its normal rising ny: the damp darkens the lowest ten metres (to 0.64
  *  at the foot), a soffit takes the vault's shade (to 0.6 facing straight down), a face turned up neither. */
@@ -667,7 +682,8 @@ export function addArchedStoneBridge(
     profile.lineTo(archX - chord / 2, bottom);
   }
   profile.lineTo(-bodyHalf, bottom);
-  const body = new THREE.ExtrudeGeometry(profile, { depth: width, bevelEnabled: false, curveSegments: 10 });
+  const body = new THREE.ExtrudeGeometry(profile, { depth: width, bevelEnabled: false, curveSegments: 10,
+    ...(style === 'ronda' ? { UVGenerator: RONDA_EXTRUDE_UV } : {}) });
   body.translate(0, 0, -width / 2);
   scaleUV(body, 0.7, 0.7); // the extrusion's UVs are metres; the stone bucket's boxes carry 0.7 per metre
   jitterUV(body, rng);
