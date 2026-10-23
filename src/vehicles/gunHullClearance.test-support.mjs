@@ -175,10 +175,10 @@ export function gunHullProbe(id, { suit = true } = {}) {
   tank.root.updateMatrixWorld(true);
   const turret = tank.root.getObjectByName('rig_turret'), gun = tank.root.getObjectByName('rig_gun'), recoil = tank.root.getObjectByName('rig_recoil');
   if (!turret || !gun || spec.armor?.turretless) { tank.dispose(); throw new Error(`${id}: no turret-borne gun to measure`); }
-  // the poses below rebuild the turret's and the gun's local matrices from yaw and pitch alone
+  // the poses below rebuild the turret's and the gun's local matrices from yaw and pitch alone (the gun's own scale, a
+  // rigid body's: 235 moved the fleet's turret squashes off rig_turret, turretRigScale.ts)
   if (gun.parent !== turret || gun.quaternion.angleTo(new THREE.Quaternion()) > 1e-9 || turret.quaternion.angleTo(new THREE.Quaternion()) > 1e-9
-    || turret.scale.distanceTo(new THREE.Vector3(1, 1, 1)) > 1e-9
-    || gun.scale.distanceTo(new THREE.Vector3(1, 1, 1)) > 1e-9) { tank.dispose(); throw new Error(`${id}: the gun is not a level, unscaled child of the turret`); }
+    || turret.scale.distanceTo(new THREE.Vector3(1, 1, 1)) > 1e-9) { tank.dispose(); throw new Error(`${id}: the gun is not a level child of an unscaled turret`); }
   const hull = turret.parent, gInv = new THREE.Matrix4().copy(gun.matrixWorld).invert(), hInv = new THREE.Matrix4().copy(hull.matrixWorld).invert();
   const recoiling = new Set(); recoil?.traverse((o) => recoiling.add(o));
   const gunMeshes = meshesUnder(gun);
@@ -187,13 +187,13 @@ export function gunHullProbe(id, { suit = true } = {}) {
   // the gun's reach from the turret axis: its farthest point from the trunnion plus the trunnion's own offset
   let reach = 0;
   for (const T of [fixedTri, recoilTri]) for (let i = 0; i < T.length; i += 3) reach = Math.max(reach, Math.hypot(T[i], T[i + 1], T[i + 2]));
-  reach += gun.position.length();
+  reach = reach * Math.max(Math.abs(gun.scale.x), Math.abs(gun.scale.y), Math.abs(gun.scale.z)) + gun.position.length();
   const ring = turret.position, outline = turretOutline(turret, gun, gun.position.y);
   const hullMeshes = meshesUnder(hull, [turret]).filter((m) => suit || !/_ghillie_/.test(m.name));
   const soup = annulus(meshTriangles(hullMeshes, hInv), ring.x, ring.z, reach + .30, ring.y - .60, ring.y + .90);
   const grid = new SurfaceGrid(soup.tri, { cell: .05, rq: .065 });
   const partOf = (t) => { let name = null; for (const [s, mesh] of soup.starts) { if (s > t) break; name = mesh.name || mesh.parent?.name || '?'; } return name; };
-  const unit = new THREE.Vector3(1, 1, 1), pq = new THREE.Quaternion(), e = new THREE.Euler(), P = new THREE.Matrix4(), v = new THREE.Vector3();
+  const pq = new THREE.Quaternion(), e = new THREE.Euler(), P = new THREE.Matrix4(), v = new THREE.Vector3();
   const sources = { all: [[fixed, 0], ...GUN_RECOIL_STROKES_M.map((back) => [moving, back])] };
   sources.barrel = sources.all.slice(1); sources.mount = sources.all.slice(0, 1);
   // The gun's samples posed at one pitch in the turret's frame, those inside the turret dropped: they do not depend on the
@@ -203,7 +203,7 @@ export function gunHullProbe(id, { suit = true } = {}) {
     const key = `${parts}:${pitch}`;
     let r = posedCache.get(key);
     if (r) { posedCache.delete(key); posedCache.set(key, r); return r; }
-    P.compose(gun.position, pq.setFromEuler(e.set(-pitch, 0, 0)), unit);
+    P.compose(gun.position, pq.setFromEuler(e.set(-pitch, 0, 0)), gun.scale);
     const xyz = [], src = [];
     sources[parts].forEach(([pts, back], g) => {
       for (let i = 0; i < pts.length; i += 3) {

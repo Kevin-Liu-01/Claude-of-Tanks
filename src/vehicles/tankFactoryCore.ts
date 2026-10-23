@@ -112,6 +112,9 @@ import { attachTankDecorations, attachTankDecorationsSteps, type DecorationAttac
 import { fxNow, emitPopTrail, emitTurretLanding } from '../fx/clock.ts';
 import { createWreckTurretDriverIfLoaded } from './wreckTurretDriverLoader.ts';
 import type { WreckTurretDriver } from './wreckTurretDriver.ts';
+import {
+  bakeTurretRigScale, isTurretSectionFrame, TURRET_SECTION_SCALE_KEY, turretSectionScaleOf, type TurretSectionScale,
+} from './turretRigScale.ts';
 import { markShadowOnly } from '../engine/renderLayers.ts';
 import {
   markVehicleShadowDetail, NEAR_SHADOW_DETAIL_MAX_MESHES, NEAR_SHADOW_DETAIL_NAMES, vehicleShadowDetailOf,
@@ -1505,9 +1508,16 @@ function staticBatchKey(mesh: BatchableStaticMesh): string {
   ].join('|');
 }
 
+/** A rig child, or (235) the one part a baked turret squash would shear, alone in its section group (turretRigScale.ts):
+ *  it batches with its rig as it did when the rig carried the squash. */
+function staticBatchCandidate(child: THREE.Object3D): THREE.Object3D {
+  return child.userData.turretSection && child.children.length === 1 ? child.children[0] : child;
+}
+
 function collectStaticBatchGroups(parent: THREE.Object3D): Map<string, BatchableStaticMesh[]> {
   const groups = new Map<string, BatchableStaticMesh[]>();
-  for (const object of parent.children) {
+  for (const child of parent.children) {
+    const object = staticBatchCandidate(child);
     if (!isBatchableStaticMesh(object)) continue;
     const key = staticBatchKey(object);
     const group = groups.get(key) || [];
@@ -1518,13 +1528,20 @@ function collectStaticBatchGroups(parent: THREE.Object3D): Map<string, Batchable
 }
 
 function createStaticBatch(
+  parent: THREE.Object3D,
   group: BatchableStaticMesh[],
   batchIndex: number,
   disposables: DisposableVehicleResource[],
 ): VehicleMesh | null {
+  // 235: under a baked turret squash (turretRigScale.ts) the batch keeps the squash frame its identity sources sat at
+  const section = turretSectionScaleOf(parent);
+  const unsquash = section ? new THREE.Matrix4().makeScale(1 / section[0], 1 / section[1], 1 / section[2]) : null;
   const geometries = group.map((mesh) => {
     mesh.updateMatrix();
-    return mesh.geometry.clone().applyMatrix4(mesh.matrix);
+    // a section group's part keeps the frame it had under the squashed rig (its section is the squash)
+    const local = !unsquash || mesh.parent !== parent ? mesh.matrix
+      : isTurretSectionFrame(parent, mesh.matrix) ? _identity4 : new THREE.Matrix4().multiplyMatrices(unsquash, mesh.matrix);
+    return mesh.geometry.clone().applyMatrix4(local);
   });
   // Preserve indexed geometry instead of expanding every triangle to
   // non-indexed vertices through mergeAll().
@@ -1535,6 +1552,7 @@ function createStaticBatch(
   const source = group[0];
   const batch = new THREE.Mesh(merged, source.material);
   batch.name = `mobileStaticBatch_${batchIndex}`;
+  if (section) batch.scale.set(section[0], section[1], section[2]);
   batch.userData.mobileStaticBatch = true;
   batch.castShadow = source.castShadow;
   batch.receiveShadow = source.receiveShadow;
@@ -1549,7 +1567,7 @@ function replaceStaticBatchSources(
   group: VehicleMesh[],
   batch: VehicleMesh,
 ): void {
-  for (const mesh of group) parent.remove(mesh);
+  for (const mesh of group) parent.remove(mesh.parent === parent ? mesh : mesh.parent!);
   parent.add(batch);
 }
 
@@ -1565,7 +1583,7 @@ function batchMobileStaticChildren(
     let batchIndex = 0;
     for (const group of groups.values()) {
       if (group.length < 2) continue;
-      const batch = createStaticBatch(group, batchIndex, disposables);
+      const batch = createStaticBatch(parent, group, batchIndex, disposables);
       if (!batch) continue;
       batchIndex++;
       replaceStaticBatchSources(parent, group, batch);
@@ -1607,7 +1625,8 @@ function collectMobileDetailObjects(
   root.traverse((object) => {
     if (!isVehicleMesh(object) || combatObjects.has(object) || underManagedGroup(object)) return;
     const name = object.name || '';
-    const anonymousStatic = !name && object.parent !== null && rigParents.includes(object.parent)
+    const owner = object.parent?.userData.turretSection ? object.parent.parent : object.parent;
+    const anonymousStatic = !name && owner !== null && rigParents.includes(owner)
       && Object.keys(object.userData || {}).length === 0
       && !String((Array.isArray(object.material) ? object.material[0] : object.material)?.name || '')
         .includes('armor-paint');
@@ -1653,6 +1672,9 @@ function installBattleDetailGroups(records: readonly StaticDetailRecord[]): {
     group.userData.battleDetailGroup = true;
     group.matrixAutoUpdate = false; // identity under the same articulation parent
     group.updateMatrix();
+    // its members keep a baked turret squash's frame (turretRigScale.ts): the static merge reads it here as on the rig
+    const section = turretSectionScaleOf(parent);
+    if (section) group.userData[TURRET_SECTION_SCALE_KEY] = section;
     for (const object of objects) {
       parent.remove(object);
       group.add(object);
@@ -9721,6 +9743,8 @@ export function* createTankRuntimeSteps(
     armor.turretPivot[0], armor.turretPivot[1], armor.turretPivot[2]);
   // the turret group's own fitted scale at the kill (a body-driven turret is placed by matrix; the reset restores it)
   const wreckSeatScale = new THREE.Vector3(1, 1, 1);
+  // 235: a builder's non-uniform turret squash, once the tail moves it onto rig_turret's children (turretRigScale.ts)
+  let turretSection: TurretSectionScale | null = null;
   // r5: V0 6.2 -> 12.2 tossed the turret ~5.5 m up — r6 critic: "reads as a
   // tiny bird-like speck for its whole flight ... never lands readable".
   // 8.4 m/s peaks ~2.6 m over the ring (inside/just above the fireball crown
@@ -9844,11 +9868,11 @@ export function* createTankRuntimeSteps(
   }
 
   /** The largest identity-placed mesh of a rig group (its plates authored in the group's frame), for the dent plan. */
-  function partPlates(group: THREE.Object3D, name: string): THREE.Mesh | null {
+  function partPlates(group: THREE.Object3D, name: string, frame: THREE.Matrix4 = _identity4): THREE.Mesh | null {
     let best: THREE.Mesh | null = null, most = 0;
     for (const child of group.children) {
       if (!(child instanceof THREE.Mesh) || child instanceof THREE.InstancedMesh || !child.geometry?.attributes?.position) continue;
-      if (!child.matrix.equals(_identity4)) continue;
+      if (!child.matrix.equals(frame)) continue;
       const count = child.geometry.attributes.position.count + (child.name === name ? 1e9 : 0);
       if (count > most) { most = count; best = child; }
     }
@@ -9872,7 +9896,8 @@ export function* createTankRuntimeSteps(
     if (geometryOnly) return;
     const rng = wreckRandom(((burnU.uBurnSeed.value * 1000) | 0) ^ 0x7e3c11);
     const box = new THREE.Box3();
-    const hullPlates = partPlates(hullG, 'hull'), turretPlates = partPlates(turretG, 'turret');
+    // a baked turret squash leaves the turret's plates at its frame, not rig_turret's identity (turretRigScale.ts)
+    const hullPlates = partPlates(hullG, 'hull'), turretPlates = partPlates(turretG, 'turret', turretSection?.frame);
     const hullDents: WreckDent[] = [], turretDents: WreckDent[] = [];
     if (hullPlates) {
       hullPlates.geometry.computeBoundingBox();
@@ -9889,9 +9914,10 @@ export function* createTankRuntimeSteps(
     }
     writeDents(hullDents, burnU.uCrHull.value, burnU.uCrHullDir.value);
     writeDents(turretDents, burnU.uCrTur.value, burnU.uCrTurDir.value);
-    // the frames by reference: the turret's moves with its pop
+    // the frames by reference: the turret's moves with its pop (a baked squash: the plates' own frame, which every part
+    // that sat at rig_turret's identity now shares)
     burnU.uCrHullW.value = hullG.matrixWorld;
-    burnU.uCrTurW.value = turretG.matrixWorld;
+    burnU.uCrTurW.value = (turretSection && turretPlates ? turretPlates : turretG).matrixWorld;
     burnU.uCrOn.value = hullDents.length || turretDents.length ? 1 : 0;
     // the gun: past a point along it the barrel bends (down, or any way on a turret the blast threw)
     gunG.updateMatrixWorld(true);
@@ -11003,6 +11029,11 @@ export function* createTankRuntimeSteps(
     // Align complete banks before static batching can flatten their socket owners.
     alignSmokeBanks(root);
     retainCombatLods(root);
+    // 235 (gun-barrel alignment class 2): a non-uniform turret squash moves off rig_turret onto its children, so rig_gun
+    // pitches rigidly about its drawn trunnion and the rig_turret frame is metres (the combat anatomy's turret cells).
+    // Last of the passes that place parts in that frame (decorations, fills, the smoke banks' alignment), before the
+    // batches, layers and merges that read the final transforms: every world vertex at rest is unchanged.
+    turretSection = bakeTurretRigScale(turretG, gunG);
 
     if ((geometryQuality === 'low' && !deferStaticBatch) || batchStatic) {
       const mobileBatchParents = [hullG, turretG, gunG, recoilG];
