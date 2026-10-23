@@ -10,13 +10,13 @@
       "speedMultiplier": 1,
       "ammo": "unlimited",
       "respawnS": 5,
-      "timeLimitS": 420,
+      "timeLimitS": 180,
       "allies": 9,
       "enemies": 5,
       "infection": {
         "infectedSpeed": 1.3,
         "survivorHpScale": 1.3,
-        "infectedHpScale": 0.25,
+        "infectedHpScale": 0.2,
         "infectedReloadScale": 1,
         "hunt": true
       },
@@ -238,25 +238,25 @@
         47,
         48
       ],
-      "humanWins": 0,
-      "overrun": 48,
+      "humanWins": 17,
+      "overrun": 31,
       "endS": {
-        "mean": 157,
-        "median": 149
+        "mean": 156,
+        "median": 163
       },
       "humanSeatS": {
-        "mean": 105,
-        "median": 101
+        "mean": 99,
+        "median": 94
       },
-      "humanSideMeanLifeS": 109,
+      "humanSideMeanLifeS": 117,
       "killsPerMin": {
-        "human": 11.28,
-        "zombie": 4.05,
-        "ratio": 2.79
+        "human": 14.4,
+        "zombie": 3.68,
+        "ratio": 3.92
       },
       "hull": {
         "human": 2957,
-        "zombie": 580
+        "zombie": 464
       },
       "waves": {
         "mean": 0,
@@ -266,7 +266,11 @@
         "human": 0,
         "zombie": 0
       },
-      "results": "1:bravo@110 2:bravo@162 3:bravo@134 4:bravo@148 5:bravo@114 6:bravo@127 7:bravo@191 8:bravo@136 9:bravo@123 10:bravo@181 11:bravo@153 12:bravo@190 13:bravo@158 14:bravo@146 15:bravo@145 16:bravo@124 17:bravo@156 18:bravo@221 19:bravo@135 20:bravo@165 21:bravo@136 22:bravo@126 23:bravo@124 24:bravo@133 25:bravo@177 26:bravo@195 27:bravo@117 28:bravo@174 29:bravo@154 30:bravo@95 31:bravo@210 32:bravo@242 33:bravo@170 34:bravo@318 35:bravo@175 36:bravo@150 37:bravo@123 38:bravo@135 39:bravo@161 40:bravo@160 41:bravo@135 42:bravo@131 43:bravo@146 44:bravo@123 45:bravo@198 46:bravo@143 47:bravo@162 48:bravo@189",
+      "firstInfectionS": {
+        "mean": 51,
+        "median": 48
+      },
+      "results": "1:bravo@166 2:alpha@180 3:alpha@180 4:bravo@145 5:bravo@125 6:bravo@149 7:bravo@116 8:bravo@132 9:bravo@149 10:bravo@159 11:alpha@180 12:bravo@122 13:bravo@170 14:alpha@180 15:alpha@180 16:bravo@134 17:bravo@180 18:alpha@180 19:alpha@180 20:alpha@180 21:bravo@128 22:bravo@87 23:bravo@126 24:bravo@125 25:alpha@180 26:alpha@180 27:bravo@154 28:alpha@180 29:alpha@180 30:bravo@64 31:alpha@180 32:alpha@180 33:bravo@174 34:alpha@180 35:bravo@119 36:bravo@147 37:bravo@158 38:bravo@159 39:bravo@179 40:alpha@180 41:bravo@149 42:bravo@169 43:bravo@171 44:bravo@121 45:alpha@180 46:bravo@139 47:bravo@135 48:bravo@160",
       "tunedSeeds": [
         1,
         2,
@@ -322,25 +326,25 @@
           47,
           48
         ],
-        "humanWins": 0,
-        "overrun": 32,
+        "humanWins": 12,
+        "overrun": 20,
         "endS": {
-          "mean": 162,
-          "median": 155
+          "mean": 156,
+          "median": 170
         },
         "humanSeatS": {
-          "mean": 110,
-          "median": 98.5
+          "mean": 96,
+          "median": 87
         },
-        "humanSideMeanLifeS": 112,
+        "humanSideMeanLifeS": 116,
         "killsPerMin": {
-          "human": 11.38,
-          "zombie": 3.94,
-          "ratio": 2.89
+          "human": 14.7,
+          "zombie": 3.68,
+          "ratio": 3.99
         },
         "hull": {
           "human": 2974,
-          "zombie": 580
+          "zombie": 464
         },
         "waves": {
           "mean": 0,
@@ -350,7 +354,11 @@
           "human": 0,
           "zombie": 0
         },
-        "results": "17:bravo@156 18:bravo@221 19:bravo@135 20:bravo@165 21:bravo@136 22:bravo@126 23:bravo@124 24:bravo@133 25:bravo@177 26:bravo@195 27:bravo@117 28:bravo@174 29:bravo@154 30:bravo@95 31:bravo@210 32:bravo@242 33:bravo@170 34:bravo@318 35:bravo@175 36:bravo@150 37:bravo@123 38:bravo@135 39:bravo@161 40:bravo@160 41:bravo@135 42:bravo@131 43:bravo@146 44:bravo@123 45:bravo@198 46:bravo@143 47:bravo@162 48:bravo@189"
+        "firstInfectionS": {
+          "mean": 50,
+          "median": 48.5
+        },
+        "results": "17:bravo@180 18:alpha@180 19:alpha@180 20:alpha@180 21:bravo@128 22:bravo@87 23:bravo@126 24:bravo@125 25:alpha@180 26:alpha@180 27:bravo@154 28:alpha@180 29:alpha@180 30:bravo@64 31:alpha@180 32:alpha@180 33:bravo@174 34:alpha@180 35:bravo@119 36:bravo@147 37:bravo@158 38:bravo@159 39:bravo@179 40:alpha@180 41:bravo@149 42:bravo@169 43:bravo@171 44:bravo@121 45:alpha@180 46:bravo@139 47:bravo@135 48:bravo@160"
       }
     },
     "endless_horde": {
