@@ -8,9 +8,14 @@
 // profile build. Fills sit strictly inside the body's own shells, so
 // silhouettes never move; behind a real gap they read as the dark interior
 // wall the eye expects. They are excluded from authored-geometry fingerprints.
+// 2026-10-16 (tank-opt HIDDEN; owner 2026-10-15: "inside the tanks where we cant see, we dont have unneeded
+// geometry"): an intact rendered tank draws each component's fill as its boundary surface, conforming and exact on
+// the voxel lattice (interiorFillSurface.ts), unless the closed boxes are fewer triangles; a wreck (setDestroyed) and a
+// geometry-only build (a map hulk's bake) draw the closed boxes they always drew.
 import * as THREE from 'three';
 import { FLEET_GROUP_BY_ID } from './fleetManifest.ts';
 import { INTERIOR_FILL_GROUP_LOADERS } from './interiorFillLoaders.generated.ts';
+import { interiorFillSurface, type InteriorFillSurface } from './interiorFillSurface.ts';
 
 export interface InteriorFillRecord {
   /** Fine voxel size in metres (box indices are in these units). */
@@ -85,11 +90,18 @@ function decodeSextets(encoded: string): Uint16Array {
   return out;
 }
 
+/** One component's inclusive voxel spans (Uint16 sextets), empty when the record has none. */
+export function interiorFillSpans(record: InteriorFillRecord, component: InteriorFillComponent): Uint16Array {
+  const encoded = record[component];
+  return encoded ? decodeSextets(encoded) : new Uint16Array(0);
+}
+
 /** Decode one component's boxes into [centre, size] metres in the TANK frame (build pose). */
 export function interiorFillBoxes(record: InteriorFillRecord, component: InteriorFillComponent): InteriorFillBox[] {
-  const encoded = record[component];
-  if (!encoded) return [];
-  const spans = decodeSextets(encoded);
+  return boxesFromSpans(record, interiorFillSpans(record, component));
+}
+
+function boxesFromSpans(record: InteriorFillRecord, spans: Uint16Array): InteriorFillBox[] {
   const boxes: InteriorFillBox[] = [];
   for (let i = 0; i + 5 < spans.length; i += 6) {
     const [x0, y0, z0, x1, y1, z1] = [spans[i], spans[i + 1], spans[i + 2], spans[i + 3], spans[i + 4], spans[i + 5]];
@@ -103,8 +115,11 @@ export function interiorFillBoxes(record: InteriorFillRecord, component: Interio
   return boxes;
 }
 
-/** Merge a component's boxes into one geometry (24 vertices per box, no index). */
-function interiorFillGeometry(boxes: readonly InteriorFillBox[]): THREE.BufferGeometry | null {
+/**
+ * The closed boxes as one geometry (36 vertices per box, no index): every fill's mesh through 2026-10-15, a wreck's and
+ * a map hulk's since, and an intact tank's where they are no more triangles than the boundary surface.
+ */
+function closedFillGeometry(boxes: readonly InteriorFillBox[]): THREE.BufferGeometry | null {
   if (!boxes.length) return null;
   const positions = new Float32Array(boxes.length * 36 * 3);
   const normals = new Float32Array(boxes.length * 36 * 3);
@@ -133,6 +148,78 @@ function interiorFillGeometry(boxes: readonly InteriorFillBox[]): THREE.BufferGe
   return geometry;
 }
 
+/**
+ * The boundary surface as one geometry (3 vertices per triangle, no index; interiorFillSurface.ts): each lattice
+ * point becomes origin + index · voxel on every axis, once, so the triangles on the two sides of an edge share its
+ * endpoints bit for bit (and keep sharing them through the rig transform, which is the same for both).
+ */
+function surfaceFillGeometry(record: InteriorFillRecord, surface: InteriorFillSurface): THREE.BufferGeometry {
+  const { corners, faces } = surface;
+  const positions = new Float32Array(corners.length), normals = new Float32Array(corners.length);
+  for (let i = 0; i < corners.length; i += 3) {
+    positions[i] = record.o[0] + corners[i] * record.v;
+    positions[i + 1] = record.o[1] + corners[i + 1] * record.v;
+    positions[i + 2] = record.o[2] + corners[i + 2] * record.v;
+  }
+  for (let t = 0; t < faces.length; t++) {
+    const axis = faces[t] >> 1, sign = faces[t] & 1 ? -1 : 1;
+    for (let k = 0; k < 3; k++) normals[9 * t + 3 * k + axis] = sign;
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+  return geometry;
+}
+
+/** The surface an intact tank draws for these spans, or null where the closed boxes are no more triangles. */
+function drawnSurface(spans: Uint16Array): InteriorFillSurface | null {
+  if (!spans.length) return null;
+  const surface = interiorFillSurface(spans);
+  return surface && surface.faces.length < 2 * spans.length ? surface : null;
+}
+
+/**
+ * Triangles of one component's (or the whole record's) fill: `closed` the closed boxes' (twelve a box: what a map
+ * hulk's bake draws), `drawn` what a rendered tank draws (the boundary surface, or the closed boxes where fewer).
+ */
+export function interiorFillTriangleCounts(record: InteriorFillRecord, only?: InteriorFillComponent): { boxes: number; closed: number; drawn: number } {
+  let boxes = 0, drawn = 0;
+  for (const component of only ? [only] : (['hull', 'turret', 'gun'] as const)) {
+    const spans = interiorFillSpans(record, component);
+    boxes += spans.length / 6;
+    drawn += drawnSurface(spans)?.faces.length ?? 2 * spans.length;
+  }
+  return { boxes, closed: 12 * boxes, drawn };
+}
+
+/** Triangles an intact tank draws for one component's spans (the generator's stats). */
+export function drawnFillTriangles(spans: Uint16Array): number {
+  return drawnSurface(spans)?.faces.length ?? 2 * spans.length;
+}
+
+/** What a fill mesh was built from, so a wreck can draw its closed boxes in the same frame. */
+interface FillMeshSource {
+  readonly record: InteriorFillRecord;
+  readonly component: InteriorFillComponent;
+  /** The build-time inverse of the rig's world matrix that took the boxes into the rig's frame. */
+  readonly toRig: THREE.Matrix4;
+}
+const fillSources = new WeakMap<THREE.Object3D, FillMeshSource>();
+
+/**
+ * A fill mesh's closed boxes in the mesh's own frame, bit for bit the mesh a rendered tank drew through 2026-10-15;
+ * null when the mesh is no fill or already draws them. A wreck draws these (tankFactoryCore setDestroyed swaps them
+ * in, resetDestroyed back): its dents move vertices one at a time, and the boxes' many corners follow a dent as they
+ * always have, where the surface's few would leave its large faces flat under a dented plate.
+ */
+export function closedInteriorFillGeometry(mesh: THREE.Object3D): THREE.BufferGeometry | null {
+  const source = fillSources.get(mesh);
+  if (!source) return null;
+  const geometry = closedFillGeometry(interiorFillBoxes(source.record, source.component));
+  geometry?.applyMatrix4(source.toRig);
+  return geometry;
+}
+
 interface ApplyInteriorFillsOptions {
   readonly specId: string;
   readonly hullG: THREE.Object3D;
@@ -144,19 +231,29 @@ interface ApplyInteriorFillsOptions {
   /** A record to apply instead of the registered one: the fleet watertight gate attaches the shipped fills to its
    * shared fill-free build without loading the registry, so the pass's other audits keep their build. */
   readonly record?: InteriorFillRecord | null;
+  /** Draw the closed boxes (the fills' mesh through 2026-10-15) instead of the boundary surface: a geometry-only build
+   * (a map hulk's bake, the workshop dressing) is baked into other meshes, counted by their triangle budgets (props.ts
+   * WRECK_TRIS_BUDGET) and crumpled on the CPU, and keeps exactly the triangles it always had. */
+  readonly closed?: boolean;
 }
 
-/** Add the registered fills for a tank to its hull and turret rigs. Returns box counts (0 when none are registered). */
-export function applyInteriorFills({ specId, hullG, turretG, gunG = null, material, disposables, record: explicit }: ApplyInteriorFillsOptions): { hull: number; turret: number; gun: number } {
+/**
+ * Add the registered fills for a tank to its hull and turret rigs: each component's boundary surface (or its closed
+ * boxes, when those are no more triangles or `closed` asks for them). Returns box counts (0 when none are registered)
+ * and the meshes attached.
+ */
+export function applyInteriorFills({ specId, hullG, turretG, gunG = null, material, disposables, record: explicit, closed = false }: ApplyInteriorFillsOptions): { hull: number; turret: number; gun: number; meshes: THREE.Mesh[] } {
   const record = explicit === undefined ? registry.get(specId) : explicit;
-  const counts = { hull: 0, turret: 0, gun: 0 };
+  const counts = { hull: 0, turret: 0, gun: 0, meshes: [] as THREE.Mesh[] };
   if (!record) return counts;
   const inverse = new THREE.Matrix4();
   const targets: Array<readonly [InteriorFillComponent, THREE.Object3D]> = [['hull', hullG], ['turret', turretG]];
   if (gunG) targets.push(['gun', gunG]);
   for (const [component, parent] of targets) {
-    const boxes = interiorFillBoxes(record, component);
-    const geometry = interiorFillGeometry(boxes);
+    const spans = interiorFillSpans(record, component);
+    const boxes = boxesFromSpans(record, spans);
+    const surface = closed ? null : drawnSurface(spans);
+    const geometry = surface ? surfaceFillGeometry(record, surface) : closedFillGeometry(boxes);
     if (!geometry) continue;
     // Boxes are authored in the tank frame at build pose; rigs may carry a scale or offset
     // (profile `s`, turret pivot), so the geometry is taken into the rig's own frame.
@@ -169,7 +266,10 @@ export function applyInteriorFills({ specId, hullG, turretG, gunG = null, materi
     mesh.receiveShadow = false;
     parent.add(mesh);
     disposables.push(geometry);
+    // a surface mesh remembers its boxes for the wreck (closedInteriorFillGeometry)
+    if (surface) fillSources.set(mesh, { record, component, toRig: inverse.clone() });
     counts[component] = boxes.length;
+    counts.meshes.push(mesh);
   }
   return counts;
 }

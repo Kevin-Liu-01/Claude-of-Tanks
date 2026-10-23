@@ -251,6 +251,12 @@ export interface GhillieConfig {
    */
   netTextureSeed?: number;
   /**
+   * 2026-10-22 (lane 240): the garnish density of the suit's net texture (camoNetTexture.ts stripDensity; default 1, the
+   * issue net). The M1A2 X suits' nets at full density were about 69 % olive cloth: on the sand ARAT skirts each drape
+   * read as a dark rectangle behind its boughs.
+   */
+  netStripDensity?: number;
+  /**
    * 2026-10-13 (netting-pl; the coordinator on the owner's performance push: "thin the garnish's triangle cost (fewer
    * cards per clump, LOD the far clumps) rather than raise ceilings"): a field suit's garnish budget. `clumpCards` keeps
    * that share of each clump's boughs and strips (at least two), each kept card longer by its share's -0.4 power and
@@ -3320,7 +3326,8 @@ function makeNet(
   // shared per theatre or palette and seed (never disposed with a visual); the height map takes the cloth's bump slot
   // (the cloned canvas already samples one), so neither adds a shader variant
   const leafy = cfg.style === 'leafy';
-  const shared = leafy ? garnishedNetTextures(theatre, cfg.netTextureSeed ?? cfg.seed, isFieldNet(cfg)) : cutLeafCoverTextures(cover, cfg.seed);
+  const shared = leafy ? garnishedNetTextures(theatre, cfg.netTextureSeed ?? cfg.seed, isFieldNet(cfg), cfg.netStripDensity ?? 1)
+    : cutLeafCoverTextures(cover, cfg.seed);
   return makeCloth(P, (m) => {
     m.color.setHex(0xffffff);
     if (shared) {
@@ -3809,12 +3816,27 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         outline: [[-1.05, -3.35], [1.05, -3.35], [1.42, -2.32], [1.36, 0.38], [0.86, 1.12], [-0.86, 1.12], [-1.36, 0.38], [-1.42, -2.32]],
         // release 233: the gunner's primary sight and its FEP FLIR head (0.55..1.03 x, 0.62..1.30 z) stand clear of the net
         holes: [rect(-1.26, -0.48, -0.86, 0.02), rect(-0.52, 0.05, 0.06, 0.55), rect(0.16, 0.83, -0.64, 0.06), rect(-1.28, -0.70, -2.92, -1.70), rect(0.68, 1.30, -2.84, -1.62), rect(0.50, 1.08, 0.60, 1.30)], seed: 37 }],
-      side: [-1, 1].map((side) => ({ side, z0: -3.20, z1: 0.80, nz: 32, ny: 8,
-        topAt: () => 0.80, bottomAt: (z) => 0.02 + Math.sin(z * 3.2) * 0.024,
-        outAt: (z, t) => (z < -1.65 ? 1.52 : 1.68) + (1 - t) * 0.028, seed: 51 + side,
-        // round 3 ("along both turret sides the net rises as vertical free-standing fence panels"): the flank drape
-        // rolls over the roof edge and tucks under the roof net
-        shoulder: { z0: -3.20, z1: 0.40, inAt: (z: number) => sepv3TurretRoofEdge(z) - 0.06, yAt: () => 0.874 } })),
+      // 2026-10-22 (lane 240; critic: "crumpled mesh at the turret's right rear"): both flank covers were fitted round
+      // the bustle, each column stepping out and back as the wall did, and creased into a crumpled lump at the rear
+      // corner: on the -X flank over the bustle-side stowage drum and its boxes (x -1.70..-1.47, z -3.17..-2.08), on the
+      // +X (hero) flank round the bustle's taper from z -2.32 aft (its walls stepping between x 1.25 and 1.56). Each
+      // cover now ends where the plain turret wall does (-X at z -2.02, ahead of the stowage; +X at -2.32), and the
+      // bustle and its stowage ride bare.
+      side: [-1, 1].map((side) => {
+        const z0 = side < 0 ? -2.02 : -2.32;
+        return { side, z0, z1: 0.80, nz: side < 0 ? 24 : 26, ny: 8,
+          topAt: () => 0.80, bottomAt: (z: number) => 0.02 + Math.sin(z * 3.2) * 0.024,
+          outAt: (z: number, t: number) => (z < -1.65 ? 1.52 : 1.68) + (1 - t) * 0.028, seed: 51 + side,
+          // 2026-10-21 (the owner: the star on the turret): the right flank's drape leaves a window for the national
+          // insignia (vehicleMarkings.ts), from its top to the hem; 2026-10-22 (lane 240): the left flank's leaves one at
+          // the designation's station (z -0.01), so the "34" keeps the left flank on bare armour rather than on the cloth
+          // (the solver never seats paint on it). Each is the marking's 0.27 m footprint and 3 cm a side (a blind critic
+          // read the first windows, a net cell of 8 cm a side, as a stark black square round the star)
+          cuts: side > 0 ? [[-0.848, -0.518, 0.138, 0.468] as const] : [[-0.176, 0.154, 0.138, 0.468] as const],
+          // round 3 ("along both turret sides the net rises as vertical free-standing fence panels"): the flank drape
+          // rolls over the roof edge and tucks under the roof net
+          shoulder: { z0, z1: 0.40, inAt: (z: number) => sepv3TurretRoofEdge(z) - 0.06, yAt: () => 0.874 } };
+      }),
       face: [{ z: 1.38, x0: -1.36, x1: 1.36, y0: -0.02, y1: 0.76, nx: 20, ny: 8,
         outline: [[-1.00, -0.02], [1.00, -0.02], [1.36, 0.40], [0.96, 0.76], [-0.96, 0.76], [-1.36, 0.40]],
         holes: [rect(-0.52, 0.52, -0.06, 0.68), rect(-1.22, -0.78, 0.44, 0.78), rect(0.55, 1.22, 0.44, 0.78)], seed: 61 }],
@@ -5730,7 +5752,8 @@ function* addGhillieOwner(
   if (netMesh && !netShared && P.mats.wheels) {
     followVehicleScheme(P.mats.wheels, netMat, (vis) => {
       const t = theatreOfHex(vis.base);
-      const next = leafy ? garnishedNetTextures(t, cfg.netTextureSeed ?? cfg.seed, field) : cutLeafCoverTextures(coverPaletteOf(vis, t), cfg.seed);
+      const next = leafy ? garnishedNetTextures(t, cfg.netTextureSeed ?? cfg.seed, field, cfg.netStripDensity ?? 1)
+        : cutLeafCoverTextures(coverPaletteOf(vis, t), cfg.seed);
       if (next) { netMat.map = next.map; netMat.bumpMap = next.bump; }
     });
   }

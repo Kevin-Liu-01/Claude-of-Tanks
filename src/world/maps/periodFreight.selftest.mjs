@@ -40,7 +40,9 @@ assert.equal(precedesIsoContainer('nowhere'), false, 'a map without a year keeps
 const drawn = [];
 for (const id of MAP_IDS) {
   const props = getMapConfig(id).props ?? {};
-  if (!(props.plan ?? []).includes('containerRow')) continue;
+  // (a map's rows authored as planned sites draw through the same kit: Cinder Junction's frozen frontage, the map-revival
+  // lane's round 3, 2026-10-11)
+  if (!(props.plan ?? []).includes('containerRow') && !(props.plannedSites ?? []).some((site) => site.structure === 'containerRow')) continue;
   const style = props.architecture ? ARCHITECTURE_STYLES.find((st) => st.id === props.architecture) : null;
   if (style?.builders?.containerRow) continue;
   if (precedesIsoContainer(id)) drawn.push(id);

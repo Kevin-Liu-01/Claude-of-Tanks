@@ -26,6 +26,11 @@
 // behind a glancing glacis), the K6 on the turning BMP-2, the Leopard 1 gathering its pivot, the seat's cannon still
 // rewinding, the same rounds twice, the pillbox, host and solo shot for shot (a driving target too).
 //
+// Lane 235 (2026-10-22) adds hulls on slopes (case 16: on the 229 module the aim points turned with the yaw alone and the
+// dead reckoning kept a hull at its height — an M551A1 on a side slope took 9 rounds for 4.1 hurting, a BMP-2 driving
+// downhill drew 5 wasted M2 rounds), allies behind the target (case 17: every TTS 30 mm round through a Hayate, a BMP-3M
+// or a Bradley on the flank carried on into the Leopard 1 parked behind it) and the aim grid's fine rows (case 18: the TTS's 30 mm fired nothing at a Type 100 or a BMP-3M head-on at 200 m).
+//
 // The ghost flights meet the scene as it really went (each tick recorded as the battle ran: a target turning or braking
 // is where it was, not where a constant rate would put it), so the station's dead reckoning is judged, never assumed.
 import assert from 'node:assert/strict';
@@ -43,14 +48,17 @@ import { createGameState, createBus, simStep } from '../game/state.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
 import { createLagCompensation } from '../../server/match/lagCompensation.ts';
 
-const FLEET = ['k1e1', 'm551a1_tts', 'm1a1_abrams_hc', 'bmp2', 'leo1a5', 'amx10p_25', 'bmp3m_dragun125', 'cv9040c', 'cv90', 'hayate_ifv', 'm1a2_abrams'];
+const FLEET = ['k1e1', 'm551a1_tts', 'm1a1_abrams_hc', 'bmp2', 'leo1a5', 'amx10p_25', 'bmp3m_dragun125', 'cv9040c', 'cv90', 'hayate_ifv', 'm1a2_abrams',
+  'type100', 'marder1a3', 'm2a2_bradley'];
 await ensureAuthorityFleet(FLEET);
 const DEG = Math.PI / 180, GHOSTS = 16;
 /** A vehicle at (x, z) whose front faces the origin turned `aspectDeg` (0: head-on to a shooter at the origin), whole
- * (createCombatState: every module at full hit points), driving at `speed` along its heading. */
+ * (createCombatState: every module at full hit points), driving at `speed` along its heading. Its attitude and gun lie
+ * level (the live walk's carry-through charges the exit armour at the hull's own pose: sim/armor.ts tankPoseFromState). */
 function vehicle(id, specId, team, x, z, aspectDeg = 0, speed = 0) {
   const spec = getSpec(specId);
-  return { id, team, specId, spec, state: { pos: { x, y: 0, z }, yaw: Math.atan2(-x, -z) + aspectDeg * DEG, turretYaw: 0, speed }, combat: createCombatState(spec) };
+  return { id, team, specId, spec, state: { pos: { x, y: 0, z }, yaw: Math.atan2(-x, -z) + aspectDeg * DEG, turretYaw: 0, visualPitch: 0, visualRoll: 0,
+    gunPitch: 0, speed }, combat: createCombatState(spec) };
 }
 const soft = (id, team, x, y, z) => ({ id, team, spec: { id: 'target', dims: { heightM: 2.5 } }, state: { pos: { x, y, z }, yaw: 0, turretYaw: 0 }, combat: {} });
 
@@ -62,15 +70,17 @@ const poseOf = (state) => ({ pos: new Vector3(state.pos.x, state.pos.y, state.po
 /** The share of GHOSTS flights of a fired round that hurt (hull damage, a module or a crew member): the live damage model,
  * never the station's estimate, against the scene as it really stood on every tick of the flight (`timeline`, recorded
  * as it ran; both authorities move the hulls, then fire and step the shells, so a round's k-th swept segment meets the
- * poses of k - 1 ticks after its shot). */
+ * poses of k - 1 ticks after its shot). A flight goes on past the hull it hurts (a carry-through, a screen pierce), and
+ * `round.friendly` is the share that strike an ally. */
 function realChance(round, shooter, entities, timeline) {
-  let hurt = 0;
+  let hurt = 0, friendly = 0;
   for (let flight = 0; flight < GHOSTS; flight++) {
     const rng = stream(0x9e3779b9 ^ (flight * 7919 + round.tick * 31));
     const shell = createShell(round.shell, shooter.id, false, round.origin, round.direction, flight);
     const hulls = entities.map((entity, index) => ({ entity, index }))
       .filter(({ entity }) => entity.id !== shooter.id && entity.spec.armor)
       .map(({ entity, index }) => ({ entity, index, ghost: { id: entity.id, spec: entity.spec, state: entity.state, combat: ghostCombat(entity, round.destroyed[index]) } }));
+    let hurtThis = false;
     for (let tick = 1; tick <= 150 && !shell.dead; tick++) {
       stepShell(shell, SIM_DT);
       const frame = timeline[Math.min(timeline.length - 1, round.tick + tick - 1)];
@@ -84,10 +94,12 @@ function realChance(round, shooter, entities, timeline) {
       const wreck = first.ghost.combat.destroyed;
       const event = resolveShellHit(shell, first.ghost, first.hits, rng);
       if (wreck) continue;
-      if (first.entity.team === shooter.team) break;
-      if ((event.damage ?? 0) > 0 || event.modulesHit?.some((m) => m.dmg > 0) || event.crewHit?.length) { hurt++; break; }
+      if (first.entity.team === shooter.team) { friendly++; break; }
+      // a hurting round is followed on: one that carries through or pierces a screen may strike an ally behind
+      if (!hurtThis && ((event.damage ?? 0) > 0 || event.modulesHit?.some((m) => m.dmg > 0) || event.crewHit?.length)) { hurt++; hurtThis = true; }
     }
   }
+  round.friendly = friendly / GHOSTS;
   return hurt / GHOSTS;
 }
 /** A fresh combat state for one ghost flight carrying the hull's own: wrecked or not (at the shot), the mode's damage
@@ -111,6 +123,12 @@ function battle(shooter, entities, seconds = 6, each = () => {}, context = {}) {
     for (const e of entities) {
       if (e.state.yawRate) e.state.yaw += e.state.yawRate * SIM_DT;
       if (e.state.speed) { e.state.pos.x += Math.sin(e.state.yaw) * e.state.speed * SIM_DT; e.state.pos.z += Math.cos(e.state.yaw) * e.state.speed * SIM_DT; }
+      if (e.plane) {
+        // on its hill: seated on the plane, the attitude's rates as movement's spring would carry them
+        const pitch = e.state.visualPitch, roll = e.state.visualRoll;
+        seat(e, e.plane);
+        e.state._spring = { pitchV: (e.state.visualPitch - pitch) / SIM_DT, rollV: (e.state.visualRoll - roll) / SIM_DT };
+      }
     }
     timeline.push(entities.map((e) => poseOf(e.state)));
   };
@@ -130,6 +148,21 @@ function battle(shooter, entities, seconds = 6, each = () => {}, context = {}) {
   return rounds;
 }
 const wasted = (rounds) => rounds.filter((round) => round.p < .1).map((round) => `station ${round.station} tick ${round.tick} p ${round.p}`);
+const intoAllies = (rounds) => rounds.filter((round) => round.friendly > 0).map((round) => `station ${round.station} tick ${round.tick} ally ${round.friendly}`);
+/** A hull on the plane y = gx (x - x0) + gz (z - z0) (a hill face through its start): its height, its pitch and roll along
+ * its heading in sim/armor.ts's frame, and movement's own plane fit (_terr) the roof law climbs it by. */
+function seat(e, plane) {
+  const s = e.state, ahead = plane.gx * Math.sin(s.yaw) + plane.gz * Math.cos(s.yaw), side = plane.gx * Math.cos(s.yaw) - plane.gz * Math.sin(s.yaw);
+  s.pos.y = plane.gx * (s.pos.x - plane.x0) + plane.gz * (s.pos.z - plane.z0);
+  s.visualPitch = Math.atan(ahead); s.visualRoll = Math.atan(side / Math.cos(s.visualPitch));
+  s._terr = { pitch: s.visualPitch, roll: s.visualRoll, fitPitch: s.visualPitch, tipPitch: 0, tipRoll: 0 };
+}
+/** `target` set on a hill rising `grade` per metre towards `uphillDeg` off its heading (0: it faces uphill). */
+function onHill(target, grade, uphillDeg) {
+  const uphill = target.state.yaw + uphillDeg * DEG;
+  target.plane = { gx: grade * Math.sin(uphill), gz: grade * Math.cos(uphill), x0: target.state.pos.x, z0: target.state.pos.z };
+  seat(target, target.plane);
+}
 const expected = (rounds, f = () => true) => rounds.filter(f).reduce((sum, round) => sum + round.p, 0);
 const count = (rounds, f) => rounds.filter(f).length;
 
@@ -443,4 +476,45 @@ for (const moving of [false, true]) {
   assert.deepEqual(b, a, `${moving ? 'moving: ' : ''}host and solo lay every station alike on every tick, to the bit`);
   console.log(`roofHoldFire: host and solo fire ${shotTicks(a, 0).length} 30 mm and ${shotTicks(a, 1).length} 12.7 rounds on the same ticks with the same lays${moving ? ' (the BMP-2 driving)' : ''}`);
 }
-console.log('roofHoldFire: every roof round hurts in the live damage model where it lands (quartering, head-on, turning and driving targets, tracks and a glanced gun, Realistic modules and crew; each station of the K1, TTS and Abrams), and rounds that can hurt still fly, off the middle too; wrecks, seen hulls and allies\' barrels in the line held, an aim point beside an ally reached, an unlayable nearest target and an overhead drone no longer idle a station; drones in reach engaged, never through an ally; the same rounds twice; a pillbox in the line draws nothing; host and solo agree shot for shot, a driving target too');
+// 16. Hills: a hull standing or driving on a slope carries its faces, its centre and its hull box with its pitch and roll,
+//     and one driving on it climbs or descends with the ground (movement's plane fit). Against the poses as recorded,
+//     height and attitude included: the TTS on an M551A1 broadside on a side slope at 200 m, on a BMP-2 driving down a
+//     25 % grade at 160 m (its 30 mm and its M2), and the Abrams's 12.7 on a BMP-2 quartering on a side slope.
+for (const [shooterId, targetId, aspect, range, speed, grade, uphill, least] of [['m551a1_tts', 'm551a1_tts', 90, 200, 0, .25, 90, 7],
+  ['m551a1_tts', 'bmp2', 60, 160, 7, .25, 180, 16], ['m551a1_tts', 'bmp2', 120, 160, 7, .25, 0, 16], ['k1e1', 'amx10p_25', 150, 140, 8, .22, 180, 12]]) {
+  const shooter = vehicle('s', shooterId, 'blue', 0, 0), target = vehicle('t', targetId, 'red', 0, range, aspect, speed);
+  shooter.state.yaw = 0;
+  target.state.pos.x -= Math.sin(target.state.yaw) * speed * 3; target.state.pos.z -= Math.cos(target.state.yaw) * speed * 3;
+  onHill(target, grade, uphill);
+  const rounds = battle(shooter, [shooter, target]), label = `${shooterId} on a ${targetId} at ${aspect} degrees on a ${grade * 100} % hill${speed ? `, driving ${speed} m/s` : ''}`;
+  assert.deepEqual(wasted(rounds), [], `${label}: no round where it cannot hurt`);
+  assert.ok(expected(rounds) >= least, `${label}: ${expected(rounds).toFixed(1)} rounds hurt (at least ${least}; ${rounds.length} fired)`);
+}
+// 17. Allies behind the target: a round that carries through (out the far side with penetration left: the TTS's 30 mm
+//     through an IFV's flank), pierces only a screen or misses flies on (sim/damage.ts resolveShellHit), so the clear
+//     line runs on past the point as far as the round does (a ghost of it at the top of its pen roll). No round strikes
+//     a Leopard 1 parked 8 m behind a Hayate, a BMP-3M or a Bradley the TTS engages on the flank at 120 m (on the 229
+//     module every 30 mm round hurt the IFV and flew on into the Leopard in up to four flights in five). GUARD: a round
+//     the hull stops still flies — the K6 on a BMP-2 broadside with a Marder 5 m behind it, and the TTS on the Hayate
+//     with the Leopard 15 m aside.
+for (const [shooterId, targetId, aspect, range, allyId, behind, across, least] of [['m551a1_tts', 'hayate_ifv', 70, 120, 'leo1a5', 8, 0, 0],
+  ['m551a1_tts', 'bmp3m_dragun125', 110, 120, 'leo1a5', 8, 0, 0], ['m551a1_tts', 'm2a2_bradley', 70, 120, 'leo1a5', 8, 0, 0],
+  ['k1e1', 'bmp2', 90, 100, 'marder1a3', 5, 0, 15], ['m551a1_tts', 'hayate_ifv', 70, 120, 'leo1a5', 8, 15, 6]]) {
+  const shooter = vehicle('s', shooterId, 'blue', 0, 0), target = vehicle('t', targetId, 'red', 0, range, aspect);
+  const ally = vehicle('ally', allyId, 'blue', across, range + behind, 90);
+  shooter.state.yaw = 0;
+  const rounds = battle(shooter, [shooter, target, ally]), label = `${shooterId} on a ${targetId} at ${aspect} degrees, a ${allyId} ${behind} m behind${across ? `, ${across} m aside` : ''}`;
+  assert.deepEqual(intoAllies(rounds), [], `${label}: no round strikes the ally`);
+  assert.deepEqual(wasted(rounds), [], `${label}: no round where it cannot hurt`);
+  if (least) assert.ok(expected(rounds) >= least, `GUARD: ${label}: the station fires on (${expected(rounds).toFixed(1)} of ${rounds.length})`);
+}
+// 18. The aim grid's fine rows: a hurting band a tenth of the face high (a plate's edge, the glacis's joint, the turret
+//     cheeks above the hull's height) between the grid's rows. The TTS's 30 mm on a Type 100 and a BMP-3M head-on at 200 m.
+for (const targetId of ['type100', 'bmp3m_dragun125']) {
+  const shooter = vehicle('s', 'm551a1_tts', 'blue', 0, 0), target = vehicle('t', targetId, 'red', 0, 200, 0);
+  shooter.state.yaw = 0;
+  const rounds = battle(shooter, [shooter, target]), label = `the TTS on a ${targetId} head-on at 200 m`;
+  assert.deepEqual(wasted(rounds), [], `${label}: no round where it cannot hurt`);
+  assert.ok(expected(rounds, (r) => r.station === 0) >= 6, `${label}: the 30 mm hurts (${expected(rounds, (r) => r.station === 0).toFixed(1)} of ${count(rounds, (r) => r.station === 0)})`);
+}
+console.log('roofHoldFire: every roof round hurts in the live damage model where it lands (quartering, head-on, turning and driving targets, on hills too, tracks and a glanced gun, Realistic modules and crew; each station of the K1, TTS and Abrams), and rounds that can hurt still fly, off the middle and between the rows of the grid too; none flies on into an ally behind the target; wrecks, seen hulls and allies\' barrels in the line held, an aim point beside an ally reached, an unlayable nearest target and an overhead drone no longer idle a station; drones in reach engaged, never through an ally; the same rounds twice; a pillbox in the line draws nothing; host and solo agree shot for shot, a driving target too');

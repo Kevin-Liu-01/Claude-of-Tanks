@@ -4,12 +4,13 @@ import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
 import { FLEET_RENEWAL_DONORS } from '../fleetRenewalSpecs.ts';
 
-// 2026-10-21 (owner: "make the t64bv1 look a lot different from the t72b3, rn they look identical"): the T-64BV1 and
-// the Donbas left the T-72B3 study for the T-64's own build (profiles/t64bvX.ts) and keep only the B3's physical frame
-// (fleetRenewalSpecs.ts copyPhysicalFrame: dims, armour, ring and gun datums). This receipt holds the T-64 running gear
-// apart from the donor course (six small steel wheels, four return rollers per side, the narrower double-pin track) and
-// the seating laws the old receipt protected: wheels standing on the band face at one axle height, suspension-driven
-// wheels, and one articulated turret/gun assembly at the combat datum.
+// 2026-10-01: the owner's September renewal (4c34b3e8b, fleet-renewal-publication-20260930.md: "T-64BV1 and UA
+// Donbas use modernized t72b3 foundations") retired the old T-64 builder, its tall 285 mm-wheel course and the
+// t64TallTrackReceipt. Release 237 gave the T-64BV1 and the Donbas a T-64 build of their own; on 2026-10-22 the owner
+// put both back on the T-72B3 study ("the ukranian t64bv1 should just be its previous model with an updated name",
+// then "now redesignn the russian t64bv1 to be based on the ukranian t64bv donbas"): t64bvK1.ts, the study under the
+// Kontakt-1 layout. This receipt holds both to that donor course and to the seating laws: wheels standing on the band
+// face at one axle height, suspension-driven wheels, and one articulated turret/gun assembly at the combat datum.
 const EPSILON = 1e-6;
 const near = (actual, expected, message) => assert.ok(Math.abs(actual - expected) <= EPSILON,
   `${message}: expected ${expected}, received ${actual}`);
@@ -31,27 +32,25 @@ const donorCounts = ['gearRoadWheelTires', 'gearReturnRollerTires', 'gearSuspens
 donor.dispose();
 
 for (const [id, variant] of [['t64bv1', 'bv1'], ['t64bv_donbas', 'donbas']]) {
-  assert.equal(FLEET_RENEWAL_DONORS[id], 't72b3', `${id}: keeps the B3's physical frame`);
+  assert.equal(FLEET_RENEWAL_DONORS[id], 't72b3', `${id}: the renewal builds it on the T-72B3 study`);
   const tank = build(id);
   try {
     const hullRig = tank.root.getObjectByName('rig_hull');
     const turretRig = tank.root.getObjectByName('rig_turret');
     const gunRig = tank.root.getObjectByName('rig_gun');
-    assert.equal(hullRig.userData.familyRebuild?.donor, 't64bv1', `${id}: the T-64's own build, not the T-72B3 study`);
-    assert.equal(hullRig.userData.familyRebuild?.variant, variant, `${id}: its own variant`);
+    assert.equal(hullRig.userData.familyRebuild?.donor, 't72b3', `${id}: owner-directed T-72B3 family rebuild`);
+    assert.equal(hullRig.userData.familyRebuild?.variant, variant, `${id}: its own modernization variant`);
     const [receipt] = hullRig.userData.runningGearReceipts || [];
     assert.ok(receipt, `${id}: exposes the canonical running-gear receipt`);
-    assert.equal(receipt.wheelZs.length, 6, `${id}: six road wheels per side`);
-    assert.ok(receipt.wheelR < donorGear.wheelR - .06, `${id}: the T-64's small wheels (${receipt.wheelR} against ${donorGear.wheelR})`);
-    assert.notDeepEqual(receipt.wheelZs, donorGear.wheelZs, `${id}: its own wheel stations`);
-    assert.notDeepEqual(receipt.idler, donorGear.idler, `${id}: its own idler`);
-    assert.notDeepEqual(receipt.sprocket, donorGear.sprocket, `${id}: its own drive sprocket`);
-    // The T-64 identity keeps its exposed forged arms (suspensionPatterns.ts family rule).
+    for (const key of ['wheelZs', 'wheelY', 'wheelR', 'idler', 'sprocket', 'topY', 'botY', 'trackTh',
+      'shoeRadialScale']) {
+      assert.deepEqual(receipt[key], donorGear[key], `${id}: ${key} is the t72b3 donor course`);
+    }
+    // The T-64 identity keeps its exposed forged arms (suspensionPatterns.ts family rule) on the donor stations.
     assert.equal(receipt.suspensionPatternId, 't64-torsion-arm', `${id}: uses the exposed T-64 torsion-arm geometry`);
-    const [wheels, rollers] = ['gearRoadWheelTires', 'gearReturnRollerTires'].map((name) => hullRig.getObjectByName(name)?.count);
-    assert.equal(wheels, 12, `${id}: twelve road wheels`);
-    assert.equal(rollers, 8, `${id}: four return rollers per side (the T-72 carries three)`);
-    assert.equal(donorCounts[1], 6, 't72b3: three return rollers per side');
+    assert.deepEqual(['gearRoadWheelTires', 'gearReturnRollerTires', 'gearSuspensionLinks', 'gearSuspensionJointBosses']
+      .map((name) => hullRig.getObjectByName(name)?.count), donorCounts,
+    `${id}: complete donor wheels, rollers, torsion arms and joint bosses`);
     near(receipt.wheelY, receipt.botY + receipt.trackTh / 2 + receipt.wheelR,
       `${id}: road-wheel axle rests on the band face (ground-datum seat, 2026-09-17)`);
     const roadWheels = hullRig.getObjectByName('gearRoadWheelTires');
@@ -69,4 +68,4 @@ for (const [id, variant] of [['t64bv1', 'bv1'], ['t64bv_donbas', 'donbas']]) {
   }
 }
 
-console.log('t64RunningGearTurretCenter.selftest: T-64BV1 and Donbas run their own six-small-wheel course with seated wheels and an articulated turret at the combat datum');
+console.log('t64RunningGearTurretCenter.selftest: the T-64BV1 and the T-64BV mod. 2017 run the T-72B3 study course with seated wheels and an articulated turret at the combat datum');

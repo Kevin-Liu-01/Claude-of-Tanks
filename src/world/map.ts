@@ -19,6 +19,8 @@ import {
 import './maps/horizon.ts';
 // Round 73 (2026-09-25): the tall-grass tier and the pressure field its blades bend to
 import { createTallGrass, type TallGrass } from './tallGrass.ts';
+// item 45 (2026-10-22): the ruts behind the tanks
+import { createTrackMarks, trackMarkSegmentsFor, type TrackMarks, type TrackMarksHull } from './trackMarks.ts';
 import type { GroundDisturbance } from './groundPressure.ts';
 import type { HeightField, TerrainMapConfig } from './terrain.ts';
 import {
@@ -43,7 +45,7 @@ import { createGroundCoverClearance } from './groundCoverClearance.ts';
 import { withGroundCoverHoles, type GroundCoverHole } from './sceneryPlan.ts';
 import { clearShrubsFromSolids } from './shrubClearance.ts';
 import { prepareSourcedTerrain } from './sourcedTextures.ts';
-import { getDeviceTier } from '../engine/quality.ts';
+import { getDeviceTier, resolvePresetName } from '../engine/quality.ts';
 import { splitProgramVariants } from '../engine/programVariants.ts';
 import { loadEarthLand, skyDrawsEarth } from '../engine/earthLandAccess.ts';
 import type { StructureGroundOcclusionHandle } from '../engine/structureGroundOcclusion.ts';
@@ -249,6 +251,9 @@ export interface WorldRuntime {
    * filled in), where its parts are in the merged buckets, and its kit chain's stage builders — or null.
    */
   structureDamage(structureIdx: number): StructureDamageSeam | null;
+  /** (perf-240) The presentation's structure table and its bodies' record grid made now (the battle's warm, behind its
+   *  veil), not at the battle's first destruction event (16 + 5 ms on Steinburg, in that frame). */
+  warmDestruction?(): void;
   /**
    * Hand every props-bucket material (each batch's own clone included, and the depth material every bucket that casts
    * a structure's shadow draws its shadow with: info.role 'depth') to `patch` once, with the meshes drawing it; returns
@@ -327,6 +332,16 @@ export interface WorldRuntime {
   advanceWater(dt: number, anchorX: number, anchorZ: number): void;
   /** Round 73: every hull this frame (footprint, heading, speed) — the tall grass lies down under it. */
   setGroundDisturbances?(sources: readonly GroundDisturbance[]): void;
+  /**
+   * Item 45 (2026-10-22): the ruts behind the tanks (trackMarks.ts; presentation only, never a simulation input).
+   * `advanceTrackMarks` steps their clock by the battle's step; `stampTrackMarks` lays one hull's pose (its key, centre,
+   * yaw, half gauge, track width and depth); `layTrackMarkPaths` drives hulls along polylines (the capture tools'
+   * staging); `trackMarksActive` is true while hulls are laying them (the FX layer's dry prints stand down then).
+   */
+  advanceTrackMarks?(dt: number): void;
+  stampTrackMarks?(key: object, x: number, z: number, yaw: number, halfGaugeM: number, trackWidthM: number, depth: number): void;
+  layTrackMarkPaths?(paths: readonly (readonly number[])[], speedMps?: number, hull?: TrackMarksHull): number;
+  trackMarksActive?(): boolean;
   setSniperFade(
     fraction: number,
     immediate?: boolean,
@@ -337,6 +352,8 @@ export interface WorldRuntime {
   _buildDetail?: { vegetation: RuntimeValue; terrain: RuntimeValue; props: RuntimeValue };
   /** Round 73: the tall-grass tier (diagnostics and the round's probes). */
   _tallGrass?: TallGrass;
+  /** Item 45: the ruts' ring (diagnostics, the cost probe and the capture tools). */
+  _trackMarks?: TrackMarks;
 }
 
 const _pt = new THREE.Vector3();
@@ -724,6 +741,9 @@ function assembleWorld(
     // receipts stub the engine context without the hook, production always has it
     setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
     releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
+    // (rock round 2, the map-revival lane) the chips each boulder sheds round its foot
+    rockFeet: (props.group.userData.rockFeet as Array<{ x: number; z: number; r: number }> | undefined) ?? null,
+    rockChipTint: (props.group.userData.rockChipTint as [number, number, number] | null | undefined) ?? null,
   });
   group.add(litter.group);
   // Round 73 (2026-09-25, the ground redux): the tall-grass tier — blades in a camera-centred ring, bent by the
@@ -735,10 +755,20 @@ function assembleWorld(
     blocked: groundCoverClearance(),
     renderer: (engineCtx as { renderer?: THREE.WebGLRenderer }).renderer ?? null,
     splatNoise: sampleSplatNoise,
+    rockFeet: (props.group.userData.rockFeet as Array<{ x: number; z: number; r: number }> | undefined) ?? null, // (rock round 2)
     setupMaterial: (material, hook) => engineCtx.setupShadowMaterial?.(material, hook),
     releaseMaterial: (material) => engineCtx.releaseShadowMaterial?.(material),
   });
   group.add(tallGrass.group);
+  // item 45 (2026-10-22; the ground lane's track marks of 2026-10-08 re-cut): the ruts behind the tanks — a ring of strips
+  // that modulate the drawn ground, laid from the simulation's tank poses (stampTrackMarks), sized by the quality preset
+  // and cleared with the destructibles at every battle's start
+  let trackMarkPreset: string | null = null;
+  try { trackMarkPreset = resolvePresetName(); } catch { /* a receipt's world: the medium ring */ }
+  const trackMarks = createTrackMarks(heightField, { segments: trackMarkSegmentsFor(trackMarkPreset) });
+  group.add(trackMarks.mesh);
+  // while hulls lay them the FX layer's own short-lived dry prints stand down (fx/effects.ts dust)
+  (heightField as HeightField & { trackMarksActive?: () => boolean }).trackMarksActive = () => trackMarks.active();
   const rayCandidates: CollisionRecord[] = [];
 
   const sp = layout.spawns;
@@ -921,6 +951,7 @@ function assembleWorld(
       }
       litter.dispose();
       tallGrass.dispose(); // round 73: the sward, its materials and the pressure field's targets
+      trackMarks.dispose(); // item 45: the ruts' ring and material
       terrain.userData.disposeWater?.(); // water pass 8: the reactive field's render targets
       horizonPanorama?.dispose(); // the mountains lane: the far panorama's atlas
     },
@@ -933,6 +964,7 @@ function assembleWorld(
     getFieldWallWorkState: () => ({ pending: (props.group.userData.fieldWallLod as { pending?: number } | undefined)?.pending ?? 0 }),
     /** Round 73: the tall-grass tier (diagnostics and the round's probes: state, meshes, the press field). */
     _tallGrass: tallGrass,
+    _trackMarks: trackMarks,
     raycast,
     groundOcclusion,
     /** @returns {Array<{min:number[],max:number[]}>} static obstacle AABBs */
@@ -951,6 +983,7 @@ function assembleWorld(
     // 'loop'-class small clutter) — hull overlap in main.ts triggers
     // crushProp (hinge-topple / debris swap) + fx.propCrush splinters.
     structureDamage: getStructureDamage,
+    warmDestruction: () => { structureTable ??= createStructureDamage(obstacles, colliders); getBodyRecordQuery(); },
     patchStructureMaterials: (patch) => patchStructureMaterialEntries(props.structureMaterials, patch),
     touchStructureShadows: (structureIdx) => { getStructureDamage(structureIdx)?.touchShadows(); },
     bodyRecordQuery: getBodyRecordQuery,
@@ -1021,6 +1054,7 @@ function assembleWorld(
       groundCoverCraters.resetHoles(); // ground lane: the battle's presentation holes go with it
       if (props.resetDestructibles) props.resetDestructibles();
       if (vegetation.resetToppled) vegetation.resetToppled();
+      trackMarks.reset(); // item 45: every battle starts on unmarked ground
     },
     pressHull: (x: number, z: number, yaw: number, halfLength: number, halfWidth: number) => {
       props.pressHull?.(x, z, yaw, halfLength, halfWidth);
@@ -1080,6 +1114,7 @@ function assembleWorld(
       vegetation.followCraters?.(groundCoverCraters);
       tallGrass.followCraters?.(groundCoverCraters);
       litter.followCraters?.(groundCoverCraters);
+      trackMarks.followCraters(groundCoverCraters); // item 45: a crater takes the ruts in its bowl, re-seats its flank's
       // water pass 8: the reactive field's window follows the chase focus (the camera when there is none)
       const waterAnchor = focusPos ?? cameraPos;
       terrain.userData.updateWater?.(dt, waterAnchor.x, waterAnchor.z);
@@ -1087,6 +1122,7 @@ function assembleWorld(
       bakePanorama(); // a no-op once baked
       litter.update(cameraPos);
       tallGrass.update(dt, cameraPos, focusPos, cameraFwd); // round 73: the sward's ring, wind and press
+      trackMarks.update(cameraPos); // item 45: the ruts' distance fade and the ring's wrap
       if (props.updateProps) props.updateProps(dt, cameraPos); // pole LOD + hinge-topple anims
       // (destruction-slabs 227 round 4) the structures' damage measures the build deferred (structureDamageSeam.ts), a
       // slice a frame till none is left
@@ -1118,6 +1154,11 @@ function assembleWorld(
     advanceWater(dt, x, z) { terrain.userData.updateWater?.(dt, x, z); },
     /** Round 73: the hulls' footprints this frame press the tall grass (main.ts publishes every vehicle). */
     setGroundDisturbances(sources) { tallGrass.setDisturbances(sources); },
+    /** Item 45: the ruts behind the tanks (battlePresentationRuntime.ts lays them from the simulation's poses). */
+    advanceTrackMarks(dt) { trackMarks.advance(dt); },
+    stampTrackMarks(key, x, z, yaw, halfGaugeM, trackWidthM, depth) { trackMarks.stamp(key, x, z, yaw, halfGaugeM, trackWidthM, depth); },
+    layTrackMarkPaths: (paths, speedMps, hull) => trackMarks.layPaths(paths, speedMps, hull),
+    trackMarksActive: () => trackMarks.active(),
     /**
      * Sniper near-grass suppression passthrough (see vegetation.setSniperFade).
      * @param {number} f target fade 0..1

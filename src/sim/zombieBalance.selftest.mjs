@@ -19,12 +19,12 @@ const infected = matchRulesetFor('infected');
 const horde = matchRulesetFor('endless_horde');
 
 // --- the rules ------------------------------------------------------------------------------------------------------
-assert.deepEqual({ ...infected.infection }, { infectedSpeed: 1.3, survivorHpScale: 1.3, infectedHpScale: 0.25, infectedReloadScale: 1, hunt: true },
-  'Infected: sturdy survivors, fragile infected that hunt at +30 % speed at their own reload (round 3, the critic\'s M3: round 2\'s x1.8 made the outbreak a shooting gallery)');
+assert.deepEqual({ ...infected.infection }, { infectedSpeed: 1.3, survivorHpScale: 1.3, infectedHpScale: 0.2, infectedReloadScale: 1, hunt: true },
+  'Infected: sturdy survivors, fragile infected (a fifth of their hull since 240) that hunt at +30 % speed at their own reload (round 3, the critic\'s M3: round 2\'s x1.8 made the outbreak a shooting gallery)');
 assert.deepEqual([...infected.infectionBots.arrival.spawnRingM, ...infected.infectionBots.arrival.fallbackRingM, infected.infectionBots.arrival.spawnMinHumanM],
   [70, 120, 120, 200, 60], 'the infected rise 70-120 m round the survivors, else 120-200 m, never inside 60 m (round 3b: never at a base a minute off)');
 assert.equal('infectedRespawnS' in infected.infection, false, 'one respawn clock: the dead infectedRespawnS is gone');
-assert.equal(infected.respawnS, 5); assert.equal(infected.hpScale, 1); assert.equal(infected.timeLimitS, 420, 'the plan\'s seven-minute round (round 3: round 2\'s five minutes moved the survivors\' wins into the band by the clock)'); assert.equal(infected.ammo, 'unlimited');
+assert.equal(infected.respawnS, 5); assert.equal(infected.hpScale, 1); assert.equal(infected.timeLimitS, 180, 'a three-minute round (240: at seven, after 233\'s pack hunt, the outbreak took all 48 probe rounds)'); assert.equal(infected.ammo, 'unlimited');
 assert.equal(infected.enemies, 5, 'five initial infected: the outbreak comes on numbers'); assert.equal(matchRulesetFor('infected', null, { enemies: 1 }).enemies, 3, 'at least three');
 assert.equal(matchRulesetFor('infected', null, { enemies: 8 }).enemies, 8, 'an arranged outbreak keeps its size');
 assert.equal(horde.hpScale, 2, 'Horde: the humans\' hull doubled'); assert.equal(horde.horde.hostileHpScale, 0.15, 'the zombies at 15 % of their own');
@@ -53,10 +53,10 @@ for (let wave = 1; wave <= 30; wave++) assert.ok(hordeHostileHull(horde.horde, w
   assert.ok(!survivor.rush && !survivor.conserveRounds && survivor.spearheadGuard && survivor.holdBandScale === 1, 'the survivors fight back at range');
   assert.equal(zombie.searchRouting, 'spotted'); assert.equal(infectedBot.searchRouting, 'spotted'); assert.equal(survivor.searchRouting, 'spotted');
 }
-assert.deepEqual(rulesetLines(infected).slice(0, 3).map((line) => [line.key, line.values.value]), [['infection', undefined], ['hp', '+30 % / -75 %'], ['ammoUnlimited', undefined]],
+assert.deepEqual(rulesetLines(infected).slice(0, 3).map((line) => [line.key, line.values.value]), [['infection', undefined], ['hp', '+30 % / -80 %'], ['ammoUnlimited', undefined]],
   'the Infected card shows both hulls in one chip (own / hostile), no line of their own');
 assert.ok(rulesetLines(infected).every((line) => line.key !== 'hostileHull') && rulesetLines(horde).every((line) => line.key !== 'hostileHull'));
-assert.deepEqual([modeCopyValues('infected').survivorHp, modeCopyValues('infected').infectedHp], [130, 25], 'the card copy quotes the table');
+assert.deepEqual([modeCopyValues('infected').survivorHp, modeCopyValues('infected').infectedHp], [130, 20], 'the card copy quotes the table');
 
 // --- the controller ---------------------------------------------------------------------------------------------------
 function tank(id, team, x, z, bot = true) {
@@ -79,7 +79,7 @@ function controller(mode, entities, ruleset = undefined) {
   // quarry choice reads from the seats as placed
   const seated = { ...infected, infectionBots: { ...infected.infectionBots, arrival: null } };
   const mode = controller('infected', [player, near1, far1, zombie, other], seated);
-  assert.equal(near1.combat.maxHp, 1300); assert.equal(zombie.combat.maxHp, 250, 'the stamp: 130 % survivors (gameplay-modes-233), 25 % infected (gameplay-modes-228)');
+  assert.equal(near1.combat.maxHp, 1300); assert.equal(zombie.combat.maxHp, 200, 'the stamp: 130 % survivors (gameplay-modes-233), 20 % infected (240)');
   // the honest hunt (gameplay-modes-228): a labelled mission at a quarry its side has spotted (no spotting hook here: every
   // living survivor counts as spotted), one hunter a quarry before any doubles up
   assert.deepEqual(mode.botTarget(zombie), { x: 40, z: -20, mission: 'hunt' }, 'an infected bot hunts the nearest survivor');
@@ -92,7 +92,7 @@ function controller(mode, entities, ruleset = undefined) {
   assert.ok(Math.hypot(next.x - 300, next.z + 100) < Math.hypot(next.x + 200, next.z + 200),
     'the hunt moves on to the next survivor, the human player included (approached on a lane, not in a line)');
   mode.step(1 / 60, 1 + infected.respawnS);
-  assert.equal(near1.combat.destroyed, false); assert.equal(near1.combat.maxHp, 250, 'a converted survivor returns as a fragile infected');
+  assert.equal(near1.combat.destroyed, false); assert.equal(near1.combat.maxHp, 200, 'a converted survivor returns as a fragile infected');
   assert.equal(near1.modeSpeedMultiplier, infected.infection.infectedSpeed);
 }
 {

@@ -1,63 +1,78 @@
-# Type 10 (Dozer) — packet
+# Type 10 Kaitaku (`type10_dozer`) — packet
 
-First-party JGSDF Type 10 with the dozer kit (`type10_dozer`, profiles/japan.ts `buildType10Dozer`, kit in
-profiles/type10Dozer.ts). Production base: modern3.ts `buildType10Native2026` through `buildType10DozerBase`.
+First-party JGSDF Type 10 breaching variant: the modern Type 10 (`type10`, the independent X build, profiles/type10X.ts)
+with the dozer kit (profiles/type10Dozer.ts) and a field kit (profiles/type10DozerFieldKit.ts). Builder
+`buildType10Dozer` in profiles/japan.ts; spec in type10DozerSpecs.ts; appliqué datums and plates in type10DozerArmor.ts.
 
 ## Current status
 
-- Updated: 2026-10-21.
-- Owner request (verbatim, 2026-10-21): "2. make a new type 10 variannt based off the version with a dozer!" with a
-  reference render: a Type 10 in green digital camouflage, plate 99-0239, a bow-mounted dozer blade.
-- ID and display name: `type10_dozer`, "Type 10 (Dozer)" (short "Type 10 Dozer").
-- Implementation status: built; stowed (battle, Garage) and lowered (presentation) poses.
-- Qualification status: NOT RUN (owner ruling 2026-10-21: no receipts, suites, censuses or critics; typecheck and build
-  only, plus the owner screenshots).
-- Publication status: lane branch `item/vehicles-type10-dozer-233`; integration by "Claude of Tanks Main".
-- Never re-keyed: `type10_tk_x`, `type10b` and `type10` keep their ids and their builds (the new builder options default
-  to the old plates and numbers, so their geometry and decals are unchanged).
+- Updated: 2026-10-22.
+- Owner requests, verbatim, in order:
+  - 2026-10-21: "make a new type 10 variannt based off the version with a dozer!"
+  - 2026-10-22: "oops the type 10 dozer shoouldve applied to the most modern type 10 design we had, u applied it to the
+    wrong next gen moodel instead of the "modern" model"
+  - 2026-10-22: "make it have 2 unique auto cannnonn turrets, a bunch of new cages and side armor and turret armor and
+    lights and equipment", then "sorry they should be machine guns not autocannons", "also add a giant flootlight next to
+    gun to left of it", "where the old machine gunn was on the original type 10, add annother euqipment light", "put thee
+    flood light on other side of gun and give this a unique name for a variannt instad of just "dozer"".
+- ID and display name: `type10_dozer` (never re-keyed), "Type 10 Kaitaku" (開拓, land-clearing); "Type 10 (Dozer)",
+  "Type 10 Dozer" and "Kaitaku" are search aliases.
+- Base: in the Garage, "Type 10" (`type10`) is the Modern-era production tank; "Type 10 (TK-X)" (`type10_tk_x`) is the
+  Modern-era prototype status build (its schema-1 id was `type10`) and "Type 10B" (`type10b`) the Next Generation
+  concept. The first build of this variant (release 238) sat on the TK-X; it now sits on `type10`.
+- Qualification: owner light checks (typecheck, build, one blind critic); no suites or censuses.
 
-## The real configuration
+## Base and spec
 
-- The JGSDF calls these vehicles ドーザ装置付き (dozer-equipped). Some units' tanks carry the kit; it shows up in parade
-  columns among standard hulls. Prototype No. 3 carried one (displayed at the Fuji School), and production-type dozer
-  kits are modelled (Fujimi 1/72 ML15, "10式戦車 量産型 ドーザー付き").
-- The blade is hydraulic, worked from inside the vehicle, and moves only up and down: it cannot angle or tilt. It is
-  sized not to foul the main gun or the tank's mobility, so it digs a hasty tank scrape or clears obstacles, far short
-  of a bulldozer (trafficnews.jp, "戦車ってブルドーザーになる？“ドーザー付き”車体の役割").
-- Not found: published blade dimensions. The blade here is sized from the hull: 3.29 m wide (the track bands end at
-  1.592 m off the centreline), 0.84 m tall along its face.
+- type10DozerSpecs.ts clones `type10` once the second-wave X registry has run (fleetRegistration imports it after it):
+  type10's armour, frame, dims (its silhouette oracle rows stripped) and gun rig (no combat gun-rig row, as type10). Its
+  own stats (2650 HP, 1200 hp, 50 t, 66 / 30 km/h, 44 and 46 deg/s, 36 deg/s pitch), number '24', paint
+  `paint_type10_dozer`, tier X, assault role and roster slot are unchanged; type10, type10_tk_x and type10b finalize
+  byte-identical and match their ledger digests.
+- The builder is `buildType10X(P, { remoteM2: false })` (type10's own 12.7 mm station left off), then the dozer kit and
+  the field kit. modern3.ts is back to its pre-dozer Type 10.
+- Look: the variant dresses as type10 (decorations.ts DECOR_TWIN: type10's manifest and seed) with the bow, the stations,
+  the cheek kit and the bins reserved from the decor; type10's turret marking seat and native wheels.
 
-## Construction
+## Dozer kit (type10Dozer.ts)
 
-- Hinge: two clevises welded on the lower bow plate at x ±0.62 (inside the 1.076 m track bands), pin at hull y 0.518,
-  z 3.322 (6.5 cm off the plate at plate height 0.56).
-- Push arms: 0.10 × 0.12 m box beams from the hinge pins to pins behind the blade's bottom rail.
-- Moldboard: concave face (w = -0.10 (1 - ((u - 0.40)/0.42)^2)), 32 mm plate with three back rails extruded in one
-  section, bolted cutting edge and end bits, 30 mm end plates, ribs at x ±1.15, paired arm and ram bracket plates.
-- Rams: x ±0.40, from raised clevis pedestals on the beak plate (pin 0.15 m off the plate at z 3.40) to eyes behind the
-  top rail; 0.42 m barrels, stroke 0.34 m between the poses; two hoses per ram from bulkhead fittings outboard of each
-  pedestal (hydraulics inside the hull).
-- Stowed: cutting edge at y 0.45, z 4.30, the blade tipped back 16 degrees, its top at y 1.26; the lowest kit vertex
-  y 0.417, over the 0.374 belly line (coordinator ruling 2026-10-16: nothing below the belly line).
-- Lowered (presentation only, `spec.visual.dozerBlade = 'lowered'` before the build): the rigid assembly turns 25.2
-  degrees about the hinge; the edge sits 4 cm off the ground at z 4.18.
-- Markings: no plate on the blade. Marking seats are armour-only (vehicleMarkingSeating.ts) and the kit is equipment,
-  so the nose plate (behind the blade, `bowNumberPlate: false`) is dropped and the stern plate and the turret carry
-  the numbers (the paint system prints the spec's tactical number, '24').
-- Gameplay: the Type 10's gun, fire control and armour; 50 t, 66 km/h, 30 km/h reverse, 44 deg/s pivot, 2650 HP;
-  breakthrough role (assault doctrine). The kit is equipment (`hullEquipment`), not armour.
-- Paint: the owner's green digital, its own catalog paint `paint_type10_dozer` ("JGSDF Digital Woodland" /
-  "陆上自卫队林地数码迷彩"), appended after GT so production's serialized camo indices hold, and the tank's stock coat
-  (camoPolicy.ts DEFAULT_CAMO_PATTERN_BY_TANK_ID; otherwise it would wear Japan's national service_type10).
+- Seats re-derived from type10X.ts `TYPE10_X_BOW_SECTIONS` (exported, numbers unchanged): plate A (floor from the belly
+  at z 2.90 to the crease at y 0.72) and plate B (the crease to the nose, y 1.146, z 3.615), both facing forward and down.
+  type10's gun at its 10 degree stop sweeps only 0.15-0.25 m over its beak, and any beak seat drove the lowered rams
+  through the nose, so the TK-X kit's beak rams could not be kept.
+- Push arms pinned on plate A at x +-0.67 (between the tow eyes and the tub's flank), hinge at hull (y 0.566, z 3.198).
+- Rams on plate B midway between the inner and outer spare-link pairs (x +-0.462, type10XBow.ts link stations), just
+  under the nose; barrel and rod follow the two poses (closed 0.533 m, open 0.679 m). Hoses from bulkhead fittings above
+  each clevis pad. The spare links and tow eyes stay.
+- Same blade (3.29 m, 0.84 m along its face). Stowed: tipped back 32 degrees, cutting edge at (y 0.52, z 4.62), top
+  y 1.238; lowest kit vertex y 0.413 over the hull's 0.393 m floor (sim-floor panYM 0.368 is the skirt hem). Lowered
+  (presentation only, `spec.visual.dozerBlade = 'lowered'`): turned 19.8 degrees about the hinge, edge 4 cm off the ground.
+- Clearances (lane probes): no kit vertex inside the hull deeper than 5 mm in either pose (the pads, cheeks and fittings
+  embed 4 mm by design); ribs and end plates 0.2 m clear of the mudguard folds.
 
-## Measurements (lane probes, .qa-dev/type10-dozer, not receipts)
+## Field kit (type10DozerFieldKit.ts)
 
-| Check | Result |
-| --- | --- |
-| Kit against the base hull, stowed | Only the intended 4 mm embeds of the clevis pads, cheeks and hose fittings are within 6 mm. |
-| Kit against the base hull, lowered | The same, plus 5.4 mm to the base build's nose-plate decal, which this tank does not carry. |
-| Gun at its 10-degree stop over the hull, every 2 degrees of yaw | Identical to `type10_tk_x` at every yaw. The production Type 10's own mantlet underside reaches its deck at yaw 8-48 degrees each side (inherited, not the kit). |
-| Gun at its 10-degree stop, kit share | The kit is never the gun's nearest surface where the base reads under 6.5 cm (identical per-yaw minima). By section: >= 0.14 m over the ram pedestals (top y 1.52 at z 3.46), >= 0.17 m over the blade top (y 1.26) at its corners; no depression change needed for the kit. |
-| Inherited (not the kit) | The production Type 10 (type10_tk_x, type10b, this tank) touches its own deck with the mantlet underside at the 10-degree stop over yaw 8-48 degrees each side: a family gunPitchByYawDeg curve or mantlet fix is a separate item. |
-| Blind critic (Main's light-check rule, 2026-10-21) | One critic, five randomised base/dozer pairs, key opened after scoring: base 6.5-7, dozer 5-6. Fixed in the one round: push arms 0.16 m deep (the blade read as unmounted), ram hoses from bulkhead nut and nipple to elbow ports (they read as ending in air). Not kit defects: blade paint differs between the two poses (camo is projected at build, and only the stowed pose runs in game); the muzzle bore, the stern strip and skirt tiling are the base's. |
-| Lowered-pose renders | The generated interior fills are measured on the stowed build; the ~190 small boxes that plug the kit's water-holding pockets (rail troughs, ram/beak gaps) would hang in the air with the blade down, so the lowered presentation renders leave out exactly the kit-region boxes absent from the base's record. |
+- Two remote machine-gun turrets on raised rings on the rear roof, each a working auxiliary station at its true calibre
+  (sourceMachineGun): a 12.7 mm M2-pattern gun on an open cradle (left; ready box, sight head) and a 7.62 mm gun in an
+  enclosed armoured mini-turret (right; side sight, cooling sleeve, boresighted searchlight on its pitch). Traverse
+  arcs and per-yaw depression from tools/roof-station-arcs.mjs: 12.7 mm -117..131 degrees, 7.62 mm -103..251, each
+  blocked only toward the other station and a mast (2 degree / 0.01 rad margins).
+- A giant floodlight (0.54 m drum, armoured doors open) beside the main gun on its right (-x), on a yoke bolted to the
+  right cheek's raked face and top; its inner edge 0.38 m off the mantlet. (First fitted on the left, moved on the
+  owner's word; the coaxial gun's port is on the left.)
+- An equipment light on the original Type 10's 12.7 mm ring by the cupola: a slewing lamp head on a short mast.
+- Cages: the modern field cage on the turret's rear two thirds (modernFieldCage.ts) and slat screens on the hull's rear
+  flanks.
+- Bolted appliqué with raised rims: four modules a side on the hull skirts, two wall modules and a cheek module a side on
+  the turret; spaced plates over them in the spec (hull 100 / 280 mm KE / CE, turret 140 / 360).
+- Smoke: a four-tube bank a side on the rear turret modules (8 charges, as the TK-X build carried; type10 draws none).
+- Work lamps on the forward turret modules and over the bustle; stowage bins on the front fenders.
+
+## Blind critic (one round, 2026-10-22)
+
+Six randomised before/after pairs (before: the release-238 TK-X build; after: this build before its fix round), three
+type10 reference views, key sealed until scoring. The after build read as the modern Type 10 underneath in 6 of 6 pairs,
+won 4, tied 1 and lost the bow close-up; verdict "yes, it reads as the modern Type 10 with a seated blade". Fix round:
+the raised blade read as a plate pressed on the nose with its arms and rams hidden (in 3D it stood 0.29 m off), so it
+stands 0.12 m further out (edge z 4.50 -> 4.62). The end plate "clipping" the skirt's front corner is perspective (no
+contact within 0.2 m).

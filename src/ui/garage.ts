@@ -39,6 +39,9 @@ import type { EquipmentItem } from '../game/equipment.ts';
 import { equipmentHoverPreview, projectEquipmentLoadout } from './equipmentPreview.ts';
 import { equipIconSVG } from './equipIcons.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { keycap, scale20, wireRoving } from './components/components.ts';
+import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
+import { CAMPAIGN_OPERATIONS, campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
 import { shellIconSVG } from './shellIcons.ts';
 import {
@@ -65,7 +68,7 @@ import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts'
 import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { testDriveLaunch } from '../game/provingGroundSession.ts';
 import {
-  isWaveMode, matchRulesetFor, modeCopyValues, rulesetSides, BATTLE_FIELD_LIMIT, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
+  isWaveMode, matchRulesetFor, modeCopyValues, rulesetSides, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
 } from '../sim/matchRuleset.ts';
 import { readMarsSettings, readTeamArrangement, writeMarsSettings, writeTeamArrangement } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
@@ -171,7 +174,7 @@ interface GarageOptions {
   readonly onBattle?: (
     specId: string,
     mapId: string,
-    options: { readonly gameMode: GameModeId },
+    options: { readonly gameMode: GameModeId; readonly campaignOperationId?: string },
   ) => void;
   readonly onPlayRequest?: (request: PlayRequest) => void;
   readonly onPlayModeIntent?: (mode: BattleMode) => void;
@@ -209,6 +212,30 @@ export interface GarageRuntime {
   /** Test drive a vehicle (default: the selected one) on the proving ground; false when it cannot launch now. */
   testDrive(specId?: string | null): boolean;
   setSelectedMap(mapId: string): void;
+}
+
+/** Each battle rule's glyph (src/ui/icons): the Deploy screen's choices and the Deploy button read this one table. */
+const MODE_GLYPH: Readonly<Partial<Record<GameModeId, string>>> = Object.freeze({
+  zone_control: 'modeZones', capture_the_flag: 'modeFlag', frontline_assault: 'modeFrontline', turbo_ball: 'modeTurbo',
+  gun_game: 'modeGunGame', mars: 'modeMars', juggernaut: 'modeJuggernaut', infected: 'modeInfected',
+  endless_horde: 'modeHorde', realistic: 'modeRealistic', drone: 'modeDrone', ac130: 'modeAc130',
+});
+
+/** The showroom's stations (brand-ui S2): the rail's six views of the selected tank, keys 1 to 6. */
+const GARAGE_STATIONS = Object.freeze([
+  ['overview', 'performance'], ['firepower', 'gun'], ['mobility', 'speed'],
+  ['protection', 'shield'], ['crew', 'crew'], ['appearance', 'camouflage'],
+] as const);
+type GarageStation = (typeof GARAGE_STATIONS)[number][0];
+
+/** The Deploy screen's rule choices: glyph, name and a chip row the ruleset fills (renderDeployChips). */
+function deployCardsHTML(ids: readonly GameModeId[], card: boolean): string {
+  return ids.map((id) => {
+    const name = `<span class="choice-name">${t(`playMenu.matchMode.${id}.label`)}</span><span class="cot-deploy-chips" data-deploy-chips="${id}"></span>`;
+    return `<button class="cot-battle-choice${card ? ' cot-deploy-card' : ''}" type="button" data-game-mode="${id}" data-mode-tone="${id}" ` +
+      `aria-pressed="false"><span class="choice-icon">${uiIconSVG(MODE_GLYPH[id] || 'modeStandard', card ? 44 : 24)}</span>` +
+      `${card ? name : `<span>${name}</span>`}</button>`;
+  }).join('');
 }
 
 function requiredElement<T extends Element>(parent: ParentNode, selector: string): T {
@@ -558,34 +585,27 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   root.innerHTML =
     `<div class="band-top"></div><div class="band-bot"></div>` +
     `<div class="band-l"></div><div class="band-r"></div>` +
-    `<div class="cot-brand-rail"><div class="title">` +
-    // brand mark (tank + Claude Code commander) so the garage brand matches
-    // the entry screen; master copy public/brand/logo-mark.svg
-    `<img class="mark" src="/brand/logo-mark.svg" alt="" draggable="false">` +
-    `<span lang="en">CLAUDE <b>OF TANKS</b></span></div>` +
-    `<div class="cot-brand-utilities cot-header-nav" aria-label="${t('garage.nav.home')} & ${t('garage.nav.record')}">` +
-    `<button class="nv" data-nav="home" type="button" aria-label="${t('garage.nav.home')}" title="${t('garage.nav.home')}">` +
-    `${uiIconSVG('home', 16, 'currentColor', 'nvi nvi-product')}` +
-    `<span class="nav-label">${t('garage.nav.home')}</span></button>` +
-    `<button class="nv cot-record-trigger" type="button" aria-label="${t('garage.nav.record')}" ` +
-    `title="${t('garage.nav.record')}" aria-haspopup="dialog" aria-expanded="false" aria-controls="cot-record-modal">` +
-    `${uiIconSVG('record', 15, 'currentColor', 'nvi')}` +
-    `<span class="nav-label">${t('garage.nav.record')}</span><span class="record-badge" aria-hidden="true">0</span>` +
-    `<span class="record-new" aria-hidden="true" hidden></span></button>` +
-    `</div></div>` +
-    `<nav class="cot-nav cot-header-nav" aria-label="${t('garage.nav.garage')}">` +
-    `<button class="nv on cot-nav-desktop" data-nav="garage" type="button" aria-current="page" aria-label="${t('garage.nav.garage')}" title="${t('garage.nav.garage')}">` +
-    `${uiIconSVG('garage', 16, 'currentColor', 'nvi nvi-product')}` +
-    `<span class="nav-label">${t('garage.nav.garage')}</span></button>` +
-    `<button class="nv cot-nav-desktop" data-nav="studio" type="button" aria-label="${t('garage.nav.studio')}" title="${t('garage.nav.studio')}">` +
-    `${uiIconSVG('studio', 16, 'currentColor', 'nvi nvi-product')}` +
-    `<span class="nav-label">${t('garage.nav.studio')}</span></button>` +
-    `<button class="nv cot-nav-desktop" data-nav="gallery" type="button" aria-label="${t('garage.nav.gallery')}" title="${t('garage.nav.gallery')}">` +
-    `${uiIconSVG('gallery', 16, 'currentColor', 'nvi nvi-product')}` +
-    `<span class="nav-label">${t('garage.nav.gallery')}</span></button>` +
-    `<button class="nv cot-nav-desktop" data-nav="docs" type="button" aria-label="${t('garage.nav.docs')}" title="${t('garage.nav.docs')}">` +
-    `${uiIconSVG('manual', 16, 'currentColor', 'nvi nvi-product')}` +
-    `<span class="nav-label">${t('garage.nav.docs')}</span></button>` +
+    // The game bar (brand-ui S2, SPEC 12.1.2): the mark and wordmark (home), then every destination with its key.
+    `<div class="cot-brand-rail">` +
+    `<button class="cot-wordmark" data-nav="home" type="button" aria-label="${t('garage.nav.home')}" title="${t('garage.nav.home')}">` +
+    `${brandMarkSVG(28)}${BRAND_WORDMARK_HTML}</button>` +
+    `<nav class="cot-gbar cot-header-nav" aria-label="${t('garage.nav.garage')}">` +
+    `<button class="nv on cot-nav-desktop" data-nav="garage" type="button" aria-current="page" aria-label="${t('garage.nav.garage')}">` +
+    `${uiIconSVG('garage', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('garage.nav.garage')}</span>${keycap('G')}</button>` +
+    `<button class="nv cot-nav-desktop" data-nav="deploy" type="button" aria-haspopup="dialog" aria-controls="cot-battle-menu" aria-label="${t('garage.battle')}">` +
+    `${uiIconSVG('deploy', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('garage.battle')}</span>${keycap('B')}</button>` +
+    `<button class="nv cot-nav-desktop" data-nav="gallery" type="button" aria-label="${t('garage.nav.gallery')}">` +
+    `${uiIconSVG('gallery', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('garage.nav.gallery')}</span>${keycap('V')}</button>` +
+    `<button class="nv cot-nav-desktop" data-nav="studio" type="button" aria-label="${t('garage.nav.studio')}">` +
+    `${uiIconSVG('studio', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('garage.nav.studio')}</span>${keycap('F8')}</button>` +
+    `<button class="nv cot-nav-desktop cot-record-trigger" type="button" aria-label="${t('garage.nav.record')}" ` +
+    `aria-haspopup="dialog" aria-expanded="false" aria-controls="cot-record-modal">` +
+    `${uiIconSVG('record', 16, 'currentColor', 'nvi')}<span class="nav-label">${t('garage.nav.record')}</span>` +
+    `<span class="record-badge" aria-hidden="true">0</span><span class="record-new" aria-hidden="true" hidden></span>${keycap('R')}</button>` +
+    `<button class="nv cot-nav-desktop" data-nav="docs" type="button" aria-label="${t('garage.nav.docs')}">` +
+    `${uiIconSVG('manual', 16, 'currentColor', 'nvi nvi-product')}<span class="nav-label">${t('garage.nav.docs')}</span>${keycap('F1')}</button>` +
+    `</nav></div>` +
+    `<nav class="cot-nav cot-header-nav" aria-label="${t('garage.nav.menu')}">` +
     `<div class="cot-locale-credit-wrap cot-nav-desktop">` +
     `<button class="nv cot-locale-switcher" data-nav="locale" type="button" ` +
     `aria-label="${localeSwitchLabel}" title="${localeSwitchLabel}">` +
@@ -609,88 +629,76 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<div class="cot-mobile-nav-menu" id="cot-mobile-nav-menu" role="group" aria-label="${t('garage.nav.menu')}" hidden>` +
     `<button type="button" data-mobile-nav="home">` +
     `${uiIconSVG('home', 20)}<span class="cot-mobile-nav-copy">` +
-    `<strong>${t('garage.nav.home')}</strong><small>${t('garage.nav.mobileHomeSub')}</small></span></button>` +
+    `<strong>${t('garage.nav.home')}</strong></span></button>` +
     `<button type="button" data-mobile-nav="garage" aria-current="page">` +
     `${uiIconSVG('garage', 20)}<span class="cot-mobile-nav-copy">` +
-    `<strong>${t('garage.nav.garage')}</strong><small>${t('garage.nav.mobileGarageSub')}</small></span></button>` +
+    `<strong>${t('garage.nav.garage')}</strong></span></button>` +
     `<button type="button" data-mobile-nav="studio">` +
     `${uiIconSVG('studio', 20)}<span class="cot-mobile-nav-copy">` +
-    `<strong>${t('garage.nav.studio')}</strong><small>${t('garage.nav.mobileStudioSub')}</small></span></button>` +
+    `<strong>${t('garage.nav.studio')}</strong></span></button>` +
     `<button type="button" data-mobile-nav="gallery">` +
     `${uiIconSVG('gallery', 20)}<span class="cot-mobile-nav-copy">` +
-    `<strong>${t('garage.nav.gallery')}</strong><small>${t('garage.nav.mobileGallerySub')}</small></span></button>` +
+    `<strong>${t('garage.nav.gallery')}</strong></span></button>` +
     `<button type="button" data-mobile-nav="docs">` +
     `${uiIconSVG('manual', 20)}<span class="cot-mobile-nav-copy">` +
-    `<strong>${t('garage.nav.docs')}</strong><small>${t('garage.nav.mobileDocsSub')}</small></span></button>` +
+    `<strong>${t('garage.nav.docs')}</strong></span></button>` +
     `<button type="button" data-mobile-nav="locale" aria-label="${localeSwitchLabel}">` +
     `${uiIconSVG('globe', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
     `<strong>${t('settings.language.title')}</strong><small>EN / 中文</small></span></button>` +
     `<button type="button" data-mobile-nav="record">` +
     `${uiIconSVG('record', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
-    `<strong>${t('garage.nav.record')}</strong><small>${t('garage.nav.mobileRecordSub')}</small></span></button>` +
+    `<strong>${t('garage.nav.record')}</strong></span></button>` +
     `<button type="button" data-mobile-nav="environment">` +
     `${uiIconSVG('garage', 20, 'currentColor')}<span class="cot-mobile-nav-copy">` +
-    `<strong>${t('garage.nav.stagingArea')}</strong><small>${t('garage.tools.chooseStaging')}</small></span></button></div></nav>` +
+    `<strong>${t('garage.nav.stagingArea')}</strong></span></button></div></nav>` +
     `<div class="cot-battle-control">` +
     `<button class="cot-battle" type="button" data-ui-sound="deploy" aria-label="${t('garage.battle.startBots')}">` +
-    `<span class="battle-active-icon">${uiIconSVG('battleBots', 20)}</span>` +
-    `<span class="battle-word">${t('garage.battle')}</span></button>` +
+    `<span class="battle-active-icon">${uiIconSVG('modeStandard', 20)}</span>` +
+    `<span class="battle-word">${t('garage.battle')}</span>${keycap(t('garage.key.enter'))}</button>` +
     `<button class="cot-battle-mode" type="button" aria-haspopup="dialog" aria-expanded="false" ` +
     `aria-controls="cot-battle-menu" aria-label="${t('garage.battle.menuTypeBots')}">` +
-    `<span>${t('garage.battle.typeBots')}</span></button>` +
-    `<div class="cot-battle-menu" id="cot-battle-menu" role="dialog" aria-label="${t('garage.battle.menuAria')}">` +
-    `<div class="cot-battle-menu-head"><strong>${t('garage.battle.setupDescription')}</strong>` +
-    `<button type="button" data-battle-close aria-label="${t('garage.battle.closeSetup')}">&times;</button></div>` +
-    `<div class="cot-battle-menu-scroll"><div class="cot-battle-mode-list">` +
-    `<button class="cot-battle-choice cot-battle-regular" type="button" data-mode="solo" aria-pressed="true">` +
-    `<span class="choice-icon">${uiIconSVG('battleBots', 17)}</span>` +
-    `<span><span class="choice-name">${t('garage.battle.soloLabel')}</span>` +
-    `<span class="choice-description">${t('garage.battle.regularDescription')}</span></span></button>` +
-    // the proving ground (2026-10-20): the selected tank straight onto the range, one press from the battle menu
-    `<button class="cot-battle-choice cot-battle-regular cot-battle-proving" type="button" data-proving>` +
-    `<span class="choice-icon">${uiIconSVG('modeProving', 17)}</span>` +
-    `<span><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span>` +
-    `<span class="choice-description">${t('garage.battle.provingDescription')}</span></span></button>` +
-    `<div class="cot-battle-menu-label" id="cot-special-modes">${t('garage.battle.soloRules')}</div>` +
-    `<div class="cot-battle-choice-grid" role="group" aria-labelledby="cot-special-modes">` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="drone" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeDrone', 17)}</span><span class="choice-name">${t('playMenu.matchMode.drone.label')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="ac130" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeAc130', 17)}</span><span class="choice-name">${t('playMenu.matchMode.ac130.label')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="mars" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('modeMars', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeMars')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="juggernaut" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeJuggernaut', 17)}</span><span class="choice-name">${t('playMenu.matchMode.juggernaut.label')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="capture_the_flag" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('modeFlag', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeFlag')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="infected" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeInfected', 17)}</span><span class="choice-name">${t('playMenu.matchMode.infected.label')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="frontline_assault" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('modeFrontline', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeFront')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="realistic" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeRealistic', 17)}</span><span class="choice-name">${t('playMenu.matchMode.realistic.label')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="gun_game" aria-pressed="false"><span class="choice-icon">${uiIconSVG('modeGunGame', 17)}</span><span class="choice-name">${t('playMenu.matchMode.gun_game.label')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="turbo_ball" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('modeTurbo', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeTurbo')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="zone_control" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('modeZones', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeZones')}</span></button>` +
-    `<button class="cot-battle-choice" type="button" data-game-mode="endless_horde" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('modeHorde', 17)}</span>` +
-    `<span class="choice-name">${t('garage.battle.modeHorde')}</span></button>` +
-    `</div><div class="cot-battle-menu-label" id="cot-multiplayer-modes">${t('garage.battle.multiplayer')}</div>` +
-    `<div class="cot-battle-choice-grid" role="group" aria-labelledby="cot-multiplayer-modes">` +
-    `<button class="cot-battle-choice" type="button" data-mode="private" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('battlePrivate', 17)}</span>` +
-    `<span><span class="choice-name">${t('garage.battle.typePrivate')}</span>` +
-    `<span class="choice-description">${t('garage.battle.privateDescription')}</span></span></button>` +
-    `<button class="cot-battle-choice" type="button" data-mode="lan" aria-pressed="false">` +
-    `<span class="choice-icon">${uiIconSVG('battleLan', 17)}</span>` +
-    `<span><span class="choice-name">${t('garage.battle.typeLan')}</span>` +
-    `<span class="choice-description">${t('garage.battle.lanDescription')}</span></span></button></div>` +
-    `</div><div class="cot-battle-details">` +
+    `<span class="sum-icon">${uiIconSVG('modeStandard', 16)}</span><span class="sum-mode">${t('garage.battle.soloLabel')}</span>` +
+    `<span class="sum-map" data-deploy-map></span></button>` +
+    // The Deploy screen (brand-ui S3, SPEC 12.1.4): the battle menu opens as one full screen. Its head returns to the
+    // Garage and holds the four ways to play; the modes sit on the left as four cards and a grid of rows, each with its
+    // glyph and the rules its ruleset sets; the plate on the right holds the selected mode, its six rules, the sides,
+    // the time, the tank and one Deploy button. Private and LAN rooms open the play menu as before.
+    `<div class="cot-battle-menu" id="cot-battle-menu" role="dialog" aria-modal="true" aria-labelledby="cot-deploy-title">` +
+    `<header class="cot-deploy-head">` +
+    `<button type="button" class="cot-deploy-back" data-battle-close data-ui-sound="back" aria-label="${t('garage.battle.closeSetup')}">` +
+    `${uiIconSVG('chevronLeft', 18)}<span>${t('garage.nav.garage')}</span>${keycap('Esc')}</button>` +
+    `<h2 class="cot-deploy-title" id="cot-deploy-title">${t('garage.battle')}</h2>` +
+    `<nav class="cot-deploy-tabs" aria-label="${t('garage.battle.menuAria')}">` +
+    `<div class="cot-deploy-tablist" role="tablist" aria-label="${t('garage.battle.menuAria')}">` +
+    `<button type="button" class="cot-deploy-tab" role="tab" id="cot-deploy-tab-quick" data-tab="quick" aria-selected="true" aria-controls="cot-deploy-quick">` +
+    `${uiIconSVG('battleBots', 18)}${t('garage.deploy.quick')}</button>` +
+    `<button type="button" class="cot-deploy-tab" role="tab" id="cot-deploy-tab-campaign" data-tab="campaign" aria-selected="false" aria-controls="cot-deploy-campaign" tabindex="-1">` +
+    `${uiIconSVG('modeFrontline', 18)}${t('campaign.heading')}<span class="cot-deploy-count num" data-deploy-campaign-count></span></button></div>` +
+    `<button type="button" class="cot-deploy-tab" data-deploy-room="private">${uiIconSVG('battlePrivate', 18)}${t('garage.battle.typePrivate')}</button>` +
+    `<button type="button" class="cot-deploy-tab" data-deploy-room="lan">${uiIconSVG('battleLan', 18)}${t('garage.battle.typeLan')}</button>` +
+    `</nav></header>` +
+    `<div class="cot-battle-menu-scroll">` +
+    `<section class="cot-battle-mode-list cot-deploy-panel" id="cot-deploy-quick" role="tabpanel" aria-labelledby="cot-deploy-tab-quick" data-deploy-panel="quick">` +
+    `<div class="cot-deploy-cards">` +
+    `<button class="cot-battle-choice cot-deploy-card" type="button" data-mode="solo" data-mode-tone="standard" aria-pressed="true">` +
+    `<span class="choice-icon">${uiIconSVG('modeStandard', 44)}</span>` +
+    `<span class="choice-name">${t('garage.battle.soloLabel')}</span><span class="cot-deploy-chips" data-deploy-chips="standard"></span></button>` +
+    deployCardsHTML(['zone_control', 'capture_the_flag', 'frontline_assault'], true) +
+    `</div><div class="cot-deploy-rows">` +
+    deployCardsHTML(['turbo_ball', 'gun_game', 'mars', 'juggernaut', 'infected', 'endless_horde', 'realistic', 'drone', 'ac130'], false) +
+    // the proving ground (2026-10-20): the selected tank straight onto the range, one press from the Deploy screen
+    `<button class="cot-battle-choice" type="button" data-proving data-mode-tone="proving">` +
+    `<span class="choice-icon">${uiIconSVG('modeProving', 24)}</span>` +
+    `<span><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span></span></button>` +
+    `</div></section>` +
+    `<section class="cot-deploy-panel cot-deploy-campaign" id="cot-deploy-campaign" role="tabpanel" aria-labelledby="cot-deploy-tab-campaign" data-deploy-panel="campaign" hidden>` +
+    `<div class="cot-deploy-ops" role="list" data-deploy-ops></div></section>` +
+    `<aside class="cot-deploy-plate" aria-labelledby="cot-deploy-mode-title" aria-describedby="cot-deploy-mode-about">` +
+    `<div class="cot-battle-details">` +
     `<div class="cot-battle-preview"><span class="cot-battle-preview-icon" data-setup-icon aria-hidden="true"></span>` +
-    `<div><small>${t('garage.setup.selected')}</small><h3 data-setup-title></h3></div>` +
-    `<p data-setup-description></p></div>` +
+    `<h3 id="cot-deploy-mode-title" data-setup-title></h3>` +
+    `<p id="cot-deploy-mode-about" data-setup-description hidden></p></div>` +
+    `<dl class="cot-deploy-rules" data-deploy-rules></dl>` +
     `<div class="cot-battle-solo-options" data-solo-options>` +
     `<div data-team-options>` +
     // sides (owner 2026-09-18): "a switch that's default set to 7v7 but then switching it does 14v14 and you can also
@@ -706,12 +714,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<label><span>${t('garage.battle.sidesEnemies')}</span><input type="number" inputmode="numeric" step="1" ` +
     `min="${TEAM_ARRANGEMENT_LIMITS.enemies.standard[0]}" max="${TEAM_ARRANGEMENT_LIMITS.enemies.standard[1]}" data-sides-field="enemies"></label>` +
     `<b class="cot-sides-readout" data-sides-readout></b>` +
-    `<small>${t('garage.battle.sidesNote', { max: String(BATTLE_FIELD_LIMIT) })}</small>` +
     `</div>` +
     `</div><fieldset class="cot-battle-times" data-time-options aria-describedby="cot-time-hint">` +
     battleTimeChoicesMarkup('cot-time-hint') + `</fieldset>` +
     `<div class="cot-battle-galaxy" data-galaxy-sky hidden>${uiIconSVG('regionNight', 24)}` +
-    `<div><strong>${t('garage.battle.galaxySky')}</strong><p>${t('garage.battle.nightGalaxy')}</p></div></div>` +
+    `<strong>${t('garage.battle.galaxySky')}</strong></div>` +
     // Mars settings (owner 2026-09-18 "give it a bunch of boosts and settings"): the gravity world and the
     // boost-cache cadence, shown while Mars is the selected rule (game/teamArrangement.ts readMarsSettings)
     `<div class="cot-battle-menu-label" data-mars-label hidden>${t('garage.battle.marsSettings')}</div>` +
@@ -719,11 +726,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<label><span>${t('garage.battle.marsGravity')}</span><select data-mars-field="gravity">` +
     MARS_GRAVITY_IDS.map((id) => `<option value="${id}">${t(`mars.gravity.${id}`)}</option>`).join('') + `</select></label>` +
     `<label><span>${t('garage.battle.marsCaches')}</span><select data-mars-field="caches">` +
-    MARS_CACHE_IDS.map((id) => `<option value="${id}">${t(`mars.caches.${id}`)}</option>`).join('') + `</select></label>` +
-    `<small>${t('garage.battle.marsNote')}</small></div>` +
-    `</div></div></div><div class="cot-battle-menu-foot">` +
-    `<span data-setup-selection></span><button type="button" data-battle-launch>` +
-    `${t('garage.battle')}${uiIconSVG('chevronRight', 14)}</button></div></div>` +
+    MARS_CACHE_IDS.map((id) => `<option value="${id}">${t(`mars.caches.${id}`)}</option>`).join('') + `</select></label></div>` +
+    `</div></div>` +
+    `<div class="cot-battle-menu-foot"><div class="cot-deploy-pick"><div class="cot-deploy-tank" data-deploy-tank></div>` +
+    // the battlefield is part of the deployment: its card opens the Garage's map picker above the foot
+    `<div class="cot-deploy-field"><button type="button" class="cot-deploy-field-card" data-deploy-field aria-expanded="false" ` +
+    `aria-controls="cot-deploy-field-pop" aria-label="${t('garage.tools.battlefields')}"><span class="cot-deploy-field-thumb" data-deploy-field-thumb aria-hidden="true"></span>` +
+    `<span class="cot-deploy-field-name" data-deploy-field-name></span>${uiIconSVG('chevronDown', 16)}</button>` +
+    `<div class="cot-deploy-field-pop" id="cot-deploy-field-pop" data-deploy-field-pop hidden></div></div></div>` +
+    `<span data-setup-selection hidden></span><button type="button" data-battle-launch data-ui-sound="deploy">` +
+    `${uiIconSVG('deploy', 24)}<span>${t('garage.battle')}</span>${keycap(t('garage.key.enter'))}</button></div>` +
+    `</aside></div></div>` +
     `<button class="cot-multiplayer-entry" type="button" aria-haspopup="dialog">` +
     `${uiIconSVG('team', 17)}<span>${t('garage.multiplayer.open')}</span></button>` +
     `<div class="cot-room-controls" role="group" aria-label="${t('garage.battle.roomReadiness')}">` +
@@ -733,18 +746,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<nav class="cot-garage-tools" aria-label="${t('garage.tools.stagingAreas')}">` +
     `<button class="cot-garage-tool cot-garage-preview-card" type="button" data-garage-panel="maps" ` +
     `aria-label="${t('garage.tools.chooseStaging')}" aria-expanded="false" aria-controls="cot-garage-maps">` +
-    `<span class="cot-garage-preview-head">${uiIconSVG('map', 15)}<strong>${t('garage.tools.battlefields')}</strong><small>${t('garage.setup.selected')}</small></span>` +
+    `<span class="cot-garage-preview-head">${uiIconSVG('map', 15)}<strong>${t('garage.tools.battlefields')}</strong></span>` +
     `<span class="cot-garage-map-preview" aria-hidden="true"></span>` +
     `<span class="cot-garage-preview-foot"><span data-garage-map-name></span>` +
-    `<small>${t('garage.setup.change')} ${uiIconSVG('chevronRight', 9)}</small></span></button>` +
+    `${uiIconSVG('chevronRight', 14)}</span></button>` +
     `<button class="cot-garage-tool cot-garage-preview-card" type="button" data-garage-panel="appearance" ` +
     `aria-label="${t('garage.tools.appearanceHint')}" aria-expanded="false" aria-controls="cot-garage-camos">` +
-    `<span class="cot-garage-preview-head">${uiIconSVG('camouflage', 15)}<strong>${t('garage.tools.camos')}</strong><small>${t('garage.setup.selected')}</small></span>` +
+    `<span class="cot-garage-preview-head">${uiIconSVG('camouflage', 15)}<strong>${t('garage.tools.camos')}</strong></span>` +
     `<span class="cot-garage-camo-preview" aria-hidden="true">` +
     `<canvas width="64" height="44"></canvas><canvas width="64" height="44"></canvas>` +
     `<canvas width="64" height="44"></canvas><canvas width="64" height="44"></canvas></span>` +
     `<span class="cot-garage-preview-foot"><span data-garage-camo-name></span>` +
-    `<small>${t('garage.setup.change')} ${uiIconSVG('chevronRight', 9)}</small></span></button></nav>` +
+    `${uiIconSVG('chevronRight', 14)}</span></button></nav>` +
     `<button class="cot-garage-panel-scrim" type="button" aria-label="${t('garage.tools.close')}"></button>` +
     `<div class="stats" id="cot-garage-dossier" data-locked="${t('garage.vehicleLocked')}"></div>` +
     `<div class="cot-country-rail">` +
@@ -768,16 +781,24 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `title="${t('garage.tools.environments')}" aria-haspopup="listbox" aria-expanded="false" ` +
     `aria-controls="cot-garage-variant-menu">` +
     `<img class="cot-garage-variant-trigger-thumb" alt="" draggable="false">` +
-    `<span class="cot-garage-variant-trigger-copy"><small>${uiIconSVG('garage', 11)}` +
-    `<span>${t('garage.nav.stagingArea')}</span></small>` +
+    `<span class="cot-garage-variant-trigger-copy">` +
     `<strong class="cot-garage-variant-label">${t('garage.tools.environments')}</strong></span>` +
-    `<span class="cot-garage-variant-action"><span>${t('garage.setup.change')}</span>` +
-    `${uiIconSVG('chevronRight', 11, 'currentColor', 'cot-garage-variant-chevron')}</span></button></div>` +
+    `<span class="cot-garage-variant-action">` +
+    `${uiIconSVG('chevronRight', 16, 'currentColor', 'cot-garage-variant-chevron')}</span></button></div>` +
     `<div class="cot-maps" id="cot-garage-maps"></div>` +
     `<div class="cot-camos" id="cot-garage-camos"></div></div>` +
     `<div class="cot-garage-variant-menu" id="cot-garage-variant-menu" role="listbox" data-heading="${t('garage.tools.stagingAreas')}" ` +
     `aria-label="${t('garage.tools.environments')}" hidden></div>` +
-    `<div class="hint">&#8592; &#8594; ${t('garage.hint.select')} &nbsp;&middot;&nbsp; ${t('garage.hint.battle')}</div>`;
+    // The showroom's lower third (brand-ui S2): the selected tank's name, once and large, over its identity as a flag and
+    // glyphs. Desktop shows it beside the stage; layouts that fold the panels keep the name in the dossier's head instead.
+    `<section class="cot-lower-third"><div aria-live="polite"><h2 class="cot-lt-name"></h2><div class="cot-lt-id"></div></div>` +
+    `<div class="cot-lt-acts"><button type="button" class="cot-c-btn cot-c-btn--36" data-lt-anatomy>${uiIconSVG('layerXray', 16)}` +
+    `<span>${t('garage.act.anatomy')}</span></button><button type="button" class="cot-c-btn cot-c-btn--36" data-lt-test-drive>` +
+    `${uiIconSVG('modeProving', 16)}<span>${t('garage.dossier.testDrive')}</span></button></div></section>` +
+    `<nav class="cot-stations" aria-label="${t('garage.station.aria')}"><div class="cot-stations-list" role="tablist" aria-orientation="vertical" aria-label="${t('garage.station.aria')}">` +
+    GARAGE_STATIONS.map(([id, glyph], index) => `<button type="button" class="cot-station" role="tab" data-tab="${id}" data-station="${id}" ` +
+      `aria-selected="${index === 0}" tabindex="${index === 0 ? 0 : -1}" aria-controls="cot-garage-dossier">${uiIconSVG(glyph, 18)}` +
+      `<span>${t(`garage.station.${id}`)}</span>${keycap(String(index + 1))}</button>`).join('') + `</div></nav>`;
   document.body.appendChild(root);
   mountGitHubStars(root);
 
@@ -834,7 +855,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<button class="fnav prev" type="button" aria-label="${t('garage.gallery.prevShot')}">&#8249;</button>` +
       `<button class="fnav next" type="button" aria-label="${t('garage.gallery.nextShot')}">&#8250;</button>` +
       `<div class="fcap"></div></div>`;
-    col.appendChild(panel);
+    root.appendChild(panel);
     const layers = panel.querySelectorAll<HTMLElement>('.fly');
     const capEl = requiredElement<HTMLElement>(panel, '.fcap');
     const dots = panel.querySelectorAll<HTMLElement>('.fdots span');
@@ -977,6 +998,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const battleBtn = requiredElement<HTMLButtonElement>(root, '.cot-battle');
   const battleModeBtn = requiredElement<HTMLButtonElement>(root, '.cot-battle-mode');
   const battleMenu = requiredElement<HTMLElement>(root, '.cot-battle-menu');
+  // The Deploy screen fills the viewport, so it lives at the Garage root, outside the Deploy button's transformed box.
+  root.appendChild(battleMenu);
   const battleMenuScroll = requiredElement<HTMLElement>(battleMenu, '.cot-battle-menu-scroll');
   const battleChoices = [...root.querySelectorAll<HTMLButtonElement>('.cot-battle-choice[data-mode]')];
   const battleRuleChoices = [...root.querySelectorAll<HTMLButtonElement>('.cot-battle-choice[data-game-mode]')];
@@ -997,6 +1020,96 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const compactCamoName = requiredElement<HTMLElement>(root, '[data-garage-camo-name]');
   const garagePanelButtons = [...root.querySelectorAll<HTMLButtonElement>('.cot-garage-tool')];
   const garagePanelScrim = requiredElement<HTMLButtonElement>(root, '.cot-garage-panel-scrim');
+
+  // --- STATIONS (brand-ui S2): the rail's six views of the selected tank (keys 1 to 6). Each shows its dossier sections;
+  // Protection and Crew open the matching technical view; Appearance takes the column for the paint and the staging area.
+  const stationTabs = requiredElement<HTMLElement>(root, '.cot-stations-list');
+  let station: GarageStation = 'overview';
+  root.dataset.station = station;
+  function setStation(next: GarageStation, { sound = true } = {}): void {
+    station = next;
+    root.dataset.station = next;
+    for (const tab of stationTabs.querySelectorAll<HTMLElement>('[role=tab]')) {
+      const on = tab.dataset.station === next;
+      tab.setAttribute('aria-selected', String(on));
+      tab.tabIndex = on ? 0 : -1;
+    }
+    const layer = next === 'protection' ? 'armor' : next === 'crew' ? 'crew' : null;
+    const view = layer ? statsEl.querySelector<HTMLButtonElement>(`.cot-technical-tab[data-technical-layer="${layer}"]`) : null;
+    if (view && view.getAttribute('aria-selected') !== 'true') activateTechnicalTab(view);
+    statsEl.scrollTop = 0;
+    if (sound) emit('ui:click', {});
+  }
+  wireRoving(stationTabs, (id) => setStation(id as GarageStation));
+
+  // --- OVERVIEW (brand-ui S2): the headline rows against a rival of the same tier and class, both on the tank's own peer
+  // scale, so a tick on the 20 cells is the rival and the delta is the gap.
+  let rivalChoice: string | null = null;
+  const rivalPeers = (spec: GarageTankSpec): GarageTankSpec[] => {
+    const group = statGroupOf(spec);
+    return specs.filter((other) => other.id !== spec.id && statGroupOf(other) === group)
+      .sort((a, b) => (a.label?.displayName || a.name).localeCompare(b.label?.displayName || b.name));
+  };
+  const rivalFor = (spec: GarageTankSpec): GarageTankSpec | null => {
+    const peers = rivalPeers(spec);
+    const chosen = peers.find((other) => other.id === rivalChoice);
+    if (chosen) return chosen;
+    // by default the nearest foreign peer in weight and calibre: a main battle tank meets a main battle tank
+    const gap = (other: GarageTankSpec) => Math.abs(other.weightTons - spec.weightTons) / spec.weightTons
+      + Math.abs(other.gun.caliberMm - spec.gun.caliberMm) / spec.gun.caliberMm;
+    const foreign = peers.filter((other) => other.nation !== spec.nation);
+    return (foreign.length ? foreign : peers).reduce<GarageTankSpec | null>((best, other) => !best || gap(other) < gap(best) ? other : best, null);
+  };
+  const headlineOf = (spec: GarageTankSpec, reloadMult = 1, turretMult = 1) => ({
+    dmg: Math.max(0, ...(spec.gun.shells || []).map((shell) => shell.dmg || 0)),
+    reload: (spec.gun.autoloader?.fullReloadS || spec.gun.reloadS) * reloadMult,
+    speed: spec.topSpeedKmh, hpt: spec.enginePowerHp / spec.weightTons, hp: spec.hp,
+    turret: spec.turretTraverseDegS * turretMult,
+  });
+  function overviewSection(spec: GarageTankSpec, eqM: ReturnType<typeof computeEquipMults>,
+    shells: readonly GarageShellSpec[]): string {
+    const group = statGroupOf(spec);
+    const rival = rivalFor(spec);
+    const mine = headlineOf(spec, eqM.reload, eqM.turret);
+    const theirs = rival ? headlineOf(rival) : null;
+    const cells = (key: StatRangeKey, value: number, lowerBetter: boolean) =>
+      Math.max(1, Math.round(statFrac(group, key, value, lowerBetter) * 20));
+    const row = (glyph: string, label: string, key: keyof typeof mine & StatRangeKey, unit: string, digits: number, lowerBetter = false) => {
+      const value = mine[key];
+      const other = theirs?.[key];
+      const gap = other == null ? null : Number((value - other).toFixed(digits));
+      const delta = gap == null ? '' : `<em class="num${gap === 0 ? '' : (lowerBetter ? gap < 0 : gap > 0) ? ' up' : ' dn'}">` +
+        `${gap === 0 ? '±' : gap > 0 ? '+' : '−'}${Math.abs(gap).toFixed(digits)}</em>`;
+      return `<div class="cot-hrow">${uiIconSVG(glyph, 18)}<span class="k">${label}</span>` +
+        `<span class="v"><b class="num">${value.toFixed(digits)}</b>${unit ? `<small>${unit}</small>` : ''}${delta}</span>` +
+        scale20(cells(key, value, lowerBetter), other == null ? undefined : cells(key, other, lowerBetter)) + `</div>`;
+    };
+    const peers = rival ? rivalPeers(spec) : [];
+    const picker = rival
+      ? `<label class="cot-rival"><span class="vs" aria-hidden="true">${t('teams.vs')}</span>${flagIconHTML(rival.nation, 22, 16)}` +
+        `<select data-rival aria-label="${t('garage.rival.aria')}">${peers.map((other) =>
+          `<option value="${other.id}"${other.id === rival.id ? ' selected' : ''}>${escapeHtmlAttribute(other.label?.displayName || other.name)}</option>`).join('')}` +
+        `</select>${uiIconSVG('chevronDown', 14)}</label>`
+      : '';
+    const turretless = spec.armor.turretless && spec.hydropneumaticAim;
+    return `<section class="cot-stat-section cot-overview-section" data-stations="overview">${picker}<div class="cot-headline">` +
+      row('damage', t('garage.dossier.stat.damage'), 'dmg', 'hp', 0) +
+      row('clock', spec.gun.autoloader ? t('garage.stat.magazineReload') : t('garage.stat.reload'), 'reload', 's', 1, true) +
+      row('speed', t('garage.dossier.stat.speed'), 'speed', 'km/h', 0) +
+      row('engine', t('garage.dossier.stat.hpt'), 'hpt', 'hp/t', 1) +
+      row('shield', t('garage.dossier.stat.hp'), 'hp', '', 0) +
+      (turretless ? '' : row('turretRing', t('garage.equipment.metric.turretTraverse'), 'turret', '°/s', 1)) +
+      `</div><div class="cot-ammo-tiles">${shells.map((shell) => `<div class="cot-ammo-tile">${shellIconSVG(shell.type, 28)}` +
+        `<b class="num">${shell.pen100Mm}<small>mm</small></b><span>${shell.type} · ${shell.dmg}</span></div>`).join('')}</div></section>`;
+  }
+  statsEl.addEventListener('change', (event) => {
+    const select = (event.target as Element | null)?.closest<HTMLSelectElement>('[data-rival]');
+    if (!select) return;
+    rivalChoice = select.value;
+    emit('ui:click', {});
+    const spec = specById.get(selectedId);
+    if (spec) renderStats(spec);
+  });
 
   let selectedId = specs[0]?.id || '';
   let battleMode: BattleMode = 'solo';
@@ -1420,6 +1533,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const selected = maps.find((map) => map.id === selectedMapId) || maps[0];
     if (!selected) return;
     compactMapName.textContent = selected.name;
+    requiredElement<HTMLElement>(root, '[data-deploy-map]').textContent = selected.name;
+    requiredElement<HTMLElement>(root, '[data-deploy-field-name]').textContent = selected.name;
+    const fieldThumb = requiredElement<HTMLElement>(root, '[data-deploy-field-thumb]');
+    fieldThumb.style.backgroundImage = selected.thumb ? `url("${selected.thumb.replace(/"/g, '%22')}")` : '';
+    fieldThumb.replaceChildren();
+    if (selected.id === 'random') fieldThumb.appendChild(createRandomMapMosaic(maps));
+    closeDeployField();
     compactMapPreview.className = `cot-garage-map-preview ${selected.id}`;
     compactMapPreview.style.removeProperty('background-image');
     compactMapPreview.replaceChildren();
@@ -2342,8 +2462,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       chip.dataset.country = group.id;
       chip.title = t('garage.country.chipTitle', { name: group.name, count });
       chip.setAttribute('aria-label', t('garage.country.chipAria', { name: group.name }));
-      chip.innerHTML = `${flagIconHTML(group.nation, 22)}` +
-        `<span class="code">${group.label}</span><span class="ct">${count}</span>`;
+      // The flag names the nation (owner UI rule 3); the chip keeps its name for assistive technology and its count.
+      chip.innerHTML = `${flagIconHTML(group.nation, 28, 21)}<span class="ct num">${count}</span>`;
       chip.addEventListener('click', () => {
         emit('ui:click', {});
         applyCountryFilter(group.id);
@@ -2368,7 +2488,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   // (garageFacetPanel.ts), never on the game entry; the panel hands back a visible-card predicate that narrows
   // every national strip, re-counts the flags and keeps the strip on a nation with a match.
   let rosterFacetMatch: ((specId: string) => boolean) | null = null;
-  const facetVisible = (specId: string): boolean => !rosterFacetMatch || rosterFacetMatch(specId);
+  // The inline search narrows with the Filter panel: one predicate, so every count and strip agrees with both.
+  let rosterQuery = '';
+  const rosterNames = new Map(allSpecs.map((spec) => [spec.id,
+    `${spec.label?.displayName || ''} ${spec.label?.shortName || ''} ${spec.name} ${spec.id.replace(/_/g, ' ')}`.toLowerCase()]));
+  const facetVisible = (specId: string): boolean => (!rosterFacetMatch || rosterFacetMatch(specId))
+    && (!rosterQuery || (rosterNames.get(specId) || '').includes(rosterQuery));
   const facetToggle = document.createElement('button');
   facetToggle.type = 'button';
   facetToggle.className = 'cot-facet-toggle';
@@ -2382,11 +2507,27 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     'l-2.8 1.2V8.4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>' +
     '<span class="ct num" hidden></span>';
   countryRailEl.insertBefore(facetToggle, chipsEl);
+  const rosterSearch = document.createElement('label');
+  rosterSearch.className = 'cot-roster-search';
+  rosterSearch.innerHTML = `${uiIconSVG('search', 16)}<input type="search" data-roster-search autocomplete="off" ` +
+    `spellcheck="false" enterkeyhint="search" aria-label="${t('garage.search.aria')}">${keycap('/')}`;
+  countryRailEl.insertBefore(rosterSearch, facetToggle);
+  const rosterSearchInput = requiredElement<HTMLInputElement>(rosterSearch, 'input');
+  rosterSearchInput.addEventListener('input', () => {
+    rosterQuery = rosterSearchInput.value.trim().toLowerCase();
+    setRosterFacetFilter(rosterFacetMatch);
+  });
+  rosterSearchInput.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    event.stopPropagation();
+    if (rosterSearchInput.value) { rosterSearchInput.value = ''; rosterQuery = ''; setRosterFacetFilter(rosterFacetMatch); }
+    else rosterSearchInput.blur();
+  });
   function setRosterFacetFilter(match: ((specId: string) => boolean) | null): void {
     rosterFacetMatch = match;
     for (const group of countryGroups) {
       const pool = specsByCountry.get(group.id) || [];
-      const shown = match ? pool.filter((spec) => match(spec.id)).length : pool.length;
+      const shown = pool.filter((spec) => facetVisible(spec.id)).length;
       const chip = chipById.get(group.id);
       const countEl = chip?.querySelector<HTMLElement>('.ct');
       if (countEl) countEl.textContent = String(shown);
@@ -2592,10 +2733,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const value = opts.mod ? `<span class="eqmod">${valueText}</span>` : valueText;
     const title = opts && opts.title ? ` title="${opts.title}"` : '';
     const icon = opts?.icon || 'speed';
+    // The fixed 20-cell scale (brand-ui SPEC 6.2): the raw value above, the peer-normalised rating as lit cells.
     return `<div class="srow"${title}><span class="sicon">${uiIconSVG(icon, 16)}</span>` +
       `<div class="lr"><span>${label}</span>` +
-      `<b>${value}</b></div>` +
-      `<div class="track"><div class="fill" style="width:${pct}%"></div></div></div>`;
+      `<b>${value}</b></div>${scale20(Math.round(Number(pct) / 5))}</div>`;
   }
 
   function activateTechnicalTab(tab: HTMLButtonElement): void {
@@ -2669,7 +2810,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           `${equipIconSVG(item.id, 26)}<span class="sl">${t(`equipment.${item.id}.short`) || item.short}</span></button>`
         : `<button type="button" class="eqslot empty" data-slot="${index}" ` +
           `aria-label="${escapeHtmlAttribute(slotLabel)}" title="${escapeHtmlAttribute(tooltip)}">` +
-          `<span class="plus">+</span><span class="sl">${t('garage.equipment.empty.name')}</span></button>`);
+          `<span class="plus">+</span></button>`);
     }
     return slots.join('');
   }
@@ -2698,6 +2839,49 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       : salvo ? `<div class="magazine-spec"><span>${t('garage.stat.missileSalvo')}</span><b>` +
         `${salvo.rounds} ${t('garage.stat.rounds')} &middot; ${(salvo.intervalS * reloadMultiplier).toFixed(2)} ${t('garage.stat.cycle')} &middot; ` +
         `${reloadS.toFixed(1)} ${t('garage.stat.fullReload')}</b></div>` : '';
+  }
+
+  const ERA_GLYPH: Readonly<Record<string, string>> = Object.freeze({
+    'next-generation': 'eraNextGeneration', modern: 'eraModern', 'cold-war': 'eraColdWar', ww2: 'eraWorldWarII', interwar: 'eraInterwar',
+  });
+  const lowerThird = requiredElement<HTMLElement>(root, '.cot-lower-third');
+  const lowerName = requiredElement<HTMLElement>(lowerThird, '.cot-lt-name');
+  const lowerId = requiredElement<HTMLElement>(lowerThird, '.cot-lt-id');
+  let lowerClassFor = '';
+  /** The name once, in the display voice: a short trailing designation (3, 2A6, HC, SEPv3) in the accent. */
+  function renderLowerThird(spec: GarageTankSpec, crew: number): void {
+    const name = spec.label?.displayName || spec.name;
+    const at = name.lastIndexOf(' ');
+    const tail = at > 0 ? name.slice(at + 1) : '';
+    lowerName.textContent = tail && tail.length <= 5 ? name.slice(0, at + 1) : name;
+    if (tail && tail.length <= 5) {
+      const accent = document.createElement('span');
+      accent.className = 'acc';
+      accent.textContent = tail;
+      lowerName.append(accent);
+    }
+    lowerName.classList.toggle('is-long', name.length > 16);
+    const tier = tierNumeral(spec.id) || '';
+    lowerId.innerHTML =
+      `<span class="lt-nation">${flagIconHTML(spec.nation, 32, 24)}<span>${tNation(spec.nation)}</span></span>` +
+      `<span>${uiIconSVG(ERA_GLYPH[spec.era] || 'eraModern', 18)}<span>${vehicleEraLabelI18n(spec.era, t)}</span></span>` +
+      (tier ? `<span class="lt-tier">${tierChipHTML(tier)}</span>` : '') +
+      `<span title="${escapeHtmlAttribute(t('garage.dossier.section.crew'))}">${uiIconSVG('crew', 18)}<span class="num">${crew}</span></span>` +
+      `<span class="lt-class" hidden></span>`;
+    // The class glyph and name ride with the facet tables, loaded beside the stage (never in the boot graph); the slot
+    // closes the row, so its arrival moves nothing.
+    lowerClassFor = spec.id;
+    // The class names live in the Filter panel's demand-loaded catalog slice (fleetStrings.ts), so they load here too.
+    void Promise.all([import('../vehicles/vehicleFacets.ts'), import('./vehicleFacetIcons.ts'),
+      import('./fleetStrings.ts').then((strings) => strings.ensureFleetStrings())]).then(([facets, icons]) => {
+      if (lowerClassFor !== spec.id) return;
+      const value = facets.vehicleClassForId(spec.id);
+      const slot = lowerId.querySelector<HTMLElement>('.lt-class');
+      if (!value || !slot) return;
+      slot.innerHTML = `${icons.vehicleClassGlyphSVG(value, 18)}<span>${facets.vehicleFacetLabel(facets.VEHICLE_CLASS_META[value], t, { short: true })}</span>`;
+      slot.title = facets.vehicleFacetLabel(facets.VEHICLE_CLASS_META[value], t);
+      slot.hidden = false;
+    }).catch(() => {});
   }
 
   function renderStats(spec: GarageTankSpec): void {
@@ -2786,7 +2970,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `aria-label="${t('garage.dossier.expand.aria', { name: spec.label?.displayName || spec.name, view: initialTechnicalViewLabel })}">` +
       `<img src="${iconUrl(spec.id, initialTechnicalView.assetView)}" alt="" ` +
       `data-technical-image draggable="false" loading="lazy" decoding="async" fetchpriority="low">` +
-      `<span class="cot-technical-expand-label">${uiIconSVG('zoomIn', 14)}${t('garage.dossier.expand')}</span></button>` +
+      `<span class="cot-technical-expand-label">${uiIconSVG('zoomIn', 16)}</span></button>` +
       `<figcaption data-technical-caption-output>${initialTechnicalViewCaption}</figcaption></figure>` +
       `<button class="cot-gallery-link cot-technical-gallery" type="button" ` +
       `data-gallery-layer="${initialTechnicalView.galleryLayer}" data-technical-gallery>` +
@@ -2811,21 +2995,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<span>${t('garage.dossier.equipment.heading')}</span></div>` +
       `<div class="eqrow">${slotBoxes}</div></section>`;
     statsEl.innerHTML =
-      technicalSection +
-      equipmentSection +
-      `<section class="cot-stat-section cot-performance-section">${statSectionTitle('speed', t('garage.dossier.section.performance'), `${spec.weightTons.toFixed(1)} t`, 'Performance')}` +
+      overviewSection(spec, eqM, shells) +
+      equipmentSection.replace('<section class="cot-stat-section', '<section data-stations="firepower mobility" class="cot-stat-section') +
+      technicalSection.replace('<section class="cot-stat-section', '<section data-stations="protection crew" class="cot-stat-section') +
+      `<section class="cot-stat-section cot-performance-section" data-stations="firepower">${statSectionTitle('gun', t('garage.station.firepower'), `${spec.gun.caliberMm} mm`, 'Performance')}` +
       `<div class="cot-performance-grid">` +
-      statBar(t('garage.dossier.stat.hp'), `${spec.hp}`, statFrac(grp, 'hp', spec.hp), { icon: 'shield' }) +
-      statBar(t('garage.dossier.stat.speed'), `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh), { icon: 'speed' }) +
-      statBar(t('garage.dossier.stat.hpt'), `${hpT.toFixed(1)} hp/t`, statFrac(grp, 'hpt', hpT), { icon: 'engine' }) +
       statBar(reloadLabel, `${reloadS.toFixed(1)} s`, statFrac(grp, 'reload', reloadS, true),
         { icon: 'clock', mod: eqM.reload !== 1, stock: stockReloadS.toFixed(1), title: eqTitle(`${stockReloadS.toFixed(1)} s`) }) +
       statBar(t('garage.dossier.stat.aim'), `${aimS.toFixed(aimPrecision)} s`, statFrac(grp, 'aim', aimS, true),
         { icon: 'scope', mod: eqM.aimTime !== 1, stock: spec.gun.aimTimeS.toFixed(aimPrecision), title: eqTitle(`${spec.gun.aimTimeS.toFixed(1)} s`) }) +
-      statBar(t('garage.equipment.metric.hullTraverse'), `${(spec.hullTraverseDegS * eqM.traverse).toFixed(1)} °/s`,
-        statFrac(grp, 'hull', spec.hullTraverseDegS * eqM.traverse), { icon: 'track', mod: eqM.traverse !== 1 }) +
-      (spec.armor.turretless && spec.hydropneumaticAim ? '' : statBar(t(spec.armor.turretless ? 'garage.stat.gunTraverse' : 'garage.equipment.metric.turretTraverse'), `${(spec.turretTraverseDegS * eqM.turret).toFixed(1)} °/s`,
-        statFrac(grp, 'turret', spec.turretTraverseDegS * eqM.turret), { icon: 'turretRing', mod: eqM.turret !== 1 })) +
       statBar(t('garage.stat.accuracy'), `${spec.gun.baseAccuracy.toFixed(2)} m`,
         statFrac(grp, 'accuracy', spec.gun.baseAccuracy, true), { icon: 'scope', title: t('garage.stat.accuracyHint') }) +
       statBar(t('garage.stat.movementBloom'), `${movingDispersion(spec.gun.bloom.move, 30).toFixed(2)} m`,
@@ -2835,6 +3013,24 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       (spec.armor.turretless && spec.hydropneumaticAim ? '' : statBar(t(spec.armor.turretless ? 'garage.stat.gunBloom' : 'garage.stat.turretBloom'), `${movingDispersion(spec.gun.bloom.turret, 20).toFixed(2)} m`,
         1 / (1 + movingDispersion(spec.gun.bloom.turret, 20)), { icon: 'turretRing', mod: eqM.bloom !== 1, title: t('garage.stat.bloomHint') })) +
       statBar(t('garage.dossier.stat.damage'), `${bestDmg} hp`, statFrac(grp, 'dmg', bestDmg), { icon: 'damage' }) +
+      `</div></section>` +
+      specialCard.replace('<section class="cot-stat-section', '<section data-stations="firepower" class="cot-stat-section') +
+      `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('shell', t('garage.dossier.section.ammunition'), `${shells.length} ${t('garage.dossier.ammunition.types')}`, 'Ammunition')}` +
+      magazineSpec +
+      `<div class="shellhead"><span>${t('garage.dossier.shell.type')}</span><span>${t('garage.dossier.shell.round')}</span><span>${t('garage.dossier.shell.pen')}</span><span>${t('garage.dossier.shell.damage')}</span></div>` +
+      shellRows + `</section>` +
+      `<section class="cot-stat-section" data-stations="firepower">${statSectionTitle('gun', t('garage.dossier.section.armament'), `${spec.gun.caliberMm} mm`, 'Armament')}` +
+      `<div class="armor-grid">` +
+      `<div class="armorline">${uiIconSVG('gun', 19)}<span>${t('garage.dossier.armament.gun')}</span><b>${spec.gun.caliberMm} mm</b></div>` +
+      `<div class="armorline">${uiIconSVG('scope', 19)}<span>${t('garage.dossier.armament.arc')}</span><b>&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;</b></div></div></section>` +
+      `<section class="cot-stat-section cot-performance-section" data-stations="mobility">${statSectionTitle('speed', t('garage.station.mobility'), `${spec.weightTons.toFixed(1)} t`, 'Performance')}` +
+      `<div class="cot-performance-grid">` +
+      statBar(t('garage.dossier.stat.speed'), `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh), { icon: 'speed' }) +
+      statBar(t('garage.dossier.stat.hpt'), `${hpT.toFixed(1)} hp/t`, statFrac(grp, 'hpt', hpT), { icon: 'engine' }) +
+      statBar(t('garage.equipment.metric.hullTraverse'), `${(spec.hullTraverseDegS * eqM.traverse).toFixed(1)} °/s`,
+        statFrac(grp, 'hull', spec.hullTraverseDegS * eqM.traverse), { icon: 'track', mod: eqM.traverse !== 1 }) +
+      (spec.armor.turretless && spec.hydropneumaticAim ? '' : statBar(t(spec.armor.turretless ? 'garage.stat.gunTraverse' : 'garage.equipment.metric.turretTraverse'), `${(spec.turretTraverseDegS * eqM.turret).toFixed(1)} °/s`,
+        statFrac(grp, 'turret', spec.turretTraverseDegS * eqM.turret), { icon: 'turretRing', mod: eqM.turret !== 1 })) +
       statBar(t('garage.dossier.stat.view'), viewText, statFrac(grp, 'view', vrMove),
         { icon: 'optics', mod: vrMove > vrBase || vrStill > vrMove + 0.5, stock: `${Math.round(vrBase)}`,
           title: vrStill > vrMove + 0.5 ? `${t('garage.dossier.view.movingStationary')} &middot; stock ${vrBase} m`
@@ -2845,25 +3041,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           stock: `${Math.round(baseCamoOf(spec, false) * 100)} / ${Math.round(baseCamoOf(spec, true) * 100)}`, title: t('garage.dossier.stat.moving') +
           (camoModded ? ` &middot; stock ${Math.round(baseCamoOf(spec, false) * 100)} %` : '') }) +
       `</div></section>` +
-      specialCard +
-      `<section class="cot-stat-section">${statSectionTitle('shell', t('garage.dossier.section.ammunition'), `${shells.length} ${t('garage.dossier.ammunition.types')}`, 'Ammunition')}` +
-      magazineSpec +
-      `<div class="shellhead"><span>${t('garage.dossier.shell.type')}</span><span>${t('garage.dossier.shell.round')}</span><span>${t('garage.dossier.shell.pen')}</span><span>${t('garage.dossier.shell.damage')}</span></div>` +
-      shellRows + `</section>` +
-      `<section class="cot-stat-section">${statSectionTitle('shield', t('garage.dossier.section.protection'), '', 'Protection')}` +
+      `<section class="cot-stat-section cot-performance-section" data-stations="protection"><div class="cot-performance-grid">` +
+      statBar(t('garage.dossier.stat.hp'), `${spec.hp}`, statFrac(grp, 'hp', spec.hp), { icon: 'shield' }) +
+      `</div></section>` +
+      `<section class="cot-stat-section" data-stations="protection">${statSectionTitle('shield', t('garage.dossier.section.protection'), '', 'Protection')}` +
       `<div class="armor-grid">` +
       `<div class="armorline">${uiIconSVG('shield', 19)}<span>${t('garage.dossier.protection.hull')}</span><b>${hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;'}</b></div>` +
       `<div class="armorline">${uiIconSVG('turretRing', 19)}<span>${t('garage.dossier.protection.turret')}</span><b>${turMm != null ? `${Math.round(turMm)} mm` : '&mdash;'}</b></div></div>` +
       `<button class="cot-layer-link" type="button" data-gallery-layer="armor">${uiIconSVG('shield', 13)}${t('garage.dossier.protection.inspect')}</button></section>` +
-      `<section class="cot-stat-section">${statSectionTitle('gun', t('garage.dossier.section.armament'), `${spec.gun.caliberMm} mm`, 'Armament')}` +
-      `<div class="armor-grid">` +
-      `<div class="armorline">${uiIconSVG('gun', 19)}<span>${t('garage.dossier.armament.gun')}</span><b>${spec.gun.caliberMm} mm</b></div>` +
-      `<div class="armorline">${uiIconSVG('scope', 19)}<span>${t('garage.dossier.armament.arc')}</span><b>&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;</b></div></div></section>` +
-      `<section class="cot-stat-section">${statSectionTitle('engine', t('garage.dossier.section.modules'), `${moduleRows.length} ${t('garage.dossier.modules.systems')}`, 'Modules')}` +
+      `<section class="cot-stat-section" data-stations="crew">${statSectionTitle('engine', t('garage.dossier.section.modules'), `${moduleRows.length} ${t('garage.dossier.modules.systems')}`, 'Modules')}` +
       `<div class="cot-module-grid">${moduleChips}</div>` +
       `<button class="cot-layer-link" type="button" data-gallery-layer="modules">${uiIconSVG('gallery', 13)}${t('garage.dossier.modules.open')}</button></section>` +
-      `<section class="cot-stat-section">${statSectionTitle('crew', t('garage.dossier.section.crew'), `${crewRows.length} ${t('garage.dossier.crew.stations')}`, 'Crew')}` +
+      `<section class="cot-stat-section" data-stations="crew">${statSectionTitle('crew', t('garage.dossier.section.crew'), `${crewRows.length} ${t('garage.dossier.crew.stations')}`, 'Crew')}` +
       `<div class="cot-crew-grid">${crewChips}</div></section>`;
+    renderLowerThird(spec, crewRows.length);
     const dossierName = requiredElement<HTMLElement>(statsEl, 'h3');
     dossierName.textContent = spec.label?.displayName || spec.name;
     // a long name sets a step smaller and may take a third line, so the compact phone head holds it whole (garage.css)
@@ -2906,6 +3097,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       guide: 'equipment', vehicle: { id: spec.id, name: spec.label?.displayName || spec.name },
     }));
     if (vehicleChanged) statsEl.scrollTop = 0;
+    if (station === 'protection' || station === 'crew') setStation(station, { sound: false });
     requestAnimationFrame(syncScrollFades);
   }
 
@@ -2967,9 +3159,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function launchBattle(
     specId: string,
     mapId: string,
-    { emitClick = true, gameMode = battleGameMode }: {
+    { emitClick = true, gameMode = battleGameMode, campaignOperationId }: {
       emitClick?: boolean;
       gameMode?: GameModeId;
+      campaignOperationId?: string;
     } = {},
   ): void {
     // Battle entry must be unstoppable: the pre-battle emits fan out to five+
@@ -2983,7 +3176,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     } catch (err) {
       console.error('[garage] battle-start listener failed:', err);
     }
-    if (onBattle) onBattle(specId, mapId, { gameMode }); // MAP-CONFIG WIRING
+    if (onBattle) onBattle(specId, mapId, campaignOperationId ? { gameMode, campaignOperationId } : { gameMode }); // MAP-CONFIG WIRING
   }
 
   /** The proving ground with this vehicle (the dossier's button, the Gallery's link): never inside a room's lobby. */
@@ -3030,37 +3223,49 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     launchBattle(specId, mapId);
   }
 
+  // A campaign operation is a Frontline Assault sortie on its own map, through the same play request as Deploy.
+  function deployCampaign(operationId: string, mapId: string): void {
+    if (!selectedId) return;
+    const specId = selectedId;
+    closeBattleMenu();
+    const start = () => launchBattle(specId, mapId, { emitClick: false, gameMode: 'frontline_assault', campaignOperationId: operationId });
+    if (opts.onPlayRequest) {
+      try { emit('ui:click', {}); } catch (_) { /* presentation-only */ }
+      opts.onPlayRequest({ mode: 'solo', gameMode: 'frontline_assault', specId, mapId, startSolo: start });
+      return;
+    }
+    start();
+  }
+
   interface BattleChoiceMeta {
-    readonly short: string;
     readonly label: string;
     readonly icon: string;
   }
-  // The button names a mode with its glossary short name (src/ui/glossary.json), never a code (BUI-F8).
+  // The toggle under Deploy names its mode in full, as the Deploy screen does: never a code (BUI-F8, SPEC 12.1.4).
   const battleModeMeta: Readonly<Record<BattleMode, BattleChoiceMeta>> = {
-    solo: { short: t('garage.battle.typeBots'), label: t('garage.battle.soloLabel'), icon: 'battleBots' },
-    private: { short: t('garage.battle.typePrivate'), label: t('garage.battle.privateLabel'), icon: 'battlePrivate' },
-    lan: { short: t('garage.battle.typeLan'), label: t('garage.battle.lanLabel'), icon: 'battleLan' },
+    solo: { label: t('garage.battle.soloLabel'), icon: 'modeStandard' },
+    private: { label: t('garage.battle.privateLabel'), icon: 'battlePrivate' },
+    lan: { label: t('garage.battle.lanLabel'), icon: 'battleLan' },
   };
-  const battleRuleMeta = Object.fromEntries(Object.entries({
-    juggernaut: 'modeJuggernaut', infected: 'modeInfected', realistic: 'modeRealistic', gun_game: 'modeGunGame',
-    drone: 'modeDrone', ac130: 'modeAc130', capture_the_flag: 'modeFlag', zone_control: 'modeZones',
-    turbo_ball: 'modeTurbo', endless_horde: 'modeHorde', frontline_assault: 'modeFrontline', mars: 'modeMars',
-  }).map(([id, icon]) => [id, {
-    short: t(`playMenu.matchMode.${id}.short`), label: t(`playMenu.matchMode.${id}.label`), icon,
+  const battleRuleMeta = Object.fromEntries(Object.entries(MODE_GLYPH).map(([id, icon]) => [id, {
+    label: t(`playMenu.matchMode.${id}.label`), icon,
   }])) as Partial<Record<GameModeId, BattleChoiceMeta>>;
-  // The menu scrolls in one region between its head and launch row: where it continues below the footer (the special
-  // modes on a short window), a fade and a chevron over the footer's edge say so.
-  function syncBattleMenuScrollCue(): void {
-    const below = battleMenuScroll.scrollTop + battleMenuScroll.clientHeight < battleMenuScroll.scrollHeight - 4;
-    battleMenu.classList.toggle('has-more-below', below);
+  function openDeployField(): void {
+    const pop = requiredElement<HTMLElement>(root, '[data-deploy-field-pop]');
+    pop.append(mapsEl);
+    pop.hidden = false;
+    requiredElement<HTMLElement>(root, '[data-deploy-field]').setAttribute('aria-expanded', 'true');
+    mapsEl.querySelector<HTMLElement>('.cot-map-card.sel button, .cot-map-card.sel')?.scrollIntoView({ block: 'nearest' });
   }
-  battleMenuScroll.addEventListener('scroll', syncBattleMenuScrollCue, { passive: true });
-  if (typeof ResizeObserver === 'function') {
-    const cueObserver = new ResizeObserver(() => { if (battleMenu.classList.contains('open')) syncBattleMenuScrollCue(); });
-    cueObserver.observe(battleMenuScroll);
-    for (const column of battleMenuScroll.children) cueObserver.observe(column);
+  function closeDeployField(): void {
+    const pop = root.querySelector<HTMLElement>('[data-deploy-field-pop]');
+    if (!pop || pop.hidden) return;
+    pop.hidden = true;
+    camosEl.before(mapsEl);
+    root.querySelector<HTMLElement>('[data-deploy-field]')?.setAttribute('aria-expanded', 'false');
   }
   function closeBattleMenu({ restoreFocus = false } = {}) {
+    closeDeployField();
     arrangementPanel?.close();
     marsDropdowns.forEach(dropdown => dropdown.close());
     battleMenu.classList.remove('open');
@@ -3071,13 +3276,21 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     closeMobileNavigation();
     setGaragePanel('');
     renderBattleOptions();
+    renderDeployTank();
+    for (const tab of deployTabs.querySelectorAll<HTMLElement>('[role=tab]')) {
+      const on = tab.dataset.tab === 'quick';
+      tab.setAttribute('aria-selected', String(on));
+      tab.tabIndex = on ? 0 : -1;
+    }
+    showDeployTab('quick');
+    const campaign = campaignSummary();
+    deployCampaignCount.textContent = `${campaign.cleared} / ${campaign.total}`;
     battleMenu.classList.add('open');
     battleModeBtn.setAttribute('aria-expanded', 'true');
     const activeRule = battleMode !== 'solo' || battleGameMode === 'standard' ? null
       : battleRuleChoices.find((choice) => choice.dataset.gameMode === battleGameMode);
     const scroller = battleMenuScroll;
     scroller.scrollTop = 0;
-    syncBattleMenuScrollCue();
     const selectedChoice = activeRule || battleChoices.find((choice) => choice.dataset.mode === battleMode);
     const scrollBounds = scroller.getBoundingClientRect();
     const selectedBounds = selectedChoice?.getBoundingClientRect();
@@ -3098,7 +3311,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (mode !== 'solo' && opts.onPlayModeIntent) {
       try { opts.onPlayModeIntent(mode); } catch (_) { /* optional warm path */ }
     }
-    requiredElement<HTMLElement>(battleModeBtn, 'span').textContent = meta.short;
+    requiredElement<HTMLElement>(battleModeBtn, '.sum-mode').textContent = meta.label;
+    requiredElement<HTMLElement>(battleModeBtn, '.sum-icon').innerHTML = uiIconSVG(meta.icon, 16);
     requiredElement<HTMLElement>(battleBtn, '.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
     battleModeBtn.setAttribute('aria-label', t('garage.battle.typeAria', { label: meta.label }));
     battleBtn.setAttribute('aria-label', t('garage.battle.startRulesAria', { label: meta.label }));
@@ -3118,7 +3332,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     battleGameMode = id;
     opts.onGameModeSelect?.(id);
     try { localStorage.setItem('cot.game.mode.v1', id); } catch (_) { /* session-only */ }
-    requiredElement<HTMLElement>(battleModeBtn, 'span').textContent = meta.short;
+    requiredElement<HTMLElement>(battleModeBtn, '.sum-mode').textContent = meta.label;
+    requiredElement<HTMLElement>(battleModeBtn, '.sum-icon').innerHTML = uiIconSVG(meta.icon, 16);
     requiredElement<HTMLElement>(battleBtn, '.battle-active-icon').innerHTML = uiIconSVG(meta.icon, 20);
     battleModeBtn.setAttribute('aria-label', t('garage.battle.rulesAria', { label: meta.label }));
     battleBtn.setAttribute('aria-label', t('garage.battle.startRulesAria', { label: meta.label }));
@@ -3132,9 +3347,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-close]').addEventListener('click', () => {
     closeBattleMenu({ restoreFocus: true });
   });
-  battleControl.addEventListener('focusout', (event) => {
-    if (event.relatedTarget instanceof Node && !battleControl.contains(event.relatedTarget)) closeBattleMenu();
-  });
+  const leavesDeploy = (event: FocusEvent) => event.relatedTarget instanceof Node
+    && !battleControl.contains(event.relatedTarget) && !battleMenu.contains(event.relatedTarget);
+  battleControl.addEventListener('focusout', (event) => { if (leavesDeploy(event)) closeBattleMenu(); });
+  battleMenu.addEventListener('focusout', (event) => { if (leavesDeploy(event)) closeBattleMenu(); });
   const multiplayerEntry = requiredElement<HTMLButtonElement>(root, '.cot-multiplayer-entry');
   multiplayerEntry.addEventListener('click', () => openMultiplayer());
   const warmMultiplayer = () => opts.onPlayModeIntent?.('private');
@@ -3265,6 +3481,97 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       arrangementPanel.render(battleGameMode);
     });
   };
+  // The Deploy screen (brand-ui S3). Every chip and rule reads the mode's ruleset (sim/matchRuleset.ts), so the screen
+  // never promises a rule the battle does not keep.
+  const deployRules = requiredElement<HTMLElement>(battleMenu, '[data-deploy-rules]');
+  const deployTank = requiredElement<HTMLElement>(battleMenu, '[data-deploy-tank]');
+  const deployOps = requiredElement<HTMLElement>(battleMenu, '[data-deploy-ops]');
+  const deployCampaignCount = requiredElement<HTMLElement>(battleMenu, '[data-deploy-campaign-count]');
+  const deployTabs = requiredElement<HTMLElement>(battleMenu, '.cot-deploy-tablist');
+  const deployPanels = [...battleMenu.querySelectorAll<HTMLElement>('[data-deploy-panel]')];
+  const clockText = (seconds: number | null): string => seconds == null ? '∞'
+    : `${Math.floor(seconds / 60)}:${String(Math.round(seconds % 60)).padStart(2, '0')}`;
+  function deployFacts(mode: GameModeId) {
+    const ruleset = matchRulesetFor(mode, null, readTeamArrangement(mode));
+    const sides = rulesetSides(ruleset);
+    return {
+      teams: t('garage.deploy.sides', { allies: String(sides.allies + 1), enemies: String(sides.enemies) }),
+      clock: clockText(ruleset.timeLimitS),
+      respawn: ruleset.respawnS == null ? null : t('garage.deploy.seconds', { value: String(ruleset.respawnS) }),
+      victory: ruleset.scoreTarget == null ? null : String(ruleset.scoreTarget),
+      equipment: ruleset.equipmentSlots ? String(ruleset.equipmentSlots) : t('garage.deploy.none'),
+      ammo: t(`garage.deploy.ammo.${ruleset.ammo}`),
+    };
+  }
+  type DeployFacts = ReturnType<typeof deployFacts>;
+  const DEPLOY_FACT_ICON = { teams: 'team', clock: 'clock', respawn: 'rematch', victory: 'statVictory', equipment: 'eqToolbox', ammo: 'shell' } as const;
+  function renderDeployChips(): void {
+    for (const row of battleMenu.querySelectorAll<HTMLElement>('[data-deploy-chips]')) {
+      const facts = deployFacts(normalizeGameMode(row.dataset.deployChips));
+      const shown = (['teams', 'clock', 'respawn', 'victory'] as const).filter((key) => facts[key] != null).slice(0, 2);
+      row.innerHTML = shown.map((key) => `<span>${uiIconSVG(DEPLOY_FACT_ICON[key], 14)}${facts[key]}</span>`).join('');
+    }
+  }
+  function renderDeployRules(): void {
+    const facts: DeployFacts = deployFacts(battleGameMode);
+    deployRules.innerHTML = (['teams', 'clock', 'respawn', 'victory', 'equipment', 'ammo'] as const).map((key) =>
+      `<div class="cot-deploy-rule">${uiIconSVG(DEPLOY_FACT_ICON[key], 18)}<dt>${t(`garage.deploy.rule.${key}`)}</dt>` +
+      `<dd class="num">${facts[key] ?? (key === 'victory' ? t('garage.deploy.elimination') : t('garage.deploy.none'))}</dd></div>`).join('');
+  }
+  // the selected tank under the rules: its roster card (hero render over its flag) and its name
+  function renderDeployTank(): void {
+    const card = selectedId ? cardById.get(selectedId) : null;
+    const spec = selectedId ? specById.get(selectedId) : null;
+    if (!card || !spec) { deployTank.replaceChildren(); return; }
+    const copy = card.cloneNode(true) as HTMLElement;
+    copy.classList.remove('sel');
+    copy.removeAttribute('title');
+    copy.setAttribute('aria-hidden', 'true');
+    copy.inert = true;
+    deployTank.replaceChildren(copy);
+    // the flag names the nation (owner UI rule 3)
+    deployTank.insertAdjacentHTML('beforeend', `<div><span>${flagIconHTML(spec.nation, 24, 18)}</span>` +
+      `<b>${escapeHtmlAttribute(spec.label?.displayName || spec.name)}</b></div>`);
+  }
+  function renderDeployCampaign(): void {
+    deployOps.innerHTML = campaignLadder().map(({ operation, status, progress, stars }) => {
+      const title = t(`campaign.op.${operation.id}.title`);
+      const action = status === 'locked'
+        ? `<span class="cot-deploy-op-lock" title="${escapeHtmlAttribute(t('campaign.lockedHint', { index: operation.index - 1 }))}">${uiIconSVG('battlePrivate', 20)}</span>`
+        : `<button class="cot-deploy-op-launch" type="button" data-campaign-launch="${operation.id}" data-map-id="${operation.mapId}">${
+          t(status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}</button>`;
+      // the operation's battlefield, as the Garage's map cards show it
+      const thumb = maps.find((map) => map.id === operation.mapId)?.thumb;
+      return `<article class="cot-deploy-op ${status}" role="listitem" aria-label="${escapeHtmlAttribute(title)}">` +
+        `<span class="cot-deploy-op-index" aria-hidden="true">${String(operation.index).padStart(2, '0')}</span>` +
+        `<span class="cot-deploy-op-map" aria-hidden="true"${thumb ? ` style="background-image:url(&quot;${escapeHtmlAttribute(thumb)}&quot;)"` : ''}></span>` +
+        `<span><b class="cot-deploy-op-name">${title}</b><span class="cot-deploy-op-meta">` +
+        `<span>${uiIconSVG('map', 14)}${t(`map.${operation.mapId}`)}</span><span>${uiIconSVG('clock', 14)}${clockText(operation.timeLimitS)}</span>` +
+        `<span class="cot-deploy-op-stars" role="img" aria-label="${escapeHtmlAttribute(t('campaign.starsAria', { stars, max: 3 }))}">${
+          [0, 1, 2].map((slot) => `<i class="${slot < stars ? 'on' : ''}">${uiIconSVG('star', 14)}</i>`).join('')}</span>` +
+        `<span class="cot-deploy-op-diff" role="img" aria-label="${escapeHtmlAttribute(t('garage.deploy.difficulty', { value: operation.difficulty, max: CAMPAIGN_OPERATIONS.length }))}">${
+          CAMPAIGN_OPERATIONS.map((_, slot) => `<i class="${slot < operation.difficulty ? 'on' : ''}"></i>`).join('')}</span>` +
+        (progress ? `<span>${t('campaign.best', { best: progress.bestLine, total: progress.total })}</span>` : '') +
+        `</span></span>${action}</article>`;
+    }).join('');
+  }
+  function showDeployTab(id: string): void {
+    battleMenu.dataset.deployTab = id;
+    for (const panel of deployPanels) panel.hidden = panel.dataset.deployPanel !== id;
+    if (id === 'campaign') renderDeployCampaign();
+  }
+  wireRoving(deployTabs, (id) => { emit('ui:click', {}); showDeployTab(id); });
+  for (const room of battleMenu.querySelectorAll<HTMLButtonElement>('[data-deploy-room]')) {
+    room.addEventListener('click', () => openMultiplayer(room.dataset.deployRoom === 'lan' ? 'lan' : 'private'));
+  }
+  requiredElement<HTMLButtonElement>(battleMenu, '[data-deploy-field]').addEventListener('click', () => {
+    emit('ui:click', {});
+    if (requiredElement<HTMLElement>(battleMenu, '[data-deploy-field-pop]').hidden) openDeployField(); else closeDeployField();
+  });
+  deployOps.addEventListener('click', (event) => {
+    const launch = (event.target as Element | null)?.closest<HTMLButtonElement>('[data-campaign-launch]');
+    if (launch?.dataset.campaignLaunch && launch.dataset.mapId) deployCampaign(launch.dataset.campaignLaunch, launch.dataset.mapId);
+  });
   renderBattleOptions = () => {
     battleMenu.dataset.rule = battleGameMode;
     renderArrangementPanel();
@@ -3293,6 +3600,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     marsField('gravity').value = settings.gravity;
     marsField('caches').value = settings.caches;
     marsDropdowns.forEach(dropdown => { if (!shown) dropdown.close(); dropdown.refresh(); });
+    renderDeployRules();
+    renderDeployChips();
   };
   marsSettings.addEventListener('change', () => {
     emit('ui:click', {});
@@ -3309,7 +3618,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
   } catch (_) { /* session-only */ }
   root.addEventListener('pointerdown', (event) => {
-    if (!battleControl.contains(eventNode(event))) closeBattleMenu();
+    const node = eventNode(event);
+    if (!battleControl.contains(node) && !battleMenu.contains(node)) closeBattleMenu();
   });
   prevVehicleBtn.addEventListener('click', () => step(-1));
   nextVehicleBtn.addEventListener('click', () => step(1));
@@ -3449,6 +3759,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   requiredElement<HTMLElement>(root, '[data-nav="docs"]').addEventListener('click', openDocs);
   requiredElement<HTMLElement>(root, '[data-nav="locale"]').addEventListener('click', switchLocale);
   requiredElement<HTMLElement>(root, '[data-nav="home"]').addEventListener('click', openHome);
+  requiredElement<HTMLElement>(root, '[data-nav="deploy"]').addEventListener('click', () => { emit('ui:click', {}); openBattleMenu(); });
+  requiredElement<HTMLElement>(root, '[data-lt-anatomy]').addEventListener('click', () => { emit('ui:click', {}); openSelectedInGallery('armor'); });
+  requiredElement<HTMLElement>(root, '[data-lt-test-drive]').addEventListener('click', () => { emit('ui:click', {}); startTestDrive(selectedId); });
   requiredElement<HTMLElement>(root, '[data-nav="github"]').addEventListener('click', () => {
     emit('ui:click', {});
   });
@@ -3508,6 +3821,24 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       e.preventDefault();
       return;
     }
+    const typing = target?.closest('input,select,textarea,[contenteditable="true"]');
+    // The Deploy screen covers the showroom: behind it only Enter (deploy) and Escape (above) act.
+    const deployOpen = battleMenu.classList.contains('open');
+    if (!typing && !deployOpen && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      const stationKey = /^Digit([1-6])$/.exec(e.code);
+      if (e.key === '/') { rosterSearchInput.focus(); e.preventDefault(); return; }
+      if (stationKey && document.body.dataset.cotPanels === 'persistent') {
+        setStation(GARAGE_STATIONS[Number(stationKey[1]) - 1][0]);
+        e.preventDefault();
+        return;
+      }
+      if (e.code === 'KeyB') { emit('ui:click', {}); openBattleMenu(); e.preventDefault(); return; }
+      if (e.code === 'KeyV') { openSelectedInGallery(); e.preventDefault(); return; }
+      if (e.code === 'KeyR') { recordTrigger.click(); e.preventDefault(); return; }
+      if (e.code === 'F1') { openDocs(); e.preventDefault(); return; }
+    }
+    if (typing) return;
+    if (deployOpen && e.code !== 'Enter' && e.code !== 'NumpadEnter') return;
     if (e.code === 'ArrowLeft') { step(-1); e.preventDefault(); }
     else if (e.code === 'ArrowRight') { step(1); e.preventDefault(); }
     else if (e.code === 'Enter' || e.code === 'NumpadEnter') {

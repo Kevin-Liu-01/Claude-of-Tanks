@@ -151,8 +151,8 @@ function replaceAttribute(tag: string, name: string, value: string): string {
   const escaped = escapeHtml(value);
   const pattern = new RegExp(`(${name}\\s*=\\s*["'])[^"']*(["'])`, 'i');
   return pattern.test(tag)
-    ? tag.replace(pattern, `$1${escaped}$2`)
-    : tag.replace(/\s*\/?>$/, ` ${name}="${escaped}" />`);
+    ? tag.replace(pattern, (_match, open: string, close: string) => `${open}${escaped}${close}`)
+    : tag.replace(/\s*\/?>$/, () => ` ${name}="${escaped}" />`);
 }
 
 function replaceMeta(html: string, selector: 'name' | 'property', key: string, value: string): string {
@@ -163,7 +163,7 @@ function replaceMeta(html: string, selector: 'name' | 'property', key: string, v
 
 /** Replace an existing page's complete social metadata without touching its app body. */
 export function injectSiteMetadata(html: string, metadata: SiteMetadata): string {
-  let output = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtml(metadata.title)}</title>`);
+  let output = html.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${escapeHtml(metadata.title)}</title>`);
   output = replaceMeta(output, 'name', 'description', metadata.description);
   output = replaceMeta(output, 'name', 'robots', metadata.robots);
   output = output.replace(/<link\b[^>]*\brel\s*=\s*["']canonical["'][^>]*>/i,

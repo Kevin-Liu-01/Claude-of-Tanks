@@ -21,6 +21,9 @@
 // the air this generator leaves for the moving gun apart from a leak.
 // The generated module is consumed by tankFactory at build time (applyInteriorFills) and excluded from the authored
 // geometry fingerprints.
+// Drawn triangles (2026-10-16, tank-opt HIDDEN): the factory draws each component's boundary surface, conforming on the
+// voxel lattice (src/vehicles/interiorFillSurface.ts), or its closed boxes where those are fewer, so `tris` reports
+// that, not twelve a box; the boxes themselves, and so the generated modules, are the mesher's unchanged input.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { stripTypeScriptTypes } from 'node:module';
@@ -39,6 +42,10 @@ import { createM1A1FillClearance } from './m1a1-fill-clearance.mjs';
 import { insideTrackLane, trackLaneBoxesForVoxel } from './track-lane-boxes.mjs';
 import { insideBoreAir, physicalBoreAir } from './physical-bore-air.mjs';
 import { CLEARANCE_AIR_FILE, encodeSpans, insideSpan, movingClearanceSpans, underMovingPart, writeDeclaredClearance } from './moving-clearance-air.mjs';
+import { drawnFillTriangles as drawnComponentTriangles } from '../src/vehicles/interiorFills.ts';
+
+/** Triangles a rendered tank draws for these components' boxes (interiorFills.ts drawnFillTriangles). */
+const drawnFillTriangles = (components) => components.reduce((n, spans) => n + (spans?.length ? drawnComponentTriangles(spans) : 0), 0);
 
 const args = process.argv.slice(2);
 const opt = (name, fallback) => { const hit = args.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
@@ -150,14 +157,16 @@ for (const id of ids) {
     if (!record) throw new Error(`${id}: no measured record in --merge-from`);
     out[id] = { ...record }; clearanceAir[id] = mergedClearance.get(id) ?? null;
     const boxes = ['hull', 'turret', 'gun'].reduce((n, key) => n + (record[key] ? Buffer.from(record[key], 'base64').length / 12 : 0), 0);
-    stats.push({ id, boxes, tris: boxes * 12, leakL: 0, residualL: 0, merged: true });
+    const spans = ['hull', 'turret', 'gun'].map((key) => { if (!record[key]) return null; const b = Buffer.from(record[key], 'base64'); return Uint16Array.from({ length: b.length >> 1 }, (_, i) => b.readUInt16LE(2 * i)); });
+    stats.push({ id, boxes, tris: drawnFillTriangles(spans), leakL: 0, residualL: 0, merged: true });
     continue;
   }
   if (uniformCommit) {
     const { record, factor } = await uniformRecord(id);
     out[id] = record; clearanceAir[id] = null; // a replayed lattice carries no measured clearance cells
     const boxes = ['hull','turret','gun'].reduce((n,key) => n + (record[key] ? Buffer.from(record[key], 'base64').length / 12 : 0), 0);
-    stats.push({ id, boxes, tris: boxes * 12, leakL: 0, residualL: 0, residualUnmeasured: true });
+    const spans = ['hull','turret','gun'].map((key) => { if (!record[key]) return null; const b = Buffer.from(record[key], 'base64'); return Uint16Array.from({ length: b.length >> 1 }, (_, i) => b.readUInt16LE(2 * i)); });
+    stats.push({ id, boxes, tris: drawnFillTriangles(spans), leakL: 0, residualL: 0, residualUnmeasured: true });
     console.log(`${id}: preserved ${boxes} fill solids at ${factor} of ${uniformCommit}; residual requires watertight check`);
     continue;
   }
@@ -287,7 +296,7 @@ for (const id of ids) {
   const L = (n) => +(n * VOXEL ** 3 * 1000).toFixed(1);
   // origins at 6 decimals: a 4-decimal origin put every fill face a few microns off the lattice
   out[id] = { v: VOXEL, o: origin.map((v) => +v.toFixed(6)), t: turretOrigin.map((v) => +v.toFixed(6)), g: gunOrigin.map((v) => +v.toFixed(6)), ...entry };
-  const row = { id, leakL: L(leakVox), filledL: L(filledVox), residualL: L(residual), skippedL: L(skipped), trackLaneL: L(bandVox), boreAirL: L(boreVox), boxes: boxesTotal, tris: boxesTotal * 12, ms: Math.round(performance.now() - t0) };
+  const row = { id, leakL: L(leakVox), filledL: L(filledVox), residualL: L(residual), skippedL: L(skipped), trackLaneL: L(bandVox), boreAirL: L(boreVox), boxes: boxesTotal, tris: drawnFillTriangles([entry.hull, entry.turret, entry.gun]), ms: Math.round(performance.now() - t0) };
   if(sourceAir){
     const receipt=sourceAir.receipt();row.preservedSourceAirL=L(receipt.cells.length);
     const evidenceDir=opt('source-air-evidence',null);

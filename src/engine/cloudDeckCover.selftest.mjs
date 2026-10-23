@@ -199,8 +199,8 @@ for (const id of MAP_IDS) {
 }
 // (2026-10-14: four decks since the broken deck's retirement on 2026-10-13 — fjord, polders and copper_mesa are cumulus;
 // 2026-10-16: three — Cinder Junction on cumulus too, the coordinator's ruling; 2026-10-18: two — Ironworks on cumulus,
-// the 228 census)
-assert.ok(rows.length >= 2, `the decks priced (${rows.map((r) => r.id).join(', ')})`);
+// the 228 census; 2026-10-22: one — Frosthollow on cumulus, world-polish-240)
+assert.ok(rows.length >= 1, `the decks priced (${rows.map((r) => r.id).join(', ')})`);
 if (process.env.COT_DECK_COVER_PRINT) for (const r of rows) console.log(r.id, r.cover.toFixed(3), r.coverage.toFixed(2), r.closing.toFixed(2));
 for (const r of rows) {
   const tag = `${r.id}: dome cover ${r.cover.toFixed(2)} at coverage ${r.coverage.toFixed(2)} (closing ${r.closing.toFixed(2)})`;

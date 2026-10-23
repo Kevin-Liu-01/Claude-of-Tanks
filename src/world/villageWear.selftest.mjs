@@ -8,16 +8,18 @@ import { createHardstandPaintCover } from './hardstandSurface.ts';
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const stringify = value => JSON.stringify(value, (_key, item) => typeof item === 'function' ? String(item) : item);
-const pilots = ['coastal', 'saltwind'];
+const pilots = ['saltwind'];
 // map revival lane 2 (2026-10-05): Aegis Crossing takes the activity mode off the gorge its village rect spans
 // (the map-revival lane, Caldera round 4, 2026-10-10: Aso's farmsteads among their paddies — the yards and margins only)
 // (2026-10-18, Earthrise 228 rebuild: outpost tracks are activity wear) Taurus-Littrow Station's rover and tyre tracks around
-// the outpost and the excavation front's strips, the rest of the floor the gardened grey (moon.ts workedGround)
-const activityMaps = ['coastal', 'caldera', 'foundry', 'saltwind', 'moon', 'cliffbridge'];
+// the outpost and the excavation front's strips, the rest of the floor the gardened grey (moon.ts workedGround); (2026-10-06,
+// the map-revival lane: Saltmere Bay's bourg is authored and its ground lies in plots, out of the activity-patch scope)
+const activityMaps = ['caldera', 'foundry', 'saltwind', 'moon', 'cliffbridge'];
 // ground lane (the farmland, 2026-10-04): Verdant lays its village's ground out as plots (terrain.villageWear 'plots') —
 // the terrain material's mask alone, no CPU twin, grading, collision or grass input reads it; the map-revival lane:
-// Orchard Valley's walled yards and threshing floors (2026-10-05)
-const plotMaps = ['verdant', 'orchard'];
+// Orchard Valley's walled yards and threshing floors (2026-10-05), Saltmere Bay's bourg (2026-10-06) and Frontier Basin's
+// Hofreiten (2026-10-05)
+const plotMaps = ['verdant', 'coastal', 'frontier', 'orchard'];
 // 2026-10-01 (frozen pins retired): the all28 parent mask digests (desktop/mobile, baked on historical road, shoreline,
 // exit, Badlands and Foundry inputs), the archived pilot masks, the parent config digest and the literal Alpine/Autumn/
 // Foundry config pins were change detectors of past outputs and authored data. Every comparison below is live: each
@@ -36,7 +38,7 @@ function wearDisabled(cfg) {
 }
 function checkScope(resolve) {
   assert.deepEqual(MAP_IDS.filter(id => resolve(id).terrain.villageWear === 'activity-patches'), activityMaps,
-    'activity wear stays opt-in: only the five activity maps replace the blanket village apron');
+    'activity wear stays opt-in: only the activity maps replace the blanket village apron');
   assert.deepEqual(MAP_IDS.filter(id => ![undefined, 'activity-patches'].includes(resolve(id).terrain.villageWear)), plotMaps,
     'the village plots stay opt-in: the plot maps alone, and no third mode');
   for (const id of plotMaps) assert.equal(resolve(id).terrain.villageWear, 'plots', `${id}: the village in plots`);

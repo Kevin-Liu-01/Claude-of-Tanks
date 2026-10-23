@@ -336,7 +336,10 @@ export default {
     bog: 'rgba(75,74,68,.55)', bogStroke: 'rgba(45,44,41,.78)',
     roadCasing: 'rgba(30,29,27,.96)', roadFill: 'rgba(112,104,94,.94)', buildingFill: '#aaa7a1',
   },
-  shot: { pos: [-238, 50, -230], look: [42, 6, 66] },
+  // (2026-10-22, world-polish-240; the coordinator: "keep the haze-wall fix, but the volcano must read") the overview from
+  // the south rim, over the farmed floor at the central cones (a blind critic: +3 against the old north-west view, whose
+  // backdrop was the somma's long flat-topped rim, "a flat hazy wall"; the low south view lost a point to a roof). The haze stays
+  shot: { pos: [80, 70, 260], look: [-30, 30, -200] },
   // the horizons stream's Caldera item (HZ.20, 2026-10-15): the Hinterland past the red line (hinterland/drafts/caldera.ts)
   // — the somma ringing the floor 6-8 km out and the central cones over it; `?hinterland=0` draws the old ring
   hinterland: true,

@@ -61,6 +61,7 @@ import { preparePlayableRelief, samplePlayableRelief, type PlayableRelief, type 
 import { landformPathBounds, landformPathFrame, prepareLandformPath, type LandformPathFrame, type PreparedLandformPath } from './landformPath.ts';
 import { createGeologyRockSampler, createGeologyZoneSampler, knollGeologyHeight, ridgeGeologyHeight, type GeologyZones, type LandformGeology } from './landformGeology.ts';
 import { sampleRedrockCanyon } from './redrockCanyon.ts';
+import { duneHeight, type DuneForm } from './duneForms.ts';
 import { createBorderLandform, resolveBorderLandform, type BorderLandformSettings } from './borderLandform.ts';
 import type { FarmsteadStyle } from './borderFarmsteads.ts';
 import { shallowWaterDepth, waterContactProfile } from './waterContact.ts';
@@ -341,6 +342,9 @@ interface LandformConfig {
    * terrain takes the greatest of their heights at a point, not their sum (a massif and the lobe against its flank summed
    * into a horn where the lobe's cap met the massif's wall). Every other landform still adds; absent on every other map. */
   union?: boolean | 'carve';
+  /** A sand landform's own form (duneForms.ts; the map-revival lane, Sirocco Wadi round 1): a seif's wandering sharp
+   * crest on a ridge, a star dune's peak and arms on a knoll. Takes the place of the smooth section and of `geology`. */
+  dune?: DuneForm;
   /** Gorges only (map revival lane 2, 2026-10-05): the wall's foot and its top as fractions of the half-width — the
    * floor runs level out to the foot and the wall climbs from there to the rim (default [0.65, 1], the smooth trough);
    * a narrow band is a sheer wall. Absent = the trough exactly as before. */
@@ -374,6 +378,12 @@ interface MesaConfig {
   tierWidth?: number;
   tierScale?: number;
   corridorFloor?: number;
+  /** The map-revival lane (2026-10-07, Sirocco Wadi round 1): the wall as the Dahar's — a talus and a marl slope under
+   * a caprock cliff. `share` of the wall's height (default 0.3) stands as a near-vertical step at the cap's edge, over
+   * the band [from, to] of the wall's own run (default 0.84-0.92); the rest rises on the slope below it. The wall's
+   * footprint is unchanged (its run over the mesa noise is the authored one; the cap begins at `to`). Absent = the
+   * smooth wall exactly as before. */
+  capCliff?: { share?: number; from?: number; to?: number };
 }
 
 interface TerrainSettings {
@@ -444,6 +454,9 @@ interface TerrainSettings {
 }
 
 interface SplatConfig {
+  /** Ground lane (2026-10-07): set by the world's build from the map's vegetation.standFloor ('canopy', the trees lane's
+   * round 8): the woods mask's discs are the drawn crowns, and the material lays the deeper stand floor under them. */
+  standFloorCanopy?: boolean;
   sourcedPalette?: TerrainPaletteId;
   grassTone?: ToneFunction | null;
   dirtTone?: ToneFunction | null;
@@ -1350,6 +1363,7 @@ export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
     const half = Math.max(1, (form.length || 100) * 0.5);
     const width = Math.max(1, form.width || 45);
     const along = 1 - smoothstep(half * 0.72, half, Math.abs(lx));
+    if (form.dune) return duneHeight(form, lx, lz, along) ?? 0;
     if (form.geology) return ridgeGeologyHeight(form, lx, lz, along) ?? 0;
     const across = 1 - smoothstep(width * 0.22, width, Math.abs(lz));
     // A wide crown plus a softer shoulder reads as a natural fold and keeps
@@ -1357,6 +1371,7 @@ export function sampleLandformHeight(form: LandformConfig, x: number, z: number,
     const shoulder = across * across * (3 - 2 * across);
     return height * along * shoulder;
   }
+  if (form.dune) return duneHeight(form, lx, lz, 1) ?? 0;
   if (form.geology) return knollGeologyHeight(form, lx, lz) ?? 0;
   const rx = Math.max(1, form.rx || form.r || 70);
   const rz = Math.max(1, form.rz || form.r || rx);
@@ -1881,7 +1896,13 @@ function* heightFieldBuildSteps(
       const band = T.mesas.thr1 - T.mesas.thr0;
       const wallWidth = T.mesas.wallWidth ?? 0.42;
       const tierWidth = T.mesas.tierWidth ?? 0.045;
-      const wall = smoothstep(T.mesas.thr0, T.mesas.thr0 + band * wallWidth, mn);
+      let wall = smoothstep(T.mesas.thr0, T.mesas.thr0 + band * wallWidth, mn);
+      if (T.mesas.capCliff) {
+        // (Sirocco Wadi round 1) the slope below, then the caprock's step at the cap's edge
+        const cc = T.mesas.capCliff, share = cc.share ?? 0.3, c0 = cc.from ?? 0.84, c1 = cc.to ?? 0.92;
+        const t = clamp((mn - T.mesas.thr0) / (band * wallWidth), 0, 1);
+        wall = (1 - share) * smoothstep(0, c0, t) + share * smoothstep(c0, c1, t);
+      }
       const tier2 = smoothstep(T.mesas.thr1 + 0.04, T.mesas.thr1 + 0.04 + tierWidth, mn);
       const tierScale = T.mesas.tierScale ?? 0.45;
       const capNoise = 0.97 + 0.03 * noi.noise(x * 0.012 + 31, z * 0.012 - 74);
@@ -4495,6 +4516,7 @@ uniform vec4 uFormationLow; // the lower formation: a tint on the rock's luminan
 uniform vec4 uFormationUp;  // the upper formation: likewise
 uniform float uCliffStrata; // ground lane (2026-10-15): the beds every sheer face carries (splat.cliffStrata)
 uniform float uMicroAmp, uStrata, uRoadTex, uTownWear, uWornDirtStrength, uShoulderDirt, uLaneK, uIceDrift, uMidRelief, uFieldPatch;
+uniform float uStandFloor; // ground lane (2026-10-07): 1 = the map's woods mask is its drawn crowns (vegetation standFloor 'canopy')
 uniform vec2 uWallWeather; // the Redrock lane: the joint blocks' tone step and the varnish streaks' darkening (default 0.26, 0.50)
 uniform vec4 uJebelFace;   // the Redrock lane, round 9: x on (1) / off (0); y flutes, z tafoni, w varnish (splat.jebelFace)
 uniform float uRippleNear; // the Redrock lane, round 10: the near ripple trains' strength (splat.rippleNear; rippleAmp's by default)
@@ -5596,6 +5618,10 @@ void splatCompute() {
   // where the engines stood, and its clinker near the camera (the works' slag grain). The yard is the village mask's on a
   // map whose ground profile floors it so (groundRedux.ts cinderYard); 0 everywhere else, and the block is skipped.
   float yardW = uYardCinder * smoothstep(0.10, 0.55, mk.a);
+  // (2026-10-11, the map-revival lane; gauntlet wave 396b: the floor "still soft mottled brown dirt with moss patches ...
+  // not black cinder and coal dust with spillage and trodden paths") the yard floored in cinder edge to edge: the dirt
+  // layer, which carries it, over all but a twentieth of the yard (the sward's green patches showed between its own)
+  if (yardW > 0.002) fD = max(fD, 0.95 * yardW * keepM * (1.0 - seaSand));
   float cinN = 0.5, cinVis = 0.0;
   if (fD > 0.002 && keepM * (1.0 - seaSand) > 0.002) {
     vec4 aD = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB);
@@ -5610,7 +5636,11 @@ void splatCompute() {
       // grey plane)
       vec3 cin = dM + (aD.rgb - dM) * mix(0.16, 0.80, smoothstep(0.012, 0.035, gFootM));
       // (a cinder's grey is a little warm — the lab's cold grey read as asphalt)
-      cin = mix(cin, vec3(reduxLuma(cin)), 0.6) * vec3(0.88, 0.85, 0.83);
+      // (2026-10-11, the map-revival lane; gauntlet wave 362: the yard floor "the same uniform brown noise as the open
+      // ground"; "a 1962 coalfield yard sits on black cinder and coal-dust ballast") the yard's cinder a dark warm grey —
+      // four fifths of the dirt photo's brown taken out and its tone two thirds (was three fifths of the brown, 0.85)
+      // (2026-10-11, wave 396b: "push the floor much darker") two fifths of the photo's tone (was 0.62): cinder black-grey
+      cin = mix(cin, vec3(reduxLuma(cin)), 0.85) * vec3(0.44, 0.43, 0.41);
       // the floor's own lumps and hollows, trodden and spread: ~25 cm and ~60 cm of tone (the noise with no period), a
       // twelfth each way, faded before they can shimmer; and its ~3 m spreads, darker and paler by a sixth, which still
       // read at a grazing 30 m where the finer terms are gone
@@ -5619,10 +5649,19 @@ void splatCompute() {
       cin *= 1.0 + ((yL.x - 0.5) * 0.34 * tileVis(0.25) + (yL.y - 0.5) * 0.30 * tileVis(0.6) + (yM.x - 0.5) * 0.36 * tileVis(3.0));
       // the patches (~8 m, the noise with no period): coal dust, dried ash, rust
       vec2 yP = nzq(uv, 0.021, vec2(0.17, 0.43));
-      float coal = smoothstep(0.56, 0.78, yP.x);
+      // (2026-10-11: the coal dust over more of the floor and blacker — the yard handled coal)
+      float coal = smoothstep(0.40, 0.66, yP.x);
       float ash = smoothstep(0.58, 0.80, 1.0 - yP.x) * smoothstep(0.30, 0.62, yP.y);
       float rust = smoothstep(0.62, 0.82, yP.y) * (1.0 - coal);
-      cin *= mix(1.0, 0.48, coal);
+      cin *= mix(1.0, 0.38, coal);
+      // (2026-10-11, wave 396b: "trodden paths") the paths across the yard — the noise's mid contour on a field drawn out
+      // along the line (~17 m along it, ~4 m across), about a metre wide, kept to a third of the floor by a ~30 m field so
+      // they run as separate paths, not a mesh: the cinder there trodden flat and compacted, a fifth darker; faded at range
+      // before its lines can shimmer
+      float pathN = nzq(vec2(uv.x * 0.26, uv.y), 0.05, vec2(0.37, 0.61)).x;
+      float trod = (1.0 - smoothstep(0.06, 0.14, abs(pathN - 0.5)))
+        * smoothstep(0.55, 0.70, nzq(uv, 0.006, vec2(0.83, 0.11)).y) * tileVis(1.2);
+      cin *= 1.0 - 0.22 * trod;
       cin = mix(cin, vec3(reduxLuma(dM) * 1.65) * vec3(1.0, 0.98, 0.95), ash * 0.62);
       cin *= mix(vec3(1.0), vec3(1.30, 0.98, 0.76), rust * 0.55);
       // the oil: stains a metre or two across where the engines stood — kept to some stretches of the yard (the ~14 m
@@ -6637,6 +6676,16 @@ void splatCompute() {
     vec3 soilF = groundSamp(uAlbD, uMeanD, uv * 0.210, df, mipB).rgb;
     if (uReduxD.y > 1.5) {
       a.rgb = mix(a.rgb, soilF * vec3(0.80, 0.70, 0.62), floorW * smoothstep(0.55, 0.95, woods) * smoothstep(0.35, 0.75, gap) * 0.55);
+    } else if (uStandFloor > 0.5) {
+      // (2026-10-07, the trees lane's round 8: a wood's mask is its drawn crowns, the canopy closed over it) the stand
+      // floor under a closed canopy: deeper and damper than a copse's — dark soil under a mat of leaf litter, paler drifts
+      // of the year's leaves on it (a metre or two), moss in the wet hollows, and the sward only in the few light gaps
+      float leaves = smoothstep(0.42, 0.72, nz(uvW, 0.55, vec2(0.61, 0.17)).r) * tileVis(1.8);
+      vec3 damp = soilF * vec3(0.92, 0.74, 0.56) * (0.90 + 0.12 * n1h);
+      vec3 litter = mix(damp, soilF * vec3(1.22, 0.98, 0.70), leaves * 0.55);
+      litter = mix(litter, a.rgb * vec3(0.62, 0.78, 0.52), smoothstep(0.30, 0.65, smoothstep(0.06, 0.50, vFold)) * 0.30);
+      vec3 floorCol = mix(litter, a.rgb * vec3(0.78, 0.96, 0.66), smoothstep(0.70, 0.90, gap) * 0.5);
+      a.rgb = mix(a.rgb, floorCol, smoothstep(0.10, 0.55, woods) * (1.0 - 0.8 * fR) * (1.0 - roadCore) * (uReduxD.y < 0.5 ? 0.94 : 0.6));
     } else {
       vec3 litter = soilF * vec3(1.06, 0.86, 0.64) * (0.92 + 0.16 * n1h);
       vec3 floorCol = mix(litter, a.rgb * vec3(0.78, 0.96, 0.66), smoothstep(0.55, 0.80, gap) * 0.7);
@@ -6727,6 +6776,14 @@ void splatCompute() {
     // albedo where the normal has mipped away; round 73's sine was one more soft undulation
     float dwave = fract(sph * 0.0669 + (n2 - 0.5) * 0.2 + wOff.y * (0.3 / 48.0)); // wOff.y / 48: the 0.0009 field's G, centred
     float drift = (dwave < 0.8 ? dwave / 0.8 : (1.0 - dwave) / 0.2) * 2.0 - 1.0;
+    // (2026-10-07, the ground lane; wave 182's Frosthollow bird under the overcast: "dark wiggly lines" over the open
+    // snow; ported by salvage 240 onto the 10-14 trains) the lee band and the sawtooth's drop span a fifth of the 15 m
+    // wave (about 3 m), and out to 420 m they were drawn unfiltered: past a pixel or two of footprint they aliased into
+    // thin dark lines. Filtered to the pixel's footprint along the wind as the other far terms are (stripeAA): the drop
+    // eases to the wave's own fundamental (0.744 · cos, its crest at 0.65 of the wave), the wave to its mean as its whole
+    // period nears the pixel, the lee band to its mean (0.12)
+    float edgeAA = stripeAA(0.2 / 0.0669, swind);
+    drift = mix(0.744 * cos(6.2832 * (dwave - 0.65)), drift, edgeAA) * stripeAA(1.0 / 0.0669, swind);
     drift *= 0.2 + 0.8 * smoothstep(0.35, 0.70, n2w);
     float driftD = 1.0 - smoothstep(120.0, 420.0, effDist);
     float sw = uReduxSnow.y * meadowG * (1.0 - fR) * (1.0 - triW) * (1.0 - roadCore);
@@ -6741,7 +6798,7 @@ void splatCompute() {
       sTilt -= sH * dot(sTilt, sH) * (1.0 - keepA);
     }
     n.xy += sTilt;
-    float lee = smoothstep(0.78, 0.84, dwave) * (1.0 - smoothstep(0.88, 0.98, dwave));
+    float lee = mix(0.12, smoothstep(0.78, 0.84, dwave) * (1.0 - smoothstep(0.88, 0.98, dwave)), edgeAA);
     a.rgb *= 1.0 + drift * 0.05 * sw * smoothstep(40.0, 120.0, effDist) * driftD;
     a.rgb *= 1.0 - lee * 0.13 * sw * uReduxC.w * smoothstep(15.0, 50.0, effDist) * (0.6 + 0.4 * n1hs);
   }
@@ -8379,6 +8436,7 @@ function* createSplatMaterialSteps(
     // r2: agrarian field patchwork — only sensible on temperate farmland maps
     // ground lane (2026-10-03): a map with a land-use row (landUse.ts) draws its real fields instead
     shader.uniforms.uFieldPatch = { value: landUseProfile ? 0 : S.fieldPatch ?? 0 };
+    shader.uniforms.uStandFloor = { value: S.standFloorCanopy ? 1 : 0 }; // ground lane (2026-10-07): the deeper stand floor
     shader.uniforms.uLandA = { value: new THREE.Vector4(...landUse.landA) };
     shader.uniforms.uLandB = { value: new THREE.Vector4(...landUse.landB) };
     shader.uniforms.uLandC = { value: new THREE.Vector4(...landUse.landC) };
@@ -9037,7 +9095,8 @@ function* terrainBuildSteps(
   const materialSteps = createSplatMaterialSteps(
     engineCtx,
     heightField._layout,
-    cfg ? cfg.splat : null,
+    // (ground lane, 2026-10-07: the map's stand floor rides with its splat — the trees lane's vegetation.standFloor)
+    cfg ? { ...cfg.splat, standFloorCanopy: (cfg as { vegetation?: { standFloor?: string } }).vegetation?.standFloor === 'canopy' } : null,
     (cfg && cfg.id) || 'verdant',
     heightField._mesaW || null,
     heightField._waterWetnessAt || null,

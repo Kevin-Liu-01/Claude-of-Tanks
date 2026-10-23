@@ -49,6 +49,21 @@ interface AnatomyVolume {
   layoutSources?: readonly string[];
   shapes?: readonly AnatomyShape[];
   parts?: ReadonlyArray<{ min: Vec3; max: Vec3 }>;
+  /** A seated crew station's head centre and posture (the combat crew seat, 235). */
+  head?: Vec3;
+  posture?: CrewSeatPosture;
+}
+
+/** The combat crew seat's posture: the mannequin's joint angles (radians), its role ladder and how far it is tucked. */
+interface CrewSeatPosture {
+  kind: string;
+  tuck: number;
+  trunk: number;
+  hip: number;
+  knee: number;
+  shoulder: number;
+  elbow: number;
+  neck: number;
 }
 
 interface AnatomyWeaponStock {
@@ -431,6 +446,8 @@ export interface CrewStation {
   head: [number, number, number];
   /** Exact crew hit shapes. */
   shapes: AnatomyShape[];
+  /** The combat seat's posture, when the station has one: the mannequin takes it exactly. */
+  posture?: CrewSeatPosture;
 }
 
 /**
@@ -469,6 +486,13 @@ function crewHeadShapes(volume: AnatomyVolume): AnatomyShape[] {
 export function crewStations(armor: AnatomyArmor): CrewStation[] {
   return (armor.crew || []).map((volume, index) => {
     const center = [0, 1, 2].map((axis) => (volume.min[axis] + volume.max[axis]) / 2) as [number, number, number];
+    if (volume.head && volume.posture) {
+      // A seated station (235): the body's own head and posture.
+      return {
+        index, crew: String(volume.crew || 'crew'), role: crewRole(String(volume.crew || '')), frame: volumeFrame(volume, armor),
+        volume, center, head: [...volume.head] as [number, number, number], shapes: [...(volume.shapes || [])], posture: { ...volume.posture },
+      };
+    }
     const halfY = (volume.max[1] - volume.min[1]) / 2;
     const nominal: [number, number, number] = [center[0], center[1] + halfY * CREW_HEAD_OFFSET_OF_HALF_HEIGHT, center[2]];
     const heads = crewHeadShapes(volume);
