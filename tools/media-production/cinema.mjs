@@ -15,7 +15,7 @@ import { createHash } from 'node:crypto';
 import { resolve, join, dirname } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createCaptureLock, stampBehindWaiting, ticketAt } from '../capture-lock.mjs';
-import { digest, sourceDigest, contactSheet, leaseClock } from './pipeline.mjs';
+import { digest, sourceDigest, contactSheet, leaseClock, cinemaLeaseMs, CINEMA_LEASE_CAP_MIN } from './pipeline.mjs';
 import { normalizeFilm, filmOutputSize, createFilmPlan } from '../../src/game/studioFilmPlan.ts';
 
 const JOB_OPTIONS = ['scene', 'formats', 'resolution', 'fps', 'samples', 'max-samples', 'shutter', 'filter', 'shake', 'start-ms', 'end-ms',
@@ -31,6 +31,8 @@ const help = `npm run media:cinema -- --scene=scene.json [--formats=landscape,po
   or --jobs=jobs.json: an array of jobs with the same keys (without "--"); every job needs its own "out".
 --ticket-stamp joins the capture queue at that place (a run split over leases keeps its first ticket's place);
 --lease-min ends the capture lease before a film that would carry it past the budget, exit 75: resume the rest.
+  The budget is the 18-min hold cap unless --lease-min asks for less; a take still running two minutes past it stops at
+  its next frame (exit 75; the resumed batch renders it again).
 --fresh-page=0 keeps one page for the whole batch; by default a film that follows another loads the Studio afresh.
 Film settings default to the scene's "film" block, then the Studio defaults (30 fps, 180°, 8 samples
 adaptive to 64 on fast motion, gaussian). Speed ramps come from the scene's film.speed keys.`;
@@ -52,7 +54,9 @@ if (args.jobs && (rawJobs.some(job => !job.out) || new Set(rawJobs.map(job => re
 }
 // 2026-10-07 (the coordinator's alternating finals): a long batch runs as several leases, one process each; every lease
 // joins the queue at the batch's first stamp, so it follows whichever lane held the GPU in between, not the line's tail.
-const leaseMs = Number(args['lease-min'] ?? 0) * 60000;
+// 2026-10-23 (the coordinator: a cinema hold ran 44 min): every lease is held to the house cap (pipeline.mjs cinemaLeaseMs).
+const leaseMs = cinemaLeaseMs(args['lease-min']);
+const LEASE_GRACE_MS = 2 * 60000;
 // (2026-10-14, MED-02: a take filmed after another in the same page drew its sunlit ground under a soft shade for its
 // first ~1.4 s, gone by frame 42, where a fresh page drew it in sun: state one take leaves in the page (temporal
 // history, wall-clock-gated reseeds, streaming and carpet budgets) reaches the next. A film that follows another on
@@ -60,7 +64,6 @@ const leaseMs = Number(args['lease-min'] ?? 0) * 60000;
 // Studio for its own map; a film a resumed batch preserves loads nothing. --fresh-page=0 keeps the old one-page
 // batch, for A/B checks)
 const freshPage = args['fresh-page'] !== '0';
-if (!(leaseMs >= 0)) throw Error(help);
 
 /** Validate one job into its settings, receipt and output paths (before taking the GPU). */
 async function prepareJob(raw) {
@@ -190,7 +193,15 @@ let server, browser, interrupted = false;
 const ticket = args['ticket-stamp'] === undefined ? null : ticketAt(stampBehindWaiting(Number(args['ticket-stamp'])));
 await lock.acquire(6 * 60 * 60 * 1000, { ticket });
 const heldSince = Date.now(), leaseTime = leaseClock(leaseMs, heldSince);
-let leaseOver = false;
+let leaseOver = false, leaseStopped = false;
+// endBefore() ends the lease before a film its longest take would carry past the budget; a take that runs past the budget
+// and the grace anyway (the first take has no estimate) stops at its next frame.
+const leaseLimit = setTimeout(() => {
+  leaseStopped = true;
+  console.log(`[cinema] hold limit: ${leaseMs / 60000} min + ${LEASE_GRACE_MS / 60000} min grace; the take stops at its next frame`);
+}, leaseMs + LEASE_GRACE_MS);
+leaseLimit.unref();
+if (leaseMs < CINEMA_LEASE_CAP_MIN * 60000) console.log(`[cinema] lease budget ${leaseMs / 60000} min`);
 // A call that times out leaves the browser wedged (2026-10-07: a still spun the GPU process for 30 minutes under memory
 // pressure): the batch ends there, its error recorded, and the caller starts the rest in a fresh browser.
 let wedged = false;
@@ -255,7 +266,7 @@ try {
   };
 
   jobLoop: for (const job of jobs) {
-    if (interrupted || wedged) break;
+    if (interrupted || wedged || leaseStopped) break;
     const { receipt, save, film, scene } = job;
     receipt.renderer = rendererInfo;
     save();
@@ -265,7 +276,7 @@ try {
       // Named by the short side, so a portrait 1080x1920 film reads 1080p like its landscape sibling.
       const stem = `${scene.map ?? 'scene'}-${format}-${job.resolution}p${film.fps}-n${film.samples}`;
       if (receipt.films.some(row => row.stem === stem && row.complete)) { console.log(`[cinema] preserved ${stem}`); continue; }
-      if (leaseTime.endBefore()) {
+      if (leaseStopped || leaseTime.endBefore()) {
         leaseOver = true;
         console.log(`[cinema] lease over at ${((Date.now() - heldSince) / 60000).toFixed(1)} min (longest take ${(leaseTime.longestTake / 60000).toFixed(1)} min): ${stem} and the rest wait for the next lease`);
         break jobLoop;
@@ -297,6 +308,7 @@ try {
         const started = Date.now();
         for (let index = 0; index < frames; index++) {
           if (interrupted) throw Error('Capture interrupted');
+          if (leaseStopped) throw Object.assign(Error(`hold limit: the take stopped at frame ${index}`), { leaseStop: true });
           const info = await page.evaluate(async ({ index, token, maxUploads }) => {
             const S = window.__STUDIO, canvas = window.__DEBUG.renderer.domElement;
             const t0 = performance.now();
@@ -395,6 +407,12 @@ try {
       } catch (error) {
         frameDir = null;
         await page.evaluate(() => window.__STUDIO.endFilm()).catch(() => {});
+        if (error?.leaseStop) {
+          // not a failure: the take is incomplete, so the resumed batch renders it again
+          row.stopped = error.message; save(); leaseOver = true;
+          console.log(`[cinema] lease over at ${((Date.now() - heldSince) / 60000).toFixed(1)} min: ${stem} ${error.message}`);
+          break jobLoop;
+        }
         row.error = String(error.stack ?? error); receipt.errors.push({ film: stem, error: row.error }); save();
         if (timedOut(error)) wedged = true;
         console.error(`[cinema] ${stem} FAILED: ${error.message}`);
@@ -403,6 +421,7 @@ try {
 
     for (const format of job.formats) for (const ms of job.stills) {
       if (interrupted || wedged) break;
+      if (leaseStopped) { leaseOver = true; break jobLoop; }
       const { width, height } = filmOutputSize(format, job.resolution);
       const exposed = job.stillExposureMs > 0 ? `-e${job.stillExposureMs}ms` : '';
       const stem = `${scene.map ?? 'scene'}-${format}-${job.resolution}p-still-${Math.round(ms)}ms${exposed}`;
@@ -435,6 +454,7 @@ try {
     }
   }
 } finally {
+  clearTimeout(leaseLimit);
   await browser?.close().catch(() => {}); await server?.close().catch(() => {}); clearInterval(lease); lock.release();
   process.removeListener('SIGINT', stop); process.removeListener('SIGTERM', stop);
   const changed = sourceDigest() !== fingerprint;
