@@ -8,11 +8,13 @@
  *
  * Every function draws centred on (x, y) in the current transform; `r` is
  * the glyph's nominal radius in the caller's units (CSS px on the minimap,
- * texture px for sprites). Colours arrive from OBJECTIVE_PALETTE: own team
- * green, enemy red, neutral chalk, contested amber — the HUD's blip colours.
+ * texture px for sprites). Colours arrive from sideColor / sideFill: own and
+ * enemy in the team tokens under the player's colour preset (the HUD's blip
+ * colours), neutral chalk and contested amber from OBJECTIVE_PALETTE.
  */
 
-import { TOKENS, tokenValue } from './tokens/tokens.ts';
+import { TOKENS, liveToken } from './tokens/tokens.ts';
+import { tokenEpoch } from './tokens/tokenSelection.ts';
 
 export type ObjectiveSide = 'own' | 'enemy' | 'neutral' | 'contested';
 
@@ -22,21 +24,10 @@ function withAlpha(hex: string, alpha: number): string {
   return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${alpha})`;
 }
 
-/**
- * Team colours follow the HUD's blips, which keep the classic green/red identity until the HUD token restyle
- * (brand-ui BUI-H1) moves every team mark at once; the rest are the brand tokens.
- */
-const TEAM_PRESET = { cvd: 'classic' } as const;
-const OWN = tokenValue('team-own', TEAM_PRESET);
-const ENEMY = tokenValue('team-enemy', TEAM_PRESET);
-
+/** The brand tokens of the sides no team owns; the team sides follow the player's colour preset (sideColor). */
 export const OBJECTIVE_PALETTE = Object.freeze({
-  own: OWN,
-  enemy: ENEMY,
   neutral: TOKENS['team-neutral'],
   contested: TOKENS.accent,
-  ownFill: withAlpha(OWN, 0.34),
-  enemyFill: withAlpha(ENEMY, 0.34),
   neutralFill: withAlpha(TOKENS['team-neutral'], 0.16),
   contestedFill: withAlpha(TOKENS.accent, 0.34),
   keyline: withAlpha(TOKENS['graphite-950'], 0.86),
@@ -46,13 +37,28 @@ export const OBJECTIVE_PALETTE = Object.freeze({
   ball: TOKENS['ink-1'],
 });
 
+/** Own and enemy in the team tokens under the player's colour preset (brand-ui H1: the HUD's blips and every team
+ *  mark share them), re-read only when the preset changes. */
+const TEAM = { epoch: -1, own: '', enemy: '', ownFill: '', enemyFill: '' };
+function team(): typeof TEAM {
+  const epoch = tokenEpoch();
+  if (epoch !== TEAM.epoch) {
+    TEAM.epoch = epoch;
+    TEAM.own = liveToken('team-own');
+    TEAM.enemy = liveToken('team-enemy');
+    TEAM.ownFill = withAlpha(TEAM.own, 0.34);
+    TEAM.enemyFill = withAlpha(TEAM.enemy, 0.34);
+  }
+  return TEAM;
+}
+
 export function sideColor(side: ObjectiveSide): string {
-  return OBJECTIVE_PALETTE[side];
+  return side === 'own' || side === 'enemy' ? team()[side] : OBJECTIVE_PALETTE[side];
 }
 
 export function sideFill(side: ObjectiveSide): string {
-  return side === 'own' ? OBJECTIVE_PALETTE.ownFill
-    : side === 'enemy' ? OBJECTIVE_PALETTE.enemyFill
+  return side === 'own' ? team().ownFill
+    : side === 'enemy' ? team().enemyFill
       : side === 'contested' ? OBJECTIVE_PALETTE.contestedFill
         : OBJECTIVE_PALETTE.neutralFill;
 }
