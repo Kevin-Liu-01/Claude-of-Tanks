@@ -32,6 +32,8 @@ interface FrameInputPort {
   getCursorNdc(out: Point2): Point2;
   getSettings(): Pick<InputSettings, 'rmbMode'>;
   isDown(actionId: ActionId): boolean;
+  /** Hold-or-toggle latches end when the player can no longer drive (paused, kill cam, wrecked, out of battle). */
+  releaseToggles?(): void;
 }
 
 interface TankInput {
@@ -125,6 +127,7 @@ export function createPlayerFrameInput({
 
   function updateTankInput(sample: PlayerFrameSample): void {
     const player = sample.player;
+    if (!player || !playerCanDrive(sample)) input.releaseToggles?.();
     if (!player) return;
     const tankInput = player.input;
     if (!playerCanDrive(sample)) {

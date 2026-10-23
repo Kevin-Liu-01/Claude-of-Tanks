@@ -1,6 +1,7 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { MEDALS } from '../game/serviceRecord.ts';
-import { createElement as el, ensureStyle } from './dom.ts';
+import { createElement as el } from './dom.ts';
+import { ensureStyle } from './styleLayers.ts';
 import { FONT_COND, FONT_STACK } from './fonts.ts';
 import { t } from './i18n.ts';
 import { medalSVG } from './medalArt.ts';
@@ -55,7 +56,7 @@ interface ToastBus {
 
 /** Show medals as they are earned in battle. */
 export function installMedalToasts(bus: ToastBus, parent: HTMLElement = document.body): void {
-  ensureStyle('cot-medal-toast-style', CSS);
+  ensureStyle('cot-medal-toast-style', CSS, 'surfaces');
   const root = el('div', 'cot-medal-toasts', parent);
   root.setAttribute('role', 'status');
   root.setAttribute('aria-live', 'polite');

@@ -9,6 +9,7 @@ import { uiIconIds, uiIconSVG } from './uiIcons.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
 import { MAP_IDS } from '../world/maps/catalog.ts';
 import { shellIconSVG, shellIconTypes } from './shellIcons.ts';
+import { readIconSprite } from '../../tools/icon-sprite-lib.mjs';
 import {
   TANK_PORTRAIT_FRAME_POLICY,
   auditPortraitPixels,
@@ -88,51 +89,45 @@ for (const id of [
 
 if (!uiIconIds().includes('github')) throw new Error('missing garage GitHub icon');
 
-for (const [id, asset] of [
-  ['garage', '/brand/nav/garage.svg'],
-  ['home', '/brand/nav/home.svg'],
-  ['gallery', '/brand/nav/tank-gallery.svg'],
-  ['studio', '/brand/nav/studio.svg'],
+// The one sprite (brand-ui BUI-F4): navigation glyphs are native monoline symbols, never <image> embeds of
+// product marks; uiIconSVG references them through the icon() host with the house stroke, caps and joins.
+const sprite = readIconSprite();
+for (const id of ['garage', 'home', 'gallery', 'studio', 'manual', 'play', 'deploy', 'media', 'record', 'settings']) {
+  const glyph = sprite.large.get(id);
+  assert.ok(glyph && !/<image|data:image\//.test(glyph), `${id} is a native vector glyph in the sprite`);
+  const svg = uiIconSVG(id, 24);
+  assert.match(svg, new RegExp(`<use href="#i-${id}"/>`), `${id} references its sprite symbol`);
+  assert.match(svg, /stroke-width="1\.5" stroke-linecap="square" stroke-linejoin="miter"/, `${id} wears the house stroke`);
+  assert.match(svg, /data-af=""/, `${id} takes the filled active state`);
+}
+assert.match(uiIconSVG('modeZones', 16), /viewBox="0 0 16 16"[^>]*stroke-width="1\.25"[\s\S]*href="#i-modeZones-s"/,
+  'at 16 px a glyph with an optical master uses the 16-unit symbol and its own stroke');
+assert.match(uiIconSVG('eqRammer', 16), /viewBox="0 0 24 24"[\s\S]*href="#i-eqRammer"/,
+  'without an optical master the 24-unit symbol serves every size');
+assert.match(uiIconSVG('tick', 12), /href="#i-check-s"/, 'retired ids resolve through the alias map');
+assert.equal(uiIconSVG('', 12), '', 'an empty id draws nothing');
+assert.match(uiIconSVG('info', 13, 'currentColor', 'x'), /^<svg class="cot-i x" /, 'a class joins the cot-i host');
+assert.doesNotMatch(uiIconSVG('info', 13), /style=/, 'the default colour inherits the surrounding text');
+const modeGlyphs = [...sprite.large.keys()].filter((id) => id.startsWith('mode'));
+assert.equal(modeGlyphs.length, 14, 'fourteen mode glyphs: the 13 rulesets and the proving ground');
+assert.equal(new Set(modeGlyphs.map((id) => sprite.large.get(id))).size, 14, 'no two modes share a glyph');
+assert.notEqual(sprite.large.get('modeFrontline'), sprite.large.get('modeZones'), 'Frontline Assault has its own glyph');
+for (const family of [
+  ['engine', 'transmission', 'fuelTank', 'ammoRack', 'autoloader', 'breech', 'optics', 'radio', 'apu', 'turretRing', 'fcs', 'track'],
+  ['crewCommander', 'crewGunner', 'crewDriver', 'crewLoader'],
+  ['penetration', 'ricochet', 'blocked', 'critical', 'detonation', 'damage', 'skull', 'statusFire'],
+  ['vehicle', 'layerArmor', 'layerModules', 'crew', 'layerMarkup', 'layerXray', 'toolSection', 'toolExplode', 'toolIsolate',
+    'toolMeasure', 'toolHitbox', 'toolPhoto'],
+  ['classMbt', 'classMedium', 'classHeavy', 'classLight', 'classIfv', 'classApc', 'classTd', 'classSpaa', 'classFireSupport'],
+  ['shellAp', 'shellApcr', 'shellApfsds', 'shellHeat', 'shellHe', 'shellAtgm'],
+  ['repair', 'medkit', 'extinguisher', 'smoke'],
+  ['lampOk', 'lampWarn', 'lampDown'],
 ]) {
-  if (!uiIconSVG(id, 24).includes(asset)) throw new Error(`${id} must use the shared product mark`);
+  for (const id of family) assert.ok(sprite.large.has(id), `the sprite draws ${id}`);
+  assert.equal(new Set(family.map((id) => sprite.large.get(id))).size, family.length, `${family[0]} family glyphs are distinct`);
 }
-
-const garageMark = await readFile(new URL('../../public/brand/nav/garage.svg', import.meta.url), 'utf8');
-if (!garageMark.includes('data-vehicle="leclerc_s2"') || garageMark.includes('<image')) {
-  throw new Error('garage mark must draw the Leclerc silhouette as native vector geometry');
-}
-if (!garageMark.includes('garage-turret') || !garageMark.includes('garage-hull')) {
-  throw new Error('garage mark must show the hoist separating the turret from the hull');
-}
-if ((garageMark.match(/data-separation="turret-ring"/g) || []).length !== 2) {
-  throw new Error('garage mark must split both masks at the turret ring');
-}
-
-const homeMark = await readFile(new URL('../../public/brand/nav/home.svg', import.meta.url), 'utf8');
-if (!homeMark.includes('data-vehicle="m1a1_abrams_hc"') || homeMark.includes('<image')) {
-  throw new Error('home mark must draw the M1A2 silhouette as native vector geometry');
-}
-if (!homeMark.includes('home-bay')) throw new Error('home mark must frame the tank inside the garage bay');
-
-const galleryMark = await readFile(new URL('../../public/brand/nav/tank-gallery.svg', import.meta.url), 'utf8');
-for (const vehicle of ['strv103a', 't90am', 'm1a1_abrams_hc']) {
-  if (!galleryMark.includes(`data-vehicle="${vehicle}"`)) {
-    throw new Error(`tank gallery mark must include the ${vehicle} silhouette`);
-  }
-}
-if (galleryMark.includes('<image') || galleryMark.includes('data:image/')) {
-  throw new Error('tank gallery silhouettes must remain native vector geometry');
-}
-
-const studioMark = await readFile(new URL('../../public/brand/nav/studio.svg', import.meta.url), 'utf8');
-if (!studioMark.includes('data-vehicle="leclerc_s2"') || studioMark.includes('<image')) {
-  throw new Error('scene studio mark must draw the Leclerc silhouette as native vector geometry');
-}
-if (!studioMark.includes('studio-turret') || !studioMark.includes('studio-hull')) {
-  throw new Error('scene studio mark must separate the turret from the hull');
-}
-if ((studioMark.match(/data-separation="turret-ring"/g) || []).length !== 2) {
-  throw new Error('scene studio mark must split both masks at the turret ring');
+for (const id of ['crewCommander', 'crewGunner', 'crewDriver', 'crewLoader', 'penetration', 'ricochet', 'blocked']) {
+  assert.ok(sprite.small.has(id), `${id} has a 16-unit optical master for the HUD`);
 }
 
 const tankThumbs = await readFile(new URL('./tankThumbs.ts', import.meta.url), 'utf8');
@@ -213,4 +208,6 @@ for (const type of shellIconTypes()) {
   }
 }
 
-execFileSync(process.execPath, [new URL('../../tools/generate-product-icons.mjs', import.meta.url).pathname, '--check'], {stdio:'pipe'});
+for (const tool of ['gen-icon-sprite.mjs', 'icon-stroke-census.mjs']) {
+  execFileSync(process.execPath, [new URL(`../../tools/${tool}`, import.meta.url).pathname, ...(tool.startsWith('gen') ? ['--check'] : [])], { stdio: 'pipe' });
+}
