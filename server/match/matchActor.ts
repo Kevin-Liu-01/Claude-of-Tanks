@@ -337,6 +337,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   );
   const checkpointEverySnapshots = VIEWER_CHECKPOINT_EVERY_SNAPSHOTS;
   const actorLog = log.child({ room: roomId, map: mapId });
+  const publishFailures = new WeakSet<object>();
   // A resumed match skips the countdown and its clock limit counts from where the old host left it.
   const resumedBattleTimeMs = resume ? Math.round(resume.battleTimeMs) : 0;
   const countdownS = resume ? 0 : options.countdownS ?? 5;
@@ -775,10 +776,22 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
         totals.droppedSnapshots++;
         continue;
       }
-      const { bytes, keyframe } = client.publisher.publish(buildFrame(client, tick), nowMs);
-      if (send(client, bytes)) {
+      let published: { bytes: Uint8Array; keyframe: boolean };
+      try {
+        published = client.publisher.publish(buildFrame(client, tick), nowMs);
+      } catch (error) {
+        // one viewer's unencodable frame (e.g. a keyframe over the wire cap) never starves the rest of the match
+        client.droppedSnapshots++;
+        totals.droppedSnapshots++;
+        if (!publishFailures.has(client)) {
+          publishFailures.add(client);
+          actorLog.error('snapshot publish failed', { player: client.playerId, error: error instanceof Error ? error.message : String(error) });
+        }
+        continue;
+      }
+      if (send(client, published.bytes)) {
         totals.snapshots++;
-        if (keyframe) totals.keyframes++;
+        if (published.keyframe) totals.keyframes++;
       }
     }
     authority.afterSnapshotBroadcast();
