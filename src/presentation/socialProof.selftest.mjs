@@ -7,8 +7,8 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const home = readFileSync(join(ROOT, 'site/home.html'), 'utf8');
 const styles = readFileSync(join(ROOT, 'src/presentation/home.css'), 'utf8');
 
-assert.match(home, /<header class="v5-hero">[\s\S]*?<\/header>\s*<section class="manual-start shell" aria-labelledby="manual-start-title">[\s\S]*?<\/section>\s*<section class="v5-social-proof" aria-labelledby="social-proof-title">/,
-  'the player-guide navigation must follow the hero, with the preserved social proof immediately after it');
+assert.match(home, /<!--home:hero-->[\s\S]*?<!--\/home:hero-->\s*<!--home:versus-->[\s\S]*?<!--\/home:fleet-->\s*<section class="manual-start shell" aria-labelledby="manual-start-title">[\s\S]*?<\/section>\s*<section class="v5-social-proof" aria-labelledby="social-proof-title">/,
+  'the hero, the versus wall and the fleet wall open the page; the player guides and the preserved social proof follow');
 assert.match(home, /Public engagement snapshot captured September 8, 2026/,
   'static platform counts must disclose their capture date');
 assert.match(home,

@@ -44,8 +44,7 @@ const SHELL: readonly string[] = [
 
 /** The public navigation every public page shares. */
 const PUBLIC_NAV: readonly string[] = [
-  '.public-nav__links a', "body[data-cot-panels='overlay'] .public-nav__links a", "body[data-cot-width='phone'] .public-nav__links a",
-  '.public-nav__links .public-nav__menu a', '.public-nav__locale', "body[data-cot-width='phone'] .public-nav__locale",
+  '.public-nav__links a', '.public-nav__lang a', '.public-footer__links a', '.public-footer__credit',
 ];
 
 /** The field manual's overview and topic pages (src/docs/docs.css). */
@@ -62,7 +61,7 @@ const DOCS: readonly string[] = [
 /** The landing page (src/presentation/home.css). */
 const HOME: readonly string[] = [
   ...PUBLIC_NAV,
-  '.btn', '.v5-maker', '.v5-social-proof__signals dt', '.v5-social-card__identity em', '.v5-social-proof__reddit>header small',
+  '.btn', '.v5-social-proof__signals dt', '.hero__stats li', '.vs-where', '.fleet-facts dt', '.v5-social-card__identity em', '.v5-social-proof__reddit>header small',
   '.v5-social-proof__reddit>header p', '.v5-social-proof__snapshot',
 ];
 
