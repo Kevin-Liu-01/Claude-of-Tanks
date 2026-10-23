@@ -1209,25 +1209,25 @@
    "hostSweep": []
   },
   "leo2_improved": {
-   "inputHash": "867b9709875d18fa",
+   "inputHash": "28f7c35ed33d4c54",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "leo2_revolution": {
-   "inputHash": "102a14689b27bdbc",
+   "inputHash": "8d1dc5c67d1c9b5e",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "leo2_revolution_proto": {
-   "inputHash": "20234b255ac1718a",
+   "inputHash": "16f56b8d43e7e263",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "leo2a2": {
-   "inputHash": "5fe08360e9d6adee",
+   "inputHash": "5eb581c3067f84f8",
    "runs": [
     {
      "index": 0,
@@ -1248,7 +1248,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.932,
-      "host": "hull<cutSlab@profiles/leopard.ts:1586>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1610>"
      }
     },
     {
@@ -1257,20 +1257,27 @@
      "source": "strip",
      "frame": "turret",
      "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
+     "classes": [
+      "HANGING"
+     ],
+     "primary": "HANGING",
+     "why": {
+      "HANGING": [
+       "94% over air",
+       "only 6% supported"
+      ]
+     },
      "notes": [],
      "measures": {
-      "support": 0.94,
-      "gap": 0.06,
-      "air": 0,
+      "support": 0.06,
+      "gap": 0,
+      "air": 0.94,
       "hidden": 0,
       "sunkMaxM": 0.003,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.897,
-      "host": "turret<buildLeo2A4TurretStage1@profiles/leopard.ts:7132>"
+      "exposure": 0.989,
+      "host": "turretDark<buildLeo2A4MarkingsStage2@profiles/leopard.ts:7350>"
      }
     }
    ],
@@ -1278,7 +1285,7 @@
    "hostSweep": []
   },
   "leo2a3": {
-   "inputHash": "cd5eb782697fe254",
+   "inputHash": "f4edb04c75e6ca2b",
    "runs": [
     {
      "index": 0,
@@ -1299,7 +1306,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.932,
-      "host": "hull<cutSlab@profiles/leopard.ts:1586>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1610>"
      }
     },
     {
@@ -1308,20 +1315,27 @@
      "source": "strip",
      "frame": "turret",
      "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
+     "classes": [
+      "HANGING"
+     ],
+     "primary": "HANGING",
+     "why": {
+      "HANGING": [
+       "94% over air",
+       "only 6% supported"
+      ]
+     },
      "notes": [],
      "measures": {
-      "support": 0.914,
-      "gap": 0.086,
-      "air": 0,
+      "support": 0.061,
+      "gap": 0,
+      "air": 0.939,
       "hidden": 0,
       "sunkMaxM": 0.003,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.9,
-      "host": "turret<buildLeo2A4TurretStage1@profiles/leopard.ts:7132>"
+      "exposure": 0.989,
+      "host": "turretDark<buildLeo2A4MarkingsStage2@profiles/leopard.ts:7350>"
      }
     }
    ],
@@ -1329,7 +1343,7 @@
    "hostSweep": []
   },
   "leo2a4": {
-   "inputHash": "85a43bd50062a356",
+   "inputHash": "3350b43fd1a0ac11",
    "runs": [
     {
      "index": 0,
@@ -1350,7 +1364,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.813,
-      "host": "hull<cutSlab@profiles/leopard.ts:1586>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1610>"
      }
     },
     {
@@ -1372,7 +1386,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<cutSlab@profiles/leopard.ts:1586>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1610>"
      }
     }
    ],
@@ -1380,7 +1394,7 @@
    "hostSweep": []
   },
   "leo2a4_otco": {
-   "inputHash": "8a03a7f7d673340a",
+   "inputHash": "050b581ddb541ff6",
    "runs": [
     {
      "index": 0,
@@ -1401,7 +1415,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.92,
-      "host": "hull<cutSlab@profiles/leopard.ts:1586>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1610>"
      }
     }
    ],
@@ -1409,7 +1423,7 @@
    "hostSweep": []
   },
   "leo2a4_v": {
-   "inputHash": "11b8362d28f6708d",
+   "inputHash": "b6cf557510504d85",
    "runs": [
     {
      "index": 0,
@@ -1421,19 +1435,18 @@
      "primary": "OK",
      "why": {},
      "notes": [
-      "clips <= 5 cm cosmetic",
-      "carried on its rack"
+      "clips <= 5 cm cosmetic"
      ],
      "measures": {
-      "support": 0.498,
-      "gap": 0.502,
+      "support": 0.886,
+      "gap": 0.114,
       "air": 0,
-      "hidden": 0.019,
-      "sunkMaxM": 0.016,
+      "hidden": 0,
+      "sunkMaxM": 0.022,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.944,
-      "host": "hullDark<leoHullV3HullStage10@profiles/leopard.ts:1852>"
+      "exposure": 0.955,
+      "host": "hull<addClosureRun@profiles/leopard.ts:2192>"
      }
     },
     {
@@ -1446,18 +1459,18 @@
      "primary": "OK",
      "why": {},
      "notes": [
-      "carried on its rack"
+      "clips <= 5 cm cosmetic"
      ],
      "measures": {
-      "support": 0.408,
-      "gap": 0.592,
+      "support": 0.885,
+      "gap": 0.115,
       "air": 0,
-      "hidden": 0.02,
-      "sunkMaxM": 0.017,
+      "hidden": 0,
+      "sunkMaxM": 0.022,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.933,
-      "host": "<mesh>"
+      "exposure": 0.922,
+      "host": "hull<addClosureRun@profiles/leopard.ts:2192>"
      }
     },
     {
@@ -1469,19 +1482,17 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "clips <= 5 cm cosmetic"
-     ],
+     "notes": [],
      "measures": {
-      "support": 0.529,
-      "gap": 0.469,
-      "air": 0.002,
+      "support": 0.985,
+      "gap": 0.015,
+      "air": 0,
       "hidden": 0.023,
-      "sunkMaxM": 0.03,
+      "sunkMaxM": 0.01,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.956,
-      "host": "hullDark<leoHullV3HullStage10@profiles/leopard.ts:1852>"
+      "exposure": 0.943,
+      "host": "<mesh>"
      }
     },
     {
@@ -1494,18 +1505,18 @@
      "primary": "OK",
      "why": {},
      "notes": [
-      "carried on its rack"
+      "clips <= 5 cm cosmetic"
      ],
      "measures": {
-      "support": 0.314,
-      "gap": 0.662,
-      "air": 0.024,
+      "support": 0.885,
+      "gap": 0.115,
+      "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.007,
+      "sunkMaxM": 0.022,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 1,
-      "host": "hullDark<towCable<-leoHullV3HullStage10@profiles/leopard.ts:1855>"
+      "exposure": 0.944,
+      "host": "hull<addClosureRun@profiles/leopard.ts:2192>"
      }
     }
    ],
@@ -1513,7 +1524,7 @@
    "hostSweep": []
   },
   "leo2a4m": {
-   "inputHash": "07da0779c65ce4c4",
+   "inputHash": "c601ca439c9e7383",
    "runs": [
     {
      "index": 0,
@@ -1525,18 +1536,19 @@
      "primary": "OK",
      "why": {},
      "notes": [
-      "clips <= 5 cm cosmetic"
+      "clips <= 5 cm cosmetic",
+      "carried on its rack"
      ],
      "measures": {
-      "support": 0.58,
-      "gap": 0.42,
+      "support": 0.409,
+      "gap": 0.591,
       "air": 0,
-      "hidden": 0.013,
-      "sunkMaxM": 0.016,
+      "hidden": 0,
+      "sunkMaxM": 0.022,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.944,
-      "host": "hullDark<leoHullV3HullStage10@profiles/leopard.ts:1869>"
+      "exposure": 0.967,
+      "host": "hullDetail<buildLeo2A5A5NL@profiles/leopard.ts:6370>"
      }
     },
     {
@@ -1553,15 +1565,15 @@
       "carried on its rack"
      ],
      "measures": {
-      "support": 0.403,
-      "gap": 0.597,
+      "support": 0.429,
+      "gap": 0.571,
       "air": 0,
-      "hidden": 0.044,
-      "sunkMaxM": 0.012,
+      "hidden": 0,
+      "sunkMaxM": 0.022,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.955,
-      "host": "hullDetail<buildLeo2A5A5NL@profiles/leopard.ts:6312>"
+      "exposure": 0.944,
+      "host": "hullDetail<buildLeo2A5A5NL@profiles/leopard.ts:6370>"
      }
     },
     {
@@ -1573,20 +1585,17 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "clips <= 5 cm cosmetic",
-      "carried on its rack"
-     ],
+     "notes": [],
      "measures": {
-      "support": 0.424,
-      "gap": 0.571,
-      "air": 0.004,
+      "support": 0.982,
+      "gap": 0.018,
+      "air": 0,
       "hidden": 0.013,
-      "sunkMaxM": 0.016,
+      "sunkMaxM": 0.01,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.978,
-      "host": "hullDark<leoHullV3HullStage10@profiles/leopard.ts:1869>"
+      "exposure": 0.922,
+      "host": "<mesh>"
      }
     },
     {
@@ -1603,15 +1612,15 @@
       "carried on its rack"
      ],
      "measures": {
-      "support": 0.403,
-      "gap": 0.597,
+      "support": 0.429,
+      "gap": 0.571,
       "air": 0,
-      "hidden": 0.048,
-      "sunkMaxM": 0.012,
+      "hidden": 0,
+      "sunkMaxM": 0.022,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.944,
-      "host": "hullDetail<buildLeo2A5A5NL@profiles/leopard.ts:6312>"
+      "exposure": 0.955,
+      "host": "hullDetail<buildLeo2A5A5NL@profiles/leopard.ts:6370>"
      }
     }
    ],
@@ -1619,7 +1628,7 @@
    "hostSweep": []
   },
   "leo2a4m_can": {
-   "inputHash": "9702676d628b643b",
+   "inputHash": "aede191d44752f7f",
    "runs": [
     {
      "index": 0,
@@ -1640,7 +1649,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<leoHullV3HullStage3@profiles/leopard.ts:1576>"
+      "host": "hull<leoHullV3HullStage3@profiles/leopard.ts:1600>"
      }
     },
     {
@@ -1649,20 +1658,27 @@
      "source": "strip",
      "frame": "turret",
      "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
+     "classes": [
+      "HANGING"
+     ],
+     "primary": "HANGING",
+     "why": {
+      "HANGING": [
+       "94% over air",
+       "only 6% supported"
+      ]
+     },
      "notes": [],
      "measures": {
-      "support": 0.94,
-      "gap": 0.06,
-      "air": 0,
+      "support": 0.06,
+      "gap": 0,
+      "air": 0.94,
       "hidden": 0,
       "sunkMaxM": 0.003,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.897,
-      "host": "turret<buildLeo2A4MTurretStage1@profiles/leopard.ts:14791>"
+      "exposure": 0.989,
+      "host": "turretDark<buildLeo2A4MMarkingsStage1@profiles/leopard.ts:15020>"
      }
     }
    ],
@@ -1682,13 +1698,13 @@
    "hostSweep": []
   },
   "leo2a6": {
-   "inputHash": "ebc69dab2c53c297",
+   "inputHash": "ad22db1e574c200c",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "leo2a6_ua": {
-   "inputHash": "52ea797a4f9aaa8e",
+   "inputHash": "020276d5b20f77d7",
    "runs": [
     {
      "index": 0,
@@ -1699,19 +1715,17 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "clips <= 5 cm cosmetic"
-     ],
+     "notes": [],
      "measures": {
       "support": 0.993,
       "gap": 0.007,
       "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.011,
+      "hidden": 0.078,
+      "sunkMaxM": 0.021,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.966,
-      "host": "hull<leoHullV3HullStage3@profiles/leopard.ts:1576>"
+      "exposure": 0.888,
+      "host": "hull<leoHullV3HullStage3@profiles/leopard.ts:1600>"
      }
     }
    ],
@@ -1754,7 +1768,7 @@
    "hostSweep": []
   },
   "leopard2_proto": {
-   "inputHash": "182b25306c634655",
+   "inputHash": "30276abb2242185d",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2680,7 +2694,7 @@
    "hostSweep": []
   },
   "strv121": {
-   "inputHash": "fa47ab65a7960ec9",
+   "inputHash": "25769c50166cb158",
    "runs": [
     {
      "index": 0,
@@ -2692,19 +2706,18 @@
      "primary": "OK",
      "why": {},
      "notes": [
-      "clips <= 5 cm cosmetic",
-      "carried on its rack"
+      "clips <= 5 cm cosmetic"
      ],
      "measures": {
-      "support": 0.498,
-      "gap": 0.502,
+      "support": 0.886,
+      "gap": 0.114,
       "air": 0,
-      "hidden": 0.019,
-      "sunkMaxM": 0.016,
+      "hidden": 0,
+      "sunkMaxM": 0.022,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.944,
-      "host": "hullDark<leoHullV3HullStage10@profiles/leopard.ts:1869>"
+      "exposure": 0.955,
+      "host": "hull<addClosureRun@profiles/leopard.ts:2192>"
      }
     },
     {
@@ -2717,18 +2730,18 @@
      "primary": "OK",
      "why": {},
      "notes": [
-      "carried on its rack"
+      "clips <= 5 cm cosmetic"
      ],
      "measures": {
-      "support": 0.408,
-      "gap": 0.592,
+      "support": 0.885,
+      "gap": 0.115,
       "air": 0,
-      "hidden": 0.02,
-      "sunkMaxM": 0.017,
+      "hidden": 0,
+      "sunkMaxM": 0.022,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.933,
-      "host": "<mesh>"
+      "exposure": 0.922,
+      "host": "hull<addClosureRun@profiles/leopard.ts:2192>"
      }
     },
     {
@@ -2740,19 +2753,17 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "clips <= 5 cm cosmetic"
-     ],
+     "notes": [],
      "measures": {
-      "support": 0.529,
-      "gap": 0.469,
-      "air": 0.002,
+      "support": 0.985,
+      "gap": 0.015,
+      "air": 0,
       "hidden": 0.023,
-      "sunkMaxM": 0.03,
+      "sunkMaxM": 0.01,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.956,
-      "host": "hullDark<leoHullV3HullStage10@profiles/leopard.ts:1869>"
+      "exposure": 0.943,
+      "host": "<mesh>"
      }
     },
     {
@@ -2765,18 +2776,18 @@
      "primary": "OK",
      "why": {},
      "notes": [
-      "carried on its rack"
+      "clips <= 5 cm cosmetic"
      ],
      "measures": {
-      "support": 0.314,
-      "gap": 0.662,
-      "air": 0.024,
+      "support": 0.885,
+      "gap": 0.115,
+      "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.007,
+      "sunkMaxM": 0.022,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 1,
-      "host": "hullDark<towCable<-leoHullV3HullStage10@profiles/leopard.ts:1872>"
+      "exposure": 0.944,
+      "host": "hull<addClosureRun@profiles/leopard.ts:2192>"
      }
     }
    ],
