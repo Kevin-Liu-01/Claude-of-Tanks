@@ -31,13 +31,13 @@ const DEFAULT_LOCK_STALE_MS = 5 * 60 * 1000;
 const DEFAULT_TICKET_STALE_MS = 60 * 60 * 1000;
 
 function ticketPid(name) {
-  const match = name.match(/-(\d+)\.t$/);
+  const match = name.match(/-(\d+)\.[tw]$/);
   return match ? parseInt(match[1], 10) : -1;
 }
 
 function readQueue(queueDir, ownTicket) {
   try {
-    return readdirSync(queueDir).filter((name) => name.endsWith('.t')).sort();
+    return readdirSync(queueDir).filter((name) => name.endsWith('.t') || name.endsWith('.w')).sort();
   } catch {
     return [ownTicket];
   }
@@ -47,9 +47,11 @@ function readQueue(queueDir, ownTicket) {
 // A ticket held only its pid, so a waiter killed in the queue (a lane's alarm) whose pid the kernel then reused looked
 // alive: at the head it stalled the queue until its ticket aged out (an hour). Tickets now carry their owner's process
 // start time, their heartbeat period and whether they are ready to hold. A ticket whose pid names another process (or a
-// zombie), or whose heartbeat stopped for `ticketSilentMs`, is dead at once. A warming ticket (acquire's `prepare` still
-// running) keeps its place, and the queue serves the tickets behind it until it is ready. Tickets written by an older
-// copy of this module (the bare pid) keep the old rules.
+// zombie), or whose heartbeat stopped for `ticketSilentMs`, is dead at once. A ticket not ready to hold (acquire's
+// `prepare` not done) waits as `<name>.w`, which older copies of this module never read (they list `*.t`), so they never
+// wait behind it; it keeps its place among this copy's tickets and becomes `<name>.t`, at the same stamp, once ready.
+// Tickets written by an older copy (the bare pid, no heartbeat period) keep the old rules exactly: pid alive and an
+// hour without a heartbeat, never the silent rule.
 const TICKET_FORMAT = 'cot-capture-ticket/1';
 const DEFAULT_TICKET_SILENT_MS = 10 * 60 * 1000;
 
@@ -101,7 +103,7 @@ function ticketLiveness(queueDir, name, { staleMs, silentMs, ignoreAge = false }
   if (Number(meta.refreshMs) > 0 && ageMs > Math.max(silentMs, 10 * Number(meta.refreshMs))) {
     return { live: false, why: `its heartbeat stopped ${Math.round(ageMs / 60_000)} min ago` };
   }
-  return { live: true, ready: meta.ready !== false };
+  return { live: true, ready: meta.ready !== false && !name.endsWith('.w') };
 }
 
 /** The first live ticket ready to hold, or `ownTicket` when none is ahead of it. Dead tickets ahead are removed (and
@@ -500,10 +502,10 @@ function rewriteTicket(path, text) {
 // Distinguish acquisitions launched by concurrent workers in one process.
 // Keep the PID last for legacy ticket liveness checks and use exclusive creation.
 let nextTicketSequence = 0;
-function reserveTicket(queueDir, text) {
+function reserveTicket(queueDir, text, suffix = '.t') {
   for (;;) {
     const sequence = String(nextTicketSequence++).padStart(12, '0');
-    const name = `${String(Date.now()).padStart(15, '0')}-${sequence}-${process.pid}.t`;
+    const name = `${String(Date.now()).padStart(15, '0')}-${sequence}-${process.pid}${suffix}`;
     try {
       writeFileSync(join(queueDir, name), text, { flag: 'wx' });
       return name;
@@ -515,7 +517,7 @@ function reserveTicket(queueDir, text) {
 
 /** Re-enter the queue under a ticket this process was issued before (its place); a present copy is kept. */
 function restoreTicket(queueDir, name, text = String(process.pid)) {
-  if (!/^\d{15}-\d{12}-\d+\.t$/.test(name) || ticketPid(name) !== process.pid) throw new Error(`not this process's ticket: ${name}`);
+  if (!/^\d{15}-\d{12}-\d+\.[tw]$/.test(name) || ticketPid(name) !== process.pid) throw new Error(`not this process's ticket: ${name}`);
   try { writeFileSync(join(queueDir, name), text, { flag: 'wx' }); } catch (error) { if (error.code !== 'EEXIST') throw error; }
   return name;
 }
@@ -630,10 +632,13 @@ export function createCaptureLock({
     let preparing = null;
     const text = () => ticketText(ticketRefreshMs, ready, ready ? 'ready' : preparing ? 'warming' : 'queued');
     if (!ticket && place) ticket = ticketAt(placeStamp(queueDir, place));
-    const ownTicket = ticket ? restoreTicket(queueDir, ticket, text()) : reserveTicket(queueDir, text());
+    // not ready yet: wait as `.w`, out of older copies' sight (see ticket identity above)
+    const suffix = ready ? '.t' : '.w';
+    if (ticket) ticket = ticket.replace(/\.[tw]$/, suffix);
+    let ownTicket = ticket ? restoreTicket(queueDir, ticket, text()) : reserveTicket(queueDir, text(), suffix);
     if (ticket) rewriteTicket(join(queueDir, ownTicket), text());
     lastTicket = ownTicket;
-    const ownPath = join(queueDir, ownTicket);
+    let ownPath = join(queueDir, ownTicket);
     const startedAt = Date.now();
     // A legitimate capture ahead of us can outlast ticketStaleMs. Keep our waiting ticket alive without changing its
     // filename or FIFO position, and restore it if an older copy of this module reaped it anyway.
@@ -645,7 +650,22 @@ export function createCaptureLock({
       preparing = (async () => prepare())();
       rewriteTicket(ownPath, text());
       preparing = preparing.then(
-        (value) => { prepared = value; warmMs = Date.now() - warmFrom; ready = true; rewriteTicket(ownPath, text()); },
+        (value) => {
+          prepared = value;
+          warmMs = Date.now() - warmFrom;
+          ready = true;
+          // ready: the same stamp as `.t`, where every copy of this module sees it
+          rewriteTicket(ownPath, text());
+          const readyTicket = ownTicket.replace(/\.w$/, '.t');
+          try {
+            renameSync(ownPath, join(queueDir, readyTicket));
+          } catch {
+            writeFileSync(join(queueDir, readyTicket), text()); // removed meanwhile: re-enter at the same stamp
+          }
+          ownTicket = readyTicket;
+          ownPath = join(queueDir, readyTicket);
+          lastTicket = readyTicket;
+        },
         (error) => { prepareError = error; });
     };
     try {
@@ -684,7 +704,9 @@ export function createCaptureLock({
       throw error;
     } finally {
       clearInterval(ticketHeartbeat);
-      try { unlinkSync(join(queueDir, ownTicket)); } catch { /* already removed */ }
+      for (const name of new Set([ownTicket, ownTicket.replace(/\.[tw]$/, '.t'), ownTicket.replace(/\.[tw]$/, '.w')])) {
+        try { unlinkSync(join(queueDir, name)); } catch { /* already removed */ }
+      }
     }
   }
 
@@ -717,7 +739,7 @@ export function createCaptureLock({
       return error.code === 'ENOENT' ? 0 : 1;
     }
     return names.filter((name) => {
-      if (!name.endsWith('.t')) return false;
+      if (!name.endsWith('.t')) return false; // a `.w` ticket is not ready to hold
       const state = ticketLiveness(queueDir, name, { ...queueRules, ignoreAge: true });
       return state.live && state.ready;
     }).length;
@@ -779,7 +801,7 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
     console.log(present ? `held by an older copy of the lock (no owner token)` : 'free');
   }
   let names = [];
-  try { names = readdirSync(DEFAULT_QUEUE_DIR).filter((name) => name.endsWith('.t')).sort(); } catch { /* no queue */ }
+  try { names = readQueue(DEFAULT_QUEUE_DIR, null).filter(Boolean); } catch { /* no queue */ }
   const rules = { staleMs: DEFAULT_TICKET_STALE_MS, silentMs: DEFAULT_TICKET_SILENT_MS };
   const states = names.map((name) => ({ name, ...ticketLiveness(DEFAULT_QUEUE_DIR, name, rules), meta: readTicketMeta(DEFAULT_QUEUE_DIR, name) }));
   const ready = states.filter((state) => state.live && state.ready), warming = states.filter((state) => state.live && !state.ready);

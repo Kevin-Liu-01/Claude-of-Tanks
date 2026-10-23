@@ -347,8 +347,11 @@ async function checkDeadWaiterIdentity() {
   await lock.acquire(5_000);
   assert.equal(existsSync(join(dir, silent)), false, 'a ticket whose heartbeat stopped is removed');
   lock.release();
-  // an older copy's bare pid of a live process: still the head, so the waiter times out behind it
+  // an older copy's bare pid of a live process, 30 min without a heartbeat (under the old hour): still the head, never
+  // "silent" (that rule needs a declared heartbeat), so the waiter times out behind it
   const older = ticket(3, process.ppid, null);
+  const halfHourAgo = new Date(Date.now() - 30 * 60_000);
+  utimesSync(join(dir, older), halfHourAgo, halfHourAgo);
   await assert.rejects(lock.acquire(300), /cot-shots lock timeout/);
   assert.equal(existsSync(join(dir, older)), true, "an older copy's live ticket is kept");
   unlinkSync(join(dir, older));
@@ -370,6 +373,7 @@ async function checkWarmingKeepsPlace() {
   await until('the warming ticket', () => existsSync(dir) && readdirSync(dir).length === 1);
   const [warmTicket] = readdirSync(dir);
   assert.equal(JSON.parse(readFileSync(join(dir, warmTicket), 'utf8')).ready, false, 'a warming ticket says so');
+  assert.ok(warmTicket.endsWith('.w'), 'and waits as .w, which older copies (they list *.t) never wait behind');
   const later = other.acquire(10_000).then(() => { order.push('other'); });
   await until('the second ticket', () => readdirSync(dir).length === 2);
   assert.equal(probe.waiting(), 1, 'waiting() leaves a warming ticket out');
@@ -380,6 +384,7 @@ async function checkWarmingKeepsPlace() {
   other.release();
   openGate();
   assert.deepEqual(await warming, { pages: 2 }, "acquire resolves with prepare's result");
+  assert.equal(warmer.lastTicket, warmTicket.replace(/\.w$/, '.t'), 'once ready it holds as .t at its first stamp');
   assert.deepEqual(order, ['other', 'warmer']);
   warmer.release();
   const lines = readFileSync(logFile, 'utf8').trim().split('\n').map((line) => JSON.parse(line));
@@ -414,13 +419,14 @@ async function checkJustInTimeWarm() {
   const runs = [];
   for (const name of ['A', 'B', 'C']) {
     runs.push(waiter(name));
-    await until(`ticket ${name}`, () => existsSync(dir) && readdirSync(dir).filter((n) => n.endsWith('.t')).length === runs.length);
+    await until(`ticket ${name}`, () => existsSync(dir) && readdirSync(dir).filter((n) => /\.[tw]$/.test(n)).length === runs.length);
   }
   await until('A and B warming', () => started.length === 2);
   await new Promise((resolve) => setTimeout(resolve, 1_500));
   assert.deepEqual(started, ['A', 'B'], 'the third ticket waits to warm while two are ahead');
-  const phases = readdirSync(dir).filter((n) => n.endsWith('.t')).sort().map((n) => JSON.parse(readFileSync(join(dir, n), 'utf8')).phase);
-  assert.deepEqual(phases, ['ready', 'ready', 'queued'], 'its ticket says it is queued to warm');
+  const tickets = readdirSync(dir).filter((n) => /\.[tw]$/.test(n)).sort();
+  assert.deepEqual(tickets.map((n) => [n.slice(-2), JSON.parse(readFileSync(join(dir, n), 'utf8')).phase]),
+    [['.t', 'ready'], ['.t', 'ready'], ['.w', 'queued']], 'warm tickets are .t; the third waits as .w, queued to warm');
   rmSync(lockAt, { recursive: true });
   await Promise.all(runs);
   assert.deepEqual(started, ['A', 'B', 'C']);
