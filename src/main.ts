@@ -3264,6 +3264,7 @@ const mainFrame = createMainFrameRuntime({
       garageModePreview.update(visual?.root ?? null, visual ? getSpec(visual.specId) : null, garagePreviewMode, dt);
     },
   },
+  garageOverlay: { frame: () => garage.frameHotspots(camera, pedestal.switchPending ? null : pedestal.current?.root ?? null) },
   networkSession: networkPump,
   garageFramePacer,
   battleFrame,

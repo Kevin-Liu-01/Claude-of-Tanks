@@ -131,7 +131,7 @@ body[data-cot-panels='overlay'] .cot-lt-id{display:none;}
 /* ---- the roster: tools over the cards, Deploy beside them ---- */
 body[data-cot-panels='persistent'] .cot-country-rail{left:var(--edge);right:var(--edge);top:auto;
   bottom:calc(var(--edge) + var(--card-h) + var(--s2));height:var(--rtools-h);width:auto;transform:none;
-  grid-template-columns:auto var(--country-edge) auto minmax(0,1fr) var(--country-edge);}
+  grid-template-columns:auto var(--country-edge) auto minmax(0,1fr) var(--country-edge) auto;}
 body[data-cot-panels='persistent'] .cot-country-rail>*{grid-row:1;}
 body[data-cot-panels='persistent'] .cot-roster-search{grid-column:1;}
 body[data-cot-panels='persistent'] .cot-country-edge.prev{grid-column:2;}
@@ -163,4 +163,23 @@ body[data-cot-panels='persistent'] .cot-battle-mode .sum-icon{display:inline-fle
 body[data-cot-panels='persistent'] .cot-battle-mode .sum-mode{font-weight:600;white-space:nowrap;}
 body[data-cot-panels='persistent'] .cot-battle-mode .sum-map{opacity:.72;}
 body[data-cot-panels='persistent'] .cot-multiplayer-entry{display:none;}
+
+/* ---- the stage's numbered hotspots (the direction's 05-garage .hs): an accent numeral on the tank, its values on a
+   plate reading outward from the stage's centre; garageHotspots.ts writes each one's place per rendered frame ---- */
+.cot-hotspots{position:absolute;inset:0;pointer-events:none;overflow:hidden;}
+.cot-hotspots[hidden]{display:none;}
+.cot-hotspot{position:absolute;left:0;top:0;display:flex;align-items:center;gap:8px;margin:-12px 0 0 -12px;will-change:transform;}
+.cot-hotspot[hidden]{display:none;}
+.cot-hotspot.l{flex-direction:row-reverse;margin-left:auto;translate:calc(-100% + 24px) 0;}
+.cot-hotspot .n{display:grid;place-items:center;width:24px;height:24px;flex:none;border-radius:50%;background:var(--accent);
+  box-shadow:var(--ring-3);color:var(--ink-on-accent);font:700 var(--fs-12)/1 var(--font-display);}
+.cot-hotspot .v{display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border-radius:var(--control-radius);
+  background:var(--glyph-plate);box-shadow:var(--ring-2);white-space:nowrap;}
+.cot-hotspot .v b{font:600 var(--fs-13)/1 var(--font-display);color:var(--ink-1);}
+.cot-hotspot .v small{font:500 var(--fs-12)/1 var(--font-data);color:var(--ink-2);}
+/* the roster's count, at the rail's end */
+.cot-roster-count{display:none;}
+body[data-cot-panels='persistent'] .cot-roster-count{display:block;grid-column:6;align-self:center;padding:0 var(--s2);
+  font:500 var(--fs-13)/1 var(--font-data);color:var(--ink-3);white-space:nowrap;}
+body[data-cot-panels='persistent'] .cot-roster-search input::placeholder{color:var(--ink-3);}
 }

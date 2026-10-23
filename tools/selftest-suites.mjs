@@ -2304,6 +2304,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/gallery/inAction.selftest.mjs',
     'src/docs/referenceTakes.selftest.mjs',
     'src/ui/garageFleetTake.selftest.mjs',
+    // 2026-10-23: the Garage's numbered hotspots (the Premiere direction's 05-garage page)
+    'src/ui/garageHotspots.selftest.mjs',
     'tools/marketing-shots/landing-media.selftest.mjs',
     // 2026-10-19: the media library (public/media/library-r3 since 10-21: the finished pictures of the current rounds), by pack range and sheet
     'tools/marketing-shots/media-library.selftest.mjs',
