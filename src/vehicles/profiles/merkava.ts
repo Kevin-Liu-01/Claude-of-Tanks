@@ -20,6 +20,7 @@ import { spareTrackPart, spareTrackRunTag } from '../spareTrackSeat.ts';
 // fender line; every later mark hangs deep scalloped skirts.
 import { merkavaDishedFaceLayers } from '../nationWheelConstructions.ts';
 import * as THREE from 'three';
+import { spareLinkBlock } from '../spareLinkGeometry.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
 import { KIT, MUDGUARDS, convexSlab, muzzleBore, orientedSlab } from './kit.ts';
 import { beginAuxiliaryStation } from './auxiliaryStation.ts';
@@ -3487,9 +3488,12 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
         for (let i = 0; i < hullUpgrade.spare; i++) {
           const merkavaChassisHullCourse27 = (): void => {
             const x = (i - (hullUpgrade.spare - 1) / 2) * spareStep;
-            P.add('hullTrack', spareTrackPart(spareRun, box(spareStep * 0.86, 0.055, 0.15)), x, spareY, spareZ,
-              rxAt(spareZ), 0, (i % 2 ? 0.012 : -0.012));
-            P.add('hullDark', spareTrackPart(spareRun, box(spareStep * 0.55, 0.012, 0.026)), x,
+            // 2026-10-22 (owner float calls): on the BAZ, whose course now lies bare on the glacis, the links are the
+            // fleet's link shape in the same box (a plain box read as a black placeholder), without the box's strip.
+            const baz = P.spec.id === 'merkava3_baz';
+            P.add('hullTrack', spareTrackPart(spareRun, baz ? spareLinkBlock(spareStep * 0.86, 0.055, 0.15)
+              : box(spareStep * 0.86, 0.055, 0.15)), x, spareY, spareZ, rxAt(spareZ), 0, (i % 2 ? 0.012 : -0.012));
+            if (!baz) P.add('hullDark', spareTrackPart(spareRun, box(spareStep * 0.55, 0.012, 0.026)), x,
               spareY + 0.030, spareZ - 0.045, rxAt(spareZ), 0, 0);
           };
           merkavaChassisHullCourse27();
