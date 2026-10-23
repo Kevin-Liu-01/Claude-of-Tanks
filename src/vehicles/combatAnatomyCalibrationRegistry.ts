@@ -72,6 +72,37 @@ export interface AnatomyTurretRingReceipt extends Record<string, RuntimeValue> {
   readonly sweepDy?: readonly number[];
 }
 
+/**
+ * 235 crew fit (tools/crew-seat-fit.mjs): a P50 (1.75 m) body seated at one crew station, in its frame (hull, or turret
+ * at rest). The posture is the Gallery mannequin's joint angles (radians); `head` the head centre; `min`/`max` the
+ * station box (the body's bounds trimmed to the shell); `shapes` the body's hit shapes (head, torso, thighs, shins).
+ * `relaxed` names the obstacles the seat had to ignore; `trimmed` is the body's outside share where no posture fitted.
+ */
+export interface AnatomyCrewSeatReceipt extends Record<string, RuntimeValue> {
+  readonly crew: string;
+  readonly frame: 'hull' | 'turret';
+  readonly posture: {
+    readonly kind: string;
+    readonly tuck: number;
+    readonly trunk: number;
+    readonly hip: number;
+    readonly knee: number;
+    readonly shoulder: number;
+    readonly elbow: number;
+    readonly neck: number;
+  };
+  readonly pelvis: readonly number[];
+  readonly head: readonly number[];
+  readonly min: readonly number[];
+  readonly max: readonly number[];
+  readonly shapes: readonly (
+    | { readonly kind: 'ellipsoid'; readonly center: readonly number[]; readonly radii: readonly number[] }
+    | { readonly kind: 'capsule'; readonly a: readonly number[]; readonly b: readonly number[]; readonly radius: number }
+  )[];
+  readonly relaxed?: string;
+  readonly trimmed?: number;
+}
+
 export interface CombatAnatomyCalibration extends Record<string, RuntimeValue> {
   readonly externalWeapons?: readonly AnatomyWeaponReceipt[];
   readonly hull: AnatomyCalibrationBounds;
@@ -92,6 +123,8 @@ export interface CombatAnatomyCalibration extends Record<string, RuntimeValue> {
   readonly trackContact?: TrackContactReceipt;
   /** The turret ring as built (turreted tanks). */
   readonly turretRing?: AnatomyTurretRingReceipt;
+  /** Where each crew member sits (235 crew fit), in the internal layout's crew order. */
+  readonly crewSeats?: readonly AnatomyCrewSeatReceipt[];
 }
 
 export interface AnatomyWeaponReceipt extends AnatomyCalibrationCell {

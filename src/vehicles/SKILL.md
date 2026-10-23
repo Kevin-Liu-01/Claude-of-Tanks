@@ -176,6 +176,16 @@ gear profile, and land per-tank changes atomically with audits. Every playable
 tank carries the core combat modules; `combatAnatomy.ts` adds only
 gameplay-backed vehicle-specific systems (autoloader, IFV feed, missile rack)
 and calibrates armor/module/crew coordinates to checked geometry receipts.
+Crew stations are seated, not boxed (235): every calibration row carries
+`crewSeats` from `tools/crew-seat-fit.mjs` (run by `gen-combat-anatomy`; refit
+against committed rows with `--crew-only [--ids=…]`): a P50 1.75 m body (the
+Gallery mannequin's segment table) in its role's posture — modern MBT drivers
+recline, turret crew sit in the basket below the ring, a turret loader stands
+where the headroom allows — placed nearest its authored station inside the
+exact shell and off the powerplant, autoloader, gun and stowage. Its literal
+box, head, posture and hit shapes are what every client and authority read.
+`node tools/crew-fit-census.mjs` judges the fleet (box, shapes and body inside
+the shell; 0 failures expected).
 Procedural low-polygon shadow hulls are presentation-invisible proxies: route
 them with `markShadowOnly()` rather than relying on `colorWrite: false`, which
 still incurs a forward submission in Three.js.

@@ -200,7 +200,10 @@ for (const id of ids) {
   }
   for (const box of armor.crew || []) {
     const env = box.turretLocal ? turretEnv : hullEnv;
-    if (!centerInside(boxCenter(box), env, 0.05)) {
+    // A turret crew member sits in the basket (235 crew seats): its centre may lie below the turret, inside the hull.
+    const pivot = armor.turretPivot || [0, 0, 0];
+    const basket = box.turretLocal && centerInside(boxCenter(box).map((value, axis) => value + pivot[axis]), hullEnv, 0.05);
+    if (!basket && !centerInside(boxCenter(box), env, 0.05)) {
       row.outside.push(`crew:${box.crew}${box.turretLocal ? '(T)' : ''}`);
     }
   }

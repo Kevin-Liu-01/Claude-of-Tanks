@@ -1,9 +1,11 @@
 // Gallery anatomy crew: one articulated P50 mannequin (1.75 m) per combat crew station.
 //
 // The figure is never scaled to its station. Its head centre is pinned to the head of the station's combat body
-// shapes (anatomyData.crewStations), the pose comes from the role, and the only fitting the pose does is to tuck
-// (recline the trunk, flex hips and knees) until the boots clear the exact hull-shell floor. A station that still
-// cannot hold a seated person shows as one: the figure is not shrunk.
+// shapes (anatomyData.crewStations). A seated station (the combat crew seat, 235: tools/crew-seat-fit.mjs poses this
+// same body inside the shell) gives the exact posture, so the figure is the hit shapes' body. Otherwise the pose comes
+// from the role, and the only fitting the pose does is to tuck (recline the trunk, flex hips and knees) until the boots
+// clear the exact hull-shell floor. A station that still cannot hold a seated person shows as one: the figure is not
+// shrunk.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { CrewStation } from './anatomyData.ts';
@@ -161,14 +163,32 @@ function stationSlides(station: CrewStation): number[] {
   return slides;
 }
 
+/** The role pose a combat seat's posture ladder draws as (a standing loader has no seat pan). */
+const SEAT_BASE_POSE: Readonly<Record<string, keyof typeof BASE_POSES>> = Object.freeze({
+  driverReclined: 'driver', driverSeated: 'driver', gunner: 'gunner', commander: 'commander',
+  loaderStanding: 'loaderStanding', loaderSeated: 'loaderSeated', seatedHunched: 'gunner',
+});
+
 /**
  * Pick the least tucked pose (tuck blend 0…1) whose lowest point clears the floor by 2 cm and whose knees, ankles and
  * toes stay inside the hull shell, with the head on the station's head anchor. Where no tuck does, the head may slide
  * along the station (inside the combat station box, nearest slide first): a reclined driver whose head shape sits
  * mid-station otherwise pushes the legs through the glacis. Failing that, the first pose with both knees and ankles
- * inside (a toe may touch a sloped plate), else the pose with the most lower-body points inside.
+ * inside (a toe may touch a sloped plate), else the pose with the most lower-body points inside. A seated station
+ * (the combat crew seat) takes its posture exactly.
  */
 function fitCrewPose(station: CrewStation, floorY: number, inside?: InsideShell): CrewFit {
+  if (station.posture) {
+    const { trunk, hip, knee, shoulder, elbow, neck } = station.posture;
+    const pose = { trunk, hip, knee, shoulder, elbow, neck };
+    const joints = poseJoints(pose);
+    const flags = inside ? lowerBodyPoints(station.head, joints).map((point) => inside(point)) : [];
+    return {
+      pose, base: SEAT_BASE_POSE[station.posture.kind] || 'commander', tuck: station.posture.tuck, slideM: 0,
+      floorClearanceM: station.head[1] + lowestBelowHead(joints) - floorY,
+      insideShell: inside ? flags.filter(Boolean).length : 6,
+    };
+  }
   const base = crewBasePose(station, floorY);
   const evaluate = (tuck: number, slide: number) => {
     const pose = lerpPose(BASE_POSES[base], TUCKED[base], tuck);
