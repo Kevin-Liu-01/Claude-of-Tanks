@@ -31,9 +31,10 @@ describe('cot-rooms Worker: the room lifecycle (the deployed shape)', () => {
     expect((await exports.default.fetch('https://room.test/rooms/ABCDEF', { headers: { Upgrade: 'websocket', Origin: `${origin}.evil` } })).status).toBe(403);
     expect((await exports.default.fetch('https://room.test/rooms/ABCDEF', { headers: { Origin: origin } })).status).toBe(426);
     expect((await exports.default.fetch('https://room.test/rooms/ABCDEF/match', { headers: { Origin: origin } })).status).toBe(426);
-    // anonymous junk never reaches the limiter or a room (Workers Free, 2026-10-23): the method first
+    // anonymous junk never reaches the limiter or a room (Workers Free, 2026-10-23): the method first (without an
+    // Upgrade header: the test runtime sends every upgrade as GET, as a browser does)
     for (const method of ['POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS']) {
-      const refused = await exports.default.fetch('https://room.test/rooms/ABCDEF', { method, headers: { Upgrade: 'websocket', Origin: origin } });
+      const refused = await exports.default.fetch('https://room.test/rooms/ABCDEF', { method, headers: { Origin: origin } });
       expect(refused.status).toBe(405);
       expect(refused.headers.get('allow')).toBe('GET');
     }
