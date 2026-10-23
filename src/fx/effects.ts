@@ -120,6 +120,8 @@ interface FxHeightField {
   getTrackSurfaceAt?(x: number, z: number): TrackSurface;
   /** The paved share of a carriageway (world/roadPave.ts): a sett or concrete street throws grit, not an earth wake. */
   getRoadPaveAt?(x: number, z: number): number;
+  /** Item 45 (2026-10-22): true while the world's hulls lay their ruts (world/trackMarks.ts): no dry prints then. */
+  trackMarksActive?(): boolean;
 }
 
 /** The world seam the structure looks read (world/map.ts; DESTRUCTION.md §16.4). */
@@ -7149,7 +7151,9 @@ function* createFxSteps(
         return;
       }
       const surface = heightField?.getTrackSurfaceAt?.(pos.x, pos.z) ?? 0;
-      if (intensity > 0.08 && !frozen) stampTrackPrint(pos, dir, false, surface);
+      // (item 45, 2026-10-22: the world lays the tracks' own ruts, world/trackMarks.ts, so the short-lived dry prints stand
+      // down while hulls lay them; the water wakes stay this layer's, and a Studio rig that lays no ruts keeps its prints)
+      if (intensity > 0.08 && !frozen && !heightField?.trackMarksActive?.()) stampTrackPrint(pos, dir, false, surface);
       const groundType = heightField?.getGroundType?.(pos.x, pos.z) ?? 'medium';
       const surfaceMultiplier = drySurfaceMultiplier(groundType);
       if (rng() > intensity * 0.85 * surfaceMultiplier) return;

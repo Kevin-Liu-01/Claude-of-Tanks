@@ -70,6 +70,8 @@ interface TankEntity {
     era: string;
     topSpeedKmh: number;
     dims: { heightM: number; widthM: number; hullLengthM: number };
+    weightTons?: number;
+    visual?: { trackWidthM?: number };
   };
   input: { throttle?: number };
   _soloRenderPose?: TankPresentationTracker;
@@ -115,6 +117,9 @@ interface PresentationWorld {
   crushProp(index: number, dirX: number, dirZ: number, speed: number): boolean;
   /** The props a hull's box meets give under it (map.ts pressHull: presentation only, never a sim input). */
   pressHull?(x: number, z: number, yaw: number, halfLength: number, halfWidth: number): void;
+  /** Item 45: the ruts behind the tanks (map.ts / world/trackMarks.ts: presentation only, never a sim input). */
+  advanceTrackMarks?(dt: number): void;
+  stampTrackMarks?(key: object, x: number, z: number, yaw: number, halfGaugeM: number, trackWidthM: number, depth: number): void;
 }
 
 type PosePorts = Pick<BattleClientAccess,
@@ -168,6 +173,8 @@ export function createBattlePresentationRuntime({
   // frame that can reach the viewport; the player and every visible actor
   // remain full-rate at any display refresh.
   const OFFSCREEN_PRESENTATION_INTERVAL_S = 1 / 30;
+  // item 45: the ruts' clock steps with the simulation (sim/movement.ts SIM_DT; battleFrameRuntime's fixed step)
+  const TRACK_MARK_STEP_S = 1 / 60;
   const detailScreenPosition = new Vector3();
   const forward = new Vector3();
   const exhaustVelocity = new Vector3();
@@ -472,6 +479,30 @@ export function createBattlePresentationRuntime({
     visual.setWreckTurretPose(turrets && turrets.framePoseAt(entity.id, alpha, wreckTurretPose) ? wreckTurretPose : null);
   };
 
+  /**
+   * Item 45 (2026-10-22): one hull's ruts from the simulation's pose (`entity.state`, never the interpolated one), so
+   * the same battle lays the same ruts at any display rate and from any camera. A wreck, an airframe, a hull in the air
+   * and an enemy the player's side has not spotted lay none (spotting is the simulation's: a solo battle's hidden enemy
+   * leaves no trail to read, as a network round never receives one).
+   */
+  const stampTrackMarks = (
+    entity: TankEntity,
+    world: PresentationWorld,
+    spotState: SpottingState | null,
+    currentPlayer: TankEntity | null,
+  ): void => {
+    const state = entity.state;
+    if (!state || !entity.combat || entity.combat.destroyed || entity.aerial || state.grounded === false) return;
+    if (spotState && entity.team !== (currentPlayer?.team ?? 'player')
+      && !spotState.isSpotted(entity.id, currentPlayer?.team ?? 'player', currentPlayer)) return;
+    const spec = entity.spec;
+    const trackWidthM = spec.visual?.trackWidthM ?? spec.dims.widthM * 0.16;
+    const halfGaugeM = Math.max(0.5, tankContactRect(spec).halfWidth - trackWidthM * 0.5);
+    // the hull's weight on the ground: 1 for a 45 t MBT, lighter hulls press shallower
+    const depth = Math.min(1.35, Math.max(0.45, 0.35 + (spec.weightTons ?? 40) / 70));
+    world.stampTrackMarks!(entity, state.pos.x, state.pos.z, state.yaw, halfGaugeM, trackWidthM, depth);
+  };
+
   const updateTank = (
     entity: TankEntity,
     dtFrame: number | undefined,
@@ -526,6 +557,13 @@ export function createBattlePresentationRuntime({
     },
 
     captureSoloPoses() {
+      // item 45: the ruts follow the simulation's step
+      const world = getWorld();
+      if (world?.stampTrackMarks && game.phase === 'battle') {
+        world.advanceTrackMarks?.(TRACK_MARK_STEP_S);
+        const spotState = spotting(), currentPlayer = player();
+        for (const entity of tanks()) stampTrackMarks(entity, world, spotState, currentPlayer);
+      }
       for (const entity of tanks()) {
         if (!entity.state) continue;
         if (!entity._soloRenderPose) {
@@ -545,6 +583,12 @@ export function createBattlePresentationRuntime({
       const networkActive = isNetworkMatchActive();
       const pedestalVisual = getPedestalVisual();
       camera.updateMatrixWorld();
+      // item 45: a network round's ruts follow the bridge's poses each frame (a solo battle's follow its fixed step,
+      // captureSoloPoses)
+      if (networkActive && world?.stampTrackMarks && game.phase === 'battle') {
+        world.advanceTrackMarks?.(Math.max(0, dtFrame ?? 0));
+        for (const entity of tanks()) stampTrackMarks(entity, world, spotState, currentPlayer);
+      }
 
       for (const entity of tanks()) {
         updateTank(
