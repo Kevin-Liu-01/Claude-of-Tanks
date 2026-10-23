@@ -39,27 +39,25 @@ export interface PublicRouteRecord {
   readonly indexable: boolean;
 }
 
+const DOCS_TOPICS = [
+  'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai', 'multiplayer', 'audio',
+  'interface', 'studio', 'filming',
+] as const;
+
+const route = (id: PublicRouteId, pathname: string, sourceHtml: string, localizedHtml = sourceHtml, indexable = true):
+  PublicRouteRecord => ({ id, pathname, sourceHtml, localizedHtml, indexable });
+
+/** Every public route (the docs topics expand from DOCS_TOPICS: `/docs/<topic>` served by `docs-<topic>.html`). */
 export const PUBLIC_ROUTE_RECORDS: readonly PublicRouteRecord[] = Object.freeze([
-  { id: 'game', pathname: '/', sourceHtml: 'index.html', localizedHtml: 'index.html', indexable: true },
-  { id: 'home', pathname: '/home', sourceHtml: 'home.html', localizedHtml: 'home.html', indexable: true },
-  { id: 'gallery', pathname: '/gallery', sourceHtml: 'gallery.html', localizedHtml: 'gallery.html', indexable: true },
-  { id: 'studio', pathname: '/studio', sourceHtml: 'index.html', localizedHtml: 'studio.html', indexable: true },
-  { id: 'docs', pathname: '/docs', sourceHtml: 'docs.html', localizedHtml: 'docs.html', indexable: true },
-  { id: 'docsBuild', pathname: '/docs/build', sourceHtml: 'docs-build.html', localizedHtml: 'docs-build.html', indexable: true },
-  { id: 'docsModels', pathname: '/docs/models', sourceHtml: 'docs-models.html', localizedHtml: 'docs-models.html', indexable: true },
-  { id: 'docsSimulation', pathname: '/docs/simulation', sourceHtml: 'docs-simulation.html', localizedHtml: 'docs-simulation.html', indexable: true },
-  { id: 'docsVehicles', pathname: '/docs/vehicles', sourceHtml: 'docs-vehicles.html', localizedHtml: 'docs-vehicles.html', indexable: true },
-  { id: 'docsRendering', pathname: '/docs/rendering', sourceHtml: 'docs-rendering.html', localizedHtml: 'docs-rendering.html', indexable: true },
-  { id: 'docsPerformance', pathname: '/docs/performance', sourceHtml: 'docs-performance.html', localizedHtml: 'docs-performance.html', indexable: true },
-  { id: 'docsWorlds', pathname: '/docs/worlds', sourceHtml: 'docs-worlds.html', localizedHtml: 'docs-worlds.html', indexable: true },
-  { id: 'docsAi', pathname: '/docs/ai', sourceHtml: 'docs-ai.html', localizedHtml: 'docs-ai.html', indexable: true },
-  { id: 'docsMultiplayer', pathname: '/docs/multiplayer', sourceHtml: 'docs-multiplayer.html', localizedHtml: 'docs-multiplayer.html', indexable: true },
-  { id: 'docsAudio', pathname: '/docs/audio', sourceHtml: 'docs-audio.html', localizedHtml: 'docs-audio.html', indexable: true },
-  { id: 'docsInterface', pathname: '/docs/interface', sourceHtml: 'docs-interface.html', localizedHtml: 'docs-interface.html', indexable: true },
-  { id: 'docsStudio', pathname: '/docs/studio', sourceHtml: 'docs-studio.html', localizedHtml: 'docs-studio.html', indexable: true },
-  { id: 'docsFilming', pathname: '/docs/filming', sourceHtml: 'docs-filming.html', localizedHtml: 'docs-filming.html', indexable: true },
-  { id: 'notFound', pathname: '/404', sourceHtml: '404.html', localizedHtml: '404.html', indexable: false },
-] satisfies readonly PublicRouteRecord[]);
+  route('game', '/', 'index.html'),
+  route('home', '/home', 'home.html'),
+  route('gallery', '/gallery', 'gallery.html'),
+  route('studio', '/studio', 'index.html', 'studio.html'),
+  route('docs', '/docs', 'docs.html'),
+  ...DOCS_TOPICS.map((topic) => route(`docs${topic[0].toUpperCase()}${topic.slice(1)}` as PublicRouteId,
+    `/docs/${topic}`, `docs-${topic}.html`)),
+  route('notFound', '/404', '404.html', '404.html', false),
+]);
 
 const ROUTE_BY_PATH = new Map(PUBLIC_ROUTE_RECORDS.map((route) => [route.pathname, route]));
 

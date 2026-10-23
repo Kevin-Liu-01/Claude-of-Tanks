@@ -35,8 +35,10 @@ import { assertPublicBuildEnv } from './tools/publicBuildEnv.ts';
 import { isExistingProjectDocument } from './tools/existing-document-route.ts';
 import { sharedWorkerChunks } from './tools/viteSharedWorkers.ts';
 import { glslMinify } from './tools/viteGlslMinify.ts';
+import { cssInTsMinify } from './tools/viteCssInTsMinify.ts';
 import { BOOT_RUNTIME_MODULES, i18nPageCatalogs, VITE_PRELOAD_HELPER } from './tools/viteI18nPageCatalogs.ts';
 import { i18nStudioCatalog } from './tools/viteI18nStudioCatalog.ts';
+import { gameEntryMeta } from './tools/viteGameEntryMeta.ts';
 
 const appVersion = resolveAppVersion(dirname(fileURLToPath(import.meta.url)));
 /** The match build line every page and host Worker of this build send in their HELLO (src/mp/wire/matchBuild.ts). */
@@ -250,6 +252,10 @@ export default defineConfig({
     // programs at build time; lines, directives, in-line text and every library shader stay as written (game boot
     // -31.3 KB raw / -10.4 KB brotli).
     glslMinify(),
+    // 2026-10-18 (brand-ui BUI-F3, tools/viteCssInTsMinify.ts): comments and layout whitespace out of the CSS kept in
+    // TS literals (the HUD, menus, settings, end screen and kill cam sheets ensureStyle() injects); strings,
+    // interpolation edges and the CSS token stream stay exactly as written (the build fails otherwise).
+    cssInTsMinify(),
     { name: 'cot-public-build-env', apply: 'build', configResolved(config) { assertPublicBuildEnv(config.env); } },
     {
       name: 'cot-app-version',
@@ -318,6 +324,9 @@ export default defineConfig({
       },
     },
     peerHarnessPlugin(),
+    // brand-ui BUI-F7: the public pages name the game's entry chunk for the Play button's hover prefetch (the game's
+    // own documents are left byte for byte as they were).
+    gameEntryMeta(),
     {
       name: 'cot-routes',
       configureServer(server) {
@@ -431,6 +440,26 @@ export default defineConfig({
             // with the loading roster it added preload edges); the group takes exactly these two modules, none of their
             // dependencies.
             { name: 'icons', test: /[\\/]src[\\/]ui[\\/](?:icons|killSourceIdentity)\.ts$/, includeDependenciesRecursively: false },
+            // brand-ui BUI-F1: the design tokens (src/ui/tokens/tokens.css, linked first by the game and cn documents) keep
+            // a stylesheet of their own; merged into a shared chunk they reorder the entry's imports and minified names.
+            { name: 'designTokens', test: /[\\/]src[\\/]ui[\\/]tokens[\\/]tokens\.css$/, includeDependenciesRecursively: false },
+            // 2026-10-18 (brand-ui BUI-F3): the style injector (src/ui/styleLayers.ts, ensureStyle with its cascade layer)
+            // rides with the type sheet (src/ui/fonts.ts), which injects through it and which 18 of its 24 callers import
+            // already: on its own it became one more boot request on the game and Gallery pages for 0.3 KB, and beside
+            // dom.ts it made every fonts importer preload the DOM helpers too. Exactly these two modules.
+            { name: 'fonts', test: /[\\/]src[\\/]ui[\\/](?:fonts|styleLayers)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-18 (brand-ui BUI-F7): the site's one playback policy (src/presentation/mediaPlayer.ts, which imports
+            // nothing) rides in the fleet takes' chunk. As a chunk of its own it became one more entry in the game entry's
+            // preload list for the Garage's import('./fleetTakes.ts'), new bytes on every game boot; grouped with the
+            // scene-link helper instead it moved that chunk earlier in the Studio's list. Here the entry is byte-identical
+            // apart from hashes. The public pages reach the player with import() beside their first bytes (with the fleet
+            // takes' small helpers, about 7 KB brotli, only on pages that show a video).
+            { name: 'fleetTakes', test: /[\\/]src[\\/](?:ui[\\/]fleetTakes|presentation[\\/]mediaPlayer)\.ts$/, includeDependenciesRecursively: false },
+            // 2026-10-18 (brand-ui BUI-F9): the accessibility reader and the token selection it writes ride with the shared DOM
+            // primitives, a leaf chunk only the game loads at boot. The main entry, the input layer's chunk and the lazy HUD,
+            // FX and kill cam all import the reader, so on its own it became one more game boot request. The group takes
+            // exactly these three modules, none of their dependencies.
+            { name: 'dom', test: /[\\/]src[\\/]ui[\\/](?:dom|accessibilityPreferences|tokens[\\/]tokenSelection)\.ts$/, includeDependenciesRecursively: false },
             { name: 'groundBounce', test: /(?:[\\/]three[\\/]examples[\\/]jsm[\\/]postprocessing[\\/]Pass\.js|[\\/]src[\\/]engine[\\/](?:atmosphere|cloudscapes|lightModelCore|hazeLaw|groundBounce)\.ts)$/, includeDependenciesRecursively: false },
             // 2026-10-19 (gameplay-modes-228 round 2): TEAM NATIONS' country table and its planner are one chunk — the
             // garage's TEAMS switch reads the table, the solo roster plans with both, the rooms read both — instead of

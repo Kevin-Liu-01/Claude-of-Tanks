@@ -12,6 +12,7 @@
 // them that hides both from the west. The zone-control discs stand on the waterworks' three gravel yards, which lie on
 // the line of equal driven distance between the deployments: it runs east of the straight midline, round the lake,
 // from the north bank's timber landing over the dry promontory between the lobes to the substation road.
+import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import frontier from './frontier.ts';
 export default {
   id: 'reservoir', name: 'Highland Reservoir',
@@ -28,16 +29,16 @@ export default {
       // Alpha's assembly apron round its pad and the road's west gate, tilted 5 % down to the east with the hillside
       // and given a 24 m bank: the old 76 x 260 m level slab at 2.0 m stood up to 12 m off its ground and cut walls on
       // every side (docs/MAP-LAYOUT-BRIEF.md, "Apron banks"). The road's west gate (-424, -72) stays on it.
-      { x: -394, z: -72, width: 40, length: 72, yawDeg: 90, level: 4.5, grade: -0.05, bankM: 24 },
+      { x: -394, z: -72, width: 40, length: 72, yawDeg: 90, level: 4.5, grade: -0.05, bankM: 24, paint: WORN_YARD_PAINT },
       // The waterworks' three gravel yards on the line of equal driven distance between the deployments (the lake
       // makes bravo drive round it, so the line runs east of the straight one), each where its ground spreads least.
       // The north bank's timber landing and the south yard by the substation road both stand on the shore road. They
       // take its own height and grade (grade 'road'), so the road keeps its grade at every terrain seed. The yard on
       // the dry promontory between the lobes stands at its ground's median height. The zone-control discs seat on
       // them.
-      { x: -8, z: 154, width: 50, length: 50, yawDeg: 15, grade: 'road', bankM: 16 },
-      { x: 88, z: 8, width: 50, length: 50, yawDeg: 0, level: -8, grade: 0 },
-      { x: 12, z: -170, width: 44, length: 44, yawDeg: -24, grade: 'road', bankM: 30 },
+      { x: -8, z: 154, width: 50, length: 50, yawDeg: 15, grade: 'road', bankM: 16, paint: WORN_YARD_PAINT },
+      { x: 88, z: 8, width: 50, length: 50, yawDeg: 0, level: -8, grade: 0, paint: WORN_YARD_PAINT },
+      { x: 12, z: -170, width: 44, length: 44, yawDeg: -24, grade: 'road', bankM: 30, paint: WORN_YARD_PAINT },
     ],
     roads: { paths: [
       // Western deployment enters one fork, not one of several full-height
