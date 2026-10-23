@@ -2,7 +2,7 @@
  * 2026-10-22 (item/mp-rejoin-seat-241): the options a match builds a seat's vehicle with. The roster
  * (battlePresentation) and a returning tab's boot (main.ts, which builds its own seat's vehicle in place of the Garage
  * hero it never shows) both read this one derivation, so the vehicle the boot made is the one the roster would make.
- * A leaf: the boot imports it without the match presentation.
+ * A leaf: a returning tab's boot imports it (lazily) without the match presentation.
  */
 export interface SeatVisualOptions {
   camoSeed: number;
@@ -34,9 +34,4 @@ export function seatVisualOptions(playerId: string, camoPattern: string, isViewe
     // Generated anatomy and live strip/reset clusters already own gameplay; the authoring audit stays off.
     eraVisualBindingReceipt: false,
   };
-}
-
-/** The same vehicle, painted the same way. */
-export function sameSeatVisual(a: SeatVisualOptions, b: { camoSeed: number; camoPattern: string; quality: string }): boolean {
-  return a.camoSeed === b.camoSeed && a.camoPattern === b.camoPattern && a.quality === b.quality;
 }

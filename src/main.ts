@@ -124,7 +124,7 @@ import { currentViewport, mapBackdropFor } from './ui/mapBackdrop.ts';
 import { preloadImageWhenIdle } from './ui/imagePreload.ts';
 import { minimapAssetUrl as getMinimapAssetUrl } from './ui/minimapAssetUrl.ts';
 import { VISIBLE_TANK_IDS, getSpec } from './vehicles/specs.ts';
-import { sameSeatVisual, seatVisualOptions, type SeatVisualOptions } from './mp/presentation/seatVisualOptions.ts';
+import type { SeatVisualOptions } from './mp/presentation/seatVisualOptions.ts';
 import {
   createTank, createTankSteps, ensureFullFleet, ensureTankBuilder, ensureTankBuilders,
 } from './vehicles/fleetFactory.ts';
@@ -336,8 +336,9 @@ function takeReturningSeat(specId: string, options: { camoSeed: number; camoPatt
   if (!seat) return null;
   returningSeat = null;
   // (the paint as the roster resolves it now, under the round's battlefield: the boot built its 'auto' pick outright)
-  const paint = { ...options, camoPattern: resolveMultiplayerCamoPattern(specId, options.camoPattern) };
-  if (seat.specId === specId && sameSeatVisual(seat.options, paint) && !seat.visual.root.parent) return seat.visual;
+  const paint = resolveMultiplayerCamoPattern(specId, options.camoPattern);
+  const same = seat.options.camoSeed === options.camoSeed && seat.options.camoPattern === paint && seat.options.quality === options.quality;
+  if (seat.specId === specId && same && !seat.visual.root.parent) return seat.visual;
   seat.visual.dispose();
   return null;
 }
@@ -371,6 +372,8 @@ function rememberedRoundFor(roomCode: string): { mapId: string; terrainVariant: 
 async function buildReturningSeat(seat: RememberedSeat, mapId: string, yieldForBudget: () => Promise<void>): Promise<boolean> {
   let visual: ReturningSeatVisual | null = null;
   try {
+    // (only a returning tab reads the roster's option derivation: an ordinary boot loads none of it)
+    const { seatVisualOptions } = await import('./mp/presentation/seatVisualOptions.ts');
     // the paint the round will resolve: an 'auto' seat wears the round's battlefield pick, not the Garage's map's
     const paint = resolveMultiplayerCamoPattern(seat.specId, seat.camo, mapId);
     const options = seatVisualOptions(seat.playerId, paint, true);
