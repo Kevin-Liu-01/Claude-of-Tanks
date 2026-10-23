@@ -46,7 +46,7 @@ import { mapRegionTags, regionTagIcon } from './regionTags.ts';
 import { shellIconSVG } from './shellIcons.ts';
 import {
   garageCrewRows, garageGalleryHref, garageModuleRows, garageSpecialSystem, garageStatGroup,
-  garageTechnicalViews, translateTechnicalView,
+  garageTechnicalViews, shellTypeLabel, translateTechnicalView,
 } from './garageDossier.ts';
 import type { GarageTechnicalViewId } from './garageDossier.ts';
 import { createRandomMapMosaic } from './randomPreviews.ts';
@@ -847,14 +847,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!col || !FEATURED_SHOTS.length) return null;
     const panel = document.createElement('div');
     panel.className = 'cot-featured';
+    // the take names itself by its pictures and caption; the region keeps the gallery's name for assistive technology
+    panel.setAttribute('role', 'region');
+    panel.setAttribute('aria-label', t('garage.gallery.title'));
     panel.innerHTML =
-      `<div class="ftitle cot-sidebar-section-title"><span>${uiIconSVG('gallery', 13)}${t('garage.gallery.title')}</span><span class="fdots">` +
-      FEATURED_SHOTS.map(() => '<span></span>').join('') +
-      `</span></div>` +
       `<div class="fshot"><div class="fly"></div><div class="fly"></div>` +
       `<button class="fnav prev" type="button" aria-label="${t('garage.gallery.prevShot')}">&#8249;</button>` +
       `<button class="fnav next" type="button" aria-label="${t('garage.gallery.nextShot')}">&#8250;</button>` +
-      `<div class="fcap"></div></div>`;
+      `<div class="fcap"></div></div>` +
+      `<div class="ftitle cot-sidebar-section-title"><span class="fdots">` +
+      FEATURED_SHOTS.map(() => '<span></span>').join('') +
+      `</span></div>`;
     root.appendChild(panel);
     const layers = panel.querySelectorAll<HTMLElement>('.fly');
     const capEl = requiredElement<HTMLElement>(panel, '.fcap');
@@ -1100,7 +1103,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       row('shield', t('garage.dossier.stat.hp'), 'hp', '', 0) +
       (turretless ? '' : row('turretRing', t('garage.equipment.metric.turretTraverse'), 'turret', '°/s', 1)) +
       `</div><div class="cot-ammo-tiles">${shells.map((shell) => `<div class="cot-ammo-tile">${shellIconSVG(shell.type, 28)}` +
-        `<b class="num">${shell.pen100Mm}<small>mm</small></b><span>${shell.type} · ${shell.dmg}</span></div>`).join('')}</div></section>`;
+        `<b class="num">${shell.pen100Mm}<small>mm</small></b><span class="ft"><span>${shellTypeLabel(shell.type)}</span>` +
+        `<span class="num">${shell.dmg}</span></span></div>`).join('')}</div></section>`;
   }
   statsEl.addEventListener('change', (event) => {
     const select = (event.target as Element | null)?.closest<HTMLSelectElement>('[data-rival]');
@@ -2994,10 +2998,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<div class="eqhead cot-sidebar-section-title">${uiIconSVG('repair', 13)}` +
       `<span>${t('garage.dossier.equipment.heading')}</span></div>` +
       `<div class="eqrow">${slotBoxes}</div></section>`;
+    // the overview follows the dossier head, which folded layouts keep at the top of their column
     statsEl.innerHTML =
-      overviewSection(spec, eqM, shells) +
       equipmentSection.replace('<section class="cot-stat-section', '<section data-stations="firepower mobility" class="cot-stat-section') +
       technicalSection.replace('<section class="cot-stat-section', '<section data-stations="protection crew" class="cot-stat-section') +
+      overviewSection(spec, eqM, shells) +
       `<section class="cot-stat-section cot-performance-section" data-stations="firepower">${statSectionTitle('gun', t('garage.station.firepower'), `${spec.gun.caliberMm} mm`, 'Performance')}` +
       `<div class="cot-performance-grid">` +
       statBar(reloadLabel, `${reloadS.toFixed(1)} s`, statFrac(grp, 'reload', reloadS, true),
@@ -3516,7 +3521,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const facts: DeployFacts = deployFacts(battleGameMode);
     deployRules.innerHTML = (['teams', 'clock', 'respawn', 'victory', 'equipment', 'ammo'] as const).map((key) =>
       `<div class="cot-deploy-rule">${uiIconSVG(DEPLOY_FACT_ICON[key], 18)}<dt>${t(`garage.deploy.rule.${key}`)}</dt>` +
-      `<dd class="num">${facts[key] ?? (key === 'victory' ? t('garage.deploy.elimination') : t('garage.deploy.none'))}</dd></div>`).join('');
+      `<dd>${facts[key] ?? (key === 'victory' ? t('garage.deploy.elimination') : t('garage.deploy.none'))}</dd></div>`).join('');
   }
   // the selected tank under the rules: its roster card (hero render over its flag) and its name
   function renderDeployTank(): void {

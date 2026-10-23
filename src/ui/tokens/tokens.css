@@ -64,7 +64,8 @@
   --chip-fill:var(--surface-raised);--chip-edge:var(--line-control);--chip-fill-on:var(--accent-wash);--chip-edge-on:var(--accent);
   --selected-edge:2px;
   --hollow-stroke:1.5px;--hollow-ink:rgba(246,243,236,.88);--hollow-fill:transparent;--hollow-accent:var(--accent);
-  --hollow-shadow:0 8px 28px rgba(0,0,0,.32);
+  --hollow-shadow:0 8px 28px rgba(0,0,0,.32);--stage-halo:0 1px 2px rgba(0,0,0,.85),0 0 18px rgba(0,0,0,.55);
+  --stage-scrim:radial-gradient(closest-side,rgba(5,6,8,.62),rgba(5,6,8,.34) 55%,rgba(5,6,8,0));
   --hud-plate:rgba(13,16,20,.92);--hud-plate-strong:rgba(13,16,20,.96);--hud-font:var(--font-ui);
   --hud-fs-copy:calc(13px*var(--cot-hud-scale));--hud-fs-body:calc(14px*var(--cot-hud-scale));--hud-fs-numeral:calc(20px*var(--cot-hud-scale));
   --focus-bracket-color:var(--accent-hi);--focus-bracket-width:2px;--focus-bracket-offset:5px;--focus-bracket-travel:6px;
