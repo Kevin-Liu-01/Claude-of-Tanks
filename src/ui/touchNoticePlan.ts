@@ -15,21 +15,18 @@
  * controls are measured and passed in (`obstacles`), the map, the score and the objective, the rosters, the network
  * readouts and the feed lanes with them (`soft`).
  *
- * Each takes the highest place on the screen's centre line (owner 2026-10-22: "a bunch of ui elements like notifications
- * ... are not centered in screen"; they used to slide to the free span nearest the centre, 200 px aside at 844x390) that
- * keeps TOUCH_SIGHT_GAP from the footprint and TOUCH_NOTICE_GAP from everything else. The countdown goes first, on the
+ * Each takes the highest place that keeps TOUCH_SIGHT_GAP from the footprint and TOUCH_NOTICE_GAP from everything else,
+ * centred on the sight where it fits there, else in the free span nearest the centre. The countdown goes first, on the
  * centre line just over the crosshair with its rules panel under it (countdownPlace.ts), in the detection's stead
  * (nothing spots the player before the roll-out), the alert alone then off both; otherwise the detection
  * and the alert take, cheapest first: where integ put them,
  * when that keeps clear; the stack (the detection over the alert, one centre); the two apart; the same with the alert,
  * then the detection, then both in their compact form (the short landscapes' 136 px notice, the alert in 8 px type). The
  * alert's slot is the detection's width, so its wrapped height holds. Where no place keeps clear (the smallest phones),
- * each element takes the least intrusive height on the centre line, reaching into the footprint (modelled at full bloom)
- * before it covers any panel or control, and over a button's label before the footprint, each block counted out to its
- * gap, the detection and the alert in the order that reaches least far in all, the detection's reach counted double
- * (`cleared` false); only where the line would set one over a panel or a control do they take the least intrusive places
- * off it. The medal card takes
- * the highest free place on the line off them all, or waits (`bannerReady` false), keeping its time.
+ * each element takes the least intrusive one, reaching into the footprint (modelled at full bloom) before it covers any
+ * panel or control, and over a button's label before the footprint (through the scope over the minimap too: its readouts
+ * matter more), each block counted out to its gap, the detection and the alert in the order that reaches least far in
+ * all (`cleared` false). The medal card takes the highest free place off them all, or waits (`bannerReady` false), keeping its time.
  *
  * DOM-free and deterministic; battleHudLayout.ts measures the inputs on each relayout. touchNoticePlan.selftest.mjs checks
  * every recorded touch size; tools/hud-touch-notices.browser.mjs measures the rendered boxes against the reticle's ink.
@@ -50,6 +47,9 @@ const RING_CEILING = 0.15;
 /** The compact notice and alert (battleHudLayout.css data-touch-notices). */
 export const TOUCH_COMPACT_NOTICE: TouchSize = { w: 136, h: 32 };
 export const TOUCH_COMPACT_ALERT: TouchSize = { w: 150, h: 40 };
+/** The narrow alert's height at a phone's map width (five lines of its 8 px type at the most: battleHudLayout.css
+ *  data-touch-notices~='alert-narrow'). */
+const TOUCH_NARROW_ALERT_H = 58;
 
 /**
  * The reticle's footprint at full bloom on a touch layout (see the module's note), as boxes. `seated`: the warning chip
@@ -94,31 +94,56 @@ const grow = (box: TouchBox, by: number): TouchBox => ({ x0: box.x0 - by, y0: bo
 const boxOf = (cx: number, y: number, size: TouchSize): TouchBox => ({ x0: cx - size.w / 2, y0: y, x1: cx + size.w / 2, y1: y + size.h });
 
 /**
- * The highest place at or under `top` on the centre line `cx` where a box of `size` keeps `gap` from every block and the
- * screen's edges: its centre and top, or null.
+ * The highest place at or under `top` where a box of `size` keeps `gap` from every block and the screen's edges: centred
+ * on `cx` where it fits there, else in the free span whose nearest centre to `cx` is nearest. Its centre and top, or null.
  */
-export function touchCentrePlace(size: TouchSize, cx: number, top: number, width: number, height: number,
+export function touchFreePlace(size: TouchSize, cx: number, top: number, width: number, height: number,
   blocks: readonly TouchBox[], gap = TOUCH_NOTICE_GAP): { cx: number; y: number } | null {
-  const x0 = cx - size.w / 2, x1 = cx + size.w / 2;
-  if (x0 < gap || x1 > width - gap) return null;
+  if (size.w + 2 * gap > width) return null;
   for (let y = Math.ceil(Math.max(top, gap)); y + size.h <= height - gap; y += 2) {
-    let clear = true;
+    // the columns the blocks on this band leave free
+    const taken: [number, number][] = [];
     for (const block of blocks) {
-      if (block.x1 + gap > x0 && block.x0 - gap < x1 && block.y1 + gap > y && block.y0 - gap < y + size.h) { clear = false; break; }
+      if (block.y1 + gap <= y || block.y0 - gap >= y + size.h) continue;
+      taken.push([block.x0 - gap, block.x1 + gap]);
     }
-    if (clear) return { cx, y };
+    taken.sort((a, b) => a[0] - b[0]);
+    let best: number | null = null;
+    let from = gap;
+    for (let i = 0; i <= taken.length; i++) {
+      const end = i < taken.length ? Math.min(taken[i][0], width - gap) : width - gap;
+      if (end - from >= size.w) {
+        const centre = Math.min(Math.max(cx, from + size.w / 2), end - size.w / 2);
+        if (best === null || Math.abs(centre - cx) < Math.abs(best - cx)) best = centre;
+      }
+      if (i < taken.length) from = Math.max(from, taken[i][1]);
+    }
+    if (best !== null) return { cx: best, y };
   }
   return null;
 }
 
+/** How far `box` reaches into the blocks, each layer by its weight (leastIntrusive's cost at one place). */
+function placeCost(box: TouchBox, layers: readonly (readonly [readonly TouchBox[], number])[]): number {
+  let cost = 0;
+  for (const [blocks, weight] of layers) {
+    for (const block of blocks) {
+      const out = grow(block, TOUCH_NOTICE_GAP);
+      cost += Math.min(weight, MARGIN_WEIGHT) * area(box, out) + weight * OVER_FACTOR * area(box, block);
+    }
+  }
+  return cost;
+}
+const area = (a: TouchBox, b: TouchBox) =>
+  Math.max(0, Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0)) * Math.max(0, Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0));
 
-/** Where on the centre line `cx` a box of `size` reaches least far into the blocks, each layer by its weight, and how far
- *  (its cost). Each block counts out to TOUCH_NOTICE_GAP, as touchCentrePlace keeps it: a place that only touches its
- *  neighbours costs (r10g: the smallest phones' notices sat 0 px from the systems row and the quick buttons); a place over
- *  the block itself costs OVER_FACTOR times as much again (at 568x256 the margins alone set the detection 10 px onto a
- *  consumable). */
+/** Where a box of `size` reaches least far into the blocks, each layer by its weight, and how far (its cost). Each block
+ *  counts out to TOUCH_NOTICE_GAP, as touchFreePlace keeps it: a place that only touches its neighbours costs (r10g: the
+ *  smallest phones' notices sat 0 px from the systems row and the quick buttons); a place over the block itself costs
+ *  OVER_FACTOR times as much again (at 568x256 the two notices fit only touching the chip and the consumables, and the
+ *  margins alone set the detection 10 px onto a consumable). */
 function leastIntrusive(size: TouchSize, cx: number, top: number, width: number, height: number,
-  layers: readonly (readonly [readonly TouchBox[], number])[], aside = false): { cx: number; y: number; cost: number } {
+  layers: readonly (readonly [readonly TouchBox[], number])[]): { cx: number; y: number; cost: number } {
   const grown: { box: TouchBox; weight: number }[] = [];
   for (const [blocks, weight] of layers) {
     for (const block of blocks) {
@@ -134,9 +159,7 @@ function leastIntrusive(size: TouchSize, cx: number, top: number, width: number,
       const rows = Math.min(y + size.h, box.y1) - Math.max(y, box.y0);
       if (rows > 0) band.push({ x0: box.x0, x1: box.x1, area: rows * weight });
     }
-    // (on the centre line; `aside`, anywhere on the row, the nearer the line the better)
-    const x0 = aside ? TOUCH_NOTICE_GAP : cx - size.w / 2, x1 = aside ? width - TOUCH_NOTICE_GAP - size.w : x0;
-    for (let x = x0; x <= x1; x += 4) {
+    for (let x = TOUCH_NOTICE_GAP; x + size.w <= width - TOUCH_NOTICE_GAP; x += 4) {
       let cost = Math.abs(x + size.w / 2 - cx) * 0.01;
       for (const block of band) {
         const columns = Math.min(x + size.w, block.x1) - Math.max(x, block.x0);
@@ -181,8 +204,8 @@ interface TouchNoticeInput {
 
 interface TouchNoticePlan {
   noticeCx: number; noticeTop: number; alertCx: number; alertTop: number; alertW: number;
-  /** Each in its compact form. */
-  noticeCompact: boolean; alertCompact: boolean;
+  /** Each in its compact form; the alert at the map's width (`alertW`) over the map, through the scope. */
+  noticeCompact: boolean; alertCompact: boolean; alertNarrow: boolean;
   /** The countdown's centre, top and scale (its top fixed: battleHudLayout.css scales it from there), and its rules
    *  panel's top and scale under the sight (shown false: no place clears it). */
   countdownCx: number; countdownTop: number; countdownScale: number;
@@ -195,17 +218,11 @@ interface TouchNoticePlan {
 /** A label's cost in a least intrusive place, per px² (the footprint's is 1, a panel's or a control's PANEL_WEIGHT), and a
  *  notice already placed (the countdown, the first of the detection and the alert). */
 const LABEL_WEIGHT = 0.25;
-const PLACED_WEIGHT = 1e7;
-/** A panel's or a control's cost per px²: over a whole compact alert lying on the ring (150 x 40 px² at RING_WEIGHT,
- *  covered: 144 000), so a notice covers none while any place over the footprint alone remains, and a cost of
- *  PANEL_WEIGHT or more means a panel is covered (the module's rule; at 10, the shorter one-row objective sent the
- *  detection 2 px onto a consumable at 568x256, and at 100 the centre line's detection clipped the joystick at 360x640
- *  rather than reach over the ring). */
-const PANEL_WEIGHT = 1e6;
-/** How much more the detection's reach counts than the alert's in the order the two take places where nothing clears. */
-const DETECTION_WEIGHT = 2;
-/** The battle sight's ring, where the player aims, per px²: over the marks' reserve round it (1), under any panel. */
-const RING_WEIGHT = 8;
+const PLACED_WEIGHT = 1000;
+/** A panel's or a control's cost per px²: more than a whole notice reaching into the footprint, so a notice covers none
+ *  while any place over the footprint alone remains (the module's rule; at 10, the shorter one-row objective sent the
+ *  detection 2 px onto a consumable at 568x256 rather than a little further into the footprint). */
+const PANEL_WEIGHT = 100;
 /** How much more a notice over a block costs than one in its gap (leastIntrusive), and the most a gap costs: a notice
  *  already placed weighs ten times a panel over it, never in its margin (at 568x256 the two notices fit side by
  *  side only touching, and a margin at its weight sent the second 10 px onto a consumable). */
@@ -235,19 +252,16 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
   // (integ's 8 px under the score and the objective)
   const start = top + INTEG_STACK_GAP;
   const plan: TouchNoticePlan = { noticeCx: cx, noticeTop: input.fallbackTop, alertCx: cx,
-    alertTop: input.fallbackTop + input.notice.h + INTEG_STACK_GAP, alertW: input.alert.w, noticeCompact: false, alertCompact: false,
+    alertTop: input.fallbackTop + input.notice.h + INTEG_STACK_GAP, alertW: input.alert.w, noticeCompact: false, alertCompact: false, alertNarrow: false,
     countdownCx: cx, countdownTop: start, countdownScale: 1, rulesTop: height, rulesScale: 1, rulesShown: false,
     cleared: true, bannerCx: cx, bannerTop: start, bannerReady: false };
   // (where nothing clears, a notice reaches into the footprint before it covers a panel or a control: the footprint is
   // modelled at full bloom, and the panels are there whole)
   // (a notice already placed counts ten times a panel: the notices never stack on each other while any other place
   // remains, r10g: at 568x256 the gap-wide costs set the detection on the alert)
-  // (in battle the ring itself, where the player aims, costs RING_WEIGHT; the reserve the marks may take over and under it,
-  // 1: on the centre line a notice that must reach into the footprint takes the reserve before the aim point)
-  const sight = scope ? keep.slice(0, 1) : keep.slice(1);
-  const ring = scope ? [] : keep.slice(0, 1);
+  const sight = scope ? keep.slice(0, 1) : keep;
   const readouts = scope ? keep.slice(1) : [];
-  const layers = (extra: readonly TouchBox[]) => [[sight, 1], [ring, RING_WEIGHT], [readouts, READOUT_SCOPE_WEIGHT], [input.obstacles, PANEL_WEIGHT],
+  const layers = (extra: readonly TouchBox[]) => [[sight, 1], [readouts, READOUT_SCOPE_WEIGHT], [input.obstacles, PANEL_WEIGHT],
     [input.soft, PANEL_WEIGHT], [map, scope ? MAP_SCOPE_WEIGHT : PANEL_WEIGHT], [labels, LABEL_WEIGHT], [extra, PLACED_WEIGHT]] as const;
   // the countdown first, on the centre line over the crosshair and its rules panel under it (countdownPlace.ts, owner
   // 2026-10-21: "regardless it needs to be in center of screen"): the alert may show with it, the detection never
@@ -267,8 +281,8 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
   if (input.countdown) {
     // the countdown takes the detection's place (it never shows with it); the alert alone keeps off it
     plan.noticeCx = plan.countdownCx; plan.noticeTop = plan.countdownTop;
-    const alert = touchCentrePlace(input.alert, cx, start, width, height, [...blocks, ...placed]);
-    const compact = alert ? null : touchCentrePlace(TOUCH_COMPACT_ALERT, cx, start, width, height, [...blocks, ...placed]);
+    const alert = touchFreePlace(input.alert, cx, start, width, height, [...blocks, ...placed]);
+    const compact = alert ? null : touchFreePlace(TOUCH_COMPACT_ALERT, cx, start, width, height, [...blocks, ...placed]);
     const place = alert ?? compact ?? leastIntrusive(TOUCH_COMPACT_ALERT, cx, start, width, height, layers(placed));
     if (!alert && !compact) plan.cleared = false;
     plan.alertCompact = !alert;
@@ -286,11 +300,11 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
     let first: { cx: number; y: number } | null = null;
     let second: { cx: number; y: number } | null = null;
     if (together) {
-      first = touchCentrePlace({ w: Math.max(notice.w, alert.w), h: notice.h + gap + alert.h }, cx, start, width, height, around);
+      first = touchFreePlace({ w: Math.max(notice.w, alert.w), h: notice.h + gap + alert.h }, cx, start, width, height, around);
       second = first && { cx: first.cx, y: first.y + notice.h + gap };
     } else {
-      first = touchCentrePlace(notice, cx, start, width, height, around);
-      second = first && touchCentrePlace(alert, cx, start, width, height, [...around, boxOf(first.cx, first.y, notice)]);
+      first = touchFreePlace(notice, cx, start, width, height, around);
+      second = first && touchFreePlace(alert, cx, start, width, height, [...around, boxOf(first.cx, first.y, notice)]);
     }
     if (!first || !second) continue;
     plan.noticeCx = first.cx; plan.noticeTop = first.y;
@@ -305,32 +319,38 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
     plan.cleared = false;
     plan.noticeCompact = plan.alertCompact = true;
     plan.alertW = TOUCH_COMPACT_ALERT.w;
-    // (the detection's reach counts DETECTION_WEIGHT times the alert's: it shows most and is most often up alone, while the
-    // alert's place is a reserve until one fires; on a near tie the reserve took the band over the ring at 568x290 and sent
-    // the detection onto the ring)
-    const pair = (noticeFirst: boolean, aside: boolean) => {
-      const [firstSize, secondSize] = noticeFirst ? [TOUCH_COMPACT_NOTICE, TOUCH_COMPACT_ALERT] : [TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE];
-      const first = leastIntrusive(firstSize, cx, start, width, height, layers(placed), aside);
-      const second = leastIntrusive(secondSize, cx, start, width, height, layers([...placed, boxOf(first.cx, first.y, firstSize)]), aside);
-      const [notice, alert] = noticeFirst ? [first, second] : [second, first];
-      return { notice, alert, cost: notice.cost * DETECTION_WEIGHT + alert.cost };
+    const pair = (firstSize: TouchSize, secondSize: TouchSize) => {
+      const first = leastIntrusive(firstSize, cx, start, width, height, layers(placed));
+      const second = leastIntrusive(secondSize, cx, start, width, height, layers([...placed, boxOf(first.cx, first.y, firstSize)]));
+      return { first, second, cost: first.cost + second.cost };
     };
-    const cheaper = <T extends { cost: number }>(a: T, b: T) => (b.cost < a.cost ? b : a);
-    let best = cheaper(pair(true, false), pair(false, false));
-    // (the centre line yields only to a panel or a control: where the pair on the line covers one, the least intrusive
-    // places off the line that cover none stand instead; at 568x256 the line under the objective holds one notice, and
-    // the alert went onto the controls row)
-    if (Math.max(best.notice.cost, best.alert.cost) >= PANEL_WEIGHT) {
-      const free = cheaper(pair(true, true), pair(false, true));
-      if (Math.max(free.notice.cost, free.alert.cost) < PANEL_WEIGHT) best = free;
+    const noticeFirst = pair(TOUCH_COMPACT_NOTICE, TOUCH_COMPACT_ALERT);
+    const alertFirst = pair(TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE);
+    let best: { notice: { cx: number; y: number }; alert: { cx: number; y: number }; size: TouchSize; cost: number } = alertFirst.cost < noticeFirst.cost
+      ? { notice: alertFirst.second, alert: alertFirst.first, size: TOUCH_COMPACT_ALERT, cost: alertFirst.cost }
+      : { notice: noticeFirst.first, alert: noticeFirst.second, size: TOUCH_COMPACT_ALERT, cost: noticeFirst.cost };
+    // (through the scope the alert may also lie over the map at the map's width, where the map leaves it room under the
+    // notices' first row: the compact alert is wider than a phone's map, which then took no notice, and the detection
+    // went onto the readouts at 320x568)
+    const over = map[0];
+    const overTop = over ? Math.max(start, over.y0) : 0;
+    if (scope && over && over.x1 - over.x0 >= 80 && over.y1 - overTop >= TOUCH_NARROW_ALERT_H) {
+      const size = { w: over.x1 - over.x0, h: TOUCH_NARROW_ALERT_H };
+      const alert = { cx: (over.x0 + over.x1) / 2, y: overTop };
+      const alertBox = boxOf(alert.cx, alert.y, size);
+      const notice = leastIntrusive(TOUCH_COMPACT_NOTICE, cx, start, width, height, layers([...placed, alertBox]));
+      const cost = placeCost(alertBox, layers(placed)) + notice.cost;
+      if (cost < best.cost) best = { notice, alert, size, cost };
     }
     plan.noticeCx = best.notice.cx; plan.noticeTop = best.notice.y; plan.alertCx = best.alert.cx; plan.alertTop = best.alert.y;
+    plan.alertW = best.size.w;
+    plan.alertNarrow = best.size !== TOUCH_COMPACT_ALERT;
   }
   if (input.banner) {
     const notice = plan.noticeCompact ? TOUCH_COMPACT_NOTICE : input.notice;
     const alert = plan.alertCompact ? TOUCH_COMPACT_ALERT : input.alert;
     const taken = input.countdown ? placed : [...placed, boxOf(plan.noticeCx, plan.noticeTop, notice), boxOf(plan.alertCx, plan.alertTop, alert)];
-    const place = touchCentrePlace(input.banner, cx, start, width, height, [...blocks, ...taken]);
+    const place = touchFreePlace(input.banner, cx, start, width, height, [...blocks, ...taken]);
     if (place) { plan.bannerCx = place.cx; plan.bannerTop = place.y; plan.bannerReady = true; }
   }
   return plan;
