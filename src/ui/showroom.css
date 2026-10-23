@@ -14,11 +14,7 @@
 .cot-wordmark{display:inline-flex;align-items:center;gap:var(--s3);height:44px;padding:0 var(--s2) 0 0;border:0;
   background:transparent;color:var(--ink-1);cursor:pointer;}
 .cot-wordmark .cot-mark{flex:none;}
-.cot-wordmark .wm{display:inline-flex;align-items:center;gap:var(--s2);white-space:nowrap;
-  font:700 var(--fs-16)/1 var(--font-display);text-transform:uppercase;}
-.cot-wordmark .wm .of{display:inline-flex;align-items:center;gap:var(--s1);color:var(--accent);
-  font:500 var(--fs-11)/1 var(--font-display);letter-spacing:var(--track-label);}
-.cot-wordmark .wm .of::before,.cot-wordmark .wm .of::after{content:'';width:10px;height:1.5px;background:currentColor;}
+.cot-wordmark .wm{display:block;height:12px;width:auto;flex:none;color:var(--ink-1);}
 .cot-gbar{display:flex;align-items:stretch;gap:var(--s1);height:38px;}
 .cot-nav{top:var(--s4);height:44px;align-items:center;}
 body[data-cot-panels='overlay'] .cot-gbar,body[data-cot-panels='overlay'] .cot-wordmark .wm{display:none;}

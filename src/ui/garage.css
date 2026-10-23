@@ -16,7 +16,6 @@
 .cot-brand-rail{position:absolute;top:20px;left:34px;height:36px;display:flex;align-items:center;
   gap:14px;pointer-events:auto;}
 /* the Latin wordmark keeps its tracking inside a Chinese page, where the tracking tokens are zero */
-.cot-wordmark .wm[lang=en]{letter-spacing:.08em}
 /* Vehicle identity remains solely on the stats card; the brand rail is
    reserved for product identity and quiet player-level destinations. */
 /* Header hierarchy: personal destinations sit with the brand at left, while
