@@ -466,15 +466,19 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
     shifts: after.map((s) => ({ t: Math.round(s.at - clickAt), value: Number(s.value.toFixed(4)), recent: s.recent, sources: s.sources })),
     abrupt, frames: shots.length, wallMs: Date.now() - wallStart,
   };
-  const end = Math.max(1000, (settled ?? 3000) + 1000);
+  const end = Math.max(1000, (settled ?? 3000) + 1000, (result.blocked ?? 0) + 1000);
+  // A new document's content counts once it has painted: the strip marks it no earlier than the first paint.
+  const painted = (at) => (at === null ? null : Math.max(at, result.fcp ?? 0));
+  const shownContent = painted(content);
+  const shownReady = painted(ready);
   const picks = [];
   for (const offset of STRIP_OFFSETS) {
     if (offset > end && picks.length >= 8) break;
     const frame = [...shots].reverse().find((f) => f.t <= offset) || shots[0];
     if (!frame) break;
     const marks = [];
-    if (content !== null && offset >= content && !picks.some((p) => p.mark.includes('content'))) marks.push('content');
-    if (ready !== null && ready !== content && offset >= ready && !picks.some((p) => p.mark.includes('ready'))) marks.push('ready');
+    if (shownContent !== null && offset >= shownContent && !picks.some((p) => p.mark.includes('content'))) marks.push('content');
+    if (shownReady !== null && shownReady !== shownContent && offset >= shownReady && !picks.some((p) => p.mark.includes('ready'))) marks.push('ready');
     picks.push({ offset, jpeg: frame.jpeg, mark: marks.join(' ') });
   }
   if (picks.length) {
