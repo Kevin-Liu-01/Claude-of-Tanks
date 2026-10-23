@@ -26,8 +26,9 @@
 // Frames come from a Chrome trace (devtools.screenshot). `navigator.webdriver` is hidden: the game skips its
 // transition veils and its boot gate under automation (src/ui/transition.ts, src/ui/bootScreen.ts), and a recording
 // must show what a player sees. Cold = a fresh browser context (empty HTTP cache); warm = the same context running
-// the journey again. --lock takes a normal ticket in the shared capture queue (tools/capture-lock.mjs) and stops
-// starting journeys after --budget-min minutes of holding it.
+// the journey again. --lock takes a normal ticket in the shared capture queue through tools/capture-hold.mjs (the
+// servers are checked and the browser starts while the ticket waits) and stops starting runs after --budget-min
+// minutes of the hold; --place=<key> keeps a killed run's place in the queue.
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
@@ -78,8 +79,9 @@ const tapOrClick = async (page, ctx, selector) => {
 const click = (selector) => Object.assign((page, ctx) => tapOrClick(page, ctx, selector), { target: selector });
 /** A top-bar link: on a phone the bar folds its pages into a menu, opened before the recording starts. */
 const navLink = (href) => Object.assign(async (page, ctx) => {
-  const inMenu = await page.$eval('.public-nav__menu', (menu) => !menu.hidden).catch(() => false);
-  await tapOrClick(page, ctx, inMenu ? `.public-nav__menu a[href="${href}"]` : `.public-nav__links > a[href="${href}"]`);
+  const inBar = await page.$eval(`.public-nav__links > a[href="${href}"]`, (a) => a.getBoundingClientRect().width > 0
+    && getComputedStyle(a).display !== 'none').catch(() => false);
+  await tapOrClick(page, ctx, inBar ? `.public-nav__links > a[href="${href}"]` : `.public-nav__menu a[href="${href}"]`);
 }, {
   target: '.public-nav',
   before: async (page, ctx) => {
@@ -115,13 +117,16 @@ const SHOW_TIMEOUT = 240000;
 const JOURNEYS = [
   { id: 'home', group: 'public', steps: [
     { id: 'home-load', act: direct('/home'), window: 3000,
-      content: when(`visible('.v5-hero h1') && decoded('.v5-hero-rail img.is-active')`) },
+      content: when(`visible('.v5-hero h1, .hero__title') && decoded('.v5-hero-rail img.is-active, img.hero__still')`) },
     { id: 'home-to-gallery', act: navLink('/gallery'), window: 3000,
-      content: when(`location.pathname === '/gallery' && any('#vehicleList .vehicle-card')`),
+      content: when(`location.pathname === '/gallery' && document.querySelector('#vehicleList .vehicle-card, #vehicleList .vl-row') && visible('#vehicleList')`),
       ready: when(`location.pathname === '/gallery' && window.__TANK_GALLERY_READY === true`) },
-    { id: 'gallery-dossier', act: click('#vehicleList .vehicle-card:not(.active)'), window: 2500, timeoutMs: SHOW_TIMEOUT,
-      content: when(`(() => { const id = document.querySelector('#vehicleList .vehicle-card.active')?.dataset.id;
-        return !!id && id !== 'm1a1_abrams_hc' && document.getElementById('dossierDesignation')?.textContent.includes(id); })()`),
+    // The roster's rows are `.vehicle-card` before the brand rebuild and `.vl-row` after it.
+    { id: 'gallery-dossier', act: click('#vehicleList .vehicle-card:not(.active), #vehicleList .vl-row:not([aria-selected="true"])'),
+      window: 2500, timeoutMs: SHOW_TIMEOUT,
+      content: when(`(() => { const row = document.querySelector('#vehicleList .vehicle-card.active, #vehicleList .vl-row[aria-selected="true"]');
+        const name = document.getElementById('dossierName')?.textContent?.trim();
+        return !!row && row.dataset.id !== 'm1a1_abrams_hc' && !!name && row.textContent.includes(name); })()`),
       ready: when(`window.__TANK_GALLERY_READY === true && document.getElementById('loadingState')?.classList.contains('hidden')`) },
     { id: 'gallery-to-docs', act: navLink('/docs'), window: 3000,
       content: when(`location.pathname === '/docs' && visible('h1')`) },
@@ -136,9 +141,9 @@ const JOURNEYS = [
   { id: 'misc', group: 'public', steps: [
     { id: 'not-found', act: direct('/no-such-page'), window: 2500, content: when(`visible('h1')`) },
     { id: 'cn-home', act: direct('/cn/home'), window: 3000,
-      content: when(`visible('.v5-hero h1') && decoded('.v5-hero-rail img.is-active')`) },
+      content: when(`visible('.v5-hero h1, .hero__title') && decoded('.v5-hero-rail img.is-active, img.hero__still')`) },
   ] },
-  { id: 'studio', group: 'game', start: '/home', startReady: `visible('.v5-hero h1')`, steps: [
+  { id: 'studio', group: 'game', start: '/home', startReady: `visible('.v5-hero h1, .hero__title')`, steps: [
     { id: 'home-to-studio', act: navLink('/studio'), window: 3000, timeoutMs: SHOW_TIMEOUT,
       content: when(`location.pathname === '/studio' && ${HERO_DECODED}`),
       ready: when(`visible('.cot-studio') || visible('#cot-boot-gate.on')`) },
@@ -380,7 +385,10 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
   // loop changes frames on its own schedule).
   const settled = Math.max(ready ?? content ?? 0, lastShift) || null;
   const result = {
-    step: step.id, path: final.path, error, response, content, ready, settled,
+    // `blocked`: how long the old view stayed up. A new document's first contentful paint ends it (the trace's frames
+    // can trail the compositor by a second under load); within a document, the first frame that changed.
+    step: step.id, path: final.path, error, blocked: final.fcp && final.fcp > clickAt ? Math.round(final.fcp - clickAt) : response,
+    response, content, ready, settled,
     fcp: final.fcp && final.fcp > clickAt ? Math.round(final.fcp - clickAt) : null,
     lcp: final.lcp && final.lcp > clickAt ? Math.round(final.lcp - clickAt) : null,
     cls: Number(cls.toFixed(4)), shift: Number(shift.toFixed(4)),
@@ -407,7 +415,7 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
   return result;
 }
 
-async function runJourney({ page, helper, journey, profile, profileName, cacheName, base, outDir }) {
+async function runJourney({ page, helper, journey, profile, profileName, cacheName, base, outDir, over = () => false }) {
   const ctx = { base, touch: profile.viewport.hasTouch };
   const results = [];
   await page.goto('about:blank');
@@ -418,6 +426,7 @@ async function runJourney({ page, helper, journey, profile, profileName, cacheNa
     await new Promise((r) => setTimeout(r, 1200));
   }
   for (const step of journey.steps) {
+    if (over()) break;
     const stem = `${step.id}.${profileName}.${cacheName}`;
     const result = await recordStep({ page, helper, step, ctx, profile, stem, outDir })
       .catch((error) => ({ step: step.id, error: String(error?.message || error).split('\n')[0] }));
@@ -434,7 +443,8 @@ async function runJourney({ page, helper, journey, profile, profileName, cacheNa
 
 /**
  * `--report=<dir>`: one Markdown table per profile × cache from the run files under <dir>/<label>/, a column group per
- * label (base, after, …), in journey order. `blocked` is the response time (the old view held), `jumps` the number of
+ * label (base, after, …), in journey order. `blocked` is how long the old view was held (a new document's first
+ * contentful paint, else the first changed frame), `content` when the step's content check passed and was painted, `jumps` the number of
  * layout shifts and their summed score (input-excused ones included), `CLS` the web-vitals score.
  */
 function report(dir) {
@@ -453,7 +463,7 @@ function report(dir) {
         const results = labels.map((label) => read(label, stem));
         if (results.every((r) => !r)) continue;
         rows.push(`| ${step.id} | ${results.map((r) => r?.error && r.content === null ? `${r.error} | | | | |`
-          : `${cell(r, 'response')} | ${cell(r, 'content')} | ${cell(r, 'settled')} | ${r ? `${r.shifts.length} / ${r.shift}` : '-'} | ${cell(r, 'cls')} |`).join(' ')}`);
+          : `${r ? r.blocked ?? r.fcp ?? r.response ?? '-' : '-'} | ${r?.content == null ? '-' : Math.max(r.content, r.fcp ?? 0)} | ${r?.settled == null ? '-' : Math.max(r.settled, r.fcp ?? 0)} | ${r ? `${r.shifts.length} / ${r.shift}` : '-'} | ${cell(r, 'cls')} |`).join(' ')}`);
       }
       if (!rows.length) continue;
       lines.push(`### ${profile}, ${cache} cache`, '');
@@ -480,34 +490,40 @@ async function main() {
     : JOURNEYS.filter((j) => wanted.includes(j.id) || wanted.some((w) => !ids.has(w) && w === j.group));
   const profiles = option('profiles', 'desktop,phone').split(',');
   const caches = option('caches', 'cold,warm').split(',');
-  const holdDeadline = Number(process.env.NAV_HOLD_DEADLINE || 0);
-  const budgetMs = Math.min(Number(option('budget-min', '18')) * 60000, holdDeadline ? holdDeadline - Date.now() - 90000 : Infinity);
-  let lock = null;
-  if (flag('lock')) {
-    lock = await import('./capture-lock.mjs');
-    console.log('nav-timeline: waiting for a capture ticket');
-    await lock.acquireCaptureLock(4 * 3600 * 1000);
-    console.log(`nav-timeline: capture lock held ${new Date().toISOString()}`);
-  }
-  const heartbeat = lock ? setInterval(() => lock.refreshCaptureLock(), 30000) : null;
-  const holdStarted = Date.now();
-  const browser = await puppeteer.launch({
-    headless: 'new', protocolTimeout: 360000, timeout: 180000, defaultViewport: null,
-    args: ['--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage',
-      '--autoplay-policy=no-user-gesture-required', `--host-resolver-rules=MAP ${option('host-map', 'cot.test')} 127.0.0.1`,
-      '--disable-blink-features=AutomationControlled', '--window-size=1440,1000',
-      ...(flag('soft-gl') ? ['--disable-gpu', '--enable-unsafe-swiftshader'] : [])],
-  });
-  // A wall-clock alarm or the hold's own deadline ends the run: never leave the browser behind.
-  for (const signal of ['SIGTERM', 'SIGINT', 'SIGALRM', 'SIGHUP']) {
-    process.on(signal, () => { browser.process()?.kill('SIGKILL'); process.exit(143); });
-  }
-  const runs = [];
-  let stopped = false;
-  let runIndex = 0;
-  try {
+  const budgetMs = Number(option('budget-min', '18')) * 60000;
+  const host = option('host-map', 'cot.test');
+
+  const launch = async () => {
+    // Every build answers before the hold: a dead server would spend the hold on timeouts. A server that is still
+    // starting (a build finishing beside the queued run) gets --serve-wait-min minutes.
+    const serveBy = Date.now() + Number(option('serve-wait-min', '45')) * 60000;
+    for (const base of bases) {
+      const local = base.url.replace(`//${host}`, '//127.0.0.1');
+      for (;;) {
+        const reply = await fetch(local).catch(() => null);
+        if (reply?.ok) break;
+        if (Date.now() > serveBy) throw new Error(`${base.label} (${base.url}) does not answer`);
+        await new Promise((r) => setTimeout(r, 10000));
+      }
+    }
+    const browser = await puppeteer.launch({
+      headless: 'new', protocolTimeout: 360000, timeout: 180000, defaultViewport: null,
+      args: ['--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage',
+        '--autoplay-policy=no-user-gesture-required', `--host-resolver-rules=MAP ${host} 127.0.0.1`,
+        '--disable-blink-features=AutomationControlled', '--window-size=1440,1000',
+        ...(flag('soft-gl') ? ['--disable-gpu', '--enable-unsafe-swiftshader'] : [])],
+    });
     const helper = await browser.newPage();
     helper.setDefaultTimeout(180000);
+    return { browser, helper, pages: [], close: () => browser.close() };
+  };
+
+  const record = async ({ browser, helper, signal }) => {
+    const started = Date.now();
+    const over = () => signal?.aborted || Date.now() - started > budgetMs;
+    const runs = [];
+    let stopped = false;
+    let runIndex = 0;
     const bench = await cpuBenchmark(helper);
     console.log(`nav-timeline: cpu benchmark ${bench} (unthrottled)`);
     for (const journey of journeys) {
@@ -517,7 +533,7 @@ async function main() {
         // and a fixed order would hand the second build that head start every time.
         const order = (runIndex += 1) % 2 ? bases : [...bases].reverse();
         for (const base of order) {
-          if (Date.now() - holdStarted > budgetMs) { stopped = true; break; }
+          if (over()) { stopped = true; break; }
           const outDir = join(out, base.label);
           mkdirSync(outDir, { recursive: true });
           const context = await browser.createBrowserContext();
@@ -527,7 +543,8 @@ async function main() {
             await page.evaluateOnNewDocument(PROBE);
             await applyProfile(page, profile);
             for (const cacheName of caches) {
-              const results = await runJourney({ page, helper, journey, profile, profileName, cacheName, base: base.url, outDir })
+              if (over()) { stopped = true; break; }
+              const results = await runJourney({ page, helper, journey, profile, profileName, cacheName, base: base.url, outDir, over })
                 .catch((error) => [{ step: journey.id, error: String(error?.message || error).split('\n')[0] }]);
               for (const result of results) runs.push({ label: base.label, journey: journey.id, profile: profileName, cache: cacheName, ...result, shifts: undefined, abrupt: undefined });
               if (results.at(-1)?.error) console.log(`${base.label} ${journey.id} ${profileName} ${cacheName}: ${results.at(-1).error}`);
@@ -535,20 +552,32 @@ async function main() {
           } finally {
             await context.close().catch(() => {});
           }
+          if (stopped) break;
         }
         if (stopped) break;
       }
       if (stopped) break;
     }
-    if (stopped) console.log('nav-timeline: budget reached, stopped starting journeys');
+    if (stopped) console.log('nav-timeline: the hold or the budget ran out; stopped starting runs');
     writeFileSync(join(out, `summary.${bases.map((b) => b.label).join('-')}.${Date.now()}.json`), `${JSON.stringify({
-      startedAt: new Date(holdStarted).toISOString(), holdMinutes: Number(((Date.now() - holdStarted) / 60000).toFixed(1)),
+      startedAt: new Date(started).toISOString(), minutes: Number(((Date.now() - started) / 60000).toFixed(1)),
       cpuBenchmark: bench, stopped, profiles: Object.fromEntries(profiles.map((p) => [p, PROFILES[p]])), bases, runs }, null, 2)}\n`);
-  } finally {
-    await browser.close().catch(() => {});
-    if (heartbeat) clearInterval(heartbeat);
-    if (lock) lock.releaseCaptureLock();
+  };
+
+  if (flag('lock')) {
+    // A normal capture ticket (tools/capture-hold.mjs): the servers are checked and the browser starts while the ticket
+    // waits, and the hold is spent recording only.
+    const { runWarmHold } = await import('./capture-hold.mjs');
+    await runWarmHold({ label: 'nav-timeline', place: option('place', null), holdMinutes: Number(option('budget-min', '18')),
+      warm: launch, shoot: record });
+    return;
   }
+  const warmed = await launch();
+  // A wall-clock alarm ends the run: never leave the browser behind.
+  for (const signal of ['SIGTERM', 'SIGINT', 'SIGALRM', 'SIGHUP']) {
+    process.on(signal, () => { warmed.browser.process()?.kill('SIGKILL'); process.exit(143); });
+  }
+  try { await record(warmed); } finally { await warmed.close().catch(() => {}); }
 }
 
 main().catch((error) => { console.error(error); process.exitCode = 1; });
