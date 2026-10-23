@@ -259,6 +259,48 @@ only the queue head claims. A caller that must not keep results from a hold it l
 returns `true` before saving them. `tools/visual-census-lock.mjs` uses the same owned holds, and so does capture lane
 2's copy (`~/cot-launch-state/tools/capture-lock-lane2.mjs`).
 
+### Warm capture holds (2026-10-22)
+
+On 2026-10-22 the queue served about one hold per 45 minutes, with 30-plus tickets waiting. The holds were spent
+loading pages. At load 200-600 a Studio map took 1-9 minutes to come up inside the hold, and each shot took 2-5 s.
+In one world-polish hold, three maps' page loads took 1,070 s of 1,142 s before the cap. Hero-card holds spent
+70-143 s of 103-212 s starting Vite, Chrome and the page. An mbt70 Garage before/after hold waited 219 minutes,
+then reached the cap with both sides failing and no shots. Per-process GPU time (`ioreg` AGXDeviceUserClient
+`accumulatedGPUTime`) showed holders using 0-15 % of the GPU. The largest GPU user was outside every Claude of Tanks
+lock: another project's iOS Simulator (SimMetal, about 44 %), plus Playwright browsers. A hold should serve shots
+only:
+
+- **`tools/capture-hold.mjs` `runWarmHold({ warm, shoot })`.** `warm` starts the servers and the browser and loads
+  every page to ready while the ticket waits. Its pages are then frozen (Chrome's page lifecycle: no timers and no
+  frames, so nothing draws during other holds). At the hold they are thawed, `shoot` runs, and they are frozen again
+  before the release. `holdMinutes` (default 18) aborts `shoot`'s signal; past `graceSeconds` the browser is closed
+  before the release. A signal releases the lock, closes the browser and exits.
+- **Helpers in the same module.** `startViteChild` runs Vite in a child process that exits with its parent: `preview`
+  serves a built `dist` with no transforms, and `dev` serves the sources. `warmPage` waits, within bounds, for a ready
+  expression, eager images and fonts. Studio, Garage and the public pages all serve from a dist (`vite build --outDir
+  <dir>` outside the lock; one dist per side of a before/after pair).
+- **Warming starts just in time.** `acquire(ms, { prepare })` starts `prepare` once at most `warmAhead` live tickets
+  are ahead (`COT_SHOTS_WARM_AHEAD`, default 2), so a long queue never holds one warm browser per lane. Until
+  `prepare` resolves, the ticket keeps its place and the queue serves the tickets behind it. Tickets record their
+  phase: queued, warming or ready.
+- **Dead waiters.** A ticket now carries its owner's process start time and heartbeat. A pid reused by another
+  process, a zombie, or a heartbeat silent for 10 minutes is removed at once, and the removal is logged. Before, a
+  killed waiter whose pid came back could stall the head for an hour.
+- **Places.** `acquire(ms, { place: '<lane>-<item>' })` (genHeroCards `--place=`) puts a run killed while it waited
+  back at its first run's stamp, for up to 12 hours. Size wall-clock alarms for the hold, never the wait.
+- **The meter.** Every hold, release and reap appends a line to `/tmp/cot-shots.log`. `node tools/capture-lock.mjs
+  --status [--hours=N]` prints the holder, the queue (ready, warming, dead) and holds per hour. Holds taken through
+  an older copy of the lock are not logged.
+- **Adopted.** `genHeroCards` warms its Vite child, Chrome, the page and `__HERO_WARM` while queued, and the hold only
+  renders. `withIsolatedCaptureBrowser(..., { capture: { lock, waitMs, warm } })` opens the cache, server and browser
+  while queued and releases once the browser closes. `tank-standard-check` and `track-clip-audit` use it, and the
+  standard check's contiguity stage, which is CPU-only, now runs after the release.
+
+A second concurrent capture lane for stills (parked 2026-10-15) is not the lever. Holds were long because of
+CPU-bound page loads, which now happen before the hold, and the GPU is already 65-80 % busy with other projects'
+work. Timing jobs still need the GPU alone, and that holds only while nothing outside the lock draws: on 2026-10-22
+the iOS Simulator did.
+
 ### The rooms Worker's TypeScript program (2026-09-28)
 
 `cloudflare/rooms/tsconfig.json` compiles the Worker with `lib: ["ES2022"]` and no DOM, and a **type-only** import still joins a
@@ -361,9 +403,11 @@ Run the complete Node self-test suite:
 
     npm test
 
-Run strict TypeScript validation for migrated modules:
+Run strict TypeScript validation (TypeScript 7, with Oxlint beside it) and,
+on its own, the linter:
 
     npm run typecheck
+    npm run lint
 
 The application, Vercel middleware, Vite configuration, and browser tooling
 are strict TypeScript. `allowJs` is disabled, so a JavaScript application module
@@ -377,9 +421,10 @@ public documentation tree.
 
 The same command also rejects unused symbols in the composition root and the
 application, network, simulation, interface, engine, FX, audio, and top-level
-world owners. Procedural fleet builders and declarative map callbacks remain a
-separate cleanup lane because their intentionally uniform factory signatures
-must be changed family-by-family with geometry receipts, not mechanically.
+world owners, in the same compile ("Fast checks" below). Procedural fleet
+builders and declarative map callbacks remain a separate cleanup lane because
+their intentionally uniform factory signatures must be changed family-by-family
+with geometry receipts, not mechanically.
 
 Node CLI, generator, and self-test entrypoints intentionally retain `.mjs`
 where they are executable harnesses rather than shipped application modules.
@@ -415,6 +460,33 @@ of shell commands.
 inputs are byte-identical to its last PASS prints a SKIP line (`COT_SELFTEST_CACHE=0 npm test` runs
 everything). Every failure in a group is reported in one run; `COT_SELFTEST_FAIL_FAST=1` stops at the first. Result reuse is specified in
 "Test gate and result reuse" below.
+
+**Typecheck, lint and the build's post-build steps (2026-10-22).** Timings are before → after, A/B-interleaved on
+one tree at load 160-410 (medians of three runs; CPU is user+sys, the load-free cost):
+
+- `npm run typecheck` (`tools/typecheck.mjs`, 308 → 147 s, CPU 73 → 40 s) is one TypeScript 7 compile with
+  `--noUnusedLocals --noUnusedParameters`. Any other diagnostic fails, as a plain `tsc --noEmit` would. Unused
+  symbols fail only in the core owners. A killed compiler, or output that is not a diagnostic list, fails too. It
+  used to be two full compiles. Oxlint runs beside the compiler and adds no wall time. A `node_modules` cloned
+  before Oxlint was added skips it with a notice until `npm ci`.
+- `npm run lint` (about 2 s) is Oxlint 1.87.0's correctness category (`.oxlintrc.json`), with no style rules and
+  no formatter. Fix a finding at its source. When a rule flags a deliberate idiom, turn it off in `.oxlintrc.json`
+  with a one-line reason (an `overrides` entry for one file). Never edit a hash-pinned source, or change
+  simulation behaviour, to satisfy a rule without proving the bug. dist, public/, generated tables and the
+  hash-pinned sources are ignored.
+- `tools/asset-provenance.mjs` (363 → 39 s, CPU 10.9 → 4.2 s) hashes the ~10,900 files (1.2 GB) of its scope 16 at
+  a time.
+- `tools/strip-nc-assets.mjs` (30 → 1-3 s; 37 s on a cold probe) reuses its registry probe's result while every
+  file the probe loaded, the probe, the lockfile and Node are byte-identical (`node_modules/.cache/cot-strip-nc`;
+  `COT_STRIP_NC_PROBE_CACHE=0` probes anyway). A probe that runs (about 3 s of CPU, 60-90 s at load 200+) gets 10
+  minutes (`COT_STRIP_NC_PROBE_TIMEOUT_MS`), where 120 s used to trip at load ~100.
+- `npm run check:bundle` (155 → 14 s, CPU 9.4 → 1.3 s; 111 s cold) reuses each file's compressed sizes by content
+  digest (`node_modules/.cache/cot-bundle-budget`) and compresses the rest on the thread pool.
+- `tools/generate-localized-pages.mjs` takes about 2 s and is unchanged.
+
+The build output is byte-identical: each run diffs the old and new steps' `dist/` from the same Vite output. The
+integrator's pre-deploy light pass is `npm run typecheck` (with lint), `npm run build` and `npm run check:bundle`.
+Lanes get lint through typecheck, or run `npm run lint` on its own.
 
 `npm run tank:release:check -- --ids=<ids> [--gate]` runs two stages (`tools/tank-release-plan.mjs`):
 the load-sensitive browser scoring (standard, sealed, source fidelity) one step at a time, then the

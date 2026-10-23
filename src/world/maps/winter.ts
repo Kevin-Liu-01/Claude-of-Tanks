@@ -34,6 +34,7 @@
 // sawmill shed and its board store, the woodsheds, the burnt houses; the strongpoints' sauna hut is a bacówka. The
 // yards are plank-fenced with their woodsheds. Every building stands where it stood.
 
+import { WORN_YARD_PAINT } from '../hardstandSurface.ts';
 import { gully, talusFan } from './geology.ts';
 import { createMarshChannel } from './marshChannel.ts';
 
@@ -75,8 +76,8 @@ export default {
     // its road's height and grade, with a bank that makes no wall (maps lane A's apron bank law). With the terrace
     // hay meadow behind the sawmill they put the three zones across the valley's waist at equal drives.
     hardstands: [
-      { x: 95, z: -5, width: 56, length: 56, yawDeg: 107, grade: 'road', bankM: 18 },
-      { x: 190, z: -40, width: 56, length: 56, yawDeg: 95, grade: 'road', bankM: 18 },
+      { x: 95, z: -5, width: 56, length: 56, yawDeg: 107, grade: 'road', bankM: 18, paint: WORN_YARD_PAINT },
+      { x: 190, z: -40, width: 56, length: 56, yawDeg: 95, grade: 'road', bankM: 18, paint: WORN_YARD_PAINT },
     ],
     roads: { paths: [
       // 0 — the valley road on the west terrace (the utility line, the
