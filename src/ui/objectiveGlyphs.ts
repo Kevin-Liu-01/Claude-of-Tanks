@@ -31,6 +31,8 @@ export const OBJECTIVE_PALETTE = Object.freeze({
   neutralFill: withAlpha(TOKENS['team-neutral'], 0.16),
   contestedFill: withAlpha(TOKENS.accent, 0.34),
   keyline: withAlpha(TOKENS['graphite-950'], 0.86),
+  /** the sector chip's hexagon well (drawObjectiveChip) */
+  well: withAlpha(TOKENS['graphite-950'], 0.9),
   chalk: TOKENS['ink-1'],
   heal: TOKENS.ok,
   ammo: TOKENS.accent,
@@ -137,6 +139,46 @@ export function drawProgressArc(
   ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2);
   ctx.stroke();
   ctx.restore();
+}
+
+interface ChipStyle {
+  side: ObjectiveSide;
+  label: string;
+  /** capture progress 0..1 toward `progressSide` (the ring's share) */
+  progress: number;
+  progressSide?: 'own' | 'enemy';
+  font?: string;
+}
+
+/**
+ * The HUD's sector chip under the score (brand-ui H3, the direction's 06-battle-hud.html .sectors): the zone's hexagon
+ * on a dark well, rimmed and lettered in its side's ink, inside a capture ring whose arc is the progress toward its side.
+ * A contested zone's ring is dashed all round in the contested ink. `r` is the hexagon's radius; the ring runs at 1.23 r.
+ */
+export function drawObjectiveChip(ctx: Ctx, x: number, y: number, r: number, chip: ChipStyle): void {
+  const ring = r * 1.23;
+  const width = r * 0.15;
+  ctx.save();
+  ctx.lineWidth = width + r * 0.06;
+  ctx.strokeStyle = OBJECTIVE_PALETTE.keyline;
+  ctx.beginPath();
+  ctx.arc(x, y, ring, 0, Math.PI * 2);
+  ctx.stroke();
+  if (chip.side === 'contested') {
+    ctx.setLineDash([r * 0.2, r * 0.13]);
+    ctx.lineWidth = width;
+    ctx.strokeStyle = sideColor('contested');
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.restore();
+  if (chip.side !== 'contested') {
+    drawProgressArc(ctx, x, y, ring, chip.progress, sideColor(chip.progressSide ?? chip.side), width);
+  }
+  const color = sideColor(chip.side);
+  drawHexBadge(ctx, x, y, r, {
+    fill: OBJECTIVE_PALETTE.well, stroke: color, label: chip.label, labelColor: color, ringWidth: r * 0.11, font: chip.font,
+  });
 }
 
 /** Swallow-tail pennant on a pole; `h` is the pole height, the pennant hangs from its top. */

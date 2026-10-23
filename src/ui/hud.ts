@@ -365,6 +365,7 @@ interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   shells?: string[];
   consumables?: string[];
   specialAction?: string;
+  minimapZoom?: string;
   active?: boolean;
   reason?: string;
   slot?: number;
@@ -1184,6 +1185,10 @@ import { tierNumeral } from '../vehicles/tier.ts';
 // SHOT-INFO SECTION: combat-intelligence panels (shot cards, armor diagrams,
 // incoming toasts, shot log, session stats) — logic lives in src/ui/shotInfo.ts.
 import { createShotInfo } from './shotInfo.ts';
+// brand-ui H3: the team strip under the score and the kill ribbon (the direction's 06-battle-hud.html .pips, .sectors,
+// .ribbon)
+import { createTeamPips } from './hudTeamPips.ts';
+import { createKillRibbon } from './hudKillRibbon.ts';
 import { sightFurniture, sightFurnitureGap, sightFurnitureRise, sightNoticeGap } from './sightFurniture.ts';
 import { hitOutcomeFor, incomingHitFeedbackFor } from './hitEventFormat.ts';
 import {
@@ -1446,7 +1451,7 @@ const HUD_CSS = `
   --hud-panel:var(--hud-plate,rgba(13,16,20,.92));--hud-edge:var(--line-3,rgba(246,243,236,.24));
   --hud-muted:var(--ink-3,#9a9a95);--hud-text:var(--ink-1,#f6f3ec);--hud-action:var(--accent,#f0a030);--hud-danger:var(--danger);
   --hud-own:var(--team-own);--hud-enemy:var(--team-enemy);
-  --hud-plate-ring:0 0 0 1px var(--line-1),0 6px 18px rgba(0,0,0,.35);
+  --hud-plate-ring:var(--battle-plate-shadow);
   --hud-layer-world:var(--z-hud-world,6);--hud-layer-sight:var(--z-hud-sight,8);--hud-layer-status:var(--z-hud-status,18);
   --hud-layer-controls:var(--z-hud-controls,24);--hud-layer-score:var(--z-hud-score,30);
   -webkit-user-select:none;user-select:none;color:var(--hud-text);overflow:hidden;}
@@ -1461,7 +1466,6 @@ const HUD_CSS = `
   min-height:64px;display:grid;grid-template-columns:minmax(0,1fr) minmax(72px,150px) minmax(0,1fr);
   align-items:center;padding:0 56px;isolation:isolate;overflow:hidden;
   background:var(--hud-plate);border-radius:var(--r1);box-shadow:var(--hud-plate-ring);
-  filter:drop-shadow(0 5px 11px rgba(0,0,0,.5));
   clip-path:polygon(0 0,100% 0,94% 100%,6% 100%);}
 
 .cot-top .sc,.cot-top .tm-block{position:relative;z-index:1;}
@@ -1476,8 +1480,11 @@ const HUD_CSS = `
 .cot-top .fg{color:var(--hud-own);}
 .cot-top .fe{color:var(--hud-enemy);white-space:nowrap;}
 /* each side's share of what wins it (the kills of the other side's tanks, or the mode's score target), drawn by
-   transform alone and written only when the score moves */
-.cot-top .sc .bar{position:relative;flex:0 1 96px;width:96px;height:4px;overflow:hidden;background:var(--line-2);}
+   transform alone and written only when the score moves; the track carries its side's ink, so an early score reads as
+   a gauge, never as an empty slot (H1 critics), and any point on the board shows a stub (setScoreBars) */
+.cot-top .sc .bar{position:relative;flex:0 1 96px;width:96px;height:4px;overflow:hidden;
+  background:color-mix(in srgb,var(--hud-own) 24%,transparent);}
+.cot-top .sc.enemy .bar{background:color-mix(in srgb,var(--hud-enemy) 24%,transparent);}
 .cot-top .sc .bar i{display:block;height:100%;transform:scaleX(var(--p,0));transform-origin:left;
   transition:transform var(--dur-base) var(--ease-enter);}
 .cot-top .sc.ally .bar i{background:var(--hud-own);}
@@ -1498,6 +1505,9 @@ const HUD_CSS = `
   font:700 11px ${FONT_COND};letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;}
 .cot-mode-status.show{display:flex}.cot-mode-status .mi,.cot-mode-status .mi svg{display:block;width:15px;height:15px}
 .cot-mode-status .mi{color:var(--accent)}.cot-mode-status .mv{color:var(--ink-1);}
+/* the mission plate (brand-ui H3, the direction's .mission): under the score it is the objective row; the corner seat
+   (battleHudLayout.css data-objective-seat=corner) shows the mode's name over it, the link's ping and the Tab key */
+.cot-mode-status .mt{display:contents}.cot-mode-status :is(.mn,.mp,.cot-c-kbd){display:none}
 /* Compact player telemetry: bare HUD text (no box, no border), as the
    multiplayer network strip beside it in the same corner row. The
    engineering dashboard folds this strip into its richer top-right panel
@@ -1518,34 +1528,30 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-drive{position:absolute;z-index:var(--hud-layer-controls);left:169px;bottom:12px;
   width:108px;height:108px;border-radius:50%;pointer-events:none;overflow:hidden;
   contain:layout paint style;
-  font-family:${FONT_COND};color:#edf3f7;
-  background:radial-gradient(circle at 50% 42%,rgba(24,32,38,.96),rgba(5,9,12,.93) 72%);
-  border:1px solid rgba(190,204,214,.38);box-shadow:0 6px 22px rgba(0,0,0,.48),inset 0 0 16px rgba(0,0,0,.5);
-  text-shadow:0 1px 2px rgba(0,0,0,.9);}
+  font-family:${FONT_COND};color:var(--ink-1);
+  background:var(--hud-plate);border:0;box-shadow:var(--hud-plate-ring);}
 .cot-drive .dial{position:absolute;inset:5px;border-radius:50%;isolation:isolate;
   background:transparent;}
 .cot-drive .dial::after{content:'';position:absolute;z-index:0;inset:7px;border-radius:50%;
-  background:radial-gradient(circle at 48% 38%,#172027,#090e12 72%);
-  border:1px solid rgba(191,207,219,.12);}
+  background:var(--fill-faint);box-shadow:var(--ring-1);}
 .cot-drive .arc{position:absolute;z-index:1;inset:0;width:100%;height:100%;overflow:visible;}
 .cot-drive .arc circle{fill:none;stroke-width:3;}
-.cot-drive .arc-track{stroke:rgba(131,149,162,.24);stroke-dasharray:75 25;}
-.cot-drive .arc-value{stroke:#f1f5f7;stroke-dasharray:0 100;
+.cot-drive .arc-track{stroke:var(--fill-scale);stroke-dasharray:75 25;}
+.cot-drive .arc-value{stroke:var(--ink-1);stroke-dasharray:0 100;
   transition:stroke-dasharray .065s linear;}
 .cot-drive .arc-red{stroke:var(--danger);stroke-dasharray:15 85;stroke-dashoffset:-60;}
 .cot-drive .ticks{position:absolute;z-index:2;inset:0;border-radius:50%;}
 .cot-drive .ticks i{position:absolute;left:calc(50% - .5px);top:8px;width:1px;height:6px;
   transform-origin:50% 41px;transform:rotate(calc(-135deg + var(--tick) * 13.5deg));
-  background:rgba(241,246,249,.88);box-shadow:0 0 2px rgba(255,255,255,.2);}
-.cot-drive .ticks i:nth-child(5n + 1){left:calc(50% - 1px);width:2px;height:9px;background:#fff;}
+  background:var(--ink-2);}
+.cot-drive .ticks i:nth-child(5n + 1){left:calc(50% - 1px);width:2px;height:9px;background:var(--ink-1);}
 .cot-drive .ticks i:nth-last-child(-n + 5){background:var(--danger);}
 .cot-drive .needle{position:absolute;z-index:2;left:50%;top:50%;width:2px;height:35px;
   margin:-35px 0 0 -1px;transform-origin:50% 100%;rotate:-135deg;
   transition:rotate .05s linear;will-change:transform;
-  background:var(--danger);box-shadow:0 0 5px rgba(0,0,0,.6);}
+  background:var(--danger);}
 .cot-drive .hub{position:absolute;z-index:4;left:50%;top:50%;width:8px;height:8px;
-  margin:-4px 0 0 -4px;border-radius:50%;background:var(--ink-1);border:2px solid var(--danger);
-  box-shadow:0 1px 4px rgba(0,0,0,.8);}
+  margin:-4px 0 0 -4px;border-radius:50%;background:var(--ink-1);border:2px solid var(--danger);}
 .cot-drive .speed{position:absolute;z-index:3;left:0;right:0;top:58px;text-align:center;
   font-size:26px;line-height:1;font-weight:700;letter-spacing:-.04em;}
 /* The unit sits in the upper face under the 12 o'clock tick, so the lower gap holds the speed and the scale's two
@@ -1670,18 +1676,19 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-kf .k,.cot-kf .v{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 /* callsigns in the display voice at the row's size; the docked desktop feed sets the direction's 13 px */
 .cot-kf .k,.cot-kf .v{font-family:${FONT_COND};font-weight:600;line-height:1;}
-body:is([data-cot-width='laptop'],[data-cot-width='desktop']):not(.cot-touch-layout) .cot-kf :is(.k,.v){font-size:13px;}
+body:is([data-cot-width='laptop'],[data-cot-width='desktop']):not(.cot-touch-layout) .cot-kf :is(.k,.v){font-size:var(--battle-fs-13);}
 .cot-kill-lane.l .cot-kf .k,.cot-kill-lane.r .cot-kf .v{color:var(--text-own);}
 .cot-kill-lane.r .cot-kf .k,.cot-kill-lane.l .cot-kf .v{color:var(--text-enemy);}
 .cot-kill-lane.l .cot-kf .ksi,.cot-kill-lane.r .cot-kf .vsi{color:var(--hud-own);}
 .cot-kill-lane.r .cot-kf .ksi,.cot-kill-lane.l .cot-kf .vsi{color:var(--hud-enemy);}
 /* the player's own kills and deaths ride on the tungsten edge */
-.cot-kf:is([data-relation=you],[data-relation=victim]){
-  box-shadow:inset 3px 0 0 var(--accent),0 0 0 1px color-mix(in srgb,var(--accent) 35%,transparent),0 6px 18px rgba(0,0,0,.35);}
+.cot-kf:is([data-relation=you],[data-relation=victim]){box-shadow:var(--battle-edge-own);}
 .cot-kf .d{display:inline-flex;align-items:center;justify-content:center;line-height:1;color:var(--ink-2);font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;flex:0 0 auto;}
 .cot-kf .c{color:var(--accent-hi);font-size:11px;letter-spacing:.05em;font-weight:700;flex:0 0 auto;}
 .cot-kf .d>svg,.cot-kf .relation>svg{display:block;flex:none;}
 .cot-kf .si{width:30px;height:12px;flex:0 0 auto;align-self:center;display:inline-block;}
+.cot-kf .vsi{transform:scaleX(-1);}
+.cot-kf .cot-flag{flex:none;align-self:center;display:block;border-radius:1px;box-shadow:var(--flag-ring);}
 .cot-kf .si.src{display:inline-flex;align-items:center;justify-content:center;height:16px;}
 .cot-kf .si.src>svg{display:block;flex:none;}
 .cot-dmglayer{position:absolute;z-index:calc(var(--hud-layer-world) + 1);inset:0;}
@@ -1707,7 +1714,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
   70%{opacity:.95}100%{opacity:0;transform:translate(-50%,-190%)}}
 .cot-alert{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:23%;max-width:calc(100vw - 32px);min-height:38px;
   display:flex;align-items:center;justify-content:center;gap:12px;padding:0 16px 0 12px;
-  transform:translate(-50%,7px);font-family:var(--font-display);font-size:15px;font-weight:700;
+  transform:translate(-50%,7px);font-family:var(--hud-font);font-size:15px;font-weight:700;
   letter-spacing:.08em;text-align:center;text-transform:uppercase;color:var(--notice-edge);white-space:nowrap;
   --notice-edge:var(--warn);
   text-shadow:0 1px 3px rgba(0,0,0,.9);opacity:0;
@@ -1831,13 +1838,13 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 .cot-shell{width:64px;height:64px;background:var(--hud-plate);
   border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);border-radius:var(--r1);
   appearance:none;color:inherit;font:inherit;padding:0;cursor:pointer;position:relative;
-  box-shadow:0 4px 13px rgba(0,0,0,.26);
+  box-shadow:var(--hud-plate-ring);
   transition:border-color .12s,background .12s,transform .1s ease-out;}
 .cot-shell:active{transform:scale(.97);}
 .cot-shell.sel .ty{color:var(--accent);}
 .cot-shell.sel{border-color:var(--accent);border-bottom-color:var(--accent);
   background:linear-gradient(var(--accent-wash),var(--accent-wash)),var(--hud-plate);
-  box-shadow:inset 0 0 0 1px var(--accent);}
+  box-shadow:var(--ring-accent),var(--hud-plate-ring);}
 /* Out of ammo (owner 2026-10-17; critic r3: a grey 0 over a thin edge read as disabled): an empty slot reads OUT the
    way the phone's does — struck through on a danger edge, its 0 in the danger ink. */
 .cot-shell.empty{color:var(--ink-4);border-color:var(--line-1);border-bottom-color:var(--hud-danger);
@@ -1872,19 +1879,18 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 .cot-shell.sel .key{color:var(--accent-hi);border-color:var(--accent);}
 /* the count takes the top-right corner, 3 px in from the slot's edge */
 .cot-shell .cnt{position:absolute;top:2px;right:3px;font-size:15px;line-height:13px;font-weight:700;
-  font-family:var(--font-display);
-  color:var(--ink-1);letter-spacing:.02em;z-index:4;
-  text-shadow:0 1px 2px rgba(0,0,0,.9);}
+  font-family:var(--hud-font);
+  color:var(--ink-1);letter-spacing:.02em;z-index:4;}
 /* Owner 2026-10-17 (endless ammo): the ammo ∞ reads as a count — the glyph draws small, so it is set larger, in the
    numeral ink, above the reload shade like every count. */
 .cot-shell.unlimited .cnt{font-size:19px;line-height:13px;color:var(--hud-text);z-index:4;}
 .cot-shell .ty{position:absolute;bottom:2px;left:4px;right:3px;font-size:11px;font-weight:700;
   font-family:${FONT_COND};
-  letter-spacing:-.02em;white-space:nowrap;z-index:4;text-shadow:0 1px 2px rgba(0,0,0,.9);}
+  letter-spacing:-.02em;white-space:nowrap;z-index:4;}
 /* A count of three digits or more (an autocannon's 180) sets a step smaller in its corner. */
 .cot-shell.wide .cnt{right:3px;font-size:12px;letter-spacing:0;}
 .cot-shell .cool{position:absolute;left:0;right:0;top:0;height:0;
-  background:rgba(4,6,9,.72);pointer-events:none;z-index:3;}
+  background:var(--battle-veil);pointer-events:none;z-index:3;}
 .cot-shell .tip{display:none;position:absolute;bottom:70px;left:50%;transform:translateX(-50%);
   white-space:nowrap;background:var(--hud-plate-strong);border:1px solid var(--line-2);border-radius:var(--r1);
   padding:5px 9px 6px;font-size:11px;color:var(--ink-2);letter-spacing:.02em;z-index:5;
@@ -1908,7 +1914,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
   background:var(--hud-plate);
   border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);border-radius:var(--r1);
   appearance:none;color:inherit;font:inherit;padding:0;display:flex;align-items:center;justify-content:center;
-  box-shadow:0 4px 13px rgba(0,0,0,.26);
+  box-shadow:var(--hud-plate-ring);
   transition:border-color .12s,transform .1s ease-out;}
 .cot-con svg{width:26px;height:26px;display:block;}
 .cot-con:active{transform:scale(.97);}
@@ -1917,10 +1923,12 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
   letter-spacing:0;
   border:1px solid var(--line-2);border-radius:var(--r1);padding:0 3px;z-index:2;}
 .cot-con .cnt{position:absolute;bottom:2px;right:4px;font-size:11px;font-weight:700;
-  font-family:${FONT_COND};letter-spacing:-.01em;color:var(--ink-1);
-  text-shadow:0 1px 2px rgba(0,0,0,.9);z-index:2;}
+  font-family:${FONT_COND};letter-spacing:-.01em;color:var(--ink-1);z-index:2;}
 .cot-con .cool{position:absolute;inset:0;display:none;
-  background:conic-gradient(rgba(4,6,9,.82) var(--cool,0%),transparent 0);z-index:1;pointer-events:none;}
+  background:conic-gradient(var(--battle-veil) var(--cool,0%),transparent 0);z-index:1;pointer-events:none;}
+/* the consumable the moment calls for (the direction's .tile.sugg): a repair kit while a module is down, a medkit while
+   a crew member is out, the extinguisher while the tank burns */
+.cot-con.sugg:not(.cooling){border-color:var(--accent);}
 .cot-con.cooling{border-color:var(--line-1);cursor:not-allowed;}
 .cot-con.used{opacity:.35;filter:grayscale(1);}
 .cot-con.deny{animation:cotConDeny .3s;}
@@ -1999,11 +2007,19 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
   border-left:5px solid transparent;border-right:5px solid transparent;
   border-top:6px solid var(--hud-enemy);
   filter:drop-shadow(0 1px 1px rgba(0,0,0,.65));}
+/* The tactical map on its plate (brand-ui H3, the direction's .mm). On the wide mouse layouts the plate's padding holds a
+   header over the map, the battlefield's name beside the map key's cap, so the map itself keeps its square. */
 .cot-minimap{position:absolute;z-index:var(--hud-layer-controls);right:16px;bottom:16px;width:220px;height:220px;
-  border:1px solid var(--line-3);border-radius:var(--r1);
-  box-shadow:0 0 0 1px rgba(0,0,0,.62),0 0 0 3px rgba(20,26,30,.55),0 10px 28px rgba(0,0,0,.6),inset 0 0 0 1px rgba(255,255,255,.07);
-  background:#0d1310;}
+  border:0;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--hud-plate-ring);}
 .cot-minimap canvas{display:block;width:100%;height:100%;}
+.cot-mm-hd{display:none}
+body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-minimap{
+  box-sizing:content-box;padding:32px 8px 8px;}
+body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-mm-hd{
+  position:absolute;left:8px;right:8px;top:6px;height:20px;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  font:600 var(--battle-fs-13)/1 var(--hud-font);color:var(--ink-1);white-space:nowrap;}
+.cot-mm-hd .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;}
+.cot-mm-hd .cot-c-kbd{flex:none;height:19px;min-width:19px;padding:0 5px;font-size:var(--battle-fs-11);}
 /* Detection is one compact instrument, revealed after the authoritative
    sixth-sense delay. A finite entry sweep replaces the old forever-pulsing
    bulb, keeping motion quiet while the state remains active. */
@@ -2018,7 +2034,7 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
 .cot-sixth .sig{display:grid;place-items:center;color:var(--warn);}
 .cot-sixth .sig svg{width:24px;height:24px;display:block;}
 .cot-sixth .copy{min-width:0;padding:0;display:flex;flex-direction:column;gap:3px;}
-.cot-sixth .lb{font:700 15px/1 var(--font-display);letter-spacing:.08em;text-transform:uppercase;color:var(--warn);}
+.cot-sixth .lb{font:700 15px/1 var(--hud-font);letter-spacing:.08em;text-transform:uppercase;color:var(--warn);}
 .cot-sixth .sub{font:500 13px/1.3 var(--font-body);letter-spacing:0;color:var(--ink-2);}
 /* Every notice is one strong HUD plate: a hairline and a 3 px bar in its severity's ink on the leading edge. */
 .cot-sixth,.cot-alert{border:0;border-radius:var(--r1);background:var(--hud-plate-strong);
@@ -2044,6 +2060,8 @@ function fmtTimer(s: number): string {
  */
 /** How far a touch may travel on a vehicle-row tile and still act on its lift (UI-06: farther is a swipe to aim). */
 const TAP_SLOP_PX = 10;
+/** The least share a score bar shows once its side has scored: about 5 px of the 96 px bar. */
+const SCORE_BAR_STUB = 0.05;
 
 /** The objective's progress as its " · " parts, each count's figures held together: a short landscape's compact form
  *  stacks the parts in the side seat (battleHudLayout.css data-objective-seat). */
@@ -2077,6 +2095,10 @@ export function initHud(bus: EventBus): HudRuntime {
   const root = el('div', 'cot-hud');
   document.body.appendChild(root);
   installBattleHudLayout(root);
+  // The nations' flags (flags.ts, the Garage's and the load screen's, already the game's own chunk): imported on demand so
+  // this module stays Node-loadable, as battleLoad.ts loads them; a Node receipt's feed and ribbon go without flags.
+  let flagHtml: ((nation: string) => string) | null = null;
+  import('./flags.ts').then(({ flagIconHTML }) => { flagHtml = (nation) => flagIconHTML(nation, 16, 12); }, () => {});
 
   const touchAimWarning = el('div', 'cot-aim-warning', root);
   touchAimWarning.hidden = true;
@@ -2127,20 +2149,44 @@ export function initHud(bus: EventBus): HudRuntime {
   const tmEl = requireElement<HTMLElement>(topPlate, '.tm');
   const allyBarEl = requireElement<HTMLElement>(topPlate, '.sc.ally .bar');
   const enemyBarEl = requireElement<HTMLElement>(topPlate, '.sc.enemy .bar');
-  /** Each side's share of what wins it, 0 to 1, on its bar (written with the score, never per frame). */
+  /** Each side's share of what wins it, 0 to 1, on its bar (written with the score, never per frame); any point on the
+   *  board shows at least a stub (H1 critics: early bars read empty). */
+  const barShare = (share: number): string => String(share > 0 ? Math.min(1, Math.max(SCORE_BAR_STUB, share)) : 0);
   const setScoreBars = (own: number, enemy: number): void => {
-    allyBarEl.style.setProperty('--p', String(Math.min(1, Math.max(0, own))));
-    enemyBarEl.style.setProperty('--p', String(Math.min(1, Math.max(0, enemy))));
+    allyBarEl.style.setProperty('--p', barShare(own));
+    enemyBarEl.style.setProperty('--p', barShare(enemy));
   };
   const allyLabelEl = requireElement<HTMLElement>(topPlate, '.sc.ally .team-label');
   const enemyLabelEl = requireElement<HTMLElement>(topPlate, '.sc.enemy .team-label');
   const timerLabelEl = requireElement<HTMLElement>(topPlate, '.tm-label');
   const modeStatusEl = el('div', 'cot-mode-status', root);
   modeStatusEl.setAttribute('role', 'status');
-  modeStatusEl.innerHTML = `<span class="mi"></span><span class="mv"></span>`;
+  // the mission plate (brand-ui H3): the mode's glyph and the objective; in the corner seat the mode's name over the
+  // objective, the link's ping (multiplayer) and the rosters' Tab key beside them
+  modeStatusEl.innerHTML = `<span class="mi"></span><span class="mt"><b class="mn"></b><span class="mv"></span></span>`
+    + `<span class="mp" aria-hidden="true" hidden><span class="ping">${uiIconSVG('signal', 14)}<b class="num"></b></span></span>`
+    + `<kbd class="cot-c-kbd" aria-hidden="true">Tab</kbd>`;
   const modeStatusIcon = requireElement<HTMLElement>(modeStatusEl, '.mi');
+  const modeStatusName = requireElement<HTMLElement>(modeStatusEl, '.mn');
   const modeStatusValue = requireElement<HTMLElement>(modeStatusEl, '.mv');
+  const modeStatusPing = requireElement<HTMLElement>(modeStatusEl, '.mp');
+  const modeStatusPingValue = requireElement<HTMLElement>(modeStatusEl, '.ping b');
+  let missionPing = -1, missionPingMs = -Infinity;
+  /** The link's round trip on the mission plate, at most once a second (its cell holds its width: no relayout). */
+  function updateMissionPing(pingMs: number | undefined): void {
+    const now = performance.now();
+    if (now - missionPingMs < 1000) return;
+    missionPingMs = now;
+    const ping = Math.max(0, Math.min(999, Math.round(Number(pingMs) || 0)));
+    if (ping === missionPing) return;
+    missionPing = ping;
+    modeStatusPing.hidden = ping <= 0;
+    modeStatusPing.dataset.tone = ping < 80 ? 'good' : ping < 160 ? 'warn' : 'bad';
+    modeStatusPingValue.textContent = ping > 0 ? t('hud.mission.ping', { ms: ping }) : '';
+  }
   let lastModeStatus = '';
+  // the team strip under the score: a silhouette per tank and a chip per capture zone (hudTeamPips.ts)
+  const teamPips = createTeamPips(root);
   const standardModeStatus: HudMatchModeState = {id:'standard',target:0};
   // proving ground (2026-10-17): the range card, a lazy chunk; its buttons reach the session through the bus
   let rangeCard: ReturnType<typeof import('./provingRangeCard.ts').createProvingRangeCard> | null = null;
@@ -2316,6 +2362,8 @@ export function initHud(bus: EventBus): HudRuntime {
   const killfeed = el('div', 'cot-killfeed', root);
   const killLeft = el('div', 'cot-kill-lane l', killfeed);
   const killRight = el('div', 'cot-kill-lane r', killfeed);
+  // the player's kills and what they earned, centre low (hudKillRibbon.ts)
+  const killRibbon = createKillRibbon(root);
 
   // ===================== SPECTATE BAR (killcam_endscreen r1) ================
   // Driven by killcam.ts's ally-spectate controller over the bus (additive
@@ -2815,10 +2863,36 @@ export function initHud(bus: EventBus): HudRuntime {
       conSlots[i].render(cooldownRemaining(timeS, conReadyAt[i]), conCooldownS[i]);
     }
   }
+  /** The consumable the moment calls for (the direction's suggested tile, on the tungsten hairline): the repair kit while
+   *  a module is knocked out, first aid while a crew member is down, the extinguisher while the tank burns. Each slot's
+   *  class is written only when it changes. */
+  const conSuggested = [false, false, false];
+  function suggestConsumable(slot: number, on: boolean): void {
+    if (conSuggested[slot] === on || !conEls[slot]) return;
+    conSuggested[slot] = on;
+    conEls[slot].classList.toggle('sugg', on);
+  }
+  function updateConsumableSuggestions(combat: CombatState | null | undefined): void {
+    let moduleDown = false, crewDown = false, burning = false;
+    if (combat && !combat.destroyed) {
+      const modules = combat.modules;
+      for (const name in modules) if (modules[name as keyof typeof modules]?.state === 'red') { moduleDown = true; break; }
+      for (const name in combat.crew) if (!combat.crew[name]) { crewDown = true; break; }
+      burning = !!combat.fire?.burning;
+    }
+    suggestConsumable(0, moduleDown);
+    suggestConsumable(1, crewDown);
+    suggestConsumable(2, burning);
+  }
 
   // --- minimap ---
   const mmWrap = el('div', 'cot-minimap', root);
   const mmCanvas = el('canvas', '', mmWrap);
+  // the map plate's header on the wide mouse layouts: the battlefield's name and the map key (the direction's .mm .hd)
+  const mmHead = el('div', 'cot-mm-hd', mmWrap);
+  mmHead.innerHTML = `<span class="nm"></span><kbd class="cot-c-kbd" aria-hidden="true">M</kbd>`;
+  const mmName = requireElement<HTMLElement>(mmHead, '.nm');
+  const mmKey = requireElement<HTMLElement>(mmHead, '.cot-c-kbd');
   const MM = 220;
   // Follow the phone's native DPR (bounded by the shared output policy) so a
   // DPR-3 browser never stretches a DPR-2 tactical map.
@@ -2843,7 +2917,6 @@ export function initHud(bus: EventBus): HudRuntime {
   const minimapForestY = new Float32Array(12);
   let w = 1, h = 1, dpr = 1;
   let scopeGrad: CanvasGradient | null = null;
-  let scopeChromGrad: CanvasGradient | null = null;
   let scopeGradZoom = -1;
   let scopeFadeMs = -1; // scope-shadow fade-in start (perf.now ms; -1 = settled)
   let scopePrevMode: HudMode = 'hidden'; // transition detector for the fade
@@ -2861,6 +2934,8 @@ export function initHud(bus: EventBus): HudRuntime {
   const nameById = new Map<string, string>();
   const teamById = new Map<string, string | undefined>();
   const specIdById = new Map<string, string>(); // entity id -> tank spec id (icon lookups)
+  const callsignById = new Map<string, string>(); // entity id -> the callsign the rosters show (feed, ribbon)
+  const nationById = new Map<string, string>(); // entity id -> its vehicle's nation (flags)
   // incoming-hit direction wedges (hitind r1, on the killcam_endscreen r1
   // world-anchoring): SHOOTER world pos + impact kind — screen angle re-projected
   // per frame from the camera basis so the wedges counter-rotate with the
@@ -2938,6 +3013,7 @@ export function initHud(bus: EventBus): HudRuntime {
     dmgLayer.replaceChildren();
     killLeft.replaceChildren();
     killRight.replaceChildren();
+    killRibbon.clear();
     if (alertTimer) {
       clearTimeout(alertTimer);
       alertTimer = null;
@@ -2963,7 +3039,6 @@ export function initHud(bus: EventBus): HudRuntime {
     markCanvas.width = markCanvas.height = Math.round(HIT_MARK_BOX_PX * dpr);
     markCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
     scopeGrad = null;
-    scopeChromGrad = null;
     scopeGradZoom = -1;
   }
   window.addEventListener('resize', resize);
@@ -3283,6 +3358,7 @@ export function initHud(bus: EventBus): HudRuntime {
       lastEnemyRosterCount = teamTally.enemyTotal;
     }
     root.classList.toggle('compact-shot-report', Math.max(teamTally.allyTotal, teamTally.enemyTotal) >= 14);
+    teamPips.updateTeams(tanks, playerRef?.team ?? 'player', playerId);
     return teamTally;
   }
 
@@ -3356,21 +3432,19 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function updateModeStatus(modeState: HudMatchModeState, ownScore: string | number): void {
-    if (modeState.id === 'standard') {
-      if (lastModeStatus === 'standard') return;
-      modeStatusEl.classList.remove('show');
-      modeStatusEl.dataset.mode = 'standard';
-      lastModeStatus = 'standard';
-      return;
-    }
     const copy = modeStatusCopy(modeState, ownScore);
     const status = `${modeState.id}|${copy}`;
     if (status === lastModeStatus) return;
     modeStatusIcon.innerHTML = uiIconSVG(modeStatusIconName(modeState.id || ''), 15, 'currentColor');
     const modeId = normalizeGameMode(modeState.id);
     modeStatusEl.dataset.mode = modeId;
-    modeStatusEl.title = t(`playMenu.matchMode.${modeId}.label`);
+    const modeName = t(`playMenu.matchMode.${modeId}.label`);
+    modeStatusEl.title = modeName;
+    modeStatusName.textContent = modeName;
     setObjectiveValue(modeStatusValue, copy);
+    // a Standard battle has no objective beyond the score: its plate shows only in the corner seat, where it is the
+    // mission plate (battleHudLayout.css .quiet), never as a second row under the score
+    modeStatusEl.classList.toggle('quiet', modeState.id === 'standard');
     modeStatusEl.classList.add('show');
     lastModeStatus = status;
   }
@@ -3467,18 +3541,14 @@ export function initHud(bus: EventBus): HudRuntime {
   //   2. FULL-WIDTH HAIRLINES — 1px cross lines running from the screen
   //      edges up to the dispersion circle's rim (interior stays clean);
   //   3. the zoom readout just below the scope ammunition line (drawReticle).
+  // brand-ui H5 (the direction's 06b-sniper-optic .vig, SPEC 12.2.6): the vignette is the direction's, an ellipse 75 % of
+  // the width by 70 % of the height, clear to 55 % of it and .42 at its rim; the blue chromatic fringe it replaces is
+  // gone (no chromatic aberration). The magnification no longer tightens it.
   function ensureScopeGradients(zoom: number): void {
-    if (scopeGrad && scopeChromGrad && scopeGradZoom === zoom) return;
-    const deep = 0.48;
-    const innerRadius = w * (0.30 - 0.012 * Math.log2(zoom));
-    scopeGrad = ctx.createRadialGradient(0, 0, innerRadius, 0, 0, w * 0.62);
-    scopeGrad.addColorStop(0, 'rgba(2,3,4,0)');
-    scopeGrad.addColorStop(0.5, `rgba(2,3,4,${(deep * 0.34).toFixed(3)})`);
-    scopeGrad.addColorStop(1, `rgba(2,3,4,${deep.toFixed(3)})`);
-    scopeChromGrad = ctx.createRadialGradient(0, 0, w * 0.40, 0, 0, w * 0.66);
-    scopeChromGrad.addColorStop(0, 'rgba(84,118,205,0)');
-    scopeChromGrad.addColorStop(0.72, 'rgba(88,122,210,0.055)');
-    scopeChromGrad.addColorStop(1, 'rgba(104,130,225,0.15)');
+    if (scopeGrad && scopeGradZoom === zoom) return;
+    scopeGrad = ctx.createRadialGradient(0, 0, w * 0.75 * 0.55, 0, 0, w * 0.75);
+    scopeGrad.addColorStop(0, 'rgba(0,0,0,0)');
+    scopeGrad.addColorStop(1, 'rgba(0,0,0,0.42)');
     scopeGradZoom = zoom;
   }
 
@@ -3490,17 +3560,15 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function paintScopeVignette(alpha: number): void {
-    if (!scopeGrad || !scopeChromGrad) return;
+    if (!scopeGrad) return;
     const lensCx = w / 2;
     const lensCy = h / 2;
-    const scaleY = h / w;
+    const scaleY = (h * 0.7) / (w * 0.75);
     ctx.save();
     ctx.translate(lensCx, lensCy);
     ctx.scale(1, scaleY);
     ctx.globalAlpha = alpha;
     ctx.fillStyle = scopeGrad;
-    ctx.fillRect(-lensCx, -lensCy / scaleY, w, h / scaleY);
-    ctx.fillStyle = scopeChromGrad;
     ctx.fillRect(-lensCx, -lensCy / scaleY, w, h / scaleY);
     ctx.restore();
   }
@@ -6691,6 +6759,8 @@ export function initHud(bus: EventBus): HudRuntime {
     // generic base rings; every other objective is drawn by kind.
     const markers = objectiveMarkers(frame.matchModeState);
     if (spawnFlags && !markersStandOnSpawns(markers)) drawMinimapBases(plMapX, plMapY);
+    // the sector chips under the score read the same markers, at the map's 20 Hz
+    teamPips.updateSectors(markers);
     if (markers.length) {
       drawMinimapObjectives(markers, frame.timeS, plMapX, plMapY, !!player?.combat?.destroyed);
     }
@@ -6726,8 +6796,14 @@ export function initHud(bus: EventBus): HudRuntime {
     // shows its icon), the player keeping the kill; a gunship pilot's own vehicle is the AC-130 whatever the source
     const source = killSourceIdentity(payload.source)
       ?? (payload.killerId && aircraftById.has(payload.killerId) ? killSourceIdentity('ac130') : null);
-    const killer = source?.label || (payload.killerId ? nameById.get(payload.killerId) : null) || t('hud.enemy');
-    const victim = (payload.id ? nameById.get(payload.id) : null) || payload.specId || t('hud.tankFallback');
+    // callsign first (SPEC 12.2.3): the player is You; the vehicles ride as flag and silhouette, named in the title
+    const callsign = (id: string | null | undefined): string | null =>
+      !id ? null : id === playerId ? t('hud.feed.you') : callsignById.get(id) ?? null;
+    const killer = source?.label || callsign(payload.killerId) || (payload.killerId ? nameById.get(payload.killerId) : null)
+      || t('hud.enemy');
+    const victim = callsign(payload.id) || (payload.id ? nameById.get(payload.id) : null) || payload.specId || t('hud.tankFallback');
+    const killerVehicle = source ? '' : payload.killerId ? nameById.get(payload.killerId) ?? '' : '';
+    const victimVehicle = (payload.id ? nameById.get(payload.id) : null) || payload.specId || '';
     const ownTeam = teamById.get(playerId || '');
     const alliedKill = ownTeam !== undefined && !!payload.killerId && teamById.get(payload.killerId) === ownTeam;
     const lane = alliedKill ? killLeft : killRight;
@@ -6738,15 +6814,19 @@ export function initHud(bus: EventBus): HudRuntime {
     item.dataset.killCause = presentation.cause;
     if (source) item.dataset.killSource = source.source;
     if (presentation.relation) item.dataset.relation = presentation.relation;
-    item.title = [presentation.label, presentation.relationLabel].filter(Boolean).join(' · ');
+    item.title = [killerVehicle && `${killer} · ${killerVehicle}`, presentation.label, victimVehicle && `${victim} · ${victimVehicle}`,
+      presentation.relationLabel].filter(Boolean).join(' · ');
     // side-profile silhouettes of the actual tanks flank the names (the platform's icon for a gunship's or drone's kill)
     const kSpec = source ? null : payload.killerId ? specIdById.get(payload.killerId) : null;
     const vSpec = (payload.id ? specIdById.get(payload.id) : null) || payload.specId;
-    item.innerHTML =
+    const kNation = kSpec && payload.killerId ? nationById.get(payload.killerId) : null;
+    const vNation = payload.id ? nationById.get(payload.id) : null;
+    const flag = (nation: string | null | undefined): string => nation && flagHtml ? flagHtml(nation) : '';
+    item.innerHTML = `<span class="k"></span>` + flag(kNation) +
       (source ? `<span class="si ksi src" aria-hidden="true">${uiIconSVG(source.icon, 16, 'currentColor')}</span>`
-        : kSpec ? `<span class="si ksi"></span>` : '') + `<span class="k"></span>` +
+        : kSpec ? `<span class="si ksi"></span>` : '') +
       `<span class="d" aria-label="${presentation.label}">${uiIconSVG(presentation.icon, 16)}${presentation.cause === 'ammorack' ? `<b>${presentation.label}</b>` : ''}</span>` +
-      (vSpec ? `<span class="si vsi"></span>` : '') + `<span class="v"></span>` +
+      (vSpec ? `<span class="si vsi"></span>` : '') + flag(vNation) + `<span class="v"></span>` +
       (presentation.relation ? `<span class="relation" aria-label="${presentation.relationLabel}">${uiIconSVG(presentation.relationIcon, 13)}</span>` : '');
     // both silhouettes take their side's team ink from the lane (.cot-kill-lane.l / .r)
     if (kSpec) maskIcon(requireElement<HTMLElement>(item, '.ksi'), kSpec, 'side_silhouette', 'currentColor');
@@ -6757,6 +6837,11 @@ export function initHud(bus: EventBus): HudRuntime {
     while (lane.children.length > MAX_BATTLE_NOTIFICATIONS) lane.lastChild?.remove();
     setTimeout(() => item.classList.add('out'), 5200);
     setTimeout(() => { if (item.parentNode) item.remove(); }, 6200);
+    // the player's own kill of an enemy (not a gunship's or a drone's: the feed names the platform) takes the ribbon
+    if (payload.id && playerId && payload.killerId === playerId && presentation.relation === 'you') {
+      killRibbon.kill({ id: payload.id, callsign: victim, vehicle: victimVehicle, flag: flag(vNation), specId: vSpec || null },
+        presentation);
+    }
   }
 
   function removeDamageNumber(number: LiveDamageNumber): void {
@@ -7013,6 +7098,7 @@ export function initHud(bus: EventBus): HudRuntime {
       }
     }
     if (typeof p.specialAction === 'string') specialKey.textContent = p.specialAction;
+    if (typeof p.minimapZoom === 'string') mmKey.textContent = p.minimapZoom;
   });
   on('ui:specialActionResult', ({ kind, active }) => {
     if (kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) {
@@ -7232,6 +7318,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (!isHudHitEvent(hit)) return;
     if (playerId != null && hit.attackerId === playerId && hit.targetId && hit.targetId !== playerId) {
       pushDamageNumber(hit);
+      killRibbon.damage(hit.targetId, hit.damage);
       // Zero-damage and pass-through outcomes use the steel confirmation;
       // damaging/module outcomes use amber. Copy belongs to the canonical
       // ballistic card (or the compact touch impact label), never this shard.
@@ -7440,6 +7527,8 @@ export function initHud(bus: EventBus): HudRuntime {
       nameById.set(tank.id, gunship ? vehicleName(tank) : tank.spec.name);
       teamById.set(tank.id, tank.team);
       specIdById.set(tank.id, tank.spec.id);
+      callsignById.set(tank.id, nickFor(tank));
+      nationById.set(tank.id, tank.spec.nation);
       if (gunship) aircraftById.add(tank.id);
     }
   }
@@ -7517,6 +7606,8 @@ export function initHud(bus: EventBus): HudRuntime {
     updateSpotting(frame);
     updateTeams(frame);
     updateNetReadout(frame);
+    updateMissionPing(frame.pingMs);
+    updateConsumableSuggestions(frame.player?.aerial?.active ? null : frame.player?.combat);
     updateSixthSense(frame.timeS);
     vehicleStatus.update(frame.player?.aerial?.active ? null : frame.player?.combat, frame.spotting?.player);
   }
@@ -7760,6 +7851,9 @@ export function initHud(bus: EventBus): HudRuntime {
 
     buildMinimapFromAsset(heightField: HudHeightField, src: string) {
       const generation = ++mmBuildGeneration;
+      // the baked plate is the battlefield's own (minimapAssetUrl.ts: /minimaps/<map id>.webp), so it names the map
+      const mapId = /\/minimaps\/([a-z0-9_]+)\.webp/.exec(src)?.[1];
+      mmName.textContent = mapId ? t(`map.${mapId}`) : '';
       return installMinimapAsset(heightField, src, generation);
     },
 

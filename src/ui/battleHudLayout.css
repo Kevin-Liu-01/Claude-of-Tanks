@@ -162,16 +162,46 @@ body.cot-spectating .cot-vehicle-controls{display:none!important;}
 
 /* Objectives share the score's center column; kill notices have bounded side lanes. The objective is its icon and its
    progress (owner 2026-10-22, "cut taglines": the mode's line is the panel's title and the pre-battle rules), one row
-   that breaks only between the progress's parts. */
+   that breaks only between the progress's parts. Under the score it is the plate's own tab: the score's trapezoid
+   carried on in its slant, flush under it (H1 critics: a rectangle hung under the trapezoid). */
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status{
   --objective-accent:var(--accent);left:var(--hud-objective-left,50%);top:var(--hud-objective-top,64px);width:var(--hud-objective-width,278px);
   box-sizing:border-box;min-height:30px;padding:4px 22px 5px;gap:0 8px;align-items:center;
   grid-template-columns:18px minmax(0,1fr);grid-template-rows:auto;
-  clip-path:none;border:0;border-radius:var(--r1);padding-top:6px;
-  background:var(--hud-plate);box-shadow:var(--hud-plate-ring);white-space:normal;
+  clip-path:polygon(0 0,100% 0,calc(100% - 12px) 100%,12px 100%);border:0;border-radius:0;padding-top:6px;
+  background:var(--hud-plate);box-shadow:none;white-space:normal;
   font:700 11px/13px var(--hud-font,system-ui);letter-spacing:.02em;
 }
 body[data-cot-battle-layout] .cot-mode-status.show{display:grid}
+/* a Standard battle has no objective beyond the score: its plate is the mission plate in the corner seat only */
+body[data-cot-battle-layout] .cot-mode-status.show.quiet{display:none}
+/* The mission plate (brand-ui H3, the direction's .mission): where battleHudLayout.ts seats it in the top-left corner
+   (the mouse layouts the team strip shows on), the mode's glyph in its well, the mode's name over the objective, the
+   link's ping and the rosters' Tab key; the left roster starts under it. */
+body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status.show,
+body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status.show.quiet{display:flex}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-objective-seat='corner'] .cot-mode-status{
+  left:16px;top:14px;transform:none;width:auto;min-height:48px;padding:0 14px 0 10px;gap:12px;align-items:center;
+  clip-path:none;border-radius:var(--r1);box-shadow:var(--battle-plate-shadow);white-space:nowrap;letter-spacing:normal}
+body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mi{display:grid;place-items:center;flex:none;width:30px;height:30px}
+body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mi svg{width:24px;height:24px}
+body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mt{display:flex;flex-direction:column;gap:4px;min-width:0}
+body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mn{display:block;font:700 var(--battle-fs-15)/1 var(--hud-font);
+  text-transform:uppercase;color:var(--ink-1)}
+body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mv{font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--ink-3)}
+body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mp:not([hidden]){display:flex;align-items:center;gap:12px;flex:none}
+body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mp::before{content:'';width:1px;height:26px;background:var(--line-2)}
+body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .ping{display:flex;align-items:center;gap:6px;
+  font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--text-ok)}
+body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .ping b{min-width:6ch;font-weight:500}
+body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mp[data-tone=warn] .ping{color:var(--text-warn)}
+body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mp[data-tone=bad] .ping{color:var(--text-danger)}
+@media (hover:hover) and (pointer:fine){
+  body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .cot-c-kbd{display:inline-flex;flex:none;padding:0 6px}
+}
+body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .cot-c-kbd{font-size:var(--battle-fs-11)}
+:lang(zh-CN) body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status :is(.mv,.ping){font-size:var(--battle-fs-13)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-objective-seat='corner'] .cot-ear.l{top:70px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status[data-mode='mars']{--objective-accent:#c3a3ff}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status[data-mode='capture_the_flag']{--objective-accent:#6cccf2}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status[data-mode='zone_control']{--objective-accent:#79d7ad}
@@ -182,7 +212,7 @@ body[data-cot-battle-layout] .cot-mode-status .seg{white-space:nowrap}
 /* A short landscape's side seat (battleHudLayout.ts OBJECTIVE_COMPACT_H): the objective under the map, each part of its
    progress on its own line */
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-objective-seat='side'] .cot-mode-status{
-  min-height:0;clip-path:none;padding:4px 6px;gap:0 6px;grid-template-columns:15px minmax(0,1fr);box-shadow:0 4px 12px #0007}
+  min-height:0;clip-path:none;padding:4px 6px;gap:0 6px;grid-template-columns:15px minmax(0,1fr);box-shadow:var(--battle-plate-shadow)}
 body[data-cot-battle-layout][data-objective-seat='side'] .cot-mode-status .sep{display:none}
 body[data-cot-battle-layout][data-objective-seat='side'] .cot-mode-status .seg{display:block;white-space:normal}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-touch .mobile-chrome{top:calc(var(--hud-objective-bottom,64px) + 8px)}
