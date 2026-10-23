@@ -488,6 +488,7 @@
   "garage.nav.stagingArea": "Staging Area",
   "garage.nav.mobileStagingSub": "Choose battlefield location",
   "garage.battle": "Deploy",
+  "garage.key.enter": "Enter",
   "garage.battle.startBots": "Start Standard Battle",
   "garage.battle.menuAria": "Battle setup",
   "garage.battle.menuTypeBots": "Standard Battle. Change battle setup",

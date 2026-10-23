@@ -635,7 +635,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<div class="cot-battle-control">` +
     `<button class="cot-battle" type="button" data-ui-sound="deploy" aria-label="${t('garage.battle.startBots')}">` +
     `<span class="battle-active-icon">${uiIconSVG('battleBots', 20)}</span>` +
-    `<span class="battle-word">${t('garage.battle')}</span>${keycap('Enter')}</button>` +
+    `<span class="battle-word">${t('garage.battle')}</span>${keycap(t('garage.key.enter'))}</button>` +
     `<button class="cot-battle-mode" type="button" aria-haspopup="dialog" aria-expanded="false" ` +
     `aria-controls="cot-battle-menu" aria-label="${t('garage.battle.menuTypeBots')}">` +
     `<span>${t('garage.battle.typeBots')}</span></button>` +

@@ -161,7 +161,10 @@
 @keyframes cot-github-star-spin{to{transform:rotate(1turn)}}
 .cot-nav .cot-settings-slot{width:34px;height:34px;flex:0 0 auto;}
 .cot-nav .cot-gear{position:static;width:34px;height:34px;min-height:34px;z-index:auto;
-  right:auto;top:auto;}
+  right:auto;top:auto;border-color:transparent;background:transparent;}
+@media (hover:hover){.cot-nav .cot-gear:hover{background:var(--surface-hover);}}
+/* GitHub is its mark and its star count; the name stays in its accessible label */
+.cot-header-nav .cot-github .nav-label{display:none;}
 .cot-header-nav .nv:focus-visible,.cot-mobile-nav-menu button:focus-visible{
   outline:2px solid #ffd27a;outline-offset:2px;}
 .cot-nav .cot-mobile-nav-trigger,.cot-mobile-nav-menu{display:none;}
@@ -474,13 +477,13 @@ body[data-cot-panels='overlay'] .cot-garage .stats h3.is-long{-webkit-line-clamp
    case-sensitive ("6.0 s", "67 km/h", not "6.0 S" / "67 KM/H") */
 .cot-garage .srow .lr b{min-width:0;color:#edf3f7;font-size:11px;font-weight:700;
   letter-spacing:.01em;text-transform:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cot-garage .srow .cot-c-scale{height:5px;margin-top:6px;}
+.cot-garage .srow .cot-c-scale{height:5px;margin-top:4px;}
 /* docked panels keep the two-column performance cards, each a compact stat: the icon leads a sentence-case
    label that uses the card's full width (a long label balances onto a second line under the icon instead of a narrow
    column of three), the value beneath, the bar along the base. Two rows (four stats) stay in view on a 900 px screen
    and five at 1080p; nothing hides under the fade or clips. */
 body[data-cot-panels='persistent'] .cot-garage .cot-performance-grid{gap:5px}
-body[data-cot-panels='persistent'] .cot-garage .srow{display:block;min-height:0;padding:5px 6px 8px;font-size:11px;line-height:1.15;
+body[data-cot-panels='persistent'] .cot-garage .srow{display:block;min-height:0;padding:4px 6px 6px;font-size:11px;line-height:1.15;
   color:#93a3af;text-wrap:balance}
 body[data-cot-panels='persistent'] .cot-garage .srow .sicon{position:static;display:inline-grid;vertical-align:-3px;width:14px;height:14px;
   margin-right:4px;background:none;border:0}
@@ -1286,6 +1289,9 @@ body[data-cot-panels='overlay'] .cot-battle .battle-word{text-indent:0}
 body[data-cot-panels='overlay'] .cot-battle-mode span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 body[data-cot-panels='overlay'] .cot-battle{flex:1 1 auto}
 body[data-cot-panels='overlay'] .cot-battle-mode{flex:0 0 52px;min-width:44px;padding:0;font-size:var(--fs-11)}
+/* the split stays inside the button's face: a short rule, not the full-height border that overhung the hexagon */
+body[data-cot-panels='overlay'] .cot-battle-control .cot-battle-mode{border-left:0;
+  background:linear-gradient(var(--btn-primary-press),var(--btn-primary-press)) left center/1px 56% no-repeat;}
 body[data-cot-panels='overlay'] .cot-battle-control .cot-battle-mode::after{right:auto;left:50%;margin-left:-4px}
 body[data-cot-panels='overlay'] .cot-garage-tools{
   display:flex;left:max(var(--cot-overlay-edge),env(safe-area-inset-left));right:auto;
@@ -1672,10 +1678,10 @@ body[data-cot-panels='persistent'] .cot-garage .cot-technical-section .cot-dossi
 body[data-cot-panels='persistent'] .cot-garage .cot-technical-section .cot-dossier-head>.cot-info-trigger{top:var(--s3);right:var(--s3);}
 body[data-cot-panels='persistent'] .cot-garage .cot-technical-tabs{margin-right:var(--s6);}
 /* the nation rail rides over the roster's own box */
-body[data-cot-panels='persistent'] .cot-garage{--cot-garage-sidebar-bottom:250px;}
 /* the dossier column clears only the Deploy stack below it (Deploy, its mode row and Multiplayer), not the rail */
 body[data-cot-panels='persistent'] .cot-garage .stats{bottom:calc(22px + var(--btn-h-xl) + 2 * var(--btn-h-s) + var(--s2) + var(--s4));}
-body[data-cot-panels='persistent'] .cot-country-rail{left:34px;right:calc(22px + var(--cot-deploy-w) + var(--s4));width:auto;transform:none;}
+body[data-cot-panels='persistent'] .cot-country-rail{left:calc(34px + var(--cot-garage-sidebar-width) + var(--s4));
+  right:calc(22px + var(--cot-deploy-w) + var(--s4));width:auto;transform:none;}
 body[data-cot-panels='persistent'] .cot-lower-third{bottom:262px;}
 body[data-cot-panels='persistent'][data-cot-height='standard'] .cot-lt-name,
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-name{font-size:var(--fs-44);}
