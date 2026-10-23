@@ -172,6 +172,12 @@ export interface BrowserLoadPorts {
    * forgets it (the seat left the room, or the room is gone). Never refuses the round.
    */
   rememberRound?(round: BrowserRememberedRound | null): void;
+  /**
+   * 2026-10-22 (item/mp-rejoin-seat-241): the viewer's vehicle the app built ahead for the remembered round's seat (a
+   * returning tab's boot builds it in place of the Garage hero), handed to the roster once; null when there is none or
+   * it is not the vehicle the options name (the roster then builds it).
+   */
+  takeViewerVisual?: BattlePresentationOptions['takeViewerVisual'];
   nextFrame(): MaybePromise<RuntimeValue>;
   setAdaptiveSuspended(suspended: boolean): void;
   now?(): number;
@@ -186,6 +192,8 @@ export interface BrowserRememberedRound {
   matchId: string;
   mapId: string;
   terrainVariant: TerrainVariant;
+  /** The viewer's seat (its vehicle, its paint, its player), whose vehicle a returning tab's boot builds; none for a spectator. */
+  seat: { specId: string; camo: string; playerId: string } | null;
 }
 
 export interface BrowserRosterPorts {
@@ -1162,7 +1170,8 @@ export function createBrowserComposition({
       if (!active.spectator && !active.ownSpecId) throw new Error('The lobby vehicle selection is unavailable.');
       const terrainVariant: TerrainVariant = terrainVariantFor(active.mode); // the mode's battlefield (sim/matchRuleset.ts)
       try {
-        load.rememberRound?.({ roomCode: sessionRound.room.roomCode, matchId: active.matchId, mapId: active.mapId, terrainVariant });
+        load.rememberRound?.({ roomCode: sessionRound.room.roomCode, matchId: active.matchId, mapId: active.mapId, terrainVariant,
+          seat: active.spectator ? null : { specId: active.ownSpecId, camo: ownPlayer?.camo || 'factory', playerId: viewerId } });
       } catch { /* a reload only loses the head start */ }
       scene.resetRoundState();
       roster.setCamoBiome(active.mapId);
@@ -1220,6 +1229,7 @@ export function createBrowserComposition({
         ...(scene.clearVehicleDecals ? { clearVehicleDecals: scene.clearVehicleDecals } : {}),
         ...(scene.onVisualReady ? { onVisualReady: scene.onVisualReady } : {}),
         camoFor: (entry) => camoOf.get(entry.playerId) ?? 'factory',
+        ...(load.takeViewerVisual ? { takeViewerVisual: load.takeViewerVisual } : {}),
         onRosterProgress: (fraction, specId) => {
           if (round !== active) return;
           noteProgress(active);
