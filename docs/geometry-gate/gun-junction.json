@@ -46,7 +46,7 @@
   "carro45t": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"0ac2a6052f007eb5","gun":"7a86331c98b5d167"}},
   "centurion3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"a0c1e31b1d53c21b","gun":"31691fd14c23ebc6"}},
   "centurion5_2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"2bafae0fa9c68d1d","gun":"ac3475faeda2874d"}},
-  "challenger1_mk2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"42930dfd758054a3","gun":"82a9cd251737d51d"}},
+  "challenger1_mk2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"467bcd0da9fdd205","gun":"3be1e53b50af87de"}},
   "challenger1_mk3": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"fa270827588583e5","gun":"baa571bf76910cc1"}},
   "challenger2": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"062fa785fc7191d4","gun":"871cee068c7a93eb"}},
   "challenger2e": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"4868e43a9dc502b9","gun":"14e49fddab7da22d"}},
