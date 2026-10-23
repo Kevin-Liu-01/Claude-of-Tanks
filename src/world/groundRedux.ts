@@ -225,7 +225,11 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   autumn: { ...STILL_WATER, scree: 0.3, grass: meadow(1.0, 0.9, { base: [0.135, 0.108, 0.042], tip: [0.26, 0.21, 0.08], dry: [0.30, 0.23, 0.08], reedMargin: 0.5 }) },
   steppe: { ...TEMPERATE, foldMoist: 0.5, scree: 0.2, grass: steppe(1.2) },
   railyard: { ...TEMPERATE, scree: 0.15, grass: verge(0.55), cinderYard: 1 },
-  frontier: { ...TEMPERATE, foldMoist: 0.55, scree: 0.3, grass: savanna(0.85) },
+  // (2026-10-23, item/maps-frontier-saltmere-242; the blind critic at Frontier's eye height: dry straw tufts in the woods'
+  // shade and "flat orange leaf sprites" standing on the floor) the Fulda basin's sward is a hay meadow's, not a savanna's
+  // straw: green tufts with their seed heads and flowers, and under the beech the herb layer green (dog's mercury, woodruff,
+  // fern), not the straw biome's rust bracken
+  frontier: { ...TEMPERATE, foldMoist: 0.55, scree: 0.3, grass: meadow(0.9) },
   fjord: { ...COAST, swashPeriodS: 9.5, swashReachM: 4, swashStrength: 1.0, scree: 0.4, grass: dune(0.5) },
   delta: { ...STILL_WATER, rimTint: MOSS, grass: reed(0.75, 1.6, 0.85, 0.5) },
   // (the Redrock lane, round 9, the gauntlet's wave 261: the walls meet the sand "with no talus, sand ramps or contact
