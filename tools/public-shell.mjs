@@ -24,6 +24,9 @@ export const PUBLIC_SHELL_ENTRIES = Object.freeze([
   'site/docs-multiplayer.html', 'site/docs-audio.html', 'site/docs-interface.html', 'site/docs-studio.html',
   'site/docs-filming.html',
   'site/docs-modes.html',
+  'site/docs-battlefields.html',
+  'site/docs-combat.html',
+  'site/docs-tanks.html',
   'site/docs-start.html',
   'site/docs-controls.html',
 ]);

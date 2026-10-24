@@ -278,6 +278,7 @@ export const TOKENS = {
   'docs-side-edge': '1px 0 0 rgba(246,243,236,.07)',
   'docs-side-on': 'inset 2px 0 0 #f0a030',
   'docs-toc-on': '-2px 0 0 #f0a030',
+  'docs-hc-flag-mask': 'radial-gradient(ellipse 70% 84% at 96% 0%,rgba(0,0,0,1) 0.0%,rgba(0,0,0,1) 40.0%,rgba(0,0,0,0.957) 47.5%,rgba(0,0,0,0.8438) 55.0%,rgba(0,0,0,0.6836) 62.5%,rgba(0,0,0,0.5) 70.0%,rgba(0,0,0,0.3164) 77.5%,rgba(0,0,0,0.1563) 85.0%,rgba(0,0,0,0.043) 92.5%,rgba(0,0,0,0) 100.0%)',
   'docs-banner-z': '2',
   'gallery-stage': 'radial-gradient(70% 60% at 50% 56%,#161b21 0,#0b0e11 70%)',
   'gallery-row-on': 'inset 2px 0 0 #f0a030',

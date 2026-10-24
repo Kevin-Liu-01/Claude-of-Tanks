@@ -33,6 +33,9 @@ export const OG_IMAGE_CARDS = [
   ['docs-modes', 'GAME MODES', 'public/media/site50-r14/home/modes/zone_control.webp', '50% 50%'],
   ['docs-controls', 'CONTROLS & WATCH MODE', 'public/media/site50-r14/home/mechanics/mobile.webp', '50% 50%'],
   ['docs-start', 'YOUR FIRST BATTLE', 'public/media/site50-r14/home/features/garage.webp', '50% 50%'],
+  ['docs-tanks', 'TANKS & EQUIPMENT', 'public/media/site50-r14/home/mechanics/dossiers.webp', '50% 50%'],
+  ['docs-combat', 'ARMOUR, ANGLING & SPOTTING', 'public/media/site50-r14/home/mechanics/armor.webp', '50% 50%'],
+  ['docs-battlefields', 'BATTLEFIELDS', 'public/maps/cards/fjord.webp', '50% 50%'],
   ['docs-build', 'HOW THE GAME WAS BUILT', 'public/media/showcase-r2/13_gallery_modules.webp', '50% 48%'],
   ['docs-models', 'PROCEDURAL MODEL PIPELINE', 'public/media/showcase-r2/12_gallery_armor.webp', '50% 48%'],
   ['docs-simulation', 'SIMULATION AND COMBAT', 'public/media/site50-r14/stills/s226-church-duel.webp', '50% 100%'],
@@ -60,7 +63,7 @@ export const OG_ZH_LABELS = Object.freeze({
   studio: ZH['studio.title'],
   'private-room': ZH['playMenu.private.title'],
   docs: zhTitle('metadata.docs.title'),
-  ...Object.fromEntries(['modes', 'start', 'controls', 'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai',
+  ...Object.fromEntries(['modes', 'battlefields', 'combat', 'tanks', 'start', 'controls', 'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai',
     'multiplayer', 'audio', 'interface', 'studio', 'filming'].map((topic) => [`docs-${topic}`, zhTopic(topic)])),
   404: zhTitle('notFound.metaTitle'),
 });
