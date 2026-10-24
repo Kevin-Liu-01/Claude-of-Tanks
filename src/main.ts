@@ -57,7 +57,6 @@ import {
 } from './app/mainBattleHudRuntime.ts';
 import { createMainFrameRuntime } from './app/mainFrameRuntime.ts';
 import { createLazyRuntimeOwner } from './app/lazyRuntimeOwner.ts';
-import { watchRevealsAll } from './game/watchSeat.ts';
 import { createCombatAimComposition } from './app/combatAimComposition.ts';
 import { checkedIntegrationPort } from './app/checkedIntegrationPort.ts';
 import { createCombatWarmComposition } from './app/combatWarmComposition.ts';
@@ -239,7 +238,7 @@ import {
   spawnTanks, ensureStagedVisuals, ensureStagedVisualsSteps, nextStagedBake, planBattleParticipantIds,
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
-import { clearMatchSession, createBus, createGameState } from './game/stateCore.ts';
+import { clearMatchSession, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';

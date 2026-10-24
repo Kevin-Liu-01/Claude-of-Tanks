@@ -1,5 +1,5 @@
 /**
- * watchHud.ts — the Watch mode's own controls (watch-mode-243), on the Premiere kit (components.css, tokens.css).
+ * watchHud.ts — the Watch mode's own controls (watch-mode-243), on the Premiere kit's tokens and markup factories.
  *
  * One bar: the watched tank (flag, silhouette, name, its side's colour) or the drone (its glyph and cruise speed), the
  * cycle pair, the drone and the seat button (Take control / Leave tank). The bar never changes shape between views —
@@ -7,7 +7,6 @@
  * on a keyboard and hide on touch, where a climb rail joins the virtual stick and drag look. The battle HUD's own tank
  * furniture follows the view through `html[data-watch]` (flying: off, the HUD's spectator rule; riding: shown, inert).
  */
-import './components/components.css';
 import { flag, keycap, silhouette } from './components/components.ts';
 import { icon } from './icons/icon.ts';
 import { t } from './i18n.ts';
@@ -43,6 +42,19 @@ export interface WatchHud {
   update(state: WatchHudState): void;
   dispose(): void;
 }
+
+// The kit's key cap, flag and silhouette, scoped to the bar: components.css itself rides the kit's boot chunk (any import
+// of it, static or dynamic, links it in the game's first paint), and the game page does not load it.
+const KIT = `
+.cot-watch .cot-c-kbd{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;
+ padding:0 6px;border:0;border-radius:var(--control-radius);box-shadow:var(--ring-3);font:500 var(--fs-11)/1 var(--font-data);
+ letter-spacing:normal;text-transform:none;color:var(--ink-2)}
+.cot-watch .cot-c-flag{box-sizing:border-box;display:inline-block;flex:none;object-fit:cover;border:0;border-radius:1px;box-shadow:var(--flag-ring)}
+.cot-watch .cot-c-sil{display:inline-block;flex:none;background:currentColor;-webkit-mask:var(--sil) center/contain no-repeat;
+ mask:var(--sil) center/contain no-repeat}
+.cot-watch .cot-c-sil--right{transform:scaleX(-1)}
+@media (hover:none),(pointer:coarse){.cot-watch .cot-c-kbd{display:none}}
+`;
 
 const STYLE = `
 .cot-watch{position:absolute;left:50%;bottom:var(--inset-bottom);transform:translateX(-50%);z-index:var(--z-hud-controls);
@@ -91,7 +103,7 @@ html[data-watch=ride] .cot-hud :is(.cot-shells,.cot-special,.cot-cons,.cot-vehic
 
 /** `host` is read when the bar first shows (the battle HUD's root, which loads beside the watch chunk). */
 export function createWatchHud(host: () => HTMLElement | null, actions: WatchHudActions): WatchHud {
-  ensureStyle('cot-watch-style', STYLE, 'surfaces');
+  ensureStyle('cot-watch-style', KIT + STYLE, 'surfaces');
   const bar = document.createElement('div');
   bar.className = 'cot-watch';
   bar.setAttribute('role', 'group');

@@ -55,6 +55,18 @@ export interface GameState<Entity = RuntimeValue, Spotting = RuntimeValue, Match
   watch?: WatchSession | null;
 }
 
+/**
+ * Watch mode (game/watchSeat.ts): the local view shows every hull — a watched battle, opened, with no seat taken (nothing to hide from a watcher with
+ * no side). A taken seat sees as its side does, spotting and all.
+ */
+export function watchRevealsAll(game: {
+  player: unknown;
+  ruleset?: { readonly watch?: { readonly revealAll: boolean } | null } | null;
+  watch?: { readonly opened: boolean } | null;
+}): boolean {
+  return !!game.ruleset?.watch?.revealAll && !!game.watch?.opened && !game.player;
+}
+
 /** Canonical deterministic PRNG used by the legacy solo runtime. */
 export function mulberry32(seed: number): RandomSource {
   let state = seed | 0;

@@ -17,8 +17,7 @@ import {
 import type { BattleClientAccess } from './battleClientAccess.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import type { TankPresentationTracker } from './presentationPose.ts';
-import type { GameState } from './stateCore.ts';
-import { watchRevealsAll } from './watchSeat.ts';
+import { watchRevealsAll, type GameState } from './stateCore.ts';
 
 // The mission-attachment visual is battle-only (2026-10-07): its seats read the vehicle auxiliary inventory and weapons
 // (sim/missionAttachment.ts, main c6b60311c), about 400 kB that a static import here put in the garage boot
@@ -232,7 +231,7 @@ export function createBattlePresentationRuntime({
     const visual = entity.visual as TankVisual;
     const combat = entity.combat as NonNullable<TankEntity['combat']>;
     if (game.phase !== 'battle') return true;
-    // a watched battle with no driver shows every hull (game/watchSeat.ts watchRevealsAll)
+    // a watched battle with no driver shows every hull (stateCore.ts watchRevealsAll)
     if (spotState && !watchRevealsAll(game) && entity.team !== (currentPlayer?.team ?? 'player')) {
       const spotted = combat.destroyed
         || spotState.isSpotted(entity.id, currentPlayer?.team ?? 'player', currentPlayer);

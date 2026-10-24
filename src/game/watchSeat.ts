@@ -162,18 +162,6 @@ export function leaveWatchSeat<TEntity extends WatchSeatEntity<TController>, TCo
   return entity;
 }
 
-/**
- * The local view shows every hull: a watched battle, opened, with no seat taken (nothing to hide from a watcher with
- * no side). A taken seat sees as its side does, spotting and all.
- */
-export function watchRevealsAll(game: {
-  player: unknown;
-  ruleset?: { readonly watch?: { readonly revealAll: boolean } | null } | null;
-  watch?: { readonly opened: boolean } | null;
-}): boolean {
-  return !!game.ruleset?.watch?.revealAll && !!game.watch?.opened && !game.player;
-}
-
 /** The verdict's reference seat in a watched battle (the human seat, whoever drives it); else the player. */
 export function verdictSeat<TEntity extends WatchSeatEntity<TController>, TController>(
   game: WatchSeatGame<TEntity, TController>,

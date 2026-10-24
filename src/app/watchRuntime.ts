@@ -11,7 +11,7 @@ import {
   type WatchControllerOptions,
   type WatchEntity,
 } from '../game/watchController.ts';
-import { watchRevealsAll } from '../game/watchSeat.ts';
+import { watchRevealsAll } from '../game/stateCore.ts';
 import { createWatchHud, type WatchHudTank } from '../ui/watchHud.ts';
 type WatchRuntimeEntity = WatchEntity & WatchHudTank;
 
