@@ -15,14 +15,24 @@ export const sightFurniture = {
   version: 0,
   boxes: Array.from({ length: CAPACITY }, (): SightFurnitureBox => ({ x0: 0, y0: 0, x1: 0, y1: 0 })),
 };
+/** The centre notices' settled boxes while they show, on either layout (battleHudLayout): the scope's cross arms end
+ *  short of them (hud.ts appendScopeRun). At 1024 x 600 no place over the upper arm holds the detection and the alert
+ *  together, and the alert's foot sat on the arm's tip at full bloom. Only the arms yield: no mark moves for a notice. */
+export const sightNoticeCuts = {
+  count: 0,
+  boxes: Array.from({ length: 4 }, (): SightFurnitureBox => ({ x0: 0, y0: 0, x1: 0, y1: 0 })),
+};
 let passPrevious = 0;
+let cutsPrevious = 0;
 let passChanged = false;
 
 /** Starts a pass: the boxes added until settleSightFurniture replace the last pass's. */
 export function clearSightFurniture(): void {
   passPrevious = sightFurniture.count;
+  cutsPrevious = sightNoticeCuts.count;
   passChanged = false;
   sightFurniture.count = 0;
+  sightNoticeCuts.count = 0;
 }
 
 /** Adds one box (a box under a pixel either way is nothing to keep clear of; past the capacity the rest are dropped). */
@@ -48,6 +58,15 @@ export function setSightNotice(on: boolean, x0 = 0, y0 = 0, x1 = 0, y1 = 0): voi
   passChanged = true;
 }
 
+/** Adds one shown notice's box to this pass's cuts (past the capacity the rest are dropped). */
+export function addSightNoticeCut(x0: number, y0: number, x1: number, y1: number): void {
+  if (sightNoticeCuts.count >= sightNoticeCuts.boxes.length || !(x1 - x0 >= 1 && y1 - y0 >= 1)) return;
+  const index = sightNoticeCuts.count++;
+  const box = sightNoticeCuts.boxes[index];
+  if (index >= cutsPrevious || box.x0 !== x0 || box.y0 !== y0 || box.x1 !== x1 || box.y1 !== y1) passChanged = true;
+  box.x0 = x0; box.y0 = y0; box.x1 = x1; box.y1 = y1;
+}
+
 /** How far the box keeps from the notice (negative: it runs into it; Infinity: none shows). */
 export function sightNoticeGap(x0: number, y0: number, x1: number, y1: number): number {
   const notice = sightNotice;
@@ -56,7 +75,7 @@ export function sightNoticeGap(x0: number, y0: number, x1: number, y1: number): 
 
 /** Ends a pass: the version steps when its boxes (or the notice) differ from the last pass's. */
 export function settleSightFurniture(): void {
-  if (passChanged || sightFurniture.count !== passPrevious) sightFurniture.version++;
+  if (passChanged || sightFurniture.count !== passPrevious || sightNoticeCuts.count !== cutsPrevious) sightFurniture.version++;
   passChanged = false;
 }
 

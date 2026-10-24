@@ -5,28 +5,20 @@
 //     hit shapes;
 //   - every seated hit shape lies inside armour at every turret yaw (hull crew: the hull; turret crew: the turret, or
 //     the hull under it at every yaw; never the open gap between them), every station box corner inside the crew
-//     shell (which adds the turret ring's opening), the head on its head shape, HE splash at head, torso and lap;
+//     shell (which adds the turret ring), the head on its head shape, HE splash at head, torso and lap;
 //   - only the pinned stations needed trimming (no posture fits their shell).
 import assert from 'node:assert/strict';
 import '../vehicles/tankFactory.ts';
 import { ALL_TANK_IDS, getSpec } from './specs.ts';
 import { COMBAT_ANATOMY_CALIBRATIONS } from './combatAnatomyCalibrations.ts';
 import { INTERNAL_LAYOUT_BY_TANK } from './internalLayoutRegistry.ts';
-import { crewArmour, crewPostureLadders, crewShell, shapeSurfaceSamples } from '../../tools/crew-seat-fit.mjs';
+import { crewArmour, crewFallbackLadders, crewPostureLadders, crewShell, shapeSurfaceSamples } from '../../tools/crew-seat-fit.mjs';
 
 // Stations where no P50 posture fits the measured shell (the body's share left outside at the best placement): kept
-// there, shapes trimmed inside. The Challenger 2 / FV4034 turret is ~0.56 m tall over a ~0.65 m-radius hull collar,
-// the ZTZ-100s', TOS-1A's and Type 96B's turrets and the BMPT's hull bays are as low; the rest miss by under 1 %.
+// there, shapes trimmed inside. The ZTZ-100's turret stands on a floor under 10 cm across (its crew ride in the hull
+// on the real vehicle: a layout question, not a seat); the two drivers miss by 0.1 %.
 const TRIMMED = Object.freeze({
-  // 243: t90a_2006 and t90a_burlak_proto seat untrimmed on gun-hull 49bf1fd16a's T-90 fixes (the crew refit on the
-  // merged tree); leo2a4m_can at 242's crew refit of the rows both lanes moved (bb3b58a894)
-  'abramsx/gunner': 0.006, 'cv90_mk4/gunner': 0.008,
-  'cv90_mk4/commander': 0.003, 'leo2a4m_can/gunner': 0.007, 'leo2a4m_can/commander': 0.008,
-  'leo2a4m_can/loader': 0.007, 'type96b/gunner': 0.043, 'type96_80_feng/gunner': 0.004, 'ztz100/gunner': 0.021,
-  'ztz100/commander': 0.022, 'ztz100_prototype/gunner': 0.034, 'ztz100_prototype/commander': 0.012,
-  'm60a3/driver': 0.001, 'tos1a_tagil/gunner': 0.017, 'tos1a_tagil/commander': 0.017,
-  'bmpt_t90/weaponOperatorLeft': 0.008, 'bmpt_t90/weaponOperatorRight': 0.059, 'k2_black_panther/commander': 0.005,
-  't72b3m_hetman_ii/driver': 0.001, 't80u_yun/gunner': 0.008,
+  'ztz100/gunner': 0.021, 'ztz100/commander': 0.022, 'm60a3/driver': 0.001, 't72b3m_hetman_ii/driver': 0.001,
 });
 
 assert.deepEqual(crewPostureLadders('leo2a6', 'leopard', 'driver', 'hull'), ['driverReclined']);
@@ -37,6 +29,11 @@ assert.deepEqual(crewPostureLadders('m60a3', 'westernManualHullAmmo', 'driver', 
 assert.deepEqual(crewPostureLadders('chieftain5', 'westernManualHullAmmo', 'driver', 'hull'), ['driverReclined']);
 assert.deepEqual(crewPostureLadders('m60a3', 'westernManualHullAmmo', 'loader', 'turret'), ['loaderStanding', 'loaderSeated', 'seatedHunched']);
 assert.deepEqual(crewPostureLadders('m60a3', 'westernManualHullAmmo', 'commander', 'turret'), ['commander', 'seatedHunched']);
+// where none of those fits, a hull crew capsule's gunner, commander or operator reclines; turret crew keep their ladder
+assert.deepEqual(crewFallbackLadders('abramsx', 'abramsX', 'gunner', 'hull'), ['gunner', 'seatedHunched', 'driverReclined']);
+assert.deepEqual(crewFallbackLadders('bmpt_t90', 'bmptFive', 'weaponOperatorLeft', 'hull'), ['gunner', 'seatedHunched', 'driverReclined']);
+assert.deepEqual(crewFallbackLadders('t90a_2006', 'sovietAz', 'gunner', 'turret'), ['gunner', 'seatedHunched']);
+assert.deepEqual(crewFallbackLadders('leo2a6', 'leopard', 'driver', 'hull'), ['driverReclined']);
 
 let stations = 0, shapes = 0, reclined = 0, standing = 0, basket = 0;
 const trimmed = {};

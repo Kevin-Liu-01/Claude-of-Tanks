@@ -69,5 +69,35 @@ assert.equal(kept.length, 8, 'the line keeps eight beats besides the result');
 assert.ok(kept.every((beat) => beat.kind === 'kill'), 'the kills before the spots');
 assert.equal(kept.filter((beat) => beat.labelled).length, 1, 'beats a second apart share one label');
 
+// ---- a watched battle's line (watch-mode-243): every side's kills and objectives, no player in them ---------------
+const watched = createBattleBeatLog();
+watched.clock(10);
+watched.battleKill('b1', 'm1a3', 'alpha', 30);
+watched.battleKill('a1', 't90am', 'bravo', 60);
+watched.battleKill('x', 'm1a3', null, 65); // a kill no side can claim is not a beat
+watched.clock(70);
+watched.objective('zone', 'bravo', 'zone-1');
+assert.deepEqual(watched.battleList().map((beat) => [beat.kind, beat.t, beat.side, beat.id ?? beat.label]),
+  [['kill', 30, 'alpha', 'b1'], ['kill', 60, 'bravo', 'a1'], ['zone', 70, 'bravo', 'A']], 'the battle line keeps every side\'s beats');
+assert.deepEqual(watched.list().map((beat) => [beat.kind, beat.own]), [['zone', false]],
+  'the player\'s line keeps only its own beats (the objective, from the Alpha seat\'s side)');
+assert.ok(watched.battleList().every((beat) => beat.own === undefined), 'a battle beat has a side, never an "own"');
+watched.clear();
+assert.deepEqual(watched.battleList(), [], 'a new battle\'s line starts empty');
+for (let i = 0; i < 600; i++) watched.battleKill(`e${i}`, 't90am', i % 2 ? 'alpha' : 'bravo', i);
+assert.equal(watched.battleList().length, 512, 'a respawn battle\'s hundreds of kills stop at 512');
+
+const fight = Array.from({ length: 40 }, (_, i) => ({ t: 10 + i * 10, kind: 'kill', id: `k${i}`, side: i % 2 ? 'alpha' : 'bravo' }));
+const flags = [{ t: 100, kind: 'flag', side: 'alpha' }, { t: 250, kind: 'flag', side: 'bravo' }];
+const line = layoutBeats([...fight, ...flags], 420, true);
+assert.equal(line.length, 8, 'the battle line keeps eight beats besides the result');
+assert.equal(line.filter((beat) => beat.kind === 'flag').length, 2, 'the objectives that decided it first');
+const lineKills = line.filter((beat) => beat.kind === 'kill').map((beat) => beat.t);
+assert.deepEqual(lineKills, [10, 90, 170, 240, 320, 400], 'then the last kill and kills spread from the first over the battle');
+for (let i = 1; i < line.length; i++) assert.ok(line[i].t >= line[i - 1].t, 'sorted by time');
+assert.deepEqual(layoutBeats([...fight, ...flags], 420).map((beat) => beat.t), [10, 20, 30, 40, 50, 60, 70, 80],
+  'the player\'s line keeps its kills earliest first, as before');
+
+console.log('battleBeats.selftest: the battle line (every side\'s kills and objectives, objectives first, kills spread) passed');
 console.log('battleBeats.selftest: the log (first spot, kills, zone letters and sides, module losses per life, the cap) ' +
   'and the layout (eight kept by kind, labels clear of each other and the result) passed');

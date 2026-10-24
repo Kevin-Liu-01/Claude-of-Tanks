@@ -3927,6 +3927,10 @@ export function applyBurnHook(
   mat.onBeforeCompile = function (shader, renderer) {
     if (prevHook) prevHook.call(this, shader, renderer);
     Object.assign(shader.uniforms, burnU);
+    // (mode-sheen-perf-243) one mask a program: an energy skin compiles through its paint's live chain
+    // (game/juggernautVisual.ts runVehicleHookChain) and outlives a kill, so the sweep can hook the skin and later its
+    // paint (a detail mesh still wearing it): the inner mask stands, the outer adds only its (the same visual's) uniforms
+    if (shader.vertexShader.includes('varying vec3 vBrnW;')) return;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>\nvarying vec3 vBrnW;\n${CRUMPLE_COMMON_GLSL}`)
       .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>\n${CRUMPLE_NORMAL_GLSL}`)

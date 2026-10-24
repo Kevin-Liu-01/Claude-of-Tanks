@@ -48,7 +48,7 @@ const meta = (key) => key.startsWith('$');
 const first = generate(source);
 const again = generate(structuredClone(source));
 assert.deepEqual(again, first, 'gen-tokens is idempotent: the same tokens.json always yields the same bytes');
-for (const path of [TOKENS_CSS, TOKENS_TS, SELECTION_TS]) {
+for (const path of Object.keys(first)) {
   assert.equal(readFileSync(path, 'utf8'), first[path],
     `${relative(ROOT, path)} drifted from tokens.json: run node tools/gen-tokens.mjs`);
 }
@@ -132,6 +132,27 @@ assert.throws(() => generate({ ...JSON.parse(readFileSync(TOKENS_JSON, 'utf8')),
 assert.equal(cssLeft.trim(), '', 'tokens.css has no rule but :root token blocks');
 assert.equal(cssBlocks.filter((b) => b.axis === null).length, 1, 'one :root block of defaults');
 
+// A group's own sheet ("$sheet": the landing's and the manual's tokens) is a pure token sheet in the tokens layer, holds
+// exactly its group's tokens, and tokens.css holds none of them: the game's document and the other pages load none.
+const sheetPaths = Object.keys(first).filter((path) => ![TOKENS_CSS, TOKENS_TS, SELECTION_TS].includes(path));
+assert.deepEqual(sheetPaths.map((path) => relative(ROOT, path)).sort(), ['src/ui/tokens/surface-docs.css', 'src/ui/tokens/surface-home.css'],
+  'the landing and the manual each have their own token sheet');
+const sheetDecls = new Map();
+for (const path of sheetPaths) {
+  const body = /^@layer reset,tokens,base,components,surfaces,utilities,overrides;\s*@layer tokens\{\s*:root\{([^}]*)\}\s*\}\s*$/
+    .exec(first[path].replace(/\/\*[\s\S]*?\*\//g, '').trim());
+  assert.ok(body, `${relative(ROOT, path)} is one :root block in the tokens layer`);
+  const decls = parseDecls(body[1]);
+  assert.deepEqual([...decls.keys()], tokens.filter((t) => t.sheet === relative(ROOT, path)).map((t) => t.name), `${relative(ROOT, path)} holds exactly its group`);
+  for (const [name, value] of decls) {
+    assert.ok(!cssBlocks[0].decls.has(name) && !cssBody.includes(`--${name}:`), `tokens.css leaves --${name} to ${relative(ROOT, path)}`);
+    sheetDecls.set(name, value);
+  }
+}
+assert.throws(() => generate({ ...source, component: { ...source.component, 'surface-x': { $sheet: 'src/ui/tokens/x.css', 'x-only': '1px' },
+  'surface-y': { 'y-reads': '{x-only}' } } }), /--y-reads reads --x-only, which only src\/ui\/tokens\/x.css declares/,
+'a shared token cannot read a token only one surface\'s sheet declares');
+
 /* 2. the SPEC 4.14 sheet -------------------------------------------------------------------------------------- */
 // Starting values for tokens.json, verbatim from SPEC 4.14 (the font families follow the owner's 2026-10-17 ruling).
 const SPEC_SHEET = `
@@ -213,16 +234,14 @@ for (const t of tokens.filter((x) => x.tier === 'component' && typeof x.raw === 
 // The Premiere landing (da5395c763): the headline's last line wears the type package's .t-hollow (src/ui/typeFaces.ts);
 // the h1 casts --hollow-shadow and its hollow line sets a 2 px stroke and drops the doubled shadow (src/presentation/home.css).
 const tHollow = /\.t-hollow\{color:transparent;-webkit-text-stroke:var\(--hollow-stroke,([\d.]+px)\)/.exec(read('src/ui/typeFaces.ts'));
-const landingTitle = /<h1 class="hero__title"[^>]*>((?:(?!<\/h1>)[\s\S])*)<\/h1>/.exec(read('site/home.html'));
-const homeCss = read('src/presentation/home.css');
-assert.ok(tHollow, 'the type package draws .t-hollow transparent, stroked with --hollow-stroke');
-assert.ok(landingTitle && /class="[^"]*\bt-hollow\b[^"]*"/.test(landingTitle[1]),
-  'the landing headline keeps its hollow Latin line (.t-hollow)');
+// (242: the hero's H1 is the outlined lockup, SPEC 3.1; the landing's hollow voice is its section headlines, 02 and 03)
+const landingHollow = /\.home-h2 \.t-hollow\{--hollow-stroke:([\d.]+px);--hollow-ink:[^;]+;text-shadow:([^;}]+)\}/.exec(read('src/presentation/home.css'));
+assert.ok(tHollow && landingHollow, 'the landing headlines keep their hollow Latin line (.t-hollow) and its shadow');
 assert.equal(TOKENS['hollow-fill'], 'transparent', 'hollow type is truly hollow, as on the landing');
-assert.equal(TOKENS['hollow-stroke'], tHollow[1], 'the hollow stroke token is the type package\'s default width');
-assert.match(homeCss, /\.hero__title\{[^}]*text-shadow:var\(--hollow-shadow\)/, 'the landing headline casts the hollow shadow token');
-assert.match(homeCss, /\.hero__title \.t-hollow\{--hollow-stroke:2px;text-shadow:none\}/,
-  'the hero\'s hollow line sets its 2 px stroke on purpose and does not double the headline\'s shadow');
+assert.equal(TOKENS['hollow-stroke'], tHollow[1], 'the shared hollow stroke is the type package\'s default');
+// the section headlines draw the direction's 1.8 px outline at their 60-88 px display size (02 header h2 .fx-hollow)
+assert.equal(landingHollow[1], '1.8px', 'the landing headlines draw the direction\'s 1.8 px outline');
+assert.equal(landingHollow[2], 'var(--hollow-shadow)', 'the landing headlines cast the hollow shadow token');
 // Boot cost (SPEC 16.1): tokens.css at most 4 KB brotli (the shipped file is minified, so this bound is conservative).
 const tokensBrotli = brotliCompressSync(Buffer.from(generatedCss), { params: { [zlib.BROTLI_PARAM_QUALITY]: 11 } }).length;
 assert.ok(tokensBrotli <= 4096, `tokens.css is ${tokensBrotli} B brotli, over the 4 KB boot budget`);
@@ -504,7 +523,8 @@ assert.deepEqual([...mediaBlocks[0].decls], [...reduceBlock.decls], 'the OS swit
 // BUI-F9: the OS copy applies only while the player follows the OS (no data-motion attribute): data-motion=reduce collapses
 // the durations whatever the OS says, data-motion=full keeps them whatever it says (SPEC 9, both ways).
 assert.equal(mediaBlocks[0].guard, 'motion', 'the OS reduce-motion copy yields to an explicit data-motion choice');
-const defaults = cssBlocks.find((b) => b.axis === null).decls;
+// the cascade on a page: tokens.css, and the surface's own sheet where the page imports it
+const defaults = new Map([...cssBlocks.find((b) => b.axis === null).decls, ...sheetDecls]);
 const resolveCss = (text, decls, depth = 0) => {
   assert.ok(depth < 32, `tokens.css reference cycle near ${text}`);
   return text.replace(/var\(--([a-z0-9-]+)\)/g, (m, n) => (decls.has(n) ? resolveCss(decls.get(n), decls, depth + 1) : m));

@@ -476,7 +476,7 @@ assert.match(INDEX_HTML,
 assert.match(RESPONSIVE_SURFACES_CSS,
   /body\[data-cot-viewport='visual'\] :is\([\s\S]*\.cot-garage[\s\S]*\.cot-hud[\s\S]*\.cot-bl[\s\S]*height:var\(--cot-viewport-height,100dvh\)/,
   'garage, battle, loading, and modal roots must share one measured fullscreen height');
-assert.match(HOME_CSS, /\.v5-hero\{[^}]*var\(--cot-viewport-height,100dvh\)/,
+assert.match(HOME_CSS, /\.hero\{[^}]*var\(--cot-viewport-height,100dvh\)/,
   'the public hero must not trust broken third-party iOS small viewport units');
 assert.match(GALLERY_CSS, /\.gallery-shell\{height:calc\(var\(--cot-viewport-height,100dvh\) - 64px\)/,
   'the gallery workspace must fit the measured viewport below navigation');
