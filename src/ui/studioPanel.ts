@@ -223,6 +223,11 @@ export interface StudioPanelApi extends StudioPicturePanelApi {
   /** The view is the shots' camera at the playhead. */
   readonly lookThrough: boolean;
   setLookThrough(on: boolean): boolean;
+  /** Where a dragged or placed tank lands: on the nearest road, on the ground under the pointer, or on its own level. */
+  readonly placementSnap: 'road' | 'terrain' | 'off';
+  setPlacementSnap(snap: 'road' | 'terrain' | 'off'): string;
+  /** A pose preset on a tank; false when hull-down finds no crest ahead. */
+  applyPosePreset(actor: StudioActor, preset: 'hull-down' | 'firing' | 'knocked-out'): boolean;
   readonly fxTimeMs: number;
   readonly durationMs: number;
   readonly playing: boolean;
@@ -915,7 +920,29 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const pz = numField('z', (v) => patchSel({ z: v }));
   const heading = numField('°', (v) => patchSel({ facingDeg: ((v % 360) + 360) % 360 }));
   fields.append(px.label, pz.label, heading.label);
-  transform.appendChild(fields);
+  // the snap (09-studio Transform .seg): where a dragged or placed tank lands
+  const snapSeg = el('div', 'cot-c-seg');
+  snapSeg.setAttribute('role', 'radiogroup');
+  snapSeg.setAttribute('aria-label', t('studio.ws.snap'));
+  const snapButtons = (['road', 'terrain', 'off'] as const).map((snap) => {
+    const option = el('button', 'cot-c-seg__opt', t(`studio.ws.snap.${snap}`));
+    option.type = 'button';
+    option.setAttribute('role', 'radio');
+    option.dataset.value = snap;
+    option.title = t(`studio.ws.snapTitle.${snap}`);
+    option.addEventListener('click', () => { S.setPlacementSnap(snap); refreshSnap(); });
+    snapSeg.appendChild(option);
+    return option;
+  });
+  function refreshSnap(): void {
+    for (const option of snapButtons) {
+      const on = option.dataset.value === S.placementSnap;
+      option.setAttribute('aria-checked', String(on));
+      option.tabIndex = on ? 0 : -1;
+    }
+  }
+  refreshSnap();
+  transform.append(fields, snapSeg);
   const pose = el('div', 'sec');
   pose.appendChild(sectionHead(t('studio.ws.pose'), 'turretRing'));
   const facing = sliderRow(t('studio.ws.facing'), 0, 360, 1, (v) => patchSel({ facingDeg: v }), 'steerLeft');
@@ -923,7 +950,26 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const gun = sliderRow(t('studio.ws.gun'), -10, 25, 0.5, (v) => patchSel({ gunDeg: v }), 'gun');
   const recoilBtn = chipButton(t('studio.recoilPose'), 'fireGun');
   recoilBtn.addEventListener('click', () => patchSel({ recoilAgeS: 0.05 }));
-  pose.append(facing.row, turret.row, gun.row, recoilBtn);
+  // the pose presets (09-studio .poses): the selected tank's silhouette over each pose's name
+  const poses = el('div', 'poses');
+  const poseSils: HTMLSpanElement[] = [];
+  for (const preset of ['hull-down', 'firing', 'knocked-out'] as const) {
+    const option = el('button');
+    option.type = 'button';
+    option.dataset.pose = preset;
+    const sil = el('span', 'cot-c-sil');
+    sil.setAttribute('aria-hidden', 'true');
+    poseSils.push(sil);
+    option.append(sil, el('span', null, t(`studio.ws.posePreset.${preset}`)));
+    option.addEventListener('click', () => {
+      const a = S._internal.selected;
+      if (!a) return;
+      if (!S.applyPosePreset(a, preset)) api.notice(t('studio.ws.noCrest'), 'info');
+      api.refreshSelected();
+    });
+    poses.appendChild(option);
+  }
+  pose.append(facing.row, turret.row, gun.row, recoilBtn, poses);
   // paint: the garage's pick and every catalogue pattern as its real swatch, painted as it scrolls into view
   const paint = el('div', 'sec');
   paint.appendChild(sectionHead(t('studio.ws.paint'), 'camouflage'));
@@ -2281,6 +2327,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         hero.querySelector('.hc-host')?.remove();
         heroSil.style.setProperty('--sil', `url(${iconUrl(a.spec.id, 'side_silhouette')})`);
         heroName.replaceChildren(flagNode(specInfo(a.spec.id).nation || ''), a.spec.name);
+        for (const sil of poseSils) sil.style.setProperty('--sil', `url(${iconUrl(a.spec.id, 'side_silhouette')})`);
         const specId = a.spec.id;
         void Promise.all([import('./heroCard.ts'), import('./heroCard.css')])
           .then(([cards]) => (hero.dataset.spec === specId

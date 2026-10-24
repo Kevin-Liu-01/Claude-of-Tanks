@@ -164,6 +164,12 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-insp .sl--glyph>label .cot-i{width:15px;height:15px;color:var(--ink-3)}
 .st-insp .sl .val{color:var(--ink-1);text-align:right;white-space:nowrap}
 .st-insp .sl>.cot-c-chip{grid-column:1/-1}
+/* the pose presets (09-studio .poses): a silhouette over each pose's name */
+.st-insp .poses{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.st-insp .poses button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;height:52px;padding:0 4px;
+  border:0;border-radius:var(--r1);background:none;box-shadow:var(--ring-2);color:var(--ink-2);font:500 var(--fs-11)/1.1 var(--font-body);text-align:center}
+.st-insp .poses .cot-c-sil{width:40px;height:13px}
+@media (hover:hover){.st-insp .poses button:hover{color:var(--ink-1);box-shadow:var(--ring-3)}}
 .cot-studio input[type=range]{-webkit-appearance:none;appearance:none;width:100%;min-width:0;height:16px;margin:0;background:transparent}
 .cot-studio input[type=range]::-webkit-slider-runnable-track{height:3px;background:linear-gradient(90deg,var(--accent) var(--fill,0%),var(--fill-scale) 0)}
 .cot-studio input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;margin-top:-4px;border-radius:50%;
@@ -296,6 +302,9 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .production-status:empty{display:none}
 .cot-studio .production-transport{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px}
 .cot-studio .production-transport output{white-space:nowrap;color:var(--ink-1);font:500 var(--fs-12)/1 var(--font-data);text-align:center}
+/* in the inspector the timeline's clock already reads the playhead: the two buttons share the row */
+.st-insp .production-transport{grid-template-columns:repeat(2,minmax(0,1fr))}
+.st-insp .production-transport output{display:none}
 .cot-studio .production-shots{display:grid;gap:2px;max-height:205px;overflow:auto;scrollbar-width:thin}
 .cot-studio .production-shot{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:32px;padding:0 6px;
   border:0;border-radius:var(--r1);background:transparent;color:var(--ink-2);font:500 var(--fs-13)/1 var(--font-body);text-align:left}

@@ -280,6 +280,11 @@ interface StudioActorInput {
   suspensionAimDeg?: number | null;
 }
 
+/** Where a dragged or placed tank lands (the inspector's snap). */
+type PlacementSnap = 'road' | 'terrain' | 'off';
+/** The inspector's pose presets. */
+type PosePreset = 'hull-down' | 'firing' | 'knocked-out';
+
 interface StudioActorPatch extends StudioActorInput {
   x?: number;
   z?: number;
@@ -1590,6 +1595,96 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return out;
   }
 
+  // --- placement snaps and pose presets (09-studio .insp Transform's snap and Pose's presets) --------------------------
+  /** Where a dragged or placed tank lands: on the nearest road and along it, on the ground under the pointer, or on the
+   *  level through the tank (off: no jumping onto rooftops or the hill behind). */
+  let placementSnap: PlacementSnap = 'terrain';
+  const ROAD_SNAP_M = 20;
+  const _snapPoint = { x: 0, z: 0, facingDeg: 0 };
+  const _snapPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  let roadCache: { map: string | null; roads: ReadonlyArray<ReadonlyArray<readonly [number, number]>> } | null = null;
+  function mapRoads(): ReadonlyArray<ReadonlyArray<readonly [number, number]>> {
+    const world = getWorld();
+    if (!world) return [];
+    if (roadCache?.map !== world.mapId) roadCache = { map: world.mapId, roads: world.getMinimapFeatures().roads };
+    return roadCache.roads;
+  }
+  /** The nearest road point within ROAD_SNAP_M of (x, z), the road's heading there turned the nearer way to `facingDeg`. */
+  function roadSnap(x: number, z: number, facingDeg: number, out: { x: number; z: number; facingDeg: number }): boolean {
+    let best = ROAD_SNAP_M * ROAD_SNAP_M;
+    let found = false;
+    for (const road of mapRoads()) {
+      for (let i = 1; i < road.length; i++) {
+        const ax = road[i - 1][0], az = road[i - 1][1], dx = road[i][0] - ax, dz = road[i][1] - az;
+        const length2 = dx * dx + dz * dz;
+        if (!length2) continue;
+        const along = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / length2));
+        const px = ax + dx * along, pz = az + dz * along;
+        const d2 = (px - x) * (px - x) + (pz - z) * (pz - z);
+        if (d2 >= best) continue;
+        best = d2;
+        found = true;
+        out.x = px;
+        out.z = pz;
+        let heading = Math.atan2(dx, dz) / DEG;
+        const turn = ((heading - facingDeg) % 360 + 540) % 360 - 180;
+        if (Math.abs(turn) > 90) heading += 180;
+        out.facingDeg = ((heading % 360) + 360) % 360;
+      }
+    }
+    return found;
+  }
+  /** The pointer on the level through the tank's ground (the off snap). */
+  function planeHit(e: PointerEvent, a: StudioActor, out: THREE.Vector3): THREE.Vector3 | null {
+    _ray.setFromCamera(pointerNdc(e), camera);
+    _snapPlane.constant = -a.state.pos.y;
+    return _ray.ray.intersectPlane(_snapPlane, out);
+  }
+  function setPlacementSnap(snap: PlacementSnap): PlacementSnap {
+    if (snap === 'road' || snap === 'terrain' || snap === 'off') placementSnap = snap;
+    return placementSnap;
+  }
+  /**
+   * Hull-down: the nearest spot within HULL_DOWN_SEARCH_M where the ground ahead of the tank (along its facing) rises
+   * enough to hide the hull and still shows the turret, on ground level enough to stand on; null when none.
+   */
+  const HULL_DOWN_SEARCH_M = 24;
+  function hullDownSpot(a: StudioActor): { x: number; z: number } | null {
+    const dims = a.spec.dims;
+    const height = dims.heightM || 2.4;
+    const half = (dims.overallLengthM || dims.hullLengthM || 7) / 2;
+    const hull = height * 0.55; // the hull below the turret ring
+    const yaw = a.pose.facingDeg * DEG, fx = Math.sin(yaw), fz = Math.cos(yaw);
+    let best: { x: number; z: number } | null = null;
+    let bestScore = Infinity;
+    for (let r = 0; r <= HULL_DOWN_SEARCH_M; r += 2) {
+      const count = r === 0 ? 1 : Math.max(8, Math.round((Math.PI * 2 * r) / 3));
+      for (let k = 0; k < count; k++) {
+        const turn = (k / count) * Math.PI * 2;
+        const x = a.pose.x + Math.cos(turn) * r, z = a.pose.z + Math.sin(turn) * r;
+        const ground = hfProxy.getHeightAt(x, z);
+        if (Math.abs(hfProxy.getHeightAt(x + fx * half, z + fz * half) - hfProxy.getHeightAt(x - fx * half, z - fz * half)) > 2.5) continue;
+        let crest = -Infinity;
+        for (let d = half + 0.5; d <= half + 8; d += 0.5) crest = Math.max(crest, hfProxy.getHeightAt(x + fx * d, z + fz * d));
+        const masked = crest - ground;
+        if (masked < hull * 0.8 || masked > height - 0.5) continue;
+        const score = r + Math.abs(masked - hull) * 6;
+        if (score < bestScore) { bestScore = score; best = { x, z }; }
+      }
+    }
+    return best;
+  }
+  /** A pose preset on a tank: hull-down behind the nearest crest ahead, firing (gun forward, recoiling), or knocked out. */
+  function applyPosePreset(ref: ActorRef, preset: PosePreset): boolean {
+    const a = findActor(ref);
+    if (!a || recording || filming) return false;
+    if (preset === 'firing') return !!updateActor(a, { turretDeg: 0, gunDeg: 2, recoilAgeS: 0.05, state: 'intact' });
+    if (preset === 'knocked-out') return !!updateActor(a, { turretDeg: 28, gunDeg: -20, state: 'wrecked' });
+    const spot = hullDownSpot(a);
+    if (!spot) return false;
+    return !!updateActor(a, { x: spot.x, z: spot.z, turretDeg: 0, gunDeg: 0 });
+  }
+
   function pickActor(e: PointerEvent): StudioActor | null {
     if (!actors.length) return null;
     _ray.setFromCamera(pointerNdc(e), camera);
@@ -1626,8 +1721,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function onPointerMove(e: PointerEvent): void {
     if (!active || filming) return;
     if (dragActor) {
-      if (terrainHit(e, _v3)) {
-        updateActor(dragActor, { x: _v3.x, z: _v3.z, _drag: true });
+      if (placementSnap === 'off' ? planeHit(e, dragActor, _v3) : terrainHit(e, _v3)) {
+        const patch: StudioActorPatch = { x: _v3.x, z: _v3.z, _drag: true };
+        if (placementSnap === 'road' && roadSnap(_v3.x, _v3.z, dragActor.pose.facingDeg, _snapPoint)) {
+          patch.x = _snapPoint.x; patch.z = _snapPoint.z; patch.facingDeg = _snapPoint.facingDeg;
+        }
+        updateActor(dragActor, patch);
         panel.refreshSelected();
       }
       return;
@@ -1659,7 +1758,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       if (terrainHit(e, _v3)) {
         marker.set(_v3);
         if (placeArmed) {
-          const a = addActor({ id: placeArmed, pos: [_v3.x, _v3.z] });
+          const snapped = placementSnap === 'road' && roadSnap(_v3.x, _v3.z, 0, _snapPoint);
+          const a = addActor({ id: placeArmed, pos: snapped ? [_snapPoint.x, _snapPoint.z] : [_v3.x, _v3.z],
+            ...(snapped ? { facingDeg: _snapPoint.facingDeg } : {}) });
           selectActor(a);
           placeArmed = null;
           panel.setPlaceArmed(null);
@@ -5642,6 +5743,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     get shuttleRate() { return reverseRate > 0 ? -reverseRate : timeScale; },
     get lookThrough() { return lookThrough; },
     setLookThrough,
+    get placementSnap() { return placementSnap; },
+    setPlacementSnap,
+    applyPosePreset,
     get fxTimeMs() { return Math.round(clockMs); },
     // cinematic storyboard + transport
     getStoryboard,
