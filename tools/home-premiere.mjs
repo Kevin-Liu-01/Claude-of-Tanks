@@ -25,6 +25,12 @@ const ASSETS = json('public/icons/tank-assets.json').tanks;
 const HERO = json('public/icons/hero/hero-cards.json');
 const FILMS = new Map(json('public/media/versus-films-r1/manifest.json').items.map((item) => [item.id, item]));
 const STILLS = new Map(json('public/media/versus-r1/manifest.json').items.map((item) => [item.id, item]));
+// the hero's responsive rungs of its versus still (public/media/home-hero-r1, from the 2560 px master)
+const HERO_RUNGS = json('public/media/home-hero-r1/manifest.json');
+/** The hero still covers the viewport: a phone shows 640 px of height (1138 css px wide), a desktop its width. */
+const HERO_SIZES = '(width < 768px) 1138px, 100vw';
+const heroSrcset = () => HERO_RUNGS.items.map((rung) => `${rung.path} ${rung.width}w`).join(', ');
+const heroDefault = () => HERO_RUNGS.items.find((rung) => rung.width === 1440).path;
 const TAKES = json('public/media/site50-r14/fleet/index.json');
 const SITE = json('public/media/site50-r14/manifest.json');
 // The horizontal lockup (public/brand/lockup.svg: the Bracket Chevron and the outlined wordmark, SPEC 3.1), inline so it
@@ -78,15 +84,16 @@ const clock = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.round(seco
 const HERO_ID = 'f6-leo2a6-steinburg-r6';
 const HERO_FILM = 'f6-leo2a6-steinburg-r7';
 const TRAILER = SITE.files.find((file) => file.path === 'media/site50-r14/films/trailer.mp4');
-const TRAILER_THUMB = '/media/site50-r14/stills/s225-verdant-duel-thumb.webp';
+const TRAILER_THUMB = '/media/site50-r14/stills/s16-street-duel-thumb.webp';
 function heroBlock() {
   const still = STILLS.get(HERO_ID);
+  if (HERO_RUNGS.still !== HERO_ID) throw new Error('home-premiere: public/media/home-hero-r1 is not the hero still\'s rungs');
   const film = FILMS.get(HERO_FILM);
   const [a, b] = film.tanks;
   const titleKey = `media.versus.title.${camel(HERO_ID)}`;
   if (!still || !TRAILER) throw new Error('home-premiere: the hero still or the trailer is missing');
   return `<header class="hero" aria-labelledby="hero-title">`
-    + `<img class="hero__still" src="${still.path}" alt="${esc(text(titleKey))}" data-i18n-alt="${titleKey}" width="${still.width}" height="${still.height}" fetchpriority="high" decoding="async">`
+    + `<img class="hero__still" src="${heroDefault()}" alt="${esc(text(titleKey))}" data-i18n-alt="${titleKey}" width="${still.width}" height="${still.height}" fetchpriority="high" decoding="async" srcset="${heroSrcset()}" sizes="${HERO_SIZES}">`
     + `<div class="hero__grade" aria-hidden="true"></div>`
     + `<div class="hero__card"><h1 class="hero__title" id="hero-title">${lockupMarkup('hero-title-name')}</h1>`
     + `<div class="hero__ctas"><a class="${btn('primary', '64')} hero__play" href="/" data-hero-play>${play}${t('publicNav.playNow')}<kbd class="cot-c-kbd" lang="en">Enter</kbd></a>`
@@ -223,9 +230,12 @@ function battlefields() {
 }
 
 const BLOCKS = { hero: heroBlock, versus: versusBlock, fleet: fleetBlock };
+const PRELOAD = /<link rel="preload"[^>]*as="image"[^>]*fetchpriority="high"[^>]*>/;
+const preloadTag = () => `<link rel="preload" href="${heroDefault()}" as="image" type="image/webp" fetchpriority="high" imagesrcset="${heroSrcset()}" imagesizes="${HERO_SIZES}">`;
 const HOME = join(ROOT, 'site/home.html');
 export function renderHome(html) {
-  let out = html;
+  if (!PRELOAD.test(html)) throw new Error('home-premiere: the hero still\'s preload is missing from site/home.html');
+  let out = html.replace(PRELOAD, () => preloadTag());
   for (const [name, render] of Object.entries(BLOCKS)) {
     const marker = new RegExp(`<!--home:${name}-->[\\s\\S]*?<!--/home:${name}-->`);
     if (!marker.test(out)) throw new Error(`home-premiere: <!--home:${name}--> is missing from site/home.html`);

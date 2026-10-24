@@ -75,12 +75,24 @@ manifest.hero.forEach((slide, i) => {
 const heroMarkup = home.match(/<!--home:hero-->([\s\S]*?)<!--\/home:hero-->/)?.[1] || '';
 const heroStill = versusById.get('f6-leo2a6-steinburg-r6');
 assert.ok(heroStill, 'the hero still is a published versus still');
-assert.match(heroMarkup, new RegExp(`<img class="hero__still" src="${heroStill.path}" alt="[^"]+" data-i18n-alt="media\\.versus\\.title\\.f6Leo2a6SteinburgR6" width="1920" height="1080" fetchpriority="high"`),
-  'the hero still carries its size and priority');
-assert.equal(home.includes(`<link rel="preload" href="${heroStill.path}" as="image" type="image/webp" fetchpriority="high">`), true,
-  'the hero still is the preloaded LCP image');
+// (243, the first paint) the hero serves that still's responsive rungs (public/media/home-hero-r1, from its master):
+// 1440 on a desktop screen, 960 or 1920 by width and density, the preload naming the same set
+const heroRungs = JSON.parse(await readFile(resolve(root, 'public/media/home-hero-r1/manifest.json'), 'utf8'));
+assert.equal(heroRungs.still, 'f6-leo2a6-steinburg-r6', 'the rungs are the hero still\'s');
+assert.deepEqual(heroRungs.items.map((rung) => rung.width), [960, 1440, 1920], 'three rungs');
+for (const rung of heroRungs.items) {
+  const file = await readFile(resolve(root, 'public', rung.path.slice(1)));
+  assert.equal(file.length, rung.bytes, `${rung.path} is the manifest's file`);
+  assert.ok(rung.bytes < heroStill.bytes, `${rung.path} is lighter than the 1920 versus still`);
+}
+const srcset = heroRungs.items.map((rung) => `${rung.path} ${rung.width}w`).join(', ');
+const rung1440 = heroRungs.items.find((rung) => rung.width === 1440).path;
+assert.ok(heroMarkup.includes(`<img class="hero__still" src="${rung1440}" alt="`) && heroMarkup.includes('data-i18n-alt="media.versus.title.f6Leo2a6SteinburgR6" width="1920" height="1080" fetchpriority="high"')
+  && heroMarkup.includes(`srcset="${srcset}"`), 'the hero still carries its size, priority and rungs');
+assert.equal(home.includes(`<link rel="preload" href="${rung1440}" as="image" type="image/webp" fetchpriority="high" imagesrcset="${srcset}"`), true,
+  'the hero still is the preloaded LCP image, by the same rungs');
 assert.equal((heroMarkup.match(/<img /g) || []).length, 2, 'the hero holds its still and the trailer thumbnail, nothing else');
-assert.match(heroMarkup, /<a class="cot-c-btn cot-c-btn--64 hero__trailer" href="#trailers" data-trailer-open><span class="hero__thumb" aria-hidden="true"><img src="\/media\/site50-r14\/stills\/s225-verdant-duel-thumb\.webp" alt="" width="84" height="46"/,
+assert.match(heroMarkup, /<a class="cot-c-btn cot-c-btn--64 hero__trailer" href="#trailers" data-trailer-open><span class="hero__thumb" aria-hidden="true"><img src="\/media\/site50-r14\/stills\/s16-street-duel-thumb\.webp" alt="" width="84" height="46"/,
   'the trailer button shows a dimensioned thumbnail');
 
 // the screenshot rail: the picks in their order, the eleven of 2026-10-19 kept after the new ones
