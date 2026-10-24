@@ -9,9 +9,11 @@
 // trailers and its own shots (each data-home-slot) are generated there, so the v5 landing's swaps are retired here, as
 // are the 404 page's preload and background (the Premiere 404 is built by hand).
 //
-//   node tools/media-r5/site-media-wire.mjs --root=<tree> [--dry-run]
+//   node tools/media-r5/site-media-wire.mjs --root=<tree> [--dry-run] [--report]
 // Run it on an export of main after site-media.mjs. Every rewrite matches its block exactly once, or the run stops
 // naming the block and writes nothing; the selftests that pin these surfaces are updated with the same picks.
+// --report (2026-10-24) lists every block that fails to match in one pass instead of stopping at the first, writes
+// nothing and exits 1 when any failed: for a tree whose pages moved under the wiring.
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -21,7 +23,9 @@ import { imageSize } from '../media-page-scan.mjs';
 const MEDIA = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3);
 const ROOT = resolve(arg('root') ?? '');
-const dryRun = process.argv.includes('--dry-run');
+const report = process.argv.includes('--report');
+const dryRun = report || process.argv.includes('--dry-run');
+const misses = [];
 const PICKS = JSON.parse(readFileSync(join(MEDIA, 'tools/media-r5/site-media/picks.json'), 'utf8'));
 const C = `/media/${PICKS.collection}`;
 const MANIFEST = JSON.parse(readFileSync(join(ROOT, 'public/media', PICKS.collection, 'manifest.json'), 'utf8'));
@@ -92,6 +96,7 @@ function swap(path, re, fn, label, wired) {
   const text = get(path);
   const count = [...text.matchAll(new RegExp(re.source, `${re.flags.replace('g', '')}g`))].length;
   if (count === 0 && wired?.test(text)) return;
+  if (count !== 1 && report) { misses.push(`${path}: ${label} matched ${count} times`); return; }
   if (count !== 1) throw new Error(`${path}: ${label} matched ${count} times`);
   texts.set(path, text.replace(new RegExp(re.source, re.flags.replace('g', '')), fn));
 }
@@ -160,7 +165,7 @@ function wireDocs() {
   swap(D, /<video controls playsinline preload="(?:metadata|none)" (?:data-)?poster="[^"]*" data-battle-reel-video aria-label="[^"]*" data-i18n-aria-label="[^"]*"><source src="[^"]*" type="video\/mp4"><\/video>/,
     () => `<video controls playsinline preload="none" data-poster="${built(`${C}/reels/${first}.webp`)}" data-battle-reel-video aria-label="${esc(take(first).shortEn)}" data-i18n-aria-label="${shortKey(first)}"><source src="${built(`${C}/reels/${first}.mp4`)}" type="video/mp4"></video>`, 'battle-take player');
   swap(D, /<strong data-battle-reel-title>[^<]*<\/strong><small data-battle-reel-map>[^<]*<\/small><\/span><b data-battle-reel-count>[^<]*<\/b>/,
-    () => `<strong data-battle-reel-title>${esc(take(first).shortEn)}</strong><small data-battle-reel-map>${esc(mapName(take(first).map))} // ${esc(COPY.en['docs.studio.reelSpec'])}</small></span><b data-battle-reel-count>01 / ${reels.length}</b>`, 'battle-take status');
+    () => `<strong data-battle-reel-title>${esc(take(first).shortEn)}</strong><small data-battle-reel-map>${esc(mapName(take(first).map))} · ${esc(COPY.en['docs.studio.reelSpec'])}</small></span><b data-battle-reel-count>01 / ${reels.length}</b>`, 'battle-take status');
   swap(D, /(data-battle-reel-grid) aria-label="[^"]*" data-i18n-aria-label="[^"]*"/,
     (_, open) => `${open} aria-label="${esc(COPY.en['docs.studio.reelsGridAria'])}" data-i18n-aria-label="docs.studio.reelsGridAria"`, 'battle-take grid label');
   swap(D, /(<noscript><p><a class="inline-link" href=")[^"]*(" data-i18n="docs\.studio\.reelNoscript">)[^<]*(<\/a>)/,
@@ -174,7 +179,7 @@ function wireDocs() {
     const url = `/${s.path}`;
     return `            <a href="${url}" target="_blank"><img src="${url}" alt="${esc(SHEET_ALT.en(s))}" data-i18n-alt="docs.media.alt.framesSheet${s.sheet}" loading="lazy"></a>\n`;
   });
-  const group = `        <div class="process-sheet-group">\n          <header><span data-i18n="docs.studio.framesHead">${esc(COPY.en['docs.studio.framesHead'])}</span><strong data-i18n="docs.studio.framesSheets" data-i18n-vars='{"count":"${frameCount}","sheets":"${sheets.length}"}'>${frameCount} frames // ${sheets.length} review sheets</strong></header>\n          <div class="process-sheet-grid">\n${sheetLinks.join('')}          </div>\n          <p class="process-sheet-note" data-i18n="docs.studio.framesNote">${esc(COPY.en['docs.studio.framesNote'])}</p>\n        </div>\n`;
+  const group = `        <div class="process-sheet-group">\n          <header><span data-i18n="docs.studio.framesHead">${esc(COPY.en['docs.studio.framesHead'])}</span><strong data-i18n="docs.studio.framesSheets" data-i18n-vars='{"count":"${frameCount}","sheets":"${sheets.length}"}'>${frameCount} frames · ${sheets.length} review sheets</strong></header>\n          <div class="process-sheet-grid">\n${sheetLinks.join('')}          </div>\n          <p class="process-sheet-note" data-i18n="docs.studio.framesNote">${esc(COPY.en['docs.studio.framesNote'])}</p>\n        </div>\n`;
   // the old two campaign groups, or (re-run) the fifty frames' one group
   swap(D, / {8}<div class="process-sheet-group">\n {10}<header><span data-i18n="docs\.studio\.framesHead">[\s\S]*?\n {8}<\/div>\n| {8}<div class="process-sheet-group">\n[\s\S]*?\n {8}<\/div>\n {8}<div class="process-sheet-group">\n[\s\S]*?\n {8}<\/div>\n/, () => group, 'contact sheets');
   // the sheets are five 480×270 frames by two rows (site-media.mjs SHEET), not the old 2400×592 labelled strips
@@ -186,7 +191,7 @@ function wireDocs() {
   swap(D, /(<div class="docs-motion-grid"[^>]*>\n)(?:[ \t]*(?:<div class="docs-motion-item">)?<video [^\n]*<\/video>(?:<\/div>)?\n)+([ \t]*<\/div>)/, (_, open, close) => `${open}${loops.join('')}${close}`, 'archive loops');
   const n = String(WALL_COUNT);
   swap(D, /(data-i18n="docs\.aside\.archiveTitle" data-i18n-vars=')[^']*('>)\d+( field frames)/, (_, a, b, c) => `${a}{"count":"${n}"}${b}${n}${c}`, 'archive card count');
-  swap(D, /(data-i18n="docs\.archive\.headIdx" data-i18n-vars=')[^']*('>Visual archive \/\/ )\d+( field frames)/, (_, a, b, c) => `${a}{"count":"${n}"}${b}${n}${c}`, 'archive dialog count');
+  // (the archive dialog's count left site/docs.html with the Field Manual rebuild, 245: its heading is gone)
   // the manual's paired figures (their captions stay; the image under each is a site fifty still)
   for (const [caption, pick] of Object.entries(PICKS.docs.figures)) {
     swap(D, new RegExp(`<figure><img src="/media/[^"]+" alt="[^"]*" data-i18n-alt="[^"]*" loading="lazy">(<figcaption data-i18n="${reKey(caption)}">)`),
@@ -221,7 +226,7 @@ function wireReels() {
     () => `// [take id, its title's catalog key, its battlefield's catalog key]: twenty of the site fifty's takes, 720p with their\n// sound (tools/media-r5/site-media/picks.json)\nconst REEL_SOURCES: ReadonlyArray<readonly [string, string, string]> = [\n${rows.join('\n')}\n];`, 'reel sources');
   swap(R, /export const BATTLE_REELS: readonly BattleReel\[\] = Object\.freeze\(REEL_SOURCES\.map\(\(\[id, (?:title, map|titleKey, mapKey)\]\) => Object\.freeze\(\{\n  id,\n  (?:title|title: t\(titleKey\)),\n  (?:map|map: t\(mapKey\)),/,
     () => 'export const BATTLE_REELS: readonly BattleReel[] = Object.freeze(REEL_SOURCES.map(([id, titleKey, mapKey]) => Object.freeze({\n  id,\n  title: t(titleKey),\n  map: t(mapKey),', 'reel table');
-  swap(R, /map\.textContent = `\$\{reel\.map\} \/\/ [^`]*`;/, () => "map.textContent = `${reel.map} // ${t('docs.studio.reelSpec')}`;", 'reel status line');
+  swap(R, /map\.textContent = `\$\{reel\.map\} (?:\/\/|·) [^`]*`;/, () => "map.textContent = `${reel.map} · ${t('docs.studio.reelSpec')}`;", 'reel status line');
   swap(R, /video\.setAttribute\('aria-label', `\$\{reel\.title\} at \$\{reel\.map\}`\);/, () => "video.setAttribute('aria-label', t('docs.studio.reelAria', { title: reel.title, map: reel.map }));", 'reel aria',
     /t\('docs\.studio\.reelAria'/);
 }
@@ -369,19 +374,19 @@ const COPY = {
     'home.trailers.trailer30Aria': "Play the trailer's {seconds}-second cut, filmed in the game engine with its score and battle sound",
     'home.trailers.trailerVerticalAria': "Play the trailer's vertical cut ({seconds} seconds), filmed in the game engine with its score and battle sound",
     'docs.hero.trailerCaption': 'The trailer, filmed in the game engine',
-    'docs.hero.trailerSpec': 'In-engine renders // {seconds} seconds',
+    'docs.hero.trailerSpec': 'In-engine renders · {seconds} seconds',
     'docs.hero.trailerAria': 'The Claude of Tanks trailer, filmed in the game engine, with its score and battle sound',
-    'docs.studio.reelsHead': "The site's battle takes // {count}",
+    'docs.studio.reelsHead': "The site's battle takes · {count}",
     'docs.studio.reelsTitle': 'Battle takes',
     'docs.studio.reelsLede': "Twenty of the site's fifty takes and four duels from the combat round, each staged in Scene Studio, rendered in the game engine and played with the sound of its own battle. Select a take to load it into the player.",
     'docs.studio.reelNoscript': 'Open the first take.',
     'docs.studio.reelsGridAria': 'Battle takes',
-    'docs.studio.reelSpec': '6 seconds // 720p with sound',
+    'docs.studio.reelSpec': '6 seconds · 720p with sound',
     'docs.studio.reelAria': '{title}, {map}',
     'docs.studio.body': 'Open <a class="inline-link" href="/studio">/studio</a> or press F8 in the garage. Studio places any roster vehicle on any map, conforms actors to terrain, applies camouflage and damage states, schedules the game’s firing and destruction effects, scrubs a deterministic 20-second timeline, builds camera, actor, and effect tracks, records video, captures high-resolution PNGs, and imports or exports scene JSON. The Field Frames drawer shows the current archive, the fifty frames and the stills of the site’s fifty takes, beside the authoring controls.',
     'docs.studio.contactBody': 'Each frame begins as deterministic scene data and is first reviewed as a low-resolution capture, ten to a sheet. The sheets expose weak silhouettes, obstructed cameras, unreadable vehicles, repetitive staging and effects that hide the action; the frames that pass are rendered at 4K with motion blur.',
     'docs.studio.framesHead': 'The fifty frames',
-    'docs.studio.framesSheets': '{count} frames // {sheets} review sheets',
+    'docs.studio.framesSheets': '{count} frames · {sheets} review sheets',
     'docs.studio.framesNote': "Open any sheet at full resolution. Each frame is a 4K render of a moving scene, exposed like a camera's shutter, so motion blurs as it would on film.",
     'docs.archive.lede': "The fifty frames and the stills of the site's takes: the game's own vehicles, maps and effects, rendered at 4K.",
     'docs.topic.ai.media1': 'A T-90M column driving into the fight, each bot holding its lane and spacing',
@@ -401,19 +406,19 @@ const COPY = {
     'home.trailers.trailer30Aria': '播放预告片的 {seconds} 秒剪辑版，在游戏引擎中拍摄，配有配乐与战场音效',
     'home.trailers.trailerVerticalAria': '播放预告片的竖屏版（{seconds} 秒），在游戏引擎中拍摄，配有配乐与战场音效',
     'docs.hero.trailerCaption': '预告片，在游戏引擎中拍摄',
-    'docs.hero.trailerSpec': '引擎内渲染 // {seconds} 秒',
+    'docs.hero.trailerSpec': '引擎内渲染 · {seconds} 秒',
     'docs.hero.trailerAria': 'Claude of Tanks 预告片，在游戏引擎中拍摄，配有配乐与战场音效',
-    'docs.studio.reelsHead': '网站战斗镜头 // {count} 段',
+    'docs.studio.reelsHead': '网站战斗镜头 · {count} 段',
     'docs.studio.reelsTitle': '战斗镜头',
     'docs.studio.reelsLede': '网站五十个镜头中的二十个，以及战斗回合的四场对决，每段都在 Scene Studio 中编排、在游戏引擎中渲染，并带有自己那场战斗的声音。点选一段即可载入播放器。',
     'docs.studio.reelNoscript': '打开第一段镜头。',
     'docs.studio.reelsGridAria': '战斗镜头',
-    'docs.studio.reelSpec': '6 秒 // 720p，含声音',
+    'docs.studio.reelSpec': '6 秒 · 720p，含声音',
     'docs.studio.reelAria': '{map}：{title}',
     'docs.studio.body': '打开 <a class="inline-link" href="/studio">/studio</a>，或在车库中按 F8。Studio 可以把任意名册载具放在任意地图上，使角色贴合地形，套用迷彩与受损状态，排程游戏内的开火与破坏特效，拖动一条确定性的 20 秒时间轴，搭建镜头、角色与特效轨，录制视频、抓取高分辨率 PNG，并导入或导出场景 JSON。Field Frames 抽屉就在创作控件旁边，展示当前的归档：五十帧画面与网站五十个镜头的静帧。',
     'docs.studio.contactBody': '每一帧都从确定性场景数据开始，先以低分辨率抓帧接受审核，十张一组。对照表会暴露轮廓单薄、被遮挡的镜头、看不清的载具、重复的走位以及遮蔽动作的特效；通过的帧再以 4K 加动态模糊渲染。',
     'docs.studio.framesHead': '五十帧',
-    'docs.studio.framesSheets': '{count} 帧 // {sheets} 张审核拼版',
+    'docs.studio.framesSheets': '{count} 帧 · {sheets} 张审核拼版',
     'docs.studio.framesNote': '任意拼版都可以全分辨率打开。每一帧都是运动场景的 4K 渲染，像相机快门一样曝光，因此运动会像在胶片上一样模糊。',
     'docs.archive.lede': '五十帧画面与网站各镜头的静帧：游戏自己的载具、地图与特效，以 4K 渲染。',
     'docs.topic.ai.media1': '驶入战斗的 T-90M 纵队，每个机器人都保持自己的路线与间距',
@@ -430,6 +435,18 @@ const SHEET_ALT = {
   en: (s) => `Review sheet ${s.sheet} of the fifty frames, frames ${sheetRange(s)[0]} through ${sheetRange(s)[1]}`,
   zh: (s) => `五十帧审核拼版第 ${s.sheet} 张，第 ${sheetRange(s)[0]} 至 ${sheetRange(s)[1]} 帧`,
 };
+// A flat catalog's lines kept as they were written (2026-10-24: JSON.stringify wrote "×" where the zh-CN file holds
+// "×", a diff in a key this tool never set): a key whose value did not change keeps its original text.
+function keepEscapes(original, text) {
+  const line = /^ {2}("(?:[^"\\]|\\.)*"): (.*?)(,?)$/;
+  const before = new Map();
+  for (const l of original.split('\n')) { const m = line.exec(l); if (m) before.set(m[1], m[2]); }
+  return text.split('\n').map((l) => {
+    const m = line.exec(l), old = m && before.get(m[1]);
+    if (!m || old === undefined || old === m[2]) return l;
+    try { return JSON.parse(old) === JSON.parse(m[2]) ? `  ${m[1]}: ${old}${m[3]}` : l; } catch { return l; }
+  }).join('\n');
+}
 function wireCatalogs() {
   const sheets = MANIFEST.files.filter((f) => /\/frames\/sheet-\d+\.webp$/.test(f.path));
   for (const [locale, file] of [['en', 'src/ui/i18nCatalog.en-US.json'], ['zh', 'src/ui/i18nCatalog.zh-CN.json']]) {
@@ -450,7 +467,7 @@ function wireCatalogs() {
     for (const group of Object.keys(HOME_GROUPS)) {
       for (const entry of PICKS.home[group] ?? []) catalog[homeAltKey(group, entry.id)] = entry.alt[locale];
     }
-    texts.set(file, `${JSON.stringify(catalog, null, 2)}\n`);
+    texts.set(file, keepEscapes(get(file), `${JSON.stringify(catalog, null, 2)}\n`));
   }
 }
 
@@ -468,6 +485,10 @@ function main() {
     if (readFileSync(join(ROOT, path), 'utf8') === text) continue;
     if (!dryRun) writeFileSync(join(ROOT, path), text);
     console.log(`${dryRun ? '[dry] ' : ''}wired ${path}`);
+  }
+  if (misses.length) {
+    console.log(`${misses.length} block${misses.length === 1 ? '' : 's'} did not match:\n  ${misses.join('\n  ')}`);
+    process.exitCode = 1;
   }
 }
 
