@@ -57,7 +57,7 @@ const PAD_MAX_BUTTONS = 17;
  *  Labels and groups are i18n keys resolved by the settings UI
  *  (see `src/ui/settings.ts` — `t()` is applied to both `label` and
  *  `group` before render). */
-const ACTION_DEFS = [
+export const ACTION_DEFS = [
   { id: 'forward', label: 'action.forward', group: 'settings.group.movement' },
   { id: 'back', label: 'action.back', group: 'settings.group.movement' },
   { id: 'left', label: 'action.left', group: 'settings.group.movement' },
@@ -155,6 +155,15 @@ type BindingMap = Record<ActionId, string | null>;
 type PadBindingMap = Record<ActionId, number | null>;
 type InputState = Record<ActionId, boolean>;
 type ActionHandler = (code: string) => void;
+/** How a pointer-lock request treats a refusal (see requestLock). */
+interface LockRequest {
+  /** A relock the UI makes on the player's behalf (closing Settings): its refusal is no evidence that this page
+   *  cannot lock, so it never counts toward the cursor-aim latch. */
+  fromUi?: boolean;
+  /** Called once if this attempt is refused; `retryInMs` is what remains of the browser's post-Esc refusal window
+   *  (0 once it has passed: only a fresh click can lock). */
+  onRefused?: (retryInMs: number) => void;
+}
 type VolumeSettingKey =
   | 'volMaster'
   | 'volEngine'
@@ -210,7 +219,7 @@ export interface InputLayer {
   consumeMouseDelta(out: InputVector, dt: number, sniper?: boolean): InputVector;
   setEnabled(enabled: boolean): void;
   isLocked(): boolean;
-  requestLock(): void;
+  requestLock(request?: LockRequest): void;
   isCursorAim(): boolean;
   onLockDenied(callback: () => void): () => void;
   onLockRestored(callback: () => void): () => void;
@@ -269,7 +278,7 @@ export const DEFAULT_BINDINGS: Partial<Record<ActionId, string>> = {
 };
 
 /** Default secondary bindings: arrow keys as alternate movement (WoT staple). */
-const DEFAULT_BINDINGS2: Partial<Record<ActionId, string>> = {
+export const DEFAULT_BINDINGS2: Partial<Record<ActionId, string>> = {
   forward: 'ArrowUp',
   back: 'ArrowDown',
   left: 'ArrowLeft',
@@ -280,7 +289,7 @@ const DEFAULT_BINDINGS2: Partial<Record<ActionId, string>> = {
 /** Default gamepad buttons (standard mapping): RT fire, LT sniper, A handbrake,
  *  LB special action, RB dedicated free-look, d-pad shells, BACK minimap, START menu. Sticks are fixed:
  *  left = drive, right = aim. */
-const DEFAULT_PAD_BINDINGS: Partial<Record<ActionId, number>> = {
+export const DEFAULT_PAD_BINDINGS: Partial<Record<ActionId, number>> = {
   fire: 7, // RT
   sniperToggle: 6, // LT
   handbrake: 0, // A
@@ -416,7 +425,7 @@ const LABEL_SPECIAL: Record<string, string> = {
  * @param {?string} code
  * @returns {string}
  */
-function labelForCode(code: string | null) {
+export function labelForCode(code: string | null) {
   if (!code) return '—';
   if (LABEL_SPECIAL[code]) return LABEL_SPECIAL[code];
   if (code.startsWith('Key')) return code.slice(3);
@@ -430,7 +439,7 @@ function labelForCode(code: string | null) {
  * @param {?number} index
  * @returns {string}
  */
-function labelForPadButton(index: number | null) {
+export function labelForPadButton(index: number | null) {
   if (index == null || index < 0) return '—';
   return PAD_BUTTON_LABELS[index] || `PAD ${index}`;
 }
@@ -741,14 +750,37 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   // a battle-entry world build blocks the main thread between them — so the
   // streak counts at most one denial PER requestLock ATTEMPT (attempt-scoped,
   // not time-windowed).
+  //
+  // aim-focus 243 (owner 2026-10-23: "clicking buttons like resume, x etc ...
+  // the tank ends up stuck looking at the cursors last click position"): quick
+  // Esc -> RESUME / X cycles still reached the streak, because each Settings
+  // close re-asked inside Chrome's refusal window (1250 ms after the player's
+  // Esc, mouse_lock_controller.cc kEffectiveUserEscapeDuration), and an
+  // Esc-closed panel asks with no user activation, which Chrome refuses after
+  // a user unlock however late it comes. Neither refusal says anything about
+  // the page, so neither counts: a refusal inside LOCK_REFUSAL_WINDOW_MS of the
+  // last lock exit, or of a UI relock (LockRequest.fromUi), only reports back
+  // to its caller (onRefused: Settings shows the click-to-resume veil). Touch
+  // layouts never ask at all, and never aim with the cursor: the synthetic
+  // mouse events a tap leaves behind sit on the tapped button.
   const LOCK_DENY_LATCH_STREAK = 3;
+  const LOCK_REFUSAL_WINDOW_MS = 1500; // Chrome's 1250 ms plus event latency
   let lockDenied = false;    // durable cursor-aim latch (see above)
   let lockDenyStreak = 0;    // consecutive denied ATTEMPTS since the last lock
   let lockHardDenied = false; // sync SecurityError seen — stop re-attempting
   let lockAttemptSeq = 0;     // bumped by every requestLock() call
   let lockDeniedAttempt = 0;  // attempt id already counted into the streak
-  let cursorClientX: number | null = null; // last real cursor position (null = never moved)
+  let lockAttemptCounts = true; // a refusal of the current attempt is evidence the page cannot lock
+  let lockAttemptRefused: ((retryInMs: number) => void) | null = null; // the current attempt's onRefused
+  let lockHeld = false;       // the canvas held the lock at the last pointerlockchange
+  let lockExitMs = -Infinity; // when the canvas last lost the lock
+  // Cursor-aim point: the last cursor position over the game canvas. Menus
+  // (setEnabled(false)), a press on anything else and focus loss forget it, so
+  // the fallback aims through the screen centre until the cursor moves over
+  // the battle again — never at the button that closed a menu.
+  let cursorClientX: number | null = null;
   let cursorClientY: number | null = null;
+  const forgetCursor = () => { cursorClientX = null; cursorClientY = null; };
   const lockDeniedHandlers = new Set<() => void>();
   const lockRestoredHandlers = new Set<() => void>();
   // content_breadth r6 (minor: first aggressive click swallowed in no-lock
@@ -765,10 +797,9 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   let lastCanvasFirePressMs = -Infinity;
   function noteLockDenied(hard: boolean) {
     if (hard) lockHardDenied = true;
-    if (lockDeniedAttempt !== lockAttemptSeq) {
-      lockDeniedAttempt = lockAttemptSeq; // count each attempt exactly once
-      lockDenyStreak += 1;
-    }
+    const firstReport = lockDeniedAttempt !== lockAttemptSeq;
+    lockDeniedAttempt = lockAttemptSeq; // count each attempt exactly once
+    if (firstReport && (hard || lockAttemptCounts)) lockDenyStreak += 1;
     if (nowMillis() - lastCanvasFirePressMs < FIRE_PRESS_BUFFER_MS) {
       firePressMs = lastCanvasFirePressMs; // re-arm the swallowed click
       fireHoldLegit = true; // a canvas press still held is full-auto too
@@ -778,8 +809,12 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       lockDenied = true;
       for (const cb of [...lockDeniedHandlers]) cb();
     }
+    const refused = firstReport ? lockAttemptRefused : null;
+    lockAttemptRefused = null;
+    if (refused) refused(Math.max(0, Math.ceil(lockExitMs + LOCK_REFUSAL_WINDOW_MS - nowMillis())));
   }
   function noteLockEngaged() {
+    lockAttemptRefused = null;
     lockDenyStreak = 0;
     lockHardDenied = false;
     if (lockDenied) {
@@ -976,12 +1011,17 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     else if (enabled) down.add(event.code);
   };
   const onKeyUp = (event: KeyboardEvent) => release(event.code);
-  const onMouseDown = (event: MouseEvent) => press(`Mouse${event.button}`, event);
+  const onMouseDown = (event: MouseEvent) => {
+    if (event.target !== lockElement) forgetCursor(); // a menu or HUD press is never an aim point
+    press(`Mouse${event.button}`, event);
+  };
   const onMouseUp = (event: MouseEvent) => release(`Mouse${event.button}`);
   const onMouseMove = (event: MouseEvent) => {
-    // real cursor position is tracked always — cursor-aim raycasts through it
-    cursorClientX = event.clientX;
-    cursorClientY = event.clientY;
+    // cursor-aim raycasts through the cursor, but only once it moves over the battle itself
+    if (event.target === lockElement) {
+      cursorClientX = event.clientX;
+      cursorClientY = event.clientY;
+    }
     if (lockElement && document.pointerLockElement === lockElement) {
       rawDX += event.movementX;
       rawDY += event.movementY;
@@ -1018,6 +1058,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     lastCanvasFirePressMs = -Infinity;
     fireHoldLegit = false;
     rawDX = 0; rawDY = 0; smDX = 0; smDY = 0;
+    forgetCursor();
   };
   const onContextMenu = (event: MouseEvent) => event.preventDefault();
 
@@ -1032,10 +1073,14 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   window.addEventListener('contextmenu', onContextMenu);
   // CURSOR-AIM FALLBACK: browsers that deny the lock asynchronously report it
   // here (no promise, no throw) — a SOFT denial (streak); a successful lock
-  // resets the streak and clears/announces the latch (noteLockEngaged).
+  // resets the streak and clears/announces the latch (noteLockEngaged). Losing
+  // the lock opens the browser's refusal window (LOCK_REFUSAL_WINDOW_MS).
   document.addEventListener('pointerlockerror', () => noteLockDenied(false));
   document.addEventListener('pointerlockchange', () => {
-    if (lockElement && document.pointerLockElement === lockElement) noteLockEngaged();
+    const held = !!lockElement && document.pointerLockElement === lockElement;
+    if (held) noteLockEngaged();
+    else if (lockHeld) lockExitMs = nowMillis();
+    lockHeld = held;
   });
 
   const isHeld = (actionId: ActionId) => (togglesOn(actionId) ? toggled.has(actionId) :
@@ -1419,6 +1464,7 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
         virtualHeld.clear();
         virtualMove.x = 0; virtualMove.y = 0; virtualMoveActive = false;
         rawDX = 0; rawDY = 0; smDX = 0; smDY = 0;
+        forgetCursor(); // a cursor that worked a menu is not where the player aims
       }
     },
 
@@ -1436,11 +1482,18 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
      *     cooldown reports this way) = SOFT: bump the consecutive-denial
      *     streak; the latch engages only at LOCK_DENY_LATCH_STREAK. Callers
      *     (canvas mousedown, battle start, settings close) keep retrying
-     *     soft-denied locks, and any success self-heals the fallback. */
-    requestLock() {
+     *     soft-denied locks, and any success self-heals the fallback.
+     *  aim-focus 243: a soft refusal of a UI relock (request.fromUi), or of
+     *  any attempt inside the browser's post-Esc refusal window, never counts;
+     *  request.onRefused hears every refusal of this attempt. Touch layouts
+     *  never ask (the touch HUD aims by swipe). */
+    requestLock(request = {}) {
       if (!lockElement || api.isLocked()) return;
       if (lockHardDenied) return; // structurally unavailable — never re-churn
+      if (api.isTouchLayout()) return;
       lockAttemptSeq += 1; // denial reports below count once per attempt
+      lockAttemptCounts = !request.fromUi && nowMillis() - lockExitMs >= LOCK_REFUSAL_WINDOW_MS;
+      lockAttemptRefused = request.onRefused ?? null;
       try {
         const p = lockElement.requestPointerLock();
         if (p && typeof p.catch === 'function') p.catch(() => noteLockDenied(false));
@@ -1451,10 +1504,11 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
      *  consecutive denials, or a synchronous SecurityError) and not currently
      *  held — aim with the real cursor. Transient denials (Chrome's post-Esc
      *  cooldown) never flip this; gestures keep retrying the lock instead.
-     *  Self-healing: any successful lock clears the latch. */
+     *  Self-healing: any successful lock clears the latch. Never on a touch
+     *  layout: a finger leaves no cursor, only taps on buttons. */
     isCursorAim() {
       return !!lockElement && lockDenied &&
-        document.pointerLockElement !== lockElement;
+        document.pointerLockElement !== lockElement && !api.isTouchLayout();
     },
 
     /**
@@ -1484,8 +1538,9 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
 
     /**
      * Real cursor position over the lock element in NDC (-1..1, +y up),
-     * clamped to the canvas. Falls back to screen center before the first
-     * mousemove. @param {{x:number,y:number}} out @returns {{x:number,y:number}}
+     * clamped to the canvas. Screen center until the cursor moves over the
+     * canvas, and again after a menu, a press elsewhere or focus loss (see
+     * forgetCursor). @param {{x:number,y:number}} out @returns {{x:number,y:number}}
      */
     getCursorNdc(out) {
       out.x = 0;

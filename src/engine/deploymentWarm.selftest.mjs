@@ -206,4 +206,36 @@ for (const fail of [false, true]) {
   } finally { f.dispose(); }
 }
 
+// (2026-10-24, perf-245) a cohort draws whatever the warm camera frames: its renderables' culling is off for that one
+// private render and back after it — culled to the deployment camera, the far side of the map (and a staged opponent
+// anywhere but in front) met its first draw when a camera was thrown onto it
+{
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+  camera.lookAt(0, 0, -1);
+  camera.updateMatrixWorld(true);
+  const root = new THREE.Group();
+  scene.add(root);
+  const geometry = new THREE.BoxGeometry();
+  const material = new THREE.MeshBasicMaterial();
+  const behind = new THREE.Mesh(geometry, material);
+  behind.position.set(0, 0, 500);
+  const ahead = new THREE.Mesh(geometry, material);
+  ahead.position.set(0, 0, -20);
+  const always = new THREE.Mesh(geometry, material);
+  always.frustumCulled = false;
+  root.add(behind, ahead, always);
+  const renders = [];
+  for (const _ of createIsolatedForwardWarmBatches({ scene, root, cohortSize: 1, warmRender() {
+    const selected = [behind, ahead, always].filter((mesh) => mesh.layers.mask !== 0);
+    renders.push(selected.map((mesh) => mesh.frustumCulled));
+  } })) { /* one cohort a step */ }
+  assert.equal(renders.length, 3, 'one render per cohort');
+  assert.ok(renders.every((flags) => flags.length === 1 && flags[0] === false), 'each cohort draws uncull\'d, whatever the camera frames');
+  assert.equal(behind.frustumCulled, true, 'culling is back after the render');
+  assert.equal(ahead.frustumCulled, true);
+  assert.equal(always.frustumCulled, false, 'an object that never culls is left as it was');
+  geometry.dispose(); material.dispose();
+}
+
 console.log('deploymentWarm.selftest: bounded terrain/vegetation/props/player cohorts, descendant-safe masks, LOD/light/CSM restoration and iterator cleanup passed');

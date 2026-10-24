@@ -41,6 +41,11 @@ function markingArmorMeshes(
   return meshes;
 }
 
+/** The armour a vehicle's markings may be painted on in one articulation owner (markingFilm.ts paints the seats on it). */
+export function vehicleMarkingSurfaces(owner: THREE.Object3D, ownerName: VehicleOwner, specId: string): VehicleMesh[] {
+  return markingArmorMeshes(owner, ownerName, vehicleMarkingIncludesPermanentHullArmor(specId));
+}
+
 function markingLocalBounds(owner: THREE.Object3D, meshes: readonly VehicleMesh[]): THREE.Box3 {
   const bounds = new THREE.Box3();
   const localPoint = new THREE.Vector3();

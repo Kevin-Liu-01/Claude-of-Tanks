@@ -10,10 +10,13 @@ const { box, cylY } = KIT;
 
 type RoofStation = readonly [z: number, bottom: number, crown: number, edge: number];
 function rearShell(P: TankBuilderPort): void {
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the rising rear underside starts at -.50,
+  // not -.69, so the flat underside's rear corners (1.47-1.51 m off the axis) stand over the driver's optical station as
+  // they turn past it; the roof keeps its stations.
   const rows: readonly RoofStation[] = [[-1.612388, 1.609024, 2.101908, 2.0174],
     [-1.10, 1.598, 2.0785, 2.015], [-.90, 1.4814, 2.0766, 2.0136],
-    [-.689702, 1.356694, 2.0756, 2.0122], [.393635, 1.356694, 2.063218, 2.0043],
-    [.545033, 1.356694, 2.059, 1.995]];
+    [-.689702, 1.415836, 2.0756, 2.0122], [-.50, 1.356694, 2.073432, 2.010817],
+    [.393635, 1.356694, 2.063218, 2.0043], [.545033, 1.356694, 2.059, 1.995]];
   const sections: SolidSection[] = rows.map(([z, bottom, crown, edge]) => ({ z,
     ring: [[-1.118, bottom], [1.118, bottom], [1.118, edge],
       [.408, crown - .012], [-.370, crown], [-.923, crown - .035], [-1.118, edge]],

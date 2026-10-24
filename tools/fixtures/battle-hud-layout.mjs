@@ -11,7 +11,7 @@ import '../../src/ui/responsiveSurfaces.css';
 // The battle HUD loads with its aerial sheet (battleHudAccess): without it the flight controls render as stray white
 // boxes over the score (critic r3, every phone frame).
 import '../../src/ui/aerialHud.css';
-import { Vector3 } from 'three';
+import { Vector3, WebGLRenderer } from 'three';
 import { installResponsiveLayout } from '../../src/ui/responsiveLayout.ts';
 import { createBus } from '../../src/game/stateCore.ts';
 import { sightFurniture, sightNotice } from '../../src/ui/sightFurniture.ts';
@@ -19,6 +19,7 @@ import { createInput } from '../../src/game/input.ts';
 import { installMedalToasts } from '../../src/ui/medalToast.ts';
 import { initHud } from '../../src/ui/hud.ts';
 import { createDamagePanel } from '../../src/ui/damagePanel.ts';
+import { initTopMaskRig } from '../../src/ui/tankThumbs.ts';
 import { createTouchControls } from '../../src/ui/touchControls.ts';
 import { createSettings } from '../../src/ui/settings.ts';
 import { createEndOverlayRuntime } from '../../src/ui/endOverlayRuntime.ts';
@@ -40,6 +41,9 @@ const input = createInput();
 const hud = initHud(bus);
 installMedalToasts(bus);
 createEndOverlayRuntime({bus,onReturnToGarage:()=>hud.setMode('hidden')});
+// ?masks: the damage panel's plan. Its top-down masks need a renderer (main.ts hands the game's over at boot); review
+// renders on the WebGL path pass it, while the layout probes keep this fixture WebGL-free.
+if (new URLSearchParams(location.search).has('masks')) initTopMaskRig({ renderer: new WebGLRenderer({ alpha: true }) });
 const panel = createDamagePanel();
 const settings = createSettings({input, bus, isBattleActive:()=>true, gearVisible:()=>false});
 const touch = createTouchControls({input, bus, isBattleActive:()=>true, onOpenSettings:()=>settings.open()});
@@ -226,7 +230,7 @@ function roster(allies, enemies) {
   hud.update(frame);
 }
 // (the layout's published sight furniture, the HUD's own module instance: tools/hud-sight-furniture.browser.mjs reads it)
-window.__HUD_LAYOUT = {multiplayer,state, roster, hud, bus, touch, settings, hit, frame, tanks, sightFurniture, sightNotice, ammoStages:Object.keys(AMMO_STAGES)};
+window.__HUD_LAYOUT = {multiplayer,state, roster, hud, panel, bus, touch, settings, hit, frame, tanks, sightFurniture, sightNotice, ammoStages:Object.keys(AMMO_STAGES)};
 const params = new URLSearchParams(location.search);
 state(params.get('state') || 'idle');
 if(params.has('allies'))roster(Number(params.get('allies')),Number(params.get('enemies')));

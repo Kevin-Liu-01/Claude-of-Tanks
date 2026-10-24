@@ -99,4 +99,31 @@ assert.match(post, /sunShafts\.update\(lightFx\.sunShafts\);/, 'per-frame update
 assert.match(sky, /targetScene\.userData\.skyHazeInputs = \{\s*fogDensity: preset\.fogDensity, turbidity: preset\.turbidity, mieCoefficient: preset\.mieCoefficient,\s*sunElevationDeg: preset\.sunElevationDeg, skyIntensity: preset\.skyIntensity,\s*\};/,
   'sky.ts publishes the haze inputs with every fog application');
 
+// (2026-10-24, perf-245) the post warm's gated draw: the mask and the blur draw once with no colour whatever the sun's
+// place (their pipelines made under the loading cover, not at the first frame the sun comes into view), then the light
+// target is cleared; off the warm a sunless frame only clears it
+{
+  const camera = new THREE.PerspectiveCamera(55, 16 / 9, 0.1, 1000);
+  camera.updateMatrixWorld(true);
+  const scene = new THREE.Scene();
+  const output = new THREE.WebGLRenderTarget(8, 8);
+  const { SunShaftsPass } = await import('./sunShafts.ts');
+  const pass = new SunShaftsPass(camera, scene, new THREE.DepthTexture(8, 8), output, 32, 32);
+  const log = [];
+  let current = null;
+  const renderer = { autoClear: true, getRenderTarget: () => current, setRenderTarget(t) { current = t; },
+    setClearColor() {}, clear() { log.push(['clear', current]); }, render(mesh) { log.push(['draw', mesh.material, current]); } };
+  pass.update(false);
+  pass.render(renderer);
+  assert.deepEqual(log.map(([kind]) => kind), ['clear'], 'sunless: the light target is cleared, nothing drawn');
+  log.length = 0;
+  pass.warmGated(true);
+  try { pass.render(renderer); } finally { pass.warmGated(false); }
+  const drawn = log.filter(([kind]) => kind === 'draw').map(([, material]) => material);
+  assert.ok(drawn.includes(pass.maskMaterial) && drawn.includes(pass.blurMaterial), 'the mask and the blur drew');
+  assert.deepEqual(pass.blurMaterial.uniforms.uColor.value.toArray(), [0, 0, 0], 'with no colour');
+  assert.deepEqual(log.at(-1), ['clear', output], 'and the light target is left cleared');
+  output.dispose();
+}
+
 console.log('sunShafts.selftest: night law, the 31-map strength table, the law\'s parts, frame fade, sun projection, pass contract and chain order pinned');

@@ -46,11 +46,14 @@ export interface BorderArchitecture { style: ArchitectureStyle; mapId: string; s
 /** The kit for a map with none in its square, where its region has one: Ironworks (the Völklingen ironworks on the
  * Saar) builds its hamlets as the coalfield's workers' cottage pairs. */
 const BORDER_ARCHITECTURE_FALLBACK: Readonly<Record<string, string>> = { foundry: 'ruhr' };
+/** The style id of a map's hamlets past the edge (resolveBorderArchitecture; map.ts loads it with the map's kits). */
+export function borderArchitectureIdOf(mapId: string, authored: string | null | undefined): string | null {
+  return authored ?? BORDER_ARCHITECTURE_FALLBACK[mapId] ?? null;
+}
 /** The kit of a map's hamlets past the edge: its square's own (`props.architecture`), else its region's; null keeps the
  * generic farm set. */
 export function resolveBorderArchitecture(mapId: string, authored: string | null | undefined, snowCap: boolean): BorderArchitecture | null {
-  const id = authored ?? BORDER_ARCHITECTURE_FALLBACK[mapId] ?? null;
-  const style = resolveRegionalArchitecture(id);
+  const style = resolveRegionalArchitecture(borderArchitectureIdOf(mapId, authored));
   return style ? { style, mapId, snowCap } : null;
 }
 

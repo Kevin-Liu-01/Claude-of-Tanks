@@ -286,4 +286,30 @@ for (const mode of ['current', 'pooled', 'malformed']) {
     assert.notEqual(copied, core, 'the timing receipt is detached from mutable visual metadata');
   } else assert.equal(copied, undefined, `${mode} core metadata cannot masquerade as this iterator's construction`);
 }
+// (2026-10-24, perf-245) a staged root draws once (drawWarm) after its programs compile, while it is attached — before a
+// hidden opponent detaches — so its GPU pipelines are made at staging, not on the frame it is first seen; no draw when
+// the caller compiles nothing
+{
+  const scene = new THREE.Scene();
+  const draws = [];
+  const makeEnt = () => ({ specId: 'test', visual: { root: new THREE.Group(), setVisible() {}, prewarmBurn() {} } });
+  const order = [];
+  const streamer = createBattleVisualStreamer({ game: { tanks: [] }, scene,
+    renderer: { initTexture() {} }, anisotropy: 1,
+    async ensureTankBuilders() {}, nextStagedBake() { return null; }, ensureStagedVisualsSteps() { return (function* () { return true; })(); },
+    getSpec() { return {}; }, async prebakeSharedTextures() {},
+    armorAimOverlay: { prime() {}, warm() { return () => {}; } },
+    forwardProgramWarm: { compile(root) { order.push(['compile', root]); } },
+    drawWarm(root) { order.push(['draw', root]); draws.push({ root, attached: root.parent === scene }); },
+  });
+  const hidden = makeEnt();
+  await streamer.stageBattleVisualReveal(hidden, async () => {}, true);
+  assert.equal(draws.length, 1, 'a staged root draws once');
+  assert.ok(draws[0].root === hidden.visual.root && draws[0].attached, 'while attached, before the hidden detach');
+  assert.deepEqual(order.map(([kind]) => kind), ['compile', 'draw'], 'after its programs compile');
+  assert.equal(hidden.visual.root.parent, null, 'the hidden opponent is detached after');
+  const skipped = makeEnt();
+  await streamer.stageBattleVisualReveal(skipped, async () => {}, false, { compilePrograms: false });
+  assert.equal(draws.length, 1, 'no draw when nothing is compiled');
+}
 console.log('battleVisualStreamer.selftest: cooperative construction, exact iterator/non-await/wait receipts, cancellation, default compile, exact uploads, hidden reveal and player deferral passed');

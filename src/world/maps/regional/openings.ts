@@ -66,6 +66,43 @@ export function paneBucket(rng: () => number, litShare: number): 'glass' | 'curt
 }
 
 /**
+ * A window's masonry dressing: its surround (dressed jambs and lintel, a carved surround, a head) and its sill, from the
+ * wall face. windowUnit lays it round every window; a damaged opening's dialect lays it alone (a granite surround and sill
+ * outlast the fire that guts the frame).
+ */
+export function windowDressing(sink: PartSink, face: Face, u: number, y: number, w: number, h: number, style: WindowStyle): void {
+  const r = sink.recess, craft = facadeOn();
+  const carved = style.surround && style.carved && facadeOn() ? style.carved : null;
+  if (style.surround && carved) {
+    // the carved surround: jambs from the apron to the head board, the crest over it, the apron under the sill
+    const s = style.surround, sw = s.width, so = s.out, outer = w + 2 * sw;
+    const sc = { decor: true, fineSides: true, ...(s.colour ? { colour: s.colour } : {}) };
+    const foot = y - 0.09 - carved.apronDrop * 0.55, head = y + h;
+    faceBox(sink, s.bucket, face, u - w / 2 - sw / 2, (foot + head) / 2, so / 2, sw, head - foot, so, sc);
+    faceBox(sink, s.bucket, face, u + w / 2 + sw / 2, (foot + head) / 2, so / 2, sw, head - foot, so, sc);
+    nalichnikCrest(sink, face, u, head, outer, carved.crest);
+    nalichnikApron(sink, face, u, y - 0.09, outer, carved.apronDrop, carved.crest.colour, carved.crest.field);
+  } else if (style.surround) {
+    const s = style.surround, sw = s.width, so = s.out, lintel = s.lintel ?? sw;
+    // a dressed surround reads by its face at range: its sides and soffits are fine joinery (EmitOptions.fineSides)
+    const sc = { decor: true, fineSides: true, ...(s.colour ? { colour: s.colour } : {}) };
+    faceBox(sink, s.bucket, face, u - w / 2 - sw / 2, y + h / 2, so / 2, sw, h, so, sc);
+    faceBox(sink, s.bucket, face, u + w / 2 + sw / 2, y + h / 2, so / 2, sw, h, so, sc);
+    if (style.head && facadeOn()) windowHead(sink, face, u, y + h, w + 2 * sw, style.head);
+    else faceBox(sink, s.bucket, face, u, y + h + lintel / 2, so / 2, w + 2 * sw, lintel, so, sc);
+  } else if (style.head && facadeOn()) {
+    windowHead(sink, face, u, y + h, w, style.head);
+  }
+  if (style.sill) {
+    // the sill runs through the reveal from the frame to its nose past the face
+    const so = style.sill.out, sw = w + (style.surround ? 2 * style.surround.width : 0) + 0.1;
+    faceBox(sink, style.sill.bucket, face, u, y - 0.045, (so - r) / 2, sw, 0.09, so + r,
+      { decor: true, fineSides: true, ...(style.sill.colour ? { colour: style.sill.colour } : {}) });
+    if (craft && sillShadowBucket) sillShadow(sink, sillShadowBucket, face, u, y - 0.09, sw, so);
+  }
+}
+
+/**
  * One window: pane, frame and bars, surround, sill, shutters. (u, y) is the bottom-centre of the clear opening. In a
  * wall the house grammar has cut the opening into (sink.recess > 0) the pane and frame stand at the back of the
  * reveal; the surround, the open shutters and the sill's nose stay on the face.
@@ -111,34 +148,7 @@ export function windowUnit(sink: PartSink, face: Face, u: number, y: number, w: 
     for (let k = 1; k < n; k++) faceBox(sink, 'structureMetal', face, u - w / 2 + F + (w - 2 * F) * k / n, y + h / 2, back + O / 2, 0.016, h - 2 * F, 0.016, iron, 'caps');
     if (h > 0.6) faceBox(sink, 'structureMetal', face, u, y + h * 0.5, back + O / 2 + 0.012, w - 2 * F, 0.03, 0.008, iron, 'ends');
   }
-  const carved = style.surround && style.carved && facadeOn() ? style.carved : null;
-  if (style.surround && carved) {
-    // the carved surround: jambs from the apron to the head board, the crest over it, the apron under the sill
-    const s = style.surround, sw = s.width, so = s.out, outer = w + 2 * sw;
-    const sc = { decor: true, fineSides: true, ...(s.colour ? { colour: s.colour } : {}) };
-    const foot = y - 0.09 - carved.apronDrop * 0.55, head = y + h;
-    faceBox(sink, s.bucket, face, u - w / 2 - sw / 2, (foot + head) / 2, so / 2, sw, head - foot, so, sc);
-    faceBox(sink, s.bucket, face, u + w / 2 + sw / 2, (foot + head) / 2, so / 2, sw, head - foot, so, sc);
-    nalichnikCrest(sink, face, u, head, outer, carved.crest);
-    nalichnikApron(sink, face, u, y - 0.09, outer, carved.apronDrop, carved.crest.colour, carved.crest.field);
-  } else if (style.surround) {
-    const s = style.surround, sw = s.width, so = s.out, lintel = s.lintel ?? sw;
-    // a dressed surround reads by its face at range: its sides and soffits are fine joinery (EmitOptions.fineSides)
-    const sc = { decor: true, fineSides: true, ...(s.colour ? { colour: s.colour } : {}) };
-    faceBox(sink, s.bucket, face, u - w / 2 - sw / 2, y + h / 2, so / 2, sw, h, so, sc);
-    faceBox(sink, s.bucket, face, u + w / 2 + sw / 2, y + h / 2, so / 2, sw, h, so, sc);
-    if (style.head && facadeOn()) windowHead(sink, face, u, y + h, w + 2 * sw, style.head);
-    else faceBox(sink, s.bucket, face, u, y + h + lintel / 2, so / 2, w + 2 * sw, lintel, so, sc);
-  } else if (style.head && facadeOn()) {
-    windowHead(sink, face, u, y + h, w, style.head);
-  }
-  if (style.sill) {
-    // the sill runs through the reveal from the frame to its nose past the face
-    const so = style.sill.out, sw = w + (style.surround ? 2 * style.surround.width : 0) + 0.1;
-    faceBox(sink, style.sill.bucket, face, u, y - 0.045, (so - r) / 2, sw, 0.09, so + r,
-      { decor: true, fineSides: true, ...(style.sill.colour ? { colour: style.sill.colour } : {}) });
-    if (craft && sillShadowBucket) sillShadow(sink, sillShadowBucket, face, u, y - 0.09, sw, so);
-  }
+  windowDressing(sink, face, u, y, w, h, style);
   if (style.shutters) {
     const sh = style.shutters, leaf = w / 2 + 0.03, sideOff = style.surround ? style.surround.width : 0;
     const closed = sh.closed ?? 0;

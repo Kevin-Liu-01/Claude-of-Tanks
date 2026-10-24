@@ -840,6 +840,64 @@ cadence-only rules probe upward and are pushed back periodically; a 21 ms main t
 - Not measured here: a live-governor run with an emulated 4050 and Medium's cost — this machine's GPU timer cannot
   drive or judge them. A quiet machine or the target laptop is the remaining certification step.
 
+## Near tree pools culled to the view (2026-10-07)
+
+A near tree pool (one InstancedMesh per species variant: trunk, cards and the shadow-only crown proxy) holds every
+near tree around the camera and is never frustum-culled, so every near tree drew its wood and cards and cast its
+shadow wherever the camera looked. The whole-PR census put the vegetation at +0.67 to +0.78 M scene triangles a view
+on Verdant against main. `src/world/vegetation.ts` now keeps each pool's slots in two runs, the trees the main
+camera's view can reach first, and the main camera draws only that run:
+
+- A tree is in the first run when its bounding sphere, or its shadow, meets the camera's frustum. The frustum is
+  widened by 4°, the spheres are padded by 4 m of movement and 2 m of sway, and the shadow is the sphere swept away
+  from the sun until its top lands (height / sin(elevation), 8 m of slope allowance, capped at twice the near reach).
+  A felled tree is always in the run.
+- The runs are re-sorted only when the camera turns or moves past those margins, its lens or the sun changes, a pool
+  is rebuilt, a tree is felled, righted or re-seated by a crater, or every 60 updates. A tree crosses between the runs
+  by a swap of two slots rewritten in place with ranged uploads (slot by slot below 24 swaps a pool, the span above).
+  The range objects are pooled, so a turning camera allocates nothing. The partition's add and remove keep the runs: a
+  tree joining in view enters the first run at once.
+- Every slot keeps its own tree's data whichever run it is in. Each pool mesh's `onBeforeRender` gives the culling
+  camera the run and any other camera (the minimap's capture, a warm render) the whole pool. A frame without a camera
+  (the battle warm, the Studio, the capture tools that call `world.update` with a position only) draws every near
+  tree. The shadow proxy draws the run in the cascades, so the r8 caster proxies compact from the same
+  light-extended set.
+- The adopted trees over the red line (`adoptOutlandTrees`, 2026-10-14) draw from their batch's own near pools; those
+  pools join the same cull. The near tier's caster profile (`updateNearTierShadowReach`) is still measured over every
+  near tree, culled or not, which is a superset of what the pools draw.
+- `world.update` and `vegetation.update` take the rendering camera as an optional fifth argument; the frame
+  presentation runtime and the shot frame pass it. The cull is opt-in (2026-10-23, below: `NEAR_VIEW_CULL_DEFAULT`
+  false): `?treeCull=1` turns it on for a page and `?treeCull=0` off, and `window.__TREE_DEBUG.noViewCull` false / true
+  does the same live; the frame-budget probe's `--toggle=tree-cull` flips the latter inside one page.
+  `src/world/treeViewCull.selftest.mjs` holds the slots exact, the runs conservative against the true frustum (the
+  sun low behind the camera included), the adopted batch culled at the line and the near partition unchanged.
+
+Still-camera A/B, measured on the 2026-10-08 trees branch before the port to the current tree (1600×900, the cull on,
+off and on again in one JS task, TAA, GTAO and the static shadow cache off, every cascade redrawn, the terrain stream
+settled; bots hidden):
+
+| map | pose | near trees drawn (on / off) | frame triangles on / off | draws on / off | px over 14 lum: on−off / on−on |
+|---|---|---|---|---|---|
+| Verdant | chase | 390 / 797 | 5.49 / 6.56 M | 584 / 584 | 0 / 0 |
+| Verdant | bird | 357 / 886 | 4.52 / 5.96 M | 415 / 444 | 0 / 0 (exact) |
+| Verdant | sun low behind the camera | 876 / 929 | 6.01 / 6.13 M | 426 / 427 | 192 / 410 |
+| Coastal | chase | 225 / 445 | 5.44 / 5.99 M | 555 / 555 | 427 / 617 |
+| Coastal | bird | 150 / 468 | 4.12 / 5.01 M | 401 / 413 | 0 / 0 (exact) |
+| Coastal | sun low behind the camera | 392 / 452 | 4.80 / 4.91 M | 359 / 359 | 339 / 698 |
+
+The on−off difference stays under the renderer's own on−on floor (clouds and particles); the diffs show nothing in
+the trees or their shadows. In the live frame (the same-page toggle, the static shadow cache on) the scene lost 17.6 %
+of its triangles at Verdant's chase and 23 % at its bird view, 11 % and 20 % on Coastal, with the main-thread time
+unchanged. The near radius held at 200 m: at the chase pose the cull saves what 130 m would (Verdant −17.2 % at 130 m,
+−17.6 % culled; Coastal −13.2 % and −11.3 %) with no visible change, and it draws no fewer pools there (each keeps a
+tree in view), so the census's +10 vegetation draws stay.
+
+Open: the frame-budget probe's later cycles on that branch read the cull arm 1.6 to 1.7 ms slower in GPU time on
+Verdant while it drew 0.68 M fewer scene triangles. `?treeCullOrder=stable` (each pool's trees in their uncull'd
+order, the run first) and `?treeCullOrder=sorted` (the run front to back from the camera) are the diagnostic arms for
+whether the swaps' instance order costs the GPU; the default is the swaps. Re-measure GPU time on the current tree
+before relying on the triangle saving: until the `tree-cull` toggle's A/B says the GPU gains, the cull ships off.
+
 ## Asset and geometry policy
 
 Playable tanks are assembled from first-party code and cached/generated

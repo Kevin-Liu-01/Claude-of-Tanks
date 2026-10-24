@@ -9,6 +9,7 @@
 // The fleet receipt (anatomyData.selftest.mjs) ray-checks the drawn armor against traceTank for every vehicle.
 import type { AnatomySystem, CrewRole } from './anatomyPalette.ts';
 import { crewRole, moduleSystem } from './anatomyPalette.ts';
+import { armorSkinPanels, skinOutlineSegments } from '../game/armorSkin.ts';
 
 type Vec3 = readonly [number, number, number];
 
@@ -104,6 +105,11 @@ export interface ArmorSurface {
   positions: number[];
   /** Weapon-stock index for `source: 'weapon'`. */
   weapon?: number;
+  /**
+   * Shell surfaces: the skin's outline on this plate as line segments (6 numbers each), plate borders and creases
+   * only. Other surfaces draw their seams from their own triangles.
+   */
+  seams?: number[];
 }
 
 function plateLayer(plate: AnatomyPlate, source: ArmorSurface['source']): ArmorLayer {
@@ -248,19 +254,28 @@ export function cellPolytope(cell: AnatomyCellPlanes): { polygons: Array<{ face:
   return { polygons: drawn, unbounded: polygons.length - drawn.length };
 }
 
+/**
+ * A frame's collision shell as drawn: its outer skin (armorSkin.ts), the surface a shell strikes first. Drawing every
+ * cell polytope put the slices' shared faces on the seams (coplanar with their neighbours, so they flickered between
+ * plates) and the structure cells' walls inside the turret (243).
+ */
+/** Shell panels of one plate meeting at less than this read as one surface in the seam lines (the old 24° crease). */
+const SHELL_SEAM_SOFT_COS = Math.cos((24 * Math.PI) / 180);
+
 function shellSurfaces(cells: readonly AnatomyCell[] | undefined, frame: 'hull' | 'turret', out: ArmorSurface[]): void {
-  const byPlate = new Map<AnatomyPlate, number[]>();
-  for (const cell of cells || []) {
-    for (const polygon of cellPolytope(cell as AnatomyCellPlanes).polygons) {
-      const plate = polygon.face.plate;
-      if (!plate) continue;
-      let positions = byPlate.get(plate);
-      if (!positions) { positions = []; byPlate.set(plate, positions); }
-      fanPolygon(polygon.points, positions);
-    }
-  }
-  for (const [plate, positions] of byPlate) {
-    if (positions.length) out.push({ plate, frame, source: 'shell', layer: plateLayer(plate, 'shell'), positions });
+  const byPlate = new Map<AnatomyPlate, { positions: number[]; seams: number[] }>();
+  const panels = armorSkinPanels(cells as Parameters<typeof armorSkinPanels>[0]);
+  const outlines = skinOutlineSegments(panels, SHELL_SEAM_SOFT_COS);
+  panels.forEach((panel, index) => {
+    const plate = panel.plate as AnatomyPlate | undefined;
+    if (!plate) return;
+    let entry = byPlate.get(plate);
+    if (!entry) { entry = { positions: [], seams: [] }; byPlate.set(plate, entry); }
+    for (const piece of panel.pieces) fanPolygon(piece, entry.positions);
+    entry.seams.push(...outlines[index]);
+  });
+  for (const [plate, { positions, seams }] of byPlate) {
+    if (positions.length) out.push({ plate, frame, source: 'shell', layer: plateLayer(plate, 'shell'), positions, seams });
   }
 }
 

@@ -23,6 +23,8 @@ interface CombatAimCompositionOptions {
   worldRaycast: CombatRaycast;
   getShellCards(): ShellCard[];
   getIsometricView?(): boolean;
+  /** (perf-245) a spectate handover's destination, warmed on the way (engine/cameraDestinationWarm.ts). */
+  prepareDestination?: CameraRigDeps['prepareDestination'];
 }
 
 interface CombatAimComposition {
@@ -45,6 +47,7 @@ export function createCombatAimComposition({
   worldRaycast,
   getShellCards,
   getIsometricView,
+  prepareDestination,
 }: CombatAimCompositionOptions): CombatAimComposition {
   let rig!: CameraRig;
   const targetVisible: AimControllerDependencies['targetVisible'] = (target) => {
@@ -74,6 +77,7 @@ export function createCombatAimComposition({
     aimRaycast: battleClient.aimController.raycast,
     getPlayer: activeCameraPlayer,
     getIsometricView,
+    prepareDestination,
   });
 
   return { battleClient, rig, targetVisible };

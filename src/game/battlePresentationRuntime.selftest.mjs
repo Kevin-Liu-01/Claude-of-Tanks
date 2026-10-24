@@ -345,15 +345,20 @@ console.log('battlePresentationRuntime.selftest: interpolation, visibility, deta
  game.matchModeState.perspectiveTeam='bravo';runtime.update(.016,1);
  assert.equal(shader.uniforms.energyColor.value.getHex(),0x6fe887,'color matches the flag marker for the local viewer');
  flag.carrierId=null;flag.status='dropped';runtime.update(.016,1);
- assert.ok(mesh.material === material,'dropping the flag removes its aura');
+ // (mode-sheen-perf-243) a mode that lights tanks keeps the skin on every tank: a drop, a conversion or a kill writes uniforms
+ const skin=mesh.material;
+ assert.ok(skin !== material&&skin.name===material.name,'dropping the flag puts its aura to sleep: the same skin, its paint\'s name');
+ assert.equal(shader.uniforms.juggernautStrength.value,0,'at zero strength (exactly its paint)');
  game.matchModeState={id:'infected',factions:[{id:entity.id,team:'alpha'}]};runtime.update(.016,1);
- assert.ok(mesh.material === material,'survivors do not glow');
+ assert.ok(mesh.material === skin&&shader.uniforms.juggernautStrength.value===0,'survivors do not glow (their dormant skin)');
  game.matchModeState.factions[0].team='bravo';runtime.update(.016,1);
  mesh.material.onBeforeCompile(shader,{});
  assert.equal(shader.uniforms.energyColor.value.getHex(),0x80ef35);
  assert.equal(shader.uniforms.energyPattern.value,2,'infection uses uneven vein pulses');
  assert.equal(root.scale.x,1);
- entity.combat.destroyed=true;runtime.update(.016,1);assert.ok(mesh.material === material,'dead infected stops glowing');
+ assert.ok(mesh.material === skin&&shader.uniforms.juggernautStrength.value>0,'the conversion lights the skin the survivor wore');
+ entity.combat.destroyed=true;runtime.update(.016,1);
+ assert.ok(mesh.material === skin&&shader.uniforms.juggernautStrength.value===0,'dead infected stops glowing, its skin kept');
  mesh.geometry.dispose();material.dispose();
 }
 
@@ -363,12 +368,12 @@ console.log('battlePresentationRuntime.selftest: interpolation, visibility, deta
  entity.combat.hp=100;entity.combat.maxHp=100;
  const {runtime,game,effects}=createHarness({tanks:[entity],phase:'garage',network:true});
  game.matchModeState={id:'infected',factions:[{id:entity.id,team:'bravo'}]};
- runtime.prepareModeVisuals();
+ assert.deepEqual(runtime.prepareModeVisuals(),[root],'the warm is handed the root whose skin is new (to compile)');
  assert.equal(mesh.material.name,'Infected surface highlight','network entry attaches mode shaders before activation/compile');
  assert.equal(game.phase,'garage','warm never activates gameplay');
  assert.equal(syncs.length,0,'warm never advances poses');
  assert.equal(effects.dust.length,0,'warm never emits driving effects');
- runtime.prepareModeVisuals();
+ assert.deepEqual(runtime.prepareModeVisuals(),[],'and never again');
  assert.equal(mesh.material.name,'Infected surface highlight');
  game.phase='ended';runtime.update(0);mesh.geometry.dispose();material.dispose();
 }

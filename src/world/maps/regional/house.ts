@@ -140,6 +140,12 @@ export interface HouseSpec {
    */
   reveal?: number;
   /**
+   * a burnt opening's soot on the wall over it: absent, one band its width and a little more, darkest at the head;
+   * 'tongue' (2026-10-24, the Breton bourg's blind: the band read as "a soft dark rectangular smudge"), a dark core in a
+   * fainter, wider and taller halo, as dark over the head
+   */
+  soot?: 'tongue';
+  /**
    * the core under a rendered wall when the kit's default is not this house's (damage.ts renderCore: a block house in a
    * mud-brick village, a stone house rendered over): what a breach shows and how the house falls (props census E8)
    */
@@ -195,6 +201,11 @@ export interface HouseDialect {
   window(sink: PartSink, face: Face, o: Opening, y0: number, frame: HouseFrame): void;
   /** a door unit with its threshold and steps (y0 is the floor of the storey) */
   door(sink: PartSink, face: Face, o: Opening, y0: number, frame: HouseFrame): void;
+  /**
+   * a damaged opening's surviving dressing (Opening.state), laid before the damage itself: a masonry kit's surround and
+   * sill outlast the fire that guts the frame. Absent, the damage alone.
+   */
+  damaged?(sink: PartSink, face: Face, o: Opening, y0: number, frame: HouseFrame): void;
   /** a framed storey wall: the members around its openings */
   dressWall?(sink: PartSink, face: Face, rect: WallRect, openings: Opening[], frame: HouseFrame): void;
   /** a framed gable: the members inside the gable polygon (u, y pairs on the face) */
@@ -1145,7 +1156,11 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
       own.forEach((o, k) => {
         const h = holes[k];
         if (o.kind === 'window' && o.state !== 'burnt') stains.push({ u0: h.u0 + 0.06, u1: h.u1 - 0.06, y0: h.y0 - 1.1, y1: h.y0, bottom: 1, top: 0.82 });
-        if (o.state === 'burnt') stains.push({ u0: h.u0 - 0.3, u1: h.u1 + 0.3, y0: h.y1, y1: h.y1 + 1.7, bottom: 0.32, top: 1 });
+        if (o.state === 'burnt' && spec.soot === 'tongue') {
+          // (HouseSpec.soot) a dark core over the head in a fainter halo, wider and taller: as dark as the band over the head
+          stains.push({ u0: h.u0 - 0.35, u1: h.u1 + 0.35, y0: h.y1, y1: h.y1 + 1.6, bottom: 0.72, top: 1 });
+          stains.push({ u0: h.u0 - 0.06, u1: h.u1 + 0.06, y0: h.y1, y1: h.y1 + 1.1, bottom: 0.45, top: 1 });
+        } else if (o.state === 'burnt') stains.push({ u0: h.u0 - 0.3, u1: h.u1 + 0.3, y0: h.y1, y1: h.y1 + 1.7, bottom: 0.32, top: 1 });
       });
       // the shell breaches: each cut as its bounding square, the masonry restored round its ragged outline below
       const brs = (spec.breaches ?? []).filter((br) => br.face === name && br.storey === i);
@@ -1227,7 +1242,7 @@ export function buildHouse(sink: PartSink, spec: HouseSpec, dialect: HouseDialec
         withSillShadow(!storey.framed && SILL_SHADOWED.has(storey.wall) ? storey.wall : null, () => {
           for (const o of own) {
             const into = scratch && inAbutted(abut, o) ? scratch : sink;
-            if (o.state) damagedOpening(into, face, o, bodies[i].y0, reveal);
+            if (o.state) { dialect.damaged?.(into, face, o, bodies[i].y0, frame); damagedOpening(into, face, o, bodies[i].y0, reveal); }
             else if (o.kind === 'door' || o.kind === 'gate' || o.kind === 'shopfront') dialect.door(into, face, o, bodies[i].y0, frame);
             else dialect.window(into, face, o, bodies[i].y0, frame);
           }

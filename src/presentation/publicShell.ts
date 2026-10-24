@@ -12,17 +12,19 @@
  *   <!--cot:nav-->…<!--/cot:nav-->          skip link, bar (mark, wordmark, pages, language, source, Play), menu sheet
  *   <!--cot:footer-->…<!--/cot:footer-->    (optional) mark, pages, language, source with its star count, credit line
  *
- * Dependency-free apart from the sprite index: the tool and the receipts pass the catalog text in.
+ * Dependency-free apart from the sprite index and the wordmark master: the tool and the receipts pass the catalog text in.
  */
+import { BRAND_WORDMARK_HTML } from '../ui/brandMark.ts';
 import { ACTIVE_MASTERS, SMALL_MASTERS } from '../ui/icons/spriteIndex.ts';
+import { brandMarkSVG } from '../ui/brandMark.ts';
 
 export type PublicPageKey = 'home' | 'gallery' | 'docs' | 'studio' | 'media';
 
 export interface PublicShellPage {
   /** The page's route without a locale prefix (`/home`, `/docs/ai`). */
   readonly path: string;
-  /** The destination this page belongs to (aria-current). */
-  readonly page: PublicPageKey;
+  /** The destination this page belongs to (aria-current); none for the missing page. */
+  readonly page: PublicPageKey | null;
 }
 
 /** English copy for a catalog key (the tool reads src/ui/i18nCatalog.en-US.json). */
@@ -58,15 +60,14 @@ export function flagMarkup(code: string, className = 'cot-flag'): string {
   return `<svg class="${className}" viewBox="0 0 640 480" width="22" height="16" aria-hidden="true" focusable="false"><use href="#f-${code}"/></svg>`;
 }
 
-/** The Bracket Chevron mark (BUI-01; public/brand/mark.svg): registration corners in ink, the chevron in the accent. */
+/** The commander mark (src/ui/brandMark.ts; public/brand/mark.svg), `size` px tall: the tank in ink, the commander in the accent. */
 export function markMarkup(size = 28): string {
-  return `<svg class="cot-mark" viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true" focusable="false">`
-    + '<path d="M2 8V2h6M16 2h6v6M22 16v6h-6M8 22H2v-6" fill="none" stroke="currentColor" stroke-width="2"/>'
-    + '<path d="M6.5 16.5 12 8.2l5.5 8.3" fill="none" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="miter" style="stroke:var(--accent)"/></svg>';
+  return brandMarkSVG(size);
 }
 
-/** The wordmark, set as text in Chakra Petch: CLAUDE —OF— TANKS. Latin in every locale. */
-export const WORDMARK = '<span class="cot-wordmark" lang="en">Claude <span class="cot-wordmark__of">of</span> Tanks</span>';
+/** The wordmark, CLAUDE —of— TANKS, as the outlined master (src/ui/brandMark.ts; SPEC 3.1: never live text). Its
+ * link names the game, so the drawing is decorative. */
+export const WORDMARK = `<span class="cot-wordmark">${BRAND_WORDMARK_HTML}</span>`;
 
 const localeHref = (path: string, chinese: boolean): string => (chinese ? (path === '/' ? '/cn/' : `/cn${path}`) : path);
 
@@ -76,7 +77,7 @@ function languageLinks(path: string, text: ShellText, className: string): string
     + `<a href="${localeHref(path, true)}" hreflang="zh-CN" lang="zh-CN" aria-label="${escapeHtml(text('publicNav.language.switchToChinese'))}" data-i18n-aria-label="publicNav.language.switchToChinese">中文</a></span>`;
 }
 
-function pageLinks(current: PublicPageKey, text: ShellText): string {
+function pageLinks(current: PublicPageKey | null, text: ShellText): string {
   return PUBLIC_DESTINATIONS.map((d) => `<a href="${d.href}"${d.page === current ? ' aria-current="page"' : ''}>`
     + `${iconMarkup(d.icon, 18, 'public-nav__icon')}<span data-i18n="${d.key}">${escapeHtml(text(d.key))}</span></a>`).join('');
 }
@@ -146,9 +147,11 @@ export function symbolBlock(html: string, sprite: string, flagSvg: (code: string
 
 const MARKER = (name: string): RegExp => new RegExp(`<!--cot:${name}-->[\\s\\S]*?<!--/cot:${name}-->`);
 
-/** The shell's route of a document: its canonical path (the docs topic template names /docs). */
+/** The shell's route of a document: its canonical path (the docs topic template names /docs). The missing page has no
+ * canonical and belongs to no destination: its language links name /404, which publicNav.ts points at the address. */
 export function shellPageOf(html: string): PublicShellPage {
-  const canonical = /<link rel="canonical" href="https:\/\/[^/"]+(\/[^"]*)"/.exec(html)?.[1] ?? '/home';
+  const canonical = /<link rel="canonical" href="https:\/\/[^/"]+(\/[^"]*)"/.exec(html)?.[1];
+  if (!canonical) return { path: '/404', page: null };
   const path = canonical.replace(/\/$/, '') || '/';
   const page: PublicPageKey = path.startsWith('/gallery') ? 'gallery'
     : path.startsWith('/docs/filming') ? 'media'

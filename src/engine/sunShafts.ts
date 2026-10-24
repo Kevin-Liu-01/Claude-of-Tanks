@@ -198,6 +198,13 @@ export class SunShaftsPass extends Pass {
   mapStrength = 0;
   /** Effect lever (postLightFxPolicy); the pass still clears the light target when off but enabled. */
   active = false;
+  /**
+   * The post warm's switch (2026-10-24, perf-245; postLazyPasses.ts warmGated): the mask and blur draw with no colour, the
+   * sun anywhere, so their pipelines are made under the loading cover, not at the first frame the sun comes into view
+   * (a camera turned or thrown toward it). The light target is left cleared, as a sunless frame leaves it.
+   */
+  private warming = false;
+  warmGated(on: boolean): void { this.warming = on; }
   readonly color = new THREE.Color(1, 1, 1);
 
   constructor(
@@ -264,7 +271,7 @@ export class SunShaftsPass extends Pass {
     const oldAutoClear = renderer.autoClear;
     renderer.autoClear = false;
     try {
-      if (!(this.strength > 0.003)) {
+      if (!(this.strength > 0.003) && !this.warming) {
         renderer.setRenderTarget(this.output);
         renderer.setClearColor(0x000000, 0);
         renderer.clear(true, false, false);
@@ -284,7 +291,7 @@ export class SunShaftsPass extends Pass {
       const bu = this.blurMaterial.uniforms;
       bu.uSun.value.copy(this.sun.uv);
       bu.tMask.value = this.mask.texture;
-      const k = SUN_SHAFT_GAIN * this.strength;
+      const k = this.warming ? 0 : SUN_SHAFT_GAIN * this.strength;
       bu.uColor.value.set(this.color.r * k, this.color.g * k, this.color.b * k);
       this.quad.material = this.blurMaterial;
       const last = SUN_SHAFT_SPANS.length - 1;
@@ -296,6 +303,11 @@ export class SunShaftsPass extends Pass {
         renderer.setRenderTarget(i === last ? this.output : this.ping);
         this.quad.render(renderer);
         source = this.ping;
+      }
+      if (this.warming) {
+        renderer.setRenderTarget(this.output);
+        renderer.setClearColor(0x000000, 0);
+        renderer.clear(true, false, false);
       }
     } finally {
       renderer.autoClear = oldAutoClear;
