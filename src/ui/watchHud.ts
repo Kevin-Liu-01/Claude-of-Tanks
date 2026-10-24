@@ -7,7 +7,8 @@
  * on a keyboard and hide on touch, where a climb rail joins the virtual stick and drag look. The battle HUD's own tank
  * furniture follows the view through `html[data-watch]` (flying: off, the HUD's spectator rule; riding: shown, inert).
  */
-import { flag, keycap, silhouette } from './components/components.ts';
+import { flagIconUrl } from './flags.ts';
+import { iconUrl } from './icons.ts';
 import { icon } from './icons/icon.ts';
 import { t } from './i18n.ts';
 import { ensureStyle } from './styleLayers.ts';
@@ -43,8 +44,8 @@ export interface WatchHud {
   dispose(): void;
 }
 
-// The kit's key cap, flag and silhouette, scoped to the bar: components.css itself rides the kit's boot chunk (any import
-// of it, static or dynamic, links it in the game's first paint), and the game page does not load it.
+// The kit's key cap, flag and silhouette (components.ts / components.css), drawn here: importing the kit from this lazy
+// chunk split it off its shared boot chunk into a request of its own on the game's first paint.
 const KIT = `
 .cot-watch .cot-c-kbd{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;
  padding:0 6px;border:0;border-radius:var(--control-radius);box-shadow:var(--ring-3);font:500 var(--fs-11)/1 var(--font-data);
@@ -102,6 +103,12 @@ html[data-watch=ride] .cot-hud :is(.cot-shells,.cot-special,.cot-cons,.cot-vehic
 `;
 
 /** `host` is read when the bar first shows (the battle HUD's root, which loads beside the watch chunk). */
+const keycap = (key: string): string => `<kbd class="cot-c-kbd" aria-hidden="true">${key}</kbd>`;
+const flag = (nation: string): string =>
+  `<img class="cot-c-flag" src="${flagIconUrl(nation)}" alt="" aria-hidden="true" draggable="false">`;
+const silhouette = (id: string): string =>
+  `<span class="cot-c-sil cot-c-sil--right" aria-hidden="true" style="--sil:url(${iconUrl(id, 'side_silhouette')})"></span>`;
+
 export function createWatchHud(host: () => HTMLElement | null, actions: WatchHudActions): WatchHud {
   ensureStyle('cot-watch-style', KIT + STYLE, 'surfaces');
   const bar = document.createElement('div');
@@ -195,8 +202,8 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
       if (tank) {
         const specId = tank.spec?.id ?? tank.specId ?? '';
         who.dataset.side = tank.team === 'enemy' ? 'enemy' : 'own';
-        lead.innerHTML = tank.spec?.nation ? flag(tank.spec.nation, 'sm') : '';
-        mark.innerHTML = specId && tank.aerial?.kind !== 'gunship' ? silhouette(specId, 'right') : '';
+        lead.innerHTML = tank.spec?.nation ? flag(tank.spec.nation) : '';
+        mark.innerHTML = /^[a-z0-9_]+$/.test(specId) && tank.aerial?.kind !== 'gunship' ? silhouette(specId) : '';
         name.textContent = vehicleName(tank);
       } else {
         delete who.dataset.side;
