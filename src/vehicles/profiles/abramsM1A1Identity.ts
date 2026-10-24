@@ -255,6 +255,10 @@ function addLoaderThermalSight(P: AbramsIdentityPort): void {
   for (const [geometry, material] of parts) {
     const mesh = new THREE.Mesh(geometry, material);
     mesh.castShadow = true;
+    // part of the mounted gun: equipment for the hitbox and selectable for surface review, as the M240's own meshes
+    // (kit.ts fittings); bare, they failed the fleet's machine-gun attachment audit
+    mesh.userData.combatHitboxRole = 'equipment';
+    mesh.userData.surfaceMarkupSelectable = true;
     sight.add(mesh);
     P.disposables.push(geometry);
   }
