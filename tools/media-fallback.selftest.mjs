@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
-  ROOT, bytesOf, existsPublic, imageSize, isStill, pageMedia, publicPages, topicData, topicPageMedia, topicSlug,
+  ROOT, bytesOf, existsPublic, imageSize, isStill, pageMedia, pageShell, publicPages, topicData, topicPageMedia, topicSlug,
 } from './media-page-scan.mjs';
 import { stillRungs } from '../src/presentation/responsivePicture.ts';
 
@@ -74,6 +74,11 @@ const KNOWN_GAPS = Object.freeze([
     match: /^\/media\/site50-r14\/loops\/(s04-column-under-fire|s20-road-return-fire|s21-fields-assault|s23-village-crossroads|s24-ice-duel|s33-water-tower|s34-furnace-salvo|s39-lakeside-village)\.webm$/,
     task: 'media: the topic headers\' 960 VP9 and phone H.264 rungs (SHOWCASE §4.7, the GO re-film)',
   },
+  {
+    // the landing's fleet tiles play the fleet takes over their poster <img> (tools/home-premiere.mjs)
+    match: /^\/media\/site50-r14\/fleet\/[\w-]+\.webm$/,
+    task: 'media: the fleet takes\' H.264 rung (fleet/index.json loopMp4; the landing\'s fleet tiles keep their poster)',
+  },
 ]);
 const gapFor = (ladder) => KNOWN_GAPS.find((gap) => ladder.some((entry) => gap.match.test(entry.src)));
 const usedGaps = new Set();
@@ -95,7 +100,7 @@ const check = (where, ladder) => {
 
 const stillsNamed = new Set();
 for (const page of publicPages()) {
-  const records = pageMedia(readFileSync(join(ROOT, page), 'utf8'));
+  const records = pageMedia(pageShell(readFileSync(join(ROOT, page), 'utf8')));
   for (const record of records) {
     if (record.tag === 'video') check(`${page} <video> #${record.element}`, record.videos);
     for (const still of record.stills) stillsNamed.add(still);

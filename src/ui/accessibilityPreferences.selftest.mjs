@@ -135,8 +135,8 @@ near(hudFitFor(1366, 768), 0.85, 'a laptop stops at 0.85');
 near(hudFitFor(390, 844), 0.85, 'a portrait phone reads its short side and stops at 0.85');
 near(hudFitFor(844, 390), 0.85, 'and a landscape one');
 near(hudFitFor(NaN, 0), 1, 'no reading is 1');
-assert.match(read('src/ui/responsiveLayout.ts'), /setVar\('--cot-ui-scale', next\.scale\.toFixed\(4\)\);/,
-  'responsiveLayout writes the ui scale the type tokens read');
+assert.match(read('src/ui/responsiveLayout.ts'), /'--cot-ui-scale': next\.scale\.toFixed\(4\),/,
+  'responsiveLayout writes the ui scale the type tokens read (the seed and the live layout share viewportLayoutAttributes)');
 {
   const root = fakeRoot();
   applyAccessibility(normalizeAccessibility({ textScale: 1.5, hudScale: 1.25 }), root);
@@ -155,6 +155,12 @@ const parseDecls = (text) => new Map(text.split(';').map((s) => s.trim()).filter
 }));
 const body = tokensCss.replace(/\/\*[\s\S]*?\*\//g, '');
 const defaults = parseDecls(/^:root\{([^}]*)\}/m.exec(body)[1]);
+// The surface tokens (245's split: tools/gen-tokens.mjs writes the tokens one page reads to src/ui/tokens/surface-*.css,
+// which that page's own sheet imports after tokens.css) join the defaults: on their page the cascade reads both sheets.
+for (const surface of ['surface-home', 'surface-docs']) {
+  const sheet = read(`src/ui/tokens/${surface}.css`).replace(/\/\*[\s\S]*?\*\//g, '');
+  for (const [k, v] of parseDecls(/:root\{([^}]*)\}/.exec(sheet)[1])) if (!defaults.has(k)) defaults.set(k, v);
+}
 const presetBlocks = [...body.matchAll(/:root\[data-([a-z]+)=([a-z]+)\]\{([^}]*)\}/g)].map(([, axis, preset, decls]) => ({ axis, preset, decls: parseDecls(decls) }));
 const media = /@media \(prefers-reduced-motion:reduce\)\{\s*:root:not\(\[data-motion\]\)\{([^}]*)\}/.exec(body);
 assert.ok(media, 'the OS reduce-motion copy yields to data-motion');

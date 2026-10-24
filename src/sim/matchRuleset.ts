@@ -652,7 +652,7 @@ interface InfectionBotRules {
  * plays under and how often a boost cache drops. Stored per player on the mars arrangement
  * (game/teamArrangement.ts readMarsSettings) and carried by rooms through the lobby arrangement.
  */
-const MARS_GRAVITY_OPTIONS = Object.freeze({
+export const MARS_GRAVITY_OPTIONS = Object.freeze({
   // round 30 (owner 2026-09-20): the jump is a rocket boost — about 1.45x the 2026-09-18 launches
   mars: Object.freeze({ gravityScale: 0.38, jumpMps: 9.5, recoilLaunchScale: 3 }),
   moon: Object.freeze({ gravityScale: 0.17, jumpMps: 12.5, recoilLaunchScale: 4.5 }),
@@ -1524,6 +1524,15 @@ export function endingHoldExpired(
  */
 export function rulesetVerdictSide(ruleset: Pick<MatchRuleset, 'infection'>, current: 'alpha' | 'bravo'): 'alpha' | 'bravo' {
   return ruleset.infection ? 'alpha' : current;
+}
+
+/**
+ * The modes whose roles light a tank's own surfaces (the Juggernaut, a flag carrier, the infected: game/juggernautVisual.ts).
+ * Any tank of their battles can take a role, so every one wears its energy skin from its staging, dormant until a role
+ * lights it (mode-sheen-perf-243: the skin's programs compile behind the cover, never on the frame a tank first glows).
+ */
+export function modeLightsTanks(mode: string | null | undefined): boolean {
+  return mode === 'juggernaut' || mode === 'capture_the_flag' || mode === 'infected';
 }
 
 /** The wave modes: their enemy side is a pool drawn per wave (Horde) or per sector (Frontline). */

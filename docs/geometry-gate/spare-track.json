@@ -482,7 +482,7 @@
    "hostSweep": []
   },
   "c2_ariete_proto": {
-   "inputHash": "912b27ff92a83b58",
+   "inputHash": "d1a76cfb2287edd9",
    "runs": [
     {
      "index": 0,
@@ -542,7 +542,7 @@
    "hostSweep": []
   },
   "centurion3": {
-   "inputHash": "90ba94762be71a7a",
+   "inputHash": "07a392fedd56f818",
    "runs": [
     {
      "index": 0,
@@ -615,7 +615,7 @@
    "hostSweep": []
   },
   "centurion5_2": {
-   "inputHash": "2dd8769a2d719d35",
+   "inputHash": "7beca2d63ee99dd2",
    "runs": [
     {
      "index": 0,
@@ -688,37 +688,37 @@
    "hostSweep": []
   },
   "challenger1_mk2": {
-   "inputHash": "c78af9a91079cf77",
+   "inputHash": "0c4f96c0c9fe84ee",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger1_mk3": {
-   "inputHash": "674e192a84bca65c",
+   "inputHash": "e453871e622d29e2",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger2": {
-   "inputHash": "b175d5be7f3594f1",
+   "inputHash": "9ebb027a05c21c8c",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger2e": {
-   "inputHash": "797b93fc14b1af08",
+   "inputHash": "7d6a81e9cfc64365",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger3": {
-   "inputHash": "0cf665f2fd0d119d",
+   "inputHash": "472f255e741dd190",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger3_proto": {
-   "inputHash": "ee4ba214b61148c7",
+   "inputHash": "62be9434102f34f6",
    "runs": [
     {
      "index": 0,
@@ -726,27 +726,22 @@
      "source": "decor",
      "frame": "turret",
      "registered": false,
-     "classes": [
-      "HANGING"
+     "classes": [],
+     "primary": "OK",
+     "why": {},
+     "notes": [
+      "clips <= 5 cm cosmetic"
      ],
-     "primary": "HANGING",
-     "why": {
-      "HANGING": [
-       "86% over air",
-       "only 12% supported"
-      ]
-     },
-     "notes": [],
      "measures": {
-      "support": 0.12,
-      "gap": 0.015,
-      "air": 0.864,
-      "hidden": 0,
-      "sunkMaxM": 0.009,
+      "support": 0.995,
+      "gap": 0.005,
+      "air": 0,
+      "hidden": 0.063,
+      "sunkMaxM": 0.041,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.966,
-      "host": "turretDetail<buildChallenger3TurretStage1@profiles/challenger.ts:4923>"
+      "exposure": 0.854,
+      "host": "turret<c3ShellSegment@profiles/challenger.ts:4804>"
      }
     }
    ],
@@ -754,25 +749,25 @@
    "hostSweep": []
   },
   "chieftain3": {
-   "inputHash": "05109bb25484cecf",
+   "inputHash": "2510854e8cdad8b3",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "chieftain5": {
-   "inputHash": "d9cc1611b8cfe4a6",
+   "inputHash": "473ced807b9f1c18",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "chieftain_mk10": {
-   "inputHash": "1072ab00d2a46ba7",
+   "inputHash": "4aa3a0b43e61b97b",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "chieftain_mk9": {
-   "inputHash": "79301e650b1dc0b8",
+   "inputHash": "c2fcf4f3d6e1d93d",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -784,25 +779,25 @@
    "hostSweep": []
   },
   "cv90105_tml": {
-   "inputHash": "d9128515dc6b73ad",
+   "inputHash": "84a8844ca32e3e9c",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "cv9040c": {
-   "inputHash": "30abac4008044547",
+   "inputHash": "89778f585575f8a7",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "cv90_mk4": {
-   "inputHash": "c0c8049242a5d00a",
+   "inputHash": "a56e0abf95ebd0ae",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "cv90_mk4_concept": {
-   "inputHash": "659e6b50d0ad9ea0",
+   "inputHash": "f95890653cb04353",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -814,7 +809,7 @@
    "hostSweep": []
   },
   "fv4034": {
-   "inputHash": "38e2c08d48c00f5a",
+   "inputHash": "c10f4f14e8f73f3f",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -851,7 +846,7 @@
    "hostSweep": []
   },
   "fv510_milan": {
-   "inputHash": "65ab62fe8715c388",
+   "inputHash": "3fc7397bcc719d62",
    "runs": [
     {
      "index": 0,
@@ -2299,7 +2294,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<merkavaChassisHullCourse25@profiles/merkava.ts:3447>"
+      "host": "hull<merkavaChassisHullCourse25@profiles/merkava.ts:3448>"
      }
     }
    ],
@@ -3447,7 +3442,7 @@
    "hostSweep": []
   },
   "t90am": {
-   "inputHash": "aa625501a029aabe",
+   "inputHash": "ac259813e417dcfe",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3459,7 +3454,7 @@
    "hostSweep": []
   },
   "t90m_proryv": {
-   "inputHash": "cd06301fc2edbaea",
+   "inputHash": "3d9f855abe029aa4",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

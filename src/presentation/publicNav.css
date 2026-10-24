@@ -5,7 +5,8 @@
    menu sheet, the footer and the shared button, mark, wordmark, flag and symbol components. Tokens only
    (src/ui/tokens/tokens.css, imported above, so every page that links this sheet has them). */
 @layer components{
-:root{--shell-gutter:clamp(16px,3.4vw,44px);--shell-max:1600px;--shell-nav-h:64px;--shell-wordmark-of:.52em}
+:root{--shell-gutter:clamp(16px,3.4vw,44px);--shell-max:1600px;--shell-nav-h:64px}
+html,body{min-height:var(--cot-viewport-height,100dvh)}
 .cot-symbols{position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
 .cot-i{flex:none}
 .cot-si{fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:square;stroke-linejoin:miter}
@@ -14,10 +15,9 @@
 .cot-mark{flex:none;color:var(--ink-1)}
 .cot-flag{flex:none;width:22px;height:16.5px;border-radius:var(--r1);outline:1px solid var(--line-2);outline-offset:-1px}
 
-/* the wordmark: CLAUDE —OF— TANKS in Chakra Petch Bold, the "of" in the accent between two rules */
-.cot-wordmark{display:inline-flex;align-items:center;gap:.36em;font:700 var(--fs-16)/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;white-space:nowrap;color:var(--ink-1)}
-.cot-wordmark__of{display:inline-flex;align-items:center;gap:.26em;font-size:var(--shell-wordmark-of);font-weight:500;letter-spacing:var(--track-label);color:var(--accent)}
-.cot-wordmark__of::before,.cot-wordmark__of::after{content:'';width:1em;height:1.5px;background:currentColor}
+/* the wordmark: the outlined master (src/ui/brandMark.ts), the words in the ink, the "of" in the accent; sized by height */
+.cot-wordmark{display:inline-flex;align-items:center;color:var(--ink-1)}
+.cot-wordmark .wm{display:block;width:auto;height:var(--wordmark-h,11px)}
 
 /* buttons: one component for every public page (Title Case in the copy, caps in the display face) */
 .cot-btn{--btn-h:var(--btn-h-m);display:inline-flex;align-items:center;justify-content:center;gap:10px;height:var(--btn-h);padding:0 22px;border:1px solid transparent;border-radius:var(--control-radius);
@@ -47,8 +47,6 @@
   -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
 .public-nav__inner{display:flex;align-items:center;gap:var(--s5);width:min(calc(100% - var(--shell-gutter) * 2),var(--shell-max));height:100%;margin-inline:auto}
 .public-nav__brand{display:inline-flex;align-items:center;gap:var(--s3);color:var(--ink-1);text-decoration:none}
-/* the Latin wordmark keeps its tracking inside a Chinese page (its lang="en" span, past the zh-CN reset) */
-.public-footer__brand [lang=en],.public-nav__brand [lang=en]{letter-spacing:var(--track-label-s)}
 .public-nav__links{position:relative;display:flex;align-items:center;gap:var(--s6);margin-left:var(--s5)}
 .public-nav__links a,.public-nav__menu-links a{position:relative;display:inline-flex;align-items:center;gap:var(--s2);height:40px;font:500 var(--fs-14)/1 var(--font-ui);color:var(--ink-2);text-decoration:none;
   transition:color var(--dur-fast) var(--ease-enter)}
@@ -102,7 +100,7 @@
   .public-footer__credit{flex-direction:column;align-items:flex-start}
 }
 @media (width <= 380px){
-  .public-nav .cot-wordmark{font-size:var(--fs-14)}
+  .public-nav .cot-wordmark{--wordmark-h:10px}
   .public-nav__cta{padding:0 10px}
 }
 @media (prefers-reduced-motion:reduce){

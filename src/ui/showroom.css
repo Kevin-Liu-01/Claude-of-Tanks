@@ -1,12 +1,15 @@
-/* The showroom (brand-ui S2, SPEC 12.1.3). Copyright © 2026 Kevin B. Liu.
-   The Premiere garage's layout, ported from the direction's own page (streams/brand-ui/phase2/bui01/src/pages/
-   05-garage.html) onto the design tokens. A docked layout sets:
+/* The showroom (brand-ui S2, SPEC 12.1.3; redesigned in 245). Copyright © 2026 Kevin B. Liu.
+   The Premiere garage's layout on the design tokens, rebuilt so everything about the tank shows at once and nothing
+   scrolls. A docked layout sets:
    - the game bar along the top;
-   - the stations rail on the left;
-   - the dossier column on the right, with the selected tank's take under it on tall screens;
-   - the name and identity as a lower third on the floor in front of the tank;
-   - the roster tools, the hero cards and the Deploy block along the bottom.
-   Folded layouts (phones and tablets) keep their overlay panels from garage.css. */
+   - the readout column on the right: the station tabs, the station's readout under them (sized to fit, never scrolled),
+     the selected tank's take on tall screens and the battle card at the foot (the battlefield's picture, its name and
+     the mode over one tungsten Deploy);
+   - the name, its identity and the band under them on the floor in front of the tank: the three equipment slots, the
+     paint (what the tank wears, three more and every paint) and the stage's acts;
+   - the fleet along the bottom, left of the column.
+   A phone held upright stacks the same pieces over its tab bar; a phone on its side keeps the stage and the fleet on the
+   left and the column on the right. */
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
 /* ---- the game bar: the mark and wordmark go home, then every destination with its key ---- */
@@ -20,40 +23,87 @@
 body[data-cot-panels='overlay'] .cot-gbar,body[data-cot-panels='overlay'] .cot-wordmark .wm{display:none;}
 
 /* ---- the docked layout's measures ---- */
-body[data-cot-panels='persistent'] .cot-garage{--edge:22px;--rail-w:184px;--dossier-w:clamp(340px,26vw,400px);
-  --deploy-w:clamp(260px,21vw,300px);--card-h:150px;--rtools-h:52px;
-  --column-top:84px;--column-bottom:calc(var(--edge) + var(--card-h) + var(--s2) + var(--rtools-h) + var(--s3));
-  --take-h:clamp(150px,19vh,210px);}
+body[data-cot-panels='persistent'] .cot-garage{--edge:22px;--col-w:clamp(320px,24vw,440px);--column-top:84px;--tabs-h:56px;
+  --card-h:150px;--rtools-h:48px;--fleet-h:calc(var(--card-h) + var(--s2) + var(--rtools-h));
+  --battle-h:clamp(156px,19vh,208px);--take-h:clamp(150px,19vh,210px);--slot:56px;
+  --band-bottom:calc(var(--edge) + var(--fleet-h) + var(--s4));--fleet-right:calc(var(--edge) + var(--col-w) + var(--s4));
+  --cot-deploy-w:var(--col-w);}
+/* a short docked window (520 to 719 px) sets the fleet a fifth smaller, so the stage keeps its room */
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-garage{--card-h:120px;--rtools-h:44px;--slot:48px;--tabs-h:48px;--battle-h:132px;}
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-cards{zoom:.8;}
 
-/* ---- the stations rail ---- */
+/* ---- the station tabs: one row of glyphs over the readout, each named under its glyph ---- */
 .cot-stations{display:none;}
-body[data-cot-panels='persistent'] .cot-stations{display:block;position:absolute;left:var(--edge);top:var(--column-top);
-  width:var(--rail-w);padding:var(--s1);border-radius:var(--plate-radius);background:var(--plate-highlight),var(--plate-fill);
-  box-shadow:var(--plate-shadow);pointer-events:auto;}
-.cot-stations-list{display:grid;gap:2px;}
-.cot-station{display:flex;align-items:center;gap:var(--s3);height:40px;padding:0 var(--s3);border:0;
-  border-radius:var(--control-radius);background:transparent;color:var(--ink-2);cursor:pointer;text-align:left;
-  font:500 var(--fs-14)/1 var(--font-ui);}
-.cot-station .cot-c-kbd{margin-left:auto;}
+body[data-cot-panels='persistent'] .cot-stations{display:block;position:absolute;right:var(--edge);top:var(--column-top);
+  width:var(--col-w);height:var(--tabs-h);padding:var(--s1);border-radius:var(--plate-radius);
+  background:var(--plate-highlight),var(--plate-fill);box-shadow:var(--plate-shadow);pointer-events:auto;}
+.cot-stations-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px;height:100%;}
+.cot-station{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s1);min-width:0;padding:0 2px;
+  border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-2);cursor:pointer;
+  font:500 var(--fs-12)/1 var(--font-ui);}
+.cot-station>span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-station .cot-i{color:var(--ink-3);}
 @media (hover:hover){.cot-station:hover{color:var(--ink-1);background:var(--surface-hover);}}
 .cot-station[aria-selected='true']{color:var(--ink-1);
-  background:linear-gradient(var(--accent),var(--accent)) left/2px 100% no-repeat,var(--accent-wash);}
+  background:linear-gradient(var(--accent),var(--accent)) bottom/100% 2px no-repeat,var(--accent-wash);}
 .cot-station[aria-selected='true'] .cot-i{color:var(--accent);}
-.cot-station:focus-visible{outline:2px solid var(--focus-ring);outline-offset:-2px;}
+.cot-station:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:-2px;}
 
-/* ---- the dossier column: each station shows its own sections ---- */
-body[data-cot-panels='persistent'] .cot-garage .stats{top:var(--column-top);right:var(--edge);bottom:var(--column-bottom);
-  width:var(--dossier-w);}
-@media (min-height:1000px){body[data-cot-panels='persistent'][data-cot-width='desktop'] .cot-garage .stats{
-  bottom:calc(var(--column-bottom) + var(--take-h) + var(--s3));}}
+/* ---- the readout: each station shows its own sections, sized to the column and never scrolled ---- */
+body[data-cot-panels='persistent'][data-cot-width] .cot-garage .stats{top:calc(var(--column-top) + var(--tabs-h) + var(--s2));
+  right:var(--edge);bottom:calc(var(--edge) + var(--battle-h) + var(--s3));width:var(--col-w);overflow:hidden;}
+body[data-cot-panels='persistent'] .cot-garage .stats.has-scroll-mask{mask-image:none;-webkit-mask-image:none;}
 body[data-cot-panels='persistent'] .cot-garage .stats [data-stations]{display:none;}
 body[data-cot-panels='persistent'] .cot-garage[data-station='overview'] .stats [data-stations~='overview'],
 body[data-cot-panels='persistent'] .cot-garage[data-station='firepower'] .stats [data-stations~='firepower'],
 body[data-cot-panels='persistent'] .cot-garage[data-station='mobility'] .stats [data-stations~='mobility'],
 body[data-cot-panels='persistent'] .cot-garage[data-station='protection'] .stats [data-stations~='protection'],
 body[data-cot-panels='persistent'] .cot-garage[data-station='crew'] .stats [data-stations~='crew']{display:block;}
-body[data-cot-panels='persistent'] .cot-garage[data-station='appearance'] .stats{display:none;}
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-overview-more{display:none;}
+/* the band's acts hold the proving ground; the readout does not repeat it */
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-test-drive{display:none;}
+/* the readout's sections close up: one plate each, a step tighter, the performance cards in two columns */
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-stat-section{padding:var(--s3);margin-bottom:var(--s2);}
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-sidebar-section-title{min-height:20px;margin-bottom:var(--s2);}
+body[data-cot-panels='persistent'] .cot-garage .stats .shellrow{padding-block:5px;}
+body[data-cot-panels='persistent'] .cot-garage .stats .armorline{min-height:44px;padding-block:6px;}
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-technical-figure img{max-height:clamp(120px,24vh,260px);}
+body[data-cot-panels='persistent'] .cot-garage .stats .cot-gallery-link{height:var(--btn-h-s);margin-top:var(--s2);}
+/* The readout never scrolls: garage.ts (fitReadout) steps the column through four densities until the station fits.
+   1 closes the plates up and drops the side notes (the special systems, the rounds' second line, the plates' headings);
+   2 drops the armament's two lines, the view tabs and the links the band already holds, and lays the modules as chips;
+   3 keeps the figures and the tables alone: the technical drawing gives up its room last;
+   4 (a short docked window) keeps each station's first plate only, without the rival. */
+.cot-garage .stats[data-density~='1'] .cot-stat-section{padding:var(--s2) var(--s3);margin-bottom:var(--s1);}
+.cot-garage[data-station] .stats[data-density~='1'] :is(.cot-special-section,
+  .cot-performance-section .cot-stat-title,.shellrow .nm small){display:none;}
+.cot-garage .stats[data-density~='1'] .cot-headline{gap:var(--s2);}
+.cot-garage .stats[data-density~='1'] .cot-ammo-tiles{margin-top:var(--s3);}
+.cot-garage .stats[data-density~='1'] .srow{padding:3px 6px 4px;}
+.cot-garage .stats[data-density~='1'] .srow .lr b{font-size:var(--fs-13);}
+.cot-garage .stats[data-density~='1'] .shellrow{min-height:0;padding-block:4px;}
+.cot-garage .stats[data-density~='1'] .magazine-spec{min-height:0;padding-block:5px;}
+.cot-garage[data-station] .stats[data-density~='1'] .cot-technical-figure img{max-height:clamp(96px,18vh,200px);}
+.cot-garage .stats[data-density~='2'] :is(.cot-technical-tabs,.cot-layer-link,
+  .cot-technical-gallery,.cot-stat-title){display:none;}
+.cot-garage[data-station='firepower'] .stats[data-density~='2'] [data-stations='firepower']:has(.armor-grid){display:none;}
+.cot-garage .stats[data-density~='2'] .cot-module-grid{display:flex;flex-wrap:wrap;gap:var(--s1);}
+.cot-garage .stats[data-density~='2'] .cot-module-chip{height:26px;padding:0 var(--s2) 0 var(--s1);}
+.cot-garage .stats[data-density~='2'] .cot-crew-chip{flex-direction:row;justify-content:center;padding:var(--s1);}
+.cot-garage .stats[data-density~='2'] .armorline{min-height:0;padding-block:var(--s1);}
+body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='3'] :is(.cot-technical-section,.cot-ammo-tiles,.magazine-spec){display:none;}
+body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='4'] :is(.cot-stat-section:not(.cot-primary),.cot-rival,.cot-ammo-tiles){display:none;}
+.cot-garage .stats[data-density~='4'] .cot-headline{gap:var(--s1);}
+.cot-garage .stats[data-density~='4'] .srow .cot-c-scale{display:none;}
+/* the rounds' rows close to one line: the glyph beside its type, each figure beside its unit */
+.cot-garage .stats[data-density~='1'] .shellkind{flex-direction:row;gap:var(--s1);}
+.cot-garage .stats[data-density~='1'] .shellkind svg{width:12px;height:18px;}
+.cot-garage .stats[data-density~='1'] .shellmetric b{display:inline;margin:0 2px 0 0;}
+/* each performance card sets its label and value on one line over its scale */
+.cot-garage .stats[data-density~='2'] .srow{display:flex;flex-wrap:wrap;align-items:baseline;
+  column-gap:var(--s1);}
+.cot-garage .stats[data-density~='2'] .srow .lr b{margin:0 0 0 auto;}
+.cot-garage .stats[data-density~='2'] .srow .cot-c-scale{flex:1 0 100%;}
 /* folded layouts lead the dossier with the overview's six rows, one fact each: the icon and its label, the value, the
    scale. The rival needs the docked column's width, so its picker, its deltas and its tick stay docked */
 body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .stats>.cot-stat-section.cot-overview-section{
@@ -90,7 +140,7 @@ body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale{margin-top:va
 .cot-garage .cot-hrow .v em.up{color:var(--ok);}
 .cot-garage .cot-hrow .v em.dn{color:var(--danger);}
 .cot-garage .cot-hrow .cot-c-scale{grid-column:2/span 2;}
-.cot-garage .cot-ammo-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:var(--s2);margin-top:var(--s4);}
+.cot-garage .cot-ammo-tiles{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:var(--s2);margin-top:var(--s4);}
 .cot-garage .cot-ammo-tile{display:grid;gap:var(--s2);padding:var(--s2) var(--s2) var(--s2);border:1px solid var(--line-1);
   border-radius:var(--control-radius);background:var(--btn-secondary-fill);}
 .cot-garage .cot-ammo-tile:first-child{border-color:var(--accent);background:var(--accent-wash);}
@@ -101,35 +151,85 @@ body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale{margin-top:va
   font:400 var(--fs-11)/1 var(--font-mono);color:var(--ink-3);}
 .cot-garage .cot-ammo-tile .ft>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;}
 
-/* Appearance: the paint and the staging area take the dossier's column; the battlefield lives in Deploy */
+/* ---- every paint: the band's last swatch opens the whole catalog over the stage and the fleet, left of the column; each
+   paint is its swatch alone (its name in the tooltip and for assistive technology), so the hundred-odd fit at 1280 x 720 ---- */
 body[data-cot-panels='persistent'] .cot-leftcol{display:none;}
-body[data-cot-panels='persistent'] .cot-garage[data-station='appearance'] .cot-leftcol{display:flex;left:auto;right:var(--edge);
-  top:var(--column-top);bottom:var(--column-bottom);width:var(--dossier-w);}
+body[data-cot-panels='persistent'][data-cot-width] .cot-garage[data-garage-panel='appearance'] .cot-leftcol{display:flex;z-index:var(--z-drawer);
+  left:var(--edge);right:var(--fleet-right);top:var(--column-top);bottom:var(--edge);width:auto;
+  border-radius:var(--plate-radius);background:var(--plate-highlight),var(--plate-fill);box-shadow:var(--plate-shadow);}
 body[data-cot-panels='persistent'] .cot-leftcol .cot-maps{display:none;}
+body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos{flex:1 1 auto;min-height:0;}
+body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] :is(.cot-camo-tags,.cot-camo-collections){flex-wrap:wrap;overflow:visible;height:auto;}
+body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camos .cgrid.camo{max-height:none;
+  grid-template-columns:repeat(auto-fill,minmax(56px,1fr));gap:var(--s1);}
+body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camo-card{padding:2px;}
+body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camo-card .sw{margin:0;aspect-ratio:1.5;}
+body[data-cot-panels='persistent'] .cot-garage[data-garage-panel='appearance'] .cot-camo-card .cl{position:absolute;width:1px;height:1px;
+  overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 
-/* the selected tank's take, under the dossier */
-body[data-cot-panels='persistent'] .cot-garage>.cot-featured{position:absolute;right:var(--edge);bottom:var(--column-bottom);
-  width:var(--dossier-w);height:var(--take-h);}
+/* ---- the selected tank's take, over the battle card on a screen tall enough that the readout keeps its full plates ---- */
+body[data-cot-panels='persistent'][data-cot-width] .cot-garage>.cot-featured{position:absolute;right:var(--edge);
+  bottom:calc(var(--edge) + var(--battle-h) + var(--s3));width:var(--col-w);height:var(--take-h);}
 body[data-cot-panels='persistent'] .cot-garage>.cot-featured .fshot{height:var(--take-h);}
-body[data-cot-panels='persistent'] .cot-garage[data-station='appearance']>.cot-featured,
 body[data-cot-panels='overlay'] .cot-garage>.cot-featured{display:none;}
-@media (max-height:999px){body[data-cot-panels='persistent'] .cot-garage>.cot-featured{display:none;}}
+@media (max-height:1199px){body[data-cot-panels='persistent'] .cot-garage>.cot-featured{display:none;}}
+@media (min-height:1200px){body[data-cot-panels='persistent'][data-cot-width='desktop'] .cot-garage .stats{
+  bottom:calc(var(--edge) + var(--battle-h) + var(--take-h) + 2 * var(--s3));}}
 
-/* ---- the lower third: the name on the floor in front of the tank, its identity and two actions ---- */
-body[data-cot-panels='persistent'] .cot-lower-third{left:calc(var(--edge) + var(--rail-w) + var(--s6));
-  right:calc(var(--edge) + var(--dossier-w) + var(--s6));bottom:calc(var(--column-bottom) + var(--s2));}
-.cot-lt-acts{display:flex;flex-wrap:wrap;gap:var(--s2);margin-top:var(--s2);}
-body[data-cot-panels='overlay'] .cot-lt-acts{display:none;}
-/* a phone held upright names the tank on the floor under it, over the roster */
-body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lower-third{display:block;position:absolute;
-  left:max(var(--cot-overlay-edge),env(safe-area-inset-left));
-  right:calc(var(--cot-compact-stats-width) + 2 * var(--cot-overlay-edge));
-  bottom:calc(var(--cot-side-panel-bottom) + var(--s2));pointer-events:none;}
-body[data-cot-panels='overlay'] .cot-lt-name,body[data-cot-panels='overlay'] .cot-lt-name.is-long{font-size:var(--fs-24);}
-body[data-cot-panels='overlay'] .cot-lt-id{display:none;}
+/* ---- the lower third: the name on the floor in front of the tank, its identity, then the band ---- */
+.cot-lt-head{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3);max-width:100%;}
+.cot-lt-name,.cot-lt-id{width:fit-content;max-width:100%;}
+body[data-cot-panels='persistent'][data-cot-width] .cot-lower-third{position:absolute;display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3);
+  left:var(--edge);right:calc(var(--fleet-right) + var(--s4));bottom:var(--band-bottom);pointer-events:none;}
+/* the words keep a local shade over the turntable's bright rim; the band is its own plate */
+body[data-cot-panels='persistent'] .cot-lt-head{padding:var(--s6) var(--s8) var(--s2) var(--s4);margin:calc(-1 * var(--s6)) 0 0 calc(-1 * var(--s4));
+  background:var(--stage-scrim);}
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-name{font-size:var(--fs-36);}
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-size:var(--fs-14);}
+.cot-lt-band{display:flex;align-items:stretch;gap:var(--s3);height:var(--slot,56px);max-width:100%;pointer-events:auto;}
+.cot-lt-band>*{display:flex;align-items:stretch;gap:var(--s1);min-width:0;}
+.cot-lt-band>*+*{padding-left:var(--s3);border-left:1px solid var(--line-2);}
+/* the slots: the fitted item's glyph and short name, an empty slot dashed with its plus */
+.cot-garage .cot-lt-loadout{display:flex;}
+.cot-garage .cot-lt-loadout .eqslot{width:68px;height:100%;gap:3px;padding:0 var(--s1);border:0;border-radius:var(--control-radius);
+  background:var(--plate-fill);box-shadow:var(--ring-2);color:var(--ink-1);}
+.cot-garage .cot-lt-loadout .eqslot svg{width:22px;height:22px;}
+.cot-garage .cot-lt-loadout .eqslot .sl{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font:500 var(--fs-11)/1 var(--font-ui);letter-spacing:0;color:var(--ink-2);}
+.cot-garage .cot-lt-loadout .eqslot.empty{background:var(--glyph-plate);box-shadow:none;outline:1px dashed var(--line-control);outline-offset:-1px;}
+.cot-garage .cot-lt-loadout .eqslot.empty .plus{font:500 var(--fs-20)/1 var(--font-ui);color:var(--ink-3);}
+@media (hover:hover){.cot-garage .cot-lt-loadout .eqslot:hover{background:var(--surface-hover);}
+  .cot-garage .cot-lt-loadout .eqslot.empty:hover .plus{color:var(--ink-1);}}
+.cot-garage .cot-lt-loadout .eqslot.open{box-shadow:var(--ring-accent);outline:1px solid var(--accent);outline-offset:-2px;}
+.cot-garage .cot-lt-loadout .eqslot:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:-2px;}
+/* the paint: what the tank wears, named; three more to try; every paint */
+.cot-lt-swatch{position:relative;width:40px;height:100%;flex:none;padding:0;border:0;border-radius:var(--control-radius);overflow:hidden;
+  background:var(--plate-fill);box-shadow:var(--ring-2);cursor:pointer;}
+.cot-lt-swatch canvas{display:block;width:100%;height:100%;object-fit:cover;}
+.cot-lt-swatch.is-on{width:112px;outline:2px solid var(--accent);outline-offset:-2px;}
+.cot-lt-swatch .nm{position:absolute;left:2px;right:2px;bottom:2px;padding:3px var(--s1);background:var(--glyph-plate);
+  color:var(--ink-1);text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font:600 var(--fs-11)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;}
+.cot-lt-swatch:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:2px;}
+@media (hover:hover){.cot-lt-swatch:not(.is-on):hover{outline:1px solid var(--line-control);outline-offset:-1px;}}
+.cot-lt-band .cot-c-btn{--h:var(--slot,56px);height:100%;}
+.cot-lt-paint-all[aria-expanded='true']{box-shadow:var(--ring-accent);color:var(--accent);}
+.cot-lt-acts{display:flex;}
+.cot-garage.vehicle-locked :is(.cot-lt-paint,.cot-lt-loadout){pointer-events:none;opacity:.42;}
+/* a narrow docked window keeps what the tank wears and every paint, and the acts close up */
+@media (max-width:1279px){
+  body[data-cot-panels='persistent'] .cot-lt-swatch:not(.is-on){display:none;}
+  body[data-cot-panels='persistent'] .cot-lt-band .cot-c-btn{--h:44px;}
+  body[data-cot-panels='persistent'] .cot-garage .cot-lt-loadout .eqslot{width:60px;}
+}
+/* the equipment picker opens over the stage above the band, every item in view */
+body[data-cot-panels='persistent'] .cot-eqpick{left:var(--edge);right:var(--fleet-right);top:auto;bottom:calc(var(--band-bottom) + var(--slot) + var(--s2));
+  width:auto;max-height:calc(100% - var(--column-top) - var(--band-bottom) - var(--slot) - var(--s3));overflow:hidden;
+  border-radius:var(--plate-radius);}
+body[data-cot-panels='persistent'] .cot-eqpick .pgrid{grid-template-columns:repeat(auto-fill,minmax(120px,1fr));max-height:none;}
 
-/* ---- the roster: tools over the cards, Deploy beside them ---- */
-body[data-cot-panels='persistent'] .cot-country-rail{left:var(--edge);right:var(--edge);top:auto;
+/* ---- the fleet: the roster tools over the cards, left of the column ---- */
+body[data-cot-panels='persistent'][data-cot-width] .cot-country-rail{left:var(--edge);right:var(--fleet-right);top:auto;
   bottom:calc(var(--edge) + var(--card-h) + var(--s2));height:var(--rtools-h);width:auto;transform:none;
   grid-template-columns:auto var(--country-edge) auto minmax(0,1fr) var(--country-edge) auto auto;}
 body[data-cot-panels='persistent'] .cot-country-rail>*{grid-row:1;}
@@ -138,8 +238,9 @@ body[data-cot-panels='persistent'] .cot-country-edge.prev{grid-column:2;}
 body[data-cot-panels='persistent'] .cot-facet-toggle{grid-column:3;}
 body[data-cot-panels='persistent'] .cot-country-chips{grid-column:4;justify-content:flex-start;}
 body[data-cot-panels='persistent'] .cot-country-edge.next{grid-column:5;}
-body[data-cot-panels='persistent'] .cot-carousel{left:var(--edge);right:calc(var(--edge) + var(--deploy-w) + var(--s3));
-  bottom:var(--edge);transform:none;max-width:none;}
+body[data-cot-panels='persistent'][data-cot-width] .cot-carousel{left:var(--edge);right:var(--fleet-right);bottom:var(--edge);
+  height:var(--card-h);transform:none;max-width:none;}
+@media (max-width:1279px){body[data-cot-panels='persistent'] .cot-roster-search{width:160px;}}
 .cot-roster-search{display:flex;align-items:center;gap:var(--s2);width:220px;height:var(--btn-h-m);margin-right:var(--s2);
   padding:0 var(--s2) 0 var(--s3);border:1px solid var(--line-2);border-radius:var(--control-radius);
   background:var(--plate-fill);color:var(--ink-3);cursor:text;}
@@ -148,35 +249,46 @@ body[data-cot-panels='persistent'] .cot-carousel{left:var(--edge);right:calc(var
   font:400 var(--fs-14)/1 var(--font-ui);}
 .cot-roster-search input::-webkit-search-cancel-button{display:none;}
 body[data-cot-panels='overlay'] .cot-roster-search{display:none;}
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-roster-search{height:var(--btn-h-s);}
 
-/* Deploy: one tungsten block, the word and its key over the mode and battlefield it will deploy to */
-body[data-cot-panels='persistent'] .cot-garage{--cot-deploy-w:var(--deploy-w);}
-body[data-cot-panels='persistent'] .cot-battle-control{right:var(--edge);bottom:var(--edge);width:var(--deploy-w);
-  height:var(--card-h);grid-template-rows:minmax(0,1fr) auto;}
-body[data-cot-panels='persistent'] .cot-battle{align-items:flex-start;padding:var(--s4) var(--s4) 0;
-  font:700 var(--fs-32)/1 var(--font-display);letter-spacing:var(--track-label);}
-body[data-cot-panels='persistent'] .cot-battle .battle-active-icon{display:none;}
-body[data-cot-panels='persistent'] .cot-battle-mode{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s1) var(--s2);min-width:0;height:auto;
-  padding:var(--s3) var(--s7) var(--s3) var(--s4);border-top:1px solid var(--btn-primary-press);
+/* ---- the battle card: the battlefield's picture with its name and the mode (one press opens the Deploy screen), over
+   one tungsten Deploy with its key ---- */
+.cot-battle-mode .sum-pic{display:none;}
+body[data-cot-panels='persistent'][data-cot-width] .cot-battle-control{top:auto;left:auto;right:var(--edge);bottom:var(--edge);
+  width:var(--col-w);height:var(--battle-h);display:grid;grid-template-rows:minmax(0,1fr) var(--btn-h-l);transform:none;
+  border-radius:var(--plate-radius);background:var(--plate-fill);box-shadow:var(--plate-shadow);}
+body[data-cot-panels='persistent'] .cot-battle-mode{grid-row:1;position:relative;display:grid;
+  grid-template-columns:auto minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto auto;align-content:end;gap:var(--s1) var(--s2);
+  min-width:0;height:auto;padding:var(--s3) var(--s7) var(--s3) var(--s3);border:0;overflow:hidden;
+  border-radius:var(--plate-radius) var(--plate-radius) 0 0;background:var(--surface-raised);color:var(--ink-1);text-align:left;
   font:500 var(--fs-13)/1.2 var(--font-ui);letter-spacing:0;text-transform:none;}
-body[data-cot-panels='persistent'] .cot-battle-mode .sum-icon{display:inline-flex;flex:none;}
-body[data-cot-panels='persistent'] .cot-battle-mode .sum-mode{font-weight:600;white-space:nowrap;}
-body[data-cot-panels='persistent'] .cot-battle-mode .sum-map{opacity:.72;}
+body[data-cot-panels='persistent'] .cot-battle-mode .sum-pic{display:block;position:absolute;inset:0;
+  background:var(--surface-raised) center/cover no-repeat;transition:transform var(--dur-screen) var(--ease-enter);}
+/* the picture paints first; the words stand over it */
+body[data-cot-panels='persistent'] .cot-battle-mode>:not(.sum-pic){position:relative;}
+body[data-cot-panels='persistent'] .cot-battle-mode .sum-pic::after{content:'';position:absolute;inset:0;
+  background:linear-gradient(180deg,transparent 30%,var(--glyph-plate));}
+.cot-battle-mode .sum-pic .random-map-mosaic{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;}
+.cot-battle-mode .sum-pic .random-map-tile{background:center/cover no-repeat;}
+body[data-cot-panels='persistent'] .cot-battle-mode .sum-map{grid-column:1/-1;grid-row:2;min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;opacity:1;color:var(--ink-1);font:600 var(--fs-18)/1.1 var(--font-display);letter-spacing:var(--track-label-s);
+  text-transform:uppercase;text-shadow:var(--stage-halo);}
+body[data-cot-panels='persistent'] .cot-battle-mode .sum-icon{display:inline-flex;grid-column:1;grid-row:3;color:var(--accent);}
+body[data-cot-panels='persistent'] .cot-battle-mode .sum-mode{grid-column:2;grid-row:3;min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;color:var(--ink-2);font:600 var(--fs-13)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;}
+body[data-cot-panels='persistent'] .cot-battle-mode::after{top:var(--s3);right:var(--s3);margin-top:0;border-top-color:var(--ink-1);}
+@media (hover:hover){
+  body[data-cot-panels='persistent'] .cot-battle-mode:hover{background:var(--surface-raised);}
+  body[data-cot-panels='persistent'] .cot-battle-mode:hover .sum-pic{transform:scale(1.04);}
+}
+body[data-cot-panels='persistent'] .cot-battle-mode:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:-2px;}
+body[data-cot-panels='persistent'] .cot-battle{grid-row:2;display:flex;align-items:center;justify-content:flex-start;gap:var(--s3);
+  padding:0 var(--s4);border-radius:0 0 var(--plate-radius) var(--plate-radius);background:var(--btn-primary-fill);color:var(--btn-primary-ink);
+  font:700 var(--fs-28)/1 var(--font-display);letter-spacing:var(--track-label);}
+body[data-cot-panels='persistent'] .cot-battle .battle-active-icon{display:none;}
+@media (hover:hover){body[data-cot-panels='persistent'] .cot-battle:hover{background:var(--btn-primary-hover);}}
 body[data-cot-panels='persistent'] .cot-multiplayer-entry{display:none;}
-
-/* ---- the stage's numbered hotspots (the direction's 05-garage .hs): an accent numeral on the tank, its values on a
-   plate reading outward from the stage's centre; garageHotspots.ts writes each one's place per rendered frame ---- */
-.cot-hotspots{position:absolute;inset:0;pointer-events:none;overflow:hidden;}
-.cot-hotspots[hidden]{display:none;}
-.cot-hotspot{position:absolute;left:0;top:0;display:flex;align-items:center;gap:8px;margin:-12px 0 0 -12px;will-change:transform;}
-.cot-hotspot[hidden]{display:none;}
-.cot-hotspot.l{flex-direction:row-reverse;margin-left:auto;translate:calc(-100% + 24px) 0;}
-.cot-hotspot .n{display:grid;place-items:center;width:24px;height:24px;flex:none;border-radius:50%;background:var(--accent);
-  box-shadow:var(--ring-3);color:var(--ink-on-accent);font:700 var(--fs-12)/1 var(--font-display);}
-.cot-hotspot .v{display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border-radius:var(--control-radius);
-  background:var(--glyph-plate);box-shadow:var(--ring-2);white-space:nowrap;}
-.cot-hotspot .v b{font:600 var(--fs-13)/1 var(--font-display);color:var(--ink-1);}
-.cot-hotspot .v small{font:500 var(--fs-12)/1 var(--font-data);color:var(--ink-2);}
+body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-battle-control{grid-template-rows:minmax(0,1fr) var(--btn-h-m);}
 /* the roster's count, at the rail's end */
 .cot-roster-count{display:none;}
 body[data-cot-panels='persistent'] .cot-roster-count{display:block;grid-column:7;align-self:center;padding:0 var(--s2);
@@ -191,4 +303,159 @@ body[data-cot-panels='persistent'] .cot-roster-fav[hidden]{display:none;}
 .cot-card.is-fav .cot-fav{position:absolute;z-index:var(--z-lift);right:8px;top:8px;display:grid;place-items:center;width:22px;height:22px;
   border-radius:var(--control-radius);background:var(--glyph-plate);color:var(--accent);}
 .cot-card.is-fav .cot-fav svg{width:14px;height:14px;}
+
+/* ---- a phone held upright (the direction's phone pages, 90 and 91, redesigned in 245): from the foot, the tab bar, the
+   battle card (the battlefield's picture, its name and mode, Deploy), the fleet, three of the readout's figures with the
+   rest one press away, then the name over the band (slots and paint); the stage's acts stand at its right edge ---- */
+.cot-tabbar{display:none;}
+
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage{
+  --cot-tabbar-h:60px;--cot-dock-h:60px;--cot-figures-h:60px;--slot:52px;
+  --cot-roster-bottom:calc(var(--cot-tabbar-h) + env(safe-area-inset-bottom,0px) + var(--cot-dock-h) + 2 * var(--cot-stack-gap));}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-tabbar{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-hud-controls);
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));height:calc(var(--cot-tabbar-h) + env(safe-area-inset-bottom,0px));
+  padding:0 env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);
+  background:var(--surface-page);border-top:1px solid var(--line-1);pointer-events:auto;}
+.cot-tabbar button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0;
+  padding:0;border:0;background:none;color:var(--ink-3);cursor:pointer;font:500 var(--fs-12)/1 var(--font-body);}
+.cot-tabbar button svg{width:22px;height:22px;}
+.cot-tabbar button[aria-current='page']{color:var(--ink-1);}
+.cot-tabbar button[aria-current='page']::before{content:'';position:absolute;left:22%;right:22%;top:-1px;height:2px;background:var(--accent);}
+.cot-tabbar button:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:-4px;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] :is(.cot-multiplayer-entry,.cot-nav .cot-mobile-nav-trigger){display:none;}
+/* the battle card: the picture and its two lines on the left, Deploy on the right */
+body[data-cot-panels='overlay'] .cot-battle-control{display:flex;transform:none;border-radius:var(--plate-radius);
+  background:var(--plate-fill);box-shadow:var(--ring-2);}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-battle-control{top:auto;width:auto;
+  left:max(var(--cot-overlay-edge),env(safe-area-inset-left,0px));right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));
+  bottom:calc(var(--cot-tabbar-h) + env(safe-area-inset-bottom,0px) + var(--cot-stack-gap));height:var(--cot-dock-h);}
+body[data-cot-panels='overlay'] .cot-battle-control .cot-battle-mode{order:-1;flex:1 1 auto;align-self:stretch;display:grid;grid-template-columns:auto minmax(0,1fr);
+  grid-template-rows:1fr 1fr;align-items:center;gap:0 var(--s2);min-width:0;height:auto;padding:var(--s1) var(--s6) var(--s1) var(--s1);
+  border:0;background:transparent;color:var(--ink-1);text-align:left;letter-spacing:0;text-transform:none;}
+body[data-cot-panels='overlay'] .cot-battle-mode .sum-pic{position:relative;display:block;grid-row:1/-1;grid-column:1;align-self:stretch;
+  width:84px;height:auto;clip-path:none;border-radius:var(--control-radius);overflow:hidden;background:var(--surface-raised) center/cover no-repeat;}
+body[data-cot-panels='overlay'] .cot-battle-mode .sum-icon{display:none;}
+body[data-cot-panels='overlay'] .cot-battle-mode .sum-map{position:static;width:auto;height:auto;margin:0;clip-path:none;
+  grid-column:2;grid-row:1;align-self:end;min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;opacity:1;color:var(--ink-1);
+  font:600 var(--fs-13)/1.15 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;}
+body[data-cot-panels='overlay'] .cot-battle-mode .sum-mode{position:static;width:auto;height:auto;grid-column:2;grid-row:2;align-self:start;
+  min-width:0;overflow:hidden;clip-path:none;white-space:nowrap;text-overflow:ellipsis;color:var(--ink-2);
+  font:500 var(--fs-12)/1.2 var(--font-body);}
+body[data-cot-panels='overlay'] .cot-battle-control .cot-battle-mode::after{left:auto;right:var(--s2);margin-left:0;border-top-color:var(--ink-2);}
+body[data-cot-panels='overlay'] .cot-battle-control .cot-battle{flex:0 0 42%;justify-content:center;gap:var(--s2);padding:0 var(--s3);
+  border-radius:var(--plate-radius);background:var(--btn-primary-fill);box-shadow:var(--btn-primary-shadow);color:var(--btn-primary-ink);
+  font:700 var(--fs-24)/1 var(--font-display);letter-spacing:var(--track-label-s);}
+body[data-cot-panels='overlay'] .cot-battle .battle-active-icon{color:var(--btn-primary-ink);filter:none;}
+body[data-cot-panels='overlay'] .cot-battle .cot-c-kbd{display:none;}
+body[data-cot-panels='overlay'] .cot-room-controls{top:auto;bottom:calc(100% + var(--s2));}
+/* three of the readout's figures in one band, the rest of the dossier one press away */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage:not([data-garage-panel='equipment']) .stats{
+  left:max(var(--cot-overlay-edge),env(safe-area-inset-left,0px));right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));
+  top:auto;bottom:var(--cot-side-panel-bottom);width:auto;height:var(--cot-figures-h);max-height:none;overflow:hidden;
+  background:var(--glyph-plate);border:0;border-radius:var(--control-radius);box-shadow:var(--ring-1);}
+body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .stats>:not(.cot-overview-section){display:none;}
+body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .stats>.cot-stat-section.cot-overview-section{
+  display:grid;grid-template-columns:minmax(0,1fr) 40px;align-items:center;gap:var(--s2);height:100%;margin:0;padding:var(--s2) 0 var(--s2) var(--s3);border:0;}
+body[data-cot-panels='overlay'] .cot-garage .stats .cot-headline{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s3);}
+body[data-cot-panels='overlay'] .cot-garage .stats .cot-headline>.cot-hrow:nth-child(n+4){display:none;}
+body[data-cot-panels='overlay'] .cot-garage .cot-hrow .k{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+body[data-cot-panels='overlay'] .cot-garage .cot-hrow>.cot-i{display:none;}
+body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-overview-more{display:none;}
+.cot-overview-more{display:none;}
+body[data-cot-panels='overlay'] .cot-garage .stats .cot-overview-more{display:grid;place-items:center;align-self:stretch;width:40px;padding:0;border:0;
+  border-left:1px solid var(--line-1);background:transparent;color:var(--ink-2);cursor:pointer;}
+body[data-cot-panels='overlay'] .cot-garage .stats .cot-overview-more:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:-2px;}
+/* the name over the band: the flag and tier lead the name; the slots and paint under it; the acts at the stage's edge */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lower-third{display:flex;flex-direction:column;gap:var(--s2);position:absolute;
+  left:max(var(--cot-overlay-edge),env(safe-area-inset-left,0px));right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));
+  bottom:calc(var(--cot-side-panel-bottom) + var(--cot-figures-h) + var(--s2));pointer-events:none;}
+body[data-cot-panels='overlay'] .cot-lt-head{flex-direction:row;align-items:center;gap:var(--s2);}
+body[data-cot-panels='overlay'] .cot-lt-name,body[data-cot-panels='overlay'] .cot-lt-name.is-long{min-width:0;overflow:hidden;white-space:nowrap;
+  text-overflow:ellipsis;font-size:var(--fs-24);line-height:1.1;}
+body[data-cot-panels='overlay'] .cot-lt-id{display:flex;order:-1;flex-wrap:nowrap;gap:var(--s2);font-size:var(--fs-13);}
+body[data-cot-panels='overlay'] .cot-lt-id>span:not(.lt-nation,.lt-tier){display:none;}
+body[data-cot-panels='overlay'] .cot-lt-id .lt-nation>span{display:none;}
+body[data-cot-panels='overlay'] .cot-lt-id .cot-flag{width:26px;height:18px;}
+body[data-cot-panels='overlay'] .cot-lt-band{width:100%;gap:var(--s2);}
+body[data-cot-panels='overlay'] .cot-lt-band>*+*{padding-left:var(--s2);}
+body[data-cot-panels='overlay'] .cot-garage .cot-lt-loadout{flex:none;}
+body[data-cot-panels='overlay'] .cot-garage .cot-lt-loadout .eqslot{width:52px;}
+body[data-cot-panels='overlay'] .cot-lt-paint{flex:1 1 auto;}
+/* a phone shows the worn paint wide, one more paint and every paint, each a 44 px touch target */
+body[data-cot-panels='overlay'] .cot-lt-swatch{width:44px;}
+body[data-cot-panels='overlay'] .cot-lt-swatch.is-on{flex:1 1 0;width:auto;min-width:44px;max-width:112px;}
+body[data-cot-panels='overlay'] .cot-lt-swatch .nm{display:none;}
+body[data-cot-panels='overlay'] .cot-lt-swatch:nth-child(n+3):not(.cot-lt-paint-all){display:none;}
+/* a folded tablet has the room for wider slots, the third quick paint and the worn paint's name */
+@media (min-width:600px){
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-lt-loadout .eqslot{width:72px;}
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lt-swatch:is(:nth-child(3),:nth-child(4)):not(.cot-lt-paint-all){display:block;}
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lt-swatch.is-on .nm{display:block;}
+}
+body[data-cot-panels='overlay'] .cot-lt-paint-all{--h:44px;width:44px;flex:none;}
+/* the stage's acts stand at its top right, under the bar's buttons and clear of the tank framed above the name */
+body[data-cot-panels='overlay'] .cot-lt-acts{position:fixed;right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));
+  top:max(64px,calc(env(safe-area-inset-top,0px) + 58px));flex-direction:column;gap:var(--s2);padding:0;box-shadow:none;pointer-events:auto;}
+body[data-cot-panels='overlay'] .cot-lt-acts .cot-c-btn{--h:44px;height:var(--h);}
+body[data-cot-panels='overlay'] .cot-lt-acts [data-lt-photo]{display:none;}
+
+/* ---- a phone on its side (and a folded tablet held wide): the stage and the fleet on the left, the column on the right
+   with the name, the band, the figures and the battle card ---- */
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage{--cot-land-col:clamp(300px,46vw,440px);--slot:48px;--cot-figures-h:100px;
+  --cot-name-h:30px;--cot-col-gap:var(--s2);--cot-battle-h:64px;
+  --cot-col-right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));--cot-col-top:max(60px,calc(env(safe-area-inset-top,0px) + 54px));
+  --cot-fleet-right:calc(var(--cot-col-right) + var(--cot-land-col) + var(--s3));}
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lower-third{display:flex;flex-direction:column;gap:var(--cot-col-gap);position:absolute;
+  right:var(--cot-col-right);top:var(--cot-col-top);bottom:auto;left:auto;width:var(--cot-land-col);pointer-events:none;}
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-acts{right:calc(var(--cot-fleet-right) - var(--s3) + var(--s2));
+  top:var(--cot-col-top);}
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'][data-cot-width] .cot-garage:not([data-garage-panel='equipment']) .stats{
+  right:var(--cot-col-right);left:auto;top:calc(var(--cot-col-top) + var(--cot-name-h) + var(--slot) + 3 * var(--cot-col-gap));bottom:auto;
+  width:var(--cot-land-col);height:var(--cot-figures-h,60px);max-height:none;overflow:hidden;
+  background:var(--glyph-plate);border:0;border-radius:var(--control-radius);box-shadow:var(--ring-1);}
+/* on its side the column has the room for all six figures, three across in two rows */
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage .stats .cot-headline>.cot-hrow:nth-child(n+4){display:block;}
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-battle-control{top:auto;left:auto;right:var(--cot-col-right);
+  bottom:max(var(--cot-overlay-edge),env(safe-area-inset-bottom,0px));width:var(--cot-land-col);height:var(--cot-battle-h);}
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-multiplayer-entry{display:none;}
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'][data-cot-width] :is(.cot-country-rail,.cot-carousel){right:var(--cot-fleet-right);}
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-head{height:var(--cot-name-h);}
+/* on its side the column is narrow: square slots, the worn paint, one more (two from 760 px) and every paint */
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage .cot-lt-loadout .eqslot{width:var(--slot);}
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-paint-all{--h:44px;width:44px;}
+@media (min-width:760px){
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-swatch:nth-child(3):not(.cot-lt-paint-all){display:block;}
+}
+@media (max-width:759px){
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-band{gap:var(--s1);}
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-band>*+*{padding-left:var(--s1);}
+}
+/* a very short window on its side (a browser bar over a phone, the 240 px minimum) closes the column up: a smaller name,
+   44 px slots, three figures without their scales and a lower battle card */
+@media (max-height:340px){
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage{--slot:44px;--cot-figures-h:44px;--cot-name-h:22px;
+    --cot-col-gap:var(--s1);--cot-battle-h:48px;--cot-col-top:max(56px,calc(env(safe-area-inset-top,0px) + 50px));}
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-name{font-size:var(--fs-18);}
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage .stats .cot-headline>.cot-hrow:nth-child(n+4),
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage .stats .cot-hrow .cot-c-scale{display:none;}
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-battle-control .cot-battle{font-size:var(--fs-20);}
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-battle-mode .sum-pic{width:64px;}
+  /* the acts lie in a row at the stage's top right, clear of the fleet's tools under them */
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-acts{flex-direction:row;}
+}
+/* a narrow phone (under 360 px) narrows its slots to the touch floor */
+@media (max-width:359px){
+  body[data-cot-panels='overlay'] .cot-garage .cot-lt-loadout .eqslot{width:44px;}
+  body[data-cot-panels='overlay'] .cot-lt-band{gap:var(--s1);}
+  body[data-cot-panels='overlay'] .cot-lt-band>*+*{padding-left:var(--s1);}
+}
+/* a short phone held upright (under 640 px) closes its stack up so the tank keeps a stage */
+@media (max-height:640px){
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage{--cot-dock-h:52px;--cot-figures-h:48px;--slot:44px;--cot-stack-gap:6px;}
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .stats .cot-hrow .cot-c-scale{display:none;}
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lt-name{font-size:var(--fs-20);}
+}
+/* the every-nation chip (the direction's All): its word where a nation shows its flag */
+.cot-country-all .lbl{font:600 var(--fs-13)/1 var(--font-display);color:var(--ink-1);}
 }

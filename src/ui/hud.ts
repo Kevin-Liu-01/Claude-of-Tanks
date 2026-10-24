@@ -1,5 +1,5 @@
 import { isRapidFireHit } from '../game/weaponHitKind.ts';
-import { tankSeedId } from '../vehicles/tankIdAliases.ts';
+import { botCallsign, PLAYER_CALLSIGN } from './botCallsigns.ts';
 import { accumulateDamage, canAccumulateDamage, DAMAGE_BURST_GAP_MS, type DamageNumberBurst } from './damageNumberBurst.ts';
 import { BattleKillLedger } from '../game/battleEventStats.ts';
 import { killPresentation } from './killPresentation.ts';
@@ -462,6 +462,7 @@ interface EarRow {
   lastFrac: number;
   wasDead: boolean | null;
   wasSpotted: boolean | null;
+  me: boolean;
 }
 interface TeamTally {
   allyAlive: number;
@@ -604,6 +605,11 @@ export interface HudRuntime {
   root: HTMLDivElement;
   /** Watch mode: the drone's pose while flying (no tank is the HUD's own), null while riding, driving or playing. */
   setWatchDrone(pose: HudWatchDrone | null): void;
+  /**
+   * Watch mode: the side a spectator reads the battle from (the watched seat's team while flying or riding), null while
+   * driving or playing. The score, rosters, pips, plates, minimap and kill feed keep that frame whichever tank is ridden.
+   */
+  setWatchSide(team: string | null): void;
   shotInfo: ShotInfoRuntime;
   forceHitMark(bounced?: boolean): void;
   getHitArcs(): Array<{
@@ -1199,7 +1205,7 @@ import { createShotInfo } from './shotInfo.ts';
 // .ribbon)
 import { createTeamPips } from './hudTeamPips.ts';
 import { createKillRibbon } from './hudKillRibbon.ts';
-import { sightFurniture, sightFurnitureGap, sightFurnitureRise, sightNoticeGap } from './sightFurniture.ts';
+import { sightFurniture, sightFurnitureGap, sightFurnitureRise, sightNoticeCuts, sightNoticeGap } from './sightFurniture.ts';
 import { hitOutcomeFor, incomingHitFeedbackFor } from './hitEventFormat.ts';
 import {
   SPECIAL_ACTION_KINDS,
@@ -1289,22 +1295,9 @@ function shellCount(shell: HudShellCard): number {
   return ammunitionSlotViewState(shell).count;
 }
 
-// Roster identity: WoT rows read "Nickname (Vehicle)" with a tier numeral.
-// Bot nicknames are assigned deterministically per battle from this pool
-// (hashed off the entity id, collisions probe forward), the player is Claude.
-const BOT_NICKS = [
-  'IronMaus', 'SteppeWolf_71', 'Kranvagn', 'DustDevil', 'Bogatyr',
-  'HullDown_Hank', 'PzKpfwPete', 'Kettenkrad', 'RicochetRita', 'TokTokkie',
-  'GeneralLee42', 'Zaseka', 'MudCrawler', 'BiaTheBear', 'SabotSally',
-  'Feldwebel_K', 'OldNikolai', 'TinCanAlly', 'GrilleGuy', 'VodkaVanya',
-  'CamoNet', 'LongStop', 'DerbyDozer', 'PakWagen',
-];
-const PLAYER_NICK = 'Claude';
-function hashStr(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
-  return h >>> 0;
-}
+// Roster identity: WoT rows read "Nickname (Vehicle)" with a tier numeral. Bot nicknames come from botCallsigns.ts,
+// assigned over the frame's tanks in their order (the battle load's cards name them alike), the player is Claude.
+const PLAYER_NICK = PLAYER_CALLSIGN;
 
 // minimap grid letters (WoT convention skips "I")
 const GRID_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'];
@@ -1692,7 +1685,7 @@ body:is([data-cot-width='laptop'],[data-cot-width='desktop']):not(.cot-touch-lay
 .cot-kill-lane.l .cot-kf .ksi,.cot-kill-lane.r .cot-kf .vsi{color:var(--hud-own);}
 .cot-kill-lane.r .cot-kf .ksi,.cot-kill-lane.l .cot-kf .vsi{color:var(--hud-enemy);}
 /* the player's own kills and deaths ride on the tungsten edge */
-.cot-kf:is([data-relation=you],[data-relation=victim]){box-shadow:var(--battle-edge-own);}
+.cot-kf:is([data-relation=you],[data-relation=victim],[data-relation=ridden]){box-shadow:var(--battle-edge-own);}
 .cot-kf .d{display:inline-flex;align-items:center;justify-content:center;line-height:1;color:var(--ink-2);font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;flex:0 0 auto;}
 .cot-kf .c{color:var(--accent-hi);font-size:11px;letter-spacing:.05em;font-weight:700;flex:0 0 auto;}
 .cot-kf .d>svg,.cot-kf .relation>svg{display:block;flex:none;}
@@ -2330,10 +2323,12 @@ export function initHud(bus: EventBus): HudRuntime {
   // --- team panels ("ears") ---
   const earL = el('div', 'cot-ear l', root);
   const earR = el('div', 'cot-ear r', root);
-  earL.innerHTML = `<div class="hd"><span>${t('hud.team.ally')}</span><span class="al num"></span></div>`;
-  earR.innerHTML = `<div class="hd"><span class="al num"></span><span>${t('hud.team.enemies')}</span></div>`;
+  earL.innerHTML = `<div class="hd"><span class="tl">${t('hud.team.ally')}</span><span class="al num"></span></div>`;
+  earR.innerHTML = `<div class="hd"><span class="al num"></span><span class="tl">${t('hud.team.enemies')}</span></div>`;
   const allyAliveEl = requireElement<HTMLElement>(earL, '.al');
   const enemyAliveEl = requireElement<HTMLElement>(earR, '.al');
+  const allyTitleEl = requireElement<HTMLElement>(earL, '.hd .tl');
+  const enemyTitleEl = requireElement<HTMLElement>(earR, '.hd .tl');
   const allyRoster = el('div', 'cot-ear-rows', earL);
   const enemyRoster = el('div', 'cot-ear-rows', earR);
   for (const [list, label] of [[allyRoster, t('hud.team.ally')], [enemyRoster, t('hud.team.enemies')]] as const) {
@@ -2624,7 +2619,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const moreButton = el('button', 'cot-systems-more', controlsRow);
   moreButton.type = 'button';
   moreButton.hidden = true;
-  moreButton.innerHTML = `<span class="si next">${uiIconSVG('chevronRight', 18)}</span><span class="si back">${uiIconSVG('chevronLeft', 18)}</span>`;
+  moreButton.innerHTML = `<span class="si">${uiIconSVG('chevronRight', 18)}</span>`;
   moreButton.setAttribute('aria-label', t('systems.more'));
   const setControlsPage = (page: number): void => {
     if (controlsRow.dataset.page === String(page)) return;
@@ -3021,6 +3016,26 @@ export function initHud(bus: EventBus): HudRuntime {
     alertEl.classList.remove('show', 'danger', 'warning', 'success', 'info');
   }
 
+  /** The HUD's own side changed mid-battle (Watch mode: a seat taken on the other side, or left): re-seat the sides. */
+  /** The ears' titles: yours and the enemy's, or a spectator's sides by name. */
+  function titleSides(): void {
+    const own = t(watchSide !== null ? 'hud.side.alpha' : 'hud.team.ally');
+    const enemy = t(watchSide !== null ? 'hud.side.bravo' : 'hud.team.enemies');
+    allyTitleEl.textContent = own;
+    enemyTitleEl.textContent = enemy;
+    allyRoster.setAttribute('aria-label', own);
+    enemyRoster.setAttribute('aria-label', enemy);
+  }
+
+  function reseatSides(): void {
+    for (const row of earRows.values()) row.root.remove();
+    earRows.clear();
+    for (const [, bar] of hpPool) bar.root.remove();
+    hpPool.clear();
+    lastScore = '';
+    mmDirty = true;
+  }
+
   function resize(): void {
     w = root.clientWidth || window.innerWidth;
     h = root.clientHeight || window.innerHeight;
@@ -3149,7 +3164,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const spotting = frame.spotting?.isSpotted ? frame.spotting : null;
     for (let i = 0; i < tanks.length; i++) {
       const tank = tanks[i];
-      if (!tank?.state || tank.isPlayer || tank.team === (playerRef?.team ?? 'player')) continue;
+      if (!tank?.state || tank.isPlayer || tank.team === ownSide()) continue;
       // Wave reserves are off the battlefield. Discard their previous wave's
       // contact so reactivation cannot resurrect a stale map position.
       if (tank.modeActive === false) {
@@ -3187,13 +3202,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (t.isPlayer) return PLAYER_NICK;
     let nick = nickById.get(t.id);
     if (!nick) {
-      const used = new Set(nickById.values());
-      let i = hashStr(String(t.id) + (t.spec ? tankSeedId(t.spec.id) : '')) % BOT_NICKS.length; // schema-1 spelling
-      for (let n = 0; n < BOT_NICKS.length; n++) {
-        const cand = BOT_NICKS[(i + n) % BOT_NICKS.length];
-        if (!used.has(cand)) { nick = cand; break; }
-      }
-      nick = nick || `Bot_${(hashStr(String(t.id)) % 90) + 10}`;
+      nick = botCallsign(t.id, t.spec?.id ?? null, new Set(nickById.values()));
       nickById.set(t.id, nick);
     }
     return nick;
@@ -3252,7 +3261,14 @@ export function initHud(bus: EventBus): HudRuntime {
     for (const row of earRows.values()) row.root.remove();
     earRows.clear();
     nickById.clear();
+    assignNicknames(tanks);
     lastScore = '';
+  }
+
+  /** The bots' nicknames over the battle's tanks in their order (botCallsigns.ts rosterCallsigns' walk), before any
+   *  surface asks for one, so the order the HUD's parts ask in never reorders them. */
+  function assignNicknames(tanks: readonly HudTank[]): void {
+    for (const tank of tanks) if (tank && !tank.displayName && !tank.isPlayer) nickFor(tank);
   }
 
   function createEarRow(tank: HudTank, ally: boolean): EarRow {
@@ -3268,7 +3284,8 @@ export function initHud(bus: EventBus): HudRuntime {
     // the silhouette takes its ear's team ink from the sheet (.cot-ear.l / .r .cot-er .ic)
     if (aircraft) iconEl.innerHTML = uiIconSVG(aircraft.icon, 24, 'currentColor');
     else maskIcon(iconEl, spec.id, 'side_silhouette', 'currentColor');
-    if (tank.isPlayer) rootEl.classList.add('me');
+    const me = !!tank.isPlayer || tank.id === riddenId();
+    if (me) rootEl.classList.add('me');
     requireElement<HTMLElement>(rootEl, '.tier').textContent = aircraft ? '' : tierNumeral(spec.id) || '–';
     requireElement<HTMLElement>(rootEl, '.nick').textContent = nickFor(tank);
     requireElement<HTMLElement>(rootEl, '.vn').textContent = vehicle;
@@ -3289,6 +3306,7 @@ export function initHud(bus: EventBus): HudRuntime {
       lastFrac: -1,
       wasDead: null,
       wasSpotted: null,
+      me,
     };
     earRows.set(tank.id, row);
     return row;
@@ -3296,6 +3314,11 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function updateEarRow(tank: HudTank, ally: boolean, dead: boolean): void {
     const row = earRows.get(tank.id) || createEarRow(tank, ally);
+    const me = !!tank.isPlayer || tank.id === riddenId();
+    if (me !== row.me) {
+      row.root.classList.toggle('me', me);
+      row.me = me;
+    }
     const kills = killLedger.count(tank.id);
     if (kills !== row.lastKills) {
       row.lastKills = kills;
@@ -3344,7 +3367,7 @@ export function initHud(bus: EventBus): HudRuntime {
     resetTeamTally();
     for (const tank of tanks) {
       if (!tank?.spec) continue;
-      const ally = tank.team === (playerRef?.team ?? 'player') || !!tank.isPlayer;
+      const ally = tank.team === ownSide() || !!tank.isPlayer;
       const dead = !!tank.combat?.destroyed;
       tallyTank(ally, dead);
       updateEarRow(tank, ally, dead);
@@ -3358,7 +3381,8 @@ export function initHud(bus: EventBus): HudRuntime {
       lastEnemyRosterCount = teamTally.enemyTotal;
     }
     root.classList.toggle('compact-shot-report', Math.max(teamTally.allyTotal, teamTally.enemyTotal) >= 14);
-    teamPips.updateTeams(tanks, playerRef?.team ?? 'player', playerId);
+    // spectating, the ridden tank is ringed on its own side (never counted as the watcher's)
+    teamPips.updateTeams(tanks, ownSide(), watchSide !== null ? null : playerId, riddenId());
     return teamTally;
   }
 
@@ -3479,8 +3503,8 @@ export function initHud(bus: EventBus): HudRuntime {
       const target = modeState.target || 0;
       if (horde) setScoreBars(0, horde.total ? remaining / horde.total : 0);
       else setScoreBars(target > 0 ? Number(ownScore) / target : 0, target > 0 ? Number(enemyScore) / target : 0);
-      allyLabelEl.textContent = horde ? (horde.special ? t(`hud.waveSpecial.${horde.special}`) : t('hud.wave')) : t('hud.allies');
-      enemyLabelEl.textContent = horde ? t('hud.remaining') : t('hud.enemy');
+      allyLabelEl.textContent = horde ? (horde.special ? t(`hud.waveSpecial.${horde.special}`) : t('hud.wave')) : allyLabel();
+      enemyLabelEl.textContent = horde ? t('hud.remaining') : enemyLabel();
       allyLabelEl.toggleAttribute('data-default', !horde);
       enemyLabelEl.toggleAttribute('data-default', !horde);
       allyAliveEl.textContent = `${tally.allyAlive} / ${tally.allyTotal}`;
@@ -3504,8 +3528,8 @@ export function initHud(bus: EventBus): HudRuntime {
       fgEl.textContent = String(allyKills);
       feEl.textContent = String(enemyKills);
       setScoreBars(tally.enemyTotal ? allyKills / tally.enemyTotal : 0, tally.allyTotal ? enemyKills / tally.allyTotal : 0);
-      allyLabelEl.textContent = t('hud.allies');
-      enemyLabelEl.textContent = t('hud.enemy');
+      allyLabelEl.textContent = allyLabel();
+      enemyLabelEl.textContent = enemyLabel();
       allyLabelEl.toggleAttribute('data-default', true);
       enemyLabelEl.toggleAttribute('data-default', true);
       allyAliveEl.textContent = `${tally.allyAlive} / ${tally.allyTotal}`;
@@ -3589,7 +3613,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   /** Appends a cross arm's run from `a` to `b` along its line, cut around every mark this frame (sightInk), the HUD's
-   *  furniture and the over-target plate on that line. */
+   *  furniture, the centre notices shown and the over-target plate on that line. */
   function appendScopeRun(horizontal: boolean, a: number, b: number, across: number): void {
     scopeCutCount = 0;
     for (let i = 0; i < sightInk.count; i++) {
@@ -3598,6 +3622,11 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     for (let i = 0; i < sightFurniture.count; i++) {
       const box = sightFurniture.boxes[i];
+      addScopeCut(horizontal, across, box.x0, box.y0, box.x1, box.y1, SCOPE_CUT_GAP);
+    }
+    // (and the centre notices while they show: the arm ends under the alert rather than meeting it, 1024x600)
+    for (let i = 0; i < sightNoticeCuts.count; i++) {
+      const box = sightNoticeCuts.boxes[i];
       addScopeCut(horizontal, across, box.x0, box.y0, box.x1, box.y1, SCOPE_CUT_GAP);
     }
     const plate = tgtShown ? tgtRect : null;
@@ -5390,7 +5419,7 @@ export function initHud(bus: EventBus): HudRuntime {
     // the proving ground: the lanes stand in a row down the sightline, so their plates would stack; the range card names
     // every hull and the laid one keeps its own target plate
     if (rangeActive) return false;
-    return tank.team === (playerRef?.team ?? 'player') || isSpotted(tank.id);
+    return tank.team === ownSide() || isSpotted(tank.id);
   }
 
   function projectHpBarAnchor(tank: HudTank, camera: THREE.PerspectiveCamera): boolean {
@@ -5407,7 +5436,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function createHpBar(tank: HudTank): HpBar {
-    const ally = tank.team === (playerRef?.team ?? 'player');
+    const ally = tank.team === ownSide();
     const rootEl = el('div', ally ? 'cot-hpb ally' : 'cot-hpb', hpLayer);
     rootEl.innerHTML = `<div class="nm"><i class="si"></i><span></span></div>`
       + `<div class="tr"><div class="fl"></div></div>`;
@@ -6406,7 +6435,7 @@ export function initHud(bus: EventBus): HudRuntime {
     let ax = 0, az = 0, an = 0, ex = 0, ez = 0, en = 0;
     for (const t of tanks) {
       if (!t || !t.state) continue;
-      if (t.team === (playerRef?.team ?? 'player') || t.isPlayer) { ax += t.state.pos.x; az += t.state.pos.z; an++; }
+      if (t.team === ownSide() || t.isPlayer) { ax += t.state.pos.x; az += t.state.pos.z; an++; }
       else { ex += t.state.pos.x; ez += t.state.pos.z; en++; }
     }
     if (!an || !en) return;
@@ -6646,7 +6675,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   function pushTankMinimapBlip(tank: HudTank, state: TankState): void {
-    const ally = tank.team === (playerRef?.team ?? 'player');
+    const ally = tank.team === ownSide();
     const ink = teamInk();
     if (ally) {
       const point = worldToMap(state.pos.x, state.pos.z);
@@ -6845,23 +6874,28 @@ export function initHud(bus: EventBus): HudRuntime {
     const source = killSourceIdentity(payload.source)
       ?? (payload.killerId && aircraftById.has(payload.killerId) ? killSourceIdentity('ac130') : null);
     // callsign first (SPEC 12.2.3): the player is You; the vehicles ride as flag and silhouette, named in the title
+    // spectating a watched battle nobody is You: the feed is the battle's, its lanes the sides, the ridden tank's kills
+    // and death only highlighted
+    const viewerId = watchSide !== null ? null : playerId;
+    const ridden = riddenId();
     const callsign = (id: string | null | undefined): string | null =>
-      !id ? null : id === playerId ? t('hud.feed.you') : callsignById.get(id) ?? null;
+      !id ? null : id === viewerId ? t('hud.feed.you') : callsignById.get(id) ?? null;
     const killer = source?.label || callsign(payload.killerId) || (payload.killerId ? nameById.get(payload.killerId) : null)
       || t('hud.enemy');
     const victim = callsign(payload.id) || (payload.id ? nameById.get(payload.id) : null) || payload.specId || t('hud.tankFallback');
     const killerVehicle = source ? '' : payload.killerId ? nameById.get(payload.killerId) ?? '' : '';
     const victimVehicle = (payload.id ? nameById.get(payload.id) : null) || payload.specId || '';
-    const ownTeam = teamById.get(playerId || '');
+    const ownTeam = watchSide ?? teamById.get(playerId || '');
     const alliedKill = ownTeam !== undefined && !!payload.killerId && teamById.get(payload.killerId) === ownTeam;
     const lane = alliedKill ? killLeft : killRight;
     const item = el('div', 'cot-kf', lane);
     const presentation = killPresentation({ cause: payload.cause, drone: source?.source === 'drone',
-      killerId: payload.killerId, victimId: payload.id || '', playerId,
+      killerId: payload.killerId, victimId: payload.id || '', playerId: viewerId,
       killerTeam: teamById.get(payload.killerId || ''), victimTeam: teamById.get(payload.id || '') });
     item.dataset.killCause = presentation.cause;
     if (source) item.dataset.killSource = source.source;
     if (presentation.relation) item.dataset.relation = presentation.relation;
+    else if (ridden && (payload.killerId === ridden || payload.id === ridden)) item.dataset.relation = 'ridden';
     item.title = [killerVehicle && `${killer} · ${killerVehicle}`, presentation.label, victimVehicle && `${victim} · ${victimVehicle}`,
       presentation.relationLabel].filter(Boolean).join(' · ');
     // side-profile silhouettes of the actual tanks flank the names (the platform's icon for a gunship's or drone's kill)
@@ -7108,6 +7142,13 @@ export function initHud(bus: EventBus): HudRuntime {
   let watchDrone: HudWatchDrone | null = null;
   /** The HUD's own tank: the player's, or the one a watcher rides (the frame's player), never one while flying. */
   const isSelf = (tank: HudTank): boolean => !!tank.isPlayer || (!watchDrone && tank === playerRef);
+  // Watch mode's spectator frame (setWatchSide): the side the HUD reads as its own, and the ridden tank it highlights
+  let watchSide: string | null = null;
+  let lastOwnSide: string | null = null;
+  const ownSide = (): string => watchSide ?? playerRef?.team ?? 'player';
+  const riddenId = (): string | null => watchSide !== null && !watchDrone ? playerRef?.id ?? null : null;
+  const allyLabel = (): string => t(watchSide !== null ? 'hud.side.alpha' : 'hud.allies');
+  const enemyLabel = (): string => t(watchSide !== null ? 'hud.side.bravo' : 'hud.enemy');
   on('tank:destroyed', (p) => {
     if (!p.id || !killLedger.record(p.id, p.killerId, teamById.get(p.id), teamById.get(p.killerId || ''))) return;
     spotById.delete(p.id);
@@ -7611,6 +7652,14 @@ export function initHud(bus: EventBus): HudRuntime {
     playerRef = frame.player || playerRef;
     // flying the watch drone, the frame's tank is only its anchor: no kill reads "You", no hit is the HUD's own
     if (frame.player) playerId = watchDrone ? null : frame.player.id;
+    // the HUD's frame moved (a watcher started spectating, took a seat on the other side, or left it): the rosters,
+    // their titles and the plates re-seat
+    const side = watchSide === null ? ownSide() : `watch:${ownSide()}`;
+    if (side !== lastOwnSide) {
+      if (lastOwnSide !== null) reseatSides();
+      lastOwnSide = side;
+      titleSides();
+    }
     jumpKey.textContent = frame.selfRightKeyLabel || 'F';
     if(frame.matchModeState?.id)setControlsJumpMode(isJumpMode(liveRuleset?.mode===frame.matchModeState.id?liveRuleset:matchRulesetFor(normalizeGameMode(frame.matchModeState.id))));
     if(frame.auxiliaryKeyLabels){
@@ -7876,6 +7925,7 @@ export function initHud(bus: EventBus): HudRuntime {
       // always advance timeS, so real frames still supersede immediately.
       const cursorReleased = !document.pointerLockElement;
       if (specCursorHint.hidden !== cursorReleased) specCursorHint.hidden = cursorReleased;
+      if (!nickById.size && frame.tanks?.length) assignNicknames(frame.tanks);
       const state = prepareHudFrame(frame);
       if (mode === 'hidden') { ctx.clearRect(0, 0, w, h); hideAerialHitMark(); return; }
       updateHudWorldPanels(frame, state.camera);
@@ -7916,6 +7966,8 @@ export function initHud(bus: EventBus): HudRuntime {
     },
 
     getMinimapCaptureReceipt: () => mmCaptureReceipt ? { ...mmCaptureReceipt } : null,
+
+    setWatchSide(team: string | null) { watchSide = team; },
 
     setWatchDrone(pose: HudWatchDrone | null) {
       if (!pose) { if (watchDrone) { watchDrone = null; mmDirty = true; } return; }

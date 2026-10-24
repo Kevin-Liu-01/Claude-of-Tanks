@@ -135,12 +135,11 @@ try {
   for (const staged of [false, true]) {
     diagnosticClock = 0;
     const options = { proceduralOnly: true, geometryReceipt: true };
-    let tank, firstCheckpointAt;
+    let tank, checkpoints = 0;
     if (staged) {
       const steps = createTankSteps('kv2', null, options);
       let result = steps.next();
-      firstCheckpointAt = diagnosticClock;
-      while (!result.done) { diagnosticClock += 1000; result = steps.next(); }
+      while (!result.done) { diagnosticClock += 1000; checkpoints++; result = steps.next(); }
       tank = result.value;
     } else tank = createTank('kv2', null, options);
     try {
@@ -164,8 +163,9 @@ try {
       const assemblyMs = timing.finishedAt - timing.bindMergeFinishedAt;
       assert.equal(setupMs + materialsMs + authoredMs + bindMergeMs + assemblyMs,
         timing.finishedAt - timing.startedAt, 'non-overlapping stages plus setup account for the complete core interval');
-      if (staged) assert.ok(timing.finishedAt <= firstCheckpointAt,
-        'decoration/finalizer waits never enter the first core-step receipt');
+      // click-perf-244: the core yields at its stage checkpoints; each wait here is 1000 ms of the fake clock
+      if (staged) assert.ok(checkpoints > 1 && timing.finishedAt - timing.startedAt < 1000,
+        'no checkpoint, decoration or finalizer wait enters the core receipt');
     } finally { tank.dispose(); }
   }
 } finally {

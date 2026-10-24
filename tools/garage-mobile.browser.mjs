@@ -42,11 +42,12 @@ try{
   };
   const tap=async target=>(await reach(target)).tap();
   const closeModal=async()=>{await box('.cot-modal-root.is-open .cot-modal');await tap('.cot-modal-root.is-open .cot-modal__close');};
-  const details=async()=>tap('.cot-compact-equipment-trigger:not(.cot-dossier-close)');
+  // the folded figures' more button opens the dossier (the 245 redesign); the band holds the slots, the paint and the acts
+  const details=async()=>tap('.cot-overview-more');
   try{
    await page.goto(`${url}/tools/fixtures/mobile-surfaces.html?full=1&locale=${locale}`,{waitUntil:'networkidle'});
    await page.waitForFunction(()=>!!window.__MOBILE_SURFACES);
-   step='garage';for(const selector of ['.cot-battle','.cot-battle-mode','.cot-multiplayer-entry','.cot-gear','.cot-mobile-nav-trigger','.cot-compact-equipment-trigger:not(.cot-dossier-close)','[data-garage-panel="maps"]','[data-garage-panel="appearance"]'])await reach(selector);
+   step='garage';for(const selector of ['.cot-battle','.cot-battle-mode','.cot-multiplayer-entry','.cot-gear','.cot-mobile-nav-trigger','.cot-overview-more','.cot-lt-loadout .eqslot','.cot-lt-paint-all','[data-lt-anatomy]','[data-lt-test-drive]'])await reach(selector);
    for(const chip of await page.locator('.cot-country-chip').all()){await tap(chip);await reach(page.locator('.cot-card:visible').last());}
    await tap(page.locator('.cot-country-chip').first());
    await page.screenshot({path:resolve(out,`${name}-garage.png`)});
@@ -54,11 +55,13 @@ try{
    for(const item of await page.locator('.cot-mobile-nav-menu button').all())await reach(item);
    await tap('[data-mobile-nav="environment"]');await box('.cot-garage-variant-menu');await tap(page.locator('.cot-garage-variant-card').last());
    await tap('.cot-mobile-nav-trigger');await tap('[data-mobile-nav="record"]');await box('.cot-record-dialog');await tap('.cot-modal-root.is-open .cot-modal__close');
-   step='maps';await tap('[data-garage-panel="maps"]');await box('.cot-leftcol');assert.ok(await page.locator('.cot-map-card').count()>25);
+   // the battlefields: the battle card opens the Deploy screen, whose field holds the map grid
+   step='maps';await tap('.cot-battle-mode');await tap('[data-deploy-field]');await box('[data-deploy-field-pop]');assert.ok(await page.locator('.cot-map-card').count()>25);
    await reach(page.locator('.cot-map-select').last());
    await tap('.cot-maps .cot-info-trigger');await closeModal();
-   await page.locator('.cot-map-scroll').evaluate(el=>el.scrollTop=0);await page.screenshot({path:resolve(out,`${name}-maps.png`)});await tap('.cot-drawer-close');
-   step='appearance';await tap('[data-garage-panel="appearance"]');await box('.cot-leftcol');
+   await page.locator('.cot-map-scroll').evaluate(el=>el.scrollTop=0);await page.screenshot({path:resolve(out,`${name}-maps.png`)});
+   await tap('[data-deploy-field]');await tap('[data-battle-close]');
+   step='appearance';await tap('.cot-lt-paint-all');await box('.cot-leftcol');
    await tap('.cot-camos .cot-info-trigger');await closeModal();
    for(const collection of await page.locator('.cot-camo-collection').all())await tap(collection);
    await tap(page.locator('.cot-camo-collection').first());
@@ -86,7 +89,8 @@ try{
    for(const link of await page.locator('.stats [data-gallery-layer]').all())await reach(link);
    for(const row of await page.locator('.cot-performance-grid .srow').all())assert.ok(await row.isVisible(),'every performance metric remains visible');
    await page.locator('.stats').evaluate(el=>el.scrollTop=0);await page.screenshot({path:resolve(out,`${name}-dossier.png`)});
-   step='equipment';await tap('.eqslot');await box('.cot-eqpick');
+   await tap('.cot-dossier-close');
+   step='equipment';await tap('.cot-lt-loadout .eqslot');await box('.cot-eqpick');
    assert.equal(await page.locator('.cot-eqpick .ph .x').evaluate(el=>el===document.activeElement),true,'picker focuses close control');
    await page.keyboard.press('Shift+Tab');assert.equal(await page.locator('.cot-eqpick').evaluate(el=>el.contains(document.activeElement)),true,'picker traps backwards Tab');
    for(const category of ['all','firepower','recon','mobility','survival']){
@@ -97,14 +101,13 @@ try{
    await page.setViewportSize({width:height,height:width});await page.waitForTimeout(100);await box('.cot-eqpick');await reach('.cot-eqpick .ph .x');
    await page.setViewportSize({width,height});await page.waitForTimeout(100);await tap(page.locator('.cot-eqtile:not([disabled]):not(.remove)').last());
    assert.equal(await page.locator('.cot-eqpick').isVisible(),false);assert.equal(await page.locator('.eqslot[data-slot="0"]').evaluate(el=>el===document.activeElement),true,'equipment selection restores slot focus');
-   await tap('.eqslot');await page.keyboard.press('Escape');
-   assert.equal(await page.locator('.cot-eqpick').isVisible(),false,'Escape closes the nested picker');
-   assert.equal(await page.locator('.cot-garage').getAttribute('data-garage-panel'),'equipment','Escape preserves the parent dossier');
-   await tap('.cot-dossier-close');
+   await tap('.cot-lt-loadout .eqslot');await page.keyboard.press('Escape');
+   assert.equal(await page.locator('.cot-eqpick').isVisible(),false,'Escape closes the picker');
+   assert.equal(await page.locator('.cot-garage').getAttribute('data-garage-panel'),null,'Escape closes only the picker');
    step='room-garage';
    for(const mode of ['private','lan']){
     await page.evaluate(mode=>window.__MOBILE_SURFACES.garage.setRoomStatus({mode,roomCode:'ABC123',ready:false,canSetReady:true,readyCount:27,total:28}),mode);
-    for(const control of ['.cot-room-ready','.cot-room-reminder','[data-garage-panel=maps]','[data-garage-panel=appearance]'])await reach(control);
+    for(const control of ['.cot-room-ready','.cot-room-reminder','.cot-lt-paint-all','.cot-lt-loadout .eqslot'])await reach(control);
     await details();await box('.stats');await tap('.cot-dossier-close');
    }
    await page.evaluate(()=>window.__MOBILE_SURFACES.garage.setRoomStatus(null));

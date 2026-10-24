@@ -138,13 +138,12 @@ function fakeGl(onOperation = () => {}) {
     contextQuery: 2, createBuffer: 2, bindingQuery: 2, bindBuffer: 4, bufferData: 2,
     readPixels: 2, fence: 2, flush: 2,
   }, 'enqueue timings are available before the first awaited poll');
-  assert.equal(timings.sizeQuery, undefined, 'allocation validation has not run before fence completion');
   assert.equal(timings.wait, undefined, 'a pending wait has no completed duration');
   await clock.resume();
   await pending;
   assert.deepEqual(timings, {
     contextQuery: 8, createBuffer: 2, bindingQuery: 4, bindBuffer: 8, bufferData: 2,
-    sizeQuery: 2, readPixels: 2, fence: 2, flush: 2,
+    readPixels: 2, fence: 2, flush: 2,
     wait: 8, copy: 2, release: 4,
   }, 'repeated bindings accumulate; GPU waiting, copying and cleanup remain distinct');
   assert(fake.events.every(([name]) => name !== 'getError'), 'diagnostics never consume GL errors');
@@ -152,7 +151,7 @@ function fakeGl(onOperation = () => {}) {
   fake.assertReleased();
 }
 
-for (const method of ['readPixels', 'clientWaitSync', 'getBufferParameter', 'getBufferSubData', 'deleteSync']) {
+for (const method of ['readPixels', 'clientWaitSync', 'getBufferSubData', 'deleteSync']) {
   const clock = timing();
   const fake = fakeGl(() => clock.advance(2));
   const timings = {};
@@ -164,8 +163,7 @@ for (const method of ['readPixels', 'clientWaitSync', 'getBufferParameter', 'get
   const rejected = assert.rejects(pending, (error) => error === failure);
   if (clock.waits.length) await clock.resume();
   await rejected;
-  const stage = { readPixels: 'readPixels', clientWaitSync: 'wait',
-    getBufferParameter: 'sizeQuery', getBufferSubData: 'copy', deleteSync: 'release' }[method];
+  const stage = { readPixels: 'readPixels', clientWaitSync: 'wait', getBufferSubData: 'copy', deleteSync: 'release' }[method];
   assert(timings[stage] >= 2, `${method}: failed operations still publish their elapsed time`);
   assert(timings.release >= 2, 'cleanup is measured after failure');
   assert(Object.values(timings).every((ms) => Number.isFinite(ms) && ms >= 0));
@@ -229,10 +227,11 @@ for (const diagnostics of ['frozen', 'throwing', 'nonfinite']) {
   fake.gl.bindBuffer(fake.gl.PIXEL_PACK_BUFFER, currentBinding);
   await clock.resume();
   await pending;
-  assert.ok(fake.names().indexOf('getBufferParameter') > fake.names().indexOf('clientWaitSync'),
-    'buffer size is validated only after the owned fence signals');
-  assert.ok(fake.names().indexOf('getBufferParameter') < fake.names().indexOf('getBufferSubData'),
-    'validated allocation remains a prerequisite for the destination copy');
+  // (2026-10-24, perf-245) no synchronous query anywhere: Chrome answers getBufferParameter with a full command-buffer
+  // round trip, which after the fence waited for every frame queued since; the copy is the readback shadow's
+  assert.equal(fake.names().includes('getBufferParameter'), false, 'no buffer-size round trip, before or after the fence');
+  assert.ok(fake.names().indexOf('getBufferSubData') > fake.names().indexOf('clientWaitSync'),
+    'the copy follows the owned fence');
   assert.equal(fake.binding(), currentBinding, 'copy restores the current binding, not the old submission binding');
   assert.deepEqual([...storage], [...new Uint8Array(4).fill(7), ...new Uint8Array(16).fill(31), ...new Uint8Array(8).fill(7)],
     'readback respects byteOffset and writes only the requested RGBA extent');
@@ -264,7 +263,7 @@ for (const diagnostics of ['frozen', 'throwing', 'nonfinite']) {
   fake.assertReleased();
 }
 
-for (const method of ['isContextLost', 'createBuffer', 'getParameter', 'bindBuffer', 'bufferData', 'getBufferParameter', 'readPixels', 'fenceSync', 'flush', 'clientWaitSync', 'getBufferSubData']) {
+for (const method of ['isContextLost', 'createBuffer', 'getParameter', 'bindBuffer', 'bufferData', 'readPixels', 'fenceSync', 'flush', 'clientWaitSync', 'getBufferSubData']) {
   const fake = fakeGl();
   const clock = timing();
   const failure = new Error(`injected ${method}`);
@@ -327,7 +326,7 @@ for (const primary of [false, true]) {
   fake.assertReleased();
 }
 
-for (const [flag, expected] of [['nullBuffer', /buffer_unavailable/], ['nullFence', /fence_unavailable/], ['contextLost', /context_lost/], ['emptyStorage', /allocation_failed/]]) {
+for (const [flag, expected] of [['nullBuffer', /buffer_unavailable/], ['nullFence', /fence_unavailable/], ['contextLost', /context_lost/]]) {
   const fake = fakeGl();
   fake.gl[flag] = true;
   const clock = timing();
@@ -339,31 +338,19 @@ for (const [flag, expected] of [['nullBuffer', /buffer_unavailable/], ['nullFenc
   fake.assertReleased();
 }
 
-for (const reportedSize of [0, 2, 8, NaN]) {
+// a pack buffer whose storage failed (out of memory): the copy is WebGL's INVALID_VALUE and writes nothing — the
+// destination keeps its bytes, and no size round trip is spent to learn it
+{
   const fake = fakeGl();
+  fake.gl.emptyStorage = true;
   const clock = timing();
-  const originalSize = fake.gl.getBufferParameter;
-  fake.gl.getBufferParameter = (...args) => {
-    originalSize(...args);
-    return reportedSize;
-  };
   const pixels = new Uint8Array(4).fill(9);
   const pending = beginRgba8Readback(fake.gl, 1, 1, pixels, clock.options);
-  const rejected = assert.rejects(pending, /allocation_failed/);
+  await clock.resume();
+  await pending;
+  assert.deepEqual([...pixels], [9, 9, 9, 9], 'failed storage leaves destination bytes untouched');
   assert.equal(fake.names().includes('getBufferParameter'), false);
-  fake.syncs[0].status = fake.gl.TIMEOUT_EXPIRED;
-  await clock.resume();
-  assert.equal(fake.names().includes('getBufferParameter'), false,
-    'a pending fence cannot trigger allocation validation');
-  const currentBinding = { id: 'external-before-allocation-validation' };
-  fake.gl.bindBuffer(fake.gl.PIXEL_PACK_BUFFER, currentBinding);
-  fake.syncs[0].status = fake.gl.CONDITION_SATISFIED;
-  await clock.resume();
-  await rejected;
-  assert.equal(fake.names().filter((name) => name === 'getBufferParameter').length, 1);
-  assert.equal(fake.names().includes('getBufferSubData'), false, 'malformed or OOM storage cannot copy');
-  assert.deepEqual([...pixels], [9, 9, 9, 9], 'rejected allocation leaves destination bytes untouched');
-  assert.equal(fake.binding(), currentBinding, 'failed validation restores the binding owned by the current caller');
+  assert.equal(fake.binding(), fake.initialBinding);
   assert.equal(clock.waits.length, 0);
   fake.assertReleased();
 }
@@ -371,12 +358,12 @@ for (const reportedSize of [0, 2, 8, NaN]) {
 for (const lost of [false, true]) {
   const fake = fakeGl();
   const clock = timing();
-  const originalSize = fake.gl.getBufferParameter;
-  fake.gl.getBufferParameter = (...args) => {
-    const size = originalSize(...args);
+  const originalWait = fake.gl.clientWaitSync;
+  fake.gl.clientWaitSync = (...args) => {
+    const status = originalWait(...args);
     if (lost) fake.gl.contextLost = true;
     else clock.advance(12);
-    return size;
+    return status;
   };
   const pixels = new Uint8Array(4).fill(9);
   const pending = beginRgba8Readback(fake.gl, 1, 1, pixels, clock.options);
@@ -384,7 +371,7 @@ for (const lost of [false, true]) {
   await clock.resume();
   await rejected;
   assert.equal(fake.names().includes('getBufferSubData'), false,
-    'post-fence validation cannot permit a copy after context loss or the ownership deadline');
+    'a fence that signals as the context is lost or the ownership deadline passes cannot permit a copy');
   assert.deepEqual([...pixels], [9, 9, 9, 9]);
   assert.equal(fake.binding(), fake.initialBinding);
   assert.equal(clock.waits.length, 0);

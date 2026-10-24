@@ -39,6 +39,8 @@ const flush = async () => { for (let i = 0; i < 12; i++) await Promise.resolve()
     firedRounds: { clear() {} }, killLedger: { clear() {} },
     // main 395305d45: the state holds the missile splash ledger and reset() also clears the primary card's timers
     MissileBlastLedger, clearCardTimers() { cardTimerClears++; },
+    // brand-ui 242: reset() also clears the end screen's battle timeline (battleBeats.ts)
+    beatLog: { clear() {} },
     shotLog: [], allShots: [], receivedLog: [], combatants: new Map(), tg: new Map(),
     endRoster: null, endInfo: null, spotWindow: new Map(), spottedSet: new Set(), spotAttributed: false,
     stats: {}, newStats: () => ({}), logOpen: false, logPanel: surface,

@@ -1,4 +1,7 @@
-import { battleMapArt, shotAccuracy } from './battleReportMedia.ts';
+import { battleEndArt, shotAccuracy } from './battleReportMedia.ts';
+import { battleLoadModeLabel } from './battleLoad.ts';
+import { GAME_MODE_DEFINITIONS } from '../sim/gameModeCatalog.ts';
+import { reportBackdrop } from './reportBackdrop.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * endScreen.ts — typed cinematic battle end screen (killcam_endscreen r1).
@@ -40,7 +43,7 @@ import { killSourceIdentity } from './killSourceIdentity.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { ICON_IDS } from './icons/spriteIndex.ts';
 import { moduleName } from './moduleRegistry.ts';
-import { layoutBeats, type BattleBeat, type PlacedBeat } from './battleBeats.ts';
+import { layoutBeats, type BattleBeat, type BattleSide, type PlacedBeat } from './battleBeats.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { t, formatNumber } from './i18n.ts';
@@ -111,6 +114,8 @@ export interface EndScreenSummary {
   revives?: boolean;
   map?: string | null;
   mapId?: string | null;
+  /** The battle's mode id: its chip leads the facts under the headline (the direction's 11-end-screen .chips). */
+  mode?: string | null;
   timeS: number;
   stats: EndScreenStats;
   kills: EndScreenKillRow[];
@@ -129,6 +134,13 @@ export interface EndScreenSummary {
   awards?: BattleAwards | null;
   /** The battle's timeline (battleBeats.ts): the player's spot, kills, objectives, losses and death, by battle time. */
   beats?: readonly BattleBeat[] | null;
+  /**
+   * A watched battle (watch-mode-243): no human side. The head names the winning side, the rosters are Alpha (allies)
+   * and Bravo (enemies), the ridden tank's row (isPlayer) is only highlighted, and the beats are the battle's own.
+   */
+  watched?: boolean;
+  /** A watched battle's mode score by side; absent where the battle is scored by its kills. */
+  score?: { readonly alpha: number; readonly bravo: number } | null;
 }
 
 interface EndScreenRuntime {
@@ -161,6 +173,8 @@ interface CountUpOptions {
 
 interface TileOptions {
   hot?: boolean;
+  /** The tile's short visible label (the full one is its title and accessible name). */
+  short?: string;
   icon?: string;
   text?: string;
   value?: number;
@@ -181,24 +195,29 @@ interface TeamSummary {
   damage: number;
 }
 
+// every use is a CSS value (the sheet, inline tints): the Premiere direction's accent, status and ink tokens
 const COL = {
-  amber: '#f0a030',
-  amberHi: '#ffd27a',
-  gold: '#ffd166',
-  green: '#7fdc8a',
-  red: '#f27a6e',
-  steel: '#cfd9e2',
-  text: '#e6edf3',
-  dim: '#8a97a3',
+  amber: 'var(--accent)',
+  amberHi: 'var(--accent-hi)',
+  gold: 'var(--accent-hi)',
+  green: 'var(--ok)',
+  red: 'var(--danger)',
+  steel: 'var(--ink-2)',
+  text: 'var(--ink-1)',
+  dim: 'var(--ink-3)',
 };
 
 /**
  * The player's vehicle tile takes its tank hero card (the 3/4 render over its waving flag) from the lazy
  * hero chunk; the packaged angle icon stays until the layers are placed, and for good when they are not.
  */
-function showHeroVehicle(card: HTMLElement, specId: string, fallback: HTMLImageElement): void {
-  Promise.all([import('./heroCard.ts'), import('./heroCard.css')])
-    .then(([hero]) => hero.decorateHeroTile(card, specId, { tankSizes: '220px', flagSizes: '260px', priority: true }))
+function showHeroVehicle(card: HTMLElement, specId: string, fallback: HTMLImageElement, name: string): void {
+  // the card module with its stylesheet (the one boundary every card surface keeps), the name's policy beside them
+  Promise.all([Promise.all([import('./heroCard.ts'), import('./heroCard.css')]), import('./heroCardPolicy.ts')])
+    .then(([[hero], policy]) => {
+      nameVehicleCard(card, name, policy.nameParts);
+      return hero.decorateHeroTile(card, specId, { tankSizes: '220px', flagSizes: '260px', priority: true });
+    })
     .then((decorated) => {
       if (!decorated) return;
       card.setAttribute('role', 'img');
@@ -206,6 +225,22 @@ function showHeroVehicle(card: HTMLElement, specId: string, fallback: HTMLImageE
       fallback.remove();
     })
     .catch(() => { /* the angle icon stays */ });
+}
+
+/**
+ * The vehicle's name under its card: the name solid, its variant (the last word) in the hollow tungsten outline, as the
+ * policy's end-screen card sets it (HERO_CARD_LAYOUT.endScreen hollow; owner 2026-10-22: "love the outline text tho").
+ */
+function nameVehicleCard(card: HTMLElement, name: string, split: (name: string) => { solid: string; variant: string }): void {
+  if (!name || card.querySelector('.es-vn')) return;
+  const { solid, variant } = split(name);
+  const label = el('span', 'es-vn', card);
+  label.setAttribute('aria-hidden', 'true');
+  label.append(solid);
+  if (variant) {
+    label.append(' ');
+    el('span', 'hv', label).textContent = variant;
+  }
 }
 
 const ES_CSS = `
@@ -216,6 +251,7 @@ const ES_CSS = `
     radial-gradient(110% 80% at 50% -10%,rgba(240,160,48,.13),rgba(240,160,48,0) 48%),
     linear-gradient(180deg,rgba(5,8,12,.985),rgba(4,7,10,.955) 44%,rgba(3,5,8,.99));}
 .cot-es.show{display:flex;}
+.cot-es.es-sheet-wait{visibility:hidden;}
 .cot-es *{box-sizing:border-box;margin:0;padding:0;}
 .cot-es::before{content:"";position:fixed;left:0;right:0;top:0;height:4px;
   background:linear-gradient(90deg,transparent 8%,${COL.amber} 50%,transparent 92%);
@@ -474,6 +510,19 @@ export function summarizeTeam(rows: TeamSummaryInput[] = []): TeamSummary {
   }, { total: 0, alive: 0, kills: 0, damage: 0 });
 }
 
+/**
+ * A watched battle's head: the winning side (the verdict reads Alpha's seat, so a victory is Alpha's and a defeat
+ * Bravo's) and the score by side, the mode's where it keeps one, else each side's kills.
+ */
+export function watchedResult(
+  result: EndScreenResult,
+  sum: Pick<EndScreenSummary, 'allies' | 'enemies' | 'score'>,
+): { readonly winner: BattleSide | null; readonly alpha: number; readonly bravo: number } {
+  const winner = result === 'victory' ? 'alpha' : result === 'defeat' ? 'bravo' : null;
+  if (sum.score) return { winner, alpha: sum.score.alpha, bravo: sum.score.bravo };
+  return { winner, alpha: summarizeTeam(sum.allies).kills, bravo: summarizeTeam(sum.enemies).kills };
+}
+
 export function damageComparisonPercent(damage: RuntimeValue, maxDamage: RuntimeValue): number {
   const value = Math.max(0, Number(damage) || 0);
   const ceiling = Math.max(0, Number(maxDamage) || 0);
@@ -561,12 +610,30 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   ensureFonts();
   ensureStyle('cot-es-style', ES_CSS, 'surfaces');
   host.classList.add('cot-es');
+  // the report's presentation sheet is its own CSS chunk, off the game's boot CSS: it loads with the screen (the battle
+  // HUD's start, minutes before a report); a report that beats it stays hidden until it lands, never unstyled
+  let sheetLoaded = false;
+  const sheetDone = (): void => { sheetLoaded = true; host.classList.remove('es-sheet-wait'); };
+  void import('./endScreenPresentation.css').then(sheetDone, sheetDone);
   host.setAttribute('role', 'dialog');
   host.setAttribute('aria-modal', 'true');
   host.setAttribute('aria-label', t('endScreen.resultsAria'));
   host.setAttribute('aria-hidden', 'true');
 
   const awardTooltip = createRichTooltip(host, '[data-medal-tip],[data-achievement-tip]', awardDetails);
+  /** A report column that scrolls (the wide windows' side-by-side record) fades at its foot while more lies below. */
+  const markMore = (panel: HTMLElement): void => {
+    panel.classList.toggle('more', panel.scrollHeight - panel.scrollTop - panel.clientHeight > 2);
+  };
+  // the column's box (a resize) and its sections (late art, the hero tile, a tab's swap) change what lies below
+  const moreObserver = typeof ResizeObserver === 'function'
+    ? new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const panel = (entry.target as HTMLElement).closest<HTMLElement>('.es-debrief');
+        if (panel) markMore(panel);
+      }
+    })
+    : null;
   host.classList.add('cot-es--record');
   host.addEventListener('keydown', event => { if (host.classList.contains('show')) containModalTab(event,host,host.querySelector<HTMLButtonElement>('button') || host); });
   let visible = false;
@@ -644,6 +711,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
 
   let seq = 0; // entrance stagger index
   const nextI = () => String(seq++);
+  // a watched battle's report (show() sets it): the sides by name, no "You", the battle's own line
+  let watchedView = false;
+  const sideName = (side: BattleSide): string => t(`endScreen.side.${side}`);
+  const sideFlag = (side: BattleSide): string => `<span class="fg ${side}">${uiIconSVG('modeFlag', 24, 'currentColor')}</span>`;
 
   function tile(
     parent: HTMLElement,
@@ -655,7 +726,11 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     t.style.setProperty('--i', nextI());
     const v = el('div', 'v', t);
     const k = el('div', 'k', t);
-    k.innerHTML = `${opts.icon ? uiIconSVG(opts.icon, 16) : ''}<span>${label}</span>`;
+    k.innerHTML = `${opts.icon ? uiIconSVG(opts.icon, 16) : ''}<span>${opts.short ?? label}</span>`;
+    // the wide record shows the glyph and the figure alone (page 11's .me .k), a phone the short label: the full label
+    // stays on hover and for assistive technology
+    t.title = label;
+    if (opts.short) k.setAttribute('aria-label', label);
     if (opts.text != null) v.textContent = opts.text;
     else countUp(v, opts.value || 0, { delayMs: 260 + seq * 60, fmt: opts.fmt });
     if (key) host.dataset[key] = String(opts.datasetV != null ? opts.datasetV : Math.round(opts.value || 0));
@@ -686,7 +761,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const icon = el('span', 'ri', row);
     if (player.specId) {
       maskIcon(icon, player.specId, 'side_silhouette',
-        player.ready ? 'rgba(127,220,138,.88)' : 'rgba(190,204,215,.72)');
+        player.ready ? 'var(--ok)' : 'var(--ink-2)');
     }
     const copy = el('span', 'room-copy', row);
     const name = el('span', 'rn', copy);
@@ -800,11 +875,15 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     row.setAttribute('role', 'listitem');
     // (ac130-fx-228) a gunship pilot's row: the AC-130, not the garage tank under the gunship's guns
     const vehicle = result.aircraft ? killSourceIdentity('ac130')?.label ?? '' : vehicleName(result.specId);
-    const details: string[] = [vehicle, ...rosterRowDetails(result, revives)];
+    const details = rosterRowDetails(result, revives);
+    // one table row on the wide windows (the direction's 11-end-screen .row): the name and its vehicle on one line, the
+    // kills (and a reviving battle's deaths) in their own columns; the narrow sheets keep the counts as words
     row.innerHTML =
       `${result.aircraft ? '' : flagSeat(result.specId)}<span class="si"></span>` +
-      `<span class="identity"><span class="nm">${result.isPlayer ? `<b class="you">${t('endScreen.you')}</b>` : ''}${escapeHtml(result.name || result.id)}</span>` +
-      `<span class="veh">${details.filter(Boolean).map(escapeHtml).join(' · ')}</span></span>` +
+      `<span class="identity"><span class="nm">${result.isPlayer && !watchedView ? `<b class="you">${t('endScreen.you')}</b>` : ''}${escapeHtml(result.name || result.id)}</span>` +
+      `<span class="veh">${escapeHtml(vehicle)}${details.length ? `<span class="dt"> · ${details.map(escapeHtml).join(' · ')}</span>` : ''}</span></span>` +
+      `<span class="kc num" title="${escapeHtml(t('endScreen.tile.kills'))}">${Math.max(0, Math.floor(Number(result.kills) || 0))}</span>` +
+      (revives ? `<span class="dc num" title="${escapeHtml(t('endScreen.deaths'))}">${Math.max(0, Math.floor(Number(result.deaths) || 0))}</span>` : '') +
       '<span class="output"><span class="ov"></span><span class="obar" aria-hidden="true"><i></i></span></span>' +
       `<span class="st">${uiIconSVG(result.dead ? 'skull' : 'check', 16)}</span>`;
     const damage = Math.max(0, Number(result.dmg) || 0);
@@ -825,10 +904,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     stateMark.title = result.dead ? t('endScreen.destroyed') : t('endScreen.survived');
     const silhouette = requiredDescendant<HTMLElement>(row, '.si');
     if (result.aircraft) {
-      silhouette.innerHTML = uiIconSVG('modeAc130', 16, result.dead ? 'rgba(242,143,143,.8)' : 'rgba(206,220,232,0.8)');
+      silhouette.innerHTML = uiIconSVG('modeAc130', 16, result.dead ? 'var(--danger)' : 'var(--ink-2)');
       silhouette.style.display = 'inline-flex'; silhouette.style.alignItems = 'center'; silhouette.style.justifyContent = 'center';
     } else maskIcon(silhouette, result.specId || result.id,
-      'side_silhouette', result.dead ? 'rgba(242,143,143,.8)' : 'rgba(206,220,232,0.8)');
+      'side_silhouette', result.dead ? 'var(--danger)' : 'var(--ink-2)');
   }
 
   function renderTeamRoster(
@@ -842,8 +921,17 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const panel = el('div', `es-roster ${hostile ? 'foe' : 'ally'}`, rosters);
     panel.setAttribute('role', 'group');
     panel.setAttribute('aria-label', title);
+    // the side's name and its kills in its ink over glyph column heads (the direction's 11-end-screen .tbl head): the
+    // wide windows' rosters stand in for the scoreboard, the narrow sheets keep the words
+    const side = summarizeTeam(list);
     const columns = el('div', 'es-roster-cols', panel);
-    columns.innerHTML = `<span>${t('endScreen.roster.colCombatant')}</span><span>${t('endScreen.damage')}</span>`;
+    const glyphHead = (icon: string, label: string, cls: string): string =>
+      `<span class="ch ${cls}" title="${escapeHtml(label)}">${uiIconSVG(icon, 14)}<span class="sr">${escapeHtml(label)}</span></span>`;
+    columns.innerHTML = `<span class="side"><b>${escapeHtml(title)}</b><span class="tot num">${fmtN(side.kills)}</span>` +
+      `<span class="alive num" title="${escapeHtml(t('endScreen.survivors'))}">${uiIconSVG('check', 12)}${side.alive}/${side.total}</span></span>` +
+      `<span class="word">${t('endScreen.roster.colCombatant')}</span>` +
+      glyphHead('skull', t('endScreen.tile.kills'), 'kc') + (revives ? glyphHead('rematch', t('endScreen.deaths'), 'dc') : '') +
+      glyphHead('damage', t('endScreen.damage'), 'dg') + `<span class="ch st" aria-hidden="true"></span>`;
     const listRoot = el('div', 'es-roster-list', panel);
     listRoot.setAttribute('role', 'list');
     listRoot.setAttribute('aria-label', t('endScreen.roster.damageResults', { title }));
@@ -877,12 +965,18 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   }
 
   function renderReportHero(result: EndScreenResult, sum: EndScreenSummary): void {
-    const art = battleMapArt(sum.mapId);
-    host.style.setProperty('--report-map', art ? `url("${art}")` : 'none');
+    // perf-246: the report covers the scene (the Garage warms on the canvas behind it): the battlefield's end still
+    // (battle-end-r1) under the direction's grade, else the battle's frozen last frame (src/ui/reportBackdrop.ts)
+    const backdrop = reportBackdrop(battleEndArt(sum.mapId));
+    host.style.setProperty('--report-map', backdrop ? `url("${backdrop}")` : 'none');
     const hero = el('div', 'es-hero', host);
     const kick = el('div', 'es-kick es-in', hero);
     kick.style.setProperty('--i', nextI());
     kick.textContent = t('endScreen.kicker');
+    if (watchedView) {
+      renderWatchedHead(hero, result, sum);
+      return;
+    }
     const bannerClass = result === 'victory' ? 'v' : result === 'defeat' ? 'd' : 'n';
     const bannerText = result === 'victory' ? t('endScreen.victory')
       : result === 'defeat' ? t('endScreen.defeat')
@@ -903,8 +997,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     el('div', 'es-rule', hero);
     const sub = el('div', 'es-sub es-in', hero);
     sub.style.setProperty('--i', nextI());
-    sub.innerHTML = `${sum.playerVehicle ? `<b>${sum.playerVehicle}</b> — ` : ''}` +
-      outcomeLine(result, sum);
+    sub.innerHTML = `${sum.playerVehicle ? `<b>${escapeHtml(sum.playerVehicle)}</b>` : ''}` +
+      `<span class="es-why">${outcomeLine(result, sum)}</span>`;
     if (sum.finalBlow) {
       const blow = el('div', 'es-blow es-in', hero);
       blow.style.setProperty('--i', nextI());
@@ -917,10 +1011,44 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     if (sum.campaign) renderCampaignDebrief(hero, sum.campaign);
   }
 
+  /**
+   * A watched battle's head (watch-mode-243): nobody won or lost, so the headline is the winning side's flag and name
+   * (a draw says so), the score is by side in the battle's inks (Alpha solid, Bravo hollow, as the HUD drew them), and
+   * the final blow and the meta strip follow; no line about a player's tank.
+   */
+  function renderWatchedHead(hero: HTMLElement, result: EndScreenResult, sum: EndScreenSummary): void {
+    const { winner, alpha, bravo } = watchedResult(result, sum);
+    const headline = el('div', 'es-headline', hero);
+    const banner = el('div', `es-ban w ${winner ?? 'n'}`, headline);
+    const word = winner ? t('endScreen.watch.wins', { side: sideName(winner) })
+      : result === 'draw' ? t('endScreen.draw') : t('endScreen.battleOver');
+    banner.innerHTML = `${winner ? sideFlag(winner) : ''}<span>${escapeHtml(word)}</span>`;
+    host.dataset.banner = word;
+    host.dataset.winner = winner ?? 'none';
+    const score = el('div', 'es-score', headline);
+    score.setAttribute('role', 'img');
+    score.setAttribute('aria-label', t('endScreen.watch.scoreAria', { alpha: fmtN(alpha), bravo: fmtN(bravo) }));
+    score.innerHTML = `<span class="o">${fmtN(alpha)}</span><span class="e">${fmtN(bravo)}</span>`;
+    host.dataset.score = `${Math.round(alpha)}:${Math.round(bravo)}`;
+    el('div', 'es-rule', hero);
+    if (sum.finalBlow) {
+      const blow = el('div', 'es-blow es-in', hero);
+      blow.style.setProperty('--i', nextI());
+      blow.innerHTML = `${uiIconSVG(sum.finalBlow.cause === 'ammorack' ? 'ammoRack' : sum.finalBlow.cause === 'ram' ? 'killRam' : 'skull', 18)}<span>${escapeHtml(finalBlowLine(sum.finalBlow))}</span>`;
+      host.dataset.finalBlow = `${sum.finalBlow.cause}:${sum.finalBlow.attacker || ''}>${sum.finalBlow.target}`;
+    } else {
+      delete host.dataset.finalBlow;
+    }
+    renderReportMetadata(hero, sum);
+  }
+
   function renderReportMetadata(hero: HTMLElement, sum: EndScreenSummary): void {
     const meta = el('div', 'es-meta es-in', hero);
     meta.style.setProperty('--i', nextI());
     const bits: string[] = [];
+    const mode = sum.mode && Object.hasOwn(GAME_MODE_DEFINITIONS, sum.mode)
+      ? GAME_MODE_DEFINITIONS[sum.mode as keyof typeof GAME_MODE_DEFINITIONS] : null;
+    if (mode) bits.push(`<span class="mode">${uiIconSVG(mode.icon, 14)}<b>${escapeHtml(battleLoadModeLabel(mode.id))}</b></span>`);
     if (sum.map) bits.push(`<span>${uiIconSVG('map', 14)}<b>${escapeHtml(sum.map)}</b></span>`);
     if (sum.timeS > 0) {
       bits.push(`<span>${uiIconSVG('clock', 14)}<b>${fmtTime(sum.timeS)}</b></span>`);
@@ -989,20 +1117,19 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     detail = '',
   ): void {
     const item = el('div', 'es-mini', parent);
+    item.title = label;
     item.innerHTML = `<div class="mk">${uiIconSVG(icon, 14)}<span>${label}</span></div>` +
       `<div class="mv">${value}</div>${detail ? `<div class="md">${detail}</div>` : ''}`;
     if (key) host.dataset[key] = value;
   }
 
+  /** The combat details' figures (the tiles carry the six that lead: damage, kills, accuracy, spotted, assist, blocked). */
   function renderSecondaryStats(parent: HTMLElement, stats: EndScreenStats, deaths: number | null): void {
     const penetrationRate = stats.hits > 0
       ? Math.round((stats.pens / stats.hits) * 100) : 0;
     renderMiniStat(parent, 'penetration', null, t('endScreen.penetrations'),
       `${stats.pens} / ${stats.hits}`, t('endScreen.penetrationPercent', { percent: penetrationRate }));
-    renderMiniStat(parent, 'team', 'assist', t('endScreen.assist'), fmtN(stats.assist));
-    renderMiniStat(parent, 'optics', null, t('endScreen.spotted'), String(stats.spotted ?? 0));
     renderMiniStat(parent, 'repair', null, t('endScreen.modules'), String(stats.modulesDestroyed ?? 0));
-    renderMiniStat(parent, 'shield', 'blocked', t('endScreen.damageBlocked'), fmtN(stats.blocked));
     renderMiniStat(parent, 'damage', 'received', t('endScreen.damageReceived'), fmtN(stats.received));
     // owner 2026-09-21: in a reviving mode deaths are a stat of the battle, not the player's end state
     if (deaths != null) renderMiniStat(parent, 'skull', 'deaths', t('endScreen.deaths'), String(deaths));
@@ -1051,7 +1178,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
    * silhouette and callsign) and its battle time under it; battleBeats.ts layoutBeats() picks the labels.
    */
   function renderBattleBeats(result: EndScreenResult, sum: EndScreenSummary): void {
-    const beats = layoutBeats(sum.beats ?? [], sum.timeS);
+    const beats = layoutBeats(sum.beats ?? [], sum.timeS, watchedView);
     if (!beats.length) return;
     const strip = el('section', 'es-beat es-in', host);
     strip.setAttribute('aria-label', t('endScreen.beat.aria'));
@@ -1059,7 +1186,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     el('i', 'ln', strip);
     const rows = [...sum.enemies, ...sum.allies];
     for (const beat of beats) {
-      const mark = el('div', `ev k-${beat.kind}`, strip);
+      const mark = el('div', `ev k-${beat.kind}${beat.side ? ` s-${beat.side}` : ''}`, strip);
       mark.style.left = `${(beat.x * 100).toFixed(2)}%`;
       if (beat.labelled) mark.insertAdjacentHTML('beforeend', `<span class="lb">${beatLabel(beat, rows)}</span>`);
       else mark.title = beatText(beat, rows);
@@ -1072,6 +1199,17 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     }
     const end = el('div', 'ev end', strip);
     end.style.left = '100%';
+    if (watchedView) {
+      // the line ends on the winning side's flag and name (a draw's mark otherwise), in that side's ink
+      const { winner } = watchedResult(result, sum);
+      if (winner) end.classList.add(`s-${winner}`);
+      end.insertAdjacentHTML('beforeend', `<span class="lb">${winner ? sideFlag(winner) : uiIconSVG('statDraw', 16)}` +
+        `<span class="tx">${escapeHtml(winner ? sideName(winner) : t('garage.record.draw'))}</span></span>`);
+      el('i', 'd', end);
+      el('span', 't num', end).textContent = fmtTime(sum.timeS);
+      host.dataset.beats = String(beats.length);
+      return;
+    }
     const glyph = result === 'victory' ? 'statVictory' : result === 'defeat' ? 'statDefeat' : 'statDraw';
     // the result in sentence case, as the service record names it (the headline's own copy is set in capitals)
     const word = result === 'victory' ? t('garage.record.victory') : result === 'defeat' ? t('garage.record.defeat')
@@ -1083,6 +1221,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   }
 
   function beatIsLoss(beat: PlacedBeat): boolean {
+    // a battle beat carries its side's ink instead (endScreenPresentation.css .s-alpha / .s-bravo)
+    if (beat.side) return false;
     return beat.kind === 'loss' || beat.kind === 'death' || (beat.own === false);
   }
 
@@ -1092,9 +1232,12 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
         const row = rows.find((candidate) => String(candidate.id) === beat.id);
         return row?.name || vehicleName(beat.specId) || t('endScreen.enemyVehicle');
       }
-      case 'zone': return t(beat.own ? 'endScreen.beat.zoneTaken' : 'endScreen.beat.zoneLost', { zone: beat.label ?? '' });
-      case 'flag': return t(beat.own ? 'endScreen.beat.flagTaken' : 'endScreen.beat.flagLost');
-      case 'goal': return t(beat.own ? 'endScreen.beat.goal' : 'endScreen.beat.goalConceded');
+      case 'zone': return beat.side ? t('endScreen.beat.sideZone', { side: sideName(beat.side), zone: beat.label ?? '' })
+        : t(beat.own ? 'endScreen.beat.zoneTaken' : 'endScreen.beat.zoneLost', { zone: beat.label ?? '' });
+      case 'flag': return beat.side ? t('endScreen.beat.sideFlag', { side: sideName(beat.side) })
+        : t(beat.own ? 'endScreen.beat.flagTaken' : 'endScreen.beat.flagLost');
+      case 'goal': return beat.side ? t('endScreen.beat.sideGoal', { side: sideName(beat.side) })
+        : t(beat.own ? 'endScreen.beat.goal' : 'endScreen.beat.goalConceded');
       case 'loss': return moduleName(beat.id ?? '');
       case 'death': return t('endScreen.beat.destroyed');
       case 'spot': return t('endScreen.beat.spot');
@@ -1143,7 +1286,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
         `<span class="nm">${escapeHtml(kill.name || kill.id)}</span>` +
         `<span class="dm">${kill.dmg > 0 ? fmtN(kill.dmg) : ''}</span>`;
       maskIcon(requiredDescendant<HTMLElement>(row, '.si'), kill.specId || kill.id,
-        'side_silhouette', 'rgba(255,209,102,.85)');
+        'side_silhouette', 'var(--accent-hi)');
     }
   }
 
@@ -1163,7 +1306,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       statGrid.classList.add('has-vehicle');
       const vehicleCard = el('div', 'es-vehicle-card', statGrid);
       const aircraft = killSourceIdentity('ac130');
-      vehicleCard.innerHTML = uiIconSVG(aircraft?.icon ?? 'modeAc130', 56, 'rgba(206,220,232,0.9)');
+      vehicleCard.innerHTML = uiIconSVG(aircraft?.icon ?? 'modeAc130', 56, 'var(--ink-1)');
       vehicleCard.setAttribute('role', 'img');
       vehicleCard.setAttribute('aria-label', t('endScreen.vehicle.alt', { name: aircraft?.label ?? '' }));
     } else if (sum.playerSpecId) {
@@ -1172,10 +1315,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       const vehicle = el('img', '', vehicleCard);
       vehicle.src = iconUrl(sum.playerSpecId, 'angle');
       vehicle.alt = sum.playerVehicle ? t('endScreen.vehicle.alt', { name: sum.playerVehicle }) : t('endScreen.vehicle.altFallback');
-      showHeroVehicle(vehicleCard, sum.playerSpecId, vehicle);
+      showHeroVehicle(vehicleCard, sum.playerSpecId, vehicle, sum.playerVehicle || '');
     }
     tile(statGrid, 'dealt', t('endScreen.tile.dealt'), {
-      value: Math.round(sum.stats.dealt), hot: true, icon: 'damage',
+      value: Math.round(sum.stats.dealt), hot: true, icon: 'damage', short: t('endScreen.tile.short.dealt'),
     });
     tile(statGrid, 'kills', t('endScreen.tile.kills'), {
       value: sum.playerKills ?? sum.kills.length, datasetV: sum.playerKills ?? sum.kills.length, icon: 'skull',
@@ -1184,35 +1327,23 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       value: shotAccuracy(sum.stats.hits, sum.stats.fired), icon: 'scope',
     });
     statGrid.lastElementChild?.setAttribute('data-stat','accuracy');
-    renderSecondaryStats(el('div', 'es-stat-secondary', personal), sum.stats,
-      sum.revives ? Math.max(0, Math.floor(Number(sum.playerDeaths) || 0)) : null);
-    renderTeamComparison(personal, sum);
+    // the direction's six (11-end-screen .me .k): the three that lead, then what the player lit, helped and turned away
+    tile(statGrid, null, t('endScreen.spotted'), { value: sum.stats.spotted ?? 0, icon: 'optics', short: t('endScreen.tile.short.spotted') });
+    tile(statGrid, 'assist', t('endScreen.assist'), { value: Math.round(sum.stats.assist), icon: 'team', short: t('endScreen.tile.short.assist') });
+    tile(statGrid, 'blocked', t('endScreen.damageBlocked'), { value: Math.round(sum.stats.blocked), icon: 'shield', short: t('endScreen.tile.short.blocked') });
     renderAwards(personal, sum.awards);
     renderBestShot(personal, sum.bestShot);
     const detail = el('details', 'es-combat-details', personal);
     const toggle = el('summary', '', detail);toggle.tabIndex=0;toggle.textContent = t('endScreen.combatDetails');
     const blow = host.querySelector('.es-blow'); if (blow) personal.insertBefore(blow, detail);
+    renderSecondaryStats(el('div', 'es-stat-secondary', detail), sum.stats,
+      sum.revives ? Math.max(0, Math.floor(Number(sum.playerDeaths) || 0)) : null);
     renderKillList(detail, result, sum.kills);
   }
 
-  function renderTeamComparison(parent: HTMLElement, sum: EndScreenSummary): void {
-    const allies = summarizeTeam(sum.allies), enemies = summarizeTeam(sum.enemies);
-    const comparison = el('section', 'es-comparison', parent);
-    comparison.setAttribute('aria-label', t('endScreen.comparison'));
-    const head = el('div', 'es-comparison-head', comparison);
-    head.innerHTML = `<b>${t('endScreen.team.ally')}</b><span>${t('endScreen.comparison')}</span><b>${t('endScreen.team.enemy')}</b>`;
-    for (const [label, left, right] of [
-      [t('endScreen.tile.dealt'), allies.damage, enemies.damage],
-      [t('endScreen.tile.kills'), allies.kills, enemies.kills],
-      [t('endScreen.survivors'), allies.alive, enemies.alive],
-    ] as const) {
-      const row = el('div', 'es-comparison-row', comparison);
-      const total = left + right;
-      row.innerHTML = `<b>${fmtN(left)}</b><span>${label}</span><b>${fmtN(right)}</b><div class="es-comparison-bar"><i></i></div>`;
-      row.style.setProperty('--allied-share', `${total ? left / total * 100 : 50}%`);
-      row.classList.toggle('empty', total === 0);
-    }
-  }
+  // the teams' titles: yours and the enemy's, or in a watched battle the sides by name
+  const allyTitle = (): string => watchedView ? sideName('alpha') : t('endScreen.team.ally');
+  const enemyTitle = (): string => watchedView ? sideName('bravo') : t('endScreen.team.enemy');
 
   function renderTeamDebrief(report: HTMLElement, sum: EndScreenSummary): void {
     const teams = el('section', 'es-debrief teams', report);
@@ -1225,21 +1356,20 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const scoreboard = el('div', 'es-scoreboard', teams);
     scoreboard.innerHTML =
       '<div class="es-score-side ally"><div class="es-score-copy">' +
-      `<div class="sl">${uiIconSVG('team', 16)}<span>${t('endScreen.team.ally')}</span></div>` +
+      `<div class="sl">${watchedView ? sideFlag('alpha') : uiIconSVG('team', 16)}<span>${allyTitle()}</span></div>` +
       `<div class="ss">${t('endScreen.team.survived', { alive: allyStats.alive, total: allyStats.total, damage: fmtN(allyStats.damage) })}</div>` +
       `</div><div class="sn">${fmtN(allyStats.kills)}</div></div>` +
       '<div class="es-score-dash">—</div>' +
       `<div class="es-score-side foe"><div class="sn">${fmtN(enemyStats.kills)}</div>` +
-      `<div class="es-score-copy"><div class="sl"><span>${t('endScreen.team.enemy')}</span>${uiIconSVG('team', 16)}</div>` +
+      `<div class="es-score-copy"><div class="sl"><span>${enemyTitle()}</span>${watchedView ? sideFlag('bravo') : uiIconSVG('team', 16)}</div>` +
       `<div class="ss">${t('endScreen.team.survived', { alive: enemyStats.alive, total: enemyStats.total, damage: fmtN(enemyStats.damage) })}</div>` +
       '</div></div>';
-    renderTeamComparison(teams, sum);
     const rosters = el('div', 'es-rosters', teams);
     const maxDamage = Math.max(0, ...sum.allies.map((row) => Number(row.dmg) || 0),
       ...sum.enemies.map((row) => Number(row.dmg) || 0));
     const revives = !!sum.revives;
-    renderTeamRoster(rosters, t('endScreen.team.ally'), sum.allies, false, maxDamage, revives);
-    renderTeamRoster(rosters, t('endScreen.team.enemy'), sum.enemies, true, maxDamage, revives);
+    renderTeamRoster(rosters, allyTitle(), sum.allies, false, maxDamage, revives);
+    renderTeamRoster(rosters, enemyTitle(), sum.enemies, true, maxDamage, revives);
     host.dataset.revives = revives ? '1' : '0';
     host.dataset.rosterAllies = String(sum.allies.length);
     host.dataset.rosterEnemies = String(sum.enemies.length);
@@ -1287,6 +1417,16 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       });
     }
     adoptEndOverlay(actions);
+    // the commander mark signs the report at the row's far end: the brand's own still master (tools/brand-marks.mjs),
+    // sized and lazy (imported, brandMark.ts's chunk would split off the boot graph)
+    const mark = el('img', 'es-mark', actions);
+    mark.src = '/brand/mark.svg';
+    mark.alt = '';
+    mark.width = 45;
+    mark.height = 26;
+    mark.decoding = 'async';
+    mark.loading = 'lazy';
+    mark.setAttribute('aria-hidden', 'true');
   }
 
   api = {
@@ -1308,10 +1448,30 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       host.textContent = '';
 
       const res = result || '';
+      if (!sheetLoaded) host.classList.add('es-sheet-wait');
+      watchedView = !!sum.watched;
       host.classList.remove('result-victory', 'result-defeat', 'result-draw');
       host.classList.add(`result-${res === 'victory' || res === 'defeat' || res === 'draw' ? res : 'draw'}`);
+      host.classList.toggle('watched', watchedView);
+      if (!watchedView) {
+        delete host.dataset.winner;
+        delete host.dataset.score;
+      }
 
       renderReportHero(res, sum);
+      if (watchedView) {
+        // a watched battle has no personal debrief: the report is the battle's, its sides and the ridden tank's row
+        const report = el('div', 'es-report es-in', host);
+        report.style.setProperty('--i', nextI());
+        renderTeamDebrief(report, sum);
+        renderBattleBeats(res, sum);
+        renderEndActions(sum);
+        fillFlags();
+        host.classList.add('show');
+        host.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('cot-si-report');
+        return;
+      }
 
       // Summary and complete teams share one readable panel, keeping rewards prominent.
       const tabs = el('div', 'es-view-tabs', host);tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label',t('endScreen.reportViews'));
@@ -1336,6 +1496,13 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       renderEndRematch(report);
       if (rematchPanel) report.prepend(rematchPanel);
       renderBattleBeats(res, sum);
+      moreObserver?.disconnect();
+      for (const panel of report.querySelectorAll<HTMLElement>('.es-debrief')) {
+        panel.addEventListener('scroll', () => markMore(panel), { passive: true });
+        moreObserver?.observe(panel);
+        for (const section of panel.children) moreObserver?.observe(section);
+        markMore(panel); // at once too: the observer's first word waits on a rendering step
+      }
       renderEndActions(sum);
       fillFlags();
 

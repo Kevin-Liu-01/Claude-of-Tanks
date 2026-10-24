@@ -71,7 +71,7 @@ export const SCENE_EFFECT_TYPES = Object.freeze([
   'smoke_screen', 'flare', 'embers', 'debris', 'shockwave', 'fire_field', 'strike', 'ram',
 ] as const);
 
-const PRODUCTION_FORMATS = Object.freeze(['landscape', 'portrait', 'square'] as const);
+const PRODUCTION_FORMATS = Object.freeze(['landscape', 'portrait', 'square', 'card'] as const);
 const CAMERA_MODES = Object.freeze(['fly', 'orbit'] as const);
 const SHOT_TRANSITIONS = Object.freeze(['bezier', 'spline', 'smooth', 'linear', 'cut'] as const);
 const KEY_TRANSITIONS = Object.freeze(['drive', 'smooth', 'linear', 'cut'] as const);

@@ -627,15 +627,22 @@ had stood 7 px off it, and now stands 23 px off. On the 390 x 844 phone the aim
 hints had held the band under the sight. DETECTED had stood on the left FIRE
 button's top; now it stands with the alert under the gun-travel chip, and the
 plan clears. The census's objective is the one-row panel's 30 px (41 before).
-1024 x 600 and 1000 x 600 still put the alert's foot over the arm's tip at full
-bloom (tier 1). 360 x 640 still finds no clear place, 2 px short over the sight.
-844 x 390 with both kill lanes holding a row is unchanged from 241: the band over
-the sight holds 71 px, and the compact detection (32), its gap (6) and the
-compact alert's 40 px reserve need 78. The detection then goes under the sight,
-past the marks' 76 px, and covers 16 px of the controls row (the Lights and Auto
-gun tiles). Two fixes would clear it: plan the compact alert at its measured
-height (28 px for one alert's two lines), or let the kill lanes give way as the
-mouse plan's do.
+244 closed the three that stood. The scope's cross arms now end short of every
+centre notice while it shows (`sightNoticeCuts`), so no alert meets an arm's tip
+(1024 x 600 and 1000 x 600, where no place over the upper arm holds both
+notices). No mark moves for a notice. One residual is new on the Premiere HUD. At
+1024 x 600 the enemy roster stands at x 708 from y 196, and the alert's 520 px
+slot cannot stack under the detection; each narrower slot wraps taller and comes
+2 px short of the full-bloom ring. The plan splits at tier 1: the alert under the
+objective, DETECTED under the sight, over the scope's zoom readout. At 844 x 390 the touch plan takes the compact alert at its
+measured height (two lines, 28 px, until one shows; the 40 px reserve covers the
+longest three-line alerts). A touch landscape's kill lanes also leave the centre
+line a compact notice and its gaps (74 px either side). Both compact notices now
+fit over the sight; DETECTED had covered 16 px of the Lights and Auto gun tiles.
+At 360 x 640 the clear band under the controls row holds 28 px, so no clear place
+exists. A control now costs strictly more than any reach into the footprint
+(`PANEL_WEIGHT` 1e5, a placed notice 1e7), and the second notice goes into the
+reserve over the ring instead of 2 px onto the joystick.
 
 ### Scope skeleton and polish (r10f, r10g)
 
