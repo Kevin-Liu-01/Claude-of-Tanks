@@ -84,6 +84,7 @@ import { pinchRestoresPage } from '../ui/pinchZoomGuard.ts';
 import type {
   StudioActor as StudioPanelActor,
   StudioPanelApi,
+  StudioSelectionFrame,
 } from '../ui/studioPanel.ts';
 import {
   STUDIO_MAX_DURATION_MS,
@@ -102,6 +103,7 @@ import type {
   ActorTrack,
   ActorTrackSample,
   CameraRailSample,
+  CameraShot,
   CameraShotInput,
   Storyboard,
   StoryboardInput,
@@ -1396,6 +1398,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     a.authoredStateAgeS = ageS;
     if (effectLog.length) rebuildEffects();
     else applyActorState(a, stateName, ageS);
+    selectionBoxes.delete(a);
     return true;
   }
 
@@ -1462,6 +1465,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     applyActorStatePatch(a, patch);
     applyActorRecoilPatch(a, patch);
     if (effectLog.length && !patch._drag) rebuildEffects(clockMs);
+    if (!patch._drag) selectionBoxes.delete(a);
     invalidate();
     return a;
   }
@@ -1476,6 +1480,89 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
     panel.setSelected(selected);
     return selected;
+  }
+
+  // --- the viewport's selection overlay (studioPanel.ts draws the outline, its name tag and the gizmo) ----------------
+  /** Each tank's extent in its own frame, measured once per edit from its visible meshes. */
+  const selectionBoxes = new WeakMap<StudioActor, THREE.Box3>();
+  const _selBox = new THREE.Box3(), _selMat = new THREE.Matrix4(), _selInv = new THREE.Matrix4();
+  const _selP = new THREE.Vector3(), _selC = new THREE.Vector3();
+  function actorLocalBox(a: StudioActor): THREE.Box3 {
+    let box = selectionBoxes.get(a);
+    if (box) return box;
+    const extent = new THREE.Box3();
+    const root = a.visual.root;
+    root.updateMatrixWorld(true);
+    _selInv.copy(root.matrixWorld).invert();
+    root.traverseVisible((object) => {
+      const mesh = object as THREE.Mesh & { boundingBox?: THREE.Box3 | null; computeBoundingBox?: () => void };
+      if (!mesh.isMesh || (!Array.isArray(mesh.material) && mesh.material?.visible === false)) return;
+      // instanced, batched and skinned meshes measure their instances; a plain mesh, its geometry
+      if (typeof mesh.computeBoundingBox === 'function') {
+        if (!mesh.boundingBox) mesh.computeBoundingBox();
+        if (!mesh.boundingBox) return;
+        _selBox.copy(mesh.boundingBox);
+      } else {
+        if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+        if (!mesh.geometry.boundingBox) return;
+        _selBox.copy(mesh.geometry.boundingBox);
+      }
+      if (!_selBox.isEmpty()) extent.union(_selBox.applyMatrix4(_selMat.multiplyMatrices(_selInv, mesh.matrixWorld)));
+    });
+    if (extent.isEmpty()) {
+      const dims = a.spec.dims;
+      const halfL = (dims.overallLengthM || dims.hullLengthM || 7) / 2, halfW = (dims.widthM || 3.6) / 2;
+      extent.set(_selP.set(-halfW, 0, -halfL), _selC.set(halfW, dims.heightM || 2.4, halfL));
+    }
+    selectionBoxes.set(a, extent);
+    return extent;
+  }
+  /** A world point to CSS pixels of the canvas; false behind the lens. */
+  function screenPoint(p: THREE.Vector3, width: number, height: number): boolean {
+    _selC.copy(p).applyMatrix4(camera.matrixWorldInverse);
+    if (_selC.z > -camera.near) return false;
+    p.project(camera);
+    p.set((p.x + 1) / 2 * width, (1 - p.y) / 2 * height, 0);
+    return true;
+  }
+  /**
+   * Where the selected tank sits on the canvas, in CSS pixels: the box around its extent, and for the gizmo its ground
+   * centre, the hull's own right axis and the up axis (a metre each) and a metre ring on the ground, as offsets from that
+   * centre. False while nothing is selected or the tank is behind the lens.
+   */
+  function projectSelection(out: StudioSelectionFrame): boolean {
+    out.visible = false;
+    const a = selected;
+    const width = renderer.domElement.clientWidth, height = renderer.domElement.clientHeight;
+    if (!a || !active || filming || !width || !height) return false;
+    const box = actorLocalBox(a);
+    const m = a.visual.root.matrixWorld;
+    camera.updateMatrixWorld();
+    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+    for (let i = 0; i < 8; i++) {
+      _selP.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).applyMatrix4(m);
+      if (!screenPoint(_selP, width, height)) return false;
+      left = Math.min(left, _selP.x); right = Math.max(right, _selP.x);
+      top = Math.min(top, _selP.y); bottom = Math.max(bottom, _selP.y);
+    }
+    const cx = (box.min.x + box.max.x) / 2, cz = (box.min.z + box.max.z) / 2, gy = box.min.y;
+    if (!screenPoint(_selP.set(cx, gy, cz).applyMatrix4(m), width, height)) return false;
+    const ox = _selP.x, oy = _selP.y;
+    if (!screenPoint(_selP.set(cx + 1, gy, cz).applyMatrix4(m), width, height)) return false;
+    out.rx = _selP.x - ox; out.ry = _selP.y - oy;
+    if (!screenPoint(_selP.set(cx, gy, cz).applyMatrix4(m).add(_up), width, height)) return false;
+    out.ux = _selP.x - ox; out.uy = _selP.y - oy;
+    const points = out.ring.length / 2;
+    for (let k = 0; k < points; k++) {
+      const turn = (k / points) * Math.PI * 2;
+      if (!screenPoint(_selP.set(cx + Math.cos(turn), gy, cz + Math.sin(turn)).applyMatrix4(m), width, height)) return false;
+      out.ring[k * 2] = _selP.x - ox;
+      out.ring[k * 2 + 1] = _selP.y - oy;
+    }
+    out.left = left; out.top = top; out.right = right; out.bottom = bottom;
+    out.cx = ox; out.cy = oy;
+    out.visible = true;
+    return true;
   }
 
   function pointerNdc(e: PointerEvent): THREE.Vector2 {
@@ -3512,6 +3599,59 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return true;
   }
 
+  // --- the shots' thumbnails: the live frame at a shot's key, cropped to the frame (the outliner and the camera lane) --
+  interface ShotThumb { x: number; y: number; z: number; lx: number; ly: number; lz: number; fov: number; tMs: number;
+    map: string | null; at: number; url: string }
+  const SHOT_THUMB_H = 64;
+  const shotThumbs = new Map<string, ShotThumb>();
+  let shotThumbCanvas: HTMLCanvasElement | null = null;
+  const _thumbDir = new THREE.Vector3(), _thumbFwd = new THREE.Vector3();
+  function thumbCurrent(thumb: ShotThumb | undefined, shot: CameraShot, map: string | null): thumb is ShotThumb {
+    return !!thumb && thumb.x === shot.pos[0] && thumb.y === shot.pos[1] && thumb.z === shot.pos[2]
+      && thumb.lx === shot.lookAt[0] && thumb.ly === shot.lookAt[1] && thumb.lz === shot.lookAt[2]
+      && thumb.fov === shot.fov && thumb.tMs === shot.tMs && thumb.map === map;
+  }
+  /** A shot's thumbnail (a data URL), while it still shows the shot as authored; null until the lens has sat on it. */
+  function shotThumbnail(id: string): string | null {
+    const shot = storyboard.shots.find((item) => item.id === id);
+    const thumb = shotThumbs.get(id);
+    return shot && thumbCurrent(thumb, shot, getWorld()?.mapId ?? null) ? thumb.url : null;
+  }
+  /**
+   * After a live frame: when the playhead stands at a shot's key (or the take just passed it) and the lens is on that
+   * key, the frame becomes the shot's thumbnail, at most once a second per shot unless the shot itself changed.
+   */
+  function grabShotThumbnail(): void {
+    if (recording || filming || !storyboard.shots.length) return;
+    let shot: CameraShot | null = null;
+    for (const item of storyboard.shots) if (item.tMs <= clockMs + 0.5 && (!shot || item.tMs >= shot.tMs)) shot = item;
+    if (!shot || clockMs - shot.tMs > 160) return;
+    if (camera.position.distanceToSquared(_thumbDir.set(shot.pos[0], shot.pos[1], shot.pos[2])) > 0.25) return;
+    _thumbDir.set(shot.lookAt[0], shot.lookAt[1], shot.lookAt[2]).sub(camera.position).normalize();
+    if (_thumbDir.dot(camera.getWorldDirection(_thumbFwd)) < 0.998 || Math.abs(camera.fov - shot.fov) > 1) return;
+    const map = getWorld()?.mapId ?? null;
+    const prior = shotThumbs.get(shot.id);
+    const now = performance.now();
+    if (thumbCurrent(prior, shot, map) && now - prior.at < 1000) return;
+    // the frame guide's crop: the format's aspect inside the canvas, 20 px in from its edges (studioPanel.css)
+    const source = renderer.domElement;
+    const inset = 40 * renderer.getPixelRatio();
+    const aspect = productionAspect(productionFormat);
+    const cropW = Math.max(1, Math.min(source.width - inset, (source.height - inset) * aspect));
+    const cropH = cropW / aspect;
+    shotThumbCanvas ??= document.createElement('canvas');
+    shotThumbCanvas.height = SHOT_THUMB_H;
+    shotThumbCanvas.width = Math.max(1, Math.round(SHOT_THUMB_H * aspect));
+    const context = shotThumbCanvas.getContext('2d');
+    if (!context) return;
+    context.drawImage(source, (source.width - cropW) / 2, (source.height - cropH) / 2, cropW, cropH,
+      0, 0, shotThumbCanvas.width, shotThumbCanvas.height);
+    const url = shotThumbCanvas.toDataURL('image/jpeg', 0.82);
+    shotThumbs.set(shot.id, { x: shot.pos[0], y: shot.pos[1], z: shot.pos[2], lx: shot.lookAt[0], ly: shot.lookAt[1],
+      lz: shot.lookAt[2], fov: shot.fov, tMs: shot.tMs, map, at: now, url });
+    panel.setShotThumbnail(shot.id, url);
+  }
+
   function selectCameraShot(ref: RuntimeValue, seek = true): string | null {
     const shot = storyboard.shots.find((item) => item.id === String(ref || ''));
     if (!shot) return null;
@@ -4441,7 +4581,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (busy) throw new Error(busy);
     const settings = filmSettingsFor(opts);
     const [defaultW, defaultH] = productionFormat === 'portrait' ? [1080, 1920]
-      : productionFormat === 'square' ? [1080, 1080] : [1920, 1080];
+      : productionFormat === 'square' ? [1080, 1080] : productionFormat === 'card' ? [2062, 1080] : [1920, 1080];
     timeScale = 0;
     filmShake = settings.shake;
     const session = filmRenderer.begin({
@@ -5196,6 +5336,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
     lighting.update();
     post.render(dt, frameWallDtSeconds);
+    grabShotThumbnail();
+    panel.drawSelection();
     if (primingEncoder && recording) {
       const session = recording;
       try {
@@ -5429,6 +5571,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     updateCameraShot,
     removeCameraShot,
     selectCameraShot,
+    shotThumbnail,
+    projectSelection,
     keyActor,
     clearActorTrack,
     setRailVisible,

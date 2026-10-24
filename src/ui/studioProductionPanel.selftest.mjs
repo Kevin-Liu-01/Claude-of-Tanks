@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import { runInNewContext } from 'node:vm';
 import { sceneLinkPath } from '../game/studioSceneLink.ts';
+import { productionAspect } from '../game/studioProduction.ts';
 import { LAST_TANK_STORAGE_KEY } from '../game/tankIdStorageMigration.ts';
 import { resolveTankId, TANK_IDS } from '../vehicles/tankIdAliases.ts';
 import { t } from './i18n.ts';
@@ -64,8 +65,8 @@ const fetch = (url) => {
 };
 const stored = new Map([[LAST_TANK_STORAGE_KEY, 't90sm_2013']]); // the tank last selected in the Garage
 const localStorage = { getItem: (key) => stored.get(key) ?? null };
-const context = { document, window, Event, PRODUCTION_PRESETS: presets, getLocale: () => locale, console, Promise, Error, fetch, sceneLinkPath,
-  t, LAST_TANK_STORAGE_KEY, localStorage, resolveTankId, SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink };
+const context = { document, window, Event, PRODUCTION_PRESETS: presets, productionAspect, getLocale: () => locale, console, Promise, Error, fetch,
+  sceneLinkPath, t, LAST_TANK_STORAGE_KEY, localStorage, resolveTankId, SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink };
 runInNewContext(`${executable}\nglobalThis.mount = mountStudioProductionPanel; globalThis.label = productionLabel; globalThis.siteFleetTakes = siteFleetTakes;`, context);
 const calls = [];
 let resolveStage, rejectStage;
@@ -201,6 +202,7 @@ assert.equal(fetches.filter(url => url.endsWith('/scenes/index.json')).length, 1
 byData('productionPreset', 'two').fire('click');
 const frame = byData('productionFormat'); frame.value = 'portrait'; frame.fire('change');
 assert.ok(calls.some(call => call[0] === 'format' && call[1] === 'portrait'), 'format selection informs the runtime camera framing');
+assert.deepEqual(frame.children.map((option) => option.value), ['landscape', 'portrait', 'square', 'card'], 'the frames include the 1.91:1 card');
 byData('productionTank').value = 'm1a1_abrams_hc';
 const stage = byData('productionStage'); stage.fire('click'); stage.fire('click');
 assert.equal(calls.filter(call => call[0] === 'stage').length, 1, 'one scene transaction despite repeated clicks');

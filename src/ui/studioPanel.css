@@ -81,6 +81,19 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-vpt{left:16px}
 .st-vpb{right:16px}
 .st-vp .cot-c-chip{height:28px;font-size:var(--fs-12);background:var(--hud-plate)}
+/* the selection (09-studio .sel, .giz): the outline, its name tag, and the move and turn gizmo, from the live camera */
+.st-vp>:is(.st-sel,.st-sel-tag,.st-giz){pointer-events:none}
+.st-sel{position:absolute;border:1.5px solid var(--accent);border-radius:var(--r1)}
+.st-sel-tag{position:absolute;display:flex;align-items:center;gap:6px;max-width:calc(100% - 8px);height:22px;padding:0 8px;overflow:hidden;
+  border-radius:var(--r1);background:var(--accent);color:var(--ink-on-accent);font:600 var(--fs-11)/1 var(--font-body);white-space:nowrap}
+.st-sel-tag .cot-c-flag{width:14px;height:10.5px}
+.st-giz{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.st-giz .ring{fill:none;stroke:var(--accent);stroke-width:1.6;stroke-dasharray:3 3}
+.st-giz .ax{stroke-width:2.2}
+.st-giz .ax--x{stroke:var(--danger)}
+.st-giz .ax--y{stroke:var(--ok)}
+.st-giz .hd{fill:var(--ink-1)}
+.st-giz .o{fill:var(--accent)}
 .st-fc{position:absolute;left:16px;bottom:10px;z-index:var(--z-lift);padding:5px 8px;border-radius:var(--r1);background:var(--hud-plate);
   color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-data);white-space:nowrap}
 .st-fc b{color:var(--ink-1);font-weight:500}
@@ -335,6 +348,7 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-tl .clip{position:absolute;top:4px;bottom:4px;display:flex;align-items:center;gap:6px;min-width:6px;padding:0 6px;overflow:hidden;border:0;
   border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-3);color:var(--ink-1);font:500 var(--fs-11)/1 var(--font-body);
   white-space:nowrap;cursor:pointer}
+.st-tl .clip .th{flex:none;width:56px;height:100%;margin-left:-6px;object-fit:cover}
 .st-tl .clip[aria-pressed=true]{box-shadow:var(--ring-accent)}
 .st-tl .clip--fx{background:var(--studio-clip-fx)}
 .st-tl .key{position:absolute;top:50%;width:8px;height:8px;padding:0;border:0;background:var(--ink-1);transform:translate(-50%,-50%) rotate(45deg);
@@ -382,11 +396,31 @@ body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-out .gh>button:
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-insp{grid-row:5;border-left:0}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-shelf{grid-row:6}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-shelf .production-takes .production-library{grid-auto-columns:42%}
-body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .pn,.st-head .r .cot-c-chip__label,.st-head .cot-c-btn__label,.st-tl .tp .sl,.st-tl .tp .r .cot-c-chip__label){display:none}
-body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-lanes{grid-template-columns:72px minmax(0,1fr)}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .pn,.st-tl .tp .sl){display:none}
+/* on a phone the header's, the transport's and the viewport's chips keep their glyphs; the names stay as accessible names, and
+   the lanes keep their flags, silhouettes and glyphs */
+body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .st .wd,.st-head .r .cot-c-chip__label,.st-head .cot-c-btn__label,.st-tl .tp .r .cot-c-chip__label,
+  .st-vpt .cot-c-chip+.cot-c-chip .cot-c-chip__label,.st-vpb .cot-c-chip:first-child .cot-c-chip__label,.st-tl .lb .nm){position:absolute;width:1px;
+  height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-vpt,.st-vpb){top:8px}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpt{left:8px;max-width:calc(100% - 156px)}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpb{right:8px}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpt .cot-c-chip:first-child{min-width:0}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpt .cot-c-chip:first-child .cot-c-chip__label{min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-lanes{grid-template-columns:72px minmax(0,1fr);grid-auto-rows:minmax(24px,1fr)}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-tl .ph{left:calc(72px + (100% - 72px) * var(--t,0))}
 body[data-cot-height='short'] .st-app{grid-template-rows:44px minmax(0,1fr) 0 120px}
 body[data-cot-height='short'] .st-shelf{display:none}
 body[data-cot-height='short'] :is(.st-out,.st-insp){grid-row:2/span 2}
+/* coarse pointers: the shell's touch floor (responsiveSurfaces.css) for rows, heads and the transport, never for what sits inside a
+   lane (the clips, the keys, the scrub) or the round info glyph; those reach their touch size through a hit area */
 body[data-cot-input='coarse'] .cot-studio :is(.st-out .it,.st-out .gh>button:first-child,.st-tl .ib){min-height:40px}
+body[data-cot-input='coarse'] .st-tl :is(.clip,.key,.scrub){min-height:0}
+body[data-cot-input='coarse'] .st-tl .key::after{content:'';position:absolute;inset:-9px}
+body[data-cot-input='coarse'] .st-tl .tp{height:44px}
+body[data-cot-input='coarse'] .st-tl .tp .cot-c-chip{min-height:36px}
+body[data-cot-input='coarse'] .cot-studio .cot-info-trigger{min-height:20px}
+body[data-cot-input='coarse'] .cot-studio .cot-info-trigger::after{inset:-12px -6px}
+body[data-cot-input='coarse']:is([data-cot-width='phone'],[data-cot-width='compact']) .st-tl{max-height:142px}
 }

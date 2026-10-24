@@ -127,7 +127,7 @@ __STUDIO.keyActor(ref, cfg?) / .clearActorTrack(ref)
 __STUDIO.setRailVisible(on) / .directDuel()
 await __STUDIO.directProduction({presetId, tankId, format}) // authored eight-second scene
 __STUDIO.applyProductionCamera(rig) // hero, track, rear, overhead, detail
-__STUDIO.setProductionFormat(format) / .productionFormat // landscape, portrait, square
+__STUDIO.setProductionFormat(format) / .productionFormat // landscape, portrait, square, card (1.91:1)
 __STUDIO.recordVideo(opts) / .stopRecording() / .recordingStatus()
 __STUDIO.beginFilm(opts) / .renderFilmFrame(opts?) / .endFilm()  // offline film frames
 await __STUDIO.exportFilm(opts)     // WebCodecs film → {blob, container, codec, frames, …}

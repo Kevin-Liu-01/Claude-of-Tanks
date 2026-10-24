@@ -188,6 +188,25 @@ interface StudioEffectRecipe {
   readonly params?: Readonly<Record<string, RuntimeValue>>;
 }
 
+/**
+ * Where the selected tank sits on the canvas, in CSS pixels (studio.ts projectSelection): the box around it, its ground
+ * centre, the hull's right axis and the up axis (a metre each) and a metre ring on the ground as offsets from that centre.
+ */
+export interface StudioSelectionFrame {
+  visible: boolean;
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+  ux: number;
+  uy: number;
+  readonly ring: Float32Array;
+}
+
 export interface StudioPanelApi extends StudioPicturePanelApi {
   readonly MAP_IDS: readonly string[];
   readonly TANK_IDS: readonly string[];
@@ -268,6 +287,9 @@ export interface StudioPanelApi extends StudioPicturePanelApi {
   selectCameraShot(id: string): RuntimeValue;
   updateCameraShot(id: string, patch: Readonly<Record<string, RuntimeValue>>): RuntimeValue;
   removeCameraShot(id: string): RuntimeValue;
+  /** A shot's thumbnail (a data URL) while it shows the shot as authored, else null. */
+  shotThumbnail(id: string): string | null;
+  projectSelection(out: StudioSelectionFrame): boolean;
 }
 
 interface SliderControl {
@@ -318,6 +340,10 @@ interface StudioPanelRuntime {
   refreshPicture(): void;
   refreshAll(): void;
   tick(dt: number): void;
+  /** After a live frame: the selection's outline, name tag and gizmo follow the tank. */
+  drawSelection(): void;
+  /** A shot's new thumbnail, into its outliner row and its clip on the camera lane. */
+  setShotThumbnail(id: string, url: string): void;
 }
 
 /** Glyphs the sprite does not draw (step back, pause, step forward, add) and the brand's badge: constant markup. */
@@ -335,7 +361,10 @@ const OUTLINE: ReadonlyArray<readonly [WorkspaceId, IconId]> = Object.freeze([
 ] as const);
 /** The camera keys' blends (studio.ts `transition`), as the timeline's shot cards offer them. */
 const SHOT_TRANSITIONS = Object.freeze(['smooth', 'linear', 'cut', 'bezier', 'spline'] as const);
-const FILM_FORMATS = Object.freeze([['landscape', '16:9'], ['portrait', '9:16'], ['square', '1:1']] as const);
+const FILM_FORMATS = Object.freeze([['landscape', '16:9'], ['portrait', '9:16'], ['square', '1:1'], ['card', '1.91:1']] as const);
+const SVG_NS = 'http://www.w3.org/2000/svg';
+/** The gizmo's turn ring, in CSS pixels (09-studio .giz: an 86 px plate, a 30 px ring). */
+const GIZMO_RADIUS = 30;
 /** At most this many camouflage swatches paint in one frame (each a 2 m crop of the real pattern tile). */
 const SWATCHES_PER_FRAME = 3;
 
@@ -378,7 +407,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // --- the header (09-studio header) ---------------------------------------------------------------------------
   const mark = el('span', 'st');
   mark.innerHTML = STUDIO_GLYPHS.mark;
-  mark.append(t('studio.ws.title'));
+  mark.append(el('span', 'wd', t('studio.ws.title')));
   const projectName = el('span', 'pn', '');
   const formatSeg = el('div', 'cot-c-seg');
   formatSeg.setAttribute('role', 'radiogroup');
@@ -438,7 +467,95 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   lensChip.addEventListener('click', () => productionPanel.activate('cinematics'));
   vpTools.append(guidesChip, lensChip);
   const frameCounter = el('span', 'st-fc');
-  vp.append(vpTop, vpTools, frameCounter);
+  // the selection (09-studio .sel and .giz): an outline round the selected tank with its name tag, and the move and turn
+  // gizmo at its feet; drawn from the live camera after each frame (drawSelection), never into an export
+  const selBox = el('div', 'st-sel');
+  selBox.hidden = true;
+  selBox.setAttribute('aria-hidden', 'true');
+  // the name tag sits on the outline's top edge, kept inside the picture and below the chips
+  const selTag = el('span', 'st-sel-tag');
+  selTag.hidden = true;
+  selTag.setAttribute('aria-hidden', 'true');
+  const selTagText = el('span');
+  selTag.append(selTagText);
+  const svgNode = <Tag extends keyof SVGElementTagNameMap>(tag: Tag, cls: string): SVGElementTagNameMap[Tag] => {
+    const node = document.createElementNS(SVG_NS, tag);
+    node.setAttribute('class', cls);
+    return node;
+  };
+  const gizmo = svgNode('svg', 'st-giz');
+  gizmo.setAttribute('aria-hidden', 'true');
+  gizmo.setAttribute('hidden', '');
+  const gizmoRing = svgNode('polygon', 'ring');
+  const gizmoX = svgNode('line', 'ax ax--x');
+  const gizmoY = svgNode('line', 'ax ax--y');
+  const gizmoHeadX = svgNode('polygon', 'hd');
+  const gizmoHeadY = svgNode('polygon', 'hd');
+  const gizmoOrigin = svgNode('circle', 'o');
+  gizmoOrigin.setAttribute('r', '4');
+  gizmo.append(gizmoRing, gizmoX, gizmoY, gizmoHeadX, gizmoHeadY, gizmoOrigin);
+  vp.append(selBox, selTag, gizmo, vpTop, vpTools, frameCounter);
+  const selFrame: StudioSelectionFrame = { visible: false, left: 0, top: 0, right: 0, bottom: 0, cx: 0, cy: 0, rx: 0, ry: 0,
+    ux: 0, uy: 0, ring: new Float32Array(64) };
+  let selTagKey = '';
+  let selTagWidth = 0;
+  /** An axis of the gizmo: its line from the centre and its arrowhead past the tip. */
+  function gizmoAxis(line: SVGLineElement, head: SVGPolygonElement, cx: number, cy: number, dx: number, dy: number): void {
+    const tipX = cx + dx, tipY = cy + dy;
+    line.setAttribute('x1', cx.toFixed(1)); line.setAttribute('y1', cy.toFixed(1));
+    line.setAttribute('x2', tipX.toFixed(1)); line.setAttribute('y2', tipY.toFixed(1));
+    const length = Math.hypot(dx, dy);
+    if (length < 4) { head.setAttribute('points', ''); return; }
+    const ux = dx / length, uy = dy / length;
+    head.setAttribute('points', `${(tipX + ux * 6).toFixed(1)},${(tipY + uy * 6).toFixed(1)} ${(tipX - ux + uy * 4).toFixed(1)},`
+      + `${(tipY - uy - ux * 4).toFixed(1)} ${(tipX - ux - uy * 4).toFixed(1)},${(tipY - uy + ux * 4).toFixed(1)}`);
+  }
+  function drawSelection(): void {
+    const a = S._internal.selected;
+    if (!a || root.style.display !== 'block' || !S.projectSelection(selFrame)) {
+      selBox.hidden = true;
+      selTag.hidden = true;
+      gizmo.setAttribute('hidden', '');
+      return;
+    }
+    const f = selFrame;
+    // measured before this frame's writes: the picture, and the foot of the chips over it
+    const vpWidth = vp.clientWidth, vpHeight = vp.clientHeight;
+    const chipsFoot = vpTop.offsetTop + vpTop.offsetHeight + 4;
+    selBox.hidden = false;
+    selBox.style.left = `${Math.round(f.left)}px`;
+    selBox.style.top = `${Math.round(f.top)}px`;
+    selBox.style.width = `${Math.max(8, Math.round(f.right - f.left))}px`;
+    selBox.style.height = `${Math.max(8, Math.round(f.bottom - f.top))}px`;
+    const heading = Math.round(((a.pose.facingDeg % 360) + 360) % 360);
+    const key = `${a.uid}|${heading}`;
+    selTag.hidden = false;
+    if (key !== selTagKey) {
+      selTagKey = key;
+      selTag.replaceChildren(flagNode(specInfo(a.spec.id).nation || ''), selTagText);
+      selTagText.textContent = t('studio.ws.selTag', { name: a.spec.name, deg: heading });
+      selTagWidth = selTag.offsetWidth;
+    }
+    // above the outline's top edge, inside it when that edge meets the chips, never past the picture's sides or foot
+    const tagLeft = Math.max(4, Math.min(f.left, vpWidth - selTagWidth - 4));
+    let tagTop = f.top - 24;
+    if (tagTop < chipsFoot) tagTop = Math.max(f.top + 2, chipsFoot);
+    selTag.style.left = `${Math.round(tagLeft)}px`;
+    selTag.style.top = `${Math.round(Math.min(tagTop, vpHeight - 26))}px`;
+    // the gizmo at one screen size: the ring's widest reach is GIZMO_RADIUS, the axes keep their true directions
+    let reach = 0;
+    for (let i = 0; i < f.ring.length; i += 2) reach = Math.max(reach, Math.hypot(f.ring[i], f.ring[i + 1]));
+    if (reach < 0.5) { gizmo.setAttribute('hidden', ''); return; }
+    const k = GIZMO_RADIUS / reach;
+    let ring = '';
+    for (let i = 0; i < f.ring.length; i += 2) ring += `${(f.cx + f.ring[i] * k).toFixed(1)},${(f.cy + f.ring[i + 1] * k).toFixed(1)} `;
+    gizmoRing.setAttribute('points', ring);
+    gizmoAxis(gizmoX, gizmoHeadX, f.cx, f.cy, f.rx * k, f.ry * k);
+    gizmoAxis(gizmoY, gizmoHeadY, f.cx, f.cy, f.ux * k, f.uy * k);
+    gizmoOrigin.setAttribute('cx', f.cx.toFixed(1));
+    gizmoOrigin.setAttribute('cy', f.cy.toFixed(1));
+    gizmo.removeAttribute('hidden');
+  }
 
   const busy = el('div', 'busy');
   vp.appendChild(busy);
@@ -575,7 +692,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // presets relative to the camera, elevation inside the time's band. Slider-rate changes coalesce to one apply.
   const secLight = el('div', 'sec');
   secLight.appendChild(sectionHead(t('studio.ws.light'), 'timeDay'));
-  const SVG_NS = 'http://www.w3.org/2000/svg';
   const svg = <K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number>): SVGElementTagNameMap[K] => {
     const node = document.createElementNS(SVG_NS, tag);
     for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value));
@@ -1952,9 +2068,29 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     }
   }
 
+  /** A shot's thumbnail slots: its outliner row and its camera clip (setShotThumbnail fills them in place). */
+  const shotThumbSlots = new Map<string, { img: HTMLImageElement; glyph: Element | null }[]>();
+  /** A shot's thumbnail, in place of its glyph until the lens has sat on the shot (studio.ts grabShotThumbnail). */
+  function shotThumb(id: string, glyph: Element | null): HTMLImageElement {
+    const img = el('img', 'th');
+    img.alt = '';
+    img.decoding = 'async';
+    img.draggable = false;
+    const url = S.shotThumbnail(id);
+    if (url) {
+      img.src = url;
+      glyph?.setAttribute('hidden', '');
+    } else img.hidden = true;
+    const slots = shotThumbSlots.get(id) ?? [];
+    slots.push({ img, glyph });
+    shotThumbSlots.set(id, slots);
+    return img;
+  }
+
   function rebuildStoryboard() {
     const board = S.getStoryboard();
     laneHost.textContent = '';
+    shotThumbSlots.clear();
     shotboard.querySelectorAll<InfoButton>('.cot-info-trigger')
       .forEach((button) => button.disposeInfo?.());
     shotboard.textContent = '';
@@ -1966,7 +2102,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const selected = shot.id === S.selectedShotId;
       const name = shotLabel(shot.label);
       const next = board.shots[index + 1]?.tMs ?? S.durationMs;
-      const clip = el('button', 'clip', name);
+      const clip = el('button', 'clip');
+      clip.append(shotThumb(shot.id, null), name);
       clip.type = 'button';
       clip.style.left = pct(shot.tMs);
       clip.style.width = `calc(${pct(Math.max(0, next - shot.tMs))} - 3px)`;
@@ -2014,7 +2151,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const line = outlineRow(() => { productionPanel.activate('cinematics'); S.selectCameraShot(shot.id); });
       line.row.setAttribute('aria-current', String(selected));
       line.pick.innerHTML = uiIconSVG('toolPhoto', 16);
-      line.pick.append(el('span', 'nm', name), el('span', 'd', seconds(Math.max(0, next - shot.tMs))));
+      line.pick.append(shotThumb(shot.id, line.pick.firstElementChild), el('span', 'nm', name),
+        el('span', 'd', seconds(Math.max(0, next - shot.tMs))));
       shotRows.appendChild(line.row);
     });
     // a lane per tank with keys: its flag, silhouette and name, a diamond per pose key
@@ -2086,6 +2224,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     setSelected(_actor) {
       api.refreshActors();
       api.refreshStoryboard();
+      drawSelection();
     },
     setSelectedEffect(_effect) {
       api.refreshEffects();
@@ -2277,6 +2416,14 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       refreshAcc = 0;
       refreshSunCamera();
       api.refreshTime();
+    },
+    drawSelection,
+    setShotThumbnail(id, url) {
+      for (const slot of shotThumbSlots.get(id) ?? []) {
+        slot.img.src = url;
+        slot.img.hidden = false;
+        slot.glyph?.setAttribute('hidden', '');
+      }
     },
   };
   return api;
