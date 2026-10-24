@@ -145,6 +145,8 @@ for (const gunSide of ['left', 'right']) {
   // Every surface that shows cards loads the card module and its stylesheet together, lazily (no static CSS import
   // in a graph, and no extra static chunk on the game page: the boundary is inline at each surface).
   assert.doesNotMatch(cardTs, /^import ['"][^'"]+\.css['"]/m, 'heroCard.ts imports no stylesheet statically');
+  assert.match(cardTs, /img\.loading = priority \? 'eager' : 'lazy';/,
+    'the selected card\'s layers load eagerly (a lazy LCP waits for layout); the rest stay lazy until drainHeroCards');
   for (const surface of ['../src/ui/garage.ts', '../src/ui/endScreen.ts', '../src/gallery/gallery.ts']) {
     const source = readFileSync(new URL(surface, import.meta.url), 'utf8');
     assert.match(source, /Promise\.all\(\[import\('(?:\.\/|\.\.\/ui\/)heroCard\.ts'\), import\('(?:\.\/|\.\.\/ui\/)heroCard\.css'\)\]\)/, `${surface} loads the card module with its stylesheet`);
@@ -165,7 +167,9 @@ for (const gunSide of ['left', 'right']) {
   for (const [kind, L] of Object.entries(HERO_CARD_LAYOUT)) {
     for (const key of ['nameSize', 'minName', 'tierSize']) assert.ok(L[key] >= 11, `${kind}.${key} ${L[key]} px is under the 11 px floor`);
   }
-  const sizes = [...garageCss.matchAll(/--hc-(?:name|tier):([\d.]+)px/g), ...garageCss.matchAll(/\.cot-card \.dev-tag\{[^}]*font-size:([\d.]+)px/g)].map((m) => Number(m[1]));
+  // a size is a literal px, the house max(<px>, <token>) (its px is the English floor) or a bare type token
+  const sizes = [...garageCss.matchAll(/--hc-(?:name|tier):([\d.]+)px/g),
+    ...garageCss.matchAll(/\.cot-card \.dev-tag\{[^}]*font-size:(?:max\()?(?:([\d.]+)px|var\(--fs-(\d+)\))/g)].map((m) => Number(m[1] ?? m[2]));
   assert.ok(sizes.length >= 5 && sizes.every((size) => size >= 11), `garage card text sizes ${sizes.join(', ')} px: none under 11 px`);
   assert.equal(HERO_CARD_LAYOUT.rosterCompact.tierWord, false, 'the compact chip shows the numeral alone');
   assert.match(garageCss, /body\[data-cot-panels='overlay'\] \.cot-card \.hc-tier\{[^}]*font-size:0\}\nbody\[data-cot-panels='overlay'\] \.cot-card \.hc-tier b\{font-size:var\(--hc-tier\)\}/, 'the compact strip hides the chip\'s word and keeps its numeral');

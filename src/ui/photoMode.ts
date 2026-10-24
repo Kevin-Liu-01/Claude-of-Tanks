@@ -4,9 +4,8 @@
 // set the view (the hero pose first: the tank faces left, its turret a little toward the viewer), Save writes a PNG at
 // twice the screen through the renderer and its post chain, and Esc returns. It imports only modules that stand in chunks
 // of their own; the kit's keycap and the live stage come through the host (an entry module imported here would be split
-// off the entry).
+// off the entry). Its sheet, photoMode.css, loads beside it at the boundary (garage.ts), like every lazy surface's.
 import type { PerspectiveCamera, WebGLRenderer } from 'three';
-import './photoMode.css';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
 

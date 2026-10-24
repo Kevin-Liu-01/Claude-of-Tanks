@@ -71,7 +71,9 @@ function layerPicture(files: readonly string[], row: HeroLayerRow, className: st
   img.height = 300;
   img.alt = '';
   img.decoding = 'async';
-  img.loading = 'lazy';
+  // the selected card's layers load at once (a lazy image waits for layout, which held a phone's LCP to 11 s); the rest
+  // stay lazy until drainHeroCards
+  img.loading = priority ? 'eager' : 'lazy';
   img.draggable = false;
   img.setAttribute('fetchpriority', priority ? 'high' : 'low');
   img.setAttribute('aria-hidden', 'true');
