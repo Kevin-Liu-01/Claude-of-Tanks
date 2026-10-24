@@ -493,6 +493,7 @@
   "studio.slotEmpty": "SLOT {n} EMPTY (shift-click saves)",
   "studio.saveFailed": "SAVE FAILED",
   "studio.loadFailed": "LOAD FAILED: {error}",
+  "studio.tankLoading": "{name} is still loading. Try again when the Studio is ready.",
   "studio.recordVideo": "RECORD VIDEO",
   "studio.stopRecording": "STOP RECORDING",
   "studio.videoSaved": "VIDEO SAVED · {size} MB",

@@ -1320,7 +1320,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const specId = cfg.id || cfg.specId || DEFAULT_ACTOR_ID;
     const spec = getSpec(specId); // throws on unknown id (deliberate)
     if (!isTankBuilderReady(specId)) {
-      throw new Error(`Studio: '${specId}' is still loading; await __STUDIO.ready() (or load the scene) before addActor`);
+      // a scripted add before its builder arrives (scripts await __STUDIO.ready(): docs/STUDIO.md); the panel's adds wait
+      throw new Error(t('studio.tankLoading', { name: spec.name }));
     }
     const engineCtx = game._engineCtx;
     const camoSeed = cfg.camoSeed != null ? cfg.camoSeed | 0 : 4200 + uidSeq * 17;

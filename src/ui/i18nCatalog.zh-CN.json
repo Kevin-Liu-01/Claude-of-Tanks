@@ -505,6 +505,7 @@
   "studio.slotEmpty": "槽位 {n} 为空（Shift+点击保存）",
   "studio.saveFailed": "保存失败",
   "studio.loadFailed": "载入失败：{error}",
+  "studio.tankLoading": "{name} 仍在载入。请在场景工作室就绪后重试。",
   "studio.recordVideo": "录制视频",
   "studio.stopRecording": "停止录制",
   "studio.videoSaved": "视频已保存 · {size} MB",
