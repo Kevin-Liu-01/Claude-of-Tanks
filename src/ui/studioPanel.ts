@@ -5,6 +5,7 @@ import type { ProductionFormat, ProductionRigId } from '../game/studioProduction
 import { mountStudioProductionPanel, presetText, productionLabel, shotLabel, type WorkspaceId } from './studioProductionPanel.ts';
 import { PRODUCTION_PRESETS } from '../game/studioProduction.ts';
 import { createCommandPalette, type StudioCommand } from './studioCommands.ts';
+import { QUEUE_PRESETS, queueEstimate, queueFileName, recordRenderRate, stillSize, type QueuePreset } from './studioQueue.ts';
 import { mountStudioPicturePanel, type StudioPicturePanelApi } from './studioPicturePanel.ts';
 /**
  * studioPanel.ts — the Studio's interface (src/game/studio.ts's UI): the Premiere direction's page 09 on the live kit
@@ -176,6 +177,8 @@ interface StudioFilmExportOptions {
   readonly samples: number;
   readonly shake: number;
   readonly download: boolean;
+  /** The file's name (the container's extension is added when it has none). */
+  readonly name?: string;
   readonly onProgress: (progress: StudioFilmProgress) => void;
   readonly onFrame: (canvas: HTMLCanvasElement) => void;
 }
@@ -293,7 +296,7 @@ export interface StudioPanelApi extends StudioPicturePanelApi {
   setCamera(config: Readonly<Record<string, RuntimeValue>>): RuntimeValue;
   recordVideo(options: { readonly fps: number; readonly download: boolean }): Promise<{ size: number }>;
   stopRecording(): RuntimeValue;
-  capture(options: { readonly width: number; readonly height?: number; readonly download: boolean }): RuntimeValue;
+  capture(options: { readonly width: number; readonly height?: number; readonly download: boolean; readonly name?: string }): RuntimeValue;
   exportFilm(options: StudioFilmExportOptions): Promise<{ readonly bytes: number }>;
   cancelFilmExport(): RuntimeValue;
   filmExportStatus(): { readonly active: boolean; readonly supported: boolean };
@@ -385,6 +388,8 @@ const OUTLINE: ReadonlyArray<readonly [WorkspaceId, IconId]> = Object.freeze([
 /** The camera keys' blends (studio.ts `transition`), as the timeline's shot cards offer them. */
 const SHOT_TRANSITIONS = Object.freeze(['smooth', 'linear', 'cut', 'bezier', 'spline'] as const);
 const FILM_FORMATS = Object.freeze([['landscape', '16:9'], ['portrait', '9:16'], ['square', '1:1'], ['card', '1.91:1']] as const);
+/** A production format as its ratio reads (16:9, 9:16, 1:1, 1.91:1). */
+const formatRatio = (format: ProductionFormat): string => FILM_FORMATS.find(([id]) => id === format)?.[1] ?? '16:9';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 /** The palette's shortcut as this platform writes it. */
 const PALETTE_KEY = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K';
@@ -548,7 +553,13 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const exitBtn = kitButton(t('studio.ws.exit'), 'ghost', 'close');
   exitBtn.insertAdjacentHTML('beforeend', `<kbd class="cot-c-kbd" aria-hidden="true">F8</kbd>`);
   exitBtn.addEventListener('click', () => S.exit());
-  headRight.append(commandsBtn, linkBtn, galleryBtn, exportBtn, exitBtn);
+  // Queue · N (09-studio header): the render queue's deliveries, run one after another
+  const queueBtn = chipButton(t('studio.ws.queue'), 'media');
+  queueBtn.classList.add('que');
+  queueBtn.setAttribute('aria-haspopup', 'dialog');
+  queueBtn.setAttribute('aria-expanded', 'false');
+  queueBtn.addEventListener('click', () => toggleQueue());
+  headRight.append(commandsBtn, linkBtn, queueBtn, galleryBtn, exportBtn, exitBtn);
   head.append(mark, projectName, historyTools, modeSeg, formatSeg, headRight);
 
   // --- the viewport (09-studio .vp): chips, notices and the frame readout over the canvas ---------------------------
@@ -1645,26 +1656,45 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     if (veilPreview.width !== width || veilPreview.height !== height) { veilPreview.width = width; veilPreview.height = height; }
     veilPreview.getContext('2d')?.drawImage(canvas, 0, 0, width, height);
   }
-  function startFilmExport(): void {
-    if (S.filmExportStatus().active || S.recordingStatus().active || !S.filmExportStatus().supported) return;
+  /** One film through the veil (Export film and the queue): resolves with its size; an AbortError when cancelled. */
+  function renderFilm(options: { resolution: number; fps: number; samples: number; shake: number; name?: string },
+    onProgress?: (fraction: number) => void): Promise<{ readonly bytes: number }> {
     filmVeil.classList.add('on');
     veilFill.style.width = '0%';
     veilText.textContent = t('studio.film.preparing');
     veilCancel.focus();
-    S.exportFilm({
+    const started = performance.now();
+    let frames = 0;
+    return S.exportFilm({
+      ...options,
+      download: true,
+      onProgress: (progress) => {
+        frames = progress.frames;
+        showFilmProgress(progress);
+        onProgress?.(progress.frames ? progress.frame / progress.frames : 0);
+      },
+      onFrame: drawFilmPreview,
+    })
+      .then((result) => {
+        const size = filmOutputSize(S.productionFormat, options.resolution);
+        recordRenderRate(performance.now() - started, frames, options.samples, size.width, size.height);
+        return result;
+      })
+      .finally(() => { filmVeil.classList.remove('on'); api.refreshStoryboard(); });
+  }
+  const aborted = (error: RuntimeValue): boolean => error instanceof Error && error.name === 'AbortError';
+  function startFilmExport(): void {
+    if (S.filmExportStatus().active || S.recordingStatus().active || !S.filmExportStatus().supported) return;
+    renderFilm({
       resolution: Number(filmSize.select.value),
       fps: Number(filmFps.select.value),
       samples: Number(filmBlur.select.value),
       shake: Number(filmShake.select.value),
-      download: true,
-      onProgress: showFilmProgress,
-      onFrame: drawFilmPreview,
     })
       .then((result) => flashBusy(t('studio.film.saved', { size: (result.bytes / 1048576).toFixed(1) })))
-      .catch((error: RuntimeValue) => flashBusy(error instanceof Error && error.name === 'AbortError'
+      .catch((error: RuntimeValue) => flashBusy(aborted(error)
         ? t('studio.film.cancelled')
-        : t('studio.film.failed', { error: errorMessage(error) })))
-      .finally(() => { filmVeil.classList.remove('on'); api.refreshStoryboard(); });
+        : t('studio.film.failed', { error: errorMessage(error) })));
   }
   filmBtn.addEventListener('click', startFilmExport);
   let filmSignature = '';
@@ -1690,7 +1720,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const { width, height } = filmOutputSize(format, Number(filmSize.select.value));
       const plan = createFilmPlan(normalizeFilm({ ...(film ?? {}), fps: Number(filmFps.select.value), samples: Number(filmBlur.select.value) }), 0, S.durationMs);
       filmSummary.textContent = t('studio.film.summary', {
-        ratio: format === 'portrait' ? '9:16' : format === 'square' ? '1:1' : '16:9',
+        ratio: formatRatio(format),
         width, height, seconds: (plan.map.durationMs / 1000).toFixed(1), frames: plan.frames,
       });
     } catch (error) {
@@ -1975,6 +2005,163 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     }).observe(vp);
   }
 
+  // --- the render queue (brand-ui SPEC 12.6; studioQueue.ts): deliveries in the scene's frame, one after another ---------
+  interface QueueJob {
+    readonly preset: QueuePreset;
+    readonly label: string;
+    readonly estimate: { readonly seconds: number; readonly bytes: number; readonly files: number };
+    state: 'waiting' | 'running' | 'done' | 'failed' | 'cancelled';
+    progress: number;
+  }
+  const queueJobs: QueueJob[] = [];
+  let queueRunning = false;
+  const queuePop = el('div', 'st-queue');
+  queuePop.hidden = true;
+  queuePop.setAttribute('role', 'dialog');
+  queuePop.setAttribute('aria-label', t('studio.ws.queueTitle'));
+  const queuePresets = el('div', 'qp');
+  const queueList = el('div', 'ql');
+  const queueEmpty = el('p', 'qe', t('studio.ws.queue.empty'));
+  const queueFoot = el('div', 'qf');
+  const queueStart = kitButton(t('studio.ws.queue.start'), 'primary');
+  queueStart.addEventListener('click', () => { void runQueue(); });
+  const queueClear = kitButton(t('studio.ws.queue.clear'), 'ghost');
+  queueClear.addEventListener('click', () => {
+    for (let i = queueJobs.length - 1; i >= 0; i--) if (queueJobs[i].state !== 'waiting' && queueJobs[i].state !== 'running') queueJobs.splice(i, 1);
+    refreshQueue();
+  });
+  queueFoot.append(queueClear, queueStart);
+  queuePop.append(queuePresets, queueList, queueEmpty, queueFoot);
+  head.appendChild(queuePop);
+  queuePop.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    toggleQueue(false);
+    queueBtn.focus();
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (queuePop.hidden || !(event.target instanceof Node) || queuePop.contains(event.target) || queueBtn.contains(event.target)) return;
+    toggleQueue(false);
+  });
+  const presetName = (preset: QueuePreset): string => t(`studio.ws.queue.preset.${preset.id}`);
+  /** "≈ 1.4 min · ≈ 22 MB" in the page's language. */
+  function costText(estimate: QueueJob['estimate']): string {
+    const time = estimate.seconds < 90 ? t('studio.ws.queue.seconds', { n: Math.max(1, Math.round(estimate.seconds)) })
+      : t('studio.ws.queue.minutes', { n: (estimate.seconds / 60).toFixed(1) });
+    const megabytes = estimate.bytes / 1e6;
+    return t('studio.ws.queue.estimate', { time, size: t('studio.ws.queue.megabytes', { n: megabytes < 10 ? megabytes.toFixed(1) : Math.round(megabytes) }) });
+  }
+  function estimateFor(preset: QueuePreset): QueueJob['estimate'] {
+    return queueEstimate(preset, S.productionFormat, S.durationMs, Number(filmBlur.select.value), S.getStoryboard().shots.length);
+  }
+  function toggleQueue(open = queuePop.hidden): void {
+    queuePop.hidden = !open;
+    queueBtn.setAttribute('aria-expanded', String(open));
+    if (open) refreshQueue();
+  }
+  function refreshQueue(): void {
+    const pending = queueJobs.filter((job) => job.state === 'waiting' || job.state === 'running').length;
+    setLabel(queueBtn, pending ? t('studio.ws.queueCount', { count: pending }) : t('studio.ws.queue'));
+    if (queuePop.hidden) return;
+    const shots = S.getStoryboard().shots.length;
+    queuePresets.replaceChildren(...QUEUE_PRESETS.map((preset) => {
+      const row = el('div', 'qr');
+      const name = el('span', 'qn', presetName(preset));
+      const cost = el('span', 'qc', costText(estimateFor(preset)));
+      const add = chipButton(t('studio.ws.queue.add'), null);
+      add.insertAdjacentHTML('afterbegin', STUDIO_GLYPHS.plus);
+      add.disabled = preset.id === 'stills-shots' && !shots;
+      add.addEventListener('click', () => {
+        queueJobs.push({ preset, label: presetName(preset), estimate: estimateFor(preset), state: 'waiting', progress: 0 });
+        refreshQueue();
+      });
+      row.append(name, cost, add);
+      return row;
+    }));
+    queueList.replaceChildren(...queueJobs.map((job, index) => {
+      const row = el('div', `qr qr--${job.state}`);
+      const status = job.state === 'running' ? `${Math.round(job.progress * 100)}%`
+        : job.state === 'waiting' ? costText(job.estimate) : t(`studio.ws.queue.state.${job.state}`);
+      row.append(el('span', 'qn', job.label), el('span', 'qc', status));
+      if (job.state === 'waiting') {
+        const remove = el('button', 'x');
+        remove.type = 'button';
+        remove.innerHTML = uiIconSVG('close', 14);
+        remove.setAttribute('aria-label', t('studio.ws.queue.remove', { name: job.label }));
+        remove.title = remove.getAttribute('aria-label') ?? '';
+        remove.addEventListener('click', () => { queueJobs.splice(index, 1); refreshQueue(); });
+        row.appendChild(remove);
+      }
+      return row;
+    }));
+    queueEmpty.hidden = queueJobs.length > 0;
+    const busy = queueRunning || S.filmExportStatus().active || S.recordingStatus().active;
+    queueStart.disabled = busy || !queueJobs.some((job) => job.state === 'waiting');
+    queueClear.disabled = !queueJobs.some((job) => job.state !== 'waiting' && job.state !== 'running');
+  }
+  const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  /** Run every waiting job in turn; a cancelled film stops the queue there, a failed job moves on. */
+  async function runQueue(): Promise<void> {
+    if (queueRunning) return;
+    queueRunning = true;
+    let files = 0;
+    refreshQueue();
+    try {
+      for (const job of queueJobs) {
+        if (job.state !== 'waiting') continue;
+        job.state = 'running';
+        job.progress = 0;
+        refreshQueue();
+        try {
+          files += await runJob(job);
+          job.state = 'done';
+        } catch (error) {
+          job.state = aborted(error) ? 'cancelled' : 'failed';
+          if (job.state === 'failed') console.error('[studio] queued render failed', error);
+        }
+        refreshQueue();
+        if (job.state === 'cancelled') break;
+      }
+    } finally {
+      queueRunning = false;
+      refreshQueue();
+      if (files) api.notice(t('studio.ws.queue.done', { count: files }), 'info');
+    }
+  }
+  async function runJob(job: QueueJob): Promise<number> {
+    const map = S.mapId ?? 'studio';
+    const ratio = formatRatio(S.productionFormat);
+    const report = (fraction: number): void => { job.progress = fraction; refreshQueue(); };
+    if (job.preset.kind === 'film') {
+      await renderFilm({
+        resolution: job.preset.resolution, fps: job.preset.fps,
+        samples: Number(filmBlur.select.value), shake: Number(filmShake.select.value),
+        name: queueFileName(map, `${job.preset.resolution}p${job.preset.fps}`, ratio, '').replace(/\.$/, ''),
+      }, report);
+      return 1;
+    }
+    const { width, height } = stillSize(S.productionFormat);
+    if (job.preset.id === 'still-now') {
+      S.capture({ width, height, download: true, name: queueFileName(map, `still-${(S.fxTimeMs / 1000).toFixed(2)}s`, ratio, 'png') });
+      return 1;
+    }
+    // a still at every shot: the lens on each key in turn, then the playhead and shot back where they were
+    const board = S.getStoryboard();
+    const playhead = S.fxTimeMs, shotBefore = S.selectedShotId;
+    let made = 0;
+    for (const [index, shot] of board.shots.entries()) {
+      S.selectCameraShot(shot.id);
+      await nextFrame();
+      S.capture({ width, height, download: true,
+        name: queueFileName(map, `shot-${String(index + 1).padStart(2, '0')}-${shotLabel(shot.label)}`, ratio, 'png') });
+      made++;
+      report(made / board.shots.length);
+    }
+    if (shotBefore) S.selectCameraShot(shotBefore);
+    S.seek(playhead);
+    return made;
+  }
+
   // --- the command palette (Ctrl/Cmd+K): every action, run through the control that does it -------------------------
   const commandPalette = createCommandPalette(studioCommands);
   root.appendChild(commandPalette.root);
@@ -2026,6 +2213,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     }
     add('export', t('studio.ws.exportFilm'), via(exportBtn), { keywords: 'export film render video' });
     add('link', t('studio.sceneLink.copyButton'), via(linkBtn), { keywords: 'copy scene link share' });
+    add('queue', t('studio.ws.queueTitle'), () => toggleQueue(true), { keywords: 'render queue deliveries stills' });
     add('gallery', t('studioPanel.tankGallery'), via(galleryBtn), { keywords: 'tank gallery' });
     add('exit', t('studio.ws.exit'), via(exitBtn), { hint: 'F8', keywords: 'exit close garage' });
     // named only: the battlefields and the fleet

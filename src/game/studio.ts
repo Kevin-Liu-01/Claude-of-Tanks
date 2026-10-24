@@ -4942,8 +4942,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         const url = URL.createObjectURL(result.blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = opts.name ||
-          `studio_${getWorld()?.mapId || 'film'}_${size.height}p${settings.fps}.${result.container}`;
+        // a name without an extension takes the container the encoder chose (MP4, else WebM)
+        link.download = opts.name ? (/\.[a-z0-9]{2,4}$/i.test(opts.name) ? opts.name : `${opts.name}.${result.container}`)
+          : `studio_${getWorld()?.mapId || 'film'}_${size.height}p${settings.fps}.${result.container}`;
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 30000);
       }
