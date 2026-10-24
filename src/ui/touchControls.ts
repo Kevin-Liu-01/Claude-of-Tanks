@@ -395,10 +395,13 @@ export function createTouchControls({
   ensureStyle('cot-touch-style', CSS, 'surfaces');
   const root = document.createElement('div');
   root.className = 'cot-touch';
+  // the battle's held and dragged controls: a 500 ms hold never turns into the kit's hover tip (components/hoverTip.ts)
+  root.dataset.tipOff = '';
   root.setAttribute('role', 'group');
   root.setAttribute('aria-label', t('touch.rootAria'));
   const aimLayer = document.createElement('div');
   aimLayer.className = 'cot-touch-aim';
+  aimLayer.dataset.tipOff = '';
   aimLayer.setAttribute('role', 'group');
   aimLayer.setAttribute('aria-label', t('touch.aimAria'));
   // (the pad is its own instruction: no "swipe to aim" or "landscape recommended" over the battlefield, owner 2026-10-22)
@@ -756,7 +759,7 @@ export function createTouchControls({
             : label;
     graphicsButton.querySelector<HTMLElement>('.ql')!.textContent = short;
     graphicsButton.setAttribute('aria-label', t('touch.gfx.aria', { label }));
-    graphicsButton.title = t('touch.gfx.title', { label });
+    graphicsButton.dataset.tip = t('touch.gfx.title', { label });
   }
   tapButton(graphicsButton, () => {
     const mobile = getDeviceTier() === 'mobile';

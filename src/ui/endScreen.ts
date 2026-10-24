@@ -729,8 +729,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const k = el('div', 'k', t);
     k.innerHTML = `${opts.icon ? uiIconSVG(opts.icon, 16) : ''}<span>${opts.short ?? label}</span>`;
     // the wide record shows the glyph and the figure alone (page 11's .me .k), a phone the short label: the full label
-    // stays on hover and for assistive technology
-    t.title = label;
+    // stays in the hover tip and for assistive technology
+    t.dataset.tip = label;
     if (opts.short) k.setAttribute('aria-label', label);
     if (opts.text != null) v.textContent = opts.text;
     else countUp(v, opts.value || 0, { delayMs: 260 + seq * 60, fmt: opts.fmt });
@@ -879,8 +879,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       `${result.aircraft ? '' : flagSeat(result.specId)}<span class="si"></span>` +
       `<span class="identity"><span class="nm">${result.isPlayer && !watchedView ? `<b class="you">${t('endScreen.you')}</b>` : ''}${escapeHtml(result.name || result.id)}</span>` +
       `<span class="veh">${escapeHtml(vehicle)}${details.length ? `<span class="dt"> · ${details.map(escapeHtml).join(' · ')}</span>` : ''}</span></span>` +
-      `<span class="kc num" title="${escapeHtml(t('endScreen.tile.kills'))}">${Math.max(0, Math.floor(Number(result.kills) || 0))}</span>` +
-      (revives ? `<span class="dc num" title="${escapeHtml(t('endScreen.deaths'))}">${Math.max(0, Math.floor(Number(result.deaths) || 0))}</span>` : '') +
+      `<span class="kc num" data-tip="${escapeHtml(t('endScreen.tile.kills'))}">${Math.max(0, Math.floor(Number(result.kills) || 0))}</span>` +
+      (revives ? `<span class="dc num" data-tip="${escapeHtml(t('endScreen.deaths'))}">${Math.max(0, Math.floor(Number(result.deaths) || 0))}</span>` : '') +
       '<span class="output"><span class="ov"></span><span class="obar" aria-hidden="true"><i></i></span></span>' +
       `<span class="st">${uiIconSVG(result.dead ? 'skull' : 'check', 16)}</span>`;
     const damage = Math.max(0, Number(result.dmg) || 0);
@@ -891,14 +891,14 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     output.setAttribute('aria-valuemax', String(Math.max(1, Math.round(maxDamage))));
     output.setAttribute('aria-valuenow', String(Math.round(damage)));
     output.setAttribute('aria-valuetext', t('endScreen.damageValueAria', { value: fmtN(damage) }));
-    output.title = t('endScreen.damageValueAria', { value: fmtN(damage) });
+    output.dataset.tip = t('endScreen.damageValueAria', { value: fmtN(damage) });
     requiredDescendant<HTMLElement>(row, '.ov').textContent = fmtN(damage);
     requiredDescendant<HTMLElement>(row, '.obar i').style.width =
       `${damageComparisonPercent(damage, maxDamage)}%`;
     const stateMark = requiredDescendant<HTMLElement>(row, '.st');
     stateMark.setAttribute('role', 'img');
     stateMark.setAttribute('aria-label', result.dead ? t('endScreen.destroyed') : t('endScreen.survived'));
-    stateMark.title = result.dead ? t('endScreen.destroyed') : t('endScreen.survived');
+    stateMark.dataset.tip = result.dead ? t('endScreen.destroyed') : t('endScreen.survived');
     const silhouette = requiredDescendant<HTMLElement>(row, '.si');
     if (result.aircraft) {
       silhouette.innerHTML = uiIconSVG('modeAc130', 16, result.dead ? 'var(--danger)' : 'var(--ink-2)');
@@ -923,9 +923,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const side = summarizeTeam(list);
     const columns = el('div', 'es-roster-cols', panel);
     const glyphHead = (icon: string, label: string, cls: string): string =>
-      `<span class="ch ${cls}" title="${escapeHtml(label)}">${uiIconSVG(icon, 14)}<span class="sr">${escapeHtml(label)}</span></span>`;
+      `<span class="ch ${cls}" data-tip="${escapeHtml(label)}">${uiIconSVG(icon, 14)}<span class="sr">${escapeHtml(label)}</span></span>`;
     columns.innerHTML = `<span class="side"><b>${escapeHtml(title)}</b><span class="tot num">${fmtN(side.kills)}</span>` +
-      `<span class="alive num" title="${escapeHtml(t('endScreen.survivors'))}">${uiIconSVG('check', 12)}${side.alive}/${side.total}</span></span>` +
+      `<span class="alive num" data-tip="${escapeHtml(t('endScreen.survivors'))}">${uiIconSVG('check', 12)}${side.alive}/${side.total}</span></span>` +
       `<span class="word">${t('endScreen.roster.colCombatant')}</span>` +
       glyphHead('skull', t('endScreen.tile.kills'), 'kc') + (revives ? glyphHead('rematch', t('endScreen.deaths'), 'dc') : '') +
       glyphHead('damage', t('endScreen.damage'), 'dg') + `<span class="ch st" aria-hidden="true"></span>`;
@@ -1095,7 +1095,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     labels.forEach((key, index) => {
       const star = el('i', lit[index] ? 'on' : '', stars);
       star.innerHTML = uiIconSVG('star', 20); // the sprite's star, filled when earned
-      star.title = t(key);
+      star.dataset.tip = t(key);
     });
     const next = el('div', 'cn', block);
     next.textContent = !debrief.cleared
@@ -1114,7 +1114,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     detail = '',
   ): void {
     const item = el('div', 'es-mini', parent);
-    item.title = label;
+    item.dataset.tip = label;
     item.innerHTML = `<div class="mk">${uiIconSVG(icon, 14)}<span>${label}</span></div>` +
       `<div class="mv">${value}</div>${detail ? `<div class="md">${detail}</div>` : ''}`;
     if (key) host.dataset[key] = value;
@@ -1186,7 +1186,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       const mark = el('div', `ev k-${beat.kind}${beat.side ? ` s-${beat.side}` : ''}`, strip);
       mark.style.left = `${(beat.x * 100).toFixed(2)}%`;
       if (beat.labelled) mark.insertAdjacentHTML('beforeend', `<span class="lb">${beatLabel(beat, rows)}</span>`);
-      else mark.title = beatText(beat, rows);
+      else mark.dataset.tip = beatText(beat, rows);
       el('i', `d${beatIsLoss(beat) ? ' loss' : ''}`, mark);
       if (beat.labelled) el('span', 't num', mark).textContent = fmtTime(beat.t);
       if (beat.kind === 'kill' && beat.labelled) {

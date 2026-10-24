@@ -2480,7 +2480,7 @@ export function createKillCam(deps: KillcamDeps) {
     row.classList.add('pen');
     appendPenetrationQualifier(row, qualifier);
     const legend = penetrationLegend(cut, qualifier, residual, nominal);
-    row.title = legend
+    row.dataset.tip = legend
       ? t('killcam.penTitle', { legend })
       : t('killcam.penTitleRoll');
     if (legend) el('div', 'cot-kc-pencap', d.rows).textContent = legend;

@@ -1280,7 +1280,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
         ? `<span class="q" style="color:${penetration.qualifier === 'era' ? COL.yellow : '#9fb0bf'}">${
           t(penetration.qualifier === 'era' ? 'killcam.era' : 'killcam.screens')}</span>`
         : ''), 'w pen');
-      r.title = penetration.legend
+      r.dataset.tip = penetration.legend
         ? t('killcam.penTitle', { legend: penetration.legend })
         : t('killcam.penTitleRoll');
     }
@@ -1422,7 +1422,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     value.innerHTML = uiIconSVG(damaging ? 'damage' : (group.outcome?.icon || 'shield'), 11) +
       summary + (group.count > 1 ? `<span class="hit-count">×${group.count}</span>` : '');
     const detail = [...group.outcomes.values()].map(item => `${item.count}× ${item.label}`).join(' · ');
-    toast.title = group.count > 1 ? t('hud.incoming.stackSummary',
+    toast.dataset.tip = group.count > 1 ? t('hud.incoming.stackSummary',
       { count: group.count, damage: Math.round(group.damage) }) + ' · ' + detail : detail;
     toast.setAttribute('aria-label', name + ' · ' + toast.title);
     toastTimers.set(toast, {
