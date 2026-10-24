@@ -291,10 +291,10 @@ function dwelling(ctx: RegionalBuildContext, opts: { longere?: boolean; storeys?
   // the gable-end stacks: one or two, the single one in either gable, on the apex or off it, of a height; an
   // eaves-fronted house's on both its side gables and on their apexes, the Léon's pignons (2026-10-24, the bourg item's
   // blind: a lone stack off the apex "rises out of the dormer" in front of it)
-  const two = rng() < (eaves ? 0.85 : 0.55) || eaves;
+  const two = rng() < (eaves ? 0.85 : 0.55);
   const stack = (end: 0 | 1): GableStack => {
     const dx = vary() < 0.4 ? (vary() < 0.5 ? -1 : 1) * (0.45 + vary() * 0.4) : 0, above = 0.8 + vary() * 0.55;
-    return { end, dx: eaves ? 0 : dx, above, cap: above + 0.15 };
+    return { end, dx, above, cap: above + 0.15 };
   };
   const stacks = two ? [stack(0), stack(1)] : [stack(vary() < 0.5 ? 0 : 1)];
   // the dormers: a longère's, now and then a gabled bourg house's in its side eaves, an eaves-fronted house's (the
@@ -316,7 +316,10 @@ function dwelling(ctx: RegionalBuildContext, opts: { longere?: boolean; storeys?
     // dormers through the eaves, clear of the stacks; a front wall over a window head close under the eaves stops short
     const top = count - 1, faceName: FaceName = dormerSide > 0 ? 'right' : 'left';
     for (let k = 0; k < dormers; k++) {
-      const zc = (dormers === 1 ? -hd * 0.15 : k === 0 ? -hd * 0.25 : hd * 0.22) + (vary() - 0.5) * 0.6;
+      // (2026-10-24, the bourg item's blind: a stack "appears to grow out of the dormer") an eaves-fronted house's single
+      // dormer stands at the far end of the ridge from a lone stack (end 0 the +z gable)
+      const away = eaves && stacks.length === 1 && stacks[0].end === 1 ? -1 : 1;
+      const zc = (dormers === 1 ? -hd * 0.15 * away : k === 0 ? -hd * 0.25 : hd * 0.22) + (vary() - 0.5) * 0.6;
       const uc = dormerSide > 0 ? -zc : zc;
       let foot = 0.6;
       for (const o of openings) {
