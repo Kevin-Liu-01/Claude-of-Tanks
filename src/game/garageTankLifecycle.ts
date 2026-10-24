@@ -122,8 +122,12 @@ export function clearBattleAfterExit<Visual extends LifecycleVisual>({
     // just acquired. Every other actor releases its visual to the detached
     // clean pool or disposes it; no actor ownership survives.
     if (visual && visual !== preservedVisual) {
-      if (visualPool?.release) visualPool.release(visual);
-      else {
+      if (visualPool?.release) {
+        visualPool.release(visual);
+        // (mode-sheen-perf-243) the pool's repair puts back the materials a wreck captured: in a mode that lights
+        // tanks those are the energy skins every tank wore (a skin outlives a kill), unwrapped here as the Garage does
+        if (visual.root) clearJuggernautVisual(visual.root, true);
+      } else {
         visual.setVisible?.(false);
         visual.dispose?.();
       }

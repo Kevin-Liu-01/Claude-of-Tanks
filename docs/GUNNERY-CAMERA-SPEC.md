@@ -63,6 +63,12 @@ real settings and battle renderer, native mouse input, and desktop plus
    behind the tank (no camera-follow scheme). Owner course-correction
    2026-07-31 confirmed the classic scheme; an experimental
    camera-follows-gun ease for this mode was built and then **reverted**.
+   The cursor is the last one seen over the game canvas: after a menu, a
+   click on any other element or focus loss the turret aims through the
+   screen centre until the mouse moves over the battle again. Only durable
+   denials engage the fallback; a refused Settings relock or a refusal in
+   Chrome's 1.25 s after an Esc shows the click-to-resume veil instead, and
+   touch layouts never use it (item 243, `src/game/input.ts`).
 
 ## Parity traces (identical scripted input, 2026-07-31)
 

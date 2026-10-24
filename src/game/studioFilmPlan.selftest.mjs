@@ -195,6 +195,9 @@ assert.throws(() => filmJitter(8, 'box', new Float64Array(8)), /too small/);
 assert.deepEqual(filmOutputSize('landscape', 2160), { width: 3840, height: 2160 });
 assert.deepEqual(filmOutputSize('portrait', 1080), { width: 1080, height: 1920 });
 assert.deepEqual(filmOutputSize('square', 1440), { width: 1440, height: 1440 });
+// the 1.91:1 link card: an even width for 4:2:0 video at every resolution
+assert.deepEqual([1080, 1440, 2160].map((r) => filmOutputSize('card', r)),
+  [{ width: 2062, height: 1080 }, { width: 2750, height: 1440 }, { width: 4126, height: 2160 }]);
 assert.throws(() => filmOutputSize('landscape', 720), /1080, 1440 or 2160/);
 
 // Motion-blur stills: stratified, centred, inside the storyboard, never across a cut.

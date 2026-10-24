@@ -22,7 +22,7 @@ export interface WatchRuntimePorts<TEntity extends WatchRuntimeEntity> extends C
   camera: PerspectiveCamera;
   heightField: WatchCameraDeps['heightField'];
   raycast: WatchCameraDeps['raycast'];
-  hud: { root(): HTMLElement | null; setWatchDrone(pose: { x: number; z: number } | null): void };
+  hud: { root(): HTMLElement | null; setWatchDrone(pose: { x: number; z: number } | null): void; setWatchSide(team: string | null): void };
 }
 
 /** What the HUD frame reads (battleHudFrameRuntime's watch view). */
@@ -104,6 +104,10 @@ export function createWatchRuntime<TEntity extends WatchRuntimeEntity>(ports: Wa
       dronePose.z = camera.position.z;
       ports.hud.setWatchDrone(dronePose);
     } else ports.hud.setWatchDrone(null);
+    // flying or riding, the HUD reads the battle from the watched seat's side (its score, rosters, kill feed and inks),
+    // the ridden tank only highlighted; a taken seat is the player's own HUD
+    const spectating = controller.view === 'drone' || controller.view === 'ride';
+    ports.hud.setWatchSide(spectating ? byId(game.watch?.seatId ?? null)?.team ?? 'player' : null);
   };
 
   const hudView: WatchHudPort<TEntity> = {
@@ -137,6 +141,7 @@ export function createWatchRuntime<TEntity extends WatchRuntimeEntity>(ports: Wa
       controller.stop();
       hud.update({ view: 'off', tank: null, canTake: false, speedIndex: 0, speedSteps: WATCH_DRONE.speeds.length });
       ports.hud.setWatchDrone(null);
+      ports.hud.setWatchSide(null);
     },
   };
 }

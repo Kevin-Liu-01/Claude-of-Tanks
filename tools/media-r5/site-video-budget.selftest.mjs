@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { bytesOf, existsPublic, pageMedia, publicPages, srcsetCandidates, topicData, topicPageMedia, topicSlug }
+import { bytesOf, existsPublic, pageMedia, pageShell, publicPages, srcsetCandidates, topicData, topicPageMedia, topicSlug }
   from '../media-page-scan.mjs';
 
 // The site's video budget (owner 2026-10-14: "we dont need them all to be super duuper highh quality 4k, they can be
@@ -190,7 +190,7 @@ const report = [];
 for (const page of publicPages()) {
   const kind = kindOf(page);
   if (!kind) continue;
-  const records = pageMedia(readFileSync(join(ROOT, page), 'utf8'));
+  const records = pageMedia(pageShell(readFileSync(join(ROOT, page), 'utf8')));
   if (topicSlug(page)) {
     const { hero } = await topicPageMedia(topicSlug(page));
     const phoneSrc = /<source media="[^"]+" srcset="([^"]+)">/.exec((await topicData()).topicHeroMarkup(

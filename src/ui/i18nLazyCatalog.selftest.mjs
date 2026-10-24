@@ -64,7 +64,7 @@ const dictionaries = await import('./i18nDictionaries.ts');
 const worker = await import('./i18n.ts?context=worker');
 assert.equal(dictionaries.localeDictionary('zh-CN'), undefined, 'a windowless context leaves the Chinese catalog unloaded');
 assert.ok(dictionaries.localeDictionary('en-US'), 'Node keeps the full English catalog resident');
-assert.equal(worker.t('garage.battle'), 'BATTLE', 'a windowless Node context translates through English');
+assert.equal(worker.t('garage.battle'), 'Deploy', 'a windowless Node context translates through English');
 const runtimeSource = readFileSync(resolve(ROOT, 'src/ui/i18n.ts'), 'utf8');
 // (BUI-F8: a dev-server-only pseudo-locale branch may follow the boot await inside the browser block; production builds
 // compile it out because it is gated on import.meta.env.DEV.)
@@ -79,15 +79,15 @@ defineGlobal('window', Object.assign(new EventTarget(), { location: { pathname: 
 const english = await import('./i18n.ts?boot=en');
 assert.equal(english.getLocale(), 'en-US');
 assert.equal(dictionaries.localeDictionary('zh-CN'), undefined, 'an English boot never loads the Chinese catalog');
-assert.equal(english.t('garage.battle'), 'BATTLE');
-assert.equal(dictionaries.catalogText('zh-CN', 'garage.battle'), 'BATTLE', 'an absent dictionary falls back to English');
+assert.equal(english.t('garage.battle'), 'Deploy');
+assert.equal(dictionaries.catalogText('zh-CN', 'garage.battle'), 'Deploy', 'an absent dictionary falls back to English');
 
 const first = dictionaries.loadLocaleDictionary('zh-CN');
 assert.equal(dictionaries.loadLocaleDictionary('zh-CN'), first, 'concurrent loads share one request');
 const events = [];
 window.addEventListener('cot:locale-changed', (event) => events.push(event.detail));
 const switched = english.setLocale('zh-CN');
-assert.equal(english.t('garage.battle'), 'BATTLE', 'until the catalog is resident an in-place switch reads English');
+assert.equal(english.t('garage.battle'), 'Deploy', 'until the catalog is resident an in-place switch reads English');
 await switched;
 assert.equal(english.t('garage.battle'), '出战', 'the switch settles once the catalog is resident');
 assert.deepEqual(events, [{ locale: 'zh-CN', previous: 'en-US' }, { locale: 'zh-CN', previous: 'en-US' }],
@@ -247,9 +247,14 @@ assert.ok(panelModulesShowingFleet.includes(PANEL_ENTRY) && panelModulesShowingF
   `the panel and its facet tables show the fleet slice (${panelModulesShowingFleet.join(', ')})`);
 // Outside the panel's graph only the Gallery (a public page: its page catalog holds every key it reaches) imports a module
 // that shows the slice, and the game reaches the panel only through the toggle's import(), which loads the slice too.
+// The Garage's lower third also shows a facet table's class name (brand-ui S2): it imports the facets beside the slice,
+// in one Promise.all, so the name never reads as a raw key.
+const garageSource = readFileSync(new URL('../ui/garage.ts', import.meta.url), 'utf8');
+assert.match(garageSource, /Promise\.all\(\[import\('\.\.\/vehicles\/vehicleFacets\.ts'\),[^\]]*import\('\.\/fleetStrings\.ts'\)/,
+  'the Garage loads the fleet slice with the facet tables it shows');
 for (const module of panelModulesShowingFleet) {
   const importers = importersOf(module).filter((file) => !panelClosure.has(file) && !file.startsWith('src/gallery/'));
-  assert.deepEqual(importers, module === PANEL_ENTRY ? ['src/ui/garage.ts'] : [],
+  assert.deepEqual(importers, module === PANEL_ENTRY || module === 'src/vehicles/vehicleFacets.ts' ? ['src/ui/garage.ts'] : [],
     `${module} shows the fleet slice; its importers outside the panel load it without the slice: ${importers.join(', ')}`);
   assert.ok(!gameClosure.has(module), `the game statically loads ${module}: ${importChain(gameClosure, module)}`);
 }

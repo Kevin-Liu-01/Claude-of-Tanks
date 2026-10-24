@@ -128,6 +128,10 @@ export function pageMedia(html) {
   return records.sort((a, b) => a.index - b.index);
 }
 
+/** A page's markup without the chapter tools/docs-prerender.mjs writes into its #topicRoot: the receipts read a chapter's
+ *  media from topicPageMedia (the same topics.ts markup), so it counts once. */
+export const pageShell = (html) => html.replace(/(<main id="topicRoot"[^>]*>)[\s\S]*?<\/main>/, '$1</main>');
+
 /** The topic page a site/docs-<slug>.html entry renders (src/docs/topics.ts), or null. */
 export const topicSlug = (page) => /^site\/docs-([a-z]+)\.html$/.exec(page)?.[1] ?? null;
 
