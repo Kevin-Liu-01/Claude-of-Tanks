@@ -4441,6 +4441,7 @@
   "gallery.stat.crew": "Crew",
   "gallery.stat.damage": "Damage",
   "gallery.stat.velocity": "Muzzle velocity",
+  "gallery.unit.hitPoints": "HP",
   "gallery.unit.mm": "mm",
   "gallery.unit.s": "s",
   "gallery.unit.t": "t",

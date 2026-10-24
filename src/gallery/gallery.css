@@ -83,10 +83,11 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .fam .gh{display:flex;align-items:center;gap:8px;padding:8px 6px 6px;font:600 var(--fs-13)/1 var(--font-display);color:var(--ink-2)}
 .fam .gh .cot-i{width:16px;height:16px;color:var(--ink-3)}
 .fam .gh .n{margin-left:auto;font:500 var(--fs-11)/1 var(--font-data);color:var(--ink-3)}
-.fam .it{position:relative;display:flex;align-items:center;gap:9px;width:100%;height:34px;flex:none;padding:0 8px;border:0;
+.fam .it{position:relative;display:flex;align-items:center;gap:9px;width:100%;min-height:34px;flex:none;padding:5px 8px;border:0;
   border-radius:var(--control-radius);background:transparent;color:var(--ink-2);font:500 var(--fs-13)/1 var(--font-body);text-align:left}
 .fam .it .cot-c-sil{width:38px;height:12px;color:var(--ink-2)}
-.it__name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* a long name takes a second line (247 round 2: no ellipsis); most rows keep one */
+.it__name{flex:1;min-width:0;line-height:1.15;overflow-wrap:anywhere}
 .fam .it .e{margin-left:auto;font:500 var(--fs-11)/1 var(--font-data);color:var(--ink-3);white-space:nowrap}
 .it__dev{margin-left:4px;color:var(--text-warn);font:600 var(--fs-11)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase}
 .fam .it[aria-selected=true]{background:var(--accent-wash);box-shadow:var(--gallery-row-on);color:var(--ink-1)}
@@ -216,7 +217,8 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .vsc .s b{font:700 var(--fs-14)/1 var(--font-display);text-transform:uppercase;overflow-wrap:anywhere}
 .vsc .s .cot-c-sil{width:64px;height:20px;color:var(--ink-2)}
 .vsc .mid{display:flex;flex-direction:column;gap:6px;color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-data);text-align:center}
-.vsc .mid>div{display:grid;grid-template-columns:44px 20px 44px;align-items:center;gap:4px}
+.vsc .mid>div{display:grid;grid-template-columns:minmax(64px,auto) 20px minmax(64px,auto);align-items:center;gap:4px}
+.vsc .mid em small{margin-left:3px;color:var(--ink-3);font-size:var(--fs-11)}
 .vsc .mid em{font-style:normal;color:var(--ink-1)}
 .vsc .mid em:first-child{text-align:right}
 .vsc .mid em:last-child{text-align:left}
