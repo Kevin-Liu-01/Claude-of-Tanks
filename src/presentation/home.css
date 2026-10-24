@@ -364,7 +364,7 @@ html[lang^='zh'] :is(h1,h2,h3,.v5-mode--hero h3){line-height:1.15}
   .vs-tile--mid,.vs-tile--sm{grid-column:span 6}
   .fleet-wall{grid-template-columns:repeat(3,minmax(0,1fr))}
   .fleet-feature{grid-column:1 / -1;grid-row:auto;order:-1}
-  .fleet-feature__art{min-height:300px}
+  .fleet-feature__art{flex:none;height:300px;min-height:0}
   .bf-rail{grid-auto-columns:calc((100% - 20px) / 2.6)}
   .v5-social-proof__intro{grid-template-columns:1fr;align-items:start}
   .v5-social-proof__x-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -417,7 +417,7 @@ html[lang^='zh'] :is(h1,h2,h3,.v5-mode--hero h3){line-height:1.15}
   .vs-tile--big .vs-tile__meta{left:14px;right:14px;bottom:12px;gap:10px}
   .vs-row2{flex-direction:column;align-items:flex-start;gap:10px}
   .fleet-wall{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .fleet-feature__art{min-height:220px}
+  .fleet-feature__art{height:220px}
   .bf-rail{grid-auto-columns:72vw}
   :is(.v5-authored,.v5-trailers,.v5-multiplayer,.v5-rails,.v5-modes,.v5-mechanics,.v5-evidence,.v5-mosaic,.v5-film,.v5-split,.v5-destruction,.v5-cta) h2{font-size:var(--fs-36)}
   .v5-social-proof h2{font-size:var(--fs-28)}
