@@ -156,9 +156,13 @@ Chinese views are `/cn/` documents: `localizedHtml.ts` adds the zh-CN floor to
 them only (English documents carry none). The floor raises `--fs-11` and `--fs-12`
 to 13 px, so a label sized with those tokens is lifted on every route, and lists
 per route (`zhTypeFloor.ts`) the selectors that set a literal size below 13 px.
-Size a new small label with the tokens; a literal 11px or 12px stays small in
-Chinese unless its selector joins the list (the 247 audit's list of such rules:
-the side-session note zh-type-floor-247.md).
+In the game `--fs-*` also multiply `--cot-ui-scale` (0.78-1.08, responsiveLayout.ts),
+so a game label must not swap a literal 11 px for the bare token (English would
+shrink on small windows). Use `max(11px,var(--fs-11))` (never smaller than before,
+lifted to 13 px in Chinese by the tokens; `mediaArchive.css`), the battle's fixed
+`--battle-fs-*` tokens (tokens.json's zh-CN locale lifts them; the HUD sheets), or a
+`zhTypeFloor.ts` entry; each route's floor is capped at 2600 raw / 640 brotli
+(`typeSystem.selftest.mjs`), so measure `zhTypeFloorCss(route)` before adding to it.
 check:bundle reports a document's inline CSS as `inlineCss`, and the receipt holds
 each head to a brotli budget. Never add an
 `@font-face`, a font preload or a face file elsewhere. Code asks only for
