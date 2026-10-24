@@ -244,13 +244,13 @@ function fleetFacets() {
     return `<button class="cot-c-chip cot-c-chip--compact" type="button" aria-pressed="false" data-fleet-nation="${code}" aria-label="${esc(text(key))}" data-i18n-aria-label="${key}">${flag(code, 'sm')}</button>`;
   }).join('');
   const classes = WALL_CLASSES.map((value) => `<button class="cot-c-chip" type="button" aria-pressed="false" data-fleet-class="${value}">${t(classMeta(value).shortKey)}</button>`).join('');
-  const count = String(cards.length);
   return `<div class="fleet-facets">`
     + `<button class="cot-c-chip" type="button" aria-pressed="true" data-fleet-all>${t('camoTag.all')}</button>`
     + `<div class="fleet-facets__set" role="group" aria-label="${esc(text('home.fleet.nationAria'))}" data-i18n-aria-label="home.fleet.nationAria">${nations}</div>`
     + `<div class="fleet-facets__set" role="group" aria-label="${esc(text('home.fleet.classAria'))}" data-i18n-aria-label="home.fleet.classAria">${classes}</div>`
-    + `<label class="fleet-search">${iconMarkup('search', 16)}<input type="search" placeholder="${esc(text('home.fleet.searchPlaceholder').replace('{count}', count))}"`
-    + ` data-i18n-placeholder="home.fleet.searchPlaceholder" data-i18n-vars='{"count":"${count}"}' aria-label="${esc(text('home.fleet.searchAria'))}"`
+    + `<label class="fleet-search">${iconMarkup('search', 16)}<input type="search" placeholder="${esc(text('home.fleet.searchPlaceholder'))}"`
+    // no count in the placeholder: the headline already gives the fleet's one
+    + ` data-i18n-placeholder="home.fleet.searchPlaceholder" aria-label="${esc(text('home.fleet.searchAria'))}"`
     + ` data-i18n-aria-label="home.fleet.searchAria" autocomplete="off" spellcheck="false" enterkeyhint="search"></label>`
     + `<p class="fleet-count" role="status"></p></div>`;
 }
