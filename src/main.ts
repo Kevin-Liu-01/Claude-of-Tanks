@@ -1373,10 +1373,10 @@ const playSurface = createPlaySurfaceRuntime({
 // Battle entry owns the play modal's visibility. Every player-facing entry
 // path emits this event, so first matches, retained-room rematches,
 // and solo all dismiss the operation picker before the next painted frame.
+// transitions-249: the hero's dormant Garage skin is parked (off its meshes, kept with its programs for the return's
+// adoption) before the mode preview's clear, which leaves a parked skin alone
 bus.on('ui:battleStart', () => {
   sceneWatchdogEntryGeneration++;
-  // transitions-249: the hero's dormant Garage skin is parked (off its meshes, kept with its programs for the return's
-  // adoption), before the mode preview's clear, which leaves a parked skin alone
   if(pedestal.current)parkGarageTankEnergyVisual(pedestal.current.root);
   garageModePreview.clear();
   coveredBattleWatchdog = null;
