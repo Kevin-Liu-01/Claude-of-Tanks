@@ -99,7 +99,7 @@ assert.match(docsCss, /\.manual-take \[hidden\]\{display:none!important\}/, 'a h
 assert.match(docsCss, /\.manual-take \.fleet-take-toggle\{[^}]*width:44px;height:44px/, 'a full-size play control');
 
 // The page catalog: the figure's strings ride the manual's lazy chunk, not its boot catalog.
-const scan = scanPageCatalogs({ root: ROOT, pages: ['site/docs-vehicles.html'] });
+const scan = scanPageCatalogs({ root: ROOT, pages: ['site/docs-tanks.html'] });
 assert.deepEqual(scan.issues, [], 'no raw key on the manual');
 const { keys, lazyKeys } = scan.catalogs.docsTopic;
 for (const key of ['docs.reference.inAction', 'docs.reference.openStudio', 'media.fleet.play', 'media.fleet.pause']) {

@@ -115,7 +115,8 @@ for (const hero of heroVideos) {
 
 // --- the topic headers: the 960 rung leads on a desktop, the 1920 loop only on a wide screen -------------------------
 const { topics, TOPIC_HERO_RUNGS } = await topicData();
-const TOPIC_960_GAP = /^(?:s04-column-under-fire|s20-road-return-fire|s21-fields-assault|s23-village-crossroads|s24-ice-duel|s33-water-tower|s34-furnace-salvo|s39-lakeside-village)$/;
+// (245: s27-caravanserai-kill heads the first-battle chapter on its 1920 loop until the media lane encodes its 960 rung)
+const TOPIC_960_GAP = /^(?:s04-column-under-fire|s20-road-return-fire|s21-fields-assault|s23-village-crossroads|s24-ice-duel|s27-caravanserai-kill|s33-water-tower|s34-furnace-salvo|s39-lakeside-village)$/;
 let topic960 = 0, topicGaps = 0;
 for (const topic of Object.values(topics)) {
   const take = /^\/media\/site50-r14\/loops\/([\w-]+)\.webm$/.exec(topic.hero)?.[1];

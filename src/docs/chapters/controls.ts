@@ -92,6 +92,23 @@ function touchFigure(): string {
 /** Hold or toggle: the actions the Accessibility settings can switch (the in-game names). */
 const SWITCHABLE: readonly ActionId[] = ['fire', 'handbrake', 'freeLook', 'freeCamera'];
 
+/** The key that switches the minimal battle HUD (src/ui/battleUiVisibility.ts; controls.selftest holds it to that file). */
+export const MINIMAL_HUD_KEY = 'F10';
+
+/** Your HUD: the layout editor and the minimal HUD, by the settings panel's own names. */
+function hudSection(): string {
+  const layout = esc(t('docs.controls.hud.layout', {
+    settings: t('settings.title'), tab: t('settings.tab.gameplay'), edit: t('hudEditor.open'),
+    desktop: t('hudEditor.desktop'), portrait: t('hudEditor.portrait'), landscape: t('hudEditor.landscape'),
+  }));
+  // the key cap goes in after escaping: the copy names it as {key}
+  const minimal = esc(t('docs.controls.hud.minimal', { key: '\u0000' })).replace('\u0000', kbd(labelForCode(MINIMAL_HUD_KEY)));
+  const setting = esc(t('docs.controls.hud.setting', { setting: t('settings.interface.hideBattleUi') }));
+  return `<ul class="dm-roles dm-roles--rows"><li>${icon('settings', { size: 20 })}<div><p>${layout}</p></div></li>`
+    + `<li>${icon('scope', { size: 20 })}<div><p>${minimal}</p></div></li>`
+    + `<li>${icon('phone', { size: 20 })}<div><p>${setting}</p></div></li></ul>`;
+}
+
 export function controlsSections(): RichSection[] {
   const sections: Array<[string, string, string]> = [
     ['keys', t('docs.controls.keys'), `<p>${esc(t('docs.controls.keysLede'))}</p>${bindingTables()}`],
@@ -102,6 +119,7 @@ export function controlsSections(): RichSection[] {
       + ['move', 'aim', 'fire', 'scope', 'zoom', 'autoAim', 'jump'].map((gesture) => `<li><span>${esc(t(`docs.controls.touch.${gesture}`))}</span></li>`).join('')
       + '</ul>'],
     ['watch', t('docs.controls.watch'), watchSection()],
+    ['hud', t('docs.controls.hud'), hudSection()],
   ];
   return sections.map(([id, title, html]) => ({ id, title, html, text: plain(html) }));
 }

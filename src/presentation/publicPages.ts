@@ -50,63 +50,6 @@ if (document.querySelector('[data-media-archive]')) {
 }
 
 
-function mountShotRail(rail: HTMLElement): void {
-  const section = rail.closest<HTMLElement>('.v5-authored');
-  const cards = [...rail.querySelectorAll<HTMLElement>('figure')];
-  const previous = section?.querySelector<HTMLButtonElement>('[data-shot-previous]');
-  const next = section?.querySelector<HTMLButtonElement>('[data-shot-next]');
-  const position = section?.querySelector<HTMLElement>('[data-shot-position]');
-  const progress = section?.querySelector<HTMLElement>('[data-shot-progress]');
-  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
-  if (!section || cards.length < 2 || !previous || !next || !position || !progress) return;
-
-  let activeIndex = 0;
-  let updateFrame = 0;
-
-  const nearestCardIndex = (): number => cards.reduce((nearest, card, index) => (
-    Math.abs(card.offsetLeft - rail.scrollLeft) < Math.abs(cards[nearest].offsetLeft - rail.scrollLeft)
-      ? index
-      : nearest
-  ), 0);
-
-  const update = (): void => {
-    updateFrame = 0;
-    activeIndex = nearestCardIndex();
-    const maxScroll = Math.max(1, rail.scrollWidth - rail.clientWidth);
-    const minimum = 1 / cards.length;
-    const ratio = minimum + Math.min(1, rail.scrollLeft / maxScroll) * (1 - minimum);
-    position.textContent = `${activeIndex + 1} / ${cards.length}`;
-    progress.style.transform = `scaleX(${ratio})`;
-    previous.disabled = rail.scrollLeft <= 2;
-    next.disabled = rail.scrollLeft >= maxScroll - 2;
-  };
-
-  const requestUpdate = (): void => {
-    if (updateFrame) return;
-    updateFrame = requestAnimationFrame(update);
-  };
-
-  const showCard = (index: number): void => {
-    activeIndex = Math.max(0, Math.min(cards.length - 1, index));
-    rail.scrollTo({
-      left: cards[activeIndex].offsetLeft,
-      behavior: reducedMotion.matches ? 'auto' : 'smooth',
-    });
-  };
-
-  previous.addEventListener('click', () => showCard(nearestCardIndex() - 1));
-  next.addEventListener('click', () => showCard(nearestCardIndex() + 1));
-  rail.addEventListener('scroll', requestUpdate, { passive: true });
-  rail.addEventListener('keydown', (event) => {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-    event.preventDefault();
-    showCard(nearestCardIndex() + (event.key === 'ArrowRight' ? 1 : -1));
-  });
-  window.addEventListener('resize', requestUpdate, { passive: true });
-  update();
-}
-
-document.querySelectorAll<HTMLElement>('[data-shot-rail]').forEach(mountShotRail);
 
 // The landing's segmented controls (the kit's cot-c-seg, a radio group): a click or an arrow key picks an option, the
 // group keeps one tab stop on the picked option.
@@ -170,6 +113,41 @@ function mountMapFilter(section: HTMLElement): void {
 
 document.querySelectorAll<HTMLElement>('#battlefields').forEach(mountMapFilter);
 
+// The modes and mechanics: the switch shows one set of tiles; a hidden set's lazy pictures load when it first shows.
+function mountPlayTabs(section: HTMLElement): void {
+  const group = section.querySelector<HTMLElement>('.cot-c-seg');
+  const panels = [...section.querySelectorAll<HTMLElement>('[data-play-panel]')];
+  if (!group) return;
+  mountSegment(group, (option) => {
+    const tab = option.dataset.playTab || 'modes';
+    for (const panel of panels) panel.hidden = panel.dataset.playPanel !== tab;
+  });
+}
+
+document.querySelectorAll<HTMLElement>('#modes').forEach(mountPlayTabs);
+
+// The screenshots strip: its arrows step it by most of a screen and rest at its ends. The markup opens with the previous
+// arrow disabled; the strip's own scroll keeps both current, so nothing reads layout as the page loads.
+function mountShotsRail(section: HTMLElement): void {
+  const rail = section.querySelector<HTMLElement>('[data-shots-rail]');
+  const previous = section.querySelector<HTMLButtonElement>('[data-rail-prev]');
+  const next = section.querySelector<HTMLButtonElement>('[data-rail-next]');
+  if (!rail || !previous || !next) return;
+  let frame = 0;
+  const update = (): void => {
+    frame = 0;
+    previous.disabled = rail.scrollLeft <= 2;
+    next.disabled = rail.scrollLeft >= rail.scrollWidth - rail.clientWidth - 2;
+  };
+  const step = (direction: number): void => rail.scrollBy({ left: direction * rail.clientWidth * 0.8,
+    behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  previous.addEventListener('click', () => step(-1));
+  next.addEventListener('click', () => step(1));
+  rail.addEventListener('scroll', () => { if (!frame) frame = requestAnimationFrame(update); }, { passive: true });
+}
+
+document.querySelectorAll<HTMLElement>('#screenshots').forEach(mountShotsRail);
+
 // Play now (Enter): Enter anywhere on the landing that is not a control follows the hero's Play link.
 const heroPlay = document.querySelector<HTMLAnchorElement>('[data-hero-play]');
 if (heroPlay) {
@@ -181,41 +159,48 @@ if (heroPlay) {
   });
 }
 
-// The hero's trailer button plays the trailer where the trailers row shows it (a click, so it plays with its sound).
-document.querySelectorAll<HTMLAnchorElement>('[data-trailer-open]').forEach((link) => {
-  link.addEventListener('click', (event) => {
-    const video = document.querySelector<HTMLVideoElement>('#trailers video[data-trailer]');
-    if (!video) return;
-    event.preventDefault();
-    video.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
-    if (video.dataset.poster && !video.poster) video.poster = video.dataset.poster;
-    void video.play().catch(() => {});
-  });
-});
-
-// The landing page's trailers row: each trailer plays on a click (controls, preload none) with its sound, so nothing of
-// it loads before the row nears the viewport, when its poster does; starting one pauses the others.
-function mountTrailerRow(row: HTMLElement): void {
-  const videos = [...row.querySelectorAll<HTMLVideoElement>('video[data-trailer]')];
-  const observer = new IntersectionObserver((entries) => {
-    for (const entry of entries) {
-      if (!entry.isIntersecting) continue;
-      const video = entry.target as HTMLVideoElement;
-      if (video.dataset.poster && !video.poster) video.poster = video.dataset.poster;
-      observer.unobserve(video);
-    }
-  }, { rootMargin: '25% 0px' });
-  for (const video of videos) {
-    observer.observe(video);
-    video.addEventListener('play', () => {
-      for (const other of videos) if (other !== video) other.pause();
-      video.closest('figure')?.classList.add('is-playing');
+// The landing's motion stage: the reel loops muted until a cut button swaps in that trailer cut, which plays with its
+// sound on that click (controls, preload none: nothing of a trailer loads before then, its poster as it shows).
+function mountTrailerStage(stage: HTMLElement): void {
+  const reel = stage.querySelector<HTMLVideoElement>('video[data-autoplay-video]');
+  const cuts = [...stage.querySelectorAll<HTMLButtonElement>('[data-trailer-cut]')];
+  const videos = [...stage.querySelectorAll<HTMLVideoElement>('video[data-trailer]')];
+  const show = (index: number): HTMLVideoElement => {
+    cuts.forEach((cut, i) => cut.setAttribute('aria-pressed', String(i === index)));
+    videos.forEach((video, i) => {
+      if (i === index) return;
+      video.pause();
+      video.hidden = true;
     });
-    video.addEventListener('pause', () => video.closest('figure')?.classList.remove('is-playing'));
+    if (reel) {
+      reel.pause();
+      reel.hidden = true;
+    }
+    stage.classList.add('has-cut');
+    const video = videos[index];
+    if (video.dataset.poster && !video.poster) video.poster = video.dataset.poster;
+    video.hidden = false;
+    return video;
+  };
+  cuts.forEach((cut, i) => cut.addEventListener('click', () => void show(i).play().catch(() => {})));
+  for (const video of videos) {
+    video.addEventListener('play', () => stage.classList.add('is-playing'));
+    video.addEventListener('pause', () => stage.classList.remove('is-playing'));
   }
 }
 
-document.querySelectorAll<HTMLElement>('[data-trailer-row]').forEach(mountTrailerRow);
+document.querySelectorAll<HTMLElement>('[data-trailer-stage]').forEach(mountTrailerStage);
+
+// The hero's trailer button plays the trailer on the motion stage (its first cut: a click, so it plays with its sound).
+document.querySelectorAll<HTMLAnchorElement>('[data-trailer-open]').forEach((link) => {
+  link.addEventListener('click', (event) => {
+    const cut = document.querySelector<HTMLButtonElement>('#trailers [data-trailer-cut]');
+    if (!cut) return;
+    event.preventDefault();
+    cut.closest('figure')?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'center' });
+    cut.click();
+  });
+});
 
 function mountDeferredImage(image: HTMLImageElement): void {
   const observer = new IntersectionObserver(([entry]) => {
