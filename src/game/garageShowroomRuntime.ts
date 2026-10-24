@@ -31,6 +31,8 @@ interface ShowroomOrbitControl {
   drag(dx: number, dy: number): void;
   endDrag(): void;
   wheel(notches: number): void;
+  hold(on: boolean): void;
+  aim(yawRad: number, pitchRad: number, zoomTo?: number): void;
   debugState(): Record<string, RuntimeValue>;
 }
 
@@ -51,6 +53,9 @@ export interface GarageShowroomRuntime {
   stop(): void;
   reset(): boolean;
   update(dt: number): boolean;
+  /** Hold the framing (no spring back to the hero pose) and steer to a view: the Garage's photo mode. */
+  hold(on: boolean): void;
+  aim(yawRad: number, pitchRad: number, zoomTo?: number): void;
   dispose(): void;
   readonly active: boolean;
   readonly moving: boolean;
@@ -157,6 +162,8 @@ export function createGarageShowroomRuntime({
     },
     reset: () => control.reset(),
     update: (dt) => enabled ? control.update(dt) : false,
+    hold: (on) => control.hold(on),
+    aim: (yawRad, pitchRad, zoomTo) => control.aim(yawRad, pitchRad, zoomTo),
     dispose() {
       enabled = false;
       dragPointer = -1;

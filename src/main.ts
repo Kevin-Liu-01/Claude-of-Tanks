@@ -1993,6 +1993,13 @@ const settings = createSettingsAccess({
 garage.attachSettingsControl(settings.gear);
 // the Deploy screen's bot tier is the settings' own (the next battle's), so both pickers read one value
 garage.attachDifficulty({ get: () => input.getSettings().aiDifficulty, set: (tier) => input.setSetting('aiDifficulty', tier) });
+// the Garage's photo mode (garage.ts attachPhoto): the stage, the showroom orbit held for framing, and the renderer, post
+// chain and lighting its lazy module draws a still with
+garage.attachPhoto({
+  stage: renderer.domElement,
+  showroom,
+  still: { renderer, camera, post, lighting, size: () => renderer.getSize(new THREE.Vector2()) },
+});
 const mobileBattleInput = createMobileBattleInputAccess<MainEntity>({
   input,
   bus,
