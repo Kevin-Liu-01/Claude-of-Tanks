@@ -91,7 +91,7 @@ const DENT_RAMP_S = 0.35;
  * from under the fender roof the eye saw through the 0.2 m slot into the hull (30-45 px at every seed; the Object 148's
  * 31-65 px the same way). The exterior pass finds them (the hull's skin the eye reaches inside the race's radius within
  * that depth); it is too slow for a battle's warm, so the scan's result is kept here (tools/turret-ring-side-caps.mjs
- * --check). Measured rings only: a calibration receipt's ring is the intact seat's too.
+ * --check). The anatomy update measures with the cap too (tools/gen-combat-anatomy.mjs), so a receipt keeps it.
  */
 export const TURRET_RING_SIDE_CAPS: Readonly<Record<string, number>> = Object.freeze({
   mbt70: 0.93,

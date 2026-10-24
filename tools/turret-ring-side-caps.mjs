@@ -6,7 +6,8 @@
 //
 // A live wreck's cut reaches 0.2 m under its race; a ring measured wider than the hull's own sides through that depth
 // opens the side wall into a slot the plate's band cannot close (turretRingWell.ts TURRET_RING_SIDE_CAPS). Per ring
-// measured at runtime (no calibration receipt), on a bot's battle build: the hull skin the eye reaches from outside
+// measured at runtime (no calibration receipt; a receipt carries the cap, tools/gen-combat-anatomy.mjs), on a bot's
+// battle build: the hull skin the eye reaches from outside
 // (turretRingWell.ts exteriorSkin, the measure's own exterior pass) inside the uncapped race's radius within that
 // depth, its nearest radius and its 5th percentile.
 //   --check (default: the capped ids)  every cap lies inside that skin (by at least CAP_MARGIN_M) and still guards a
@@ -64,8 +65,11 @@ for (const id of ids) {
     await ensureTankBuilder(id);
     const spec = getSpec(id);
     if (spec?.armor?.turretless) continue;
-    if (combatAnatomyCalibration(id)?.turretRing) {
-      if (TURRET_RING_SIDE_CAPS[id] !== undefined) failures.push(`${id}: capped, but its ring is a calibration receipt's (the cap applies to measured rings only)`);
+    const receipt = combatAnatomyCalibration(id)?.turretRing;
+    if (receipt) {
+      // the anatomy update measures with the cap too (tools/gen-combat-anatomy.mjs), so a receipt keeps it
+      const cap = TURRET_RING_SIDE_CAPS[id];
+      if (cap !== undefined && receipt.rimR > cap + 1e-4) failures.push(`${id}: its receipt's ring (${receipt.rimR}) is past its cap ${cap}: rerun the anatomy update`);
       continue;
     }
     visual = createTank(id, null, { camoSeed: 77, quality: 'low', geometryQuality: 'low', batchStatic: true, battleDetailLod: true, eraVisualBindingReceipt: false });
