@@ -12,11 +12,17 @@ import type { TankBuilderPort } from '../tankFactoryCore.ts';
 import { addVehicleGhillieSuit } from '../ghillieSuit.ts';
 const {box,cylX,cylY,cylZ}=KIT;
 
+// Release 240 (the owner: "make sure all tank turrets are clear of hulls"; closed hulls at real dimensions): the troop
+// cell's raised roof (1.94) starts at -2.49, 1.73 m off the ring's axis, past the sweep of the turret's underside
+// (1.78-1.94, out to 1.48 m) and of the rocking mask at full elevation (1.95, out to 1.65 m). It started at -1.48, 0.72 m
+// behind the axis, and the turret stood 11-15 cm in it at rest and at every bearing. Its walls step with it.
 function hull(P: TankBuilderPort): void {
   P.add('hull',chassisLoft([
     [-3.32,.78,1.51,1.40,.65,1.22,1.93],
     [-2.96,.93,1.52,1.43,.37,1.22,1.94],
-    [-1.48,.94,1.52,1.43,.37,1.16,1.94],
+    [-2.49,0.9332,1.52,1.43,0.37,1.2009,1.94],
+    [-2.43,0.9336,1.52,1.43,0.37,1.1985,1.76],
+    [-1.48,.94,1.52,1.43,.37,1.16,1.76],
     [-.95,.94,1.52,1.43,.37,1.16,1.76],
     [1.22,.94,1.52,1.43,.37,1.16,1.76],
     [2.62,.94,1.51,1.40,.58,1.25,1.40],
@@ -24,7 +30,7 @@ function hull(P: TankBuilderPort): void {
   ],1.06));
   for(const side of [-1,1]) {
     // External C-standard protection follows the low front / high rear cell.
-    sideWall(P,side,1.50,1.64,[[-3.28,1.15,1.90],[-1.49,1.15,1.90],[-.97,1.15,1.73],[1.16,1.15,1.73],[2.60,1.25,1.36],[3.21,1.18,1.23]]);
+    sideWall(P,side,1.50,1.64,[[-3.28,1.15,1.90],[-2.50,1.15,1.90],[-2.44,1.15,1.73],[1.16,1.15,1.73],[2.60,1.25,1.36],[3.21,1.18,1.23]]);
     for(let i=0;i<6;i++) {
       const z=-2.65+i*.98;
       sideWall(P,side,1.61,1.685,[[z-.474,.56,1.19],[z+.474,.56,1.19]]);
@@ -36,11 +42,12 @@ function hull(P: TankBuilderPort): void {
     P.addEquipment('hullDetail',box(.37,.16,.26),side*1.19,1.31,3.12);
     for(const dx of [-.10,.10])P.addEquipment('hullGlass',markVehicleNightLens(cylZ(.045,.018,12), 'headlight'),side*1.19+dx,1.32,3.26);
     // 2026-10-19 (owner float sweep): rear roof hatches stood 8 mm above the deck; seated.
-    for(const z of [-2.62,-2.02])P.addHatch('hull',box(.99,.033,.50),side*.77,1.9555,z);
+    // (release 240: the aft pair 14 cm aft, on the cell past the sweep of the turret's front; the forward pair on the
+    // lowered roof ahead of the cell)
+    P.addHatch('hull',box(.99,.033,.50),side*.77,1.9555,-2.76);
+    P.addHatch('hull',box(.99,.033,.50),side*.77,1.752,-2.02);
     for(const z of [-3.12,.75,2.62])KIT.liftEye(P,'hullDetail',side*1.25,z>2?1.43:z>0?1.78:1.96,z);
   }
-  // The turret's ring plinth: the low front roof (1.76) rises to the lifted seat (1.96) round the ring (buildCv9040CX).
-  P.add('hull',cylY(.92,.92,.20,P.q?40:20),0,1.86,-.76);
   // Driver at the left front, engine and cooling package to the right.
   P.addHatch('hull',box(.62,.052,.71),-.79,1.78,1.11);
   for(const x of [-.99,-.79,-.59])KIT.periscope(P,'hullDetail',x,1.835,1.41);
@@ -134,16 +141,8 @@ function gun(P: TankBuilderPort): void {
   P.addGunExtraDark(new THREE.CircleGeometry(.010,12),-.325,-.06,.701); // 2026-10-19 (owner float sweep): 8 mm off the tube end
 }
 
-/** Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the turret and its gun ride this far over
- * their authored seat on the low front roof (1.76). The troop cell's roof (1.94, hatches 1.972) starts 0.19 m behind the
- * ring's axis, and the turret's 1.78 underside stood 11-15 cm into it, at rest and at every bearing. The source-backed
- * CV90 Mk IV carries the same raised cell under a turret whose underside clears it, and the lift puts this roof near the
- * real 2.7 m. A hull ring plinth (hull()) carries the ring up to the lifted seat. */
-const CV9040C_TURRET_LIFT_M = .20;
-
 export function buildCv9040CX(P: TankBuilderPort): void {
   hull(P);gear(P);turret(P);gun(P);P.topY=1.03;
-  P.turretG.position.y += CV9040C_TURRET_LIFT_M;
   P.additionalShadowSources={hull:['hullExternalArmor','hullHatch'],turret:['turretExternalArmor','turretHatch']};
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts)
   addVehicleGhillieSuit(P);

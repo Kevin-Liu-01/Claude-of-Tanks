@@ -48,7 +48,9 @@ function addCv90FendersAndLamps(P: TankBuilderPort, side: number): void {
     P.addEquipment('hullGlass',markVehicleNightLens(box(.098,.04,.012), 'marker'),side<0?-1.17:.966,1.073,3.201);
     for(const dx of [-lampW*.38,0,lampW*.38])P.addEquipment('hullDetail',cylY(.006,.006,.009,6),lampX+dx,1.18,3.08);
     P.addEquipment('hullDetail',box(.03,.04,1.48),side*1.32,1.53,1.13,0,0,-side*.02);
-    for(const z of [-2.62,-2.01])P.addHatch('hullDetail',box(.84,.025,.51),side*.89,1.748,z);
+    // (release 240: the aft hatch on the raised cell, the forward one on the lowered roof ahead of it)
+    P.addHatch('hullDetail',box(.84,.025,.51),side*.89,1.748,-2.915);
+    P.addHatch('hullDetail',box(.84,.025,.51),side*.89,1.5495,-2.01);
 }
 
 function buildCv90RearRamp(P: TankBuilderPort): void {
@@ -70,7 +72,7 @@ function buildCv90RearRamp(P: TankBuilderPort): void {
 
 function addCv90SideArmor(P: TankBuilderPort, side: number, x: number): void {
     sideWall(P,side,Math.abs(x)-.0225,Math.abs(x)+.0225,[
-      [-3.16,.97,1.725],[-1.80,.97,1.725],[-1.22,.97,1.537],
+      [-3.16,.97,1.725],[-2.66,.97,1.725],[-2.60,.97,1.537],
       [1.25,.97,1.515],[2.55,.97,1.266],[3.17,.995,1.15],
     ]);
     // Independently hinged lower panels leave the lower wheel faces exposed.
@@ -92,10 +94,15 @@ function addCv90SideArmor(P: TankBuilderPort, side: number, x: number): void {
     }
 }
 
+// Release 240 (the owner: "make sure all tank turrets are clear of hulls"; closed hulls at real dimensions): the source's
+// raised troop roof (1.727) starts at -2.66, 2.06 m off the ring's axis, past the sweep of the turret's lower shoulders
+// and cheek smoke arrays (1.58-1.73, out to 1.99 m). It rose from -1.22, and they ran up to 21 cm through it at every
+// rear bearing: a source error. Its walls step with it.
 function buildCv90Hull(P: TankBuilderPort): void {
   P.add('hull',chassisLoft([
     [-3.185,.76,1.535,1.515,.91,1.03,1.727],[-2.75,.78,1.555,1.535,.35,.99,1.727],
-    [-1.80,.69,1.555,1.535,.30,.97,1.727],[-1.22,.68,1.555,1.535,.30,.97,1.537],
+    [-2.66,0.7715,1.555,1.535,0.3453,0.9881,1.727],[-2.6,0.7658,1.555,1.535,0.3421,0.9868,1.537],
+    [-1.80,.69,1.555,1.535,.30,.97,1.537],[-1.22,.68,1.555,1.535,.30,.97,1.537],
     [1.25,.65,1.555,1.525,.30,.97,1.515],[2.50,.73,1.545,1.495,.36,.96,1.276],
     [3.23,.82,1.515,1.445,.75,.99,1.14],
   ],.923).translate(-.035,0,0));
@@ -324,9 +331,6 @@ function buildCv90Cannon(P: TankBuilderPort): void {
   P.muzzleZ=mouth;P.physicalMuzzleBore={outerRadiusM:outer,innerRadiusM:inner,depthM:depth,rimProjectionM:.0996};
 }
 
-/** The turret's lift over the source seat (buildCv90MkivX). */
-const CV90_MKIV_TURRET_LIFT_M=.21;
-
 export function buildCv90MkivX(P: TankBuilderPort): void {
   // Measured fixed armor extends the shadow silhouette; omit small fittings.
   P.additionalShadowSources = {
@@ -345,11 +349,5 @@ export function buildCv90MkivX(P: TankBuilderPort): void {
   buildCv90Cannon(P);
   preserveSourceStudyGunMountAppearance(P);
   P.topY=2.82-py;
-  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the turret and its gun ride this far over
-  // the source seat. The source's troop roof rises from 1.53 to 1.727 (fittings 1.76) between 0.6 and 1.2 m behind the
-  // ring's axis, and the turret's lower shoulders and cheek smoke arrays (1.58-1.59) ran up to 21 cm through it at every
-  // rear bearing. A hull ring plinth carries the ring up to the lifted seat.
-  P.turretG.position.y+=CV90_MKIV_TURRET_LIFT_M;
-  P.add('hull',cylY(.92,.92,CV90_MKIV_TURRET_LIFT_M+.03,P.q?40:20),-.035,1.53+(CV90_MKIV_TURRET_LIFT_M+.03)/2,-.60);
   P.hullG.userData.xRebuild={candidate:'cv90_mk4',independent:true,sourceLocalOnly:true,datumVersion:1};
 }
