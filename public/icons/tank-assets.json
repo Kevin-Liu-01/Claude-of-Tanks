@@ -107337,7 +107337,7 @@
           }
         ]
       },
-      "geometryHash": "762576e4",
+      "geometryHash": "8ec56a1b",
       "metadataHash": "c74ad786",
       "presentationAnchor": {
         "xM": 0,
@@ -107398,15 +107398,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26002,
-          "sha256": "df7870072da74809f254e7b8a0590e0d873054996709e786fe7f9e18f0ebaa11",
+          "bytes": 25984,
+          "sha256": "d094af47bf727a42a71b0389c0ddcc57351f57d3ce2cbbae47227d8e8095905c",
           "thumbnail": {
             "file": "thumbs/challenger3_proto_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11622,
-            "sha256": "186bea670bf9e3ac59eb96a3cefcc3d18123b1f97fa176bf3d85623a1a8564d7"
+            "bytes": 11614,
+            "sha256": "5a36b8937d109b79a54ad6e2b50a9de21f81748deafd1ccaa4f8b1b8542ba2a7"
           }
         },
         "top": {
@@ -107414,16 +107414,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8476,
-          "sha256": "81cf49f3b485b24fea0e917289a9ee26125b5b70224d0a4995d4f607e3c2798a"
+          "bytes": 8466,
+          "sha256": "eadc5580d1bdf7d3ac2af2062f7e5fb92c7af81ffdf9283e0d4c8daa15d0bc60"
         },
         "side": {
           "file": "challenger3_proto_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8672,
-          "sha256": "cddfc181f484dc3d19f2beaca56f39bc793f04b9f51ceeddced8d0677b58c93a"
+          "bytes": 8674,
+          "sha256": "c0c2fa01f28ec5760630bc2b4e8bd15cbf0c72ea71416fad56c3d7e92e9db287"
         },
         "topSilhouette": {
           "file": "challenger3_proto_top_silhouette.png",
@@ -107438,8 +107438,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4094,
-          "sha256": "6ffbaa4807b38e8158bcf58a84dbee73a52b1bbac47372d38aee1a6714e33d72"
+          "bytes": 4092,
+          "sha256": "703427c15b84b19b986c679efa3fd1c949af7c39541802c61ba8ef19191e9a40"
         },
         "armorSide": {
           "file": "challenger3_proto_armor_side.png",
