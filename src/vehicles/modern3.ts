@@ -4871,7 +4871,12 @@ export function buildPuma(P: Modern3BuilderPort) {
   // stepped tower. Pivot y/z stay the print's (2.03, -1.374); gun stays at
   // the print's world x 0.085 via the spec gunPivot. All furniture below
   // yaws (§B5); the Spike pod pitches (rig_gun, print shooter00/01). ======
-  P.add('turret', cylY(0.58, 0.64, 0.10, 22), 0, 0.01, 0.10);                  // ring collar on the deck
+  // ring collar on the deck. Release 240 (the owner: "make sure all tank turrets have a proper turret ring/attachment
+  // area"): coaxial with the yaw axis and 16 cm tall, up to the seated turret's 2.155 floor (turretSeatRace.ts), so the
+  // seam over the deck reads as the collar. 10 cm forward of the axis its front reached 0.74 m, past the seat's keep
+  // radius (0.7365): the seat lifted that wall's corners onto its plane, turning it and the cap inside out (the
+  // gun-junction census's openings under the gun).
+  P.add('turret', cylY(0.58, 0.64, 0.16, 22), 0, 0.04, 0);
   // core: low flat wedge — roof descends toward the muzzle (print stepped
   // 2.72->2.60 x1.0444); walls rake inward 11-13 deg (§B1 + §B8 order 3).
   P.add('turret', slab(
