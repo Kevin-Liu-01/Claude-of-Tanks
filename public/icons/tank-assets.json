@@ -671796,22 +671796,22 @@
             "verts": [
               [
                 0.3332,
-                -0.0055,
+                0.0638,
                 1.3612
               ],
               [
                 1.385,
-                -0.0055,
+                0.0638,
                 -0.287
               ],
               [
                 1.385,
-                1.2005,
+                1.2025,
                 -0.4809
               ],
               [
                 0.3332,
-                1.2005,
+                1.2025,
                 1.1673
               ]
             ]
@@ -671827,22 +671827,22 @@
             "verts": [
               [
                 -1.3418,
-                -0.0055,
+                0.0638,
                 -0.287
               ],
               [
                 -0.29,
-                -0.0055,
+                0.0638,
                 1.3612
               ],
               [
                 -0.29,
-                1.2005,
+                1.2025,
                 1.1673
               ],
               [
                 -1.3418,
-                1.2005,
+                1.2025,
                 -0.4809
               ]
             ]
@@ -671858,22 +671858,22 @@
             "verts": [
               [
                 -0.316,
-                0.2012,
+                0.259,
                 1.4
               ],
               [
                 0.3592,
-                0.2012,
+                0.259,
                 1.4
               ],
               [
                 0.3592,
-                1.0282,
+                1.0398,
                 1.3224
               ],
               [
                 -0.316,
-                1.0282,
+                1.0398,
                 1.3224
               ]
             ]
@@ -671889,22 +671889,22 @@
             "verts": [
               [
                 1.385,
-                -0.04,
+                0.0313,
                 -0.1901
               ],
               [
                 1.385,
-                -0.04,
+                0.0313,
                 -2.323
               ],
               [
                 1.3032,
-                1.2005,
+                1.2025,
                 -2.323
               ],
               [
                 1.3032,
-                1.2005,
+                1.2025,
                 -0.1901
               ]
             ]
@@ -671920,22 +671920,22 @@
             "verts": [
               [
                 -1.3418,
-                -0.04,
+                0.0313,
                 -2.323
               ],
               [
                 -1.3418,
-                -0.04,
+                0.0313,
                 -0.1901
               ],
               [
                 -1.26,
-                1.2005,
+                1.2025,
                 -0.1901
               ],
               [
                 -1.26,
-                1.2005,
+                1.2025,
                 -2.323
               ]
             ]
@@ -671951,22 +671951,22 @@
             "verts": [
               [
                 1.2487,
-                -0.04,
+                0.0313,
                 -2.323
               ],
               [
                 -1.2055,
-                -0.04,
+                0.0313,
                 -2.323
               ],
               [
                 -1.2055,
-                1.2005,
+                1.2025,
                 -2.42
               ],
               [
                 1.2487,
-                1.2005,
+                1.2025,
                 -2.42
               ]
             ]
@@ -672009,12 +672009,12 @@
             "name": "gun",
             "min": [
               -0.2381,
-              0.2357,
+              0.2916,
               -0.9851
             ],
             "max": [
               0.2813,
-              1.0627,
+              1.0723,
               1.3612
             ],
             "turretLocal": true
@@ -672024,13 +672024,13 @@
             "name": "turretRing",
             "min": [
               -0.9129,
-              1.5146,
-              -0.6516
+              1.7059,
+              -0.6136
             ],
             "max": [
               0.9129,
-              1.8254,
-              1.3356
+              2.0167,
+              1.3736
             ],
             "turretLocal": false
           },
@@ -672312,8 +672312,8 @@
           }
         ]
       },
-      "geometryHash": "405500f7",
-      "metadataHash": "685fabae",
+      "geometryHash": "b67e6f22",
+      "metadataHash": "3ab0b23f",
       "presentationAnchor": {
         "xM": 0.0004,
         "zM": -0.0994
@@ -672337,7 +672337,7 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "gunmetal": 17,
+          "gunmetal": 18,
           "armorPaint": 8,
           "opticGlass": 6,
           "tireRubber": 1,
@@ -672375,15 +672375,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32652,
-          "sha256": "57af986cd8135e987ff2f6e601a333ec94cf69034e52d400ba4baa76c051b92d",
+          "bytes": 33036,
+          "sha256": "bbb0ec145f0d5fb6fa8d28be804416683468cca0fee2d81a7162c80a44e2917f",
           "thumbnail": {
             "file": "thumbs/m60a2_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 12980,
-            "sha256": "88b98272741fea22cf902f4887eb7993ab5a810889face14df1bfb07af03366a"
+            "bytes": 13182,
+            "sha256": "e4351143df7de664493ee679801163b99319b966202c3620dfcae12fab88d629"
           }
         },
         "top": {
@@ -672391,16 +672391,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21348,
-          "sha256": "f5b1991bbc075164592bc1fb0be5faba4e027eb01b94e7ca5129a8ae31d93df6"
+          "bytes": 21236,
+          "sha256": "3eecb3321ee4b0fd26c787959aa09c0fc1431ba83ba618779fc1077d76be0713"
         },
         "side": {
           "file": "m60a2_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 24450,
-          "sha256": "810c7432e50790eb255d8280192f832fe94cda421046e81c0378e13962874e53"
+          "bytes": 24918,
+          "sha256": "bbbeb5bb310dbbebf25ca6effbcbd0ac8b89ff53498cec3625cc99a9af1995d6"
         },
         "topSilhouette": {
           "file": "m60a2_top_silhouette.png",
@@ -672415,32 +672415,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5969,
-          "sha256": "b58b576256cabd7d33c1202b7b17be4d7daf02d4f2ed57b3e2d42b83e923048a"
+          "bytes": 6228,
+          "sha256": "2d2d19193d9f24fe455d6071e7bd56bced8d903291996418fbf9116c70e6c65a"
         },
         "armorSide": {
           "file": "m60a2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 134590,
-          "sha256": "5a46c3de5b018c099668c5836d6ffd3bcb01d81b863b49173b9fe45d2ce51e52"
+          "bytes": 137008,
+          "sha256": "6f1d4ed4376e81a955e165b246744f6a228a634a5e3149502188c0eb69a99426"
         },
         "modulesSide": {
           "file": "m60a2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 148781,
-          "sha256": "bcda4983d55a698561526d29e228e56e6200b02ba87cefa55ec5fdb630705d26"
+          "bytes": 151732,
+          "sha256": "87d67668b68b4cf9cd6c62bd0c2d69f814a6e5402ffc5c2355bde83578428585"
         },
         "crewSide": {
           "file": "m60a2_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 139615,
-          "sha256": "5848b3b711766fe3b1a16ca79e6fe5649d667c853528c2d4afb1ff586267c84c"
+          "bytes": 139732,
+          "sha256": "b3d4b1985c1352c6b1cb56df9888f4bbb389647b74b035f2bd56f428f00dd23e"
         },
         "markings": {
           "file": "m60a2_markings.png",
