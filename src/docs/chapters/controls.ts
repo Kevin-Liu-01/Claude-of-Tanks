@@ -116,9 +116,9 @@ export function controlsSections(): RichSection[] {
     ['hold', t('docs.controls.hold'), `<p>${esc(t('docs.controls.holdLede'))}</p><ul class="dm-chips">`
       + `${SWITCHABLE.map((id) => `<li>${esc(t(ACTION_DEFS.find((action) => action.id === id)?.label ?? id))}</li>`).join('')}`
       + `<li>${esc(t('docs.controls.holdRoster'))}</li></ul>`],
-    ['touch', t('docs.controls.touch'), `<p>${esc(t('docs.controls.touchLede'))}</p>${touchFigure()}<ul class="dm-keylist">`
+    ['touch', t('docs.controls.touch'), `<p>${esc(t('docs.controls.touchLede'))}</p><div class="dm-touch">${touchFigure()}<ul class="dm-keylist">`
       + ['move', 'aim', 'fire', 'scope', 'zoom', 'autoAim', 'jump'].map((gesture) => `<li><span>${esc(t(`docs.controls.touch.${gesture}`))}</span></li>`).join('')
-      + '</ul>'],
+      + '</ul></div>'],
     ['watch', t('docs.controls.watch'), watchSection()],
     ['hud', t('docs.controls.hud'), hudSection()],
   ];
