@@ -9,7 +9,7 @@
   "href": "/docs/start#garage",
   "title": "Pick a tank",
   "chapter": "Your first battle",
-  "text": "01 The Garage opens on your fleet of 220 tanks. Pick one: its dossier shows the armour, the gun and how it moves, and the Tank Gallery opens its full anatomy."
+  "text": "01 The Garage opens on your fleet of 221 tanks. Pick one: its dossier shows the armour, the gun and how it moves, and the Tank Gallery opens its full anatomy."
  },
  {
   "href": "/docs/start#deploy",
@@ -69,7 +69,7 @@
   "href": "/docs/controls#watch",
   "title": "Watch mode",
   "chapter": "Controls and Watch",
-  "text": "Watch a bots' battle from the Garage: Watch sits beside Deploy. Every seat is a bot's, every tank is visible and nothing is recorded. It works in 12 modes. Drone Fly anywhere over the battle. You open 70 m up at 14 m/s; the wheel steps the speed (4 / 8 / 14 / 24 / 40 / 64 m/s) and Shift boosts ×3. W A S D Fly SPACE C Climb and descend L-SHIFT Boost WHEEL ↑ WHEEL ↓ Step the speed Ride along Follow any tank from behind, or look through its gunner's sight at ×2 / ×4 / ×8. F Ride the tank in the middle of the view TAB Q E Next and previous tank L-SHIFT Gunner's sight V Back to the drone Take control Take over the tank you ride and fight it yourself. If it dies, the drone takes you back after 3.5 s. ENTER Take control, or hand it back"
+  "text": "Watch a bots' battle from the Garage: Watch sits beside Deploy. Every seat is a bot's, every tank is visible and nothing is recorded. It works in 12 modes. Drone Fly anywhere over the battle. You open 70 m up at 14 m/s; the wheel steps the speed (4 / 8 / 14 / 24 / 40 / 64 m/s) and Shift boosts ×2.5. W A S D Fly SPACE C Climb and descend L-SHIFT Boost WHEEL ↑ WHEEL ↓ Step the speed Ride along Follow any tank from behind, or look through its gunner's sight at ×2 / ×4 / ×8. F Ride the tank in the middle of the view TAB Q E Next and previous tank L-SHIFT Gunner's sight V Back to the drone Take control Take over the tank you ride and fight it yourself. If it dies, the drone takes you back after 3.5 s. ENTER Take control, or hand it back"
  },
  {
   "href": "/docs/modes",
@@ -106,6 +106,108 @@
   "title": "Practice",
   "chapter": "Game modes",
   "text": "Proving Ground Take any tank onto a measured range: target hulls at set ranges and angles show every penetration outcome. No enemies, no clock, nothing recorded. Clock — Sides 5 lanes Respawn 3 s All tanks visible unlimited rounds nothing recorded"
+ },
+ {
+  "href": "/docs/tanks",
+  "title": "The fleet and its kit",
+  "chapter": "Tanks and equipment",
+  "text": "What each class does, how each role plays, and the equipment and kits every tank carries."
+ },
+ {
+  "href": "/docs/tanks#classes",
+  "title": "Classes",
+  "chapter": "Tanks and equipment",
+  "text": "221 tanks in 9 classes. Each card shows the class's highest-tier tank. Main battle tank 159 AbramsX Medium tank 7 Carro 45t Heavy tank 1 KV-2 Light tank 6 BMP-3M Dragun 125 Infantry fighting vehicle 35 Ajax Armored personnel carrier 1 Ares APC Tank destroyer 7 AFT-10 Self-propelled anti-aircraft 1 M6 Linebacker Fire support vehicle 4 BMPT T-90 Open any of them in the Tank Gallery"
+ },
+ {
+  "href": "/docs/tanks#roles",
+  "title": "Battle roles",
+  "chapter": "Tanks and equipment",
+  "text": "A role is how the tank plays: the bots drive it that way, and the Garage filters by it. Breakthrough 68 Heavy armor and hit points: leads the push and absorbs fire. Frontline 42 Balanced main-line tank: armor, mobility and firepower in proportion. Flanker 44 Fast and agile: strikes the sides and relocates quickly. Sniper 19 Accurate long-range gun: fights from cover at distance. Scout 15 Spots for the team and avoids sustained fights. Support 33 Autocannons, missiles or fire support that back the tanks."
+ },
+ {
+  "href": "/docs/tanks#tiers",
+  "title": "Tiers and nations",
+  "chapter": "Tanks and equipment",
+  "text": "Tanks of a tier meet tanks of nearby tiers. X 106 IX 60 VIII 34 VII 21 13 nations Soviet Union 43 Germany 28 United States 25 United Kingdom 19 China 17 Ukraine 14 Poland 13 France 12 Japan 12 Israel 12 Sweden 11 Italy 8 South Korea 7"
+ },
+ {
+  "href": "/docs/tanks#equipment",
+  "title": "Equipment",
+  "chapter": "Tanks and equipment",
+  "text": "Each tank mounts 3 of the 14 items, chosen in the Garage. Firepower Gun Rammer -10% reload time Vertical Stabilizer -20% dispersion on the move Modern tanks only Gun Laying Drive -10% aim time Improved Ventilation +2.5% crew: reload, aim, view, camo Recon Coated Optics +10% view range Binocular Telescope +25% view range while stationary Camouflage Net +12% concealment while stationary Mobility Improved Rotation +10% hull and turret traverse Enhanced Suspension +50% track durability Survival Toolbox +25% repair speed Spall Liner -25% HE splash damage, -50% crew hits from splash Wet Ammo Rack +50% ammo rack durability Safety Fuel Tanks +50% fuel tank durability, -50% engine fire chance Auto Extinguishers Fires burn half as long and self-extinguish 2x as often Modern tanks only"
+ },
+ {
+  "href": "/docs/tanks#kits",
+  "title": "Kits, smoke and the drone",
+  "chapter": "Tanks and equipment",
+  "text": "Kits are unlimited; each waits out its cooldown, which starts only once the kit has done something. Repair Kit 35 s cooldown First Aid Kit 45 s cooldown Fire Extinguisher 25 s cooldown Smoke A screen that hangs for 18 s; 28 s between launches. Drone A 40 s battery, an 850 m link and 350 m spotting; 25 s before the next one after you lose it. Roof gun Fires on its own at enemies and drones in reach; B switches it."
+ },
+ {
+  "href": "/docs/combat",
+  "title": "How a shell becomes damage",
+  "chapter": "Armour, angling and spotting",
+  "text": "Penetration, angles, modules and crew, and who sees whom, charted from the game's own rules."
+ },
+ {
+  "href": "/docs/combat#penetration",
+  "title": "Penetration",
+  "chapter": "Armour, angling and spotting",
+  "text": "A shell goes through when its penetration, rolled 75–125 %, beats the armour it meets. 200 400 600 800 1000 100 500 1000 1500 2000 Range (m) mm OFL 120 F2 APFSDS OECC 120 F1 HEAT Penetration falls linearly from its 100 m figure to its 1,000 m figure, then on to 2,000 m where the shell has one. Penetration and damage each roll 75–125 % of their figure. HEAT keeps its penetration at any range."
+ },
+ {
+  "href": "/docs/combat#angling",
+  "title": "Angling",
+  "chapter": "Armour, angling and spotting",
+  "text": "Angle the plate and it gets thicker along the shell's path, until the shell bounces off. 100 200 300 400 500 0 15 30 45 60 75 Impact angle (°) mm AP, 75 mm bounces past 70° APCR, 75 mm bounces past 70° APFSDS, 120 mm bounces past 78° HEAT, 120 mm Effective armour is the plate divided by the cosine of the angle less the shell's normalization. APFSDS turns 2° toward the plate and bounces past 78°. AP turns 5° toward the plate and bounces past 70°. A shell 3× wider than the plate never bounces. A shell bounces at most 2 times; a HEAT jet dies on its first. Leclerc XLR: armour by thickness"
+ },
+ {
+  "href": "/docs/combat#special",
+  "title": "Spaced armour, ERA and HE",
+  "chapter": "Armour, angling and spotting",
+  "text": "Not every plate is solid steel, and not every shell needs to go through. Air gaps cost HEAT 5 % of its penetration per 10 cm. ERA takes a fixed bite out of HEAT and a share of a kinetic round; a tandem warhead goes through it unless the block is built against tandems. HE never bounces: it blasts what it hits, plate or not."
+ },
+ {
+  "href": "/docs/combat#modules",
+  "title": "Modules and crew",
+  "chapter": "Armour, angling and spotting",
+  "text": "A hit that goes through can break what is behind the plate. Broken modules repair themselves after 10 s. Leclerc XLR: modules and crew Module Hit points Chance to be hit Gun 150 33 % Turret ring 120 45 % Gun mount 120 45 % Autoloader 125 36 % Weapon feed 110 38 % Roof gun 80 65 % Missile rack 120 30 % Engine 160 45 % Transmission 140 45 % Fuel tank 120 45 % Ammo rack 150 27 % Radio 90 45 % Optics 80 45 % Track L 100 100 % Track R 100 100 % A damaged ammo rack slows the reload ×1.5; a destroyed one blows the tank up. A damaged engine catches fire 15 % of the time; a fire burns 10 ticks of 0.5 % hull and may go out by itself (12 % a tick). A shell that goes through hits a crew member 33 % of the time (10 % for HE splash); losing every crew member loses the tank. Damaged optics cut the view range by 50 %. A working radio shares what you see within 600 m; a damaged one within 300 m."
+ },
+ {
+  "href": "/docs/combat#spotting",
+  "title": "Spotting",
+  "chapter": "Armour, angling and spotting",
+  "text": "You see a tank when it is inside your view range less its camo, between 50 m and 445 m. 100 200 300 400 500 0 10 20 30 40 50 60 Target camo (%) m 445 m view range 380 m view range 300 m view range Inside 50 m a tank is always seen, even through cover. A tank stays seen 5 s after the last sighting. The sixth-sense lamp lights 3 s after you are spotted and stays 8 s. Firing strips most of your camo for a moment; bushes near you turn see-through after you fire. Bushes and trees add up to 50 % camo; a camo paint that matches the map adds 3.5 %."
+ },
+ {
+  "href": "/docs/battlefields",
+  "title": "Every battlefield",
+  "chapter": "Battlefields",
+  "text": "The maps, their landscapes, the time of day and the practice range."
+ },
+ {
+  "href": "/docs/battlefields#maps",
+  "title": "Maps",
+  "chapter": "Battlefields",
+  "text": "33 battlefields; a random battle picks from 31 of them. Woodland 10 Desert 9 Urban 6 Maritime 5 Winter 4 Tropical 3 Night 1 Verdant Fields Sirocco Wadi Frosthollow Steinburg Saltmere Bay Amberford Tarkhan Steppe Cinder Junction Frontier Basin Nordhavn Fjord Jade River Delta Redrock Divide Monsoon Ridge Glacier Pass Obsidian Caldera Ironworks Ruinspires Suzhou Creek Titan Gorge Skybridge Chasm Tidegate Polders Copper Mesa Mine Kestrel Airfield Sunscar Oasis Whiteout Station Orchard Valley Longleaf Crossing Mangrove Reach Saltwind Narrows Highland Reservoir Olympus Basin Earthrise Basin Aegis Crossing"
+ },
+ {
+  "href": "/docs/battlefields#gravity",
+  "title": "Gravity worlds",
+  "chapter": "Battlefields",
+  "text": "Gravity Mode plays under another sky: Mars 0.38 g · Moon 0.17 g · Earth 1 g. Its two off-world maps stay out of the random rotation."
+ },
+ {
+  "href": "/docs/battlefields#time",
+  "title": "Time of day",
+  "chapter": "Battlefields",
+  "text": "Deploy can set the time; left to chance, it falls like this. Day 60 % Sunset 30 % Night 10 %"
+ },
+ {
+  "href": "/docs/battlefields#proving",
+  "title": "The Proving Ground",
+  "chapter": "Battlefields",
+  "text": "Test drive opens Kestrel Airfield: 5 target lanes and a rack of plates, with no clock and no record. Lanes 100 m target turned 0° 200 m target turned 30° 300 m target turned 90° 450 m target turned 45° 650 m target turned 0° Plate rack 50 mm 100 mm 200 mm 300 mm 500 mm 100 mm · 45° 100 mm · 60° 60 mm · 82°"
  },
  {
   "href": "/docs/build",

@@ -8,10 +8,11 @@ import { richSections } from './chapters/index.ts';
 import { CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
 import { WEAPON_CLASSES } from '../audio/weaponAudio.ts';
 import { staleChapters } from '../../tools/docs-prerender.mjs';
+import { heroFlagMaskCss } from '../ui/heroCardPolicy.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const expected = [
-  'start', 'controls', 'modes', 'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio', 'filming',
+  'start', 'controls', 'modes', 'tanks', 'combat', 'battlefields', 'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio', 'filming',
 ];
 
 assert.deepEqual([...TOPIC_ORDER], expected, 'the manual keeps one deliberate public topic order');
@@ -117,5 +118,10 @@ for (const slug of TOPIC_ORDER) {
 }
 assert.match(topicsSource, /root\.dataset\.prerendered === slug && root\.dataset\.prerenderedLocale === getLocale\(\)/,
   'the script keeps a chapter prerendered for its locale and only wires it');
+
+// the tanks chapter's hero cards feather their flags as the Garage does: the docs token is the policy's mask
+const docsTokens = JSON.parse(readFileSync(join(ROOT, 'src/ui/tokens/tokens.json'), 'utf8')).component['surface-docs'];
+assert.equal(docsTokens['docs-hc-flag-mask'].value, heroFlagMaskCss(undefined, 'left'),
+  'tokens.json docs-hc-flag-mask is heroFlagMaskCss() (src/ui/heroCardPolicy.ts): copy it after a policy change');
 
 console.log(`topics.selftest: ${TOPIC_ORDER.length} indexed manuals with complete icon, workflow, and audio coverage passed; every chapter prerendered in en-US and zh-CN`);

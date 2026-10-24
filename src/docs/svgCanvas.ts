@@ -26,7 +26,7 @@ export class SvgCanvas {
   lineWidth = 1;
   lineCap = 'butt';
   lineJoin = 'miter';
-  font = '10px sans-serif';
+  font = '11px sans-serif';
   textAlign = 'start';
   textBaseline = 'alphabetic';
   globalAlpha = 1;
@@ -112,7 +112,7 @@ export class SvgCanvas {
   }
 
   private textAttrs(x: number, y: number): string {
-    const size = /(\d+(?:\.\d+)?)px/.exec(this.font)?.[1] ?? '10';
+    const size = /(\d+(?:\.\d+)?)px/.exec(this.font)?.[1] ?? '11';
     const weight = /\b([1-9]00|bold)\b/.exec(this.font)?.[1];
     const anchor = this.textAlign === 'center' ? 'middle' : this.textAlign === 'right' || this.textAlign === 'end' ? 'end' : 'start';
     const baseline = this.textBaseline === 'middle' ? 'central' : this.textBaseline === 'top' ? 'hanging' : 'alphabetic';

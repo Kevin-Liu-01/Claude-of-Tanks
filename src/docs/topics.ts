@@ -22,7 +22,7 @@ interface TopicDefinition {
 }
 
 export const TOPIC_ORDER = [
-  'start', 'controls', 'modes', 'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio', 'filming',
+  'start', 'controls', 'modes', 'tanks', 'combat', 'battlefields', 'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio', 'filming',
 ] as const;
 
 export const topics: Record<string, TopicDefinition> = {
@@ -57,6 +57,42 @@ export const topics: Record<string, TopicDefinition> = {
     lede: t('docs.topic.start.lede'),
     hero: '/media/site50-r14/loops/s27-caravanserai-kill.webm',
     icon: 'manual',
+    sectionIcons: [],
+    sections: [],
+    media: [],
+    rich: true,
+  },
+  // The fleet by class, role, tier and nation, the equipment and the kits, from the game's tables (src/docs/chapters/tanks.ts).
+  tanks: {
+    label: t('docs.topic.tanks.label'),
+    title: t('docs.topic.tanks.title'),
+    lede: t('docs.topic.tanks.lede'),
+    hero: '/media/site50-r14/loops/s05-barn-advance.webm',
+    icon: 'fleet',
+    sectionIcons: [],
+    sections: [],
+    media: [],
+    rich: true,
+  },
+  // Armour, angling and spotting, charted from the sim's own functions (src/docs/chapters/combat.ts).
+  combat: {
+    label: t('docs.topic.combat.label'),
+    title: t('docs.topic.combat.title'),
+    lede: t('docs.topic.combat.lede'),
+    hero: '/media/site50-r14/loops/s24-ice-duel.webm',
+    icon: 'combat',
+    sectionIcons: [],
+    sections: [],
+    media: [],
+    rich: true,
+  },
+  // Every battlefield with its art and landscapes, the rotation, time of day and the Proving Ground (src/docs/chapters/battlefields.ts).
+  battlefields: {
+    label: t('docs.topic.battlefields.label'),
+    title: t('docs.topic.battlefields.title'),
+    lede: t('docs.topic.battlefields.lede'),
+    hero: '/maps/fjord.webp',
+    icon: 'battlefields',
     sectionIcons: [],
     sections: [],
     media: [],
@@ -430,7 +466,7 @@ type TopicGroupKey = 'play' | 'behind';
 
 /** The manual's two shelves (08-docs .side .grp): what a player meets in the game, and how it is engineered. */
 const TOPIC_GROUPS: ReadonlyArray<{ readonly key: TopicGroupKey; readonly icon: DocsIconKey; readonly topics: readonly TopicId[] }> = [
-  { key: 'play', icon: 'combat', topics: ['start', 'controls', 'modes', 'vehicles', 'worlds', 'multiplayer', 'audio', 'interface', 'studio'] },
+  { key: 'play', icon: 'combat', topics: ['start', 'controls', 'modes', 'tanks', 'combat', 'battlefields', 'vehicles', 'worlds', 'multiplayer', 'audio', 'interface', 'studio'] },
   { key: 'behind', icon: 'architecture', topics: ['build', 'simulation', 'models', 'rendering', 'performance', 'ai', 'filming'] },
 ];
 const groupLabel = (key: TopicGroupKey): string => (key === 'play' ? t('docs.group.play') : t('docs.group.behind'));
