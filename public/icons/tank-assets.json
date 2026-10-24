@@ -137534,12 +137534,12 @@
             "name": "turretRing",
             "min": [
               -1.3249,
-              1.4779,
-              -1.0169
+              1.4734,
+              -1.0168
             ],
             "max": [
               1.3249,
-              1.6861,
+              1.6816,
               1.4532
             ],
             "turretLocal": false
@@ -137897,13 +137897,13 @@
             "name": "driver",
             "min": [
               -0.7368,
-              0.8102,
-              1.4913
+              0.7768,
+              1.7413
             ],
             "max": [
               -0.2774,
-              1.3266,
-              3.2837
+              1.3632,
+              3.5337
             ],
             "turretLocal": false
           },
@@ -137912,13 +137912,13 @@
             "name": "gunner",
             "min": [
               0.4319,
-              -0.9358,
-              -0.873
+              -0.95,
+              -0.9476
             ],
             "max": [
-              0.8913,
-              -0.0558,
-              -0.1381
+              0.7816,
+              0.4021,
+              -0.1949
             ],
             "turretLocal": true
           },
@@ -137926,21 +137926,21 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.47,
-              -0.8561,
-              -1.5335
+              0.17,
+              -0.943,
+              -1.4911
             ],
             "max": [
-              0.8997,
-              -0.1361,
-              -0.9183
+              0.6294,
+              -0.083,
+              -0.7481
             ],
             "turretLocal": true
           }
         ]
       },
-      "geometryHash": "ff32eaa1",
-      "metadataHash": "765b72e5",
+      "geometryHash": "c1ac6aa8",
+      "metadataHash": "b53b67f2",
       "presentationAnchor": {
         "xM": -0.0002,
         "zM": 0.0439
@@ -137967,7 +137967,7 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 9,
-          "gunmetal": 7,
+          "gunmetal": 8,
           "opticGlass": 3,
           "unclassified": 17,
           "gearShadow": 1,
@@ -138000,39 +138000,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72978,
-          "sha256": "cc4b749c783d81453e12d2a2d084de7e09a196b1f227ca768bcb5df1fdee0833"
+          "bytes": 71225,
+          "sha256": "eb4156ea44fa3e05f506ca8a16eee4df09467e130aa4a2e2ba2c142217a14e7b"
         },
         "modulesSide": {
           "file": "k2_black_panther_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68201,
-          "sha256": "91919e67f73a3f1d1da98a569f8f34e7c4c5fe6716f91ac810dac81e55972b7d"
+          "bytes": 69420,
+          "sha256": "f010ab2c75ef37fc62fb389575edf6dd43bf3125279a304bd8cb294f04687854"
         },
         "crewSide": {
           "file": "k2_black_panther_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 63899,
-          "sha256": "c573960ba590ae3f01c89ca29ffc26f16a557fcc8e6ababb71895a7eb5d90e03"
+          "bytes": 63668,
+          "sha256": "61b2b30f90e912176d9ad35659350ee42644b4bae39f22be1ed24eb0fa073cce"
         },
         "angle": {
           "file": "k2_black_panther_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28148,
-          "sha256": "8db1fd7b757721750f5865835ce2074a097cb6838e7dbd273871ddc9577a6955",
+          "bytes": 28144,
+          "sha256": "4f0f03405e5772e320617cd2f69980d3be4381d04f9d3e4d6fe75751ce36d106",
           "thumbnail": {
             "file": "thumbs/k2_black_panther_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
             "bytes": 11350,
-            "sha256": "3b7c686ad70263972e7e84b40ee6b63a8f6b812845b371c056b677e52bfd0273"
+            "sha256": "49a86b41aa331c089a8d383098e2b9b8a0a421010c8aa887134951b1201fe035"
           }
         },
         "top": {
@@ -138040,16 +138040,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 11496,
-          "sha256": "8613eee2575a03935ab6f8164a801a02f1c2a1caabbb9318b4ffebebbf8ff505"
+          "bytes": 11504,
+          "sha256": "51d81830332bd2c65fd84f8ae1e523814afb69fca148cea8c0d2104dd018a4e1"
         },
         "side": {
           "file": "k2_black_panther_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 11704,
-          "sha256": "784161d26f44d8dc8989fa0e83ff18aa909718be07a0927cce5395b85def5cde"
+          "bytes": 11692,
+          "sha256": "f2744ef4c285a99103e7174745595a2113ab3cf4024b5011a2703f49fe58daee"
         },
         "topSilhouette": {
           "file": "k2_black_panther_top_silhouette.png",
@@ -138064,8 +138064,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4480,
-          "sha256": "d0ab800540c6fca279857817968dcb038898df6189442eae28cad3541b1692fa"
+          "bytes": 4491,
+          "sha256": "6bcd25d97a418b16a46d5556a228c0df3d79f6683977fbb044aba8a4b48cb46e"
         },
         "markings": {
           "file": "k2_black_panther_markings.png",
