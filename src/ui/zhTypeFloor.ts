@@ -66,23 +66,10 @@ const HOME: readonly string[] = [
 /** The 404 page (src/presentation/notFound.css): the search hits' chapter line (12 px); its other labels are 14 px and up. */
 const NOT_FOUND: readonly string[] = [...PUBLIC_NAV, '.nf-hit small'];
 
-/**
- * The media archive's labels (src/presentation/mediaArchive.css: the manual's dialog, the landing, the Studio's
- * production archive) set literal 11-12 px sizes: a token would also shrink them with the game's UI scale, so the
- * Chinese floor lists them on every route that shows the archive.
- */
-const ARCHIVE: readonly string[] = [
-  '.media-archive-filter', '.media-archive-count', '.media-archive-more', '.media-archive-card-copy span',
-  '.media-archive-card-copy small', '.media-archive-card-index', '.media-lightbox figcaption span', '.media-lightbox figcaption small',
-];
-
-/** The manual's pages: the index's archive dialog shows the archive's labels. */
-const DOCS_WITH_ARCHIVE: readonly string[] = [...DOCS, ...ARCHIVE];
-
 const ROUTES: Readonly<Record<string, readonly string[]>> = {
-  game: [...SHELL, ...ARCHIVE],
-  studio: [...SHELL, ...ARCHIVE],
-  home: [...HOME, ...ARCHIVE],
+  game: SHELL,
+  studio: SHELL,
+  home: HOME,
   notFound: NOT_FOUND,
 };
 
@@ -98,7 +85,7 @@ const LEADING: Readonly<Record<string, string>> = {
 
 /** The label selectors a route's Chinese document lifts (docs topics share the overview's list). */
 export function zhTypeFloorSelectors(routeId: string): readonly string[] {
-  return ROUTES[routeId] ?? (routeId.startsWith('docs') ? DOCS_WITH_ARCHIVE : PUBLIC_NAV);
+  return ROUTES[routeId] ?? (routeId.startsWith('docs') ? DOCS : PUBLIC_NAV);
 }
 
 /** The zh-CN floor rules a route's Chinese document carries (an empty string when it has none). */
