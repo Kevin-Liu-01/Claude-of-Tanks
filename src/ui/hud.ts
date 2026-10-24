@@ -1709,6 +1709,25 @@ body:is([data-cot-width='laptop'],[data-cot-width='desktop']):not(.cot-touch-lay
 .cot-kf .si.src>svg{display:block;flex:none;}
 .cot-dmglayer{position:absolute;z-index:calc(var(--hud-layer-world) + 1);inset:0;}
 ${spectatorSwitcherStyles}
+/* brand-ui 245: the battle layout's touch and roster rules that only matter once the HUD is up ride this lazy sheet, not
+   the boot CSS (battleHudLayout.css); their selectors keep the layout sheet's weight */
+/* the status chips hug the panel's right edge at their own width: a strip the panel's width began 5 px off the joystick,
+   inside its 8 px margin, so the dock lifted it 102 px onto the alt-fire button (statusDockBottom) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-status{left:auto;right:0;width:auto}
+/* the narrow touch strip (112-150 px, phone, compact, tight): 32 px chips (status, not controls: their tooltip is the
+   tap), so the strip sits on the panel under the round buttons' labels (AUTO AIM, SCOPE end 12 px above it) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-status-box{
+  flex:0 0 32px;width:32px;height:32px;min-width:32px;min-height:32px;padding:4px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-status-box svg{
+  width:18px;height:18px}
+/* brand-ui 245 (less text): at rest a roster row is its silhouette and its commander, one line; Tab's held roster
+   (rosters-expanded) adds each vehicle and its tier */
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud:not(.rosters-expanded) .cot-ear:not(.icon-grid) .cot-er .n .veh{display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud:not(.rosters-expanded) .cot-ear:not(.icon-grid) .cot-er .n .nick{font-size:var(--battle-fs-12)}
+/* brand-ui 245: flying Watch mode's drone on touch, its bar (watchHud.ts) rides above the virtual stick (138 px, 24 px off
+   the floor: the bar sat across it on a phone); a short landscape tucks it under the score, as riding does */
+html[data-watch=drone] body[data-cot-battle-layout].cot-touch-layout .cot-watch{bottom:calc(env(safe-area-inset-bottom) + 170px)}
+@media(max-height:500px){html[data-watch=drone] body[data-cot-battle-layout].cot-touch-layout .cot-watch{top:calc(var(--inset-top) + 40px);bottom:auto}}
 /* while spectating, the DEAD player's own-tank furniture is meaningless and
    collides with the bar — shell tray, damage panel (+ its camo lamp) and the
    reticle canvas hide; team panels / minimap / killfeed stay (that is the

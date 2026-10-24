@@ -99,15 +99,6 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 /* Keep touch health inside the gap between thumbs; the old inline schematic
    width overrode the responsive HP-only width and hit the joystick. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-dp{left:270px}
-/* the status chips hug the panel's right edge at their own width: a strip the panel's width began 5 px off the joystick,
-   inside its 8 px margin, so the dock lifted it 102 px onto the alt-fire button (statusDockBottom) */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-status{left:auto;right:0;width:auto}
-/* the narrow touch strip (112-150 px, phone, compact, tight): 32 px chips (status, not controls: their tooltip is the
-   tap), so the strip sits on the panel under the round buttons' labels (AUTO AIM, SCOPE end 12 px above it) */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-status-box{
-  flex:0 0 32px;width:32px;height:32px;min-width:32px;min-height:32px;padding:4px}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-status-box svg{
-  width:18px;height:18px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-dp{width:clamp(112px,30vw,150px)!important}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-width-density='narrow'][data-cot-orientation='portrait'] .cot-touch .autoaim{right:172px}
 /* Spectating has no driving/weapon actions. Keep just navigation and the
@@ -305,7 +296,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag .box:
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag :is(.pf,.sil){background-size:contain;mask-size:contain;object-fit:contain}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-diag svg.ov{width:100%;height:100%;object-fit:contain}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-ear:not(.icon-grid) .cot-er{container:roster-row / size}
-@container roster-row (max-height:22px){.cot-hud .cot-ear .cot-er .n .veh{display:none}.cot-hud .cot-ear .cot-er .n .nick{font-size:9px;line-height:1.1}}
+@container roster-row (max-height:22px){.cot-hud .cot-ear .cot-er .n .veh{display:none}.cot-hud .cot-ear .cot-er .n .nick{font-size:var(--battle-fs-11);line-height:1.1}}
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-report,.tight-shot-report) .cot-si-hd{min-height:26px;padding-block:3px}
 
@@ -383,6 +374,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-net{top:auto;right:auto;left:max(14px,env(safe-area-inset-left));bottom:calc(env(safe-area-inset-bottom) + 2px);box-sizing:border-box;width:88px;height:20px;min-height:20px;padding:0;justify-content:center}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-net .ping{display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .joy{bottom:calc(env(safe-area-inset-bottom) + 24px)}
+
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout.cot-spectating .cot-net{top:var(--hud-fps-top,8px);bottom:auto}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-net{left:var(--hud-network-left,120px);right:auto;top:calc(var(--hud-objective-bottom,64px) + 8px);width:88px;height:20px;min-height:20px;padding:0;justify-content:center;box-sizing:border-box}
