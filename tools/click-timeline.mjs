@@ -251,9 +251,9 @@ export const PATHS = [
       await run('deploy-launch', () => target(page, '#cot-battle-menu [data-battle-launch], #cot-battle-menu .cot-battle'), {
         shown: `shown('.cot-bl.on')`, done: `!!window.__BATTLE_REVEAL`, doneTimeoutMs: 240000 });
       await page.evaluate(() => window.__DEBUG.slayEnemies());
-      await waitFor(page, `shown('.cot-es.show') && shown('.cot-es-btn.ghost')`, 120000);
+      await waitFor(page, `shown('.cot-es.show') && shown('.cot-es [data-es-action="garage"]')`, 120000);
       await settle(page, 800, 8000);
-      await run('end-to-garage', () => target(page, '.cot-es.show .cot-es-btn.ghost'), { shown: `shown('.cot-trans.on') || shown('.cot-garage')`,
+      await run('end-to-garage', () => target(page, '.cot-es.show [data-es-action="garage"]'), { shown: `shown('.cot-trans.on') || shown('.cot-garage')`,
         done: GARAGE_BACK, doneTimeoutMs: 120000 });
       if (i < 1) return;
       await openDeploy(page, ctx);

@@ -29,7 +29,7 @@ export function openHudEditor(trigger:HTMLElement):void {
   const dimensions=new Map<HudPartId,[number,number]>();
   const defaults=new Map<HudPartId,[number,number]>();
   let drag:{id:HudPartId;pointer:number;x:number;y:number;startX:number;startY:number}|null=null;
-  const modal=createModal({title:label('title'),subtitle:label('help'),size:'wide',eyebrow:label('eyebrow'),onClose:()=>{
+  const modal=createModal({title:label('title'),subtitle:label('help'),size:'wide',onClose:()=>{
     closed=true;request?.abort();scene?.frame.remove();observer.disconnect();queueMicrotask(()=>modal.dispose());
   }});
   modal.root.classList.add('cot-hud-editor');
@@ -55,7 +55,8 @@ export function openHudEditor(trigger:HTMLElement):void {
   const restore=element('button','',inspector);restore.type='button';restore.textContent=label('restore');
   const nudge=element('div','hud-edit-nudge',inspector);
   for(const [key,dx,dy] of [['left',-10,0],['up',0,-10],['down',0,10],['right',10,0]] as const){
-    const b=element('button','',nudge);b.type='button';b.textContent={left:'←',up:'↑',down:'↓',right:'→'}[key];b.setAttribute('aria-label',label(key));
+    // the sprite's chevrons; up is the down chevron turned (hudEditor.css)
+    const b=element('button',`nudge-${key}`,nudge);b.type='button';b.innerHTML=uiIconSVG(({left:'chevronLeft',up:'chevronDown',down:'chevronDown',right:'chevronRight'} as const)[key],18);b.setAttribute('aria-label',label(key));
     b.onclick=()=>{const node=nodes.get(selected);if(node)move(selected,(parseFloat(node.style.left)+dx)/vw,(parseFloat(node.style.top)+dy)/vh);};
   }
   const tip=element('p','',inspector);

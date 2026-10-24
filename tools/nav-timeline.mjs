@@ -187,7 +187,7 @@ const JOURNEYS = [
     steps: [
       { id: 'battle-to-end', act: (page) => page.evaluate(() => { window.__DEBUG.slayEnemies(); window.__DEBUG.fastForward(1); }),
         window: 2500, timeoutMs: 60000, content: when(`visible('.cot-es.show')`) },
-      { id: 'end-to-garage', act: click('.cot-es.show .cot-es-btn.ghost'), window: 3000, timeoutMs: SHOW_TIMEOUT,
+      { id: 'end-to-garage', act: click('.cot-es.show [data-es-action="garage"]'), window: 3000, timeoutMs: SHOW_TIMEOUT,
         content: when(GARAGE), ready: when(`${GARAGE} && window.__GARAGE_ENTRY?.presentationUnready === false`) },
     ] },
 ];

@@ -17,12 +17,12 @@ import type { TouchControlsOptions, TouchControlsRuntime } from './touchControls
 
 const CSS = `
 .cot-touch{position:fixed;inset:0;z-index:60;display:none;pointer-events:none;
-  font-family:${FONT_STACK};color:#eef4f9;-webkit-user-select:none;user-select:none;
+  font-family:${FONT_STACK};color:var(--ink-1);-webkit-user-select:none;user-select:none;
   touch-action:none;overflow:hidden;--edge:max(14px,env(safe-area-inset-left));
-  --touch-panel:rgba(7,11,15,.94);--touch-edge:rgba(205,219,229,.34);
-  --touch-action:#f0a030;--touch-action-soft:rgba(240,160,48,.18);}
+  --touch-panel:var(--hud-plate-strong);--touch-edge:var(--line-control);
+  --touch-action:var(--accent);--touch-action-soft:oklch(from var(--accent) l c h / .18);}
 .cot-touch-aim{position:fixed;inset:0;z-index:39;display:none;pointer-events:none;
-  font-family:${FONT_STACK};color:#eef4f9;-webkit-user-select:none;user-select:none;
+  font-family:${FONT_STACK};color:var(--ink-1);-webkit-user-select:none;user-select:none;
   touch-action:none;overflow:hidden;}
 .cot-touch.on,.cot-touch-aim.on{display:block;}
 .cot-touch *,.cot-touch-aim *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -32,92 +32,92 @@ const CSS = `
 .cot-touch .joy{position:absolute;z-index:2;left:var(--edge);
   bottom:max(16px,env(safe-area-inset-bottom));width:138px;height:138px;
   border-radius:50%;pointer-events:auto;touch-action:none;
-  background:radial-gradient(circle,rgba(78,91,101,.24) 0 28%,transparent 29% 45%,rgba(218,230,238,.1) 46% 47%,transparent 48%),
+  background:radial-gradient(circle,oklch(from var(--ink-4) l c h / .24) 0 28%,transparent 29% 45%,oklch(from var(--ink-1) l c h / .1) 46% 47%,transparent 48%),
     conic-gradient(from 45deg,rgba(212,225,234,.08),transparent 13% 37%,rgba(212,225,234,.08) 50%,transparent 63% 87%,rgba(212,225,234,.08)),
     radial-gradient(circle,rgba(23,31,37,.72),rgba(5,9,12,.58) 68%,rgba(2,5,8,.4));
-  border:2px solid var(--touch-edge);box-shadow:inset 0 0 0 5px rgba(3,7,10,.28),inset 0 0 25px rgba(0,0,0,.58),0 7px 20px rgba(0,0,0,.34);}
+  border:2px solid var(--touch-edge);box-shadow:inset 0 0 0 5px oklch(from var(--surface-scene) l c h / .28),inset 0 0 25px oklch(from var(--surface-scene) l c h / .58),0 7px 20px oklch(from var(--surface-scene) l c h / .34);}
 .cot-touch .joy::before,.cot-touch .joy::after{content:"";position:absolute;left:50%;top:50%;
-  background:rgba(219,231,240,.16);transform:translate(-50%,-50%);}
+  background:oklch(from var(--ink-1) l c h / .16);transform:translate(-50%,-50%);}
 .cot-touch .joy::before{width:76%;height:1px}.cot-touch .joy::after{width:1px;height:76%}
 .cot-touch .knob{position:absolute;left:50%;top:50%;width:56px;height:56px;margin:-28px;
-  border-radius:50%;background:radial-gradient(circle at 38% 30%,#778794,#34414b 35%,#151d23 72%,#080c10);
-  border:2px solid rgba(231,239,245,.58);box-shadow:0 6px 14px rgba(0,0,0,.68),inset 0 1px 4px rgba(255,255,255,.2);}
-.cot-touch .arrow{position:absolute;color:rgba(231,240,247,.72);font-size:16px;line-height:1;
-  text-shadow:0 1px 3px #000}.cot-touch .arrow.u{left:61px;top:8px}.cot-touch .arrow.d{left:61px;bottom:8px}
+  border-radius:50%;background:radial-gradient(circle at 38% 30%,oklch(from var(--ink-3) .61 c h),oklch(from var(--surface-hover) .37 c h) 35%,var(--surface-menu) 72%,var(--surface-page));
+  border:2px solid oklch(from var(--ink-1) l c h / .58);box-shadow:0 6px 14px oklch(from var(--surface-scene) l c h / .68),inset 0 1px 4px oklch(from var(--ink-1) l c h / .2);}
+.cot-touch .arrow{position:absolute;color:oklch(from var(--ink-1) l c h / .72);font-size:16px;line-height:1;
+  text-shadow:0 1px 3px var(--surface-scene)}.cot-touch .arrow.u{left:61px;top:8px}.cot-touch .arrow.d{left:61px;bottom:8px}
 .cot-touch .arrow.l{left:10px;top:58px}.cot-touch .arrow.r{right:10px;top:58px}
 /* All four arrows are the same glyph rotated, avoiding platform variants. */
 .cot-touch .arrow.d{transform:rotate(180deg)}
 .cot-touch .arrow.l{transform:rotate(-90deg)}
 .cot-touch .arrow.r{transform:rotate(90deg)}
 .cot-touch .round{position:absolute;z-index:3;display:flex;align-items:center;justify-content:center;
-  border-radius:50%;pointer-events:auto;touch-action:none;border:2px solid rgba(220,231,239,.32);
-  background:radial-gradient(circle at 38% 27%,rgba(108,122,133,.8),rgba(27,36,43,.96) 48%,var(--touch-panel) 76%);
-  box-shadow:0 6px 18px rgba(0,0,0,.52),inset 0 0 0 4px rgba(3,7,10,.3),inset 0 1px 4px rgba(255,255,255,.18);
-  transition:transform 90ms ease-out,border-color 90ms ease,color 90ms ease,box-shadow 90ms ease;}
+  border-radius:50%;pointer-events:auto;touch-action:none;border:2px solid var(--line-control);
+  background:radial-gradient(circle at 38% 27%,oklch(from var(--ink-4) .57 c h / .8),var(--hud-plate-strong) 48%,var(--touch-panel) 76%);
+  box-shadow:0 6px 18px oklch(from var(--surface-scene) l c h / .52),inset 0 0 0 4px oklch(from var(--surface-scene) l c h / .3),inset 0 1px 4px oklch(from var(--ink-1) l c h / .18);
+  transition:transform var(--dur-instant) ease-out,border-color var(--dur-instant) ease,color var(--dur-instant) ease,box-shadow var(--dur-instant) ease;}
 .cot-touch .round::before{content:"";position:absolute;inset:7px;border-radius:50%;pointer-events:none;
-  border:1px solid rgba(222,233,241,.1);}
-.cot-touch .round:active,.cot-touch .round.down{transform:scale(.94);border-color:#f0ad45;
-  box-shadow:0 0 18px rgba(240,150,40,.35),inset 0 2px 7px rgba(0,0,0,.65);}
+  border:1px solid var(--line-1);}
+.cot-touch .round:active,.cot-touch .round.down{transform:scale(.94);border-color:var(--accent);
+  box-shadow:0 0 18px oklch(from var(--accent) l c h / .35),inset 0 2px 7px oklch(from var(--surface-scene) l c h / .65);}
 .cot-touch .fire{right:max(20px,env(safe-area-inset-right));bottom:max(22px,env(safe-area-inset-bottom));
-  width:96px;height:96px;color:#ffd27a;border-color:rgba(255,190,91,.58);
-  background:radial-gradient(circle at 50% 48%,rgba(240,160,48,.24),transparent 35%),
+  width:96px;height:96px;color:var(--accent-hi);border-color:oklch(from var(--accent-hi) l c h / .58);
+  background:radial-gradient(circle at 50% 48%,oklch(from var(--accent) l c h / .24),transparent 35%),
     radial-gradient(circle at 38% 27%,rgba(118,103,75,.88),rgba(36,31,24,.97) 48%,rgba(10,10,9,.98) 76%);}
-.cot-touch .fire svg{width:34px;height:54px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.8));}
+.cot-touch .fire svg{width:34px;height:54px;filter:drop-shadow(0 2px 3px oklch(from var(--surface-scene) l c h / .8));}
 .cot-touch .fire .lb,.cot-touch .scope .lb,.cot-touch .autoaim .lb{position:absolute;bottom:-17px;
   left:50%;transform:translateX(-50%);font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;
-  letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px #000;}
+  letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px var(--surface-scene);}
 .cot-touch .fire.alt{left:166px;right:auto;bottom:156px;width:64px;height:64px;opacity:.86;}
 .cot-touch .fire.alt svg{width:20px;height:34px}.cot-touch .fire.alt .lb{display:none}
 /* out of ammo (owner 2026-10-17; critic r3 advisory): the selected gun is dry (hud.ts marks the body), so both FIRE
    buttons dim to a muted shell on a danger rim, in colour only */
-body.cot-gun-dry .cot-touch .fire{color:var(--hud-muted,#93a3af);border-color:rgba(240,90,90,.5);opacity:.62;
-  background:radial-gradient(circle at 38% 27%,rgba(78,84,90,.86),rgba(26,30,34,.97) 48%,rgba(10,10,9,.98) 76%);}
-.cot-touch .fire.aiming{border-color:#ffd27a;box-shadow:0 0 0 5px rgba(240,160,48,.13),
+body.cot-gun-dry .cot-touch .fire{color:var(--hud-muted,#93a3af);border-color:oklch(from var(--danger) l c h / .5);opacity:.62;
+  background:radial-gradient(circle at 38% 27%,oklch(from var(--surface-hover) .44 c h / .86),var(--hud-plate-strong) 48%,var(--hud-plate-strong) 76%);}
+.cot-touch .fire.aiming{border-color:var(--accent-hi);box-shadow:0 0 0 5px oklch(from var(--accent) l c h / .13),
   0 0 22px rgba(240,150,40,.45),inset 0 2px 7px rgba(0,0,0,.65);}
-.cot-touch .fire.autofire{border-color:#ffbd5c;box-shadow:0 0 0 5px rgba(255,179,74,.16),
+.cot-touch .fire.autofire{border-color:var(--accent-hi);box-shadow:0 0 0 5px oklch(from var(--accent-hi) l c h / .16),
   0 0 25px rgba(255,147,30,.58),inset 0 0 14px rgba(255,173,58,.16);}
 .cot-touch .fire-cancel{position:fixed;z-index:5;width:56px;height:56px;margin:-28px;
   display:flex;align-items:center;justify-content:center;pointer-events:none;visibility:hidden;
-  opacity:0;transform:scale(.78);border-radius:50%;border:1.5px solid rgba(255,112,98,.7);
-  background:rgba(28,8,7,.68);color:#ff8f83;box-shadow:0 4px 13px rgba(0,0,0,.48);
-  transition:opacity 90ms ease,transform 90ms ease,border-color 90ms ease;}
-.cot-touch .fire-cancel b{font:400 28px/1 ${FONT_COND};}
+  opacity:0;transform:scale(.78);border-radius:50%;border:1.5px solid oklch(from var(--danger) l c h / .7);
+  background:var(--battle-chip-plate);color:oklch(from var(--danger) .77 .137 h);box-shadow:0 4px 13px oklch(from var(--surface-scene) l c h / .48);
+  transition:opacity var(--dur-instant) ease,transform var(--dur-instant) ease,border-color var(--dur-instant) ease;}
+.cot-touch .fire-cancel b{font:400 var(--battle-fs-28)/1 ${FONT_COND};}
 .cot-touch.fire-armed .fire-cancel{visibility:visible;opacity:.82;transform:scale(1);}
-.cot-touch.fire-cancel-hot .fire-cancel{opacity:1;color:#fff;border-color:#ff594c;background:rgba(111,14,8,.94);
-  transform:scale(1.07);box-shadow:0 0 18px rgba(255,52,38,.46);}
-.cot-touch .scope{right:134px;bottom:43px;width:62px;height:62px;color:#dce7ef;}
-.cot-touch .scope svg{width:32px;height:24px;filter:drop-shadow(0 2px 3px #000);}
-.cot-touch .autoaim{right:206px;bottom:43px;width:58px;height:58px;color:#dce7ef;}
-.cot-touch .jump{right:134px;bottom:124px;width:84px;height:84px;color:#ffbe5c;border-color:rgba(255,190,91,.5);
-  background:radial-gradient(circle at 50% 42%,rgba(255,170,60,.22),transparent 40%),
+.cot-touch.fire-cancel-hot .fire-cancel{opacity:1;color:var(--ink-1);border-color:var(--danger);background:oklch(from var(--danger) .35 .131 h / .94);
+  transform:scale(1.07);box-shadow:0 0 18px oklch(from var(--danger) l c h / .46);}
+.cot-touch .scope{right:134px;bottom:43px;width:62px;height:62px;color:var(--ink-1);}
+.cot-touch .scope svg{width:32px;height:24px;filter:drop-shadow(0 2px 3px var(--surface-scene));}
+.cot-touch .autoaim{right:206px;bottom:43px;width:58px;height:58px;color:var(--ink-1);}
+.cot-touch .jump{right:134px;bottom:124px;width:84px;height:84px;color:var(--accent-hi);border-color:oklch(from var(--accent-hi) l c h / .5);
+  background:radial-gradient(circle at 50% 42%,oklch(from var(--accent) l c h / .22),transparent 40%),
     radial-gradient(circle at 38% 27%,rgba(96,78,48,.9),rgba(34,28,18,.97) 48%,rgba(10,10,9,.98) 76%);}
 .cot-touch .jump[hidden]{display:none!important;}
-.cot-touch .jump svg{width:40px;height:40px;filter:drop-shadow(0 2px 3px #000);}
+.cot-touch .jump svg{width:40px;height:40px;filter:drop-shadow(0 2px 3px var(--surface-scene));}
 .cot-touch .jump .lb{position:absolute;bottom:-17px;left:50%;transform:translateX(-50%);font-family:${FONT_COND};font-size:var(--battle-fs-11);
-  font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px #000;}
-.cot-touch .autoaim svg{width:28px;height:28px;filter:drop-shadow(0 2px 3px #000);}
-.cot-touch .autoaim.on{color:#ffd27a;border-color:#f0ad45;
-  background:radial-gradient(circle at 35% 28%,rgba(120,83,28,.92),rgba(42,27,10,.96) 64%,rgba(8,7,5,.98));
-  box-shadow:0 0 18px rgba(240,150,40,.42),inset 0 1px 4px rgba(255,225,170,.2);}
+  font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px var(--surface-scene);}
+.cot-touch .autoaim svg{width:28px;height:28px;filter:drop-shadow(0 2px 3px var(--surface-scene));}
+.cot-touch .autoaim.on{color:var(--accent-hi);border-color:var(--accent);
+  background:radial-gradient(circle at 35% 28%,oklch(from var(--accent-lo) .47 .085 h / .92),var(--hud-plate-strong) 64%,var(--hud-plate-strong));
+  box-shadow:0 0 18px oklch(from var(--accent) l c h / .42),inset 0 1px 4px oklch(from var(--accent-hi) .92 .078 h / .2);}
 .cot-touch .mobile-chrome{position:absolute;z-index:4;top:max(8px,env(safe-area-inset-top));
-  right:max(10px,env(safe-area-inset-right));display:flex;gap:4px;pointer-events:auto;}
+  right:max(10px,env(safe-area-inset-right));display:flex;gap:var(--s1);pointer-events:auto;}
 body.cot-touch-layout[data-cot-orientation='portrait'] .cot-touch .mobile-chrome{
   top:calc(max(8px,env(safe-area-inset-top)) + 60px);
 }
 .cot-touch .quick{width:44px;height:44px;padding:3px 2px 2px;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:1px;pointer-events:auto;touch-action:none;
-  border:1px solid var(--touch-edge);border-bottom:2px solid rgba(205,219,229,.42);border-radius:2px;
-  background:linear-gradient(180deg,rgba(29,38,45,.96),var(--touch-panel));
-  color:#dce7ef;box-shadow:0 4px 13px rgba(0,0,0,.4),inset 0 1px rgba(255,255,255,.05);
-  transition:transform 90ms ease-out,border-color 90ms ease,color 90ms ease;}
-.cot-touch .quick:active{transform:scale(.95);border-color:#f0ad45;color:#ffd27a;background:rgba(48,32,12,.96);}
+  border:1px solid var(--touch-edge);border-bottom:2px solid var(--line-control);border-radius:2px;
+  background:linear-gradient(180deg,var(--hud-plate-strong),var(--touch-panel));
+  color:var(--ink-1);box-shadow:0 4px 13px oklch(from var(--surface-scene) l c h / .4),inset 0 1px oklch(from var(--ink-1) l c h / .05);
+  transition:transform var(--dur-instant) ease-out,border-color var(--dur-instant) ease,color var(--dur-instant) ease;}
+.cot-touch .quick:active{transform:scale(.95);border-color:var(--accent);color:var(--accent-hi);background:var(--hud-plate-strong);}
 .cot-touch .quick svg{width:18px;height:18px;display:block;}
 .cot-touch .quick .ql{font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;line-height:1;
   letter-spacing:0em;text-transform:uppercase;white-space:nowrap;}
 /* A 44 px button holds an 11 px word of four or five letters: the sound and settings buttons speak through their icons
    (their names stay for assistive technology), and the graphics button prints only its level under the monitor. */
 .cot-touch .quick:is(.sound,.settings) .ql{position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
-.cot-touch .quick.muted{color:#f08b75;border-color:rgba(240,102,83,.55);}
+.cot-touch .quick.muted{color:var(--danger);border-color:oklch(from var(--danger) l c h / .55);}
 /* Recompose the existing live HUD instead of duplicating ammo/state UI. */
 body.cot-touch-layout{overscroll-behavior:none;}
 body.cot-touch-layout #app canvas{touch-action:none;}
@@ -126,7 +126,7 @@ body.cot-touch-layout .cot-top{top:0;padding:5px 29px 7px;gap:10px;z-index:30;}
 body.cot-touch-layout .cot-top .fg,body.cot-touch-layout .cot-top .fe{font-size:22px;}
 body.cot-touch-layout .cot-top .tm{font-size:var(--battle-fs-12);}
 body.cot-touch-layout .cot-killfeed{top:48px;left:50%;transform:translateX(-50%);max-width:48%;align-items:center;}
-body.cot-touch-layout .cot-kf{font-size:var(--battle-fs-11);padding:3px 7px;background:rgba(7,10,14,.68);}
+body.cot-touch-layout .cot-kf{font-size:var(--battle-fs-11);padding:3px 7px;background:var(--battle-chip-plate);}
 /* Ammo is directly above the equipment/consumable stack, leaving the top
    edge to the three global mobile controls. */
 body.cot-touch-layout .cot-shells{left:auto;right:max(10px,env(safe-area-inset-right));
@@ -134,10 +134,10 @@ body.cot-touch-layout .cot-shells{left:auto;right:max(10px,env(safe-area-inset-r
   width:48px;height:52px;display:block;transform:none;z-index:24;overflow:visible;}
 body.cot-touch-layout .cot-shell{position:absolute;right:0;top:0;width:48px;height:52px;
   opacity:0;pointer-events:none;transform:scale(.94);transform-origin:right center;
-  transition:transform 160ms ease-out,opacity 120ms ease-out,border-color 120ms ease-out,background 120ms ease-out;}
+  transition:transform var(--dur-fast) ease-out,opacity var(--dur-instant) ease-out,border-color var(--dur-instant) ease-out,background var(--dur-instant) ease-out;}
 body.cot-touch-layout .cot-shell.sel{z-index:3;opacity:1;pointer-events:auto;transform:none;}
 body.cot-touch-layout .cot-shell.sel::after{content:'‹';position:absolute;left:2px;top:50%;
-  transform:translateY(-50%);font:700 13px/1 ${FONT_COND};color:rgba(255,210,122,.9);}
+  transform:translateY(-50%);font:700 var(--battle-fs-13)/1 ${FONT_COND};color:oklch(from var(--accent-hi) l c h / .9);}
 body.cot-touch-layout .cot-shells.touch-open .cot-shell{opacity:1;pointer-events:auto;
   transform:translateX(var(--touch-ammo-x,0));}
 body.cot-touch-layout .cot-shells.touch-open .cot-shell.sel::after{content:'›';}
@@ -150,16 +150,16 @@ body.cot-touch-layout .cot-shell .ty{font-size:var(--battle-fs-11);left:0;right:
 body.cot-touch-layout .cot-shell .cnt{font-size:var(--battle-fs-11);}
 /* stronger ACTIVE-AMMO read at glance distance: brighter amber frame, inner
    keyline + glow (the desktop .sel border alone washes out at phone size) */
-body.cot-touch-layout .cot-shell.sel{border-color:#ffbd5c;border-bottom-color:#ffbd5c;
-  background:linear-gradient(180deg,rgba(58,42,17,.97),rgba(30,20,9,.97));
-  box-shadow:inset 0 0 0 1px rgba(255,196,107,.5),0 0 16px rgba(240,160,48,.5);}
+body.cot-touch-layout .cot-shell.sel{border-color:var(--accent-hi);border-bottom-color:var(--accent-hi);
+  background:linear-gradient(180deg,oklch(from var(--accent-lo) .30 .045 h / .97),var(--hud-plate-strong));
+  box-shadow:inset 0 0 0 1px oklch(from var(--accent-hi) l c h / .5),0 0 16px oklch(from var(--accent) l c h / .5);}
 body.cot-touch-layout .cot-shell.sel .ty{font-size:var(--battle-fs-11);}
 /* out of ammo (owner 2026-10-17): the collapsed tray shows only the selected slot, so its empty state outranks the frame */
 body.cot-touch-layout .cot-shell.sel.empty{border-color:var(--hud-edge);border-bottom-color:var(--hud-danger);
   background:var(--hud-panel);box-shadow:inset 0 -2px 0 var(--hud-danger);}
 /* ... struck through like a spent launcher control, its count in the danger ink (critic r3: it still read as selected) */
 body.cot-touch-layout .cot-shell.sel.empty::before{content:'';position:absolute;left:11px;right:11px;top:calc(50% - .75px);
-  height:1.5px;border-radius:1px;background:var(--hud-danger);box-shadow:0 0 0 1px #05080bd9;transform:rotate(-45deg);z-index:2;}
+  height:1.5px;border-radius:1px;background:var(--hud-danger);box-shadow:0 0 0 1px oklch(from var(--surface-nav) l c h / .851);transform:rotate(-45deg);z-index:2;}
 body.cot-touch-layout .cot-shell.sel.empty .cnt{color:var(--hud-danger);}
 /* endless ammo (owner 2026-10-17): the ∞ at the numeral's size, not the consumables' small mark */
 body.cot-touch-layout .cot-shell.unlimited .cnt{font-size:16px;line-height:11px;}
@@ -197,9 +197,9 @@ body.cot-touch-layout[data-cot-width='compact'] .cot-dp,
 body.cot-touch-layout[data-cot-width='phone'] .cot-dp,
 body.cot-touch-layout[data-cot-height-density='tight'] .cot-dp{
   display:block!important;left:50%!important;bottom:max(8px,env(safe-area-inset-bottom))!important;
-  width:clamp(112px,38vw,184px);min-height:34px;padding:7px 8px 6px;
+  width:clamp(112px,38vw,184px);min-height:34px;padding:7px var(--s2) 6px;
   transform:translateX(-50%)!important;transform-origin:center bottom!important;
-  z-index:var(--hud-layer-controls,24);background:linear-gradient(180deg,rgba(13,19,24,.94),rgba(5,9,12,.92));
+  z-index:var(--hud-layer-controls,24);background:linear-gradient(180deg,var(--hud-plate-strong),var(--hud-plate));
 }
 body.cot-touch-layout[data-cot-width='compact'] .cot-dp canvas,
 body.cot-touch-layout[data-cot-width='compact'] .cot-dp .crew,
@@ -218,7 +218,7 @@ body.cot-touch-layout[data-cot-width='phone'] .cot-dp .hptrack,
 body.cot-touch-layout[data-cot-height-density='tight'] .cot-dp .hptrack{margin-bottom:0;height:6px;}
 body.cot-touch-layout .cot-alert{bottom:28%;max-width:calc(100vw - 24px);font-size:var(--battle-fs-11);white-space:normal;}
 body.cot-touch-layout .cot-sixth{top:max(70px,12%);width:min(214px,calc(100vw - 24px));
-  min-height:32px;grid-template-columns:21px minmax(0,1fr);gap:8px;}
+  min-height:32px;grid-template-columns:21px minmax(0,1fr);gap:var(--s2);}
 body.cot-touch-layout .cot-sixth .sig svg{width:21px;height:21px;}
 body.cot-touch-layout .cot-sixth .copy{padding:0;}
 body.cot-touch-layout .cot-sixth .lb{font-size:var(--battle-fs-11);}
@@ -235,7 +235,7 @@ body.cot-touch-layout .cot-shell.wide .cnt{top:1px;right:2px;font-size:var(--bat
 body.cot-touch-layout .cot-shell.wide canvas{bottom:12px;transform:translateX(calc(-50% - 5px)) scale(.6);}
 /* Touch-target floor for garage chrome the phone shares with desktop. */
 body.cot-touch-layout .nv{padding:9px 14px;}
-body.cot-touch-layout .cot-country-chip{padding:9px 12px;}
+body.cot-touch-layout .cot-country-chip{padding:9px var(--s3);}
 body.cot-touch-layout .cot-car-arrow{width:44px;}
 @media (prefers-reduced-motion:reduce){
   .cot-touch .round,.cot-touch .quick,.cot-touch .fire-cancel{transition:none;}

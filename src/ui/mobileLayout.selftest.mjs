@@ -391,7 +391,7 @@ assert.match(responsiveSurfaces,
   /body\[data-cot-width='phone'\] #cot-diag\{[\s\S]*max-height:62dvh!important;overflow:auto!important/,
   'the compatibility diagnostics panel must stay bounded and scrollable on phones');
 assert.match(responsiveSurfaces,
-  /body\[data-cot-width='phone'\] #cot-ctxlost>div>div:first-child\{[\s\S]*letter-spacing:\.18em!important/,
+  /body\[data-cot-width='phone'\] #cot-ctxlost h2\{[\s\S]*overflow-wrap:anywhere/,
   'the graphics recovery title must reflow without overflowing small screens');
 assert.match(gallery, /\.toast\{[^}]*max-width:calc\(100vw - 24px\)[^}]*white-space:normal/,
   'Gallery feedback toasts must be viewport-bounded');
