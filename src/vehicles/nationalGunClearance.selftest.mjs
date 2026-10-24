@@ -75,6 +75,7 @@ const CURVES = {
   fv510: [],
   fv510_milan: [],
   merkava1b: [[146,164]],
+  merkava2b: [[146,176]],
   merkava2d: [[145,146],[152,176]],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes

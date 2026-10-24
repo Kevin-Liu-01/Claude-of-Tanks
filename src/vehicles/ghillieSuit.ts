@@ -230,6 +230,12 @@ export interface GhillieConfig {
    */
   clothClearsGunStops?: boolean;
   /**
+   * Release 245 (nationalGunClearance.selftest: the T-90AM's rear-deck leaves 19.3 mm from its barrel at yaw 180): a field
+   * suit's garnish card keeps the gun's swept volume with its whole face, sampled densely, as a cloth point does
+   * (FieldClearance.netOk, a garnish point), not with the point it grows from alone. Needs fieldClearanceM.
+   */
+  cardsClearGunSweep?: boolean;
+  /**
    * Release 227 (round 2, 2026-10-16; the critic on the new national frontal ERA: "net blades and leaf clumps sink into the
    * new brick rows and stick out between them"): no point of a garnish card may lie inside the owner's armour (the
    * nearest surface over it faces up: the top of the block it is in), sampled densely over the card's face. The net's
@@ -5719,7 +5725,8 @@ function* addGhillieOwner(
         ? (x, y, z) => surfacesAt(x, z).some((h) => !h.gear && h.y > y + 0.001 && h.y < y + OVERHUNG_M) : undefined,
       // the card's own vertices keep the vehicle's clearances; its face, sampled densely, keeps the thin lens views
       // and smoke lines clear (a line can pass between a card's vertices)
-      cardClear: clearance ? field ? (card) => denseCardPoints(card).every((p) => clearance.fieldLinesOk(owner, p))
+      cardClear: clearance ? field ? (card) => denseCardPoints(card).every((p) => clearance.fieldLinesOk(owner, p)
+            && (!cfg.cardsClearGunSweep || clearance.netOk(owner, p, true)))
           && (!markRays || !cardHidesMarking(card, markRays))
         : (card) => cardPoints(card).every((p) => clearance.netOk(owner, p))
           && denseCardPoints(card).every((p) => clearance.linesOk(owner, p)) : undefined,

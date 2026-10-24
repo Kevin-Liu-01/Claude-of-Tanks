@@ -720,8 +720,13 @@ function angularLowAt(P: SeatAngularProfile, r: number, ang: number, halfArc: nu
 export interface SeatMotion {
   /** Turret pivot (hull frame); the turret's rest pose is a pure translation to it. */
   pivot: THREE.Vector3;
-  /** Gun pivot in the turret frame. */
+  /** Gun pivot in the turret frame, metres from the turret pivot. */
   gunPivot: THREE.Vector3;
+  /**
+   * The turret frame's units per metre on each axis: its rig's scale at the pass (a builder's non-uniform squash, which
+   * turretRigScale.ts bakes onto its children after the pass; 1 elsewhere). The motion tests work in metres.
+   */
+  turretScale: THREE.Vector3;
   /** True for a full-traverse turret; false for a casemate. */
   turreted: boolean;
   /** Gun yaw half-arc for a casemate with a moving mount (rad), 0 for a gun fixed in the hull. */
@@ -1123,6 +1128,8 @@ function motionClearance(env: SeatEnv, shape: SeatRunShape, ax: Axes, pose: Seat
   stopBelow = -Infinity): number {
   const M = env.motion!;
   const pts = runSamples(shape, ax, pose);
+  // a turret run's points in metres (its frame carries the builder's squash at the pass), as the gun moves round them
+  if (env.frame !== 'hull') for (const p of pts) p.multiply(M.turretScale);
   let clear = Infinity;
   if (env.frame === 'hull') {
     // the turret's own body over the full traverse: a point under the turret's lowest solid at its radius clears it
