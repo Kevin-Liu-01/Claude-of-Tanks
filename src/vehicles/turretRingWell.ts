@@ -84,6 +84,20 @@ const BAND_TOP_M = 0.002;
 /** The burn hook's dent ramp (materials.ts CRUMPLE_NORMAL_GLSL: smoothstep( 0.0, 0.35, uBurnT )). */
 const DENT_RAMP_S = 0.35;
 
+/**
+ * (244) Rings measured wider than the hull's own sides through the depth a live wreck's cut reaches under the race (the
+ * race's outer radius held inside them, m). There the cut opened the hull's side wall into a slot that no band closes:
+ * the MBT-70's deck runs on flush over its fender roofs, its measured race past the upper hull's sides at ±0.97 m, and
+ * from under the fender roof the eye saw through the 0.2 m slot into the hull (30-45 px at every seed; the Object 148's
+ * 31-65 px the same way). The exterior pass finds them (the hull's skin the eye reaches inside the race's radius within
+ * that depth); it is too slow for a battle's warm, so the scan's result is kept here (tools/turret-ring-side-caps.mjs
+ * --check). The anatomy update measures with the cap too (tools/gen-combat-anatomy.mjs), so a receipt keeps it.
+ */
+export const TURRET_RING_SIDE_CAPS: Readonly<Record<string, number>> = Object.freeze({
+  mbt70: 0.93,
+  object148_proto: 0.95,
+});
+
 /** The polygon the plate's rim and the hull's cut share: corner k at bearing 2πk/sides (x = sin, z = cos). */
 export function turretRingSides(high: boolean): number { return high ? 64 : 48; }
 
@@ -231,7 +245,7 @@ export function measureTurretRing(
   hullRig: THREE.Object3D,
   turretRig: THREE.Object3D,
   ringR: number,
-  options: { exterior?: boolean } = {},
+  options: { exterior?: boolean; rimCap?: number } = {},
 ): AnatomyTurretRingReceipt | null {
   hullRig.updateWorldMatrix(true, true);
   turretRig.updateWorldMatrix(true, true);
@@ -347,6 +361,8 @@ export function measureTurretRing(
   const w = raceWidth(R + 0.07);
   let rimR = R + w;
   if (Number.isFinite(footR)) rimR = Math.min(rimR, footR - 0.02);
+  // (244) inside the hull's own sides through the depth a live wreck's cut reaches (TURRET_RING_SIDE_CAPS)
+  if (options.rimCap !== undefined) rimR = Math.min(rimR, options.rimCap);
   rimR = Math.max(0.15, rimR);
   const inside = heightsWithin(0, 0.7 * rimR);
   const level = inside.length ? percentile(inside, 0.9) : deck0;
@@ -525,7 +541,7 @@ const CRUMPLE_REACH_M = 0.32;
  * what the eye reaches only through it the well replaces). Every pixel's nearest hull face inside the well's reach is a
  * point of the hull's outside there: per point its distance from the axis and its height.
  */
-function exteriorSkin(triangles: readonly number[], cx: number, cz: number, deckY: number, rimR: number,
+export function exteriorSkin(triangles: readonly number[], cx: number, cz: number, deckY: number, rimR: number,
   floorY: number, margin = EXTERIOR_MARGIN_M): { r: number; y: number }[] {
   const lip = deckY - LIP_M;
   const reach = Math.max(0.5 * rimR, rimR - raceWidth(rimR)) - 0.018 + margin;
@@ -1053,7 +1069,7 @@ interface RingEdgeCorners {
  * partly shares, a source mesh's T-joint, takes the other's placed corners as well).
  */
 function ringEdgeCorners(cut: TurretRingCut, splits: readonly RingSplit[]): RingEdgeCorners | null {
-  const reach = cut.r + LIVE_ZONE_M + CONFORM_MARGIN_M;
+  const reach = cut.r + PLANE_DENT_M + CONFORM_MARGIN_M;
   const found: number[] = [];
   const bent: number[] = [];
   let any = false;
@@ -1349,27 +1365,29 @@ function assembleRingCut(split: RingSplit, cut: TurretRingCut, corners: RingEdge
 }
 
 /**
- * (233) A dented mesh's new corners past the zone, placed so that the burn hook's vertex dent (the field at the vertex,
- * at full share) carries each one where its source triangle's corners carry it, the triangle moving as one plane. A long
- * face split out there then bends as it did whole: no crack along a neighbour's edge that holds none of its points, no
- * sliver of it folded over by the field between its corners (the Hetman II's deck: up to 11 cm cracks and a fan of
- * holes beside the ring). Inside the zone the field at their own points bends them, with the plate on the same law.
- * Every rule here depends on the point alone, so two faces sharing an edge place its points alike. Returns the farthest
- * a corner moved. The burn hook ramps the dents in over 0.35 s (DENT_RAMP_S): during the blast the placed corners sit
- * that share off their faces.
+ * (233, 244) A dented mesh's new corners placed for the dents: the burn hook's vertex dent (the field at the vertex, at
+ * full share) carries each one to a blend of where its source triangle's corners carry it (the triangle moving as one
+ * plane) and where the field at its own point does, by its plane share (planeShare: none on the rim, all from
+ * PLANE_RAMP_M past it). A long face split out there then bends as it did whole: no crack along a neighbour's edge that
+ * holds none of its points, no sliver of it folded over by the field between its corners (the Hetman II's deck: up to
+ * 11 cm cracks and a fan of holes beside the ring). Near the rim the field at their own points bends them, with the
+ * plate on the same law. Every rule here depends on the point alone (an edge's corner on that edge's two ends), so two
+ * faces sharing an edge place its points alike. Returns the farthest a corner moved. The burn hook ramps the dents in
+ * over 0.35 s (DENT_RAMP_S): during the blast a placed corner sits that share off its target, and no corner's share of
+ * the plane carries it in over the rim at either end of the ramp (RIM_CLEAR).
  */
 function placeForDents(array: NumericArray, base: number, extra: number, blends: readonly number[],
   words: ArrayLike<number>, stride: number, offset: number, cut: TurretRingCut, dents: TurretRingDents): number {
-  const zone = cut.r + LIVE_ZONE_M;
   const f = new Float64Array(3);
   let moved = 0;
   for (let e = 0; e < extra; e++) {
     const o = (base + e) * 3;
     const x = array[o], y = array[o + 1], z = array[o + 2];
-    if (Math.hypot(x - cut.cx, z - cut.cz) <= zone) continue;
-    // where the source triangle's corners carry it
+    let share = planeShare(cut, x, z);
+    if (share <= 0) continue;
+    // where the source triangle's corners carry it (its plane), and the field at its own point
     const b = e * 6;
-    let tx = x, ty = y, tz = z;
+    let tx = 0, ty = 0, tz = 0;
     for (let j = 0; j < 3; j++) {
       const w = blends[b + 3 + j];
       if (!w) continue;
@@ -1377,6 +1395,18 @@ function placeForDents(array: NumericArray, base: number, extra: number, blends:
       dentAt(dents, words[i], words[i + 1], words[i + 2], f);
       tx += w * f[0]; ty += w * f[1]; tz += w * f[2];
     }
+    if (share < 1) {
+      dentAt(dents, x, y, z, f);
+      // and no more of the plane than keeps it outside the rim through the ramp: placed, the corner rests the plane's
+      // share of (plane − field) off its point and the ramp carries it on to its target, so its pull toward the axis at
+      // either end stays under RIM_CLEAR of its distance past the rim
+      const r = Math.hypot(x - cut.cx, z - cut.cz), d = r - cut.r;
+      const ux = (cut.cx - x) / r, uz = (cut.cz - z) / r;
+      const plane = tx * ux + tz * uz, field = f[0] * ux + f[2] * uz;
+      if (plane > field) share = Math.max(0, Math.min(share, (RIM_CLEAR * d) / (plane - field), (RIM_CLEAR * d - field) / (plane - field)));
+      tx = share * tx + (1 - share) * f[0]; ty = share * ty + (1 - share) * f[1]; tz = share * tz + (1 - share) * f[2];
+    }
+    tx += x; ty += y; tz += z;
     // the rest point the field carries there (the field's slope under 1: the iteration contracts)
     let px = x, py = y, pz = z;
     for (let it = 0; it < 32; it++) {
@@ -1390,6 +1420,33 @@ function placeForDents(array: NumericArray, base: number, extra: number, blends:
     moved = Math.max(moved, Math.hypot(px - x, py - y, pz - z));
   }
   return moved;
+}
+
+/** (244) The deepest a planned dent moves a point (planDents' 0.28 m, and a hair), and the most the field moves a corner as
+ *  a share of its distance from the rim (the zone's own bound, above). */
+const PLANE_DENT_M = 0.3;
+const FIELD_SLOPE = 0.72;
+/** The share of its distance past the rim a corner may be pulled toward the axis at any share of the dents' ramp. */
+const RIM_CLEAR = 0.9;
+/** How far past the rim a new corner takes all of its face's dented plane (planeShare). */
+const PLANE_RAMP_M = 0.1;
+
+/**
+ * (244) The share of its face's dented plane a new corner takes (the rest the field at its own point), d past the rim:
+ * none on the rim (the plate's rim follows the field), all of it from PLANE_RAMP_M out, between them
+ * (1 − FIELD_SLOPE)·d / (PLANE_RAMP_M − FIELD_SLOPE·d); placeForDents then holds each corner outside the rim
+ * (RIM_CLEAR). Through 243 the share stepped from none to all at the zone's edge, and the zone's field carried a few
+ * centimetres off the uncut surface out along every long face that reached in: a thin strip or a wall's top beside the
+ * ring moved off its outline (challenger2e's fender strip, type74's wall, the AMX-40's relief), seen as holes at grazing
+ * angles. The uncut surface is the face's plane (the hook dents its corners only), so the ramp is short: over 0.3 m
+ * type74's side wall, one 6.45 m triangle lifted 5 cm by a dent 3 m off, still dropped under its fender beside the ring
+ * and opened a sky sliver over it from below. Depends on the point alone.
+ */
+function planeShare(cut: TurretRingCut, x: number, z: number): number {
+  const d = Math.hypot(x - cut.cx, z - cut.cz) - cut.r;
+  if (d <= 0) return 0;
+  const room = PLANE_RAMP_M - FIELD_SLOPE * d;
+  return room <= 0 ? 1 : Math.min(1, ((1 - FIELD_SLOPE) * d) / room);
 }
 
 /** A mesh the ring's cut may take: a drawn, non-instanced hull mesh (not the turret's, not a shadow proxy's, not the
@@ -2088,7 +2145,7 @@ export function createTurretRingPresentation(options: TurretRingPresentationOpti
     }
     // no receipt (a tool's build, a tank the anatomy update has not reached) or a stale one: this build, once
     root.updateMatrixWorld(true);
-    const measured = measureTurretRing(hull, turret, turretRingRadius(armor), { exterior: !rendered });
+    const measured = measureTurretRing(hull, turret, turretRingRadius(armor), { exterior: !rendered, rimCap: TURRET_RING_SIDE_CAPS[specId] });
     cached = measured ? turretRingSeatFrom(measured, armor, hullFloorY, 'measured') : null;
     return cached;
   }

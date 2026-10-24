@@ -115,7 +115,6 @@ for (const headerClass of [
   'mtitle cot-sidebar-section-title',
   'ctitle cot-sidebar-section-title',
   'cot-stat-title cot-sidebar-section-title',
-  'eqhead cot-sidebar-section-title',
 ]) {
   assert.match(garageSource, new RegExp(headerClass),
     `Garage header ${headerClass} must consume the shared section-heading contract`);
@@ -131,7 +130,7 @@ for (const band of ['instant', 'fast', 'base', 'slow', 'scene']) {
 }
 assert.match(motionCss, /@media \(prefers-reduced-motion: reduce\)/,
   'motion contract must collapse spatial motion for reduced-motion users');
-assert.match(publicNavCss, /^@import url\('\.\.\/ui\/motion\.css'\);/,
+assert.match(publicNavCss, /^(?:@import url\('[^']+'\);\n)*@import url\('\.\.\/ui\/motion\.css'\);/, // among the leading imports (the tokens sheet comes first since 243)
   'public pages must load the same motion contract as the game');
 for (const [name, css] of [
   ['motion', motionCss], ['responsive', responsiveCss], ['garage', garageCss],

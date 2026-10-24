@@ -78,6 +78,8 @@ declare global {
     __BOOT_TIMINGS?: Record<string, number>;
     __GAME_READY?: boolean;
     __GARAGE_ENTRY?: RuntimeValue;
+    /** perf-246: the battle-end Garage warm's counters (src/app/battleEndGarageWarm.ts). */
+    __GARAGE_PREWARM?: RuntimeValue;
     __GARAGE_IDLE_WORK?: RuntimeValue;
     __MINIMAP_LOAD?: RuntimeValue;
     /** The Multiplayer v2 browser composition (diagnostics builds): tools/mp-browser-e2e.mjs reads its stats. */

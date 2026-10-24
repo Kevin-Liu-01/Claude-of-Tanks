@@ -27,6 +27,7 @@ let cameraPoseCount = 0;
 let holdNextRestore = false;
 let notifyRestoreStarted = null;
 let releaseHeldRestore = null;
+let lastRestoreIsCurrent;
 const authoredSky = { sunColorHex: 0xffe0c0, sunIntensity: 4.8, haze: 0.2 };
 let battleSky = { sunColorHex: 0xffb985, sunIntensity: 3.5, hemiIntensity: 0.64 };
 
@@ -47,8 +48,9 @@ const runtime = createGaragePhasePresentationRuntime({
   shouldReleaseGpuOnBattle: () => { policyReads++; return releaseOnBattle; },
   posePedestal: () => { pedestalPoseCount += 1; },
   poseCamera: () => { cameraPoseCount += 1; },
-  restorePresentationGpu: async ({ resourcesReleased }) => {
+  restorePresentationGpu: async ({ resourcesReleased, isCurrent }) => {
     calls.push(['restorePresentationGpu', resourcesReleased]);
+    lastRestoreIsCurrent = isCurrent;
     warmCount += 1;
     if (holdNextRestore) {
       notifyRestoreStarted?.();
@@ -135,15 +137,20 @@ assert.equal(runtime.diagnostics().gpu.suspended, false);
 assert.deepEqual(calls.at(-1), ['restorePresentationGpu', true],
   'GPU renewal delegates to the bounded presentation restore once');
 
+assert.equal(lastRestoreIsCurrent, undefined, 'an ordinary restore carries no abandonment check');
+
 holdNextRestore = true;
 const restoreStarted = new Promise((resolve) => { notifyRestoreStarted = resolve; });
-const residentRestorePending = runtime.restoreGpu();
+const abandonCheck = () => true;
+const residentRestorePending = runtime.restoreGpu(abandonCheck);
 await restoreStarted;
 assert.equal(runtime.restoringGpu, true,
   'the frame owner can suppress cold Garage draws throughout restoration');
 releaseHeldRestore();
 const residentRestore = await residentRestorePending;
 holdNextRestore = false;
+assert.equal(lastRestoreIsCurrent, abandonCheck,
+  'perf-246: the caller\'s abandonment check reaches the restore owner');
 assert.equal(runtime.restoringGpu, false,
   'the Garage frame cover clears immediately after restoration');
 assert.equal(warmCount, 2, 'resident returns still settle one exact covered Garage frame');

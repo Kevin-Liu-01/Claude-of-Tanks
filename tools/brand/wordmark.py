@@ -2,7 +2,8 @@
 # The wordmark master (brand-ui BUI-F6, SPEC 3.1). Copyright (c) 2026 Kevin B. Liu.
 # Outlines CLAUDE —of— TANKS to pure SVG paths from Chakra Petch Bold and Medium at the positions the browser lays the
 # Premiere direction's wordmark CSS out (tools/brand/wordmark-layout.mjs, kerning and tracking included), and writes
-# every lockup the identity uses into public/brand/ plus the inline paths src/ui/brandWordmark.ts carries.
+# the wordmark's files into public/brand/ plus the inline paths src/ui/brandWordmark.ts carries (the lockups that pair it
+# with the commander mark come from tools/brand-marks.mjs).
 #   node tools/brand/wordmark-layout.mjs > /tmp/wordmark-layout.json
 #   python3 tools/brand/wordmark.py /tmp/wordmark-layout.json /path/to/ChakraPetch-Bold.ttf /path/to/ChakraPetch-Medium.ttf
 # Needs fontTools (pip install fonttools). The TTFs are the SIL OFL sources of public/fonts/chakra-petch.
@@ -68,58 +69,8 @@ files = {
     'wordmark-mono.svg': svg(*horizontal, 'currentColor', 'currentColor'),
     'wordmark-stacked.svg': svg(*stacked, PAPER, TUNGSTEN),
 }
-# The Bracket Chevron (brandMark.ts, 24-unit grid): paper brackets around a tungsten chevron.
-MARK_BRACKETS = 'M2 8V2h6M16 2h6v6M22 16v6h-6M8 22H2v-6'
-MARK_CHEVRON = 'M6.5 16.5 12 8.2l5.5 8.3'
-
-
-def mark_group(x, y, size, ink, accent):
-    k = size / 24
-    return (f'<g transform="translate({x:.0f} {y:.0f}) scale({k:.3f})" fill="none">'
-            f'<path d="{MARK_BRACKETS}" stroke="{ink}" stroke-width="2"/>'
-            f'<path d="{MARK_CHEVRON}" stroke="{accent}" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="miter"/></g>')
-
-
-def lockup(words, of, vb, ink, accent):
-    # the direction's nav lockup: a 28 px mark, a 12 px gap and the wordmark at 17 px (its caps 0.7 em tall)
-    x, y, w, h = vb
-    em = h / 0.7
-    size, gap = em * 28 / 17, em * 12 / 17
-    top = y + h / 2 - size / 2
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x - size - gap:.0f} {top:.0f} {w + size + gap:.0f} {size:.0f}" '
-            f'role="img" aria-label="Claude of Tanks"><!-- The Claude of Tanks lockup: the Bracket Chevron and the wordmark. {NOTICE} -->'
-            f'{mark_group(x - size - gap, top, size, ink, accent)}<path fill="{ink}" d="{words}"/><path fill="{accent}" d="{of}"/></svg>\n')
-
-
-def title_card(words, of, rules, vb, ink, accent):
-    # the ceremonial tier (SPEC 3.3, the retired crest's place): the chevron over the stacked wordmark. The words are one
-    # path drawn twice, each word line's lower half and its top half (.t), and the "of" rules apart from its letters
-    # (.r), so the registration sting (SPEC 3.4) can slide the top halves into register and draw the rules from the
-    # centre; at rest the card is one wordmark.
-    x, y, w, h = vb
-    size = w * 0.34
-    gap = size * 0.28
-    mx = x + w / 2 - size / 2
-    lines = sorted({round(g['baseline']) for g in layout['stacked']['glyphs'] if g['weight'] == 700})
-    cap = 700 * layout['stacked']['glyphs'][0]['size'] / 1000
-    pad = cap * 0.2
-    seam = 8  # the halves overlap a little, so their anti-aliased edges never leave a hairline at rest
-    top = ''.join(f'<rect x="{x - pad:.0f}" y="{b - cap - pad:.0f}" width="{w + 2 * pad:.0f}" height="{cap / 2 + pad + seam:.0f}"/>' for b in lines)
-    low = ''.join(f'<rect x="{x - pad:.0f}" y="{b - cap / 2 - seam:.0f}" width="{w + 2 * pad:.0f}" height="{cap / 2 + pad + seam:.0f}"/>' for b in lines)
-    # each rule grows outward from its end at the "of" (.rl, .rr), so neither ever crosses the letters
-    left, right = sorted((d + 'Z' for d in rules.split('Z') if d), key=lambda d: float(d[1:].split()[0]))
-    return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x:.0f} {y - size - gap:.0f} {w:.0f} {h + size + gap:.0f}" '
-            f'role="img" aria-label="Claude of Tanks"><!-- The Claude of Tanks title card: the Bracket Chevron over the stacked wordmark. {NOTICE} -->'
-            f'<defs><path id="cot-tc-w" d="{words}"/><clipPath id="cot-tc-top">{top}</clipPath><clipPath id="cot-tc-low">{low}</clipPath></defs>'
-            f'{mark_group(mx, y - size - gap, size, ink, accent)}'
-            f'<use href="#cot-tc-w" fill="{ink}" clip-path="url(#cot-tc-low)"/><use class="t" href="#cot-tc-w" fill="{ink}" clip-path="url(#cot-tc-top)"/>'
-            f'<path class="of" fill="{accent}" d="{of}"/><path class="r rl" fill="{accent}" d="{left}"/>'
-            f'<path class="r rr" fill="{accent}" d="{right}"/></svg>\n')
-
-
-files['lockup.svg'] = lockup(*horizontal, PAPER, TUNGSTEN)
-files['lockup-paper.svg'] = lockup(*horizontal, GRAPHITE, TUNGSTEN_600)
-files['title-card.svg'] = title_card(*build(layout['stacked'], split=True), PAPER, TUNGSTEN)
+# The lockups, the title card and the icons carry the commander mark: tools/brand-marks.mjs composes them from these
+# wordmark outputs and src/ui/brandMark.ts (run it after this script).
 for name, text in files.items():
     open(os.path.join(out, name), 'w').write(text)
 

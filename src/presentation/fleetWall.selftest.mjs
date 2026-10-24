@@ -52,7 +52,8 @@ assert.match(facets, /<button class="cot-c-chip" type="button" aria-pressed="tru
 const flags = [...facets.matchAll(/data-fleet-nation="([a-z]{2})"/g)].map((match) => match[1]);
 assert.deepEqual([...flags].sort(), [...new Set(wall.map((record) => record.flag))].sort(), 'a flag for every nation on the wall');
 assert.ok([...facets.matchAll(/data-fleet-class="([\w-]+)"/g)].length >= 3, 'the class chips');
-assert.match(facets, new RegExp(`data-i18n-vars='\\{"count":"${wall.length}"\\}'`), 'the search names the whole wall');
+assert.match(facets, /<input type="search" placeholder="[^"\d]+" data-i18n-placeholder="home\.fleet\.searchPlaceholder"/,
+  'the search names no count of its own: the headline gives the fleet\'s one');
 assert.match(facets, /<p class="fleet-count" role="status"><\/p>/, 'the count speaks as the filter changes');
 
 console.log(`fleetWall.selftest: ${wall.length} vehicles, ${flags.length} nations; the curated twelve lead; chips and search narrow`);

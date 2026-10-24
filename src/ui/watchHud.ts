@@ -30,11 +30,14 @@ export interface WatchHudState {
   readonly canTake: boolean;
   readonly speedIndex: number;
   readonly speedSteps: number;
+  /** The drone's orbit is locked on `tank`. */
+  readonly locked: boolean;
 }
 
 export interface WatchHudActions {
   cycle(direction: -1 | 1): void;
   drone(): void;
+  toggleLock(): void;
   toggleSeat(): void;
   setClimb(direction: -1 | 0 | 1): void;
 }
@@ -89,7 +92,7 @@ body.cot-touch-layout .cot-watch-rail{display:flex}
 html:not([data-watch=drone]) .cot-watch-rail{display:none}
 .cot-watch-rail .wb{position:relative;display:grid;place-items:center;width:56px;height:56px;border:0;border-radius:var(--r1);
  background:var(--hud-plate);color:var(--ink-1);box-shadow:var(--ring-2);pointer-events:auto;touch-action:none}
-.cot-watch-rail .wb.on{box-shadow:var(--ring-accent);color:var(--accent-hi)}
+.cot-watch-rail .wb.on,.cot-watch .wb.lock.on{box-shadow:var(--ring-accent);color:var(--accent-hi)}
 body.cot-touch-layout .cot-watch .cot-c-kbd{display:none}
 html:is([data-watch=drone],[data-watch=ride]) body :is(.round.fire,.round.scope,.round.jump,.round.autoaim,.fire-cancel){display:none}
 html[data-watch=ride] body .cot-touch .joy{display:none}
@@ -128,6 +131,7 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
     + `<button type="button" class="wb prev" data-ui-sound="tick" aria-label="${t('watch.prev')}">${icon('chevronLeft', { size: 20 })}${keycap('Q')}</button>`
     + `<button type="button" class="wb next" data-ui-sound="tick" aria-label="${t('watch.next')}">${icon('chevronRight', { size: 20 })}${keycap('E')}</button>`
     + `<button type="button" class="wb drone" data-ui-sound="back" aria-label="${t('watch.drone')}">${icon('modeDrone', { size: 20 })}${keycap('V')}</button>`
+    + `<button type="button" class="wb lock" data-ui-sound="tick" aria-pressed="false" aria-label="${t('watch.lock')}">${icon('autoAim', { size: 20 })}${keycap('T')}</button>`
     + `<button type="button" class="wb seat" data-ui-sound="confirm">${icon('crewDriver', { size: 20 })}<span class="label"></span>${keycap('Enter')}</button>`;
   const rail = document.createElement('div');
   rail.className = 'cot-watch-rail';
@@ -142,6 +146,7 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
   const prev = bar.querySelector('.prev') as HTMLButtonElement;
   const next = bar.querySelector('.next') as HTMLButtonElement;
   const drone = bar.querySelector('.drone') as HTMLButtonElement;
+  const lock = bar.querySelector('.lock') as HTMLButtonElement;
   const seat = bar.querySelector('.seat') as HTMLButtonElement;
   const seatLabel = seat.querySelector('.label') as HTMLElement;
   const up = rail.querySelector('.up') as HTMLButtonElement;
@@ -155,6 +160,7 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
   listen(prev, 'click', () => actions.cycle(-1));
   listen(next, 'click', () => actions.cycle(1));
   listen(drone, 'click', () => actions.drone());
+  listen(lock, 'click', () => actions.toggleLock());
   listen(seat, 'click', () => actions.toggleSeat());
   const hold = (button: HTMLButtonElement, direction: -1 | 1): void => {
     listen(button, 'pointerdown', (event) => {
@@ -173,7 +179,7 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
   hold(down, -1);
 
   // what the bar shows now (compared field by field: the bar rebuilds nothing on an unchanged frame)
-  const shown = { view: '' as WatchHudView | '', tank: null as WatchHudTank | null, canTake: false, speedIndex: -1 };
+  const shown = { view: '' as WatchHudView | '', tank: null as WatchHudTank | null, canTake: false, speedIndex: -1, locked: false };
   const pips = (index: number, steps: number): string => {
     let out = '<span class="pips" aria-hidden="true">';
     for (let i = 0; i < steps; i++) out += `<i class="${i <= index ? 'on' : ''}" style="height:${6 + i * 2}px"></i>`;
@@ -195,9 +201,11 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
         // flying, the battle HUD's own-tank furniture is off (its spectator rule); riding and driving, it is the tank's
         document.body.classList.toggle('cot-spectating', state.view === 'drone');
       }
-      const tank = state.view === 'drone' ? null : state.tank;
+      // flying, the plate names the drone, or the tank its orbit is locked on
+      const locked = state.view === 'drone' && state.locked && !!state.tank;
+      const tank = state.view === 'drone' && !locked ? null : state.tank;
       if (bar.isConnected && shown.view === state.view && shown.tank === tank && shown.canTake === state.canTake
-        && shown.speedIndex === state.speedIndex) return;
+        && shown.speedIndex === state.speedIndex && shown.locked === locked) return;
       if (!bar.isConnected) {
         const mount = host();
         if (!mount) return;
@@ -207,6 +215,7 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
       shown.tank = tank;
       shown.canTake = state.canTake;
       shown.speedIndex = state.speedIndex;
+      shown.locked = locked;
       bar.hidden = false;
       if (tank) {
         const specId = tank.spec?.id ?? tank.specId ?? '';
@@ -223,6 +232,10 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
       const driving = state.view === 'drive';
       prev.disabled = next.disabled = driving;
       drone.disabled = state.view !== 'ride';
+      lock.disabled = state.view !== 'drone';
+      lock.classList.toggle('on', locked);
+      lock.setAttribute('aria-pressed', locked ? 'true' : 'false');
+      lock.setAttribute('aria-label', t(locked ? 'watch.unlock' : 'watch.lock'));
       seat.disabled = !driving && !state.canTake;
       seatLabel.textContent = driving ? t('watch.leave') : t('watch.take');
       seat.setAttribute('aria-label', seatLabel.textContent);

@@ -394,8 +394,10 @@ const FILM_FORMATS = Object.freeze([['landscape', '16:9'], ['portrait', '9:16'],
 const formatRatio = (format: ProductionFormat): string => FILM_FORMATS.find(([id]) => id === format)?.[1] ?? '16:9';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 /** The palette's shortcut as this platform writes it. */
-const PALETTE_KEY = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K';
-const UNDO_KEY = PALETTE_KEY === '⌘K' ? '⌘Z' : 'Ctrl Z';
+// the keys in words: the shipped faces carry no command-key glyph, so a Mac reads Cmd (the type system's coverage rule)
+const ON_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+const PALETTE_KEY = ON_MAC ? 'Cmd K' : 'Ctrl K';
+const UNDO_KEY = ON_MAC ? 'Cmd Z' : 'Ctrl Z';
 /** The Studio's shortcuts a focused panel lets through to the runtime. */
 function studioShortcut(e: KeyboardEvent): boolean {
   if (e.altKey) return false;
@@ -659,10 +661,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       selTagText.textContent = t('studio.ws.selTag', { name: a.spec.name, deg: heading });
       selTagWidth = selTag.offsetWidth;
     }
-    // above the outline's top edge, inside it when that edge meets the chips, never past the picture's sides or foot
+    // above the outline, or under it when the chips leave no room above: never on the tank, never past the picture's sides
     const tagLeft = Math.max(4, Math.min(f.left, vpWidth - selTagWidth - 4));
     let tagTop = f.top - 24;
-    if (tagTop < chipsFoot) tagTop = Math.max(f.top + 2, chipsFoot);
+    if (tagTop < chipsFoot) tagTop = Math.max(f.bottom + 4, chipsFoot);
     selTag.style.left = `${Math.round(tagLeft)}px`;
     selTag.style.top = `${Math.round(Math.min(tagTop, vpHeight - 26))}px`;
     // the gizmo at one screen size: the ring's widest reach is GIZMO_RADIUS, the axes keep their true directions
@@ -1019,11 +1021,12 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
 
   // === SELECTED ACTOR section (09-studio .insp: the hero card, Transform, Pose, Paint and state) ===
   const secSel = section('selectedTank', t('studioPanel.section.selectedTank'), 'vehicle');
+  // the card shows the tank alone; its flag and name sit on their own line under it (no text on a tank)
   const hero = el('div', 'st-hero');
   const heroSil = el('span', 'cot-c-sil');
-  const heroName = el('span', 'nm', '');
-  hero.append(heroSil, heroName);
-  secSel.appendChild(hero);
+  const heroName = el('div', 'st-hero-name');
+  hero.append(heroSil);
+  secSel.append(hero, heroName);
   const transform = el('div', 'sec');
   transform.appendChild(sectionHead(t('studio.ws.transform'), 'freeLook'));
   const fields = el('div', 'fld');
@@ -2047,7 +2050,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     toggleQueue(false);
   });
   const presetName = (preset: QueuePreset): string => t(`studio.ws.queue.preset.${preset.id}`);
-  /** "≈ 1.4 min · ≈ 22 MB" in the page's language. */
+  /** "about 1.4 min · about 22 MB" in the page's language. */
   function costText(estimate: QueueJob['estimate']): string {
     const time = estimate.seconds < 90 ? t('studio.ws.queue.seconds', { n: Math.max(1, Math.round(estimate.seconds)) })
       : t('studio.ws.queue.minutes', { n: (estimate.seconds / 60).toFixed(1) });
@@ -2764,7 +2767,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         hero.dataset.spec = a.spec.id;
         hero.querySelector('.hc-host')?.remove();
         heroSil.style.setProperty('--sil', `url(${iconUrl(a.spec.id, 'side_silhouette')})`);
-        heroName.replaceChildren(flagNode(specInfo(a.spec.id).nation || ''), a.spec.name);
+        heroName.replaceChildren(flagNode(specInfo(a.spec.id).nation || ''), el('span', null, a.spec.name));
         for (const sil of poseSils) sil.style.setProperty('--sil', `url(${iconUrl(a.spec.id, 'side_silhouette')})`);
         const specId = a.spec.id;
         void Promise.all([import('./heroCard.ts'), import('./heroCard.css')])

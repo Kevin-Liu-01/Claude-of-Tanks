@@ -13,7 +13,7 @@ import {
   buildHouse, emitRoof, holedBox, holedPolygon, recordShaft, roofGeometry, wallPolygon, windowRhythm,
   type FaceName, type HouseDialect, type HouseFrame, type HouseSpec, type Opening, type RoofSpec,
 } from './house.ts';
-import { doorUnit, gateUnit, windowUnit, type WindowStyle } from './openings.ts';
+import { doorUnit, gateUnit, windowDressing, windowUnit, type WindowStyle } from './openings.ts';
 import { bench, mound, wallLantern } from './dressing.ts';
 import { boatHull, bollard, copingRun, hungNet, leantPole, netRack, slipway, trestles } from './waterfront.ts';
 import { ruinHouse, type RuinHead } from './ruinGrammar.ts';
@@ -69,6 +69,11 @@ function dialect(st: BretonState): HouseDialect {
   return {
     window: (sink, face, o, y0) => windowUnit(sink, face, o.u, y0 + o.y0, o.w, o.h,
       o.kind === 'loft' ? { ...st.window, shutters: null, bars: 'none' } : st.window, st.rng, o.kind === 'loft' ? 0 : st.litShare),
+    // (2026-10-24, the bourg item's blind: a burnt window read as "a dark slot with no glazing bars") the granite surround
+    // and sill outlast the fire: a gutted window keeps them round its charred frame
+    damaged: (sink, face, o, y0) => {
+      if (o.kind === 'window') windowDressing(sink, face, o.u, y0 + o.y0, o.w, o.h, { ...st.window, shutters: null });
+    },
     door: (sink, face, o, y0, frame) => {
       if (o.kind === 'gate') {
         gateUnit(sink, face, o.u, y0 + o.y0, o.w, o.h, shade(st.paint, 0.8), { bucket: 'stone', width: 0.3, out: 0.07 });
@@ -283,8 +288,9 @@ function dwelling(ctx: RegionalBuildContext, opts: { longere?: boolean; storeys?
       }
     }
   }
-  // the gable-end stacks: one or two, the single one in either gable, on the apex or off it, of a height (an
-  // eaves-fronted house's on both its side gables, most often)
+  // the gable-end stacks: one or two, the single one in either gable, on the apex or off it, of a height; an
+  // eaves-fronted house's on both its side gables and on their apexes, the Léon's pignons (2026-10-24, the bourg item's
+  // blind: a lone stack off the apex "rises out of the dormer" in front of it)
   const two = rng() < (eaves ? 0.85 : 0.55);
   const stack = (end: 0 | 1): GableStack => {
     const dx = vary() < 0.4 ? (vary() < 0.5 ? -1 : 1) * (0.45 + vary() * 0.4) : 0, above = 0.8 + vary() * 0.55;
@@ -304,13 +310,16 @@ function dwelling(ctx: RegionalBuildContext, opts: { longere?: boolean; storeys?
     const frame = buildHouse(sink, {
       w: hw, d: hd, plinth: { h: 0.12, out: 0.03, bucket: 'stone' }, storeys: sts,
       roof: slate(pitch), gableBucket: st.wall, openings, chimneys: [], gutters: rng() < 0.3 ? { colour: rgb(0x5a5e60) } : null, verge: null,
-      reveal: 0.34,
+      reveal: 0.34, soot: 'tongue',
     }, dialect(st));
     gableParapets(sink, frame, stacks, rng);
     // dormers through the eaves, clear of the stacks; a front wall over a window head close under the eaves stops short
     const top = count - 1, faceName: FaceName = dormerSide > 0 ? 'right' : 'left';
     for (let k = 0; k < dormers; k++) {
-      const zc = (dormers === 1 ? -hd * 0.15 : k === 0 ? -hd * 0.25 : hd * 0.22) + (vary() - 0.5) * 0.6;
+      // (2026-10-24, the bourg item's blind: a stack "appears to grow out of the dormer") an eaves-fronted house's single
+      // dormer stands at the far end of the ridge from a lone stack (end 0 the +z gable)
+      const away = eaves && stacks.length === 1 && stacks[0].end === 1 ? -1 : 1;
+      const zc = (dormers === 1 ? -hd * 0.15 * away : k === 0 ? -hd * 0.25 : hd * 0.22) + (vary() - 0.5) * 0.6;
       const uc = dormerSide > 0 ? -zc : zc;
       let foot = 0.6;
       for (const o of openings) {
@@ -841,11 +850,12 @@ export const BRETON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
     stone: { kind: 'granite', tint: [0.58, 0.55, 0.5] },
     // (2026-10-23, item/maps-frontier-saltmere-242; the blind critic on the bourg's rendered fronts: "a noisy, bumpy procedural
     // texture that looks like crumpled paper or foil, not granite rubble or render") the Léon's houses limewashed over
-    // their rubble, not roughcast: the region's limewash painted on the kit's walls (regionalSurfaces.ts paintLimewash) as
-    // a skin, fine and shallow, white, a cream and a pale grey from house to house; the sourced scan's coarse relief gone
+    // their rubble, not roughcast; the sourced scan's coarse relief gone. (2026-10-24, the bourg item's blind on v3: the
+    // brushed mud-wall wash at a fifth of its relief read "flat, untextured white, slightly plastic") the weathered lime
+    // render of the town kits (regionalSurfaces.ts paintLimeRender: the carbonation's clouds, worn coats, patches) at
+    // their relief; the house kernel's sill runs, rain shadow and foot grime over it
     sourced: { plaster: false, wood: true },
-    render: { kind: 'limewash', seed: 0x6b2c },
-    relief: { plasterUv: 1.8, normal: 0.22, ao: 0.32 },
+    render: { kind: 'limeRender', seed: 0x6b2c },
     tones: {
       plaster2: (_h, s, l) => [0.11, Math.min(1, 0.12 + s * 0.2), Math.min(1, l * 0.3 + 0.62)],
       plaster3: (_h, s, l) => [0.58, Math.min(1, 0.03 + s * 0.1), Math.min(1, l * 0.3 + 0.58)],
@@ -854,7 +864,8 @@ export const BRETON_STYLE: ArchitectureStyle = Object.freeze<ArchitectureStyle>(
   builders: BRETON_BUILDERS,
   // granite greys, limewash, slates from blue-black to lichen-crusted: the Atlantic's orange-yellow lichen and damp
   weather: {
-    plaster: [[1, 1, 1], [0.98, 0.98, 0.96], [1, 0.97, 0.93]],
+    // (2026-10-24) a wash yellowed, greyed or greened by the Atlantic from house to house, never one clean white
+    plaster: [[1, 1, 1], [0.95, 0.95, 0.92], [0.97, 0.94, 0.87], [0.92, 0.93, 0.91]],
     stone: [[1, 1, 1], [0.92, 0.92, 0.92], [1.02, 0.99, 0.95], [0.88, 0.88, 0.9]],
     roof: [[1, 1, 1], [0.9, 0.92, 0.95], [0.86, 0.88, 0.84], [1.05, 1.04, 1.02]],
     damp: 0.95, moss: 0.8, mossTint: [1.12, 1.0, 0.62],
