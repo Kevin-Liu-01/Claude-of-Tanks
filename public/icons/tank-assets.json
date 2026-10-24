@@ -123256,12 +123256,12 @@
             "name": "turretRing",
             "min": [
               -0.6986,
-              1.5975,
+              1.65,
               -1.0222
             ],
             "max": [
               0.6986,
-              1.7975,
+              1.85,
               0.4222
             ],
             "turretLocal": false
@@ -123572,16 +123572,16 @@
           }
         ]
       },
-      "geometryHash": "0beef010",
-      "metadataHash": "f19dacab",
+      "geometryHash": "dcb0119c",
+      "metadataHash": "6364ab2f",
       "presentationAnchor": {
         "xM": -0.0011,
-        "zM": 0.019
+        "zM": 0.0188
       },
-      "presentationHash": "5ede7c36",
+      "presentationHash": "3213c223",
       "presentationProjection": {
         "centerYM": 2.07,
-        "topHalfM": 4.0295,
+        "topHalfM": 4.0292,
         "sideHalfM": 2.2149
       },
       "appearance": {
@@ -123599,7 +123599,7 @@
           "armorPaint": 10,
           "tireRubber": 1,
           "opticGlass": 2,
-          "gunmetal": 5,
+          "gunmetal": 6,
           "unclassified": 19,
           "fittingPaint": 1
         }
@@ -123630,39 +123630,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 106277,
-          "sha256": "997cd89de34f53d2f04b745050850ddc447acbb618b67e9372b19feedd2532f4"
+          "bytes": 108394,
+          "sha256": "973b4af11d1c2dc220eab71847fa04033aa73e00beaf2ca18ecd99217e96469d"
         },
         "modulesSide": {
           "file": "dardo_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 114908,
-          "sha256": "a4584c16df62c93be47522ba2518642962199a5446f5f245371f5307ec948c09"
+          "bytes": 116167,
+          "sha256": "8d33484b105b8d7826a1784138d6943ea8494642ff755ee201ffc1121de40c89"
         },
         "crewSide": {
           "file": "dardo_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 102255,
-          "sha256": "56d236ac2f0877475221cb717285bcf53d59555857665c7c1988b8add775d8fd"
+          "bytes": 102244,
+          "sha256": "d5b3c0b2f20efb3a2036f4622e19344726fb1219fbd75c8e955a1f89cd83c864"
         },
         "angle": {
           "file": "dardo_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24238,
-          "sha256": "f6580104a39aa0a97d7bac75a2a664c002fb659c9c2d1611f2cc58918961498f",
+          "bytes": 23876,
+          "sha256": "624d2e31785bdcab7ecb4f26ad1fc39edbe2af3e7e1188e518ab32ad9e020e2d",
           "thumbnail": {
             "file": "thumbs/dardo_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10238,
-            "sha256": "b0b23f25acb18dc053bdb211b239cf0c0dc6501fe4eff545845dc5092b2a965a"
+            "bytes": 10092,
+            "sha256": "386f6ec391ef8b88647ae3a71033be28a6bb56abf9d8362d2b27d6045bd57f9f"
           }
         },
         "top": {
@@ -123670,32 +123670,32 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 14638,
-          "sha256": "42af32b760e1861a56cfc2ecdd39e378c82985ee34372468bd7c3b9478585231"
+          "bytes": 14642,
+          "sha256": "ba3d60d64067d4129d622cd59fa3313a7f3418dccab1fc89e01b6d22a96ef00a"
         },
         "side": {
           "file": "dardo_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 12642,
-          "sha256": "23b5deb340b8953475eb03b78b93e35518f62a8742125a37a03d30766646ce84"
+          "bytes": 11778,
+          "sha256": "8444c4aed15f97698fe9cbdb7287c9fcca2b062c7088c808d4407a570a10f1c2"
         },
         "topSilhouette": {
           "file": "dardo_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1539,
-          "sha256": "2bccced47e82cebfeade932b85b2c44fe3a16afb692f97295188d7e6b9dd2f7e"
+          "bytes": 1553,
+          "sha256": "80f3cd68cca16758edfe76ac695dc7285a1f7fa50a9e4094b82ce0df8214fe78"
         },
         "sideSilhouette": {
           "file": "dardo_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5246,
-          "sha256": "eff27e0b171fc7ebe780b78de38066b83ccc718ece136247fd1d0f56d87d1828"
+          "bytes": 5240,
+          "sha256": "d5dc494722bf648116af01f7f4878aad0733ea1f0c926cb3f2d9b1094df09508"
         },
         "markings": {
           "file": "dardo_markings.png",
