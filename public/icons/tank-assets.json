@@ -566931,22 +566931,22 @@
             "verts": [
               [
                 0.1701,
-                -0.031,
+                0.0022,
                 2.1314
               ],
               [
                 1.5789,
-                -0.031,
+                0.0022,
                 1.0257
               ],
               [
                 1.5789,
-                0.8373,
+                0.8377,
                 0.8585
               ],
               [
                 0.1701,
-                0.8373,
+                0.8377,
                 1.9643
               ]
             ]
@@ -566962,22 +566962,22 @@
             "verts": [
               [
                 -1.715,
-                -0.031,
+                0.0022,
                 1.0257
               ],
               [
                 -0.3062,
-                -0.031,
+                0.0022,
                 2.1314
               ],
               [
                 -0.3062,
-                0.8373,
+                0.8377,
                 1.9643
               ],
               [
                 -1.715,
-                0.8373,
+                0.8377,
                 0.8585
               ]
             ]
@@ -566993,22 +566993,22 @@
             "verts": [
               [
                 -0.3458,
-                0.0201,
+                0.0513,
                 2.1314
               ],
               [
                 0.2097,
-                0.0201,
+                0.0513,
                 2.1314
               ],
               [
                 0.2097,
-                0.5002,
+                0.5133,
                 2.0928
               ],
               [
                 -0.3458,
-                0.5002,
+                0.5133,
                 2.0928
               ]
             ]
@@ -567024,22 +567024,22 @@
             "verts": [
               [
                 1.5789,
-                -0.031,
+                0.0022,
                 0.8457
               ],
               [
                 1.5789,
-                -0.031,
+                0.0022,
                 -2.6773
               ],
               [
                 1.5789,
-                0.8373,
+                0.8377,
                 -2.6773
               ],
               [
                 1.5789,
-                0.8373,
+                0.8377,
                 0.8457
               ]
             ]
@@ -567055,22 +567055,22 @@
             "verts": [
               [
                 -1.715,
-                -0.031,
+                0.0022,
                 -2.6773
               ],
               [
                 -1.715,
-                -0.031,
+                0.0022,
                 0.8457
               ],
               [
                 -1.715,
-                0.8373,
+                0.8377,
                 0.8457
               ],
               [
                 -1.715,
-                0.8373,
+                0.8377,
                 -2.6773
               ]
             ]
@@ -567086,22 +567086,22 @@
             "verts": [
               [
                 1.5392,
-                -0.031,
+                0.0022,
                 -2.6773
               ],
               [
                 -1.6753,
-                -0.031,
+                0.0022,
                 -2.6773
               ],
               [
                 -1.6753,
-                0.8373,
+                0.8377,
                 -2.6773
               ],
               [
                 1.5392,
-                0.8373,
+                0.8377,
                 -2.6773
               ]
             ]
@@ -647492,12 +647492,12 @@
             "name": "gun",
             "min": [
               -0.2466,
-              0.0201,
+              0.0513,
               0.0485
             ],
             "max": [
               0.1105,
-              0.5308,
+              0.5428,
               1.6557
             ],
             "turretLocal": true
@@ -647507,13 +647507,13 @@
             "name": "turretRing",
             "min": [
               -0.9134,
-              1.36,
+              1.3632,
               -0.7115
             ],
             "max": [
-              0.9129,
-              1.6046,
-              1.497
+              0.9128,
+              1.6078,
+              1.4969
             ],
             "turretLocal": false
           },
@@ -647567,12 +647567,12 @@
             "name": "ammoRack",
             "min": [
               -0.9114,
-              -0.031,
+              0.0022,
               -2.5873
             ],
             "max": [
               0.7753,
-              0.7351,
+              0.7394,
               -0.4658
             ],
             "turretLocal": true
@@ -647582,12 +647582,12 @@
             "name": "radio",
             "min": [
               -0.6633,
-              0.0712,
+              0.1005,
               -0.4015
             ],
             "max": [
               -0.1673,
-              0.4798,
+              0.4937,
               0.2413
             ],
             "turretLocal": true
@@ -648086,13 +648086,13 @@
             "name": "gunner",
             "min": [
               0.2479,
-              0.0128,
-              0.3927
+              -0.6316,
+              0.4452
             ],
             "max": [
               0.7073,
-              0.6628,
-              1.1735
+              0.6977,
+              0.8707
             ],
             "turretLocal": true
           },
@@ -648115,30 +648115,30 @@
             "volumeId": "C04",
             "name": "loader",
             "min": [
-              -0.6685,
-              -1.0666,
-              0.3074
+              -0.8485,
+              -1.099,
+              0.4124
             ],
             "max": [
-              -0.3088,
-              0.7068,
-              0.5599
+              -0.4088,
+              0.6744,
+              0.7399
             ],
             "turretLocal": true
           }
         ]
       },
-      "geometryHash": "90292519",
-      "metadataHash": "44611c20",
+      "geometryHash": "85673bef",
+      "metadataHash": "68c36ad3",
       "presentationAnchor": {
-        "xM": -0.0003,
-        "zM": 0.0087
+        "xM": 0,
+        "zM": 0.0094
       },
-      "presentationHash": "df3a1554",
+      "presentationHash": "72dc32b4",
       "presentationProjection": {
         "centerYM": 2.0619,
-        "topHalfM": 6.2068,
-        "sideHalfM": 3.1034
+        "topHalfM": 6.206,
+        "sideHalfM": 3.103
       },
       "appearance": {
         "version": 1,
@@ -648154,7 +648154,7 @@
           "trackPadSimplified": 1,
           "armorPaint": 14,
           "opticGlass": 4,
-          "gunmetal": 160,
+          "gunmetal": 161,
           "canvas": 4,
           "unclassified": 5,
           "gearShadow": 1
@@ -648186,39 +648186,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 91490,
-          "sha256": "52b7ffc05a2fc5964e49773f763afae17ad4151f2c9287d45416d43899b6df3f"
+          "bytes": 91820,
+          "sha256": "bbf44a7b15e6e769097ae532b102224be66fb3395210e7456ccec8d7a7357095"
         },
         "modulesSide": {
           "file": "m1a2_abrams_tusk_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 93841,
-          "sha256": "1e4ebc6646b34ba819f34497adc49ccb25fc8b5297514e8a8d893c13d4eb6be5"
+          "bytes": 94237,
+          "sha256": "13f9f4f10b31b58b7d3059f2fc2776c48eba1e7467b0bcafb2aade454000a7bd"
         },
         "crewSide": {
           "file": "m1a2_abrams_tusk_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81382,
-          "sha256": "b0e5cdef970eafe3f10e8ab58d0d439603ad98c94ed24c08f68b5767ef1f7f9a"
+          "bytes": 80749,
+          "sha256": "12d9756751709779a622fdd56590af7a0c1419ae7787f215c43ba71140eb1eec"
         },
         "angle": {
           "file": "m1a2_abrams_tusk_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 34900,
-          "sha256": "c4f1d548e96546c900de47ee4c6efde3a3f29a93d5dfa509fdbf8939024584eb",
+          "bytes": 34892,
+          "sha256": "8fb1c842503eac9eb37e09dbcae3d53d5dc8db9ee01adaa79ec27618a87a1d19",
           "thumbnail": {
             "file": "thumbs/m1a2_abrams_tusk_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 13616,
-            "sha256": "f2b3659a01d81209fdedabe8efd362703b9a2ca81b3c5c0a9d58944a0af9fdd8"
+            "bytes": 13542,
+            "sha256": "acd7661800fb86802911ee40ab68ae7661686c0915611cb42e7ebdeb131d5b32"
           }
         },
         "top": {
@@ -648226,32 +648226,32 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22040,
-          "sha256": "630740f474a54e2a429547ee9957497b3032ed73d5ff3f25841fb8bdf2f142a1"
+          "bytes": 22364,
+          "sha256": "2fc0c80088e065d53e9b9214607f4b4869ee9b7810b214c7a25f213be001c873"
         },
         "side": {
           "file": "m1a2_abrams_tusk_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 16194,
-          "sha256": "5440f152334070dfeaa719dbdfbf8ee2f338b2cc9e3b2bbaa87c2318a9cab172"
+          "bytes": 16372,
+          "sha256": "f1199e7d329385a0f91b915d0e722fb37c4767f100ff784321c1cd04f0ae284a"
         },
         "topSilhouette": {
           "file": "m1a2_abrams_tusk_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1331,
-          "sha256": "683c7b90df698def538f8e77be5985109097b5bc90c542973ec5153997c43bfb"
+          "bytes": 1407,
+          "sha256": "2d462c4e9e90269b91498ed4fd7922774b897000eac93e4f17765da67dcb6128"
         },
         "sideSilhouette": {
           "file": "m1a2_abrams_tusk_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5071,
-          "sha256": "a29e558561ec03dbcd414e2873b48262081a9092c99eb62b7163b2e52ed37080"
+          "bytes": 5077,
+          "sha256": "194dd9f0bbd64bdc7c42b24b047374a85019cd1090189db88c47f404725d69e7"
         },
         "markings": {
           "file": "m1a2_abrams_tusk_markings.png",
