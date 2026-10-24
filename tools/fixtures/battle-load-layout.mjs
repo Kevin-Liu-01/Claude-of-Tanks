@@ -21,10 +21,10 @@ window.__LOAD_LAYOUT = {
   roster(allies, enemies) { screen.rosters(rows(allies,true), rows(enemies,false)); },
 };
 const params = new URLSearchParams(location.search);
-// ?map=<id>&name=<its name>: a battlefield as the game passes it (its art, and its baked plan on the plate beside the tip);
+// ?map=<id>&name=<its name>[&mode=<mode id>]: a battlefield as the game passes it (its art, its baked plan on the plate beside the tip, the mode's objectives on it);
 // without it the layout probes keep the plain Steinburg entry
 const mapId = params.get('map');
 screen.show({mapName:params.get('name') || 'Steinburg', mode:'Turbo Ball · Any battlefield', thumb:`/maps/${mapId || 'urban'}.webp`,
-  ...(mapId ? {biome:mapId} : {}), allies:[], enemies:[]});
+  ...(mapId ? {biome:mapId} : {}), ...(params.get('mode') ? {modeId:params.get('mode')} : {}), allies:[], enemies:[]});
 window.__LOAD_LAYOUT.roster(Number(params.get('allies') ?? 7), Number(params.get('enemies') ?? 7));
 screen.progress(.97, 'Priming deployment view');

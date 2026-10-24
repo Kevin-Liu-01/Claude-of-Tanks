@@ -898,6 +898,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   function renderReportHero(result: EndScreenResult, sum: EndScreenSummary): void {
     const art = battleMapArt(sum.mapId);
     host.style.setProperty('--report-map', art ? `url("${art}")` : 'none');
+    // page 11: the result stands over the battle's last frame (the scene's canvas keeps it under the report) under the
+    // direction's grade; with no scene behind (a capture harness, a report without a battle) the battlefield's art does
+    host.classList.toggle('es-over-scene', !!document.querySelector('canvas[data-scene-msaa-samples]'));
     const hero = el('div', 'es-hero', host);
     const kick = el('div', 'es-kick es-in', hero);
     kick.style.setProperty('--i', nextI());
