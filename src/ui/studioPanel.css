@@ -147,6 +147,10 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-insp .sh .cot-i{width:15px;height:15px;color:var(--ink-3)}
 .st-insp .sh .cot-info-trigger{margin-left:auto}
 .st-insp .row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.st-insp .col{display:flex;flex-direction:column;gap:6px}
+.st-insp .col>*{width:100%}
+/* buttons never share a row in the inspector (two to a row wrap their names); chips still do */
+.st-insp .grid:has(>.cot-c-btn),.cot-studio .st-insp :is(.production-exports,.production-transport){grid-template-columns:minmax(0,1fr)}
 .st-insp .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .st-insp .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .st-insp .grid .cot-c-btn,.st-insp .grid3 .cot-c-btn,.st-insp .grid .cot-c-chip,.st-insp .grid3 .cot-c-chip{width:100%;min-width:0}
@@ -170,7 +174,7 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
   box-shadow:var(--ring-2);color:var(--ink-1);font:500 var(--fs-12)/1 var(--font-data)}
 .st-insp .fld small{color:var(--ink-3);font:inherit}
 .st-insp .fld input{width:100%;min-width:0;height:auto;padding:0;border:0;background:none;box-shadow:none;color:inherit;font:inherit;text-align:right}
-.st-insp .sl{display:grid;grid-template-columns:72px minmax(0,1fr) 40px;align-items:center;gap:8px;color:var(--ink-2);
+.st-insp .sl{display:grid;grid-template-columns:96px minmax(0,1fr) 40px;align-items:center;gap:8px;color:var(--ink-2);
   font:500 var(--fs-12)/1 var(--font-data)}
 .st-insp .sl>label{min-width:0;overflow:hidden;color:var(--ink-3);font:500 var(--fs-12)/1.1 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
 .st-insp .sl--glyph{grid-template-columns:20px minmax(0,1fr) 40px}
@@ -316,7 +320,6 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .production-transport{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px}
 .cot-studio .production-transport output{white-space:nowrap;color:var(--ink-1);font:500 var(--fs-12)/1 var(--font-data);text-align:center}
 /* in the inspector the timeline's clock already reads the playhead: the two buttons share the row */
-.st-insp .production-transport{grid-template-columns:repeat(2,minmax(0,1fr))}
 .st-insp .production-transport output{display:none}
 .cot-studio .production-shots{display:grid;gap:2px;max-height:205px;overflow:auto;scrollbar-width:thin}
 .cot-studio .production-shot{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:32px;padding:0 6px;
@@ -365,6 +368,7 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-tl .lb .cot-i{width:14px;height:14px}
 .st-tl .lb .cot-c-sil{width:28px;height:9px}
 .st-tl .lb .cot-c-flag{width:14px;height:10.5px}
+.st-tl .lb .nm{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .st-tl .tk{position:relative;min-width:0;overflow:hidden;border-bottom:1px solid var(--line-1);border-left:1px solid var(--line-1);cursor:crosshair}
 .st-tl .tk--ruler{display:flex;align-items:center;padding:0 2px}
 .st-tl .scrub{width:100%}
@@ -372,6 +376,8 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
   border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-3);color:var(--ink-1);font:500 var(--fs-11)/1 var(--font-body);
   white-space:nowrap;cursor:pointer}
 .st-tl .clip .th{flex:none;width:56px;height:100%;margin-left:-6px;object-fit:cover}
+.st-tl .clip .cl{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.st-tl .clip .ck{position:absolute;top:3px;bottom:3px;width:1px;background:var(--line-3);pointer-events:none}
 .st-tl .clip[aria-pressed=true]{box-shadow:var(--ring-accent)}
 .st-tl .clip--fx{background:var(--studio-clip-fx)}
 .st-tl .key{position:absolute;top:50%;width:8px;height:8px;padding:0;border:0;background:var(--ink-1);transform:translate(-50%,-50%) rotate(45deg);
