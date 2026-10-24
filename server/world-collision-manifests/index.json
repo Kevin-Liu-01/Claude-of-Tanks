@@ -61,8 +61,8 @@
       "concealers": 1904
     },
     "frontier": {
-      "bytes": 2218681,
-      "sha256": "982f6ec3b2629f9c79e50d96d288f54380217a39b3fda28a084229470fae5469",
+      "bytes": 2218978,
+      "sha256": "9ccdb37bc9d410decedf12b45680ff4f1b1f08b31e51c06c6f93292e66de7282",
       "obstacles": 8357,
       "colliders": 9047,
       "concealers": 8325
@@ -295,8 +295,8 @@
         "concealers": 1904
       },
       "frontier": {
-        "bytes": 2269930,
-        "sha256": "b60bf020f038e75b03200574f85b2928eff1e55532d46511246e0e29411e34a3",
+        "bytes": 2270227,
+        "sha256": "5dc59c8346921e8d7888dbeafdf1afaf96117b548c5202a88b267f1b777fa1e2",
         "obstacles": 8238,
         "colliders": 8830,
         "concealers": 7990
