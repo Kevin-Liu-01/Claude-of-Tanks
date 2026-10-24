@@ -53,6 +53,8 @@ export interface IsolatedForwardWarmOptions {
   root: Object3D;
   warmRender: () => void;
   cohortSize?: number;
+  /** Cascade lights whose maps a private render must not refresh (a warm between live frames: mode-sheen-perf-243). */
+  shadowLights?: readonly ShadowLight[] | null;
   now?: () => number;
 }
 
@@ -218,8 +220,10 @@ export function* createIsolatedForwardWarmBatches({
   root,
   warmRender,
   cohortSize = 4,
+  shadowLights = null,
   now = () => performance.now(),
 }: IsolatedForwardWarmOptions): Generator<DeploymentForwardWarmBatch> {
+  const render = shadowLights?.length ? () => renderWithoutShadowUpdates(shadowLights, warmRender) : warmRender;
   const lightRoots = sceneLightRoots(scene);
   const rootWasVisible = root.visible;
   let renderables: RenderableObject[];
@@ -241,7 +245,7 @@ export function* createIsolatedForwardWarmBatches({
     const startedAt = now();
     root.visible = true;
     try {
-      renderSelectedCohort(root, cohort, warmRender);
+      renderSelectedCohort(root, cohort, render);
     } finally {
       root.visible = rootWasVisible;
       for (const child of hiddenRoots) child.visible = true;

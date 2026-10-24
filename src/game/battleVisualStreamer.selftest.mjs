@@ -11,6 +11,7 @@ const timings = [];
 const yieldFlags = [];
 const initializedTextures = [];
 const compiled = [];
+const drawn = [];
 const registered = [];
 const primed = [];
 let restored = 0;
@@ -55,6 +56,12 @@ const streamer = createBattleVisualStreamer({
     warm() { return () => { restored += 1; }; },
   },
   forwardProgramWarm: { compile(root) { compiled.push(root); } },
+  // (mode-sheen-perf-243) one real private draw after the compile, with the root attached
+  warmDraw(root) {
+    assert.ok(compiled.includes(root), 'the warm draw follows the staged compile');
+    assert.ok(root.parent === scene, 'and draws the scene-attached root');
+    drawn.push(root);
+  },
   onVisualReady(entity) {
     assert.ok(entity.visual.root.parent === scene,
       'late emitter registration sees the staged scene-attached visual');
@@ -77,6 +84,7 @@ assert.deepEqual(builderRequests, [['alpha', 'bravo']],
   'all exact builders resolve concurrently before procedural construction');
 assert.deepEqual(primed, ['alpha', 'bravo']);
 assert.equal(compiled.length, 2);
+assert.deepEqual(drawn, compiled, 'every staged compile takes its real warm draw (a hidden enemy\'s first sight pays none)');
 assert.deepEqual(registered, ['alpha', 'bravo']);
 assert.equal(restored, 2);
 assert.equal(initializedTextures.length, 2);
@@ -100,6 +108,7 @@ createVisual(player);
 const early = await streamer.stageBattleVisualReveal(player, async () => {}, false,
   { compilePrograms: false });
 assert.equal(compiled.length, 2, 'explicit covered deferral submits no early player program');
+assert.equal(drawn.length, 2, 'nor draws it early');
 assert.equal(early.compileMs, 0, 'a deferred compile is not reported as performed');
 assert.equal(initializedTextures.length, 3, 'deferral preserves the exact player texture upload');
 assert.deepEqual(registered, ['alpha', 'bravo', 'early-player']);
