@@ -682390,12 +682390,12 @@
             "name": "turretRing",
             "min": [
               -0.92,
-              1.6047,
+              1.5187,
               -1.4915
             ],
             "max": [
               0.92,
-              1.8273,
+              1.7413,
               0.3915
             ],
             "turretLocal": false
@@ -682783,8 +682783,8 @@
           }
         ]
       },
-      "geometryHash": "a8f74e56",
-      "metadataHash": "69859ab7",
+      "geometryHash": "ab8415a0",
+      "metadataHash": "893a45f2",
       "presentationAnchor": {
         "xM": 0,
         "zM": -0.6398
@@ -682810,7 +682810,7 @@
           "trackPadSimplified": 1,
           "armorPaint": 9,
           "tireRubber": 1,
-          "gunmetal": 11,
+          "gunmetal": 12,
           "opticGlass": 2,
           "canvas": 2,
           "fittingPaint": 2,
@@ -682845,15 +682845,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32746,
-          "sha256": "73ec21f91937630a833a864ea9e5059b41556e6e50465c6155d81062beddb4a2",
+          "bytes": 32510,
+          "sha256": "8e93ca366cecce5d3cf1878d9bee812e06d472e0091eb20fa2f78448f0d78836",
           "thumbnail": {
             "file": "thumbs/merkava2b_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 12792,
-            "sha256": "a24e93fae487004a07ccacb926cafa16a5b3b1bba22b26ea217f781942fbfa3b"
+            "bytes": 12852,
+            "sha256": "7550a2e20098a10c4735531c3ffb7eb9b6fd9001b34570edc98864ffd2572045"
           }
         },
         "top": {
@@ -682861,16 +682861,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 18160,
-          "sha256": "bd6ec8aba04153a0a25fad668df22622fa908761a878f0c6c524965d79a649a9"
+          "bytes": 18144,
+          "sha256": "776e39287cfd547d514a755cc14432f33fbd2446b68cc8186663c8ebc6646ed7"
         },
         "side": {
           "file": "merkava2b_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 17322,
-          "sha256": "73c3f44eb7d8f420322d74f7add9d8ccc40e07999d14b1726a8344ef6bc9f5fd"
+          "bytes": 17202,
+          "sha256": "62ca643be2af65a7d7bcb386e885ca22dee8921b22eb3fced08ba78c90a13fb5"
         },
         "topSilhouette": {
           "file": "merkava2b_top_silhouette.png",
@@ -682885,32 +682885,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5756,
-          "sha256": "19b70c590a39dd8cbf262ddbb4af726a0f1ae207634df523fa20d56be3241639"
+          "bytes": 5758,
+          "sha256": "a6cbe13e7f8a38289fb17ba55420e2fa60c381a10514595e6de9b394d95b138a"
         },
         "armorSide": {
           "file": "merkava2b_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 106315,
-          "sha256": "b25d1021cc5b63330e1415304f6c81a084b7e9c8f05f71ee77fe661ef42a16c9"
+          "bytes": 110837,
+          "sha256": "bf20bfdc3aa76567bd7542d6442295c149d55e0b30cbac60d877cb6a05966cf7"
         },
         "modulesSide": {
           "file": "merkava2b_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 116290,
-          "sha256": "717420e425a659442faee3ff8dc4fe0809db2df65f32e7ee6a63c3b034a11839"
+          "bytes": 117151,
+          "sha256": "365b00ef408768e16dc19b63baa6660e5d7f58f299ec17b8e6d259b8417d5304"
         },
         "crewSide": {
           "file": "merkava2b_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 107757,
-          "sha256": "d28b3bfc78364526c8c05da887e4913dd36b728ca36a3c8d963cfc8230bb3388"
+          "bytes": 107104,
+          "sha256": "ac9921f59939de1e24fac7a6146cc14da4158912cd863d5de4342a9bf988e196"
         },
         "markings": {
           "file": "merkava2b_markings.png",
