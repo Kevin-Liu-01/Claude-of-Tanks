@@ -229,9 +229,9 @@ function globallyUnambiguousShell(event: HitEventPresentation): PresentationShel
 
 /**
  * Convert a simulation zone id (an armour plate's name, a module, a seam: 'hull_side_L', 'upper_glacis', 'ammoRack') into
- * its player-facing label, word by word through the catalog's zone.part.* (a word without one stays as it is), a
- * trailing L / R as the side (zone.side.*), joined by the locale's separator: "hull side L" in English, 车体侧面（左）
- * in Chinese.
+ * its player-facing label, word by word through the catalog's zone.part (an ICU select over the words; English
+ * prints each word as it is, and a word without a branch stays as it is), joined pair by pair (zone.join) and a
+ * trailing L / R set as the side (zone.side): "hull side L" in English, 车体侧面（左） in Chinese.
  */
 export function zoneLabel(zone: string | null | undefined): string {
   if (!zone) return '—';
@@ -241,12 +241,10 @@ export function zoneLabel(zone: string | null | undefined): string {
   const parts = words.map((word) => {
     // a plate's number stays with its word ('side38', 'era_tile_3')
     const [, base, digits] = /^([a-z]+)(\d*)$/.exec(word) ?? [word, word, ''];
-    const key = `zone.part.${base}`;
-    const text = t(key);
-    return `${text === key ? base : text}${digits}`;
+    return `${t('zone.part', { part: base })}${digits}`;
   });
-  if (side) parts.push(t(`zone.side.${side}`));
-  return parts.join(t('zone.separator'));
+  const label = parts.length ? parts.reduce((a, b) => t('zone.join', { a, b })) : '';
+  return side ? t('zone.side', { label, side }) : label;
 }
 
 /** Remove a shell-type token already displayed by the surrounding panel. */
