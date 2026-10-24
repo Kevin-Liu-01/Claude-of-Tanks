@@ -51,8 +51,6 @@ export function createCustomCamoStudio({
 
   const modal = createModal({
     title: t('customCamo.title'),
-    eyebrow: t('customCamo.eyebrow'),
-    subtitle: t('customCamo.subtitle'),
     size: 'wide',
     onOpen: () => button.setAttribute('aria-expanded', 'true'),
     onClose: () => button.setAttribute('aria-expanded', 'false'),

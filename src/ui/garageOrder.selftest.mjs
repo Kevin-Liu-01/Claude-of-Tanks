@@ -359,7 +359,7 @@ assert.match(garageSource,
   /card\.scrollIntoView\(\{ block: 'nearest', inline: 'center', behavior: 'auto' \}\);/,
   'vehicle selection reveals distant cards immediately instead of sweeping across the carousel');
 assert.match(garageSource,
-  /\.cot-cards\{[^}]*padding:8px 8px 0;[^}]*scroll-padding-inline:8px;/,
+  /\.cot-cards\{[^}]*padding:var\(--s2\) var\(--s2\) 0;[^}]*scroll-padding-inline:8px;/,
   'vehicle rails keep selected end cards inset from their clipping edges');
 assert.doesNotMatch(garageSource, /\.cot-dossier-head\{[^}]*border-top:/,
   'the vehicle dossier header uses one consistent neutral border');

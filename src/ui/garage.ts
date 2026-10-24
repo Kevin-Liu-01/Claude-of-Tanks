@@ -409,7 +409,7 @@ function equipmentPickerTiles(
   const emptyTile =
     `<button type="button" class="cot-eqtile remove" data-eq="" data-eq-id="" ` +
     `aria-label="${emptyLabel}">` +
-    `${uiIconSVG('close', 34, 'rgba(238,244,250,.86)')}` +
+    `${uiIconSVG('close', 34)}` +
     `<span class="n">${t('garage.equipment.empty.name')}</span>` +
     `<span class="e">${t('garage.equipment.empty.desc')}</span></button>`;
   const itemTiles = EQUIPMENT_CATALOG
@@ -1416,8 +1416,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   let technicalExpandTrigger: HTMLButtonElement | null = null;
   const technicalModal = createModal({
     title: t('garage.dossier.vehicleDossier'),
-    eyebrow: t('garage.dossier.dossier.title'),
-    subtitle: t('garage.dossier.technicalSubtitle'),
     size: 'wide',
     className: 'cot-technical-viewer',
     closeLabel: t('garage.dossier.closeTechnical'),
@@ -2663,9 +2661,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   facetToggle.title = t('fleet.filter.toggleAria');
   // Icon only (blind critic 2026-10-21: a text chip cost the flag rail a quarter of a phone's width); the name rides in
   // aria-label and title, and the badge counts the active filters.
-  facetToggle.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M2 3h12l-4.6 5.4V13' +
-    'l-2.8 1.2V8.4z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>' +
-    '<span class="ct num" hidden></span>';
+  facetToggle.innerHTML = `${uiIconSVG('filter', 16)}<span class="ct num" hidden></span>`;
   countryRailEl.insertBefore(facetToggle, chipsEl);
   const rosterSearch = document.createElement('label');
   rosterSearch.className = 'cot-roster-search';
