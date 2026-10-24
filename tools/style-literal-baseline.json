@@ -62,6 +62,7 @@
     "src/ui/touchControls.ts": {"colour":108,"fontSize":18,"letterSpacing":5,"zIndex":15,"shadow":21,"duration":14,"important":12},
     "src/ui/transition.ts": {"colour":20,"fontSize":5,"letterSpacing":4,"zIndex":1,"shadow":4,"duration":2,"important":1},
     "src/ui/typeFaces.ts": {"colour":2,"fontSize":0,"letterSpacing":0,"zIndex":0,"shadow":0,"duration":0,"important":1},
-    "src/ui/vehicleStatus.ts": {"colour":14,"fontSize":2,"letterSpacing":0,"zIndex":2,"shadow":3,"duration":0,"important":1}
+    "src/ui/vehicleStatus.ts": {"colour":14,"fontSize":2,"letterSpacing":0,"zIndex":2,"shadow":3,"duration":0,"important":1},
+    "src/ui/watchHud.ts": {"colour":0,"fontSize":0,"letterSpacing":0,"zIndex":0,"shadow":0,"duration":0,"important":3}
   }
 }

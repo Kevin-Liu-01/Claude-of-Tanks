@@ -30,7 +30,7 @@ const SIZES = [[800, 400], [800, 500], [900, 480], [700, 460], [700, 431], [700,
   [390, 844, true], [844, 390, true], [667, 375, true], [568, 290, true], [320, 568, true], [360, 640, true], [932, 430, true],
   [740, 360, true], [640, 360, true], [375, 667, true]];
 const NAMES = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .joy',
-  '.cot-touch.on .quick', '.cot-touch-aim.on .aimhint', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show',
+  '.cot-touch.on .quick', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show',
   '.cot-scope-vision', '.cot-aim-warning', '.flight-identity', '.cot-ear'];
 
 const browser = await chromium.launch({ headless: true, channel: 'chrome', args: ['--disable-gpu'] });

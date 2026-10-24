@@ -55,6 +55,7 @@ import type { PolyMultiLoftRing } from '../factoryGeometry.ts';
 import type { RuntimeValue } from '../../runtimeTypes.ts';
 import { mount as wrapMount } from './fittingMount.ts';
 import { beamBetween } from './measuredPrimitives.ts';
+import { sectionSolid } from './sectionSolid.ts';
 
 type Vec2Tuple = readonly [number, number];
 type Vec3Tuple = readonly [number, number, number];
@@ -13654,10 +13655,10 @@ function buildLeo2A6M(P: TankBuilderPort, { fieldEra = true } = {}) {
     }
     // ---- German fender grammar: bins, width rods, Bosch horn, pioneer kit.
     for (const s of [-1, 1] as const) {
-      for (const [bz, bl] of [[1.05, 1.10], [-1.65, 1.05]]) {                 // (release 240: the rear pair starts 20 cm aft, outside the nose's sweep)
-        // (release 240: the rear pair's lids 1.5 cm lower, under the aft walls' 1.845 as the turret turns over them; the
-        // front pair, inside the sweep of the cheeks' lower edge (1.74), are low lockers under it)
-        const binH = bz > 0 ? 0.05 : 0.145;
+      for (const [bz, bl] of [[1.05, 1.10], [-1.725, 0.90]]) {                // (release 240: the rear pair starts 35 cm aft, outside the nose's sweep)
+        // (release 240: the rear pair's lids 3.5 cm lower, under the aft walls' 1.845 and the nose as the turret turns over
+        // them; the front pair, inside the sweep of the cheeks' lower edge (1.74), are low lockers under it)
+        const binH = bz > 0 ? 0.03 : 0.125;
         P.add('hullDetail', box(0.27, binH, bl), s * 1.50, 1.67 + binH / 2, bz);  // sponson bins
         P.add('hullDetail', box(0.29, 0.024, bl + 0.02), s * 1.50, 1.67 + binH + 0.008, bz); // lid lip
         const latchH = Math.min(0.05, binH * 0.6), latchY = bz > 0 ? 1.67 + binH * 0.5 : 1.74;
@@ -14167,7 +14168,8 @@ function addLeopardUaEraProtection(
       }
     }, true);
 
-    P.add('turret', box(0.10, 0.70, 4.18), side * 1.53, 0.40, -0.79);
+    // (release 240: the backing plate's foot 3 cm higher, over the engine deck's fan rings as the turret turns over them)
+    P.add('turret', box(0.10, 0.67, 4.18), side * 1.53, 0.415, -0.79);
     const sideSector = `ua_turret_side_era_${side > 0 ? 'R' : 'L'}`;
     P.eraCluster(sideSector, (place) => {
       for (let row = 0; row < 3; row++) {
@@ -14217,11 +14219,14 @@ function addLeopardUaHullCage(P: TankBuilderPort): void {
       P.add('hullDark', cylX(0.018, 0.23, 8), side * 2.105, 1.43, z);
     }
   }
-  for (let row = 0; row < 6; row++) {
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the rear frame stands four rails high (top
+  // 1.83, was 2.06), under the turret's flank cages, whose aft ends sweep 3.8 m off the ring's axis at 1.865 and ran
+  // through its upper rails with the turret turned a few degrees.
+  for (let row = 0; row < 4; row++) {
     P.add('hullDetail', box(4.42, 0.026, 0.026), 0, 1.46 + row * 0.12, -3.30);
   }
   for (let station = 0; station < 9; station++) {
-    P.add('hullDetail', box(0.028, 0.56, 0.028), -2.18 + station * 0.545, 1.75, -3.30);
+    P.add('hullDetail', box(0.028, 0.38, 0.028), -2.18 + station * 0.545, 1.64, -3.30);
   }
   for (const side of [-1, 1] as const) {
     P.add('hullDark', box(0.56, 0.035, 0.20), side * 1.94, 1.46, -3.29);
@@ -14269,11 +14274,12 @@ function addLeopardUaTurretCage(P: TankBuilderPort): void {
       }
     }
   }
+  // (release 240: the bottom rail 4.5 cm higher, over the hull's tail plate as the turret turns over it; the top rail stays)
   for (let row = 0; row < 6; row++) {
-    P.add('turretDetail', box(3.66, 0.026, 0.026), 0, 0.08 + row * 0.15, -3.58);
+    P.add('turretDetail', box(3.66, 0.026, 0.026), 0, 0.125 + row * 0.141, -3.58);
   }
   for (let station = 0; station < 9; station++) {
-    P.add('turretDetail', box(0.028, 0.78, 0.028), -1.80 + station * 0.45, 0.455, -3.58);
+    P.add('turretDetail', box(0.028, 0.735, 0.028), -1.80 + station * 0.45, 0.4775, -3.58);
   }
 }
 
@@ -14740,12 +14746,14 @@ function buildLeo2A4M(P: TankBuilderPort) {
     }
     // ---- German fender grammar + pioneer kit
     for (const s of [-1, 1] as const) {
-      // (release 240: 4 cm outboard, clear of the turret's front lower body as it turns over them)
+      // (release 240: 4 cm outboard, clear of the turret's front lower body as it turns over them; the front pair, inside
+      // the sweep of the front body's 1.715 floor, are low lockers under it, the rear pair stays under the bustle's floor)
       for (const [bz, bl] of [[0.95, 1.15], [-1.60, 1.25]]) {
-        P.add('hullDetail', box(0.27, 0.16, bl), s * 1.54, 1.75, bz);
-        P.add('hullDetail', box(0.29, 0.024, bl + 0.02), s * 1.54, 1.838, bz);
-        P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.672, 1.74, bz + bl * 0.28);
-        P.add('hullDark', box(0.012, 0.05, 0.08), s * 1.672, 1.74, bz - bl * 0.28);
+        const binH = bz > 0 ? 0.02 : 0.16, lidH = bz > 0 ? 0.016 : 0.024, latchH = bz > 0 ? 0.012 : 0.05;
+        P.add('hullDetail', box(0.27, binH, bl), s * 1.54, 1.67 + binH / 2, bz);
+        P.add('hullDetail', box(0.29, lidH, bl + 0.02), s * 1.54, 1.67 + binH + 0.008, bz);
+        P.add('hullDark', box(0.012, latchH, 0.08), s * 1.672, 1.67 + binH * 0.4375, bz + bl * 0.28);
+        P.add('hullDark', box(0.012, latchH, 0.08), s * 1.672, 1.67 + binH * 0.4375, bz - bl * 0.28);
       }
       // 2026-10-19 (owner float sweep): the width rods stood 336 mm over the fore skirt rail (top 1.3345); seated on it
       // (the 2A6M seat class).
@@ -14842,19 +14850,32 @@ function buildLeo2A4M(P: TankBuilderPort) {
     [-0.92, 1.20], [0.92, 1.20], [1.24, 0.78], [1.20, -0.82], [1.13, -1.80],
     [1.04, -2.30], [-1.04, -2.30], [-1.13, -1.80], [-1.20, -0.82], [-1.24, 0.78],
   ];
-  // Full-plan lower armor pan: the restored A4M side package exposes the
-  // original narrow bearing from low quarters. This pan follows the welded
-  // shell footprint and overlaps the deck, closing the see-through slot
-  // without turning the hull skirts or cage into turret geometry.
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the shell stood on one flat floor 1.5 cm over
+  // the ring's deck out to the bustle's end, 2.5 m off the ring's axis, so the bustle ran through the rear bins, the engine
+  // deck and its fans as the turret turned (and sat in the deck at rest). The bustle's floor rides at 0.18, over all of
+  // them; a solid under the front body (the plan's fore part, to its -0.82 corners) keeps the low front line and ramps up
+  // to the bustle's floor by -1.25, so the turret's edge is at the bustle's floor from 1.71 m off the axis.
+  const A4_FRONT_PLAN = [[-0.92, 1.20], [0.92, 1.20], [1.24, 0.78], [1.20, -0.82], [-1.20, -0.82], [-1.24, 0.78]];
+  const A4_BUSTLE_FLOOR = 0.18;
+  const a4FrontBody = (z: number, halfW: number, floor: number) => ({
+    z, ring: [[-halfW, floor], [halfW, floor], [halfW, A4_BUSTLE_FLOOR], [-halfW, A4_BUSTLE_FLOOR]] as [number, number][],
+  });
+  // Lower armor pan under the front body: the restored A4M side package exposes the original narrow bearing from low
+  // quarters. This pan follows the welded shell footprint and overlaps the deck, closing the see-through slot without
+  // turning the hull skirts or cage into turret geometry.
   const buildLeo2A4MTurretStage1 = (): void => {
-    P.add('turret', polyMultiLoft(A4_PLAN, [
+    P.add('turret', polyMultiLoft(A4_FRONT_PLAN, [
       { height: -0.08, inset: 0.90 },
       { height: 0.04, inset: 1.00 },
     ]));
     P.add('turret', polyMultiLoft(A4_PLAN, [
-      { height: 0.015, inset: 1.00 },
+      { height: A4_BUSTLE_FLOOR, inset: 1.00 },
       { height: 0.40, inset: 0.995 },
       { height: 0.68, inset: 0.91 },
+    ]));
+    P.add('turret', sectionSolid([
+      a4FrontBody(-1.25, 1.1693, A4_BUSTLE_FLOOR - 0.005), a4FrontBody(-0.82, 1.20, 0.015),
+      a4FrontBody(0.78, 1.24, 0.015), a4FrontBody(1.20, 0.92, 0.015),
     ]));
     // Buried lower cheek apron: closes the rising hull-roof junction without
     // reintroducing a full-height rectangular belt.
@@ -14988,8 +15009,9 @@ function buildLeo2A4M(P: TankBuilderPort) {
     }
     // full-width slatted bustle rack + strapped kit (the A4's rear basket).
     {
-      // (release 240: the bottom rail stood 5 cm into the engine deck's plates at rest; it rides 9 cm higher, over them)
-      const rackZ = -2.70, rackT = 0.60, rackB = 0.15;
+      // (release 240: the bottom rail stood 5 cm into the engine deck's plates at rest; it rides 14 cm higher, over them
+      // and the rear bins, and the kit in it 5 cm higher)
+      const rackZ = -2.70, rackT = 0.60, rackB = 0.20;
       P.add('turretDetail', box(2.30, 0.045, 0.045), 0, rackT, rackZ);
       P.add('turretDetail', box(2.30, 0.045, 0.045), 0, (rackT + rackB) / 2, rackZ); // mid rail
       P.add('turretDetail', box(2.30, 0.045, 0.045), 0, rackB, rackZ);
@@ -15010,12 +15032,12 @@ function buildLeo2A4M(P: TankBuilderPort) {
         P.add('turretDark', box(0.026, rackT - rackB - 0.14, 0.014), -1.05 + k * 0.21, (rackT + rackB) / 2, -2.725);
       }
       stowage(P, 'turretCloth', P.rng, [
-        [-0.62, 0.32, -2.55, 0.68, 0.38, 0.30], [0.12, 0.30, -2.57, 0.58, 0.34, 0.28],
-        [0.80, 0.31, -2.55, 0.46, 0.36, 0.26],
+        [-0.62, 0.37, -2.55, 0.68, 0.38, 0.30], [0.12, 0.35, -2.57, 0.58, 0.34, 0.28],
+        [0.80, 0.36, -2.55, 0.46, 0.36, 0.26],
       ]);
-      jerryCan(P, 'turretCloth', -1.02, 0.30, -2.56, 0.15);
-      tarpRoll(P, 'turretCloth', 0.42, 0.50, -2.52, 0.95, 0.085, true, P.q ? 12 : 8);
-      ammoCan(P, 'turretDark', 1.05, 0.27, -2.57, 0.2);
+      jerryCan(P, 'turretCloth', -1.02, 0.43, -2.56, 0.15);                   // (release 240: its foot on the bottom rail)
+      tarpRoll(P, 'turretCloth', 0.42, 0.55, -2.52, 0.95, 0.085, true, P.q ? 12 : 8);
+      ammoCan(P, 'turretDark', 1.05, 0.32, -2.57, 0.2);
       // 2026-10-21 (watertight-230): the two links lie flat on the rear roof (seated as authored: support 100 %, gap
       // 0.2 cm). Laid on the basket's soft stowage they failed their seat (host:soft) and rode a four-post rack 17 cm
       // over the roof, whose enclosed air the interior fills filled as stair-stepped dark filler.

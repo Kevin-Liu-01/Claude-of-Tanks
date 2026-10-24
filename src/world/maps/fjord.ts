@@ -345,4 +345,9 @@ export default {
   // round 66 (2026-09-24, the FFT ocean): a sheltered fjord — a light air down the arms, a faint swell from the mouth;
   // the owner's approved look is kept (amplitude 0.45: centimetres, read as the same water from the chase camera)
   ocean: { windSpeed: 3.2, windDirDeg: 250, fetchKm: 6, swell: 0.1, amplitude: 0.45, choppiness: 0.7, foam: 0.15, breakers: 0.3, caustics: 0.4 },
+  // the horizons stream (horizons-240, 2026-10-23): the Hinterland past the red line (hinterland/drafts/fjord.ts) —
+  // Herjangsfjord and the Narvik peaks over Bjerkvik, May 1940; its blind pair against the old ring won 8/1 (mean 4.7 -> 5.8,
+  // driver, gunner and chase under day, sunset and night); the battlefield's ground carried past the edge (groundDetail.ts);
+  // `?hinterland=0` draws the old ring
+  hinterland: true,
 } satisfies import('./contracts.ts').MapCompositionConfig;

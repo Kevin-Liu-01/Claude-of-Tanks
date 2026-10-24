@@ -13,6 +13,8 @@ export interface SoloBattleStartOptions {
   randomRoster?: boolean;
   gameMode?: string;
   campaignOperationId?: string | null;
+  /** Watch mode (sim/matchRuleset.ts WATCH_RULES): every seat a bot's. */
+  watch?: boolean;
 }
 
 interface SoloBattlePlayer {
@@ -85,6 +87,7 @@ export interface SoloBattleStartRuntimeOptions {
         deferOpeningRoutes: boolean;
         gameMode?: string;
         campaignOperationId?: string | null;
+        watch?: boolean;
       },
     ): void;
     combatWarm: { reset(): void; drain(): RuntimeValue };
@@ -166,6 +169,7 @@ export function createSoloBattleStartRuntime({
       randomRoster = true,
       gameMode = 'standard',
       campaignOperationId = null,
+      watch = false,
     } = {}) {
       if (!specId) throw new TypeError('solo battle start requires a vehicle specification');
 
@@ -210,6 +214,7 @@ export function createSoloBattleStartRuntime({
         deferOpeningRoutes: deferVisuals,
         ...(gameMode === 'standard' ? {} : { gameMode }),
         ...(campaignOperationId ? { campaignOperationId } : {}),
+        ...(watch ? { watch } : {}),
       });
       round.combatWarm.reset();
       mark('setupRoster');

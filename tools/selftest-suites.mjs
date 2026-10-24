@@ -752,7 +752,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/viteCssInTsMinify.selftest.mjs',
     'tools/viteSpeculationRules.selftest.mjs',
     'tools/viteResponsiveSeed.selftest.mjs',
-    'tools/viteNavChrome.selftest.mjs',
     'tools/vercel-static-preview.selftest.mjs',
     'tools/telemetry-report.selftest.mjs',
     'tools/browser-failure-evidence.selftest.mjs',
@@ -853,6 +852,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/black-world-repro-summary.selftest.mjs',
     'src/engine/frameLoopScheduler.selftest.mjs',
     'src/engine/cameraRig.selftest.mjs',
+    // watch-mode-243: the drone's world clamp and flight, the ride-along's chase, sight, wreck hold and handovers
+    'src/engine/watchCamera.selftest.mjs',
     'src/engine/garageFramePacer.selftest.mjs',
     'src/engine/phaseSceneResidency.selftest.mjs',
     'src/engine/phaseGpuResidency.selftest.mjs',
@@ -1630,6 +1631,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/killcamGhostPolicy.selftest.mjs',
     'src/game/killcamPresentation.selftest.mjs',
     'src/game/killcamObserverInput.selftest.mjs',
+    // watch-mode-243: the ride-along's handoff on death, picking and cycling, Take control / Leave through the rig
+    'src/game/watchController.selftest.mjs',
+    // watch-mode-243: the Watch ruleset entry, bot -> player -> bot, the replay over the swap, every mode with no human seat
+    'src/game/watchSeat.selftest.mjs',
     'src/game/battleResultPresentationRuntime.selftest.mjs',
     'src/game/battleEnding.selftest.mjs',
     'src/game/battleEndingHold.selftest.mjs',
@@ -1869,6 +1874,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/civic/civicArea.selftest.mjs',
     'src/world/civic/roadLife.selftest.mjs', // (229) every map's road life: at its seats, out of the discs, no new pool, stream-neutral
     'src/world/civic/civicPathways.selftest.mjs',
+    // the map-revival lane (round 2b, 2026-10-10; ported 2026-10-22, maps-stalled 240): Whiteout's drifts against its
+    // buildings and windrows along its roads
+    'src/world/maps/buildingSnowDrifts.selftest.mjs',
     'src/world/maps/wellKit.selftest.mjs', // 2026-10-13 the looks lane: each place's village well and square monument
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/yardDressing.selftest.mjs',

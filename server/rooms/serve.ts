@@ -25,6 +25,8 @@ interface RoomsServerOptions {
   countdownS?: number;
   battleLimitS?: number;
   maxActors?: number;
+  /** Most rooms the room service holds at once (`LocalRoomServiceOptions.maxRooms`). */
+  maxRooms?: number;
   guards?: Partial<RoomPolicyGuards>;
   log?: Logger;
   wallClock?: () => number;
@@ -53,6 +55,7 @@ export async function createRoomsServer({
   countdownS,
   battleLimitS,
   maxActors = 64,
+  maxRooms,
   guards,
   log = silentLogger,
   wallClock,
@@ -63,7 +66,7 @@ export async function createRoomsServer({
   const matchService = await createMatchService({ server, host, port, allowedOrigins, seatSecret, controlSecret, maxActors, log, wallClock });
   const roomService = createLocalRoomService({
     matchService, seatSecret, allowedOrigins, matchUrl: '/match', world, matchTransport, countdownS, battleLimitS, guards, log, wallClock, random,
-    ...(relayCredentials ? { relayCredentials } : {}),
+    ...(relayCredentials ? { relayCredentials } : {}), ...(maxRooms !== undefined ? { maxRooms } : {}),
   });
   server.on('request', (request, response) => {
     if (matchService.handleRequest(request, response) || roomService.handleRequest(request, response)) return;
