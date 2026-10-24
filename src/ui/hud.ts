@@ -2247,7 +2247,7 @@ export function initHud(bus: EventBus): HudRuntime {
   gearBtn.type = 'button';
   gearBtn.dataset.uiSound = 'press';
   gearBtn.setAttribute('aria-label', t('touch.settingsAria'));
-  gearBtn.title = t('touch.settingsAria');
+  gearBtn.dataset.tip = ''; // the kit's hover tip shows its name (the key cap is its only text)
   gearBtn.innerHTML = `${uiIconSVG('settings', 18)}<kbd class="cot-c-kbd" aria-hidden="true">Esc</kbd>`;
   const gearKey = requireElement<HTMLElement>(gearBtn, '.cot-c-kbd');
   // the same opening as the settings key (settingsAccess.ts: ui:openSettings)
@@ -2471,8 +2471,8 @@ export function initHud(bus: EventBus): HudRuntime {
     specVeh.textContent = `${tier}${p.vehicle || t('hud.spec.unknownVehicle')}`;
     specIndex.textContent = card.position;
     specIndex.hidden = !card.position;
-    specNick.title = specNick.textContent || '';
-    specVeh.title = specVeh.textContent || '';
+    specNick.dataset.tip = specNick.textContent || '';
+    specVeh.dataset.tip = specVeh.textContent || '';
     for (const button of specBar.querySelectorAll<HTMLButtonElement>('.cycle')) button.disabled = (p.count ?? 0) < 2;
     specPortrait.src = card.icon;
     specPortrait.hidden = !card.icon;
@@ -2643,7 +2643,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const jumpLabel = requireElement<HTMLElement>(jumpHint, '.sl');
   jumpLabel.textContent=t('hud.jump');
   jumpHint.setAttribute('aria-label', t('hud.jump'));
-  jumpHint.title = t('hud.jump'); // (its name reads as its glyph at the 11 px floor: the word on hover)
+  jumpHint.dataset.tip = t('hud.jump'); // (its name reads as its glyph at the 11 px floor: the word in the hover tip)
   const jumpKey = requireElement<HTMLElement>(jumpHint, '.sk');
   const specialIcon = requireElement<HTMLElement>(specialButton, '.si');
   const specialLabel = requireElement<HTMLElement>(specialButton, '.sl');
@@ -2654,7 +2654,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const droneButton = el('button', 'cot-auxiliary cot-drone-control', controlsRow); droneButton.type = 'button'; droneButton.hidden = true;
   droneButton.innerHTML = `<span class="si">${uiIconSVG('modeDrone',18)}</span><span class="sl"></span><span class="sk">V</span>`;
   droneButton.setAttribute('aria-label', t('systems.drone.help'));
-  droneButton.title = t('systems.drone.help');
+  droneButton.dataset.tip = t('systems.drone.help');
   bindControl(droneButton, () => { if (!droneButton.disabled) bus.emit('ui:drone', {}); });
   // The drone altimeter reads the same terrain height field as the spotting line-of-sight tests (set on map load).
   const aerialHud = createAerialHud(root,bus,() => heightFieldRef);
@@ -2756,7 +2756,7 @@ export function initHud(bus: EventBus): HudRuntime {
       specialIcon.innerHTML = icon ? uiIconSVG(icon, 22, 'currentColor') : '';
       specialLabel.textContent = descriptor.shortLabel;
       specialLabel.dataset.short = descriptor.shortLabel;
-      specialButton.title = descriptor.label;
+      specialButton.dataset.tip = descriptor.label ?? '';
       specialButton.setAttribute('aria-label', descriptor.label || t('hud.special.unavailable'));
       specialButton.classList.toggle('show', specialKind !== SPECIAL_ACTION_KINDS.NONE);
       specialButton.hidden = specialKind === SPECIAL_ACTION_KINDS.NONE;
@@ -2897,7 +2897,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const c = CONSUMABLES[i];
     const s = el('button', 'cot-con', conBox);
     s.type = 'button';
-    s.title = c.label;
+    s.dataset.tip = c.label;
     s.setAttribute('aria-label', t('hud.consumable.ready', { name: c.label }));
     s.innerHTML = `<div class="key">${c.key}</div>${c.svg}` +
       `<div class="cnt">${c.count != null ? c.count : ''}</div><div class="cool"></div>`;
@@ -3378,11 +3378,11 @@ export function initHud(bus: EventBus): HudRuntime {
     requireElement<HTMLElement>(rootEl, '.tier').textContent = aircraft ? '' : tierNumeral(spec.id) || '–';
     requireElement<HTMLElement>(rootEl, '.nick').textContent = nickFor(tank);
     requireElement<HTMLElement>(rootEl, '.vn').textContent = vehicle;
-    rootEl.title = `${nickFor(tank)} · ${vehicle}`;
+    rootEl.dataset.tip = `${nickFor(tank)} · ${vehicle}`;
     // Jev commander (2026-09-25): a bot under Jev's orders carries a small tag beside its vehicle
     const brainEl = requireElement<HTMLElement>(rootEl, '.brain');
     brainEl.textContent = t('hud.brain.jev');
-    brainEl.title = t('hud.brain.jevTitle');
+    brainEl.dataset.tip = t('hud.brain.jevTitle');
     brainEl.hidden = tank.brain !== 'jev';
     (ally ? allyRoster : enemyRoster).appendChild(rootEl);
     const row = {
@@ -3414,7 +3414,7 @@ export function initHud(bus: EventBus): HudRuntime {
       row.kills.textContent = String(kills);
       row.kills.hidden = kills === 0;
       row.kills.setAttribute('aria-label', t('hud.roster.kills', { count: kills }));
-      row.root.title = `${nickFor(tank)} · ${vehicleName(tank)} · ${t('hud.roster.kills', { count: kills })}`;
+      row.root.dataset.tip = `${nickFor(tank)} · ${vehicleName(tank)} · ${t('hud.roster.kills', { count: kills })}`;
     }
     if (dead !== row.wasDead) {
       row.root.classList.toggle('dead', dead);
@@ -3552,7 +3552,7 @@ export function initHud(bus: EventBus): HudRuntime {
     const modeId = normalizeGameMode(modeState.id);
     modeStatusEl.dataset.mode = modeId;
     const modeName = t(`playMenu.matchMode.${modeId}.label`);
-    modeStatusEl.title = modeName;
+    modeStatusEl.dataset.tip = modeName;
     modeStatusName.textContent = modeName;
     setObjectiveValue(modeStatusValue, copy);
     // a Standard battle has no objective beyond the score: its plate shows only in the corner seat, where it is the
@@ -5286,7 +5286,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (touchWarning) {
       if (touchAimWarningText.textContent !== warning.text) {
         touchAimWarningText.textContent = warning.text;
-        touchAimWarning.title = warning.text;
+        touchAimWarning.dataset.tip = warning.text;
       }
       if (touchAimWarning.dataset.kind !== warning.kind) {
         touchAimWarning.dataset.kind = warning.kind;
@@ -6995,7 +6995,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (source) item.dataset.killSource = source.source;
     if (presentation.relation) item.dataset.relation = presentation.relation;
     else if (ridden && (payload.killerId === ridden || payload.id === ridden)) item.dataset.relation = 'ridden';
-    item.title = [killerVehicle && `${killer} · ${killerVehicle}`, presentation.label, victimVehicle && `${victim} · ${victimVehicle}`,
+    item.dataset.tip = [killerVehicle && `${killer} · ${killerVehicle}`, presentation.label, victimVehicle && `${victim} · ${victimVehicle}`,
       presentation.relationLabel].filter(Boolean).join(' · ');
     // side-profile silhouettes of the actual tanks flank the names (the platform's icon for a gunship's or drone's kill)
     const kSpec = source ? null : payload.killerId ? specIdById.get(payload.killerId) : null;
@@ -7006,7 +7006,7 @@ export function initHud(bus: EventBus): HudRuntime {
     item.innerHTML = `<span class="k"></span>` + flag(kNation) +
       (source ? `<span class="si ksi src" aria-hidden="true">${uiIconSVG(source.icon, 16, 'currentColor')}</span>`
         : kSpec ? `<span class="si ksi"></span>` : '') +
-      `<span class="d" aria-label="${presentation.label}" title="${presentation.label}">${uiIconSVG(presentation.icon, 16)}${presentation.cause === 'ammorack' ? `<b>${presentation.label}</b>` : ''}</span>` +
+      `<span class="d" aria-label="${presentation.label}">${uiIconSVG(presentation.icon, 16)}${presentation.cause === 'ammorack' ? `<b>${presentation.label}</b>` : ''}</span>` +
       (vSpec ? `<span class="si vsi"></span>` : '') + flag(vNation) + `<span class="v"></span>` +
       (presentation.relation ? `<span class="relation" aria-label="${presentation.relationLabel}">${uiIconSVG(presentation.relationIcon, 13)}</span>` : '');
     // both silhouettes take their side's team ink from the lane (.cot-kill-lane.l / .r)
@@ -7220,8 +7220,8 @@ export function initHud(bus: EventBus): HudRuntime {
     // their space an ordinary one, r10f. A no-break space there set narrower than the space before the dot, "EMPTY
     // ·SELECT", and a word joiner after an ordinary space left the break in Chrome, r10g.)
     const parts = text.split(' · ');
-    // (a compact alert reads as its glyph: its words in the live region and on hover)
-    alertEl.title = text;
+    // (a compact alert reads as its glyph: its words in the live region and in the hover tip)
+    alertEl.dataset.tip = text;
     alertCopyEl.replaceChildren(parts[0]);
     for (let i = 1; i < parts.length; i++) {
       const space = parts[i].indexOf(' ');

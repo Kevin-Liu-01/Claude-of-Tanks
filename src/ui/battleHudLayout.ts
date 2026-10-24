@@ -643,6 +643,9 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     // The mouse layout's centre notices are planned off the reticle (mouseNoticePlan.ts); touch keeps its own rules.
     if (document.body.hasAttribute('data-hud-notices') === touch) document.body.toggleAttribute('data-hud-notices', !touch);
+    // On touch the HUD's controls are pressed and held mid-fight: the kit's hover tip (components/hoverTip.ts, a 500 ms
+    // hold) stays off them there, and shows on a free mouse cursor's rest.
+    if (typeof root.toggleAttribute === 'function' && root.hasAttribute('data-tip-off') !== touch) root.toggleAttribute('data-tip-off', touch);
     const map = read('.cot-minimap');
     const score = read('.cot-top');
     const scoreBottom = score?.bottom || 64;
