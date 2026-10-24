@@ -1994,11 +1994,21 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     style.setProperty('--studio-vp-h', `${Math.max(1, Math.round(box.height))}px`);
     window.dispatchEvent(new Event('cot:layoutchange'));
   };
+  // The canvas moves into the cell hidden (data-studio-settling) and shows once the grid has settled, so its move from the
+  // full window is no layout shift (248: CLS 0.164 on a cold /studio); the build's plate covers the cell meanwhile.
+  let settleCap = 0;
+  const settled = (): void => {
+    clearTimeout(settleCap);
+    delete document.body.dataset.studioSettling;
+  };
   if (typeof ResizeObserver === 'function') {
     new ResizeObserver(() => {
       if (root.style.display !== 'block') return;
       cancelAnimationFrame(viewportFrame);
-      viewportFrame = requestAnimationFrame(syncViewport);
+      viewportFrame = requestAnimationFrame(() => {
+        syncViewport();
+        if ('studioSettling' in document.body.dataset) requestAnimationFrame(settled);
+      });
     }).observe(vp);
   }
 
@@ -2675,6 +2685,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const api: StudioPanelRuntime = {
     root,
     show() {
+      document.body.dataset.studioSettling = '';
+      settleCap = window.setTimeout(settled, 600); // a grid that never resizes still shows its canvas
       root.style.display = 'block';
       syncViewport();
       productionPanel.setVisible(true);
