@@ -2033746,14 +2033746,14 @@
             "volumeId": "C02",
             "name": "gunner",
             "min": [
-              0.5072,
-              -1.05,
-              -0.7962
+              0.4572,
+              -1.2523,
+              -0.7562
             ],
             "max": [
-              0.9666,
-              0.3021,
-              0.0252
+              0.9166,
+              0,
+              -0.0148
             ],
             "turretLocal": true
           },
@@ -2033761,21 +2033761,21 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.5495,
-              -1.25,
-              -1.1401
+              0.9495,
+              -1.2129,
+              -0.8764
             ],
             "max": [
-              1.0089,
-              0.1377,
-              -0.2974
+              1.2892,
+              -0.01,
+              -0.163
             ],
             "turretLocal": true
           }
         ]
       },
       "geometryHash": "2172b3cb",
-      "metadataHash": "ae44e4e3",
+      "metadataHash": "bd9d5f7f",
       "presentationAnchor": {
         "xM": -0.0013,
         "zM": -0.0055
@@ -2033886,24 +2033886,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 95947,
-          "sha256": "b0964ba8244183809ad26ef5c7d82c5ca201a1bc7b7de0ad97f1354751dd314a"
+          "bytes": 95989,
+          "sha256": "9822e239ecae5d41b8b1184566ac7aae42fc758c62d521efdf3002b354163d15"
         },
         "modulesSide": {
           "file": "type10b_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 101111,
-          "sha256": "705dd24347a7fe8fe7220299f49aa1d6b8af3e2910d618e931976efeaa4f145b"
+          "bytes": 100802,
+          "sha256": "3883ae3440015263863bd9aaf9069d362d61f6c5281f713c6caedfaf55a91681"
         },
         "crewSide": {
           "file": "type10b_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 87211,
-          "sha256": "afc107678b90f75b512276999013e20f611fe14ad4fcff5f9dd71430c6514828"
+          "bytes": 87336,
+          "sha256": "8da8c12b7ebf22c4d681a4db21403f4eecf84d2cf047ce98377d94454c67ec6b"
         },
         "markings": {
           "file": "type10b_markings.png",
