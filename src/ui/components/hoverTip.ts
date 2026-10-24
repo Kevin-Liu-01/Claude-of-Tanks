@@ -7,8 +7,9 @@
  * does not also press the control. It hides on leave, any press, Escape, scroll and resize.
  * Which controls: any with data-tip, and every icon-only control (a named button, link, tab or summary with no visible
  * text). data-tip-off on a control or a region opts it out; the rich tooltip's own targets (richTooltip.ts) are skipped.
- * What it says: data-tip's text, else the control's name (aria-label, aria-labelledby, else title). A title moves into
- * the tip the first time it is targeted, so the browser's own tooltip never stacks on it.
+ * What it says: data-tip's text, else the control's name (aria-label, aria-labelledby, an image's alt). A control that
+ * still has a title keeps the browser's own tooltip, so the two never stack; the tip never edits the page (code may read
+ * a title: the Garage's guides read their info from it).
  * Where: the rich tooltip's placement (responsiveLayout.ts placeFloat), clear of every edge, in the top layer. Copyright © 2026 Kevin B. Liu.
  */
 import { placeFloat } from '../responsiveLayout.ts';
@@ -39,20 +40,15 @@ function nameOf(control: HTMLElement): string {
       .filter(Boolean).join(' ');
     if (text) return text;
   }
-  return control.getAttribute('title')?.trim() || control.querySelector('img[alt]')?.getAttribute('alt')?.trim() || '';
+  return control.querySelector('img[alt]')?.getAttribute('alt')?.trim() ?? '';
 }
 
 /** The tip a control shows, or '' for none. */
 function tipText(control: HTMLElement): string {
   if (control.closest('[data-tip-off]')) return '';
   if (richTarget(control)) return '';
-  // a title would also raise the browser's tooltip: it moves into the tip (and names an otherwise unnamed control)
-  const title = control.getAttribute('title');
-  if (title !== null) {
-    control.removeAttribute('title');
-    if (!control.hasAttribute('data-tip') && control.textContent?.trim()) control.dataset.tip = title;
-    else if (!control.getAttribute('aria-label') && !control.getAttribute('aria-labelledby') && title.trim()) control.setAttribute('aria-label', title);
-  }
+  // a title raises the browser's own tooltip: that control keeps it, so the two never stack
+  if (control.hasAttribute('title')) return '';
   const own = control.dataset.tip?.trim();
   if (own) return own;
   if (control.hasAttribute('data-tip')) return nameOf(control);

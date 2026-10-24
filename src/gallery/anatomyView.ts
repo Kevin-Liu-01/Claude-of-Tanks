@@ -388,7 +388,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
         button.tabIndex = metric === value ? 0 : -1;
         button.dataset.uiSound = 'select';
         button.dataset.anatomyMetric = value;
-        button.title = t(`gallery.anatomy.metricTitle.${value}`);
+        button.dataset.tip = t(`gallery.anatomy.metricTitle.${value}`);
         button.textContent = t(`gallery.anatomy.metric.${value}`);
         seg.append(button);
       }
@@ -401,7 +401,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       button.dataset.anatomyToggle = toggle;
       button.dataset.uiSound = 'toggle';
       button.setAttribute('aria-pressed', String(view[toggle]));
-      button.title = t(`gallery.anatomy.toggle.${toggle}`);
+      button.setAttribute('aria-label', t(`gallery.anatomy.toggle.${toggle}`));
       button.innerHTML = uiIconSVG(CHIP_ICONS[toggle], 15);
       const label = document.createElement('span');
       label.textContent = t(`gallery.anatomy.toggle.${toggle}`);

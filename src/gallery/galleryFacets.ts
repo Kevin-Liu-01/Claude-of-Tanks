@@ -16,7 +16,7 @@ type FacetKind = 'flag' | 'chip' | 'named';
 export function facetButton(attrs: string, pressed: boolean, label: string, content: string, kind: FacetKind,
   disabled = false, i18n = ''): string {
   const cls = kind === 'flag' ? '' : ' class="cot-c-chip"';
-  const name = kind === 'named' ? '' : ` aria-label="${esc(label)}" title="${esc(label)}"`;
+  const name = kind === 'named' ? '' : ` aria-label="${esc(label)}"`;
   const body = kind === 'named' ? `${content}<span>${esc(label)}</span>` : content;
   return `<button type="button"${cls} ${attrs} aria-pressed="${pressed}"${name}${i18n} data-ui-sound="toggle"${disabled ? ' disabled' : ''}>${body}</button>`;
 }
@@ -70,7 +70,7 @@ export function flagLabel(code: string, nations: ReadonlyMap<string, readonly st
 export function nationFacetsMarkup(options: NationRowOptions): string {
   const { codes, nations, selected, translate, flagSrc } = options;
   const shell = !flagSrc;
-  const named = (key: string): string => (shell ? ` data-i18n-aria-label="${key}" data-i18n-title="${key}"` : '');
+  const named = (key: string): string => (shell ? ` data-i18n-aria-label="${key}"` : '');
   return facetButton('data-facet="nation" data-value=""', !selected, translate('gallery.archive.filter.allNations'),
     icon('pixels', { size: 16 }), 'flag', false, named('gallery.archive.filter.allNations'))
     + codes.map((code) => {
@@ -86,7 +86,7 @@ export function classFacetsMarkup(classes: readonly VehicleClass[], selected: st
   return classes.map((id) => {
     const meta = VEHICLE_CLASS_META[id];
     const i18n = shell
-      ? ` data-i18n-aria-label="${meta.labelKey}" data-i18n-title="${meta.labelKey}" data-i18n="${meta.shortKey}"`
+      ? ` data-i18n-aria-label="${meta.labelKey}" data-i18n="${meta.shortKey}"`
       : '';
     return facetButton(`data-facet="vehicleClass" data-value="${esc(id)}"`, selected === id, vehicleFacetLabel(meta, translate),
       esc(vehicleFacetLabel(meta, translate, { short: true })), 'chip', false, i18n);
