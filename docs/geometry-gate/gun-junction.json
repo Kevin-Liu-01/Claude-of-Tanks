@@ -212,7 +212,7 @@
   "type10_dozer": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"9c2c77d15f229c77","gun":"9173b3ab122d8bcf"}},
   "type10_tk_x": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"449e17df13b99616","gun":"25e23a5a2886c073"}},
   "type10b": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"e73747f03fa9e764","gun":"c0344a74c157e118"}},
-  "type59": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"3ab6a7bbed63039c","gun":"8379c17ffb2312b5"}},
+  "type59": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"72713aa70aa55b28","gun":"3d4fb55600a68223"}},
   "type74": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"26b78c02d4f74d8c","gun":"2b101415a3f11a45"}},
   "type89": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d3385aee0278ca1b","gun":"af3e682d116a1ff8"}},
   "type90": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"fe6200d060ac9a07","gun":"778ed0dfb5f808c7"}},
