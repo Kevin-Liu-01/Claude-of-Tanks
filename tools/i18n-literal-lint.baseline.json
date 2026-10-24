@@ -1,8 +1,7 @@
 {
   "$description": "Ratchet for tools/i18n-literal-lint.mjs (BUI-F8): player-facing English literals per file. It only falls: fix literals, then run node tools/i18n-literal-lint.mjs --update. --check fails on any rise and on any stale pin.",
-  "total": 3,
+  "total": 2,
   "files": {
-    "src/ui/garage.ts": 1,
     "src/ui/icons/icon.ts": 1,
     "src/ui/styleLayers.ts": 1
   }
