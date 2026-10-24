@@ -43,8 +43,11 @@ function bearingDeck(P: TankBuilderPort): void {
     .map(([r, y]) => new THREE.Vector2(r, y)), 64);
   // Concealed 0.8 mm bearing contact is inferred; the visible well stays open.
   P.add('hull', ring, 0, 0, .328029);
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"; the older C1s "clitch through hull"): the
+  // engine deck's rise starts at -1.60 and meets its 1.498 plate at -1.99 (the service cap's fore edge), out of the sweep
+  // of the turret's front armour (bottom 1.419, 1.83 m off the axis, frame metres), which ran into the old ramp from -0.86.
   P.add('hull', stock([[-3.157488, 1.199, 1.497999],
-    [-1.497157, 1.199, 1.497999], [-.862968, 1.199, 1.347441]], -.878, .878));
+    [-1.99, 1.199, 1.497999], [-1.60, 1.199, 1.347441], [-.862968, 1.199, 1.347441]], -.878, .878));
   P.add('hull', stock([[1.760422, 1.199, 1.346614],
     [2.935438, 1.198, 1.23305], [3.035, 1.17, 1.1873]], -.878, .878));
 }
