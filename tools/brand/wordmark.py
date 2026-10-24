@@ -33,8 +33,8 @@ def glyph_path(g):
     return pen.getCommands(), bounds.bounds
 
 
-def build(part):
-    words, of, box = [], [], [None, None, None, None]
+def build(part, split=False):
+    words, of, rules, box = [], [], [], [None, None, None, None]
     def grow(b):
         for i, f in enumerate((min, min, max, max)):
             box[i] = b[i] if box[i] is None else f(box[i], b[i])
@@ -44,10 +44,12 @@ def build(part):
         (of if g['weight'] == 500 else words).append(d)
     for r in part['rules']:
         x, y, w = round(r['x']), round(r['y'] - RULE / 2), round(r['width'])
-        of.append(f'M{x} {y}h{w}v{RULE}h{-w}Z')
+        rules.append(f'M{x} {y}h{w}v{RULE}h{-w}Z')
         grow((x, y, x + w, y + RULE))
     x0, y0, x1, y1 = (round(v) for v in box)
-    return ''.join(words), ''.join(of), (x0, y0, x1 - x0, y1 - y0)
+    if split:
+        return ''.join(words), ''.join(of), ''.join(rules), (x0, y0, x1 - x0, y1 - y0)
+    return ''.join(words), ''.join(of) + ''.join(rules), (x0, y0, x1 - x0, y1 - y0)
 
 
 def svg(words, of, vb, ink, accent, label='Claude of Tanks'):
@@ -89,20 +91,35 @@ def lockup(words, of, vb, ink, accent):
             f'{mark_group(x - size - gap, top, size, ink, accent)}<path fill="{ink}" d="{words}"/><path fill="{accent}" d="{of}"/></svg>\n')
 
 
-def title_card(words, of, vb, ink, accent):
-    # the ceremonial tier (SPEC 3.3, the retired crest's place): the chevron over the stacked wordmark
+def title_card(words, of, rules, vb, ink, accent):
+    # the ceremonial tier (SPEC 3.3, the retired crest's place): the chevron over the stacked wordmark. The words are one
+    # path drawn twice, each word line's lower half and its top half (.t), and the "of" rules apart from its letters
+    # (.r), so the registration sting (SPEC 3.4) can slide the top halves into register and draw the rules from the
+    # centre; at rest the card is one wordmark.
     x, y, w, h = vb
     size = w * 0.34
     gap = size * 0.28
     mx = x + w / 2 - size / 2
+    lines = sorted({round(g['baseline']) for g in layout['stacked']['glyphs'] if g['weight'] == 700})
+    cap = 700 * layout['stacked']['glyphs'][0]['size'] / 1000
+    pad = cap * 0.2
+    seam = 8  # the halves overlap a little, so their anti-aliased edges never leave a hairline at rest
+    top = ''.join(f'<rect x="{x - pad:.0f}" y="{b - cap - pad:.0f}" width="{w + 2 * pad:.0f}" height="{cap / 2 + pad + seam:.0f}"/>' for b in lines)
+    low = ''.join(f'<rect x="{x - pad:.0f}" y="{b - cap / 2 - seam:.0f}" width="{w + 2 * pad:.0f}" height="{cap / 2 + pad + seam:.0f}"/>' for b in lines)
+    # each rule grows outward from its end at the "of" (.rl, .rr), so neither ever crosses the letters
+    left, right = sorted((d + 'Z' for d in rules.split('Z') if d), key=lambda d: float(d[1:].split()[0]))
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x:.0f} {y - size - gap:.0f} {w:.0f} {h + size + gap:.0f}" '
             f'role="img" aria-label="Claude of Tanks"><!-- The Claude of Tanks title card: the Bracket Chevron over the stacked wordmark. {NOTICE} -->'
-            f'{mark_group(mx, y - size - gap, size, ink, accent)}<path fill="{ink}" d="{words}"/><path fill="{accent}" d="{of}"/></svg>\n')
+            f'<defs><path id="cot-tc-w" d="{words}"/><clipPath id="cot-tc-top">{top}</clipPath><clipPath id="cot-tc-low">{low}</clipPath></defs>'
+            f'{mark_group(mx, y - size - gap, size, ink, accent)}'
+            f'<use href="#cot-tc-w" fill="{ink}" clip-path="url(#cot-tc-low)"/><use class="t" href="#cot-tc-w" fill="{ink}" clip-path="url(#cot-tc-top)"/>'
+            f'<path class="of" fill="{accent}" d="{of}"/><path class="r rl" fill="{accent}" d="{left}"/>'
+            f'<path class="r rr" fill="{accent}" d="{right}"/></svg>\n')
 
 
 files['lockup.svg'] = lockup(*horizontal, PAPER, TUNGSTEN)
 files['lockup-paper.svg'] = lockup(*horizontal, GRAPHITE, TUNGSTEN_600)
-files['title-card.svg'] = title_card(*stacked, PAPER, TUNGSTEN)
+files['title-card.svg'] = title_card(*build(layout['stacked'], split=True), PAPER, TUNGSTEN)
 for name, text in files.items():
     open(os.path.join(out, name), 'w').write(text)
 

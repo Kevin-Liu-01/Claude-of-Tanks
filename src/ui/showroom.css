@@ -131,7 +131,7 @@ body[data-cot-panels='overlay'] .cot-lt-id{display:none;}
 /* ---- the roster: tools over the cards, Deploy beside them ---- */
 body[data-cot-panels='persistent'] .cot-country-rail{left:var(--edge);right:var(--edge);top:auto;
   bottom:calc(var(--edge) + var(--card-h) + var(--s2));height:var(--rtools-h);width:auto;transform:none;
-  grid-template-columns:auto var(--country-edge) auto minmax(0,1fr) var(--country-edge) auto;}
+  grid-template-columns:auto var(--country-edge) auto minmax(0,1fr) var(--country-edge) auto auto;}
 body[data-cot-panels='persistent'] .cot-country-rail>*{grid-row:1;}
 body[data-cot-panels='persistent'] .cot-roster-search{grid-column:1;}
 body[data-cot-panels='persistent'] .cot-country-edge.prev{grid-column:2;}
@@ -179,7 +179,16 @@ body[data-cot-panels='persistent'] .cot-multiplayer-entry{display:none;}
 .cot-hotspot .v small{font:500 var(--fs-12)/1 var(--font-data);color:var(--ink-2);}
 /* the roster's count, at the rail's end */
 .cot-roster-count{display:none;}
-body[data-cot-panels='persistent'] .cot-roster-count{display:block;grid-column:6;align-self:center;padding:0 var(--s2);
+body[data-cot-panels='persistent'] .cot-roster-count{display:block;grid-column:7;align-self:center;padding:0 var(--s2);
   font:500 var(--fs-13)/1 var(--font-data);color:var(--ink-3);white-space:nowrap;}
 body[data-cot-panels='persistent'] .cot-roster-search input::placeholder{color:var(--ink-3);}
+
+/* the favourites chip and each favourite's star (the direction's star chip and card mark) */
+.cot-roster-fav{display:none;}
+body[data-cot-panels='persistent'] .cot-roster-fav{display:inline-flex;grid-column:6;align-self:center;margin-left:var(--s2);}
+body[data-cot-panels='persistent'] .cot-roster-fav[hidden]{display:none;}
+.cot-card .cot-fav{display:none;}
+.cot-card.is-fav .cot-fav{position:absolute;z-index:var(--z-lift);right:8px;top:8px;display:grid;place-items:center;width:22px;height:22px;
+  border-radius:var(--control-radius);background:var(--glyph-plate);color:var(--accent);}
+.cot-card.is-fav .cot-fav svg{width:14px;height:14px;}
 }

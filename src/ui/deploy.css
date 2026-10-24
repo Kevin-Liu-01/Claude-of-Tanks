@@ -4,12 +4,14 @@
    - the bar: back to the Garage, the title, the four ways to play;
    - the main column: the four core modes as picture cards, the rest as rows, then the campaign's next operation and the
      player's recent battles;
-   - the side plate: the selected mode and its six rules, the battlefield beside its tactical map, the sides and the
-     time, the tank and its loadout, and one Deploy bar. */
+   - the side plate: the selected mode and its six rules, the battlefield beside its tactical map, the time, the sides
+     and the bot tier in one row (the mode's own settings open under it), the tank and its loadout, and one Deploy bar
+     with the load estimate;
+   - the foot: the keys the screen answers. */
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
 .cot-garage .cot-battle-menu.open{position:fixed;inset:0;z-index:var(--z-modal);width:auto;max-width:none;max-height:none;
-  transform:none;margin:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);border:0;border-radius:0;
+  transform:none;margin:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;border:0;border-radius:0;
   box-shadow:none;clip-path:none;background:var(--surface-scene);color:var(--ink-1);font-family:var(--font-body);overflow:hidden;}
 body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right:0;bottom:0;left:0;max-height:none;}
 /* The Garage shell passes the pointer through (.cot-garage is pointer-events:none, its controls opt in). The open
@@ -33,12 +35,16 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
 @media (hover:hover){.cot-garage .cot-deploy-tab:hover{color:var(--ink-1);}}
 .cot-garage .cot-deploy-tab[aria-selected='true']{color:var(--ink-1);}
 .cot-garage .cot-deploy-tab[aria-selected='true']::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent);}
+/* the last battle again (.bar .right .chip) */
+.cot-garage .cot-deploy-again{flex:none;margin-left:auto;}
+.cot-garage .cot-deploy-again[hidden]{display:none;}
+.cot-garage .cot-deploy-again>span{max-width:36ch;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-garage .cot-deploy-tab .cot-deploy-count{margin-left:2px;display:inline-flex;align-items:center;height:20px;padding:0 7px;
   border-radius:var(--control-radius);box-shadow:var(--ring-2);font:600 var(--fs-11)/1 var(--font-display);color:var(--ink-2);}
 
 /* ---- the columns: the main column (61 %) and the side plate (39 %), each scrolling on its own ---- */
 .cot-garage .cot-battle-menu.open .cot-battle-menu-scroll{grid-row:2;display:grid;min-height:0;overflow:hidden;
-  grid-template-columns:minmax(0,61fr) minmax(0,39fr);gap:12px;padding:16px 24px 24px;background:none;}
+  grid-template-columns:minmax(0,61fr) minmax(0,39fr);gap:12px;padding:16px 24px 12px;background:none;}
 .cot-garage .cot-battle-menu.open .cot-battle-mode-list{min-height:0;overflow:auto;display:flex;flex-direction:column;gap:14px;
   padding:0;scrollbar-width:thin;}
 .cot-garage .cot-battle-menu.open .cot-deploy-panel[hidden]{display:none;}
@@ -61,6 +67,10 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
   display:flex;flex-direction:column;gap:9px;}
 .cot-garage .cot-deploy-card .choice-name{font:700 var(--fs-20)/1 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
 .cot-garage .cot-battle-choice.cot-deploy-card[aria-pressed='true']{outline:2px solid var(--accent);outline-offset:0;}
+/* the card's badge (.badge): Selected on the chosen mode, Campaign on the mode the campaign plays */
+.cot-garage .cot-deploy-badge{position:absolute;z-index:var(--z-lift);right:10px;top:12px;background:var(--glyph-plate);}
+.cot-garage .cot-deploy-badge.cot-c-tag--accent{background:var(--accent);}
+.cot-garage .cot-deploy-badge[hidden]{display:none;}
 .cot-garage .cot-battle-choice.cot-deploy-card[aria-pressed='true'] .choice-icon{background:var(--accent);color:var(--ink-on-accent);box-shadow:none;}
 
 /* ---- the rest as rows (.specs, .row) ---- */
@@ -77,7 +87,9 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
 /* the selection ring says which mode is chosen; the old menu's tick stays off */
 .cot-garage .cot-deploy-panel .cot-battle-choice::before{display:none;}
 /* a card's fade sits under the type set on its foot */
-.cot-garage .cot-battle-choice.cot-deploy-card::after{content:'';display:block;position:absolute;inset:0;background:var(--media-fade);}
+/* (the old menu's tick shares this pseudo-element: its box, border and turn are reset here) */
+.cot-garage .cot-battle-choice.cot-deploy-card::after{content:'';display:block;position:absolute;inset:0;width:auto;height:auto;border:0;
+  transform:none;opacity:1;background:var(--media-fade);}
 
 /* every choice's rules: the data voice (.rules) */
 .cot-garage .cot-deploy-chips{display:flex;gap:12px;font:500 var(--fs-12)/1 var(--font-data);color:var(--ink-2);}
@@ -89,7 +101,7 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
 .cot-garage .cot-deploy-lower{display:grid;grid-template-columns:1.05fr 1fr 1fr 1fr;gap:10px;flex:1 0 auto;min-height:clamp(220px,30vh,320px);}
 .cot-garage .cot-deploy-lower:empty{display:none;}
 /* before the first battle the campaign card takes the band's first half */
-.cot-garage .cot-deploy-camp:only-child{grid-column:span 2;}
+.cot-garage .cot-deploy-camp:only-child{grid-column:1/-1;}
 .cot-garage .cot-deploy-camp{position:relative;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--e1);}
 .cot-garage .cot-deploy-camp>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .cot-garage .cot-deploy-camp::after{content:'';position:absolute;inset:0;background:var(--media-fade-full);}
@@ -174,6 +186,8 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
 .cot-garage .cot-deploy-field-mm{position:relative;height:100%;aspect-ratio:1;background:var(--surface-page);border-left:1px solid var(--line-2);}
 .cot-garage .cot-deploy-field-mm img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
 .cot-garage .cot-deploy-field-mm img[hidden]{display:none;}
+/* the opening objectives over it (deployObjectives.ts) */
+.cot-garage .cot-deploy-field-obj{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
 /* the random battlefield has no one map to show: its mosaic takes the whole card */
 .cot-garage .cot-deploy-field-mm:has(img[hidden]){display:none;}
 /* the battlefield picker opens over the plate */
@@ -181,8 +195,32 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
   border-radius:var(--control-radius);background:var(--surface-menu);box-shadow:var(--e3);}
 .cot-garage .cot-deploy-field-pop[hidden]{display:none;}
 .cot-garage .cot-deploy-field-pop .cot-maps{display:flex;}
-/* the sides, the time and the mode's own settings (.ctl, .seg) */
-.cot-garage .cot-battle-menu.open .cot-battle-solo-options{display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px;}
+/* the time, the sides and the bot tier in one row (.ctl, .seg); the mode's own settings open under it on the toggle */
+.cot-garage .cot-battle-menu.open .cot-battle-solo-options{display:flex;flex-wrap:wrap;align-items:center;gap:10px;}
+.cot-garage .cot-battle-menu.open [data-team-options]{display:contents;}
+.cot-garage .cot-battle-menu.open [data-team-options][hidden]>*{display:none;}
+.cot-garage .cot-battle-menu.open :is(.cot-battle-times,.cot-battle-galaxy){order:1;}
+.cot-garage .cot-battle-menu.open .cot-battle-sides{order:2;}
+.cot-garage .cot-deploy-diff{order:3;}
+.cot-garage .cot-deploy-more{order:4;}
+.cot-garage .cot-battle-menu.open :is(.cot-battle-sides-custom,[data-mars-label],.cot-battle-mars,.cot-mode-settings){order:5;flex:1 1 100%;}
+.cot-garage .cot-battle-menu.open .cot-battle-solo-options:not([data-more]) :is([data-mars-label],.cot-battle-mars,.cot-mode-settings){display:none;}
+/* a time shows its name while it is in the draw; the rest show their glyph */
+.cot-garage .cot-battle-menu.open .cot-time-choice input:not(:checked)+.cot-time-content{padding:0 10px;}
+.cot-garage .cot-battle-menu.open .cot-time-choice input:not(:checked)+.cot-time-content .cot-time-name{position:absolute;width:1px;height:1px;
+  overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
+.cot-garage .cot-deploy-diff{display:inline-flex;align-items:center;gap:0;padding:3px 3px 3px 10px;border-radius:var(--control-radius);
+  background:var(--fill-quiet);box-shadow:var(--ring-1);color:var(--ink-3);}
+.cot-garage .cot-deploy-diff[hidden]{display:none;}
+.cot-garage .cot-deploy-diff>svg{width:16px;height:16px;margin-right:4px;}
+.cot-garage .cot-deploy-diff button{height:34px;padding:0 13px;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-3);
+  cursor:pointer;font:500 var(--fs-13)/1 var(--font-body);}
+.cot-garage .cot-deploy-diff button[aria-pressed='true']{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow);}
+.cot-garage .cot-deploy-more{display:grid;place-items:center;width:40px;height:40px;margin-left:auto;padding:0;border:0;border-radius:var(--control-radius);
+  background:var(--fill-quiet);box-shadow:var(--ring-1);color:var(--ink-2);cursor:pointer;}
+.cot-garage .cot-deploy-more svg{width:18px;height:18px;}
+.cot-garage .cot-deploy-more[aria-expanded='true']{color:var(--ink-1);box-shadow:var(--ring-accent);}
+@media (hover:hover){.cot-garage :is(.cot-deploy-diff button,.cot-deploy-more):hover{color:var(--ink-1);}}
 .cot-garage .cot-battle-menu.open [data-team-options]>.cot-battle-menu-label,
 .cot-garage .cot-battle-menu.open .cot-battle-times legend,
 .cot-garage .cot-battle-menu.open .cot-mode-features{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
@@ -233,12 +271,21 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
 .cot-garage .cot-deploy-tank .eq{display:grid;place-items:center;width:24px;height:24px;border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-2);}
 .cot-garage .cot-deploy-tank .eq svg{width:15px;height:15px;}
 .cot-garage .cot-deploy-tank .chg{align-self:center;flex:none;}
+.cot-garage .cot-deploy-tank .ok{display:inline-flex;align-items:center;gap:4px;margin-left:4px;color:var(--ok);font:500 var(--fs-12)/1 var(--font-body);}
+.cot-garage .cot-deploy-tank .ok svg{width:14px;height:14px;}
 .cot-garage .cot-battle-menu.open [data-battle-launch]{display:flex;align-items:center;justify-content:space-between;width:100%;height:66px;min-height:0;
   padding:0 22px;border:0;border-radius:var(--control-radius);background:var(--btn-primary-fill);box-shadow:var(--btn-primary-shadow);
   color:var(--btn-primary-ink);cursor:pointer;}
 .cot-garage .cot-deploy-go{display:flex;align-items:center;gap:14px;font:700 var(--fs-28)/1 var(--font-display);letter-spacing:var(--track-label-s);
   text-transform:uppercase;}
 .cot-garage .cot-deploy-go svg{width:20px;height:20px;}
+/* the estimate beside its key (.deploy span) */
+.cot-garage .cot-deploy-end{display:flex;align-items:center;gap:10px;font:500 var(--fs-13)/1 var(--font-body);}
+/* the keys the screen answers (.hints), for a keyboard */
+.cot-garage .cot-deploy-keys{grid-row:3;display:flex;align-items:center;gap:22px;height:40px;padding:0 24px;border-top:1px solid var(--line-1);
+  font:500 var(--fs-12)/1 var(--font-body);color:var(--ink-3);}
+.cot-garage .cot-deploy-keys>span{display:inline-flex;align-items:center;gap:6px;}
+@media (pointer:coarse){.cot-garage .cot-deploy-keys{display:none;}}
 @media (hover:hover){.cot-garage .cot-battle-menu.open [data-battle-launch]:hover{background:var(--btn-primary-hover);}}
 .cot-garage .cot-battle-menu.open [data-battle-launch]:active{background:var(--btn-primary-press);box-shadow:none;}
 .cot-garage .cot-battle-menu.open [data-battle-launch] .cot-c-kbd{color:var(--kbd-on-accent-ink);box-shadow:var(--kbd-on-accent-ring);}
@@ -286,7 +333,8 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-choice.cot-deploy-card[a
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-choice.cot-deploy-card[aria-pressed='true'] .choice-name{font:700 var(--fs-24)/1 var(--font-display);}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-rows .cot-battle-choice{min-height:56px;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-rows .choice-icon{width:40px;height:40px;}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-lower{display:none;}
+body[data-cot-panels='overlay'] .cot-garage :is(.cot-deploy-lower,.cot-deploy-keys,.cot-deploy-again,.cot-deploy-badge){display:none;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-end>span{display:none;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-plate{display:block;padding:10px;box-shadow:var(--e1);}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-details{overflow:visible;gap:10px;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-preview{display:none;}

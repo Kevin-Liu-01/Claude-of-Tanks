@@ -9,7 +9,12 @@ import { renderProductStats } from '../../src/productStats.ts';
 import { PUBLIC_ROUTE_RECORDS } from '../../src/ui/localeRouting.ts';
 
 const root = new URL('../../', import.meta.url);
-const crest = readFileSync(new URL('public/brand/logo-mark.svg', root)).toString('base64');
+// The Premiere identity's lockup (src/ui/components/DIRECTION.md, "The identity"): the Bracket Chevron and the outlined
+// wordmark, one master; the retired crest and the text wordmark stay off every card.
+const lockupSvg = readFileSync(new URL('public/brand/lockup.svg', root), 'utf8');
+const lockup = Buffer.from(lockupSvg).toString('base64');
+const [, , vbW, vbH] = /viewBox="([^"]+)"/.exec(lockupSvg)[1].split(/\s+/).map(Number);
+const LOCKUP_ASPECT = vbW / vbH;
 const font = readFileSync(new URL('public/fonts/chakra-petch/ChakraPetch-Bold-Latin.woff2', root)).toString('base64');
 assert.equal(OG_IMAGE_CARDS.length, 20, 'default, private rooms, Studio, the 404, and every public page need a card');
 assert.equal(new Set(OG_IMAGE_CARDS.map(([id]) => id)).size, 20);
@@ -30,15 +35,13 @@ const sheet = sheetPath ? createCanvas(1200, 210 * Math.ceil(renders.length / 3)
 let cardIndex = 0;
 for (const { id, label, source, position, fit, locale } of renders) {
   const html = cardHtml(label, source, position, fit, locale);
-  assert.ok(html.includes(`data:image/svg+xml;base64,${crest}`), `${id}: use the current shield master verbatim`);
+  assert.ok(html.includes(`<img class="lockup" src="data:image/svg+xml;base64,${lockup}" alt="Claude of Tanks">`),
+    `${id}: use the current lockup master verbatim (public/brand/lockup.svg)`);
+  assert.doesNotMatch(html, /class="(?:crest|wordmark|wordmark-subtitle)"/, `${id}: the retired crest and text wordmark stay off`);
   assert.ok(html.includes(`data:font/woff2;base64,${font}`), `${id}: embed the approved brand font`);
-  assert.match(html, /\.crest\{width:150px;height:150px;flex:none;object-fit:contain;/);
-  assert.match(html, /\.lockup\{position:absolute;left:64px;bottom:46px;/);
-  assert.match(html, /\.lockup\{[^}]*gap:20px;/);
-  assert.match(html, /\.wordmark-subtitle\{margin-top:0;/);
-  assert.match(html, /class="wordmark">CLAUDE<\/div>/);
-  assert.match(html, /class="wordmark-subtitle">OF TANKS<\/div>/);
-  assert.match(html, /\.wordmark-subtitle\{[^}]*color:#f0a030/);
+  assert.match(html, /\.lockup\{position:absolute;left:60px;bottom:52px;height:76px;width:auto;/);
+  // the game card's tank fills the lower left: its lockup stands on the right (text never on a tank)
+  assert.match(html, /\.game \.lockup\{left:auto;right:48px;bottom:40px;height:64px\}/);
   assert.ok(html.includes(` lang="${locale}">`), `${id}: the card declares its language`);
   if (label) assert.ok(html.includes(`<div class="label">${label}</div>`));
 
@@ -49,14 +52,15 @@ for (const { id, label, source, position, fit, locale } of renders) {
   context.drawImage(image, 0, 0);
   sheet?.getContext('2d').drawImage(image, (cardIndex % 3) * 400, Math.floor(cardIndex / 3) * 210, 400, 210);
   cardIndex++;
-  // Inspect the shipped raster, not just the template: the old compact logo
-  // has no amber subtitle at the approved bottom-left wordmark location.
-  const pixels = context.getImageData(234, 524, 180, 30).data;
+  // Inspect the shipped raster, not just the template: the lockup's tungsten (the chevron and the "of") stands in its
+  // box, bottom left, or bottom right on the game card (576 to 803 pixels on the shipped set)
+  const h = label ? 76 : 64, w = Math.round(h * LOCKUP_ASPECT);
+  const pixels = context.getImageData(label ? 60 : 1200 - 48 - w, 630 - (label ? 52 : 40) - h, w, h).data;
   let amber = 0;
   for (let i = 0; i < pixels.length; i += 4) {
     if (pixels[i] > 175 && pixels[i + 1] > 90 && pixels[i + 1] < 195 && pixels[i + 2] < 105) amber++;
   }
-  assert.ok(amber > 500, `${path}: regenerate the shipped card with the amber OF TANKS subtitle (${amber} pixels)`);
+  assert.ok(amber > 300, `${path}: regenerate the shipped card with the lockup in its place (${amber} tungsten pixels)`);
 }
 if (sheet) writeFileSync(sheetPath, sheet.toBuffer('image/png'));
 
@@ -86,4 +90,4 @@ assert.equal(localizedStudioMetadata('zh-CN').image, `${SITE_ORIGIN}/brand/og/zh
 assert.equal(privateRoomMetadata(new URL(`${SITE_ORIGIN}/?room=HKP5XW`))?.image, `${SITE_ORIGIN}/brand/og/private-room.jpg`);
 assert.equal(privateRoomMetadata(new URL(`${SITE_ORIGIN}/cn/?room=HKP5XW`), 'zh-CN')?.image,
   `${SITE_ORIGIN}/brand/og/zh/private-room.jpg`);
-console.log(`og-images.selftest: all ${OG_IMAGE_CARDS.length} cards and ${renders.length - OG_IMAGE_CARDS.length} Chinese twins use the canonical shield, typography, and bottom-left lockup; every page shares its own`);
+console.log(`og-images.selftest: all ${OG_IMAGE_CARDS.length} cards and ${renders.length - OG_IMAGE_CARDS.length} Chinese twins use the Premiere lockup master, the brand font and their lockup place; every page shares its own`);
