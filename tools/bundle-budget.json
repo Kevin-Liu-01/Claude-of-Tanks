@@ -8,21 +8,21 @@
       "gzip": 1237522,
       "brotli": 1044894,
       "inlineCss": 4318,
-      "entryRaw": 848157,
+      "entryRaw": 848162,
       "entryBrotli": 233624
     },
     "home": {
       "requests": 8,
       "raw": 110167,
       "gzip": 31710,
-      "brotli": 28044,
+      "brotli": 28057,
       "inlineCss": 702
     },
     "docs": {
       "requests": 12,
       "raw": 127059,
-      "gzip": 36431,
-      "brotli": 32051,
+      "gzip": 36458,
+      "brotli": 32105,
       "inlineCss": 846
     },
     "gallery": {
@@ -35,8 +35,8 @@
     "notFound": {
       "requests": 7,
       "raw": 56123,
-      "gzip": 17694,
-      "brotli": 15632,
+      "gzip": 17709,
+      "brotli": 15659,
       "inlineCss": 702
     },
     "cn": {
@@ -45,7 +45,7 @@
       "gzip": 1290166,
       "brotli": 1087390,
       "inlineCss": 4742,
-      "entryRaw": 848157,
+      "entryRaw": 848162,
       "entryBrotli": 233624
     }
   }
