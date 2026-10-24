@@ -34,7 +34,7 @@ const GAME_METADATA: SiteMetadata = {
   canonical: `${SITE_ORIGIN}/`,
   url: `${SITE_ORIGIN}/`,
   image: `${SITE_ORIGIN}/brand/og-image.png`,
-  imageAlt: 'Claude of Tanks — in-engine battle still with the crest wordmark',
+  imageAlt: 'Claude of Tanks in-engine armored battle with the lockup: the Bracket Chevron and the wordmark',
   type: 'website',
   robots: INDEX_ROBOTS,
   ogTitle: 'Claude of Tanks — Free Browser Tank Game',
