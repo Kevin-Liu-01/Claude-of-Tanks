@@ -237,10 +237,6 @@ const showsFleet = (text) => fleetKeys.find((key) => ["'", '"', '`'].some((quote
 const panelModulesShowingFleet = [];
 for (const file of sources) {
   if (file === 'src/ui/i18nFleetKeys.ts') continue;
-  // (247) the manual's fleet reference names each record's class in the reader's language (zh-247 5cd6fd7935); it runs
-  // only on the docs pages (topics.ts imports it lazily), whose page catalog holds the slice (i18n-page-catalogs: docs
-  // lazyKeys), and falls back to the raw class value where a key is missing
-  if (file === 'src/docs/reference.ts') continue;
   const text = readFileSync(resolve(ROOT, file), 'utf8');
   const shown = showsFleet(text);
   if (panelClosure.has(file)) {
