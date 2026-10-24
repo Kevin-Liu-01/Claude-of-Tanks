@@ -1448,7 +1448,11 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       host.textContent = '';
 
       const res = result || '';
-      if (!sheetLoaded) host.classList.add('es-sheet-wait');
+      // a slow sheet holds the report back at most 1.5 s (a failed one shows it at once)
+      if (!sheetLoaded) {
+        host.classList.add('es-sheet-wait');
+        setTimeout(() => host.classList.remove('es-sheet-wait'), 1500);
+      }
       watchedView = !!sum.watched;
       host.classList.remove('result-victory', 'result-defeat', 'result-draw');
       host.classList.add(`result-${res === 'victory' || res === 'defeat' || res === 'draw' ? res : 'draw'}`);
