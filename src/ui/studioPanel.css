@@ -43,6 +43,14 @@ body[data-studio-workspace] #app{position:fixed;left:var(--studio-vp-x,0px);top:
 .st-head .cot-c-seg__opt{height:28px;font-size:var(--fs-12)}
 .st-head .cot-c-seg{flex:none}
 .st-head .r{display:flex;align-items:center;gap:8px;margin-left:auto}
+/* the scene's safety (09-studio header .sv, the undo/redo pair): the autosave's lamp and age, the steps either side */
+.st-head .hist{display:flex;flex:none;align-items:center;gap:4px}
+.st-head .sv{display:flex;align-items:center;gap:6px;margin-right:6px;color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body);white-space:nowrap}
+.st-head .sv i{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.st-head .ib{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:var(--r1);background:none;color:var(--ink-2)}
+.st-head .ib:disabled{color:var(--ink-4);cursor:default}
+.st-head .redo .cot-i{transform:scaleX(-1)}
+@media (hover:hover){.st-head .ib:not(:disabled):hover{color:var(--ink-1)}}
 .st-head .cot-c-chip{height:32px}
 button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 
@@ -395,7 +403,7 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio[data-controls-collapsed=true] :is(.st-out,.st-insp,.st-shelf,.st-tl){display:none}
 .cot-studio[data-controls-collapsed=true] .st-vp{grid-column:1/-1;grid-row:2/-1}
 body:is([data-cot-width='laptop'],[data-cot-width='tablet']) .st-app{grid-template-columns:208px minmax(0,1fr) 272px;grid-template-rows:50px minmax(0,1fr) 116px 160px}
-body:is([data-cot-width='laptop'],[data-cot-width='tablet']) .st-head .pn,body[data-cot-width='tablet'] .st-head .r .cot-c-chip__label{display:none}
+body:is([data-cot-width='laptop'],[data-cot-width='tablet']) :is(.st-head .pn,.st-head .sv),body[data-cot-width='tablet'] .st-head .r .cot-c-chip__label{display:none}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-app{grid-template-columns:minmax(0,1fr);
   grid-template-rows:50px 40dvh auto auto minmax(0,1fr) 112px}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head,.st-vp,.st-tl,.st-out,.st-insp,.st-shelf){grid-column:1}
@@ -409,7 +417,7 @@ body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-out .gh>button:
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-insp{grid-row:5;border-left:0}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-shelf{grid-row:6}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-shelf .production-takes .production-library{grid-auto-columns:42%}
-body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .pn,.st-head .st-mode,.st-tl .tp .sl){display:none}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .pn,.st-head .st-mode,.st-head .hist,.st-tl .tp .sl){display:none}
 /* on a phone the header's, the transport's and the viewport's chips keep their glyphs; the names stay as accessible names, and
    the lanes keep their flags, silhouettes and glyphs */
 body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .st .wd,.st-head .r .cot-c-chip__label,.st-head .cot-c-btn__label,.st-tl .tp .r .cot-c-chip__label,

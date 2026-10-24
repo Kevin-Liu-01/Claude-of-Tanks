@@ -620,6 +620,13 @@ const CAPTURE_MAX_W = 6144;    // sanity cap (also clamped by GPU max texture)
 const MAX_STUDIO_EFFECTS = 256; // bounded authoring/replay stack
 
 /** Actor damage-state ids (panel + scene JSON `state`). */
+/** Undo/redo: edits settle this long before they commit as one step; the history keeps this many steps. */
+const HISTORY_SETTLE_MS = 500;
+const HISTORY_LIMIT = 60;
+/** The autosave (each viewer's browser): the scene as authored, at most this many characters. */
+const AUTOSAVE_KEY = 'cot.studio.autosave';
+const AUTOSAVE_MAX_CHARS = 2_000_000;
+
 export const ACTOR_STATES = [
   'intact', 'engine-smoking', 'burning', 'wrecked', 'wrecked-burnt', 'turret-popped',
 ];
@@ -708,6 +715,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let timeScale = 1;           // fx time multiplier; 0 = frozen
   /** The view is the shots' camera (the rail at the playhead); navigating away leaves it until a shot or the chip returns. */
   let lookThrough = true;
+  /** Undo/redo: the scene document as last committed, the steps either side of it, and a pending commit. */
+  let historyHead: string | null = null;
+  const undoStack: string[] = [], redoStack: string[] = [];
+  let historyTimer: ReturnType<typeof setTimeout> | 0 = 0;
+  let restoringHistory = false, pointerHeld = false, lastSavedAt = 0;
   /** J/K/L: the reverse shuttle's rate (1, 2 or 4; 0 = off); forward runs on timeScale. */
   let reverseRate = 0;
   let reverseShuttleMs = 0, reverseWallS = 0;
@@ -770,7 +782,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let paletteId = 'verdant';
   let effectFireS = 0; // authored cue time of the effect being fired
 
-  function invalidate() { frameDirty = true; }
+  function invalidate() {
+    frameDirty = true;
+    if (!historyTimer && !restoringHistory) historyTimer = setTimeout(flushHistory, HISTORY_SETTLE_MS);
+  }
 
   // fx event channel: a PRIVATE bus bound to the fx system only, so synthetic
   // events (muzzle flash, impact, smoke column, detrack burst) reuse the real
@@ -1702,6 +1717,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function onPointerDown(e: PointerEvent): void {
+    pointerHeld = true; // a drag or a slider held anywhere: history waits for the release
     if (!active || e.target !== renderer.domElement) return;
     if (recording || filming) return;
     if (e.button === 0) {
@@ -1744,6 +1760,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function onPointerUp(e: PointerEvent): void {
+    pointerHeld = false;
     if (!active) return;
     if (dragActor) {
       updateActor(dragActor, {}); // full-precision settle on release
@@ -1814,6 +1831,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       return;
     }
     if (!active || typingInUI(e)) return;
+    // Ctrl/Cmd+Z undoes, Shift+Ctrl/Cmd+Z and Ctrl/Cmd+Y redo
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.code === 'KeyZ' || e.code === 'KeyY')) {
+      e.preventDefault();
+      if (!e.repeat) void (e.code === 'KeyY' || e.shiftKey ? redo() : undo());
+      return;
+    }
     if (e.code === 'Escape') { exit(); return; }
     keys.add(e.code);
     if (e.code === 'Space' && !e.repeat) api.setTimeScale(timeScale === 0 ? 1 : 0);
@@ -1837,6 +1860,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   window.addEventListener('pointerup', onPointerUp, true);
   window.addEventListener('wheel', onWheel, { passive: false, capture: true });
   window.addEventListener('blur', () => keys.clear());
+  window.addEventListener('pagehide', () => commitHistory());
   window.addEventListener('resize', invalidate, { passive: true });
   window.addEventListener('cot:layoutchange', invalidate, { passive: true });
 
@@ -5002,6 +5026,164 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     };
   }
 
+  // --- undo/redo and the autosave (brand-ui SPEC 12.6 Safety) ---------------------------------------------------------
+  /**
+   * The scene as authored, what undo steps between and the autosave keeps: state() without the view (camera, playhead,
+   * play rate) and with each tank's authored state, so playing the take or moving the camera is never a step.
+   */
+  function documentJson(): StudioSceneInput {
+    const { camera: _camera, fxTime: _fxTime, timeScale: _timeScale, actors: _actors, ...scene } = stateJson();
+    return { ...scene, actors: actors.map(actorDocumentJson) } as StudioSceneInput;
+  }
+  function actorDocumentJson(a: StudioActor): StudioActorInput {
+    return {
+      id: a.specId,
+      ...(a.name ? { name: a.name } : {}),
+      pos: [r2(a.pose.x), r2(a.pose.z)],
+      facingDeg: r2(a.pose.facingDeg),
+      turretDeg: r2(a.pose.turretDeg),
+      gunDeg: r2(a.pose.gunDeg),
+      ...(a.camo ? { camo: a.camo } : {}),
+      camoSeed: a.camoSeed,
+      state: a.authoredStateName,
+      ...(a.authoredStateAgeS != null ? { stateAgeS: a.authoredStateAgeS } : {}),
+      ...(a.authoredRecoilAgeS != null ? { recoilAgeS: a.authoredRecoilAgeS } : {}),
+      ...(a.authoredSuspensionAimDeg != null ? { suspensionAimDeg: r2(a.authoredSuspensionAimDeg) } : {}),
+      ...(a.authoredSmoking ? { smoking: true } : {}),
+      ...(a.authoredBurning ? { burning: true } : {}),
+    };
+  }
+  const emptyDocument = (doc: StudioSceneInput): boolean => {
+    const shots = (doc.storyboard as { readonly shots?: readonly unknown[] } | undefined)?.shots;
+    return !doc.actors?.length && !(Array.isArray(shots) && shots.length) && !doc.effects?.length;
+  };
+  /** Settled edits commit as one step (a held pointer, a load or a restore waits). */
+  function flushHistory(): void {
+    historyTimer = 0;
+    if (restoringHistory) return;
+    if (pointerHeld || dragActor || dragging || loading || productionLoading) {
+      historyTimer = setTimeout(flushHistory, HISTORY_SETTLE_MS);
+      return;
+    }
+    commitHistory();
+  }
+  function commitHistory(): void {
+    if (historyTimer) { clearTimeout(historyTimer); historyTimer = 0; }
+    if (restoringHistory || loading || recording || filming || !active) return;
+    const doc = documentJson();
+    const text = JSON.stringify(doc);
+    if (text === historyHead) return;
+    if (historyHead !== null) {
+      undoStack.push(historyHead);
+      if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+      redoStack.length = 0;
+    }
+    historyHead = text;
+    if (!emptyDocument(doc)) writeAutosave(text);
+    panel.refreshHistory();
+  }
+  function writeAutosave(text: string): void {
+    if (text.length > AUTOSAVE_MAX_CHARS) return;
+    try {
+      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ savedAt: Date.now(), doc: text }));
+      lastSavedAt = Date.now();
+    } catch (_) { /* private windows, full storage: the session keeps its history */ }
+  }
+  function readAutosave(): { savedAt: number; doc: StudioSceneInput } | null {
+    try {
+      const raw = localStorage.getItem(AUTOSAVE_KEY);
+      if (!raw) return null;
+      const saved = JSON.parse(raw) as { savedAt?: number; doc?: string };
+      if (typeof saved.doc !== 'string' || typeof saved.savedAt !== 'number') return null;
+      return { savedAt: saved.savedAt, doc: JSON.parse(saved.doc) as StudioSceneInput };
+    } catch (_) { return null; }
+  }
+  /** The last autosaved scene, for the header's Restore: when it was saved, its battlefield and how many tanks. */
+  function autosaved(): { savedAt: number; map: string; tanks: number } | null {
+    const saved = readAutosave();
+    return saved ? { savedAt: saved.savedAt, map: String(saved.doc.map || 'verdant'), tanks: saved.doc.actors?.length ?? 0 } : null;
+  }
+  async function restoreAutosave(): Promise<boolean> {
+    const saved = readAutosave();
+    if (!saved || recording || filming || loading) return false;
+    await load(saved.doc);
+    commitHistory(); // opening the saved scene is a step: undo returns to the empty Studio
+    return true;
+  }
+  async function undo(): Promise<boolean> { return stepHistory(undoStack, redoStack); }
+  async function redo(): Promise<boolean> { return stepHistory(redoStack, undoStack); }
+  async function stepHistory(from: string[], to: string[]): Promise<boolean> {
+    if (restoringHistory || loading || recording || filming || !active) return false;
+    commitHistory(); // a pending edit becomes its own step first
+    const target = from.pop();
+    if (target == null || historyHead == null) return false;
+    to.push(historyHead);
+    try {
+      await restoreDocument(JSON.parse(target) as StudioSceneInput);
+    } catch (error) {
+      console.error('[studio] undo/redo could not restore the scene', error);
+    }
+    historyHead = JSON.stringify(documentJson()); // the restored scene as this build writes it
+    const doc = JSON.parse(historyHead) as StudioSceneInput;
+    if (!emptyDocument(doc)) writeAutosave(historyHead);
+    panel.refreshHistory();
+    return true;
+  }
+  /** The same tanks in the same order, which a restore can patch in place instead of rebuilding. */
+  function sameActorSet(doc: StudioSceneInput): boolean {
+    const list = doc.actors || [];
+    return list.length === actors.length && list.every((json, i) => {
+      const a = actors[i];
+      return json.id === a.specId && (json.name || null) === (a.name || null) && (json.camoSeed ?? a.camoSeed) === a.camoSeed
+        && (json.stateAgeS ?? null) === a.authoredStateAgeS && (json.suspensionAimDeg ?? null) === (a.authoredSuspensionAimDeg ?? null)
+        && !!json.smoking === a.authoredSmoking && !!json.burning === a.authoredBurning;
+    });
+  }
+  /**
+   * Put the scene back to a document, keeping the view. The same battlefield and tanks patch in place (no tank is
+   * rebuilt); anything else loads the document as Load JSON would.
+   */
+  async function restoreDocument(doc: StudioSceneInput): Promise<void> {
+    if (historyTimer) { clearTimeout(historyTimer); historyTimer = 0; }
+    restoringHistory = true;
+    try {
+      const world = getWorld();
+      if (!world || world.mapId !== doc.map || !sameActorSet(doc)) {
+        await load({ ...doc, fxTime: Math.round(clockMs), timeScale: 0 }, { keepView: true }); // no camera: the view stays
+        return;
+      }
+      const light = normalizeStudioLight(doc.light);
+      if ((doc.timeOfDay ?? 'day') !== studioTimeFor(world.mapId, timeOfDay) || !sameLight(light, studioLight)) {
+        await setTimeOfDay(doc.timeOfDay ?? 'day', light);
+      }
+      applyFxSettings(normalizeStudioFx(doc.fx));
+      timeScale = 0;
+      (doc.actors || []).forEach((json, i) => {
+        const pos = json.pos ?? [actors[i].pose.x, actors[i].pose.z];
+        updateActor(actors[i], {
+          x: pos[0], z: pos[pos.length >= 3 ? 2 : 1], facingDeg: json.facingDeg, turretDeg: json.turretDeg, gunDeg: json.gunDeg,
+          camo: json.camo ?? null, state: json.state, recoilAgeS: json.recoilAgeS ?? null,
+        });
+      });
+      storyboard = loadedStoryboard(doc);
+      bindStoryboardTracks();
+      if (!storyboard.shots.some((shot) => shot.id === selectedShotId)) selectedShotId = storyboard.shots[0]?.id || null;
+      rail.rebuild();
+      effectLog.length = 0;
+      selectedEffect = null;
+      replaceLoadEffects(doc, clampStudioTime(clockMs, storyboard.durationMs));
+      productionFormat = doc.productionFormat ?? 'landscape';
+      sceneFilm = doc.film == null ? null : normalizeFilm(doc.film);
+      picture = resolvePicture(doc.picture);
+      applyPictureRuntime();
+      rail.updateVisibility();
+      panel.refreshAll();
+      invalidate();
+    } finally {
+      restoringHistory = false;
+    }
+  }
+
   /** Scenes without a picture keep exactly the earlier state() shape. */
   function pictureStateEntry(): { picture?: Record<string, RuntimeValue> } {
     const json = pictureStateJson(picture);
@@ -5090,13 +5272,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    */
   async function load(
     json: StudioSceneInput = {},
-    _opts: Readonly<Record<string, RuntimeValue>> = {},
+    opts: Readonly<Record<string, RuntimeValue>> = {},
   ): Promise<ReturnType<typeof stateJson>> {
     // A scene names its vehicles under the id schema it was written in (SSOT 2.19).
     json = sceneInCurrentTankIds(json);
     const loadedFormat = json.productionFormat ?? 'landscape';
     productionAspect(loadedFormat); // Validate before replacing any scene state.
-    lookThrough = true;
+    if (!opts.keepView) lookThrough = true; // an undo keeps the view it was given; a new scene looks through its shots
     const loadedFilm = json.film == null ? null : normalizeFilm(json.film);
     if (filmRenderer.active) throw new Error('Finish the film render before loading a scene');
     if (json.timeOfDay !== undefined && !isStudioTime(json.timeOfDay)) throw new RangeError('Unknown time of day');
@@ -5422,6 +5604,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    */
   let exiting = false;
   function exit() {
+    commitHistory(); // the last edit reaches the autosave before the Studio closes
     if (!active || exiting) return;
     exiting = true;
     transition.run(() => doExit(), {
@@ -5743,6 +5926,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     get shuttleRate() { return reverseRate > 0 ? -reverseRate : timeScale; },
     get lookThrough() { return lookThrough; },
     setLookThrough,
+    undo,
+    redo,
+    get history() { return { undo: undoStack.length, redo: redoStack.length, savedAt: lastSavedAt }; },
+    autosaved,
+    restoreAutosave,
     get placementSnap() { return placementSnap; },
     setPlacementSnap,
     applyPosePreset,

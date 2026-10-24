@@ -223,6 +223,13 @@ export interface StudioPanelApi extends StudioPicturePanelApi {
   /** The view is the shots' camera at the playhead. */
   readonly lookThrough: boolean;
   setLookThrough(on: boolean): boolean;
+  /** Undo/redo between the scene's settled edits (Ctrl/Cmd+Z, Shift+Ctrl/Cmd+Z). */
+  undo(): Promise<boolean>;
+  redo(): Promise<boolean>;
+  readonly history: { readonly undo: number; readonly redo: number; readonly savedAt: number };
+  /** The last autosaved scene (this browser), and opening it. */
+  autosaved(): { readonly savedAt: number; readonly map: string; readonly tanks: number } | null;
+  restoreAutosave(): Promise<boolean>;
   /** Where a dragged or placed tank lands: on the nearest road, on the ground under the pointer, or on its own level. */
   readonly placementSnap: 'road' | 'terrain' | 'off';
   setPlacementSnap(snap: 'road' | 'terrain' | 'off'): string;
@@ -350,6 +357,8 @@ interface StudioPanelRuntime {
   refreshPicture(): void;
   refreshAll(): void;
   tick(dt: number): void;
+  /** The header's undo, redo and saved state after a step or an autosave. */
+  refreshHistory(): void;
   /** After a live frame: the selection's outline, name tag and gizmo follow the tank. */
   drawSelection(): void;
   /** A shot's new thumbnail, into its outliner row and its clip on the camera lane. */
@@ -424,6 +433,42 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   mark.innerHTML = STUDIO_GLYPHS.mark;
   mark.append(el('span', 'wd', t('studio.ws.title')));
   const projectName = el('span', 'pn', '');
+  // the scene's safety (09-studio header .sv and the undo/redo pair): its autosave, and the steps either side
+  const savedState = el('span', 'sv');
+  savedState.hidden = true;
+  savedState.append(el('i'), el('span'));
+  const restoreBtn = chipButton(t('studio.ws.restore'), 'undo');
+  restoreBtn.hidden = true;
+  restoreBtn.addEventListener('click', () => {
+    restoreBtn.disabled = true;
+    void S.restoreAutosave().finally(() => { restoreBtn.disabled = false; api.refreshHistory(); });
+  });
+  const undoBtn = iconButton(t('studio.ws.undoTitle'));
+  undoBtn.innerHTML = uiIconSVG('undo', 16);
+  undoBtn.addEventListener('click', () => { void S.undo(); });
+  const redoBtn = iconButton(t('studio.ws.redoTitle'));
+  redoBtn.classList.add('redo');
+  redoBtn.innerHTML = uiIconSVG('undo', 16);
+  redoBtn.addEventListener('click', () => { void S.redo(); });
+  const historyTools = el('span', 'hist');
+  historyTools.append(savedState, restoreBtn, undoBtn, redoBtn);
+  /** "2 minutes ago" in the page's language, empty under a minute. */
+  function agoText(at: number): string {
+    const minutes = Math.round((Date.now() - at) / 60000);
+    if (minutes < 1) return '';
+    const format = new Intl.RelativeTimeFormat(getLocale(), { numeric: 'auto' });
+    if (minutes < 60) return format.format(-minutes, 'minute');
+    return minutes < 1440 ? format.format(-Math.round(minutes / 60), 'hour') : format.format(-Math.round(minutes / 1440), 'day');
+  }
+  function refreshSaved(): void {
+    const { savedAt } = S.history;
+    savedState.hidden = !savedAt;
+    if (!savedAt) return;
+    const ago = agoText(savedAt);
+    const text = ago ? t('studio.ws.saved', { ago }) : t('studio.ws.savedNow');
+    const label = savedState.lastElementChild;
+    if (label && label.textContent !== text) label.textContent = text;
+  }
   const formatSeg = el('div', 'cot-c-seg');
   formatSeg.setAttribute('role', 'radiogroup');
   formatSeg.setAttribute('aria-label', productionLabel('format'));
@@ -482,7 +527,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   exitBtn.insertAdjacentHTML('beforeend', `<kbd class="cot-c-kbd" aria-hidden="true">F8</kbd>`);
   exitBtn.addEventListener('click', () => S.exit());
   headRight.append(linkBtn, galleryBtn, exportBtn, exitBtn);
-  head.append(mark, projectName, modeSeg, formatSeg, headRight);
+  head.append(mark, projectName, historyTools, modeSeg, formatSeg, headRight);
 
   // --- the viewport (09-studio .vp): chips, notices and the frame readout over the canvas ---------------------------
   const vpTop = el('div', 'st-vpt');
@@ -2506,6 +2551,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       api.refreshMap();
       api.refreshPicture();
       api.refreshActors();
+      api.refreshHistory();
       api.refreshEffects();
       api.refreshCamera();
       api.refreshStoryboard();
@@ -2523,8 +2569,23 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       refreshAcc = 0;
       refreshSunCamera();
       api.refreshTime();
+      refreshSaved();
     },
     drawSelection,
+    refreshHistory() {
+      const history = S.history;
+      undoBtn.disabled = !history.undo;
+      redoBtn.disabled = !history.redo;
+      refreshSaved();
+      // an empty Studio offers the last autosaved scene until something is staged or saved here
+      const saved = history.savedAt ? null : S.autosaved();
+      const empty = !S._internal.actors.length && !S.getStoryboard().shots.length;
+      restoreBtn.hidden = !(saved && empty);
+      if (saved && empty) {
+        restoreBtn.title = t('studio.ws.restoreTitle', { map: S.getMapInfo(saved.map).name, count: saved.tanks,
+          ago: agoText(saved.savedAt) || t('studio.ws.justNow') });
+      }
+    },
     setShotThumbnail(id, url) {
       for (const slot of shotThumbSlots.get(id) ?? []) {
         slot.img.src = url;
