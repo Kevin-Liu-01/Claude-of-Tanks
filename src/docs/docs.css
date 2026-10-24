@@ -1,6 +1,7 @@
 /* The Field Manual (site/docs.html and the chapter pages topics.ts writes), on the Premiere direction's kit
    (src/ui/components/components.css, imported here) and its 08-docs page. */
 @import url('../ui/components/components.css');
+@import url('../ui/tokens/surface-docs.css');
 /* the manual-start block rides in this sheet: no extra stylesheet on the path to first paint */
 @import url('../presentation/manualStart.css');
 @layer reset,tokens,base,components,surfaces,utilities,overrides;

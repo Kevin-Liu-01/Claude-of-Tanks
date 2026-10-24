@@ -4,6 +4,7 @@
    writes the hero, versus, fleet and battlefield markup; the sections under them speak the same grammar: a display
    headline, picture cards with their fade, kit buttons. Tokens only; the page's own values are the surface-home group. */
 @import url('../ui/components/components.css');
+@import url('../ui/tokens/surface-home.css');
 /* the manual-start block and the hero card layers ride in this one sheet: no extra stylesheet on the path to first paint */
 @import url('./manualStart.css');
 @import url('../ui/heroCard.css');
