@@ -39,6 +39,8 @@ function hull(P: TankBuilderPort): void {
     for(const z of [-2.62,-2.02])P.addHatch('hull',box(.99,.033,.50),side*.77,1.9555,z);
     for(const z of [-3.12,.75,2.62])KIT.liftEye(P,'hullDetail',side*1.25,z>2?1.43:z>0?1.78:1.96,z);
   }
+  // The turret's ring plinth: the low front roof (1.76) rises to the lifted seat (1.96) round the ring (buildCv9040CX).
+  P.add('hull',cylY(.92,.92,.20,P.q?40:20),0,1.86,-.76);
   // Driver at the left front, engine and cooling package to the right.
   P.addHatch('hull',box(.62,.052,.71),-.79,1.78,1.11);
   for(const x of [-.99,-.79,-.59])KIT.periscope(P,'hullDetail',x,1.835,1.41);
@@ -132,8 +134,16 @@ function gun(P: TankBuilderPort): void {
   P.addGunExtraDark(new THREE.CircleGeometry(.010,12),-.325,-.06,.701); // 2026-10-19 (owner float sweep): 8 mm off the tube end
 }
 
+/** Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the turret and its gun ride this far over
+ * their authored seat on the low front roof (1.76). The troop cell's roof (1.94, hatches 1.972) starts 0.19 m behind the
+ * ring's axis, and the turret's 1.78 underside stood 11-15 cm into it, at rest and at every bearing. The source-backed
+ * CV90 Mk IV carries the same raised cell under a turret whose underside clears it, and the lift puts this roof near the
+ * real 2.7 m. A hull ring plinth (hull()) carries the ring up to the lifted seat. */
+const CV9040C_TURRET_LIFT_M = .20;
+
 export function buildCv9040CX(P: TankBuilderPort): void {
   hull(P);gear(P);turret(P);gun(P);P.topY=1.03;
+  P.turretG.position.y += CV9040C_TURRET_LIFT_M;
   P.additionalShadowSources={hull:['hullExternalArmor','hullHatch'],turret:['turretExternalArmor','turretHatch']};
   // 2026-10-09 (owner): the field net and garnish (ghillieFleetSuits.ts)
   addVehicleGhillieSuit(P);

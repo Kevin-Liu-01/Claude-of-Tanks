@@ -542,7 +542,7 @@
    "hostSweep": []
   },
   "centurion3": {
-   "inputHash": "07a392fedd56f818",
+   "inputHash": "90ba94762be71a7a",
    "runs": [
     {
      "index": 0,
@@ -615,7 +615,7 @@
    "hostSweep": []
   },
   "centurion5_2": {
-   "inputHash": "7beca2d63ee99dd2",
+   "inputHash": "2dd8769a2d719d35",
    "runs": [
     {
      "index": 0,
@@ -694,7 +694,7 @@
    "hostSweep": []
   },
   "challenger1_mk3": {
-   "inputHash": "e453871e622d29e2",
+   "inputHash": "4bd8993f9b2b5229",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -712,13 +712,13 @@
    "hostSweep": []
   },
   "challenger3": {
-   "inputHash": "472f255e741dd190",
+   "inputHash": "0cf665f2fd0d119d",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger3_proto": {
-   "inputHash": "62be9434102f34f6",
+   "inputHash": "ee4ba214b61148c7",
    "runs": [
     {
      "index": 0,
@@ -726,22 +726,27 @@
      "source": "decor",
      "frame": "turret",
      "registered": false,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "clips <= 5 cm cosmetic"
+     "classes": [
+      "HANGING"
      ],
+     "primary": "HANGING",
+     "why": {
+      "HANGING": [
+       "86% over air",
+       "only 12% supported"
+      ]
+     },
+     "notes": [],
      "measures": {
-      "support": 0.995,
-      "gap": 0.005,
-      "air": 0,
-      "hidden": 0.063,
-      "sunkMaxM": 0.041,
+      "support": 0.12,
+      "gap": 0.015,
+      "air": 0.864,
+      "hidden": 0,
+      "sunkMaxM": 0.009,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.854,
-      "host": "turret<c3ShellSegment@profiles/challenger.ts:4804>"
+      "exposure": 0.966,
+      "host": "turretDetail<buildChallenger3TurretStage1@profiles/challenger.ts:4923>"
      }
     }
    ],
@@ -749,25 +754,25 @@
    "hostSweep": []
   },
   "chieftain3": {
-   "inputHash": "2510854e8cdad8b3",
+   "inputHash": "05109bb25484cecf",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "chieftain5": {
-   "inputHash": "473ced807b9f1c18",
+   "inputHash": "d9cc1611b8cfe4a6",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "chieftain_mk10": {
-   "inputHash": "4aa3a0b43e61b97b",
+   "inputHash": "1072ab00d2a46ba7",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "chieftain_mk9": {
-   "inputHash": "c2fcf4f3d6e1d93d",
+   "inputHash": "79301e650b1dc0b8",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -779,25 +784,25 @@
    "hostSweep": []
   },
   "cv90105_tml": {
-   "inputHash": "84a8844ca32e3e9c",
+   "inputHash": "d9128515dc6b73ad",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "cv9040c": {
-   "inputHash": "89778f585575f8a7",
+   "inputHash": "980fe6d787ce479d",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "cv90_mk4": {
-   "inputHash": "a56e0abf95ebd0ae",
+   "inputHash": "f82080ab9b3069d5",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "cv90_mk4_concept": {
-   "inputHash": "f95890653cb04353",
+   "inputHash": "659e6b50d0ad9ea0",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

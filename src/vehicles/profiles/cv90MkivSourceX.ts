@@ -324,6 +324,9 @@ function buildCv90Cannon(P: TankBuilderPort): void {
   P.muzzleZ=mouth;P.physicalMuzzleBore={outerRadiusM:outer,innerRadiusM:inner,depthM:depth,rimProjectionM:.0996};
 }
 
+/** The turret's lift over the source seat (buildCv90MkivX). */
+const CV90_MKIV_TURRET_LIFT_M=.21;
+
 export function buildCv90MkivX(P: TankBuilderPort): void {
   // Measured fixed armor extends the shadow silhouette; omit small fittings.
   P.additionalShadowSources = {
@@ -342,5 +345,11 @@ export function buildCv90MkivX(P: TankBuilderPort): void {
   buildCv90Cannon(P);
   preserveSourceStudyGunMountAppearance(P);
   P.topY=2.82-py;
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the turret and its gun ride this far over
+  // the source seat. The source's troop roof rises from 1.53 to 1.727 (fittings 1.76) between 0.6 and 1.2 m behind the
+  // ring's axis, and the turret's lower shoulders and cheek smoke arrays (1.58-1.59) ran up to 21 cm through it at every
+  // rear bearing. A hull ring plinth carries the ring up to the lifted seat.
+  P.turretG.position.y+=CV90_MKIV_TURRET_LIFT_M;
+  P.add('hull',cylY(.92,.92,CV90_MKIV_TURRET_LIFT_M+.03,P.q?40:20),-.035,1.53+(CV90_MKIV_TURRET_LIFT_M+.03)/2,-.60);
   P.hullG.userData.xRebuild={candidate:'cv90_mk4',independent:true,sourceLocalOnly:true,datumVersion:1};
 }
