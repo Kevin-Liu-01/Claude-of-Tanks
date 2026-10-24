@@ -377,6 +377,7 @@ void main() {
 
 const PUFF_FRAG_NORMAL = `
 uniform sampler2D uMap;
+uniform float uHeatSmoke;
 varying vec2 vUv;
 varying vec2 vUvA;
 varying vec2 vUvB;
@@ -397,7 +398,8 @@ float pNoise( vec2 p ) {
 void main() {
   float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
   // edges thin out with age so old puffs wisp away instead of popping
-  float a = pow( tex, 1.0 + vT * 1.2 ) * vColor.a * softDepthFade();
+  // (245) a heat-imaging camera sees through a cold puff (uHeatSmoke: its share of the opacity it keeps)
+  float a = pow( tex, 1.0 + vT * 1.2 ) * vColor.a * softDepthFade() * uHeatSmoke;
   // (HE look v2, the coordinator: "no spheres. Break the silhouette with noise-eroded edges") the thin half of the card
   // is torn by a two-octave noise riding the puff's own seed and drifting as it ages: where the noise is low the rim is
   // cut away, so a puff's outline is ragged lobes, never a soft round ball; its dense body is untouched
@@ -443,7 +445,7 @@ void main() {
   if ( vFlame > 0.5 ) {
     float fy = vUv.y;
     float hw = 0.5 * ( 0.62 + 0.38 * smoothstep( 0.0, 0.16, fy ) ) * pow( max( 1.0 - fy, 0.0 ), 0.7 ) * ( 0.8 + 0.4 * tex );
-    float body = ( 1.0 - smoothstep( 0.45 * hw, hw, abs( vUv.x - 0.5 ) ) ) * smoothstep( 0.0, 0.07, fy );
+    float body = ( 1.0 - smoothstep( 0.72 * hw, hw, abs( vUv.x - 0.5 ) ) ) * smoothstep( 0.0, 0.07, fy );
     tex = body * ( 0.55 + 0.45 * tex ) * ( 1.0 - 0.35 * fy );
   }
   // erosion-style dissolve: the alpha threshold rises with age so the noisy
@@ -479,8 +481,11 @@ void main() {
   float heat = clamp( ( tex - er ) * 2.6, 0.0, 1.0 );
   float hot = 0.45 + heat * heat * ( 2.2 - vT * 1.6 );
   vec3 col = vColor.rgb * hot * ( 1.0 - vT * vT * 0.45 );
-  // (240) a flame tongue reddens toward its tip
-  col *= mix( vec3( 1.0 ), vec3( 1.0, 0.6, 0.36 ), smoothstep( 0.4, 1.0, vUv.y ) * vFlame );
+  // (240) a flame tongue reddens toward its tip; (245, the night-fire critic: "a soft orange ball or glow with no hot root
+  // and cooler tips") its root burns over the bloom's threshold and its body and tip under it, so a stack of tongues keeps
+  // its outlines instead of blooming into one ball
+  col *= mix( vec3( 1.0 ), vec3( 1.0, 0.45, 0.22 ), smoothstep( 0.35, 1.0, vUv.y ) * vFlame );
+  col *= mix( 1.0, 0.62 + 0.55 * ( 1.0 - smoothstep( 0.0, 0.3, vUv.y ) ), vFlame );
   // rim tint — r5: the hard 0.0-0.55 gate stamped a saturated RED BAND onto
   // the rim (r4 "hard red banding"). The ramp now walks white -> yellow ->
   // orange -> sooty umber across a wide gate so no single hue bands.
@@ -1569,6 +1574,8 @@ interface ParticleSharing {
   readonly uLightTint: { value: THREE.Color };
   /** (FX lane 10-17) the dark puffs' night floor: a share of the tint's luminance their light never falls under. */
   readonly uNightFloor: { value: number };
+  /** (245) the share of its opacity a cold puff of smoke or dust keeps to this frame's camera (1; less under a heat lens) */
+  readonly uHeatSmoke: { value: number };
   readonly textures: Readonly<Record<'smoke' | 'fire' | 'prop' | 'dust' | 'flash' | 'jet', THREE.Texture>>;
 }
 
@@ -1608,6 +1615,8 @@ export function createParticleSystem(
   const uLightTint = share ? share.uLightTint : { value: new THREE.Color(1, 1, 1) };
   // (FX lane 10-17) the dark puffs' night floor (fxLit): one shared value, the Studio's companion pools read the same
   const uNightFloor = share?.uNightFloor ?? { value: NIGHT_SMOKE_FLOOR };
+  // (245) a heat lens sees through cold smoke and dust (effects.ts THERMAL_SMOKE_ALPHA); a smoke screen's own uniform stays 1
+  const uHeatSmoke = share?.uHeatSmoke ?? { value: 1 };
   // Normal-blended media that honour FX_LIGHT_TINT (setLightTintShading).
   const tintMaterials: THREE.ShaderMaterial[] = [];
   let lateFxUntil = -Infinity;
@@ -1828,6 +1837,7 @@ export function createParticleSystem(
         uCameraFar,
         uLightTint,
         uNightFloor,
+        uHeatSmoke,
       }, localLightUniforms),
       transparent: true,
       depthWrite: false,
@@ -2051,7 +2061,7 @@ export function createParticleSystem(
   // Studio companion seam (see ParticleSystemOptions.share): the exact
   // uniform objects and sprite sheets, never copies.
   const sharing: ParticleSharing = Object.freeze({
-    uTime, uSceneDepth, uSoftViewport, uCameraNear, uCameraFar, uLightTint, uNightFloor,
+    uTime, uSceneDepth, uSoftViewport, uCameraNear, uCameraFar, uLightTint, uNightFloor, uHeatSmoke,
     textures: Object.freeze({
       smoke: smokeTex, fire: fireTex, prop: propTex, dust: dustTex, flash: flashTex, jet: jetTex,
     }),

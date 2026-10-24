@@ -678,6 +678,12 @@ const THERMAL_FIRE_GAIN = 4;
  *  gas cools to the eye in ~0.15 s (its dome's heat e-folds at 7/s) but stays hot to a long-wave sensor for most of a
  *  second: under a heat-imaging camera the media's fire cools at this share of its rate (volumeMedia.ts uHeatCool) */
 const THERMAL_FIRE_COOL = 0.3;
+/** (245, the heat-lens critic: "black, hard-edged cold patches inside warm hull outlines") a long-wave sensor sees through
+ *  smoke and dust, but they drew at full opacity to it: from the gunship a wreck's own column laid dark noise-edged blots
+ *  over its hot hull. Under a heat-imaging camera a cold puff (pooled or simulated) keeps this share of its opacity; hot gas
+ *  and a burst's lit heart keep all of it; a smoke screen (its own shader) keeps all. 233 tried a quarter (withdrawn with
+ *  the wreck curve); a little under half keeps the column's shape in the lens. */
+const THERMAL_SMOKE_ALPHA = 0.45;
 /** the grade's own vision code (engine/post.ts uThermal): 1 infrared, 2 thermal (heat); 0 daylight, 3 intensified */
 function imagesHeat(camera: THREE.Camera | null | undefined): boolean {
   const ud = camera?.userData as { sensorVision?: number; thermalFlight?: boolean; flightVision?: number } | undefined;
@@ -824,12 +830,14 @@ const NIGHT_TONGUE_DECK_M = 1.5;
 /** (240) a wreck's deck under its night flames: this share of the hull's height (a turret's roof stands at ~1) */
 const DECK_OF_HEIGHT = 0.78;
 /** (240) a night fire's light on its own smoke (nightSmokeGlowAt): from this far over its deck (its flames' tops), this
- *  many times the day slot's gain, over this reach (m, x the column's scale) */
-const NIGHT_SMOKE_GLOW_UP_M = 0.9, NIGHT_SMOKE_GLOW_K = 5, NIGHT_SMOKE_GLOW_REACH_M = 3.4;
+ *  many times the day slot's gain, over this reach (m, x the column's scale). (245, the critic's close views: "the whole
+ *  column washed a muddy orange-brown far above the fire") lower, weaker and shorter: 0.9 / 5 / 3.4 -> 0.4 / 3.5 / 2.4 */
+const NIGHT_SMOKE_GLOW_UP_M = 0.4, NIGHT_SMOKE_GLOW_K = 3.5, NIGHT_SMOKE_GLOW_REACH_M = 2.4;
 /** (240) a burning tank wreck's pooled light at night (updateWreckLight): over its deck (m: among its flames' tops, so the
  *  turret's roof under it never burns white while the ground round it takes a pool), its gain on the day's, its reach (m;
- *  the day's 12) and its hue (a fire's yellow-orange: the kill orange painted the hull red at night) */
-const NIGHT_FIRE_LIGHT_UP_M = 2.0, NIGHT_FIRE_LIGHT_K = 3.5, NIGHT_FIRE_LIGHT_RANGE_M = 20, NIGHT_FIRE_LIGHT_HEX = 0xff9848;
+ *  the day's 12) and its hue (a fire's yellow-orange: the kill orange painted the hull red at night). (245, the critic's
+ *  close views: "the ground pool falls off too slowly toward the camera") 3.5 / 20 m -> 2.6 / 13 m */
+const NIGHT_FIRE_LIGHT_UP_M = 2.0, NIGHT_FIRE_LIGHT_K = 2.6, NIGHT_FIRE_LIGHT_RANGE_M = 13, NIGHT_FIRE_LIGHT_HEX = 0xff9848;
 const SHELL_BURST_COLUMN_S = 14; // a shell hit's smoke-only column (the Studio's stand-in blast; no wreck burns)
 // r5 column-continuity rebuild: 0.05 (was 0.11) — the 9 Hz cadence of very
 // large puffs is what let the column macro-structure fall apart in motion
@@ -1183,7 +1191,8 @@ function* createFxSteps(
   const landingGround = createLatticeGround((x, z) => deformedGroundY(x, z), groundRevision, (x, z) => baseCellFlipped(x, z));
   const vol: VolumeMedia | null = mediaTier
     ? createVolumeMedia({ soft: particles.softParticles, now: () => particles.getTime(), scene: engineCtx.scene ?? null,
-      heatGain: (camera) => (imagesHeat(camera) ? THERMAL_FIRE_GAIN : 1), heatCool: (camera) => (imagesHeat(camera) ? THERMAL_FIRE_COOL : 1) })
+      heatGain: (camera) => (imagesHeat(camera) ? THERMAL_FIRE_GAIN : 1), heatCool: (camera) => (imagesHeat(camera) ? THERMAL_FIRE_COOL : 1),
+      heatSmoke: (camera) => (imagesHeat(camera) ? THERMAL_SMOKE_ALPHA : 1) })
     : null;
   const chunks: DebrisChunks | null = mediaTier
     ? createDebrisChunks({ seed, now: () => particles.getTime(), scene: engineCtx.scene ?? null, groundAt: landingGround })
@@ -4255,14 +4264,16 @@ function* createFxSteps(
     _puffO.vel[1] = 0.35 + rng() * 0.5;
     _puffO.vel[2] = COLUMN_WIND_Z * 0.25 + (rng() - 0.5) * 0.3;
     _puffO.life = 0.35 + rng() * 0.3;
-    const w = (0.6 + rng() * 0.4) * col.scale * dk * (0.55 + 0.45 * fk);
+    // (245, the night-fire critic: the flames "a soft orange ball or glow") narrower and of more different heights, so the
+    // tongues stand apart instead of merging into one glow
+    const w = (0.38 + rng() * 0.3) * col.scale * dk * (0.55 + 0.45 * fk);
     _puffO.size0 = w;
     _puffO.size1 = -w * 0.7;
     // its height over its width, and its tip's sway (negative: the flame's outline)
-    _puffO.rot = 2.1 + rng() * 1.0;
+    _puffO.rot = 2.4 + rng() * 1.4;
     _puffO.rotVel = -(6 + rng() * 6);
-    col3(0xffb04a, _puffO.col0); col3(0xd8400a, _puffO.col1);
-    _puffO.alpha = 0.72; _puffO.grav = 0.6; _puffO.birthOffset = birthOffset - rng() * 0.15;
+    col3(0xffcf6a, _puffO.col0); col3(0xc8380a, _puffO.col1);
+    _puffO.alpha = 0.85; _puffO.grav = 0.6; _puffO.birthOffset = birthOffset - rng() * 0.15;
     particles.emit('fire', _puffO);
   }
 
@@ -5248,6 +5259,8 @@ function* createFxSteps(
     flareCamSet = true;
     setGunshipTrailNear(_flareCam);
     heatCamera = imagesHeat(camera);
+    // (245) the pooled smoke and dust a heat lens sees through (the volume media take theirs in their own frame)
+    particles.sharing.uHeatSmoke.value = heatCamera ? THERMAL_SMOKE_ALPHA : 1;
     drones.begin(particles.getTime(), camera.position);
     tracers.begin(_flareCam); // atmospherics lane; (ac130-fx-228 r3) the eye, for the gunship's lens clearance
     liveAtgmCount = 0;
