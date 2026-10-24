@@ -167,7 +167,8 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
     return { duration, processing: Math.round(processing),
       inputDelay: first ? Math.round(first.processingStart - first.start) : 0, event: slowest?.name ?? null, target: slowest?.target ?? null,
       loafs, longtaskMs: Math.round(longtasks.reduce((sum, t) => sum + t.duration, 0)), longtasks: longtasks.length,
-      garageSwitch: lastSwitch ? JSON.parse(JSON.stringify(lastSwitch)) : null };
+      garageSwitch: lastSwitch ? JSON.parse(JSON.stringify(lastSwitch)) : null,
+      garageEntry: window.__GARAGE_ENTRY ? JSON.parse(JSON.stringify(window.__GARAGE_ENTRY)) : null };
   }, t0, INPUT_EVENTS);
   return { error, selector: selector ?? key, shownMs: shownAt == null ? null : Math.round(shownAt - t0),
     doneMs: doneAt == null ? null : Math.round(doneAt - t0), ...data };
