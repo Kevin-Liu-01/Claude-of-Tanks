@@ -162,9 +162,9 @@ body[data-cot-width='compact'] .cot-set-tab,
 body[data-cot-width='phone'] .cot-set-tab{min-height:var(--cot-control-floor);white-space:nowrap;flex:0 0 auto}
 /* Phone tabs size to their labels and share the spare width; a row too wide for a narrow phone scrolls instead of
    letting a label run past its plate. */
-body[data-cot-width='phone'] .cot-set-tab{flex:1 0 auto;padding-inline:4px;font-size:11px;letter-spacing:.01em}
+body[data-cot-width='phone'] .cot-set-tab{flex:1 0 auto;padding-inline:4px;font-size:max(13px,var(--fs-13))}
 body[data-cot-width='phone'] .cot-set-tab.sel::after{left:3px;right:3px}
-body[data-cot-width='phone'] .cot-set-tab .ct{margin-left:3px;font-size:11px}
+body[data-cot-width='phone'] .cot-set-tab .ct{margin-left:3px;font-size:max(var(--fs-floor-11),var(--fs-11))}
 /* The crew-voice picker stacks under its label once the panel is full-screen. */
 body[data-cot-width='compact'] .cot-set-crew-row,
 body[data-cot-width='phone'] .cot-set-crew-row{flex-direction:column;align-items:stretch;gap:10px}
@@ -190,7 +190,7 @@ body[data-cot-height='short'] .cot-set-hdr{padding-block:7px 5px}
 body[data-cot-height='short'] .cot-set-ftr{padding-block:6px max(6px,env(safe-area-inset-bottom))}
 body[data-cot-width='tablet'] .cot-set-hdr{padding:12px 14px 8px}
 body[data-cot-width='tablet'] .cot-set-tabs{padding-inline:14px}
-body[data-cot-width='tablet'] .cot-set-tab{padding:9px 10px 8px;font-size:11px;letter-spacing:.07em}
+body[data-cot-width='tablet'] .cot-set-tab{font-size:max(13px,var(--fs-13))}
 body[data-cot-width='tablet'] .cot-set-body{padding:0 14px 12px}
 body[data-cot-width='tablet'] .cot-set-conflict{margin:8px 14px 0}
 body[data-cot-width='tablet'] .cot-set-ftr{padding:10px 14px 12px}
@@ -433,7 +433,7 @@ body[data-cot-width='phone'] .cot-studio .dock{
 body[data-cot-width='compact'] .cot-studio .badge,
 body[data-cot-width='phone'] .cot-studio .badge{top:max(8px,env(safe-area-inset-top));left:var(--cot-edge);right:var(--cot-edge)}
 body[data-cot-width='phone'] .cot-studio .badge .m{display:none}
-body[data-cot-width='phone'] .cot-studio .badge .t{font-size:11px;letter-spacing:.06em}
+body[data-cot-width='phone'] .cot-studio .badge .t{font-size:max(var(--fs-floor-11),var(--fs-11));letter-spacing:.06em}
 body[data-cot-input='coarse'] .cot-studio button{min-height:44px}
 body[data-cot-input='coarse'] .cot-studio input,
 body[data-cot-input='coarse'] .cot-studio select{min-height:42px}
@@ -443,9 +443,9 @@ body[data-cot-height='short'] .cot-studio .mapBtn{height:94px}
 body[data-cot-width='compact'] .cot-studio .badge,
 body[data-cot-width='phone'] .cot-studio .badge{gap:6px;padding:6px 8px}
 body[data-cot-width='compact'] .cot-studio .badge .t,
-body[data-cot-width='phone'] .cot-studio .badge .t{font-size:11px;letter-spacing:.1em}
+body[data-cot-width='phone'] .cot-studio .badge .t{font-size:max(var(--fs-floor-11),var(--fs-11));letter-spacing:.1em}
 body[data-cot-width='compact'] .cot-studio .badge button,
-body[data-cot-width='phone'] .cot-studio .badge button{font-size:11px;padding:5px 6px}
+body[data-cot-width='phone'] .cot-studio .badge button{font-size:max(var(--fs-floor-11),var(--fs-11));padding:5px 6px}
 body[data-cot-width='compact'] .cot-studio .mapBtn,
 body[data-cot-width='phone'] .cot-studio .mapBtn{height:126px}
 body[data-cot-width='compact'] .cot-studio .mapPop,
@@ -702,9 +702,9 @@ body[data-cot-width='phone'] .cot-trans .title{
   font-size:clamp(20px,7vw,32px);letter-spacing:.1em;text-indent:.1em;
 }
 body[data-cot-width='compact'] .cot-trans .kick,
-body[data-cot-width='phone'] .cot-trans .kick{font-size:11px;letter-spacing:.16em;text-indent:.26em}
+body[data-cot-width='phone'] .cot-trans .kick{font-size:max(var(--fs-floor-11),var(--fs-11));letter-spacing:.16em;text-indent:.26em}
 body[data-cot-width='compact'] .cot-trans .sub,
-body[data-cot-width='phone'] .cot-trans .sub{font-size:11px;letter-spacing:.07em;text-indent:.14em}
+body[data-cot-width='phone'] .cot-trans .sub{font-size:max(var(--fs-floor-11),var(--fs-11));letter-spacing:.07em;text-indent:.14em}
 body[data-cot-height='short'] .cot-trans .mark{width:36px;height:36px}
 body[data-cot-height='short'] .cot-trans .kick{margin-top:8px}
 body[data-cot-height='short'] .cot-trans .title{margin-top:6px;font-size:clamp(19px,6vh,28px)}
@@ -735,7 +735,7 @@ body[data-cot-width='phone'] .cot-hints{
   font-size:11px;letter-spacing:.01em;
 }
 body[data-cot-width='compact'] .cot-hints kbd,
-body[data-cot-width='phone'] .cot-hints kbd{min-width:20px;height:20px;padding:0 4px;font-size:11px}
+body[data-cot-width='phone'] .cot-hints kbd{min-width:20px;height:20px;padding:0 4px;font-size:max(var(--fs-floor-11),var(--fs-11))}
 body[data-cot-height='short'] .cot-hints{display:none!important}
 body[data-cot-panels='overlay']>.cot-gear{
   top:max(12px,calc(env(safe-area-inset-top) + 8px));right:max(12px,calc(env(safe-area-inset-right) + 8px));

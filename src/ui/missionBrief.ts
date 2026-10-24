@@ -17,15 +17,15 @@ const CSS = `
   font-family:var(--font-ui);opacity:0;transform:translateX(-14px);
   transition:opacity var(--dur-screen) var(--ease-enter),transform var(--dur-screen) var(--ease-enter);pointer-events:none}
 .cot-brief.show{opacity:1;transform:none}
-.cot-brief .kicker{font:600 max(11px,var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3)}
+.cot-brief .kicker{font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3)}
 .cot-brief h3{margin:var(--s1) 0 var(--s2);font:600 max(20px,var(--fs-20))/1.15 var(--font-display);letter-spacing:var(--track-title);color:var(--ink-1)}
 .cot-brief p{margin:0 0 var(--s2);font:400 max(13px,var(--fs-13))/1.45 var(--font-body);color:var(--ink-2)}
-.cot-brief .objectives{margin:0 0 var(--s1);font:600 max(11px,var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label);
+.cot-brief .objectives{margin:0 0 var(--s1);font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label);
   text-transform:uppercase;color:var(--ink-3)}
 .cot-brief ul{margin:0 0 var(--s2);padding:0;list-style:none}
 .cot-brief li{position:relative;padding-left:14px;font:400 max(13px,var(--fs-13))/1.4 var(--font-body);color:var(--ink-1)}
 .cot-brief li::before{content:'';position:absolute;left:1px;top:6px;width:5px;height:5px;background:var(--accent)}
-.cot-brief .enemy{font:600 max(11px,var(--fs-11))/1.3 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;
+.cot-brief .enemy{font:600 max(var(--fs-floor-11),var(--fs-11))/1.3 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;
   color:var(--text-enemy)}
 `;
 

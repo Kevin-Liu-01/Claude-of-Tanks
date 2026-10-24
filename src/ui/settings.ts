@@ -228,7 +228,7 @@ const SETTINGS_CSS = `
 /* PAUSE: the battle-pause tag in the header, shown only while the open panel freezes a live battle (root gets .paused;
    the Garage's Esc never shows it): a chip with the accent's lamp */
 .cot-set-paused{display:none;align-items:center;gap:var(--s2);padding:0 var(--s3);height:28px;
-  font:600 max(11px,var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;
+  font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;
   color:var(--ink-1);background:var(--accent-wash);box-shadow:var(--ring-accent);border-radius:var(--control-radius);}
 .cot-set-paused::before{content:'';width:6px;height:6px;flex:0 0 auto;border-radius:50%;background:var(--accent);
   animation:cotPausedPulse calc(var(--dur-stage) * 2.4) var(--ease-move) infinite;}
@@ -259,7 +259,7 @@ const SETTINGS_CSS = `
   mask-image:linear-gradient(180deg,transparent 0,#000 28px,#000 calc(100% - 28px),transparent 100%);}
 /* a section's header: the plate header's label and rule (no tick) */
 .cot-set-group{display:flex;align-items:center;gap:var(--s3);margin:var(--s4) 0 var(--s1);
-  font:600 max(12px,var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3);}
+  font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3);}
 .cot-set-group::after{content:'';flex:1;height:1px;background:var(--line-1);}
 .cot-set-group:first-child{margin-top:var(--s3);}
 /* a cluster's plate on the Gameplay, Sound and Graphics tabs */
@@ -279,20 +279,20 @@ const SETTINGS_CSS = `
 .cot-setting-icon svg{display:block;width:16px;height:16px;overflow:visible;}
 .cot-setting-icon[data-badge]::after{content:attr(data-badge);position:absolute;right:-4px;bottom:-4px;
   min-width:12px;height:12px;padding:0 2px;display:grid;place-items:center;border-radius:2px;
-  font:600 max(11px,var(--fs-11))/1 var(--font-data);color:var(--ink-on-accent);background:var(--accent);}
+  font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);color:var(--ink-on-accent);background:var(--accent);}
 .cot-setting-label-text{min-width:0;}
 .cot-set-row.conflict{background:oklch(from var(--danger) l c h / .12);box-shadow:inset 2px 0 0 var(--danger);}
 .cot-set-row.conflict .cot-chip{box-shadow:var(--ring-danger);}
 .cot-set-row .chips{display:flex;gap:var(--s2);align-items:center;}
 .cot-set-colhdr{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s2) var(--s1);border-bottom:1px solid var(--line-1);}
-.cot-set-colhdr span{width:92px;text-align:center;font:600 max(11px,var(--fs-11))/1 var(--font-display);
+.cot-set-colhdr span{width:92px;text-align:center;font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);
   letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-4);}
 .cot-set-colhdr span.act{width:auto;flex:1;text-align:left;}
 .cot-set-colhdr span.pad{width:72px;}
 /* binding chips: the kit's key cap (components.css .cot-c-kbd) at the binding's width. States: bound, unbound (dashed),
    listening (the accent, pulsing) and conflict (the danger ring, row-scoped above). */
 .cot-chip{width:92px;height:30px;padding:0 var(--s1);border:0;border-radius:var(--control-radius);cursor:pointer;
-  font:500 max(12px,var(--fs-12))/1 var(--font-data);color:var(--ink-1);text-align:center;background:var(--surface-raised);
+  font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-1);text-align:center;background:var(--surface-raised);
   box-shadow:var(--ring-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter);}
 .cot-chip.padcol{width:72px;}
@@ -335,7 +335,7 @@ const SETTINGS_CSS = `
   border-radius:var(--control-radius);box-shadow:var(--ring-2);-moz-appearance:textfield;appearance:textfield;}
 .cot-set-slider input[type=number]:focus{outline:none;box-shadow:var(--ring-accent);}
 .cot-set-slider input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
-.cot-set-slider .unit{width:16px;font:500 max(12px,var(--fs-12))/1 var(--font-data);color:var(--ink-3);}
+.cot-set-slider .unit{width:16px;font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-3);}
 /* segmented pickers (difficulty, right click, quality, language) and On/Off: the kit's segmented control
    (components.css .cot-c-seg) on the panel's own state class */
 .cot-set-seg{display:inline-flex;gap:0;padding:3px;border-radius:var(--control-radius);background:var(--fill-quiet);

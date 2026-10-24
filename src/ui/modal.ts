@@ -90,11 +90,11 @@ export function normalizeModalSize(value: RuntimeValue): ModalSize {
   return typeof value === 'string' && MODAL_SIZES.has(value) ? value as ModalSize : 'medium';
 }
 
+// The one modal (SPEC 6.2): a plate over a dimmed scene, on the Premiere tokens (brand-ui 247, the consistency pass): no
+// glass, no top rule, no eyebrow; the close is the kit's ghost icon button and .cot-modal__button the kit's secondary and
+// primary buttons, drawn from the same tokens as src/ui/components/components.css (this sheet sits in the surfaces layer,
+// over the kit's).
 const CSS = `
-/* The one modal (SPEC 6.2): a plate over a dimmed scene, on the Premiere tokens (brand-ui 247, the consistency pass): no
-   glass, no top rule, no eyebrow; the close is the kit's ghost icon button and .cot-modal__button the kit's secondary and
-   primary buttons, drawn from the same tokens as src/ui/components/components.css (this sheet sits in the surfaces
-   layer, over the kit's). */
 .cot-modal-root,.cot-modal{box-sizing:border-box;min-width:0}
 .cot-modal-root{position:fixed;inset:0;z-index:10050;display:grid;place-items:center;padding:clamp(12px,3vw,38px);
   font-family:var(--font-ui);color:var(--ink-1);opacity:0;pointer-events:none;
