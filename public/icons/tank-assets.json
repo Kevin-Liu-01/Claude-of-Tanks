@@ -217604,23 +217604,23 @@
             "verts": [
               [
                 -0.87,
-                1.7805,
-                1.43
+                1.6068,
+                2.5292
               ],
               [
                 -0.21,
-                1.7805,
-                1.43
+                1.6068,
+                2.5292
               ],
               [
                 -0.21,
-                1.8075,
-                1.43
+                1.7464,
+                2.5292
               ],
               [
                 -0.87,
-                1.8075,
-                1.43
+                1.7464,
+                2.5292
               ]
             ]
           },
@@ -217635,23 +217635,23 @@
             "verts": [
               [
                 -0.21,
-                1.7805,
-                0.85
+                1.6068,
+                1.9551
               ],
               [
                 -0.87,
-                1.7805,
-                0.85
+                1.6068,
+                1.9551
               ],
               [
                 -0.87,
-                1.8075,
-                0.85
+                1.7464,
+                1.9551
               ],
               [
                 -0.21,
-                1.8075,
-                0.85
+                1.7464,
+                1.9551
               ]
             ]
           },
@@ -217666,23 +217666,23 @@
             "verts": [
               [
                 -0.21,
-                1.7805,
-                1.43
+                1.6068,
+                2.5292
               ],
               [
                 -0.21,
-                1.7805,
-                0.85
+                1.6068,
+                1.9551
               ],
               [
                 -0.21,
-                1.8075,
-                0.85
+                1.7464,
+                1.9551
               ],
               [
                 -0.21,
-                1.8075,
-                1.43
+                1.7464,
+                2.5292
               ]
             ]
           },
@@ -217697,23 +217697,23 @@
             "verts": [
               [
                 -0.87,
-                1.7805,
-                0.85
+                1.6068,
+                1.9551
               ],
               [
                 -0.87,
-                1.7805,
-                1.43
+                1.6068,
+                2.5292
               ],
               [
                 -0.87,
-                1.8075,
-                1.43
+                1.7464,
+                2.5292
               ],
               [
                 -0.87,
-                1.8075,
-                0.85
+                1.7464,
+                1.9551
               ]
             ]
           },
@@ -217728,23 +217728,23 @@
             "verts": [
               [
                 -0.87,
-                1.8075,
-                1.43
+                1.7464,
+                2.5292
               ],
               [
                 -0.21,
-                1.8075,
-                1.43
+                1.7464,
+                2.5292
               ],
               [
                 -0.21,
-                1.8075,
-                0.85
+                1.7464,
+                1.9551
               ],
               [
                 -0.87,
-                1.8075,
-                0.85
+                1.7464,
+                1.9551
               ]
             ]
           },
@@ -218452,12 +218452,12 @@
             "name": "turretRing",
             "min": [
               -1.0133,
-              1.6814,
+              1.677,
               -0.5143
             ],
             "max": [
               1.0133,
-              1.9274,
+              1.923,
               1.5543
             ],
             "turretLocal": false
@@ -218858,16 +218858,16 @@
         ]
       },
       "geometryHash": "00f958be",
-      "metadataHash": "7deb211f",
+      "metadataHash": "ea97e738",
       "presentationAnchor": {
-        "xM": 0.0064,
-        "zM": -0.0963
+        "xM": 0.0052,
+        "zM": -0.0941
       },
-      "presentationHash": "16d5ca90",
+      "presentationHash": "33bbae55",
       "presentationProjection": {
         "centerYM": 2.7884,
-        "topHalfM": 7.5763,
-        "sideHalfM": 3.7881
+        "topHalfM": 7.5739,
+        "sideHalfM": 3.787
       },
       "appearance": {
         "version": 1,
@@ -218920,39 +218920,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82476,
-          "sha256": "d56acc1d696e5751e21856bd939ffeaac4a97cf594d2a34ce56959b5149ae091"
+          "bytes": 82717,
+          "sha256": "3a332976183966a0d987cafbd6c25e325d2ca6d69b755f00ff87b0feaef25bc9"
         },
         "modulesSide": {
           "file": "leo2a7v_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81729,
-          "sha256": "ee17c746289e08c2363f89a7d4a7e09d70f9ce32ba248bc0523fb9a26f94ee1d"
+          "bytes": 82057,
+          "sha256": "4867ca85afb849667f6d6e2b97f239baf416a4eac39fe0236031991367c13c87"
         },
         "crewSide": {
           "file": "leo2a7v_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74852,
-          "sha256": "6a6b17edfbd2f97a31c9f308082e9f11aaf6a1a22e89c6faa3b77b05e4a6a4d2"
+          "bytes": 74573,
+          "sha256": "1d1394114fc3eb0cdb108a049e883e38b2c84b226139e7b46a874886b225d252"
         },
         "angle": {
           "file": "leo2a7v_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31860,
-          "sha256": "ede8215517b47029e59b3306eefde7fabc769c05df5ccf68039125bad64cd32a",
+          "bytes": 31854,
+          "sha256": "186a020a9d842f24a51e27e793b969e8d761dcb4a8ef60025c5f627036f556f1",
           "thumbnail": {
             "file": "thumbs/leo2a7v_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 12204,
-            "sha256": "5ac0cae73d005c02fa6ddeb5b9fa0ff6386022b17fa6490ce9987f8590388d44"
+            "bytes": 12210,
+            "sha256": "bcb2f74bc1fffd19eb36739c9f390e792d50869eee717a00efe34a0866a1a1ae"
           }
         },
         "top": {
@@ -218960,32 +218960,32 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 16018,
-          "sha256": "171981af49a88329bce43eaa5ea530d8c8e265adaccc2a9c7d1afa4c588dd932"
+          "bytes": 16142,
+          "sha256": "cba758ef1128e26e570e9a5dff3a6bc31baa825f088e996693ceff29f97009e4"
         },
         "side": {
           "file": "leo2a7v_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 12104,
-          "sha256": "131d0d65aac3fce6c7165c8567f88e88eaa606c7d46ebdc0cf5530c7ecb63fb3"
+          "bytes": 13442,
+          "sha256": "6cbfe42748e219073521ab765fe259a8939d3fc125427d2c7d5006f4bd3c3035"
         },
         "topSilhouette": {
           "file": "leo2a7v_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1638,
-          "sha256": "797f3f7f78698fb1aaa326cdb02e62ced816d5edf2d3391a39e819ed96f3b643"
+          "bytes": 1640,
+          "sha256": "744034f7ef5e19f70f571d33ca607f3794e1a18a7f6ad55914e51d5faf96f3fc"
         },
         "sideSilhouette": {
           "file": "leo2a7v_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5004,
-          "sha256": "fbe6e9d9941745240f16006c3de9001b54b752687999c130cc77c4ee7666c5a4"
+          "bytes": 5075,
+          "sha256": "c4542996ae1fa08eaf0dc557ec24c32a29b1bad820191c782bbc21229de90e49"
         },
         "markings": {
           "file": "leo2a7v_markings.png",
