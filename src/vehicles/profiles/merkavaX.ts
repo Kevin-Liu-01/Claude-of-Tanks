@@ -135,17 +135,20 @@ function deckField(P: TankBuilderPort, slot: string, stations: readonly (readonl
 function merkava3FrontDeck(P: TankBuilderPort): void {
   // Canonical source armor has three slopes and a raised left-center field.
   // The earlier uniform wedge sat 15–20 cm below these visible armor planes.
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the raised field and the crest stand to
+  // 1.79 forward of z 1.6, under the turret's flat floor (1.800 to 2.3 m off the ring's axis); at 1.82-1.837 the turret
+  // sat 4 cm in them at rest and swept them at every forward bearing. The access pack and hinge saddles below follow.
   deckField(P,'hull',[
-    [.82,-1.24,.47,1.82,1.82],[1.057,-1.24,.47,1.83705,1.83705],
-    [1.502,-1.24,.47,1.765,1.83705],[2.068,-1.20,.40,1.728,1.7647],
+    [.82,-1.24,.47,1.79,1.79],[1.057,-1.24,.47,1.79,1.79],
+    [1.502,-1.24,.47,1.765,1.79],[2.068,-1.20,.40,1.728,1.7647],
     [2.656,-1.17,.35,1.659,1.659],
   ],.24);
   // The flatter central crest is separate from the left transverse bevel.
   deckField(P,'hull',[
-    [1.502,-.648,.165,1.83705,1.83705],[1.836,-.495,.408,1.807,1.807],
+    [1.502,-.648,.165,1.79,1.79],[1.836,-.495,.408,1.807,1.807],
     [2.068,-.495,.294,1.785,1.785],[2.656,-1.10,.215,1.659,1.659],
   ],.09);
-  deckField(P,'hull',[[1.502,-1.24,-.648,1.765,1.837],
+  deckField(P,'hull',[[1.502,-1.24,-.648,1.765,1.79],
     [2.068,-1.20,-.495,1.727,1.785],[2.656,-1.17,-1.10,1.659,1.659]],.065);
   deckField(P,'hull',[[.82,.50,1.39,1.75972,1.75972],[1.40,.50,1.39,1.75972,1.75972],
     [1.77,.50,1.39,1.726,1.726],[2.69,.50,1.39,1.471,1.471]],.13);
@@ -165,12 +168,12 @@ function merkava3FrontDeck(P: TankBuilderPort): void {
     [2.97,-.78,-.52,1.622,1.622],[3.119,-.81,-.55,1.576,1.576]],.072);
   P.addEquipment('hullDetail',torus(.084,.016,20,8),-.527,1.671,2.73,1.285);
   P.snapGroup('merkava3-driver-cover',()=>P.addEquipment('hullDetail',box(.21,.019,.033),-.666,1.626,3.005,.29,.16),{reachM:.08,mode:'down'});
-  P.addEquipment('hullDetail',box(.649,.0483,.4816),.88868,1.78628,1.20122);
-  P.addEquipment('hullDetail',box(.5413,.0480,.2621),1.08541,1.8190,1.26188);
+  P.addEquipment('hullDetail',box(.649,.022,.4816),.88868,1.771,1.20122);
+  P.addEquipment('hullDetail',box(.5413,.012,.2621),1.08541,1.788,1.26188);
   for(const x of[.6397,1.1070]){
     P.addEquipment('hullDetail',box(.183,.020,.186),x,1.76972,1.458);
-    P.addEquipment('hullDetail',cylX(.037,.161,16),x,1.80972,1.448);
-    P.addEquipment('hullDetail',box(.12,.035,.070),x,1.794,1.516);
+    P.addEquipment('hullDetail',cylX(.025,.161,16),x,1.768,1.448);
+    P.addEquipment('hullDetail',box(.12,.035,.070),x,1.779,1.516);
   }
   P.addEquipment('hullDetail',box(1.429,.026,.070),-.4414,1.481,3.211);
   for(const x of[-1.06,-.76,-.06,.20])P.addEquipment('hullDetail',cylX(.024,.10,12),x,1.488,3.215);
@@ -492,18 +495,21 @@ function merkava4HullDetails(P: TankBuilderPort, candidate: 'merkava4'|'merkava4
   P.addEquipment('hullDetail',box(.366,.084,.163),-.009,1.404,2.6495);
   P.addEquipment('hullDark',box(.29,.050,.010),-.009,1.414,2.736);
   P.addEquipment('hullDetail',box(.384,.084,.092),-.009,1.258,3.177);
-  merkava4EngineAccess(P);
+  merkava4EngineAccess(P,candidate==='merkava4'||candidate==='merkava4_trophy');
 }
 
-function merkava4EngineAccess(P: TankBuilderPort): void {
+function merkava4EngineAccess(P: TankBuilderPort, slimHinges: boolean): void {
   // The source access pack sits on the right, with a stepped sliding cover
   // and two separated hinge saddles. It is not a central radiator grille.
   P.addEquipment('hullDetail',box(.7399,.0211,.5017),.74765,1.62294,1.40051);
   P.addEquipment('hullDetail',box(.4980,.02477,.2301),.99953,1.64587,1.47904);
   P.addEquipment('hullDetail',box(.1883,.0081,.1883),1.18837,1.61714,1.53830);
+  // (release 240: on the Merkava 4 and 4 Trophy the hinge barrels are .033 m, not .0486, seated on their saddles: their
+  // turrets' rear chain curtain (1.674, 2.2-2.3 m off the ring's axis) swept the outer one's 1.702 top; the Barak's and
+  // the Namer's clear it)
   for(const x of[.5243,1.0121]){
     P.addEquipment('hullDetail',box(.1923,.00762,.1706),x,1.60096,1.68669);
-    P.addEquipment('hullDetail',cylX(.0486,.1634,16),x,1.6534,1.6892);
+    P.addEquipment('hullDetail',slimHinges?cylX(.033,.1634,16):cylX(.0486,.1634,16),x,slimHinges?1.635:1.6534,1.6892);
     P.addEquipment('hullDetail',box(.12,.022,.075),x,1.615,1.724);
   }
   P.addEquipment('hullDetail',box(.2587,.008,.0965),.7682,1.601,1.734);

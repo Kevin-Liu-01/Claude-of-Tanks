@@ -4610,10 +4610,10 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
     // ±1.60; ±1.72 belongs to the short forward skirt.  The old ±1.68 deck
     // AA-painted the outer plan columns all the way to z -3.27.
     P.add('hull', box(3.20, 0.045, 3.35), 0, 1.5275, 0.625);                     // main deck 1.55, z -1.05..2.30
-    // (release 240: the first step at 1.625 runs to -2.12, so the 1.67 step starts past the bustle's sweep, 3.23 m off the
-    // ring's axis)
-    P.add('hull', box(3.20, 0.05, 0.87), 0, 1.60, -1.685);                       // engine deck step 1.625
-    P.add('hull', box(3.20, 0.05, 0.33), 0, 1.645, -2.285);                      // step 1.67
+    // (release 240: the step at 1.625 runs on to the exhaust hump, -2.45, and the 1.67 step is gone: the turret's rear
+    // armour sweeps 1.644 to 3.55 m off the ring's axis and 1.666 to 3.60 (authored metres, before the 1.1 vehicle scale),
+    // and the 1.67 step stood 3 cm in it from -2.12)
+    P.add('hull', box(3.20, 0.05, 1.20), 0, 1.60, -1.85);                        // engine deck step 1.625
     P.add('hull', box(1.92, 0.045, 0.35), 0, 1.6775, -2.625);                    // exhaust hump 1.70 (print front deck line 1.66 at ±0.96)
     P.add('hull', box(3.20, 0.05, 0.50), 0, 1.665, -3.05);                       // rear deck 1.69
     // Concave plan tail from the print: center lane recessed to -3.78, with

@@ -3383,7 +3383,9 @@ function fv510PhotoBuild(P: UKBuilderPort): void {
   // as a straight pipe — x/y weave gives the rope read)
   const tc = FITTINGS.towCable({
     mats: P.mats, seed: 9,
-    pts: [[1.30, 2.075, -0.42], [1.22, 2.062, -0.95], [1.30, 2.068, -1.50], [1.23, 2.060, -2.05]],
+    // (release 240, the owner: "make sure all tank turrets are clear of hulls": the run starts 0.2 m aft, its eye out of
+    // the sweep of the turret's side, 1.768 and 1.62 m off the ring's axis, which grazed it)
+    pts: [[1.30, 2.075, -0.62], [1.22, 2.062, -1.05], [1.30, 2.068, -1.55], [1.23, 2.060, -2.05]],
   });
   const fv510PhotoBuildAssemblyStage1 = (): void => {
     // 2026-10-19 (owner float sweep): the coiled run lay 68 mm outboard of the roof edge; it is seated on the hull
@@ -3749,11 +3751,13 @@ function fv510MilanBuild(P: UKBuilderPort): void {
   // semantic equipment rather than armor and therefore use addEquipment.
   // 2026-10-21 (the turret's lower seat, fv510PhotoBuild): the turret's rear corners sweep 2.0 m from its pivot, and
   // the lamp's front stood 2.05 m out, 26 mm into their sweep even before; it moves 8 cm up the glacis (to 1.97 m)
-  // and is dropped onto the plate.
+  // and is dropped onto the plate. Release 240 (the owner: "make sure all tank turrets are clear of hulls"): its top
+  // stood 1.88-1.92 m inside that sweep (the turret's rear underside 1.795, after the 1.1 vehicle scale); it goes 0.42 m
+  // down the glacis, wholly past 2.05 m, its top under the turret's 1.88 detail line.
   P.snapGroup('fv510-milan-ir-lamp', () => {
-    P.addEquipment('hull', box(0.30, 0.18, 0.25), 0.48, 1.62, 2.10, -0.35, 0, 0);
-    P.addEquipment('hullDark', cylZ(0.090, 0.12, 16), 0.48, 1.65, 2.23, -0.18, 0, 0);
-    P.addEquipment('hullGlass', cylZ(0.068, 0.014, 16), 0.48, 1.66, 2.297, -0.18, 0, 0);
+    P.addEquipment('hull', box(0.30, 0.18, 0.25), 0.48, 1.52, 2.52, -0.35, 0, 0);
+    P.addEquipment('hullDark', cylZ(0.090, 0.12, 16), 0.48, 1.55, 2.65, -0.18, 0, 0);
+    P.addEquipment('hullGlass', cylZ(0.068, 0.014, 16), 0.48, 1.56, 2.717, -0.18, 0, 0);
   }, { reachM: 0.10, mode: 'down' });
   for (const s of [-1, 1]) {
     // 2026-10-19 (owner float sweep): the lamp and its guard stood 23 mm over the bow shoulder; they drop onto it
@@ -3770,8 +3774,9 @@ function fv510MilanBuild(P: UKBuilderPort): void {
       P.addEquipment('hullDark', box(0.27, 0.025, 0.23), s * 1.08, 1.61, 2.72);
     }, { reachM: 0.05, mode: 'down' });
   }
-  P.addEquipment('hullDetail', box(0.055, 0.055, 1.15), -0.44, 1.58, 2.05, 0, 0.08, 0);
-  P.addEquipment('hullDetail', box(0.055, 0.055, 0.88), 0.13, 1.60, 2.04, 0, -0.12, 0);
+  // (release 240: the two tool rods 2.5 cm lower, under the turret's side, 1.771 after the 1.1 vehicle scale, as it turns)
+  P.addEquipment('hullDetail', box(0.055, 0.055, 1.15), -0.44, 1.555, 2.05, 0, 0.08, 0);
+  P.addEquipment('hullDetail', box(0.055, 0.055, 0.88), 0.13, 1.575, 2.04, 0, -0.12, 0);
   for (const x of [-0.72, -0.45, -0.18]) {
     // 2026-10-19 (owner float sweep): two of the three pads stood 24 mm over the deck; each drops onto it
     // 2026-10-21 (the turret's lower seat): 15 mm thick, not 35: the turret's sides sweep over them
