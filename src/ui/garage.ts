@@ -62,6 +62,7 @@ import { getPlayerRecord, getRecentBattles } from '../game/profile.ts';
 import { battleLoadEstimateS } from '../game/battleLoadEstimate.ts';
 import { readFavouriteTanks, writeFavouriteTanks } from '../game/favouriteTanks.ts';
 import type { DeployDifficulty, DeployScreen } from './deployScreen.ts';
+import type { PhotoStill } from './photoMode.ts';
 import { minimapAssetUrl } from './minimapAssetUrl.ts';
 import type { GarageHotspots, HotspotFacts } from './garageHotspots.ts';
 import type { Object3D, PerspectiveCamera } from 'three';
@@ -92,6 +93,13 @@ import type { CustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import type { ImagePriority } from './imagePreload.ts';
 import type { FleetTake, FleetTakeIndex, FleetTakePlayer } from './fleetTakes.ts';
 import { countryOfVehicle } from '../sim/countries.ts';
+
+/** What the Garage's photo mode needs from the composition root (main.ts): the stage, its orbit and its capture. */
+interface GaragePhotoControl {
+  readonly stage: HTMLElement;
+  readonly showroom: { hold(on: boolean): void; aim(yawRad: number, pitchRad: number, zoomTo?: number): void; reset(): boolean };
+  readonly still: PhotoStill;
+}
 
 type BattleMode = PlayMode;
 // The fleet takes load with the battle gallery, never with the Garage (see the featured panel).
@@ -217,6 +225,8 @@ export interface GarageRuntime {
   attachSettingsControl(control: HTMLElement): void;
   /** The next battle's bot tier, for the Deploy screen's picker (the input settings own it; attached once they exist). */
   attachDifficulty(control: DeployDifficulty): void;
+  /** The photo mode's stage, orbit and capture (attached once the renderer and its post chain exist). */
+  attachPhoto(control: GaragePhotoControl): void;
   getSelectedMap(): string;
   startSolo(): void;
   /** Test drive a vehicle (default: the selected one) on the proving ground; false when it cannot launch now. */
@@ -832,7 +842,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<section class="cot-lower-third"><div aria-live="polite"><h2 class="cot-lt-name"></h2><div class="cot-lt-id"></div></div>` +
     `<div class="cot-lt-acts"><button type="button" class="cot-c-btn cot-c-btn--36" data-lt-anatomy>${uiIconSVG('layerXray', 16)}` +
     `<span>${t('garage.act.anatomy')}</span></button><button type="button" class="cot-c-btn cot-c-btn--36" data-lt-test-drive>` +
-    `${uiIconSVG('modeProving', 16)}<span>${t('garage.dossier.testDrive')}</span></button></div></section>` +
+    `${uiIconSVG('modeProving', 16)}<span>${t('garage.dossier.testDrive')}</span></button>` +
+    `<button type="button" class="cot-c-btn cot-c-btn--36" data-lt-photo hidden>${uiIconSVG('toolPhoto', 16)}` +
+    `<span>${t('garage.photo.open')}</span>${keycap('P')}</button></div></section>` +
     `<nav class="cot-stations" aria-label="${t('garage.station.aria')}"><div class="cot-stations-list" role="tablist" aria-orientation="vertical" aria-label="${t('garage.station.aria')}">` +
     GARAGE_STATIONS.map(([id, glyph], index) => `<button type="button" class="cot-station" role="tab" data-tab="${id}" data-station="${id}" ` +
       `aria-selected="${index === 0}" tabindex="${index === 0 ? 0 : -1}" aria-controls="cot-garage-dossier">${uiIconSVG(glyph, 18)}` +
@@ -4019,6 +4031,22 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   requiredElement<HTMLElement>(root, '[data-nav="deploy"]').addEventListener('click', () => { emit('ui:click', {}); openBattleMenu(); });
   requiredElement<HTMLElement>(root, '[data-lt-anatomy]').addEventListener('click', () => { emit('ui:click', {}); openSelectedInGallery('armor'); });
   requiredElement<HTMLElement>(root, '[data-lt-test-drive]').addEventListener('click', () => { emit('ui:click', {}); startTestDrive(selectedId); });
+  // photo mode (the direction's Photo action): loaded at its first use, off the game entry
+  const photoButton = requiredElement<HTMLButtonElement>(root, '[data-lt-photo]');
+  let photo: GaragePhotoControl | null = null;
+  let photoMode: Promise<typeof import('./photoMode.ts')> | null = null;
+  function openPhoto(): void {
+    if (!photo || !api.isOpen || battleMenu.classList.contains('open')) return;
+    const control = photo;
+    emit('ui:click', {});
+    photoMode ??= import('./photoMode.ts');
+    void photoMode.then(({ openPhotoMode }) => openPhotoMode({
+      stage: control.stage, showroom: control.showroom, still: control.still, keycap,
+      fileName: () => `claude-of-tanks_${selectedId || 'garage'}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`,
+      click: () => emit('ui:click', {}), onClose: () => photoButton.focus(),
+    })).catch(() => { photoMode = null; });
+  }
+  photoButton.addEventListener('click', openPhoto);
   requiredElement<HTMLElement>(root, '[data-nav="github"]').addEventListener('click', () => {
     emit('ui:click', {});
   });
@@ -4092,6 +4120,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (e.code === 'KeyB') { emit('ui:click', {}); openBattleMenu(); e.preventDefault(); return; }
       if (e.code === 'KeyV') { openSelectedInGallery(); e.preventDefault(); return; }
       if (e.code === 'KeyF') { toggleFavourite(selectedId); e.preventDefault(); return; }
+      if (e.code === 'KeyP' && photo) { openPhoto(); e.preventDefault(); return; }
       if (e.code === 'KeyR') { recordTrigger.click(); e.preventDefault(); return; }
       if (e.code === 'F1') { openDocs(); e.preventDefault(); return; }
     }
@@ -4197,6 +4226,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
     /** UI-free rectangle reserved for the 3D showroom hero (CSS pixels). */
     getStageRect() {
+      // photo mode (photoMode.ts) puts every panel away: the stage is the whole screen
+      if (document.body.classList.contains('cot-photo-on')) return { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
       const rr = root.getBoundingClientRect();
       const left = root.querySelector('.cot-leftcol')?.getBoundingClientRect();
       const stats = statsEl.getBoundingClientRect();
@@ -4297,6 +4328,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     },
 
     isVehicleLocked() { return vehicleLocked; },
+
+    attachPhoto(control) {
+      photo = control;
+      photoButton.hidden = false;
+    },
 
     attachDifficulty(control) {
       difficulty = control;
