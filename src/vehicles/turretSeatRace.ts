@@ -21,7 +21,8 @@
  * centimetres proud of the ring's, a plate over the track's return; taller kit keeps its own clearance; a builder whose
  * turret turns over a raised engine deck sets its own limit, `turretG.userData.turretSeatRiseM`, and may widen the band a
  * corner reads, `turretSeatReadM`, so a broad face reaching over that deck comes up whole; one whose receipt reads its
- * ring well's floor for the deck sets the deck's own plane as a floor, `turretSeatMinY`), and lower
+ * ring well's floor for the deck sets the deck's own plane as a floor, `turretSeatMinY`, and where that receipt's rim
+ * moves with its interior fills, the keep radius itself, `turretSeatKeepR`), and lower
  * where the hull stays under that deck on every bearing (a lower engine deck or glacis, past the hull's sides), so a
  * bustle or a rack hanging over a lower deck keeps its drop. Procedural turrets were authored sitting into their decks,
  * so a traverse swept their buried undersides through the hull and its kit; seated, the turret's walls stop over a dark
@@ -132,11 +133,11 @@ export interface SeatTurretOverDeckOptions {
 export function seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables }: SeatTurretOverDeckOptions): number {
   const receipt = combatAnatomyCalibration(specId)?.turretRing;
   if (!receipt || !(receipt.rimR > 0.3) || !Number.isFinite(receipt.deckY)) return 0;
-  const seatY = receipt.deckY + TURRET_SEAT_GAP_M, keepR = receipt.rimR + SEAT_RIM_CLEAR_M;
-  const cx = receipt.seat[0], cz = receipt.seat[2];
-  const sweep = receipt.sweepDy, sweepR0 = receipt.sweepR0 ?? Infinity;
   const own = (key: string, fallback: number): number =>
     typeof turretG.userData[key] === 'number' ? turretG.userData[key] as number : fallback;
+  const seatY = receipt.deckY + TURRET_SEAT_GAP_M, keepR = own('turretSeatKeepR', receipt.rimR + SEAT_RIM_CLEAR_M);
+  const cx = receipt.seat[0], cz = receipt.seat[2];
+  const sweep = receipt.sweepDy, sweepR0 = receipt.sweepR0 ?? Infinity;
   const rise = own('turretSeatRiseM', TURRET_SEAT_RISE_M), read = own('turretSeatReadM', SWEEP_READ_M);
   const floorY = own('turretSeatMinY', -Infinity);
   // the plane a corner at plan radius r comes up to: its gap over the swept deck's highest band within SWEEP_READ_M of

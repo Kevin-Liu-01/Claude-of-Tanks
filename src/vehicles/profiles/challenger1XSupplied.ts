@@ -26,4 +26,8 @@ export function buildChallenger1Supplied(P: TankBuilderPort): void {
   // the ring is 1.622 and the engine deck behind it 1.73, and the turret's lower body and nose (1.57-1.65) ran through
   // both. Its seat (turretSeatRace.ts) takes that engine deck's plane, with a 1.5 cm seam, as a floor.
   P.turretG.userData.turretSeatMinY = 1.745;
+  // Its measured rim reads the interior fills (.8237 with one set, .8657 with the next), so the chain never settles; the
+  // seat keeps a fixed radius, the hull opening's (.8237) with its 2 cm clearance, so the turret's lower collar over the
+  // deck's edge (1.57, out to .88) comes up too.
+  P.turretG.userData.turretSeatKeepR = .8437;
 }
