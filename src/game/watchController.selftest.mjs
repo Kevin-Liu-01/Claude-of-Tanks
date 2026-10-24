@@ -57,11 +57,15 @@ function setup() {
   const camInput = { mouseDX: 0, mouseDY: 0, wheel: 0, shiftPressed: false };
   const killcam = { active: false, isActive() { return this.active; }, spectate: { active: false, stop() { this.active = false; } } };
   const seats = [];
+  const virtualHeld = new Set();
   let newSeats = 0;
   const controller = createWatchController({
     game, camera, watchCamera, rig, bus, killcam, cameraInput: camInput,
     input: {
       getState: () => ({ forward: false, back: false, left: false, right: false }),
+      isDown: (action) => virtualHeld.has(action),
+      pressVirtual: (action) => virtualHeld.add(action),
+      releaseVirtual: (action) => virtualHeld.delete(action),
       getVirtualMove: () => false,
       getPadSnapshot: (out) => Object.assign(out, { connected: false, leftX: 0, leftY: 0, rightX: 0, rightY: 0, leftTrigger: 0, rightTrigger: 0, buttons: 0 }),
       isLocked: () => true,
@@ -72,7 +76,7 @@ function setup() {
     pickSurface: () => true,
     openingFrame: (out) => { out.position.set(0, 60, -250); out.yaw = 0; out.pitch = -0.35; return true; },
   });
-  return { game, tanks, camera, watchCamera, bus, rig, rigCalls, killcam, controller, seats, newSeats: () => newSeats };
+  return { game, tanks, camera, watchCamera, bus, rig, rigCalls, killcam, controller, seats, virtualHeld, newSeats: () => newSeats };
 }
 const run = (controller, seconds) => { for (let t = 0; t < seconds; t += DT) controller.frame(DT); };
 const byId = (tanks, id) => tanks.find((tank) => tank.id === id);
@@ -103,6 +107,23 @@ const byId = (tanks, id) => tanks.find((tank) => tank.id === id);
   assert.equal(controller.focusId, 'foe');
   key('KeyV');
   assert.equal(controller.view, 'drone', 'V flies off again');
+  controller.stop();
+}
+
+// --- the drone's holds are the input layer's actions (the touch rail presses them too) --------------------------------
+{
+  const { camera, controller, virtualHeld } = setup();
+  controller.prepareReveal();
+  controller.open();
+  const y0 = camera.position.y;
+  controller.setClimb(1);
+  assert.ok(virtualHeld.has('handbrake'), 'the rail presses the climb action (Space\'s)');
+  run(controller, 1);
+  assert.ok(camera.position.y > y0 + 3, 'and the drone climbs');
+  controller.setClimb(-1);
+  assert.ok(!virtualHeld.has('handbrake') && virtualHeld.has('reloadMagazine'), 'descend is C\'s action');
+  controller.setClimb(0);
+  assert.equal(virtualHeld.size, 0, 'released');
   controller.stop();
 }
 

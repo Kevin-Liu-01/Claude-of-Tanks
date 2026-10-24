@@ -46,8 +46,8 @@ seat a bot's. The rules are the `WATCH_RULES` entry in `src/sim/matchRuleset.ts`
 
 | View | Desktop | Gamepad | Touch |
 | --- | --- | --- | --- |
-| Drone | WASD/arrows move, mouse looks, Space·E climb, C·Q descend, Shift boosts, wheel sets cruise speed | Left stick moves, right stick looks, RT/LT climb/descend, L3 boosts | Stick moves, drag looks, the climb rail |
-| Ride along | Click a tank, F (the one in view) or Tab; Q/E and Shift+Tab cycle; Shift or wheel-in for the gunner sight; V flies off | A rides the tank in view; LB/RB cycle; B flies off | Tap a tank or the cycle buttons |
+| Drone | WASD/arrows move, mouse looks, Space climbs, C descends, Shift boosts (the handbrake, reload and sniper actions: Accessibility's hold-or-toggle applies), wheel sets cruise speed | Left stick moves, right stick looks, RT/LT climb/descend, L3 boosts | Stick moves, drag looks, the climb rail |
+| Ride along | Click a tank, F (the one in view) or Tab; Q/E and Shift+Tab cycle; Shift or wheel-in for the gunner sight; V flies off | Y rides the tank in view; LB/RB cycle; B flies off | Tap a tank or the cycle buttons |
 | Take control | Enter (again to leave) | R3 | The Drive / Leave button |
 
 A ridden tank's wreck is held `deathHoldS`, then the camera rides on with its killer (a burn-out or crash credits the

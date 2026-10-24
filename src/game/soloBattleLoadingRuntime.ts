@@ -456,7 +456,8 @@ export function createSoloBattleLoadingRuntime(
         () => audio.warmBattleEvents(plannedRoster),
         () => fxTexture,
         () => ensureKillcam(),
-        () => (watch && ensureWatch ? ensureWatch() : Promise.resolve(null)),
+        // a watched battle's drone, controller and bar (an ordinary battle's barrier is unchanged)
+        ...(watch && ensureWatch ? [() => ensureWatch()] : []),
         () => rosterTexture,
         ]);
       } catch (error) {

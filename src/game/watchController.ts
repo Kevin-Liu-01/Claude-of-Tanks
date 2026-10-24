@@ -3,10 +3,12 @@
  *
  * One battle-scoped controller turns the watcher's input into the three views:
  *  - DRONE: free flight (engine/watchCamera.ts) — keys or the left stick move, the mouse / right stick / drag looks,
- *    Space·E and C·Q (the triggers, the touch rail) climb and descend, Shift (L3) boosts, the wheel steps the speed;
+ *    Space and C (the triggers, the touch rail) climb and descend, Shift (L3) boosts, the wheel steps the speed. The
+ *    holds are the input layer's own actions (handbrake, reloadMagazine, sniperToggle), so the Accessibility hold-or-
+ *    toggle choice applies to them as to any hold;
  *  - RIDE: a ride-along on any living tank — a click or tap on it, F for the one in the middle of the view, Tab (the
  *    bumpers) cycles, Q/E step back and forth; V (pad B) flies off again. A ridden tank's wreck is held a beat, then the
- *    camera rides on with its killer (or flies);
+ *    camera rides on with its killer (or flies); pad Y rides the tank in view;
  *  - DRIVE: Take control (Enter, pad R3, the touch button) puts the watcher in that bot's seat through the player's own
  *    path (game/watchSeat.ts): the camera rig, the HUD and the controls are the player's from that frame, and Leave
  *    (the same key) hands the hull back to its bot and lifts the drone off the chase pose. A taken hull destroyed plays
@@ -54,8 +56,14 @@ interface WatchRigPort {
   stopSpectate(): void;
 }
 
+type WatchHoldAction = 'handbrake' | 'reloadMagazine' | 'sniperToggle';
+
 interface WatchInputPort {
   getState(): { forward: boolean; back: boolean; left: boolean; right: boolean };
+  /** A held action (its key, pad button or touch press; latched when the Accessibility setting makes it a toggle). */
+  isDown(actionId: WatchHoldAction): boolean;
+  pressVirtual(actionId: WatchHoldAction): void;
+  releaseVirtual(actionId: WatchHoldAction): void;
   getVirtualMove(out: { x: number; y: number }): boolean;
   getPadSnapshot(out: PadSnapshot): PadSnapshot;
   isLocked(): boolean;
@@ -108,7 +116,9 @@ export interface WatchController {
   stop(): void;
 }
 
-const PAD = Object.freeze({ a: 0, b: 1, lb: 4, rb: 5, l3: 10, r3: 11, deadzone: 0.12, lookPxPerS: 900 });
+const PAD = Object.freeze({ b: 1, y: 3, lb: 4, rb: 5, l3: 10, r3: 11, deadzone: 0.12 });
+/** The drone's holds: the actions Space, C and Shift (and the touch rail) press. */
+const CLIMB: WatchHoldAction = 'handbrake', DESCEND: WatchHoldAction = 'reloadMagazine', BOOST: WatchHoldAction = 'sniperToggle';
 const TAP = Object.freeze({ maxMs: 320, maxPx: 14 });
 /** A tank picked by a click or tap: within this share of the screen height of its projected centre, or its own size. */
 const PICK_RADIUS_NDC = 0.09;
@@ -121,8 +131,7 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
   const { game, camera, watchCamera, rig, input, cameraInput, bus, killcam, resultPresentation } = options;
   let live = false;
   let driving: TEntity | null = null;
-  let held = { up: false, down: false, boost: false };
-  let touchClimb: -1 | 0 | 1 = 0;
+  let railHeld: WatchHoldAction | null = null;
   let wreckHoldS = 0;
   let drivenDeathS = 0;
   let padButtons = 0;
@@ -271,20 +280,15 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
     return !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName ?? ''));
   };
 
-  function onKey(event: KeyboardEvent, down: boolean): void {
-    if (!live || game.phase !== 'battle' || typing(event.target)) return;
-    if (options.isInputHeld()) { held = { up: false, down: false, boost: false }; return; }
+  function onKeyDown(event: KeyboardEvent): void {
+    if (!live || game.phase !== 'battle' || typing(event.target) || options.isInputHeld() || event.repeat) return;
     const code = event.code;
     if (driving) {
       // the tank's own bindings own every key but the seat's
-      if (down && !event.repeat && (code === 'Enter' || code === 'NumpadEnter')) { event.preventDefault(); leave(); }
+      if (code === 'Enter' || code === 'NumpadEnter') { event.preventDefault(); leave(); }
       return;
     }
     const riding = watchCamera.mode === 'ride';
-    if (code === 'Space' || code === 'KeyE') { if (!riding || code === 'Space') held.up = down; }
-    if (code === 'KeyC' || code === 'KeyQ') { if (!riding || code === 'KeyC') held.down = down; }
-    if (code === 'ShiftLeft' || code === 'ShiftRight') held.boost = down;
-    if (!down || event.repeat) return;
     switch (code) {
       case 'Tab':
         event.preventDefault();
@@ -299,9 +303,7 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
       default: break;
     }
   }
-  const onKeyDown = (event: KeyboardEvent): void => onKey(event, true);
-  const onKeyUp = (event: KeyboardEvent): void => onKey(event, false);
-  const onBlur = (): void => { held = { up: false, down: false, boost: false }; touchClimb = 0; };
+  const releaseRail = (): void => { if (railHeld) input.releaseVirtual(railHeld); railHeld = null; };
 
   // a click on the field rides the tank under the cursor (the sight's centre under pointer lock); a short tap does
   let tapId = -1, tapX = 0, tapY = 0, tapT = 0;
@@ -325,14 +327,18 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
     ride(tankAt(x, y));
   };
 
+  /** A pad button that went down since the last frame. */
+  function pressed(index: number): boolean {
+    return (pad.buttons & (1 << index)) !== 0 && (padButtons & (1 << index)) === 0;
+  }
+
   function padEdges(): void {
     const buttons = pad.buttons;
-    const pressed = (index: number): boolean => (buttons & (1 << index)) !== 0 && (padButtons & (1 << index)) === 0;
     if (driving) { if (pressed(PAD.r3)) leave(); padButtons = buttons; return; }
     const riding = watchCamera.mode === 'ride';
     if (pressed(PAD.lb)) ride(cycleFrom(rideTarget(), -1));
     if (pressed(PAD.rb)) ride(cycleFrom(rideTarget(), 1));
-    if (pressed(PAD.a) && !riding) ride(tankAt(0, 0));
+    if (pressed(PAD.y) && !riding) ride(tankAt(0, 0));
     if (pressed(PAD.b) && riding) toDrone(true);
     if (pressed(PAD.r3)) take();
     padButtons = buttons;
@@ -349,11 +355,11 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
     camInput.moveForward = padMoving ? -stickY : touching ? virtual.y : (state.forward ? 1 : 0) - (state.back ? 1 : 0);
     camInput.moveRight = padMoving ? stickX : touching ? virtual.x : (state.right ? 1 : 0) - (state.left ? 1 : 0);
     const triggers = pad.connected ? pad.rightTrigger - pad.leftTrigger : 0;
-    camInput.moveUp = Math.max(-1, Math.min(1, (held.up ? 1 : 0) - (held.down ? 1 : 0) + touchClimb + triggers));
+    camInput.moveUp = Math.max(-1, Math.min(1, (input.isDown(CLIMB) ? 1 : 0) - (input.isDown(DESCEND) ? 1 : 0) + triggers));
     // consumeMouseDelta gives a world-yaw delta (mouse right negative) that already carries the right stick and drag
     camInput.lookDX = -cameraInput.mouseDX;
     camInput.lookDY = cameraInput.mouseDY;
-    camInput.boost = held.boost || (pad.buttons & (1 << PAD.l3)) !== 0;
+    camInput.boost = input.isDown(BOOST) || (pad.buttons & (1 << PAD.l3)) !== 0;
     camInput.wheel = cameraInput.wheel;
     void dt;
   }
@@ -407,7 +413,13 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
       const target = rideTarget();
       return watching() && !!target && watchSeatRefusal(game, target) === null;
     },
-    setClimb(direction) { touchClimb = direction; },
+    setClimb(direction) {
+      // the rail presses the keyboard's own actions: one hold, one Accessibility choice
+      const action = direction > 0 ? CLIMB : direction < 0 ? DESCEND : null;
+      if (action === railHeld) return;
+      releaseRail();
+      if (action && watching()) { input.pressVirtual(action); railHeld = action; }
+    },
     cycle(direction) { if (watching()) ride(cycleFrom(rideTarget(), direction)); },
     drone() { if (watching() && watchCamera.mode === 'ride') toDrone(true); },
     rideAt(ndcX, ndcY) { return ride(tankAt(ndcX, ndcY)); },
@@ -432,11 +444,9 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
         if (!api.prepareReveal()) watchCamera.startDrone(false);
       }
       options.onSeat(null);
-      unsubscribe.push(bus.on('tank:destroyed', onDestroyed), bus.on('shell:hit', onHit),
-        bus.on('battle:ended', () => { held = { up: false, down: false, boost: false }; touchClimb = 0; }));
+      unsubscribe.push(bus.on('tank:destroyed', onDestroyed), bus.on('shell:hit', onHit), bus.on('battle:ended', releaseRail));
       window.addEventListener('keydown', onKeyDown, true);
-      window.addEventListener('keyup', onKeyUp, true);
-      window.addEventListener('blur', onBlur);
+      window.addEventListener('blur', releaseRail);
       window.addEventListener('pointerdown', onPointerDown, true);
       window.addEventListener('pointerup', onPointerUp, true);
       announced.view = '';
@@ -481,12 +491,10 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
       watchCamera.stop();
       for (const off of unsubscribe.splice(0)) off();
       window.removeEventListener('keydown', onKeyDown, true);
-      window.removeEventListener('keyup', onKeyUp, true);
-      window.removeEventListener('blur', onBlur);
+      window.removeEventListener('blur', releaseRail);
       window.removeEventListener('pointerdown', onPointerDown, true);
       window.removeEventListener('pointerup', onPointerUp, true);
-      held = { up: false, down: false, boost: false };
-      touchClimb = 0;
+      releaseRail();
       killerOf.clear();
       lastAttacker.clear();
       announced.view = '';

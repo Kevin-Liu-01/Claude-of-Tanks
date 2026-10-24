@@ -201,6 +201,7 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
   };
 
   const armorTargets: TEntity[] = [];
+  const watchAimView = { sight: false, zoom: 1 };
   const spotFrame: BattleHudSpotFrame<TEntity> = {
     receiver: null,
     isSpotted(id) {
@@ -326,7 +327,9 @@ export function createBattleHudFrameRuntime<TEntity extends HudTankEntity>({
     const localPlayer = player();
     if (localPlayer) aimController.update(frameInfo.aim);
     else if (watched && watch && !watch.flying()) {
-      aimController.observe(frameInfo.aim, watched.id, { sight: watch.sight(), zoom: watch.zoom() });
+      watchAimView.sight = watch.sight();
+      watchAimView.zoom = watch.zoom();
+      aimController.observe(frameInfo.aim, watched.id, watchAimView);
     }
     requireHud().update(frameInfo);
     updateArmorOverlay(localPlayer);
