@@ -1,4 +1,3 @@
-import './ui/endScreenPresentation.css';
 import './ui/richTooltip.css';
 import { createVehicleGroundSampler } from './world/vehicleGroundSampler.ts';
 import './ui/battleUiVisibility.css';
