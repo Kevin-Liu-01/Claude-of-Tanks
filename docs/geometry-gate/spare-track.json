@@ -1329,7 +1329,7 @@
    "hostSweep": []
   },
   "leo2a4": {
-   "inputHash": "ccb0163bb0d66e22",
+   "inputHash": "bc9a7e4946a3a862",
    "runs": [
     {
      "index": 0,
@@ -1342,15 +1342,15 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.689,
-      "gap": 0.311,
+      "support": 1,
+      "gap": 0,
       "air": 0,
       "hidden": 0,
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 1,
-      "host": "hull<addShapedMudguard [as add]@profiles/kit.ts:1224>"
+      "exposure": 0.813,
+      "host": "hull<cutSlab@profiles/leopard.ts:1611>"
      }
     },
     {
@@ -1371,8 +1371,8 @@
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.813,
-      "host": "hull<segRun@profiles/leopard.ts:2072>"
+      "exposure": 1,
+      "host": "hull<cutSlab@profiles/leopard.ts:1611>"
      }
     }
    ],
@@ -1409,7 +1409,7 @@
    "hostSweep": []
   },
   "leo2a4_v": {
-   "inputHash": "105a5c17f009b4d4",
+   "inputHash": "86cd096bdda3e123",
    "runs": [
     {
      "index": 0,
@@ -1420,17 +1420,19 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [],
+     "notes": [
+      "clips <= 5 cm cosmetic"
+     ],
      "measures": {
-      "support": 0.99,
-      "gap": 0.01,
+      "support": 0.886,
+      "gap": 0.114,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0,
+      "sunkMaxM": 0.022,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.989,
-      "host": "<mesh>"
+      "exposure": 0.944,
+      "host": "hull<addClosureRun@profiles/leopard.ts:2193>"
      }
     },
     {
@@ -1442,17 +1444,19 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [],
+     "notes": [
+      "clips <= 5 cm cosmetic"
+     ],
      "measures": {
-      "support": 0.991,
-      "gap": 0.009,
+      "support": 0.885,
+      "gap": 0.115,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0,
+      "sunkMaxM": 0.022,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.989,
-      "host": "<mesh>"
+      "exposure": 0.933,
+      "host": "hull<addClosureRun@profiles/leopard.ts:2193>"
      }
     },
     {
@@ -1466,14 +1470,14 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.99,
-      "gap": 0.01,
+      "support": 0.985,
+      "gap": 0.015,
       "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0,
+      "hidden": 0.023,
+      "sunkMaxM": 0.01,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 1,
+      "exposure": 0.944,
       "host": "<mesh>"
      }
     },
@@ -1486,17 +1490,19 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [],
+     "notes": [
+      "clips <= 5 cm cosmetic"
+     ],
      "measures": {
-      "support": 0.991,
-      "gap": 0.009,
+      "support": 0.885,
+      "gap": 0.115,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0,
+      "sunkMaxM": 0.022,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.989,
-      "host": "<mesh>"
+      "exposure": 0.944,
+      "host": "hull<addClosureRun@profiles/leopard.ts:2193>"
      }
     }
    ],
@@ -1504,7 +1510,7 @@
    "hostSweep": []
   },
   "leo2a4m": {
-   "inputHash": "094c317398df35c0",
+   "inputHash": "c88848af97795f87",
    "runs": [
     {
      "index": 0,
@@ -1515,17 +1521,20 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [],
+     "notes": [
+      "clips <= 5 cm cosmetic",
+      "carried on its rack"
+     ],
      "measures": {
-      "support": 0.993,
-      "gap": 0.007,
+      "support": 0.409,
+      "gap": 0.591,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0,
+      "sunkMaxM": 0.022,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.944,
-      "host": "hull<leoHullV3HullStage2@profiles/leopard.ts:1479>"
+      "exposure": 0.989,
+      "host": "hullDetail<buildLeo2A5A5NL@profiles/leopard.ts:6371>"
      }
     },
     {
@@ -1538,18 +1547,19 @@
      "primary": "OK",
      "why": {},
      "notes": [
+      "clips <= 5 cm cosmetic",
       "carried on its rack"
      ],
      "measures": {
-      "support": 0.459,
-      "gap": 0.541,
+      "support": 0.429,
+      "gap": 0.571,
       "air": 0,
-      "hidden": 0.016,
-      "sunkMaxM": 0.037,
+      "hidden": 0,
+      "sunkMaxM": 0.022,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.888,
-      "host": "hull<leoHullV3HullStage2@profiles/leopard.ts:1479>"
+      "exposure": 0.966,
+      "host": "hullDetail<buildLeo2A5A5NL@profiles/leopard.ts:6371>"
      }
     },
     {
@@ -1563,15 +1573,15 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.993,
-      "gap": 0.007,
+      "support": 0.982,
+      "gap": 0.018,
       "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0,
+      "hidden": 0.013,
+      "sunkMaxM": 0.01,
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.944,
-      "host": "hull<leoHullV3HullStage2@profiles/leopard.ts:1479>"
+      "host": "<mesh>"
      }
     },
     {
@@ -1580,24 +1590,23 @@
      "source": "fitting",
      "frame": "hull",
      "registered": false,
-     "classes": [
-      "BURIED"
-     ],
-     "primary": "BURIED",
+     "classes": [],
+     "primary": "OK",
      "why": {},
      "notes": [
-      "exposure 0.09"
+      "clips <= 5 cm cosmetic",
+      "carried on its rack"
      ],
      "measures": {
-      "support": 0.459,
-      "gap": 0.541,
+      "support": 0.429,
+      "gap": 0.571,
       "air": 0,
-      "hidden": 0.012,
-      "sunkMaxM": 0.034,
+      "hidden": 0,
+      "sunkMaxM": 0.022,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.09,
-      "host": "hull<leoHullV3HullStage2@profiles/leopard.ts:1479>"
+      "exposure": 0.966,
+      "host": "hullDetail<buildLeo2A5A5NL@profiles/leopard.ts:6371>"
      }
     }
    ],
@@ -2425,7 +2434,7 @@
    "hostSweep": []
   },
   "merkava4b": {
-   "inputHash": "e1ec590180cd45d8",
+   "inputHash": "d56508bc1135a712",
    "runs": [
     {
      "index": 0,
@@ -2440,15 +2449,15 @@
       "carried on its rack"
      ],
      "measures": {
-      "support": 0.205,
-      "gap": 0.727,
-      "air": 0.068,
+      "support": 0.234,
+      "gap": 0.766,
+      "air": 0,
       "hidden": 0,
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<merkavaChassisHullStage9@profiles/merkava.ts:966>"
+      "host": "hull<merkavaChassisHullCourse25@profiles/merkava.ts:3448>"
      }
     }
    ],
@@ -2662,7 +2671,7 @@
    "hostSweep": []
   },
   "strv121": {
-   "inputHash": "0fb38a5c731d8384",
+   "inputHash": "c1a08827a2ac8b62",
    "runs": [
     {
      "index": 0,
@@ -2673,17 +2682,19 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [],
+     "notes": [
+      "clips <= 5 cm cosmetic"
+     ],
      "measures": {
-      "support": 0.976,
-      "gap": 0.024,
+      "support": 0.886,
+      "gap": 0.114,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.01,
+      "sunkMaxM": 0.022,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.989,
-      "host": "<mesh>"
+      "exposure": 0.944,
+      "host": "hull<addClosureRun@profiles/leopard.ts:2193>"
      }
     },
     {
@@ -2695,17 +2706,19 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [],
+     "notes": [
+      "clips <= 5 cm cosmetic"
+     ],
      "measures": {
-      "support": 0.712,
-      "gap": 0.288,
+      "support": 0.885,
+      "gap": 0.115,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.032,
+      "sunkMaxM": 0.022,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.92,
-      "host": "hull<leoHullV3HullStage2@profiles/leopard.ts:1479>"
+      "exposure": 0.933,
+      "host": "hull<addClosureRun@profiles/leopard.ts:2193>"
      }
     },
     {
@@ -2719,14 +2732,14 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.967,
-      "gap": 0.033,
+      "support": 0.985,
+      "gap": 0.015,
       "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0.006,
+      "hidden": 0.023,
+      "sunkMaxM": 0.01,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.933,
+      "exposure": 0.944,
       "host": "<mesh>"
      }
     },
@@ -2739,17 +2752,19 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [],
+     "notes": [
+      "clips <= 5 cm cosmetic"
+     ],
      "measures": {
-      "support": 0.712,
-      "gap": 0.288,
+      "support": 0.885,
+      "gap": 0.115,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.026,
+      "sunkMaxM": 0.022,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.966,
-      "host": "hull<leoHullV3HullStage2@profiles/leopard.ts:1479>"
+      "exposure": 0.944,
+      "host": "hull<addClosureRun@profiles/leopard.ts:2193>"
      }
     }
    ],
@@ -3797,7 +3812,7 @@
    "hostSweep": []
   },
   "type59": {
-   "inputHash": "8e27945f49385413",
+   "inputHash": "b86b5a111ef3785f",
    "runs": [
     {
      "index": 0,
@@ -3830,19 +3845,17 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
+     "notes": [],
      "measures": {
-      "support": 0.076,
-      "gap": 0.924,
+      "support": 0.65,
+      "gap": 0.35,
       "air": 0,
       "hidden": 0,
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<<anon>@profiles/russia.ts:1282>"
+      "host": "hull<loftHull@profiles/russia.ts:505>"
      }
     }
    ],
