@@ -360,4 +360,9 @@ export default {
   },
   minimap: { base: [99, 111, 77], hard: [114, 118, 111], soft: [62, 80, 64], forest: 'rgba(46,71,41,.84)', forestStroke: 'rgba(27,44,25,.94)', bog: 'rgba(95,84,53,.71)', bogStroke: 'rgba(52,47,29,.66)', roadCasing: 'rgba(37,39,37,.94)', roadFill: 'rgba(149,151,144,.96)', buildingFill: '#d0d0c4' },
   shot: { pos: [-294, 52, -310], look: [80, 1, 90] },
+  // the horizons stream (horizons-240, 2026-10-23): the Hinterland past the red line (hinterland/drafts/airfield.ts) —
+  // Hostomel's pine plateau in its growing season (snowLineM off); its blind pair against the old ring won 9/0 (mean
+  // 4.8 -> 6.0, driver, gunner and chase under day, sunset and night, both sides on main 4178992761); the battlefield's
+  // ground carried past the edge (groundDetail.ts); rimH unchanged; `?hinterland=0` draws the old ring
+  hinterland: true,
 } satisfies import('./contracts.ts').MapCompositionConfig;

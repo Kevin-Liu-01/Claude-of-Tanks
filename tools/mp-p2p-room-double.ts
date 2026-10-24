@@ -306,8 +306,10 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
     const hostId = room.host.hostId;
     if (!hostId || !matchLive(room) || room.seats.get(hostId)?.socketId) return;
     const at = now();
-    const witnesses = [...room.hostUnreachable].filter(([playerId, claimedAt]) => playerId !== hostId && at - claimedAt <= ROOM_HOST_UNREACHABLE_TTL_MS);
-    if (!witnesses.length) return;
+    // a strict majority of the match's connected commanders (the actor's corroboration rule, security audit 2026-10-22)
+    const peers = [...room.seats].filter(([playerId, seat]) => playerId !== hostId && seat.socketId && seat.token && seat.token.team !== 'spectator');
+    const witnesses = [...room.hostUnreachable].filter(([playerId, claimedAt]) => peers.some(([peerId]) => peerId === playerId) && at - claimedAt <= ROOM_HOST_UNREACHABLE_TTL_MS);
+    if (!witnesses.length || witnesses.length * 2 <= peers.length) return;
     emit('host_lost', room.code, { hostId, witnesses: witnesses.map(([playerId]) => playerId) });
     clearHostGrace(room);
     changeHost(room, 'timeout', hostId, false, 'socket_lease');

@@ -1,5 +1,5 @@
 {
-  "$description": "Ratchet for tools/i18n-literal-lint.mjs (BUI-F8): player-facing English literals per file. It only falls: fix literals, then run node tools/i18n-literal-lint.mjs --update. --check fails on any rise and on any stale pin. Four pins are fragments the scanner reads as words, not player copy: an SVG path tail in garage.ts, the icon host's fill-rule in icons/icon.ts, the layer wrapper in styleLayers.ts, and the wordmark's accent \"of\" in brandMark.ts (the Latin brand lockup, split across spans).",
+  "$description": "Ratchet for tools/i18n-literal-lint.mjs (BUI-F8): player-facing English literals per file. It only falls: fix literals, then run node tools/i18n-literal-lint.mjs --update. --check fails on any rise and on any stale pin. Three pins are fragments the scanner reads as words, not player copy: an SVG path tail in garage.ts, the icon host's fill-rule in icons/icon.ts and the layer wrapper in styleLayers.ts (the wordmark is outlined paths now, brandWordmark.ts).",
   "total": 95,
   "files": {
     "src/game/studio.ts": 25,
@@ -13,7 +13,6 @@
     "src/game/studioLightRuntime.ts": 1,
     "src/game/studioPicture.ts": 11,
     "src/game/studioProduction.ts": 5,
-    "src/ui/brandMark.ts": 1,
     "src/ui/garage.ts": 1,
     "src/ui/icons/icon.ts": 1,
     "src/ui/studioPanel.ts": 2,

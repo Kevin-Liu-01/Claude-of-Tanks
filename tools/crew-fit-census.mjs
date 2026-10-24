@@ -13,14 +13,15 @@
 // the turret ring's opening between them.
 //   boxOut    share of the station box (3 cm grid, corners included) outside the shell by more than 1 cm, and the
 //             farthest such point (boxOutM);
-//   shapesOut share of the crew hit shapes' surface samples outside the shell by more than 1 cm;
+//   shapesOut share of the crew hit shapes' surface samples outside the armour by more than 1 cm (crewArmour: the shell
+//             without the turret ring's opening, which the combat shells leave open);
 //   body      whether a 1.75 m body (head, torso, thighs, shins, boots, the Gallery mannequin's segment table) in the
 //             role's posture family fits entirely inside the shell, 5 mm in, with its head centre at a point of a 5 cm
 //             grid over the station box grown 15 cm each way: drivers seated or reclined, gunners and commanders seated
 //             (upright or hunched), turret loaders standing or seated.
 // The search and the containment here are independent of the seat fitter (tools/crew-seat-fit.mjs): it judges it.
 import { readFileSync, writeFileSync } from 'node:fs';
-import { crewShell } from './crew-seat-fit.mjs';
+import { crewArmour, crewShell } from './crew-seat-fit.mjs';
 
 const args = Object.fromEntries(process.argv.slice(2).map((arg) => {
   const [key, ...rest] = arg.replace(/^--/, '').split('=');
@@ -40,9 +41,12 @@ const HEAD_REACH_M = 0.15;
 // turret yaw, the turret ring's opening included. The search below is the census's own.
 function makeShell(armor) {
   const shells = { hull: crewShell(armor, 'hull'), turret: crewShell(armor, 'turret') };
+  const armour = { hull: crewArmour(armor, 'hull'), turret: crewArmour(armor, 'turret') };
   const empty = !(armor.collisionShells?.hull || []).length && !(armor.collisionShells?.turret || []).length;
   return {
     inside: (p, frame, tol) => shells[frame].inside(p, -tol),
+    /** Hit shapes are held to the armour proper: never the turret ring's open gap. */
+    armoured: (p, frame, tol) => armour[frame].inside(p, -tol),
     insideXYZ: (x, y, z, turretFrame, tol) => shells[turretFrame ? 'turret' : 'hull'].inside([x, y, z], -tol),
     /** How far a point lies above or below its column's nearest inside interval (1 m when the column is empty). */
     excess(p, frame) {
@@ -220,7 +224,7 @@ for (const id of ids) {
       outM = Math.max(outM, shell.excess(p, frame));
     }
     const shapePoints = (box.shapes || []).flatMap(shapeSamples);
-    const shapesOutCount = shapePoints.filter((p) => !shell.inside(p, frame, TOL)).length;
+    const shapesOutCount = shapePoints.filter((p) => !shell.armoured(p, frame, TOL)).length;
     const body = shell.empty ? { fits: false } : bodyFit(shell, box, frame, box.crew);
     rows.push({
       id, crew: box.crew, station: box.station || null, frame,

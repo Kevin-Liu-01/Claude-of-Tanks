@@ -140,10 +140,13 @@ export type HostToWorkerMessage =
   | { type: 'boot'; config: HostBootConfig }
   /** Load the world and the fleet a later boot will use (a standby host thread; ignored once a boot began). */
   | { type: 'prepare'; prepare: HostPrepareConfig }
-  | { type: 'link_open'; peer: number; label: string }
+  // playerId: the room-authenticated peer behind the link (the relayed signal's `from`; the host's own id on the loopback)
+  | { type: 'link_open'; peer: number; label: string; playerId: string }
   | { type: 'link_frame'; peer: number; bytes: ArrayBuffer }
   | { type: 'link_close'; peer: number }
   | { type: 'link_pressure'; peer: number; bufferedAmount: number }
+  /** The room removed this player mid-match: drop its seat and refuse its token (MatchActor.revokeSeat). */
+  | { type: 'seat_revoke'; playerId: string }
   | { type: 'stop'; reason: CloseReasonId; detail: string }
   | { type: 'stats' };
 

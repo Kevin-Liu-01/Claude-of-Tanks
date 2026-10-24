@@ -327,8 +327,9 @@ function noticeMeasure(){
     const n={box:[box.x,box.y,box.w,box.h].map(v=>Math.round(v*10)/10),union:ink(m.union,box),battle:ink(m.battle,box),rest:ink(m.rest,box),hits:[],clip:0};
     for(const [s,r] of others)if(inter(box,r))n.hits.push(s);
     for(const [k2,e2] of Object.entries(els))if(k2!==k&&vis(e2)&&inter(box,e2.getBoundingClientRect()))n.hits.push(`notice ${k2}`);
-    if(k==='d'){n.clip=Math.max(clipped(e.querySelector('.lb'),e,12),clipped(e.querySelector('.sub'),e,12));
-      const sub=e.querySelector('.sub');n.sub=!!sub&&sub.getClientRects().length>0&&getComputedStyle(sub).display!=='none';}
+    // (its second line is a screen reader's alone: shown is wider than the 1 px it keeps)
+    if(k==='d'){n.clip=clipped(e.querySelector('.lb'),e,12);
+      const sub=e.querySelector('.sub');n.sub=!!sub&&sub.getBoundingClientRect().width>1&&getComputedStyle(sub).display!=='none';}
     if(k==='a'){const copy=e.querySelector('.cot-alert-copy');n.clip=clipped(copy,e,12);n.font=parseFloat(getComputedStyle(e).fontSize);
       n.clamp=getComputedStyle(copy).webkitLineClamp;}
     if(k==='m')n.clip=Math.max(...['strong','small','.ey'].map(q=>clipped(e.querySelector(q),e,14)));
@@ -491,7 +492,8 @@ try {
             const mainFont=mainStage?._f??(height<=550||width<=480?9:12);
             if(n.font<mainFont||n.font<9||(n.clamp&&n.clamp!=='none'))failures.push(`the alert is clamped or smaller than main's type (${n.font} px, main ${mainFont}; clamp ${n.clamp})`);
           }
-          if(k==='d'&&n.sub!==(height>550))failures.push(`the detection's second line is ${n.sub?'shown':'hidden'} at ${height} px tall (main: ${height>550?'shown':'hidden'})`);
+          // (owner 2026-10-22: no secondary labels; the lamp and DETECTED read alone, one row at every size)
+          if(k==='d'&&n.sub)failures.push(`the detection's second line shows at ${width}x${height}`);
           noticeTable.push({name,key,k,box:n.box,union:n.union,rest:n.rest,main:main[0],tier:t});
         }
         // the lanes: every row main shows while nothing is up; at least one while anything is (an exemption is matched

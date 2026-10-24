@@ -6,8 +6,14 @@
  * Two strokes, so it lives beside the icon sprite rather than in it (the sprite carries one stroke weight on its host):
  * the bracket takes the surrounding ink, the chevron the brand accent.
  */
-/** The wordmark, "Claude of Tanks" with its small accent "of" between rules, in Latin in every locale (lang="en"). */
-export const BRAND_WORDMARK_HTML = '<span class="wm" lang="en">Claude <span class="of">of</span> Tanks</span>';
+import { WORDMARK_OF, WORDMARK_VIEWBOX, WORDMARK_WORDS } from './brandWordmark.ts';
+
+/**
+ * The wordmark, CLAUDE —of— TANKS, as the outlined master (src/ui/brandWordmark.ts, SPEC 3.1: never live text): the
+ * words take the surrounding ink, the "of" and its rules the accent. Its host names the game; the drawing is decorative.
+ */
+export const BRAND_WORDMARK_HTML = `<svg class="wm" viewBox="${WORDMARK_VIEWBOX}" aria-hidden="true" focusable="false">`
+  + `<path fill="currentColor" d="${WORDMARK_WORDS}"/><path style="fill:var(--accent)" d="${WORDMARK_OF}"/></svg>`;
 
 export function brandMarkSVG(size: number): string {
   return `<svg class="cot-mark" viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true" focusable="false">` +

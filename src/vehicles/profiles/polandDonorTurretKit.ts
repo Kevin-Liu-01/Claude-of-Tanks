@@ -98,7 +98,9 @@ const ZUBR = {
   lampX: 1.80,
   screen: {x: ZUBR_ROW.turretX, front: ZUBR_ROW.turretPanels[0][1], rear: ZUBR_ROW.turretPanels[0][0],
     bottom: ZUBR_ROW.turretBottom, top: ZUBR_ROW.turretTop},
-  rack: {front: -2.00, rear: ZUBR_ROW.rearZ, half: ZUBR_ROW.rearHalf, floor: ZUBR_ROW.rearBottom, top: ZUBR_ROW.rearTop,
+  // (release 240, the owner: "make sure all tank turrets are clear of hulls": the rack's floor and its rails 4 cm over
+  // the row's rear bottom, over the driver's periscope heads as the turret turns aft; the rails swept through them)
+  rack: {front: -2.00, rear: ZUBR_ROW.rearZ, half: ZUBR_ROW.rearHalf, floor: ZUBR_ROW.rearBottom + .04, top: ZUBR_ROW.rearTop,
     rails: [.30, .62] as const},
 } as const;
 
@@ -256,7 +258,8 @@ const ZUBR_II = {
   // the basket to the Zubr II's layout row (its slatted sides are the row's turret panels, its rear face the rear cage)
   basket: {front: ZUBR_II_ROW.turretPanels[0][1], rear: ZUBR_II_ROW.rearZ, half: ZUBR_II_ROW.rearHalf,
     floor: ZUBR_II_ROW.rearBottom, top: ZUBR_II_ROW.rearTop, rails: [.30, .62] as const,
-    railLow: .075, rise: [-1.95, -2.03] as const, slatSides: true},
+    // (release 240: the low rails 4 cm higher, over the driver's periscope heads as the turret turns aft)
+    railLow: .115, rise: [-1.95, -2.03] as const, slatSides: true},
 } as const;
 
 /** The cabinet wall's plan path on one side: outer face points and inward normals (front, knee, back, shoulder end). */
