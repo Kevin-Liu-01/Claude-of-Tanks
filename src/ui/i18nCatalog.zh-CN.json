@@ -478,6 +478,7 @@
   "studio.clearAllEffects": "清空全部特效",
   "studio.selectActorFirst": "请先选择一个角色",
   "studio.selectTankFirst": "请先选择一辆坦克",
+  "studio.actorStillLoading": "Studio：{spec} 仍在加载。请先 await __STUDIO.ready()（或加载场景），再调用 addActor。",
   "studio.clickBattlefieldPlaceMarker": "点击战场以放置特效标记",
   "studio.restart": "重新开始",
   "studio.play": "播放",
