@@ -2731,6 +2731,10 @@ export function initHud(bus: EventBus): HudRuntime {
     setControlText(droneButton.querySelector('.sl')!, flight?.active ? t('systems.drone.return') : droneWait ? `${Math.ceil(flight!.cooldownS)}s` : t('systems.drone'), droneWait);
 
     root.classList.toggle('aerial-active', !!flight?.active);
+    // (perf-249) the key hints leave a flight by this class on the body (settings.ts), not body:has(.cot-hud.aerial-active):
+    // a body subject made every write anywhere in the page re-match the rule and restyle the whole page (~1,300 elements,
+    // ~11 ms a frame, forced at the reticle's first canvas font). This root is the page's one HUD and never leaves it.
+    document.body.classList.toggle('cot-hud-aerial', !!flight?.active);
     root.classList.toggle('aerial-drone', flight?.kind === 'drone' && flight.active);
     const kit=auxiliaryCapabilities(player?.spec), state=player?.combat?.auxiliary;
     for(const {action,button,label,status} of auxiliaryButtons){
