@@ -69,7 +69,7 @@ globalThis.fetch = async (request) => {
 
 const studioResponse = await middleware(new Request('https://cot.kevinliu.studio/studio'));
 const studioHtml = await studioResponse.text();
-assert.match(studioHtml, /<title>Scene Studio · Stage Cinematic Tank Battles · Claude of Tanks<\/title>/);
+assert.match(studioHtml, /<title>Scene Studio · Claude of Tanks<\/title>/, 'the ruling\'s form: the page, then the game');
 assert.match(studioHtml, /brand\/og\/studio\.jpg/);
 assert.match(studioHtml, /<main id="game-shell">Playable app<\/main>/,
   'route metadata must preserve the playable document body');
