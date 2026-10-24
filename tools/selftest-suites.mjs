@@ -1654,6 +1654,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/watchController.selftest.mjs',
     // watch-mode-243: the Watch ruleset entry, bot -> player -> bot, the replay over the swap, every mode with no human seat
     'src/game/watchSeat.selftest.mjs',
+    // (watch-drone-244) Take control in every watchable mode: the boss, a convert, a carrier, revives, a drone; AC-130 and rooms
+    'src/game/watchTakeover.selftest.mjs',
     'src/game/battleResultPresentationRuntime.selftest.mjs',
     'src/game/battleEnding.selftest.mjs',
     'src/game/battleEndingHold.selftest.mjs',

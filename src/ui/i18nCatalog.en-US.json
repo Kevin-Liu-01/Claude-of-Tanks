@@ -1636,6 +1636,8 @@
   "watch.prev": "Previous tank",
   "watch.next": "Next tank",
   "watch.drone": "Drone",
+  "watch.lock": "Lock on",
+  "watch.unlock": "Release",
   "watch.take": "Drive",
   "watch.leave": "Leave tank",
   "watch.climb": "Climb",

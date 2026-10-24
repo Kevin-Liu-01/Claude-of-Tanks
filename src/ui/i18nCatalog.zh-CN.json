@@ -1660,6 +1660,8 @@
   "watch.prev": "上一辆坦克",
   "watch.next": "下一辆坦克",
   "watch.drone": "无人机",
+  "watch.lock": "锁定",
+  "watch.unlock": "解除锁定",
   "watch.take": "驾驶",
   "watch.leave": "离开坦克",
   "watch.climb": "上升",
