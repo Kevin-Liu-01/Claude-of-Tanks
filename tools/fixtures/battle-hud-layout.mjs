@@ -51,9 +51,11 @@ if (new URLSearchParams(location.search).has('masks')) initTopMaskRig({ renderer
 const panel = createDamagePanel();
 const settings = createSettings({input, bus, isBattleActive:()=>true, gearVisible:()=>false});
 const touch = createTouchControls({input, bus, isBattleActive:()=>true, onOpenSettings:()=>settings.open()});
-const tanks = Array.from({length:14},(_,i)=>{
+// ?tanks=N: a larger bot room (two even sides; the HUD's per-frame cost probes, brand-ui 249); 7 v 7 by default
+const TANK_COUNT = Math.max(2, Math.min(64, Number(new URLSearchParams(location.search).get('tanks')) || 14));
+const tanks = Array.from({length:TANK_COUNT},(_,i)=>{
   const spec = TANK_SPECS[['leo2a4_v','m1a1_abrams_hc','t90am'][i%3]];
-  return {id:`tank-${i}`, isPlayer:i===0, team:i<7?'player':'enemy', displayName:`Commander_Long_Name_${i}`,
+  return {id:`tank-${i}`, isPlayer:i===0, team:i<TANK_COUNT/2?'player':'enemy', displayName:`Commander_Long_Name_${i}`,
     spec, state:createTankState(spec,new Vector3(i*10,0,50),0), combat:createCombatState(spec)};
 });
 const player = tanks[0];

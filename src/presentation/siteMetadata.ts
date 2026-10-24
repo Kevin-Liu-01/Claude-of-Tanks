@@ -42,7 +42,7 @@ const GAME_METADATA: SiteMetadata = {
 };
 
 export const STUDIO_METADATA: SiteMetadata = {
-  title: 'Scene Studio · Stage Cinematic Tank Battles · Claude of Tanks',
+  title: 'Scene Studio · Claude of Tanks',
   description: 'Open the Claude of Tanks Scene Studio to stage vehicles, maps, cameras, weather, articulation, effects, timelines, stills, GIFs, and cinematic battle videos directly in your browser.',
   canonical: `${SITE_ORIGIN}/studio`,
   url: `${SITE_ORIGIN}/studio`,

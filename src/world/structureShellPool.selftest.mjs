@@ -93,7 +93,9 @@ for (const reader of ['composeLoggingYard(', 'composeReservoirWaterworks(', 'com
 }
 assert.equal(props.match(/addStructureCollision\([^;]*, packetNow\);/g)?.length, 2, 'the packet-bearing placements derive inline');
 assert.match(props, /if \(step\?\.structureShells\) \{/, 'the async driver waits at the join');
-assert.match(props, /if \(step\.stealStructureShell\?\.\(\)\) \{/, 'and derives the newest unanswered structures meanwhile (2026-10-15)');
+// (perf-248: the join's loop is shared with the broken-vehicle pool's, props.ts awaitPoolJoin)
+assert.match(props, /awaitPoolJoin\(step\.structureShells, step\.stealStructureShell, /, 'the driver passes the join its steal');
+assert.match(props, /if \(steal\?\.\(\)\) \{/, 'and derives the newest unanswered structures meanwhile (2026-10-15)');
 assert.match(props, /joinStructureShells\(\); \/\/ \(Plan W\) no pooled structure outlives the build/);
 assert.match(props, /throw new Error\(`\$\{id\}: structure shell record read \(\$\{key\}\) before the build joined the pool`\);/);
 assert.match(props, /const shellPool = structureShellPoolFor\(sourceApplication\.worker === true\);/, 'workers only in the async build');

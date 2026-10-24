@@ -96,6 +96,11 @@ export function studioTimeFor(mapId: string, time: StudioTimeOfDay): StudioTimeO
   return isSpaceMap(mapId) ? 'day' : time;
 }
 
+/** The rendered times that light the lamps (studioLightRuntime's night pool: the world's emitters, the headlights). */
+export function studioTimeLightsLamps(time: StudioTimeOfDay): boolean {
+  return time === 'dusk' || time === 'night';
+}
+
 const round = (value: number, digits: number): number => {
   const scale = 10 ** digits;
   return Math.round(value * scale) / scale;

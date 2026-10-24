@@ -15,7 +15,7 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { createTank } from '/src/vehicles/tankFactory.ts';
 import { ensureInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { getSpec } from '/src/vehicles/specs.ts';
-import { geometryFingerprint } from '/src/vehicles/tankAssets.ts';
+import { exteriorFingerprint } from '/src/vehicles/tankAssets.ts';
 import { measurePortraitCoreBounds } from '/src/ui/portraitFraming.ts';
 import { minimumMechanicalGunPitch } from '/src/sim/gunPitchLimits.ts';
 import {
@@ -268,7 +268,8 @@ function renderHero(id, overrides = {}) {
   scene.add(root);
   try {
     root.updateMatrixWorld(true);
-    const geometryHash = geometryFingerprint(root);
+    // 244: the exterior fingerprint, the same key tools/icons-page.html writes to the manifest
+    const geometryHash = exteriorFingerprint(root);
     const mirror = camera.facing === 'right' ? -1 : 1;
     const az = deg(camera.azimuthDeg);
     const el = deg(camera.elevationDeg);

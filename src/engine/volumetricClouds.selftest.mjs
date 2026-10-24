@@ -213,6 +213,74 @@ function channelMean(bytes, channel) {
   assert.match(readFileSync(new URL('./sky.ts', import.meta.url), 'utf8'), /const linking = volumetricClouds\.warmAsync\(\);\s*if \(tick\) await tick\(\);\s*await linking;/,
     'the sky\'s chunked warm submits the link before its next frame and awaits it');
 }
+// ---- perf-249 (the battle-scale traces: a tier change in battle made the next frame's trace read the ray march's link
+// synchronously, 0.4 s at 7 v 7 and seconds at 14 v 14): a live frame's tier change links the new tier's trace in
+// parallel at the quad's variant and keeps drawing the old tier until it is linked; the warms (immediate) swap at once;
+// a preset that moves again drops the tier still linking; without KHR_parallel_shader_compile the swap is immediate
+{
+  const { resolvePresetName } = await import('./quality.ts');
+  const live = resolvePresetName();
+  const other = live === 'low' ? 'high' : 'low';
+  const layer = Object.create(VolumetricCloudLayer.prototype);
+  const compiles = [], disposed = [];
+  let finish = null, resets = 0;
+  const renderer = {
+    xr: { enabled: true }, toneMapping: THREE.ACESFilmicToneMapping,
+    getRenderTarget: () => 'screen', getActiveCubeFace: () => 0, getActiveMipmapLevel: () => 0,
+    setRenderTarget: () => {},
+    compileAsync: (scene) => {
+      compiles.push([scene.children[0].material.name, renderer.toneMapping, renderer.xr.enabled, !!scene.children[0].geometry.getAttribute('normal')]);
+      return new Promise((resolve) => { finish = resolve; });
+    },
+  };
+  const material = (tier) => {
+    const m = new THREE.ShaderMaterial({ name: `VolumetricCloudTrace-${tier}`, uniforms: { uAtmoKnee: { value: new THREE.Vector3() },
+      uMarchMax: { value: tier }, uShared: { value: 'old-uniform' } } });
+    m.dispose = () => disposed.push(m.name);
+    return m;
+  };
+  const old = material(other);
+  Object.assign(layer, { renderer, trace: 'trace-target', traceMaterial: old, traceTier: other, frame: 15, pendingTrace: null,
+    quadLinkGeometry: null, makeTraceMaterial: (tier) => material(tier), resetHistory: () => { resets++; } });
+  layer.syncTier();
+  assert.equal(layer.traceMaterial, old, 'the old tier draws while the new one links');
+  assert.deepEqual(compiles, [[`VolumetricCloudTrace-${live}`, THREE.NoToneMapping, false, false]], 'the new tier submitted at the quad\'s variant');
+  assert.equal(renderer.toneMapping, THREE.ACESFilmicToneMapping);
+  assert.equal(renderer.xr.enabled, true);
+  layer.frame = 16;
+  layer.syncTier();
+  layer.frame = 30;
+  layer.syncTier();
+  assert.equal(layer.traceMaterial, old, 'no swap before the link');
+  assert.equal(compiles.length, 1, 'one link in flight');
+  finish();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  layer.frame = 31;
+  layer.syncTier();
+  assert.equal(layer.traceMaterial.name, `VolumetricCloudTrace-${live}`, 'the linked tier draws from the next frame');
+  assert.equal(layer.traceTier, live);
+  assert.equal(layer.traceMaterial.uniforms.uShared.value, 'old-uniform', 'the uniforms carried over');
+  assert.equal(layer.traceMaterial.uniforms.uMarchMax.value, live, 'the tier\'s own march budget kept');
+  assert.deepEqual(disposed, [`VolumetricCloudTrace-${other}`]);
+  assert.equal(resets, 1);
+  // the warms swap at once, dropping a tier still linking
+  layer.traceMaterial = material(other); layer.traceTier = other; layer.frame = 45;
+  layer.syncTier();
+  assert.equal(layer.pendingTrace?.tier, live);
+  layer.syncTier(true);
+  assert.equal(layer.pendingTrace, null);
+  assert.equal(layer.traceMaterial.name, `VolumetricCloudTrace-${live}`, 'an immediate sync swaps at once');
+  assert.equal(disposed.filter((n) => n === `VolumetricCloudTrace-${live}`).length, 1, 'the linking tier disposed');
+  // without the extension: at once, as before
+  delete renderer.compileAsync;
+  layer.traceMaterial = material(other); layer.traceTier = other; layer.frame = 60;
+  layer.syncTier();
+  assert.equal(layer.traceMaterial.name, `VolumetricCloudTrace-${live}`);
+  assert.match(readFileSync(new URL('./volumetricClouds.ts', import.meta.url), 'utf8'),
+    /typeof renderer\.compileAsync !== 'function'\) \{ this\.warm\(\); return Promise\.resolve\(\); \}\s*this\.syncTier\(true\);/,
+    'warmAsync links the tier it resolves now');
+  console.log('volumetricClouds.selftest: a live tier change links in parallel and swaps once linked; the warms swap at once PASS');
+}
 
 // ---- the GPU volumes (cloudVolumeNoise.ts): their sizes, a tileable lattice (every lattice index wraps before it is
 // hashed, every hash integer-only) and the GLSL ES rule that the modulus of a negative int is undefined (the wrap adds

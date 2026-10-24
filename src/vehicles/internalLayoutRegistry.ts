@@ -57,6 +57,11 @@ export const INTERNAL_LAYOUT_SOURCES = Object.freeze({
     url: 'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/concepts/type100-ifv-20260919.json',
     kind: 'owner-authored-concept',
   }),
+  ztz100SourceStudy: Object.freeze({
+    title: 'Owner-supplied ZTZ-100 exterior study: measured unmanned turret over a sub-10 cm floor, bustle autoloader',
+    url: 'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/tanks/ztz100_x.md',
+    kind: 'owner-supplied-source-study',
+  }),
   ownerMissileConcepts: Object.freeze({
     title: 'Owner-authored ZTZ-100 Prototype and Object 695 missile turret designs, 2026-09-19',
     url: 'https://github.com/Kevin-Liu-01/Claude-of-Tanks/blob/main/docs/references/concepts/missile-turrets-20260919.json',
@@ -416,6 +421,11 @@ const LAYOUTS = Object.freeze({
   abramsX: { confidence: 'published-demonstrator', sources: ['gdAbramsX', 'armyNgmbt'], crew: crew(
     ['gunner', 'hull', 'frontLeft'], ['driver', 'hull', 'frontCenter'], ['commander', 'hull', 'frontRight'],
   ), systems: systems({ engine: { placement: 'rear', form: 'hybridDieselPowerpack' }, ammoRack: { placement: 'turret', form: 'blowOffBustleRack' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
+  // 244: the ZTZ-100's measured turret stands on a floor under 10 cm across and carries the gun and its bustle
+  // autoloader only, so its three crew ride side by side in the hull front (the AbramsX arrangement), not in the turret.
+  ztz100HullCapsule: { confidence: 'platform-inferred', sources: ['ztz100SourceStudy'], crew: crew(
+    ['gunner', 'hull', 'frontLeft'], ['driver', 'hull', 'frontCenter'], ['commander', 'hull', 'frontRight'],
+  ), systems: systems({ ammoRack: { placement: 'turret', form: 'bustleMagazine' }, autoloader: { placement: 'turret', form: 'bustleConveyor' } }) },
   m1a3: { confidence: 'owner-directed', sources: ['gdAbramsX', 'armyNgmbt'], crew: crew(
     ['commander', 'hull', 'frontLeft'], ['driver', 'hull', 'frontCenter'], ['gunner', 'hull', 'frontRight'],
   ), systems: systems({
@@ -528,7 +538,8 @@ const IDS_BY_LAYOUT = Object.freeze({
   conceptMzHybrid: ['type96_80_feng','t72_rys'],
   sovietAz: ['type96b', 't90ms_tagil', 't90a_burlak', 't90', 't72bu', 't72b3m_2016', 't72b3', 't72b_1987', 't72b3m_2022', 't72bu_1989', 'pt91m', 't90_1992', 't90a_2004', 't90a_2006', 't90a_burlak_proto', 't90sm_2013', 't90ms_2011', 't90am', 't90m_proryv', 'ztz99_longwei', 'ztz99a', 'ztz99a2', 't72m1_jaguar', 'pt91a_twardy', 't90a', 't90a_vladimir', 't90m', 't90sm'],
   sovietMz: ['t80u', 't64bv1', 't80', 't80b', 't80bv', 't80uk', 't84', 'ua_t80bv', 't80u_kursk', 't84bm_oplot_m'],
-  bustleAuto: ['type90', 'type10', 'leclerc_xlr', 'amx56', 'xk2_black_panther', 'k2b', 'type90_kyumaru', 'type90a', 'type10_tk_x', 'type10b', 'type10_dozer', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1', 'vt4a1', 'k2_black_panther', 'ztz100'],
+  bustleAuto: ['type90', 'type10', 'leclerc_xlr', 'amx56', 'xk2_black_panther', 'k2b', 'type90_kyumaru', 'type90a', 'type10_tk_x', 'type10b', 'type10_dozer', 'leclerc_s2', 'leclerc_sxxi', 'leclerc_s1', 'vt4a1', 'k2_black_panther'],
+  ztz100HullCapsule: ['ztz100'],
   fixedAuto: ['udes03', 'strv103a', 'strv103b'],
   mbt70: ['mbt70'],
   sheridan: ['m551_sheridan', 'm551a1_tts'],

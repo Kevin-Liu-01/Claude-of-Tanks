@@ -247,6 +247,36 @@ export function metadataFingerprint(metadata: object | null): string {
 /** Geometry fingerprint used by both generator and release gate. Mesh order is
  * normalized so harmless scene traversal order changes do not stale assets. */
 export function geometryFingerprint(root: GeometryRootLike): string {
+  return meshFingerprint(root, false);
+}
+
+/**
+ * The rendered-asset staleness key (244, the icon manifest's `geometryHash` and the hero cards' `in`/`audit`): the
+ * geometry fingerprint of only what a colour camera can draw. A mesh counts when it and every ancestor are shown, it
+ * sits on the camera's layer 0 and one of its materials is visible and writes colour; shadow-only proxies, hidden
+ * meshes and interior fills cannot move a pixel of an icon or a hero card, so their changes no longer stale them. Crew
+ * volumes and crew seats are combat-anatomy data, never meshes: crew-fit work cannot move this key either.
+ */
+export function exteriorFingerprint(root: GeometryRootLike): string {
+  return meshFingerprint(root, true);
+}
+
+type FingerprintMesh = {
+  visible?: boolean;
+  parent?: FingerprintMesh | null;
+  layers?: { mask: number };
+  material?: { visible?: boolean; colorWrite?: boolean } | Array<{ visible?: boolean; colorWrite?: boolean }>;
+  userData?: { interiorFill?: boolean };
+};
+
+function cameraDraws(object: FingerprintMesh): boolean {
+  for (let node: FingerprintMesh | null | undefined = object; node; node = node.parent) if (node.visible === false) return false;
+  if (object.layers && (object.layers.mask & 1) === 0) return false;
+  const materials = Array.isArray(object.material) ? object.material : [object.material];
+  return materials.some((material) => !!material && material.visible !== false && material.colorWrite !== false);
+}
+
+function meshFingerprint(root: GeometryRootLike, exteriorOnly: boolean): string {
   root.updateMatrixWorld(true);
   const digests: number[] = [];
   const instance = new Float32Array(16);
@@ -254,6 +284,7 @@ export function geometryFingerprint(root: GeometryRootLike): string {
     if (!(object.isMesh || object.isInstancedMesh) || !object.geometry || !object.geometry.getAttribute) return;
     // generated interior fills (interiorFills.ts) are not authored geometry: the original-model receipts ignore them
     if ((object as { userData?: { interiorFill?: boolean } }).userData?.interiorFill) return;
+    if (exteriorOnly && !cameraDraws(object as unknown as FingerprintMesh)) return;
     const position = object.geometry.getAttribute && object.geometry.getAttribute('position');
     if (!position || !position.array) return;
     let hash = fnvBytes(0x811c9dc5, new Uint8Array(position.array.buffer, position.array.byteOffset, position.array.byteLength));
