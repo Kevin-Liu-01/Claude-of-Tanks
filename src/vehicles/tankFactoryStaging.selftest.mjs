@@ -197,7 +197,11 @@ for (const [id, options] of [
     const steps = candidate.createTankSteps(id, null, options);
     equal(capture, undefined, 'constructing an iterator performs no early core work');
     let first = true;
+    let coreCheckpoints = 0;
     staged = drain(steps, () => {
+      // click-perf-244: the core's own stage checkpoints come first; they publish nothing
+      if (!capture) { coreCheckpoints++; return; }
+      check(coreCheckpoints > 0, 'the core yields at its stage checkpoints before the visual exists');
       check(capture?.visual?.root.children.length > 0, 'first checkpoint owns a completed core visual');
       equal(capture.visual.root.parent, null, 'private visual never published into a scene across checkpoints');
       if (first) equal(capture.visual.root.userData.__decorApplied, undefined, 'first checkpoint precedes decoration');
@@ -228,6 +232,7 @@ try {
       const registry = shadowRegistry();
       const steps = candidate.createTankSteps('m1a1', registry.context, baseOpts);
       let result = steps.next();
+      while (!result.done && !capture) result = steps.next();
       check(!result.done && capture, 'cancellable core checkpoint reached');
       if (target !== 'core-ready') {
         while (!result.done && decorStage !== target) result = steps.next();
@@ -243,6 +248,20 @@ try {
       equal(steps.next().done, true, 'abandoned generator cannot resume');
       registry.assertEmpty();
     }
+  }
+  // click-perf-244: a core abandoned or failed at its first stage checkpoint, before any visual exists, releases its
+  // material set and the factory's own clones from the cascade setup.
+  for (const operation of ['return', 'throw']) {
+    disposed.clear(); capture = undefined;
+    const registry = shadowRegistry();
+    const steps = candidate.createTankSteps('m1a1', registry.context, baseOpts);
+    const result = steps.next();
+    check(!result.done && !capture, 'a core stage checkpoint precedes the visual');
+    if (operation === 'return') steps.return(undefined);
+    else assert.throws(() => steps.throw(new Error('factory cancellation')), /factory cancellation/);
+    check(disposed.size > 0, `core-stage/${operation}: the partial core's materials are released`);
+    equal(steps.next().done, true, 'abandoned generator cannot resume');
+    registry.assertEmpty();
   }
   disposed.clear(); capture = undefined;
   const finalizerRegistry = shadowRegistry();
@@ -279,11 +298,15 @@ let clock = 0;
 Object.defineProperty(globalThis, 'performance', { configurable: true, value: { now: () => clock } });
 let timed;
 try {
-  let yields = 0;
-  timed = drain(candidate.createTankSteps('m1a1', null, baseOpts), () => { clock += 17; yields++; });
+  let yields = 0, coreYields = 0;
+  capture = undefined;
+  timed = drain(candidate.createTankSteps('m1a1', null, baseOpts), () => { clock += 17; yields++; if (!capture) coreYields++; });
   equal(timed.root.userData.decorBuildMs, 0, 'scheduled pauses are not mislabeled as synchronous decoration cost');
-  equal(timed.root.userData.decorYieldMs, 17 * (yields - 1), 'only nested decoration waits enter its wait receipt');
-  equal(timed.root.userData.decorCheckpointCount, yields - 1, 'first completed-core pause is not decoration work');
+  equal(timed.root.userData.decorYieldMs, 17 * (yields - coreYields - 1), 'only nested decoration waits enter its wait receipt');
+  equal(timed.root.userData.decorCheckpointCount, yields - coreYields - 1, 'first completed-core pause is not decoration work');
+  const core = timed.root.userData.coreBuildTiming;
+  check(coreYields > 0, 'the core yields at its stage checkpoints (click-perf-244)');
+  equal(core.finishedAt - core.startedAt, 0, 'core stage checkpoint waits never enter the core receipt');
 } finally { timed?.dispose(); Object.defineProperty(globalThis, 'performance', clockDescriptor); }
 
 const facade = await import(candidateFacadeUrl);
