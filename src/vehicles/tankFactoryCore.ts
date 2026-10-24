@@ -42,7 +42,7 @@ import {
 } from './factoryGeometry.ts';
 import { CAMO_THIN_PART_PROJECTION_IDS, CAMO_UV_REPEATS_PER_M } from './camoWorldScale.ts';
 import {
-  createTankMaterials, makeBurnUniforms, applyBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
+  createTankMaterials, makeBurnUniforms, applyBurnHook, removeBurnHook, vehicleAmbientFloorHook, stampSchemeFinish,
   setVehicleGroundFromRoot, resetVehicleGround, cloneVehicleMaterial, tagUnlitVehicleMaterials, LIVE_HULL_DENTS,
   LIVE_TURRET_DENTS,
 } from './materials.ts';
@@ -1301,6 +1301,8 @@ export interface TankVisual {
   awaitWreckTurretPose(): void;
   isDestroyed(): boolean;
   prewarmBurn(): THREE.Object3D[];
+  /** Take the disarmed burn hooks prewarmBurn put on an intact visual off again (the Garage adopting its battle hero). */
+  releaseBurnHooks(): void;
   getWreckFallbackMaterial(): THREE.Material;
   stageBattleDetailsForWarm(): () => void;
   /** The turret ring as built, hull frame (turretRingWell.ts): what a wreck's ring plate and a hulk's well are sized
@@ -11111,6 +11113,18 @@ export function* createTankRuntimeSteps(
         if (mm.length === 1 && !patchable) wreckFallbackWarmSources.add(o);
       });
       return [...wreckFallbackWarmSources];
+    },
+
+    // (2026-10-24, transitions-249) a burn hook keys every paint program '|burn-r7': the Garage's own programs were
+    // linked without it, so the hero it adopts back from a battle drops the disarmed hooks (the next battle's prewarmBurn
+    // puts them back) and its Garage paint compiles as its build did
+    releaseBurnHooks() {
+      if (destroyed) return;
+      root.traverse((o) => {
+        if (!isVehicleMesh(o)) return;
+        const mm = Array.isArray(o.material) ? o.material : [o.material];
+        for (const sm of mm) removeBurnHook(sm, burnU);
+      });
     },
 
     /** Shared fallback used by non-standard fittings during the wreck sweep. */

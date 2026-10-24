@@ -3909,6 +3909,35 @@ if ( uBurnT >= 0.0 && uCrOn > 0.5 ) {
  *   driver; false when not patchable (or owned by another visual's driver —
  *   caller falls back to the shared burnt material)
  */
+/** The hook and program key a material had before applyBurnHook wrapped them (removeBurnHook puts them back). */
+const BURN_HOOK_PRIOR = new WeakMap<THREE.Material, {
+  hook: THREE.Material['onBeforeCompile']; key: THREE.Material['customProgramCacheKey'];
+  wrapper: THREE.Material['onBeforeCompile']; ownHook: boolean; ownKey: boolean;
+}>();
+
+/**
+ * Take this visual's disarmed burn hook off a material (2026-10-24, transitions-249): a surviving battle hero the Garage
+ * adopts goes back to the hook chain and program key its Garage build compiled, so the first Return to Garage links
+ * no burn-keyed variant of every Garage paint program (23-26 programs, 3-6 s desktop, 7-12 s on a 4x phone). The next
+ * battle's prewarmBurn hooks it again (its burn programs stay with the material). A hook another visual's driver owns,
+ * or a hook wrapped again since, is left alone.
+ * @returns {boolean} true when the hook came off
+ */
+export function removeBurnHook(mat: THREE.Material | null | undefined, burnU: BurnUniforms): boolean {
+  if (!mat) return false;
+  mat = programVariantOrigin(mat);
+  const prior = BURN_HOOK_PRIOR.get(mat);
+  if (!prior || mat.userData.__burnU !== burnU || mat.onBeforeCompile !== prior.wrapper) return false;
+  BURN_HOOK_PRIOR.delete(mat);
+  if (prior.ownHook) mat.onBeforeCompile = prior.hook;
+  else delete (mat as { onBeforeCompile?: unknown }).onBeforeCompile;
+  if (prior.ownKey) mat.customProgramCacheKey = prior.key;
+  else delete (mat as { customProgramCacheKey?: unknown }).customProgramCacheKey;
+  delete mat.userData.__burnU;
+  mat.needsUpdate = true;
+  return true;
+}
+
 export function applyBurnHook(
   mat: THREE.Material | null | undefined,
   burnU: BurnUniforms,
@@ -3924,6 +3953,12 @@ export function applyBurnHook(
   mat.userData.__burnU = burnU;
   const prevHook = typeof mat.onBeforeCompile === 'function' ? mat.onBeforeCompile : null;
   const prevKey = mat.customProgramCacheKey;
+  const prior = {
+    hook: mat.onBeforeCompile, key: prevKey, wrapper: mat.onBeforeCompile,
+    ownHook: Object.prototype.hasOwnProperty.call(mat, 'onBeforeCompile'),
+    ownKey: Object.prototype.hasOwnProperty.call(mat, 'customProgramCacheKey'),
+  };
+  BURN_HOOK_PRIOR.set(mat, prior);
   mat.onBeforeCompile = function (shader, renderer) {
     if (prevHook) prevHook.call(this, shader, renderer);
     Object.assign(shader.uniforms, burnU);
@@ -3957,6 +3992,7 @@ transformed += crD;
   mat.customProgramCacheKey = function () {
     return (typeof prevKey === 'function' ? prevKey.call(this) : '') + '|burn-r7';
   };
+  prior.wrapper = mat.onBeforeCompile;
   mat.needsUpdate = true;
   return true;
 }

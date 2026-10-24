@@ -1068,7 +1068,12 @@ const pedestal = createGaragePedestalRuntime({
   // forwardProgramWarm is initialized before the first pedestal warm is
   // invoked; the closure keeps this early lifecycle declaration independent
   // of the later renderer-target owner.
-  prepareVisual: (visual) => prepareGarageTankEnergyVisual(visual.root, getSpec(visual.specId).dims),
+  // transitions-249: a hero adopted back from a battle first drops the battle's disarmed burn hooks, so its Garage skin
+  // compiles the chain the Garage linked (a fresh build has none)
+  prepareVisual: (visual) => {
+    (visual as { releaseBurnHooks?(): void }).releaseBurnHooks?.();
+    prepareGarageTankEnergyVisual(visual.root, getSpec(visual.specId).dims);
+  },
   // (the time-to-battle lane, 2026-10-08) the dormant skin ends where the hero becomes the battle's, on every entry path
   releaseVisual: (visual) => clearJuggernautVisual(visual.root, true),
   compilePrograms: (root) => forwardProgramWarm.compile(root),
