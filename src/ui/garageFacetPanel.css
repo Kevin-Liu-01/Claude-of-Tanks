@@ -22,7 +22,7 @@
 .cot-facet-toggle[aria-expanded='true'],.cot-facet-toggle.is-active{color:#ffd27a;border-color:rgba(240,176,74,.65);
   border-bottom-color:#f0a030;background:linear-gradient(180deg,rgba(32,24,12,.97),rgba(14,10,6,.98));}
 .cot-facet-toggle .ct{min-width:14px;padding:0 4px;line-height:14px;text-align:center;
-  font:700 var(--fs-11)/14px var(--font-ui);color:#1a1105;background:#f0a030;}
+  font:700 11px/14px var(--font-ui);color:#1a1105;background:#f0a030;}
 .cot-facet-toggle .ct[hidden]{display:none;}
 .cot-country-chip.is-facet-empty{opacity:.42;}
 .cot-facet-panel .cot-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
@@ -43,7 +43,7 @@
 .cot-facet-clear,.cot-facet-close{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:0 0 auto;
   min-height:36px;cursor:pointer;outline:none;color:#9fb0bf;background:rgba(11,15,20,.82);
   border:1px solid rgba(146,164,180,.28);transition:color .14s,border-color .14s;}
-.cot-facet-clear{padding:0 11px;font:700 var(--fs-12) var(--facet-font);letter-spacing:.02em;}
+.cot-facet-clear{padding:0 11px;font:700 11.5px var(--facet-font);letter-spacing:.02em;}
 .cot-facet-clear[hidden]{display:none;}
 .cot-facet-close{width:36px;padding:0;}
 .cot-facet-clear svg,.cot-facet-close svg{display:block;flex:0 0 auto;}
@@ -53,7 +53,7 @@
 .cot-facet-search>svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#7d8d99;pointer-events:none;}
 .cot-facet-search input{width:100%;height:36px;box-sizing:border-box;padding:0 10px 0 35px;border-radius:0;outline:none;
   color:#e3e9ec;background:linear-gradient(#11171b,#090d10);border:1px solid rgba(174,190,197,.24);
-  font:600 var(--fs-13) var(--facet-font);}
+  font:600 12.5px var(--facet-font);}
 .cot-facet-search input::placeholder{color:#76858f;}
 .cot-facet-search input:focus{border-color:#f0a030;box-shadow:inset 3px 0 0 #f0a030;}
 .cot-facet-search:focus-within>svg{color:#f0a030;}
@@ -64,11 +64,11 @@
 .cot-facet-option{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:4px 10px 3px;cursor:pointer;
   color:#b3c1cc;background:rgba(11,15,20,.82);border:1px solid rgba(146,164,180,.26);
   border-bottom:2px solid rgba(146,164,180,.34);outline:none;white-space:nowrap;
-  font:700 var(--fs-12) var(--facet-font);letter-spacing:.02em;transition:color .14s,border-color .14s,background .14s;}
+  font:700 12px var(--facet-font);letter-spacing:.02em;transition:color .14s,border-color .14s,background .14s;}
 .cot-facet-option svg{display:block;flex:0 0 auto;color:#aebdc9;transition:color .14s;}
 .cot-facet-option[data-facet='vehicleClass'] svg{width:32px;height:16px;}
 .cot-facet-option[data-facet='battleRole'] svg,.cot-facet-option[data-facet='era'] svg{width:17px;height:17px;}
-.cot-facet-option .ct{font-size:var(--fs-11);font-weight:600;color:#7f909e;}
+.cot-facet-option .ct{font-size:11px;font-weight:600;color:#7f909e;}
 .cot-facet-option:hover:not(:disabled),.cot-facet-option:focus-visible{color:#e6eef4;border-color:rgba(210,225,240,.55);}
 .cot-facet-option:hover:not(:disabled) svg,.cot-facet-option:focus-visible svg{color:#dbe5ec;}
 .cot-facet-option:focus-visible{outline:2px solid #f0a030;outline-offset:1px;}
@@ -79,7 +79,7 @@
 .cot-facet-option[aria-pressed='true'] .ct{color:#ffd27a;}
 .cot-facet-option:disabled{cursor:default;opacity:.5;}
 .cot-facet-option:disabled svg{color:#6f7f8b;}
-.cot-facet-empty{display:flex;align-items:center;gap:12px;margin:0;padding:10px 12px;font-size:var(--fs-13);color:#e3b36b;
+.cot-facet-empty{display:flex;align-items:center;gap:12px;margin:0;padding:10px 12px;font-size:12.5px;color:#e3b36b;
   border:1px dashed rgba(240,176,74,.4);}
 .cot-facet-empty svg{flex:0 0 auto;color:#e3b36b;opacity:.8;}
 .cot-facet-empty[hidden]{display:none;}
