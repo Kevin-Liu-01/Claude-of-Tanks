@@ -479,8 +479,9 @@ for (const none of ['', '#', '#other=1', null, undefined, 7]) assert.equal(scene
   assert.equal(quoted.ok, false);
   assert.doesNotMatch(quoted.detail, /evil/, 'the refusal names the field, not the value');
   for (const glyph of Object.values(ui.SCENE_LINK_GLYPHS)) {
-    assert.match(glyph, /^<svg viewBox="0 0 24 24" width="\d+" height="\d+" aria-hidden="true" focusable="false">/);
-    assert.doesNotMatch(glyph, /<(?:script|foreignObject|image|use|a)\b|\bon[a-z]+=|href|url\(/i, 'link glyphs are inert shapes');
+    // the sprite's glyphs (src/ui/uiIcons.ts): one <use> of a same-document symbol and nothing that loads or runs
+    assert.match(glyph, /^<svg class="cot-i" viewBox="0 0 24 24" width="\d+" height="\d+" aria-hidden="true" focusable="false"[^>]*><use href="#i-[A-Za-z]+"\/><\/svg>$/);
+    assert.doesNotMatch(glyph, /<(?:script|foreignObject|image|a)\b|\bon[a-z]+=|url\(|href="(?!#)/i, 'link glyphs are inert shapes');
   }
 }
 

@@ -10,9 +10,10 @@ export const FIELD_GUIDE_SCENES = [
   {id:'modules',offset:[10,8,1],aim:[0,1,0],fov:40,overlay:'modules'},
   {id:'crew',offset:[8,10,5],aim:[0,1.2,0],fov:36,overlay:'crew'},
   {id:'ammunition',offset:[10,5,10],aim:[0,1.3,2],fov:45,fire:true},
-  {id:'camo',offset:[17,11,25],aim:[-3,1,-2],fov:44},
-  {id:'smoke',offset:[25,18,21],aim:[-1,1,10],fov:47,smoke:6},
-  {id:'smoke-launch',offset:[25,18,21],aim:[-1,1,10],fov:47,smoke:.65},
+  // (246) the wide shots stand in the hollow at (-330,-150): a barn and a water tower now flank the spot above
+  {id:'camo',pos:[-330,-150],offset:[17,11,25],aim:[-3,1,-2],fov:44},
+  {id:'smoke',pos:[-330,-150],offset:[25,18,21],aim:[-1,1,10],fov:47,smoke:6},
+  {id:'smoke-launch',pos:[-330,-150],offset:[25,18,21],aim:[-1,1,10],fov:47,smoke:.65},
 ];
 
 /** Called only inside the authoring browser; never imported by game boot. */
@@ -20,14 +21,15 @@ export async function stageFieldGuide(job) {
   const S=window.__STUDIO,D=window.__DEBUG;
   if(!S?.active||!D)throw new Error('Field guide capture requires Studio and explicit debug intent');
   window.__fieldGuideOverlay?.clear();window.__fieldGuideOverlay=null;
-  const scene={map:'verdant',seed:5126,timeOfDay:'day',actors:[{id:'m1a2_abrams',name:'hero',pos:[-56,-14],facingDeg:0,turretDeg:-12,gunDeg:job.gunDeg??0,camo:'summer',camoSeed:261}],effects:job.fire?[{type:'fire',actor:'hero',tMs:100,params:{slot:0,tracer:true,recoil:true}}]:[],fxTime:job.fire?155:0,timeScale:0};
+  const [px,pz]=job.pos??[-56,-14];
+  const scene={map:'verdant',seed:5126,timeOfDay:'day',actors:[{id:'m1a2_abrams',name:'hero',pos:[px,pz],facingDeg:0,turretDeg:-12,gunDeg:job.gunDeg??0,camo:'summer',camoSeed:261}],effects:job.fire?[{type:'fire',actor:'hero',tMs:100,params:{slot:0,tracer:true,recoil:true}}]:[],fxTime:job.fire?155:0,timeScale:0};
   await S.load(scene);
   D.post.pinDynScale?.(1);
   const {awaitMapCaptureReadiness}=await import('/src/dev/mapCaptureReadiness.ts');
   const textures=await awaitMapCaptureReadiness(D.world,()=>D.world);
   const a=S._internal.findActor('hero');
-  const y=D.world.heightField.getHeightAt(-56,-14);
-  const camera=job.camera??{pos:[-56+job.offset[0],y+job.offset[1],-14+job.offset[2]],lookAt:[-56+job.aim[0],y+job.aim[1],-14+job.aim[2]],groundRel:false,fov:job.fov};
+  const y=D.world.heightField.getHeightAt(px,pz);
+  const camera=job.camera??{pos:[px+job.offset[0],y+job.offset[1],pz+job.offset[2]],lookAt:[px+job.aim[0],y+job.aim[1],pz+job.aim[2]],groundRel:false,fov:job.fov};
   S.setCamera(camera);
   let overlayCount=0;
   if(job.overlay){const {createInspectionOverlay}=await import('/src/gallery/overlays.ts');window.__fieldGuideOverlay=createInspectionOverlay(a.spec,a.visual,job.overlay);overlayCount=window.__fieldGuideOverlay.count;}

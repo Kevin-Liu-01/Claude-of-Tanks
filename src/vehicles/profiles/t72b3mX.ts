@@ -107,9 +107,12 @@ function hullCassettes(P:TankBuilderPort,nativeEra=true):void {
   }
 }
 
-function deckEquipment(P:TankBuilderPort,glacisLamps=true,sweptStrap=true):void {
-  P.addEquipment('hullDetail',boxSections([[-2.19,1.058,1.578,1.535],[-2.03,1.058,1.62359,1.535],
-    [-1.69,1.058,1.62359,1.535],[-1.482,1.058,1.577,1.535]]));
+function deckEquipment(P:TankBuilderPort,glacisLamps=true,sweptStrap=true,lowCrown=false):void {
+  // (lowCrown, release 240: the hump flat at its 1.577 rim, under a turret whose floor sweeps 1.580-1.599 over it (the
+  // T-84 and the Type 96 Lei); its 1.624 crest stood 3-4 cm in it)
+  const crown=lowCrown?1.577:1.62359;
+  P.addEquipment('hullDetail',boxSections([[-2.19,1.058,1.578,1.535],[-2.03,1.058,crown,1.535],
+    [-1.69,1.058,crown,1.535],[-1.482,1.058,1.577,1.535]]));
   for(const x of [-.527,.523]){
     P.addEquipment('hullDetail',box(1.029,.024,.746),x,1.539,-2.609);
     for(let i=0;i<19;i++)P.addEquipment('hullDark',box(.98,.010,.012),x,1.555,-2.945+i*.037);
@@ -339,11 +342,11 @@ function mainGun(P:TankBuilderPort,chinLift=0):void {
  * `sweptStrap: false` drops the two right deck-cover straps within 1.4 m of the turret's yaw axis (z .22 and .55): they
  * stand 2 cm over their covers, into the path of the T-72B3M turret's mantlet, whose foot rides 4 mm over the covers at
  * yaw -57 to -99 (release 227, round 2: Hetman II's whole-gun sweep). */
-interface T72B3MXHullOptions { nativeEra?:boolean; glacisLamps?:boolean; sweptStrap?:boolean }
+interface T72B3MXHullOptions { nativeEra?:boolean; glacisLamps?:boolean; sweptStrap?:boolean; lowDeckCrown?:boolean }
 
 export function buildT72B3MXHull(P:TankBuilderPort,options:T72B3MXHullOptions={}):void {
   P.hullG.position.set(0,0,0);
-  hull(P,options.nativeEra!==false);runningGear(P);hullCassettes(P,options.nativeEra!==false);deckEquipment(P,options.glacisLamps!==false,options.sweptStrap!==false);rearEquipment(P);
+  hull(P,options.nativeEra!==false);runningGear(P);hullCassettes(P,options.nativeEra!==false);deckEquipment(P,options.glacisLamps!==false,options.sweptStrap!==false,options.lowDeckCrown===true);rearEquipment(P);
 }
 
 export function buildT72B3MX(P:TankBuilderPort):void {

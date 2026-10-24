@@ -494,12 +494,12 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     clockChip.hidden = clock == null;
     if (clock != null) {
       requiredElement<HTMLSpanElement>(clockChip, '.v').textContent = `${Math.floor(clock / 60)}:${String(Math.round(clock % 60)).padStart(2, '0')}`;
-      clockChip.title = t('battleLoad.rule.clock');
+      clockChip.dataset.tip = t('battleLoad.rule.clock');
     }
     respawnChip.hidden = respawn == null;
     if (respawn != null) {
       requiredElement<HTMLSpanElement>(respawnChip, '.v').textContent = t('battleLoad.rule.respawnValue', { s: respawn });
-      respawnChip.title = t('battleLoad.rule.respawn');
+      respawnChip.dataset.tip = t('battleLoad.rule.respawn');
     }
   }
   const markEl = requiredElement<HTMLSpanElement>(root, '.fstage .mk');

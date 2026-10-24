@@ -45,11 +45,8 @@ assert.deepEqual(surfaceElementResets('@layer base{a{color:inherit}}@layer surfa
 assert.deepEqual(surfaceElementResets('@layer surfaces{@media(min-width:1px){a{color:inherit}}}'), ['a'], 'a reset inside a media query still counts');
 
 // 2. the tree
-/** The resets left when this receipt landed (247), to fall to zero: the landing lead's sheets. */
-const ALLOWED = Object.freeze({
-  'src/presentation/home.css': 2,
-  'src/gallery/gallery.css': 1,
-});
+/** The resets a sheet may keep (a ratchet to zero; the 247 landing and Gallery sheets moved theirs into base). */
+const ALLOWED = Object.freeze({});
 const sheets = execFileSync('git', ['ls-files', 'src/**/*.css', 'src/*.css'], { cwd: ROOT, encoding: 'utf8' }).trim().split('\n').filter(Boolean);
 const over = [];
 const counts = {};

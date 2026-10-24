@@ -445,7 +445,9 @@ function rearDeckStowage(P: TankBuilderPort): void {
   for(const [x,y,z,w,h,d] of [
     [-1.289,1.822,-2.4005,.486,.347,.506],
     [-1.312,1.796,-1.465,.341,.261,.318],
-    [-1.345,1.900,-1.027,.342,.274,.576],
+    // (release 240, the owner: "make sure all tank turrets are clear of hulls": 6 cm lower, nearer its ledge, top and
+    // straps 1.977/1.987 under the turret's 1.995 floor, which swept it 1.39 m off the ring's axis)
+    [-1.345,1.840,-1.027,.342,.274,.576],
   ]) {
     P.addEquipment('hullDetail',clippedPlate(w,h,d,.055),x,y,z);
     for(const dx of [-w*.30,w*.30])

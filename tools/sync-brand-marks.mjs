@@ -2,10 +2,11 @@
 // Usage:
 //   node tools/sync-brand-marks.mjs
 //   node tools/sync-brand-marks.mjs --check
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BRAND_MOTION_CSS } from '../src/ui/brandMarkMotion.ts';
+import { brandMarkSVG } from '../src/ui/brandMark.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CHECK = process.argv.includes('--check');
@@ -89,6 +90,16 @@ let index = replaceBetween(indexSource.replace(bootTag[0], bootStart), bootStart
 index = replaceBetween(index, '/* cot:brand-motion */', '/* /cot:brand-motion */',
   `\n${BRAND_MOTION_CSS.trim().split('\n').map((line) => `    ${line}`).join('\n')}\n    `);
 syncFile('index.html', index);
+
+// (brand-ui 247) the Field Manual's static pages carry the mark in their footer: the drawing src/ui/brandMark.ts gives at
+// the footer's height (the hatch fix of 2026-10-24 found these copies a version behind)
+for (const name of readdirSync(join(ROOT, 'site')).filter((file) => /^docs.*\.html$/.test(file)).sort()) {
+  const path = `site/${name}`;
+  const source = read(path);
+  const footer = /(<footer class="docs-footer">[\s\S]*?<a class="brand" href="\/home"[^>]*>)<svg class="cot-mark" [^>]*height="(\d+)"[^>]*>[\s\S]*?<\/svg>/;
+  if (!footer.test(source)) throw new Error(`missing derived-brand marker: the footer mark in ${path}`);
+  syncFile(path, source.replace(footer, (_, open, height) => open + brandMarkSVG(Number(height))));
+}
 
 if (!process.exitCode) {
   console.log(`[brand-sync] ${CHECK ? 'all derived marks are current' : 'sync complete'}`);

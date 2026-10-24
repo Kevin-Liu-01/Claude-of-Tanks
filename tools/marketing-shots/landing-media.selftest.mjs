@@ -23,7 +23,8 @@ for (const retiredTitle of ['Ground rush', 'Charge thread', 'Overhead dive', 'Sh
 const shotsMarkup = home.match(/<!--home:shots-->([\s\S]*?)<!--\/home:shots-->/)?.[1] || '';
 assert.equal(shotsMarkup.includes('<figcaption'), false, 'the screenshots strip does not overlay promotional shot names');
 assert.match(shotsMarkup, /data-rail-prev disabled[\s\S]*data-rail-next/, 'the screenshots strip provides previous and next arrows');
-assert.match(shotsMarkup, /data-shots-rail tabindex="0" role="region"/, 'the strip scrolls by keyboard too');
+// (247 audit) a named group, not a second region with the section's name (axe landmark-unique)
+assert.match(shotsMarkup, /data-shots-rail tabindex="0" role="group" aria-labelledby="shots-title"/, 'the strip scrolls by keyboard too');
 assert.match(shotsMarkup, /href="\/docs\/filming#library" data-i18n="home\.mosaic\.library"/, 'the strip leads into the whole library');
 assert.match(presentation, /\.shots-rail\{[^}]*scrollbar-width:none/, 'the strip hides the large native scrollbar');
 assert.match(presentation, /\.shots-rail::-webkit-scrollbar\{display:none\}/, 'the strip hides the WebKit scrollbar');
@@ -188,10 +189,14 @@ assert.equal((home.match(/data-mobile-src="\/media\/web-video-r1\//g) || []).len
   'every landing video supplies a lightweight mobile proxy');
 assert.equal((home.match(/<source data-src="\/media\/versus-films-r1\/[a-z0-9-]+-mobile\.mp4" type="video\/mp4" data-rung="phone">/g) || []).length, versusFilms.length,
   'every versus film supplies its phone file');
-assert.equal(mobileVideoManifest.files.length, siteVideos.length, 'mobile proxy manifest covers every landing video');
-assert.ok(mobileVideoManifest.files.reduce((total, file) => total + file.bytes, 0) < 9_000_000,
-  'the complete mobile proxy library stays below the nine-megabyte transfer budget');
-for (const proxy of mobileVideoManifest.files) {
+// (the manifest is the site's: since media db2bff2901 it also carries the manual's first-battle hero loops)
+const landingProxies = [...new Set([...home.matchAll(/data-mobile-src="\/media\/web-video-r1\/([^"]+)"/g)].map((match) => match[1]))];
+assert.equal(landingProxies.length, siteVideos.length, 'one proxy per landing video');
+assert.deepEqual(landingProxies.filter((file) => !mobileVideoManifest.files.some((entry) => entry.path === file)), [],
+  'mobile proxy manifest covers every landing video');
+assert.ok(mobileVideoManifest.files.filter((file) => landingProxies.includes(file.path)).reduce((total, file) => total + file.bytes, 0) < 9_000_000,
+  'the landing\'s complete mobile proxy library stays below the nine-megabyte transfer budget');
+for (const proxy of mobileVideoManifest.files.filter((file) => landingProxies.includes(file.path))) {
   const publicPath = `/media/web-video-r1/${proxy.path}`;
   assert.equal(home.includes(`data-mobile-src="${publicPath}"`), true, `${proxy.path} is wired into the landing page`);
   assert.equal((await stat(resolve(root, 'public', publicPath.slice(1)))).size, proxy.bytes,

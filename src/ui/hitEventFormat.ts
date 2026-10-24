@@ -227,15 +227,24 @@ function globallyUnambiguousShell(event: HitEventPresentation): PresentationShel
   return resolvedShell;
 }
 
-/** Convert a simulation zone id into its player-facing label. */
+/**
+ * Convert a simulation zone id (an armour plate's name, a module, a seam: 'hull_side_L', 'upper_glacis', 'ammoRack') into
+ * its player-facing label, word by word through the catalog's zone.part (an ICU select over the words; English
+ * prints each word as it is, and a word without a branch stays as it is), joined pair by pair (zone.join) and a
+ * trailing L / R set as the side (zone.side): "hull side L" in English, 车体侧面（左） in Chinese.
+ */
 export function zoneLabel(zone: string | null | undefined): string {
   if (!zone) return '—';
-  return zone
-    .replace(/_(R|L)$/, ' $1')
-    .replace(/_/g, ' ')
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .toLowerCase()
-    .replace(/ (r|l)$/, (match) => match.toUpperCase());
+  const words = zone.replace(/([a-z])([A-Z])/g, '$1_$2').split('_').filter(Boolean).map((word) => word.toLowerCase());
+  const last = words.at(-1);
+  const side = words.length > 1 && (last === 'l' || last === 'r') ? words.pop()!.toUpperCase() : null;
+  const parts = words.map((word) => {
+    // a plate's number stays with its word ('side38', 'era_tile_3')
+    const [, base, digits] = /^([a-z]+)(\d*)$/.exec(word) ?? [word, word, ''];
+    return `${t('zone.part', { part: base })}${digits}`;
+  });
+  const label = parts.length ? parts.reduce((a, b) => t('zone.join', { a, b })) : '';
+  return side ? t('zone.side', { label, side }) : label;
 }
 
 /** Remove a shell-type token already displayed by the surrounding panel. */

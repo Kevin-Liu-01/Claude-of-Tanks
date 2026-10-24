@@ -27,6 +27,22 @@ topic figures; the game's featured stills, boot frame, 404 page, HUD editor back
 `tools/marketing-shots/site50-media.selftest.mjs` holds the collection to its receipt. Each take's scene is code in
 `tools/media-r5/site50-shots/`, and `/docs/filming` records how the takes were made.
 
+## Current: the interface set (ui-246, since 2026-10-24)
+
+The site's pictures of the game's screens are `public/media/ui-246/`: the Garage (its photo mode, the camouflage drawer
+and the Deploy sheet's battlefield picker), the battle loader, the battle HUD, the gunner's sight, firing, the pause
+veil, the X-ray kill cam, the end screen of a won battle, the Service Record, Watch mode on a desktop and its phone twin
+of the same moment, a private room's two players side by side, the Tank Gallery's four layers and the Scene Studio.
+Each is captured on the game as release 246 draws it (`f02eb8653a`): the Tank Gallery by
+`tools/marketing-shots/capture-showcase-r2-ui.mjs`, the battles by `tools/marketing-shots/mode-battle-shots.mjs`, and
+the Garage, Deploy, loader, HUD, pause, end-screen, Record, Watch and Studio screens by the media lane's own capture
+tool (`home-ui-243.mjs`, kept with the lane's evidence). Each is published at its figure's size (1920×1080 unless the
+manifest says otherwise) with a 640 px rung; `public/media/ui-246/manifest.json` lists each file, what it shows and
+replaces, and how it was staged. It replaced the pre-overhaul interface pictures: presentation-r1's `ui_*` frames, showcase-r2's
+interface frames 11 to 25, multiplayer-r1's dual view and the media library's field-guide map card
+(`tools/media-freshness.selftest.mjs` fails a page that still names one). The in-game field guide still draws its own
+`public/field-guide/` captures by a computed path (`src/ui/infoGuideCaptures.ts`).
+
 ## Retired: showcase-r1 (until 2026-10-12)
 
 The rest of this page records the previous library, `public/media/showcase-r1`, which the site fifty replaced. Its
@@ -75,19 +91,12 @@ stable scene IDs. This makes camera intersections, weak tank silhouettes,
 repetitive compositions, blown effects, and missing battle depth visible in a
 single pass.
 
-### Action campaign
-
-| Frames 61–70 | Frames 71–80 | Frames 81–90 |
-| --- | --- | --- |
-| [![Action campaign review sheet 1](../public/media/showcase-r1/process/action-review-01.webp)](../public/media/showcase-r1/process/action-review-01.webp) | [![Action campaign review sheet 2](../public/media/showcase-r1/process/action-review-02.webp)](../public/media/showcase-r1/process/action-review-02.webp) | [![Action campaign review sheet 3](../public/media/showcase-r1/process/action-review-03.webp)](../public/media/showcase-r1/process/action-review-03.webp) |
-
-### Foreground campaign
-
-| Frames 91–100 | Frames 101–110 | Frames 111–120 |
-| --- | --- | --- |
-| [![Foreground campaign review sheet 1](../public/media/showcase-r1/process/foreground-review-01.webp)](../public/media/showcase-r1/process/foreground-review-01.webp) | [![Foreground campaign review sheet 2](../public/media/showcase-r1/process/foreground-review-02.webp)](../public/media/showcase-r1/process/foreground-review-02.webp) | [![Foreground campaign review sheet 3](../public/media/showcase-r1/process/foreground-review-03.webp)](../public/media/showcase-r1/process/foreground-review-03.webp) |
-
-The published manifest records all six sheets, their frame IDs, and the review
+The six sheets were the action campaign's frames 61–90 (`action-review-01` to
+`-03`) and the foreground campaign's frames 91–120 (`foreground-review-01` to
+`-03`). They left the tree with showcase-r1 in `7acc117fd0` (2026-10-12); each
+is still in its parent, for example
+`git show 7acc117fd0^:public/media/showcase-r1/process/action-review-01.webp > action-review-01.webp`.
+The retired manifest recorded all six sheets, their frame IDs, and the review
 sequence: scene JSON → review capture → contact-sheet inspection → 4K export →
 automated grade → owner approval.
 

@@ -102,7 +102,11 @@ function buildSabraRearDeck(P: TankBuilderPort): void {
 function buildSabraHull(P: TankBuilderPort): void {
   P.add('hull',sectionSolid([
     [-3.25,.75,1.10,.96,.65,1.12,1.76],[-2.90,.87,1.11,.97,.44,1.31,1.84],
-    [-1.68,.91,1.11,.98,.44,1.33,1.84],[-.72,.91,1.13,1.02,.44,1.35,1.565],
+    // release 240 (the owner: "make sure all tank turrets are clear of hulls"): the engine block's ramp climbs under the
+    // turret's rising underside (1.635 to 1.5 m off the ring's axis, 1.700/1.717/1.733 to 1.8, 1.790 to 1.9, 1.850 to
+    // 2.0) to its 1.84 roof at -1.93; reaching it at -1.68 it stood 11 cm in the turret's sweep and met it at rest.
+    [-1.93,.91,1.110,.978,.44,1.326,1.84],[-1.85,.91,1.110,.979,.44,1.327,1.78],[-1.75,.91,1.110,.979,.44,1.329,1.725],
+    [-1.65,.91,1.111,.981,.44,1.331,1.71],[-1.45,.91,1.115,.990,.44,1.335,1.63],[-.72,.91,1.13,1.02,.44,1.35,1.565],
     [1.51,.91,1.15,1.03,.44,1.34,1.565],[2.46,.93,1.09,1.02,.50,1.18,1.48],
     [3.15,.91,1.09,1.03,.87,1.10,1.105],
   ].map(([z,belly,shoulder,roof,floor,knee,top])=>({z,ring:[
@@ -123,7 +127,8 @@ function buildSabraHull(P: TankBuilderPort): void {
       P.addEquipment('hullDetail',box(outer-.014-1.685+.01,.03,.56),side*((outer-.014+1.685)/2+.005),1.415,z);   // a carrier, not armour
       for(const y of [.83,1.36])P.addEquipment('hullDetail',box(.035,.062,.094),side*(outer+.0145),y,z);
     }
-    for(const z of [-2.48,-1.59])P.addEquipment('hullDetail',box(.48,.25,.68),side*1.37,1.678,z);
+    // (release 240: the stowage boxes 0.12/0.31 m aft, -2.60/-1.90, past the turret's sweep at their 1.803 tops)
+    for(const z of [-2.60,-1.90])P.addEquipment('hullDetail',box(.48,.25,.68),side*1.37,1.678,z);
     // Owner 2026-10-19 (flaps sweep): flap and clamp 38 mm wider inboard, into the hull side they stood 33 mm off
     P.hangMudguard('sabra-rear-'+side,'hullRubber',box(.648,.23,.055),side*1.421,1.04,-3.491,.20);
     P.addEquipment('hullDetail',box(.648,.055,.29),side*1.421,1.175,-3.34);

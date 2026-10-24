@@ -244,8 +244,10 @@ function buildZTZ85IIIDeckFurniture(P: ChinaBuilderPort): void {
   P.add('hull', box(1.78, 0.045, 0.20), 0, 1.415, 0.58, -0.32, 0, 0);
   P.add('hull', cylY(0.25, 0.25, 0.045, 14), -0.42, 1.455, 0.28);
   P.add('hullDark', cylY(0.256, 0.256, 0.014, 14), -0.42, 1.468, 0.28);
-  periscope(P, 'hullDetail', -0.56, 1.475, 0.52);
-  periscope(P, 'hullDetail', -0.28, 1.475, 0.52);
+  // (release 240, the owner: "make sure all tank turrets are clear of hulls": 12 mm lower, tops 1.489, under the turret's
+  // 1.495 front underside at the ring's edge, which sat on them at rest)
+  periscope(P, 'hullDetail', -0.56, 1.463, 0.52);
+  periscope(P, 'hullDetail', -0.28, 1.463, 0.52);
 
   P.add('hullDetail', cylZ(0.115, 0.20, 12),
     0.46, 1.20, 1.52, -0.30, 0, 0);

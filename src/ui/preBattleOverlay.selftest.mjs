@@ -15,8 +15,9 @@ const animations = Object.fromEntries(['tick', 'tick-alt'].map(className => {
 assert.notEqual(animations.tick, animations['tick-alt']);
 const keyframes = Object.values(animations).map(name =>
   hudSource.match(new RegExp(`@keyframes ${name}\\{(from\\{[^}]+\\}to\\{[^}]+\\})\\}`))?.[1]);
-assert.deepEqual(keyframes, Array(2).fill('from{transform:scale(1.28);opacity:.4;}to{transform:scale(1);opacity:1;}'),
-  'alternate names preserve the exact original transform/opacity motion');
+// the two names restart one motion each second: the dial's scale-in (8339df05b1, owner 2026-10-21), from 1.45 and clear
+assert.deepEqual(keyframes, Array(2).fill('from{transform:scale(1.45);opacity:0;}to{transform:scale(1);opacity:1;}'),
+  'alternate names preserve the exact same transform/opacity motion');
 
 function element() {
   const classes = new Set();
