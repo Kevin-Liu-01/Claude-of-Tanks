@@ -16,8 +16,8 @@ const lockup = Buffer.from(lockupSvg).toString('base64');
 const [, , vbW, vbH] = /viewBox="([^"]+)"/.exec(lockupSvg)[1].split(/\s+/).map(Number);
 const LOCKUP_ASPECT = vbW / vbH;
 const font = readFileSync(new URL('public/fonts/chakra-petch/ChakraPetch-Bold-Latin.woff2', root)).toString('base64');
-assert.equal(OG_IMAGE_CARDS.length, 20, 'default, private rooms, Studio, the 404, and every public page need a card');
-assert.equal(new Set(OG_IMAGE_CARDS.map(([id]) => id)).size, 20);
+assert.equal(OG_IMAGE_CARDS.length, 23, 'default, private rooms, Studio, the 404, and every public page need a card');
+assert.equal(new Set(OG_IMAGE_CARDS.map(([id]) => id)).size, 23);
 // Every labelled card has a Chinese twin for its /cn page, labelled in that page's own catalog words.
 for (const [id, label] of OG_IMAGE_CARDS) {
   assert.equal(Boolean(OG_ZH_LABELS[id]), Boolean(label), `${id}: a zh-CN label exactly when the card carries a label`);
