@@ -49,7 +49,7 @@ import { appendFileSync } from 'node:fs';
 
 await import('./tank-surface-collect.mjs');
 const { TANK_SPECS } = await import('../src/vehicles/specs.ts');
-const { ensureInteriorFills } = await import('../src/vehicles/interiorFills.ts');
+const { ensureInteriorFills, closedInteriorFillGeometry } = await import('../src/vehicles/interiorFills.ts');
 const { geometryFingerprint } = await import('../src/vehicles/tankAssets.ts');
 const { bakeTankWreck } = await import('../src/world/wrecks.ts');
 const { collectWreckSolids } = await import('../src/world/wreckCollision.ts');
@@ -696,11 +696,21 @@ function liveProbe(id, buildName, camoSeed) {
       root.updateMatrixWorld(true);
       turret.visible = false;
       const swapped = [];
-      root.traverse((o) => { if (o.isMesh && o.geometry?.userData?.turretRingCut && heldBefore.has(o)) { swapped.push([o, o.geometry]); o.geometry = heldBefore.get(o); } });
+      // (244) an interior fill's reference is the closed boxes the kill swapped in and the ring cut, not the surface it
+      // drew intact (type74's and the XK2's fills read as thousands of holes against it)
+      const references = [];
+      root.traverse((o) => {
+        if (!o.isMesh || !o.geometry?.userData?.turretRingCut || !heldBefore.has(o)) return;
+        const closed = o.userData.interiorFill ? closedInteriorFillGeometry(o) : null;
+        if (closed) references.push(closed);
+        swapped.push([o, o.geometry]);
+        o.geometry = closed ?? heldBefore.get(o);
+      });
       const { burnU, list } = readDents(root);
       const dent = list.length ? { burnU, hullWorld: hull.matrixWorld, list, share: turretRingDentShare(SHARE_AGES[SHARE_AGES.length - 1]) } : null;
       const intactTris = collect(root, new Set([turret, plate]), dent);
       for (const [o, g] of swapped) o.geometry = g;
+      for (const g of references) g.dispose();
       row.cutMeshes = swapped.map(([o]) => o.name);
       const destroyedTris = collect(root, new Set([turret]), dent);
       const plateTris = geometryTris(plate.geometry, plate.matrixWorld, plate.material.side === THREE.DoubleSide ? 1 : 0);
