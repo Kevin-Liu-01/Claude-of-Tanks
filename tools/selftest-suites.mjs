@@ -62,6 +62,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/thermalWreckCooling.selftest.mjs',
     'src/engine/thermalHullHeat.selftest.mjs',
     'src/engine/thermalLensBloom.selftest.mjs',
+    // (fx-redo-240) the night pool's town lamps as lanterns
+    'src/engine/lampLightShape.selftest.mjs',
     'src/ui/aerialHitMark.selftest.mjs',
     'src/ui/killFeedSource.selftest.mjs',
     'src/ui/endScreenAircraft.selftest.mjs',

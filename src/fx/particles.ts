@@ -279,6 +279,7 @@ varying vec2 vShade;
 varying float vParticleDepth;
 varying float vSeed;
 varying float vAge;
+varying float vFlame;
 #ifdef FX_LIGHT_TINT
 varying vec3 vEmit;
 #endif
@@ -293,7 +294,7 @@ void main() {
   float age = uTime - aPB.w;
   if ( life <= 0.0 || age < 0.0 || age > life ) {
     vUv = uv; vUvA = uv; vUvB = uv; vFMix = 0.0;
-    vColor = vec4( 0.0 ); vT = 0.0; vShade = vec2( 0.0 ); vSeed = 0.0; vAge = 0.0;
+    vColor = vec4( 0.0 ); vT = 0.0; vShade = vec2( 0.0 ); vSeed = 0.0; vAge = 0.0; vFlame = 0.0;
     vParticleDepth = 1e9;
     #ifdef FX_LIGHT_TINT
       vEmit = vec3( 0.0 );
@@ -322,6 +323,9 @@ void main() {
     corner = vec2( position.x * size * ( 1.0 - 0.5 * up ) + sin( age * aSR.w + vSeed * 6.2832 ) * 0.32 * size * up * up,
                    ( up - 0.22 ) * tall );
   }
+  // (240, a night fire's "pill-shaped sprite blobs") a tongue whose tip sways at a negative rate is cut to a flame's
+  // outline in the additive pass: a broad root narrowing to a torn point, hot at its root and red toward its tip
+  vFlame = tongue * step( aSR.w, -1e-6 );
   vec3 camRight = vec3( viewMatrix[0][0], viewMatrix[1][0], viewMatrix[2][0] );
   vec3 camUp    = vec3( viewMatrix[0][1], viewMatrix[1][1], viewMatrix[2][1] );
   wpos += camRight * corner.x + camUp * corner.y;
@@ -427,11 +431,21 @@ varying float vFMix;
 varying vec4 vColor;
 varying float vT;
 varying vec2 vShade;
+varying float vFlame;
 ${FOG_PARS_F}
 ${TONECAP_GLSL}
 ${SOFT_DEPTH_GLSL}
 void main() {
   float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
+  // (240) a flame tongue (vFlame, PUFF_VERT): the round puff's density cut to a flame's outline — widest just over its
+  // root, narrowing to a point torn by the puff's own churn — and hottest at its root, so a stack of tongues reads as
+  // licking flame against a night sky, never a stretched round blob
+  if ( vFlame > 0.5 ) {
+    float fy = vUv.y;
+    float hw = 0.5 * ( 0.62 + 0.38 * smoothstep( 0.0, 0.16, fy ) ) * pow( max( 1.0 - fy, 0.0 ), 0.7 ) * ( 0.8 + 0.4 * tex );
+    float body = ( 1.0 - smoothstep( 0.45 * hw, hw, abs( vUv.x - 0.5 ) ) ) * smoothstep( 0.0, 0.07, fy );
+    tex = body * ( 0.55 + 0.45 * tex ) * ( 1.0 - 0.35 * fy );
+  }
   // erosion-style dissolve: the alpha threshold rises with age so the noisy
   // texture breaks apart from its thin texels inward — edges churn and burn
   // away instead of the whole card fading uniformly. Band widened 0.24 ->
@@ -465,6 +479,8 @@ void main() {
   float heat = clamp( ( tex - er ) * 2.6, 0.0, 1.0 );
   float hot = 0.45 + heat * heat * ( 2.2 - vT * 1.6 );
   vec3 col = vColor.rgb * hot * ( 1.0 - vT * vT * 0.45 );
+  // (240) a flame tongue reddens toward its tip
+  col *= mix( vec3( 1.0 ), vec3( 1.0, 0.6, 0.36 ), smoothstep( 0.4, 1.0, vUv.y ) * vFlame );
   // rim tint — r5: the hard 0.0-0.55 gate stamped a saturated RED BAND onto
   // the rim (r4 "hard red banding"). The ramp now walks white -> yellow ->
   // orange -> sooty umber across a wide gate so no single hue bands.
