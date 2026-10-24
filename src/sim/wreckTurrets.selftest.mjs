@@ -24,7 +24,7 @@ const strv = getSpec('strv103b');
   assert.ok(wreckTurretProfile(strv).hullHalf[2] > 2, 'but stands as a hull box for the others');
 }
 
-// --- launch velocities: a cook-off throws high over its fireball (an MBT's turret 6–14 m over the ring), well off to a
+// --- launch velocities: a cook-off throws high over its fireball (an MBT's turret 9–18 m over the ring), well off to a
 // side, tumbling end over end; the speed is the charge's work on the turret's mass; a plain death unseats
 {
   const out = new Float64Array(6);
@@ -32,17 +32,17 @@ const strv = getSpec('strv103b');
   const random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
   for (let n = 0; n < 50; n++) {
     turretLaunchVelocity('ammorack', 66.8, random, out);
-    assert.ok(out[1] > 10.4 && out[1] < 16.6, `cook-off up ${out[1].toFixed(2)} (apex ${(out[1] ** 2 / 19.62).toFixed(1)} m)`);
-    assert.ok(Math.hypot(out[0], out[2]) >= 1.79 && Math.hypot(out[0], out[2]) <= 4.41, 'thrown well off to a side');
+    assert.ok(out[1] > 13.3 && out[1] <= 19 + 1e-9, `cook-off up ${out[1].toFixed(2)} (apex ${(out[1] ** 2 / 19.62).toFixed(1)} m)`);
+    assert.ok(Math.hypot(out[0], out[2]) >= 2.19 && Math.hypot(out[0], out[2]) <= 4.81, 'thrown well off to a side');
     assert.ok(Math.hypot(out[3], out[4], out[5]) > 1.3, 'tumbling');
     turretLaunchVelocity('shot', 66.8, random, out);
     assert.ok(out[1] > 1.5 && out[1] < 2.7 && Math.hypot(out[0], out[2]) < 0.81, 'a plain kill unseats it');
   }
   // the same rack throws a light turret higher than a heavy one, never past the cap
   const draws = (k) => { let i = 0; return () => [0.5, 0.5, 0.5, 0.5, 0.5, k, 0.5, 0.5, 0.5][i++ % 9]; };
-  turretLaunchVelocity('ammorack', 66.8, draws(0.5), out, 16000);
+  turretLaunchVelocity('ammorack', 66.8, draws(0.5), out, 30000);
   const heavy = out[1];
-  turretLaunchVelocity('ammorack', 66.8, draws(0.5), out, 9000);
+  turretLaunchVelocity('ammorack', 66.8, draws(0.5), out, 16000);
   assert.ok(out[1] > heavy * 1.25, `a lighter turret flies faster (${heavy.toFixed(1)} → ${out[1].toFixed(1)} m/s)`);
   turretLaunchVelocity('ammorack', 66.8, draws(1), out, 1500);
   assert.ok(out[1] <= 19 + 1e-9, 'capped');
