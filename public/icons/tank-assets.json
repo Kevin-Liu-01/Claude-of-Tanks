@@ -93044,22 +93044,22 @@
             "verts": [
               [
                 0.1613,
-                -0.0462,
+                -0.011,
                 2.145
               ],
               [
                 1.6104,
-                -0.0462,
+                -0.011,
                 -0.0915
               ],
               [
                 1.6104,
-                0.7824,
+                0.7832,
                 -1.0525
               ],
               [
                 0.1613,
-                0.7824,
+                0.7832,
                 1.184
               ]
             ]
@@ -93075,22 +93075,22 @@
             "verts": [
               [
                 -1.7094,
-                -0.0462,
+                -0.011,
                 -0.0915
               ],
               [
                 -0.2603,
-                -0.0462,
+                -0.011,
                 2.145
               ],
               [
                 -0.2603,
-                0.7824,
+                0.7832,
                 1.184
               ],
               [
                 -1.7094,
-                0.7824,
+                0.7832,
                 -1.0525
               ]
             ]
@@ -93106,22 +93106,22 @@
             "verts": [
               [
                 -0.313,
-                0.0459,
+                0.0772,
                 1.9179
               ],
               [
                 0.214,
-                0.0459,
+                0.0772,
                 1.9179
               ],
               [
                 0.214,
-                0.4602,
+                0.4743,
                 1.7955
               ],
               [
                 -0.313,
-                0.4602,
+                0.4743,
                 1.7955
               ]
             ]
@@ -93137,22 +93137,22 @@
             "verts": [
               [
                 1.6104,
-                -0.0462,
+                -0.011,
                 -0.0915
               ],
               [
                 1.6104,
-                -0.0462,
+                -0.011,
                 -3.4986
               ],
               [
                 1.6104,
-                0.7824,
+                0.7832,
                 -3.4986
               ],
               [
                 1.6104,
-                0.7824,
+                0.7832,
                 -0.0915
               ]
             ]
@@ -93168,22 +93168,22 @@
             "verts": [
               [
                 -1.7094,
-                -0.0462,
+                -0.011,
                 -3.4986
               ],
               [
                 -1.7094,
-                -0.0462,
+                -0.011,
                 -0.0915
               ],
               [
                 -1.7094,
-                0.7824,
+                0.7832,
                 -0.0915
               ],
               [
                 -1.7094,
-                0.7824,
+                0.7832,
                 -3.4986
               ]
             ]
@@ -93199,22 +93199,22 @@
             "verts": [
               [
                 1.5314,
-                -0.0462,
+                -0.011,
                 -3.586
               ],
               [
                 -1.6304,
-                -0.0462,
+                -0.011,
                 -3.586
               ],
               [
                 -1.6304,
-                0.7824,
+                0.7832,
                 -3.586
               ],
               [
                 1.5314,
-                0.7824,
+                0.7832,
                 -3.586
               ]
             ]
@@ -93257,12 +93257,12 @@
             "name": "gun",
             "min": [
               -0.2866,
-              0.0459,
+              0.0772,
               -0.9651
             ],
             "max": [
               0.1876,
-              0.5062,
+              0.5184,
               1.219
             ],
             "turretLocal": true
@@ -93272,13 +93272,13 @@
             "name": "turretRing",
             "min": [
               -0.9475,
-              1.5561,
-              0.1073
+              1.4273,
+              0.0073
             ],
             "max": [
               0.9475,
-              1.7615,
-              2.0927
+              1.6327,
+              1.9927
             ],
             "turretLocal": false
           },
@@ -93347,12 +93347,12 @@
             "name": "radio",
             "min": [
               -0.8399,
-              0.0459,
+              0.0772,
               -2.7124
             ],
             "max": [
               -0.1812,
-              0.4602,
+              0.4743,
               -1.8387
             ],
             "turretLocal": true
@@ -93994,14 +93994,14 @@
             "volumeId": "C02",
             "name": "gunner",
             "min": [
-              0.1954,
-              -0.0088,
-              -0.4158
+              0.0454,
+              -1.0826,
+              -0.5126
             ],
             "max": [
-              0.6548,
-              0.6212,
-              0.2559
+              0.5048,
+              -0.3226,
+              0.1214
             ],
             "turretLocal": true
           },
@@ -94010,13 +94010,13 @@
             "name": "commander",
             "min": [
               0.0783,
-              -1.0512,
-              -0.5198
+              -1.0526,
+              -0.5541
             ],
             "max": [
               0.5377,
-              -0.3212,
-              0.2302
+              -0.3226,
+              0.0799
             ],
             "turretLocal": true
           },
@@ -94024,30 +94024,30 @@
             "volumeId": "C04",
             "name": "loader",
             "min": [
-              -0.547,
-              -1.0854,
-              -0.429
+              -0.6367,
+              -1.0526,
+              -0.5649
             ],
             "max": [
               -0.1773,
-              0.2759,
-              0.3397
+              -0.3326,
+              0.0535
             ],
             "turretLocal": true
           }
         ]
       },
-      "geometryHash": "386569f8",
-      "metadataHash": "4c3a26df",
+      "geometryHash": "e67fc602",
+      "metadataHash": "562c56be",
       "presentationAnchor": {
-        "xM": -0.0005,
-        "zM": 0.0746
+        "xM": -0.0004,
+        "zM": 0.0749
       },
-      "presentationHash": "c2560f08",
+      "presentationHash": "3e3b7362",
       "presentationProjection": {
         "centerYM": 2.6383,
-        "topHalfM": 8.6632,
-        "sideHalfM": 4.3316
+        "topHalfM": 8.6629,
+        "sideHalfM": 4.3314
       },
       "appearance": {
         "version": 1,
@@ -94062,7 +94062,7 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "gunmetal": 27,
+          "gunmetal": 28,
           "armorPaint": 9,
           "opticGlass": 3,
           "unclassified": 17,
@@ -94097,15 +94097,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 25108,
-          "sha256": "8850860f6933314552ae382b8144f8729152427c95a1e63fd5c9a3b9c0330257",
+          "bytes": 25200,
+          "sha256": "6e60bb69c34784e9275ae0f3c478c76252e1c58e3499a49605dfdab23eab7a09",
           "thumbnail": {
             "file": "thumbs/challenger2_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10568,
-            "sha256": "da2d6c6cdac2df8bc9826280338441cb204cc2be506ce243f9afc9190639028a"
+            "bytes": 10540,
+            "sha256": "30487b87db2cd9d6f1edb9c03cfb81bd177fe5be03cdd15dd1cff0bd6ecfef79"
           }
         },
         "top": {
@@ -94113,56 +94113,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8102,
-          "sha256": "53431ae5628c01419540d801b1ba6029b167529984017a96bf4fb51c9f7df5bd"
+          "bytes": 8046,
+          "sha256": "86774c1be5cfe9c77a60d85a4a88043ee71fd5ab9ff19bd01a11e4e65b908ed4"
         },
         "side": {
           "file": "challenger2_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8418,
-          "sha256": "3efe214486cb591ea0dfc2e87ba661df18bb7e59b39de17e7de377ee0a152fd0"
+          "bytes": 8596,
+          "sha256": "08f0aa93daa6074e7627ad0da7fb865f727c969f1931fb201e7bc63261608167"
         },
         "topSilhouette": {
           "file": "challenger2_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1102,
-          "sha256": "8a99f4c18adfbb277b09a1a146d8bcf4852b229b666215d8778f7f11a56afb44"
+          "bytes": 1096,
+          "sha256": "b0c578d021a52520e5922aa9093da953a69ac53fe85c13ba3db925fbb474ee96"
         },
         "sideSilhouette": {
           "file": "challenger2_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4241,
-          "sha256": "4d692ab0f8e046c0b0603dc325dbb1597eaed6a33a24d97769ca53c9e393c128"
+          "bytes": 4346,
+          "sha256": "86c62427ad98023ee684d240d9b835068b79b2569a83b0ce3bb0dd1db2d90029"
         },
         "armorSide": {
           "file": "challenger2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80833,
-          "sha256": "b38955a3043ee356944e7ed38c7c6495fa908102009ca8a4c2a5368e45e69d46"
+          "bytes": 82325,
+          "sha256": "1241991a6260078e35a026970ce1ea240314337724a9fbbde617e750d76822bb"
         },
         "modulesSide": {
           "file": "challenger2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82790,
-          "sha256": "a07e43fbc82e2ebc8be03fc5458896164dfe5e4b0d2dddb7c88d594bcf656887"
+          "bytes": 82301,
+          "sha256": "88784d0280a615052ccb21d32b8693def9e427ab150c91ef48a023e2179e0428"
         },
         "crewSide": {
           "file": "challenger2_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70555,
-          "sha256": "5fd5c30505549217e462b184518dd4852216ddde890eb8803d150c236bfdb2c4"
+          "bytes": 71180,
+          "sha256": "f8c7e6bab3136c2e5cd0d8540398940fbff7cd8d4b99ccdbc0c3720856859a63"
         },
         "markings": {
           "file": "challenger2_markings.png",
