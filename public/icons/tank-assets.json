@@ -184445,12 +184445,12 @@
             "name": "turretRing",
             "min": [
               -0.9974,
-              1.4979,
+              1.4972,
               -0.7221
             ],
             "max": [
               0.9974,
-              1.6783,
+              1.6776,
               1.3221
             ],
             "turretLocal": false
@@ -184617,7 +184617,7 @@
             ],
             "max": [
               -1.0525,
-              1.4147,
+              1.4146,
               3.759
             ],
             "turretLocal": false
@@ -184632,7 +184632,7 @@
             ],
             "max": [
               1.6875,
-              1.4147,
+              1.4146,
               3.759
             ],
             "turretLocal": false
@@ -184743,7 +184743,7 @@
         ]
       },
       "geometryHash": "30c20dcb",
-      "metadataHash": "5d3a1252",
+      "metadataHash": "5b29b109",
       "presentationAnchor": {
         "xM": 0.0087,
         "zM": -0.0138
@@ -184853,24 +184853,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 99579,
-          "sha256": "7704feba9b5e1988fd98c8399f0f0621f1169ef2770e1909dd23910cd98928d3"
+          "bytes": 101177,
+          "sha256": "22bf351f635a3a8b64cde3422efbbcf5c348b91df21ce5ed737a704227fbdd17"
         },
         "modulesSide": {
           "file": "leo2a2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 104235,
-          "sha256": "f6ed7cac09141b7cfd895411422893fe067bfb45182882414c6a5f8ea91734d0"
+          "bytes": 105281,
+          "sha256": "7f8c291c754df7d8911f96771a7ffd1d7328cb19cb3d6f4633e84ebbbd188455"
         },
         "crewSide": {
           "file": "leo2a2_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 94186,
-          "sha256": "20a6a3047e5d47e697f8c3591416c39024b5834137e518397cfb1f62d662299a"
+          "bytes": 94018,
+          "sha256": "7a5e1d90274df851632bdd24e3d02a09f58790ddb74b2bf116aea5ebb2cd3554"
         },
         "markings": {
           "file": "leo2a2_markings.png",
