@@ -3,7 +3,7 @@ import { normalizeStoryboard } from './studioTimeline.ts';
 import type { Storyboard } from './studioTimeline.ts';
 
 /** Original, in-engine editorial recipes. No competing game's media or models. */
-export type ProductionFormat = 'landscape' | 'portrait' | 'square';
+export type ProductionFormat = 'landscape' | 'portrait' | 'square' | 'card';
 export type ProductionRigId = 'hero' | 'track' | 'rear' | 'overhead' | 'detail';
 type Vec3 = [number, number, number];
 type Vec2 = [number, number];
@@ -43,6 +43,7 @@ export function productionPreset(id: string): ProductionPreset {
 export function productionAspect(format: ProductionFormat): number {
   if (format === 'portrait') return 9 / 16;
   if (format === 'square') return 1;
+  if (format === 'card') return 1.91;
   if (format !== 'landscape') throw new RangeError('Unknown production format');
   return 16 / 9;
 }

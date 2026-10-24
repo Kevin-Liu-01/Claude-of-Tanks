@@ -1800,6 +1800,9 @@ function buildType10Native2026(
       sprocketDepthScale: 0.68, idlerDepthScale: 0.78,
       frontArcSteps: 12, tautFrontSpan: true,
       linkPitchM: 0.138, shoeRadialScale: 0.85,
+      // 240: the roller-carried sag lengthens the upper run; the shoes at rest stay centred on the 4.16 m loaded run, so
+      // all 30 it carries stand on the ground (type10TrackReseat)
+      shoeRestPhase: 'loadedRunCentred',
       pinCapOuter: 0.252,                                                         // caps outer 1.586 (2 mm proud of the 1.5837 pad face; 3.6 cm inside the 1.622 skirt inner — §B4 voxel-margin law)
       padHex: 0x31322a, chainHex: 0x292a24,
       gearFloor: true,
@@ -4055,8 +4058,9 @@ export function buildBMP2(P: Modern3BuilderPort) {
   // intake mushrooms (r3b instrument: the ref's tall 1.75 cap reads at
   // x +1.10..1.14 ONLY — engine right; the left deck is flat 1.62-1.66):
   // one tall RIGHT mushroom on the exact ref column, a flush LEFT pot.
-  P.add('hull', cylY(0.05, 0.065, 0.084, 12), 1.125, 1.676, 0.696);             // stem into the cap (20 mm short of it before: owner 2026-10-19 float sweep)
-  P.add('hull', cylY(0.05, 0.05, 0.022, 12), 1.125, 1.725, 0.696);              // cap top 1.736 (ref col 1.754)
+  // (release 240: 11 cm forward, out of the sweep of the turret's rear corners, 1.23 m off the ring's axis at 1.72)
+  P.add('hull', cylY(0.05, 0.065, 0.084, 12), 1.125, 1.676, 0.806);             // stem into the cap (20 mm short of it before: owner 2026-10-19 float sweep)
+  P.add('hull', cylY(0.05, 0.05, 0.022, 12), 1.125, 1.725, 0.806);              // cap top 1.736 (ref col 1.754)
   P.add('hull', cylY(0.05, 0.065, 0.02, 12), -1.16, 1.639, 0.696);
   P.add('hull', cylY(0.05, 0.05, 0.012, 12), -1.16, 1.655, 0.696);
   P.add('hullDark', box(0.28, 0.02, 0.85), 1.13, 1.634, 1.326);                  // exhaust louvre

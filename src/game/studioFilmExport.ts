@@ -88,7 +88,7 @@ function avcCodecString(width: number, height: number, fps: number, bitrate: num
 }
 
 /** Default quality: ~0.2 bits per pixel per frame, 8–100 Mbit/s. */
-function defaultFilmBitrate(width: number, height: number, fps: number): number {
+export function defaultFilmBitrate(width: number, height: number, fps: number): number {
   return Math.round(Math.min(100_000_000, Math.max(8_000_000, width * height * fps * 0.2)));
 }
 

@@ -2,8 +2,8 @@ import { layoutViewportSize } from './responsiveLayout.ts';
 import {
   mouseAlertBox, mouseMedalWaits, planMouseNotices, type MouseNoticeInput, type MouseNoticePlan, type PlanLane, type PlanRect,
 } from './mouseNoticePlan.ts';
-import { addSightFurniture, clearSightFurniture, setSightNotice, settleSightFurniture } from './sightFurniture.ts';
-import { planTouchNotices, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
+import { addSightFurniture, addSightNoticeCut, clearSightFurniture, setSightNotice, settleSightFurniture } from './sightFurniture.ts';
+import { planTouchNotices, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
 
 /** A resize whose sizes arrive closer than this is still in progress. */
 const RESIZE_SETTLE_MS = 150;
@@ -117,6 +117,13 @@ const TOUCH_NOTICE_SOFT = '.cot-top,.cot-pips.show,.cot-mode-status.show,.cot-ea
   + '.cot-si-toasthost,.cot-room-chat:not([hidden]),.cot-spec.show';
 /** The alert's height while none shows (two lines at the touch type size in the detection's width), so places hold. */
 const TOUCH_ALERT_RESERVE_H = 40;
+/** The compact alert's two lines of 8 px type (battleHudLayout.css data-touch-notices~='alert-compact', 28 px at the
+ *  least), its planned height until one shows. */
+const TOUCH_COMPACT_ALERT_LINES_H = 28;
+/** Half the centre column a touch landscape's kill lanes leave the notices: a compact notice and its gaps (battleHudLayout.css
+ *  --hud-message-width keeps the same 74 px). At 844 x 390 a lane's row crossed the centre line wherever a notice stood
+ *  over the sight. */
+const TOUCH_CENTRE_HALF = TOUCH_COMPACT_NOTICE.w / 2 + TOUCH_NOTICE_GAP;
 /** Below this height a portrait phone's systems row leaves the band over the sight for the top slot (r10g). */
 const PORTRAIT_SIGHT_ROOM_H = 720;
 /** Where a touch layout parks the gun travel chip under the map instead of seating it by the sight (hud.ts
@@ -360,8 +367,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     if (ribbon.classList.contains('yield') !== meets) ribbon.classList.toggle('yield', meets);
   }
-  /** Measures the furniture the reticle keeps clear of (sightFurniture.ts), once per relayout, and on a touch layout the
-   *  sixth-sense notice its seated warning chip yields to. */
+  /** Measures the furniture the reticle keeps clear of (sightFurniture.ts), once per relayout, on a touch layout the
+   *  sixth-sense notice its seated warning chip yields to, and on either the centre notices the scope's arms end short of. */
   function publishSightFurniture(touch: boolean): void {
     clearSightFurniture();
     for (const node of document.querySelectorAll(SIGHT_FURNITURE)) {
@@ -376,6 +383,13 @@ export function installBattleHudLayout(root: HTMLElement): void {
       const slide = translationY(notice);
       setSightNotice(true, box.left, box.top - slide, box.right, box.bottom - slide);
     } else setSightNotice(false);
+    // the centre notices the scope's arms end short of, each at its settled place (both slide in)
+    for (const node of document.querySelectorAll<HTMLElement>('.cot-sixth.on,.cot-alert.show')) {
+      if (!node.getClientRects().length || getComputedStyle(node).visibility === 'hidden') continue;
+      const box = node.getBoundingClientRect();
+      const slide = translationY(node);
+      addSightNoticeCut(box.left, box.top - slide, box.right, box.bottom - slide);
+    }
     settleSightFurniture();
   }
   // The multiplayer v2 network strip with every cell shown, measured whenever it is not folded to its ping.
@@ -782,7 +796,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         }
       }
     }
-    const sideWidth = Math.min(400, width / 2 - 24);
+    const sideWidth = Math.min(400, width / 2 - (touch && width > height ? TOUCH_CENTRE_HALF : 24));
     const chat = !!read('.cot-room-chat:not([hidden])');
     const toastHost = root.querySelector<HTMLElement>('.cot-si-toasthost');
     const toastCount = toastHost?.childElementCount || 0;
@@ -969,6 +983,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
       // (its full size while it shows compact: one 32 px row, hud.ts .cot-sixth)
       const noticeSize: TouchSize = !compactNow.includes('notice-compact') && notice ? { w: notice.width, h: notice.height } : { w: 214, h: 32 };
       const alertBox = compactNow.includes('alert-compact') ? null : read('.cot-alert.show');
+      // (the compact alert planned at its own height while it shows so: two lines of its 8 px type until one does)
+      const compactAlertBox = compactNow.includes('alert-compact') ? read('.cot-alert.show') : null;
       // (the card's layout box: it enters scaled)
       const bannerBox = banner?.childElementCount ? { width: banner.offsetWidth, height: banner.offsetHeight } : null;
       // (the kill lanes by the places and heights this pass gives them, while they hold a row)
@@ -980,6 +996,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
         map: map ? { x0: map.left, y0: map.top, x1: map.right, y1: map.bottom } : null,
         scope: !!read('.cot-scope-vision'), seated: !touchChipParked(width, height), notice: noticeSize,
         alert: { w: noticeSize.w, h: alertBox?.height ?? TOUCH_ALERT_RESERVE_H },
+        alertCompact: { w: TOUCH_COMPACT_ALERT.w, h: compactAlertBox?.height ?? TOUCH_COMPACT_ALERT_LINES_H },
         countdown: touchCountdown, countdownRules: touchRules,
         banner: bannerBox ? { w: bannerBox.width, h: bannerBox.height } : null, fallbackTop: noticeTop });
       noticeTop = touchPlan.noticeTop;

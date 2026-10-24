@@ -6,6 +6,7 @@ import { DOCS_ICON_SPECS } from './docsIcons.ts';
 import { TOPIC_ORDER, topicSectionId, topics } from './topics.ts';
 import { CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
 import { WEAPON_CLASSES } from '../audio/weaponAudio.ts';
+import { staleChapters } from '../../tools/docs-prerender.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const expected = [
@@ -43,11 +44,15 @@ for (const id of TOPIC_ORDER) {
   assert.match(landing, new RegExp(`href="/docs/${id}"`), `${id} is discoverable from the manual index`);
 }
 
-assert.match(docsCss, /\.topic-nav \.shell\{display:grid;grid-template-columns:minmax\(120px,\.72fr\) repeat\(7,minmax\(0,1fr\)\)/, 'wide manuals expose every topic in a balanced two-row grid');
-assert.match(docsCss, /\n\.topic-nav a:last-child\{grid-column:span 2\}\n/, 'the thirteenth topic closes the second row across its last two cells');
-assert.equal(TOPIC_ORDER.length, 13, 'thirteen topics fill the two-row grid: seven, then five and one spanning two');
-assert.match(docsCss, /\.topic-nav \.shell\{display:flex;gap:1px;overflow-x:auto;[^}]*scrollbar-width:thin\}/, 'narrow manuals keep an explicit scrollable topic strip');
-assert.match(topicsSource, /navStrip\.scrollLeft = Math\.max\(0, activeTopic\.offsetLeft/, 'narrow manuals reveal their active topic without moving the page');
+// (242, the direction's 08-docs) every chapter sits on the shelf beside the page, in its two groups; the narrow
+// layout folds the shelf into one scrolling row that opens on the current chapter
+assert.match(topicsSource, /const TOPIC_GROUPS[\s\S]*?'mechanics'[\s\S]*?'engineering'/, 'the shelf names its two groups');
+const shelved = [...topicsSource.matchAll(/topics: \[([^\]]+)\]/g)].flatMap((m) => m[1].match(/'([a-z]+)'/g).map((q) => q.slice(1, -1)));
+assert.deepEqual([...shelved].sort(), [...TOPIC_ORDER].sort(), 'every chapter is on the shelf exactly once');
+assert.match(docsCss, /\.dm\{display:grid;grid-template-columns:var\(--docs-side-w\) minmax\(0,1fr\)/, 'wide manuals keep the shelf beside the page');
+assert.match(docsCss, /\.dm-side\{position:static;flex-direction:row;flex-wrap:nowrap;[^}]*overflow-x:auto/, 'narrow manuals fold the shelf into a scrolling row');
+assert.match(topicsSource, /shelf\.scrollLeft = Math\.max\(0, current\.offsetLeft/, 'narrow manuals reveal their current chapter without moving the page');
+assert.doesNotMatch(topicsSource, / \/\/ \$\{title\}/, 'no "01 // title" index lines (the owner\'s no-separator rule)');
 assert.doesNotMatch(topicsSource, /replace\(\/\[\^a-z0-9\]/, 'translated headings must not determine section anchors');
 
 const buildText = [topics.build.lede, ...topics.build.sections.flat()].join(' ');
@@ -89,4 +94,13 @@ assert.match(audioText, /13 existing national crews for every tank/);
 assert.match(audioText, /saved across battles and reloads/);
 assert.doesNotMatch(audioText, /selftest|node (?:src|tools)\//, 'the audio manual is written for players, not as a test checklist');
 
-console.log(`topics.selftest: ${TOPIC_ORDER.length} indexed manuals with complete icon, workflow, and audio coverage passed`);
+// brand-ui SPEC 12.4: every chapter ships in its page in both locales, so the first paint is the chapter (no stub)
+assert.deepEqual(staleChapters(), [], 'the prerendered chapters match topics.ts (node tools/docs-prerender.mjs --write)');
+for (const slug of TOPIC_ORDER) {
+  assert.match(readFileSync(join(ROOT, `site/docs-${slug}.html`), 'utf8'), new RegExp(`<main id="topicRoot" data-prerendered="${slug}" data-prerendered-locale="en-US"><div class="dm">`),
+    `site/docs-${slug}.html carries its chapter`);
+}
+assert.match(topicsSource, /root\.dataset\.prerendered === slug && root\.dataset\.prerenderedLocale === getLocale\(\)/,
+  'the script keeps a chapter prerendered for its locale and only wires it');
+
+console.log(`topics.selftest: ${TOPIC_ORDER.length} indexed manuals with complete icon, workflow, and audio coverage passed; every chapter prerendered in en-US and zh-CN`);

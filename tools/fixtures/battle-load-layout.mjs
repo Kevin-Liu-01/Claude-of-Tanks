@@ -5,7 +5,7 @@ import '../../src/ui/components/components.css';
 import '../../src/ui/motion.css';
 import '../../src/ui/responsiveSurfaces.css';
 import { installResponsiveLayout } from '../../src/ui/responsiveLayout.ts';
-import { createBattleLoadScreen } from '../../src/ui/battleLoad.ts';
+import { battleLoadModeLabel, createBattleLoadScreen } from '../../src/ui/battleLoad.ts';
 
 installResponsiveLayout();
 const screen = createBattleLoadScreen();
@@ -20,7 +20,13 @@ window.__LOAD_LAYOUT = {
   screen,
   roster(allies, enemies) { screen.rosters(rows(allies,true), rows(enemies,false)); },
 };
-screen.show({mapName:'Steinburg', mode:'Turbo Ball · Any battlefield', thumb:'/maps/urban.webp', allies:[], enemies:[]});
 const params = new URLSearchParams(location.search);
+// ?map=<id>&name=<its name>[&mode=<mode id>]: a battlefield as the game passes it (its art, its baked plan on the plate beside the tip, the mode's objectives on it);
+// without it the layout probes keep the plain Steinburg entry
+const mapId = params.get('map');
+// the chip and the plan's objectives name one mode (&mode=<id>, Turbo Ball unless set), as the game's entries pass both
+const modeId = params.get('mode') || 'turbo_ball';
+screen.show({mapName:params.get('name') || 'Steinburg', mode:battleLoadModeLabel(modeId), thumb:`/maps/${mapId || 'urban'}.webp`,
+  ...(mapId ? {biome:mapId, modeId} : {}), allies:[], enemies:[]});
 window.__LOAD_LAYOUT.roster(Number(params.get('allies') ?? 7), Number(params.get('enemies') ?? 7));
 screen.progress(.97, 'Priming deployment view');
