@@ -83,6 +83,8 @@ export interface MatchHost {
   pump(nowMs?: number): void;
   requestStats(): void;
   stats(): MatchHostStats;
+  /** The room removed `playerId` mid-match (kick or leave): drop its peer link and refuse its seat token. */
+  revokeSeat(playerId: string): void;
   stop(reason?: CloseReasonId, detail?: string): void;
   onState(listener: (state: MatchHostState, detail: string) => void): Unsubscribe;
 }
@@ -152,7 +154,7 @@ export function createMatchHost({
     // The host's own client reconnected (its stall recovery after a long task on this tab, 2026-10-11): a fresh connection
     // is a fresh link — the core retires the old one and gates the new HELLO. Before, link 0 stayed attached, the second
     // HELLO met UNEXPECTED_MESSAGE and the host's own seat hung in 'handshaking' while the match ran on without it.
-    else if (change.state === 'open' && change.resumed && ready) post({ type: 'link_open', peer: HOST_LOOPBACK_PEER, label: 'host' });
+    else if (change.state === 'open' && change.resumed && ready) post({ type: 'link_open', peer: HOST_LOOPBACK_PEER, label: 'host', playerId });
   });
 
   // ------------------------------------------------------------ peers
@@ -160,7 +162,7 @@ export function createMatchHost({
   const bridge = (link: RtcClientLink, peerId: string): void => {
     const peer = ++peerSeq;
     bridges.set(peer, { link, playerId: peerId, lastPressure: 0 });
-    post({ type: 'link_open', peer, label: link.label });
+    post({ type: 'link_open', peer, label: link.label, playerId: peerId });
     link.onMessage((bytes) => {
       const copy = bytes.slice();
       post({ type: 'link_frame', peer, bytes: copy.buffer }, [copy.buffer]);
@@ -176,7 +178,7 @@ export function createMatchHost({
         if (ready) return;
         ready = true;
         if (bootTimer !== null) { clearTimer(bootTimer); bootTimer = null; }
-        post({ type: 'link_open', peer: HOST_LOOPBACK_PEER, label: 'host' });
+        post({ type: 'link_open', peer: HOST_LOOPBACK_PEER, label: 'host', playerId });
         for (const bytes of queuedLoopback.splice(0)) post({ type: 'link_frame', peer: HOST_LOOPBACK_PEER, bytes: bytes.buffer }, [bytes.buffer]);
         setState('live', message.resumed ? 'resumed' : 'started');
         onLog('info', 'host live', { tick: message.tick, entities: message.entities, resumed: message.resumed });
@@ -325,6 +327,10 @@ export function createMatchHost({
     start,
     pump,
     requestStats: () => post({ type: 'stats' }),
+    revokeSeat(playerId) {
+      post({ type: 'seat_revoke', playerId });
+      acceptor?.drop(playerId, CLOSE_REASON.ROOM_CLOSED, 'removed from the room');
+    },
     stats: () => ({
       state, generation: config?.generation ?? generation(), peersConnected: acceptor?.connected ?? 0, relayed: acceptor?.relayed ?? 0, uplinkBytesPerS,
       tick: lastReport?.tick ?? 0, phase: lastReport?.phase ?? 'loading', reports, core: coreStats, acceptor: acceptor?.stats() ?? null,

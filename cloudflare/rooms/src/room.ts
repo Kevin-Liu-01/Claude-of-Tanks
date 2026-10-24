@@ -42,6 +42,11 @@ function isAttachment(value: unknown): value is SocketAttachment {
     Number.isFinite(record.rateStart) && Number.isSafeInteger(record.rateCount);
 }
 
+/** The rooms Worker's root seat secret must exist and be at least as long as the Node room services require. */
+function seatSecretUsable(secret: unknown): boolean {
+  return typeof secret === 'string' && secret.length >= 16;
+}
+
 export class Room extends DurableObject<Env> {
   #actor: RoomActor | null = null;
   #roomCode = '';
@@ -103,7 +108,8 @@ export class Room extends DurableObject<Env> {
     this.#roomCode = code;
     this.#actor = new RoomActor(code, {
       now: () => Date.now(),
-      random: () => Math.random(),
+      // match ids feed the per-match host secret: drawn from the platform CSPRNG, not Math.random
+      random: () => crypto.getRandomValues(new Uint32Array(1))[0]! / 2 ** 32,
       sha256Hex: (text) => createHash('sha256').update(text).digest('hex'),
       seatSecret: this.env.MATCH_SEAT_SECRET,
       signSeatToken,
@@ -206,6 +212,12 @@ export class Room extends DurableObject<Env> {
     if (!route || route.match || (this.#roomCode && this.#roomCode !== route.code)) return json({ error: 'invalid_room_route' }, 404);
     if (!allowedOrigin(request, this.env.ALLOWED_ORIGINS)) return json({ error: 'origin_forbidden' }, 403);
     if (!isWebSocketUpgrade(request)) return json({ error: 'websocket_required' }, 426);
+    // fail closed (security audit 2026-10-22): every match's host secret is sha256(MATCH_SEAT_SECRET:matchId), so an
+    // absent or short root would let any seat derive it from its own match_start; the Node room services refuse the same
+    if (!seatSecretUsable(this.env.MATCH_SEAT_SECRET)) {
+      console.error('room refused: MATCH_SEAT_SECRET is unset or shorter than 16 characters (wrangler secret put MATCH_SEAT_SECRET)');
+      return json({ error: 'room_unconfigured' }, 503);
+    }
     const actor = this.#activate(route.code);
     let pending = 0;
     for (const socketId of this.#sockets.keys()) if (!actor.socketRecord(socketId)?.playerId) pending++;

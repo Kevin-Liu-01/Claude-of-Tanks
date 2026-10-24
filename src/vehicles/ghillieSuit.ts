@@ -20,6 +20,7 @@ import { FLEET_GHILLIE_SUITS } from './ghillieFleetSuits.ts';
 import { mechanicalGunPitchFloor, type GunPitchByYawCurve } from '../sim/gunPitchLimits.ts';
 import { MISSION_DOCK_SEATS } from '../sim/missionDockSeats.generated.ts';
 import { vehicleMarkingSeats } from './vehicleMarkingSeatRegistry.ts';
+import { vehicleMarkingPaintsOnSuit } from './vehicleMarkings.ts';
 import { missionAirframeVolumes, missionCradleVolumes } from '../sim/missionDockVolumes.ts';
 
 type Point2 = readonly [number, number];
@@ -3827,12 +3828,8 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
         return { side, z0, z1: 0.80, nz: side < 0 ? 24 : 26, ny: 8,
           topAt: () => 0.80, bottomAt: (z: number) => 0.02 + Math.sin(z * 3.2) * 0.024,
           outAt: (z: number, t: number) => (z < -1.65 ? 1.52 : 1.68) + (1 - t) * 0.028, seed: 51 + side,
-          // 2026-10-21 (the owner: the star on the turret): the right flank's drape leaves a window for the national
-          // insignia (vehicleMarkings.ts), from its top to the hem; 2026-10-22 (lane 240): the left flank's leaves one at
-          // the designation's station (z -0.01), so the "34" keeps the left flank on bare armour rather than on the cloth
-          // (the solver never seats paint on it). Each is the marking's 0.27 m footprint and 3 cm a side (a blind critic
-          // read the first windows, a net cell of 8 cm a side, as a stark black square round the star)
-          cuts: side > 0 ? [[-0.848, -0.518, 0.138, 0.468] as const] : [[-0.176, 0.154, 0.138, 0.468] as const],
+          // 2026-10-23 (the owner: "Paint it on the drape"): no window for the markings; the star and the "34" are painted
+          // on these drapes (vehicleMarkings.ts vehicleMarkingPaintsOnSuit), where the windows read as black squares
           // round 3 ("along both turret sides the net rises as vertical free-standing fence panels"): the flank drape
           // rolls over the roof edge and tucks under the roof net
           shoulder: { z0, z1: 0.40, inAt: (z: number) => sepv3TurretRoofEdge(z) - 0.06, yAt: () => 0.874 } };
@@ -5739,6 +5736,8 @@ function* addGhillieOwner(
   const netMat = netShared ? suitMats.net! : makeNet(P, cfg, theatre, cover);
   // Mesh names keep the schema-1 spelling (tankIdAliases.ts): geometry digests hash them.
   const netMesh = addMerged(P, parent, netGeos, netMat, `${tankSeedId(cfg.id)}_ghillie_${owner}_net`);
+  // 2026-10-23 (the owner on the M1A1 FEP's star: "Paint it on the drape"): the net carries the vehicle's markings
+  if (netMesh && vehicleMarkingPaintsOnSuit(P.spec.id)) netMesh.userData.backsMarkingPaint = true;
   if (netMesh && !netShared) suitMats.net = netMat;
   // the netting lane: a suit with working clearances is marked for the decor's turret-load guard (decorations.ts), and
   // what the decor draws up over its loads is held to the same clearances (ghillieDrape.ts)

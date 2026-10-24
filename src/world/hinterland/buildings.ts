@@ -10,7 +10,7 @@ import type { HinterlandShapeArrays } from './outlandGeometry.ts';
 import type { HinterlandAir } from './air.ts';
 import { HINTERLAND_DEPTH_GLSL, HINTERLAND_PROJECT_GLSL, HINTERLAND_REMAP_DEFINE, HINTERLAND_WRITE_DEPTH } from './project.ts';
 import type { HinterlandPyramid } from './pyramid.ts';
-import { HINTERLAND_TREE_STRIDE, type HinterlandWire } from './wire.ts';
+import { HINTERLAND_ROAD_SRGB, HINTERLAND_TREE_STRIDE, type HinterlandWire } from './wire.ts';
 
 interface EngineLike {
   setupShadowMaterial?: (material: THREE.Material, hook: (shader: THREE.WebGLProgramParametersWithUniforms) => void) => THREE.Material;
@@ -99,6 +99,25 @@ export interface HinterlandNearTrees { trees: Float32Array; species: string[]; p
 /** The near trees' packed records (the wire's stride), kept for the impostors (trees.ts). */
 export interface HinterlandNearTrees { trees: Float32Array; species: string[]; pyramid: HinterlandPyramid }
 
+/**
+ * The road ribbons in the battlefield's own packed earth (horizons-240: the worker's neutral greys met the battlefield's
+ * dirt roads at the edge as a narrow grey strip): the up-facing triangles in a road kind's colour take roadColor
+ * (linear). Tracks keep their earth, a snowy place its packed snow.
+ */
+function recolourRoads(arrays: HinterlandShapeArrays, roadColor: readonly [number, number, number]): void {
+  const enc = (c: number): number => Math.round(Math.sqrt(Math.max(0, Math.min(1, c))) * 255);
+  const lin = (v: number): number => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const from = [HINTERLAND_ROAD_SRGB.road, HINTERLAND_ROAD_SRGB.dikeRoad].map((c) => c.map((v) => enc(lin(v))));
+  const to = roadColor.map(enc);
+  const { color, normal } = arrays;
+  for (let i = 0; i + 2 < color.length; i += 3) {
+    if (normal[i + 1] < 120) continue;
+    for (const f of from) {
+      if (color[i] === f[0] && color[i + 1] === f[1] && color[i + 2] === f[2]) { color[i] = to[0]; color[i + 1] = to[1]; color[i + 2] = to[2]; break; }
+    }
+  }
+}
+
 function wrap(arrays: HinterlandShapeArrays): THREE.BufferGeometry {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(arrays.position, 3));
@@ -110,7 +129,8 @@ function wrap(arrays: HinterlandShapeArrays): THREE.BufferGeometry {
 }
 
 /** The outland's scene objects from the worker's answer (null when it carries no outland). */
-export function createHinterlandOutlandObjects(wire: HinterlandWire, pyramid: HinterlandPyramid, engineCtx: unknown, air: HinterlandAir | null = null): THREE.Object3D | null {
+export function createHinterlandOutlandObjects(wire: HinterlandWire, pyramid: HinterlandPyramid, engineCtx: unknown, air: HinterlandAir | null = null,
+  roadColor: readonly [number, number, number] | null = null): THREE.Object3D | null {
   const geo = wire.outland;
   if (!geo) return null;
   const engine = (engineCtx ?? {}) as EngineLike;
@@ -120,6 +140,7 @@ export function createHinterlandOutlandObjects(wire: HinterlandWire, pyramid: Hi
   const hazeSigma = Math.max(0, wire.fogDensity) * 0.42 * (wire.air ?? 1);
   if (geo.buildings) {
     const { material, cam, proj } = createOutlandMaterial(engine, hazeSigma, 'hinterland-outland-built-v2', 0.9, air);
+    if (roadColor) recolourRoads(geo.buildings, roadColor);
     group.add(outlandMesh('hinterland-buildings', wrap(geo.buildings), material, cam, air, proj));
   }
   if (geo.nearTrees || geo.farTrees) {

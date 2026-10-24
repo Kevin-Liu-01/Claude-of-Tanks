@@ -1209,21 +1209,14 @@ function addT90ALegacyHull(P: T90BuilderPort, fenderLipHullSeat = true): void {
 function addT90ALegacyHullDeckAndGear(P: T90BuilderPort): void {
   const { box, cylX, cylZ, buildRunningGear, stowage } = KIT;
   ruDeck(P, { deckY: 1.365, hatchY: 1.215, hatchZ: 2.16, gz: -1.74, grilles: 5, gw: 1.5, periY: 1.20, gY: 1.33, ribY: 1.34 });
-  // ORACLE-PARITY: the print's hull node carries a low dome ghost (side
-  // 1.64@-1.54 falling 1.56@-1.43; front 1.605 across |x|<0.6) — matched
-  // as a low filler like the vladimir precedent.
+  // The print's hull node carries a low dome ghost (side 1.64@-1.54 falling 1.56@-1.43; front 1.605 across |x|<0.6) and
+  // a cast shoulder breaking at 1.48-1.49 m: the turret's own base, which the oracle parity once matched in the hull.
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): those stood up to 21 cm inside the turret
+  // at rest and in the sweep of its floor (1.41, out to 2.6 m off the ring's axis) as it turned; the deck between the
+  // ring and the grilles is one low filler at the deck's level under it.
   P.add('hull', KIT.slab(
-    [-0.75, 1.34, -1.60], [0.75, 1.34, -1.60], [0.75, 1.34, -1.68], [-0.75, 1.34, -1.68],
-    [-0.75, 1.37, -1.60], [0.75, 1.37, -1.60], [0.75, 1.37, -1.68], [-0.75, 1.37, -1.68]));
-  for (const [x0, x1, top] of [[-0.61, -0.35, 1.64], [-0.35, 0.35, 1.605], [0.35, 0.65, 1.64]]) {
-    P.add('hull', KIT.slab(
-      [x0, 1.34, -1.47], [x1, 1.34, -1.47], [x1, 1.34, -1.60], [x0, 1.34, -1.60],
-      [x0, top, -1.47], [x1, top, -1.47], [x1, 1.37, -1.60], [x0, 1.37, -1.60]));
-  }
-  // Lower cast shoulder survives outside the narrow high center section.
-  // Its top follows the oracle's 1.48-1.49 m break at |x| 0.66..0.75.
-  P.add('hull', box(1.50, 0.15, 0.08), 0, 1.415, -1.53);
-  P.add('hull', box(1.25, 0.20, 0.07), 0.035, 1.45, -1.445);
+    [-0.75, 1.34, -1.41], [0.75, 1.34, -1.41], [0.75, 1.34, -1.68], [-0.75, 1.34, -1.68],
+    [-0.75, 1.37, -1.41], [0.75, 1.37, -1.41], [0.75, 1.37, -1.68], [-0.75, 1.37, -1.68]));
   ruGlacisKit(P, { w: 3.5, y: 1.10, z: 2.83, eyeX: 0.90, eyeZ: 3.03, eyeSplit: true, hookX: 0.40, hookY: 0.68, hookZ: 3.04, hlY: 1.10, lights: false });
   // T4A SHADOW-TONE (verdict order 6: "rehook the near-black headlight/
   // bracket clusters at bow/stern corners"): headlight pods + stern
@@ -1314,8 +1307,9 @@ function addT90ALegacyHullDeckAndGear(P: T90BuilderPort): void {
   }
   // r10c: log slimmed to the ref's x +-1.0 / top 1.39 line (the 2.55-long
   // 1.605-high log owned eight front cols and the -1.33 side col)
-  P.add('hullDark', cylX(0.09, 1.90, 10), 0, 1.39, -1.43);
-  for (const s of [-1, 1]) P.add('hullDetail', box(0.06, 0.18, 0.09), s * 0.90, 1.39, -1.43);
+  // (release 240: its top on that 1.39 line, under the turret's 1.41 floor as it turns over it; the axis stood there)
+  P.add('hullDark', cylX(0.09, 1.90, 10), 0, 1.30, -1.43);
+  for (const s of [-1, 1]) P.add('hullDetail', box(0.06, 0.18, 0.09), s * 0.90, 1.30, -1.43);
   // unditching log SPLIT (ref plan has the center-notch gap at |x|<0.15)
   for (const s of [-1, 1]) P.add('hullWood', cylX(0.095, 0.85, 10), s * 0.575, 1.36, -3.23);
   for (const s of [-0.55, 0.55]) P.add('hullDark', cylX(0.102, 0.045, 10), s * 1.05, 1.36, -3.23);
@@ -1977,12 +1971,9 @@ function buildT90AVladimirStern(P: T90BuilderPort): void {
   }
   ruDeck(P, { deckY: 1.46, hatchZ: 0.50, gz: -3.35, grilles: 5, gw: 1.5, periY: 1.37 });
 
-  // Small asymmetric service heads preserve the recovered deck stations
-  // without recreating the fixed duplicate-turret silhouette.
-  P.add('hull', box(0.245, 0.185, 0.004), -0.6425, 1.8975, -1.52);
-  P.add('hull', box(0.045, 0.32, 0.004), -0.6425, 1.66, -1.52);
-  P.add('hull', box(0.14, 0.20, 0.004), 1.093, 1.84, -0.919);
-  P.add('hull', box(0.045, 0.25, 0.004), 1.093, 1.625, -0.919);
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the two 4 mm service heads that kept the
+  // recovered deck stations stood half a metre over the deck inside the turret at rest, hull-fixed, so they cut through
+  // it as it turned; they are gone.
 }
 
 function addT90AVladimirSmokeBanks(P: T90BuilderPort): void {
@@ -4432,12 +4423,14 @@ function buildT90(P: T90BuilderPort): void {
   // hullLengthM body span holds at the -3.43 anchor (12%-filter class).
   // CRITIC FIX (defect 8 "tan smear"): bins read as BIN ROW — scheme
   // bodies, thin dark lid SEAMS (not tan lid sheets), latch dots.
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the row stands 10 cm lower than the print's
+  // band (lids at 1.55), under the bustle's tail, which sat 5 cm into its lids at rest and swept through them turned.
   for (const s of [-1, 1]) {
-    P.add('hull', box(0.98, 0.30, 0.30), s * 0.60, 1.50, -3.26);
-    P.add('hullDark', box(0.90, 0.014, 0.03), s * 0.60, 1.652, -3.14);   // lid seam (front edge)
-    P.add('hullDark', box(0.03, 0.014, 0.24), s * 0.155, 1.652, -3.26);  // lid split seam
-    P.add('hullDark', box(0.03, 0.05, 0.014), s * 0.38, 1.58, -3.105);   // latches
-    P.add('hullDark', box(0.03, 0.05, 0.014), s * 0.84, 1.58, -3.105);
+    P.add('hull', box(0.98, 0.20, 0.30), s * 0.60, 1.45, -3.26);
+    P.add('hullDark', box(0.90, 0.014, 0.03), s * 0.60, 1.552, -3.14);   // lid seam (front edge)
+    P.add('hullDark', box(0.03, 0.014, 0.24), s * 0.155, 1.552, -3.26);  // lid split seam
+    P.add('hullDark', box(0.03, 0.05, 0.014), s * 0.38, 1.50, -3.105);   // latches
+    P.add('hullDark', box(0.03, 0.05, 0.014), s * 0.84, 1.50, -3.105);
     P.add('hull', box(0.30, 0.26, 0.26), s * 1.42, 1.44, -3.24);
     P.add('hull', box(0.16, 0.20, 0.18), s * 1.53, 1.21, -3.05);    // corner bracket (§B2 cell closure, standard-check ±1.56,-3.05)
     P.add('hull', box(0.07, 0.14, 0.16), s * 0.60, 1.235, -3.50);   // rack sliver bars (y 1.165..1.305)
@@ -7976,7 +7969,9 @@ function addT90BurlakBustleNative2026(
     [-1.50, 0.05, 0.67, -1.02, 1.02, -0.90, 0.90, -0.96, 0.96],
     [-2.08, 0.07, 0.65, -0.84, 0.84, -0.72, 0.72, -0.79, 0.79],
     [-2.68, 0.08, 0.60, -0.72, 0.72, -0.60, 0.60, -0.67, 0.67],
-    [-3.30, 0.00, 0.58, -0.58, 0.58, -0.47, 0.47, -0.54, 0.54],
+    // (release 240, the owner: "make sure all tank turrets are clear of hulls": the tail's floor stays level with the
+    // station ahead of it; it dropped 8 cm to the ring's plane, into the stern's drums and bins it swings over)
+    [-3.30, 0.08, 0.58, -0.58, 0.58, -0.47, 0.47, -0.54, 0.54],
   ].map(([z, y0, y1, xl, xr, xbl, xbr, xtl, xtr]): WeldedStation => [
     fitZ(z), fit(y0), fit(y1), fit(xl), fit(xr),
     fit(xbl), fit(xbr), fit(xtl), fit(xtr),

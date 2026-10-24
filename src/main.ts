@@ -56,6 +56,7 @@ import {
   type MainBattleHudRuntime,
 } from './app/mainBattleHudRuntime.ts';
 import { createMainFrameRuntime } from './app/mainFrameRuntime.ts';
+import { createLazyRuntimeOwner } from './app/lazyRuntimeOwner.ts';
 import { createCombatAimComposition } from './app/combatAimComposition.ts';
 import { checkedIntegrationPort } from './app/checkedIntegrationPort.ts';
 import { createCombatWarmComposition } from './app/combatWarmComposition.ts';
@@ -140,7 +141,6 @@ import './ui/motion.css';
 import './ui/responsiveSurfaces.css';
 import './ui/components/components.css';
 import './ui/garage.css';
-import './ui/deploy.css';
 import './ui/showroom.css';
 import './ui/battleTimeChoices.css';
 import { createGarage } from './ui/garage.ts';
@@ -238,7 +238,7 @@ import {
   spawnTanks, ensureStagedVisuals, ensureStagedVisualsSteps, nextStagedBake, planBattleParticipantIds,
   planBattleCamoOverrides, type BattleVisual,
 } from './game/rosterState.ts';
-import { clearMatchSession, createBus, createGameState } from './game/stateCore.ts';
+import { clearMatchSession, createBus, createGameState, watchRevealsAll } from './game/stateCore.ts';
 import { campaignOperationById } from './game/campaignOperations.ts';
 // Pure roster planning: the solo battle authority stays behind soloBattleAccess (boot-static-closure receipt).
 import { soloRosterPlan } from './game/soloRosterPlan.ts';
@@ -687,6 +687,7 @@ installServiceRecord(bus, {
   playerTeam: () => game.player?.team ?? null,
   teamOf: (id) => game.tankById.get(id)?.team ?? null,
   gameMode: () => game.gameMode,
+  watched: () => !!game.ruleset?.watch,
   clockS: () => game.timeS,
   playerHpFraction: () => {
     const combat = game.player?.combat;
@@ -748,7 +749,8 @@ const fxRuntimeAccess = createFxRuntimeAccess<MainFxModule, MainFxRuntime>({
       auxiliaryEntities: () => multiplayerV2.current?.active ? game.tankById.values() : game.tanks, // v2 is the only multiplayer (cutover)
       auxiliaryTime: () => game.timeS,
       auxiliaryVisible: entity => entity.networkVisible !== undefined ? entity.networkVisible
-        : entity.team !== 'enemy' || game.spotting?.isSpotted(entity.id, 'player', game.player) === true,
+        : watchRevealsAll(game) || entity.team === (game.player?.team ?? 'player')
+          || game.spotting?.isSpotted(entity.id, game.player?.team ?? 'player', game.player) === true,
       auxiliaryReport: (id,p,caliberMm) => bus.emit('auxiliary:fired',{id,x:p.x,y:p.y,z:p.z,caliberMm}),
       // Decals must resolve every live struck entity in production. The old
       // window.__DEBUG lookup silently dropped all marks whenever diagnostics
@@ -1742,7 +1744,8 @@ const nightLighting = createNightLightingAccess({
   isNight: () => battleAtmosphere.current?.weather?.timeOfDay === 'night',
   isBattlePresentation: () => game.phase !== 'garage' && !studio.active,
   isEntityVisible: (entity) => entity.networkVisible !== undefined ? entity.networkVisible
-    : entity.team !== 'enemy' || game.spotting?.isSpotted(entity.id, 'player', game.player) === true,
+    : watchRevealsAll(game) || entity.team === (game.player?.team ?? 'player')
+      || game.spotting?.isSpotted(entity.id, game.player?.team ?? 'player', game.player) === true,
 });
 const post = createPost(renderer, scene, camera);
 // (black-screen-228) the network entry arms the black-world guard through the engine context
@@ -1934,9 +1937,10 @@ for (const type of ['mode:flag_captured', 'mode:zone_captured', 'mode:goal_score
 const battlePhase = createBattlePhasePolicy({
   getPhase: () => game.phase,
   hasResult: () => !!game.result,
+  // a watcher flying or riding along owns the view as a player does (settings on Esc, the pointer recaptured)
   hasControllablePlayer: () => !!(
     game.player?.combat && !game.player.combat.destroyed
-  ),
+  ) || !!watchOwner.current?.controller.active,
   isKillcamActive: () => killcam.isActive(),
   isBattleLoadVisible: () => !!document.querySelector('.cot-bl.on'),
 });
@@ -1988,6 +1992,8 @@ const settings = createSettingsAccess({
   isGamePaused: battlePhase.isPauseEligible,
 });
 garage.attachSettingsControl(settings.gear);
+// the Deploy screen's bot tier is the settings' own (the next battle's), so both pickers read one value
+garage.attachDifficulty({ get: () => input.getSettings().aiDifficulty, set: (tier) => input.setSetting('aiDifficulty', tier) });
 const mobileBattleInput = createMobileBattleInputAccess<MainEntity>({
   input,
   bus,
@@ -2331,7 +2337,7 @@ const soloBattleStart = createSoloBattleStartAccess({
       emitConsumableReset: () => bus.emit('ui:consumableReset', {}),
       rig,
       stopShowroom: () => showroom.stop(),
-      openBattle: battleRollout.open,
+      openBattle: () => openBattleRound(),
     },
     recordTrace: (trace: RuntimeValue) => {
       if (typeof window !== 'undefined') window.__START_BATTLE_TIMINGS = trace;
@@ -2401,7 +2407,8 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
     resolveVisiblePreBattleSeconds,
     preBattleHoldSeconds: PRE_BATTLE_HOLD_S,
     minimumVisiblePreBattleSeconds: MIN_VISIBLE_PRE_BATTLE_S,
-    openBattle: battleRollout.open,
+    openBattle: (seconds: number) => openBattleRound(seconds),
+    ensureWatch: () => watchOwner.preload(),
     scheduleDeferredWarm: scheduleDeferredCombatWarm,
     nextFrame,
     createLoadingYielder: createOpaqueLoadingYielder,
@@ -2414,7 +2421,15 @@ const soloBattleLoading = createSoloBattleLoadingAccess({
  * the render loop drains those deltas while battleLoad.covering is true, so
  * this pose remains unchanged until the loader has fully left the viewport.
  */
+/** The countdown starts; a watched battle hands the human seat to its bot and the watcher to the drone. */
+function openBattleRound(preBattleSeconds?: number) {
+  battleRollout.open(preBattleSeconds);
+  if (game.ruleset?.watch) watchOwner.current?.open();
+}
+
 function prepareBattleRevealCamera() {
+  // a watched battle opens on the drone's frame over the field, never on the human seat's chase
+  if (game.ruleset?.watch && watchOwner.current?.prepareReveal()) return;
   if (!game.player || !game.player.state) return;
   rig.release();
   rig.snapArcade(2, game.player.state.yaw, -10 * DEG);
@@ -2459,7 +2474,7 @@ function importMultiplayerV2Modules() {
 }
 
 function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
-  return importMultiplayerV2Modules().then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE, loadObstacleIdentities }, { createRoomIceResolver }, { prewarmRosterVisuals }]) => {
+  return importMultiplayerV2Modules().then(([{ createBrowserComposition }, { createActivationRuntime }, { createBrowserHostPort }, { COLLISION_MANIFEST_ROUTE, loadObstacleIdentities }, { createRoomIceResolver }, { prewarmRosterVisuals, prebuildRosterVisuals }]) => {
     // The launch runs on the app's ports: the loader, the world, the warm owners, the activation.
     const options = multiplayerAppPorts();
     const activation = createActivationRuntime(options.activation);
@@ -2470,7 +2485,9 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
         // a world laid out otherwise than the host's manifest reads the destroyed list through the manifest's identities
         load: { ...options.load, loadAuthorityObstacles: (mapId, signal, variant) => loadObstacleIdentities(mapId, COLLISION_MANIFEST_ROUTE, { signal, variant }),
           // 2026-10-15 (the MP stream): the named seats' builders and textures beside the world load (the rejoin row)
-          prewarmRoster: (seats, signal) => prewarmRosterVisuals(seats, { anisotropy: engineCtx.anisotropy ?? 4, signal }) },
+          prewarmRoster: (seats, signal) => prewarmRosterVisuals(seats, { anisotropy: engineCtx.anisotropy ?? 4, signal }),
+          // 2026-10-23 (item/mp-rejoin-levers-242): and their vehicles themselves, built there too (the roster takes them)
+          prebuildRoster: (seats, signal) => prebuildRosterVisuals(seats, { engineCtx, anisotropy: engineCtx.anisotropy ?? 4, signal }) },
         roster: options.roster,
         scene: {
           engineCtx,
@@ -2827,6 +2844,8 @@ function multiplayerAppPorts(): MultiplayerAppPorts {
     };
 }
 
+/** The last solo entry was a watched battle (Battle Again watches again). */
+let lastEntryWatched = false;
 function beginBattleEntry(
   specId: string,
   mapId: string | null = null,
@@ -2837,6 +2856,7 @@ function beginBattleEntry(
   pendingTerrainVariant = terrainVariantFor(options?.gameMode); // the mode's battlefield, as the authority builds it
   // a campaign operation launched from the Deploy screen names its sortie (its brief and its map)
   pendingCampaignOperationId = options?.gameMode === 'frontline_assault' ? options.campaignOperationId ?? null : null;
+  lastEntryWatched = options?.watch === true;
   return soloBattleEntry.begin(specId, mapId, options);
 }
 
@@ -2907,6 +2927,7 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
       battleResultPresentation.clearPending();
       killcam.cancel();
       if (killcam.spectate?.active) killcam.spectate.stop(true);
+      watchOwner.current?.stop();
       if (keepScreens) return;
       veilHud(false);
       // cancel() can flush a buffered report, so hide battle UI afterward.
@@ -2970,7 +2991,8 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
     poseGarageCamera: garageEnvironmentPresentation.poseCamera,
     startShowroom: () => showroom.start(),
     triggerBattle: () => {
-      const button = document.querySelector<HTMLButtonElement>('.cot-battle');
+      // Battle Again replays the entry it follows: a watched battle is watched again (the Deploy foot's Watch)
+      const button = document.querySelector<HTMLButtonElement>(lastEntryWatched ? '[data-battle-watch]' : '.cot-battle');
       if (!button || button.disabled) return false;
       button.click();
       return true;
@@ -3103,6 +3125,14 @@ const battleHudFrame = createBattleHudFrameRuntime({
   getDamagePanel: currentDamagePanel,
   // A v2 round's measured round trip feeds the HUD's ping cell from the status model (no per-frame copy).
   pingMs: () => { const v2 = multiplayerV2.current; return v2?.active ? v2.networkStatus.rttMs : null; },
+  // Watch mode: the ridden tank's HUD, read-only; flying, every tank and the drone on the map
+  watch: {
+    focus: () => watchOwner.current?.hudView.focus() ?? null,
+    flying: () => watchOwner.current?.hudView.flying() ?? false,
+    sight: () => watchOwner.current?.hudView.sight() ?? false,
+    zoom: () => watchOwner.current?.hudView.zoom() ?? 1,
+    revealAll: () => watchRevealsAll(game),
+  },
 });
 const frameInfo = battleHudFrame.frameInfo;
 const refreshSpotFrame = battleHudFrame.refreshSpotting;
@@ -3113,13 +3143,52 @@ const refreshSpotFrame = battleHudFrame.refreshSpotting;
 // A typed, allocation-free owner samples every device and publishes the one
 // mutable camera-input record consumed by the existing rig.
 const camInput = playerFrameInput.camera;
+// Watch mode (watch-mode-243): the drone, the ride-along and the seat controller of a watched battle. Its chunk loads
+// with a watched battle's covered work (soloBattleLoading ensureWatch); nothing of it is on the boot graph.
+const watchOwner = createLazyRuntimeOwner(
+  () => import('./app/watchRuntime.ts'),
+  (module) => module.createWatchRuntime<MainEntity>({
+    game,
+    camera,
+    heightField: hfProxy,
+    raycast: worldRaycast,
+    rig,
+    input,
+    cameraInput: camInput,
+    bus,
+    killcam,
+    resultPresentation: battleResultPresentation,
+    hud: { root: () => currentHud()?.root ?? null, setWatchDrone: (pose) => currentHud()?.setWatchDrone(pose) },
+    onSeat: (entity) => {
+      // a taken seat's shot log and consumables are the player's from here; the panels follow watch:change
+      if (entity) currentHud()?.shotInfo.setPlayer(entity.id);
+      playerBattleActions?.resetConsumables();
+    },
+    isInputHeld: () => settings.isOpen(),
+    pickSurface: (target) => target === renderer.domElement
+      || (target instanceof Element && !!target.closest('.cot-touch-aim')),
+  }),
+);
+// the HUD's shells and the damage panel name the tank a watcher rides or drives (read-only while riding)
+let watchPanelEntity: MainEntity | null = null;
+bus.on('watch:change', (payload) => {
+  const id = typeof payload === 'object' && payload !== null ? Reflect.get(payload, 'id') : null;
+  const entity = typeof id === 'string' ? game.tankById.get(id) ?? null : null;
+  if (!entity || entity === watchPanelEntity) { if (!entity) watchPanelEntity = null; return; }
+  watchPanelEntity = entity;
+  playerBattleActions?.setTank(entity.spec);
+  const panel = currentDamagePanel();
+  panel?.setTank(entity.spec, entity.visual);
+  panel?.setEquipment(entity.equip ?? null);
+});
 const audioListener = createListenerPoseRuntime({ camera, game, rig, killcam, audio });
 const baseWorldFramePresentation = createWorldFramePresentationRuntime({
   camera,
   rig,
   getWorld: currentWorld,
   isWorldDormant: () => worldRuntime.dormant,
-  getCameraFocus: () => game.player ?? null,
+  getCameraFocus: () => game.player ?? (watchOwner.current?.controller.focusId
+    ? game.tankById.get(watchOwner.current.controller.focusId) ?? null : null),
 });
 // The frontline ticks with the world presentation: live battle frames only,
 // never the Garage, a paused battle, or a dormant world.
@@ -3266,6 +3335,7 @@ const mainFrame = createMainFrameRuntime({
       garageModePreview.update(visual?.root ?? null, visual ? getSpec(visual.specId) : null, garagePreviewMode, dt);
     },
   },
+  garageOverlay: { frame: () => garage.frameHotspots(camera, pedestal.switchPending ? null : pedestal.current?.root ?? null) },
   networkSession: networkPump,
   garageFramePacer,
   battleFrame,
@@ -3275,6 +3345,7 @@ const mainFrame = createMainFrameRuntime({
   cameraInput: camInput,
   getMobileAutoAim: mobileBattleInput.getAutoAim,
   rig,
+  watchFrame: (dt) => watchOwner.current?.frame(dt) ?? false,
   killcam,
   veilHud,
   worldFramePresentation,

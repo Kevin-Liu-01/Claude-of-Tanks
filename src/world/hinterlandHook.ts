@@ -10,6 +10,8 @@ export interface HinterlandBuildContext {
   engineCtx: unknown;
   /** The battlefield's height field. */
   heightField: unknown;
+  /** The battlefield's ground (its splat sheets, their means and the road tint), carried on past the edge (horizons-240). */
+  ground?: unknown;
 }
 
 export interface HinterlandSupply {

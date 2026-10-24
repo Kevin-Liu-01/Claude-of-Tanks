@@ -4667,9 +4667,9 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 3.73,
-   "insideM2": 0,
-   "gapM2": 7.53,
+   "holeM2": 0,
+   "insideM2": 0.276,
+   "gapM2": 2.21,
    "invertedM2": 0
   },
   "landmark/frontier:church#1": {
@@ -4718,5 +4718,5 @@
    "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-23T08:10:42.866Z"
+ "updatedAt": "2026-10-23T17:17:02.254Z"
 }
