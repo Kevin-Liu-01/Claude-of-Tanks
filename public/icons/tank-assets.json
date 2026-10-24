@@ -736211,22 +736211,22 @@
               [
                 0.0872,
                 -0.04,
-                0.6866
+                0.5893
               ],
               [
                 0.86,
                 -0.04,
-                0.0779
+                0.0107
               ],
               [
                 0.86,
                 0.6208,
-                0.0117
+                -0.0522
               ],
               [
                 0.0872,
                 0.6208,
-                0.6204
+                0.5263
               ]
             ]
           },
@@ -736242,22 +736242,22 @@
               [
                 -0.98,
                 -0.04,
-                0.0779
+                0.0107
               ],
               [
                 -0.2072,
                 -0.04,
-                0.6866
+                0.5893
               ],
               [
                 -0.2072,
                 0.6208,
-                0.6204
+                0.5263
               ],
               [
                 -0.98,
                 0.6208,
-                0.0117
+                -0.0522
               ]
             ]
           },
@@ -736273,22 +736273,22 @@
               [
                 -0.1785,
                 0.2584,
-                0.74
+                0.64
               ],
               [
                 0.0585,
                 0.2584,
-                0.74
+                0.64
               ],
               [
                 0.0585,
                 0.77,
-                0.7133
+                0.6146
               ],
               [
                 -0.1785,
                 0.77,
-                0.7133
+                0.6146
               ]
             ]
           },
@@ -736304,7 +736304,7 @@
               [
                 0.86,
                 -0.04,
-                0.0948
+                0.0268
               ],
               [
                 0.86,
@@ -736319,7 +736319,7 @@
               [
                 0.86,
                 0.6208,
-                0.0948
+                0.0268
               ]
             ]
           },
@@ -736340,12 +736340,12 @@
               [
                 -0.98,
                 -0.04,
-                0.0948
+                0.0268
               ],
               [
                 -0.98,
                 0.6208,
-                0.0948
+                0.0268
               ],
               [
                 -0.98,
@@ -736397,12 +736397,12 @@
               [
                 -0.98,
                 0.6314,
-                0.0948
+                0.0268
               ],
               [
                 0.86,
                 0.6314,
-                0.0948
+                0.0268
               ],
               [
                 0.86,
@@ -736424,12 +736424,12 @@
             "min": [
               -0.139,
               0.2797,
-              -0.5815
+              -0.616
             ],
             "max": [
               0.019,
               0.7913,
-              0.6866
+              0.5893
             ],
             "turretLocal": true
           },
@@ -736454,12 +736454,12 @@
             "min": [
               -0.1185,
               0.3748,
-              -0.3552
+              -0.4029
             ],
             "max": [
               -0.0015,
               0.6562,
-              0.3803
+              0.2961
             ],
             "turretLocal": true
           },
@@ -736469,12 +736469,12 @@
             "min": [
               -0.679,
               0.2714,
-              -1.0978
+              -1.1068
             ],
             "max": [
               -0.0453,
               0.676,
-              0.1942
+              0.1212
             ],
             "turretLocal": true
           },
@@ -736534,7 +736534,7 @@
             "max": [
               0.7544,
               0.77,
-              0.3764
+              0.2944
             ],
             "turretLocal": true
           },
@@ -736544,12 +736544,12 @@
             "min": [
               -0.612,
               0.0133,
-              -1.1118
+              -1.1201
             ],
             "max": [
               -0.152,
               0.3234,
-              -0.6633
+              -0.6939
             ],
             "turretLocal": true
           },
@@ -736685,8 +736685,8 @@
           }
         ]
       },
-      "geometryHash": "a3517f78",
-      "metadataHash": "2099aa2f",
+      "geometryHash": "7b2b23c1",
+      "metadataHash": "45c8b926",
       "presentationAnchor": {
         "xM": 0.0008,
         "zM": -0.0773
@@ -736749,15 +736749,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28038,
-          "sha256": "a86fbc1c43ca4a0e8882a3be69915520463e3fb617ace4a4891047ca11af4a7a",
+          "bytes": 27998,
+          "sha256": "14ad263a3e03ef3c92778adce04d0b5c0c8330a88a8fdebba79cc716fd281431",
           "thumbnail": {
             "file": "thumbs/spz_puma_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11274,
-            "sha256": "f28e9f6e485f29b84615e7bb8c1baa767bc3c180ef57f65e76214c5d1b68f581"
+            "bytes": 11268,
+            "sha256": "84212589877ca724467ab5539b5cb858d60aa7ca54e06c53ef7aea43e5a4b124"
           }
         },
         "top": {
@@ -736765,16 +736765,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 20362,
-          "sha256": "b0286e6a6ef4971dd17059070ffd8afc4cea333674d889de4b4fc02aea195af4"
+          "bytes": 20316,
+          "sha256": "bc0a9488bd3f23d3ca47df4c834709f94249f7cfe31f07d8672258d9cbae047f"
         },
         "side": {
           "file": "spz_puma_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 17934,
-          "sha256": "5ec978a273ecd341329ad262c9f8b245d29d335e7b8a260b7e847e16000ed856"
+          "bytes": 17840,
+          "sha256": "649237475368e06cde8adfc911ba653b91f821af7d5b375202a4d2e5f2e03c3b"
         },
         "topSilhouette": {
           "file": "spz_puma_top_silhouette.png",
@@ -736789,32 +736789,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5491,
-          "sha256": "8286dde0bafaddddb62ca6e7a138e5cceba56f7614e5ba392b3e5d215015be57"
+          "bytes": 5445,
+          "sha256": "22428bccfbb0af759e74608f5c0e2de32be590e08c7e26354a83a4be079cfb37"
         },
         "armorSide": {
           "file": "spz_puma_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 128432,
-          "sha256": "1a228b7cbf6cf178b2765e0ee13b8c13eec480d71b9642f01935d10d8ffddfa2"
+          "bytes": 128344,
+          "sha256": "0cb437f2513a3b1c156d8716d6cc83910aaa684b888de2a20531b572f36ea781"
         },
         "modulesSide": {
           "file": "spz_puma_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 136551,
-          "sha256": "7a00d8e006a56e8266f257bfcaf67815ded7cb29f3f35e57c01ab06116c7242c"
+          "bytes": 136849,
+          "sha256": "3139c17260905f1b3e0c4d70161817b8fd903a5bd58ce29dd610e5363dbf8912"
         },
         "crewSide": {
           "file": "spz_puma_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 125973,
-          "sha256": "be7e026c710b5e4d98e703067a2d45300c6831019e5ee2d5932fb52b28c97ea9"
+          "bytes": 126049,
+          "sha256": "19e0c450530cdbe43cb1e8fe8e961dfb1757bf01c6a9962843f48488eeeefd7e"
         },
         "markings": {
           "file": "spz_puma_markings.png",
