@@ -131372,16 +131372,84 @@
             "gunFollow": false,
             "min": [
               -1.1,
-              0.0809,
-              -0.6373
+              0.1023,
+              -0.6371
+            ],
+            "max": [
+              -1.07,
+              0.5377,
+              0.3172
+            ],
+            "physicalMm": 10,
+            "surfaceFingerprint": "eef42bf6"
+          },
+          {
+            "module": "missileRack",
+            "turretLocal": true,
+            "gunFollow": false,
+            "min": [
+              -0.77,
+              0.1023,
+              -0.6371
             ],
             "max": [
               -0.74,
-              0.5591,
-              0.3173
+              0.5377,
+              0.3172
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "5dbcbb87"
+            "surfaceFingerprint": "22e996bc"
+          },
+          {
+            "module": "missileRack",
+            "turretLocal": true,
+            "gunFollow": false,
+            "min": [
+              -1.1,
+              0.0775,
+              -0.5946
+            ],
+            "max": [
+              -0.74,
+              0.2354,
+              0.3187
+            ],
+            "physicalMm": 10,
+            "surfaceFingerprint": "2d242810"
+          },
+          {
+            "module": "missileRack",
+            "turretLocal": true,
+            "gunFollow": false,
+            "min": [
+              -1.1,
+              0.4043,
+              -0.6406
+            ],
+            "max": [
+              -0.74,
+              0.5622,
+              0.2726
+            ],
+            "physicalMm": 10,
+            "surfaceFingerprint": "85169d69"
+          },
+          {
+            "module": "missileRack",
+            "turretLocal": true,
+            "gunFollow": false,
+            "min": [
+              -1.075,
+              0.103,
+              -0.6322
+            ],
+            "max": [
+              -0.765,
+              0.4142,
+              -0.5592
+            ],
+            "physicalMm": 10,
+            "surfaceFingerprint": "9bd0657d"
           },
           {
             "module": "missileRack",
@@ -131398,7 +131466,7 @@
               0.06
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "891541d1"
+            "surfaceFingerprint": "e3556bf1"
           },
           {
             "module": "missileRack",
@@ -131406,16 +131474,84 @@
             "gunFollow": false,
             "min": [
               0.74,
-              0.0809,
-              -0.6373
+              0.1023,
+              -0.6371
+            ],
+            "max": [
+              0.77,
+              0.5377,
+              0.3172
+            ],
+            "physicalMm": 10,
+            "surfaceFingerprint": "448f2ac0"
+          },
+          {
+            "module": "missileRack",
+            "turretLocal": true,
+            "gunFollow": false,
+            "min": [
+              1.07,
+              0.1023,
+              -0.6371
             ],
             "max": [
               1.1,
-              0.5591,
-              0.3173
+              0.5377,
+              0.3172
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "d7feb679"
+            "surfaceFingerprint": "f58ba8b6"
+          },
+          {
+            "module": "missileRack",
+            "turretLocal": true,
+            "gunFollow": false,
+            "min": [
+              0.74,
+              0.0775,
+              -0.5946
+            ],
+            "max": [
+              1.1,
+              0.2354,
+              0.3187
+            ],
+            "physicalMm": 10,
+            "surfaceFingerprint": "b18b1276"
+          },
+          {
+            "module": "missileRack",
+            "turretLocal": true,
+            "gunFollow": false,
+            "min": [
+              0.74,
+              0.4043,
+              -0.6406
+            ],
+            "max": [
+              1.1,
+              0.5622,
+              0.2726
+            ],
+            "physicalMm": 10,
+            "surfaceFingerprint": "956ca5c9"
+          },
+          {
+            "module": "missileRack",
+            "turretLocal": true,
+            "gunFollow": false,
+            "min": [
+              0.765,
+              0.103,
+              -0.6322
+            ],
+            "max": [
+              1.075,
+              0.4142,
+              -0.5592
+            ],
+            "physicalMm": 10,
+            "surfaceFingerprint": "279d2777"
           },
           {
             "module": "missileRack",
@@ -131432,75 +131568,41 @@
               0.06
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "708d7165"
+            "surfaceFingerprint": "6b3dbd45"
           },
           {
             "module": "missileRack",
             "turretLocal": true,
             "gunFollow": false,
             "min": [
-              -1.07,
-              0.2351,
-              0.2641
+              -1.075,
+              0.2223,
+              0.2144
             ],
             "max": [
-              -0.77,
-              0.535,
-              0.3259
+              -0.765,
+              0.5321,
+              0.2775
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "c1794781"
+            "surfaceFingerprint": "3a9b3274"
           },
           {
             "module": "missileRack",
             "turretLocal": true,
             "gunFollow": false,
             "min": [
-              -1.0175,
-              0.2832,
-              0.2512
+              -1.025,
+              0.2718,
+              0.2044
             ],
             "max": [
-              -0.8225,
-              0.4868,
-              0.3188
+              -0.815,
+              0.4896,
+              0.3201
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "5423df12"
-          },
-          {
-            "module": "missileRack",
-            "turretLocal": true,
-            "gunFollow": false,
-            "min": [
-              0.77,
-              0.2351,
-              0.2641
-            ],
-            "max": [
-              1.07,
-              0.535,
-              0.3259
-            ],
-            "physicalMm": 10,
-            "surfaceFingerprint": "b8b8f285"
-          },
-          {
-            "module": "missileRack",
-            "turretLocal": true,
-            "gunFollow": false,
-            "min": [
-              0.8225,
-              0.2832,
-              0.2512
-            ],
-            "max": [
-              1.0175,
-              0.4868,
-              0.3188
-            ],
-            "physicalMm": 10,
-            "surfaceFingerprint": "65b2d58a"
+            "surfaceFingerprint": "a381debc"
           },
           {
             "module": "missileRack",
@@ -131517,7 +131619,7 @@
               -0.52
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "ce7dec0b"
+            "surfaceFingerprint": "7ed04c1d"
           },
           {
             "module": "missileRack",
@@ -131534,7 +131636,41 @@
               0.32
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "162f7131"
+            "surfaceFingerprint": "16e79bcb"
+          },
+          {
+            "module": "missileRack",
+            "turretLocal": true,
+            "gunFollow": false,
+            "min": [
+              0.765,
+              0.2223,
+              0.2144
+            ],
+            "max": [
+              1.075,
+              0.5321,
+              0.2775
+            ],
+            "physicalMm": 10,
+            "surfaceFingerprint": "a982b6a8"
+          },
+          {
+            "module": "missileRack",
+            "turretLocal": true,
+            "gunFollow": false,
+            "min": [
+              0.815,
+              0.2718,
+              0.2044
+            ],
+            "max": [
+              1.025,
+              0.4896,
+              0.3201
+            ],
+            "physicalMm": 10,
+            "surfaceFingerprint": "90343a8e"
           },
           {
             "module": "missileRack",
@@ -131551,7 +131687,7 @@
               -0.52
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "00a6aebb"
+            "surfaceFingerprint": "1c1737eb"
           },
           {
             "module": "missileRack",
@@ -131568,7 +131704,41 @@
               0.32
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "5c333f35"
+            "surfaceFingerprint": "d2a56555"
+          },
+          {
+            "module": "missileRack",
+            "turretLocal": true,
+            "gunFollow": false,
+            "min": [
+              -1.005,
+              0.2888,
+              0.2044
+            ],
+            "max": [
+              -0.835,
+              0.4698,
+              0.3173
+            ],
+            "physicalMm": 10,
+            "surfaceFingerprint": "6d82a4e0"
+          },
+          {
+            "module": "missileRack",
+            "turretLocal": true,
+            "gunFollow": false,
+            "min": [
+              0.835,
+              0.2888,
+              0.2044
+            ],
+            "max": [
+              1.005,
+              0.4698,
+              0.3173
+            ],
+            "physicalMm": 10,
+            "surfaceFingerprint": "17b2f234"
           }
         ],
         "turretPivot": [
@@ -132416,14 +132586,14 @@
             "volumeId": "C01",
             "name": "driver",
             "min": [
-              -0.735,
-              0.609,
-              1.747
+              -0.6217,
+              0.7308,
+              1.3776
             ],
             "max": [
-              -0.049,
-              1.6713,
-              3.1328
+              -0.1623,
+              1.3608,
+              2.6022
             ],
             "turretLocal": false
           },
@@ -132431,14 +132601,14 @@
             "volumeId": "C02",
             "name": "gunner",
             "min": [
-              0.132,
-              -0.0197,
-              -0.3521
+              0.1988,
+              -1.0254,
+              -0.4505
             ],
             "max": [
-              0.825,
-              0.4784,
-              0.245
+              0.6582,
+              -0.0454,
+              0.3434
             ],
             "turretLocal": true
           },
@@ -132446,21 +132616,21 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.132,
-              -0.0197,
-              -0.6363
+              0.2763,
+              -0.876,
+              -0.9782
             ],
             "max": [
-              0.88,
-              0.5089,
-              -0.3521
+              0.676,
+              -0.0444,
+              -0.3504
             ],
             "turretLocal": true
           }
         ]
       },
-      "geometryHash": "b9e322db",
-      "metadataHash": "2bde1b23",
+      "geometryHash": "41dcbc9d",
+      "metadataHash": "40f9df56",
       "presentationAnchor": {
         "xM": -0.0007,
         "zM": -0.1163
@@ -132521,15 +132691,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24570,
-          "sha256": "d6e98462021db8431eb6b1833819a740f60da965645de399ac33e7f614ca5941",
+          "bytes": 25820,
+          "sha256": "9936baf00ec693f30ee04c5aa9470e080ef051648941d2383b4be4d5fdad917b",
           "thumbnail": {
             "file": "thumbs/hayate_ifv_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10418,
-            "sha256": "25dc8e89231446730af89dd8925ffafc6f1af70ca0b8dbc48235dd89488e9455"
+            "bytes": 10558,
+            "sha256": "b610b18f1ac6e05629632840f4180ce6871411176b971d7e57a2c0fdfaea0a40"
           }
         },
         "top": {
@@ -132537,16 +132707,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 12106,
-          "sha256": "0079e57f0461c91afbfe34c4c79b44b2478ac38e68577c179effc151eeb5dca4"
+          "bytes": 14426,
+          "sha256": "7ba9ce6feaf9c19f089045b4eb958422912f3ab789e9f349106050a801bbf5fc"
         },
         "side": {
           "file": "hayate_ifv_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 13986,
-          "sha256": "82c0cf61cc8c0e985be982baab57190e60e15a369b964a09457da39f91bde41f"
+          "bytes": 16116,
+          "sha256": "43e89fd65d951fc4bae297d22e8d11b42908427cd7eedc47bca199a3c93889f2"
         },
         "topSilhouette": {
           "file": "hayate_ifv_top_silhouette.png",
@@ -132561,32 +132731,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5883,
-          "sha256": "5f86921ad53b0e976d7d0a8546709ac543daebf441571acb7cabe139a9e6fc5a"
+          "bytes": 5928,
+          "sha256": "d322e536edae806f7599f93849c5ad58bf512c8cade9e9a0bfcd6e898e51e6c0"
         },
         "armorSide": {
           "file": "hayate_ifv_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 109839,
-          "sha256": "36dbd52a051feecab86f1ed05c6868e928806c41c5bddcb7372620d62e5ad377"
+          "bytes": 113182,
+          "sha256": "1c4958b4b098439b35a80f267b936c0118bff2cb85e7443231aef762f9b77ef6"
         },
         "modulesSide": {
           "file": "hayate_ifv_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 124626,
-          "sha256": "2948c163bebbe8774f06db1d7c107e3848ac183248f23db512d70e8148d8a5cf"
+          "bytes": 128054,
+          "sha256": "a92ac7d47e2eae0c4c5b06c642b8817d2b6dbfe8ea0b59a7f63677e790ad8111"
         },
         "crewSide": {
           "file": "hayate_ifv_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 109522,
-          "sha256": "04c7961287fc639ff815a14d58b2328c6a96732c78dc811c4df4755c5eaaae9a"
+          "bytes": 113093,
+          "sha256": "ed9586247013d0ca4880e54ecea645acfe1c06b434e5c89d5d717656d7830ef6"
         },
         "markings": {
           "file": "hayate_ifv_markings.png",
