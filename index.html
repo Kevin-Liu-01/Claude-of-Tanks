@@ -204,7 +204,7 @@
       font-optical-sizing: auto;
     }
     html, body { margin: 0; padding: 0; width: var(--cot-viewport-width, 100dvw);
-      height: var(--cot-viewport-height, 100dvh); overflow: hidden; background: #05080b;
+      height: var(--cot-viewport-height, 100dvh); overflow: hidden; background: var(--surface-scene);
       /* MOBILE-UX r1: no double-tap zoom anywhere (taps stay instant); menus
          keep one-finger scrolling — their own overflow containers pan as
          normal under touch-action: manipulation. */
@@ -246,8 +246,8 @@
       height: var(--cot-viewport-height, 100dvh); z-index: 200; overflow: hidden;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       font-family: var(--font-ui);
-      color: #e6edf3; -webkit-user-select: none; user-select: none; cursor: default;
-      background: #05080b;
+      color: var(--ink-1); -webkit-user-select: none; user-select: none; cursor: default;
+      background: var(--surface-scene);
       opacity: 1; transition: opacity .5s ease;
     }
     #cot-boot.cot-boot-out { opacity: 0; pointer-events: none; }
@@ -267,8 +267,8 @@
     #cot-boot-hero::after {
       content: ''; position: absolute; inset: 0;
       background:
-        linear-gradient(180deg, rgba(5,8,11,.78) 0%, rgba(5,8,11,.44) 28%, rgba(5,8,11,.42) 58%, rgba(5,8,11,.86) 100%),
-        radial-gradient(120% 95% at 50% 34%, rgba(5,8,11,.08) 0%, rgba(5,8,11,.60) 88%);
+        linear-gradient(180deg, oklch(from var(--surface-scene) l c h / .78) 0%, oklch(from var(--surface-scene) l c h / .44) 28%, oklch(from var(--surface-scene) l c h / .42) 58%, oklch(from var(--surface-scene) l c h / .86) 100%),
+        radial-gradient(120% 95% at 50% 34%, oklch(from var(--surface-scene) l c h / .08) 0%, oklch(from var(--surface-scene) l c h / .60) 88%);
     }
     .cot-boot-inner { position: relative; z-index: 2; width: min(760px, 86vw); text-align: center; }
 
@@ -300,8 +300,8 @@
     /* /cot:brand-motion */
     .cot-boot-invite {
       display: none; width: fit-content; max-width: min(560px, 84vw); margin: 25px auto -20px;
-      padding: 9px 15px; color: #fff0d2; border: 1px solid rgba(240,160,48,.48);
-      background: rgba(9,13,18,.72); box-shadow: 0 10px 34px rgba(0,0,0,.28);
+      padding: 9px 15px; color: var(--ink-1); border: 1px solid oklch(from var(--accent) l c h / .48);
+      background: oklch(from var(--surface-plate) l c h / .72); box-shadow: var(--e2);
       font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
     }
     .cot-boot-invite.on { display: block; }
@@ -329,16 +329,16 @@
       font-family: var(--font-ui);
     }
     .cot-boot-stage {
-      font-size: 14px; font-weight: 500; text-align: left; min-height: 14px; color: #c9c5bb;
+      font-size: 14px; font-weight: 500; text-align: left; min-height: 14px; color: var(--ink-2);
     }
-    .cot-boot-pct { width: 64px; flex: 0 0 64px; font-size: 13px; font-weight: 500; color: #9a9a95; text-align: right; }
+    .cot-boot-pct { width: 64px; flex: 0 0 64px; font-size: 13px; font-weight: 500; color: var(--ink-3); text-align: right; }
     /* one continuous tungsten fill (bootScreen.ts eases it toward the real load, creeping inside a long stage) */
-    .cot-boot-bar { position: relative; height: 4px; overflow: hidden; background: rgba(246,243,236,.16); }
-    .cot-boot-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: #f0a030; }
+    .cot-boot-bar { position: relative; height: 4px; overflow: hidden; background: oklch(from var(--ink-1) l c h / .16); }
+    .cot-boot-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: var(--accent); }
     /* a travelling sheen: the load is alive even inside a long stage */
     .cot-boot-fill::after {
       content: ''; position: absolute; inset: 0;
-      background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.36) 50%, rgba(255,255,255,0) 100%);
+      background: linear-gradient(90deg, oklch(from var(--ink-1) l c h / 0) 0%, oklch(from var(--ink-1) l c h / .36) 50%, oklch(from var(--ink-1) l c h / 0) 100%);
       background-size: 40% 100%; background-repeat: no-repeat;
       animation: cot-boot-sheen 1.4s linear infinite;
     }
@@ -347,13 +347,13 @@
     /* --- tips + gate ------------------------------------------------------- */
     .cot-boot-tip {
       box-sizing: border-box; height: 84px; max-width: 560px; margin: 34px auto 0; overflow: hidden;
-      font-size: 14px; font-weight: 500; line-height: 1.4; color: #c9c5bb;
+      font-size: 14px; font-weight: 500; line-height: 1.4; color: var(--ink-2);
       opacity: 1; transition: opacity .19s cubic-bezier(.16,1,.3,1);
     }
     #cot-boot.cot-boot-enter .cot-boot-tip {
       animation: cot-boot-rise .34s cubic-bezier(.16,1,.3,1) .18s backwards;
     }
-    .cot-boot-tip span { display: inline-block; padding: 12px 14px; border-radius: 2px; background: rgba(9,11,14,.82); text-align: left; }
+    .cot-boot-tip span { display: inline-block; padding: 12px 14px; border-radius: 2px; background: oklch(from var(--surface-plate) l c h / .82); text-align: left; }
     .cot-boot-tip.fade { opacity: 0; }
     .cot-boot-links {
       display: grid; grid-template-columns: repeat(2, 1fr); width: max-content;
@@ -361,8 +361,8 @@
     }
     .cot-boot-link {
       box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-      min-width: 118px; padding: 10px 15px; border: 1px solid rgba(246,243,236,.24); border-radius: 2px;
-      background: rgba(9,11,14,.55); color: #f6f3ec; cursor: pointer;
+      min-width: 118px; padding: 10px 15px; border: 1px solid var(--line-3); border-radius: 2px;
+      background: oklch(from var(--surface-plate) l c h / .55); color: var(--ink-1); cursor: pointer;
       font: 700 13px/1 var(--font-ui);
       letter-spacing: .06em; text-transform: uppercase; text-decoration: none;
       transition: transform .14s cubic-bezier(.16,1,.3,1), border-color .14s ease,
@@ -384,7 +384,7 @@
     .cot-boot-link-icon.github { fill: currentColor; stroke: none; }
     .cot-github-stars {
       display: inline-flex; align-items: center; gap: 3px; padding-left: 7px;
-      border-left: 1px solid rgba(246,243,236,.24); color: #f0a030;
+      border-left: 1px solid var(--line-3); color: var(--accent);
        letter-spacing: .04em;
     }
     .cot-github-stars svg { width: 9px; height: 9px; fill: currentColor; stroke: none; }
@@ -399,12 +399,12 @@
     .cot-github-stars:has([data-github-stars-state='unavailable']) { visibility: hidden; }
     @keyframes cot-github-star-spin { to { transform: rotate(1turn); } }
     .cot-boot-link:hover {
-      transform: translateY(-2px); border-color: #f0a030; color: #f6f3ec;
-      background: rgba(9,11,14,.82); box-shadow: 0 8px 20px rgba(0,0,0,.30);
+      transform: translateY(-2px); border-color: var(--accent); color: var(--ink-1);
+      background: oklch(from var(--surface-plate) l c h / .82); box-shadow: var(--e2);
     }
     .cot-boot-link:hover .cot-boot-link-icon { transform: scale(1.1); }
     .cot-boot-link:active { transform: translateY(0); box-shadow: none; transition-duration: .06s; }
-    .cot-boot-link:focus-visible { outline: 2px solid #f0a030; outline-offset: 3px; }
+    .cot-boot-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
     /* The splash paints before any module writes body[data-cot-*]: its phone sizes read the same bands
        (src/ui/responsiveLayout.ts) as media queries, so the first frame already has them (brand-ui SPEC 5.5). */
     @media (width <= 380px) {
@@ -425,49 +425,52 @@
       .cot-boot-link:active { transform: none; }
       .cot-github-stars [data-github-stars][data-github-stars-state='loading']::before { animation: none; }
     }
-    /* Baseline for visible game scrollbars. Component rules still own hidden rails. */
-    :where(html,body,body *){scrollbar-width:thin;scrollbar-color:#596976 #0c1319}
+    /* Baseline for visible game scrollbars (the line ramp on the scene). Component rules still own hidden rails. */
+    :where(html,body,body *){scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
     :where(html,body,body *)::-webkit-scrollbar{width:6px;height:6px}
-    :where(html,body,body *)::-webkit-scrollbar-track{background:#0c1319}
-    :where(html,body,body *)::-webkit-scrollbar-thumb{background:#596976;border-radius:6px}
-    :where(html,body,body *)::-webkit-scrollbar-thumb:hover{background:#c59650}
-    :where(html,body,body *)::-webkit-scrollbar-corner{background:#0c1319}
+    :where(html,body,body *)::-webkit-scrollbar-track{background:transparent}
+    :where(html,body,body *)::-webkit-scrollbar-thumb{background:var(--line-3);border-radius:6px}
+    :where(html,body,body *)::-webkit-scrollbar-thumb:hover{background:var(--ink-3)}
+    :where(html,body,body *)::-webkit-scrollbar-corner{background:transparent}
+    /* the credits: the one modal's plate (src/ui/modal.ts), no glass (brand-ui 247, the consistency pass) */
     .cot-credits {
       box-sizing:border-box;width:min(860px,calc(100vw - 32px));max-width:none;
       max-height:calc(var(--cot-viewport-height,100dvh) - 32px);padding:0;overflow:hidden;
-      border:1px solid #3a4853;border-top-color:#b1803f;color:#e6edf3;background:#0b1117;
-      box-shadow:0 28px 90px rgba(0,0,0,.75);font-family:var(--font-ui);
+      border:0;border-radius:var(--plate-radius);color:var(--ink-1);background:var(--surface-plate);box-shadow:var(--e4);
+      font-family:var(--font-ui);
     }
-    .cot-credits::backdrop{background:rgba(2,4,7,.84);backdrop-filter:blur(9px)}
+    .cot-credits::backdrop{background:oklch(from var(--scrim) l c h / .8)}
     .cot-credits-scroll{box-sizing:border-box;max-height:calc(var(--cot-viewport-height,100dvh) - 34px);
       overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
     .cot-credits-grid{display:grid;grid-template-columns:250px minmax(0,1fr);min-width:0}
-    .cot-credits-profile{margin:0;padding:38px 24px;background:linear-gradient(155deg,#1a2530,#0c141d);
-      border-right:1px solid #283641;display:flex;flex-direction:column;gap:23px}
+    .cot-credits-profile{margin:0;padding:38px var(--s5);background:var(--surface-page);
+      border-right:1px solid var(--line-1);display:flex;flex-direction:column;gap:var(--s5)}
     .cot-credits-portrait{box-sizing:border-box;display:block;width:100%;height:auto;aspect-ratio:1;
-      object-fit:cover;object-position:center;border:1px solid #64707a;background:#18232e}
-    .cot-credits-signature{display:flex;align-items:center;gap:12px;color:#d4dfe7;font-size:12px;line-height:1.6}
+      object-fit:cover;object-position:center;border-radius:var(--control-radius);background:var(--surface-raised)}
+    .cot-credits-signature{display:flex;align-items:center;gap:var(--s3);color:var(--ink-2);font-size:max(12px,var(--fs-12));line-height:1.6}
     .cot-credits-signature img{width:36px;height:36px;object-fit:contain}
-    .cot-credits-signature strong{display:block;font-size:12px;letter-spacing:.08em}
-    .cot-credits-signature span{display:block;color:#8296a6;font-size:11px}
+    .cot-credits-signature strong{display:block;font-size:max(12px,var(--fs-12));letter-spacing:var(--track-label-s)}
+    .cot-credits-signature span{display:block;color:var(--ink-3);font-size:max(12px,var(--fs-12))}
     .cot-credits-copy{min-width:0;padding:45px 34px 34px;text-align:left}
-    .cot-credits-kicker{display:block;max-width:calc(100% - 20px);color:#edac53;font-size:11px;
-      font-weight:700;letter-spacing:.09em;text-transform:uppercase;line-height:1.7}
-    .cot-credits h2{margin:12px 0 23px;font-size:38px;line-height:1.06;letter-spacing:-.035em}
-    .cot-credits p{margin:0 0 16px;color:#aebdc9;font-size:14px;line-height:1.75}
-    .cot-credits-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px;padding-top:20px;border-top:1px solid #293641}
-    .cot-credits-actions .cot-boot-link{box-sizing:border-box;min-height:40px;padding:10px 13px;
-      font-size:11px;letter-spacing:.03em;background:#101a23;border-color:#3b4c59}
-    .cot-credits-actions .cot-boot-link:first-child{border-color:#b78035;background:#322619;color:#ffd18a}
-    .cot-credits-actions .cot-boot-link:last-child{border-color:transparent;background:transparent;color:#8fa4b4}
+    .cot-credits-kicker{display:block;max-width:calc(100% - 20px);color:var(--ink-3);font:600 max(12px,var(--fs-12))/1.7 var(--font-display);
+      letter-spacing:var(--track-label);text-transform:uppercase}
+    .cot-credits h2{margin:var(--s3) 0 var(--s5);font:600 38px/1.06 var(--font-display);letter-spacing:var(--track-title)}
+    .cot-credits p{margin:0 0 var(--s4);color:var(--ink-2);font:400 max(14px,var(--fs-14))/1.75 var(--font-body)}
+    .cot-credits-actions{display:flex;flex-wrap:wrap;gap:var(--s2);margin-top:var(--s5);padding-top:var(--s5);border-top:1px solid var(--line-1)}
+    .cot-credits-actions .cot-boot-link{box-sizing:border-box;min-height:40px;padding:var(--s2) var(--s3);
+      font-size:max(12px,var(--fs-12));letter-spacing:var(--track-label-s);background:var(--btn-secondary-fill);border-color:transparent;
+      box-shadow:var(--btn-secondary-ring)}
+    .cot-credits-actions .cot-boot-link:first-child{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-shadow)}
+    .cot-credits-actions .cot-boot-link:last-child{background:transparent;box-shadow:none;color:var(--ink-3)}
     .cot-credits-close{position:absolute;z-index:2;top:12px;right:12px;display:grid;place-items:center;
-      width:36px;height:36px;padding:0;border:1px solid #3d4d59;background:#0d151e;color:#b8c7d2;cursor:pointer;font-size:24px;line-height:1}
-    .cot-credits-close:hover{color:#ffd18a;border-color:#b78035}
-    .cot-credits-close:focus-visible,.cot-credits-actions a:focus-visible{outline:2px solid #f0b04a;outline-offset:3px}
+      width:36px;height:36px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-2);cursor:pointer}
+    .cot-credits-close svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
+    .cot-credits-close:hover{color:var(--ink-1);background:var(--surface-hover)}
+    .cot-credits-close:focus-visible,.cot-credits-actions a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits{width:calc(100vw - 16px);max-height:calc(var(--cot-viewport-height,100dvh) - 16px)}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-scroll{max-height:calc(var(--cot-viewport-height,100dvh) - 18px)}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-grid{grid-template-columns:1fr}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-profile{flex-direction:row;align-items:center;padding:22px;gap:18px;border-right:0;border-bottom:1px solid #283641}
+    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-profile{flex-direction:row;align-items:center;padding:22px;gap:18px;border-right:0;border-bottom:1px solid var(--line-1)}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-portrait{width:100px;flex:none}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-signature{display:block;padding-right:18px}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-signature img{width:28px;height:28px;margin-bottom:7px}
@@ -1083,7 +1086,7 @@
   </div>
 
   <dialog class="cot-credits" id="cot-credits" data-cot-boot-control aria-labelledby="cot-credits-title">
-    <button class="cot-credits-close" id="cot-credits-close" type="button" aria-label="Close credits" data-i18n-aria-label="aria.closecredits" data-i18n-aria="credits.closeAria" autofocus>&times;</button>
+    <button class="cot-credits-close" id="cot-credits-close" type="button" aria-label="Close credits" data-i18n-aria-label="aria.closecredits" data-i18n-aria="credits.closeAria" autofocus><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5.5 5.5l13 13M18.5 5.5l-13 13"/></svg></button>
     <div class="cot-credits-scroll">
     <div class="cot-credits-grid">
       <figure class="cot-credits-profile">
