@@ -854449,16 +854449,16 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85440,
-          "sha256": "7b6393cafa13e76acc9199017108dd577e6a2026b21e3e6167473555350e7f5d"
+          "bytes": 87810,
+          "sha256": "8052fdefb434c4c0febdb4e9a1f4462ff940fa570492904d01bedfef35d4da1a"
         },
         "modulesSide": {
           "file": "t64bv1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 88257,
-          "sha256": "6ebfa3a47ec7c3c3dd01d9c9dd01855e4f4afb7daee5a413b13d86d2c8c228ed"
+          "bytes": 90374,
+          "sha256": "57df16ff1ee7992fca1ce453a715b46bf532b38348db0ca4939e398b14458caa"
         },
         "crewSide": {
           "file": "t64bv1_crew_side.png",
