@@ -35,7 +35,8 @@ body[data-studio-workspace] #app{position:fixed;left:var(--studio-vp-x,0px);top:
 .st-head,.st-out,.st-insp,.st-shelf,.st-tl{background:var(--surface-page)}
 
 /* the header (09-studio header): the mark, the battlefield, the frame, and the scene's actions */
-.st-head{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;padding:0 14px;border-bottom:1px solid var(--line-1)}
+.st-head{position:relative;z-index:var(--studio-pop-z);grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;padding:0 14px;
+  border-bottom:1px solid var(--line-1)}
 .st-head .st{display:flex;align-items:center;gap:9px;flex:none;font:700 var(--fs-15)/1 var(--font-display);letter-spacing:var(--studio-track-mark);
   text-transform:uppercase}
 .st-head .st svg{width:24px;height:24px}
@@ -379,6 +380,24 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
   background:var(--accent);pointer-events:none}
 .st-tl .ph::before{content:'';position:absolute;top:0;left:-5px;border:6px solid transparent;border-top-color:var(--accent)}
 
+/* --------------------------------------------------------------------- the render queue (09-studio header Queue · N) */
+.st-queue{position:absolute;top:calc(100% + 4px);right:14px;display:flex;flex-direction:column;gap:10px;width:min(460px,calc(100% - 28px));
+  max-height:min(70vh,560px);padding:12px;overflow-y:auto;border-radius:var(--r2);background:var(--surface-menu);box-shadow:var(--e2)}
+.st-queue :is(.qp,.ql){display:flex;flex-direction:column;gap:2px}
+.st-queue .ql:not(:empty){padding-top:8px;border-top:1px solid var(--line-1)}
+.st-queue .qr{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;min-height:34px;padding:0 4px 0 8px;
+  border-radius:var(--r1);color:var(--ink-2);font:500 var(--fs-13)/1.2 var(--font-body)}
+.st-queue .qn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.st-queue .qc{color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-data);white-space:nowrap}
+.st-queue .qr .cot-c-chip{height:26px;padding:0 8px;font-size:var(--fs-12)}
+.st-queue .qr .x{display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;border-radius:var(--r1);background:none;color:var(--ink-3)}
+.st-queue .qr--running{background:var(--accent-wash);box-shadow:var(--studio-row-on);color:var(--ink-1)}
+.st-queue .qr--running .qc{color:var(--accent)}
+.st-queue .qr--done .qc{color:var(--text-ok)}
+.st-queue :is(.qr--failed,.qr--cancelled) .qc{color:var(--text-danger)}
+.st-queue .qe{margin:0;padding:6px 8px;color:var(--ink-3);font:400 var(--fs-12)/1.4 var(--font-body)}
+.st-queue .qf{display:flex;justify-content:flex-end;gap:8px}
+
 /* ------------------------------------------------------------------------------- the command palette (Ctrl/Cmd+K) */
 .st-cmd{position:absolute;inset:0;z-index:var(--studio-pop-z);display:flex;align-items:flex-start;justify-content:center;padding:64px 16px 16px;
   pointer-events:auto;background:var(--scrim)}
@@ -434,7 +453,7 @@ body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-insp{grid-row:5
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-shelf{grid-row:6}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-shelf .production-takes .production-library{grid-auto-columns:42%}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .pn,.st-head .st-mode,.st-head .hist,.st-head .r .cmd,.st-head .r .gal,
-  .st-head .r .studio-panel-toggle,.st-head .r .cot-c-kbd,.st-tl .tp .sl){display:none}
+  .st-head .r .studio-panel-toggle,.st-head .r .que,.st-head .r .cot-c-kbd,.st-tl .tp .sl){display:none}
 /* on a phone the header's, the transport's and the viewport's chips keep their glyphs; the names stay as accessible names, and
    the lanes keep their flags, silhouettes and glyphs */
 body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .st .wd,.st-head .r .cot-c-chip__label,.st-head .cot-c-btn__label,.st-tl .tp .r .cot-c-chip__label,

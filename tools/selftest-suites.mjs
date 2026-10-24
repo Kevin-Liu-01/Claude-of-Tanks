@@ -405,6 +405,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioProductionPersistence.selftest.mjs',
     'src/game/studioLight.selftest.mjs',
     'src/ui/studioProductionPanel.selftest.mjs',
+    'src/ui/studioQueue.selftest.mjs',
     'tools/media-production/campaign.selftest.mjs',
     'tools/media-production/campaignPublication.selftest.mjs',
     'tools/publish-gameplay-capture.selftest.mjs',

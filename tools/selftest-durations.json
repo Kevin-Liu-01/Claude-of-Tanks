@@ -696,6 +696,7 @@
     "src/ui/spectatorSwitcher.selftest.mjs": 1000,
     "src/ui/studioPlanView.selftest.mjs": 1000,
     "src/ui/studioProductionPanel.selftest.mjs": 1000,
+    "src/ui/studioQueue.selftest.mjs": 1000,
     "src/ui/studioSiteTakes.selftest.mjs": 1000,
     "src/ui/tankThumbs.selftest.mjs": 6000,
     "src/ui/topAccentBorders.selftest.mjs": 1000,
