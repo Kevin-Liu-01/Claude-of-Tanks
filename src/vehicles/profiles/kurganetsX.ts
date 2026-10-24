@@ -188,8 +188,11 @@ function addKurganetsDeckFittings(P: TankBuilderPort): void {
     ];
     // the fan stands on the deck under it (owner 2026-10-19 sweep: it hovered 0.12 m over it). 2026-10-19 (owner float
     // sweep): seated as one group, the first rod down stopped the rest 15-41 mm short of the uneven deck; each rod drops.
+    // (release 240, the owner: "make sure all tank turrets are clear of hulls": each cluster 0.15 m outboard, its pattern
+    // kept, the inner rod ends out of the sweep of the turret's floor, 1.0-1.2 m off the ring's axis at 2.08, which ran
+    // through them and held the left cluster's inner ends at rest)
     for (const [x, y, z, ax, az] of fan) P.snapGroup('kurganets-deck-fan', () => {
-        P.addEquipment('hullDetail', cylZ(.062, .4043, P.q ? 16 : 9), x, y, z, 0, Math.atan2(ax, az));
+        P.addEquipment('hullDetail', cylZ(.062, .4043, P.q ? 16 : 9), x + Math.sign(x) * .15, y, z, 0, Math.atan2(ax, az));
     }, { reachM: .15, mode: 'down' });
     for (const side of [-1, 1]) {
         // Owner markup 2026-10-14 on these blank deck blocks (critic panel 10-15: a low chest on the same footprint still

@@ -652,7 +652,7 @@ interface InfectionBotRules {
  * plays under and how often a boost cache drops. Stored per player on the mars arrangement
  * (game/teamArrangement.ts readMarsSettings) and carried by rooms through the lobby arrangement.
  */
-const MARS_GRAVITY_OPTIONS = Object.freeze({
+export const MARS_GRAVITY_OPTIONS = Object.freeze({
   // round 30 (owner 2026-09-20): the jump is a rocket boost — about 1.45x the 2026-09-18 launches
   mars: Object.freeze({ gravityScale: 0.38, jumpMps: 9.5, recoilLaunchScale: 3 }),
   moon: Object.freeze({ gravityScale: 0.17, jumpMps: 12.5, recoilLaunchScale: 4.5 }),

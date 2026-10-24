@@ -7847,12 +7847,57 @@ function defaultStaticDrawMerge(): NonNullable<TankFactoryOptions['staticDrawMer
   return requested === 'off' || requested === 'translations' ? requested : 'identity';
 }
 
+/**
+ * What a core build owns until it hands its visual to the runtime (click-perf-244). The core yields at its stage
+ * checkpoints, so a caller can abandon it there (the Garage pedestal drops a stale selection) or it can throw; either
+ * way the factory's own material clones leave the cascade setup and the material set releases its shared textures. Its
+ * geometry was never uploaded, and the collector takes it with the rest of the partial graph.
+ */
+interface TankCoreOwner {
+  mats: TankMaterials | null;
+  disposables: DisposableVehicleResource[];
+  handedOff: boolean;
+}
+
 function* createTankOwnedSteps(
   specId: string,
   engineContext: RuntimeValue,
   opts: TankFactoryOptions,
   legacyDecoration: boolean,
 ): Generator<void, TankVisual, void> {
+  const owner: TankCoreOwner = { mats: null, disposables: [], handedOff: false };
+  try {
+    return yield* buildTankCoreSteps(specId, engineContext, opts, legacyDecoration, owner);
+  } finally {
+    if (!owner.handedOff) {
+      const engineCtx = normalizeTankEngineContext(engineContext);
+      for (const resource of owner.disposables) {
+        if (isVehicleMaterial(resource)) engineCtx?.releaseShadowMaterial?.(resource);
+        resource.dispose();
+      }
+      owner.mats?.dispose?.();
+    }
+  }
+}
+
+/** A checkpoint between the core's stages: frame-budgeted callers (the Garage pedestal, the Gallery, the battle
+ *  streamer) may yield here, createTank drains straight through. The wait is kept out of the core's stage timings. */
+function* coreCheckpoint(yielded: { ms: number }): Generator<void, void, void> {
+  const pausedAt = performance.now();
+  yield;
+  yielded.ms += performance.now() - pausedAt;
+}
+
+function* buildTankCoreSteps(
+  specId: string,
+  engineContext: RuntimeValue,
+  opts: TankFactoryOptions,
+  legacyDecoration: boolean,
+  owner: TankCoreOwner,
+): Generator<void, TankVisual, void> {
+  // The core's stages are stamped on a clock that leaves out its checkpoint waits (coreBuildTiming stays work time).
+  const coreYield = { ms: 0 };
+  const coreClock = (): number => performance.now() - coreYield.ms;
   const coreStartedAt = performance.now();
   if (!factoryConfigured) {
     throw new Error('Import tankFactory.ts instead of the unconfigured tankFactoryCore.ts');
@@ -7886,11 +7931,12 @@ function* createTankOwnedSteps(
   const armor = spec.armor;
   const marking: VehicleMarkingRecord = spec.markings || vehicleMarkingRecord(spec);
   const usesSharedMaterialTextures = !geometryReceipt && !geometryOnly;
-  const coreMaterialsStartedAt = performance.now();
+  const coreMaterialsStartedAt = coreClock();
   const mats: TankMaterials = usesSharedMaterialTextures
     ? createTankMaterials(spec, engineCtx, camoSeed, quality, camoPattern)
     : createNonRenderingTankMaterials();
-  const coreMaterialsFinishedAt = performance.now();
+  owner.mats = mats;
+  const coreMaterialsFinishedAt = coreClock();
   const rng = mulberry32((camoSeed | 0) ^ 0x9e37);
 
   const root = new THREE.Group();
@@ -7982,7 +8028,7 @@ function* createTankOwnedSteps(
   const eraBoundPartsByPlate = new Map<string, THREE.BufferGeometry[]>();
   let activeVisualEraCluster: VisualEraCluster | null = null;
   const decals: VehicleDecal[] = [];
-  const disposables: DisposableVehicleResource[] = [];
+  const disposables: DisposableVehicleResource[] = owner.disposables;
   // Fleet-weapons lane 2026-10-09: the weapon finish (weaponFinish.ts) rides the rendered material set; its clones are
   // owned (and released from the cascade setup) by this visual. Non-rendering builds keep dark/detail.
   if (usesSharedMaterialTextures) {
@@ -7994,6 +8040,7 @@ function* createTankOwnedSteps(
     linkWeaponFinish(mats.detail, mats.hull);
     disposables.push(finish.weaponSteel, finish.ammoDrab);
   }
+  yield* coreCheckpoint(coreYield);
   const equipmentDamage = new EquipmentDamage();
   const weaponDamage = new WeaponDamageVisuals();
 
@@ -8361,7 +8408,7 @@ function* createTankOwnedSteps(
 
   const builder = resolveBuilder(specId, spec);
   resetSpareTrackRunSerial();
-  const coreAuthoredStartedAt = performance.now();
+  const coreAuthoredStartedAt = coreClock();
   const sizeFactor = VEHICLE_SIZE_FACTORS[specId] ?? 1;
   if (sizeFactor !== 1) {
     const sourceSpec = vehicleAuthoringSpec(combatSpec);
@@ -8378,6 +8425,8 @@ function* createTankOwnedSteps(
     resizeAuthoredVehicle(P, sizeFactor);
   } else if (builder) Reflect.apply(builder, undefined, [P]);
   else buildCommunityPlaceholder(P);
+  // The profile's run serial is spent (spareTrackRunTag): another build may start at this checkpoint.
+  yield* coreCheckpoint(coreYield);
   // Round 4 (2026-10-07): the discharger tubes add() marked for the matte fitting paint move now, once the profile
   // is done. Moved at add() time they escaped every later bucket operation: the Chieftain Mk 5 and Mk 10 rebuild
   // clears turretDetail before its upper turret and squashes the turret's height by bucket, so the donor bank
@@ -8452,6 +8501,7 @@ function* createTankOwnedSteps(
     }
     root.userData.fittingSnaps = snapReceipts;
   }
+  yield* coreCheckpoint(coreYield);
   // VEH-13 (2026-10-15): every authored spare-link run (fittings, strips, registered hand-drawn courses) is measured on
   // the finished, unmerged armour (spareTrackSeatPass.ts): a passing run stays exactly as built, a failing one is
   // re-seated from outside nearby or removed, and both are recorded.
@@ -8475,7 +8525,7 @@ function* createTankOwnedSteps(
     root.userData.spareTrackError = error instanceof Error ? error.message : String(error);
     console.warn(`[tankFactory] ${specId}: spare-track seat pass failed — ${root.userData.spareTrackError}`);
   }
-  const coreAuthoredFinishedAt = performance.now();
+  const coreAuthoredFinishedAt = coreClock();
 
   // Native profiles often author visible ERA as irregular wedges, lids and
   // carrier-faced cassettes rather than the legacy shared brick primitive.
@@ -8799,6 +8849,7 @@ function* createTankOwnedSteps(
 
   if (finalPartCensus) for (const [bucket, list] of Object.entries(buckets)) for (const part of list) finalPartCensus(bucket, part);
 
+  yield* coreCheckpoint(coreYield);
   // ---- merge buckets into meshes ----
   const gunYOff = armor.turretPivot[1] + armor.gunPivot[1];
   // The horizon every non-silhouette bucket culls at (mergeBucket).
@@ -9021,7 +9072,8 @@ function* createTankOwnedSteps(
     }
     for(const group of groups.values())mergeBucket(bucket,group);
   }
-  const coreBindMergeFinishedAt = performance.now();
+  const coreBindMergeFinishedAt = coreClock();
+  yield* coreCheckpoint(coreYield);
 
   // ---- ERA bricks (t90am) ----
   let eraMesh: THREE.InstancedMesh<THREE.BufferGeometry, THREE.Material> | null = null;
@@ -9168,6 +9220,7 @@ function* createTankOwnedSteps(
     }
   }
   const assembledChildren = deferredAssembly.length ? captureAssemblyChildren(root) : null;
+  yield* coreCheckpoint(coreYield);
 
   // ---- physically seated vehicle markings ----
   // Resolve these after all profile-owned regrouping so the support ray sees
@@ -9326,6 +9379,7 @@ function* createTankOwnedSteps(
   // it now inherits the physical terminal tube/brake radius and lip plane.
   // Install final metre datums after donor cleanup and profile scaling. A
   // builder must never erase these anchors or scale them a second time.
+  yield* coreCheckpoint(coreYield);
   const launcherTips = createLauncherTips(gunG, turretG, spec.gun.launcherMuzzles);
   const muzzleDefs = cannonMuzzleDefinitions(spec.gun, authoredMuzzles, launcherTips.length);
   // §5.362 per-barrel fire anchors (twin-plant ids only): one Object3D per
@@ -9571,6 +9625,7 @@ function* createTankOwnedSteps(
     });
     boreParent.add(bore);
   }
+  yield* coreCheckpoint(coreYield);
 
   const turretTop = new THREE.Object3D();
   turretTop.position.set(0, P.topY, 0);
@@ -9624,9 +9679,10 @@ function* createTankOwnedSteps(
     presentationAnchor,
     presentationTrackFloorYM,
   } = resolveTankPresentationSetup(specId, opts, geometryOnly, root, P.gear);
+  owner.handedOff = true;
   return yield* createTankRuntimeSteps({
     specId, opts, legacyDecoration, coreStartedAt, coreMaterialsStartedAt, coreMaterialsFinishedAt,
-    coreAuthoredStartedAt, coreAuthoredFinishedAt, coreBindMergeFinishedAt, proceduralOnly, geometryQuality,
+    coreAuthoredStartedAt, coreAuthoredFinishedAt, coreBindMergeFinishedAt, coreYieldMs: coreYield.ms, proceduralOnly, geometryQuality,
     deferStaticBatch, batchStatic, battleDetailLod, staticDrawMerge, geometryOnly, engineCtx, spec, armor, mats, rng,
     root, hullG, turretG, gunG, recoilG, launcherCursor, barrelGs, eraClusters, eraPlacements, eraLocal,
     destructibleClusters, disposables, equipmentDamage, weaponDamage, P, deferredAssembly, assembledChildren,
@@ -9651,6 +9707,8 @@ export interface TankRuntimeEnv {
   coreAuthoredStartedAt: number;
   coreAuthoredFinishedAt: number;
   coreBindMergeFinishedAt: number;
+  /** The core's checkpoint waits, left out of its finish stamp as out of its stages (absent: none). */
+  coreYieldMs?: number;
   proceduralOnly: boolean;
   geometryQuality: 'high' | 'low';
   deferStaticBatch: boolean;
@@ -9719,7 +9777,7 @@ export function* createTankRuntimeSteps(
 ): Generator<void, TankVisual, void> {
   const {
     specId, opts, legacyDecoration, coreStartedAt, coreMaterialsStartedAt, coreMaterialsFinishedAt,
-    coreAuthoredStartedAt, coreAuthoredFinishedAt, coreBindMergeFinishedAt, proceduralOnly, geometryQuality,
+    coreAuthoredStartedAt, coreAuthoredFinishedAt, coreBindMergeFinishedAt, coreYieldMs = 0, proceduralOnly, geometryQuality,
     deferStaticBatch, batchStatic, battleDetailLod, staticDrawMerge, geometryOnly, engineCtx, spec, armor, mats, rng,
     root, hullG, turretG, gunG, recoilG, barrelGs, eraClusters, eraPlacements, eraLocal, destructibleClusters,
     disposables, equipmentDamage, weaponDamage, P, deferredAssembly, assembledChildren, decalMeshes,
@@ -11228,7 +11286,7 @@ export function* createTankRuntimeSteps(
   // to the final procedural geometry in the same build.
   let visualCompleted = false;
   try {
-    const coreFinishedAt = performance.now();
+    const coreFinishedAt = performance.now() - coreYieldMs;
     // Bounded non-await elapsed intervals, not CPU time. Binding/merge ends
     // after authored bucket merge; later ERA instances belong to assembly.
     // Setup before materials and between materials/builder is explicit, so
@@ -11245,6 +11303,7 @@ export function* createTankRuntimeSteps(
         + (coreAuthoredStartedAt - coreMaterialsFinishedAt),
     };
     // No earlier yield: all core resources now belong to visual.dispose().
+    // (The core's own stage checkpoints are covered by its owner, createTankOwnedSteps.)
     // The root remains private through decoration and the unchanged finalizers.
     yield;
     // The deferred assembly (a suit or field net), before the decorations that lay loads on it and drape it over them.

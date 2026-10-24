@@ -934,6 +934,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/deploymentParity.selftest.mjs',
     'src/game/rosterVisualStaging.selftest.mjs',
     'src/game/rosterPresentation.selftest.mjs',
+    'src/ui/botCallsigns.selftest.mjs',
     'src/presentation/publicCopy.selftest.mjs',
     'src/presentation/socialProof.selftest.mjs',
     'src/presentation/publicLoading.selftest.mjs',
@@ -947,6 +948,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/docs/docsIcons.selftest.mjs',
     'src/docs/docsSearch.selftest.mjs',
     'src/docs/topics.selftest.mjs',
+    'src/docs/docsSearch.selftest.mjs',
+    'src/docs/chapters/controls.selftest.mjs',
+    'src/docs/chapters/chapters.selftest.mjs',
     'src/docs/filming.selftest.mjs',
     'tools/generate-manual-reference.selftest.mjs',
     'src/productStats.selftest.mjs',
@@ -1172,6 +1176,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/dev/perfDiagnosticsAccess.selftest.mjs',
     'src/engine/deploymentSkew.selftest.mjs',
     'src/engine/offscreenWarm.selftest.mjs',
+    'src/engine/cameraDestinationWarm.selftest.mjs', // perf-245 (2026-10-24): a camera hop's destination warmed on the way (batches alone and uncull'd, the terrain focus)
     'src/engine/lodEmptySentinels.selftest.mjs',
     // sealed lane round 2 (2026-10-10): screen-size vehicle LODs, the sniper sight draws near detail
     'src/engine/lodDistanceScale.selftest.mjs',
@@ -1633,6 +1638,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleKeyActions.selftest.mjs',
     'src/game/playerFrameInput.selftest.mjs',
     'src/app/combatWarmComposition.selftest.mjs',
+    'src/app/battleEndGarageWarm.selftest.mjs',
     'src/app/mainFrameRuntime.selftest.mjs',
     'src/app/mainBattleHudRuntime.selftest.mjs',
     'src/game/battleFrameRuntime.selftest.mjs',
@@ -1655,6 +1661,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/watchController.selftest.mjs',
     // watch-mode-243: the Watch ruleset entry, bot -> player -> bot, the replay over the swap, every mode with no human seat
     'src/game/watchSeat.selftest.mjs',
+    // (watch-drone-244) Take control in every watchable mode: the boss, a convert, a carrier, revives, a drone; AC-130 and rooms
+    'src/game/watchTakeover.selftest.mjs',
     'src/game/battleResultPresentationRuntime.selftest.mjs',
     'src/game/battleEnding.selftest.mjs',
     'src/game/battleEndingHold.selftest.mjs',

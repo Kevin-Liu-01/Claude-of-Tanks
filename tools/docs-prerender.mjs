@@ -6,7 +6,9 @@
 // The markup is src/docs/topics.ts's topicPageMarkup(), with its icons filled (docsIcons.ts fillDocsIcons):
 //   - English goes into site/docs-<topic>.html, as <main id="topicRoot" data-prerendered=… data-prerendered-locale=…>;
 //   - Chinese goes into src/docs/topicPrerender.zh-CN.json, which src/presentation/localizedHtml.ts puts in the /cn
-//     page (the build's generate-localized-pages step and the dev server's /cn routes).
+//     page (the build's generate-localized-pages step and the dev server's /cn routes);
+//   - the search index per locale goes into src/docs/searchIndex.<locale>.json (src/docs/searchIndex.ts builds it).
+// The data-built chapters (src/docs/chapters) run here only: no page imports their builders.
 // topics.ts keeps the markup it finds and only wires the behaviour. Run `node tools/public-shell.mjs --write` after a
 // write: the shell inlines the symbols the chapter's icons reference.
 //
@@ -29,9 +31,12 @@ if (emit) {
   const { setLocale } = await import('../src/ui/i18n.ts');
   await setLocale(emit);
   const { TOPIC_ORDER, topicPageMarkup } = await import('../src/docs/topics.ts');
+  const { richSections } = await import('../src/docs/chapters/index.ts');
+  const { manualRecords } = await import('../src/docs/searchIndex.ts');
   const { fillDocsIcons } = await import('../src/docs/docsIcons.ts');
   // exit only once the pipe has taken the whole payload (an early exit cuts a piped stdout at 64 KB)
-  process.stdout.write(JSON.stringify(Object.fromEntries(TOPIC_ORDER.map((slug) => [slug, fillDocsIcons(topicPageMarkup(slug, false))]))), () => process.exit(0));
+  const pages = Object.fromEntries(TOPIC_ORDER.map((slug) => [slug, fillDocsIcons(topicPageMarkup(slug, false, richSections(slug)))]));
+  process.stdout.write(JSON.stringify({ pages, index: manualRecords() }), () => process.exit(0));
   await new Promise(() => {});
 }
 
@@ -40,9 +45,16 @@ const render = (locale) => JSON.parse(execFileSync(process.execPath, ['--max-old
 
 /** Bring every chapter page and the zh fragments to the current markup (`write`), or list the stale ones. */
 function prerender(write) {
-  const en = render('en-US');
-  const zh = render('zh-CN');
+  const { pages: en, index: enIndex } = render('en-US');
+  const { pages: zh, index: zhIndex } = render('zh-CN');
   const stale = [];
+  // a generated file: written when it changed, or listed as stale
+  const keep = (path, text) => {
+    let current = '';
+    try { current = readFileSync(join(ROOT, path), 'utf8'); } catch { /* first write */ }
+    if (current === text) return;
+    if (write) writeFileSync(join(ROOT, path), text); else stale.push(path);
+  };
   for (const [slug, markup] of Object.entries(en)) {
     const path = join(ROOT, `site/docs-${slug}.html`);
     const html = readFileSync(path, 'utf8');
@@ -51,12 +63,10 @@ function prerender(write) {
     if (next === html) continue;
     if (write) writeFileSync(path, next); else stale.push(`site/docs-${slug}.html`);
   }
-  const fragments = `${JSON.stringify(zh, null, 1)}\n`;
-  let current = '';
-  try { current = readFileSync(join(ROOT, ZH_FRAGMENTS), 'utf8'); } catch { /* first write */ }
-  if (current !== fragments) {
-    if (write) writeFileSync(join(ROOT, ZH_FRAGMENTS), fragments); else stale.push(ZH_FRAGMENTS);
-  }
+  keep(ZH_FRAGMENTS, `${JSON.stringify(zh, null, 1)}\n`);
+  // the search index per locale (src/docs/docsSearch.ts loads the reader's with the field's first use)
+  keep('src/docs/searchIndex.en-US.json', `${JSON.stringify(enIndex, null, 1)}\n`);
+  keep('src/docs/searchIndex.zh-CN.json', `${JSON.stringify(zhIndex, null, 1)}\n`);
   return { chapters: Object.keys(en).length, stale };
 }
 

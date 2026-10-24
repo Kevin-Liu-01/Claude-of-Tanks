@@ -25,21 +25,21 @@ export const MAP_ART_TONES: Readonly<Record<string, readonly [string, string, st
   ruinspires: ['#acacad', '#626261', '#3f3d39'],
   blackglass: ['#adbdcb', '#88827b', '#6c5f51'],
   titan_gorge: ['#989dac', '#ac9076', '#b7916b'],
-  skybridge: ['#919ba8', '#a37a5e', '#a4744d'],
+  skybridge: ['#b0bfcc', '#a37a5f', '#a4744d'],
   polders: ['#aabfcd', '#818674', '#525a36'],
-  copper_mesa: ['#8a92a6', '#9d826f', '#a1816d'],
-  airfield: ['#9bc0db', '#7d877d', '#5c614f'],
-  oasis: ['#a6bfd8', '#ae9f85', '#9f8f6d'],
+  copper_mesa: ['#9da6bb', '#9f8371', '#a0806d'],
+  airfield: ['#9dbed9', '#818b82', '#606153'],
+  oasis: ['#a6bfd7', '#afa189', '#a29070'],
   whiteout: ['#aab4bc', '#a1abb0', '#a1acb2'],
   orchard: ['#a5c0d3', '#748170', '#656b49'],
-  longleaf: ['#a9bccb', '#686e68', '#514f3d'],
+  longleaf: ['#a8bccb', '#6b706a', '#514f3d'],
   mangrove: ['#b3c9d5', '#708073', '#475839'],
   saltwind: ['#9cafb4', '#56666a', '#4d504c'],
   reservoir: ['#9ab8ce', '#536763', '#404936'],
-  mars: ['#633840', '#975d44', '#8b523c'],
+  mars: ['#4d2733', '#955940', '#8b523c'],
   moon: ['#040505', '#1a2024', '#6d7479'],
   cliffbridge: ['#8c8e81', '#9a8c71', '#796e52'],
 });
 
 /** The bands' mean over every battlefield: the gradient before the battlefield is known. */
-export const MAP_ART_TONE_DEFAULT: readonly [string, string, string] = ['#9bacbb', '#817f73', '#706a54'];
+export const MAP_ART_TONE_DEFAULT: readonly [string, string, string] = ['#9caebd', '#817f74', '#706a54'];

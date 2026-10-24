@@ -322,10 +322,21 @@ function hashLaunch(seed: number, id: string, tick: number): number {
 export type WreckTurretCause = 'ammorack' | 'ammo_rack' | 'shot' | 'fire' | 'ram' | string;
 
 /** The cook-off's work on the turret per kilogram of its charge (J/kg): a 66.8 t M1A2's 10 kg throws its 16.6 t
- * turret at about 14 m/s, some 10 m over the ring (6–14 m by the draw). */
-const COOK_OFF_J_PER_KG = 160_000;
-const COOK_OFF_MIN_MPS = 8;
-const COOK_OFF_MAX_MPS = 19;
+ * turret at 15.5–19 m/s by the draw, some 12–18 m over the ring and clear of its own fireball. */
+const COOK_OFF_J_PER_KG = 250_000;
+const COOK_OFF_MIN_MPS = 9;
+/**
+ * Past the knee the throw eases toward the ceiling (smoothly, keeping its order), so a stronger draw or a lighter turret
+ * still flies higher and no throw pins at one height (244: a hard 19 m/s cap held most MBT throws at 18.4 m).
+ */
+const COOK_OFF_KNEE_MPS = 17;
+const COOK_OFF_MAX_MPS = 21;
+
+function cookOffSpeed(mps: number): number {
+  if (mps <= COOK_OFF_KNEE_MPS) return Math.max(COOK_OFF_MIN_MPS, mps);
+  const room = COOK_OFF_MAX_MPS - COOK_OFF_KNEE_MPS;
+  return COOK_OFF_KNEE_MPS + room * (1 - Math.exp(-(mps - COOK_OFF_KNEE_MPS) / room));
+}
 
 /**
  * The launch of a turret (world frame velocities, m/s and rad/s): a cook-off throws it high over its fireball and well
@@ -354,11 +365,11 @@ export function turretLaunchVelocity(
   ax *= al; ay *= al; az *= al;
   let up: number, side: number, tumble: number, spin: number;
   if (rack) {
-    // v = sqrt(2 E / m), the work 0.6–1.4 of the mean: 6–14 m over the ring for an MBT, 2.5–3.8 s in the air, landing
-    // 5–15 m off its hull with one or two turns in it
-    const work = COOK_OFF_J_PER_KG * charge * (0.6 + 0.8 * random());
-    up = Math.max(COOK_OFF_MIN_MPS, Math.min(COOK_OFF_MAX_MPS, Math.sqrt((2 * work) / mass)));
-    side = 1.8 + 2.6 * random();
+    // v = sqrt(2 E / m), the work 0.8–1.25 of the mean: 12–19 m over the ring for an MBT, 3–4 s in the air, landing
+    // 7–17 m off its hull (clear of its ends) with one or two turns in it
+    const work = COOK_OFF_J_PER_KG * charge * (0.8 + 0.45 * random());
+    up = cookOffSpeed(Math.sqrt((2 * work) / mass));
+    side = 2.2 + 2.6 * random();
     tumble = 1.4 + 2.2 * random();
     spin = (random() * 2 - 1) * 3.0;
   } else if (burn) {

@@ -1,0 +1,77 @@
+// The Field Manual's first chapter: a first battle, step by step. Copyright © 2026 Kevin B. Liu.
+// The steps are a real order (the Garage, Deploy, driving, firing, winning), so they are numbered. Every key is the
+// game's default (src/game/input.ts), every count and clock the game's own (src/productStats.ts, the ruleset, the map
+// list, the consumable rules); the pictures are in-engine stills of the screens they describe. Node only
+// (tools/docs-prerender.mjs).
+import { DEFAULT_BINDINGS, labelForCode, type ActionId } from '../../game/input.ts';
+import { CONSUMABLE_RULES } from '../../game/consumables.ts';
+import { WATCH_RIDE } from '../../engine/watchCamera.ts';
+import { matchRulesetFor, SIDES_PRESETS } from '../../sim/matchRuleset.ts';
+import { RANDOM_BATTLE_MAP_IDS } from '../../world/maps/mapIds.ts';
+import { PRODUCT_STATS } from '../../productStats.ts';
+import { pictureMarkup } from '../../presentation/responsivePicture.ts';
+import { hrefForLocale } from '../../ui/localeRouting.ts';
+import { getLocale, t } from '../../ui/i18n.ts';
+import { icon } from '../../ui/icons/icon.ts';
+import type { RichSection } from './types.ts';
+
+const esc = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const plain = (html: string): string => html.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+  .replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
+const kbd = (id: ActionId): string => `<kbd class="cot-c-kbd">${esc(labelForCode(DEFAULT_BINDINGS[id] ?? null))}</kbd>`;
+
+/** A catalog line whose {placeholders} take markup (keys) or text (numbers, names): the line itself is escaped. */
+function line(key: string, values: Readonly<Record<string, string>>, markup: Readonly<Record<string, string>> = {}): string {
+  const tokens = Object.fromEntries(Object.keys(markup).map((name, i) => [name, `\u0000${i}\u0000`]));
+  let text = esc(t(key, { ...values, ...tokens }));
+  Object.values(markup).forEach((html, i) => { text = text.split(`\u0000${i}\u0000`).join(html); });
+  return text;
+}
+
+const still = (path: string, width: number, height: number, alt: string): string => pictureMarkup({
+  src: `/media/site50-r14/home/${path}.webp`, width, height, alt, sizes: '(width < 1100px) 100vw, 45vw',
+  rungs: [{ src: `/media/site50-r14/home/${path}-640.webp`, width: 640 }, { src: `/media/site50-r14/home/${path}.webp`, width }],
+}, false);
+
+const KIT_NAMES: Readonly<Record<string, string>> = { repair: 'hud.consumable.repair', first_aid: 'hud.consumable.firstAid', extinguisher: 'hud.consumable.extinguisher' };
+
+export function startSections(): RichSection[] {
+  const kit = (id: string): { name: string; cooldown: string } => {
+    const rule = CONSUMABLE_RULES.find((entry) => entry.id === id);
+    return { name: t(KIT_NAMES[id]), cooldown: String(rule?.cooldownS ?? 0) };
+  };
+  const [repair, firstAid, extinguisher] = ['repair', 'first_aid', 'extinguisher'].map(kit);
+  const sides = (preset: keyof typeof SIDES_PRESETS): string => t('docs.modes.sides', {
+    allies: String(SIDES_PRESETS[preset].allies + 1), enemies: String(SIDES_PRESETS[preset].enemies),
+  });
+  const standard = matchRulesetFor('standard');
+  const locale = getLocale();
+  const steps: Array<[string, string, string]> = [
+    ['garage', still('features/garage', 1920, 1080, t('docs.start.garage.alt')),
+      line('docs.start.garage.body', { tanks: String(PRODUCT_STATS.battlePlayableVehicles) })],
+    ['deploy', still('modes/standard', 1280, 720, t('docs.start.deploy.alt')),
+      line('docs.start.deploy.body', { modes: String(PRODUCT_STATS.battleModes), maps: String(RANDOM_BATTLE_MAP_IDS.length),
+        small: sides('7v7'), large: sides('14v14') })],
+    ['drive', still('mechanics/suspension', 1280, 720, t('docs.start.drive.alt')),
+      line('docs.start.drive.body', { zooms: WATCH_RIDE.zooms.map((zoom) => `×${zoom}`).join(' / ') },
+        { forward: kbd('forward'), left: kbd('left'), back: kbd('back'), right: kbd('right'), sight: kbd('sniperToggle'), hold: kbd('freeLook') })],
+    ['fire', still('mechanics/ammunition', 1280, 720, t('docs.start.fire.alt')),
+      line('docs.start.fire.body', { repair: repair.name, repairS: repair.cooldown, firstAid: firstAid.name, firstAidS: firstAid.cooldown,
+        extinguisher: extinguisher.name, extinguisherS: extinguisher.cooldown },
+      { fire: kbd('fire'), shell1: kbd('shell1'), shell2: kbd('shell2'), shell3: kbd('shell3'), kit1: kbd('consumable1'), kit2: kbd('consumable2'), kit3: kbd('consumable3') })],
+    ['win', still('features/killcam', 1920, 1080, t('docs.start.win.alt')),
+      line('docs.start.win.body', { minutes: String(Math.round((standard.timeLimitS ?? 0) / 60)) })],
+  ];
+  const sections: RichSection[] = steps.map(([id, figure, body], i) => {
+    const html = `<div class="dm-step"><figure class="dm-step__figure">${figure}</figure><div class="dm-step__body">`
+      + `<span class="dm-step__n" aria-hidden="true">${String(i + 1).padStart(2, '0')}</span><p>${body}</p></div></div>`;
+    return { id, title: t(`docs.start.${id}.title`), html, text: plain(html) };
+  });
+  // where to go next: the chapters a new player reads after a first battle
+  const next = ([['controls', 'interface'], ['modes', 'modes']] as const).map(([slug, glyph]) => `<a class="dm-next" href="${hrefForLocale(`/docs/${slug}`, locale)}">`
+    + `${icon(glyph === 'interface' ? 'settings' : 'modeStandard', { size: 20 })}<b>${esc(t(`docs.topic.${slug}.label`))}</b>`
+    + `<span>${esc(t(`docs.chapter.${slug}Lede`))}</span></a>`).join('');
+  const html = `<div class="dm-nexts">${next}</div>`;
+  sections.push({ id: 'next', title: t('docs.start.next.title'), html, text: plain(html) });
+  return sections;
+}

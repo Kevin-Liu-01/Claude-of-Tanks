@@ -20,8 +20,10 @@ function centralHull(P: TankBuilderPort): void {
     [-3.30698, 1.017, 1.672369], [-2.948852, .451396, 1.66992],
     [-2.592913, .345496, 1.66749], [-2.04363, .322815, 1.66374],
     [-1.75044, .302, 1.653687], [-1.66926, .305, 1.654683],
-    [-1.38496, .305593, 1.646498], [-.8665, .309, 1.6467],
-    [-.8655, .309, 1.62876], [-.68969, .307375, 1.575083],
+    // (release 240, the owner: "make sure all tank turrets are clear of hulls": the engine deck's step stands at -1.45, out
+    // of the sweep of the turret's sloping side edge, under 1.652 out to 1.97 m off the ring's axis, which ran into it at
+    // -0.8665)
+    [-1.4505, .30546, 1.64838], [-1.4495, .309, 1.62876], [-.68969, .307375, 1.575083],
     [.399819, .304165, 1.572337], [1.918395, .2997, 1.520278],
     [2.25591, .3118, 1.493134], [2.5212, .31664, 1.440507],
     [2.99912, .498601, 1.353638], [3.318516, .687504, 1.29558],
@@ -125,9 +127,10 @@ function bow(P: TankBuilderPort): void {
   // The source driver's window is inset behind its own raised frame.
   P.addHatch('hull', box(.850255, .024, .607723), .5594245, 1.50, 1.9047535, .178);
   // 2026-10-19 (owner float sweep): the frame strip stood 12-23 mm short of its posts; it runs back onto them (front kept)
-  P.addEquipment('hullDetail', box(.850255, .028, .19), .5594245, 1.606, 1.801, .178);
-  P.addEquipment('hullDetail', box(.085, .116, .24), .178, 1.565, 1.988, .178);
-  P.addEquipment('hullDetail', box(.085, .116, .24), .940, 1.565, 1.988, .178);
+  // (release 240: the frame strip and its posts 2 cm lower, under the turret's front overhang at 1.637 at rest)
+  P.addEquipment('hullDetail', box(.850255, .028, .19), .5594245, 1.586, 1.801, .178);
+  P.addEquipment('hullDetail', box(.085, .116, .24), .178, 1.545, 1.988, .178);
+  P.addEquipment('hullDetail', box(.085, .116, .24), .940, 1.545, 1.988, .178);
   P.addEquipment('hullGlass', box(.628987, .003, .244), .580878, 1.563, 1.9953, .467);
   for (const x of [-.720, .458]) {
     P.addEquipment('hullDetail', box(.918, .15, .118), x + .230, 1.17, 3.516);

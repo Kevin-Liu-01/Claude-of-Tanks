@@ -373,6 +373,7 @@ export function createSoloBattleLoadingRuntime(
         biome: resolved,
         mode: soloBattleLoadingModeLabel(normalizedGameMode),
         modeId: normalizedGameMode,
+        ...(campaignOperationId ? { campaign: true } : {}),
         allies: [],
         enemies: [],
         slots: PENDING_ROSTER_SLOTS,

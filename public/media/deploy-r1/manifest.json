@@ -4,13 +4,13 @@
  "author": "Kevin B. Liu",
  "copyright": "Copyright © 2026 Kevin B. Liu",
  "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
- "description": "The Deploy screen's mode cards (brand-ui S3, the Premiere direction's 04-deploy page): each core mode's picture, a 640x360 cut of the approved in-engine still the direction chose for it.",
- "generatedBy": "ffmpeg (scale 640x360 lanczos) + cwebp -q 80 -m 6",
+ "description": "The Deploy screen's mode pictures (brand-ui S3 and 245, the Premiere direction's 04-deploy page): each core mode's picture, a 640x360 cut of the approved in-engine still the direction chose for it, and each other mode's tile, a 480x270 centre cut of its in-engine still (tools/deploy-mode-art.mjs).",
+ "generatedBy": "ffmpeg (scale lanczos; the tiles: centre crop) + cwebp -q 80 -m 6",
  "dimensions": {
   "width": 640,
   "height": 360
  },
- "count": 4,
+ "count": 13,
  "items": [
   {
    "id": "standard",
@@ -35,6 +35,123 @@
    "file": "frontline_assault-640.webp",
    "mode": "frontline_assault",
    "source": "public/media/site50-r14/stills/s225-verdant-duel.webp"
+  },
+  {
+   "id": "turbo_ball-tile",
+   "file": "turbo_ball-480.webp",
+   "mode": "turbo_ball",
+   "source": "public/media/site50-r14/home/modes/turbo_ball.webp",
+   "cut": {
+    "w": 0.68,
+    "cx": 0.5,
+    "cy": 0.47
+   },
+   "width": 480,
+   "height": 270
+  },
+  {
+   "id": "gun_game-tile",
+   "file": "gun_game-480.webp",
+   "mode": "gun_game",
+   "source": "public/media/site50-r14/home/modes/gun_game.webp",
+   "cut": {
+    "w": 0.68,
+    "cx": 0.5,
+    "cy": 0.47
+   },
+   "width": 480,
+   "height": 270
+  },
+  {
+   "id": "mars-tile",
+   "file": "mars-480.webp",
+   "mode": "mars",
+   "source": "public/media/site50-r14/home/modes/mars.webp",
+   "cut": {
+    "w": 0.68,
+    "cx": 0.5,
+    "cy": 0.47
+   },
+   "width": 480,
+   "height": 270
+  },
+  {
+   "id": "juggernaut-tile",
+   "file": "juggernaut-480.webp",
+   "mode": "juggernaut",
+   "source": "public/media/site50-r14/home/modes/juggernaut.webp",
+   "cut": {
+    "w": 0.68,
+    "cx": 0.5,
+    "cy": 0.47
+   },
+   "width": 480,
+   "height": 270
+  },
+  {
+   "id": "infected-tile",
+   "file": "infected-480.webp",
+   "mode": "infected",
+   "source": "public/media/site50-r14/home/modes/infected.webp",
+   "cut": {
+    "w": 0.68,
+    "cx": 0.5,
+    "cy": 0.47
+   },
+   "width": 480,
+   "height": 270
+  },
+  {
+   "id": "endless_horde-tile",
+   "file": "endless_horde-480.webp",
+   "mode": "endless_horde",
+   "source": "public/media/site50-r14/home/modes/endless_horde.webp",
+   "cut": {
+    "w": 0.68,
+    "cx": 0.5,
+    "cy": 0.47
+   },
+   "width": 480,
+   "height": 270
+  },
+  {
+   "id": "realistic-tile",
+   "file": "realistic-480.webp",
+   "mode": "realistic",
+   "source": "public/media/site50-r14/home/modes/realistic.webp",
+   "cut": {
+    "w": 0.68,
+    "cx": 0.5,
+    "cy": 0.47
+   },
+   "width": 480,
+   "height": 270
+  },
+  {
+   "id": "drone-tile",
+   "file": "drone-480.webp",
+   "mode": "drone",
+   "source": "public/media/site50-r14/home/modes/drone.webp",
+   "cut": {
+    "w": 0.68,
+    "cx": 0.5,
+    "cy": 0.47
+   },
+   "width": 480,
+   "height": 270
+  },
+  {
+   "id": "ac130-tile",
+   "file": "ac130-480.webp",
+   "mode": "ac130",
+   "source": "public/media/site50-r14/home/modes/ac130.webp",
+   "cut": {
+    "w": 0.68,
+    "cx": 0.5,
+    "cy": 0.47
+   },
+   "width": 480,
+   "height": 270
   }
  ]
 }

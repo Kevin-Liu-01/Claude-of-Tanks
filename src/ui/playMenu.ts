@@ -126,7 +126,6 @@ export interface PlayMenuOptions {
   }): MaybePromise<RuntimeValue>;
   onLobbyChange?(context: PlayMenuLobbyContext | null): void;
   isVehicleAllowed?(specId: string): boolean;
-  getCamoName?(camo: string): string;
   getVehicleName?(specId: string): string;
 }
 
@@ -204,17 +203,15 @@ const CSS = `
   border:1px solid rgba(181,197,210,.3);box-shadow:0 30px 100px rgba(0,0,0,.72);padding:28px;}
 .cot-play .close{position:absolute;right:14px;top:12px;width:40px;height:40px;border:0;background:none;
   color:#95a5b2;font-size:27px;cursor:pointer}/* no kicker above the title (owner UI rules 2026-10-17); kept for assistive technology */
-.cot-play .eyebrow{position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.cot-play h2{margin:0 0 4px;font-size:32px;letter-spacing:.02em}
-.cot-play .lead{margin:0 0 22px;color:#9dadba;font-size:13px}.cot-play .modes{display:grid;
+.cot-play .eyebrow{position:absolute;width:1px;height:1px;margin:0;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}.cot-play h2{margin:0 0 4px;font-size:32px;letter-spacing:.02em;text-transform:uppercase}
+.cot-play .lead{margin:0 0 22px;color:#9dadba;font-size:13px}.cot-play .lead:empty{display:none}.cot-play .modes{display:grid;
   grid-template-columns:repeat(3,1fr);gap:10px}.cot-play .mode{position:relative;min-height:156px;text-align:left;padding:18px;
   color:#eef4f8;background:rgba(20,27,34,.86);border:1px solid rgba(161,180,195,.28);cursor:pointer}
 .cot-play .mode:hover,.cot-play .mode.on{border-color:#e69a36;background:rgba(230,154,54,.1)}
 .cot-play.invite-entry .panel{border-color:rgba(230,154,54,.62);box-shadow:0 30px 100px rgba(0,0,0,.72),0 0 48px rgba(230,154,54,.08)}
 .cot-play.invite-entry h2{color:#fff4df}.cot-play.invite-entry .lead{color:#c5d0d8}
 .cot-play.lobby-active .modes{display:none}.cot-play.lobby-active .lead{margin-bottom:8px}.cot-play.lobby-active .room{margin-top:10px}
-.cot-play .mode b{display:block;font-size:17px;margin:8px 0}.cot-play .mode-desc{display:block;color:#9eafbc;
-  font-size:11px;line-height:1.55}.cot-play .mode i{display:block;padding-right:44px;font:700 11px ${FONT_COND};
-  font-style:normal;letter-spacing:.11em;color:#e69a36;text-transform:uppercase}.cot-play .mode-icon{position:absolute;
+.cot-play .mode b{display:block;font-size:17px;margin:8px 0}.cot-play .mode-icon{position:absolute;
   right:15px;top:13px;display:grid;width:36px;height:36px;place-items:center;color:#d7e1e8;background:rgba(5,9,13,.6);
   border:1px solid rgba(159,178,192,.26)}.cot-play .mode:hover .mode-icon,.cot-play .mode.on .mode-icon{color:#ffb452;
   border-color:rgba(230,154,54,.72);background:rgba(230,154,54,.09)}.cot-play .mode-icon svg{display:block}
@@ -288,12 +285,11 @@ body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='comp
 .cot-play .room{display:none;margin-top:18px;padding-top:18px;
   border-top:1px solid rgba(160,180,195,.2)}.cot-play .room.show{display:block}.cot-play .setup{display:grid;gap:12px}
 .cot-play .room.connected .setup{display:none}.cot-play .identity{display:flex;align-items:end;gap:14px}
-.cot-play .identity label{width:min(300px,100%)}.cot-play .identity-note{padding-bottom:9px;color:#758794;font-size:11px}
+.cot-play .identity label{width:min(300px,100%)}
 .cot-play .room-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cot-play .room-action{display:grid;gap:14px;
   min-height:142px;padding:16px;border:1px solid rgba(161,180,195,.24);background:rgba(12,17,22,.76)}
 .cot-play .room-action:hover{border-color:rgba(230,154,54,.48)}.cot-play .room-action-head{display:grid;gap:4px}
-.cot-play .room-action-head i{color:#e69a36;font:700 11px ${FONT_COND};font-style:normal;letter-spacing:.09em;text-transform:uppercase}
-.cot-play .room-action-head b{font-size:17px}.cot-play .room-action-head span{color:#8799a6;font-size:11px;line-height:1.45}
+.cot-play .room-action-head b{font-size:17px}
 .cot-play .room-action-fields{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:end}
 .cot-play .field{display:grid;gap:5px}.cot-play .field-label{font:700 11px ${FONT_COND};letter-spacing:.07em;
   text-transform:uppercase;color:#8fa1ae}.cot-play .menu-select{position:relative;min-width:0}.cot-play .menu-select-trigger{
@@ -365,8 +361,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='comp
   align-items:center;gap:10px;min-width:0;color:#dbe5eb}.cot-play .vehicle-icon{width:58px;height:42px;flex:0 0 58px;
   object-fit:contain;filter:drop-shadow(0 3px 5px rgba(0,0,0,.6));transform:scale(1.06)}.cot-play .vehicle-icon.missing{display:none}
 .cot-play .vehicle-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cot-play .vehicle-copy{display:grid;min-width:0;gap:3px}.cot-play .vehicle-camo{color:#8fa1ae;font:700 11px ${FONT_COND};
-  letter-spacing:.04em;text-transform:uppercase;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cot-play .vehicle-copy{display:grid;min-width:0;gap:3px}
 .cot-play .battlefield-card{position:relative;display:grid;grid-template-columns:minmax(220px,.85fr) minmax(280px,1.15fr);
   min-height:108px;margin-top:10px;border:1px solid rgba(161,180,195,.24);
   background:linear-gradient(110deg,rgba(12,18,23,.98),rgba(21,27,33,.88))}
@@ -385,14 +380,7 @@ body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='comp
 .cot-play .battlefield-art .random-map-count b{color:#ffd18a;font:700 16px ${FONT_COND};line-height:1}
 .cot-play .battlefield-art .random-map-count span{margin-top:2px;color:#a9b6bf;font:700 11px ${FONT_COND};
   letter-spacing:.03em;text-transform:uppercase}
-.cot-play .battlefield-art > span{position:absolute;z-index:3;left:13px;bottom:11px;color:#ffd08b;
-  font:700 11px ${FONT_COND};letter-spacing:.09em;text-transform:uppercase}
-.cot-play .battlefield-copy{display:grid;grid-template-columns:minmax(0,1fr) minmax(170px,.85fr);align-items:center;
-  gap:18px;padding:15px 16px}.cot-play .battlefield-id{min-width:0}.cot-play .battlefield-id i{display:block;
-  color:#e69a36;font:700 11px ${FONT_COND};font-style:normal;letter-spacing:.09em;text-transform:uppercase}
-.cot-play .battlefield-id b{display:block;margin-top:7px;color:#f1f5f8;font-size:18px;white-space:nowrap;
-  overflow:hidden;text-overflow:ellipsis}.cot-play .battlefield-id span{display:block;margin-top:5px;color:#8597a5;
-  font-size:11px;line-height:1.4}.cot-play .battlefield-card.guest .battlefield-id i{color:#8293a0}
+.cot-play .battlefield-copy{display:grid;align-items:center;gap:12px;padding:15px 16px}
 .cot-play .battlefield-picker{min-width:0}.cot-play .battlefield-card.guest .menu-select-trigger{border-color:rgba(161,180,195,.24)}
 .cot-play .player .team{font:700 11px ${FONT_COND};
   letter-spacing:.02em;text-transform:uppercase;color:#aebfca}.cot-play .player.alpha .team{color:#82c3f4}
@@ -438,6 +426,11 @@ body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='comp
 .cot-play .play-head{position:sticky;top:-24px;z-index:5;flex-shrink:0;margin:-24px -24px 0;
   padding:20px 64px 14px 24px;background:#10171d;border-bottom:1px solid #91a5b32b;}
 .cot-play .play-head h2{font-size:28px;}
+/* the lobby's controls stay in view at the panel's foot while a long roster scrolls under them */
+.cot-play .lobby.show .controls{position:sticky;bottom:-24px;z-index:4;margin:12px -24px -24px;padding:14px 24px 20px;
+  background:var(--side-plate);border-top:1px solid var(--line-2);}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .lobby.show .controls{bottom:-20px;margin:12px -14px -20px;
+  padding:12px 14px 16px;}
 .cot-play .lead{margin:12px 0 20px;line-height:1.5;}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .play-head{
   top:-20px;margin:-20px -14px 0;padding:18px 60px 12px 14px;}
@@ -448,11 +441,11 @@ body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .play-hea
 .cot-play.lobby-active .mode[data-mode='solo']{display:none;}
 .cot-play:not(.multiplayer-entry) .room-rules>summary{display:none;}
 .cot-play:not(.multiplayer-entry) .mode[data-mode='solo']{display:none;}
-.cot-play .mode{min-height:80px;padding:12px 56px 12px 14px;}
-.cot-play .mode i{display:none;}
-.cot-play .mode b{font-size:15px;margin:0 0 4px;}
-.cot-play .mode .mode-desc{font-size:11px;}
+.cot-play .mode{display:flex;align-items:center;min-height:64px;padding:12px 56px 12px 14px;}
+.cot-play .mode b{font-size:15px;margin:0;}
 .cot-play .room{order:1;margin-top:16px;padding-top:16px;}
+/* a lobby opens straight under the title: no mode cards above it, so no rule between them */
+.cot-play.lobby-active .room{margin-top:0;padding-top:0;border-top:0;}
 .cot-play .room-rules{order:2;margin-top:16px;padding-top:12px;border-top:1px solid #91a5b32b;}
 .cot-play .room-rules>summary{display:flex;align-items:center;gap:12px;min-height:44px;cursor:pointer;
   color:#b4c2cc;font-size:12px;font-weight:700;list-style:none;}
@@ -467,11 +460,9 @@ body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .play-hea
 .cot-play .room-rules .rule-lines,.cot-play .room-rules .rule-progress{display:none;}
 .cot-play .room-action-fields{grid-template-columns:minmax(0,1fr);gap:10px;}
 .cot-play .room-action-head b{font-size:20px;}
-.cot-play .room-action-head span{font-size:12px;line-height:1.5;}
 .cot-play .room-action{gap:18px;padding:18px;}
 .cot-play button.action,.cot-play input,.cot-play .menu-select-trigger{min-height:44px;}
 .cot-play .identity{align-items:center;}
-.cot-play .identity-note{max-width:38ch;line-height:1.5;padding:0;font-size:11px;}
 .cot-play .room-failure{padding:14px;border-left-width:2px;background:#281d1a;}
 .cot-play .room-failure h3{font-size:15px;}
 .cot-play .room-failure p{font-size:12px;margin:6px 0 12px;}
@@ -738,7 +729,6 @@ export function createPlayMenu({
   onNetworkStart,
   onLobbyChange,
   isVehicleAllowed = () => true,
-  getCamoName = (camo) => camo || t('camoPattern.factory'),
   getVehicleName = (specId) => specId,
   reloadPage = () => { location.reload(); },
 }: PlayMenuOptions): PlayMenuRuntime {
@@ -802,17 +792,15 @@ export function createPlayMenu({
       <h3 id="cot-version-refusal-title">${t('playMenu.versionRefusal.title')}</h3><p data-version-text></p>
       <button class="action" data-action="refresh-page" type="button">${t('playMenu.versionRefusal.refresh')}</button>
     </section></header>
-    <p class="lead">${t('playMenu.lead')}</p>
+    <p class="lead"></p>
     <div class="modes">
-      <button class="mode" data-mode="private" type="button"><span class="mode-icon">${uiIconSVG('battlePrivate', 24)}</span><i>${t('playMenu.private.kicker')}</i><b>${t('playMenu.private.title')}</b><span class="mode-desc">${t('playMenu.private.desc')}</span></button>
-      <button class="mode" data-mode="lan" type="button"><span class="mode-icon">${uiIconSVG('battleLan', 24)}</span><i>${t('playMenu.lan.kicker')}</i><b>${t('playMenu.lan.title')}</b><span class="mode-desc">${t('playMenu.lan.desc')}</span></button>
+      <button class="mode" data-mode="private" type="button"><span class="mode-icon">${uiIconSVG('battlePrivate', 24)}</span><b>${t('playMenu.private.title')}</b></button>
+      <button class="mode" data-mode="lan" type="button"><span class="mode-icon">${uiIconSVG('battleLan', 24)}</span><b>${t('playMenu.lan.title')}</b></button>
     </div>
     <section class="room"><div class="setup">
-      <div class="identity"><label>${t('playMenu.identity.callsign')}<input data-field="name" maxlength="24" autocomplete="nickname"></label>
-        <span class="identity-note">${t('playMenu.identity.note')}</span></div>
+      <div class="identity"><label>${t('playMenu.identity.callsign')}<input data-field="name" maxlength="24" autocomplete="nickname"></label></div>
       <div class="room-actions">
-        <div class="room-action"><div class="room-action-head"><i>${t('playMenu.create.kicker')}</i><b>${t('playMenu.create.title')}</b>
-          <span>${t('playMenu.create.desc')}</span></div>
+        <div class="room-action"><div class="room-action-head"><b>${t('playMenu.create.title')}</b></div>
           <div class="room-action-fields"><div class="field"><span class="field-label" id="cot-create-size-label">${t('playMenu.advanced.size')}</span>
             <div class="menu-select" data-field="create-size" data-value="2">
               <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
@@ -827,8 +815,7 @@ export function createPlayMenu({
               </div>
             </div></div>
             <button class="action" data-action="create" type="button">${t('playMenu.create.action')}</button></div></div>
-        <div class="room-action"><div class="room-action-head"><i>${t('playMenu.join.kicker')}</i><b>${t('playMenu.join.title')}</b>
-          <span>${t('playMenu.join.desc')}</span></div>
+        <div class="room-action"><div class="room-action-head"><b>${t('playMenu.join.title')}</b></div>
           <div class="room-action-fields"><label>${t('playMenu.join.code')}<input class="code-input" data-field="code" maxlength="6"
             autocomplete="off" spellcheck="false" placeholder="ABC123"></label>
             <button class="action alt" data-action="join" type="button">${t('playMenu.join.action')}</button></div></div>
@@ -845,10 +832,8 @@ export function createPlayMenu({
     </section><div class="lobby">
       <div class="roomhead"><div><div class="roommeta">${t('playMenu.advanced.roomCode')}</div><div class="code"></div></div>
         <button class="action alt" data-action="copy" type="button">${t('playMenu.advanced.copyLink')}</button></div>
-      <div class="battlefield-card"><div class="battlefield-art"><span>${t('playMenu.advanced.battlefieldBriefing')}</span></div>
-        <div class="battlefield-copy"><div class="battlefield-id"><i data-map-role>${t('playMenu.advanced.battlefieldHostSelectable')}</i><b data-map-name>${t('playMenu.advanced.battlefieldRandom')}</b>
-          <span>${t('playMenu.advanced.battlefieldDesc')}</span></div>
-          <div class="field battlefield-picker"><span class="field-label" id="cot-room-map-label">${t('playMenu.advanced.battlefield')}</span>
+      <div class="battlefield-card"><div class="battlefield-art"></div>
+        <div class="battlefield-copy">          <div class="field battlefield-picker"><span class="field-label" id="cot-room-map-label">${t('playMenu.advanced.battlefield')}</span>
             <div class="menu-select menu-select--map" data-control="map" data-value="random">
               <button class="menu-select-trigger" data-select-trigger type="button" aria-haspopup="listbox" aria-expanded="false"
                 aria-controls="cot-room-map-list" aria-labelledby="cot-room-map-label cot-room-map-value">
@@ -976,9 +961,7 @@ export function createPlayMenu({
     option.setAttribute('aria-selected', 'false');
     option.dataset.value = map.id;
     option.dataset.label = map.name;
-    option.dataset.meta = map.id === 'random'
-      ? t('playMenu.map.battlefieldsCount', { count: battlefieldCount })
-      : t('playMenu.map.battlefield');
+    option.dataset.meta = map.id === 'random' ? t('playMenu.map.battlefieldsCount', { count: battlefieldCount }) : '';
     option.dataset.thumb = map.thumb || '';
     const thumb = document.createElement('span');
     thumb.className = `menu-select-thumb${map.thumb ? '' : ' is-random'}`;
@@ -988,9 +971,12 @@ export function createPlayMenu({
     copy.className = 'menu-select-option-copy';
     const name = document.createElement('b');
     name.textContent = map.name;
-    const detail = document.createElement('small');
-    detail.textContent = option.dataset.meta;
-    copy.append(name, detail);
+    copy.append(name);
+    if (option.dataset.meta) {
+      const detail = document.createElement('small');
+      detail.textContent = option.dataset.meta;
+      copy.append(detail);
+    }
     option.append(thumb, copy);
     mapList.appendChild(option);
   }
@@ -999,6 +985,8 @@ export function createPlayMenu({
     id: initialSelection.specId,
     name: getVehicleName(initialSelection.specId),
   }];
+  // the lobby names each player's tank from the menu's own roster before the host's lookup
+  const selectableVehicleNames = new Map(selectableVehicles.map((vehicle) => [vehicle.id, vehicle.name]));
   for (const vehicle of selectableVehicles) {
     const option = document.createElement('button');
     option.className = 'menu-select-option';
@@ -1054,8 +1042,6 @@ export function createPlayMenu({
   const operationDropdown = createCustomSelect(operationSelect);
   const battlefieldArt = requiredElement<HTMLElement>(root, '.battlefield-art');
   battlefieldArt.appendChild(createRandomMapMosaic(maps, { showCount: true }));
-  const battlefieldName = requiredElement<HTMLElement>(root, '[data-map-name]');
-  const battlefieldRole = requiredElement<HTMLElement>(root, '[data-map-role]');
   const playersEl = requiredElement<HTMLElement>(root, '.players');
   const codeEl = requiredElement<HTMLElement>(root, '.code');
   const readyBtn = requiredElement<HTMLButtonElement>(root, '[data-action="ready"]');
@@ -1618,15 +1604,11 @@ export function createPlayMenu({
     operationDropdown.refresh();
     mapSelect.value = operation?.mapId ?? next.mapId;
     const selectedMap = mapById.get(operation?.mapId ?? next.mapId) || mapById.get('random') || maps[0];
-    battlefieldName.textContent = selectedMap?.name || next.mapId || t('playMenu.map.random');
     const randomBattlefield = selectedMap?.id === 'random' || !selectedMap?.thumb;
     battlefieldArt.classList.toggle('is-random', randomBattlefield);
     battlefieldArt.style.backgroundImage = randomBattlefield
       ? 'none'
       : `url("${String(selectedMap?.hero || selectedMap?.thumb || '').replace(/"/g, '%22')}")`;
-    battlefieldRole.textContent = t(role === 'host'
-      ? 'playMenu.map.hostSelectable'
-      : 'playMenu.map.selectedByHost');
     battlefieldCard.classList.toggle('guest', role !== 'host');
     sizeSelect.value = String(next.teamSize || 1);
     createSizeSelect.value = sizeSelect.value;
@@ -1702,14 +1684,10 @@ export function createPlayMenu({
     icon.addEventListener('error', markMissingVehicleIcon, { once: true });
     const vehicleCopy = document.createElement('span');
     vehicleCopy.className = 'vehicle-copy';
-    try { vehicleName.textContent = getVehicleName(player.specId) || player.specId; }
-    catch (_) { vehicleName.textContent = player.specId; }
-    const vehicleCamo = document.createElement('span');
-    vehicleCamo.className = 'vehicle-camo';
-    vehicleCamo.textContent = t('playMenu.lobby.camouflage', {
-      name: getCamoName(player.camo || 'factory'),
-    });
-    vehicleCopy.append(vehicleName, vehicleCamo);
+    const listed = selectableVehicleNames.get(player.specId);
+    try { vehicleName.textContent = listed || getVehicleName(player.specId) || player.specId; }
+    catch (_) { vehicleName.textContent = listed || player.specId; }
+    vehicleCopy.append(vehicleName);
     vehicle.append(icon, vehicleCopy);
     return vehicle;
   }
@@ -1750,7 +1728,7 @@ export function createPlayMenu({
       : next.gameMode === 'frontline_assault'
         ? t('playMenu.note.frontlineFill')
         : t('playMenu.note.botFill', { size: next.teamSize || 1 });
-    note.textContent = `${t(mode === 'lan' ? 'playMenu.note.lan' : 'playMenu.note.private')} ${fillNote}`;
+    note.textContent = fillNote;
   }
 
   function renderLobby(next: SerializedLobby): void {

@@ -5,17 +5,22 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { entryOf, manualEntries, markedText, searchManual, snippetOf } from './docsSearch.ts';
+import { entriesOf, entryOf, markedText, searchManual, snippetOf } from './docsSearch.ts';
+import { manualRecords } from './searchIndex.ts';
 import { TOPIC_ORDER, topics } from './topics.ts';
+import { richSections } from './chapters/index.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
 // the index: one entry per chapter and one per section, each linking into its chapter
-const entries = manualEntries();
-const sections = TOPIC_ORDER.reduce((sum, slug) => sum + topics[slug].sections.length, 0);
+const entries = entriesOf(manualRecords());
+// the shipped index is this one, in the reader's locale (tools/docs-prerender.mjs writes it; topics.selftest fails on a stale one)
+assert.deepEqual(JSON.parse(readFileSync(join(ROOT, 'src/docs/searchIndex.en-US.json'), 'utf8')), manualRecords(), 'the English index is current');
+// a chapter built from the game's tables indexes its own sections (src/docs/chapters)
+const sections = TOPIC_ORDER.reduce((sum, slug) => sum + (richSections(slug)?.length ?? topics[slug].sections.length), 0);
 assert.equal(entries.length, TOPIC_ORDER.length + sections, 'every chapter and every section is in the index');
 for (const entry of entries) {
-  assert.match(entry.href, /^\/docs\/[a-z]+(?:#topic-section-\d+)?$/, `${entry.href}: a chapter or one of its sections`);
+  assert.match(entry.href, /^\/docs\/[a-z]+(?:#[a-z][a-z0-9-]*)?$/, `${entry.href}: a chapter or one of its sections`);
   assert.ok(entry.title && entry.chapter && !entry.text.includes('`'), `${entry.href}: titled, chaptered, plain text`);
 }
 

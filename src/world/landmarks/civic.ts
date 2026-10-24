@@ -34,15 +34,26 @@ export const townHall: LandmarkBuilder = (ctx) => {
   const bays = Math.max(3, Math.round(W / 4.2)), bw = W / bays;
   const arches: ArchHole[] = Array.from({ length: bays }, (_, i) => ({ u: -W / 2 + bw * (i + 0.5), w: bw * 0.66, y0: plinth, spring: plinth + g - bw * 0.33 - 0.5, form: 'round' as const }));
   sink.placed(0, 0, 0, D / 2 - 0.4, () => archedSlab(sink, wall, -W / 2, W / 2, plinth, plinth + g, 0.8, arches, { ends: true, top: false }));
-  const back = archedBody(sink, render, 0, -arcadeD / 2, W - 1.0, D - arcadeD - 0.6, plinth, plinth + g, {
+  // (2026-10-24, the Frontier follow-ups; the blind critic on the Rathaus' side: "the stone gable wall is one blank,
+  // paler slab with no openings, and there is a visible seam or step where it meets the brick corner pier, so it reads
+  // as a separate box pushed against the arcade") the hall's ground floor in the arcade's own masonry, flush with the
+  // arcade's ends and with the storeys over it at the sides and the back — one stone base under the framed hall, as at
+  // Alsfeld — and lit by a window a bay at the back and one in each end
+  const hallD = D - arcadeD - 0.3, hallZ = -(arcadeD + 0.3) / 2;
+  const groundWin = (u: number): ArchHole => ({ u, w: 1.1, y0: plinth + 1.1, spring: plinth + 2.9, form: 'segmental', rise: 0.2 });
+  const groundHoles: Partial<Record<FaceName, ArchHole[]>> = {
     front: [{ u: 0, w: 1.6, y0: plinth, spring: plinth + 2.6, form: 'round' }],
-  }, 0.3);
+    back: Array.from({ length: bays }, (_, i) => groundWin(W / 2 - bw * (i + 0.5))),
+    left: hallD >= 4.2 ? [groundWin(0)] : [],
+    right: hallD >= 4.2 ? [groundWin(0)] : [],
+  };
+  const back = archedBody(sink, wall, 0, hallZ, W, hallD, plinth, plinth + g, groundHoles, 0.3);
   doorLeaf(sink, back.front, { u: 0, w: 1.6, y0: plinth, spring: plinth + 2.6, form: 'round' }, 0.3);
   // the arcade's own interior (gauntlet wave 156: "its ground-floor arches are filled with cream render, so the market
   // hall reads as a painted facade"): the hall's front in the arcade's shadow (the render's own bucket under the kit
   // weathering's occlusion), the boarded ceiling on its beams under the floor above, and the market's stalls under it
   const zIn = D / 2 - 0.8, zWall = back.front.origin[2] + 0.02;
-  for (const [u0, u1] of [[-(W - 1.0) / 2, -1.0], [1.0, (W - 1.0) / 2]] as const) {
+  for (const [u0, u1] of [[-(W / 2 - 0.6), -1.0], [1.0, W / 2 - 0.6]] as const) {
     sink.quad(render, facePoint(back.front, u0, plinth, 0.02), facePoint(back.front, u1, plinth, 0.02), facePoint(back.front, u1, plinth + g, 0.02),
       facePoint(back.front, u0, plinth + g, 0.02), { decor: true, shade: 0.5 });
   }
@@ -97,6 +108,11 @@ export const townHall: LandmarkBuilder = (ctx) => {
       archWindow(sink, upper[name], h, 0.28, FRAME_WHITE, lit(ctx, 0.35));
       if (!framed) archSurround(sink, wall, upper[name], h, 0.16, 0.06);
     }
+  }
+  // the ground floor's windows in the masonry's own reveals (after the storeys': their draws stand where they did; a
+  // dressed surround each took the plain hall past its triangle budget)
+  for (const name of ['back', 'left', 'right'] as const) {
+    for (const h of groundHoles[name] ?? []) archWindow(sink, back[name], h, 0.3, FRAME_WHITE, lit(ctx, 0.35));
   }
   // its age (round 2: the pieces stood "pristine with no weathering"): the render fallen in patches — the clay infill
   // under it in a framed hall, the masonry in a rendered one — and the rain run down from the eaves and the sills

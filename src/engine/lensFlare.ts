@@ -225,6 +225,13 @@ export class LensFlarePass extends Pass {
   /** post.ts: clear the shared light target first when the shafts pass did not run this frame. */
   clearTarget = false;
   /**
+   * The post warm's switch (2026-10-24, perf-245; postLazyPasses.ts warmGated): the flare draws with no colour whatever
+   * the sun's visibility, so its pipeline is made under the loading cover, not at the first frame the sun comes into
+   * view. The light target is left cleared.
+   */
+  private warming = false;
+  warmGated(on: boolean): void { this.warming = on; }
+  /**
    * Scene Studio film renderer only: ease the visibility by this step (seconds)
    * instead of the wall-clock gap, so offline frames are deterministic. Null
    * (every live path) keeps the measured cadence.
@@ -336,7 +343,7 @@ export class LensFlarePass extends Pass {
         renderer.setClearColor(0x000000, 0);
         renderer.clear(true, false, false);
       }
-      if (!this.active) return;
+      if (!this.active && !this.warming) return;
       // 1 × 1 eased visibility (runs even at target 0 so the flare fades out through the same easing)
       const vu = this.visMaterial.uniforms;
       const aspect = this.camera.aspect || 16 / 9;
@@ -351,15 +358,20 @@ export class LensFlarePass extends Pass {
       renderer.setRenderTarget(this.visCur);
       this.quad.render(renderer);
       const swap = this.visPrev; this.visPrev = this.visCur; this.visCur = swap;
-      if (!(this.target > 0.001)) return;
+      if (!(this.target > 0.001) && !this.warming) return;
       const fu = this.flareMaterial.uniforms;
       fu.tVis.value = this.visPrev.texture;
       fu.uSun.value.copy(this.sun.uv);
       fu.uAspect.value = aspect;
-      fu.uColor.value.set(this.color.r * LENS_FLARE_GAIN, this.color.g * LENS_FLARE_GAIN, this.color.b * LENS_FLARE_GAIN);
+      const gain = this.warming ? 0 : LENS_FLARE_GAIN;
+      fu.uColor.value.set(this.color.r * gain, this.color.g * gain, this.color.b * gain);
       this.quad.material = this.flareMaterial;
       renderer.setRenderTarget(this.output);
       this.quad.render(renderer);
+      if (this.warming) {
+        renderer.setClearColor(0x000000, 0);
+        renderer.clear(true, false, false);
+      }
     } finally {
       renderer.autoClear = oldAutoClear;
       renderer.setRenderTarget(previousTarget);
