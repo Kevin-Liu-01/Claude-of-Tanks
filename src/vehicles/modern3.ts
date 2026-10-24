@@ -4055,8 +4055,9 @@ export function buildBMP2(P: Modern3BuilderPort) {
   // intake mushrooms (r3b instrument: the ref's tall 1.75 cap reads at
   // x +1.10..1.14 ONLY — engine right; the left deck is flat 1.62-1.66):
   // one tall RIGHT mushroom on the exact ref column, a flush LEFT pot.
-  P.add('hull', cylY(0.05, 0.065, 0.084, 12), 1.125, 1.676, 0.696);             // stem into the cap (20 mm short of it before: owner 2026-10-19 float sweep)
-  P.add('hull', cylY(0.05, 0.05, 0.022, 12), 1.125, 1.725, 0.696);              // cap top 1.736 (ref col 1.754)
+  // (release 240: 11 cm forward, out of the sweep of the turret's rear corners, 1.23 m off the ring's axis at 1.72)
+  P.add('hull', cylY(0.05, 0.065, 0.084, 12), 1.125, 1.676, 0.806);             // stem into the cap (20 mm short of it before: owner 2026-10-19 float sweep)
+  P.add('hull', cylY(0.05, 0.05, 0.022, 12), 1.125, 1.725, 0.806);              // cap top 1.736 (ref col 1.754)
   P.add('hull', cylY(0.05, 0.065, 0.02, 12), -1.16, 1.639, 0.696);
   P.add('hull', cylY(0.05, 0.05, 0.012, 12), -1.16, 1.655, 0.696);
   P.add('hullDark', box(0.28, 0.02, 0.85), 1.13, 1.634, 1.326);                  // exhaust louvre
