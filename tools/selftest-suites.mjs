@@ -1278,6 +1278,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/deviceDiag.selftest.mjs',
     'src/engine/sceneBlackWatchdog.selftest.mjs',
     'src/engine/sceneBlackWatchdogAsync.selftest.mjs',
+    'src/engine/sceneProbeTarget.selftest.mjs',
     'src/engine/deviceEnvRadiance.selftest.mjs',
     'src/engine/renderScalePolicy.selftest.mjs',
     'src/engine/shadowStability.selftest.mjs',

@@ -113,6 +113,8 @@ interface DeploymentWarmTrace {
   phase: 'transition';
   stages: Record<string, number>;
   enemyVisualsDeferred?: boolean;
+  /** (transitions-249) Waits, between tasks, for the queued program links ahead of the shadow and post warms (ms). */
+  deploymentLinkWaitMs?: number[];
   /** (ac130-fx-228 r2) gunship airframes staged for the covered compile */
   gunshipAirframes?: number;
   /** (ac130-fx-228 r2) the mode objective presentations built for the covered compile */
@@ -188,6 +190,10 @@ export interface SoloBattleDeploymentRuntimeOptions {
   prepareAtmosphere?(): Promise<void>;
   prepareNightLighting?(): Promise<void>;
   runSceneWatchdog(assertCurrent: () => void): Promise<SceneWatchdogResult | void>;
+  /** True leaves the opponents to the revealed countdown's warm instead of the cover. */
+  deferOpponentVisuals?(): boolean;
+  /** Wait, between tasks, until the renderer's queued program links are in (bounded by the owner). */
+  awaitProgramLinks?(yieldForBudget: WorkYielder): Promise<void>;
   getGeneration(): number;
   advanceGeneration(): number;
   setPending(pending: boolean): void;
@@ -654,10 +660,22 @@ export function createSoloBattleDeploymentRuntime(
         requireCurrent(generation);
         mark('allyVisuals');
 
-        // Hidden opponents cannot participate in the first revealed frame.
-        // The deferred warm owner streams the same exact builders during the
-        // visible deployment countdown, before control is released.
-        trace.enemyVisualsDeferred = true;
+        // (2026-10-24, transitions-249) Opponents are built here, hidden, under the cover. The deferred warm owner
+        // streamed them in the revealed countdown at its 6 ms frame budget, and the count held at 3 until every one was
+        // built: 10.1-10.8 s on desktop and 41-44 s on a 4x phone, where the cover builds the same seven in about 3.5 s
+        // and 10 s. Hidden opponents still cannot appear in the first revealed frame; the countdown's stream finds them
+        // built and releases its hold at once. deferOpponentVisuals keeps them for the countdown.
+        if (options.deferOpponentVisuals?.()) {
+          trace.enemyVisualsDeferred = true;
+        } else {
+          await battleVisuals.stream(
+            (entity) => (entity as DeploymentEntity).team === 'enemy',
+            guardedCoveredYield,
+            (fraction) => battleLoad.progress(0.93 + fraction * 0.035, 'Painting vehicles'),
+            true,
+          );
+          trace.enemyVisualsDeferred = false;
+        }
         requireCurrent(generation);
         mark('enemyVisuals');
 
@@ -709,6 +727,17 @@ export function createSoloBattleDeploymentRuntime(
         // programs do not belong to this covered first-frame preparation.
         trace.deploymentUniformsDeferred = true;
         battleLoad.progress(0.969, 'Priming deployment shadows');
+        // (2026-10-24, transitions-249) the shadow and post warms draw: a draw binds programs the earlier submissions
+        // queued, and their links finish here between tasks instead of inside one draw's task (a 3.4 s frozen frame in a
+        // cold desktop entry's post pass once the tank draws stopped absorbing the queue)
+        const awaitProgramLinks = options.awaitProgramLinks;
+        const awaitLinks = async (wait: NonNullable<typeof awaitProgramLinks>): Promise<void> => {
+          const startedAt = now();
+          await wait(guardedCoveredYield);
+          requireCurrent(generation);
+          (trace.deploymentLinkWaitMs ??= []).push(Math.round(now() - startedAt));
+        };
+        if (awaitProgramLinks) await awaitLinks(awaitProgramLinks);
         trace.deploymentShadowWarm = await getDeploymentShadowWarm().prime(guardedCoveredYield);
         requireCurrent(generation);
         mark('shadowMaps');
@@ -746,6 +775,7 @@ export function createSoloBattleDeploymentRuntime(
         // (deferredCombatWarmRuntime), as it did de facto on every main entry probed (the covered warm missed its link
         // budget before reaching this stage). Nine programs off the covered link queue (the 10-15 census, Urban).
         trace.visionProgramsDeferred = true;
+        if (awaitProgramLinks) await awaitLinks(awaitProgramLinks);
         trace.deploymentPostWarm = await post.warmFirstFrame(() => guardedCoveredYield(true));
         requireCurrent(generation);
         mark('postPasses');

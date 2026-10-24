@@ -4,12 +4,12 @@
   "pages": {
     "game": {
       "requests": 130,
-      "raw": 4011326,
-      "gzip": 1237906,
-      "brotli": 1045276,
+      "raw": 4013993,
+      "gzip": 1238839,
+      "brotli": 1046106,
       "inlineCss": 4318,
-      "entryRaw": 849673,
-      "entryBrotli": 234084
+      "entryRaw": 851260,
+      "entryBrotli": 234623
     },
     "home": {
       "requests": 8,
@@ -27,9 +27,9 @@
     },
     "gallery": {
       "requests": 76,
-      "raw": 2522982,
-      "gzip": 765210,
-      "brotli": 644000,
+      "raw": 2523733,
+      "gzip": 765412,
+      "brotli": 644189,
       "inlineCss": 846
     },
     "notFound": {
@@ -41,12 +41,12 @@
     },
     "cn": {
       "requests": 131,
-      "raw": 4161097,
-      "gzip": 1290941,
-      "brotli": 1088187,
+      "raw": 4163764,
+      "gzip": 1291874,
+      "brotli": 1089017,
       "inlineCss": 4742,
-      "entryRaw": 849673,
-      "entryBrotli": 234084
+      "entryRaw": 851260,
+      "entryBrotli": 234623
     }
   }
 }

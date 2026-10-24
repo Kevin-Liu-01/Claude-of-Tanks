@@ -677,12 +677,110 @@ export async function runSceneWatchdogNow(
   return result;
 }
 
+// (2026-10-24, transitions-249) The scene probes draw in the production scene target's format. Three shares their
+// programs with the HDR scene pass (both draw linear into a target), but the GPU also builds a pipeline per program,
+// vertex layout, blend and attachment format (ANGLE's Metal and D3D backends): the RGBA8, single-sample probe built one
+// for every draw of the scene that no frame ever used, all on the GPU's one queue. A cold desktop battle entry's covered
+// watchdog waited 13 s for its fence (timed out; the sync retry then read in 51 ms), a 4x phone's 10.6 s, and the
+// Garage's boot probe queued the same work ahead of its first frames. Drawn in the scene target's colour type, samples
+// and depth, the probe's pipelines are the ones the battle's frames use anyway; one small copy draw brings the result
+// into the RGBA8 target that the readback and its calibrated bands read (both clamp linear colour to [0, 1]).
+type SceneProbeTargetSource = () => THREE.WebGLRenderTarget | null | undefined;
+let sceneProbeTargetSource: SceneProbeTargetSource | null = null;
+
+/** The production scene target the scene probes mirror (post's scene AA target); null keeps the RGBA8 probe. */
+export function setSceneProbeTargetSource(source: SceneProbeTargetSource | null): void {
+  sceneProbeTargetSource = source;
+}
+
+interface SceneProbeTargets {
+  /** The scene draws here. */
+  draw: THREE.WebGLRenderTarget;
+  /** The RGBA8 target read back: `draw` itself when no production target is configured. */
+  read: THREE.WebGLRenderTarget;
+  /** Copy `draw` into `read`, leaving `read` bound; nothing when they are one target. */
+  copy(renderer: THREE.WebGLRenderer): void;
+  dispose(): void;
+}
+
+interface SceneProbeCopyPass {
+  scene: THREE.Scene;
+  camera: THREE.OrthographicCamera;
+  source: { value: THREE.Texture | null };
+}
+
+// one per page: its one small program links once, whatever the number of probes
+let sceneProbeCopy: SceneProbeCopyPass | null = null;
+function sceneProbeCopyPass(): SceneProbeCopyPass {
+  if (sceneProbeCopy) return sceneProbeCopy;
+  const source = { value: null as THREE.Texture | null };
+  const material = new THREE.ShaderMaterial({
+    name: 'SceneProbeCopy',
+    uniforms: { tSource: source },
+    vertexShader: 'varying vec2 vUv;\nvoid main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: 'uniform sampler2D tSource;\nvarying vec2 vUv;\nvoid main() { gl_FragColor = texture2D(tSource, vUv); }',
+    depthTest: false,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), material);
+  quad.frustumCulled = false;
+  const scene = new THREE.Scene();
+  scene.add(quad);
+  sceneProbeCopy = { scene, camera: new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1), source };
+  return sceneProbeCopy;
+}
+
+function createSceneProbeTargets(width: number, height: number): SceneProbeTargets {
+  let production: THREE.WebGLRenderTarget | null | undefined = null;
+  try { production = sceneProbeTargetSource?.(); } catch { production = null; }
+  const productionType = production?.texture?.type;
+  if (!production || productionType === undefined
+    || (productionType === THREE.UnsignedByteType && !(production.samples > 0))) {
+    const single = new THREE.WebGLRenderTarget(width, height, { depthBuffer: true });
+    return { draw: single, read: single, copy() {}, dispose: () => single.dispose() };
+  }
+  const productionDepth = production.depthTexture;
+  let depthTexture: THREE.DepthTexture | undefined;
+  if (productionDepth) {
+    depthTexture = new THREE.DepthTexture(width, height, productionDepth.type);
+    depthTexture.format = productionDepth.format;
+  }
+  const draw = new THREE.WebGLRenderTarget(width, height, {
+    type: productionType,
+    format: production.texture.format as THREE.PixelFormat,
+    samples: production.samples,
+    depthBuffer: production.depthBuffer,
+    stencilBuffer: production.stencilBuffer,
+    ...(depthTexture ? { depthTexture } : {}),
+  });
+  const read = new THREE.WebGLRenderTarget(width, height, { depthBuffer: false });
+  return {
+    draw,
+    read,
+    copy(renderer) {
+      const pass = sceneProbeCopyPass();
+      pass.source.value = draw.texture;
+      try {
+        renderer.setRenderTarget(read);
+        renderer.render(pass.scene, pass.camera);
+      } finally {
+        pass.source.value = null;
+      }
+    },
+    dispose() {
+      try { draw.dispose(); depthTexture?.dispose(); }
+      finally { read.dispose(); }
+    },
+  };
+}
+
 function createSceneBandProbe(
   renderer: THREE.WebGLRenderer,
   measurements?: SceneBandTiming[],
   nightRadianceScale = 1,
 ): SceneBandProbe {
-  const rt = new THREE.WebGLRenderTarget(64, 36, { depthBuffer: true });
+  const targets = createSceneProbeTargets(64, 36);
   const buf = new Uint8Array(64 * 22 * 4);
   let disposed = false;
   return {
@@ -696,7 +794,7 @@ function createSceneBandProbe(
       if (timing && measurements) measurements.push(timing);
       try {
         timedSceneProbeStep(timing, 'setupMs', () => {
-          renderer.setRenderTarget(rt);
+          renderer.setRenderTarget(targets.draw);
           renderer.clear();
         });
         recordSceneProbePrograms(timing, renderer, 'programsBeforeRender');
@@ -704,7 +802,8 @@ function createSceneBandProbe(
           scene, radianceScale, () => withSceneProbeLayers(camera, () => renderer.render(scene, camera))));
         recordSceneProbePrograms(timing, renderer, 'programsAfterRender');
         timedSceneProbeStep(timing, 'readbackMs', () => {
-          renderer.readRenderTargetPixels(rt, 0, 0, 64, 22, buf);
+          targets.copy(renderer);
+          renderer.readRenderTargetPixels(targets.read, 0, 0, 64, 22, buf);
         });
         return timedSceneProbeStep(timing, 'reduceMs', () => {
           let sum = 0;
@@ -726,7 +825,7 @@ function createSceneBandProbe(
       const prevFace = renderer.getActiveCubeFace();
       const prevMip = renderer.getActiveMipmapLevel();
       try {
-        renderer.setRenderTarget(rt);
+        renderer.setRenderTarget(targets.draw);
         withSceneProbeLayers(camera, () => renderer.compile(scene, camera));
         return true;
       } finally {
@@ -736,7 +835,7 @@ function createSceneBandProbe(
     dispose() {
       if (disposed) return;
       disposed = true;
-      rt.dispose();
+      targets.dispose();
     },
   };
 }
@@ -1043,7 +1142,7 @@ async function measureSceneBandAsync(
 ): Promise<{ before: number; rendererRestored: boolean }> {
   const timing: SceneBandTiming | undefined = measurements ? { kind: 'async', startTime: sceneProbeClock() } : undefined;
   if (timing) measurements!.push(timing);
-  const rt = new THREE.WebGLRenderTarget(64, 36, { depthBuffer: true });
+  const targets = createSceneProbeTargets(64, 36);
   const pixels = new Uint8Array(64 * 22 * 4);
   let readback: Promise<void> | undefined;
   let before = 0;
@@ -1054,7 +1153,7 @@ async function measureSceneBandAsync(
     const mip = renderer.getActiveMipmapLevel();
     try {
       timedSceneProbeStep(timing, 'setupMs', () => {
-        renderer.setRenderTarget(rt);
+        renderer.setRenderTarget(targets.draw);
         renderer.clear();
       });
       recordSceneProbePrograms(timing, renderer, 'programsBeforeRender');
@@ -1062,9 +1161,12 @@ async function measureSceneBandAsync(
         scene, nightRadianceScale, () => withSceneProbeLayers(camera, () => renderer.render(scene, camera))));
       recordSceneProbePrograms(timing, renderer, 'programsAfterRender');
       if (timing) timing.readbackSteps = {};
-      readback = timedSceneProbeStep(timing, 'enqueueMs', () => beginRgba8Readback(
-        renderer.getContext() as WebGL2RenderingContext, 64, 22, pixels, { timings: timing?.readbackSteps },
-      ));
+      readback = timedSceneProbeStep(timing, 'enqueueMs', () => {
+        targets.copy(renderer);
+        return beginRgba8Readback(
+          renderer.getContext() as WebGL2RenderingContext, 64, 22, pixels, { timings: timing?.readbackSteps },
+        );
+      });
     } finally {
       timedSceneProbeStep(timing, 'restoreMs', () => {
         try { renderer.setRenderTarget(target, face, mip); }
@@ -1100,7 +1202,7 @@ async function measureSceneBandAsync(
   } finally {
     try { await readback?.catch(() => {}); }
     finally {
-      rt.dispose();
+      targets.dispose();
       finishSceneProbeTiming(timing);
     }
   }

@@ -13,7 +13,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
   night = false, failNight = false, pauseNight = false, cancelCover = false, failCover = false,
   compileSlices = 2, cancelCompile = false, lateCancelCompile = '', lateCancelWarm = '',
   streamedCadence = null, terrainPrograms = '', vegetationPrograms = '', failPost = false,
-  watchdog = 'healthy', pauseWatchdog = false, failRevealCover = false, panel = '' } = {}) {
+  watchdog = 'healthy', pauseWatchdog = false, failRevealCover = false, panel = '', deferOpponents = false, linkWaits = false } = {}) {
   const calls = [];
   let releaseAtmosphere;
   const atmosphereGate = new Promise((resolve) => { releaseAtmosphere = resolve; });
@@ -207,6 +207,8 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
         assert.equal(predicate(entity), true);
         calls.push([hidden ? 'enemies' : 'allies']);
         onProgress?.(1);
+        // the opponents stage hidden (detached): no late actor joins the light set
+        if (hidden) return 1;
         if (!hidden && failAllies) throw new Error('allied warm failed');
         const ally = { id: 'late-ally', team: 'player', specId: 'late-ally',
           visual: { root: new THREE.Group() }, combat: { destroyed: false } };
@@ -279,6 +281,8 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
         after: null, rescued: false, stage: null,
         ...(watchdog === 'black' || watchdog === 'unrestorable' ? { failed: true } : {}) };
     },
+    ...(deferOpponents ? { deferOpponentVisuals: () => true } : {}),
+    ...(linkWaits ? { awaitProgramLinks: async (yieldForBudget) => { calls.push(['links']); await yieldForBudget(true); } } : {}),
     getGeneration: () => generation,
     advanceGeneration: () => ++generation,
     setPending: (value) => { pending = value; },
@@ -406,7 +410,7 @@ function createStreamedCadence(cancelAt = '') {
 
 {
   const cadence = createStreamedCadence();
-  const harness = createHarness({ streamedCadence: cadence });
+  const harness = createHarness({ streamedCadence: cadence, deferOpponents: true });
   const warmed = await harness.runtime.warm(Promise.resolve());
   assert.equal(warmed.revealPrimed, true);
   assert.equal(cadence.tasks.find(row => row.privateId)?.atMs, 12,
@@ -429,9 +433,23 @@ function createStreamedCadence(cancelAt = '') {
     'all seven hidden opponents remain deferred, not dropped or eagerly built');
 }
 
+// transitions-249: by default the seven hidden opponents are built under the cover too, after the allies, and staged
+// detached
+{
+  const cadence = createStreamedCadence();
+  const harness = createHarness({ streamedCadence: cadence });
+  const warmed = await harness.runtime.warm(Promise.resolve());
+  assert.equal(warmed.revealPrimed, true);
+  const opponents = cadence.game.tanks.filter(entity => entity.team === 'enemy');
+  assert.equal(opponents.length, 7);
+  assert.ok(opponents.every(entity => entity.visual && entity.visual.root.parent === null),
+    'every opponent is built under the cover and left detached until the battle spots it');
+  assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.enemyVisualsDeferred, false);
+}
+
 for (const [cancelAt, admitted] of [['before', 2], ['task', 3], ['frame', 8]]) {
   const cadence = createStreamedCadence(cancelAt);
-  const harness = createHarness({ streamedCadence: cadence });
+  const harness = createHarness({ streamedCadence: cadence, deferOpponents: true });
   cadence.cancel = () => { harness.generation++; };
   await assert.rejects(harness.runtime.warm(Promise.resolve()), /superseded/);
   assert.equal(cadence.checkpoints.length, admitted,
@@ -521,11 +539,31 @@ for (const failPost of [false, true]) for (const watchdog of ['healthy', 'black'
   assert.ok(!h.calls.some(([name]) => name === 'reveal' || name === 'watchdogSettled'));
   h.disposeWarmResources();
 }
-assert.equal(order.includes('enemies'), false,
-  'hidden opponents are deferred until the visible deployment countdown');
+assert.ok(order.indexOf('allies') < order.indexOf('enemies') && order.indexOf('enemies') < order.indexOf('terrain'),
+  'hidden opponents stream under the cover, after the allies and before the terrain grid (transitions-249)');
+// transitions-249: the queued links are awaited between tasks before the shadow warm and before the post warm
+{
+  const h = createHarness({ linkWaits: true });
+  await h.runtime.warm(Promise.resolve());
+  const names = h.calls.map(([name]) => name);
+  const links = names.flatMap((name, index) => name === 'links' ? [index] : []);
+  assert.equal(links.length, 2, 'two link waits');
+  assert.ok(links[0] < names.indexOf('shadowWarm') && names.indexOf('shadowWarm') < links[1]
+    && links[1] < names.indexOf('postWarm'), 'one before the shadow warm, one before the post warm');
+  assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.deploymentLinkWaitMs.length, 2);
+  h.disposeWarmResources();
+}
+// deferOpponentVisuals leaves them to the revealed countdown's warm
+{
+  const h = createHarness({ deferOpponents: true });
+  await h.runtime.warm(Promise.resolve());
+  assert.equal(h.calls.some(([name]) => name === 'enemies'), false, 'deferred opponents are not streamed under the cover');
+  assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.enemyVisualsDeferred, true);
+  h.disposeWarmResources();
+}
 assert.equal(happyTrace.done, true);
 assert.equal(happyTrace.doneBeforeRollout, true);
-assert.equal(happyTrace.enemyVisualsDeferred, true);
+assert.equal(happyTrace.enemyVisualsDeferred, false);
 assert.equal(happyTrace.deploymentUniformsDeferred, true);
 assert.equal(happyOpeningWarm.covered, true);
 assert.equal(happyTrace.deploymentProgramSubmission.submissionSlices, 3);
