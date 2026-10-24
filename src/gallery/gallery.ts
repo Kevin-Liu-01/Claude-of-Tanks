@@ -542,7 +542,7 @@ const STATS: readonly StatDef[] = Object.freeze([
   { key: 'turretTraverse', label: 'gallery.stat.turretTraverse', icon: 'turretRing', unit: 'gallery.unit.degS', better: 1, digits: 0, group: 'firepower', value: (r) => r.metrics.turretTraverseDegS },
   { key: 'depression', label: 'gallery.stat.depression', icon: 'moveBack', unit: 'gallery.unit.deg', better: 1, digits: 0, group: 'firepower', value: (r) => gunArcs.get(r.id)?.depression ?? 0 },
   { key: 'elevation', label: 'gallery.stat.elevation', icon: 'moveForward', unit: 'gallery.unit.deg', better: 1, digits: 0, group: 'firepower', value: (r) => gunArcs.get(r.id)?.elevation ?? 0 },
-  { key: 'hp', label: 'gallery.dossier.spec.hp', icon: 'shield', unit: '', better: 1, digits: 0, group: 'protection', value: (r) => r.metrics.hp },
+  { key: 'hp', label: 'gallery.dossier.spec.hp', icon: 'shield', unit: 'gallery.unit.hitPoints', better: 1, digits: 0, group: 'protection', value: (r) => r.metrics.hp },
   { key: 'ke', label: 'gallery.stat.ke', icon: 'layerArmor', unit: 'gallery.unit.mm', better: 1, digits: 0, group: 'protection', value: (r) => r.metrics.bestKeMm },
   { key: 'ce', label: 'gallery.stat.ce', icon: 'armorFlashlight', unit: 'gallery.unit.mm', better: 1, digits: 0, group: 'protection', value: (r) => r.metrics.bestCeMm },
   { key: 'speed', label: 'gallery.stat.speed', icon: 'speed', unit: 'gallery.unit.kmh', better: 1, digits: 0, group: 'mobility', value: (r) => r.metrics.topSpeedKmh },
@@ -965,7 +965,7 @@ function renderOverview(record: GalleryRecord): void {
     ['gun', formatNumber(record.metrics.caliberMm), unit('gallery.unit.mm'), t('gallery.stat.caliber')],
     ['team', formatNumber(record.metrics.crewCount), unit('gallery.unit.crew'), t('gallery.stat.crew')],
     ['track', formatNumber(record.metrics.weightTons, { maximumFractionDigits: 1 }), unit('gallery.unit.t'), t('gallery.dossier.spec.weight')],
-    ['shield', formatNumber(record.metrics.hp), '', t('gallery.dossier.spec.hp')],
+    ['shield', formatNumber(record.metrics.hp), unit('gallery.unit.hitPoints'), t('gallery.dossier.spec.hp')],
   ].map(([glyph, value, suffix, label]) => `<div title="${esc(label)}">${icon(glyph as IconId, { size: 16 })}`
     + `<b class="num">${value}${suffix}</b><span class="sr-only">${esc(label)}</span></div>`).join('');
   const rival = rivalId ? recordById.get(rivalId) : null;
@@ -1064,17 +1064,19 @@ function renderVersus(record: GalleryRecord): void {
   if (!rival) { $('#versusMid').innerHTML = ''; $('#versusRival').innerHTML = ''; return; }
   rivalSelect.value = rival.id;
   $('#versusRival').innerHTML = versusSide(rival, true);
-  const rows: Array<[IconId, string, number, number, number]> = [
-    ['penetration', 'gallery.stat.penetration', record.metrics.bestPenetrationMm, rival.metrics.bestPenetrationMm, 1],
-    ['reload', 'gallery.stat.reload', record.metrics.reloadS, rival.metrics.reloadS, -1],
-    ['shield', 'gallery.dossier.spec.hp', record.metrics.hp, rival.metrics.hp, 1],
+  // every number carries its unit (247 round 2): penetration in mm, reload in seconds, hit points
+  const rows: Array<[IconId, string, string, number, number, number]> = [
+    ['penetration', 'gallery.stat.penetration', 'gallery.unit.mm', record.metrics.bestPenetrationMm, rival.metrics.bestPenetrationMm, 1],
+    ['reload', 'gallery.stat.reload', 'gallery.unit.s', record.metrics.reloadS, rival.metrics.reloadS, -1],
+    ['shield', 'gallery.dossier.spec.hp', 'gallery.unit.hitPoints', record.metrics.hp, rival.metrics.hp, 1],
   ];
-  $('#versusMid').innerHTML = rows.map(([glyph, label, own, other, better]) => {
+  $('#versusMid').innerHTML = rows.map(([glyph, label, unitKey, own, other, better]) => {
     const ownBetter = (own - other) * better > 0;
     const otherBetter = (other - own) * better > 0;
     const digits = glyph === 'reload' ? 1 : 0;
-    return `<div title="${esc(t(label))}"><em class="num${ownBetter ? ' w' : ''}">${formatNumber(own, { maximumFractionDigits: digits })}</em>`
-      + `${icon(glyph, { size: 14, label: t(label) })}<em class="num${otherBetter ? ' w' : ''}">${formatNumber(other, { maximumFractionDigits: digits })}</em></div>`;
+    const value = (n: number, wins: boolean): string => `<em class="num${wins ? ' w' : ''}">${formatNumber(n, { maximumFractionDigits: digits })}`
+      + `<small>${esc(t(unitKey))}</small></em>`;
+    return `<div title="${esc(t(label))}">${value(own, ownBetter)}${icon(glyph, { size: 14, label: t(label) })}${value(other, otherBetter)}</div>`;
   }).join('');
   void drawTrueScale($<HTMLCanvasElement>('#versusScale'), [
     { id: record.id, lengthM: record.dimensions.overallLengthM, tone: '--ink-1', facing: 'right' },
