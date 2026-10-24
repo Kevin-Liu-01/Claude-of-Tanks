@@ -40,6 +40,8 @@ const PLANE_EPS_M = 1e-4;
 /** Pieces under this area (m²) are clipping slivers, not armour. */
 const MIN_PIECE_AREA_M2 = 2e-5;
 const COINCIDENT_DOT = 0.9995;
+/** How far past its bounds a cell's face planes still count as struck (m). */
+const BOUNDS_MARGIN_M = 1e-3;
 
 const dot = (a: readonly number[], b: readonly number[]): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 
@@ -105,7 +107,10 @@ const planeKey = (n: readonly number[], c: number): string =>
  * triangles, so the drawn surface is the tested one even where the two disagree.
  */
 function cellShape(cell: SkinCell): CellShape {
-  const [x0, y0, z0] = cell.min, [x1, y1, z1] = cell.max;
+  // traceTank's bounds only reject a ray (intersectAABB): the entry is the face planes', so a face plane a hair past
+  // the bounds is still struck there (Chieftain Mk10's cast stock: a roof plane 7 µm over its bounds' top).
+  const [x0, y0, z0] = cell.min.map((value) => value - BOUNDS_MARGIN_M);
+  const [x1, y1, z1] = cell.max.map((value) => value + BOUNDS_MARGIN_M);
   const corner = (x: number, y: number, z: number): SkinPoint => [x ? x1 : x0, y ? y1 : y0, z ? z1 : z0];
   let polygons: Array<{ plane: Plane | null; plate: unknown; points: SkinPoint[] }> = [
     [corner(1, 0, 0), corner(1, 1, 0), corner(1, 1, 1), corner(1, 0, 1)],
@@ -151,7 +156,7 @@ function cellShape(cell: SkinCell): CellShape {
     unique.sort((a, b) => angle(a) - angle(b));
     if (vectorArea(unique) > 1e-12) polygons.push({ plane, plate: face.plate, points: unique });
   }
-  // the bounds are half-planes too (intersectAABB rejects first)
+  // the (grown) bounds are half-planes too: intersectAABB rejects a ray that misses them
   planes.push({ n: [1, 0, 0], c: -x1 }, { n: [-1, 0, 0], c: x0 }, { n: [0, 1, 0], c: -y1 }, { n: [0, -1, 0], c: y0 },
     { n: [0, 0, 1], c: -z1 }, { n: [0, 0, -1], c: z0 });
   return {
