@@ -394,8 +394,10 @@ const FILM_FORMATS = Object.freeze([['landscape', '16:9'], ['portrait', '9:16'],
 const formatRatio = (format: ProductionFormat): string => FILM_FORMATS.find(([id]) => id === format)?.[1] ?? '16:9';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 /** The palette's shortcut as this platform writes it. */
-const PALETTE_KEY = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K';
-const UNDO_KEY = PALETTE_KEY === '⌘K' ? '⌘Z' : 'Ctrl Z';
+// the keys in words: the shipped faces carry no command-key glyph, so a Mac reads Cmd (the type system's coverage rule)
+const ON_MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+const PALETTE_KEY = ON_MAC ? 'Cmd K' : 'Ctrl K';
+const UNDO_KEY = ON_MAC ? 'Cmd Z' : 'Ctrl Z';
 /** The Studio's shortcuts a focused panel lets through to the runtime. */
 function studioShortcut(e: KeyboardEvent): boolean {
   if (e.altKey) return false;
@@ -2048,7 +2050,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     toggleQueue(false);
   });
   const presetName = (preset: QueuePreset): string => t(`studio.ws.queue.preset.${preset.id}`);
-  /** "≈ 1.4 min · ≈ 22 MB" in the page's language. */
+  /** "about 1.4 min · about 22 MB" in the page's language. */
   function costText(estimate: QueueJob['estimate']): string {
     const time = estimate.seconds < 90 ? t('studio.ws.queue.seconds', { n: Math.max(1, Math.round(estimate.seconds)) })
       : t('studio.ws.queue.minutes', { n: (estimate.seconds / 60).toFixed(1) });
