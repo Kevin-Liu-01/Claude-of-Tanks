@@ -488,7 +488,14 @@
    "r7c: foe0 turret -41.27 -> -6.04; hero flash 6955 -> 6900 ms; ricochet removed (3 effects); debris at 6320 ms scale 0.7; debris at 5620 ms scale 0.7",
    "r7d: foe turret -6.04 -> 3.96 (10° off centre, on the hero's front corner)",
    "r7e: lens [232.33, 5, 153.24] fov 54.16 -> [224.96, 13.51, 156.77] fov 54",
-   "r7f: lens {\"pos\":[233.08,4,153.24],\"lookAt\":[231.22,-2.1,163.07],\"fov\":56.16,\"rollDeg\":9.8}"
+   "r7f: lens {\"pos\":[233.08,4,153.24],\"lookAt\":[231.22,-2.1,163.07],\"fov\":56.16,\"rollDeg\":9.8}",
+   "r7g: lens {\"pos\":[233.64,6,150.29],\"lookAt\":[229.84,-2.1,164.56],\"fov\":60.16,\"rollDeg\":9.8}",
+   "r7i: the r7g lens; the two small HE bursts between the tanks (5.6 s and 6.3 s, their debris and dust) moved to 6.65 and 6.78 s, so the still at 7 s catches fresh blasts, not their grown smoke over the T-80BV",
+   "r7k-base: camera and cameraVariants and effects back to before r7g (the owner wanted the frame shifted up, not the eye raised)",
+   "r7k: tilted up 4.58° (a frame shift up); lens {\"pos\":[233.08,4,153.24],\"lookAt\":[231.29,-1.32,163.55],\"fov\":56.16,\"rollDeg\":9.8}"
+  ],
+  "notes": [
+   "r7j 10-23: the near-miss explosions 18-23 moved past the 7000 ms still (7150-7330 ms): at 6650-6830 they bloomed over the T-80BV at the still."
   ]
  },
  "camera": {
@@ -499,9 +506,9 @@
    153.24
   ],
   "lookAt": [
-   231.22,
-   -2.1,
-   163.07
+   231.29,
+   -1.32,
+   163.55
   ],
   "fov": 56.16,
   "rollDeg": 9.8,
@@ -516,9 +523,9 @@
     153.24
    ],
    "lookAt": [
-    231.22,
-    -2.1,
-    163.07
+    231.29,
+    -1.32,
+    163.55
    ],
    "fov": 56.16,
    "rollDeg": 9.8,

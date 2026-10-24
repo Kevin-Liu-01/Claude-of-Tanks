@@ -765,6 +765,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `${uiIconSVG('freeLook', 20)}<span>${t('watch.entry')}</span></button>` +
     `<button type="button" data-battle-launch data-ui-sound="deploy">` +
     `<span class="cot-deploy-go">${uiIconSVG('deploy', 20)}<span>${t('garage.battle')}</span></span>` +
+    // the launch's estimate and the key hints load with deployScreen.ts (972c9575b3); the extra </div> closes Watch's .cot-deploy-acts
     `<span class="cot-deploy-end">${keycap(t('garage.key.enter'))}</span></button></div></div>` +
     `</aside></div></div>` +
     `<button class="cot-multiplayer-entry" type="button" aria-haspopup="dialog">` +

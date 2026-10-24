@@ -38,6 +38,9 @@ import { ensureStyle } from './styleLayers.ts';
 import { iconUrl, maskIcon } from './icons.ts';
 import { killSourceIdentity } from './killSourceIdentity.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { ICON_IDS } from './icons/spriteIndex.ts';
+import { moduleName } from './moduleRegistry.ts';
+import { layoutBeats, type BattleBeat, type BattleSide, type PlacedBeat } from './battleBeats.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { t, formatNumber } from './i18n.ts';
@@ -124,6 +127,15 @@ export interface EndScreenSummary {
   brains?: { readonly enemy: string; readonly allies: string } | null;
   /** Medals and achievement tiers this battle earned (serviceRecord.ts). */
   awards?: BattleAwards | null;
+  /** The battle's timeline (battleBeats.ts): the player's spot, kills, objectives, losses and death, by battle time. */
+  beats?: readonly BattleBeat[] | null;
+  /**
+   * A watched battle (watch-mode-243): no human side. The head names the winning side, the rosters are Alpha (allies)
+   * and Bravo (enemies), the ridden tank's row (isPlayer) is only highlighted, and the beats are the battle's own.
+   */
+  watched?: boolean;
+  /** A watched battle's mode score by side; absent where the battle is scored by its kills. */
+  score?: { readonly alpha: number; readonly bravo: number } | null;
 }
 
 interface EndScreenRuntime {
@@ -469,6 +481,19 @@ export function summarizeTeam(rows: TeamSummaryInput[] = []): TeamSummary {
   }, { total: 0, alive: 0, kills: 0, damage: 0 });
 }
 
+/**
+ * A watched battle's head: the winning side (the verdict reads Alpha's seat, so a victory is Alpha's and a defeat
+ * Bravo's) and the score by side, the mode's where it keeps one, else each side's kills.
+ */
+export function watchedResult(
+  result: EndScreenResult,
+  sum: Pick<EndScreenSummary, 'allies' | 'enemies' | 'score'>,
+): { readonly winner: BattleSide | null; readonly alpha: number; readonly bravo: number } {
+  const winner = result === 'victory' ? 'alpha' : result === 'defeat' ? 'bravo' : null;
+  if (sum.score) return { winner, alpha: sum.score.alpha, bravo: sum.score.bravo };
+  return { winner, alpha: summarizeTeam(sum.allies).kills, bravo: summarizeTeam(sum.enemies).kills };
+}
+
 export function damageComparisonPercent(damage: RuntimeValue, maxDamage: RuntimeValue): number {
   const value = Math.max(0, Number(damage) || 0);
   const ceiling = Math.max(0, Number(maxDamage) || 0);
@@ -514,6 +539,26 @@ function requiredDescendant<T extends Element>(root: ParentNode, selector: strin
   if (!result) throw new Error(`end screen requires ${selector}`);
   return result;
 }
+
+function vehicleNation(specId: string | null | undefined): string {
+  if (!specId) return '';
+  try {
+    const spec: RuntimeValue = getSpec(specId);
+    return isRecord(spec) && typeof spec.nation === 'string' ? spec.nation : '';
+  } catch {
+    return '';
+  }
+}
+
+/** A flag's seat; fillFlags() loads the flag art (flags.ts, its SVG assets) once the screen is up. */
+const flagSeat = (specId: string | null | undefined): string => {
+  const nation = vehicleNation(specId);
+  return nation ? `<span class="fl" data-nation="${escapeHtml(nation)}"></span>` : '';
+};
+
+/** A module's glyph from the shared set (the two tracks share one); anything else draws the damage glyph. */
+const moduleGlyph = (id: string): string =>
+  /^track[LR]$/.test(id) ? 'track' : (ICON_IDS as readonly string[]).includes(id) ? id : 'damage';
 
 function vehicleName(specId: string | null | undefined): string {
   if (!specId) return '';
@@ -619,6 +664,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
 
   let seq = 0; // entrance stagger index
   const nextI = () => String(seq++);
+  // a watched battle's report (show() sets it): the sides by name, no "You", the battle's own line
+  let watchedView = false;
+  const sideName = (side: BattleSide): string => t(`endScreen.side.${side}`);
+  const sideFlag = (side: BattleSide): string => `<span class="fg ${side}">${uiIconSVG('modeFlag', 24, 'currentColor')}</span>`;
 
   function tile(
     parent: HTMLElement,
@@ -777,8 +826,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const vehicle = result.aircraft ? killSourceIdentity('ac130')?.label ?? '' : vehicleName(result.specId);
     const details: string[] = [vehicle, ...rosterRowDetails(result, revives)];
     row.innerHTML =
-      '<span class="si"></span>' +
-      `<span class="identity"><span class="nm">${result.isPlayer ? `<b class="you">${t('endScreen.you')}</b>` : ''}${escapeHtml(result.name || result.id)}</span>` +
+      `${result.aircraft ? '' : flagSeat(result.specId)}<span class="si"></span>` +
+      `<span class="identity"><span class="nm">${result.isPlayer && !watchedView ? `<b class="you">${t('endScreen.you')}</b>` : ''}${escapeHtml(result.name || result.id)}</span>` +
       `<span class="veh">${details.filter(Boolean).map(escapeHtml).join(' · ')}</span></span>` +
       '<span class="output"><span class="ov"></span><span class="obar" aria-hidden="true"><i></i></span></span>' +
       `<span class="st">${uiIconSVG(result.dead ? 'skull' : 'check', 16)}</span>`;
@@ -858,13 +907,27 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const kick = el('div', 'es-kick es-in', hero);
     kick.style.setProperty('--i', nextI());
     kick.textContent = t('endScreen.kicker');
+    if (watchedView) {
+      renderWatchedHead(hero, result, sum);
+      return;
+    }
     const bannerClass = result === 'victory' ? 'v' : result === 'defeat' ? 'd' : 'n';
     const bannerText = result === 'victory' ? t('endScreen.victory')
       : result === 'defeat' ? t('endScreen.defeat')
         : result === 'draw' ? t('endScreen.draw') : t('endScreen.battleOver');
-    const banner = el('div', `es-ban ${bannerClass}`, hero);
+    // the direction's head (11-end-screen .head h1): the result as the display headline, the score beside it, the sides'
+    // kills, own solid and enemy hollow in the team inks
+    const headline = el('div', 'es-headline', hero);
+    const banner = el('div', `es-ban ${bannerClass}`, headline);
     banner.textContent = bannerText;
     host.dataset.banner = bannerText;
+    if (sum.allies.length || sum.enemies.length) {
+      const own = fmtN(summarizeTeam(sum.allies).kills), enemy = fmtN(summarizeTeam(sum.enemies).kills);
+      const score = el('div', 'es-score', headline);
+      score.setAttribute('role', 'img');
+      score.setAttribute('aria-label', t('endScreen.scoreAria', { own, enemy }));
+      score.innerHTML = `<span class="o">${own}</span><span class="e">${enemy}</span>`;
+    }
     el('div', 'es-rule', hero);
     const sub = el('div', 'es-sub es-in', hero);
     sub.style.setProperty('--i', nextI());
@@ -880,6 +943,37 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     }
     renderReportMetadata(hero, sum);
     if (sum.campaign) renderCampaignDebrief(hero, sum.campaign);
+  }
+
+  /**
+   * A watched battle's head (watch-mode-243): nobody won or lost, so the headline is the winning side's flag and name
+   * (a draw says so), the score is by side in the battle's inks (Alpha solid, Bravo hollow, as the HUD drew them), and
+   * the final blow and the meta strip follow; no line about a player's tank.
+   */
+  function renderWatchedHead(hero: HTMLElement, result: EndScreenResult, sum: EndScreenSummary): void {
+    const { winner, alpha, bravo } = watchedResult(result, sum);
+    const headline = el('div', 'es-headline', hero);
+    const banner = el('div', `es-ban w ${winner ?? 'n'}`, headline);
+    const word = winner ? t('endScreen.watch.wins', { side: sideName(winner) })
+      : result === 'draw' ? t('endScreen.draw') : t('endScreen.battleOver');
+    banner.innerHTML = `${winner ? sideFlag(winner) : ''}<span>${escapeHtml(word)}</span>`;
+    host.dataset.banner = word;
+    host.dataset.winner = winner ?? 'none';
+    const score = el('div', 'es-score', headline);
+    score.setAttribute('role', 'img');
+    score.setAttribute('aria-label', t('endScreen.watch.scoreAria', { alpha: fmtN(alpha), bravo: fmtN(bravo) }));
+    score.innerHTML = `<span class="o">${fmtN(alpha)}</span><span class="e">${fmtN(bravo)}</span>`;
+    host.dataset.score = `${Math.round(alpha)}:${Math.round(bravo)}`;
+    el('div', 'es-rule', hero);
+    if (sum.finalBlow) {
+      const blow = el('div', 'es-blow es-in', hero);
+      blow.style.setProperty('--i', nextI());
+      blow.innerHTML = `${uiIconSVG(sum.finalBlow.cause === 'ammorack' ? 'ammoRack' : sum.finalBlow.cause === 'ram' ? 'killRam' : 'skull', 18)}<span>${escapeHtml(finalBlowLine(sum.finalBlow))}</span>`;
+      host.dataset.finalBlow = `${sum.finalBlow.cause}:${sum.finalBlow.attacker || ''}>${sum.finalBlow.target}`;
+    } else {
+      delete host.dataset.finalBlow;
+    }
+    renderReportMetadata(hero, sum);
   }
 
   function renderReportMetadata(hero: HTMLElement, sum: EndScreenSummary): void {
@@ -1010,6 +1104,100 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       `${tiers.map(({def,tier})=>`<button type="button" class="aw tier" data-achievement-tip="${def!.id}" data-award-tier="${tier}" aria-label="${attr(t(`service.achievement.${def!.id}.name`))}">${achievementSVG(def!,tier,60)}<b>${t(`service.achievement.${def!.id}.name`)} ${['','I','II','III'][tier]}</b></button>`).join('')}</div>`;
   }
 
+  /**
+   * The battle's timeline (the direction's 11-end-screen .beat): one line from the start to the result, a diamond at
+   * each beat (the enemy's ink for what the player lost), the label above it (the beat's glyph; a kill's flag,
+   * silhouette and callsign) and its battle time under it; battleBeats.ts layoutBeats() picks the labels.
+   */
+  function renderBattleBeats(result: EndScreenResult, sum: EndScreenSummary): void {
+    const beats = layoutBeats(sum.beats ?? [], sum.timeS, watchedView);
+    if (!beats.length) return;
+    const strip = el('section', 'es-beat es-in', host);
+    strip.setAttribute('aria-label', t('endScreen.beat.aria'));
+    strip.style.setProperty('--i', nextI());
+    el('i', 'ln', strip);
+    const rows = [...sum.enemies, ...sum.allies];
+    for (const beat of beats) {
+      const mark = el('div', `ev k-${beat.kind}${beat.side ? ` s-${beat.side}` : ''}`, strip);
+      mark.style.left = `${(beat.x * 100).toFixed(2)}%`;
+      if (beat.labelled) mark.insertAdjacentHTML('beforeend', `<span class="lb">${beatLabel(beat, rows)}</span>`);
+      else mark.title = beatText(beat, rows);
+      el('i', `d${beatIsLoss(beat) ? ' loss' : ''}`, mark);
+      if (beat.labelled) el('span', 't num', mark).textContent = fmtTime(beat.t);
+      if (beat.kind === 'kill' && beat.labelled) {
+        const silhouette = mark.querySelector<HTMLElement>('.si');
+        if (silhouette) maskIcon(silhouette, beat.specId || beat.id || '', 'side_silhouette', 'currentColor');
+      }
+    }
+    const end = el('div', 'ev end', strip);
+    end.style.left = '100%';
+    if (watchedView) {
+      // the line ends on the winning side's flag and name (a draw's mark otherwise), in that side's ink
+      const { winner } = watchedResult(result, sum);
+      if (winner) end.classList.add(`s-${winner}`);
+      end.insertAdjacentHTML('beforeend', `<span class="lb">${winner ? sideFlag(winner) : uiIconSVG('statDraw', 16)}` +
+        `<span class="tx">${escapeHtml(winner ? sideName(winner) : t('garage.record.draw'))}</span></span>`);
+      el('i', 'd', end);
+      el('span', 't num', end).textContent = fmtTime(sum.timeS);
+      host.dataset.beats = String(beats.length);
+      return;
+    }
+    const glyph = result === 'victory' ? 'statVictory' : result === 'defeat' ? 'statDefeat' : 'statDraw';
+    // the result in sentence case, as the service record names it (the headline's own copy is set in capitals)
+    const word = result === 'victory' ? t('garage.record.victory') : result === 'defeat' ? t('garage.record.defeat')
+      : result === 'draw' ? t('garage.record.draw') : host.dataset.banner || '';
+    end.insertAdjacentHTML('beforeend', `<span class="lb">${uiIconSVG(glyph, 16)}<span class="tx">${escapeHtml(word)}</span></span>`);
+    el('i', `d${result === 'defeat' ? ' loss' : ''}`, end);
+    el('span', 't num', end).textContent = fmtTime(sum.timeS);
+    host.dataset.beats = String(beats.length);
+  }
+
+  function beatIsLoss(beat: PlacedBeat): boolean {
+    // a battle beat carries its side's ink instead (endScreenPresentation.css .s-alpha / .s-bravo)
+    if (beat.side) return false;
+    return beat.kind === 'loss' || beat.kind === 'death' || (beat.own === false);
+  }
+
+  function beatText(beat: PlacedBeat, rows: readonly EndScreenTeamRow[]): string {
+    switch (beat.kind) {
+      case 'kill': {
+        const row = rows.find((candidate) => String(candidate.id) === beat.id);
+        return row?.name || vehicleName(beat.specId) || t('endScreen.enemyVehicle');
+      }
+      case 'zone': return beat.side ? t('endScreen.beat.sideZone', { side: sideName(beat.side), zone: beat.label ?? '' })
+        : t(beat.own ? 'endScreen.beat.zoneTaken' : 'endScreen.beat.zoneLost', { zone: beat.label ?? '' });
+      case 'flag': return beat.side ? t('endScreen.beat.sideFlag', { side: sideName(beat.side) })
+        : t(beat.own ? 'endScreen.beat.flagTaken' : 'endScreen.beat.flagLost');
+      case 'goal': return beat.side ? t('endScreen.beat.sideGoal', { side: sideName(beat.side) })
+        : t(beat.own ? 'endScreen.beat.goal' : 'endScreen.beat.goalConceded');
+      case 'loss': return moduleName(beat.id ?? '');
+      case 'death': return t('endScreen.beat.destroyed');
+      case 'spot': return t('endScreen.beat.spot');
+    }
+  }
+
+  function beatLabel(beat: PlacedBeat, rows: readonly EndScreenTeamRow[]): string {
+    const glyph = beat.kind === 'kill' ? 'autoAim' : beat.kind === 'zone' ? 'modeZones' : beat.kind === 'flag' ? 'modeFlag'
+      : beat.kind === 'goal' ? 'modeTurbo' : beat.kind === 'loss' ? moduleGlyph(beat.id ?? '') : beat.kind === 'death' ? 'skull'
+        : 'optics';
+    const identity = beat.kind === 'kill' ? `${flagSeat(beat.specId)}<span class="si"></span>` : '';
+    return `${uiIconSVG(glyph, 16)}${identity}<span class="tx">${escapeHtml(beatText(beat, rows))}</span>`;
+  }
+
+  /** The flags of this render (roster rows, kill beats): flags.ts loads with its art once, after the screen is up. */
+  let flagsPass = 0;
+  function fillFlags(): void {
+    const pass = String(++flagsPass);
+    host.dataset.flagsPass = pass;
+    if (!host.querySelector('.fl[data-nation]')) return;
+    void import('./flags.ts').then(({ flagIconHTML }) => {
+      if (host.dataset.flagsPass !== pass) return; // a later report took the screen
+      for (const seat of host.querySelectorAll<HTMLElement>('.fl[data-nation]')) {
+        seat.innerHTML = flagIconHTML(seat.dataset.nation || '', 16, 12);
+      }
+    }, () => {});
+  }
+
   function renderKillList(
     parent: HTMLElement,
     result: EndScreenResult,
@@ -1082,12 +1270,16 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     renderKillList(detail, result, sum.kills);
   }
 
+  // the teams' titles: yours and the enemy's, or in a watched battle the sides by name
+  const allyTitle = (): string => watchedView ? sideName('alpha') : t('endScreen.team.ally');
+  const enemyTitle = (): string => watchedView ? sideName('bravo') : t('endScreen.team.enemy');
+
   function renderTeamComparison(parent: HTMLElement, sum: EndScreenSummary): void {
     const allies = summarizeTeam(sum.allies), enemies = summarizeTeam(sum.enemies);
     const comparison = el('section', 'es-comparison', parent);
     comparison.setAttribute('aria-label', t('endScreen.comparison'));
     const head = el('div', 'es-comparison-head', comparison);
-    head.innerHTML = `<b>${t('endScreen.team.ally')}</b><span>${t('endScreen.comparison')}</span><b>${t('endScreen.team.enemy')}</b>`;
+    head.innerHTML = `<b>${allyTitle()}</b><span>${t('endScreen.comparison')}</span><b>${enemyTitle()}</b>`;
     for (const [label, left, right] of [
       [t('endScreen.tile.dealt'), allies.damage, enemies.damage],
       [t('endScreen.tile.kills'), allies.kills, enemies.kills],
@@ -1112,12 +1304,12 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const scoreboard = el('div', 'es-scoreboard', teams);
     scoreboard.innerHTML =
       '<div class="es-score-side ally"><div class="es-score-copy">' +
-      `<div class="sl">${uiIconSVG('team', 16)}<span>${t('endScreen.team.ally')}</span></div>` +
+      `<div class="sl">${watchedView ? sideFlag('alpha') : uiIconSVG('team', 16)}<span>${allyTitle()}</span></div>` +
       `<div class="ss">${t('endScreen.team.survived', { alive: allyStats.alive, total: allyStats.total, damage: fmtN(allyStats.damage) })}</div>` +
       `</div><div class="sn">${fmtN(allyStats.kills)}</div></div>` +
       '<div class="es-score-dash">—</div>' +
       `<div class="es-score-side foe"><div class="sn">${fmtN(enemyStats.kills)}</div>` +
-      `<div class="es-score-copy"><div class="sl"><span>${t('endScreen.team.enemy')}</span>${uiIconSVG('team', 16)}</div>` +
+      `<div class="es-score-copy"><div class="sl"><span>${enemyTitle()}</span>${watchedView ? sideFlag('bravo') : uiIconSVG('team', 16)}</div>` +
       `<div class="ss">${t('endScreen.team.survived', { alive: enemyStats.alive, total: enemyStats.total, damage: fmtN(enemyStats.damage) })}</div>` +
       '</div></div>';
     renderTeamComparison(teams, sum);
@@ -1125,8 +1317,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const maxDamage = Math.max(0, ...sum.allies.map((row) => Number(row.dmg) || 0),
       ...sum.enemies.map((row) => Number(row.dmg) || 0));
     const revives = !!sum.revives;
-    renderTeamRoster(rosters, t('endScreen.team.ally'), sum.allies, false, maxDamage, revives);
-    renderTeamRoster(rosters, t('endScreen.team.enemy'), sum.enemies, true, maxDamage, revives);
+    renderTeamRoster(rosters, allyTitle(), sum.allies, false, maxDamage, revives);
+    renderTeamRoster(rosters, enemyTitle(), sum.enemies, true, maxDamage, revives);
     host.dataset.revives = revives ? '1' : '0';
     host.dataset.rosterAllies = String(sum.allies.length);
     host.dataset.rosterEnemies = String(sum.enemies.length);
@@ -1195,10 +1387,29 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       host.textContent = '';
 
       const res = result || '';
+      watchedView = !!sum.watched;
       host.classList.remove('result-victory', 'result-defeat', 'result-draw');
       host.classList.add(`result-${res === 'victory' || res === 'defeat' || res === 'draw' ? res : 'draw'}`);
+      host.classList.toggle('watched', watchedView);
+      if (!watchedView) {
+        delete host.dataset.winner;
+        delete host.dataset.score;
+      }
 
       renderReportHero(res, sum);
+      if (watchedView) {
+        // a watched battle has no personal debrief: the report is the battle's, its sides and the ridden tank's row
+        const report = el('div', 'es-report es-in', host);
+        report.style.setProperty('--i', nextI());
+        renderTeamDebrief(report, sum);
+        renderBattleBeats(res, sum);
+        renderEndActions(sum);
+        fillFlags();
+        host.classList.add('show');
+        host.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('cot-si-report');
+        return;
+      }
 
       // Summary and complete teams share one readable panel, keeping rewards prominent.
       const tabs = el('div', 'es-view-tabs', host);tabs.setAttribute('role','tablist');tabs.setAttribute('aria-label',t('endScreen.reportViews'));
@@ -1222,7 +1433,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
 
       renderEndRematch(report);
       if (rematchPanel) report.prepend(rematchPanel);
+      renderBattleBeats(res, sum);
       renderEndActions(sum);
+      fillFlags();
 
       host.classList.add('show');
       host.setAttribute('aria-hidden', 'false');

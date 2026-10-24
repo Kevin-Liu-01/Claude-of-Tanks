@@ -284,7 +284,7 @@ assert.ok(schedulerBinding.pos < replacementCall.pos,
 assert.match(studioSource, /hud\?\.setMode\?\.\('hidden'\)/,
   'a pristine direct Studio visit must not require the battle-only HUD runtime');
 assert.match(mainSource,
-  /clearBattle: \(\) => \{[\s\S]{0,500}currentHud\(\)\?\.setMode\?\.\('hidden'\)/,
+  /clearBattle: \([^)]*\) => \{[\s\S]{0,500}currentHud\(\)\?\.setMode\?\.\('hidden'\)/, // 242: clearBattle({ keepScreens })
   'direct Studio exit cleanup must not require the battle-only HUD runtime');
 assert.match(mainSource,
   /function veilHud\(on(?::\s*boolean)?\)[\s\S]{0,180}battleHudRuntime\?\.veil\(on\)/,

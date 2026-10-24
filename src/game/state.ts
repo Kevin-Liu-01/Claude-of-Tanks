@@ -1281,7 +1281,8 @@ function attachBattleCommander(game: SoloGameState): void {
   // the proving ground's targets have no brain to command
   const teams: TeamId[] = game.ruleset.provingGround ? []
     : brains.opponent === 'jev' ? (brains.allies ? ['enemy', 'player'] : ['enemy']) : [];
-  if (teams.length) {
+  // a transport Jev halted this session (out of credit, a TypeSafe 429, the budget spent) leaves the classic brain
+  if (teams.length && !jevTransport?.halted) {
     jevTransport ??= createJevFetchTransport({ url: jevEndpointUrl() });
     game.jev = createJevCommander({ transport: jevTransport, teams });
     game._jevView = createJevBattleView(game);
@@ -3227,8 +3228,10 @@ function emitBattleEnded(game: SoloGameState, bus: EventBus): void {
     timeLimitS: game.ruleset.timeLimitS,
     alliesLost: game.tanks.filter((entity) =>
       entity.team === 'player' && entity.id !== verdictSeat(game)?.id && entity.combat.destroyed).length,
-    // a watched battle (WATCH_RULES): no record reads it (matchRuleset.ts battleKeepsRecords)
+    // a watched battle (WATCH_RULES): no record reads it (matchRuleset.ts battleKeepsRecords); its report heads with the
+    // mode's score by side, as the HUD showed it (a battle scored by kills, or the Horde's waves, reads its kills)
     watch: !!game.ruleset.watch,
+    score: game.ruleset.watch ? watchedScore(game) : null,
     // campaign slice 4 (2026-09-12): the campaign record needs the mode and the line state
     gameMode: game.gameMode,
     line: game.matchModeState?.line ? { ...game.matchModeState.line } : null,
@@ -3248,6 +3251,12 @@ function emitBattleEnded(game: SoloGameState, bus: EventBus): void {
       isPlayer: game.player?.id === entity.id,
     })),
   });
+}
+
+function watchedScore(game: SoloGameState): { alpha: number; bravo: number } | null {
+  const mode = game.matchModeState;
+  if (!mode || mode.id === 'standard' || mode.horde) return null;
+  return { alpha: Math.round(mode.score.alpha || 0), bravo: Math.round(mode.score.bravo || 0) };
 }
 
 function settleBattleResult(

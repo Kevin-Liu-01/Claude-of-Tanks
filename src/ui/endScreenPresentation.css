@@ -2,27 +2,44 @@
 @layer surfaces{
 body[data-cot-width] .cot-es.cot-es--record *{box-sizing:border-box;min-width:0}
 /* The debrief keeps result, personal highlights, rewards and team detail distinct. */
-body[data-cot-width] .cot-es.cot-es--record{box-sizing:border-box;justify-content:flex-start;gap:0;padding:clamp(12px,3vh,30px) max(16px,calc((100vw - 1280px)/2));overflow:hidden;pointer-events:auto;background:linear-gradient(90deg,#070e16f0,#070e1690 65%,#070e16d9),linear-gradient(0deg,#070e16 0%,#070e1633 100%),var(--report-map,none) center/cover no-repeat #080f16}
+/* The debrief on the Premiere direction's end screen (bui01/src/pages/11-end-screen.html): the battle still under the
+   direction's grade, the result as the display headline with the score beside it in the team inks, the battle's facts as
+   chips, the report on the HUD's plates, the actions as the kit's buttons. Every live part stays (the views, awards, the
+   comparison, the rosters, the rematch room, the campaign). */
+body[data-cot-width] .cot-es.cot-es--record{box-sizing:border-box;justify-content:flex-start;gap:0;padding:clamp(12px,3vh,30px) max(16px,calc((100vw - 1280px)/2));overflow:hidden;pointer-events:auto;background:var(--battle-end-grade),var(--report-map,none) center 40%/cover no-repeat var(--surface-scene)}
 body[data-cot-width] .cot-es.cot-es--record .es-hero{width:100%;max-width:none;flex:0 0 auto;padding:calc(clamp(12px,3vh,30px) + 8px) 24px;max-height:30dvh;overflow:auto;scrollbar-width:thin}
 body[data-cot-width] .cot-es.cot-es--record :is(.es-kick,.es-ban,.es-sub,.es-meta,.es-blow){text-align:left;justify-content:flex-start;text-indent:0;letter-spacing:normal}
-body[data-cot-width] .cot-es.cot-es--record .es-kick{font-size:13px;letter-spacing:0;color:#98aebb}
-body[data-cot-width] .cot-es.cot-es--record .es-ban{font-size:clamp(34px,5vw,58px);letter-spacing:-.03em;margin:6px 0 0;text-shadow:none}
-body[data-cot-width] .cot-es.cot-es--record .es-ban.v{color:#b8edc6}body[data-cot-width] .cot-es.cot-es--record .es-ban.d{color:#f1b0a6}
+body[data-cot-width] .cot-es.cot-es--record .es-kick{font-size:var(--fs-13);letter-spacing:0;color:var(--ink-3)}
+body[data-cot-width] .cot-es.cot-es--record .es-headline{display:flex;flex-wrap:wrap;align-items:baseline;gap:0 26px}
+body[data-cot-width] .cot-es.cot-es--record .es-ban{margin:0;font:700 clamp(40px,8vw,140px)/.84 var(--font-ui);letter-spacing:var(--track-title);text-shadow:none}
+body[data-cot-width] .cot-es.cot-es--record .es-ban.v{color:var(--accent)}body[data-cot-width] .cot-es.cot-es--record .es-ban.d{color:var(--ink-1)}
+body[data-cot-width] .cot-es.cot-es--record .es-ban.n{color:var(--ink-2)}
+body[data-cot-width] .cot-es.cot-es--record .es-score{display:inline-flex;gap:.3em;font:700 clamp(26px,4.5vw,78px)/.84 var(--font-ui)}
+body[data-cot-width] .cot-es.cot-es--record .es-score .o{color:var(--team-own)}
+body[data-cot-width] .cot-es.cot-es--record .es-score .e{color:transparent;-webkit-text-stroke:var(--hollow-stroke) var(--team-enemy)}
+:lang(zh-CN) body[data-cot-width] .cot-es.cot-es--record .es-score .e{color:var(--team-enemy);-webkit-text-stroke:0}
 body[data-cot-width] .cot-es.cot-es--record .es-rule{display:none}
-body[data-cot-width] .cot-es.cot-es--record .es-sub{margin-top:9px;font-size:14px;color:#a8bccb}
-body[data-cot-width] .cot-es.cot-es--record .es-meta{gap:16px;flex-wrap:wrap;font-size:11px;margin-top:9px;letter-spacing:.05em}
-body[data-cot-width] .cot-es.cot-es--record .es-view-tabs{display:flex;gap:4px;width:100%;flex:0 0 auto;padding:6px;background:#0e171ee8;border:1px solid #8b9ead66;border-bottom:0}
-.cot-es--record .es-view-tabs button{display:flex;justify-content:center;align-items:center;gap:9px;min-height:44px;flex:1;border:1px solid transparent;padding:10px;color:#a6b7c5;background:transparent;font:700 12px var(--font-ui);cursor:pointer}.cot-es--record .es-view-tabs [aria-selected=true]{border-color:#b9893d;background:#3d2c16;color:#ffd18a}.cot-es--record button:focus-visible,.cot-es--record summary:focus-visible{outline:2px solid #ffc96b;outline-offset:-2px}
-body[data-cot-width] .cot-es.cot-es--record .es-report{display:block;width:100%;max-width:none;flex:1 1 auto;min-height:0;height:auto;margin:0;overflow:auto;scrollbar-width:thin;scrollbar-color:#6a8397 #111b25;border:1px solid #8b9ead33;overscroll-behavior:contain}
-body[data-cot-width] .cot-es.cot-es--record .es-debrief{display:block;height:auto;min-height:100%;overflow:visible;border:0;box-shadow:none;background:#0b131bea}
+body[data-cot-width] .cot-es.cot-es--record .es-sub{margin-top:12px;font-size:var(--fs-14);color:var(--ink-2)}
+/* the battle's facts as the direction's chips (11-end-screen .chips) */
+body[data-cot-width] .cot-es.cot-es--record .es-meta{gap:8px;flex-wrap:wrap;margin-top:14px;letter-spacing:normal;text-transform:none}
+body[data-cot-width] .cot-es.cot-es--record .es-meta>span{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 11px;border-radius:var(--chip-radius);
+  background:var(--battle-chip-plate);box-shadow:var(--ring-2);font:500 var(--fs-13)/1 var(--font-body);color:var(--ink-2)}
+body[data-cot-width] .cot-es.cot-es--record .es-meta>span b{font-weight:500;color:var(--ink-1)}
+/* the report's views as the kit's tabs, the report on the HUD's plate */
+body[data-cot-width] .cot-es.cot-es--record .es-view-tabs{display:flex;gap:24px;width:100%;flex:0 0 auto;padding:0 4px;background:none;border:0;border-bottom:1px solid var(--line-2)}
+.cot-es--record .es-view-tabs button{display:flex;justify-content:center;align-items:center;gap:9px;min-height:44px;flex:0 0 auto;border:0;padding:0;color:var(--ink-3);background:transparent;font:600 var(--fs-15)/1 var(--font-ui);cursor:pointer}.cot-es--record .es-view-tabs button{border-bottom:2px solid transparent}.cot-es--record .es-view-tabs [aria-selected=true]{color:var(--ink-1);border-bottom-color:var(--accent)}.cot-es--record button:focus-visible,.cot-es--record summary:focus-visible{outline:2px solid var(--accent-hi);outline-offset:-2px}
+body[data-cot-width] .cot-es.cot-es--record .es-report{display:block;width:100%;max-width:none;flex:1 1 auto;min-height:0;height:auto;margin:0;overflow:auto;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;border:0;border-radius:var(--r1);box-shadow:var(--e2);overscroll-behavior:contain}
+body[data-cot-width] .cot-es.cot-es--record .es-debrief{display:block;height:auto;min-height:100%;overflow:visible;border:0;box-shadow:none;background:var(--glyph-plate)}
 body[data-cot-width] .cot-es.cot-es--record .es-debrief[hidden]{display:none}
 body[data-cot-width] .cot-es.cot-es--record .es-dh{display:none}
-body[data-cot-width] .cot-es.cot-es--record .es-stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:18px 20px;gap:16px;border-bottom:1px solid #8b9ead33}
+body[data-cot-width] .cot-es.cot-es--record .es-stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:18px 20px;gap:6px;border-bottom:1px solid var(--line-1)}
 body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{grid-template-columns:180px repeat(3,minmax(0,1fr))}
 body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card{min-height:100px;background:transparent;border:0;box-shadow:none}
 body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card img{object-fit:contain;width:100%;height:100%;max-height:130px}
-body[data-cot-width] .cot-es.cot-es--record .es-tal{background:none;border:0;padding:12px;gap:8px}
-body[data-cot-width] .cot-es.cot-es--record .es-tal .v{font-size:40px;line-height:1.1;letter-spacing:-.03em}
+/* the tallies as the direction's stat tiles (11-end-screen .me .k): a quiet tile on a hairline, the figure in the display voice */
+body[data-cot-width] .cot-es.cot-es--record .es-tal{background:var(--fill-quiet);border:0;border-radius:var(--r1);box-shadow:var(--ring-1);padding:12px;gap:8px}
+body[data-cot-width] .cot-es.cot-es--record .es-tal .v{font:700 var(--fs-40)/1.1 var(--font-ui);letter-spacing:var(--track-title);color:var(--ink-1)}
+body[data-cot-width] .cot-es.cot-es--record .es-tal.hot .v{color:var(--accent)}
 body[data-cot-width] .cot-es.cot-es--record .es-tal .l{font-size:11px;letter-spacing:.08em}
 body[data-cot-width] .cot-es.cot-es--record .es-tal[data-stat=accuracy] .v::after{content:'%';font-size:max(11px,.55em);margin-left:3px}
 body[data-cot-width] .cot-es.cot-es--record .es-awards{display:block;margin:0;padding:20px;border:0;border-bottom:1px solid #8b9ead33;background:linear-gradient(120deg,#8b601518,transparent 65%)}
@@ -42,7 +59,10 @@ body[data-cot-width] .cot-es.cot-es--record .es-rosters{flex:none;min-height:0;p
 body[data-cot-width] .cot-es.cot-es--record .es-roster-list{overflow:visible;max-height:none;flex:none}
 body[data-cot-width] .cot-es.cot-es--record .es-tr{min-height:56px;height:auto;padding:10px 8px}
 body[data-cot-width] .cot-es.cot-es--record .es-actions{flex:0 0 auto;width:100%;justify-content:flex-end;padding:12px 0 0;margin:0;gap:10px;background:transparent;position:static}
-body[data-cot-width] .cot-es.cot-es--record .cot-es-btn{min-width:160px;min-height:48px;padding:12px 22px;font-size:12px;letter-spacing:.09em}
+/* the actions as the kit's buttons: again in the primary fill, the garage on the secondary hairline */
+body[data-cot-width] .cot-es.cot-es--record .cot-es-btn{min-width:160px;min-height:48px;padding:12px 22px;border-radius:var(--control-radius);font:700 var(--fs-15)/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase}
+body[data-cot-width] .cot-es.cot-es--record .cot-es-btn.prime{border:0;color:var(--btn-primary-ink);background:var(--btn-primary-fill);box-shadow:var(--btn-primary-shadow)}
+body[data-cot-width] .cot-es.cot-es--record .cot-es-btn.ghost{border:0;color:var(--ink-1);background:var(--btn-secondary-fill);box-shadow:var(--ring-3)}
 body[data-cot-width] .cot-es.cot-es--record .es-rematch{flex:0 0 auto;width:100%;max-height:24dvh;overflow:auto;margin:8px 0 0}
 @media(max-width:700px){body[data-cot-width] .cot-es.cot-es--record{padding:10px}.cot-es--record .es-view-tabs button{font-size:11px}body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{grid-template-columns:66px repeat(3,minmax(0,1fr));padding:10px;gap:3px}body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card{min-height:64px}body[data-cot-width] .cot-es.cot-es--record .es-tal{padding:8px 4px}body[data-cot-width] .cot-es.cot-es--record .es-tal .v{font-size:26px}body[data-cot-width] .cot-es.cot-es--record .es-tal .l{font-size:11px}body[data-cot-width] .cot-es.cot-es--record .es-awards{padding:14px}body[data-cot-width] .cot-es.cot-es--record .es-awards .al{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}body[data-cot-width] .cot-es.cot-es--record .es-awards .aw{padding:12px 6px}body[data-cot-width] .cot-es.cot-es--record .es-rosters{grid-template-columns:1fr;padding:14px}body[data-cot-width] .cot-es.cot-es--record .es-best{margin:14px}.cot-es--record .es-combat-details{padding:0 14px 14px}body[data-cot-width] .cot-es.cot-es--record .cot-es-btn{flex:1;min-width:0;padding:10px;font-size:11px}body[data-cot-width] .cot-es.cot-es--record .es-sub{font-size:12px}body[data-cot-width] .cot-es.cot-es--record .es-meta{gap:8px;font-size:11px}body[data-cot-width] .cot-es.cot-es--record .es-scoreboard{padding:12px}}
 @media(max-height:450px) and (orientation:landscape){body[data-cot-width] .cot-es.cot-es--record{padding:8px 12px}body[data-cot-width] .cot-es.cot-es--record .es-hero{padding:0 4px 8px;max-height:25dvh}body[data-cot-width] .cot-es.cot-es--record .es-kick{display:none}body[data-cot-width] .cot-es.cot-es--record .es-ban{font-size:28px;margin:0}body[data-cot-width] .cot-es.cot-es--record .es-sub{margin-top:4px;font-size:11px}body[data-cot-width] .cot-es.cot-es--record .es-meta{font-size:11px;margin-top:4px}body[data-cot-width] .cot-es.cot-es--record .es-actions{padding-top:6px}body[data-cot-width] .cot-es.cot-es--record .cot-es-btn{min-height:44px}body[data-cot-width] .cot-es.cot-es--record .es-awards .al{grid-template-columns:repeat(4,minmax(0,1fr))}body[data-cot-width] .cot-es.cot-es--record .es-rematch{max-height:30dvh}}
@@ -55,12 +75,11 @@ body[data-cot-width] .cot-es.cot-es--record .es-report .es-rematch{max-height:no
 
 @media(max-height:320px) and (orientation:landscape){body[data-cot-width] .cot-es.cot-es--record .es-hero{max-height:32px;padding-bottom:4px}body[data-cot-width] .cot-es.cot-es--record .es-hero :is(.es-sub,.es-meta){display:none}body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{padding:4px 10px}body[data-cot-width] .cot-es.cot-es--record .es-tal{min-height:64px;padding:6px}body[data-cot-width] .cot-es.cot-es--record .es-tal .v,body[data-cot-width] .cot-es.cot-es--record .es-tal.hot .v{font-size:24px}}
 
-/* Battle imagery stays behind the report. Complete steel frames replace one-edge accents. */
+/* The battle's still stays behind the report; the head stands on the grade, unframed (the direction's .head). */
 body[data-cot-width] .cot-es.cot-es--record::before{display:none}
-body[data-cot-width] .cot-es.cot-es--record .es-hero{border:1px solid #9cabb750;background:linear-gradient(90deg,#101923d9,#10192350);margin-bottom:12px;box-shadow:inset 0 1px #ffffff0c}
-body[data-cot-width] .cot-es.cot-es--record .es-kick{color:#ffd18a}
-body[data-cot-width] .cot-es.cot-es--record .es-stat-grid{background:linear-gradient(100deg,#96734716,transparent 60%);align-items:center}
-body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card{background:radial-gradient(ellipse,#a9853622,transparent 70%)}
+body[data-cot-width] .cot-es.cot-es--record .es-hero{border:0;background:none;margin-bottom:16px;box-shadow:none;padding-inline:0}
+body[data-cot-width] .cot-es.cot-es--record .es-stat-grid{background:none;align-items:center}
+body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card{background:none}
 body[data-cot-width] .cot-es.cot-es--record .es-stat-secondary{grid-template-columns:repeat(3,minmax(0,1fr))}
 body[data-cot-width] .cot-es.cot-es--record .es-mini{padding:12px 14px;border:1px solid #a1b1bf30;background:linear-gradient(135deg,#26343f75,#0d171d80)}
 body[data-cot-width] .cot-es.cot-es--record .es-mini .mv{font-size:24px}
@@ -79,8 +98,47 @@ body[data-cot-width] .cot-es.cot-es--record .es-blow{padding:12px 16px;margin:16
 @media(min-width:1000px){body[data-cot-width] .cot-es.cot-es--record .personal{display:grid;grid-template-columns:1.15fr 1fr;align-content:start;min-height:100%;gap:0}body[data-cot-width] .cot-es.cot-es--record .personal>.es-stat-grid,body[data-cot-width] .cot-es.cot-es--record .personal>.es-combat-details{grid-column:1/-1}body[data-cot-width] .cot-es.cot-es--record .personal>.es-stat-secondary{margin-right:10px}body[data-cot-width] .cot-es.cot-es--record .personal>.es-comparison{margin-left:10px;align-self:stretch}body[data-cot-width] .cot-es.cot-es--record .personal>.es-awards{grid-column:1/-1;border-top:1px solid #8b9ead33}body[data-cot-width] .cot-es.cot-es--record .personal>:is(.es-best,.es-blow){grid-column:1/-1}}
 @media(max-width:700px){body[data-cot-width] .cot-es.cot-es--record .es-hero{padding:12px;margin-bottom:8px}.cot-es--record .es-comparison{margin:14px;padding:12px}.cot-es--record .es-comparison-head{font-size:11px;letter-spacing:0em}body[data-cot-width] .cot-es.cot-es--record .es-stat-secondary{margin:14px;gap:6px;grid-template-columns:repeat(2,minmax(0,1fr))}body[data-cot-width] .cot-es.cot-es--record .es-mini{padding:10px}body[data-cot-width] .cot-es.cot-es--record .es-blow{margin:14px}}
 @media(max-height:450px) and (orientation:landscape){body[data-cot-width] .cot-es.cot-es--record .es-hero{padding:6px 12px;margin-bottom:6px}body[data-cot-width] .cot-es.cot-es--record .es-hero .es-ban{display:inline-block;margin-right:14px}body[data-cot-width] .cot-es.cot-es--record .es-meta{display:inline-flex;margin-top:0}body[data-cot-width] .cot-es.cot-es--record .es-sub{display:none}body[data-cot-width] .cot-es.cot-es--record .es-stat-secondary{grid-template-columns:repeat(3,minmax(0,1fr))}}
-body[data-cot-width] .cot-es.cot-es--record :is(.es-tr,.es-room-player,.es-campaign){border:1px solid #93a5b438;box-shadow:inset 0 1px #ffffff06}
-body[data-cot-width] .cot-es.cot-es--record .es-tr.me{border-color:#c89a5066;background:linear-gradient(90deg,#a2792920,#a2792908)}
+/* the rosters as the direction's tables (11-end-screen .row): zebra rows, the player's own on the tungsten edge */
+body[data-cot-width] .cot-es.cot-es--record :is(.es-tr,.es-room-player,.es-campaign){border:0;border-radius:var(--r1);box-shadow:var(--ring-1)}
+body[data-cot-width] .cot-es.cot-es--record .es-tr:nth-child(even){background:var(--fill-faint)}
+body[data-cot-width] .cot-es.cot-es--record .es-tr.me{background:var(--accent-wash);box-shadow:var(--battle-row-me)}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-list{border-top-color:#93a5b438}
 body[data-cot-width] .cot-es.cot-es--record .es-report .es-rematch{border:1px solid #93a5b438}
+/* every vehicle carries its flag beside its silhouette (11-end-screen .who) */
+body[data-cot-width] .cot-es.cot-es--record .fl{display:inline-flex;flex:0 0 auto}
+/* the battle's timeline (11-end-screen .beat): one line from the start to the result, a diamond per beat (the enemy's
+   ink for what the player lost), its label above and its battle time under it; the wide windows of standard height */
+body[data-cot-width] .cot-es.cot-es--record .es-beat{position:relative;flex:0 0 auto;align-self:stretch;height:64px;margin:14px 30px 0 22px}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .ln{position:absolute;inset:31px 0 auto;height:2px;background:var(--line-2)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .ev{position:absolute;top:32px;width:0;height:0}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .d{position:absolute;left:-6px;top:-6px;width:12px;height:12px;transform:rotate(45deg);
+  background:var(--accent);box-shadow:var(--battle-beat-ring)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .d.loss{background:var(--team-enemy)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .lb{position:absolute;bottom:14px;left:0;transform:translateX(-50%);display:flex;
+  align-items:center;gap:6px;max-width:180px;padding:5px 8px;white-space:nowrap;border-radius:var(--chip-radius);
+  background:var(--battle-tip-plate);box-shadow:var(--e1);font:600 var(--battle-fs-12)/1 var(--font-ui);color:var(--ink-1)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .lb svg{flex:0 0 auto;color:var(--ink-2)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .lb .tx{min-width:0;overflow:hidden;text-overflow:ellipsis}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .lb .si{flex:0 0 28px;height:10px;color:var(--team-enemy);transform:scaleX(-1)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .t{position:absolute;top:12px;left:0;transform:translateX(-50%);
+  font:500 var(--battle-fs-11)/1 var(--font-data);color:var(--ink-3)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .end :is(.lb,.t){transform:translateX(-100%)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .end .lb svg{color:var(--accent)}
+/* A watched battle (watch-mode-243): no side is the viewer's, so the sides keep the battle's inks as the HUD drew them,
+   Alpha's the own ink and Bravo's the enemy's: the headline is the winner's flag and name, each beat carries its side's
+   ink (a kill's silhouette the victim's), and the line ends on the winner's flag. */
+body[data-cot-width] .cot-es.cot-es--record .es-ban.w{display:inline-flex;align-items:center;gap:.16em;text-transform:uppercase}
+body[data-cot-width] .cot-es.cot-es--record .es-ban.w.alpha{color:var(--team-own)}
+body[data-cot-width] .cot-es.cot-es--record .es-ban.w.bravo{color:var(--team-enemy)}
+.cot-es--record .fg{display:inline-flex;flex:0 0 auto}
+.cot-es--record .fg.alpha{color:var(--team-own)}
+.cot-es--record .fg.bravo{color:var(--team-enemy)}
+.cot-es--record .es-ban .fg svg{width:.72em;height:.72em}
+.cot-es--record :is(.es-beat .lb,.es-score-side .sl) .fg svg{width:16px;height:16px}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .s-alpha .d{background:var(--team-own)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .s-bravo .d{background:var(--team-enemy)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .s-bravo .lb .si{color:var(--team-own)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .lb .fg svg{color:inherit}
+body[data-cot-width]:not(:is([data-cot-width='laptop'],[data-cot-width='desktop'])) .cot-es.cot-es--record .es-beat,
+body[data-cot-height]:not(:is([data-cot-height='standard'],[data-cot-height='tall'])) .cot-es.cot-es--record .es-beat{display:none}
 }

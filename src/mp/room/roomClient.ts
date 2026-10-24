@@ -758,6 +758,11 @@ export class RoomClient {
     this.finish('left_room');
   }
 
+  /** End the connection and its reconnect attempts as `reason` (the room service is at its daily limit): closed, not idle. */
+  stop(reason: string): void {
+    this.finish(reason);
+  }
+
   /** Drop the connection but keep the seat and the capability (a reload resumes). */
   disconnect(reason = 'client'): void {
     this.admission = null;

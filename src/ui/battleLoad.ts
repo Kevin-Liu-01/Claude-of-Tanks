@@ -12,7 +12,7 @@
  * public/icons/<id>_side_silhouette.png (tools/genIcons.mjs).
  */
 
-import { FONT_STACK, FONT_COND } from './fonts.ts';
+import { FONT_STACK } from './fonts.ts';
 import { iconUrl } from './icons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { tierNumeral } from '../vehicles/tier.ts';
@@ -23,6 +23,7 @@ import { isImagePreloaded, preloadImage } from './imagePreload.ts';
 import { mapCardFor } from './mapBackdrop.ts';
 import { MAP_THUMBS } from './mapThumbs.ts';
 import { MAP_ART_TONES, MAP_ART_TONE_DEFAULT } from './mapArtTones.ts';
+import { minimapAssetUrl } from './minimapAssetUrl.ts';
 import { recordBattleLoad } from '../game/battleLoadEstimate.ts';
 
 // Backward-compatible re-export for main.ts, killcam and end-screen callers.
@@ -94,49 +95,55 @@ export function primeMapLqipWhenIdle(): void {
   else setTimeout(() => { void primeMapLqip(); }, 1500);
 }
 
+/** The windows the direction's composition is for (bui01/src/pages/10-battle-load.html, 1440 x 900): laptop and desktop
+ *  widths, 720 px and taller, with persistent panels; smaller windows keep the compact sheets (responsiveSurfaces.css). */
+const WIDE = "body:is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall'])"
+  + ":not([data-cot-panels='overlay'])";
+/** A side this size or smaller shows a hero card a tank on the wide layouts (the direction's seven a side). */
+const CARD_TEAM_MAX = 7;
+/** The progress's steps (the direction's five). */
+const PROGRESS_STEPS = 5;
+
 const CSS = `
 .cot-bl{position:fixed;inset:0;z-index:150;display:none;place-items:center;
   --bl-edge:clamp(18px,4vw,64px);
-  font-family:${FONT_STACK};color:#e6edf3;-webkit-user-select:none;user-select:none;
-  background:#05080b;opacity:1;overflow:hidden;isolation:isolate;}
+  font-family:${FONT_STACK};color:var(--ink-1);-webkit-user-select:none;user-select:none;
+  background:var(--surface-scene);opacity:1;overflow:hidden;isolation:isolate;}
 .cot-bl.on{display:grid;opacity:1;}
 .cot-bl.leaving{display:grid;opacity:0;transition:opacity var(--cot-motion-base) var(--cot-ease-out);}
 .cot-bl *{box-sizing:border-box;margin:0;padding:0;}
-.cot-bl::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
-  background-image:linear-gradient(rgba(190,208,221,.022) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(190,208,221,.018) 1px,transparent 1px);
-  background-size:48px 48px;mask-image:linear-gradient(180deg,transparent,black 36%,black);}
-/* Full-bleed map art; the transparent briefing bounds keep text readable
-   on ultrawide screens without framing the scene in a second panel. */
+/* Full-bleed map art under the direction's grade (bui01/src/pages/10-battle-load.html .grade): dark from the left for
+   the battlefield's name and from the floor for the rosters, the battlefield itself clear in the upper right. */
 .cot-bl .hero{position:absolute;inset:0;z-index:-1;overflow:hidden;}
-.cot-bl .hero .art{position:absolute;inset:-4%;background-size:cover;
-  background-position:center;filter:saturate(.82) contrast(1.08) brightness(.7);
-  transform:scale(1.04);background-image:${mapArtGradient(undefined)};}
+.cot-bl .hero .art{position:absolute;inset:0;background-size:cover;background-position:center;
+  background-image:${mapArtGradient(undefined)};}
 /* 2026-10-12/13 (the perf stream; owner: "loading into some maps still shows a black screen at first"): .art carries
    the map's own mid-tones (its art's band colours) and, once the lazy placeholder chunk is resident, the map's blurred
    48x27 picture from the first frame; the art is decoded before it is shown over it, so an uncached 1.5 MB hero never
    leaves the screen near-black while it downloads; the picker thumb and the 1280 px card stand in until it is ready. */
-.cot-bl .hero .art-img{position:absolute;inset:-4%;background-size:cover;background-position:center;
-  filter:saturate(.82) contrast(1.08) brightness(.7);transform:scale(1.04);opacity:0;
-  transition:opacity 160ms var(--cot-ease-out);}
+.cot-bl .hero .art-img{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;
+  transition:opacity var(--dur-fast) var(--ease-enter);}
 .cot-bl .hero .art-img.ready{opacity:1;}
-.cot-bl .hero .scrim{position:absolute;inset:0;
-  background:linear-gradient(180deg,rgba(3,6,9,.2),rgba(3,6,9,.62) 38%,rgba(3,6,9,.94) 100%);}
-.cot-bl .hero .vig{position:absolute;inset:0;
-  background:radial-gradient(110% 90% at 50% 20%,transparent 24%,rgba(0,0,0,.78) 100%);}
+.cot-bl .hero .scrim{position:absolute;inset:0;background:var(--battle-load-grade);}
+.cot-bl .lb{display:none;}
 .cot-bl .briefing{position:relative;z-index:1;width:min(1180px,calc(100vw - (var(--bl-edge) * 2)));
   height:min(800px,88dvh);min-height:520px;
-  display:grid;grid-template-rows:auto minmax(0,1fr) auto;align-items:stretch;
+  display:grid;grid-template-rows:auto minmax(0,1fr) auto;grid-template-columns:minmax(0,1fr);align-items:stretch;
   padding:clamp(20px,3vh,34px) clamp(18px,2.5vw,34px) clamp(16px,2.2vh,26px);
   background:transparent;border:0;box-shadow:none;}
-
-.cot-bl .cap{text-align:center;padding-bottom:clamp(15px,2.5vh,27px);display:flex;flex-direction:column;align-items:center;}
-/* The mode reads under the map's name, never as a kicker above it (owner UI rules 2026-10-17). */
-.cot-bl .kicker{order:1;margin-top:9px;font-family:${FONT_COND};font-size:11px;font-weight:700;
-  letter-spacing:.16em;text-indent:.16em;color:#f0a030;text-transform:uppercase;}
-.cot-bl .mapname{margin-top:0;font-size:clamp(30px,4.1vw,52px);font-weight:700;
-  letter-spacing:.14em;text-indent:.14em;text-transform:uppercase;color:#f4f8fc;
-  text-shadow:0 3px 22px rgba(0,0,0,.9);}
+/* The battlefield's name, its first word solid and the rest hollow (the direction's title), over the rules: the mode
+   and the sides. */
+.cot-bl .cap{display:flex;flex-direction:column;align-items:center;gap:12px;padding-bottom:clamp(15px,2.5vh,27px);
+  min-width:0;text-align:center;}
+.cot-bl .mapname{max-width:100%;font:700 clamp(30px,4.1vw,52px)/.9 var(--font-ui);text-transform:uppercase;color:var(--ink-1);}
+.cot-bl .mapname .ho{color:transparent;-webkit-text-stroke:var(--hollow-stroke) var(--hollow-ink);}
+:lang(zh-CN) .cot-bl .mapname .ho{color:var(--ink-1);-webkit-text-stroke:0;}
+.cot-bl .rules{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;}
+.cot-bl .rules .cot-c-chip{height:34px;padding:0 12px;background:var(--battle-chip-plate);color:var(--ink-1);}
+.cot-bl .rules .cot-c-chip[hidden]{display:none;}
+.cot-bl .rules .gi{display:flex;color:var(--accent);}
+/* The tip and the battlefield's plan: the wide layouts' upper right (below). */
+.cot-bl .side{display:none;}
 /* --- rosters ------------------------------------------------------------- */
 .cot-bl .teams{min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 54px minmax(0,1fr);
   align-items:stretch;gap:clamp(16px,3vw,42px);}
@@ -144,70 +151,99 @@ const CSS = `
   height:min(100%,calc(var(--bl-count) * (var(--bl-row-height) + var(--bl-row-gap)) + var(--bl-heading) + var(--bl-row-inset) - var(--bl-row-gap)));
   display:grid;grid-template-rows:auto minmax(0,1fr);}
 .cot-bl .thead{height:var(--bl-heading);display:flex;align-items:center;gap:9px;padding:0 8px 8px;
-  border-bottom:1px solid rgba(146,164,180,.24);font-family:${FONT_COND};
-  font-size:11px;font-weight:700;letter-spacing:.28em;text-transform:uppercase;}
+  font:600 var(--fs-12)/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;}
 .cot-bl .thead .flags{display:inline-flex;align-items:center;gap:4px;}
-.cot-bl .thead .flags .cot-flag{border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.35);}
-.cot-bl .team.ally .thead{color:#7fdc8a;border-bottom-color:rgba(127,220,138,.4);}
-.cot-bl .team.foe .thead{color:#f07a72;border-bottom-color:rgba(240,122,114,.4);}
-.cot-bl .team.foe .thead{flex-direction:row-reverse;}
-.cot-bl .thead .n{margin-left:auto;color:#8a97a3;
-  letter-spacing:.12em;}
+.cot-bl .team.ally .thead{color:var(--text-own);border-bottom:1px solid var(--team-own);}
+.cot-bl .team.foe .thead{color:var(--text-enemy);border-bottom:1px solid var(--team-enemy);flex-direction:row-reverse;}
+.cot-bl .thead .n{margin-left:auto;color:var(--ink-3);}
 .cot-bl .team.foe .thead .n{margin-left:0;margin-right:auto;}
 /* Center each roster as a block. Rows never stretch when a team is small.
    Fixed silhouette boxes keep asset loading from moving the rows. */
 .cot-bl .rows{display:grid;grid-template-rows:repeat(var(--bl-count),var(--bl-row-height));align-content:start;
   min-height:0;gap:var(--bl-row-gap);padding-top:var(--bl-row-inset);overflow-y:auto;overscroll-behavior:contain;
   scrollbar-width:none;}
-.cot-bl .rows:focus-visible{outline:1px solid #f0a030;outline-offset:-1px}
+.cot-bl .rows:focus-visible{outline:1px solid var(--accent);outline-offset:-1px}
 .cot-bl .rows::-webkit-scrollbar{display:none}
-.cot-bl .row{display:flex;align-items:center;gap:10px;min-height:0;padding:0 8px;
-  background:rgba(171,193,209,.045);border:1px solid rgba(161,181,196,.07);
-  border-left:2px solid transparent;}
-.cot-bl .team.foe .row{flex-direction:row-reverse;border-left:none;
-  border-right:2px solid transparent;}
-.cot-bl .team.ally .row{border-left-color:rgba(127,220,138,.42);}
-.cot-bl .team.foe .row{border-right-color:rgba(240,122,114,.42);}
-.cot-bl .row.slot{opacity:.5;}
-.cot-bl .row.me{background:linear-gradient(90deg,rgba(240,160,48,.20),rgba(240,160,48,.03));
-  border-left-color:#f0a030;}
-.cot-bl .row .tier{flex:0 0 26px;text-align:center;font-family:${FONT_COND};
-  font-size:11px;font-weight:700;letter-spacing:.04em;color:#ffd27a;}
+.cot-bl .row{position:relative;display:flex;align-items:center;gap:10px;min-height:0;padding:0 8px;border-radius:var(--r1);
+  background:var(--fill-quiet);outline:1px solid var(--line-1);outline-offset:-1px;}
+.cot-bl .team.foe .row{flex-direction:row-reverse;}
+.cot-bl .team.ally .row{border-left:2px solid var(--team-own);}
+.cot-bl .team.foe .row{border-right:2px solid var(--team-enemy);}
+.cot-bl .row.slot{background:var(--fill-faint);}
+.cot-bl .row.me{background:var(--accent-wash);border-left-color:var(--accent);box-shadow:var(--ring-accent);outline:0;}
+.cot-bl .row .tier{flex:0 0 26px;text-align:center;font:500 var(--fs-11)/1 var(--font-mono);color:var(--accent-hi);}
 .cot-bl .row .sil{flex:0 0 52px;height:100%;max-height:24px;background-repeat:no-repeat;
-  background-position:center;background-size:contain;opacity:.9;}
+  background-position:center;background-size:contain;}
 .cot-bl .team.foe .row .sil{transform:scaleX(-1);}
-.cot-bl .row .nm{flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:600;
-  color:#dfe8f0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cot-bl .row .nm{flex:1 1 auto;min-width:0;font:600 var(--fs-13)/1.2 var(--font-ui);color:var(--ink-1);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-bl .team.foe .row .nm{text-align:right;}
-.cot-bl .row.me .nm{color:#ffe4b0;}
-.cot-bl .vs{width:48px;height:48px;display:grid;place-items:center;justify-self:center;align-self:center;
-  font-family:${FONT_COND};font-size:11px;font-weight:700;letter-spacing:.14em;color:#c8d4dd;
-  background:rgba(6,10,14,.82);border:1px solid rgba(240,176,74,.34);
-  box-shadow:inset 0 0 0 3px rgba(4,7,10,.75),0 8px 22px rgba(0,0,0,.4);}
-/* --- footer: progress + countdown --------------------------------------- */
+.cot-bl .row.me .nm{color:var(--accent-hi);}
+.cot-bl .vs{display:grid;place-items:center;justify-self:center;align-self:center;
+  font:700 var(--fs-28)/1 var(--font-ui);color:var(--accent);}
+/* --- footer: the stage, the five-step progress, the countdown ------------- */
 .cot-bl .foot{padding-top:clamp(15px,2.5vh,24px);}
-.cot-bl .fmeta{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
-  margin-bottom:8px;font-family:${FONT_COND};letter-spacing:-.01em;}
-.cot-bl .fstage{min-height:2.6em;line-height:1.3;display:flex;align-items:flex-end;font-size:11px;font-weight:700;letter-spacing:.26em;color:#9fb0bf;
-  text-transform:uppercase;}
-.cot-bl .fpct{min-width:4ch;text-align:right;font-variant-numeric:tabular-nums;font-size:19px;font-weight:700;color:#ffd27a;}
-.cot-bl .fbar{position:relative;height:5px;background:rgba(255,255,255,.07);overflow:hidden;
-  box-shadow:inset 0 0 0 1px rgba(146,164,180,.22);}
-.cot-bl .ffill{position:absolute;left:0;top:0;bottom:0;width:100%;
-  transform:scaleX(0);transform-origin:left center;
-  background:linear-gradient(90deg,#b96f10,#f0a030 65%,#ffcf7d);
-  box-shadow:0 0 14px rgba(240,160,48,.5);transition:transform .18s linear;}
-.cot-bl.on .ffill{will-change:transform;}
-.cot-bl .count{margin-top:13px;text-align:center;font-family:${FONT_COND};
-  font-size:15px;font-weight:700;letter-spacing:.3em;text-indent:.3em;
-  color:#dce6ee;text-transform:uppercase;height:30px;line-height:30px;
-  text-shadow:0 2px 8px rgba(0,0,0,.9);}
-.cot-bl .count b{color:#ffd27a;font-size:23px;text-shadow:0 0 18px rgba(240,160,48,.36);}
-.cot-bl .tip{margin-top:9px;text-align:center;font-size:11px;color:#82909b;
-  line-height:1.45;padding:0 5%;}
-.cot-bl .tip b{color:#c2903f;font-family:${FONT_COND};font-weight:700;
-  letter-spacing:.12em;text-transform:uppercase;font-size:11px;margin-right:8px;}
-@media (prefers-reduced-motion:reduce){.cot-bl.leaving,.cot-bl .ffill{transition-duration:1ms;}}
+.cot-bl .fmeta{display:flex;align-items:center;gap:16px;}
+.cot-bl .fstage{flex:0 1 auto;min-width:0;display:flex;align-items:center;gap:8px;font:500 var(--fs-14)/1.3 var(--font-body);
+  color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cot-bl .fstage .gi{display:flex;flex:none;color:var(--accent);}
+.cot-bl .fbar{flex:1 1 auto;min-width:80px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;}
+.cot-bl .fbar i{position:relative;display:block;height:4px;overflow:hidden;background:var(--fill-scale);}
+.cot-bl .fbar i b{position:absolute;inset:0;background:var(--ink-1);transform:scaleX(0);transform-origin:left center;
+  transition:transform var(--dur-fast) linear;}
+.cot-bl .fbar i.c b{background:var(--accent);}
+.cot-bl.on .fbar i b{will-change:transform;}
+.cot-bl .fpct{flex:none;min-width:4ch;text-align:right;font:500 var(--fs-13)/1 var(--font-mono);color:var(--ink-3);}
+.cot-bl .count{margin-top:13px;text-align:center;font:700 var(--fs-15)/1 var(--font-ui);line-height:30px;
+  letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-1);height:30px;}
+.cot-bl .count b{color:var(--accent-hi);font-size:var(--fs-24);}
+.cot-bl .tip{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:var(--r1);
+  background:var(--battle-tip-plate);box-shadow:var(--e1);font:400 var(--fs-14)/1.4 var(--font-body);color:var(--ink-2);}
+.cot-bl .tip .gi{display:flex;flex:none;color:var(--accent);}
+/* --- the wide layouts: the direction's composition ------------------------
+   The name and its rules top left, the tip and the battlefield's plan top right, the rosters over the floor (a hero
+   card a tank while a side has seven or fewer), the progress under them, letterboxed. */
+${WIDE} .cot-bl{place-items:stretch;}
+${WIDE} .cot-bl .lb{display:block;position:absolute;left:0;right:0;height:5.5vh;background:var(--surface-scene);}
+${WIDE} .cot-bl .lb.t{top:0}${WIDE} .cot-bl .lb.b{bottom:0}
+${WIDE} .cot-bl .briefing{width:100%;height:100%;min-height:0;grid-template-columns:minmax(0,1fr) minmax(0,360px);
+  grid-template-rows:auto minmax(0,1fr) auto auto;column-gap:48px;padding:14vh 64px calc(5.5vh + 22px);}
+${WIDE} .cot-bl .cap{grid-column:1;grid-row:1;align-items:flex-start;text-align:left;gap:16px;padding:0;}
+${WIDE} .cot-bl .mapname{font-size:clamp(64px,7vw,128px);line-height:.84;}
+${WIDE} .cot-bl .rules{justify-content:flex-start;}
+${WIDE} .cot-bl .side{grid-column:2;grid-row:1 / span 2;display:flex;flex-direction:column;align-items:stretch;gap:12px;min-height:0;}
+${WIDE} .cot-bl .map{align-self:flex-end;width:250px;padding:8px;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--e2);}
+${WIDE} .cot-bl .map[hidden]{display:none;}
+${WIDE} .cot-bl .map img{display:block;width:234px;height:234px;object-fit:cover;box-shadow:var(--ring-3);}
+${WIDE} .cot-bl .teams{grid-column:1 / -1;grid-row:3;align-items:end;gap:28px;}
+${WIDE} .cot-bl .foot{grid-column:1 / -1;grid-row:4;padding-top:24px;}
+${WIDE} .cot-bl .count{position:absolute;left:0;right:0;top:calc(100% + 1.2vh);margin:0;}
+${WIDE} .cot-bl .foot{position:relative;}
+${WIDE} .cot-bl .team.cards{--bl-row-height:104px;--bl-row-gap:6px;--bl-heading:0px;--bl-row-inset:0px;height:auto;align-self:end;}
+${WIDE} .cot-bl .team.cards .thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);}
+${WIDE} .cot-bl .team.cards .rows{grid-template-rows:var(--bl-row-height);grid-template-columns:repeat(var(--bl-count),minmax(0,1fr));
+  gap:var(--bl-row-gap);overflow:visible;}
+${WIDE} .cot-bl .vs{align-self:end;padding-bottom:34px;}
+/* A hero card (the live hero card's layers, heroCard.ts): the nation's flag and the vehicle over the card's ground, the
+   vehicle's name in the band under it, the side's ink along the floor, the player's card ringed in the accent. */
+${WIDE} .cot-bl .team.cards .row.card{display:block;padding:0;overflow:hidden;isolation:isolate;container-type:size;background:var(--surface-raised);
+  --hc-band:28px;--hc-share:0.7;--hc-hshare:0.64;--hc-cxr:0.51;}
+${WIDE} .cot-bl .team.ally.cards .row.card{border:0;border-bottom:2px solid var(--team-own);}
+${WIDE} .cot-bl .team.foe.cards .row.card{border:0;border-bottom:2px solid var(--team-enemy);}
+${WIDE} .cot-bl .team.cards .row.card.me{box-shadow:var(--battle-card-me);}
+${WIDE} .cot-bl .team.cards .row.card .sil{position:absolute;left:10%;right:10%;top:22%;height:36%;max-height:none;opacity:.5;}
+${WIDE} .cot-bl .team.cards .row.card.cot-hc .sil{display:none;}
+${WIDE} .cot-bl .team.cards .row.card::after{content:'';position:absolute;z-index:var(--battle-z-card-fade);left:0;right:0;bottom:0;height:calc(var(--hc-band) + 8px);
+  background:var(--media-fade);pointer-events:none;}
+${WIDE} .cot-bl .team.cards .row.card .nm{position:absolute;z-index:var(--battle-z-card-text);left:8px;right:8px;bottom:8px;font:600 var(--fs-11)/1.1 var(--font-ui);
+  text-transform:uppercase;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-align:left;}
+${WIDE} .cot-bl .team.foe.cards .row.card .nm{text-align:left;}
+${WIDE} .cot-bl .team.cards .row.card .tier{position:absolute;z-index:var(--battle-z-card-text);top:6px;left:6px;flex:none;padding:2px 4px;border-radius:var(--r1);
+  background:var(--glyph-plate);}
+/* the hero layers show on the cards alone (a window that narrows to the compact sheets keeps the rows plain) */
+.cot-bl .row :is(.hc-flag,.hc-tank){display:none;}
+${WIDE} .cot-bl .team.cards .row :is(.hc-flag,.hc-tank){display:block;}
+@media (prefers-reduced-motion:reduce){.cot-bl.leaving,.cot-bl .fbar i b{transition-duration:1ms;}}
 `;
 
 const BATTLE_TIPS: ReadonlyArray<readonly [string, string]> = [
@@ -305,9 +341,12 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   root.setAttribute('role', 'status');
   root.setAttribute('aria-label', t('battleLoad.preparing'));
   root.innerHTML =
-    `<div class="hero" aria-hidden="true"><div class="art none"></div><div class="art-img"></div><div class="scrim"></div><div class="vig"></div></div>` +
-    `<main class="briefing"><div class="cap"><div class="kicker">${t('battleLoad.kicker')}</div>` +
-    `<div class="mapname"></div></div>` +
+    `<div class="hero" aria-hidden="true"><div class="art none"></div><div class="art-img"></div><div class="scrim"></div></div>` +
+    `<i class="lb t" aria-hidden="true"></i><i class="lb b" aria-hidden="true"></i>` +
+    `<main class="briefing"><div class="cap"><h1 class="mapname"></h1>` +
+    `<div class="rules"><span class="cot-c-chip"><span class="kicker">${t('battleLoad.kicker')}</span></span>` +
+    `<span class="cot-c-chip sides" hidden><span class="gi">${uiIconSVG('team', 16)}</span><span class="sv"></span></span></div></div>` +
+    `<div class="side"><div class="tip"></div><div class="map" hidden><img alt="" decoding="async" draggable="false"></div></div>` +
     `<div class="teams">` +
     `<div class="team ally"><div class="thead"><span>${t('battleLoad.allies')}</span><span class="flags" aria-hidden="true"></span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
@@ -315,10 +354,11 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     `<div class="team foe"><div class="thead"><span>${t('battleLoad.enemies')}</span><span class="flags" aria-hidden="true"></span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
     `</div>` +
-    `<div class="foot" aria-live="polite"><div class="fmeta"><div class="fstage">${t('battleLoad.loading')}</div>` +
-    `<div class="fpct num">0%</div></div>` +
-    `<div class="fbar" role="progressbar" aria-label="${t('battleLoad.loading')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="ffill"></div></div>` +
-    `<div class="count"></div><div class="tip"></div></div></main>`;
+    `<div class="foot" aria-live="polite"><div class="fmeta">` +
+    `<div class="fstage"><span class="gi">${uiIconSVG('map', 16)}</span><span class="st">${t('battleLoad.loading')}</span></div>` +
+    `<div class="fbar" role="progressbar" aria-label="${t('battleLoad.loading')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">` +
+    `${'<i><b></b></i>'.repeat(PROGRESS_STEPS)}</div><div class="fpct num">0%</div></div>` +
+    `<div class="count"></div></div></main>`;
   document.body.appendChild(root);
 
   const artEl = requiredElement<HTMLDivElement>(root, '.art');
@@ -358,7 +398,21 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       });
     }
   };
-  const nameEl = requiredElement<HTMLDivElement>(root, '.mapname');
+  const nameEl = requiredElement<HTMLHeadingElement>(root, '.mapname');
+  const sidesChip = requiredElement<HTMLSpanElement>(root, '.rules .sides');
+  const sidesEl = requiredElement<HTMLSpanElement>(root, '.rules .sv');
+  const mapEl = requiredElement<HTMLDivElement>(root, '.map');
+  const mapImg = requiredElement<HTMLImageElement>(root, '.map img');
+  /** The battlefield's name: its first word solid, the rest hollow (the direction's title; zh-CN stays solid). */
+  const setMapName = (name: string): void => {
+    const space = name.indexOf(' ');
+    nameEl.textContent = space < 0 ? name : name.slice(0, space + 1);
+    if (space < 0) return;
+    const rest = document.createElement('span');
+    rest.className = 'ho';
+    rest.textContent = name.slice(space + 1);
+    nameEl.append(rest);
+  };
   const kickEl = requiredElement<HTMLDivElement>(root, '.kicker');
   const allyTeam = requiredElement<HTMLDivElement>(root, '.team.ally');
   const foeTeam = requiredElement<HTMLDivElement>(root, '.team.foe');
@@ -371,12 +425,30 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   }
   const allyN = requiredElement<HTMLSpanElement>(root, '.team.ally .n');
   const foeN = requiredElement<HTMLSpanElement>(root, '.team.foe .n');
-  const stageEl = requiredElement<HTMLDivElement>(root, '.fstage');
+  const stageEl = requiredElement<HTMLSpanElement>(root, '.fstage .st');
   const pctEl = requiredElement<HTMLDivElement>(root, '.fpct');
-  const fillEl = requiredElement<HTMLDivElement>(root, '.ffill');
   const progressEl = requiredElement<HTMLDivElement>(root, '.fbar');
+  const stepEls = Array.from({ length: PROGRESS_STEPS }, (_, step) => requiredElement<HTMLElement>(root, `.fbar i:nth-child(${step + 1})`));
+  const stepFills = stepEls.map((_, step) => requiredElement<HTMLElement>(root, `.fbar i:nth-child(${step + 1}) b`));
   const countEl = requiredElement<HTMLDivElement>(root, '.count');
   const tipEl = requiredElement<HTMLDivElement>(root, '.tip');
+
+  /** The live hero card's layers (heroCard.ts, its lazy chunk and sheet, the Garage's): once per page, null where they
+   *  cannot load (a Node receipt, a blocked chunk), and the cards keep their silhouettes. */
+  let heroCards: Promise<typeof import('./heroCard.ts') | null> | null = null;
+  let cardsPass = 0;
+  function decorateCards(host: HTMLElement, cards: readonly (readonly [HTMLElement, string])[]): void {
+    const pass = String(++cardsPass);
+    host.dataset.cardsPass = pass;
+    if (!cards.length) return;
+    heroCards ??= Promise.all([import('./heroCard.ts'), import('./heroCard.css')]).then(([module]) => module, () => null);
+    void heroCards.then(async (hero) => {
+      const manifest = hero ? await hero.loadHeroManifest() : null;
+      if (!hero || !manifest || host.dataset.cardsPass !== pass) return; // a later roster took this side
+      host.style.setProperty('--hc-flag-mask', hero.heroCardFlagMask(manifest));
+      for (const [card, id] of cards) hero.decorateHeroCard(card, id, manifest, { tankSizes: '120px', flagSizes: '140px' });
+    });
+  }
 
   let visible = false;
   // `visible` is the requested open state and flips false when hide() starts.
@@ -386,6 +458,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   // the load's first frame, until its countdown (the Deploy button's estimate reads these, battleLoadEstimate.ts)
   let loadStartedAt = 0;
   let shownFill = '';
+  const shownSteps: string[] = [];
   let shownPercent = -1;
   let shownStage = '';
 
@@ -415,6 +488,10 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   ): void {
     const reserved = rows.length ? 0 : Math.max(0, Math.floor(slots));
     team.style.setProperty('--bl-count', String(Math.max(1, rows.length, reserved)));
+    // a side of seven or fewer shows a hero card a tank where the layout is wide (CSS), the rows otherwise
+    const cards = rows.length > 0 && rows.length <= CARD_TEAM_MAX;
+    if (cards) team.classList.add('cards'); else team.classList.remove('cards');
+    const decorated: [HTMLElement, string][] = [];
     host.textContent = '';
     for (let slot = 0; slot < reserved; slot += 1) {
       const el = document.createElement('div');
@@ -424,7 +501,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     }
     for (const r of rows) {
       const el = document.createElement('div');
-      el.className = 'row' + (r.isPlayer ? ' me' : '');
+      el.className = 'row' + (cards ? ' card' : '') + (r.isPlayer ? ' me' : '');
       const tier = document.createElement('div');
       tier.className = 'tier';
       tier.textContent = r.kind === 'aircraft' ? '' : r.tier || tierNumeral(r.id);
@@ -441,8 +518,16 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       nm.textContent = aircraft?.label || r.name || r.id;
       el.append(tier, sil, nm);
       host.appendChild(el);
+      if (cards && !aircraft) decorated.push([el, r.id]);
     }
     countEl2.textContent = reserved ? '' : String(rows.length);
+    decorateCards(host, decorated);
+  }
+
+  /** The sides on the rules row ("7 v 7"), once both are known. */
+  function showSides(allies: number, enemies: number): void {
+    sidesChip.hidden = !allies && !enemies;
+    sidesEl.textContent = t('battleLoad.sides', { allies, enemies });
   }
 
   const api: BattleLoadScreen = {
@@ -473,15 +558,20 @@ export function createBattleLoadScreen(): BattleLoadScreen {
      *   mode?:string, allies:Array, enemies:Array}} info
      */
     show(info: BattleLoadInfo) {
-      nameEl.textContent = info.mapName || t('battleLoad.fallbackMapName');
+      setMapName(info.mapName || t('battleLoad.fallbackMapName'));
       if (info.mode) kickEl.textContent = info.mode;
       stageArt(info.thumb, info.biome);
+      // the battlefield's own plan (its baked tactical map, which the battle's minimap loads next)
+      mapEl.hidden = !info.biome;
+      if (info.biome) mapImg.src = minimapAssetUrl(info.biome);
       fillTeam(allyRows, allyN, allyTeam, info.allies, info.slots);
       fillTeam(foeRows, foeN, foeTeam, info.enemies, info.slots);
-      const [h, b] = localizedTip(
+      showSides(info.allies.length, info.enemies.length);
+      // the tip's body alone (less text): its glyph says what it is
+      const [, body] = localizedTip(
         BATTLE_TIPS[Math.floor(Math.random() * BATTLE_TIPS.length)],
       );
-      tipEl.innerHTML = `<b>${h}</b>${b}`;
+      tipEl.innerHTML = `<span class="gi">${uiIconSVG('shield', 22)}</span><span>${body}</span>`;
       countEl.textContent = '';
       api.progress(0, t('battleLoad.loading'));
       if (!visible) loadStartedAt = performance.now();
@@ -502,6 +592,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     ) {
       fillTeam(allyRows, allyN, allyTeam, allies);
       fillTeam(foeRows, foeN, foeTeam, enemies);
+      showSides(allies.length, enemies.length);
       fillFlags(allyFlags, teams?.allied ?? null, teams?.alliedFills ?? []);
       fillFlags(foeFlags, teams?.enemy ?? null, teams?.enemyFills ?? []);
     },
@@ -519,7 +610,15 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       // repeatedly replacing unchanged live-region text at fine checkpoints.
       if (fill !== shownFill) {
         shownFill = fill;
-        fillEl.style.transform = `scaleX(${fill})`;
+        // the direction's five steps: each fills its fifth, the step in progress in the accent
+        for (let step = 0; step < PROGRESS_STEPS; step++) {
+          const share = Math.max(0, Math.min(1, v * PROGRESS_STEPS - step));
+          const scale = `scaleX(${share.toFixed(3)})`;
+          if (shownSteps[step] === scale) continue;
+          shownSteps[step] = scale;
+          stepFills[step].style.transform = scale;
+          if (share > 0 && share < 1) stepEls[step].classList.add('c'); else stepEls[step].classList.remove('c');
+        }
       }
       if (percent !== shownPercent) {
         shownPercent = percent;

@@ -1313,6 +1313,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/match/prediction.selftest.mjs',
     'src/mp/match/predictionStall.selftest.mjs', // 2026-10-13 MP plan step 9: a stalled seat's gap stepped on the authority's hold-and-release
     'src/mp/match/matchClient.selftest.mjs',
+    'src/mp/match/migrationStore.selftest.mjs', // 242 security round 2 (3a55e00a60); in no suite since
     'src/mp/match/matchBuildGate.selftest.mjs',
     'src/mp/wire/matchBuild.selftest.mjs',
     'src/mp/wire/destroyedSet.selftest.mjs',
@@ -1383,6 +1384,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/movementPredictionState.selftest.mjs',
     'src/mp/transport/iceConfig.selftest.mjs',
     'src/mp/session/roomFailure.selftest.mjs',
+    'src/mp/session/roomServiceLimit.selftest.mjs', // 243 Workers Free: one limit state over real sockets
     'src/ui/multiplayerStatus.selftest.mjs',
     'src/ui/roomFailurePresentation.selftest.mjs',
     'src/ui/playMenu.selftest.mjs',
@@ -1399,6 +1401,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/jev.selftest.mjs',
     'tools/deployment-policy.selftest.mjs',
     'tools/vercel-routes.selftest.mjs',
+    'tools/contentSecurityPolicy.selftest.mjs', // 243 security: the report-only script-src names every inline script
     'tools/middleware-diet.selftest.mjs',
     'tools/worker-generated-types.selftest.mjs',
     'server/dedicatedWorldCollision.selftest.mjs',
@@ -1415,6 +1418,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/inputBuffer.selftest.mjs',
     'server/match/seatToken.selftest.mjs',
     'server/match/matchActor.selftest.mjs',
+    'server/match/forcedKeyframes.selftest.mjs', // 243 security: forced keyframes from a bucket of 8, refilling at 2/s
     'server/match/interestTiers.selftest.mjs',
     'server/match/matchActorResume.selftest.mjs',
     'server/match/service.selftest.mjs',
@@ -1483,6 +1487,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',
     'src/sim/spotting.selftest.mjs',
+    'src/sim/hiddenShotEvents.selftest.mjs', // 242 security round 2 (3a55e00a60, the hidden-shooter shell_hit); in no suite since
     'src/sim/spottingHullBushGrid.selftest.mjs',
     'src/sim/shellSurface.selftest.mjs',
     // 2026-10-07 (destruction core lane): the munition blast catalog over every round in the game (docs/DESTRUCTION.md §4).
@@ -1496,6 +1501,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/terrainDeformation.selftest.mjs',
     'src/sim/destructionNavigation.selftest.mjs',
     'src/sim/destructionShard.selftest.mjs',
+    'src/sim/destructionLogBudget.selftest.mjs', // 243 security C3: the destruction log's budget
     'src/sim/destructionCraters.selftest.mjs',
     // 2026-10-15 (destruction lane, DST-04): the world's ray march reads the dug ground (craters' bowls, heaps), both worlds
     'src/world/groundOverlayRaycast.selftest.mjs',
@@ -2171,6 +2177,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-16 (tank-opt RING; the owner: "when the turret blows off we should see that"): the ring a kill leaves — the
     // measure, the anatomy's ring on it, the live plate's lifecycle (fingerprint byte-identical), the hulk's well
     'src/vehicles/turretRingWell.selftest.mjs',
+    // 2026-10-23 (wreck-cracks 243): the dented live cut keeps the hull watertight (a split face's corners on an edge are
+    // its neighbour's too: the synthetic pair in one mesh and in two, the vt4a1's wreck at seed 77)
+    'src/vehicles/turretRingWatertight.selftest.mjs',
     // 2026-10-22 (crew-fit 235): every crew station a seated P50 body inside the shell at every turret yaw
     'src/vehicles/crewSeats.selftest.mjs',
     'src/world/wreckPaintDedup.selftest.mjs',
@@ -2195,6 +2204,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/contextInfo.selftest.mjs',
     'src/ui/endOverlayRuntime.selftest.mjs',
     'src/ui/endScreen.selftest.mjs',
+    'src/ui/battleBeats.selftest.mjs',
+    // (watch-mode-243) a watched battle's HUD frame and its neutral report: the sides by name, the ridden tank highlighted
+    'src/ui/watchBattleReport.selftest.mjs',
     'src/game/battleEventStats.selftest.mjs',
     'src/ui/killPresentation.selftest.mjs',
     'src/ui/shotInfo.selftest.mjs',
@@ -2214,6 +2226,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/hud-ammo-frame-ink.selftest.mjs',
     'src/ui/hudAmmunitionPresentation.selftest.mjs',
     'src/ui/hudConsumablePresentation.selftest.mjs',
+    // brand-ui 242 (the direction's battle HUD): the team strip under the score and the kill ribbon
+    'src/ui/hudTeamPips.selftest.mjs',
+    'src/ui/hudKillRibbon.selftest.mjs',
     // 2026-10-14 (owner): a jump mode puts the jump farthest left in the vehicle-controls row, for every loadout
     'src/ui/vehicleControlOrder.selftest.mjs',
     'src/ui/battleHudLayout.selftest.mjs',
