@@ -52,7 +52,7 @@ saturated HDR is light, never a fault; `guard.timing` measures its own cost; `po
 chain's demand-loaded half (SMAA and the first-frame warm). Inactive retained phases may
 release geometry buffers and textures, but preserve compiled materials and
 restore through a covered real render rather than isolated `compileAsync`;
-`cameraRig.ts` owns player/cinematic poses; settled showroom framing is pumped
+`cameraRig.ts` owns player/cinematic poses; `watchCamera.ts` owns Watch mode's two cameras (the spectator drone, eased and terrain-following, with its orbit lock, and the ride-along on the player's chase and sight poses); settled showroom framing is pumped
 only by the Garage watchdog or visible motion; `quality.ts` and `deviceDiag.ts`
 own tiering and rescue behavior. `adaptiveQualityPolicy.ts` owns the typed,
 side-effect-free decision ladder for measured shading trim, resolution relief,
