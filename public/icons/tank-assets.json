@@ -738682,22 +738682,22 @@
             "verts": [
               [
                 -1.048,
-                -0.0203,
+                -0.0153,
                 1.31
               ],
               [
                 1.048,
-                -0.0203,
+                -0.0153,
                 1.31
               ],
               [
                 1.048,
-                0.448,
+                0.4481,
                 1.1555
               ],
               [
                 -1.048,
-                0.448,
+                0.4481,
                 1.1555
               ]
             ]
@@ -738713,22 +738713,22 @@
             "verts": [
               [
                 1.31,
-                -0.0203,
+                -0.0153,
                 1.0782
               ],
               [
                 1.31,
-                -0.0203,
+                -0.0153,
                 -1.7802
               ],
               [
                 1.2052,
-                0.448,
+                0.4481,
                 -1.7802
               ],
               [
                 1.2052,
-                0.448,
+                0.4481,
                 1.0782
               ]
             ]
@@ -738744,22 +738744,22 @@
             "verts": [
               [
                 -1.31,
-                -0.0203,
+                -0.0153,
                 -1.7802
               ],
               [
                 -1.31,
-                -0.0203,
+                -0.0153,
                 1.0782
               ],
               [
                 -1.2052,
-                0.448,
+                0.4481,
                 1.0782
               ],
               [
                 -1.2052,
-                0.448,
+                0.4481,
                 -1.7802
               ]
             ]
@@ -738775,22 +738775,22 @@
             "verts": [
               [
                 1.1135,
-                -0.0203,
+                -0.0153,
                 -1.7802
               ],
               [
                 -1.1135,
-                -0.0203,
+                -0.0153,
                 -1.7802
               ],
               [
                 -1.1135,
-                0.448,
+                0.4481,
                 -1.8575
               ],
               [
                 1.1135,
-                0.448,
+                0.4481,
                 -1.8575
               ]
             ]
@@ -739019,12 +739019,12 @@
             "name": "gun",
             "min": [
               -0.2229,
-              -0.0599,
+              -0.0545,
               -0.8532
             ],
             "max": [
               0.2229,
-              0.2699,
+              0.2719,
               1.31
             ],
             "turretLocal": true
@@ -739034,12 +739034,12 @@
             "name": "turretRing",
             "min": [
               -0.8553,
-              1.3035,
+              1.2725,
               -0.6066
             ],
             "max": [
               0.8553,
-              1.4959,
+              1.4649,
               1.0466
             ],
             "turretLocal": false
@@ -739516,14 +739516,14 @@
             "volumeId": "C02",
             "name": "gunner",
             "min": [
-              -0.815,
-              -0.6519,
-              -0.3439
+              -0.655,
+              -0.6314,
+              -0.3539
             ],
             "max": [
-              -0.4253,
-              0.3559,
-              0.2361
+              -0.2753,
+              0.3764,
+              0.2261
             ],
             "turretLocal": true
           },
@@ -739531,13 +739531,13 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.3753,
-              -0.6475,
-              -0.471
+              0.2253,
+              -0.6417,
+              -0.451
             ],
             "max": [
-              0.765,
-              0.3602,
+              0.595,
+              0.3761,
               0.1281
             ],
             "turretLocal": true
@@ -739546,21 +739546,21 @@
             "volumeId": "C04",
             "name": "loader",
             "min": [
-              0.3098,
-              -0.6527,
-              0.0608
+              0.2098,
+              -0.6549,
+              0.0028
             ],
             "max": [
-              0.7495,
-              0.4129,
-              0.4934
+              0.6692,
+              -0.0333,
+              0.6905
             ],
             "turretLocal": true
           }
         ]
       },
-      "geometryHash": "e7d9e0af",
-      "metadataHash": "02942bc0",
+      "geometryHash": "1619da79",
+      "metadataHash": "05898e31",
       "presentationAnchor": {
         "xM": -0.0002,
         "zM": -0.04
@@ -739575,7 +739575,7 @@
         "version": 1,
         "issues": [],
         "roles": {
-          "gunmetal": 13,
+          "gunmetal": 14,
           "wheelTire": 1,
           "wheelDish": 5,
           "suspensionLink": 1,
@@ -739620,15 +739620,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24436,
-          "sha256": "fb05347ece33109f27852dc165d2542dfe4702269204ac1e5cd1c91959d0081a",
+          "bytes": 24510,
+          "sha256": "5df7709547749539ca051906661418b72b39505acbeb75cd69f0c05ed8e7ad8f",
           "thumbnail": {
             "file": "thumbs/stb1_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 9958,
-            "sha256": "66de02718d262a85b5cb99c8d4fc4e91f6ea47f0371b2921a224f4d1f52b233b"
+            "bytes": 9986,
+            "sha256": "dfb9d6dcf6c532daa5ace3cedd9389b0ed9e72cdabd03e63c4351acd62ca07d6"
           }
         },
         "top": {
@@ -739636,56 +739636,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8768,
-          "sha256": "f41367d67e5e70e357fd3328439d58ef461bee931d6ca6baec0c4cb4ac100da0"
+          "bytes": 8984,
+          "sha256": "db48169fbe8727602c5c35abf8dee348f765926006eeecf7934cba293d6e661d"
         },
         "side": {
           "file": "stb1_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 7800,
-          "sha256": "68d515fa7a21d84e9df0462fb54dc420910fdb2f7c0182ac6b2b546ab14bad1e"
+          "bytes": 7904,
+          "sha256": "0c870cf78f6342b39344d80d145a43d8f41d8ddff3d126ca9f937cc7b8de8c3b"
         },
         "topSilhouette": {
           "file": "stb1_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1270,
-          "sha256": "bf6f08705150310e4faa434f76e57aa7b62590e54d0f3fc0640b1c5060a8556f"
+          "bytes": 1278,
+          "sha256": "ef1004f01d6df0e612338be5b0aa6eaf10db02b9a2dbace4fafc86347bda694b"
         },
         "sideSilhouette": {
           "file": "stb1_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3909,
-          "sha256": "d45b024f87661ba504aeb8ed0dd9f1f940ff4196f551fa0700dd673a0c3294d8"
+          "bytes": 3947,
+          "sha256": "b7d8a967d8f32d5b5d20401a217ca0da7f45f09ef9900f1ccccd4d66f923846e"
         },
         "armorSide": {
           "file": "stb1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79526,
-          "sha256": "ae186d051af5111ca52275aabafc9f14350f986866b25f901a500afb7bafd75a"
+          "bytes": 81404,
+          "sha256": "96ea47bf9173a4c29d4042680603f8d835d4dbb7c6330efff59d9a3e97b323d4"
         },
         "modulesSide": {
           "file": "stb1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81456,
-          "sha256": "2ad6205e250b170876d9ba70ed749a512d88d081b6cc8afcb758a17a09df8d46"
+          "bytes": 82943,
+          "sha256": "61202a80422cdddece0a9f938066c693bb4ace738f4d0d78d9f966465ed3b532"
         },
         "crewSide": {
           "file": "stb1_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72629,
-          "sha256": "079a87d78059d574d903174a06f87c288e456b64ee05dd0c7c03c02beee59096"
+          "bytes": 72863,
+          "sha256": "fd7fd567e65045bb003623d9888efbebe7fcb41c56f77d7e567800715444a712"
         },
         "markings": {
           "file": "stb1_markings.png",
