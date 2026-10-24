@@ -51,7 +51,7 @@ const TUCKS = Object.freeze([0, 0.2, 0.4, 0.6, 0.8, 1]);
 
 // Internal-layout families whose drivers recline (modern MBTs), and the ids of other families that do.
 const RECLINED_DRIVER_LAYOUTS = new Set([
-  'leopard', 'abrams', 'abramsX', 'm1a3', 'westernTwoPart', 'arieteManual', 'merkava', 'nationalSmDiesel',
+  'leopard', 'abrams', 'abramsX', 'ztz100HullCapsule', 'm1a3', 'westernTwoPart', 'arieteManual', 'merkava', 'nationalSmDiesel',
   'nationalSmTurbine', 'conceptAzHybrid', 'conceptMzHybrid', 'sovietAz', 'sovietMz', 'bustleAuto', 'fixedAuto',
   'kf51_evo', 'fictionalAuto', 'mbt70',
 ]);

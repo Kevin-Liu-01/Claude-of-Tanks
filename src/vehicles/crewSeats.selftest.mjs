@@ -15,15 +15,21 @@ import { INTERNAL_LAYOUT_BY_TANK } from './internalLayoutRegistry.ts';
 import { crewArmour, crewFallbackLadders, crewPostureLadders, crewShell, shapeSurfaceSamples } from '../../tools/crew-seat-fit.mjs';
 
 // Stations where no P50 posture fits the measured shell (the body's share left outside at the best placement): kept
-// there, shapes trimmed inside. The ZTZ-100's turret stands on a floor under 10 cm across (its crew ride in the hull
-// on the real vehicle: a layout question, not a seat); the two drivers miss by 0.1 %.
+// there, shapes trimmed inside. The Challenger 2 family's turret crews (fv4034, challenger2, challenger2e, ua_challenger2)
+// stopped fitting at 245's deck changes under their turrets (084d4a855c, 30a2464d5d: the current fitter, full ring
+// included, reproduces these rows); the two drivers miss by 0.1 %. The ZTZ-100's crew ride in its hull capsule (247).
 const TRIMMED = Object.freeze({
-  'ztz100/gunner': 0.021, 'ztz100/commander': 0.022, 'm60a3/driver': 0.001, 't72b3m_hetman_ii/driver': 0.001,
+  'fv4034/gunner': 0.023, 'fv4034/commander': 0.023, 'fv4034/loader': 0.019, 'challenger2/gunner': 0.023,
+  'challenger2/commander': 0.023, 'challenger2/loader': 0.029, 'challenger2e/gunner': 0.017,
+  'challenger2e/commander': 0.017, 'challenger2e/loader': 0.017, 'ua_challenger2/gunner': 0.017,
+  'ua_challenger2/commander': 0.017, 'ua_challenger2/loader': 0.017, 't72b3m_hetman_ii/driver': 0.001,
+  'm60a3/driver': 0.001,
 });
 
 assert.deepEqual(crewPostureLadders('leo2a6', 'leopard', 'driver', 'hull'), ['driverReclined']);
 assert.deepEqual(crewPostureLadders('m1a2_abrams_sepv3', 'abrams', 'driver', 'hull'), ['driverReclined']);
 assert.deepEqual(crewPostureLadders('t72b3', 'sovietAz', 'driver', 'hull'), ['driverReclined']);
+assert.deepEqual(crewPostureLadders('ztz100', 'ztz100HullCapsule', 'driver', 'hull'), ['driverReclined']);
 assert.deepEqual(crewPostureLadders('leo1a5', 'leopard', 'driver', 'hull'), ['driverSeated', 'driverReclined']);
 assert.deepEqual(crewPostureLadders('m60a3', 'westernManualHullAmmo', 'driver', 'hull'), ['driverSeated', 'driverReclined']);
 assert.deepEqual(crewPostureLadders('chieftain5', 'westernManualHullAmmo', 'driver', 'hull'), ['driverReclined']);
