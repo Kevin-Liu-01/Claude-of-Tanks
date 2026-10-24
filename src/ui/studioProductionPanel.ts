@@ -1,5 +1,5 @@
 /** Director workspace: curated scenes and camera tools, backed by the same Studio API as captures. */
-import { PRODUCTION_PRESETS, type ProductionFormat } from '../game/studioProduction.ts';
+import { PRODUCTION_PRESETS, productionAspect, type ProductionFormat } from '../game/studioProduction.ts';
 import { sceneLinkPath } from '../game/studioSceneLink.ts';
 import type { StudioPanelApi } from './studioPanel.ts';
 import { getLocale, t } from './i18n.ts';
@@ -35,7 +35,7 @@ const FLEET_RESULTS = 6;
 
 /** The Director's words: the catalogs' studio.director.ui.* (the Studio's demand-loaded slice). */
 type CopyKey = 'director' | 'scene' | 'actors' | 'effects' | 'timeline' | 'output' | 'library' | 'stage' | 'staging' |
-  'ready' | 'format' | 'landscape' | 'portrait' | 'square' | 'subject' | 'defaultTank' | 'shotlist' | 'empty' |
+  'ready' | 'format' | 'landscape' | 'portrait' | 'square' | 'card' | 'subject' | 'defaultTank' | 'shotlist' | 'empty' |
   'camera' | 'hero' | 'track' | 'rear' | 'overhead' | 'detail' | 'lens' | 'wide' | 'natural' | 'tight' | 'guides' |
   'play' | 'pause' | 'restart' | 'scrub' | 'export' | 'photo' | 'video' | 'stop' | 'saved' | 'unsupported' |
   'workspace' | 'hide' | 'show' | 'takes' | 'takesLoading' | 'takesUnavailable' | 'takeLoading' | 'takeLoaded';
@@ -142,7 +142,7 @@ export function mountStudioProductionPanel(
   const frameLabel = node('label', '', productionLabel('format'));
   const frame = node('select');
   frame.dataset.productionFormat = '';
-  for (const value of ['landscape', 'portrait', 'square'] as const) {
+  for (const value of ['landscape', 'portrait', 'square', 'card'] as const) {
     const option = node('option', '', productionLabel(value)); option.value = value; frame.append(option);
   }
   frame.value = format;
@@ -330,7 +330,7 @@ export function mountStudioProductionPanel(
   if (hosts.guides) hosts.guides.prepend(guideLayer); else root.prepend(guideLayer);
   function setFormat(): void {
     format = frame.value as ProductionFormat;
-    guide.style.setProperty('--frame-aspect', String(format === 'portrait' ? 9 / 16 : format === 'square' ? 1 : 16 / 9));
+    guide.style.setProperty('--frame-aspect', String(productionAspect(format)));
     guideCaption.textContent = productionLabel(format);
   }
   frame.addEventListener('change', () => { setFormat(); S.setProductionFormat(format); }); setFormat();
@@ -341,7 +341,8 @@ export function mountStudioProductionPanel(
   const exports = node('section'); exports.append(node('h3', '', productionLabel('export')));
   const exportButtons = node('div', 'production-exports');
   const photo = button(productionLabel('photo'), () => {
-    const [width, height] = format === 'portrait' ? [2160, 3840] : format === 'square' ? [2880, 2880] : [3840, 2160];
+    const [width, height] = format === 'portrait' ? [2160, 3840] : format === 'square' ? [2880, 2880]
+      : format === 'card' ? [3840, 2010] : [3840, 2160];
     Promise.resolve().then(() => S.capture({ width, height, download: true })).then(() => notify(productionLabel('saved'))).catch(failure);
   }, KIT_BUTTON);
   const video = button(productionLabel('video'), () => {
