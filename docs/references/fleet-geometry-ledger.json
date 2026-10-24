@@ -14,16 +14,16 @@
  "algorithm": "per mesh: sha256(path, type, visibility/shadow flags, render order, instance count, groups, draw range, every attribute (name, layout, bytes), index bytes, Float32 world matrix, instance matrices/colours, material scalars and texture-slot presence); per group and per tank: sha256 of the sorted mesh digests (first 16 hex). Interior fills and texture pixels excluded.",
  "tanks": {
   "abramsx": {
-   "high": {"meshes":86,"vertices":338680,"triangles":113742,"digest":"3e848e8a93e33ca6","groups":{"hull":"2f5520cf8e5706db","turret":"99ce766fb638ff83","gun":"26f2e7c2806dc3cb","runningGear":"ca258c88655efde7","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":81,"vertices":274528,"triangles":92358,"digest":"2feb7e0c6a31d554","groups":{"hull":"1a0c8134e18d9506","turret":"1f16ee8aeaa3ff8f","gun":"9ab11335462a6c54","runningGear":"92e7f875deda10cc","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":87,"vertices":339142,"triangles":114406,"digest":"43b4fa76d9712718","groups":{"hull":"9c1e2a1aca054a37","turret":"303671cda608607f","gun":"26f2e7c2806dc3cb","runningGear":"ca258c88655efde7","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":82,"vertices":274894,"triangles":92862,"digest":"d5d3cbbfb3f6ee4f","groups":{"hull":"46d87d3a09eff688","turret":"cfe7fd1020ef258c","gun":"9ab11335462a6c54","runningGear":"92e7f875deda10cc","other":"e3b0c44298fc1c14"}}
   },
   "aft10": {
    "high": {"meshes":36,"vertices":184434,"triangles":61654,"digest":"3c47216e073da18e","groups":{"hull":"980119d768fe7387","turret":"6a266d93d1f57b16","gun":"f354f19edcb8ea66","runningGear":"27a95b2659773738","other":"e3b0c44298fc1c14"}},
    "low": {"meshes":35,"vertices":120996,"triangles":40508,"digest":"8f1cf9597b610129","groups":{"hull":"817eb8fe7b00911b","turret":"11eb2ebb635d0a0c","gun":"f354f19edcb8ea66","runningGear":"3f4bf93fab3c9277","other":"e3b0c44298fc1c14"}}
   },
   "ajax": {
-   "high": {"meshes":38,"vertices":212393,"triangles":75741,"digest":"b015a0c7a70a6494","groups":{"hull":"99e16e6651823afb","turret":"5437f1c3d85fd64f","gun":"faac6065d8f30e11","runningGear":"7abf63e11da4a861","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":38,"vertices":131413,"triangles":46265,"digest":"23141d518c8a6d48","groups":{"hull":"f0359bfc7a799086","turret":"82f770c022ae19e8","gun":"9a3ef71bf4ac8090","runningGear":"54b2df60b298ec66","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":39,"vertices":212783,"triangles":76381,"digest":"1fdf05edd8d40e1e","groups":{"hull":"62a16da5f846455c","turret":"3f457d13569ceb03","gun":"faac6065d8f30e11","runningGear":"7abf63e11da4a861","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":39,"vertices":131707,"triangles":46745,"digest":"9755a396706d03b9","groups":{"hull":"f6f632dc355a1377","turret":"03a2e98038885a11","gun":"9a3ef71bf4ac8090","runningGear":"54b2df60b298ec66","other":"e3b0c44298fc1c14"}}
   },
   "amx10p": {
    "high": {"meshes":43,"vertices":178265,"triangles":61253,"digest":"db8aaa979262bdd4","groups":{"hull":"847008aa52a32d91","turret":"ed54fd9ca760f9c4","gun":"67d168ef28eb674c","runningGear":"530d0f4edb2420f9","other":"e3b0c44298fc1c14"}},
@@ -234,8 +234,8 @@
    "low": {"meshes":45,"vertices":207360,"triangles":70152,"digest":"59a4b783d0cd6b39","groups":{"hull":"449c8ce7b6de91a8","turret":"e9248f416491fcde","gun":"91cb0e296b5b6720","runningGear":"b86a88381f383e54","other":"e3b0c44298fc1c14"}}
   },
   "k2b": {
-   "high": {"meshes":82,"vertices":302317,"triangles":101099,"digest":"e8ef86b421c9a847","groups":{"hull":"1c181f61650c01b8","turret":"f5e2bab98c318e4b","gun":"60cc68877f9965b7","runningGear":"37b9f8d3d0927ca7","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":80,"vertices":265051,"triangles":88677,"digest":"37f3bb6bc7749bba","groups":{"hull":"4f667102cc7da4f8","turret":"dfb7d200a5b83c3b","gun":"3d0706b2d72a4d26","runningGear":"b96647561ffec0ac","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":83,"vertices":302707,"triangles":101739,"digest":"1dd14496d929b644","groups":{"hull":"a764d123f98d1b34","turret":"fbbca0ae82d7756a","gun":"60cc68877f9965b7","runningGear":"37b9f8d3d0927ca7","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":81,"vertices":265345,"triangles":89157,"digest":"36cb61da6c1c3a5a","groups":{"hull":"7256545ccd676091","turret":"79e9a9ceb8db59c8","gun":"3d0706b2d72a4d26","runningGear":"b96647561ffec0ac","other":"e3b0c44298fc1c14"}}
   },
   "kf41_lynx": {
    "high": {"meshes":44,"vertices":228943,"triangles":80747,"digest":"061053e3f419f3df","groups":{"hull":"1a4a386b450a2c60","turret":"f5f1aeaaee4d7e3c","gun":"49ba9c9013b72e2c","runningGear":"4ecc5add95dbd390","other":"e3b0c44298fc1c14"}},
@@ -498,8 +498,8 @@
    "low": {"meshes":46,"vertices":131980,"triangles":49132,"digest":"2d0710a24aa99cef","groups":{"hull":"75ed57f9631ee509","turret":"bb5768e7ac3cb0be","gun":"7839a02cdf0464ae","runningGear":"7cbd508adfb7c956","other":"e3b0c44298fc1c14"}}
   },
   "object148_proto": {
-   "high": {"meshes":51,"vertices":222681,"triangles":74686,"digest":"c1554161d614f12b","groups":{"hull":"7d24ec56284c2822","turret":"1e34700648b9f97a","gun":"db9c56bf1384b697","runningGear":"b1eb17dcdd82a581","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":50,"vertices":196809,"triangles":66062,"digest":"427bf640af6e655f","groups":{"hull":"7d24ec56284c2822","turret":"b1d216efcb046cf2","gun":"0f2a801f9eb37083","runningGear":"c9f9bc187d08e40c","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":52,"vertices":223065,"triangles":75324,"digest":"cadf05ca8272804e","groups":{"hull":"2406d0b708175ecb","turret":"5c5c3c8e4f1682c5","gun":"db9c56bf1384b697","runningGear":"b1eb17dcdd82a581","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":51,"vertices":197097,"triangles":66540,"digest":"820b7013cae92a2f","groups":{"hull":"a1aaa46d4ac8c84b","turret":"fc02a18a435d2118","gun":"0f2a801f9eb37083","runningGear":"c9f9bc187d08e40c","other":"e3b0c44298fc1c14"}}
   },
   "object695": {
    "high": {"meshes":39,"vertices":275321,"triangles":96543,"digest":"dd485fa87d09cdab","groups":{"hull":"05b7109c2f0af520","turret":"c0b57b5d72c50af8","gun":"2a91b32ea38edb1a","runningGear":"9b4c02b8fbd8f1c0","other":"e3b0c44298fc1c14"}},
