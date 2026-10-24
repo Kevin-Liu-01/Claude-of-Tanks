@@ -1225,7 +1225,7 @@
    "hostSweep": []
   },
   "leo2a2": {
-   "inputHash": "5eb581c3067f84f8",
+   "inputHash": "a2659a2fecf3b7a0",
    "runs": [
     {
      "index": 0,
@@ -1246,7 +1246,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.932,
-      "host": "hull<cutSlab@profiles/leopard.ts:1610>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1611>"
      }
     },
     {
@@ -1255,27 +1255,20 @@
      "source": "strip",
      "frame": "turret",
      "registered": true,
-     "classes": [
-      "HANGING"
-     ],
-     "primary": "HANGING",
-     "why": {
-      "HANGING": [
-       "94% over air",
-       "only 6% supported"
-      ]
-     },
+     "classes": [],
+     "primary": "OK",
+     "why": {},
      "notes": [],
      "measures": {
-      "support": 0.06,
-      "gap": 0,
-      "air": 0.94,
+      "support": 0.94,
+      "gap": 0.06,
+      "air": 0,
       "hidden": 0,
       "sunkMaxM": 0.003,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.989,
-      "host": "turretDark<buildLeo2A4MarkingsStage2@profiles/leopard.ts:7350>"
+      "exposure": 0.897,
+      "host": "orphan:turret"
      }
     }
    ],
@@ -1283,7 +1276,7 @@
    "hostSweep": []
   },
   "leo2a3": {
-   "inputHash": "f4edb04c75e6ca2b",
+   "inputHash": "912d41b3d3dda3d3",
    "runs": [
     {
      "index": 0,
@@ -1304,7 +1297,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.932,
-      "host": "hull<cutSlab@profiles/leopard.ts:1610>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1611>"
      }
     },
     {
@@ -1313,27 +1306,20 @@
      "source": "strip",
      "frame": "turret",
      "registered": true,
-     "classes": [
-      "HANGING"
-     ],
-     "primary": "HANGING",
-     "why": {
-      "HANGING": [
-       "94% over air",
-       "only 6% supported"
-      ]
-     },
+     "classes": [],
+     "primary": "OK",
+     "why": {},
      "notes": [],
      "measures": {
-      "support": 0.061,
-      "gap": 0,
-      "air": 0.939,
+      "support": 0.914,
+      "gap": 0.086,
+      "air": 0,
       "hidden": 0,
       "sunkMaxM": 0.003,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.989,
-      "host": "turretDark<buildLeo2A4MarkingsStage2@profiles/leopard.ts:7350>"
+      "exposure": 0.9,
+      "host": "orphan:turret"
      }
     }
    ],
