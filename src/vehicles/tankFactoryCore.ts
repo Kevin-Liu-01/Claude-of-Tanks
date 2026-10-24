@@ -9860,7 +9860,13 @@ export function* createTankRuntimeSteps(
   // camoSeed/quality never move wheels), so re-attachment on every build is
   // an idempotent overwrite. Gearless builds (community GLB placeholders)
   // publish nothing and keep the legacy plate+AABB path untouched.
-  if (P.gear && P.gear.trackHitbox) attachTrackShapes(armor, P.gear.trackHitbox);
+  // (249) A combat-rig row hands the builders an authoring copy of the armor (authoringRigSpec); the prisms go onto the
+  // shared combat armor as well, which the copy's writes never reached (every such tank fought without track prisms).
+  if (P.gear && P.gear.trackHitbox) {
+    attachTrackShapes(armor, P.gear.trackHitbox);
+    const combatArmor = getSpec(specId).armor;
+    if (combatArmor !== armor) attachTrackShapes(combatArmor, P.gear.trackHitbox);
+  }
 
   // ---- state ----
   let destroyed = false;
