@@ -67,7 +67,7 @@ const SURFACES = {
     keys: ['nav.public-nav', 'header.docs-hero', 'section.docs-chapters', 'main.docs-layout', 'aside.docs-toc', 'article.docs-main'],
   },
   'docs-topic': {
-    route: '/docs/vehicles', kind: 'public', title: 'a field-manual topic page',
+    route: '/docs/tanks', kind: 'public', title: 'a field-manual topic page',
     keys: ['nav.public-nav', 'main', 'main > *', 'aside', 'article'],
     scrollWindowTo: 900,
   },

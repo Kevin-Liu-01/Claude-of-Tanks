@@ -26,7 +26,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const arg = (name, fallback) => process.argv.find((value) => value.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
 const OUT = resolve(arg('out', join(ROOT, '.qa-dev/media-motion-savedata')));
 mkdirSync(OUT, { recursive: true });
-const PAGES = arg('pages', '/home,/docs,/docs/vehicles,/docs/filming,/docs/worlds,/gallery,/no-such-sector').split(',');
+const PAGES = arg('pages', '/home,/docs,/docs/tanks,/docs/filming,/docs/battlefields,/gallery,/no-such-sector').split(',');
 const VIDEO = /\.(?:webm|mp4|mov)(?:[?#]|$)/i;
 
 async function freePort() {

@@ -2,7 +2,7 @@
  * referenceTakes.ts — each vehicle's own take in the field manual's fleet reference (owner 2026-10-12: "make a special
  * video for all tanks ... and use that everywhere"; src/ui/fleetTakes.ts).
  *
- * The manual has no page per vehicle: /docs/vehicles presents each one as a record of its reference (reference.ts),
+ * The manual has no page per vehicle: the tanks chapter (/docs/tanks) presents each one as a record of its fleet reference (reference.ts),
  * which marks the record with the vehicle's spec id. The first time a record opens, the fleet-takes module and its
  * index load; a vehicle the index has gains an "In action" figure under its values (poster first, the silent loop
  * while the figure is on screen, the take's title and a link that opens its scene in the Studio). A vehicle the index
