@@ -123,6 +123,7 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
   const reload=createVehicleCooldownReader();
   let priorTime=0,priorX=0,priorY=0,priorZ=0,speed=0,wasActive=false,kind='';
   let priorRecallLocked:boolean|null=null;
+  let batteryCharge=NaN;
   function updateWeapons(player:HudTank|null|undefined,now:number):void {
     for(let slot=0;slot<cards.length;slot++){
       const card=cards[slot]!,wait=reload(player?.combat,slot,now),selected=player?.combat?.shellSlot===slot;
@@ -209,7 +210,7 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
       setHidden(zoom.host,drone);setHidden(distance.host,drone);
       setText(timer.value,`${Math.ceil(view.batteryS)}s`);setText(link.value,`${Math.round(range)}m`);setText(speedometer.value,`${Math.round(speed*3.6)}km/h`);
       setText(zoom.value,`×${(55/fov).toFixed(1)}`);setText(distance.value,`${Math.round(dist)}m`);
-      setHidden(battery,!drone);if(battery.value!==view.batteryS)battery.value=view.batteryS;
+      setHidden(battery,!drone);const charge=Math.round(view.batteryS*4)/4;if(charge!==batteryCharge){battery.value=charge;batteryCharge=charge;} // (in quarter seconds, against the last value written: a meter reads back clamped to its max)
       root.classList.toggle('low-battery',drone&&view.batteryS<10);
       setHidden(weapons,drone);setHidden(back,!drone);
       // Owner 2026-10-14: the authority accepts a recall only once the pilot is in the drone's feed; until then the return

@@ -1535,9 +1535,10 @@ const HUD_CSS = `
 body.cot-debug-hud .cot-net{display:none!important;}
 /* (249, the owner's performance push) The plates are their own layout and paint roots: a count, a name or a row that
    changes relayouts and repaints its plate, never the HUD around it. Paint containment only where nothing draws past
-   the plate (the ammo slots' hover cards and the controls' badges do: layout only there). */
+   the plate (the ammo slots' hover cards do: layout only there; the controls row's buttons are static, and their
+   overlays place against the row, so they keep no containment). */
 .cot-top,.cot-ear,.cot-kill-lane,.cot-net,.cot-mode-status{contain:layout paint;}
-.cot-shell,.cot-con,.cot-vehicle-controls>button,.cot-minimap{contain:layout;}
+.cot-shell,.cot-con,.cot-minimap{contain:layout;}
 /* The top-right corner (hud.ts netEl): the readout's units once measured (.metered), the link's ping in a networked
    battle (the meter's own ping cell carries it while that shows), the settings gear and its key. */
 .cot-net-units{display:flex;align-items:center;}
