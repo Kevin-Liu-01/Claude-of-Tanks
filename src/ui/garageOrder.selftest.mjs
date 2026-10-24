@@ -48,6 +48,13 @@ assert.match(garageSource,
 assert.match(garageSource, /const GARAGE_STATIONS = Object\.freeze\(\[\s*\['overview', 'performance'\], \['firepower', 'gun'\], \['mobility', 'speed'\],\s*\['protection', 'shield'\], \['crew', 'crew'\],\s*\] as const\);/,
   'the readout has five stations; the paint left them for the band');
 assert.match(garageSource, /\/\^Digit\(\[1-5\]\)\$\//, 'the station keys run 1 to 5');
+// the stage's callouts wait for their act (owner 10-24): off by default, the module loads at the first press, and a frame
+// does nothing while they are off
+assert.match(garageSource, /data-lt-callouts aria-pressed="false"/, 'the callouts act starts unpressed');
+assert.match(garageSource, /frameHotspots\(camera, model\) \{\s*if \(!calloutsShown \|\| !hotspots\) return;/,
+  'no frame projects the callouts while they are off');
+assert.doesNotMatch(garageSource, /\n  loadHotspots\(\);/, 'the hotspot module never loads before the act');
+assert.match(garageSource, /e\.code === 'KeyI' && document\.body\.dataset\.cotPanels === 'persistent'/, 'I toggles the callouts on the docked stage');
 assert.match(garageSource, /aria-orientation="horizontal"/, 'the station tabs are one horizontal row');
 assert.match(garageSource, /function fitReadout\(force = false\): void \{[\s\S]*?while \(density < 4 && statsEl\.scrollHeight > statsEl\.clientHeight \+ 1\) statsEl\.dataset\.density = READOUT_DENSITY\[\+\+density\];/,
   'the readout steps through its four densities until the station fits');

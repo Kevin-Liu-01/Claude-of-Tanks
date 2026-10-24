@@ -220,7 +220,7 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
 .cot-lt-swatch:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:2px;}
 @media (hover:hover){.cot-lt-swatch:not(.is-on):hover{outline:1px solid var(--line-control);outline-offset:-1px;}}
 .cot-lt-band .cot-c-btn{--h:var(--slot,56px);height:100%;}
-.cot-lt-paint-all[aria-expanded='true']{box-shadow:var(--ring-accent);color:var(--accent);}
+.cot-lt-paint-all[aria-expanded='true'],.cot-lt-acts [data-lt-callouts][aria-pressed='true']{box-shadow:var(--ring-accent);color:var(--accent);}
 .cot-lt-acts{display:flex;}
 .cot-garage.vehicle-locked :is(.cot-lt-paint,.cot-lt-loadout){pointer-events:none;opacity:.42;}
 /* a narrow docked band (under 760 px: a window under about 1180 px) keeps what the tank wears and every paint, and the acts
@@ -409,7 +409,7 @@ body[data-cot-panels='overlay'] .cot-lt-paint-all{--h:44px;width:44px;flex:none;
 body[data-cot-panels='overlay'] .cot-lt-acts{position:fixed;right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));
   top:max(64px,calc(env(safe-area-inset-top,0px) + 58px));flex-direction:column;gap:var(--s2);padding:0;box-shadow:none;pointer-events:auto;}
 body[data-cot-panels='overlay'] .cot-lt-acts .cot-c-btn{--h:44px;height:var(--h);}
-body[data-cot-panels='overlay'] .cot-lt-acts [data-lt-photo]{display:none;}
+body[data-cot-panels='overlay'] .cot-lt-acts :is([data-lt-photo],[data-lt-callouts]){display:none;}
 
 /* ---- a phone on its side (and a folded tablet held wide): the stage and the fleet on the left, the column on the right
    with the name, the band, the figures and the battle card ---- */
