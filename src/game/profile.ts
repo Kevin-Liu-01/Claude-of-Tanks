@@ -1,5 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
-import { rulesetKeepsRecords } from '../sim/matchRuleset.ts';
+import { battleKeepsRecords } from '../sim/matchRuleset.ts';
 // Durable local battle history. This deliberately records outcomes instead of
 // inventing a wallet: Claude of Tanks has no research tree or purchasable
 // vehicles, so credits and XP would communicate progression that does not
@@ -18,6 +18,8 @@ export interface BattleRecord {
   /** (ac130-fx-228 r3) the player flew the AC-130 that battle: the last-battle card names the aircraft */
   aircraft?: boolean;
   mapId: string;
+  /** The battle's mode (sim/matchModes.ts id), for "Again: <mode · map>"; absent on records saved before it. */
+  gameMode?: string;
   durationS: number;
   completedAt: number;
 }
@@ -46,6 +48,7 @@ interface BattleResultInput {
   vehicleId?: RuntimeValue;
   aircraft?: RuntimeValue;
   mapId?: RuntimeValue;
+  gameMode?: RuntimeValue;
   durationS?: RuntimeValue;
   completedAt?: RuntimeValue;
 }
@@ -113,6 +116,7 @@ function sanitizeBattle(value: RuntimeValue): BattleRecord | null {
     vehicleId: typeof source.vehicleId === 'string' ? source.vehicleId : '',
     ...(source.aircraft === true ? { aircraft: true } : {}),
     mapId: typeof source.mapId === 'string' ? source.mapId : '',
+    ...(typeof source.gameMode === 'string' && source.gameMode ? { gameMode: source.gameMode } : {}),
     durationS: finiteInt(source.durationS),
     completedAt: Number.isFinite(source.completedAt) ? Number(source.completedAt) : 0,
   };
@@ -190,6 +194,7 @@ export function recordBattleResult({
   vehicleId = '',
   aircraft = false,
   mapId = '',
+  gameMode = '',
   durationS = 0,
   completedAt = Date.now(),
 }: BattleResultInput = {}): BattleRecord {
@@ -201,6 +206,7 @@ export function recordBattleResult({
     vehicleId,
     aircraft,
     mapId,
+    gameMode,
     durationS,
     completedAt,
   });
@@ -250,8 +256,9 @@ export function installBattleRecords(bus: ProfileEventBus | null | undefined): v
   bus.on('battle:ended', (payload) => {
     const event = recordOf(payload) ?? {};
     if (!tally) return;
-    // a practice mode keeps no record (sim/matchRuleset.ts records): the proving ground never reaches the tally
-    if (event.reason === 'network_disconnect' || !rulesetKeepsRecords(typeof event.gameMode === 'string' ? event.gameMode : null)) {
+    // a practice mode keeps no record (sim/matchRuleset.ts records): the proving ground never reaches the tally, nor a
+    // watched battle (battleKeepsRecords)
+    if (event.reason === 'network_disconnect' || !battleKeepsRecords(event)) {
       tally = null;
       return;
     }
@@ -265,6 +272,7 @@ export function installBattleRecords(bus: ProfileEventBus | null | undefined): v
       vehicleId: tally.vehicleId,
       aircraft: own?.aircraft === true,
       mapId: event.mapId || tally.mapId,
+      gameMode: typeof event.gameMode === 'string' ? event.gameMode : '',
       durationS: Number.isFinite(event.durationS)
         ? Number(event.durationS) : Math.max(0, (Date.now() - tally.startedAt) / 1000),
     });

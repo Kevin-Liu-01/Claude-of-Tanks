@@ -90,6 +90,8 @@ interface BattleResultPresentationRuntime {
   update(): void;
   reset(): void;
   clearPending(): void;
+  /** Watch mode (watch-mode-243): a freshly taken seat gets the player's death flow afresh. */
+  newSeat(): void;
   /** Feed the director the bus facts it reads (mode:* events, tank:destroyed). */
   observe(type: string, payload: unknown): void;
   snapshot(): BattleResultPresentationSnapshot;
@@ -310,6 +312,11 @@ export function createBattleResultPresentationRuntime({
     },
     clearPending() {
       cancelBeat();
+      pending = null;
+    },
+    newSeat() {
+      if (endShown) return;
+      deathCamShown = false;
       pending = null;
     },
     observe(type, payload) {

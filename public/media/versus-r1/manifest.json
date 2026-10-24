@@ -726,8 +726,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/f6-leo2a6-steinburg-r7-top.json",
    "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-top.webp",
-   "bytes": 422008,
-   "sha256": "80a8944716c91e7260742260f16aa735d712c6cf9774469de58e93cb96f3a004",
+   "bytes": 349576,
+   "sha256": "444a16904037953af78b4c977ffbb9e4aa930fbcb8b1458e3c1f4255fb74102b",
    "width": 1920,
    "height": 1080,
    "source": "f6-leo2a6-steinburg-r7-top-1920.webp"
@@ -757,8 +757,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs07-autumn-ariete-t62-r7-top.json",
    "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-top.webp",
-   "bytes": 546208,
-   "sha256": "93e75feff79dcafbdf96fd8c890c145e3a4b41aa54d61dc3e53cc3e19b50eac8",
+   "bytes": 446346,
+   "sha256": "39ffcd2a419b469634ac1b02d4ad84f5f4fe587930c4e10d0a28e47b39fdea71",
    "width": 1920,
    "height": 1080,
    "source": "vs07-autumn-ariete-t62-r7-top-1920.webp"
@@ -788,8 +788,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs08-winter-cv90-bmp3-r7-top.json",
    "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top.webp",
-   "bytes": 253428,
-   "sha256": "17ba48c1261534e80add23e17df1c038d478b0063b8e7f7852f530c5aded7838",
+   "bytes": 180572,
+   "sha256": "cef0eb1d7825e14c1daa1193b797034546c600c56c01d27285cd4b910f627f39",
    "width": 1920,
    "height": 1080,
    "source": "vs08-winter-cv90-bmp3-r7-top-1920.webp"
@@ -819,8 +819,8 @@
    ],
    "scene": "tools/media-r5/versus/scenes/vs09-alpine-strv122-t80bv-r7-top.json",
    "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-top.webp",
-   "bytes": 263860,
-   "sha256": "c359f6567f1f2628e4b1e4b5f4f3ccb2d415ede1ccb45c38af1a27421cca8ecf",
+   "bytes": 255362,
+   "sha256": "22f7a383890174ddab9a70cbfecc1d8a8a80922147c1d79ed347fa043a2cf956",
    "width": 1920,
    "height": 1080,
    "source": "vs09-alpine-strv122-t80bv-r7-top-1920.webp"

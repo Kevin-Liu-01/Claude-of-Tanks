@@ -193,4 +193,9 @@ export default {
   },
   minimap: { ...frontier.minimap, base: [73, 95, 59], hard: [105, 96, 73], soft: [44, 65, 48], bog: 'rgba(92,81,48,.71)', bogStroke: 'rgba(49,43,25,.66)' },
   shot: { pos: [-244, 50, -250], look: [50, 1, 100] },
+  // the horizons stream (horizons-240, 2026-10-23): the Hinterland past the red line (hinterland/drafts/longleaf.ts) —
+  // the longleaf flatwoods, 1941; its blind pair against the old ring won 7/2 (mean 4.0 -> 5.4, driver, gunner and chase
+  // under day, sunset and night, both sides on main 4178992761); the battlefield's ground carried past the edge
+  // (groundDetail.ts); rimH unchanged; `?hinterland=0` draws the old ring
+  hinterland: true,
 } satisfies import('./contracts.ts').MapCompositionConfig;
