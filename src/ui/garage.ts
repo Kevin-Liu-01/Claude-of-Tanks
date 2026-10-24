@@ -4144,7 +4144,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!photo || !api.isOpen || battleMenu.classList.contains('open')) return;
     const control = photo;
     emit('ui:click', {});
-    photoMode ??= import('./photoMode.ts');
+    // the photo mode's sheet loads beside its module, at the boundary (the runtime-styles rule: only main.ts imports CSS statically)
+    photoMode ??= Promise.all([import('./photoMode.ts'), import('./photoMode.css')]).then(([mode]) => mode);
     void photoMode.then(({ openPhotoMode }) => openPhotoMode({
       stage: control.stage, showroom: control.showroom, still: control.still, keycap,
       fileName: () => `claude-of-tanks_${selectedId || 'garage'}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`,

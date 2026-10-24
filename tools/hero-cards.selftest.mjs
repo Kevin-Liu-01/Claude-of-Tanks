@@ -167,7 +167,9 @@ for (const gunSide of ['left', 'right']) {
   for (const [kind, L] of Object.entries(HERO_CARD_LAYOUT)) {
     for (const key of ['nameSize', 'minName', 'tierSize']) assert.ok(L[key] >= 11, `${kind}.${key} ${L[key]} px is under the 11 px floor`);
   }
-  const sizes = [...garageCss.matchAll(/--hc-(?:name|tier):([\d.]+)px/g), ...garageCss.matchAll(/\.cot-card \.dev-tag\{[^}]*font-size:([\d.]+)px/g)].map((m) => Number(m[1]));
+  // a size is a literal px or the type token it reads (var(--fs-11) is 11 px in English; the zh floor lifts it)
+  const sizes = [...garageCss.matchAll(/--hc-(?:name|tier):([\d.]+)px/g),
+    ...garageCss.matchAll(/\.cot-card \.dev-tag\{[^}]*font-size:(?:([\d.]+)px|var\(--fs-(\d+)\))/g)].map((m) => Number(m[1] ?? m[2]));
   assert.ok(sizes.length >= 5 && sizes.every((size) => size >= 11), `garage card text sizes ${sizes.join(', ')} px: none under 11 px`);
   assert.equal(HERO_CARD_LAYOUT.rosterCompact.tierWord, false, 'the compact chip shows the numeral alone');
   assert.match(garageCss, /body\[data-cot-panels='overlay'\] \.cot-card \.hc-tier\{[^}]*font-size:0\}\nbody\[data-cot-panels='overlay'\] \.cot-card \.hc-tier b\{font-size:var\(--hc-tier\)\}/, 'the compact strip hides the chip\'s word and keeps its numeral');
