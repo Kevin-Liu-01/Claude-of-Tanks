@@ -257,7 +257,7 @@ export function geometryFingerprint(root: GeometryRootLike): string {
  * meshes and interior fills cannot move a pixel of an icon or a hero card, so their changes no longer stale them. Crew
  * volumes and crew seats are combat-anatomy data, never meshes: crew-fit work cannot move this key either.
  *
- * The browser is the only writer of this key (tools/icons-page.html, tools/hero-cards-page.html, tank-assets-check).
+ * The browser is the only writer of this key (tools/icons-page.html, tools/hero-cards-page.html and the fleet asset check).
  * A Node build of the same tank is not bit-identical everywhere: Node 24's V8 (13.6) and the capture Chrome's (151)
  * round Math.sin/cos/tan/atan2/exp/log/cbrt/... differently in the last bit (measured 2026-10-24: 3-18 % of inputs;
  * pow, sqrt and hypot agree), and near-degenerate geometry amplifies a last bit. In the measurement, the M1A2 family's
