@@ -65,7 +65,7 @@ import type {
 import {
   getDeviceTier, getMobilePresetChoice, getStoredChoice,
   MOBILE_PRESET_ORDER, PRESET_ORDER,
-  setMobilePresetName, setPresetName,
+  resolvePresetName, setMobilePresetName, setPresetName,
   type PresetName,
 } from '../engine/quality.ts';
 // entry telemetry (2026-09-24): the anonymous crash/load beacon is a player choice
@@ -75,6 +75,11 @@ import {
   type AccessibilityChange, type ColorPreset, type HoldAction, type MotionMode,
 } from './accessibilitySettings.ts';
 import { tokenValue } from './tokens/tokens.ts';
+
+/** A desktop preset's preview (public/media/settings-r1: one Verdant frame per preset, a 640x360 cut at 1:1 pixels). */
+const QUALITY_PREVIEWS: ReadonlySet<PresetName> = new Set<PresetName>(['low', 'medium', 'high', 'ultra']);
+const qualityPreview = (name: PresetName): string | null =>
+  (QUALITY_PREVIEWS.has(name) ? `/media/settings-r1/quality-${name}-640.webp` : null);
 
 const PRESET_LABEL_KEYS: Readonly<Record<PresetName, string>> = Object.freeze({
   ultra: 'settings.preset.ultra',
@@ -433,6 +438,10 @@ const SETTINGS_CSS = `
   background:linear-gradient(180deg,rgba(58,40,14,.92),rgba(30,20,8,.95));
   box-shadow:inset 0 1px 0 rgba(255,210,122,.12);}
 .cot-set-seg.onoff button{padding:5px 13px 4px;min-width:48px;}
+/* the graphics quality preview (media/settings-r1): the chosen preset's frame at 1:1 pixels, or the one pointed at */
+.cot-set-preview{margin:10px 10px 4px;max-width:640px;aspect-ratio:16/9;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--ring-2)}
+.cot-set-preview[hidden]{display:none}
+.cot-set-preview img{display:block;width:100%;height:100%;object-fit:cover}
 .cot-set-note{font-size:13px;font-weight:400;letter-spacing:0;color:#8d9ba7;margin:10px 10px 2px;line-height:1.55;max-width:72ch;text-wrap:pretty;}
 .cot-set-note b{color:#c3cfd8;font-family:var(--font-body);font-weight:600;}
 .cot-set-note.folded{display:none;}
@@ -1261,12 +1270,36 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         if (mobile) setMobilePresetName(name);
         else setPresetName(name); // live-applies post resize + shadow RT realloc
         for (const x of btns) x.classList.toggle('sel', x.dataset.name === name);
+        chosen = name;
+        showPreview(name);
         emit('ui:click', {});
       });
+      // the preview shows the preset a pointer or the focus is on, then returns to the chosen one
+      b.addEventListener('pointerenter', () => showPreview(name));
+      b.addEventListener('focus', () => showPreview(name));
       btns.push(b);
     }
     const selected = mobile ? getMobilePresetChoice() : getStoredChoice();
+    let chosen: string = selected;
     for (const x of btns) x.classList.toggle('sel', x.dataset.name === selected);
+    seg.addEventListener('pointerleave', () => showPreview(chosen));
+    seg.addEventListener('focusout', (event) => { if (!seg.contains(event.relatedTarget as Node | null)) showPreview(chosen); });
+    // the desktop presets' preview (phones keep the picker alone): Auto shows the preset it resolves to
+    const preview = mobile ? null : el('figure', 'cot-set-preview', card);
+    const previewImage = preview ? el('img', '', preview) : null;
+    if (previewImage) {
+      previewImage.width = 640;
+      previewImage.height = 360;
+      previewImage.alt = '';
+      previewImage.decoding = 'async';
+    }
+    function showPreview(choice: string): void {
+      if (!preview || !previewImage) return;
+      const src = qualityPreview(choice === 'auto' ? resolvePresetName('auto') : choice as PresetName);
+      preview.hidden = !src;
+      if (src && previewImage.getAttribute('src') !== src) previewImage.src = src;
+    }
+    showPreview(selected);
     const note = el('div', 'cot-set-note', card);
     note.textContent = mobile
       ? t('settings.graphics.note.mobile')
