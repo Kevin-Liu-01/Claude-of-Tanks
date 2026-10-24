@@ -19,6 +19,8 @@ body.not-found-page{--font-display:var(--font-ui);--font-body:var(--font-ui);dis
 .not-found h1{display:flex;flex-direction:column;gap:var(--s3);margin:0;font:700 var(--home-h1)/.86 var(--font-display);text-transform:uppercase;color:var(--ink-1);text-shadow:var(--home-headline-shadow)}
 .not-found__line{font-size:var(--home-h2);line-height:.9}
 .not-found__line.t-hollow{--hollow-stroke:1.8px;--hollow-ink:var(--ink-1);text-shadow:var(--hollow-shadow)}
+/* the page's own Play is its one primary: the bar keeps its pages, language and source */
+.not-found-page .public-nav__tools>.public-nav__cta{display:none}
 .not-found__actions{display:flex;flex-wrap:wrap;gap:10px}
 .not-found__actions a{min-width:0}
 .not-found__report{margin-top:calc(var(--s4) * -1)}
