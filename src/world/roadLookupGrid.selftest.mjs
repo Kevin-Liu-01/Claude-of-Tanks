@@ -308,6 +308,8 @@ function mapFixture(fine, fail = false) {
     // (2026-10-07, the time-to-battle lane) the planned wreck bakes and fixed-input prints the wrapper starts beside the
     // terrain (wreckBakePrefetch.ts, surfacePaintPrefetch.ts): none here
     startPlannedWreckBakes: () => null, startSurfacePaints: () => null, plannedSurfacePaints: () => [],
+    // (perf-242's lazy kit registries: a map's own kits load beside its terrain, worldKits.ts) none to load here
+    loadMapKits: () => Promise.resolve(),
   };
   const run = new Function(...Object.keys(dependencies), stripTypeScriptTypes(mapAsync).replace('export ', '')
     + '\nreturn createMapAsync;')(...Object.values(dependencies));

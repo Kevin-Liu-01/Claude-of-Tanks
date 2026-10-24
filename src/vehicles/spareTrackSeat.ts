@@ -720,13 +720,23 @@ function angularLowAt(P: SeatAngularProfile, r: number, ang: number, halfArc: nu
 export interface SeatMotion {
   /** Turret pivot (hull frame); the turret's rest pose is a pure translation to it. */
   pivot: THREE.Vector3;
-  /** Gun pivot in the turret frame. */
+  /** Gun pivot in the turret frame, metres from the turret pivot. */
   gunPivot: THREE.Vector3;
+  /**
+   * The turret frame's units per metre on each axis: its rig's scale at the pass (a builder's non-uniform squash, which
+   * turretRigScale.ts bakes onto its children after the pass; 1 elsewhere). The motion tests work in metres.
+   */
+  turretScale: THREE.Vector3;
   /** True for a full-traverse turret; false for a casemate. */
   turreted: boolean;
   /** Gun yaw half-arc for a casemate with a moving mount (rad), 0 for a gun fixed in the hull. */
   arc: number;
   gun: SeatGunSlices | null;
+  /**
+   * Whether the gun's stops are a measured depression curve (gunPitchByYawDeg): every pose from it up is one the gun
+   * takes, so none is passed by as armour-limited (the curve already holds the gun off the hull).
+   */
+  curved: boolean;
   /** Lowest pitch (rad, negative = depressed) at a turret yaw, and the highest. */
   pitchMin(yaw: number): number;
   pitchMax: number;
@@ -1123,6 +1133,8 @@ function motionClearance(env: SeatEnv, shape: SeatRunShape, ax: Axes, pose: Seat
   stopBelow = -Infinity): number {
   const M = env.motion!;
   const pts = runSamples(shape, ax, pose);
+  // a turret run's points in metres (its frame carries the builder's squash at the pass), as the gun moves round them
+  if (env.frame !== 'hull') for (const p of pts) p.multiply(M.turretScale);
   let clear = Infinity;
   if (env.frame === 'hull') {
     // the turret's own body over the full traverse: a point under the turret's lowest solid at its radius clears it
@@ -1169,7 +1181,10 @@ function motionClearance(env: SeatEnv, shape: SeatRunShape, ax: Axes, pose: Seat
           for (let i = 0; i <= steps; i += stride) {
             const c = gunClearanceAt(M, pts, yaw, lo + i * GUN_PITCH_STEP, true);
             if (c >= clear) continue;
-            if (c < SEAT_RULES.chosen.sweepClearM) {
+            // (245) a pose under the armour is passed by only where the stops are the bare depression: a measured curve's
+            // poses are all the gun's own (the Merkavas' long mantlets read armour-limited at their stops, and the
+            // search seated merkava2d's bow links 0.02 mm under the barrel)
+            if (c < SEAT_RULES.chosen.sweepClearM && !M.curved) {
               if (floor < 0) floor = armourFloor(env, M, yaw, lo, steps, owner);
               if (i < floor) continue;
             }

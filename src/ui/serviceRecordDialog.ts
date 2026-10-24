@@ -10,24 +10,24 @@ import { RECORD_TABS, recordSummary, recordTabForKey, recordTabMarkup, type Reco
 const TAB_ICONS = { overview: 'battleRecord', medals: 'gold', achievements: 'stamp', history: 'clock' } as const;
 export function createServiceRecordDialog(names: RecordViewNames, onClose: () => void) {
   let selected: RecordTab = 'overview', unseen: string[] = [];
-  const modal = createModal({ title:t('garage.record.heading'),
-    subtitle:t('garage.record.description'), size:'wide', closeLabel:t('garage.record.close'),
+  const modal = createModal({ title:t('garage.record.heading'), size:'wide', closeLabel:t('garage.record.close'),
     onClose:()=>{ tooltip.hide(); onClose(); } });
   modal.root.classList.add('cot-service-record');
   modal.panel.id = 'cot-record-modal'; modal.panel.classList.add('cot-record-dialog');
-  const summary = document.createElement('div'); summary.className = 'cot-record-summary';
+  // The header carries the last battle as a plate (its map behind, its tank beside the result); the X closes, so
+  // the dialog keeps no footer.
+  const plate = document.createElement('div'); plate.className = 'cot-record-plate-host';
+  modal.header.insertBefore(plate, modal.closeButton);
   const tabs = document.createElement('div'); tabs.className = 'cot-record-tabs'; tabs.setAttribute('role','tablist');
   tabs.setAttribute('aria-label',t('garage.record.tabsAria'));
-  tabs.innerHTML = RECORD_TABS.map(tab=>`<button class="cot-modal__button" type="button" role="tab" id="cot-record-tab-${tab}" data-record-tab="${tab}" aria-controls="cot-record-panel"><span>${uiIconSVG(TAB_ICONS[tab],18)}${t(`garage.record.tab.${tab}`)}</span><small></small></button>`).join('');
+  tabs.innerHTML = RECORD_TABS.map(tab=>`<button class="cot-record-tab" type="button" role="tab" id="cot-record-tab-${tab}" data-record-tab="${tab}" aria-controls="cot-record-panel">${uiIconSVG(TAB_ICONS[tab],18)}<span>${t(`garage.record.tab.${tab}`)}</span><small></small></button>`).join('');
   const body = document.createElement('div'); body.className = 'cot-record-body'; body.id='cot-record-panel';
   body.setAttribute('role','tabpanel'); body.tabIndex=0;
-  modal.body.append(summary,tabs,body);
-  const note=document.createElement('span'); note.className='cot-record-footnote';note.textContent=t('garage.record.inspectHint');modal.footer.append(note);
-  const close=document.createElement('button');close.type='button';close.className='cot-modal__button';close.dataset.uiSound='back';close.textContent=t('garage.record.close');close.onclick=()=>modal.close();modal.footer.append(close);
+  modal.body.append(tabs,body);
   const tooltip=createRichTooltip(body,'[data-medal-tip],[data-achievement-tip]',awardDetails);
   function render(){
     tooltip.hide();
-    const view={...getServiceRecord(),unseen}, totals=recordSummary(view);summary.innerHTML=totals.chips;
+    const view={...getServiceRecord(),unseen}, totals=recordSummary(names,view);plate.innerHTML=totals.plate;
     const art=battleMapArt(view.history[0]?.mapId);
     modal.root.style.setProperty('--record-map',art?`url("${art}")`:'none');
     for(const button of tabs.querySelectorAll<HTMLButtonElement>('button')){

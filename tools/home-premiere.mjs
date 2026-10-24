@@ -40,9 +40,8 @@ const heroSrcset = () => HERO_RUNGS.items.map((rung) => `${rung.path} ${rung.wid
 const heroDefault = () => HERO_RUNGS.items.find((rung) => rung.width === 1440).path;
 const TAKES = json('public/media/site50-r14/fleet/index.json');
 const SITE = json('public/media/site50-r14/manifest.json');
-// The horizontal lockup (public/brand/lockup.svg from tools/brand-marks.mjs: the commander's tank and the outlined
-// wordmark), inline so it paints with the document: the tank and the words take the ink, the commander and the "of" the
-// accent.
+// The horizontal lockup (public/brand/lockup.svg: the commander mark and the outlined wordmark, tools/brand-marks.mjs), inline
+// so it paints with the document: the paper parts take the ink, the accent parts (style= or fill=) the accent.
 const LOCKUP = readFileSync(join(ROOT, 'public/brand/lockup.svg'), 'utf8');
 function lockupMarkup(titleId) {
   const viewBox = /viewBox="([^"]+)"/.exec(LOCKUP)?.[1];

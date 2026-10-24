@@ -33,9 +33,9 @@ const SHELL: readonly string[] = [
   // settings
   '.cot-set-group', '.cot-set-colhdr span', '.lb .cot-setting-label-text', '.cot-set-btn', '.cot-set-btn.resume',
   // service record
-  '.cot-service-record .cot-record-stat-label', '.cot-record-metric small', '.cot-record-chip small', '.cot-record-card-head small',
-  '.cot-record-card-head strong', '.cot-record-reason small', '.cot-record-reason strong', '.cot-record-footnote',
-  '.cot-modal-root.cot-service-record .cot-modal__button', "body[data-cot-width='phone'] .cot-modal__subtitle",
+  '.cot-service-record .cot-record-stat-label', '.cot-record-metric small', '.cot-record-card-head small',
+  '.cot-record-card-head strong', '.cot-record-reason small', '.cot-record-reason strong', '.cot-record-plate small',
+  '.cot-service-record .cot-record-tab', "body[data-cot-width='phone'] .cot-modal__subtitle",
   // mission brief
   '.cot-brief .kicker', '.cot-brief .objectives', '.cot-brief .enemy',
 ];

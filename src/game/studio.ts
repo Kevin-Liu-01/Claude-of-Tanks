@@ -5517,11 +5517,16 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * shows the map's picture, its name and the build's progress (panel.setStage). The entry and a battlefield change both
    * run under it; the exit to the Garage keeps the branded cover.
    */
+  // (perf-247) the build's plate (studioPanel .st-load) is opaque over the viewport: no scene frame renders under it. Its
+  // first frames linked programs against a scene still being built (0.66 s of link waits on the cold profile).
+  let buildPlateUp = false;
   async function withStage<T>(mapId: string, work: (progress: ProgressListener) => Promise<T>): Promise<T> {
     panel.setStage({ mapId, name: getMapConfig(mapId).name || mapId });
+    buildPlateUp = true;
     try {
       return await work((fraction: number, label: string) => panel.setStageProgress(fraction, label));
     } finally {
+      buildPlateUp = false;
       panel.setStage(null);
     }
   }
@@ -5745,6 +5750,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       sweepPool();
     }
     panel.tick(dt);
+    if (buildPlateUp) return;
     if (reverseRate > 0) stepReverseShuttle(frameWallDtSeconds);
     const playbackScale = timeScale;
     const animating = playbackScale > 0;

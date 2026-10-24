@@ -6,7 +6,7 @@
  "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
  "description": "The Field Manual's pictures: the current game, captured in the engine, one file per size rung.",
  "generatedBy": "shots/media-r5/landing-r6/site-all/docs-manifest.py",
- "count": 30,
+ "count": 31,
  "items": [
   {
    "id": "banner-1280",
@@ -16,6 +16,16 @@
    "height": 540,
    "bytes": 78960,
    "sha256": "c0c4800e7ce9a7273d2f9453accb26a58fd2de58a5e938c78bf89a96dee9e674",
+   "shows": "The Field Manual index banner: a Leopard on Highland Reservoir's lakeside street laying its gun, a burst behind (21:9)."
+  },
+  {
+   "id": "banner-1920",
+   "slot": "banner",
+   "src": "/media/docs-r1/banner-1920.webp",
+   "width": 1920,
+   "height": 810,
+   "bytes": 141908,
+   "sha256": "bbece3475db9ef4d10e2d7f1f96514c8c7778b098f6c799d50d9bd1c5110cb8f",
    "shows": "The Field Manual index banner: a Leopard on Highland Reservoir's lakeside street laying its gun, a burst behind (21:9)."
   },
   {
@@ -234,8 +244,8 @@
    "src": "/media/docs-r1/start-win-1920.webp",
    "width": 1920,
    "height": 1080,
-   "bytes": 64574,
-   "sha256": "a3793c871d948753df7ce09491e351573c376275c0eb6c758bcd6ed425b34479",
+   "bytes": 65112,
+   "sha256": "b05434de4d36a3d7b3cbec9c02ec916b27601deaaa81e9b0936fff15a822ff25",
    "shows": "The end screen after a win: the result, your performance, the battle comparison and the medals earned."
   },
   {
@@ -244,8 +254,8 @@
    "src": "/media/docs-r1/start-win-640.webp",
    "width": 640,
    "height": 360,
-   "bytes": 14348,
-   "sha256": "70e940c44ec7d4bf1c35fa731fbaf6b5dc8400361bf7d670aedde2d71e24dae0",
+   "bytes": 14682,
+   "sha256": "7effe5b803ad9d0cb590f133bd56ed9497e606df694707ee4be2e1c8d1996c0c",
    "shows": "The end screen after a win: the result, your performance, the battle comparison and the medals earned."
   },
   {

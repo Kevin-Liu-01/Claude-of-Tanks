@@ -15,6 +15,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 //     challengerSpecs.ts so an Abrams garage does not load this geometry.
 // Shared family and spec construction policy is imported, never duplicated.
 import * as THREE from 'three';
+import { turretPlinthGeometry } from './turretPlinth.ts';
 import { buildChallenger3RearTurretClosure } from './challenger3RearTurret.ts';
 import { facetedSlab } from './facetedSlab.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
@@ -1516,6 +1517,21 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     // circular while its trunnion follows the corrected casting seat.
     P.turretG.scale.set(...CH1_CASTING_SCALE);
     P.gunG.scale.set(1 / CH1_CASTING_SCALE[0], 1 / CH1_CASTING_SCALE[1], 1 / CH1_CASTING_SCALE[2]);
+    // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the casting turns over the raised engine
+    // deck behind the fighting compartment (1.75, 0.128 m over the 1.622 ring deck), so its seat (turretSeatRace.ts) may
+    // rise that far: past ~1.55 m off the ring's axis the casting's underside stands its seam over that deck. Seated at the
+    // default 4 cm it ran 6-7 cm through the deck and its grilles at every rear bearing.
+    P.turretG.userData.turretSeatRiseM = 0.13;
+    // the casting's broad underside faces fan from inside the ring out over that deck: each corner reads the swept deck
+    // 0.70 m either side, so the whole face comes up over it rather than sloping back to the ring's plane through the deck
+    P.turretG.userData.turretSeatReadM = 0.70;
+    // (the keep radius pinned at the race's: the plinth's hole below must not move the measured rim)
+    P.turretG.userData.turretSeatKeepR = 0.988;
+    // The fighting compartment's roof (1.622) stood 16 cm under the seated casting (1.78): daylight under the turret.
+    // A plinth rises to 1.75 under the casting's rest footprint, from the engine deck's step to the glacis, flush with
+    // the engine deck behind; the ring's race and collar keep their well.
+    P.add('hull', turretPlinthGeometry([[-1.48, -1.27], [1.48, -1.27], [1.48, 2.20], [1.14, 2.40], [0.80, 2.50],
+      [-0.80, 2.50], [-1.14, 2.40], [-1.48, 2.20]], [0, 0.362, 1.02], 1.60, 1.75));
     // The casting was authored in world-like station coordinates and its idle
     // silhouette is correct, but the live yaw pivot was left 0.562 m behind the
     // recovered Challenger ring center (z=0.362). Re-seat the articulation at
@@ -3018,11 +3034,9 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
   // upper hull and skirt courses below retain the published CR2 silhouette.
   const buildChallenger2AssemblyStage3 = (): void => {
     cr2ProfileStrip(P, 0.23, 0.96, midTop, midBottom);
-    // Narrow engine-deck hinge/vent spine: the source side trace carries this
-    // short crest, while its front trace proves it is not a broad deck slab.
-    cr2ProfileStrip(P, 0, 0.006,
-      [[-2.18, 1.58], [-2.10, 1.80], [-1.92, 1.80], [-1.82, 1.58]],
-      [[-2.18, 1.56], [-1.82, 1.56]]);
+    // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): no engine-deck "hinge/vent spine". The
+    // source side trace's short crest (1.80 over z -2.10..-1.92) is the turret bustle's underside, which hangs there at
+    // rest; as a 12 mm hull fin it stood 19 cm up into the bustle and the turret swept through it at every other bearing.
     cr2HullCrossLoft(P, [
       { z: -4.06, bw: 0.46, tw: 1.00, bot: 1.21, top: 1.38 },
       { z: -3.70, bw: 0.58, tw: 1.06, bot: 1.05, top: 1.54 },
@@ -3162,7 +3176,8 @@ function buildChallenger2(P: ChallengerBuilderPort): void {
     // Continuous ring landing beneath the articulated assembly. This is the
     // actual load surface (centered on armorChallenger2.turretPivot.z), not a
     // second turret silhouette; it closes the former visual/physical seam.
-    P.add('hull', box(2.75, 0.035, 1.00), 0, 1.525, 1.00);
+    // (release 240: 1 cm lower, under the turret's front underside, 1.694 m after the family scale, which grazed its corners)
+    P.add('hull', box(2.75, 0.035, 1.00), 0, 1.515, 1.00);
     for (const side of [-1, 1]) P.add('hull', box(0.06, 0.12, 0.12), side * 0.99, 0.435, 0);   // from the 0.96 belly side out
     P.snapGroup('cr2-fender-lug', () => P.add('hull', box(0.04, 0.04, 0.12), 1.72, 1.42, 0), { reachM: 0.06 });
 
@@ -4578,22 +4593,27 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
     // walls INSIDE 1.63 there, only the skirts reach further out)
     P.add('hull', box(1.44, 0.30, 5.85), 0, 1.17, -0.625);                       // low inner spine stays inside the scaled shoe inner faces
     for (const s of [-1, 1]) {
-      P.add('hull', box(0.57, 0.075, 5.85), s * 1.345, 1.6025, -0.625);          // sponson floor clears the complete scaled top run, ends -3.55
+      // (release 240, the owner: "make sure all tank turrets are clear of hulls": the sponson tops, the shoulder's ridge and
+      // the engine deck's first step stand at 1.625, 1.2 cm under the turret's underside (1.637), which sat on their 1.64
+      // and swept through them at every bearing)
+      P.add('hull', box(0.57, 0.075, 5.85), s * 1.345, 1.5875, -0.625);          // sponson floor clears the complete scaled top run, ends -3.55
       P.add('hull', box(0.04, 0.34, 5.85), s * 1.61, 1.35, -0.625);              // source-low outer wall 1.18..1.52, not a full-height plinth
       P.add('hull', mslab1(s,                                                    // continuous upper-hull shoulder: inner spine -> sponson deck
         [0.78, 1.30, 2.30], [0.88, 1.18, 2.30], [0.88, 1.18, -3.55], [0.78, 1.30, -3.55],
-        [0.68, 1.64, 2.30], [1.08, 1.565, 2.30], [1.08, 1.565, -3.55], [0.68, 1.64, -3.55]));
+        [0.68, 1.625, 2.30], [1.08, 1.565, 2.30], [1.08, 1.565, -3.55], [0.68, 1.625, -3.55]));
       P.add('hull', mslab1(s,                                                    // sharp source chamfer -3.55 -> -3.62
         [1.06, 1.565, -3.55], [1.63, 1.565, -3.55], [1.15, 1.565, -3.62], [1.06, 1.565, -3.62],
-        [1.06, 1.64, -3.55], [1.63, 1.64, -3.55], [1.15, 1.64, -3.62], [1.06, 1.64, -3.62]));
+        [1.06, 1.625, -3.55], [1.63, 1.625, -3.55], [1.15, 1.625, -3.62], [1.06, 1.625, -3.62]));
       P.add('hullDetail', box(0.04, 0.10, 1.76), s * 1.65, 1.32, -2.65);         // station-width rail: source side-band height, outer ±1.67
     }
     // Leclerc-method plan trace: the print's full-width rear course is only
     // ±1.60; ±1.72 belongs to the short forward skirt.  The old ±1.68 deck
     // AA-painted the outer plan columns all the way to z -3.27.
     P.add('hull', box(3.20, 0.045, 3.35), 0, 1.5275, 0.625);                     // main deck 1.55, z -1.05..2.30
-    P.add('hull', box(3.20, 0.05, 0.53), 0, 1.615, -1.515);                      // engine deck step 1.64
-    P.add('hull', box(3.20, 0.05, 0.67), 0, 1.645, -2.115);                      // step 1.67
+    // (release 240: the first step at 1.625 runs to -2.12, so the 1.67 step starts past the bustle's sweep, 3.23 m off the
+    // ring's axis)
+    P.add('hull', box(3.20, 0.05, 0.87), 0, 1.60, -1.685);                       // engine deck step 1.625
+    P.add('hull', box(3.20, 0.05, 0.33), 0, 1.645, -2.285);                      // step 1.67
     P.add('hull', box(1.92, 0.045, 0.35), 0, 1.6775, -2.625);                    // exhaust hump 1.70 (print front deck line 1.66 at ±0.96)
     P.add('hull', box(3.20, 0.05, 0.50), 0, 1.665, -3.05);                       // rear deck 1.69
     // Concave plan tail from the print: center lane recessed to -3.78, with
@@ -4648,8 +4668,9 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
     // glacis furniture: driver hatch + periscopes at the crest, splash strip
     P.add('hull', cylY(0.28, 0.28, 0.04, P.q ? 20 : 12), 0.30, 1.575, 1.78);     // driver hatch
     P.add('hullDark', torus(0.28, 0.014, P.q ? 20 : 12), 0.30, 1.582, 1.78);
-    periscope(P, 'hullDetail', 0.30, 1.60, 2.12);
-    periscope(P, 'hullDetail', 0.02, 1.59, 2.12, -0.15);
+    // (release 240: 1 cm lower, under the turret's front underside, which they touched at rest)
+    periscope(P, 'hullDetail', 0.30, 1.59, 2.12);
+    periscope(P, 'hullDetail', 0.02, 1.58, 2.12, -0.15);
     for (const s of [-1, 1]) {
       P.add('hullDetail', box(0.92, 0.045, 0.07), s * 0.52, 1.33, 2.98, 0.30, s * 0.30, 0); // splash V
     }
@@ -4741,8 +4762,9 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
     }
     P.add('hullDetail', box(0.30, 0.16, 0.04), 0, 1.20, -3.785);                 // convoy plate on the center plate
     P.add('hullDetail', box(0.12, 0.14, 0.22), 0, 1.20, -3.89);                  // center tow pintle preserves the print's narrow -3.98 plan tip
-    liftEye(P, 'hullDetail', -1.45, 1.58, -1.60);
-    liftEye(P, 'hullDetail', 1.45, 1.58, -1.60);
+    // (release 240: 6 cm lower, under the bustle's corners, which sat 5 cm into them at rest)
+    liftEye(P, 'hullDetail', -1.45, 1.52, -1.60);
+    liftEye(P, 'hullDetail', 1.45, 1.52, -1.60);
     headlight(P, -1.45, 1.11, 3.96, -0.25, 0.05);
     headlight(P, 1.45, 1.11, 3.96, -0.25, 0.05);
   };
