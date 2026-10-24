@@ -57,6 +57,7 @@ const SKIP_HULK = args.includes('--no-hulk');
 const STRESS = args.includes('--stress');
 const SKIP_LIVE = args.includes('--no-live');
 const RENDER = opt('render');
+const FAR_SAMPLES = Number(opt('far-samples', '0'));
 const { createCanvas } = await import('@napi-rs/canvas');
 const { writeFileSync } = await import('node:fs');
 
@@ -273,6 +274,8 @@ const SHARE_AGES = [0, 0.175, 1000];
 const LIVE_ZONE_M = 0.36;                                    // turretRingWell.ts LIVE_ZONE_M
 const EXT_TOL_M = 0.05, EXT_TOL_R_M = LIVE_ZONE_M + 0.3;
 const GUARD_HALF_M = 0.03, GATE_EXT_PX = 20;
+// a see-through pixel this near (px) a pixel both rasters see past: the cut wreck's outline receded there
+const SILHOUETTE_PX = 3;
 
 /** A convex polygon's part (flat xyz) on one side of the vertical plane x (axis 0) or z (axis 2) = value, or null. */
 function clipAxis(poly, axis, value, keepLess) {
@@ -325,6 +328,10 @@ function carveOpening(tris, hullWorld, box) {
  *  the verifier's rule), nor the dents' reshaping (EXT_TOL_M on the same mesh within EXT_TOL_R_M of the rim). */
 function exteriorHoles(intactTris, destroyedTris, seat, hull, elevations, keepSamples = 10) {
   let holes = 0, holesFar = 0, changed = 0, tolerated = 0;
+  // the holes by kind: see-through (no hit on the cut wreck) inside the outline, see-through at the outline (the cut
+  // wreck's silhouette receded: a background pixel of both rasters within SILHOUETTE_PX), a deeper hit; and by radius
+  let seeThrough = 0, silhouette = 0, deeperHit = 0;
+  const byR = {};
   const samples = [];
   const toHull = hull.matrixWorld.clone().invert();
   const centre = new THREE.Vector3(seat.cx, seat.deckY - 0.3, seat.cz).applyMatrix4(hull.matrixWorld);
@@ -345,6 +352,25 @@ function exteriorHoles(intactTris, destroyedTris, seat, hull, elevations, keepSa
         if (deeper < EXT_TOL_M && r <= seat.rimR + EXT_TOL_R_M && now === intactTris.names[A.triFront[p]]) { tolerated++; continue; }
         holes++;
         if (deeper > 0.2) holesFar++;
+        if (now === null) {
+          let rim = false;
+          const pi = p % v.n, pj = (p / v.n) | 0;
+          for (let dj = -SILHOUETTE_PX; dj <= SILHOUETTE_PX && !rim; dj++) {
+            for (let di = -SILHOUETTE_PX; di <= SILHOUETTE_PX; di++) {
+              const qi = pi + di, qj = pj + dj;
+              if (qi < 0 || qj < 0 || qi >= v.n || qj >= v.n) continue;
+              const q = qj * v.n + qi;
+              if (!Number.isFinite(A.zFront[q]) && !Number.isFinite(B.zFront[q])) { rim = true; break; }
+            }
+          }
+          if (rim) silhouette++; else seeThrough++;
+        } else deeperHit++;
+        const bin = (Math.floor(r * 10) / 10).toFixed(1);
+        byR[bin] = (byR[bin] || 0) + 1;
+        if (FAR_SAMPLES && deeper > 0.2 && (samples.farN = (samples.farN || 0) + 1) % 7 === 1 && (samples.far ??= []).length < FAR_SAMPLES) {
+          const q = pixelPoint(v, p, A.zFront[p]).applyMatrix4(toHull), q1 = Number.isFinite(B.zFront[p]) ? pixelPoint(v, p, B.zFront[p]).applyMatrix4(toHull) : null;
+          samples.far.push({ el, az, world: pixelPoint(v, p, A.zFront[p]).toArray().map(r4), at: [r4(q.x), r4(q.y), r4(q.z)], r: r4(r), was: intactTris.names[A.triFront[p]], now, nowAt: q1 ? [r4(q1.x), r4(q1.y), r4(q1.z)] : null, deeper: r4(deeper) });
+        }
         if (samples.length < keepSamples) {
           const q = pixelPoint(v, p, A.zFront[p]), q1 = Number.isFinite(B.zFront[p]) ? pixelPoint(v, p, B.zFront[p]) : null;
           samples.push({ el, az, at: [r4(q.x), r4(q.y), r4(q.z)], was: intactTris.names[A.triFront[p]], now, nowAt: q1 ? [r4(q1.x), r4(q1.y), r4(q1.z)] : null, deeper: r4(deeper) });
@@ -352,7 +378,8 @@ function exteriorHoles(intactTris, destroyedTris, seat, hull, elevations, keepSa
       }
     }
   }
-  return { changedPx: changed, holePx: holes, holeFarPx: holesFar, toleratedPx: tolerated, samples };
+  return { changedPx: changed, holePx: holes, holeFarPx: holesFar, toleratedPx: tolerated, seeThroughPx: seeThrough,
+    silhouettePx: silhouette, deeperPx: deeperHit, byR, samples, ...(samples.far ? { far: samples.far } : {}) };
 }
 function platesOf(root) { const l = []; root.traverse((o) => { if (o.userData?.turretRingPlate) l.push(o); }); return l; }
 function discTris(plate, positions) {

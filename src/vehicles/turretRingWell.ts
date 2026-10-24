@@ -1198,7 +1198,8 @@ export function cutGeometryAtTurretRing(
   if (!boxReaches(box, cut, refine ? LIVE_ZONE_M : 0)) return null;
   const split = splitGeometryAtRing(geometry, ringCutter(cut, refine), toHull, rim);
   if (!split) return null;
-  return assembleRingCut(split, cut, dents && refine ? ringEdgeCorners(cut, [split]) : null, dents);
+  const live = dents && dents.centres.some((c) => c.w > 0) ? dents : null;
+  return assembleRingCut(split, cut, live && refine ? ringEdgeCorners(cut, [split]) : null, dents);
 }
 
 /** The cut copy of a split mesh: its kept faces, its pieces, the edge corners given to both (null: none). */

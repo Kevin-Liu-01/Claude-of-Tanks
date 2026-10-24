@@ -2165,6 +2165,9 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-16 (tank-opt RING; the owner: "when the turret blows off we should see that"): the ring a kill leaves — the
     // measure, the anatomy's ring on it, the live plate's lifecycle (fingerprint byte-identical), the hulk's well
     'src/vehicles/turretRingWell.selftest.mjs',
+    // 2026-10-23 (wreck-cracks 243): the dented live cut keeps the hull watertight (a split face's corners on an edge are
+    // its neighbour's too: the synthetic pair in one mesh and in two, the vt4a1's wreck at seed 77)
+    'src/vehicles/turretRingWatertight.selftest.mjs',
     // 2026-10-22 (crew-fit 235): every crew station a seated P50 body inside the shell at every turret yaw
     'src/vehicles/crewSeats.selftest.mjs',
     'src/world/wreckPaintDedup.selftest.mjs',
