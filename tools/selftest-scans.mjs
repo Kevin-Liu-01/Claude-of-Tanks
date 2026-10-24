@@ -112,6 +112,32 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/viteGlslMinify.selftest.mjs': lists('src/**/*.ts'),
   'vite.config.ts': lists('server/world-collision-manifests/*.json', 'server/world-collision-manifests-228/*.json'),
 
+  // 248 (selftest-scans hygiene): listings the receipts gained in 240-247
+  // the Watch seat ledger never reaches the network: every src/mp module is read
+  'src/game/watchTakeover.selftest.mjs': lists('src/mp/**/*.ts'),
+  // every icon() id in the sources is drawn by the sprite
+  'src/ui/icons/icon.selftest.mjs': lists('src/**/*.ts'),
+  // the cascade layers of every sheet, document and source that injects styles
+  'src/ui/styleLayers.selftest.mjs': lists('src/**/*.{css,ts,mts}', 'public/**/*.css', 'site/**/*.html', 'tools/fixtures/**/*.html'),
+  // nothing outside the token package reads a colour ramp or redefines a legacy alias
+  'src/ui/tokens/tokens.selftest.mjs': lists('src/**/*.{css,ts,html}', 'site/**/*.{css,ts,html}', 'public/*.css'),
+  'src/vehicles/workingPintleCradle.selftest.mjs': lists('src/**/*.ts'),
+  // one row per exported kit style; no module but the registries loads a kit lazily
+  'src/world/kitRegistry.selftest.mjs': lists('src/world/maps/regional/*.ts', 'src/**/*.ts'),
+  // documentSources: the HTML entries the build emits
+  'tools/contentSecurityPolicy.mjs': lists('site/*.html'),
+  // repositoryShapeFailures: the root and site documents and every source
+  'tools/i18n-catalog-shape.mjs': lists('*.html', 'site/**/*.html', 'src/**/*.ts'),
+  // scopeFiles: the UI, Gallery and Studio sources and every sheet
+  'tools/i18n-literal-lint.mjs': lists('src/ui/**/*.ts', 'src/gallery/**/*.ts', 'src/game/**/*.ts', 'src/**/*.css'),
+  // every media reference in the pages and sources against the collections on disk
+  'tools/media-freshness.selftest.mjs': lists('src/**', 'site/*.html', 'public/media/*'),
+  // publicPages: the game, the 404 and every page under site/
+  'tools/media-page-scan.mjs': lists('site/*.html'),
+  // censusFiles: the sources, the public sheets and the site documents
+  'tools/style-literal-census.mjs': lists('src/**/*.{css,ts,mts}', 'public/**/*.css', 'site/**/*.html'),
+  'tools/viteCssInTsMinify.selftest.mjs': lists('src/**/*.ts'),
+
   // ---- git's index (live receipts: selection only)
   // the scene-link codec round-trips every tracked take; its sink audit reads the Studio's own sources
   'src/game/studioSceneShare.selftest.mjs': tracked('**/*.scene.json', 'src/game/studio*.ts', 'src/ui/studio*.ts'),
@@ -128,6 +154,10 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/tool-only-public-files.selftest.mjs': tracked('src/**', 'site/**', 'api/**', 'cloudflare/rooms/src/**',
     'cloudflare/telemetry/src/**', 'middleware.ts', 'index.html', '404.html', 'vercel.json', 'public/site.webmanifest'),
   'tools/worker-generated-types.selftest.mjs': tracked('cloudflare/*/worker-configuration.d.ts'),
+  // every release handler in the shell is a hold action or a named non-hold (git grep)
+  'src/game/inputHoldToggle.selftest.mjs': tracked('src/ui/**', 'src/game/**', 'src/app/**', 'src/main.ts'),
+  // element colour resets outside @layer base (git ls-files of the tracked sheets)
+  'tools/surface-element-resets.selftest.mjs': tracked('src/**/*.css'),
 
   // the import graphs of real receipts (closureOf on this checkout) beside its fixture repository
   'tools/selftest-cache.selftest.mjs': lists('src/**/*.{ts,mts,mjs,js,json}', 'tools/**/*.{ts,mts,mjs,js,json}'),
@@ -172,6 +202,10 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/visual-census-lock.mjs': outside('the visual-census queue directory its caller names'),
   'tools/visual-census.selftest.mjs': outside('its own queue directories under tmpdir'),
   'tools/viteSharedWorkers.selftest.mjs': outside('the build it writes into its tmpdir fixture'),
+  'tools/contentSecurityPolicy.selftest.mjs': outside('dist/, a finished build, when this checkout has one'),
+  'tools/mode-aggression-harness.mjs': outside('the run directories its report and compare commands name (--dir, --base): ' +
+    'its .qa-dev records, or the receipt\'s tmpdir fixtures'),
+  'tools/vercel-static-preview.mjs': outside('the build output it serves (dist/, or the fixture dist its caller passes)'),
 
   // ---- source digests for provenance records: no verdict depends on what they list
   'tools/appVersion.ts': identity("git status --porcelain: the version string's dirty mark"),
@@ -204,13 +238,15 @@ export const SELFTEST_SCANS = Object.freeze({
   'tools/tank-world-contact-census.mjs': cli('reads the census output directories its CLI names'),
   'tools/tank-regen-changed.mjs': cli('npm run tank:regen:changed fingerprints this checkout; the chain receipt runs it on its ' +
     'declared fixture repository'),
+  'tools/pr-census.mjs': cli('report() lists the record directory --report names; its receipt imports the census helpers'),
 
   // ---- import a caller-directed lister for a constant
   'tools/gate.selftest.mjs': none('REPO_ROOT from selftest-cache.mjs; its gate runs list through tools/gate.mjs (above)'),
   'tools/selftest-cache-dir.mjs': none("defaultSelftestCacheDir and sha1: the proof store's name"),
   'tools/selftest-schedule.selftest.mjs': none('sha1 from selftest-cache.mjs'),
   'tools/changed-only/table.mjs': none("DEFAULT_CONFIG from fingerprint.mjs: a step table's defaults"),
-  'tools/selftest-cpu-pool.selftest.mjs': none('the runner\'s pool helpers from run-selftests.mjs, driven with fake children'),
+  'tools/selftest-cpu-pool.selftest.mjs': none('the runner\'s pool helpers from run-selftests.mjs, driven with fake children'),  'tools/destruction-slab-kinds.selftest.mjs': none('inputKey of the destruction sources it names (CODE) from selftest-cache.mjs: ' +
+    'the closures of fixed files, for its pass fingerprint'),
 });
 
 const KINDS = ['lists', 'tracked', 'caller', 'outside', 'identity', 'cli', 'none'];

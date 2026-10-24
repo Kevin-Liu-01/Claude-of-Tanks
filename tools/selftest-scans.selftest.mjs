@@ -5,9 +5,10 @@
 // fails it, and a cached PASS never hides it), a root-level listing shows the key gap the declarations close, the
 // census's negative controls, and the census of the real registry (tools/selftest-scans.mjs).
 import assert from 'node:assert/strict';
-import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { REPO_ROOT, createSelftestCache } from './selftest-cache.mjs';
 import { selftestCacheLocations } from './selftest-cache-dir.mjs';
 import { collectSelftestInputs } from './selftest-inputs.mjs';
@@ -40,10 +41,14 @@ try {
   const write = (path, text) => { mkdirSync(dirname(join(root, path)), { recursive: true }); writeFileSync(join(root, path), text); };
   const copy = (path) => { mkdirSync(dirname(join(root, path)), { recursive: true }); copyFileSync(join(REPO_ROOT, path), join(root, path)); };
 
-  // ---- 228p, replayed: the real receipt over a fixture holding the files it reads
+  // ---- 228p, replayed: the real receipt over a fixture holding the files it reads (every file it names with
+  // new URL(…, import.meta.url), so a read it gains never leaves the fixture short; the directory it lists is the fixture)
   const STYLES = 'src/ui/runtimeStyles.selftest.mjs';
-  for (const path of [STYLES, 'src/main.ts', 'src/ui/garage.ts', 'src/ui/responsiveSurfaces.css', 'src/ui/garage.css', 'src/ui/motion.css',
-    'src/presentation/publicNav.css']) copy(path);
+  const stylesUrl = pathToFileURL(join(REPO_ROOT, STYLES));
+  const stylesReads = [...readFileSync(stylesUrl, 'utf8').matchAll(/new URL\('([^']+)', import\.meta\.url\)/g)]
+    .map(([, path]) => relative(REPO_ROOT, fileURLToPath(new URL(path, stylesUrl)))).filter((path) => statSync(join(REPO_ROOT, path)).isFile());
+  assert.ok(['src/main.ts', 'index.html'].every((path) => stylesReads.includes(path)), `runtimeStyles' reads: ${stylesReads.join(', ')}`);
+  for (const path of [STYLES, ...stylesReads]) copy(path);
   const cacheDir = join(root, '.proofs');
   const scans = { [STYLES]: SELFTEST_SCANS[STYLES] };
   assert.deepEqual(scans[STYLES], { lists: ['src/**/*.ts'] }, 'runtimeStyles declares the tree it lists');
