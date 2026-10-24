@@ -524,6 +524,29 @@ for (const [w, h, tier] of [[1024, 600, 1], [1000, 600, 1], [1024, 768, 2], [115
   assert.ok(plan.detection.x + plan.detection.w / 2 === w / 2 && plan.alert.x === w / 2, `${w}x${h}: both on the centre line`);
 }
 
+// 5b. The Premiere HUD at 1024 x 600 (measured on the fixture, main 371bf714f9): the shot report card's place (x 708, from
+//     y 196) leaves the alert's slot no room under the detection, and every narrower slot wraps too tall for the bloomed
+//     ring; the split had set DETECTED under the sight, over the scope's zoom readout. The flipped stack keeps both over
+//     the sight: the alert under the objective, the detection under it.
+{
+  const box = ([x, y, w, h]) => ({ x, y, w, h });
+  const plan = planMouseNotices({ width: 1024, height: 600, top: 106,
+    obstacles: [[349, 12, 326, 64], [382, 76, 260, 30], [816, 392, 192, 192], [305, 520, 433, 64], [0, 58, 160, 134],
+      [864, 58, 160, 106], [12, 385, 160, 203], [12, 349, 160, 36], [184, 480, 108, 108], [330, 480, 384, 32],
+      [708, 196, 300, 184]].map(box),
+    furniture: [[349, 12, 326, 64], [382, 76, 260, 30], [816, 392, 192, 192], [0, 58, 160, 134], [864, 58, 160, 106],
+      [12, 385, 160, 203], [184, 480, 108, 108], [330, 480, 74, 32], [407, 480, 74, 32], [484, 480, 74, 32],
+      [561, 480, 74, 32], [638, 480, 74, 32], [305, 520, 64, 64], [375, 520, 64, 64], [445, 520, 64, 64],
+      [534, 520, 64, 64], [604, 520, 64, 64], [674, 520, 64, 64]].map(box),
+    lanes: [{ x: 0, w: 400, top: 200, bottom: 341 }, null], smallAlert: false, countdown: null, countdownRules: null,
+    revive: null, medal: { w: 380, h: 85 }, medalCompact: { w: 250, h: 40 } });
+  const alert = alertBox(plan.alert), det = plan.detection;
+  assert.equal(plan.arrangement, 'flip', '1024x600 (Premiere): the alert over the detection');
+  assert.ok(alert.y + alert.h + MOUSE_NOTICE_GAP_PX <= det.y, '1024x600 (Premiere): the detection under the alert');
+  // (over the bloomed battle ring, 15 % of the height and its stroke, and nowhere near the scope's readouts under it)
+  assert.ok(det.y + det.h + MOUSE_RETICLE_MARGIN_PX <= 300 - 600 * .15 - 3, `1024x600 (Premiere): the detection over the sight (${det.y})`);
+}
+
 // 6. The layout owner calls the plan on the mouse path only, and every rule it drives is keyed to the mouse layout.
 const layout = readFileSync(new URL('./battleHudLayout.ts', import.meta.url), 'utf8');
 const css = readFileSync(new URL('./battleHudLayout.css', import.meta.url), 'utf8');

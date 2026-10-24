@@ -26,6 +26,9 @@
  * are nnot actually centered in screen"): a place moves up or down, never sideways. The detection and the alert take
  * the cheapest of
  * - stack: detection over the alert (main's arrangement);
+ * - flip: the alert over the detection, where the alert's slot fits only the band under the score (1024 x 600 on the
+ *   Premiere HUD: the enemy roster from x 708 and y 196 left no stack under the detection, and the split set DETECTED
+ *   under the sight, over the scope's zoom readout);
  * - split: each at its own height (the band over the scope's centre-line arm holds one notice: the alert goes under the
  *   sight, or both clear a reduced keep-out).
  * Cheapest is highest (from main's own top), then widest (fewest alert lines), with the rows a lane yields while the
@@ -101,7 +104,7 @@ export interface MouseMedalCompany {
 }
 
 export interface MouseNoticePlan {
-  readonly arrangement: 'stack' | 'split' | 'fallback';
+  readonly arrangement: 'stack' | 'flip' | 'split' | 'fallback';
   /** The keep-out the notices clear: 2 everything the reticle draws, 1 the battle sight at full bloom, 0 the resting
    *  sight only, -1 the fallback (the resting sight, reaching least far into the instruments; else main's own places). */
   readonly clearance: 2 | 1 | 0 | -1;
@@ -513,6 +516,8 @@ const ALERT_WIDTHS_9 = [340, 200, 159] as const;
 // Costs: a px down from main's top costs 1, a px up from it .5 (a place never moves sideways: noticeCentreLine.ts).
 const UP_COST = .5;
 const SPLIT_COST = 60;
+/** The flipped stack's price over main's (a notice nearer the sight than the alert reads first): under a split's. */
+const FLIP_COST = 30;
 /** What a lane yielding to an element costs while it shows: each kill row it gives up (of its rows clear of the battle
  *  sight), each px its rows move down, and the yield itself. The countdown runs before the first kill, while the lanes
  *  are empty (only chat can be up): it pays less. */
@@ -1014,8 +1019,7 @@ function searchPair(input: MouseNoticeInput, envs: readonly Env[]): PairResult |
           fits = y + dh <= height - EDGE_PX && !Number.isNaN(onCentre(env, band(env, y, dh), dw / 2));
           detFit.set(dw, fits);
         }
-        if (!fits) continue;
-        if (y + dh + g + ah <= height - EDGE_PX) {
+        if (fits && y + dh + g + ah <= height - EDGE_PX) {
           const m = onCentre(env, band(env, y, dh), dw / 2, band(env, y + dh + g, ah), aw / 2);
           if (!Number.isNaN(m)) {
             const ay = y + dh + g;
@@ -1023,8 +1027,17 @@ function searchPair(input: MouseNoticeInput, envs: readonly Env[]): PairResult |
               { x: m - dw / 2, y, w: dw, h: dh }, { x: m, y: ay, w: aw, h: ah, small: input.smallAlert });
           }
         }
+        // flip: the alert on top, in the band under the score only (it exists for that band), the detection under it
+        if (y < yPref + Y_STEP && c.base + yCost + FLIP_COST < bestCost() && y + ah + g + dh <= height - EDGE_PX) {
+          const m = onCentre(env, band(env, y, ah), aw / 2, band(env, y + ah + g, dh), dw / 2);
+          if (!Number.isNaN(m)) {
+            const dy = y + ah + g;
+            offer(c.base + yCost + FLIP_COST + laneCost(m - dw / 2, dy, dw, dh, m - aw / 2, y, aw, ah), 'flip',
+              { x: m - dw / 2, y: dy, w: dw, h: dh }, { x: m, y, w: aw, h: ah, small: input.smallAlert });
+          }
+        }
       }
-    }, () => best === null ? NaN : best.det.y);
+    }, () => best === null ? NaN : Math.min(best.det.y, best.alert.y));
     // split: the detection at its own cheapest place (with the lanes yielding: also its cheapest off them, and a few
     // dearer places apart from those), then the alert at its own, off the detection, pricing a lane the two would
     // leave without a row

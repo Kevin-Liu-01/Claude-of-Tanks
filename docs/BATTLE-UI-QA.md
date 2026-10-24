@@ -630,11 +630,13 @@ plan clears. The census's objective is the one-row panel's 30 px (41 before).
 244 closed the three that stood. The scope's cross arms now end short of every
 centre notice while it shows (`sightNoticeCuts`), so no alert meets an arm's tip
 (1024 x 600 and 1000 x 600, where no place over the upper arm holds both
-notices). No mark moves for a notice. One residual is new on the Premiere HUD. At
-1024 x 600 the enemy roster stands at x 708 from y 196, and the alert's 520 px
-slot cannot stack under the detection; each narrower slot wraps taller and comes
-2 px short of the full-bloom ring. The plan splits at tier 1: the alert under the
-objective, DETECTED under the sight, over the scope's zoom readout. At 844 x 390 the touch plan takes the compact alert at its
+notices). No mark moves for a notice. On the Premiere HUD at 1024 x 600 the shot report
+card's place stands at x 708 from y 196, and the alert's 520 px slot cannot stack
+under the detection; each narrower slot wraps taller and comes 2 px short of the
+full-bloom ring. 244 then split them, with DETECTED under the sight over the
+scope's zoom readout. Since 245 the plan flips the stack instead: the alert in the
+band under the objective, the detection under it, both over the sight
+(`flip`, priced between the stack and the split). At 844 x 390 the touch plan takes the compact alert at its
 measured height (two lines, 28 px, until one shows; the 40 px reserve covers the
 longest three-line alerts). A touch landscape's kill lanes also leave the centre
 line a compact notice and its gaps (74 px either side). Both compact notices now
