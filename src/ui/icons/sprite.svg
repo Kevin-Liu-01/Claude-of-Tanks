@@ -267,4 +267,9 @@
 <symbol id="i-studio-s"><path d="M2 7h12v6.5H2ZM2 7V4.5l11-2V5ZM5.25 6.25 6.5 3.75M9 5.5l1.25-2.25"/></symbol>
 <symbol id="i-settings-s"><path d="M6.8 3.7 7 1.8h2l.2 1.9 1 .4 1.4-1.2 1.5 1.5-1.2 1.4.4 1 1.9.2v2l-1.9.2-.4 1 1.2 1.4-1.5 1.5-1.4-1.2-1 .4-.2 1.9H7l-.2-1.9-1-.4-1.4 1.2-1.5-1.5 1.2-1.4-.4-1-1.9-.2V7l1.9-.2.4-1-1.2-1.4 1.5-1.5 1.4 1.2ZM9.75 8a1.75 1.75 0 1 1-3.5 0 1.75 1.75 0 1 1 3.5 0Z"/></symbol>
 <symbol id="i-phone"><path d="M6.5 2.5h11v19h-11ZM10.5 18.5h3"/></symbol>
+<symbol id="i-pause"><path d="M8 5v14M16 5v14"/></symbol>
+<symbol id="i-stepBack"><path d="M6 5v14M18 5 9 12l9 7Z"/></symbol>
+<symbol id="i-stepForward"><path d="M18 5v14M6 5l9 7-9 7Z"/></symbol>
+<symbol id="i-plus"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-link"><path d="M10.2 13.8a4 4 0 0 0 5.7 0l3.4-3.4a4 4 0 0 0-5.7-5.7l-1.2 1.2M13.8 10.2a4 4 0 0 0-5.7 0l-3.4 3.4a4 4 0 0 0 5.7 5.7l1.2-1.2"/></symbol>
 </svg>

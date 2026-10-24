@@ -24,10 +24,9 @@ import {
   CONCEPT_PROTOTYPE_FILTER_META,
   VEHICLE_BATTLE_ROLE_META,
   VEHICLE_BATTLE_ROLE_ORDER,
-  VEHICLE_CLASS_META,
-  VEHICLE_CLASS_ORDER,
   vehicleFacetLabel,
 } from '../vehicles/vehicleFacets.ts';
+import { classFacetsMarkup, facetButton, flagLabel as flagLabelOf, fleetClasses, nationFacetsMarkup, nationFlags } from './galleryFacets.ts';
 import {
   createSurfaceMarkup,
   MARKUP_OPERATIONS,
@@ -40,8 +39,6 @@ import { icon, type IconId } from '../ui/icons/icon.ts';
 import {
   esc, flag, scale20, scaleCells, silhouette, statRow, tabs, wireRoving,
 } from '../ui/components/components.ts';
-// the shared component sheet, static in the components layer (brand-ui S2: the kit no longer mounts it)
-import '../ui/components/components.css';
 import { cameraViewGlyphSVG } from './viewGlyphs.ts';
 import { drawTrueScale } from './trueScale.ts';
 import { t, getLocale, formatNumber } from '../ui/i18n.ts';
@@ -625,18 +622,9 @@ function nationName(nation: string): string {
   const name = t(key);
   return name === key ? nation : name;
 }
-/** One flag per nation: the USSR, Russia and USSR/Russia vehicles share one taxonomy (SPEC 12.5). */
-const nationsByFlag = new Map<string, string[]>();
-for (const record of records) {
-  const code = flagIconCode(record.nation);
-  const list = nationsByFlag.get(code) ?? [];
-  if (!list.includes(record.nation)) list.push(record.nation);
-  nationsByFlag.set(code, list);
-}
-const flagLabel = (code: string): string => [...new Set((nationsByFlag.get(code) ?? []).map(nationName))].join(' / ');
-const flagCodes = [...nationsByFlag.keys()].sort((a, b) =>
-  records.filter((r) => flagIconCode(r.nation) === b).length - records.filter((r) => flagIconCode(r.nation) === a).length
-  || flagLabel(a).localeCompare(flagLabel(b)));
+/** One flag per nation (galleryFacets.ts, shared with the page's static shell). */
+const { codes: flagCodes, nations: nationsByFlag } = nationFlags(records);
+const flagLabel = (code: string): string => flagLabelOf(code, nationsByFlag, t);
 
 const GALLERY_ERA_ICONS: Readonly<Record<string, IconId>> = Object.freeze({
   [VEHICLE_ERAS.INTERWAR]: 'eraInterwar',
@@ -656,27 +644,14 @@ const ROLE_ICONS: Readonly<Record<string, IconId>> = Object.freeze({
 const eras = [...new Map(records.map((record) => [record.eraKey || '', record.era])).entries()]
   .filter(([key]) => key)
   .sort((a, b) => compareVehicleEras(a[0] as Parameters<typeof compareVehicleEras>[0], b[0] as Parameters<typeof compareVehicleEras>[1]));
-const classes = VEHICLE_CLASS_ORDER.filter((id) => records.some((record) => record.vehicleClass?.id === id));
+const classes = fleetClasses(records);
 const roles = VEHICLE_BATTLE_ROLE_ORDER.filter((id) => records.some((record) => record.battleRole?.id === id));
 
-/** A filter: a flag tile (`.flags`), a kit chip with a short label, or a glyph-only chip; the full name is its label. */
-/** A facet's button: a flag or a short chip named by its label, or (behind More filters) a glyph beside its own name. */
-function facetButton(attrs: string, pressed: boolean, label: string, content: string, kind: 'flag' | 'chip' | 'named', disabled = false): string {
-  const cls = kind === 'flag' ? '' : ' class="cot-c-chip"';
-  const name = kind === 'named' ? '' : ` aria-label="${esc(label)}" title="${esc(label)}"`;
-  const body = kind === 'named' ? `${content}<span>${esc(label)}</span>` : content;
-  return `<button type="button"${cls} ${attrs} aria-pressed="${pressed}"${name} data-ui-sound="toggle"${disabled ? ' disabled' : ''}>${body}</button>`;
-}
 function renderFacets(): void {
-  $('#nationFacets').innerHTML = facetButton('data-facet="nation" data-value=""', !browse.nation, t('gallery.archive.filter.allNations'),
-    icon('pixels', { size: 16 }), 'flag')
-    + flagCodes.map((code) => facetButton(`data-facet="nation" data-value="${esc(code)}"`, browse.nation === code, flagLabel(code),
-      `<img class="cot-c-flag" src="${esc(flagIconUrl(nationsByFlag.get(code)?.[0] || ''))}" alt="" width="20" height="15" draggable="false">`, 'flag')).join('');
-  $('#classFacets').innerHTML = classes.map((id) => {
-    const meta = VEHICLE_CLASS_META[id];
-    return facetButton(`data-facet="vehicleClass" data-value="${esc(id)}"`, browse.vehicleClass === id, vehicleFacetLabel(meta, t),
-      esc(vehicleFacetLabel(meta, t, { short: true })), 'chip');
-  }).join('');
+  // the nation and class rows: site/gallery.html ships their default state (tools/gallery-shell.mjs), so these renders
+  // fill the flags in and set the pressed state without moving anything
+  $('#nationFacets').innerHTML = nationFacetsMarkup({ codes: flagCodes, nations: nationsByFlag, selected: browse.nation, translate: t, flagSrc: flagIconUrl });
+  $('#classFacets').innerHTML = classFacetsMarkup(classes, browse.vehicleClass, t);
   $('#eraFacets').innerHTML = eras.map(([key, label]) => facetButton(`data-facet="era" data-value="${esc(key)}"`, browse.era === key, label,
     icon(GALLERY_ERA_ICONS[key] || 'clock', { size: 14 }), 'named')).join('');
   $('#roleFacets').innerHTML = roles.map((id) => facetButton(`data-facet="role" data-value="${esc(id)}"`, browse.role === id,
