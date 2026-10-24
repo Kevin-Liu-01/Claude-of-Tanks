@@ -5,30 +5,38 @@
     "height": 1080,
     "fps": 30
   },
-  "scene": "shots/media-r5/home-r2/studio-loop/scene.json",
-  "source": "/media/site50-r14/scenes/s36-barn-knockout.scene.json (hero -> shooter, foe0 -> victim, golden hour)",
+  "scene": "studio.resolved.json",
+  "source": "shots/media-r5/home-r2/studio-loop/scene-243.json",
   "master": "studio.webm",
   "durationMs": 6600,
   "mimeType": "video/webm",
-  "bytes": 179324117,
+  "bytes": 27893521,
   "captureMode": "studio-ui",
   "capture": "frame-stepped",
+  "frames": 198,
   "workspace": "director",
+  "keyframes": [
+    850,
+    1550,
+    2600,
+    4150,
+    5200
+  ],
   "actors": [
     {
-      "id": "type10_x",
+      "id": "type10",
       "name": "shooter"
     },
     {
-      "id": "k2_x",
+      "id": "k2_black_panther",
       "name": "ally1"
     },
     {
-      "id": "t90m_x",
+      "id": "t90m",
       "name": "victim"
     },
     {
-      "id": "t72b3m_x",
+      "id": "t72b3m_2016",
       "name": "foe1"
     }
   ],
@@ -118,9 +126,5 @@
       "actor": null,
       "tMs": 4680
     }
-  ],
-  "sha256": "f829353652829096a59bd3bee56be703bfa19171879e7b66dbc7b1f021c70555",
-  "frames": 198,
-  "alt": "Scene Studio on Frontier Basin at golden hour with the Director workspace open: a Type 10 rolls toward the lens as the T-90M it knocked out explodes and burns behind it, beside the sequence library, the Stage Sequence button and the site's takes as cards.",
-  "deliveredAt": "2026-10-19T04:35:06+00:00"
+  ]
 }

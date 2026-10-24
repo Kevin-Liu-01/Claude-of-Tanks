@@ -52,9 +52,11 @@ function upperBins(P: TankBuilderPort, side: number): void {
     for (const z of [back + .14, front - .15]) P.addEquipment('hullDetail',
       KIT.cylX(.0115, .019, 8), side * 1.606, a - (a - b) * (z - back) / (front - back) - .034, z);
   }
-  P.addEquipment('hullDetail', slope(side, [[-3.2725, 1.378, 1.612, 1.355, 1.7138],
-    [-1.0344, 1.378, 1.612, 1.355, 1.694]]));
-  P.addEquipment('hullDetail', KIT.box(.037, .047, 1.755), side * 1.351, 1.716, -1.506);
+  // (release 240, the owner: "make sure all tank turrets are clear of hulls": the bins 3 cm lower and their top rail
+  // 5.5 cm, under the turret's bustle bins, 1.692 and 2.13 m off the ring's axis, which swept through them)
+  P.addEquipment('hullDetail', slope(side, [[-3.2725, 1.378, 1.612, 1.355, 1.6838],
+    [-1.0344, 1.378, 1.612, 1.355, 1.664]]));
+  P.addEquipment('hullDetail', KIT.box(.037, .047, 1.755), side * 1.351, 1.661, -1.506);
   for (const [z, y] of [[-2.9431, 1.667], [-.8708, 1.647]]) {
     P.addEquipment('hullDetail', KIT.cylY(.143, .143, .029, 24), side * 1.118, y, z);
     P.addEquipment('hullDetail', KIT.box(.066, .027, .034), side * 1.118, y + .023, z);
@@ -97,12 +99,14 @@ function engineDeck(P: TankBuilderPort): void {
     boxSpan(P, x1, x2, 1.674, 1.714, -3.204, -2.500);
     boxSpan(P, x1 + .003, x2 - .003, 1.714, 1.7281, -3.201, -2.501);
   }
-  boxSpan(P, -.8564, .8573, 1.6618, 1.6878, -2.4792, -1.0335);
+  // (release 240: the forward deck's panels 1 cm thinner from the top, under the turret's bustle bins, 1.692, which sat
+  // 2 mm over them)
+  boxSpan(P, -.8564, .8573, 1.6618, 1.6778, -2.4792, -1.0335);
   for (const side of [-1, 1]) {
     const a = side < 0 ? -.8923 : .213, b = side < 0 ? -.2120 : .8932;
-    boxSpan(P, a, b, 1.663, 1.6896, -2.136, -.989);
+    boxSpan(P, a, b, 1.663, 1.6796, -2.136, -.989);
     for (const z of [-1.9858, -1.7805, -1.4588, -1.2535]) {
-      P.addEquipment('hullDetail', KIT.box(.0618, .0099, .1156), side * .1806, 1.6828, z);
+      P.addEquipment('hullDetail', KIT.box(.0618, .0099, .1156), side * .1806, 1.6728, z);
     }
   }
   boxSpan(P, -.8313, .8322, 1.690, 1.7433, -2.3762, -2.3412);

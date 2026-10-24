@@ -59,7 +59,25 @@ export interface SeatFrames {
   /** Turret pivot (hull frame) and gun pivot (turret frame) at rest. */
   pivot: THREE.Vector3;
   gunPivot: THREE.Vector3;
+  /**
+   * The turret rig's and the gun rig's scale against the hull's at the pass (absent: 1). A builder's non-uniform turret
+   * squash rides on rig_turret until turretRigScale.ts bakes it onto its children after this pass, and the gun rig
+   * carries its own scale under it: the finished vehicle's gun is that scale in metres, pitching about a trunnion at the
+   * squash times gunPivot (245: merkava2b's 0.8 squash read its trunnion 7 cm high, and the search seated its bow links
+   * 3.6 mm under the barrel).
+   */
+  turretScale?: THREE.Vector3;
+  gunScale?: THREE.Vector3;
 }
+
+/** The rig's scale against `frame`'s (the rigs carry no rotation at rest). */
+function scaleAgainst(rig: THREE.Object3D, frame: THREE.Object3D): THREE.Vector3 {
+  const scale = new THREE.Vector3();
+  relativeMatrix(frame, rig).decompose(new THREE.Vector3(), new THREE.Quaternion(), scale);
+  return scale;
+}
+
+const UNIT_SCALE = new THREE.Vector3(1, 1, 1);
 
 function relativeMatrix(frame: THREE.Object3D, object: THREE.Object3D): THREE.Matrix4 {
   return new THREE.Matrix4().copy(frame.matrixWorld).invert().multiply(object.matrixWorld);
@@ -106,17 +124,22 @@ export function buildSeatMotion(spec: SeatSpec, frames: SeatFrames, fixedMount: 
   const arc = turreted || fixedMount ? 0 : casemateGunYawLimit({ armor: spec.armor, gunArcDeg: spec.gunArcDeg,
     hydropneumaticAim: spec.hydropneumaticAim });
   if (!turreted && !(arc > 0)) return null;
-  const gun = frames.gun.length ? seatGunSlices(frames.gun) : null;
-  const toHull = new THREE.Matrix4().makeTranslation(frames.pivot.x, frames.pivot.y, frames.pivot.z);
+  // the motion in metres: the gun at its scale about its trunnion, the turret's own solids at its scale
+  const S = frames.turretScale ?? UNIT_SCALE, G = frames.gunScale ?? UNIT_SCALE;
+  const gun = frames.gun.length ? seatGunSlices(moved(frames.gun, new THREE.Matrix4().makeScale(G.x, G.y, G.z), false)) : null;
+  const squash = new THREE.Matrix4().makeScale(S.x, S.y, S.z);
+  const toHull = new THREE.Matrix4().makeTranslation(frames.pivot.x, frames.pivot.y, frames.pivot.z).multiply(squash);
   let turretLow: SeatRadialProfile | null | undefined;
   let hullHigh: SeatRadialProfile | null | undefined;
   let turretAngular: SeatAngularProfile | null | undefined;
   return {
     pivot: frames.pivot.clone(),
-    gunPivot: frames.gunPivot.clone(),
+    gunPivot: frames.gunPivot.clone().multiply(S),
+    turretScale: S.clone(),
     turreted,
     arc,
     gun,
+    curved: (spec.gunPitchByYawDeg?.length ?? 0) > 0,
     pitchMin: (yaw) => minimumMechanicalGunPitch(spec, yaw),
     pitchMax: (spec.gunElevationDeg ?? 20) * D2R,
     // built on first use: only hull runs read the turret's underside
@@ -135,7 +158,7 @@ export function buildSeatMotion(spec: SeatSpec, frames: SeatFrames, fixedMount: 
       return hullHigh;
     },
     turretAngularLow: () => {
-      if (turretAngular === undefined) turretAngular = turreted ? seatAngularLow(frames.turret) : null;
+      if (turretAngular === undefined) turretAngular = turreted ? seatAngularLow(moved(frames.turret, squash, false)) : null;
       return turretAngular;
     },
   };
@@ -143,9 +166,11 @@ export function buildSeatMotion(spec: SeatSpec, frames: SeatFrames, fixedMount: 
 
 /** The soup and environment for one run of `frame` around `region` (that frame's coordinates). */
 function seatEnv(frames: SeatFrames, frame: 'hull' | 'turret', region: THREE.Box3, motion: SeatMotion | null): SeatEnv {
-  const p = frames.pivot, g = frames.gunPivot;
-  const turretToHull = new THREE.Matrix4().makeTranslation(p.x, p.y, p.z);
-  const gunToTurret = new THREE.Matrix4().makeTranslation(g.x, g.y, g.z);
+  const p = frames.pivot, g = frames.gunPivot, S = frames.turretScale ?? UNIT_SCALE, G = frames.gunScale ?? UNIT_SCALE;
+  // the turret frame is its squash times metres; the gun is its scale in metres about the trunnion (SeatFrames)
+  const turretToHull = new THREE.Matrix4().makeTranslation(p.x, p.y, p.z).multiply(new THREE.Matrix4().makeScale(S.x, S.y, S.z));
+  const gunToTurret = new THREE.Matrix4().makeTranslation(g.x, g.y, g.z)
+    .multiply(new THREE.Matrix4().makeScale(G.x / S.x, G.y / S.y, G.z / S.z));
   const sources = frame === 'hull'
     ? [...frames.hull, ...moved(frames.turret, turretToHull, true),
       ...moved(frames.gun, new THREE.Matrix4().multiplyMatrices(turretToHull, gunToTurret), true)]
@@ -330,7 +355,8 @@ export function seatAuthoredSpareTracks(a: AuthoredSeatArgs): SpareTrackSeatRepo
   const collect = (): SeatFrames => {
     a.root.updateMatrixWorld(true);
     const frames: SeatFrames = { hull: [], turret: [], gun: [],
-      pivot: a.turretG.position.clone(), gunPivot: a.gunG.position.clone() };
+      pivot: a.turretG.position.clone(), gunPivot: a.gunG.position.clone(),
+      turretScale: scaleAgainst(a.turretG, a.hullG), gunScale: scaleAgainst(a.gunG, a.hullG) };
     for (const [bucket, list] of Object.entries(a.buckets)) {
       const parent = a.bucketParent(bucket);
       if (!parent) continue;
@@ -718,7 +744,8 @@ export function decorSeatEnv(spec: SeatSpec, hullG: THREE.Group, turretG: THREE.
   turretG.updateMatrixWorld(true);
   const gunG = turretG.getObjectByName('rig_gun') ?? null;
   const frames: SeatFrames = { hull: [], turret: [], gun: [], pivot: turretG.position.clone(),
-    gunPivot: gunG ? gunG.position.clone() : new THREE.Vector3() };
+    gunPivot: gunG ? gunG.position.clone() : new THREE.Vector3(), turretScale: scaleAgainst(turretG, hullG),
+    gunScale: gunG ? (gunG.updateMatrixWorld(true), scaleAgainst(gunG, hullG)) : undefined };
   const none = new Map<THREE.Object3D, number>();
   meshSources(hullG, hullG, gunG ? [turretG, gunG] : [turretG], none, frames.hull);
   meshSources(turretG, turretG, gunG ? [gunG] : [], none, frames.turret);

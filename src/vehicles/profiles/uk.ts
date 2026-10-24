@@ -707,7 +707,9 @@ const CHIEFTAIN_HULL = {
   deck: [[3.47, 1.205], [3.28, 1.30], [3.10, 1.35], [2.88, 1.33], [2.72, 1.325],
     [2.62, 1.375], [2.52, 1.425], [2.42, 1.475], [2.16, 1.49], [2.08, 1.545],
     [1.88, 1.555], [1.62, 1.56], [1.10, 1.58], [0.30, 1.60], [-0.60, 1.61],
-    [-1.35, 1.64], [-1.76, 1.705], [-2.47, 1.71], [-2.60, 1.71], [-3.30, 1.71],
+    // release 240 (the owner: "make sure all tank turrets are clear of hulls"): the rise to the engine deck stays under
+    // the 2026 turret's cheek and side-bin undersides (1.673-1.696, 1.75-1.93 m off the ring's axis) to -2.00
+    [-1.35, 1.64], [-1.70, 1.662], [-2.00, 1.685], [-2.12, 1.705], [-2.47, 1.71], [-2.60, 1.71], [-3.30, 1.71],
     [-3.44, 1.695], [-3.58, 1.70], [-3.70, 1.72]],
   // Belly raised to the ref's cast floor line (front-view bottoms 0.49-0.56
   // across the inter-track band — the flat 0.50 slab read 0.02-0.06 low on
@@ -945,14 +947,15 @@ function chieftain5Build(P: UKBuilderPort): void {
     // engine bay — mid-run fenders sit under the deck line. r4: front plate
     // 15 mm clear of the 1.3603 column boundary (AA law) and outer edges
     // pulled to the ref's own station widths (1.51 fwd / 1.53 aft).
-    P.add('hullDetail', box(0.34, 0.03, 0.20), side * 1.34, 1.685, 1.475);
-    P.add('hullDetail', box(0.38, 0.03, 1.3), side * 1.34, 1.695, -2.02);
+    // (release 240: plates and bins 2 cm lower, under the 2026 turret's side bins, 1.696, as it turns)
+    P.add('hullDetail', box(0.34, 0.03, 0.20), side * 1.34, 1.665, 1.475);
+    P.add('hullDetail', box(0.38, 0.03, 1.3), side * 1.34, 1.675, -2.02);
     // plate-fill r1 (owner directive 2026-08-01): both crest plates floated
     // 9 cm ABOVE the fender plane with a see-through slot beneath — they
     // are raised stowage bins on the real vehicle. Close plate-to-fender
     // (tops tuck under the plates; interior to their side/plan columns).
-    P.add('hullDetail', box(0.34, 0.085, 0.20), side * 1.34, 1.6375, 1.475);
-    P.add('hullDetail', box(0.38, 0.085, 1.3), side * 1.34, 1.6375, -2.02);
+    P.add('hullDetail', box(0.34, 0.085, 0.20), side * 1.34, 1.6175, 1.475);
+    P.add('hullDetail', box(0.38, 0.085, 1.3), side * 1.34, 1.6175, -2.02);
   }
   // Engine deck: louvre field + fuel caps + rear grille face.
   P.add('hull', box(2.2, 0.04, 1.15), 0, 1.685, -2.65);
@@ -1120,10 +1123,10 @@ function chieftain5Build(P: UKBuilderPort): void {
   // hull run behind it rises to the ref's 2.2325 line, and quarter-round
   // crests roll both top-outer edges (r < 0.48 chord-limit class — radius
   // authored, cited, not tool-paired).
-  // 2026-10-19 (owner float sweep): the shoulder run's 1.8175 floor stood 107 mm over the 1.71 rear fender plate; its
-  // floor now reaches 2 mm into that plate (top kept at 2.2325).
-  segBoxZ(P, 'hull', 0.138, 0.524, 1.12, 1.559, 1.9705, -0.88);
-  P.add('hull', xform(cylY(0.045, 0.045, 1.12, 10, false, Math.PI / 2, Math.PI / 2), 0, 0, 0, Math.PI / 2, 0, 0), 1.583, 2.1875, -0.88);
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): no hull "shoulder run" behind the right
+  // bins. It matched the old turret's right band (2.2325) as a 0.52 m hull block on the rear fender, and the 2026
+  // upper (buildChieftainUpper2026, which clears this turret) stands over it: it sat 54 cm up inside the new turret
+  // and the turret turned through it.
   segBoxZ(P, 'turret', 0.0505, 0.475, 1.30, 1.50025, 0.3375, -0.28);
   P.add('turret', xform(cylY(0.05, 0.05, 1.30, 10, false, Math.PI / 2, Math.PI / 2), 0, 0, 0, Math.PI / 2, 0, 0), 1.4755, 0.525, -0.28);
   P.add('turret', box(0.04, 0.35, 0.50), 1.62, 0.29, 0.04);
@@ -1576,9 +1579,12 @@ const MK10_HULL = {
   // Family glacis line extended to the real full-width bow: ONE reclined
   // plane 1.49 @ z 2.16 -> 1.205 @ 3.47 -> 1.15 @ 3.72 (§B8.1 gate 2 —
   // ~12.5° run, no bow cliff: the lit bow face is the thin wing tip band).
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the rise to the engine deck stays under
+  // 1.685 to -2.00 and meets 1.705 at -2.12, out of the sweep of the 2026 turret's cheek and side-bin undersides
+  // (1.672-1.696, 1.75-1.93 m off the ring's axis), which ran 1-2 cm into the old rise.
   deck: [[3.72, 1.15], [3.47, 1.205], [3.10, 1.32], [2.72, 1.40], [2.42, 1.475],
     [2.16, 1.49], [1.62, 1.56], [1.10, 1.58], [0.30, 1.60], [-0.60, 1.61],
-    [-1.35, 1.64], [-1.76, 1.705], [-2.60, 1.71], [-3.30, 1.71],
+    [-1.35, 1.64], [-1.70, 1.662], [-2.00, 1.685], [-2.12, 1.705], [-2.60, 1.71], [-3.30, 1.71],
     [-3.44, 1.695], [-3.58, 1.70], [-3.70, 1.72]],
   beltTop: 1.02, belly: 0.56,
   noseRake: [[2.55, 0.56], [2.90, 0.575], [3.20, 0.62], [3.45, 0.69], [3.72, 0.78]],
@@ -1690,7 +1696,8 @@ function chieftainMk10Build(P: UKBuilderPort): void {
     P.add('hullDark', box(2.05, 0.018, 0.05), 0, 1.70, -2.2 - i * 0.17);
   }
   for (const side of [-1, 1]) P.add('hullDetail', cylY(0.08, 0.08, 0.03, 10), side * 1.15, 1.715, -1.9);
-  KIT.towCable(P, [[-0.95, 1.735, -2.2], [0, 1.75, -2.62], [0.95, 1.735, -2.2]], 0.026);
+  // (release 240: bedded 1.3 cm into the deck, its top 1.75 under the bustle, which sat 2 mm into it at rest)
+  KIT.towCable(P, [[-0.95, 1.722, -2.2], [0, 1.725, -2.62], [0.95, 1.722, -2.2]], 0.026);
   // ---- tail kit (symmetric planes; the -3.76 rear extreme = the exhaust
   // run faces, matching the +3.76 wing tips for the published 7.52 hull)
   P.add('hullDark', box(1.16, 0.5, 0.03), 0, 1.32, -3.60);
@@ -1892,8 +1899,11 @@ const CENTURION_HULL = {
   // scan (ref tops 1.695@2.397, 1.54@2.497 — the r5 2.44..2.56 rake read
   // +0.07..+0.08 high on the build-2.53 column, the worst side_hull col
   // both marks); nose tip trimmed to the ref's 3.454 plan line.
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the rise to the 1.75 engine-deck plateau
+  // runs under 1.72 to -1.40 and meets it at -1.55, out of the sweep of the turret's overhang (seated underside 1.729,
+  // its low reach 1.73 m off the ring's axis), which stood 2-3 cm into the old rise from 0.35 to -1.00.
   deck: [[3.458, 1.462], [2.80, 1.483], [2.49, 1.512], [2.40, 1.693], [2.30, 1.694],
-    [2.05, 1.660], [0.35, 1.658], [-1.00, 1.75],
+    [2.05, 1.660], [0.35, 1.658], [-1.40, 1.72], [-1.55, 1.75],
     [-3.16, 1.75], [-3.30, 1.685], [-3.40, 1.664]],
   // r6: rear deck plateau narrowed (ref front tops 1.64-1.66 outboard of
   // |x| 1.0 — the step plates in the build fn carry that line; the loft's

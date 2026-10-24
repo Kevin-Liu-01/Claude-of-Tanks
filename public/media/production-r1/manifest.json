@@ -1,57 +1,55 @@
 {
   "version": 1,
-  "created": "2026-10-24T07:53:46.984Z",
-  "sourceDigest": "8a47e0626c29f5dd222de3d36d8aa094377c69e9979e25ceb8ae4d9ff821b9e5",
-  "revision": "371bf714f940ca196f838c17ccb695afc8edca5c",
+  "created": "2026-10-24T12:26:43.515Z",
+  "sourceDigest": "0a13a46d8142ea40b1cbd4657156d36ea8bb0d1363e8471797cf5e73dd2d74b2",
+  "revision": "edae4a1b070cbc4e506272540fc3ebab78e2956b",
   "review": {
-    "reviewedAt": "2026-10-24T07:53:42+00:00",
-    "notes": "Maps 243: the six battlefields release 243 gave the Hinterland, re-shot on its head (371bf714f9), each looked at beside its live picture; they show the world as main now draws it.",
+    "reviewedAt": "2026-10-24T12:13:24+00:00",
+    "notes": "Maps 245: Frontier Basin and Saltmere Bay as 245 re-planned them, re-shot on its head (edae4a1b07), each looked at beside its live picture; they show the world as main now draws it.",
     "maps": {
-      "longleaf": {
+      "frontier": {
         "accepted": true,
         "hashes": [
-          "65b97fdaaec3c368c57413992676626852da89a26c17c59114981b040cae1018"
+          "a23eb9d5a31146022f0228fc05e381d6ebd3b118afdb0a49e93e037fe0fefd91"
         ],
-        "notes": "Re-shot on 243 (371bf714f9): looked at beside the live picture, 2026-10-24."
+        "notes": "Re-shot on 245 (edae4a1b07): looked at beside the live picture, 2026-10-24."
       },
-      "airfield": {
+      "coastal": {
         "accepted": true,
         "hashes": [
-          "516480c11479ce3cbafbf22715121aa87ec795b4d3a60bc36628a8f9be52dc97"
+          "f55388b991b6edd8f28fdb91c6848524bd35121d207c3d71bd1ab500e614f69c"
         ],
-        "notes": "Re-shot on 243 (371bf714f9): looked at beside the live picture, 2026-10-24."
-      },
-      "oasis": {
-        "accepted": true,
-        "hashes": [
-          "055bd36fd08fe0fcc203db74e67587a504396ec892199860cae992d4238cb2e2"
-        ],
-        "notes": "Re-shot on 243 (371bf714f9): looked at beside the live picture, 2026-10-24."
-      },
-      "skybridge": {
-        "accepted": true,
-        "hashes": [
-          "803a095db7ce8f559015fe486cda0c3396acd2de8a6a47f84ad112ee5b1dea57"
-        ],
-        "notes": "Re-shot on 243 (371bf714f9): looked at beside the live picture, 2026-10-24."
-      },
-      "copper_mesa": {
-        "accepted": true,
-        "hashes": [
-          "a3d20ed0021f632383488c8a7c14d011a1c1cc53f34b59ba1fc0982fbfaf74d7"
-        ],
-        "notes": "Re-shot on 243 (371bf714f9): looked at beside the live picture, 2026-10-24."
-      },
-      "mars": {
-        "accepted": true,
-        "hashes": [
-          "c216dc2125ed998adb5303825c1fe10113be2eb288309e478a19ac3729fc3cc9"
-        ],
-        "notes": "Re-shot on 243 (371bf714f9): looked at beside the live picture, 2026-10-24."
+        "notes": "Re-shot on 245 (edae4a1b07): looked at beside the live picture, 2026-10-24."
       }
     }
   },
   "shots": [
+    {
+      "src": "/maps/frontier.webp",
+      "previewSrc": "/maps/cards/frontier.webp",
+      "alt": "frontier battlefield overview",
+      "title": "frontier",
+      "map": "frontier",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 1
+    },
+    {
+      "src": "/maps/coastal.webp",
+      "previewSrc": "/maps/cards/coastal.webp",
+      "alt": "coastal battlefield overview",
+      "title": "coastal",
+      "map": "coastal",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 2
+    },
     {
       "src": "/maps/longleaf.webp",
       "previewSrc": "/maps/cards/longleaf.webp",
@@ -129,32 +127,6 @@
         "daylight"
       ],
       "sequence": 6
-    },
-    {
-      "src": "/maps/frontier.webp",
-      "previewSrc": "/maps/cards/frontier.webp",
-      "alt": "frontier battlefield overview",
-      "title": "frontier",
-      "map": "frontier",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 1
-    },
-    {
-      "src": "/maps/coastal.webp",
-      "previewSrc": "/maps/cards/coastal.webp",
-      "alt": "coastal battlefield overview",
-      "title": "coastal",
-      "map": "coastal",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 2
     },
     {
       "src": "/maps/desert.webp",
@@ -485,6 +457,30 @@
   "films": [],
   "assets": [
     {
+      "src": "/maps/frontier.webp",
+      "sha256": "e662b1ba5c5d45b6c7ce0a7f734c932787e89034a70a0a534c885276ab43e433"
+    },
+    {
+      "src": "/maps/cards/frontier.webp",
+      "sha256": "d5989f95f88c92813052e68674e9a6c291a20345961d79d0e2184d060077e650"
+    },
+    {
+      "src": "/maps/thumbs/frontier.webp",
+      "sha256": "6f214c452fd362b2c04c7621ba2b957b2a97f739dd90e5023a5bbd319e4cb728"
+    },
+    {
+      "src": "/maps/coastal.webp",
+      "sha256": "27c6713b2b5226c8771976f63f3e45501dec3daef860deaf86311a11cadb5319"
+    },
+    {
+      "src": "/maps/cards/coastal.webp",
+      "sha256": "9e5ac00e03cbdd63a45124c21652681d2c6714348d178981a13998be1be04539"
+    },
+    {
+      "src": "/maps/thumbs/coastal.webp",
+      "sha256": "bc2978a340dc4b1bd711b177a27f14fa39f2d830a7a162e79de8e100a5e8fc6c"
+    },
+    {
       "src": "/maps/longleaf.webp",
       "sha256": "786e29eb1a73d6264def5a9f659dbd78f713fcc9cc2a1f9b0cd823741b716316"
     },
@@ -555,30 +551,6 @@
     {
       "src": "/maps/thumbs/mars.webp",
       "sha256": "f56def6f2f6d4ec3089cf916f26ced52770bba873b730c391617d4cffa6c50dc"
-    },
-    {
-      "src": "/maps/frontier.webp",
-      "sha256": "d63ef2b47813530d4b06983fb61378d5275d21362c011676ef16d8d41a87c35f"
-    },
-    {
-      "src": "/maps/cards/frontier.webp",
-      "sha256": "18c961ef83844dd6563a15522d51f7e367f5cd52a20a7fc5593cc3c5a78b136c"
-    },
-    {
-      "src": "/maps/thumbs/frontier.webp",
-      "sha256": "a3654cbf6787fae71df328b77e7ac8cedc9842e7659c644d8b108b5d011f6662"
-    },
-    {
-      "src": "/maps/coastal.webp",
-      "sha256": "1a94be4140d9032be35c320ff67ffb443566c26d9651f0d7b50bf01e6e5fb543"
-    },
-    {
-      "src": "/maps/cards/coastal.webp",
-      "sha256": "fa30cc518967557e140ffa5b4cec6d110dcaa838f9d9b6bf74c17b1e9f965747"
-    },
-    {
-      "src": "/maps/thumbs/coastal.webp",
-      "sha256": "272da4b70709450cfce7470aea03d2f5917c269c74d0286d5c6dff0723f4384f"
     },
     {
       "src": "/maps/desert.webp",
@@ -930,12 +902,6 @@
     "/maps/delta.webp": "production-map-delta",
     "/maps/cards/delta.webp": "production-map-delta",
     "/maps/thumbs/delta.webp": "production-map-delta",
-    "/maps/frontier.webp": "production-map-frontier",
-    "/maps/cards/frontier.webp": "production-map-frontier",
-    "/maps/thumbs/frontier.webp": "production-map-frontier",
-    "/maps/coastal.webp": "production-map-coastal",
-    "/maps/cards/coastal.webp": "production-map-coastal",
-    "/maps/thumbs/coastal.webp": "production-map-coastal",
     "/maps/desert.webp": "production-map-desert",
     "/maps/cards/desert.webp": "production-map-desert",
     "/maps/thumbs/desert.webp": "production-map-desert",
@@ -980,7 +946,13 @@
     "/maps/thumbs/copper_mesa.webp": "production-map-copper_mesa",
     "/maps/mars.webp": "production-map-mars",
     "/maps/cards/mars.webp": "production-map-mars",
-    "/maps/thumbs/mars.webp": "production-map-mars"
+    "/maps/thumbs/mars.webp": "production-map-mars",
+    "/maps/frontier.webp": "production-map-frontier",
+    "/maps/cards/frontier.webp": "production-map-frontier",
+    "/maps/thumbs/frontier.webp": "production-map-frontier",
+    "/maps/coastal.webp": "production-map-coastal",
+    "/maps/cards/coastal.webp": "production-map-coastal",
+    "/maps/thumbs/coastal.webp": "production-map-coastal"
   },
   "recipes": {
     "production-map-verdant": {
@@ -1335,50 +1307,6 @@
         "fov": 55
       }
     },
-    "production-map-frontier": {
-      "map": "frontier",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          150,
-          76.30363623238867,
-          -330
-        ],
-        "lookAt": [
-          -20,
-          1.0524110273179432,
-          40
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-coastal": {
-      "map": "coastal",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          356,
-          60.84,
-          -300
-        ],
-        "lookAt": [
-          96,
-          -6.957800224607393,
-          190
-        ],
-        "fov": 55
-      }
-    },
     "production-map-desert": {
       "map": "desert",
       "timeOfDay": "day",
@@ -1705,6 +1633,50 @@
           50,
           6.129426266709305,
           160
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-frontier": {
+      "map": "frontier",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          150,
+          76.30363623238867,
+          -330
+        ],
+        "lookAt": [
+          -20,
+          1.0524110273179432,
+          40
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-coastal": {
+      "map": "coastal",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          356,
+          60.84,
+          -300
+        ],
+        "lookAt": [
+          96,
+          -6.957800224607393,
+          190
         ],
         "fov": 55
       }
@@ -2254,30 +2226,6 @@
       },
       "assets": [
         {
-          "src": "/maps/frontier.webp",
-          "sha256": "d63ef2b47813530d4b06983fb61378d5275d21362c011676ef16d8d41a87c35f"
-        },
-        {
-          "src": "/maps/cards/frontier.webp",
-          "sha256": "18c961ef83844dd6563a15522d51f7e367f5cd52a20a7fc5593cc3c5a78b136c"
-        },
-        {
-          "src": "/maps/thumbs/frontier.webp",
-          "sha256": "a3654cbf6787fae71df328b77e7ac8cedc9842e7659c644d8b108b5d011f6662"
-        },
-        {
-          "src": "/maps/coastal.webp",
-          "sha256": "1a94be4140d9032be35c320ff67ffb443566c26d9651f0d7b50bf01e6e5fb543"
-        },
-        {
-          "src": "/maps/cards/coastal.webp",
-          "sha256": "fa30cc518967557e140ffa5b4cec6d110dcaa838f9d9b6bf74c17b1e9f965747"
-        },
-        {
-          "src": "/maps/thumbs/coastal.webp",
-          "sha256": "272da4b70709450cfce7470aea03d2f5917c269c74d0286d5c6dff0723f4384f"
-        },
-        {
           "src": "/maps/desert.webp",
           "sha256": "aa1e96861505f87133e07b97907115ca7eb1033fb40f1a5dead29d5586bb9167"
         },
@@ -2384,6 +2332,133 @@
         {
           "src": "/maps/thumbs/monsoon.webp",
           "sha256": "8d5403d2fd220a4358b9eaa32808c62cf240555557ec43e47373cb928e0c1fa8"
+        }
+      ]
+    },
+    {
+      "created": "2026-10-24T07:53:46.984Z",
+      "revision": "371bf714f940ca196f838c17ccb695afc8edca5c",
+      "sourceDigest": "8a47e0626c29f5dd222de3d36d8aa094377c69e9979e25ceb8ae4d9ff821b9e5",
+      "review": {
+        "reviewedAt": "2026-10-24T07:53:42+00:00",
+        "notes": "Maps 243: the six battlefields release 243 gave the Hinterland, re-shot on its head (371bf714f9), each looked at beside its live picture; they show the world as main now draws it.",
+        "maps": {
+          "longleaf": {
+            "accepted": true,
+            "hashes": [
+              "65b97fdaaec3c368c57413992676626852da89a26c17c59114981b040cae1018"
+            ],
+            "notes": "Re-shot on 243 (371bf714f9): looked at beside the live picture, 2026-10-24."
+          },
+          "airfield": {
+            "accepted": true,
+            "hashes": [
+              "516480c11479ce3cbafbf22715121aa87ec795b4d3a60bc36628a8f9be52dc97"
+            ],
+            "notes": "Re-shot on 243 (371bf714f9): looked at beside the live picture, 2026-10-24."
+          },
+          "oasis": {
+            "accepted": true,
+            "hashes": [
+              "055bd36fd08fe0fcc203db74e67587a504396ec892199860cae992d4238cb2e2"
+            ],
+            "notes": "Re-shot on 243 (371bf714f9): looked at beside the live picture, 2026-10-24."
+          },
+          "skybridge": {
+            "accepted": true,
+            "hashes": [
+              "803a095db7ce8f559015fe486cda0c3396acd2de8a6a47f84ad112ee5b1dea57"
+            ],
+            "notes": "Re-shot on 243 (371bf714f9): looked at beside the live picture, 2026-10-24."
+          },
+          "copper_mesa": {
+            "accepted": true,
+            "hashes": [
+              "a3d20ed0021f632383488c8a7c14d011a1c1cc53f34b59ba1fc0982fbfaf74d7"
+            ],
+            "notes": "Re-shot on 243 (371bf714f9): looked at beside the live picture, 2026-10-24."
+          },
+          "mars": {
+            "accepted": true,
+            "hashes": [
+              "c216dc2125ed998adb5303825c1fe10113be2eb288309e478a19ac3729fc3cc9"
+            ],
+            "notes": "Re-shot on 243 (371bf714f9): looked at beside the live picture, 2026-10-24."
+          }
+        }
+      },
+      "assets": [
+        {
+          "src": "/maps/longleaf.webp",
+          "sha256": "786e29eb1a73d6264def5a9f659dbd78f713fcc9cc2a1f9b0cd823741b716316"
+        },
+        {
+          "src": "/maps/cards/longleaf.webp",
+          "sha256": "709449a108446cea58356c2977cae5b32a7dc4a2e94b3fe3ab292fdd5889d115"
+        },
+        {
+          "src": "/maps/thumbs/longleaf.webp",
+          "sha256": "24a8cf78a25080b4b3c913500016a147bbd30364f532fb1e16622a58d99e4911"
+        },
+        {
+          "src": "/maps/airfield.webp",
+          "sha256": "6add7cb60238b58a45627a227840b670971d1cb36528234329247a25e079f6c6"
+        },
+        {
+          "src": "/maps/cards/airfield.webp",
+          "sha256": "d424a0cebe1c0f8335d74796944a939d47730a2f1b70cb691ed8902babfe0253"
+        },
+        {
+          "src": "/maps/thumbs/airfield.webp",
+          "sha256": "a6c5545010e8957f294f188bfc6eccd8c35640422fefa9ec0fe5e68fb4418608"
+        },
+        {
+          "src": "/maps/oasis.webp",
+          "sha256": "e634960d03249fa8b6685cdc26659fd1849cb355cbbe77b1da32056366ed445a"
+        },
+        {
+          "src": "/maps/cards/oasis.webp",
+          "sha256": "acf739dd89b637a4a8a8a5767b95868e9c52f82dfe79efbc7d3b92119974ff72"
+        },
+        {
+          "src": "/maps/thumbs/oasis.webp",
+          "sha256": "83c2243563413fde05925419bd3d1065bbba11dd60008347be8c3252988e3cff"
+        },
+        {
+          "src": "/maps/skybridge.webp",
+          "sha256": "d8e3261602ed09958a60f209742c27e220d8e24576727525c38077b20042d70a"
+        },
+        {
+          "src": "/maps/cards/skybridge.webp",
+          "sha256": "65c07802ce9932bfd7c6b07dd856e467c30f97700c389f18a01a78786799fa16"
+        },
+        {
+          "src": "/maps/thumbs/skybridge.webp",
+          "sha256": "6443020dc7a00ff8ac66053ba316930cba3ac410783c1c66785d561fad057971"
+        },
+        {
+          "src": "/maps/copper_mesa.webp",
+          "sha256": "b6d75e002b01c866d63127fac8d9adcf35494164fde8b67dc343b0fc5579fae4"
+        },
+        {
+          "src": "/maps/cards/copper_mesa.webp",
+          "sha256": "f8928c777595b2a7dddf16a95117987e2cd94b1e1fa6d9cc8a219993f7c93902"
+        },
+        {
+          "src": "/maps/thumbs/copper_mesa.webp",
+          "sha256": "adf03cb678e72260c2cf2a8f071274903551adcb89248b54aabb6356a049dd8b"
+        },
+        {
+          "src": "/maps/mars.webp",
+          "sha256": "b49c0d1a93a4c863d32fa4d823c4d7a78819556a8f8e22861bdbc55c5ddd03ea"
+        },
+        {
+          "src": "/maps/cards/mars.webp",
+          "sha256": "4019eeebada65de7e8c5c0f90810239d755ba702310478db4cec012fae3af6b5"
+        },
+        {
+          "src": "/maps/thumbs/mars.webp",
+          "sha256": "f56def6f2f6d4ec3089cf916f26ced52770bba873b730c391617d4cffa6c50dc"
         }
       ]
     }

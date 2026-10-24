@@ -16,19 +16,9 @@ const indexedPages = new Map([
   ['site/home.html', `${SITE}/home`],
   ['site/gallery.html', `${SITE}/gallery`],
   ['site/docs.html', `${SITE}/docs`],
-  ['site/docs-build.html', `${SITE}/docs/build`],
-  ['site/docs-models.html', `${SITE}/docs/models`],
-  ['site/docs-simulation.html', `${SITE}/docs/simulation`],
-  ['site/docs-vehicles.html', `${SITE}/docs/vehicles`],
-  ['site/docs-rendering.html', `${SITE}/docs/rendering`],
-  ['site/docs-performance.html', `${SITE}/docs/performance`],
-  ['site/docs-worlds.html', `${SITE}/docs/worlds`],
-  ['site/docs-ai.html', `${SITE}/docs/ai`],
-  ['site/docs-multiplayer.html', `${SITE}/docs/multiplayer`],
-  ['site/docs-audio.html', `${SITE}/docs/audio`],
-  ['site/docs-interface.html', `${SITE}/docs/interface`],
-  ['site/docs-studio.html', `${SITE}/docs/studio`],
-  ['site/docs-filming.html', `${SITE}/docs/filming`],
+  // every manual chapter is its own indexed page (src/ui/localeRouting.ts PUBLIC_ROUTE_RECORDS)
+  ...PUBLIC_ROUTE_RECORDS.filter((route) => /^\/docs\/[a-z]+$/.test(route.pathname))
+    .map((route) => [`site/${route.sourceHtml}`, `${SITE}${route.pathname}`]),
 ]);
 const socialCards = new Map([
   ['index.html', 'brand/og-image.png'],
@@ -44,7 +34,8 @@ function attribute(html, element, key, value, wanted = 'content') {
   const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const tag = html.match(new RegExp(`<${element}[^>]+${key}=["']${escaped}["'][^>]*>`, 'i'))?.[0];
   if (!tag) return '';
-  return tag.match(new RegExp(`${wanted}=["']([^"']+)["']`, 'i'))?.[1] ?? '';
+  // the value runs to its own closing quote: an apostrophe inside a double-quoted attribute is text
+  return tag.match(new RegExp(`${wanted}=(["'])(.*?)\\1`, 'i'))?.[2] ?? '';
 }
 
 const titles = new Set();
@@ -179,7 +170,7 @@ const homeVisibleText = renderProductStats(readFileSync(join(ROOT, 'site/home.ht
 assert.doesNotMatch(homeVisibleText, /16 battlefields/);
 assert.doesNotMatch(homeVisibleText, /(?:Choose from |Drive )111 tanks|111 production vehicles/);
 const currentPublicCopy = [
-  'index.html', 'site/home.html', 'site/gallery.html', 'site/docs.html', 'site/docs-vehicles.html',
+  'index.html', 'site/home.html', 'site/gallery.html', 'site/docs.html', 'site/docs-tanks.html',
   'README.md', 'public/llms.txt', 'public/llms-full.txt', 'public/docs/llms.txt',
 ].map((file) => renderProductStats(readFileSync(join(ROOT, file), 'utf8'))).join('\n');
 assert.doesNotMatch(currentPublicCopy, /111 (?:production|first-party procedural)|148 keyed|150 saved/,
