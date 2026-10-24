@@ -1172,7 +1172,10 @@ export function buildLeopard2A7VX(P: TankBuilderPort): void {
     paintedEnds:true, arms:true, coveredTop:true },[-2.05,-.35,1.25,2.20]));
   a7Skirts(P);
   fans(P,2.018,-2.82,.54);
-  driver(P,1.783,-.54,1.14,.07);
+  // Release 240: the driver's station on the upper glacis plate 0.31 m ahead of the deck's break, as the 2A5's source
+  // hatch lies (this source carries no hatch of its own), flat on that plate; it stood inside the ring's circle, so a
+  // kill's ring cut took part of it.
+  driver(P,1.6658,-.54,2.24,.03,Math.atan2(1.785-1.628,2.43-1.64));
   a7BowFittings(P);
   a7Stern(P);
   shell(P,d,[[-2.80,-1.11,1.25,2.092,2.235],[-2.49,-1.14,1.26,2.084,2.628],
@@ -1230,7 +1233,10 @@ export function buildLeopard2A6MX(P: TankBuilderPort): void {
     paintedEnds:true,arms:true,coveredTop:true});
   a6HullCage(P);
   fans(P,1.825,-2.86,.48,true);                                               // (release 240: flat, under the bustle cage's 1.88)
-  driver(P,1.72,-.56,1.15,.09);
+  // Release 240: the driver's station on the upper glacis plate 0.31 m ahead of the deck's break, as the 2A5's source
+  // hatch lies (this source carries no hatch of its own), flat on that plate; it stood inside the ring's circle, so a
+  // kill's ring cut took part of it.
+  driver(P,1.6443,-.56,2.12,.03,Math.atan2(1.72-1.58,2.63-1.52));
   a6BowFittings(P);
   a6Stern(P);
   shell(P,d,[[-2.70,-1.14,1.15,1.948,1.979],[-2.39,-1.14,1.15,1.93,1.979],
@@ -1295,7 +1301,10 @@ export function buildLeopard2A4MX(P: TankBuilderPort): void {
     P.addEquipment('hullDetail',box(.53,.05,.014).translate(0,.185,-.0255),side*1.36,.75,-3.69,.07);
   }
   fans(P,1.81,-2.95,.51,true);                                                // (release 240: flat, under the bustle's 1.842)
-  driver(P,1.68,-.58,1.0,.09);
+  // Release 240: the driver's station on the upper glacis plate 0.31 m ahead of the deck's break, as the 2A5's source
+  // hatch lies (this source carries no hatch of its own), flat on that plate; it stood inside the ring's circle, so a
+  // kill's ring cut took part of it.
+  driver(P,1.5619,-.58,2.20,.03,Math.atan2(1.684-1.45,2.75-1.60));
   bowFittings(P,1.33,3.56,false);
   sternFittings(P,1.47,-3.79,1.65);
   shell(P,d,[[-2.82,-1.02,-.64,1.873,2.33],[-2.53,-1.05,.98,1.856,2.387],
