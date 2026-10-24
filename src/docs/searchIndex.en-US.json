@@ -72,6 +72,12 @@
   "text": "Watch a bots' battle from the Garage: Watch sits beside Deploy. Every seat is a bot's, every tank is visible and nothing is recorded. It works in 12 modes. Drone Fly anywhere over the battle. You open 70 m up at 14 m/s; the wheel steps the speed (4 / 8 / 14 / 24 / 40 / 64 m/s) and Shift boosts ×3. W A S D Fly SPACE C Climb and descend L-SHIFT Boost WHEEL ↑ WHEEL ↓ Step the speed Ride along Follow any tank from behind, or look through its gunner's sight at ×2 / ×4 / ×8. F Ride the tank in the middle of the view TAB Q E Next and previous tank L-SHIFT Gunner's sight V Back to the drone Take control Take over the tank you ride and fight it yourself. If it dies, the drone takes you back after 3.5 s. ENTER Take control, or hand it back"
  },
  {
+  "href": "/docs/controls#hud",
+  "title": "Your HUD",
+  "chapter": "Controls and Watch",
+  "text": "Settings › Gameplay › Edit HUD layout: move or hide each panel over a battlefield preview; Desktop, Phone portrait and Phone landscape each keep their own layout. F10 switches to the minimal battle HUD: the reticle, range, zoom and ammunition stay, the other panels hide. Press it again to bring them back. On touch screens, turn on Minimal battle HUD in Settings; a three-finger tap brings the full HUD back."
+ },
+ {
   "href": "/docs/modes",
   "title": "Every way to fight",
   "chapter": "Game modes",
@@ -192,6 +198,12 @@
   "text": "33 battlefields; a random battle picks from 31 of them. Woodland 10 Desert 9 Urban 6 Maritime 5 Winter 4 Tropical 3 Night 1 Verdant Fields Sirocco Wadi Frosthollow Steinburg Saltmere Bay Amberford Tarkhan Steppe Cinder Junction Frontier Basin Nordhavn Fjord Jade River Delta Redrock Divide Monsoon Ridge Glacier Pass Obsidian Caldera Ironworks Ruinspires Suzhou Creek Titan Gorge Skybridge Chasm Tidegate Polders Copper Mesa Mine Kestrel Airfield Sunscar Oasis Whiteout Station Orchard Valley Longleaf Crossing Mangrove Reach Saltwind Narrows Highland Reservoir Olympus Basin Earthrise Basin Aegis Crossing"
  },
  {
+  "href": "/docs/battlefields#breaks",
+  "title": "What breaks",
+  "chapter": "Battlefields",
+  "text": "Buildings that collapse Shellfire and ramming wear a building down until it comes apart, changing the cover and the routes around it. Crush what you drive through A heavy hull fells fences, walls, trees, huts and stalls that cannot hold it, and what falls stays down. Map vehicles break Parked cars and trucks crumple under tracks, and a round sets them burning. Big cover, such as buildings, walls, rocks and hills, stops shots and blocks sight; signs, lamps and other small fittings never become invisible walls."
+ },
+ {
   "href": "/docs/battlefields#gravity",
   "title": "Gravity worlds",
   "chapter": "Battlefields",
@@ -208,420 +220,6 @@
   "title": "The Proving Ground",
   "chapter": "Battlefields",
   "text": "Test drive opens Kestrel Airfield: 5 target lanes and a rack of plates, with no clock and no record. Lanes 100 m target turned 0° 200 m target turned 30° 300 m target turned 90° 450 m target turned 45° 650 m target turned 0° Plate rack 50 mm 100 mm 200 mm 300 mm 500 mm 100 mm · 45° 100 mm · 60° 60 mm · 82°"
- },
- {
-  "href": "/docs/build",
-  "title": "A browser game built through verified loops",
-  "chapter": "How the game was built",
-  "text": "Claude of Tanks grew from a direct Three.js prototype into a typed, tested game through short implementation rounds: isolate one problem, change the smallest owner, prove it in the browser, record the result, and land it on main."
- },
- {
-  "href": "/docs/build#topic-section-1",
-  "title": "Start with hard constraints",
-  "chapter": "How the game was built",
-  "text": "The project is browser-native and built directly on Three.js rather than a general game engine. The simulation runs at a fixed 60 Hz, playable tanks use first-party procedural runtime geometry, and presentation pages stay isolated from the heavy game boot graph. Those constraints shaped the architecture: deterministic rules can run in Node, the renderer adapts independently, and every public claim can point to code, a test, a capture, or a measured receipt."
- },
- {
-  "href": "/docs/build#topic-section-2",
-  "title": "Separate rules from presentation",
-  "chapter": "How the game was built",
-  "text": "Movement, ballistics, armor, damage, spotting, match state, and bot decisions live behind renderer-free contracts. Three.js turns the latest state into cameras, rigs, lighting, effects, audio, and UI without becoming the authority for a hit. That boundary lets local battles and browser-hosted rooms share the same combat rules. It also lets lower-end visual settings reduce cost without changing gameplay."
- },
- {
-  "href": "/docs/build#topic-section-3",
-  "title": "Claude Code and Codex workflow",
-  "chapter": "How the game was built",
-  "text": "Claude Code and Codex were used as development tools across bounded tasks. Broad or risky work moved into isolated Git worktrees; each lane named the files it owned, preserved unrelated changes, and exchanged exact commit hashes and evidence before integration. The working rule was simple: main stays current, unfinished experiments stay isolated, and a branch is not proof. Only the integrated bytes count. Human direction set the target and acceptance bar; agents implemented, measured, reviewed, and documented against it."
- },
- {
-  "href": "/docs/build#topic-section-4",
-  "title": "Build, falsify, and measure",
-  "chapter": "How the game was built",
-  "text": "A typical round starts with a reproducible baseline, then attribution. The smallest plausible fix is tested with focused self-tests, browser interaction, console inspection, screenshots, and performance probes. A result must survive a second run or a deliberately hostile case before it is accepted. Visual work is judged from current pixels, not only numeric checks. Performance work records cold and warm conditions, device constraints, long tasks, frame gaps, GPU resources, and transition timings instead of reporting a single FPS number."
- },
- {
-  "href": "/docs/build#topic-section-5",
-  "title": "Make the workflow durable",
-  "chapter": "How the game was built",
-  "text": "Repository-level AGENTS.md, indexed subsystem SKILL.md files, and one maintained architecture decision record preserve ownership, invariants, required commands, and recurring failure modes without burying contributors in completed migration notes. When a manual process repeats, it becomes a script or a gate. That is why model screenshots, combat anatomy, vehicle icons, route probes, public metadata, and release checks are reproducible from the repository. Raw execution receipts stay in Git history or ignored QA artifacts."
- },
- {
-  "href": "/docs/build#topic-section-6",
-  "title": "Land only integrated proof",
-  "chapter": "How the game was built",
-  "text": "A finished change is committed as one coherent unit, rebased on the latest origin/main, and rechecked after integration. The final push verifies that its parent is still the remote tip so concurrent work cannot silently overwrite a newer landing. The public build then proves route isolation and strips non-distributable comparison material. This keeps the playable site, source tree, documentation, and main branch describing the same game."
- },
- {
-  "href": "/docs/models",
-  "title": "From reference to playable machine",
-  "chapter": "Procedural model pipeline",
-  "text": "Kevin B. Liu authored every playable tank as first-party procedural runtime geometry. References guide proportion and detail, but the shipped machine is rebuilt from code, connected to combat data, rendered into its own icon set, and released through measured and visual gates."
- },
- {
-  "href": "/docs/models#topic-section-1",
-  "title": "Research and reference intake",
-  "chapter": "Procedural model pipeline",
-  "text": "A model round begins with source photographs, published dimensions, plan and side references, or a comparison mesh when its license permits authoring use. The source is an oracle for recognizable shape—not a playable asset and not an automatic truth when the reference itself is wrong. Proportion comes first: hull length and width, turret station, roof height, gun length, wheel count, track course, and major armor masses must read correctly before small fittings are added."
- },
- {
-  "href": "/docs/models#topic-section-2",
-  "title": "Build the visible machine from parts",
-  "chapter": "Procedural model pipeline",
-  "text": "Procedural builders assemble hull plates, turret shells, mantlets, barrels, running gear, optics, hatches, smoke launchers, baskets, antennas, armor kits, and stowage from reusable geometry and material vocabulary. Station-section measurements keep front, middle, and rear masses faithful instead of stretching one generic box. Camouflage-aware structural parts and neutral mechanical parts use explicit roles. Comparison GLBs never become a hidden production fallback."
- },
- {
-  "href": "/docs/models#topic-section-3",
-  "title": "Rig articulation and running gear",
-  "chapter": "Procedural model pipeline",
-  "text": "Hull, turret, gun mount, recoil group, muzzle, wheels, return rollers, sprockets, idlers, and linked tracks have explicit owners. Turret equipment must rotate with the turret and remain visibly seated; hull equipment must not follow it. The muzzle bore must be open and resolve from the actual barrel hierarchy. Suspension samples terrain at each support station. Native running gear preserves the correct wheel count and track path while avoiding duplicated donor wheels, clipping shoes, or floating attachments."
- },
- {
-  "href": "/docs/models#topic-section-4",
-  "title": "Author combat anatomy from the same shape",
-  "chapter": "Procedural model pipeline",
-  "text": "Armor plates, spaced layers, ERA, modules, ammunition, fuel, crew, and articulation anchors are calibrated to the checked vehicle frame. The game therefore uses the same authored shape for presentation, impact tracing, internal damage, and the technical side diagrams. Structural cupolas can participate in hit geometry. Sights, machine guns, baskets, antennas, and loose equipment remain presentation fittings unless gameplay explicitly gives them a physical role."
- },
- {
-  "href": "/docs/models#topic-section-5",
-  "title": "Generate icons and technical cards",
-  "chapter": "Procedural model pipeline",
-  "text": "The asset pipeline renders the current procedural rig into garage and gallery imagery, transparent silhouettes, armor diagrams, separate module and crew diagrams, tier treatments, and supporting presentation views. One deterministic angle capture now emits both portrait sizes through a shared framing policy, so a new tank cannot leave behind a hand-cropped or stale thumbnail. Use npm run tank:portraits -- --ids=<changed ids> and npm run tank:portraits:check -- --ids=<changed ids> for portrait-only work. The complete release sequence remains npm run tank:anatomy:update, npm run tank:anatomy:check, then npm run tank:release:check -- --ids=<changed ids> --gate."
- },
- {
-  "href": "/docs/models#topic-section-6",
-  "title": "Measure, inspect, and graduate",
-  "chapter": "Procedural model pipeline",
-  "text": "Automated gates check geometry fingerprints, dimensions, stations, floaters, track intersections, wheel quality, muzzle bores, materials, armor anatomy, markings, provenance, and deterministic asset freshness. Standard front, quarter, side, rear, top, close, and yaw views then expose defects a numeric score can miss. A model graduates only when every required view clears the visual acceptance floor, attachments have physical load paths, winding and backfaces are healthy, and the clean integrated release check passes. The Tank Gallery is the live inspection surface for that final procedural rig."
- },
- {
-  "href": "/docs/simulation",
-  "title": "Every hit has a path",
-  "chapter": "Simulation and combat",
-  "text": "The battle simulation advances at 60 Hz. Movement, aim, ballistics, armor, damage, reloads, spotting, and match results are resolved from authoritative state—not from the rendered frame."
- },
- {
-  "href": "/docs/simulation#topic-section-1",
-  "title": "Fixed-step battle loop",
-  "chapter": "Simulation and combat",
-  "text": "The authoritative step uses metres, seconds, radians, and a fixed 1/60-second interval. Input is sampled into explicit vehicle controls before movement, combat, spotting, and result evaluation run in a stable order. Render rate can change without changing the number or order of simulation steps. Frame-time spikes accumulate into bounded fixed steps. Authoritative randomness is seeded or injected. Wall-clock time and Math.random() are excluded from rules that affect a shot, reload, module state, or match result."
- },
- {
-  "href": "/docs/simulation#topic-section-2",
-  "title": "Aim and shot creation",
-  "chapter": "Simulation and combat",
-  "text": "Camera aim and gun aim are separate. The camera chooses the requested point; traverse, elevation, suspension attitude, and bore obstruction determine where the barrel can actually point. A shot starts at the resolved muzzle transform with the current shell, velocity, dispersion, and owner identity. The HUD draws both states. The camera marker communicates the request. The gun marker communicates the ballistic line. “Path blocked” and gun-limit feedback therefore describe physical constraints instead of repainting the request as truth."
- },
- {
-  "href": "/docs/simulation#topic-section-3",
-  "title": "Armor trace and penetration",
-  "chapter": "Simulation and combat",
-  "text": "The shell segment is tested against world collision before vehicle armor. Vehicle queries transform the ray into the target pose, order plate crossings, calculate distance and angle, apply normalization or ricochet rules, and consume the shell’s remaining penetration. Spaced layers and internal volumes stay in traversal order. A penetration continues through internal module and crew volumes. A non-penetration still produces an authoritative impact event. Presentation receives the resolved path and result; it does not rerun the decision."
- },
- {
-  "href": "/docs/simulation#topic-section-4",
-  "title": "Damage, reloads, and special weapons",
-  "chapter": "Simulation and combat",
-  "text": "Damage updates hit points, tracks, engine, fuel, ammunition, gun, turret drive, optics, and crew state. Autoloaders distinguish intra-clip delay from magazine reload. Guided missiles retain a live projectile and steering state until impact or expiry. Fires, ammunition-rack events, ramming, and repairs use the same event boundary. The X-ray replay, hit card, damage log, reload rack, impact effects, and sound all consume those events. This keeps visible feedback aligned with the result used by solo and multiplayer authority."
- },
- {
-  "href": "/docs/simulation#topic-section-5",
-  "title": "Battle rules",
-  "chapter": "Simulation and combat",
-  "text": "Standard Battle, Capture the Flag, Zone Control, Turbo Ball, and Endless Horde compose over the same complete tank simulation. Flag and zone modes add six-second respawns. Turbo Ball keeps weapons active while tanks drive at 1.85× mobility and shells can strike the ball. Horde escalates deterministic waves of fragile bots and places repair caches. The renderer-free mode controller owns scores, objectives, respawn timers, wave state, caches, and bot objective points. Solo, private rooms, and LAN rooms use the same rules; the host choice travels in canonical lobby state and survives rematches."
- },
- {
-  "href": "/docs/simulation#topic-section-6",
-  "title": "Bosses, infection, critical damage and weapon ladders",
-  "chapter": "Simulation and combat",
-  "text": "Juggernaut lets you play the boss or join the hunters. The boss is 12% larger, has a pulsing shield aura, eight times its hull health and half its reload time. Hunters respawn; the boss must survive ten minutes. Infected starts with five infected (at least three in custom battles). Survivors have 130% health; infected have 20%, 30% more speed and their own reload, and hunt the survivors as a pack, returning five seconds after every death. Destroyed survivors join the infected. Survive three minutes, or convert everyone. Both modes play with unlimited rounds. Realistic uses normal spotting and removes hull HP attrition. Penetrations reliably injure crew, apply 2.5× module damage and spread fragments through the struck compartments. Fires damage modules four times faster. Ammunition destruction, fewer than two crew or a destroyed engine and gun eliminate the tank. Gun Game advances through five weapons with two kills per stage; respawns preserve progress."
- },
- {
-  "href": "/docs/simulation#topic-section-7",
-  "title": "Direct drone flight and the AC-130 scope",
-  "chapter": "Simulation and combat",
-  "text": "In Drone mode, press V or tap the drone control to launch a quadcopter from your tank. After the launch animation you directly pilot its first-person view. W/S move, A/D strafe, Space climbs and mouse or touch look steers; pitch down and fly forward to dive. The battery lasts 40 seconds within an 850 m radius. Fly into an enemy to deliver an explosive impact. Once you are flying its feed, V returns you to your parked, vulnerable tank: the drone flies home, lands on its dock and is ready again 5 seconds after landing; after an impact, an empty battery or a lost link the next drone takes 25 seconds. V does nothing during the launch. National drones have detailed service airframes, camera gimbals and payloads. Large turrets carry the launch rail; compact turrets may use the hull. Impact, battery expiry and a lost link trigger a short static transition; a return closes the feed cleanly. The minimap tracks the drone separately from its carrier. I or the sensor button cycles white-hot infrared, colored thermal, green night vision and daylight; the same options are available in tank scopes. Heat highlights visible tanks and bright explosions, without bypassing cover or spotting. The AC-130 follows an automatic orbit with an overhead aiming scope. Mouse or touch controls aim; the wheel zooms. Select the 30 mm autocannon, 152 mm explosive howitzer or guided missiles with 1–3 or the ammunition buttons. These have independent reload channels and unlimited ammunition. Shots and drone impacts use the same host-authoritative collision, armor and damage rules as tank weapons. Protect the vulnerable allied ground convoy: escorts have 90% hull strength and must physically reach the green E extraction marker. Save at least half before the eight-minute deadline; losing too many allies fails the mission. The objective tracks surviving troops, rescued troops and route progress. In multiplayer every pilot supplies air support while separate allied bots drive the convoy. Enemies cannot see or shoot the aircraft. Howitzer blasts reach 22 m and missile blasts reach 18 m. J drops ammunition and K drops medical supplies at the ground aim point; icons support touch input. Crates land after six seconds. Nearby allies that need them detour to collect them. Ammo restores finite ground reserves; medicine repairs 35% of maximum health. Cooldowns are 22/30 seconds and crates expire after 70 seconds. The minimap shows the aircraft, orbit, ground aim, extraction and supplies."
- },
- {
-  "href": "/docs/simulation#topic-section-8",
-  "title": "Verification",
-  "chapter": "Simulation and combat",
-  "text": "Node-runnable self-tests cover movement, combat, spotting, missile guidance, special actions, AI aim, and the complete authoritative match. Browser probes add bore parity, projectile travel, live impact effects, and HUD alignment. Run node src/sim/combat.selftest.mjs, node src/sim/authoritativeMatch.selftest.mjs, and npm test after changing shared combat rules."
- },
- {
-  "href": "/docs/simulation#topic-section-9",
-  "title": "Standard Battle and team setup",
-  "chapter": "Simulation and combat",
-  "text": "Standard Battle is elimination: defeat the opposing team before the fifteen-minute clock ends. Destroyed vehicles do not respawn. The scoreboard carries the essential information, so this mode has no extra objective banner. Choose 7 v 7, 14 v 14 or custom teams before launch. In custom solo battles, the player counts as an ally; the field limit is 42 vehicles and allied bots yield when needed to preserve the requested enemy count. Battle Setup stores settings for each mode. Team presets, enemy nation and eligible times of day are chosen before starting. The Battle button launches the configured game; Multiplayer has its own entry for creating or joining a room without accidentally starting a solo match."
- },
- {
-  "href": "/docs/simulation#topic-section-10",
-  "title": "Capture the Flag",
-  "chapter": "Simulation and combat",
-  "text": "Take the enemy flag back to your own base while protecting your home flag. The default target is three captures, with a fifteen-minute clock and six-second respawns; setup can change the score and respawn settings. A flag carrier keeps its full speed. Recovering a dropped friendly flag and escorting a carrier can be more valuable than chasing a distant kill. Use fast vehicles for the run, keep a defender near home and cover the carrier’s return lane. Bots assign carrier, recovery, escort, raid and defense roles rather than sending the entire team to one flag. Destroying an enemy opens a route, but a kill is not a flag capture."
- },
- {
-  "href": "/docs/simulation#topic-section-11",
-  "title": "Zone Control and Gravity Mode",
-  "chapter": "Simulation and combat",
-  "text": "Zone Control rewards taking and holding three sectors. The default target is 750 points, with six-second respawns and a fifteen-minute clock. Destroying an opposing tank adds 25 points in Zone Control and Gravity Mode. Spread pressure across the map: leaving every sector to pursue one damaged tank gives the enemy time to score. Gravity Mode uses the zone objective with a twelve-minute clock, rocket jumps, boosted mobility and selectable gravity. Mars is 0.38 g, Moon 0.17 g and Earth 1 g. Cache frequency is configurable. Its default vehicle modifiers are 1.25× speed, 1.2× hull health, 0.9× damage and 0.9× reload time. Recoil and airborne motion matter: choose a landing zone before launching."
- },
- {
-  "href": "/docs/simulation#topic-section-12",
-  "title": "Turbo Ball",
-  "chapter": "Simulation and combat",
-  "text": "Drive or shoot the ball into the enemy goal. The default match lasts ten minutes, ends at five goals and uses three-second respawns. Vehicles have 0.6 g gravity, 1.85× speed, 1.5× hull health, half damage and 0.7× reload time. Ammunition is unlimited; equipment, consumables and critical module damage are disabled for this mode. Get behind the ball, line up the goal and commit to a controlled push. Jumping and amplified recoil enable aerial plays but can overshoot the ball. A striker, supporting screens and a goal defender make a stronger team than several tanks wedged around the same contact point. Destroying tanks disrupts the opposition; goals decide the score."
- },
- {
-  "href": "/docs/simulation#topic-section-13",
-  "title": "Endless Horde and Frontline Assault",
-  "chapter": "Simulation and combat",
-  "text": "Endless Horde has no match clock or respawns, and rounds are unlimited. Your side has twice its hull health; attackers arrive at 15% of theirs, 2% tougher each wave. Survive waves that grow from six attackers by two each wave, with an additional surge every third wave under the default settings. Clearing a wave repairs 30% of maximum hull health; use the floating repair caches to sustain the run. Setup can change the allied support, hostile identity pool, opening wave and enemy nation. Frontline Assault is a sequential breakthrough: take three sectors against escalating defenders, then hold the final sector for twenty seconds. The default clock is twelve minutes and running out of time is a defeat. Campaign operations vary the battlefield and difficulty; clearing an operation opens the next. Preserve your hull for the final hold rather than treating it like a respawn mode."
- },
- {
-  "href": "/docs/simulation#topic-section-14",
-  "title": "Driving, airtime and landing damage",
-  "chapter": "Simulation and combat",
-  "text": "Movement runs at a fixed sixty steps per second. Engine power, weight, forward and reverse limits, track condition, terrain resistance and hull rotation jointly determine handling. The renderer interpolates those states rather than changing movement with frame rate. Handbrake behavior is grounded; landing after a jump must not silently latch the brake. A fall is a physical impact, not just a height threshold. Mass, impact speed, attitude and mode physics affect the result. Reduced gravity changes both your arc and the terrain you can safely reach. Avoid blind drops at bridge abutments or cliff edges; use a route with a visible landing and enough room to settle."
- },
- {
-  "href": "/docs/vehicles",
-  "title": "The model moves as one machine",
-  "chapter": "Vehicles and running gear",
-  "text": "Every selectable tank is a first-party procedural runtime rig. The same vehicle record drives its geometry, dimensions, armor, internal anatomy, mobility, gun, ammunition, icon set, garage dossier, and battle behavior."
- },
- {
-  "href": "/docs/vehicles#topic-section-1",
-  "title": "Vehicle contract",
-  "chapter": "Vehicles and running gear",
-  "text": "A vehicle spec defines identity, class, nation, tier, dimensions, mass, engine output, speed, traverse, gun limits, shells, armor, modules, crew, equipment policy, and builder. Consumers read the registry instead of carrying parallel facts. Entity IDs are not vehicle spec IDs. Multiplayer permits duplicate tank selections, so identity, ownership, and specification remain separate throughout state and presentation."
- },
- {
-  "href": "/docs/vehicles#topic-section-2",
-  "title": "Procedural rig",
-  "chapter": "Vehicles and running gear",
-  "text": "Builders create hull, turret, gun mount, gun, running gear, tracks, optics, fittings, markings, and damage hooks with stable ownership. Tank forward is local +Z. Articulation occurs at explicit pivots, and the muzzle is resolved from the actual barrel hierarchy. Roof equipment can move with the turret without becoming armor. Cupolas participate in hit geometry; machine guns, antennas, baskets, loose stowage, and presentation-only fittings do not."
- },
- {
-  "href": "/docs/vehicles#topic-section-3",
-  "title": "Suspension and tracks",
-  "chapter": "Vehicles and running gear",
-  "text": "Each supported wheel samples terrain beneath its own station. The visual suspension settles to those contacts, the hull derives pitch and roll from support, and the track path is rebuilt around the moved wheels. Swedish siege suspension adds commanded hull attitude without breaking gun tracking. Track animation follows traveled distance and side speed. Damage can detach a side, remove its running band, throw a persistent ribbon, and leave loose running-gear pieces."
- },
- {
-  "href": "/docs/vehicles#topic-section-4",
-  "title": "Combat anatomy",
-  "chapter": "Vehicles and running gear",
-  "text": "Armor plates, modules, and crew stations are authored in the vehicle frame and transformed with the live pose. Generated side diagrams are receipts for that same data. They are not separately drawn approximations. Any playable geometry or profile change runs tank:anatomy:update, tank:anatomy:check, then the targeted gated release check. This refreshes armor, module, crew, icon, and technical-diagram evidence together."
- },
- {
-  "href": "/docs/vehicles#topic-section-5",
-  "title": "Fleet release gate",
-  "chapter": "Vehicles and running gear",
-  "text": "Appearance, bore, material, wheel, recoil, combat anatomy, provenance, and profile-specific checks run before a vehicle is considered current. Playable loading never falls back to a comparison GLB. The Tank Gallery constructs the live builder and overlays the canonical diagnostic volumes, which makes it the fastest manual review surface for a vehicle change."
- },
- {
-  "href": "/docs/vehicles#topic-section-6",
-  "title": "Choose a role, then a vehicle",
-  "chapter": "Vehicles and running gear",
-  "text": "Light tanks and reconnaissance IFVs trade protection for scouting, repositioning and support. The Sheridan family leads the fleet in base view range. A high view range does not reveal every enemy: camouflage, cover, smoke and line of sight still determine detection. Main battle tanks combine armor, gun handling and mobility in different proportions; a heavy front plate does not protect the sides, roof or internal modules. Use the searchable fleet reference below to compare base hull and turret rotation, dispersion, aim time, reload, speed, view range and supported systems. These are game balance values, not claims about classified real-world performance. Garage figures include your fitted equipment; mode bonuses and combat damage can change the resulting battle performance."
- },
- {
-  "href": "/docs/vehicles#topic-section-7",
-  "title": "Vehicle systems and their controls",
-  "chapter": "Vehicles and running gear",
-  "text": "The compact console above ammunition only offers systems that the selected vehicle or mode supports. E selects or toggles an ATGM, G launches smoke, N toggles lights, B toggles a remote automatic gun, and F jumps in jump-enabled modes. The displayed key hints are the immediate reference. A reload countdown replaces the weapon label while that system is unavailable. Smoke grenades leave the authored launcher sockets, fly forward in an arc and develop into expanding, drifting clouds. They interrupt spotting and targeting through the cloud, providing space to withdraw or cross an exposed lane. Smoke does not stop shells already in flight. Remote guns need a suitable visible target and a clear firing path; they animate independently of the main cannon. Hydropneumatic aiming is only available on vehicles equipped for it."
- },
- {
-  "href": "/docs/vehicles#topic-section-8",
-  "title": "Equipment, ammunition and technical diagrams",
-  "chapter": "Vehicles and running gear",
-  "text": "Equipment benefits appear directly in the final garage values rather than as an old-to-new comparison. Compare turret traverse and dispersion as well as reload, mobility and vision: a handling improvement can matter more than raw damage. Each shell has its own penetration, velocity, damage and ammunition count. Guided racks and conventional cannon ammunition may use different reload channels. Open the information controls or Tank Gallery for vehicle-specific armor, module and crew diagrams generated from the actual first-party model. They explain why a hit can disable a track, damage an engine or injure crew without destroying the hull. The current vehicle geometry and calibration receipts, rather than one generic tank drawing, supply these diagrams."
- },
- {
-  "href": "/docs/rendering",
-  "title": "Rendering can adapt without changing the rules",
-  "chapter": "Renderer and graphics",
-  "text": "Three.js owns presentation only. Adaptive resolution, shadows, vegetation, post-processing, particles, and warmup can change with the device; the 60 Hz battle model remains unchanged."
- },
- {
-  "href": "/docs/rendering#topic-section-1",
-  "title": "Frame composition",
-  "chapter": "Renderer and graphics",
-  "text": "The render path updates camera, visible vehicle rigs, world detail, presentation effects, lighting, shadows, and post-processing from the latest interpolated state. Established hot loops reuse scratch objects and pools rather than allocating each frame. Late transparent effects share depth information with the main scene. Muzzle light, tracer, sparks, smoke, dust, fire, and debris are admitted by distance and quality policy."
- },
- {
-  "href": "/docs/rendering#topic-section-2",
-  "title": "Lighting and post-processing",
-  "chapter": "Renderer and graphics",
-  "text": "Biome lighting supplies sun direction, sky, fog, exposure, and shadow policy. Stable cascaded shadows follow the relevant camera region. The post chain combines ambient occlusion, anti-aliasing, bloom where useful, output grading, and the final dynamic render scale. Capture views pin quality and render scale so comparison images do not drift. Gameplay can reduce expensive layers under sustained load."
- },
- {
-  "href": "/docs/rendering#topic-section-3",
-  "title": "Adaptive quality",
-  "chapter": "Renderer and graphics",
-  "text": "Desktop and mobile resolve separate starting profiles. Internal resolution, shadow work, vegetation density, effect budgets, and post features can step down independently. Hysteresis prevents rapid oscillation. Device diagnostics and measured overload—not user-agent labels alone—select the safe path. A quality change never alters shell travel, spotting, damage, or authoritative timing."
- },
- {
-  "href": "/docs/rendering#topic-section-4",
-  "title": "Loading and recovery",
-  "chapter": "Renderer and graphics",
-  "text": "Boot-critical modules avoid importing the complete fleet builder graph. Deferred vehicle construction, shader warmup, offscreen preparation, and cached garage residents flatten transition spikes. Context-loss handling restores presentation state without inventing battle state. Screenshot and loading probes treat black frames, stale swaps, console errors, and incomplete garage models as failures."
- },
- {
-  "href": "/docs/rendering#topic-section-5",
-  "title": "Performance evidence",
-  "chapter": "Renderer and graphics",
-  "text": "Performance traces record frame categories, renderer counters, dynamic scale, and transition budgets. Browser probes cover cold load, battle entry, map switching, the garage, and multiplayer rendering. Use npm run perf:dev, npm run perf:cold, npm run perf:transitions, and a production build for renderer work."
- },
- {
-  "href": "/docs/rendering#topic-section-6",
-  "title": "Headlights, shadows and smoke",
-  "chapter": "Renderer and graphics",
-  "text": "Driving lights use actual model apertures and follow the hull’s pose. Their warm beams now illuminate farther ahead; only the nearest eligible sources occupy a fixed light pool, while the other visible lamp lenses may still glow. Switching lights off or destroying a tank removes its contribution. Periscopes, mirrors and unrelated armor must not glow just because they share a material. Ambient occlusion and cast shadows are separate. Turning AO off should not remove sun shadows. Shadow stability, cloud history and effects composition have dedicated checks for moving cameras, firing and quality changes. Smoke is both a rendered volume effect and a simulation visibility blocker; the picture and the spotting decision have separate owners that must agree."
- },
- {
-  "href": "/docs/performance",
-  "title": "Measure the frame that the player actually feels",
-  "chapter": "Performance and loading",
-  "text": "Performance work covers cold boot, garage residency, battle acquisition, countdown warmup, the first ten seconds of combat, steady-state frame pacing, device adaptation, and recovery—not just an average frame-rate number."
- },
- {
-  "href": "/docs/performance#topic-section-1",
-  "title": "Keep boot and routes isolated",
-  "chapter": "Performance and loading",
-  "text": "The garage does not build a battlefield until concrete Battle intent. Public pages do not import the playable renderer, and garage boot does not eagerly import the complete simulation or fleet graph. Exact vehicle-family and world work is acquired only when the selected route needs it. Cold-load probes disable caches and record network plus application work so a warm navigation cannot masquerade as first-visit performance."
- },
- {
-  "href": "/docs/performance#topic-section-2",
-  "title": "Stage battle loading behind cover",
-  "chapter": "Performance and loading",
-  "text": "Battle entry acquires the exact world and roster, uploads required textures, prepares effects, submits vehicle materials, warms shaders and post-processing, and establishes the first valid camera before reveal. Required work finishes before the countdown instead of surfacing as a black or frozen opening frame. Progress reflects owned stages. Stale work is cancelled when intent changes, and a retryable lifecycle owns recovery rather than scattering timers through the composition root."
- },
- {
-  "href": "/docs/performance#topic-section-3",
-  "title": "Record full frame evidence",
-  "chapter": "Performance and loading",
-  "text": "The development flight recorder stores route transitions, long tasks, frame gaps, renderer counters, resolution, simulation debt, memory, and named spans. The performance HUD exposes live statistics for focused probes and saves event histories for later attribution. Opening-battle probes focus on the first ten seconds after the countdown because shader births, roster commits, audio startup, and effect bursts often hide there."
- },
- {
-  "href": "/docs/performance#topic-section-4",
-  "title": "Reduce work at its owner",
-  "chapter": "Performance and loading",
-  "text": "Static garage presentation sleeps between invalidations. Established frame loops reuse scratch objects, rank or stagger expensive updates, pool transient effects, cache stable worlds, demand-load vehicle families, and remove invisible render submissions rather than merely lowering visual quality. Optimization is accepted only when the same scenario improves without shifting cost into loading, memory, correctness, or a later frame."
- },
- {
-  "href": "/docs/performance#topic-section-5",
-  "title": "Adapt to the real device",
-  "chapter": "Performance and loading",
-  "text": "Capability probes and measured overload choose render scale, shadows, vegetation, effect budgets, and post-processing. Desktop, mobile, and constrained profiles start differently, then adjust with hysteresis to avoid visible oscillation. GPU recovery validates framebuffers and can step down optional presentation layers. Simulation frequency, ballistics, armor, and network authority remain unchanged."
- },
- {
-  "href": "/docs/performance#topic-section-6",
-  "title": "Budgets and release evidence",
-  "chapter": "Performance and loading",
-  "text": "Release probes cover cold load, transitions, battle opening, sustained play, map and tank switching, returned garage state, mobile layouts, and constrained CPU/network profiles. Reports include p95 frame gaps, long tasks, program births, draw work, memory, and readiness time. Use npm run perf:cold, npm run perf:dev, npm run perf:resources:gate, npm run qa:device, and npm run build for the corresponding performance claims."
- },
- {
-  "href": "/docs/performance#topic-section-7",
-  "title": "Graphics recovery and stale sessions",
-  "chapter": "Performance and loading",
-  "text": "The browser may reclaim a graphics context under memory pressure. The game pauses presentation and restores resources behind cover before resuming. Quality recovery should be bounded, preserve the battle state and avoid repeated allocation. A reload is the fallback when restoration cannot complete; it is not the normal way to switch maps or vehicles. When a regular tab behaves differently from a fresh tab, compare the served application version and saved graphics settings before attributing it to one render effect. Hashed assets and deployment-version checks protect against mixed releases. Record the map, vehicle, quality, viewport and reproduction steps with a report; a screenshot alone cannot establish whether the cause is stale assets, settings or GPU state."
- },
- {
-  "href": "/docs/worlds",
-  "title": "Battlefields are built for armored movement",
-  "chapter": "Battlefields and destruction",
-  "text": "Thirty-three battlefields offer distinct routes, settlements, elevation, cover and skies. Learn how map selection works, explore the current atlas and understand what terrain means for movement and tactics."
- },
- {
-  "href": "/docs/worlds#topic-section-1",
-  "title": "Map contract",
-  "chapter": "Battlefields and destruction",
-  "text": "Each map provides terrain height, ground materials, obstacles, collision, concealment, spawn groups, capture areas, lighting, weather, sound context, and a deterministic establishing camera. Simulation consumers use these interfaces rather than scene traversal. The registry is the source for selection, loading, Studio, screenshots, and documentation counts."
- },
- {
-  "href": "/docs/worlds#topic-section-2",
-  "title": "Terrain and movement",
-  "chapter": "Battlefields and destruction",
-  "text": "Height fields answer vehicle support, projectile collision, camera clearance, and prop placement. Surface class affects grip and presentation. Roads, slopes, ridges, water edges, and hull-down positions are composed around the intended armored routes. Vehicle suspension samples the same ground surface used by movement and ballistic terrain queries."
- },
- {
-  "href": "/docs/worlds#topic-section-3",
-  "title": "Structures and utilities",
-  "chapter": "Battlefields and destruction",
-  "text": "Structure families expose readable openings, material sets, damage states, and collision. Utility networks connect poles and lines across valid spans. Large cover blocks sightlines; small visual fittings do not become invisible walls. Detached doors, barriers, street pieces, and other loose props enter bounded physics with stable sleep and cleanup rules."
- },
- {
-  "href": "/docs/worlds#topic-section-4",
-  "title": "Destruction and wrecks",
-  "chapter": "Battlefields and destruction",
-  "text": "Destroyed vehicles retain wreck geometry, detached tracks, fire, smoke, and debris. Map wrecks and disassembled garage pieces use modern first-party vehicle families. Turrets, hulls, wheels, ERA, and weapons remain decoration unless explicitly registered for collision. Persistent aftermath is presentation state derived from authoritative destruction events."
- },
- {
-  "href": "/docs/worlds#topic-section-5",
-  "title": "Map quality gates",
-  "chapter": "Battlefields and destruction",
-  "text": "Automated checks audit spawns, bounds, material coverage, structures, utilities, collision, wrecks, loose props, and placement. Deterministic battle captures expose bad silhouettes and obstructed routes that numeric gates cannot. Run node src/world/mapQuality.selftest.mjs, the nearby world self-tests, and targeted screenshot views after map changes."
- },
- {
-  "href": "/docs/worlds#topic-section-6",
-  "title": "Picking maps and times of day",
-  "chapter": "Battlefields and destruction",
-  "text": "The current catalog contains 33 battlefields. Pick a specific map or use Random. Ordinary random selection excludes the dedicated Mars and Moon battlefields, and consecutive solo draws avoid the previous map. Multiplayer uses the host’s selected battlefield so every peer shares the same world. The full atlas below uses the approved current map pictures. Day, sunset and night are weighted 60:30:10 when all are enabled. Disabling a time redistributes those weights over the remaining choices; at least one must remain enabled. Earthrise Basin places a large Earth in its lunar sky. Aegis Crossing is a lush green cliff-and-bridge battlefield with buildings around the crossing. Read routes and elevation as well as the thumbnail: a spectacular drop can still be fatal."
- },
- {
-  "href": "/docs/ai",
-  "title": "One bot controller for every battlefield",
-  "chapter": "Bots and tactical AI",
-  "text": "Solo and authoritative multiplayer bots use the same renderer-free decision logic. They navigate a seeded battlefield graph, respect team and visibility rules, choose viable shots, use vehicle capabilities, and remain testable without a GPU."
- },
- {
-  "href": "/docs/ai#topic-section-1",
-  "title": "Perception and target choice",
-  "chapter": "Bots and tactical AI",
-  "text": "Bots consume the same team, visibility, range, health, and vehicle-state contracts used by authority. They do not read rendered objects or hidden client-only coordinates. Candidate targets are scored from current tactical state rather than selected by scene proximity alone. Difficulty changes reaction, aim quality, engagement distance, and decision pressure without granting information the bot should not have."
- },
- {
-  "href": "/docs/ai#topic-section-2",
-  "title": "Seeded route planning",
-  "chapter": "Bots and tactical AI",
-  "text": "One typed traversability grid is built per match from terrain mobility, world collision, openings, objectives, and vehicle capabilities. The planner supplies deterministic paths around blocked cells while local steering handles immediate alignment and avoidance. Route decisions can be reproduced in Node across every map, including heavy vehicles, tracked damage, steep slopes, and objective modes."
- },
- {
-  "href": "/docs/ai#topic-section-3",
-  "title": "Gun handling and fire control",
-  "chapter": "Bots and tactical AI",
-  "text": "The controller respects turret traverse, elevation and depression, bore obstruction, reloads, magazines, dispersion, shell velocity, penetration, and target motion. It aims for hittable armor and internal weak areas when the current weapon and angle make that shot credible. Autocannons, single-shot guns, autoloaders, and guided weapons share the same decision boundary but apply their own cadence and ammunition state."
- },
- {
-  "href": "/docs/ai#topic-section-4",
-  "title": "Team safety and pressure",
-  "chapter": "Bots and tactical AI",
-  "text": "Friendly vehicles are rejected from valid shot paths, and the controller avoids firing through allies. Bots spread their attention, move to useful lanes, support objectives, and keep enough separation to avoid turning one friendly cluster into an obstacle. Enemy bots and allied bots use the same logic. Team assignment changes targets and objectives, not competence."
- },
- {
-  "href": "/docs/ai#topic-section-5",
-  "title": "Survival and recovery",
-  "chapter": "Bots and tactical AI",
-  "text": "Bots consider exposure, cover, damaged tracks, disabled modules, repair opportunities, ammo state, and nearby threats. They can disengage from a losing angle, recover movement, re-path after destruction, and continue contributing instead of waiting in open ground. Mode objectives layer onto these survival decisions so capture, defense, escort, and horde pressure do not require separate fake movement systems."
- },
- {
-  "href": "/docs/ai#topic-section-6",
-  "title": "Verification",
-  "chapter": "Bots and tactical AI",
-  "text": "Focused AI tests cover aim, friendly-fire rejection, routes, difficulty, deterministic decisions, and authoritative bot integration. Map-wide server tests run the controller without rendering, while browser battles verify that visible movement, firing, and effects match those decisions. Bot changes run node src/game/ai.selftest.mjs, node src/sim/ai.aim.selftest.mjs, node src/sim/botRoutePlanner.selftest.mjs, and node server/authoritativeBots.selftest.mjs."
- },
- {
-  "href": "/docs/ai#topic-section-7",
-  "title": "Classic, Jev and coordinated objectives",
-  "chapter": "Bots and tactical AI",
-  "text": "Classic and Jev share the local driving, aiming, visibility and vehicle-system logic on both allied and enemy teams. Jev adds bounded team-level orders; it does not bypass spotting or replace the physical driver. Choose the brain and difficulty before the next match. An allied team should not retain an older behavior set just because it fights alongside the player. Flag teams distribute recovery, escort and raiding roles. Turbo Ball retains a striker long enough to circle behind the ball and line up a push, with screening and defensive support. Zone teams distribute capture pressure. Mobile units can flank while anchors maintain pressure; navigation includes right-of-way for the human, committed passing and safe reversing when vehicles block one another."
- },
- {
-  "href": "/docs/ai#topic-section-8",
-  "title": "Smoke, remote guns and safe jumps",
-  "chapter": "Bots and tactical AI",
-  "text": "Bots can deploy fitted smoke when withdrawing, under pressure or reloading, and operate remote automatic guns against eligible visible opponents. They only request a jump when the mode allows it and the prospective landing is affordable. Cliff and bridge approaches need a valid route; a direct line to the objective is not enough. Behavior tests include all 33 maps, flag and ball scenarios, congestion, fall-risk decisions and a large Jev team workload. Their guarantees are scoped to the tested scenarios: they catch regressions in decisions and bounded work, but do not prove that a bot will solve every possible terrain or traffic situation."
  },
  {
   "href": "/docs/multiplayer",
@@ -708,54 +306,6 @@
   "text": "Settings › Sound has six sliders and two alarms; changes apply at once. Master volume Engine & mechanical volume Gunfire & impacts volume Ambience volume (wind, birds, garage) Interface & music volume Crew voices & alarms volume Critical-damage heartbeat pulse Concussion muffle and ear ringing after close blasts Every sound is a recording made for Claude of Tanks with ElevenLabs before release; nothing is generated while you play."
  },
  {
-  "href": "/docs/interface",
-  "title": "Read the tank without losing the view",
-  "chapter": "Interface and controls",
-  "text": "The garage, HUD, sight, killcam, spectator mode, after-action report, settings, keyboard, pointer, controller, and touch input share one control and typography system."
- },
- {
-  "href": "/docs/interface#topic-section-1",
-  "title": "Garage and deployment",
-  "chapter": "Interface and controls",
-  "text": "The garage combines vehicle selection, dossier, ammunition, equipment, camouflage, map choice, match mode, room state, and launch. Selection and displayed pedestal identity remain synchronized through explicit state. The interface links directly to Tank Gallery for deeper geometry inspection and to Scene Studio for composition work."
- },
- {
-  "href": "/docs/interface#topic-section-2",
-  "title": "Battle HUD",
-  "chapter": "Interface and controls",
-  "text": "The HUD prioritizes score, time, teams, reticle state, ammunition, consumables, minimap, damage, spotting, and short event feedback. It does not restate every system continuously. Reload racks use the authoritative magazine state. Damage panels use current modules. Team and minimap information obey the spotting boundary."
- },
- {
-  "href": "/docs/interface#topic-section-3",
-  "title": "Death, killcam, and spectating",
-  "chapter": "Interface and controls",
-  "text": "A death beat shows the player’s destruction before the X-ray replay. If the battle continues, the camera moves to a living ally. The compact switcher identifies the vehicle, its position in the living roster, equal previous and next controls, and a quiet garage exit. Mouse movement orbits the ally without turning a turret. Keyboard and touch targets retain a minimum 44-pixel interaction size."
- },
- {
-  "href": "/docs/interface#topic-section-4",
-  "title": "Input and mobile",
-  "chapter": "Interface and controls",
-  "text": "Keyboard, mouse, pointer-lock fallback, free look, zoom, touch joysticks, swipe aim, pinch scope, shell selection, special actions, and consumables normalize into game input. UI ownership prevents a text field or dialog from leaking keys into battle. Safe-area layout, compact labels, and device-specific quality preserve the same battle rules on phones. Settings → Gameplay → Edit HUD layout lets you drag or hide panels over a battlefield preview, with separate desktop, portrait, and landscape layouts. Save applies changes; Cancel discards them; Reset restores responsive defaults."
- },
- {
-  "href": "/docs/interface#topic-section-5",
-  "title": "Accessibility and regression checks",
-  "chapter": "Interface and controls",
-  "text": "Semantic buttons, visible focus, reduced-motion handling, descriptive media alternatives, contrast, and touch sizing are part of the public and in-game surfaces. Responsive QA covers desktop and 390-pixel layouts. Minimal battle HUD keeps the aiming reticle, range, zoom, ammunition/reload, and scope vision controls while hiding other battle panels. Touch driving and firing remain available. F10 toggles the display, Esc opens Settings, and a three-finger tap restores the full HUD. Focused tests cover keyboard ownership, settings, layout editing and persistence, icons, flags, loading screens, spectator controls, and touch controls."
- },
- {
-  "href": "/docs/interface#topic-section-6",
-  "title": "A compact garage and readable battle HUD",
-  "chapter": "Interface and controls",
-  "text": "Open Choose how you play to configure each mode, then use Battle to launch. The separate hexagonal Multiplayer control opens room setup. Map cards show compact biome tags; hover reveals the magnifier, and selecting an already selected map opens its larger preview. Camouflage names occupy one line, with compact collection and nation filters above the scrollable swatches. Hold Tab to expand the team lists. Lists remain readable through 14 vehicles per side; larger teams use an icon grid. The penetration panel simplifies its numeric detail for large rosters so the vehicle diagrams remain contained and visible. Scope magnification sits with the central aiming information. Objective, detection and team notifications occupy separate reserved areas; Standard Battle omits the extra objective strip."
- },
- {
-  "href": "/docs/interface#topic-section-7",
-  "title": "Settings, clean captures and phone orientation",
-  "chapter": "Interface and controls",
-  "text": "Settings separates gameplay, sound, graphics and language. Choose AI difficulty and Classic or Jev behavior for the next battle. The UI-free setting hides gameplay overlays for unobstructed viewing; restore it through Settings when you need the HUD again. It is a viewing control, not a replay export or an automatic promotion workflow. On phones, test both portrait and landscape, including rotation while a menu is open. Short landscape drawers reserve actual space for map cards and camouflage swatches; detection and countdowns must leave touch controls usable. Automated layout checks cover 568×320, 667×375, 844×390, 932×430 and a 844×300 browser-chrome case, plus Chinese text. These checks supplement physical-device testing; they do not establish performance on every phone."
- },
- {
   "href": "/docs/studio",
   "title": "Film your own battles",
   "chapter": "Scene Studio",
@@ -796,6 +346,246 @@
   "title": "Save and share",
   "chapter": "Scene Studio",
   "text": "Copy scene link: the scene travels inside the link. Save JSON downloads the scene file; Load JSON opens one. Slots keep scenes in this browser: click to load, Shift-click to save."
+ },
+ {
+  "href": "/docs/build",
+  "title": "A browser game built through verified loops",
+  "chapter": "How the game was built",
+  "text": "Claude of Tanks grew from a direct Three.js prototype into a typed, tested game through short implementation rounds: isolate one problem, change the smallest owner, prove it in the browser, record the result, and land it on main."
+ },
+ {
+  "href": "/docs/build#topic-section-1",
+  "title": "Start with hard constraints",
+  "chapter": "How the game was built",
+  "text": "The project is browser-native and built directly on Three.js rather than a general game engine. The simulation runs at a fixed 60 Hz, playable tanks use first-party procedural runtime geometry, and presentation pages stay isolated from the heavy game boot graph. Those constraints shaped the architecture: deterministic rules can run in Node, the renderer adapts independently, and every public claim can point to code, a test, a capture, or a measured receipt."
+ },
+ {
+  "href": "/docs/build#topic-section-2",
+  "title": "Separate rules from presentation",
+  "chapter": "How the game was built",
+  "text": "Movement, ballistics, armor, damage, spotting, match state, and bot decisions live behind renderer-free contracts. Three.js turns the latest state into cameras, rigs, lighting, effects, audio, and UI without becoming the authority for a hit. That boundary lets local battles and browser-hosted rooms share the same combat rules. It also lets lower-end visual settings reduce cost without changing gameplay."
+ },
+ {
+  "href": "/docs/build#topic-section-3",
+  "title": "Claude Code and Codex workflow",
+  "chapter": "How the game was built",
+  "text": "Claude Code and Codex were used as development tools across bounded tasks. Broad or risky work moved into isolated Git worktrees; each lane named the files it owned, preserved unrelated changes, and exchanged exact commit hashes and evidence before integration. The working rule was simple: main stays current, unfinished experiments stay isolated, and a branch is not proof. Only the integrated bytes count. Human direction set the target and acceptance bar; agents implemented, measured, reviewed, and documented against it."
+ },
+ {
+  "href": "/docs/build#topic-section-4",
+  "title": "Build, falsify, and measure",
+  "chapter": "How the game was built",
+  "text": "A typical round starts with a reproducible baseline, then attribution. The smallest plausible fix is tested with focused self-tests, browser interaction, console inspection, screenshots, and performance probes. A result must survive a second run or a deliberately hostile case before it is accepted. Visual work is judged from current pixels, not only numeric checks. Performance work records cold and warm conditions, device constraints, long tasks, frame gaps, GPU resources, and transition timings instead of reporting a single FPS number."
+ },
+ {
+  "href": "/docs/build#topic-section-5",
+  "title": "Make the workflow durable",
+  "chapter": "How the game was built",
+  "text": "Repository-level AGENTS.md, indexed subsystem SKILL.md files, and one maintained architecture decision record preserve ownership, invariants, required commands, and recurring failure modes without burying contributors in completed migration notes. When a manual process repeats, it becomes a script or a gate. That is why model screenshots, combat anatomy, vehicle icons, route probes, public metadata, and release checks are reproducible from the repository. Raw execution receipts stay in Git history or ignored QA artifacts."
+ },
+ {
+  "href": "/docs/build#topic-section-6",
+  "title": "Land only integrated proof",
+  "chapter": "How the game was built",
+  "text": "A finished change is committed as one coherent unit, rebased on the latest origin/main, and rechecked after integration. The final push verifies that its parent is still the remote tip so concurrent work cannot silently overwrite a newer landing. The public build then proves route isolation and strips non-distributable comparison material. This keeps the playable site, source tree, documentation, and main branch describing the same game."
+ },
+ {
+  "href": "/docs/simulation",
+  "title": "Every hit has a path",
+  "chapter": "Simulation and authority",
+  "text": "The battle simulation advances at 60 Hz. Movement, aim, ballistics, armor, damage, reloads, spotting, and match results are resolved from authoritative state—not from the rendered frame."
+ },
+ {
+  "href": "/docs/simulation#topic-section-1",
+  "title": "Fixed-step battle loop",
+  "chapter": "Simulation and authority",
+  "text": "The authoritative step uses metres, seconds, radians, and a fixed 1/60-second interval. Input is sampled into explicit vehicle controls before movement, combat, spotting, and result evaluation run in a stable order. Render rate can change without changing the number or order of simulation steps. Frame-time spikes accumulate into bounded fixed steps. Authoritative randomness is seeded or injected. Wall-clock time and Math.random() are excluded from rules that affect a shot, reload, module state, or match result."
+ },
+ {
+  "href": "/docs/simulation#topic-section-2",
+  "title": "The host runs the match",
+  "chapter": "Simulation and authority",
+  "text": "The room Worker coordinates discovery and signaling. It does not run the sixty-step battle simulation. The host browser runs the match authority and exchanges WebRTC data with peers. Guests send inputs; the host resolves movement, firing, reloads, collisions, damage, bots and results. This differs from the older dedicated-server architecture still documented for historical reference. The local vehicle predicts movement and reconciles against acknowledged host state; remote vehicles interpolate snapshots. Nearby and recently engaged opponents refresh more often than distant visible actors. Combat events remain ordered independently of those interest tiers. Prediction improves responsiveness but cannot award a hit or change the authoritative result."
+ },
+ {
+  "href": "/docs/simulation#topic-section-3",
+  "title": "Visibility and trust",
+  "chapter": "Simulation and authority",
+  "text": "Guest snapshots contain only enemies the viewer is allowed to see. Filtering occurs before encoding, so hidden coordinates are not simply sent and concealed by the renderer. Team vision and spectator perspective also govern nameplates, minimaps and presentation. A browser host is still a participating player’s machine and must hold the authoritative world. Peer hosting should not be described as having the same trust boundary as an independent dedicated server. The protocol checks input ordering and message shape; it cannot turn an untrusted host into trusted tournament infrastructure."
+ },
+ {
+  "href": "/docs/simulation#topic-section-4",
+  "title": "Terrain and movement",
+  "chapter": "Simulation and authority",
+  "text": "Height fields answer vehicle support, projectile collision, camera clearance, and prop placement. Surface class affects grip and presentation. Roads, slopes, ridges, water edges, and hull-down positions are composed around the intended armored routes. Vehicle suspension samples the same ground surface used by movement and ballistic terrain queries."
+ },
+ {
+  "href": "/docs/simulation#topic-section-5",
+  "title": "Verification",
+  "chapter": "Simulation and authority",
+  "text": "Node-runnable self-tests cover movement, combat, spotting, missile guidance, special actions, AI aim, and the complete authoritative match. Browser probes add bore parity, projectile travel, live impact effects, and HUD alignment. Run node src/sim/combat.selftest.mjs, node src/sim/authoritativeMatch.selftest.mjs, and npm test after changing shared combat rules."
+ },
+ {
+  "href": "/docs/simulation#topic-section-6",
+  "title": "Driving, airtime and landing damage",
+  "chapter": "Simulation and authority",
+  "text": "Movement runs at a fixed sixty steps per second. Engine power, weight, forward and reverse limits, track condition, terrain resistance and hull rotation jointly determine handling. The renderer interpolates those states rather than changing movement with frame rate. Handbrake behavior is grounded; landing after a jump must not silently latch the brake. A fall is a physical impact, not just a height threshold. Mass, impact speed, attitude and mode physics affect the result. Reduced gravity changes both your arc and the terrain you can safely reach. Avoid blind drops at bridge abutments or cliff edges; use a route with a visible landing and enough room to settle."
+ },
+ {
+  "href": "/docs/models",
+  "title": "From reference to playable machine",
+  "chapter": "Procedural model pipeline",
+  "text": "Kevin B. Liu authored every playable tank as first-party procedural runtime geometry. References guide proportion and detail, but the shipped machine is rebuilt from code, connected to combat data, rendered into its own icon set, and released through measured and visual gates."
+ },
+ {
+  "href": "/docs/models#topic-section-1",
+  "title": "Research and reference intake",
+  "chapter": "Procedural model pipeline",
+  "text": "A model round begins with source photographs, published dimensions, plan and side references, or a comparison mesh when its license permits authoring use. The source is an oracle for recognizable shape—not a playable asset and not an automatic truth when the reference itself is wrong. Proportion comes first: hull length and width, turret station, roof height, gun length, wheel count, track course, and major armor masses must read correctly before small fittings are added."
+ },
+ {
+  "href": "/docs/models#topic-section-2",
+  "title": "Build the visible machine from parts",
+  "chapter": "Procedural model pipeline",
+  "text": "Procedural builders assemble hull plates, turret shells, mantlets, barrels, running gear, optics, hatches, smoke launchers, baskets, antennas, armor kits, and stowage from reusable geometry and material vocabulary. Station-section measurements keep front, middle, and rear masses faithful instead of stretching one generic box. Camouflage-aware structural parts and neutral mechanical parts use explicit roles. Comparison GLBs never become a hidden production fallback."
+ },
+ {
+  "href": "/docs/models#topic-section-3",
+  "title": "Rig articulation and running gear",
+  "chapter": "Procedural model pipeline",
+  "text": "Hull, turret, gun mount, recoil group, muzzle, wheels, return rollers, sprockets, idlers, and linked tracks have explicit owners. Turret equipment must rotate with the turret and remain visibly seated; hull equipment must not follow it. The muzzle bore must be open and resolve from the actual barrel hierarchy. Suspension samples terrain at each support station. Native running gear preserves the correct wheel count and track path while avoiding duplicated donor wheels, clipping shoes, or floating attachments."
+ },
+ {
+  "href": "/docs/models#topic-section-4",
+  "title": "Suspension and tracks",
+  "chapter": "Procedural model pipeline",
+  "text": "Each supported wheel samples terrain beneath its own station. The visual suspension settles to those contacts, the hull derives pitch and roll from support, and the track path is rebuilt around the moved wheels. Swedish siege suspension adds commanded hull attitude without breaking gun tracking. Track animation follows traveled distance and side speed. Damage can detach a side, remove its running band, throw a persistent ribbon, and leave loose running-gear pieces."
+ },
+ {
+  "href": "/docs/models#topic-section-5",
+  "title": "Author combat anatomy from the same shape",
+  "chapter": "Procedural model pipeline",
+  "text": "Armor plates, spaced layers, ERA, modules, ammunition, fuel, crew, and articulation anchors are calibrated to the checked vehicle frame. The game therefore uses the same authored shape for presentation, impact tracing, internal damage, and the technical side diagrams. Structural cupolas can participate in hit geometry. Sights, machine guns, baskets, antennas, and loose equipment remain presentation fittings unless gameplay explicitly gives them a physical role."
+ },
+ {
+  "href": "/docs/models#topic-section-6",
+  "title": "Generate icons and technical cards",
+  "chapter": "Procedural model pipeline",
+  "text": "The asset pipeline renders the current procedural rig into garage and gallery imagery, transparent silhouettes, armor diagrams, separate module and crew diagrams, tier treatments, and supporting presentation views. One deterministic angle capture now emits both portrait sizes through a shared framing policy, so a new tank cannot leave behind a hand-cropped or stale thumbnail. Use npm run tank:portraits -- --ids=<changed ids> and npm run tank:portraits:check -- --ids=<changed ids> for portrait-only work. The complete release sequence remains npm run tank:anatomy:update, npm run tank:anatomy:check, then npm run tank:release:check -- --ids=<changed ids> --gate."
+ },
+ {
+  "href": "/docs/models#topic-section-7",
+  "title": "Measure, inspect, and graduate",
+  "chapter": "Procedural model pipeline",
+  "text": "Automated gates check geometry fingerprints, dimensions, stations, floaters, track intersections, wheel quality, muzzle bores, materials, armor anatomy, markings, provenance, and deterministic asset freshness. Standard front, quarter, side, rear, top, close, and yaw views then expose defects a numeric score can miss. A model graduates only when every required view clears the visual acceptance floor, attachments have physical load paths, winding and backfaces are healthy, and the clean integrated release check passes. The Tank Gallery is the live inspection surface for that final procedural rig."
+ },
+ {
+  "href": "/docs/rendering",
+  "title": "Rendering can adapt without changing the rules",
+  "chapter": "Rendering and performance",
+  "text": "Three.js owns presentation only. Adaptive resolution, shadows, vegetation, post-processing, particles, and warmup can change with the device; the 60 Hz battle model remains unchanged."
+ },
+ {
+  "href": "/docs/rendering#topic-section-1",
+  "title": "Frame composition",
+  "chapter": "Rendering and performance",
+  "text": "The render path updates camera, visible vehicle rigs, world detail, presentation effects, lighting, shadows, and post-processing from the latest interpolated state. Established hot loops reuse scratch objects and pools rather than allocating each frame. Late transparent effects share depth information with the main scene. Muzzle light, tracer, sparks, smoke, dust, fire, and debris are admitted by distance and quality policy."
+ },
+ {
+  "href": "/docs/rendering#topic-section-2",
+  "title": "Lighting and post-processing",
+  "chapter": "Rendering and performance",
+  "text": "Biome lighting supplies sun direction, sky, fog, exposure, and shadow policy. Stable cascaded shadows follow the relevant camera region. The post chain combines ambient occlusion, anti-aliasing, bloom where useful, output grading, and the final dynamic render scale. Capture views pin quality and render scale so comparison images do not drift. Gameplay can reduce expensive layers under sustained load."
+ },
+ {
+  "href": "/docs/rendering#topic-section-3",
+  "title": "Adaptive quality",
+  "chapter": "Rendering and performance",
+  "text": "Desktop and mobile resolve separate starting profiles. Internal resolution, shadow work, vegetation density, effect budgets, and post features can step down independently. Hysteresis prevents rapid oscillation. Device diagnostics and measured overload—not user-agent labels alone—select the safe path. A quality change never alters shell travel, spotting, damage, or authoritative timing."
+ },
+ {
+  "href": "/docs/rendering#topic-section-4",
+  "title": "Keep boot and routes isolated",
+  "chapter": "Rendering and performance",
+  "text": "The garage does not build a battlefield until concrete Battle intent. Public pages do not import the playable renderer, and garage boot does not eagerly import the complete simulation or fleet graph. Exact vehicle-family and world work is acquired only when the selected route needs it. Cold-load probes disable caches and record network plus application work so a warm navigation cannot masquerade as first-visit performance."
+ },
+ {
+  "href": "/docs/rendering#topic-section-5",
+  "title": "Stage battle loading behind cover",
+  "chapter": "Rendering and performance",
+  "text": "Battle entry acquires the exact world and roster, uploads required textures, prepares effects, submits vehicle materials, warms shaders and post-processing, and establishes the first valid camera before reveal. Required work finishes before the countdown instead of surfacing as a black or frozen opening frame. Progress reflects owned stages. Stale work is cancelled when intent changes, and a retryable lifecycle owns recovery rather than scattering timers through the composition root."
+ },
+ {
+  "href": "/docs/rendering#topic-section-6",
+  "title": "Performance evidence",
+  "chapter": "Rendering and performance",
+  "text": "Performance traces record frame categories, renderer counters, dynamic scale, and transition budgets. Browser probes cover cold load, battle entry, map switching, the garage, and multiplayer rendering. Use npm run perf:dev, npm run perf:cold, npm run perf:transitions, and a production build for renderer work."
+ },
+ {
+  "href": "/docs/rendering#topic-section-7",
+  "title": "Headlights, shadows and smoke",
+  "chapter": "Rendering and performance",
+  "text": "Driving lights use actual model apertures and follow the hull’s pose. Their warm beams now illuminate farther ahead; only the nearest eligible sources occupy a fixed light pool, while the other visible lamp lenses may still glow. Switching lights off or destroying a tank removes its contribution. Periscopes, mirrors and unrelated armor must not glow just because they share a material. Ambient occlusion and cast shadows are separate. Turning AO off should not remove sun shadows. Shadow stability, cloud history and effects composition have dedicated checks for moving cameras, firing and quality changes. Smoke is both a rendered volume effect and a simulation visibility blocker; the picture and the spotting decision have separate owners that must agree."
+ },
+ {
+  "href": "/docs/rendering#topic-section-8",
+  "title": "Graphics recovery and stale sessions",
+  "chapter": "Rendering and performance",
+  "text": "The browser may reclaim a graphics context under memory pressure. The game pauses presentation and restores resources behind cover before resuming. Quality recovery should be bounded, preserve the battle state and avoid repeated allocation. A reload is the fallback when restoration cannot complete; it is not the normal way to switch maps or vehicles. When a regular tab behaves differently from a fresh tab, compare the served application version and saved graphics settings before attributing it to one render effect. Hashed assets and deployment-version checks protect against mixed releases. Record the map, vehicle, quality, viewport and reproduction steps with a report; a screenshot alone cannot establish whether the cause is stale assets, settings or GPU state."
+ },
+ {
+  "href": "/docs/ai",
+  "title": "One bot controller for every battlefield",
+  "chapter": "Bots and tactical AI",
+  "text": "Solo and authoritative multiplayer bots use the same renderer-free decision logic. They navigate a seeded battlefield graph, respect team and visibility rules, choose viable shots, use vehicle capabilities, and remain testable without a GPU."
+ },
+ {
+  "href": "/docs/ai#topic-section-1",
+  "title": "Perception and target choice",
+  "chapter": "Bots and tactical AI",
+  "text": "Bots consume the same team, visibility, range, health, and vehicle-state contracts used by authority. They do not read rendered objects or hidden client-only coordinates. Candidate targets are scored from current tactical state rather than selected by scene proximity alone. Difficulty changes reaction, aim quality, engagement distance, and decision pressure without granting information the bot should not have."
+ },
+ {
+  "href": "/docs/ai#topic-section-2",
+  "title": "Seeded route planning",
+  "chapter": "Bots and tactical AI",
+  "text": "One typed traversability grid is built per match from terrain mobility, world collision, openings, objectives, and vehicle capabilities. The planner supplies deterministic paths around blocked cells while local steering handles immediate alignment and avoidance. Route decisions can be reproduced in Node across every map, including heavy vehicles, tracked damage, steep slopes, and objective modes."
+ },
+ {
+  "href": "/docs/ai#topic-section-3",
+  "title": "Gun handling and fire control",
+  "chapter": "Bots and tactical AI",
+  "text": "The controller respects turret traverse, elevation and depression, bore obstruction, reloads, magazines, dispersion, shell velocity, penetration, and target motion. It aims for hittable armor and internal weak areas when the current weapon and angle make that shot credible. Autocannons, single-shot guns, autoloaders, and guided weapons share the same decision boundary but apply their own cadence and ammunition state."
+ },
+ {
+  "href": "/docs/ai#topic-section-4",
+  "title": "Team safety and pressure",
+  "chapter": "Bots and tactical AI",
+  "text": "Friendly vehicles are rejected from valid shot paths, and the controller avoids firing through allies. Bots spread their attention, move to useful lanes, support objectives, and keep enough separation to avoid turning one friendly cluster into an obstacle. Enemy bots and allied bots use the same logic. Team assignment changes targets and objectives, not competence."
+ },
+ {
+  "href": "/docs/ai#topic-section-5",
+  "title": "Survival and recovery",
+  "chapter": "Bots and tactical AI",
+  "text": "Bots consider exposure, cover, damaged tracks, disabled modules, repair opportunities, ammo state, and nearby threats. They can disengage from a losing angle, recover movement, re-path after destruction, and continue contributing instead of waiting in open ground. Mode objectives layer onto these survival decisions so capture, defense, escort, and horde pressure do not require separate fake movement systems."
+ },
+ {
+  "href": "/docs/ai#topic-section-6",
+  "title": "Verification",
+  "chapter": "Bots and tactical AI",
+  "text": "Focused AI tests cover aim, friendly-fire rejection, routes, difficulty, deterministic decisions, and authoritative bot integration. Map-wide server tests run the controller without rendering, while browser battles verify that visible movement, firing, and effects match those decisions. Bot changes run node src/game/ai.selftest.mjs, node src/sim/ai.aim.selftest.mjs, node src/sim/botRoutePlanner.selftest.mjs, and node server/authoritativeBots.selftest.mjs."
+ },
+ {
+  "href": "/docs/ai#topic-section-7",
+  "title": "Classic, Jev and coordinated objectives",
+  "chapter": "Bots and tactical AI",
+  "text": "Classic and Jev share the local driving, aiming, visibility and vehicle-system logic on both allied and enemy teams. Jev adds bounded team-level orders; it does not bypass spotting or replace the physical driver. Choose the brain and difficulty before the next match. An allied team should not retain an older behavior set just because it fights alongside the player. Flag teams distribute recovery, escort and raiding roles. Turbo Ball retains a striker long enough to circle behind the ball and line up a push, with screening and defensive support. Zone teams distribute capture pressure. Mobile units can flank while anchors maintain pressure; navigation includes right-of-way for the human, committed passing and safe reversing when vehicles block one another."
+ },
+ {
+  "href": "/docs/ai#topic-section-8",
+  "title": "Smoke, remote guns and safe jumps",
+  "chapter": "Bots and tactical AI",
+  "text": "Bots can deploy fitted smoke when withdrawing, under pressure or reloading, and operate remote automatic guns against eligible visible opponents. They only request a jump when the mode allows it and the prospective landing is affordable. Cliff and bridge approaches need a valid route; a direct line to the objective is not enough. Behavior tests include all 33 maps, flag and ball scenarios, congestion, fall-risk decisions and a large Jev team workload. Their guarantees are scoped to the tested scenarios: they catch regressions in decisions and bounded work, but do not prove that a bot will solve every possible terrain or traffic situation."
  },
  {
   "href": "/docs/filming",

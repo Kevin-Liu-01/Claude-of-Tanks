@@ -23,7 +23,7 @@ interface TopicDefinition {
 }
 
 export const TOPIC_ORDER = [
-  'start', 'controls', 'modes', 'tanks', 'combat', 'battlefields', 'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio', 'filming',
+  'start', 'controls', 'modes', 'tanks', 'combat', 'battlefields', 'multiplayer', 'audio', 'studio', 'build', 'simulation', 'models', 'rendering', 'ai', 'filming',
 ] as const;
 
 export const topics: Record<string, TopicDefinition> = {
@@ -125,11 +125,12 @@ export const topics: Record<string, TopicDefinition> = {
     lede: t('docs.topic.models.lede'),
     hero: '/media/site50-r14/loops/s07-lake-shellfire.webm',
     icon: 'models',
-    sectionIcons: ['research', 'construction', 'rig', 'anatomy', 'iconPipeline', 'critique'],
+    sectionIcons: ['research', 'construction', 'rig', 'vehicles', 'anatomy', 'iconPipeline', 'critique'],
     sections: [
       [t('docs.topic.models.s1.t'), t('docs.topic.models.s1.p1'), t('docs.topic.models.s1.p2')],
       [t('docs.topic.models.s2.t'), t('docs.topic.models.s2.p1'), t('docs.topic.models.s2.p2')],
       [t('docs.topic.models.s3.t'), t('docs.topic.models.s3.p1'), t('docs.topic.models.s3.p2')],
+      [t('docs.topic.models.s7.t'), t('docs.topic.models.s7.p1'), t('docs.topic.models.s7.p2')],
       [t('docs.topic.models.s4.t'), t('docs.topic.models.s4.p1'), t('docs.topic.models.s4.p2')],
       [t('docs.topic.models.s5.t'), t('docs.topic.models.s5.p1'), t('docs.topic.models.s5.p2')],
       [t('docs.topic.models.s6.t'), t('docs.topic.models.s6.p1'), t('docs.topic.models.s6.p2')],
@@ -171,41 +172,19 @@ export const topics: Record<string, TopicDefinition> = {
     media: [],
     rich: true,
   },
-  performance: {
-    label: t('docs.topic.performance.label'),
-    title: t('docs.topic.performance.title'),
-    lede: t('docs.topic.performance.lede'),
-    hero: '/media/site50-r14/loops/s39-lakeside-village.webm',
-    icon: 'performance',
-    sectionIcons: ['loading', 'profiling', 'optimization', 'device', 'budgets', 'verification'],
-    sections: [
-      [t('docs.topic.performance.s1.t'), t('docs.topic.performance.s1.p1'), t('docs.topic.performance.s1.p2')],
-      [t('docs.topic.performance.s2.t'), t('docs.topic.performance.s2.p1'), t('docs.topic.performance.s2.p2')],
-      [t('docs.topic.performance.s3.t'), t('docs.topic.performance.s3.p1'), t('docs.topic.performance.s3.p2')],
-      [t('docs.topic.performance.s4.t'), t('docs.topic.performance.s4.p1'), t('docs.topic.performance.s4.p2')],
-      [t('docs.topic.performance.s5.t'), t('docs.topic.performance.s5.p1'), t('docs.topic.performance.s5.p2')],
-      [t('docs.topic.performance.s6.t'), t('docs.topic.performance.s6.p1'), t('docs.topic.performance.s6.p2')],
-    ],
-    media: [
-      ['/media/versus-r1/f6-leo2a6-steinburg-r6.webp', t('docs.topic.performance.media1')],
-      ['/media/versus-r1/f7-t90m-column-r5.webp', t('docs.topic.performance.media2')],
-    ],
-  },
+
   simulation: {
     label: t('docs.topic.simulation.label'),
     title: t('docs.topic.simulation.title'),
     lede: t('docs.topic.simulation.lede'),
     hero: '/media/site50-r14/loops/s24-ice-duel.webm',
-    icon: 'combat',
-    sectionIcons: ['simulation', 'aiming', 'armor', 'weapons', 'modes', 'modes', 'aiming', 'verification'],
+    icon: 'simulation',
+    sectionIcons: ['simulation', 'interface', 'perception', 'navigation', 'verification'],
     sections: [
       [t('docs.topic.simulation.s1.t'), t('docs.topic.simulation.s1.p1'), t('docs.topic.simulation.s1.p2')],
-      [t('docs.topic.simulation.s2.t'), t('docs.topic.simulation.s2.p1'), t('docs.topic.simulation.s2.p2')],
-      [t('docs.topic.simulation.s3.t'), t('docs.topic.simulation.s3.p1'), t('docs.topic.simulation.s3.p2')],
-      [t('docs.topic.simulation.s4.t'), t('docs.topic.simulation.s4.p1'), t('docs.topic.simulation.s4.p2')],
-      [t('docs.topic.simulation.s5.t'), t('docs.topic.simulation.s5.p1'), t('docs.topic.simulation.s5.p2')],
-      [t('docs.topic.simulation.roles.t'), t('docs.topic.simulation.roles.p1'), t('docs.topic.simulation.roles.p2')],
-      [t('docs.topic.simulation.flight.t'), t('docs.topic.simulation.flight.p1'), t('docs.topic.simulation.flight.p2')],
+      [t('docs.topic.simulation.s7.t'), t('docs.topic.simulation.s7.p1'), t('docs.topic.simulation.s7.p2')],
+      [t('docs.topic.simulation.s8.t'), t('docs.topic.simulation.s8.p1'), t('docs.topic.simulation.s8.p2')],
+      [t('docs.topic.simulation.s9.t'), t('docs.topic.simulation.s9.p1'), t('docs.topic.simulation.s9.p2')],
       [t('docs.topic.simulation.s6.t'), t('docs.topic.simulation.s6.p1'), t('docs.topic.simulation.s6.p2')],
     ],
     media: [
@@ -213,37 +192,20 @@ export const topics: Record<string, TopicDefinition> = {
       ['/media/site50-r14/stills/s27-caravanserai-kill.webp', t('docs.topic.simulation.media2')],
     ],
   },
-  vehicles: {
-    label: t('docs.topic.vehicles.label'),
-    title: t('docs.topic.vehicles.title'),
-    lede: t('docs.topic.vehicles.lede'),
-    hero: '/media/site50-r14/loops/s05-barn-advance.webm',
-    icon: 'vehicles',
-    sectionIcons: ['specification', 'rig', 'vehicles', 'anatomy', 'release'],
-    sections: [
-      [t('docs.topic.vehicles.s1.t'), t('docs.topic.vehicles.s1.p1'), t('docs.topic.vehicles.s1.p2')],
-      [t('docs.topic.vehicles.s2.t'), t('docs.topic.vehicles.s2.p1'), t('docs.topic.vehicles.s2.p2')],
-      [t('docs.topic.vehicles.s3.t'), t('docs.topic.vehicles.s3.p1'), t('docs.topic.vehicles.s3.p2')],
-      [t('docs.topic.vehicles.s4.t'), t('docs.topic.vehicles.s4.p1'), t('docs.topic.vehicles.s4.p2')],
-      [t('docs.topic.vehicles.s5.t'), t('docs.topic.vehicles.s5.p1'), t('docs.topic.vehicles.s5.p2')],
-    ],
-    media: [
-      ['/media/showcase-r2/11_gallery_hero.webp', t('docs.topic.vehicles.media1')],
-      ['/media/presentation-r1/ui_tank_closeup_modern.webp', t('docs.topic.vehicles.media2')],
-    ],
-  },
+
   rendering: {
     label: t('docs.topic.rendering.label'),
     title: t('docs.topic.rendering.title'),
     lede: t('docs.topic.rendering.lede'),
     hero: '/media/site50-r14/loops/s20-road-return-fire.webm',
     icon: 'rendering',
-    sectionIcons: ['rendering', 'measured', 'device', 'loading', 'performance'],
+    sectionIcons: ['rendering', 'measured', 'device', 'loading', 'profiling', 'performance'],
     sections: [
       [t('docs.topic.rendering.s1.t'), t('docs.topic.rendering.s1.p1'), t('docs.topic.rendering.s1.p2')],
       [t('docs.topic.rendering.s2.t'), t('docs.topic.rendering.s2.p1'), t('docs.topic.rendering.s2.p2')],
       [t('docs.topic.rendering.s3.t'), t('docs.topic.rendering.s3.p1'), t('docs.topic.rendering.s3.p2')],
-      [t('docs.topic.rendering.s4.t'), t('docs.topic.rendering.s4.p1'), t('docs.topic.rendering.s4.p2')],
+      [t('docs.topic.rendering.s6.t'), t('docs.topic.rendering.s6.p1'), t('docs.topic.rendering.s6.p2')],
+      [t('docs.topic.rendering.s7.t'), t('docs.topic.rendering.s7.p1'), t('docs.topic.rendering.s7.p2')],
       [t('docs.topic.rendering.s5.t'), t('docs.topic.rendering.s5.p1'), t('docs.topic.rendering.s5.p2')],
     ],
     media: [
@@ -251,25 +213,7 @@ export const topics: Record<string, TopicDefinition> = {
       ['/media/site50-r14/stills/s38-church-knockout-close.webp', t('docs.topic.rendering.media2')],
     ],
   },
-  worlds: {
-    label: t('docs.topic.worlds.label'),
-    title: t('docs.topic.worlds.title'),
-    lede: t('docs.topic.worlds.lede'),
-    hero: '/maps/fjord.webp',
-    icon: 'worlds',
-    sectionIcons: ['battlefields', 'navigation', 'construction', 'damage', 'quality'],
-    sections: [
-      [t('docs.topic.worlds.s1.t'), t('docs.topic.worlds.s1.p1'), t('docs.topic.worlds.s1.p2')],
-      [t('docs.topic.worlds.s2.t'), t('docs.topic.worlds.s2.p1'), t('docs.topic.worlds.s2.p2')],
-      [t('docs.topic.worlds.s3.t'), t('docs.topic.worlds.s3.p1'), t('docs.topic.worlds.s3.p2')],
-      [t('docs.topic.worlds.s4.t'), t('docs.topic.worlds.s4.p1'), t('docs.topic.worlds.s4.p2')],
-      [t('docs.topic.worlds.s5.t'), t('docs.topic.worlds.s5.p1'), t('docs.topic.worlds.s5.p2')],
-    ],
-    media: [
-      ['/maps/autumn.webp', t('docs.topic.worlds.media1')],
-      ['/maps/coastal.webp', t('docs.topic.worlds.media2')],
-    ],
-  },
+
   // Rooms, codes, the local network, seats and who hosts, from the room service's own rules (src/docs/chapters/multiplayer.ts).
   multiplayer: {
     label: t('docs.topic.multiplayer.label'),
@@ -282,25 +226,7 @@ export const topics: Record<string, TopicDefinition> = {
     media: [],
     rich: true,
   },
-  interface: {
-    label: t('docs.topic.interface.label'),
-    title: t('docs.topic.interface.title'),
-    lede: t('docs.topic.interface.lede'),
-    hero: '/media/presentation-r1/ui_spectator_switcher.webp',
-    icon: 'interface',
-    sectionIcons: ['garage', 'interface', 'replay', 'mobile', 'accessibility'],
-    sections: [
-      [t('docs.topic.interface.s1.t'), t('docs.topic.interface.s1.p1'), t('docs.topic.interface.s1.p2')],
-      [t('docs.topic.interface.s2.t'), t('docs.topic.interface.s2.p1'), t('docs.topic.interface.s2.p2')],
-      [t('docs.topic.interface.s3.t'), t('docs.topic.interface.s3.p1'), t('docs.topic.interface.s3.p2')],
-      [t('docs.topic.interface.s4.t'), t('docs.topic.interface.s4.p1'), t('docs.topic.interface.s4.p2')],
-      [t('docs.topic.interface.s5.t'), t('docs.topic.interface.s5.p1'), t('docs.topic.interface.s5.p2')],
-    ],
-    media: [
-      ['/media/presentation-r1/ui_spectator_switcher_mobile.webp', t('docs.topic.interface.media1')],
-      ['/media/presentation-r1/ui_mobile.webp', t('docs.topic.interface.media2')],
-    ],
-  },
+
   // Opening, setting, shooting and exporting a scene, from the Studio's own tables and names (src/docs/chapters/studio.ts).
   studio: {
     label: t('docs.topic.studio.label'),
@@ -345,13 +271,13 @@ export const topics: Record<string, TopicDefinition> = {
   },
 };
 
-// Practical field guides follow the original technical anchors.
-const guideCounts: Record<string, number> = {"vehicles": 3, "simulation": 6, "worlds": 1, "interface": 2, "ai": 2, "rendering": 1, "performance": 1, "studio": 1};
-for (const [slug, count] of Object.entries(guideCounts)) {
+// Practical notes no data-built chapter covers, after the chapter's own sections (docs.guide.<key>.t/p1/p2).
+const FIELD_GUIDES: Readonly<Record<string, readonly string[]>> = {
+  simulation: ['simulation.6'], rendering: ['rendering.1', 'performance.1'], ai: ['ai.1', 'ai.2'],
+};
+for (const [slug, keys] of Object.entries(FIELD_GUIDES)) {
   const topic = topics[slug];
-  const guides: TopicSection[] = Array.from({length: count}, (_, i) => [
-    t(`docs.guide.${slug}.${i + 1}.t`), t(`docs.guide.${slug}.${i + 1}.p1`), t(`docs.guide.${slug}.${i + 1}.p2`),
-  ]);
+  const guides: TopicSection[] = keys.map((key) => [t(`docs.guide.${key}.t`), t(`docs.guide.${key}.p1`), t(`docs.guide.${key}.p2`)]);
   topic.sections = [...topic.sections, ...guides];
   topic.sectionIcons = [...topic.sectionIcons, ...guides.map(() => topic.icon)];
 }
@@ -442,8 +368,8 @@ type TopicGroupKey = 'play' | 'behind';
 
 /** The manual's two shelves (08-docs .side .grp): what a player meets in the game, and how it is engineered. */
 const TOPIC_GROUPS: ReadonlyArray<{ readonly key: TopicGroupKey; readonly icon: DocsIconKey; readonly topics: readonly TopicId[] }> = [
-  { key: 'play', icon: 'combat', topics: ['start', 'controls', 'modes', 'tanks', 'combat', 'battlefields', 'vehicles', 'worlds', 'multiplayer', 'audio', 'interface', 'studio'] },
-  { key: 'behind', icon: 'architecture', topics: ['build', 'simulation', 'models', 'rendering', 'performance', 'ai', 'filming'] },
+  { key: 'play', icon: 'combat', topics: ['start', 'controls', 'modes', 'tanks', 'combat', 'battlefields', 'multiplayer', 'audio', 'studio'] },
+  { key: 'behind', icon: 'architecture', topics: ['build', 'simulation', 'models', 'rendering', 'ai', 'filming'] },
 ];
 const groupLabel = (key: TopicGroupKey): string => (key === 'play' ? t('docs.group.play') : t('docs.group.behind'));
 
@@ -528,7 +454,7 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
   if (topic.rich && !rich) throw new Error(`topics: ${slug} is built from the game's tables: pass its richSections()`);
   const toc = (rich ? rich.map(({ id, title }) => `<a href="#${id}">${title}</a>`)
     : topic.sections.map(([title], index) => `<a href="#${topicSectionId(index)}">${title}</a>`)).join('')
-    + (reference ? `<a href="#reference">${t(`docs.reference.${slug}.title`)}</a>` : '');
+    + (reference ? `<a href="#reference">${t('docs.reference.vehicles.title')}</a>` : '');
   const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
   const neighbour = (topicId: TopicId | undefined, side: 'prev' | 'next'): string => (topicId
     ? `<a class="cot-c-btn cot-c-btn--ghost dm-pager__${side}" href="${docsHref(topicId)}"><span data-doc-icon="${topics[topicId].icon}"></span><span>${topics[topicId].label}</span></a>`
@@ -551,7 +477,7 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
     + `<nav class="dm-pager" aria-label="${t('docs.topic.navAria')}">${neighbour(order[at - 1], 'prev')}${neighbour(order[at + 1], 'next')}</nav></div></div>`;
 }
 
-const REFERENCE_TOPICS: readonly TopicId[] = ['vehicles', 'worlds', 'simulation'];
+const REFERENCE_TOPICS: readonly TopicId[] = ['tanks'];
 
 /**
  * The chapter page's behaviour. A page the build prerendered (tools/docs-prerender.mjs: `data-prerendered` names the

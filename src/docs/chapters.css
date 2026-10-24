@@ -199,6 +199,12 @@
 .dm-delays b{min-width:5em;font:600 var(--fs-14)/1 var(--font-body);color:var(--ink-1)}
 .dm-delays span{padding:5px 9px;border-radius:var(--r1);background:var(--chip-fill);font-size:var(--fs-13);color:var(--ink-2)}
 .dm-bars--wide b{min-width:13em}
+.dm-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:var(--s3);margin:var(--s4) 0 0;padding:0;list-style:none}
+.dm-tiles li{display:grid;grid-template-rows:auto 1fr;overflow:hidden;border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1)}
+.dm-tiles img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;background:var(--surface-scene)}
+.dm-tiles div{display:grid;gap:4px;padding:var(--s3) var(--s4) var(--s4)}
+.dm-tiles b{font:600 var(--fs-16)/1.25 var(--font-display);color:var(--ink-1)}
+.dm-tiles p,.dm-section .dm-tiles p{margin:0;font:400 var(--fs-14)/1.45 var(--font-body);color:var(--ink-2)}
 .dm-roles small{display:block;margin-top:6px;font:500 var(--fs-13)/1.3 var(--font-body);color:var(--ink-3)}
 .dm-takes{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--s3);margin:0;padding:0;list-style:none}
 .dm-takes a{display:grid;grid-template-columns:minmax(0,1fr);overflow:hidden;border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1);color:var(--ink-2);text-decoration:none}

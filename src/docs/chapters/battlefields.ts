@@ -53,11 +53,22 @@ function provingGround(): string {
     + `<div><h3>${esc(t('docs.battlefields.plates'))}</h3><ul class="dm-chips">${plates}</ul></div></div>`;
 }
 
+/** What the battlefield gives way to, in the landing's own words and stills (home.mechanics.*), and what cover stops. */
+const BREAKS: ReadonlyArray<readonly [string, string]> = [['buildings', 'buildings'], ['crushing', 'crushing'], ['mapVehicles', 'map-vehicles']];
+function breaksSection(): string {
+  const tiles = BREAKS.map(([key, still]) => `<li>${pictureMarkup({ src: `/media/site50-r14/home/mechanics/${still}.webp`, width: 1280, height: 720, alt: '',
+    sizes: '(width < 768px) 100vw, (width < 1440px) 33vw, 24vw', rungs: [{ src: `/media/site50-r14/home/mechanics/${still}-640.webp`, width: 640 },
+      { src: `/media/site50-r14/home/mechanics/${still}.webp`, width: 1280 }] }, false)}`
+    + `<div><b>${esc(t(`home.mechanics.${key}.title`))}</b><p>${esc(t(`home.mechanics.${key}.body`))}</p></div></li>`).join('');
+  return `<ul class="dm-tiles">${tiles}</ul><ul class="dm-facts"><li>${esc(t('docs.battlefields.cover'))}</li></ul>`;
+}
+
 export function battlefieldsSections(): RichSection[] {
   const gravity = Object.entries(MARS_GRAVITY_OPTIONS).map(([id, option]) => `${t(`docs.battlefields.gravity.${id}`)} ${option.gravityScale} g`).join(' · ');
   const sections: Array<[string, string, string]> = [
     ['maps', t('docs.battlefields.maps'), `<p>${esc(t('docs.battlefields.mapsLede', { maps: String(MAP_IDS.length), random: String(RANDOM_BATTLE_MAP_IDS.length) }))}</p>`
       + `${landscapes()}<ul class="dm-maps">${MAP_IDS.map(mapCard).join('')}</ul>`],
+    ['breaks', t('docs.battlefields.breaks'), breaksSection()],
     ['gravity', t('docs.battlefields.gravity'), `<p>${esc(t('docs.battlefields.gravityLede', { options: gravity }))}</p>`],
     ['time', t('docs.battlefields.time'), timeOfDay()],
     ['proving', t('docs.battlefields.proving'), provingGround()],

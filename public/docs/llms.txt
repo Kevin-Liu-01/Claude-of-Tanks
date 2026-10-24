@@ -5,19 +5,21 @@
 ## Manual
 
 - [Field manual index](https://cot.kevinliu.studio/docs): Current system overview, build facts, visual evidence, and links to every detailed guide.
-- [How the game was built](https://cot.kevinliu.studio/docs/build): Three.js architecture, Claude Code and Codex worktrees, browser proof, durable instructions, and main-first releases.
-- [Procedural model pipeline](https://cot.kevinliu.studio/docs/models): Reference intake, procedural construction, articulation, anatomy, generated icons and cards, and acceptance gates.
-- [Simulation and combat](https://cot.kevinliu.studio/docs/simulation): Fixed 60 Hz loop, aim, projectiles, armor, damage, reloads, special weapons, and tests.
-- [Vehicles and running gear](https://cot.kevinliu.studio/docs/vehicles): Vehicle specifications, procedural rigs, anatomy, tracks, suspension, recoil, LOD, and release verification.
-- [Renderer and graphics](https://cot.kevinliu.studio/docs/rendering): Three.js rendering, adaptive quality, pixel density, shadows, post-processing, recovery, and mobile GPU behavior.
-- [Performance and loading](https://cot.kevinliu.studio/docs/performance): Cold boot, staged battle loading, frame evidence, constrained devices, and release budgets.
-- [Battlefields and destruction](https://cot.kevinliu.studio/docs/worlds): Thirty authored maps, terrain, routes, structures, collision, environment, destruction, props, and wrecks.
-- [Bots and tactical AI](https://cot.kevinliu.studio/docs/ai): Perception, deterministic route planning, gun handling, team safety, survival behavior, and tests.
-- [Multiplayer authority](https://cot.kevinliu.studio/docs/multiplayer): Rooms, input intent, authority, snapshots, prediction, reconciliation, spotting, bots, and host migration.
-- [Audio and battlefield FX](https://cot.kevinliu.studio/docs/audio): Weapon reports and distance, hits heard at the target, engines and tracks, national crew radio, ambience, mode sounds, and Sound settings.
-- [Interface and controls](https://cot.kevinliu.studio/docs/interface): Garage, HUD, aiming feedback, ammunition, killcam, spectator mode, reports, settings, desktop input, and touch.
-- [Scene Studio and capture](https://cot.kevinliu.studio/docs/studio): Scene data, maps, vehicles, cameras, effects, timeline, stills, GIFs, video, and review workflow.
-- [Filming the media](https://cot.kevinliu.studio/docs/filming): Shots written as code, motion search, schematic previz, engine reviews and fixes, supersampled 4K finals, stills, and the films' sound.
+- [Your first battle](https://cot.kevinliu.studio/docs/start): Pick a tank, deploy, drive, aim, fire and win your first Claude of Tanks battle, with the game's own keys and rules.
+- [Controls and Watch](https://cot.kevinliu.studio/docs/controls): Every Claude of Tanks action with its key, mouse button and gamepad button, the touch controls, and Watch mode's drone, ride along and take control.
+- [Game modes](https://cot.kevinliu.studio/docs/modes): Every Claude of Tanks mode with its goal, clock, respawn, sides and rules, and its objectives drawn on the map.
+- [Tanks and equipment](https://cot.kevinliu.studio/docs/tanks): The Claude of Tanks fleet by class, battle role, tier and nation, the 14 equipment items and the consumables, smoke and drone every tank can carry.
+- [Armour, angling and spotting](https://cot.kevinliu.studio/docs/combat): How Claude of Tanks resolves a hit: penetration over range, effective armour at an angle, ricochets, spaced armour and ERA, modules, crew and fires, and the spotting rules.
+- [Battlefields](https://cot.kevinliu.studio/docs/battlefields): Every Claude of Tanks battlefield with its art and landscapes, the random rotation, the gravity worlds, the time of day and the Proving Ground.
+- [Multiplayer](https://cot.kevinliu.studio/docs/multiplayer): How to play Claude of Tanks with friends: private rooms by code or invite link, the local network, seats and team sizes, the modes a room plays, and what happens when someone leaves.
+- [Sound and radio](https://cot.kevinliu.studio/docs/audio): What Claude of Tanks sounds tell you: your gunner's hit calls, the crew's warnings, crew radio in 13 languages, 18 gun reports and how far they carry, engines and tracks, and the Sound settings.
+- [Scene Studio](https://cot.kevinliu.studio/docs/studio): How to film Claude of Tanks in the Scene Studio: open any film on the site as a scene, set the battlefield, time and tanks, place camera shots and effects, and export stills or film.
+- [How the game was built](https://cot.kevinliu.studio/docs/build): How a solo developer built Claude of Tanks through typed architecture, procedural assets, deterministic simulation, test gates, performance evidence, and persistent agent collaboration.
+- [Simulation and authority](https://cot.kevinliu.studio/docs/simulation): How Claude of Tanks runs a battle: the 60 Hz fixed step, the host's authority over hits and results, what each player is sent, terrain and movement, and how it is verified.
+- [Procedural model pipeline](https://cot.kevinliu.studio/docs/models): How Claude of Tanks researches, constructs, articulates, audits, compares, and releases its first-party procedural tank models.
+- [Rendering and performance](https://cot.kevinliu.studio/docs/rendering): How Claude of Tanks draws and loads: the renderer, lighting, post-processing, adaptive quality, an isolated boot and battle loading staged behind cover.
+- [Bots and tactical AI](https://cot.kevinliu.studio/docs/ai): Technical guide to bot perception, route planning, tactical positioning, aiming, team behavior, survival, and deterministic verification in Claude of Tanks.
+- [How the media was filmed](https://cot.kevinliu.studio/docs/filming): How the Claude of Tanks site takes, portraits and films were shot in Scene Studio: a motion search, schematic previz, engine reviews and their fixes, supersampled 4K finals, stills and generated sound.
 
 ## Related
 
