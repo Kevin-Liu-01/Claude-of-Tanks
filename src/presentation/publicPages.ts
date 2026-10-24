@@ -178,8 +178,27 @@ function mountFleetFeature(section: HTMLElement): void {
   for (const tile of tiles) {
     tile.addEventListener('pointerenter', () => show(tile));
     tile.addEventListener('focus', () => show(tile));
+    mountTakeProgress(tile);
   }
   tiles[0].classList.add('is-featured');
+}
+
+/** A playing take's bar runs at the loop's own length from where the loop is, and restarts as the loop does. */
+function mountTakeProgress(tile: HTMLElement): void {
+  const video = tile.querySelector('video');
+  const bar = tile.querySelector<HTMLElement>('.fleet-tile__progress');
+  if (!video || !bar) return;
+  const run = (): void => {
+    if (!(video.duration > 0)) return;
+    bar.style.setProperty('--loop-s', `${video.duration}s`);
+    bar.style.setProperty('--loop-at', `${-video.currentTime}s`);
+    tile.classList.remove('is-playing');
+    void bar.offsetWidth; // restarts the bar's animation
+    tile.classList.add('is-playing');
+  };
+  video.addEventListener('playing', run);
+  video.addEventListener('seeked', () => { if (!video.paused) run(); });
+  for (const type of ['pause', 'emptied', 'ended']) video.addEventListener(type, () => tile.classList.remove('is-playing'));
 }
 
 document.querySelectorAll<HTMLElement>('#fleet').forEach(mountFleetFeature);

@@ -107,6 +107,12 @@ button{font:inherit;color:inherit}
 .fleet-tile>video{opacity:0;transition:opacity var(--dur-screen) var(--ease-enter)}
 .fleet-tile>video.has-frame{opacity:1}
 .fleet-tile:hover,.fleet-tile:focus-visible,.fleet-tile.is-featured{outline:none;box-shadow:var(--home-pick-ring)}
+/* the playing take's progress (03): publicPages.ts sets the loop's length and position as it plays */
+.fleet-tile__progress{position:absolute;left:0;right:0;bottom:0;height:2px;overflow:hidden;background:var(--fill-scale);opacity:0;pointer-events:none;transition:opacity var(--dur-fast) var(--ease-enter)}
+.fleet-tile__progress i{display:block;height:100%;background:var(--accent);transform:scaleX(0);transform-origin:left center}
+.fleet-tile.is-playing .fleet-tile__progress{opacity:1}
+.fleet-tile.is-playing .fleet-tile__progress i{animation:fleet-progress var(--loop-s) linear var(--loop-at) infinite}
+@keyframes fleet-progress{to{transform:scaleX(1)}}
 .fleet-tile__id{position:absolute;left:10px;right:10px;bottom:9px;display:flex;align-items:center;gap:7px;min-width:0}
 .fleet-tile__id .cot-c-sil{width:34px;height:11px;color:var(--ink-1);filter:var(--sil-shadow)}
 .fleet-tile__id b{overflow:hidden;font:700 var(--fs-13)/1 var(--font-display);text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap;color:var(--ink-1)}
@@ -432,5 +438,6 @@ html[lang^='zh'] :is(h1,h2,h3,.v5-mode--hero h3){line-height:1.15}
   .cot-media-toggle{top:14px;left:14px}
 }
 @media(hover:hover) and (pointer:fine){.v5-social-card:hover,.v5-reddit-grid article:hover{box-shadow:var(--e2)}.v5-social-card:hover::after{opacity:.34;transform:scale(1.03)}}
+@media(prefers-reduced-motion:reduce){.fleet-tile__progress{display:none}}
 @media(prefers-reduced-motion:reduce){.v5-social-card,.v5-social-card::after,.v5-reddit-grid article{transition:none}html{scroll-behavior:auto}.v5-social-card::after{transform:none}.vs-tile__film,.fleet-tile>video,.v5-shot-progress span,.v5-trailer figcaption,.v5-shot-controls button{transition:none}}
 }

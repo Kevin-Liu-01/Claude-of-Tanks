@@ -212,7 +212,7 @@ function fleetBlock() {
   const tile = (c) => `<a class="fleet-tile cot-c-media cot-c-media--soft" href="${galleryHref(c.id)}" data-feature="${esc(feature(c))}">`
     + `<img src="${c.take.poster}" alt="" width="640" height="360" loading="lazy" decoding="async">`
     + `<video data-media-player="hover" muted loop playsinline preload="none" aria-hidden="true" data-label="${esc(text(takeKey(c.take)))}" data-i18n-label="${takeKey(c.take)}">`
-    + `<source data-src="${c.take.loop}" type="video/webm"></video>`
+    + `<source data-src="${c.take.loop}" type="video/webm"></video><span class="fleet-tile__progress" aria-hidden="true"><i></i></span>`
     + `<span class="fleet-tile__id">${flag(c.a.countryCode, 'sm')}${sil(c.id)}<b>${esc(c.a.name)}</b></span></a>`;
   const tiles = cards.map(tile);
   return `<section class="fleet" id="fleet" aria-labelledby="fleet-title"><div class="home-shell">`
