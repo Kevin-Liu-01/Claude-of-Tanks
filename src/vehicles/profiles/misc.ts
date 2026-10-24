@@ -2370,8 +2370,10 @@ function buildType90HullStructure(P: MiscBuilderPort): void {
   headlight(P, 1.22, 1.05, 3.44, -0.3, 0.05);
   P.add('hullDetail', torus(0.08, 0.014, 10), -0.55, 0.62, 3.12, Math.PI / 2, 0, 0); // tow eyes on the under-nose (r6: pulled to 3.12 — their 3.395 plan fronts co-printed the ref's flat 3.222 center line with the old nose)
   P.add('hullDetail', torus(0.08, 0.014, 10), 0.55, 0.62, 3.12, Math.PI / 2, 0, 0);
-  liftEye(P, 'hullDetail', -1.35, 1.36, -0.3);                                 // (r6: sunk 4 cm — the 1.45 eye crowns printed the -0.21/-0.33 side cols over the ref's bare 1.400 deck line)
-  liftEye(P, 'hullDetail', 1.35, 1.36, -0.3);
+  // (r6: sunk 4 cm — the 1.45 eye crowns printed the -0.21/-0.33 side cols over the ref's bare 1.400 deck line; release
+  // 240: 2 cm more, under the Type 90A turret's side as it turns over them)
+  liftEye(P, 'hullDetail', -1.35, 1.34, -0.3);
+  liftEye(P, 'hullDetail', 1.35, 1.34, -0.3);
   // tow cable along the right fender line (§B3 dressing — rides at 1.21,
   // fully under the 1.39-1.45 deck line so no side column cost)
   const cable = FITTINGS.towCable({ mats: P.mats, pts: [[1.50, 1.20, 1.90], [1.55, 1.20, 0.40], [1.52, 1.20, -1.20]], r: 0.018, seed: 4 });
@@ -3072,10 +3074,12 @@ function buildType74(P: MiscBuilderPort): void {
     P.add('hullDark', box(0.15, 0.19, 0.03), s * 1.475, 1.505, 2.66);
   }
   // fender stowage bins + pioneer tools + headlight pods with guards
-  bin(P, -1.28, 1.435, -1.35, 0.40, 0.12, 1.00);
-  bin(P, -1.28, 1.435, 0.35, 0.40, 0.12, 0.85);
-  bin(P, 1.28, 1.435, -0.90, 0.40, 0.12, 1.00);
-  bin(P, 1.28, 1.435, 0.60, 0.40, 0.12, 0.80);
+  // (release 240, the owner: "make sure all tank turrets are clear of hulls": the four are low lockers, their lids 3 cm
+  // under the turret's overhang at 1.465-1.47, which swings over all of them and in which they stood 3 cm)
+  bin(P, -1.28, 1.405, -1.35, 0.40, 0.06, 1.00);
+  bin(P, -1.28, 1.405, 0.35, 0.40, 0.06, 0.85);
+  bin(P, 1.28, 1.405, -0.90, 0.40, 0.06, 1.00);
+  bin(P, 1.28, 1.405, 0.60, 0.40, 0.06, 0.80);
   shovelTool(P, -1.27, 1.40, 1.85);
   // 2026-10-19 (owner float sweep): the lamps and their guard rings stood 15 mm over the fender; seated.
   headlight(P, -1.26, 1.443, 2.98, -0.22, 0.05);
@@ -3089,8 +3093,10 @@ function buildType74(P: MiscBuilderPort): void {
   liftEye(P, 'hullDetail', -1.38, 1.41, -1.75);
   liftEye(P, 'hullDetail', 1.38, 1.41, -1.75);
   {                                                                            // §I fittings: two water cans strapped on the left fender run
+    // (release 240, the owner: "make sure all tank turrets are clear of hulls": on the rear run, 2.8 m off the ring's
+    // axis, past the bustle's corners; beside the turret they stood 40 cm into its overhang)
     const cans = FITTINGS.jerryCans({ mats: P.mats, count: 2, seed: 5 });
-    cans.position.set(-1.28, 1.39, 1.30);
+    cans.position.set(-1.28, 1.39, -2.30);
     P.hullG.add(cans);
   }
   stowage(P, 'hullCloth', rng, [[0.55, 1.50, -2.99, 0.52, 0.10, 0.5]]);        // strapped tarp roll on the rack shelf (d 0.5: stays inside the -3.29 shelf edge)
