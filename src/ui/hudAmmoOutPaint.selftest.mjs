@@ -1440,8 +1440,8 @@ function assertFurnitureClear(items, boxes, at, key = null) {
 // the warning, over the rings, every cross arm segment keeps 3 px from every mark (the rack, the struck round, the
 // countdown, the readout line and zoom plate, the range tag, the chip) and from the furniture, every mil tick 2 px.
 {
-  const ARM_INK = new Set(['rgba(170,240,178,0.6)', 'rgba(4,7,6,0.38)']);
-  const TICK_INK = new Set(['rgba(176,242,184,0.70)', 'rgba(3,7,5,0.52)']);
+  const ARM_INK = new Set(['rgba(246,243,236,0.78)', 'rgba(5,6,8,0.55)']);
+  const TICK_INK = new Set(['rgba(246,243,236,0.86)', 'rgba(5,6,8,0.6)']);
   const apart = (a, b) => Math.max(a.x0 - b.x1, b.x0 - a.x1, a.y0 - b.y1, b.y0 - a.y1);
   // (a stroke's moveTo/lineTo pairs, each a segment, its line width either side)
   const segments = (op) => {

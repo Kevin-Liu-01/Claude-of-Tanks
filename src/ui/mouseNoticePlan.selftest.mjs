@@ -110,7 +110,7 @@ const pins = [
   [/state\.zoomScale = state\.sniper\s+\? Math\.min\(1\.8, 1\.1 \+ 0\.085 \* \(view\.zoom \|\| 8\)\)/, R.scopeClearCentrePx === 14 + .8 * 9],
   [/state\.centerClearanceRadius = 14 \+ \(state\.zoomScale - 1\) \* 9;/, R.clearCentrePx === 14],
   [/const armEnd = radius \* 1\.55 \+ 3;/, R.armFactor === 1.55],
-  [/paintScopeCrossArms\(cx, cy, gap, armEnd, 'rgba\(4,7,6,0\.38\)', 2\.4\);/, R.armPx === 3 + 1.3],
+  [/paintScopeCrossArms\(cx, cy, gap, armEnd, 'rgba\(5,6,8,0\.55\)', 2\.4\);/, R.armPx === 3 + 1.3],
   // the column under the marker: a rack (four shells) or a struck round, dropped below a ring that crosses it, the
   // countdown under it or beside the rack; over the ring where the furniture sits under it
   [/export const AUTOLOADER_HUD_SHELLS = 4;/, true], [/const AUTOLOADER_HUD_ARC_DEPTH = 2\.25;/, true],

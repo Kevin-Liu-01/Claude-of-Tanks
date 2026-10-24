@@ -3,7 +3,8 @@
 //
 // One plate centre low, above the systems row and well clear of the sight: "Destroyed", the victim's flag and
 // silhouette, callsign and vehicle, the cause where it says more than a shot (ammo rack, fire, ramming), the streak's
-// multiplier on a tungsten block; under it, on the same plate, what the player's streak earned (+kills, +damage). It
+// multiplier on a tungsten block; under it, on the same plate, what the player's streak earned (+kills, +damage, the
+// zones the side took and the tanks the player lit in the streak's window). It
 // holds 2.4 s after the latest kill (SPEC 12.2.1) and steps aside while a notice meets its place (battleHudLayout.ts
 // yieldKillRibbon). The mouse layouts wide and tall enough for it show it (laptop and desktop, 720 px and up); every other
 // layout reads the same kill in the feed.
@@ -17,6 +18,15 @@ import { maskIcon } from './icons.ts';
 /** How long the ribbon holds after the latest kill, and how soon another kill extends the streak. */
 const RIBBON_HOLD_MS = 2400;
 const STREAK_WINDOW_MS = 8000;
+/** How many of the latest spots and captures the stream remembers. */
+const RECENT = 8;
+
+/** How many of `times` fall in the streak's window before `now`. */
+function inWindow(times: Float64Array, now: number): number {
+  let count = 0;
+  for (let i = 0; i < times.length; i++) if (now - times[i] <= STREAK_WINDOW_MS) count++;
+  return count;
+}
 
 const CSS = `
 .cot-ribbon{position:absolute;z-index:var(--hud-layer-status);left:50%;top:var(--hud-systems-top,80%);
@@ -74,6 +84,10 @@ interface KillRibbonRuntime {
   damage(targetId: string, amount: number): void;
   /** The player destroyed `victim`. */
   kill(victim: RibbonVictim, cause: RibbonCause): void;
+  /** The player lit an enemy (the stream counts the spots of the streak's window). */
+  spot(): void;
+  /** The player's side took a zone. */
+  zone(): void;
   /** A battle ends or restarts: forget the streak and the damage ledger. */
   clear(): void;
 }
@@ -103,14 +117,30 @@ export function createKillRibbon(parent: HTMLElement): KillRibbonRuntime {
   const damageItem = el('span', 'd', stream);
   el('span', 'gi', damageItem).innerHTML = uiIconSVG('damage', 14);
   const damageText = el('span', '', damageItem);
+  const zonesItem = el('span', 'z', stream);
+  el('span', 'gi', zonesItem).innerHTML = uiIconSVG('modeZones', 14);
+  const zonesText = el('span', '', zonesItem);
+  const spotsItem = el('span', 's', stream);
+  el('span', 'gi', spotsItem).innerHTML = uiIconSVG('optics', 14);
+  const spotsText = el('span', '', spotsItem);
+  // the latest spots and captures, as times: a fixed ring each, so an event allocates nothing
+  const spotTimes = new Float64Array(RECENT).fill(-Infinity);
+  const zoneTimes = new Float64Array(RECENT).fill(-Infinity);
+  let spotNext = 0, zoneNext = 0;
   const dealt = new Map<string, number>();
   let streak = 0, streakDamage = 0, lastKillMs = -Infinity;
   let hideTimer: ReturnType<typeof setTimeout> | null = null;
 
   function paintStream(): void {
+    const now = performance.now();
     killsText.textContent = t('hud.ribbon.kills', { count: streak });
     damageItem.hidden = streakDamage <= 0;
     damageText.textContent = t('hud.ribbon.damage', { amount: formatNumber(Math.round(streakDamage)) });
+    const zones = inWindow(zoneTimes, now), spots = inWindow(spotTimes, now);
+    zonesItem.hidden = zones <= 0;
+    zonesText.textContent = t('hud.ribbon.zones', { count: zones });
+    spotsItem.hidden = spots <= 0;
+    spotsText.textContent = t('hud.ribbon.spots', { count: spots });
   }
 
   return {
@@ -148,8 +178,20 @@ export function createKillRibbon(parent: HTMLElement): KillRibbonRuntime {
       if (hideTimer) clearTimeout(hideTimer);
       hideTimer = setTimeout(() => { hideTimer = null; root.classList.remove('on'); }, RIBBON_HOLD_MS);
     },
+    spot() {
+      spotTimes[spotNext] = performance.now();
+      spotNext = (spotNext + 1) % RECENT;
+      if (root.classList.contains('on')) paintStream();
+    },
+    zone() {
+      zoneTimes[zoneNext] = performance.now();
+      zoneNext = (zoneNext + 1) % RECENT;
+      if (root.classList.contains('on')) paintStream();
+    },
     clear() {
       dealt.clear();
+      spotTimes.fill(-Infinity);
+      zoneTimes.fill(-Infinity);
       streak = 0; streakDamage = 0; lastKillMs = -Infinity;
       if (hideTimer) { clearTimeout(hideTimer); hideTimer = null; }
       root.classList.remove('on');
