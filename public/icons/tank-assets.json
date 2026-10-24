@@ -117265,22 +117265,22 @@
             "verts": [
               [
                 0.2743,
-                0.0526,
+                0.0981,
                 1.3053
               ],
               [
                 1.2,
-                0.0526,
+                0.0981,
                 -0.1704
               ],
               [
                 1.2,
-                0.6674,
+                0.6687,
                 -0.344
               ],
               [
                 0.2743,
-                0.6674,
+                0.6687,
                 1.1317
               ]
             ]
@@ -117296,22 +117296,22 @@
             "verts": [
               [
                 -1.2,
-                0.0526,
+                0.0981,
                 -0.1704
               ],
               [
                 -0.2743,
-                0.0526,
+                0.0981,
                 1.3053
               ],
               [
                 -0.2743,
-                0.6674,
+                0.6687,
                 1.1317
               ],
               [
                 -1.2,
-                0.6674,
+                0.6687,
                 -0.344
               ]
             ]
@@ -117327,22 +117327,22 @@
             "verts": [
               [
                 -0.2971,
-                0.158,
+                0.1959,
                 1.34
               ],
               [
                 0.2971,
-                0.158,
+                0.1959,
                 1.34
               ],
               [
                 0.2971,
-                0.5796,
+                0.5872,
                 1.2706
               ],
               [
                 -0.2971,
-                0.5796,
+                0.5872,
                 1.2706
               ]
             ]
@@ -117358,22 +117358,22 @@
             "verts": [
               [
                 1.2,
-                0.035,
+                0.0818,
                 -0.0836
               ],
               [
                 1.2,
-                0.035,
+                0.0818,
                 -1.9932
               ],
               [
                 1.128,
-                0.6674,
+                0.6687,
                 -1.9932
               ],
               [
                 1.128,
-                0.6674,
+                0.6687,
                 -0.0836
               ]
             ]
@@ -117389,22 +117389,22 @@
             "verts": [
               [
                 -1.2,
-                0.035,
+                0.0818,
                 -1.9932
               ],
               [
                 -1.2,
-                0.035,
+                0.0818,
                 -0.0836
               ],
               [
                 -1.128,
-                0.6674,
+                0.6687,
                 -0.0836
               ],
               [
                 -1.128,
-                0.6674,
+                0.6687,
                 -1.9932
               ]
             ]
@@ -117420,22 +117420,22 @@
             "verts": [
               [
                 1.08,
-                0.035,
+                0.0818,
                 -1.9932
               ],
               [
                 -1.08,
-                0.035,
+                0.0818,
                 -1.9932
               ],
               [
                 -1.08,
-                0.6674,
+                0.6687,
                 -2.08
               ],
               [
                 1.08,
-                0.6674,
+                0.6687,
                 -2.08
               ]
             ]
@@ -117943,12 +117943,12 @@
             "name": "gun",
             "min": [
               -0.2286,
-              0.1755,
+              0.2122,
               -0.7953
             ],
             "max": [
               0.2286,
-              0.5972,
+              0.6035,
               1.3053
             ],
             "turretLocal": true
@@ -117958,12 +117958,12 @@
             "name": "turretRing",
             "min": [
               -0.7581,
-              1.4872,
+              1.47,
               -1.5451
             ],
             "max": [
               0.7901,
-              1.7728,
+              1.7556,
               0.3051
             ],
             "turretLocal": false
@@ -118172,13 +118172,13 @@
             "name": "gunner",
             "min": [
               -0.124,
-              -0.9039,
-              -0.701
+              -0.9068,
+              -0.7043
             ],
             "max": [
               0.3354,
               -0.01,
-              0.0339
+              0.0372
             ],
             "turretLocal": true
           },
@@ -118187,12 +118187,12 @@
             "name": "commander",
             "min": [
               0.3215,
-              -0.4355,
-              -0.7685
+              -0.4204,
+              -0.7507
             ],
             "max": [
               0.75,
-              0.6022,
+              0.6073,
               -0.2097
             ],
             "turretLocal": true
@@ -118201,29 +118201,29 @@
             "volumeId": "C04",
             "name": "loader",
             "min": [
-              -0.7157,
+              -0.7354,
               -0.7875,
-              -0.838
+              -0.829
             ],
             "max": [
               -0.276,
-              0.6825,
+              0.6625,
               -0.3899
             ],
             "turretLocal": true
           }
         ]
       },
-      "geometryHash": "5a1a5d83",
-      "metadataHash": "6cca9986",
+      "geometryHash": "5f606b51",
+      "metadataHash": "3187c915",
       "presentationAnchor": {
-        "xM": -0.0004,
-        "zM": 0.0071
+        "xM": -0.0005,
+        "zM": 0.007
       },
-      "presentationHash": "f18c1b2c",
+      "presentationHash": "da30c6fa",
       "presentationProjection": {
         "centerYM": 2.3206,
-        "topHalfM": 5.107,
+        "topHalfM": 5.1071,
         "sideHalfM": 2.5535
       },
       "appearance": {
@@ -118242,7 +118242,7 @@
           "armorPaint": 11,
           "tireRubber": 1,
           "opticGlass": 2,
-          "gunmetal": 6,
+          "gunmetal": 7,
           "unclassified": 12,
           "fittingPaint": 1
         }
@@ -118273,39 +118273,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 98867,
-          "sha256": "25f083e2a57ec91f8c7063fd85e9363ee613318618779641b10e68418dcce56e"
+          "bytes": 102474,
+          "sha256": "3f74aa3febb87450c1618825d0c7b8f0fd02206c181de34e3897375626d54a9e"
         },
         "modulesSide": {
           "file": "cv90105_tml_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 103876,
-          "sha256": "5ebec95e1de046267d8fa17c78c025854e6fd2a31527d4fd383588da0f0e7ea7"
+          "bytes": 107513,
+          "sha256": "02d22045f508cfe6656291348487ae2cde251b388558e38ed8b1b5cfb4211177"
         },
         "crewSide": {
           "file": "cv90105_tml_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 96851,
-          "sha256": "4b75a0c2ae0ab9c52804e58b1dd225a745e61248a6ace4ddadb10d06263da218"
+          "bytes": 96812,
+          "sha256": "d4185e5a9f02276aefee7b3f143ebaa7625267c617d3c4c55ec85afefdc9565f"
         },
         "angle": {
           "file": "cv90105_tml_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28278,
-          "sha256": "a3c951c3c23f9e703682034b6b798381f0b12c46749bf0557a04651642a35266",
+          "bytes": 28424,
+          "sha256": "8027e913615d0d37d5f8203807cb170b2eabf6643adcf90c7cf0fcbf5962f5dd",
           "thumbnail": {
             "file": "thumbs/cv90105_tml_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11732,
-            "sha256": "0e0f3295a024f05ac6509e8b77c8d7e181833e197180e5bb1e77d8dc7031eb33"
+            "bytes": 11680,
+            "sha256": "463a5c59ee2c4c300e25f1064da349c3cb288802f3efdd9e23d42aabf89c7a2f"
           }
         },
         "top": {
@@ -118313,32 +118313,32 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 13500,
-          "sha256": "10ac8705690cbc2f7de74e94494470d74397a30cd84058a021db4c0fa06e8d0d"
+          "bytes": 13398,
+          "sha256": "06d7bded48b33900569dc68a60e8be11c68967a395ec382cce9e39d46eb1e137"
         },
         "side": {
           "file": "cv90105_tml_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 14302,
-          "sha256": "5110e063ce79ebf684bd0f4f56b1860977237a7f99e6b3554831ad74448043ef"
+          "bytes": 14372,
+          "sha256": "018a368138ad4b658321e4bf68774e95929fd9167e8a63b2009bd563a2809403"
         },
         "topSilhouette": {
           "file": "cv90105_tml_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1262,
-          "sha256": "cb362709099bfd04e254f75e2c6f0c9719ebd9044de81c5582de7c3c7bf6d9b8"
+          "bytes": 1264,
+          "sha256": "fa4d896713347f16c25bde9fb464567cd33b96945355641278629a708fc981ca"
         },
         "sideSilhouette": {
           "file": "cv90105_tml_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4740,
-          "sha256": "c56b67c87aa5fe2340f07962de66d00a873f84c72c077824743c7e9229aeb35e"
+          "bytes": 4806,
+          "sha256": "82dc0e2c597657fab5db44ee439b81e3df5f222ecd39be960e51e5a1fc8144fa"
         },
         "markings": {
           "file": "cv90105_tml_markings.png",
