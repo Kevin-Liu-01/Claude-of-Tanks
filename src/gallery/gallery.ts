@@ -9,7 +9,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { pinchRestoresPage } from '../ui/pinchZoomGuard.ts';
-import { createTank, ensureTankBuilder } from '../vehicles/fleetFactory.ts';
+import { createTank, createTankSteps, ensureTankBuilder, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
 import { linkTankId, stampTankIdLink } from '../game/tankIdBoundaries.ts';
 import { testDriveHref } from '../game/testDriveLink.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
@@ -335,8 +335,11 @@ function anatomyVehicle(): AnatomyVehicle | null {
 }
 function showAnatomy(mode: AnatomyMode, announce: boolean): void {
   const slow = setTimeout(() => showToast(t('gallery.anatomy.loading')), 250);
-  anatomyReady = loadAnatomy().then((module) => {
+  anatomyReady = loadAnatomy().then(async (module) => {
     clearTimeout(slow);
+    // The pressed mode paints before its scene is built: with the module loaded the build ran in the press's own
+    // microtask and held its paint (click-perf-244).
+    await afterNextPaint();
     const vehicle = anatomyVehicle();
     if (!vehicle || activeMode !== mode) return;
     if (!anatomyView) {
@@ -1195,6 +1198,42 @@ function disposeTank(): void {
 function nextFrame(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
+/** After the next paint: the frame's callback, then a task (frameScheduler.ts nextPaintFrame, kept off the Gallery's
+ *  boot requests). */
+function afterNextPaint(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+}
+
+// Gallery models remain first-party/procedural-only, but show the same authored field equipment players see in the
+// garage and battle. Measurement tools that omit this explicit opt-in still get bare hulls.
+const GALLERY_TANK_OPTIONS: CreateTankOptions = { camoSeed: 4242, quality: 'high', proceduralOnly: true, decor: true };
+
+/** The selected tank's model, built a frame-sized slice at a time (null once a later selection superseded it). A
+ *  decoration that fails the sliced build falls back to the synchronous one, which keeps its warning and bare fitting. */
+async function buildGalleryTank(id: string, current: () => boolean): Promise<GalleryVisual | null> {
+  let sliceStartedAt = performance.now();
+  let steps: ReturnType<typeof createTankSteps> | null = createTankSteps(id, engineCtx, GALLERY_TANK_OPTIONS);
+  try {
+    for (;;) {
+      const result = steps.next();
+      if (result.done) {
+        steps = null;
+        if (current()) return result.value as GalleryVisual;
+        result.value.dispose();
+        return null;
+      }
+      if (performance.now() - sliceStartedAt >= 10) { await nextFrame(); sliceStartedAt = performance.now(); }
+      if (!current()) return null;
+    }
+  } catch (error) {
+    steps = null;
+    console.warn('[gallery] the sliced build failed; building at once', error);
+    return current() ? createTank(id, engineCtx, GALLERY_TANK_OPTIONS) as GalleryVisual : null;
+  } finally {
+    // an abandoned build closes its iterator, which disposes what it had made
+    steps?.return(undefined as never);
+  }
+}
 
 async function loadTank(
   requestedId: string | null | undefined,
@@ -1208,7 +1247,8 @@ async function loadTank(
   selectedId = id;
   const record = recordById.get(id);
   if (!record) throw new Error(`Missing Gallery record for ${id}`);
-  // the dossier and the list answer at once; the model follows
+  // the dossier and the list answer at once; the model follows, built in frame-sized slices while the outgoing tank
+  // stays on the stage under the loading silhouette (click-perf-244: the whole build was one long task after the paint)
   renderDossier(record);
   markSelectedRow();
   loadingSilhouette.style.setProperty('--sil', `url(${iconUrl(id, 'side_silhouette')})`);
@@ -1216,19 +1256,17 @@ async function loadTank(
   await nextFrame();
   if (version !== loadVersion) return;
 
-  disposeTank();
   await ensureTankBuilder(id);
   if (version !== loadVersion) return;
   const spec = getSpec(id) as GalleryVehicleSpec;
-  visual = createTank(id, engineCtx, {
-    camoSeed: 4242,
-    quality: 'high',
-    proceduralOnly: true,
-    // Gallery models remain first-party/procedural-only, but now show the
-    // same authored field equipment players see in the garage and battle.
-    // Measurement tools that omit this explicit opt-in still get bare hulls.
-    decor: true,
-  }) as GalleryVisual;
+  const built = await buildGalleryTank(id, () => version === loadVersion);
+  if (!built) return;
+  // Its programs link before it shows (KHR_parallel_shader_compile where the GPU has it): the first frame with a new
+  // tank used to compile them inside the render loop (click-perf-244: ~300 ms per row press on desktop).
+  await renderer.compileAsync(built.root, camera, scene).catch(() => { /* the first frame compiles what is left */ });
+  if (version !== loadVersion) { built.dispose(); return; }
+  disposeTank();
+  visual = built;
   visual.centerOnPresentationPoint?.(0, 0);
   visual.seatOnFloor?.(GALLERY_FLOOR_Y_M);
   scene.add(visual.root);

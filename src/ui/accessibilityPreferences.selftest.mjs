@@ -135,8 +135,8 @@ near(hudFitFor(1366, 768), 0.85, 'a laptop stops at 0.85');
 near(hudFitFor(390, 844), 0.85, 'a portrait phone reads its short side and stops at 0.85');
 near(hudFitFor(844, 390), 0.85, 'and a landscape one');
 near(hudFitFor(NaN, 0), 1, 'no reading is 1');
-assert.match(read('src/ui/responsiveLayout.ts'), /setVar\('--cot-ui-scale', next\.scale\.toFixed\(4\)\);/,
-  'responsiveLayout writes the ui scale the type tokens read');
+assert.match(read('src/ui/responsiveLayout.ts'), /'--cot-ui-scale': next\.scale\.toFixed\(4\),/,
+  'responsiveLayout writes the ui scale the type tokens read (the seed and the live layout share viewportLayoutAttributes)');
 {
   const root = fakeRoot();
   applyAccessibility(normalizeAccessibility({ textScale: 1.5, hudScale: 1.25 }), root);

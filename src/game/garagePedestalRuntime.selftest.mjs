@@ -11,7 +11,7 @@ function deferred() {
 
 function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayedFrames = [],
   delayedBuilds = [], buildCheckpoints = 0, failBudget = false, programSlices = 0,
-  programOutcome = null, speculativeIds = [], deviceTier = 'desktop' } = {}) {
+  programOutcome = null, speculativeIds = [], deviceTier = 'desktop', waitForPaint = undefined } = {}) {
   const scene = new THREE.Scene();
   const garagePosition = new THREE.Vector3(10, 5, -12);
   const debugTarget = {};
@@ -147,6 +147,7 @@ function createHarness({ residentLimit = 2, delayedBuilders = new Map(), delayed
       nowMs += 11;
     },
     nextFrame: async () => { frameCalls += 1; await delayedFrames.shift()?.promise; },
+    waitForPaint,
     getDeviceTier: () => deviceTier,
     getPhase: () => phase,
     isBootComplete: () => bootComplete,
@@ -776,4 +777,25 @@ console.log('garagePedestalRuntime.selftest: private sliced construction, cancel
  assert.equal(tank.root.visible,false);
  await h.runtime.set('alpha');assert.ok(tank.root.parent === h.scene);assert.equal(tank.root.visible,true);
  h.runtime.dispose();
+}
+
+// click-perf-244: an uncached hero's build starts only once the press has painted (a phone's roster press held its
+// paint for the core build's first slice); a cached hero still reveals at once.
+{
+  const paint = deferred();
+  let paints = 0;
+  const h = createHarness({ waitForPaint: () => { paints += 1; return paints === 1 ? Promise.resolve() : paint.promise; } });
+  await h.runtime.set('alpha');
+  h.setBootComplete(true);
+  const pending = h.runtime.set('bravo');
+  await flushMicrotasks();
+  assert.equal(h.visuals.filter((visual) => visual.specId === 'bravo').length, 0, 'no build before the press painted');
+  paint.resolve();
+  await pending;
+  assert.equal(h.runtime.current?.specId, 'bravo', 'the build runs once the paint resolves');
+  const waited = paints;
+  await h.runtime.set('alpha');
+  assert.equal(h.runtime.current?.specId, 'alpha', 'the parked hero returns');
+  assert.equal(paints, waited, 'a cached hero reveals without waiting for a paint');
+  h.runtime.dispose();
 }
