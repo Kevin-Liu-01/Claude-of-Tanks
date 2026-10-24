@@ -11,7 +11,7 @@
 //
 // THREE-free: the receipts and the tools read it in Node.
 import type { TreeSpecies } from './treeSpecies.ts';
-import type { GrowthSpecies } from './treeGrowth.ts';
+import type { GrowthSpecies, ShrubCushion } from './treeGrowth.ts';
 
 export interface TreeBiomeSlot {
   /** The growth profile and spray atlas the slot's grown trees take. */
@@ -108,6 +108,12 @@ export interface TreeBiome {
    * cushion.shorn; vegetation.ts turns each one's leeward side to it, within a few degrees).
    */
   wind?: Readonly<{ towardDeg: number }>;
+  /**
+   * (2026-10-24, the Frontier follow-ups) the habit the place's field bushes grow their bush slot's form in: a cushion
+   * (treeGrowth.ts ShrubCushion) of many small sprays over a full mound — a hawthorn's or a hazel's thicket — where the
+   * form's own shrub is a sapling's few broad sprays. The understorey under a wood keeps the form's own.
+   */
+  shrubHabit?: ShrubCushion;
 }
 
 /**
@@ -305,8 +311,11 @@ export const TREE_BIOMES: Readonly<Record<string, Readonly<TreeBiome>>> = Object
   // the coast's gorse, dark and prickly, clipped into cushions and swept inland by the wind off the bay on the east edge)
   coastal: Object.freeze({ ...B('the Breton bocage, Brittany', { cedar: { form: 'chestnut' } }, 'gorse'),
     shrubColour: GORSE_FOLIAGE, wind: Object.freeze({ towardDeg: 270 }) }),
-  // the Fulda Gap: beech woods with spruce, oak and birch
-  frontier: B('the Fulda Gap, Hesse', { pine: { form: 'beech' }, aspen: { form: 'birch', leaves: true } }),
+  // the Fulda Gap: beech woods with spruce, oak and birch; (2026-10-24; the blind critic at the west arm: the field bushes
+  // "flat leaf-cluster bushes ... like cut-out cards with a detached Y-shaped clump floating against the sky") the
+  // field-edge thickets a hedge's hawthorn and hazel: the oak slot's sprays, small and many, over a full rounded mound
+  frontier: Object.freeze({ ...B('the Fulda Gap, Hesse', { pine: { form: 'beech' }, aspen: { form: 'birch', leaves: true } }),
+    shrubHabit: Object.freeze({ density: 1.7, size: 0.7, height: 1.0, clip: 2.2, lobes: 0.85, shorn: 0 }) }),
   // Prokhorovka: birch and oak shelterbelts, poplars along the tracks (the map's willow and pine slots grow as birches:
   // wave 4 read the weeping willows of the left treeline as "hanging curtains of flat strips")
   verdant: B('Prokhorovka, Kursk oblast', { pine: { form: 'birch', leaves: true }, willow: { form: 'birch', leaves: true } }),
@@ -568,6 +577,11 @@ export function treeBiomeSnowPalette<P extends TreeBiomeSnowTerms>(pal: P, famil
 /** Trees round 4: the colour of a place's shrubs over the bush slot's palette (TreeBiome.shrubColour), or none. */
 export function treeBiomeShrubColour(mapId: string | null | undefined): Readonly<TreeBiomeColour> | null {
   return (mapId ? TREE_BIOMES[mapId]?.shrubColour : null) ?? null;
+}
+
+/** (2026-10-24) the habit a place's field bushes grow in (TreeBiome.shrubHabit), or null: the form's own. */
+export function treeBiomeShrubHabit(mapId: string | null | undefined): ShrubCushion | null {
+  return (mapId ? TREE_BIOMES[mapId]?.shrubHabit : null) ?? null;
 }
 
 /** The trees lane (2026-10-08, wave 278): the bearing a place's wind blows toward (TreeBiome.wind), or null. */

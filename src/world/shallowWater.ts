@@ -403,7 +403,9 @@ export function createShallowWaterSurface(
   const seaShelf = { value: new THREE.Vector4(shoreDist ? 1 : 0, SEA_SHELF.colourM, SEA_SHELF.alphaM, SEA_SHELF.shallowAlpha) };
   // (2026-10-23: a sea may carry its own shelf look, the profile's seaTurquoise / seaDeepBlue)
   const seaTurquoise = profile.seaTurquoise ?? SEA_TINT.turquoise, seaDeepBlue = profile.seaDeepBlue ?? SEA_TINT.deepBlue;
-  const seaTint = { value: new THREE.Vector4(seaTurquoise, seaDeepBlue, SEA_TINT.deepDarken, 0) };
+  // (2026-10-24) a sea tied to its own sky (WaterContactProfile.seaSkyGrade; uSeaTint.w)
+  const seaSkyGrade = profile.seaSkyGrade ?? 0;
+  const seaTint = { value: new THREE.Vector4(seaTurquoise, seaDeepBlue, SEA_TINT.deepDarken, seaSkyGrade) };
   const swellDirRad = (ocean?.state.swellDirDeg ?? 0) * Math.PI / 180;
   const swell = { value: new THREE.Vector4(ocean ? SEA_SWELL.slope : 0, SEA_SWELL.lengthM, swellDirRad, ocean ? SEA_SWELL.classicNormal : 1) };
   // 2026-10-05 (the sea's second round, QA): the sky mirror's grazing exponent (1 = as before) and the per-coast shelf share
@@ -570,7 +572,7 @@ export function createShallowWaterSurface(
       float oceanBed;                 // the bed under this fragment (m below the surface) by that law
       uniform sampler2D uShoreDist;   // 2026-10-04: metres from the shore (R8, one metre a unit; the coast with an FFT ocean)
       uniform vec4 uSeaShelf;         // (on, the colour's shelf m, the clarity's shelf m, the alpha at the shore)
-      uniform vec4 uSeaTint;          // (the shelf's turquoise share, the deep blue's share, the deep body's darkening)
+      uniform vec4 uSeaTint;          // (the shelf's turquoise share, the deep blue's share, the deep body's darkening, the sky grade: WaterContactProfile.seaSkyGrade)
       uniform vec4 uSwell;            // (the swell's slope, its length m, its heading rad, the tiled ripple's scale on an FFT sea)
       uniform vec3 uSeaRough;         // 2026-10-05: (the open sea's sun-lobe roughness share, -, -)
       uniform vec4 uSeaLook;          // 2026-10-05: (the sky mirror's grazing exponent, the per-coast shelf's share, its width's scale, the sun glints' cap on the open sea — 0: the joint cap)
@@ -635,7 +637,12 @@ export function createShallowWaterSurface(
       // (0.05..0.75 -> 0.02..0.90) so a lake is not one saturated sheet 20 m out.
       // (2026-10-04: on the shelf a sand bed's turquoise, past it the deep blue — SEA_TINT)
       vec3 seaShallowCol = mix(uWaterShallow, vec3(0.028, 0.45, 0.42), uSeaTint.x * uSeaShelf.x);
-      vec3 seaDeepCol = mix(diffuseColor.rgb, vec3(0.006, 0.065, 0.195), uSeaTint.y * uSeaShelf.x);
+      vec3 seaDeepTarget = vec3(0.006, 0.065, 0.195);
+      #ifdef USE_FOG
+      // (2026-10-24, seaSkyGrade) the deep water the depth of the place's own horizon haze, not a clear sky's navy
+      seaDeepTarget = mix(seaDeepTarget, fogColor * 0.18, uSeaTint.w);
+      #endif
+      vec3 seaDeepCol = mix(diffuseColor.rgb, seaDeepTarget, uSeaTint.y * uSeaShelf.x);
       diffuseColor.rgb = mix(seaShallowCol, seaDeepCol, smoothstep(0.02, 0.90, waterDeep));
       ${paddyQuads.length ? 'diffuseColor.rgb = mix(diffuseColor.rgb, uPaddyMud, 0.75 * paddyW);' : ''}
       // Water pass 4 (2026-09-13, owner: "significantly better, more varied,
@@ -885,7 +892,10 @@ export function createShallowWaterSurface(
     shader.fragmentShader = shader.fragmentShader.replace('#include <lights_fragment_maps>',
       // Water pass 5: wind-ruffled, sediment-laden patches mirror less sky, so the
       // sheet reads as water of varying depth and colour instead of one reflection.
-      '#include <lights_fragment_maps>\nradiance *= mix(uWaterQa.x, uWaterQa.y, pow(waterGrazing, uSeaLook.x));\nradiance *= 1.15 - 0.55 * smoothstep(0.35, 0.85, waterTurbidity);');
+      '#include <lights_fragment_maps>\nradiance *= mix(uWaterQa.x, uWaterQa.y, pow(waterGrazing, uSeaLook.x));\nradiance *= 1.15 - 0.55 * smoothstep(0.35, 0.85, waterTurbidity);'
+      // (2026-10-24, seaSkyGrade) the sky's mirror in the place's own horizon haze (the scene fog's colour at the mirror's
+      // luminance), more toward the horizon, where the sea mirrors the haze band over it
+      + '\n#ifdef USE_FOG\nif (uSeaTint.w > 0.0) { float seaRl = dot(radiance, vec3(0.2126, 0.7152, 0.0722)); vec3 seaHaze = fogColor / max(dot(fogColor, vec3(0.2126, 0.7152, 0.0722)), 1e-4); radiance = mix(radiance, seaHaze * seaRl, uSeaTint.w * (0.5 + 0.5 * waterGrazing)); }\n#endif');
     // Round 66: caustics on the shelf bed. The sun ray refracts at the flat surface and lands `bed` metres down; the
     // finest cascade's curvature at that entry point focuses or spreads the light there (a thin lens of index
     // 1.333: concentration 1 / (1 + 0.25·d·∇²h), the one-bounce form of Wallace's photon splatting) and the sheet
@@ -934,7 +944,7 @@ export function createShallowWaterSurface(
   };
   if (setup) setup(material, hook);
   else material.onBeforeCompile = hook;
-  material.customProgramCacheKey = () => `shallow-water-v23-${outlandWater?.openings?.length ? 'coast' : 'land'}${paddyQuads.length ? '-paddy' : ''}`;
+  material.customProgramCacheKey = () => `shallow-water-v24-${outlandWater?.openings?.length ? 'coast' : 'land'}${paddyQuads.length ? '-paddy' : ''}`;
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `shallow_water_${mapId}`;
   mesh.userData.ocean = ocean; // round 66: probes read the field's maps and spectrum through the sheet
@@ -952,7 +962,7 @@ export function createShallowWaterSurface(
       seaShelf.value.set(shoreDist ? lightTune('SEA_SHELF', 1) : 0, lightTune('SEA_SHELF_COLOUR_M', SEA_SHELF.colourM),
         lightTune('SEA_SHELF_ALPHA_M', SEA_SHELF.alphaM), lightTune('SEA_SHALLOW_ALPHA', SEA_SHELF.shallowAlpha));
       seaTint.value.set(lightTune('SEA_TURQUOISE', seaTurquoise), lightTune('SEA_DEEP_BLUE', seaDeepBlue),
-        lightTune('SEA_DEEP_DARKEN', SEA_TINT.deepDarken), 0);
+        lightTune('SEA_DEEP_DARKEN', SEA_TINT.deepDarken), lightTune('SEA_SKY_GRADE', seaSkyGrade));
       swell.value.set(ocean ? lightTune('SEA_SWELL_SLOPE', SEA_SWELL.slope) : 0, lightTune('SEA_SWELL_M', SEA_SWELL.lengthM), swellDirRad,
         ocean ? lightTune('SEA_CLASSIC_NORMAL', SEA_SWELL.classicNormal) : 1);
       // (2026-10-05, the sea's second round, the open sea only: the sky's mirror takes over later toward the horizon (an

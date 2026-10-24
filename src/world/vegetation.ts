@@ -42,7 +42,7 @@ import { createTreeImpostorLibrary, type TreeImpostorLibrary, type TreeImpostorR
 // branch-spray atlases
 import { canopyFormProfile, GROWTH_CANOPY_DEPTH,
   canopySkyOcclusion, crownLobes, crownSurfaceNormal, emitBranchGeometry, GROWTH_CROWN_SHADING, emitCrownShadowHull, emitLeafCards, growShrubSkeleton, GROWTH_SHRUB_VALUE, growthCardRows, shrubStemSites, GROWTH_CROWN_STEM_WIDTH, growthCrownAttachments,
-  growTreeSkeleton, GROWTH_BIRCH_FOOT, GROWTH_CANOPY_AO, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES, weldGrownGeometry, type CrownShadowMass, type GrowthSpecies,
+  growTreeSkeleton, GROWTH_BIRCH_FOOT, GROWTH_CANOPY_AO, GROWTH_TUBE_SIDES, TREE_GROWTH_PROFILES, weldGrownGeometry, type CrownShadowMass, type GrowthSpecies, type ShrubCushion,
 } from './treeGrowth.ts';
 import { makePalmFrondAtlas, makeSprayAtlas, SHRUB_STEM_TILE, SPRAY_ATLAS_COVERAGE, SPRAY_ATLAS_TILES, type SprayKind } from './treeSprayAtlas.ts';
 import type { GroundLitterConfig } from './groundLitter.ts';
@@ -50,7 +50,7 @@ import { resolveLandUseProfile, type LandFieldSample } from './landUse.ts';
 import {
   insideClearPolygon, plannedSiteClearances, redistributeAuthoredTrees, type AuthoredTreeFeature,
 } from './authoredTreePlacement.ts';
-import { treeBiomeArid, treeBiomeBare, treeBiomeBlend, treeBiomeCanopyForm, treeBiomeColour, treeBiomeGrove, treeBiomeOpen, treeBiomePalette, treeBiomeRiparian, treeBiomeShrub, treeBiomeShrubColour, treeBiomeSlot, treeBiomeSnagValue, treeBiomeSnow, treeBiomeSnowPalette, treeBiomeTransmission, treeBiomeUpland, treeBiomeWindToward, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
+import { treeBiomeArid, treeBiomeBare, treeBiomeBlend, treeBiomeCanopyForm, treeBiomeColour, treeBiomeGrove, treeBiomeOpen, treeBiomePalette, treeBiomeRiparian, treeBiomeShrub, treeBiomeShrubColour, treeBiomeShrubHabit, treeBiomeSlot, treeBiomeSnagValue, treeBiomeSnow, treeBiomeSnowPalette, treeBiomeTransmission, treeBiomeUpland, treeBiomeWindToward, treeBiomeWoodSpread, uplandBandOf, uplandZoneAllows, type TreeBiomeSlot } from './treeBiomes.ts';
 import { resolveGroundReduxProfile } from './groundRedux.ts';
 import { SWARD_TONE, swardPatchAt, type SwardPatch } from './swardPatch.ts';
 import { createCraterFollower, createStaticCoverPatcher, followCraters, reseatCraterTrees, restoreCraterTrees, type GroundCoverCraters } from './groundCoverCraters.ts';
@@ -2861,9 +2861,9 @@ export function grownTintLaw(family: string, leafy = false, bare = false): reado
  * palette's laden tiles on the sky-facing sprays. Cards only, welded: the shrub's stems stand inside its foliage.
  */
 function buildGrownShrub(kind: 'bush' | 'understorey', rng: RandomSource, pal: VegetationPalette, growth: GrowthSpecies,
-  shrubAtlas = false, canopyForm = false): THREE.BufferGeometry {
+  shrubAtlas = false, canopyForm = false, habit: ShrubCushion | null = null): THREE.BufferGeometry {
   const profile = canopyForm ? canopyFormProfile(growth) : TREE_GROWTH_PROFILES[growth];
-  const skeleton = growShrubSkeleton(growth, kind, rng);
+  const skeleton = growShrubSkeleton(growth, kind, rng, habit);
   // a snowy palette's load lies on the sprays facing the sky highest on the mound: a fixed share of the shrub's sprays
   // (by the load) takes the atlas' laden tiles in that order, every other one a bare tile — every shrub of a map
   // carries the same load, not a draw's
@@ -7990,6 +7990,11 @@ function* vegetationBuildSteps(
     // the shrub grows from the sprays its material paints: the Mangrove map's willow form is the mangrove
     // trees round 2: the shrubs grow as the map's shrub form (their own material: shrubMaterials) or the bush slot's form
     const shrubForm = grownTrees ? veg.shrubForm ?? treeBiomeShrub(cfg?.id) : null;
+    // (2026-10-24, the Frontier follow-ups; the blind critic at its west arm: the field bushes "big dark, flat leaf-cluster
+    // bushes ... like cut-out cards with a detached Y-shaped clump floating against the sky") a place's shrub habit grows
+    // the bush slot's form as a cushion (treeGrowth.ts ShrubCushion): many small sprays over a full mound, not a sapling's
+    // few broad ones on its stools; the understorey under a wood keeps the form's own
+    const bushHabit = grownTrees ? treeBiomeShrubHabit(cfg?.id) : null;
     const shrubGrowth: GrowthSpecies = bushSpecies === 'willow' && veg.willowForm === 'tidalMangrove' ? 'mangrove'
       : shrubForm ?? (grownTrees ? formOf(bushSpecies)?.form : null) ?? bushSpecies;
     // the trees lane (2026-10-08, the gauntlet's wave 278 on Saltmere Bay): a wind-shorn cushion (treeGrowth.ts
@@ -8053,8 +8058,8 @@ function* vegetationBuildSteps(
       return bushMatCache;
     };
     const bushGeos = sprayAtlasSpecies.has(bushSpecies)
-      ? [buildGrownShrub('bush', mulberry32(seed + 31), bushPal, shrubGrowth, shrubOnAtlas, canopyForm),
-        buildGrownShrub('bush', mulberry32(seed + 32), bushPal, shrubGrowth, shrubOnAtlas, canopyForm)]
+      ? [buildGrownShrub('bush', mulberry32(seed + 31), bushPal, shrubGrowth, shrubOnAtlas, canopyForm, bushHabit),
+        buildGrownShrub('bush', mulberry32(seed + 32), bushPal, shrubGrowth, shrubOnAtlas, canopyForm, bushHabit)]
       : [buildBushCards(mulberry32(seed + 31), bushPal), buildBushCards(mulberry32(seed + 32), bushPal)];
     const bushPlacements: [THREE.Matrix4[], THREE.Matrix4[]] = [[], []];
     const bushKeep: [boolean[],boolean[]]=[[],[]];

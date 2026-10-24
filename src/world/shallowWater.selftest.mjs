@@ -179,7 +179,7 @@ const water = createShallowWaterSurface(surface.geometry, mask, waves, field.siz
     'the procedural bow foam bar is off inside the window too (it was the last thing that followed the hull)');
   assert.match(probe.fragmentShader, /wave\.x \* uWaterWaveStrength - rippleGrad\.x \* 1\.6/, 'the field slope tilts the normal');
   assert.match(probe.fragmentShader, /rippleGrad \*= \(min\(gl, 0\.45\) \/ max\(gl, 1e-4\)\) \* rippleW;/, 'the slope is capped at a breaking face');
-  assert.equal(routed.mesh.material.customProgramCacheKey(), 'shallow-water-v23-land', 'the program key moved with the fragment (v13: round 66, the FFT ocean; v22: 2026-10-04, the sea\'s shelf and swell; v23: 2026-10-05, the sea\'s second round)');
+  assert.equal(routed.mesh.material.customProgramCacheKey(), 'shallow-water-v24-land', 'the program key moved with the fragment (v13: round 66, the FFT ocean; v22: 2026-10-04, the sea\'s shelf and swell; v23: 2026-10-05, the sea\'s second round; v24: 2026-10-24, the sea tied to its own sky)');
   // round 47: without a baked bay contour the apron keeps the round-40 ramp; with one, the coast fades past the edge
   assert.equal(probe.uniforms.uOutlandWaterSize.value, 0, 'no contour: size 0 keeps the round-40 ramp');
   assert.match(probe.fragmentShader, /float coast = texture2D\(uOutlandWater, vWaterWorld\.xz \/ uOutlandWaterSize \+ 0\.5\)\.r;/,
@@ -245,7 +245,7 @@ assert.match(shader.fragmentShader, /1\.0 - uWaterQa\.w \* grazing/,
 // tint (colour only — the alpha ramp above is unchanged, so no pale film over
 // sand) and broken crests whiten the bank band at the authored foam strength.
 // Water pass 5 (2026-09-13): the bank colour rises further into the body (0.02..0.90).
-assert.match(shader.fragmentShader, /vec3 seaShallowCol = mix\(uWaterShallow, vec3\(0\.028, 0\.45, 0\.42\), uSeaTint\.x \* uSeaShelf\.x\);\s*vec3 seaDeepCol = mix\(diffuseColor\.rgb, vec3\(0\.006, 0\.065, 0\.195\), uSeaTint\.y \* uSeaShelf\.x\);\s*diffuseColor\.rgb = mix\(seaShallowCol, seaDeepCol, smoothstep\(0\.02, 0\.90, waterDeep\)\)/,
+assert.match(shader.fragmentShader, /vec3 seaShallowCol = mix\(uWaterShallow, vec3\(0\.028, 0\.45, 0\.42\), uSeaTint\.x \* uSeaShelf\.x\);\s*vec3 seaDeepTarget = vec3\(0\.006, 0\.065, 0\.195\);\s*#ifdef USE_FOG[\s\S]*?seaDeepTarget = mix\(seaDeepTarget, fogColor \* 0\.18, uSeaTint\.w\);\s*#endif\s*vec3 seaDeepCol = mix\(diffuseColor\.rgb, seaDeepTarget, uSeaTint\.y \* uSeaShelf\.x\);\s*diffuseColor\.rgb = mix\(seaShallowCol, seaDeepCol, smoothstep\(0\.02, 0\.90, waterDeep\)\)/,
   'the shallow tint is a depth-mixed hue, never an opacity change');
 assert.match(shader.fragmentShader, /foamBank \* 0\.55 \+ foamCrest \* 0\.45\) \* uWaterFoam/, 'shoreline and crest foam scale with the authored profile');
 assert.equal(shader.uniforms.uWaterFoam.value, 0.85, 'coastal foam strength');
