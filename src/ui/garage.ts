@@ -802,21 +802,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button type="button" data-tabbar="gallery">${uiIconSVG('gallery', 22)}<span>${t('garage.nav.gallery')}</span></button>` +
     `<button type="button" data-tabbar="record">${uiIconSVG('record', 22)}<span>${t('garage.nav.record')}</span></button>` +
     `<button type="button" data-tabbar="more">${uiIconSVG('menu', 22)}<span>${t('garage.nav.more')}</span></button></nav>` +
-    `<nav class="cot-garage-tools" aria-label="${t('garage.tools.stagingAreas')}">` +
-    `<button class="cot-garage-tool cot-garage-preview-card" type="button" data-garage-panel="maps" ` +
-    `aria-label="${t('garage.tools.chooseStaging')}" aria-expanded="false" aria-controls="cot-garage-maps">` +
-    `<span class="cot-garage-preview-head">${uiIconSVG('map', 15)}<strong>${t('garage.tools.battlefields')}</strong></span>` +
-    `<span class="cot-garage-map-preview" aria-hidden="true"></span>` +
-    `<span class="cot-garage-preview-foot"><span data-garage-map-name></span>` +
-    `${uiIconSVG('chevronRight', 14)}</span></button>` +
-    `<button class="cot-garage-tool cot-garage-preview-card" type="button" data-garage-panel="appearance" ` +
-    `aria-label="${t('garage.tools.appearanceHint')}" aria-expanded="false" aria-controls="cot-garage-camos">` +
-    `<span class="cot-garage-preview-head">${uiIconSVG('camouflage', 15)}<strong>${t('garage.tools.camos')}</strong></span>` +
-    `<span class="cot-garage-camo-preview" aria-hidden="true">` +
-    `<canvas width="64" height="44"></canvas><canvas width="64" height="44"></canvas>` +
-    `<canvas width="64" height="44"></canvas><canvas width="64" height="44"></canvas></span>` +
-    `<span class="cot-garage-preview-foot"><span data-garage-camo-name></span>` +
-    `${uiIconSVG('chevronRight', 14)}</span></button></nav>` +
     `<button class="cot-garage-panel-scrim" type="button" aria-label="${t('garage.tools.close')}"></button>` +
     `<div class="stats" id="cot-garage-dossier" data-locked="${t('garage.vehicleLocked')}"></div>` +
     `<div class="cot-country-rail">` +
@@ -1090,10 +1075,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const garageVariantThumb = requiredElement<HTMLImageElement>(root, '.cot-garage-variant-trigger-thumb');
   const mobileNavTrigger = requiredElement<HTMLButtonElement>(root, '.cot-mobile-nav-trigger');
   const mobileNavMenu = requiredElement<HTMLElement>(root, '.cot-mobile-nav-menu');
-  const compactMapPreview = requiredElement<HTMLElement>(root, '.cot-garage-map-preview');
-  const compactMapName = requiredElement<HTMLElement>(root, '[data-garage-map-name]');
-  const compactCamoName = requiredElement<HTMLElement>(root, '[data-garage-camo-name]');
-  const garagePanelButtons = [...root.querySelectorAll<HTMLButtonElement>('.cot-garage-tool')];
   const garagePanelScrim = requiredElement<HTMLButtonElement>(root, '.cot-garage-panel-scrim');
 
   // --- STATIONS (brand-ui S2): the rail's six views of the selected tank (keys 1 to 6). Each shows its dossier sections;
@@ -1515,11 +1496,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     technicalModalTabs[next].focus();
     selectTechnicalModalView(technicalModalTabs[next].dataset.technicalModalView as GarageTechnicalViewId);
   });
-  garagePanelButtons.forEach((button) => button.addEventListener('click', () => {
-    emit('ui:click', {});
-    const panel = button.dataset.garagePanel;
-    setGaragePanel(openGaragePanel() === panel ? '' : panel);
-  }));
   garagePanelScrim.addEventListener('click', () => setGaragePanel('', { restoreFocus: true }));
   root.querySelector('.cot-drawer-close')?.addEventListener('click', () => setGaragePanel('', { restoreFocus: true }));
   window.addEventListener('cot:layoutchange', () => {
@@ -1660,10 +1636,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const maps = opts.maps || [];
   let selectedMapId = defaultGarageMapId(maps);
   const mapCardById = new Map<string, HTMLElement>();
-  function refreshCompactMapPreview(): void {
+  // The selected battlefield on the battle card and the Deploy screen's field.
+  function refreshBattlefield(): void {
     const selected = maps.find((map) => map.id === selectedMapId) || maps[0];
     if (!selected) return;
-    compactMapName.textContent = selected.name;
     requiredElement<HTMLElement>(root, '[data-deploy-map]').textContent = selected.name;
     // the battle card's picture: the battlefield's 512 px still (never its 4K hero), or every battlefield for Random
     const deployPic = requiredElement<HTMLElement>(root, '[data-deploy-pic]');
@@ -1685,13 +1661,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (selected.id === 'random') fieldThumb.appendChild(createRandomMapMosaic(maps));
     deployScreen?.drawObjectives();
     closeDeployField();
-    compactMapPreview.className = `cot-garage-map-preview ${selected.id}`;
-    compactMapPreview.style.removeProperty('background-image');
-    compactMapPreview.replaceChildren();
-    if (selected.id === 'random') compactMapPreview.appendChild(createRandomMapMosaic(maps));
-    else if (selected.thumb) {
-      compactMapPreview.style.backgroundImage = `url("${selected.thumb.replace(/"/g, '%22')}")`;
-    }
   }
   function initializeMapPicker(): void {
     if (!maps.length) return;
@@ -2518,13 +2487,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     paintEl.querySelector<HTMLButtonElement>('[data-lt-paint]')?.focus({ preventScroll: true });
   });
 
-  // The folded tool cards (garage.css) no longer show in any layout: the band carries the paint, so only their name stays
-  // current and their four canvases are left unpainted.
-  function refreshCompactCamoPreview(spec: GarageTankSpec, selectedPatternId: string): void {
-    compactCamoName.textContent = camoPatternLabel(selectedPatternId);
-    refreshBandPaint(spec, selectedPatternId);
-  }
-
   function refreshCamoSel() {
     if (!camoOpts || !selectedId) return;
     const selectedPatternId = camoOpts.get(selectedId);
@@ -2537,7 +2499,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     syncCamoCardSelection(selectedPatternId);
     const spec = specById.get(selectedId);
     if (!spec) return;
-    refreshCompactCamoPreview(spec, selectedPatternId);
+    refreshBandPaint(spec, selectedPatternId);
     // repaint swatch tiles for THIS tank (factory palette + nation digital
     // differ per vehicle — the preview must show what the hull will wear)
     if (swatchesFor === selectedId) return;
@@ -3097,7 +3059,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const setHotspotFacts = (facts: HotspotFacts | null): void => { hotspotFacts = facts; hotspots?.setFacts(facts); };
   const loadHotspots = (): void => {
     if (window.__GAME_READY !== true) { setTimeout(loadHotspots, 300); return; }
-    const load = () => void import('./garageHotspots.ts').then(({ createGarageHotspots }) => {
+    // the hotspots' sheet rides with their module, off the Garage's first paint
+    const load = () => void Promise.all([import('./garageHotspots.ts'), import('./garageHotspots.css')]).then(([{ createGarageHotspots }]) => {
       // over the Garage's edge bands (which dim the scene), under every panel
       hotspots = createGarageHotspots(root, hotspotRoom, root.querySelector('.band-r')?.nextElementSibling ?? null);
       hotspots.setFacts(hotspotFacts);
@@ -4519,7 +4482,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         const inspect = card.querySelector<HTMLButtonElement>('.cot-map-inspect');
         if (inspect) inspect.disabled = id !== mapId;
       }
-      refreshCompactMapPreview();
+      refreshBattlefield();
       if (opts.onMapSelect) opts.onMapSelect(mapId);   // CAMO WIRING: AUTO preview
       // Keep packaged portraits healthy after the biome/camo transition.
       requeueTankThumbs();
