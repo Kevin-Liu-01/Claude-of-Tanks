@@ -11725,10 +11725,11 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
     leoHullV3(P, {
       bodyHW: 1.56, sponsonY: 1.19, trackW: 0.587, xc: 1.262,
       // release 240 (the owner: "make sure all tank turrets are clear of hulls"): the deck stays under the bustle's
-      // underside (1.71, 2.98 m off the ring's axis) to -2.34, under its stowage (1.777, 3.08 m) to -2.44, and meets the
-      // power-pack plateau at -2.52; it rose from -0.58, and the bustle sat 10 cm in it at rest (authored metres, before
+      // underside (1.71, 2.98 m off the ring's axis) to -2.34, under its stowage (1.78, 3.2 m) to -2.58, and meets the
+      // power-pack plateau at -2.63; it rose from -0.58, and the bustle sat 10 cm in it at rest (authored metres, before
       // the 5% enlargement)
-      deck: [[1.55, 1.615], [-0.58, 1.64], [-1.90, 1.665], [-2.34, 1.70], [-2.44, 1.765], [-2.52, 1.82], [-3.66, 1.82]],
+      deck: [[1.55, 1.615], [-0.58, 1.64], [-1.90, 1.665], [-2.34, 1.70], [-2.44, 1.765], [-2.58, 1.772], [-2.63, 1.82],
+        [-3.66, 1.82]],
       glacis: [[1.55, 1.615], [2.20, 1.512], [3.08, 1.375], [3.60, 1.275], [3.84, 1.225]],
       glacisLaneCut: { x: 0.93, z0: 2.90 },
       sponsonLaneLift: { z0: -3.66, z1: 2.95, x0: 0.94, y: 1.50 },
@@ -11759,8 +11760,8 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
       dedupeLoopPoints: true,
       padHex: 0x2c2d25, chainHex: 0x24251f,
       gearFloor: true,
-      // (radiatorWellLength, release 240: the wells end at -2.48, on the power-pack plateau behind the lowered deck)
-      fans: { z: -3.05, x: 0.62, r: 0.30 }, fanWell: true, radiatorWellLength: 0.52,
+      // (radiatorWellLength, release 240: the wells end at -2.63, on the power-pack plateau behind the lowered deck)
+      fans: { z: -3.05, x: 0.62, r: 0.30 }, fanWell: true, radiatorWellLength: 0.37,
       splashArms: false, jackDark: true,
     });
 
