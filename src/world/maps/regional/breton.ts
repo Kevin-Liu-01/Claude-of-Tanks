@@ -254,7 +254,9 @@ function dwelling(ctx: RegionalBuildContext, opts: { longere?: boolean; storeys?
       : vary() < 0.45 ? centred : (vary() < 0.5 ? -1 : 1) * (W / 2 - 1.25 - vary() * 0.3);
   openings.push({ face: doorFace, storey: 0, kind: 'door', u: doorU, w: 0.95, y0: 0, h: 2.05 });
   const bayCount: Record<FaceName, number> = eaves
-    ? { right: hd >= 7 && vary() < 0.45 ? 3 : 2, left: vary() < 0.5 ? 1 : 2, front: vary() < 0.25 ? 1 : 0, back: vary() < 0.25 ? 1 : 0 }
+    // (an eaves-fronted house's side gables, seen end on down the street: a window a floor in most, the stacks over them;
+    // v3's first frames read a blind rendered gable as an unfinished wall)
+    ? { right: hd >= 7 && vary() < 0.45 ? 3 : 2, left: vary() < 0.5 ? 1 : 2, front: vary() < 0.75 ? 1 : 0, back: vary() < 0.75 ? 1 : 0 }
     : {
       front: longere ? 0 : W >= 6.3 && vary() < 0.35 ? 3 : vary() < 0.2 ? 1 : 2,
       back: longere ? 0 : vary() < 0.5 ? 1 : 2,
@@ -276,7 +278,7 @@ function dwelling(ctx: RegionalBuildContext, opts: { longere?: boolean; storeys?
         row = bays(face, i, face === 'front' || face === 'back' ? hw : hd, bayCount[face], w, 1.0, avoid, vary);
       }
       for (const o of row) {
-        if (face === 'back' && rng() < 0.4) continue;
+        if (face === 'back' && rng() < 0.4 && !eaves) continue;
         openings.push(o);
       }
     }
