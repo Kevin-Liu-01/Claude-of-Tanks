@@ -8,12 +8,18 @@
 //    stays closed; the same pair cut without the dents (no corners given) cracks once bent, so the fixture sees the defect;
 //  - the vt4a1's live wreck at seed 77 (its bot and its player build): no new corner of the cut lies inside an edge of
 //    the hull's own (an unsplit neighbour's) without being a corner of a face on that edge, however the dents bend it;
-//    and the cut is the same twice for the same kill.
+//    and the cut is the same twice for the same kill;
+//  - (244) a ring measured past the hull's own sides through the cut's depth (the MBT-70's, over its fender roofs) is
+//    held inside them: the live seat takes its cap, the uncapped measure reaches past it.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import '../../tools/tank-surface-collect.mjs';
 import { createTank, ensureTankBuilder } from './fleetFactory.ts';
-import { createTurretRingPresentation, cutGeometryAtTurretRing, turretRingCut } from './turretRingWell.ts';
+import {
+  TURRET_RING_SIDE_CAPS, createTurretRingPresentation, cutGeometryAtTurretRing, measureTurretRing, turretRingCut,
+  turretRingRadius,
+} from './turretRingWell.ts';
+import { getSpec } from './specs.ts';
 
 /** The burn hook's field at a hull-frame point, at full depth (materials.ts CRUMPLE_NORMAL_GLSL). */
 function field(dents, x, y, z) {
@@ -273,6 +279,25 @@ for (const [build, options] of [
   visual.resetDestroyed();
   visual.setDestroyed({ pop: true, ageS: 1000 });
   meshes.forEach((o, m) => assert.deepEqual(o.geometry.getAttribute('position').array, first[m], `vt4a1 ${build}: ${o.name} cut the same again`));
+  visual.dispose();
+}
+// ---- (244) the MBT-70's ring held inside its hull's sides ------------------------------------------------------------
+{
+  await ensureTankBuilder('mbt70');
+  const cap = TURRET_RING_SIDE_CAPS.mbt70;
+  assert.ok(cap > 0, 'the MBT-70 carries a side cap');
+  const visual = createTank('mbt70', null, { camoSeed: 77, quality: 'low', geometryQuality: 'low', batchStatic: true,
+    battleDetailLod: true, eraVisualBindingReceipt: false });
+  const hull = visual.root.getObjectByName('rig_hull'), turret = visual.root.getObjectByName('rig_turret');
+  const uncapped = measureTurretRing(hull, turret, turretRingRadius(getSpec('mbt70').armor));
+  assert.ok(uncapped.rimR > cap + 0.1, `the uncapped race runs out past the hull's sides (${uncapped.rimR})`);
+  const seat = visual.turretRingSeat();
+  assert.equal(seat.source, 'measured', 'a measured ring (no calibration receipt)');
+  assert.ok(seat.rimR <= cap + 1e-9, `the live seat is held inside them (${seat.rimR} <= ${cap})`);
+  visual.setDestroyed({ pop: true, ageS: 1000 });
+  let plate = null;
+  visual.root.traverse((o) => { if (o.userData?.turretRingPlate) plate = o; });
+  assert.ok(plate && plate.userData.turretRingSeat.rimR <= cap + 1e-9, 'and the kill\'s plate and cut with it');
   visual.dispose();
 }
 console.log('turretRingWatertight selftest: ok');

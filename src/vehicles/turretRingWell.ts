@@ -84,6 +84,21 @@ const BAND_TOP_M = 0.002;
 /** The burn hook's dent ramp (materials.ts CRUMPLE_NORMAL_GLSL: smoothstep( 0.0, 0.35, uBurnT )). */
 const DENT_RAMP_S = 0.35;
 
+/**
+ * (244) Rings measured wider than the hull's own sides through the depth a live wreck's cut reaches under the race (the
+ * race's outer radius held inside them, m). There the cut opened the hull's side wall into a slot that no band closes:
+ * the MBT-70's deck runs on flush over its fender roofs, its measured race past the upper hull's sides at ±0.97 m, and
+ * from under the fender roof the eye saw through the 0.2 m slot into the hull (30-45 px at every seed; the Object 148's
+ * 31-65 px the same way). The exterior
+ * pass finds them (the hull's skin the eye reaches inside the race's radius within that depth); it is too slow for a
+ * battle's warm, so the scan's result is kept here (tools/turret-ring-side-caps.mjs --check). Measured rings only: a
+ * calibration receipt's ring is the intact seat's too.
+ */
+export const TURRET_RING_SIDE_CAPS: Readonly<Record<string, number>> = Object.freeze({
+  mbt70: 0.93,
+  object148_proto: 0.95,
+});
+
 /** The polygon the plate's rim and the hull's cut share: corner k at bearing 2πk/sides (x = sin, z = cos). */
 export function turretRingSides(high: boolean): number { return high ? 64 : 48; }
 
@@ -231,7 +246,7 @@ export function measureTurretRing(
   hullRig: THREE.Object3D,
   turretRig: THREE.Object3D,
   ringR: number,
-  options: { exterior?: boolean } = {},
+  options: { exterior?: boolean; rimCap?: number } = {},
 ): AnatomyTurretRingReceipt | null {
   hullRig.updateWorldMatrix(true, true);
   turretRig.updateWorldMatrix(true, true);
@@ -347,6 +362,8 @@ export function measureTurretRing(
   const w = raceWidth(R + 0.07);
   let rimR = R + w;
   if (Number.isFinite(footR)) rimR = Math.min(rimR, footR - 0.02);
+  // (244) inside the hull's own sides through the depth a live wreck's cut reaches (TURRET_RING_SIDE_CAPS)
+  if (options.rimCap !== undefined) rimR = Math.min(rimR, options.rimCap);
   rimR = Math.max(0.15, rimR);
   const inside = heightsWithin(0, 0.7 * rimR);
   const level = inside.length ? percentile(inside, 0.9) : deck0;
@@ -525,7 +542,7 @@ const CRUMPLE_REACH_M = 0.32;
  * what the eye reaches only through it the well replaces). Every pixel's nearest hull face inside the well's reach is a
  * point of the hull's outside there: per point its distance from the axis and its height.
  */
-function exteriorSkin(triangles: readonly number[], cx: number, cz: number, deckY: number, rimR: number,
+export function exteriorSkin(triangles: readonly number[], cx: number, cz: number, deckY: number, rimR: number,
   floorY: number, margin = EXTERIOR_MARGIN_M): { r: number; y: number }[] {
   const lip = deckY - LIP_M;
   const reach = Math.max(0.5 * rimR, rimR - raceWidth(rimR)) - 0.018 + margin;
@@ -2088,7 +2105,7 @@ export function createTurretRingPresentation(options: TurretRingPresentationOpti
     }
     // no receipt (a tool's build, a tank the anatomy update has not reached) or a stale one: this build, once
     root.updateMatrixWorld(true);
-    const measured = measureTurretRing(hull, turret, turretRingRadius(armor), { exterior: !rendered });
+    const measured = measureTurretRing(hull, turret, turretRingRadius(armor), { exterior: !rendered, rimCap: TURRET_RING_SIDE_CAPS[specId] });
     cached = measured ? turretRingSeatFrom(measured, armor, hullFloorY, 'measured') : null;
     return cached;
   }
