@@ -62,9 +62,9 @@ function driverFor(r, landings = []) {
     prev = p.clone();
   }
   assert.ok(peak > start.y + 1.5, `thrown clear of the hull (${(peak - start.y).toFixed(2)} m)`);
-  // a step's travel at the fastest throw (244: the cook-off's 19 m/s climb cap with its 4.8 m/s side throw, about 0.33 m a
+  // a step's travel at the fastest throw (244: the cook-off's 21 m/s ceiling with its 4.8 m/s side throw, about 0.36 m a
   // 60 Hz step; 0.25 m before the throw cleared its fireball); a snap is many steps' worth
-  assert.ok(worstJump < 0.35, `no frame jumps further than a step's travel (${worstJump.toFixed(3)} m): no snap`);
+  assert.ok(worstJump < 0.37, `no frame jumps further than a step's travel (${worstJump.toFixed(3)} m): no snap`);
   assert.ok(landings.length >= 1 && landings[0].speed > 2.2, `its landing was reported (${landings.length})`);
   const rest = drawnFrame(r.turret).p.clone();
   driver.update(11, 1);
