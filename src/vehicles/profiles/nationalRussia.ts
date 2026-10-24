@@ -117,8 +117,10 @@ function hullKit(P:TankBuilderPort,c:NationalModernizationConfig):void {
  }
  const hy=seat(P,'hull',0,1.49);
  P.addHatch('hull',box(.54,.029,.37),0,hy+.009,1.49);
- P.addEquipment('hullDetail',box(.31,.045,.075),0,hy+.043,1.60);
- P.addEquipment('hullGlass',box(.23,.023,.012),0,hy+.045,1.643);
+ // (release 240: the periscope block 1.5 cm lower, its foot still in the hatch plate, under the turret's front
+ // underside as it turns over it)
+ P.addEquipment('hullDetail',box(.31,.045,.075),0,hy+.028,1.60);
+ P.addEquipment('hullGlass',box(.23,.023,.012),0,hy+.030,1.643);
  // Keep the turbine/diesel rear identities visible beneath the service kit.
  if(m===0){
   P.addEquipment('hullDetail',box(1.31,.23,.16),0,1.20,-3.20);

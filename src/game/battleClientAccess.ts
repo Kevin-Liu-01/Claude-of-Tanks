@@ -102,6 +102,7 @@ export function createBattleClientAccess(
     gunCenterRay: (...args) => requireAim().gunCenterRay(...args),
     muzzlePathBlockDist: (...args) => requireAim().muzzlePathBlockDist(...args),
     update(frame) { if (aim) aim.update(frame); },
+    observe(frame, tankId, view) { if (aim) aim.observe(frame, tankId, view); },
   };
 
   return {

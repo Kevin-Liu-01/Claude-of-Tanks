@@ -18,18 +18,20 @@ export { Room } from './room.ts';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
+    // Anonymous junk is answered from the request alone, cheapest first, before the limiter and the Durable Object
+    // (security audit 2026-10-22, NV-5/NV-9: the account is on Workers Free, and only a real room socket reaches a room).
+    if (request.method !== 'GET') return json({ error: 'method_not_allowed' }, 405, { allow: 'GET' });
     const url = new URL(request.url);
-    if (request.method === 'GET' && url.pathname === '/healthz' && !url.search) {
+    if (url.pathname === '/healthz' && !url.search) {
       return json({ ok: true, service: 'cot-rooms', backend: 'durable-object', matchHost: 'p2p' });
     }
     const route = parseRoomRoute(url.pathname);
-    if (!route || url.hash) return json({ error: 'invalid_room_route' }, 404);
+    if (!route || url.hash || url.search) return json({ error: 'invalid_room_route' }, 404);
     if (!allowedOrigin(request, env.ALLOWED_ORIGINS)) return json({ error: 'origin_forbidden' }, 403);
     if (!isWebSocketUpgrade(request)) return json({ error: 'websocket_required' }, 426);
+    if (route.match) return json({ error: 'match_host_unavailable' }, 503);
     const { success } = await env.ROOM_CONNECT_LIMITER.limit({ key: request.headers.get('CF-Connecting-IP') || 'local' });
     if (!success) return json({ error: 'rate_limit' }, 429, { 'retry-after': '60' });
-    if (route.match) return json({ error: 'match_host_unavailable' }, 503);
-    if (url.search) return json({ error: 'invalid_room_route' }, 404);
     try { return await env.ROOMS.getByName(route.code).fetch(request); }
     catch (error) { console.error('room object unavailable', { room: route.code, error: String(error) }); return json({ error: 'room_store_unavailable' }, 503); }
   },

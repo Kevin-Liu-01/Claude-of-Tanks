@@ -262,8 +262,11 @@ function basket(P: TankBuilderPort): void {
       // The lower rail is genuinely inset under the flared upper hoop.
       rail(new THREE.Vector3(side*x*.934,1.811,z*.91),new THREE.Vector3(side*nx*.934,1.811,nz*.91));
       if(i%2===0) {
-        rail(new THREE.Vector3(side*x*.934,1.62,z*.91),new THREE.Vector3(side*x,2.006,z));
-        rail(new THREE.Vector3(side*x*.934,1.62,z*.91),new THREE.Vector3(side*(x-.20),1.68,z*.91));
+        // (release 240: the aft foot, behind the casting over the engine grilles, stands 10 cm higher, over their bars
+        // as the turret turns; it sat 2.5 cm in them at rest)
+        const footY=i>=10?1.72:1.62, kneeY=i>=10?1.75:1.68;
+        rail(new THREE.Vector3(side*x*.934,footY,z*.91),new THREE.Vector3(side*x,2.006,z));
+        rail(new THREE.Vector3(side*x*.934,footY,z*.91),new THREE.Vector3(side*(x-.20),kneeY,z*.91));
       }
     }
   }

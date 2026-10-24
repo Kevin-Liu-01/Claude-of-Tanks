@@ -15,11 +15,24 @@ type PlanBox = Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>;
  *  unless a queued medal card waits on it). */
 const SCOPED_ATTRIBUTE = 'data-cot-scoped';
 
-/** Matches the scoreboard polygon; the objective clears each bottom corner by 8px. */
-export const SCORE_BOTTOM_INSET = 25;
+/** The scoreboard polygon's bottom corners (6 % of the plate, the direction's trapezoid) stay inside this on the
+ *  compact plates; the objective clears each by 8px. */
+const SCORE_BOTTOM_INSET = 25;
+/** The objective's width under the desktop plate: the panel keeps its measure under the direction's wider score. */
+const OBJECTIVE_MAX_W = 278;
 export function objectiveWidth(scoreWidth: number): number {
-  return Math.max(0, scoreWidth - 2 * (SCORE_BOTTOM_INSET + 8));
+  return Math.max(0, Math.min(OBJECTIVE_MAX_W, scoreWidth - 2 * (SCORE_BOTTOM_INSET + 8)));
 }
+/** The team strip's gap under the score, and the objective's under the strip (hudTeamPips.ts: the direction's pips sit
+ *  6 px under the plate). */
+const PIPS_GAP = 6;
+/** The mission plate's corner seat (brand-ui H3, the direction's .mission at 16, 14): the mouse layouts the team strip
+ *  shows on, where the plate keeps CORNER_GAP from the score; battleHudLayout.css data-objective-seat=corner. */
+const CORNER_GAP = 12;
+const WIDE_TOP_WIDTHS = new Set(['laptop', 'desktop']);
+const WIDE_TOP_HEIGHTS = new Set(['standard', 'tall']);
+const wideTop = (touch: boolean) => !touch && WIDE_TOP_WIDTHS.has(document.body.dataset.cotWidth ?? '')
+  && WIDE_TOP_HEIGHTS.has(document.body.dataset.cotHeight ?? '');
 
 export const MAX_BATTLE_NOTIFICATIONS = 8;
 /** Whole 26px rows, separated by 3px, within the available lane. */
@@ -87,7 +100,7 @@ export function portraitSightClearTop(top: number, height: number, centerY: numb
  *  report, the open combat log and the centre notices are passing overlays the reticle never dodges, or its marks would
  *  jump as they come and go (only the vision switch keeps clear of the right lane's: seatScopeVision). */
 const SIGHT_FURNITURE = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .joy',
-  '.cot-touch.on .quick', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show',
+  '.cot-touch.on .quick', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-pips.show', '.cot-mode-status.show',
   '.cot-scope-vision', '.cot-aim-warning:not([hidden]):not([data-seat])', '.flight-identity', '.cot-ear'].join(',');
 /** What a touch layout's centre notices, countdown and medal card keep clear of besides the reticle's footprint
  *  (touchNoticePlan.ts): the controls, the ammunition and consumables, the instruments, the vision plate, the warning
@@ -100,7 +113,7 @@ const TOUCH_NOTICE_OBSTACLES = '.cot-vehicle-controls>button,.cot-shell,.cot-con
 /** The round buttons' labels hung under them (r10g: the alert sat on AUTO AIM and SCOPE at 375x667; touchNoticePlan
  *  `labels`). */
 const TOUCH_NOTICE_LABELS = '.cot-touch.on .round>.lb';
-const TOUCH_NOTICE_SOFT = '.cot-top,.cot-mode-status.show,.cot-ear,.cot-net,.cot-mp-status.battle,'
+const TOUCH_NOTICE_SOFT = '.cot-top,.cot-pips.show,.cot-mode-status.show,.cot-ear,.cot-net,.cot-mp-status.battle,'
   + '.cot-si-toasthost,.cot-room-chat:not([hidden]),.cot-spec.show';
 /** The alert's height while none shows (two lines at the touch type size in the detection's width), so places hold. */
 const TOUCH_ALERT_RESERVE_H = 40;
@@ -135,6 +148,9 @@ function translationY(node: Element): number {
   const transform = getComputedStyle(node).transform;
   return transform && transform !== 'none' && typeof DOMMatrixReadOnly === 'function' ? new DOMMatrixReadOnly(transform).m42 : 0;
 }
+/** The notices the kill ribbon steps aside for (yieldKillRibbon). */
+const RIBBON_YIELDS = '.cot-sixth.on,.cot-alert.show,.cot-prebattle.on,.cot-revive.on,'
+  + '.cot-medal-toasts[data-placement="ready"] .cot-medal-toast';
 /** The left lane's feeds, which the scope's vision switch keeps clear of in its mirror seat (seatScopeVision). */
 const LEFT_LANE = '.cot-kill-lane.l .cot-kf:not([hidden]),.cot-si-toasthost .cot-si-toast:not([hidden]),.cot-room-chat:not([hidden])';
 /** What covers the vision switch's seat right of the sight on a mouse layout (critic r9: under about 1200 px wide): a shot
@@ -244,20 +260,30 @@ export function installBattleHudLayout(root: HTMLElement): void {
   let seatAwaitsFaces = false;
   /** Seats the objective (OBJECTIVE_COMPACT_H) and writes its seat and place before the pass reads it: the side seat is
    *  measured in its compact form under the map and kept where it ends over the joystick (the left lane's own floor
-   *  reserves a short landscape's hidden second FIRE button). 'side', or '' (the panel under the score). */
-  function seatObjective(touch: boolean, width: number, height: number, map: DOMRect | null, score: DOMRect | null): string {
+   *  reserves a short landscape's hidden second FIRE button); the corner seat is measured as the mission plate in the top
+   *  left and kept where it clears the score. 'side', 'corner', or '' (the panel under the score and the team strip). */
+  function seatObjective(touch: boolean, width: number, height: number, map: DOMRect | null, score: DOMRect | null,
+    pips: DOMRect | null): string {
     const node = document.querySelector<HTMLElement>('.cot-mode-status.show');
-    objectivePlace = { left: score ? score.left + score.width / 2 : width / 2, top: score?.bottom || 64,
+    objectivePlace = { left: score ? score.left + score.width / 2 : width / 2, top: pips ? pips.bottom + PIPS_GAP : score?.bottom || 64,
       width: objectiveWidth(score?.width || 344) - (touch && read('.cot-mp-status.battle') && width > height ? 52 : 0) };
     let seat = '';
-    const key = `${width}x${height}|${node?.dataset.mode}`;
-    if (node && touch && width > height && height <= OBJECTIVE_COMPACT_H && map && map.left < width / 2 && key !== objectiveTopKey) {
+    if (node && score && wideTop(touch)) {
+      writeObjective('corner', objectivePlace);
+      const box = node.getBoundingClientRect();
+      if (box.width > 0 && box.right <= score.left - CORNER_GAP) seat = 'corner';
+      else if (document.fonts?.status === 'loading') seatAwaitsFaces = true;
+    }
+    // (a Standard battle's plate shows only in the corner: battleHudLayout.css .quiet)
+    const shown = node && !node.classList?.contains('quiet') ? node : null;
+    const key = `${width}x${height}|${shown?.dataset.mode}`;
+    if (shown && touch && width > height && height <= OBJECTIVE_COMPACT_H && map && map.left < width / 2 && key !== objectiveTopKey) {
       const seatWidth = Math.max(map.width, PARKED_CHIP_W);
       const place = { left: map.left + seatWidth / 2, top: map.bottom + OBJECTIVE_SEAT_GAP, width: seatWidth };
       writeObjective('side', place);
       const floor = Math.min(read('.cot-touch.on .joy')?.top ?? height, read('.cot-touch.on .fire.alt')?.top ?? height, height) - 8;
       // (never kept from a measure the HUD's faces have not reached yet: a fallback face wraps wider)
-      if (node.getBoundingClientRect().bottom <= floor) { seat = 'side'; objectivePlace = place; }
+      if (shown.getBoundingClientRect().bottom <= floor) { seat = 'side'; objectivePlace = place; }
       else if (document.fonts?.status !== 'loading') objectiveTopKey = key;
       else seatAwaitsFaces = true;
     }
@@ -318,6 +344,21 @@ export function installBattleHudLayout(root: HTMLElement): void {
       if (seat) document.body.dataset.scopeVision = seat;
       else delete document.body.dataset.scopeVision;
     }
+  }
+  /** The kill ribbon (hudKillRibbon.ts) holds one place centre low; it steps aside while a notice this pass placed meets
+   *  that place (one notice slot, SPEC 12.2.2): the detection, an alert, the countdown, the revive count, a medal card. */
+  function yieldKillRibbon(): void {
+    const ribbon = root.querySelector<HTMLElement>('.cot-ribbon');
+    if (!ribbon) return;
+    const place = ribbon.getClientRects().length ? ribbon.getBoundingClientRect() : null;
+    let meets = false;
+    if (place) {
+      for (const node of document.querySelectorAll(RIBBON_YIELDS)) {
+        const box = shownBox(node);
+        if (box && apart(place, box) < 8) { meets = true; break; }
+      }
+    }
+    if (ribbon.classList.contains('yield') !== meets) ribbon.classList.toggle('yield', meets);
   }
   /** Measures the furniture the reticle keeps clear of (sightFurniture.ts), once per relayout, and on a touch layout the
    *  sixth-sense notice its seated warning chip yields to. */
@@ -418,6 +459,8 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const add = (r: PlanBox | null, role = 0) => { if (r) box(r.left, r.top, r.width, r.height, role); };
     // score, objective and minimap, then the ammunition rail and the network strip, as refresh() read them
     for (let i = 0; i < seen.length; i++) add(seen[i], i < 3 ? 1 : 0);
+    // the team strip under the score, a panel like the score's
+    add(read('.cot-pips.show'), 1);
     // each roster down to its height while Tab is held (its width then stops short of anything shown)
     for (let side = 0; side < 4; side += 2) {
       const ear = rosters[side] as DOMRect | null;
@@ -552,7 +595,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
       settleSightFurniture();
       return;
     }
-    observe('.cot-vehicle-status,.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-mode-status,.cot-prebattle,.cot-prebattle-rules,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
+    observe('.cot-vehicle-status,.cot-net,.cot-aim-warning,.cot-sixth,.cot-alert,.cot-ear,.cot-minimap,.cot-dp,.cot-drive,.cot-vehicle-controls,.cot-spec,.cot-top,.cot-pips,.cot-mode-status,.cot-prebattle,.cot-prebattle-rules,.cot-touch .mobile-chrome,.cot-shells,.cot-touch .autoaim,.cot-touch .joy,.cot-touch .fire.alt');
     // the revive count is placed (mouse) as it shows
     if (!document.body.classList.contains('cot-touch-layout')) observe('.cot-revive');
     observe('.cot-si-toasthost,.cot-room-chat,.cot-kill-lane,.cot-medal-toasts,.cot-si-cardhost,.cot-si-log', true);
@@ -585,10 +628,14 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const map = read('.cot-minimap');
     const score = read('.cot-top');
     const scoreBottom = score?.bottom || 64;
-    const objectiveSeat = seatObjective(touch, width, height, map, score);
+    // the team strip under the score (hudTeamPips.ts), where it shows; the objective under the score sits under it
+    setBodyVar('--hud-pips-top', `${Math.round(scoreBottom + PIPS_GAP)}px`);
+    const pips = read('.cot-pips.show');
+    const objectiveSeat = seatObjective(touch, width, height, map, score, pips);
     const objective = read('.cot-mode-status.show');
     const side = objectiveSeat === 'side' && objective ? objective : null;
-    const top = side ? scoreBottom : Math.max(scoreBottom, objective?.bottom || 0);
+    const head = Math.max(scoreBottom, pips?.bottom || 0);
+    const top = side || objectiveSeat === 'corner' ? head : Math.max(head, objective?.bottom || 0);
     const telemetry = read('.cot-net');
     const earLeft = read('.cot-ear.l');
     let leftAnchor = Math.max(top, earLeft?.bottom || 0,
@@ -1060,6 +1107,7 @@ export function installBattleHudLayout(root: HTMLElement): void {
     }
     const toastRows = String(stack.toastRows);
     if (root.dataset.toastRows !== toastRows) root.dataset.toastRows = toastRows;
+    yieldKillRibbon();
     seatScopeVision(width, height, touch);
     publishSightFurniture(touch);
   }

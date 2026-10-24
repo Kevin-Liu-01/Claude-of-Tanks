@@ -14,6 +14,7 @@ import type { RoomClientOptions, StorageLike } from '../room/roomClient.ts';
 import { normalizeRoomCode } from '../room/protocol.ts';
 import type { RoomChatEntry, RoomMatchStartPayload, RoomMode, RoomSnapshot } from '../room/protocol.ts';
 import { roomToLobby } from '../room/roomPolicy.ts';
+import { RoomServiceLimitError, type RoomServiceLimit } from './roomServiceLimit.ts';
 import type { SerializedLobby } from '../room/lobbyShape.ts';
 
 type Unsubscribe = () => void;
@@ -70,6 +71,11 @@ export interface RoomConnectionOptions {
   clientBuild?: string;
   /** Receipts inject a client bound to an in-process host or a scripted transport. */
   createRoomClient?: (options: RoomClientOptions) => RoomClient;
+  /**
+   * The rooms Worker's daily limit (roomServiceLimit.ts): asked after a failed admission or an interrupted room, and
+   * before an admission while a remembered limit lasts, so no socket is opened into the limit. Null: never asked.
+   */
+  serviceLimit?: RoomServiceLimit | null;
   /** The room's `match_start` reached this seat: enter the match (every seat, the host included). */
   onHostStart?(state: SerializedLobby, connection: RoomConnection): void;
   /** The room is gone for the menu-owned seat (never after `forget()`: the session owner holds it then). */
@@ -121,6 +127,7 @@ export function createRoomConnectionAdapter({
   storage = null,
   clientBuild = 'dev',
   createRoomClient = (options) => new RoomClient(options),
+  serviceLimit = null,
   onHostStart = () => {},
   onClose = () => {},
   onStatus = () => {},
@@ -189,9 +196,21 @@ export function createRoomConnectionAdapter({
       lastMatchStart = payload;
       if (current === connection || released === connection) onHostStart(lobby, connection);
     }));
+    let limitAsked = false;
     subscriptions.push(client.onPhase(({ phase }) => {
-      if (phase === 'reconnecting') onStatus({ state: 'reconnecting' });
-      else if (phase === 'joined') onStatus({ state: 'connected' });
+      if (phase === 'reconnecting') {
+        onStatus({ state: 'reconnecting' });
+        // once per interruption: a room at its daily limit ends here instead of reconnecting into the refusal
+        if (!limitAsked && serviceLimit?.appliesTo(client.endpoint)) {
+          limitAsked = true;
+          void serviceLimit.check().then((state) => {
+            if (state === 'limited' && current === connection && client.phase === 'reconnecting') client.stop('room_service_limited');
+          });
+        }
+      } else if (phase === 'joined') {
+        limitAsked = false;
+        onStatus({ state: 'connected' });
+      }
     }));
     subscriptions.push(client.onClosed(({ reason }) => {
       for (const unsubscribe of subscriptions.splice(0)) unsubscribe();
@@ -229,9 +248,17 @@ export function createRoomConnectionAdapter({
   const connect = async (request: RoomConnectRequest): Promise<RoomConnection | null> => {
     validateConnectRequest(request);
     if (pending || current) throw new Error('a room connection already owns this menu');
+    const roomsUrl = String(request.roomsUrl).trim();
+    const limited = serviceLimit?.appliesTo(roomsUrl) ? serviceLimit : null;
+    if (limited?.until() != null && await limited.check() === 'limited') {
+      // a remembered limit that still holds: no socket into the refusal
+      const refusal = new RoomServiceLimitError(limited.until() ?? 0);
+      onError(refusal);
+      throw refusal;
+    }
     const attemptGeneration = ++generation;
     const client = createRoomClient({
-      endpoint: String(request.roomsUrl).trim(),
+      endpoint: roomsUrl,
       player: { id: request.player.id, name: request.player.name },
       storage,
       clientBuild,
@@ -259,6 +286,12 @@ export function createRoomConnectionAdapter({
       if (pending === attempt) pending = null;
       client.dispose();
       if (canceled) return null;
+      // an unreachable room host on the daily-capped Worker: one status ask says whether it is the limit
+      if (limited && (error as { code?: unknown })?.code === 'room_unreachable' && await limited.check() === 'limited') {
+        const refusal = new RoomServiceLimitError(limited.until() ?? 0);
+        onError(refusal);
+        throw refusal;
+      }
       onError(error);
       // The room's own refusal carries the room's code (RoomError); an unreachable host carries `room_unreachable`
       // (RoomConnectError): both reach the menu's classifier as `error.code`.

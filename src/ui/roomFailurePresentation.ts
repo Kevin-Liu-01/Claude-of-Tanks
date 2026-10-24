@@ -6,6 +6,10 @@ const COPY_KEYS: Record<RoomFailureCode, { titleKey: string; detailKey: string }
     titleKey: 'playMenu.roomFailure.roomServiceUnavailable.title',
     detailKey: 'playMenu.roomFailure.roomServiceUnavailable.detail',
   },
+  room_service_limited: {
+    titleKey: 'playMenu.roomFailure.roomServiceLimited.title',
+    detailKey: 'playMenu.roomFailure.roomServiceLimited.detail',
+  },
   invalid_room_code: {
     titleKey: 'playMenu.roomFailure.invalidRoomCode.title',
     detailKey: 'playMenu.roomFailure.invalidRoomCode.detail',
@@ -45,6 +49,6 @@ export function roomFailurePresentation(error: unknown) {
   const failure = classifyRoomFailure(error);
   const keys = COPY_KEYS[failure.code];
   return { ...failure, title: t(keys.titleKey), detail: t(keys.detailKey),
-    editCode: failure.code !== 'room_service_unavailable',
+    editCode: failure.code !== 'room_service_unavailable' && failure.code !== 'room_service_limited',
   };
 }

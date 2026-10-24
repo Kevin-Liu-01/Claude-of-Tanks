@@ -55,6 +55,24 @@ interface DestructionMatchOptions {
 /** Deforming craters a fixed step may dig (§8.5): the rest of the tick's ground bursts are marks. */
 export const CRATERS_PER_TICK = 4;
 
+/**
+ * The log's wire budget (security audit 2026-10-22, C3; docs/DESTRUCTION.md §8.5). A keyframe carries the whole log
+ * beside the entity rows, the shells, the mode state and the destroyed set inside one 64 KB message, so a log that
+ * outgrew it stopped every viewer's snapshots and the migration keyframe for the rest of the match. Stage and crater
+ * entries are finite by construction (three transitions a structure, `maxCraters`), and the budget keeps room for every
+ * one still possible. Breaches are not finite, so they are logged while the rest of the budget lasts: holes up to
+ * BREACH_HOLE_SHARE of it, a section's fall (which changes collision) to all of it. Past that a breach still opens
+ * live, and its event reaches every connected viewer; only a late joiner or a migrated host lays the structure down
+ * without it.
+ */
+export const DESTRUCTION_LOG_BUDGET_BYTES = 36 * 1024;
+const BREACH_HOLE_SHARE = 0.75;
+/** Worst-case wire sizes (mp/wire/destructionLog.ts: a stage 11–13 B, a breach 20–28 B, a crater 19 B). */
+const STAGE_ENTRY_BYTES = 13;
+const BREACH_ENTRY_BYTES = 28;
+const CRATER_ENTRY_BYTES = 19;
+const STAGE_TRANSITIONS = 3;
+
 export interface DestructionMatch {
   readonly enabled: boolean;
   readonly structures: StructureDamage | null;
@@ -89,6 +107,8 @@ export interface DestructionMatch {
   drainCraters(out: TerrainCraterEvent[]): number;
   /** Deforming craters dug so far this match (and restored). */
   readonly craters: number;
+  /** Breaches opened live but left out of the log by its wire budget (DESTRUCTION_LOG_BUDGET_BYTES). */
+  readonly unloggedBreaches: number;
   /** Lay a previous authority's log down without events (a resumed host): kept verbatim, its stages and collapses
    * applied at once; returns the entries this world applied. */
   restore(entries: readonly DestructionLogEntry[]): number;
@@ -163,6 +183,13 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
   const cratering = !!rules?.craters && !!ground && (rules.maxCraters ?? 0) > 0;
   let craterCount = 0;
   let cratersThisTick = 0;
+  // the budget's share for breaches: what every stage and crater the match can still log leaves of it
+  const reservedBytes = (structures?.structures.length ?? 0) * STAGE_TRANSITIONS * STAGE_ENTRY_BYTES
+    + (cratering ? rules!.maxCraters : 0) * CRATER_ENTRY_BYTES;
+  const breachBudgetBytes = Math.max(0, DESTRUCTION_LOG_BUDGET_BYTES - reservedBytes);
+  const holeBudgetBytes = Math.floor(breachBudgetBytes * BREACH_HOLE_SHARE);
+  let breachBytes = 0;
+  let unloggedBreaches = 0;
   /** A ground burst's crater, when it deforms (the wire's quantization: mm positions, cm radius, mm depth and rim): its
    * id, or null for a mark. */
   function dig(munition: MunitionClass, chargeKg: number, x: number, z: number, sourceId: string | null): number | null {
@@ -248,6 +275,7 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
       }
     },
     get craters() { return craterCount; },
+    get unloggedBreaches() { return unloggedBreaches; },
     step() {
       cratersThisTick = 0;
       if (!structures) return;
@@ -261,9 +289,14 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
       stepBreaches.length = 0;
       structures.drainBreaches(stepBreaches);
       for (const event of stepBreaches) {
+        breachOutbox.push(event);
+        if (breachBytes + BREACH_ENTRY_BYTES > (event.sectionDown ? breachBudgetBytes : holeBudgetBytes)) {
+          unloggedBreaches++;
+          continue;
+        }
+        breachBytes += BREACH_ENTRY_BYTES;
         log.push({ kind: 'breach', structureId: event.structureId, section: event.section, hole: event.hole,
           x: event.x, y: event.y, z: event.z, radiusM: event.radiusM, sectionDown: event.sectionDown, cx: event.cx, cz: event.cz });
-        breachOutbox.push(event);
       }
     },
     drainEvents(out) {
@@ -294,6 +327,7 @@ export function createDestructionMatch(options: DestructionMatchOptions): Destru
       try {
         for (const entry of entries) {
           log.push({ ...entry });
+          if (entry.kind === 'breach') breachBytes += BREACH_ENTRY_BYTES;
           if (entry.kind === 'stage' && structures?.restoreStage(entry.structureId, entry.stage as StructureStage)) applied++;
           if (entry.kind === 'breach' && structures && structures.restoreBreach(entry.structureId, entry.section, entry.hole,
             entry.x, entry.y, entry.z, entry.radiusM, entry.sectionDown) >= 0) applied++;
