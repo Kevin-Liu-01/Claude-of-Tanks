@@ -45,7 +45,7 @@ function hostWithSlowWorld(loadMs) {
 {
   const { pair, core, posted, isLoaded } = hostWithSlowWorld(400);
   pair.main.post({ type: 'boot', config: bootConfig });
-  pair.main.post({ type: 'link_open', peer: HOST_LOOPBACK_PEER, label: 'loopback' });
+  pair.main.post({ type: 'link_open', peer: HOST_LOOPBACK_PEER, label: 'loopback', playerId: 'me' });
   pair.main.post({ type: 'link_frame', peer: HOST_LOOPBACK_PEER, bytes: hello.slice().buffer });
   await sleep(50);
   assert.equal(isLoaded(), false, 'the world is still loading');
@@ -68,7 +68,7 @@ function hostWithSlowWorld(loadMs) {
 {
   const { pair, core, posted, isLoaded } = hostWithSlowWorld(200);
   pair.main.post({ type: 'boot', config: bootConfig });
-  pair.main.post({ type: 'link_open', peer: HOST_LOOPBACK_PEER, label: 'loopback' });
+  pair.main.post({ type: 'link_open', peer: HOST_LOOPBACK_PEER, label: 'loopback', playerId: 'me' });
   pair.main.post({ type: 'link_frame', peer: HOST_LOOPBACK_PEER, bytes: hello.slice().buffer });
   while (!isLoaded()) await sleep(20);
   const started = Date.now();

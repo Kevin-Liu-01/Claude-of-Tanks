@@ -7381,6 +7381,8 @@ const BUCKET_DEF: Record<string, BucketDefinition> = {
   turret: ['turretG', 'hull'], turretCupola: ['turretG', 'hull'], turretHatch: ['turretG', 'hull'],
   turretExternalArmor: ['turretG', 'hull'], turretEquipment: ['turretG', 'hull'],
   turretDetail: ['turretG', 'hull'], turretDark: ['turretG', 'dark'],
+  // a gun's static cradle cast into the turret, in the gun mount's own steel (242: the Challenger 1's L11 collar)
+  turretWeaponSteel: ['turretG', 'weaponSteel'],
   // Fixed painted turret fittings (stowage cases, carriers, basket floors)
   // keep their detail LOD and non-armor role while carrying camouflage.
   turretPaintedDetail: ['turretG', 'hull'],

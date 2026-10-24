@@ -54,6 +54,11 @@ interface LocalRoomServiceOptions {
    * from its environment (`server/relayCredentials.ts`, `server/rooms/main.ts`); absent, a seat gets no server.
    */
   relayCredentials?: RoomActorPorts['relayCredentials'];
+  /**
+   * Most rooms held at once (security audit 2026-10-22): an abandoned room lives until its 24 h idle expiry, so past this
+   * an upgrade for a new code is refused 503; a code already held still connects.
+   */
+  maxRooms?: number;
 }
 
 export interface LocalRoomService {
@@ -145,8 +150,10 @@ export function createLocalRoomService({
   random = Math.random,
   region = 'lan',
   relayCredentials,
+  maxRooms = 256,
 }: LocalRoomServiceOptions): LocalRoomService {
   if (typeof seatSecret !== 'string' || seatSecret.length < 16) throw new TypeError('seatSecret must be at least 16 characters');
+  if (!Number.isInteger(maxRooms) || maxRooms < 1 || maxRooms > 4096) throw new TypeError('maxRooms must be 1..4096');
   const origins = allowedOrigins && allowedOrigins.length ? new Set(allowedOrigins.map((origin) => origin.trim())) : null;
   const rooms = new Map<string, RoomActor>();
   const sockets = new Map<string, WebSocket>();
@@ -266,8 +273,9 @@ export function createLocalRoomService({
       const route = parseRoomRoute(path);
       if (!route || route.match) return false;
       const origin = request.headers.origin;
-      if (closed || (origins && (!origin || !origins.has(origin)))) {
-        socket.write(closed ? 'HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n' : 'HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
+      const full = !rooms.has(route.code) && rooms.size >= maxRooms;
+      if (closed || full || (origins && (!origin || !origins.has(origin)))) {
+        socket.write(closed || full ? 'HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n' : 'HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
         socket.destroy();
         return true;
       }

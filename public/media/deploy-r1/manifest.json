@@ -1,0 +1,40 @@
+{
+ "libraryId": "claude-of-tanks-deploy-r1",
+ "schemaVersion": 1,
+ "author": "Kevin B. Liu",
+ "copyright": "Copyright © 2026 Kevin B. Liu",
+ "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
+ "description": "The Deploy screen's mode cards (brand-ui S3, the Premiere direction's 04-deploy page): each core mode's picture, a 640x360 cut of the approved in-engine still the direction chose for it.",
+ "generatedBy": "ffmpeg (scale 640x360 lanczos) + cwebp -q 80 -m 6",
+ "dimensions": {
+  "width": 640,
+  "height": 360
+ },
+ "count": 4,
+ "items": [
+  {
+   "id": "standard",
+   "file": "standard-640.webp",
+   "mode": "standard",
+   "source": "public/media/versus-r1/vs02-verdant-challenger-t80u-r6.webp"
+  },
+  {
+   "id": "zone_control",
+   "file": "zone_control-640.webp",
+   "mode": "zone_control",
+   "source": "public/media/versus-r1/f7-t90m-column-r5.webp"
+  },
+  {
+   "id": "capture_the_flag",
+   "file": "capture_the_flag-640.webp",
+   "mode": "capture_the_flag",
+   "source": "public/media/versus-r1/vs06-coastal-type10-ztz99a2-r7.webp"
+  },
+  {
+   "id": "frontline_assault",
+   "file": "frontline_assault-640.webp",
+   "mode": "frontline_assault",
+   "source": "public/media/site50-r14/stills/s225-verdant-duel.webp"
+  }
+ ]
+}

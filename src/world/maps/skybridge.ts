@@ -348,4 +348,10 @@ export default {
   // round 66 (2026-09-24, the FFT ocean): the mountain lake under the wind funnelled down the gorge — a clear,
   // lively chop over the spillway reach where the sheet lay flat
   ocean: { windSpeed: 3.8, windDirDeg: 40, fetchKm: 4, amplitude: 1, foam: 0.1, breakers: 0.25, caustics: 0.55 },
+  // the horizons stream (horizons-240, 2026-10-23): the Hinterland past the red line (hinterland/drafts/skybridge.ts) —
+  // Tower Butte, Navajo Mountain and the Kaiparowits rim aimed through the gaps the square's own skyline leaves; its blind
+  // pair against the old ring won 7/2 (mean 4.2 -> 6.2, driver, gunner and chase under day, sunset and night, both sides on
+  // main 4178992761); the battlefield's ground carried past the edge (groundDetail.ts); rimH unchanged; `?hinterland=0`
+  // draws the old ring
+  hinterland: true,
 } satisfies import('./contracts.ts').MapCompositionConfig;

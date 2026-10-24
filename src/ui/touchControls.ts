@@ -29,9 +29,6 @@ const CSS = `
 .cot-touch button{font:inherit;color:inherit;}
 .cot-touch-aim .aimpad{position:absolute;inset:auto 0 0 auto;top:18%;width:62%;
   pointer-events:auto;touch-action:none;}
-.cot-touch-aim .aimhint{position:absolute;right:21%;bottom:31%;font-family:${FONT_COND};
-  font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;
-  color:rgba(234,242,248,.3);text-shadow:0 1px 3px #000;}
 .cot-touch .joy{position:absolute;z-index:2;left:var(--edge);
   bottom:max(16px,env(safe-area-inset-bottom));width:138px;height:138px;
   border-radius:50%;pointer-events:auto;touch-action:none;
@@ -86,7 +83,6 @@ body.cot-gun-dry .cot-touch .fire{color:var(--hud-muted,#93a3af);border-color:rg
   transition:opacity 90ms ease,transform 90ms ease,border-color 90ms ease;}
 .cot-touch .fire-cancel b{font:400 28px/1 ${FONT_COND};}
 .cot-touch.fire-armed .fire-cancel{visibility:visible;opacity:.82;transform:scale(1);}
-.cot-touch-aim.fire-armed .aimhint{opacity:0;}
 .cot-touch.fire-cancel-hot .fire-cancel{opacity:1;color:#fff;border-color:#ff594c;background:rgba(111,14,8,.94);
   transform:scale(1.07);box-shadow:0 0 18px rgba(255,52,38,.46);}
 .cot-touch .scope{right:134px;bottom:43px;width:62px;height:62px;color:#dce7ef;}
@@ -222,11 +218,10 @@ body.cot-touch-layout[data-cot-width='phone'] .cot-dp .hptrack,
 body.cot-touch-layout[data-cot-height-density='tight'] .cot-dp .hptrack{margin-bottom:0;height:6px;}
 body.cot-touch-layout .cot-alert{bottom:28%;max-width:calc(100vw - 24px);font-size:11px;white-space:normal;}
 body.cot-touch-layout .cot-sixth{top:max(70px,12%);width:min(214px,calc(100vw - 24px));
-  min-height:42px;grid-template-columns:21px minmax(0,1fr);gap:8px;}
+  min-height:32px;grid-template-columns:21px minmax(0,1fr);gap:8px;}
 body.cot-touch-layout .cot-sixth .sig svg{width:21px;height:21px;}
 body.cot-touch-layout .cot-sixth .copy{padding:0;}
 body.cot-touch-layout .cot-sixth .lb{font-size:11px;}
-body.cot-touch-layout .cot-sixth .sub{font-size:11px;letter-spacing:.03em;}
 
 /* Shell chip label/count collision: at the 48px touch chip the
    selected slot's long class label (APFSDS, 35px) ran under the ammo count
@@ -402,8 +397,8 @@ export function createTouchControls({
   aimLayer.className = 'cot-touch-aim';
   aimLayer.setAttribute('role', 'group');
   aimLayer.setAttribute('aria-label', t('touch.aimAria'));
-  aimLayer.innerHTML = `<div class="aimpad" role="group" aria-label="${t('touch.aimHint')}"></div>` +
-    `<div class="aimhint" data-landscape="${t('touch.landscapeHint')}">${t('touch.aimHint')}</div>`;
+  // (the pad is its own instruction: no "swipe to aim" or "landscape recommended" over the battlefield, owner 2026-10-22)
+  aimLayer.innerHTML = `<div class="aimpad" role="group" aria-label="${t('touch.aimHint')}"></div>`;
   root.innerHTML = `<div class="mobile-chrome" role="toolbar" aria-label="${t('touch.toolbar')}">` +
     `<button class="quick sound" type="button" aria-label="${t('touch.mute')}">${SOUND}<span class="ql">${t('touch.sound')}</span></button>` +
     `<button class="quick graphics" type="button" aria-label="${t('touch.gfxAria')}">${GRAPHICS}<span class="ql">${t('touch.gfx')}</span></button>` +
