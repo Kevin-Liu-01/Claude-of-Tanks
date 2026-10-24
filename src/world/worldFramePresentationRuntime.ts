@@ -1,4 +1,4 @@
-import { Vector3, type Object3D, type PerspectiveCamera } from 'three';
+import { Vector3, type Camera, type Object3D, type PerspectiveCamera } from 'three';
 
 interface WorldFrameEntity {
   state?: object | null;
@@ -19,6 +19,7 @@ interface WorldFrameTarget {
     cameraPosition: Vector3,
     cameraForward: Vector3,
     occlusionFocus: Vector3 | null,
+    viewCamera?: Camera | null,
   ): void;
 }
 
@@ -71,7 +72,8 @@ export function createWorldFramePresentationRuntime({
         occlusionFocus.y += (entity.spec?.dims?.heightM ?? 0) * 0.75;
         focus = occlusionFocus;
       }
-      world.update(dtSeconds, camera.position, forward, focus);
+      // trees perf (2026-10-07): the camera itself, so the near tree pools cull to its view
+      world.update(dtSeconds, camera.position, forward, focus, camera);
     },
   };
 }

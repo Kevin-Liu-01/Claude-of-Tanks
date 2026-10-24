@@ -2,7 +2,10 @@ import { STUDIO_TIMES, type StudioLight, type StudioTimeOfDay } from '../game/st
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { galleryHref } from '../game/tankIdBoundaries.ts';
 import type { ProductionFormat, ProductionRigId } from '../game/studioProduction.ts';
-import { mountStudioProductionPanel, productionLabel, shotLabel, type WorkspaceId } from './studioProductionPanel.ts';
+import { mountStudioProductionPanel, presetText, productionLabel, shotLabel, shotRuns, type WorkspaceId } from './studioProductionPanel.ts';
+import { PRODUCTION_PRESETS } from '../game/studioProduction.ts';
+import { createCommandPalette, type StudioCommand } from './studioCommands.ts';
+import { QUEUE_PRESETS, queueEstimate, queueFileName, recordRenderRate, stillSize, type QueuePreset } from './studioQueue.ts';
 import { mountStudioPicturePanel, type StudioPicturePanelApi } from './studioPicturePanel.ts';
 /**
  * studioPanel.ts — the Studio's interface (src/game/studio.ts's UI): the Premiere direction's page 09 on the live kit
@@ -174,6 +177,8 @@ interface StudioFilmExportOptions {
   readonly samples: number;
   readonly shake: number;
   readonly download: boolean;
+  /** The file's name (the container's extension is added when it has none). */
+  readonly name?: string;
   readonly onProgress: (progress: StudioFilmProgress) => void;
   readonly onFrame: (canvas: HTMLCanvasElement) => void;
 }
@@ -188,6 +193,25 @@ interface StudioEffectRecipe {
   readonly params?: Readonly<Record<string, RuntimeValue>>;
 }
 
+/**
+ * Where the selected tank sits on the canvas, in CSS pixels (studio.ts projectSelection): the box around it, its ground
+ * centre, the hull's right axis and the up axis (a metre each) and a metre ring on the ground as offsets from that centre.
+ */
+export interface StudioSelectionFrame {
+  visible: boolean;
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+  ux: number;
+  uy: number;
+  readonly ring: Float32Array;
+}
+
 export interface StudioPanelApi extends StudioPicturePanelApi {
   readonly MAP_IDS: readonly string[];
   readonly TANK_IDS: readonly string[];
@@ -199,6 +223,25 @@ export interface StudioPanelApi extends StudioPicturePanelApi {
   setLight(patch: StudioLight | null): Promise<RuntimeValue>;
   getLight(): StudioLightState;
   readonly timeScale: number;
+  /** The shuttle's signed rate (J/K/L): negative while the playhead runs back. */
+  readonly shuttleRate: number;
+  /** The view is the shots' camera at the playhead. */
+  readonly lookThrough: boolean;
+  setLookThrough(on: boolean): boolean;
+  /** Undo/redo between the scene's settled edits (Ctrl/Cmd+Z, Shift+Ctrl/Cmd+Z). */
+  undo(): Promise<boolean>;
+  redo(): Promise<boolean>;
+  readonly history: { readonly undo: number; readonly redo: number; readonly savedAt: number };
+  /** The last autosaved scene (this browser), and opening it. */
+  autosaved(): { readonly savedAt: number; readonly map: string; readonly tanks: number } | null;
+  restoreAutosave(): Promise<boolean>;
+  /** The film's soundtrack as peaks over the timeline (the sound lane); null while busy or playing. */
+  soundPreview(buckets: number): Promise<{ readonly peaks: Float32Array; readonly cues: number } | null>;
+  /** Where a dragged or placed tank lands: on the nearest road, on the ground under the pointer, or on its own level. */
+  readonly placementSnap: 'road' | 'terrain' | 'off';
+  setPlacementSnap(snap: 'road' | 'terrain' | 'off'): string;
+  /** A pose preset on a tank; false when hull-down finds no crest ahead. */
+  applyPosePreset(actor: StudioActor, preset: 'hull-down' | 'firing' | 'knocked-out'): boolean;
   readonly fxTimeMs: number;
   readonly durationMs: number;
   readonly playing: boolean;
@@ -255,7 +298,7 @@ export interface StudioPanelApi extends StudioPicturePanelApi {
   setCamera(config: Readonly<Record<string, RuntimeValue>>): RuntimeValue;
   recordVideo(options: { readonly fps: number; readonly download: boolean }): Promise<{ size: number }>;
   stopRecording(): RuntimeValue;
-  capture(options: { readonly width: number; readonly height?: number; readonly download: boolean }): RuntimeValue;
+  capture(options: { readonly width: number; readonly height?: number; readonly download: boolean; readonly name?: string }): RuntimeValue;
   exportFilm(options: StudioFilmExportOptions): Promise<{ readonly bytes: number }>;
   cancelFilmExport(): RuntimeValue;
   filmExportStatus(): { readonly active: boolean; readonly supported: boolean };
@@ -268,6 +311,9 @@ export interface StudioPanelApi extends StudioPicturePanelApi {
   selectCameraShot(id: string): RuntimeValue;
   updateCameraShot(id: string, patch: Readonly<Record<string, RuntimeValue>>): RuntimeValue;
   removeCameraShot(id: string): RuntimeValue;
+  /** A shot's thumbnail (a data URL) while it shows the shot as authored, else null. */
+  shotThumbnail(id: string): string | null;
+  projectSelection(out: StudioSelectionFrame): boolean;
 }
 
 interface SliderControl {
@@ -318,6 +364,14 @@ interface StudioPanelRuntime {
   refreshPicture(): void;
   refreshAll(): void;
   tick(dt: number): void;
+  /** The header's undo, redo and saved state after a step or an autosave. */
+  refreshHistory(): void;
+  /** The command palette (Ctrl/Cmd+K). */
+  openCommands(): void;
+  /** After a live frame: the selection's outline, name tag and gizmo follow the tank. */
+  drawSelection(): void;
+  /** A shot's new thumbnail, into its outliner row and its clip on the camera lane. */
+  setShotThumbnail(id: string, url: string): void;
 }
 
 /** Glyphs the sprite does not draw (step back, pause, step forward, add) and the brand's badge: constant markup. */
@@ -335,9 +389,28 @@ const OUTLINE: ReadonlyArray<readonly [WorkspaceId, IconId]> = Object.freeze([
 ] as const);
 /** The camera keys' blends (studio.ts `transition`), as the timeline's shot cards offer them. */
 const SHOT_TRANSITIONS = Object.freeze(['smooth', 'linear', 'cut', 'bezier', 'spline'] as const);
-const FILM_FORMATS = Object.freeze([['landscape', '16:9'], ['portrait', '9:16'], ['square', '1:1']] as const);
+const FILM_FORMATS = Object.freeze([['landscape', '16:9'], ['portrait', '9:16'], ['square', '1:1'], ['card', '1.91:1']] as const);
+/** A production format as its ratio reads (16:9, 9:16, 1:1, 1.91:1). */
+const formatRatio = (format: ProductionFormat): string => FILM_FORMATS.find(([id]) => id === format)?.[1] ?? '16:9';
+const SVG_NS = 'http://www.w3.org/2000/svg';
+/** The palette's shortcut as this platform writes it. */
+const PALETTE_KEY = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K';
+const UNDO_KEY = PALETTE_KEY === '⌘K' ? '⌘Z' : 'Ctrl Z';
+/** The Studio's shortcuts a focused panel lets through to the runtime. */
+function studioShortcut(e: KeyboardEvent): boolean {
+  if (e.altKey) return false;
+  if (e.metaKey || e.ctrlKey) return e.code === 'KeyZ' || e.code === 'KeyY' || e.code === 'KeyK';
+  return e.code === 'KeyJ' || e.code === 'KeyK' || e.code === 'KeyL' || e.code === 'F8';
+}
+/** The gizmo's turn ring, in CSS pixels (09-studio .giz: an 86 px plate, a 30 px ring). */
+const GIZMO_RADIUS = 30;
 /** At most this many camouflage swatches paint in one frame (each a 2 m crop of the real pattern tile). */
 const SWATCHES_PER_FRAME = 3;
+/** Each viewer's Quick | Pro choice (a convenience: a private window starts on Quick). */
+const CONTROLS_MODE_KEY = 'cot.studio.controls';
+function readControlsMode(): 'quick' | 'pro' {
+  try { return localStorage.getItem(CONTROLS_MODE_KEY) === 'pro' ? 'pro' : 'quick'; } catch (_) { return 'quick'; }
+}
 
 /**
  * Build the Studio: the Premiere direction's page 09 (streams/brand-ui/phase2/bui01/src/pages/09-studio.html) on the
@@ -368,18 +441,57 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const timeline = el('section', 'st-tl');
   timeline.setAttribute('aria-label', t('studio.ws.timelineAria'));
   app.append(head, out, vp, dock, shelf, timeline);
-  // keep the canvas's drag-look and fly keys from firing while a panel is in use (the viewport passes them through)
+  // keep the canvas's drag-look and fly keys from firing while a panel is in use (the viewport passes them through); the
+  // Studio's own shortcuts (J/K/L, undo and redo, the palette, F8) still reach it from a focused button, and the runtime
+  // ignores them while a field is being typed in
   for (const panel of [head, out, dock, shelf, timeline]) {
-    for (const evName of ['pointerdown', 'pointermove', 'pointerup', 'wheel', 'keydown']) {
+    for (const evName of ['pointerdown', 'pointermove', 'pointerup', 'wheel']) {
       panel.addEventListener(evName, (e) => e.stopPropagation());
     }
+    panel.addEventListener('keydown', (e) => { if (!studioShortcut(e)) e.stopPropagation(); });
   }
 
   // --- the header (09-studio header) ---------------------------------------------------------------------------
   const mark = el('span', 'st');
   mark.innerHTML = STUDIO_GLYPHS.mark;
-  mark.append(t('studio.ws.title'));
+  mark.append(el('span', 'wd', t('studio.ws.title')));
   const projectName = el('span', 'pn', '');
+  // the scene's safety (09-studio header .sv and the undo/redo pair): its autosave, and the steps either side
+  const savedState = el('span', 'sv');
+  savedState.hidden = true;
+  savedState.append(el('i'), el('span'));
+  const restoreBtn = chipButton(t('studio.ws.restore'), 'undo');
+  restoreBtn.hidden = true;
+  restoreBtn.addEventListener('click', () => {
+    restoreBtn.disabled = true;
+    void S.restoreAutosave().finally(() => { restoreBtn.disabled = false; api.refreshHistory(); });
+  });
+  const undoBtn = iconButton(t('studio.ws.undoTitle'));
+  undoBtn.innerHTML = uiIconSVG('undo', 16);
+  undoBtn.addEventListener('click', () => { void S.undo(); });
+  const redoBtn = iconButton(t('studio.ws.redoTitle'));
+  redoBtn.classList.add('redo');
+  redoBtn.innerHTML = uiIconSVG('undo', 16);
+  redoBtn.addEventListener('click', () => { void S.redo(); });
+  const historyTools = el('span', 'hist');
+  historyTools.append(savedState, restoreBtn, undoBtn, redoBtn);
+  /** "2 minutes ago" in the page's language, empty under a minute. */
+  function agoText(at: number): string {
+    const minutes = Math.round((Date.now() - at) / 60000);
+    if (minutes < 1) return '';
+    const format = new Intl.RelativeTimeFormat(getLocale(), { numeric: 'auto' });
+    if (minutes < 60) return format.format(-minutes, 'minute');
+    return minutes < 1440 ? format.format(-Math.round(minutes / 60), 'hour') : format.format(-Math.round(minutes / 1440), 'day');
+  }
+  function refreshSaved(): void {
+    const { savedAt } = S.history;
+    savedState.hidden = !savedAt;
+    if (!savedAt) return;
+    const ago = agoText(savedAt);
+    const text = ago ? t('studio.ws.saved', { ago }) : t('studio.ws.savedNow');
+    const label = savedState.lastElementChild;
+    if (label && label.textContent !== text) label.textContent = text;
+  }
   const formatSeg = el('div', 'cot-c-seg');
   formatSeg.setAttribute('role', 'radiogroup');
   formatSeg.setAttribute('aria-label', productionLabel('format'));
@@ -393,7 +505,37 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     formatSeg.appendChild(option);
     return option;
   });
+  // Quick | Pro (brand-ui SPEC 12.6): Quick keeps the essentials, Pro adds the fine controls; each viewer's own choice
+  const modeSeg = el('div', 'cot-c-seg st-mode');
+  modeSeg.setAttribute('role', 'radiogroup');
+  modeSeg.setAttribute('aria-label', t('studio.ws.controls'));
+  const modeButtons = (['quick', 'pro'] as const).map((mode) => {
+    const option = el('button', 'cot-c-seg__opt', t(`studio.ws.mode.${mode}`));
+    option.type = 'button';
+    option.setAttribute('role', 'radio');
+    option.dataset.value = mode;
+    option.addEventListener('click', () => setControlsMode(mode));
+    modeSeg.appendChild(option);
+    return option;
+  });
+  let proControls = readControlsMode() === 'pro';
+  function setControlsMode(mode: 'quick' | 'pro'): void {
+    proControls = mode === 'pro';
+    root.dataset.studioMode = mode;
+    for (const option of modeButtons) {
+      const on = option.dataset.value === mode;
+      option.setAttribute('aria-checked', String(on));
+      option.tabIndex = on ? 0 : -1;
+    }
+    try { localStorage.setItem(CONTROLS_MODE_KEY, mode); } catch (_) { /* private windows */ }
+    if (proControls && planShown) planView.refreshPlan();
+  }
   const headRight = el('div', 'r');
+  // Commands (09-studio header): the palette over every action, with its shortcut
+  const commandsBtn = chipButton(t('studio.ws.commands'), 'search');
+  commandsBtn.classList.add('cmd');
+  commandsBtn.append(el('kbd', 'cot-c-kbd', PALETTE_KEY));
+  commandsBtn.addEventListener('click', () => commandPalette.open());
   const linkBtn = chipButton(t('studio.sceneLink.copyButton'), null);
   linkBtn.insertAdjacentHTML('afterbegin', SCENE_LINK_GLYPHS.link);
   linkBtn.title = t('studio.sceneLink.copyTitle');
@@ -403,17 +545,24 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       .then((result) => api.notice(result.message, result.ok ? 'info' : 'error', result.detail));
   });
   const galleryBtn = chipButton(t('studioPanel.tankGallery'), 'gallery');
+  galleryBtn.classList.add('gal');
   galleryBtn.addEventListener('click', () => {
     const id = S._internal.selected?.spec?.id;
     window.location.href = hrefForLocale(id ? galleryHref(id) : '/gallery', getLocale());
   });
   const exportBtn = kitButton(t('studio.ws.exportFilm'), 'primary', 'record');
   exportBtn.addEventListener('click', () => startFilmExport());
-  const exitBtn = kitButton(t('studio.ws.exit'), 'ghost');
+  const exitBtn = kitButton(t('studio.ws.exit'), 'ghost', 'close');
   exitBtn.insertAdjacentHTML('beforeend', `<kbd class="cot-c-kbd" aria-hidden="true">F8</kbd>`);
   exitBtn.addEventListener('click', () => S.exit());
-  headRight.append(linkBtn, galleryBtn, exportBtn, exitBtn);
-  head.append(mark, projectName, formatSeg, headRight);
+  // Queue · N (09-studio header): the render queue's deliveries, run one after another
+  const queueBtn = chipButton(t('studio.ws.queue'), 'media');
+  queueBtn.classList.add('que');
+  queueBtn.setAttribute('aria-haspopup', 'dialog');
+  queueBtn.setAttribute('aria-expanded', 'false');
+  queueBtn.addEventListener('click', () => toggleQueue());
+  headRight.append(commandsBtn, linkBtn, queueBtn, galleryBtn, exportBtn, exitBtn);
+  head.append(mark, projectName, historyTools, modeSeg, formatSeg, headRight);
 
   // --- the viewport (09-studio .vp): chips, notices and the frame readout over the canvas ---------------------------
   const vpTop = el('div', 'st-vpt');
@@ -424,7 +573,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     if (S.getCamera().mode === 'orbit') S.setCamera({ mode: 'fly' }); else orbitCamera();
     api.refreshCamera();
   });
-  vpTop.append(shotChip, modeChip);
+  // Look through (09-studio .vpt): the view is the shots' camera at the playhead; navigating leaves it
+  const lookChip = chipButton(t('studio.ws.lookThrough'), 'scope', true);
+  lookChip.addEventListener('click', () => S.setLookThrough(!S.lookThrough));
+  vpTop.append(shotChip, lookChip, modeChip);
   const vpTools = el('div', 'st-vpb');
   const guidesChip = chipButton(t('studio.ws.guides'), 'pixels', true);
   guidesChip.addEventListener('click', () => {
@@ -438,7 +590,95 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   lensChip.addEventListener('click', () => productionPanel.activate('cinematics'));
   vpTools.append(guidesChip, lensChip);
   const frameCounter = el('span', 'st-fc');
-  vp.append(vpTop, vpTools, frameCounter);
+  // the selection (09-studio .sel and .giz): an outline round the selected tank with its name tag, and the move and turn
+  // gizmo at its feet; drawn from the live camera after each frame (drawSelection), never into an export
+  const selBox = el('div', 'st-sel');
+  selBox.hidden = true;
+  selBox.setAttribute('aria-hidden', 'true');
+  // the name tag sits on the outline's top edge, kept inside the picture and below the chips
+  const selTag = el('span', 'st-sel-tag');
+  selTag.hidden = true;
+  selTag.setAttribute('aria-hidden', 'true');
+  const selTagText = el('span');
+  selTag.append(selTagText);
+  const svgNode = <Tag extends keyof SVGElementTagNameMap>(tag: Tag, cls: string): SVGElementTagNameMap[Tag] => {
+    const node = document.createElementNS(SVG_NS, tag);
+    node.setAttribute('class', cls);
+    return node;
+  };
+  const gizmo = svgNode('svg', 'st-giz');
+  gizmo.setAttribute('aria-hidden', 'true');
+  gizmo.setAttribute('hidden', '');
+  const gizmoRing = svgNode('polygon', 'ring');
+  const gizmoX = svgNode('line', 'ax ax--x');
+  const gizmoY = svgNode('line', 'ax ax--y');
+  const gizmoHeadX = svgNode('polygon', 'hd');
+  const gizmoHeadY = svgNode('polygon', 'hd');
+  const gizmoOrigin = svgNode('circle', 'o');
+  gizmoOrigin.setAttribute('r', '4');
+  gizmo.append(gizmoRing, gizmoX, gizmoY, gizmoHeadX, gizmoHeadY, gizmoOrigin);
+  vp.append(selBox, selTag, gizmo, vpTop, vpTools, frameCounter);
+  const selFrame: StudioSelectionFrame = { visible: false, left: 0, top: 0, right: 0, bottom: 0, cx: 0, cy: 0, rx: 0, ry: 0,
+    ux: 0, uy: 0, ring: new Float32Array(64) };
+  let selTagKey = '';
+  let selTagWidth = 0;
+  /** An axis of the gizmo: its line from the centre and its arrowhead past the tip. */
+  function gizmoAxis(line: SVGLineElement, head: SVGPolygonElement, cx: number, cy: number, dx: number, dy: number): void {
+    const tipX = cx + dx, tipY = cy + dy;
+    line.setAttribute('x1', cx.toFixed(1)); line.setAttribute('y1', cy.toFixed(1));
+    line.setAttribute('x2', tipX.toFixed(1)); line.setAttribute('y2', tipY.toFixed(1));
+    const length = Math.hypot(dx, dy);
+    if (length < 4) { head.setAttribute('points', ''); return; }
+    const ux = dx / length, uy = dy / length;
+    head.setAttribute('points', `${(tipX + ux * 6).toFixed(1)},${(tipY + uy * 6).toFixed(1)} ${(tipX - ux + uy * 4).toFixed(1)},`
+      + `${(tipY - uy - ux * 4).toFixed(1)} ${(tipX - ux - uy * 4).toFixed(1)},${(tipY - uy + ux * 4).toFixed(1)}`);
+  }
+  function drawSelection(): void {
+    const a = S._internal.selected;
+    if (!a || root.style.display !== 'block' || !S.projectSelection(selFrame)) {
+      selBox.hidden = true;
+      selTag.hidden = true;
+      gizmo.setAttribute('hidden', '');
+      return;
+    }
+    const f = selFrame;
+    // measured before this frame's writes: the picture, and the foot of the chips over it
+    const vpWidth = vp.clientWidth, vpHeight = vp.clientHeight;
+    const chipsFoot = vpTop.offsetTop + vpTop.offsetHeight + 4;
+    selBox.hidden = false;
+    selBox.style.left = `${Math.round(f.left)}px`;
+    selBox.style.top = `${Math.round(f.top)}px`;
+    selBox.style.width = `${Math.max(8, Math.round(f.right - f.left))}px`;
+    selBox.style.height = `${Math.max(8, Math.round(f.bottom - f.top))}px`;
+    const heading = Math.round(((a.pose.facingDeg % 360) + 360) % 360);
+    const key = `${a.uid}|${heading}`;
+    selTag.hidden = false;
+    if (key !== selTagKey) {
+      selTagKey = key;
+      selTag.replaceChildren(flagNode(specInfo(a.spec.id).nation || ''), selTagText);
+      selTagText.textContent = t('studio.ws.selTag', { name: a.spec.name, deg: heading });
+      selTagWidth = selTag.offsetWidth;
+    }
+    // above the outline's top edge, inside it when that edge meets the chips, never past the picture's sides or foot
+    const tagLeft = Math.max(4, Math.min(f.left, vpWidth - selTagWidth - 4));
+    let tagTop = f.top - 24;
+    if (tagTop < chipsFoot) tagTop = Math.max(f.top + 2, chipsFoot);
+    selTag.style.left = `${Math.round(tagLeft)}px`;
+    selTag.style.top = `${Math.round(Math.min(tagTop, vpHeight - 26))}px`;
+    // the gizmo at one screen size: the ring's widest reach is GIZMO_RADIUS, the axes keep their true directions
+    let reach = 0;
+    for (let i = 0; i < f.ring.length; i += 2) reach = Math.max(reach, Math.hypot(f.ring[i], f.ring[i + 1]));
+    if (reach < 0.5) { gizmo.setAttribute('hidden', ''); return; }
+    const k = GIZMO_RADIUS / reach;
+    let ring = '';
+    for (let i = 0; i < f.ring.length; i += 2) ring += `${(f.cx + f.ring[i] * k).toFixed(1)},${(f.cy + f.ring[i + 1] * k).toFixed(1)} `;
+    gizmoRing.setAttribute('points', ring);
+    gizmoAxis(gizmoX, gizmoHeadX, f.cx, f.cy, f.rx * k, f.ry * k);
+    gizmoAxis(gizmoY, gizmoHeadY, f.cx, f.cy, f.ux * k, f.uy * k);
+    gizmoOrigin.setAttribute('cx', f.cx.toFixed(1));
+    gizmoOrigin.setAttribute('cy', f.cy.toFixed(1));
+    gizmo.removeAttribute('hidden');
+  }
 
   const busy = el('div', 'busy');
   vp.appendChild(busy);
@@ -470,6 +710,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // --- the outliner (09-studio .out): one group per workspace, its head the workspace's switch ----------------------
   const outlineGroups = new Map<WorkspaceId, HTMLDivElement>();
   const outlineHeads = new Map<WorkspaceId, HTMLButtonElement>();
+  const workspaceNames = new Map<WorkspaceId, string>();
   for (const [id] of OUTLINE) {
     const group = el('div', 'og');
     group.dataset.og = id;
@@ -575,7 +816,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // presets relative to the camera, elevation inside the time's band. Slider-rate changes coalesce to one apply.
   const secLight = el('div', 'sec');
   secLight.appendChild(sectionHead(t('studio.ws.light'), 'timeDay'));
-  const SVG_NS = 'http://www.w3.org/2000/svg';
   const svg = <K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string, string | number>): SVGElementTagNameMap[K] => {
     const node = document.createElementNS(SVG_NS, tag);
     for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value));
@@ -791,7 +1031,29 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const pz = numField('z', (v) => patchSel({ z: v }));
   const heading = numField('°', (v) => patchSel({ facingDeg: ((v % 360) + 360) % 360 }));
   fields.append(px.label, pz.label, heading.label);
-  transform.appendChild(fields);
+  // the snap (09-studio Transform .seg): where a dragged or placed tank lands
+  const snapSeg = el('div', 'cot-c-seg');
+  snapSeg.setAttribute('role', 'radiogroup');
+  snapSeg.setAttribute('aria-label', t('studio.ws.snap'));
+  const snapButtons = (['road', 'terrain', 'off'] as const).map((snap) => {
+    const option = el('button', 'cot-c-seg__opt', t(`studio.ws.snap.${snap}`));
+    option.type = 'button';
+    option.setAttribute('role', 'radio');
+    option.dataset.value = snap;
+    option.title = t(`studio.ws.snapTitle.${snap}`);
+    option.addEventListener('click', () => { S.setPlacementSnap(snap); refreshSnap(); });
+    snapSeg.appendChild(option);
+    return option;
+  });
+  function refreshSnap(): void {
+    for (const option of snapButtons) {
+      const on = option.dataset.value === S.placementSnap;
+      option.setAttribute('aria-checked', String(on));
+      option.tabIndex = on ? 0 : -1;
+    }
+  }
+  refreshSnap();
+  transform.append(fields, snapSeg);
   const pose = el('div', 'sec');
   pose.appendChild(sectionHead(t('studio.ws.pose'), 'turretRing'));
   const facing = sliderRow(t('studio.ws.facing'), 0, 360, 1, (v) => patchSel({ facingDeg: v }), 'steerLeft');
@@ -799,7 +1061,27 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const gun = sliderRow(t('studio.ws.gun'), -10, 25, 0.5, (v) => patchSel({ gunDeg: v }), 'gun');
   const recoilBtn = chipButton(t('studio.recoilPose'), 'fireGun');
   recoilBtn.addEventListener('click', () => patchSel({ recoilAgeS: 0.05 }));
-  pose.append(facing.row, turret.row, gun.row, recoilBtn);
+  recoilBtn.dataset.pro = '';
+  // the pose presets (09-studio .poses): the selected tank's silhouette over each pose's name
+  const poses = el('div', 'poses');
+  const poseSils: HTMLSpanElement[] = [];
+  for (const preset of ['hull-down', 'firing', 'knocked-out'] as const) {
+    const option = el('button');
+    option.type = 'button';
+    option.dataset.pose = preset;
+    const sil = el('span', 'cot-c-sil');
+    sil.setAttribute('aria-hidden', 'true');
+    poseSils.push(sil);
+    option.append(sil, el('span', null, t(`studio.ws.posePreset.${preset}`)));
+    option.addEventListener('click', () => {
+      const a = S._internal.selected;
+      if (!a) return;
+      if (!S.applyPosePreset(a, preset)) api.notice(t('studio.ws.noCrest'), 'info');
+      api.refreshSelected();
+    });
+    poses.appendChild(option);
+  }
+  pose.append(facing.row, turret.row, gun.row, recoilBtn, poses);
   // paint: the garage's pick and every catalogue pattern as its real swatch, painted as it scrolls into view
   const paint = el('div', 'sec');
   paint.appendChild(sectionHead(t('studio.ws.paint'), 'camouflage'));
@@ -1145,6 +1427,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // replaying the stack once per change
   const fxParamsBox = el('div', 'fxg');
   fxParamsBox.hidden = true;
+  fxParamsBox.dataset.pro = '';
   secFx.insertBefore(fxParamsBox, fxStack.nextSibling);
   let fxParamsKey = '';
   const fxParamRows = new Map<string, SliderControl>();
@@ -1199,8 +1482,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     if (!actor) { flashBusy(t('studio.selectTankFirst')); return; }
     S.keyActor(actor);
   });
+  // the timeline's header adds shots and keys tanks (these two stay as the controls it drives, out of the panel)
   authorRow.append(addShotBtn, keyActorBtn);
-  const railRow = el('div', 'grid');
+  const railRow = el('div', 'col');
   const railBtn = chipButton(t('studio.showCameraRail'), 'cameraPath', false);
   railBtn.addEventListener('click', () => S.setRailVisible(!S.railVisible));
   const clearTrackBtn = kitButton(t('studio.clearTankTrack'), 'danger');
@@ -1210,7 +1494,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     S.clearActorTrack(actor);
   });
   railRow.append(railBtn, clearTrackBtn);
-  secTime.append(authorRow, railRow);
+  secTime.append(railRow);
   // the take from above: routes, the camera's track and its distance and height (studioPlanView.ts)
   const planView = createPlanView(S, t);
   let planShown = true;
@@ -1222,7 +1506,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     press(planBtn, planShown);
     if (planShown) planView.refreshPlan();
   });
+  planBtn.dataset.pro = '';
+  planView.root.dataset.pro = '';
   secTime.append(planBtn, planView.root);
+  setControlsMode(proControls ? 'pro' : 'quick');
   const duelBtn = kitButton(t('studio.directDuel'), 'primary');
   duelBtn.classList.add('cot-c-btn--wide');
   let duelVariant = 0;
@@ -1258,6 +1545,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const fov = sliderRow(t('studio.ws.fov'), 15, 100, 1, (v) => S.setCamera({ fov: v }));
   const roll = sliderRow(t('studio.ws.roll'), -45, 45, 0.5, (v) => S.setCamera({ rollDeg: v }));
   const spd = sliderRow(t('studio.ws.flySpeed'), 2, 60, 1, (v) => { S._internal.cam.speed = v; });
+  roll.row.dataset.pro = '';
+  spd.row.dataset.pro = '';
   secCam.append(fov.row, roll.row, spd.row);
   globalGroup.body.appendChild(secCam);
   const secPicture = section('picture', t('studioPanel.section.picture'), 'visionThermal');
@@ -1315,6 +1604,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   }
   filmShake.select.title = t('studio.film.shakeTitle');
   filmBlurRow.append(filmBlur.row, filmShake.row);
+  filmBlurRow.dataset.pro = '';
   secCap.appendChild(filmBlurRow);
   const filmSummary = el('div', 'recStatus', '');
   secCap.appendChild(filmSummary);
@@ -1369,26 +1659,45 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     if (veilPreview.width !== width || veilPreview.height !== height) { veilPreview.width = width; veilPreview.height = height; }
     veilPreview.getContext('2d')?.drawImage(canvas, 0, 0, width, height);
   }
-  function startFilmExport(): void {
-    if (S.filmExportStatus().active || S.recordingStatus().active || !S.filmExportStatus().supported) return;
+  /** One film through the veil (Export film and the queue): resolves with its size; an AbortError when cancelled. */
+  function renderFilm(options: { resolution: number; fps: number; samples: number; shake: number; name?: string },
+    onProgress?: (fraction: number) => void): Promise<{ readonly bytes: number }> {
     filmVeil.classList.add('on');
     veilFill.style.width = '0%';
     veilText.textContent = t('studio.film.preparing');
     veilCancel.focus();
-    S.exportFilm({
+    const started = performance.now();
+    let frames = 0;
+    return S.exportFilm({
+      ...options,
+      download: true,
+      onProgress: (progress) => {
+        frames = progress.frames;
+        showFilmProgress(progress);
+        onProgress?.(progress.frames ? progress.frame / progress.frames : 0);
+      },
+      onFrame: drawFilmPreview,
+    })
+      .then((result) => {
+        const size = filmOutputSize(S.productionFormat, options.resolution);
+        recordRenderRate(performance.now() - started, frames, options.samples, size.width, size.height);
+        return result;
+      })
+      .finally(() => { filmVeil.classList.remove('on'); api.refreshStoryboard(); });
+  }
+  const aborted = (error: RuntimeValue): boolean => error instanceof Error && error.name === 'AbortError';
+  function startFilmExport(): void {
+    if (S.filmExportStatus().active || S.recordingStatus().active || !S.filmExportStatus().supported) return;
+    renderFilm({
       resolution: Number(filmSize.select.value),
       fps: Number(filmFps.select.value),
       samples: Number(filmBlur.select.value),
       shake: Number(filmShake.select.value),
-      download: true,
-      onProgress: showFilmProgress,
-      onFrame: drawFilmPreview,
     })
       .then((result) => flashBusy(t('studio.film.saved', { size: (result.bytes / 1048576).toFixed(1) })))
-      .catch((error: RuntimeValue) => flashBusy(error instanceof Error && error.name === 'AbortError'
+      .catch((error: RuntimeValue) => flashBusy(aborted(error)
         ? t('studio.film.cancelled')
-        : t('studio.film.failed', { error: errorMessage(error) })))
-      .finally(() => { filmVeil.classList.remove('on'); api.refreshStoryboard(); });
+        : t('studio.film.failed', { error: errorMessage(error) })));
   }
   filmBtn.addEventListener('click', startFilmExport);
   let filmSignature = '';
@@ -1414,7 +1723,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const { width, height } = filmOutputSize(format, Number(filmSize.select.value));
       const plan = createFilmPlan(normalizeFilm({ ...(film ?? {}), fps: Number(filmFps.select.value), samples: Number(filmBlur.select.value) }), 0, S.durationMs);
       filmSummary.textContent = t('studio.film.summary', {
-        ratio: format === 'portrait' ? '9:16' : format === 'square' ? '1:1' : '16:9',
+        ratio: formatRatio(format),
         width, height, seconds: (plan.map.durationMs / 1000).toFixed(1), frames: plan.frames,
       });
     } catch (error) {
@@ -1423,6 +1732,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   }
   // --- live recording, stills and the scene file ---------------------------------------------------------------
   const secLive = el('div', 'sec');
+  secLive.dataset.pro = '';
   secLive.appendChild(sectionHead(t('studio.film.liveHeading'), 'record'));
   const fpsSel = labelledSelect(t('studio.ws.video'));
   for (const fps of [60, 30]) {
@@ -1574,6 +1884,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   stepBtn.innerHTML = STUDIO_GLYPHS.stepForward;
   stepBtn.addEventListener('click', () => { S.pause(); S.seek(S.fxTimeMs + 1000 / 30); });
   const clockNow = el('span', 'tc');
+  // the J/K/L shuttle's rate beside the clock, only while it is not plain play or stop
+  const shuttleBadge = el('span', 'rate');
+  shuttleBadge.hidden = true;
   const playKey = el('kbd', 'cot-c-kbd', t('studio.ws.spaceKey'));
   playKey.setAttribute('aria-hidden', 'true');
   const duration = sliderRow(t('studioPanel.storyboard.lengthLabel'), 1, 20, 0.5, (v) => S.setStoryboardDuration(v * 1000));
@@ -1583,8 +1896,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   keyBtn.addEventListener('click', () => keyActorBtn.click());
   const shotBtn = chipButton(t('studio.addCameraShot'), 'toolPhoto');
   shotBtn.addEventListener('click', () => S.addCameraShot());
+  ts.row.dataset.pro = '';
   transportRight.append(duration.row, ts.row, shotBtn, keyBtn);
-  transport.append(restartBtn, pauseBtn, stepBtn, clockNow, playKey, transportRight);
+  transport.append(restartBtn, pauseBtn, stepBtn, clockNow, shuttleBadge, playKey, transportRight);
   const lanes = el('div', 'st-lanes');
   lanes.appendChild(el('div', 'lb'));
   const ruler = el('div', 'tk tk--ruler');
@@ -1631,6 +1945,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     head(id, button) {
       const glyph = OUTLINE.find(([outlineId]) => outlineId === id)?.[1] ?? 'studio';
       const label = button.textContent ?? '';
+      workspaceNames.set(id, label);
       button.innerHTML = uiIconSVG(glyph, 15);
       button.append(el('span', 'nm', label));
       outlineHeads.set(id, button);
@@ -1691,6 +2006,228 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       cancelAnimationFrame(viewportFrame);
       viewportFrame = requestAnimationFrame(syncViewport);
     }).observe(vp);
+  }
+
+  // --- the render queue (brand-ui SPEC 12.6; studioQueue.ts): deliveries in the scene's frame, one after another ---------
+  interface QueueJob {
+    readonly preset: QueuePreset;
+    readonly label: string;
+    readonly estimate: { readonly seconds: number; readonly bytes: number; readonly files: number };
+    state: 'waiting' | 'running' | 'done' | 'failed' | 'cancelled';
+    progress: number;
+  }
+  const queueJobs: QueueJob[] = [];
+  let queueRunning = false;
+  const queuePop = el('div', 'st-queue');
+  queuePop.hidden = true;
+  queuePop.setAttribute('role', 'dialog');
+  queuePop.setAttribute('aria-label', t('studio.ws.queueTitle'));
+  const queuePresets = el('div', 'qp');
+  const queueList = el('div', 'ql');
+  const queueEmpty = el('p', 'qe', t('studio.ws.queue.empty'));
+  const queueFoot = el('div', 'qf');
+  const queueStart = kitButton(t('studio.ws.queue.start'), 'primary');
+  queueStart.addEventListener('click', () => { void runQueue(); });
+  const queueClear = kitButton(t('studio.ws.queue.clear'), 'ghost');
+  queueClear.addEventListener('click', () => {
+    for (let i = queueJobs.length - 1; i >= 0; i--) if (queueJobs[i].state !== 'waiting' && queueJobs[i].state !== 'running') queueJobs.splice(i, 1);
+    refreshQueue();
+  });
+  queueFoot.append(queueClear, queueStart);
+  queuePop.append(queuePresets, queueList, queueEmpty, queueFoot);
+  head.appendChild(queuePop);
+  queuePop.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    toggleQueue(false);
+    queueBtn.focus();
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (queuePop.hidden || !(event.target instanceof Node) || queuePop.contains(event.target) || queueBtn.contains(event.target)) return;
+    toggleQueue(false);
+  });
+  const presetName = (preset: QueuePreset): string => t(`studio.ws.queue.preset.${preset.id}`);
+  /** "≈ 1.4 min · ≈ 22 MB" in the page's language. */
+  function costText(estimate: QueueJob['estimate']): string {
+    const time = estimate.seconds < 90 ? t('studio.ws.queue.seconds', { n: Math.max(1, Math.round(estimate.seconds)) })
+      : t('studio.ws.queue.minutes', { n: (estimate.seconds / 60).toFixed(1) });
+    const megabytes = estimate.bytes / 1e6;
+    return t('studio.ws.queue.estimate', { time, size: t('studio.ws.queue.megabytes', { n: megabytes < 10 ? megabytes.toFixed(1) : Math.round(megabytes) }) });
+  }
+  function estimateFor(preset: QueuePreset): QueueJob['estimate'] {
+    return queueEstimate(preset, S.productionFormat, S.durationMs, Number(filmBlur.select.value), shotRuns(S.getStoryboard().shots, S.durationMs).length);
+  }
+  function toggleQueue(open = queuePop.hidden): void {
+    queuePop.hidden = !open;
+    queueBtn.setAttribute('aria-expanded', String(open));
+    if (open) refreshQueue();
+  }
+  function refreshQueue(): void {
+    const pending = queueJobs.filter((job) => job.state === 'waiting' || job.state === 'running').length;
+    setLabel(queueBtn, pending ? t('studio.ws.queueCount', { count: pending }) : t('studio.ws.queue'));
+    if (queuePop.hidden) return;
+    const shots = S.getStoryboard().shots.length;
+    queuePresets.replaceChildren(...QUEUE_PRESETS.map((preset) => {
+      const row = el('div', 'qr');
+      const name = el('span', 'qn', presetName(preset));
+      const cost = el('span', 'qc', costText(estimateFor(preset)));
+      const add = chipButton(t('studio.ws.queue.add'), null);
+      add.insertAdjacentHTML('afterbegin', STUDIO_GLYPHS.plus);
+      add.disabled = preset.id === 'stills-shots' && !shots;
+      add.addEventListener('click', () => {
+        queueJobs.push({ preset, label: presetName(preset), estimate: estimateFor(preset), state: 'waiting', progress: 0 });
+        refreshQueue();
+      });
+      row.append(name, cost, add);
+      return row;
+    }));
+    queueList.replaceChildren(...queueJobs.map((job, index) => {
+      const row = el('div', `qr qr--${job.state}`);
+      const status = job.state === 'running' ? `${Math.round(job.progress * 100)}%`
+        : job.state === 'waiting' ? costText(job.estimate) : t(`studio.ws.queue.state.${job.state}`);
+      row.append(el('span', 'qn', job.label), el('span', 'qc', status));
+      if (job.state === 'waiting') {
+        const remove = el('button', 'x');
+        remove.type = 'button';
+        remove.innerHTML = uiIconSVG('close', 14);
+        remove.setAttribute('aria-label', t('studio.ws.queue.remove', { name: job.label }));
+        remove.title = remove.getAttribute('aria-label') ?? '';
+        remove.addEventListener('click', () => { queueJobs.splice(index, 1); refreshQueue(); });
+        row.appendChild(remove);
+      }
+      return row;
+    }));
+    queueEmpty.hidden = queueJobs.length > 0;
+    const busy = queueRunning || S.filmExportStatus().active || S.recordingStatus().active;
+    queueStart.disabled = busy || !queueJobs.some((job) => job.state === 'waiting');
+    queueClear.disabled = !queueJobs.some((job) => job.state !== 'waiting' && job.state !== 'running');
+  }
+  const nextFrame = (): Promise<void> => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  /** Run every waiting job in turn; a cancelled film stops the queue there, a failed job moves on. */
+  async function runQueue(): Promise<void> {
+    if (queueRunning) return;
+    queueRunning = true;
+    let files = 0;
+    refreshQueue();
+    try {
+      for (const job of queueJobs) {
+        if (job.state !== 'waiting') continue;
+        job.state = 'running';
+        job.progress = 0;
+        refreshQueue();
+        try {
+          files += await runJob(job);
+          job.state = 'done';
+        } catch (error) {
+          job.state = aborted(error) ? 'cancelled' : 'failed';
+          if (job.state === 'failed') console.error('[studio] queued render failed', error);
+        }
+        refreshQueue();
+        if (job.state === 'cancelled') break;
+      }
+    } finally {
+      queueRunning = false;
+      refreshQueue();
+      if (files) api.notice(t('studio.ws.queue.done', { count: files }), 'info');
+    }
+  }
+  async function runJob(job: QueueJob): Promise<number> {
+    const map = S.mapId ?? 'studio';
+    const ratio = formatRatio(S.productionFormat);
+    const report = (fraction: number): void => { job.progress = fraction; refreshQueue(); };
+    if (job.preset.kind === 'film') {
+      await renderFilm({
+        resolution: job.preset.resolution, fps: job.preset.fps,
+        samples: Number(filmBlur.select.value), shake: Number(filmShake.select.value),
+        name: queueFileName(map, `${job.preset.resolution}p${job.preset.fps}`, ratio, '').replace(/\.$/, ''),
+      }, report);
+      return 1;
+    }
+    const { width, height } = stillSize(S.productionFormat);
+    if (job.preset.id === 'still-now') {
+      S.capture({ width, height, download: true, name: queueFileName(map, `still-${(S.fxTimeMs / 1000).toFixed(2)}s`, ratio, 'png') });
+      return 1;
+    }
+    // a still at every shot: the lens on each key in turn, then the playhead and shot back where they were
+    const runs = shotRuns(S.getStoryboard().shots, S.durationMs);
+    const playhead = S.fxTimeMs, shotBefore = S.selectedShotId;
+    let made = 0;
+    for (const [index, { first: shot }] of runs.entries()) {
+      S.selectCameraShot(shot.id);
+      await nextFrame();
+      S.capture({ width, height, download: true,
+        name: queueFileName(map, `shot-${String(index + 1).padStart(2, '0')}-${shotLabel(shot.label)}`, ratio, 'png') });
+      made++;
+      report(made / runs.length);
+    }
+    if (shotBefore) S.selectCameraShot(shotBefore);
+    S.seek(playhead);
+    return made;
+  }
+
+  // --- the command palette (Ctrl/Cmd+K): every action, run through the control that does it -------------------------
+  const commandPalette = createCommandPalette(studioCommands);
+  root.appendChild(commandPalette.root);
+  function studioCommands(): StudioCommand[] {
+    const list: StudioCommand[] = [];
+    const add = (id: string, label: string, run: () => void, extra: Omit<Partial<StudioCommand>, 'id' | 'label' | 'run'> = {}): void => {
+      list.push({ id, label, run, ...extra });
+    };
+    const via = (button: HTMLButtonElement) => () => { if (!button.disabled) button.click(); };
+    const text = (node: Element): string => node.textContent?.trim() ?? '';
+    const selected = S._internal.selected;
+    add('play', S.playing ? t('studio.pause') : t('studio.play'), via(pauseBtn), { hint: 'Space', keywords: 'play pause' });
+    add('restart', t('studio.restart'), via(restartBtn), { keywords: 'restart beginning' });
+    add('step', t('studio.stepOneFrame'), via(stepBtn), { keywords: 'step frame next' });
+    if (!undoBtn.disabled) add('undo', t('studio.ws.cmd.undo'), via(undoBtn), { hint: UNDO_KEY, keywords: 'undo' });
+    if (!redoBtn.disabled) add('redo', t('studio.ws.cmd.redo'), via(redoBtn), { hint: `Shift ${UNDO_KEY}`, keywords: 'redo' });
+    if (!restoreBtn.hidden) add('restore', t('studio.ws.restore'), via(restoreBtn), { keywords: 'restore autosave last scene' });
+    add('shot', t('studio.addCameraShot'), via(shotBtn), { keywords: 'add camera shot key' });
+    if (!keyBtn.disabled) add('key', t('studio.keySelectedTank'), via(keyBtn), { keywords: 'key selected tank keyframe' });
+    if (!lookChip.disabled) add('look', t('studio.ws.lookThrough'), via(lookChip), { keywords: 'look through camera view shot' });
+    add('guides', t('studio.ws.guides'), via(guidesChip), { keywords: 'guides thirds safe frame' });
+    if (selected) {
+      for (const option of poses.querySelectorAll<HTMLButtonElement>('[data-pose]')) {
+        add(`pose-${option.dataset.pose}`, t('studio.ws.cmd.pose', { name: text(option) }), via(option), { keywords: `pose ${option.dataset.pose}` });
+      }
+      add('remove', t('studio.ws.cmd.remove', { name: selected.spec.name }), () => { S.removeActor(selected); }, { hint: 'Del', keywords: 'remove delete tank' });
+    }
+    for (const [id, button] of outlineHeads) {
+      add(`go-${id}`, t('studio.ws.cmd.workspace', { name: workspaceNames.get(id) ?? text(button) }), via(button), { keywords: `go workspace ${id}` });
+    }
+    for (const option of formatButtons) {
+      add(`frame-${option.dataset.value}`, t('studio.ws.cmd.frame', { ratio: text(option) }), via(option), { keywords: `frame format aspect ${option.dataset.value}` });
+    }
+    for (const option of modeButtons) {
+      add(`controls-${option.dataset.value}`, t('studio.ws.cmd.controls', { name: text(option) }), via(option), { keywords: `controls ${option.dataset.value}` });
+    }
+    for (const option of snapButtons) {
+      add(`snap-${option.dataset.value}`, t('studio.ws.cmd.snap', { name: text(option) }), via(option), { keywords: `snap ${option.dataset.value}` });
+    }
+    for (const [time, button] of timeOptions) {
+      if (!button.disabled) add(`time-${time}`, t('studio.ws.cmd.time', { name: t(`atmosphere.${time}`) }), via(button), { keywords: `light time ${time}` });
+    }
+    for (const preset of PRODUCTION_PRESETS) {
+      add(`stage-${preset.id}`, t('studio.ws.cmd.stage', { name: presetText(preset.id, 'title', preset.title) }), () => {
+        S.directProduction({ presetId: preset.id, format: S.productionFormat })
+          .then(() => api.refreshAll())
+          .catch((error: RuntimeValue) => api.notice(errorMessage(error), 'error'));
+      }, { keywords: `stage sequence director ${preset.id}` });
+    }
+    add('export', t('studio.ws.exportFilm'), via(exportBtn), { keywords: 'export film render video' });
+    add('link', t('studio.sceneLink.copyButton'), via(linkBtn), { keywords: 'copy scene link share' });
+    add('queue', t('studio.ws.queueTitle'), () => toggleQueue(true), { keywords: 'render queue deliveries stills' });
+    add('gallery', t('studioPanel.tankGallery'), via(galleryBtn), { keywords: 'tank gallery' });
+    add('exit', t('studio.ws.exit'), via(exitBtn), { hint: 'F8', keywords: 'exit close garage' });
+    // named only: the battlefields and the fleet
+    for (const [id, card] of mapCards) {
+      add(`map-${id}`, t('studio.ws.cmd.map', { name: S.getMapInfo(id).name }), via(card), { searchOnly: true, keywords: `battlefield map ${id}` });
+    }
+    for (const id of S.TANK_IDS) {
+      add(`tank-${id}`, t('studio.ws.cmd.addTank', { name: specInfo(id).name }), () => { setPicked(id); addAtMarker.click(); },
+        { searchOnly: true, keywords: `add tank ${id}` });
+    }
+    return list;
   }
 
   // --- helpers -------------------------------------------------------------------
@@ -1952,28 +2489,69 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     }
   }
 
+  /** A shot's thumbnail slots: its outliner row and its camera clip (setShotThumbnail fills them in place). */
+  const shotThumbSlots = new Map<string, { img: HTMLImageElement; glyph: Element | null }[]>();
+  /** A shot's thumbnail, in place of its glyph until the lens has sat on the shot (studio.ts grabShotThumbnail). */
+  function shotThumb(id: string, glyph: Element | null): HTMLImageElement {
+    const img = el('img', 'th');
+    img.alt = '';
+    img.decoding = 'async';
+    img.draggable = false;
+    const url = S.shotThumbnail(id);
+    if (url) {
+      img.src = url;
+      glyph?.setAttribute('hidden', '');
+    } else img.hidden = true;
+    const slots = shotThumbSlots.get(id) ?? [];
+    slots.push({ img, glyph });
+    shotThumbSlots.set(id, slots);
+    return img;
+  }
+
   function rebuildStoryboard() {
     const board = S.getStoryboard();
     laneHost.textContent = '';
+    shotThumbSlots.clear();
     shotboard.querySelectorAll<InfoButton>('.cot-info-trigger')
       .forEach((button) => button.disposeInfo?.());
     shotboard.textContent = '';
     shotRows.textContent = '';
-    outlineCount('cinematics', board.shots.length);
-    // the camera lane: each shot a clip from its key to the next (09-studio .tl Camera)
+    const runs = shotRuns(board.shots, S.durationMs);
+    outlineCount('cinematics', runs.length);
+    // the camera lane (09-studio .tl Camera): one clip per shot, from its first key to the next shot's, its thumbnail
+    // beside its name and a tick at each later key of the shot
     const cameraLane = timelineLane(t('studio.ws.laneCamera'), 'toolPhoto');
-    board.shots.forEach((shot, index) => {
-      const selected = shot.id === S.selectedShotId;
+    for (const run of runs) {
+      const shot = run.first;
       const name = shotLabel(shot.label);
-      const next = board.shots[index + 1]?.tMs ?? S.durationMs;
-      const clip = el('button', 'clip', name);
+      const clip = el('button', 'clip');
+      clip.append(shotThumb(shot.id, null), el('span', 'cl', name));
       clip.type = 'button';
-      clip.style.left = pct(shot.tMs);
-      clip.style.width = `calc(${pct(Math.max(0, next - shot.tMs))} - 3px)`;
-      clip.setAttribute('aria-pressed', String(selected));
+      clip.style.left = pct(run.startMs);
+      clip.style.width = `calc(${pct(Math.max(0, run.endMs - run.startMs))} - 3px)`;
+      clip.setAttribute('aria-pressed', String(run.keys.some((key) => key.id === S.selectedShotId)));
       clip.title = t('studioPanel.shot.timelineMarkerTitle', { label: name, t: (shot.tMs / 1000).toFixed(2) });
       clip.addEventListener('click', (event) => { event.stopPropagation(); S.selectCameraShot(shot.id); });
+      for (const key of run.keys.slice(1)) {
+        const tick = el('i', 'ck');
+        tick.style.left = `${((key.tMs - run.startMs) / Math.max(1, run.endMs - run.startMs)) * 100}%`;
+        clip.appendChild(tick);
+      }
       cameraLane.appendChild(clip);
+      // its outliner row (09-studio .out Shots): the thumbnail, the name and the shot's length
+      const line = outlineRow(() => { productionPanel.activate('cinematics'); S.selectCameraShot(shot.id); });
+      line.row.setAttribute('aria-current', String(run.keys.some((key) => key.id === S.selectedShotId)));
+      line.pick.innerHTML = uiIconSVG('toolPhoto', 16);
+      line.pick.append(shotThumb(shot.id, line.pick.firstElementChild), el('span', 'nm', name),
+        el('span', 'd', seconds(Math.max(0, run.endMs - run.startMs))));
+      shotRows.appendChild(line.row);
+    }
+    // the storyboard's cards: one per shot, as the outliner and the camera lane count them; its blend is how the shot
+    // begins (its first key's), and removing it removes every key it holds
+    runs.forEach((run, index) => {
+      const shot = run.first;
+      const selected = run.keys.some((key) => key.id === S.selectedShotId);
+      const name = shotLabel(shot.label);
       const card = el('div', `shotcard${selected ? ' sel' : ''}`);
       card.appendChild(el('div', 'num', String(index + 1).padStart(2, '0')));
       const copy = el('div', 'copy');
@@ -2007,15 +2585,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       del.innerHTML = uiIconSVG('close', 14);
       del.title = t('studioPanel.shot.removeTitle', { label: name });
       del.setAttribute('aria-label', del.title);
-      del.addEventListener('click', () => S.removeCameraShot(shot.id));
+      del.addEventListener('click', () => { for (const key of run.keys) S.removeCameraShot(key.id); });
       card.appendChild(del);
       shotboard.appendChild(card);
-      // its outliner row (09-studio .out Shots): the label and the shot's length
-      const line = outlineRow(() => { productionPanel.activate('cinematics'); S.selectCameraShot(shot.id); });
-      line.row.setAttribute('aria-current', String(selected));
-      line.pick.innerHTML = uiIconSVG('toolPhoto', 16);
-      line.pick.append(el('span', 'nm', name), el('span', 'd', seconds(Math.max(0, next - shot.tMs))));
-      shotRows.appendChild(line.row);
     });
     // a lane per tank with keys: its flag, silhouette and name, a diamond per pose key
     for (const track of board.actorTracks) {
@@ -2024,7 +2596,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       for (const key of track.keys) {
         const mark = el('button', 'key');
         mark.type = 'button';
-        mark.style.left = pct(key.tMs);
+        // a key at either end stays whole inside its lane, clear of the lane's name
+        mark.style.left = `clamp(6px, ${pct(key.tMs)}, calc(100% - 6px))`;
         const title = t('studio.ws.keyTitle', { actor: actor?.spec.name ?? track.actor, s: (key.tMs / 1000).toFixed(2) });
         mark.title = title;
         mark.setAttribute('aria-label', title);
@@ -2032,21 +2605,80 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         lane.appendChild(mark);
       }
     }
-    // the effects lane: a clip where each fires
+    // the effects lane: a chip per moment, as wide as its name up to the next moment (where its name ellipsizes);
+    // effects that fire together share one ("Dust burst ×2", "Dust burst +1")
     const effectLane = timelineLane(t('studio.ws.laneEffects'), 'detonation');
-    for (const effect of S.listEffects()) {
-      const clip = el('button', 'clip clip--fx', effectName(effect.type));
+    const together = Math.max(40, S.durationMs * 0.004);
+    const moments: StudioEffect[][] = [];
+    for (const effect of [...S.listEffects()].sort((a, b) => a.tMs - b.tMs)) {
+      const moment = moments[moments.length - 1];
+      if (moment && effect.tMs - moment[0].tMs <= together) moment.push(effect);
+      else moments.push([effect]);
+    }
+    moments.forEach((moment, index) => {
+      const first = moment[0];
+      const next = moments[index + 1]?.[0].tMs ?? S.durationMs;
+      const name = effectName(first.type);
+      const label = moment.length < 2 ? name : moment.every((effect) => effect.type === first.type)
+        ? t('studio.ws.fxMany', { name, count: moment.length }) : t('studio.ws.fxPlus', { name, count: moment.length - 1 });
+      const clip = el('button', 'clip clip--fx');
+      clip.appendChild(el('span', 'cl', label));
       clip.type = 'button';
-      clip.style.left = pct(effect.tMs);
-      clip.style.maxWidth = '30%';
-      clip.setAttribute('aria-pressed', String(!!effect.selected));
-      clip.title = t('studio.ws.fxTitle', { type: effectName(effect.type), s: (effect.tMs / 1000).toFixed(2) });
-      clip.addEventListener('click', (event) => { event.stopPropagation(); S.selectEffect(effect.id); S.seek(effect.tMs); });
+      clip.style.left = pct(first.tMs);
+      clip.style.maxWidth = `calc(${pct(Math.max(0, next - first.tMs))} - 3px)`;
+      clip.setAttribute('aria-pressed', String(moment.some((effect) => !!effect.selected)));
+      clip.title = moment.map((effect) => t('studio.ws.fxTitle', { type: effectName(effect.type), s: (effect.tMs / 1000).toFixed(2) })).join('\n');
+      clip.addEventListener('click', (event) => { event.stopPropagation(); S.selectEffect(first.id); S.seek(first.tMs); });
       effectLane.appendChild(clip);
+    });
+    // the sound lane (09-studio .tl Sound): the film's soundtrack as it will mix, redrawn once the scene settles
+    const soundLane = timelineLane(t('studio.ws.laneSound'), 'sound');
+    soundLane.classList.add('tk--sound');
+    soundLane.appendChild(soundWave);
+    scheduleSound();
+  }
+
+  // the sound lane's waveform: one element kept across the timeline's rebuilds, redrawn when the scene changes
+  const SOUND_BUCKETS = 400;
+  const soundWave = document.createElementNS(SVG_NS, 'svg');
+  soundWave.setAttribute('viewBox', `0 0 ${SOUND_BUCKETS} 20`);
+  soundWave.setAttribute('preserveAspectRatio', 'none');
+  soundWave.setAttribute('aria-hidden', 'true');
+  const soundPath = document.createElementNS(SVG_NS, 'path');
+  soundWave.appendChild(soundPath);
+  let soundKey = '';
+  let soundTimer: ReturnType<typeof setTimeout> | 0 = 0;
+  /** What the soundtrack depends on: the effects, the take's length, the shots (the listener) and the tanks. */
+  function soundSignature(): string {
+    return JSON.stringify([S.mapId, S.durationMs, S.listEffects().map((effect) => [effect.id, effect.type, effect.tMs, effect.actor ?? null, effect.params ?? null]),
+      // the shots place the listener (the panel's shot type leaves the camera out; the storyboard carries it)
+      (S.getStoryboard().shots as ReadonlyArray<StudioCameraShot & { readonly pos?: readonly number[]; readonly lookAt?: readonly number[] }>)
+        .map((shot) => [shot.tMs, shot.pos ?? null, shot.lookAt ?? null, shot.transition]),
+      S._internal.actors.map((actor) => [actor.uid, actor.spec.id, actor.pose.x, actor.pose.z, actor.pose.facingDeg, actor.pose.turretDeg, actor.pose.gunDeg])]);
+  }
+  function scheduleSound(): void {
+    const key = soundSignature();
+    if (key === soundKey) return;
+    soundKey = key;
+    soundWave.classList.add('stale');
+    if (soundTimer) clearTimeout(soundTimer);
+    soundTimer = setTimeout(drawSound, 1500);
+  }
+  async function drawSound(): Promise<void> {
+    soundTimer = 0;
+    const key = soundKey;
+    const result = root.style.display === 'block' ? await S.soundPreview(SOUND_BUCKETS).catch(() => null) : null;
+    if (!result) { soundTimer = setTimeout(drawSound, 1500); return; } // busy or playing: again once it settles
+    if (key !== soundKey) return; // the scene moved on while it mixed; its own redraw is queued
+    let peak = 0;
+    for (const value of result.peaks) peak = Math.max(peak, value);
+    let d = '';
+    for (let i = 0; i < result.peaks.length; i++) {
+      const half = (peak > 0 ? (result.peaks[i] / peak) * 9.4 : 0) + 0.3;
+      d += `M${i + 0.5} ${(10 - half).toFixed(2)}V${(10 + half).toFixed(2)}`;
     }
-    if (!board.shots.length) {
-      shotboard.appendChild(el('div', 'fxempty', t('studioPanel.storyboard.empty')));
-    }
+    soundPath.setAttribute('d', d);
+    soundWave.classList.remove('stale');
   }
 
   // --- public panel API -------------------------------------------------------
@@ -2086,6 +2718,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     setSelected(_actor) {
       api.refreshActors();
       api.refreshStoryboard();
+      drawSelection();
     },
     setSelectedEffect(_effect) {
       api.refreshEffects();
@@ -2121,6 +2754,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       if (planShown) planView.refreshPlan();
     },
     refreshSelected() {
+      scheduleSound();
       const a = S._internal.selected;
       secSel.hidden = !a;
       selEmpty.hidden = !!a;
@@ -2131,6 +2765,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         hero.querySelector('.hc-host')?.remove();
         heroSil.style.setProperty('--sil', `url(${iconUrl(a.spec.id, 'side_silhouette')})`);
         heroName.replaceChildren(flagNode(specInfo(a.spec.id).nation || ''), a.spec.name);
+        for (const sil of poseSils) sil.style.setProperty('--sil', `url(${iconUrl(a.spec.id, 'side_silhouette')})`);
         const specId = a.spec.id;
         void Promise.all([import('./heroCard.ts'), import('./heroCard.css')])
           .then(([cards]) => (hero.dataset.spec === specId
@@ -2164,6 +2799,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       orbBtn.setAttribute('aria-checked', String(c.mode === 'orbit'));
       setLabel(modeChip, c.mode === 'orbit' ? t('studio.orbit') : t('studio.freeFly'));
       setLabel(lensChip, `${Math.round(c.fov)}°`);
+      press(lookChip, S.lookThrough && !lookChip.disabled);
     },
     refreshTime() {
       productionPanel.refresh();
@@ -2172,9 +2808,15 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       if (scale > 0 && Number(ts.input.value) !== scale) ts.set(scale);
       const playing = scale !== 0;
       const pauseLabel = playing ? t('studio.pause') : t('studio.play');
+      const rate = S.shuttleRate;
+      const rateText = rate === 0 || rate === 1 ? '' : `${rate < 0 ? '−' : ''}${Math.abs(rate)}×`;
+      if (shuttleBadge.textContent !== rateText) {
+        shuttleBadge.textContent = rateText;
+        shuttleBadge.hidden = !rateText;
+      }
       if (pauseBtn.getAttribute('aria-label') !== pauseLabel) {
         pauseBtn.setAttribute('aria-label', pauseLabel);
-        pauseBtn.title = pauseLabel;
+        pauseBtn.title = t('studio.ws.playTitle', { action: pauseLabel });
         if (playing) pauseBtn.innerHTML = STUDIO_GLYPHS.pause;
         else pauseBtn.innerHTML = uiIconSVG('play', 16);
       }
@@ -2231,9 +2873,12 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       rebuildStoryboard();
       updateFilmSummary();
       const board = S.getStoryboard();
-      const shotIndex = board.shots.findIndex((shot) => shot.id === S.selectedShotId);
+      lookChip.disabled = !board.shots.length;
+      press(lookChip, S.lookThrough && !lookChip.disabled);
+      const runs = shotRuns(board.shots, S.durationMs);
+      const shotIndex = runs.findIndex((run) => run.keys.some((key) => key.id === S.selectedShotId));
       setLabel(shotChip, shotIndex < 0 ? t('studio.ws.noShot')
-        : t('studio.ws.shot', { n: String(shotIndex + 1).padStart(2, '0'), label: shotLabel(board.shots[shotIndex].label) }));
+        : t('studio.ws.shot', { n: String(shotIndex + 1).padStart(2, '0'), label: shotLabel(runs[shotIndex].first.label) }));
       if (planShown) planView.refreshPlan();
       api.refreshTime();
     },
@@ -2260,6 +2905,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       api.refreshMap();
       api.refreshPicture();
       api.refreshActors();
+      api.refreshHistory();
       api.refreshEffects();
       api.refreshCamera();
       api.refreshStoryboard();
@@ -2272,11 +2918,35 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       refreshAcc += dt;
       planAcc += dt;
       // the plan follows the playhead at ~15 fps while the take plays
-      if (planShown && S.playing && planAcc >= 1 / 15) { planAcc = 0; planView.refreshTime(); }
+      if (planShown && proControls && S.playing && planAcc >= 1 / 15) { planAcc = 0; planView.refreshTime(); }
       if (refreshAcc < 0.25) return;
       refreshAcc = 0;
       refreshSunCamera();
       api.refreshTime();
+      refreshSaved();
+    },
+    drawSelection,
+    openCommands() { commandPalette.open(); },
+    refreshHistory() {
+      const history = S.history;
+      undoBtn.disabled = !history.undo;
+      redoBtn.disabled = !history.redo;
+      refreshSaved();
+      // an empty Studio offers the last autosaved scene until something is staged or saved here
+      const saved = history.savedAt ? null : S.autosaved();
+      const empty = !S._internal.actors.length && !S.getStoryboard().shots.length;
+      restoreBtn.hidden = !(saved && empty);
+      if (saved && empty) {
+        restoreBtn.title = t('studio.ws.restoreTitle', { map: S.getMapInfo(saved.map).name, count: saved.tanks,
+          ago: agoText(saved.savedAt) || t('studio.ws.justNow') });
+      }
+    },
+    setShotThumbnail(id, url) {
+      for (const slot of shotThumbSlots.get(id) ?? []) {
+        slot.img.src = url;
+        slot.img.hidden = false;
+        slot.glyph?.setAttribute('hidden', '');
+      }
     },
   };
   return api;

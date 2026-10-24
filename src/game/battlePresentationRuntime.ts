@@ -1,6 +1,7 @@
 import { applyJuggernautScale } from '../sim/juggernautScale.ts';
 import { lodDistanceScale } from '../engine/lodDistanceScale.ts';
 import { syncTankEnergyVisual, clearJuggernautVisual, TANK_ENERGY, type TankEnergyStyle } from './juggernautVisual.ts';
+import { modeLightsTanks } from '../sim/matchRuleset.ts';
 import type { MatchModePresentationState } from '../sim/matchModes.ts';
 import type { ArmorEnvelope } from '../vehicles/specHelpers.ts';
 import type { syncMissionAttachment as SyncMissionAttachment } from './missionAttachmentVisual.ts';
@@ -131,7 +132,10 @@ type PosePorts = Pick<BattleClientAccess,
 >;
 
 interface BattlePresentationRuntime {
-  prepareModeVisuals(): void;
+  /** Every tank's mode equipment and energy skin; returns the roots given new skin materials (programs to compile). */
+  prepareModeVisuals(): Object3D[];
+  /** A staged tank's energy skin, before its first program compile (the visual streamers' onVisualReady). */
+  prepareModeEnergy(entity: object): void;
   resetSoloPoses(): void;
   primeDeploymentTerrainTiles(): void;
   captureSoloPoses(): void;
@@ -263,12 +267,16 @@ export function createBattlePresentationRuntime({
       && Math.abs(detailScreenPosition.y) <= 1.45;
   };
 
-  const syncModeVisual = (entity: TankEntity, dtFrame: number | undefined, active: boolean): void => {
+  const syncModeEnergy = (entity: TankEntity, dtFrame: number | undefined, active: boolean): boolean => {
     const state = entity.state as TankState;
     const visual = entity.visual as TankVisual;
+    const mode = game.matchModeState as MatchModePresentationState | null;
+    // (mode-sheen-perf-243) a mode that lights tanks keeps every tank's skin on from its staging (a network entry's
+    // covered compile runs before its phase turns) to the battle's exit, dormant while no role lights it (the ending
+    // included): a pickup, a conversion, a kill or a spotting edge writes uniforms, never a material or a program
+    const dormant = game.phase !== 'studio' && game.phase !== 'shot' && modeLightsTanks(mode?.id);
     if(active){
       if((game.matchModeState as {boss?:{id:string}}|null)?.boss?.id===entity.id)applyJuggernautScale(entity as TankEntity & {state:TankState});
-      const mode = game.matchModeState as MatchModePresentationState | null;
       let style: TankEnergyStyle = TANK_ENERGY.juggernaut;
       let modeAura = false;
       if (mode?.id === 'capture_the_flag') {
@@ -281,9 +289,19 @@ export function createBattlePresentationRuntime({
           style = TANK_ENERGY.infected; modeAura = true; break;
         }
       }
-      syncTankEnergyVisual(visual.root,entity.spec.dims,modeAura?1.12:state.modeScale??1,
-        entity.combat?.destroyed?0:entity.combat?.hp??1,entity.combat?.maxHp??1,dtFrame??0,!modeAura,style);
-    } else clearJuggernautVisual(visual.root);
+      return syncTankEnergyVisual(visual.root,entity.spec.dims,modeAura?1.12:state.modeScale??1,
+        entity.combat?.destroyed?0:entity.combat?.hp??1,entity.combat?.maxHp??1,dtFrame??0,!modeAura,style,false,dormant);
+    }
+    // the ending: every glow and the boss's size end as a clear ends them, the skins stay (no paint compiles on the ending)
+    if (dormant) return syncTankEnergyVisual(visual.root,entity.spec.dims,1,0,1,dtFrame??0,true,TANK_ENERGY.juggernaut,false,true);
+    clearJuggernautVisual(visual.root);
+    return false;
+  };
+
+  const syncModeVisual = (entity: TankEntity, dtFrame: number | undefined, active: boolean): boolean => {
+    const state = entity.state as TankState;
+    const visual = entity.visual as TankVisual;
+    const energized = syncModeEnergy(entity, dtFrame, active);
     if (syncMissionAttachment) syncMissionAttachment(visual.root,entity.spec,entity.aerial,!!entity.combat?.destroyed,dtFrame ?? 0);
     else if (entity.aerial) void loadMissionAttachmentVisual();
     // (ac130-fx-228) the pilot's own airframe draws whenever the camera is not its gimbal lens (the killcam, the ending's
@@ -293,6 +311,7 @@ export function createBattlePresentationRuntime({
     // (r3) and never while the camera is inside its hull (the ending's first beat leaves from the lens)
     if (entity.aerial?.kind === 'gunship') syncGunshipVisual(visual.root, state.pos, state.yaw, dtFrame ?? 0, visual.root.visible, camera.position);
     else hideGunshipVisual(visual.root);
+    return energized;
   };
 
   const syncTankVisual = (
@@ -556,7 +575,16 @@ export function createBattlePresentationRuntime({
     // Covered entry can prepare equipment before phase activation. It does not
     // advance simulation, interpolation, visibility, dust or camera state.
     prepareModeVisuals() {
-      for (const entity of tanks()) if (entity.state && entity.visual) syncModeVisual(entity, 0, true);
+      const energized: Object3D[] = [];
+      for (const entity of tanks()) {
+        if (entity.state && entity.visual && syncModeVisual(entity, 0, true)) energized.push((entity.visual as TankVisual).root);
+      }
+      return energized;
+    },
+
+    prepareModeEnergy(entity) {
+      const tank = entity as TankEntity;
+      if (tank.state && tank.visual) syncModeEnergy(tank, 0, true);
     },
 
     captureSoloPoses() {

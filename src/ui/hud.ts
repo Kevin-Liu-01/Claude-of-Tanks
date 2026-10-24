@@ -1205,7 +1205,7 @@ import { createShotInfo } from './shotInfo.ts';
 // .ribbon)
 import { createTeamPips } from './hudTeamPips.ts';
 import { createKillRibbon } from './hudKillRibbon.ts';
-import { sightFurniture, sightFurnitureGap, sightFurnitureRise, sightNoticeGap } from './sightFurniture.ts';
+import { sightFurniture, sightFurnitureGap, sightFurnitureRise, sightNoticeCuts, sightNoticeGap } from './sightFurniture.ts';
 import { hitOutcomeFor, incomingHitFeedbackFor } from './hitEventFormat.ts';
 import {
   SPECIAL_ACTION_KINDS,
@@ -2336,10 +2336,12 @@ export function initHud(bus: EventBus): HudRuntime {
   // --- team panels ("ears") ---
   const earL = el('div', 'cot-ear l', root);
   const earR = el('div', 'cot-ear r', root);
-  earL.innerHTML = `<div class="hd"><span>${t('hud.team.ally')}</span><span class="al num"></span></div>`;
-  earR.innerHTML = `<div class="hd"><span class="al num"></span><span>${t('hud.team.enemies')}</span></div>`;
+  earL.innerHTML = `<div class="hd"><span class="tl">${t('hud.team.ally')}</span><span class="al num"></span></div>`;
+  earR.innerHTML = `<div class="hd"><span class="al num"></span><span class="tl">${t('hud.team.enemies')}</span></div>`;
   const allyAliveEl = requireElement<HTMLElement>(earL, '.al');
   const enemyAliveEl = requireElement<HTMLElement>(earR, '.al');
+  const allyTitleEl = requireElement<HTMLElement>(earL, '.hd .tl');
+  const enemyTitleEl = requireElement<HTMLElement>(earR, '.hd .tl');
   const allyRoster = el('div', 'cot-ear-rows', earL);
   const enemyRoster = el('div', 'cot-ear-rows', earR);
   for (const [list, label] of [[allyRoster, t('hud.team.ally')], [enemyRoster, t('hud.team.enemies')]] as const) {
@@ -2630,7 +2632,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const moreButton = el('button', 'cot-systems-more', controlsRow);
   moreButton.type = 'button';
   moreButton.hidden = true;
-  moreButton.innerHTML = `<span class="si next">${uiIconSVG('chevronRight', 18)}</span><span class="si back">${uiIconSVG('chevronLeft', 18)}</span>`;
+  moreButton.innerHTML = `<span class="si">${uiIconSVG('chevronRight', 18)}</span>`;
   moreButton.setAttribute('aria-label', t('systems.more'));
   const setControlsPage = (page: number): void => {
     if (controlsRow.dataset.page === String(page)) return;
@@ -3028,6 +3030,16 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   /** The HUD's own side changed mid-battle (Watch mode: a seat taken on the other side, or left): re-seat the sides. */
+  /** The ears' titles: yours and the enemy's, or a spectator's sides by name. */
+  function titleSides(): void {
+    const own = t(watchSide !== null ? 'hud.side.alpha' : 'hud.team.ally');
+    const enemy = t(watchSide !== null ? 'hud.side.bravo' : 'hud.team.enemies');
+    allyTitleEl.textContent = own;
+    enemyTitleEl.textContent = enemy;
+    allyRoster.setAttribute('aria-label', own);
+    enemyRoster.setAttribute('aria-label', enemy);
+  }
+
   function reseatSides(): void {
     for (const row of earRows.values()) row.root.remove();
     earRows.clear();
@@ -3613,7 +3625,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   /** Appends a cross arm's run from `a` to `b` along its line, cut around every mark this frame (sightInk), the HUD's
-   *  furniture and the over-target plate on that line. */
+   *  furniture, the centre notices shown and the over-target plate on that line. */
   function appendScopeRun(horizontal: boolean, a: number, b: number, across: number): void {
     scopeCutCount = 0;
     for (let i = 0; i < sightInk.count; i++) {
@@ -3622,6 +3634,11 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     for (let i = 0; i < sightFurniture.count; i++) {
       const box = sightFurniture.boxes[i];
+      addScopeCut(horizontal, across, box.x0, box.y0, box.x1, box.y1, SCOPE_CUT_GAP);
+    }
+    // (and the centre notices while they show: the arm ends under the alert rather than meeting it, 1024x600)
+    for (let i = 0; i < sightNoticeCuts.count; i++) {
+      const box = sightNoticeCuts.boxes[i];
       addScopeCut(horizontal, across, box.x0, box.y0, box.x1, box.y1, SCOPE_CUT_GAP);
     }
     const plate = tgtShown ? tgtRect : null;
@@ -7647,11 +7664,13 @@ export function initHud(bus: EventBus): HudRuntime {
     playerRef = frame.player || playerRef;
     // flying the watch drone, the frame's tank is only its anchor: no kill reads "You", no hit is the HUD's own
     if (frame.player) playerId = watchDrone ? null : frame.player.id;
-    // the HUD's own side moved (a watcher took a seat on the other side, or left it): the rosters and plates re-seat
-    const side = ownSide();
+    // the HUD's frame moved (a watcher started spectating, took a seat on the other side, or left it): the rosters,
+    // their titles and the plates re-seat
+    const side = watchSide === null ? ownSide() : `watch:${ownSide()}`;
     if (side !== lastOwnSide) {
       if (lastOwnSide !== null) reseatSides();
       lastOwnSide = side;
+      titleSides();
     }
     jumpKey.textContent = frame.selfRightKeyLabel || 'F';
     if(frame.matchModeState?.id)setControlsJumpMode(isJumpMode(liveRuleset?.mode===frame.matchModeState.id?liveRuleset:matchRulesetFor(normalizeGameMode(frame.matchModeState.id))));

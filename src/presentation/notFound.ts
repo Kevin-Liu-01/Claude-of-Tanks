@@ -1,22 +1,10 @@
-import { getLocale, t } from '../ui/i18n.ts';
-import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
-import { localizeDocumentLinks, synchronizeLocaleRoute } from '../ui/localeRouting.ts';
-import { bindStaticI18nAuto } from './staticI18n.ts';
+import { t } from '../ui/i18n.ts';
+import { localeRouteChanged } from './publicNav.ts';
 
-installResponsiveLayout();
-
-const locale = getLocale();
-const localeRouteChanged = synchronizeLocaleRoute(locale);
-if (!localeRouteChanged) {
-  bindStaticI18nAuto();
-  localizeDocumentLinks(document, locale);
-}
-
-// The meta description is localized before JavaScript: the build writes /cn/404.html and the middleware serves the
-// localized shell for other /cn misses (src/presentation/localizedHtml.ts), so the runtime sets only the tab title.
-// The action icons reference the shared sprite; it mounts from its own chunk, off the critical path.
-void import('../ui/icons/icon.ts').then(({ mountIconSprite }) => mountIconSprite());
-
+// The missing page carries the public shell (its bar, menu sheet and footer are static markup written by
+// tools/public-shell.mjs); publicNav.ts localizes it, its links and the page's static copy, so this module only sets
+// the tab title. The meta description is localized before JavaScript: the build writes /cn/404.html and the
+// middleware serves the localized shell for other /cn misses (src/presentation/localizedHtml.ts).
 document.title = t('notFound.metaTitle');
 
 // GA4 as on the other public non-game pages (../googleAnalytics.ts gates the production host and Consent Mode), on

@@ -16,7 +16,8 @@ import {
 // deferred GitHub star count.
 
 installResponsiveLayout();
-const localeRouteChanged = synchronizeLocaleRoute(getLocale());
+/** True when the page is moving to its other-locale route (the rest of the page then stands down). */
+export const localeRouteChanged = synchronizeLocaleRoute(getLocale());
 if (!localeRouteChanged) {
   bindStaticI18nAuto();
   localizeDocumentLinks(document, getLocale());

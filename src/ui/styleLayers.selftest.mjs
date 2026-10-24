@@ -109,7 +109,9 @@ for (const path of documents) {
 // The token sheet holds the tokens layer. Every sheet that existed before the layers sits in surfaces, so their
 // contests resolve exactly as they did unlayered (specificity, then order); base and components fill as rules move
 // there deliberately (BUI-F5 builds the components).
-assert.deepEqual(layerUse.tokens?.sort(), ['src/ui/motion.css', 'src/ui/tokens/tokens.css'], 'tokens.css and the legacy motion aliases form the tokens layer');
+// The landing's and the manual's own token sheets (tools/gen-tokens.mjs "$sheet") hold their tokens in the same layer.
+assert.deepEqual(layerUse.tokens?.sort(), ['src/ui/motion.css', 'src/ui/tokens/surface-docs.css', 'src/ui/tokens/surface-home.css', 'src/ui/tokens/tokens.css'],
+  'tokens.css, the surfaces\' own token sheets and the legacy motion aliases form the tokens layer');
 assert.match(read('index.html'), /<style>\s*@layer reset,tokens,base,components,surfaces,utilities,overrides;\s*@layer surfaces \{\s*:root \{/,
   'the game document opens its first inline sheet with the layer order and keeps the document defaults in surfaces');
 // The generated heads (each document's type head, the zh-CN label floor) declare into the layers too: unlayered, their

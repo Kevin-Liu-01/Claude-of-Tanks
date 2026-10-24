@@ -57,7 +57,7 @@ import type { EventBus } from '../game/stateCore.ts';
 import { t } from './i18n.ts';
 import { campaignDebrief, type CampaignDebrief } from '../game/campaignDebrief.ts';
 import { getLastBattleAwards } from '../game/serviceRecord.ts';
-import { resolveFinalBlow, type FinalBlowDestroyed, type FinalBlowLethal } from './finalBlow.ts';
+import { resolveFinalBlow, type FinalBlow, type FinalBlowDestroyed, type FinalBlowLethal } from './finalBlow.ts';
 import { attackerLabel, killSourceIdentity } from './killSourceIdentity.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
@@ -1523,6 +1523,18 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     );
   }
 
+  /**
+   * The blow that ended the battle. A watched battle's reads as the battle's, whichever tank was ridden, and a blow with
+   * no named attacker (a ram, a burn-out) is the victim's enemy side's, never "Enemy".
+   */
+  function summaryFinalBlow(watched: boolean): FinalBlow | null {
+    const blow = resolveFinalBlow(lastLethalHit, lastDestroyedRow, playerId == null || watched ? null : String(playerId),
+      (id) => combatants.get(id)?.name ?? null);
+    if (!watched || !blow || blow.attacker || !lastDestroyedRow) return blow;
+    const victimSide = battleSide(teamOf(lastDestroyedRow.id));
+    return victimSide ? { ...blow, attacker: t(`endScreen.side.${victimSide === 'alpha' ? 'bravo' : 'alpha'}`) } : blow;
+  }
+
   function buildSummary(result: EndScreenResult): EndScreenSummary {
     const watched = !!endInfo?.watch;
     const rows = summaryRows();
@@ -1569,9 +1581,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       allies,
       enemies,
       campaign: endInfo?.campaign ?? null,
-      // a watched battle's last blow reads as the battle's, whichever tank was ridden
-      finalBlow: resolveFinalBlow(lastLethalHit, lastDestroyedRow, playerId == null || watched ? null : String(playerId),
-        (id) => combatants.get(id)?.name ?? null),
+      finalBlow: summaryFinalBlow(watched),
       hordeWave: endInfo?.hordeWave ?? null,
       brains: endInfo?.brains ?? null,
       awards: getLastBattleAwards(),

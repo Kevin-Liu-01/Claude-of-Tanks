@@ -7,7 +7,9 @@ const tetra = {
   vertices: [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]],
   faces: [[0, 2, 1], [0, 1, 3], [0, 3, 2], [1, 2, 3]],
 };
-assert.deepEqual(calibrationOrientationPoint(tetra), [.5, .5, .5], 'legacy arithmetic unchanged');
+// 2026-10-23 (243): generated cells orient from the vertex mean too; the bounds midpoint [.5, .5, .5] lies outside this
+// tetrahedron, and on the fleet's slanted shell slices it turned faces inward.
+assert.deepEqual(calibrationOrientationPoint(tetra), [.25, .25, .25], 'generated cells orient from their vertex mean');
 assert.throws(() => calibrationOrientationPoint({ ...tetra, sourceStock: 'incomplete' }), /missing its interior/);
 assert.deepEqual(calibrationOrientationPoint({ ...tetra, interiorPoint: [.25, .25, .25] }),
   [.25, .25, .25], 'new wedge orientation uses an actually interior point');
@@ -87,4 +89,4 @@ for (const cell of finalizeCells([stock(left, 'left'), stock(right, 'right')])) 
 }
 const legacy = finalizeCells([{ ...left, faces: left.faces.map(face => face.indices) }]);
 assert.equal(Object.hasOwn(legacy[0], 'sourceStock'), false, 'legacy output gains no metadata fields');
-console.log('calibrationStockGeometry: legacy center/output, actual tetra conversion, finite interior witnesses, thin wedge and independent-stock faces PASS');
+console.log('calibrationStockGeometry: vertex-mean orientation, actual tetra conversion, finite interior witnesses, thin wedge and independent-stock faces PASS');
