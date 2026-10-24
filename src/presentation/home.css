@@ -38,6 +38,10 @@ button{font:inherit;color:inherit}
 .home-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s4) var(--s5);margin-bottom:var(--s5)}
 .home-h2{margin:0;font:700 var(--home-h2)/.88 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
 .home-h2 .t-hollow{--hollow-stroke:1.8px;--hollow-ink:var(--ink-1);text-shadow:var(--hollow-shadow)}
+/* a section's switch never runs past the screen: a narrow one scrolls its options in place */
+:is(.home-head,.bf-head)>.cot-c-seg{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none}
+:is(.home-head,.bf-head)>.cot-c-seg::-webkit-scrollbar{display:none}
+:is(.home-head,.bf-head)>.cot-c-seg>.cot-c-seg__opt{flex:none}
 
 /* ---- vehicle identity: flag, silhouette, name (direction .flag, .silm; the kit's cot-c-flag, cot-c-sil) ---- */
 .vs-duel{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:nowrap}
@@ -291,10 +295,11 @@ button{font:inherit;color:inherit}
 /* the headline and its two calls sit on the open snow at the lower left; the duel stays clear above and to the right */
 .v5-cta{position:relative;display:flex;align-items:flex-end;min-height:640px;padding-bottom:var(--s7);overflow:hidden;background:var(--surface-scene)}
 .v5-cta>img,.v5-cta>div{position:absolute;inset:0;width:100%;height:100%}
-.v5-cta>img{object-fit:cover}
+/* bottom-anchored: the snow under the duel takes the words on every width, the far tank stays above them */
+.v5-cta>img{object-fit:cover;object-position:50% 100%}
 .v5-cta>div{background:var(--home-closing-grade)}
 .v5-cta>.shell{position:relative;z-index:var(--z-lift)}
-.v5-cta h2{max-width:min(620px,50%);margin:0 0 var(--s6);font:700 var(--home-h2)/.88 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
+.v5-cta h2{max-width:clamp(620px,43vw,820px);margin:0 0 var(--s6);font:700 var(--home-h2)/.88 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
 .hero-actions{display:flex;flex-wrap:wrap;gap:14px}
 
 :is(.motion,.play,.replay,.v5-cta){content-visibility:auto;contain-intrinsic-size:auto 1100px}
