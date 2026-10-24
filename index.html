@@ -480,8 +480,8 @@
       margin-top: 26px; height: 22px;
       font-family: var(--font-ui);
       font-size: 14px; font-weight: 500;
-      color: #c9c5bb; opacity: 0;
-      transition: opacity .19s cubic-bezier(.16,1,.3,1);
+      color: var(--ink-2); opacity: 0;
+      transition: opacity var(--dur-base) var(--ease-enter);
     }
     .cot-boot-gate.on { opacity: 1; animation: cot-gate 1.5s ease-in-out infinite; }
     /* retry stands just under the centred column, outside its flow: a failure shows it without re-centring the splash */
@@ -489,18 +489,18 @@
       display: none; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
       height: 48px; margin: 18px 0 0; padding: 0 22px; white-space: nowrap;
       border: 0; border-radius: 2px;
-      background: #f0a030; color: #140d03; cursor: pointer;
+      background: var(--btn-primary-fill); color: var(--btn-primary-ink); cursor: pointer;
       font: 700 15px/1 var(--font-ui);
       letter-spacing: .06em; text-transform: uppercase;
     }
     .cot-boot-retry.on { display: block; }
-    .cot-boot-retry:focus-visible { outline: 2px solid #f0a030; outline-offset: 3px; }
+    .cot-boot-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
     /* a browser the game cannot run in (src/engine/capabilityGate.ts shows Retry): the load's bar, its count and the
        tip step aside, the reason stands centred under the mark, and the tank holds still */
     #cot-boot:has(.cot-boot-retry.on) :is(.cot-boot-bar, .cot-boot-pct, .cot-boot-tip) { display: none; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { justify-content: center; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage {
-      max-width: 46ch; font-size: 16px; line-height: 1.5; text-align: center; color: #f6f3ec;
+      max-width: 46ch; font-size: 16px; line-height: 1.5; text-align: center; color: var(--ink-1);
     }
     #cot-boot:has(.cot-boot-retry.on) .cot-mark--motion * { animation-play-state: paused; }
     /* Retry joins the column right under the reason, before the links */
@@ -515,14 +515,14 @@
       margin: 8px auto 0; max-width: 420px; min-height: 0;
       font-family: var(--font-ui);
       font-size: 13px; font-weight: 500; line-height: 1.45;
-      color: #9a9a95; text-align: center; opacity: 0; transition: opacity .2s ease;
+      color: var(--ink-3); text-align: center; opacity: 0; transition: opacity var(--dur-base) var(--ease-enter);
     }
     .cot-boot-notice.on { opacity: 1; }
     @keyframes cot-gate { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
     .cot-boot-foot {
       position: absolute; left: 0; right: 0; bottom: 20px; z-index: 2;
       font-family: var(--font-ui);
-      font-size: 12px; font-weight: 500; color: #5d636a; text-align: center;
+      font-size: 12px; font-weight: 500; color: var(--ink-4); text-align: center;
     }
     #cot-boot.cot-boot-enter .cot-boot-foot {
       animation: cot-boot-fade .42s cubic-bezier(.16,1,.3,1) .18s backwards;
@@ -710,7 +710,7 @@
         const nav = globalThis.navigator;
         let text = MESSAGES[kind];
         if (kind === 'chunk' && file) text += ' (' + file + ')';
-        if (kind === 'chunk' && nav && nav.onLine === false) text += ' — you appear to be offline; it retries when the connection returns';
+        if (kind === 'chunk' && nav && nav.onLine === false) text += '. You appear to be offline. The game retries when the connection returns.';
         return { kind, text };
       }
       // A failed import names the entry script, not the dependency that 404ed;
@@ -762,8 +762,9 @@
         if (!retry && window.__GAME_READY) {
           retry = document.createElement('button');
           retry.id = 'cot-runtime-retry';
-          retry.textContent = verdict.text + ' — reload';
-          retry.style.cssText = 'position:fixed;z-index:10000;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 18px;border:1px solid #f0a030;background:#0b1117;color:#ffe4b0;font:700 12px var(--font-ui);cursor:pointer';
+          retry.textContent = 'Reload';
+          retry.title = verdict.text;
+          retry.style.cssText = 'position:fixed;z-index:10000;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 18px;border:0;border-radius:var(--control-radius);background:var(--btn-primary-fill);color:var(--btn-primary-ink);font:700 12px var(--font-ui);cursor:pointer';
           document.body.appendChild(retry);
         }
         if (retry) {
