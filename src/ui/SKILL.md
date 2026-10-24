@@ -158,11 +158,15 @@ to 13 px, so a label sized with those tokens is lifted on every route, and lists
 per route (`zhTypeFloor.ts`) the selectors that set a literal size below 13 px.
 In the game `--fs-*` also multiply `--cot-ui-scale` (0.78-1.08, responsiveLayout.ts),
 so a game label must not swap a literal 11 px for the bare token (English would
-shrink on small windows). Use `max(11px,var(--fs-11))` (never smaller than before,
-lifted to 13 px in Chinese by the tokens; `mediaArchive.css`), the battle's fixed
-`--battle-fs-*` tokens (tokens.json's zh-CN locale lifts them; the HUD sheets), or a
-`zhTypeFloor.ts` entry; each route's floor is capped at 2600 raw / 640 brotli
-(`typeSystem.selftest.mjs`), so measure `zhTypeFloorCss(route)` before adding to it.
+shrink on small windows). On a scalable surface use
+`max(var(--fs-floor-11),var(--fs-11))` or `max(var(--fs-floor-12),var(--fs-12))`:
+the floor tokens alias the battle's fixed `--battle-fs-11/12` (11 and 12 px, which
+tokens.json's zh-CN locale lifts to 13 px), so English never falls under its px size
+and Chinese never under 13 px at any UI scale. (The older `max(11px,var(--fs-11))`
+let Chinese fall to 11 px below a scale of about 0.85; the 247 integration swaps the
+11, 12, 11.5 and 12.5 px forms.) Fixed HUD slots keep `var(--battle-fs-11/12)`. A
+`zhTypeFloor.ts` entry is the last resort: each route's floor is capped at 2600 raw /
+640 brotli (`typeSystem.selftest.mjs`), so measure `zhTypeFloorCss(route)` first.
 check:bundle reports a document's inline CSS as `inlineCss`, and the receipt holds
 each head to a brotli budget. Never add an
 `@font-face`, a font preload or a face file elsewhere. Code asks only for
