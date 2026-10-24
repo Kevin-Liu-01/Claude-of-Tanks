@@ -38,6 +38,9 @@ import { ensureStyle } from './styleLayers.ts';
 import { iconUrl, maskIcon } from './icons.ts';
 import { killSourceIdentity } from './killSourceIdentity.ts';
 import { uiIconSVG } from './uiIcons.ts';
+import { ICON_IDS } from './icons/spriteIndex.ts';
+import { moduleName } from './moduleRegistry.ts';
+import { layoutBeats, type BattleBeat, type PlacedBeat } from './battleBeats.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import type { EventBus } from '../game/stateCore.ts';
 import { t, formatNumber } from './i18n.ts';
@@ -124,6 +127,8 @@ export interface EndScreenSummary {
   brains?: { readonly enemy: string; readonly allies: string } | null;
   /** Medals and achievement tiers this battle earned (serviceRecord.ts). */
   awards?: BattleAwards | null;
+  /** The battle's timeline (battleBeats.ts): the player's spot, kills, objectives, losses and death, by battle time. */
+  beats?: readonly BattleBeat[] | null;
 }
 
 interface EndScreenRuntime {
@@ -515,6 +520,26 @@ function requiredDescendant<T extends Element>(root: ParentNode, selector: strin
   return result;
 }
 
+function vehicleNation(specId: string | null | undefined): string {
+  if (!specId) return '';
+  try {
+    const spec: RuntimeValue = getSpec(specId);
+    return isRecord(spec) && typeof spec.nation === 'string' ? spec.nation : '';
+  } catch {
+    return '';
+  }
+}
+
+/** A flag's seat; fillFlags() loads the flag art (flags.ts, its SVG assets) once the screen is up. */
+const flagSeat = (specId: string | null | undefined): string => {
+  const nation = vehicleNation(specId);
+  return nation ? `<span class="fl" data-nation="${escapeHtml(nation)}"></span>` : '';
+};
+
+/** A module's glyph from the shared set (the two tracks share one); anything else draws the damage glyph. */
+const moduleGlyph = (id: string): string =>
+  /^track[LR]$/.test(id) ? 'track' : (ICON_IDS as readonly string[]).includes(id) ? id : 'damage';
+
 function vehicleName(specId: string | null | undefined): string {
   if (!specId) return '';
   try {
@@ -777,7 +802,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const vehicle = result.aircraft ? killSourceIdentity('ac130')?.label ?? '' : vehicleName(result.specId);
     const details: string[] = [vehicle, ...rosterRowDetails(result, revives)];
     row.innerHTML =
-      '<span class="si"></span>' +
+      `${result.aircraft ? '' : flagSeat(result.specId)}<span class="si"></span>` +
       `<span class="identity"><span class="nm">${result.isPlayer ? `<b class="you">${t('endScreen.you')}</b>` : ''}${escapeHtml(result.name || result.id)}</span>` +
       `<span class="veh">${details.filter(Boolean).map(escapeHtml).join(' · ')}</span></span>` +
       '<span class="output"><span class="ov"></span><span class="obar" aria-hidden="true"><i></i></span></span>' +
@@ -1020,6 +1045,84 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       `${tiers.map(({def,tier})=>`<button type="button" class="aw tier" data-achievement-tip="${def!.id}" data-award-tier="${tier}" aria-label="${attr(t(`service.achievement.${def!.id}.name`))}">${achievementSVG(def!,tier,60)}<b>${t(`service.achievement.${def!.id}.name`)} ${['','I','II','III'][tier]}</b></button>`).join('')}</div>`;
   }
 
+  /**
+   * The battle's timeline (the direction's 11-end-screen .beat): one line from the start to the result, a diamond at
+   * each beat (the enemy's ink for what the player lost), the label above it (the beat's glyph; a kill's flag,
+   * silhouette and callsign) and its battle time under it; battleBeats.ts layoutBeats() picks the labels.
+   */
+  function renderBattleBeats(result: EndScreenResult, sum: EndScreenSummary): void {
+    const beats = layoutBeats(sum.beats ?? [], sum.timeS);
+    if (!beats.length) return;
+    const strip = el('section', 'es-beat es-in', host);
+    strip.setAttribute('aria-label', t('endScreen.beat.aria'));
+    strip.style.setProperty('--i', nextI());
+    el('i', 'ln', strip);
+    const rows = [...sum.enemies, ...sum.allies];
+    for (const beat of beats) {
+      const mark = el('div', `ev k-${beat.kind}`, strip);
+      mark.style.left = `${(beat.x * 100).toFixed(2)}%`;
+      if (beat.labelled) mark.insertAdjacentHTML('beforeend', `<span class="lb">${beatLabel(beat, rows)}</span>`);
+      else mark.title = beatText(beat, rows);
+      el('i', `d${beatIsLoss(beat) ? ' loss' : ''}`, mark);
+      if (beat.labelled) el('span', 't num', mark).textContent = fmtTime(beat.t);
+      if (beat.kind === 'kill' && beat.labelled) {
+        const silhouette = mark.querySelector<HTMLElement>('.si');
+        if (silhouette) maskIcon(silhouette, beat.specId || beat.id || '', 'side_silhouette', 'currentColor');
+      }
+    }
+    const end = el('div', 'ev end', strip);
+    end.style.left = '100%';
+    const glyph = result === 'victory' ? 'statVictory' : result === 'defeat' ? 'statDefeat' : 'statDraw';
+    // the result in sentence case, as the service record names it (the headline's own copy is set in capitals)
+    const word = result === 'victory' ? t('garage.record.victory') : result === 'defeat' ? t('garage.record.defeat')
+      : result === 'draw' ? t('garage.record.draw') : host.dataset.banner || '';
+    end.insertAdjacentHTML('beforeend', `<span class="lb">${uiIconSVG(glyph, 16)}<span class="tx">${escapeHtml(word)}</span></span>`);
+    el('i', `d${result === 'defeat' ? ' loss' : ''}`, end);
+    el('span', 't num', end).textContent = fmtTime(sum.timeS);
+    host.dataset.beats = String(beats.length);
+  }
+
+  function beatIsLoss(beat: PlacedBeat): boolean {
+    return beat.kind === 'loss' || beat.kind === 'death' || (beat.own === false);
+  }
+
+  function beatText(beat: PlacedBeat, rows: readonly EndScreenTeamRow[]): string {
+    switch (beat.kind) {
+      case 'kill': {
+        const row = rows.find((candidate) => String(candidate.id) === beat.id);
+        return row?.name || vehicleName(beat.specId) || t('endScreen.enemyVehicle');
+      }
+      case 'zone': return t(beat.own ? 'endScreen.beat.zoneTaken' : 'endScreen.beat.zoneLost', { zone: beat.label ?? '' });
+      case 'flag': return t(beat.own ? 'endScreen.beat.flagTaken' : 'endScreen.beat.flagLost');
+      case 'goal': return t(beat.own ? 'endScreen.beat.goal' : 'endScreen.beat.goalConceded');
+      case 'loss': return moduleName(beat.id ?? '');
+      case 'death': return t('endScreen.beat.destroyed');
+      case 'spot': return t('endScreen.beat.spot');
+    }
+  }
+
+  function beatLabel(beat: PlacedBeat, rows: readonly EndScreenTeamRow[]): string {
+    const glyph = beat.kind === 'kill' ? 'autoAim' : beat.kind === 'zone' ? 'modeZones' : beat.kind === 'flag' ? 'modeFlag'
+      : beat.kind === 'goal' ? 'modeTurbo' : beat.kind === 'loss' ? moduleGlyph(beat.id ?? '') : beat.kind === 'death' ? 'skull'
+        : 'optics';
+    const identity = beat.kind === 'kill' ? `${flagSeat(beat.specId)}<span class="si"></span>` : '';
+    return `${uiIconSVG(glyph, 16)}${identity}<span class="tx">${escapeHtml(beatText(beat, rows))}</span>`;
+  }
+
+  /** The flags of this render (roster rows, kill beats): flags.ts loads with its art once, after the screen is up. */
+  let flagsPass = 0;
+  function fillFlags(): void {
+    const pass = String(++flagsPass);
+    host.dataset.flagsPass = pass;
+    if (!host.querySelector('.fl[data-nation]')) return;
+    void import('./flags.ts').then(({ flagIconHTML }) => {
+      if (host.dataset.flagsPass !== pass) return; // a later report took the screen
+      for (const seat of host.querySelectorAll<HTMLElement>('.fl[data-nation]')) {
+        seat.innerHTML = flagIconHTML(seat.dataset.nation || '', 16, 12);
+      }
+    }, () => {});
+  }
+
   function renderKillList(
     parent: HTMLElement,
     result: EndScreenResult,
@@ -1232,7 +1335,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
 
       renderEndRematch(report);
       if (rematchPanel) report.prepend(rematchPanel);
+      renderBattleBeats(res, sum);
       renderEndActions(sum);
+      fillFlags();
 
       host.classList.add('show');
       host.setAttribute('aria-hidden', 'false');

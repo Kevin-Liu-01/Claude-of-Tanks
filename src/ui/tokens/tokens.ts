@@ -302,6 +302,7 @@ export const TOKENS = {
   'battle-card-me': '0 0 0 2px #f0a030',
   'battle-z-card-fade': '2',
   'battle-z-card-text': '3',
+  'battle-beat-ring': '0 0 0 3px oklch(from #050608 l c h / .8)',
 } as const;
 
 export type TokenName = keyof typeof TOKENS;

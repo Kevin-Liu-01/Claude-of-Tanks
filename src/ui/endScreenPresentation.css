@@ -104,4 +104,26 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr:nth-child(even){background:va
 body[data-cot-width] .cot-es.cot-es--record .es-tr.me{background:var(--accent-wash);box-shadow:var(--battle-row-me)}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-list{border-top-color:#93a5b438}
 body[data-cot-width] .cot-es.cot-es--record .es-report .es-rematch{border:1px solid #93a5b438}
+/* every vehicle carries its flag beside its silhouette (11-end-screen .who) */
+body[data-cot-width] .cot-es.cot-es--record .fl{display:inline-flex;flex:0 0 auto}
+/* the battle's timeline (11-end-screen .beat): one line from the start to the result, a diamond per beat (the enemy's
+   ink for what the player lost), its label above and its battle time under it; the wide windows of standard height */
+body[data-cot-width] .cot-es.cot-es--record .es-beat{position:relative;flex:0 0 auto;align-self:stretch;height:64px;margin:14px 30px 0 22px}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .ln{position:absolute;inset:31px 0 auto;height:2px;background:var(--line-2)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .ev{position:absolute;top:32px;width:0;height:0}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .d{position:absolute;left:-6px;top:-6px;width:12px;height:12px;transform:rotate(45deg);
+  background:var(--accent);box-shadow:var(--battle-beat-ring)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .d.loss{background:var(--team-enemy)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .lb{position:absolute;bottom:14px;left:0;transform:translateX(-50%);display:flex;
+  align-items:center;gap:6px;max-width:180px;padding:5px 8px;white-space:nowrap;border-radius:var(--chip-radius);
+  background:var(--battle-tip-plate);box-shadow:var(--e1);font:600 var(--battle-fs-12)/1 var(--font-ui);color:var(--ink-1)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .lb svg{flex:0 0 auto;color:var(--ink-2)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .lb .tx{min-width:0;overflow:hidden;text-overflow:ellipsis}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .lb .si{flex:0 0 28px;height:10px;color:var(--team-enemy);transform:scaleX(-1)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .t{position:absolute;top:12px;left:0;transform:translateX(-50%);
+  font:500 var(--battle-fs-11)/1 var(--font-data);color:var(--ink-3)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .end :is(.lb,.t){transform:translateX(-100%)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .end .lb svg{color:var(--accent)}
+body[data-cot-width]:not(:is([data-cot-width='laptop'],[data-cot-width='desktop'])) .cot-es.cot-es--record .es-beat,
+body[data-cot-height]:not(:is([data-cot-height='standard'],[data-cot-height='tall'])) .cot-es.cot-es--record .es-beat{display:none}
 }
