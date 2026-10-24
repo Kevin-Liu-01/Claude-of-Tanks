@@ -2751,6 +2751,8 @@
   "docs.modes.win.proving_ground": "练习，不计分",
   "docs.search.label": "搜索手册",
   "docs.search.placeholder": "搜索",
+  "docs.search.shortcutMac": "Cmd K",
+  "docs.search.shortcut": "Ctrl K",
   "docs.search.count": "{count} 条结果",
   "docs.search.none": "手册中没有匹配的内容",
   "docs.topic.manualIndex": "手册首页",

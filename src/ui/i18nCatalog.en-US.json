@@ -2763,6 +2763,8 @@
   "docs.modes.win.proving_ground": "Practice, no score",
   "docs.search.label": "Search the manual",
   "docs.search.placeholder": "Search",
+  "docs.search.shortcutMac": "Cmd K",
+  "docs.search.shortcut": "Ctrl K",
   "docs.search.count": "{count, plural, one {# result} other {# results}}",
   "docs.search.none": "Nothing in the manual matches",
   "docs.topic.manualIndex": "Manual index",
