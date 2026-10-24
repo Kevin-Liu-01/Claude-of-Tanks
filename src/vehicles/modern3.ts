@@ -33,6 +33,7 @@ export interface Modern3BuilderPort {
   readonly mats: { readonly rubber: THREE.Material };
   readonly disposables: TankBuilderPort['disposables'];
   readonly spec: {
+    readonly id: string;
     readonly armor: { readonly gunPivot: readonly [number, number, number] };
     readonly visual: { readonly number?: string };
   };
@@ -2394,6 +2395,13 @@ function addBradleyUpperHullClosure(P: Modern3BuilderPort) {
   });
 }
 
+// Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the engine-deck raise, its grille and lift
+// eyes sit this much lower on the Bradley-hulled M6 and Marder 1A3, under their turrets' floors; the held Bradleys keep
+// the print's heights.
+function bradleyEngineRaiseDrop(id: string): number {
+  return id === 'm6_linebacker' || id === 'marder1a3' ? 0.025 : 0;
+}
+
 export function buildBradley(P: Modern3BuilderPort) {
   // AFV r1 REBUILD against the 42manako oracle (vertex report docs/
   // references/vertex/m2a2_bradley.json — all targets below are that
@@ -2469,14 +2477,19 @@ export function buildBradley(P: Modern3BuilderPort) {
       [-1.46, 1.77, 1.26], [-1.385, 1.771, 1.26],
       [-1.385, 1.771, -2.90], [-1.46, 1.77, -2.90]));
     // raised roof furniture (print tops 2.02/2.06): engine strip + cargo lids
-    P.add('hull', box(1.58, 0.075, 0.87), 0.34, 1.94, 1.09);                      // engine deck raise (top 1.98;
+    // (bradleyEngineRaiseDrop: on the M6 and the Marder 1A3 the slats stood 3 cm and the grille 1.5 cm in their turrets'
+    // floors (1.979-1.980, 0.6-1.4 m off the ring's axis) at rest; the slats now top 1.973)
+    const raiseDrop = bradleyEngineRaiseDrop(P.spec.id);
+    P.add('hull', box(1.58, 0.075, 0.87), 0.34, 1.94 - raiseDrop, 1.09);         // engine deck raise (top 1.98;
                                                                                   //   r4: x to 1.13 — the ref deck
                                                                                   //   band 1.966 reads out to x ~1.13
                                                                                   //   on the front 1.05-1.13 cols;
                                                                                   //   z-front 0.655 — the 0.575 face
                                                                                   //   lit the side 0.55 col, ref 1.903)
-    P.add('hullDark', box(1.18, 0.02, 0.82), 0.20, 1.985, 1.05);
-    for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.10, 0.028, 0.06), 0.20, 1.995, 1.36 - k * 0.21);
+    P.add('hullDark', box(1.18, 0.02, 0.82), 0.20, 1.985 - raiseDrop, 1.05);
+    for (let k = 0; k < 4; k++) {
+      P.add('hullDetail', box(1.10, 0.028, 0.06), 0.20, 1.995 - (raiseDrop ? 0.036 : 0), 1.36 - k * 0.21);
+    }
     P.add('hull', box(1.10, 0.155, 0.58), 0.25, 1.985, -2.37);                    // cargo hatch hump (top 2.06;
                                                                                   //   r2: z -2.08..-2.66 + x to 0.80 —
                                                                                   //   the ref deck band 2.031-2.068
@@ -3099,8 +3112,9 @@ export function buildBradley(P: Modern3BuilderPort) {
                                                                                   //   cols; deck seat hides inside
                                                                                   //   the engine-raise 1.98 envelope)
     }
-    liftEye(P, 'hullDetail', -0.35, 1.90, 1.10);                                  // (90-ladder z 0.2 -> 1.10 + r2
-    liftEye(P, 'hullDetail', 0.35, 1.90, 1.10);                                   //   x ±0.98 -> ±0.35: the loops
+    const eyeY = 1.90 - bradleyEngineRaiseDrop(P.spec.id);
+    liftEye(P, 'hullDetail', -0.35, eyeY, 1.10);                                  // (90-ladder z 0.2 -> 1.10 + r2
+    liftEye(P, 'hullDetail', 0.35, eyeY, 1.10);                                   //   x ±0.98 -> ±0.35: the loops
                                                                                   //   topped 1.985 on the front -0.98
                                                                                   //   col (ref 1.902) — inside the
                                                                                   //   engine-raise footprint both
@@ -4821,9 +4835,9 @@ export function buildPuma(P: Modern3BuilderPort) {
   liftEye(P, 'hullDetail', 1.30, 1.89, 2.10);
   liftEye(P, 'hullDetail', -1.30, 2.12, -2.60);
   liftEye(P, 'hullDetail', 1.30, 2.12, -2.60);
-  stowage(P, 'hullCloth', rng, [[0.55, 2.15, -2.55, 0.42, 0.15, 0.75]]);       // strapped bergen row by the rack
-                                                                               //   (top 2.23 — under the 2.25
-                                                                               //   bustle sweep plane, §B5)
+  // (release 240, the owner: "make sure all tank turrets are clear of hulls": the bergen row 0.67 m aft on the flat
+  // 2.150 rear deck, 1.56 m off the ring's axis, past the turret's floor (2.155 to 1.45 m), which it stood 7 cm in at rest)
+  stowage(P, 'hullCloth', rng, [[0.55, 2.215, -3.22, 0.42, 0.15, 0.60]]);      // strapped bergen row by the rack
   P.decal('hull', 'number', num, 0.34, [1.87, 1.30, -0.35], Math.PI / 2);      // plates on the lower armor course
   P.decal('hull', 'number', num, 0.34, [-1.87, 1.30, -0.35], -Math.PI / 2);
   P.decal('hull', 'soot', null, 0.5, [-1.435, 1.75, 1.55], -Math.PI / 2);      // exhaust stain aft of the grille

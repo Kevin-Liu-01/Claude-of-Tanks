@@ -2514,9 +2514,12 @@ function buildChallenger2VariantPackage(
         };
         buildChallenger2VariantPackageAssemblyStage15();
         const buildChallenger2VariantPackageHullStage2 = (): void => {
+          // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): 200 L drums (0.88 m long after the
+          // 1.1 vehicle scale) on the tail, their fronts 4.41 m off the ring's axis, past the bustle rack's floor (1.933
+          // world to 4.3 m); 1.12 m long from -3.07 world, they stood 32 cm into it.
           for (const side of [-1, 1]) {
-            P.add('hullDetail', cylZ(0.25, 1.02, P.q ? 20 : 14), side * 0.62, 1.80, -3.30);
-            for (const z of [-3.63, -2.97]) {
+            P.add('hullDetail', cylZ(0.25, 0.80, P.q ? 20 : 14), side * 0.62, 1.80, -3.41);
+            for (const z of [-3.74, -3.08]) {
               P.add('hullDark', torus(0.255, 0.018, P.q ? 18 : 12), side * 0.62, 1.80, z,
                 Math.PI / 2, 0, 0);
               P.add('hullDetail', box(0.42, 0.055, 0.10), side * 0.62, 1.56, z);
@@ -2541,14 +2544,17 @@ function buildChallenger2VariantPackage(
           P.add('hullDetail', box(0.18, 0.04, 0.18), side * 0.975, 1.48, -2.39);
           receipt.cageDeckTiePlates++;
         }
+        // (release 240, the owner: "make sure all tank turrets are clear of hulls": the hull cage tops 1.585, under the
+        // turret's side baskets (1.752 world, after the hull's 1.1 scale) that sweep it from z -0.10; at 1.658 it stood in
+        // them)
         for (const side of [-1, 1]) {
-          for (const y of [1.12, 1.38, 1.64]) {
+          for (const y of [1.12, 1.35, 1.565]) {
             P.add('hullDetail', cylZ(0.018, 3.70, 8), side * 1.94, y, -1.95);
             receipt.cageRails++;
           }
           for (let k = 0; k < 8; k++) {
             const z = -0.18 - k * 0.50;
-            P.add('hullDetail', box(0.028, 0.55, 0.028), side * 1.94, 1.38, z);
+            P.add('hullDetail', box(0.028, 0.48, 0.028), side * 1.94, 1.345, z);
             P.add('hullDetail', box(0.44, 0.035, 0.035), side * 1.82, 1.48, z);
             receipt.cagePosts++;
           }
@@ -4610,10 +4616,10 @@ function buildChallenger3(P: ChallengerBuilderPort): void {
     // ±1.60; ±1.72 belongs to the short forward skirt.  The old ±1.68 deck
     // AA-painted the outer plan columns all the way to z -3.27.
     P.add('hull', box(3.20, 0.045, 3.35), 0, 1.5275, 0.625);                     // main deck 1.55, z -1.05..2.30
-    // (release 240: the first step at 1.625 runs to -2.12, so the 1.67 step starts past the bustle's sweep, 3.23 m off the
-    // ring's axis)
-    P.add('hull', box(3.20, 0.05, 0.87), 0, 1.60, -1.685);                       // engine deck step 1.625
-    P.add('hull', box(3.20, 0.05, 0.33), 0, 1.645, -2.285);                      // step 1.67
+    // (release 240: the step at 1.625 runs on to the exhaust hump, -2.45, and the 1.67 step is gone: the turret's rear
+    // armour sweeps 1.644 to 3.55 m off the ring's axis and 1.666 to 3.60 (authored metres, before the 1.1 vehicle scale),
+    // and the 1.67 step stood 3 cm in it from -2.12)
+    P.add('hull', box(3.20, 0.05, 1.20), 0, 1.60, -1.85);                        // engine deck step 1.625
     P.add('hull', box(1.92, 0.045, 0.35), 0, 1.6775, -2.625);                    // exhaust hump 1.70 (print front deck line 1.66 at ±0.96)
     P.add('hull', box(3.20, 0.05, 0.50), 0, 1.665, -3.05);                       // rear deck 1.69
     // Concave plan tail from the print: center lane recessed to -3.78, with

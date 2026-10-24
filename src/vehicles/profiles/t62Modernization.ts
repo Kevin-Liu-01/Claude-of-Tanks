@@ -17,8 +17,10 @@ export function buildT62MV1Modern(P:TankBuilderPort):void {
       P.addEquipment('hullDetail',box(.13,.05,.70),side*1.65,1.35,z);
       eraCassette(P,'hull',`skirt_era_${side<0?'L':'R'}`,[side*1.67,1.11,z],[.10,.43,.73],[0,0,side*.03]);
     }
+    // (release 240, the owner: "make sure all tank turrets are clear of hulls": the row 0.11 m down the glacis; the inner
+    // cassettes' rear crests (1.607, 1.55 m off the ring's axis) stood under the turret's side kit (1.599) as it turned)
     for(let i=0;i<4;i++)glacisEraCassette(P,`glacis_era_${side<0?'L':'R'}`,
-      side*(.18+i*.30),2.39,[.27,.08,.41]);
+      side*(.18+i*.30),2.50,[.27,.08,.41]);
   }
   supportedSensor(P,[-.43,1.04,.01],.675);
   attachedCage(P,'turret',[0,.23,-2.14],1.86,.42,.40);

@@ -495,20 +495,21 @@ function merkava4HullDetails(P: TankBuilderPort, candidate: 'merkava4'|'merkava4
   P.addEquipment('hullDetail',box(.366,.084,.163),-.009,1.404,2.6495);
   P.addEquipment('hullDark',box(.29,.050,.010),-.009,1.414,2.736);
   P.addEquipment('hullDetail',box(.384,.084,.092),-.009,1.258,3.177);
-  merkava4EngineAccess(P);
+  merkava4EngineAccess(P,candidate==='merkava4'||candidate==='merkava4_trophy');
 }
 
-function merkava4EngineAccess(P: TankBuilderPort): void {
+function merkava4EngineAccess(P: TankBuilderPort, slimHinges: boolean): void {
   // The source access pack sits on the right, with a stepped sliding cover
   // and two separated hinge saddles. It is not a central radiator grille.
   P.addEquipment('hullDetail',box(.7399,.0211,.5017),.74765,1.62294,1.40051);
   P.addEquipment('hullDetail',box(.4980,.02477,.2301),.99953,1.64587,1.47904);
   P.addEquipment('hullDetail',box(.1883,.0081,.1883),1.18837,1.61714,1.53830);
-  // (release 240: the hinge barrels .033 m, not .0486, seated on their saddles: the turret's rear chain curtain (1.674,
-  // 2.2-2.3 m off the ring's axis) swept the outer one's 1.702 top)
+  // (release 240: on the Merkava 4 and 4 Trophy the hinge barrels are .033 m, not .0486, seated on their saddles: their
+  // turrets' rear chain curtain (1.674, 2.2-2.3 m off the ring's axis) swept the outer one's 1.702 top; the Barak's and
+  // the Namer's clear it)
   for(const x of[.5243,1.0121]){
     P.addEquipment('hullDetail',box(.1923,.00762,.1706),x,1.60096,1.68669);
-    P.addEquipment('hullDetail',cylX(.033,.1634,16),x,1.635,1.6892);
+    P.addEquipment('hullDetail',slimHinges?cylX(.033,.1634,16):cylX(.0486,.1634,16),x,slimHinges?1.635:1.6534,1.6892);
     P.addEquipment('hullDetail',box(.12,.022,.075),x,1.615,1.724);
   }
   P.addEquipment('hullDetail',box(.2587,.008,.0965),.7682,1.601,1.734);

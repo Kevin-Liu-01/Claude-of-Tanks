@@ -8198,20 +8198,26 @@ function addM1A3HullCagesAndPowerpack(P: AbramsBuilderPort): void {
 
   // Hybrid-electric powerpack: separated cooling plenums, inverter boxes
   // and louvers expose the actual rear-mounted engine/transmission modules.
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the stack steps up under the turret's
+  // rising underside (1.745 at 2.1 m off the ring's axis, 1.786 at 2.5, 1.806 at 2.7, 1.827 at 2.9): the plenum from
+  // -2.33 to 1.765, its cover from -2.55 to 1.7975 and six louvers from -2.78 to 1.817. The block (to 1.79 from -2.13),
+  // cover (1.8225 from -2.20) and louvers (1.839 from -2.32) stood 1.5-6.6 cm into it at the rear bearings.
   for (const side of [-1, 1]) {
-    P.addModuleVisual('engine', 'hull', box(1.30, 0.16, 1.30), side * 0.72, 1.71, -2.78);
-    P.addEquipment('hull', box(1.16, 0.035, 1.16), side * 0.72, 1.805, -2.78);
-    for (let k = 0; k < 7; k++) {
-      P.add('hullDark', box(1.02, 0.022, 0.045), side * 0.72, 1.828,
-        -3.24 + k * 0.15);
+    P.addModuleVisual('engine', 'hull', box(1.30, 0.16, 1.10), side * 0.72, 1.685, -2.88);
+    P.addEquipment('hull', box(1.16, 0.035, 0.81), side * 0.72, 1.78, -2.955);
+    for (let k = 0; k < 6; k++) {
+      P.add('hullDark', box(1.02, 0.022, 0.045), side * 0.72, 1.806,
+        -3.28 + k * 0.10);
     }
     P.addModuleVisual('transmission', 'hullDetail', box(0.42, 0.20, 0.55),
       side * 1.36, 1.70, -3.45);
   }
-  P.addModuleVisual('radio', 'hull', box(0.88, 0.13, 0.54), 0, 1.70, 1.25);
+  // (release 240: the radio housing 6 cm lower and the hatch rings seated on their hatches, under the turret sides'
+  // 1.71 lower edge as it turns over them; the housing stood 6 cm and the rings 1.4 cm into it)
+  P.addModuleVisual('radio', 'hull', box(0.88, 0.13, 0.54), 0, 1.64, 1.25);
   for (const x of [-0.72, 0, 0.72]) {
     P.addHatch('hull', cylY(0.27, 0.29, 0.055, 16), x, 1.66, 1.72);
-    P.add('hullDark', torus(0.26, 0.014, 18), x, 1.705, 1.72);
+    P.add('hullDark', torus(0.26, 0.014, 18), x, 1.689, 1.72);
   }
 }
 
@@ -8470,9 +8476,10 @@ function addM1A3UpgradeEquipment(P: AbramsBuilderPort, t: M1A3BuildLayout['t']):
     }
     // Armored cooling grilles on the rear quarter advertise the hybrid
     // powerpack without obscuring the top cooling outlets.
-    abramsServiceCase(P, 'hull', side * 1.57, 1.72, -3.23, .36, .24, .62);
+    // (release 240: 1.5 cm lower, the lids under the bustle's 1.843 underside 3.37 m off the ring's axis)
+    abramsServiceCase(P, 'hull', side * 1.57, 1.705, -3.23, .36, .24, .62);
     for (let k = 0; k < 5; k++) P.addEquipment('hullDark', box(.015, .022, .45),
-      side * 1.757, 1.635 + k * .039, -3.23);
+      side * 1.757, 1.62 + k * .039, -3.23);
   }
 }
 
