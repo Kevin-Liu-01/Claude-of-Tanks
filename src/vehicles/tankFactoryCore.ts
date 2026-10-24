@@ -20,7 +20,7 @@ import { markSmokeTube, alignSmokeBanks, transferSmokeSockets } from './vehicleA
 import * as THREE from 'three';
 import { installCarvedMuzzleBore, verifyCarvedMuzzleBore } from './carvedMuzzleBore.ts';
 import { vehicleProvenance } from '../authorship.ts';
-import { isBattleShareableMesh, shareBattleGeometry } from './battleGeometrySharing.ts';
+import { isBattleShareableMesh, leaseSharedBattleGeometry, shareBattleGeometry } from './battleGeometrySharing.ts';
 import { mergeContiguousStaticRuns, type CoplanarLayerRecord, type FarMergeRun } from './staticDrawMerge.ts';
 import { assignCoplanarDepth, coplanarDepthUnits, markingDepthRecords } from './coplanarDepth.ts';
 import { releaseStaticMergeParts } from './staticMergeParts.ts';
@@ -1418,7 +1418,7 @@ export interface StaticDetailRecord {
   baseVisible: boolean;
 }
 
-interface BattleDetailGroup {
+export interface BattleDetailGroup {
   parent: THREE.Object3D;
   group: THREE.Group;
 }
@@ -9790,6 +9790,12 @@ export interface TankRuntimeEnv {
 /** A clone's runtime takes its source's finished tail (cloneTankVisual) instead of running it. */
 interface TankRuntimeAdoption {
   mobileDetailObjects: StaticDetailRecord[];
+  /** (perf-252) a battle build's tail in the clone's terms: its detail groups, the dual merge's far copies, and the depth
+   * orders its runtime installs (the far one only with far copies) */
+  battleDetailGroups: BattleDetailGroup[];
+  farMergeRuns: FarMergeRun[];
+  depthLayers: CoplanarLayerRecord[];
+  farLayers: CoplanarLayerRecord[] | null;
 }
 
 /** A finished visual's runtime record: what cloneTankVisual copies a clone's runtime from. */
@@ -9797,6 +9803,9 @@ interface TankCloneSource {
   env: TankRuntimeEnv;
   mobileDetailObjects: StaticDetailRecord[];
   depthLayers: CoplanarLayerRecord[];
+  battleDetailGroups: BattleDetailGroup[];
+  farMergeRuns: FarMergeRun[];
+  farLayers: CoplanarLayerRecord[] | null;
 }
 export const TANK_CLONE_SOURCES = new WeakMap<TankVisual, TankCloneSource>();
 
@@ -11328,6 +11337,15 @@ export function* createTankRuntimeSteps(
   // A clone's tree is its source's finished one (decorated, filled, normalized and layered): only its state is new.
   if (adoption) {
     mobileDetailObjects = adoption.mobileDetailObjects;
+    battleDetailGroups = adoption.battleDetailGroups;
+    farMergeRuns = adoption.farMergeRuns;
+    // the render hooks every finished mesh carries: its coplanar depth layer (mode-aware where the build has far
+    // copies), then the ground reference around it
+    if (adoption.farLayers) installCoplanarDepthLayers(root, adoption.depthLayers, { far: adoption.farLayers, mode: farMergeMode });
+    else installCoplanarDepthLayers(root, adoption.depthLayers);
+    installVehicleGroundReference(root);
+    // (perf-252) a battle build's pooled rigid stock: the clone draws its source's and holds its own lease on it
+    if (batchStatic && !staticPreview) releaseBattleGeometry = leaseSharedBattleGeometry(root);
     return visual;
   }
 
@@ -11628,6 +11646,7 @@ export function* createTankRuntimeSteps(
 
     TANK_CLONE_SOURCES.set(visual, {
       env: { ...env, deferredAssembly: [], assembledChildren: null }, mobileDetailObjects, depthLayers,
+      battleDetailGroups, farMergeRuns, farLayers,
     });
     visualCompleted = true;
     return visual;

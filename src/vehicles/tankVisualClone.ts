@@ -2,13 +2,14 @@
 // (the multiplayer roster) load it: the factory records what a clone copies (TANK_CLONE_SOURCES, GEAR_RUNTIME_ENVS) and
 // runs the same runtimes over the copy (createTankRuntimeSteps, createRunningGearRuntime).
 import * as THREE from 'three';
+import { articulatedShadowBatchSources, installArticulatedShadowBatch } from '../engine/articulatedShadowBatch.ts';
+import { programVariantCopy, programVariantOrigin } from '../engine/programVariants.ts';
 import { mulberry32 } from './factoryGeometry.ts';
 import { acquireTankTextureLease, copyVehicleMaterial } from './materials.ts';
 import { runningGearMotionScaleOf, scaleRunningGearMotion } from './scaledGroundSampler.ts';
 import {
   GEAR_OWN_METHODS, GEAR_RUNTIME_ENVS, TANK_CLONE_SOURCES, combineGearUnits, createRunningGearRuntime,
-  createTankRuntimeSteps, installCoplanarDepthLayers, installVehicleGroundReference, isVehicleMaterial,
-  normalizeTankEngineContext,
+  createTankRuntimeSteps, isVehicleMaterial, normalizeTankEngineContext,
   type DisposableVehicleResource, type RunningGearUnit, type TankFactoryOptions, type TankMaterials, type TankRuntimeEnv,
   type TankVisual,
 } from './tankFactoryCore.ts';
@@ -21,6 +22,12 @@ export interface TankCloneOptions {
   camoSeed?: number;
   camoPattern?: string | null;
   quality?: TankFactoryOptions['quality'];
+  /** (perf-252) the build options a copy shares with its source (it copies that build): checked against the source's
+   * where given, never changed; an omitted geometry tier is the factory's default for the texture tier */
+  geometryQuality?: TankFactoryOptions['geometryQuality'];
+  batchStatic?: boolean;
+  battleDetailLod?: boolean;
+  staticDrawMerge?: TankFactoryOptions['staticDrawMerge'];
 }
 
 /**
@@ -32,8 +39,11 @@ export interface TankCloneOptions {
  * dents); its stowage is its source's, the one thing a fresh build's seed would also move.
  *
  * The source must be pristine: built but never shown, synced, warmed, damaged or destroyed (the roster clones it
- * before it adds it to the scene). Battle-batched builds (batchStatic) cannot be cloned. Anything the copy cannot
- * carry faithfully throws, and the caller builds the visual from scratch instead.
+ * before it adds it to the scene). A battle-batched build (batchStatic, perf-252) copies too: its end-wheel batches
+ * (their own instance matrices), its detail groups, the dual merge's far copies and depth orders, its program-variant
+ * twins (over the copy's own originals) and its own lease on the pooled rigid stock; the shadow batch is the copy's own,
+ * installed over the copied proxies. Anything the copy cannot carry faithfully throws, and the caller builds the
+ * visual from scratch instead.
  */
 export function cloneTankVisual(source: TankVisual, engineContext: RuntimeValue, cloneOpts: TankCloneOptions = {}): TankVisual {
   const record = TANK_CLONE_SOURCES.get(source);
@@ -43,8 +53,11 @@ export function cloneTankVisual(source: TankVisual, engineContext: RuntimeValue,
   const camoPattern = cloneOpts.camoPattern === undefined ? env.opts.camoPattern ?? null : cloneOpts.camoPattern;
   const camoSeed = cloneOpts.camoSeed ?? 4000;
   const engineCtx = normalizeTankEngineContext(engineContext);
-  if (env.batchStatic) throw new Error(`${env.specId}: a battle-batched visual cannot be cloned`);
-  if ((quality === 'low' ? 'low' : 'high') !== env.geometryQuality) throw new Error(`${env.specId}: a clone keeps its source's geometry tier`);
+  if ((cloneOpts.geometryQuality ?? (quality === 'low' ? 'low' : 'high')) !== env.geometryQuality) throw new Error(`${env.specId}: a clone keeps its source's geometry tier`);
+  if ((cloneOpts.batchStatic ?? env.batchStatic) !== env.batchStatic || (cloneOpts.battleDetailLod ?? env.battleDetailLod) !== env.battleDetailLod
+    || (env.batchStatic && (cloneOpts.staticDrawMerge ?? env.staticDrawMerge) !== env.staticDrawMerge)) {
+    throw new Error(`${env.specId}: a clone keeps its source's battle build`);
+  }
   if (camoPattern !== (env.opts.camoPattern ?? null)) throw new Error(`${env.specId}: a clone keeps its source's paint scheme`);
   if (engineCtx !== env.engineCtx) throw new Error(`${env.specId}: a clone registers through its source's engine context`);
   if (source.isDestroyed() || source.root.parent) throw new Error(`${env.specId}: only a pristine visual can be cloned`);
@@ -54,6 +67,7 @@ export function cloneTankVisual(source: TankVisual, engineContext: RuntimeValue,
 
   const disposables: DisposableVehicleResource[] = [];
   let lease: { release(): void } | null = null;
+  let visual: TankVisual | null = null;
   try {
     const sourceMats = env.mats;
     // the track bands scroll their own textures (updateGearSurface): the copy's share the image, not the offset
@@ -64,16 +78,23 @@ export function cloneTankVisual(source: TankVisual, engineContext: RuntimeValue,
       disposables.push(own);
     }
     const materials = new Map<THREE.Material, THREE.Material>();
-    const copy = new VehicleGraphCopy((material) => {
+    const copy: VehicleGraphCopy = new VehicleGraphCopy((material) => {
       let own = materials.get(material);
       if (!own) {
-        own = copyVehicleMaterial(material);
-        for (const [key, value] of Object.entries(own)) {
-          const texture = value as THREE.Texture | null;
-          if (texture?.isTexture && textures.has(texture)) (own as unknown as Record<string, unknown>)[key] = textures.get(texture);
+        // a program-variant twin (a battle build's split, programVariants.ts) is the twin of the same variant over the
+        // copy's own original; the original is copied, with the variant it kept
+        const origin = programVariantOrigin(material);
+        if (origin !== material) own = programVariantCopy(material, origin, copy.material(origin));
+        else {
+          own = copyVehicleMaterial(material);
+          for (const [key, value] of Object.entries(own)) {
+            const texture = value as THREE.Texture | null;
+            if (texture?.isTexture && textures.has(texture)) (own as unknown as Record<string, unknown>)[key] = textures.get(texture);
+          }
+          disposables.push(own);
+          programVariantCopy(material, material, own);
         }
         materials.set(material, own);
-        disposables.push(own);
       }
       return own;
     }, new Set(['runningGearRoadWheels', 'runningGearGroundRun']));
@@ -112,9 +133,24 @@ export function cloneTankVisual(source: TankVisual, engineContext: RuntimeValue,
         disposables.push(copy.ownGeometry(geometry));
       }
     });
+    // the battle build's shadow batch is the copy's own (installed below over the copied proxies)
+    let shadowProxies: readonly THREE.Mesh[] | null = null;
+    for (const child of source.root.children) {
+      const proxies = articulatedShadowBatchSources(child);
+      if (!proxies) continue;
+      if (shadowProxies) throw new Error(`${env.specId}: a visual with two shadow batches cannot be cloned`);
+      shadowProxies = proxies;
+      copy.leaveOut(child);
+    }
     const root = copy.tree(source.root);
     copy.userData();
     root.userData.textureQuality = quality;
+    if (shadowProxies) {
+      // the batch took its proxies' casting over: the copied proxies cast as they did before it, until the copy's own does
+      const proxies = shadowProxies.map((proxy) => copy.object(proxy));
+      for (const proxy of proxies) proxy.castShadow = true;
+      if (!installArticulatedShadowBatch(root, proxies)) throw new Error(`${env.specId}: the copy's shadow batch refused its proxies`);
+    }
 
     const object = <T extends THREE.Object3D>(value: T): T => copy.object(value);
     const geometryOf = (geometry: THREE.BufferGeometry): THREE.BufferGeometry => copy.geometry(geometry);
@@ -150,28 +186,38 @@ export function cloneTankVisual(source: TankVisual, engineContext: RuntimeValue,
       ownsTree: false,
     };
     const mobileDetailObjects = record.mobileDetailObjects.map((entry) => ({ ...entry, object: object(entry.object) }));
-    const steps = createTankRuntimeSteps(cloneEnv, { mobileDetailObjects });
-    const made = steps.next();
-    if (!made.done) throw new Error(`${env.specId}: a clone's runtime yielded`);
-    const visual = made.value;
-    // the render hooks every finished mesh carries: its coplanar depth layer, then the ground reference around it
-    const depthLayers = record.depthLayers.map((layer) => ({
+    const layers = (records: typeof record.depthLayers) => records.map((layer) => ({
       object: object(layer.object), materials: layer.materials.map((material) => copy.material(material)), layer: layer.layer,
       depth: layer.depth, ties: layer.ties,
     }));
-    installCoplanarDepthLayers(root, depthLayers);
-    installVehicleGroundReference(root);
+    const adoption = {
+      mobileDetailObjects,
+      battleDetailGroups: record.battleDetailGroups.map((group) => ({ parent: object(group.parent), group: object(group.group) })),
+      farMergeRuns: record.farMergeRuns.map((run) => ({ ...run, copy: object(run.copy), sources: run.sources.map(object) })),
+      // the render hooks every finished mesh carries (the runtime installs them): its coplanar depth layer, then the
+      // ground reference around it
+      depthLayers: layers(record.depthLayers),
+      farLayers: record.farLayers ? layers(record.farLayers) : null,
+    };
+    const steps = createTankRuntimeSteps(cloneEnv, adoption);
+    const made = steps.next();
+    if (!made.done) throw new Error(`${env.specId}: a clone's runtime yielded`);
+    visual = made.value;
     copyVehicleNightLighting(source.root, root, (value) => copy.objects.get(value),
       (material) => copy.material(material));
     root.userData.cloneSourceSpecId = env.specId;
-    TANK_CLONE_SOURCES.set(visual, { env: cloneEnv, mobileDetailObjects, depthLayers });
+    TANK_CLONE_SOURCES.set(visual, { env: cloneEnv, ...adoption });
     return visual;
   } catch (error) {
-    for (const resource of disposables) {
-      if (isVehicleMaterial(resource)) engineCtx?.releaseShadowMaterial?.(resource);
-      resource.dispose();
+    // a made runtime releases all it holds (its disposables, batches, stock lease and textures)
+    if (visual) visual.dispose();
+    else {
+      for (const resource of disposables) {
+        if (isVehicleMaterial(resource)) engineCtx?.releaseShadowMaterial?.(resource);
+        resource.dispose();
+      }
+      lease?.release();
     }
-    lease?.release();
     throw error;
   }
 }
@@ -187,7 +233,6 @@ function cloneRunningGear(
   const units = (gear.__units || [gear]).map((unit) => {
     const env = GEAR_RUNTIME_ENVS.get(unit);
     if (!env) throw new Error('a running-gear unit without its runtime record cannot be cloned');
-    if (env.spinnerInstances.length) throw new Error('a battle-batched running gear cannot be cloned');
     return createRunningGearRuntime({
       ...env,
       disposables,
@@ -205,6 +250,8 @@ function cloneRunningGear(
       tgR: copy.geometry(env.tgR),
       linkMeshes: copy.value(env.linkMeshes),
       spinners: copy.value(env.spinners),
+      // a battle build's end-wheel batches: the copy's own (vehicleGraphClone: its own instance matrices)
+      spinnerInstances: env.spinnerInstances.map((entry) => ({ batch: copy.object(entry.batch), entries: copy.value(entry.entries) })),
       bandRestPos: copy.value(env.bandRestPos),
       loadedContact: copy.value(env.loadedContact),
       gearContactGeom: copy.value(env.gearContactGeom),
