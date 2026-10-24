@@ -15,6 +15,7 @@ import { markSmokeTube } from '../vehicleAuxiliaryGeometry.ts';
 //     challengerSpecs.ts so an Abrams garage does not load this geometry.
 // Shared family and spec construction policy is imported, never duplicated.
 import * as THREE from 'three';
+import { turretPlinthGeometry } from './turretPlinth.ts';
 import { buildChallenger3RearTurretClosure } from './challenger3RearTurret.ts';
 import { facetedSlab } from './facetedSlab.ts';
 import { markVehicleNightLens } from '../vehicleNightLighting.ts';
@@ -1524,6 +1525,13 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     // the casting's broad underside faces fan from inside the ring out over that deck: each corner reads the swept deck
     // 0.70 m either side, so the whole face comes up over it rather than sloping back to the ring's plane through the deck
     P.turretG.userData.turretSeatReadM = 0.70;
+    // (the keep radius pinned at the race's: the plinth's hole below must not move the measured rim)
+    P.turretG.userData.turretSeatKeepR = 0.988;
+    // The fighting compartment's roof (1.622) stood 16 cm under the seated casting (1.78): daylight under the turret.
+    // A plinth rises to 1.75 under the casting's rest footprint, from the engine deck's step to the glacis, flush with
+    // the engine deck behind; the ring's race and collar keep their well.
+    P.add('hull', turretPlinthGeometry([[-1.48, -1.27], [1.48, -1.27], [1.48, 2.20], [1.14, 2.40], [0.80, 2.50],
+      [-0.80, 2.50], [-1.14, 2.40], [-1.48, 2.20]], [0, 0.362, 1.02], 1.60, 1.75));
     // The casting was authored in world-like station coordinates and its idle
     // silhouette is correct, but the live yaw pivot was left 0.562 m behind the
     // recovered Challenger ring center (z=0.362). Re-seat the articulation at

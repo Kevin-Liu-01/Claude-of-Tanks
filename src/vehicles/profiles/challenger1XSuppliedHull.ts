@@ -47,8 +47,11 @@ function sponson(P:TankBuilderPort,side:number):void{
   }),{sideQuadDiagonal:'convex'}));
 }
 function engineRoof(P:TankBuilderPort):void{
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"; closed hulls at real dimensions): the engine
+  // roof's forward course stays at the fighting compartment's 65.05 to -122 and steps to its 69.0 plateau at -125, past
+  // the sweep of the turret's nose (2.33 m off the ring's axis); it rose from -83, through the nose's and cheeks' sweep.
   P.add('hull',slab([[-194.8425,50.72,49.5,68.65],[-125,50.72,49.5,69.0],
-    [-111,43.2,49.5,66.5],[-83,37.1,49.5,65.05]]));
+    [-122,49.1086,49.5,65.05],[-111,43.2,49.5,65.05],[-83,37.1,49.5,65.05]]));
   // each roof fitting stands on the engine roof under it (owner 2026-10-19 sweep: the supplied heights left caps, rails,
   // grille fields and boxes 1-10 cm over this roof's slab)
   const seat=(build:()=>void):void=>P.snapGroup('c1-engine-roof-fitting',build,{reachM:.12,mode:'down'});
