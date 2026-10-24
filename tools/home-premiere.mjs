@@ -406,7 +406,7 @@ function playBlock() {
     + `<div class="cot-c-seg" role="radiogroup" aria-labelledby="play-title">${tabs}</div></header>`
     + panel('modes', BATTLE_MODE_IDS.map(modeTile), false)
     + MECHANICS.map(([group, , ids]) => panel(group, ids.map(mechanicTile), true)).join('')
-    + `<p class="play-more" data-play-panel="modes"><a class="${btn('', '')}" href="/docs/simulation#topic-section-7">${iconMarkup('manual', 18)}${t('home.modes.cta')}</a></p>`
+    + `<p class="play-more" data-play-panel="modes"><a class="${btn('', '')}" href="/docs/modes">${iconMarkup('manual', 18)}${t('home.modes.cta')}</a></p>`
     + `</div></section>`;
 }
 
@@ -445,7 +445,7 @@ function replayBlock() {
   const studio = `<video data-home-slot="features/studio" muted loop playsinline preload="none" data-poster="${siteFile(`${C}/home/features/studio.jpg`)}" data-autoplay-video`
     + ` data-i18n-label="home.evidence.studioTitle" data-label="${esc(text('home.evidence.studioTitle'))}" aria-hidden="true">`
     + `<source data-src="${siteFile(`${C}/home/features/studio.mp4`)}" data-type="video/mp4" data-mobile-src="/media/web-video-r1/home-studio-mobile.mp4" data-mobile-type="video/mp4"></video>`;
-  return `<div class="replay home-shell">${card('killcam', killcam, '/docs/simulation', 'killcamCta')}${card('studio', studio, '/studio', 'studioCta')}</div>`;
+  return `<div class="replay home-shell">${card('killcam', killcam, '/docs/combat', 'killcamCta')}${card('studio', studio, '/studio', 'studioCta')}</div>`;
 }
 
 const BLOCKS = { hero: heroBlock, versus: versusBlock, motion: motionBlock, fleet: fleetBlock, play: playBlock, shots: shotsBlock, replay: replayBlock };

@@ -1,5 +1,6 @@
 import { getLocale, t } from '../ui/i18n.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
+import type { ManualRecord } from '../docs/searchIndex.ts';
 import { localeRouteChanged } from './publicNav.ts';
 
 // The missing page carries the public shell (its bar, menu sheet and footer are static markup written by
@@ -9,8 +10,8 @@ import { localeRouteChanged } from './publicNav.ts';
 document.title = t('notFound.metaTitle');
 
 // The search (brand-ui SPEC 12.3.4): the fleet and the Field Manual, matched in the browser. Both indexes load with the
-// field's first focus (fleetWall.json, the manual's own docsSearch.ts and its chapters), so the first paint carries
-// neither. The vehicles lead, then the manual's sections; Enter opens the first hit.
+// field's first focus (fleetWall.json, and the manual's own search over its prebuilt index in the reader's locale), so
+// the first paint carries neither. The vehicles lead, then the manual's sections; Enter opens the first hit.
 interface FleetRecord { readonly name: string; readonly href: string; readonly entry: { readonly searchText: string } }
 interface Hit { readonly kind: 'vehicle' | 'manual'; readonly href: string; readonly title: string; readonly detail: string }
 type Search = (query: string) => Hit[];
@@ -20,8 +21,11 @@ const VEHICLE_HITS = 4;
 const MANUAL_HITS = 6;
 
 function loadSearch(): Promise<Search> {
-  return Promise.all([import('../docs/docsSearch.ts'), import('./fleetWall.json')]).then(([docs, fleet]) => {
-    const manual = docs.manualEntries();
+  const index = getLocale() === 'zh-CN'
+    ? import('../docs/searchIndex.zh-CN.json', { with: { type: 'json' } })
+    : import('../docs/searchIndex.en-US.json', { with: { type: 'json' } });
+  return Promise.all([import('../docs/docsSearch.ts'), index, import('./fleetWall.json')]).then(([docs, records, fleet]) => {
+    const manual = docs.entriesOf(records.default as readonly ManualRecord[]);
     const vehicles = (fleet.default as readonly FleetRecord[]).map((record) => ({ record, name: fold(record.name), text: record.entry.searchText }));
     return (query: string): Hit[] => {
       const terms = fold(query).split(/\s+/).filter(Boolean);

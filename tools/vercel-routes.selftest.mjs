@@ -88,6 +88,10 @@ const queries = ['', '?room=HKP5XW&host=Commander', '?layer=markup'];
 const SLASH_PAGES = ['/home', '/docs', '/gallery', '/studio', ...docsTopics.map((topic) => `/docs/${topic}`)];
 const slashRedirects = new Map(SLASH_PAGES.flatMap((page) => [[`${page}/`, page], [`/cn${page}/`, `/cn${page}`]]));
 
+// The deliberate change of the Field Manual rebuild (245): four chapters folded into others redirect there, en and cn.
+const FOLDED = new Map([['vehicles', 'tanks'], ['worlds', 'battlefields'], ['interface', 'controls'], ['performance', 'rendering']]
+  .flatMap(([from, to]) => [[`/docs/${from}`, `/docs/${to}`], [`/cn/docs/${from}`, `/cn/docs/${to}`]]));
+
 let compared = 0;
 for (const path of paths) {
   for (const query of queries) {
@@ -99,6 +103,12 @@ for (const path of paths) {
         `${path}${query} → 308 to its canonical path, query kept`);
       const target = resolveVercelRequest(after, { path: slashRedirects.get(path), query }, files);
       assert.equal(target.status, 200, `${slashRedirects.get(path)} serves a document`);
+      continue;
+    }
+    const folded = FOLDED.get(path.replace(/\/$/, ''));
+    if (folded) {
+      assert.deepEqual([now.status, now.location], [308, `${folded}${query}`], `${path}${query} → 308 to the chapter that took it in`);
+      assert.equal(resolveVercelRequest(after, { path: folded, query }, files).status, 200, `${folded} serves a document`);
       continue;
     }
     assert.deepEqual(

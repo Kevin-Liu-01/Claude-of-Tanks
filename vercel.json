@@ -14,10 +14,18 @@
     { "source": "/:path(.*)", "has": [{ "type": "host", "value": { "eq": "claude-of-tanks.vercel.app" } }], "destination": "https://cot.kevinliu.studio/:path", "permanent": true },
     { "source": "/surface-studio", "destination": "/gallery?layer=markup", "permanent": true },
     { "source": "/cn/surface-studio", "destination": "/cn/gallery?layer=markup", "permanent": true },
+    { "source": "/docs/vehicles{/}?", "destination": "/docs/tanks", "permanent": true },
+    { "source": "/cn/docs/vehicles{/}?", "destination": "/cn/docs/tanks", "permanent": true },
+    { "source": "/docs/worlds{/}?", "destination": "/docs/battlefields", "permanent": true },
+    { "source": "/cn/docs/worlds{/}?", "destination": "/cn/docs/battlefields", "permanent": true },
+    { "source": "/docs/interface{/}?", "destination": "/docs/controls", "permanent": true },
+    { "source": "/cn/docs/interface{/}?", "destination": "/cn/docs/controls", "permanent": true },
+    { "source": "/docs/performance{/}?", "destination": "/docs/rendering", "permanent": true },
+    { "source": "/cn/docs/performance{/}?", "destination": "/cn/docs/rendering", "permanent": true },
     { "source": "/:page(home|docs|gallery|studio)/", "destination": "/:page", "permanent": true },
-    { "source": "/docs/:topic(build|models|simulation|vehicles|rendering|performance|worlds|ai|multiplayer|audio|interface|studio|filming)/", "destination": "/docs/:topic", "permanent": true },
+    { "source": "/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls)/", "destination": "/docs/:topic", "permanent": true },
     { "source": "/cn/:page(home|docs|gallery|studio)/", "destination": "/cn/:page", "permanent": true },
-    { "source": "/cn/docs/:topic(build|models|simulation|vehicles|rendering|performance|worlds|ai|multiplayer|audio|interface|studio|filming)/", "destination": "/cn/docs/:topic", "permanent": true }
+    { "source": "/cn/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls)/", "destination": "/cn/docs/:topic", "permanent": true }
   ],
   "headers": [
     {
@@ -38,10 +46,10 @@
   ],
   "rewrites": [
     { "source": "/:page(home|docs|gallery)", "destination": "/:page.html" },
-    { "source": "/docs/:topic(build|models|simulation|vehicles|rendering|performance|worlds|ai|multiplayer|audio|interface|studio|filming)", "destination": "/docs-:topic.html" },
+    { "source": "/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls)", "destination": "/docs-:topic.html" },
     { "source": "/studio", "destination": "/index.html" },
     { "source": "/cn", "destination": "/cn/index.html" },
     { "source": "/cn/:page(home|docs|gallery|studio|404)", "destination": "/cn/:page.html" },
-    { "source": "/cn/docs/:topic(build|models|simulation|vehicles|rendering|performance|worlds|ai|multiplayer|audio|interface|studio|filming)", "destination": "/cn/docs-:topic.html" }
+    { "source": "/cn/docs/:topic(build|models|simulation|rendering|ai|multiplayer|audio|studio|filming|modes|battlefields|combat|tanks|start|controls)", "destination": "/cn/docs-:topic.html" }
   ]
 }

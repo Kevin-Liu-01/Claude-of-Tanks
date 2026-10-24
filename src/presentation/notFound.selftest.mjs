@@ -21,8 +21,9 @@ assert.match(html, /<h1 class="not-found__title" id="not-found-title"><span clas
 assert.doesNotMatch(html, /t-hollow/, 'no outline type on the missing page');
 assert.match(html, /<form class="not-found__search" role="search" data-nf-search>[\s\S]*?<input type="search" name="q" placeholder="[^"]+" data-i18n-placeholder="notFound\.searchPlaceholder" aria-label="[^"]+" data-i18n-aria-label="notFound\.searchAria"/,
   'a search over the fleet and the manual, its field named in both locales');
-assert.match(runtime, /import\('\.\.\/docs\/docsSearch\.ts'\), import\('\.\/fleetWall\.json'\)/, 'the search indexes load with the field, never at first paint');
-assert.doesNotMatch(runtime, /^import [^;]*(?:docsSearch|fleetWall)/m, 'no index in the page\'s first bytes');
+assert.match(runtime, /import\('\.\.\/docs\/docsSearch\.ts'\), index, import\('\.\/fleetWall\.json'\)/, 'the search indexes load with the field, never at first paint');
+assert.match(runtime, /import\('\.\.\/docs\/searchIndex\.zh-CN\.json'/, 'the manual\'s prebuilt index in the reader\'s locale');
+assert.doesNotMatch(runtime, /^import (?!type )[^;]*(?:docsSearch|fleetWall|searchIndex)/m, 'no index in the page\'s first bytes');
 assert.match(html, /data-i18n-aria-label="publicNav\.menuAria"/,
   'the recovery navigation keeps an accessible localized name');
 assert.match(html, /<!--cot:nav--><a class="public-skip"[\s\S]*?<nav class="public-nav"[\s\S]*?<!--\/cot:nav-->/,

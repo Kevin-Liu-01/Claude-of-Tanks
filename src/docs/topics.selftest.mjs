@@ -4,14 +4,15 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DOCS_ICON_SPECS } from './docsIcons.ts';
 import { TOPIC_ORDER, topicSectionId, topics } from './topics.ts';
+import { richSections } from './chapters/index.ts';
 import { CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
 import { WEAPON_CLASSES } from '../audio/weaponAudio.ts';
 import { staleChapters } from '../../tools/docs-prerender.mjs';
+import { heroFlagMaskCss } from '../ui/heroCardPolicy.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const expected = [
-  'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance',
-  'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio', 'filming',
+  'start', 'controls', 'modes', 'tanks', 'combat', 'battlefields', 'multiplayer', 'audio', 'studio', 'build', 'simulation', 'models', 'rendering', 'ai', 'filming',
 ];
 
 assert.deepEqual([...TOPIC_ORDER], expected, 'the manual keeps one deliberate public topic order');
@@ -29,16 +30,31 @@ for (const id of TOPIC_ORDER) {
   const topic = topics[id];
   assert.ok(topic, `${id} has a topic definition`);
   assert.ok(Object.hasOwn(DOCS_ICON_SPECS, topic.icon), `${id} has a typed custom icon`);
-  assert.ok(topic.sections.length >= 5, `${id} remains a substantive manual`);
-  assert.equal(topic.sectionIcons.length, topic.sections.length, `${id} has an icon for every section`);
-  for (const icon of topic.sectionIcons) {
-    assert.ok(Object.hasOwn(DOCS_ICON_SPECS, icon), `${id} section icon ${icon} is registered`);
-  }
-  assert.equal(topic.media.length, 2, `${id} has two current visual evidence anchors`);
-  const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
-  assert.ok(firstFigureAt < secondFigureAt && secondFigureAt < topic.sections.length, `${id} places both figures after its own sections`);
-  for (const asset of [topic.hero, ...topic.media.map(([src]) => src)]) {
-    assert.ok(existsSync(join(ROOT, 'public', asset)), `${id}: referenced media exists (${asset})`);
+  const rich = richSections(id);
+  if (rich) {
+    // a chapter built from the game's tables (src/docs/chapters): its own sections, anchors and pictures
+    assert.ok(topic.rich && rich.length >= 3, `${id} remains a substantive manual`);
+    assert.equal(new Set(rich.map((section) => section.id)).size, rich.length, `${id}: one anchor per section`);
+    for (const section of rich) {
+      assert.match(section.id, /^[a-z][a-z0-9-]*$/, `${id}#${section.id}: a plain anchor`);
+      assert.ok(section.title && section.html && section.text, `${id}#${section.id}: a heading, markup and text`);
+      for (const [, src] of section.html.matchAll(/(?:src|srcset)="(\/[^" ,?]+)/g)) {
+        assert.ok(existsSync(join(ROOT, 'public', src)), `${id}#${section.id}: ${src} is on disk`);
+      }
+    }
+    assert.ok(existsSync(join(ROOT, 'public', topic.hero)), `${id}: its banner take exists`);
+  } else {
+    assert.ok(topic.sections.length >= 5, `${id} remains a substantive manual`);
+    assert.equal(topic.sectionIcons.length, topic.sections.length, `${id} has an icon for every section`);
+    for (const icon of topic.sectionIcons) {
+      assert.ok(Object.hasOwn(DOCS_ICON_SPECS, icon), `${id} section icon ${icon} is registered`);
+    }
+    assert.equal(topic.media.length, 2, `${id} has two current visual evidence anchors`);
+    const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
+    assert.ok(firstFigureAt < secondFigureAt && secondFigureAt < topic.sections.length, `${id} places both figures after its own sections`);
+    for (const asset of [topic.hero, ...topic.media.map(([src]) => src)]) {
+      assert.ok(existsSync(join(ROOT, 'public', asset)), `${id}: referenced media exists (${asset})`);
+    }
   }
   assert.ok(existsSync(join(ROOT, `site/docs-${id}.html`)), `${id} has an independently indexed HTML entry`);
   assert.match(landing, new RegExp(`href="/docs/${id}"`), `${id} is discoverable from the manual index`);
@@ -46,7 +62,7 @@ for (const id of TOPIC_ORDER) {
 
 // (242, the direction's 08-docs) every chapter sits on the shelf beside the page, in its two groups; the narrow
 // layout folds the shelf into one scrolling row that opens on the current chapter
-assert.match(topicsSource, /const TOPIC_GROUPS[\s\S]*?'mechanics'[\s\S]*?'engineering'/, 'the shelf names its two groups');
+assert.match(topicsSource, /const TOPIC_GROUPS[\s\S]*?'play'[\s\S]*?'behind'/, 'the shelf names its two groups: the player\'s chapters first, then behind the game');
 const shelved = [...topicsSource.matchAll(/topics: \[([^\]]+)\]/g)].flatMap((m) => m[1].match(/'([a-z]+)'/g).map((q) => q.slice(1, -1)));
 assert.deepEqual([...shelved].sort(), [...TOPIC_ORDER].sort(), 'every chapter is on the shelf exactly once');
 assert.match(docsCss, /\.dm\{display:grid;grid-template-columns:var\(--docs-side-w\) minmax\(0,1fr\)/, 'wide manuals keep the shelf beside the page');
@@ -67,32 +83,29 @@ assert.match(modelText, /Generate icons and technical cards/);
 assert.match(modelText, /tank:anatomy:update/);
 assert.match(modelText, /tank:release:check/);
 
-// The audio manual is player-facing copy over docs/AUDIO.md; its counts follow the engine.
-const audioText = [topics.audio.lede, ...topics.audio.sections.flat()].join(' ');
-const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
-  'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
-const reportClasses = NUMBER_WORDS[Object.keys(WEAPON_CLASSES).length];
-assert.ok(reportClasses, 'the weapon report-class count must be expressible in the manual');
-assert.match(audioText, new RegExp(`\\b${reportClasses} report classes\\b`),
-  'the audio manual states the engine weapon report-class count');
+// The sound chapter is built from the audio engine's own tables (src/docs/chapters/audio.ts); its counts follow the engine.
+const audioSections = richSections('audio');
+const audioText = audioSections.map((section) => section.text).join(' ');
+assert.match(audioText, new RegExp(`\\b${Object.keys(WEAPON_CLASSES).length} report classes\\b`),
+  'the sound chapter states the engine weapon report-class count');
 const CREW_LANGUAGE_NAMES = {
   'en-US': 'American', 'en-GB': 'British', de: 'German', ru: 'Russian', uk: 'Ukrainian', zh: 'Chinese',
   fr: 'French', sv: 'Swedish', ja: 'Japanese', ko: 'Korean', it: 'Italian', pl: 'Polish', he: 'Hebrew',
 };
-const crewRadioText = topics.audio.sections.find(([title]) => title === 'Crew radio')?.join(' ') ?? '';
+const crewRadioText = audioSections.find((section) => section.id === 'radio')?.text ?? '';
 for (const language of CREW_LANGUAGES) {
   const name = CREW_LANGUAGE_NAMES[language];
-  assert.ok(name, `crew language ${language} needs a name in the audio manual`);
-  assert.match(crewRadioText, new RegExp(`\\b${name}\\b`), `the audio manual names the ${name} crews`);
+  assert.ok(name, `crew language ${language} needs a name in the sound chapter`);
+  assert.match(crewRadioText, new RegExp(`\\b${name}\\b`), `the sound chapter names the ${name} crews`);
 }
 assert.match(audioText, /ElevenLabs/);
 assert.match(audioText, /nothing is generated while you play/);
 assert.match(audioText, /No interface sound tells you a shot hit/);
 assert.match(audioText, /Short\. Adjusting\./);
 assert.match(audioText, /National crews/);
-assert.match(audioText, /13 existing national crews for every tank/);
+assert.match(audioText, new RegExp(`\\b${CREW_LANGUAGES.length} existing national crews for every tank\\b`));
 assert.match(audioText, /saved across battles and reloads/);
-assert.doesNotMatch(audioText, /selftest|node (?:src|tools)\//, 'the audio manual is written for players, not as a test checklist');
+assert.doesNotMatch(audioText, /selftest|node (?:src|tools)\//, 'the sound chapter is written for players, not as a test checklist');
 
 // brand-ui SPEC 12.4: every chapter ships in its page in both locales, so the first paint is the chapter (no stub)
 assert.deepEqual(staleChapters(), [], 'the prerendered chapters match topics.ts (node tools/docs-prerender.mjs --write)');
@@ -102,5 +115,10 @@ for (const slug of TOPIC_ORDER) {
 }
 assert.match(topicsSource, /root\.dataset\.prerendered === slug && root\.dataset\.prerenderedLocale === getLocale\(\)/,
   'the script keeps a chapter prerendered for its locale and only wires it');
+
+// the tanks chapter's hero cards feather their flags as the Garage does: the docs token is the policy's mask
+const docsTokens = JSON.parse(readFileSync(join(ROOT, 'src/ui/tokens/tokens.json'), 'utf8')).component['surface-docs'];
+assert.equal(docsTokens['docs-hc-flag-mask'].value, heroFlagMaskCss(undefined, 'left'),
+  'tokens.json docs-hc-flag-mask is heroFlagMaskCss() (src/ui/heroCardPolicy.ts): copy it after a policy change');
 
 console.log(`topics.selftest: ${TOPIC_ORDER.length} indexed manuals with complete icon, workflow, and audio coverage passed; every chapter prerendered in en-US and zh-CN`);

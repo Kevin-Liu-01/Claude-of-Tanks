@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { TOPIC_ORDER } from './topics.ts';
 import { readFile } from 'node:fs/promises';
 import { DOCS_ICON_SPECS, docsIconKeys } from './docsIcons.ts';
 import { uiIconIds, uiIconSVG } from '../ui/uiIcons.ts';
@@ -18,8 +19,10 @@ for (const key of placeholders) {
   assert.ok(Object.hasOwn(DOCS_ICON_SPECS, key), `Docs placeholder ${key} has a typed icon mapping`);
 }
 
-assert.equal((docs.match(/class="docs-chapter-media"/g) || []).length, 13,
-  'all focused field manuals have a visual icon plate');
+// each chapter card on the index is a picture with its icon plate, one per chapter
+const cards = [...docs.matchAll(/<a href="\/docs\/([a-z]+)"><span class="docs-chapter-media">/g)].map((match) => match[1]);
+assert.ok(cards.length >= 13 && new Set(cards).size === cards.length && cards.every((slug) => TOPIC_ORDER.includes(slug)),
+  `all focused field manuals have a visual icon plate (${cards.join(', ')})`);
 assert.equal((docs.match(/class="doc-section-icon"/g) || []).length, 12,
   'all overview chapters have a section icon');
 assert.equal((docs.match(/class="toc-icon"/g) || []).length, 12,
