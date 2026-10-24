@@ -1514,6 +1514,13 @@ const SHOW_ZOOM_STEP = 0.9;            // per wheel notch
 const SHOW_ZOOM_MIN = 0.62;
 const SHOW_ZOOM_MAX = 1.55;
 const SHOW_DIST_MAX_M = 19;            // stays inside the 46 m bay (HW 23)
+// A screen held upright (the 246 Garage fix): the hero framed whole, gun included, in a frame narrower than it is tall.
+// The camera pitches down onto the tank and stands back a little further, still under the hall's lamps and truss chords
+// (8.66 m: at 12 degrees and 22 m the eye is about 6.5 m up, about 8 m inside the bay's walls on its diagonal), and the
+// frame keeps a fifth of the window for the guns that reach past the canonical box.
+const SHOW_UPRIGHT_PITCH = THREE.MathUtils.degToRad(12);
+const SHOW_UPRIGHT_DIST_MAX_M = 22;
+const SHOW_UPRIGHT_HERO_FILL = 0.8;
 const SHOW_NEAR_PAD_M = 1.2;           // camera never inside the silhouette
 const SHOW_FLOOR_PAD_M = 0.7;          // camera never under the pedestal plane
 const SHOW_SOLVE_ITERS = 9;
@@ -1663,7 +1670,12 @@ export function createShowroomOrbit(
   deps: ShowroomOrbitDeps,
 ): ShowroomOrbit {
   const heroYaw = deps.heroYawRad;
-  const heroPitch = THREE.MathUtils.clamp(deps.heroPitchRad, SHOW_PITCH_MIN, SHOW_PITCH_MAX);
+  const heroPitchWide = THREE.MathUtils.clamp(deps.heroPitchRad, SHOW_PITCH_MIN, SHOW_PITCH_MAX);
+  // the hero pose's yaw holds in every shape; an upright screen looks down onto it (SHOW_UPRIGHT_*)
+  const upright = (): boolean => viewAspect() < 1;
+  const heroPitchNow = (): number => (upright() ? Math.max(heroPitchWide, SHOW_UPRIGHT_PITCH) : heroPitchWide);
+  const heroFill = (): number => (upright() ? SHOW_UPRIGHT_HERO_FILL : SHOW_HERO_FILL);
+  const distMax = (): number => (upright() ? SHOW_UPRIGHT_DIST_MAX_M : SHOW_DIST_MAX_M);
 
   // measured subject (local-frame box + the world transform it was taken in)
   let subject: THREE.Object3D | null = null;
@@ -1673,7 +1685,7 @@ export function createShowroomOrbit(
   // live orbit state: `t*` are the pointer/spring targets, the bare values are
   // the damped ones actually rendered.
   let tYaw = heroYaw, yaw = heroYaw;
-  let tPitch = heroPitch, pitch = heroPitch;
+  let tPitch = heroPitchWide, pitch = heroPitchWide;
   let tZoom = 1, zoom = 1;
   let yawVel = 0, pitchVel = 0;
   let dragging = false;
@@ -1876,7 +1888,7 @@ export function createShowroomOrbit(
           (w.hx * fill) / Math.max(projectionBounds.nx1 - projectionBounds.nx0, 1e-6),
           (w.hy * fill) / Math.max(projectionBounds.ny1 - projectionBounds.ny0, 1e-6),
         );
-        const dNew = THREE.MathUtils.clamp(d / s, dFloor, SHOW_DIST_MAX_M);
+        const dNew = THREE.MathUtils.clamp(d / s, dFloor, distMax());
         // offsets are proportional to distance — carry them across the step so
         // the centering correction below starts from the same framing
         const k = dNew / d;
@@ -1909,8 +1921,8 @@ export function createShowroomOrbit(
     if (!haveBox) return;
     const need = solve(yaw, pitch, SHOW_KEEP_FILL, 0).dist;
     const d = THREE.MathUtils.clamp(Math.max(heroDist, need) * zoom,
-      nearDist, SHOW_DIST_MAX_M);
-    const off = solve(yaw, pitch, SHOW_HERO_FILL, d);
+      nearDist, distMax());
+    const off = solve(yaw, pitch, heroFill(), d);
     basis(yaw, pitch);
     _sbPos.copy(_sbCenter).addScaledVector(_sbC, d)
       .addScaledVector(_sbR, off.sx).addScaledVector(_sbU, off.sy);
@@ -1927,14 +1939,14 @@ export function createShowroomOrbit(
 
   function resetMeasuredOrbit(): boolean {
     tYaw = yaw = heroYaw;
-    tPitch = pitch = heroPitch;
+    tPitch = pitch = heroPitchNow();
     tZoom = zoom = 1;
     yawVel = pitchVel = 0;
     dragging = false;
     sinceInputS = 999;
     lastInputMs = -Infinity;
     measureAccS = 0;
-    heroDist = solve(heroYaw, heroPitch, SHOW_HERO_FILL, 0).dist;
+    heroDist = solve(heroYaw, heroPitchNow(), heroFill(), 0).dist;
     applyPose();
     return true;
   }
@@ -1969,7 +1981,7 @@ export function createShowroomOrbit(
     // with a clamped simulation delta. That must not extend this input grace.
     if (held || dragging || performance.now() - lastInputMs <= SHOW_IDLE_RETURN_S * 1000) return;
     tYaw = yaw + wrapPi(heroYaw - yaw);
-    tPitch = heroPitch;
+    tPitch = heroPitchNow();
     tZoom = 1;
     yawVel = pitchVel = 0;
   }
@@ -1981,7 +1993,7 @@ export function createShowroomOrbit(
     const previousSubject = subject;
     const previousHeroDist = heroDist;
     if (!measure() || !haveBox) return false;
-    heroDist = solve(heroYaw, heroPitch, SHOW_HERO_FILL, 0).dist;
+    heroDist = solve(heroYaw, heroPitchNow(), heroFill(), 0).dist;
     settleNewSubject(previousSubject);
     return framingChanged(previousHeroDist);
   }
@@ -2001,6 +2013,7 @@ export function createShowroomOrbit(
     if (held || sinceInputS <= SHOW_IDLE_RETURN_S) return;
     const follow = 1 - Math.exp(-dt / SHOW_RETURN_TAU_S);
     tYaw += wrapPi(heroYaw - tYaw) * follow;
+    const heroPitch = heroPitchNow();
     tPitch += (heroPitch - tPitch) * follow;
     tZoom += (1 - tZoom) * follow;
     const settled = Math.abs(wrapPi(heroYaw - tYaw)) < SHOW_SETTLE_EPS &&
@@ -2184,7 +2197,7 @@ export function createShowroomOrbit(
         yawDeg: THREE.MathUtils.radToDeg(yaw),
         pitchDeg: THREE.MathUtils.radToDeg(pitch),
         heroYawDeg: THREE.MathUtils.radToDeg(heroYaw),
-        heroPitchDeg: THREE.MathUtils.radToDeg(heroPitch),
+        heroPitchDeg: THREE.MathUtils.radToDeg(heroPitchNow()),
         // garage-scene r1: yaw is unclamped (full 360°). Report a full turn so
         // probe assertions of the form |yaw-hero| <= clamp keep holding for
         // any single-drag gesture without a schema change.

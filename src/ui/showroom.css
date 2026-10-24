@@ -268,7 +268,9 @@ body[data-cot-panels='persistent'] .cot-battle-mode .sum-pic{display:block;posit
 body[data-cot-panels='persistent'] .cot-battle-mode>:not(.sum-pic){position:relative;}
 body[data-cot-panels='persistent'] .cot-battle-mode .sum-pic::after{content:'';position:absolute;inset:0;
   background:linear-gradient(180deg,transparent 30%,var(--glyph-plate));}
-.cot-battle-mode .sum-pic .random-map-mosaic{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;}
+/* Random's four battlefields: one row of four on the wide card, two by two in a phone's small picture; no empty cell */
+.cot-battle-mode .sum-pic .random-map-mosaic{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;}
+body[data-cot-panels='overlay'] .cot-battle-mode .sum-pic .random-map-mosaic{grid-template:repeat(2,1fr)/repeat(2,1fr);}
 .cot-battle-mode .sum-pic .random-map-tile{background:center/cover no-repeat;}
 body[data-cot-panels='persistent'] .cot-battle-mode .sum-map{grid-column:1/-1;grid-row:2;min-width:0;overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap;opacity:1;color:var(--ink-1);font:600 var(--fs-18)/1.1 var(--font-display);letter-spacing:var(--track-label-s);
