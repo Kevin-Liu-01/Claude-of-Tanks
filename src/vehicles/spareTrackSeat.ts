@@ -1288,6 +1288,7 @@ const _down = new THREE.Vector3(0, -1, 0), _from = new THREE.Vector3();
 function armourLimited(env: SeatEnv, M: SeatMotion, yaw: number, pitch: number, owner: number): boolean {
   const G = M.gun!;
   const cy = Math.cos(yaw), sy = Math.sin(yaw), cp = Math.cos(pitch), sp = Math.sin(pitch);
+  const footprint = M.turreted ? M.turretAngularLow() : null;
   for (let k = 0; k < G.count; k++) {
     const o = k * 4;
     if (Number.isNaN(G.bins[o])) continue;
@@ -1295,6 +1296,10 @@ function armourLimited(env: SeatEnv, M: SeatMotion, yaw: number, pitch: number, 
     if (gz < 0.5) continue; // the breech and cradle ride inside the turret: only the gun out past its mantlet can be stopped
     // gun -> turret -> hull
     const ty = cp * gy + sp * gz + M.gunPivot.y, tz = -sp * gy + cp * gz + M.gunPivot.z, tx = gx + M.gunPivot.x;
+    // (245) a station over the turret's own footprint rides inside the turret too, as the gun's clearance receipt leaves
+    // it out (gunHullClearance.test-support.mjs turretOutline): the Merkavas' mantlets reach 2.5 m out under the
+    // turret's nose, below the deck's plane, and read the gun inside the armour at its measured stops
+    if (footprint && Number.isFinite(angularLowAt(footprint, Math.hypot(tx, tz), Math.atan2(tx, tz), 0.05))) continue;
     _g.set(cy * tx + sy * tz + M.pivot.x, ty + M.pivot.y, -sy * tx + cy * tz + M.pivot.z);
     _from.copy(_g); _from.y += 1.5;
     if (!env.soup.raycast(_from, _down, 1.5, owner, false, _hit2)) continue;
