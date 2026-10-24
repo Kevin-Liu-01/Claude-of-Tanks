@@ -262,7 +262,9 @@ assert.doesNotMatch(selectorFunctions, /requireElement|querySelector/,
   'live shell/cooldown presentation must use construction-time handles');
 assert.match(hudSource, /slotPresentations\[k\]\.select\(k === i\)/,
   'optimistic selection must use the same retained class owner');
-assert.match(hudSource, /typeLabel: shellTypeLabel,[\s\S]*count: shellCount,[\s\S]*selectionLabel: ammunitionSelectionLabel,/,
+// The slot prints the shell's canonical code in every locale (f88e0e7c5e, the 11 px floor: a slot holds five Chinese
+// characters and the full names run to seven); its full name is in its aria-label and its own hover card (.tip .tnm).
+assert.match(hudSource, /typeLabel: shellTypeCode,[\s\S]*count: shellCount,[\s\S]*selectionLabel: ammunitionSelectionLabel,/,
   'slot retention consumes the canonical HUD formatting/count policy');
 assert.match(hudSource, /locale: getLocale,/,
   'locale-only updates invalidate retained translated ammunition presentation');
@@ -314,7 +316,8 @@ assert.match(hudSource, /locale: getLocale,/,
 
 {
   const rule = /\.cot-shell\.unlimited \.cnt\{([^}]*)\}/.exec(hudSource)?.[1] ?? '';
-  const size = (css) => Number(/font-size:(\d+(?:\.\d+)?)px/.exec(css)?.[1]);
+  // a px literal or the battle size token (--battle-fs-N is N px)
+  const size = (css) => { const m = /font-size:(?:var\(--battle-fs-(\d+)\)|(\d+(?:\.\d+)?)px)/.exec(css); return Number(m?.[1] ?? m?.[2]); };
   const numeral = /\.cot-shell \.cnt\{([^}]*)\}/.exec(hudSource)?.[1] ?? '';
   assert.ok(size(rule) > size(numeral), 'the ammo ∞ is set larger than the numerals (the glyph draws small)');
   assert.match(rule, /color:var\(--hud-text\)/, 'in the numeral ink');
