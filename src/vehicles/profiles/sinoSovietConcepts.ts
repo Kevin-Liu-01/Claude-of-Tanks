@@ -26,7 +26,7 @@ const BOOT_FLOOR:Readonly<Record<Variant,readonly (number|null)[]>>={
 function build(P:TankBuilderPort,variant:Variant):void {
   const frame=EASTERN_SOURCE_STUDIES.type96b.frame;
   if(variant==='feng')buildT80UXHull(P);
-  else if(variant==='lei')buildT72B3MXHull(P);
+  else if(variant==='lei')buildT72B3MXHull(P,{lowDeckCrown:true});
   else buildT72B3XHull(P);
   // The turret stays in its authored local frame. Translate its whole ring
   // onto the donor deck, including the main-gun pivot and all fittings.
@@ -69,7 +69,9 @@ function build(P:TankBuilderPort,variant:Variant):void {
       strappedPack(P,'turret',[side*.69,.67,-1.68],[.46,.17,.68]);
     }
     // 2026-10-19 (owner float sweep): the cage's brackets ran 10 mm under the bustle floor; raised onto it.
-    attachedCage(P,'turret',[0,.275,-2.56],2.35,.48,.32);
+    // (release 240, the owner: "make sure all tank turrets are clear of hulls": 3 cm shorter from below, its bottom rail
+    // 1.596 world, over the rear deck plates' straps (1.586) it swept at 2.6-2.9 m off the ring's axis; top unchanged)
+    attachedCage(P,'turret',[0,.29,-2.56],2.35,.45,.32);
     supportedSensor(P,[-.22,.94,-1.13],.55);
   }
   if(variant==='feng')addRearFieldStowage(P);
