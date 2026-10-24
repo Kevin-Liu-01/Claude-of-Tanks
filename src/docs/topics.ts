@@ -503,7 +503,8 @@ function wireTopicPage(root: HTMLElement, slug: TopicId): void {
   const heroVideos = root.querySelectorAll<HTMLVideoElement>('video[data-media-player]');
   if (heroVideos.length) {
     void Promise.all([import('../presentation/mediaPlayer.ts'), import('../presentation/mediaPlayer.css')]).then(([{ mountMediaPlayers }]) => mountMediaPlayers(heroVideos,
-      (playing, video) => t(playing ? 'publicPages.video.pauseAria' : 'publicPages.video.playAria', { label: video.dataset.label || '' })));
+      (playing, video) => t(playing ? 'publicPages.video.pauseAria' : 'publicPages.video.playAria', { label: video.dataset.label || '' }),
+      (playing) => t(playing ? 'publicPages.video.pauseTip' : 'publicPages.video.playTip')));
   }
   const article = root.querySelector<HTMLElement>('article');
   if (article && reference) {

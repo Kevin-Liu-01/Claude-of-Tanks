@@ -1783,6 +1783,8 @@
   "publicPages.fleet.count": "{count} 辆战车",
   "publicPages.fleet.none": "没有匹配的战车",
   "publicPages.video.pauseAria": "暂停{label}",
+  "publicPages.video.playTip": "播放",
+  "publicPages.video.pauseTip": "暂停",
   "gallery.archive.h1": "战车展厅",
   "gallery.archive.searchPlaceholder": "搜索",
   "gallery.archive.filter.nation": "国家",

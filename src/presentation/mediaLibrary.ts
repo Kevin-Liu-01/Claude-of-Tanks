@@ -180,7 +180,7 @@ function setSection(collection: LibraryCollection, set: LibrarySet, viewer: View
     button.className = 'media-library-thumb';
     button.setAttribute('role', 'listitem');
     button.setAttribute('aria-label', t('mediaLibrary.openAria', { name: pictureTitle(set, index), set: say(set.title) }));
-    button.title = pictureTitle(set, index);
+    button.dataset.tip = pictureTitle(set, index);
     button.style.width = `${Math.round(tw * scale)}px`;
     button.style.height = `${Math.round(th * scale)}px`;
     button.style.backgroundImage = `url("${ROOT_URL}/${collection.key}/${sheetName}")`;

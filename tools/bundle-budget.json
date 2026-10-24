@@ -15,13 +15,13 @@
       "requests": 8,
       "raw": 110167,
       "gzip": 31710,
-      "brotli": 28057,
+      "brotli": 28215,
       "inlineCss": 702
     },
     "docs": {
       "requests": 12,
       "raw": 169013,
-      "gzip": 36458,
+      "gzip": 36615,
       "brotli": 41746,
       "inlineCss": 846
     },
