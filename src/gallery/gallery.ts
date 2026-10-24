@@ -10,7 +10,6 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { pinchRestoresPage } from '../ui/pinchZoomGuard.ts';
 import { createTank, createTankSteps, ensureTankBuilder, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
-import { createFrameBudgetYielder, nextPaintFrame } from '../engine/frameScheduler.ts';
 import { linkTankId, stampTankIdLink } from '../game/tankIdBoundaries.ts';
 import { testDriveHref } from '../game/testDriveLink.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
@@ -340,7 +339,7 @@ function showAnatomy(mode: AnatomyMode, announce: boolean): void {
     clearTimeout(slow);
     // The pressed mode paints before its scene is built: with the module loaded the build ran in the press's own
     // microtask and held its paint (click-perf-244).
-    await nextPaintFrame();
+    await afterNextPaint();
     const vehicle = anatomyVehicle();
     if (!vehicle || activeMode !== mode) return;
     if (!anatomyView) {
@@ -1199,6 +1198,11 @@ function disposeTank(): void {
 function nextFrame(): Promise<void> {
   return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
+/** After the next paint: the frame's callback, then a task (frameScheduler.ts nextPaintFrame, kept off the Gallery's
+ *  boot requests). */
+function afterNextPaint(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+}
 
 // Gallery models remain first-party/procedural-only, but show the same authored field equipment players see in the
 // garage and battle. Measurement tools that omit this explicit opt-in still get bare hulls.
@@ -1207,7 +1211,7 @@ const GALLERY_TANK_OPTIONS: CreateTankOptions = { camoSeed: 4242, quality: 'high
 /** The selected tank's model, built a frame-sized slice at a time (null once a later selection superseded it). A
  *  decoration that fails the sliced build falls back to the synchronous one, which keeps its warning and bare fitting. */
 async function buildGalleryTank(id: string, current: () => boolean): Promise<GalleryVisual | null> {
-  const yieldForBudget = createFrameBudgetYielder(10);
+  let sliceStartedAt = performance.now();
   let steps: ReturnType<typeof createTankSteps> | null = createTankSteps(id, engineCtx, GALLERY_TANK_OPTIONS);
   try {
     for (;;) {
@@ -1218,7 +1222,7 @@ async function buildGalleryTank(id: string, current: () => boolean): Promise<Gal
         result.value.dispose();
         return null;
       }
-      await yieldForBudget();
+      if (performance.now() - sliceStartedAt >= 10) { await nextFrame(); sliceStartedAt = performance.now(); }
       if (!current()) return null;
     }
   } catch (error) {
