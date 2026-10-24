@@ -991,9 +991,11 @@ function buildBMP3(P: AfvBuilderPort): void {
   P.add('hull', box(2.16, 0.92, 6.20), 0, 0.76, -0.10);                        // tub y 0.30..1.22, z -3.20..3.00
   P.add('hull', box(3.00, 0.51, 5.42), 0, 1.545, -0.55);                       // upper body y 1.29..1.80 (SS-B4)
   P.add('hull', box(2.90, 0.05, 5.30), 0, 1.815, -0.57);                       // roof plate, top 1.84
-  P.add('hull', box(1.90, 0.11, 1.35), 0, 1.895, -1.25);                       // raised mid strip, top 1.95
+  // (release 240, the owner: "make sure all tank turrets are clear of hulls": the strip starts at -1.05, outside the sweep
+  // of the turret's floor (1.91, 1.04-1.23 m off the ring's axis), which sat 4.5 cm in its fore end at rest)
+  P.add('hull', box(1.90, 0.11, 0.875), 0, 1.895, -1.4875);                    // raised mid strip, top 1.95
                                                                                 //   (print 1.956 band z -1.93..-0.55)
-  P.add('hull', box(1.20, 0.075, 1.60), 0, 1.875, 0.90);                       // fore-deck crown 1.89-1.91 band
+  P.add('hull', box(1.20, 0.045, 1.60), 0, 1.86, 0.90);                        // fore-deck crown 1.89-1.91 band (release 240: top 1.8825, under the turret's 1.91 floor)
   // ---- BOW (print deck 1.74@2.28 -> 1.66@3.00, trim-vane roll band 1.80
   // over 3.06..3.28, tip 1.58; belly rises 0.30@2.05 -> 0.90@3.06 ->
   // knuckle 1.13@3.31 -> 1.51 at the tip) -----------------------------------

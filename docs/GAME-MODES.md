@@ -46,13 +46,51 @@ seat a bot's. The rules are the `WATCH_RULES` entry in `src/sim/matchRuleset.ts`
 
 | View | Desktop | Gamepad | Touch |
 | --- | --- | --- | --- |
-| Drone | WASD/arrows move, mouse looks, Space climbs, C descends, Shift boosts (the handbrake, reload and sniper actions: Accessibility's hold-or-toggle applies), wheel sets cruise speed | Left stick moves, right stick looks, RT/LT climb/descend, L3 boosts | Stick moves, drag looks, the climb rail |
+| Drone | WASD/arrows move, mouse looks, Space climbs, C descends, Shift boosts (the handbrake, reload and sniper actions: Accessibility's hold-or-toggle applies), wheel sets cruise speed; T (the auto-aim key) locks on the tank in view and lets go | Left stick moves, right stick looks, RT/LT climb/descend, L3 boosts, X locks | Stick moves, drag looks, the climb rail, the bar's lock |
 | Ride along | Click a tank, F (the one in view) or Tab; Q/E and Shift+Tab cycle; Shift or wheel-in for the gunner sight; V flies off | Y rides the tank in view; LB/RB cycle; B flies off | Tap a tank or the cycle buttons |
 | Take control | Enter (again to leave) | R3 | The Drive / Leave button |
 
 A ridden tank's wreck is held `deathHoldS`, then the camera rides on with its killer (a burn-out or crash credits the
 last hull that hit it), or the drone lifts off. Every handover is an eased pose blend that arcs over long hops
 (`src/engine/watchCamera.ts`).
+
+**The drone flies like a spectator drone** (watch-drone-244, owner 2026-10-24: "how flying around should actually work
+(youre a spectator drone)"; the laws are `WATCH_DRONE`):
+- Momentum: the stick is shaped (fine near the centre) and eased, then the velocity follows it, so a press builds and a
+  release glides out; nothing jolts.
+- Speed scales with the height above ground (√(h / 18 m), 0.55–2.6x the wheel's cruise step, never past 180 m/s): it
+  creeps low and covers ground high.
+- Altitude hold: let go of climb or descent and it holds the height it coasts to.
+- A terrain-follow floor sampled ahead of it along its path lifts it over a rise before it gets there and lets it settle
+  back to its held height after; a hard floor under it never gives. Structures are a swept ray along the move, and the
+  move slides along what it meets.
+- The square's edges and the ceiling are a braking curve (the speed that can still stop in the distance left), never a
+  dead stop.
+- Lock-on: the lock orbits a tank. Sideways and the mouse go round, climb raises the orbit, forward closes in, the wheel
+  steps the range; the drone flies to its slot through the same clamps, its lens turning onto the tank from where it
+  looked. A locked wreck is held `deathHoldS` and the lock lets go; a tank revived across the field lets go at once. A
+  lock from far away streams its slot ahead of the flight (perf-245's `prepareDestination`).
+
+**Take control in every mode** (watch-drone-244, `src/game/watchTakeover.selftest.mjs` per mode). A seat's `bot` flag is
+its role and never changes; control decisions read `src/sim/botDriven.ts` (`bot && !isPlayer`), so a taken bot's seat
+flies its FPV drone on the watcher's throttle and launch key, and collects caches as a player does; outside Watch it
+reads exactly as `bot`. Per mode:
+- Juggernaut: the boss can be taken (it is the human seat when the boss is Alpha's); it stays the boss, its hull and
+  scale stay.
+- Infected: a driven survivor that falls rises infected and is handed back after the death flow. The watched battle's
+  side is the seat's side as the battle opened (`game.watch.team`): its verdict, the mode's perspective
+  (`watchViewer`) and the spectator HUD never turn with a converted seat.
+- Capture the flag: a driven hull picks up a flag, keeps it across the hand-back and drops it when it falls.
+- Respawn modes: a driven hull that falls is handed back as a wreck and its controller rides the mode's revive;
+  no-respawn modes keep the wreck.
+- Turbo Ball, Mars (low gravity), Gun Game, Zone Control, Frontline, the Horde, Realistic: the round trip holds; mid-air,
+  flipped and mid-reload hulls carry over as they are (a taken flipped hull rights itself through the player's own
+  self-right; the controller's auto-flip resumes when it is handed back).
+- The AC-130 is not watchable: only the human seat flies the gunship (`initializeAerial`), so a watched one would have
+  no gunship and no fight.
+- Rooms never carry Watch: a networked match has no seat ledger (Take control refuses with `no-watch`) and the room code
+  never reaches the Watch modules; Deploy offers Watch only in a solo battle.
+- Nothing is recorded; the scoreboard credits a driven hull's kills to that hull, and the end screen highlights it.
 
 **Take control** is the player's own path: `src/game/watchSeat.ts` parks the hull's AI controller and makes the hull
 `game.player`. The fixed step drives a hull from its controller only while `aiCtl` is set, so the frame input
@@ -64,8 +102,10 @@ Receipts:
 - `src/game/watchSeat.selftest.mjs`: the ruleset entry, bot → player → bot leaves the hull identical, an exact replay
   over the swap, no controller step while driven, every watchable mode running with no human seat.
 - `src/game/watchController.selftest.mjs`: the death handoff, picking and cycling, take and leave.
-- `src/engine/watchCamera.selftest.mjs`: the drone's clamp to the terrain floor, structures (slide), the world square
-  and the ceiling.
+- `src/engine/watchCamera.selftest.mjs`: the drone's hard floor, terrain-follow ahead, altitude hold, speed by height,
+  two-lag momentum, the braking edges and ceiling, structures (slide), and the lock-on orbit (no jump, no snap, the
+  stick orbits, letting go is continuous, a revive lets go, a far lock streams its slot).
+- `src/game/watchTakeover.selftest.mjs`: Take control in every watchable mode (see above), the AC-130 and rooms.
 
 The controller, camera and bar load as one lazy chunk with a watched battle (`src/app/watchRuntime.ts`).
 

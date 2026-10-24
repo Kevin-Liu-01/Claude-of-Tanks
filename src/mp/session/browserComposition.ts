@@ -1038,7 +1038,8 @@ export function createBrowserComposition({
     const displayTeam = own?.team === 'spectator' ? 'alpha' : String(own?.team || 'alpha');
     const allies = roster.rows(players, displayTeam, viewerId, gameMode);
     const enemies = roster.rows(players, displayTeam === 'alpha' ? 'bravo' : 'alpha', viewerId, gameMode);
-    load.battleLoad.show({ mapName: map.name, thumb: map.thumb, biome: mapId ? map.biome : 'none', mode: modeLabelFor(mode, roundNumber), allies, enemies });
+    load.battleLoad.show({ mapName: map.name, thumb: map.thumb, biome: mapId ? map.biome : 'none', mode: modeLabelFor(mode, roundNumber),
+      ...(gameMode ? { modeId: gameMode } : {}), allies, enemies });
     // TEAM NATIONS (round 2, E10): each side's flag and fills read off its seated vehicles under MONO-NATION (the host's
     // plan record stays on the host); RANDOM shows none
     if (latestRoom?.settings?.arrangement?.teamNations !== 'random') {

@@ -359,6 +359,9 @@ function mainPlateDescriptors(plates: readonly ArmorPlate[]): PlateDescriptor[] 
     .filter((descriptor): descriptor is PlateDescriptor => descriptor !== null);
 }
 
+/** Twice the area (m²) under which a collision triangle is degenerate. */
+const DEGENERATE_FACE_CROSS = 1e-10;
+
 function collisionFaceFromTriangle(
   sourceIndices: readonly number[],
   vertices: Vec3[],
@@ -371,7 +374,11 @@ function collisionFaceFromTriangle(
   const b = vertices[indices[1]];
   const c = vertices[indices[2]];
   if (!a || !b || !c) return null;
-  let normal = normalize(cross(sub(b, a), sub(c, a)));
+  // 243: a zero-area triangle (three collinear hull points after rounding) has no plane; its fallback normal cut a
+  // whole side out of the slice traceTank tests (strv103a's lower right hull).
+  const raw = cross(sub(b, a), sub(c, a));
+  if (Math.hypot(raw[0], raw[1], raw[2]) < DEGENERATE_FACE_CROSS) return null;
+  let normal = normalize(raw);
   const faceCenter = [
     (a[0] + b[0] + c[0]) / 3,
     (a[1] + b[1] + c[1]) / 3,

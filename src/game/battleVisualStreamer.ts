@@ -112,6 +112,12 @@ export interface BattleVisualStreamerOptions<TGame extends { tanks: BattleVisual
   ): Promise<RuntimeValue>;
   armorAimOverlay: ArmorAimWarmOwner<TGame['tanks'][number]>;
   forwardProgramWarm: ForwardCompileOwner;
+  /**
+   * Draw a staged root once offscreen with its production materials, whatever any camera frames (2026-10-24, perf-245;
+   * main.ts: deploymentWarm.ts createIsolatedForwardWarmBatches). Its programs compile at staging; without a draw, the
+   * GPU pipelines of a hidden opponent were made at its first sight — the mode-sheen lane's 7.4 s boss reveal.
+   */
+  drawWarm?: (root: Object3D) => void;
   onVisualReady?: (entity: TGame['tanks'][number]) => void;
   recordTiming?: (timing: VisualLoadTiming) => void;
   now?: () => number;
@@ -211,6 +217,7 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
   prebakeSharedTextures,
   armorAimOverlay,
   forwardProgramWarm,
+  drawWarm,
   onVisualReady,
   recordTiming = () => {},
   now = () => performance.now(),
@@ -277,6 +284,11 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
       if (options.compilePrograms !== false) forwardProgramWarm.compile(root);
     } catch { /* first render fallback */ }
     finally { restoreArmorWarmVisibility(); }
+    // (perf-245) and draws once while it is attached, before a hidden opponent detaches: its pipelines are made here,
+    // within the staging budget, not on the frame it is first seen
+    if (options.compilePrograms !== false && drawWarm) {
+      try { drawWarm(root); } catch { /* first render fallback */ }
+    }
     const compileMs = options.compilePrograms === false ? 0 : Math.round(now() - compileAt);
     root.userData.loadCompileMs = compileMs;
     if (initiallyHidden) {

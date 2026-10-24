@@ -253,13 +253,20 @@ export function createLazyAudio({
       // mixer, so neither waits for a first battle.
       if (!gestureBound && typeof document !== 'undefined') {
         gestureBound = true;
+        // Opening the device is synchronous and can take hundreds of milliseconds (click-perf-244: 585 ms of a first
+        // Garage press's handlers). Where activation is verified the press paints first and the device opens one frame
+        // later, inside the same activation window; a touch's pointerdown carries no activation yet, so its pointerup
+        // does. Engines without the activation API keep the in-gesture unlock.
+        const gestures = ['pointerdown', 'pointerup', 'keydown'] as const;
+        const activationKnown = typeof navigator !== 'undefined' && !!navigator.userActivation;
         const onGesture = (): void => {
-          document.removeEventListener('pointerdown', onGesture, true);
-          document.removeEventListener('keydown', onGesture, true);
-          if (!muted && masterVolume > 0) resume();
+          const sticky = hasStickyActivation();
+          if (!sticky && activationKnown) return;
+          for (const type of gestures) document.removeEventListener(type, onGesture, true);
+          if (!sticky) { if (!muted && masterVolume > 0) resume(); return; }
+          void nextPaintFrame().then(() => { if (!muted && masterVolume > 0) resume(); });
         };
-        document.addEventListener('pointerdown', onGesture, true);
-        document.addEventListener('keydown', onGesture, true);
+        for (const type of gestures) document.addEventListener(type, onGesture, true);
         // Boot idle after the first frame (AU.07, 2026-10-13): the mixer module and the interface's press sounds, decoded
         // with no device, so the first press anywhere is neither silent nor late.
         void nextPaintFrame().then(() => (globalThis.requestIdleCallback ?? setTimeout)(() => void preload().then((module) => module?.prepareInterfaceSounds?.())));

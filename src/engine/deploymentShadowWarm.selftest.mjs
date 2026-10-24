@@ -560,4 +560,40 @@ for (const fail of ['', 'draw']) {
   } finally { f.dispose(); }
 }
 
+// (2026-10-24, perf-245) every caster batch draws whatever the cascades frame (a caster kind found only away from the
+// spawn made its depth pipeline at its first live draw), and the culling flags are back before the cascades prime
+{
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+  camera.updateMatrixWorld(true);
+  const light = new THREE.DirectionalLight();
+  scene.add(light);
+  const geometry = new THREE.BoxGeometry();
+  const material = new THREE.MeshBasicMaterial();
+  const casters = Array.from({ length: 5 }, (_, index) => {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.castShadow = true;
+    mesh.position.set(index * 300, 0, 0);
+    scene.add(mesh);
+    return mesh;
+  });
+  casters[4].frustumCulled = false;
+  const renders = [];
+  const owner = createDeploymentShadowWarmOwner({
+    renderer: {}, scene, camera,
+    lighting: { csm: { lights: [light] }, updateFov() {}, update() {}, preservePrimedCascadesForNextFrame() {} },
+    warmRender: preparable(() => {}),
+    shadowOnlyWarmRender() { renders.push(casters.filter((mesh) => mesh.castShadow).map((mesh) => mesh.frustumCulled)); },
+    getWorldGroup: () => scene, noteFovPrimed() {}, simDt: 1 / 60,
+  });
+  try {
+    await owner.prime(async () => {});
+    assert.deepEqual(renders[0], [false, false, false, false, false], 'the caster batch draws uncull\'d');
+    assert.deepEqual(renders.at(-1), [true, true, true, true, false], 'the cascades prime with the casters as they were');
+    assert.deepEqual(casters.map((mesh) => mesh.frustumCulled), [true, true, true, true, false], 'every flag restored');
+  } finally {
+    owner.dispose(); geometry.dispose(); material.dispose();
+  }
+}
+
 console.log('deploymentShadowWarm.selftest: exact cascades, bounded casters, and restoration passed');

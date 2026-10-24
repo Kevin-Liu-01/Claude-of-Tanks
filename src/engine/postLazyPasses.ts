@@ -59,7 +59,12 @@ async function warmPasses(composer: WarmComposer, grade: GradePass, yieldBeforeP
         if (yieldBeforePass) await yieldBeforePass(`vision-${mode}`);
       }
     } else {
-      renderPassAlone(composer, pass);
+      // (2026-10-24, perf-245) a pass whose draws wait on the view (the sun shafts' mask and blur, the lens flare: the sun
+      // on screen) draws them once here with no colour (warmGated), or a camera turned or thrown toward the sun made
+      // their pipelines on that live frame
+      const gated = pass as Pass & { warmGated?: (on: boolean) => void };
+      gated.warmGated?.(true);
+      try { renderPassAlone(composer, pass); } finally { gated.warmGated?.(false); }
     }
     timings.push({ label, ms: Math.round(performance.now() - startedAt) });
   }

@@ -3,7 +3,7 @@ import { PRODUCTION_PRESETS, createProductionScene, productionCamera, production
 import { sampleActorTrack, sampleCameraRail } from './studioTimeline.ts';
 
 const height = (x, z) => 2 + x * .002 + z * .003;
-for (const preset of PRODUCTION_PRESETS) for (const format of ['landscape', 'portrait', 'square']) {
+for (const preset of PRODUCTION_PRESETS) for (const format of ['landscape', 'portrait', 'square', 'card']) {
   const options = {presetId:preset.id,format};
   const scene = createProductionScene(options,height);
   assert.deepEqual(scene,createProductionScene(options,height),'authored scene must be deterministic');

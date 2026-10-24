@@ -2,10 +2,11 @@
  * watchController.ts — the Watch mode's browser owner (watch-mode-243; sim/matchRuleset.ts WATCH_RULES).
  *
  * One battle-scoped controller turns the watcher's input into the three views:
- *  - DRONE: free flight (engine/watchCamera.ts) — keys or the left stick move, the mouse / right stick / drag looks,
- *    Space and C (the triggers, the touch rail) climb and descend, Shift (L3) boosts, the wheel steps the speed. The
- *    holds are the input layer's own actions (handbrake, reloadMagazine, sniperToggle), so the Accessibility hold-or-
- *    toggle choice applies to them as to any hold;
+ *  - DRONE: a spectator drone (engine/watchCamera.ts) — keys or the left stick move, the mouse / right stick / drag
+ *    looks, Space and C (the triggers, the touch rail) climb and descend, Shift (L3) boosts, the wheel steps the speed.
+ *    The game's own lock (auto-aim: T by default; pad X; the bar's lock) locks its orbit on the tank in the middle of
+ *    the view, or the nearest one ahead, and lets go again; a locked tank's wreck is held a beat, then the drone flies on. The holds are the input layer's own
+ *    actions (handbrake, reloadMagazine, sniperToggle), so the Accessibility hold-or-toggle choice applies to them;
  *  - RIDE: a ride-along on any living tank — a click or tap on it, F for the one in the middle of the view, Tab (the
  *    bumpers) cycles, Q/E step back and forth; V (pad B) flies off again. A ridden tank's wreck is held a beat, then the
  *    camera rides on with its killer (or flies); pad Y rides the tank in view;
@@ -100,6 +101,10 @@ export interface WatchController {
   readonly zoom: number;
   readonly speedIndex: number;
   readonly canTake: boolean;
+  /** The tank the drone's orbit is locked on (the bar names it), or null. */
+  readonly lockedId: string | null;
+  /** Lock the drone on the tank in view, or let go. */
+  toggleLock(): void;
   /** Touch rail / HUD buttons. */
   setClimb(direction: -1 | 0 | 1): void;
   cycle(direction: -1 | 1): void;
@@ -116,7 +121,9 @@ export interface WatchController {
   stop(): void;
 }
 
-const PAD = Object.freeze({ b: 1, y: 3, lb: 4, rb: 5, l3: 10, r3: 11, deadzone: 0.12 });
+const PAD = Object.freeze({ b: 1, x: 2, y: 3, lb: 4, rb: 5, l3: 10, r3: 11, deadzone: 0.12 });
+/** The lock's reach when no tank sits under the crosshair: the nearest one this far ahead of the lens. */
+const LOCK_REACH_M = 450;
 /** The drone's holds: the actions Space, C and Shift (and the touch rail) press. */
 const CLIMB: WatchHoldAction = 'handbrake', DESCEND: WatchHoldAction = 'reloadMagazine', BOOST: WatchHoldAction = 'sniperToggle';
 const TAP = Object.freeze({ maxMs: 320, maxPx: 14 });
@@ -133,6 +140,7 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
   let driving: TEntity | null = null;
   let railHeld: WatchHoldAction | null = null;
   let wreckHoldS = 0;
+  let lockWreckS = 0;
   let drivenDeathS = 0;
   let padButtons = 0;
   const pad: PadSnapshot = { connected: false, leftX: 0, leftY: 0, rightX: 0, rightY: 0, leftTrigger: 0, rightTrigger: 0, buttons: 0 };
@@ -237,6 +245,41 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
     watchCamera.ride(entity);
     emitChange();
     return true;
+  }
+
+  /** The tank a lock takes: the one under the crosshair, else the nearest living one ahead of the lens. */
+  function lockCandidate(): TEntity | null {
+    const centre = tankAt(0, 0);
+    if (centre) return centre;
+    camera.getWorldDirection(_forward);
+    let best: TEntity | null = null, bestD = LOCK_REACH_M * LOCK_REACH_M;
+    for (const entity of game.tanks) {
+      if (!liveHull(entity)) continue;
+      _toTank.copy(entity.state.pos).sub(camera.position);
+      const d = _toTank.lengthSq();
+      if (d < bestD && _toTank.dot(_forward) > 0) { bestD = d; best = entity; }
+    }
+    return best;
+  }
+
+  function toggleLock(): void {
+    if (!watching() || watchCamera.mode !== 'drone') return;
+    lockWreckS = 0;
+    if (watchCamera.lockTarget) watchCamera.lock(null);
+    else {
+      const target = lockCandidate();
+      if (liveHull(target)) watchCamera.lock(target);
+    }
+  }
+
+  /** A locked tank's wreck is held a beat, then the drone flies on; a tank that leaves the field lets go at once. */
+  function lockHandoff(dt: number): void {
+    const locked = watchCamera.lockTarget as TEntity | null;
+    if (!locked) { lockWreckS = 0; return; }
+    if (locked.modeActive === false || !locked.state) { watchCamera.lock(null); return; }
+    if (!locked.combat?.destroyed) { lockWreckS = 0; return; }
+    lockWreckS += dt;
+    if (lockWreckS >= (rules()?.deathHoldS ?? 1.6)) { lockWreckS = 0; watchCamera.lock(null); }
   }
 
   function toDrone(liftOff: boolean): void {
@@ -350,6 +393,7 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
     if (pressed(PAD.lb)) ride(cycleFrom(rideTarget(), -1));
     if (pressed(PAD.rb)) ride(cycleFrom(rideTarget(), 1));
     if (pressed(PAD.y) && !riding) ride(tankAt(0, 0));
+    if (pressed(PAD.x) && !riding) toggleLock();
     if (pressed(PAD.b) && riding) toDrone(true);
     if (pressed(PAD.r3)) take();
     padButtons = buttons;
@@ -421,6 +465,8 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
     get sight() { return watchCamera.sight; },
     get zoom() { return watchCamera.zoom; },
     get speedIndex() { return watchCamera.speedIndex; },
+    get lockedId() { return live && !driving ? (watchCamera.lockTarget as TEntity | null)?.id ?? null : null; },
+    toggleLock,
     get canTake() {
       const target = rideTarget();
       return watching() && !!target && target === shown && watchSeatRefusal(game, target) === null;
@@ -456,7 +502,9 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
         if (!api.prepareReveal()) watchCamera.startDrone(false);
       }
       options.onSeat(null);
-      unsubscribe.push(bus.on('tank:destroyed', onDestroyed), bus.on('shell:hit', onHit), bus.on('battle:ended', releaseRail));
+      unsubscribe.push(bus.on('tank:destroyed', onDestroyed), bus.on('shell:hit', onHit), bus.on('battle:ended', releaseRail),
+        // the auto-aim key (whatever it is bound to) is the drone's lock: with nobody driving, auto-aim has no gun to lay
+        bus.on('ui:autoAimToggle', () => { if (watchCamera.mode === 'drone') toggleLock(); }));
       window.addEventListener('keydown', onKeyDown, true);
       window.addEventListener('blur', releaseRail);
       window.addEventListener('pointerdown', onPointerDown, true);
@@ -484,6 +532,7 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
       // a verdict hands the camera to the ending beats (the final-kill replay, the report)
       if (game.result !== null || killcam.isActive()) return false;
       rideHandoff(dt);
+      lockHandoff(dt);
       sampleCamera(dt);
       if (options.isInputHeld()) {
         camInput.moveForward = camInput.moveRight = camInput.moveUp = camInput.lookDX = camInput.lookDY = camInput.wheel = 0;

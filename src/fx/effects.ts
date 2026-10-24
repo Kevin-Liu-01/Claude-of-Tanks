@@ -674,6 +674,14 @@ const THERMAL_FIRE_GAIN = 4;
  *  gas cools to the eye in ~0.15 s (its dome's heat e-folds at 7/s) but stays hot to a long-wave sensor for most of a
  *  second: under a heat-imaging camera the media's fire cools at this share of its rate (volumeMedia.ts uHeatCool) */
 const THERMAL_FIRE_COOL = 0.3;
+/** (245, the heat-lens critic: "black, hard-edged cold patches inside warm hull outlines") a long-wave sensor sees through
+ *  smoke and dust, but they drew at full opacity to it: from the gunship a wreck's own column laid dark noise-edged blots
+ *  over its hot hull. Under a heat-imaging camera a cold puff (pooled or simulated) keeps this share of its opacity; hot gas
+ *  and a burst's lit heart keep all of it; a smoke screen (its own shader) keeps all. 233 tried a quarter (withdrawn with
+ *  the wreck curve). (245 r2: the pinned re-take's crops at 0.45 still showed soft dark blots over the hottest deck at
+ *  7-20 s) a fifth: soot's micron particles barely touch long-wave light, so cold smoke is a faint veil to the lens and
+ *  only the hot gas over the fire stays solid. */
+const THERMAL_SMOKE_ALPHA = 0.2;
 /** the grade's own vision code (engine/post.ts uThermal): 1 infrared, 2 thermal (heat); 0 daylight, 3 intensified */
 function imagesHeat(camera: THREE.Camera | null | undefined): boolean {
   const ud = camera?.userData as { sensorVision?: number; thermalFlight?: boolean; flightVision?: number } | undefined;
@@ -726,7 +734,12 @@ const MUZZLE_LIGHT_RANGE = 12;
  *  muzzle, as a burst's own pulse does (blastRecipes' albedoK): snow returns about four times turf's light, so a third
  *  of the peak, sand two thirds. */
 const MUZZLE_LIGHT_REF_MM = 122.5, MUZZLE_LIGHT_BORE_POW = 1.2;
+/** (245) a gun under this bore (mm) throws no ground ring at its muzzle (emitMuzzleGroundBlast) */
+const MUZZLE_RING_MIN_MM = 20;
 const MUZZLE_LIGHT_SNOW_K = 0.33, MUZZLE_LIGHT_SAND_K = 0.66;
+/** The muzzle light's hue by day ("r5: less saturated kiss"), and (240) at night a propellant flame's warm yellow-orange
+ *  (muzzleLightPulse, by the dark level) */
+const MUZZLE_LIGHT_HEX = 0xffe4c4, MUZZLE_NIGHT_HEX = 0xffb06a;
 /** (EF.10) the local lights' gains on the smoke and dust they reach (a radiance gain on the medium's own colour, at the
  *  light; falling off as (1 - d / range)^2): a headlight's beam, a flash at its peak, a wreck's fire at its mean */
 const LOCAL_HEADLIGHT_GAIN = 1.4, LOCAL_FLASH_GAIN = 2.4, LOCAL_FIRE_GAIN = 1.5;
@@ -1164,7 +1177,8 @@ function* createFxSteps(
   const landingGround = createLatticeGround((x, z) => deformedGroundY(x, z), groundRevision, (x, z) => baseCellFlipped(x, z));
   const vol: VolumeMedia | null = mediaTier
     ? createVolumeMedia({ soft: particles.softParticles, now: () => particles.getTime(), scene: engineCtx.scene ?? null,
-      heatGain: (camera) => (imagesHeat(camera) ? THERMAL_FIRE_GAIN : 1), heatCool: (camera) => (imagesHeat(camera) ? THERMAL_FIRE_COOL : 1) })
+      heatGain: (camera) => (imagesHeat(camera) ? THERMAL_FIRE_GAIN : 1), heatCool: (camera) => (imagesHeat(camera) ? THERMAL_FIRE_COOL : 1),
+      heatSmoke: (camera) => (imagesHeat(camera) ? THERMAL_SMOKE_ALPHA : 1) })
     : null;
   const chunks: DebrisChunks | null = mediaTier
     ? createDebrisChunks({ seed, now: () => particles.getTime(), scene: engineCtx.scene ?? null, groundAt: landingGround })
@@ -1319,7 +1333,8 @@ function* createFxSteps(
   // --- dynamic lights (budget: exactly 2 PointLights) -----------------------
   // Muzzle: warm white-amber (was deep orange — the "saturated ground decal"
   // read); tighter range so it kisses the hull rather than floods the field.
-  const muzzleLight = new THREE.PointLight(0xffe4c4, 0, MUZZLE_LIGHT_RANGE, 2); // r5: less saturated kiss
+  const muzzleLight = new THREE.PointLight(MUZZLE_LIGHT_HEX, 0, MUZZLE_LIGHT_RANGE, 2); // r5: less saturated kiss
+  const _muzzleNight = new THREE.Color(MUZZLE_NIGHT_HEX);
   // lighting_post r5: range 34 -> 24 — the wide range warmed the ENTIRE
   // visible field to mustard from the 22 m camera; wreck/debris keep their
   // warm pool, the wider grass field drops out of the mustard band.
@@ -1354,6 +1369,11 @@ function* createFxSteps(
     const bore = Number.isFinite(caliberMm) && caliberMm > 0 ? caliberMm / MUZZLE_LIGHT_REF_MM : 1;
     const surface = classifyTerrain(heightField, x, z);
     const groundK = surface === 'snow' ? MUZZLE_LIGHT_SNOW_K : surface === 'sand' ? MUZZLE_LIGHT_SAND_K : 1;
+    // (240, the coordinator: a big gun's flash "pooling white on snow" at night) its light is a propellant flame's: by the
+    // dark level its hue warms from the day's peach-white to MUZZLE_NIGHT_HEX, so under the night's open camera the snow
+    // round a big gun's muzzle takes a warm firelit pool for its instant instead of a white band (a night ground cap,
+    // tried first, turned the firing hull into a silhouette: the brightness stays the bore's)
+    muzzleLight.color.setHex(MUZZLE_LIGHT_HEX).lerp(_muzzleNight, tracers.darkLevel());
     muzzlePulse.peakK = THREE.MathUtils.clamp(Math.pow(bore, MUZZLE_LIGHT_BORE_POW), 0.03, 1.4) * groundK;
     muzzlePulse.range = THREE.MathUtils.clamp(MUZZLE_LIGHT_RANGE * Math.sqrt(bore), 3, 14);
     return muzzlePulse;
@@ -2641,8 +2661,15 @@ function* createFxSteps(
     const gy = groundY(pos.x, pos.z);
     const hK = THREE.MathUtils.clamp(1 - (pos.y - gy - 1.2) / 3.4, 0, 1);
     if (hK <= 0.05) return;
-    spawnShockRing(pos.x + dir.x * 1.2, pos.z + dir.z * 1.2,
-      Math.max(0, -birthOffset), 0.42 + 0.22 * hK, 0.7 * (0.5 + 0.5 * hK));
+    // (245, the muzzle light's critic: "neither build makes the lit area much smaller for the smaller flashes") the ground
+    // ring sweeps and shows by the bore (a 30 mm shot's half a 125 mm gun's), lit warm as it leaves the muzzle; a machine
+    // gun throws none (the coax raised a 125 mm gun's 10 m ring)
+    const boreMm = Number.isFinite(caliberMm) && caliberMm > 0 ? caliberMm : MUZZLE_LIGHT_REF_MM;
+    if (boreMm >= MUZZLE_RING_MIN_MM) {
+      const boreK = THREE.MathUtils.clamp(Math.sqrt(boreMm / MUZZLE_LIGHT_REF_MM), 0.3, 1.2);
+      spawnShockRing(pos.x + dir.x * 1.2, pos.z + dir.z * 1.2,
+        Math.max(0, -birthOffset), (0.42 + 0.22 * hK) * boreK, 0.7 * (0.5 + 0.5 * hK) * Math.min(1, boreK));
+    }
     if (!dust) return; // destruction-fx lane: the media layer lifts the ground's own dust (blastRecipes muzzleBlast)
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2 + rng() * 0.6;
@@ -2729,7 +2756,11 @@ function* createFxSteps(
     col3(0xb0aca0, puff.col0); col3(0x7b7b73, puff.col1);
     puff.alpha = 0.3;
     particles.emit('smoke', puff);
-    flashLight(lightStates[0], pos, MUZZLE_LIGHT_PEAK * 0.3, -birthOffset);
+    // (240) the motor's flash lights its launcher by the rocket's calibre and the ground under it (muzzleLightPulse) at the
+    // 0.3 of a gun's peak it always took: one flat 138 cd for a 57 mm rocket and a 220 mm one alike before
+    const pulse = muzzleLightPulse(caliberMm, pos.x, pos.z);
+    flashLight(lightStates[0], pos, MUZZLE_LIGHT_PEAK * 0.3 * pulse.peakK, -birthOffset, undefined, undefined, undefined,
+      pulse.range);
   }
 
   /**
@@ -5169,6 +5200,8 @@ function* createFxSteps(
     flareCamSet = true;
     setGunshipTrailNear(_flareCam);
     heatCamera = imagesHeat(camera);
+    // (245) the pooled smoke and dust a heat lens sees through (the volume media take theirs in their own frame)
+    particles.sharing.uHeatSmoke.value = heatCamera ? THERMAL_SMOKE_ALPHA : 1;
     drones.begin(particles.getTime(), camera.position);
     tracers.begin(_flareCam); // atmospherics lane; (ac130-fx-228 r3) the eye, for the gunship's lens clearance
     liveAtgmCount = 0;
@@ -6142,7 +6175,14 @@ function* createFxSteps(
     // atmospherics lane: the smoke screen on the media layer (desktop tiers; null on the phone tier)
     blast,
     report: (id,p,caliber) => auxiliaryReport?.(id,p,caliber),
-    flash: (p,d,caliber) => { spawnMuzzleFlash(p,d,caliber,0); },
+    // (240) a roof gun's flash lights its mount as any gun of its bore does (muzzleLightPulse: a 12.7 mm round a ~30 cd
+    // kiss over 4 m of the turret roof; it lit nothing before), and never cuts short a bigger gun's pulse still burning
+    flash: (p,d,caliber) => {
+      const lightK = spawnMuzzleFlash(p,d,caliber,0);
+      const pulse = muzzleLightPulse(caliber, p.x, p.z);
+      const peak = MUZZLE_LIGHT_PEAK * pulse.peakK * lightK * muzzleLightScale;
+      if (!(muzzleLight.intensity > peak)) flashLight(lightStates[0], p, peak, 0, undefined, undefined, undefined, pulse.range);
+    },
     smoke: (p,scale,density=1,life=2.4,wind=null) => {
       for(let i=0;i<3;i++){
         _puffO.pos[0]=p.x+(rng()-.5)*1.4*scale;_puffO.pos[1]=p.y+(i-1)*1.7*scale;_puffO.pos[2]=p.z+(rng()-.5)*1.4*scale;
@@ -7585,10 +7625,10 @@ function* createFxSteps(
       // onto the mantlet/hull front, but the hottest lit metal is the muzzle.
       _sv.copy(muzzlePos).addScaledVector(dir, -0.18);
       _sv.y += 0.10;
-      // (233) a gun's by its bore and the ground under the muzzle (muzzleLightPulse); a rocket keeps its own pulse
-      const pulse = rocket ? null : muzzleLightPulse(caliberMm, _sv.x, _sv.z);
-      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * (pulse ? pulse.peakK : 0.3) * muzzleLightScale, ageS,
-        undefined, undefined, undefined, pulse?.range);
+      // (233) a gun's by its bore and the ground under the muzzle (muzzleLightPulse); (240) a rocket's too, at its motor's 0.3
+      const pulse = muzzleLightPulse(caliberMm, _sv.x, _sv.z);
+      flashLight(lightStates[0], _sv, MUZZLE_LIGHT_PEAK * (rocket ? 0.3 : 1) * pulse.peakK * muzzleLightScale, ageS,
+        undefined, undefined, undefined, pulse.range);
     },
 
     /**
