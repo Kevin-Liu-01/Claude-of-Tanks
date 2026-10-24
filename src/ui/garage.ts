@@ -1169,6 +1169,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const cardById = new Map<string, HTMLElement>();
   const cardsByCountry = new Map<string, HTMLElement[]>();
   const specsByCountry = new Map<string, GarageTankSpec[]>();
+  // the roster's every-nation strip (the direction's All chip): one more key in the national maps, so the strip, the
+  // count, the filter's fallback and the arrows read it as they read a nation
+  const ALL_COUNTRIES = 'all';
   const specById = new Map<string, GarageTankSpec>();
   // specById covers the FULL roster so direct tooling can still inspect a
   // delisted vehicle without exposing it in the player-facing carousel.
@@ -1180,6 +1183,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       group.push(spec);
       specsByCountry.set(countryId, group);
     }
+    specsByCountry.set(ALL_COUNTRIES, [...specs]);
   }
   indexGarageSpecs();
 
@@ -2508,6 +2512,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }, { root: chipsEl, threshold: [0.5] })
     : null;
   function initializeCountryChips(): void {
+    const all = document.createElement('button');
+    all.type = 'button';
+    all.className = 'cot-country-chip cot-country-all';
+    all.dataset.country = ALL_COUNTRIES;
+    all.setAttribute('aria-label', t('garage.country.allAria'));
+    all.innerHTML = `<span class="lbl">${t('garage.country.all')}</span><span class="ct num">${specs.length}</span>`;
+    // every nation keeps the selected tank where it is
+    all.addEventListener('click', () => {
+      emit('ui:click', {});
+      applyCountryFilter(ALL_COUNTRIES);
+      requestAnimationFrame(() => cardById.get(selectedId)?.scrollIntoView({ block: 'nearest', inline: 'center' }));
+    });
+    chipsEl.appendChild(all);
+    chipById.set(ALL_COUNTRIES, all);
     for (const group of countryGroups) {
       const count = group.count;
       const chip = document.createElement('button');
@@ -2620,7 +2638,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   });
   function setRosterFacetFilter(match: ((specId: string) => boolean) | null): void {
     rosterFacetMatch = match;
-    for (const group of countryGroups) {
+    for (const group of [{ id: ALL_COUNTRIES }, ...countryGroups]) {
       const pool = specsByCountry.get(group.id) || [];
       const shown = pool.filter((spec) => facetVisible(spec.id)).length;
       const chip = chipById.get(group.id);
@@ -2765,6 +2783,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const countryCards = cardsByCountry.get(cardCountry) || [];
       countryCards.push(card);
       cardsByCountry.set(cardCountry, countryCards);
+      const allCards = cardsByCountry.get(ALL_COUNTRIES) || [];
+      allCards.push(card);
+      cardsByCountry.set(ALL_COUNTRIES, allCards);
     }
   }
   initializeTankCards();
@@ -3230,7 +3251,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     selectedId = specId;
     // Direct selection from another country (for example a screenshot
     // harness) switches the visible strip to that national fleet.
-    if (cardById.has(specId) && countryCodeOf(spec) !== countryFilter) {
+    if (cardById.has(specId) && countryFilter !== ALL_COUNTRIES && countryCodeOf(spec) !== countryFilter) {
       applyCountryFilter(countryCodeOf(spec));
     }
     // Remember one independent selection per nation. This also adopts valid

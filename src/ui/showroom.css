@@ -242,4 +242,6 @@ body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .co
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-hrow>.cot-i{display:none;}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lower-third{right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));
   bottom:calc(var(--cot-side-panel-bottom) + var(--cot-figures-h) + var(--s2));}
+/* the every-nation chip (the direction's All): its word where a nation shows its flag */
+.cot-country-all .lbl{font:600 var(--fs-13)/1 var(--font-display);color:var(--ink-1);}
 }

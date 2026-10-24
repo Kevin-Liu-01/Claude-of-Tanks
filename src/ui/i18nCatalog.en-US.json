@@ -871,6 +871,8 @@
   "garage.record.localSession": "Local session",
   "garage.record.decisiveResults": "Decisive results",
   "garage.record.nonDraw": "Non-draw battles",
+  "garage.country.all": "All",
+  "garage.country.allAria": "Show every nation's vehicles",
   "garage.country.filterAria": "Filter vehicles by country",
   "garage.country.scrollLeft": "Scroll countries left",
   "garage.country.scrollRight": "Scroll countries right",
