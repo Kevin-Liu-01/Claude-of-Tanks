@@ -181999,13 +181999,13 @@
       "geometryHash": "b75a5d5d",
       "metadataHash": "6c6cbe1e",
       "presentationAnchor": {
-        "xM": 0.0003,
-        "zM": 0.0698
+        "xM": -0.0002,
+        "zM": 0.0699
       },
-      "presentationHash": "d6e915d9",
+      "presentationHash": "130e79e2",
       "presentationProjection": {
         "centerYM": 2.0029,
-        "topHalfM": 6.463,
+        "topHalfM": 6.4629,
         "sideHalfM": 3.2315
       },
       "appearance": {
@@ -182058,15 +182058,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 31952,
-          "sha256": "ec97612a3ec6c64fa8a602aedf3332c57fa3be584d8328451096e10be4346460",
+          "bytes": 31718,
+          "sha256": "f663990c2b62fc9b17383f11931bbccc9db9e09373f3d314ac8466e32a058f83",
           "thumbnail": {
             "file": "thumbs/leo2_revolution_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11646,
-            "sha256": "f239f9766ca196779171c0e71125bac8a4c01d13f2818161ae662836cd76530b"
+            "bytes": 11662,
+            "sha256": "8fa99f3ca9a2465ddd3042044a68096d55a6d0ea16aaa1a11d21540beebed598"
           }
         },
         "top": {
@@ -182074,56 +182074,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 19876,
-          "sha256": "a2c862c523e22d2be07a26a7006ff07b5456776b706d620c8c93a6594596a0e4"
+          "bytes": 19866,
+          "sha256": "fc9ae663a8a8759077bea4de6e5c06c4c82371f3b196f42a797e93f4b35c7d34"
         },
         "side": {
           "file": "leo2_revolution_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 13056,
-          "sha256": "a56159902f4154719cce6f731c58666a4f1f1e26723d6e979c665f69f81a93c5"
+          "bytes": 12746,
+          "sha256": "86a274a4d90731c23f721febba09d52078c1938350777b89bbc19b8a8a7bd51d"
         },
         "topSilhouette": {
           "file": "leo2_revolution_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1675,
-          "sha256": "83217d85d8b560e3a84d366b22f078eb0c04ad5ec9b58fd70bb9b688c8ed972f"
+          "bytes": 1667,
+          "sha256": "94d82cb8dae403e96db6c98443cf36e50f2df53032e00b9cc295077f7b9596fb"
         },
         "sideSilhouette": {
           "file": "leo2_revolution_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4311,
-          "sha256": "1f9c6d5f72a8cde3aca44e8d2ebe2203cc3774b07240a4b2bba82fc0680c7360"
+          "bytes": 4329,
+          "sha256": "d954ad65b2001b478fd773713d906d9c6574a017d0162d57c3c1735ee9ea8ce5"
         },
         "armorSide": {
           "file": "leo2_revolution_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 100324,
-          "sha256": "913ebbf907e96388907667409097300deb900690daa6de84dd7dcb35f9709e86"
+          "bytes": 100207,
+          "sha256": "2217575606faaad5d9b66cacb1e99fc1c180d417f87bd4632a9a0ff20b29cefd"
         },
         "modulesSide": {
           "file": "leo2_revolution_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 102848,
-          "sha256": "efc636b9ad5894cf9f6d2dc3d032bfd06f61900b5554ff8584b66cd46f46fe28"
+          "bytes": 102908,
+          "sha256": "cfe48f64cec7485e4c6a60ea5dfd27bf7717bc945474dcc7109433e9b154ad8d"
         },
         "crewSide": {
           "file": "leo2_revolution_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 94671,
-          "sha256": "d2e201627f662f956ded115e5a7ebe7df0f22882f3be4222dff1aa5db2290cdc"
+          "bytes": 94027,
+          "sha256": "852e873d5269d06f89bec0205074ec33c484b5235da0ba2f333c271cea648ba2"
         },
         "markings": {
           "file": "leo2_revolution_markings.png",
