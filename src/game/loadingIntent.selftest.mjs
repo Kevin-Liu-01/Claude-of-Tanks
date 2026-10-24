@@ -61,14 +61,19 @@ assert.match(battleIntent, /onPlayModeIntent\?\.\(battleMode\)/,
   'network modes should warm their own selected path');
 class IntentNode {}
 for (const mode of ['solo', 'private', 'lan']) {
-  const calls = [], multiplayerTarget = new IntentNode();
+  const calls = [], idle = [], multiplayerTarget = new IntentNode();
+  // (click-perf-244) the callback queues its warm for an idle slot, once, however many intents arrive first
   const intent = new Function('opts', 'battleMode', 'Node', 'multiplayerEntry', 'selectedId', 'selectedMapId',
-    `return ${stripTypeScriptTypes(battleIntent)};`)(
+    'battleIntentQueued', 'requestIdleCallback', `return ${stripTypeScriptTypes(battleIntent)};`)(
     { onBattleIntent: value => calls.push(['solo', value]), onPlayModeIntent: value => calls.push(['network', value]) },
-    mode, IntentNode, { contains: target => target === multiplayerTarget }, 'm1a1', 'coastal');
+    mode, IntentNode, { contains: target => target === multiplayerTarget }, 'm1a1', 'coastal', false, (run) => idle.push(run));
   intent({ target: multiplayerTarget });
-  assert.deepEqual(calls, [], 'multiplayer configuration must not warm a solo battle');
+  assert.deepEqual([calls, idle.length], [[], 0], 'multiplayer configuration must not warm a solo battle');
   intent({ target: new IntentNode() });
+  intent({ target: new IntentNode() });
+  assert.deepEqual(calls, [], `${mode}: the warm waits for an idle slot, out of the press`);
+  assert.equal(idle.length, 1, `${mode}: one warm however many intents arrive before it runs`);
+  idle.shift()();
   assert.deepEqual(calls, mode === 'solo'
     ? [['solo', { specId: 'm1a1', mapId: 'coastal' }]] : [['network', mode]],
   `${mode}: actual callback warms only its selected path`);

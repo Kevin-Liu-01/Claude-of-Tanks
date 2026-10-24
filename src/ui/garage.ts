@@ -3580,19 +3580,30 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   multiplayerEntry.addEventListener('focus', warmMultiplayer);
   battleBtn.addEventListener('click', () => battle());
   requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-launch]').addEventListener('click', () => battle());
+  // (click-perf-244) the warm work starts after the press has painted, in an idle slot (a timer where there is none),
+  // and once however many intents arrive first: on a phone the touch that signals it is the first press on the Deploy
+  // screen, and the prep and the HUD chunk it pulls ran about 0.2 s of long tasks inside it
+  let battleIntentQueued = false;
   const signalBattleIntent = (event: Event) => {
     if (event.target instanceof Node && multiplayerEntry.contains(event.target)) return;
-    if (!selectedId) return;
-    try {
-      if (battleMode === 'solo') {
-        opts.onBattleIntent?.({ specId: selectedId, mapId: selectedMapId });
-      } else {
-        // Opening a room is not solo-battle intent. Warming the bot roster and
-        // current garage map here made the lobby compete with irrelevant
-        // terrain generation; transfer only the selected network path.
-        opts.onPlayModeIntent?.(battleMode);
-      }
-    } catch (_) { /* optional warm path */ }
+    if (!selectedId || battleIntentQueued) return;
+    battleIntentQueued = true;
+    const warm = (): void => {
+      battleIntentQueued = false;
+      if (!selectedId) return;
+      try {
+        if (battleMode === 'solo') {
+          opts.onBattleIntent?.({ specId: selectedId, mapId: selectedMapId });
+        } else {
+          // Opening a room is not solo-battle intent. Warming the bot roster and
+          // current garage map here made the lobby compete with irrelevant
+          // terrain generation; transfer only the selected network path.
+          opts.onPlayModeIntent?.(battleMode);
+        }
+      } catch (_) { /* optional warm path */ }
+    };
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(warm, { timeout: 600 });
+    else setTimeout(warm, 120);
   };
   // Choosing rules is not deployment intent. Preparing an entire battlefield
   // here competed with the selected mode's Garage preview and tank shaders.

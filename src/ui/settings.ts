@@ -215,7 +215,7 @@ const SETTINGS_CSS = `
   font-family:${FONT_STACK};color:#e6edf3;-webkit-user-select:none;user-select:none;}
 .cot-settings.open{display:flex;animation:cotSetVeil var(--cot-motion-base) var(--cot-ease-out);}
 .cot-settings *{box-sizing:border-box;margin:0;padding:0;}
-.cot-set-panel{position:relative;width:744px;max-width:96vw;max-height:88vh;
+.cot-set-panel{position:relative;width:744px;max-width:96vw;height:min(880px,88vh);max-height:88vh;
   display:flex;flex-direction:column;
   background:linear-gradient(180deg,rgba(12,17,22,.96),rgba(6,9,12,.985));
   border:1px solid rgba(146,164,180,.30);
@@ -436,6 +436,7 @@ const SETTINGS_CSS = `
 .cot-set-note{font-size:13px;font-weight:400;letter-spacing:0;color:#8d9ba7;margin:10px 10px 2px;line-height:1.55;max-width:72ch;text-wrap:pretty;}
 .cot-set-note b{color:#c3cfd8;font-family:var(--font-body);font-weight:600;}
 .cot-set-note.folded{display:none;}
+.cot-settings [data-time-hint]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 .cot-set-card.notes-open .cot-set-note.folded{display:block;}
 .cot-set-info{order:2;display:inline-grid;place-items:center;width:28px;height:28px;flex:none;margin:-6px -4px -6px 0;padding:0;
   border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-3);cursor:pointer;}
@@ -611,6 +612,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     body.classList.toggle('fade-top', canTop);
     body.classList.toggle('fade-bot', canBot);
   }
+  // (click-perf-244) a press that shows or rebuilds the panel measures its overflow at the next frame, after the
+  // panel's own layout, so the press never forces that layout itself
+  let fadesRaf = 0;
+  const scheduleScrollFades = (): void => {
+    if (fadesRaf) return;
+    fadesRaf = requestAnimationFrame(() => { fadesRaf = 0; updateScrollFades(); });
+  };
   body.addEventListener('scroll', updateScrollFades, { passive: true });
   window.addEventListener('resize', () => { if (open) updateScrollFades(); });
 
@@ -1526,7 +1534,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     else renderGameplay();
     applyZebra();
     foldNotes();
-    updateScrollFades(); // fades follow the fresh content's real overflow
+    scheduleScrollFades(); // fades follow the fresh content's real overflow
   }
 
   // (owner, the 10-24 UI sweep: no helper text in view) a card's explanations fold behind one info button in its
@@ -1553,7 +1561,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
           card.classList.toggle('notes-open', open);
           button.setAttribute('aria-expanded', String(open));
           emit('ui:click', {});
-          updateScrollFades();
+          scheduleScrollFades();
         });
         info = button;
       }
@@ -1804,7 +1812,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     resumeBtn.textContent = canLeave ? t('settings.resume') : t('settings.close.title');
     root.classList.add('open');
     requiredElement<HTMLButtonElement>(root, '.cot-set-close').focus({ preventScroll: true });
-    updateScrollFades(); // measured after display flips — 0x0 while hidden
+    scheduleScrollFades(); // measured once the panel has laid out — 0x0 while hidden
     window.addEventListener('keydown', onPanelKey, true);
     window.addEventListener('keyup', onPanelKeyUp, true);
     panelPadSnapshot();
@@ -1886,12 +1894,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     input.resetBindings();
     bindingsMutated();
   });
+  const SETTINGS_TABS: readonly SettingsTab[] = ['controls', 'gameplay', 'sound', 'graphics', 'accessibility', 'language'];
   for (const t of root.querySelectorAll<HTMLButtonElement>('.cot-set-tab')) {
     t.addEventListener('click', () => {
-      const tab = t.dataset.tab;
-      if (tab === 'controls' || tab === 'gameplay' || tab === 'sound' || tab === 'graphics' || tab === 'language') {
-        activeTab = tab;
-      }
+      const tab = SETTINGS_TABS.find((id) => id === t.dataset.tab);
+      // click-perf-244: Accessibility was missing here, so its tab never opened; pressing the open tab rebuilt it.
+      if (!tab || tab === activeTab) return;
+      activeTab = tab;
       renderTab();
       emit('ui:click', {});
     });
