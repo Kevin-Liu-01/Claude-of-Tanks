@@ -149,7 +149,7 @@ try {
     const { context, page, cdp, requests, errors } = await openPage();
     await page.goto(`${base}/home`, { waitUntil: 'networkidle2', timeout: 60_000 });
     await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 150, downloadThroughput: 200_000, uploadThroughput: 100_000 });
-    await page.evaluate(() => document.querySelector('.v5-film')?.scrollIntoView({ block: 'center' }));
+    await page.evaluate(() => document.querySelector('.motion')?.scrollIntoView({ block: 'center' }));
     const started = Date.now();
     let inFlight = null;
     while (!inFlight && Date.now() - started < 15_000) {
@@ -158,13 +158,13 @@ try {
     }
     assert.ok(inFlight, 'a video transfer is in flight before the hand-off');
     // hovering Play while a video downloads prefetches nothing
-    await page.hover('.hero-actions .btn.primary');
+    await page.hover('.v5-cta .cot-c-btn--primary');
     await new Promise((done) => setTimeout(done, 500));
     const prefetchedWhileBusy = await page.evaluate(() => !!document.querySelector('link[rel="prefetch"][data-cot-game-entry], link[rel="prefetch"][href*="/assets/main-"]'));
     // the click: every media transfer cancelled before the game document is requested
     await Promise.all([
       page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 60_000 }).catch(() => null),
-      page.click('.hero-actions .btn.primary'),
+      page.click('.v5-cta .cot-c-btn--primary'),
     ]);
     await new Promise((done) => setTimeout(done, 500));
     const rows = [...requests.values()];
@@ -195,7 +195,7 @@ try {
     assert.match(entry, /^\/assets\/main-[\w-]+\.js$/, 'the build names the game\'s entry chunk');
     const before = [...requests.values()].filter((row) => new URL(row.url).pathname === entry).length;
     await new Promise((done) => setTimeout(done, 500));
-    await page.hover('.hero-actions .btn.primary');
+    await page.hover('.v5-cta .cot-c-btn--primary');
     await new Promise((done) => setTimeout(done, 1500));
     const after = [...requests.values()].filter((row) => new URL(row.url).pathname === entry);
     report.prefetch = { entry, before, after: after.map((row) => ({ type: row.type, bytes: row.bytes, finished: !!row.finished })) };

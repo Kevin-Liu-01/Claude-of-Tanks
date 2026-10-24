@@ -536,4 +536,5 @@ function renderTopicPage(): void {
   }
 }
 
-if (typeof document !== 'undefined') renderTopicPage();
+// a chapter page renders; another page that reads the chapters (the missing page's search, through docsSearch.ts) does not
+if (typeof document !== 'undefined' && document.querySelector('#topicRoot')) renderTopicPage();

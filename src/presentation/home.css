@@ -85,6 +85,8 @@ button{font:inherit;color:inherit}
 .vs-tile--big{grid-column:span 8;grid-row:span 2;aspect-ratio:auto;--sil-w:74px;--sil-h:24px;--flag-w:30px;--vs-name:var(--fs-28);--vs-mark:var(--fs-14)}
 .vs-tile--mid{grid-column:span 4;--sil-w:46px;--sil-h:15px;--vs-name:var(--fs-16)}
 .vs-tile--sm{grid-column:span 3}
+/* four to a row, a small tile names both tanks in full: the flags stay, the silhouettes give way */
+@media (width >= 1100px){.vs-tile--sm .cot-c-sil{display:none}}
 .vs-tile__film{opacity:0;transition:opacity var(--dur-screen) var(--ease-enter)}
 .vs-tile__film.has-frame{opacity:1}
 .vs-tile__idx{position:absolute;right:12px;top:10px;font:500 var(--fs-12)/1 var(--font-data);color:var(--home-idx-ink);text-shadow:var(--home-idx-shadow)}
@@ -134,8 +136,10 @@ button{font:inherit;color:inherit}
 .fleet-tile__id{position:absolute;left:10px;right:10px;bottom:9px;display:flex;align-items:center;gap:7px;min-width:0}
 .fleet-tile__id .cot-c-sil{width:34px;height:11px;color:var(--ink-1);filter:var(--sil-shadow)}
 .fleet-tile__id b{overflow:hidden;font:700 var(--fs-13)/1 var(--font-display);text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap;color:var(--ink-1)}
-.fleet-feature{grid-column:5 / span 2;grid-row:1 / span 3;display:flex;flex-direction:column;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e1)}
-.fleet-feature__art{position:relative;flex:1;min-height:220px;overflow:hidden;
+/* the plate is a grid so the art's height is definite: the hero card sizes its tank in container units, and a size
+   container that takes its height from flex and min-height reports 0 cqh, which drew the tank at 0 px */
+.fleet-feature{grid-column:5 / span 2;grid-row:1 / span 3;display:grid;grid-template-rows:minmax(220px,1fr) auto auto;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e1)}
+.fleet-feature__art{position:relative;height:100%;overflow:hidden;
   --hc-band:40px;--hc-share:0.7;--hc-hshare:0.7;--hc-cxr:0.56;
   --hc-flag-mask:radial-gradient(ellipse 70% 84% at 96% 0%,var(--ink-1) 0%,var(--ink-1) 40%,color-mix(in srgb,var(--ink-1) 68.4%,transparent) 62.5%,color-mix(in srgb,var(--ink-1) 31.6%,transparent) 77.5%,transparent 100%)}
 .fleet-feature__name{position:absolute;left:18px;top:16px;right:18px;z-index:var(--z-lift);display:flex;align-items:center;gap:10px;margin:0;font:700 var(--fs-28)/1 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
@@ -166,14 +170,55 @@ button{font:inherit;color:inherit}
 .bf-card__tags{display:flex;gap:5px;color:var(--ink-2)}
 .bf-card__tags .cot-i{width:14px;height:14px}
 
-/* ---- the sections under the walls, in the same grammar ---- */
-:is(.v5-authored,.v5-trailers,.v5-multiplayer,.v5-rails,.v5-modes,.v5-mechanics,.v5-evidence,.v5-mosaic,.v5-social-proof){padding-top:var(--s8)}
-:is(.v5-authored-head,.v5-trailers>header,.v5-multiplayer>header,.v5-rails>header,.v5-modes>header,.v5-mechanics>header,.v5-evidence>header,.v5-mosaic>header){display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s4) var(--s5);margin-bottom:var(--s5)}
-:is(.v5-authored,.v5-trailers,.v5-multiplayer,.v5-rails,.v5-modes,.v5-mechanics,.v5-evidence,.v5-mosaic,.v5-film,.v5-split,.v5-destruction,.v5-cta) h2{max-width:1100px;margin:0;font:700 var(--fs-52)/.94 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
-:is(.v5-film,.v5-split,.v5-destruction,.v5-evidence,.v5-cta) :is(div,section)>a:not(.cot-c-btn){display:inline-flex;margin-top:var(--s4);font:600 var(--fs-13)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--accent)}
+/* ---- the beats under the walls: the trailer beside its loops, the modes and mechanics behind one switch, the kill
+   cam and the Studio. Names sit over the pictures' fade, as on the walls; no copy under them ---- */
+.motion{padding:var(--s7) 0 var(--s8)}
+.motion-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.motion-trailer{position:relative;grid-column:span 2;grid-row:span 2;margin:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e1)}
+.motion-trailer video{display:block;width:100%;height:100%;object-fit:cover;background:var(--surface-scene)}
+.motion-trailer video[hidden]{display:none}
+/* the vertical cut keeps its whole frame */
+.motion-trailer video[data-trailer]{object-fit:contain}
+.motion-trailer .cot-media-toggle{top:var(--s4);bottom:auto;left:auto;right:var(--s4)}
+.motion-trailer.has-cut .cot-media-toggle{display:none}
+.motion-cuts{position:absolute;left:var(--s4);top:var(--s4);z-index:var(--z-lift);background:var(--side-plate);transition:opacity var(--dur-fast) var(--ease-enter)}
+.motion-cuts .cot-c-seg__opt{font:500 var(--fs-13)/1 var(--font-data)}
+.motion-cuts .cot-c-seg__opt[aria-pressed=true]{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow)}
+.motion-trailer.is-playing:not(:hover,:focus-within) .motion-cuts{opacity:0}
+.motion-loop{margin:0;aspect-ratio:16/9}
+.motion-loop .cot-media-toggle{top:10px;bottom:auto;left:10px;right:auto}
+.play{padding:var(--s8) 0 0}
+.play-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-flow:dense;gap:12px}
+.play-grid[hidden],.play-more[hidden]{display:none}
+.play-tile{margin:0;aspect-ratio:16/9}
+.play-tile--lead{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}
+.play-tile__nm{position:absolute;left:14px;right:14px;bottom:12px;display:flex;align-items:center;gap:9px;margin:0;color:var(--ink-1)}
+.play-tile__nm .cot-i{flex:none;width:18px;height:18px;color:var(--accent)}
+.play-tile__nm b{overflow:hidden;font:700 var(--fs-16)/1.05 var(--font-display);text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap}
+.play-tile--lead .play-tile__nm{left:24px;bottom:22px;gap:14px}
+.play-tile--lead .play-tile__nm .cot-i{width:28px;height:28px}
+.play-tile--lead .play-tile__nm b{font-size:var(--fs-36);line-height:.94;white-space:normal}
+.play-more{display:flex;justify-content:flex-end;margin:var(--s5) 0 0}
+.shots{padding-top:var(--s7)}
+.shots-acts{display:flex;align-items:center;gap:8px}
+.shots-acts .cot-c-btn--icon:disabled{opacity:.4;cursor:default}
+.shots-rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 48px) / 4.4);gap:12px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none}
+.shots-rail::-webkit-scrollbar{display:none}
+.shots-rail:focus-visible{outline-offset:2px}
+.shots-tile{margin:0;aspect-ratio:16/9;scroll-snap-align:start}
+/* nothing sits on a screenshot, so it keeps its whole frame: no fade */
+.shots-tile::after{content:none}
+.replay{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding-top:var(--s7)}
+.replay-card{min-width:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--e1)}
+.replay-card__media{position:relative;margin:0;aspect-ratio:16/9;background:var(--surface-scene)}
+.replay-card__media>:is(img,video){position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.replay-card__media .cot-media-toggle{top:12px;bottom:auto;left:12px;right:auto}
+.replay-card__row{display:flex;align-items:center;justify-content:space-between;gap:var(--s4);padding:var(--s5)}
+.replay-card h2{margin:0;font:700 var(--fs-24)/1 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
+
 
 /* social proof */
-.v5-social-proof{position:relative;padding-bottom:var(--s8);overflow:hidden;background:var(--surface-page)}
+.v5-social-proof{position:relative;padding-block:var(--s8);overflow:hidden;background:var(--surface-page)}
 .v5-social-proof__intro{position:relative;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(410px,.6fr);align-items:end;gap:var(--s7);margin-bottom:var(--s6)}
 .v5-social-proof__platforms{display:flex;align-items:center;gap:8px;margin:0 0 var(--s4)}
 .v5-social-proof__intro header>p:last-child{max-width:760px;margin:var(--s4) 0 0;color:var(--ink-2);font:400 var(--fs-16)/1.55 var(--font-body)}
@@ -241,120 +286,27 @@ button{font:inherit;color:inherit}
 .v5-reddit-grid .v5-social-metric-icon{width:16px;height:16px}
 .v5-social-proof__snapshot{margin:var(--s4) 0 0;color:var(--ink-3);font:400 var(--fs-12)/1.4 var(--font-body);text-align:right}
 
-/* the screenshot rail */
-.v5-shot-controls{display:flex;align-items:center;gap:8px}
-.v5-shot-controls button{display:grid;width:40px;height:40px;padding:0;place-items:center;border:0;border-radius:var(--control-radius);background:var(--btn-media-fill);box-shadow:var(--ring-3);color:var(--ink-1);font-size:var(--fs-18);line-height:1;cursor:pointer;transition:background-color var(--dur-fast) var(--ease-enter)}
-.v5-shot-controls button:hover{background:var(--surface-hover)}
-.v5-shot-controls button:disabled{box-shadow:var(--ring-1);color:var(--ink-4);cursor:default}
-.v5-shot-controls span{min-width:70px;color:var(--ink-2);font:500 var(--fs-13)/1 var(--font-data);text-align:center}
-.v5-shot-stage{overflow:hidden}
-.v5-shot-rail{position:relative;display:flex;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scroll-padding-inline:1px;scrollbar-width:none;-ms-overflow-style:none}
-.v5-shot-rail::-webkit-scrollbar{display:none}
-.v5-shot-rail figure{position:relative;flex:0 0 clamp(390px,35vw,540px);height:clamp(300px,29vw,440px);margin:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--e1);scroll-snap-align:start;scroll-snap-stop:always}
-.v5-shot-rail figure:first-child{flex-basis:clamp(620px,54vw,830px)}
-.v5-shot-rail img{width:100%;height:100%;object-fit:cover}
-.v5-shot-progress{height:2px;margin-top:var(--s5);overflow:hidden;background:var(--fill-scale)}
-.v5-shot-progress span{display:block;width:100%;height:100%;background:var(--accent);transform:scaleX(.091);transform-origin:left center;transition:transform var(--dur-fast) var(--ease-enter)}
 
-/* the facts strip, the reel, the destruction loop and the closing call: full-bleed pictures under their fade */
-.v5-facts{margin-top:var(--s8);border-block:1px solid var(--line-1);background:var(--surface-scene)}
-.v5-facts .shell{display:grid;grid-template-columns:repeat(4,1fr)}
-.v5-facts span{display:flex;align-items:center;gap:var(--s3);padding:var(--s5) var(--s5) var(--s5) 0;color:var(--ink-3);font:500 var(--fs-13)/1.2 var(--font-body)}
-.v5-facts b{color:var(--ink-1);font:700 var(--fs-24)/1 var(--font-display)}
-.v5-facts i{font-style:normal}
-.v5-fact-icon{width:20px;height:20px;color:var(--ink-2)}
-:is(.v5-film,.v5-destruction){position:relative;display:flex;align-items:flex-end;min-height:max(640px,var(--cot-viewport-height,100dvh));overflow:hidden;background:var(--surface-scene)}
-:is(.v5-film,.v5-destruction)>video,.v5-film-shade{position:absolute;inset:0;width:100%;height:100%}
-:is(.v5-film,.v5-destruction)>video{object-fit:cover}
-.v5-film-shade{background:var(--media-fade-full)}
-.v5-film-copy,.v5-destruction>.shell{position:relative;z-index:var(--z-lift);padding-bottom:var(--s8)}
-:is(.v5-film,.v5-destruction) .cot-c-btn{margin-top:var(--s5)}
-.v5-cta{position:relative;display:flex;align-items:center;justify-content:center;min-height:640px;overflow:hidden;text-align:center;background:var(--surface-scene)}
+/* the closing call: full-bleed art under its fade */
+/* the headline and its two calls sit on the open snow at the lower left; the duel stays clear above and to the right */
+.v5-cta{position:relative;display:flex;align-items:flex-end;min-height:640px;padding-bottom:var(--s7);overflow:hidden;background:var(--surface-scene)}
 .v5-cta>img,.v5-cta>div{position:absolute;inset:0;width:100%;height:100%}
 .v5-cta>img{object-fit:cover}
-.v5-cta>div{background:var(--media-fade-full)}
+.v5-cta>div{background:var(--home-closing-grade)}
 .v5-cta>.shell{position:relative;z-index:var(--z-lift)}
-.v5-cta h2{margin:0 auto var(--s6);font-size:var(--home-h2);line-height:.88}
-.hero-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:14px}
+.v5-cta h2{max-width:min(620px,50%);margin:0 0 var(--s6);font:700 var(--home-h2)/.88 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
+.hero-actions{display:flex;flex-wrap:wrap;gap:14px}
 
-/* the trailers */
-.v5-trailer-grid{display:grid;grid-template-columns:minmax(0,16fr) minmax(0,10.125fr);gap:12px}
-.v5-trailer{position:relative;min-width:0;margin:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e1)}
-.v5-trailer--wide{grid-column:1;aspect-ratio:16/9}
-.v5-trailer--vertical{grid-column:2;grid-row:1/span 2}
-.v5-trailer video{display:block;width:100%;height:100%;object-fit:cover;background:var(--surface-scene)}
-.v5-trailer figcaption{position:absolute;z-index:var(--z-lift);top:var(--s4);left:var(--s4);display:flex;gap:10px;align-items:baseline;padding:7px 10px;border-radius:var(--control-radius);background:var(--btn-media-fill);box-shadow:var(--ring-3);pointer-events:none;transition:opacity var(--dur-base) var(--ease-enter)}
-.v5-trailer figcaption b{color:var(--ink-1);font:600 var(--fs-14)/1 var(--font-display);text-transform:uppercase}
-.v5-trailer figcaption span{color:var(--ink-2);font:500 var(--fs-12)/1 var(--font-data)}
-.v5-trailer.is-playing figcaption{opacity:0}
-
-/* the Garage split, multiplayer, evidence: a picture beside its headline */
-.v5-split{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(360px,.6fr);margin-top:var(--s8);background:var(--surface-scene);border-block:1px solid var(--line-1)}
-.v5-split>img{width:100%;height:100%;min-width:0;object-fit:cover}
-.v5-split>div{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:var(--s5);padding:var(--s8) var(--s7)}
-.v5-multiplayer figure{margin:0;overflow:hidden}
-.v5-multiplayer figure img{width:100%;height:auto;aspect-ratio:24/7;object-fit:cover}
-.v5-multiplayer>header>div,.v5-modes>header>div{min-width:0}
-.v5-multiplayer h2,.v5-modes h2{overflow-wrap:break-word}
-.v5-evidence article{position:relative;display:grid;grid-template-columns:minmax(0,1.42fr) minmax(360px,.58fr);margin-bottom:12px;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--e1)}
-.v5-evidence article:nth-of-type(even){grid-template-columns:minmax(360px,.58fr) minmax(0,1.42fr)}
-.v5-evidence article:nth-of-type(even)>:is(img,video){order:2}
-.v5-evidence article>:is(img,video){width:100%;height:100%;min-width:0;aspect-ratio:16/9;object-fit:cover;background:var(--surface-scene)}
-.v5-evidence article>div{display:flex;flex-direction:column;justify-content:center;padding:var(--s7)}
-.v5-evidence h3{margin:0 0 var(--s4);font:700 var(--fs-36)/.94 var(--font-display);text-transform:uppercase}
-.v5-evidence p{margin:0;color:var(--ink-2);font:400 var(--fs-15)/1.55 var(--font-body)}
-.v5-evidence article .cot-media-toggle{top:var(--s4);left:var(--s4);right:auto;bottom:auto}
-.v5-evidence article[hidden],.v5-multiplayer figure[hidden]{display:none}
-
-/* the camera-path loops and the mosaic */
-.v5-rail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.v5-rail-grid article{position:relative;aspect-ratio:16/9;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e1)}
-.v5-rail-grid video{width:100%;height:100%;object-fit:cover}
-.v5-rail-grid article::after{content:'';position:absolute;inset:0;background:var(--media-fade-soft);pointer-events:none}
-.v5-rail-grid article>div{position:absolute;z-index:var(--z-lift);left:var(--s5);right:var(--s5);bottom:var(--s5)}
-.v5-rail-grid article>div p{max-width:620px;margin:0;color:var(--ink-1);font:600 var(--fs-18)/1.25 var(--font-display)}
-.v5-mosaic-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-flow:dense;grid-auto-rows:minmax(190px,18vw);gap:10px}
-.v5-mosaic-grid figure{position:relative;min-width:0;margin:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e1)}
-.v5-mosaic-grid figure:nth-child(12n+1),.v5-mosaic-grid figure:nth-child(12n+8){grid-column:span 2;grid-row:span 2}
-.v5-mosaic-grid figure:nth-child(12n+5),.v5-mosaic-grid figure:nth-child(12n+12){grid-column:span 2}
-.v5-mosaic-grid img{width:100%;height:100%;object-fit:cover}
-.v5-mosaic-more{display:flex;justify-content:center;margin:0;padding-block:var(--s6) var(--s8)}
-
-/* modes and mechanics: picture cards with their copy beneath */
-.v5-modes-grid,.v5-mechanics-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.v5-mechanics-group>h3{margin:0 auto;padding-block:var(--s6) var(--s4);color:var(--ink-1);font:600 var(--fs-28)/1.08 var(--font-display)}
-.v5-mode,.v5-mechanics-grid article{position:relative;display:grid;grid-template-rows:auto 1fr;min-width:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--e1)}
-.v5-mechanics-grid article.is-wide{grid-column:span 2;grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
-.v5-mechanics-grid img,.v5-mode>img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover}
-.v5-mechanics-grid article.is-wide>img{height:100%;aspect-ratio:auto}
-.v5-mode>div,.v5-mechanics-grid article>div{padding:var(--s4) var(--s4) var(--s5)}
-.v5-mechanics-grid article.is-wide>div{display:flex;flex-direction:column;justify-content:center;padding:var(--s5)}
-/* a card waiting for its shot keeps its title and copy over a plain plate, and a standalone section waiting for its
-   shot hides (site-media-wire.mjs; no stand-in may show the wrong subject) */
-.v5-slot-pending{display:block;width:100%;aspect-ratio:16/9;background:var(--fill-quiet)}
-.v5-mechanics-grid article.is-wide>.v5-slot-pending,.v5-mode--hero>.v5-slot-pending{height:100%;aspect-ratio:auto}
-.v5-mechanics-grid h4,.v5-mode h3{display:flex;align-items:center;gap:10px;margin:0 0 var(--s2);color:var(--ink-1);font:700 var(--fs-18)/1.05 var(--font-display);text-transform:uppercase}
-.v5-mechanics-grid article.is-wide h4{font-size:var(--fs-28)}
-.v5-mechanics-grid p,.v5-mode p{margin:0;color:var(--ink-2);font:400 var(--fs-13)/1.5 var(--font-body)}
-.v5-mode-icon{display:inline-flex;flex:none;width:24px;height:24px;color:var(--accent)}
-.v5-mode-icon svg{width:100%;height:100%}
-.v5-mode-icon:empty{display:none}
-.v5-mode--hero{grid-column:span 2;grid-row:span 2;grid-template-rows:minmax(0,1fr)}
-.v5-mode--hero>img{height:100%;aspect-ratio:auto}
-.v5-mode--hero>div{position:absolute;inset:auto 0 0;padding:var(--s6);background:var(--media-fade-full)}
-.v5-mode--hero h3{gap:14px;font-size:var(--fs-44);line-height:.94}
-.v5-mode--hero .v5-mode-icon{width:36px;height:36px}
-.v5-mode--hero p{max-width:520px;font-size:var(--fs-15)}
-.v5-modes>header>div:last-child>.cot-c-btn,.v5-multiplayer>header>div:last-child>.cot-c-btn{margin-top:0}
-:is(.v5-film,.v5-trailers,.v5-split,.v5-multiplayer,.v5-destruction,.v5-rails,.v5-modes,.v5-mechanics,.v5-evidence,.v5-mosaic,.v5-cta){content-visibility:auto;contain-intrinsic-size:auto 1100px}
+:is(.motion,.play,.replay,.v5-cta){content-visibility:auto;contain-intrinsic-size:auto 1100px}
+.shots{content-visibility:auto;contain-intrinsic-size:auto 420px}
 /* the walls under the hero lay out only as they near the screen: the first frame draws the hero alone */
 .versus{content-visibility:auto;contain-intrinsic-size:auto 1200px}
 .fleet{content-visibility:auto;contain-intrinsic-size:auto 1300px}
-:is(.manual-start,.v5-social-proof,.v5-authored){content-visibility:auto;contain-intrinsic-size:auto 900px}
+.v5-social-proof{content-visibility:auto;contain-intrinsic-size:auto 900px}
 
 /* Chinese headlines: solid ink (no outline type on CJK, the shared .t-hollow rule) and roomier lines: CJK glyphs fill the
    em box, so the Latin display leading would make two lines touch */
-html[lang^='zh'] :is(h1,h2,h3,.v5-mode--hero h3){line-height:1.15}
+html[lang^='zh'] :is(h1,h2,h3,.play-tile--lead .play-tile__nm b){line-height:1.15}
 
 @media (width < 1440px){
   .bf-rail{grid-auto-columns:calc((100% - 40px) / 4.4)}
@@ -364,9 +316,15 @@ html[lang^='zh'] :is(h1,h2,h3,.v5-mode--hero h3){line-height:1.15}
   .vs-tile--big{grid-column:span 12;grid-row:auto;aspect-ratio:16/9}
   .vs-tile--mid,.vs-tile--sm{grid-column:span 6}
   .fleet-wall{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .fleet-feature{grid-column:1 / -1;grid-row:auto;order:-1}
-  .fleet-feature__art{flex:none;height:300px;min-height:0}
+  .fleet-feature{grid-column:1 / -1;grid-row:auto;order:-1;grid-template-rows:300px auto auto}
   .bf-rail{grid-auto-columns:calc((100% - 20px) / 2.6)}
+  .motion-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .motion-trailer{grid-column:1 / -1;grid-row:auto;aspect-ratio:16/9}
+  .motion-loop:last-child{display:none}
+  .play-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .play-tile--lead{grid-row:auto;aspect-ratio:16/9}
+  .replay{grid-template-columns:1fr}
+  .shots-rail{grid-auto-columns:calc((100% - 24px) / 2.4)}
   .v5-social-proof__intro{grid-template-columns:1fr;align-items:start}
   .v5-social-proof__x-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .v5-social-card:nth-child(n){grid-column:span 1;min-height:330px}
@@ -374,13 +332,6 @@ html[lang^='zh'] :is(h1,h2,h3,.v5-mode--hero h3){line-height:1.15}
   .v5-reddit-grid{display:flex;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none}
   .v5-reddit-grid::-webkit-scrollbar{display:none}
   .v5-reddit-grid article{flex:0 0 min(330px,66vw);scroll-snap-align:start}
-  :is(.v5-split,.v5-evidence article,.v5-evidence article:nth-of-type(even)){grid-template-columns:1fr}
-  .v5-evidence article:nth-of-type(even)>:is(img,video){order:initial}
-  :is(.v5-mechanics-grid,.v5-modes-grid){grid-template-columns:repeat(2,minmax(0,1fr))}
-  .v5-mode--hero{grid-row:span 1}
-  .v5-mosaic-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
-  .v5-mosaic-grid figure:nth-child(n){grid-column:span 1;grid-row:span 1}
-  .v5-mosaic-grid figure:nth-child(8n+1){grid-column:span 2;grid-row:span 2}
 }
 /* 90 the phone landing: the still over the first 640 px, the headline in its sky, the duel at its foot, the counts,
    and one Play bar held at the bottom of the screen */
@@ -421,9 +372,28 @@ html[lang^='zh'] :is(h1,h2,h3,.v5-mode--hero h3){line-height:1.15}
   .vs-tile--big .vs-tile__meta{left:14px;right:14px;bottom:12px;gap:10px}
   .vs-row2{flex-direction:column;align-items:flex-start;gap:10px}
   .fleet-wall{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .fleet-feature__art{height:220px}
+  .fleet-feature{grid-template-rows:220px auto auto}
   .bf-rail{grid-auto-columns:72vw}
-  :is(.v5-authored,.v5-trailers,.v5-multiplayer,.v5-rails,.v5-modes,.v5-mechanics,.v5-evidence,.v5-mosaic,.v5-film,.v5-split,.v5-destruction,.v5-cta) h2{font-size:var(--fs-36)}
+  .motion,.play{padding-top:var(--s7)}
+  .motion-grid{gap:8px}
+  .play-grid{gap:8px}
+  .play-tile__nm{left:10px;right:10px;bottom:9px;gap:7px}
+  .play-tile__nm b{font-size:var(--fs-13)}
+  .play-tile__nm .cot-i{width:15px;height:15px}
+  .play-tile--lead .play-tile__nm{left:14px;bottom:13px}
+  .play-tile--lead .play-tile__nm b{font-size:var(--fs-24)}
+  .play-tile--lead .play-tile__nm .cot-i{width:22px;height:22px}
+  .play-more{justify-content:flex-start}
+  .shots-rail{grid-auto-columns:72vw;gap:8px}
+  .shots-acts>.cot-c-btn--icon{display:none}
+  .replay-card__row{flex-direction:column;align-items:flex-start;padding:var(--s4)}
+  .replay-card h2{font-size:var(--fs-20)}
+  /* the picture, then the words under it: no headline over a tank on a narrow screen */
+  .v5-cta{flex-direction:column;align-items:stretch;min-height:0;padding:0 0 var(--s7)}
+  .v5-cta>img{position:static;height:auto;aspect-ratio:16/9}
+  .v5-cta>div{display:none}
+  .v5-cta>.shell{margin-top:var(--s5)}
+  .v5-cta h2{max-width:none;font-size:var(--fs-36)}
   .v5-social-proof h2{font-size:var(--fs-28)}
   .v5-social-proof__x-grid{display:flex;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none}
   .v5-social-proof__x-grid::-webkit-scrollbar{display:none}
@@ -435,30 +405,9 @@ html[lang^='zh'] :is(h1,h2,h3,.v5-mode--hero h3){line-height:1.15}
   .v5-social-proof__reddit>header{display:block}
   .v5-reddit-grid article{flex-basis:82vw}
   .v5-social-proof__snapshot{text-align:left}
-  .v5-facts .shell{grid-template-columns:1fr 1fr}
-  :is(.v5-film,.v5-destruction){min-height:640px}
-  .v5-split>div{padding:var(--s6) var(--s4)}
-  .v5-rail-grid,.v5-trailer-grid{grid-template-columns:1fr}
-  .v5-trailer--vertical{grid-column:1;grid-row:auto;aspect-ratio:9/16}
-  :is(.v5-mechanics-grid,.v5-modes-grid){display:flex;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none}
-  :is(.v5-mechanics-grid,.v5-modes-grid)::-webkit-scrollbar{display:none}
-  :is(.v5-mechanics-grid article,.v5-mechanics-grid article.is-wide,.v5-mode,.v5-mode--hero){flex:0 0 min(340px,82vw);grid-template-columns:none;grid-template-rows:auto 1fr;scroll-snap-align:start}
-  :is(.v5-mechanics-grid article.is-wide>img,.v5-mode--hero>img){height:auto;aspect-ratio:16/9}
-  :is(.v5-mechanics-grid article.is-wide>div,.v5-mode--hero>div){position:static;padding:var(--s4) var(--s4) var(--s5);background:none}
-  :is(.v5-mechanics-grid article.is-wide h4,.v5-mode--hero h3){font-size:var(--fs-20);line-height:1}
-  .v5-mode--hero p{font-size:var(--fs-13)}
-  .v5-evidence article>div{padding:var(--s6) var(--s4)}
-  .v5-evidence h3{font-size:var(--fs-28)}
-  .v5-mosaic-grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:48vw}
-  .v5-mosaic-grid figure:nth-child(n){grid-column:span 1;grid-row:span 1}
-  .v5-mosaic-grid figure:nth-child(7n+1){grid-column:1/-1}
-  .v5-shot-rail{gap:8px}
-  :is(.v5-shot-rail figure,.v5-shot-rail figure:first-child){flex-basis:82vw;height:56vw;min-height:230px;max-height:330px}
-  .v5-authored-head{display:block}
-  .v5-shot-controls{margin-top:var(--s4)}
   .cot-media-toggle{top:14px;left:14px}
 }
 @media(hover:hover) and (pointer:fine){.v5-social-card:hover,.v5-reddit-grid article:hover{box-shadow:var(--e2)}.v5-social-card:hover::after{opacity:.34;transform:scale(1.03)}}
 @media(prefers-reduced-motion:reduce){.fleet-tile__progress{display:none}}
-@media(prefers-reduced-motion:reduce){.v5-social-card,.v5-social-card::after,.v5-reddit-grid article{transition:none}html{scroll-behavior:auto}.v5-social-card::after{transform:none}.vs-tile__film,.fleet-tile>video,.v5-shot-progress span,.v5-trailer figcaption,.v5-shot-controls button{transition:none}}
+@media(prefers-reduced-motion:reduce){.v5-social-card,.v5-social-card::after,.v5-reddit-grid article{transition:none}html{scroll-behavior:auto}.v5-social-card::after{transform:none}.vs-tile__film,.fleet-tile>video,.motion-cuts{transition:none}}
 }
