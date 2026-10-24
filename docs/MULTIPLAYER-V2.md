@@ -2387,7 +2387,9 @@ in code.
 - The p2p host's periodic `match_report` goes every 30 s instead of 10 (`ROOM_MATCH_POLL_MS`; phase changes and the
   verdict still go at once). That is about 120 billed requests an hour per running match instead of 360. A host
   that stays connected and stops reporting is now declared stale after 90 s. A host that leaves or crashes is found
-  as before: its socket's grace and the peers' corroborated `host_unreachable`.
+  as before: its socket's grace and the peers' corroborated `host_unreachable`. **Release order:** the rooms Worker
+  goes first. The old Worker declares a host stale after 3 × 10 s, exactly the new report interval, so a new site on
+  the old Worker could trigger false host migrations. A new Worker with old hosts (10 s reports) is fine.
 - Telemetry sends one beacon per session phase (docs/ENTRY-RESILIENCE.md).
 
 **Junk is dropped before the limiter and the Durable Object.** The rooms Worker answers 405 to anything but GET
