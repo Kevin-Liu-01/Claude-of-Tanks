@@ -2,7 +2,7 @@ import { STUDIO_TIMES, type StudioLight, type StudioTimeOfDay } from '../game/st
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { galleryHref } from '../game/tankIdBoundaries.ts';
 import type { ProductionFormat, ProductionRigId } from '../game/studioProduction.ts';
-import { mountStudioProductionPanel, presetText, productionLabel, shotLabel, type WorkspaceId } from './studioProductionPanel.ts';
+import { mountStudioProductionPanel, presetText, productionLabel, shotLabel, shotRuns, type WorkspaceId } from './studioProductionPanel.ts';
 import { PRODUCTION_PRESETS } from '../game/studioProduction.ts';
 import { createCommandPalette, type StudioCommand } from './studioCommands.ts';
 import { QUEUE_PRESETS, queueEstimate, queueFileName, recordRenderRate, stillSize, type QueuePreset } from './studioQueue.ts';
@@ -1482,8 +1482,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     if (!actor) { flashBusy(t('studio.selectTankFirst')); return; }
     S.keyActor(actor);
   });
+  // the timeline's header adds shots and keys tanks (these two stay as the controls it drives, out of the panel)
   authorRow.append(addShotBtn, keyActorBtn);
-  const railRow = el('div', 'grid');
+  const railRow = el('div', 'col');
   const railBtn = chipButton(t('studio.showCameraRail'), 'cameraPath', false);
   railBtn.addEventListener('click', () => S.setRailVisible(!S.railVisible));
   const clearTrackBtn = kitButton(t('studio.clearTankTrack'), 'danger');
@@ -1493,7 +1494,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     S.clearActorTrack(actor);
   });
   railRow.append(railBtn, clearTrackBtn);
-  secTime.append(authorRow, railRow);
+  secTime.append(railRow);
   // the take from above: routes, the camera's track and its distance and height (studioPlanView.ts)
   const planView = createPlanView(S, t);
   let planShown = true;
@@ -2054,7 +2055,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     return t('studio.ws.queue.estimate', { time, size: t('studio.ws.queue.megabytes', { n: megabytes < 10 ? megabytes.toFixed(1) : Math.round(megabytes) }) });
   }
   function estimateFor(preset: QueuePreset): QueueJob['estimate'] {
-    return queueEstimate(preset, S.productionFormat, S.durationMs, Number(filmBlur.select.value), S.getStoryboard().shots.length);
+    return queueEstimate(preset, S.productionFormat, S.durationMs, Number(filmBlur.select.value), shotRuns(S.getStoryboard().shots, S.durationMs).length);
   }
   function toggleQueue(open = queuePop.hidden): void {
     queuePop.hidden = !open;
@@ -2148,16 +2149,16 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       return 1;
     }
     // a still at every shot: the lens on each key in turn, then the playhead and shot back where they were
-    const board = S.getStoryboard();
+    const runs = shotRuns(S.getStoryboard().shots, S.durationMs);
     const playhead = S.fxTimeMs, shotBefore = S.selectedShotId;
     let made = 0;
-    for (const [index, shot] of board.shots.entries()) {
+    for (const [index, { first: shot }] of runs.entries()) {
       S.selectCameraShot(shot.id);
       await nextFrame();
       S.capture({ width, height, download: true,
         name: queueFileName(map, `shot-${String(index + 1).padStart(2, '0')}-${shotLabel(shot.label)}`, ratio, 'png') });
       made++;
-      report(made / board.shots.length);
+      report(made / runs.length);
     }
     if (shotBefore) S.selectCameraShot(shotBefore);
     S.seek(playhead);
@@ -2515,22 +2516,42 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       .forEach((button) => button.disposeInfo?.());
     shotboard.textContent = '';
     shotRows.textContent = '';
-    outlineCount('cinematics', board.shots.length);
-    // the camera lane: each shot a clip from its key to the next (09-studio .tl Camera)
+    const runs = shotRuns(board.shots, S.durationMs);
+    outlineCount('cinematics', runs.length);
+    // the camera lane (09-studio .tl Camera): one clip per shot, from its first key to the next shot's, its thumbnail
+    // beside its name and a tick at each later key of the shot
     const cameraLane = timelineLane(t('studio.ws.laneCamera'), 'toolPhoto');
-    board.shots.forEach((shot, index) => {
-      const selected = shot.id === S.selectedShotId;
+    for (const run of runs) {
+      const shot = run.first;
       const name = shotLabel(shot.label);
-      const next = board.shots[index + 1]?.tMs ?? S.durationMs;
       const clip = el('button', 'clip');
-      clip.append(shotThumb(shot.id, null), name);
+      clip.append(shotThumb(shot.id, null), el('span', 'cl', name));
       clip.type = 'button';
-      clip.style.left = pct(shot.tMs);
-      clip.style.width = `calc(${pct(Math.max(0, next - shot.tMs))} - 3px)`;
-      clip.setAttribute('aria-pressed', String(selected));
+      clip.style.left = pct(run.startMs);
+      clip.style.width = `calc(${pct(Math.max(0, run.endMs - run.startMs))} - 3px)`;
+      clip.setAttribute('aria-pressed', String(run.keys.some((key) => key.id === S.selectedShotId)));
       clip.title = t('studioPanel.shot.timelineMarkerTitle', { label: name, t: (shot.tMs / 1000).toFixed(2) });
       clip.addEventListener('click', (event) => { event.stopPropagation(); S.selectCameraShot(shot.id); });
+      for (const key of run.keys.slice(1)) {
+        const tick = el('i', 'ck');
+        tick.style.left = `${((key.tMs - run.startMs) / Math.max(1, run.endMs - run.startMs)) * 100}%`;
+        clip.appendChild(tick);
+      }
       cameraLane.appendChild(clip);
+      // its outliner row (09-studio .out Shots): the thumbnail, the name and the shot's length
+      const line = outlineRow(() => { productionPanel.activate('cinematics'); S.selectCameraShot(shot.id); });
+      line.row.setAttribute('aria-current', String(run.keys.some((key) => key.id === S.selectedShotId)));
+      line.pick.innerHTML = uiIconSVG('toolPhoto', 16);
+      line.pick.append(shotThumb(shot.id, line.pick.firstElementChild), el('span', 'nm', name),
+        el('span', 'd', seconds(Math.max(0, run.endMs - run.startMs))));
+      shotRows.appendChild(line.row);
+    }
+    // the storyboard's cards: one per shot, as the outliner and the camera lane count them; its blend is how the shot
+    // begins (its first key's), and removing it removes every key it holds
+    runs.forEach((run, index) => {
+      const shot = run.first;
+      const selected = run.keys.some((key) => key.id === S.selectedShotId);
+      const name = shotLabel(shot.label);
       const card = el('div', `shotcard${selected ? ' sel' : ''}`);
       card.appendChild(el('div', 'num', String(index + 1).padStart(2, '0')));
       const copy = el('div', 'copy');
@@ -2564,16 +2585,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       del.innerHTML = uiIconSVG('close', 14);
       del.title = t('studioPanel.shot.removeTitle', { label: name });
       del.setAttribute('aria-label', del.title);
-      del.addEventListener('click', () => S.removeCameraShot(shot.id));
+      del.addEventListener('click', () => { for (const key of run.keys) S.removeCameraShot(key.id); });
       card.appendChild(del);
       shotboard.appendChild(card);
-      // its outliner row (09-studio .out Shots): the label and the shot's length
-      const line = outlineRow(() => { productionPanel.activate('cinematics'); S.selectCameraShot(shot.id); });
-      line.row.setAttribute('aria-current', String(selected));
-      line.pick.innerHTML = uiIconSVG('toolPhoto', 16);
-      line.pick.append(shotThumb(shot.id, line.pick.firstElementChild), el('span', 'nm', name),
-        el('span', 'd', seconds(Math.max(0, next - shot.tMs))));
-      shotRows.appendChild(line.row);
     });
     // a lane per tank with keys: its flag, silhouette and name, a diamond per pose key
     for (const track of board.actorTracks) {
@@ -2582,7 +2596,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       for (const key of track.keys) {
         const mark = el('button', 'key');
         mark.type = 'button';
-        mark.style.left = pct(key.tMs);
+        // a key at either end stays whole inside its lane, clear of the lane's name
+        mark.style.left = `clamp(6px, ${pct(key.tMs)}, calc(100% - 6px))`;
         const title = t('studio.ws.keyTitle', { actor: actor?.spec.name ?? track.actor, s: (key.tMs / 1000).toFixed(2) });
         mark.title = title;
         mark.setAttribute('aria-label', title);
@@ -2590,26 +2605,37 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         lane.appendChild(mark);
       }
     }
-    // the effects lane: a clip where each fires
+    // the effects lane: a chip per moment, as wide as its name up to the next moment (where its name ellipsizes);
+    // effects that fire together share one ("Dust burst ×2", "Dust burst +1")
     const effectLane = timelineLane(t('studio.ws.laneEffects'), 'detonation');
-    for (const effect of S.listEffects()) {
-      const clip = el('button', 'clip clip--fx', effectName(effect.type));
-      clip.type = 'button';
-      clip.style.left = pct(effect.tMs);
-      clip.style.maxWidth = '30%';
-      clip.setAttribute('aria-pressed', String(!!effect.selected));
-      clip.title = t('studio.ws.fxTitle', { type: effectName(effect.type), s: (effect.tMs / 1000).toFixed(2) });
-      clip.addEventListener('click', (event) => { event.stopPropagation(); S.selectEffect(effect.id); S.seek(effect.tMs); });
-      effectLane.appendChild(clip);
+    const together = Math.max(40, S.durationMs * 0.004);
+    const moments: StudioEffect[][] = [];
+    for (const effect of [...S.listEffects()].sort((a, b) => a.tMs - b.tMs)) {
+      const moment = moments[moments.length - 1];
+      if (moment && effect.tMs - moment[0].tMs <= together) moment.push(effect);
+      else moments.push([effect]);
     }
+    moments.forEach((moment, index) => {
+      const first = moment[0];
+      const next = moments[index + 1]?.[0].tMs ?? S.durationMs;
+      const name = effectName(first.type);
+      const label = moment.length < 2 ? name : moment.every((effect) => effect.type === first.type)
+        ? t('studio.ws.fxMany', { name, count: moment.length }) : t('studio.ws.fxPlus', { name, count: moment.length - 1 });
+      const clip = el('button', 'clip clip--fx');
+      clip.appendChild(el('span', 'cl', label));
+      clip.type = 'button';
+      clip.style.left = pct(first.tMs);
+      clip.style.maxWidth = `calc(${pct(Math.max(0, next - first.tMs))} - 3px)`;
+      clip.setAttribute('aria-pressed', String(moment.some((effect) => !!effect.selected)));
+      clip.title = moment.map((effect) => t('studio.ws.fxTitle', { type: effectName(effect.type), s: (effect.tMs / 1000).toFixed(2) })).join('\n');
+      clip.addEventListener('click', (event) => { event.stopPropagation(); S.selectEffect(first.id); S.seek(first.tMs); });
+      effectLane.appendChild(clip);
+    });
     // the sound lane (09-studio .tl Sound): the film's soundtrack as it will mix, redrawn once the scene settles
     const soundLane = timelineLane(t('studio.ws.laneSound'), 'sound');
     soundLane.classList.add('tk--sound');
     soundLane.appendChild(soundWave);
     scheduleSound();
-    if (!board.shots.length) {
-      shotboard.appendChild(el('div', 'fxempty', t('studioPanel.storyboard.empty')));
-    }
   }
 
   // the sound lane's waveform: one element kept across the timeline's rebuilds, redrawn when the scene changes
@@ -2849,9 +2875,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const board = S.getStoryboard();
       lookChip.disabled = !board.shots.length;
       press(lookChip, S.lookThrough && !lookChip.disabled);
-      const shotIndex = board.shots.findIndex((shot) => shot.id === S.selectedShotId);
+      const runs = shotRuns(board.shots, S.durationMs);
+      const shotIndex = runs.findIndex((run) => run.keys.some((key) => key.id === S.selectedShotId));
       setLabel(shotChip, shotIndex < 0 ? t('studio.ws.noShot')
-        : t('studio.ws.shot', { n: String(shotIndex + 1).padStart(2, '0'), label: shotLabel(board.shots[shotIndex].label) }));
+        : t('studio.ws.shot', { n: String(shotIndex + 1).padStart(2, '0'), label: shotLabel(runs[shotIndex].first.label) }));
       if (planShown) planView.refreshPlan();
       api.refreshTime();
     },

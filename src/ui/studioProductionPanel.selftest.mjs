@@ -176,7 +176,8 @@ assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s65-fleet-le
 featuredTank.value = ''; featuredTank.fire('change');
 stored.clear(); search.fire('input');
 assert.equal(fleetCards().length, 0, 'no tank selected anywhere: no card');
-assert.equal(fleetStatus(), t('studio.director.fleet.hint'), 'but a hint');
+assert.equal(fleetStatus(), '', 'and no helper line: the placeholder says what to type');
+assert.equal(search.attributes['aria-label'], t('studio.director.fleet.search'), 'the finder keeps its name for assistive tech');
 stored.set(LAST_TANK_STORAGE_KEY, 't90sm_2013'); search.fire('input');
 const loadsBefore = calls.filter(call => call[0] === 'load').length;
 fleetCards()[0].fire('click'); await tick(); await tick();

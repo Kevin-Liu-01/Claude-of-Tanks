@@ -53,6 +53,28 @@ export function shotLabel(label: string): string {
   return unnamed ? t('studio.ws.shotDefault', { n: unnamed[1] }) : label;
 }
 
+/** A shot: the run of camera keys under one name (a directed sequence keys each shot's start and its end), from its first
+ *  key to the next shot's. */
+export interface ShotRun<Key extends { readonly id: string; readonly label: string; readonly tMs: number }> {
+  readonly first: Key;
+  readonly keys: readonly Key[];
+  readonly startMs: number;
+  readonly endMs: number;
+}
+
+/** The take's shots: consecutive camera keys that share a name are one shot (the outliner, the camera lane, the shot list). */
+export function shotRuns<Key extends { readonly id: string; readonly label: string; readonly tMs: number }>(
+  keys: readonly Key[], durationMs: number,
+): ShotRun<Key>[] {
+  const runs: { first: Key; keys: Key[] }[] = [];
+  for (const key of keys) {
+    const last = runs[runs.length - 1];
+    if (last && last.first.label === key.label) last.keys.push(key);
+    else runs.push({ first: key, keys: [key] });
+  }
+  return runs.map((run, index) => ({ ...run, startMs: run.first.tMs, endMs: runs[index + 1]?.first.tMs ?? durationMs }));
+}
+
 /** A curated sequence's title or description in the reader's language (the preset's own English when the catalog has none). */
 export function presetText(id: string, field: 'title' | 'description', fallback: string): string {
   const key = `studio.director.ui.preset.${id}.${field}`;
@@ -222,9 +244,10 @@ export function mountStudioProductionPanel(
   // selected in the Garage.
   const fleetSection = node('section', 'production-takes production-fleet');
   fleetSection.hidden = true;
-  const fleetSearchLabel = node('label', 'production-fleet-search', t('studio.director.fleet.search'));
+  const fleetSearchLabel = node('div', 'production-fleet-search');
   const fleetSearch = node('input');
   fleetSearch.type = 'search';
+  fleetSearch.setAttribute('aria-label', t('studio.director.fleet.search'));
   fleetSearch.autocomplete = 'off';
   fleetSearch.spellcheck = false;
   fleetSearch.placeholder = t('studio.director.fleet.placeholder');
@@ -264,7 +287,7 @@ export function mountStudioProductionPanel(
     for (const take of fleetTakes) takeCards.delete(take.id);
     fleetLibrary.replaceChildren(...matches.slice(0, FLEET_RESULTS).map(takeCard));
     fleetStatus.textContent = !query
-      ? (matches.length ? t('studio.director.fleet.yourTank') : t('studio.director.fleet.hint'))
+      ? (matches.length ? t('studio.director.fleet.yourTank') : '')
       : !matches.length ? t('studio.director.fleet.none', { query: typed })
       : matches.length > FLEET_RESULTS ? t('studio.director.fleet.more', { shown: FLEET_RESULTS, count: matches.length }) : '';
     refresh();
@@ -442,16 +465,18 @@ export function mountStudioProductionPanel(
     if (signature !== shotSignature) {
       shotSignature = signature; shots.replaceChildren();
       if (!storyboard.shots.length) shots.append(node('p', '', productionLabel('empty')));
-      storyboard.shots.forEach((shot, index) => {
+      shotRuns(storyboard.shots, S.durationMs).forEach((run, index) => {
+        const shot = run.first;
         const entry = button('', () => { S.pause(); S.seek(shot.tMs); S.selectCameraShot(shot.id); refreshAll(); }, 'production-shot');
         entry.dataset.productionShot = shot.id;
+        entry.dataset.productionKeys = run.keys.map((key) => key.id).join(' ');
         entry.append(node('span', '', String(index + 1).padStart(2, '0')), node('span', '', shotLabel(shot.label)), node('span', '', `${(shot.tMs / 1000).toFixed(1)}s`));
         shots.append(entry);
       });
     }
     for (const entry of shots.querySelectorAll<HTMLButtonElement>('button')) {
       entry.disabled = locked;
-      entry.setAttribute('aria-current', String(entry.dataset.productionShot === S.selectedShotId));
+      entry.setAttribute('aria-current', String(!!S.selectedShotId && (entry.dataset.productionKeys ?? '').split(' ').includes(S.selectedShotId)));
     }
   }
   refresh();
