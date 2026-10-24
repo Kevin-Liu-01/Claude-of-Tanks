@@ -54,7 +54,7 @@ export function shotLabel(label: string): string {
 }
 
 /** A curated sequence's title or description in the reader's language (the preset's own English when the catalog has none). */
-function presetText(id: string, field: 'title' | 'description', fallback: string): string {
+export function presetText(id: string, field: 'title' | 'description', fallback: string): string {
   const key = `studio.director.ui.preset.${id}.${field}`;
   const text = t(key);
   return text === key ? fallback : text;
@@ -79,7 +79,7 @@ export type WorkspaceId = 'director' | 'battlefield' | 'tanks' | 'effects' | 'ci
  * head for it, the site's takes fill the shelf, the controls toggle and the frame guides join the header and the
  * viewport. Without hosts (the receipts) the switches form a tab row atop the dock and everything stays in the dock.
  */
-export interface StudioWorkspaceHosts {
+interface StudioWorkspaceHosts {
   readonly head?: (id: WorkspaceId, head: HTMLButtonElement) => void;
   readonly takes?: HTMLElement;
   readonly toggle?: HTMLElement;

@@ -80,6 +80,8 @@ automatically so headless capture tools can enter Studio.
 - **Click terrain**: move the effect marker (amber ring)
 - **Click a tank**: select · **drag a tank**: move it and update terrain alignment
 - **Space**: play/pause the storyboard · **J/K/L**: shuttle back, stop, forward (each J or L press doubles the rate to 4x) · **Delete**: remove the selected effect
+- **Commands** (the header, **Ctrl/⌘ K**, from a field too): one search over every action, run through the control that does it; battlefields and tanks are listed once named ("t-90" adds that tank in view). Arrows move, Enter runs, Esc closes the palette, never the Studio. The Studio's shortcuts (J/K/L, undo, redo, the palette, F8) work from a focused panel button
+- **Undo / redo** (the header, **Ctrl/⌘ Z**, **Shift Ctrl/⌘ Z** or **Ctrl/⌘ Y**): settled edits are steps (the camera, the playhead and playing never are); the same battlefield and tanks restore in place, anything else reloads. Every step autosaves the scene to this browser (never an empty one), and an empty Studio offers **Restore last scene**
 - **Quick | Pro** (the header): Quick keeps the essentials; Pro adds the picture sliders, letterbox and depth of field, camera roll and fly speed, film blur and shake, live recording, the recoil chip, play speed, effect parameters and the plan view. Each viewer's choice is remembered in the browser
 - **Look through** (the viewport chip): the view is the shots' camera at the playhead. Dragging, the wheel, the fly keys or a camera edit leave it, after which scrubbing and playing keep the free view; selecting a shot, keying one from the view or loading a scene look through again. Recording and film export always ride the shots
   (or selected actor when no effect layer is selected)
@@ -137,6 +139,8 @@ __STUDIO.cancelFilmExport() / .filmExportStatus()
 __STUDIO.getFilm() / .setFilm(patch | null) / .FILM_DEFAULTS / .filming / .filmInfo
 __STUDIO.setCamera(cfg) / .getCamera()                // leaves look-through
 __STUDIO.setLookThrough(on) / .lookThrough
+__STUDIO.undo() / .redo() / .history           // { undo, redo, savedAt }
+__STUDIO.autosaved() / .restoreAutosave()      // the last autosaved scene in this browser
 __STUDIO.setPlacementSnap('road'|'terrain'|'off') / .placementSnap  // where a dragged or placed tank lands
 __STUDIO.applyPosePreset(actor, 'hull-down'|'firing'|'knocked-out')  // false: no crest within 24 m ahead
 __STUDIO.setPicture(patch) / .getPicture()          // film-grade picture (see "Picture")
