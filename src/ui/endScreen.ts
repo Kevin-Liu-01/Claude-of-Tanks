@@ -688,6 +688,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const v = el('div', 'v', t);
     const k = el('div', 'k', t);
     k.innerHTML = `${opts.icon ? uiIconSVG(opts.icon, 16) : ''}<span>${label}</span>`;
+    t.title = label; // the wide record shows the glyph and the figure alone (page 11's .me .k): the label stays on hover
     if (opts.text != null) v.textContent = opts.text;
     else countUp(v, opts.value || 0, { delayMs: 260 + seq * 60, fmt: opts.fmt });
     if (key) host.dataset[key] = String(opts.datasetV != null ? opts.datasetV : Math.round(opts.value || 0));
@@ -1024,6 +1025,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     detail = '',
   ): void {
     const item = el('div', 'es-mini', parent);
+    item.title = label;
     item.innerHTML = `<div class="mk">${uiIconSVG(icon, 14)}<span>${label}</span></div>` +
       `<div class="mv">${value}</div>${detail ? `<div class="md">${detail}</div>` : ''}`;
     if (key) host.dataset[key] = value;
