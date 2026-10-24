@@ -625,99 +625,87 @@
  },
  {
   "href": "/docs/multiplayer",
-  "title": "Configure a room, then enter battle",
-  "chapter": "Multiplayer rooms",
-  "text": "Create or join a room from the separate Multiplayer control. The current v2 connection uses WebRTC between browsers; the host browser runs the authoritative match, while the room service handles membership and connection signaling."
+  "title": "Play together",
+  "chapter": "Multiplayer",
+  "text": "Start a room, send the code, and fight beside your friends or against them."
  },
  {
-  "href": "/docs/multiplayer#topic-section-1",
-  "title": "Create, join and configure",
-  "chapter": "Multiplayer rooms",
-  "text": "Set a callsign, choose the room format and create a room, or enter an invite code to join. Share the invite link with your friends. Configure teams, vehicles, camouflage, battlefield and mode rules before readying up. Opening Multiplayer does not start a battle. Room identities belong to players; several players may select the same tank. Private rooms use the configured room service; LAN uses the local helper where available. A service or connection failure stays on the setup screen with a clear recovery action. Recheck the code for an invalid invitation, retry an interrupted connection, or return to the garage. The current entry does not require a version flag or a legacy signaling-address field."
+  "href": "/docs/multiplayer#rooms",
+  "title": "Start a room",
+  "chapter": "Multiplayer",
+  "text": "Open Multiplayer and pick one of three ways in. Private room Create a room and send its six-character code or invite link to your friends. Enter a room code Type the code from your host, or open their invite link. Local network One computer runs npm run server:mp (port 8792); everyone on the same network picks Local network and plays through it."
  },
  {
-  "href": "/docs/multiplayer#topic-section-2",
-  "title": "The host runs the match",
-  "chapter": "Multiplayer rooms",
-  "text": "The room Worker coordinates discovery and signaling. It does not run the sixty-step battle simulation. The host browser runs the match authority and exchanges WebRTC data with peers. Guests send inputs; the host resolves movement, firing, reloads, collisions, damage, bots and results. This differs from the older dedicated-server architecture still documented for historical reference. The local vehicle predicts movement and reconciles against acknowledged host state; remote vehicles interpolate snapshots. Nearby and recently engaged opponents refresh more often than distant visible actors. Combat events remain ordered independently of those interest tiers. Prediction improves responsiveness but cannot award a hit or change the authoritative result."
+  "href": "/docs/multiplayer#seats",
+  "title": "Seats",
+  "chapter": "Multiplayer",
+  "text": "Two sides and a gallery. The room sets its team size; empty seats can fill with bots. Team Alpha v Team Bravo Spectator 7 a side by default up to 14 a side A room holds up to 28 players and 8 spectators. New players join the smaller side; the room's creator can lock team switching. Empty seats fill with bots unless the room turns that off. Everyone brings their own tank, camouflage and up to 3 equipment items; two players can pick the same tank. Names are up to 24 characters; a name already taken gets a number."
  },
  {
-  "href": "/docs/multiplayer#topic-section-3",
-  "title": "Visibility and trust",
-  "chapter": "Multiplayer rooms",
-  "text": "Guest snapshots contain only enemies the viewer is allowed to see. Filtering occurs before encoding, so hidden coordinates are not simply sent and concealed by the renderer. Team vision and spectator perspective also govern nameplates, minimaps and presentation. A browser host is still a participating player’s machine and must hold the authoritative world. Peer hosting should not be described as having the same trust boundary as an independent dedicated server. The protocol checks input ordering and message shape; it cannot turn an untrusted host into trusted tournament infrastructure."
+  "href": "/docs/multiplayer#modes",
+  "title": "Modes",
+  "chapter": "Multiplayer",
+  "text": "A room plays any battle mode; the Proving Ground stays solo. Standard Battle Capture the Flag Zone Control Turbo Ball Endless Horde Frontline Assault Gravity Mode Juggernaut Infected Realistic Gun Game Drone AC-130 In Endless Horde and Frontline Assault, everyone deploys on one side, up to 7 players, against the waves."
  },
  {
-  "href": "/docs/multiplayer#topic-section-4",
-  "title": "Leaving, reconnecting and host migration",
-  "chapter": "Multiplayer rooms",
-  "text": "Connection state is visible during room and match transitions. If the host leaves or loses its connection, the v2 session has a migration path that transfers the match to a remaining eligible peer using its retained migration state. Recovery depends on surviving peers and usable connectivity; closing every participant ends that possibility. Backpressure and stalled channels are bounded rather than allowing unlimited queued snapshots. A delayed peer should receive fresh state when it recovers. Repeated failures should include the application version, room format, map, browser and which player was hosting in the report. Do not expose invite codes or private room links in public diagnostics."
+  "href": "/docs/multiplayer#start",
+  "title": "Ready up",
+  "chapter": "Multiplayer",
+  "text": "1 Pick your tank, camouflage and equipment, then press Ready. 2 The room's creator starts the battle once every connected player is ready. 3 The creator's browser hosts the battle; on a local network, the helper does."
  },
  {
-  "href": "/docs/multiplayer#topic-section-5",
-  "title": "What the tests cover",
-  "chapter": "Multiplayer rooms",
-  "text": "Current certification exercises browser-to-browser entry, input and snapshot exchange, visible combat, interruption, migration and large-team traffic. The 14 v 14 bandwidth work measures host uplink and snapshot timing as well as positional drift. These results describe the tested network conditions; real Wi-Fi, mobile radios, firewalls and suspended browser tabs can behave differently. Run npm run test:net:v2:p2p for the three-browser peer-to-peer gate: a host and two peers move and fire, then migrate the host. The former ranked and dedicated-server stack has been removed; MULTIPLAYER-V2.md owns the current room and match contract."
+  "href": "/docs/multiplayer#leaving",
+  "title": "Leaving and rejoining",
+  "chapter": "Multiplayer",
+  "text": "Drop out and your seat waits 5 minutes; open the link again to take it back. If the host's browser goes away, the room hands the battle to another player within 8 s and play goes on. If the creator leaves, the room's settings pass to the longest-seated player after 30 s. A room closes 24 hours after its last message. Room chat keeps the last 48 messages, up to 240 characters each."
+ },
+ {
+  "href": "/docs/multiplayer#fair",
+  "title": "Fair play",
+  "chapter": "Multiplayer",
+  "text": "The host decides every hit, reload and result; the others send only their controls. You receive only the enemies your team has spotted: a hidden tank's position never reaches your browser."
  },
  {
   "href": "/docs/audio",
   "title": "Hear the battle the way a crew does",
-  "chapter": "Audio and battlefield FX",
-  "text": "Gunfire, impacts and engines sound from where they happen and arrive later the farther away they are. Hits are confirmed the way a crew experiences them: by the strike at the target and the gunner’s call."
+  "chapter": "Sound and radio",
+  "text": "What every shot, warning and engine tells you, and how to set the mix."
  },
  {
-  "href": "/docs/audio#topic-section-1",
-  "title": "Where the sound comes from",
-  "chapter": "Audio and battlefield FX",
-  "text": "Gunfire, impacts, engines, tracks, ambience and the crew radio are first-party sounds generated for Claude of Tanks with ElevenLabs. Each generated sound was produced in takes that were measured and scored, and the best were mastered for their kind of sound; every voice take was also transcribed and checked against its script. No third-party recordings are sampled, and nothing is generated while you play. Every sound you hear is one of these recordings: nothing is synthesized, not the alarms, not the radio's key clicks, not the weight under a blast. Audio starts with your first click, tap or key press, as browsers require. Each battle loads its core sounds as it opens and rarer ones on first use; a sound that is not ready yet, or that cannot play where WebM/Opus audio is unsupported (Safari before 17.4), stays silent rather than being replaced by a stand-in."
+  "href": "/docs/audio#hits",
+  "title": "Did it go in?",
+  "chapter": "Sound and radio",
+  "text": "No interface sound tells you a shot hit: you hear it at the target, late by the distance, and about half a second later your gunner calls it. Your crew says It means Penetration. Target. Through the armor. The round went through. No penetration. Didn't go through. It hit but did not go through: aim for thinner armour. Ricochet. Bounced. It glanced off an angled plate. Miss. Short. Adjusting. Nothing hit: correct your aim. Good hit. Something's damaged. Critical hit. It went in and broke a module. Ammo rack hit. He's cooking off. His ammunition is burning: he is about to blow. Hit his engine. His engine is hit: he slows down or catches fire. His track's off. He's immobilized. His track is off: he cannot move until he repairs it. Their crew's hit. One of his crew is down. Target destroyed. Target down. Tank knocked out. Your shot finished him. How late you hear it Earth 100 m: 0.3 s 500 m: 1.5 s 1000 m: 2.9 s Mars 100 m: 0.4 s 500 m: 2.1 s 1000 m: 4.0 s"
  },
  {
-  "href": "/docs/audio#topic-section-2",
-  "title": "Gunfire and distance",
-  "chapter": "Audio and battlefield FX",
-  "text": "Every weapon belongs to one of eighteen report classes: rifle and heavy machine guns; 20, 25, 30, 40 and 50 mm autocannons; 90, 105, 120, 125, 130 and 152 mm guns; anti-tank missile and heavy rocket launchers; and the AC-130's autocannon, howitzer and missiles. Each class has a close and a distant report that blend with range, followed by an echo that matches the battlefield: open ground, forest, town or mountains. A gun is heard as a real report: an instant crack, a short body that decays rather than swells, then its echo. Under it sits the punch of the muzzle blast, a recorded slam of air and the air rushing back behind it, tight from a machine gun and deep from a tank gun; machine-gun bursts echo once per beat. Sound takes time to travel: a distant shot is seen before it is heard, and a far impact arrives late. The air softens distant sounds and hills between you and the source muffle them; on Mars sound is slower and thinner, and on the Moon, with no air, you hear little beyond your own hull. Gunfire fades far more gently than it would in life, so distant fights stay audible, and a shell passing close gives a flyby or a sharp near-miss crack."
+  "href": "/docs/audio#warnings",
+  "title": "Crew warnings",
+  "chapter": "Sound and radio",
+  "text": "When something happens to your tank, the crew says so before you see it. Your crew says It means We're hit. Taking hits. A shot went into your tank. Armor held. It bounced. A shot hit you and did no harm. Fire! Engine compartment! Fire in the hull! You are burning: put it out or keep losing hull. Ammo rack hit! Ammunition damaged! Your ammunition is damaged: the reload slows. Engine's damaged. Engine hit. Losing power. Your engine is hit: less power, and it may catch fire. Track's gone. We're immobilized. Lost a track. A track is off: you cannot move until it is fixed. Main gun's damaged. Gun's hit. Your main gun is damaged until it is repaired. Armor's failing. Can't take much more. Little hull is left: get to cover. We're spotted. They have eyes on us. An enemy has spotted you; the sixth-sense lamp lights too. Missile incoming! Incoming missile, brace! A guided missile is on its way: move or break its line of sight. Drone inbound! Drone on us, overhead! An enemy drone is overhead."
  },
  {
-  "href": "/docs/audio#topic-section-3",
-  "title": "Hits, kills and misses",
-  "chapter": "Audio and battlefield FX",
-  "text": "No interface sound tells you a shot hit. You hear it at the target, from its direction, delayed by the distance. Up close an armor hit is tearing metal, a heavy clang or a dull thud; farther out, a distant crack, knock or clang with an outdoor echo. HE and HEAT add their blasts, reactive armor its cassettes. Your own rounds carry farther than other hits: a penetration at 700 m is a distant crack about two seconds after the shell lands. Your kill is the target going up: blast, debris, turret and any cook-off, heard as far away as your hits. About half a second after a main-gun round lands, the time it takes to see it, your gunner almost always calls the result: in English, “Penetration”, “Ricochet”, “No penetration”, a module or crew hit, or “Target destroyed”. A miss is called “Short. Adjusting.” if the round fell short of the enemy it was laid on, otherwise “Miss.”"
- },
- {
-  "href": "/docs/audio#topic-section-4",
-  "title": "Gun, loader and sight",
-  "chapter": "Audio and battlefield FX",
-  "text": "Your own gun has its own report, fuller than anyone else's, with the breech recoiling and running back into battery. The loader is heard in step with the reload: a manual loader opens the ready-rack door, pulls a round, shuts the door, rams it home and closes the breech; carousel and bustle autoloaders, autocannon feeds, missile tubes and launcher arms, and drum magazines refilled round by round each have their own sequence, ending in the lock that says the gun is ready. Your own tank adds the turret drive starting, running and braking, the elevation servo, cabin hum and rattle. In the sight, your gun is heard as an interior report and your engine through the turret and headset, while the world outside dulls; your own gun follows the gunfire volume. A heavy round through your hull, or an HE burst or vehicle explosion close by, muffles everything; hearing returns over about four and a half seconds, with ringing in the ears after the strongest blasts. Your own gun never causes it, and Settings can turn it off."
- },
- {
-  "href": "/docs/audio#topic-section-5",
-  "title": "Engine and running gear",
-  "chapter": "Audio and battlefield FX",
-  "text": "Each hull carries the sound of its powertrain. The gas turbines of the Abrams and T-80 spool and whine rather than shift. The two-stroke diesels of the Leopard 1, Chieftain and T-64 lineage, Soviet and modern V12 diesels, the air-cooled diesels of the M48, M60 and Merkava 1 to 3, infantry fighting vehicle diesels and petrol V12s each sound different, with a turbo whistle or hybrid-electric drive where a vehicle has one. Speed, throttle, slope and engine damage set the revs, and gearboxes hold each gear instead of hunting between two. Tracks change with the ground and your speed: earth, hard surfaces, mud, sand and snow, and wading through water. Brake squeal, skids, suspension landings, a damaged engine’s knock, stalls and restarts all have their own sounds. Nearby tanks are heard in this detail, distant ones more simply."
- },
- {
-  "href": "/docs/audio#topic-section-6",
+  "href": "/docs/audio#radio",
   "title": "Crew radio",
-  "chapter": "Audio and battlefield FX",
-  "text": "Each nation’s crews speak their own language over the intercom: American and British English, German, Russian, Ukrainian, Chinese, French, Swedish, Japanese, Korean, Italian, Polish and Hebrew, each with a commander and a crew voice. The calls are written in the terse procedure each army’s tank crews use, not translated word for word: a German crew calls a vehicle fire “Brand!” because “Feuer” is the order to fire. Every line passes through a live intercom chain: a narrow headset band, compression, drive, static and squelch. A damaged radio module narrows the band, adds distortion and drops syllables. One transmission plays at a time: survival warnings cut in, calls that would arrive stale are dropped, and chatter is rationed, so autocannon and machine-gun hits are called only now and then. In Settings → Sound, Crew voices defaults to National crews, following each tank’s nation. The flag dropdown can instead use any one of the 13 existing national crews for every tank."
+  "chapter": "Sound and radio",
+  "text": "Each nation's crew speaks its own language: 13 crews in all. American English British English German Russian Ukrainian Chinese French Swedish Japanese Korean Italian Polish Hebrew One call plays at a time; survival warnings cut in front. A damaged radio narrows the voice, adds static and drops words. Settings › Sound › Crew voices: National crews follow each tank's nation, or pick one of the 13 existing national crews for every tank; the choice is saved across battles and reloads."
  },
  {
-  "href": "/docs/audio#topic-section-7",
-  "title": "Battlefields and the garage",
-  "chapter": "Audio and battlefield FX",
-  "text": "Each battlefield has its own soundscape: a stereo bed, a water or machinery layer where the map has one, and distant sounds at random bearings, mostly crows, hawks, gulls, wind, rubble and machinery, with songbirds, bees or a distant siren where they belong. In battle a distant war rumbles underneath. Artillery, flak, anti-aircraft fire and flyovers have their own sounds, as do trees, fences, walls, cars, crates and rubble when they break. Every map also sets the reverb and the echo after each shot. The garage is a working hangar: a room tone with tools, impact wrenches, a hammer on a track pin, the crane chain, an air compressor, a diesel being run up and the big door a few metres away, all on the ambience volume. Every control in the garage and the menus has its sound, and garage sound starts with your first click or key press."
+  "href": "/docs/audio#gunfire",
+  "title": "Gunfire",
+  "chapter": "Sound and radio",
+  "text": "Every weapon fires one of 18 report classes; the bigger the gun, the louder and longer its report. Rifle-calibre machine gun 118 dB Heavy machine gun 124 dB 20 mm autocannon 128 dB 25 mm autocannon 130 dB 30 mm autocannon 132 dB Anti-tank missile 132 dB AC-130 autocannon 134 dB 40 mm autocannon 135 dB AC-130 missile 136 dB 50 mm autocannon 137 dB 90 mm gun 141 dB 105 mm gun 144 dB Heavy rocket 145 dB 120 mm gun 147 dB 125 mm gun 148 dB 130 mm gun 150 dB AC-130 howitzer 150 dB 152 mm gun 152 dB A distant shot is seen before it is heard, and hills between you and it muffle it. On Mars sound travels at 240 m/s and arrives 14 dB quieter and thinner. On the Moon almost nothing carries (60 dB less): you hear your own tank through its hull. In the sight your own gun sounds from inside the turret, and the world outside dulls."
  },
  {
-  "href": "/docs/audio#topic-section-8",
-  "title": "Mode sounds",
-  "chapter": "Audio and battlefield FX",
-  "text": "In Drone mode an enemy drone buzzes where it flies, rising in pitch as it closes and inaudible beyond about 500 m. Yours spins up as it lifts off, and while it flies you hear the battle from the drone: its motors lead, from a hovering hum to a full-throttle buzz as they work harder, with the wind rising with speed and the feed's hiss growing toward the 850 m range limit and in the last ten seconds of battery. Your tank is just another vehicle out there, though a hit on it still reaches you. The feed cuts out in a burst of static when the drone strikes, is recalled or is lost, and you are back in the tank. From the ground the AC-130 is heard as four turboprops circling overhead, its autocannon thumping and its howitzer booming from the sky. Its crew hears the cabin: the turboprops, the airframe rattling and the wind at the gun ports, the guns firing inside the fuselage, the howitzer's hot case clanging onto the deck before the crew rams the next round by hand, the missile leaving the wing pylon and the selector arming each gun. Each mode opens on its own sound: an air-raid siren for the Horde (and at every wave, with the all-clear after it), a distant barrage for the Frontline (again as the line moves up), a vault door for the Juggernaut (whose own engine and gun sound deeper and heavier than anyone's), broken radio for Infected, a foghorn for Turbo Ball, an armory for Gun Game and the gunship passing overhead for the AC-130; Realistic opens on silence. Caches land with a thud where they arrive. In Gun Game every stage advance plays the weapon changeover and the loader calls the new round; in Infected, being turned plays a grave sting and radio interference."
+  "href": "/docs/audio#engines",
+  "title": "Engines and tracks",
+  "chapter": "Sound and radio",
+  "text": "Each hull carries its own powertrain's sound: gas turbines spool and whine, diesels shift and rumble. Tracks change with the ground and your speed: earth, hard surface, mud, sand, snow and water. An enemy drone buzzes where it flies and rises in pitch as it closes."
  },
  {
-  "href": "/docs/audio#topic-section-9",
+  "href": "/docs/audio#settings",
   "title": "Sound settings",
-  "chapter": "Audio and battlefield FX",
-  "text": "The Sound tab has six sliders: master, engine and mechanical, gunfire and impacts (including your own gun), ambience, interface and music, and crew voices and alarms. Changes apply at once and persist; releasing a slider plays a reference sound at the new level. Crew voices selects National crews or one nation’s voices for all tanks; the choice is saved across battles and reloads, and the concussion muffle and the critical-damage heartbeat can each be turned off. The mix follows what you are doing. Gunfire and your own tank lead: its engine, its gun and the machinery inside it sit above everyone else's, and other engines, ambience, the radio and the interface sit beneath. Pausing lowers the battle, the killcam drops the live fight under its replay, and spectating and the garage have their own balance. To keep a full battle readable, at most 32 sounds play at once on desktop and 16 on mobile, and the lowest-priority sound gives way first."
+  "chapter": "Sound and radio",
+  "text": "Settings › Sound has six sliders and two alarms; changes apply at once. Master volume Engine & mechanical volume Gunfire & impacts volume Ambience volume (wind, birds, garage) Interface & music volume Crew voices & alarms volume Critical-damage heartbeat pulse Concussion muffle and ear ringing after close blasts Every sound is a recording made for Claude of Tanks with ElevenLabs before release; nothing is generated while you play."
  },
  {
   "href": "/docs/interface",
@@ -769,45 +757,45 @@
  },
  {
   "href": "/docs/studio",
-  "title": "Every public frame can be reproduced",
-  "chapter": "Scene Studio and capture",
-  "text": "Scene Studio uses current maps, vehicle builders, articulation, effects, and camera systems to create deterministic stills and video inside the browser."
+  "title": "Film your own battles",
+  "chapter": "Scene Studio",
+  "text": "Any battlefield, any tank and every effect the battle has, on a timeline you direct, taken away as stills or film."
  },
  {
-  "href": "/docs/studio#topic-section-1",
-  "title": "Scene document",
-  "chapter": "Scene Studio and capture",
-  "text": "A scene stores map, seed, actor spec IDs, names, positions, headings, turret and gun pose, camouflage, effects, camera, time, and optional storyboard. Loading rebuilds from current first-party assets. The JSON is a reproducibility record, not a baked screenshot description."
+  "href": "/docs/studio#open",
+  "title": "Open the Studio",
+  "chapter": "Scene Studio",
+  "text": "The Studio is the game's own film set, running in your browser. From the top bar Open Studio in the top bar to start a new scene. Open in Studio Every film on this site has Open in Studio: it stages that film as it was shot. Copy scene link A scene link carries the whole scene; opening it rebuilds that scene in your Studio. Films from this site Object 148 Proto, Tarkhan Steppe Leopard 2 Improved, Ruinspires M1A2 Abrams, Sirocco Wadi Challenger 1 Mk 2, Saltwind Narrows Stridsvagn 121, Frosthollow ZTZ-99 Longwei, Titan Gorge"
  },
  {
-  "href": "/docs/studio#topic-section-2",
-  "title": "Timeline and actors",
-  "chapter": "Scene Studio and capture",
-  "text": "Actor tracks interpolate position and articulation over deterministic time. Storyboard shots animate camera position, target, field of view, roll, and transition. Scrubbing evaluates both without depending on wall-clock time. The five current hero films use four-key rails across five battlefields. Each rail keeps multiple vehicles readable while moving from contact to impact."
+  "href": "/docs/studio#scene",
+  "title": "Set the scene",
+  "chapter": "Scene Studio",
+  "text": "Pick any battlefield, Olympus Basin and Earthrise Basin too, place tanks, aim their turrets and set their state. Time of day Dawn Morning Day Golden hour Sunset Dusk (blue hour) Night Tank states Intact Engine smoking Burning Wrecked Burnt-out wreck Turret blown off Frames 16:9 Film 9:16 Vertical 1:1 Square"
  },
  {
-  "href": "/docs/studio#topic-section-3",
+  "href": "/docs/studio#shots",
+  "title": "Shots and the timeline",
+  "chapter": "Scene Studio",
+  "text": "Add camera shots along the timeline; the camera moves from one to the next. Camera rigs Hero Tracking Rear chase Overhead Detail Lenses Wide · 58° Natural · 42° Tight · 28° Moves between shots Smooth Linear Cut Bézier Spline A sequence runs 1 to 20 s; a film up to 60 s. Speed ramps reach 8× for fast cuts and slow motion. Staged sequences Steel pursuit Track-level escort, a forward gun pass, then a rising battlefield reveal. Verdant Fields · Day · 8 s · 3 shots Desert crossfire A sunset engagement: approach, recoil and tracer, then the impact aftermath. Sirocco Wadi · Sunset · 8 s · 3 shots Coastal reconnaissance A moving coastal patrol with a rear follow, side portrait and sea-facing reveal. Saltmere Bay · Day · 8 s · 3 shots"
+ },
+ {
+  "href": "/docs/studio#effects",
   "title": "Effects",
-  "chapter": "Scene Studio and capture",
-  "text": "Fire, tracer, impact, sparks, dust, machine-gun bursts, track damage, fuel kills, and ammunition-rack kills are placed on the same timeline. Effects resolve from actor anchors or explicit world points. Capture masters preserve motion and effects at 30 frames per second before public encodes are made."
+  "chapter": "Scene Studio",
+  "text": "Every effect is the battle's own, fired from the timeline at a tank, a point or a marker. Main gun shot Muzzle flash Tracer Impact Sparks Explosion Tank kill Dust burst Engine smoke Burning Track break Firing moment Frozen fireball Machine-gun burst Barrage Armour scars Exhaust belch Smoke screen Flare Embers Debris Shockwave Fire field"
  },
  {
-  "href": "/docs/studio#topic-section-4",
-  "title": "Capture pipeline",
-  "chapter": "Scene Studio and capture",
-  "text": "Studio records VP9 through the production renderer. The current publisher preserves the 1920 × 1080 hero masters without another lossy video encode, publishes a native 3840 × 2160 gameplay film, and generates still posters and byte receipts. Public playback uses looping video rather than GIF. A rail fails if vehicles disappear behind scenery, effects erase the silhouette, the camera crosses geometry, or the source resolution falls below its delivery contract."
+  "href": "/docs/studio#film",
+  "title": "Stills and film",
+  "chapter": "Scene Studio",
+  "text": "Take a still at any moment, or render the sequence to a film. Capture PNG saves the frame you see. Export film renders every frame offline with motion blur, drops none, and mixes in the battle's sound, as MP4 or WebM, whichever your browser encodes. Live recording captures the screen in real time instead. Size 1080p 1440p 2160p Rate 24 FPS 30 FPS 60 FPS Blur Off · 1 sample Draft · 4 samples Good · 8 samples Best · 16 samples Master · 32 samples Shake As authored Half Quarter Off"
  },
  {
-  "href": "/docs/studio#topic-section-5",
-  "title": "Still-image campaigns",
-  "chapter": "Scene Studio and capture",
-  "text": "Battle campaigns start from scene JSON, render review captures, tile contact sheets, export 4K frames, run image statistics, and require owner approval. The public archive retains its scene identifiers and review sheets. Run npm run studio:hero:render, npm run studio:hero:publish, npm run studio:evidence:capture, and npm run showcase:check to reproduce the current public media."
- },
- {
-  "href": "/docs/studio#topic-section-6",
-  "title": "Owner-directed media",
-  "chapter": "Scene Studio and capture",
-  "text": "Public screenshots and videos are curated by the owner. The approved map pictures remain available in the battlefield picker and manual atlas. New promotional stills, films or page replacements require an owner-directed brief and review; the existence of a capture tool does not authorize replacing the public archive. For a planned shoot, agree on the vehicle, map, time, action and camera progression first. Use the game’s real rigs and effects, capture with the HUD hidden where appropriate, and review motion, framing, exposure and terrain contact before exporting. Preserve reproducible scene settings and distinguish staged material from ordinary gameplay footage."
+  "href": "/docs/studio#share",
+  "title": "Save and share",
+  "chapter": "Scene Studio",
+  "text": "Copy scene link: the scene travels inside the link. Save JSON downloads the scene file; Load JSON opens one. Slots keep scenes in this browser: click to load, Shift-click to save."
  },
  {
   "href": "/docs/filming",

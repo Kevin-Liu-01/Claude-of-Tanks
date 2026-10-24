@@ -72,6 +72,7 @@
 .dm-figure img{display:block;width:100%;max-width:var(--measure-docs);height:auto;border-radius:var(--r1);background:var(--surface-scene)}
 .dm-chips{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
 .dm-chips li{padding:5px 9px;border-radius:var(--r1);background:var(--chip-fill);font:500 var(--fs-13)/1.1 var(--font-body);color:var(--ink-2)}
+.dm-chips+p{margin-top:var(--s3)}
 /* the tanks, combat and battlefields chapters: hero cards, bars drawn to one scale, line charts, map cards */
 .dm-section>h3,.dm-pair h3,.dm-equip>h3{margin:var(--s5) 0 var(--s3);font:600 var(--fs-20)/1.15 var(--font-display);color:var(--ink-1)}
 .dm-link{display:inline-flex;align-items:center;gap:8px;color:var(--accent-hi);font:600 var(--fs-15)/1.2 var(--font-body);text-decoration:none}
@@ -153,8 +154,68 @@
   .dm-chart svg{font-size:calc(var(--fs-11) * 2)}
   .dm-bars b{min-width:3.5em}
 }
+/* the multiplayer, sound and studio chapters: ways in, seats drawn to scale, steps, linked chips, glyph rows */
+.dm-cell{display:inline-flex;align-items:center;gap:8px}
+.dm-cell .cot-i{flex:none;color:var(--accent)}
+.dm-section p code{padding:1px 5px;border-radius:var(--r1);background:var(--chip-fill);font:500 var(--fs-14)/1.4 var(--font-data);color:var(--ink-1)}
+.dm-roles--ways{grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.dm-roles--ways li>.cot-i{color:var(--accent)}
+.dm-roles--rows{grid-template-columns:minmax(0,1fr);max-width:var(--measure-docs)}
+.dm-roles--rows li{align-items:center;padding:var(--s2) var(--s4)}
+.dm-roles--rows li>.cot-i{margin-top:0;color:var(--ink-3)}
+.dm-roles--rows p,.dm-section .dm-roles--rows p{margin:0;font-size:var(--fs-15)}
+.dm-seats{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:var(--s3) var(--s4);align-items:end;max-width:var(--measure-docs);margin:var(--s4) 0;padding:var(--s4);border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1)}
+.dm-seats__side{display:grid;gap:8px;min-width:0}
+.dm-seats__side b{font:600 var(--fs-14)/1 var(--font-body);color:var(--ink-1)}
+.dm-seats__side ol{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin:0;padding:0;list-style:none}
+.dm-seats__side li{aspect-ratio:1;border-radius:var(--r1);box-shadow:var(--ring-1)}
+.dm-seats__side.is-alpha li.is-on{background:var(--text-info)}
+.dm-seats__side.is-bravo li.is-on{background:var(--text-danger)}
+.dm-seats__side.is-bravo b{text-align:right}
+.dm-seats__side.is-spectator{grid-column:1/-1}
+.dm-seats__side.is-spectator ol{grid-template-columns:repeat(8,minmax(0,1fr));max-width:calc((50% - var(--s4)) * 8 / 7)}
+.dm-seats__vs{align-self:center;font:700 var(--fs-20)/1 var(--font-display);color:var(--ink-3);text-transform:uppercase}
+.dm-seats figcaption{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px 18px;font:400 var(--fs-13)/1.3 var(--font-body);color:var(--ink-2)}
+.dm-seats figcaption span{display:inline-flex;align-items:center;gap:7px}
+.dm-seats figcaption i{width:12px;height:12px;border-radius:var(--r1);box-shadow:var(--ring-1)}
+.dm-seats figcaption i.is-on{background:var(--ink-2);box-shadow:none}
+.dm-chips--links li{padding:0;background:none}
+.dm-chips--links a{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:var(--r1);background:var(--chip-fill);color:var(--ink-2);text-decoration:none}
+.dm-chips--links a .cot-i{color:var(--accent)}
+.dm-chips--links a:hover,.dm-chips--links a:focus-visible{color:var(--ink-1);outline:none;box-shadow:var(--ring-2)}
+.dm-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--s3);margin:var(--s4) 0 0;padding:0;list-style:none}
+.dm-steps li{display:grid;gap:var(--s2);padding:var(--s4);border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1)}
+.dm-steps__n{font:700 var(--fs-36)/1 var(--font-display);color:transparent;-webkit-text-stroke:var(--hollow-stroke) var(--accent)}
+:lang(zh-CN) .dm-steps__n{color:var(--accent);-webkit-text-stroke:0}
+.dm-steps p,.dm-section .dm-steps p{margin:0;font:400 var(--fs-15)/1.5 var(--font-body);color:var(--ink-2)}
+.dm-cell--quotes{align-items:flex-start}
+.dm-cell--quotes .cot-i{margin-top:2px}
+.dm-cell--quotes>span{display:flex;flex-wrap:wrap;gap:2px 10px}
+.dm-cell q{font-weight:600;color:var(--ink-1);white-space:normal}
+.dm-cell q::before,.dm-cell q::after{color:var(--accent)}
+.dm-table--wrap :is(th,td){white-space:normal}
+.dm-delays{display:grid;gap:6px;max-width:var(--measure-docs);margin:0;padding:0;list-style:none}
+.dm-delays li{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.dm-delays b{min-width:5em;font:600 var(--fs-14)/1 var(--font-body);color:var(--ink-1)}
+.dm-delays span{padding:5px 9px;border-radius:var(--r1);background:var(--chip-fill);font-size:var(--fs-13);color:var(--ink-2)}
+.dm-bars--wide b{min-width:13em}
+.dm-roles small{display:block;margin-top:6px;font:500 var(--fs-13)/1.3 var(--font-body);color:var(--ink-3)}
+.dm-takes{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--s3);margin:0;padding:0;list-style:none}
+.dm-takes a{display:grid;grid-template-columns:minmax(0,1fr);overflow:hidden;border-radius:var(--r2);background:var(--surface-plate);box-shadow:var(--ring-1);color:var(--ink-2);text-decoration:none}
+.dm-takes img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;background:var(--surface-scene)}
+.dm-takes span{display:flex;min-width:0;align-items:center;gap:8px;padding:8px 10px;font:500 var(--fs-13)/1.3 var(--font-body)}
+.dm-takes span .cot-i{flex:none;color:var(--accent)}
+.dm-takes b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dm-takes a:hover,.dm-takes a:focus-visible{outline:none;box-shadow:var(--ring-2);color:var(--ink-1)}
 @media (width < 768px){
   .dm-mode{padding:var(--s3)}
+  .dm-takes{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .dm-bars--wide li{flex-wrap:wrap;gap:4px 10px}
+  .dm-bars--wide b{min-width:0;flex:1 0 100%}
+  .dm-seats{grid-template-columns:minmax(0,1fr);padding:var(--s3)}
+  .dm-seats__vs{display:none}
+  .dm-seats__side.is-bravo b{text-align:left}
+  .dm-seats__side.is-spectator ol{grid-template-columns:repeat(8,minmax(0,1fr));max-width:none}
   .dm-step{grid-template-columns:minmax(0,1fr)}
   .dm-mode__media.has-map{grid-template-columns:minmax(0,1fr)}
   .dm-objectives{width:min(240px,70%)}

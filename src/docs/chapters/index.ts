@@ -3,6 +3,9 @@
 // and writes the result into the chapter's page; a page that was not prerendered (or the search index) loads this
 // module on demand, so no chapter page carries the builders or their data up front.
 import { modesSections } from './modes.ts';
+import { studioSections } from './studio.ts';
+import { audioSections } from './audio.ts';
+import { multiplayerSections } from './multiplayer.ts';
 import { battlefieldsSections } from './battlefields.ts';
 import { combatSections } from './combat.ts';
 import { tanksSections } from './tanks.ts';
@@ -12,6 +15,9 @@ import type { RichSection } from './types.ts';
 
 const BUILDERS: Readonly<Record<string, () => RichSection[]>> = {
   modes: modesSections,
+  studio: studioSections,
+  audio: audioSections,
+  multiplayer: multiplayerSections,
   battlefields: battlefieldsSections,
   combat: combatSections,
   tanks: tanksSections,

@@ -17,6 +17,7 @@ import {
   SIXTH_SENSE_DELAY_S, SIXTH_SENSE_SHOW_S, SPOT_LINGER_S, spotRangeM,
 } from '../../sim/spotting.ts';
 import { pictureMarkup } from '../../presentation/responsivePicture.ts';
+import { icon, type IconId } from '../../ui/icons/icon.ts';
 import { t } from '../../ui/i18n.ts';
 import { lineChart, type ChartSeries } from './charts.ts';
 import { fleetTanks, type FleetTank } from './fleet.ts';
@@ -85,8 +86,15 @@ function spotChart(): string {
     y: { min: 0, max: 500, ticks: [100, 200, 300, 400, 500], unit: 'm', label: t('docs.combat.chart.spot') } });
 }
 
+/** Each module's glyph in the sprite (the Gallery's damage workbench draws the same). */
+const MODULE_ICONS: Readonly<Record<string, IconId>> = {
+  gun: 'gun', turretRing: 'turretRing', gunMount: 'gunMount', autoloader: 'autoloader', feedSystem: 'feedSystem', roofGun: 'roofGun',
+  missileRack: 'missileRack', engine: 'engine', transmission: 'transmission', fuelTank: 'fuelTank', ammoRack: 'ammoRack', radio: 'radio',
+  optics: 'optics', trackL: 'track', trackR: 'track',
+};
+
 function moduleTable(): string {
-  const rows = MODULE_IDS.map((id) => `<tr><th scope="row">${esc(t(`garage.module.${id}`))}</th><td class="num">${MODULE_DEFS[id].hp}</td>`
+  const rows = MODULE_IDS.map((id) => `<tr><th scope="row"><span class="dm-cell">${icon(MODULE_ICONS[id] ?? 'damage', { size: 16 })}<span>${esc(t(`garage.module.${id}`))}</span></span></th><td class="num">${MODULE_DEFS[id].hp}</td>`
     + `<td class="num">${pct(MODULE_DEFS[id].damageChance)} %</td></tr>`).join('');
   return `<div class="dm-table" tabindex="0" role="region" aria-label="${esc(t('docs.combat.modulesAria'))}"><table><thead><tr>`
     + `<th scope="col">${esc(t('docs.combat.col.module'))}</th><th scope="col">${esc(t('docs.combat.col.hp'))}</th>`

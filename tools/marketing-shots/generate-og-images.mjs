@@ -44,10 +44,10 @@ export const OG_IMAGE_CARDS = [
   ['docs-performance', 'PERFORMANCE AND LOADING', 'public/media/versus-r1/f7-t90m-column-r5.webp', '50% 0%'],
   ['docs-worlds', 'BATTLEFIELDS & DESTRUCTION', 'public/media/versus-r1/vs03-reservoir-k2-ztz99-r6.webp', '50% 50%'],
   ['docs-ai', 'BOTS & TACTICAL AI', 'public/media/versus-r1/vs08-winter-cv90-bmp3-r6.webp', '50% 50%'],
-  ['docs-multiplayer', 'MULTIPLAYER ROOMS', 'public/media/multiplayer-r1/dual-perspective.webp', '50% 28%', 'contain'],
-  ['docs-audio', 'AUDIO & BATTLEFIELD FX', 'public/media/versus-r1/vs06-coastal-type10-ztz99a2-r6.webp', '50% 50%'],
+  ['docs-multiplayer', 'MULTIPLAYER', 'public/media/multiplayer-r1/dual-perspective.webp', '50% 28%', 'contain'],
+  ['docs-audio', 'SOUND & RADIO', 'public/media/versus-r1/vs06-coastal-type10-ztz99a2-r6.webp', '50% 50%'],
   ['docs-interface', 'INTERFACE & CONTROLS', 'public/media/showcase-r2/17_live_player_hud.webp', '50% 50%', 'contain'],
-  ['docs-studio', 'SCENE STUDIO & CAPTURE', 'public/media/showcase-r2/15_studio_workspace.webp', '50% 50%', 'contain'],
+  ['docs-studio', 'SCENE STUDIO', 'public/media/site50-r14/stills/s33-water-tower.webp', '50% 50%'],
   ['docs-filming', 'FILMING THE MEDIA', 'public/media/site50-r14/stills/s225-verdant-duel.webp', '50% 50%'],
   ['404', 'ROUTE NOT FOUND', 'public/media/versus-r1/vs08-winter-cv90-bmp3-r6.webp', '50% 40%'],
 ];

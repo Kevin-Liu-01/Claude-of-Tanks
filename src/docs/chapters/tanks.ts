@@ -25,7 +25,10 @@ const esc = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, 
 const plain = (html: string): string => html.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
   .replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
 
-const CLASS_ICONS: Partial<Record<string, IconId>> = { mbt: 'classMbt', light: 'classLight', ifv: 'classIfv' };
+const CLASS_ICONS: Readonly<Record<string, IconId>> = {
+  mbt: 'classMbt', medium: 'classMedium', heavy: 'classHeavy', light: 'classLight', ifv: 'classIfv', apc: 'classApc', td: 'classTd', spaa: 'classSpaa',
+  'fire-support': 'classFireSupport',
+};
 const ROLE_ICONS: Readonly<Record<string, IconId>> = {
   breakthrough: 'roleBreakthrough', frontline: 'roleFrontline', flanker: 'roleFlanker', sniper: 'roleSniper', scout: 'roleScout', support: 'roleSupport',
 };

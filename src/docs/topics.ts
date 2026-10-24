@@ -1,5 +1,6 @@
 import { mountDocsIcons, type DocsIconKey } from './docsIcons.ts';
 import { getLocale, t } from '../ui/i18n.ts';
+import { hrefForLocale } from '../ui/localeRouting.ts';
 import { pictureMarkup, stillDataSaver } from '../presentation/responsivePicture.ts';
 import type { RichSection } from './chapters/types.ts';
 
@@ -158,29 +159,17 @@ export const topics: Record<string, TopicDefinition> = {
       ['/media/site50-r14/stills/s06-farm-charge.webp', t('docs.topic.ai.media2')],
     ],
   },
+  // What each shot, warning and engine tells you, quoted and measured from the audio engine (src/docs/chapters/audio.ts).
   audio: {
     label: t('docs.topic.audio.label'),
     title: t('docs.topic.audio.title'),
     lede: t('docs.topic.audio.lede'),
     hero: '/media/site50-r14/loops/s34-furnace-salvo.webm',
     icon: 'audio',
-    // Player-facing guide to the sound engine; docs/AUDIO.md is the engineering source of truth.
-    sectionIcons: ['assets', 'weapons', 'armor', 'loading', 'vehicles', 'radio', 'spatial', 'modes', 'mix'],
-    sections: [
-      [t('docs.topic.audio.s1.t'), t('docs.topic.audio.s1.p1'), t('docs.topic.audio.s1.p2')],
-      [t('docs.topic.audio.s2.t'), t('docs.topic.audio.s2.p1'), t('docs.topic.audio.s2.p2')],
-      [t('docs.topic.audio.s3.t'), t('docs.topic.audio.s3.p1'), t('docs.topic.audio.s3.p2')],
-      [t('docs.topic.audio.s4.t'), t('docs.topic.audio.s4.p1'), t('docs.topic.audio.s4.p2')],
-      [t('docs.topic.audio.s5.t'), t('docs.topic.audio.s5.p1'), t('docs.topic.audio.s5.p2')],
-      [t('docs.topic.audio.s6.t'), t('docs.topic.audio.s6.p1'), t('docs.topic.audio.s6.p2')],
-      [t('docs.topic.audio.s7.t'), t('docs.topic.audio.s7.p1'), t('docs.topic.audio.s7.p2')],
-      [t('docs.topic.audio.s8.t'), t('docs.topic.audio.s8.p1'), t('docs.topic.audio.s8.p2')],
-      [t('docs.topic.audio.s9.t'), t('docs.topic.audio.s9.p1'), t('docs.topic.audio.s9.p2')],
-    ],
-    media: [
-      ['/media/site50-r14/stills/s34-furnace-salvo-close.webp', t('docs.topic.audio.media1')],
-      ['/media/showcase-r2/19_live_sniper.webp', t('docs.topic.audio.media2')],
-    ],
+    sectionIcons: [],
+    sections: [],
+    media: [],
+    rich: true,
   },
   performance: {
     label: t('docs.topic.performance.label'),
@@ -281,24 +270,17 @@ export const topics: Record<string, TopicDefinition> = {
       ['/maps/coastal.webp', t('docs.topic.worlds.media2')],
     ],
   },
+  // Rooms, codes, the local network, seats and who hosts, from the room service's own rules (src/docs/chapters/multiplayer.ts).
   multiplayer: {
     label: t('docs.topic.multiplayer.label'),
     title: t('docs.topic.multiplayer.title'),
     lede: t('docs.topic.multiplayer.lede'),
     hero: '/media/site50-r14/loops/s18-street-knockout.webm',
     icon: 'multiplayer',
-    sectionIcons: ['multiplayer', 'interface', 'perception', 'combat', 'verification'],
-    sections: [
-      [t('docs.topic.multiplayer.s1.t'), t('docs.topic.multiplayer.s1.p1'), t('docs.topic.multiplayer.s1.p2')],
-      [t('docs.topic.multiplayer.s2.t'), t('docs.topic.multiplayer.s2.p1'), t('docs.topic.multiplayer.s2.p2')],
-      [t('docs.topic.multiplayer.s3.t'), t('docs.topic.multiplayer.s3.p1'), t('docs.topic.multiplayer.s3.p2')],
-      [t('docs.topic.multiplayer.s4.t'), t('docs.topic.multiplayer.s4.p1'), t('docs.topic.multiplayer.s4.p2')],
-      [t('docs.topic.multiplayer.s5.t'), t('docs.topic.multiplayer.s5.p1'), t('docs.topic.multiplayer.s5.p2')],
-    ],
-    media: [
-      ['/media/presentation-r1/ui_spectator_switcher.webp', t('docs.topic.multiplayer.media1')],
-      ['/media/home/ui_roster.webp', t('docs.topic.multiplayer.media2')],
-    ],
+    sectionIcons: [],
+    sections: [],
+    media: [],
+    rich: true,
   },
   interface: {
     label: t('docs.topic.interface.label'),
@@ -319,25 +301,19 @@ export const topics: Record<string, TopicDefinition> = {
       ['/media/presentation-r1/ui_mobile.webp', t('docs.topic.interface.media2')],
     ],
   },
+  // Opening, setting, shooting and exporting a scene, from the Studio's own tables and names (src/docs/chapters/studio.ts).
   studio: {
     label: t('docs.topic.studio.label'),
     title: t('docs.topic.studio.title'),
     lede: t('docs.topic.studio.lede'),
     hero: '/media/site50-r14/loops/s33-water-tower.webm',
     icon: 'studio',
-    sectionIcons: ['specification', 'workflow', 'weapons', 'studio', 'critique'],
-    sections: [
-      [t('docs.topic.studio.s1.t'), t('docs.topic.studio.s1.p1'), t('docs.topic.studio.s1.p2')],
-      [t('docs.topic.studio.s2.t'), t('docs.topic.studio.s2.p1'), t('docs.topic.studio.s2.p2')],
-      [t('docs.topic.studio.s3.t'), t('docs.topic.studio.s3.p1'), t('docs.topic.studio.s3.p2')],
-      [t('docs.topic.studio.s4.t'), t('docs.topic.studio.s4.p1'), t('docs.topic.studio.s4.p2')],
-      [t('docs.topic.studio.s5.t'), t('docs.topic.studio.s5.p1'), t('docs.topic.studio.s5.p2')],
-    ],
-    media: [
-      ['/media/showcase-r2/15_studio_workspace.webp', t('docs.topic.studio.media1')],
-      ['/media/site50-r14/frames/sheet-2.webp', t('docs.topic.studio.media2')],
-    ],
+    sectionIcons: [],
+    sections: [],
+    media: [],
+    rich: true,
   },
+
   // How the media rounds were filmed (2026-10-06). The second section holds the take viewer and the third the
   // process, both filled by filming.ts; public/media/filming-r1 is built by tools/media-r5/docs-media.mjs.
   filming: {
@@ -530,6 +506,9 @@ const HERO_TAKE = /\/media\/site50-r14\/loops\/([\w-]+)\.webm$/;
 const camelTake = (take: string): string => take.replace(/-([a-z0-9])/g, (_, c: string) => c.toUpperCase());
 const isTopicId = (value: string): value is TopicId => (TOPIC_ORDER as readonly string[]).includes(value);
 
+/** A manual route in the page's locale (the Chinese pages are prerendered with /cn links, not rewritten on click). */
+const docsHref = (topicId?: string): string => hrefForLocale(topicId ? `/docs/${topicId}` : '/docs', getLocale());
+
 /**
  * A chapter of the Field Manual (bui01/src/pages/08-docs) as markup: the shelf of chapters, the banner (the take under
  * its fade, the breadcrumb, the two-voice title, the take's caption), the reading column (lede, reading time, sections,
@@ -544,7 +523,7 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
   const take = HERO_TAKE.exec(topic.hero)?.[1];
   const caption = take ? t(`media.site50.title.${camelTake(take)}`) : '';
   const shelves = TOPIC_GROUPS.map((shelf) => `<p class="dm-grp"><span data-doc-icon="${shelf.icon}"></span><span>${groupLabel(shelf.key)}</span></p>`
-    + shelf.topics.map((topicId) => `<a href="/docs/${topicId}"${topicId === slug ? ' aria-current="page"' : ''}>${topics[topicId].label}</a>`).join('')).join('');
+    + shelf.topics.map((topicId) => `<a href="${docsHref(topicId)}"${topicId === slug ? ' aria-current="page"' : ''}>${topics[topicId].label}</a>`).join('')).join('');
   const reference = REFERENCE_TOPICS.includes(slug);
   if (topic.rich && !rich) throw new Error(`topics: ${slug} is built from the game's tables: pass its richSections()`);
   const toc = (rich ? rich.map(({ id, title }) => `<a href="#${id}">${title}</a>`)
@@ -552,16 +531,16 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
     + (reference ? `<a href="#reference">${t(`docs.reference.${slug}.title`)}</a>` : '');
   const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
   const neighbour = (topicId: TopicId | undefined, side: 'prev' | 'next'): string => (topicId
-    ? `<a class="cot-c-btn cot-c-btn--ghost dm-pager__${side}" href="/docs/${topicId}"><span data-doc-icon="${topics[topicId].icon}"></span><span>${topics[topicId].label}</span></a>`
+    ? `<a class="cot-c-btn cot-c-btn--ghost dm-pager__${side}" href="${docsHref(topicId)}"><span data-doc-icon="${topics[topicId].icon}"></span><span>${topics[topicId].label}</span></a>`
     : '');
   // the search field leads the shelf (08 .side .search); docsSearch.ts fills its status and hits
   const search = `<div class="dm-search" role="search"><label class="dm-search__field"><span data-doc-icon="search"></span>`
     + `<input type="search" placeholder="${t('docs.search.placeholder')}" aria-label="${t('docs.search.label')}" aria-controls="dmSearchHits" autocomplete="off" spellcheck="false" enterkeyhint="search">`
     + `<kbd class="cot-c-kbd" aria-hidden="true">⌘K</kbd></label><p class="dm-search__status" role="status"></p><div class="dm-search__hits" id="dmSearchHits" hidden></div></div>`;
   return `<div class="dm">`
-    + `<aside class="dm-side" aria-label="${t('docs.topic.navAria')}"><a class="dm-home" href="/docs"><span data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${search}${shelves}</aside>`
+    + `<aside class="dm-side" aria-label="${t('docs.topic.navAria')}"><a class="dm-home" href="${docsHref()}"><span data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${search}${shelves}</aside>`
     + `<div class="dm-main"><header class="dm-banner">${topicHeroMarkup(topic.hero, t('docs.topic.heroAlt', { label: topic.label }), saving)}`
-    + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="/docs">${t('publicNav.fieldManual')}</a><i aria-hidden="true">›</i>`
+    + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="${docsHref()}">${t('publicNav.fieldManual')}</a><i aria-hidden="true">›</i>`
     + `<span>${groupLabel(group.key)}</span><i aria-hidden="true">›</i><span aria-current="page">${topic.label}</span></nav>`
     + `<h1>${titleMarkup(topic.title)}</h1></div>${caption ? `<p class="dm-banner__cap cot-c-cap"><span data-doc-icon="filming"></span><span>${caption}</span></p>` : ''}</header>`
     + `<div class="dm-body"><article class="dm-article${topic.rich ? ' dm-article--wide' : ''}"><p class="dm-lede">${topic.lede}</p>`
