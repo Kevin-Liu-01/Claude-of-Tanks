@@ -1005,7 +1005,9 @@ export function createTallGrass(field: TallGrassField, options: TallGrassOptions
     // grass r2 (the critics: "one species and one colour"): the sward's patch (swardPatch.ts — the tufts read the same
     // field): fresh regrowth, last season's straw, a russet stand, and its light; a reed margin keeps its own olive
     const pt = reedTint ? null : swardPatchAt(x, z, b.kind, _patch);
-    const dryP = Math.max(dry, pt ? 0.55 * pt.cured : 0);
+    // (TallGrassBiome.strawOnDry) last season's straw on the dry ground only, and none in a stand's shade
+    const cured = pt ? 0.55 * pt.cured * (b.strawOnDry ? smoothstep(0.2, 0.6, dry) : 1) : 0;
+    const dryP = Math.max(dry, cured) * (b.strawOnDry ? 1 - smoothstep(0.25, 0.6, woods) : 1);
     const pr = (b.tip[0] * (1 - dryP) + b.dry[0] * dryP) / b.tip[0] * (pt ? pt.r : 1);
     const pg = (b.tip[1] * (1 - dryP) + b.dry[1] * dryP) / b.tip[1] * (pt ? pt.g : 1);
     const pb = (b.tip[2] * (1 - dryP) + b.dry[2] * dryP) / b.tip[2] * (pt ? pt.b : 1);

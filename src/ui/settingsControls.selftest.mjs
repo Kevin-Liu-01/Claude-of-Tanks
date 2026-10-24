@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { getLocale, setLocale } from './i18n.ts';
+import { readFileSync } from 'node:fs';
+import { getLocale, setLocale, t } from './i18n.ts';
 import { battleControlHintGroups } from './settings.ts';
 import { SETTINGS_ACTION_ICONS, SETTINGS_OPTION_ICONS } from './settingsIcons.ts';
 import { uiIconIds, uiIconSVG } from './uiIcons.ts';
@@ -51,6 +52,16 @@ assert.deepEqual([
 const armorSvg = uiIconSVG(SETTINGS_OPTION_ICONS.armorAimOverlay.id, 16);
 assert.match(armorSvg, /href="#i-armorFlashlight"/, 'the armour overlay draws its own glyph');
 assert.doesNotMatch(armorSvg, /#[0-9a-f]{6}/i, 'the armour overlay glyph carries no baked colour');
+
+// (watch-mode-243 follow-up) the resume veil speaks to the layout under it: a touch layout, a battle's or a watched
+// one's, has no click and no Esc, so it taps
+{
+  const source = readFileSync(new URL('./settings.ts', import.meta.url), 'utf8');
+  assert.match(source, /resumeSub\.innerHTML = t\(input\.isTouchLayout\?\.\(\) \? 'settings\.pauseSubTouch' : 'settings\.pauseSub'\);/,
+    'the veil picks its line by the layout when it shows');
+  assert.doesNotMatch(t('settings.pauseSubTouch'), /click|esc/i, 'the touch line names no click and no Esc');
+  assert.match(t('settings.pauseSub'), /Esc/, 'the mouse line keeps its Esc');
+}
 
 console.log('settingsControls.selftest: controls references and exhaustive setting icons passed');
 setLocale(originalLocale);

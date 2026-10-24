@@ -21,7 +21,8 @@ screen.show('victory', {
 });
 const rows = created.filter((e) => e.classes.has('es-tr'));
 const rowOf = (who) => rows.find((r) => r.innerHTML.includes(`>${who}<`));
-const veh = (row) => /<span class="veh">([^<]*)<\/span>/.exec(row?.innerHTML ?? '')?.[1] ?? null;
+// the row's vehicle (brand-ui 245: a narrow sheet's kill and death words follow it in their own span)
+const veh = (row) => /<span class="veh">([^<]*)(?:<span class="dt">[^<]*<\/span>)?<\/span>/.exec(row?.innerHTML ?? '')?.[1] ?? null;
 const pilotRow = rowOf('Claude'), wingRow = rowOf('Wingman'), foeRow = rowOf('Rival');
 assert.ok(pilotRow && wingRow && foeRow, `the roster renders every combatant's row (${rows.length})`);
 const ac130 = killSourceIdentity('ac130').label;

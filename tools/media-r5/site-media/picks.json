@@ -1621,6 +1621,10 @@
         "id": "s23-village-crossroads",
         "still": "moment"
       },
+      "models": {
+        "id": "s03-square-pass",
+        "still": "close"
+      },
       "simulation": {
         "id": "s24-ice-duel",
         "still": "moment"
@@ -1635,6 +1639,14 @@
       },
       "ai": {
         "id": "s04-column-under-fire",
+        "still": "moment"
+      },
+      "multiplayer": {
+        "id": "s16-street-duel",
+        "still": "moment"
+      },
+      "studio": {
+        "id": "s42-assault-above",
         "still": "moment"
       }
     },

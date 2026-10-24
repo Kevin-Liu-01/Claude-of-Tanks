@@ -134,6 +134,13 @@ interface GaragePedestalRuntimeOptions {
     timing: Record<string, number>,
   ): Generator<void, ProgramPreparationOutcome | void, void>;
   nextFrame(): Promise<RuntimeValue>;
+  /**
+   * Optional: resolves once the frame after the current task has painted (frameScheduler nextPaintFrame). An uncached
+   * hero's build starts only after it, so a roster press paints before the build's first slice (click-perf-244: with the
+   * builder and textures ready the switch's promises resolved inside the press's own task, and on a phone its core
+   * slice held the press's paint 1.4-2 s). Absent: the build starts as soon as its builder and textures are ready.
+   */
+  waitForPaint?(): Promise<RuntimeValue>;
   getDeviceTier(): string;
   getPhase(): string;
   isBootComplete(): boolean;
@@ -210,6 +217,7 @@ export function createGaragePedestalRuntime({
   releaseVisual,
   prepareProgramSteps,
   nextFrame,
+  waitForPaint,
   getDeviceTier,
   getPhase,
   isBootComplete,
@@ -753,6 +761,7 @@ export function createGaragePedestalRuntime({
       prebakeSharedTextures(
         getSpec(specId), anisotropy, 'ai', createBudgetYield(6),
       ).catch(() => undefined).then(() => closeStage(record, 'paint', importStartedAt)),
+      waitForPaint?.(),
     ]).then(async () => {
       phases.prebakeMs = Math.round(now() - phaseAt);
       if (!canStage() || buildToken !== pollToken) {

@@ -15,13 +15,15 @@ import {
 const originalLocale = getLocale();
 setLocale('en-US');
 assert.equal(
-  soloBattleLoadingModeLabel('capture_the_flag', 'verdant'),
-  'Capture the Flag · Selected Battlefield',
+  soloBattleLoadingModeLabel('capture_the_flag'),
+  'Capture the Flag',
+  'the chip names the mode alone: the load screen names the battlefield',
 );
+assert.equal(soloBattleLoadingModeLabel('standard'), 'Random Battle · Standard');
 await setLocale('zh-CN'); // the zh-CN catalog loads on demand (FE-P3)
 assert.equal(
-  soloBattleLoadingModeLabel('capture_the_flag', 'verdant'),
-  '夺旗战 · 指定战场',
+  soloBattleLoadingModeLabel('capture_the_flag'),
+  '夺旗战',
   'non-standard battle loading labels stay in the active locale',
 );
 setLocale('en-US');

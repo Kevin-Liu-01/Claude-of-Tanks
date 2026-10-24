@@ -134,6 +134,43 @@ const byId = (tanks, id) => tanks.find((tank) => tank.id === id);
   controller.stop();
 }
 
+// --- the drone's lock: the auto-aim key (and the bar) locks the orbit on the tank in view, lets go, a wreck lets go ------
+{
+  const { tanks, camera, watchCamera, bus, controller } = setup();
+  controller.prepareReveal();
+  controller.open();
+  camera.lookAt(0, 2, 100);
+  camera.updateMatrixWorld(true);
+  bus.emit('ui:autoAimToggle', {});
+  assert.equal(controller.lockedId, 'foe', 'the auto-aim key locks the drone on the tank in the middle of the view');
+  assert.equal(controller.view, 'drone', 'still flying');
+  assert.equal(controller.focusId, null, 'the battle HUD keeps the drone (the lock is no ride)');
+  run(controller, 2);
+  const pivot = new Vector3(0, 3.4, 100);
+  const look = new Vector3();
+  camera.getWorldDirection(look);
+  assert.ok(look.angleTo(pivot.clone().sub(camera.position)) < 0.1, 'the lens holds the locked tank');
+  controller.toggleLock();
+  assert.equal(controller.lockedId, null, 'the bar\'s lock lets go');
+  controller.toggleLock();
+  assert.equal(controller.lockedId, 'foe', 'and locks again');
+  byId(tanks, 'foe').combat.destroyed = true;
+  run(controller, WATCH_RULES.deathHoldS * 0.5);
+  assert.equal(controller.lockedId, 'foe', 'a locked wreck is held a beat');
+  run(controller, WATCH_RULES.deathHoldS);
+  assert.equal(controller.lockedId, null, 'then the drone flies on');
+  assert.equal(controller.view, 'drone');
+  // riding drops the lock; the auto-aim key does nothing on a ride
+  byId(tanks, 'foe').combat.destroyed = false;
+  bus.emit('ui:autoAimToggle', {});
+  assert.equal(controller.lockedId, 'foe');
+  controller.rideId('foe2');
+  assert.equal(watchCamera.lockTarget, null, 'a ride takes the camera off the lock');
+  bus.emit('ui:autoAimToggle', {});
+  assert.equal(watchCamera.lockTarget, null, 'the lock is the drone\'s alone');
+  controller.stop();
+}
+
 // --- the ride-along's handoff on death ----------------------------------------------------------------------------------
 {
   const { tanks, bus, watchCamera, controller } = setup();

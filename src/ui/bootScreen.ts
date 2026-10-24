@@ -142,6 +142,11 @@ const $ = <ElementType extends HTMLElement = HTMLElement>(id: string): ElementTy
 // another frame.
 const BOOT_HERO_SHOTS = TRANSITION_SHOTS;
 const HERO_ROTATE_MS = 9000;
+/** The progress fill: inside a stage it creeps toward CRAWL_CAP of the stage's span with this time constant, and the
+ *  drawn fill eases toward the load with EASE_MS (both in milliseconds of real time). */
+const CRAWL_MS = 2400;
+const CRAWL_CAP = 0.9;
+const EASE_MS = 110;
 
 function afterPaint(): Promise<void> {
   return new Promise((resolve) => {
@@ -264,7 +269,6 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   const elStage = $('cot-boot-stage');
   const elPct = $('cot-boot-pct');
   const elFill = $('cot-boot-fill');
-  const elTicks = $('cot-boot-ticks');
   const elTip = $('cot-boot-tip');
   const elGate = $('cot-boot-gate');
   const elRetry = $('cot-boot-retry');
@@ -292,15 +296,6 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
     }
   }
 
-  const tickEls: HTMLSpanElement[] = [];
-  if (elTicks) {
-    for (let i = 0; i < stages.length; i++) {
-      const s = document.createElement('span');
-      elTicks.appendChild(s);
-      tickEls.push(s);
-    }
-  }
-
   let target = 0;      // where the real load says we are
   let shown = 0;       // eased value actually rendered
   let curKey: string | null = null;
@@ -316,15 +311,25 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   let tipTimer: ReturnType<typeof setInterval> | null = null;
   let tipIdx = Math.floor(Math.random() * tips.length);
 
-  function paint() {
-    // Ease toward the real target so a stage that lands 20 points of progress
-    // in one blocking call still reads as motion rather than a jump.
-    shown += (target - shown) * 0.16;
+  let lastPaint = 0;
+  function paint(now: number) {
+    const dt = lastPaint ? Math.min(100, now - lastPaint) : 16;
+    lastPaint = now;
+    // Inside a stage the fill keeps creeping toward (never onto) the stage's end, so a long stage
+    // still reads as one continuous load; end() and the next begin() carry it on from there.
+    const sp = !finished && curKey ? span.get(curKey) : undefined;
+    if (sp) {
+      const cap = sp[0] + (sp[1] - sp[0]) * CRAWL_CAP;
+      if (target < cap) target += (cap - target) * (1 - Math.exp(-dt / CRAWL_MS));
+    }
+    // Ease toward the target so a stage that lands 20 points of progress in one blocking call
+    // still reads as motion rather than a jump (by time, so a slow frame does not slow the fill).
+    shown += (target - shown) * (1 - Math.exp(-dt / EASE_MS));
     if (target - shown < 0.0015) shown = target;
     if (elFill) elFill.style.width = `${(shown * 100).toFixed(1)}%`;
     if (elPct) elPct.textContent = `${Math.round(shown * 100)}%`;
     raf = 0;
-    if (shown !== target) schedule();
+    if (shown !== target || sp) schedule();
   }
   function schedule() {
     if (raf || !root) return;
@@ -386,7 +391,7 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   }
 
   const api: BootScreen = {
-    /** Enter a stage: bar jumps to its start, label + tick update. */
+    /** Enter a stage: the fill carries on from its start, the label updates. */
     begin(key: string) {
       heartbeat(key);
       curKey = key;
@@ -395,14 +400,12 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
       if (elStage) elStage.textContent = stageLabel(key);
       schedule();
     },
-    /** Leave a stage: bar advances to its end and its tick lights up. */
+    /** Leave a stage: the fill advances to its end. */
     end(key: string) {
       heartbeat(`${key || curKey}:complete`);
       const effectiveKey = key || curKey;
       const sp = effectiveKey ? span.get(effectiveKey) : undefined;
       if (sp && sp[1] > target) target = sp[1];
-      const i = stages.findIndex((x) => x[0] === effectiveKey);
-      if (i >= 0 && tickEls[i]) tickEls[i].classList.add('on');
       schedule();
     },
     /** Sub-progress inside the current stage (0..1) — used by the world build. */
@@ -432,7 +435,6 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
       target = 1;
       shown = Math.max(shown, 0.985);
       schedule();
-      for (const t of tickEls) t.classList.add('on');
       if (elStage) elStage.textContent = mode === 'studio' ? t('boot.stage.studioReady') : t('boot.stage.readyBattle');
       if (!root || bootGateSkipped()) { api.dismiss(); return Promise.resolve(); }
       if (elGate) elGate.classList.add('on');

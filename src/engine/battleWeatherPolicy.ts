@@ -9,7 +9,7 @@ export type BattleWeatherBiome = 'temperate' | 'arid' | 'tropical' | 'cold' | 'c
 type BattleWeatherCondition = 'clear';
 export const BATTLE_TIMES = Object.freeze(['day', 'sunset', 'night'] as const);
 export type BattleTimeOfDay = typeof BATTLE_TIMES[number];
-const TIME_WEIGHTS: Readonly<Record<BattleTimeOfDay, number>> = Object.freeze({
+export const TIME_WEIGHTS: Readonly<Record<BattleTimeOfDay, number>> = Object.freeze({
   day: 60, sunset: 30, night: 10,
 });
 

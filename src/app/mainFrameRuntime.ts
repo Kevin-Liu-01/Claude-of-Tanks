@@ -81,6 +81,8 @@ interface MainFrameRuntimeOptions {
   killcam: KillcamRuntime;
   veilHud(hidden: boolean): void;
   worldFramePresentation: WorldFramePresentationRuntime;
+  /** (perf-245) a camera hop's destination warm: one batch a battle frame, before the scene renders. */
+  destinationWarm?: { update(): void } | null;
   matchModeWorld: MatchModeWorldPresentation;
   audioListener: ListenerPoseRuntime;
   isGaragePresentationDirty(): boolean;
@@ -137,6 +139,7 @@ export function createMainFrameRuntime({
   killcam,
   veilHud,
   worldFramePresentation,
+  destinationWarm = null,
   matchModeWorld,
   audioListener,
   isGaragePresentationDirty,
@@ -194,7 +197,7 @@ export function createMainFrameRuntime({
     world: MainWorld | null,
   ): void => {
     camera.getWorldDirection(forward);
-    world?.update(0, camera.position, forward, null);
+    world?.update(0, camera.position, forward, null, camera);
     sniperFill.update();
     fx?.update(dtSeconds, game.shells, camera, resolveFxSubject);
     updateNightLighting?.();
@@ -287,6 +290,7 @@ export function createMainFrameRuntime({
     const vision=thermal?(camera.userData.flightVision??1):(frame.inBattle&&!frame.killcamActive?camera.userData.scopeVision:0);
     camera.userData.sensorVision=vision;
     thermalVehicles.begin(game.tanks,(vision===1||vision===2),game.player?.team,frame.inBattle?game.timeS:undefined);
+    if (frame.inBattle) destinationWarm?.update();
     try { post.render(dtSeconds, frameWallDtSeconds); }
     finally { thermalVehicles.end(); }
     const frameFinishedAt = profileGarageReturn ? performance.now() : 0;

@@ -1,4 +1,5 @@
 /** Fixed-step flight shared by solo and multiplayer. Hits stay in the normal projectile pipeline. */
+import { botDriven } from './botDriven.ts';
 import { Vector3, Quaternion } from 'three';
 import { createShell, type ShellEntity } from './ballistics.ts';
 import { AERIAL_RULES, DRONE_WARHEAD, type MatchRuleset } from './matchRuleset.ts';
@@ -189,17 +190,17 @@ function launchOrigin(entity:AerialEntity,out:Vector3):void {
 }
 function steerDrone(entity: AerialEntity, v: AerialView, shell: ShellEntity<ShellSpec>, dt: number): void {
   const rules = AERIAL_RULES.drone;
-  if (entity.bot) direction.copy(botDroneAim(shell.pos, entity.input.aimPoint, _botAim)).sub(shell.pos).normalize();
+  if (botDriven(entity)) direction.copy(botDroneAim(shell.pos, entity.input.aimPoint, _botAim)).sub(shell.pos).normalize();
   else direction.copy(entity.input.aimPoint).sub(shell.pos).normalize();
   const wantedYaw = Math.atan2(direction.x, direction.z), wantedPitch = Math.asin(Math.max(-1, Math.min(1, direction.y)));
   const delta = Math.atan2(Math.sin(wantedYaw - v.yaw), Math.cos(wantedYaw - v.yaw));
   v.yaw += Math.max(-rules.turnRadS * dt, Math.min(rules.turnRadS * dt, delta));
   v.pitch += Math.max(-rules.turnRadS * dt, Math.min(rules.turnRadS * dt, wantedPitch - v.pitch));
-  const speed = rules.speedMps * (entity.bot ? 1 : Math.max(-.5, Math.min(1, entity.input.throttle)));
+  const speed = rules.speedMps * (botDriven(entity) ? 1 : Math.max(-.5, Math.min(1, entity.input.throttle)));
   direction.set(Math.sin(v.yaw) * Math.cos(v.pitch), Math.sin(v.pitch), Math.cos(v.yaw) * Math.cos(v.pitch)).multiplyScalar(speed);
-  const strafe = entity.bot ? 0 : Math.max(-1, Math.min(1, entity.input.steer)) * rules.speedMps * .6;
+  const strafe = botDriven(entity) ? 0 : Math.max(-1, Math.min(1, entity.input.steer)) * rules.speedMps * .6;
   direction.x += Math.cos(v.yaw) * strafe; direction.z -= Math.sin(v.yaw) * strafe;
-  if (!entity.bot && entity.input.brake) direction.y += rules.climbMps;
+  if (!botDriven(entity) && entity.input.brake) direction.y += rules.climbMps;
 }
 
 /** The airframe is lost or spent: it struck something, its battery ran out or it flew past the link's range. */
@@ -224,7 +225,7 @@ function recallDrone(entity: AerialEntity, flight: Flight, shell: ShellEntity<Sh
 
 function droneToggleRequested(entity:AerialEntity,flight:Flight,timeS:number):boolean {
   return !!((entity.input.auxiliaryBits??0)&PLAYER_ACTION_BITS.DRONE)
-    || (!!entity.bot&&!flight.shell&&entity.input.fire&&timeS>8&&timeS>=flight.readyAt);
+    || (botDriven(entity)&&!flight.shell&&entity.input.fire&&timeS>8&&timeS>=flight.readyAt);
 }
 
 export function stepAerial(entity: AerialEntity, timeS: number, dt: number, nextId: () => number, launchShell: (shell: ShellEntity<ShellSpec>) => void, world: AerialWorldQuery | null = null): void {
@@ -300,7 +301,7 @@ function advanceDrone(entity:AerialEntity,flight:Flight,shell:ShellEntity<ShellS
     direction.z+=.7*Math.sin(age*1.9+phase)+.3*Math.sin(age*3.7+phase);
     // Owner 2026-10-12: a human pilot flies wherever they steer, down to the ground (deploy 212). Only a bot's
     // airframe takes the look-ahead avoidance; a human's contact is the shell sweep's alone.
-    if(world&&entity.bot)avoidDroneObstacles(world,entity.id,shell.pos,direction);
+    if(world&&botDriven(entity))avoidDroneObstacles(world,entity.id,shell.pos,direction);
   }
   if(v.launching) shell.vel.copy(direction);
   else shell.vel.lerp(direction, 1-Math.exp(-dt*AERIAL_RULES.drone.responseHz));

@@ -373,6 +373,7 @@ void main() {
 
 const PUFF_FRAG_NORMAL = `
 uniform sampler2D uMap;
+uniform float uHeatSmoke;
 varying vec2 vUv;
 varying vec2 vUvA;
 varying vec2 vUvB;
@@ -393,7 +394,8 @@ float pNoise( vec2 p ) {
 void main() {
   float tex = mix( texture2D( uMap, vUvA ).a, texture2D( uMap, vUvB ).a, vFMix );
   // edges thin out with age so old puffs wisp away instead of popping
-  float a = pow( tex, 1.0 + vT * 1.2 ) * vColor.a * softDepthFade();
+  // (245) a heat-imaging camera sees through a cold puff (uHeatSmoke: its share of the opacity it keeps)
+  float a = pow( tex, 1.0 + vT * 1.2 ) * vColor.a * softDepthFade() * uHeatSmoke;
   // (HE look v2, the coordinator: "no spheres. Break the silhouette with noise-eroded edges") the thin half of the card
   // is torn by a two-octave noise riding the puff's own seed and drifting as it ages: where the noise is low the rim is
   // cut away, so a puff's outline is ragged lobes, never a soft round ball; its dense body is untouched
@@ -1553,6 +1555,8 @@ interface ParticleSharing {
   readonly uLightTint: { value: THREE.Color };
   /** (FX lane 10-17) the dark puffs' night floor: a share of the tint's luminance their light never falls under. */
   readonly uNightFloor: { value: number };
+  /** (245) the share of its opacity a cold puff of smoke or dust keeps to this frame's camera (1; less under a heat lens) */
+  readonly uHeatSmoke: { value: number };
   readonly textures: Readonly<Record<'smoke' | 'fire' | 'prop' | 'dust' | 'flash' | 'jet', THREE.Texture>>;
 }
 
@@ -1592,6 +1596,8 @@ export function createParticleSystem(
   const uLightTint = share ? share.uLightTint : { value: new THREE.Color(1, 1, 1) };
   // (FX lane 10-17) the dark puffs' night floor (fxLit): one shared value, the Studio's companion pools read the same
   const uNightFloor = share?.uNightFloor ?? { value: NIGHT_SMOKE_FLOOR };
+  // (245) a heat lens sees through cold smoke and dust (effects.ts THERMAL_SMOKE_ALPHA); a smoke screen's own uniform stays 1
+  const uHeatSmoke = share?.uHeatSmoke ?? { value: 1 };
   // Normal-blended media that honour FX_LIGHT_TINT (setLightTintShading).
   const tintMaterials: THREE.ShaderMaterial[] = [];
   let lateFxUntil = -Infinity;
@@ -1812,6 +1818,7 @@ export function createParticleSystem(
         uCameraFar,
         uLightTint,
         uNightFloor,
+        uHeatSmoke,
       }, localLightUniforms),
       transparent: true,
       depthWrite: false,
@@ -2035,7 +2042,7 @@ export function createParticleSystem(
   // Studio companion seam (see ParticleSystemOptions.share): the exact
   // uniform objects and sprite sheets, never copies.
   const sharing: ParticleSharing = Object.freeze({
-    uTime, uSceneDepth, uSoftViewport, uCameraNear, uCameraFar, uLightTint, uNightFloor,
+    uTime, uSceneDepth, uSoftViewport, uCameraNear, uCameraFar, uLightTint, uNightFloor, uHeatSmoke,
     textures: Object.freeze({
       smoke: smokeTex, fire: fireTex, prop: propTex, dust: dustTex, flash: flashTex, jet: jetTex,
     }),

@@ -127,6 +127,7 @@ const topple = new Function('THREE', 'setToppleAxis', 'settledToppleAngle',
     const writeTreeSlot = () => { throw new Error('Unpartitioned tree must not upload'); };
     const nearMeshes = {}, farMeshes = {};
     let nearTierHeightVersion = 0; // (the near tier's height cache: resetToppled bumps it)
+    let nearCullStale = false; // (the near pools' view cull: crushTree and resetToppled mark its runs stale)
     ${source.slice(crushStart, crushEnd)}
     return { crushTree, resetToppled, treeCrushAnims };
   }`)}`)(THREE, setToppleAxis, settledToppleAngle);

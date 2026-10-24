@@ -15,7 +15,7 @@ import { cloneVehicleMaterial, vehicleAmbientFloorHook } from './materials.ts';
 import { createTank } from './tankFactory.ts';
 import { getSpec } from './specs.ts';
 import { clearJuggernautVisual, prepareGarageTankEnergyVisual } from '../game/juggernautVisual.ts';
-import { programVariantOrigin } from '../engine/programVariants.ts';
+import { programVariantOf, programVariantOrigin } from '../engine/programVariants.ts';
 
 function installCanvasFixture() {
   const documentDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'document');
@@ -177,18 +177,33 @@ try {
     visual.root.traverse((object) => { if (object.isMesh) sourceOf.set(object, object.material); });
     prepareGarageTankEnergyVisual(visual.root, getSpec(id).dims);
     const skins = new Map();
-    // (2026-10-19) a program-variant twin wears its original's skin: one skin per material, as before the split
-    const skinOfOrigin = new Map();
+    // (mode-sheen-perf-243) one skin a drawn material: a program-variant twin wears its own, so a skin draws exactly the
+    // program variants its paint did (one skin over an original and its twins re-resolved its program at each flip,
+    // every frame)
+    const skinOfSource = new Map(), sourcesOfSkin = new Map(), variantsOf = new Map();
     visual.root.traverse((object) => {
       const source = sourceOf.get(object);
       if (!object.isMesh || !source || object.material === source || Array.isArray(source)) return;
       if (!registered.has(programVariantOrigin(source))) return;
       if (!skins.has(object.material)) skins.set(object.material, programVariantOrigin(source));
-      const origin = programVariantOrigin(source);
-      if (origin !== source) twinSkins++;
-      assert.ok((skinOfOrigin.get(origin) ?? object.material) === object.material, `${id}: a twin and its original wear one skin (${origin.name})`);
-      skinOfOrigin.set(origin, object.material);
+      if (programVariantOrigin(source) !== source) twinSkins++;
+      assert.ok((skinOfSource.get(source) ?? object.material) === object.material, `${id}: one skin a drawn material (${source.name})`);
+      skinOfSource.set(source, object.material);
+      const sources = sourcesOfSkin.get(object.material) ?? new Set();
+      sources.add(source);
+      sourcesOfSkin.set(object.material, sources);
+      for (const [material, drawn] of [[object.material, object.material], [source, source]]) {
+        const variants = variantsOf.get(material) ?? new Set();
+        variants.add(programVariantOf(object, drawn));
+        variantsOf.set(material, variants);
+      }
     });
+    for (const [skin, sources] of sourcesOfSkin) {
+      assert.equal(sources.size, 1, `${id}: the skin over ${skins.get(skin).name} replaces one drawn material`);
+      const [source] = sources;
+      assert.deepEqual([...variantsOf.get(skin)].sort(), [...variantsOf.get(source)].sort(),
+        `${id}: the skin over ${skins.get(skin).name} draws exactly its paint's program variants`);
+    }
     let wheelPaint = 0;
     for (const [clone, source] of skins) {
       const label = `${id}: the skin over ${source.name || source.type}`;
@@ -196,7 +211,7 @@ try {
       assert.equal(clone.defines.USE_CSM, 1, `${label}: compiles the cascade branch`);
       assert.equal(clone.defines.CSM_CASCADES, 4, `${label}: with the cascade count`);
       assert.ok('CSM_FADE' in clone.defines, `${label}: and the cascade fade`);
-      assert.equal(clone.customProgramCacheKey(), `${source.customProgramCacheKey()}|tank-mode-energy-preview-v1`,
+      assert.equal(clone.customProgramCacheKey(), `${source.customProgramCacheKey()}|tank-mode-energy-preview-v2`,
         `${label}: the source's program key with the dormant skin's suffix`);
       for (const key of ['COT_WHEEL_PAINT_READABILITY', 'COT_GEAR_CAVITY']) {
         assert.equal(clone.defines[key], source.defines[key], `${label}: the source's ${key}`);
@@ -243,7 +258,7 @@ try {
     ['energySkin', ['m1a1_abrams_hc', 'm60a1', 't72b3m_2022']]]) {
     for (const id of ids) assert.ok(seenKinds.get(kind)?.has(id), `${id}: a ${kind} clone was covered`);
   }
-  assert.ok(twinSkins > 0, `the battle build's twin-drawn meshes wear their originals' skins (${twinSkins})`);
+  assert.ok(twinSkins > 0, `the battle build's twin-drawn meshes wear skins of their own (${twinSkins})`);
 } finally {
   for (const visual of visuals) visual.dispose();
   restoreCanvas();
