@@ -118,8 +118,10 @@ assert.ok(bootFaces.length >= 3 && bootFaces.every((rule) => /font-display:swap/
   'late inline game fonts must replace the fallback instead of abandoning the brand face');
 assert.match(bootHtml, /\.cot-boot-pct \{ width: 64px; flex: 0 0 64px;/,
   'boot percentage updates must keep a stable reserved width');
-assert.match(bootHtml, /\.cot-boot-ticks \{[\s\S]*?min-height: 4px;/,
-  'boot stage ticks must reserve their height before JavaScript mounts them');
+assert.match(bootHtml, /\.cot-boot-bar \{[^}]*height: 4px;/,
+  'the boot fill\'s track reserves its height in the first paint');
+assert.doesNotMatch(bootHtml, /cot-boot-ticks/, 'one continuous fill: no stage ticks');
+assert.match(bootHtml, /#cot-boot-hero \{[^}]*inset: 0;/, 'the boot picture fills the whole screen: no letterbox bars');
 assert.match(bootHtml, /\.cot-boot-tip \{[\s\S]*?height: 84px;[\s\S]*?overflow: hidden;/,
   'rotating boot tips must not resize the vertically centered splash');
 assert.match(bootHtml,

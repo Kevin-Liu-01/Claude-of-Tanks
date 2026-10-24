@@ -253,7 +253,8 @@
        are decoded off-screen, installed at opacity 0, then promoted only
        after two animation frames so their arrival is a real fade rather than
        the old blue -> image flash. The splash chrome itself never replays. */
-    #cot-boot-hero { position: absolute; inset: 5.5vh 0; z-index: 0; overflow: hidden; pointer-events: none; }
+    /* the picture fills the whole screen at every aspect (cover: the height filled, the sides cropped as needed) */
+    #cot-boot-hero { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
     #cot-boot-hero .hly {
       position: absolute; inset: -1px; width: calc(100% + 2px); height: calc(100% + 2px);
       object-fit: cover; object-position: 50% 48%; opacity: 0;
@@ -314,19 +315,17 @@
       font-size: 14px; font-weight: 500; text-align: left; min-height: 14px; color: #c9c5bb;
     }
     .cot-boot-pct { width: 64px; flex: 0 0 64px; font-size: 13px; font-weight: 500; color: #9a9a95; text-align: right; }
-    /* the stages are the bar (the direction's battle-load .reg): each done in paper, the one loading part tungsten */
-    .cot-boot-bar { display: none; }
-    .cot-boot-ticks {
-      display: flex; gap: 4px; min-height: 4px;
+    /* one continuous tungsten fill (bootScreen.ts eases it toward the real load, creeping inside a long stage) */
+    .cot-boot-bar { position: relative; height: 4px; overflow: hidden; background: rgba(246,243,236,.16); }
+    .cot-boot-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: #f0a030; }
+    /* a travelling sheen: the load is alive even inside a long stage */
+    .cot-boot-fill::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.36) 50%, rgba(255,255,255,0) 100%);
+      background-size: 40% 100%; background-repeat: no-repeat;
+      animation: cot-boot-sheen 1.4s linear infinite;
     }
-    .cot-boot-ticks span {
-      flex: 1 1 0; height: 4px; background: rgba(246,243,236,.16);
-      transition: background-color .19s ease;
-    }
-    .cot-boot-ticks span.on { background: #f6f3ec; }
-    .cot-boot-ticks span:first-child:not(.on), .cot-boot-ticks span.on + span:not(.on) {
-      background: linear-gradient(90deg, #f0a030 60%, rgba(246,243,236,.16) 60%);
-    }
+    @keyframes cot-boot-sheen { from { background-position: -45% 0; } to { background-position: 145% 0; } }
 
     /* --- tips + gate ------------------------------------------------------- */
     .cot-boot-tip {
@@ -397,6 +396,7 @@
     }
     @media (prefers-reduced-motion: reduce) {
       #cot-boot-hero .hly { transition-duration: .01ms; }
+      .cot-boot-fill::after { animation: none; }
       #cot-boot.cot-boot-enter .cot-boot-mark,
       #cot-boot.cot-boot-enter .cot-boot-mark .t,
       #cot-boot.cot-boot-enter .cot-boot-mark .r,
@@ -1026,7 +1026,6 @@
           <div class="cot-boot-pct num" id="cot-boot-pct">0%</div>
         </div>
         <div class="cot-boot-bar"><div class="cot-boot-fill" id="cot-boot-fill"></div></div>
-        <div class="cot-boot-ticks" id="cot-boot-ticks"></div>
         <div class="cot-boot-notice" id="cot-boot-notice" aria-live="polite"></div>
       </div>
 
