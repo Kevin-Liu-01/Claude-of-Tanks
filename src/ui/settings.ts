@@ -1,3 +1,4 @@
+import { installPageBehaviours } from './components/pageBehaviours.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 // src/ui/settings.ts — in-game settings panel (Esc in battle, gear in garage).
 //
@@ -476,6 +477,8 @@ const HINT_BATTLES = 3;
  *   toggle:Function,isOpen:()=>boolean,showHints:Function,root:HTMLElement}}
  */
 export function createSettings(opts: SettingsOptions): SettingsRuntime {
+  // the game document's shared behaviours (the kit's hover tip) install with the panel every screen has
+  installPageBehaviours();
   ensureFonts();
   const { input, bus } = opts;
   const isBattleActive = opts.isBattleActive || (() => false);

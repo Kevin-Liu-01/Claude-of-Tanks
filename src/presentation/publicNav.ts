@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
+import { installPageBehaviours } from '../ui/components/pageBehaviours.ts';
 import { bindStaticI18nAuto } from './staticI18n.ts';
 import { getLocale, setLocale, t } from '../ui/i18n.ts';
 import {
@@ -16,6 +17,7 @@ import {
 // deferred GitHub star count.
 
 installResponsiveLayout();
+installPageBehaviours(); // the kit's hover tip
 /** True when the page is moving to its other-locale route (the rest of the page then stands down). */
 export const localeRouteChanged = synchronizeLocaleRoute(getLocale());
 if (!localeRouteChanged) {
