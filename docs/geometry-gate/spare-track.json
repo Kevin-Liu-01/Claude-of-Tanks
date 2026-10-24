@@ -1995,7 +1995,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.989,
-      "host": "turretEquipment<addM3A3Turret@profiles/afvFamily.ts:820>"
+      "host": "turretEquipment<addM3A3Turret@profiles/afvFamily.ts:824>"
      }
     }
    ],
