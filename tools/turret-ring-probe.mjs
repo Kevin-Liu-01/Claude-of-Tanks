@@ -491,7 +491,15 @@ function exteriorHoles(intactTris, destroyedTris, seat, hull, elevations, keepSa
               if (!Number.isFinite(A.zFront[q]) && !Number.isFinite(B.zFront[q])) { rim = true; break; }
             }
           }
-          if (rim) silhouette++; else seeThrough++;
+          if (rim) silhouette++;
+          else {
+            seeThrough++;
+            if (FAR_SAMPLES && (samples.seeN = (samples.seeN || 0) + 1) % 5 === 1 && (samples.see ??= []).length < FAR_SAMPLES) {
+              const q = pixelPoint(v, p, A.zFront[p]).applyMatrix4(toHull);
+              samples.see.push({ el, az, world: pixelPoint(v, p, A.zFront[p]).toArray().map(r4), at: [r4(q.x), r4(q.y), r4(q.z)], r: r4(r),
+                dy: r4(q.y - seat.deckY), was: intactTris.names[A.triFront[p]] });
+            }
+          }
         } else deeperHit++;
         const bin = (Math.floor(r * 10) / 10).toFixed(1);
         byR[bin] = (byR[bin] || 0) + 1;
@@ -507,7 +515,8 @@ function exteriorHoles(intactTris, destroyedTris, seat, hull, elevations, keepSa
     }
   }
   return { changedPx: changed, holePx: holes, holeFarPx: holesFar, toleratedPx: tolerated, reshapedPx: reshaped, seeThroughPx: seeThrough,
-    silhouettePx: silhouette, deeperPx: deeperHit, byR, samples, ...(samples.far ? { far: samples.far } : {}) };
+    silhouettePx: silhouette, deeperPx: deeperHit, byR, samples, ...(samples.far ? { far: samples.far } : {}),
+    ...(samples.see ? { see: samples.see } : {}) };
 }
 function platesOf(root) { const l = []; root.traverse((o) => { if (o.userData?.turretRingPlate) l.push(o); }); return l; }
 function discTris(plate, positions) {
@@ -676,8 +685,15 @@ function liveProbe(id, buildName, camoSeed) {
       }
     }
     // the exterior: the cut hull with its plate (turret hidden) against the intact hull from 80 directions, both dented as
-    // the settled wreck is (exteriorHoles: what counts as a hole); with the player's build, the guard's two openings
+    // the settled wreck is (exteriorHoles: what counts as a hole); with the player's build, the guard's two openings.
+    // (244) The wreck settled again first: the synthetic dents above leave it killed at age 0, its plate at no dent share,
+    // and a settled hull against that plate let grazing rays through between them just inside the rim (m551_sheridan's
+    // ~100 px, every one of them covered by the plate in the game)
     {
+      visual.resetDestroyed();
+      visual.setDestroyed({ pop: true, ageS: SHARE_AGES[SHARE_AGES.length - 1] });
+      plate = platesOf(root)[0];
+      root.updateMatrixWorld(true);
       turret.visible = false;
       const swapped = [];
       root.traverse((o) => { if (o.isMesh && o.geometry?.userData?.turretRingCut && heldBefore.has(o)) { swapped.push([o, o.geometry]); o.geometry = heldBefore.get(o); } });
