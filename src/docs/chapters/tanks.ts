@@ -25,7 +25,10 @@ const esc = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, 
 const plain = (html: string): string => html.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
   .replace(/&quot;/g, '"').replace(/\s+/g, ' ').trim();
 
-const CLASS_ICONS: Partial<Record<string, IconId>> = { mbt: 'classMbt', light: 'classLight', ifv: 'classIfv' };
+const CLASS_ICONS: Readonly<Record<string, IconId>> = {
+  mbt: 'classMbt', medium: 'classMedium', heavy: 'classHeavy', light: 'classLight', ifv: 'classIfv', apc: 'classApc', td: 'classTd', spaa: 'classSpaa',
+  'fire-support': 'classFireSupport',
+};
 const ROLE_ICONS: Readonly<Record<string, IconId>> = {
   breakthrough: 'roleBreakthrough', frontline: 'roleFrontline', flanker: 'roleFlanker', sniper: 'roleSniper', scout: 'roleScout', support: 'roleSupport',
 };
@@ -88,7 +91,11 @@ function equipmentSection(): string {
       + `${item.era === 'modern' ? `<small>${esc(t('docs.tanks.modernOnly'))}</small>` : ''}</div></li>`).join('');
     return `<div class="dm-equip"><h3>${esc(t(`garage.equipment.cat.${cat.id}`))}</h3><ul>${items}</ul></div>`;
   }).join('');
-  return `<p>${esc(t('docs.tanks.equipmentLede', { slots: String(EQUIP_SLOTS), items: String(EQUIPMENT_CATALOG.length) }))}</p><div class="dm-equips">${groups}</div>`;
+  // the Garage's equipment station, cut to 4:3 (public/media/docs-r1 tanks-equipment-crop)
+  const station = pictureMarkup({ src: '/media/docs-r1/tanks-equipment-crop-1280.webp', width: 1280, height: 960, alt: t('docs.tanks.equipmentAlt'),
+    sizes: '(width < 768px) 100vw, 480px', rungs: [{ src: '/media/docs-r1/tanks-equipment-crop-640.webp', width: 640 }, { src: '/media/docs-r1/tanks-equipment-crop-1280.webp', width: 1280 }] }, false);
+  return `<p>${esc(t('docs.tanks.equipmentLede', { slots: String(EQUIP_SLOTS), items: String(EQUIPMENT_CATALOG.length) }))}</p>`
+    + `<figure class="dm-figure dm-figure--crop">${station}</figure><div class="dm-equips">${groups}</div>`;
 }
 
 const KIT_NAMES: Readonly<Record<string, string>> = { repair: 'hud.consumable.repair', first_aid: 'hud.consumable.firstAid', extinguisher: 'hud.consumable.extinguisher' };

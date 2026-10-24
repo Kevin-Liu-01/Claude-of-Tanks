@@ -20,6 +20,8 @@ import { getSpec } from '../src/vehicles/specs.ts';
 import { CONCEPT_PROTOTYPE_CLASS_FILTER, CONCEPT_PROTOTYPE_FILTER_META, VEHICLE_CLASS_META, vehicleFacetSearchWords, vehicleFacetsForId }
   from '../src/vehicles/vehicleFacets.ts';
 import { MAP_IDS } from '../src/world/maps/mapIds.ts';
+import { BATTLE_MODE_IDS, GAME_MODE_DEFINITIONS } from '../src/sim/gameModeCatalog.ts';
+import { srcsetFor, stillRungs } from '../src/presentation/responsivePicture.ts';
 import { mapRegionTags, regionTagIcon } from '../src/ui/regionTags.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -38,15 +40,16 @@ const heroSrcset = () => HERO_RUNGS.items.map((rung) => `${rung.path} ${rung.wid
 const heroDefault = () => HERO_RUNGS.items.find((rung) => rung.width === 1440).path;
 const TAKES = json('public/media/site50-r14/fleet/index.json');
 const SITE = json('public/media/site50-r14/manifest.json');
-// The horizontal lockup (public/brand/lockup.svg: the commander mark and the outlined wordmark, tools/brand-marks.mjs), inline
-// so it paints with the document: the paper parts take the ink, the accent parts (style= or fill=) the accent.
+// The horizontal lockup (public/brand/lockup.svg from tools/brand-marks.mjs: the commander's tank and the outlined
+// wordmark), inline so it paints with the document: the tank and the words take the ink, the commander and the "of" the
+// accent.
 const LOCKUP = readFileSync(join(ROOT, 'public/brand/lockup.svg'), 'utf8');
 function lockupMarkup(titleId) {
   const viewBox = /viewBox="([^"]+)"/.exec(LOCKUP)?.[1];
   const body = LOCKUP.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '').replace(/<!--[\s\S]*?-->/g, '')
     .replace(/stroke="#f6f3ec"/g, 'stroke="currentColor"').replace(/stroke="#f0a030"/g, 'style="stroke:var(--accent)"')
     .replace(/fill="#f6f3ec"/g, 'fill="currentColor"').replace(/fill="#f0a030"/g, 'style="fill:var(--accent)"')
-    .replace(/style="(fill|stroke):#f0a030"/g, 'style="$1:var(--accent)"');
+    .replace(/style="fill:#f0a030"/g, 'style="fill:var(--accent)"');
   if (!viewBox || /#[0-9a-f]{3,8}\b/i.test(body)) throw new Error('home-premiere: public/brand/lockup.svg is not the two-ink lockup');
   return `<svg class="hero__lockup" viewBox="${viewBox}" role="img" aria-labelledby="${titleId}"><title id="${titleId}">Claude of Tanks</title>${body}</svg>`;
 }
@@ -306,7 +309,146 @@ function battlefields() {
     + `<div class="bf-rail" data-map-rail tabindex="0" role="region" aria-labelledby="battlefields-title">${cards}</div></section>`;
 }
 
-const BLOCKS = { hero: heroBlock, versus: versusBlock, fleet: fleetBlock };
+// ---- the beats under the walls (SPEC 12.3.2: combat in motion, modes and mechanics, the kill cam and the Studio) -----
+// Each beat has one primary piece of media and one call; the pictures are the site fifty's (public/media/site50-r14), the
+// mode tiles the Deploy screen's own art once public/media/deploy-r1 carries it.
+const SITE_FILE = new Map(SITE.files.map((file) => [`/${file.path}`, file]));
+const siteFile = (path) => {
+  if (!SITE_FILE.has(path)) throw new Error(`home-premiere: ${path} is not in public/media/site50-r14/manifest.json`);
+  return path;
+};
+const C = '/media/site50-r14';
+/** A muted loop that plays while it is on screen (mediaPlayer.ts data-autoplay-video), named by its catalog title. */
+function loopVideo(id, labelKey, cls = '') {
+  return `<video${cls ? ` class="${cls}"` : ''} muted loop playsinline preload="none" data-poster="${siteFile(`${C}/loops/${id}.jpg`)}" data-autoplay-video`
+    + ` data-i18n-label="${labelKey}" data-label="${esc(text(labelKey))}" aria-hidden="true">`
+    + `<source data-src="${siteFile(`${C}/loops/${id}.webm`)}" data-type="video/webm" data-mobile-src="/media/web-video-r1/${id}-mobile.mp4" data-mobile-type="video/mp4"></video>`;
+}
+
+// 3, combat in motion: the battle reel loops muted (SPEC 12.3.2 beat 3); its cut buttons swap in the trailer, its
+// 30-second cut or its vertical cut, which play with their score on that click (owner 2026-10-19: every new film has a
+// place on the site); beside it, the loops of the camera paths and a knockout
+const MOTION_LOOPS = ['s05-barn-advance', 's18-street-knockout', 's07-lake-shellfire', 's26-minaret-fire', 's27-caravanserai-kill'];
+const CUTS = [['trailer', 'trailer-row', 'home.trailers.trailerAria', 'play'], ['trailer-30', 'trailer-30-row', 'home.trailers.trailer30Aria', ''],
+  ['trailer-vertical', 'trailer-vertical-row', 'home.trailers.trailerVerticalAria', 'phone']];
+function motionBlock() {
+  const loops = MOTION_LOOPS.map((id) => `<figure class="motion-loop cot-c-media cot-c-media--soft">${loopVideo(id, `media.site50.title.${camel(id)}`)}</figure>`);
+  const cuts = CUTS.map(([film, poster, ariaKey]) => {
+    const seconds = String(Math.round(SITE_FILE.get(`${C}/films/${film}.mp4`)?.seconds ?? NaN));
+    if (seconds === 'NaN') throw new Error(`home-premiere: ${film} has no length in the site manifest`);
+    const aria = `aria-label="${esc(text(ariaKey).replace('{seconds}', seconds))}" data-i18n-aria-label="${ariaKey}" data-i18n-vars='{"seconds":"${seconds}"}'`;
+    return { film, seconds, aria, video: `<video controls playsinline preload="none" data-trailer data-poster="${siteFile(`${C}/films/${poster}.jpg`)}" ${aria} hidden>`
+      + `<source src="${siteFile(`${C}/films/${film}.webm`)}" type="video/webm"><source src="${siteFile(`${C}/films/${film}.mp4`)}" type="video/mp4"></video>` };
+  });
+  const buttons = cuts.map((cut, i) => `<button class="cot-c-seg__opt" type="button" aria-pressed="false" data-trailer-cut ${cut.aria}>`
+    + `${CUTS[i][3] ? iconMarkup(CUTS[i][3], 16) : ''}<span class="num" lang="en">${clock(Number(cut.seconds))}</span></button>`).join('');
+  const reel = `<video class="motion-reel" muted loop playsinline preload="none" data-poster="${siteFile(`${C}/films/reel.jpg`)}" data-autoplay-video`
+    + ` data-i18n-label="media.site50.title.reel" data-label="${esc(text('media.site50.title.reel'))}" aria-hidden="true">`
+    + `<source data-src="${siteFile(`${C}/films/reel.webm`)}" data-type="video/webm" data-fallback-src="${siteFile(`${C}/films/reel.mp4`)}" data-fallback-type="video/mp4"`
+    + ` data-mobile-src="/media/web-video-r1/reel-mobile.mp4" data-mobile-type="video/mp4"></video>`;
+  return `<section class="motion" id="trailers" aria-labelledby="motion-title"><div class="home-shell">`
+    + `<header class="home-head"><h2 class="home-h2" id="motion-title">${t('home.motion.title')}</h2>`
+    + `<a class="${btn('', '')}" href="/docs#battle-reels">${iconMarkup('fireGun', 18)}${t('home.reel.cta')}</a></header>`
+    + `<div class="motion-grid"><figure class="motion-trailer" data-trailer-stage>${reel}${cuts.map((cut) => cut.video).join('')}`
+    + `<div class="cot-c-seg motion-cuts" role="group" aria-label="${esc(text('home.trailers.cutsAria'))}" data-i18n-aria-label="home.trailers.cutsAria">${buttons}</div></figure>`
+    + loops.join('') + `</div></div></section>`;
+}
+
+// 6, modes and mechanics: one section, the modes and three sets of mechanics behind one switch, names over pictures
+const MECHANICS = [
+  ['gunnery', 'gun', ['armor', 'ricochet', 'modules', 'ammunition', 'missiles', 'autoloader', 'era', 'thermal', 'roof-guns']],
+  ['battlefield', 'map', ['buildings', 'spotting', 'smoke', 'crushing', 'map-vehicles', 'time-of-day', 'impact', 'suspension', 'field-kit']],
+  ['beyond', 'star', ['replays', 'equipment', 'consumables', 'radio', 'medals', 'dossiers', 'presets', 'bots', 'mobile']],
+];
+// the Deploy screen's mode stills (public/media/deploy-r1) by file; its core tiles are cuts of versus stills, which the
+// duel wall already shows, so the landing takes only the modes' own moments
+const DEPLOY_ART = (() => {
+  try {
+    return new Set(json('public/media/deploy-r1/manifest.json').items
+      .filter((item) => !String(item.source).includes('/versus-r1/')).map((item) => `media/deploy-r1/${item.file}`));
+  } catch { return new Set(); }
+})();
+const LEAD_SIZES = '(width < 768px) 100vw, (width < 1100px) 100vw, 50vw';
+const TILE_SIZES = '(width < 768px) 50vw, (width < 1100px) 50vw, 25vw';
+/** A tile's picture: the 640 rung, the full frame where the tile is the lead; its alt is the catalog's own description. */
+function stillTag(path, altKey, lead) {
+  const base = siteFile(`${C}/home/${path}.webp`), small = siteFile(`${C}/home/${path}-640.webp`);
+  return `<img data-home-slot="${path}" src="${lead ? base : small}" srcset="${small} 640w, ${base} 1280w" sizes="${lead ? LEAD_SIZES : TILE_SIZES}" width="1280" height="720"`
+    + ` alt="${esc(text(altKey))}" data-i18n-alt="${altKey}" loading="lazy" decoding="async">`;
+}
+function modeTile(id, i) {
+  const def = GAME_MODE_DEFINITIONS[id];
+  const deploy = (width) => `media/deploy-r1/${id}-${width}.webp`;
+  // the Deploy screen's clean still where it exists (its alt stays empty: the caption names the mode), the lead's only at
+  // 1280; else the site's mode still
+  const lead = i === 0;
+  const picture = lead && DEPLOY_ART.has(deploy(1280)) && DEPLOY_ART.has(deploy(480))
+    ? `<img src="/${deploy(1280)}" srcset="/${deploy(480)} 480w, /${deploy(1280)} 1280w" sizes="${LEAD_SIZES}" width="1280" height="720" alt="" loading="lazy" decoding="async">`
+    : !lead && DEPLOY_ART.has(deploy(480))
+      ? `<img src="/${deploy(480)}" width="480" height="270" alt="" loading="lazy" decoding="async">`
+      : stillTag(`modes/${id}`, `media.home.modes.${id}`, lead);
+  return `<figure class="play-tile cot-c-media${i === 0 ? ' play-tile--lead' : ''}" data-mode="${id}">${picture}`
+    + `<figcaption class="play-tile__nm">${iconMarkup(def.icon, i === 0 ? 24 : 18)}${t(`playMenu.matchMode.${id}.label`, 'b')}</figcaption></figure>`;
+}
+const mechanicKey = (id) => camel(id);
+const mechanicTile = (id, i) => `<figure class="play-tile cot-c-media${i === 0 ? ' play-tile--lead' : ''}">`
+  + `${stillTag(`mechanics/${id}`, `media.home.mechanics.${mechanicKey(id)}`, i === 0)}`
+  + `<figcaption class="play-tile__nm">${t(`home.mechanics.${mechanicKey(id)}.title`, 'b')}</figcaption></figure>`;
+function playBlock() {
+  const count = (n) => `<span class="cot-c-tabs__count num" lang="en">${n}</span>`;
+  const tabs = [['modes', 'modeStandard', 'home.stats.modes', count('{{COT_BATTLE_MODES}}')],
+    ...MECHANICS.map(([group, icon]) => [group, icon, `home.mechanics.group.${group}`, ''])]
+    .map(([value, icon, key, extra], i) => `<button class="cot-c-seg__opt" type="button" role="radio" data-play-tab="${value}" aria-checked="${i === 0}">`
+      + `${iconMarkup(icon, 16)}${t(key)}${extra}</button>`).join('');
+  const panel = (value, tiles, hidden) => `<div class="play-grid" data-play-panel="${value}"${hidden ? ' hidden' : ''}>${tiles.join('')}</div>`;
+  return `<section class="play" id="modes" aria-labelledby="play-title"><div class="home-shell">`
+    + `<header class="home-head"><h2 class="home-h2" id="play-title">${t('home.play.title')}</h2>`
+    + `<div class="cot-c-seg" role="radiogroup" aria-labelledby="play-title">${tabs}</div></header>`
+    + panel('modes', BATTLE_MODE_IDS.map(modeTile), false)
+    + MECHANICS.map(([group, , ids]) => panel(group, ids.map(mechanicTile), true)).join('')
+    + `<p class="play-more" data-play-panel="modes"><a class="${btn('', '')}" href="/docs/modes">${iconMarkup('manual', 18)}${t('home.modes.cta')}</a></p>`
+    + `</div></section>`;
+}
+
+// the screenshots: every still the screenshot rail and the mosaic showed (owner 2026-10-19: "all our new frames need to
+// go up with no removals of old ones"), in one strip that loads as it scrolls, with the way into the whole library
+const LANDING = json('public/media/landing-r1/manifest.json');
+const LIBRARY_COUNT = json('public/media/library-r3/index.json').count;
+const stillKey = (id) => `media.site50.title.${camel(id)}`;
+function shotsBlock() {
+  const shots = [...LANDING.rail, ...LANDING.mosaic];
+  if (new Set(shots.map((shot) => shot.src)).size !== shots.length) throw new Error('home-premiere: a screenshot repeats');
+  const tiles = shots.map((shot) => {
+    const alt = EN[stillKey(shot.id)] ? `alt="${esc(EN[stillKey(shot.id)])}" data-i18n-alt="${stillKey(shot.id)}"` : `alt="${esc(shot.title)}"`;
+    // the 640 rung on the strip (responsivePicture.ts names it), the full still on a dense screen that asks for it
+    const rungs = stillRungs(siteFile(shot.src));
+    return `<figure class="shots-tile cot-c-media"><img src="${rungs[0].src}" srcset="${srcsetFor(rungs)}" sizes="(width < 768px) 72vw, 22vw"`
+      + ` width="640" height="360" ${alt} loading="lazy" decoding="async"></figure>`;
+  });
+  const arrow = (dir, key) => `<button class="${btn('icon', '')}" type="button" data-rail-${dir}${dir === 'prev' ? ' disabled' : ''} aria-label="${esc(text(key))}" data-i18n-aria-label="${key}">`
+    + `${iconMarkup(dir === 'prev' ? 'chevronLeft' : 'chevronRight', 18)}</button>`;
+  return `<section class="shots" id="screenshots" aria-labelledby="shots-title"><div class="home-shell">`
+    + `<header class="home-head"><h2 class="home-h2" id="shots-title">${t('home.shots.title')}</h2>`
+    + `<div class="shots-acts">${arrow('prev', 'home.shots.previousAria')}${arrow('next', 'home.shots.nextAria')}`
+    + `<a class="${btn('', '')}" href="/docs/filming#library" data-i18n="home.mosaic.library" data-i18n-vars='{"count":"${LIBRARY_COUNT}"}'>`
+    + `${esc(text('home.mosaic.library').replace('{count}', LIBRARY_COUNT))}</a></div></header>`
+    + `<div class="shots-rail" data-shots-rail tabindex="0" role="region" aria-labelledby="shots-title">${tiles.join('')}</div></div></section>`;
+}
+
+// 7 and 8, the kill cam and the Studio: two pictures, each with its name and its one way in
+function replayBlock() {
+  const card = (key, media, href, cta) => `<article class="replay-card" aria-labelledby="replay-${key}"><figure class="replay-card__media">${media}</figure>`
+    + `<div class="replay-card__row">${t(`home.evidence.${key}Title`, 'h2').replace('<h2', `<h2 id="replay-${key}"`)}`
+    + `<a class="${btn('', '36')}" href="${href}">${t(`home.evidence.${cta}`)}</a></div></article>`;
+  const killcam = `<img data-home-slot="features/killcam" src="${siteFile(`${C}/home/features/killcam.webp`)}" srcset="${siteFile(`${C}/home/features/killcam-640.webp`)} 640w, ${C}/home/features/killcam.webp 1920w"`
+    + ` sizes="(width < 1100px) 100vw, 50vw" width="1920" height="1080" alt="${esc(text('media.home.features.killcam'))}" data-i18n-alt="media.home.features.killcam" loading="lazy" decoding="async">`;
+  const studio = `<video data-home-slot="features/studio" muted loop playsinline preload="none" data-poster="${siteFile(`${C}/home/features/studio.jpg`)}" data-autoplay-video`
+    + ` data-i18n-label="home.evidence.studioTitle" data-label="${esc(text('home.evidence.studioTitle'))}" aria-hidden="true">`
+    + `<source data-src="${siteFile(`${C}/home/features/studio.mp4`)}" data-type="video/mp4" data-mobile-src="/media/web-video-r1/home-studio-mobile.mp4" data-mobile-type="video/mp4"></video>`;
+  return `<div class="replay home-shell">${card('killcam', killcam, '/docs/combat', 'killcamCta')}${card('studio', studio, '/studio', 'studioCta')}</div>`;
+}
+
+const BLOCKS = { hero: heroBlock, versus: versusBlock, motion: motionBlock, fleet: fleetBlock, play: playBlock, shots: shotsBlock, replay: replayBlock };
 const PRELOAD = /<link rel="preload"[^>]*as="image"[^>]*fetchpriority="high"[^>]*>/;
 const preloadTag = () => `<link rel="preload" href="${heroDefault()}" as="image" type="image/webp" fetchpriority="high" imagesrcset="${heroSrcset()}" imagesizes="${HERO_SIZES}">`;
 const HOME = join(ROOT, 'site/home.html');

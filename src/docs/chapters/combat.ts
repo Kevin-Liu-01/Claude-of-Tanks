@@ -3,8 +3,9 @@
 // effectiveThickness, SHELL_BEHAVIOR), penetration against range (src/sim/ballistics.ts penAtDistanceMm, for the Leclerc
 // XLR's shells from the fleet's asset table) and spot range against camo (src/sim/spotting.ts spotRangeM). The rules
 // and numbers beside them are the sim's constants; the module table is src/sim/moduleCatalog.ts; the pictures are the
-// Leclerc XLR's own armour and module diagrams (public/icons, drawn from its combat data) and the mechanics stills.
-// Node only (tools/docs-prerender.mjs).
+// Leclerc XLR's own armour and module diagrams (public/icons, drawn from its combat data), the mechanics stills and the
+// battle shots in public/media/docs-r1 (the armour overlay, the kill cam, the spotting lamp); the overlay's key is
+// src/game/input.ts's default. Node only (tools/docs-prerender.mjs).
 import {
   AMMORACK_RELOAD_MULT, CREW_HIT_CHANCE, CREW_HIT_CHANCE_HE, ENGINE_FIRE_CHANCE, FIRE_BASE_TICKS, FIRE_EXTINGUISH_CHANCE,
   FIRE_TICK_HP_FRAC, HEAT_GAP_LOSS_PER_M, OVERMATCH_NO_RICOCHET, REPAIR_S, RICOCHET_MAX_BOUNCES, ROLL_LOW, ROLL_SPAN,
@@ -16,7 +17,9 @@ import {
   CAMO_PAINT_BONUS, MAX_BUSH_BONUS, MAX_SPOT_RANGE_M, MIN_SPOT_RANGE_M, OPTICS_VIEW_FACTOR, RADIO_DAMAGED_FACTOR, SIGNAL_RANGE_M,
   SIXTH_SENSE_DELAY_S, SIXTH_SENSE_SHOW_S, SPOT_LINGER_S, spotRangeM,
 } from '../../sim/spotting.ts';
+import { DEFAULT_BINDINGS, labelForCode } from '../../game/input.ts';
 import { pictureMarkup } from '../../presentation/responsivePicture.ts';
+import { icon, type IconId } from '../../ui/icons/icon.ts';
 import { t } from '../../ui/i18n.ts';
 import { lineChart, type ChartSeries } from './charts.ts';
 import { fleetTanks, type FleetTank } from './fleet.ts';
@@ -34,6 +37,10 @@ const list = (keys: ReadonlyArray<readonly [string, Readonly<Record<string, stri
 
 /** The reference tank whose shells the range chart draws (the fleet's quality exemplar). */
 const REFERENCE_TANK = 'leclerc_xlr';
+
+/** A docs-r1 still (public/media/docs-r1, the media lane's Field Manual shots) as a full-width figure. */
+const docsStill = (slot: string, alt: string): string => `<figure class="dm-figure">${pictureMarkup({ src: `/media/docs-r1/${slot}-1920.webp`, width: 1920, height: 1080,
+  alt, sizes: '(width < 1100px) 100vw, 50vw', rungs: [{ src: `/media/docs-r1/${slot}-640.webp`, width: 640 }, { src: `/media/docs-r1/${slot}-1920.webp`, width: 1920 }] }, false)}</figure>`;
 
 const still = (name: string, alt: string): string => pictureMarkup({ src: `/media/site50-r14/home/mechanics/${name}.webp`, width: 1280, height: 720, alt,
   sizes: '(width < 1100px) 100vw, 50vw', rungs: [{ src: `/media/site50-r14/home/mechanics/${name}-640.webp`, width: 640 },
@@ -85,8 +92,15 @@ function spotChart(): string {
     y: { min: 0, max: 500, ticks: [100, 200, 300, 400, 500], unit: 'm', label: t('docs.combat.chart.spot') } });
 }
 
+/** Each module's glyph in the sprite (the Gallery's damage workbench draws the same). */
+const MODULE_ICONS: Readonly<Record<string, IconId>> = {
+  gun: 'gun', turretRing: 'turretRing', gunMount: 'gunMount', autoloader: 'autoloader', feedSystem: 'feedSystem', roofGun: 'roofGun',
+  missileRack: 'missileRack', engine: 'engine', transmission: 'transmission', fuelTank: 'fuelTank', ammoRack: 'ammoRack', radio: 'radio',
+  optics: 'optics', trackL: 'track', trackR: 'track',
+};
+
 function moduleTable(): string {
-  const rows = MODULE_IDS.map((id) => `<tr><th scope="row">${esc(t(`garage.module.${id}`))}</th><td class="num">${MODULE_DEFS[id].hp}</td>`
+  const rows = MODULE_IDS.map((id) => `<tr><th scope="row"><span class="dm-cell">${icon(MODULE_ICONS[id] ?? 'damage', { size: 16 })}<span>${esc(t(`garage.module.${id}`))}</span></span></th><td class="num">${MODULE_DEFS[id].hp}</td>`
     + `<td class="num">${pct(MODULE_DEFS[id].damageChance)} %</td></tr>`).join('');
   return `<div class="dm-table" tabindex="0" role="region" aria-label="${esc(t('docs.combat.modulesAria'))}"><table><thead><tr>`
     + `<th scope="col">${esc(t('docs.combat.col.module'))}</th><th scope="col">${esc(t('docs.combat.col.hp'))}</th>`
@@ -103,10 +117,15 @@ export function combatSections(): RichSection[] {
   });
   const diagram = (view: 'armor' | 'modules', alt: string): string => `<figure class="dm-diagram"><img src="/icons/${REFERENCE_TANK}_${view}_side.png" width="512" height="256"`
     + ` alt="${esc(alt)}" loading="lazy" decoding="async"><figcaption>${esc(alt)}</figcaption></figure>`;
+  const overlayKey = DEFAULT_BINDINGS.hitboxOverlay;
+  if (!overlayKey) throw new Error('docs: the armour overlay has no default key');
+  // the armour overlay's key cap goes in after escaping: the copy names it as {key}
+  const overlay = `<p>${esc(t('docs.combat.overlay', { key: '\u0000' })).replace('\u0000', `<kbd class="cot-c-kbd">${esc(labelForCode(overlayKey))}</kbd>`)}</p>`;
   const sections: Array<[string, string, string]> = [
     ['penetration', t('docs.combat.penetration'),
       p('docs.combat.penetrationLede', { roll }) + rangeChart(reference.shells, tank)
-      + list([['docs.combat.fact.range', {}], ['docs.combat.fact.roll', { roll }], ['docs.combat.fact.heat', {}]])],
+      + list([['docs.combat.fact.range', {}], ['docs.combat.fact.roll', { roll }], ['docs.combat.fact.heat', {}]])
+      + `<h3>${esc(t('docs.combat.overlayTitle'))}</h3>${overlay}${docsStill('combat-armor', t('docs.combat.overlayAlt'))}`],
     ['angling', t('docs.combat.angling'),
       p('docs.combat.anglingLede') + angleChart()
       + list([['docs.combat.fact.slope', {}], ['docs.combat.fact.apfsds', behavior('APFSDS')], ['docs.combat.fact.ap', behavior('AP')],
@@ -122,13 +141,14 @@ export function combatSections(): RichSection[] {
         ['docs.combat.fact.fire', { chance: pct(ENGINE_FIRE_CHANCE), ticks: String(FIRE_BASE_TICKS), tick: pct1(FIRE_TICK_HP_FRAC), out: pct(FIRE_EXTINGUISH_CHANCE) }],
         ['docs.combat.fact.crew', { hit: pct(CREW_HIT_CHANCE), he: pct(CREW_HIT_CHANCE_HE) }],
         ['docs.combat.fact.optics', { view: pct(1 - OPTICS_VIEW_FACTOR) }],
-        ['docs.combat.fact.radio', { range: String(SIGNAL_RANGE_M), damaged: String(SIGNAL_RANGE_M * RADIO_DAMAGED_FACTOR) }]])],
+        ['docs.combat.fact.radio', { range: String(SIGNAL_RANGE_M), damaged: String(SIGNAL_RANGE_M * RADIO_DAMAGED_FACTOR) }]])
+      + `<h3>${esc(t('docs.combat.killcamTitle'))}</h3>${p('docs.combat.killcam')}${docsStill('combat-killcam', t('docs.combat.killcamAlt'))}`],
     ['spotting', t('docs.combat.spotting'),
       p('docs.combat.spottingLede', { min: String(MIN_SPOT_RANGE_M), max: String(MAX_SPOT_RANGE_M) }) + spotChart()
       + list([['docs.combat.fact.close', { min: String(MIN_SPOT_RANGE_M) }], ['docs.combat.fact.linger', { linger: String(SPOT_LINGER_S) }],
         ['docs.combat.fact.sixth', { delay: String(SIXTH_SENSE_DELAY_S), show: String(SIXTH_SENSE_SHOW_S) }],
         ['docs.combat.fact.firing', {}], ['docs.combat.fact.bushes', { bush: pct(MAX_BUSH_BONUS), paint: pct1(CAMO_PAINT_BONUS) }]])
-      + `<figure class="dm-figure">${still('spotting', t('docs.combat.spottingAlt'))}</figure>`],
+      + docsStill('combat-spotting', t('docs.combat.spottingAlt'))],
   ];
   return sections.map(([id, title, html]) => ({ id, title, html, text: plain(html) }));
 }
