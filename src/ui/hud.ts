@@ -1722,6 +1722,10 @@ html[data-watch=drone] body[data-cot-battle-layout].cot-touch-layout .cot-watch{
 .cot-vehicle-controls>button:not(:has(.sl[data-count],.system-status:not(:empty))) .si{grid-column:1 / 3}
 .cot-vehicle-controls>button .system-status:not(:empty){display:block}
 .cot-vehicle-controls>button .sl[data-count]~.system-status{display:none}
+/* a recalled drone's tile on the touch strip keeps the Returning cue (aerialHud.css data-phase=returning: its amber ink
+   and underline) over the strip tile's plate ring (battleHudLayout.css), by specificity alone (droneReturningCascade.selftest.mjs): at
+   (0,5,3) it outranks the strip's tile at (0,5,2) and yields to the action dock's own cue at (0,6,2) */
+html body[data-cot-battle-layout].cot-touch-layout .cot-vehicle-controls>button.cot-drone-control[data-phase=returning]{opacity:1;color:#ffdc94;box-shadow:inset 0 -2px #efb84e99}
 /* the side kill lanes: an ammo-rack kill's cause is its glyph (its word in the glyph's label and title) */
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d b{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 /* the aim chip's glyph beside its words; a compact chip (the short landscapes, the narrowest portraits) keeps the glyph */
