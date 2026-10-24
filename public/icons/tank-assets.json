@@ -2027804,13 +2027804,13 @@
             "name": "gunner",
             "min": [
               0.4703,
-              -1.056,
-              -0.7962
+              -1.2523,
+              -0.7562
             ],
             "max": [
               0.9297,
-              0.2961,
-              0.0252
+              0,
+              -0.0148
             ],
             "turretLocal": true
           },
@@ -2027818,21 +2027818,21 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.5099,
-              -1.25,
-              -1.1401
+              0.1599,
+              -1.2129,
+              -1.4664
             ],
             "max": [
-              0.9693,
-              0.1377,
-              -0.2974
+              0.5296,
+              -0.01,
+              -0.713
             ],
             "turretLocal": true
           }
         ]
       },
       "geometryHash": "f695be03",
-      "metadataHash": "5b1a8cd8",
+      "metadataHash": "371c04bc",
       "presentationAnchor": {
         "xM": -0.0024,
         "zM": -0.0049
@@ -2027943,24 +2027943,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 86193,
-          "sha256": "23142be9d0bb112b49544cf47f2618359fec372f0292686259c90f96aed510aa"
+          "bytes": 86087,
+          "sha256": "1baadae555e1705b0e69479e74edb00548437560263ccf32ee71b851c4535cdb"
         },
         "modulesSide": {
           "file": "type10_tk_x_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 92290,
-          "sha256": "ddf4f4aedfbcffe97a0a1fc6a4d4241bb593d1a4c6b7dae441dc717ea83da7da"
+          "bytes": 92543,
+          "sha256": "81f135b41635f30b1ab860e88089d0a915f10f1813e8618b98fa28860f08b714"
         },
         "crewSide": {
           "file": "type10_tk_x_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78115,
-          "sha256": "808d284d309dae662fadb9dccfeb5b6bfd1a66f01c7cadce58a7d4ad1b0058d3"
+          "bytes": 78583,
+          "sha256": "489fab18782c181430941ec4d9c898d977cba9d28ed05e16b025f91012f325f2"
         },
         "markings": {
           "file": "type10_tk_x_markings.png",
