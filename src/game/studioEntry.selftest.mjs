@@ -81,7 +81,7 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   const code = stripTypeScriptTypes(`
     function makeStudioEntry(ports) {
     const { ${Object.keys(ports).join(',')} } = ports;
-    let active = false, entering = null, timeScale = 1, recording = false, entryGeneration = 0, buildPlateUp = false;
+    let active = false, entering = null, timeScale = 1, recording = false, entryGeneration = 0, buildPlateUp = false, exitRun = null;
     class EntryAbandoned extends Error {}
     let placeArmed = null, dragActor = null, dragging = false, storyboard = {};
     let selectedShotId = null, shotUidSeq = 1, actorKeyUidSeq = 1;

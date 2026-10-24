@@ -5547,6 +5547,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * @param {{map?:string}} [opts]
    */
   function enter(opts: EnterOptions = {}): Promise<void> {
+    // a press while the exit's transition runs waits for the Garage, then enters (it was dropped: the exit still held active)
+    if (exitRun) return exitRun.then(() => enter(opts), () => enter(opts));
     if (active) return Promise.resolve();
     if (entering) return entering; // share the in-flight entry (load() awaits it)
     const mine: Promise<void> = doEnter(opts).finally(() => { if (entering === mine) entering = null; });
@@ -5708,15 +5710,16 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * half-torn frame is ever visible; the actual teardown runs covered.
    */
   let exiting = false;
+  let exitRun: Promise<unknown> | null = null;
   function exit() {
     commitHistory(); // the last edit reaches the autosave before the Studio closes
     if (!active || exiting) return;
     exiting = true;
-    transition.run(() => doExit(), {
+    exitRun = transition.run(() => doExit(), {
       kicker: 'Scene Studio', title: 'Garage',
       mapId: getWorld()?.mapId,
       progress: false, minShowMs: 250,
-    }).finally(() => { exiting = false; });
+    }).finally(() => { exiting = false; exitRun = null; });
   }
 
   async function doExit() {
