@@ -213,16 +213,14 @@ for (const t of tokens.filter((x) => x.tier === 'component' && typeof x.raw === 
 // The Premiere landing (da5395c763): the headline's last line wears the type package's .t-hollow (src/ui/typeFaces.ts);
 // the h1 casts --hollow-shadow and its hollow line sets a 2 px stroke and drops the doubled shadow (src/presentation/home.css).
 const tHollow = /\.t-hollow\{color:transparent;-webkit-text-stroke:var\(--hollow-stroke,([\d.]+px)\)/.exec(read('src/ui/typeFaces.ts'));
-const landingTitle = /<h1 class="hero__title"[^>]*>((?:(?!<\/h1>)[\s\S])*)<\/h1>/.exec(read('site/home.html'));
-const homeCss = read('src/presentation/home.css');
-assert.ok(tHollow, 'the type package draws .t-hollow transparent, stroked with --hollow-stroke');
-assert.ok(landingTitle && /class="[^"]*\bt-hollow\b[^"]*"/.test(landingTitle[1]),
-  'the landing headline keeps its hollow Latin line (.t-hollow)');
+// (242: the hero's H1 is the outlined lockup, SPEC 3.1; the landing's hollow voice is its section headlines, 02 and 03)
+const landingHollow = /\.home-h2 \.t-hollow\{--hollow-stroke:([\d.]+px);--hollow-ink:[^;]+;text-shadow:([^;}]+)\}/.exec(read('src/presentation/home.css'));
+assert.ok(tHollow && landingHollow, 'the landing headlines keep their hollow Latin line (.t-hollow) and its shadow');
 assert.equal(TOKENS['hollow-fill'], 'transparent', 'hollow type is truly hollow, as on the landing');
-assert.equal(TOKENS['hollow-stroke'], tHollow[1], 'the hollow stroke token is the type package\'s default width');
-assert.match(homeCss, /\.hero__title\{[^}]*text-shadow:var\(--hollow-shadow\)/, 'the landing headline casts the hollow shadow token');
-assert.match(homeCss, /\.hero__title \.t-hollow\{--hollow-stroke:2px;text-shadow:none\}/,
-  'the hero\'s hollow line sets its 2 px stroke on purpose and does not double the headline\'s shadow');
+assert.equal(TOKENS['hollow-stroke'], tHollow[1], 'the shared hollow stroke is the type package\'s default');
+// the section headlines draw the direction's 1.8 px outline at their 60-88 px display size (02 header h2 .fx-hollow)
+assert.equal(landingHollow[1], '1.8px', 'the landing headlines draw the direction\'s 1.8 px outline');
+assert.equal(landingHollow[2], 'var(--hollow-shadow)', 'the landing headlines cast the hollow shadow token');
 // Boot cost (SPEC 16.1): tokens.css at most 4 KB brotli (the shipped file is minified, so this bound is conservative).
 const tokensBrotli = brotliCompressSync(Buffer.from(generatedCss), { params: { [zlib.BROTLI_PARAM_QUALITY]: 11 } }).length;
 assert.ok(tokensBrotli <= 4096, `tokens.css is ${tokensBrotli} B brotli, over the 4 KB boot budget`);

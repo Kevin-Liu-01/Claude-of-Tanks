@@ -48,12 +48,12 @@ const PUBLIC_NAV: readonly string[] = [
 /** The field manual's overview and topic pages (src/docs/docs.css). */
 const DOCS: readonly string[] = [
   ...PUBLIC_NAV,
-  '.docs-hero-actions a', '.docs-hero-route', '.doc-hero-reel figcaption', '.doc-hero-reel figcaption strong', '.docs-evidence dt',
+  '.docs-hero-actions a', '.doc-hero-reel figcaption', '.doc-hero-reel figcaption strong', '.docs-evidence dt',
   '.docs-evidence dd', '.kicker', '.docs-chapters-heading>p', '.docs-chapter-grid span', '.docs-chapter-grid strong', '.toc-head',
-  '.docs-toc a', '.docs-toc a span', '.toc-footer', '.section-index', '.callout', '.callout strong', '.principle p',
+  '.docs-toc a', '.docs-toc a span', '.toc-footer', '.callout', '.callout strong', '.principle p',
   '.aside-card p:first-child', '.aside-card strong', '.aside-card p:last-child', '.aside-card-kicker', '.aside-card-copy',
-  '.aside-card-action', '.topic-nav a', '.topic-section-map strong', '.topic-figure figcaption', '.topic-layout>aside p',
-  '.topic-layout>aside>span:not(.topic-aside-icon)', '.topic-layout>aside a', '.footer-links a', '.footer-mark',
+  '.aside-card-action', '.dm-side a', '.dm-grp', '.dm-crumb', '.dm-meta', '.dm-banner__cap', '.dm-toc a', '.topic-figure figcaption',
+  '.footer-links a', '.footer-mark',
 ];
 
 /** The landing page (src/presentation/home.css). */

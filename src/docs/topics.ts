@@ -386,45 +386,117 @@ export function topicSectionId(index: number): string {
   return `topic-section-${index + 1}`;
 }
 
-function sectionMarkup(section: TopicSection, index: number, icon: DocsIconKey, media?: TopicMedia): string {
-  const [title, ...paragraphs] = section;
-  return `<section class="topic-section" id="${topicSectionId(index)}"><p class="section-index">${String(index + 1).padStart(2, '0')} // ${title}</p><h2><span class="topic-section-icon" data-doc-icon="${icon}"></span><span>${title}</span></h2>${paragraphs.map((text) => `<p>${formatText(text)}</p>`).join('')}${media ? mediaFigure(media) : ''}</section>`;
+type TopicId = typeof TOPIC_ORDER[number];
+type TopicGroupKey = 'mechanics' | 'engineering';
+
+/** The manual's two shelves (08-docs .side .grp): what a player meets in the game, and how it is engineered. */
+const TOPIC_GROUPS: ReadonlyArray<{ readonly key: TopicGroupKey; readonly icon: DocsIconKey; readonly topics: readonly TopicId[] }> = [
+  { key: 'mechanics', icon: 'combat', topics: ['simulation', 'vehicles', 'worlds', 'ai', 'multiplayer', 'audio'] },
+  { key: 'engineering', icon: 'architecture', topics: ['build', 'models', 'rendering', 'performance', 'interface', 'studio', 'filming'] },
+];
+const groupLabel = (key: TopicGroupKey): string => (key === 'mechanics' ? t('docs.group.mechanics') : t('docs.group.engineering'));
+
+/** The title in the direction's two voices (08 h1): its first words solid, its last words in the hollow outline. A
+ *  Chinese title has no spaces and stays one solid line (the type package keeps CJK solid, SPEC 4.7). */
+function titleMarkup(title: string): string {
+  const words = title.split(' ');
+  if (words.length < 2) return `<span>${title}</span>`;
+  const cut = Math.ceil(words.length / 2);
+  return `<span>${words.slice(0, cut).join(' ')}</span> <span class="t-hollow">${words.slice(cut).join(' ')}</span>`;
 }
 
-function renderTopicPage(): void {
-  const slug = location.pathname.split('/').filter(Boolean).at(-1) || 'simulation';
-  const topic = topics[slug] || topics.simulation;
-  document.title = `${topic.label} — ${t('docs.topic.pageTitle')}`;
+/** Minutes to read a topic: 200 Latin words, or 400 Chinese characters, a minute. */
+function readMinutes(topic: TopicDefinition): number {
+  const text = [topic.lede, ...topic.sections.flat()].join(' ');
+  const cjk = (text.match(/[㐀-鿿]/g) ?? []).length;
+  const words = text.replace(/[㐀-鿿]/g, ' ').split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.round(words / 200 + cjk / 400));
+}
 
-  const topicNav = TOPIC_ORDER.map((id) => `<a href="/docs/${id}"${id === slug ? ' aria-current="page"' : ''}><span class="topic-nav-icon" data-doc-icon="${topics[id].icon}"></span><span>${topics[id].label}</span></a>`).join('');
+function sectionMarkup(section: TopicSection, index: number, media?: TopicMedia): string {
+  const [title, ...paragraphs] = section;
+  return `<section class="dm-section" id="${topicSectionId(index)}"><h2>${title}</h2>${paragraphs.map((text) => `<p>${formatText(text)}</p>`).join('')}`
+    + `${media ? mediaFigure(media) : ''}</section>`;
+}
+
+/** "On this page" follows the reader: the section crossing the top third of the screen is the current one. */
+function mountTocSpy(root: HTMLElement): void {
+  const links = [...root.querySelectorAll<HTMLAnchorElement>('.dm-toc a[href^="#"]')];
+  const targets = links.map((link) => document.getElementById(link.hash.slice(1))).filter((el): el is HTMLElement => el !== null);
+  if (!targets.length) return;
+  const observer = new IntersectionObserver((entries) => {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      for (const link of links) {
+        if (link.hash === `#${entry.target.id}`) link.setAttribute('aria-current', 'location');
+        else link.removeAttribute('aria-current');
+      }
+    }
+  }, { rootMargin: '-20% 0px -70%' });
+  for (const target of targets) observer.observe(target);
+}
+
+const HERO_TAKE = /\/media\/site50-r14\/loops\/([\w-]+)\.webm$/;
+const camelTake = (take: string): string => take.replace(/-([a-z0-9])/g, (_, c: string) => c.toUpperCase());
+const isTopicId = (value: string): value is TopicId => (TOPIC_ORDER as readonly string[]).includes(value);
+
+/**
+ * A chapter of the Field Manual (bui01/src/pages/08-docs): the shelf of chapters, the banner (the take under its
+ * fade, the breadcrumb, the two-voice title, the take's caption), the reading column (lede, reading time, sections,
+ * figures), "on this page" with the reader's place, and the neighbouring chapters.
+ */
+function renderTopicPage(): void {
+  const last = location.pathname.split('/').filter(Boolean).at(-1) || 'simulation';
+  const slug: TopicId = isTopicId(last) ? last : 'simulation';
+  const topic = topics[slug];
+  document.title = `${topic.label} — ${t('docs.topic.pageTitle')}`;
   const root = document.querySelector<HTMLElement>('#topicRoot');
   if (!root) throw new Error('technical manual topic root is unavailable');
-  const heroAlt = t('docs.topic.heroAlt', { label: topic.label });
-  const heroMarkup = topicHeroMarkup(topic.hero, heroAlt);
+  const group = TOPIC_GROUPS.find((shelf) => shelf.topics.includes(slug)) ?? TOPIC_GROUPS[0];
+  const order = TOPIC_GROUPS.flatMap((shelf) => shelf.topics);
+  const at = order.indexOf(slug);
+  const take = HERO_TAKE.exec(topic.hero)?.[1];
+  const caption = take ? t(`media.site50.title.${camelTake(take)}`) : '';
+  const shelves = TOPIC_GROUPS.map((shelf) => `<p class="dm-grp"><span data-doc-icon="${shelf.icon}"></span><span>${groupLabel(shelf.key)}</span></p>`
+    + shelf.topics.map((topicId) => `<a href="/docs/${topicId}"${topicId === slug ? ' aria-current="page"' : ''}>${topics[topicId].label}</a>`).join('')).join('');
+  const reference = ['vehicles', 'worlds', 'simulation'].includes(slug);
+  const toc = topic.sections.map(([title], index) => `<a href="#${topicSectionId(index)}">${title}</a>`).join('')
+    + (reference ? `<a href="#reference">${t(`docs.reference.${slug}.title`)}</a>` : '');
   const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
-  const sectionMap = topic.sections.map(([title], index) => `<a href="#${topicSectionId(index)}"><span data-doc-icon="${topic.sectionIcons[index] || topic.icon}"></span><b>${String(index + 1).padStart(2, '0')}</b><strong>${title}</strong></a>`).join('');
-  root.innerHTML = `
-    <header class="topic-hero">${heroMarkup}<div class="topic-hero-shade"></div><div class="shell"><p class="topic-kicker"><span data-doc-icon="${topic.icon}"></span><span>${t('docs.topic.kicker', { label: topic.label })}</span></p><h1>${topic.title}</h1><p>${topic.lede}</p></div></header>
-    <nav class="topic-nav" aria-label="${t('docs.topic.navAria')}"><div class="shell"><a href="/docs"><span class="topic-nav-icon" data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${topicNav}</div></nav>
-    <div class="shell topic-layout"><article><nav class="topic-section-map" aria-label="${t('docs.topic.onThisPage')}">${sectionMap}${['vehicles','worlds','simulation'].includes(slug) ? `<a href="#reference"><strong>${t(`docs.reference.${slug}.title`)}</strong></a>` : ''}</nav>${topic.sections.map((section, index) => sectionMarkup(section, index, topic.sectionIcons[index] || topic.icon, topic.media[index === firstFigureAt ? 0 : index === secondFigureAt ? 1 : -1])).join('')}</article><aside><span class="topic-aside-icon" data-doc-icon="${topic.icon}"></span><p>${t('docs.topic.asideKicker')}</p><strong>${topic.label}</strong><span>${t('docs.topic.asideBody')}</span><a href="/docs">${t('docs.topic.asideLink')}</a></aside></div>`;
+  const neighbour = (topicId: TopicId | undefined, side: 'prev' | 'next'): string => (topicId
+    ? `<a class="cot-c-btn cot-c-btn--ghost dm-pager__${side}" href="/docs/${topicId}"><span data-doc-icon="${topics[topicId].icon}"></span><span>${topics[topicId].label}</span></a>`
+    : '');
+  root.innerHTML = `<div class="dm">`
+    + `<aside class="dm-side" aria-label="${t('docs.topic.navAria')}"><a class="dm-home" href="/docs"><span data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${shelves}</aside>`
+    + `<div class="dm-main"><header class="dm-banner">${topicHeroMarkup(topic.hero, t('docs.topic.heroAlt', { label: topic.label }))}`
+    + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="/docs">${t('publicNav.fieldManual')}</a><i aria-hidden="true">›</i>`
+    + `<span>${groupLabel(group.key)}</span><i aria-hidden="true">›</i><span aria-current="page">${topic.label}</span></nav>`
+    + `<h1>${titleMarkup(topic.title)}</h1></div>${caption ? `<p class="dm-banner__cap cot-c-cap"><span data-doc-icon="filming"></span><span>${caption}</span></p>` : ''}</header>`
+    + `<div class="dm-body"><article class="dm-article"><p class="dm-lede">${topic.lede}</p>`
+    + `<p class="dm-meta"><span data-doc-icon="simulation"></span><span>${t('docs.topic.readTime', { minutes: readMinutes(topic) })}</span></p>`
+    + topic.sections.map((section, index) => sectionMarkup(section, index, topic.media[index === firstFigureAt ? 0 : index === secondFigureAt ? 1 : -1])).join('')
+    + `</article><aside class="dm-toc"><nav aria-label="${t('docs.topic.onThisPage')}">${toc}</nav></aside></div>`
+    + `<nav class="dm-pager" aria-label="${t('docs.topic.navAria')}">${neighbour(order[at - 1], 'prev')}${neighbour(order[at + 1], 'next')}</nav></div></div>`;
   mountDocsIcons(root);
+  mountTocSpy(root);
   const heroVideos = root.querySelectorAll<HTMLVideoElement>('video[data-media-player]');
   if (heroVideos.length) {
     void Promise.all([import('../presentation/mediaPlayer.ts'), import('../presentation/mediaPlayer.css')]).then(([{ mountMediaPlayers }]) => mountMediaPlayers(heroVideos,
       (playing, video) => t(playing ? 'publicPages.video.pauseAria' : 'publicPages.video.playAria', { label: video.dataset.label || '' })));
   }
   const article = root.querySelector<HTMLElement>('article');
-  if (article && ['vehicles', 'worlds', 'simulation'].includes(slug)) {
+  if (article && reference) {
     void import('./reference.ts').then(({mountReference}) => mountReference(article, slug));
   }
   if (article && slug === 'filming') {
     void import('./filming.ts').then(({mountFilming}) => mountFilming(article));
   }
 
-  const navStrip = root.querySelector<HTMLElement>('.topic-nav .shell');
-  const activeTopic = navStrip?.querySelector<HTMLElement>('[aria-current="page"]');
-  if (navStrip && activeTopic && navStrip.scrollWidth > navStrip.clientWidth) {
-    navStrip.scrollLeft = Math.max(0, activeTopic.offsetLeft - (navStrip.clientWidth - activeTopic.offsetWidth) / 2);
+  // the narrow layout folds the shelf into one scrolling row: it opens on the current chapter, without moving the page
+  const shelf = root.querySelector<HTMLElement>('.dm-side');
+  const current = shelf?.querySelector<HTMLElement>('[aria-current="page"]');
+  if (shelf && current && shelf.scrollWidth > shelf.clientWidth) {
+    shelf.scrollLeft = Math.max(0, current.offsetLeft - (shelf.clientWidth - current.offsetWidth) / 2);
   }
 }
 

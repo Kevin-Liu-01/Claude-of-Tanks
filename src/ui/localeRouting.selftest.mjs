@@ -50,7 +50,7 @@ for (const route of PUBLIC_ROUTE_RECORDS) {
   const source = renderProductStats(readFileSync(join(ROOT, route.sourceHtml === 'index.html' || route.sourceHtml === '404.html' ? route.sourceHtml : `site/${route.sourceHtml}`), 'utf8'));
   const localized = localizeHtmlDocument(source, route, 'zh-CN');
   assert.match(localized, /<html\b[^>]*lang="zh-CN"/i, `${route.id} needs canonical HTML language`);
-  assert.match(localized, new RegExp(`<title>${route.id === 'notFound' ? '未找到路线' : '[^<]+'}`),
+  assert.match(localized, new RegExp(`<title>${route.id === 'notFound' ? '页面不在地图上' : '[^<]+'}`),
     `${route.id} needs localized title metadata`);
   if (route.indexable) {
     assert.match(localized, /hreflang="en-US"/);
