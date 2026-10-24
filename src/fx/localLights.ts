@@ -29,16 +29,34 @@ type LocalLightUniforms = {
 const slots = (): THREE.Vector4[] => Array.from({ length: LOCAL_LIGHT_SLOTS }, () => new THREE.Vector4(0, 0, 0, 0));
 export const localLightUniforms: LocalLightUniforms = { uLocalP: { value: slots() }, uLocalC: { value: slots() }, uLocalD: { value: slots() } };
 
-/** The GLSL: the uniforms and localLightAt(world position, skip the burst-flagged slots) -> the light's rgb there. */
+/** The GLSL: the uniforms; localLightAt(world position, skip the burst-flagged slots) -> the light's rgb there;
+ *  localLightAtExcept(..., slot) the same without one slot; localKeyPoint(centre, radius, skip, out pos+range, out rgb)
+ *  -> the slot of the strongest point light reaching a body that size (-1: none), for a reader that lights it itself. */
 export const LOCAL_LIGHT_GLSL = /* glsl */ `
 uniform vec4 uLocalP[ ${LOCAL_LIGHT_SLOTS} ];
 uniform vec4 uLocalC[ ${LOCAL_LIGHT_SLOTS} ];
 uniform vec4 uLocalD[ ${LOCAL_LIGHT_SLOTS} ];
-vec3 localLightAt( vec3 p, float skipBursts ) {
+int localKeyPoint( vec3 c, float r, float skipBursts, out vec4 keyP, out vec3 keyC ) {
+  int key = -1;
+  float best = 0.0;
+  keyP = vec4( 0.0 ); keyC = vec3( 0.0 );
+  for ( int i = 0; i < ${LOCAL_LIGHT_SLOTS}; i++ ) {
+    vec4 lp = uLocalP[ i ];
+    if ( lp.w == 0.0 || ( lp.w < 0.0 && skipBursts > 0.5 ) || uLocalD[ i ].w > -1.5 ) continue;
+    float range = abs( lp.w );
+    float d = max( length( c - lp.xyz ) - r, 0.0 );
+    if ( d >= range ) continue;
+    float q = 1.0 - d / range;
+    float w = dot( uLocalC[ i ].rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) * q * q;
+    if ( w > best ) { best = w; key = i; keyP = vec4( lp.xyz, range ); keyC = uLocalC[ i ].rgb; }
+  }
+  return key;
+}
+vec3 localLightAtExcept( vec3 p, float skipBursts, int skipSlot ) {
   vec3 sum = vec3( 0.0 );
   for ( int i = 0; i < ${LOCAL_LIGHT_SLOTS}; i++ ) {
     vec4 lp = uLocalP[ i ];
-    if ( lp.w == 0.0 || ( lp.w < 0.0 && skipBursts > 0.5 ) ) continue;
+    if ( i == skipSlot || lp.w == 0.0 || ( lp.w < 0.0 && skipBursts > 0.5 ) ) continue;
     float range = abs( lp.w );
     vec3 d = p - lp.xyz;
     float dist = length( d );
@@ -55,6 +73,9 @@ vec3 localLightAt( vec3 p, float skipBursts ) {
     sum += lc.rgb * ( att * cone );
   }
   return sum;
+}
+vec3 localLightAt( vec3 p, float skipBursts ) {
+  return localLightAtExcept( p, skipBursts, -1 );
 }
 `;
 

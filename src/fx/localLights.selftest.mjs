@@ -27,20 +27,36 @@ beginLocalLights(); assert.equal(endLocalLights(), 0); assert.equal(U.uLocalP.va
 // the GLSL's light, mirrored: the medium in a headlight's beam is lit, beside it is not; a point light falls off to its range
 assert.match(LOCAL_LIGHT_GLSL, /float att = 1\.0 - dist \/ range;\s*att \*= att;/);
 assert.match(LOCAL_LIGHT_GLSL, /float cone = ld\.w < -1\.5 \? 1\.0 : smoothstep\( ld\.w, lc\.w, dot\( d \/ max\( dist, 1e-3 \), ld\.xyz \) \);/);
-assert.match(LOCAL_LIGHT_GLSL, /if \( lp\.w == 0\.0 \|\| \( lp\.w < 0\.0 && skipBursts > 0\.5 \) \) continue;/, 'the media skip a burst pulse');
+assert.match(LOCAL_LIGHT_GLSL, /\|\| lp\.w == 0\.0 \|\| \( lp\.w < 0\.0 && skipBursts > 0\.5 \) \) continue;/, 'the media skip a burst pulse');
 const sst = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const spotAt = (p, cosO, cosI) => { const d = Math.hypot(...p); const att = (1 - d / 40) ** 2; return att * sst(cosO, cosI, p[2] / d); };
 const cO = Math.cos(0.43), cI = Math.cos(0.43 * 0.3);
 assert.ok(spotAt([0, 0, 10], cO, cI) > 0.5, 'dust 10 m down the beam is lit');
 assert.ok(spotAt([8, 0, 10], cO, cI) === 0, 'dust beside the beam is not');
 
+// (245) the night's key light: the strongest point light reaching a body (centre, radius) is lit per fragment by the
+// media, the rest per corner; a spot is never the key, nor a skipped burst
+assert.match(LOCAL_LIGHT_GLSL, /int localKeyPoint\( vec3 c, float r, float skipBursts, out vec4 keyP, out vec3 keyC \)/);
+assert.match(LOCAL_LIGHT_GLSL, /\|\| uLocalD\[ i \]\.w > -1\.5 \) continue;/, 'no spot is a key');
+assert.match(LOCAL_LIGHT_GLSL, /if \( i == skipSlot \|\| lp\.w == 0\.0/, 'the key is left out of the per-corner sum');
+assert.match(LOCAL_LIGHT_GLSL, /vec3 localLightAt\( vec3 p, float skipBursts \) \{\s*return localLightAtExcept\( p, skipBursts, -1 \);/);
+// lit per fragment, a fire 3.5 m across on a 12 m column body lights its lower part and leaves its crown dark; lit per
+// corner (the old way) the body's middle took half the corners' light
+{
+  const fire = [0, 2.3, 0], reach = 3.5, att = (p) => { const d = Math.hypot(p[0] - fire[0], p[1] - fire[1], p[2] - fire[2]); return d >= reach ? 0 : (1 - d / reach) ** 2; };
+  const lowCorner = [0, 1.5, 0], highCorner = [0, 13.5, 0], mid = [0, 7.5, 0];
+  const perCorner = (att(lowCorner) + att(highCorner)) / 2;
+  assert.ok(perCorner > 0.2 && att(mid) === 0, `per corner the body's middle took ${perCorner.toFixed(2)}; per fragment ${att(mid)}`);
+}
 // the readers
 const parts = await readFile(new URL('./particles.ts', import.meta.url), 'utf8');
 assert.match(parts, /vEmit \+= vColor\.rgb \* localLightAt\( wpos, 0\.0 \);/, 'the pooled puffs take the local light');
 assert.match(parts, /\}, localLightUniforms\),/, 'their materials hold the shared slots');
 const media = await readFile(new URL('./volumeMedia.ts', import.meta.url), 'utf8');
-assert.match(media, /vLocal = localLightAt\( wpos, 1\.0 \);/, 'the media take it at each corner, the bursts skipped');
-assert.match(media, /col \+= vColor\.rgb \* vLocal \* \( 0\.35 \+ 0\.65 \* cov \);/, 'scattered in the medium\'s own colour');
+assert.match(media, /vLocal = localLightAtExcept\( mix\( mix\( center, wpos, 0\.35 \), wpos, uGrade2\.y \), 1\.0, key \);/,
+  'the media take it at each corner (by day a third of the way in from the heart), the bursts skipped');
+assert.match(media, /col \+= max\( vColor\.rgb, vec3\( 0\.07 \* \( 1\.0 - uGrade2\.y \) \) \) \* \( vLocal \+ vKeyC \* \( keyA \* keyA \) \) \* \( 0\.35 \+ 0\.65 \* cov \);/,
+  'scattered in the medium\'s own colour, the key light with the rest');
 assert.match(media, /\.\.\.localLightUniforms,/, 'the media material holds the shared slots');
 const fx = await readFile(new URL('./effects.ts', import.meta.url), 'utf8');
 assert.match(fx, /updateWreckLight\(\);\s*writeLocalLights\(\);/, 'gathered every frame after the wreck light');
@@ -65,8 +81,8 @@ assert.ok(LOCAL_LIGHTS_DEFINE in mat.defines && LOCAL_LIGHTS_DEFINE in late.defi
 assert.match(parts, /#ifdef FX_LOCAL_LIGHTS\s*\$\{LOCAL_LIGHT_GLSL\}\s*#endif/, 'the puff shader declares the loop only in the variant');
 assert.match(parts, /#ifdef FX_LOCAL_LIGHTS\s*vEmit \+= vColor\.rgb \* localLightAt\( wpos, 0\.0 \);\s*#endif/, 'and reads it only there');
 assert.match(media, /#ifdef FX_LOCAL_LIGHTS\s*varying vec3 vLocal;[^#]*\$\{LOCAL_LIGHT_GLSL\}\s*#endif/, 'the media declare it only in the variant');
-assert.match(media, /#ifdef FX_LOCAL_LIGHTS\s*vLocal = localLightAt\( wpos, 1\.0 \);\s*#endif/);
-assert.match(media, /#ifdef FX_LOCAL_LIGHTS\s*col \+= vColor\.rgb \* vLocal \* \( 0\.35 \+ 0\.65 \* cov \);\s*#endif/);
+assert.match(media, /#ifdef FX_LOCAL_LIGHTS\s*vec4 keyP = vec4\( 0\.0 \); vec3 keyC = vec3\( 0\.0 \);\s*int key = uGrade2\.y > 0\.5 \? localKeyPoint\( center, 0\.5 \* size, 1\.0, keyP, keyC \) : -1;\s*vLocal = localLightAtExcept\([^;]*;\s*vKeyD = [^;]*;\s*vKeyC = [^;]*;\s*#endif/);
+assert.match(media, /#ifdef FX_LOCAL_LIGHTS\s*\/\/[^\n]*\n\s*float keyA = [^;]*;\s*col \+= [^;]*;\s*#endif/);
 assert.match(media, /registerLocalLightMaterial\(material\);/);
 assert.match(parts, /registerLocalLightMaterial\(mat\);/);
 assert.match(fx, /setLocalLightsCompiled\(localLightsForPreset\(resolvePresetName\(\)\)\);\s*onPresetChange\(/, 'the preset picks the variant, and every change');

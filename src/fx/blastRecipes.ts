@@ -1639,8 +1639,15 @@ export function exhaustSpacing(speedMps: number, dk: number): number {
 
 const STEEL: Rgb = [0.055, 0.053, 0.05];
 
-/** One tick of a burning hull's column (stage 1 fresh .. 0 burnt out; scale = the column's own x distance boost). */
-export function columnPuff(C: BlastContext, x: number, y: number, z: number, stage: number, scale: number, bo: number): void {
+/** (245, the night fire's close views: "flames reading as glow") at night (the dark level, 0 day .. 1 night) a column
+ *  body is born this much cooler and cools this many times faster: its own fire glow, 2-3 m wide at the deck and two stops
+ *  over the day's exposure, read as one soft orange ball under the flames. The flames on the deck carry the fire. */
+const COLUMN_NIGHT_HEAT_CUT = 0.6, COLUMN_NIGHT_COOL_K = 1.8;
+
+/** One tick of a burning hull's column (stage 1 fresh .. 0 burnt out; scale = the column's own x distance boost; night =
+ *  the dark level). */
+export function columnPuff(C: BlastContext, x: number, y: number, z: number, stage: number, scale: number, bo: number,
+  night = 0): void {
   const R = C.rand;
   const m = C.m;
   const a = R() * TAU, r = R() * 0.6 * scale;
@@ -1666,7 +1673,7 @@ export function columnPuff(C: BlastContext, x: number, y: number, z: number, sta
   look(m, stage > 0.5 ? SOOT : mix3(SOOT, SMOKE_AGED, 0.3), crown,
     Math.min(0.95, (0.5 + 0.3 * stage) * (gulp ? 1.2 : 0.85 + R() * 0.3)), 0.2, 0.35 + R() * 0.3);
   book(m, 'billow', R, life * (0.85 + R() * 0.3));
-  heat(m, 0.55 * stage, 2.4);
+  heat(m, 0.55 * stage * (1 - COLUMN_NIGHT_HEAT_CUT * night), 2.4 * (1 + COLUMN_NIGHT_COOL_K * night));
   C.media(m);
 }
 

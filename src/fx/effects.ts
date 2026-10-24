@@ -682,8 +682,10 @@ const THERMAL_FIRE_COOL = 0.3;
  *  smoke and dust, but they drew at full opacity to it: from the gunship a wreck's own column laid dark noise-edged blots
  *  over its hot hull. Under a heat-imaging camera a cold puff (pooled or simulated) keeps this share of its opacity; hot gas
  *  and a burst's lit heart keep all of it; a smoke screen (its own shader) keeps all. 233 tried a quarter (withdrawn with
- *  the wreck curve); a little under half keeps the column's shape in the lens. */
-const THERMAL_SMOKE_ALPHA = 0.45;
+ *  the wreck curve). (245 r2: the pinned re-take's crops at 0.45 still showed soft dark blots over the hottest deck at
+ *  7-20 s) a fifth: soot's micron particles barely touch long-wave light, so cold smoke is a faint veil to the lens and
+ *  only the hot gas over the fire stays solid. */
+const THERMAL_SMOKE_ALPHA = 0.2;
 /** the grade's own vision code (engine/post.ts uThermal): 1 infrared, 2 thermal (heat); 0 daylight, 3 intensified */
 function imagesHeat(camera: THREE.Camera | null | undefined): boolean {
   const ud = camera?.userData as { sensorVision?: number; thermalFlight?: boolean; flightVision?: number } | undefined;
@@ -736,6 +738,8 @@ const MUZZLE_LIGHT_RANGE = 12;
  *  muzzle, as a burst's own pulse does (blastRecipes' albedoK): snow returns about four times turf's light, so a third
  *  of the peak, sand two thirds. */
 const MUZZLE_LIGHT_REF_MM = 122.5, MUZZLE_LIGHT_BORE_POW = 1.2;
+/** (245) a gun under this bore (mm) throws no ground ring at its muzzle (emitMuzzleGroundBlast) */
+const MUZZLE_RING_MIN_MM = 20;
 const MUZZLE_LIGHT_SNOW_K = 0.33, MUZZLE_LIGHT_SAND_K = 0.66;
 /** The muzzle light's hue by day ("r5: less saturated kiss"), and (240) at night a propellant flame's warm yellow-orange
  *  (muzzleLightPulse, by the dark level) */
@@ -836,8 +840,11 @@ const NIGHT_SMOKE_GLOW_UP_M = 0.4, NIGHT_SMOKE_GLOW_K = 3.5, NIGHT_SMOKE_GLOW_RE
 /** (240) a burning tank wreck's pooled light at night (updateWreckLight): over its deck (m: among its flames' tops, so the
  *  turret's roof under it never burns white while the ground round it takes a pool), its gain on the day's, its reach (m;
  *  the day's 12) and its hue (a fire's yellow-orange: the kill orange painted the hull red at night). (245, the critic's
- *  close views: "the ground pool falls off too slowly toward the camera") 3.5 / 20 m -> 2.6 / 13 m */
-const NIGHT_FIRE_LIGHT_UP_M = 2.0, NIGHT_FIRE_LIGHT_K = 2.6, NIGHT_FIRE_LIGHT_RANGE_M = 13, NIGHT_FIRE_LIGHT_HEX = 0xff9848;
+ *  close views: "the ground pool falls off too slowly toward the camera") 3.5 / 20 m -> 2.6 / 13 m; (245 r2: the close
+ *  views still preferred main's tighter light, the mid views ours) set among the tongues (2 -> 1.2 m over the deck),
+ *  2.0 x, out to 8 m: the deck and the hull's sides burn warm, the ground takes a pool of a few metres that is gone by
+ *  the window's edge (three's range window, (1 - (d / range)^4)^2: under half at 6 m) */
+const NIGHT_FIRE_LIGHT_UP_M = 1.2, NIGHT_FIRE_LIGHT_K = 2.0, NIGHT_FIRE_LIGHT_RANGE_M = 8, NIGHT_FIRE_LIGHT_HEX = 0xff9848;
 const SHELL_BURST_COLUMN_S = 14; // a shell hit's smoke-only column (the Studio's stand-in blast; no wreck burns)
 // r5 column-continuity rebuild: 0.05 (was 0.11) — the 9 Hz cadence of very
 // large puffs is what let the column macro-structure fall apart in motion
@@ -2675,8 +2682,15 @@ function* createFxSteps(
     const gy = groundY(pos.x, pos.z);
     const hK = THREE.MathUtils.clamp(1 - (pos.y - gy - 1.2) / 3.4, 0, 1);
     if (hK <= 0.05) return;
-    spawnShockRing(pos.x + dir.x * 1.2, pos.z + dir.z * 1.2,
-      Math.max(0, -birthOffset), 0.42 + 0.22 * hK, 0.7 * (0.5 + 0.5 * hK));
+    // (245, the muzzle light's critic: "neither build makes the lit area much smaller for the smaller flashes") the ground
+    // ring sweeps and shows by the bore (a 30 mm shot's half a 125 mm gun's), lit warm as it leaves the muzzle; a machine
+    // gun throws none (the coax raised a 125 mm gun's 10 m ring)
+    const boreMm = Number.isFinite(caliberMm) && caliberMm > 0 ? caliberMm : MUZZLE_LIGHT_REF_MM;
+    if (boreMm >= MUZZLE_RING_MIN_MM) {
+      const boreK = THREE.MathUtils.clamp(Math.sqrt(boreMm / MUZZLE_LIGHT_REF_MM), 0.3, 1.2);
+      spawnShockRing(pos.x + dir.x * 1.2, pos.z + dir.z * 1.2,
+        Math.max(0, -birthOffset), (0.42 + 0.22 * hK) * boreK, 0.7 * (0.5 + 0.5 * hK) * Math.min(1, boreK));
+    }
     if (!dust) return; // destruction-fx lane: the media layer lifts the ground's own dust (blastRecipes muzzleBlast)
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2 + rng() * 0.6;
@@ -3944,7 +3958,8 @@ function* createFxSteps(
       // over the hull in the kill's first frame; wave 266: six bodies on a fixed beat rose as a chain of beads)
       const colScale = (burn ? 1.45 : 1.3) * dk;
       for (let i = 0; i < 3; i++) {
-        mediaColumnPuff(blast, pos.x, Math.max(pos.y, gy), pos.z, 1, colScale, birthOffset + 0.7 + i * 0.45 + rng() * 0.3);
+        mediaColumnPuff(blast, pos.x, Math.max(pos.y, gy), pos.z, 1, colScale, birthOffset + 0.7 + i * 0.45 + rng() * 0.3,
+          tracers.darkLevel());
       }
       // (integration, 2026-10-09) media's shell burst (the Studio's stand-in blast on open ground) keeps its shorter,
       // smoke-only column on this tier too: no flame licks over bare ground and no smolder (shellBurstColumn.selftest)
@@ -4093,25 +4108,23 @@ function* createFxSteps(
       // the overdraw and the sort (six burning hulls would otherwise hold ~560 live puffs)
       const lod = dk > 1.4 ? 0.5 : dk > 1.15 ? 0.72 : 1;
       if (rng() < (COLUMN_TICK_S / 0.16) * lod) {
-        mediaColumnPuff(blast, col.pos[0], col.pos[1], col.pos[2], stage, col.scale * dk / Math.sqrt(lod), birthOffset);
+        mediaColumnPuff(blast, col.pos[0], col.pos[1], col.pos[2], stage, col.scale * dk / Math.sqrt(lod), birthOffset,
+          tracers.darkLevel());
       }
       // (233) its flames die down with its fire (flameOf); a car's are tongues along its cabin
       const fk = flameOf(col);
       if (col.car) emitCarFlames(col, fk, dk, birthOffset);
-      // (233) by day a tank wreck's lick is a tongue (emitColumnTongue); at night main's round lick
-      else if (rng() < (0.70 + 0.30 * stage) * fk && !nightFire()) emitColumnTongue(col, fk, dk, birthOffset);
-      else if (nightFire() && rng() < (0.70 + 0.30 * stage) * fk) {
-        _puffO.pos[0] = col.pos[0] + (rng() - 0.5) * 1.2;
-        _puffO.pos[1] = col.pos[1] + 0.95 + rng() * 0.55;
-        _puffO.pos[2] = col.pos[2] + (rng() - 0.5) * 1.2;
-        _puffO.vel[0] = (rng() - 0.5) * 0.6; _puffO.vel[1] = 1.0 + rng() * 0.9; _puffO.vel[2] = (rng() - 0.5) * 0.6;
-        _puffO.life = 0.30 + rng() * 0.28;
-        _puffO.size0 = (1.15 + rng() * 0.4) * col.scale * dk * (0.55 + 0.45 * fk);
-        _puffO.size1 = (0.75 + rng() * 0.3) * col.scale * dk * (0.55 + 0.45 * fk);
-        _puffO.rot = rng() * Math.PI * 2; _puffO.rotVel = (rng() - 0.5) * 3;
-        col3(0xffcf70, _puffO.col0); col3(0xff5a10, _puffO.col1);
-        _puffO.alpha = 0.95; _puffO.grav = 1.4; _puffO.birthOffset = birthOffset - rng() * 0.15;
-        particles.emit('fire', _puffO);
+      // (233) by day a tank wreck's lick is a tongue (emitColumnTongue); (245) at night the deck's flame-cut tongues
+      // (emitNightTongue), and more often than not a smaller second one: this tier (the desktop's) kept main's round
+      // licks at night, born 1-1.5 m
+      // over the hull's foot (inside most hulls) at 1.2-1.6 m across and 0.95 alpha, so the 240 tongues never drew where
+      // the critics looked ("the flame shapes are effectively identical"; "a soft orange ball or glow")
+      else if (rng() < (0.70 + 0.30 * stage) * fk) {
+        if (!nightFire()) emitColumnTongue(col, fk, dk, birthOffset);
+        else {
+          emitNightTongue(col, fk, dk, birthOffset);
+          if (rng() < 0.7) emitNightTongue(col, fk * 0.7, dk, birthOffset);
+        }
       }
       return;
     }

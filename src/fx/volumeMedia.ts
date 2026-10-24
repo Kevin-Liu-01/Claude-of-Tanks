@@ -216,6 +216,8 @@ varying vec2 vDetail;
 varying vec3 vSoft;       // card-local uv, 1 for the billow medium (its softened silhouette)
 #ifdef FX_LOCAL_LIGHTS
 varying vec3 vLocal;      // (EF.10) the local lights at this corner: headlights, the muzzle, burning wrecks
+varying vec4 vKeyD;       // (245) at night the key fire light, lit per fragment: this corner less its seat, its range
+varying vec3 vKeyC;       // and its rgb
 ${LOCAL_LIGHT_GLSL}
 #endif
 ${FOG_PARS_V}
@@ -227,7 +229,7 @@ void main() {
     vW = vec4( 0.0 ); vWfb = vec2( 0.0 ); vHeat = 0.0; vMirror = 1.0; vT = 0.0; vFade = 1.0; vParticleDepth = 1e9;
     vFeather = 1.0; vThick = 0.0; vGlow = 0.0; vSoft = vec3( 0.5, 0.5, 0.0 );
     #ifdef FX_LOCAL_LIGHTS
-      vLocal = vec3( 0.0 );
+      vLocal = vec3( 0.0 ); vKeyD = vec4( 0.0 ); vKeyC = vec3( 0.0 );
     #endif
     gl_Position = vec4( 0.0, 0.0, 2.0, 1.0 );
     #ifdef USE_FOG
@@ -348,8 +350,17 @@ void main() {
   // body's heart to the corner: a column body's corners stood metres out of a fire's few-metre reach while its heart sat
   // over the flames; at night (uGrade2.y) at the corner, as main (the integrator's critic: the night smoke over-lit far
   // above the fire)
+  // (245, the night fire's close views: "the smoke lit too high") at night the strongest point light reaching the body (a
+  // burning wreck's fire on its smoke) is lit per fragment (vKeyD: the corner less the light's seat, linear on the card,
+  // so its length is exact everywhere on it): lit per corner, a 9-18 m column body whose lower corners stood in the
+  // fire's few-metre reach carried its light linearly to its upper corners, washing the column orange-brown metres over
+  // the flames. By day every light stays per corner, as it was.
   #ifdef FX_LOCAL_LIGHTS
-    vLocal = localLightAt( mix( mix( center, wpos, 0.35 ), wpos, uGrade2.y ), 1.0 );
+    vec4 keyP = vec4( 0.0 ); vec3 keyC = vec3( 0.0 );
+    int key = uGrade2.y > 0.5 ? localKeyPoint( center, 0.5 * size, 1.0, keyP, keyC ) : -1;
+    vLocal = localLightAtExcept( mix( mix( center, wpos, 0.35 ), wpos, uGrade2.y ), 1.0, key );
+    vKeyD = key >= 0 ? vec4( wpos - keyP.xyz, keyP.w ) : vec4( 0.0 );
+    vKeyC = key >= 0 ? keyC : vec3( 0.0 );
   #endif
   // (fx 8q, wave 381's pack: the collapse dust "darker and browner than A's warm lit tan"; full-resolution crops showed the
   // same puffs dark olive-brown in B against walls in full sun) no cloud shade on the media: 8c's per-vertex cloud shade
@@ -408,6 +419,8 @@ varying float vThick;
 varying float vGlow;
 #ifdef FX_LOCAL_LIGHTS
 varying vec3 vLocal;
+varying vec4 vKeyD;
+varying vec3 vKeyC;
 #endif
 varying vec3 vSoft;
 ${FOG_PARS_F}
@@ -555,7 +568,9 @@ void main() {
   // (233) by day soot scatters a fire's light at 7 % at least (at its own ~3 % albedo the flames' light on their smoke
   // base was lost under the sun's); at night (uGrade2.y) at its own albedo, or the column washes cream
   #ifdef FX_LOCAL_LIGHTS
-    col += max( vColor.rgb, vec3( 0.07 * ( 1.0 - uGrade2.y ) ) ) * vLocal * ( 0.35 + 0.65 * cov );
+    // (245) the night's key fire light, its reach honoured over the whole body
+    float keyA = vKeyD.w > 0.0 ? max( 1.0 - length( vKeyD.xyz ) / vKeyD.w, 0.0 ) : 0.0;
+    col += max( vColor.rgb, vec3( 0.07 * ( 1.0 - uGrade2.y ) ) ) * ( vLocal + vKeyC * ( keyA * keyA ) ) * ( 0.35 + 0.65 * cov );
   #endif
   #ifdef USE_FOG
     #ifdef FOG_EXP2
