@@ -1911172,24 +1911172,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 88521,
-          "sha256": "b5062e3565bf9abce0fe702c6f2a9b1c7e0afa9fc4448530a7125db8f4d533ec"
+          "bytes": 88413,
+          "sha256": "00a60b0a87ba13280f06490cb1a31f204653e22314d44811c632ffedea78d0a9"
         },
         "modulesSide": {
           "file": "t90sm_2013_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 89004,
-          "sha256": "9f9a9f87cf581f64caf43b959a1b08060b178b943e72104c4503fb7cf75f3d9e"
+          "bytes": 89185,
+          "sha256": "eb07595b450d788f0844ae59a0f4042427110155b4bca2a6daec2031ffe1c88d"
         },
         "crewSide": {
           "file": "t90sm_2013_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77160,
-          "sha256": "0fe2458d9aeb94c2a2ccc3cc0fe66800eaa64e41e7a50123087f6ddd84a31947"
+          "bytes": 76828,
+          "sha256": "9d3e747ddbe4a6610715cba464537c63698f0523448bce8fa3316d6a1ff572ed"
         },
         "markings": {
           "file": "t90sm_2013_markings.png",
