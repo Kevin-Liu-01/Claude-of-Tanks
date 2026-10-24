@@ -145,6 +145,8 @@ interface AbramsHullConfig {
     readonly bowStations?: readonly Vec2Tuple[];
   };
   readonly engineZ: number;
+  /** The engine grille beds' length (default 0.78 m scaled); a shorter deck plateau takes shorter beds. */
+  readonly engineBedLength?: number;
   readonly glacisTopZ: number;
   readonly periZ?: number;
   readonly periX?: number;
@@ -1404,7 +1406,7 @@ function abramsHull(P: AbramsBuilderPort, g: AbramsHullConfig): void {
       for (const side of [-1, 1]) {
         // (r5 softSeams: from the rear's grazing deck angle the two grille
         // beds read as ink-black slatted bars on a deck the ref fuses)
-        P.add(g.softSeams ? 'hullShadow' : 'hullDark', box(bw * 0.48, 0.02, 0.78 * s), side * bw * 0.31, deckAt(g, ez) + 0.006, ez);
+        P.add(g.softSeams ? 'hullShadow' : 'hullDark', box(bw * 0.48, 0.02, g.engineBedLength ?? 0.78 * s), side * bw * 0.31, deckAt(g, ez) + 0.006, ez);
         for (const k of KIT.grilleIndices(P.q, 4, 2)) {
           P.add('hullDetail', box(bw * 0.44, 0.018, 0.045), side * bw * 0.31, deckAt(g, ez) + 0.010, ez + (k - 1.5) * 0.18 * s);
         }
@@ -5819,8 +5821,13 @@ const AX_HULL: AbramsHullConfig = {
   deck: [[3.97, 1.20], [3.86, 1.22], [3.74, 1.33], [3.55, 1.37], [3.30, 1.40],
     [3.10, 1.42], [2.98, 1.42], [2.88, 1.34], [2.68, 1.37], [2.52, 1.45],
     [2.36, 1.51], [2.20, 1.49], [2.02, 1.44], [1.70, 1.42], [1.20, 1.46],
-    [0.20, 1.54], [-0.60, 1.60], [-0.85, 1.50], [-1.30, 1.49], [-1.48, 1.62],
-    [-1.60, 1.72], [-2.28, 1.76], [-3.34, 1.76],
+    // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the dip runs on to -2.46 at 1.55-1.585
+    // and the 1.76 engine deck begins at -2.75, past the reach of the turret's long front (its underside 1.59-1.69 to
+    // 2.5 m off the ring's axis); rising from -1.48 the deck stood 12-17 cm in it at the reversed bearings. The ramp
+    // steepens past -2.54 to meet the louvre panels' fore edge (1.734 at -2.625). The -0.60 crest stays under the
+    // turret's 1.587 sides at rest.
+    [0.20, 1.54], [-0.60, 1.575], [-0.85, 1.50], [-1.30, 1.49], [-1.48, 1.55],
+    [-2.46, 1.585], [-2.54, 1.645], [-2.625, 1.735], [-2.75, 1.76], [-3.34, 1.76],
     [-3.52, 1.71], [-3.70, 1.68], [-3.82, 1.56], [-3.97, 1.42]],
   // AXDED-R1 (dedicated round 2026-08-07): the workorder front rows read the
   // ref's underside FLOOR at 0.412 across |x| < 1.05 (28 columns of proc
@@ -5854,7 +5861,8 @@ const AX_HULL: AbramsHullConfig = {
   // exact class the flag was built for — the plate rendered blank camo
   // with every fitting buried). buildAbramsX authors its kit ON the wall.
   noRearFace: true,
-  engineZ: -2.95, glacisTopZ: 2.4, periZ: 2.95, noFrontFlaps: true,
+  // (release 240: the beds 0.60 m long and 9 cm aft, on the engine deck's plateau behind the turret's sweep)
+  engineZ: -3.04, engineBedLength: 0.60, glacisTopZ: 2.4, periZ: 2.95, noFrontFlaps: true,
   // Seat the continuous tow cable on the protected center glacis.  The
   // family-default endpoints cross AbramsX's elevated idler/shoe wrap; the
   // cable remains complete and visible here without entering either lane.
@@ -7743,7 +7751,9 @@ function buildAbramsX(P: AbramsBuilderPort): void {
     P.add('turretDetail', box(0.69, 0.014, 0.026), 0, 0.523, 1.015);
     if (P.q) {
       for (const side of [-1, 1]) {
-        P.add('turretDark', box(0.02, 0.5, 0.02), side * 1.30, -0.16, 2.30, -0.35, 0, 0);
+        // (release 240: the corner rods ride 21 cm higher, their feet over the turret's own underside; hanging to 1.564 they
+        // swept the engine deck at the reversed bearings)
+        P.add('turretDark', box(0.02, 0.5, 0.02), side * 1.30, 0.05, 2.30, -0.35, 0, 0);
         P.add('turretDetail', box(0.24, 0.03, 0.03), side * 0.9, 0.346, -0.01);
         P.add('turretDetail', box(0.24, 0.03, 0.03), side * 0.9, 0.226, 0.89);
       }
@@ -8506,7 +8516,8 @@ function addAbramsXUpgradeEquipment(P: AbramsBuilderPort): void {
     abramsServiceCase(P, 'turret', side * 1.57, .373, -.93, .24, .14, .47);
     P.addEquipment('turretDark', box(.026, .16, .49), side * 1.693, .373, -.93);
     // Tie-down lugs anchor the added skirt protection to the fender crown.
-    for (const z of [-2.25, -.55, 1.1]) {
+    // (release 240: the middle lug moved from -0.55, where its ring stood 4.8 cm into the turret's flank rails)
+    for (const z of [-2.25, -1.0, 1.1]) {
       P.addEquipment('hull', box(.10, .045, .12), side * 1.735, deckAt(AX_HULL, z), z);
       P.addEquipment('hullDetail', torus(.027, .009, 10), side * 1.735,
         deckAt(AX_HULL, z) + .038, z, Math.PI / 2);
