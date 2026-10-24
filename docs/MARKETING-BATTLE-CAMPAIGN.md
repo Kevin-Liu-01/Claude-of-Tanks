@@ -85,11 +85,6 @@ clipping, saturation, and edge/detail density. Its JSON receipt defaults to
 still mandatory because image statistics cannot prove tank visibility or a
 good composition.
 
-The publisher preserves that human-review evidence beside the final archive:
-
-| Action review | Foreground review |
-| --- | --- |
-| [![Action frames 71–80 contact sheet](../public/media/showcase-r1/process/action-review-02.webp)](../public/media/showcase-r1/process/action-review-02.webp) | [![Foreground frames 101–110 contact sheet](../public/media/showcase-r1/process/foreground-review-02.webp)](../public/media/showcase-r1/process/foreground-review-02.webp) |
-
-All six sheets and their exact frame ranges are indexed in
-[`SHOWCASE-LIBRARY.md`](SHOWCASE-LIBRARY.md#review-sheets).
+The publisher kept that human-review evidence beside the final archive until
+showcase-r1 retired; [`SHOWCASE-LIBRARY.md`](SHOWCASE-LIBRARY.md#review-sheets)
+names all six sheets, their frame ranges, and the commit that still holds them.
