@@ -59,6 +59,7 @@ import { bindHinterlandTreeImpostors } from './hinterland/trees.ts';
 import { HINTERLAND_DEPTH_MARGIN_M } from './hinterland/project.ts';
 import { supplyHorizonRing, withdrawHorizonRing } from './horizonRingHook.ts';
 import { worldBuildConfig, type BuildMapConfig } from './worldBuildConfig.ts';
+import { loadMapKits } from './worldKits.ts';
 import { startPlannedWreckBakes } from './wreckBakePrefetch.ts';
 import { startSurfacePaints } from './surfacePaintPrefetch.ts';
 import { splitMinimapWater } from './minimapWaterPatches.ts';
@@ -305,6 +306,7 @@ export interface WorldRuntime {
     cameraPosition: THREE.Vector3,
     cameraForward?: THREE.Vector3 | null,
     focusPosition?: THREE.Vector3 | null,
+    viewCamera?: THREE.Camera | null,
   ): void;
   warmTerrainLookahead(cameraPosition: THREE.Vector3, maxJobs?: number): number;
   /** Round 77c: bake the vegetation's impostor atlas under cover (the activation / solo loading warm). */
@@ -414,6 +416,10 @@ export async function createMapAsync(
       console.warn('[world] the Earth\'s land mask did not load; the sky keeps its placeholder', error);
     })
     : null;
+  // (2026-10-15, the perf lane) and the map's own kits — its architecture styles and set-piece builders — beside the
+  // terrain and the vegetation, which read none of them (loadMapKits; awaited before the props build)
+  const kitsReady = loadMapKits(config);
+  kitsReady.catch(() => { /* awaited before the props build, which reports it */ });
   const terrainConfig: TerrainMapConfig = config;
   const terrainSources = prepareSourcedTerrain(config.id, terrainConfig.splat || {}, { worker: true });
   // (the time-to-battle lane, 2026-10-07) the map's planned wreck bakes start in their own worker now, beside the
@@ -467,6 +473,8 @@ export async function createMapAsync(
     const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
       sub('Planting vegetation', 0.58, 0.82), fineSlices);
     await step('Placing structures', 0.82);
+    const kitsAwaitStart = performance.now();
+    await kitsReady;
     const propModelsAwaitStart = performance.now();
     await propModelsReady;
     const propModelsAwaitEnd = performance.now();
@@ -478,6 +486,10 @@ export async function createMapAsync(
       // duration or CPU cost. All timestamps use the page performance clock.
       props._buildDetail.propModelsAwait = { count: 1, totalMs: elapsedMs, maxMs: elapsedMs,
         startMs: propModelsAwaitStart, endMs: propModelsAwaitEnd };
+      // (and the map's kits, loaded beside the terrain: the time left to wait for them at the same consumer)
+      const kitsMs = propModelsAwaitStart - kitsAwaitStart;
+      (props._buildDetail as typeof props._buildDetail & { kitsAwait?: typeof props._buildDetail.propModelsAwait }).kitsAwait = {
+        count: 1, totalMs: kitsMs, maxMs: kitsMs, startMs: kitsAwaitStart, endMs: propModelsAwaitStart };
     }
     await step('Sealing the battlefield', 0.96);
     // (the time-to-battle lane, 2026-10-08) the horizon ring last: the worker started with this build has had the whole
@@ -1086,12 +1098,15 @@ function assembleWorld(
      *   scoped grass center-cone clear-out
      * @param {THREE.Vector3|null} [focusPos] chase-camera focus — non-null
      *   enables the tree occlusion fade along focus→camera
+     * @param {THREE.Camera|null} [viewCamera] trees perf (2026-10-07): the camera
+     *   this frame's main pass renders with — its view culls the near tree pools
      */
     update(
       dt: number,
       cameraPos: THREE.Vector3,
       cameraFwd: THREE.Vector3 | null = null,
       focusPos: THREE.Vector3 | null = null,
+      viewCamera: THREE.Camera | null = null,
     ) {
       terrain.userData.updateLOD(cameraPos);
       // ground lane (crater-render-spec §C): the cover in a crater's reach, after the terrain took the same stamps
@@ -1103,7 +1118,7 @@ function assembleWorld(
       // water pass 8: the reactive field's window follows the chase focus (the camera when there is none)
       const waterAnchor = focusPos ?? cameraPos;
       terrain.userData.updateWater?.(dt, waterAnchor.x, waterAnchor.z);
-      vegetation.update(dt, cameraPos, cameraFwd, focusPos);
+      vegetation.update(dt, cameraPos, cameraFwd, focusPos, viewCamera);
       bakePanorama(); // a no-op once baked
       litter.update(cameraPos);
       tallGrass.update(dt, cameraPos, focusPos, cameraFwd); // round 73: the sward's ring, wind and press

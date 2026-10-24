@@ -166,6 +166,10 @@ interface TouchNoticeInput {
   /** The detection's box and the alert's (its height in the detection's width; a reserve while none shows). */
   readonly notice: TouchSize;
   readonly alert: TouchSize;
+  /** The alert's compact form: its measured box while it shows so, else two lines of its 8 px type (most alerts; the
+   *  longest take three, TOUCH_COMPACT_ALERT). At 844 x 390 the 40 px reserve left the band over the sight 7 px short of
+   *  both compact notices, and DETECTED went under the sight onto the Lights and Auto gun tiles. */
+  readonly alertCompact?: TouchSize;
   /** The pre-battle countdown's box while it shows, and its rules panel's. */
   readonly countdown: TouchSize | null;
   readonly countdownRules?: TouchSize | null;
@@ -192,13 +196,14 @@ interface TouchNoticePlan {
 /** A label's cost in a least intrusive place, per px² (the footprint's is 1, a panel's or a control's PANEL_WEIGHT), and a
  *  notice already placed (the countdown, the first of the detection and the alert). */
 const LABEL_WEIGHT = 0.25;
-const PLACED_WEIGHT = 1000;
+const PLACED_WEIGHT = 1e7;
 /** A panel's or a control's cost per px²: more than a whole notice reaching into the footprint, so a notice covers none
  *  while any place over the footprint alone remains (the module's rule; at 10, the shorter one-row objective sent the
- *  detection 2 px onto a consumable at 568x256 rather than a little further into the footprint). */
-const PANEL_WEIGHT = 100;
+ *  detection 2 px onto a consumable at 568x256 rather than a little further into the footprint; at 100, a notice 2 px
+ *  onto the joystick at 360x640 still cost less than one reaching into the reserve over the ring). */
+const PANEL_WEIGHT = 1e5;
 /** How much more a notice over a block costs than one in its gap (leastIntrusive), and the most a gap costs: a notice
- *  already placed weighs ten times a panel over it, never in its margin (at 568x256 the two notices fit side by
+ *  already placed weighs a hundred times a panel over it, never in its margin (at 568x256 the two notices fit side by
  *  side only touching, and a margin at its weight sent the second 10 px onto a consumable). */
 const OVER_FACTOR = 3;
 const MARGIN_WEIGHT = 10;
@@ -217,6 +222,7 @@ const CANDIDATES: readonly (readonly [boolean, boolean, boolean])[] = [[true, fa
 /** The notices' places (see the module's note). */
 export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
   const { width, height, top, scope, seated } = input;
+  const compactAlert = input.alertCompact ?? TOUCH_COMPACT_ALERT;
   const gap = TOUCH_NOTICE_GAP;
   const cx = noticeCentreX(width);
   const centred = (y: number, size: TouchSize) => boxOf(cx, y, size);
@@ -233,7 +239,7 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
     cleared: true, bannerTop: start, bannerReady: false };
   // (where nothing clears, a notice reaches into the footprint before it covers a panel or a control: the footprint is
   // modelled at full bloom, and the panels are there whole)
-  // (a notice already placed counts ten times a panel: the notices never stack on each other while any other place
+  // (a notice already placed counts a hundred times a panel: the notices never stack on each other while any other place
   // remains, r10g: at 568x256 the gap-wide costs set the detection on the alert)
   const sight = scope ? keep.slice(0, 1) : keep;
   const readouts = scope ? keep.slice(1) : [];
@@ -258,20 +264,20 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
     // the countdown takes the detection's place (it never shows with it); the alert alone keeps off it
     plan.noticeTop = plan.countdownTop;
     const alert = touchFreePlace(input.alert, start, width, height, [...blocks, ...placed]);
-    const compact = alert === null ? touchFreePlace(TOUCH_COMPACT_ALERT, start, width, height, [...blocks, ...placed]) : null;
-    const y = alert ?? compact ?? leastIntrusive(TOUCH_COMPACT_ALERT, start, width, height, layers(placed)).y;
+    const compact = alert === null ? touchFreePlace(compactAlert, start, width, height, [...blocks, ...placed]) : null;
+    const y = alert ?? compact ?? leastIntrusive(compactAlert, start, width, height, layers(placed)).y;
     if (alert === null && compact === null) plan.cleared = false;
     plan.alertCompact = alert === null;
-    plan.alertW = alert !== null ? input.alert.w : TOUCH_COMPACT_ALERT.w;
+    plan.alertW = alert !== null ? input.alert.w : compactAlert.w;
     plan.alertTop = y;
-    placed.push(centred(y, alert !== null ? input.alert : TOUCH_COMPACT_ALERT));
+    placed.push(centred(y, alert !== null ? input.alert : compactAlert));
   }
   const stack = { w: Math.max(input.notice.w, input.alert.w), h: input.notice.h + INTEG_STACK_GAP + input.alert.h };
   let found = !!input.countdown || clearOf(centred(input.fallbackTop, stack), placed);
   for (let i = 0; i < CANDIDATES.length && !found; i++) {
     const [together, noticeCompact, alertCompact] = CANDIDATES[i];
     const notice = noticeCompact ? TOUCH_COMPACT_NOTICE : input.notice;
-    const alert = alertCompact ? TOUCH_COMPACT_ALERT : input.alert;
+    const alert = alertCompact ? compactAlert : input.alert;
     const around = [...blocks, ...placed];
     let first: number | null = null;
     let second: number | null = null;
@@ -293,20 +299,20 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
     // went onto the scope's zoom plate)
     plan.cleared = false;
     plan.noticeCompact = plan.alertCompact = true;
-    plan.alertW = TOUCH_COMPACT_ALERT.w;
+    plan.alertW = compactAlert.w;
     const pair = (firstSize: TouchSize, secondSize: TouchSize) => {
       const first = leastIntrusive(firstSize, start, width, height, layers(placed));
       const second = leastIntrusive(secondSize, start, width, height, layers([...placed, centred(first.y, firstSize)]));
       return { first, second, cost: first.cost + second.cost };
     };
-    const noticeFirst = pair(TOUCH_COMPACT_NOTICE, TOUCH_COMPACT_ALERT);
-    const alertFirst = pair(TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE);
+    const noticeFirst = pair(TOUCH_COMPACT_NOTICE, compactAlert);
+    const alertFirst = pair(compactAlert, TOUCH_COMPACT_NOTICE);
     if (alertFirst.cost < noticeFirst.cost) { plan.noticeTop = alertFirst.second.y; plan.alertTop = alertFirst.first.y; }
     else { plan.noticeTop = noticeFirst.first.y; plan.alertTop = noticeFirst.second.y; }
   }
   if (input.banner) {
     const notice = plan.noticeCompact ? TOUCH_COMPACT_NOTICE : input.notice;
-    const alert = plan.alertCompact ? TOUCH_COMPACT_ALERT : input.alert;
+    const alert = plan.alertCompact ? compactAlert : input.alert;
     const taken = input.countdown ? placed : [...placed, centred(plan.noticeTop, notice), centred(plan.alertTop, alert)];
     const y = touchFreePlace(input.banner, start, width, height, [...blocks, ...taken]);
     if (y !== null) { plan.bannerTop = y; plan.bannerReady = true; }

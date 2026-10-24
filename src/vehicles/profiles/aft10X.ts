@@ -146,7 +146,9 @@ function buildAftHull(P: TankBuilderPort): void {
     // with the falling fore roof, and each grab handle sits on its own panel (they stood 12-33 mm over them)
     panel(P, 'hull', -.109, 1.960, .928, 1.06, .585, .032, .018, .06);
     panel(P, 'hull', -1.262, 1.985, .674, .552, 1.05, .074, .035);
-    panel(P, 'hull', -.767, 2.106, -.449, .610, .360, .362, .030);
+    // (release 240, the owner: "make sure all tank turrets are clear of hulls": the box 0.41 m forward, its nearest corner
+    // 1.5 m off the launcher's axis, past the sweep of the launcher's rear corners, which ran through it turning)
+    panel(P, 'hull', -.767, 2.106, -.040, .610, .360, .362, .030);
     for (const [x, z, w, handleY] of [[.895, 1.49, .51, 1.942], [.773, -.29, .35, 2.005], [-.109, .64, .74, 1.990], [-1.262, .18, .31, 2.026]]) {
         for (const side of [-1, 1])
             equipment(P, 'hull', 'Detail', cylX(.022, .115, 10), x + side * w * .38, z > 1.4 ? 1.952 : 2.002, z);
@@ -232,8 +234,10 @@ function addAftLauncherSensors(P: TankBuilderPort): void {
     }
     // Twelve hull-mounted tubes occupy two staggered rows ahead of the yaw
     // cradle. Their source axes rise forward; they do not turn with the turret.
-    const smokeCenters = [[-.3717, -.1747], [-.2230, -.1618], [-.0756, -.1488],
-        [.1044, -.1444], [.2511, -.1573], [.4006, -.1703]];
+    // (release 240, the owner: "make sure all tank turrets are clear of hulls": both rows 0.42 m forward, the rear one 1.5 m
+    // off the launcher's axis, past the sweep of the launcher's rear corners, which ran through it turning)
+    const smokeCenters = [[-.3717, .2453], [-.2230, .2582], [-.0756, .2712],
+        [.1044, .2756], [.2511, .2627], [.4006, .2497]];
     for (const [x, z] of smokeCenters)
         for (const rear of [0, 1]) {
             const zz = z - rear * .3925, tilt = -.55;

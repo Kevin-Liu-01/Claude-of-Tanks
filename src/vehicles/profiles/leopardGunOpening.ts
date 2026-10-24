@@ -72,12 +72,18 @@ export interface LeopardMantletFit {
   readonly crown: number;
   readonly noseZ: number;
   readonly noseRoof: number;
+  /** The trunnion bearing drum's radius (default .275). */
+  readonly drumR?: number;
+  /** The rocker's lowest underside under the trunnion axis (default: the authored -.22..-.155 keel). */
+  readonly keel?: number;
+  /** The receiving collar's radius at the nose (default .195). */
+  readonly collarR?: number;
 }
 
 export function addLeopardMovingMantlet(P:TankBuilderPort,fit:LeopardMantletFit):void {
   // The bearing stays on the trunnion; the broad rocker and long upper cover
   // pitch together. The cannon slides independently inside its receiving sleeve.
-  P.add('gunMount',KIT.cylX(.275,.76,32),0,0,0);
+  P.add('gunMount',KIT.cylX(fit.drumR??.275,.76,32),0,0,0);
   const ring=(half:number,bottom:number,top:number):[number,number][]=>[
     [-half+.026,bottom],[half-.026,bottom],[half,bottom+.045],
     [half,top-.028],[half-.025,top],[-half+.025,top],
@@ -85,17 +91,18 @@ export function addLeopardMovingMantlet(P:TankBuilderPort,fit:LeopardMantletFit)
   ];
   // The underside rises toward the breech so elevation clears the turret
   // bearing ring below it; a full-depth rear drum intersected that ring.
+  const keel=(bottom:number)=>Math.max(bottom,fit.keel??-Infinity);
   const rear=[-.62,-.56,-.48,-.38,-.25,0].map(z=>{
     const radius=Math.sqrt(.66*.66-z*z);
-    return {z,ring:ring(.376,Math.max(-.22,-.15-.40*z),Math.min(fit.crown,radius))};
+    return {z,ring:ring(.376,keel(Math.max(-.22,-.15-.40*z)),Math.min(fit.crown,radius))};
   });
   P.add('gunMount',sectionSolid([
     ...rear,
-    {z:.38,ring:ring(.376,-.205,fit.crown*.82)},
-    {z:.80,ring:ring(.365,-.185,Math.max(.19,fit.noseRoof+.10))},
-    {z:fit.noseZ,ring:ring(.205,-.155,fit.noseRoof)},
+    {z:.38,ring:ring(.376,keel(-.205),fit.crown*.82)},
+    {z:.80,ring:ring(.365,keel(-.185),Math.max(.19,fit.noseRoof+.10))},
+    {z:fit.noseZ,ring:ring(.205,keel(-.155),fit.noseRoof)},
   ]));
-  P.add('gunMount',KIT.cylZ(.195,.26,32),0,0,fit.noseZ-.035);
+  P.add('gunMount',KIT.cylZ(fit.collarR??.195,.26,32),0,0,fit.noseZ-.035);
   for(const side of [-1,1]) {
     P.add('turret',KIT.cylX(.19,.09,24),
       P.gunG.position.x+side*.397,P.gunG.position.y,P.gunG.position.z);

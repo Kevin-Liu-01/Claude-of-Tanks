@@ -3231,8 +3231,10 @@ function emitBattleEnded(game: SoloGameState, bus: EventBus): void {
     timeLimitS: game.ruleset.timeLimitS,
     alliesLost: game.tanks.filter((entity) =>
       entity.team === 'player' && entity.id !== verdictSeat(game)?.id && entity.combat.destroyed).length,
-    // a watched battle (WATCH_RULES): no record reads it (matchRuleset.ts battleKeepsRecords)
+    // a watched battle (WATCH_RULES): no record reads it (matchRuleset.ts battleKeepsRecords); its report heads with the
+    // mode's score by side, as the HUD showed it (a battle scored by kills, or the Horde's waves, reads its kills)
     watch: !!game.ruleset.watch,
+    score: game.ruleset.watch ? watchedScore(game) : null,
     // campaign slice 4 (2026-09-12): the campaign record needs the mode and the line state
     gameMode: game.gameMode,
     line: game.matchModeState?.line ? { ...game.matchModeState.line } : null,
@@ -3252,6 +3254,12 @@ function emitBattleEnded(game: SoloGameState, bus: EventBus): void {
       isPlayer: game.player?.id === entity.id,
     })),
   });
+}
+
+function watchedScore(game: SoloGameState): { alpha: number; bravo: number } | null {
+  const mode = game.matchModeState;
+  if (!mode || mode.id === 'standard' || mode.horde) return null;
+  return { alpha: Math.round(mode.score.alpha || 0), bravo: Math.round(mode.score.bravo || 0) };
 }
 
 function settleBattleResult(

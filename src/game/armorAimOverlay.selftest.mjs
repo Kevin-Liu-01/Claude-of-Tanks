@@ -77,6 +77,36 @@ assert(entry && entry.frames.length === 1, 'closed hull shell creates one articu
 assert(secondEntry && secondEntry.frames.length === 1, 'every scoped enemy receives its own overlay mesh');
 assert(entry.frames.every((frame) => !frame.mesh.visible), 'primed meshes stay hidden before entering scope');
 
+// 243: the shell is the cells' outer skin, evenly lifted: closed and outward (its area-weighted normals cancel), every
+// vertex 5-9 cm off the box, crease outlines marked, every vertex painted by its panel's one sample.
+{
+  const frame = entry.frames[0];
+  const position = frame.geometry.getAttribute('position');
+  const closure = new THREE.Vector3(), a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
+  for (let vertex = 0; vertex < position.count; vertex += 3) {
+    a.fromBufferAttribute(position, vertex); b.fromBufferAttribute(position, vertex + 1); c.fromBufferAttribute(position, vertex + 2);
+    const normal = b.clone().sub(a).cross(c.clone().sub(a));
+    const centroid = a.clone().add(b).add(c).multiplyScalar(1 / 3).sub(new THREE.Vector3(0, 1, 0));
+    assert.ok(normal.dot(centroid) > 0, 'every flashlight triangle faces out of the cell');
+    closure.add(normal);
+  }
+  assert.ok(closure.length() < 1e-3, `the lifted skin is closed (area-weighted normals sum to ${closure.length()})`);
+  for (let vertex = 0; vertex < position.count; vertex++) {
+    a.fromBufferAttribute(position, vertex);
+    const out = Math.max(Math.abs(a.x) - 1, Math.abs(a.y - 1) - 1, Math.abs(a.z) - 1);
+    assert.ok(out > 0.05 && out < 0.09, `skin vertex ${vertex} stands ${out.toFixed(3)} m off the armour`);
+  }
+  const border = frame.geometry.getAttribute('aSkinBorder');
+  let outlined = 0;
+  for (let index = 0; index < border.array.length; index++) outlined += border.array[index];
+  assert.ok(outlined > 0, 'the box edges are panel outlines');
+  const painted = new Uint8Array(position.count);
+  for (const sample of frame.samples) for (let index = sample.start; index < sample.end; index++) painted[frame.targets[index]]++;
+  assert.ok(painted.every((count) => count === 1), 'every skin vertex takes exactly one panel sample');
+  assert.equal(secondEntry.frames[0].geometry.getAttribute('position'), position, 'vehicles of one spec share the shell');
+  assert.notEqual(secondEntry.frames[0].color, frame.color, 'each vehicle paints its own colours');
+}
+
 const restoreWarm = overlay.warm();
 assert(entry.frames.every((frame) => frame.mesh.visible), 'warm exposes overlay shaders under the loading veil');
 restoreWarm();

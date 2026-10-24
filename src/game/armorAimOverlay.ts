@@ -7,26 +7,19 @@
 
 import * as THREE from 'three';
 import { queryAimArmor, tankPoseFromState } from '../sim/armor.ts';
-import type {
-  ArmorCollisionCell,
-  ArmorModel,
-  ArmorPoseState,
-} from '../sim/armor.ts';
+import type { ArmorModel, ArmorPoseState } from '../sim/armor.ts';
 import { estimatePenRatio } from '../sim/damage.ts';
 import type { AimArmorInfo, DamageShellSpec } from '../sim/damage.ts';
+import { buildFlashlightGeometry, createFlashlightMaterial, type FlashlightSample } from './armorFlashlightMesh.ts';
 
 const SAMPLE_INTERVAL_MS = 110;
 const SAMPLE_BATCH_SIZE = 48;
-const SURFACE_LIFT_M = 0.022;
 // 2026-09-13 owner review ("the highlights are sometimes behind tank
-// surfaces — make them a little bigger than the tank"): the armour cells sit
-// on the structural plate, while skirts, stowage, ERA blocks and fittings
-// stand a few centimetres proud of it, so a coplanar highlight lost the depth
-// test against them. Every cell is now inflated about its own centroid by a
-// fixed radial distance before the per-face lift, which keeps neighbouring
-// faces of a cell connected (a per-face lift alone opens seams at the
-// edges) and puts the whole highlight shell just outside the visible hull.
-const CELL_INFLATE_M = 0.05;
+// surfaces — make them a little bigger than the tank"): the shell stands just
+// proud of skirts, stowage and ERA. 243 (owner: "so many terrible weird
+// geometries"): it is the cells' outer skin, evenly lifted, with outlined
+// panels (armorFlashlightMesh.ts), not every cell triangle blown up about its
+// own cell.
 const MAX_QUERY_M = 820;
 
 const LOW = new THREE.Color(0xe53d35);
@@ -40,7 +33,6 @@ const _pose = {
   pos: new THREE.Vector3(), yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
 };
 
-type ArmorOverlayCell = ArmorCollisionCell;
 export type ArmorOverlayModel = ArmorModel;
 
 interface ArmorOverlayVisual {
@@ -58,17 +50,13 @@ export interface ArmorOverlayTarget {
   spec?: { armor?: ArmorOverlayModel } | null;
 }
 
-interface ArmorOverlaySample {
-  center: readonly number[];
-  offset: number;
-}
-
 interface ArmorOverlayFrame {
   owner: THREE.Object3D;
   mesh: THREE.Mesh;
   geometry: THREE.BufferGeometry;
   color: THREE.Float32BufferAttribute;
-  samples: ArmorOverlaySample[];
+  samples: FlashlightSample[];
+  targets: Uint32Array;
 }
 
 interface ArmorOverlayEntry {
@@ -119,61 +107,14 @@ function ownerForFrame(
   return visual.root.getObjectByName(turretLocal ? 'rig_turret' : 'rig_hull') || visual.root;
 }
 
-function buildFrameGeometry(cells: readonly ArmorOverlayCell[] | undefined): {
-  geometry: THREE.BufferGeometry;
-  color: THREE.Float32BufferAttribute;
-  samples: ArmorOverlaySample[];
-} | null {
-  const positions: number[] = [];
-  const colors: number[] = [];
-  const samples: ArmorOverlaySample[] = [];
-  for (const cell of cells || []) {
-    const vertices = cell.vertices || [];
-    let cx = 0, cy = 0, cz = 0;
-    for (const point of vertices) { cx += point[0]; cy += point[1]; cz += point[2]; }
-    const inv = vertices.length ? 1 / vertices.length : 0;
-    cx *= inv; cy *= inv; cz *= inv;
-    for (const face of cell.faces || []) {
-      if (face.internal) continue;
-      const offset = positions.length / 3;
-      for (const index of face.indices) {
-        const point = vertices[index];
-        if (!point) continue;
-        const rx = point[0] - cx, ry = point[1] - cy, rz = point[2] - cz;
-        const radius = Math.hypot(rx, ry, rz);
-        const grow = radius > 1e-6 ? CELL_INFLATE_M / radius : 0;
-        positions.push(
-          point[0] + rx * grow + face.normal[0] * SURFACE_LIFT_M,
-          point[1] + ry * grow + face.normal[1] * SURFACE_LIFT_M,
-          point[2] + rz * grow + face.normal[2] * SURFACE_LIFT_M,
-        );
-        colors.push(NEUTRAL.r, NEUTRAL.g, NEUTRAL.b);
-      }
-      if (positions.length / 3 === offset + 3) {
-        samples.push({ center: face.center, offset });
-      } else {
-        positions.length = offset * 3;
-        colors.length = offset * 3;
-      }
-    }
-  }
-  if (!positions.length) return null;
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  const color = new THREE.Float32BufferAttribute(colors, 3);
-  color.setUsage(THREE.DynamicDrawUsage);
-  geometry.setAttribute('color', color);
-  geometry.computeBoundingSphere();
-  return { geometry, color, samples };
-}
-
 function paintSample(
   attribute: THREE.Float32BufferAttribute,
-  offset: number,
+  targets: Uint32Array,
+  sample: FlashlightSample,
   color: THREE.Color,
 ): void {
-  for (let vertex = 0; vertex < 3; vertex++) {
-    attribute.setXYZ(offset + vertex, color.r, color.g, color.b);
+  for (let index = sample.start; index < sample.end; index++) {
+    attribute.setXYZ(targets[index], color.r, color.g, color.b);
   }
 }
 
@@ -182,19 +123,7 @@ function paintSample(
  */
 export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
   const entries = new Map<string, ArmorOverlayEntry>();
-  const material = new THREE.MeshBasicMaterial({
-    vertexColors: true,
-    transparent: true,
-    opacity: 0.46,
-    depthTest: true,
-    depthWrite: false,
-    side: THREE.FrontSide,
-    toneMapped: false,
-    polygonOffset: true,
-    polygonOffsetFactor: -4,
-    polygonOffsetUnits: -4,
-  });
-  material.name = 'cot:scoped-armor-flashlight';
+  const material = createFlashlightMaterial();
   const visibleEntries: ArmorOverlayEntry[] = [];
   let sampleCursor = 0;
 
@@ -210,7 +139,7 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
     const frameKinds = [['hull', false], ['turret', true]] as const;
     for (const [key, turretLocal] of frameKinds) {
       const cells = target.spec?.armor?.collisionShells?.[key] || [];
-      const built = buildFrameGeometry(cells);
+      const built = buildFlashlightGeometry(cells, NEUTRAL);
       const owner = ownerForFrame(target.visual, turretLocal);
       if (!built || !owner) continue;
       const mesh = new THREE.Mesh(built.geometry, material);
@@ -290,7 +219,7 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
         _dir.copy(_world).sub(muzzle);
         const distance = _dir.length();
         if (!(distance > 0.05) || distance > MAX_QUERY_M) {
-          paintSample(frame.color, samplePoint.offset, NEUTRAL);
+          paintSample(frame.color, frame.targets, samplePoint, NEUTRAL);
           continue;
         }
         _dir.multiplyScalar(1 / distance);
@@ -299,7 +228,7 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
           target.combat.eraSpent,
         ) as AimArmorInfo | null;
         const ratio = info ? estimatePenRatio(shellSpec, info.distM, info) : NaN;
-        paintSample(frame.color, samplePoint.offset, penetrationColor(ratio, _color));
+        paintSample(frame.color, frame.targets, samplePoint, penetrationColor(ratio, _color));
       }
       frame.color.needsUpdate = true;
       if (entry.samplePointIndex >= frame.samples.length) {

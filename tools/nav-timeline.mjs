@@ -4,7 +4,7 @@
 // keep static chrome in the layout, no visual pops).
 //
 //   node tools/nav-timeline.mjs --base=<label>=<url> [--base=<label>=<url>] --out=<dir> [--journeys=all|id,group]
-//        [--profiles=desktop,phone] [--caches=cold,warm] [--lock] [--budget-min=18] [--soft-gl]
+//        [--steps=id,…] [--profiles=desktop,phone] [--caches=cold,warm] [--lock] [--budget-min=18] [--soft-gl]
 //   node tools/nav-timeline.mjs --list
 //   node tools/nav-timeline.mjs --report=<dir> [--labels=base,after]     Markdown tables of a recorded run
 //
@@ -561,8 +561,12 @@ async function main() {
   const wanted = option('journeys', 'all').split(',');
   // A word names a journey when one has that id, else a group.
   const ids = new Set(JOURNEYS.map((j) => j.id));
-  const journeys = wanted.includes('all') ? JOURNEYS
-    : JOURNEYS.filter((j) => wanted.includes(j.id) || wanted.some((w) => !ids.has(w) && w === j.group));
+  // --steps=<id,…> keeps only the named steps of each journey (a prefix of a journey is always a valid run)
+  const stepIds = option('steps', '').split(',').filter(Boolean);
+  const journeys = (wanted.includes('all') ? JOURNEYS
+    : JOURNEYS.filter((j) => wanted.includes(j.id) || wanted.some((w) => !ids.has(w) && w === j.group)))
+    .map((j) => (stepIds.length ? { ...j, steps: j.steps.filter((s) => stepIds.includes(s.id)) } : j))
+    .filter((j) => j.steps.length);
   const profiles = option('profiles', 'desktop,phone').split(',');
   const caches = option('caches', 'cold,warm').split(',');
   const budgetMs = Number(option('budget-min', '18')) * 60000;
