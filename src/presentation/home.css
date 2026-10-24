@@ -208,7 +208,7 @@ html[lang^='zh'] :is(h1,h2,.v5-evidence h3,.v5-mode--hero h3){line-height:1.15}
 @layer surfaces{
 :root{--home-h1:clamp(var(--fs-60),7.6vw,var(--fs-128));--home-h2:clamp(var(--fs-44),5vw,var(--fs-88));
   --home-x:max(var(--shell-gutter),calc((100% - var(--shell-max)) / 2));
-  --home-shade:color-mix(in srgb,var(--graphite-950) 92%,transparent);--home-veil:color-mix(in srgb,var(--graphite-950) 55%,transparent)}
+  --home-shade:color-mix(in srgb,var(--surface-scene) 92%,transparent);--home-veil:color-mix(in srgb,var(--surface-scene) 55%,transparent)}
 .home-shell{width:min(calc(100% - var(--shell-gutter) * 2),var(--shell-max));margin-inline:auto}
 .home-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s4) var(--s5);margin-bottom:var(--s5)}
 .home-head h2{margin:0;font:700 var(--home-h2)/.88 var(--font-ui);letter-spacing:var(--track-title);text-transform:uppercase;color:var(--ink-1)}
@@ -222,7 +222,7 @@ html[lang^='zh'] :is(h1,h2,.v5-evidence h3,.v5-mode--hero h3){line-height:1.15}
 /* the floating bar over the hero, solid once the page scrolls (publicNav.ts data-scrolled) */
 .home .public-nav{position:fixed;inset:0 0 auto;border-bottom-color:transparent;background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none;
   transition:background-color var(--dur-base) var(--ease-enter),border-color var(--dur-base) var(--ease-enter)}
-.home .public-nav[data-scrolled]{border-bottom-color:var(--line-1);background:color-mix(in srgb,var(--graphite-900) 94%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+.home .public-nav[data-scrolled]{border-bottom-color:var(--line-1);background:color-mix(in srgb,var(--surface-nav) 94%,transparent);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
 
 /* vehicle identity: flag, side silhouette, name */
 .cot-sil{display:inline-block;flex:none;width:var(--sil-w,40px);height:var(--sil-h,13px);background:currentColor;color:var(--ink-1);opacity:.92;
@@ -302,8 +302,8 @@ html[lang^='zh'] :is(h1,h2,.v5-evidence h3,.v5-mode--hero h3){line-height:1.15}
   --hc-band:40px;--hc-share:0.7;--hc-hshare:0.76;--hc-cxr:0.56;
   --hc-flag-mask:radial-gradient(ellipse 70% 84% at 96% 0%,var(--ink-1) 0%,var(--ink-1) 40%,color-mix(in srgb,var(--ink-1) 95.7%,transparent) 47.5%,color-mix(in srgb,var(--ink-1) 84.4%,transparent) 55%,color-mix(in srgb,var(--ink-1) 68.4%,transparent) 62.5%,color-mix(in srgb,var(--ink-1) 50%,transparent) 70%,color-mix(in srgb,var(--ink-1) 31.6%,transparent) 77.5%,color-mix(in srgb,var(--ink-1) 15.6%,transparent) 85%,color-mix(in srgb,var(--ink-1) 4.3%,transparent) 92.5%,transparent 100%)}
 .fleet-card{position:relative;display:block;overflow:hidden;aspect-ratio:264/188;border-radius:var(--r1);text-decoration:none;
-  background:radial-gradient(ellipse 62% 62% at 50% 55%,color-mix(in srgb,var(--sky-400) 14%,transparent),transparent 100%),
-    linear-gradient(180deg,color-mix(in srgb,var(--sky-400) 22%,var(--graphite-950)) 0%,color-mix(in srgb,var(--sky-400) 14%,var(--graphite-950)) 55%,var(--graphite-850) 100%);
+  background:radial-gradient(ellipse 62% 62% at 50% 55%,color-mix(in srgb,var(--landing-sky) 14%,transparent),transparent 100%),
+    linear-gradient(180deg,color-mix(in srgb,var(--landing-sky) 22%,var(--surface-scene)) 0%,color-mix(in srgb,var(--landing-sky) 14%,var(--surface-scene)) 55%,var(--surface-page) 100%);
   box-shadow:var(--e1);transition:transform var(--dur-fast) var(--ease-enter)}
 .fleet-card:hover,.fleet-card:focus-visible,.fleet-card.is-featured{outline:2px solid var(--accent);outline-offset:-2px;--hc-flag-opacity:1}
 .fleet-card:focus-visible{box-shadow:var(--focus-ring)}
