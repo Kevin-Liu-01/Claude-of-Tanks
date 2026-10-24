@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
-import { assignCoplanarDepth, COPLANAR_DEPTH_SLOPE_STEP, MARKING_DEPTH_MARGIN } from './coplanarDepth.ts';
+import {
+  assignCoplanarDepth, COPLANAR_TIE_NEAR_M, COPLANAR_TIE_UNITS, coplanarDepthUnits, MARKING_DEPTH_MARGIN,
+} from './coplanarDepth.ts';
 
 // 2026-10-23 (lane 243; the owner: "insignias and marks on tanks are still glitching ... fix any glitching of that or
 // tank props"): every colour-pass mesh keeps a unique place in the semantic order (`coplanarDepthLayer`), and draws
@@ -28,9 +30,18 @@ const MAX_OFFSET = 32;
   turned.rotation.y = Math.PI;
   const records = [base, plate, stencil, proud, far, turned]
     .map((object, index) => ({ object, materials: [object.material], layer: index + 1 }));
-  const depth = Object.fromEntries(assignCoplanarDepth(root, records).map((record) => [record.object.name, record.depth]));
+  const assigned = assignCoplanarDepth(root, records);
+  const depth = Object.fromEntries(assigned.map((record) => [record.object.name, record.depth]));
   assert.deepEqual(depth, { base: 1, plate: 2, stencil: 3, proud: 1, far: 1, turned: 1 },
     'only meshes that share a facing plane where their bounds meet are ordered; each ordered pair keeps the ladder\'s winner');
+  const ties = Object.fromEntries(assigned.map((record) => [record.object.name, record.ties]));
+  assert.deepEqual(ties, { base: 0, plate: 1, stencil: 2, proud: 0, far: 0, turned: 0 },
+    'exact ties (one plane) are counted along the chain; a plane 4 mm proud is no tie');
+  // a tie's extra units scale with the drawing camera's near plane above the depth layers' tuned 5 cm
+  assert.equal(coplanarDepthUnits(3, 2, COPLANAR_TIE_NEAR_M), 3, 'at the tuned near plane a tie is its unit');
+  assert.equal(coplanarDepthUnits(3, 2, 0.01), 3, 'a nearer plane never shrinks a unit');
+  assert.equal(coplanarDepthUnits(3, 2, 4), 3 + 2 * COPLANAR_TIE_UNITS * (4 / COPLANAR_TIE_NEAR_M - 1),
+    'under the Gallery\'s tight near plane each tie climbs in proportion');
   // instanced draws move their planes per instance: they order against every record their bounds meet
   const pads = new THREE.InstancedMesh(new THREE.BoxGeometry(0.1, 0.1, 0.1), new THREE.MeshBasicMaterial(), 2);
   pads.name = 'pads';
@@ -74,9 +85,14 @@ for (const options of [
   const hull = tank.root.getObjectByName('hull');
   const detail = tank.root.getObjectByName('hullDark');
   assert.ok(hull && detail, 'representative armor and detail meshes exist');
+  // the Gallery's tight near plane: the hull's exact ties climb
+  hull.onBeforeRender(null, null, { near: 4 }, hull.geometry, hull.material, null);
+  assert.equal(hull.material.polygonOffsetUnits,
+    -coplanarDepthUnits(hull.userData.coplanarDepthOffset, hull.userData.coplanarDepthTies, 4),
+    'armor draw applies its exact ties\' near-scaled units');
   hull.onBeforeRender(null, null, null, hull.geometry, hull.material, null);
-  assert.equal(hull.material.polygonOffsetFactor, -hull.userData.coplanarDepthOffset * COPLANAR_DEPTH_SLOPE_STEP,
-    'armor carries a thirty-second of its depth slope per offset unit (ties under a tight near plane)');
+  assert.equal(hull.material.polygonOffsetFactor, 0,
+    'armor uses slope-independent depth arbitration (a slope share moved errors onto every grazing edge: 243 GPU census)');
   assert.equal(hull.material.polygonOffsetUnits, -hull.userData.coplanarDepthOffset,
     'armor draw applies its bounded offset');
   detail.onBeforeRender(null, null, null, detail.geometry, detail.material, null);
@@ -91,8 +107,7 @@ for (const options of [
     assert.ok(surface, `${mark.name}: its armour exists`);
     const material = Array.isArray(mark.material) ? mark.material[0] : mark.material;
     mark.onBeforeRender(null, null, null, mark.geometry, material, null);
-    assert.equal(material.polygonOffsetFactor, -mark.userData.coplanarDepthOffset * COPLANAR_DEPTH_SLOPE_STEP,
-      `${mark.name}: its slope share follows its offset`);
+    assert.equal(material.polygonOffsetFactor, 0, `${mark.name}: slope-independent`);
     assert.ok(mark.userData.coplanarDepthOffset >= (surface.userData.coplanarDepthOffset ?? 0) + MARKING_DEPTH_MARGIN,
       `${mark.name} (${mark.userData.coplanarDepthOffset}) draws ${MARKING_DEPTH_MARGIN} units in front of its armour (${surface.userData.coplanarDepthOffset})`);
     assert.equal(material.polygonOffsetUnits, -mark.userData.coplanarDepthOffset, `${mark.name}: its offset applies`);

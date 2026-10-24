@@ -229,10 +229,13 @@ function installHarness() {
         // share): where they agree the front-most part is geometry's, where they differ it is a tie
         const rank = mesh.userData.coplanarDepthLayer;
         const actSlope = (offset) => (MF.lever.slope !== null ? -offset * MF.lever.slope : null);
+        // the draw hook's units (coplanarDepth.ts coplanarDepthUnits): exact ties scale with the drawing camera's near
+        const actUnits = (offset) => offset + (mesh.userData.coplanarDepthTies ?? 0) * (MF.lever.tieUnits ?? 1)
+          * (camera.near > 0.05 ? camera.near / 0.05 - 1 : 0);
         if (category === 0) {
           if (mode !== 'act') units = -(maxRank + 2);
           else if (Number.isFinite(mesh.userData.coplanarDepthOffset)) {
-            units = -mesh.userData.coplanarDepthOffset;
+            units = -actUnits(mesh.userData.coplanarDepthOffset);
             factor = actSlope(mesh.userData.coplanarDepthOffset) ?? mesh.userData.coplanarDepthFactor ?? 0;
           } else { units = source.polygonOffset ? source.polygonOffsetUnits : 0; factor = source.polygonOffset ? source.polygonOffsetFactor : 0; }
         } else if (Number.isFinite(rank)) {
@@ -240,7 +243,7 @@ function installHarness() {
           else if (mode === 'refB') units = -(maxRank + 1 - rank);
           else {
             const offset = mesh.userData.coplanarDepthOffset ?? rank;
-            units = -offset;
+            units = -(Number.isFinite(mesh.userData.coplanarDepthOffset) ? actUnits(offset) : offset);
             factor = Number.isFinite(mesh.userData.coplanarDepthOffset)
               ? (actSlope(offset) ?? mesh.userData.coplanarDepthFactor ?? 0) : 0;
           }

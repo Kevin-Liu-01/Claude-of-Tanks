@@ -49,6 +49,8 @@ export interface CoplanarLayerRecord {
   layer: number;
   /** The polygon offset it draws with (coplanarDepth.ts assignCoplanarDepth); the layer itself when absent. */
   depth?: number;
+  /** The exact ties below it, whose extra units scale with the drawing camera's near plane (coplanarDepthUnits). */
+  ties?: number;
 }
 
 interface StaticMergeOptions {
@@ -206,7 +208,7 @@ function commonUserData(sources: readonly VehicleMesh[]): Record<string, unknown
   const [first, ...rest] = sources;
   for (const [key, value] of Object.entries(first.userData)) {
     if (key === 'smokeSockets' || key === 'coplanarDepthLayer' || key === 'coplanarDepthOffset'
-      || key === 'coplanarDepthFactor') continue;
+      || key === 'coplanarDepthTies') continue;
     if (rest.every((source) => Object.prototype.hasOwnProperty.call(source.userData, key)
       && source.userData[key] === value)) shared[key] = value;
   }

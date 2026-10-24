@@ -137,7 +137,7 @@ function equivalent(id, options, label) {
       assert.equal(part.name, source.name, `${label} ${id}: side table names layer ${layer}`);
       // (the layer and its draw offset are the merged draw's: 243's contact-bounded offsets are set after the merge)
       const depthFree = (userData) => ({ ...userData, coplanarDepthLayer: undefined, coplanarDepthOffset: undefined,
-        coplanarDepthFactor: undefined });
+        coplanarDepthTies: undefined });
       assert.deepEqual(depthFree(part.userData), depthFree(source.userData),
         `${label} ${id}: side table keeps ${source.name}'s userData`);
       assert.ok(staticMergePartMatrixWorld(mesh, part, world).equals(source.matrixWorld), `${label} ${id}: ${source.name} replayed world matrix`);

@@ -100,8 +100,10 @@ export function rootFrameBounds(object: VehicleMesh | THREE.Mesh, root: THREE.Ob
 }
 
 /**
- * Each record's draw depth: one unit deeper than the deepest earlier record (in `layer` order) it can tie with.
- * Returns the records in layer order, each with its `depth`.
+ * Each record's draw depth: one unit deeper than the deepest earlier record (in `layer` order) it can tie with; and its
+ * `ties`: how many exact ties (a shared plane key, not a neighbouring one) the chain below it climbs. Both rise along
+ * every contact, so any scale of the ties' extra units (coplanarDepthUnits) keeps every pair's order.
+ * Returns the records in layer order, each with its `depth` and `ties`.
  */
 export function assignCoplanarDepth(
   root: THREE.Object3D, records: readonly CoplanarLayerRecord[],
@@ -111,31 +113,41 @@ export function assignCoplanarDepth(
   const bounds = ordered.map((record) => rootFrameBounds(record.object, root));
   rootInverse.copy(root.matrixWorld).invert();
   const depth = new Int32Array(ordered.length);
-  const seen = new Int32Array(ordered.length).fill(-1);
+  const ties = new Int32Array(ordered.length);
+  // per earlier record met by the current one: 1 a neighbouring plane, 2 the same plane (an exact tie)
+  const met = new Uint8Array(ordered.length);
   const byPlane = new Map<number, number[]>();
   const boundsOnly: number[] = [];
   for (let i = 0; i < ordered.length; i++) {
     const object = ordered[i].object;
     const planar = !isVehicleInstancedMesh(object) && !isVehicleBatchedMesh(object);
     const keys = planar ? facingPlaneKeys(object) : null;
-    let below = 0;
-    const meet = (j: number): void => {
-      if (seen[j] === i) return;
-      seen[j] = i;
-      if (depth[j] > below && !bounds[j].isEmpty() && bounds[i].intersectsBox(bounds[j])) below = depth[j];
+    const touched: number[] = [];
+    const meet = (j: number, exact: boolean): void => {
+      if (!met[j]) touched.push(j);
+      met[j] = Math.max(met[j], exact ? 2 : 1);
     };
     if (keys) {
       for (const key of keys) {
         for (let near = key - 1; near <= key + 1; near++) {
           const list = byPlane.get(near);
-          if (list) for (const j of list) meet(j);
+          if (list) for (const j of list) meet(j, near === key);
         }
       }
-      for (const j of boundsOnly) meet(j);
+      for (const j of boundsOnly) meet(j, false);
     } else {
-      for (let j = 0; j < i; j++) meet(j);
+      for (let j = 0; j < i; j++) meet(j, false);
+    }
+    let below = 0, tiesBelow = 0;
+    for (const j of touched) {
+      if (!bounds[j].isEmpty() && bounds[i].intersectsBox(bounds[j])) {
+        below = Math.max(below, depth[j]);
+        tiesBelow = Math.max(tiesBelow, ties[j] + (met[j] === 2 ? 1 : 0));
+      }
+      met[j] = 0;
     }
     depth[i] = below + 1;
+    ties[i] = tiesBelow;
     if (keys) {
       for (const key of keys) {
         const list = byPlane.get(key);
@@ -146,7 +158,30 @@ export function assignCoplanarDepth(
       boundsOnly.push(i);
     }
   }
-  return ordered.map((record, i) => ({ ...record, depth: depth[i] }));
+  return ordered.map((record, i) => ({ ...record, depth: depth[i], ties: ties[i] }));
+}
+
+/**
+ * The near plane under which a unit or two separates an exact tie at every view the Gallery and the game frame (the
+ * Gallery's camera before 243 and the depth layers' tuning). Two coplanar draws cut from different triangles differ by
+ * about their depth slope over 256 after vertex snapping, and that slope grows with the near plane: under the Gallery's
+ * tight near (fitGalleryDepth, metres) the Leclerc's flush rear-deck inlay (hullDark in the deck's plane) sparkled at
+ * grazing views, 7.3 per mille of its props' pixels against 0.4 on main (243 GPU census).
+ */
+export const COPLANAR_TIE_NEAR_M = 0.05;
+/** Units each exact tie climbs at COPLANAR_TIE_NEAR_M (the old ladder's one unit between neighbouring ranks held
+ * there); they scale with the drawing camera's near plane above it. */
+export const COPLANAR_TIE_UNITS = 1;
+
+/**
+ * The polygon-offset units a record draws with under a camera with this near plane: its contact depth, plus its exact
+ * ties' extra units, which grow with the near plane so a tie stays as far apart, against vertex-snapping error, as it
+ * was at COPLANAR_TIE_NEAR_M. In eye depth that extra is what COPLANAR_TIE_UNITS were there (0.17 mm a tie at 12 m,
+ * 2 mm for the fleet's longest chains of twelve), so a flush inlay never pulls visibly through what stands before it.
+ */
+export function coplanarDepthUnits(depth: number, ties: number, near: number): number {
+  const scale = near > COPLANAR_TIE_NEAR_M ? near / COPLANAR_TIE_NEAR_M : 1;
+  return depth + ties * COPLANAR_TIE_UNITS * (scale - 1);
 }
 
 /**
@@ -155,16 +190,6 @@ export function assignCoplanarDepth(
  */
 export const MARKING_DEPTH_MARGIN = 2;
 
-/**
- * The slope-scaled share of each offset unit (polygonOffsetFactor per unit of depth). Two coplanar draws cut from
- * different triangles reach the rasteriser through different snapped vertices: their depths differ by about the
- * surface's depth slope over 256 (eight subpixel bits), which a constant offset covers only while that slope stays a
- * few units a pixel. Under a near plane tight on the subject (the Gallery's fitGalleryDepth) a grazing plate's slope
- * runs to thousands of units a pixel: the Leclerc's rear-deck grille (hullDark, exactly in the deck's plane, two units
- * above it) sparkled through the deck at 0.6x zoom. One thirty-second of the slope per unit outweighs that rounding
- * eight times over and stays under a pixel's worth of the surface's own depth for every offset the fleet draws.
- */
-export const COPLANAR_DEPTH_SLOPE_STEP = 1 / 32;
 export function markingDepthRecords(
   root: THREE.Object3D, records: readonly CoplanarLayerRecord[], markings: readonly VehicleMesh[],
 ): CoplanarLayerRecord[] {
@@ -176,12 +201,14 @@ export function markingDepthRecords(
     const materials = (Array.isArray(marking.material) ? marking.material : [marking.material]).filter(Boolean);
     if (!materials.length) continue;
     const own = rootFrameBounds(marking, root);
-    let below = 0;
+    let below = 0, tiesBelow = 0;
     records.forEach((record, index) => {
-      const at = record.depth ?? record.layer;
-      if (at > below && !recordBounds[index].isEmpty() && own.intersectsBox(recordBounds[index])) below = at;
+      if (recordBounds[index].isEmpty() || !own.intersectsBox(recordBounds[index])) return;
+      below = Math.max(below, record.depth ?? record.layer);
+      tiesBelow = Math.max(tiesBelow, record.ties ?? 0);
     });
-    out.push({ object: marking, materials, layer: ++rank, depth: below + MARKING_DEPTH_MARGIN });
+    // the film lies on its armour like an exact tie: it climbs one more, so it stays over the armour's own ties
+    out.push({ object: marking, materials, layer: ++rank, depth: below + MARKING_DEPTH_MARGIN, ties: tiesBelow + 1 });
   }
   return out;
 }
