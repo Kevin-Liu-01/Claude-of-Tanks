@@ -1,6 +1,9 @@
 // src/world/sceneryRocks.ts — the scenery lane's rock formations (2026-10-03): the landmark rock a map's geology
 // makes, built from the ground up instead of scattered boulders. Each form follows the process that made it:
 //
+//   chaos    granite: the coast's corestones, weathered out round — a great sunk boulder, another leaning on it, a
+//            rocking stone perched on the pair, one split by a fissure, smaller rounded boulders at their feet (the
+//            chaos of Meneham and Brignogan on the Léon's strand);
 //   tor      granite: cuboidal blocks split by the sheeting joints (every thickness, thin flags over massive sheets)
 //            and the vertical joint sets, their arrises rounded, stacked in two to four columns parted by open vertical
 //            joints, the sheet rock breaking the turf round them, the clitter strewn down the slope (Dartmoor, the
@@ -536,6 +539,80 @@ function graniteTor(spec: RockFormationSpec, ground: RockGround, noise: SimplexN
       mobile || size < 0.9 ? 2 : 3, noise, rng, { weather: 0.08, cuts: 1, cutDepth: 0.8, seedOffset: 80 + i });
     const y = ground.getHeightAt(x, z) + size * (0.05 - rng() * 0.3);
     pieces.push({ geometry: place(g, x, y, z, rng() * Math.PI * 2, (rng() - 0.5) * 0.35, (rng() - 0.5) * 0.35), layer: -1, standing: false });
+  }
+}
+
+/**
+ * The Breton chaos (2026-10-23, item/maps-frontier-saltmere-242; the blind critic on Saltmere Bay's strand: "the granite
+ * boulders are stacked rectangular blocks that read as cubes or rubble rather than rounded, weathered granite"): the
+ * corestones the weather left when it rotted the jointed granite round them and the sea washed the grus away — round
+ * boulders, not sheets. A great boulder sunk a fifth in the sand, a second leaning on its flank, a rocking stone perched
+ * across the pair, one boulder split through by a vertical fissure, smaller ones at their feet and a little rounded
+ * clitter; their surfaces pitted by the weather (the roundedBlock field at its deepest). One stream, the tor's budget.
+ */
+function graniteChaos(spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, mobile: boolean, pieces: Piece[]): void {
+  const R = spec.radius, H = spec.height;
+  const yaw = THREE.MathUtils.degToRad(spec.yawDeg ?? rng() * 180);
+  const ca = Math.cos(yaw), sa = Math.sin(yaw);
+  const at = (along: number, across: number): [number, number] => [spec.x + ca * along - sa * across, spec.z + sa * along + ca * across];
+  const seg = mobile ? 3 : 5;
+  const boulder = (hx: number, hy: number, hz: number, round: number, s: number, offset: number) =>
+    roundedBlock(hx, hy, hz, round, s, noise, rng, { weather: 0.14, cuts: 1, cutDepth: 0.9, seedOffset: offset });
+  // the great boulder: a fifth of it in the sand, its top at about four fifths of the formation's height
+  const hy0 = H * 0.44, hx0 = Math.min(R * 0.56, hy0 * 1.35), hz0 = hx0 * (0.78 + rng() * 0.14);
+  {
+    const [x, z] = at(0, 0);
+    const y = ground.getHeightAt(x, z) + hy0 * 0.62;
+    pieces.push({ geometry: place(boulder(hx0, hy0, hz0, 0.82 + rng() * 0.1, seg + 1, 7), x, y, z, yaw + (rng() - 0.5) * 0.3,
+      (rng() - 0.5) * 0.12, (rng() - 0.5) * 0.12), layer: -1, standing: true });
+  }
+  // the second leaning on its flank along the main joint, the far side of it down in the sand
+  const k1 = 0.62 + rng() * 0.12, hx1 = hx0 * k1, hy1 = hy0 * k1, hz1 = hz0 * k1;
+  {
+    const along = hx0 + hx1 * 0.72;
+    const [x, z] = at(along, (rng() - 0.5) * hz0 * 0.4);
+    const y = ground.getHeightAt(x, z) + hy1 * 0.7;
+    pieces.push({ geometry: place(boulder(hx1, hy1, hz1, 0.85 + rng() * 0.1, seg, 11), x, y, z, yaw + (rng() - 0.5) * 0.5,
+      0.08 + rng() * 0.1, (rng() - 0.5) * 0.15), layer: -1, standing: true });
+  }
+  // the rocking stone across the pair, on the great boulder's crown toward the second
+  {
+    const k2 = 0.42 + rng() * 0.1, hx2 = hx0 * k2, hy2 = hy0 * k2 * 0.85, hz2 = hz0 * k2;
+    const along = hx0 * 0.45;
+    const [x, z] = at(along, (rng() - 0.5) * hz0 * 0.3);
+    const crown = ground.getHeightAt(spec.x, spec.z) + hy0 * 0.62 + hy0 * 0.92;
+    pieces.push({ geometry: place(boulder(hx2, hy2, hz2, 0.8 + rng() * 0.12, Math.max(3, seg - 1), 13), x, crown + hy2 * 0.72, z,
+      yaw + rng() * Math.PI, (rng() - 0.5) * 0.2, (rng() - 0.5) * 0.2), layer: -1, standing: true });
+  }
+  // the split boulder on the far side: two halves parted by a vertical fissure a hand wide
+  {
+    const k3 = 0.55 + rng() * 0.12, hx3 = hx0 * k3, hy3 = hy0 * k3 * 0.9, hz3 = hz0 * k3;
+    const along = -(hx0 + hx3 * 0.55), across = (rng() - 0.5) * hz0 * 0.6;
+    const gap = 0.08 + rng() * 0.1, half = hz3 / 2;
+    for (const side of [-1, 1]) {
+      const [x, z] = at(along, across + side * (half + gap / 2));
+      const y = ground.getHeightAt(x, z) + hy3 * 0.64;
+      pieces.push({ geometry: place(boulder(hx3, hy3, half, 0.7 + rng() * 0.1, Math.max(3, seg - 1), 17 + side), x, y, z,
+        yaw + (rng() - 0.5) * 0.1, (rng() - 0.5) * 0.06, side * (0.04 + rng() * 0.05)), layer: -1, standing: true });
+    }
+  }
+  // the smaller boulders at their feet, round and sunk, and the rounded clitter
+  const small = mobile ? 2 : 4;
+  for (let i = 0; i < small; i++) {
+    const a = (i / small) * Math.PI * 2 + (rng() - 0.5) * 0.9, rr = R * (0.95 + rng() * 0.45);
+    const [x, z] = at(Math.cos(a) * rr, Math.sin(a) * rr * 0.8);
+    const k = 0.22 + rng() * 0.18, hx = hx0 * k, hy = hy0 * k * (0.7 + rng() * 0.25), hz = hz0 * k;
+    const y = ground.getHeightAt(x, z) + hy * 0.45;
+    pieces.push({ geometry: place(boulder(hx, hy, hz, 0.86, Math.max(2, seg - 2), 23 + i), x, y, z, rng() * Math.PI * 2,
+      (rng() - 0.5) * 0.3, (rng() - 0.5) * 0.3), layer: -1, standing: false });
+  }
+  const clitter = Math.round((mobile ? 3 : 8) * (spec.shed ?? 1));
+  for (let i = 0; i < clitter; i++) {
+    const a = rng() * Math.PI * 2, rr = R * (0.7 + Math.pow(rng(), 1.3) * 1.4);
+    const [x, z] = at(Math.cos(a) * rr, Math.sin(a) * rr * 0.85);
+    const size = 0.18 + Math.pow(rng(), 2) * 0.45;
+    const g = looseStone(size, 0.62 + rng() * 0.2, noise, rng, mobile ? 0 : 1, 1);
+    pieces.push({ geometry: place(g, x, ground.getHeightAt(x, z) + size * 0.25, z, rng() * Math.PI * 2), layer: -1, standing: false });
   }
 }
 
@@ -1206,7 +1283,7 @@ export function buildBedrock(
 
 type FormBuilder = (spec: RockFormationSpec, ground: RockGround, noise: SimplexNoise, rng: Rng, mobile: boolean, pieces: Piece[]) => void;
 const FORMS: Readonly<Record<RockForm, FormBuilder>> = Object.freeze({
-  tor: graniteTor, outcrop: beddedOutcrop, crag: slateCrag, pavement: limestonePavement, scree, hoodoo,
+  tor: graniteTor, chaos: graniteChaos, outcrop: beddedOutcrop, crag: slateCrag, pavement: limestonePavement, scree, hoodoo,
   menhir, cairn, calvary, blocks: blockField,
 });
 

@@ -636,4 +636,9 @@ export default {
 
   // south-east of the ford over the eastern fan: the ksar on the wadi, the Gara behind it, the Erg Dune to the right
   shot: { pos: [196, 44, -150], look: [-40, 6, 40] },
+  // the horizons stream (horizons-240, 2026-10-23): the Hinterland past the red line (hinterland/drafts/desert.ts) —
+  // the Dahar cuesta west, the mesa outliers, the Jeffara east; its blind pair against the old ring won 8/1 (mean 4.9 -> 6.4,
+  // driver, gunner and chase under day, sunset and night, both sides on main 4178992761); the battlefield's ground carried
+  // past the edge (groundDetail.ts); rimH unchanged; `?hinterland=0` draws the old ring
+  hinterland: true,
 } satisfies import('./contracts.ts').MapCompositionConfig;

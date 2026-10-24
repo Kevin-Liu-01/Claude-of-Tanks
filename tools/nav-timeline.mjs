@@ -26,8 +26,9 @@
 // Frames come from a Chrome trace (devtools.screenshot). `navigator.webdriver` is hidden: the game skips its
 // transition veils and its boot gate under automation (src/ui/transition.ts, src/ui/bootScreen.ts), and a recording
 // must show what a player sees. Cold = a fresh browser context (empty HTTP cache); warm = the same context running
-// the journey again. --lock takes a normal ticket in the shared capture queue (tools/capture-lock.mjs) and stops
-// starting journeys after --budget-min minutes of holding it.
+// the journey again. --lock takes a normal ticket in the shared capture queue through tools/capture-hold.mjs (the
+// servers are checked and the browser starts while the ticket waits) and stops starting runs after --budget-min
+// minutes of the hold; --place=<key> keeps a killed run's place in the queue.
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import puppeteer from 'puppeteer';
@@ -78,8 +79,9 @@ const tapOrClick = async (page, ctx, selector) => {
 const click = (selector) => Object.assign((page, ctx) => tapOrClick(page, ctx, selector), { target: selector });
 /** A top-bar link: on a phone the bar folds its pages into a menu, opened before the recording starts. */
 const navLink = (href) => Object.assign(async (page, ctx) => {
-  const inMenu = await page.$eval('.public-nav__menu', (menu) => !menu.hidden).catch(() => false);
-  await tapOrClick(page, ctx, inMenu ? `.public-nav__menu a[href="${href}"]` : `.public-nav__links > a[href="${href}"]`);
+  const inBar = await page.$eval(`.public-nav__links > a[href="${href}"]`, (a) => a.getBoundingClientRect().width > 0
+    && getComputedStyle(a).display !== 'none').catch(() => false);
+  await tapOrClick(page, ctx, inBar ? `.public-nav__links > a[href="${href}"]` : `.public-nav__menu a[href="${href}"]`);
 }, {
   target: '.public-nav',
   before: async (page, ctx) => {
@@ -115,18 +117,28 @@ const SHOW_TIMEOUT = 240000;
 const JOURNEYS = [
   { id: 'home', group: 'public', steps: [
     { id: 'home-load', act: direct('/home'), window: 3000,
-      content: when(`visible('.v5-hero h1') && decoded('.v5-hero-rail img.is-active')`) },
+      content: when(`visible('.v5-hero h1, .hero__title') && decoded('.v5-hero-rail img.is-active, img.hero__still')`) },
     { id: 'home-to-gallery', act: navLink('/gallery'), window: 3000,
-      content: when(`location.pathname === '/gallery' && any('#vehicleList .vehicle-card')`),
+      content: when(`location.pathname === '/gallery' && document.querySelector('#vehicleList .vehicle-card, #vehicleList .vl-row') && visible('#vehicleList')`),
       ready: when(`location.pathname === '/gallery' && window.__TANK_GALLERY_READY === true`) },
-    { id: 'gallery-dossier', act: click('#vehicleList .vehicle-card:not(.active)'), window: 2500, timeoutMs: SHOW_TIMEOUT,
-      content: when(`(() => { const id = document.querySelector('#vehicleList .vehicle-card.active')?.dataset.id;
-        return !!id && id !== 'm1a1_abrams_hc' && document.getElementById('dossierDesignation')?.textContent.includes(id); })()`),
+    // The roster's rows are `.vehicle-card` before the brand rebuild and `.vl-row` after it.
+    { id: 'gallery-dossier', act: click('#vehicleList .vehicle-card:not(.active), #vehicleList .vl-row:not([aria-selected="true"])'),
+      window: 2500, timeoutMs: SHOW_TIMEOUT,
+      content: when(`(() => { const row = document.querySelector('#vehicleList .vehicle-card.active, #vehicleList .vl-row[aria-selected="true"]');
+        const name = document.getElementById('dossierName')?.textContent?.trim();
+        return !!row && row.dataset.id !== 'm1a1_abrams_hc' && !!name && row.textContent.includes(name); })()`),
       ready: when(`window.__TANK_GALLERY_READY === true && document.getElementById('loadingState')?.classList.contains('hidden')`) },
     { id: 'gallery-to-docs', act: navLink('/docs'), window: 3000,
       content: when(`location.pathname === '/docs' && visible('h1')`) },
     { id: 'docs-to-topic', act: click('a[href="/docs/build"]'), window: 3000,
       content: when(`location.pathname === '/docs/build' && visible('#topicRoot h1')`) },
+  ] },
+  // The landing page to the manual and a topic, without the Gallery's WebGL in between.
+  { id: 'manual', group: 'public', start: '/home', startReady: `visible('.v5-hero h1, .hero__title')`, steps: [
+    { id: 'home-to-docs', act: navLink('/docs'), window: 3000,
+      content: when(`location.pathname === '/docs' && visible('h1')`) },
+    { id: 'manual-to-topic', act: click('a[href="/docs/simulation"]'), window: 3000,
+      content: when(`location.pathname === '/docs/simulation' && visible('#topicRoot h1')`) },
   ] },
   { id: 'docs', group: 'public', start: '/docs', startReady: `visible('h1')`, steps: [
     { id: 'docs-archive', act: click('#docsArchiveOpen'), window: 2500,
@@ -136,9 +148,9 @@ const JOURNEYS = [
   { id: 'misc', group: 'public', steps: [
     { id: 'not-found', act: direct('/no-such-page'), window: 2500, content: when(`visible('h1')`) },
     { id: 'cn-home', act: direct('/cn/home'), window: 3000,
-      content: when(`visible('.v5-hero h1') && decoded('.v5-hero-rail img.is-active')`) },
+      content: when(`visible('.v5-hero h1, .hero__title') && decoded('.v5-hero-rail img.is-active, img.hero__still')`) },
   ] },
-  { id: 'studio', group: 'game', start: '/home', startReady: `visible('.v5-hero h1')`, steps: [
+  { id: 'studio', group: 'game', start: '/home', startReady: `visible('.v5-hero h1, .hero__title')`, steps: [
     { id: 'home-to-studio', act: navLink('/studio'), window: 3000, timeoutMs: SHOW_TIMEOUT,
       content: when(`location.pathname === '/studio' && ${HERO_DECODED}`),
       ready: when(`visible('.cot-studio') || visible('#cot-boot-gate.on')`) },
@@ -194,6 +206,11 @@ const PROBE = `(() => {
   if (window.__navProbe) return;
   Object.defineProperty(Navigator.prototype, 'webdriver', { get: () => false, configurable: true });
   const probe = window.__navProbe = { shifts: [], contentAt: null, readyAt: null, inputAt: null, spec: window.__navSpec || null, lcp: null };
+  // A prerendered page (tools/viteSpeculationRules.ts) was built before the click and shown at its activation; the probe
+  // reaches it only once it is shown (late), and its content counts from the activation.
+  const navigation = performance.getEntriesByType('navigation')[0];
+  probe.activation = navigation && navigation.activationStart > 0 ? performance.timeOrigin + navigation.activationStart : null;
+  probe.late = window.__navLate === true;
   const onInput = () => { if (probe.spec && probe.inputAt === null) { probe.inputAt = performance.timeOrigin + performance.now(); console.timeStamp('nav:input'); } };
   for (const type of ['pointerdown', 'touchstart', 'keydown']) addEventListener(type, onInput, { capture: true, passive: true });
   const describe = (node) => { if (!node || node.nodeType !== 1) return node ? node.nodeName : null;
@@ -216,8 +233,10 @@ const PROBE = `(() => {
     const spec = probe.spec || window.__navSpec;
     if (spec) {
       const now = performance.timeOrigin + performance.now();
-      if (probe.contentAt === null && check(spec.content)) { probe.contentAt = now; console.timeStamp('nav:content'); }
-      if (probe.contentAt !== null && probe.readyAt === null && (!spec.ready || check(spec.ready))) probe.readyAt = now;
+      const at = probe.late && probe.activation ? probe.activation : now;
+      if (probe.contentAt === null && check(spec.content)) { probe.contentAt = at; console.timeStamp('nav:content'); }
+      if (probe.contentAt !== null && probe.readyAt === null && (!spec.ready || check(spec.ready))) probe.readyAt = at;
+      probe.late = false;
     }
     requestAnimationFrame(tick);
   };
@@ -293,9 +312,42 @@ async function filmstrip(helper, picks, portrait, heading) {
   }, picks, portrait, heading);
 }
 
-function traceEvents(buffer) {
-  const parsed = JSON.parse(Buffer.from(buffer).toString('utf8'));
-  return Array.isArray(parsed) ? parsed : parsed.traceEvents || [];
+/**
+ * A trace on a session of its own on the page's target (the screenshot category records only for a page target).
+ * A navigation that activates a prerendered page (tools/viteSpeculationRules.ts) swaps the page's target and closes
+ * that session: the step then keeps its probe's measures and has no frames, and the next step traces the new target.
+ */
+let openTrace = null;
+async function startTrace(page) {
+  if (openTrace) await openTrace().catch(() => {});
+  const session = await page.createCDPSession();
+  await session.send('Tracing.start', {
+    transferMode: 'ReturnAsStream',
+    traceConfig: { includedCategories: ['devtools.timeline', 'disabled-by-default-devtools.screenshot'], excludedCategories: ['*'] },
+  });
+  const stop = async () => {
+    openTrace = null;
+    try {
+      const done = new Promise((resolve) => session.once('Tracing.tracingComplete', resolve));
+      await session.send('Tracing.end');
+      const { stream } = await done;
+      const chunks = [];
+      for (;;) {
+        const { data, base64Encoded, eof } = await session.send('IO.read', { handle: stream, size: 1 << 22 });
+        chunks.push(Buffer.from(data, base64Encoded ? 'base64' : 'utf8'));
+        if (eof) break;
+      }
+      await session.send('IO.close', { handle: stream }).catch(() => {});
+      const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+      return Array.isArray(parsed) ? parsed : parsed.traceEvents || [];
+    } catch {
+      return []; // the target was swapped under the trace
+    } finally {
+      await session.detach().catch(() => {});
+    }
+  };
+  openTrace = stop;
+  return stop;
 }
 
 async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
@@ -307,6 +359,12 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
     await page.waitForSelector(step.act.target, { visible: true, timeout: 120000 }).catch(() => {});
     await page.evaluate((sel) => document.querySelector(sel)?.scrollIntoView({ block: 'center', behavior: 'instant' }), step.act.target).catch(() => {});
     await new Promise((r) => setTimeout(r, 500));
+    // A mouse reaches a link before it presses it: 300 ms over the control, as a visitor's pointer rests on it
+    // (what a hover-time prerender works with; a touch has no hover).
+    if (!ctx.touch && step.act.hover !== false) {
+      await page.hover(step.act.target).catch(() => {});
+      await new Promise((r) => setTimeout(r, 300));
+    }
   }
   await page.evaluate((value) => {
     if (!window.__navProbe) return;
@@ -314,15 +372,23 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
   }, spec).catch(() => {});
   // The frame on screen before the input: the reference the first response is measured against.
   const before = await page.screenshot({ type: 'jpeg', quality: 40, optimizeForSpeed: true, encoding: 'base64' }).catch(() => null);
-  await page.tracing.start({ screenshots: true, categories: ['devtools.timeline', 'disabled-by-default-devtools.screenshot'] });
+  const stopTrace = await startTrace(page);
   let clickAt = await page.evaluate(() => { console.timeStamp('nav:click'); return performance.timeOrigin + performance.now(); });
   const wallStart = Date.now();
   let error = null;
   await step.act(page, ctx).catch((cause) => { error = String(cause?.message || cause).split('\n')[0]; });
   const deadline = Date.now() + (step.timeoutMs || 90000);
   let seen = null;
+  let lateProbe = false;
   while (Date.now() < deadline) {
-    seen = await page.evaluate(() => window.__navProbe && { content: window.__navProbe.contentAt, ready: window.__navProbe.readyAt }).catch(() => null);
+    seen = await page.evaluate(() => (window.__navProbe ? { content: window.__navProbe.contentAt, ready: window.__navProbe.readyAt }
+      : document.readyState === 'loading' ? null : 'unprobed')).catch(() => null);
+    if (seen === 'unprobed') {
+      // A document the new-document scripts never reached: an activated prerender. Its times come from the trace.
+      await page.evaluate(`window.__navLate = true; window.__navSpec = ${JSON.stringify(spec)}; ${PROBE}`).catch(() => {});
+      lateProbe = true;
+      seen = null;
+    }
     if (seen?.ready) break;
     await new Promise((r) => setTimeout(r, 120));
   }
@@ -342,8 +408,15 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
     await new Promise((r) => setTimeout(r, 150));
   }
   const final = await page.evaluate(() => ({ shifts: window.__navProbe?.shifts || [], lcp: window.__navProbe?.lcp ?? null,
-    fcp: window.__navProbe?.fcp ?? null, path: location.pathname + location.search })).catch(() => ({ shifts: [], lcp: null, fcp: null, path: null }));
-  const trace = traceEvents(await page.tracing.stop());
+    fcp: window.__navProbe?.fcp ?? null, activation: window.__navProbe?.activation ?? null, path: location.pathname + location.search }))
+    .catch(() => ({ shifts: [], lcp: null, fcp: null, activation: null, path: null }));
+  // An activated prerender painted before it was shown: a visitor sees its paints and shifts from the activation on.
+  if (final.activation) {
+    final.shifts = final.shifts.filter((entry) => entry.at >= final.activation);
+    if (final.fcp) final.fcp = Math.max(final.fcp, final.activation);
+    if (final.lcp) final.lcp = Math.max(final.lcp, final.activation);
+  }
+  const trace = await stopTrace();
   await page.removeScriptToEvaluateOnNewDocument(specScript.identifier).catch(() => {});
 
   const stamp = (message) => trace.find((e) => e.name === 'TimeStamp' && e.args?.data?.message === message)?.ts;
@@ -370,8 +443,11 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
     if (delta >= 0.04) abrupt.push({ t: shots[i].t, delta: Number(delta.toFixed(3)) });
   }
   const rel = (at) => (at ? Math.round(at - clickAt) : null);
-  const content = rel(seen?.content);
-  const ready = rel(seen?.ready);
+  // A late probe saw the page only once it was shown: without an activation time, the first changed frame is when it
+  // was shown and its content with it.
+  const shownAt = lateProbe && !final.activation ? response : null;
+  const content = shownAt ?? rel(seen?.content);
+  const ready = shownAt ?? rel(seen?.ready);
   const after = final.shifts.filter((s) => s.at >= clickAt - 5);
   const cls = after.filter((s) => !s.recent).reduce((sum, s) => sum + s.value, 0);
   const shift = after.reduce((sum, s) => sum + s.value, 0);
@@ -380,22 +456,29 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
   // loop changes frames on its own schedule).
   const settled = Math.max(ready ?? content ?? 0, lastShift) || null;
   const result = {
-    step: step.id, path: final.path, error, response, content, ready, settled,
+    // `blocked`: how long the old view stayed up. A new document's first contentful paint ends it (the trace's frames
+    // can trail the compositor by a second under load); within a document, the first frame that changed.
+    step: step.id, path: final.path, error, prerendered: !!final.activation || lateProbe, blocked: final.fcp && final.fcp > clickAt ? Math.round(final.fcp - clickAt) : response,
+    response, content, ready, settled,
     fcp: final.fcp && final.fcp > clickAt ? Math.round(final.fcp - clickAt) : null,
     lcp: final.lcp && final.lcp > clickAt ? Math.round(final.lcp - clickAt) : null,
     cls: Number(cls.toFixed(4)), shift: Number(shift.toFixed(4)),
     shifts: after.map((s) => ({ t: Math.round(s.at - clickAt), value: Number(s.value.toFixed(4)), recent: s.recent, sources: s.sources })),
     abrupt, frames: shots.length, wallMs: Date.now() - wallStart,
   };
-  const end = Math.max(1000, (settled ?? 3000) + 1000);
+  const end = Math.max(1000, (settled ?? 3000) + 1000, (result.blocked ?? 0) + 1000);
+  // A new document's content counts once it has painted: the strip marks it no earlier than the first paint.
+  const painted = (at) => (at === null ? null : Math.max(at, result.fcp ?? 0));
+  const shownContent = painted(content);
+  const shownReady = painted(ready);
   const picks = [];
   for (const offset of STRIP_OFFSETS) {
     if (offset > end && picks.length >= 8) break;
     const frame = [...shots].reverse().find((f) => f.t <= offset) || shots[0];
     if (!frame) break;
     const marks = [];
-    if (content !== null && offset >= content && !picks.some((p) => p.mark.includes('content'))) marks.push('content');
-    if (ready !== null && ready !== content && offset >= ready && !picks.some((p) => p.mark.includes('ready'))) marks.push('ready');
+    if (shownContent !== null && offset >= shownContent && !picks.some((p) => p.mark.includes('content'))) marks.push('content');
+    if (shownReady !== null && shownReady !== shownContent && offset >= shownReady && !picks.some((p) => p.mark.includes('ready'))) marks.push('ready');
     picks.push({ offset, jpeg: frame.jpeg, mark: marks.join(' ') });
   }
   if (picks.length) {
@@ -407,7 +490,7 @@ async function recordStep({ page, helper, step, ctx, profile, stem, outDir }) {
   return result;
 }
 
-async function runJourney({ page, helper, journey, profile, profileName, cacheName, base, outDir }) {
+async function runJourney({ page, helper, journey, profile, profileName, cacheName, base, outDir, over = () => false }) {
   const ctx = { base, touch: profile.viewport.hasTouch };
   const results = [];
   await page.goto('about:blank');
@@ -418,6 +501,7 @@ async function runJourney({ page, helper, journey, profile, profileName, cacheNa
     await new Promise((r) => setTimeout(r, 1200));
   }
   for (const step of journey.steps) {
+    if (over()) break;
     const stem = `${step.id}.${profileName}.${cacheName}`;
     const result = await recordStep({ page, helper, step, ctx, profile, stem, outDir })
       .catch((error) => ({ step: step.id, error: String(error?.message || error).split('\n')[0] }));
@@ -434,7 +518,8 @@ async function runJourney({ page, helper, journey, profile, profileName, cacheNa
 
 /**
  * `--report=<dir>`: one Markdown table per profile × cache from the run files under <dir>/<label>/, a column group per
- * label (base, after, …), in journey order. `blocked` is the response time (the old view held), `jumps` the number of
+ * label (base, after, …), in journey order. `blocked` is how long the old view was held (a new document's first
+ * contentful paint, else the first changed frame), `content` when the step's content check passed and was painted, `jumps` the number of
  * layout shifts and their summed score (input-excused ones included), `CLS` the web-vitals score.
  */
 function report(dir) {
@@ -453,7 +538,7 @@ function report(dir) {
         const results = labels.map((label) => read(label, stem));
         if (results.every((r) => !r)) continue;
         rows.push(`| ${step.id} | ${results.map((r) => r?.error && r.content === null ? `${r.error} | | | | |`
-          : `${cell(r, 'response')} | ${cell(r, 'content')} | ${cell(r, 'settled')} | ${r ? `${r.shifts.length} / ${r.shift}` : '-'} | ${cell(r, 'cls')} |`).join(' ')}`);
+          : `${r ? r.blocked ?? r.fcp ?? r.response ?? '-' : '-'} | ${r?.content == null ? '-' : Math.max(r.content, r.fcp ?? 0)} | ${r?.settled == null ? '-' : Math.max(r.settled, r.fcp ?? 0)} | ${r ? `${r.shifts.length} / ${r.shift}` : '-'} | ${cell(r, 'cls')} |`).join(' ')}`);
       }
       if (!rows.length) continue;
       lines.push(`### ${profile}, ${cache} cache`, '');
@@ -480,34 +565,40 @@ async function main() {
     : JOURNEYS.filter((j) => wanted.includes(j.id) || wanted.some((w) => !ids.has(w) && w === j.group));
   const profiles = option('profiles', 'desktop,phone').split(',');
   const caches = option('caches', 'cold,warm').split(',');
-  const holdDeadline = Number(process.env.NAV_HOLD_DEADLINE || 0);
-  const budgetMs = Math.min(Number(option('budget-min', '18')) * 60000, holdDeadline ? holdDeadline - Date.now() - 90000 : Infinity);
-  let lock = null;
-  if (flag('lock')) {
-    lock = await import('./capture-lock.mjs');
-    console.log('nav-timeline: waiting for a capture ticket');
-    await lock.acquireCaptureLock(4 * 3600 * 1000);
-    console.log(`nav-timeline: capture lock held ${new Date().toISOString()}`);
-  }
-  const heartbeat = lock ? setInterval(() => lock.refreshCaptureLock(), 30000) : null;
-  const holdStarted = Date.now();
-  const browser = await puppeteer.launch({
-    headless: 'new', protocolTimeout: 360000, timeout: 180000, defaultViewport: null,
-    args: ['--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage',
-      '--autoplay-policy=no-user-gesture-required', `--host-resolver-rules=MAP ${option('host-map', 'cot.test')} 127.0.0.1`,
-      '--disable-blink-features=AutomationControlled', '--window-size=1440,1000',
-      ...(flag('soft-gl') ? ['--disable-gpu', '--enable-unsafe-swiftshader'] : [])],
-  });
-  // A wall-clock alarm or the hold's own deadline ends the run: never leave the browser behind.
-  for (const signal of ['SIGTERM', 'SIGINT', 'SIGALRM', 'SIGHUP']) {
-    process.on(signal, () => { browser.process()?.kill('SIGKILL'); process.exit(143); });
-  }
-  const runs = [];
-  let stopped = false;
-  let runIndex = 0;
-  try {
+  const budgetMs = Number(option('budget-min', '18')) * 60000;
+  const host = option('host-map', 'cot.test');
+
+  const launch = async () => {
+    // Every build answers before the hold: a dead server would spend the hold on timeouts. A server that is still
+    // starting (a build finishing beside the queued run) gets --serve-wait-min minutes.
+    const serveBy = Date.now() + Number(option('serve-wait-min', '45')) * 60000;
+    for (const base of bases) {
+      const local = base.url.replace(`//${host}`, '//127.0.0.1');
+      for (;;) {
+        const reply = await fetch(local).catch(() => null);
+        if (reply?.ok) break;
+        if (Date.now() > serveBy) throw new Error(`${base.label} (${base.url}) does not answer`);
+        await new Promise((r) => setTimeout(r, 10000));
+      }
+    }
+    const browser = await puppeteer.launch({
+      headless: 'new', protocolTimeout: 360000, timeout: 180000, defaultViewport: null,
+      args: ['--use-gl=angle', '--enable-webgl', '--ignore-gpu-blocklist', '--no-sandbox', '--disable-dev-shm-usage',
+        '--autoplay-policy=no-user-gesture-required', `--host-resolver-rules=MAP ${host} 127.0.0.1`,
+        '--disable-blink-features=AutomationControlled', '--window-size=1440,1000',
+        ...(flag('soft-gl') ? ['--disable-gpu', '--enable-unsafe-swiftshader'] : [])],
+    });
     const helper = await browser.newPage();
     helper.setDefaultTimeout(180000);
+    return { browser, helper, pages: [], close: () => browser.close() };
+  };
+
+  const record = async ({ browser, helper, signal }) => {
+    const started = Date.now();
+    const over = () => signal?.aborted || Date.now() - started > budgetMs;
+    const runs = [];
+    let stopped = false;
+    let runIndex = 0;
     const bench = await cpuBenchmark(helper);
     console.log(`nav-timeline: cpu benchmark ${bench} (unthrottled)`);
     for (const journey of journeys) {
@@ -517,7 +608,7 @@ async function main() {
         // and a fixed order would hand the second build that head start every time.
         const order = (runIndex += 1) % 2 ? bases : [...bases].reverse();
         for (const base of order) {
-          if (Date.now() - holdStarted > budgetMs) { stopped = true; break; }
+          if (over()) { stopped = true; break; }
           const outDir = join(out, base.label);
           mkdirSync(outDir, { recursive: true });
           const context = await browser.createBrowserContext();
@@ -527,7 +618,8 @@ async function main() {
             await page.evaluateOnNewDocument(PROBE);
             await applyProfile(page, profile);
             for (const cacheName of caches) {
-              const results = await runJourney({ page, helper, journey, profile, profileName, cacheName, base: base.url, outDir })
+              if (over()) { stopped = true; break; }
+              const results = await runJourney({ page, helper, journey, profile, profileName, cacheName, base: base.url, outDir, over })
                 .catch((error) => [{ step: journey.id, error: String(error?.message || error).split('\n')[0] }]);
               for (const result of results) runs.push({ label: base.label, journey: journey.id, profile: profileName, cache: cacheName, ...result, shifts: undefined, abrupt: undefined });
               if (results.at(-1)?.error) console.log(`${base.label} ${journey.id} ${profileName} ${cacheName}: ${results.at(-1).error}`);
@@ -535,20 +627,32 @@ async function main() {
           } finally {
             await context.close().catch(() => {});
           }
+          if (stopped) break;
         }
         if (stopped) break;
       }
       if (stopped) break;
     }
-    if (stopped) console.log('nav-timeline: budget reached, stopped starting journeys');
+    if (stopped) console.log('nav-timeline: the hold or the budget ran out; stopped starting runs');
     writeFileSync(join(out, `summary.${bases.map((b) => b.label).join('-')}.${Date.now()}.json`), `${JSON.stringify({
-      startedAt: new Date(holdStarted).toISOString(), holdMinutes: Number(((Date.now() - holdStarted) / 60000).toFixed(1)),
+      startedAt: new Date(started).toISOString(), minutes: Number(((Date.now() - started) / 60000).toFixed(1)),
       cpuBenchmark: bench, stopped, profiles: Object.fromEntries(profiles.map((p) => [p, PROFILES[p]])), bases, runs }, null, 2)}\n`);
-  } finally {
-    await browser.close().catch(() => {});
-    if (heartbeat) clearInterval(heartbeat);
-    if (lock) lock.releaseCaptureLock();
+  };
+
+  if (flag('lock')) {
+    // A normal capture ticket (tools/capture-hold.mjs): the servers are checked and the browser starts while the ticket
+    // waits, and the hold is spent recording only.
+    const { runWarmHold } = await import('./capture-hold.mjs');
+    await runWarmHold({ label: 'nav-timeline', place: option('place', null), holdMinutes: Number(option('budget-min', '18')),
+      warm: launch, shoot: record });
+    return;
   }
+  const warmed = await launch();
+  // A wall-clock alarm ends the run: never leave the browser behind.
+  for (const signal of ['SIGTERM', 'SIGINT', 'SIGALRM', 'SIGHUP']) {
+    process.on(signal, () => { warmed.browser.process()?.kill('SIGKILL'); process.exit(143); });
+  }
+  try { await record(warmed); } finally { await warmed.close().catch(() => {}); }
 }
 
 main().catch((error) => { console.error(error); process.exitCode = 1; });

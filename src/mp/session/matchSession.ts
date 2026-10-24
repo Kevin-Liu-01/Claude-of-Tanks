@@ -207,6 +207,8 @@ export class MatchSession {
   private presentation: SessionPresentation | null = null;
   private unbind: Unsubscribe | null = null;
   private currentRound: SessionRound | null = null;
+  // players this seat's host already revoked this round (a kick or leave seen in room_state)
+  private readonly revokedSeats = new Set<string>();
   private generation = 0;
   private roundsEntered = 0;
   private verdictsSeen = 0;
@@ -345,6 +347,7 @@ export class MatchSession {
     this.roomSubscriptions.push(this.room.onClosed(() => { void this.leaveMatch('room_closed'); }));
     this.roomSubscriptions.push(this.room.onHostChanged((change) => { void this.handleHostChanged(change); }));
     this.roomSubscriptions.push(this.room.onPhase(({ phase }) => { if (phase === 'joined') this.declineIfUnable(); }));
+    this.roomSubscriptions.push(this.room.onState((room) => this.revokeRemovedSeats(room)));
     this.declineIfUnable();
     const pending = this.room.matchStart;
     if (pending && this.autoEnter) void this.enterMatch(pending).catch(() => { /* reported through the phase */ });
@@ -380,6 +383,7 @@ export class MatchSession {
     if (!room) throw new Error('no room snapshot');
     const round: SessionRound = { matchStart: payload, room, spectator: payload.team === 'spectator', playerId: this.room.playerId };
     this.currentRound = round;
+    this.revokedSeats.clear();
     this.lastVerdict = null;
     this.setPhase('loading', payload.matchId);
     this.startEntryReports(round, payload);
@@ -816,8 +820,27 @@ export class MatchSession {
     const peer = this.createPeerTransport();
     this.peerTransport = peer;
     this.runningGeneration = this.room.generation;
+    // a newer generation's blobs outrank the one this seat hosted, whatever tick an earlier host stamped on them
+    this.matchClient?.migration.setGeneration(this.room.generation);
     migrating.replace(peer, detail);
     this.p2pListeners.emit({ kind: 'role', role: 'peer', generation: this.room.generation });
+  }
+
+  /**
+   * The room removed a seat of the running match (an admin kick, a leave): the host this seat runs drops its link and
+   * refuses its token for the rest of the match (security audit 2026-10-22: a kick used to end the match link only when
+   * the kicked client honoured room_closed). A seat that merely lost its room socket stays in the roster and is kept.
+   */
+  private revokeRemovedSeats(room: RoomSnapshot): void {
+    const host = this.host;
+    const round = this.currentRound;
+    if (!host || !round) return;
+    const seated = new Set(room.players.map((player) => player.id));
+    for (const player of round.room.players) {
+      if (seated.has(player.id) || this.revokedSeats.has(player.id)) continue;
+      this.revokedSeats.add(player.id);
+      host.revokeSeat(player.id);
+    }
   }
 
   /** The room elected a host: a newer generation than this seat runs is a migration — become it, follow it, or step down. */
@@ -837,6 +860,7 @@ export class MatchSession {
       return;
     }
     this.runningGeneration = change.generation;
+    client.migration.setGeneration(change.generation);
     this.migrationsSeen++;
     this.migrationActive = true;
     // the host that went (the resume hold does not wait for it: a silent host may still hold its room socket)

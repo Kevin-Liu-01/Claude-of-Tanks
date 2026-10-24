@@ -159,7 +159,7 @@ assert.match(gameHtml,
   /\.cot-boot-links\s*\{[^}]*display: grid; grid-template-columns: repeat\(2, 1fr\); width: max-content;/,
   'boot utility controls must share the widest control\'s intrinsic width');
 assert.match(gameHtml,
-  /\.cot-boot-links > \.cot-boot-link\s*\{[^}]*width: auto; min-width: 0;[^}]*padding: 0 16px;/,
+  /\.cot-boot-links > \.cot-boot-link\s*\{[^}]*width: auto; min-width: 0;[^}]*padding: 0 14px;/,
   'boot utility controls must keep balanced content-driven horizontal padding');
 assert.doesNotMatch(gameHtml, /\.cot-boot-links > \.cot-boot-link\s*\{[^}]*width: 132px;/,
   'boot utility controls must not return to the fixed width that cramped GitHub');
@@ -175,18 +175,18 @@ for (const [, contents] of gameRepositoryLinks) {
 
 const garageSource = readFileSync(join(ROOT, 'src/ui/garage.ts'), 'utf8');
 const garageCss = readFileSync(join(ROOT, 'src/ui/garage.css'), 'utf8');
-const brandUtilities = garageSource.indexOf('class="cot-brand-utilities cot-header-nav"');
-const homeControl = garageSource.indexOf('data-nav="home"');
-const recordControl = garageSource.indexOf('class="nv cot-record-trigger"');
-const garageNavigation = garageSource.indexOf('class="cot-nav cot-header-nav"');
-assert.ok(brandUtilities >= 0 && homeControl > brandUtilities && recordControl > homeControl &&
-  garageNavigation > recordControl,
-  'garage Home and Record controls must live with the left-side brand before workspace navigation');
+// the Premiere top bar (bui01 05-garage): the wordmark leads and returns Home; Record is one of the workspace tabs
+const homeControl = garageSource.indexOf('class="cot-wordmark" data-nav="home"');
+const workspaceTabs = garageSource.indexOf('class="cot-gbar cot-header-nav"');
+const recordControl = garageSource.indexOf('cot-record-trigger"');
+const utilities = garageSource.indexOf('class="cot-nav cot-header-nav"');
+assert.ok(homeControl >= 0 && workspaceTabs > homeControl && recordControl > workspaceTabs && utilities > recordControl,
+  'the garage wordmark returns Home ahead of the workspace tabs, Record is one of those tabs, and the utilities follow');
 const galleryControl = garageSource.indexOf('data-nav="gallery"');
 const docsControl = garageSource.indexOf('data-nav="docs"');
 const githubControl = garageSource.indexOf('class="nv cot-github"');
-assert.ok(galleryControl > garageNavigation && docsControl > galleryControl && githubControl > docsControl,
-  'garage Docs control must sit immediately after Gallery and before GitHub');
+assert.ok(galleryControl > workspaceTabs && docsControl > galleryControl && githubControl > docsControl,
+  'the workspace tabs run Gallery before Docs, and GitHub sits with the utilities after them');
 const settingsSlot = garageSource.indexOf('class="cot-settings-slot"');
 const mobileMenuTrigger = garageSource.indexOf('class="nv cot-mobile-nav-trigger"');
 assert.ok(githubControl >= 0 && settingsSlot > githubControl && mobileMenuTrigger > settingsSlot,
@@ -195,9 +195,10 @@ for (const destination of ['home', 'garage', 'studio', 'gallery', 'docs', 'recor
   assert.ok(garageSource.includes(`data-mobile-nav="${destination}"`),
     `garage mobile menu must expose ${destination}`);
 }
-assert.match(garageCss,
-  /body\[data-cot-panels='overlay'\] \.cot-brand-utilities,\s*body\[data-cot-panels='overlay'\] \.cot-nav \.cot-nav-desktop\{display:none\}/,
-  'overlay panel layouts must collapse left utilities and desktop workspace links');
+assert.match(garageCss, /body\[data-cot-panels='overlay'\] \.cot-nav \.cot-nav-desktop\{display:none\}/,
+  'overlay panel layouts collapse the desktop utilities');
+assert.match(readFileSync(join(ROOT, 'src/ui/showroom.css'), 'utf8'), /body\[data-cot-panels='overlay'\] \.cot-gbar,/,
+  'overlay panel layouts collapse the workspace tabs (the menu carries them)');
 assert.match(garageSource,
   /class="github-stars" data-github-stars data-github-stars-state="loading" aria-busy="true"/,
   'garage GitHub control exposes the shared loading state before the verified live star count');

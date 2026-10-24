@@ -189,7 +189,7 @@ export interface MatchActorStats {
 export interface ResumeHintStats {
   applied: number;
   rejected: number;
-  reasons: { noResume: number; notRestored: number; repeated: number; older: number; future: number; tooFar: number; noSeat: number };
+  reasons: { noResume: number; notRestored: number; repeated: number; older: number; future: number; tooFar: number; noSeat: number; late: number };
 }
 
 export interface MatchActor {
@@ -204,6 +204,11 @@ export interface MatchActor {
   readonly lagComp: LagCompensation;
   /** Admit a link whose HELLO carried verified seat claims for this room. */
   attach(link: ClientLink, hello: HelloMessage, claims: SeatClaims): boolean;
+  /**
+   * The room removed this player (an admin kick or a leave) while the match runs: detach its seat and refuse its seat token
+   * for the rest of this match (security audit 2026-10-22: a kick used to rely on the kicked client leaving on its own).
+   */
+  revokeSeat(playerId: string, detail?: string): boolean;
   /** The authority entity behind a wire entity id (1..64), null for an unknown id. */
   entityForWireId(entityId: number): AuthoritativeEntity | null;
   /** The wire entity id of a player or bot id, null for an unknown one. */
@@ -420,7 +425,11 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
   const restoredX = new Float64Array(MAX_ENTITIES + 1);
   const restoredZ = new Float64Array(MAX_ENTITIES + 1);
   const hinted = new Uint8Array(MAX_ENTITIES + 1);
-  const resumeHints: ResumeHintStats = { applied: 0, rejected: 0, reasons: { noResume: 0, notRestored: 0, repeated: 0, older: 0, future: 0, tooFar: 0, noSeat: 0 } };
+  // an entity this resumed actor has already driven from its seat's inputs: its pose is this authority's own, so a
+  // later hint is stale (a withheld hint sent mid-fight would teleport the hull; security audit 2026-10-22)
+  const driven = new Uint8Array(MAX_ENTITIES + 1);
+  const RESUME_HINT_WINDOW_TICKS = TICK_HZ * 10;
+  const resumeHints: ResumeHintStats = { applied: 0, rejected: 0, reasons: { noResume: 0, notRestored: 0, repeated: 0, older: 0, future: 0, tooFar: 0, noSeat: 0, late: 0 } };
   let ended = false;
   let stopped = false;
   let verdict: MatchVerdict | null = null;
@@ -546,6 +555,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     const restoredTick = restoredTicks[entityId]!;
     if (restoredTick < 0) { refuse('notRestored'); return; }
     if (hinted[entityId]) { refuse('repeated'); return; }
+    if (driven[entityId] || loop.tick > resume.tick + RESUME_HINT_WINDOW_TICKS) { refuse('late'); return; }
     if (!(hint.tick > restoredTick)) { refuse('older'); return; }
     if (hint.tick >= resume.tick) { refuse('future'); return; }
     const x = dequantizePosition(hint.x);
@@ -585,6 +595,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       sendError(client, CLOSE_REASON.INPUT_TOO_FAR_AHEAD, `tick ${frame.clientTick} vs ${loop.tick}`);
       return;
     }
+    if (client.entityId !== NO_ENTITY) driven[client.entityId] = 1;
     acknowledge(client, frame.snapshotAckTick, nowMs);
     client.latency.setInterpDelayMs(frame.interpDelayMs);
     lagComp.setRewindTicks(client.entity.id, client.latency.rewindTicks(TICK_MS));
@@ -776,7 +787,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
         totals.droppedSnapshots++;
         continue;
       }
-      let published: { bytes: Uint8Array; keyframe: boolean };
+      let published: { bytes: Uint8Array; keyframe: boolean } | null;
       try {
         published = client.publisher.publish(buildFrame(client, tick), nowMs);
       } catch (error) {
@@ -789,6 +800,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
         }
         continue;
       }
+      if (!published) continue; // a forced keyframe inside its minimum interval (publisher.ts)
       if (send(client, published.bytes)) {
         totals.snapshots++;
         if (published.keyframe) totals.keyframes++;
@@ -860,12 +872,24 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     actorLog.info('actor stopped', { reason, tick: loop.tick });
   }
 
+  const revokedPlayers = new Set<string>();
+  function revokeSeat(playerId: string, detail = 'removed from the room'): boolean {
+    revokedPlayers.add(playerId);
+    let detached = false;
+    for (const client of [...clients.keys()]) {
+      if (client.playerId === playerId) { detach(client, CLOSE_REASON.ROOM_CLOSED, detail); detached = true; }
+    }
+    if (detached) actorLog.info('seat revoked', { player: playerId });
+    return detached;
+  }
+
   function attach(link: ClientLink, hello: HelloMessage, claims: SeatClaims): boolean {
     if (stopped) { link.close(CLOSE_REASON.ROOM_CLOSED, 'match over'); return false; }
     if (hello.protocolVersion !== PROTOCOL_VERSION) { link.close(CLOSE_REASON.PROTOCOL_VERSION, `server ${PROTOCOL_VERSION}`); return false; }
     if (claims.roomId !== roomId) { link.close(CLOSE_REASON.ROOM_UNKNOWN, 'token is for another room'); return false; }
     const seatSpec = seatById.get(claims.seat);
     if (!seatSpec || seatSpec.playerId !== claims.playerId) { link.close(CLOSE_REASON.BAD_TOKEN, 'seat does not match the roster'); return false; }
+    if (revokedPlayers.has(claims.playerId)) { link.close(CLOSE_REASON.ROOM_CLOSED, 'removed from the room'); return false; }
     // the same-wire build check (2026-10-13, MP plan step 13): a seat whose prediction code differs from this authority's
     // would mispredict silently; it is refused before it can replace a live link of its seat, with words it can act on
     const builds = compareMatchBuilds(build, hello.clientBuild);
@@ -970,6 +994,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
     loop,
     lagComp,
     attach,
+    revokeSeat,
     entityForWireId: (entityId) => entityByWireId.get(entityId) ?? null,
     wireIdOf: (playerId) => entityIdOf.get(playerId) ?? null,
     resumedBattleTimeMs,
@@ -979,6 +1004,7 @@ export function createMatchActor(options: MatchActorOptions): MatchActor {
       restoredX[entityId] = x;
       restoredZ[entityId] = z;
       hinted[entityId] = 0;
+      driven[entityId] = 0;
     },
     broadcastEvent,
     advance: (nowMs) => loop.advance(nowMs),

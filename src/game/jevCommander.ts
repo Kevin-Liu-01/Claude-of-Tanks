@@ -82,7 +82,17 @@ interface JevTransport {
   /** The session id the proxy budgets by (one per page load; never a player name). */
   readonly sid: string;
   send(body: JevRequestBody, signal: AbortSignal): Promise<JevTransportResult>;
+  /** No further request this session (out of credit, a TypeSafe 429, the budget spent); the classic brain commands. */
+  readonly halted?: boolean;
+  halt?(): void;
 }
+
+/**
+ * Answers that end Jev for the rest of the page session (2026-10-23): TypeSafe's credit is hard-capped and shared with
+ * the owner's other keys, so the out-of-credit answer, a TypeSafe 429 and a spent session budget are not retried. The
+ * classic brain commands every team from there, and no error is shown.
+ */
+const SESSION_ENDING_ERRORS = new Set(['upstream_out_of_credit', 'upstream_rate_limited', 'session_budget_spent']);
 
 interface JevTeamStats {
   requests: number;
@@ -509,7 +519,7 @@ export function createJevCommander({
 
   function issue(view: JevBattleView, team: string): void {
     const row = teamStats(team);
-    if (row.requests >= requestsPerTeam) {
+    if (row.requests >= requestsPerTeam || transport.halted) {
       row.budgetSpent = true;
       return;
     }
@@ -667,6 +677,7 @@ export function createJevCommander({
       }
       row.failed++;
       row.lastError = arrival.result.error;
+      if (SESSION_ENDING_ERRORS.has(arrival.result.error)) transport.halt?.();
       // back off: doubling from two seconds to thirty, or what the proxy asked for
       const count = (failures.get(team) ?? 0) + 1;
       failures.set(team, count);
@@ -750,9 +761,13 @@ function sessionId(): string {
 export function createJevFetchTransport({
   url = '/api/jev', fetch = globalThis.fetch, timeoutMs = 3500, sid = sessionId(),
 }: { url?: string; fetch?: typeof globalThis.fetch; timeoutMs?: number; sid?: string } = {}): JevTransport {
+  let halted = false;
   return {
     sid,
+    get halted() { return halted; },
+    halt() { halted = true; },
     async send(body, signal) {
+      if (halted) return { ok: false, error: 'halted' };
       const controller = new AbortController();
       const abort = (): void => controller.abort();
       signal.addEventListener('abort', abort, { once: true });
