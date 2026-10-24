@@ -64,6 +64,7 @@ export function createCustomCamoStudio({
   canvasHeading.innerHTML = `<span>${t('customCamo.tileHeading')}</span><small>${t('customCamo.tileSubheading')}</small>`;
   const drawWrap = document.createElement('div');
   drawWrap.className = 'cot-custom-draw-wrap';
+  drawWrap.dataset.tipOff = '';
   const drawCanvas = document.createElement('canvas');
   drawCanvas.className = 'cot-custom-draw';
   drawCanvas.width = 512;

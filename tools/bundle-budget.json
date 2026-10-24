@@ -4,7 +4,7 @@
   "pages": {
     "game": {
       "requests": 130,
-      "raw": 3995409,
+      "raw": 4000848,
       "gzip": 1237522,
       "brotli": 1045132,
       "inlineCss": 4318,
@@ -20,9 +20,9 @@
     },
     "docs": {
       "requests": 12,
-      "raw": 169013,
+      "raw": 127066,
       "gzip": 36615,
-      "brotli": 41746,
+      "brotli": 32051,
       "inlineCss": 846
     },
     "gallery": {
@@ -41,7 +41,7 @@
     },
     "cn": {
       "requests": 131,
-      "raw": 4146147,
+      "raw": 4149828,
       "gzip": 1291321,
       "brotli": 1088444,
       "inlineCss": 4742,

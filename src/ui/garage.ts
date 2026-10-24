@@ -622,7 +622,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<div class="band-l"></div><div class="band-r"></div>` +
     // The game bar (brand-ui S2, SPEC 12.1.2): the mark and wordmark (home), then every destination with its key.
     `<div class="cot-brand-rail">` +
-    `<button class="cot-wordmark" data-nav="home" type="button" aria-label="${t('garage.nav.home')}" title="${t('garage.nav.home')}">` +
+    `<button class="cot-wordmark" data-nav="home" type="button" aria-label="${t('garage.nav.home')}">` +
     `${brandMarkSVG(28)}${BRAND_WORDMARK_HTML}</button>` +
     `<nav class="cot-gbar cot-header-nav" aria-label="${t('garage.nav.garage')}">` +
     `<button class="nv on cot-nav-desktop" data-nav="garage" type="button" aria-current="page" aria-label="${t('garage.nav.garage')}">` +
@@ -643,7 +643,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<nav class="cot-nav cot-header-nav" aria-label="${t('garage.nav.menu')}">` +
     `<div class="cot-locale-credit-wrap cot-nav-desktop">` +
     `<button class="nv cot-locale-switcher" data-nav="locale" type="button" ` +
-    `aria-label="${localeSwitchLabel}" title="${localeSwitchLabel}">` +
+    `aria-label="${localeSwitchLabel}">` +
     `${uiIconSVG('globe', 15, 'currentColor', 'nvi')}` +
     `<span class="cot-locale-options" aria-hidden="true">` +
     `<span${currentLocale === 'en-US' ? ' class="is-current"' : ''}>EN</span><i>/</i>` +
@@ -654,12 +654,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<span><small>${t('publicNav.language.creditEyebrow')}</small>` +
     `<strong>${t('publicNav.language.creditName')}</strong></span></a></div>` +
     `<a class="nv cot-github" data-nav="github" href="https://github.com/Kevin-Liu-01/Claude-of-Tanks" ` +
-    `target="_blank" rel="noopener noreferrer" aria-label="${t('garage.nav.githubAria')}" title="${t('garage.nav.github')}">` +
+    `target="_blank" rel="noopener noreferrer" aria-label="${t('garage.nav.githubAria')}">` +
     `${uiIconSVG('github', 15, 'currentColor', 'nvi')}` +
     `<span class="nav-label">${t('garage.nav.github')}</span><span class="github-stars" data-github-stars data-github-stars-state="loading" aria-busy="true" aria-label="${t('githubStars.loadingLabel')}"></span></a>` +
     `<div class="cot-settings-slot"></div>` +
     `<button class="nv cot-mobile-nav-trigger" type="button" aria-label="${t('garage.nav.menu')}" ` +
-    `title="${t('garage.nav.menu')}" aria-expanded="false" aria-controls="cot-mobile-nav-menu">` +
+    `aria-expanded="false" aria-controls="cot-mobile-nav-menu">` +
     `${uiIconSVG('menu', 17, 'currentColor', 'nvi')}<span class="nav-label">${t('garage.nav.menu')}</span></button>` +
     `<div class="cot-mobile-nav-menu" id="cot-mobile-nav-menu" role="group" aria-label="${t('garage.nav.menu')}" hidden>` +
     `<button type="button" data-mobile-nav="home">` +
@@ -822,7 +822,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<div class="cot-drawer-heading"><strong></strong><button type="button" class="cot-drawer-close" aria-label="${t('garage.tools.close')}">${uiIconSVG('close', 20)}</button></div>` +
     `<div class="cot-garage-variant-control">` +
     `<button class="cot-garage-variant-trigger" type="button" aria-label="${t('garage.tools.chooseStaging')}" ` +
-    `title="${t('garage.tools.environments')}" aria-haspopup="listbox" aria-expanded="false" ` +
+    `aria-haspopup="listbox" aria-expanded="false" ` +
     `aria-controls="cot-garage-variant-menu">` +
     `<img class="cot-garage-variant-trigger-thumb" alt="" draggable="false">` +
     `<span class="cot-garage-variant-trigger-copy">` +
@@ -841,13 +841,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<div class="cot-lt-band"><div class="cot-lt-loadout eqrow" role="group" aria-label="${t('garage.dossier.equipment.heading')}"></div>` +
     `<div class="cot-lt-paint" role="group" aria-label="${t('garage.tools.camos')}"></div>` +
     `<div class="cot-lt-acts"><button type="button" class="cot-c-btn cot-c-btn--icon" data-lt-callouts aria-pressed="false" ` +
-    `aria-keyshortcuts="I" aria-label="${t('garage.act.callouts')}" title="${t('garage.act.callouts')} (I)">${uiIconSVG('info', 18)}</button>` +
+    `aria-keyshortcuts="I" aria-label="${t('garage.act.callouts')}" data-tip="${t('garage.act.calloutsTip')} (I)">${uiIconSVG('info', 18)}</button>` +
     `<button type="button" class="cot-c-btn cot-c-btn--icon" data-lt-anatomy ` +
-    `aria-label="${t('garage.act.anatomy')}" title="${t('garage.act.anatomy')}">${uiIconSVG('layerXray', 18)}</button>` +
+    `aria-label="${t('garage.act.anatomy')}" data-tip="${t('garage.act.anatomyTip')}">${uiIconSVG('layerXray', 18)}</button>` +
     `<button type="button" class="cot-c-btn cot-c-btn--icon" data-lt-test-drive ` +
-    `aria-label="${t('garage.dossier.testDrive')}" title="${t('garage.dossier.testDrive')}">${uiIconSVG('modeProving', 18)}</button>` +
+    `aria-label="${t('garage.dossier.testDrive')}" data-tip="${t('garage.act.testDriveTip')}">${uiIconSVG('modeProving', 18)}</button>` +
     `<button type="button" class="cot-c-btn cot-c-btn--icon" data-lt-photo hidden aria-keyshortcuts="P" ` +
-    `aria-label="${t('garage.photo.open')}" title="${t('garage.photo.open')} (P)">${uiIconSVG('toolPhoto', 18)}</button></div></div></section>` +
+    `aria-label="${t('garage.photo.open')}" data-tip="${t('garage.act.photoTip')} (P)">${uiIconSVG('toolPhoto', 18)}</button></div></div></section>` +
     // the readout's station tabs (the 245 redesign): one row of glyphs over the readout, each named under its glyph
     `<nav class="cot-stations" aria-label="${t('garage.station.aria')}"><div class="cot-stations-list" role="tablist" aria-orientation="horizontal" aria-label="${t('garage.station.aria')}">` +
     GARAGE_STATIONS.map(([id, glyph], index) => `<button type="button" class="cot-station" role="tab" data-tab="${id}" data-station="${id}" ` +
@@ -970,7 +970,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         if (timer) { clearInterval(timer); timer = 0; }
         player ??= fleet.createFleetTakePlayer(shotEl, () => activated);
         capEl.textContent = fleet.fleetTakeText(take, 'short');
-        shotEl.title = fleet.fleetTakeText(take, 'title');
+        shotEl.dataset.tip = fleet.fleetTakeText(take, 'title');
       } else {
         shotEl.removeAttribute('title');
         if (idx >= 0) capEl.textContent = t(FEATURED_SHOTS[idx].capKey, FEATURED_SHOTS[idx].capVars);
@@ -1199,7 +1199,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         `<span class="num">${shell.dmg}</span></span></div>`).join('')}</div>` +
       // a folded layout shows three of the rows; this opens the whole dossier
       `<button type="button" class="cot-overview-more" data-garage-panel="equipment" aria-expanded="false" aria-controls="cot-garage-dossier" ` +
-      `aria-label="${t('garage.dossier.vehicleDossier')}" title="${t('garage.dossier.vehicleDossier')}">${uiIconSVG('chevronRight', 18)}</button></section>`;
+      `aria-label="${t('garage.dossier.vehicleDossier')}">${uiIconSVG('chevronRight', 18)}</button></section>`;
   }
   statsEl.addEventListener('change', (event) => {
     const select = (event.target as Element | null)?.closest<HTMLSelectElement>('[data-rival]');
@@ -1271,7 +1271,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     garageVariantLabel.textContent = variantDisplayName;
     garageVariantThumb.src = selected.thumb || selected.hero || '';
     garageVariantThumb.hidden = !garageVariantThumb.src;
-    garageVariantTrigger.title = `${variantDisplayName} · ${variantLocation}`;
+    garageVariantTrigger.dataset.tip = `${variantDisplayName} · ${variantLocation}`;
     garageVariantTrigger.setAttribute('aria-label',
       t('garage.tools.environmentAria', { name: variantDisplayName }));
     root.dataset.garageVariant = selected.id;
@@ -1358,7 +1358,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         recordTrigger.setAttribute('aria-expanded', 'false'); refreshServiceRecord();
       });
       serviceRecord.open(trigger); recordTrigger.setAttribute('aria-expanded', 'true'); refreshServiceRecord();
-    } catch { recordTrigger.title = t('garage.record.loadError'); }
+    } catch { recordTrigger.dataset.tip = t('garage.record.loadError'); }
     finally { recordOpening = false; }
   };
   const closeServiceRecord = ({ restoreFocus = true } = {}) => {
@@ -1701,7 +1701,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       selectMap.type = 'button';
       selectMap.className = 'cot-map-select';
       selectMap.setAttribute('aria-label', m.name);
-      card.title = m.name;
       const thumb = document.createElement('div');
       thumb.className = `mthumb ${m.id}`;
       const loadThumb = () => {
@@ -1729,7 +1728,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
           tag.innerHTML = uiIconSVG(regionTagIcon(region)!, 12);
           const label = document.createElement('span');
           label.textContent = t(`camoTag.${region}`);
-          tag.title = label.textContent;
           tag.appendChild(label);
           tags.appendChild(tag);
         }
@@ -1892,7 +1890,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const label = nation ? tNation(nation) : t('garage.camo.defaultCollection');
       if (nation) button.innerHTML = flagIconHTML(nation, 22);
       else button.textContent = label;
-      button.title = label;
       button.setAttribute('aria-label', label);
       button.addEventListener('click', () => {
         emit('ui:click', {});
@@ -1926,7 +1923,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const label = document.createElement('span');
       label.textContent = tagLabel;
       button.appendChild(label);
-      button.title = t('garage.camo.showTag', { tag: tagLabel });
+      button.dataset.tip = t('garage.camo.showTag', { tag: tagLabel });
       button.setAttribute('aria-label', t('garage.camo.showTag', { tag: tagLabel }));
       button.setAttribute('aria-pressed', String(tagId === activeCamoTag));
       button.addEventListener('click', () => {
@@ -1956,7 +1953,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         : `<div class="sw"><canvas></canvas></div><div class="cl"></div>`;
       requiredElement<HTMLElement>(card, '.cl').textContent =
         (camoOpts.label && camoOpts.label[pid]) || pid;
-      card.title = (camoOpts.label && camoOpts.label[pid]) || pid;
+      card.dataset.tip = (camoOpts.label && camoOpts.label[pid]) || pid;
       card.addEventListener('click', () => {
         emit('ui:click', {});
         if (!selectedId) return;
@@ -2000,10 +1997,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         button.removeAttribute('data-load-error');
         try {
           await customCamoStudioAccess?.open();
-          button.removeAttribute('title');
+          delete button.dataset.tip;
         } catch (error) {
           button.dataset.loadError = 'true';
-          button.title = t('garage.camo.customStudioRetryTitle');
+          button.dataset.tip = t('garage.camo.customStudioRetryTitle');
           console.warn('[garage] custom camouflage studio failed to load', error);
         } finally {
           button.removeAttribute('aria-busy');
@@ -2412,8 +2409,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const label = genericLabel !== genericKey ? genericLabel : originalLabel;
       requiredElement<HTMLElement>(card, '.cl').textContent = label;
       card.setAttribute('aria-label', label);
-      // Keep the complete pattern name available when the single line truncates.
-      card.title = label;
+      // the complete pattern name, when the single line truncates or the grid shows swatches alone
+      card.dataset.tip = label;
     }
     requestAnimationFrame(syncScrollFades);
   }
@@ -2459,11 +2456,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     paintEl.innerHTML = picks.map((patternId, index) => {
       const label = escapeHtmlAttribute(camoPatternLabel(patternId));
       return `<button type="button" class="cot-lt-swatch${index ? '' : ' is-on'}" data-lt-paint="${escapeHtmlAttribute(patternId)}" ` +
-        `aria-pressed="${index === 0}" aria-label="${label}" title="${label}"><canvas width="${index ? 48 : 96}" height="48"></canvas>` +
+        `aria-pressed="${index === 0}" aria-label="${label}"><canvas width="${index ? 48 : 96}" height="48"></canvas>` +
         (index ? '' : `<span class="nm">${label}</span>`) + `</button>`;
     }).join('') +
       `<button type="button" class="cot-c-btn cot-c-btn--icon cot-lt-paint-all" data-garage-panel="appearance" aria-expanded="${openGaragePanel() === 'appearance'}" ` +
-      `aria-controls="cot-garage-camos" aria-label="${escapeHtmlAttribute(allLabel)}" title="${escapeHtmlAttribute(allLabel)}">${uiIconSVG('camouflage', 18)}</button>`;
+      `aria-controls="cot-garage-camos" aria-label="${escapeHtmlAttribute(allLabel)}">${uiIconSVG('camouflage', 18)}</button>`;
     paintEl.querySelectorAll<HTMLButtonElement>('[data-lt-paint]').forEach((button) => {
       const canvas = button.querySelector('canvas');
       if (canvas) paintBandSwatch(canvas, spec, button.dataset.ltPaint || selectedPatternId);
@@ -2616,7 +2613,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       chip.type = 'button';
       chip.className = 'cot-country-chip';
       chip.dataset.country = group.id;
-      chip.title = t('garage.country.chipTitle', { name: group.name, count });
+      chip.dataset.tip = t('garage.country.chipTitle', { name: group.name, count });
       chip.setAttribute('aria-label', t('garage.country.chipAria', { name: group.name }));
       // The flag names the nation (owner UI rule 3); the chip keeps its name for assistive technology and its count.
       chip.innerHTML = `${flagIconHTML(group.nation, 28, 21)}<span class="ct num">${count}</span>`;
@@ -2660,7 +2657,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   facetToggle.setAttribute('aria-haspopup', 'dialog');
   facetToggle.setAttribute('aria-expanded', 'false');
   facetToggle.setAttribute('aria-label', t('fleet.filter.toggleAria'));
-  facetToggle.title = t('fleet.filter.toggleAria');
   // Icon only (blind critic 2026-10-21: a text chip cost the flag rail a quarter of a phone's width); the name rides in
   // aria-label and title, and the badge counts the active filters.
   facetToggle.innerHTML = `${uiIconSVG('filter', 16)}<span class="ct num" hidden></span>`;
@@ -2837,7 +2833,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       card.style.display = cardCountry === countryFilter ? '' : 'none';
       const displayName = spec.label?.displayName || spec.name;
       const shortName = spec.label?.shortName || displayName;
-      card.title = developmentOnly ? `${displayName}${t('garage.card.developmentVehicle')}` : displayName;
       const tier = tierNumeral(spec.id) || '';
       const nationName = t(`nation.${spec.nation}`);
       card.setAttribute('aria-label', `${tier
@@ -2932,7 +2927,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const pct = Math.max(2, Math.min(100, frac * 100)).toFixed(1);
     // Show the equipped result; stock values remain available in the tooltip.
     const value = opts.mod ? `<span class="eqmod">${valueText}</span>` : valueText;
-    const title = opts && opts.title ? ` title="${opts.title}"` : '';
+    const title = opts && opts.title ? ` data-tip="${opts.title}"` : '';
     const icon = opts?.icon || 'speed';
     // The fixed 20-cell scale (brand-ui SPEC 6.2): the raw value above, the peer-normalised rating as lit cells.
     return `<div class="srow"${title}><span class="sicon">${uiIconSVG(icon, 16)}</span>` +
@@ -3007,10 +3002,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const tooltip = item ? slotLabel : t('garage.dossier.equipment.emptyTip');
       slots.push(item
         ? `<button type="button" class="eqslot" data-slot="${index}" ` +
-          `aria-label="${escapeHtmlAttribute(slotLabel)}" title="${escapeHtmlAttribute(slotLabel)}">` +
+          `aria-label="${escapeHtmlAttribute(slotLabel)}" data-tip="${escapeHtmlAttribute(slotLabel)}">` +
           `${equipIconSVG(item.id, 26)}<span class="sl">${t(`equipment.${item.id}.short`) || item.short}</span></button>`
         : `<button type="button" class="eqslot empty" data-slot="${index}" ` +
-          `aria-label="${escapeHtmlAttribute(slotLabel)}" title="${escapeHtmlAttribute(tooltip)}">` +
+          `aria-label="${escapeHtmlAttribute(slotLabel)}" data-tip="${escapeHtmlAttribute(tooltip)}">` +
           `<span class="plus">+</span></button>`);
     }
     return slots.join('');
@@ -3028,7 +3023,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if(!controls.length)return '';
     return `<section class="cot-stat-section cot-special-section">` +
       statSectionTitle('missileRack', t('systems.title'), '', 'Special system') +
-      `<div class="cot-system-preview">${controls.map(control=>`<button type="button" data-guide="${control.icon==='smoke'?'smoke':'special'}" title="${escapeHtmlAttribute(control.detail)}" aria-label="${escapeHtmlAttribute(control.label+': '+control.detail)}">${uiIconSVG(control.icon,19)}<span>${control.label}</span></button>`).join('')}</div></section>`;
+      `<div class="cot-system-preview">${controls.map(control=>`<button type="button" data-guide="${control.icon==='smoke'?'smoke':'special'}" data-tip="${escapeHtmlAttribute(control.detail)}" aria-label="${escapeHtmlAttribute(control.label+': '+control.detail)}">${uiIconSVG(control.icon,19)}<span>${control.label}</span></button>`).join('')}</div></section>`;
   }
 
   function magazineDescription(gun: FleetGunSpec, reloadS: number, reloadMultiplier: number): string {
@@ -3103,7 +3098,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<span class="lt-nation">${flagIconHTML(spec.nation, 32, 24)}<span>${tNation(spec.nation)}</span></span>` +
       `<span>${uiIconSVG(ERA_GLYPH[spec.era] || 'eraModern', 18)}<span>${vehicleEraLabelI18n(spec.era, t)}</span></span>` +
       (tier ? `<span class="lt-tier">${tierChipHTML(tier)}</span>` : '') +
-      `<span title="${escapeHtmlAttribute(t('garage.dossier.section.crew'))}">${uiIconSVG('crew', 18)}<span class="num">${crew}</span></span>` +
+      `<span data-tip="${escapeHtmlAttribute(t('garage.dossier.section.crew'))}">${uiIconSVG('crew', 18)}<span class="num">${crew}</span></span>` +
       `<span class="lt-class" hidden></span>`;
     // The class glyph and name ride with the facet tables, loaded beside the stage (never in the boot graph); the slot
     // closes the row, so its arrival moves nothing.
@@ -3116,7 +3111,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const slot = lowerId.querySelector<HTMLElement>('.lt-class');
       if (!value || !slot) return;
       slot.innerHTML = `${icons.vehicleClassGlyphSVG(value, 18)}<span>${facets.vehicleFacetLabel(facets.VEHICLE_CLASS_META[value], t, { short: true })}</span>`;
-      slot.title = facets.vehicleFacetLabel(facets.VEHICLE_CLASS_META[value], t);
+      slot.dataset.tip = facets.vehicleFacetLabel(facets.VEHICLE_CLASS_META[value], t);
       slot.hidden = false;
     }).catch(() => {});
   }
@@ -3199,7 +3194,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<div class="cot-dossier-title"><span class="cot-tier-plate">${tierNumeral(spec.id) || '&mdash;'}</span><h3></h3></div>` +
       `<div class="sub">${flagIconHTML(spec.nation, 20)}<span>${tNation(spec.nation)} &middot; ${vehicleEraLabelI18n(spec.era, t)}</span></div>` +
       `<button class="cot-compact-equipment-trigger" type="button" data-garage-panel="equipment" ` +
-      `aria-label="${t('garage.dossier.vehicleDossier')}" title="${t('garage.dossier.vehicleDossier')}" ` +
+      `aria-label="${t('garage.dossier.vehicleDossier')}" ` +
       `aria-expanded="${openGaragePanel() === 'equipment'}" aria-controls="cot-garage-dossier">` +
       `${uiIconSVG('performance', 20)}<span>${t('garage.dossier.vehicleDossier')}</span></button>` +
       `<button class="cot-compact-equipment-trigger cot-dossier-close" type="button" aria-label="${t('garage.tools.close')}">${uiIconSVG('close', 20)}</button></div>`;
@@ -3228,7 +3223,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const moduleRows = garageModuleRows(spec);
     const crewRows = garageCrewRows(spec);
     const moduleChips = moduleRows.map((row) =>
-      `<div class="cot-module-chip" title="${t('garage.module.tooltip', { name: row.label })}">` +
+      `<div class="cot-module-chip" data-tip="${t('garage.module.tooltip', { name: row.label })}">` +
       `<span class="mi">${uiIconSVG(row.icon, 16)}</span><span>${row.label}</span></div>`).join('');
     const crewChips = crewRows.map((row) =>
       `<div class="cot-crew-chip"><span>${uiIconSVG(row.icon, 16)}</span><span>${row.label}</span></div>`).join('');
@@ -3877,7 +3872,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<span>${escapeHtmlAttribute(spec.label?.displayName || spec.name)}</span></b><div class="load">${shells}${fittings}` +
       `${vehicleLocked ? '' : `<span class="ok">${uiIconSVG('check', 14)}${t('garage.deploy.ready')}</span>`}</div></div>` +
       `<button type="button" class="cot-c-btn cot-c-btn--36 cot-c-btn--icon chg" data-battle-close data-ui-sound="back" ` +
-      `aria-label="${escapeHtmlAttribute(t('garage.deploy.changeTank'))}" title="${escapeHtmlAttribute(t('garage.deploy.changeTank'))}">${uiIconSVG('garage', 18)}</button>`);
+      `aria-label="${escapeHtmlAttribute(t('garage.deploy.changeTank'))}">${uiIconSVG('garage', 18)}</button>`);
   }
   // the lower band (the direction's .lower): the campaign's next operation over its battlefield, then the player's
   // recent battles, each with its tank's hero card, the result, the battlefield and the kills and damage
@@ -3913,7 +3908,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     deployOps.innerHTML = campaignLadder().map(({ operation, status, progress, stars }) => {
       const title = t(`campaign.op.${operation.id}.title`);
       const action = status === 'locked'
-        ? `<span class="cot-deploy-op-lock" title="${escapeHtmlAttribute(t('campaign.lockedHint', { index: operation.index - 1 }))}">${uiIconSVG('battlePrivate', 20)}</span>`
+        ? `<span class="cot-deploy-op-lock" data-tip="${escapeHtmlAttribute(t('campaign.lockedHint', { index: operation.index - 1 }))}">${uiIconSVG('battlePrivate', 20)}</span>`
         : `<button class="cot-deploy-op-launch" type="button" data-campaign-launch="${operation.id}" data-map-id="${operation.mapId}">${
           t(status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}</button>`;
       // the operation's battlefield, as the Garage's map cards show it
@@ -4425,7 +4420,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       roomReady.textContent = status?.ready ? t('playMenu.ready.notReady') : t('playMenu.ready.iAmReady');
       roomReady.setAttribute('aria-pressed', String(!!status?.ready));
       roomReady.setAttribute('aria-label', status?.ready ? t('playMenu.ready.markNotReady') : t('playMenu.ready.markReady'));
-      roomReady.title = status?.canSetReady
+      roomReady.dataset.tip = status?.canSetReady
         ? (status.ready ? t('garage.battle.readyCancelLoadout') : t('garage.battle.readyForNextBattle'))
         : t('garage.battle.readinessWaitingOnly');
       if (!status) {
