@@ -1617,6 +1617,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/consumables.selftest.mjs',
     'src/game/wheelNotches.selftest.mjs',
     'src/game/input.selftest.mjs',
+    // 2026-10-23 (aim-focus 243): refused Settings relocks never latch cursor aim; a menu click is never an aim point
+    'src/game/inputPointerLockFocus.selftest.mjs',
     'src/game/playerBattleActions.selftest.mjs',
     'src/game/battleKeyActions.selftest.mjs',
     'src/game/playerFrameInput.selftest.mjs',

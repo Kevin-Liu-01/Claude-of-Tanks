@@ -661,6 +661,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<div class="rz-sub">${t('settings.pauseSub')}</div>`;
   const resumeSub = requiredElement<HTMLElement>(resume, '.rz-sub');
   document.body.appendChild(resume);
+  let relockRetry: TimerHandle | null = null; // see relockRefused
 
   function showResumeVeil() {
     if (open || resume.classList.contains('show')) return;
@@ -672,8 +673,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     // fresh click gesture after focus loss. With the lock unavailable the aim
     // never depended on it — showing the veil would only swallow the next
     // battle click (input.isCursorAim() means every lock attempt is denied).
+    // A touch layout never holds the lock either.
     if (input.isCursorAim && input.isCursorAim()) return;
-    // a touch layout (a battle or a watched one) has no click and no Esc: it taps
+    if (input.isTouchLayout && input.isTouchLayout()) return;
+    // the veil's line names the gesture of the layout that shows it (Watch 243: a touch layout taps)
     resumeSub.innerHTML = t(input.isTouchLayout?.() ? 'settings.pauseSubTouch' : 'settings.pauseSub');
     resume.classList.add('show');
     emit('ui:click', {});
@@ -681,12 +684,32 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
   function hideResumeVeil() {
     resume.classList.remove('show');
+    if (relockRetry !== null) clearTimeout(relockRetry);
+    relockRetry = null;
+  }
+
+  // aim-focus 243: a relock the browser refused leaves this veil up instead of
+  // a dead mouse (the refusal never latches cursor aim: input.ts). Chrome
+  // refuses every relock for 1250 ms after the player's Esc; a RESUME click in
+  // that window still carries user activation (5 s), so ask once more as the
+  // window closes. Outside it (an Esc-closed panel asks with no activation)
+  // the veil waits for a click.
+  function relockRefused(retryInMs: number): void {
+    if (open || !isBattleActive()) return;
+    showResumeVeil();
+    if (retryInMs <= 0 || relockRetry !== null || !resume.classList.contains('show')) return;
+    if (typeof navigator !== 'undefined' && navigator.userActivation && !navigator.userActivation.isActive) return;
+    relockRetry = setTimeout(() => {
+      relockRetry = null;
+      if (open || !isBattleActive() || !resume.classList.contains('show')) return;
+      input.requestLock({ fromUi: true });
+    }, retryInMs);
   }
 
   resume.addEventListener('mousedown', (e) => {
     e.stopPropagation();
     hideResumeVeil();
-    if (isBattleActive()) input.requestLock(); // inside the click gesture
+    if (isBattleActive()) input.requestLock({ onRefused: relockRefused }); // inside the click gesture
     emit('ui:click', {});
   });
 
@@ -1753,7 +1776,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
   /**
    * Close the panel. Resuming into a live battle re-requests pointer lock
-   * (relockOnClose); a denied request is retried by the next canvas click.
+   * (relockOnClose); a refused request leaves the click-to-resume veil
+   * (relockRefused).
    * @param {{noRelock?: boolean}} [o] noRelock: battle entry/exit paths close
    *   the panel programmatically — they must never fire a gesture-less lock
    *   request (a denial there would feed the cursor-aim denial streak).
@@ -1771,7 +1795,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     window.removeEventListener('keyup', onPanelKeyUp, true);
     if (panelRaf) { cancelAnimationFrame(panelRaf); panelRaf = 0; }
     input.setEnabled(true);
-    if (relockOnClose && isBattleActive()) input.requestLock();
+    if (relockOnClose && isBattleActive()) input.requestLock({ fromUi: true, onRefused: relockRefused });
     updateGear();
     emit('ui:click', {});
   }
@@ -1863,6 +1887,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     activeElement: document.activeElement,
   });
   document.addEventListener('pointerlockchange', () => {
+    if (input.isLocked()) { hideResumeVeil(); return; } // a relock (relockRefused's retry) resumes the battle
     // Enter opens room chat by focusing its field and intentionally releasing
     // pointer lock. A focused editor owns that unlock; only an otherwise
     // unclaimed in-battle unlock (the browser's swallowed Esc gesture) opens
