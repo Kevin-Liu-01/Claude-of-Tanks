@@ -5774,9 +5774,14 @@ function merkavaModularTurret(P: TankBuilderPort, t: MerkavaTurretConfig): void 
       // reproduce the old slabs exactly (graduate marks byte-identical).
       const merkavaModularTurretGunCourse1 = (): void => {
         const rT0 = cr.rakeTop ?? cr.hw0, rT1 = cr.rakeTop1 ?? cr.hw1;
+        // (247) A gun-owned hood is the sleeve over the gun past the nose (the Mk.4B mantlet cover): nothing of it
+        // hangs below the gun's boot, so its rear underside stays on the front's line (the coordinator's ruling;
+        // the 6 cm drop met the deck at -4 deg), its flanks cut on their own raked planes there (about +-0.20 m).
+        const hoodRearBot = t.gunOwnedCrestFront ? cr.bot : cr.bot - 0.06;
+        const hoodRearHW = cr.hw0 + (rT0 - cr.hw0) * (hoodRearBot - (cr.bot - 0.06)) / (cr.top0 - (cr.bot - 0.06));
         const forwardCrest = slab(
           [-cr.hw0, cr.bot, cr.z0], [cr.hw0, cr.bot, cr.z0],
-          [cr.hw0, cr.bot - 0.06, cr.zW], [-cr.hw0, cr.bot - 0.06, cr.zW],
+          [hoodRearHW, hoodRearBot, cr.zW], [-hoodRearHW, hoodRearBot, cr.zW],
           [-rT0, cr.top0, cr.z0], [rT0, cr.top0, cr.z0],
           [rT0, cr.top0, cr.zW], [-rT0, cr.top0, cr.zW]);
         if (t.gunOwnedCrestFront) {
@@ -8613,6 +8618,16 @@ function merkava4bArmorPanels(P: TankBuilderPort, p: MerkavaProfileData): void {
     return { point, normal, extended };
   };
 
+  // (247) A point `distance` off the support plane, slid along that plane into its own station's z plane: a support
+  // normal with a fore-aft part (the extrapolated nose stations lean ~30 deg forward) otherwise set a station's inner
+  // and outer points at different z, twisting the course's end faces. The offset planes are unchanged.
+  const offsetInStation = (sample: Merkava4bPanelSurfaceSample, distance: number): THREE.Vector3 => {
+    const { point, normal } = sample;
+    const lateral = normal.x * normal.x + normal.y * normal.y;
+    if (normal.z === 0 || lateral < 0.5) return point.clone().addScaledVector(normal, distance);
+    return new THREE.Vector3(normal.x, normal.y, 0).multiplyScalar(distance / lateral).add(point);
+  };
+
   const panel = (side: Side, course: Merkava4bPanelCourse, courseIndex: number): void => {
     const segments = Math.max(2, Math.ceil(Math.abs(course.zF - course.zR) / 0.18));
     const stations: Merkava4bPanelBuildStation[] = [];
@@ -8621,10 +8636,10 @@ function merkava4bArmorPanels(P: TankBuilderPort, p: MerkavaProfileData): void {
       const worldZ = THREE.MathUtils.lerp(course.zF, course.zR, f);
       const bottom = sampleSupport(side, THREE.MathUtils.lerp(course.yBF, course.yBR, f), worldZ);
       const top = sampleSupport(side, THREE.MathUtils.lerp(course.yTF, course.yTR, f), worldZ);
-      const bottomInner = bottom.point.clone().addScaledVector(bottom.normal, -flankPanelEmbedM);
-      const topInner = top.point.clone().addScaledVector(top.normal, -flankPanelEmbedM);
-      const bottomOuter = bottom.point.clone().addScaledVector(bottom.normal, course.thick - flankPanelEmbedM);
-      const topOuter = top.point.clone().addScaledVector(top.normal, course.thick - flankPanelEmbedM);
+      const bottomInner = offsetInStation(bottom, -flankPanelEmbedM);
+      const topInner = offsetInStation(top, -flankPanelEmbedM);
+      const bottomOuter = offsetInStation(bottom, course.thick - flankPanelEmbedM);
+      const topOuter = offsetInStation(top, course.thick - flankPanelEmbedM);
       stations.push({ worldZ, bottom, top, bottomInner, topInner, bottomOuter, topOuter });
     }
     let backedSegments = 0;
@@ -8636,10 +8651,10 @@ function merkava4bArmorPanels(P: TankBuilderPort, p: MerkavaProfileData): void {
       ));
       if (a.bottom.extended || a.top.extended || b.bottom.extended || b.top.extended) {
         backedSegments++;
-        const aBottomBack = a.bottom.point.clone().addScaledVector(a.bottom.normal, -extensionBackerDepthM);
-        const bBottomBack = b.bottom.point.clone().addScaledVector(b.bottom.normal, -extensionBackerDepthM);
-        const bTopBack = b.top.point.clone().addScaledVector(b.top.normal, -extensionBackerDepthM);
-        const aTopBack = a.top.point.clone().addScaledVector(a.top.normal, -extensionBackerDepthM);
+        const aBottomBack = offsetInStation(a.bottom, -extensionBackerDepthM);
+        const bBottomBack = offsetInStation(b.bottom, -extensionBackerDepthM);
+        const bTopBack = offsetInStation(b.top, -extensionBackerDepthM);
+        const aTopBack = offsetInStation(a.top, -extensionBackerDepthM);
         P.add('turret', orientedSlab(
           vectorTuple(aBottomBack), vectorTuple(bBottomBack), vectorTuple(bTopBack), vectorTuple(aTopBack),
           vectorTuple(a.bottom.point), vectorTuple(b.bottom.point), vectorTuple(b.top.point), vectorTuple(a.top.point),
@@ -9405,14 +9420,25 @@ function merkavaSourceGunCradle(
     merkava1b: { rootZ: 0.18, mouthZ: 1.55, rootHW: 0.30, rootHH: 0.28, mouthHW: 0.20, mouthHH: 0.18, bootLen: 0.39, seatDepth: 0.52, x: -0.02 },
     merkava2b: { rootZ: 0.19, mouthZ: 1.76, rootHW: 0.32, rootHH: 0.30, mouthHW: 0.21, mouthHH: 0.19, bootLen: 0.42, seatDepth: 0.54, x: 0.01 },
     merkava2d: { rootZ: 0.17, mouthZ: 1.82, rootHW: 0.34, rootHH: 0.31, mouthHW: 0.22, mouthHH: 0.20, bootLen: 0.43, seatDepth: 0.56, x: -0.01 },
-    merkava3c: { rootZ: 0.12, mouthZ: 1.78, rootHW: 0.37, rootHH: 0.34, mouthHW: 0.23, mouthHH: 0.21, bootLen: 0.42, seatDepth: 0.58, x: 0.01 },
-    merkava3_baz: { rootZ: 0.09, mouthZ: 1.88, rootHW: 0.39, rootHH: 0.36, mouthHW: 0.24, mouthHH: 0.22, bootLen: 0.44, seatDepth: 0.60, x: -0.03 },
+    merkava3c: { rootZ: 0.12, mouthZ: 1.78, rootHW: 0.37, rootHH: 0.34, mouthHW: 0.23, mouthHH: 0.21, bootLen: 0.42, seatDepth: 0.58, x: 0.01,
+      nose: [[0, 1.72], [0.2, 1.72], [0.25, 1.71], [0.3, 1.67], [0.35, 1.65], [0.4, 1.61], [0.5, 1.56], [0.6, 1.50], [0.7, 1.44]],
+      noseSafe: [[0, 1.65], [0.2, 1.65], [0.25, 1.635], [0.3, 1.615], [0.35, 1.58], [0.4, 1.54], [0.45, 1.52], [0.5, 1.485],
+        [0.55, 1.45], [0.6, 1.43], [0.65, 1.395], [0.7, 1.365]],
+      noseBootR: 0.13 },
+    merkava3_baz: { rootZ: 0.09, mouthZ: 1.88, rootHW: 0.39, rootHH: 0.36, mouthHW: 0.24, mouthHH: 0.22, bootLen: 0.44, seatDepth: 0.60, x: -0.03,
+      nose: [[0, 1.68], [0.25, 1.68], [0.3, 1.66], [0.35, 1.63], [0.4, 1.61], [0.5, 1.57], [0.6, 1.52], [0.7, 1.47]],
+      noseSafe: [[0, 1.61], [0.2, 1.61], [0.25, 1.595], [0.3, 1.58], [0.35, 1.55], [0.4, 1.525], [0.45, 1.51], [0.5, 1.48],
+        [0.55, 1.455], [0.6, 1.435], [0.65, 1.41], [0.7, 1.385]],
+      noseBootR: 0.125 },
     // Mk.4B's articulated mask fills the 65 cm half-width turret throat at
     // the buried socket and shoulder station.  The old 46 -> 36 cm taper
     // exposed a 19-29 cm open slot down both sides of the mask.  Hold the
     // mask at 64/63 cm until it clears the throat, then taper to the same
     // compact tube mouth so gun elevation remains visually articulated.
-    merkava4b: { rootZ: 0.18, mouthZ: 2.43, rootHW: 0.64, rootHH: 0.42, seatHW: 0.63, mouthHW: 0.29, mouthHH: 0.26, bootLen: 0.46, seatDepth: 0.68, x: 0.00 },
+    merkava4b: { rootZ: 0.18, mouthZ: 2.43, rootHW: 0.64, rootHH: 0.42, seatHW: 0.63, mouthHW: 0.29, mouthHH: 0.26, bootLen: 0.46, seatDepth: 0.68, x: 0.00,
+      nose: [[0, 1.73], [0.4, 1.72], [0.45, 1.68], [0.5, 1.51], [0.65, 1.51], [0.7, 1.49]],
+      noseSafe: [[0, 1.66], [0.38, 1.66], [0.40, 1.455], [0.5, 1.445], [0.7, 1.42]],
+      noseBootR: 0.14 },
   }[id];
   if (!cfg) return false;
 
@@ -9443,12 +9469,100 @@ function merkavaSourceGunCradle(
   const midF = 0.58;
   const midHW = cfg.seatHW ?? (cfg.rootHW + (cfg.mouthHW - cfg.rootHW) * midF);
   const midHH = cfg.rootHH + (cfg.mouthHH - cfg.rootHH) * midF;
-  addMask(merkavaAxialLoft([
-    ring(cfg.rootHW * 0.98, cfg.rootHH * 0.98, rootZ - cfg.seatDepth),
-    ring(cfg.rootHW, cfg.rootHH, rootZ + 0.035),
-    ring(midHW, midHH, rootZ + span * midF),
-    ring(cfg.mouthHW, cfg.mouthHH, mouthZ + 0.035),
-  ]));
+  // (247) The Merkava 3/4 gun leaves the long wedge nose through a compact mantlet and a cloth boot (photo parity; the
+  // coordinator's ruling): the source mask ran on 0.9 m beyond the nose and met the deck ahead of it and the rear-deck
+  // kit astern near level. On a mark with `nose` (the turret's plan outline at gun height, [|x|, z] in the gun frame,
+  // measured, the lesser of its two sides held from widening again outward) the mask ends at the nose, unchanged behind it and capped: its upper half just inside the outline, so it
+  // still fills the turret's gun throat, and its lower half NOSE_LOW_M inside `noseSafe` (the furthest the clearance
+  // receipt still reads as inside the turret: its outline less its 6.5 cm reach band, measured on both sides), so
+  // nothing below the bore stands past the nose. Beyond it the gun carries a boot sized to its sleeve
+  // (`noseBootR`); the details that stood on the cut-off mask go with it.
+  const nose = 'nose' in cfg ? cfg.nose as unknown as readonly (readonly [number, number])[] : undefined;
+  const noseSafe = 'noseSafe' in cfg ? cfg.noseSafe as unknown as readonly (readonly [number, number])[] : undefined;
+  const NOSE_HIGH_M = 0.005, NOSE_LOW_M = 0.02, NOSE_BLEND_M = 0.04;
+  const tableAt = (pts: readonly (readonly [number, number])[], x: number): number => {
+    const ax = Math.abs(x);
+    if (ax <= pts[0][0]) return pts[0][1];
+    for (let i = 1; i < pts.length; i++) {
+      if (ax <= pts[i][0]) return pts[i - 1][1] + (pts[i][1] - pts[i - 1][1]) * (ax - pts[i - 1][0]) / (pts[i][0] - pts[i - 1][0]);
+    }
+    return pts[pts.length - 1][1];
+  };
+  // the mask's limit at (x, y): the upper half's just inside the outline down to the bore, the lower half's from
+  // NOSE_BLEND_M under it, linear between
+  const noseAt = (x: number): number => tableAt(nose!, x);
+  const noseLimit = (x: number, y: number): number => {
+    const high = noseAt(x) - NOSE_HIGH_M, low = Math.min(high, tableAt(noseSafe ?? nose!, x) - NOSE_LOW_M);
+    return high + (low - high) * THREE.MathUtils.clamp(-y / NOSE_BLEND_M, 0, 1);
+  };
+  const noseZ: number | undefined = nose ? noseAt(0) - NOSE_HIGH_M : undefined;
+  // pull every vertex past the limit back onto it (a face beyond the limit folds onto the limit surface)
+  const clampToNose = (geo: THREE.BufferGeometry, ox: number, oy: number, oz: number): void => {
+    const position = geo.getAttribute('position');
+    for (let i = 0; i < position.count; i++) {
+      const limit = noseLimit(position.getX(i) + ox, position.getY(i) + oy);
+      if (position.getZ(i) + oz > limit) position.setZ(i, limit - oz);
+    }
+    position.needsUpdate = true;
+    geo.computeVertexNormals();
+  };
+  const stations: [number, number, number][] = [
+    [rootZ - cfg.seatDepth, cfg.rootHW * 0.98, cfg.rootHH * 0.98],
+    [rootZ + 0.035, cfg.rootHW, cfg.rootHH],
+    [rootZ + span * midF, midHW, midHH],
+    [mouthZ + 0.035, cfg.mouthHW, cfg.mouthHH],
+  ];
+  // A cut mask is lofted through extra rings where the limit bends (every table point, and where the lower half
+  // gives way under the bore), each ring's points drawn in to the limit at their own height: the furthest |x| it
+  // allows there, and under the bore no lower than the limit's floor on the centre line. Between those rings the limit
+  // runs linear, so every face stays inside it (a vertex clamp alone left long faces spanning its bends).
+  const reachAt = (z: number, y: number): number => {
+    if (noseLimit(0, y) < z) return 0;
+    let lo = 0, hi = 1.5;
+    if (noseLimit(hi, y) >= z) return hi;
+    for (let i = 0; i < 32; i++) {
+      const mid = (lo + hi) / 2;
+      if (noseLimit(mid, y) >= z) lo = mid; else hi = mid;
+    }
+    return lo;
+  };
+  const floorAt = (z: number): number => {
+    const high = noseLimit(0, 0), low = noseLimit(0, -NOSE_BLEND_M);
+    return z <= low || high <= low ? -Infinity : -NOSE_BLEND_M * (high - z) / (high - low);
+  };
+  const fit = ([x, y, z]: Vec3Tuple): Vec3Tuple => {
+    const fy = Math.max(y, floorAt(z));
+    const reach = reachAt(z, fy);
+    return [THREE.MathUtils.clamp(x + x0, -reach, reach) - x0, fy, z];
+  };
+  const profileAt = (z: number): [number, number] => {
+    for (let i = 1; i < stations.length; i++) {
+      const [za, hwa, hha] = stations[i - 1], [zb, hwb, hhb] = stations[i];
+      if (z <= zb) {
+        const t = (z - za) / (zb - za);
+        return [hwa + (hwb - hwa) * t, hha + (hhb - hha) * t];
+      }
+    }
+    const last = stations[stations.length - 1];
+    return [last[1], last[2]];
+  };
+  const cut = noseZ === undefined ? stations : ((): [number, number, number][] => {
+    const zs = stations.map(([z]) => z).filter((z) => z < noseZ);
+    const bends = [...nose!.map(([, z]) => z - NOSE_HIGH_M), ...(noseSafe ?? nose!).map(([, z]) => z - NOSE_LOW_M),
+      noseLimit(0, -NOSE_BLEND_M), noseZ];
+    for (const z of bends) if (z > zs[0] && z <= noseZ) zs.push(z);
+    zs.sort((a, b) => a - b);
+    return zs.filter((z, i) => i === 0 || z - zs[i - 1] > 0.002).map((z) => [z, ...profileAt(z)]);
+  })();
+  // a cut mask's sides carry two more points per ring, at the bore and NOSE_BLEND_M under it, on the side's own line,
+  // so the limit's step falls on an edge and the faces under the bore stand back with the lower half
+  const noseRing = (hw: number, hh: number, z: number): Vec3Tuple[] => {
+    const r = ring(hw, hh, z);
+    return [r[0], r[1], r[2], [hw, -NOSE_BLEND_M, z], [hw, 0, z], r[3], r[4], r[5], r[6], [-hw, 0, z], [-hw, -NOSE_BLEND_M, z], r[7]]
+      .map((point) => fit(point as Vec3Tuple));
+  };
+  const maskGeometry = merkavaAxialLoft(cut.map(([z, hw, hh]) => (nose ? noseRing : ring)(hw, hh, z)));
+  addMask(maskGeometry);
 
   const recordGunSeatReceipt = (): void => {
     if (id !== 'merkava4b') return;
@@ -9478,6 +9592,16 @@ function merkavaSourceGunCradle(
   const sideAngle = Math.atan2(cfg.rootHW - cfg.mouthHW, span);
   const addSkin = (geo: THREE.BufferGeometry, x: number, y: number, z: number, rx = 0, ry = 0, rz = 0, dark = false): void => {
     const transformed = xform(geo, 0, 0, 0, rx, ry, rz);
+    if (nose) {
+      // a detail wholly past the mask's limit goes with the mask; one crossing it ends at the limit
+      const position = transformed.getAttribute('position');
+      let inside = false;
+      for (let i = 0; i < position.count && !inside; i++) {
+        inside = position.getZ(i) + z < noseLimit(position.getX(i) + x0 + x, position.getY(i) + y) - 0.005;
+      }
+      if (!inside) return;
+      clampToNose(transformed, x0 + x, y, z);
+    }
     (dark ? P.addGunExtraDark : P.addGunExtra)(transformed, x0 + x, y, z);
   };
 
@@ -9608,15 +9732,19 @@ function merkavaSourceGunCradle(
 
   // Deep backed tunnel on the mask face.  The painted lip owns the outer
   // shoulder, while the dark recess is visible only inside that armor.
-  oval(cfg.mouthHW * 1.03, 0.105, mouthZ + 0.015, aspect);
-  oval(cfg.mouthHW * 0.82, 0.060, mouthZ + 0.075, aspect * 0.96, undefined, true);
+  if (noseZ === undefined) {
+    oval(cfg.mouthHW * 1.03, 0.105, mouthZ + 0.015, aspect);
+    oval(cfg.mouthHW * 0.82, 0.060, mouthZ + 0.075, aspect * 0.96, undefined, true);
+  }
 
   // Short flexible boot INSIDE the armored tunnel, contracting onto the
-  // canonical barrel root.  Every section intersects its neighbours.
-  const bootHW = cfg.mouthHW * 0.64;
-  const bootHH = cfg.mouthHH * 0.67;
+  // canonical barrel root.  Every section intersects its neighbours.  (247) On a
+  // cut mask it starts tucked into the cut face and is round, sized to the sleeve.
+  const noseBootR: number | undefined = 'noseBootR' in cfg ? cfg.noseBootR : undefined;
+  const bootHW = noseBootR ?? cfg.mouthHW * 0.64;
+  const bootHH = noseBootR ?? cfg.mouthHH * 0.67;
   const bootAspect = bootHH / bootHW;
-  const bootStart = mouthZ + 0.08;
+  const bootStart = noseZ !== undefined ? noseZ - 0.03 : mouthZ + 0.08;
   const bootFront = bootStart + cfg.bootLen;
   oval(bootHW * 1.08, 0.16, bootStart + 0.01, bootAspect);
   oval(bootHW, cfg.bootLen, bootStart + cfg.bootLen * 0.48,
