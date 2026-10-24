@@ -44,8 +44,19 @@ for (const locale of ['en-US', 'zh-CN']) {
   for (const [key, value] of Object.entries(catalog).filter(([key]) => /^metadata\.docs[A-Za-z]*\.title$/.test(key))) {
     assert.match(value, /^[^·]+ · Claude of Tanks$/, `${locale} ${key} "${value}" is "<page> · Claude of Tanks"`);
   }
-  assert.equal(catalog['docs.topic.pageTitle'], 'Claude of Tanks', `${locale} a topic's run-time title ends with the game`);
+  // (249) one string for the head and the running page: each topic's title is its heading (the label), then the game
+  for (const [key, label] of Object.entries(catalog).filter(([key]) => /^docs\.topic\.[a-z]+\.label$/.test(key))) {
+    const slug = key.split('.')[2];
+    const title = catalog[`metadata.docs${slug[0].toUpperCase()}${slug.slice(1)}.title`];
+    assert.equal(title, `${label} · Claude of Tanks`, `${locale} the ${slug} title is its heading, then the game`);
+    if (locale === 'en-US') {
+      const head = readFileSync(join(ROOT, `site/docs-${slug}.html`), 'utf8').match(/<title>([^<]+)<\/title>/)?.[1];
+      assert.equal(head, title.replace(/&/g, '&amp;'), `site/docs-${slug}.html's prerendered title is the catalog's`);
+    }
+  }
 }
+assert.match(readFileSync(join(ROOT, 'src/docs/topics.ts'), 'utf8'), /document\.title = topic\.pageTitle;/,
+  'the running page sets the same catalog title the head carries');
 
 for (const file of pageFiles) {
   const html = readFileSync(join(ROOT, file), 'utf8');
