@@ -330,6 +330,7 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-tl .ib[aria-pressed=true]{color:var(--accent)}
 .st-tl .tc{font:500 var(--fs-15)/1 var(--font-data);white-space:nowrap}
 .st-tl .tc small{color:var(--ink-3);font:inherit}
+.st-tl .rate{padding:3px 6px;border-radius:var(--r1);background:var(--accent-wash);color:var(--accent);font:500 var(--fs-12)/1 var(--font-data)}
 .st-tl .tp .sl{display:grid;grid-template-columns:auto 96px 36px;align-items:center;gap:6px;color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-data)}
 .st-tl .tp .sl>label{color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body);white-space:nowrap}
 .st-tl .tp .sl .val{color:var(--ink-1);text-align:right}
