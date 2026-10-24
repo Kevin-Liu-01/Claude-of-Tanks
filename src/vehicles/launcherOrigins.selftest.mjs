@@ -74,7 +74,9 @@ for (const id of ids) {
         const tip = source.gun.launcherMuzzles[index];
         const anchor = tank.root.getObjectByName(`rig_launcher_tip_${index}`);
         assert(anchor, `${id}: anchor survives donor cleanup`);
-        assert.equal(anchor.parent.name, tip.frame === 'turret' ? 'rig_turret' : 'rig_gun', `${id}: correct native owner`);
+        // (a squashed turret's bake, turretRigScale.ts, wraps a child that cannot take the squash in a turretSection)
+        const owner = anchor.parent.userData.turretSection ? anchor.parent.parent : anchor.parent;
+        assert.equal(owner.name, tip.frame === 'turret' ? 'rig_turret' : 'rig_gun', `${id}: correct native owner`);
         terminalContact(tank, stock, index, `${id}/${quality}/${index}`);
         if (index === 0) {
           anchor.position.y += 5; tank.root.updateMatrixWorld(true);
@@ -114,7 +116,10 @@ for (const id of ids) {
           // Cannon mouths can have a measured cosmetic lip offset. Launcher
           // anchors have no such tolerance: their world pose is the spec pose.
           if (launcher) {
-            assert(point.distanceTo(new Vector3(event.x, event.y, event.z)) < 1e-7,
+            // a squashed turret's anchor rides its turretSection (turretRigScale.ts): one more matrix, 0.03 mm of float
+            const anchor = tank.root.getObjectByName(`rig_launcher_tip_${Math.max(0, event.muzzleIndex)}`);
+            const tolerance = anchor?.parent?.userData.turretSection ? 1e-4 : 1e-7;
+            assert(point.distanceTo(new Vector3(event.x, event.y, event.z)) < tolerance,
               `${id}/${quality}/${round.name}: authority and native tube launch origin agree`);
             tank.gunDirWorld(direction, event.muzzleIndex, true);
             assert(direction.dot(new Vector3(event.dx, event.dy, event.dz)) > .99999,

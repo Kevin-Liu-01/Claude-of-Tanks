@@ -148,12 +148,20 @@ for (const quality of ['high', 'low']) {
     for (let parent=object; parent; parent=parent.parent) if (!parent.visible) return;
     visibleMeshes.push(object);
   });
-  for (const side of [-1,1]) for (const y of [-.145,-.125,-.105]) {
-    const origin=turret.localToWorld(new THREE.Vector3(side*8,y,0));
-    frontRay.set(origin,new THREE.Vector3(-side,0,0));
-    const hit=frontRay.intersectObjects(visibleMeshes,false)[0];
-    assert.equal(hit?.object.name,'turret','side sightline exposes the thin circular bearing');
-    assert.ok(Math.abs(turret.worldToLocal(hit.point.clone()).x)<1.3,'visible stock is the bearing, not a turret side panel');
+  // (the M1A3's camouflage hull net drapes the left deck edge to the bearing's lowest line, x -1.52: a suit may cover one
+  // of a side's three lines, nothing else may, and the bearing shows on the other two)
+  for (const side of [-1,1]) {
+    let seen=0;
+    for (const y of [-.145,-.125,-.105]) {
+      const origin=turret.localToWorld(new THREE.Vector3(side*8,y,0));
+      frontRay.set(origin,new THREE.Vector3(-side,0,0));
+      const hit=frontRay.intersectObjects(visibleMeshes,false)[0];
+      if (hit && /_ghillie_/.test(hit.object.name)) continue;
+      assert.equal(hit?.object.name,'turret','side sightline exposes the thin circular bearing');
+      assert.ok(Math.abs(turret.worldToLocal(hit.point.clone()).x)<1.3,'visible stock is the bearing, not a turret side panel');
+      seen++;
+    }
+    assert.ok(seen>=2,`side ${side}: the bearing shows on at least two of its three sightlines (${seen})`);
   }
   for (const side of [-1, 1]) {
     for (const x of [1.10,1.45]) {
@@ -236,8 +244,10 @@ for (const quality of ['high', 'low']) {
       'front underside rises into the cheek instead of remaining flat at -.10 m');
     closureRay.set(new THREE.Vector3(side*1.10,-.5,.96),new THREE.Vector3(0,1,0));
     const aft = closureRay.intersectObject(cheekProbe)[0];
-    assert.ok(aft && Math.abs(aft.point.y+.10)<1e-5,
-      'rear cheek foot remains seated at the unchanged lower shell datum');
+    // (release 240: past the ring's keep radius the turret seat, turretSeatRace.ts, stands the underside its 3 cm seam
+    // over the swept deck, at most 4 cm over the ring's plane: the foot is at the lower datum or on that plane over it)
+    assert.ok(aft && aft.point.y > -.10 - 1e-5 && aft.point.y < -.10 + .04 + 1e-5,
+      `rear cheek foot remains seated at the lower shell datum or the seat's plane over it (${aft?.point.y})`);
   }
   cheekProbe.material.dispose();
   verifyM1A3Mantlet(m1);
