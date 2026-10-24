@@ -1,6 +1,6 @@
 // Deterministic 1200x630 social cards composed from approved in-engine captures.
 // The default game card and every route companion share the owner-approved
-// bottom-left lockup: the Bracket Chevron and the outlined wordmark (public/brand/lockup.svg, tools/brand/wordmark.py).
+// bottom-left lockup: the commander mark and the outlined wordmark (public/brand/lockup.svg, tools/brand-marks.mjs).
 // Every card shows the current game (owner, 2026-10-15: "for the social link cards, they have to use the modern version
 // of the game, not the old"): the versus stills (public/media/versus-r1) for the game, the home page, private rooms,
 // the 404 and the manual's battle topics, performance and loading among them; two of the combat round's duels
@@ -84,12 +84,12 @@ export function cardHtml(label, source, position, fit = 'cover', lang = 'en') {
     .rule{position:absolute;top:42px;right:48px;width:92px;height:3px;background:#f5a623;box-shadow:0 0 18px rgba(245,166,35,.28)}
     .label{position:absolute;top:57px;right:48px;color:#f4f7f9;font:700 16px/1 'Chakra Petch',sans-serif;letter-spacing:3.3px;text-shadow:0 2px 7px #000;text-align:right}
     .label:lang(zh){top:55px;font:600 19px/1 'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Microsoft YaHei',sans-serif;letter-spacing:4px}
-    .lockup{position:absolute;left:60px;bottom:52px;height:76px;width:auto;filter:drop-shadow(0 2px 18px rgba(0,0,0,.75))}
+    .lockup{position:absolute;left:60px;bottom:48px;height:100px;width:auto;filter:drop-shadow(0 2px 18px rgba(0,0,0,.75))}
     .edge{position:absolute;inset:14px;border:1px solid rgba(189,207,218,.2)}
     .game .backdrop,.game .grain,.game .edge{display:none}
     .game .hero{filter:none}
     /* the game card's Leopard fills the lower left: its lockup takes the clear cobbles on the right (text never on a tank) */
-    .game .lockup{left:auto;right:48px;bottom:40px;height:64px}
+    .game .lockup{left:auto;right:48px;bottom:40px;height:84px}
     .game .shade{background:linear-gradient(0deg,rgba(5,8,11,.82) 0%,rgba(5,8,11,.42) 24%,rgba(5,8,11,0) 48%)}
   </style></head><body><div class="card${label ? '' : ' game'}" lang="${lang}">
     <img class="backdrop" src="${image}"><img class="hero" src="${image}">
@@ -103,7 +103,8 @@ async function generateOgImages(cards = OG_IMAGE_CARDS) {
   mkdirSync(OUTPUT, { recursive: true });
   const browser = await puppeteer.launch({
     headless: 'new',
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--allow-file-access-from-files'],
+    // (the capture-browser rule, 2026-10-23: every capture browser runs with a 3 GB JavaScript heap)
+    args: ['--js-flags=--max-old-space-size=3072', '--no-sandbox', '--disable-dev-shm-usage', '--allow-file-access-from-files'],
   });
   try {
     const page = await browser.newPage();

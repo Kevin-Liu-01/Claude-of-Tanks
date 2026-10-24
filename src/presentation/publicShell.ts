@@ -16,6 +16,7 @@
  */
 import { BRAND_WORDMARK_HTML } from '../ui/brandMark.ts';
 import { ACTIVE_MASTERS, SMALL_MASTERS } from '../ui/icons/spriteIndex.ts';
+import { brandMarkSVG } from '../ui/brandMark.ts';
 
 export type PublicPageKey = 'home' | 'gallery' | 'docs' | 'studio' | 'media';
 
@@ -59,11 +60,9 @@ export function flagMarkup(code: string, className = 'cot-flag'): string {
   return `<svg class="${className}" viewBox="0 0 640 480" width="22" height="16" aria-hidden="true" focusable="false"><use href="#f-${code}"/></svg>`;
 }
 
-/** The Bracket Chevron mark (BUI-01; public/brand/mark.svg): registration corners in ink, the chevron in the accent. */
+/** The commander mark (src/ui/brandMark.ts; public/brand/mark.svg), `size` px tall: the tank in ink, the commander in the accent. */
 export function markMarkup(size = 28): string {
-  return `<svg class="cot-mark" viewBox="0 0 24 24" width="${size}" height="${size}" aria-hidden="true" focusable="false">`
-    + '<path d="M2 8V2h6M16 2h6v6M22 16v6h-6M8 22H2v-6" fill="none" stroke="currentColor" stroke-width="2"/>'
-    + '<path d="M6.5 16.5 12 8.2l5.5 8.3" fill="none" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="miter" style="stroke:var(--accent)"/></svg>';
+  return brandMarkSVG(size);
 }
 
 /** The wordmark, CLAUDE —of— TANKS, as the outlined master (src/ui/brandMark.ts; SPEC 3.1: never live text). Its

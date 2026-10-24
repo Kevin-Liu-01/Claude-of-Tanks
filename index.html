@@ -38,7 +38,7 @@
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:type" content="image/png" />
-  <meta property="og:image:alt" content="Claude of Tanks in-engine armored battle with the lockup: the Bracket Chevron and the wordmark" />
+  <meta property="og:image:alt" content="Claude of Tanks in-engine armored battle with the commander mark" />
   <!-- the game's moving card (owner 2026-10-23): the f6 Steinburg film with the lockup, for previews that play video -->
   <meta property="og:video" content="https://cot.kevinliu.studio/brand/og/game.mp4" />
   <meta property="og:video:secure_url" content="https://cot.kevinliu.studio/brand/og/game.mp4" />
@@ -49,7 +49,7 @@
   <meta name="twitter:title" content="Claude of Tanks — Free Browser Tank Game" />
   <meta name="twitter:description" content="{{COT_PRODUCTION_VEHICLES}} production vehicles, {{COT_BATTLEFIELDS}} battlefields, bot and multiplayer battles — armored warfare rendered live in your browser. No install, no account." />
   <meta name="twitter:image" content="https://cot.kevinliu.studio/brand/og-image.png" />
-  <meta name="twitter:image:alt" content="Claude of Tanks in-engine armored battle with the lockup: the Bracket Chevron and the wordmark" />
+  <meta name="twitter:image:alt" content="Claude of Tanks in-engine armored battle with the commander mark" />
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -96,11 +96,13 @@
     ]
   }
   </script>
-  <link rel="icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
   <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
   <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/brand/favicon-192.png" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta name="msapplication-config" content="/browserconfig.xml" />
+  <meta name="msapplication-TileColor" content="#11151a" />
   <!-- BOOT SCREEN: first-paint faces, preloaded (src/ui/typeFaces.ts) -->
   <!--cot:type ui mono body display-700 body-500-->
   <script>
@@ -271,16 +273,31 @@
     .cot-boot-inner { position: relative; z-index: 2; width: min(760px, 86vw); text-align: center; }
 
     /* --- emblem + wordmark ------------------------------------------------ */
-    .cot-boot-mark { display: block; width: clamp(180px, 22vw, 290px); height: auto; margin: 0 auto 6px; overflow: visible; }
-    /* the registration sting (SPEC 3.4): the caps' top halves slide into register, then the "of" rules draw outward
-       from the centre; reduced motion shows the final frame */
-    .cot-boot-mark .r { transform-box: fill-box; }
-    .cot-boot-mark .rl { transform-origin: right; }
-    .cot-boot-mark .rr { transform-origin: left; }
-    #cot-boot.cot-boot-enter .cot-boot-mark .t { animation: cot-boot-register .42s cubic-bezier(.16,1,.3,1) .1s backwards; }
-    #cot-boot.cot-boot-enter .cot-boot-mark .r { animation: cot-boot-rule .24s cubic-bezier(.16,1,.3,1) .36s backwards; }
-    @keyframes cot-boot-register { from { transform: translateX(160px); } }
-    @keyframes cot-boot-rule { from { transform: scaleX(0); } }
+    .cot-boot-mark { display: block; width: clamp(170px, 20vw, 270px); height: auto; margin: 0 auto 6px; overflow: visible; }
+    /* the living mark: the commander's tank rolls along while the game loads (src/ui/brandMarkMotion.ts; reduced
+       motion shows the static frame) */
+    /* cot:brand-motion */
+    .cot-mark--motion{--mk-loop:1.2s;overflow:visible}
+    .cot-mark--motion :is(.mk-hull,.mk-turret,.mk-crew,.mk-antenna,.mk-puff){transform-box:view-box}
+    .cot-mark--motion .mk-wheel{transform-box:fill-box;transform-origin:50% 50%;animation:mk-turn var(--mk-loop) linear infinite}
+    .cot-mark--motion .mk-links--top{animation:mk-links-top var(--mk-loop) linear infinite}
+    .cot-mark--motion .mk-links--low{animation:mk-links-low var(--mk-loop) linear infinite}
+    .cot-mark--motion .mk-hull{animation:mk-bob calc(var(--mk-loop) / 2) ease-in-out infinite}
+    .cot-mark--motion .mk-turret{transform-origin:105px 93px;animation:mk-rock calc(var(--mk-loop) / 2) ease-in-out calc(var(--mk-loop) * -0.38) infinite}
+    .cot-mark--motion .mk-crew{animation:mk-bounce calc(var(--mk-loop) / 2) ease-in-out calc(var(--mk-loop) * -0.3) infinite}
+    .cot-mark--motion .mk-antenna{transform-origin:64px 76px;animation:mk-sway calc(var(--mk-loop) / 2) ease-in-out calc(var(--mk-loop) * -0.26) infinite}
+    .cot-mark--motion .mk-puff{transform-origin:37px 101px;opacity:0;animation:mk-puff var(--mk-loop) ease-out infinite}
+    @keyframes mk-turn{to{transform:rotate(240deg)}}
+    @keyframes mk-links-top{from{stroke-dashoffset:5.655}to{stroke-dashoffset:0}}
+    @keyframes mk-links-low{from{stroke-dashoffset:0}to{stroke-dashoffset:5.655}}
+    @keyframes mk-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-0.9px)}}
+    @keyframes mk-rock{0%,100%{transform:rotate(-0.55deg)}50%{transform:rotate(0.55deg)}}
+    @keyframes mk-bounce{0%,100%{transform:translateY(0)}45%{transform:translateY(-1.1px)}}
+    @keyframes mk-sway{0%,100%{transform:rotate(0deg)}50%{transform:rotate(-5deg)}}
+    @keyframes mk-puff{0%{opacity:.5;transform:translate(0,0) scale(1)}100%{opacity:0;transform:translate(-11px,-5px) scale(3.2)}}
+    @media (prefers-reduced-motion:reduce){.cot-mark--motion :is(.mk-wheel,.mk-links,.mk-hull,.mk-turret,.mk-crew,.mk-antenna,.mk-puff){animation:none}
+      .cot-mark--motion .mk-puff{display:none}}
+    /* /cot:brand-motion */
     .cot-boot-invite {
       display: none; width: fit-content; max-width: min(560px, 84vw); margin: 25px auto -20px;
       padding: 9px 15px; color: #fff0d2; border: 1px solid rgba(240,160,48,.48);
@@ -398,8 +415,6 @@
       #cot-boot-hero .hly { transition-duration: .01ms; }
       .cot-boot-fill::after { animation: none; }
       #cot-boot.cot-boot-enter .cot-boot-mark,
-      #cot-boot.cot-boot-enter .cot-boot-mark .t,
-      #cot-boot.cot-boot-enter .cot-boot-mark .r,
       #cot-boot.cot-boot-enter .cot-boot-invite,
       #cot-boot.cot-boot-enter .cot-boot-load,
       #cot-boot.cot-boot-enter .cot-boot-tip,
@@ -495,7 +510,7 @@
       animation: cot-boot-fade .42s cubic-bezier(.16,1,.3,1) .18s backwards;
     }
     @media (width < 768px) {
-      .cot-boot-mark { width: 172px; }
+      .cot-boot-mark { width: 164px; }
       .cot-boot-load { margin-top: 32px; }
       .cot-boot-tip { height: 144px; }
       /* a failure's sentence takes the stage line and wraps to three on a phone: its room is held from the first
@@ -1013,11 +1028,10 @@
       <img class="hly" alt="" decoding="async" fetchpriority="low">
     </div>
     <div class="cot-boot-inner">
-      <!-- The ceremonial title card (brand-ui SPEC 3.3): the Bracket Chevron over the stacked wordmark, its top halves
-           sliding into register at entry (SPEC 3.4, the CSS above). -->
-      <svg class="cot-boot-mark" viewBox="55 -1575 3946 4097" role="img" aria-label="Claude of Tanks" data-i18n-aria-label="aria.claudeoftanks">
+      <!-- The title card (brand-ui 245): the living commander mark over the stacked wordmark; its body is generated. -->
+      <svg class="cot-boot-mark" viewBox="55 -2187 3946 4709" role="img" aria-label="Claude of Tanks" data-i18n-aria-label="aria.claudeoftanks">
       <!-- GENERATED from public/brand/title-card.svg by tools/sync-brand-marks.mjs. -->
-<defs><path id="cot-tc-w" d="M55 727V257L170 142H512L625 255V362H489V305L442 258H242L191 309V675L242 726H442L489 679V622H625V729L512 842H170ZM760 142H896V727H1246V842H760ZM1557 142H1681L1937 842H1799L1742 687H1496L1439 842H1301ZM1712 575 1619 309H1617L1527 575ZM2027 722V142H2163V675L2214 726H2410L2461 675V142H2597V722L2477 842H2147ZM2767 142H3215L3335 262V722L3215 842H2767ZM3148 726 3199 675V309L3148 258H2903V726ZM3495 142H4001V257H3631V434H3972V547H3631V727H4001V842H3495ZM612 1937H403V1822H957V1937H748V2522H612ZM1183 1822H1307L1563 2522H1425L1368 2367H1122L1065 2522H927ZM1338 2255 1245 1989H1243L1153 2255ZM1673 1822H1795L2107 2297H2109V1822H2240V2522H2118L1806 2048H1804V2522H1673ZM2410 1822H2546V2115H2652L2821 1822H2974L2769 2171L2991 2522H2835L2651 2231H2546V2522H2410ZM3061 2414V2314H3195V2373L3228 2406H3435L3469 2372V2256L3436 2223H3171L3063 2115V1930L3171 1822H3487L3595 1930V2031H3461V1971L3428 1938H3230L3197 1971V2074L3230 2107H3495L3603 2215V2412L3493 2522H3169Z"/><clipPath id="cot-tc-top"><rect x="-85" y="2" width="4226" height="498"/><rect x="-85" y="1682" width="4226" height="498"/></clipPath><clipPath id="cot-tc-low"><rect x="-85" y="484" width="4226" height="498"/><rect x="-85" y="2164" width="4226" height="498"/></clipPath></defs><g transform="translate(1357 -1575) scale(55.902)" fill="none"><path d="M2 8V2h6M16 2h6v6M22 16v6h-6M8 22H2v-6" stroke="#f6f3ec" stroke-width="2"/><path d="M6.5 16.5 12 8.2l5.5 8.3" stroke="#f0a030" stroke-width="2.4" stroke-linecap="square" stroke-linejoin="miter"/></g><use href="#cot-tc-w" fill="#f6f3ec" clip-path="url(#cot-tc-low)"/><use class="t" href="#cot-tc-w" fill="#f6f3ec" clip-path="url(#cot-tc-top)"/><path class="of" fill="#f0a030" d="M1665.2 1459.8V1212.2L1723.4 1154H1895L1953.2 1212.2V1459.8L1895 1518H1723.4ZM1871.1 1474.3 1903.3 1442.1V1229.9L1871.1 1197.7H1747.3L1715.1 1229.9V1442.1L1747.3 1474.3ZM2109.2 1154H2348.4V1197.7H2159.2V1318.3H2323.5V1362H2159.2V1518H2109.2Z"/><path class="r rl" fill="#f0a030" d="M352 1295h1144v90h-1144Z"/><path class="r rr" fill="#f0a030" d="M2580 1295h1144v90h-1144Z"/>
+<g class="cot-mark--motion"><g transform="translate(-379.06 -2858.20) scale(19.73000)"><g class="mk-run" fill="#f6f3ec"><path fill-rule="evenodd" d="M50 119h126a9.5 9.5 0 0 1 0 19H50a9.5 9.5 0 0 1 0-19ZM61.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM84.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM107.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM130.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM153.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM176.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0Z"/><path class="mk-links mk-links--top" d="M50 120.4H176" fill="none" stroke="var(--mk-ground, #0b0e11)" stroke-width="1.5" stroke-dasharray="2.38 3.28"/><path class="mk-links mk-links--low" d="M50 136.6H176" fill="none" stroke="var(--mk-ground, #0b0e11)" stroke-width="1.5" stroke-dasharray="2.38 3.28"/><g fill="#f6f3ec"><g class="mk-wheel"><circle cx="56" cy="128.5" r="5.4" fill="none"/><circle cx="56" cy="128.5" r="1.7"/><rect x="55.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 56 128.5)"/><rect x="55.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 56 128.5)"/><rect x="55.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 56 128.5)"/></g><g class="mk-wheel"><circle cx="79" cy="128.5" r="5.4" fill="none"/><circle cx="79" cy="128.5" r="1.7"/><rect x="78.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 79 128.5)"/><rect x="78.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 79 128.5)"/><rect x="78.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 79 128.5)"/></g><g class="mk-wheel"><circle cx="102" cy="128.5" r="5.4" fill="none"/><circle cx="102" cy="128.5" r="1.7"/><rect x="101.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 102 128.5)"/><rect x="101.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 102 128.5)"/><rect x="101.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 102 128.5)"/></g><g class="mk-wheel"><circle cx="125" cy="128.5" r="5.4" fill="none"/><circle cx="125" cy="128.5" r="1.7"/><rect x="124.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 125 128.5)"/><rect x="124.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 125 128.5)"/><rect x="124.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 125 128.5)"/></g><g class="mk-wheel"><circle cx="148" cy="128.5" r="5.4" fill="none"/><circle cx="148" cy="128.5" r="1.7"/><rect x="147.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 148 128.5)"/><rect x="147.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 148 128.5)"/><rect x="147.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 148 128.5)"/></g><g class="mk-wheel"><circle cx="171" cy="128.5" r="5.4" fill="none"/><circle cx="171" cy="128.5" r="1.7"/><rect x="170.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 171 128.5)"/><rect x="170.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 171 128.5)"/><rect x="170.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 171 128.5)"/></g></g></g><g class="mk-hull"><g class="mk-exhaust" fill="#f6f3ec"><circle class="mk-puff" style="animation-delay:0.00s" cx="37" cy="101" r="1.6"/><circle class="mk-puff" style="animation-delay:-0.40s" cx="37" cy="101" r="1.6"/><circle class="mk-puff" style="animation-delay:-0.80s" cx="37" cy="101" r="1.6"/></g><path fill="#f6f3ec" d="M34 116.6 40 94h108l52 18-2.4 4.6Z"/><g class="mk-turret"><g fill="#f6f3ec"><g transform="rotate(-10 140 82)"><rect x="136" y="76" width="18" height="12" rx="1.5"/><rect x="154" y="78.3" width="52" height="7.4"/><rect x="168" y="76.4" width="16" height="11.2" rx="4.4"/><rect x="203" y="77.3" width="7" height="9.4" rx="1"/></g><path d="M77.6 68.9 71.4 53.4a1.6 1.6 0 0 1 .9-2.1l2.6-1a1.6 1.6 0 0 1 2.1.9l6.3 15.6Z"/><rect x="74.6" y="65.6" width="8.4" height="4" rx="1.2"/></g><g class="mk-antenna"><path d="M64 76 56 41" fill="none" stroke="#f6f3ec" stroke-width="1.6"/><path style="fill:#f0a030" d="M56 38.5 41 43l15 4.5Z"/></g><g class="mk-crew"><g style="fill:#f0a030"><path fill-rule="evenodd" d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z" transform="translate(82.65 42.75) scale(1.95)"/></g><g fill="#f6f3ec"><path fill-rule="evenodd" d="M87.5 52.5a18.5 12 0 0 1 37 0ZM94 45.2h24.5v5.2H94Z"/><rect x="85.5" y="52.3" width="41" height="4.2" rx="2.1"/></g><g fill="none" stroke="#f6f3ec" stroke-width="1.3"><circle cx="102.5" cy="47.8" r="2.9"/><circle cx="111" cy="47.8" r="2.9"/></g></g><g fill="#f6f3ec"><path d="M151.4 92.6 140 77.5 82 74 61.5 72.8 58 76.5V88l4.5 3.5H73l1.5 1.1Z"/><path d="M77.5 75.5 80 68.2h53l2.6 8.4Z"/></g></g></g></g></g><path fill="#f6f3ec" d="M55 727V257L170 142H512L625 255V362H489V305L442 258H242L191 309V675L242 726H442L489 679V622H625V729L512 842H170ZM760 142H896V727H1246V842H760ZM1557 142H1681L1937 842H1799L1742 687H1496L1439 842H1301ZM1712 575 1619 309H1617L1527 575ZM2027 722V142H2163V675L2214 726H2410L2461 675V142H2597V722L2477 842H2147ZM2767 142H3215L3335 262V722L3215 842H2767ZM3148 726 3199 675V309L3148 258H2903V726ZM3495 142H4001V257H3631V434H3972V547H3631V727H4001V842H3495ZM612 1937H403V1822H957V1937H748V2522H612ZM1183 1822H1307L1563 2522H1425L1368 2367H1122L1065 2522H927ZM1338 2255 1245 1989H1243L1153 2255ZM1673 1822H1795L2107 2297H2109V1822H2240V2522H2118L1806 2048H1804V2522H1673ZM2410 1822H2546V2115H2652L2821 1822H2974L2769 2171L2991 2522H2835L2651 2231H2546V2522H2410ZM3061 2414V2314H3195V2373L3228 2406H3435L3469 2372V2256L3436 2223H3171L3063 2115V1930L3171 1822H3487L3595 1930V2031H3461V1971L3428 1938H3230L3197 1971V2074L3230 2107H3495L3603 2215V2412L3493 2522H3169Z"/><path fill="#f0a030" d="M1665.2 1459.8V1212.2L1723.4 1154H1895L1953.2 1212.2V1459.8L1895 1518H1723.4ZM1871.1 1474.3 1903.3 1442.1V1229.9L1871.1 1197.7H1747.3L1715.1 1229.9V1442.1L1747.3 1474.3ZM2109.2 1154H2348.4V1197.7H2159.2V1318.3H2323.5V1362H2159.2V1518H2109.2ZM352 1295h1144v90h-1144ZM2580 1295h1144v90h-1144Z"/>
       </svg>
       <div class="cot-boot-invite" id="cot-boot-invite" aria-live="polite"></div>
       <div class="cot-boot-load">
