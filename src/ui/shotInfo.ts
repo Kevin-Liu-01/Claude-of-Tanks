@@ -1424,7 +1424,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     const detail = [...group.outcomes.values()].map(item => `${item.count}× ${item.label}`).join(' · ');
     toast.dataset.tip = group.count > 1 ? t('hud.incoming.stackSummary',
       { count: group.count, damage: Math.round(group.damage) }) + ' · ' + detail : detail;
-    toast.setAttribute('aria-label', name + ' · ' + toast.title);
+    toast.setAttribute('aria-label', name + ' · ' + (toast.dataset.tip || ''));
     toastTimers.set(toast, {
       fade: setTimeout(() => toast.classList.add('out'), INCOMING_FADE_MS),
       remove: setTimeout(() => removeToast(toast), 5500),

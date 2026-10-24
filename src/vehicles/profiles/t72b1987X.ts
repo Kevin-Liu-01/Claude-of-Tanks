@@ -218,7 +218,7 @@ function machineGun(P:TankBuilderPort):void {
   stationFromDrawnGun(gun.finish(),{name:'t72b1987XRoofNsvt',caliberMm:12.7});
 }
 
-function mainGun(P:TankBuilderPort):void {
+function mainGun(P:TankBuilderPort,rearMantletBottom=-.18):void {
   const muzzle=T72B1987_X_DATUMS.muzzleZ,floor=5.59804;
   KIT.buildGun(P,{len:floor-GUN[2],r:.100,baseR:.125,sleeve:false,collar:false});
   // Source stock was anisotropically widened. Preserve its section area, not
@@ -234,7 +234,7 @@ function mainGun(P:TankBuilderPort):void {
   // entirely behind the factory's dark mouth disc.
   P.add('gun',cappedTube(Math.sqrt(.11515*.105),muzzle-4.51927,32),0,0,(muzzle+4.51927)/2-GUN[2]);
   P.add('gunMount',cylX(.213,.423,28),0,0,-.029);
-  P.add('gunMount',boxSections([[1.03-GUN[2],.204,.245,-.18],[1.20-GUN[2],.218,.239,-.185],[1.49-GUN[2],.138,.129,-.13]]));
+  P.add('gunMount',boxSections([[1.03-GUN[2],.204,.245,rearMantletBottom],[1.20-GUN[2],.218,.239,-.185],[1.49-GUN[2],.138,.129,-.13]]));
   P.muzzleZ=muzzle-GUN[2];
 }
 
@@ -244,11 +244,13 @@ function buildT72B1987X(P:TankBuilderPort):void {
   P.muzzleZ=T72B1987_X_DATUMS.muzzleZ-GUN[2];P.topY=T72B1987_X_DATUMS.highestFittingM-YAW[1];
   hull(P);runningGear(P);engineDeck(P);glacisEra(P);skirtEra(P);buildT72B1987XTurret(P);
 }
-export function buildT72B1987XTurret(P:TankBuilderPort):void {
+/** `rearMantletBottom`: the mantlet's rear section's underside under the trunnion (its own -0.18 by default); a carrier
+ * whose deck stands close under the turret's ring raises it (it dips as the gun elevates). */
+export function buildT72B1987XTurret(P:TankBuilderPort,{rearMantletBottom}:{rearMantletBottom?:number}={}):void {
   P.turretG.position.set(...YAW);
   P.gunG.position.set(GUN[0]-YAW[0],GUN[1]-YAW[1],GUN[2]-YAW[2]);
   P.topY=T72B1987_X_DATUMS.highestFittingM-YAW[1];
-  casting(P);turretEra(P);roofEquipment(P);smoke(P);machineGun(P);mainGun(P);
+  casting(P);turretEra(P);roofEquipment(P);smoke(P);machineGun(P);mainGun(P,rearMantletBottom);
 }
 
 export const T72B1987_X_PROFILES={t72b_1987:{build:buildT72B1987X}} as const;

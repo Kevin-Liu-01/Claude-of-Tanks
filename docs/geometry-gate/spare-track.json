@@ -844,7 +844,7 @@
    "hostSweep": []
   },
   "fv510_milan": {
-   "inputHash": "6e7ec6779adac58d",
+   "inputHash": "49c4d712390f00b8",
    "runs": [
     {
      "index": 0,
@@ -1225,7 +1225,7 @@
    "hostSweep": []
   },
   "leo2a2": {
-   "inputHash": "185eaaf045ac3753",
+   "inputHash": "9fc9aa6d9c2aefc7",
    "runs": [
     {
      "index": 0,
@@ -1663,7 +1663,7 @@
    "hostSweep": []
   },
   "leo2a5": {
-   "inputHash": "2e92e517073a27e8",
+   "inputHash": "22e0f21941d4fc51",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2191,7 +2191,7 @@
    "hostSweep": []
   },
   "merkava1b": {
-   "inputHash": "3123aefbda2ab98a",
+   "inputHash": "3cd9ebd6a54dd615",
    "runs": [
     {
      "index": 0,
@@ -2214,7 +2214,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<merkavaChassisHullCourse25@profiles/merkava.ts:3448>"
+      "host": "hull<merkavaChassisHullCourse25@profiles/merkava.ts:3450>"
      }
     }
    ],
@@ -2222,7 +2222,7 @@
    "hostSweep": []
   },
   "merkava2b": {
-   "inputHash": "2ff5b0b3d693a7d4",
+   "inputHash": "e6db63f9e78ccb50",
    "runs": [
     {
      "index": 0,
@@ -2243,7 +2243,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<merkavaChassisHullCourse25@profiles/merkava.ts:3448>"
+      "host": "hull<merkavaChassisHullCourse25@profiles/merkava.ts:3450>"
      }
     }
    ],
@@ -2251,7 +2251,7 @@
    "hostSweep": []
   },
   "merkava2d": {
-   "inputHash": "69b24af931a14d47",
+   "inputHash": "48e1b3abae8dd380",
    "runs": [
     {
      "index": 0,
@@ -2272,7 +2272,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<merkavaChassisHullCourse25@profiles/merkava.ts:3448>"
+      "host": "hull<merkavaChassisHullCourse25@profiles/merkava.ts:3450>"
      }
     }
    ],
@@ -2280,7 +2280,7 @@
    "hostSweep": []
   },
   "merkava3_baz": {
-   "inputHash": "ad2ceeb7abbf537c",
+   "inputHash": "0d247c4d484f77d8",
    "runs": [
     {
      "index": 0,
@@ -2311,7 +2311,7 @@
    "hostSweep": []
   },
   "merkava3c": {
-   "inputHash": "1e6485daa3992c9f",
+   "inputHash": "4a8cae7b9f7f92f8",
    "runs": [
     {
      "index": 0,
@@ -2432,7 +2432,7 @@
    "hostSweep": []
   },
   "merkava4b": {
-   "inputHash": "fb4419deca5a02d4",
+   "inputHash": "26a8737254fb7897",
    "runs": [
     {
      "index": 0,
@@ -2443,19 +2443,17 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
+     "notes": [],
      "measures": {
-      "support": 0.234,
-      "gap": 0.766,
+      "support": 0.559,
+      "gap": 0.441,
       "air": 0,
       "hidden": 0,
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<merkavaChassisHullCourse25@profiles/merkava.ts:3448>"
+      "host": "hull<merkavaChassisHullCourse26@profiles/merkava.ts:3470>"
      }
     }
    ],
@@ -2932,7 +2930,7 @@
    "hostSweep": []
   },
   "t62mv1": {
-   "inputHash": "476ea79c3e6bf0ac",
+   "inputHash": "d3933456eb985bf7",
    "runs": [
     {
      "index": 0,
@@ -2945,8 +2943,8 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.585,
-      "gap": 0.415,
+      "support": 0.583,
+      "gap": 0.417,
       "air": 0,
       "hidden": 0,
       "sunkMaxM": 0.01,
@@ -2987,19 +2985,17 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
+     "notes": [],
      "measures": {
-      "support": 0.017,
-      "gap": 0.983,
+      "support": 0.996,
+      "gap": 0.004,
       "air": 0,
       "hidden": 0,
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 1,
-      "host": "hull<<anon>@profiles/russia.ts:1282>"
+      "exposure": 0.978,
+      "host": "hull<loftHull@profiles/russia.ts:505>"
      }
     }
    ],
@@ -3915,7 +3911,7 @@
    "hostSweep": []
   },
   "ua_challenger2": {
-   "inputHash": "e2eb88af3887670f",
+   "inputHash": "192684ce3cbe08dd",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

@@ -20,7 +20,7 @@ visit(source);
 assert.equal(functions.length, 4);
 
 const noop = () => {};
-async function scenario({ directBoot, priorWorld = null, fail = false, time = 'day' }) {
+async function scenario({ directBoot, priorWorld = null, fail = false, time = 'day', reenter = false }) {
   let world = priorWorld;
   const calls = [];
   let releaseWorld;
@@ -56,7 +56,10 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     post: { resetAdaptiveResolution: noop, render: () => calls.push('covered-frame') },
     garage: { hide: noop }, showroom: { stop: noop }, hud: null,
     setGarageSpots: noop, setGarageSunTrim: (enabled) => presentation.setSunTrim(enabled),
-    ensureFxBus: noop, ensureFullFleet: async () => {}, ensureWorld: () => acquisition,
+    // (perf-248) the build links its programs early unless the entry's time lights the lamps (studioLight.ts)
+    ensureFxBus: noop, ensureFullFleet: async () => {},
+    ensureWorld: (_id, _progress, options) => { calls.push(['early-programs', options?.earlyPrograms]); return acquisition; },
+    studioTimeFor: (_mapId, requested) => requested, studioTimeLightsLamps: (rendered) => rendered === 'dusk' || rendered === 'night',
     warmStudioPipeline: async () => {}, setWorldDormant: (value) => calls.push(['dormant', value]),
     setCamoBiome: noop, applyCamoPatterns: noop, sweepPool: noop, resetFx: noop,
     getWorld: () => world, actors: [], _v1: new THREE.Vector3(), _v2: new THREE.Vector3(),
@@ -81,7 +84,8 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   const code = stripTypeScriptTypes(`
     function makeStudioEntry(ports) {
     const { ${Object.keys(ports).join(',')} } = ports;
-    let active = false, entering = null, timeScale = 1, recording = false;
+    let active = false, entering = null, timeScale = 1, recording = false, entryGeneration = 0, buildPlateUp = false;
+    class EntryAbandoned extends Error {}
     let placeArmed = null, dragActor = null, dragging = false, storyboard = {};
     let selectedShotId = null, shotUidSeq = 1, actorKeyUidSeq = 1;
     ${functions.join('\n')}
@@ -91,6 +95,29 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   const studio = new Function('ports', code + '\nreturn makeStudioEntry(ports);')(ports);
   const pending = studio.enter({ map: 'whiteout', coveredByBoot: directBoot });
   await Promise.resolve();
+  if (reenter) {
+    // (248) an exit while the battlefield streams, then a second entry: it shows its own shell at once and joins the
+    // build; the abandoned entry never touches the plate, the atmosphere or the fleet again
+    for (let i = 0; i < 4; i++) await Promise.resolve();
+    await studio.doExit();
+    assert.equal(studio.active(), false);
+    const mark = calls.push('--reenter') - 1;
+    const second = studio.enter({ map: 'whiteout' });
+    assert.notStrictEqual(second, pending, 'a re-entry runs its own entry');
+    for (let i = 0; i < 4; i++) await Promise.resolve();
+    const after = calls.slice(mark);
+    assert.ok(after.includes('stage-on') && after.includes('panel-shown') && !after.includes('world-activated'),
+      'the re-entry shows its shell before the battlefield is in');
+    releaseWorld();
+    await Promise.all([pending, second]);
+    const tail = calls.slice(mark);
+    assert.equal(tail.filter((entry) => entry === 'stage-off').length, 1, 'only the live entry clears the plate');
+    assert.equal(calls.filter((entry) => Array.isArray(entry) && entry[0] === 'atmosphere').length, 1, 'one atmosphere, the live entry\'s');
+    assert.equal(calls.filter((entry) => entry === 'fleet-warm').length, 1, 'the fleet warms once');
+    assert.equal(studio.active(), true);
+    await studio.doExit();
+    return;
+  }
   assert.equal(calls.some((entry) => Array.isArray(entry) && entry[0] === 'sun'), false,
     'pending world acquisition never asks for a missing or previous battlefield preset');
   releaseWorld();
@@ -102,6 +129,9 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     return;
   }
   await pending;
+  assert.deepEqual(calls.find((entry) => Array.isArray(entry) && entry[0] === 'early-programs'),
+    ['early-programs', time !== 'dusk' && time !== 'night'],
+    'the build links its programs early unless the entry\'s time lights the lamps (their lights re-key every lit program)');
   const sunIndex = calls.findIndex((entry) => Array.isArray(entry) && entry[0] === 'sun');
   assert.ok(calls.indexOf('world-activated') < sunIndex);
   assert.strictEqual(calls[sunIndex][1], world.skyConfig, 'untrim restores the actual newly activated world');
@@ -140,5 +170,7 @@ await scenario({ directBoot: true });
 await scenario({ directBoot: false });
 await scenario({ directBoot: false, priorWorld: { mapId: 'desert', skyConfig: { sunIntensity: 5 } } });
 await scenario({ directBoot: false, time: 'sunset' });
+await scenario({ directBoot: false, time: 'night' });
 await scenario({ directBoot: true, fail: true });
-console.log('studioEntry.selftest: actual cold, F8, warm-map replacement, failed acquisition and Garage return ordering pass');
+await scenario({ directBoot: false, reenter: true });
+console.log('studioEntry.selftest: actual cold, F8, warm-map replacement, failed acquisition, a re-entry during the load and Garage return ordering pass');

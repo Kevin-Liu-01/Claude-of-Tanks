@@ -344,6 +344,8 @@ const dependencies = { roadBuildingDoorAxis, roadSettlementJunction, buildingRoa
   // Plan W (2026-10-13): the structure shell pool belongs to the browser's async build; this Node build derives every
   // structure's shells inline, as the manifests and hosts do (no pool, no sourced-texture worker)
   structureShellPoolFor: () => null, sourceApplication: {},
+  // (perf-248) and the broken-vehicle pool too: every broken body builds inline (props.ts brokenVehiclePoolFor)
+  brokenVehiclePoolFor: () => null,
   // settlement pass 2 (2026-09-12): mergeInto carries chimney tops through the exterior kit helper.
   carryExteriorChimneyTops, THREE, STRUCTURE_BUILDERS, DESTRUCTIBLE_BUILDING_TYPES, makeTimberBathhouse,
   addCatalogExterior, jitterUV, mulberry32, sampleObbGround, deriveRuntimeStructureCollisionProfile,

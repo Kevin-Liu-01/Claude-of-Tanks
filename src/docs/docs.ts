@@ -17,7 +17,7 @@ if (searchHost && searchInput) {
     searchInput.select();
   });
   const kbd = searchHost.querySelector('kbd');
-  if (kbd && !/Mac|iP(?:hone|ad|od)/.test(navigator.platform)) kbd.textContent = 'Ctrl K';
+  if (kbd) kbd.textContent = t(/Mac|iP(?:hone|ad|od)/.test(navigator.platform) ? 'docs.search.shortcutMac' : 'docs.search.shortcut');
 }
 
 let toastTimer = 0;
