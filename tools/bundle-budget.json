@@ -6,10 +6,10 @@
       "requests": 130,
       "raw": 3960873,
       "gzip": 1225094,
-      "brotli": 1034528,
+      "brotli": 1034638,
       "inlineCss": 5517,
       "entryRaw": 836014,
-      "entryBrotli": 230038
+      "entryBrotli": 230148
     },
     "home": {
       "requests": 9,
