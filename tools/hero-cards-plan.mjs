@@ -3,7 +3,8 @@
 //   - geometry: the tank's geometryHash in public/icons/tank-assets.json, which the combat-anatomy
 //     procedure keeps current for every geometry or profile change (genIcons). Since 244 it is the exterior
 //     fingerprint (tankAssets.ts exteriorFingerprint: only meshes a colour camera draws), so interior-only work
-//     (crew seats, fills, shadow proxies, hidden parts) never stales a card;
+//     (crew seats, fills, shadow proxies, hidden parts) never stales a card. Both keys are written by the pages in the
+//     browser; a Node build can differ in the last bit (V8 versions), so never key a row from Node alone;
 //   - look: the sha256 of that tank's packaged angle render in the same manifest, which moves when
 //     its paint or markings move (genIcons renders the finished vehicle);
 //   - flag: the nation's flag code (src/ui/flagCodes.ts), its flag-icons SVG bytes and the flag policy;
