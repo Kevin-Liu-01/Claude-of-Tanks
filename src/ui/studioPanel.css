@@ -57,6 +57,12 @@ body[data-studio-workspace] #app{position:fixed;left:var(--studio-vp-x,0px);top:
 .st-head .cot-c-seg__opt{height:28px;font-size:var(--fs-12)}
 .st-head .cot-c-seg{flex:none}
 .st-head .r{display:flex;align-items:center;gap:8px;margin-left:auto}
+/* under 1680 px the header's secondary chips (commands, the scene link, the Gallery) keep their glyphs and give up their
+   words to the screen (the words stay their names), so Export film, Exit and Hide controls stay on screen at 1440 */
+@media (width < 1680px){
+  .st-head .r :is(.cmd,[data-scene-link-copy],.gal) .cot-c-chip__label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .st-head .r .cmd .cot-c-kbd{display:none}
+}
 .st-head .cmd .cot-c-kbd{margin-left:2px}
 /* the scene's safety (09-studio header .sv, the undo/redo pair): the autosave's lamp and age, the steps either side */
 .st-head .hist{display:flex;flex:none;align-items:center;gap:4px}
