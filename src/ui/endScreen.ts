@@ -196,9 +196,12 @@ const COL = {
  * The player's vehicle tile takes its tank hero card (the 3/4 render over its waving flag) from the lazy
  * hero chunk; the packaged angle icon stays until the layers are placed, and for good when they are not.
  */
-function showHeroVehicle(card: HTMLElement, specId: string, fallback: HTMLImageElement): void {
-  Promise.all([import('./heroCard.ts'), import('./heroCard.css')])
-    .then(([hero]) => hero.decorateHeroTile(card, specId, { tankSizes: '220px', flagSizes: '260px', priority: true }))
+function showHeroVehicle(card: HTMLElement, specId: string, fallback: HTMLImageElement, name: string): void {
+  Promise.all([import('./heroCard.ts'), import('./heroCard.css'), import('./heroCardPolicy.ts')])
+    .then(([hero, , policy]) => {
+      nameVehicleCard(card, name, policy.nameParts);
+      return hero.decorateHeroTile(card, specId, { tankSizes: '220px', flagSizes: '260px', priority: true });
+    })
     .then((decorated) => {
       if (!decorated) return;
       card.setAttribute('role', 'img');
@@ -206,6 +209,22 @@ function showHeroVehicle(card: HTMLElement, specId: string, fallback: HTMLImageE
       fallback.remove();
     })
     .catch(() => { /* the angle icon stays */ });
+}
+
+/**
+ * The vehicle's name under its card: the name solid, its variant (the last word) in the hollow tungsten outline, as the
+ * policy's end-screen card sets it (HERO_CARD_LAYOUT.endScreen hollow; owner 2026-10-22: "love the outline text tho").
+ */
+function nameVehicleCard(card: HTMLElement, name: string, split: (name: string) => { solid: string; variant: string }): void {
+  if (!name || card.querySelector('.es-vn')) return;
+  const { solid, variant } = split(name);
+  const label = el('span', 'es-vn', card);
+  label.setAttribute('aria-hidden', 'true');
+  label.append(solid);
+  if (variant) {
+    label.append(' ');
+    el('span', 'hv', label).textContent = variant;
+  }
 }
 
 const ES_CSS = `
@@ -1172,7 +1191,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       const vehicle = el('img', '', vehicleCard);
       vehicle.src = iconUrl(sum.playerSpecId, 'angle');
       vehicle.alt = sum.playerVehicle ? t('endScreen.vehicle.alt', { name: sum.playerVehicle }) : t('endScreen.vehicle.altFallback');
-      showHeroVehicle(vehicleCard, sum.playerSpecId, vehicle);
+      showHeroVehicle(vehicleCard, sum.playerSpecId, vehicle, sum.playerVehicle || '');
     }
     tile(statGrid, 'dealt', t('endScreen.tile.dealt'), {
       value: Math.round(sum.stats.dealt), hot: true, icon: 'damage',

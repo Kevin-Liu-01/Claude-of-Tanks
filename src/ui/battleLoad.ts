@@ -98,6 +98,10 @@ export function primeMapLqipWhenIdle(): void {
  *  widths, 720 px and taller, with persistent panels; smaller windows keep the compact sheets (responsiveSurfaces.css). */
 const WIDE = "body:is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall'])"
   + ":not([data-cot-panels='overlay'])";
+/** The portrait phones and tablets of standard height and up: the battlefield's plan sits between the rules and the
+ *  rosters, in the band the art leaves clear there (the tip stays a wide-layout part). */
+const PORTRAIT = "body[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-width='tablet'])"
+  + ":is([data-cot-height='standard'],[data-cot-height='tall'])";
 /** A side this size or smaller shows a hero card a tank on the wide layouts (the direction's seven a side). */
 const CARD_TEAM_MAX = 7;
 /** The progress's steps (the direction's five). */
@@ -214,6 +218,12 @@ ${WIDE} .cot-bl .side{grid-column:2;grid-row:1 / span 2;display:flex;flex-direct
 ${WIDE} .cot-bl .map{align-self:flex-end;width:250px;padding:8px;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--e2);}
 ${WIDE} .cot-bl .map[hidden]{display:none;}
 ${WIDE} .cot-bl .map img{display:block;width:234px;height:234px;object-fit:cover;box-shadow:var(--ring-3);}
+${PORTRAIT} .cot-bl .briefing{grid-template-rows:auto auto minmax(0,1fr) auto;}
+${PORTRAIT} .cot-bl .side{display:flex;justify-content:center;padding-bottom:clamp(12px,2.5vh,24px);}
+${PORTRAIT} .cot-bl .side .tip{display:none;}
+${PORTRAIT} .cot-bl .map{width:min(58vw,260px);padding:6px;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--e2);}
+${PORTRAIT} .cot-bl .map[hidden]{display:none;}
+${PORTRAIT} .cot-bl .map img{display:block;width:100%;aspect-ratio:1;object-fit:cover;box-shadow:var(--ring-3);}
 ${WIDE} .cot-bl .teams{grid-column:1 / -1;grid-row:3;align-items:end;gap:28px;}
 ${WIDE} .cot-bl .foot{grid-column:1 / -1;grid-row:4;padding-top:24px;}
 ${WIDE} .cot-bl .count{position:absolute;left:0;right:0;top:calc(100% + 1.2vh);margin:0;}
