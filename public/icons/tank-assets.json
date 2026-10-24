@@ -2105835,17 +2105835,68 @@
             "turretLocal": true,
             "gunFollow": false,
             "min": [
-              1.1044,
-              0.3014,
-              -0.352
+              1.1022,
+              0.2893,
+              0.869
             ],
             "max": [
-              1.3156,
-              0.5126,
-              0.913
+              1.3178,
+              0.5247,
+              0.891
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "687bac01"
+            "surfaceFingerprint": "c01a84e1"
+          },
+          {
+            "module": "missileRack",
+            "turretLocal": true,
+            "gunFollow": false,
+            "min": [
+              1.1022,
+              0.2893,
+              -0.341
+            ],
+            "max": [
+              1.3178,
+              0.5247,
+              -0.319
+            ],
+            "physicalMm": 10,
+            "surfaceFingerprint": "845952c3"
+          },
+          {
+            "module": "missileRack",
+            "turretLocal": true,
+            "gunFollow": false,
+            "min": [
+              1.1099,
+              0.3069,
+              0.396
+            ],
+            "max": [
+              1.3101,
+              0.5071,
+              0.935
+            ],
+            "physicalMm": 10,
+            "surfaceFingerprint": "a0720aa9"
+          },
+          {
+            "module": "missileRack",
+            "turretLocal": true,
+            "gunFollow": false,
+            "min": [
+              1.1297,
+              0.3267,
+              0.396
+            ],
+            "max": [
+              1.2903,
+              0.4873,
+              0.935
+            ],
+            "physicalMm": 10,
+            "surfaceFingerprint": "475a4a11"
           }
         ],
         "turretPivot": [
@@ -2112297,14 +2112348,14 @@
             "volumeId": "C01",
             "name": "driver",
             "min": [
-              -0.7022,
-              0.4755,
-              1.4492
+              -0.4042,
+              0.5486,
+              1.4518
             ],
             "max": [
-              -0.0468,
-              1.5835,
-              2.5836
+              0.0552,
+              1.5686,
+              2.481
             ],
             "turretLocal": false
           },
@@ -2112312,14 +2112363,14 @@
             "volumeId": "C02",
             "name": "gunner",
             "min": [
-              0.1346,
-              -0.0902,
-              -0.4155
+              -0.0916,
+              -1.221,
+              -0.3272
             ],
             "max": [
-              0.8415,
-              0.5516,
-              0.4549
+              0.3678,
+              -0.141,
+              0.4667
             ],
             "turretLocal": true
           },
@@ -2112327,21 +2112378,21 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.1346,
-              -0.0902,
-              -0.7003
+              -0.0636,
+              -1.0679,
+              -0.9437
             ],
             "max": [
-              0.8976,
-              0.5909,
-              -0.4155
+              0.3958,
+              -0.2079,
+              -0.2721
             ],
             "turretLocal": true
           }
         ]
       },
-      "geometryHash": "e1cb4c8d",
-      "metadataHash": "6cbeeceb",
+      "geometryHash": "f7f7b4dd",
+      "metadataHash": "1771a932",
       "presentationAnchor": {
         "xM": 0.0029,
         "zM": -0.08
@@ -2112402,15 +2112453,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 30602,
-          "sha256": "c67a0b87dd8a97707b55e89336e36b676e31f0efcff8fb583d824a7f6c5ad40f",
+          "bytes": 31388,
+          "sha256": "482eecc6330beebad5beb290a05bde774590f518a1423cfaeb0eef3961d15dad",
           "thumbnail": {
             "file": "thumbs/upior_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11814,
-            "sha256": "e3ab8c17ce877b24af1de8e75f6824173e04a976d3c62163988906a5c72357ae"
+            "bytes": 11834,
+            "sha256": "2d4f12deaf6af13ae4b42c7b0cc93bc134294dbeb1d8a6a51cd6a83bb1a670f2"
           }
         },
         "top": {
@@ -2112418,56 +2112469,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22764,
-          "sha256": "77f233dd6269a2189b682989036d50835e0cacc3aa5ddb08bfda7cca93e965b6"
+          "bytes": 25172,
+          "sha256": "0739419d7b3e118c685bb4a60c28a36c6f424902ba0127232961f7b870f25883"
         },
         "side": {
           "file": "upior_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 15274,
-          "sha256": "9bb1c438ab7eb81ea221415ece9fecd546a649726b7411bc92d6dea039895d72"
+          "bytes": 17504,
+          "sha256": "252b467c931b3e41683c717814fadc888ab8865f28e25b0f0ec2ff1cf9b31390"
         },
         "topSilhouette": {
           "file": "upior_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 2322,
-          "sha256": "569f39d2cb519ffdc6383622b6dfad50b4ead8db4f7e0843f4b4e5341c1a788b"
+          "bytes": 2317,
+          "sha256": "aff397790f944859bad16cbc3a5e6633b4143c2a679c6a495cc175706b6c03e4"
         },
         "sideSilhouette": {
           "file": "upior_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5221,
-          "sha256": "c04f7071bd5aaed7750691ad2cb3d6ba24601bf3af43a551ad689c738fcc297f"
+          "bytes": 5149,
+          "sha256": "2d3ff488b793f47541a9f838be4b317cc4ffd20977121902258de5ff550eb57c"
         },
         "armorSide": {
           "file": "upior_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 143461,
-          "sha256": "dab32aa8b412b3a907f475206b3f1991090ece14a9335e0d6d9e6ed66c438229"
+          "bytes": 147118,
+          "sha256": "994889f4122c2b68f380be2a00f1bcc29483e1dec0cbfa01383aad7c3eed8a9c"
         },
         "modulesSide": {
           "file": "upior_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 141179,
-          "sha256": "6270486e7cc20d7f5e7684f33df29a0914d723cba2ec3787276a0c588096e1d5"
+          "bytes": 147169,
+          "sha256": "b5ae0f2c91c8c84b2ff150facf271175bf45c57f0f2d9bbc6cc579546f863be2"
         },
         "crewSide": {
           "file": "upior_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 128491,
-          "sha256": "6c75d3e1750ed711e703ff46a3bd645c844e5acea9b7a9edcca15bf72e3ad02c"
+          "bytes": 133736,
+          "sha256": "2714a5fd7168a44085313673b62830c4fde289da2a0ce31f2a28210c6f284ce9"
         },
         "markings": {
           "file": "upior_markings.png",
