@@ -825462,24 +825462,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 83269,
-          "sha256": "790efdbb6e0162c707bad5ae0d430eb96bb059103a67d61dd75fdec0884bdc69"
+          "bytes": 83261,
+          "sha256": "d930cae94b8244ebdae6c18dcb448af17aa11fcdf9111f450bec033c9e9dfc08"
         },
         "modulesSide": {
           "file": "t64bv_donbas_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 93230,
-          "sha256": "ca97945921dda679e3731bbfed79a65d43ac88421fb32551e0820c0eabbe8c4f"
+          "bytes": 96260,
+          "sha256": "c309ccb73221713cbf55f5e437a8c214779ed8322f369086049be63a9d19ed42"
         },
         "armorSide": {
           "file": "t64bv_donbas_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 90987,
-          "sha256": "b9255504f9738474d3d52398d8abedb2e5a315a33c0534b4000821334c96caa3"
+          "bytes": 94738,
+          "sha256": "ffd6e10a4a107bc24935004e2cbf5ea01f131be51ab3333747e43ab3b2ca8484"
         },
         "angle": {
           "file": "t64bv_donbas_angle.webp",
