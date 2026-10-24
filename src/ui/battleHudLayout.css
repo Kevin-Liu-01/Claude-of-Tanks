@@ -178,32 +178,39 @@ body[data-cot-battle-layout] .cot-mode-status.show{display:grid}
 /* a Standard battle has no objective beyond the score: its plate is the mission plate in the corner seat only */
 body[data-cot-battle-layout] .cot-mode-status.show.quiet{display:none}
 /* The mission plate (brand-ui H3, the direction's .mission): where battleHudLayout.ts seats it in the top-left corner
-   (the mouse layouts the team strip shows on), the mode's glyph in its well, the mode's name over the objective, the
-   link's ping and the rosters' Tab key; the left roster starts under it. */
+   (the mouse layouts the team strip shows on), a right trapezoid hung from the window's corner (owner 2026-10-24: "left
+   objective marker should be another right trapezoid attached to left"), the mode's glyph in its well, the mode's name
+   over the objective and the rosters' Tab key; the left roster starts under it. The link's ping is the top-right
+   corner's (hud.ts .cot-net-link). */
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status.show,
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status.show.quiet{display:flex}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-objective-seat='corner'] .cot-mode-status{
-  left:16px;top:14px;transform:none;width:auto;min-height:48px;padding:0 14px 0 10px;gap:var(--s3);align-items:center;
-  clip-path:none;border-radius:var(--r1);box-shadow:var(--battle-plate-shadow);white-space:nowrap;letter-spacing:normal}
+  left:0;top:0;transform:none;width:auto;min-height:48px;padding:0 calc(var(--s3) + 16px) 0 var(--s3);gap:var(--s3);align-items:center;
+  clip-path:polygon(0 0,100% 0,calc(100% - 16px) 100%,0 100%);border-radius:0;box-shadow:none;white-space:nowrap;letter-spacing:normal}
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mi{display:grid;place-items:center;flex:none;width:30px;height:30px}
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mi svg{width:24px;height:24px}
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mt{display:flex;flex-direction:column;gap:var(--s1);min-width:0}
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mn{display:block;font:700 var(--battle-fs-15)/1 var(--hud-font);
   text-transform:uppercase;color:var(--ink-1)}
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mv{font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--ink-3)}
-body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mp:not([hidden]){display:flex;align-items:center;gap:var(--s3);flex:none}
-body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mp::before{content:'';width:1px;height:26px;background:var(--line-2)}
-body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .ping{display:flex;align-items:center;gap:6px;
-  font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--text-ok)}
-body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .ping b{min-width:6ch;font-weight:500}
-body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mp[data-tone=warn] .ping{color:var(--text-warn)}
-body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mp[data-tone=bad] .ping{color:var(--text-danger)}
 @media (hover:hover) and (pointer:fine){
   body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .cot-c-kbd{display:inline-flex;flex:none;padding:0 6px}
 }
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .cot-c-kbd{font-size:var(--battle-fs-11)}
-:lang(zh-CN) body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status :is(.mv,.ping){font-size:var(--battle-fs-13)}
-body[data-cot-battle-layout][data-cot-width][data-cot-height][data-objective-seat='corner'] .cot-ear.l{top:70px}
+:lang(zh-CN) body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mv{font-size:var(--battle-fs-13)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-objective-seat='corner'] .cot-ear.l{top:56px}
+/* The top-right corner (hud.ts .cot-net) on the mouse layouts with room beside the score: a right trapezoid mirrored
+   from the mission plate, hung from the window's corner, holding the readout (while shown), the link's ping and the
+   settings gear with its key; the right roster starts under it. Phone- and compact-width windows keep the readout's
+   lane under the objective (below), the gear in it without its key. */
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):not([data-cot-width='phone']):not([data-cot-width='compact']) .cot-net{
+  top:0;right:0;min-height:48px;padding:0 var(--s3) 0 calc(var(--s3) + 16px);gap:var(--s3);background:var(--hud-plate);
+  clip-path:polygon(0 0,100% 0,100% 100%,16px 100%);text-shadow:none}
+@media (hover:hover) and (pointer:fine){
+  body[data-cot-battle-layout]:not(.cot-touch-layout):not([data-cot-width='phone']):not([data-cot-width='compact']) .cot-hud-gear .cot-c-kbd{display:inline-flex;padding:0 6px}
+}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) :is(.cot-hud-gear){height:20px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-net-link{display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status[data-mode='mars']{--objective-accent:#c3a3ff}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status[data-mode='capture_the_flag']{--objective-accent:#6cccf2}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status[data-mode='zone_control']{--objective-accent:#79d7ad}
@@ -251,7 +258,6 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>.cot-systems-more:not([hidden]){display:grid}
 /* (on the last page the chevron turns back to the first) */
 .cot-systems-more.last .si svg{transform:scaleX(-1)}
-body[data-cot-battle-layout] .cot-kill-lane.r .cot-kf{background:var(--hud-plate)}
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] :is(.cot-dp,.cot-drive){bottom:128px}
 
@@ -442,7 +448,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientati
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d{display:inline-flex;align-items:center;gap:var(--s1);color:var(--ink-2)}
 .cot-kf .relation{display:inline-flex;align-items:center;justify-content:center;align-self:center;line-height:1;flex:none;color:var(--accent-hi)}
 /* an ammo-rack kill names its cause in the ammunition system's ink */
-body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-kill-cause=ammorack]{background:var(--hud-plate-strong);border:1px solid var(--sys-ammo)}
+body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-kill-cause=ammorack]{border:1px solid var(--sys-ammo)}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-kill-cause=ammorack] .d{color:color-mix(in srgb,var(--sys-ammo) 55%,var(--ink-1));font-weight:800}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-relation=friendly] .relation{color:var(--warn)}
 

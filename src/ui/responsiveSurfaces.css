@@ -40,8 +40,8 @@ body[data-cot-width='phone']:not(.cot-touch-layout) .cot-ear,
 body[data-cot-width='compact']:not(.cot-touch-layout) .cot-ear{display:none}
 body[data-cot-width='phone']:not(.cot-touch-layout) .cot-top,
 body[data-cot-width='compact']:not(.cot-touch-layout) .cot-top{
-  top:max(4px,env(safe-area-inset-top));width:min(320px,calc(100vw - 88px));min-height:52px;
-  grid-template-columns:minmax(62px,1fr) 72px minmax(62px,1fr);padding:5px 25px 7px;
+  top:0;width:min(320px,calc(100vw - 88px));min-height:52px;
+  grid-template-columns:minmax(62px,1fr) 72px minmax(62px,1fr);padding:max(5px,env(safe-area-inset-top)) 25px 7px;
 }
 body[data-cot-width='phone']:not(.cot-touch-layout) .cot-top .fg,
 body[data-cot-width='phone']:not(.cot-touch-layout) .cot-top .fe,
@@ -541,10 +541,10 @@ body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape']
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-minimap{width:106px!important;height:106px!important}
 /* The centre line (owner 2026-10-22: "a bunch of ui elements ... are not centered in screen"): a centred element stays on
    the viewport's centre and narrows by the wider corner's reserve on both sides where a corner panel would reach it, never
-   shifts off the line. On a short landscape phone the three global controls (140 px, 10 px in) are that corner: the score
-   plate keeps 6 px from them at 568 px wide (256 px), 294 px where it fits (it was biased 18 px left). */
+   shifts off the line. On a short landscape phone the toolbar's corner plate (158 px, hung from the corner) is that corner:
+   the score plate keeps 6 px from it at 568 px wide (240 px), 294 px where it fits (it was biased 18 px left). */
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-top{
-  left:50%;width:min(294px,calc(100vw - 2 * (max(10px,env(safe-area-inset-right)) + 146px)));padding:5px 18px 7px;
+  left:50%;width:min(294px,calc(100vw - 2 * (env(safe-area-inset-right) + 164px)));padding:5px 18px 7px;
   grid-template-columns:minmax(62px,1fr) 72px minmax(62px,1fr);
 }
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-net{

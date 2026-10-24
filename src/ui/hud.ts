@@ -368,6 +368,7 @@ interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   consumables?: string[];
   specialAction?: string;
   minimapZoom?: string;
+  settingsMenu?: string;
   active?: boolean;
   reason?: string;
   slot?: number;
@@ -1464,11 +1465,13 @@ const HUD_CSS = `
 .cot-hitmark{position:absolute;z-index:var(--hud-layer-sight);left:0;top:0;width:${HIT_MARK_BOX_PX}px;height:${HIT_MARK_BOX_PX}px;
   display:none;pointer-events:none;}
 /* The score plate (brand-ui H1, the direction's 06-battle-hud.html .score): a trapezoid on the HUD plate, each side's
-   points beside the bar of its share of what wins it, the clock in the data voice over its label. */
-.cot-top{position:absolute;z-index:var(--hud-layer-score);top:12px;left:50%;transform:translateX(-50%);width:min(604px,calc(100vw - 24px));
+   points beside the bar of its share of what wins it, the clock in the data voice over its label. It hangs from the
+   window's top edge (owner 2026-10-24: "make the trapezoid on top of score be attached to top of screen"), the corner
+   plates beside it (the mission plate left, the readout and the settings gear right). */
+.cot-top{position:absolute;z-index:var(--hud-layer-score);top:0;left:50%;transform:translateX(-50%);width:min(604px,calc(100vw - 24px));
   min-height:64px;display:grid;grid-template-columns:minmax(0,1fr) minmax(72px,150px) minmax(0,1fr);
   align-items:center;padding:0 56px;isolation:isolate;overflow:hidden;
-  background:var(--hud-plate);border-radius:var(--r1);box-shadow:var(--hud-plate-ring);
+  background:var(--hud-plate);border-radius:0;
   clip-path:polygon(0 0,100% 0,94% 100%,6% 100%);}
 
 .cot-top .sc,.cot-top .tm-block{position:relative;z-index:1;}
@@ -1510,7 +1513,7 @@ const HUD_CSS = `
 .cot-mode-status .mi{color:var(--accent)}.cot-mode-status .mv{color:var(--ink-1);}
 /* the mission plate (brand-ui H3, the direction's .mission): under the score it is the objective row; the corner seat
    (battleHudLayout.css data-objective-seat=corner) shows the mode's name over it, the link's ping and the Tab key */
-.cot-mode-status .mt{display:contents}.cot-mode-status :is(.mn,.mp,.cot-c-kbd){display:none}
+.cot-mode-status .mt{display:contents}.cot-mode-status :is(.mn,.cot-c-kbd){display:none}
 /* Compact player telemetry: bare HUD text (no box, no border), as the
    multiplayer network strip beside it in the same corner row. The
    engineering dashboard folds this strip into its richer top-right panel
@@ -1526,6 +1529,21 @@ const HUD_CSS = `
 .cot-net-unit.good .metric{color:var(--ok)}.cot-net-unit.warn .metric{color:var(--warn)}
 .cot-net-unit.bad .metric{color:var(--danger)}.cot-net-unit.local .metric{color:var(--ink-2);font-size:var(--battle-fs-11);letter-spacing:.01em}
 body.cot-debug-hud .cot-net{display:none!important;}
+/* The top-right corner (hud.ts netEl): the readout's units once measured (.metered), the link's ping in a networked
+   battle (the meter's own ping cell carries it while that shows), the settings gear and its key. */
+.cot-net-units{display:flex;align-items:center;}
+.cot-net:not(.metered) .cot-net-units,.cot-net.metered .cot-net-link,.cot-net-link[hidden]{display:none;}
+.cot-net-link{display:flex;align-items:center;gap:6px;font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--text-ok);text-transform:none;}
+.cot-net-link b{min-width:6ch;font-weight:500;}
+.cot-net-link[data-tone=warn]{color:var(--text-warn);}.cot-net-link[data-tone=bad]{color:var(--text-danger);}
+.cot-hud-gear{display:inline-flex;align-items:center;gap:var(--s2);height:32px;padding:0 var(--s1);border:0;border-radius:var(--r1);
+  background:transparent;color:var(--ink-2);font:inherit;cursor:pointer;pointer-events:auto;}
+.cot-hud-gear:hover{color:var(--ink-1);}
+.cot-hud-gear .cot-c-kbd{display:none;font-size:var(--battle-fs-11);}
+.cot-net:is(.metered,:has(.cot-net-link:not([hidden]))) .cot-hud-gear{padding-left:var(--s3);border-left:1px solid var(--line-2);border-radius:0;}
+/* touch: the readout keeps its own place (battleHudLayout.css), the gear is the toolbar's (touchControls.ts) */
+body.cot-touch-layout .cot-net:not(.metered){display:none;}
+body.cot-touch-layout :is(.cot-hud-gear,.cot-net-link){display:none;}
 /* Circular analog speedometer beside the damage schematic. The 270° sweep
    leaves a quiet lower gap for the numeric speed and physical limit. */
 .cot-drive{position:absolute;z-index:var(--hud-layer-controls);left:169px;bottom:12px;
@@ -1566,30 +1584,27 @@ body.cot-debug-hud .cot-net{display:none!important;}
 @media (prefers-reduced-motion:reduce){
   .cot-drive .arc-value,.cot-drive .needle{transition:none;}
 }
-.cot-ear{position:absolute;z-index:var(--hud-layer-status);top:52px;width:194px;display:flex;flex-direction:column;gap:1px;max-height:28vh;}
+.cot-ear{position:absolute;z-index:var(--hud-layer-status);top:56px;width:194px;display:flex;flex-direction:column;gap:1px;max-height:28vh;}
 .cot-ear.l{left:0;}
-.cot-ear.r{right:0;top:var(--hud-roster-top-right,52px);}
+.cot-ear.r{right:0;top:var(--hud-roster-top-right,56px);}
 .cot-ear .hd{flex-shrink:0;font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.13em;color:var(--ink-3);
   font-family:${FONT_COND};
   text-transform:uppercase;padding:var(--s1) 10px;display:flex;justify-content:space-between;
-  background:var(--hud-plate);}
+  text-shadow:var(--battle-text-halo);}
 .cot-ear.l .hd{border-left:2px solid var(--hud-own);}
 .cot-ear.r .hd{border-right:2px solid var(--hud-enemy);text-align:right;}
 .cot-er{display:flex;align-items:center;gap:5px;padding:3px 10px var(--s1) var(--s2);font-size:var(--battle-fs-11);
   font-weight:600;letter-spacing:.02em;color:var(--ink-1);position:relative;
-  text-shadow:0 1px 2px oklch(from var(--surface-scene) l c h / .85);}
-/* r5: FLAT single translucent dark strips + a 1px separator line (WoT ears)
-   — the old fade-to-transparent gradients read as glossy web chrome */
-.cot-ear.l .cot-er{background:var(--hud-plate);
-  border-left:2px solid var(--hud-own);
-  box-shadow:0 1px 0 oklch(from var(--surface-scene) l c h / .45);}
+  text-shadow:var(--battle-text-halo);}
+/* The rows carry no plate (owner 2026-10-24: "dont have the black background behind allied or enemy tanks"): the
+   team's edge, the silhouette's own shadow and the names' halo hold them over the battlefield. */
+.cot-ear.l .cot-er{border-left:2px solid var(--hud-own);}
 /* battle_hud r1: the right ear is a TRUE mirror of the left — row-reverse
    flips the flex order but not the padding, so the enemy silhouette sat
    10px off its edge vs the ally's 8px. Mirrored padding keeps both panels'
    row metrics identical. */
-.cot-ear.r .cot-er{background:var(--hud-plate);padding:3px var(--s2) var(--s1) 10px;
-  border-right:2px solid var(--hud-enemy);flex-direction:row-reverse;
-  box-shadow:0 1px 0 oklch(from var(--surface-scene) l c h / .45);}
+.cot-ear.r .cot-er{padding:3px var(--s2) var(--s1) 10px;
+  border-right:2px solid var(--hud-enemy);flex-direction:row-reverse;}
 .cot-er .ic{width:29px;height:14px;flex:0 0 auto;display:block;
   filter:drop-shadow(0 1px 1px oklch(from var(--surface-scene) l c h / .78));}
 /* Generated side silhouettes face right. Mirror only the enemy ear so both
@@ -1672,7 +1687,7 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-killfeed{position:absolute;z-index:var(--hud-layer-status);top:52px;left:210px;display:flex;flex-direction:column;
   gap:5px;align-items:flex-start;max-width:420px;}
 .cot-kf{display:flex;gap:7px;align-items:center;padding:5px var(--s4) 5px var(--s3);font-size:12.5px;line-height:1.2;
-  letter-spacing:.03em;background:var(--hud-plate);box-shadow:var(--hud-plate-ring);border-radius:var(--r1);
+  letter-spacing:.03em;text-shadow:var(--battle-text-halo);border-radius:var(--r1);
   transition:opacity var(--cot-motion-slow) var(--cot-ease-out);opacity:1;
   box-sizing:border-box;max-width:100%;min-width:0;overflow:hidden;white-space:nowrap;}
 .cot-kf.out{opacity:0;}
@@ -1685,7 +1700,7 @@ body:is([data-cot-width='laptop'],[data-cot-width='desktop']):not(.cot-touch-lay
 .cot-kill-lane.l .cot-kf .ksi,.cot-kill-lane.r .cot-kf .vsi{color:var(--hud-own);}
 .cot-kill-lane.r .cot-kf .ksi,.cot-kill-lane.l .cot-kf .vsi{color:var(--hud-enemy);}
 /* the player's own kills and deaths ride on the tungsten edge */
-.cot-kf:is([data-relation=you],[data-relation=victim],[data-relation=ridden]){box-shadow:var(--battle-edge-own);}
+.cot-kf:is([data-relation=you],[data-relation=victim],[data-relation=ridden]){box-shadow:inset 3px 0 0 var(--accent);}
 .cot-kf .d{display:inline-flex;align-items:center;justify-content:center;line-height:1;color:var(--ink-2);font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:var(--track-label-s);flex:0 0 auto;}
 .cot-kf .c{color:var(--accent-hi);font-size:var(--battle-fs-11);letter-spacing:.05em;font-weight:700;flex:0 0 auto;}
 .cot-kf .d>svg,.cot-kf .relation>svg{display:block;flex:none;}
@@ -2014,8 +2029,7 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
 .cot-tgt{position:absolute;z-index:var(--hud-layer-world);width:176px;height:64px;text-align:center;display:none;
   will-change:transform;contain:layout paint style;transform:translate3d(0,0,0);}
 .cot-tgt .bk{height:64px;padding:0;background:none;display:flex;flex-direction:column;align-items:center;gap:var(--s1);}
-.cot-tgt .pl{height:30px;display:flex;align-items:center;gap:var(--s2);padding:0 10px;border-radius:var(--r1);
-  background:var(--hud-plate);box-shadow:var(--hud-plate-ring);}
+.cot-tgt .pl{height:30px;display:flex;align-items:center;gap:var(--s2);padding:0 10px;text-shadow:var(--battle-text-halo);}
 .cot-tgt .flg{display:flex;flex:none;}.cot-tgt .flg:empty{display:none;}
 .cot-tgt .flg .cot-flag{display:block;box-shadow:var(--flag-ring);}
 .cot-tgt .cg{flex:none;width:34px;height:11px;color:var(--hud-enemy);transform:scaleX(-1);filter:var(--sil-shadow);}
@@ -2200,28 +2214,12 @@ export function initHud(bus: EventBus): HudRuntime {
   const modeStatusEl = el('div', 'cot-mode-status', root);
   modeStatusEl.setAttribute('role', 'status');
   // the mission plate (brand-ui H3): the mode's glyph and the objective; in the corner seat the mode's name over the
-  // objective, the link's ping (multiplayer) and the rosters' Tab key beside them
+  // objective and the rosters' Tab key beside them (the link's ping is the top-right corner's, below)
   modeStatusEl.innerHTML = `<span class="mi"></span><span class="mt"><b class="mn"></b><span class="mv"></span></span>`
-    + `<span class="mp" aria-hidden="true" hidden><span class="ping">${uiIconSVG('signal', 14)}<b class="num"></b></span></span>`
     + `<kbd class="cot-c-kbd" aria-hidden="true">Tab</kbd>`;
   const modeStatusIcon = requireElement<HTMLElement>(modeStatusEl, '.mi');
   const modeStatusName = requireElement<HTMLElement>(modeStatusEl, '.mn');
   const modeStatusValue = requireElement<HTMLElement>(modeStatusEl, '.mv');
-  const modeStatusPing = requireElement<HTMLElement>(modeStatusEl, '.mp');
-  const modeStatusPingValue = requireElement<HTMLElement>(modeStatusEl, '.ping b');
-  let missionPing = -1, missionPingMs = -Infinity;
-  /** The link's round trip on the mission plate, at most once a second (its cell holds its width: no relayout). */
-  function updateMissionPing(pingMs: number | undefined): void {
-    const now = performance.now();
-    if (now - missionPingMs < 1000) return;
-    missionPingMs = now;
-    const ping = Math.max(0, Math.min(999, Math.round(Number(pingMs) || 0)));
-    if (ping === missionPing) return;
-    missionPing = ping;
-    modeStatusPing.hidden = ping <= 0;
-    modeStatusPing.dataset.tone = ping < 80 ? 'good' : ping < 160 ? 'warn' : 'bad';
-    modeStatusPingValue.textContent = ping > 0 ? t('hud.mission.ping', { ms: ping }) : '';
-  }
   let lastModeStatus = '';
   // the team strip under the score: a silhouette per tank and a chip per capture zone (hudTeamPips.ts)
   const teamPips = createTeamPips(root);
@@ -2231,18 +2229,48 @@ export function initHud(bus: EventBus): HudRuntime {
   let rangeCardLoad: Promise<void> | null = null;
   let objectiveTeam: 'alpha' | 'bravo' = 'alpha';
 
-  // --- ping/fps readout (WoT battle constant, top-right corner) ---
+  // --- the top-right corner (owner 2026-10-24: "right should have fps and other data like that"; "have a way to access
+  // settings view"): the fps/ping readout while the player shows it (Interface: the performance meter), the link's ping
+  // in a networked battle, then the settings gear and its key. The mouse layouts hang it from the corner as a plate;
+  // touch keeps the readout's own place and the toolbar's gear (touchControls.ts). ---
   const netEl = el('div', 'cot-net', root);
-  netEl.setAttribute('role', 'status');
-  netEl.setAttribute('aria-label', t('hud.net.perfAria'));
-  netEl.innerHTML = `<span class="cot-net-unit fps"><b class="metric num">—</b><span class="label">${t('hud.net.fps')}</span></span>` +
+  const netUnits = el('span', 'cot-net-units', netEl);
+  netUnits.setAttribute('role', 'status');
+  netUnits.setAttribute('aria-label', t('hud.net.perfAria'));
+  netUnits.innerHTML = `<span class="cot-net-unit fps"><b class="metric num">—</b><span class="label">${t('hud.net.fps')}</span></span>` +
     `<span class="cot-net-unit ping"><b class="metric">${t('hud.net.local')}</b><span class="label">${t('hud.net.link')}</span></span>`;
-  const netFpsUnit = requireElement<HTMLElement>(netEl, '.fps');
-  const netPingUnit = requireElement<HTMLElement>(netEl, '.ping');
+  const netLink = el('span', 'cot-net-link', netEl);
+  netLink.hidden = true;
+  netLink.innerHTML = `${uiIconSVG('signal', 14)}<b class="num"></b>`;
+  const netLinkValue = requireElement<HTMLElement>(netLink, 'b');
+  const gearBtn = el('button', 'cot-hud-gear', netEl);
+  gearBtn.type = 'button';
+  gearBtn.dataset.uiSound = 'press';
+  gearBtn.setAttribute('aria-label', t('touch.settingsAria'));
+  gearBtn.title = t('touch.settingsAria');
+  gearBtn.innerHTML = `${uiIconSVG('settings', 18)}<kbd class="cot-c-kbd" aria-hidden="true">Esc</kbd>`;
+  const gearKey = requireElement<HTMLElement>(gearBtn, '.cot-c-kbd');
+  // the same opening as the settings key (settingsAccess.ts: ui:openSettings)
+  gearBtn.addEventListener('click', () => bus.emit('ui:openSettings', {}));
+  const netFpsUnit = requireElement<HTMLElement>(netUnits, '.fps');
+  const netPingUnit = requireElement<HTMLElement>(netUnits, '.ping');
   const netFpsValue = requireElement<HTMLElement>(netFpsUnit, '.metric');
   const netPingValue = requireElement<HTMLElement>(netPingUnit, '.metric');
   const netPingLabel = requireElement<HTMLElement>(netPingUnit, '.label');
-  netEl.style.display = 'none'; // hidden until live frames are measured
+  // the readout's units show once live frames are measured (.metered); the gear always
+  let missionPing = -1, missionPingMs = -Infinity;
+  /** The link's round trip in the corner, at most once a second (its cell holds its width: no relayout). */
+  function updateMissionPing(pingMs: number | undefined): void {
+    const now = performance.now();
+    if (now - missionPingMs < 1000) return;
+    missionPingMs = now;
+    const ping = Math.max(0, Math.min(999, Math.round(Number(pingMs) || 0)));
+    if (ping === missionPing) return;
+    missionPing = ping;
+    netLink.hidden = ping <= 0;
+    netLink.dataset.tone = ping < 80 ? 'good' : ping < 160 ? 'warn' : 'bad';
+    netLinkValue.textContent = ping > 0 ? t('hud.mission.ping', { ms: ping }) : '';
+  }
   let netFrames = 0;       // consecutive live frames since last mode switch
   let netLastMs = 0;       // wall-clock of previous update (fps EMA only)
   let netLastPaintMs = 0;  // DOM values update at 4 Hz, not every render frame
@@ -2263,7 +2291,7 @@ export function initHud(bus: EventBus): HudRuntime {
     // the deterministic default text; live battles settle onto measured fps.
     if (netFrames < 30 || now - netLastPaintMs < 250) return;
     netLastPaintMs = now;
-    netEl.style.display = '';
+    netEl.classList.add('metered');
     const fps = Math.max(1, Math.min(999, Math.round(1 / netEmaDt)));
     // Local play has no transport hop and reports 0 ms. Multiplayer forwards
     // the runtime client's measured RTT; never synthesize a decorative ping.
@@ -2274,7 +2302,7 @@ export function initHud(bus: EventBus): HudRuntime {
     netPingValue.classList.toggle('num', ping > 0); // a ticking ms readout; the local link stays a word
     netPingLabel.textContent = ping > 0 ? t('hud.net.ms') : t('hud.net.link');
     netPingUnit.className = `cot-net-unit ping ${ping <= 0 ? 'local' : ping < 80 ? 'good' : ping < 160 ? 'warn' : 'bad'}`;
-    netEl.setAttribute('aria-label', ping > 0
+    netUnits.setAttribute('aria-label', ping > 0
       ? t('hud.net.ariaLive', { fps, ping })
       : t('hud.net.ariaLocal', { fps }));
   }
@@ -7242,7 +7270,7 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   on('ui:perfMeter', (p) => {
     netOptIn = !!(p && p.on);
-    if (!netOptIn) { netEl.style.display = 'none'; netFrames = 0; netLastPaintMs = 0; }
+    if (!netOptIn) { netEl.classList.remove('metered'); netFrames = 0; netLastPaintMs = 0; }
   });
   on('ui:directionalHitValues', (p) => {
     directionalHitValuesEnabled = !!(p && p.on);
@@ -7265,6 +7293,7 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     if (typeof p.specialAction === 'string') specialKey.textContent = p.specialAction;
     if (typeof p.minimapZoom === 'string') mmKey.textContent = p.minimapZoom;
+    if (typeof p.settingsMenu === 'string') gearKey.textContent = p.settingsMenu;
   });
   on('ui:specialActionResult', ({ kind, active }) => {
     if (kind === SPECIAL_ACTION_KINDS.GUIDED_MISSILE) {
@@ -7938,7 +7967,7 @@ export function initHud(bus: EventBus): HudRuntime {
       mmDirty = true; // guarantee a minimap draw on the next update()
       // net readout: forced screenshot frames (single update after setMode)
       // stay clean — hide the readout and reset the live counter
-      netEl.style.display = 'none';
+      netEl.classList.remove('metered');
       netFrames = 0;
       netLastMs = 0;
       netLastPaintMs = 0;
