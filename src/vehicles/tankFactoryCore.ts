@@ -22,7 +22,7 @@ import { installCarvedMuzzleBore, verifyCarvedMuzzleBore } from './carvedMuzzleB
 import { vehicleProvenance } from '../authorship.ts';
 import { isBattleShareableMesh, shareBattleGeometry } from './battleGeometrySharing.ts';
 import { mergeContiguousStaticRuns, type CoplanarLayerRecord } from './staticDrawMerge.ts';
-import { assignCoplanarDepth, markingDepthRecords } from './coplanarDepth.ts';
+import { assignCoplanarDepth, COPLANAR_DEPTH_SLOPE_STEP, markingDepthRecords } from './coplanarDepth.ts';
 import { releaseStaticMergeParts } from './staticMergeParts.ts';
 import { combatVisibleObjects, retainCombatLods } from './combatVisibility.ts';
 import { detachEmptyLodSentinels } from '../engine/lodEmptySentinels.ts';
@@ -1705,11 +1705,12 @@ function installBattleDetailGroups(records: readonly StaticDetailRecord[]): {
 // their visible winner implementation-dependent as the camera moves.
 //
 // Give every raster-visible mesh a deterministic sub-depth in semantic order.
-// `polygonOffsetFactor = 0` avoids slope-dependent crawling; one depth-buffer
-// unit between layers is enough to break equality without changing silhouette
-// geometry or pulling a fitting visibly away from its support. Each draws with
-// an offset bounded by contact (coplanarDepth.ts, 243): a unit per mesh grew to
-// centimetres of eye depth at Gallery and battle range. The callback is
+// One depth-buffer unit between layers breaks equality without changing
+// silhouette geometry or pulling a fitting visibly away from its support. Each
+// draws with an offset bounded by contact (coplanarDepth.ts, 243): a unit per
+// mesh grew to centimetres of eye depth at Gallery and battle range. A thirty-
+// second of the depth slope per unit (COPLANAR_DEPTH_SLOPE_STEP) keeps ties apart
+// where a tight near plane steepens slopes; under a pixel, so no crawling. The callback is
 // object-local even though materials are shared: Three invokes it immediately
 // before applying the material's raster state for that draw. Shadow materials
 // are deliberately ignored, so the arbitration cannot introduce shadow acne.
@@ -1780,6 +1781,9 @@ export function installCoplanarDepthLayers(root: THREE.Object3D, records: readon
   for (const { object, materials, layer, depth = layer } of records) {
     object.userData.coplanarDepthLayer = layer;
     object.userData.coplanarDepthOffset = depth;
+    // a small slope-scaled share per unit keeps coplanar ties apart where a tight near plane steepens depth slopes
+    const factor = -depth * COPLANAR_DEPTH_SLOPE_STEP;
+    object.userData.coplanarDepthFactor = factor;
     top = Math.max(top, depth);
     const previous = object.onBeforeRender;
     object.onBeforeRender = function applyCoplanarDepthLayer(
@@ -1793,7 +1797,7 @@ export function installCoplanarDepthLayers(root: THREE.Object3D, records: readon
       if (previous) previous.call(this, renderer, scene, camera, geometry, renderedMaterial, group);
       if (!materials.includes(renderedMaterial) || renderedMaterial.depthTest === false) return;
       renderedMaterial.polygonOffset = true;
-      renderedMaterial.polygonOffsetFactor = 0;
+      renderedMaterial.polygonOffsetFactor = factor;
       renderedMaterial.polygonOffsetUnits = -depth;
     };
   }

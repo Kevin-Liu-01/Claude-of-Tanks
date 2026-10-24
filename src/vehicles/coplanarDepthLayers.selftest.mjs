@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
-import { assignCoplanarDepth, MARKING_DEPTH_MARGIN } from './coplanarDepth.ts';
+import { assignCoplanarDepth, COPLANAR_DEPTH_SLOPE_STEP, MARKING_DEPTH_MARGIN } from './coplanarDepth.ts';
 
 // 2026-10-23 (lane 243; the owner: "insignias and marks on tanks are still glitching ... fix any glitching of that or
 // tank props"): every colour-pass mesh keeps a unique place in the semantic order (`coplanarDepthLayer`), and draws
@@ -75,8 +75,8 @@ for (const options of [
   const detail = tank.root.getObjectByName('hullDark');
   assert.ok(hull && detail, 'representative armor and detail meshes exist');
   hull.onBeforeRender(null, null, null, hull.geometry, hull.material, null);
-  assert.equal(hull.material.polygonOffsetFactor, 0,
-    'armor uses slope-independent depth arbitration');
+  assert.equal(hull.material.polygonOffsetFactor, -hull.userData.coplanarDepthOffset * COPLANAR_DEPTH_SLOPE_STEP,
+    'armor carries a thirty-second of its depth slope per offset unit (ties under a tight near plane)');
   assert.equal(hull.material.polygonOffsetUnits, -hull.userData.coplanarDepthOffset,
     'armor draw applies its bounded offset');
   detail.onBeforeRender(null, null, null, detail.geometry, detail.material, null);
@@ -91,7 +91,8 @@ for (const options of [
     assert.ok(surface, `${mark.name}: its armour exists`);
     const material = Array.isArray(mark.material) ? mark.material[0] : mark.material;
     mark.onBeforeRender(null, null, null, mark.geometry, material, null);
-    assert.equal(material.polygonOffsetFactor, 0, `${mark.name}: slope-independent`);
+    assert.equal(material.polygonOffsetFactor, -mark.userData.coplanarDepthOffset * COPLANAR_DEPTH_SLOPE_STEP,
+      `${mark.name}: its slope share follows its offset`);
     assert.ok(mark.userData.coplanarDepthOffset >= (surface.userData.coplanarDepthOffset ?? 0) + MARKING_DEPTH_MARGIN,
       `${mark.name} (${mark.userData.coplanarDepthOffset}) draws ${MARKING_DEPTH_MARGIN} units in front of its armour (${surface.userData.coplanarDepthOffset})`);
     assert.equal(material.polygonOffsetUnits, -mark.userData.coplanarDepthOffset, `${mark.name}: its offset applies`);

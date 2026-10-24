@@ -205,7 +205,8 @@ function commonUserData(sources: readonly VehicleMesh[]): Record<string, unknown
   const shared: Record<string, unknown> = {};
   const [first, ...rest] = sources;
   for (const [key, value] of Object.entries(first.userData)) {
-    if (key === 'smokeSockets' || key === 'coplanarDepthLayer' || key === 'coplanarDepthOffset') continue;
+    if (key === 'smokeSockets' || key === 'coplanarDepthLayer' || key === 'coplanarDepthOffset'
+      || key === 'coplanarDepthFactor') continue;
     if (rest.every((source) => Object.prototype.hasOwnProperty.call(source.userData, key)
       && source.userData[key] === value)) shared[key] = value;
   }

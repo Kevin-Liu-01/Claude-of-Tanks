@@ -154,6 +154,17 @@ export function assignCoplanarDepth(
  * coplanar with it there) by `MARKING_DEPTH_MARGIN` units. Appended after the vehicle's own records.
  */
 export const MARKING_DEPTH_MARGIN = 2;
+
+/**
+ * The slope-scaled share of each offset unit (polygonOffsetFactor per unit of depth). Two coplanar draws cut from
+ * different triangles reach the rasteriser through different snapped vertices: their depths differ by about the
+ * surface's depth slope over 256 (eight subpixel bits), which a constant offset covers only while that slope stays a
+ * few units a pixel. Under a near plane tight on the subject (the Gallery's fitGalleryDepth) a grazing plate's slope
+ * runs to thousands of units a pixel: the Leclerc's rear-deck grille (hullDark, exactly in the deck's plane, two units
+ * above it) sparkled through the deck at 0.6x zoom. One thirty-second of the slope per unit outweighs that rounding
+ * eight times over and stays under a pixel's worth of the surface's own depth for every offset the fleet draws.
+ */
+export const COPLANAR_DEPTH_SLOPE_STEP = 1 / 32;
 export function markingDepthRecords(
   root: THREE.Object3D, records: readonly CoplanarLayerRecord[], markings: readonly VehicleMesh[],
 ): CoplanarLayerRecord[] {

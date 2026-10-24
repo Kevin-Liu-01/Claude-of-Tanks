@@ -207,7 +207,11 @@ function installHarness() {
         } else if (Number.isFinite(mesh.userData.coplanarDepthLayer)) {
           units = -(mode === 'ref' ? mesh.userData.coplanarDepthLayer
             : (mesh.userData.coplanarDepthOffset ?? mesh.userData.coplanarDepthLayer));
+          // the reference orders exact ties by rank at every slope; the actual draw uses whatever slope share it has
+          factor = mode === 'ref' ? units / 32 : (mesh.userData.coplanarDepthFactor ?? 0);
         }
+        if (category === 0 && mode === 'act' && Number.isFinite(mesh.userData.coplanarDepthFactor)) factor = mesh.userData.coplanarDepthFactor;
+        if (category === 0 && mode === 'ref') factor = units / 32;
         saved.push([mesh, mesh.material, mesh.onBeforeRender, mesh.onAfterRender, mesh.renderOrder]);
         mesh.material = Array.isArray(mesh.material) ? mesh.material.map(() => material) : material;
         mesh.onBeforeRender = () => { material.polygonOffsetUnits = units; material.polygonOffsetFactor = factor; };
