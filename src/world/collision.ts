@@ -2121,7 +2121,13 @@ export function nearestColliderHit(
       }
       continue;
     }
-    const distance = rayCollisionRecord(origin, dir, candidate, Math.min(maxDist, best), _nearestCandidate);
+    const limit = Math.min(maxDist, best);
+    // (perf-249, the battle-scale profile: sight and shell rays judged every corridor record's footprint, a building's every
+    // band, ~4 % of a 16 v 16 step) a record whose box, RAY_BOX_PAD_M wider, the ray does not enter within the limit is not
+    // met within it: the point of a hit at t lies inside the footprint, and every footprint lies inside its box to well
+    // under the pad (the 33 maps' packed records: 0.32 mm at most, Float32 boxes), so rayCollisionRecord answers -1 there
+    if (paddedFootprintEntry(origin, dir, candidate) > limit) continue;
+    const distance = rayCollisionRecord(origin, dir, candidate, limit, _nearestCandidate);
     if (distance >= 0 && distance < best) {
       best = distance;
       record = candidate;
@@ -2165,6 +2171,36 @@ export function createObstacleGrid(records: CollisionRecord[], cellSize = 24): O
       a.push(i);
     }
   }
+  // (perf-249, the battle-scale profile: the queries' hash lookup a cell, ~3 % of a 16 v 16 step) the cells as one dense
+  // table over the records' own cell range, row by row in z as the query walks, each cell's slots in their insertion
+  // order: a cell outside the range holds nothing, so a query clipped to it visits the same records in the same order. A
+  // range too wide for a table (records strewn kilometres apart) keeps the map.
+  let cellX0 = Infinity, cellZ0 = Infinity, cellX1 = -Infinity, cellZ1 = -Infinity;
+  for (const k of cells.keys()) {
+    const z = (k % 65536) - 32768, x = (k - (z + 32768)) / 65536 - 32768;
+    if (x < cellX0) cellX0 = x;
+    if (x > cellX1) cellX1 = x;
+    if (z < cellZ0) cellZ0 = z;
+    if (z > cellZ1) cellZ1 = z;
+  }
+  const cols = cells.size ? cellX1 - cellX0 + 1 : 0, rows = cells.size ? cellZ1 - cellZ0 + 1 : 0;
+  const dense = cols * rows <= DENSE_GRID_MAX_CELLS;
+  const cellStart = new Int32Array(dense ? cols * rows + 1 : 0);
+  let cellSlots = new Int32Array(0);
+  if (dense) {
+    let total = 0;
+    for (let z = 0; z < rows; z++) for (let x = 0; x < cols; x++) {
+      cellStart[z * cols + x] = total;
+      total += cells.get(key(x + cellX0, z + cellZ0))?.length ?? 0;
+    }
+    cellStart[cols * rows] = total;
+    cellSlots = new Int32Array(total);
+    for (let z = 0; z < rows; z++) for (let x = 0; x < cols; x++) {
+      const a = cells.get(key(x + cellX0, z + cellZ0));
+      if (a) cellSlots.set(a, cellStart[z * cols + x]);
+    }
+  }
+  const sparse = dense ? null : cells;
   let stamp = 0;
   const slotOf = new Map<CollisionRecord, number>();
   for (let i = 0; i < indexedRecords.length; i++) slotOf.set(indexedRecords[i], i);
@@ -2177,8 +2213,26 @@ export function createObstacleGrid(records: CollisionRecord[], cellSize = 24): O
     if (stamp >= 0x7fffffff) { stamp = 1; visited.fill(0); }
     const x0 = Math.floor(minX * inv), x1 = Math.floor(maxX * inv);
     const z0 = Math.floor(minZ * inv), z1 = Math.floor(maxZ * inv);
+    if (dense) {
+      const qx0 = Math.max(x0, cellX0), qx1 = Math.min(x1, cellX1), qz0 = Math.max(z0, cellZ0), qz1 = Math.min(z1, cellZ1);
+      for (let z = qz0; z <= qz1; z++) {
+        const row = (z - cellZ0) * cols - cellX0;
+        for (let x = qx0; x <= qx1; x++) {
+          const end = cellStart[row + x + 1];
+          for (let i = cellStart[row + x]; i < end; i++) {
+            const index = cellSlots[i];
+            if (visited[index] === stamp) continue;
+            visited[index] = stamp;
+            const r = indexedRecords[index];
+            if (r.max[0] < minX || r.min[0] > maxX || r.max[2] < minZ || r.min[2] > maxZ) continue;
+            out.push(r);
+          }
+        }
+      }
+      return out;
+    }
     for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) {
-      const a = cells.get(key(x, z));
+      const a = sparse!.get(key(x, z));
       if (!a) continue;
       for (let i = 0; i < a.length; i++) {
         const index = a[i];
@@ -2192,6 +2246,8 @@ export function createObstacleGrid(records: CollisionRecord[], cellSize = 24): O
     return out;
   }, { rayOrder });
 }
+/** The widest cell table createObstacleGrid lays out densely (cells): a 1 km battlefield at 24 m is ~1,900. */
+const DENSE_GRID_MAX_CELLS = 1 << 18;
 
 /**
  * The corridor step of nearestColliderHitAlongRay (metres of ray per broad-phase box). Two grid cells: short enough that
@@ -2227,6 +2283,35 @@ function footprintEntry(origin: Vector3Like, dir: Vector3Like, r: CollisionRecor
   } else {
     const inv = 1 / dir.z;
     let a = (r.min[2] - origin.z) * inv, b = (r.max[2] - origin.z) * inv;
+    if (a > b) { const t = a; a = b; b = t; }
+    if (a > t0) t0 = a;
+    if (b < t1) t1 = b;
+  }
+  return t0 <= t1 ? t0 : Infinity;
+}
+
+/** The pad round a record's box for the narrow phase's plan test (nearestColliderHit): 30 times the widest a footprint
+ * stands past its box in the packed records. */
+const RAY_BOX_PAD_M = 0.01;
+/** footprintEntry against the record's box padded by RAY_BOX_PAD_M (0 from inside, Infinity when the ray misses it). */
+function paddedFootprintEntry(origin: Vector3Like, dir: Vector3Like, r: CollisionRecord): number {
+  let t0 = 0, t1 = Infinity;
+  const minX = r.min[0] - RAY_BOX_PAD_M, maxX = r.max[0] + RAY_BOX_PAD_M;
+  const minZ = r.min[2] - RAY_BOX_PAD_M, maxZ = r.max[2] + RAY_BOX_PAD_M;
+  if (Math.abs(dir.x) < 1e-12) {
+    if (origin.x < minX || origin.x > maxX) return Infinity;
+  } else {
+    const inv = 1 / dir.x;
+    let a = (minX - origin.x) * inv, b = (maxX - origin.x) * inv;
+    if (a > b) { const t = a; a = b; b = t; }
+    if (a > t0) t0 = a;
+    if (b < t1) t1 = b;
+  }
+  if (Math.abs(dir.z) < 1e-12) {
+    if (origin.z < minZ || origin.z > maxZ) return Infinity;
+  } else {
+    const inv = 1 / dir.z;
+    let a = (minZ - origin.z) * inv, b = (maxZ - origin.z) * inv;
     if (a > b) { const t = a; a = b; b = t; }
     if (a > t0) t0 = a;
     if (b < t1) t1 = b;
