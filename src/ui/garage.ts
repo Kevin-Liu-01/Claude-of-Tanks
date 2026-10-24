@@ -840,7 +840,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<section class="cot-lower-third"><div class="cot-lt-head" aria-live="polite"><h2 class="cot-lt-name"></h2><div class="cot-lt-id"></div></div>` +
     `<div class="cot-lt-band"><div class="cot-lt-loadout eqrow" role="group" aria-label="${t('garage.dossier.equipment.heading')}"></div>` +
     `<div class="cot-lt-paint" role="group" aria-label="${t('garage.tools.camos')}"></div>` +
-    `<div class="cot-lt-acts"><button type="button" class="cot-c-btn cot-c-btn--icon" data-lt-anatomy ` +
+    `<div class="cot-lt-acts"><button type="button" class="cot-c-btn cot-c-btn--icon" data-lt-callouts aria-pressed="false" ` +
+    `aria-keyshortcuts="I" aria-label="${t('garage.act.callouts')}" title="${t('garage.act.callouts')} (I)">${uiIconSVG('info', 18)}</button>` +
+    `<button type="button" class="cot-c-btn cot-c-btn--icon" data-lt-anatomy ` +
     `aria-label="${t('garage.act.anatomy')}" title="${t('garage.act.anatomy')}">${uiIconSVG('layerXray', 18)}</button>` +
     `<button type="button" class="cot-c-btn cot-c-btn--icon" data-lt-test-drive ` +
     `aria-label="${t('garage.dossier.testDrive')}" title="${t('garage.dossier.testDrive')}">${uiIconSVG('modeProving', 18)}</button>` +
@@ -3045,25 +3047,41 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   });
   const lowerThird = requiredElement<HTMLElement>(root, '.cot-lower-third');
   // the stage's numbered hotspots (the direction's 05-garage page): the selected tank's gun, turret, powerpack and
-  // running gear, each with its real values, a dot on its part and a plate off the tank. The module loads off the entry
-  // once the Garage is playable and idle; the latest facts wait for it.
+  // running gear, each with its real values, a dot on its part and a plate off the tank. They wait for their act (owner
+  // 10-24: "dont show all the little info boxes over tanks until we press a certain button"), and the choice lasts the
+  // session. Until the first press the module never loads and no frame projects anything; the latest facts wait for it.
+  const CALLOUTS_KEY = 'cot.garage.callouts';
+  let calloutsShown = false;
+  try { calloutsShown = sessionStorage.getItem(CALLOUTS_KEY) === '1'; } catch (_) { /* this page only */ }
   let hotspots: GarageHotspots | null = null;
+  let hotspotsLoading = false;
   // where the plates may stand: the stage the tank is framed in, less the name, its identity and the band under them
   const hotspotRoom: HotspotRoom = { stage: () => api.getStageRect(),
     avoid: () => [...lowerThird.querySelectorAll('.cot-lt-name, .cot-lt-id, .cot-lt-band > *'), root.querySelector('.cot-eqpick.open')] };
   let hotspotFacts: HotspotFacts | null = null;
-  const setHotspotFacts = (facts: HotspotFacts | null): void => { hotspotFacts = facts; hotspots?.setFacts(facts); };
+  const setHotspotFacts = (facts: HotspotFacts | null): void => { hotspotFacts = facts; if (calloutsShown) hotspots?.setFacts(facts); };
   const loadHotspots = (): void => {
+    if (hotspots || hotspotsLoading) return;
     if (window.__GAME_READY !== true) { setTimeout(loadHotspots, 300); return; }
+    hotspotsLoading = true;
     // the hotspots' sheet rides with their module, off the Garage's first paint
-    const load = () => void Promise.all([import('./garageHotspots.ts'), import('./garageHotspots.css')]).then(([{ createGarageHotspots }]) => {
+    void Promise.all([import('./garageHotspots.ts'), import('./garageHotspots.css')]).then(([{ createGarageHotspots }]) => {
       // over the Garage's edge bands (which dim the scene), under every panel
       hotspots = createGarageHotspots(root, hotspotRoom, root.querySelector('.band-r')?.nextElementSibling ?? null);
-      hotspots.setFacts(hotspotFacts);
-    }, () => undefined);
-    if (typeof requestIdleCallback === 'function') requestIdleCallback(load, { timeout: 2500 }); else setTimeout(load, 900);
+      hotspots.setFacts(calloutsShown ? hotspotFacts : null);
+    }, () => { hotspotsLoading = false; });
   };
-  loadHotspots();
+  const calloutsButton = requiredElement<HTMLButtonElement>(root, '[data-lt-callouts]');
+  function setCallouts(on: boolean): void {
+    calloutsShown = on;
+    calloutsButton.setAttribute('aria-pressed', String(on));
+    try { sessionStorage.setItem(CALLOUTS_KEY, on ? '1' : '0'); } catch (_) { /* this page only */ }
+    if (!on) hotspots?.setFacts(null);
+    else if (hotspots) hotspots.setFacts(hotspotFacts);
+    else loadHotspots();
+  }
+  calloutsButton.addEventListener('click', () => { emit('ui:click', {}); setCallouts(!calloutsShown); });
+  if (calloutsShown) setCallouts(true);
   const lowerName = requiredElement<HTMLElement>(lowerThird, '.cot-lt-name');
   const lowerId = requiredElement<HTMLElement>(lowerThird, '.cot-lt-id');
   let lowerClassFor = '';
@@ -4223,6 +4241,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (e.code === 'KeyV') { openSelectedInGallery(); e.preventDefault(); return; }
       if (e.code === 'KeyF') { toggleFavourite(selectedId); e.preventDefault(); return; }
       if (e.code === 'KeyP' && photo) { openPhoto(); e.preventDefault(); return; }
+      if (e.code === 'KeyI' && document.body.dataset.cotPanels === 'persistent') {
+        emit('ui:click', {});
+        setCallouts(!calloutsShown);
+        e.preventDefault();
+        return;
+      }
       if (e.code === 'KeyR') { recordTrigger.click(); e.preventDefault(); return; }
       if (e.code === 'F1') { openDocs(); e.preventDefault(); return; }
     }
@@ -4252,7 +4276,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     isOpen: false,
     // the hotspots show on the docked overview, never over Deploy, a panel or a folded layout
     frameHotspots(camera, model) {
-      hotspots?.frame(camera, model, api.isOpen && document.body.dataset.cotPanels === 'persistent'
+      if (!calloutsShown || !hotspots) return;
+      hotspots.frame(camera, model, api.isOpen && document.body.dataset.cotPanels === 'persistent'
         && root.dataset.station === 'overview' && !battleMenu.classList.contains('open'));
     },
 
