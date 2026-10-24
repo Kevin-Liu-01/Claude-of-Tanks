@@ -124,6 +124,25 @@ for (const route of PUBLIC_ROUTE_RECORDS.filter((record) => record.id === 'docs'
   assert.deepEqual(english, [], `/cn ${file} JSON-LD names and headlines are Chinese`);
 }
 
+// /cn: the landing's and the Gallery's JSON-LD names are the zh catalog's too (the landing's page names itself by its
+// catalog title; the Gallery's fleet list by metadata.gallery.listName)
+for (const route of PUBLIC_ROUTE_RECORDS.filter((record) => record.id === 'home' || record.id === 'gallery')) {
+  const zh = localizeHtmlDocument(readFileSync(join(ROOT, `site/${route.sourceHtml}`), 'utf8'), route, 'zh-CN');
+  const english = [];
+  for (const [, json] of zh.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+    const visit = (node) => {
+      if (!node || typeof node !== 'object') return;
+      for (const [key, value] of Object.entries(node)) {
+        if (key === 'name' && typeof value === 'string' && !/[一-鿿]/.test(value)
+          && !['Claude of Tanks', 'Kevin B. Liu'].includes(value)) english.push(`name "${value}"`);
+        else visit(value);
+      }
+    };
+    visit(JSON.parse(json));
+  }
+  assert.deepEqual(english, [], `/cn ${route.sourceHtml} JSON-LD names are Chinese`);
+}
+
 function imageDimensions(path) {
   const buffer = readFileSync(path);
   if (buffer.length >= 24 && buffer.toString('ascii', 12, 16) === 'IHDR') {

@@ -108,6 +108,10 @@ function localizeStructuredData(
   const englishTitle = locale !== DEFAULT_LOCALE && localizedHas(titleKey) ? renderProductStats(translation('en-US', titleKey)) : null;
   const localizedTitle = englishTitle ? renderProductStats(translation(locale, titleKey)) : null;
   const pagePart = (title: string): string => title.split(' · ')[0];
+  // a list the page names (the Gallery's fleet) takes the locale's name from metadata.<route>.listName
+  const listKey = `metadata.${route.id}.listName`;
+  const englishListName = locale !== DEFAULT_LOCALE && localizedHas(listKey) ? renderProductStats(translation('en-US', listKey)) : null;
+  const localizedListName = englishListName ? renderProductStats(translation(locale, listKey)) : null;
 
   return html.replace(
     /<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi,
@@ -134,6 +138,8 @@ function localizeStructuredData(
             } else if (englishTitle && localizedTitle && key === 'name' && englishTitle.includes(' · ')
               && child === pagePart(englishTitle) && child !== 'Claude of Tanks') {
               record[key] = pagePart(localizedTitle);
+            } else if (localizedListName && key === 'name' && child === englishListName) {
+              record[key] = localizedListName;
             } else if (localizedHeadline && key === 'name' && typeof child === 'string') {
               if (child === englishHeadline) record[key] = localizedHeadline;
               else if (localizedCrumb && child === 'Documentation') record[key] = localizedCrumb;
