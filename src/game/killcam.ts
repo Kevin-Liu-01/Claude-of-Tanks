@@ -152,6 +152,7 @@ interface KillcamArmor extends Omit<ArmorEnvelope, 'modules' | 'crew'> {
   modules: KillcamModuleBox[];
   crew: KillcamCrewBox[];
   trackShapes?: TrackShape[];
+  collisionShells?: { hull?: readonly { min: Vec3Tuple; max: Vec3Tuple }[] };
 }
 
 interface KillcamSpec extends FleetTankSpec {
@@ -4626,8 +4627,15 @@ export function createKillCam(deps: KillcamDeps) {
   ): T {
     const dimensions = context.snap.targetEnt?.spec?.dims;
     if (!dimensions || box.turretLocal || box.gunFollow) return box;
-    const halfWidth = dimensions.widthM / 2 + 0.03;
-    const halfLength = (dimensions.hullLengthM || dimensions.overallLengthM * 0.8) / 2 + 0.08;
+    // 248: or the combat hull's own extent, where it outgrows the published dims (the CR2/CR3 families measure their
+    // hull in their 1.1-scaled vehicle frame, tools/rigid-hull-frame.mjs)
+    let hullHalfWidth = 0, hullHalfLength = 0;
+    for (const cell of context.armor.collisionShells?.hull ?? []) {
+      hullHalfWidth = Math.max(hullHalfWidth, -cell.min[0], cell.max[0]);
+      hullHalfLength = Math.max(hullHalfLength, -cell.min[2], cell.max[2]);
+    }
+    const halfWidth = Math.max(dimensions.widthM / 2, hullHalfWidth) + 0.03;
+    const halfLength = Math.max((dimensions.hullLengthM || dimensions.overallLengthM * 0.8) / 2, hullHalfLength) + 0.08;
     const min: Vec3Tuple = [
       Math.max(box.min[0], -halfWidth),
       Math.max(box.min[1], -0.05),

@@ -17,18 +17,8 @@ import { crewArmour, crewFallbackLadders, crewPostureLadders, crewShell, shapeSu
 // Stations where no P50 posture fits the measured shell (the body's share left outside at the best placement): kept
 // there, shapes trimmed inside. The ZTZ-100's turret stands on a floor under 10 cm across (its crew ride in the hull
 // on the real vehicle: a layout question, not a seat); the two drivers miss by 0.1 %.
-// 247 (the turret-scale lane): the Challenger 2 family's turret crew. Its combat hull is measured in the hull rig's own
-// frame (the real 8.33 m hull) while its turret pivot is the 1.1-scaled visual one (1.705, CHALLENGER2_FAMILY_SCALE), so
-// the combat shells leave 17 cm between the ring landing and the turret's floor and 26-28 cm under the ring's full
-// circle, past the ring's 0.25 m bridge. 245's turret seat raised the turret's skirt onto its ring plane (it had hung
-// 3.5 cm under it, which kept the gap at 22 cm), and the crew fit through the ring no longer: seated in the basket,
-// trimmed. A refit reproduces them; the scale mismatch is the coordinator's follow-up.
 const TRIMMED = Object.freeze({
   'ztz100/gunner': 0.022, 'ztz100/commander': 0.021, 'm60a3/driver': 0.001, 't72b3m_hetman_ii/driver': 0.001,
-  'challenger2/gunner': 0.023, 'challenger2/commander': 0.023, 'challenger2/loader': 0.029,
-  'challenger2e/gunner': 0.017, 'challenger2e/commander': 0.017, 'challenger2e/loader': 0.017,
-  'fv4034/gunner': 0.023, 'fv4034/commander': 0.023, 'fv4034/loader': 0.019,
-  'ua_challenger2/gunner': 0.017, 'ua_challenger2/commander': 0.017, 'ua_challenger2/loader': 0.017,
 });
 
 assert.deepEqual(crewPostureLadders('leo2a6', 'leopard', 'driver', 'hull'), ['driverReclined']);
