@@ -1,5 +1,5 @@
 // referenceTakes.selftest.mjs — the field manual's fleet reference shows each vehicle's own take (src/docs/referenceTakes.ts
-// over src/ui/fleetTakes.ts; owner 2026-10-12). The manual presents a single vehicle only as a record of /docs/vehicles'
+// over src/ui/fleetTakes.ts; owner 2026-10-12). The manual presents a single vehicle only as a record of /docs/tanks'
 // reference: the first opening of a record loads the takes (never the page itself), a vehicle the index has gains its
 // "In action" figure once, a vehicle it lacks shows nothing, and the loop plays only while the open record is on screen.
 // The fixture index is fake and lives only here; its files are the site fifty's s21.

@@ -157,7 +157,10 @@ function delivery(id) {
 }
 
 const takeIds = Object.keys(PICKS.takes);
-const loopIds = [...new Set([PICKS.home.destruction, ...PICKS.home.paths, ...Object.values(PICKS.topics), ...PICKS.docs.archiveLoops])];
+// picks.docs.chapterLoops (2026-10-24): the rebuilt Field Manual's chapter heroes (the first battle's, in place of the
+// retired s27), each a loop with its 960 rung as the archive's are
+const chapterLoops = PICKS.docs.chapterLoops ?? [];
+const loopIds = [...new Set([PICKS.home.destruction, ...PICKS.home.paths, ...Object.values(PICKS.topics), ...PICKS.docs.archiveLoops, ...chapterLoops])];
 const proxyIds = [PICKS.home.destruction, ...PICKS.home.paths];
 const reelIds = PICKS.docs.reels;
 const fourK = PICKS.featured.filter((f) => f.fourK).map((f) => f.id);
@@ -343,7 +346,7 @@ function buildLoops() {
     // from the delivery's 1080p master with its sound (WEB.loop), not its own VP9: that ran at 22-32 Mbit/s
     webMake(join(OUT, 'loops', `${id}.webm`), d.hd, WEB_LOOP_CAPS[id] ? { ...WEB.loop, capKbps: WEB_LOOP_CAPS[id] } : WEB.loop, take);
     copy(join(OUT, 'loops', `${id}.jpg`), d.poster, take);
-    if (PICKS.docs.archiveLoops.includes(id)) webMake(join(OUT, 'loops', `${id}-960.webm`), d.hd, WEB.loop960, take);
+    if (PICKS.docs.archiveLoops.includes(id) || chapterLoops.includes(id)) webMake(join(OUT, 'loops', `${id}-960.webm`), d.hd, WEB.loop960, take);
   }
 }
 

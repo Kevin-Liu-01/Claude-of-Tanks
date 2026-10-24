@@ -65,7 +65,7 @@ assert.doesNotMatch(galleryHtmlSource, /Live simulation data|galleryArchiveOpen|
 assert.ok(new RegExp(`id="docsArchiveOpen"[\\s\\S]*?Visual archive[\\s\\S]*?${archiveCount} field frames`).test(docsSource),
   'the archive card counts the archive');
 assert.match(docsSource, /id="docsArchive"[\s\S]*?id="docsArchiveBody"/);
-// the home page loops the reel silent; the manual plays the trailer with its score (public/media/site50-r14/films), and
+// the home page loops the reel silent; the manual leads with its banner (the trailer is the landing's, public/media/site50-r14/films), and
 // (2026-10-19, the owner: "all our new medai has to be shhown soomewhhere") the home page's motion stage plays the
 // trailer's three cuts with their score on a click only: outside that stage the home page names no trailer
 assert.match(homeSource, /\/media\/site50-r14\/films\/reel\.mp4/);
@@ -74,8 +74,9 @@ assert.match(homeTrailerStage, /<video controls playsinline preload="none" data-
   'the motion stage plays the trailer on a click');
 assert.doesNotMatch(homeSource.replace(homeTrailerStage, ''), /\/media\/site50-r14\/films\/trailer[^"]*\.(?:mp4|webm)/,
   'no trailer plays on the home page outside its motion stage');
-// (round six, 2026-10-15: the trailer's VP9 webm first, its H.264 mp4 after for a browser that plays no VP9)
-assert.match(docsSource, /<video controls[^>]*poster="\/media\/site50-r14\/films\/trailer\.jpg"[^>]*><source src="\/media\/site50-r14\/films\/trailer\.webm" type="video\/webm"><source src="\/media\/site50-r14\/films\/trailer\.mp4"/);
+// (245: the manual's hero is its own banner, public/media/docs-r1, and the trailer plays in the landing's trailers row)
+assert.match(docsSource, /<img src="\/media\/docs-r1\/banner-2560\.webp" srcset="\/media\/docs-r1\/banner-1280\.webp 1280w/, 'the manual leads with its banner');
+assert.doesNotMatch(docsSource, /\/media\/site50-r14\/films\/trailer/, 'the trailer plays on the landing, not in the manual');
 assert.doesNotMatch(`${homeSource}${docsSource}`, /promo-v13/, 'the v13 reel is retired from both pages');
 // Chinese headlines (the type rules): the CJK system faces follow the Latin face in the shared stack, the
 // lines open up, and no outline type is set on Chinese: the shared .t-hollow treatment paints solid ink in zh-CN.

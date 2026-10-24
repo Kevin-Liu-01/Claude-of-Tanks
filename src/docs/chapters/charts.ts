@@ -34,7 +34,9 @@ export function lineChart(options: { readonly x: Axis; readonly y: Axis; readonl
     return `<path class="l s-${s.tone}" d="${d}"/>${end}`;
   }).join('');
   const axes = `<line class="a" x1="${left}" x2="${W - right}" y1="${H - bottom}" y2="${H - bottom}"/><line class="a" x1="${left}" x2="${left}" y1="${top}" y2="${H - bottom}"/>`
-    + `<text class="u" x="${W - right}" y="${H - 6}" text-anchor="end">${esc(x.label)} (${esc(x.unit)})</text>`
+    // the x title sits on the axis's right end inside the plot (the manual's charts leave that corner empty): under the
+    // tick row it ran into the ticks once a phone doubles the type
+    + `<text class="u" x="${W - right}" y="${H - bottom - 8}" text-anchor="end">${esc(x.label)} (${esc(x.unit)})</text>`
     + `<text class="u" x="${left}" y="${top - 2}" text-anchor="start" dominant-baseline="auto">${esc(y.unit)}</text>`;
   const legend = series.map((s) => `<li><i class="s-${s.tone}" aria-hidden="true"></i><span>${esc(s.label)}${s.end ? ` <small>${esc(s.end)}</small>` : ''}</span></li>`).join('');
   return `<figure class="dm-chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)}">${grid}${xticks}${axes}${lines}</svg>`

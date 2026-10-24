@@ -5,30 +5,20 @@ import { mountDocsIcons } from './docsIcons.ts';
 
 mountDocsIcons();
 
-const navLinks = [...document.querySelectorAll<HTMLAnchorElement>('.docs-toc a[href^="#"]')];
-const sections = navLinks.map((link) => {
-  const encodedId = link.hash.slice(1);
-  if (!encodedId) return null;
-  try {
-    return document.getElementById(decodeURIComponent(encodedId));
-  } catch {
-    return null;
-  }
-})
-  .filter((section): section is HTMLElement => section !== null);
-
-const observer = new IntersectionObserver((entries) => {
-  for (const entry of entries) {
-    if (!entry.isIntersecting) continue;
-    navLinks.forEach((link) => {
-      const active = link.hash === `#${entry.target.id}`;
-      link.classList.toggle('active', active);
-      if (active) link.setAttribute('aria-current', 'location');
-      else link.removeAttribute('aria-current');
-    });
-  }
-}, { rootMargin: '-16% 0px -73%' });
-sections.forEach((section) => observer.observe(section));
+// The index's search: the field loads the manual's index with its first use (docsSearch.ts); ⌘K or Ctrl K focuses it.
+const searchHost = document.querySelector<HTMLElement>('[data-docs-search]');
+const searchInput = searchHost?.querySelector<HTMLInputElement>('input');
+if (searchHost && searchInput) {
+  searchInput.addEventListener('focus', () => { void import('./docsSearch.ts').then(({ mountDocsSearch }) => mountDocsSearch(searchHost, searchInput)); }, { once: true });
+  document.addEventListener('keydown', (event) => {
+    if (event.key.toLowerCase() !== 'k' || !(event.metaKey || event.ctrlKey) || event.altKey) return;
+    event.preventDefault();
+    searchInput.focus();
+    searchInput.select();
+  });
+  const kbd = searchHost.querySelector('kbd');
+  if (kbd && !/Mac|iP(?:hone|ad|od)/.test(navigator.platform)) kbd.textContent = 'Ctrl K';
+}
 
 let toastTimer = 0;
 function announce(message: string): void {
@@ -39,36 +29,6 @@ function announce(message: string): void {
   clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => toast.classList.remove('show'), 1600);
 }
-
-document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((button) => {
-  button.addEventListener('click', async () => {
-    const selector = button.dataset.copy;
-    if (!selector) return;
-    const target = document.querySelector<HTMLElement>(selector);
-    if (!target) return;
-    try {
-      await navigator.clipboard.writeText(target.textContent.trim());
-      const original = button.textContent;
-      button.textContent = t('contextInfo.copied');
-      announce(t('contextInfo.copied'));
-      setTimeout(() => { button.textContent = original; }, 1400);
-    } catch (_) {
-      announce(t('gallery.toast.clipboardUnavailable'));
-    }
-  });
-});
-
-document.querySelector('#docsMenu')?.addEventListener('click', () => {
-  const toc = document.querySelector<HTMLElement>('.docs-toc');
-  if (!toc) return;
-  const open = toc.classList.toggle('open');
-  document.querySelector<HTMLElement>('#docsMenu')?.setAttribute('aria-expanded', String(open));
-});
-
-navLinks.forEach((link) => link.addEventListener('click', () => {
-  document.querySelector<HTMLElement>('.docs-toc')?.classList.remove('open');
-  document.querySelector('#docsMenu')?.setAttribute('aria-expanded', 'false');
-}));
 
 const archiveDialog = document.querySelector<HTMLDialogElement>('#docsArchive');
 const archiveOpen = document.querySelector<HTMLButtonElement>('#docsArchiveOpen');

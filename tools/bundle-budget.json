@@ -6,10 +6,10 @@
       "requests": 130,
       "raw": 3985459,
       "gzip": 1234298,
-      "brotli": 1042097,
+      "brotli": 1042228,
       "inlineCss": 4313,
       "entryRaw": 847515,
-      "entryBrotli": 233533
+      "entryBrotli": 233546
     },
     "home": {
       "requests": 8,
@@ -20,9 +20,9 @@
     },
     "docs": {
       "requests": 13,
-      "raw": 169006,
-      "gzip": 47992,
-      "brotli": 41743,
+      "raw": 136007,
+      "gzip": 38695,
+      "brotli": 33970,
       "inlineCss": 846
     },
     "gallery": {
@@ -42,11 +42,11 @@
     "cn": {
       "requests": 131,
       "raw": 4136502,
-      "gzip": 1287446,
-      "brotli": 1085238,
+      "gzip": 1287574,
+      "brotli": 1085242,
       "inlineCss": 4757,
       "entryRaw": 847515,
-      "entryBrotli": 233533
+      "entryBrotli": 233546
     }
   }
 }

@@ -28,9 +28,10 @@ function line(key: string, values: Readonly<Record<string, string>>, markup: Rea
   return text;
 }
 
-const still = (path: string, width: number, height: number, alt: string): string => pictureMarkup({
-  src: `/media/site50-r14/home/${path}.webp`, width, height, alt, sizes: '(width < 1100px) 100vw, 45vw',
-  rungs: [{ src: `/media/site50-r14/home/${path}-640.webp`, width: 640 }, { src: `/media/site50-r14/home/${path}.webp`, width }],
+/** A step's screen: the media lane's capture of that moment on the current build (public/media/docs-r1, its manifest). */
+const shot = (slot: string, alt: string): string => pictureMarkup({
+  src: `/media/docs-r1/${slot}-1920.webp`, width: 1920, height: 1080, alt, sizes: '(width < 1100px) 100vw, 45vw',
+  rungs: [{ src: `/media/docs-r1/${slot}-640.webp`, width: 640 }, { src: `/media/docs-r1/${slot}-1920.webp`, width: 1920 }],
 }, false);
 
 const KIT_NAMES: Readonly<Record<string, string>> = { repair: 'hud.consumable.repair', first_aid: 'hud.consumable.firstAid', extinguisher: 'hud.consumable.extinguisher' };
@@ -47,19 +48,19 @@ export function startSections(): RichSection[] {
   const standard = matchRulesetFor('standard');
   const locale = getLocale();
   const steps: Array<[string, string, string]> = [
-    ['garage', still('features/garage', 1920, 1080, t('docs.start.garage.alt')),
+    ['garage', shot('start-garage', t('docs.start.garage.alt')),
       line('docs.start.garage.body', { tanks: String(PRODUCT_STATS.battlePlayableVehicles) })],
-    ['deploy', still('modes/standard', 1280, 720, t('docs.start.deploy.alt')),
+    ['deploy', shot('start-deploy', t('docs.start.deploy.alt')),
       line('docs.start.deploy.body', { modes: String(PRODUCT_STATS.battleModes), maps: String(RANDOM_BATTLE_MAP_IDS.length),
         small: sides('7v7'), large: sides('14v14') })],
-    ['drive', still('mechanics/suspension', 1280, 720, t('docs.start.drive.alt')),
+    ['drive', shot('start-hud', t('docs.start.drive.alt')),
       line('docs.start.drive.body', { zooms: WATCH_RIDE.zooms.map((zoom) => `×${zoom}`).join(' / ') },
         { forward: kbd('forward'), left: kbd('left'), back: kbd('back'), right: kbd('right'), sight: kbd('sniperToggle'), hold: kbd('freeLook') })],
-    ['fire', still('mechanics/ammunition', 1280, 720, t('docs.start.fire.alt')),
+    ['fire', shot('start-sight', t('docs.start.fire.alt')),
       line('docs.start.fire.body', { repair: repair.name, repairS: repair.cooldown, firstAid: firstAid.name, firstAidS: firstAid.cooldown,
         extinguisher: extinguisher.name, extinguisherS: extinguisher.cooldown },
       { fire: kbd('fire'), shell1: kbd('shell1'), shell2: kbd('shell2'), shell3: kbd('shell3'), kit1: kbd('consumable1'), kit2: kbd('consumable2'), kit3: kbd('consumable3') })],
-    ['win', still('features/killcam', 1920, 1080, t('docs.start.win.alt')),
+    ['win', shot('start-win', t('docs.start.win.alt')),
       line('docs.start.win.body', { minutes: String(Math.round((standard.timeLimitS ?? 0) / 60)) })],
   ];
   const sections: RichSection[] = steps.map(([id, figure, body], i) => {

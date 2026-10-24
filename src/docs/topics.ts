@@ -285,19 +285,11 @@ for (const [slug, keys] of Object.entries(FIELD_GUIDES)) {
 /** Each figure's intrinsic size, so the page never shifts as a figure loads (tools/media-fallback.selftest.mjs reads
  *  every file's own header against this table). */
 export const TOPIC_FIGURE_SIZES: Readonly<Record<string, readonly [number, number]>> = {
-  '/maps/autumn.webp': [3840, 2160],
-  '/maps/coastal.webp': [3840, 2160],
   '/media/filming-r1/plan-view.webp': [2000, 594],
   '/media/filming-r1/previz-sheet.webp': [1920, 720],
-  '/media/home/ui_roster.webp': [2000, 1224],
-  '/media/presentation-r1/ui_mobile.webp': [430, 932],
-  '/media/presentation-r1/ui_spectator_switcher.webp': [1440, 900],
-  '/media/presentation-r1/ui_spectator_switcher_mobile.webp': [390, 844],
   '/media/presentation-r1/ui_tank_closeup_modern.webp': [1920, 1080],
   '/media/showcase-r2/11_gallery_hero.webp': [1920, 1080],
   '/media/showcase-r2/15_studio_workspace.webp': [1920, 1080],
-  '/media/showcase-r2/16_mobile_garage.webp': [860, 1864],
-  '/media/showcase-r2/17_live_player_hud.webp': [1920, 1080],
   '/media/showcase-r2/19_live_sniper.webp': [1920, 1080],
   '/media/showcase-r2/25_live_killcam_xray.webp': [1920, 1080],
   '/media/site50-r14/frames/sheet-2.webp': [2400, 540],
@@ -367,7 +359,7 @@ type TopicId = typeof TOPIC_ORDER[number];
 type TopicGroupKey = 'play' | 'behind';
 
 /** The manual's two shelves (08-docs .side .grp): what a player meets in the game, and how it is engineered. */
-const TOPIC_GROUPS: ReadonlyArray<{ readonly key: TopicGroupKey; readonly icon: DocsIconKey; readonly topics: readonly TopicId[] }> = [
+export const TOPIC_GROUPS: ReadonlyArray<{ readonly key: TopicGroupKey; readonly icon: DocsIconKey; readonly topics: readonly TopicId[] }> = [
   { key: 'play', icon: 'combat', topics: ['start', 'controls', 'modes', 'tanks', 'combat', 'battlefields', 'multiplayer', 'audio', 'studio'] },
   { key: 'behind', icon: 'architecture', topics: ['build', 'simulation', 'models', 'rendering', 'ai', 'filming'] },
 ];

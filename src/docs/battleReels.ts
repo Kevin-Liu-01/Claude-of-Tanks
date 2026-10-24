@@ -94,7 +94,7 @@ export function mountBattleReels(scope: Document = document): void {
       button.setAttribute('aria-pressed', String(buttonIndex === index));
     });
     title.textContent = reel.title;
-    map.textContent = `${reel.map} // ${t('docs.studio.reelSpec')}`;
+    map.textContent = `${reel.map} · ${t('docs.studio.reelSpec')}`;
     count.textContent = `${reelNumber(index)} / ${BATTLE_REELS.length}`;
     video.setAttribute('aria-label', t('docs.studio.reelAria', { title: reel.title, map: reel.map }));
 
