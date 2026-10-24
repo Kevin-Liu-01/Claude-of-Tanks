@@ -18,6 +18,8 @@ policy into a second owner. Dependencies arrive through explicit typed ports.
 `combatAimComposition.ts` connects camera, reticle, physical aim, and spotting.
 `combatWarmComposition.ts` owns renderer-lifetime warm caches and cancellation.
 `lazyRuntimeOwner.ts` and `checkedIntegrationPort.ts` guard lazy integration.
+`watchRuntime.ts` composes Watch mode (the drone/ride camera, the controller and
+its bar) the first time a watched battle loads; main.ts keeps only the lazy owner.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->

@@ -540,8 +540,8 @@ assert.match(layout, /const alertSlot = countdown \? plan\.countdownAlert : plan
 // every centre notice on the centre line: the layout writes no x of its own, and the sheet centres them all
 assert.doesNotMatch(layout, /--hud-(notice|alert|banner|revive|countdown|touch-notice|touch-alert|touch-banner|touch-countdown)-(x|cx)\b|--hud-alert-shift/, 'no planned x');
 assert.doesNotMatch(css, /--hud-(notice|alert|banner|revive|countdown)-x\b|--hud-touch-[a-z]+-cx|--hud-alert-shift/, 'no planned x in the sheet');
-assert.match(css, /body\[data-cot-battle-layout\] :is\(\.cot-sixth,\.cot-alert,\.cot-prebattle,\.cot-prebattle-rules,\.cot-revive,\.cot-medal-toasts\):not\(\[data-hud-positioned\]\)\{left:50%;right:auto\}\s*$/,
-  'the one centring rule, last in the sheet');
+assert.match(css, /body\[data-cot-battle-layout\] :is\(\.cot-sixth,\.cot-alert,\.cot-prebattle,\.cot-prebattle-rules,\.cot-revive,\.cot-medal-toasts\):not\(\[data-hud-positioned\]\)\{left:50%;right:auto\}\s*\}\s*$/,
+  'the one centring rule, last in the sheet (inside its surfaces layer: styleLayers)');
 assert.match(css, /\.rosters-expanded \.cot-ear\.l\{width:min\(320px,calc\(50vw - 184px\),var\(--hud-roster-wide-left,320px\)\)\}/);
 assert.doesNotMatch(css, /data-hud-alert-type/, 'the alert never drops below main\'s type size');
 // the layout holds the medal card by mouseMedalWaits with everything it can show with (4c); hud.ts flags the scope on the

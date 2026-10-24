@@ -134,7 +134,7 @@ for (const [file, activeHref] of pages) {
   assert.deepEqual(active, activeHref === '/home' ? [] : [activeHref], `${file} marks its own destination`);
   if (activeHref === '/home') assert.match(nav, /class="public-nav__brand" href="\/home" aria-current="page"/, 'the landing marks the brand link');
   assert.match(linksBlock, /href="#i-manual(?:-s)?"/, `${file} must use the shared Field Manual glyph`);
-  assert.match(nav, /<a class="cot-btn cot-btn--primary cot-btn--sm public-nav__cta" href="\/">[\s\S]*?Play Now/, `${file} has one primary Play Now`);
+  assert.match(nav, /<a class="cot-c-btn cot-c-btn--primary cot-c-btn--36 public-nav__cta" href="\/">[\s\S]*?Play Now/, `${file} has one primary Play Now`);
   assert.match(nav, /class="public-nav__icon-link public-nav__github" href="https:\/\/github\.com\/Kevin-Liu-01\/claude-of-tanks" target="_blank"/,
     `${file} GitHub control opens the repository`);
   assert.match(nav, /hreflang="en-US"[^>]*>EN<\/a><a href="\/cn[^"]*" hreflang="zh-CN"/, `${file} names both locales`);

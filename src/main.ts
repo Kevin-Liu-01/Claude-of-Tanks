@@ -3689,8 +3689,9 @@ await bootStage('post', async () => {
 let studioLightRuntime: Promise<import('./game/studioLightRuntime.ts').StudioLightRuntime> | null = null;
 let studioLightLive: import('./game/studioLightRuntime.ts').StudioLightRuntime | null = null;
 const studioAccess = createStudioAccess({
-  // the Studio's own catalog strings, which the game's catalogs leave out, load beside its chunk
-  loadModule: () => Promise.all([import('./game/studio.ts'), import('./ui/studioStrings.ts').then((strings) => strings.ensureStudioStrings())])
+  // the Studio's own catalog strings, which the game's catalogs leave out, and its panel's sheet load beside its chunk
+  loadModule: () => Promise.all([import('./game/studio.ts'), import('./ui/studioPanel.css'),
+    import('./ui/studioStrings.ts').then((strings) => strings.ensureStudioStrings())])
     .then(([module]) => module),
   preloadFxModule,
   ensureFxRuntime,

@@ -6757,22 +6757,22 @@
   },
   {
    "path": "media/site50-r14/home/features/studio.jpg",
-   "bytes": 359170,
-   "sha256": "8919b34f063e658f6b7ba6fae11a83f5fed5150dd433eadd2d114f7ae8e9adc0",
+   "bytes": 382555,
+   "sha256": "651b4d271f3df7bbb071ce09685b4f3d4054f9a03ffb9312c007d6387b0a5579",
    "source": "shots/media-r5/home-r2/deliver/features/studio.webm",
    "home": "features/studio"
   },
   {
    "path": "media/site50-r14/home/features/studio.json",
    "bytes": 2066,
-   "sha256": "e9d4e8e8a4d6aacc58e6a0cab1dcb5ed17e135f2e30c92a78ccdabfffcdfdfdf",
+   "sha256": "e5f28f5d0e3fcf56584c4dbd3c963bb742fcb95852d66cf1b1bb1e723fed1532",
    "source": "shots/media-r5/home-r2/deliver/features/studio.json",
    "home": "features/studio"
   },
   {
    "path": "media/site50-r14/home/features/studio.mp4",
-   "bytes": 3017535,
-   "sha256": "f4e96128c4f7c40de4b23dab0151c20498377b5ff2a46c477c0290ab4a3fcd2a",
+   "bytes": 3042523,
+   "sha256": "8a5703c64ecde4d39a36d9952d31c24a36f3541e42a574195588cad3ffe5a83a",
    "width": 1920,
    "height": 1080,
    "fps": 30,

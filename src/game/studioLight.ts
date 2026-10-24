@@ -21,6 +21,7 @@
  */
 import type { MapSkyConfig } from '../world/maps/horizon.ts';
 import type { CloudLayerPreset } from '../engine/cloudPresets.ts';
+import { t } from '../ui/i18n.ts';
 
 export const STUDIO_TIMES = Object.freeze(['dawn', 'morning', 'day', 'golden', 'sunset', 'dusk', 'night'] as const);
 export type StudioTimeOfDay = typeof STUDIO_TIMES[number];
@@ -113,24 +114,24 @@ export function studioElevationBand(mapId: string, time: StudioTimeOfDay): Eleva
  */
 export function normalizeStudioLight(input: unknown): StudioLight | null {
   if (input == null) return null;
-  if (typeof input !== 'object' || Array.isArray(input)) throw new TypeError('Studio light must be an object');
+  if (typeof input !== 'object' || Array.isArray(input)) throw new TypeError(t('studio.error.lightObject'));
   const source = input as Record<string, unknown>;
   for (const key of Object.keys(source)) {
-    if (key !== 'sunAzimuthDeg' && key !== 'sunElevationDeg' && key !== 'headlights') throw new RangeError(`Unknown Studio light field: ${key}`);
+    if (key !== 'sunAzimuthDeg' && key !== 'sunElevationDeg' && key !== 'headlights') throw new RangeError(t('studio.error.lightField', { field: key }));
   }
   const out: StudioLight = {};
   if (source.sunAzimuthDeg != null) {
     const azimuth = Number(source.sunAzimuthDeg);
-    if (typeof source.sunAzimuthDeg !== 'number' || !Number.isFinite(azimuth)) throw new RangeError('Studio light sunAzimuthDeg must be a finite number');
+    if (typeof source.sunAzimuthDeg !== 'number' || !Number.isFinite(azimuth)) throw new RangeError(t('studio.error.lightNumber', { field: 'sunAzimuthDeg' }));
     out.sunAzimuthDeg = round(((azimuth % 360) + 360) % 360, 2) % 360;
   }
   if (source.sunElevationDeg != null) {
     const elevation = Number(source.sunElevationDeg);
-    if (typeof source.sunElevationDeg !== 'number' || !Number.isFinite(elevation)) throw new RangeError('Studio light sunElevationDeg must be a finite number');
+    if (typeof source.sunElevationDeg !== 'number' || !Number.isFinite(elevation)) throw new RangeError(t('studio.error.lightNumber', { field: 'sunElevationDeg' }));
     out.sunElevationDeg = round(clamp(elevation, -90, 90), 2);
   }
   if (source.headlights != null) {
-    if (typeof source.headlights !== 'boolean') throw new RangeError('Studio light headlights must be a boolean');
+    if (typeof source.headlights !== 'boolean') throw new RangeError(t('studio.error.lightBoolean', { field: 'headlights' }));
     // the default (on) is not stored, so a scene without the field round-trips without it
     if (!source.headlights) out.headlights = false;
   }
@@ -306,7 +307,7 @@ export function planStudioLight(
   mapId: string, authored: MapSkyConfig, requested: StudioTimeOfDay, light: StudioLight | null,
   clouds: StudioCloudIdentity | null = null, lab: StudioLightLab | null = null,
 ): StudioLightPlan {
-  if (!isStudioTime(requested)) throw new RangeError('Unknown Studio time of day');
+  if (!isStudioTime(requested)) throw new RangeError(t('studio.error.unknownStudioTime'));
   const space = isSpaceMap(mapId);
   const time = studioTimeFor(mapId, requested);
   const authoredAz = authored.sunAzimuthDeg ?? 115;

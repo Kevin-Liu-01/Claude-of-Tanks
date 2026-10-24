@@ -25,7 +25,8 @@ assert.ok(index.includes(APP_VERSION_TOKEN), 'playable boot page owns the build-
 assert.ok(!/Three\.js technology demo/i.test(index), 'obsolete technology-demo footer is removed');
 const rendered = replaceAppVersionTokens(index, 'v9.8.7+gabcdef123');
 assert.ok(!rendered.includes(APP_VERSION_TOKEN), 'HTML transform replaces every version token');
-assert.match(rendered, /Claude of Tanks &middot; v9\.8\.7\+gabcdef123/);
+// (246) the boot card's foot carries the version alone, under the commander mark
+assert.match(rendered, /<div class="cot-boot-foot num">v9\.8\.7\+gabcdef123<\/div>/);
 assert.match(rendered, /name="application-version" content="v9\.8\.7\+gabcdef123"/);
 
 const ciVersion = resolveAppVersion(root, { VERCEL_GIT_COMMIT_SHA: '123456789abcdef' });

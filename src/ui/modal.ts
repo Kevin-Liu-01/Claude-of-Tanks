@@ -4,7 +4,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 // locking, and the visual treatment so dialogs do not drift into bespoke
 // popovers with unreadably small type.
 
-import { FONT_STACK, FONT_COND, ensureFonts } from './fonts.ts';
+import { ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { t } from './i18n.ts';
 import { ensureStyle } from './styleLayers.ts';
@@ -66,6 +66,7 @@ export interface ModalController {
 
 interface ModalOptions {
   title?: string;
+  /** Retired (owner UI rules, 2026-10-22: no eyebrows): accepted for callers, never drawn. */
   eyebrow?: string;
   subtitle?: string;
   size?: ModalSize | string;
@@ -89,60 +90,56 @@ export function normalizeModalSize(value: RuntimeValue): ModalSize {
   return typeof value === 'string' && MODAL_SIZES.has(value) ? value as ModalSize : 'medium';
 }
 
+// The one modal (SPEC 6.2): a plate over a dimmed scene, on the Premiere tokens (brand-ui 247, the consistency pass): no
+// glass, no top rule, no eyebrow; the close is the kit's ghost icon button and .cot-modal__button the kit's secondary and
+// primary buttons, drawn from the same tokens as src/ui/components/components.css (this sheet sits in the surfaces layer,
+// over the kit's).
 const CSS = `
 .cot-modal-root,.cot-modal{box-sizing:border-box;min-width:0}
 .cot-modal-root{position:fixed;inset:0;z-index:10050;display:grid;place-items:center;padding:clamp(12px,3vw,38px);
-  font-family:${FONT_STACK};color:#e9eff4;opacity:0;pointer-events:none;
-  transition:opacity var(--cot-motion-base) var(--cot-ease-out)}
+  font-family:var(--font-ui);color:var(--ink-1);opacity:0;pointer-events:none;
+  transition:opacity var(--dur-base) var(--ease-enter)}
 .cot-modal-root[hidden]{display:none}.cot-modal-root.is-open{opacity:1;pointer-events:auto}
-.cot-modal-backdrop{position:absolute;inset:0;background:rgba(1,4,7,.78);backdrop-filter:blur(9px) saturate(.72)}
+.cot-modal-backdrop{position:absolute;inset:0;background:oklch(from var(--scrim) l c h / .8)}
 .cot-modal{--cot-modal-max:680px;position:relative;display:flex;flex-direction:column;width:min(100%,var(--cot-modal-max));
-  max-height:min(88vh,900px);overflow:hidden;border:1px solid rgba(165,183,198,.28);border-top-color:rgba(240,176,74,.76);
-  background:linear-gradient(155deg,rgba(16,23,29,.99),rgba(5,8,11,.995));box-shadow:0 28px 90px rgba(0,0,0,.76);
-  transform:translateY(12px) scale(.992);
-  transition:transform var(--cot-motion-slow) var(--cot-ease-drawer)}
-.cot-modal-root.is-open .cot-modal{transform:translateY(0) scale(1)}
+  max-height:min(88vh,900px);overflow:hidden;border-radius:var(--plate-radius);background:var(--surface-plate);box-shadow:var(--e4);
+  transform:translateY(12px);transition:transform var(--dur-screen) var(--ease-enter)}
+.cot-modal-root.is-open .cot-modal{transform:none}
 .cot-modal[data-size='small']{--cot-modal-max:500px}.cot-modal[data-size='large']{--cot-modal-max:900px}
 .cot-modal[data-size='wide']{--cot-modal-max:1120px}
-.cot-modal::before{content:"";position:absolute;z-index:3;left:0;top:0;width:96px;height:2px;
-  background:linear-gradient(90deg,#f0a030,rgba(240,160,48,0));pointer-events:none}
-.cot-modal__header{position:relative;z-index:2;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:18px;
-  padding:20px clamp(18px,3vw,30px) 17px;border-bottom:1px solid rgba(165,183,198,.17);background:rgba(8,12,16,.88)}
-.cot-modal__eyebrow{display:flex;align-items:center;gap:8px;margin-bottom:6px;color:#c9a872;font:500 12px/1 ${FONT_COND};
-  letter-spacing:0}.cot-modal__eyebrow::before{content:"";width:18px;height:2px;background:#e69a2d}
-.cot-modal__title{margin:0;color:#f3f6f8;font:700 clamp(21px,3vw,30px)/1.08 ${FONT_STACK};letter-spacing:-.025em}
-.cot-modal__subtitle{max-width:720px;margin:8px 0 0;color:#93a3b0;font:500 14px/1.5 ${FONT_STACK}}
-.cot-modal__close{width:40px;height:40px;display:grid;place-items:center;padding:0;border:1px solid rgba(165,183,198,.24);
-  background:rgba(4,7,10,.64);color:#9cadb9;cursor:pointer;
-  transition:color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,
-    background-color var(--cot-motion-fast) ease,transform var(--cot-motion-fast) var(--cot-ease-out)}
-.cot-modal__close:hover,.cot-modal__close:focus-visible{color:#ffd27a;border-color:#f0a030;background:rgba(240,160,48,.1);outline:none}
-.cot-modal__close:active{transform:scale(.96)}
+.cot-modal__header{position:relative;z-index:2;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:var(--s4);
+  padding:var(--s5) clamp(18px,3vw,30px) var(--s4);border-bottom:1px solid var(--line-1)}
+.cot-modal__title{margin:0;color:var(--ink-1);font:600 clamp(21px,3vw,28px)/1.08 var(--font-display);letter-spacing:var(--track-title)}
+.cot-modal__subtitle{max-width:720px;margin:var(--s2) 0 0;color:var(--ink-3);font:400 max(14px,var(--fs-14))/1.5 var(--font-body)}
+.cot-modal__close{width:40px;height:40px;display:grid;place-items:center;padding:0;border:0;border-radius:var(--control-radius);
+  background:transparent;color:var(--ink-2);cursor:pointer;
+  transition:color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter)}
+.cot-modal__close:hover{color:var(--ink-1);background:var(--surface-hover)}
+.cot-modal__close:focus-visible,.cot-modal__button:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.cot-modal__close:active,.cot-modal__button:active{transform:translateY(var(--btn-press-drop))}
 .cot-modal__body{min-height:0;overflow:auto;overscroll-behavior:contain;padding:clamp(18px,3vw,30px);scrollbar-width:thin;
-  scrollbar-color:rgba(230,154,45,.45) rgba(8,11,14,.6)}
-.cot-modal__body::-webkit-scrollbar{width:7px}.cot-modal__body::-webkit-scrollbar-track{background:rgba(8,11,14,.6)}
-.cot-modal__body::-webkit-scrollbar-thumb{background:rgba(230,154,45,.42)}
-.cot-modal__footer{display:flex;align-items:center;justify-content:flex-end;gap:9px;padding:13px clamp(18px,3vw,30px);
-  border-top:1px solid rgba(165,183,198,.17);background:rgba(7,11,14,.94)}
+  scrollbar-color:var(--line-3) transparent}
+.cot-modal__body::-webkit-scrollbar{width:7px}.cot-modal__body::-webkit-scrollbar-track{background:transparent}
+.cot-modal__body::-webkit-scrollbar-thumb{background:var(--line-3)}
+.cot-modal__footer{display:flex;align-items:center;justify-content:flex-end;gap:var(--s2);padding:var(--s3) clamp(18px,3vw,30px);
+  border-top:1px solid var(--line-1)}
 .cot-modal__footer:empty{display:none}
-.cot-modal__button{min-height:40px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 16px;
-  border:1px solid rgba(165,183,198,.3);background:rgba(10,15,19,.86);color:#c5d0d8;cursor:pointer;
-  font:700 11px/1 ${FONT_COND};letter-spacing:.06em;text-transform:uppercase;
-  transition:color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,
-    background-color var(--cot-motion-fast) ease,transform var(--cot-motion-fast) var(--cot-ease-out)}
-.cot-modal__button:hover,.cot-modal__button:focus-visible{border-color:#e69a2d;color:#ffd27a;background:rgba(230,154,45,.1);outline:none}
-.cot-modal__button:active{transform:scale(.97)}.cot-modal__button--primary{border-color:#f0b04a;background:linear-gradient(#efaa45,#c8731d);color:#1c1003}
-.cot-modal__button--primary:hover,.cot-modal__button--primary:focus-visible{background:linear-gradient(#ffc164,#df8525);color:#120a02}
-body[data-cot-width='phone'] .cot-modal-root{padding:8px;place-items:end center}
+.cot-modal__button{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);
+  min-height:var(--btn-h-s);padding:0 var(--s4);border:0;border-radius:var(--control-radius);
+  background:var(--btn-secondary-fill);box-shadow:var(--btn-secondary-ring);color:var(--ink-1);cursor:pointer;
+  font:600 max(13px,var(--fs-13))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;
+  transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter)}
+.cot-modal__button:hover{background:var(--surface-hover);box-shadow:var(--btn-secondary-ring-hover)}
+.cot-modal__button--primary{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-shadow)}
+.cot-modal__button--primary:hover{background:var(--btn-primary-hover);box-shadow:var(--btn-primary-shadow)}
+body[data-cot-width='phone'] .cot-modal-root{padding:var(--s2);place-items:end center}
 body[data-cot-width='phone'] .cot-modal{width:100%;max-height:calc(var(--cot-viewport-height,100dvh) - 16px)}
-body[data-cot-width='phone'] .cot-modal__header{padding:16px 16px 13px}
-body[data-cot-width='phone'] .cot-modal__body{padding:16px}
-body[data-cot-width='phone'] .cot-modal__footer{padding:11px 16px;flex-wrap:wrap}
+body[data-cot-width='phone'] .cot-modal__header{padding:var(--s4) var(--s4) var(--s3)}
+body[data-cot-width='phone'] .cot-modal__body{padding:var(--s4)}
+body[data-cot-width='phone'] .cot-modal__footer{padding:var(--s3) var(--s4);flex-wrap:wrap}
 body[data-cot-width='phone'] .cot-modal__title{font-size:22px}
-body[data-cot-width='phone'] .cot-modal__subtitle{font-size:12px}
-body[data-cot-width='phone'] .cot-modal__close{width:38px;height:38px}
+body[data-cot-width='phone'] .cot-modal__subtitle{font-size:max(13px,var(--fs-13))}
 body[data-cot-input='coarse'] :is(.cot-modal__close,.cot-modal__button){min-width:44px;min-height:44px}
-@media(hover:hover){.cot-modal__button:hover,.cot-modal__close:hover{transform:translateY(-1px)}}
 @media(prefers-reduced-motion:reduce){.cot-modal-root,.cot-modal,.cot-modal__button,.cot-modal__close{transition:none!important}}
 `;
 
@@ -165,7 +162,7 @@ function unlockBody() {
 
 /** Create a reusable modal controller. Callers populate `body` and `footer`. */
 export function createModal({
-  title = '', eyebrow = '', subtitle = '', size = 'medium',
+  title = '', subtitle = '', size = 'medium',
   closeLabel = '', className = '', onOpen = null, onClose = null,
 }: ModalOptions = {}): ModalController {
   ensureCss();
@@ -186,9 +183,6 @@ export function createModal({
   const header = document.createElement('header');
   header.className = 'cot-modal__header';
   const headingWrap = document.createElement('div');
-  const eyebrowEl = document.createElement('div');
-  eyebrowEl.className = 'cot-modal__eyebrow';
-  eyebrowEl.textContent = eyebrow || t('modal.eyebrowDefault');
   const titleEl = document.createElement('h2');
   titleEl.id = `${id}-title`;
   titleEl.className = 'cot-modal__title';
@@ -198,7 +192,7 @@ export function createModal({
   subtitleEl.className = 'cot-modal__subtitle';
   subtitleEl.textContent = subtitle;
   subtitleEl.hidden = !subtitle;
-  headingWrap.append(eyebrowEl, titleEl, subtitleEl);
+  headingWrap.append(titleEl, subtitleEl);
   const closeButton = document.createElement('button');
   closeButton.type = 'button';
   closeButton.className = 'cot-modal__close';
@@ -221,7 +215,8 @@ export function createModal({
     root, panel, header, body, footer, closeButton,
     isOpen: () => activeModal === controller,
     setTitle(value: RuntimeValue) { titleEl.textContent = String(value || t('modal.titleDefault')); },
-    setEyebrow(value: RuntimeValue) { eyebrowEl.textContent = String(value || t('modal.eyebrowDefault')); },
+    // eyebrows are retired (owner UI rules, 2026-10-22); the setter stays for callers and draws nothing
+    setEyebrow(_value: RuntimeValue) { /* no eyebrow */ },
     setSubtitle(value: RuntimeValue) {
       subtitleEl.textContent = String(value || '');
       subtitleEl.hidden = !value;

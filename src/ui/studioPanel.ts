@@ -27,7 +27,6 @@ import { STUDIO_FX_PARAMS } from '../game/studioFxSettings.ts';
 import { hrefForLocale } from './localeRouting.ts';
 import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
 import { FILM_RESOLUTIONS, createFilmPlan, filmOutputSize, normalizeFilm } from '../game/studioFilmPlan.ts';
-import './studioPanel.css';
 
 /** The Studio's workspaces: the outliner's groups (the inspector shows one at a time). */
 type StudioGroupId = 'battlefield' | 'tanks' | 'effects' | 'cinematics' | 'output';
@@ -359,13 +358,13 @@ interface StudioPanelRuntime {
   setShotThumbnail(id: string, url: string): void;
 }
 
-/** Glyphs the sprite does not draw (step back, pause, step forward, add) and the brand's badge: constant markup. */
+/** The transport and add glyphs from the sprite (brand-ui 247: one glyph set), and the brand's badge. */
 const STUDIO_GLYPHS = Object.freeze({
   mark: brandMarkSVG(24),
-  stepBack: '<svg class="cot-i" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M6 5v14M18 5 9 12l9 7Z"/></svg>',
-  pause: '<svg class="cot-i" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M8 5v14M16 5v14"/></svg>',
-  stepForward: '<svg class="cot-i" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M18 5v14M6 5l9 7-9 7Z"/></svg>',
-  plus: '<svg class="cot-i" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M12 5v14M5 12h14"/></svg>',
+  stepBack: uiIconSVG('stepBack', 16),
+  pause: uiIconSVG('pause', 16),
+  stepForward: uiIconSVG('stepForward', 16),
+  plus: uiIconSVG('plus', 15),
 });
 
 /** The outliner's order (09-studio .out: Scene, Actors, Shots, Effects), the Director first and Export last. */
@@ -505,7 +504,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     option.type = 'button';
     option.setAttribute('role', 'radio');
     option.dataset.value = format;
-    option.title = productionLabel(format);
+    option.dataset.tip = productionLabel(format);
     option.addEventListener('click', () => chooseFormat(format));
     formatSeg.appendChild(option);
     return option;
@@ -543,7 +542,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   commandsBtn.addEventListener('click', () => commandPalette.open());
   const linkBtn = chipButton(t('studio.sceneLink.copyButton'), null);
   linkBtn.insertAdjacentHTML('afterbegin', SCENE_LINK_GLYPHS.link);
-  linkBtn.title = t('studio.sceneLink.copyTitle');
+  linkBtn.dataset.tip = t('studio.sceneLink.copyTitle');
   linkBtn.dataset.sceneLinkCopy = '';
   linkBtn.addEventListener('click', () => {
     copySceneLink(S.state(), browserSceneLinkEnv())
@@ -701,7 +700,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const noticeClose = el('button', 'nx', '×');
   noticeClose.type = 'button';
   noticeClose.setAttribute('aria-label', t('studio.sceneLink.dismiss'));
-  noticeClose.title = t('studio.sceneLink.dismiss');
   notice.append(noticeGlyph, noticeText, noticeClose);
   vp.appendChild(notice);
   let noticeTimer: ReturnType<typeof setTimeout> | null = null;
@@ -729,7 +727,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     add.type = 'button';
     add.innerHTML = STUDIO_GLYPHS.plus;
     add.setAttribute('aria-label', label);
-    add.title = label;
     add.addEventListener('click', () => { productionPanel.activate(id); action(); });
     outlineGroups.get(id)?.querySelector('.gh')?.appendChild(add);
     return add;
@@ -856,7 +853,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // relative to the camera's bearing: the sun ahead (backlight), just off-axis ahead (rim), across (side), behind (front)
   for (const [key, offset] of [['back', 0], ['rim', 32], ['side', 90], ['front', 180], ['map', null]] as const) {
     const button = chipButton(t(`studioPanel.light.${key}`), null, offset === null ? false : undefined);
-    button.title = t(`studioPanel.light.${key}Hint`);
+    button.dataset.tip = t(`studioPanel.light.${key}Hint`);
     button.addEventListener('click', () => {
       const bearing = offset === null ? null : Math.round(((cameraBearing() + offset) % 360 + 360) % 360);
       queueLight({ sunAzimuthDeg: bearing });
@@ -868,14 +865,14 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   sunSide.append(sunRead, sunPresets);
   sunBlock.append(dial, sunSide);
   const lampBtn = chipButton(t('studioPanel.light.headlights'), 'lampOk', false);
-  lampBtn.title = t('studioPanel.light.headlightsHint');
+  lampBtn.dataset.tip = t('studioPanel.light.headlightsHint');
   lampBtn.addEventListener('click', () => queueLight({ headlights: !S.getLight().headlights }));
   const elevation = sliderRow(t('studioPanel.light.elevation'), 1, 80, 0.5, (value) => {
     queueLight({ sunElevationDeg: value });
   });
   elevation.input.setAttribute('aria-label', t('studioPanel.light.elevationAria'));
   const elevationReset = chipButton(t('studioPanel.light.auto'), null, false);
-  elevationReset.title = t('studioPanel.light.autoHint');
+  elevationReset.dataset.tip = t('studioPanel.light.autoHint');
   elevationReset.addEventListener('click', () => queueLight({ sunElevationDeg: null }));
   const lampRow = el('div', 'grid');
   lampRow.append(lampBtn, elevationReset);
@@ -964,7 +961,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   mapRowThumb.className = 'th';
   mapRowThumb.alt = '';
   mapRowThumb.decoding = 'async';
-  mapRow.pick.append(mapRowThumb, el('span', 'nm', ''));
+  mapRow.pick.append(mapRowThumb, el('span', 'nm', t('studio.chooseBattlefield')));
   const lightRow = outlineRow(() => { productionPanel.activate('battlefield'); secLight.scrollIntoView({ block: 'nearest' }); });
   lightRow.pick.innerHTML = uiIconSVG('timeDay', 16);
   lightRow.pick.append(el('span', 'nm', ''), el('span', 'd', ''));
@@ -1046,7 +1043,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     option.type = 'button';
     option.setAttribute('role', 'radio');
     option.dataset.value = snap;
-    option.title = t(`studio.ws.snapTitle.${snap}`);
+    option.dataset.tip = t(`studio.ws.snapTitle.${snap}`);
     option.addEventListener('click', () => { S.setPlacementSnap(snap); refreshSnap(); });
     snapSeg.appendChild(option);
     return option;
@@ -1104,7 +1101,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     swatch.type = 'button';
     swatch.setAttribute('aria-pressed', 'false');
     swatch.setAttribute('aria-label', cid);
-    swatch.title = cid;
     swatch.dataset.camo = cid;
     swatch.appendChild(document.createElement('canvas'));
     swatch.addEventListener('click', () => patchSel({ camo: cid }));
@@ -1267,7 +1263,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
 
   const addRow2 = el('div', 'grid');
   const addAtMarker = kitButton(t('studio.addInView'));
-  addAtMarker.title = t('studio.addInViewTitle');
+  addAtMarker.dataset.tip = t('studio.addInViewTitle');
   addAtMarker.addEventListener('click', () => {
     const point = S._internal.markerActive
       ? S._internal.markerPos
@@ -1519,7 +1515,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const duelBtn = kitButton(t('studio.directDuel'), 'primary');
   duelBtn.classList.add('cot-c-btn--wide');
   let duelVariant = 0;
-  duelBtn.title = t('studio.directDuelTitle');
+  duelBtn.dataset.tip = t('studio.directDuelTitle');
   duelBtn.addEventListener('click', () => {
     try {
       S.directDuel({ variant: duelVariant });
@@ -1608,7 +1604,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     option.textContent = t(key);
     filmShake.select.appendChild(option);
   }
-  filmShake.select.title = t('studio.film.shakeTitle');
+  filmShake.select.dataset.tip = t('studio.film.shakeTitle');
   filmBlurRow.append(filmBlur.row, filmShake.row);
   filmBlurRow.dataset.pro = '';
   secCap.appendChild(filmBlurRow);
@@ -1744,7 +1740,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   for (const fps of [60, 30]) {
     const option = document.createElement('option');
     option.value = String(fps);
-    option.textContent = `${t('studio.film.fpsOption', { fps })} · 12 Mbps`;
+    option.textContent = t('studio.film.fpsBitrate', { fps, mbps: 12 });
     fpsSel.select.appendChild(option);
   }
   const recordBtn = kitButton(t('studio.recordVideo'), undefined, 'record');
@@ -1810,7 +1806,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const sceneLinkBtn = kitButton(t('studio.sceneLink.copy'));
   sceneLinkBtn.insertAdjacentHTML('afterbegin', SCENE_LINK_GLYPHS.link);
   sceneLinkBtn.classList.add('cot-c-btn--wide');
-  sceneLinkBtn.title = t('studio.sceneLink.copyTitle');
+  sceneLinkBtn.dataset.tip = t('studio.sceneLink.copyTitle');
   sceneLinkBtn.dataset.sceneLinkCopy = '';
   sceneLinkBtn.addEventListener('click', () => {
     copySceneLink(S.state(), browserSceneLinkEnv())
@@ -1820,7 +1816,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const slotRow = el('div', 'grid3');
   for (let i = 1; i <= 3; i++) {
     const b = chipButton(t('studio.slot', { n: i }), null);
-    b.title = t('studio.slotTitle');
+    b.dataset.tip = t('studio.slotTitle');
     b.addEventListener('click', (e) => {
       const key = `cot.studio.slot${i}.v1`;
       if (e.shiftKey) {
@@ -2089,7 +2085,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         remove.type = 'button';
         remove.innerHTML = uiIconSVG('close', 14);
         remove.setAttribute('aria-label', t('studio.ws.queue.remove', { name: job.label }));
-        remove.title = remove.getAttribute('aria-label') ?? '';
         remove.addEventListener('click', () => { queueJobs.splice(index, 1); refreshQueue(); });
         row.appendChild(remove);
       }
@@ -2262,7 +2257,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const b = el('button', 'ib');
     b.type = 'button';
     b.setAttribute('aria-label', label);
-    b.title = label;
     return b;
   }
   /** A nation's flag (the kit's .cot-c-flag), built as a node. */
@@ -2337,7 +2331,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     const name = el('label');
     if (glyph) {
       name.innerHTML = uiIconSVG(glyph, 16);
-      name.title = label;
+      name.dataset.tip = label; // the range input carries the name
     } else name.textContent = label;
     const r = document.createElement('input');
     r.type = 'range';
@@ -2448,7 +2442,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       time.max = String(S.durationMs / 1000);
       time.step = '0.05';
       time.value = (effect.tMs / 1000).toFixed(2);
-      time.title = t('studioPanel.effects.timeTitle');
+      time.dataset.tip = t('studioPanel.effects.timeTitle');
       time.setAttribute('aria-label', t('studioPanel.effects.timeAria', { type: effectName(effect.type) }));
       time.addEventListener('pointerdown', (event) => event.stopPropagation());
       time.addEventListener('click', (event) => event.stopPropagation());
@@ -2460,8 +2454,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const del = el('button', 'x');
       del.type = 'button';
       del.innerHTML = uiIconSVG('close', 14);
-      del.title = t('studioPanel.effects.deleteTitle', { type: effectName(effect.type) });
-      del.setAttribute('aria-label', del.title);
+      del.setAttribute('aria-label', t('studioPanel.effects.deleteTitle', { type: effectName(effect.type) }));
       del.addEventListener('click', (event) => {
         event.stopPropagation();
         S.removeEffect(effect.id);
@@ -2528,7 +2521,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       clip.style.left = pct(run.startMs);
       clip.style.width = `calc(${pct(Math.max(0, run.endMs - run.startMs))} - 3px)`;
       clip.setAttribute('aria-pressed', String(run.keys.some((key) => key.id === S.selectedShotId)));
-      clip.title = t('studioPanel.shot.timelineMarkerTitle', { label: name, t: (shot.tMs / 1000).toFixed(2) });
+      clip.dataset.tip = t('studioPanel.shot.timelineMarkerTitle', { label: name, t: (shot.tMs / 1000).toFixed(2) });
       clip.addEventListener('click', (event) => { event.stopPropagation(); S.selectCameraShot(shot.id); });
       for (const key of run.keys.slice(1)) {
         const tick = el('i', 'ck');
@@ -2581,8 +2574,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const del = el('button', 'x');
       del.type = 'button';
       del.innerHTML = uiIconSVG('close', 14);
-      del.title = t('studioPanel.shot.removeTitle', { label: name });
-      del.setAttribute('aria-label', del.title);
+      del.setAttribute('aria-label', t('studioPanel.shot.removeTitle', { label: name }));
       del.addEventListener('click', () => { for (const key of run.keys) S.removeCameraShot(key.id); });
       card.appendChild(del);
       shotboard.appendChild(card);
@@ -2597,7 +2589,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         // a key at either end stays whole inside its lane, clear of the lane's name
         mark.style.left = `clamp(6px, ${pct(key.tMs)}, calc(100% - 6px))`;
         const title = t('studio.ws.keyTitle', { actor: actor?.spec.name ?? track.actor, s: (key.tMs / 1000).toFixed(2) });
-        mark.title = title;
         mark.setAttribute('aria-label', title);
         mark.addEventListener('click', (event) => { event.stopPropagation(); S.seek(key.tMs); });
         lane.appendChild(mark);
@@ -2625,7 +2616,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       clip.style.left = pct(first.tMs);
       clip.style.maxWidth = `calc(${pct(Math.max(0, next - first.tMs))} - 3px)`;
       clip.setAttribute('aria-pressed', String(moment.some((effect) => !!effect.selected)));
-      clip.title = moment.map((effect) => t('studio.ws.fxTitle', { type: effectName(effect.type), s: (effect.tMs / 1000).toFixed(2) })).join('\n');
+      clip.dataset.tip = moment.map((effect) => t('studio.ws.fxTitle', { type: effectName(effect.type), s: (effect.tMs / 1000).toFixed(2) })).join('\n');
       clip.addEventListener('click', (event) => { event.stopPropagation(); S.selectEffect(first.id); S.seek(first.tMs); });
       effectLane.appendChild(clip);
     });
@@ -2761,7 +2752,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
         del.type = 'button';
         del.innerHTML = uiIconSVG('close', 14);
         del.setAttribute('aria-label', t('studio.ws.removeTank', { name: a.spec.name }));
-        del.title = del.getAttribute('aria-label') ?? '';
         del.addEventListener('click', (e) => { e.stopPropagation(); S.removeActor(a); });
         line.row.append(trail, del);
         actorRows.appendChild(line.row);
@@ -2832,7 +2822,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       }
       if (pauseBtn.getAttribute('aria-label') !== pauseLabel) {
         pauseBtn.setAttribute('aria-label', pauseLabel);
-        pauseBtn.title = t('studio.ws.playTitle', { action: pauseLabel });
+        pauseBtn.dataset.tip = t('studio.ws.playTitle', { action: pauseLabel });
         if (playing) pauseBtn.innerHTML = STUDIO_GLYPHS.pause;
         else pauseBtn.innerHTML = uiIconSVG('play', 16);
       }
@@ -2953,7 +2943,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       const empty = !S._internal.actors.length && !S.getStoryboard().shots.length;
       restoreBtn.hidden = !(saved && empty);
       if (saved && empty) {
-        restoreBtn.title = t('studio.ws.restoreTitle', { map: S.getMapInfo(saved.map).name, count: saved.tanks,
+        restoreBtn.dataset.tip = t('studio.ws.restoreTitle', { map: S.getMapInfo(saved.map).name, count: saved.tanks,
           ago: agoText(saved.savedAt) || t('studio.ws.justNow') });
       }
     },

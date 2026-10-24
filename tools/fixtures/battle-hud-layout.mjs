@@ -33,8 +33,12 @@ import { createSpecialActionState } from '../../src/sim/specialActionPolicy.ts';
 import {createMultiplayerStatusSurface} from '../../src/ui/multiplayerStatus.ts';
 import {NetworkStatusModel} from '../../src/mp/session/networkStatus.ts';
 import { setLocale } from '../../src/ui/i18n.ts';
+import { zhTypeFloorStyle } from '../../src/ui/zhTypeFloor.ts';
 
-setLocale(new URLSearchParams(location.search).get('locale') || 'en-US');
+// the catalog lands before the HUD builds (the game awaits it too), and a zh-CN capture carries the label floor its /cn/
+// document ships (src/presentation/localizedHtml.ts), as the end-screen fixture does
+await setLocale(new URLSearchParams(location.search).get('locale') || 'en-US');
+if (document.documentElement.lang === 'zh-CN') document.head.insertAdjacentHTML('beforeend', zhTypeFloorStyle('game'));
 installResponsiveLayout();
 const bus = createBus();
 const input = createInput();

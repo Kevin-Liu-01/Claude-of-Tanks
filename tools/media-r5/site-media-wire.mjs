@@ -164,8 +164,12 @@ function wireDocs() {
   // (the battle-take player sits far below the fold: battleReels.ts sets its poster as it nears the viewport)
   swap(D, /<video controls playsinline preload="(?:metadata|none)" (?:data-)?poster="[^"]*" data-battle-reel-video aria-label="[^"]*" data-i18n-aria-label="[^"]*"><source src="[^"]*" type="video\/mp4"><\/video>/,
     () => `<video controls playsinline preload="none" data-poster="${built(`${C}/reels/${first}.webp`)}" data-battle-reel-video aria-label="${esc(take(first).shortEn)}" data-i18n-aria-label="${shortKey(first)}"><source src="${built(`${C}/reels/${first}.mp4`)}" type="video/mp4"></video>`, 'battle-take player');
-  swap(D, /<strong data-battle-reel-title>[^<]*<\/strong><small data-battle-reel-map>[^<]*<\/small><\/span><b data-battle-reel-count>[^<]*<\/b>/,
-    () => `<strong data-battle-reel-title>${esc(take(first).shortEn)}</strong><small data-battle-reel-map>${esc(mapName(take(first).map))} · ${esc(COPY.en['docs.studio.reelSpec'])}</small></span><b data-battle-reel-count>01 / ${reels.length}</b>`, 'battle-take status');
+  // (2026-10-24, the site lane: the /cn build kept the English caption until scripts ran) the title, the map and the
+  // spec each carry their catalog key, the map and the spec as two spans; the plain form and the keyed one both match
+  swap(D, /<strong data-battle-reel-title(?: data-i18n="[^"]*")?>[^<]*<\/strong><small data-battle-reel-map>(?:[^<]*|<span data-i18n="[^"]*">[^<]*<\/span> · <span data-i18n="[^"]*">[^<]*<\/span>)<\/small><\/span><b data-battle-reel-count>[^<]*<\/b>/,
+    () => `<strong data-battle-reel-title data-i18n="${shortKey(first)}">${esc(take(first).shortEn)}</strong><small data-battle-reel-map>`
+      + `<span data-i18n="map.${take(first).map}">${esc(mapName(take(first).map))}</span> · <span data-i18n="docs.studio.reelSpec">${esc(COPY.en['docs.studio.reelSpec'])}</span>`
+      + `</small></span><b data-battle-reel-count>01 / ${reels.length}</b>`, 'battle-take status');
   swap(D, /(data-battle-reel-grid) aria-label="[^"]*" data-i18n-aria-label="[^"]*"/,
     (_, open) => `${open} aria-label="${esc(COPY.en['docs.studio.reelsGridAria'])}" data-i18n-aria-label="docs.studio.reelsGridAria"`, 'battle-take grid label');
   swap(D, /(<noscript><p><a class="inline-link" href=")[^"]*(" data-i18n="docs\.studio\.reelNoscript">)[^<]*(<\/a>)/,

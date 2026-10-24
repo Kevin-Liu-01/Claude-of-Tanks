@@ -48,11 +48,30 @@ assert.match(garageSource,
 assert.match(garageSource, /const GARAGE_STATIONS = Object\.freeze\(\[\s*\['overview', 'performance'\], \['firepower', 'gun'\], \['mobility', 'speed'\],\s*\['protection', 'shield'\], \['crew', 'crew'\],\s*\] as const\);/,
   'the readout has five stations; the paint left them for the band');
 assert.match(garageSource, /\/\^Digit\(\[1-5\]\)\$\//, 'the station keys run 1 to 5');
+// the stage's callouts wait for their act (owner 10-24): off by default, the module loads at the first press, and a frame
+// does nothing while they are off
+assert.match(garageSource, /data-lt-callouts aria-pressed="false"/, 'the callouts act starts unpressed');
+assert.match(garageSource, /frameHotspots\(camera, model\) \{\s*if \(!calloutsShown \|\| !hotspots\) return;/,
+  'no frame projects the callouts while they are off');
+assert.doesNotMatch(garageSource, /\n  loadHotspots\(\);/, 'the hotspot module never loads before the act');
+assert.match(garageSource, /e\.code === 'KeyI' && document\.body\.dataset\.cotPanels === 'persistent'/, 'I toggles the callouts on the docked stage');
 assert.match(garageSource, /aria-orientation="horizontal"/, 'the station tabs are one horizontal row');
 assert.match(garageSource, /function fitReadout\(force = false\): void \{[\s\S]*?while \(density < 4 && statsEl\.scrollHeight > statsEl\.clientHeight \+ 1\) statsEl\.dataset\.density = READOUT_DENSITY\[\+\+density\];/,
   'the readout steps through its four densities until the station fits');
-assert.match(garageSource, /statsEl\.scrollTop = 0;\s*queueReadoutFit\(\);/, 'a station change refits the readout in the frame, not in the press');
-assert.match(garageSource, /else queueReadoutFit\(\);\s*requestAnimationFrame\(syncScrollFades\);/, 'a tank change refits the readout in the frame, not in the press');
+assert.match(garageSource, /activateTechnicalTab\(view\);\s*queueReadoutFit\(false, true\);/,
+  'a station change refits the readout and returns it to its top in the frame, not in the press');
+assert.match(garageSource, /else queueReadoutFit\(false, vehicleChanged\);\s*requestAnimationFrame\(syncScrollFades\);/,
+  'a tank change refits the readout (and a new tank returns it to its top) in the frame, not in the press');
+assert.match(garageSource, /fitReadout\(forced\);\s*if \(reset\) statsEl\.scrollTop = 0;/,
+  'the readout\'s scroll reset shares the fit\'s layout (click-perf-248: a scroll write in the press laid the Garage out)');
+assert.doesNotMatch(garageSource, /if \(vehicleChanged\) statsEl\.scrollTop = 0;/, 'no scroll write in a tank switch\'s press');
+// a folded layout's switch builds the overview's figures only; the dossier builds when it opens or the window unfolds
+assert.match(garageSource, /if \(dossierFolded\(\)\) \{\s*statsEl\.innerHTML = overviewSection\(spec, eqM, shells\);[\s\S]*?dossierStale = true;/,
+  'a folded switch leaves the hidden dossier for its press (click-perf-248)');
+assert.match(garageSource, /if \(next === 'equipment'\) renderStaleDossier\(\);/, 'opening the dossier builds it');
+assert.match(garageSource, /renderStaleDossier\(\);\s*fitReadout\(forced\);/, 'an unfolded window builds the dossier before its fit');
+assert.match(garageSource, /requestAnimationFrame\(\(\) => \{ cardsEl\.scrollLeft = 0; \}\);/,
+  'a nation switch returns the strip to its start in the frame, not in the press');
 assert.match(garageSource, /const key = `\$\{station\}\|\$\{statsFor\}\|\$\{window\.innerWidth\}x\$\{window\.innerHeight\}`;/,
   'a station, tank and window fitted before take their density from memory');
 assert.match(garageSource, /statsEl\.addEventListener\('load', \(\) => queueReadoutFit\(true\), true\);/, 'the technical drawing refits the readout as it loads');
@@ -359,7 +378,7 @@ assert.match(garageSource,
   /card\.scrollIntoView\(\{ block: 'nearest', inline: 'center', behavior: 'auto' \}\);/,
   'vehicle selection reveals distant cards immediately instead of sweeping across the carousel');
 assert.match(garageSource,
-  /\.cot-cards\{[^}]*padding:8px 8px 0;[^}]*scroll-padding-inline:8px;/,
+  /\.cot-cards\{[^}]*padding:var\(--s2\) var\(--s2\) 0;[^}]*scroll-padding-inline:8px;/,
   'vehicle rails keep selected end cards inset from their clipping edges');
 assert.doesNotMatch(garageSource, /\.cot-dossier-head\{[^}]*border-top:/,
   'the vehicle dossier header uses one consistent neutral border');

@@ -644,7 +644,7 @@ export function createSurfaceMarkup({
       const remove = document.createElement('span');
       remove.className = 'markup-remove';
       remove.textContent = '×';
-      remove.title = t('gallery.markup.deleteTitle');
+      remove.dataset.tip = t('gallery.markup.deleteTitle');
       row.append(marker, copy, remove);
       row.addEventListener('click', (event) => {
         if (event.target instanceof Element && event.target.closest('.markup-remove')) {

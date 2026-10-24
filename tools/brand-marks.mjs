@@ -69,6 +69,10 @@ const masters = {
   'mark-mono-ink.svg': svg(BRAND_TANK_VIEWBOX, tank(GRAPHITE, GRAPHITE, true)),
   'mark-motion.svg': svg(BRAND_TANK_VIEWBOX, `<style>${BRAND_MOTION_CSS.replace(/\.cot-mark--motion/g, ':root')}</style>`
     + brandMarkMotionSVG(106, PAPER, TUNGSTEN).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')),
+  // the hover roll's drawing (src/ui/brandMarkRoll.ts inlines its body into a still mark): the host's ink and accent, the
+  // loop's rules scoped to .cot-mark--motion. A file, not a module, so the roll adds no script to any page's graph.
+  'mark-motion-inline.svg': svg(BRAND_TANK_VIEWBOX, `<style>${BRAND_MOTION_CSS.trim()}</style>`
+    + brandMarkMotionSVG(106).replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')),
   'bust.svg': svg(BRAND_BUST_VIEWBOX, bust(PAPER, TUNGSTEN)),
   'bust-paper.svg': svg(BRAND_BUST_VIEWBOX, bust(GRAPHITE, TUNGSTEN_600)),
   'bust-mono.svg': svg(BRAND_BUST_VIEWBOX, bust(PAPER, PAPER, true)),

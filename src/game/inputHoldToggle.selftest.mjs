@@ -130,6 +130,7 @@ try {
   // A release handler (keyup, pointerup / mouseup / touchend) is how a hold is built. Each one in the game shell is a
   // hold action with a toggle path above, or one of these, which are not holds a player keeps down to act.
   const NOT_HOLDS = {
+    'src/ui/components/hoverTip.ts': 'the kit\'s hover tip: a touch hold shows a control\'s name and ends its own press, never an action',
     'src/ui/hud.ts': 'Tab rosters (a HOLD_ACTIONS member) and the roster lists keeping keys from the game while focused',
     'src/ui/touchControls.ts': 'drive stick and aim pad (analog drags), the fire button (drag-to-aim, then the input layer\'s fire), the climb button (the handbrake action), tap buttons',
     'src/ui/settings.ts': 'rebind capture: a tap cancels and holding Esc binds Escape itself (a capture gesture, not an action)',
@@ -144,7 +145,7 @@ try {
   };
   const files = ['src/ui/hud.ts', 'src/ui/touchControls.ts', 'src/ui/settings.ts', 'src/ui/hudEditor.ts', 'src/ui/garage.ts',
     'src/ui/customCamoStudio.ts', 'src/game/garageShowroomRuntime.ts', 'src/game/input.ts', 'src/game/studio.ts', 'src/ui/studioPanel.ts',
-    'src/game/watchController.ts'];
+    'src/game/watchController.ts', 'src/ui/components/hoverTip.ts'];
   const { execFileSync } = await import('node:child_process');
   const found = execFileSync('git', ['grep', '-l', '-I', '-E', "addEventListener\\('(keyup|pointerup|mouseup|touchend)'|onpointerup=", '--', 'src/ui', 'src/game', 'src/app', 'src/main.ts'],
     { cwd: ROOT, encoding: 'utf8' }).trim().split('\n').filter((f) => f && !/\.selftest\.|\.test\./.test(f)).sort();

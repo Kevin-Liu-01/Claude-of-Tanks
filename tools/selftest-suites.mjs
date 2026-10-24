@@ -431,6 +431,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/spare-track-outline.selftest.mjs',
     // 2026-10-18 (228): ledger keys hold no line number; a line-shifted tree gates green; --update then --gate round-trips
     'tools/spare-track-key.selftest.mjs',
+    // 247: plate-fitted collision cells lie on their slice's plates, hold its hull to the tolerance, carry no sliver
+    'tools/plate-fitted-cell.selftest.mjs',
     'src/vehicles/turretBarrelCircularity.selftest.mjs',
     'src/vehicles/profiles/gunTopFixturePlacement.selftest.mjs',
     'src/vehicles/profiles/bradleyHullClosure.selftest.mjs',
@@ -948,7 +950,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/docs/docsIcons.selftest.mjs',
     'src/docs/docsSearch.selftest.mjs',
     'src/docs/topics.selftest.mjs',
-    'src/docs/docsSearch.selftest.mjs',
     'src/docs/chapters/controls.selftest.mjs',
     'src/docs/chapters/chapters.selftest.mjs',
     'src/docs/filming.selftest.mjs',
@@ -983,6 +984,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/styleLayers.selftest.mjs',
     // 2026-10-22 (brand-ui BUI-F5): the shared component kit (markup, ARIA, roving focus, one tokens-only sheet)
     'src/ui/components/components.selftest.mjs',
+    'src/ui/components/hoverTip.selftest.mjs',
+    'src/ui/brandMarkRoll.selftest.mjs',
     'tools/style-literal-census.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F9): the accessibility core — the record, :root as its runtime source (the head seed and
     // applyAccessibility agree), text and HUD scale, colour presets through tokens.ts, Custom pairs under the floors
@@ -996,6 +999,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-24 (brand-ui 247, the public-site a11y pass): element colour resets sit under the components (the primary
     // buttons' ink); the landing's and the Gallery's remaining resets are a ratchet
     'tools/surface-element-resets.selftest.mjs',
+    // 2026-10-24 (brand-ui 247, the public-site perf pass): the Gallery's nation and class rows ship in its first layout
+    'tools/gallery-shell.selftest.mjs',
     'src/vehicles/camoPolicy.selftest.mjs',
     // 2026-10-09 (fix/camo-defaults): production's camouflage system, row for row (R113; the owner's 10-09 messages)
     'src/vehicles/camoCatalogProductionIndices.selftest.mjs',
