@@ -1,7 +1,7 @@
 // The Garage's numbered hotspots (garageHotspots.ts): four callouts projected from the pedestal tank's own geometry.
 // Copyright © 2026 Kevin B. Liu.
 import assert from 'node:assert/strict';
-import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera } from 'three';
+import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Vector3 } from 'three';
 
 // a minimal element: what the hotspot layer touches
 function element(tag) {
@@ -78,5 +78,34 @@ assert.equal(layer.hidden, true, 'between tanks: hidden');
 hotspots.setFacts(null);
 hotspots.frame(camera, tank, true);
 assert.equal(layer.hidden, true, 'no tank selected: hidden');
+
+// a rigged tank: the gun's callout sits on its barrel, a third back from the muzzle, in the gun's own frame
+const rigged = new Object3D();
+const body = new Mesh(new BoxGeometry(3.6, 1.6, 7), new MeshBasicMaterial());
+body.position.set(0, 0.8, 0);
+const turretNode = new Object3D();
+turretNode.name = 'rig_turret';
+turretNode.position.set(0, 1.6, 0);
+const turretShell = new Mesh(new BoxGeometry(2.4, 0.8, 3), new MeshBasicMaterial());
+turretShell.position.set(0, 0.4, 0);
+const gunNode = new Object3D();
+gunNode.name = 'rig_gun';
+gunNode.position.set(0, 0.5, 1);
+const barrel = new Mesh(new BoxGeometry(0.2, 0.2, 6), new MeshBasicMaterial());
+barrel.position.set(0, 0, 3);
+gunNode.add(barrel);
+turretNode.add(turretShell, gunNode);
+rigged.add(body, turretNode);
+rigged.updateMatrixWorld(true);
+hotspots.setFacts(facts);
+camera.position.set(14, 5, -3);
+camera.lookAt(0, 1.2, 0);
+camera.updateMatrixWorld(true);
+hotspots.frame(camera, rigged, true);
+// the barrel runs z 0..6 in the gun frame: a third back from the muzzle is z 4.02, in the world (0, 2.1, 5.02)
+const expected = new Vector3(0, 2.1, 5.02).project(camera);
+const px = (expected.x + 1) / 2 * 1600, py = (1 - expected.y) / 2 * 900;
+const [gx, gy] = /translate3d\((-?[\d.]+)px,(-?[\d.]+)px/.exec(spot('gun').style.transform).slice(1).map(Number);
+assert.ok(Math.abs(gx - px) < 1 && Math.abs(gy - py) < 1, `the gun's callout sits on the barrel (${gx},${gy} vs ${px.toFixed(1)},${py.toFixed(1)})`);
 
 console.log('garageHotspots.selftest: four callouts from the tank\'s own geometry, by transform, on the overview only');
