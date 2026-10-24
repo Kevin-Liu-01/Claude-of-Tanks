@@ -1930010,13 +1930010,13 @@
       "metadataHash": "a703bdb2",
       "presentationAnchor": {
         "xM": -0.0021,
-        "zM": 0.0294
+        "zM": 0.0296
       },
-      "presentationHash": "a4a6ee22",
+      "presentationHash": "a0acf804",
       "presentationProjection": {
         "centerYM": 1.7276,
-        "topHalfM": 4.0993,
-        "sideHalfM": 2.0497
+        "topHalfM": 4.0995,
+        "sideHalfM": 2.0498
       },
       "appearance": {
         "version": 1,
@@ -1930064,39 +1930064,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 141182,
-          "sha256": "01272d250268da38326f05f3fb7f4bae81b16c8dbe1ba62d98da1f17260f92fd"
+          "bytes": 140987,
+          "sha256": "89b2318221eaa358ccf780858db70ddcd8af3ca213e87af74b9e95f7f6e4956e"
         },
         "modulesSide": {
           "file": "tos1a_tagil_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 142902,
-          "sha256": "738daf7394cd7c58f6b029ed30dd8bc80a4525a9951b3fe9590efd8898681a3b"
+          "bytes": 145209,
+          "sha256": "7a1372c54a8940ebb03499fbd12dcdc0f9c445af5e11a7e79faf407f40ec38f9"
         },
         "crewSide": {
           "file": "tos1a_tagil_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 127787,
-          "sha256": "209f61a05d6f8be63a0ad9fc1cc0589133e71a2fa2c7bf3f79228f783d167ed0"
+          "bytes": 127908,
+          "sha256": "ce834c83fc6937a215532c697d35d03cddd8d888baa18268ddb844d53452d976"
         },
         "angle": {
           "file": "tos1a_tagil_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 35138,
-          "sha256": "32f5d88d8e481ffd1ce54c41e2891e933c69867b595b63b472012aee80c5ff9e",
+          "bytes": 35216,
+          "sha256": "3dcaf002d94aff0a8fc94533f7d7322ed70ee394f51480ce906d874a2bad4343",
           "thumbnail": {
             "file": "thumbs/tos1a_tagil_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 14036,
-            "sha256": "d96e110e742070fc5e9fa768eec04c728264b87ad87e760ef667648a978f043a"
+            "bytes": 14060,
+            "sha256": "a969f6d47c645c3525deb748c2696f2aa652293987d0b4f758d19e1c19755fec"
           }
         },
         "top": {
@@ -1930104,32 +1930104,32 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17556,
-          "sha256": "85e6f340ced85f6f556a993696a65af176c89a0737acee6e61a9fff4bcbc221a"
+          "bytes": 17592,
+          "sha256": "a388ef914e3e23633cc9f7db0614d6adde77350e7c475f393633642a70e7061f"
         },
         "side": {
           "file": "tos1a_tagil_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 17322,
-          "sha256": "b4fcb6ae02ba0d9e2bf1f5f88b27e659cb8a768a7d1e2f25e8dd9e4ae0e5ee9b"
+          "bytes": 17444,
+          "sha256": "d0a4cac1ac0c9cdfdee9a7dcfe783828f0a5b633d81a9f45eba9049b8a38bc7e"
         },
         "topSilhouette": {
           "file": "tos1a_tagil_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1279,
-          "sha256": "a915fdc043711745ae26d60e9f829c16954b94095fa7b64275452104846f233e"
+          "bytes": 1280,
+          "sha256": "eae5ac3c068a6d732d55eb651c81e2f00a5b3c0b3588fd38f73756f4a8a41ba6"
         },
         "sideSilhouette": {
           "file": "tos1a_tagil_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5124,
-          "sha256": "83b65f9b4c647c03d1114a28c790db1871edfb71f108a77ced40c48b806916f8"
+          "bytes": 5140,
+          "sha256": "c4d3da5e7a857fe3df7ba1febb799272457b88fc0676f211eea871ebf5cf0c25"
         },
         "markings": {
           "file": "tos1a_tagil_markings.png",
