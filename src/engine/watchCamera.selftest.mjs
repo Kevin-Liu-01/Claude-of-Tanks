@@ -114,6 +114,8 @@ function tank(x, z) {
       root,
       turretTopWorld: (out) => out.set(0, 2.4, 0).applyMatrix4(root.matrixWorld),
       gunPivotWorld: (out) => out.set(0, 2.0, 0.6).applyMatrix4(root.matrixWorld),
+      // the bore: along +Z, wherever the gunner's aim point is (the turret lags the lay)
+      gunDirWorld: (out) => out.set(0, 0, 1),
     },
   };
   return ent;
@@ -161,6 +163,8 @@ function tank(x, z) {
   assert.ok(camera.position.distanceTo(gun) < 1e-6, 'the lens sits at the gun');
   assert.equal(a.visual.root.visible, false, 'own hull hidden in the sight');
   assert.equal(camera.fov, WATCH_RIDE.fovDeg / watch.zoom, 'sight FOV');
+  const bore = camera.getWorldDirection(new Vector3());
+  assert.ok(bore.z > 0.99, `the sight is slaved to the gun, not the lay (${bore.toArray().map((v) => v.toFixed(2))})`);
   for (let i = 0; i < 6; i++) watch.update(DT, { ...idle(), wheel: -1 });
   assert.equal(watch.sight, false, 'wheel out closes the sight');
   watch.update(DT, idle());

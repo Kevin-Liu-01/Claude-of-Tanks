@@ -52,9 +52,10 @@ export const WATCH_DRONE = Object.freeze({
   bankPerMps: 0.006,
   bankPerRadS: 0.07,
   bankMax: 0.09,
-  /** Leaving a tank: the drone lifts and backs off from the chase pose. */
-  liftOffUpMps: 5,
-  liftOffBackMps: 4,
+  /** Leaving a tank: the drone lifts and backs off from the chase pose for liftOffS (clear of the hull and the trees). */
+  liftOffUpMps: 10,
+  liftOffBackMps: 6,
+  liftOffS: 1,
 });
 
 /** The ride-along's chase and sight (the player's own rig grammar: cameraRig.ts ORBIT_STEPS, SNIPER zooms). */
@@ -172,6 +173,9 @@ const _desired = new THREE.Vector3();
 const _viewDir = new THREE.Vector3();
 const _look = new THREE.Vector3();
 const _aim = new THREE.Vector3();
+const _gunDir = new THREE.Vector3();
+const _finalPos = new THREE.Vector3();
+const _farPoint = new THREE.Vector3();
 
 export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCameraDeps): WatchCamera {
   const { heightField, raycast } = deps;
@@ -182,6 +186,7 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
   const droneVel = new THREE.Vector3();
   let droneYaw = 0, droneYawT = 0, dronePitch = 0, dronePitchT = 0, droneRoll = 0, prevYaw = 0;
   let droneFov: number = WATCH_DRONE.fovDeg;
+  let liftOffT = 0;
   let speedIndex: number = WATCH_DRONE.speedIndex;
 
   // --- ride state ---
@@ -194,6 +199,7 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
   let aimYaw = 0, aimPitch = 0, aimReady = false;
   let lookYaw = 0, lookPitch = 0, lookIdleS = 0;
   let sight = false;
+  let preSightOrbit = -1;
   let zoomIndex = 0;
   let wreckAz = 0, wreckActive = false;
 
@@ -236,6 +242,13 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
     blendT = Math.min(blendDur, blendT + Math.max(0, dt));
     const u = blendDur > 0 ? blendT / blendDur : 1;
     const k = u * u * u * (u * (u * 6 - 15) + 10); // smootherstep
+    // where the solved pose will look: a point far down its own view line, so the lens arrives already aligned with it
+    // (aimed at the subject itself, a lens arriving from above stares down and swings level in the last frames)
+    _finalPos.copy(_desired);
+    _farPoint.copy(_look).sub(_finalPos);
+    const finalLen = _farPoint.length();
+    if (finalLen > 1e-4) _farPoint.multiplyScalar(60 / finalLen).add(_finalPos);
+    else _farPoint.copy(_look);
     _desired.lerpVectors(fromPos, _desired, k);
     _desired.y += Math.sin(Math.PI * k) * blendArcM;
     const floor = heightField.getHeightAt(_desired.x, _desired.z) + WATCH_RIDE.minClearanceM;
@@ -245,7 +258,7 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
     const v = Math.min(1, u / WATCH_BLEND.lookLeadShare);
     const kl = v * v * v * (v * (v * 6 - 15) + 10);
     _aim.copy(fromLook).sub(fromPos).normalize();
-    _viewDir.copy(_look).sub(_desired);
+    _viewDir.copy(_farPoint).sub(_desired);
     const toLen = _viewDir.length();
     if (toLen > 1e-4) _viewDir.multiplyScalar(1 / toLen);
     else _viewDir.copy(_aim);
@@ -317,6 +330,14 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
     const r = THREE.MathUtils.clamp(input.moveRight, -1, 1);
     const u = THREE.MathUtils.clamp(input.moveUp, -1, 1);
     _desiredVel.set((fx * f + rx * r) * speed, u * speed * WATCH_DRONE.climbScale, (fz * f + rz * r) * speed);
+    if (liftOffT > 0) {
+      // the exit's rise and back-off, fading out under the watcher's own stick
+      const share = liftOffT / WATCH_DRONE.liftOffS;
+      _desiredVel.x -= fx * WATCH_DRONE.liftOffBackMps * share;
+      _desiredVel.z -= fz * WATCH_DRONE.liftOffBackMps * share;
+      _desiredVel.y += WATCH_DRONE.liftOffUpMps * share;
+      liftOffT = Math.max(0, liftOffT - Math.max(0, dt));
+    }
     const stick = Math.abs(f) + Math.abs(r) + Math.abs(u) > 1e-3;
     droneVel.lerp(_desiredVel, ease(dt, stick ? WATCH_DRONE.accelTauS : WATCH_DRONE.brakeTauS));
     _move.copy(droneVel).multiplyScalar(Math.max(0, dt));
@@ -411,10 +432,20 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
         else orbitIndex = THREE.MathUtils.clamp(orbitIndex + dir, 0, WATCH_RIDE.orbitSteps.length - 1);
       } else {
         const i = zoomIndex + dir;
-        if (i < 0) camApi.setSight(false);
+        if (i < 0) exitSight(false);
         else zoomIndex = Math.min(i, WATCH_RIDE.zooms.length - 1);
       }
     }
+  }
+
+  /** Out of the sight: a toggle returns to the orbit step it came from (the player rig's rule), the wheel to the closest. */
+  function exitSight(restore: boolean): void {
+    if (!sight) return;
+    sight = false;
+    revealTarget();
+    orbitIndex = restore && preSightOrbit >= 0 ? preSightOrbit : WATCH_RIDE.orbitSteps.length - 1;
+    dist = WATCH_RIDE.orbitSteps[orbitIndex];
+    preSightOrbit = -1;
   }
 
   function solveWreck(ent: CameraEntity, dt: number): void {
@@ -459,14 +490,24 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
     _look.copy(pivot);
   }
 
+  /** The gunner sight is slaved to the gun (its bore, where the hull has one; else the gunner's lay): what the gun
+   *  covers is the centre of the view, as in the player's own sight. Free look does not move it. */
   function solveSight(ent: CameraEntity, dt: number): void {
     sightAnchorFor(ent, _desired);
-    const lay = layAngles(ent, _desired);
+    let yaw: number, pitch: number;
+    if (ent.visual?.gunDirWorld) {
+      ent.visual.gunDirWorld(_gunDir);
+      yaw = Math.atan2(_gunDir.x, _gunDir.z);
+      pitch = Math.asin(THREE.MathUtils.clamp(_gunDir.y, -1, 1));
+    } else {
+      const lay = layAngles(ent, _desired);
+      yaw = lay.yaw;
+      pitch = lay.pitch;
+    }
     const k = ease(dt, WATCH_RIDE.sightTauS);
-    aimYaw += wrapPi(lay.yaw - aimYaw) * k;
-    aimPitch += (lay.pitch - aimPitch) * k;
-    const pitch = THREE.MathUtils.clamp(aimPitch + lookPitch, WATCH_RIDE.pitchMin, WATCH_RIDE.pitchMax);
-    dirFromAngles(aimYaw + lookYaw, pitch, _viewDir);
+    aimYaw += wrapPi(yaw - aimYaw) * k;
+    aimPitch += (pitch - aimPitch) * k;
+    dirFromAngles(aimYaw, THREE.MathUtils.clamp(aimPitch, WATCH_RIDE.pitchMin, WATCH_RIDE.pitchMax), _viewDir);
     _look.copy(_desired).addScaledVector(_viewDir, 50);
   }
 
@@ -513,6 +554,7 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
       blendT = blendDur = 0;
       adoptCameraPose();
       droneVel.set(0, 0, 0);
+      liftOffT = liftOff ? WATCH_DRONE.liftOffS : 0;
       if (liftOff) {
         droneVel.set(-Math.sin(droneYaw) * WATCH_DRONE.liftOffBackMps, WATCH_DRONE.liftOffUpMps,
           -Math.cos(droneYaw) * WATCH_DRONE.liftOffBackMps);
@@ -565,8 +607,9 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
     setSight(on: boolean): void {
       if (mode !== 'ride' || !target || (on && target.combat?.destroyed)) return;
       if (on === sight) return;
-      sight = on;
-      if (!on) { revealTarget(); orbitIndex = WATCH_RIDE.orbitSteps.length - 1; dist = WATCH_RIDE.orbitSteps[orbitIndex]; }
+      if (!on) { exitSight(true); return; }
+      sight = true;
+      preSightOrbit = orbitIndex;
     },
 
     update(dt: number, input: WatchCameraInput): boolean {
