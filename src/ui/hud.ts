@@ -1199,7 +1199,7 @@ import { createShotInfo } from './shotInfo.ts';
 // .ribbon)
 import { createTeamPips } from './hudTeamPips.ts';
 import { createKillRibbon } from './hudKillRibbon.ts';
-import { sightFurniture, sightFurnitureGap, sightFurnitureRise, sightNoticeGap } from './sightFurniture.ts';
+import { sightFurniture, sightFurnitureGap, sightFurnitureRise, sightNoticeCuts, sightNoticeGap } from './sightFurniture.ts';
 import { hitOutcomeFor, incomingHitFeedbackFor } from './hitEventFormat.ts';
 import {
   SPECIAL_ACTION_KINDS,
@@ -3589,7 +3589,7 @@ export function initHud(bus: EventBus): HudRuntime {
   }
 
   /** Appends a cross arm's run from `a` to `b` along its line, cut around every mark this frame (sightInk), the HUD's
-   *  furniture and the over-target plate on that line. */
+   *  furniture, the centre notices shown and the over-target plate on that line. */
   function appendScopeRun(horizontal: boolean, a: number, b: number, across: number): void {
     scopeCutCount = 0;
     for (let i = 0; i < sightInk.count; i++) {
@@ -3598,6 +3598,11 @@ export function initHud(bus: EventBus): HudRuntime {
     }
     for (let i = 0; i < sightFurniture.count; i++) {
       const box = sightFurniture.boxes[i];
+      addScopeCut(horizontal, across, box.x0, box.y0, box.x1, box.y1, SCOPE_CUT_GAP);
+    }
+    // (and the centre notices while they show: the arm ends under the alert rather than meeting it, 1024x600)
+    for (let i = 0; i < sightNoticeCuts.count; i++) {
+      const box = sightNoticeCuts.boxes[i];
       addScopeCut(horizontal, across, box.x0, box.y0, box.x1, box.y1, SCOPE_CUT_GAP);
     }
     const plate = tgtShown ? tgtRect : null;

@@ -166,6 +166,10 @@ interface TouchNoticeInput {
   /** The detection's box and the alert's (its height in the detection's width; a reserve while none shows). */
   readonly notice: TouchSize;
   readonly alert: TouchSize;
+  /** The alert's compact form: its measured box while it shows so, else two lines of its 8 px type (most alerts; the
+   *  longest take three, TOUCH_COMPACT_ALERT). At 844 x 390 the 40 px reserve left the band over the sight 7 px short of
+   *  both compact notices, and DETECTED went under the sight onto the Lights and Auto gun tiles. */
+  readonly alertCompact?: TouchSize;
   /** The pre-battle countdown's box while it shows, and its rules panel's. */
   readonly countdown: TouchSize | null;
   readonly countdownRules?: TouchSize | null;
@@ -217,6 +221,7 @@ const CANDIDATES: readonly (readonly [boolean, boolean, boolean])[] = [[true, fa
 /** The notices' places (see the module's note). */
 export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
   const { width, height, top, scope, seated } = input;
+  const compactAlert = input.alertCompact ?? TOUCH_COMPACT_ALERT;
   const gap = TOUCH_NOTICE_GAP;
   const cx = noticeCentreX(width);
   const centred = (y: number, size: TouchSize) => boxOf(cx, y, size);
@@ -258,20 +263,20 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
     // the countdown takes the detection's place (it never shows with it); the alert alone keeps off it
     plan.noticeTop = plan.countdownTop;
     const alert = touchFreePlace(input.alert, start, width, height, [...blocks, ...placed]);
-    const compact = alert === null ? touchFreePlace(TOUCH_COMPACT_ALERT, start, width, height, [...blocks, ...placed]) : null;
-    const y = alert ?? compact ?? leastIntrusive(TOUCH_COMPACT_ALERT, start, width, height, layers(placed)).y;
+    const compact = alert === null ? touchFreePlace(compactAlert, start, width, height, [...blocks, ...placed]) : null;
+    const y = alert ?? compact ?? leastIntrusive(compactAlert, start, width, height, layers(placed)).y;
     if (alert === null && compact === null) plan.cleared = false;
     plan.alertCompact = alert === null;
-    plan.alertW = alert !== null ? input.alert.w : TOUCH_COMPACT_ALERT.w;
+    plan.alertW = alert !== null ? input.alert.w : compactAlert.w;
     plan.alertTop = y;
-    placed.push(centred(y, alert !== null ? input.alert : TOUCH_COMPACT_ALERT));
+    placed.push(centred(y, alert !== null ? input.alert : compactAlert));
   }
   const stack = { w: Math.max(input.notice.w, input.alert.w), h: input.notice.h + INTEG_STACK_GAP + input.alert.h };
   let found = !!input.countdown || clearOf(centred(input.fallbackTop, stack), placed);
   for (let i = 0; i < CANDIDATES.length && !found; i++) {
     const [together, noticeCompact, alertCompact] = CANDIDATES[i];
     const notice = noticeCompact ? TOUCH_COMPACT_NOTICE : input.notice;
-    const alert = alertCompact ? TOUCH_COMPACT_ALERT : input.alert;
+    const alert = alertCompact ? compactAlert : input.alert;
     const around = [...blocks, ...placed];
     let first: number | null = null;
     let second: number | null = null;
@@ -293,20 +298,20 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
     // went onto the scope's zoom plate)
     plan.cleared = false;
     plan.noticeCompact = plan.alertCompact = true;
-    plan.alertW = TOUCH_COMPACT_ALERT.w;
+    plan.alertW = compactAlert.w;
     const pair = (firstSize: TouchSize, secondSize: TouchSize) => {
       const first = leastIntrusive(firstSize, start, width, height, layers(placed));
       const second = leastIntrusive(secondSize, start, width, height, layers([...placed, centred(first.y, firstSize)]));
       return { first, second, cost: first.cost + second.cost };
     };
-    const noticeFirst = pair(TOUCH_COMPACT_NOTICE, TOUCH_COMPACT_ALERT);
-    const alertFirst = pair(TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE);
+    const noticeFirst = pair(TOUCH_COMPACT_NOTICE, compactAlert);
+    const alertFirst = pair(compactAlert, TOUCH_COMPACT_NOTICE);
     if (alertFirst.cost < noticeFirst.cost) { plan.noticeTop = alertFirst.second.y; plan.alertTop = alertFirst.first.y; }
     else { plan.noticeTop = noticeFirst.first.y; plan.alertTop = noticeFirst.second.y; }
   }
   if (input.banner) {
     const notice = plan.noticeCompact ? TOUCH_COMPACT_NOTICE : input.notice;
-    const alert = plan.alertCompact ? TOUCH_COMPACT_ALERT : input.alert;
+    const alert = plan.alertCompact ? compactAlert : input.alert;
     const taken = input.countdown ? placed : [...placed, centred(plan.noticeTop, notice), centred(plan.alertTop, alert)];
     const y = touchFreePlace(input.banner, start, width, height, [...blocks, ...taken]);
     if (y !== null) { plan.bannerTop = y; plan.bannerReady = true; }

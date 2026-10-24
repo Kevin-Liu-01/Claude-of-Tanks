@@ -2,6 +2,8 @@
    These selectors intentionally outrank battle-lazy injected component CSS. */
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
+/* (a touch landscape's kill lanes leave the centre line a compact notice and its gaps: battleHudLayout.ts TOUCH_CENTRE_HALF) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='landscape']{--hud-message-width:min(400px,calc(50vw - 74px))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]{--hud-side-width:min(300px,calc(50vw - 24px));--hud-feed-width:min(240px,calc(50vw - 24px));--hud-message-width:min(400px,calc(50vw - 24px))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-drive{left:184px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-minimap{
