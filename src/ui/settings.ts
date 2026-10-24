@@ -663,7 +663,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   document.body.appendChild(resume);
   let relockRetry: TimerHandle | null = null; // see relockRefused
 
-  function showResumeVeil() {
+  /** `relock`: the browser refused a pointer relock (aim-focus 243); `pause`: the battle lost the page (a focus loss, a
+   *  background tab, an app switch) and waits for the player. Touch never locks, so it never shows the first; it does show
+   *  the second, with the touch line (Watch 243: a touch layout taps). */
+  function showResumeVeil(trigger: 'relock' | 'pause' = 'pause') {
     if (open || resume.classList.contains('show')) return;
     // KILL-CAM: the replay owns the screen — a veil on top would sit over the
     // cinematic and its mousedown would eat the click players aim at the
@@ -675,7 +678,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     // battle click (input.isCursorAim() means every lock attempt is denied).
     // A touch layout never holds the lock either.
     if (input.isCursorAim && input.isCursorAim()) return;
-    if (input.isTouchLayout && input.isTouchLayout()) return;
+    if (trigger === 'relock' && input.isTouchLayout && input.isTouchLayout()) return;
     // the veil's line names the gesture of the layout that shows it (Watch 243: a touch layout taps)
     resumeSub.innerHTML = t(input.isTouchLayout?.() ? 'settings.pauseSubTouch' : 'settings.pauseSub');
     resume.classList.add('show');
@@ -696,7 +699,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // the veil waits for a click.
   function relockRefused(retryInMs: number): void {
     if (open || !isBattleActive()) return;
-    showResumeVeil();
+    showResumeVeil('relock');
     if (retryInMs <= 0 || relockRetry !== null || !resume.classList.contains('show')) return;
     if (typeof navigator !== 'undefined' && navigator.userActivation && !navigator.userActivation.isActive) return;
     relockRetry = setTimeout(() => {
@@ -1901,12 +1904,18 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   });
   // Focus regained with the pointer still unlocked (alt-tab round trip that
   // never fired another pointerlockchange): offer the resume veil.
-  window.addEventListener('focus', () => {
+  const offerPauseVeil = () => {
     if (!open && isBattleActive() && !input.isLocked() && !replayOwnsScreen() &&
         shouldOpenSettingsFromPointerUnlock({
           battleActive: true,
           activeElement: document.activeElement,
-        })) showResumeVeil();
+        })) showResumeVeil('pause');
+  };
+  window.addEventListener('focus', offerPauseVeil);
+  // A phone back from another app or a background tab (244): the page shows again, and a touch layout, which never
+  // locks, gets the pause veil with the touch line; a tap resumes.
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && input.isTouchLayout && input.isTouchLayout()) offerPauseVeil();
   });
 
   // --- gear button (garage) --------------------------------------------------------
