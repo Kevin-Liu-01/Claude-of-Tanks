@@ -218,6 +218,11 @@ export interface StudioPanelApi extends StudioPicturePanelApi {
   setLight(patch: StudioLight | null): Promise<RuntimeValue>;
   getLight(): StudioLightState;
   readonly timeScale: number;
+  /** The shuttle's signed rate (J/K/L): negative while the playhead runs back. */
+  readonly shuttleRate: number;
+  /** The view is the shots' camera at the playhead. */
+  readonly lookThrough: boolean;
+  setLookThrough(on: boolean): boolean;
   readonly fxTimeMs: number;
   readonly durationMs: number;
   readonly playing: boolean;
@@ -453,7 +458,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     if (S.getCamera().mode === 'orbit') S.setCamera({ mode: 'fly' }); else orbitCamera();
     api.refreshCamera();
   });
-  vpTop.append(shotChip, modeChip);
+  // Look through (09-studio .vpt): the view is the shots' camera at the playhead; navigating leaves it
+  const lookChip = chipButton(t('studio.ws.lookThrough'), 'scope', true);
+  lookChip.addEventListener('click', () => S.setLookThrough(!S.lookThrough));
+  vpTop.append(shotChip, lookChip, modeChip);
   const vpTools = el('div', 'st-vpb');
   const guidesChip = chipButton(t('studio.ws.guides'), 'pixels', true);
   guidesChip.addEventListener('click', () => {
@@ -1690,6 +1698,9 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   stepBtn.innerHTML = STUDIO_GLYPHS.stepForward;
   stepBtn.addEventListener('click', () => { S.pause(); S.seek(S.fxTimeMs + 1000 / 30); });
   const clockNow = el('span', 'tc');
+  // the J/K/L shuttle's rate beside the clock, only while it is not plain play or stop
+  const shuttleBadge = el('span', 'rate');
+  shuttleBadge.hidden = true;
   const playKey = el('kbd', 'cot-c-kbd', t('studio.ws.spaceKey'));
   playKey.setAttribute('aria-hidden', 'true');
   const duration = sliderRow(t('studioPanel.storyboard.lengthLabel'), 1, 20, 0.5, (v) => S.setStoryboardDuration(v * 1000));
@@ -1700,7 +1711,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const shotBtn = chipButton(t('studio.addCameraShot'), 'toolPhoto');
   shotBtn.addEventListener('click', () => S.addCameraShot());
   transportRight.append(duration.row, ts.row, shotBtn, keyBtn);
-  transport.append(restartBtn, pauseBtn, stepBtn, clockNow, playKey, transportRight);
+  transport.append(restartBtn, pauseBtn, stepBtn, clockNow, shuttleBadge, playKey, transportRight);
   const lanes = el('div', 'st-lanes');
   lanes.appendChild(el('div', 'lb'));
   const ruler = el('div', 'tk tk--ruler');
@@ -2303,6 +2314,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       orbBtn.setAttribute('aria-checked', String(c.mode === 'orbit'));
       setLabel(modeChip, c.mode === 'orbit' ? t('studio.orbit') : t('studio.freeFly'));
       setLabel(lensChip, `${Math.round(c.fov)}°`);
+      press(lookChip, S.lookThrough && !lookChip.disabled);
     },
     refreshTime() {
       productionPanel.refresh();
@@ -2311,9 +2323,15 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       if (scale > 0 && Number(ts.input.value) !== scale) ts.set(scale);
       const playing = scale !== 0;
       const pauseLabel = playing ? t('studio.pause') : t('studio.play');
+      const rate = S.shuttleRate;
+      const rateText = rate === 0 || rate === 1 ? '' : `${rate < 0 ? '−' : ''}${Math.abs(rate)}×`;
+      if (shuttleBadge.textContent !== rateText) {
+        shuttleBadge.textContent = rateText;
+        shuttleBadge.hidden = !rateText;
+      }
       if (pauseBtn.getAttribute('aria-label') !== pauseLabel) {
         pauseBtn.setAttribute('aria-label', pauseLabel);
-        pauseBtn.title = pauseLabel;
+        pauseBtn.title = t('studio.ws.playTitle', { action: pauseLabel });
         if (playing) pauseBtn.innerHTML = STUDIO_GLYPHS.pause;
         else pauseBtn.innerHTML = uiIconSVG('play', 16);
       }
@@ -2370,6 +2388,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       rebuildStoryboard();
       updateFilmSummary();
       const board = S.getStoryboard();
+      lookChip.disabled = !board.shots.length;
+      press(lookChip, S.lookThrough && !lookChip.disabled);
       const shotIndex = board.shots.findIndex((shot) => shot.id === S.selectedShotId);
       setLabel(shotChip, shotIndex < 0 ? t('studio.ws.noShot')
         : t('studio.ws.shot', { n: String(shotIndex + 1).padStart(2, '0'), label: shotLabel(board.shots[shotIndex].label) }));

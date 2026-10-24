@@ -79,7 +79,8 @@ automatically so headless capture tools can enter Studio.
   (orbit mode: wheel = distance)
 - **Click terrain**: move the effect marker (amber ring)
 - **Click a tank**: select · **drag a tank**: move it and update terrain alignment
-- **Space**: play/pause the storyboard · **Delete**: remove the selected effect
+- **Space**: play/pause the storyboard · **J/K/L**: shuttle back, stop, forward (each J or L press doubles the rate to 4x) · **Delete**: remove the selected effect
+- **Look through** (the viewport chip): the view is the shots' camera at the playhead. Dragging, the wheel, the fly keys or a camera edit leave it, after which scrubbing and playing keep the free view; selecting a shot, keying one from the view or loading a scene look through again. Recording and film export always ride the shots
   (or selected actor when no effect layer is selected)
 - The panel provides a scrollable workspace with **Battlefield**, **Tanks**,
   **Effects**, **Cinematics**, and **Output** sections. Add camera shots at the
@@ -119,7 +120,7 @@ __STUDIO.selectEffect(id) / .removeEffect(id)        // select/delete one layer
 __STUDIO.updateEffect(id, {tMs})                     // retime a layer
 __STUDIO.clearEffects()                               // reset fx timeline (keeps actors)
 __STUDIO.advanceFx(ms) / .seek(ms)                    // scrub/step the timeline
-__STUDIO.setTimeScale(v) / .timeScale / .fxTimeMs
+__STUDIO.setTimeScale(v) / .timeScale / .fxTimeMs / .shuttleRate  // shuttleRate < 0 while J runs back
 __STUDIO.play() / .pause() / .stop()
 __STUDIO.getStoryboard() / .setStoryboard(board) / .setStoryboardDuration(ms)
 __STUDIO.addCameraShot(cfg?) / .updateCameraShot(id, patch) / .removeCameraShot(id)
@@ -133,7 +134,8 @@ __STUDIO.beginFilm(opts) / .renderFilmFrame(opts?) / .endFilm()  // offline film
 await __STUDIO.exportFilm(opts)     // WebCodecs film → {blob, container, codec, frames, …}
 __STUDIO.cancelFilmExport() / .filmExportStatus()
 __STUDIO.getFilm() / .setFilm(patch | null) / .FILM_DEFAULTS / .filming / .filmInfo
-__STUDIO.setCamera(cfg) / .getCamera()
+__STUDIO.setCamera(cfg) / .getCamera()                // leaves look-through
+__STUDIO.setLookThrough(on) / .lookThrough
 __STUDIO.setPicture(patch) / .getPicture()          // film-grade picture (see "Picture")
 __STUDIO.pictureInfo({width, height}?)              // focal length, focus, mattes, stages
 __STUDIO.PICTURE_PRESETS                            // [{id, label}] named looks

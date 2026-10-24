@@ -5079,6 +5079,8 @@
   "studio.director.ui.preset.coast-recon.description": "A moving coastal patrol with a rear follow, side portrait and sea-facing reveal.",
   "studio.ws.shotDefault": "Shot {n}",
   "studio.ws.selTag": "{name} · heading {deg}°",
+  "studio.ws.lookThrough": "Look through",
+  "studio.ws.playTitle": "{action} · Space, or J K L to shuttle",
   "media.versus.title.f6Leo2a6SteinburgR7Top": "Steinburg, day, from above: Leopard 2A6 v T-90M",
   "media.versus.match.f6Leo2a6SteinburgR7Top": "Leopard 2A6 v T-90M",
   "media.versus.place.f6Leo2a6SteinburgR7Top": "Steinburg, day, from above",

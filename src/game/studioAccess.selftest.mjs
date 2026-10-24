@@ -117,7 +117,7 @@ const tick = new Function('calls', `
   const perf = { skippedFrames: 0, renderedFrames: 0 }, storyboard = { durationMs: 1000 };
   const updateCamera = dt => { calls.push(['camera', dt]); return true; };
   const panel = { tick: dt => calls.push(['panel', dt]), drawSelection() {} }, getWorld = () => null;
-  const grabShotThumbnail = () => {};
+  const grabShotThumbnail = () => {}, reverseRate = 0, stepReverseShuttle = () => {};
   const camera = { fov: 55, getWorldDirection() {} }, lighting = { update() {}, updateFrustums() {} };
   const advanceTimeline = dt => calls.push(['timeline', dt]), stepFx = () => {};
   const sweepPool = () => {}, stopRecording = () => {}, post = { render: (...args) => calls.push(['post', ...args]) };

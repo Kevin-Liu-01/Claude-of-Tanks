@@ -701,6 +701,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let timeOfDay: StudioTimeOfDay = 'day';
   let studioLight: StudioLight | null = null; // scene JSON `light`: the sun override (absolute bearing / elevation)
   let timeScale = 1;           // fx time multiplier; 0 = frozen
+  /** The view is the shots' camera (the rail at the playhead); navigating away leaves it until a shot or the chip returns. */
+  let lookThrough = true;
+  /** J/K/L: the reverse shuttle's rate (1, 2 or 4; 0 = off); forward runs on timeScale. */
+  let reverseRate = 0;
+  let reverseShuttleMs = 0, reverseWallS = 0;
   let clockMs = 0;             // studio fx timeline (ms since last fx reset)
   // the lens flare eases on the export clock while advanceFrame drives the timeline (one ease per step, whatever the
   // live renders between steps), on the wall clock again in playback and outside the Studio
@@ -933,11 +938,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function updateCamera(dt: number): boolean {
-    if (timeScale > 0 && storyboard.shots.length) return false;
+    if (timeScale > 0 && storyboard.shots.length && lookThrough) return false;
     const boost = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 4 : 1;
     const v = cam.speed * boost * dt;
     if (cam.mode === 'fly') {
       if (!flyCameraIsMoving() && !cameraDirty) return false;
+      if (flyCameraIsMoving()) leaveShotView();
       translateFlyCamera(v);
       applyCameraPose();
       return true;
@@ -1630,6 +1636,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const dx = e.movementX || 0;
     const dy = e.movementY || 0;
     dragMoved += Math.abs(dx) + Math.abs(dy);
+    if (dragMoved >= 5) leaveShotView();
     cam.yaw -= dx * 0.0032;
     cam.pitch = Math.max(-1.45, Math.min(1.45, cam.pitch - dy * 0.0032));
     cameraDirty = true;
@@ -1675,6 +1682,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (filming) return;
     const units = wheelNotchUnits(e);
     if (!units) return;
+    leaveShotView();
     if (cam.mode === 'orbit') {
       cam.orbit.dist = Math.max(3, Math.min(400, cam.orbit.dist * wheelDollyFactor(units, 0.12)));
       cameraDirty = true;
@@ -1708,6 +1716,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (e.code === 'Escape') { exit(); return; }
     keys.add(e.code);
     if (e.code === 'Space' && !e.repeat) api.setTimeScale(timeScale === 0 ? 1 : 0);
+    // J/K/L, the editors' shuttle: L forward at 1x, 2x, 4x; J back at the same steps; K stops
+    if (!e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (e.code === 'KeyJ') shuttle(-1);
+      else if (e.code === 'KeyK') shuttle(0);
+      else if (e.code === 'KeyL') shuttle(1);
+    }
     if (e.code === 'Delete' || e.code === 'Backspace') {
       if (selectedEffect) removeEffect(selectedEffect);
       else if (selected) removeActor(selected);
@@ -3081,7 +3095,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       for (const a of actors) syncActorVisual(a, dt);
       remainingS -= dt;
     }
-    applyStoryboardCamera(clockMs);
+    if (lookThrough || recording || filming) applyStoryboardCamera(clockMs);
     invalidate();
   }
 
@@ -3173,6 +3187,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if ((recording && !opts.recording) || filming) return Math.round(clockMs);
     const target = clampStudioTime(timeMs, storyboard.durationMs);
     if (opts.pause !== false) timeScale = 0;
+    reverseRate = 0;
     rebuildEffects(target);
     post.lensFlare?.snap?.();
     panel.refreshAll();
@@ -3216,8 +3231,57 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return Math.round(clockMs);
   }
 
+  /** Navigating the view (a drag, the wheel, the fly keys) leaves the shot's camera; the chip shows it. */
+  function leaveShotView(): void {
+    if (!lookThrough || recording || filming || !storyboard.shots.length) return;
+    lookThrough = false;
+    panel.refreshCamera();
+  }
+  /** Look through the shots' camera (the rail at the playhead), or keep a free view that scrubs and plays leave alone. */
+  function setLookThrough(on: boolean): boolean {
+    if (recording || filming) return lookThrough;
+    lookThrough = !!on;
+    if (lookThrough && applyStoryboardCamera(clockMs)) rail.updateVisibility();
+    panel.refreshCamera();
+    invalidate();
+    return lookThrough;
+  }
+  /** J/K/L: forward doubles the play rate up to 4x, back runs the reverse shuttle at 1x, 2x, 4x, and K stops both. */
+  function shuttle(direction: -1 | 0 | 1): void {
+    if (recording || filming) return;
+    if (direction === 0) {
+      reverseRate = 0;
+      pauseTimeline();
+      return;
+    }
+    if (direction > 0) {
+      api.setTimeScale(timeScale >= 1 ? Math.min(4, timeScale * 2) : 1);
+      return;
+    }
+    const rate = reverseRate >= 1 ? Math.min(4, reverseRate * 2) : 1;
+    if (timeScale > 0) pauseTimeline();
+    reverseRate = clockMs > 0 ? rate : 0;
+    reverseShuttleMs = 0;
+    reverseWallS = 0;
+    panel.refreshTime();
+  }
+  /** The reverse shuttle: the playhead steps back about twelve times a second (each step replays the effects to it). */
+  function stepReverseShuttle(wallDt: number): void {
+    reverseWallS += wallDt;
+    reverseShuttleMs += wallDt * 1000 * reverseRate;
+    if (reverseWallS < 1 / 12) return;
+    const target = Math.max(0, clockMs - reverseShuttleMs);
+    reverseWallS = 0;
+    reverseShuttleMs = 0;
+    rebuildEffects(target);
+    post.lensFlare?.snap?.();
+    if (target <= 0) reverseRate = 0;
+    panel.refreshTime();
+  }
+
   function playTimeline() {
     if (filming) return false;
+    reverseRate = 0;
     if (clockMs >= storyboard.durationMs - 0.5) seekTimeline(0, { pause: false });
     flareToWallClock();
     timeScale = 1;
@@ -3230,6 +3294,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function pauseTimeline() {
     if (recording) return Math.round(clockMs);
     timeScale = 0;
+    reverseRate = 0;
     rail.updateVisibility();
     panel.refreshTime();
     invalidate();
@@ -3512,7 +3577,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   function applyStoryboardFrame(timeMs: number, dt = 0, settle = false): void {
     applyStoryboardActors(timeMs, dt, settle);
-    applyStoryboardCamera(timeMs);
+    if (lookThrough || recording || filming) applyStoryboardCamera(timeMs);
     rail.updateVisibility();
     invalidate();
   }
@@ -3571,8 +3636,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       transition: cfg.transition || existing?.transition || 'smooth',
     });
     selectedShotId = id;
+    // a shot keyed from the view at the playhead is that view: the lens looks through it again
+    if (!cfg.pos) lookThrough = true;
     rail.rebuild();
     panel.refreshStoryboard();
+    panel.refreshCamera();
     return storyboard.shots.find((shot) => shot.id === id) || null;
   }
 
@@ -3656,8 +3724,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const shot = storyboard.shots.find((item) => item.id === String(ref || ''));
     if (!shot) return null;
     selectedShotId = shot.id;
-    if (seek) seekTimeline(shot.tMs);
+    if (seek) {
+      lookThrough = true;
+      seekTimeline(shot.tMs);
+    }
     panel.refreshStoryboard();
+    panel.refreshCamera();
     return shot.id;
   }
 
@@ -3755,6 +3827,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const actor = selected ?? actors[0];
     if (!actor) throw new Error('Stage or select a tank first');
     pauseTimeline();
+    leaveShotView();
     const p = actor.state.pos;
     applyCamera(productionCamera(rig, [p.x, p.y + 1.7, p.z], actor.state.yaw / DEG,
       (x, z) => hfProxy.getHeightAt(x, z), productionFormat));
@@ -4922,6 +4995,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     json = sceneInCurrentTankIds(json);
     const loadedFormat = json.productionFormat ?? 'landscape';
     productionAspect(loadedFormat); // Validate before replacing any scene state.
+    lookThrough = true;
     const loadedFilm = json.film == null ? null : normalizeFilm(json.film);
     if (filmRenderer.active) throw new Error('Finish the film render before loading a scene');
     if (json.timeOfDay !== undefined && !isStudioTime(json.timeOfDay)) throw new RangeError('Unknown time of day');
@@ -5304,6 +5378,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       sweepPool();
     }
     panel.tick(dt);
+    if (reverseRate > 0) stepReverseShuttle(frameWallDtSeconds);
     const playbackScale = timeScale;
     const animating = playbackScale > 0;
     // Canvas encoders may need several frame timestamps before yielding their
@@ -5551,6 +5626,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     advanceFx: (ms: number) => seekTimeline(clockMs + ms),
     setTimeScale: (v: number) => {
       if (recording || filming) return timeScale;
+      reverseRate = 0;
       const next = Math.max(0, Math.min(4, v));
       if (next > 0 && clockMs >= storyboard.durationMs - 0.5) {
         seekTimeline(0, { pause: false });
@@ -5562,6 +5638,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       return timeScale;
     },
     get timeScale() { return timeScale; },
+    /** The shuttle's signed rate: negative while J runs the playhead back. */
+    get shuttleRate() { return reverseRate > 0 ? -reverseRate : timeScale; },
+    get lookThrough() { return lookThrough; },
+    setLookThrough,
     get fxTimeMs() { return Math.round(clockMs); },
     // cinematic storyboard + transport
     getStoryboard,
@@ -5614,7 +5694,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     filmExportStatus,
     FILM_DEFAULTS,
     // camera
-    setCamera: (cfg: CameraConfig) => recording ? getCamera() : applyCamera(cfg),
+    setCamera: (cfg: CameraConfig) => {
+      if (recording) return getCamera();
+      leaveShotView(); // a new lens, roll or camera mode is no longer the shot's view
+      return applyCamera(cfg);
+    },
     getCamera,
     // picture (docs/STUDIO.md "Picture")
     setPicture: (patch: PicturePatch | null) => recording ? getPicture() : setPicture(patch),

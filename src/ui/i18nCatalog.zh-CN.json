@@ -5079,6 +5079,8 @@
   "studio.director.ui.preset.coast-recon.description": "沿海岸行进的巡逻：后方跟拍、侧面特写与面向大海的揭示。",
   "studio.ws.shotDefault": "镜头 {n}",
   "studio.ws.selTag": "{name} · 航向 {deg}°",
+  "studio.ws.lookThrough": "镜头视角",
+  "studio.ws.playTitle": "{action} · 空格键，或用 J K L 穿梭",
   "media.versus.title.f6Leo2a6SteinburgR7Top": "斯泰因堡，白天，俯瞰：Leopard 2A6 对 T-90M",
   "media.versus.match.f6Leo2a6SteinburgR7Top": "Leopard 2A6 对 T-90M",
   "media.versus.place.f6Leo2a6SteinburgR7Top": "斯泰因堡，白天，俯瞰",
