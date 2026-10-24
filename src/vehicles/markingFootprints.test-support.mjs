@@ -6,6 +6,7 @@
 // footprint, and the paint covers at least `minCoverage` of each.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
+import { MARKING_FILM_LIFT_M } from './markingFilm.ts';
 
 const a = new THREE.Vector3(), b = new THREE.Vector3(), c = new THREE.Vector3();
 const centroid = new THREE.Vector3(), cross = new THREE.Vector3(), offset = new THREE.Vector3();
@@ -33,10 +34,12 @@ export function renderedMarkingFootprints(mesh, { minCoverage = 0, label = mesh.
     centroid.copy(a).add(b).add(c).multiplyScalar(1 / 3);
     cross.subVectors(b, a).cross(offset.subVectors(c, a));
     if (cross.lengthSq() < 1e-16) continue;
+    // (inside, give or take the film's lift along a face tilted off the seat's plane)
     const owner = footprints.find((footprint) => {
       offset.subVectors(centroid, footprint.center);
       const s = offset.dot(footprint.u) / footprint.u.lengthSq(), t = offset.dot(footprint.v) / footprint.v.lengthSq();
-      return Math.abs(s) <= 0.5 + 1e-3 && Math.abs(t) <= 0.5 + 1e-3;
+      const reach = 0.5 + 1.5 * MARKING_FILM_LIFT_M / Math.min(footprint.u.length(), footprint.v.length());
+      return Math.abs(s) <= reach && Math.abs(t) <= reach;
     });
     assert.ok(owner, `${label}: painted triangle ${i / 3} lies inside its marking's footprint`);
     // its area as seen along the footprint's normal

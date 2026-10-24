@@ -18,6 +18,7 @@
 //          markings), and the share of those pixels that toggle between consecutive frames (the flicker of it).
 // Each is counted over the markings' footprint, the props' footprint (fittings, stowage, ERA, lamps, guns, decor) and
 // the whole tank. A manual probe, not part of npm test. Never edit src while it runs (vite would reload the page).
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
@@ -374,18 +375,58 @@ function installHarness() {
 
 // ---- driver ---------------------------------------------------------------------------------------------------------
 // --roots=a,b [--labels=before,after]: both checkouts served and shot in one hold, tank by tank (matched GPU state).
+// Browser rule (coordinator, 2026-10-23 after a jetsam report of a 14 GB capture renderer): every browser runs with a
+// 3 GB V8 heap per renderer, the run aborts if any of its processes passes 6 GB, and one browser at a time is launched
+// for each orbit capture (one tank on one checkout) and closed after it. The vite servers stay warm across captures.
 const roots = (arg('roots', '') ? arg('roots', '').split(',') : [root]).map((path) => resolve(path));
 const labels = arg('labels', roots.length > 1 ? 'before,after' : 'run').split(',');
+const RSS_LIMIT_KB = 6 * 1024 * 1024;
 const servers = [];
-let browser = null, refresher = null;
+let browser = null, refresher = null, guard = null, overLimit = null;
 const report = { startedAt: new Date().toISOString(), roots, labels, ids, views, zooms, slowFrames, fastFrames,
   slowStepDeg, fastStepDeg, runs: Object.fromEntries(labels.map((label) => [label, {}])) };
-async function warm() {
+
+/** The browser and every process under it, by resident size (KB). */
+function browserTreeRss(rootPid) {
+  const rows = execFileSync('ps', ['-axo', 'pid=,ppid=,rss='], { encoding: 'utf8' }).trim().split('\n')
+    .map((line) => line.trim().split(/\s+/).map(Number));
+  const tree = new Set([rootPid]);
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const [pid, ppid] of rows) if (tree.has(ppid) && !tree.has(pid)) { tree.add(pid); grew = true; }
+  }
+  return rows.filter(([pid]) => tree.has(pid)).map(([pid, , rss]) => ({ pid, rss }));
+}
+
+async function launchBrowser() {
   const args = swiftshader
     ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox']
     : ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--ignore-gpu-blocklist'];
-  browser = await puppeteer.launch({ headless: 'new', protocolTimeout: 900_000, args: [...args, `--window-size=${width},${height}`] });
-  const pages = [];
+  browser = await puppeteer.launch({ headless: 'new', protocolTimeout: 900_000,
+    args: [...args, '--js-flags=--max-old-space-size=3072', `--window-size=${width},${height}`] });
+  const pid = browser.process()?.pid;
+  if (pid) {
+    guard = setInterval(() => {
+      const heavy = browserTreeRss(pid).find(({ rss }) => rss > RSS_LIMIT_KB);
+      if (!heavy || overLimit) return;
+      overLimit = `browser process ${heavy.pid} reached ${(heavy.rss / 1048576).toFixed(1)} GB (limit 6 GB)`;
+      console.error(`[guard] ${overLimit}: aborting`);
+      browser.process()?.kill('SIGKILL');
+    }, 2000);
+  }
+  return browser;
+}
+
+async function closeBrowser() {
+  if (guard) clearInterval(guard);
+  guard = null;
+  if (browser) await browser.close().catch(() => {});
+  browser = null;
+  if (overLimit) throw new Error(overLimit);
+}
+
+/** Vite servers for every checkout, their gallery graph transformed ahead (no browser before the hold). */
+async function warm() {
   for (const [index, checkout] of roots.entries()) {
     // vite's warmup resolves against the working directory
     process.chdir(checkout);
@@ -393,35 +434,35 @@ async function warm() {
       port: Number(arg('port', '5843')) + index * 7, strictPort: false, hmr: false, watch: null } });
     await server.listen();
     servers.push(server);
-    const page = await browser.newPage();
-    await page.setViewport({ width, height, deviceScaleFactor: dpr });
-    page.setDefaultTimeout(300_000);
-    page.on('pageerror', (error) => console.error(`[page ${labels[index]}]`, String(error).slice(0, 300)));
-    await page.evaluateOnNewDocument(installSeenHook);
-    await page.goto(`http://127.0.0.1:${server.httpServer.address().port}/gallery?id=${ids[0]}`,
-      { waitUntil: 'domcontentloaded', timeout: 300_000 });
-    await page.waitForFunction(() => window.__TANK_GALLERY?.ready, { timeout: 300_000, polling: 500 });
-    pages.push(page);
+    await server.warmupRequest('/src/gallery/gallery.ts').catch(() => {});
   }
-  return pages;
+  return servers;
+}
+
+/** One orbit capture: a fresh browser on one checkout's Gallery, one tank, closed afterwards. */
+async function openGallery(index, id) {
+  await launchBrowser();
+  const page = await browser.newPage();
+  await page.setViewport({ width, height, deviceScaleFactor: dpr });
+  page.setDefaultTimeout(300_000);
+  page.on('pageerror', (error) => console.error(`[page ${labels[index]}]`, String(error).slice(0, 300)));
+  await page.evaluateOnNewDocument(installSeenHook);
+  await page.goto(`http://127.0.0.1:${servers[index].httpServer.address().port}/gallery?id=${id}`,
+    { waitUntil: 'domcontentloaded', timeout: 300_000 });
+  await page.waitForFunction((next) => window.__TANK_GALLERY?.ready && window.__TANK_GALLERY.getState().selectedId === next,
+    { timeout: 300_000, polling: 300 }, id);
+  report.gpu = await page.evaluate(installHarness);
+  return page;
 }
 
 try {
-  const pages = swiftshader ? await warm()
-    : await acquireCaptureLock(60 * 60 * 1000, { prepare: warm, place: `marking-flicker-243-${labels.join('-')}` });
+  if (swiftshader) await warm();
+  else await acquireCaptureLock(60 * 60 * 1000, { prepare: warm, place: `marking-flicker-243-${labels.join('-')}` });
   if (!swiftshader) { refresher = setInterval(refreshCaptureLock, 60_000); refresher.unref(); }
-  for (const [index, page] of pages.entries()) {
-    await page.bringToFront();
-    report.gpu = await page.evaluate(installHarness);
-    console.log('gpu', labels[index], JSON.stringify(report.gpu));
-  }
   for (const id of ids) {
-    for (const [index, page] of pages.entries()) {
-      const label = labels[index];
-      await page.bringToFront();
-      await page.evaluate((next) => window.__TANK_GALLERY.loadTank(next), id);
-      await page.waitForFunction((next) => window.__TANK_GALLERY?.ready && window.__TANK_GALLERY.getState().selectedId === next,
-        { timeout: 300_000, polling: 300 }, id);
+    for (const [index, label] of labels.entries()) {
+      const page = await openGallery(index, id);
+      console.log('gpu', label, id, JSON.stringify(report.gpu));
       const tank = report.runs[label][id] = {};
       for (const view of views) {
         const frame = await page.evaluate((v) => { window.__TANK_GALLERY.frameView(v); return window.__TANK_GALLERY.getState().camera; }, view);
@@ -444,12 +485,11 @@ try {
           const video = videoIds.has(id) && view === 'hero' && zoom >= 1 ? await page.evaluate((o) => window.__MF.sequence(o),
             { ...base, frames: videoFrames, stepDeg: videoStepDeg, blips: false, nudgeEvery: 0, keepFrames: true, measure: false })
             : null;
-          if (video) tank[key].video = video.summary;
-          for (const [speed, run] of [['video', video]]) {
-            if (!run?.kept.length) continue;
-            const dir = `${out}/frames/${label}/${id}-${view}@${zoom}-${speed}`;
+          if (video) {
+            tank[key].video = video.summary;
+            const dir = `${out}/frames/${label}/${id}-${view}@${zoom}-video`;
             mkdirSync(dir, { recursive: true });
-            run.kept.forEach((url, i) => writeFileSync(`${dir}/${String(i).padStart(3, '0')}.png`, Buffer.from(url.split(',')[1], 'base64')));
+            video.kept.forEach((url, i) => writeFileSync(`${dir}/${String(i).padStart(3, '0')}.png`, Buffer.from(url.split(',')[1], 'base64')));
           }
           console.log(label, id, key, JSON.stringify({ slow: { blip: slow.summary.blipPerMille, nudge: slow.summary.nudgePerMille,
             depth: slow.summary.depthErrPerMille, toggle: slow.summary.depthTogglePerMille, mark: slow.summary.markShown?.mean,
@@ -458,13 +498,14 @@ try {
         }
       }
       writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 2));
+      await closeBrowser();
     }
   }
   report.finishedAt = new Date().toISOString();
   writeFileSync(`${out}/report.json`, JSON.stringify(report, null, 2));
 } finally {
   if (refresher) clearInterval(refresher);
-  if (browser) await browser.close().catch(() => {});
+  await closeBrowser().catch((error) => { console.error(String(error)); process.exitCode = 3; });
   for (const server of servers) await server.close().catch(() => {});
   if (!swiftshader) releaseCaptureLock();
 }
