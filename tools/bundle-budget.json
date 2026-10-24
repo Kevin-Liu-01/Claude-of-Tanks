@@ -8,7 +8,7 @@
       "gzip": 1237522,
       "brotli": 1044894,
       "inlineCss": 4313,
-      "entryRaw": 847819,
+      "entryRaw": 847870,
       "entryBrotli": 233569
     },
     "home": {
@@ -45,7 +45,7 @@
       "gzip": 1289948,
       "brotli": 1087202,
       "inlineCss": 4741,
-      "entryRaw": 847819,
+      "entryRaw": 847870,
       "entryBrotli": 233569
     }
   }
