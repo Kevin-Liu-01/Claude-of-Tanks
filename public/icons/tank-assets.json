@@ -28174,12 +28174,12 @@
             "name": "turretRing",
             "min": [
               -0.9656,
-              1.1996,
+              1.4589,
               -0.4349
             ],
             "max": [
               0.933,
-              1.4156,
+              1.6749,
               1.5571
             ],
             "turretLocal": false
@@ -28414,7 +28414,7 @@
             "max": [
               0.8922,
               0.5405,
-              0.9529
+              0.9429
             ],
             "turretLocal": true
           },
@@ -28436,7 +28436,7 @@
         ]
       },
       "geometryHash": "94ced23e",
-      "metadataHash": "923c1bdd",
+      "metadataHash": "1b56214f",
       "presentationAnchor": {
         "xM": 0.0014,
         "zM": 0.0747
@@ -28462,7 +28462,7 @@
           "armorPaint": 12,
           "tireRubber": 1,
           "opticGlass": 2,
-          "gunmetal": 6,
+          "gunmetal": 7,
           "unclassified": 17,
           "gearShadow": 1,
           "canvas": 1,
@@ -28495,24 +28495,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 92224,
-          "sha256": "180985562adebfa5d622a9c0d093b018ca0048896ace8ff738e1539136fb0ff1"
+          "bytes": 94450,
+          "sha256": "ff3e01c42a45f207e8740f43ae689c28329650e50bdcbd40513a52ab2c4bc749"
         },
         "modulesSide": {
           "file": "amx56_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 93831,
-          "sha256": "d31580d6497cbb19b5a07d548f42184c2b46dab176d71f6bdee95e846d890b97"
+          "bytes": 95877,
+          "sha256": "27d83fe97d5e4edff57d181e38e07434ebd904262af552e3257f3aaea73be4e1"
         },
         "crewSide": {
           "file": "amx56_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 79915,
-          "sha256": "76fd52314ca21acc5d05bcc2267c8b00b1514061c0834f2976f5b66d5865ec13"
+          "bytes": 80044,
+          "sha256": "559196e758d21c4f94d1a626ec31a0dd3c8b6e540a33b0215db617003d13ce00"
         },
         "angle": {
           "file": "amx56_angle.webp",
