@@ -5,11 +5,11 @@
     "game": {
       "requests": 130,
       "raw": 4007160,
-      "gzip": 1236890,
-      "brotli": 1044137,
+      "gzip": 1236888,
+      "brotli": 1043934,
       "inlineCss": 4318,
       "entryRaw": 850004,
-      "entryBrotli": 234020
+      "entryBrotli": 233817
     },
     "home": {
       "requests": 8,
@@ -42,11 +42,11 @@
     "cn": {
       "requests": 131,
       "raw": 4156943,
-      "gzip": 1289939,
-      "brotli": 1087037,
+      "gzip": 1289937,
+      "brotli": 1086834,
       "inlineCss": 4742,
       "entryRaw": 850004,
-      "entryBrotli": 234020
+      "entryBrotli": 233817
     }
   }
 }
