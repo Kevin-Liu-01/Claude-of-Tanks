@@ -18,7 +18,10 @@
  * plane at a radius off the ring's axis is TURRET_SEAT_GAP_M over the hull's highest top at that radius on any bearing
  * (the receipt's swept deck, turretRingWell.ts measureTurretSweep), so whatever of the turret passes over a hull part
  * at some bearing stands its gap over it: no higher than TURRET_SEAT_RISE_M over the deck round the ring (a deck a few
- * centimetres proud of the ring's, a plate over the track's return; taller kit keeps its own clearance), and lower
+ * centimetres proud of the ring's, a plate over the track's return; taller kit keeps its own clearance; a builder whose
+ * turret turns over a raised engine deck sets its own limit, `turretG.userData.turretSeatRiseM`, and may widen the band a
+ * corner reads, `turretSeatReadM`, so a broad face reaching over that deck comes up whole; one whose receipt reads its
+ * ring well's floor for the deck sets the deck's own plane as a floor, `turretSeatMinY`), and lower
  * where the hull stays under that deck on every bearing (a lower engine deck or glacis, past the hull's sides), so a
  * bustle or a rack hanging over a lower deck keeps its drop. Procedural turrets were authored sitting into their decks,
  * so a traverse swept their buried undersides through the hull and its kit; seated, the turret's walls stop over a dark
@@ -132,16 +135,20 @@ export function seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables }
   const seatY = receipt.deckY + TURRET_SEAT_GAP_M, keepR = receipt.rimR + SEAT_RIM_CLEAR_M;
   const cx = receipt.seat[0], cz = receipt.seat[2];
   const sweep = receipt.sweepDy, sweepR0 = receipt.sweepR0 ?? Infinity;
+  const own = (key: string, fallback: number): number =>
+    typeof turretG.userData[key] === 'number' ? turretG.userData[key] as number : fallback;
+  const rise = own('turretSeatRiseM', TURRET_SEAT_RISE_M), read = own('turretSeatReadM', SWEEP_READ_M);
+  const floorY = own('turretSeatMinY', -Infinity);
   // the plane a corner at plan radius r comes up to: its gap over the swept deck's highest band within SWEEP_READ_M of
   // r (no higher than TURRET_SEAT_RISE_M over the deck round the ring), or the deck's own plane without a swept deck
   const planeAt = (r: number): number => {
-    if (!sweep?.length || r < sweepR0) return seatY;
-    const b0 = Math.max(0, Math.floor((r - SWEEP_READ_M - sweepR0) / TURRET_SWEEP_BIN_M));
-    const b1 = Math.floor((r + SWEEP_READ_M - sweepR0) / TURRET_SWEEP_BIN_M);
-    if (b1 >= sweep.length) return seatY;
+    if (!sweep?.length || r < sweepR0) return Math.max(seatY, floorY);
+    const b0 = Math.max(0, Math.floor((r - read - sweepR0) / TURRET_SWEEP_BIN_M));
+    const b1 = Math.min(sweep.length - 1, Math.floor((r + read - sweepR0) / TURRET_SWEEP_BIN_M));
+    if (Math.floor((r + SWEEP_READ_M - sweepR0) / TURRET_SWEEP_BIN_M) >= sweep.length) return Math.max(seatY, floorY);
     let dy = TURRET_SWEEP_FLOOR_M;
     for (let b = b0; b <= b1; b++) dy = Math.max(dy, sweep[b]);
-    return seatY + Math.min(dy, TURRET_SEAT_RISE_M);
+    return Math.max(seatY + Math.min(dy, rise), floorY);
   };
   hullG.updateWorldMatrix(true, false);
   turretG.updateMatrixWorld(true);
