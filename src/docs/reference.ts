@@ -7,6 +7,9 @@ const escape = (value: unknown): string => String(value).replace(/[&<>"']/g, cha
 const text = (key: string): string => t(`docs.reference.${key}`);
 const number = (value: number): string => new Intl.NumberFormat(getLocale(), {maximumFractionDigits:3}).format(value);
 const pair = (label: string, value: unknown): string => `<div><dt>${text(label)}</dt><dd>${escape(value)}</dd></div>`;
+/** A catalog name, or the raw value when the catalog has none (a nation or class added after the copy). */
+const named = (key: string, fallback: string): string => { const value = t(key); return value === key ? fallback : value; };
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 
 export function mountReference(article: HTMLElement, slug: string): void {
   // the tanks chapter's fleet reference: every production vehicle's base values (tools/generate-manual-reference.mjs)
@@ -20,8 +23,11 @@ export function mountReference(article: HTMLElement, slug: string): void {
   records.innerHTML = data.vehicles.map(v => {
     const systems = [v.smoke ? `${text('smoke')} (${v.smoke})` : '', v.lights ? text('lights') : '',
       v.roofGun ? text('roofGun') : '', v.missile ? text('missile') : '', v.suspension ? text('suspension') : ''].filter(Boolean);
-    return `<details class="manual-record" data-vehicle="${escape(v.id)}" data-search="${escape(`${v.name} ${v.nation} ${v.role}`)}">
-      <summary><strong>${escape(v.name)}</strong><span>${escape(v.nation.toUpperCase())} · ${escape(v.role)} · ${v.tier}</span></summary>
+    // the nation and the class by the reader's catalog (nation.*, fleet.class.*), the tier as the fleet writes it
+    const nation = named(`nation.${v.nation}`, v.nation), role = named(`fleet.class.${v.role}`, v.role);
+    const tier = t('killcam.tier', { tier: ROMAN[v.tier] ?? String(v.tier) });
+    return `<details class="manual-record" data-vehicle="${escape(v.id)}" data-search="${escape(`${v.name} ${nation} ${role} ${v.nation} ${v.role}`)}">
+      <summary><strong>${escape(v.name)}</strong><span>${escape(nation)} · ${escape(role)} · ${escape(tier)}</span></summary>
       <dl>${pair('hp',number(v.hp))}${pair('speed',`${number(v.speed)} / ${number(v.reverse)} km/h`)}
       ${pair('hull',`${number(v.hull)} °/s`)}${pair('turret',`${number(v.turret)} °/s`)}
       ${pair('dispersion',`${number(v.dispersion)} m / 100 m`)}${pair('aim',`${number(v.aim)} s`)}
