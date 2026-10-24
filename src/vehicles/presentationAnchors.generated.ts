@@ -16,7 +16,7 @@ export interface TankPresentationProjection {
 export const TANK_PRESENTATION_ANCHOR_SCHEMA_VERSION = 2;
 
 export const TANK_PRESENTATION_ANCHORS: Readonly<Record<string, TankPresentationAnchor>> = Object.freeze({
-  abramsx: Object.freeze({ xM: 0.0041, zM: -0.0927 }),
+  abramsx: Object.freeze({ xM: 0.0026, zM: -0.0939 }),
   aft10: Object.freeze({ xM: 0.0005, zM: 0.1881 }),
   ajax: Object.freeze({ xM: -0.0067, zM: -0.2982 }),
   amx10p: Object.freeze({ xM: 0, zM: 0.0117 }),
@@ -247,7 +247,7 @@ export function presentationAnchorFor(id: string): TankPresentationAnchor | null
 // Hit markers consume these receipts so they overlay the generated assets
 // without re-deriving scale from symmetric published dimensions.
 export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresentationProjection>> = Object.freeze({
-  abramsx: Object.freeze({ centerYM: 2.0715, topHalfM: 6.3528, sideHalfM: 3.1764 }),
+  abramsx: Object.freeze({ centerYM: 2.0715, topHalfM: 6.3541, sideHalfM: 3.177 }),
   aft10: Object.freeze({ centerYM: 2.6352, topHalfM: 4.4842, sideHalfM: 2.8201 }),
   ajax: Object.freeze({ centerYM: 1.8514, topHalfM: 4.1778, sideHalfM: 2.0889 }),
   amx10p: Object.freeze({ centerYM: 2.05, topHalfM: 3.1984, sideHalfM: 2.1935 }),
