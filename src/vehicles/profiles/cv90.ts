@@ -526,7 +526,8 @@ function buildCv90MkivRunningGear(P: CvBuilderPort): void {
       P.add('hull', KIT.box(.026,.59,.72), side*2.073,1.30,z);
       for (const y of [1.08, 1.52]) P.add('hullDetail', KIT.cylX(0.019, 0.20, 8), side * 2.09, y, z);
     }
-    P.add('hull', KIT.box(0.15, 0.18, 6.20), side * 1.89, 1.87, -0.70);
+    // (release 240: 3 cm lower, under the turret's side armour, 1.757 after the vehicle scale, which grazed it)
+    P.add('hull', KIT.box(0.15, 0.18, 6.20), side * 1.89, 1.84, -0.70);
     for (const z of [1.25, -0.15, -1.55]) {
       P.addEquipment('hull', KIT.box(0.10, 0.24, 0.30), side * 2.09, 1.68, z);
       P.addModuleVisual('optics', 'hullGlass', KIT.box(0.014, 0.13, 0.18), side * 2.15, 1.68, z);
@@ -540,13 +541,9 @@ function buildCv90MkivRunningGear(P: CvBuilderPort): void {
       [side * 2.06, 1.84, -3.43], [side * 2.06, 0.72, -3.59],
     ));
   }
-  for (const x of [-1.47, 1.47]) {
-    for (const y of [1.97, 2.37]) P.add('hullDetail', KIT.box(0.035, 0.035, 2.26), x, y, -1.57);
-    // 2026-10-19 (owner float sweep): rails and posts stood 62-110 mm over the 1.89 roof; the posts now reach it.
-    for (const z of [-2.67, -2.12, -1.57, -1.02, -0.47]) {
-      P.add('hullDetail', KIT.box(0.035, 0.493, 0.035), x, 2.1335, z);
-    }
-  }
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): no rails and posts on the troop roof. They
+  // stood 0.49 m over it from -0.47 to -2.67, all inside the sweep of the turret's bustle and its own rack (2.18 m off
+  // the ring's axis), which skims that roof: buried 38 cm in the turret at rest, run through at every other bearing.
 }
 
 function addCv90MkivScaffoldedCradle(P: CvBuilderPort): void {

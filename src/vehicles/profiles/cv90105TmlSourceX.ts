@@ -59,7 +59,9 @@ function buildTmlHull(P: TankBuilderPort): void {
     P.hangMudguard('cv90105-rear-'+side,'hullRubber',box(.48,.22,.055),side*1.24,.77,-3.04,.10);
     P.addEquipment('hullDetail',box(.22,.095,.13),side*1.13,1.24,2.97);
     P.addEquipment('hullGlass',markVehicleNightLens(box(.15,.045,.015), 'headlight'),side*1.13,1.25,3.044);
-    for(const z of [-2.60,-1.96])P.addHatch('hullDetail',box(.76,.025,.46),side*.91,1.671,z); // 2026-10-19 (owner float sweep): 12 mm over the deck; seated
+    // 2026-10-19 (owner float sweep): 12 mm over the deck; seated. Release 240 (the owner: "make sure all tank turrets are
+    // clear of hulls"): 1.5 cm into the deck, 1 cm proud, under the turret's rear underside (1.68), which swept their tops.
+    for(const z of [-2.60,-1.96])P.addHatch('hullDetail',box(.76,.025,.46),side*.91,1.656,z);
     P.addEquipment('hullDetail',box(.035,.045,1.48),side*1.30,1.54,1.01);
   }
   buildTmlRearRamp(P);
