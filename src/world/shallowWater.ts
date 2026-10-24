@@ -401,7 +401,9 @@ export function createShallowWaterSurface(
   const shoreDist = profile.kind === 'coast' && ocean
     ? shoreDistanceTexture(mask, size, ramp[0] + 0.02, (geometry.userData.landRiseAt as ((x: number, z: number) => number) | undefined) ?? null) : null;
   const seaShelf = { value: new THREE.Vector4(shoreDist ? 1 : 0, SEA_SHELF.colourM, SEA_SHELF.alphaM, SEA_SHELF.shallowAlpha) };
-  const seaTint = { value: new THREE.Vector4(SEA_TINT.turquoise, SEA_TINT.deepBlue, SEA_TINT.deepDarken, 0) };
+  // (2026-10-23: a sea may carry its own shelf look, the profile's seaTurquoise / seaDeepBlue)
+  const seaTurquoise = profile.seaTurquoise ?? SEA_TINT.turquoise, seaDeepBlue = profile.seaDeepBlue ?? SEA_TINT.deepBlue;
+  const seaTint = { value: new THREE.Vector4(seaTurquoise, seaDeepBlue, SEA_TINT.deepDarken, 0) };
   const swellDirRad = (ocean?.state.swellDirDeg ?? 0) * Math.PI / 180;
   const swell = { value: new THREE.Vector4(ocean ? SEA_SWELL.slope : 0, SEA_SWELL.lengthM, swellDirRad, ocean ? SEA_SWELL.classicNormal : 1) };
   // 2026-10-05 (the sea's second round, QA): the sky mirror's grazing exponent (1 = as before) and the per-coast shelf share
@@ -949,7 +951,7 @@ export function createShallowWaterSurface(
         lightTune('WATER_BODY_GRAZE', 0.35));
       seaShelf.value.set(shoreDist ? lightTune('SEA_SHELF', 1) : 0, lightTune('SEA_SHELF_COLOUR_M', SEA_SHELF.colourM),
         lightTune('SEA_SHELF_ALPHA_M', SEA_SHELF.alphaM), lightTune('SEA_SHALLOW_ALPHA', SEA_SHELF.shallowAlpha));
-      seaTint.value.set(lightTune('SEA_TURQUOISE', SEA_TINT.turquoise), lightTune('SEA_DEEP_BLUE', SEA_TINT.deepBlue),
+      seaTint.value.set(lightTune('SEA_TURQUOISE', seaTurquoise), lightTune('SEA_DEEP_BLUE', seaDeepBlue),
         lightTune('SEA_DEEP_DARKEN', SEA_TINT.deepDarken), 0);
       swell.value.set(ocean ? lightTune('SEA_SWELL_SLOPE', SEA_SWELL.slope) : 0, lightTune('SEA_SWELL_M', SEA_SWELL.lengthM), swellDirRad,
         ocean ? lightTune('SEA_CLASSIC_NORMAL', SEA_SWELL.classicNormal) : 1);

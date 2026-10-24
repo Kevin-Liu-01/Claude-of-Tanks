@@ -618,3 +618,41 @@ console.log('jevCommander.selftest: team document, question fan-out, order appli
   commander.stop(); assert.equal(fake.requests[1].signal.aborted,true,'battle end aborts outstanding work');
   commander.dispose();
 }
+
+{
+  console.log('[12] out of credit or a TypeSafe 429 ends Jev for the session: no retry, the classic brain commands, no error shown');
+  for (const [error, status] of [['upstream_out_of_credit', 503], ['upstream_rate_limited', 429], ['session_budget_spent', 429]]) {
+    const calls = [];
+    const fetch = async (url, init) => { calls.push(url); return { status, json: async () => ({ error }) }; };
+    const transport = createJevFetchTransport({ url: '/api/jev', fetch, sid: 'sess_credit_0001' });
+    const f = fixture();
+    const commander = createJevCommander({ transport, teams: ['enemy'], cadenceS: 2, now: () => 0 });
+    commander.step(f.view);
+    assert.equal(calls.length, 1, `${error}: the first request goes out`);
+    await tick(); commander.step(f.view);
+    assert.equal(transport.halted, true, `${error}: the transport halts`);
+    assert.equal(commander.stats().lastError, error);
+    for (const time of [3, 40, 600]) { f.set(time); commander.step(f.view); await tick(); }
+    assert.equal(calls.length, 1, `${error}: never retried, however long the battle runs`);
+    assert.equal(commander.stats().budgetSpent, true, 'the team reads as out of budget: the classic brain commands');
+    commander.dispose();
+    const nextBattle = createJevCommander({ transport, teams: ['enemy', 'player'], now: () => 0 });
+    nextBattle.step(fixture().view); await tick();
+    assert.equal(calls.length, 1, `${error}: the next battle of the same session asks nothing`);
+    nextBattle.dispose();
+    const nextSession = createJevFetchTransport({ url: '/api/jev', fetch, sid: 'sess_credit_0002' });
+    assert.equal(nextSession.halted, false, 'a new session starts fresh');
+  }
+  // the proxy's own throttles stay a back-off, not the end of the session
+  const calls = [];
+  const transport = createJevFetchTransport({ url: '/api/jev', sid: 'sess_credit_0003',
+    fetch: async () => { calls.push(1); return { status: 429, json: async () => ({ error: 'session_rate_limited', retryAfterMs: 5000 }) }; } });
+  const f = fixture();
+  const commander = createJevCommander({ transport, teams: ['enemy'], cadenceS: 2, now: () => 0 });
+  commander.step(f.view); await tick(); commander.step(f.view);
+  assert.equal(transport.halted, false, 'a proxy throttle is not out of credit');
+  f.set(60); commander.step(f.view);
+  assert.equal(calls.length, 2, 'it asks again after the back-off');
+  commander.dispose();
+  console.log('jevCommander.selftest: a spent or rate-limited TypeSafe ends Jev for the session without an error');
+}

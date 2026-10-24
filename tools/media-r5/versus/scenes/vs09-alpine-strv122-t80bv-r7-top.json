@@ -1,0 +1,535 @@
+{
+ "map": "alpine",
+ "timeOfDay": "day",
+ "seed": 1979,
+ "light": {
+  "sunAzimuthDeg": 157.26,
+  "sunElevationDeg": 30
+ },
+ "actors": [
+  {
+   "id": "strv122_x",
+   "name": "hero",
+   "pos": [
+    233.45,
+    160.03
+   ],
+   "facingDeg": 216.83,
+   "turretDeg": 85.16,
+   "gunDeg": 9.94,
+   "camo": "winter",
+   "camoSeed": 7191,
+   "recoilAgeS": 0.1
+  },
+  {
+   "id": "t80bv",
+   "name": "foe0",
+   "pos": [
+    221.55,
+    167.46
+   ],
+   "facingDeg": 128.02,
+   "turretDeg": 3.96,
+   "gunDeg": -5,
+   "camo": "winter",
+   "camoSeed": 7192,
+   "state": "engine-smoking",
+   "stateAgeS": 6
+  }
+ ],
+ "effects": [
+  {
+   "type": "dust",
+   "at": [
+    242.66,
+    171.79
+   ],
+   "tMs": 5700,
+   "params": {
+    "count": 24,
+    "intensity": 1.3,
+    "dirDeg": 216.83
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    245.08,
+    169.98
+   ],
+   "tMs": 5700,
+   "params": {
+    "count": 24,
+    "intensity": 1.3,
+    "dirDeg": 216.83
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    240.73,
+    169.91
+   ],
+   "tMs": 6000,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 216.83
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    243.15,
+    168.1
+   ],
+   "tMs": 6000,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 216.83
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    239.11,
+    168.34
+   ],
+   "tMs": 6250,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 216.83
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    241.53,
+    166.53
+   ],
+   "tMs": 6250,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 216.83
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    237.5,
+    166.78
+   ],
+   "tMs": 6500,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 216.83
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    239.92,
+    164.96
+   ],
+   "tMs": 6500,
+   "params": {
+    "count": 27,
+    "intensity": 1.3,
+    "dirDeg": 216.83
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    236.21,
+    165.52
+   ],
+   "tMs": 6700,
+   "params": {
+    "count": 24,
+    "intensity": 1.3,
+    "dirDeg": 216.83
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    238.63,
+    163.71
+   ],
+   "tMs": 6700,
+   "params": {
+    "count": 24,
+    "intensity": 1.3,
+    "dirDeg": 216.83
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    235.24,
+    164.58
+   ],
+   "tMs": 6850,
+   "params": {
+    "count": 21,
+    "intensity": 1.3,
+    "dirDeg": 216.83
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    237.66,
+    162.77
+   ],
+   "tMs": 6850,
+   "params": {
+    "count": 21,
+    "intensity": 1.3,
+    "dirDeg": 216.83
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    234.66,
+    164.02
+   ],
+   "tMs": 6940,
+   "params": {
+    "count": 15,
+    "intensity": 1.3,
+    "dirDeg": 216.83
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    237.08,
+    162.21
+   ],
+   "tMs": 6940,
+   "params": {
+    "count": 15,
+    "intensity": 1.3,
+    "dirDeg": 216.83
+   }
+  },
+  {
+   "type": "muzzle_flash",
+   "actor": "hero",
+   "tMs": 6900,
+   "params": {
+    "caliberMm": 120,
+    "quality": "battle"
+   }
+  },
+  {
+   "type": "impact",
+   "at": [
+    223.99,
+    -1.06,
+    165.94
+   ],
+   "tMs": 6100,
+   "params": {
+    "kind": "pen",
+    "caliberMm": 120,
+    "normal": [
+     -0.12,
+     0.55,
+     -0.59
+    ]
+   }
+  },
+  {
+   "type": "sparks",
+   "at": [
+    223.99,
+    -1.06,
+    165.94
+   ],
+   "tMs": 6120,
+   "params": {
+    "caliberMm": 120,
+    "normal": [
+     -0.12,
+     0.55,
+     -0.59
+    ]
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    223.99,
+    -1.06,
+    165.94
+   ],
+   "tMs": 6110,
+   "params": {
+    "count": 10,
+    "speedMps": 8,
+    "hot": 0.9,
+    "scale": 0.45
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    226.58,
+    157.24
+   ],
+   "tMs": 6300,
+   "params": {
+    "size": "small",
+    "munition": "he",
+    "cause": "shot"
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    226.58,
+    -1.84,
+    157.24
+   ],
+   "tMs": 6320,
+   "params": {
+    "count": 24,
+    "speedMps": 15,
+    "hot": 0.5,
+    "scale": 0.7
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    226.58,
+    157.24
+   ],
+   "tMs": 6350,
+   "params": {
+    "count": 18,
+    "intensity": 1.2,
+    "dirDeg": 188
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    233.58,
+    167.24
+   ],
+   "tMs": 5600,
+   "params": {
+    "size": "small",
+    "munition": "he",
+    "cause": "shot"
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    233.58,
+    -0.94,
+    167.24
+   ],
+   "tMs": 5620,
+   "params": {
+    "count": 24,
+    "speedMps": 13,
+    "hot": 0.4,
+    "scale": 0.7
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    233.58,
+    167.24
+   ],
+   "tMs": 5650,
+   "params": {
+    "count": 15,
+    "intensity": 1.1,
+    "dirDeg": 1
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    272,
+    172
+   ],
+   "tMs": 0,
+   "params": {
+    "size": "huge"
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    272.6,
+    172.6
+   ],
+   "tMs": 1000,
+   "params": {
+    "size": "huge"
+   }
+  },
+  {
+   "type": "fire_field",
+   "at": [
+    248,
+    178.5
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 3.5,
+    "durationS": 40,
+    "intensity": 1.1,
+    "smoke": true
+   }
+  },
+  {
+   "type": "embers",
+   "at": [
+    248,
+    178.5
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 3,
+    "rate": 45,
+    "durationS": 20,
+    "rise": 3
+   }
+  }
+ ],
+ "fxTime": 7000,
+ "timeScale": 0,
+ "storyboard": {
+  "version": 1,
+  "durationMs": 8500,
+  "shots": [],
+  "actorTracks": [
+   {
+    "actor": "hero",
+    "keys": [
+     {
+      "id": "hero-0",
+      "tMs": 5026,
+      "pos": [
+       246.2,
+       172.4
+      ],
+      "facingDeg": 216.83,
+      "turretDeg": 85.16,
+      "gunDeg": 9.94,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-1",
+      "tMs": 7400,
+      "pos": [
+       230.86,
+       157.52
+      ],
+      "facingDeg": 216.83,
+      "turretDeg": 85.16,
+      "gunDeg": 9.94,
+      "transition": "linear"
+     }
+    ]
+   }
+  ]
+ },
+ "picture": {
+  "grain": {
+   "amount": 0.05,
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
+  "vignette": {
+   "amount": 0.36,
+   "roundness": 0.55,
+   "softness": 0.6
+  },
+  "dof": {
+   "enabled": false
+  },
+  "chromaticAberration": 0,
+  "exposure": 0.3,
+  "vibrance": 0.14,
+  "contrast": 1.05
+ },
+ "fx": {
+  "quality": "cinematic",
+  "trackDust": true
+ },
+ "autoPlace": false,
+ "meta": {
+  "id": "vs09-alpine-strv122-t80bv-r7-top",
+  "kind": "versus-still",
+  "pair": "strv122_x v t80bv",
+  "round": 7,
+  "view": "top-down",
+  "idea": "the ice-road ambush from above: a crane over the snow looks down on the Strv 122 sliding off the causeway, its gun swung onto the T-80BV come down after it",
+  "lens": "a",
+  "pick": "vs09-alpine-strv122-t80bv-r7-top:a",
+  "restage": [
+   "r7c: foe0 turret -41.27 -> -6.04; hero flash 6955 -> 6900 ms; ricochet removed (3 effects); debris at 6320 ms scale 0.7; debris at 5620 ms scale 0.7",
+   "r7d: foe turret -6.04 -> 3.96 (10° off centre, on the hero's front corner)",
+   "r7e: lens [232.33, 5, 153.24] fov 54.16 -> [224.96, 13.51, 156.77] fov 54",
+   "r7f: lens {\"pos\":[233.08,4,153.24],\"lookAt\":[231.22,-2.1,163.07],\"fov\":56.16,\"rollDeg\":9.8}",
+   "r7g: lens {\"pos\":[233.64,6,150.29],\"lookAt\":[229.84,-2.1,164.56],\"fov\":60.16,\"rollDeg\":9.8}",
+   "r7i: the r7g lens; the two small HE bursts between the tanks (5.6 s and 6.3 s, their debris and dust) moved to 6.65 and 6.78 s, so the still at 7 s catches fresh blasts, not their grown smoke over the T-80BV",
+   "r7k-base: camera and cameraVariants and effects back to before r7g (the owner wanted the frame shifted up, not the eye raised)",
+   "r7k: tilted up 4.58° (a frame shift up); lens {\"pos\":[233.08,4,153.24],\"lookAt\":[231.29,-1.32,163.55],\"fov\":56.16,\"rollDeg\":9.8}"
+  ],
+  "notes": [
+   "r7j 10-23: the near-miss explosions 18-23 moved past the 7000 ms still (7150-7330 ms): at 6650-6830 they bloomed over the T-80BV at the still."
+  ]
+ },
+ "camera": {
+  "name": "a",
+  "pos": [
+   233.08,
+   4,
+   153.24
+  ],
+  "lookAt": [
+   231.29,
+   -1.32,
+   163.55
+  ],
+  "fov": 56.16,
+  "rollDeg": 9.8,
+  "groundRel": true
+ },
+ "cameraVariants": [
+  {
+   "name": "a",
+   "pos": [
+    233.08,
+    4,
+    153.24
+   ],
+   "lookAt": [
+    231.29,
+    -1.32,
+    163.55
+   ],
+   "fov": 56.16,
+   "rollDeg": 9.8,
+   "groundRel": true
+  }
+ ]
+}

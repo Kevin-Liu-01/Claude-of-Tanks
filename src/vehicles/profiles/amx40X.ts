@@ -77,11 +77,15 @@ function hullDeck(P:TankBuilderPort):void {
     put(P,'hullDetail',box(.537,.044,1.02),x,1.739,-2.741);
     for(let i=0;i<17;i++)put(P,'hullDark',box(.488,.011,.023),x,1.766,-3.185+i*.055);
   }
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the fore grilles sit 3 cm deeper, recessed
+  // into the climbing deck (their fore ends flush with it), under the turret's front corners, 1.7 m off the ring's axis
+  // at 1.698, which ran through their slats as it turned aft.
+  const foreGrilleDrop=.03;
   for(const s of[-1,1]) {
-    put(P,'hullDetail',box(.945,.024,1.068),s*.48,1.698,-1.644,.101);
+    put(P,'hullDetail',box(.945,.024,1.068),s*.48,1.698-foreGrilleDrop,-1.644,.101);
     // 2026-10-19 (owner float sweep): the slats rose while the grille fell (24-45 mm clear by slat 8-10); each slat now
     // rides the grille top where it would stand above it.
-    for(let i=0;i<18;i++){const z=-2.15+i*.056;put(P,'hullDark',box(.865,.015,.026),s*.48,Math.min(1.72+i*.0049,1.7155-(z+1.644)*.1008),z);}
+    for(let i=0;i<18;i++){const z=-2.15+i*.056;put(P,'hullDark',box(.865,.015,.026),s*.48,Math.min(1.72+i*.0049,1.7155-(z+1.644)*.1008)-foreGrilleDrop,z);}
     put(P,'hullDark',box(.45,.239,.047),s*1.133,1.430,-3.37);
     for(let i=0;i<7;i++)put(P,'hullDetail',box(.469,.018,.042),s*1.133,1.321+i*.034,-3.40);
     put(P,'hullDetail',cylZ(.046,.78,20),s*1.49,1.448,-2.86);

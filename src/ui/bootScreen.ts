@@ -44,25 +44,26 @@ declare global {
   }
 }
 
-type BootTip = readonly [heading: string, body: string];
 type BootStage = readonly [key: string, label: string, weight: number];
 
 // Tip keys are resolved through i18n at render time so the rotating list
 // stays in sync with the player's chosen locale. Order is hand-curated.
-const TIP_KEYS: ReadonlyArray<readonly [headingKey: string, bodyKey: string]> = [
-  ['boot.tip.angling.heading', 'boot.tip.angling.body'],
-  ['boot.tip.weakspots.heading', 'boot.tip.weakspots.body'],
-  ['boot.tip.camouflage.heading', 'boot.tip.camouflage.body'],
-  ['boot.tip.gunhandling.heading', 'boot.tip.gunhandling.body'],
-  ['boot.tip.hulldown.heading', 'boot.tip.hulldown.body'],
-  ['boot.tip.tracks.heading', 'boot.tip.tracks.body'],
-  ['boot.tip.sniper.heading', 'boot.tip.sniper.body'],
-  ['boot.tip.gunhold.heading', 'boot.tip.gunhold.body'],
-  ['boot.tip.spotting.heading', 'boot.tip.spotting.body'],
-  ['boot.tip.shelltypes.heading', 'boot.tip.shelltypes.body'],
-  ['boot.tip.terrain.heading', 'boot.tip.terrain.body'],
-  ['boot.tip.ammorack.heading', 'boot.tip.ammorack.body'],
-  ['boot.tip.flanking.heading', 'boot.tip.flanking.body'],
+// The tip's body alone: its heading was a kicker over it (owner: no eyebrows). A tip marked `fine` names a mouse or
+// keyboard control, so a coarse pointer never sees it (SPEC 12.1.1).
+const TIP_KEYS: ReadonlyArray<readonly [bodyKey: string, fine?: true]> = [
+  ['boot.tip.angling.body'],
+  ['boot.tip.weakspots.body'],
+  ['boot.tip.camouflage.body'],
+  ['boot.tip.gunhandling.body'],
+  ['boot.tip.hulldown.body'],
+  ['boot.tip.tracks.body'],
+  ['boot.tip.sniper.body', true],
+  ['boot.tip.gunhold.body', true],
+  ['boot.tip.spotting.body'],
+  ['boot.tip.shelltypes.body'],
+  ['boot.tip.terrain.body'],
+  ['boot.tip.ammorack.body'],
+  ['boot.tip.flanking.body'],
 ];
 
 // Stage labels are also i18n-resolved at render time.
@@ -97,8 +98,6 @@ interface BootScreen {
   dismiss(): void;
   readonly gated: boolean;
 }
-
-const TIPS: ReadonlyArray<BootTip> = TIP_KEYS.map(([h, b]) => [t(h), t(b)] as const);
 
 // Weighted load stages. Weight = measured share of boot wall-clock, so the bar
 // moves at a roughly constant rate instead of parking at 40% for three seconds.
@@ -273,6 +272,7 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   // coarse pointer gets the touch prompt.
   const coarsePointer = typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches;
   if (elGate) elGate.textContent = t(coarsePointer ? 'boot.gate.promptTouch' : 'boot.gate.prompt');
+  const tips = coarsePointer ? TIP_KEYS.filter(([, fine]) => !fine) : TIP_KEYS;
   if (elRetry) elRetry.textContent = t('boot.gate.retry');
   mountGitHubStars(document);
 
@@ -314,7 +314,7 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
   let finishEntrance: () => void = () => {};
   let stopHero: () => void = () => {};
   let tipTimer: ReturnType<typeof setInterval> | null = null;
-  let tipIdx = Math.floor(Math.random() * TIPS.length);
+  let tipIdx = Math.floor(Math.random() * tips.length);
 
   function paint() {
     // Ease toward the real target so a stage that lands 20 points of progress
@@ -333,17 +333,17 @@ export function createBootScreen({ mode = 'garage' }: BootScreenOptions = {}): B
 
   function showTip(i: number): void {
     if (!elTip) return;
-    const [headingKey, bodyKey] = TIP_KEYS[i % TIP_KEYS.length];
-    const head = t(headingKey);
-    const body = t(bodyKey);
-    elTip.innerHTML = `<b>${head}</b>${body}`;
+    // the sentence on its plate, the plate sized to it inside the tip's reserved box
+    const plate = document.createElement('span');
+    plate.textContent = t(tips[i % tips.length][0]);
+    elTip.replaceChildren(plate);
   }
   function rotateTip() {
     if (!elTip || dismissed) return;
     elTip.classList.add('fade');
     setTimeout(() => {
       if (dismissed) return;
-      tipIdx = (tipIdx + 1) % TIPS.length;
+      tipIdx = (tipIdx + 1) % tips.length;
       showTip(tipIdx);
       elTip.classList.remove('fade');
     }, 360);

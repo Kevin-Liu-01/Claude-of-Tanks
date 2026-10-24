@@ -46,8 +46,13 @@ export const ROOM_HOST_UNREACHABLE_TTL_MS = 3_000;
 export const ROOM_SIGNAL_MAX_BYTES = 8 * 1024;
 /** The browser-hosted authority emits a keyframe snapshot at least this often so any peer can become the host. */
 export const ROOM_MATCH_KEYFRAME_INTERVAL_MS = 2_000;
-/** The room polls the match host at this cadence while a match runs. */
-export const ROOM_MATCH_POLL_MS = 10_000;
+/**
+ * The room polls the match host at this cadence while a match runs; a p2p host reports at least this often. 30 s, not
+ * 10 (security audit 2026-10-22, NV-5/NV-9; Workers Free): every report is a billed Durable Object request, about 360
+ * an hour per running match at 10 s. A host that leaves or crashes is still found at once (its socket's grace, the
+ * peers' corroborated host_unreachable); only a host that stays connected and stops reporting waits out three.
+ */
+export const ROOM_MATCH_POLL_MS = 30_000;
 /** A match that has not answered two polls in a row is lost. */
 export const ROOM_MATCH_LOST_AFTER_POLLS = 2;
 /** Seat tokens issued at start are valid this long (reconnects through the whole match). */
@@ -395,13 +400,27 @@ export function randomRoomCode(random: () => number = Math.random): string {
   return code;
 }
 
+/** C0/C1 controls and the bidi embedding, override and isolate controls (security audit 2026-10-22): a name cannot reorder the text beside it. */
+const NAME_UNSAFE_CHARS = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g;
+
 export function normalizePlayerName(value: unknown): string {
-  return String(value ?? '').trim().replace(/\s+/g, ' ').slice(0, ROOM_MAX_NAME_CHARS);
+  return String(value ?? '').replace(/\s+/g, ' ').replace(NAME_UNSAFE_CHARS, '').trim().slice(0, ROOM_MAX_NAME_CHARS);
 }
 
 export function cleanId(value: unknown, code: RoomErrorCode = 'invalid_player'): string {
   const id = String(value ?? '').trim();
   if (!ROOM_ID_RE.test(id)) throw new RoomError(code);
+  return id;
+}
+
+/** The room bot planner's ids (roomBots.ts: `bot-<team>-<n>`, `mode-<team>-<n>`): never a seat's own playerId. */
+const ROOM_RESERVED_ID_RE = /^(?:bot|mode)-/;
+
+/** A seat's self-chosen playerId: a room id outside the planner's namespace, so one seat can never collide with a
+ * planned bot and make every host's match boot fail (security audit 2026-10-22). Clients mint `p_<hex>` ids. */
+export function cleanSeatId(value: unknown): string {
+  const id = cleanId(value);
+  if (ROOM_RESERVED_ID_RE.test(id)) throw new RoomError('invalid_player');
   return id;
 }
 
@@ -537,6 +556,7 @@ export function normalizeRoomChat(raw: unknown): string {
   for (const char of raw.normalize('NFC')) {
     const code = char.codePointAt(0) ?? 0;
     if (code < 0x20 || (code >= 0x7f && code <= 0x9f) || code === 0x200b || code === 0x2028 || code === 0x2029) continue;
+    if ((code >= 0x202a && code <= 0x202e) || (code >= 0x2066 && code <= 0x2069)) continue; // bidi overrides and isolates
     text += char;
     if (text.length >= ROOM_CHAT_MAX_CHARS) break;
   }

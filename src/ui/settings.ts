@@ -745,13 +745,14 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   const bindLabel = (id: ActionId): string =>
     input.labelFor(input.getBinding(id, 0) || input.getBinding(id, 1));
 
-  /** Broadcast current shell/consumable hotkey labels so the HUD tray never
-   *  shows a stale (or hardcoded) key. */
+  /** Broadcast current shell/consumable/map hotkey labels so the HUD tray and the map plate never
+   *  show a stale (or hardcoded) key. */
   function emitBindings() {
     emit('ui:bindingsChanged', {
       shells: (['shell1', 'shell2', 'shell3'] as const).map(bindLabel),
       consumables: (['consumable1', 'consumable2', 'consumable3'] as const).map(bindLabel),
       specialAction: bindLabel('specialAction'),
+      minimapZoom: bindLabel('minimapZoom'),
     });
   }
 

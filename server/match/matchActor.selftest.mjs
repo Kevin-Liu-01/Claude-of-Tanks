@@ -137,6 +137,9 @@ const driveP1 = (tick) => {
     if (other.closed) continue;
     other.send({ type: MESSAGE_TYPE.INPUT, clientTick: tick + 2, snapshotAckTick: other.ackTick(), interpDelayMs: 67, controls: [control({ flags: CONTROL_FLAGS.BRAKE })] });
   }
+  // the spectator acknowledges as the shipped client does (matchClient maintainAcks); one that never does draws
+  // forced keyframes from a bucket (2026-10-23, NV-11: forcedKeyframes.selftest)
+  if (!s1.closed && s1.ackTick() !== NO_TICK) s1.send({ type: MESSAGE_TYPE.SNAPSHOT_ACK, tick: s1.ackTick() });
 };
 await advanceTicks(actor, 180, driveP1);
 const p1Entity = actor.authority.entityById.get('p1');
@@ -290,7 +293,11 @@ const p2b = createHeadlessClient(actor, 1, 'p2');
 await flush();
 assert.ok(p2.closed && p2.closed.reason === CLOSE_REASON.REPLACED, 'a reconnecting seat replaces the old link');
 assert.ok(p2b.welcome && p2b.welcome.entityId === 2);
-await advanceTicks(actor, 30, driveP1);
+// the replacement acknowledges as a seated client does (a silent one draws forced keyframes from a bucket, NV-11)
+await advanceTicks(actor, 30, (tick) => {
+  driveP1(tick);
+  if (!p2b.closed && p2b.ackTick() !== NO_TICK) p2b.send({ type: MESSAGE_TYPE.SNAPSHOT_ACK, tick: p2b.ackTick() });
+});
 assert.ok(p2b.frames.length >= 13, 'the replacement receives snapshots');
 p2b.send({ type: MESSAGE_TYPE.LEAVE, reason: CLOSE_REASON.CLIENT_LEAVE });
 await flush();

@@ -107,6 +107,18 @@ export type BindingSlot = 0 | 1;
 export type AiDifficulty = 'easy' | 'normal' | 'hard';
 export type RmbMode = 'hold' | 'toggle' | 'freelook';
 
+/** A read-only pad sample (watch mode's drone reads the analog triggers the actions only see as pressed). */
+export interface PadSnapshot {
+  connected: boolean;
+  leftX: number;
+  leftY: number;
+  rightX: number;
+  rightY: number;
+  leftTrigger: number;
+  rightTrigger: number;
+  buttons: number;
+}
+
 interface InputVector {
   x: number;
   y: number;
@@ -190,6 +202,8 @@ export interface InputLayer {
   isPadConnected(): boolean;
   padActive(): boolean;
   getPadMove(out: InputVector): InputVector;
+  /** The first pad's curved sticks, analog triggers and pressed buttons (bit i = button i) from the last poll. */
+  getPadSnapshot(out: PadSnapshot): PadSnapshot;
   setVirtualMove(x: number, y: number): void;
   getVirtualMove(out: InputVector): boolean;
   addVirtualAim(dx: number, dy: number): void;
@@ -886,6 +900,8 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
   const padAim = { x: 0, y: 0 }; // curved right-stick deflection (-1..1)
   const padMove = { x: 0, y: 0 }; // curved left-stick deflection (-1..1)
   const padRawMove = { x: 0, y: 0 };
+  const padTriggers = { left: 0, right: 0 };
+  let padButtonBits = 0;
   let padConnected = false;
   let padLastActiveMs = -Infinity;
   let padLastPollMs = -1;
@@ -905,6 +921,9 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
     padMove.y = 0;
     padRawMove.x = 0;
     padRawMove.y = 0;
+    padTriggers.left = 0;
+    padTriggers.right = 0;
+    padButtonBits = 0;
     padConnected = false;
   }
 
@@ -941,7 +960,9 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       const button = pad.buttons[index];
       const pressed = !!button &&
         (button.pressed || button.value > PAD_TRIGGER_THRESHOLD);
-      if (pressed) active = true;
+      if (pressed) { active = true; padButtonBits |= 1 << index; }
+      if (index === 6) padTriggers.left = button?.value ?? 0;
+      if (index === 7) padTriggers.right = button?.value ?? 0;
       const wasPressed = padPrevPressed[index];
       padPrevPressed[index] = pressed;
       if (!enabled) continue;
@@ -976,7 +997,10 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       return;
     }
     padConnected = true;
-    const anyActivity = readPadAxes(pad) || pollPadButtons(pad);
+    // both always run: a deflected stick must not skip the buttons' poll (held triggers and edges)
+    const axesActive = readPadAxes(pad);
+    const buttonsActive = pollPadButtons(pad);
+    const anyActivity = axesActive || buttonsActive;
     updatePadMovementActions();
     if (anyActivity) padLastActiveMs = nowMs;
   }
@@ -1235,6 +1259,19 @@ export function createInput(opts: { lockElement?: HTMLElement | null } = {}): In
       pollPad();
       out.x = padMove.x;
       out.y = padMove.y;
+      return out;
+    },
+
+    getPadSnapshot(out) {
+      pollPad();
+      out.connected = padConnected;
+      out.leftX = padMove.x;
+      out.leftY = padMove.y;
+      out.rightX = padAim.x;
+      out.rightY = padAim.y;
+      out.leftTrigger = padTriggers.left;
+      out.rightTrigger = padTriggers.right;
+      out.buttons = padButtonBits;
       return out;
     },
 
