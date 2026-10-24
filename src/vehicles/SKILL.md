@@ -223,6 +223,23 @@ distance (killcam, Garage, Studio) and on a wreck the parts draw. A part in a
 detail wrapper, a battle detail group, a turret squash frame or the near-hull
 shadow never joins a copy. `?staticmerge=off|identity|translations|dual` switches
 the mode on one build for probes.
+Past `FAR_LOD_ENTER_M` (180 m screen-equivalent; back under 165 m) a dual battle
+build draws its far LOD (`farLod.ts`, perf-255), built from its own finished tree
+the first time it goes that far (one vehicle at a time, `claimFarLodBuild`): the
+far hull (its visible static draws merged per direct parent, material and far
+coplanar depth, then vertex-clustered at 5 cm, split by normal direction and never
+across a UV seam, each cell's normals and colours averaged; a long, thin part
+clusters alone at an eighth of its section) and the
+far running gear (one low cylinder per wheel station: the tyre layer's centre and
+radius, a rubber ring as wide as the tyre shows past its set's painted layers, the
+dish in the wheel paint; end wheels and tyreless sets all paint). Only what the
+stand-ins replace is parked on `FAR_LOD_PARKED_LAYER` (27): the hull sources, the
+wheel layers, roller spindles and end wheels; the bands, shoes and links stay. It
+is never toggled through `visible`, and the gear's runtime rests while far.
+Damage-edited buffers, ERA, markings, proxies and transparent draws never join the
+far hull. The switch evidence (perf-256) is CPU render pairs on either side of it
+at 165/180/200 m, side and 3/4 views, with silhouette XOR; a narrower probe lens
+must pin the vehicle's LODs to the true range (they pick by screen size).
 Destroyed-only char and ember atlases must remain demand-owned. The battle warm
 pipeline prepares fielded variants before rollout, while `setDestroyed()` is
 the correctness fallback for Studio and diagnostic callers that skip warming;

@@ -53,6 +53,8 @@ interface VisualLoadTiming {
   maxBuildStepIndex?: number;
   maxBuildStepStartedAt?: number;
   maxBuildStepFinishedAt?: number;
+  /** (perf-255) The far LOD's build, under the stream's budget (TankVisual.prepareFarLod). */
+  farLodMs?: number;
   coreBuildTiming?: CoreBuildTiming;
   uploadMs?: number;
   preUploadYieldMs?: number;
@@ -424,6 +426,13 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
       timing.textureUploadMs = stageReceipt.textureUploadMs;
       timing.compileMs = stageReceipt.compileMs;
       timing.postCompileYieldMs = stageReceipt.postCompileYieldMs;
+      // (perf-255) its far LOD now, under this budget, rather than in the first battle frame it stands that far
+      const visual = next.ent.visual as { prepareFarLod?(): boolean } | null | undefined;
+      if (visual?.prepareFarLod) {
+        await yieldForBudget();
+        mark = now();
+        if (visual.prepareFarLod()) timing.farLodMs = Math.round(now() - mark);
+      }
       timing.totalMs = Math.round(now() - timing.startedAt);
       built += 1;
       onProgress?.(built / Math.max(1, total));

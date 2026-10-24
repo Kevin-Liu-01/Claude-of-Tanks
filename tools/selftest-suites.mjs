@@ -1757,6 +1757,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/staticDrawMerge.selftest.mjs',
     'src/vehicles/battleStaticDrawMerge.selftest.mjs', // perf-250/251: the source-X Abrams' battle builds take the dual merge
     'src/vehicles/tankVisualClone.selftest.mjs', // perf-252: a copied visual (battle builds too) draws as a fresh build
+    'src/vehicles/farLod.selftest.mjs', // perf-255: the far LOD past 180 m, the near law after a far trip
     'src/vehicles/recoilRig.selftest.mjs',
     'src/fx/fxRuntimeAccess.selftest.mjs',
     'src/game/garageDressingAccess.selftest.mjs',
