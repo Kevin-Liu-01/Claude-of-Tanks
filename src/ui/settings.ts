@@ -389,8 +389,7 @@ const SETTINGS_CSS = `
 .cot-hints.fade{opacity:0;}
 .cot-hints .hg{display:flex;align-items:center;gap:var(--s2);}
 .cot-hints .hk{display:flex;gap:2px;}
-/* a flight (a drone, the gunship) flies on other keys (hud.ts sets the class with the HUD's aerial-active: a body:has()
-   rule restyled the whole page at every write in it) */
+/* a flight (a drone, the gunship) flies on other keys (the class: hud.ts) */
 body.cot-hud-aerial .cot-hints{display:none;}
 /* The pause veil (247): one plate over a dimmed battle. The whole veil resumes (a click inside the gesture relocks);
    Settings, the Esc menu, is its one other way out. */
