@@ -28,13 +28,15 @@ const savingData = (): boolean => {
 type MediaPlayerModule = typeof import('./mediaPlayer.ts');
 let media: MediaPlayerModule | null = null;
 const pageVideos = document.querySelectorAll<HTMLVideoElement>('video[data-media-player], video[data-autoplay-video]');
-if (pageVideos.length) {
-  void Promise.all([import('./mediaPlayer.ts'), import('./mediaPlayer.css')]).then(([module]) => {
+const videoLabels = (playing: boolean, video: HTMLVideoElement): string => t(playing ? 'publicPages.video.pauseAria'
+  : 'publicPages.video.playAria', { label: video.dataset.i18nLabel ? t(video.dataset.i18nLabel) : video.dataset.label || '' });
+const mediaModule = pageVideos.length
+  ? Promise.all([import('./mediaPlayer.ts'), import('./mediaPlayer.css')]).then(([module]) => {
     media = module;
-    module.mountMediaPlayers(pageVideos, (playing, video) => t(playing ? 'publicPages.video.pauseAria'
-      : 'publicPages.video.playAria', { label: video.dataset.i18nLabel ? t(video.dataset.i18nLabel) : video.dataset.label || '' }));
-  });
-}
+    module.mountMediaPlayers(pageVideos, videoLabels);
+    return module;
+  })
+  : null;
 const savingPictures = savingData() ? import('./responsivePicture.ts') : null;
 void savingPictures?.then(({ applyDataSaverStills }) => applyDataSaverStills(document, true));
 
@@ -154,13 +156,14 @@ interface FleetFeature {
 // featured plate; the take itself opens the vehicle's Gallery dossier. The plate's box never changes size.
 function mountFleetFeature(section: HTMLElement): void {
   const plate = section.querySelector<HTMLElement>('[data-fleet-feature]');
-  const tiles = [...section.querySelectorAll<HTMLAnchorElement>('a[data-feature]')];
-  if (!plate || !tiles.length) return;
+  const wall = section.querySelector<HTMLElement>('[data-fleet-wall]');
+  const tiles = (): HTMLAnchorElement[] => [...section.querySelectorAll<HTMLAnchorElement>('a[data-feature]')];
+  if (!plate || !wall || !tiles().length) return;
   const fact = <T extends Element>(name: string): T | null => plate.querySelector<T>(`[data-fact="${name}"]`);
   const show = (tile: HTMLAnchorElement): void => {
     let feature: FleetFeature;
     try { feature = JSON.parse(tile.dataset.feature || '') as FleetFeature; } catch { return; }
-    for (const other of tiles) other.classList.toggle('is-featured', other === tile);
+    for (const other of tiles()) other.classList.toggle('is-featured', other === tile);
     fact<HTMLSourceElement>('banner-set')?.setAttribute('srcset', feature.banner[0]);
     fact<HTMLImageElement>('banner')?.setAttribute('src', feature.banner[1]);
     fact<HTMLSourceElement>('tank-set')?.setAttribute('srcset', feature.tank[0]);
@@ -175,16 +178,70 @@ function mountFleetFeature(section: HTMLElement): void {
     fact<HTMLAnchorElement>('anatomy')?.setAttribute('href', feature.anatomy);
     fact<HTMLAnchorElement>('drive')?.setAttribute('href', feature.drive);
   };
-  for (const tile of tiles) {
-    tile.addEventListener('pointerenter', () => show(tile));
-    tile.addEventListener('focus', () => show(tile));
-    mountTakeProgress(tile);
-  }
-  tiles[0].classList.add('is-featured');
+  // the wall's own tiles and the ones the facets write (fleetWall.ts)
+  const pointed = (event: Event): void => {
+    const tile = (event.target as Element | null)?.closest<HTMLAnchorElement>('a[data-feature]');
+    if (tile && wall.contains(tile) && !tile.classList.contains('is-featured')) show(tile);
+  };
+  wall.addEventListener('pointerover', pointed);
+  wall.addEventListener('focusin', pointed);
+  for (const tile of tiles()) mountTakeProgress(tile);
+  tiles()[0].classList.add('is-featured');
+  mountFleetFacets(section, show);
+}
+
+type FleetWallModule = typeof import('./fleetWall.ts');
+let fleetWall: Promise<FleetWallModule> | null = null;
+
+/**
+ * The wall's nation and class chips and its search (03 .facets): one nation and one class at a time, a chip pressed
+ * again lets go, All clears both and the search. The vehicles and their matching (fleetWall.ts) load with the first
+ * press or keystroke; the first tile that answers takes the plate.
+ */
+function mountFleetFacets(section: HTMLElement, show: (tile: HTMLAnchorElement) => void): void {
+  const facets = section.querySelector<HTMLElement>('.fleet-facets');
+  const input = facets?.querySelector<HTMLInputElement>('input[type=search]');
+  const status = facets?.querySelector<HTMLElement>('.fleet-count');
+  if (!facets || !input || !status) return;
+  const chips = [...facets.querySelectorAll<HTMLButtonElement>('button.cot-c-chip')];
+  let nation = '', cls = '';
+  const apply = (): void => {
+    const filter = { nation, cls, query: input.value };
+    for (const chip of chips) {
+      const pressed = chip.hasAttribute('data-fleet-all') ? !nation && !cls && !input.value.trim()
+        : chip.dataset.fleetNation !== undefined ? chip.dataset.fleetNation === nation : chip.dataset.fleetClass === cls;
+      chip.setAttribute('aria-pressed', String(pressed));
+    }
+    void (fleetWall ??= import('./fleetWall.ts')).then(({ applyFleetFilter, isEmptyFilter }) => {
+      const { tiles, total } = applyFleetFilter(section, filter);
+      status.textContent = isEmptyFilter(filter) ? '' : total ? t('publicPages.fleet.count', { count: total }) : t('publicPages.fleet.none');
+      for (const tile of tiles) if (tile.dataset.progress === undefined) mountTakeProgress(tile);
+      const videos = tiles.map((tile) => tile.querySelector('video')).filter((video): video is HTMLVideoElement => video !== null);
+      void mediaModule?.then((module) => module.mountMediaPlayers(videos, videoLabels));
+      if (tiles[0]) show(tiles[0]);
+    });
+  };
+  facets.addEventListener('click', (event) => {
+    const chip = (event.target as Element | null)?.closest<HTMLButtonElement>('button.cot-c-chip');
+    if (!chip) return;
+    const { fleetNation, fleetClass } = chip.dataset;
+    if (chip.hasAttribute('data-fleet-all')) { nation = ''; cls = ''; input.value = ''; }
+    else if (fleetNation !== undefined) nation = nation === fleetNation ? '' : fleetNation;
+    else if (fleetClass !== undefined) cls = cls === fleetClass ? '' : fleetClass;
+    apply();
+  });
+  input.addEventListener('input', apply);
+  input.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || !input.value) return;
+    event.preventDefault();
+    input.value = '';
+    apply();
+  });
 }
 
 /** A playing take's bar runs at the loop's own length from where the loop is, and restarts as the loop does. */
 function mountTakeProgress(tile: HTMLElement): void {
+  tile.dataset.progress = '';
   const video = tile.querySelector('video');
   const bar = tile.querySelector<HTMLElement>('.fleet-tile__progress');
   if (!video || !bar) return;

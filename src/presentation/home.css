@@ -103,6 +103,20 @@ button{font:inherit;color:inherit}
 /* ---- 03 the fleet wall: twelve takes around the featured vehicle's plate ---- */
 .fleet{padding:var(--s7) 0 var(--s8)}
 .fleet-wall{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+/* the wall's facets (03 .facets): All, the nations' flags and the classes, the search at the row's end, the count */
+.fleet-facets{display:flex;align-items:center;gap:6px;min-width:0;margin-bottom:12px}
+.fleet-facets__set{display:flex;align-items:center;gap:6px}
+.fleet-facets__set+.fleet-facets__set{margin-left:var(--s3)}
+.fleet-facets .cot-c-flag{display:block}
+.fleet-search{display:flex;align-items:center;gap:8px;width:250px;height:30px;margin-left:auto;padding:0 10px;border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-3);cursor:text}
+.fleet-search:focus-within{box-shadow:var(--ring-3);color:var(--ink-2)}
+.fleet-search input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;font:400 var(--fs-13)/1 var(--font-body);color:var(--ink-1);outline:none}
+.fleet-search input::placeholder{color:var(--ink-3)}
+.fleet-search input::-webkit-search-cancel-button{display:none}
+.fleet-count{flex:none;margin:0;font:500 var(--fs-13)/1 var(--font-data);color:var(--ink-3)}
+.fleet-count:empty{display:none}
+@media (width < 1100px){.fleet-facets{flex-wrap:wrap}.fleet-search{order:1;flex:1 1 100%;width:auto;margin-left:0}}
+@media (width < 768px){.fleet-facets__set{flex-wrap:wrap}.fleet-facets__set+.fleet-facets__set{margin-left:0}}
 .fleet-tile{display:block;aspect-ratio:16/9;text-decoration:none}
 .fleet-tile>video{opacity:0;transition:opacity var(--dur-screen) var(--ease-enter)}
 .fleet-tile>video.has-frame{opacity:1}
