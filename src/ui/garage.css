@@ -296,8 +296,6 @@ body[data-cot-input='coarse'] .cot-battle-mode::after{right:7px;border-left-widt
 .cot-battle-choice .choice-name{letter-spacing:normal;text-transform:uppercase;text-wrap:balance;}
 .cot-battle-choice::after{content:'';position:absolute;right:10px;top:calc(50% - 6px);width:5px;height:9px;
   border:solid currentColor;border-width:0 1.5px 1.5px 0;transform:rotate(45deg);opacity:0;}
-.cot-battle-regular{min-height:66px;}
-.cot-battle-regular .choice-name{font-size:max(13px,var(--fs-13));}
 .cot-battle-choice[aria-pressed='true']{border-color:var(--accent);background:var(--accent-wash);color:var(--accent-hi);}
 .cot-battle-choice[aria-pressed='true']::after{opacity:1;}
 .cot-battle-choice[aria-pressed='true'] .choice-icon{color:var(--text-accent);}
@@ -391,7 +389,6 @@ body[data-cot-panels='persistent'] .cot-garage .srow .sicon svg{width:13px;heigh
 body[data-cot-panels='persistent'] .cot-garage .srow .lr{display:contents}
 body[data-cot-panels='persistent'] .cot-garage .srow .lr>span{font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.15;color:var(--ink-3)}
 body[data-cot-panels='persistent'] .cot-garage .srow .lr b{display:block;margin-top:2px;font-size:max(14px,var(--fs-14));line-height:1.1;white-space:normal;overflow:visible}
-body[data-cot-panels='persistent'] .cot-garage .srow .lr b.stat-comparison{display:flex}
 .cot-garage .shellhead{display:grid;grid-template-columns:46px minmax(0,1fr) 62px 48px;
   gap:7px;padding:0 7px 5px;color:var(--ink-4);font:700 max(var(--fs-floor-11),var(--fs-11)) var(--font-ui);
   letter-spacing:0;text-transform:uppercase;}
@@ -1275,7 +1272,6 @@ body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment'])
 body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .cot-performance-section .srow .lr{display:contents}
 body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .cot-performance-section .srow .lr>span{font-size:max(var(--fs-floor-11),var(--fs-11));line-height:1.15;color:var(--ink-3)}
 body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .cot-performance-section .srow .lr b{display:block;margin-top:3px;font-size:max(13px,var(--fs-13));line-height:1.1;white-space:normal;overflow:visible}
-body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .cot-performance-section .srow .lr b.stat-comparison{display:flex}
 @container garage-dossier (max-width:205px){
   .cot-garage .cot-performance-grid{grid-template-columns:1fr}
   .cot-garage .srow{min-height:40px}

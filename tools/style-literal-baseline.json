@@ -29,7 +29,7 @@
     "src/ui/endOverlayRuntime.ts": {"colour":4,"fontSize":3,"letterSpacing":3,"zIndex":1,"shadow":1,"duration":0,"important":0},
     "src/ui/endScreen.ts": {"colour":146,"fontSize":48,"letterSpacing":31,"zIndex":2,"shadow":14,"duration":6,"important":2},
     "src/ui/endScreenPresentation.css": {"colour":73,"fontSize":33,"letterSpacing":8,"zIndex":0,"shadow":2,"duration":0,"important":0},
-    "src/ui/garage.css": {"colour":100,"fontSize":152,"letterSpacing":0,"zIndex":38,"shadow":13,"duration":5,"important":10},
+    "src/ui/garage.css": {"colour":100,"fontSize":151,"letterSpacing":0,"zIndex":38,"shadow":13,"duration":5,"important":10},
     "src/ui/garageFacetPanel.css": {"colour":0,"fontSize":10,"letterSpacing":0,"zIndex":3,"shadow":1,"duration":0,"important":0},
     "src/ui/heroCard.css": {"colour":5,"fontSize":0,"letterSpacing":0,"zIndex":2,"shadow":0,"duration":2,"important":0},
     "src/ui/hud.ts": {"colour":294,"fontSize":55,"letterSpacing":40,"zIndex":24,"shadow":53,"duration":25,"important":5},
