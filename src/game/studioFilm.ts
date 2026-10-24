@@ -28,6 +28,7 @@ import {
   type FilmSettings,
   type FilmSettingsInput,
 } from './studioFilmPlan.ts';
+import { t } from '../ui/i18n.ts';
 
 interface FilmLighting {
   update(force?: boolean): void;
@@ -224,7 +225,7 @@ export function createStudioFilm(ports: StudioFilmPorts) {
 
   /** Resize the renderer and the whole chain to the exact output, then own the frame. */
   function enter(width: number, height: number): void {
-    if (saved) throw new Error('A film render is already active');
+    if (saved) throw new Error(t('studio.error.filmActive'));
     renderer.getSize(size);
     saved = {
       width: size.x,
@@ -251,7 +252,7 @@ export function createStudioFilm(ports: StudioFilmPorts) {
       pass = new FilmAccumulatePass(renderer, post.sceneAA.sceneTarget.width, post.sceneAA.sceneTarget.height);
       const passes = post.composer.passes;
       const at = passes.indexOf(post.lateFx);
-      if (at < 0) throw new Error('Film renderer needs the late-FX pass in the composer');
+      if (at < 0) throw new Error(t('studio.error.filmNeedsLateFx'));
       post.composer.insertPass(pass, at + 1);
       lastFov = camera.fov;
     } catch (error) {
@@ -395,13 +396,13 @@ export function createStudioFilm(ports: StudioFilmPorts) {
      * order through renderNext(); end() restores the live Studio.
      */
     begin(options: FilmSessionOptions, durationMs: number): FilmSessionInfo {
-      if (plan) throw new Error('A film render is already active');
+      if (plan) throw new Error(t('studio.error.filmActive'));
       const width = Math.round(options.width), height = Math.round(options.height);
       const maxSize = Math.min(6144, renderer.capabilities.maxTextureSize || 6144);
       if (!(width >= 64 && height >= 64 && width <= maxSize && height <= maxSize)) {
-        throw new RangeError(`Film size must be between 64 and ${maxSize} pixels`);
+        throw new RangeError(t('studio.error.filmSize', { max: maxSize }));
       }
-      if (width % 2 || height % 2) throw new RangeError('Film dimensions must be even (4:2:0 video)');
+      if (width % 2 || height % 2) throw new RangeError(t('studio.error.filmEven'));
       const settings = normalizeFilm(options.settings ?? {});
       const startMs = Math.round(Math.max(0, options.startMs ?? 0));
       const endMs = Math.min(durationMs, options.endMs ?? durationMs);
@@ -446,8 +447,8 @@ export function createStudioFilm(ports: StudioFilmPorts) {
 
     /** Render the next output frame into the canvas (call in order). */
     renderNext(): FilmFrameInfo {
-      if (!plan || !info) throw new Error('No film render is active');
-      if (nextFrame >= plan.frames) throw new RangeError('The film has no frames left');
+      if (!plan || !info) throw new Error(t('studio.error.filmNone'));
+      if (nextFrame >= plan.frames) throw new RangeError(t('studio.error.filmNoFrames'));
       const frame = nextFrame++;
       const settings = plan.settings;
       ensureFilmSize(info.width, info.height);
@@ -501,7 +502,7 @@ export function createStudioFilm(ports: StudioFilmPorts) {
      * same task (downsampling when supersampled).
      */
     renderStill(options: FilmStillOptions): FilmStill {
-      if (plan || saved) throw new Error('Finish the film render first');
+      if (plan || saved) throw new Error(t('studio.error.finishFilm'));
       const samples = Math.round(Math.min(FILM_MAX_ADAPTIVE_SAMPLES, Math.max(1, options.samples ?? 16)));
       const exposureMs = Math.min(FILM_MAX_EXPOSURE_MS, Math.max(0, Number(options.exposureMs) || 0));
       const moving = exposureMs > 0 && samples > 1;
@@ -548,7 +549,7 @@ export function createStudioFilm(ports: StudioFilmPorts) {
         output.width = Math.round(options.width);
         output.height = Math.round(options.height);
         const context = output.getContext('2d');
-        if (!context) throw new Error('2D canvas unavailable');
+        if (!context) throw new Error(t('studio.error.canvas2d'));
         context.imageSmoothingEnabled = true;
         context.imageSmoothingQuality = 'high';
         context.drawImage(renderer.domElement, 0, 0, output.width, output.height);
