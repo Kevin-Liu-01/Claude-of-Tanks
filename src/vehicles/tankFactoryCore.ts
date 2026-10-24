@@ -9026,6 +9026,8 @@ function* createTankOwnedSteps(
     if (film) disposables.push(film);
     const mesh = new THREE.Mesh(film ?? decalGeo, mats.decal(d.kind, d.text));
     mesh.userData.markingFilm = film !== null;
+    // the seat's footprint in this draw's frame (the unit quad the film is cut to): receipts read the paint's extent here
+    mesh.userData.markingFootprints = [{ center: [0, 0, 0], u: [1, 0, 0], v: [0, 1, 0] }];
     mesh.name = `vehicleMarking_${d.kind}`;
     mesh.userData.vehicleMarking = true;
     mesh.userData.markingCode = marking.markingCode;
@@ -11173,6 +11175,19 @@ export function* createTankRuntimeSteps(
           }
           if (markingBatch) {
             batch.userData.vehicleMarking = true;
+            // each folded marking's footprint, carried into the batch's frame as createStaticBatch carried its paint
+            batch.updateMatrix();
+            const toBatch = new THREE.Matrix4().copy(batch.matrix).invert();
+            batch.userData.markingFootprints = sources.flatMap((source) => {
+              const local = new THREE.Matrix4().multiplyMatrices(toBatch, source.matrix);
+              return ((source.userData.markingFootprints ?? []) as { center: number[]; u: number[]; v: number[] }[])
+                .map(({ center, u, v }) => {
+                  const origin = new THREE.Vector3().fromArray(center).applyMatrix4(local);
+                  const at = (axis: number[]) => new THREE.Vector3().fromArray(center)
+                    .add(new THREE.Vector3().fromArray(axis)).applyMatrix4(local).sub(origin).toArray();
+                  return { center: origin.toArray(), u: at(u), v: at(v) };
+                });
+            });
             decalMeshes.push(batch);
           }
         });
