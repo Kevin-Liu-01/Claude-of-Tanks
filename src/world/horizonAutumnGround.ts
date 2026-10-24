@@ -16,8 +16,10 @@ export function bindAutumnHorizonGround(
   mesh: Mesh,
   material: MeshStandardMaterial,
   textures: Texture[],
-  { columns = 287, bands = 2, continuousGround = false, ground }: {
+  { columns = 287, bands = 2, continuousGround = false, ground, seamFinished = false }: {
     columns?: number; bands?: number; continuousGround?: boolean; ground?: CanyonGround;
+    /** (perf-248) the ring arrives finished (horizonRingFinish.ts: its topology held and its seam refined there) */
+    seamFinished?: boolean;
   } = {},
 ): void {
   const retained = RETAINED.get(mesh), geometry = mesh.geometry, index = geometry.index;
@@ -25,11 +27,13 @@ export function bindAutumnHorizonGround(
     throw new Error('Expected private unbound horizon ring');
   // Vista pass (2026-09-19): every map binds its rim bands (the buried anchor band and the seated foothill
   // bands) to the terrain material, so the ground texture, sun and shadows continue past the playable edge.
-  const rows = geometry.attributes.position.count / (columns + 1);
   const nearCount = bands * columns * 6;
-  if (!Number.isInteger(rows) || rows < bands + 1 || index.count !== (rows - 1) * columns * 6)
-    throw new Error('Expected the ring topology of ' + columns + ' columns');
-  if (continuousGround && ground?.getOutlandHeightAt) refineHorizonGroundSeam(geometry, columns, ground);
+  if (!seamFinished) {
+    const rows = geometry.attributes.position.count / (columns + 1);
+    if (!Number.isInteger(rows) || rows < bands + 1 || index.count !== (rows - 1) * columns * 6)
+      throw new Error('Expected the ring topology of ' + columns + ' columns');
+    if (continuousGround && ground?.getOutlandHeightAt) refineHorizonGroundSeam(geometry, columns, ground);
+  }
   // Round 40 (2026-09-22, AAA program check 13 "water at the edge: same level and shader beyond"): every ring face
   // inside a sea aperture — near band or far range — renders with the terrain material, which paints it as the
   // square's own open water (terrain.ts outlandSeaWeight), so the sea keeps one shader from the battlefield to the

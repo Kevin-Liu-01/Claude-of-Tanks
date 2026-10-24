@@ -26,6 +26,8 @@
 /* the game's canvas (#app) takes the viewport cell while the Studio is open (studioPanel.ts measures the cell) */
 body[data-studio-workspace] #app{position:fixed;left:var(--studio-vp-x,0px);top:var(--studio-vp-y,0px);width:var(--studio-vp-w,100dvw);
   height:var(--studio-vp-h,100dvh)}
+/* it moves into the cell hidden and shows once the grid has settled (studioPanel.ts show): a move unseen is no shift */
+body[data-studio-settling] #app{visibility:hidden}
 
 /* ------------------------------------------------------------------------------------------------- the app grid */
 /* the battlefield's build (studioPanel.ts setStage, 247): the panels wait under it, the viewport shows the map's picture,

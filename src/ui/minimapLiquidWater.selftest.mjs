@@ -472,7 +472,9 @@ assert.ok(censusRows.find((row) => row.id === 'polders').missedBeforeM2 > 0, 'Ti
 assert.deepEqual(iceMaps.sort(), ['alpine', 'whiteout', 'winter'], 'the frozen maps paint their lakes as ice');
 assert.deepEqual(dryMaps.sort(), ['airfield', 'caldera', 'copper_mesa', 'desert', 'longleaf', 'orchard', 'steppe'],
   'the maps whose discs are dry ground');
-assert.equal(liquidMaps.length, 12, `twelve liquid maps (${liquidMaps.join(', ')})`);
+// Frontier Basin joined the liquid maps with its two mill ponds (5b848317f9, 2026-10-22: "the mill ponds as water")
+assert.ok(liquidMaps.includes('frontier'), 'Frontier Basin: the mill ponds are liquid water');
+assert.equal(liquidMaps.length, 13, `thirteen liquid maps (${liquidMaps.join(', ')})`);
 
 // ---- Kestrel Airfield, end to end on its real height field ----
 {
