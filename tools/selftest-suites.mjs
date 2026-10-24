@@ -875,6 +875,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/gallery/damageLab.selftest.mjs',
     'src/gallery/combatHitboxes.selftest.mjs',
     'src/game/armorAimOverlay.selftest.mjs',
+    // 243: the armour skin (the cells' outer surface the flashlight and the Gallery heat map draw) is closed and exact
+    'src/game/armorSkin.selftest.mjs',
     'src/game/loadingIntent.selftest.mjs',
     'src/game/battleIntentRuntime.selftest.mjs',
     'src/game/combatFeedbackRuntime.selftest.mjs',
