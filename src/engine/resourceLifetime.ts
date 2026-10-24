@@ -66,9 +66,11 @@ const LIMITS = Object.freeze({
   // Six preview tanks (four recently shown heroes plus the two adjacent cards
   // built ahead in the quiet window, FSP-01 R2) and two worlds preserve useful
   // reuse while putting a deterministic ceiling on hidden scene graphs,
-  // textures and programs.
+  // textures and programs. A phone keeps three: the shown hero, the one before
+  // it, and the next card built ahead (click-perf-248: with two, every switch
+  // after the first back-and-forth rebuilt its tank).
   desktop: Object.freeze({ pedestalVisuals: 6, worldScenes: 2 }),
-  mobile: Object.freeze({ pedestalVisuals: 2, worldScenes: 1 }),
+  mobile: Object.freeze({ pedestalVisuals: 3, worldScenes: 1 }),
 });
 
 // Some owners retain valid GPU resources outside the active Object3D tree

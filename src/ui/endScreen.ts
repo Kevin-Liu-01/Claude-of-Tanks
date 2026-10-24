@@ -248,14 +248,14 @@ const ES_CSS = `
   flex-direction:column;align-items:center;justify-content:center;
   padding:2.2vh 0 2.6vh;overflow:hidden;font-family:${FONT_STACK};color:${COL.text};
   background:
-    radial-gradient(110% 80% at 50% -10%,rgba(240,160,48,.13),rgba(240,160,48,0) 48%),
+    radial-gradient(110% 80% at 50% -10%,var(--accent-wash),transparent 48%),
     linear-gradient(180deg,rgba(5,8,12,.985),rgba(4,7,10,.955) 44%,rgba(3,5,8,.99));}
 .cot-es.show{display:flex;}
 .cot-es.es-sheet-wait{visibility:hidden;}
 .cot-es *{box-sizing:border-box;margin:0;padding:0;}
 .cot-es::before{content:"";position:fixed;left:0;right:0;top:0;height:4px;
   background:linear-gradient(90deg,transparent 8%,${COL.amber} 50%,transparent 92%);
-  box-shadow:0 0 22px rgba(240,160,48,.5);}
+  box-shadow:0 0 22px oklch(from var(--accent) l c h / .5);}
 .cot-es.result-victory::before{background:linear-gradient(90deg,transparent 8%,${COL.green} 50%,transparent 92%);}
 .cot-es.result-defeat::before{background:linear-gradient(90deg,transparent 8%,${COL.red} 50%,transparent 92%);}
 .cot-es .es-hero{position:relative;width:1160px;max-width:96vw;flex:0 0 auto;overflow:hidden;}
@@ -269,230 +269,230 @@ const ES_CSS = `
 /* The report's name stays for assistive technology; on screen the result banner leads (owner UI rule 2: no kicker
    above a heading). */
 .cot-es .es-kick{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;
-  font-family:${FONT_COND};font-weight:500;font-size:13px;letter-spacing:0;color:#a9b8c4;text-align:center;}
+  font-family:${FONT_COND};font-weight:500;font-size:var(--battle-fs-13);letter-spacing:0;color:var(--ink-2);text-align:center;}
 .cot-es .es-ban{margin-top:6px;font-weight:700;font-size:clamp(44px,5.8vw,68px);
   line-height:1;letter-spacing:.18em;text-indent:.18em;text-align:center;
   text-transform:uppercase;opacity:0;
   animation:cotEsHero var(--cot-motion-scene) var(--cot-ease-soft) forwards;
-  text-shadow:0 3px 30px rgba(0,0,0,.85);}
-.cot-es .es-ban.v{color:#eafce9;text-shadow:0 0 34px rgba(127,220,138,.35),0 3px 30px rgba(0,0,0,.85);}
-.cot-es .es-ban.d{color:#fceeec;text-shadow:0 0 34px rgba(242,110,100,.32),0 3px 30px rgba(0,0,0,.85);}
+  text-shadow:0 3px 30px oklch(from var(--surface-scene) l c h / .85);}
+.cot-es .es-ban.v{color:var(--ink-1);text-shadow:0 0 34px oklch(from var(--ok) l c h / .35),0 3px 30px oklch(from var(--surface-scene) l c h / .85);}
+.cot-es .es-ban.d{color:var(--ink-1);text-shadow:0 0 34px oklch(from var(--danger) l c h / .32),0 3px 30px oklch(from var(--surface-scene) l c h / .85);}
 .cot-es .es-ban.n{color:${COL.steel};}
-.cot-es .es-rule{width:132px;height:2px;margin:12px auto 0;
-  background:linear-gradient(90deg,rgba(240,160,48,0),#f0a030 30%,#ffcf7d 50%,#f0a030 70%,rgba(240,160,48,0));
-  box-shadow:0 0 12px rgba(240,160,48,.55);}
-.cot-es .es-ban.v+.es-rule{background:linear-gradient(90deg,rgba(127,220,138,0),#5fcf74 30%,#a8f0b2 50%,#5fcf74 70%,rgba(127,220,138,0));box-shadow:0 0 12px rgba(127,220,138,.5);}
-.cot-es .es-ban.d+.es-rule{background:linear-gradient(90deg,rgba(242,110,100,0),#e06055 30%,#ffb0a6 50%,#e06055 70%,rgba(242,110,100,0));box-shadow:0 0 12px rgba(242,110,100,.5);}
+.cot-es .es-rule{width:132px;height:2px;margin:var(--s3) auto 0;
+  background:linear-gradient(90deg,transparent,var(--accent) 30%,var(--accent-hi) 50%,var(--accent) 70%,transparent);
+  box-shadow:0 0 12px oklch(from var(--accent) l c h / .55);}
+.cot-es .es-ban.v+.es-rule{background:linear-gradient(90deg,transparent,var(--ok) 30%,oklch(from var(--ok) .89 .111 h) 50%,var(--ok) 70%,transparent);box-shadow:0 0 12px oklch(from var(--ok) l c h / .5);}
+.cot-es .es-ban.d+.es-rule{background:linear-gradient(90deg,transparent,var(--danger) 30%,oklch(from var(--danger) .83 .094 h) 50%,var(--danger) 70%,transparent);box-shadow:0 0 12px oklch(from var(--danger) l c h / .5);}
 .cot-es .es-sub{margin-top:11px;text-align:center;font-size:14.5px;font-weight:500;
   color:${COL.steel};letter-spacing:.04em;}
-.cot-es .es-sub b{color:#ffe4b0;font-weight:700;}
+.cot-es .es-sub b{color:oklch(from var(--accent-hi) .93 .073 h);font-weight:700;}
 /* battle endings (2026-09-25): the final blow under the verdict line */
-.cot-es .es-blow{margin-top:8px;text-align:center;font-family:${FONT_COND};font-weight:700;font-size:12.5px;
-  letter-spacing:.12em;text-transform:uppercase;color:#ffd27a;display:flex;align-items:center;justify-content:center;gap:8px;}
-.cot-es .es-blow svg{flex:0 0 auto;color:#ffb54a;}
-.cot-es .es-meta{margin-top:4px;text-align:center;font-family:${FONT_COND};
-  font-weight:700;font-size:12px;letter-spacing:.14em;color:#aab7c2;
+.cot-es .es-blow{margin-top:var(--s2);text-align:center;font-family:${FONT_COND};font-weight:700;font-size:12.5px;
+  letter-spacing:var(--track-label);text-transform:uppercase;color:var(--accent-hi);display:flex;align-items:center;justify-content:center;gap:var(--s2);}
+.cot-es .es-blow svg{flex:0 0 auto;color:var(--accent-hi);}
+.cot-es .es-meta{margin-top:var(--s1);text-align:center;font-family:${FONT_COND};
+  font-weight:700;font-size:var(--battle-fs-12);letter-spacing:.14em;color:var(--ink-2);
   text-transform:uppercase;display:flex;align-items:center;justify-content:center;gap:18px;}
-.cot-es .es-meta span{display:flex;align-items:center;gap:7px}.cot-es .es-meta svg{color:#8797a3}
-.cot-es .es-meta b{color:#c8d4de;font-weight:700;}
-.cot-es .es-campaign{margin:12px auto 0;width:min(560px,92vw);padding:10px 14px 11px;text-align:center;
-  border:1px solid rgba(230,154,54,.5);border-left:3px solid #e69a36;border-radius:4px;background:rgba(9,13,18,.72);}
-.cot-es .es-campaign .ck{font-family:${FONT_COND};font-size:11px;font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:#e2b56a;}
-.cot-es .es-campaign .ct{margin-top:3px;font-family:${FONT_COND};font-size:19px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff0d8;}
-.cot-es .es-campaign .cs{margin-top:5px;font-size:12.5px;color:#c8d3db;}
-.cot-es .es-campaign .cs b{color:#ffe4b0;font-weight:700;}
-.cot-es .es-campaign .stars{display:inline-flex;gap:3px;margin:6px 0 0;font-size:20px;line-height:1;letter-spacing:.04em;}
-.cot-es .es-campaign .stars i{font-style:normal;color:#4a5560;}
-.cot-es .es-campaign .stars i.on{color:#ffcc55;text-shadow:0 0 10px rgba(255,190,70,.55);}
-.cot-es .es-campaign .cn{margin-top:6px;font-family:${FONT_COND};font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#8ea2b0;}
+.cot-es .es-meta span{display:flex;align-items:center;gap:7px}.cot-es .es-meta svg{color:var(--ink-3)}
+.cot-es .es-meta b{color:var(--ink-2);font-weight:700;}
+.cot-es .es-campaign{margin:var(--s3) auto 0;width:min(560px,92vw);padding:10px 14px 11px;text-align:center;
+  border:1px solid oklch(from var(--accent) l c h / .5);border-left:3px solid var(--accent);border-radius:4px;background:var(--battle-chip-plate);}
+.cot-es .es-campaign .ck{font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);}
+.cot-es .es-campaign .ct{margin-top:3px;font-family:${FONT_COND};font-size:19px;font-weight:700;letter-spacing:var(--battle-track-status);text-transform:uppercase;color:var(--ink-1);}
+.cot-es .es-campaign .cs{margin-top:5px;font-size:12.5px;color:var(--ink-2);}
+.cot-es .es-campaign .cs b{color:oklch(from var(--accent-hi) .93 .073 h);font-weight:700;}
+.cot-es .es-campaign .stars{display:inline-flex;gap:var(--s1);margin:6px 0 0;line-height:0;}
+.cot-es .es-campaign .stars i{color:var(--ink-4);}
+.cot-es .es-campaign .stars i.on{color:var(--accent);}.cot-es .es-campaign .stars i.on svg{fill:currentColor}
+.cot-es .es-campaign .cn{margin-top:6px;font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);}
 /* --- two-column debrief --------------------------------------------------- */
 .cot-es .es-report{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);
-  align-items:stretch;gap:12px;width:1160px;max-width:96vw;height:clamp(300px,45vh,390px);
-  flex:0 0 clamp(300px,45vh,390px);margin-top:12px;min-height:0;}
+  align-items:stretch;gap:var(--s3);width:1160px;max-width:96vw;height:clamp(300px,45vh,390px);
+  flex:0 0 clamp(300px,45vh,390px);margin-top:var(--s3);min-height:0;}
 .cot-es .es-debrief{display:flex;flex-direction:column;min-width:0;min-height:0;height:100%;
-  overflow:hidden;background:linear-gradient(155deg,rgba(13,18,23,.96),rgba(6,9,12,.97));
-  border:1px solid rgba(166,184,199,.3);box-shadow:0 12px 36px rgba(0,0,0,.42);pointer-events:auto;}
-.cot-es .es-dh{display:flex;align-items:center;justify-content:space-between;gap:12px;
-  min-height:41px;padding:9px 14px;border-bottom:1px solid rgba(166,184,199,.2);}
+  overflow:hidden;background:linear-gradient(155deg,var(--hud-plate-strong),var(--hud-plate-strong));
+  border:1px solid var(--line-3);box-shadow:0 12px 36px oklch(from var(--surface-scene) l c h / .42);pointer-events:auto;}
+.cot-es .es-dh{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);
+  min-height:41px;padding:9px 14px;border-bottom:1px solid var(--line-3);}
 .cot-es .es-dh .titleline{display:flex;align-items:center;gap:9px}.cot-es .es-dh .titleline svg{flex:0 0 auto;opacity:.92}
-.cot-es .es-dh .ey{font:700 12px ${FONT_COND};letter-spacing:.18em;text-transform:uppercase;color:${COL.amberHi};}
-.cot-es .es-dh .context{font:700 11px ${FONT_COND};letter-spacing:.03em;color:#8f9da9;
+.cot-es .es-dh .ey{font:700 var(--battle-fs-12) ${FONT_COND};letter-spacing:.18em;text-transform:uppercase;color:${COL.amberHi};}
+.cot-es .es-dh .context{font:700 var(--battle-fs-11) ${FONT_COND};letter-spacing:.03em;color:var(--ink-3);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cot-es .es-debrief.teams .es-dh .ey{color:#a8eab1;}
+.cot-es .es-debrief.teams .es-dh .ey{color:oklch(from var(--team-own) .88 .103 h);}
 .cot-es .es-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;
-  background:rgba(166,184,199,.15);border-bottom:1px solid rgba(166,184,199,.18);}
+  background:oklch(from var(--ink-2) l c h / .15);border-bottom:1px solid var(--line-2);}
 .cot-es .es-stat-grid.has-vehicle{grid-template-columns:minmax(112px,.72fr) repeat(2,minmax(0,1fr));}
 .cot-es .es-vehicle-card{position:relative;display:grid;place-items:center;min-width:0;min-height:80px;
-  overflow:hidden;background:radial-gradient(100% 85% at 50% 35%,rgba(240,160,48,.13),rgba(8,12,16,.98) 72%);}
-.cot-es .es-vehicle-card img{display:block;width:100%;height:76px;padding:4px 7px 7px;object-fit:contain;
-  object-position:center;opacity:.84;filter:grayscale(.12) contrast(1.12) drop-shadow(0 9px 11px rgba(0,0,0,.72));}
+  overflow:hidden;background:radial-gradient(100% 85% at 50% 35%,var(--accent-wash),var(--hud-plate-strong) 72%);}
+.cot-es .es-vehicle-card img{display:block;width:100%;height:76px;padding:var(--s1) 7px 7px;object-fit:contain;
+  object-position:center;opacity:.84;filter:grayscale(.12) contrast(1.12) drop-shadow(0 9px 11px oklch(from var(--surface-scene) l c h / .72));}
 .cot-es .es-tal{display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0;
-  min-height:80px;text-align:left;padding:12px 16px;background:rgba(8,12,16,.98);}
+  min-height:80px;text-align:left;padding:var(--s3) var(--s4);background:var(--hud-plate-strong);}
 .cot-es .es-tal .v{font-family:${FONT_COND};font-weight:700;font-size:23px;
-  letter-spacing:-.01em;color:#f2f7fb;line-height:1.05;text-align:left;}
-.cot-es .es-tal .v i{font-style:normal;font-size:14px;color:${COL.dim};font-weight:700;}
-.cot-es .es-tal .k{order:-1;display:flex;align-items:center;gap:7px;font-size:11px;font-weight:700;letter-spacing:.1em;
-  color:#aab7c2;text-transform:uppercase;font-family:${FONT_COND};}
+  letter-spacing:-.01em;color:var(--ink-1);line-height:1.05;text-align:left;}
+.cot-es .es-tal .v i{font-style:normal;font-size:var(--battle-fs-14);color:${COL.dim};font-weight:700;}
+.cot-es .es-tal .k{order:-1;display:flex;align-items:center;gap:7px;font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.1em;
+  color:var(--ink-2);text-transform:uppercase;font-family:${FONT_COND};}
 .cot-es .es-tal .k svg{flex:0 0 auto;color:${COL.amberHi}}
-.cot-es .es-tal.hot{background:linear-gradient(135deg,rgba(255,209,102,.13),rgba(255,209,102,.025));}
+.cot-es .es-tal.hot{background:linear-gradient(135deg,oklch(from var(--accent-hi) l c h / .13),oklch(from var(--accent-hi) l c h / .025));}
 .cot-es .es-tal .v,.cot-es .es-tal.hot .v{font-size:34px}.cot-es .es-tal.hot .v{color:${COL.gold};}
 .cot-es .es-stat-secondary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
-  border-bottom:1px solid rgba(166,184,199,.18);}
-.cot-es .es-mini{min-width:0;padding:10px 14px;border-right:1px solid rgba(166,184,199,.13);}
-.cot-es .es-mini:last-child{border-right:0}.cot-es .es-mini .mk{display:flex;align-items:center;gap:6px;font:700 11px ${FONT_COND};letter-spacing:.02em;
-  text-transform:uppercase;color:#91a0ac}.cot-es .es-mini .mk svg{flex:0 0 auto}.cot-es .es-mini .mv{margin-top:5px;font:700 21px ${FONT_COND};
-  color:#edf4f8;}.cot-es .es-mini .md{margin-top:2px;font-size:11px;color:#7f8e9a;
+  border-bottom:1px solid var(--line-2);}
+.cot-es .es-mini{min-width:0;padding:10px 14px;border-right:1px solid var(--line-2);}
+.cot-es .es-mini:last-child{border-right:0}.cot-es .es-mini .mk{display:flex;align-items:center;gap:6px;font:700 var(--battle-fs-11) ${FONT_COND};letter-spacing:.02em;
+  text-transform:uppercase;color:var(--ink-3)}.cot-es .es-mini .mk svg{flex:0 0 auto}.cot-es .es-mini .mv{margin-top:5px;font:700 21px ${FONT_COND};
+  color:var(--ink-1);}.cot-es .es-mini .md{margin-top:2px;font-size:var(--battle-fs-11);color:var(--ink-3);
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cot-es .es-best{display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:center;gap:9px;
-  min-height:48px;padding:8px 14px;background:linear-gradient(90deg,rgba(240,160,48,.12),rgba(240,160,48,.015) 78%);
-  border-bottom:1px solid rgba(240,160,48,.3);}
-.cot-es .es-best .bk{font-family:${FONT_COND};font-weight:700;font-size:11px;
+  min-height:48px;padding:var(--s2) 14px;background:linear-gradient(90deg,var(--accent-wash),oklch(from var(--accent) l c h / .015) 78%);
+  border-bottom:1px solid oklch(from var(--accent) l c h / .3);}
+.cot-es .es-best .bk{font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);
   letter-spacing:.11em;color:${COL.amberHi};text-transform:uppercase;flex:0 0 auto;display:flex;align-items:center;gap:7px;}
-.cot-es .es-best .bd{font-family:${FONT_COND};font-weight:700;font-size:20px;
+.cot-es .es-best .bd{font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-20);
   color:${COL.gold};flex:0 0 auto;letter-spacing:-.01em;}
-.cot-es .es-best .bt{font-size:12px;color:${COL.steel};letter-spacing:.02em;flex:1;
+.cot-es .es-best .bt{font-size:var(--battle-fs-12);color:${COL.steel};letter-spacing:.02em;flex:1;
   min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   }
-.cot-es .es-best .bt b{color:#eef4f9;font-weight:700;}
-.cot-es .es-best .bt small{display:block;margin-top:2px;font-size:11px;color:#83929e;}
+.cot-es .es-best .bt b{color:var(--ink-1);font-weight:700;}
+.cot-es .es-best .bt small{display:block;margin-top:2px;font-size:var(--battle-fs-11);color:var(--ink-3);}
 .cot-es .es-awards{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:10px;
-  min-height:46px;padding:6px 14px;border-bottom:1px solid rgba(166,184,199,.18);
-  background:linear-gradient(90deg,rgba(255,209,102,.08),rgba(255,209,102,0) 70%);}
-.cot-es .es-awards .ak{display:flex;align-items:center;gap:7px;font:700 11px ${FONT_COND};letter-spacing:.11em;
+  min-height:46px;padding:6px 14px;border-bottom:1px solid var(--line-2);
+  background:linear-gradient(90deg,oklch(from var(--accent-hi) l c h / .08),transparent 70%);}
+.cot-es .es-awards .ak{display:flex;align-items:center;gap:7px;font:700 var(--battle-fs-11) ${FONT_COND};letter-spacing:.11em;
   text-transform:uppercase;color:${COL.amberHi};}
 .cot-es .es-awards .ak svg{flex:0 0 auto;}
 .cot-es .es-awards .al{display:flex;flex-wrap:wrap;gap:5px 6px;min-width:0;}
-.cot-es .es-awards .aw{display:flex;flex:0 0 auto;align-items:center;gap:6px;padding:3px 9px 3px 4px;
-  background:rgba(8,12,16,.72);border:1px solid rgba(166,184,199,.22);}
-.cot-es .es-awards .aw.icon{padding:3px 4px;}
-.cot-es .es-awards .aw.signature{border-color:rgba(240,160,48,.65);background:rgba(240,160,48,.1);}
-.cot-es .es-awards .aw b{font:700 11px ${FONT_COND};letter-spacing:.02em;text-transform:uppercase;color:#eef4f9;white-space:nowrap;}
-.cot-es .es-awards .aw.tier b{color:#cfd9e2;}
+.cot-es .es-awards .aw{display:flex;flex:0 0 auto;align-items:center;gap:6px;padding:3px 9px 3px var(--s1);
+  background:var(--battle-chip-plate);border:1px solid var(--line-3);}
+.cot-es .es-awards .aw.icon{padding:3px var(--s1);}
+.cot-es .es-awards .aw.signature{border-color:oklch(from var(--accent) l c h / .65);background:var(--accent-wash);}
+.cot-es .es-awards .aw b{font:700 var(--battle-fs-11) ${FONT_COND};letter-spacing:.02em;text-transform:uppercase;color:var(--ink-1);white-space:nowrap;}
+.cot-es .es-awards .aw.tier b{color:var(--ink-2);}
 .cot-es .es-awards svg{display:block;flex:0 0 auto;}
-.cot-es .es-kill-block{display:flex;flex:1;min-height:0;flex-direction:column;padding:0 12px 10px;}
+.cot-es .es-kill-block{display:flex;flex:1;min-height:0;flex-direction:column;padding:0 var(--s3) 10px;}
 .cot-es .es-kill-list{min-height:0;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(240,160,48,.45) transparent;}
 /* the legacy integration overlay may flash its old button/earnings line in
    the frames between endOverlayRuntime.show() and the report flush — armed on
    battle:ended, this suppresses it outright (the end screen owns the frame;
    !important beats the integration overlay's inline display:flex) */
 body.cot-es-armed .cot-end{display:none !important;}
-.cot-es .es-ph{font-size:11px;font-weight:700;letter-spacing:.1em;color:#aebbc6;
+.cot-es .es-ph{font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.1em;color:var(--ink-2);
   text-transform:uppercase;font-family:${FONT_COND};padding:9px 2px 7px;
-  border-bottom:1px solid rgba(166,184,199,.25);margin-bottom:4px;
+  border-bottom:1px solid var(--line-3);margin-bottom:var(--s1);
   display:flex;justify-content:space-between;}
 .cot-es .es-ph .ph-title{display:flex;align-items:center;gap:7px}.cot-es .es-ph svg{flex:0 0 auto}
-.cot-es .es-ph.ally{color:${COL.green};border-bottom-color:rgba(127,220,138,.35);}
-.cot-es .es-ph.foe{color:${COL.red};border-bottom-color:rgba(242,122,114,.35);}
+.cot-es .es-ph.ally{color:${COL.green};border-bottom-color:oklch(from var(--team-own) l c h / .35);}
+.cot-es .es-ph.foe{color:${COL.red};border-bottom-color:oklch(from var(--team-enemy) l c h / .35);}
 .cot-es .es-scoreboard{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;min-height:86px;
-  padding:10px 22px;border-bottom:1px solid rgba(166,184,199,.18);background:rgba(7,11,15,.72);}
-.cot-es .es-score-side{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;}
+  padding:10px 22px;border-bottom:1px solid var(--line-2);background:var(--battle-chip-plate);}
+.cot-es .es-score-side{display:grid;grid-template-columns:1fr auto;align-items:center;gap:var(--s3);}
 .cot-es .es-score-side.foe{text-align:right;grid-template-columns:auto 1fr}.cot-es .es-score-copy{min-width:0}
-.cot-es .es-score-side .sl{font:700 12px ${FONT_COND};letter-spacing:.12em;text-transform:uppercase;}
+.cot-es .es-score-side .sl{font:700 var(--battle-fs-12) ${FONT_COND};letter-spacing:var(--track-label);text-transform:uppercase;}
 .cot-es .es-score-side .sl{display:flex;align-items:center;gap:7px}.cot-es .es-score-side.foe .sl{justify-content:flex-end}
 .cot-es .es-score-side.ally .sl{color:${COL.green}}.cot-es .es-score-side.foe .sl{color:${COL.red}}
-.cot-es .es-score-side .ss{margin-top:5px;font-size:11px;color:#8f9daa;}
-.cot-es .es-score-side .sn{font:700 38px ${FONT_COND};color:#edf4f8;line-height:1;}
-.cot-es .es-score-dash{padding:0 18px;font:500 24px ${FONT_COND};color:#53616c;}
-.cot-es .es-rosters{display:grid;grid-template-columns:1fr 1fr;gap:12px;flex:1;min-height:0;padding:12px;}
+.cot-es .es-score-side .ss{margin-top:5px;font-size:var(--battle-fs-11);color:var(--ink-3);}
+.cot-es .es-score-side .sn{font:700 38px ${FONT_COND};color:var(--ink-1);line-height:1;}
+.cot-es .es-score-dash{padding:0 18px;font:500 24px ${FONT_COND};color:var(--ink-4);}
+.cot-es .es-rosters{display:grid;grid-template-columns:1fr 1fr;gap:var(--s3);flex:1;min-height:0;padding:var(--s3);}
 .cot-es .es-roster{display:flex;min-width:0;min-height:0;flex-direction:column;}
-.cot-es .es-roster-cols{display:grid;grid-template-columns:minmax(0,1fr) 58px;gap:8px;padding:0 28px 6px 54px;
-  font:700 11px ${FONT_COND};letter-spacing:.04em;text-transform:uppercase;color:#6f7e8a;}
+.cot-es .es-roster-cols{display:grid;grid-template-columns:minmax(0,1fr) 58px;gap:var(--s2);padding:0 28px 6px 54px;
+  font:700 var(--battle-fs-11) ${FONT_COND};letter-spacing:.04em;text-transform:uppercase;color:oklch(from var(--ink-4) .58 c h);}
 .cot-es .es-roster-cols span:last-child{text-align:right;}
-.cot-es .es-roster-list{flex:1;min-height:0;padding-top:7px;overflow-y:auto;border-top:1px solid rgba(166,184,199,.28);
+.cot-es .es-roster-list{flex:1;min-height:0;padding-top:7px;overflow-y:auto;border-top:1px solid var(--line-3);
   scrollbar-width:thin;scrollbar-color:rgba(166,184,199,.38) transparent;}
 .cot-es .es-roster-list:focus-visible{outline:2px solid ${COL.amberHi};outline-offset:-2px;}
-.cot-es .es-roster.ally .es-roster-list{border-top-color:rgba(127,220,138,.38)}
-.cot-es .es-roster.foe .es-roster-list{border-top-color:rgba(242,122,114,.38)}
+.cot-es .es-roster.ally .es-roster-list{border-top-color:oklch(from var(--team-own) l c h / .38)}
+.cot-es .es-roster.foe .es-roster-list{border-top-color:oklch(from var(--team-enemy) l c h / .38)}
 /* team rows: one readable identity line, one natural-language result line */
-.cot-es .es-tr{display:flex;align-items:center;gap:8px;height:43px;padding:0 8px;
-  background:rgba(255,255,255,.024);border-left:2px solid rgba(146,164,180,.25);
-  margin-bottom:4px;}
-.cot-es .es-tr.ally{border-left-color:rgba(127,220,138,.45);}
-.cot-es .es-tr.foe{border-left-color:rgba(242,122,114,.45);}
-.cot-es .es-tr.me{background:linear-gradient(90deg,rgba(240,160,48,.18),rgba(240,160,48,.03));
+.cot-es .es-tr{display:flex;align-items:center;gap:var(--s2);height:43px;padding:0 var(--s2);
+  background:oklch(from var(--ink-1) l c h / .024);border-left:2px solid var(--line-3);
+  margin-bottom:var(--s1);}
+.cot-es .es-tr.ally{border-left-color:oklch(from var(--team-own) l c h / .45);}
+.cot-es .es-tr.foe{border-left-color:oklch(from var(--team-enemy) l c h / .45);}
+.cot-es .es-tr.me{background:linear-gradient(90deg,oklch(from var(--accent) l c h / .18),oklch(from var(--accent) l c h / .03));
   border-left-color:${COL.amber};}
 .cot-es .es-tr .tier{display:none}.cot-es .es-tr .si{flex:0 0 44px;height:19px;}
-.cot-es .es-tr .identity{flex:1;min-width:0}.cot-es .es-tr .nm{display:block;min-width:0;font-size:12px;font-weight:700;color:#e5edf4;
+.cot-es .es-tr .identity{flex:1;min-width:0}.cot-es .es-tr .nm{display:block;min-width:0;font-size:var(--battle-fs-12);font-weight:700;color:var(--ink-1);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-es .es-tr .nm .you{color:${COL.gold};font-family:${FONT_COND};font-weight:700;
-  font-size:11px;letter-spacing:.01em;margin-right:5px;vertical-align:1px;}
-.cot-es .es-tr .veh{display:block;margin-top:2px;font-size:11px;color:#7f8e9a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  font-size:var(--battle-fs-11);letter-spacing:.01em;margin-right:5px;vertical-align:1px;}
+.cot-es .es-tr .veh{display:block;margin-top:2px;font-size:var(--battle-fs-11);color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-es .es-tr .veh b{color:${COL.gold};font-weight:700}
 .cot-es .es-tr .output{display:flex;flex:0 0 58px;min-width:0;flex-direction:column;gap:3px;align-items:stretch;}
-.cot-es .es-tr .ov{text-align:right;font:700 11.5px ${FONT_COND};line-height:1;color:#dfe8ef;
+.cot-es .es-tr .ov{text-align:right;font:700 11.5px ${FONT_COND};line-height:1;color:var(--ink-1);
   letter-spacing:-.01em;}
-.cot-es .es-tr .obar{display:block;height:2px;background:rgba(146,164,180,.16);overflow:hidden;}
+.cot-es .es-tr .obar{display:block;height:2px;background:oklch(from var(--ink-3) l c h / .16);overflow:hidden;}
 .cot-es .es-tr .obar i{display:block;height:100%;background:${COL.green};}
 .cot-es .es-tr.foe .obar i{background:${COL.red};}.cot-es .es-tr.me .obar i{background:${COL.gold};}
 .cot-es .es-tr.me .ov{color:${COL.gold};}
 .cot-es .es-tr .st{display:grid;place-items:center;flex:0 0 18px;
-  color:${COL.green};filter:drop-shadow(0 0 5px rgba(127,220,138,.3));}
+  color:${COL.green};filter:drop-shadow(0 0 5px oklch(from var(--ok) l c h / .3));}
 /* Dead rows remain legible; status color carries the state instead of a
    line-through that made player/tank names needlessly difficult to scan. */
-.cot-es .es-tr.dead{opacity:.78;background:rgba(120,30,24,.1);}
-.cot-es .es-tr.dead .nm{color:#aab7c2;}
+.cot-es .es-tr.dead{opacity:.78;background:oklch(from var(--danger) .38 .125 h / .1);}
+.cot-es .es-tr.dead .nm{color:var(--ink-2);}
 .cot-es .es-tr.dead .st{color:${COL.red};filter:none;opacity:1;}
 .cot-es .es-tr.dead .si{opacity:.75;}
 /* your kill rows */
 .cot-es .es-kr{display:flex;align-items:center;gap:10px;height:39px;padding:0 7px;
-  border-bottom:1px solid rgba(146,164,180,.1);}
-.cot-es .es-kr .si{flex:0 0 50px;height:20px;}.cot-es .es-kr .nm{flex:1;min-width:0;font-size:13px;font-weight:700;color:#eef4f9;
+  border-bottom:1px solid var(--line-1);}
+.cot-es .es-kr .si{flex:0 0 50px;height:20px;}.cot-es .es-kr .nm{flex:1;min-width:0;font-size:var(--battle-fs-13);font-weight:700;color:var(--ink-1);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-es .es-kr .dm{flex:0 0 52px;text-align:right;font-family:${FONT_COND};font-weight:700;
-  font-size:13px;color:${COL.gold};letter-spacing:-.01em;}
-.cot-es .es-none{padding:9px 5px;font-size:11px;color:${COL.dim};letter-spacing:.02em;}
+  font-size:var(--battle-fs-13);color:${COL.gold};letter-spacing:-.01em;}
+.cot-es .es-none{padding:9px 5px;font-size:var(--battle-fs-11);color:${COL.dim};letter-spacing:.02em;}
 /* persistent private/LAN room: results are one round inside a social session */
 .cot-es .es-rematch{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:0;width:1160px;
-  max-width:96vw;margin-top:12px;padding:0;background:linear-gradient(100deg,rgba(15,22,28,.98),rgba(25,18,10,.98));
-  border:1px solid rgba(240,160,48,.45);border-left:3px solid ${COL.amber};pointer-events:auto;overflow:hidden;flex:0 0 auto}
-.cot-es .es-room-info{min-width:0;padding:13px 16px}.cot-es .es-room-head{display:grid;grid-template-columns:36px minmax(0,1fr) auto;
+  max-width:96vw;margin-top:var(--s3);padding:0;background:linear-gradient(100deg,var(--hud-plate-strong),var(--hud-plate-strong));
+  border:1px solid oklch(from var(--accent) l c h / .45);border-left:3px solid ${COL.amber};pointer-events:auto;overflow:hidden;flex:0 0 auto}
+.cot-es .es-room-info{min-width:0;padding:13px var(--s4)}.cot-es .es-room-head{display:grid;grid-template-columns:36px minmax(0,1fr) auto;
   align-items:center;gap:11px}.cot-es .es-room-mode-icon{display:grid;place-items:center;width:36px;height:36px;color:${COL.amberHi};
-  background:rgba(240,160,48,.1);border:1px solid rgba(240,160,48,.32)}
-.cot-es .es-room-title{min-width:0}.cot-es .es-room-title span{display:block;font:700 11px ${FONT_COND};letter-spacing:.07em;
+  background:var(--accent-wash);border:1px solid oklch(from var(--accent) l c h / .32)}
+.cot-es .es-room-title{min-width:0}.cot-es .es-room-title span{display:block;font:700 var(--battle-fs-11) ${FONT_COND};letter-spacing:.07em;
   text-transform:uppercase;color:${COL.amberHi}}.cot-es .es-room-title b{display:block;margin-top:2px;font:700 19px ${FONT_COND};
-  letter-spacing:.12em;color:#fff0d4}.cot-es .es-room-round{display:flex;align-items:center;gap:7px;font:700 11px ${FONT_COND};
-  letter-spacing:.08em;text-transform:uppercase;color:#aebbc6}.cot-es .es-room-round svg{color:${COL.amberHi}}
-.cot-es .es-room-players{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.cot-es .es-room-player{display:grid;
+  letter-spacing:var(--track-label);color:var(--ink-1)}.cot-es .es-room-round{display:flex;align-items:center;gap:7px;font:700 var(--battle-fs-11) ${FONT_COND};
+  letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-2)}.cot-es .es-room-round svg{color:${COL.amberHi}}
+.cot-es .es-room-players{display:flex;gap:var(--s2);flex-wrap:wrap;margin-top:10px}.cot-es .es-room-player{display:grid;
   grid-template-columns:44px minmax(100px,1fr) auto;align-items:center;gap:9px;min-width:245px;height:50px;padding:5px 10px;
-  background:rgba(4,8,12,.58);border-left:2px solid rgba(228,170,88,.65)}
+  background:var(--battle-veil);border-left:2px solid oklch(from var(--accent) l c h / .65)}
 .cot-es .es-room-player.ready{border-left-color:${COL.green}}.cot-es .es-room-player .ri{width:44px;height:21px}
 .cot-es .es-room-player .room-copy{min-width:0}.cot-es .es-room-player .rn{display:block;min-width:0;overflow:hidden;
-  text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:700}.cot-es .es-room-player .rv{display:block;margin-top:2px;
-  font-size:11px;color:#8796a2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cot-es .es-room-player .rs{display:flex;
-  align-items:center;gap:5px;font:700 11px ${FONT_COND};letter-spacing:0em;color:#e4aa58}.cot-es .es-room-player .rs svg{flex:0 0 auto}
+  text-overflow:ellipsis;white-space:nowrap;font-size:var(--battle-fs-12);font-weight:700}.cot-es .es-room-player .rv{display:block;margin-top:2px;
+  font-size:var(--battle-fs-11);color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cot-es .es-room-player .rs{display:flex;
+  align-items:center;gap:5px;font:700 var(--battle-fs-11) ${FONT_COND};letter-spacing:0em;color:var(--accent)}.cot-es .es-room-player .rs svg{flex:0 0 auto}
 .cot-es .es-room-player.ready .rs{color:${COL.green}}.cot-es .es-room-actions{display:flex;flex-direction:column;align-items:stretch;
-  justify-content:center;gap:8px;padding:13px 14px;background:rgba(6,9,12,.65);border-left:1px solid rgba(240,160,48,.22)}
-.cot-es .es-ready-meter{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;margin-bottom:2px;color:#9eacb8}
-.cot-es .es-ready-meter .meter-label{font:700 11px ${FONT_COND};letter-spacing:.04em;text-transform:uppercase}.cot-es .es-ready-meter b{
-  font:700 13px ${FONT_COND};color:#f5e7d3;}.cot-es .es-ready-track{grid-column:1/-1;height:3px;
-  background:rgba(151,171,186,.16);overflow:hidden}.cot-es .es-ready-fill{display:block;height:100%;background:${COL.green};
-  box-shadow:0 0 10px rgba(127,220,138,.45);transition:width .25s ease}.cot-es .es-room-actions .cot-es-btn{width:100%;min-width:0;
-  min-height:44px;padding:9px 14px;font-size:11.5px}
-.cot-es .cot-es-btn.ready-now{color:#b8f2c2;border-color:rgba(127,220,138,.6);background:rgba(31,88,45,.68)}
-@keyframes cotEsReadyPulse{50%{box-shadow:0 0 0 5px rgba(240,160,48,.16),0 0 26px rgba(240,160,48,.42)}}
-.cot-es .cot-es-btn.can-start,.cot-es .cot-es-btn.needs-ready:not(:disabled){animation:cotEsReadyPulse 1.35s ease-in-out infinite}
+  justify-content:center;gap:var(--s2);padding:13px 14px;background:var(--battle-chip-plate);border-left:1px solid oklch(from var(--accent) l c h / .22)}
+.cot-es .es-ready-meter{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:var(--s2);margin-bottom:2px;color:var(--ink-3)}
+.cot-es .es-ready-meter .meter-label{font:700 var(--battle-fs-11) ${FONT_COND};letter-spacing:.04em;text-transform:uppercase}.cot-es .es-ready-meter b{
+  font:700 var(--battle-fs-13) ${FONT_COND};color:var(--ink-1);}.cot-es .es-ready-track{grid-column:1/-1;height:3px;
+  background:oklch(from var(--ink-3) l c h / .16);overflow:hidden}.cot-es .es-ready-fill{display:block;height:100%;background:${COL.green};
+  box-shadow:0 0 10px oklch(from var(--ok) l c h / .45);transition:width var(--dur-base) ease}.cot-es .es-room-actions .es-action{width:100%;min-width:0}
+.cot-es .es-action.ready-now{color:var(--text-ok);box-shadow:var(--ring-ok)}
+@keyframes cotEsReadyPulse{50%{box-shadow:0 0 0 5px oklch(from var(--accent) l c h / .16),0 0 26px oklch(from var(--accent) l c h / .42)}}
+.cot-es .es-action.can-start,.cot-es .es-action.needs-ready:not(:disabled){animation:cotEsReadyPulse 1.35s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){
-  .cot-es .es-in,.cot-es .es-ban,.cot-es .cot-es-btn.can-start,
-  .cot-es .cot-es-btn.needs-ready:not(:disabled){animation:none!important;opacity:1;transform:none;}
+  .cot-es .es-in,.cot-es .es-ban,.cot-es .es-action.can-start,
+  .cot-es .es-action.needs-ready:not(:disabled){animation:none!important;opacity:1;transform:none;}
 }
 /* --- actions -------------------------------------------------------------- */
-.cot-es .es-actions{display:flex;gap:14px;margin-top:1.8vh;padding:4px 10px;
+.cot-es .es-actions{display:flex;gap:14px;margin-top:1.8vh;padding:var(--s1) 10px;
   flex:0 0 auto;pointer-events:auto;z-index:2;}
-.cot-es .cot-es-btn{font-family:${FONT_COND};font-weight:700;font-size:13.5px;
-  letter-spacing:.22em;text-indent:.11em;text-transform:uppercase;cursor:pointer;
-  min-width:230px;min-height:52px;padding:13px 40px;
-  transition:transform .12s ease,box-shadow .12s ease,filter .12s ease;}
-.cot-es .cot-es-btn .btn-inner{display:flex;align-items:center;justify-content:center;gap:10px}.cot-es .cot-es-btn svg{flex:0 0 auto}
-.cot-es .cot-es-btn:hover{transform:translateY(-1px);filter:brightness(1.08);}
-.cot-es .cot-es-btn:active{transform:translateY(0);}
-.cot-es .cot-es-btn:disabled{cursor:not-allowed;opacity:.62;transform:none;filter:none}
-.cot-es .cot-es-btn.prime{color:#1a0e02;border:1px solid #ffc169;
-  background:linear-gradient(180deg,#ffb64f,#e07a10);
-  box-shadow:0 6px 22px rgba(240,150,40,.35);}
-.cot-es .cot-es-btn.ghost{color:#f4e9d8;border:1px solid rgba(240,193,105,.55);
-  background:rgba(240,160,48,.08);}
-.cot-es .cot-es-btn.ghost:hover{background:rgba(240,160,48,.16);}
+/* the actions are the kit's buttons (.cot-c-btn); their width and padding in the row: endScreenPresentation.css */
 `;
+
+/**
+ * One report action in the kit's vocabulary (.cot-c-btn, 48 tall): its icon, then its label. data-es-action names it
+ * for the spectator bar's Garage and the probes; `state` adds the room's ready / start states.
+ */
+function action(parent: HTMLElement, variant: 'primary' | 'secondary', name: string, iconId: string, label: string,
+  state = ''): HTMLButtonElement {
+  const button = el('button', `cot-c-btn cot-c-btn--${variant} cot-c-btn--48 es-action${state ? ` ${state}` : ''}`, parent);
+  button.type = 'button';
+  button.dataset.esAction = name;
+  button.dataset.uiSound = variant === 'primary' ? 'confirm' : 'press';
+  button.innerHTML = `${uiIconSVG(iconId, 18)}<span class="cot-c-btn__label">${label}</span>`;
+  return button;
+}
 
 const fmtTime = (s: number): string => {
   const t = Math.max(0, Math.floor(s || 0));
@@ -698,9 +698,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     if (overlay) {
       const btn = overlay.querySelector<HTMLButtonElement>('button');
       if (btn) {
-        btn.removeAttribute('style'); // shed the inline amber pill styling
-        btn.classList.add('cot-es-btn', 'ghost');
-        btn.innerHTML = `<span class="btn-inner">${uiIconSVG('garage', 18)}<span>${t('endScreen.returnToGarage')}</span></span>`;
+        btn.removeAttribute('style');
+        btn.className = 'cot-c-btn cot-c-btn--secondary cot-c-btn--48 es-action';
+        btn.dataset.esAction = 'garage';
+        btn.innerHTML = `${uiIconSVG('garage', 18)}<span class="cot-c-btn__label">${t('endScreen.returnToGarage')}</span>`;
         garageBtn = btn;
       }
       overlay.style.display = 'none';
@@ -728,8 +729,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const k = el('div', 'k', t);
     k.innerHTML = `${opts.icon ? uiIconSVG(opts.icon, 16) : ''}<span>${opts.short ?? label}</span>`;
     // the wide record shows the glyph and the figure alone (page 11's .me .k), a phone the short label: the full label
-    // stays on hover and for assistive technology
-    t.title = label;
+    // stays in the hover tip and for assistive technology
+    t.dataset.tip = label;
     if (opts.short) k.setAttribute('aria-label', label);
     if (opts.text != null) v.textContent = opts.text;
     else countUp(v, opts.value || 0, { delayMs: 260 + seq * 60, fmt: opts.fmt });
@@ -801,10 +802,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     me: LobbyPlayer | undefined,
   ): void {
     if (!me || me.team === 'spectator') return;
-    const ready = el('button', `cot-es-btn ${me.ready ? 'ready-now' : 'prime needs-ready'}`, controls);
-    ready.type = 'button';
-    ready.innerHTML = `<span class="btn-inner">${uiIconSVG(me.ready ? 'close' : 'check', 17)}` +
-      `<span>${me.ready ? t('endScreen.notReady') : t('endScreen.readyNext')}</span></span>`;
+    const ready = action(controls, me.ready ? 'secondary' : 'primary', 'ready', me.ready ? 'close' : 'check',
+      me.ready ? t('endScreen.notReady') : t('endScreen.readyNext'), me.ready ? 'ready-now' : 'needs-ready');
     ready.disabled = state.phase !== 'waiting' || me.connected === false || !me.specId;
     ready.setAttribute('aria-pressed', String(!!me.ready));
     ready.setAttribute('aria-label', me.ready ? t('playMenu.ready.markNotReady') : t('playMenu.ready.markReady'));
@@ -819,10 +818,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     state: SerializedLobby,
     everyoneReady: boolean,
   ): void {
-    const start = el('button', `cot-es-btn ghost${everyoneReady ? ' can-start' : ''}`, controls);
-    start.type = 'button';
-    start.innerHTML = `<span class="btn-inner">${uiIconSVG(everyoneReady ? 'rematch' : 'clock', 17)}` +
-      `<span>${everyoneReady ? t('endScreen.startNext') : t('endScreen.waitingTeam')}</span></span>`;
+    const start = action(controls, 'secondary', 'start', everyoneReady ? 'rematch' : 'clock',
+      everyoneReady ? t('endScreen.startNext') : t('endScreen.waitingTeam'), everyoneReady ? 'can-start' : '');
     start.disabled = state.phase !== 'waiting' || !everyoneReady;
     start.addEventListener('click', () => {
       bus.emit('ui:click', {});
@@ -882,8 +879,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       `${result.aircraft ? '' : flagSeat(result.specId)}<span class="si"></span>` +
       `<span class="identity"><span class="nm">${result.isPlayer && !watchedView ? `<b class="you">${t('endScreen.you')}</b>` : ''}${escapeHtml(result.name || result.id)}</span>` +
       `<span class="veh">${escapeHtml(vehicle)}${details.length ? `<span class="dt"> · ${details.map(escapeHtml).join(' · ')}</span>` : ''}</span></span>` +
-      `<span class="kc num" title="${escapeHtml(t('endScreen.tile.kills'))}">${Math.max(0, Math.floor(Number(result.kills) || 0))}</span>` +
-      (revives ? `<span class="dc num" title="${escapeHtml(t('endScreen.deaths'))}">${Math.max(0, Math.floor(Number(result.deaths) || 0))}</span>` : '') +
+      `<span class="kc num" data-tip="${escapeHtml(t('endScreen.tile.kills'))}">${Math.max(0, Math.floor(Number(result.kills) || 0))}</span>` +
+      (revives ? `<span class="dc num" data-tip="${escapeHtml(t('endScreen.deaths'))}">${Math.max(0, Math.floor(Number(result.deaths) || 0))}</span>` : '') +
       '<span class="output"><span class="ov"></span><span class="obar" aria-hidden="true"><i></i></span></span>' +
       `<span class="st">${uiIconSVG(result.dead ? 'skull' : 'check', 16)}</span>`;
     const damage = Math.max(0, Number(result.dmg) || 0);
@@ -894,14 +891,14 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     output.setAttribute('aria-valuemax', String(Math.max(1, Math.round(maxDamage))));
     output.setAttribute('aria-valuenow', String(Math.round(damage)));
     output.setAttribute('aria-valuetext', t('endScreen.damageValueAria', { value: fmtN(damage) }));
-    output.title = t('endScreen.damageValueAria', { value: fmtN(damage) });
+    output.dataset.tip = t('endScreen.damageValueAria', { value: fmtN(damage) });
     requiredDescendant<HTMLElement>(row, '.ov').textContent = fmtN(damage);
     requiredDescendant<HTMLElement>(row, '.obar i').style.width =
       `${damageComparisonPercent(damage, maxDamage)}%`;
     const stateMark = requiredDescendant<HTMLElement>(row, '.st');
     stateMark.setAttribute('role', 'img');
     stateMark.setAttribute('aria-label', result.dead ? t('endScreen.destroyed') : t('endScreen.survived'));
-    stateMark.title = result.dead ? t('endScreen.destroyed') : t('endScreen.survived');
+    stateMark.dataset.tip = result.dead ? t('endScreen.destroyed') : t('endScreen.survived');
     const silhouette = requiredDescendant<HTMLElement>(row, '.si');
     if (result.aircraft) {
       silhouette.innerHTML = uiIconSVG('modeAc130', 16, result.dead ? 'var(--danger)' : 'var(--ink-2)');
@@ -926,9 +923,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const side = summarizeTeam(list);
     const columns = el('div', 'es-roster-cols', panel);
     const glyphHead = (icon: string, label: string, cls: string): string =>
-      `<span class="ch ${cls}" title="${escapeHtml(label)}">${uiIconSVG(icon, 14)}<span class="sr">${escapeHtml(label)}</span></span>`;
+      `<span class="ch ${cls}" data-tip="${escapeHtml(label)}">${uiIconSVG(icon, 14)}<span class="sr">${escapeHtml(label)}</span></span>`;
     columns.innerHTML = `<span class="side"><b>${escapeHtml(title)}</b><span class="tot num">${fmtN(side.kills)}</span>` +
-      `<span class="alive num" title="${escapeHtml(t('endScreen.survivors'))}">${uiIconSVG('check', 12)}${side.alive}/${side.total}</span></span>` +
+      `<span class="alive num" data-tip="${escapeHtml(t('endScreen.survivors'))}">${uiIconSVG('check', 12)}${side.alive}/${side.total}</span></span>` +
       `<span class="word">${t('endScreen.roster.colCombatant')}</span>` +
       glyphHead('skull', t('endScreen.tile.kills'), 'kc') + (revives ? glyphHead('rematch', t('endScreen.deaths'), 'dc') : '') +
       glyphHead('damage', t('endScreen.damage'), 'dg') + `<span class="ch st" aria-hidden="true"></span>`;
@@ -1097,8 +1094,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const lit = [debrief.cleared, debrief.underPar, debrief.noAllyLost];
     labels.forEach((key, index) => {
       const star = el('i', lit[index] ? 'on' : '', stars);
-      star.textContent = '★';
-      star.title = t(key);
+      star.innerHTML = uiIconSVG('star', 20); // the sprite's star, filled when earned
+      star.dataset.tip = t(key);
     });
     const next = el('div', 'cn', block);
     next.textContent = !debrief.cleared
@@ -1117,7 +1114,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     detail = '',
   ): void {
     const item = el('div', 'es-mini', parent);
-    item.title = label;
+    item.dataset.tip = label;
     item.innerHTML = `<div class="mk">${uiIconSVG(icon, 14)}<span>${label}</span></div>` +
       `<div class="mv">${value}</div>${detail ? `<div class="md">${detail}</div>` : ''}`;
     if (key) host.dataset[key] = value;
@@ -1189,7 +1186,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       const mark = el('div', `ev k-${beat.kind}${beat.side ? ` s-${beat.side}` : ''}`, strip);
       mark.style.left = `${(beat.x * 100).toFixed(2)}%`;
       if (beat.labelled) mark.insertAdjacentHTML('beforeend', `<span class="lb">${beatLabel(beat, rows)}</span>`);
-      else mark.title = beatText(beat, rows);
+      else mark.dataset.tip = beatText(beat, rows);
       el('i', `d${beatIsLoss(beat) ? ' loss' : ''}`, mark);
       if (beat.labelled) el('span', 't num', mark).textContent = fmtTime(beat.t);
       if (beat.kind === 'kill' && beat.labelled) {
@@ -1394,21 +1391,16 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       // campaign ladder: the next (or the same, after a loss) operation is one click away
       const debrief = sum.campaign;
       const next = debrief.next!;
-      const cta = el('button', 'cot-es-btn prime', actions);
-      cta.type = 'button';
+      const cta = action(actions, 'primary', 'campaign', 'modeZones',
+        t(debrief.cleared ? 'endScreen.campaign.next' : 'endScreen.campaign.retry', { title: t(`campaign.op.${next.id}.title`) }));
       cta.dataset.campaignNext = next.id;
-      cta.innerHTML = `<span class="btn-inner">${uiIconSVG('modeZones', 18)}` +
-        `<span>${t(debrief.cleared ? 'endScreen.campaign.next' : 'endScreen.campaign.retry', { title: t(`campaign.op.${next.id}.title`) })}</span></span>`;
       cta.addEventListener('click', () => {
         bus.emit('ui:click', {});
         bus.emit('ui:campaignNext', { operationId: next.id, mapId: next.mapId });
       });
     }
     if (!roomContext?.state) {
-      const again = el('button', 'cot-es-btn prime', actions);
-      again.type = 'button';
-      again.innerHTML = `<span class="btn-inner">${uiIconSVG('rematch', 18)}` +
-        `<span>${t('endScreen.battleAgain')}</span></span>`;
+      const again = action(actions, 'primary', 'again', 'rematch', t('endScreen.battleAgain'));
       again.addEventListener('click', () => {
         bus.emit('ui:click', {});
         bus.emit('ui:battleAgain', {});

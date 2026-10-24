@@ -46,7 +46,7 @@ assert.doesNotMatch(garageCss,
   /\.cot-garage-variant-trigger::after/,
   'the staging control avoids a redundant left-side accent rail');
 assert.match(garageCss,
-  /\.cot-garage-variant-trigger\{[^}]*border:1px solid rgba\(146,164,180,\.16\)/,
+  /\.cot-garage-variant-trigger\{[^}]*border:1px solid var\(--line-2\)/,
   'the staging control uses the same neutral border color as the setup panels');
 assert.match(garageCss,
   /body\[data-cot-width='compact'\] \.cot-garage-variant-menu,[\s\S]*?grid-template-columns:1fr;/,

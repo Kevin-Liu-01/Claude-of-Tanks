@@ -142,5 +142,12 @@ button.cot-c-chip{cursor:pointer}
 .cot-c-media--full::after{background:var(--media-fade-full)}
 .cot-c-media>:not(img,video,picture){position:relative;z-index:var(--z-lift)}
 .cot-c-skel{display:block;min-height:1em;border-radius:var(--control-radius);background:var(--fill-quiet)}
-@media (prefers-reduced-motion:reduce){.cot-c-btn,.cot-c-toggle__track i{transition:none}}
+/* ---- the hover tip (hoverTip.ts): one per document, in the top layer, placed clear of every edge ---- */
+.cot-c-tip{position:fixed;inset:auto;z-index:var(--z-toast);max-width:min(280px,calc(100vw - 16px));margin:0;padding:var(--s1) var(--s2);
+  overflow:visible;border:0;border-radius:var(--r1);background:var(--surface-menu);box-shadow:var(--e3);color:var(--ink-1);
+  font:500 max(var(--fs-floor-11),var(--fs-11))/1.35 var(--font-body);letter-spacing:normal;text-transform:none;
+  white-space:normal;pointer-events:none;opacity:0;transition:opacity var(--dur-instant) var(--ease-enter)}
+.cot-c-tip.is-on{opacity:1}
+.cot-c-tip[hidden]{display:none}
+@media (prefers-reduced-motion:reduce){.cot-c-btn,.cot-c-toggle__track i,.cot-c-tip{transition:none}}
 }

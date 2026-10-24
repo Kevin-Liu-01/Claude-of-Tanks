@@ -305,7 +305,7 @@ function battlefields() {
   return `<section class="bf" id="battlefields" aria-labelledby="battlefields-title">`
     + `<header class="bf-head"><h3 class="bf-title" id="battlefields-title"><span class="t-accent">{{COT_BATTLEFIELDS}}</span> ${t('home.battlefields.title')}</h3>`
     + `<div class="cot-c-seg" role="radiogroup" aria-label="${esc(text('home.battlefields.filterAria'))}" data-i18n-aria-label="home.battlefields.filterAria">${filters}</div></header>`
-    + `<div class="bf-rail" data-map-rail tabindex="0" role="region" aria-labelledby="battlefields-title">${cards}</div></section>`;
+    + `<div class="bf-rail" data-map-rail tabindex="0" role="group" aria-labelledby="battlefields-title">${cards}</div></section>`;
 }
 
 // ---- the beats under the walls (SPEC 12.3.2: combat in motion, modes and mechanics, the kill cam and the Studio) -----
@@ -431,7 +431,7 @@ function shotsBlock() {
     + `<div class="shots-acts">${arrow('prev', 'home.shots.previousAria')}${arrow('next', 'home.shots.nextAria')}`
     + `<a class="${btn('', '')}" href="/docs/filming#library" data-i18n="home.mosaic.library" data-i18n-vars='{"count":"${LIBRARY_COUNT}"}'>`
     + `${esc(text('home.mosaic.library').replace('{count}', LIBRARY_COUNT))}</a></div></header>`
-    + `<div class="shots-rail" data-shots-rail tabindex="0" role="region" aria-labelledby="shots-title">${tiles.join('')}</div></div></section>`;
+    + `<div class="shots-rail" data-shots-rail tabindex="0" role="group" aria-labelledby="shots-title">${tiles.join('')}</div></div></section>`;
 }
 
 // 7 and 8, the kill cam and the Studio: two pictures, each with its name and its one way in

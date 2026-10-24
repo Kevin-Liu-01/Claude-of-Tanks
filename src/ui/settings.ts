@@ -33,7 +33,7 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 
 import { installHudCustomization } from './hudCustomization.ts';
 import { installBattleUiVisibility } from './battleUiVisibility.ts';
-import { FONT_STACK, ensureFonts } from './fonts.ts';
+import { ensureFonts } from './fonts.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { readBrainSettings, writeBrainSettings } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
@@ -206,74 +206,50 @@ function requiredElement<ElementType extends Element>(
 }
 
 const SETTINGS_CSS = `
-/* settings_ui r2 (owner: "make our settings screen look much better"):
-   premium pass in the garage r9 kit — blurred pause veil, amber top strip,
-   segmented tabs with amber underline, amber-tick section rules, keycap
-   binding chips with bound/unbound/listening/conflict states, custom steel
-   sliders with amber fill, ON/OFF segmented toggles, plate group-cards on
-   the slider tabs, flat-orange chamfered RESUME (BATTLE-button plate), red
-   LEAVE BATTLE, overflow-gated scroll fades. Reskin only — every class the
-   probes and main.ts touch keeps its name and open/close semantics. */
+/* The settings panel on the Premiere tokens (brand-ui 247, the consistency pass): one plate over a dimmed scene, the
+   kit's tabs, segmented controls, key caps and buttons, read from the same tokens as src/ui/components/components.css,
+   so the colour, contrast and motion presets reach it with no code. Sizes are max(px, token): the type tokens follow the
+   game's UI scale and the zh floor, and the px keeps the 11 px floor on a small window. Every class the probes and
+   main.ts touch keeps its name and open/close semantics. */
 .cot-settings{position:fixed;inset:0;z-index:80;display:none;align-items:center;justify-content:center;
-  background:radial-gradient(130% 100% at 50% 42%,rgba(4,7,10,.50) 0%,rgba(2,4,6,.76) 100%);
-  -webkit-backdrop-filter:blur(8px) saturate(.9);backdrop-filter:blur(8px) saturate(.9);
-  font-family:${FONT_STACK};color:#e6edf3;-webkit-user-select:none;user-select:none;}
-.cot-settings.open{display:flex;animation:cotSetVeil var(--cot-motion-base) var(--cot-ease-out);}
-.cot-settings *{box-sizing:border-box;margin:0;padding:0;}
+  background:oklch(from var(--scrim) l c h / .7);font-family:var(--font-ui);color:var(--ink-1);
+  -webkit-user-select:none;user-select:none;}
+.cot-settings.open{display:flex;animation:cotSetVeil var(--dur-base) var(--ease-enter);}
+/* the panel's reset spares the kit's buttons, whose layer the surfaces layer would otherwise override */
+.cot-settings :where(:not(.cot-c-btn)){box-sizing:border-box;margin:0;padding:0;}
 .cot-set-panel{position:relative;width:744px;max-width:96vw;height:min(880px,88vh);max-height:88vh;
-  display:flex;flex-direction:column;
-  background:linear-gradient(180deg,rgba(12,17,22,.96),rgba(6,9,12,.985));
-  border:1px solid rgba(146,164,180,.30);
-  box-shadow:0 24px 90px rgba(0,0,0,.8),inset 0 1px 0 rgba(235,243,250,.05);}
-.cot-settings.open .cot-set-panel{animation:cotSetIn var(--cot-motion-slow) var(--cot-ease-drawer) backwards;}
+  display:flex;flex-direction:column;background:var(--surface-plate);border-radius:var(--plate-radius);box-shadow:var(--e4);}
+.cot-settings.open .cot-set-panel{animation:cotSetIn var(--dur-screen) var(--ease-enter) backwards;}
 @keyframes cotSetVeil{from{opacity:0;}}
-@keyframes cotSetIn{from{opacity:0;transform:translateY(14px) scale(.985);}}
-.cot-set-hdr{display:flex;align-items:center;gap:12px;padding:15px 22px 11px;}
-.cot-set-hdr h2{font-size:15px;font-weight:700;letter-spacing:.18em;color:#d5dfe7;
-  text-transform:uppercase;margin-right:auto;}
-.cot-set-hdr h2::before{content:'';display:inline-block;width:18px;height:3px;
-  background:#f0a030;margin-right:12px;vertical-align:3px;}
-/* PAUSE: battle-pause tag in the header — shown only while the open panel is
-   actually freezing a live battle (root gets .paused; garage Esc never shows
-   it). Era-chip plate + slow-pulsing amber lamp instead of the old blinking
-   outline chip (settings_ui r2). */
-.cot-set-paused{display:none;align-items:center;gap:8px;font-size:11px;font-weight:700;
-  letter-spacing:.2em;color:#ffd27a;text-transform:uppercase;padding:6px 12px 5px 11px;
-  border:1px solid rgba(240,176,74,.6);border-bottom:2px solid #f0a030;
-  background:linear-gradient(180deg,rgba(58,40,14,.92),rgba(30,20,8,.95));}
-.cot-set-paused::before{content:'';width:6px;height:6px;flex:0 0 auto;background:#f0a030;
-  box-shadow:0 0 8px rgba(240,160,48,.8);animation:cotPausedPulse 1.7s ease-in-out infinite;}
+@keyframes cotSetIn{from{opacity:0;transform:translateY(14px);}}
+.cot-set-hdr{display:flex;align-items:center;gap:var(--s3);padding:var(--s4) var(--s5) var(--s2);}
+.cot-set-hdr h2{margin-right:auto;font:600 max(20px,var(--fs-20))/1.15 var(--font-display);letter-spacing:var(--track-title);
+  color:var(--ink-1);}
+/* PAUSE: the battle-pause tag in the header, shown only while the open panel freezes a live battle (root gets .paused;
+   the Garage's Esc never shows it): a chip with the accent's lamp */
+.cot-set-paused{display:none;align-items:center;gap:var(--s2);padding:0 var(--s3);height:28px;
+  font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;
+  color:var(--ink-1);background:var(--accent-wash);box-shadow:var(--ring-accent);border-radius:var(--control-radius);}
+.cot-set-paused::before{content:'';width:6px;height:6px;flex:0 0 auto;border-radius:50%;background:var(--accent);
+  animation:cotPausedPulse calc(var(--dur-stage) * 2.4) var(--ease-move) infinite;}
 .cot-settings.paused .cot-set-paused{display:inline-flex;}
 @keyframes cotPausedPulse{0%,100%{opacity:1;}50%{opacity:.3;}}
-.cot-set-close{cursor:pointer;width:30px;height:30px;flex:0 0 auto;display:flex;
-  align-items:center;justify-content:center;
-  border:1px solid rgba(146,164,180,.35);border-bottom:2px solid rgba(146,164,180,.45);
-  background:rgba(11,15,20,.7);color:#9fb0bf;font-family:${FONT_STACK};font-size:13px;
-  line-height:1;transition:color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,
-    transform var(--cot-motion-fast) var(--cot-ease-out);}
-.cot-set-close:active{transform:scale(.96);}
-.cot-set-close:hover{color:#f0b04a;border-color:rgba(240,176,74,.6);}
-/* segmented tabs: hover plate + amber active underline (garage era-chip kit) */
-.cot-set-tabs{display:flex;gap:2px;padding:0 22px;border-bottom:1px solid rgba(146,164,180,.22);
-  background:linear-gradient(180deg,rgba(146,164,180,.05),rgba(146,164,180,0));}
-.cot-set-tab{position:relative;cursor:pointer;background:none;border:none;
-  font-family:${FONT_STACK};font-size:11px;font-weight:700;letter-spacing:.22em;color:#8a97a3;
-  text-transform:uppercase;padding:11px 16px 10px;
-  transition:color var(--cot-motion-fast) ease,background-color var(--cot-motion-fast) ease;}
-.cot-set-tab:hover{color:#c6d2dc;background:rgba(146,164,180,.07);}
-:lang(zh-CN) .cot-settings .cot-set-tab{font-size:13px;}
-.cot-set-tab.sel{color:#ffd27a;background:linear-gradient(180deg,rgba(240,160,48,.10),rgba(240,160,48,0));}
-.cot-set-tab.sel::after{content:'';position:absolute;left:6px;right:6px;bottom:-1px;height:2px;
-  background:#f0a030;box-shadow:0 -1px 8px rgba(240,160,48,.45);}
-/* scrolling rows area — thin steel scrollbar + overflow-gated fade masks
-   (.fade-top/.fade-bot toggled by JS from live scroll position; the garage
-   r9 .can-scroll pattern, split per edge) */
-.cot-set-body{flex:1;overflow-y:auto;padding:2px 22px 16px;min-height:280px;
-  scrollbar-width:thin;scrollbar-color:rgba(146,164,180,.45) rgba(8,11,14,.6);}
+/* the close glyph: the kit's ghost icon button (one close glyph, no frame) */
+.cot-set-close svg{width:18px;height:18px;}
+/* tabs: the kit's tabs (components.css .cot-c-tabs) on the panel's own state class */
+.cot-set-tabs{display:flex;gap:var(--s5);padding:0 var(--s5);border-bottom:1px solid var(--line-1);}
+.cot-set-tab{position:relative;display:inline-flex;align-items:center;min-height:44px;padding:0;border:0;background:none;
+  cursor:pointer;color:var(--ink-3);font:600 max(15px,var(--fs-15))/1 var(--font-display);white-space:nowrap;
+  transition:color var(--dur-fast) var(--ease-enter);}
+.cot-set-tab:hover{color:var(--ink-2);}
+.cot-set-tab.sel{color:var(--ink-1);}
+.cot-set-tab.sel::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent);}
+/* scrolling rows: a thin scrollbar and overflow-gated fade masks (.fade-top/.fade-bot set from the scroll position) */
+.cot-set-body{flex:1;overflow-y:auto;padding:var(--s1) var(--s5) var(--s4);min-height:280px;
+  scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;}
 .cot-set-body::-webkit-scrollbar{width:6px;}
-.cot-set-body::-webkit-scrollbar-track{background:rgba(8,11,14,.6);}
-.cot-set-body::-webkit-scrollbar-thumb{background:rgba(146,164,180,.45);}
-.cot-set-body::-webkit-scrollbar-thumb:hover{background:rgba(146,164,180,.65);}
+.cot-set-body::-webkit-scrollbar-track{background:transparent;}
+.cot-set-body::-webkit-scrollbar-thumb{background:var(--line-3);}
 .cot-set-body.fade-bot{-webkit-mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 28px),transparent 100%);
   mask-image:linear-gradient(180deg,#000 0,#000 calc(100% - 28px),transparent 100%);}
 .cot-set-body.fade-top{-webkit-mask-image:linear-gradient(180deg,transparent 0,#000 28px,#000 100%);
@@ -281,169 +257,103 @@ const SETTINGS_CSS = `
 .cot-set-body.fade-top.fade-bot{
   -webkit-mask-image:linear-gradient(180deg,transparent 0,#000 28px,#000 calc(100% - 28px),transparent 100%);
   mask-image:linear-gradient(180deg,transparent 0,#000 28px,#000 calc(100% - 28px),transparent 100%);}
-/* section header: amber tick + hairline rule running to the right edge
-   (the garage r9 .mtitle pattern) */
-.cot-set-group{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;
-  letter-spacing:.16em;color:#8a97a3;text-transform:uppercase;margin:18px 0 6px;}
-.cot-set-group::before{content:'';width:8px;height:2px;flex:0 0 auto;background:#f0a030;}
-.cot-set-group::after{content:'';flex:1;height:1px;background:rgba(146,164,180,.14);}
-.cot-set-group:first-child{margin-top:12px;}
-/* plate group-card (garage r9 battlefield/camo plate) — clusters on the
-   GAMEPLAY / SOUND / GRAPHICS tabs sit on one industrial plate each */
-.cot-set-card{margin:12px 0 0;padding:10px 12px 9px;
-  background:linear-gradient(180deg,rgba(9,13,17,.66),rgba(6,9,12,.5));
-  border:1px solid rgba(146,164,180,.16);}
-.cot-set-card .cot-set-group{margin:0 0 4px;}
-.cot-set-hud-editor:hover{border-color:#d9a24a;color:#ffe1a2}.cot-set-hud-editor:focus-visible{outline:2px solid #f0a030;outline-offset:2px}.cot-set-hud-editor:disabled{opacity:.5;cursor:wait}
-.cot-set-hud-editor{margin-left:auto;flex-shrink:0;min-height:44px;padding:8px 16px;border:1px solid #816333;background:linear-gradient(110deg,#322717,#171b1d);color:#f2c479;font:inherit;font-size:11px;font-weight:700;cursor:pointer;}
-.cot-set-row{display:flex;align-items:center;justify-content:space-between;gap:14px;
-  padding:7px 10px;border-bottom:1px solid rgba(146,164,180,.08);transition:background .12s;}
-.cot-set-row:hover{background:rgba(146,164,180,.06);}
-.cot-set-row.alt{background:rgba(146,164,180,.03);}
-.cot-set-row.alt:hover{background:rgba(146,164,180,.06);}
-.cot-set-row .lb{min-width:0;flex:1;display:flex;align-items:center;gap:9px;
-  font-size:12.5px;color:#c6d2dc;letter-spacing:.04em;line-height:1.3;}
+/* a section's header: the plate header's label and rule (no tick) */
+.cot-set-group{display:flex;align-items:center;gap:var(--s3);margin:var(--s4) 0 var(--s1);
+  font:600 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3);}
+.cot-set-group::after{content:'';flex:1;height:1px;background:var(--line-1);}
+.cot-set-group:first-child{margin-top:var(--s3);}
+/* a cluster's plate on the Gameplay, Sound and Graphics tabs */
+.cot-set-card{margin:var(--s3) 0 0;padding:var(--s3);background:var(--surface-page);border-radius:var(--plate-radius);
+  box-shadow:var(--e1);}
+.cot-set-card .cot-set-group{margin:0 0 var(--s1);}
+.cot-set-hud-editor{margin-left:auto;flex-shrink:0;}
+.cot-set-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:44px;
+  padding:var(--s1) var(--s2);border-bottom:1px solid var(--line-1);transition:background-color var(--dur-fast) var(--ease-enter);}
+.cot-set-row:last-child{border-bottom:0;}
+.cot-set-row:hover{background:var(--fill-faint);}
+.cot-set-row .lb{min-width:0;flex:1;display:flex;align-items:center;gap:var(--s2);
+  font:500 max(13px,var(--fs-13))/1.3 var(--font-body);color:var(--ink-2);}
 .cot-set-crew-field{width:260px;max-width:100%;min-width:0;}
-.cot-setting-icon{position:relative;width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center;
-  color:#91a3b2;background:linear-gradient(180deg,rgba(37,46,54,.72),rgba(16,21,26,.78));
-  border:1px solid rgba(146,164,180,.24);box-shadow:inset 0 1px 0 rgba(235,243,250,.05);}
+/* a setting's glyph: one grey, the accent only on a shell slot's number */
+.cot-setting-icon{position:relative;width:24px;height:24px;flex:0 0 24px;display:grid;place-items:center;color:var(--ink-3);}
 .cot-setting-icon svg{display:block;width:16px;height:16px;overflow:visible;}
-.cot-setting-icon.tone-amber{color:#e2a64d;border-color:rgba(226,166,77,.28);}
-.cot-setting-icon.tone-red{color:#d9685f;border-color:rgba(217,104,95,.28);}
-.cot-setting-icon.tone-green{color:#67bd7d;border-color:rgba(103,189,125,.28);}
-.cot-setting-icon.tone-cyan{color:#67b8d8;border-color:rgba(103,184,216,.28);}
-.cot-setting-icon.tone-violet{color:#aa8bd3;border-color:rgba(170,139,211,.28);}
 .cot-setting-icon[data-badge]::after{content:attr(data-badge);position:absolute;right:-4px;bottom:-4px;
-  min-width:11px;height:11px;padding:0 2px;display:grid;place-items:center;font-size:11px;font-weight:700;
-  line-height:1;color:#161009;background:#e2a64d;border:1px solid #6d4717;box-shadow:0 1px 3px #000;}
+  min-width:12px;height:12px;padding:0 2px;display:grid;place-items:center;border-radius:2px;
+  font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-data);color:var(--ink-on-accent);background:var(--accent);}
 .cot-setting-label-text{min-width:0;}
-.cot-set-row.conflict,.cot-set-row.conflict.alt{background:rgba(190,60,50,.12);
-  box-shadow:inset 2px 0 0 #c8503c,inset 0 0 0 1px rgba(240,90,90,.35);}
-.cot-set-row.conflict .cot-chip{border-color:rgba(240,110,95,.6);
-  border-bottom-color:rgba(200,80,60,.85);}
-.cot-set-row .chips{display:flex;gap:6px;align-items:center;}
-.cot-set-colhdr{display:flex;align-items:center;gap:6px;padding:12px 10px 5px;
-  border-bottom:1px solid rgba(146,164,180,.22);}
-.cot-set-colhdr span{width:92px;text-align:center;font-size:11px;font-weight:700;
-  letter-spacing:.1em;color:#68747f;text-transform:uppercase;}
+.cot-set-row.conflict{background:oklch(from var(--danger) l c h / .12);box-shadow:inset 2px 0 0 var(--danger);}
+.cot-set-row.conflict .cot-chip{box-shadow:var(--ring-danger);}
+.cot-set-row .chips{display:flex;gap:var(--s2);align-items:center;}
+.cot-set-colhdr{display:flex;align-items:center;gap:var(--s2);padding:var(--s3) var(--s2) var(--s1);border-bottom:1px solid var(--line-1);}
+.cot-set-colhdr span{width:92px;text-align:center;font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-display);
+  letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-4);}
 .cot-set-colhdr span.act{width:auto;flex:1;text-align:left;}
 .cot-set-colhdr span.pad{width:72px;}
-/* binding chips: keycap read — top-light gradient, 1px inner highlight, 2px
-   bottom edge. States: bound steel / unbound dashed dim / listening amber
-   pulse / conflict red tint (row-scoped above). */
-.cot-chip{width:92px;height:26px;text-align:center;cursor:pointer;font-family:${FONT_STACK};
-  font-size:11px;font-weight:700;letter-spacing:.08em;color:#e6edf3;padding:5px 5px 4px;
-  background:linear-gradient(180deg,rgba(40,49,58,.95) 0%,rgba(24,30,37,.95) 55%,rgba(15,20,25,.97) 100%);
-  border:1px solid rgba(146,164,180,.5);border-bottom:2px solid rgba(88,102,115,.95);
-  box-shadow:inset 0 1px 0 rgba(235,243,250,.12);
-  transition:color .12s,border-color .12s,filter .12s;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+/* binding chips: the kit's key cap (components.css .cot-c-kbd) at the binding's width. States: bound, unbound (dashed),
+   listening (the accent, pulsing) and conflict (the danger ring, row-scoped above). */
+.cot-chip{width:92px;height:30px;padding:0 var(--s1);border:0;border-radius:var(--control-radius);cursor:pointer;
+  font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-1);text-align:center;background:var(--surface-raised);
+  box-shadow:var(--ring-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  transition:background-color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter);}
 .cot-chip.padcol{width:72px;}
-.cot-chip:hover{color:#ffd27a;border-color:rgba(240,176,74,.7);filter:brightness(1.08);}
-.cot-chip:active{transform:translateY(1px);}
-.cot-chip.empty{color:#55606a;background:rgba(11,15,20,.5);box-shadow:none;
-  border:1px dashed rgba(146,164,180,.26);padding:5px;}
-.cot-chip.listening{color:#ffd27a;border:1px solid #f0a030;border-bottom:2px solid #c97f18;
-  background:linear-gradient(180deg,rgba(66,42,12,.96),rgba(34,22,8,.97));
-  animation:cotChipPulse 1.1s ease-in-out infinite;font-size:11px;letter-spacing:0em;padding:5px 3px 4px;}
-/* controls_gunnery r4 minor: Chromium's default blue focus ring survived on
-   chips after a rebind click (visible in the conflict screenshot) and read as
-   web-page chrome inside the custom panel. All panel controls drop the UA
-   outline; keyboard navigation keeps an on-brand amber ring via
-   :focus-visible (mouse clicks set :focus but not :focus-visible, so the
-   pointer flow stays clean). */
-.cot-chip:focus,.cot-set-tab:focus,.cot-set-btn:focus,.cot-set-close:focus,
-.cot-set-seg button:focus{outline:none;}
-.cot-chip:focus-visible,.cot-set-tab:focus-visible,.cot-set-btn:focus-visible,
-.cot-set-close:focus-visible,.cot-set-seg button:focus-visible{
-  outline:1px solid #f0a030;outline-offset:1px;}
+.cot-chip:hover{background:var(--surface-hover);}
+.cot-chip:active{transform:translateY(var(--btn-press-drop));}
+.cot-chip.empty{color:var(--ink-4);background:transparent;box-shadow:inset 0 0 0 1px var(--line-1);}
+.cot-chip.listening{color:var(--ink-1);background:var(--accent-wash);box-shadow:var(--ring-accent);
+  animation:cotChipPulse calc(var(--dur-stage) * 1.6) var(--ease-move) infinite;}
+.cot-chip:focus,.cot-set-tab:focus,.cot-set-btn:focus,.cot-set-close:focus,.cot-set-seg button:focus{outline:none;}
+.cot-chip:focus-visible,.cot-set-tab:focus-visible,.cot-set-seg button:focus-visible{box-shadow:var(--focus-ring);}
 .cot-set-slider input[type=range]:focus{outline:none;}
-.cot-set-slider input[type=range]:focus-visible{outline:1px solid #f0a030;outline-offset:2px;}
-@keyframes cotChipPulse{
-  0%,100%{box-shadow:inset 0 1px 0 rgba(255,210,122,.2),0 0 3px rgba(240,160,48,.25);}
-  50%{box-shadow:inset 0 1px 0 rgba(255,210,122,.2),0 0 14px rgba(240,160,48,.6);}}
-.cot-set-conflict{display:none;margin:10px 22px 0;padding:9px 14px;align-items:center;gap:12px;
-  background:linear-gradient(180deg,rgba(52,16,13,.95),rgba(34,11,9,.95));
-  border:1px solid rgba(216,92,68,.5);border-left:3px solid #c8503c;font-size:11.5px;
-  letter-spacing:.04em;color:#f2b1a8;}
+.cot-set-slider input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+@keyframes cotChipPulse{50%{opacity:.7;}}
+.cot-set-conflict{display:none;margin:var(--s3) var(--s5) 0;padding:var(--s2) var(--s3);align-items:center;gap:var(--s3);
+  background:oklch(from var(--danger) l c h / .12);box-shadow:inset 3px 0 0 var(--danger);border-radius:var(--control-radius);
+  font:500 max(13px,var(--fs-13))/1.4 var(--font-body);color:var(--ink-1);}
 .cot-set-conflict.show{display:flex;}
-.cot-set-conflict b{color:#ffd27a;font-weight:700;}
+.cot-set-conflict b{color:var(--text-danger);font-weight:600;}
 .cot-set-conflict .msg{flex:1;}
-/* footer: quiet ghost reset (left) / red-outline LEAVE BATTLE + flat-orange
-   chamfered RESUME (right) — the r7 BATTLE plate, no gloss, no bevel */
-.cot-set-ftr{display:flex;align-items:center;gap:10px;padding:13px 22px 16px;
-  border-top:1px solid rgba(146,164,180,.22);
-  background:linear-gradient(180deg,rgba(146,164,180,.04),rgba(146,164,180,0));}
-.cot-set-btn{cursor:pointer;font-family:${FONT_STACK};font-size:11px;font-weight:700;
-  letter-spacing:.2em;color:#fff8ee;text-transform:uppercase;padding:10px 22px 9px;
-  text-shadow:none;background:#ee8912;border:1px solid #8a4a06;border-bottom:2px solid #a85a05;
-  transition:filter .12s;}
-.cot-set-btn:hover{filter:brightness(1.08);}
-.cot-set-btn:active{transform:translateY(1px);}
-.cot-set-btn.ghost{background:rgba(11,15,20,.55);color:#9fb0bf;
-  border:1px solid rgba(146,164,180,.3);border-bottom:2px solid rgba(146,164,180,.38);}
-.cot-set-btn.ghost:hover{color:#f0b04a;border-color:rgba(240,176,74,.6);filter:none;}
-/* reset anchors LEFT and pushes the action pair right — margin on RESET (not
-   the old margin-left:auto on LEAVE) so the primary stays flush right even
-   when LEAVE BATTLE is display:none in the garage context */
+/* the footer: Reset on the left, Leave battle and the one primary on the right (the kit's buttons) */
+.cot-set-ftr{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) var(--s5) var(--s4);border-top:1px solid var(--line-1);}
+/* reset anchors left and pushes the action pair right (the primary stays flush right with Leave battle hidden) */
 .cot-set-btn.reset{margin-right:auto;}
-.cot-set-btn.leave{color:#f0a9a0;background:rgba(46,13,10,.55);
-  border:1px solid rgba(216,92,68,.55);border-bottom:2px solid rgba(170,56,40,.85);}
-.cot-set-btn.leave:hover{color:#ffd0c5;border-color:rgba(239,110,82,.9);
-  background:rgba(66,18,14,.7);filter:none;}
-.cot-set-btn.resume{width:150px;height:38px;padding:0 0 1px;border:none;text-indent:.24em;
-  letter-spacing:.24em;font-size:11.5px;
-  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 150 38'%3E%3Cpath d='M8.4 .5H141.6L149.5 19 141.6 37.5H8.4L.5 19Z' fill='%23ee8912' stroke='%238a4a06' stroke-width='1'/%3E%3Cpath d='M1.3 20.5 8.9 37.1h132.2l7.6-16.6' fill='none' stroke='%23a85a05' stroke-width='2' opacity='.9'/%3E%3C/svg%3E") 0 0/100% 100% no-repeat;}
-.cot-set-btn.resume:hover{filter:brightness(1.07);}
-/* sliders: steel track, amber fill (--f set from JS), keycap thumb */
-.cot-set-slider{display:flex;align-items:center;gap:10px;}
-.cot-set-slider input[type=range]{-webkit-appearance:none;appearance:none;--f:50%;
-  width:190px;height:16px;cursor:pointer;background:transparent;}
-.cot-set-slider input[type=range]::-webkit-slider-runnable-track{height:4px;
-  background:linear-gradient(90deg,#c9812a 0,#f0a030 var(--f),rgba(146,164,180,.22) var(--f));
-  box-shadow:inset 0 1px 1px rgba(0,0,0,.5);}
-.cot-set-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;
-  width:11px;height:16px;margin-top:-6px;
-  background:linear-gradient(180deg,#4a5866,#232c34);
-  border:1px solid rgba(210,225,240,.6);border-bottom:2px solid rgba(70,84,96,.95);
-  box-shadow:inset 0 1px 0 rgba(235,243,250,.18),0 1px 3px rgba(0,0,0,.5);
-  transition:border-color .12s;}
-.cot-set-slider input[type=range]:hover::-webkit-slider-thumb{border-color:rgba(240,176,74,.75);}
-.cot-set-slider input[type=range]::-moz-range-track{height:4px;background:rgba(146,164,180,.22);}
-.cot-set-slider input[type=range]::-moz-range-progress{height:4px;background:#f0a030;}
-.cot-set-slider input[type=range]::-moz-range-thumb{width:11px;height:16px;border-radius:0;
-  background:linear-gradient(180deg,#4a5866,#232c34);border:1px solid rgba(210,225,240,.6);}
-.cot-set-slider input[type=number]{width:62px;text-align:right;font-size:12px;font-weight:700;
-  color:#ffd27a;letter-spacing:.03em;padding:4px 6px 3px;
-  font-family:${FONT_STACK};background:rgba(8,11,15,.85);
-  border:1px solid rgba(146,164,180,.4);border-bottom:2px solid rgba(146,164,180,.5);
-  -moz-appearance:textfield;appearance:textfield;}
-.cot-set-slider input[type=number]:focus{outline:none;border-color:rgba(240,176,74,.65);}
+/* sliders: a line track with the accent's fill (--f set from JS) and a square knob */
+.cot-set-slider{display:flex;align-items:center;gap:var(--s3);}
+.cot-set-slider input[type=range]{-webkit-appearance:none;appearance:none;--f:50%;width:190px;height:20px;cursor:pointer;
+  background:transparent;}
+.cot-set-slider input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;
+  background:linear-gradient(90deg,var(--accent) var(--f),var(--line-2) var(--f));}
+.cot-set-slider input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-5px;
+  border-radius:var(--control-radius);background:var(--ink-1);box-shadow:var(--e1);
+  transition:transform var(--dur-fast) var(--ease-enter);}
+.cot-set-slider input[type=range]:hover::-webkit-slider-thumb{transform:scale(1.15);}
+.cot-set-slider input[type=range]::-moz-range-track{height:4px;background:var(--line-2);}
+.cot-set-slider input[type=range]::-moz-range-progress{height:4px;background:var(--accent);}
+.cot-set-slider input[type=range]::-moz-range-thumb{width:14px;height:14px;border:0;border-radius:var(--control-radius);
+  background:var(--ink-1);}
+.cot-set-slider input[type=number]{width:62px;height:30px;padding:0 var(--s2);text-align:right;
+  font:500 max(13px,var(--fs-13))/1 var(--font-data);color:var(--ink-1);background:var(--surface-page);border:0;
+  border-radius:var(--control-radius);box-shadow:var(--ring-2);-moz-appearance:textfield;appearance:textfield;}
+.cot-set-slider input[type=number]:focus{outline:none;box-shadow:var(--ring-accent);}
 .cot-set-slider input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
-.cot-set-slider .unit{width:16px;font-size:11px;font-weight:700;color:#8a97a3;}
-.cot-set-seg button:disabled{opacity:.4;cursor:not-allowed;}
-/* segmented pickers (difficulty / RMB mode / quality) + ON/OFF toggles —
-   keycap plates, amber selected (era-chip sel treatment) */
-.cot-set-seg{display:flex;gap:4px;}
-.cot-set-seg button{cursor:pointer;font-family:${FONT_STACK};font-size:11px;font-weight:700;
-  letter-spacing:.09em;text-transform:uppercase;color:#8a97a3;padding:6px 14px 5px;
-  background:linear-gradient(180deg,rgba(30,38,46,.9),rgba(16,21,26,.95));
-  border:1px solid rgba(146,164,180,.42);border-bottom:2px solid rgba(88,102,115,.8);
-  box-shadow:inset 0 1px 0 rgba(235,243,250,.07);
-  transition:color var(--cot-motion-fast) ease,border-color var(--cot-motion-fast) ease,
-    background-color var(--cot-motion-fast) ease,transform var(--cot-motion-fast) var(--cot-ease-out);}
-.cot-set-seg button:active{transform:scale(.97);}
-.cot-set-seg button:hover{color:#c6d2dc;border-color:rgba(210,225,240,.55);}
-.cot-set-seg button.sel{color:#ffd27a;border-color:rgba(240,176,74,.75);border-bottom-color:#f0a030;
-  background:linear-gradient(180deg,rgba(58,40,14,.92),rgba(30,20,8,.95));
-  box-shadow:inset 0 1px 0 rgba(255,210,122,.12);}
-.cot-set-seg.onoff button{padding:5px 13px 4px;min-width:48px;}
+.cot-set-slider .unit{width:16px;font:500 max(var(--fs-floor-12),var(--fs-12))/1 var(--font-data);color:var(--ink-3);}
+/* segmented pickers (difficulty, right click, quality, language) and On/Off: the kit's segmented control
+   (components.css .cot-c-seg) on the panel's own state class */
+.cot-set-seg{display:inline-flex;gap:0;padding:3px;border-radius:var(--control-radius);background:var(--fill-quiet);
+  box-shadow:var(--ring-1);}
+.cot-set-seg button{display:inline-flex;align-items:center;justify-content:center;min-width:32px;height:32px;padding:0 13px;
+  border:0;border-radius:var(--control-radius);background:transparent;cursor:pointer;white-space:nowrap;
+  color:var(--ink-3);font:500 max(13px,var(--fs-13))/1 var(--font-body);
+  transition:color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter);}
+.cot-set-seg button:hover{color:var(--ink-1);}
+.cot-set-seg button.sel{background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow);}
+.cot-set-seg button:disabled{color:var(--ink-4);cursor:not-allowed;}
+.cot-set-seg.onoff button{min-width:48px;}
 /* the graphics quality preview (media/settings-r1): the chosen preset's frame at 1:1 pixels, or the one pointed at */
 .cot-set-preview{margin:10px 10px 4px;max-width:640px;aspect-ratio:16/9;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--ring-2)}
 .cot-set-preview[hidden]{display:none}
 .cot-set-preview img{display:block;width:100%;height:100%;object-fit:cover}
-.cot-set-note{font-size:13px;font-weight:400;letter-spacing:0;color:#8d9ba7;margin:10px 10px 2px;line-height:1.55;max-width:72ch;text-wrap:pretty;}
-.cot-set-note b{color:#c3cfd8;font-family:var(--font-body);font-weight:600;}
+.cot-set-note{margin:var(--s3) var(--s2) var(--s1);max-width:72ch;font:400 max(13px,var(--fs-13))/1.55 var(--font-body);color:var(--ink-3);text-wrap:pretty;}
+.cot-set-note b{color:var(--ink-2);font-weight:600;}
 .cot-set-note.folded{display:none;}
 .cot-settings [data-time-hint]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 .cot-set-card.notes-open .cot-set-note.folded{display:block;}
@@ -457,18 +367,17 @@ const SETTINGS_CSS = `
 @media (prefers-reduced-motion:reduce){
   .cot-settings.open,.cot-settings.open .cot-set-panel{animation:none;}
   .cot-set-paused::before{animation:none;}
-  .cot-chip.listening{animation:none;
-    box-shadow:inset 0 1px 0 rgba(255,210,122,.2),0 0 10px rgba(240,160,48,.5);}
+  .cot-chip.listening{animation:none;}
   .cot-settings *{transition-duration:0s !important;}
 }
 /* Standalone fallback placement. The garage mounts this settings-owned button
    into its top navigation rail; these coordinates only apply before that
    mount or in a surface that creates settings without the garage. */
 .cot-gear{position:fixed;top:60px;right:26px;z-index:62;width:42px;height:42px;display:none;
-  align-items:center;justify-content:center;cursor:pointer;
-  background:rgba(11,15,20,.8);border:1px solid rgba(146,164,180,.3);
-  transition:border-color .12s,color var(--dur-fast);pointer-events:auto;color:var(--ink-3);}
-.cot-gear:hover{border-color:rgba(240,176,74,.6);color:#f0b04a;}
+  align-items:center;justify-content:center;cursor:pointer;border:0;border-radius:var(--control-radius);
+  background:var(--surface-plate);box-shadow:var(--ring-2);color:var(--ink-3);pointer-events:auto;
+  transition:color var(--dur-fast) var(--ease-enter),box-shadow var(--dur-fast) var(--ease-enter);}
+.cot-gear:hover{color:var(--ink-1);box-shadow:var(--ring-3);}
 /* The strip clears the HUD's bottom stack (the shell tray and the vehicle-controls row above it end 120 px up). A fixed
    box at left:50% shrinks to half the viewport, so max-content keeps one row until the edge clamps it. */
 .cot-hints{position:fixed;left:50%;bottom:132px;transform:translateX(-50%);z-index:45;width:max-content;
@@ -567,6 +476,11 @@ const HINT_BATTLES = 3;
  *   toggle:Function,isOpen:()=>boolean,showHints:Function,root:HTMLElement}}
  */
 export function createSettings(opts: SettingsOptions): SettingsRuntime {
+  // the game document's shared behaviours (the kit's hover tip, the mark's roll) install with the panel every screen has,
+  // once the boot is idle: they act only on a hover, so they stay off the game's entry
+  const behaviours = (): void => void import('./components/pageBehaviours.ts').then(({ installPageBehaviours }) => installPageBehaviours());
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(behaviours, { timeout: 4000 });
+  else setTimeout(behaviours, 1000);
   ensureFonts();
   const { input, bus } = opts;
   const isBattleActive = opts.isBattleActive || (() => false);
@@ -589,7 +503,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<div class="cot-set-panel" role="dialog" aria-modal="true" aria-label="${t('settings.title')}">` +
     `<div class="cot-set-hdr"><h2>${t('settings.title')}</h2>` +
     `<span class="cot-set-paused">${t('settings.paused')}</span>` +
-    `<button class="cot-set-close" type="button" title="${t('settings.close.title')}">&#10005;</button></div>` +
+    `<button class="cot-set-close cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--ghost" type="button" aria-label="${t('settings.close.title')}">${uiIconSVG('close', 18)}</button></div>` +
     `<div class="cot-set-tabs">` +
     // every tab is its name alone (the 10-24 sweep: the controls tab's action count was one more number to read)
     `<button class="cot-set-tab sel" data-tab="controls" type="button">${t('settings.tab.controls')}</button>` +
@@ -600,13 +514,13 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<button class="cot-set-tab" data-tab="language" type="button">${t('settings.tab.language')}</button>` +
     `</div>` +
     `<div class="cot-set-conflict"><span class="msg"></span>` +
-    `<button class="cot-set-btn swap" type="button">${t('settings.conflict.swap')}</button>` +
-    `<button class="cot-set-btn ghost dismiss" type="button">${t('settings.conflict.cancel')}</button></div>` +
+    `<button class="cot-set-btn swap cot-c-btn cot-c-btn--36 cot-c-btn--primary" type="button">${t('settings.conflict.swap')}</button>` +
+    `<button class="cot-set-btn ghost dismiss cot-c-btn cot-c-btn--36 cot-c-btn--ghost" type="button">${t('settings.conflict.cancel')}</button></div>` +
     `<div class="cot-set-body"></div>` +
     `<div class="cot-set-ftr">` +
-    `<button class="cot-set-btn ghost reset" type="button">${t('settings.reset')}</button>` +
-    `<button class="cot-set-btn ghost leave" type="button">${t('settings.leave')}</button>` +
-    `<button class="cot-set-btn resume" type="button">${t('settings.resume')}</button></div>` +
+    `<button class="cot-set-btn ghost reset cot-c-btn cot-c-btn--ghost" type="button">${t('settings.reset')}</button>` +
+    `<button class="cot-set-btn ghost leave cot-c-btn cot-c-btn--danger" type="button">${t('settings.leave')}</button>` +
+    `<button class="cot-set-btn resume cot-c-btn cot-c-btn--primary" type="button">${t('settings.resume')}</button></div>` +
     `</div>`;
   document.body.appendChild(root);
 
@@ -663,7 +577,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   gear.type = 'button';
   gear.setAttribute('aria-label', t('settings.gearAria'));
   gear.innerHTML = GEAR_SVG;
-  gear.title = t('settings.gearAria');
   if (!gear.parentNode) document.body.appendChild(gear);
 
   installHudCustomization();
@@ -803,6 +716,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       consumables: (['consumable1', 'consumable2', 'consumable3'] as const).map(bindLabel),
       specialAction: bindLabel('specialAction'),
       minimapZoom: bindLabel('minimapZoom'),
+      settingsMenu: bindLabel('settingsMenu'),
     });
   }
 
@@ -832,9 +746,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const chip = el('button', `cot-chip${slotKey === 'pad' ? ' padcol' : ''}`, parent);
     chip.type = 'button';
     const labelText = t(def.label);
-    chip.title = slotKey === 'pad'
-      ? `${labelText} — ${t('settings.bind.pad')}. ${t('settings.bind.rightClickClear')}`
-      : `${labelText} — ${SLOT_NAME[slotKey]} ${t('settings.bind.key')}. ${t('settings.bind.rightClickClear')}`;
+    chip.dataset.tip = slotKey === 'pad'
+      ? `${labelText}, ${t('settings.bind.pad')}. ${t('settings.bind.rightClickClear')}`
+      : `${labelText}, ${SLOT_NAME[slotKey]} ${t('settings.bind.key')}. ${t('settings.bind.rightClickClear')}`;
     chip.addEventListener('click', () => {
       emit('ui:click', {});
       beginCapture(def.id, slotKey, chip);
@@ -1128,7 +1042,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const iface = groupCard(body, t('settings.interface.title'));
     const hudLayoutRow = el('div', 'cot-set-row', iface);
     settingLabel(hudLayoutRow, t('hudEditor.title'), { id: 'performance', tone: 'cyan' });
-    const editHud = el('button', 'cot-set-hud-editor', hudLayoutRow);
+    const editHud = el('button', 'cot-set-hud-editor cot-c-btn cot-c-btn--36', hudLayoutRow);
     editHud.type = 'button'; editHud.textContent = t('hudEditor.open');
     editHud.addEventListener('click', async () => {
       editHud.disabled = true;
@@ -1272,6 +1186,18 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   }
 
   // --- GRAPHICS tab -----------------------------------------------------------
+  // A graphics preset waits for the panel to close (owner, 2026-10-24: "changing graphics should only apply once we
+  // press resume"): the picker stages it and closing the panel applies it, by Resume back into the battle or by the
+  // Garage's close. Applying resizes the frame and reallocates the shadow targets, so it never runs under the menu.
+  let stagedPreset: string | null = null;
+  function commitGraphics(): void {
+    const name = stagedPreset;
+    stagedPreset = null;
+    if (name === null) return;
+    if (getDeviceTier() === 'mobile') { if (name !== getMobilePresetChoice()) setMobilePresetName(name); }
+    else if (name !== getStoredChoice()) setPresetName(name);
+  }
+
   function renderGraphics() {
     body.textContent = '';
     const card = groupCard(body, t('settings.graphics.title'));
@@ -1291,8 +1217,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         : t(PRESET_LABEL_KEYS[name] || 'settings.preset.ultra').toLowerCase();
       b.dataset.name = name;
       b.addEventListener('click', () => {
-        if (mobile) setMobilePresetName(name);
-        else setPresetName(name); // live-applies post resize + shadow RT realloc
+        stagedPreset = name; // applied when the panel closes (commitGraphics)
         for (const x of btns) x.classList.toggle('sel', x.dataset.name === name);
         chosen = name;
         showPreview(name);
@@ -1303,7 +1228,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       b.addEventListener('focus', () => showPreview(name));
       btns.push(b);
     }
-    const selected = mobile ? getMobilePresetChoice() : getStoredChoice();
+    const selected = stagedPreset ?? (mobile ? getMobilePresetChoice() : getStoredChoice());
     let chosen: string = selected;
     for (const x of btns) x.classList.toggle('sel', x.dataset.name === selected);
     seg.addEventListener('pointerleave', () => showPreview(chosen));
@@ -1324,10 +1249,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       if (src && previewImage.getAttribute('src') !== src) previewImage.src = src;
     }
     showPreview(selected);
-    const note = el('div', 'cot-set-note', card);
-    note.textContent = mobile
-      ? t('settings.graphics.note.mobile')
-      : t('settings.graphics.note.desktop');
 
     // entry telemetry (2026-09-24): the anonymous load/crash beacon
     // (docs/ENTRY-RESILIENCE.md) is a player choice stored beside the presets.
@@ -1611,7 +1532,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         button.type = 'button';
         button.setAttribute('aria-expanded', 'false');
         button.setAttribute('aria-label', t('settings.notes.toggle'));
-        button.title = t('settings.notes.toggle');
         button.innerHTML = uiIconSVG('info', 16);
         button.addEventListener('click', () => {
           const open = !card.classList.contains('notes-open');
@@ -1888,6 +1808,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
    */
   function closePanel(o: { noRelock?: boolean } = {}): void {
     if (!open) return;
+    commitGraphics();
     crewSelectController?.close();
     if (o && o.noRelock) relockOnClose = false;
     cancelCapture();
@@ -1917,8 +1838,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     cancelCapture();
     clearConflict();
     if (activeTab === 'graphics') {
-      if (getDeviceTier() === 'mobile') setMobilePresetName('mobile');
-      else setPresetName('auto');
+      stagedPreset = getDeviceTier() === 'mobile' ? 'mobile' : 'auto';
       renderTab();
       return;
     }

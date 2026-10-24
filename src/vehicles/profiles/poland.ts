@@ -1004,12 +1004,17 @@ function addPL01HullFurniture(P: PolishBuilderPort, context: PL01BuildContext): 
   P.add('hull', box(0.60, 0.075, 0.60), 1.08, 1.925, 1.66, -0.485, 0, 0);
   P.add('hullDark', box(0.50, 0.02, 0.50), 1.08, 1.955, 1.67, -0.485, 0, 0);
   // engine deck: inset dark vents at the stern (print Vents z -3.30..-3.52)
-  P.add('hullDark', box(2.90, 0.018, 0.20), 0, 2.106, -3.32);
+  // (release 240: the vent panel 8 mm and its slats 15 mm lower, slat tops 2.115, under the turret's 2.121 floor at its
+  // 2.4 m reach)
+  P.add('hullDark', box(2.90, 0.018, 0.20), 0, 2.098, -3.32);
   for (let k = 0; k < 6; k++) P.add('hullDetail', box(0.42, 0.024, 0.16),
-    -1.25 + k * 0.5, 2.118, -3.32);
-  P.add('hullDark', box(1.80, 0.016, 0.55), -0.2, 2.108, -2.55);
+    -1.25 + k * 0.5, 2.103, -3.32);
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the grille field tops 2.108-2.113, under
+  // the turret's flat floor (2.121 to 2.4 m off the ring's axis), and the cable and handles below keep under it too; its
+  // slats, the arched cable and the handles stood 1-9 cm in it, already at rest.
+  P.add('hullDark', box(1.80, 0.016, 0.55), -0.2, 2.100, -2.55);
   for (let k = 0; k < 4; k++) P.add('hullDetail', box(1.72, 0.022, 0.05),
-    -0.2, 2.12, -2.36 - k * 0.13);
+    -0.2, 2.102, -2.36 - k * 0.13);
   // recessed bow light clusters (stealth housings, inside the glacis line —
   // r8 receipt: shields at 1.52 topped 1.81 over the 1.68 fold cols; r9
   // containment receipt: the ±1.22 seat sat mid-course in the idler sweep)
@@ -1031,17 +1036,17 @@ function addPL01HullFurniture(P: PolishBuilderPort, context: PL01BuildContext): 
   }
   // Recovery equipment remains conformal: a deck-clipped tow cable, paired
   // rear clevises, and service handles break up the broad engine surface.
+  // (release 240: a flat 24 mm run on the bare deck ahead of the grille; arched over the grille it rose to 2.20)
   mount(P, 'hull', FITTINGS.towCable({
     mats: P.mats,
-    pts: [[-1.22, 0, -0.08], [-0.62, 0.055, 0.10], [0, 0.025, 0.15],
-      [0.62, 0.055, 0.10], [1.22, 0, -0.08]],
-    r: 0.018, seg: 26, seed: 1015,
-  }), 0, 2.13, -2.78);
+    pts: [[-1.22, 0, 0], [-0.62, 0, 0.05], [0, 0, 0.07], [0.62, 0, 0.05], [1.22, 0, 0]],
+    r: 0.012, seg: 26, seed: 1015,
+  }), 0, 2.088, -2.08);
   for (const s of [-1, 1]) {
     P.add('hullDetail', torus(0.105, 0.022, 14), s * 1.13, 0.86, -3.39,
       Math.PI / 2, 0, 0);
     for (let k = 0; k < 2; k++) P.add('hullDetail', box(0.28, 0.025, 0.035),
-      s * 0.72, 2.135, -2.18 - k * 0.28);
+      s * 0.72, k === 0 ? 2.0885 : 2.102, -2.18 - k * 0.28);
   }
 }
 

@@ -132,11 +132,13 @@ assert.throws(() => generate({ ...JSON.parse(readFileSync(TOKENS_JSON, 'utf8')),
 assert.equal(cssLeft.trim(), '', 'tokens.css has no rule but :root token blocks');
 assert.equal(cssBlocks.filter((b) => b.axis === null).length, 1, 'one :root block of defaults');
 
-// A group's own sheet ("$sheet": the landing's and the manual's tokens) is a pure token sheet in the tokens layer, holds
-// exactly its group's tokens, and tokens.css holds none of them: the game's document and the other pages load none.
+// A group's own sheet ("$sheet": the landing's, the manual's and the Gallery's tokens) is a pure token sheet in the tokens
+// layer, holds exactly its group's tokens, and tokens.css holds none of them: the game's document and the other pages load
+// none.
 const sheetPaths = Object.keys(first).filter((path) => ![TOKENS_CSS, TOKENS_TS, SELECTION_TS].includes(path));
-assert.deepEqual(sheetPaths.map((path) => relative(ROOT, path)).sort(), ['src/ui/tokens/surface-docs.css', 'src/ui/tokens/surface-home.css'],
-  'the landing and the manual each have their own token sheet');
+assert.deepEqual(sheetPaths.map((path) => relative(ROOT, path)).sort(),
+  ['src/ui/tokens/surface-docs.css', 'src/ui/tokens/surface-gallery.css', 'src/ui/tokens/surface-home.css'],
+  'the landing, the manual and the Gallery each have their own token sheet');
 const sheetDecls = new Map();
 for (const path of sheetPaths) {
   const body = /^@layer reset,tokens,base,components,surfaces,utilities,overrides;\s*@layer tokens\{\s*:root\{([^}]*)\}\s*\}\s*$/

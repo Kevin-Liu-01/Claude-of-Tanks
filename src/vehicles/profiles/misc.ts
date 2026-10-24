@@ -900,13 +900,16 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     fenders(P, 1.24, 1.72, 1.534, 1.10, 2.06, 0.03);                             // fore deck fwd half 1.549
     fenders(P, 1.24, 1.695, 1.562, -1.86, -0.65, 0.03);                          // mid deck 1.577; aft edge stops before the source's supported deck dip
     fenders(P, 1.20, 1.40, 1.592, -2.16, -1.80, 0.03);                           // engine deck fore step 1.607
-    fenders(P, 1.20, 1.40, 1.612, -2.40, -2.16, 0.03);                           // engine deck mid step 1.627
-    fenders(P, 1.20, 1.44, 1.616, -2.55, -2.40, 0.03);                           // engine raised band 1.631 (front cols ±1.19..1.44 carry the ref's 1.631 line; side col -2.464 wants 1.638)
-    fenders(P, 1.20, 1.40, 1.612, -3.06, -2.55, 0.03);                           // engine deck aft 1.627 (ref falls 1.617 by -2.91 — split priced lower)
+    // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the engine deck's plates, louvres, fan,
+    // bands and cable runs sit 2.5 cm lower, and its filler pots 0.19 m aft, under and past the sweep of the turret's
+    // nose (1.607-1.614, 2.4 m off the ring's axis), which ran 1-11 cm through them at every rear bearing.
+    fenders(P, 1.20, 1.40, 1.587, -2.40, -2.16, 0.03);                           // engine deck mid step 1.602
+    fenders(P, 1.20, 1.44, 1.591, -2.55, -2.40, 0.03);                           // engine raised band 1.631 (front cols ±1.19..1.44 carry the ref's 1.631 line; side col -2.464 wants 1.638)
+    fenders(P, 1.20, 1.40, 1.587, -3.06, -2.55, 0.03);                           // engine deck aft 1.602 (ref falls 1.617 by -2.91 — split priced lower)
     fenders(P, 1.38, 1.72, 1.570, -3.06, -1.80, 0.03);                           // engine deck outer edge 1.585 (front ±1.72 wants 1.555)
     fenders(P, 1.20, 1.695, 1.590, -3.24, -3.00, 0.03);                          // tail lip 1.605 (90-ladder r1: outer 1.695 — its 1.72 edge owned the front ±1.72 cols at 1.602 vs the ref's 1.553)
     // 2026-10-19 (owner float sweep): the pots stood 10-15 mm over the deck step; they run down into it (tops kept).
-    for (const s2 of [-1, 1]) P.add('hull', box(0.07, 0.11, 0.165), s2 * 1.05, 1.658, -2.3125); // filler pots (the ref's 1.715 'hump' is two x ±1.05 caps. 90-ladder r1: ref front cols carry the 1.71 line ONLY at ±1.033/1.073 — the 0.16-wide pots printed +0.044/+0.063 on ±0.991/±1.112; x-span now 1.015..1.085. z rear pulled to -2.395: the old -2.415 edge AA'd into side col -2.464's window [-2.409..])
+    for (const s2 of [-1, 1]) P.add('hull', box(0.07, 0.11, 0.165), s2 * 1.05, 1.633, -2.5025); // filler pots (the ref's 1.715 'hump' is two x ±1.05 caps. 90-ladder r1: ref front cols carry the 1.71 line ONLY at ±1.033/1.073 — the 0.16-wide pots printed +0.044/+0.063 on ±0.991/±1.112; x-span now 1.015..1.085. z rear pulled to -2.395: the old -2.415 edge AA'd into side col -2.464's window [-2.409..])
     // GLACIS: raked surface (1.64,1.55) -> (2.66,1.363) full width, then a
     // TAPER to x ±0.94 by z 2.78 and a narrow nose to 3.46 — the ascending
     // track band crosses the glacis plane at z>2.75, so full-width plate
@@ -1127,9 +1130,9 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     // engine deck: raised CENTER plate at the ref's 1.618 line (front view
     // center tops 1.62 come from HERE — the fore deck stays 1.545) + inset
     // fan dark + louvres barely proud
-    P.add('hull', box(2.40, 0.05, 1.30), 0, 1.593, -2.42);
-    P.add('hullDark', box(1.80, 0.016, 1.20), 0, 1.61, -2.42);
-    for (let k = 0; k < 6; k++) P.add('hullDetail', box(1.72, 0.02, 0.055), 0, k < 2 ? 1.597 : 1.617, -1.87 - k * 0.17); // louvres follow the 90-ladder deck steps: fore pair 1.607, aft field 1.627
+    P.add('hull', box(2.40, 0.05, 1.30), 0, 1.568, -2.42);
+    P.add('hullDark', box(1.80, 0.016, 1.20), 0, 1.585, -2.42);
+    for (let k = 0; k < 6; k++) P.add('hullDetail', box(1.72, 0.02, 0.055), 0, k < 2 ? 1.572 : 1.592, -1.87 - k * 0.17); // louvres follow the 90-ladder deck steps: fore pair 1.607, aft field 1.627
     for (const s of [-1, 1]) {
       P.add('hullDetail', cylY(0.09, 0.09, 0.026, 12), s * 1.30, 1.482, -0.55);  // 90-ladder r1: vents sunk to the ref's 1.494-1.498 DIP line (they owned side cols -0.47/-0.584 at 1.558/1.569 vs want 1.498)
       P.add('hullDetail', cylY(0.032, 0.032, 0.05, 8), s * 1.30, 1.448, -0.55);  // stem to the sponson band (no float)
@@ -1174,10 +1177,10 @@ function buildLeclerc(P: MiscBuilderPort, variant: 's2' | 'xlr' | 'leclerc_s1' =
     // §B3.2: second tow cable run on the right engine deck — crown 1.62 under
     // the ref's own 1.634 engine line (side cols -1.9..-3.0), interior to the
     // deck plan outline.
-    towCable(P, [[0.62, 1.59, -1.90], [0.98, 1.595, -2.35], [0.70, 1.59, -2.90]]);
+    towCable(P, [[0.62, 1.565, -1.90], [0.98, 1.57, -2.35], [0.70, 1.565, -2.90]]);
     // §5.14: LEFT engine-deck cable run (real Leclercs carry a pair) — crowns
     // 1.61 under the 1.618 engine line, inboard of the x -1.03 pioneer lane
-    towCable(P, [[-0.60, 1.59, -1.95], [-0.90, 1.595, -2.40], [-0.66, 1.59, -2.92]]);
+    towCable(P, [[-0.60, 1.565, -1.95], [-0.90, 1.57, -2.40], [-0.66, 1.565, -2.92]]);
     // §B3.2: bow TOW SHACKLES on the lower bow plate (real fit: paired clevis
     // points low center; proud 40 mm of the §5.329 re-lofted lower-glacis
     // plane (surface z 3.227 at y 0.78 -> clevis face 3.267), under the 3.46

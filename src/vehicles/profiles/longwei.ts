@@ -205,10 +205,13 @@ function buildLongweiHullStructure(P: TankBuilderPort): void {
     P.add('hullDetail', box(1.45, 0.02, 0.055), 0, 1.792, -1.90 - k * 0.16);
   }
   P.add('hullDark', box(0.72, 0.02, 0.52), -0.52, 1.79, -1.62);
-  P.add('hull', box(0.92, 0.05, 0.72), 0.48, 1.795, -1.72);
-  P.add('hullDark', box(0.80, 0.02, 0.60), 0.48, 1.825, -1.72);
-  liftEye(P, 'hullDetail', -1.30, 1.52, 1.70);
-  liftEye(P, 'hullDetail', 1.30, 1.52, 1.70);
+  // (release 240, the owner: "make sure all tank turrets are clear of hulls": the filter hump and its mesh 2-2.3 cm lower,
+  // tops 1.797/1.802 under the bustle armour's 1.81 foot (2.0 m off the ring's axis), and the front lift eyes 3 cm lower,
+  // under the turret's 1.603 sides)
+  P.add('hull', box(0.92, 0.05, 0.72), 0.48, 1.772, -1.72);
+  P.add('hullDark', box(0.80, 0.02, 0.60), 0.48, 1.792, -1.72);
+  liftEye(P, 'hullDetail', -1.30, 1.49, 1.70);
+  liftEye(P, 'hullDetail', 1.30, 1.49, 1.70);
   liftEye(P, 'hullDetail', -1.30, 1.80, -3.05);
   liftEye(P, 'hullDetail', 1.30, 1.80, -3.05);
 }

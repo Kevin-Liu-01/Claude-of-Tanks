@@ -59,7 +59,7 @@ assert.match(detach, /clearRoomUrl\(\);\s*resetInvitation\(\)/,
   'retired room cleanup removes its durable invite only after the ownership guards pass');
 // Multiplayer v2 exit flow (2026-09-26): a seat back in the Garage with the room kept may rejoin the match the room still
 // runs; a fresh v2 joiner never auto-hands off into a running match without its own match_start.
-assert.match(source, /<button class="action" data-action="rejoin" type="button" hidden>\$\{t\('playMenu\.rejoin'\)\}<\/button>/,
+assert.match(source, /<button class="action cot-c-btn cot-c-btn--primary" data-action="rejoin" type="button" hidden>\$\{t\('playMenu\.rejoin'\)\}<\/button>/,
   'the lobby carries a Rejoin battle control, hidden until a running match can be re-entered');
 assert.match(source, /function canRejoinBattle\(next: SerializedLobby\): boolean \{\s*return !handedOff && \(next\.phase === 'starting' \|\| next\.phase === 'playing'\) && hasMatchStart\(activeRoom\?\.session \?\? session\);/,
   'rejoin needs a room in a match and a match_start for this seat');
@@ -201,7 +201,7 @@ assert.match(failureBody, /setStatus\(''\)/, 'detailed failure replaces the prog
 {
   const { readFile: read } = await import('node:fs/promises');
   assert.match(source, /const VERSION_REFUSAL_CODES: ReadonlySet<string> = new Set\(\['build_mismatch', 'build_host_older', 'build_host_newer'\]\);/);
-  assert.match(source, /<h2 id="cot-play-title">[^<]*<\/h2>\s*<section class="version-refusal" hidden role="alert"[^>]*>[\s\S]*?data-version-text[\s\S]*?<button class="action" data-action="refresh-page" type="button">[\s\S]*?<\/section><\/header>/,
+  assert.match(source, /<h2 id="cot-play-title">[^<]*<\/h2>\s*<section class="version-refusal" hidden role="alert"[^>]*>[\s\S]*?data-version-text[\s\S]*?<button class="action cot-c-btn cot-c-btn--primary" data-action="refresh-page" type="button">[\s\S]*?<\/section><\/header>/,
     'the banner lives inside the menu header, above every room section');
   assert.match(source, /\.cot-play \.play-head\{position:sticky;/, 'which stays in view while the panel scrolls (nothing can cover its Refresh)');
   const notice = source.slice(source.indexOf('  function showActiveRoom('), source.indexOf('  return {', source.indexOf('  function showActiveRoom(')));

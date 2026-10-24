@@ -109,9 +109,12 @@ function addBowTowStock(P: TankBuilderPort): void {
 function addDriverEquipment(P: TankBuilderPort): void {
   put(P,'hullDetail',KIT.box(.786,.075,.747),-.426,1.863,.025);
   put(P,'hullDetail',KIT.box(.588,.114,.417),.5265,1.872,.282,-.0952);
-  put(P,'hullDetail',KIT.box(.520,.108,.399),.532,1.997,.256,-.200);
-  put(P,'hullDetail',KIT.box(.348,.036,.292),.518,2.057,.229,-.093);
-  put(P,'hullDark',KIT.box(.435,.064,.017),.532,2.003,.460,-.095);
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the driver's hood, its cover and window
+  // strip sit 6 cm lower, under the turret's underside (2.020 to 1.4 m off the ring's axis, 2.039-2.044 to 1.6, 2.082 to
+  // 1.7, source-world metres); the cover stood 4-5 cm in it as the turret turned over the right front.
+  put(P,'hullDetail',KIT.box(.520,.108,.399),.532,1.937,.256,-.200);
+  put(P,'hullDetail',KIT.box(.348,.036,.292),.518,1.997,.229,-.093);
+  put(P,'hullDark',KIT.box(.435,.064,.017),.532,1.943,.460,-.095);
   // 2026-10-19 (owner float sweep): the sight block and its window stood 20 mm over the deck; seated on it
   put(P,'hullDetail',KIT.box(.225,.142,.196),-.0407,1.9885,.7403);
   put(P,'hullDark',KIT.box(.165,.078,.016),-.0407,1.998,.846);

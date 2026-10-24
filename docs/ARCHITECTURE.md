@@ -1832,6 +1832,32 @@ switching and all 13 packs through the radio chain;
 perspective, cannon and engine distance falloff, rams and the kill-cam
 replay; `node tools/pause-probe.mjs` covers the pause duck.
 
+
+### 3.10 Watch mode — `src/game/watchController.ts`, `src/game/watchSeat.ts`, `src/engine/watchCamera.ts` (watch-mode-243)
+
+A watched battle is a listed mode (`WATCH_RULES.modes` in `src/sim/matchRuleset.ts`: every battle mode whose human
+seat a bot plays; not the AC-130, whose gunship only a human flies, nor the proving ground) set up exactly as a solo
+battle, except that the human seat's bot brain is built beside it and drives it. The mode keeps its clock, respawns,
+scores and objectives; a watched battle keeps no record.
+
+- **Seats (`watchSeat.ts`).** `openWatchSeats` hands the player's seat to its parked brain when the battle opens, so
+  the session has no player. `takeWatchSeat` parks a living bot's controller and makes its hull the session's player;
+  `leaveWatchSeat` hands it back, and the planner resumes from the hull's state. Both run between fixed steps through
+  the player's own path (`aiCtl` and the frame input), so a replay of a watched battle is the replay of its inputs.
+- **Views (`watchController.ts`).** One battle-scoped controller turns the watcher's input into three views: `drone`,
+  `ride` (any living tank, on the chase or the gunner's sight) and `drive` (a taken seat: the player's rig, HUD and
+  controls from that frame; a destroyed taken hull plays the player's death beat for `takenDeathS`, then the drone).
+  A watched tank's wreck is held for `deathHoldS` before the camera rides on with its killer.
+- **Cameras (`watchCamera.ts`).** The drone opens at `openAltitudeM` over the deployments' midpoint, moves on its
+  heading with eased velocity, follows the terrain ahead and orbits a locked tank; the ride camera is the pose a player
+  in that tank would see. The frame runtime asks the controller each frame and solves the player's rig only when it
+  answers that the watch camera is not in use.
+- **Visibility.** `revealAll` shows every tank on the minimap and the markers while watching; a taken seat sees as its
+  side does again.
+- **Invariants.** The simulation never reads the controller or the cameras; seats change only through `watchSeat.ts`;
+  every rule above lives in `WATCH_RULES` (no literal elsewhere). `src/app/watchRuntime.ts` builds the owner the first
+  time a watched battle loads, and `battleHudFrameRuntime.ts` shows the ridden tank's HUD read-only.
+
 ---
 
 ## 4. Update-loop call order (integration will implement EXACTLY this)

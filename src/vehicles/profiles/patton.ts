@@ -4762,8 +4762,12 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
   // centre engine crown over the fender-level band deck, CAMBERED: full
   // height only |x|<=0.78, wing wedges taper to the band by |x| 1.02 (the
   // reference front-hull columns read 1.82 at x 0.88, 1.79 by 1.08).
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the crown climbs under the turret's
+  // rising underside (1.811 to 1.9 m off the ring's axis, 1.840 at 2.0, 1.866 at 2.1, 1.893 at 2.2; authored metres,
+  // before the 0.9 vehicle scale) and reaches its 1.886 crest at -2.10; it rose to 1.884 by -1.60 and the turret sat
+  // 2.5 cm in it at rest and ran 7 cm through it at the rear bearings.
   const CROWN: Vec2Tuple[] = [
-    [-0.45, 1.744], [-1.00, 1.782], [-1.60, 1.884], [-2.10, 1.886],
+    [-0.45, 1.744], [-1.00, 1.782], [-1.55, 1.800], [-1.75, 1.830], [-1.95, 1.880], [-2.10, 1.886],
     [-2.45, 1.872], [-2.80, 1.849], [-3.10, 1.831], [-3.28, 1.838]];
   const buildM60HullStage1 = (): void => {
     for (let i = 0; i < CROWN.length - 1; i++) {
@@ -4800,9 +4804,11 @@ function buildM60(P: PattonBuilderPort, cfg: M60BuildConfig): void {
     // 16 mm frame around a dark floor with seven 34-degree louvre vanes inside it, so the lit and shaded vane faces and
     // the dark void between them read as a grille in depth. Tops stay at or under the 1.904 deck-band cap (front bay
     // crown 1.886 + 16 mm frame; vane tops 15 mm).
+    // (release 240: both bays 0.10 m aft, the front one's inner corner out of the turret's 1.893 band (2.2-2.3 m off
+    // the ring's axis))
     const FRAME = 0.028, FRAME_H = 0.016, VANES = 7, VANE_TILT = 0.6;
     for (const side of [-1, 1]) {
-      for (const [gz0, gz1] of [[-1.92, -2.24], [-2.30, -2.60]]) {
+      for (const [gz0, gz1] of [[-2.02, -2.34], [-2.40, -2.70]]) {
         const gm = (gz0 + gz1) / 2, gd = gz0 - gz1, gy = crownAt(gm), gx = side * 0.40, bw = 0.56;
         P.add('hullDark', box(bw, 0.006, gd), gx, gy + 0.003, gm);
         P.add('hullDetail', box(bw + 2 * FRAME, FRAME_H, FRAME), gx, gy + FRAME_H / 2, gz0 + FRAME / 2);
@@ -5473,9 +5479,22 @@ function addM60A2EngineDeck(P: PattonBuilderPort): void {
   // the 2.18 peak @ -2.20, easing 1.98 by the -3.60 rear plate; full height
   // only |x|<=0.45, wings taper to the 1.97 shoulder at +-0.95 — the ref
   // front rolls 2.18 @ 0.44 -> 1.98 @ 0.95)
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the crown holds 1.92-1.93 out to 2.0 m
+  // off the ring's axis, under the Starship turret's seated floor (1.931), climbs under its rising underside (1.956 at
+  // 2.0 m, 2.036 at 2.2, 2.109 at 2.4, 2.130 at 2.6, 2.150 at 2.7) and crests at 2.14 past its reach (-2.42..-2.55); the
+  // extract's 2.0-2.18 crown stood 12-18 cm in the turret at rest and ran through it at every rear bearing.
   const CROWN = [
-    [-0.62, 1.985], [-0.92, 2.005], [-2.20, 2.18], [-2.55, 2.14],
-    [-3.05, 2.08], [-3.35, 2.04], [-3.60, 1.96]];
+    [-0.62, 1.92], [-1.55, 1.925], [-1.62, 1.93], [-1.75, 1.955], [-2.05, 2.075], [-2.25, 2.118],
+    [-2.32, 2.122], [-2.42, 2.14], [-2.55, 2.14], [-3.05, 2.08], [-3.35, 2.04], [-3.60, 1.96]];
+  const crownAt = (z: number): number => {
+    for (let i = 0; i < CROWN.length - 1; i++) {
+      const [z0, y0] = CROWN[i], [z1, y1] = CROWN[i + 1];
+      if (z <= z0 && z >= z1) return y0 + (y1 - y0) * ((z - z0) / (z1 - z0));
+    }
+    const tail = CROWN[CROWN.length - 1];
+    if (!tail) throw new Error('M60A2 engine crown profile is empty');
+    return tail[1];
+  };
   for (let i = 0; i < CROWN.length - 1; i++) {
     const [z0, y0] = CROWN[i], [z1, y1] = CROWN[i + 1];
     P.add('hull', slab(
@@ -5490,10 +5509,11 @@ function addM60A2EngineDeck(P: PattonBuilderPort): void {
   }
   // louver bays on the crown (inset language, m60a1 r3 lineage; kept inside
   // the full-height |x|<=0.44 camber so the wing roll stays clean)
+  // (release 240: both bays aft of the turret's reach, -2.47..-3.22, on the crest and its fall)
   for (const side of [-1, 1]) {
-    for (const [gz0, gz1] of [[-1.95, -2.30], [-2.40, -2.75]]) {
+    for (const [gz0, gz1] of [[-2.47, -2.82], [-2.87, -3.22]]) {
       const gm = (gz0 + gz1) / 2;
-      const gy = 2.18 - Math.abs(gm + 2.20) * 0.115;
+      const gy = crownAt(gm);
       P.add('hullDark', box(0.40, 0.012, gz0 - gz1), side * 0.235, gy + 0.002, gm);
       for (let i = 0; i < 4; i++) {
         P.add('hullDetail', box(0.36, 0.012, (gz0 - gz1) / 4 * 0.55), side * 0.235, gy + 0.006, gz0 - (i + 0.5) * ((gz0 - gz1) / 4));
@@ -5507,11 +5527,14 @@ function addM60A2ShoulderArmor(P: PattonBuilderPort, cfg: M60A2BuildConfig): voi
   const slab = orientedSlab;
   // Full Starship upper-side course. The segmented roof plates begin on the
   // glacis shoulder, follow the deck rise and meet the raised rear sponson at
-  // z=-0.92. Their inboard edge is buried in the 1.19 m hull band; the
+  // z=-1.60. Their inboard edge is buried in the 1.19 m hull band; the
   // outboard rail stays above the exact moving-track sweep.
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the shelves hold 1.86 to -1.27 and the
+  // rise to the raised rear course runs -1.27..-1.60, under the turret's floor (1.931 to 2.0 m off the ring's axis) and
+  // its rising underside; the rise at -0.60..-0.92 stood 8-10 cm in it at the rear-quarter bearings.
   const UPPER_SIDE_RUN = [
     [3.30, 1.50], [2.95, 1.66], [2.35, 1.76], [1.82, 1.82],
-    [0.62, 1.84], [-0.60, 1.86], [-0.92, 2.005],
+    [0.62, 1.84], [-0.60, 1.86], [-1.27, 1.86], [-1.60, 2.005],
   ];
   const shoulderInner = 1.185;
   const shoulderOuter = 1.765;
@@ -5542,12 +5565,12 @@ function addM60A2ShoulderArmor(P: PattonBuilderPort, cfg: M60A2BuildConfig): voi
   // 35 mm roof plate spanning to the track edge, so low quarter views could
   // see straight through the volume below it.  Seal that volume with a
   // mirrored, camouflaged hull wall: the front wedge follows the exact
-  // -0.60 -> -0.92 roof rise and the two aft cells continue to the rear deck.
+  // -1.27 -> -1.60 roof rise and the two aft cells continue to the rear deck.
   // Its 1.48 m floor clears the authored track crown (1.41 m) by 70 mm while
   // overlapping both the native hull band inboard and the roof plate above.
   const shoulderBottomY = 1.48;
   const SHOULDER_RUN: Vec2Tuple[] = [
-    [-0.60, 1.86], [-0.92, 2.005], [-2.45, 2.005], [-3.50, 2.005],
+    [-0.60, 1.86], [-1.27, 1.86], [-1.60, 2.005], [-2.45, 2.005], [-3.50, 2.005],
   ];
   for (const side of [-1, 1]) {
     const innerX = side * shoulderInner;
@@ -5786,9 +5809,11 @@ function addM60A2TurretAndGun(P: PattonBuilderPort, cfg: M60A2BuildConfig): void
     P.turretG.add(whip);
     // push round: cable dropped to 1.955 — at 2.023 its clamps topped 2.08,
     // four front columns over the ref's 2.008 fender line
+    // (release 240: half-sunk in the lowered shelf to -1.27, 1.887, its clamps under the turret's 1.931 floor, then into
+    // the raised course as before)
     const cable = FITTINGS.towCable({
       mats: P.mats,
-      pts: [[-1.38, 1.955, -0.70], [-1.44, 1.955, -1.60], [-1.40, 1.955, -2.60]],
+      pts: [[-1.38, 1.887, -0.70], [-1.41, 1.887, -1.27], [-1.44, 1.955, -1.60], [-1.40, 1.955, -2.60]],
       r: 0.018,
     });
     P.hullG.add(cable);
@@ -6014,7 +6039,8 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
     // 1.861 plate — side pairs the ref's 1.881 read)
     for (const side of [-1, 1]) {
       // 2026-10-19 (owner float sweep): the 21 mm pod hovered 56 mm over the plate; it now rises from it to the same top
-      P.add('hullDetail', box(0.30, 0.080, 0.24), side * 0.51, 1.842, 1.86);
+      // (release 240: 6 mm lower, top 1.876, under the turret's 1.882 detail line as it turns over them)
+      P.add('hullDetail', box(0.30, 0.080, 0.24), side * 0.51, 1.836, 1.86);
     }
     // Low source A5 fender service boxes.  The previous RISE-height pack was
     // an unrelated tall envelope and inflated the hull profile above the
@@ -6029,15 +6055,17 @@ function buildM48(P: PattonBuilderPort, cfg: M48BuildConfig): void {
     }
     // left-fender tow cable with cleats (decoration minimum; outboard of the
     // left bins, deck-flush run like the m60 recipe)
+    // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the run lies on the fender (1.70 at x
+    // 1.74), outboard of the hull's top edge; on that edge, over the deck's 1.883 crest, it and its cleats stood 1.4-1.9
+    // cm into the turret's flat floor (1.893 to 2.15 m off the ring's axis) as it turned.
     {
       const { towCable } = KIT;
-      const cy = (z: number): number => hull.deckAt(z) + 0.012;
+      const fy = 1.708;
       towCable(P, [
-        [1.665, cy(0.55) - 0.008, 0.55], [1.70, cy(-0.30), -0.30],
-        [1.70, cy(-1.10), -1.10], [1.655, cy(-1.85) - 0.006, -1.85],
+        [1.755, fy, 0.55], [1.77, fy, -0.30], [1.77, fy, -1.10], [1.75, fy, -1.85],
       ], 0.017);
       for (const cz of [-0.30, -1.10]) {
-        P.add('hullDetail', box(0.085, 0.030, 0.05), 1.70, hull.deckAt(cz) + 0.009, cz);
+        P.add('hullDetail', box(0.085, 0.030, 0.05), 1.765, fy + 0.001, cz);
       }
     }
     // rear fender mud flaps (the sprocket shoes pass below at wrap top 1.03
@@ -6467,7 +6495,9 @@ const M46_FIT: HullFurniture = {
   // sits within 1q of the ref line, so the +0.03 cylinders always poked
   // (the ref reads its caps flush)
   shackleY: 1.10, shackleZ: 1.60,
-  grille: { z0: -1.42, z1: -2.24, y: 1.70, rx: 0, x: 0.52, w: 0.88 },
+  // (release 240: 1.4 cm lower, inside the lowered deck-slat field, which hides it; its centre bar stood 1.726 under the
+  // turret's 1.731 floor)
+  grille: { z0: -1.42, z1: -2.24, y: 1.686, rx: 0, x: 0.52, w: 0.88 },
   rearGrilleY: 1.15, rearGrilleW: 0.56, rearGrilleZ: -4.231, noRearEyes: true,
 };
 
@@ -6498,8 +6528,11 @@ const M47_HULL: PattonHullConfig = {
   runningGearFit: true, runningGearFace: true,
   darkGearFit: true, // r4 A3: muffler legs + roller brackets off the pale bucket
   deck: [[1.92, 1.30], [1.32, 1.402], [1.16, 1.628], [0.63, 1.607], [0.10, 1.638],
-    [-0.05, 1.602], [-0.22, 1.602], [-0.38, 1.652], [-1.28, 1.652], [-1.36, 1.702],
-    [-2.20, 1.712], [-2.95, 1.698], [-3.18, 1.75], [-3.27, 1.735], [-3.47, 1.735],
+    // (release 240, the owner: "make sure all tank turrets are clear of hulls": the engine deck behind the ring 3 cm
+    // lower, 1.672-1.682, under the turret's flat floor (1.708 to 1.45 m off the ring's axis); its grille frames, centre
+    // bar and slats stood 1.6-2 cm into it at rest)
+    [-0.05, 1.602], [-0.22, 1.602], [-0.38, 1.652], [-1.28, 1.652], [-1.36, 1.672],
+    [-2.20, 1.682], [-2.95, 1.698], [-3.18, 1.75], [-3.27, 1.735], [-3.47, 1.735],
     [-3.58, 1.74], [-3.63, 1.66], [-3.78, 1.63], [-3.86, 1.626], [-3.95, 1.578],
     [-4.05, 1.53], [-4.115, 1.48]],
   fenderY: [1.545, 1.10, -4.06], fenderHW: 1.677,
@@ -6528,7 +6561,9 @@ const M47_FIT: HullFurniture = {
   shackleY: 1.10, shackleZ: 1.95,
   // caps moved under the bustle overhang (z -1.55): at -0.55 they poked
   // 1.682 over the ref's 1.654 deck band (r2 workorder)
-  grille: { z0: -1.42, z1: -2.20, y: 1.70, rx: 0, x: 0.52, w: 0.88 }, caps: [0.85, -1.55],
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the grille seats on the 3 cm lower engine
+  // deck (M47_HULL) and the caps go 7 cm aft, out of the turret floor's reach (1.708, 1.45 m off the ring's axis)
+  grille: { z0: -1.42, z1: -2.20, y: 1.67, rx: 0, x: 0.52, w: 0.88 }, caps: [0.85, -1.62],
   // r3: grille re-seated onto the tail-core rear face (-4.19); at -4.105 it
   // sat hidden inside the new tail band. Face 1 mm proud, 27 mm clear of
   // the -4.218 trace boundary, y-band interior to the core.
@@ -6570,7 +6605,9 @@ const M48_HULL: PattonHullConfig = {
   runningGearFace: true, runningGearFit: true,
   deck: [[3.249, 1.100], [2.300, 1.580], [2.275, 1.805], [1.740, 1.805],
     [1.726, 1.780], [1.445, 1.780], [1.432, 1.823], [0.05, 1.823],
-    [-0.09, 1.883], [-0.34, 1.883], [-0.52, 1.800], [-1.10, 1.775],
+    // (release 240, the owner: "make sure all tank turrets are clear of hulls": the crest 3.3 cm lower, under the
+    // turret's low side stowage (1.86, 1.97 m off the ring's axis), which swept its outer corners)
+    [-0.09, 1.85], [-0.34, 1.85], [-0.52, 1.800], [-1.10, 1.775],
     [-1.62, 1.821], [-2.96, 1.821], [-2.98, 1.660], [-3.29, 1.640]],
   toeBot: 1.10, bellyFrontZ: 2.25, bellyRearZ: -2.48, tailBotY: 0.88,
   rearUndercutFloorJoin: true,
@@ -6621,7 +6658,9 @@ const M60_FIT: HullFurniture = {
   // engine crown (invisible; kept for config parity). A usKit re-seat onto
   // the crown was tried and cost ~0.6 whole / 0.7 stations (full-width end
   // rails) — the visible louvres are the flush m60-scoped bays in buildM60.
-  grille: { z0: -1.90, z1: -2.62, y: 1.840, rx: 0.026, x: 0.40, w: 0.62 }, caps: [1.18, -1.35],
+  // (release 240: 3 cm lower, buried again under the lowered engine crown, buildM60; at 1.840 its bars stood 1-2 cm
+  // through it, in the turret's sweep)
+  grille: { z0: -1.90, z1: -2.62, y: 1.81, rx: 0.026, x: 0.40, w: 0.62 }, caps: [1.18, -1.35],
   // rear-plate grille: panel recessed 6 mm so the louver slats (added in
   // buildM60) read against it; slat faces stay flush with the -3.28 plate.
   // r4 tell 3: panel widened 1.24 -> 1.90 (lower band of the full-width
@@ -6714,7 +6753,8 @@ const M60A2_HULL: PattonHullConfig = {
   // push round r5: raised shoulder roof edge 1.755 — curveHull's plate outer
   // edge lands at fenderHW+0.005, and the ref's 2.008 band covers the +-1.74 column
   // (1.996) but not +-1.78 (1.853): outer 1.760 threads both boundaries
-  fenderY: [2.005, -0.92, -3.50], fenderHW: 1.755,
+  // (release 240: the raised course's roof from -1.60, behind its moved rise, addM60A2ShoulderArmor)
+  fenderY: [2.005, -1.60, -3.50], fenderHW: 1.755,
   toeBot: 1.06, bellyFrontZ: 2.35, bellyRearZ: -2.62, tailBotY: 0.95,
   runningGearFace: true, runningGearFit: true,
   gear: {
@@ -6856,7 +6896,10 @@ export const PATTON_PROFILES = {
       // under the 1.02 deckCaps front-view carriers.
       deckSlats: {
         x0: 0.025, x1: 1.015, z0: -1.44, z1: -2.22,
-        fieldBot: 1.7135, fieldTop: 1.729, crownTop: 1.7385,
+        // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the field flush on the plateau (+0.5
+        // mm) and the crowns +1 cm, under the turret's flat floor (1.731 to 1.45 m off the ring's axis); at +1.35/+2.3 cm
+        // the front two crests' risers and crowns stood in it at rest
+        fieldBot: 1.7005, fieldTop: 1.716, crownTop: 1.7255,
         crests: [-1.465, -1.66, -1.86, -2.055],
         dashes: [[0.145, 0.285], [0.36, 0.50], [0.575, 0.715], [0.79, 0.93]],
         // sampled dial (the A2/drum dial law): the r7-B1 0x424635 recipe

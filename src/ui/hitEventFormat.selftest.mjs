@@ -92,4 +92,17 @@ assert.match(killcamSource, /function addXrayEntryPlateLabel[\s\S]*const outcome
 assert.doesNotMatch(killcamSource, /KIND_WORD|STOPPED BY ERA|NO PENETRATION/,
   'kill cam must not retain a second result vocabulary');
 
+// zh-CN reads each zone word from the catalog's zone.part select, joined without a space, the side as its mark; a word
+// without a branch stays as it is. English (above) prints every word as it is.
+{
+  const { setLocale } = await import('./i18n.ts');
+  await setLocale('zh-CN');
+  assert.equal(zoneLabel('hull_side_L'), '车体侧面（左）');
+  assert.equal(zoneLabel('upperGlacis'), '上部首甲');
+  assert.equal(zoneLabel('era_tile_3'), '反应装甲块3');
+  assert.equal(zoneLabel('mystery_plate_R'), 'mystery装甲板（右）');
+  await setLocale('en-US');
+  assert.equal(zoneLabel('hull_side_L'), 'hull side L');
+}
+
 console.log('hitEventFormat.selftest: ok');

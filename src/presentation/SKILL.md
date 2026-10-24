@@ -29,13 +29,29 @@ from media queries at `responsiveLayout.ts`'s band edges, never the
 (`src/ui/viewportQueries.test-support.mjs`, checked by `mobileLayout.selftest.mjs`).
 `mediaArchive.ts` renders the packaged showcase manifest and lightbox;
 `captureRecipes.ts` links media to reproducible Scene Studio recipes.
+`publicShell.ts` renders the public site's one bar and footer; `tools/public-shell.mjs`
+writes them, with the inline symbol block, into every public entry (or checks
+that each carries exactly that). The landing's blocks between `<!--home:NAME-->`
+markers come from `tools/home-premiere.mjs` (run the shell writer after it); the
+404 (`notFound.ts`) searches the fleet and the manual's prebuilt index
+(`src/docs/docsSearch.ts`). `localizedHtml.ts` makes each `/cn` document at build:
+the data-i18n hosts in Chinese, the manual's prerendered chapters
+(`src/docs/topicPrerender.zh-CN.json`), body links kept under `/cn`
+(`localizeLinks`; hreflang links untouched), the zh-CN type floor
+(`src/ui/zhTypeFloor.ts`) and the localized structured data.
 Adjacent selftests also cover root public HTML, SEO metadata, copy, analytics,
 and loading policy; those contracts extend beyond this directory.
 
 ## Patterns to follow / invariants
 <!-- agent-docs:fill:patterns -->
 
-- Preserve public/game bundle isolation and lazy archive/recipe loading.
+- Preserve public/game bundle isolation and lazy archive/recipe loading: a sheet
+  only a dialog or a wall uses loads with its module at that boundary, never as a
+  head `<link>` (the manual's archive sheet, 247).
+- The bar and footer are generated: change `publicShell.ts`, then
+  `node tools/public-shell.mjs --write`; landing blocks: `node tools/home-premiere.mjs --write`.
+- Element colour resets (`a`, `button`, form controls) belong in `@layer base`; in
+  `surfaces` they outrank every component's colour (the primary buttons' dark ink).
 - Every public HTML entry declares its page catalog
   (`<meta name="cot-i18n-catalog">`); keep `node tools/i18n-page-catalogs.mjs
   --check` clean when adding a page or a key pattern (docs/LOCALIZATION.md
@@ -81,3 +97,6 @@ media playback lifecycle. The player rides in the fleet takes' chunk
 (vite.config.ts group): as its own chunk it adds an entry to the game entry's
 preload list; keep it import-free. Do not eagerly fetch the complete archive on the
 landing page or import `src/main.ts` to obtain public product information.
+`backdrop-filter` (and `transform`, `filter`) on the bar makes it the containing
+block of its `position:fixed` descendants: the phone menu sized itself to the
+56 px bar until the bar dropped its blur while the menu is open (`publicNav.css`).

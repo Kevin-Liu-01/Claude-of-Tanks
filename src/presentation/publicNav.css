@@ -19,22 +19,9 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
 .cot-wordmark{display:inline-flex;align-items:center;color:var(--ink-1)}
 .cot-wordmark .wm{display:block;width:auto;height:var(--wordmark-h,11px)}
 
-/* buttons: one component for every public page (Title Case in the copy, caps in the display face) */
-.cot-btn{--btn-h:var(--btn-h-m);display:inline-flex;align-items:center;justify-content:center;gap:10px;height:var(--btn-h);padding:0 22px;border:1px solid transparent;border-radius:var(--control-radius);
-  font:700 var(--fs-14)/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;white-space:nowrap;color:var(--ink-1);text-decoration:none;cursor:pointer;
-  transition:background-color var(--dur-fast) var(--ease-enter),border-color var(--dur-fast) var(--ease-enter),color var(--dur-fast) var(--ease-enter),transform var(--dur-instant) var(--ease-enter)}
-.cot-btn .cot-i{width:18px;height:18px}
-.cot-btn--primary{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-bevel)}
-.cot-btn--primary:hover{background:var(--btn-primary-hover)}
-.cot-btn--primary:active{background:var(--btn-primary-press);transform:translateY(var(--btn-press-drop))}
-.cot-btn--secondary{background:color-mix(in srgb,var(--surface-scene) 56%,transparent);border-color:var(--line-3)}
-.cot-btn--secondary:hover{border-color:var(--accent);color:var(--accent-hi)}
-.cot-btn--sm{--btn-h:var(--btn-h-s);padding:0 14px;gap:8px;font-size:var(--fs-13)}
-.cot-btn--sm .cot-i{width:16px;height:16px}
-.cot-btn--lg{--btn-h:var(--btn-h-l);padding:0 26px;font-size:var(--fs-16)}
-.cot-btn--xl{--btn-h:var(--btn-h-xl);padding:0 30px;font-size:var(--fs-18)}
-.cot-btn:focus-visible,.public-nav a:focus-visible,.public-nav button:focus-visible,.public-footer a:focus-visible{outline:none;box-shadow:var(--focus-ring)}
-@media (prefers-reduced-motion:reduce){.cot-btn{transition:none}}
+/* the shell's Play buttons are the kit's (src/ui/components/components.css, on every public page at first paint);
+   the links' focus ring matches the kit's */
+.public-nav a:focus-visible,.public-nav button:focus-visible,.public-footer a:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 }
 
 @layer surfaces{
@@ -63,6 +50,7 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
 .public-nav__icon-link{display:inline-grid;place-items:center;width:40px;height:40px;border-radius:var(--control-radius);color:var(--ink-2);transition:color var(--dur-fast) var(--ease-enter)}
 .public-nav__icon-link:hover{color:var(--ink-1)}
 .public-nav__cta{margin-left:var(--s2)}
+.public-nav__cta svg{width:16px;height:16px}
 .public-nav__menu-trigger{display:none;place-items:center;width:44px;height:44px;margin-right:-10px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-1);cursor:pointer}
 .public-nav__menu[hidden]{display:none}
 /* the bar's blur makes it the containing block of its fixed descendants: while the menu is open the bar drops it, so
