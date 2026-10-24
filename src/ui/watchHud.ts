@@ -92,6 +92,7 @@ html:not([data-watch=drone]) .cot-watch-rail{display:none}
 .cot-watch-rail .wb.on{box-shadow:var(--ring-accent);color:var(--accent-hi)}
 body.cot-touch-layout .cot-watch .cot-c-kbd{display:none}
 html:is([data-watch=drone],[data-watch=ride]) body :is(.round.fire,.round.scope,.round.jump,.round.autoaim,.fire-cancel){display:none!important}
+html[data-watch=ride] body .cot-touch .joy{display:none!important}
 html[data-watch=ride] .cot-hud :is(.cot-shells,.cot-special,.cot-cons,.cot-vehicle-controls){pointer-events:none}
 /* flying on touch: the drive stick is the drone's (the spectator rule that hides it is for a view with nothing to steer) */
 html[data-watch=drone] body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-spectating .cot-touch .joy{display:block!important}
@@ -153,7 +154,8 @@ export function createWatchHud(host: () => HTMLElement | null, actions: WatchHud
   const hold = (button: HTMLButtonElement, direction: -1 | 1): void => {
     listen(button, 'pointerdown', (event) => {
       event.preventDefault();
-      button.setPointerCapture?.((event as PointerEvent).pointerId);
+      // capture keeps the hold through a slide off the button; a pointer the browser no longer tracks refuses it
+      try { button.setPointerCapture((event as PointerEvent).pointerId); } catch { /* the press still holds */ }
       button.classList.add('on');
       actions.setClimb(direction);
     });
