@@ -118,6 +118,9 @@ button{font:inherit;color:inherit}
 @media (width < 1100px){.fleet-facets{flex-wrap:wrap}.fleet-search{order:1;flex:1 1 100%;width:auto;margin-left:0}}
 @media (width < 768px){.fleet-facets__set{flex-wrap:wrap}.fleet-facets__set+.fleet-facets__set{margin-left:0}}
 .fleet-tile{display:block;aspect-ratio:16/9;text-decoration:none}
+/* a filtered wall's empty cells (fleetWall.ts): the desktop grid keeps its three rows; the narrow ones close up */
+.fleet-gap{aspect-ratio:16/9}
+@media (width < 1100px){.fleet-gap{display:none}}
 .fleet-tile>video{opacity:0;transition:opacity var(--dur-screen) var(--ease-enter)}
 .fleet-tile>video.has-frame{opacity:1}
 .fleet-tile:hover,.fleet-tile:focus-visible,.fleet-tile.is-featured{outline:none;box-shadow:var(--home-pick-ring)}

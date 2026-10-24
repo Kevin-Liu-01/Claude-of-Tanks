@@ -90,8 +90,15 @@ export function applyFleetFilter(section: HTMLElement, filter: FleetFilter): { t
     if (!tile) { tile = tileFor(section, record); tiles!.set(record.id, tile); }
     return tile;
   });
-  for (const tile of wall.querySelectorAll('a.fleet-tile')) tile.remove();
+  for (const tile of wall.querySelectorAll('a.fleet-tile, .fleet-gap')) tile.remove();
   plate.before(...shown.slice(0, 4));
   plate.after(...shown.slice(4));
+  // the empty cells keep the wall's three rows, so the plate keeps the box the page was written with (home.css)
+  for (let i = shown.length; i < SHOWN; i++) {
+    const gap = document.createElement('span');
+    gap.className = 'fleet-gap';
+    gap.setAttribute('aria-hidden', 'true');
+    wall.append(gap);
+  }
   return { tiles: shown, total: matches.length };
 }
