@@ -1184,8 +1184,11 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
   // at 10.68/1.13% via column quantization; 10.74 sits safely in grace)
   muzzleBore(P, 5.57, 0.10, 0.05, 14);
   P.muzzleZ = 5.57;
-  P.decal('turret', 'number', '325', 0.30, [1.505, 0.30, -0.85], Math.PI / 2, 0, 0.05);
-  P.decal('turret', 'number', '325', 0.30, [-1.505, 0.30, -0.85], -Math.PI / 2, 0, -0.05);
+  // (release 240: authored 0.14 m off the seated flank (1.40 at this station), past the surface solver's 0.12 m inner
+  // probe, which otherwise starts inside the armour and ties the outer one at the same hit with its normal turned in;
+  // at 1.505 the K2B's seated flank won that tie inward and both numbers read 0/9 and were dropped)
+  P.decal('turret', 'number', '325', 0.30, [1.54, 0.30, -0.85], Math.PI / 2, 0, 0.05);
+  P.decal('turret', 'number', '325', 0.30, [-1.54, 0.30, -0.85], -Math.PI / 2, 0, -0.05);
   addHullDecals();
   };
   buildK2Weapon();
