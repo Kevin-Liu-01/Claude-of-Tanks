@@ -157,6 +157,11 @@ export interface CameraRigDeps {
   aimRaycast?: CameraAimRaycast;
   getPlayer(): CameraEntity | null;
   getIsometricView?(): boolean;
+  /**
+   * A spectate handover is about to carry the camera to `position` (looking at `lookAt`) over `durationS`
+   * (2026-10-24, perf-245; cameraDestinationWarm.ts): the destination is warmed on the way.
+   */
+  prepareDestination?(position: THREE.Vector3, lookAt: THREE.Vector3, durationS: number): void;
 }
 
 interface CameraInputFrame {
@@ -342,6 +347,15 @@ export function createCameraRig(
   // unlocked cursor must reach all the way around before it hits the screen
   // edge). Damped by SPEC_LOOK_TAU_S above, so the higher gain stays smooth.
   const SPEC_SENS = BASE_SENS * 1.8;
+
+  /** (perf-245) where a spectate handover lands: the chase pose behind `ent` (tank forward is local +Z). */
+  const _specDest = new THREE.Vector3();
+  function announceSpectate(ent: CameraEntity, durationS: number): void {
+    if (!deps.prepareDestination || !ent.state?.pos) return;
+    const p = ent.state.pos, yaw = ent.state.yaw ?? 0;
+    _specDest.set(p.x - Math.sin(yaw) * SPEC_DIST_M, p.y + 3, p.z - Math.cos(yaw) * SPEC_DIST_M);
+    deps.prepareDestination(_specDest, p as THREE.Vector3, durationS);
+  }
 
   function spectateBlendDuration(ent: CameraEntity | null): number {
     if (!ent || !ent.state || !ent.state.pos) return SPEC_BLEND_S;
@@ -1135,6 +1149,7 @@ export function createCameraRig(
         fromLook: _specFromLook,
         fromFov: specFromFov,
       };
+      announceSpectate(ent, spec.blendDur);
       rig.mode = 'ARCADE';
       applyPlayerVisibility(getPlayer(), true);
     },
@@ -1169,6 +1184,7 @@ export function createCameraRig(
       spec.blendT = 0;
       spec.blendDur = spectateBlendDuration(ent);
       spec.fromFov = specFromFov;
+      announceSpectate(ent, spec.blendDur);
     },
 
     /**
@@ -1493,6 +1509,7 @@ export function createCameraRig(
 // therefore byte-identical whether or not the player had dragged the view.
 
 const SHOW_FOV_DEG = 42;               // stage lens (matches the authored bay)
+const SHOW_FOV_UPRIGHT_MAX_DEG = 70;   // a screen held upright opens the lens up to this (showFovDeg)
 const SHOW_HERO_FILL = 0.86;           // hero framing: fraction of the stage rect
 const SHOW_KEEP_FILL = 0.99;           // orbiting: pull back rather than crop
 // garage-scene r1: the ±72° yaw clamp is GONE — free continuous 360° orbit
@@ -1637,6 +1654,11 @@ interface ShowroomOrbit {
   drag(dxPx: number, dyPx: number): void;
   endDrag(): void;
   wheel(notches: number): void;
+  /** Hold the framing: no idle spring back to the hero pose while held (the Garage's photo mode). */
+  hold(on: boolean): void;
+  /** Steer toward a view: yaw and pitch in radians (the pitch kept inside the turntable's clamp), the dolly (1 = the
+   *  hero fit). */
+  aim(yawRad: number, pitchRad: number, zoomTo?: number): void;
   debugState(): Record<string, RuntimeValue>;
 }
 
@@ -1672,6 +1694,7 @@ export function createShowroomOrbit(
   let yawVel = 0, pitchVel = 0;
   let dragging = false;
   let running = false;
+  let held = false;
   let sinceInputS = 999;
   let lastDragMs = 0;
   let lastInputMs = -Infinity;
@@ -1714,6 +1737,16 @@ export function createShowroomOrbit(
   /** The camera's aspect, or 16:9 while the viewport has no area (the resize seam's w / 0 and 0 / 0 are no aspect). */
   function viewAspect(): number {
     return Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
+  }
+
+  /** The stage lens (the 245 Garage redesign): 42° on a screen held wide. A screen held upright opens it until it sees as
+   *  wide as a square screen would (up to 70°), so a phone frames the whole tank inside the bay's 19 m reach instead of
+   *  cropping both ends of the hull. */
+  function showFovDeg(): number {
+    const aspect = viewAspect();
+    if (aspect >= 1) return SHOW_FOV_DEG;
+    const tanV = Math.tan(THREE.MathUtils.degToRad(SHOW_FOV_DEG) * 0.5);
+    return Math.min(SHOW_FOV_UPRIGHT_MAX_DEG, THREE.MathUtils.radToDeg(2 * Math.atan(tanV / aspect)));
   }
 
   function measureFixedFrame(frame: ShowroomFixedFrame): void {
@@ -1846,7 +1879,7 @@ export function createShowroomOrbit(
    */
   function solve(y: number, p: number, fill: number, fixedDist: number): ShowroomSolve {
     const w = readWindow();
-    const tanV = Math.tan(THREE.MathUtils.degToRad(SHOW_FOV_DEG) * 0.5);
+    const tanV = Math.tan(THREE.MathUtils.degToRad(showFovDeg()) * 0.5);
     const tanH = tanV * viewAspect();
     const maxPc = prepareCornerProjection(y, p);
     const dFloor = Math.max(maxPc + SHOW_NEAR_PAD_M, nearDist, 1);
@@ -1902,7 +1935,7 @@ export function createShowroomOrbit(
     const minY = (deps.floorY ? deps.floorY() : -Infinity) + SHOW_FLOOR_PAD_M;
     if (_sbPos.y < minY) _sbPos.y = minY;
     _sbLook.copy(_sbPos).addScaledVector(_sbC, -d);
-    rig.setExternalPose(_sbPos, _sbLook, SHOW_FOV_DEG);
+    rig.setExternalPose(_sbPos, _sbLook, showFovDeg());
     appliedAspect = viewAspect();
     appliedWin.cx = win.cx; appliedWin.cy = win.cy;
     appliedWin.hx = win.hx; appliedWin.hy = win.hy;
@@ -1950,7 +1983,7 @@ export function createShowroomOrbit(
     // idle spring and explicit reset still restore the canonical hero view.
     // Use wall time here: the settled Garage only ticks every five seconds,
     // with a clamped simulation delta. That must not extend this input grace.
-    if (dragging || performance.now() - lastInputMs <= SHOW_IDLE_RETURN_S * 1000) return;
+    if (held || dragging || performance.now() - lastInputMs <= SHOW_IDLE_RETURN_S * 1000) return;
     tYaw = yaw + wrapPi(heroYaw - yaw);
     tPitch = heroPitch;
     tZoom = 1;
@@ -1981,7 +2014,7 @@ export function createShowroomOrbit(
   }
 
   function returnOrbitTargets(dt: number): void {
-    if (sinceInputS <= SHOW_IDLE_RETURN_S) return;
+    if (held || sinceInputS <= SHOW_IDLE_RETURN_S) return;
     const follow = 1 - Math.exp(-dt / SHOW_RETURN_TAU_S);
     tYaw += wrapPi(heroYaw - tYaw) * follow;
     tPitch += (heroPitch - tPitch) * follow;
@@ -2142,6 +2175,20 @@ export function createShowroomOrbit(
       lastInputMs = performance.now();
     },
 
+    hold(on: boolean): void {
+      held = on;
+    },
+
+    aim(yawRad: number, pitchRad: number, zoomTo = 1): void {
+      if (!haveBox || !Number.isFinite(yawRad) || !Number.isFinite(pitchRad)) return;
+      tYaw = yaw + wrapPi(yawRad - yaw);
+      tPitch = THREE.MathUtils.clamp(pitchRad, SHOW_PITCH_MIN, SHOW_PITCH_MAX);
+      tZoom = THREE.MathUtils.clamp(zoomTo, SHOW_ZOOM_MIN, SHOW_ZOOM_MAX);
+      yawVel = pitchVel = 0;
+      sinceInputS = 0;
+      lastInputMs = performance.now();
+    },
+
     /**
      * Live state for the headless camera probe (tools/garage-camera-probe.mjs).
      * @returns {object}
@@ -2162,7 +2209,7 @@ export function createShowroomOrbit(
         pitchMaxDeg: THREE.MathUtils.radToDeg(SHOW_PITCH_MAX),
         zoom, zoomMin: SHOW_ZOOM_MIN, zoomMax: SHOW_ZOOM_MAX,
         heroDist, dragging, sinceInputS,
-        fovDeg: SHOW_FOV_DEG,
+        fovDeg: showFovDeg(),
         box: haveBox
           ? { min: _sbMin.toArray(), max: _sbMax.toArray(), center: _sbCenter.toArray() }
           : null,

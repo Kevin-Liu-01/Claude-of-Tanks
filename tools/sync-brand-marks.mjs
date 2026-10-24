@@ -5,6 +5,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { BRAND_MOTION_CSS } from '../src/ui/brandMarkMotion.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const CHECK = process.argv.includes('--check');
@@ -68,9 +69,9 @@ const fullMetal = replaceBetween(
 );
 syncFile('public/brand/logo-full-metal.svg', fullMetal);
 
-// (brand-ui 242) The crest retired with the Premiere identity (src/ui/components/DIRECTION.md, "The identity"): its
-// files above stay for the media kits, favicon.svg is the monogram tools/brand/wordmark.py writes, and the boot splash
-// carries the title card, its body inlined so the registration sting can move the caps' top halves.
+// (brand-ui 245) The commander mark (the owner's pick): tools/brand-marks.mjs writes every master from src/ui/brandMark.ts;
+// the retired crest's files above stay for the media kits, and the boot splash carries the title card (the living tank
+// over the stacked wordmark), its body inlined with the loop's rules.
 const titleCard = read('public/brand/title-card.svg');
 const cardViewBox = /^<svg [^>]*viewBox="([^"]+)"/.exec(titleCard);
 const cardBodyStart = titleCard.indexOf('-->') + 3;
@@ -83,7 +84,10 @@ if (!bootTag) throw new Error('missing derived-brand marker: the cot-boot-mark <
 const bootStart = bootTag[0].replace(/viewBox="[^"]*"/, `viewBox="${cardViewBox[1]}"`);
 const bootBody = '      <!-- GENERATED from public/brand/title-card.svg by tools/sync-brand-marks.mjs. -->\n'
   + titleCard.slice(cardBodyStart, cardBodyEnd);
-const index = replaceBetween(indexSource.replace(bootTag[0], bootStart), bootStart, '\n      </svg>\n', bootBody);
+let index = replaceBetween(indexSource.replace(bootTag[0], bootStart), bootStart, '\n      </svg>\n', bootBody);
+// (brand-ui 245) the card's tank is the living mark: its loop's rules, from src/ui/brandMarkMotion.ts, in the boot sheet
+index = replaceBetween(index, '/* cot:brand-motion */', '/* /cot:brand-motion */',
+  `\n${BRAND_MOTION_CSS.trim().split('\n').map((line) => `    ${line}`).join('\n')}\n    `);
 syncFile('index.html', index);
 
 if (!process.exitCode) {

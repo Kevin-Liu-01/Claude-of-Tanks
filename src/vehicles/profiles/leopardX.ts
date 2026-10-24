@@ -151,14 +151,21 @@ function a7ForwardCheek(P:TankBuilderPort,d:Datum): void {
 
 function mainGun(P: TankBuilderPort, d: Datum, radius: number, long: boolean): void {
   const length = d.muzzleZ - d.trunnion[2];
-  KIT.buildGun(P, { len: length, r: radius, baseR: radius * 1.6,
+  // Release 240 (gun sweep): the A7V and A5M trunnions stand only 19-25 cm over the deck round the turret, and their
+  // mounts hung under it. The .275 m bearing drum stood in the deck at every pitch (A7V 1.758 under 1.796, A5M 1.633
+  // under 1.662), so neither gun had a clear pitch at any yaw. The rocker's -.205 keel took the deck in depression abeam,
+  // and the kit's breech collar (.177 m at its rear, recoiling) took it at full elevation. Both now sit inside the rocker:
+  // a .16 m drum, a keel 1 cm under the barrel tube, and a collar no wider than the tube's root. The nose's receiving
+  // collar (.195 m, 7-10 cm under the barrel) took the engine deck astern; it now stands 2 cm proud of the sleeve.
+  const trimmed = d !== LEOPARD_X_DATUMS.leo2a6m;
+  KIT.buildGun(P, { len: length, r: radius, baseR: radius * (trimmed ? 1 : 1.6),
     sleeve: true, evac: long ? .43 : .35, evacR: 1.66, collar: true, paintSleeveBands: true });
   // The existing physical collar pitches but is not part of barrel recoil.
   const fit=d===LEOPARD_X_DATUMS.leo2a7v
-    ? {crown:.515,noseZ:1.10,noseRoof:.145}
+    ? {crown:.515,noseZ:1.10,noseRoof:.145,drumR:.16,keel:-.13,collarR:.14}
     : d===LEOPARD_X_DATUMS.leo2a6m
       ? {crown:.390,noseZ:1.24,noseRoof:.105}
-      : {crown:.445,noseZ:1.04,noseRoof:.120};
+      : {crown:.445,noseZ:1.04,noseRoof:.120,drumR:.16,keel:-.11,collarR:.12};
   addLeopardMovingMantlet(P,fit);
   P.add('gunDark', cylZ(radius * .84, .016, 24), 0, 0, length + .001);
   P.add('gun', torus(radius * .93, radius * .10, 24, 6), 0, 0, length + .007, Math.PI / 2);
@@ -307,13 +314,20 @@ function recoveryCable(P:TankBuilderPort,name:string,path:THREE.CatmullRomCurve3
 // body, whose seated underside stands 3 cm over the deck round the ring, and the periscope heads stood 11 cm over the hatch,
 // into the turret at rest and through it in traverse; `sink` sets the heads and the handle down into the hatch's frame
 // under that underside (they show when the turret is turned off the station).
-function driver(P: TankBuilderPort, y: number, x: number, z: number, sink = 0): void {
-  P.addHatch('hull', box(.66, .027, .58), x, y + .011, z);
+// `rake`: the plate the station lies on falls toward the bow by this angle (the upper glacis plate), the station flat on
+// it, `y` that plate's height under the hatch's middle.
+function driver(P: TankBuilderPort, y: number, x: number, z: number, sink = 0, rake = 0): void {
+  const at = (dy: number, dz: number): [number, number] =>
+    [y + dy * Math.cos(rake) - dz * Math.sin(rake), z + dy * Math.sin(rake) + dz * Math.cos(rake)];
+  const [hy, hz] = at(.011, 0);
+  P.addHatch('hull', box(.66, .027, .58), x, hy, hz, rake, 0, 0);
   for (let i = -1; i <= 1; i++) {
-    P.addEquipment('hullDark', box(.145, .085, .12), x + i * .165, y + .07 - sink, z + .18);
-    P.addEquipment('hullGlass', box(.114, .043, .009), x + i * .165, y + .08 - sink, z + .245);
+    const [py, pz] = at(.07 - sink, .18), [gy, gz] = at(.08 - sink, .245);
+    P.addEquipment('hullDark', box(.145, .085, .12), x + i * .165, py, pz, rake, 0, 0);
+    P.addEquipment('hullGlass', box(.114, .043, .009), x + i * .165, gy, gz, rake, 0, 0);
   }
-  P.addEquipment('hullDetail', box(.18, .028, .035), x, y + .041 - Math.min(sink, .03), z - .06);
+  const [ly, lz] = at(.041 - Math.min(sink, .03), -.06);
+  P.addEquipment('hullDetail', box(.18, .028, .035), x, ly, lz, rake, 0, 0);
 }
 
 function roofHatch(P: TankBuilderPort, d: Datum, x: number, y: number, z: number, r = .32): void {
@@ -840,25 +854,28 @@ function a7BowFittings(P:TankBuilderPort): void {
 function a5CrewBasket(P: TankBuilderPort,d:Datum): void {
   // Source floor extrema fix an ellipse: retain transverse radius and Y,
   // correcting only the former circular contour's 10.4 mm axial overhang.
-  const axialScale=.97573431/.986,centerZ=.66115932;
+  // Release 240: the carrier turns inside the hull's ring bore (rim .965 m), so its .986 m wall comes in to .975 m. At
+  // .986 the wall stood past the turret seat's keep radius (rim + 2 cm), and the seat lifted the whole basket, floor and
+  // all, from .82 m to the deck.
+  const outer=.975,inner=outer-.065,axialScale=.97573431/.986,centerZ=.66115932;
   const band=(bottom:number,top:number) => new THREE.LatheGeometry([
-    new THREE.Vector2(.921,bottom),new THREE.Vector2(.986,bottom),
-    new THREE.Vector2(.986,top),new THREE.Vector2(.921,top),
-    new THREE.Vector2(.921,bottom),
+    new THREE.Vector2(inner,bottom),new THREE.Vector2(outer,bottom),
+    new THREE.Vector2(outer,top),new THREE.Vector2(inner,top),
+    new THREE.Vector2(inner,bottom),
   ],48).scale(1,1,axialScale);
   equip(P,d,'turretDetail',band(.84,1.025),0,0,centerZ);
   equip(P,d,'turretDetail',band(1.515,1.71),0,0,centerZ);
-  equip(P,d,'turretDetail',cylY(.986,.986,.025,40).scale(1,1,axialScale),0,.8328,centerZ);
+  equip(P,d,'turretDetail',cylY(outer,outer,.025,40).scale(1,1,axialScale),0,.8328,centerZ);
   for(let i=0;i<4;i++) {
     const start=Math.PI/8+i*Math.PI/2;
     const outline:THREE.Vector2[]=[];
     for(let j=0;j<=12;j++) {
       const a=start+j*Math.PI/48;
-      outline.push(new THREE.Vector2(.986*Math.cos(a),.986*Math.sin(a)));
+      outline.push(new THREE.Vector2(outer*Math.cos(a),outer*Math.sin(a)));
     }
     for(let j=12;j>=0;j--) {
       const a=start+j*Math.PI/48;
-      outline.push(new THREE.Vector2(.921*Math.cos(a),.921*Math.sin(a)));
+      outline.push(new THREE.Vector2(inner*Math.cos(a),inner*Math.sin(a)));
     }
     const wall=new THREE.ExtrudeGeometry(new THREE.Shape(outline),{depth:.49,steps:1,bevelEnabled:false});
     wall.rotateX(-Math.PI/2);
@@ -1165,7 +1182,10 @@ export function buildLeopard2A7VX(P: TankBuilderPort): void {
     paintedEnds:true, arms:true, coveredTop:true },[-2.05,-.35,1.25,2.20]));
   a7Skirts(P);
   fans(P,2.018,-2.82,.54);
-  driver(P,1.783,-.54,1.14,.07);
+  // Release 240: the driver's station on the upper glacis plate 0.31 m ahead of the deck's break, as the 2A5's source
+  // hatch lies (this source carries no hatch of its own), flat on that plate; it stood inside the ring's circle, so a
+  // kill's ring cut took part of it.
+  driver(P,1.6658,-.54,2.24,.03,Math.atan2(1.785-1.628,2.43-1.64));
   a7BowFittings(P);
   a7Stern(P);
   shell(P,d,[[-2.80,-1.11,1.25,2.092,2.235],[-2.49,-1.14,1.26,2.084,2.628],
@@ -1223,7 +1243,10 @@ export function buildLeopard2A6MX(P: TankBuilderPort): void {
     paintedEnds:true,arms:true,coveredTop:true});
   a6HullCage(P);
   fans(P,1.825,-2.86,.48,true);                                               // (release 240: flat, under the bustle cage's 1.88)
-  driver(P,1.72,-.56,1.15,.09);
+  // Release 240: the driver's station on the upper glacis plate 0.31 m ahead of the deck's break, as the 2A5's source
+  // hatch lies (this source carries no hatch of its own), flat on that plate; it stood inside the ring's circle, so a
+  // kill's ring cut took part of it.
+  driver(P,1.6443,-.56,2.12,.03,Math.atan2(1.72-1.58,2.63-1.52));
   a6BowFittings(P);
   a6Stern(P);
   shell(P,d,[[-2.70,-1.14,1.15,1.948,1.979],[-2.39,-1.14,1.15,1.93,1.979],
@@ -1288,7 +1311,10 @@ export function buildLeopard2A4MX(P: TankBuilderPort): void {
     P.addEquipment('hullDetail',box(.53,.05,.014).translate(0,.185,-.0255),side*1.36,.75,-3.69,.07);
   }
   fans(P,1.81,-2.95,.51,true);                                                // (release 240: flat, under the bustle's 1.842)
-  driver(P,1.68,-.58,1.0,.09);
+  // Release 240: the driver's station on the upper glacis plate 0.31 m ahead of the deck's break, as the 2A5's source
+  // hatch lies (this source carries no hatch of its own), flat on that plate; it stood inside the ring's circle, so a
+  // kill's ring cut took part of it.
+  driver(P,1.5619,-.58,2.20,.03,Math.atan2(1.684-1.45,2.75-1.60));
   bowFittings(P,1.33,3.56,false);
   sternFittings(P,1.47,-3.79,1.65);
   shell(P,d,[[-2.82,-1.02,-.64,1.873,2.33],[-2.53,-1.05,.98,1.856,2.387],
@@ -1346,7 +1372,10 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
   a5Skirts(P);
   a5InnerSuspension(P);
   fans(P,1.811,-2.89,.514);
-  driver(P,1.661,-.54,1.20,.09);
+  // Release 240: the driver's station at the source's hatch_01 (X -1.106..-.331, Z 2.050..2.571: on the upper glacis
+  // plate, 0.31 m ahead of the deck's break), flat on that plate; it stood at Z 1.20 inside the ring's circle (the
+  // source's basket, radius .986 about Z .661), so a kill's ring cut took part of it.
+  driver(P,1.568,-.718,2.34,.03,Math.atan2(1.661-1.5003,2.78-1.74));
   a5BowFittings(P);
   a5Stern(P);
   // Rear hull marker rod, present in the supplied x_root_107 node; unlike

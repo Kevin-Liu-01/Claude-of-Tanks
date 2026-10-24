@@ -31,8 +31,8 @@ function createFixture({
     getSelectedSpecId: () => 'm1a1_abrams_hc',
     presentation: {
       setAdaptiveSuspended: (value) => calls.push(['adaptive', value]),
-      clearBattle: () => {
-        calls.push(['clearPresentation']);
+      clearBattle: (options) => {
+        calls.push(['clearPresentation', options?.keepScreens === true]);
         onClearPresentation?.(runtime);
       },
       resetBattleTank: () => calls.push(['resetBattleTank']),
@@ -116,9 +116,9 @@ function createFixture({
         }
       },
     },
-    restoreGaragePresentation: async () => {
+    restoreGaragePresentation: async (isCurrent) => {
       calls.push(['restoreGaragePresentation']);
-      if (restore) return restore();
+      if (restore) return restore(isCurrent);
       return {
         totalMs: 12,
         resourcesReleased: false,
@@ -259,6 +259,14 @@ assert.equal(rematch.triggerCount, 1);
 assert.ok(rematch.calls.findIndex(([name]) => name === 'triggerBattle')
   < rematch.calls.findIndex(([name]) => name === 'transitionEnd'),
   'the canonical Battle action fires while the result transition still covers Garage');
+// perf-246: straight back into a battle never pays the Garage's program warm.
+assert.equal(rematch.calls.some(([name]) => name === 'restoreGaragePresentation'), false,
+  'Battle Again skips the Garage GPU restore');
+assert.equal(rematch.runtime.lastTrace.restoreSkipped, true);
+assert.equal(rematch.runtime.lastTrace.presentationUnready, true,
+  'Garage frames stay suppressed until the next battle covers');
+assert.equal(rematch.calls.some(([name]) => name === 'adaptive'), false,
+  'the skipped Garage never starts its quality baseline');
 
 const coveredHandoff = createFixture({ battleCoverDelay: 2 });
 await coveredHandoff.runtime.battleAgain();
@@ -290,8 +298,11 @@ assert.equal(unavailableBattle.calls.some(([name]) => name === 'sleep'), false,
   'a missing or disabled action fails immediately, not after a silent 15-second wait');
 assert.equal(unavailableBattle.game.phase, 'garage');
 assert.ok(unavailableBattle.calls.findIndex(([name]) => name === 'restoreGaragePresentation')
-  < unavailableBattle.calls.findIndex(([name]) => name === 'triggerBattle'),
+  > unavailableBattle.calls.findIndex(([name]) => name === 'triggerBattle'),
+  'an unavailable action pays the skipped restore after the refused trigger');
+assert.equal(unavailableBattle.runtime.lastTrace.presentationUnready, false,
   'an unavailable action leaves the complete restored Garage, never a skipped restore');
+assert.equal(unavailableBattle.runtime.lastTrace.restoreSkipped, false);
 assert.equal(unavailableBattle.calls.at(-1)[0], 'transitionEnd');
 assert.equal(unavailableBattle.runtime.transitioning, false);
 unavailableBattle.setTriggerAccepted(true);
@@ -302,6 +313,8 @@ const triggerFailure = new Error('battle routing failed');
 const throwingBattle = createFixture({ triggerError: triggerFailure });
 await assert.rejects(throwingBattle.runtime.battleAgain(), (error) => error === triggerFailure);
 assert.equal(throwingBattle.game.phase, 'garage');
+assert.equal(throwingBattle.runtime.lastTrace.presentationUnready, false,
+  'a throwing Battle action still leaves a restored Garage');
 assert.equal(throwingBattle.runtime.transitioning, false);
 assert.equal(throwingBattle.calls.at(-1)[0], 'transitionEnd');
 throwingBattle.setTriggerError(null);
@@ -311,6 +324,8 @@ assert.equal(throwingBattle.triggerCount, 2, 'throwing adapter releases the latc
 const missingCover = createFixture({ battleCoverDelay: Infinity });
 await assert.rejects(missingCover.runtime.battleAgain(), /next battle did not start/);
 assert.equal(missingCover.game.phase, 'garage');
+assert.equal(missingCover.runtime.lastTrace.presentationUnready, false,
+  'a battle that never covered leaves a restored Garage');
 assert.equal(missingCover.calls.at(-1)[0], 'transitionEnd');
 assert.equal(missingCover.runtime.transitioning, false,
   'failed loading-cover handoff is explicit and cannot retain the rematch latch');
@@ -387,10 +402,10 @@ for (const failure of ['placement', 'restore', 'missing-receipt']) {
   assert.notEqual(fixture.runtime.lastTrace, failedTrace);
 }
 
-assert.equal(unavailableBattle.runtime.lastTrace.presentationUnready, false,
-  'a failed Battle trigger after a successful restore leaves a usable Garage');
-assert.equal(stuckEntry.runtime.lastTrace.presentationUnready, false,
-  'a later successful retry owns a complete restore receipt');
+assert.equal(unavailableBattle.runtime.lastTrace.restoreSkipped, true,
+  'the enabled retry goes straight into its battle without the Garage restore');
+assert.equal(stuckEntry.runtime.lastTrace.restoreSkipped, true,
+  'a later successful retry skips the restore its battle covers');
 assert.doesNotMatch(mainSource, /function enterGarage\(/,
   'main must not own the Garage return transaction');
 assert.doesNotMatch(mainSource, /let leavingBattle\s*=/,
@@ -784,4 +799,145 @@ for (const kind of ['phase', 'context-loss', 'info-replacement', 'context-replac
   assert.equal(isCovered(fixture), false);
 }
 
-console.log('garageReturnRuntime.selftest: room preservation, canonical recovery, budgeted covered checkpoints, leave, and rematch pass');
+// perf-246: the Garage swapped and warmed behind the opaque battle report, handed over on Return; Battle Again
+// never pays for it.
+const screenCalls = ['emitGaragePhase', 'hideEndOverlay', 'exitPointerLock', 'hideHud', 'showGarage', 'startShowroom',
+  'ambient', 'garageSting', 'closeSettings', 'adaptive'];
+const callNames = (fixture, from = 0) => fixture.calls.slice(from).map(([name]) => name);
+{
+  const fixture = createFixture();
+  fixture.setPreserveRoom(false);
+  assert.equal(await fixture.runtime.prepare(), true, 'a solo battle end prepares the Garage');
+  assert.equal(fixture.game.phase, 'garage');
+  assert.equal(fixture.runtime.awaitingHandoff, true);
+  assert.deepEqual(fixture.calls.find(([name]) => name === 'clearPresentation'), ['clearPresentation', true],
+    'the report (and the HUD it hides) stays the screen');
+  for (const name of screenCalls) {
+    assert.equal(callNames(fixture).includes(name), false, `the preparation never runs ${name}`);
+  }
+  assert.ok(callNames(fixture).indexOf('poseGarageCamera') < callNames(fixture).indexOf('restoreGaragePresentation'),
+    'the restore is framed from the Garage camera');
+  assert.equal(fixture.runtime.lastTrace.presentationUnready, false);
+  assert.equal(isCovered(fixture), true, 'a prepared Garage paints nothing until its handoff');
+  fixture.game.phase = 'battle';
+  assert.equal(fixture.runtime.awaitingHandoff, false, 'a prepared trace never claims another phase');
+  assert.equal(isCovered(fixture), false);
+  fixture.game.phase = 'garage';
+  const before = fixture.calls.length;
+  await fixture.runtime.leave();
+  const handoff = callNames(fixture, before);
+  assert.equal(handoff.includes('restoreGaragePresentation'), false, 'the Return pays no restore');
+  assert.equal(handoff.includes('garagePlacement'), false, 'nor the Garage swap');
+  for (const name of ['transitionStart', 'emitGaragePhase', 'hideEndOverlay', 'showGarage', 'poseGarageCamera',
+    'startShowroom', 'garageSting', 'closeSettings', 'transitionEnd']) {
+    assert.ok(handoff.includes(name), `the handoff runs ${name}`);
+  }
+  assert.ok(fixture.calls.slice(before).some(([name, keep]) => name === 'clearPresentation' && keep === false),
+    'the handoff clears the report under the veil');
+  assert.ok(handoff.indexOf('emitGaragePhase') < handoff.indexOf('showGarage'));
+  assert.deepEqual(fixture.calls.find(([name]) => name === 'adaptive'), ['adaptive', false],
+    'the quality baseline starts with the handed-over Garage');
+  assert.equal(fixture.runtime.awaitingHandoff, false);
+  assert.equal(isCovered(fixture), false, 'the handed-over Garage paints');
+  assert.equal(typeof fixture.runtime.lastTrace.stages.handoff, 'number');
+}
+
+{
+  const room = createFixture();
+  assert.equal(await room.runtime.prepare(), false, 'a live room is never touched behind the report');
+  assert.equal(room.calls.length, 0);
+  assert.equal(room.game.phase, 'battle');
+  const pending = createFixture();
+  pending.setPreserveRoom(false);
+  pending.setEntryPending(true);
+  assert.equal(await pending.runtime.prepare(), false, 'an entry still loading is not raced');
+  assert.equal(pending.calls.length, 0);
+  const garage = createFixture();
+  garage.setPreserveRoom(false);
+  garage.game.phase = 'garage';
+  assert.equal(await garage.runtime.prepare(), false, 'a Garage already up is not prepared again');
+  const leaving = createFixture({ transitionGate: true });
+  leaving.setPreserveRoom(false);
+  const leave = leaving.runtime.leave();
+  assert.equal(await leaving.runtime.prepare(), false, 'a Return already under way is not raced');
+  leaving.releaseTransition();
+  await leave;
+}
+
+{
+  let finishRestore;
+  const fixture = createFixture({ restore: () => new Promise((resolve) => { finishRestore = resolve; }) });
+  fixture.setPreserveRoom(false);
+  const prepared = fixture.runtime.prepare();
+  for (let i = 0; i < 20 && !finishRestore; i += 1) await Promise.resolve();
+  assert.ok(finishRestore, 'the preparation reaches the exact restore owner');
+  const left = fixture.runtime.leave();
+  for (let i = 0; i < 8; i += 1) await Promise.resolve();
+  assert.equal(callNames(fixture).includes('showGarage'), false, 'the Return waits, under its veil, for the warm');
+  finishRestore(direct.runtime.lastTrace.presentationRestore);
+  assert.equal(await prepared, true);
+  await left;
+  assert.equal(fixture.calls.filter(([name]) => name === 'restoreGaragePresentation').length, 1,
+    'the Return joins the warm instead of restarting it');
+  assert.equal(fixture.calls.filter(([name]) => name === 'garagePlacement').length, 1);
+  assert.ok(callNames(fixture).includes('showGarage'));
+  assert.equal(isCovered(fixture), false);
+}
+
+{
+  let restoreIsCurrent;
+  let abandon;
+  const fixture = createFixture({
+    restore: (isCurrent) => new Promise((_resolve, reject) => { restoreIsCurrent = isCurrent; abandon = reject; }),
+  });
+  fixture.setPreserveRoom(false);
+  const prepared = fixture.runtime.prepare();
+  for (let i = 0; i < 20 && !abandon; i += 1) await Promise.resolve();
+  assert.equal(restoreIsCurrent(), true, 'the preparation is current until Battle Again');
+  const again = fixture.runtime.battleAgain();
+  for (let i = 0; i < 20 && restoreIsCurrent(); i += 1) await Promise.resolve();
+  assert.equal(restoreIsCurrent(), false, 'Battle Again abandons the warm in flight');
+  abandon(new Error('abandoned at the next program step'));
+  assert.equal(await prepared, false);
+  await again;
+  assert.equal(fixture.calls.filter(([name]) => name === 'restoreGaragePresentation').length, 1,
+    'the abandoned restore is never resumed or repeated');
+  assert.equal(fixture.runtime.lastTrace.restoreSkipped, true);
+  assert.equal(fixture.triggerCount, 1);
+}
+
+{
+  const fixture = createFixture();
+  fixture.setPreserveRoom(false);
+  assert.equal(await fixture.runtime.prepare(), true);
+  const before = fixture.calls.length;
+  await fixture.runtime.battleAgain();
+  const after = callNames(fixture, before);
+  assert.equal(after.includes('restoreGaragePresentation'), false);
+  assert.equal(after.includes('garagePlacement'), false, 'a prepared Garage only hands its screen over');
+  assert.ok(after.indexOf('showGarage') < after.indexOf('triggerBattle'), 'the Battle control exists when it fires');
+  assert.equal(fixture.triggerCount, 1);
+}
+
+{
+  const fixture = createFixture({ placement: async () => { throw new Error('lost device'); } });
+  fixture.setPreserveRoom(false);
+  assert.equal(await fixture.runtime.prepare(), false);
+  fixture.setPlacement(null);
+  assert.equal(await fixture.runtime.recoverAfterContextRestore(() => true), true);
+  for (const name of screenCalls) {
+    assert.equal(callNames(fixture).includes(name), false, `recovery keeps the report up: no ${name}`);
+  }
+  assert.equal(fixture.runtime.awaitingHandoff, true, 'an interrupted preparation recovers as a preparation');
+  assert.equal(isCovered(fixture), true);
+}
+
+{
+  const fixture = createFixture();
+  await fixture.runtime.battleAgain();
+  assert.equal(fixture.runtime.lastTrace.restoreSkipped, true);
+  assert.equal(await fixture.runtime.recoverAfterContextRestore(() => true), false,
+    'after Battle Again the next battle, not a Garage retry, owns a context restore');
+}
+
+console.log('garageReturnRuntime.selftest: room preservation, canonical recovery, budgeted covered checkpoints, leave, rematch, and the prepared Garage pass');

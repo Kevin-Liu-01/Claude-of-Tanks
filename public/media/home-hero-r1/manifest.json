@@ -1,0 +1,32 @@
+{
+  "libraryId": "claude-of-tanks-home-hero-r1",
+  "schemaVersion": 1,
+  "author": "Kevin B. Liu",
+  "copyright": "Copyright © 2026 Kevin B. Liu",
+  "description": "The landing hero's responsive rungs (brand-ui 243): the Premiere direction's Steinburg duel still (versus-r1 f6-leo2a6-steinburg-r6), encoded from its 2560 px master at WebP q78 (cwebp -m 6 -sharp_yuv) so the first paint does not wait on the 423 kB 1920 still.",
+  "still": "f6-leo2a6-steinburg-r6",
+  "source": "streams/brand-ui/phase2/bui01/assets/vs/f6-leo2a6-steinburg-r6-2560.jpg",
+  "items": [
+    {
+      "path": "/media/home-hero-r1/f6-leo2a6-steinburg-r6-960.webp",
+      "width": 960,
+      "height": 540,
+      "bytes": 89552,
+      "sha256": "af2e5957dfd9696b4c34f37993e7f6e387e6ec518b34cd09f47cd65908af41a7"
+    },
+    {
+      "path": "/media/home-hero-r1/f6-leo2a6-steinburg-r6-1440.webp",
+      "width": 1440,
+      "height": 810,
+      "bytes": 161386,
+      "sha256": "9bb4c8352acdfdb22652e82a9d922500c0ce1bba682c780ff69dda3ba5cd9cf3"
+    },
+    {
+      "path": "/media/home-hero-r1/f6-leo2a6-steinburg-r6-1920.webp",
+      "width": 1920,
+      "height": 1080,
+      "bytes": 237522,
+      "sha256": "03a408dafa82d1efb1228868b91fbe4b6b40349f7a5c7d3c3cfd63f2f0450cd7"
+    }
+  ]
+}

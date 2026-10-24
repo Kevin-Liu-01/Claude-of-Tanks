@@ -6,11 +6,27 @@
 // only modules that already stand in chunks of their own: a module the entry also imports (the profile, the kit, the load
 // estimate) comes through the host, or the bundler splits it off the entry into one more request at boot.
 import type { AiDifficulty } from '../game/input.ts';
+import type { IconId } from './icons/icon.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
 
 /** The next battle's bot tier (the input settings own it). */
 export interface DeployDifficulty { get(): AiDifficulty; set(tier: AiDifficulty): void }
+
+/** A campaign operation as the campaign tab's plate sets it (garage.ts reads the ladder). */
+interface DeployOperation {
+  readonly id: string;
+  readonly index: number;
+  readonly mapId: string;
+  readonly status: 'locked' | 'ready' | 'cleared';
+  readonly stars: number;
+  readonly difficulty: number;
+  readonly difficulties: number;
+  /** The sortie clock, as m:ss. */
+  readonly clock: string;
+  /** The enemy formation's nation, as a roster nation name. */
+  readonly enemy: string;
+}
 
 interface DeployScreenHost {
   /** The Deploy screen (garage.ts's battle menu). */
@@ -33,6 +49,15 @@ interface DeployScreenHost {
   /** The kit's keycap. */
   keycap(label: string): string;
   click(): void;
+  /** The campaign tab's operations list (a row under the pointer or the keyboard briefs its operation), their ids in
+   *  ladder order, and the operation in focus (the next to play for an empty or unknown id). */
+  readonly ops: HTMLElement;
+  readonly operationIds: readonly string[];
+  operation(id: string): DeployOperation | null;
+  /** A roster nation's flag, the kit's rule chips and a battlefield's tactical map. */
+  flag(nation: string): string;
+  rules(items: readonly (readonly [IconId, string])[]): string;
+  minimap(mapId: string): string;
 }
 
 export interface DeployScreen {
@@ -42,6 +67,8 @@ export interface DeployScreen {
   drawObjectives(): void;
   /** Arrow keys: move the chosen mode across the cards and rows, by where each sits on screen. */
   move(code: string, from: Element | null): void;
+  /** Brief the campaign tab's operation in focus on the plate (the tab must be showing). */
+  brief(id?: string): void;
 }
 
 const TIERS: readonly AiDifficulty[] = ['easy', 'normal', 'hard'];
@@ -113,6 +140,24 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     `<span>${keycap(t('garage.key.enter'))}${t('garage.battle')}</span><span>${keycap('Esc')}${t('garage.nav.garage')}</span>`;
   menu.append(keys);
 
+  // a folded layout opens the chosen mode in place (91's .sel): the plate's rules, battlefield and pickers stand right
+  // under its card or row, one block; a wide layout keeps them on the plate
+  const details = menu.querySelector<HTMLElement>('.cot-battle-details');
+  const plate = menu.querySelector<HTMLElement>('.cot-deploy-plate');
+  function placeDetails(): void {
+    if (!details || !plate) return;
+    const chosen = document.body.dataset.cotPanels === 'overlay'
+      ? menu.querySelector<HTMLElement>('#cot-deploy-quick .cot-battle-choice[aria-pressed="true"]') : null;
+    if (chosen) {
+      if (chosen.nextElementSibling !== details) chosen.after(details);
+      details.classList.add('is-inline');
+    } else if (details.parentElement !== plate) {
+      plate.prepend(details);
+      details.classList.remove('is-inline');
+    }
+  }
+  new MutationObserver(placeDetails).observe(document.body, { attributes: true, attributeFilter: ['data-cot-panels'] });
+
   function renderTiers(): void {
     const control = host.difficulty();
     tiers.hidden = !control;
@@ -127,7 +172,49 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     drawer ??= import('./deployObjectives.ts');
     void drawer.then(({ drawDeployObjectives }) => drawDeployObjectives(objectives, mapId, mode)).catch(() => { /* the bare map */ });
   }
+  // the campaign tab's plate (the direction's 04-deploy plate, for an operation): the one in focus over its
+  // battlefield, its brief, the enemy formation's flag, its clock, difficulty and stars, its opening objectives on the
+  // tactical map, and its launch (garage.ts handles the launch's click)
+  const plateBrief = menu.querySelector<HTMLElement>('[data-deploy-brief]');
+  function brief(id = plateBrief?.dataset.op || ''): void {
+    const op = plateBrief ? host.operation(id) : null;
+    if (!plateBrief || !op) { plateBrief?.replaceChildren(); return; }
+    if (plateBrief.dataset.op === op.id && plateBrief.dataset.status === op.status && plateBrief.firstChild) return;
+    plateBrief.dataset.op = op.id;
+    plateBrief.dataset.status = op.status;
+    const action = op.status === 'locked'
+      ? `<span class="cot-deploy-brief-lock">${uiIconSVG('battlePrivate', 18)}${t('campaign.lockedHint', { index: op.index - 1 })}</span>`
+      : `<button type="button" class="cot-c-btn cot-c-btn--56 cot-c-btn--primary" data-campaign-launch="${op.id}" data-map-id="${op.mapId}">` +
+        `${t(op.status === 'cleared' ? 'campaign.replay' : 'campaign.launch')}${uiIconSVG('chevronRight', 18)}</button>`;
+    const bars = Array.from({ length: op.difficulties }, (_, slot) => `<i class="${slot < op.difficulty ? 'on' : ''}"></i>`).join('');
+    const stars = [0, 1, 2].map((slot) => `<i class="${slot < op.stars ? 'on' : ''}">${uiIconSVG('star', 14)}</i>`).join('');
+    plateBrief.innerHTML =
+      `<div class="cot-deploy-brief-art"><img src="/maps/cards/${op.mapId}.webp" alt="" width="1280" height="720" decoding="async"></div>` +
+      `<div class="cot-deploy-brief-head"><span class="cot-deploy-brief-ix" aria-hidden="true">${String(op.index).padStart(2, '0')}</span>` +
+      `<h3 class="cot-deploy-brief-name">${t(`campaign.op.${op.id}.title`)}</h3></div>` +
+      `<p class="cot-deploy-brief-text">${t(`campaign.op.${op.id}.brief`)}</p>` +
+      `<div class="cot-deploy-brief-facts">${host.flag(op.enemy)}${host.rules([['map', t(`map.${op.mapId}`)], ['clock', op.clock]])}` +
+      `<span class="cot-deploy-op-diff" role="img" aria-label="${t('garage.deploy.difficulty', { value: op.difficulty, max: op.difficulties })}">${bars}</span>` +
+      `<span class="cot-deploy-op-stars" role="img" aria-label="${t('campaign.starsAria', { stars: op.stars, max: 3 })}">${stars}</span></div>` +
+      `<div class="cot-deploy-brief-mm" aria-hidden="true"><img src="${host.minimap(op.mapId)}" alt="" width="256" height="256" decoding="async">` +
+      `<canvas width="256" height="256"></canvas></div>` +
+      `<div class="cot-deploy-brief-go">${action}</div>`;
+    const canvas = plateBrief.querySelector('canvas');
+    if (!canvas) return;
+    // the frontline's opening objectives (the drawer and its data load with the first map to draw)
+    drawer ??= import('./deployObjectives.ts');
+    void drawer.then(({ drawDeployObjectives }) => (plateBrief.dataset.op === op.id
+      ? drawDeployObjectives(canvas, op.mapId, 'frontline_assault') : undefined)).catch(() => { /* the bare map */ });
+  }
+  // a row under the pointer or the keyboard briefs its operation
+  for (const type of ['pointerover', 'focusin'] as const) host.ops.addEventListener(type, (event) => {
+    const row = (event.target as Element | null)?.closest('.cot-deploy-op');
+    const at = row ? [...host.ops.children].indexOf(row) : -1;
+    const id = at >= 0 ? host.operationIds[at] : undefined;
+    if (id) brief(id);
+  });
   return {
+    brief,
     render() {
       for (const { card, badge } of badges) {
         const chosen = card.getAttribute('aria-pressed') === 'true';
@@ -141,8 +228,12 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
       againOf = offered && last?.mapId && host.mapIds.has(last.mapId) ? { mode: offered.mode, mapId: last.mapId } : null;
       again.hidden = !againOf;
       if (againOf && offered) {
-        again.innerHTML = `${uiIconSVG('rematch', 15)}<span>${t('garage.deploy.again', { mode: offered.label, map: t(`map.${againOf.mapId}`) })}</span>`;
+        // the full chip on a wide screen, "Again" alone on a phone (the mode and the battlefield stay its accessible name)
+        const full = t('garage.deploy.again', { mode: offered.label, map: t(`map.${againOf.mapId}`) });
+        again.innerHTML = `${uiIconSVG('rematch', 15)}<span class="full">${full}</span><span class="short">${t('garage.deploy.againShort')}</span>`;
+        again.setAttribute('aria-label', full);
       }
+      placeDetails();
       renderTiers();
       const seconds = host.loadEstimateS();
       estimate.textContent = seconds ? t('garage.deploy.loadEstimate', { value: String(seconds) }) : '';

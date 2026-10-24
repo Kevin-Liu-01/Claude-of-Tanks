@@ -269,3 +269,10 @@ do not add small-prop shadow casters or variant-specific Garage lights.
 calls; deepen that seam incrementally through `rosterState.ts` without pulling
 the solo graph back into garage boot. Entity IDs historically equal spec IDs
 and must not remain so in multiplayer.
+The mode energy skin (`juggernautVisual.ts`) is one material per drawn
+material, a program-variant twin included. In a mode that lights tanks
+(`matchRuleset.ts` `modeLightsTanks`) every tank wears it dormant from its
+staging (`prepareModeEnergy` in the streamers' `onVisualReady`, the opening
+warm's `prepareModeVisuals`) until the battle's exit clears it. Never end a
+skin on a scene removal (spotting detaches unseen enemies) and never swap
+materials on a role change: both relink programs on a live frame.

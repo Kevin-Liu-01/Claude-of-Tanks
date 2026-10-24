@@ -14,6 +14,7 @@ interface DocsIconSpec {
 /** One typed visual vocabulary for the field manual. */
 export const DOCS_ICON_SPECS = Object.freeze({
   manual: { id: 'manual', tone: 'accent' },
+  search: { id: 'search', tone: 'steel' },
   github: { id: 'github', tone: 'steel' },
   fleet: { id: 'vehicle', tone: 'accent' },
   battlefields: { id: 'map', tone: 'accent' },
@@ -82,6 +83,15 @@ export type DocsIconKey = keyof typeof DOCS_ICON_SPECS;
 
 export function docsIconKeys(): DocsIconKey[] {
   return Object.keys(DOCS_ICON_SPECS) as DocsIconKey[];
+}
+
+/** The same fill as markup, for a page written at build time (tools/docs-prerender.mjs): its icons paint with the
+ *  document, and the shared shell inlines the symbols they reference. */
+export function fillDocsIcons(html: string): string {
+  return html.replace(/<span data-doc-icon="(\w+)"><\/span>/g, (whole, key: string) => {
+    const spec = (DOCS_ICON_SPECS as Readonly<Record<string, DocsIconSpec>>)[key];
+    return spec ? `<span data-doc-icon="${key}" class="doc-icon tone-${spec.tone}" aria-hidden="true">${icon(spec.id, { size: 24 })}</span>` : whole;
+  });
 }
 
 /** Fill decorative placeholders without changing their accessible text. */

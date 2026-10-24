@@ -1,6 +1,7 @@
 import { createThermalVehicles } from '../engine/thermalVehicles.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type {
+  Object3D,
   PerspectiveCamera,
   Scene,
   Vector3,
@@ -29,7 +30,8 @@ import type {
   MainWorld,
 } from './mainContracts.ts';
 
-type CombatWarmPost = CombatWarmRuntimeContext['post'];
+/** (perf-245) the live scene target's MSAA sample count: the warm target matches it (offscreenWarm.ts samples) */
+type CombatWarmPost = CombatWarmRuntimeContext['post'] & { readonly msaaSamples?: number };
 type IsolatedForwardWarmFactory = CombatWarmRuntimeContext['createIsolatedForwardWarmBatches'];
 
 interface TraceSink {
@@ -52,7 +54,7 @@ interface CombatWarmCompositionOptions {
   setPending(pending: boolean): void;
   prepareNextOpeningRoute(): boolean;
   ensureStagedVisuals(count: number): boolean;
-  prepareModeVisuals?(): void;
+  prepareModeVisuals?(): readonly Object3D[] | void;
   prebakeBurntSteps: CombatWarmRuntimeContext['prebakeBurntSteps'];
   warmWreckTextures: CombatWarmRuntimeContext['warmWreckTextures'];
   createIsolatedForwardWarmBatches: IsolatedForwardWarmFactory;
@@ -121,7 +123,7 @@ export function createCombatWarmComposition({
 }: CombatWarmCompositionOptions): CombatWarmComposition {
   const thermalVehicles = createThermalVehicles();
   let destructionWarmed = false;
-  const warmRender = createOffscreenSceneWarmer(renderer, scene, camera, 0.125);
+  const warmRender = createOffscreenSceneWarmer(renderer, scene, camera, 0.125, { samples: () => post.msaaSamples ?? 0 });
   const deploymentShadowWarm = createDeploymentShadowWarmOwner({
     renderer,
     scene,

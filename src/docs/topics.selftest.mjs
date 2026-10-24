@@ -4,13 +4,15 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DOCS_ICON_SPECS } from './docsIcons.ts';
 import { TOPIC_ORDER, topicSectionId, topics } from './topics.ts';
+import { richSections } from './chapters/index.ts';
 import { CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
 import { WEAPON_CLASSES } from '../audio/weaponAudio.ts';
+import { staleChapters } from '../../tools/docs-prerender.mjs';
+import { heroFlagMaskCss } from '../ui/heroCardPolicy.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const expected = [
-  'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance',
-  'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio', 'filming',
+  'start', 'controls', 'modes', 'tanks', 'combat', 'battlefields', 'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio', 'filming',
 ];
 
 assert.deepEqual([...TOPIC_ORDER], expected, 'the manual keeps one deliberate public topic order');
@@ -28,26 +30,45 @@ for (const id of TOPIC_ORDER) {
   const topic = topics[id];
   assert.ok(topic, `${id} has a topic definition`);
   assert.ok(Object.hasOwn(DOCS_ICON_SPECS, topic.icon), `${id} has a typed custom icon`);
-  assert.ok(topic.sections.length >= 5, `${id} remains a substantive manual`);
-  assert.equal(topic.sectionIcons.length, topic.sections.length, `${id} has an icon for every section`);
-  for (const icon of topic.sectionIcons) {
-    assert.ok(Object.hasOwn(DOCS_ICON_SPECS, icon), `${id} section icon ${icon} is registered`);
-  }
-  assert.equal(topic.media.length, 2, `${id} has two current visual evidence anchors`);
-  const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
-  assert.ok(firstFigureAt < secondFigureAt && secondFigureAt < topic.sections.length, `${id} places both figures after its own sections`);
-  for (const asset of [topic.hero, ...topic.media.map(([src]) => src)]) {
-    assert.ok(existsSync(join(ROOT, 'public', asset)), `${id}: referenced media exists (${asset})`);
+  const rich = richSections(id);
+  if (rich) {
+    // a chapter built from the game's tables (src/docs/chapters): its own sections, anchors and pictures
+    assert.ok(topic.rich && rich.length >= 3, `${id} remains a substantive manual`);
+    assert.equal(new Set(rich.map((section) => section.id)).size, rich.length, `${id}: one anchor per section`);
+    for (const section of rich) {
+      assert.match(section.id, /^[a-z][a-z0-9-]*$/, `${id}#${section.id}: a plain anchor`);
+      assert.ok(section.title && section.html && section.text, `${id}#${section.id}: a heading, markup and text`);
+      for (const [, src] of section.html.matchAll(/(?:src|srcset)="(\/[^" ,?]+)/g)) {
+        assert.ok(existsSync(join(ROOT, 'public', src)), `${id}#${section.id}: ${src} is on disk`);
+      }
+    }
+    assert.ok(existsSync(join(ROOT, 'public', topic.hero)), `${id}: its banner take exists`);
+  } else {
+    assert.ok(topic.sections.length >= 5, `${id} remains a substantive manual`);
+    assert.equal(topic.sectionIcons.length, topic.sections.length, `${id} has an icon for every section`);
+    for (const icon of topic.sectionIcons) {
+      assert.ok(Object.hasOwn(DOCS_ICON_SPECS, icon), `${id} section icon ${icon} is registered`);
+    }
+    assert.equal(topic.media.length, 2, `${id} has two current visual evidence anchors`);
+    const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
+    assert.ok(firstFigureAt < secondFigureAt && secondFigureAt < topic.sections.length, `${id} places both figures after its own sections`);
+    for (const asset of [topic.hero, ...topic.media.map(([src]) => src)]) {
+      assert.ok(existsSync(join(ROOT, 'public', asset)), `${id}: referenced media exists (${asset})`);
+    }
   }
   assert.ok(existsSync(join(ROOT, `site/docs-${id}.html`)), `${id} has an independently indexed HTML entry`);
   assert.match(landing, new RegExp(`href="/docs/${id}"`), `${id} is discoverable from the manual index`);
 }
 
-assert.match(docsCss, /\.topic-nav \.shell\{display:grid;grid-template-columns:minmax\(120px,\.72fr\) repeat\(7,minmax\(0,1fr\)\)/, 'wide manuals expose every topic in a balanced two-row grid');
-assert.match(docsCss, /\n\.topic-nav a:last-child\{grid-column:span 2\}\n/, 'the thirteenth topic closes the second row across its last two cells');
-assert.equal(TOPIC_ORDER.length, 13, 'thirteen topics fill the two-row grid: seven, then five and one spanning two');
-assert.match(docsCss, /\.topic-nav \.shell\{display:flex;gap:1px;overflow-x:auto;[^}]*scrollbar-width:thin\}/, 'narrow manuals keep an explicit scrollable topic strip');
-assert.match(topicsSource, /navStrip\.scrollLeft = Math\.max\(0, activeTopic\.offsetLeft/, 'narrow manuals reveal their active topic without moving the page');
+// (242, the direction's 08-docs) every chapter sits on the shelf beside the page, in its two groups; the narrow
+// layout folds the shelf into one scrolling row that opens on the current chapter
+assert.match(topicsSource, /const TOPIC_GROUPS[\s\S]*?'play'[\s\S]*?'behind'/, 'the shelf names its two groups: the player\'s chapters first, then behind the game');
+const shelved = [...topicsSource.matchAll(/topics: \[([^\]]+)\]/g)].flatMap((m) => m[1].match(/'([a-z]+)'/g).map((q) => q.slice(1, -1)));
+assert.deepEqual([...shelved].sort(), [...TOPIC_ORDER].sort(), 'every chapter is on the shelf exactly once');
+assert.match(docsCss, /\.dm\{display:grid;grid-template-columns:var\(--docs-side-w\) minmax\(0,1fr\)/, 'wide manuals keep the shelf beside the page');
+assert.match(docsCss, /\.dm-side\{position:static;flex-direction:row;flex-wrap:nowrap;[^}]*overflow-x:auto/, 'narrow manuals fold the shelf into a scrolling row');
+assert.match(topicsSource, /shelf\.scrollLeft = Math\.max\(0, current\.offsetLeft/, 'narrow manuals reveal their current chapter without moving the page');
+assert.doesNotMatch(topicsSource, / \/\/ \$\{title\}/, 'no "01 // title" index lines (the owner\'s no-separator rule)');
 assert.doesNotMatch(topicsSource, /replace\(\/\[\^a-z0-9\]/, 'translated headings must not determine section anchors');
 
 const buildText = [topics.build.lede, ...topics.build.sections.flat()].join(' ');
@@ -89,4 +110,18 @@ assert.match(audioText, /13 existing national crews for every tank/);
 assert.match(audioText, /saved across battles and reloads/);
 assert.doesNotMatch(audioText, /selftest|node (?:src|tools)\//, 'the audio manual is written for players, not as a test checklist');
 
-console.log(`topics.selftest: ${TOPIC_ORDER.length} indexed manuals with complete icon, workflow, and audio coverage passed`);
+// brand-ui SPEC 12.4: every chapter ships in its page in both locales, so the first paint is the chapter (no stub)
+assert.deepEqual(staleChapters(), [], 'the prerendered chapters match topics.ts (node tools/docs-prerender.mjs --write)');
+for (const slug of TOPIC_ORDER) {
+  assert.match(readFileSync(join(ROOT, `site/docs-${slug}.html`), 'utf8'), new RegExp(`<main id="topicRoot" data-prerendered="${slug}" data-prerendered-locale="en-US"><div class="dm">`),
+    `site/docs-${slug}.html carries its chapter`);
+}
+assert.match(topicsSource, /root\.dataset\.prerendered === slug && root\.dataset\.prerenderedLocale === getLocale\(\)/,
+  'the script keeps a chapter prerendered for its locale and only wires it');
+
+// the tanks chapter's hero cards feather their flags as the Garage does: the docs token is the policy's mask
+const docsTokens = JSON.parse(readFileSync(join(ROOT, 'src/ui/tokens/tokens.json'), 'utf8')).component['surface-docs'];
+assert.equal(docsTokens['docs-hc-flag-mask'].value, heroFlagMaskCss(undefined, 'left'),
+  'tokens.json docs-hc-flag-mask is heroFlagMaskCss() (src/ui/heroCardPolicy.ts): copy it after a policy change');
+
+console.log(`topics.selftest: ${TOPIC_ORDER.length} indexed manuals with complete icon, workflow, and audio coverage passed; every chapter prerendered in en-US and zh-CN`);

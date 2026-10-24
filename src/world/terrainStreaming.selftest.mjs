@@ -114,6 +114,31 @@ for (let frame = 0; frame < 4; frame++) timed.update(farCamera);
 assert.equal(timed.calls(), 99, '2 ms target stops after one measured expensive row');
 clockStepMs = 0;
 
+// (2026-10-24, perf-245) a camera on its way somewhere else aims the stream there (setStreamFocus): a job may start on
+// the first update, the destination's chunk is refined while the camera is away, mounting still follows the camera, and
+// released, the stream is back on its four-update cadence round the camera
+{
+  const focused = fixture();
+  const spawnSide = new THREE.Vector3(-448, 0, -448);
+  const farChunk = focused.group.children.at(-1);
+  const coarse = farChunk.geometry;
+  focused.group.userData.setStreamFocus(farCamera);
+  focused.update(spawnSide);
+  assert.ok(focused.calls() > 0, 'focused: work starts on the first update');
+  let guard = 0;
+  while (focused.stats.streamedGeometryCount === 0 && guard++ < 400) focused.update(spawnSide);
+  assert.equal(focused.stats.streamedGeometryCount, 1);
+  assert.ok(farChunk.geometry !== coarse, 'the destination\'s chunk is refined first');
+  focused.update(spawnSide);
+  assert.ok(farChunk.geometry === coarse, 'mounting follows the camera, not the focus');
+  // released: the stream works round the camera again
+  focused.group.userData.setStreamFocus(null);
+  const builtBefore = focused.stats.streamedGeometryCount;
+  while (focused.stats.streamedGeometryCount === builtBefore && guard++ < 2000) focused.update(spawnSide);
+  assert.equal(focused.stats.streamedGeometryCount, builtBefore + 1, 'released: the stream builds round the camera');
+  assert.ok(farChunk.geometry === coarse, 'and the far chunk keeps its coarse level while the camera is away');
+}
+
 // Camera reversal must affect publication and the next candidate even when it
 // happens on a non-start frame. Keep the useful partial result, not a second
 // simultaneous generator; complete it before urgent work in the new region.

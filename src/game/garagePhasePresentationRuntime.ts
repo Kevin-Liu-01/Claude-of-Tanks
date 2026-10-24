@@ -17,6 +17,8 @@ export type GaragePresentationRestoreReceipt = GarageGpuRestoreReceipt;
 
 interface GaragePresentationRestoreContext {
   resourcesReleased: boolean;
+  /** False once the caller abandoned this restore (perf-246: Battle Again over a preparation behind the report). */
+  isCurrent?: () => boolean;
 }
 
 interface GarageLightingPort {
@@ -56,7 +58,7 @@ export interface GaragePhasePresentationRuntime {
   swapWorld(previous: THREE.Object3D | null, next: THREE.Object3D): void;
   setWorldActive(root: THREE.Object3D | null, active: boolean): void;
   invalidateGpu(): boolean;
-  restoreGpu(): Promise<GaragePresentationRestoreReceipt>;
+  restoreGpu(isCurrent?: () => boolean): Promise<GaragePresentationRestoreReceipt>;
   diagnostics(): GaragePhasePresentationDiagnostics;
 }
 
@@ -129,13 +131,16 @@ export function createGaragePhasePresentationRuntime({
   });
   let restoreReceipt: GaragePresentationRestoreReceipt | null = null;
   let restoreDepth = 0;
+  // The residency's restore callback takes no arguments: the caller's abandonment check rides here for its duration.
+  let restoreIsCurrent: (() => boolean) | undefined;
   const restorePresentation = async (
     resourcesReleased: boolean,
   ): Promise<GaragePresentationRestoreReceipt> => {
     restoreDepth += 1;
     restoreReceipt = null;
     try {
-      restoreReceipt = await restorePresentationGpu({ resourcesReleased });
+      restoreReceipt = await restorePresentationGpu(restoreIsCurrent
+        ? { resourcesReleased, isCurrent: restoreIsCurrent } : { resourcesReleased });
       return restoreReceipt;
     } finally {
       restoreDepth -= 1;
@@ -205,10 +210,15 @@ export function createGaragePhasePresentationRuntime({
     swapWorld: sceneResidency.swapWorld,
     setWorldActive: sceneResidency.setWorldActive,
     invalidateGpu: gpuResidency.invalidate,
-    async restoreGpu() {
-      const renewed = await gpuResidency.resume();
-      if (!renewed) {
-        await restorePresentation(false);
+    async restoreGpu(isCurrent?: () => boolean) {
+      restoreIsCurrent = isCurrent;
+      try {
+        const renewed = await gpuResidency.resume();
+        if (!renewed) {
+          await restorePresentation(false);
+        }
+      } finally {
+        restoreIsCurrent = undefined;
       }
       if (!restoreReceipt) {
         throw new Error('Garage GPU restoration completed without a receipt');

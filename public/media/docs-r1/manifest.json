@@ -1,0 +1,32 @@
+{
+ "libraryId": "claude-of-tanks-docs-r1",
+ "schemaVersion": 1,
+ "author": "Kevin B. Liu",
+ "copyright": "Copyright © 2026 Kevin B. Liu",
+ "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
+ "description": "The Field Manual's pictures: the current game, captured in the engine, one file per size rung.",
+ "generatedBy": "shots/media-r5/landing-r6/site-all/docs-manifest.py",
+ "count": 2,
+ "items": [
+  {
+   "id": "banner-1280",
+   "slot": "banner",
+   "src": "/media/docs-r1/banner-1280.webp",
+   "width": 1280,
+   "height": 540,
+   "bytes": 78960,
+   "sha256": "c0c4800e7ce9a7273d2f9453accb26a58fd2de58a5e938c78bf89a96dee9e674",
+   "shows": "The Field Manual index banner: a Leopard on Highland Reservoir's lakeside street laying its gun, a burst behind (21:9)."
+  },
+  {
+   "id": "banner-2560",
+   "slot": "banner",
+   "src": "/media/docs-r1/banner-2560.webp",
+   "width": 2560,
+   "height": 1080,
+   "bytes": 216070,
+   "sha256": "202da529a8224300a868b1f12e5d5f543df8a83c83469f7b2f9b0e38fa642676",
+   "shows": "The Field Manual index banner: a Leopard on Highland Reservoir's lakeside street laying its gun, a burst behind (21:9)."
+  }
+ ]
+}

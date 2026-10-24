@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import { createOffscreenSceneWarmer, warmSceneOffscreenBatched } from './offscreenWarm.ts';
+import { createOffscreenSceneWarmer, renderBatchAlone, warmSceneOffscreenBatched } from './offscreenWarm.ts';
 import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 function fakeRenderer({ throwOnRender = false } = {}) {
@@ -176,6 +176,41 @@ for (const failure of [null, 'render', 'yield']) {
   assert.equal(lod.autoUpdate, true);
   assert.equal(mesh.layers.mask, mask);
   mesh.geometry.dispose(); mesh.material.dispose();
+}
+
+// (2026-10-24, perf-245) the warm target takes the live scene target's MSAA sample count (a GPU pipeline is made per
+// attachment set, sample count included) and is remade when it changes; `uncull` and renderBatchAlone draw a batch
+// whatever the camera frames, its culling back after the render
+{
+  const renderer = fakeRenderer();
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera();
+  let samples = 4;
+  const warm = createOffscreenSceneWarmer(renderer, scene, camera, 0.25, { samples: () => samples });
+  warm();
+  const first = renderer.calls.find((call) => call.kind === 'render').target;
+  assert.equal(first.samples, 4, 'the warm target is multisampled as the scene target is');
+  samples = 0;
+  warm();
+  const second = renderer.calls.filter((call) => call.kind === 'render').at(-1).target;
+  assert.notEqual(second, first, 'a changed sample count remakes the target');
+  assert.equal(second.samples, 0);
+  warm.dispose();
+
+  const near = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  const far = new THREE.Mesh(near.geometry, near.material);
+  far.position.set(0, 0, 5000);
+  scene.add(near, far);
+  const seen = [];
+  const record = () => seen.push([near, far].map((mesh) => [mesh.layers.mask !== 0, mesh.frustumCulled]));
+  renderBatchAlone(scene, camera, [far], record);
+  assert.deepEqual(seen.at(-1), [[false, true], [true, false]], 'the batch alone, uncull\'d; the rest masked');
+  assert.deepEqual([near.frustumCulled, far.frustumCulled, near.layers.mask, far.layers.mask], [true, true, 1, 1], 'restored');
+  const batchRenderer = fakeRenderer();
+  await warmSceneOffscreenBatched(batchRenderer, scene, camera, { maxObjects: 1, uncull: true, renderBatch: record });
+  assert.deepEqual(seen.slice(-2), [[[true, false], [false, true]], [[false, true], [true, false]]], 'each batch drawn uncull\'d');
+  assert.equal(far.frustumCulled, true);
+  near.geometry.dispose(); near.material.dispose();
 }
 
 console.log('offscreenWarm self-test passed');

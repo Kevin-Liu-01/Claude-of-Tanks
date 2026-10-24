@@ -30,7 +30,7 @@ import { uiIconSVG } from './uiIcons.ts';
 import { maskIcon, iconUrl } from './icons.ts';
 import { schematicUrl as prepareSchematicUrl } from './shotSchematicClient.ts';
 import { moduleName } from './moduleRegistry.ts';
-import { createBattleBeatLog } from './battleBeats.ts';
+import { createBattleBeatLog, type BattleSide } from './battleBeats.ts';
 import {
   createShotDiagramProjection,
   impactForShotDiagram,
@@ -57,7 +57,7 @@ import type { EventBus } from '../game/stateCore.ts';
 import { t } from './i18n.ts';
 import { campaignDebrief, type CampaignDebrief } from '../game/campaignDebrief.ts';
 import { getLastBattleAwards } from '../game/serviceRecord.ts';
-import { resolveFinalBlow, type FinalBlowDestroyed, type FinalBlowLethal } from './finalBlow.ts';
+import { resolveFinalBlow, type FinalBlow, type FinalBlowDestroyed, type FinalBlowLethal } from './finalBlow.ts';
 import { attackerLabel, killSourceIdentity } from './killSourceIdentity.ts';
 import { matchRulesetFor } from '../sim/matchRuleset.ts';
 import type { GameModeId } from '../sim/matchModes.ts';
@@ -153,6 +153,10 @@ interface BattleEndedEvent {
   readonly hordeWave?: number | null;
   /** Jev commander (2026-09-25): who commanded each side's bots */
   readonly brains?: { readonly enemy?: string; readonly allies?: string } | null;
+  /** A watched battle (watch-mode-243): no human side, the report is the battle's. */
+  readonly watch?: boolean;
+  /** A watched battle's mode score by side (absent where the score is the kills). */
+  readonly score?: { readonly alpha: number; readonly bravo: number } | null;
 }
 
 interface Combatant {
@@ -264,6 +268,10 @@ interface EndInfo {
   readonly campaign: CampaignDebrief | null;
   readonly hordeWave: number | null;
   readonly brains: { readonly enemy: string; readonly allies: string } | null;
+  readonly watch: boolean;
+  readonly score: { readonly alpha: number; readonly bravo: number } | null;
+  /** The battle's mode id (the report's mode chip). */
+  readonly gameMode: string | null;
 }
 
 interface SummaryTeamRow extends EndScreenTeamRow {
@@ -301,12 +309,13 @@ function presentationSpec(id: string): PresentationTankSpec {
 
 
 
+// every use is a CSS value (the sheet, inline colours): the battle surface's status and ink tokens
 const COL = {
-  green: '#7ee87e',
-  red: '#f05a5a',
-  yellow: '#f0b04a',
-  text: '#e6edf3',
-  dim: '#8a97a3',
+  green: 'var(--ok)',
+  red: 'var(--danger)',
+  yellow: 'var(--warn)',
+  text: 'var(--ink-1)',
+  dim: 'var(--ink-3)',
 };
 
 const SHELL_TYPE_COLOR: Readonly<Record<string, string>> = {
@@ -355,15 +364,14 @@ const SI_CSS = `
 .cot-si-cardhost{position:absolute;right:16px;top:var(--cot-si-card-top,var(--cot-si-roster-bottom,272px));width:320px;display:flex;
   flex-direction:column;gap:6px;align-items:stretch;contain:layout style;}
 .cot-si-card{position:relative;min-height:0;overflow:hidden;contain:layout paint style;
-  background:linear-gradient(145deg,rgba(16,23,29,.96),rgba(7,11,15,.96) 64%,rgba(11,16,21,.98));
-  border:1px solid rgba(174,192,205,.3);border-right:3px solid rgba(146,164,180,.3);
-  box-shadow:0 12px 34px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.035);
+  background:var(--hud-plate);border:1px solid transparent;border-right:3px solid var(--line-3);border-radius:var(--r1);
+  box-shadow:var(--battle-plate-shadow);
   padding:0 0 4px;transition:opacity .8s ease;}
 .cot-si-card.out{opacity:0;}
 
-.cot-si-missile-blast{flex:0 0 30px;min-height:30px;padding:5px 9px!important;font-size:11px;color:#ffd166;overflow:hidden;line-height:1.3;}
+.cot-si-missile-blast{flex:0 0 30px;min-height:30px;padding:5px 9px!important;font-size:11px;color:var(--warn);overflow:hidden;line-height:1.3;}
 .cot-si-hd{min-height:38px;display:flex;align-items:center;justify-content:space-between;gap:8px;
-  padding:4px 9px 3px;border-bottom:1px solid rgba(146,164,180,.2);}
+  padding:4px 9px 3px;border-bottom:1px solid var(--line-1);}
 .cot-si-state{display:flex;min-width:0;}
 .cot-si-badge{font-family:${FONT_COND};font-weight:700;
   font-size:13px;line-height:1.15;letter-spacing:.1em;
@@ -373,15 +381,14 @@ const SI_CSS = `
 .cot-si-card{container:si-card/inline-size;}
 @container si-card (max-width:220px){.cot-si-badge{letter-spacing:.03em;}.cot-si-badge svg{display:none;}}
 .cot-si-dmg{flex:0 0 auto;text-align:right;font-family:${FONT_COND};letter-spacing:-.02em;font-weight:700;font-size:20px;
-  color:#ffd166;display:flex;justify-content:flex-end;align-items:center;gap:4px;}
+  color:var(--warn);display:flex;justify-content:flex-end;align-items:center;gap:4px;}
 .cot-si-dmg svg{width:12px;height:12px;flex:0 0 auto;}
-.cot-si-sub{height:21px;padding:3px 9px;font-size:11px;color:#c6d2dc;letter-spacing:0em;
-  display:grid;grid-template-columns:minmax(0,1fr) minmax(80px,1fr);align-items:center;gap:8px;
-  background:rgba(149,168,184,.045);}
+.cot-si-sub{height:21px;padding:3px 9px;font-size:11px;color:var(--ink-2);letter-spacing:0em;
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(80px,1fr);align-items:center;gap:8px;}
 .cot-si-sub>span{min-width:0;display:flex;align-items:center;gap:4px;overflow:hidden;white-space:nowrap;}
-.cot-si-sub>span:last-child{text-align:right;color:#e4ebf0;font-weight:700;}
+.cot-si-sub>span:last-child{text-align:right;color:var(--ink-1);font-weight:700;}
 .cot-si-sub>span:last-child{justify-content:flex-end;}
-.cot-si-sub svg{width:9px;height:9px;flex:0 0 auto;color:#81909d;}
+.cot-si-sub svg{width:9px;height:9px;flex:0 0 auto;color:var(--ink-3);}
 .cot-si-sub .cot-si-subtext{min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .cot-si-sub .ty{font-weight:700;font-size:11px;letter-spacing:.02em;
   font-family:${FONT_COND};display:inline-flex;align-items:center;gap:3px;}
@@ -389,28 +396,27 @@ const SI_CSS = `
 .cot-si-body{display:flex;flex-direction:column;gap:3px;padding:4px 9px 0;}
 .cot-si-rows{padding:0;display:grid;grid-template-columns:1fr;gap:1px;}
 .cot-si-kv{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px;
-  align-items:center;font-size:11px;line-height:1.15;color:${COL.dim};letter-spacing:0em;}
+  align-items:center;font-size:11px;line-height:1.15;color:var(--ink-3);letter-spacing:0em;}
 .cot-si-kv .cot-si-k{display:flex;align-items:center;gap:4px;}
-.cot-si-kv .cot-si-k svg{width:9px;height:9px;flex:0 0 auto;color:#7f8f9c;}
-.cot-si-kv b{min-width:0;text-align:right;color:#dbe6ef;font-weight:700;font-family:${FONT_COND};
+.cot-si-kv .cot-si-k svg{width:9px;height:9px;flex:0 0 auto;color:var(--ink-3);}
+.cot-si-kv b{min-width:0;text-align:right;color:var(--ink-1);font-weight:700;font-family:${FONT_COND};
   letter-spacing:-.005em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 /* r8: the pen row spans the card on ONE line (the 'Pen roll' label broke
    across two lines and the value wrapped, r7 critic); the ERA/screens
    qualifier is an unbreakable suffix chip and a dim caption legends the
    'fresh → after screens / nominal' format once. */
 .cot-si-kv.w{grid-column:1/-1;}
-.cot-si-kv.pen{margin-top:2px;padding-top:3px;border-top:1px solid rgba(146,164,180,.24);}
+.cot-si-kv.pen{margin-top:2px;padding-top:3px;border-top:1px solid var(--line-2);}
 .cot-si-kv.pen b{white-space:nowrap;}
 .cot-si-kv b .q{display:inline-block;margin-left:5px;padding:0 3px 1px;
   border:1px solid currentColor;font-size:11px;letter-spacing:.04em;
   vertical-align:1px;line-height:1.25;font-weight:700;}
-.cot-si-kv.armor{padding:2px 0;border-top:1px solid rgba(146,164,180,.12);border-bottom:1px solid rgba(146,164,180,.12);}
-.cot-si-kv.result b{color:#f2c06d;letter-spacing:.06em;}
-.cot-si-pencap{grid-column:1/-1;font-size:11px;color:#687683;letter-spacing:0em;
+.cot-si-kv.armor{padding:2px 0;border-top:1px solid var(--line-1);border-bottom:1px solid var(--line-1);}
+.cot-si-kv.result b{color:var(--accent-hi);letter-spacing:.06em;}
+.cot-si-pencap{grid-column:1/-1;font-size:11px;color:var(--ink-3);letter-spacing:0em;
   text-align:right;margin-top:-2px;text-transform:uppercase;}
 .cot-si-diag{display:grid;grid-template-columns:90px 172px;gap:9px;align-items:center;
-  justify-content:center;width:100%;margin:0;padding:4px 5px;border:1px solid rgba(146,164,180,.16);
-  background:linear-gradient(110deg,rgba(146,164,180,.075),rgba(146,164,180,.018));}
+  justify-content:center;width:100%;margin:0;padding:4px 5px;border:1px solid var(--line-1);border-radius:var(--r1);}
 .cot-si-diag .box{position:relative;flex:0 0 auto;}
 .cot-si-diag .box:first-child{width:90px!important;height:90px!important;}
 .cot-si-diag .box:nth-child(2){width:172px!important;height:86px!important;}
@@ -429,48 +435,48 @@ const SI_CSS = `
 .cot-si-diag svg.ov{position:absolute;inset:0;overflow:visible;}
 .cot-si-diag svg.ov .wdg{animation:cotSiWedge 1.6s ease-in-out infinite;}
 @keyframes cotSiWedge{0%,100%{opacity:.5;}50%{opacity:1;}}
-.cot-si-zone{min-width:0;font-size:11px;color:#f2ca82;font-weight:700;letter-spacing:0em;
+.cot-si-zone{min-width:0;font-size:11px;color:var(--accent-hi);font-weight:700;letter-spacing:0em;
   text-transform:uppercase;font-family:${FONT_COND};text-align:right;line-height:1.3;}
-.cot-si-zone .cap{display:block;color:#778692;font-weight:700;letter-spacing:.05em;font-size:11px;}
+.cot-si-zone .cap{display:block;color:var(--ink-3);font-weight:700;letter-spacing:.05em;font-size:11px;}
 .cot-si-mods{display:flex;flex-wrap:wrap;gap:4px;padding:5px 10px 0;}
 .cot-si-mod{display:flex;align-items:center;gap:3px;font-size:11px;font-weight:700;
   letter-spacing:0em;font-family:${FONT_COND};text-transform:uppercase;
   border:1px solid currentColor;padding:1.5px 4px 1.5px 3px;line-height:1;}
 .cot-si-mod svg{width:11px;height:11px;display:block;}
 .cot-si-log{position:absolute;right:16px;top:clamp(272px,30vh,336px);width:340px;display:none;
-  pointer-events:auto;background:linear-gradient(180deg,rgba(10,14,18,.92),rgba(6,9,12,.94));
-  border:1px solid rgba(146,164,180,.3);box-shadow:0 6px 22px rgba(0,0,0,.55);
+  pointer-events:auto;background:var(--hud-plate);border:1px solid transparent;border-radius:var(--r1);
+  box-shadow:var(--battle-plate-shadow);
   max-height:calc(var(--cot-viewport-height,100dvh) - 560px);min-height:120px;overflow-y:auto;}
 .cot-si-log.open{display:block;}
-.cot-si-log .sec{font-size:11px;font-weight:700;letter-spacing:.1em;color:${COL.dim};
+.cot-si-log .sec{font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--ink-3);
   font-family:${FONT_COND};text-transform:uppercase;
   padding:6px 9px 3px;display:flex;justify-content:space-between;
-  border-bottom:1px solid rgba(146,164,180,.16);}
+  border-bottom:1px solid var(--line-1);}
 .cot-si-lrow{display:flex;align-items:baseline;gap:6px;padding:3px 9px;font-size:11px;
-  color:#c6d2dc;border-bottom:1px solid rgba(146,164,180,.08);}
+  color:var(--ink-2);border-bottom:1px solid var(--line-1);}
 .cot-si-lrow .b{font-family:${FONT_COND};font-weight:700;
   font-size:11px;letter-spacing:0em;width:92px;flex:0 0 auto;white-space:nowrap;}
-.cot-si-lrow .d{font-weight:700;color:#ffd166;width:36px;flex:0 0 auto;text-align:right;
+.cot-si-lrow .d{font-weight:700;color:var(--warn);width:36px;flex:0 0 auto;text-align:right;
   font-family:${FONT_COND};letter-spacing:-.01em;}
 .cot-si-lrow .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cot-si-lrow .z{color:${COL.dim};font-size:11px;flex:0 0 auto;}
-.cot-si-empty{padding:6px 9px;font-size:11px;color:${COL.dim};letter-spacing:0em;}
+.cot-si-lrow .z{color:var(--ink-3);font-size:11px;flex:0 0 auto;}
+.cot-si-empty{padding:6px 9px;font-size:11px;color:var(--ink-3);letter-spacing:0em;}
 .cot-si-toasthost{position:absolute;left:0;bottom:452px;width:240px;min-height:84px;
   display:flex;flex-direction:column;justify-content:flex-end;gap:3px;contain:layout style;}
 .cot-si-toast{height:26px;overflow:hidden;contain:layout paint style;
-  background:linear-gradient(90deg,rgba(8,12,16,.82),transparent);
-  border:0;border-left:2px solid ${COL.red};padding:4px 6px;
-  transition:opacity .7s ease;text-shadow:0 1px 2px rgba(0,0,0,.85);}
+  background:linear-gradient(90deg,var(--hud-plate) 40%,oklch(from var(--hud-plate) l c h / 0));
+  border:0;border-left:2px solid var(--danger);border-radius:var(--r1) 0 0 var(--r1);padding:4px 6px;
+  transition:opacity .7s ease;text-shadow:var(--battle-text-halo);}
 .cot-si-toast.out{opacity:0;}
 .cot-si-toast .l1{height:100%;display:flex;justify-content:space-between;align-items:center;gap:6px;
-  font-size:11px;font-weight:700;color:#d6e2ec;}
+  font-size:11px;font-weight:700;color:var(--ink-1);}
 .cot-si-toast .l1 span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-toast .l1 .attacker{flex:1;}
 .cot-si-toast .l1 .si{display:inline-block;width:22px;height:12px;flex:0 0 22px;}
-.cot-si-toast .l1 b{flex:0 0 auto;color:#ff8f80;font-family:${FONT_COND};letter-spacing:-.01em;
+.cot-si-toast .l1 b{flex:0 0 auto;color:var(--danger);font-family:${FONT_COND};letter-spacing:-.01em;
   font-size:11px;display:flex;align-items:center;gap:4px;
   white-space:nowrap;}
-.cot-si-toast .l1 b .hit-count{font-size:11px;color:#d6e2ec;flex-shrink:0;}
+.cot-si-toast .l1 b .hit-count{font-size:11px;color:var(--ink-1);flex-shrink:0;}
 .cot-si-toast .l1 b svg{width:11px;height:11px;flex:0 0 auto;}
 .cot-si-stats{position:fixed;inset:0;z-index:71;display:none;pointer-events:none;
   flex-direction:column;align-items:center;justify-content:center;
@@ -1517,7 +1523,20 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     );
   }
 
+  /**
+   * The blow that ended the battle. A watched battle's reads as the battle's, whichever tank was ridden, and a blow with
+   * no named attacker (a ram, a burn-out) is the victim's enemy side's, never "Enemy".
+   */
+  function summaryFinalBlow(watched: boolean): FinalBlow | null {
+    const blow = resolveFinalBlow(lastLethalHit, lastDestroyedRow, playerId == null || watched ? null : String(playerId),
+      (id) => combatants.get(id)?.name ?? null);
+    if (!watched || !blow || blow.attacker || !lastDestroyedRow) return blow;
+    const victimSide = battleSide(teamOf(lastDestroyedRow.id));
+    return victimSide ? { ...blow, attacker: t(`endScreen.side.${victimSide === 'alpha' ? 'bravo' : 'alpha'}`) } : blow;
+  }
+
   function buildSummary(result: EndScreenResult): EndScreenSummary {
+    const watched = !!endInfo?.watch;
     const rows = summaryRows();
     const { allies, enemies } = summaryTeams(rows);
     const kills = summaryKills();
@@ -1536,6 +1555,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       revives,
       map: summaryMapName(),
       mapId: endInfo?.mapId || endInfo?.map || null,
+      mode: endInfo?.gameMode ?? null,
       timeS: summaryTime(),
       stats: {
         dealt: stats.dealt,
@@ -1562,12 +1582,12 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       allies,
       enemies,
       campaign: endInfo?.campaign ?? null,
-      finalBlow: resolveFinalBlow(lastLethalHit, lastDestroyedRow, playerId == null ? null : String(playerId),
-        (id) => combatants.get(id)?.name ?? null),
+      finalBlow: summaryFinalBlow(watched),
       hordeWave: endInfo?.hordeWave ?? null,
       brains: endInfo?.brains ?? null,
       awards: getLastBattleAwards(),
-      beats: beatLog.list(),
+      beats: watched ? beatLog.battleList() : beatLog.list(),
+      ...(watched ? { watched, score: endInfo?.score ?? null } : {}),
     };
   }
 
@@ -1727,6 +1747,10 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     // the timeline's beats: the player's death, and each tank the player destroyed (fire and rams included)
     if (playerId != null && p.id === playerId) beatLog.death();
     else if (playerId != null && p.killerId === playerId) beatLog.kill(String(p.id), p.specId);
+    // and the battle's own line: every kill, to the killer's side (a fire or a fall: the victim's enemy)
+    const killerSide = p.killerId != null && p.killerId !== p.id ? battleSide(teamOf(p.killerId)) : null;
+    const victimSide = battleSide(teamOf(p.id));
+    beatLog.battleKill(String(p.id), p.specId, killerSide ?? (victimSide && (victimSide === 'alpha' ? 'bravo' : 'alpha')));
     lastDestroyedRow = { id: String(p.id), killerId: p.killerId == null ? null : String(p.killerId), cause: p.cause ?? null,
       source: p.source ?? null };
     if (p.killerId != null && p.killerId !== p.id) {
@@ -1848,6 +1872,10 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       hordeWave: typeof p.hordeWave === 'number' && Number.isFinite(p.hordeWave) ? p.hordeWave : null,
       brains: p.brains && typeof p.brains === 'object'
         ? { enemy: String(p.brains.enemy || 'classic'), allies: String(p.brains.allies || 'classic') } : null,
+      watch: p.watch === true,
+      score: p.score && Number.isFinite(p.score.alpha) && Number.isFinite(p.score.bravo)
+        ? { alpha: p.score.alpha, bravo: p.score.bravo } : null,
+      gameMode: typeof p.gameMode === 'string' && p.gameMode ? p.gameMode : null,
     } : null;
     if (rulesetRevives(p?.gameMode)) revives = true;
     pendingReport = p ? (p.result || '') : '';
@@ -1940,4 +1968,9 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     },
   };
   return api;
+}
+
+/** A tank's side on the battle line: the solo roster's teams ('player', 'enemy') or a room's ('alpha', 'bravo'). */
+function battleSide(team: string | undefined): BattleSide | null {
+  return team === 'player' || team === 'alpha' ? 'alpha' : team === 'enemy' || team === 'bravo' ? 'bravo' : null;
 }
