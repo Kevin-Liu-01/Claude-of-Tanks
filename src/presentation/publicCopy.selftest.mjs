@@ -74,7 +74,7 @@ assert.match(homeTrailerStage, /<video controls playsinline preload="none" data-
   'the motion stage plays the trailer on a click');
 assert.doesNotMatch(homeSource.replace(homeTrailerStage, ''), /\/media\/site50-r14\/films\/trailer[^"]*\.(?:mp4|webm)/,
   'no trailer plays on the home page outside its motion stage');
-// (245: the manual's hero is its own banner, public/media/docs-r1, and the trailer plays in the landing's trailers row)
+// (245: the manual's hero is its own banner, public/media/docs-r1, and the trailer plays in the landing's motion stage)
 assert.match(docsSource, /<img src="\/media\/docs-r1\/banner-2560\.webp" srcset="\/media\/docs-r1\/banner-1280\.webp 1280w/, 'the manual leads with its banner');
 assert.doesNotMatch(docsSource, /\/media\/site50-r14\/films\/trailer/, 'the trailer plays on the landing, not in the manual');
 assert.doesNotMatch(`${homeSource}${docsSource}`, /promo-v13/, 'the v13 reel is retired from both pages');

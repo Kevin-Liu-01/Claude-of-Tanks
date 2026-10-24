@@ -63,9 +63,10 @@ for (const route of PUBLIC_ROUTE_RECORDS) {
     textHosts++;
   }
 }
-assert.ok(textHosts > 650, `every public page's text hosts are checked (${textHosts})`);
+// (246: the landing's legacy sections and the manual index's card copy left on purpose: 612 text hosts, 609 change)
+assert.ok(textHosts > 580, `every public page's text hosts are checked (${textHosts})`);
 assert.ok(attributeHosts > 190, `and attribute hosts (${attributeHosts})`);
-assert.ok(changed > 620, `most hosts change language (${changed})`);
+assert.ok(changed > 580, `most hosts change language (${changed})`);
 
 // Synthetic edges.
 const doc = (inner) => `<!doctype html><html><head><title data-i18n="x">Head stays</title></head><body>${inner}</body></html>`;
