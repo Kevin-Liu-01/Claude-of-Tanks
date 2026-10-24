@@ -63,9 +63,11 @@ const currentFacts = [
 ].map((file) => readFileSync(join(ROOT, file), 'utf8')).join('\n');
 
 const gallery = renderProductStats(readFileSync(join(ROOT, 'site/gallery.html'), 'utf8'));
-const galleryTitle = `Tank Gallery · Inspect ${PRODUCT_STATS.productionVehicles} Claude of Tanks Vehicles`;
-assert.ok(gallery.includes(`<title>${galleryTitle}</title>`), 'Gallery tab title follows the live fleet count');
-assert.ok(gallery.includes(`property="og:title" content="${galleryTitle}"`), 'Gallery share title follows the live fleet count');
+// the tab title is the page and the game (the coordinator's title ruling); the live fleet count is in its description
+assert.ok(gallery.includes('<title>Tank Gallery · Claude of Tanks</title>'), 'the Gallery tab title reads the page, then the game');
+assert.ok(gallery.includes(`<meta name="description" content="Inspect all ${PRODUCT_STATS.productionVehicles} production vehicles`),
+  'the Gallery description follows the live fleet count');
+assert.ok(gallery.includes('property="og:title" content="Tank Gallery · Claude of Tanks"'), 'the Gallery share title matches its tab title');
 
 for (const value of [
   PRODUCT_STATS.productionVehicles,
