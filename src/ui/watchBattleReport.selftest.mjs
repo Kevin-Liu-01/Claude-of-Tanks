@@ -46,6 +46,10 @@ frame(); frame();
 const label = created.find((element) => element.text === t('hud.side.alpha'));
 assert.ok(label, 'the score\'s own side reads Alpha');
 assert.ok(created.some((element) => element.text === t('hud.side.bravo')), 'and the other Bravo, whichever tank is ridden');
+const earTitle = (ear) => created.find((element) => element.classes.has('hd') && element.parentNode?.classes.has('cot-ear')
+  && element.parentNode.classes.has(ear));
+assert.equal(earTitle('l').text, t('hud.side.alpha'), 'the left roster is titled Alpha, not Allies');
+assert.equal(earTitle('r').text, t('hud.side.bravo'), 'the right one Bravo, not Enemies');
 const pips = created.filter((element) => element.classes.has('pip') && element.parentNode);
 const ringed = pips.filter((pip) => pip.classes.has('me'));
 assert.equal(ringed.length, 1, 'one pip is ringed: the ridden tank\'s');
@@ -75,6 +79,7 @@ ridden.isPlayer = true;
 hud.setWatchSide(null);
 frame();
 assert.equal(label.text, t('hud.allies'), 'driving, the score is the player\'s again');
+assert.equal(earTitle('l').text, t('hud.team.ally'), 'and the rosters are the player\'s allies and enemies');
 const drivenRows = created.filter((element) => element.classes.has('cot-er') && element.parentNode && element.classes.has('me'));
 assert.equal(drivenRows.length, 1, 'the rosters re-seat with the driven tank\'s row as the player\'s');
 bus.emit('tank:destroyed', { id: 'a0', specId: 'm1a1_abrams_hc', killerId: 'b0', cause: 'shot', pos: [0, 0, 0], timeS: 230 });
@@ -88,8 +93,11 @@ frame();
 assert.equal(label.text, t('hud.side.alpha'), 'handed back, the battle\'s frame returns');
 
 // --- the end screen: the winning side, the score by side, the battle's timeline --------------------------------------
+// the battle's last loss is a burn-out: no attacker, so the final blow is the victim's enemy side's, never "Enemy"
+bus.emit('tank:destroyed', { id: 'b2', specId: 'm1a3', killerId: null, cause: 'fire', pos: [0, 0, 0], timeS: 290 });
+frame();
 const roster = tanks.map((entity) => ({ id: entity.id, specId: entity.spec.id, vehicle: entity.spec.name, team: entity.team,
-  alive: !['a0', 'a1', 'b1'].includes(entity.id), isPlayer: false }));
+  alive: !['a0', 'a1', 'b1', 'b2'].includes(entity.id), isPlayer: false }));
 const before = created.length;
 bus.emit('battle:ended', { result: 'defeat', reason: 'elimination', timeS: 300, map: 'steppe', mapId: 'steppe', watch: true,
   score: null, gameMode: 'standard', roster });
@@ -97,7 +105,9 @@ await new Promise((resolve) => setTimeout(resolve, 700)); // the report gate's n
 const report = created.find((element) => element.classes.has('cot-si-stats'));
 assert.equal(report.dataset.winner, 'bravo', 'a defeat of the watched seat\'s side is Bravo\'s win');
 assert.equal(report.dataset.banner, t('endScreen.watch.wins', { side: t('endScreen.side.bravo') }), 'the headline names the winner');
-assert.equal(report.dataset.score, '1:2', 'the score by side: Alpha one kill, Bravo two');
+assert.equal(report.dataset.score, '1:2', 'the score by side: Alpha one kill, Bravo two (a burn-out is nobody\'s kill)');
+assert.ok(report.dataset.finalBlow?.startsWith(`fire:${t('endScreen.side.alpha')}>`),
+  `a burn-out with no attacker is the victim's enemy side's (${report.dataset.finalBlow})`);
 const drawn = created.slice(before);
 const words = drawn.map((element) => `${element.text} ${element.html ?? ''}`).join('\n');
 for (const verdict of [t('endScreen.victory'), t('endScreen.defeat')]) {
@@ -116,7 +126,7 @@ const marks = drawn.filter((element) => element.classes.has('ev'));
 assert.ok(marks.some((mark) => mark.classes.has('k-kill') && mark.classes.has('s-bravo')), 'Bravo\'s kills on the line in Bravo\'s ink');
 assert.ok(marks.some((mark) => mark.classes.has('k-kill') && mark.classes.has('s-alpha')), 'and Alpha\'s in Alpha\'s');
 assert.ok(marks.some((mark) => mark.classes.has('end') && mark.classes.has('s-bravo')), 'the line ends on the winner');
-assert.equal(report.dataset.beats, '3', 'every kill of the battle is a beat, whoever was ridden');
+assert.equal(report.dataset.beats, '4', 'every loss of the battle is a beat, whoever was ridden');
 
 console.log('watchBattleReport: riding Bravo the HUD reads the battle (Alpha/Bravo score, lanes by side, the ridden tank ' +
   'only highlighted), a taken seat is the player\'s HUD, and the end screen names the winning side, the score by side ' +
