@@ -147,7 +147,8 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
   const announced = { view: '' as WatchView | '', id: null as string | null, sight: false, canTake: false };
 
   const rules = (): WatchRules | null => game.ruleset?.watch ?? null;
-  const watching = (): boolean => live && !driving && game.phase === 'battle';
+  // a verdict ends watching: the ending beats own the camera and no seat can be taken
+  const watching = (): boolean => live && !driving && game.phase === 'battle' && game.result === null;
   const liveHull = (entity: TEntity | null | undefined): entity is LiveWatchEntity<TEntity> =>
     !!entity && !!entity.state && !!entity.combat && !entity.combat.destroyed && entity.modeActive !== false
     && entity.aerial?.kind !== 'gunship';
@@ -281,7 +282,8 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
   };
 
   function onKeyDown(event: KeyboardEvent): void {
-    if (!live || game.phase !== 'battle' || typing(event.target) || options.isInputHeld() || event.repeat) return;
+    if (!live || game.phase !== 'battle' || game.result !== null || typing(event.target) || options.isInputHeld()
+      || event.repeat) return;
     const code = event.code;
     if (driving) {
       // the tank's own bindings own every key but the seat's
@@ -389,7 +391,8 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
 
   /** A driven hull destroyed: the player's death flow plays (the death cam, a replay), then the drone. */
   function drivenHandoff(dt: number): void {
-    if (!driving) return;
+    // after the verdict the player's ending flow keeps the seat to the report
+    if (!driving || game.result !== null) return;
     if (!driving.combat?.destroyed) { drivenDeathS = 0; return; }
     drivenDeathS += dt;
     if (drivenDeathS < (rules()?.takenDeathS ?? 3.5) || killcam.isActive()) return;

@@ -198,6 +198,13 @@ const byId = (tanks, id) => tanks.find((tank) => tank.id === id);
   assert.equal(controller.view, 'drone', 'then the watcher is back on the drone');
   assert.equal(killcam.spectate.active, false, 'the ally spectator the replay opened is closed');
   assert.ok(byId(tanks, 'foe2').aiCtl, 'the wreck goes back to its bot (it revives with it where the mode revives)');
+  // a verdict ends watching: no seat is taken and no tank ridden after it
+  controller.rideId('ally');
+  game.result = 'victory';
+  key('Enter');
+  assert.equal(controller.view, 'ride', 'Enter after the verdict takes no seat');
+  assert.equal(controller.rideId('seat'), false, 'and nothing is ridden');
+  assert.equal(controller.frame(DT), false, 'the ending beats own the camera');
   controller.stop();
   assert.equal(game.watch, null, 'the ledger ends with the battle');
 }
