@@ -2142623,17 +2142623,17 @@
           }
         ]
       },
-      "geometryHash": "87981e86",
+      "geometryHash": "4f82da2a",
       "metadataHash": "0766062b",
       "presentationAnchor": {
-        "xM": 0.0065,
-        "zM": 0.1823
+        "xM": 0.007,
+        "zM": 0.1821
       },
-      "presentationHash": "91248d9e",
+      "presentationHash": "007374ae",
       "presentationProjection": {
         "centerYM": 2.0858,
-        "topHalfM": 6.021,
-        "sideHalfM": 3.0105
+        "topHalfM": 6.0212,
+        "sideHalfM": 3.0106
       },
       "appearance": {
         "version": 1,
@@ -2142682,39 +2142682,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 90100,
-          "sha256": "598c7286ceca9d01ad40da2a80b37f528533d7f0cc4b3f1ce110578d5ba750d5"
+          "bytes": 90136,
+          "sha256": "daf9dfbf6442835199b64051075a5523311d08c7f0dfa83425e9d29e683e2640"
         },
         "modulesSide": {
           "file": "ua_m1a2_abrams_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 88283,
-          "sha256": "ddf6f6ae5e22ae098a5f3f16b4253d2aa89124aa6dd948de116f0f2e95b47603"
+          "bytes": 87405,
+          "sha256": "277a1efce27a9b5f764bdb614bf584621f11a282c67fb0848f250dde9e5f0172"
         },
         "crewSide": {
           "file": "ua_m1a2_abrams_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80599,
-          "sha256": "c5436f84fb95d578e7cdbd03d789c9ec27d1175f1a9a9422350070ff2ac4f780"
+          "bytes": 79961,
+          "sha256": "257474e3866e7b0e6cd983795895c48c3c608af11d52de6c3864a141a86d147e"
         },
         "angle": {
           "file": "ua_m1a2_abrams_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 40428,
-          "sha256": "a5ffa48cfc7cad81e4f94e318a2d2e659dfb3f2044696369a3b82e5e8749a561",
+          "bytes": 40554,
+          "sha256": "8d7c0495f1c24c71709e9342333ee090803dfb2cf747cfa8d19920d43ebffab3",
           "thumbnail": {
             "file": "thumbs/ua_m1a2_abrams_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 14638,
-            "sha256": "3d1d18e5af230e8fd7f88c6d746d865be3c3c0b96778c8b24cb7f8cc9e2cb6ff"
+            "bytes": 14634,
+            "sha256": "7e5dd2d3e72b3408597e4ad2a4a4da0c04e3134556d15cf69e00184d97bc9cf0"
           }
         },
         "top": {
@@ -2142722,32 +2142722,32 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22390,
-          "sha256": "64913f1c24c205cfb08a8f4f8969fb1a30ca444d66450d6f1845a70a2562050d"
+          "bytes": 22366,
+          "sha256": "da0fc164c7a987ca438d0fc89f0ba9c0be6538613d7655a3ff32aa892f90a9d6"
         },
         "side": {
           "file": "ua_m1a2_abrams_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 16940,
-          "sha256": "b9385440c33ac2fabe3f74065e0e111969f4a929915c82d2e1e4f979dcfce4cd"
+          "bytes": 16984,
+          "sha256": "35061c5e14798239c9e925a11c270123708fe8601c665ac085a1bec0722af36f"
         },
         "topSilhouette": {
           "file": "ua_m1a2_abrams_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1805,
-          "sha256": "71014e10ec4d411f393ea18b647c45b58105d452254cc5eeef5ee54c553dc877"
+          "bytes": 1816,
+          "sha256": "75450446192bc10c065d00b44b586b03ad000058b2eeae5569210075629f6653"
         },
         "sideSilhouette": {
           "file": "ua_m1a2_abrams_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 6818,
-          "sha256": "946ca79316eeb31ca4a55c8e042aeadbddf2f2e5b96de361dd0d17fdc9a6c1ae"
+          "bytes": 6814,
+          "sha256": "9a4a374adb1feeea415854e53f49d612456cbdd47b8dec1f22f300b78d62a19c"
         },
         "markings": {
           "file": "ua_m1a2_abrams_markings.png",
