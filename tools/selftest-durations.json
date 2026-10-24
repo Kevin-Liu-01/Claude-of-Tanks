@@ -1564,6 +1564,7 @@
     "src/world/treeSpacing.selftest.mjs": 99000,
     "src/world/treeSpecies.selftest.mjs": 1000,
     "src/world/treeTrunkQuality.selftest.mjs": 4000,
+    "src/world/treeViewCull.selftest.mjs": 12000,
     "src/world/understorey.selftest.mjs": 78000,
     "src/world/utilityNetwork.selftest.mjs": 1000,
     "src/world/vegetationClearance.selftest.mjs": 1000,
