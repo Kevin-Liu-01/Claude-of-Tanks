@@ -82,7 +82,8 @@ export function snippetOf(text: string, query: string, room = 64): string {
 }
 
 export async function mountDocsSearch(root: HTMLElement, input: HTMLInputElement): Promise<void> {
-  const side = root.querySelector<HTMLElement>('.dm-side');
+  // a chapter's shelf, or the index's own search host (site/docs.html [data-docs-search])
+  const side = root.querySelector<HTMLElement>('.dm-side') ?? (root.matches('[data-docs-search]') ? root : null);
   const status = root.querySelector<HTMLElement>('.dm-search__status');
   const list = root.querySelector<HTMLElement>('.dm-search__hits');
   if (!side || !status || !list) return;

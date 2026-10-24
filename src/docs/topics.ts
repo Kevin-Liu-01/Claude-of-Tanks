@@ -367,7 +367,7 @@ type TopicId = typeof TOPIC_ORDER[number];
 type TopicGroupKey = 'play' | 'behind';
 
 /** The manual's two shelves (08-docs .side .grp): what a player meets in the game, and how it is engineered. */
-const TOPIC_GROUPS: ReadonlyArray<{ readonly key: TopicGroupKey; readonly icon: DocsIconKey; readonly topics: readonly TopicId[] }> = [
+export const TOPIC_GROUPS: ReadonlyArray<{ readonly key: TopicGroupKey; readonly icon: DocsIconKey; readonly topics: readonly TopicId[] }> = [
   { key: 'play', icon: 'combat', topics: ['start', 'controls', 'modes', 'tanks', 'combat', 'battlefields', 'multiplayer', 'audio', 'studio'] },
   { key: 'behind', icon: 'architecture', topics: ['build', 'simulation', 'models', 'rendering', 'ai', 'filming'] },
 ];
