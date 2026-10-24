@@ -64,7 +64,7 @@ const STYLE = `
 html[data-watch=ride] .cot-watch,html[data-watch=drive] .cot-watch{bottom:auto;top:calc(var(--inset-top) + 76px)}
 .cot-watch .who{--tone:var(--accent);display:grid;grid-template-columns:auto 56px minmax(0,1fr);align-items:center;gap:var(--s2);
  width:300px;height:48px;padding:0 var(--s3);background:var(--hud-plate);border-radius:var(--r1);
- box-shadow:inset 3px 0 0 var(--tone),var(--ring-1);pointer-events:auto}
+ border-left:3px solid var(--tone);box-shadow:var(--ring-1);pointer-events:auto}
 .cot-watch .who[data-side=own]{--tone:var(--team-own)}.cot-watch .who[data-side=enemy]{--tone:var(--team-enemy)}
 .cot-watch .who .cot-c-flag{width:24px;height:16px}
 .cot-watch .who .cot-c-sil{width:56px;height:20px;color:var(--tone)}
@@ -91,11 +91,9 @@ html:not([data-watch=drone]) .cot-watch-rail{display:none}
  background:var(--hud-plate);color:var(--ink-1);box-shadow:var(--ring-2);pointer-events:auto;touch-action:none}
 .cot-watch-rail .wb.on{box-shadow:var(--ring-accent);color:var(--accent-hi)}
 body.cot-touch-layout .cot-watch .cot-c-kbd{display:none}
-html:is([data-watch=drone],[data-watch=ride]) body :is(.round.fire,.round.scope,.round.jump,.round.autoaim,.fire-cancel){display:none!important}
-html[data-watch=ride] body .cot-touch .joy{display:none!important}
+html:is([data-watch=drone],[data-watch=ride]) body :is(.round.fire,.round.scope,.round.jump,.round.autoaim,.fire-cancel){display:none}
+html[data-watch=ride] body .cot-touch .joy{display:none}
 html[data-watch=ride] .cot-hud :is(.cot-shells,.cot-special,.cot-cons,.cot-vehicle-controls){pointer-events:none}
-/* flying on touch: the drive stick is the drone's (the spectator rule that hides it is for a view with nothing to steer) */
-html[data-watch=drone] body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-spectating .cot-touch .joy{display:block!important}
 @media(max-width:600px){
  .cot-watch{left:var(--inset-left);right:var(--inset-right);transform:none;justify-content:center;flex-wrap:wrap}
  .cot-watch .who{width:auto;flex:1 1 180px;grid-template-columns:auto 44px minmax(0,1fr)}

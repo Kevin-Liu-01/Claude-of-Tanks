@@ -159,6 +159,21 @@ body[data-cot-width] .cot-es.cot-es--record .es-beat .t{position:absolute;top:12
   font:500 var(--battle-fs-11)/1 var(--font-data);color:var(--ink-3)}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .end :is(.lb,.t){transform:translateX(-100%)}
 body[data-cot-width] .cot-es.cot-es--record .es-beat .end .lb svg{color:var(--accent)}
+/* A watched battle (watch-mode-243): no side is the viewer's, so the sides keep the battle's inks as the HUD drew them,
+   Alpha's the own ink and Bravo's the enemy's: the headline is the winner's flag and name, each beat carries its side's
+   ink (a kill's silhouette the victim's), and the line ends on the winner's flag. */
+body[data-cot-width] .cot-es.cot-es--record .es-ban.w{display:inline-flex;align-items:center;gap:.16em;text-transform:uppercase}
+body[data-cot-width] .cot-es.cot-es--record .es-ban.w.alpha{color:var(--team-own)}
+body[data-cot-width] .cot-es.cot-es--record .es-ban.w.bravo{color:var(--team-enemy)}
+.cot-es--record .fg{display:inline-flex;flex:0 0 auto}
+.cot-es--record .fg.alpha{color:var(--team-own)}
+.cot-es--record .fg.bravo{color:var(--team-enemy)}
+.cot-es--record .es-ban .fg svg{width:.72em;height:.72em}
+.cot-es--record :is(.es-beat .lb,.es-score-side .sl) .fg svg{width:16px;height:16px}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .s-alpha .d{background:var(--team-own)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .s-bravo .d{background:var(--team-enemy)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .s-bravo .lb .si{color:var(--team-own)}
+body[data-cot-width] .cot-es.cot-es--record .es-beat .lb .fg svg{color:inherit}
 body[data-cot-width]:not(:is([data-cot-width='laptop'],[data-cot-width='desktop'])) .cot-es.cot-es--record .es-beat,
 body[data-cot-height]:not(:is([data-cot-height='standard'],[data-cot-height='tall'])) .cot-es.cot-es--record .es-beat{display:none}
 }

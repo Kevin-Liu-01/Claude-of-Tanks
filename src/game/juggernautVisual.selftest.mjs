@@ -55,7 +55,12 @@ update(0);assert.ok(hull.material === source,'dead tank stops glowing');assert.e
 update();assert.ok(hull.material !== material,'respawn gets a fresh highlight');
 const wreck=new T.MeshStandardMaterial({color:0x111111});gun.material=wreck;
 update(100,1);assert.ok(hull.material === source);assert.ok(gun.material === wreck,'mode exit never overwrites damage material changes');assert.deepEqual(root.scale.toArray(),[2,2,2]);
-gun.material=source;update();let removed=0;hull.material.addEventListener('dispose',()=>removed++);root.removeFromParent();assert.equal(removed,1);assert.ok(hull.material === source,'pooled visual is clean on removal');
+gun.material=source;update();let removed=0;hull.material.addEventListener('dispose',()=>removed++);const keptSkin=hull.material;
+// (mode-sheen-perf-243) leaving the scene is not the end of a skin (a spotting edge detaches an unseen enemy's root, a warm
+// attaches one for a moment): disposing it there freed its programs, and each re-spot linked them again on the frame
+root.removeFromParent();assert.equal(removed,0,'a detached root keeps its skin');scene.add(root);update();
+assert.ok(hull.material === keptSkin,'and draws the same skin back: no new material, no program');
+clearJuggernautVisual(root);assert.equal(removed,1);assert.ok(hull.material === source,'pooled visual is clean on its explicit clear');
 scene.add(root);update();assert.equal(root.scale.x,2.24,'rematch never compounds the boss size');update(100,1);
 update();pulseJuggernautImpact(root,[0,1,0]);clearJuggernautVisual(root);clearJuggernautVisual(root);
 assert.ok(hull.material === source);assert.equal(root.scale.x,2);assert.equal(pulseJuggernautImpact(root,[0,1,0]),false,'garage cleanup removes all live ripple state');
@@ -78,19 +83,23 @@ assert.equal(root._listeners.childadded.length,0,'effect cleanup releases hierar
 
 geometry.dispose();batch.dispose();source.dispose();wreck.dispose();glassMaterial.dispose();
 
-// 2026-10-19 (the 229 perf pass, critic r1): a battle build's program-variant twin wears its original's skin, and a skin
-// a wreck snapshot put back unwraps onto the twin the mesh drew, not the original (programVariants.ts)
+// 2026-10-19 (the 229 perf pass, critic r1): a skin a wreck snapshot put back unwraps onto the twin the mesh drew, not the
+// original (programVariants.ts). (mode-sheen-perf-243) A twin wears a skin of its own: one skin over the original and its
+// twins drew two program variants again, and three re-resolved its program at each flip (every frame, every skinned tank)
 {
-  const {splitProgramVariants}=await import('../engine/programVariants.ts');
+  const {splitProgramVariants,programVariantOf}=await import('../engine/programVariants.ts');
   const tank=new T.Group(),paint=new T.MeshStandardMaterial({color:0x445533}),box=new T.BoxGeometry();
   const plate=new T.Mesh(box,paint),wheels=new T.InstancedMesh(box,paint,4);tank.add(plate,wheels);
   tank.userData.programVariants=splitProgramVariants(tank);
   const twin=wheels.material;assert.ok(twin !== paint,'the instanced draw has its own twin');
   syncJuggernautVisual(tank,dims,1.12,100,100,.016);
-  const skin=plate.material;assert.ok(skin !== paint);assert.ok(wheels.material === skin,'the twin wears its original\'s skin');
+  const skin=plate.material,twinSkin=wheels.material;assert.ok(skin !== paint&&twinSkin !== twin);
+  assert.ok(twinSkin !== skin,'the twin wears a skin of its own');
+  for(const [mesh,material] of [[plate,skin],[wheels,twinSkin]])assert.equal(programVariantOf(mesh,material),programVariantOf(mesh,mesh===plate?paint:twin),'each skin keeps its mesh\'s variant');
+  assert.equal(twinSkin.customProgramCacheKey(),skin.customProgramCacheKey(),'under the one program key (the variant is the mesh\'s)');
   syncJuggernautVisual(tank,dims,1.12,0,100,.016);
   assert.ok(plate.material === paint);assert.ok(wheels.material === twin,'the kill ends the skin: each mesh its own material');
-  plate.material=skin;wheels.material=skin; // the wreck snapshot taken while skinned puts the skins back
+  plate.material=skin;wheels.material=twinSkin; // the wreck snapshot taken while skinned puts the skins back
   clearJuggernautVisual(tank,true);
   assert.ok(plate.material === paint);assert.ok(wheels.material === twin,'the Garage handoff re-seats the twin, never the original');
   box.dispose();paint.dispose();
@@ -178,10 +187,10 @@ geometry.dispose();batch.dispose();source.dispose();wreck.dispose();glassMateria
     };
     const garage=build();
     prepareGarageTankEnergyVisual(garage.root,dims);
-    const garageClones=check('garage dormant skin',garage,'|tank-mode-energy-preview-v1');
+    const garageClones=check('garage dormant skin',garage,'|tank-mode-energy-preview-v2');
     const battle=build();
     syncTankEnergyVisual(battle.root,dims,1.12,100,100,0,false,(await import('./juggernautVisual.ts')).TANK_ENERGY.juggernaut,false);
-    const battleClones=check('battle live skin',battle,'|tank-mode-energy-v6');
+    const battleClones=check('battle live skin',battle,'|tank-mode-energy-v7');
     // the cascade's refresh reaches the clone's program (its far plane, its splits), not only the source's
     camera.far=3000;camera.updateProjectionMatrix();rig.updateFrustums();
     for(const [,clone] of garageClones)assert.equal(csm.shaders.get(clone).uniforms.shadowFar.value,Math.min(3000,csm.maxFar),'the cascade refresh reaches each clone');
@@ -202,4 +211,74 @@ geometry.dispose();batch.dispose();source.dispose();wreck.dispose();glassMateria
     box.dispose();for(const m of [...Object.values(sources),hookOnly,stray,strayClone])m.dispose();
   }finally{console.error=consoleError;}
 }
-console.log('juggernautVisual: exact surfaces, instancing/batching, shared paint isolation, original hooks, articulation, hit pulse, thermal, death, removal and reuse passed; the skins keep the cascade registration');
+// ---- (mode-sheen-perf-243; the owner: "that juggernaut/ctf/zombie sheen ... super laggy rn and the first moment u enter it
+// if its not loaded in is a guaranteed lag spike"): in a battle whose mode can light any tank the skin goes on dormant at
+// the tank's staging, where its programs compile behind the cover, and stays: a role, a kill, a respawn, a spotting edge
+// and the ending only write uniforms. No material is made after the staging, so no program links on a battle frame.
+{
+  const {splitProgramVariants,programVariantOf}=await import('../engine/programVariants.ts');
+  const {syncTankEnergyVisual,TANK_ENERGY,pulseJuggernautImpact,clearJuggernautVisual}=await import('./juggernautVisual.ts');
+  const {applyBurnHook,makeBurnUniforms}=await import('../vehicles/materials.ts');
+  const compiled=()=>({uniforms:{},vertexShader:T.ShaderLib.standard.vertexShader,fragmentShader:T.ShaderLib.standard.fragmentShader});
+  const world=new T.Scene(),tank=new T.Group(),paint=new T.MeshStandardMaterial({color:0x445533}),box=new T.BoxGeometry();
+  paint.name='hull paint';
+  const hull=new T.Mesh(box,paint),wheels=new T.InstancedMesh(box,paint,4),turret=new T.Group(),gun=new T.Mesh(box,paint);
+  turret.name='rig_turret';turret.add(gun);tank.add(hull,wheels,turret);world.add(tank);
+  tank.userData.programVariants=splitProgramVariants(tank);
+  const sync=(scale,hp,dt=.016,style=TANK_ENERGY.flagOwn)=>syncTankEnergyVisual(tank,dims,scale,hp,100,dt,false,style,false,true);
+  assert.equal(sync(1,100,0),true,'the staging installs the dormant skin: its programs for the warm to compile');
+  const skins=new Map([[hull,hull.material],[wheels,wheels.material],[gun,gun.material]]);
+  for(const [mesh,skin] of skins)assert.ok(skin!==paint&&skin.isMeshStandardMaterial,'every opaque surface wears its skin');
+  assert.ok(gun.material===hull.material&&wheels.material!==hull.material,'one skin a drawn material (the instanced twin its own)');
+  const drawnBy=new Map();
+  tank.traverse(o=>{if(!o.isMesh)return;const set=drawnBy.get(o.material)??new Set();set.add(programVariantOf(o,o.material));drawnBy.set(o.material,set);});
+  for(const set of drawnBy.values())assert.equal(set.size,1,'every skin draws with one program variant: no per-draw re-resolution');
+  const shader=compiled();hull.material.onBeforeCompile(shader,{});
+  assert.equal(shader.uniforms.juggernautStrength.value,0,'dormant: zero strength');
+  assert.match(shader.fragmentShader,/if \(juggernautStrength > 0\.0\) \{\s+float juggernautRim/,'everything the skin adds sits under its strength: a dormant skin is its paint');
+  assert.match(shader.vertexShader,/vJuggernautPosition = vec3\(0\.0\);\s+if \(juggernautStrength > 0\.0\)/,'the hull-frame position too');
+  assert.equal(hull.material.name,'hull paint','a dormant skin wears its paint\'s name');
+  assert.equal(pulseJuggernautImpact(tank,[0,1,0]),false,'a dormant skin takes no ripple');
+  let disposed=0;for(const skin of new Set(skins.values()))skin.addEventListener('dispose',()=>disposed++);
+  tank.removeFromParent();sync(1,100);world.add(tank);sync(1,100);
+  assert.equal(disposed,0,'a spotting edge never ends the skin');
+  assert.equal(sync(1.12,100),false,'a role lights it without a new material');
+  for(const [mesh,skin] of skins)assert.ok(mesh.material===skin,'the role lights the skin the tank already wears');
+  assert.ok(shader.uniforms.juggernautStrength.value>0,'only its strength moves');
+  assert.equal(hull.material.name,TANK_ENERGY.flagOwn.name,'a lit skin wears its style\'s name');
+  assert.equal(pulseJuggernautImpact(tank,[0,1,0],'turret'),true,'a lit skin ripples');
+  assert.equal(sync(1.12,100,.016,TANK_ENERGY.infected),false,'a style change (a conversion) is uniforms too');
+  assert.equal(shader.uniforms.energyPattern.value,TANK_ENERGY.infected.pattern);
+  assert.equal(sync(1.12,0),false,'the kill makes nothing');
+  for(const [mesh,skin] of skins)assert.ok(mesh.material===skin,'and keeps the skin');
+  assert.equal(shader.uniforms.juggernautStrength.value,0);assert.equal(shader.uniforms.juggernautActiveHits.value,0,'its ripples end');
+  const burnt=new T.MeshStandardMaterial({color:0x111111});gun.material=burnt;
+  sync(1.12,0,1);sync(1,100,1);
+  assert.ok(gun.material===burnt,'a dormant skin never rescans: the wreck\'s swaps (and a damage state\'s) are left alone');
+  gun.material=skins.get(gun); // the respawn's repair restores what the wreck captured
+  assert.equal(sync(1.12,100),false,'the respawn lights the same skins');
+  const detail=new T.Mesh(box,paint);turret.add(detail);sync(1.12,100,.3);
+  assert.ok(detail.material===hull.material,'a lit skin still takes a newly attached detail, with the skin already made');
+  assert.equal(syncTankEnergyVisual(tank,dims,1,0,1,.016,true,TANK_ENERGY.juggernaut,false,true),false,'the ending: dormant, nothing made');
+  assert.equal(disposed,0,'a whole battle: no skin disposed');
+  clearJuggernautVisual(tank,true);
+  assert.equal(disposed,2,'the battle\'s exit ends both skins');
+  assert.ok(hull.material===paint&&gun.material===paint&&detail.material===paint&&wheels.material!==paint&&wheels.material.isMeshStandardMaterial,'each mesh its paint (the twin its twin)');
+  // a skin ends with its paint when nothing clears it (a visual disposed while parked or detached)
+  sync(1,100,0);const orphan=hull.material;let orphanDisposed=0;orphan.addEventListener('dispose',()=>orphanDisposed++);
+  tank.removeFromParent();paint.dispose();
+  assert.equal(orphanDisposed,1,'the paint\'s disposal ends its skin');
+  // one burn mask a program: the staging hooks the skin, the kill's sweep later its paint (a detail mesh still wearing it)
+  const paint2=new T.MeshStandardMaterial(),plate=new T.Mesh(box,paint2),other=new T.Group();other.add(plate);
+  syncTankEnergyVisual(other,dims,1,100,100,0,false,TANK_ENERGY.juggernaut,false,true);
+  const skin=plate.material,burnU=makeBurnUniforms(3);
+  assert.equal(applyBurnHook(skin,burnU),true,'the staging burn hook goes onto the skin the mesh wears');
+  assert.equal(applyBurnHook(paint2,burnU),true,'and the sweep\'s onto its paint');
+  const burnt2=compiled();skin.onBeforeCompile(burnt2,{});
+  assert.equal(burnt2.vertexShader.split('varying vec3 vBrnW;').length-1,1,'one burn mask in the skin\'s program');
+  assert.equal(burnt2.uniforms.uBurnT,burnU.uBurnT,'driven by the visual\'s own burn');
+  assert.match(skin.customProgramCacheKey(),/\|burn-r7\|tank-mode-energy-v7\|burn-r7$/,'its key names both hooks (one text a key)');
+  clearJuggernautVisual(other,true);box.dispose();paint2.dispose();burnt.dispose();
+}
+
+console.log('juggernautVisual: exact surfaces, instancing/batching, shared paint isolation, original hooks, articulation, hit pulse, thermal, death, removal and reuse passed; the skins keep the cascade registration; dormant battle skins make no material after staging');

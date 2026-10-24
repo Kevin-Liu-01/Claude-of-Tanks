@@ -1,6 +1,7 @@
 import { createThermalVehicles } from '../engine/thermalVehicles.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type {
+  Object3D,
   PerspectiveCamera,
   Scene,
   Vector3,
@@ -52,7 +53,7 @@ interface CombatWarmCompositionOptions {
   setPending(pending: boolean): void;
   prepareNextOpeningRoute(): boolean;
   ensureStagedVisuals(count: number): boolean;
-  prepareModeVisuals?(): void;
+  prepareModeVisuals?(): readonly Object3D[] | void;
   prebakeBurntSteps: CombatWarmRuntimeContext['prebakeBurntSteps'];
   warmWreckTextures: CombatWarmRuntimeContext['warmWreckTextures'];
   createIsolatedForwardWarmBatches: IsolatedForwardWarmFactory;

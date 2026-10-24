@@ -1,9 +1,152 @@
 {
   "version": 1,
-  "created": "2026-10-23T20:08:57.877Z",
-  "sourceDigest": "717b8d85b7255a2392c36246c6d55f92a6f29abe1ed87b0961586029d60b0610",
-  "revision": "3e8c32658d9293e536da0fe4a4897360cd05537c",
+  "created": "2026-10-24T03:15:32.087Z",
+  "sourceDigest": "b006b127a892011def48f932093908f5fb47093e3af0d7df50a717e781d47814",
+  "revision": "fbbb86f57ddab5afad62011fb44758a15367060f",
   "shots": [
+    {
+      "src": "/maps/frontier.webp",
+      "previewSrc": "/maps/cards/frontier.webp",
+      "alt": "frontier battlefield overview",
+      "title": "frontier",
+      "map": "frontier",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 1
+    },
+    {
+      "src": "/maps/coastal.webp",
+      "previewSrc": "/maps/cards/coastal.webp",
+      "alt": "coastal battlefield overview",
+      "title": "coastal",
+      "map": "coastal",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 2
+    },
+    {
+      "src": "/maps/desert.webp",
+      "previewSrc": "/maps/cards/desert.webp",
+      "alt": "desert battlefield overview",
+      "title": "desert",
+      "map": "desert",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 3
+    },
+    {
+      "src": "/maps/saltwind.webp",
+      "previewSrc": "/maps/cards/saltwind.webp",
+      "alt": "saltwind battlefield overview",
+      "title": "saltwind",
+      "map": "saltwind",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 4
+    },
+    {
+      "src": "/maps/railyard.webp",
+      "previewSrc": "/maps/cards/railyard.webp",
+      "alt": "railyard battlefield overview",
+      "title": "railyard",
+      "map": "railyard",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 5
+    },
+    {
+      "src": "/maps/fjord.webp",
+      "previewSrc": "/maps/cards/fjord.webp",
+      "alt": "fjord battlefield overview",
+      "title": "fjord",
+      "map": "fjord",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 6
+    },
+    {
+      "src": "/maps/orchard.webp",
+      "previewSrc": "/maps/cards/orchard.webp",
+      "alt": "orchard battlefield overview",
+      "title": "orchard",
+      "map": "orchard",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 7
+    },
+    {
+      "src": "/maps/caldera.webp",
+      "previewSrc": "/maps/cards/caldera.webp",
+      "alt": "caldera battlefield overview",
+      "title": "caldera",
+      "map": "caldera",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 8
+    },
+    {
+      "src": "/maps/alpine.webp",
+      "previewSrc": "/maps/cards/alpine.webp",
+      "alt": "alpine battlefield overview",
+      "title": "alpine",
+      "map": "alpine",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 9
+    },
+    {
+      "src": "/maps/whiteout.webp",
+      "previewSrc": "/maps/cards/whiteout.webp",
+      "alt": "whiteout battlefield overview",
+      "title": "whiteout",
+      "map": "whiteout",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 10
+    },
+    {
+      "src": "/maps/monsoon.webp",
+      "previewSrc": "/maps/cards/monsoon.webp",
+      "alt": "monsoon battlefield overview",
+      "title": "monsoon",
+      "map": "monsoon",
+      "feature": "world system",
+      "kind": "battlefield",
+      "effects": [
+        "daylight"
+      ],
+      "sequence": 11
+    },
     {
       "src": "/maps/copper_mesa.webp",
       "previewSrc": "/maps/cards/copper_mesa.webp",
@@ -83,19 +226,6 @@
       "sequence": 6
     },
     {
-      "src": "/maps/desert.webp",
-      "previewSrc": "/maps/cards/desert.webp",
-      "alt": "desert battlefield overview",
-      "title": "desert",
-      "map": "desert",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 1
-    },
-    {
       "src": "/maps/longleaf.webp",
       "previewSrc": "/maps/cards/longleaf.webp",
       "alt": "longleaf battlefield overview",
@@ -109,19 +239,6 @@
       "sequence": 2
     },
     {
-      "src": "/maps/monsoon.webp",
-      "previewSrc": "/maps/cards/monsoon.webp",
-      "alt": "monsoon battlefield overview",
-      "title": "monsoon",
-      "map": "monsoon",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 3
-    },
-    {
       "src": "/maps/reservoir.webp",
       "previewSrc": "/maps/cards/reservoir.webp",
       "alt": "reservoir battlefield overview",
@@ -133,19 +250,6 @@
         "daylight"
       ],
       "sequence": 4
-    },
-    {
-      "src": "/maps/alpine.webp",
-      "previewSrc": "/maps/cards/alpine.webp",
-      "alt": "alpine battlefield overview",
-      "title": "alpine",
-      "map": "alpine",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 5
     },
     {
       "src": "/maps/oasis.webp",
@@ -200,19 +304,6 @@
       "sequence": 2
     },
     {
-      "src": "/maps/coastal.webp",
-      "previewSrc": "/maps/cards/coastal.webp",
-      "alt": "coastal battlefield overview",
-      "title": "coastal",
-      "map": "coastal",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 3
-    },
-    {
       "src": "/maps/autumn.webp",
       "previewSrc": "/maps/cards/autumn.webp",
       "alt": "autumn battlefield overview",
@@ -237,45 +328,6 @@
         "daylight"
       ],
       "sequence": 5
-    },
-    {
-      "src": "/maps/railyard.webp",
-      "previewSrc": "/maps/cards/railyard.webp",
-      "alt": "railyard battlefield overview",
-      "title": "railyard",
-      "map": "railyard",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 6
-    },
-    {
-      "src": "/maps/frontier.webp",
-      "previewSrc": "/maps/cards/frontier.webp",
-      "alt": "frontier battlefield overview",
-      "title": "frontier",
-      "map": "frontier",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 7
-    },
-    {
-      "src": "/maps/fjord.webp",
-      "previewSrc": "/maps/cards/fjord.webp",
-      "alt": "fjord battlefield overview",
-      "title": "fjord",
-      "map": "fjord",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 8
     },
     {
       "src": "/maps/badlands.webp",
@@ -330,32 +382,6 @@
       "sequence": 12
     },
     {
-      "src": "/maps/whiteout.webp",
-      "previewSrc": "/maps/cards/whiteout.webp",
-      "alt": "whiteout battlefield overview",
-      "title": "whiteout",
-      "map": "whiteout",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 13
-    },
-    {
-      "src": "/maps/orchard.webp",
-      "previewSrc": "/maps/cards/orchard.webp",
-      "alt": "orchard battlefield overview",
-      "title": "orchard",
-      "map": "orchard",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 14
-    },
-    {
       "src": "/maps/mangrove.webp",
       "previewSrc": "/maps/cards/mangrove.webp",
       "alt": "mangrove battlefield overview",
@@ -395,19 +421,6 @@
       "sequence": 17
     },
     {
-      "src": "/maps/caldera.webp",
-      "previewSrc": "/maps/cards/caldera.webp",
-      "alt": "caldera battlefield overview",
-      "title": "caldera",
-      "map": "caldera",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 14
-    },
-    {
       "src": "/maps/airfield.webp",
       "previewSrc": "/maps/cards/airfield.webp",
       "alt": "airfield battlefield overview",
@@ -419,56 +432,25 @@
         "daylight"
       ],
       "sequence": 22
-    },
-    {
-      "src": "/maps/saltwind.webp",
-      "previewSrc": "/maps/cards/saltwind.webp",
-      "alt": "saltwind battlefield overview",
-      "title": "saltwind",
-      "map": "saltwind",
-      "feature": "world system",
-      "kind": "battlefield",
-      "effects": [
-        "daylight"
-      ],
-      "sequence": 28
     }
   ],
   "films": [],
   "media": {
-    "/maps/caldera.webp": "production-map-caldera",
-    "/maps/cards/caldera.webp": "production-map-caldera",
-    "/maps/thumbs/caldera.webp": "production-map-caldera",
     "/maps/airfield.webp": "production-map-airfield",
     "/maps/cards/airfield.webp": "production-map-airfield",
     "/maps/thumbs/airfield.webp": "production-map-airfield",
-    "/maps/saltwind.webp": "production-map-saltwind",
-    "/maps/cards/saltwind.webp": "production-map-saltwind",
-    "/maps/thumbs/saltwind.webp": "production-map-saltwind",
     "/maps/verdant.webp": "production-map-verdant",
     "/maps/cards/verdant.webp": "production-map-verdant",
     "/maps/thumbs/verdant.webp": "production-map-verdant",
     "/maps/urban.webp": "production-map-urban",
     "/maps/cards/urban.webp": "production-map-urban",
     "/maps/thumbs/urban.webp": "production-map-urban",
-    "/maps/coastal.webp": "production-map-coastal",
-    "/maps/cards/coastal.webp": "production-map-coastal",
-    "/maps/thumbs/coastal.webp": "production-map-coastal",
     "/maps/autumn.webp": "production-map-autumn",
     "/maps/cards/autumn.webp": "production-map-autumn",
     "/maps/thumbs/autumn.webp": "production-map-autumn",
     "/maps/steppe.webp": "production-map-steppe",
     "/maps/cards/steppe.webp": "production-map-steppe",
     "/maps/thumbs/steppe.webp": "production-map-steppe",
-    "/maps/railyard.webp": "production-map-railyard",
-    "/maps/cards/railyard.webp": "production-map-railyard",
-    "/maps/thumbs/railyard.webp": "production-map-railyard",
-    "/maps/frontier.webp": "production-map-frontier",
-    "/maps/cards/frontier.webp": "production-map-frontier",
-    "/maps/thumbs/frontier.webp": "production-map-frontier",
-    "/maps/fjord.webp": "production-map-fjord",
-    "/maps/cards/fjord.webp": "production-map-fjord",
-    "/maps/thumbs/fjord.webp": "production-map-fjord",
     "/maps/badlands.webp": "production-map-badlands",
     "/maps/cards/badlands.webp": "production-map-badlands",
     "/maps/thumbs/badlands.webp": "production-map-badlands",
@@ -481,12 +463,6 @@
     "/maps/skybridge.webp": "production-map-skybridge",
     "/maps/cards/skybridge.webp": "production-map-skybridge",
     "/maps/thumbs/skybridge.webp": "production-map-skybridge",
-    "/maps/whiteout.webp": "production-map-whiteout",
-    "/maps/cards/whiteout.webp": "production-map-whiteout",
-    "/maps/thumbs/whiteout.webp": "production-map-whiteout",
-    "/maps/orchard.webp": "production-map-orchard",
-    "/maps/cards/orchard.webp": "production-map-orchard",
-    "/maps/thumbs/orchard.webp": "production-map-orchard",
     "/maps/mangrove.webp": "production-map-mangrove",
     "/maps/cards/mangrove.webp": "production-map-mangrove",
     "/maps/thumbs/mangrove.webp": "production-map-mangrove",
@@ -499,21 +475,12 @@
     "/maps/polders.webp": "production-map-polders",
     "/maps/cards/polders.webp": "production-map-polders",
     "/maps/thumbs/polders.webp": "production-map-polders",
-    "/maps/desert.webp": "production-map-desert",
-    "/maps/cards/desert.webp": "production-map-desert",
-    "/maps/thumbs/desert.webp": "production-map-desert",
     "/maps/longleaf.webp": "production-map-longleaf",
     "/maps/cards/longleaf.webp": "production-map-longleaf",
     "/maps/thumbs/longleaf.webp": "production-map-longleaf",
-    "/maps/monsoon.webp": "production-map-monsoon",
-    "/maps/cards/monsoon.webp": "production-map-monsoon",
-    "/maps/thumbs/monsoon.webp": "production-map-monsoon",
     "/maps/reservoir.webp": "production-map-reservoir",
     "/maps/cards/reservoir.webp": "production-map-reservoir",
     "/maps/thumbs/reservoir.webp": "production-map-reservoir",
-    "/maps/alpine.webp": "production-map-alpine",
-    "/maps/cards/alpine.webp": "production-map-alpine",
-    "/maps/thumbs/alpine.webp": "production-map-alpine",
     "/maps/oasis.webp": "production-map-oasis",
     "/maps/cards/oasis.webp": "production-map-oasis",
     "/maps/thumbs/oasis.webp": "production-map-oasis",
@@ -534,31 +501,42 @@
     "/maps/thumbs/delta.webp": "production-map-delta",
     "/maps/mars.webp": "production-map-mars",
     "/maps/cards/mars.webp": "production-map-mars",
-    "/maps/thumbs/mars.webp": "production-map-mars"
+    "/maps/thumbs/mars.webp": "production-map-mars",
+    "/maps/frontier.webp": "production-map-frontier",
+    "/maps/cards/frontier.webp": "production-map-frontier",
+    "/maps/thumbs/frontier.webp": "production-map-frontier",
+    "/maps/coastal.webp": "production-map-coastal",
+    "/maps/cards/coastal.webp": "production-map-coastal",
+    "/maps/thumbs/coastal.webp": "production-map-coastal",
+    "/maps/desert.webp": "production-map-desert",
+    "/maps/cards/desert.webp": "production-map-desert",
+    "/maps/thumbs/desert.webp": "production-map-desert",
+    "/maps/saltwind.webp": "production-map-saltwind",
+    "/maps/cards/saltwind.webp": "production-map-saltwind",
+    "/maps/thumbs/saltwind.webp": "production-map-saltwind",
+    "/maps/railyard.webp": "production-map-railyard",
+    "/maps/cards/railyard.webp": "production-map-railyard",
+    "/maps/thumbs/railyard.webp": "production-map-railyard",
+    "/maps/fjord.webp": "production-map-fjord",
+    "/maps/cards/fjord.webp": "production-map-fjord",
+    "/maps/thumbs/fjord.webp": "production-map-fjord",
+    "/maps/orchard.webp": "production-map-orchard",
+    "/maps/cards/orchard.webp": "production-map-orchard",
+    "/maps/thumbs/orchard.webp": "production-map-orchard",
+    "/maps/caldera.webp": "production-map-caldera",
+    "/maps/cards/caldera.webp": "production-map-caldera",
+    "/maps/thumbs/caldera.webp": "production-map-caldera",
+    "/maps/alpine.webp": "production-map-alpine",
+    "/maps/cards/alpine.webp": "production-map-alpine",
+    "/maps/thumbs/alpine.webp": "production-map-alpine",
+    "/maps/whiteout.webp": "production-map-whiteout",
+    "/maps/cards/whiteout.webp": "production-map-whiteout",
+    "/maps/thumbs/whiteout.webp": "production-map-whiteout",
+    "/maps/monsoon.webp": "production-map-monsoon",
+    "/maps/cards/monsoon.webp": "production-map-monsoon",
+    "/maps/thumbs/monsoon.webp": "production-map-monsoon"
   },
   "recipes": {
-    "production-map-caldera": {
-      "map": "caldera",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -238,
-          80.7234464879223,
-          -230
-        ],
-        "lookAt": [
-          42,
-          8.673138276748638,
-          66
-        ],
-        "fov": 55
-      }
-    },
     "production-map-airfield": {
       "map": "airfield",
       "timeOfDay": "day",
@@ -577,28 +555,6 @@
           80,
           6.377761351059624,
           90
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-saltwind": {
-      "map": "saltwind",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          120,
-          195.03555627339992,
-          280
-        ],
-        "lookAt": [
-          -260,
-          -5.651393170117241,
-          -15
         ],
         "fov": 55
       }
@@ -647,28 +603,6 @@
         "fov": 55
       }
     },
-    "production-map-coastal": {
-      "map": "coastal",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          356,
-          60,
-          -300
-        ],
-        "lookAt": [
-          96,
-          -6.957800224607393,
-          190
-        ],
-        "fov": 55
-      }
-    },
     "production-map-autumn": {
       "map": "autumn",
       "timeOfDay": "day",
@@ -709,72 +643,6 @@
           60,
           6.637644410133362,
           60
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-railyard": {
-      "map": "railyard",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          150,
-          71.82597844441426,
-          -240
-        ],
-        "lookAt": [
-          -20,
-          4.2871347069740295,
-          10
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-frontier": {
-      "map": "frontier",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          150,
-          76.30363623238867,
-          -330
-        ],
-        "lookAt": [
-          -20,
-          1.0524110273179432,
-          40
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-fjord": {
-      "map": "fjord",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          80,
-          56.7513572239795,
-          -130
-        ],
-        "lookAt": [
-          470,
-          -8.2,
-          120
         ],
         "fov": 55
       }
@@ -867,50 +735,6 @@
         "fov": 55
       }
     },
-    "production-map-whiteout": {
-      "map": "whiteout",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -256,
-          81.43021650704293,
-          -262
-        ],
-        "lookAt": [
-          68,
-          -1.4053230451260046,
-          82
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-orchard": {
-      "map": "orchard",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -244,
-          91.18042109739834,
-          -256
-        ],
-        "lookAt": [
-          60,
-          1.4797670084821508,
-          98
-        ],
-        "fov": 55
-      }
-    },
     "production-map-mangrove": {
       "map": "mangrove",
       "timeOfDay": "day",
@@ -999,28 +823,6 @@
         "fov": 55
       }
     },
-    "production-map-desert": {
-      "map": "desert",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          196,
-          71.40968780478333,
-          -150
-        ],
-        "lookAt": [
-          -40,
-          2.4992842855813517,
-          40
-        ],
-        "fov": 55
-      }
-    },
     "production-map-longleaf": {
       "map": "longleaf",
       "timeOfDay": "day",
@@ -1043,28 +845,6 @@
         "fov": 55
       }
     },
-    "production-map-monsoon": {
-      "map": "monsoon",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -176,
-          71.57952164174246,
-          -232
-        ],
-        "lookAt": [
-          44,
-          6.533978742438812,
-          92
-        ],
-        "fov": 55
-      }
-    },
     "production-map-reservoir": {
       "map": "reservoir",
       "timeOfDay": "day",
@@ -1083,28 +863,6 @@
           108,
           -9,
           74
-        ],
-        "fov": 55
-      }
-    },
-    "production-map-alpine": {
-      "map": "alpine",
-      "timeOfDay": "day",
-      "seed": 5000,
-      "actors": [],
-      "effects": [],
-      "fxTime": 2000,
-      "timeScale": 0,
-      "camera": {
-        "pos": [
-          -238,
-          92.6093291827016,
-          -252
-        ],
-        "lookAt": [
-          62,
-          -8.749962679016873,
-          54
         ],
         "fov": 55
       }
@@ -1262,9 +1020,383 @@
         ],
         "fov": 55
       }
+    },
+    "production-map-frontier": {
+      "map": "frontier",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          150,
+          76.30363623238867,
+          -330
+        ],
+        "lookAt": [
+          -20,
+          1.0524110273179432,
+          40
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-coastal": {
+      "map": "coastal",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          356,
+          60.84,
+          -300
+        ],
+        "lookAt": [
+          96,
+          -6.957800224607393,
+          190
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-desert": {
+      "map": "desert",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          196,
+          71.40968780478333,
+          -150
+        ],
+        "lookAt": [
+          -40,
+          2.496597965077515,
+          40
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-saltwind": {
+      "map": "saltwind",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          120,
+          195.03555627339992,
+          280
+        ],
+        "lookAt": [
+          -260,
+          -4.819612128284687,
+          -15
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-railyard": {
+      "map": "railyard",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          150,
+          71.82597844441426,
+          -240
+        ],
+        "lookAt": [
+          -20,
+          4.2871347069740295,
+          10
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-fjord": {
+      "map": "fjord",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          80,
+          56.7513572239795,
+          -130
+        ],
+        "lookAt": [
+          470,
+          -8.2,
+          120
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-orchard": {
+      "map": "orchard",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -244,
+          91.18042109739834,
+          -256
+        ],
+        "lookAt": [
+          60,
+          1.4797670084821508,
+          98
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-caldera": {
+      "map": "caldera",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          80,
+          94.08275447031916,
+          260
+        ],
+        "lookAt": [
+          -30,
+          31.294686168124283,
+          -200
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-alpine": {
+      "map": "alpine",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -238,
+          92.6093291827016,
+          -252
+        ],
+        "lookAt": [
+          62,
+          -8.749962679016873,
+          54
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-whiteout": {
+      "map": "whiteout",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -256,
+          81.43021650704293,
+          -262
+        ],
+        "lookAt": [
+          68,
+          -1.4053230451260046,
+          82
+        ],
+        "fov": 55
+      }
+    },
+    "production-map-monsoon": {
+      "map": "monsoon",
+      "timeOfDay": "day",
+      "seed": 5000,
+      "actors": [],
+      "effects": [],
+      "fxTime": 2000,
+      "timeScale": 0,
+      "camera": {
+        "pos": [
+          -176,
+          71.57952164174246,
+          -232
+        ],
+        "lookAt": [
+          44,
+          6.533978742438812,
+          92
+        ],
+        "fov": 55
+      }
     }
   },
   "assets": [
+    {
+      "src": "/maps/frontier.webp",
+      "sha256": "d63ef2b47813530d4b06983fb61378d5275d21362c011676ef16d8d41a87c35f"
+    },
+    {
+      "src": "/maps/cards/frontier.webp",
+      "sha256": "18c961ef83844dd6563a15522d51f7e367f5cd52a20a7fc5593cc3c5a78b136c"
+    },
+    {
+      "src": "/maps/thumbs/frontier.webp",
+      "sha256": "a3654cbf6787fae71df328b77e7ac8cedc9842e7659c644d8b108b5d011f6662"
+    },
+    {
+      "src": "/maps/coastal.webp",
+      "sha256": "1a94be4140d9032be35c320ff67ffb443566c26d9651f0d7b50bf01e6e5fb543"
+    },
+    {
+      "src": "/maps/cards/coastal.webp",
+      "sha256": "fa30cc518967557e140ffa5b4cec6d110dcaa838f9d9b6bf74c17b1e9f965747"
+    },
+    {
+      "src": "/maps/thumbs/coastal.webp",
+      "sha256": "272da4b70709450cfce7470aea03d2f5917c269c74d0286d5c6dff0723f4384f"
+    },
+    {
+      "src": "/maps/desert.webp",
+      "sha256": "aa1e96861505f87133e07b97907115ca7eb1033fb40f1a5dead29d5586bb9167"
+    },
+    {
+      "src": "/maps/cards/desert.webp",
+      "sha256": "96e1928ea3d77730d3f604a81965d36f5c6a48129ecae4afb0cd64d026abc2da"
+    },
+    {
+      "src": "/maps/thumbs/desert.webp",
+      "sha256": "b17225b8ee05089519a25864dec654a7a44458af1f3132febd1edbbc136cd6f9"
+    },
+    {
+      "src": "/maps/saltwind.webp",
+      "sha256": "80a45562c6fd19282539279d0fb7e1c494f405e4fa533a050c1b300767a902d6"
+    },
+    {
+      "src": "/maps/cards/saltwind.webp",
+      "sha256": "09521434247e3784ca10c26d68f0855fd0e4e89694c0631c9dd0fc825633c940"
+    },
+    {
+      "src": "/maps/thumbs/saltwind.webp",
+      "sha256": "9e023b60d8909942c9caa22e3cce134ca67527460f14ae61d9a5cae4d33dafb1"
+    },
+    {
+      "src": "/maps/railyard.webp",
+      "sha256": "b1c812a74c6860b27fff4a605f08ecb479ababe101cb110f40ac75c0824d69ed"
+    },
+    {
+      "src": "/maps/cards/railyard.webp",
+      "sha256": "6565a6d1867daf095e32cc7c86951d1debf09739682a553164a5d95b79670c28"
+    },
+    {
+      "src": "/maps/thumbs/railyard.webp",
+      "sha256": "fd0b8d4101a55d352b5d9ca724f53319f0ee8f0d3cc8c7c63f89497c91d7a312"
+    },
+    {
+      "src": "/maps/fjord.webp",
+      "sha256": "f1a2bb06bf30f3070ec8978eb76326780153173077da1233fd8201c43e4cf2e2"
+    },
+    {
+      "src": "/maps/cards/fjord.webp",
+      "sha256": "2ace1ac5ae738359b3b8160e5c8c3d02da591a966630e9e2fb040f9bb96f6c74"
+    },
+    {
+      "src": "/maps/thumbs/fjord.webp",
+      "sha256": "a9c830b6596c78343ed8997f3b10e3e7ea708772f8f60110b06f534cf002fcfc"
+    },
+    {
+      "src": "/maps/orchard.webp",
+      "sha256": "37f4685fb3763d24cb3a6bff7f88faf95f656b0f2a269854d9b733d340d9f74f"
+    },
+    {
+      "src": "/maps/cards/orchard.webp",
+      "sha256": "f073ef92f59c3bd296d50110fc5ea0b5440eeb79049619d86886f5b24365b4f1"
+    },
+    {
+      "src": "/maps/thumbs/orchard.webp",
+      "sha256": "7d058af20199a57ee3b75ce2aedd9f3c95f866c21a56b015c83438d5b1b7ba66"
+    },
+    {
+      "src": "/maps/caldera.webp",
+      "sha256": "4e28d4c604571386c5cdd2420867146637d77abaee48ad7be966d58f7400dbb4"
+    },
+    {
+      "src": "/maps/cards/caldera.webp",
+      "sha256": "16a67ce59bee736224acd6dff72be07a87cd9c352393f136baf3409eb1049484"
+    },
+    {
+      "src": "/maps/thumbs/caldera.webp",
+      "sha256": "0505711244650a911e30c93215648fc9c49fa18b3f3b5655ebaff89b4d916dcf"
+    },
+    {
+      "src": "/maps/alpine.webp",
+      "sha256": "18f71057969dacdc5b74e2eb44631ec53feb409bdf98cf4efd57ffdd68afda70"
+    },
+    {
+      "src": "/maps/cards/alpine.webp",
+      "sha256": "ee3d1e5bb8accce37fc532ee66efa839cbc8c64dc6b8df13a04b94809a6aa73a"
+    },
+    {
+      "src": "/maps/thumbs/alpine.webp",
+      "sha256": "1492acbf82112cdd13e09ab8189126ecb6b25126019126fc993c47e0c4879d93"
+    },
+    {
+      "src": "/maps/whiteout.webp",
+      "sha256": "e866ced4e2c4ff079cf55b8478c4c127c83c4069df5bd299ce0db335cf5fafd8"
+    },
+    {
+      "src": "/maps/cards/whiteout.webp",
+      "sha256": "ef0b2076c2bfd928f570b69f23b737ed5fd25b1eff08084ef907d7139313166e"
+    },
+    {
+      "src": "/maps/thumbs/whiteout.webp",
+      "sha256": "6101202574c991e1df307ec79745f0e44211822d8abdbbeb317d3fd0d5e38804"
+    },
+    {
+      "src": "/maps/monsoon.webp",
+      "sha256": "417c13e743d12e8c38005bc9ca781c5912bf6845f8e485db12c12e4e6c6055dd"
+    },
+    {
+      "src": "/maps/cards/monsoon.webp",
+      "sha256": "b84d74dfce4253c787a88274c31817cc98c8682fecfc0066c3aaf99538ae436f"
+    },
+    {
+      "src": "/maps/thumbs/monsoon.webp",
+      "sha256": "8d5403d2fd220a4358b9eaa32808c62cf240555557ec43e47373cb928e0c1fa8"
+    },
     {
       "src": "/maps/copper_mesa.webp",
       "sha256": "b3ee8b17a03d3a87ac92bde8d74b75646f51d3d87e8973927f6ccf0ef53db73f"
@@ -1338,18 +1470,6 @@
       "sha256": "c42071fb07d692074237f65e10cfb70c71a66d9669de4b74e304f2cb1c320dcb"
     },
     {
-      "src": "/maps/desert.webp",
-      "sha256": "eaa71dcf52f6560193c871bce35b83c614673e323409dc20c3a59eb5e939e85b"
-    },
-    {
-      "src": "/maps/cards/desert.webp",
-      "sha256": "723243df055fef583fce999059578f3d61a276e32dfbc0f143d3b17e8b7640a3"
-    },
-    {
-      "src": "/maps/thumbs/desert.webp",
-      "sha256": "28f0d1106b156d54e6cb3bee28bdc84ea798974d3ac5bffd0ceb4c57d392f610"
-    },
-    {
       "src": "/maps/longleaf.webp",
       "sha256": "9d846d6d0264f50e6d0a00f1785eabfb70ac727144c1bc9b9cec1a30cdbecb52"
     },
@@ -1362,18 +1482,6 @@
       "sha256": "2f17eff5787465e10f67278a38252d89f50eef39d9a67c86aa56b7a2bdddc516"
     },
     {
-      "src": "/maps/monsoon.webp",
-      "sha256": "c9ccea923effe7383e0f12e23e712635f71dbeffc71949703ce3946aae30965c"
-    },
-    {
-      "src": "/maps/cards/monsoon.webp",
-      "sha256": "161ea98a32865bb97663532e69a26e3379601257a743fde1ada8c5eb6a2d24fc"
-    },
-    {
-      "src": "/maps/thumbs/monsoon.webp",
-      "sha256": "84d631ebba1b0f455a62692c73db2f139228441671b44d43d708d07e57211130"
-    },
-    {
       "src": "/maps/reservoir.webp",
       "sha256": "7d6d19cf27ddab340edfb7a4d45f8d53e0b7f23ad8d3552e0f4b1e256c9d3ff0"
     },
@@ -1384,18 +1492,6 @@
     {
       "src": "/maps/thumbs/reservoir.webp",
       "sha256": "7a823122ceb1918c21d7e5422e89def4a9d4002be1e6866fc8ba4d9d8a707ad5"
-    },
-    {
-      "src": "/maps/alpine.webp",
-      "sha256": "06fc9a4e8e9c19db6095e98e2e9ef43bb12dca5a1b99932cf9bf0c4002ffeb44"
-    },
-    {
-      "src": "/maps/cards/alpine.webp",
-      "sha256": "6c403029ffd7c9a7366758e56b983a07a23c3acf260ef690171b99625b6a9830"
-    },
-    {
-      "src": "/maps/thumbs/alpine.webp",
-      "sha256": "57a2e130cbd7c15e1a80b90d7556049f2df043ca0a975c6495c556659fbba084"
     },
     {
       "src": "/maps/oasis.webp",
@@ -1446,18 +1542,6 @@
       "sha256": "44dae0ff52f390338add4c4dd5fa9cc160b615b31263438e367ab71a00f55fa0"
     },
     {
-      "src": "/maps/coastal.webp",
-      "sha256": "f393cc4ed0a0737f18d8d52b5d3cdb121556a4aa166b7fcf5ac3ce2551775c1b"
-    },
-    {
-      "src": "/maps/cards/coastal.webp",
-      "sha256": "2e4d72ddb7e66db1ed03b7d381874012d8fe5c8f76bd207b904371646537bc97"
-    },
-    {
-      "src": "/maps/thumbs/coastal.webp",
-      "sha256": "8ee5b4b518862603ee92783ce75b7d109bce42f424410ed35bb38ccc5aa5d8f0"
-    },
-    {
       "src": "/maps/autumn.webp",
       "sha256": "09b74c03b45fa69587e94f7f5035e3ddcb1fa02f80476d7f5cc425ac230ec8c2"
     },
@@ -1480,42 +1564,6 @@
     {
       "src": "/maps/thumbs/steppe.webp",
       "sha256": "46652b318f9b8835229db247f505e4f499c7eec1a5811951d596598a785b9a48"
-    },
-    {
-      "src": "/maps/railyard.webp",
-      "sha256": "88373e5cbad773a1dabf523da34e1f193bf55ccba821ef768bd51a6335778dea"
-    },
-    {
-      "src": "/maps/cards/railyard.webp",
-      "sha256": "418b1979a841c1bbf1606ee18397652a21903e2d662aaffb587cdb6429d0ca3c"
-    },
-    {
-      "src": "/maps/thumbs/railyard.webp",
-      "sha256": "b322127035926a2d8e8ec64466afcbb1dfe2632d5c486826c00e85ef6535db29"
-    },
-    {
-      "src": "/maps/frontier.webp",
-      "sha256": "1aa5af979d1d379ebec206f4cda5e8b8bd8fa6da91569887f8fb6805acc2c1d5"
-    },
-    {
-      "src": "/maps/cards/frontier.webp",
-      "sha256": "69ffb2b939ed0bc954d1d9994c7d6409036c5df4a2b7dd7b3ed5224b0e913fc4"
-    },
-    {
-      "src": "/maps/thumbs/frontier.webp",
-      "sha256": "b66ed2ac371de3617bd6b684cf0ea560cac163274fd9c3972d99286570b6ffcd"
-    },
-    {
-      "src": "/maps/fjord.webp",
-      "sha256": "afd45412a685d7bd63b4b71de5e624a3d01caffda2ff31f777b58ebb71e48b28"
-    },
-    {
-      "src": "/maps/cards/fjord.webp",
-      "sha256": "36fa4e98cedf463d47a89fce2a191406d4776061aa8880da9dd6e455dddd350e"
-    },
-    {
-      "src": "/maps/thumbs/fjord.webp",
-      "sha256": "54d0a1deeb441d752497b104a253beaf3639379a3934d9f14a55bceeec871f12"
     },
     {
       "src": "/maps/badlands.webp",
@@ -1566,30 +1614,6 @@
       "sha256": "fad2798e95bac58595ac1d619ce0ff2bb89b139c5440e68d47d5466f1e670ef2"
     },
     {
-      "src": "/maps/whiteout.webp",
-      "sha256": "41f372faf9e06b3c41652d0f178f4ab910b56e03d418e18ff25ee148c36eee74"
-    },
-    {
-      "src": "/maps/cards/whiteout.webp",
-      "sha256": "1ea0a8ddd6928c44bc761523dc0ca7155be7e31a446c2b674093b03932f42ca8"
-    },
-    {
-      "src": "/maps/thumbs/whiteout.webp",
-      "sha256": "d7f4cfccf2511562a20ece3a1f60a05e4a8cd5981de54142df9453808b28660e"
-    },
-    {
-      "src": "/maps/orchard.webp",
-      "sha256": "77763e41b54285d769aecb2dfe4e560ceac752df47c5ffd9cc8552156babcdc7"
-    },
-    {
-      "src": "/maps/cards/orchard.webp",
-      "sha256": "5430374995af0fdf2c28de5d3079a4a69463233fffcb9f8260aadc57c4eb106c"
-    },
-    {
-      "src": "/maps/thumbs/orchard.webp",
-      "sha256": "524019e7ccad121ae55379c3a02df22b8cfb02fcd7fcf7949bf7799c0154b5ef"
-    },
-    {
       "src": "/maps/mangrove.webp",
       "sha256": "e4c36612dc3e58a86c8c998ddbb09dcd05da62cb1357cbdee531408cbd850e96"
     },
@@ -1626,18 +1650,6 @@
       "sha256": "925aa16feb54499c0be5ded5955d7b15832d8825fff735207c88e179054ad811"
     },
     {
-      "src": "/maps/caldera.webp",
-      "sha256": "59e8914c8018ea78f681ef8879bb090c5272d0ebce939e043a7476a01fa94307"
-    },
-    {
-      "src": "/maps/cards/caldera.webp",
-      "sha256": "ca8d4626676034536af6de037f6f0646f952b1c63be8958ad7eb2826153e807e"
-    },
-    {
-      "src": "/maps/thumbs/caldera.webp",
-      "sha256": "82c1b10274d68c08ddee222907aadf75ed28810e9b77c9b17a3154948d17f1e6"
-    },
-    {
       "src": "/maps/airfield.webp",
       "sha256": "0508cf7ad573fe0a3c263061f2acd2a5cfb109a8b998a5ca9d905bd6dc0f2220"
     },
@@ -1648,65 +1660,88 @@
     {
       "src": "/maps/thumbs/airfield.webp",
       "sha256": "811624a12e32032bcc03b6e75ede50063c176fa8710b4f4070c96a3f367d126f"
-    },
-    {
-      "src": "/maps/saltwind.webp",
-      "sha256": "9a45c3a819c51a1bde143398a86eea95a6865457c950fe2930f0d2cc0ca9aac6"
-    },
-    {
-      "src": "/maps/cards/saltwind.webp",
-      "sha256": "64e154c4bbc067a0d5e8daf3e38eadad463df747a4351ff0de1de344c94abc2d"
-    },
-    {
-      "src": "/maps/thumbs/saltwind.webp",
-      "sha256": "bdf49fc512dd153379e9787854b5c5d7a2d55946ca4fd340915f93b883b91b43"
     }
   ],
   "review": {
-    "reviewedAt": "2026-10-23T19:53:19+00:00",
-    "notes": "Maps 240: the six battlefield pictures re-shot on world-polish-240 (3e8c32658d, on main), each looked at beside its live picture; they show the world as main now draws it (the owner, 10-23: \"just ship it all\").",
+    "reviewedAt": "2026-10-24T03:15:05+00:00",
+    "notes": "Maps 242: the eleven battlefield pictures main changed through release 242, re-shot on its head (fbbb86f57d), each looked at beside its live picture; they show the world as main now draws it.",
     "maps": {
-      "copper_mesa": {
+      "frontier": {
         "accepted": true,
         "hashes": [
-          "49b30b2ac53908b84295b51c3be07e127a49a61d8d8bc22485f096a1555fc8b8"
+          "1aa85ebd4640d75791bf3477cdf2c11de15e0d5bef54efee42aeace69e9df64a"
         ],
-        "notes": "Re-shot on main's world (world-polish-240): looked at beside the live picture, 2026-10-23."
+        "notes": "Re-shot on main fbbb86f57d: looked at beside the live picture, 2026-10-23."
       },
-      "ruinspires": {
+      "coastal": {
         "accepted": true,
         "hashes": [
-          "a1fe73850b90ebfa2fa45040b111dc8878ed0ad18744f832beb4f782c57a1ccd"
+          "35a545805005361474f2247f12aa58ac41854660c28c1b697d5890980ad2daf1"
         ],
-        "notes": "Re-shot on main's world (world-polish-240): looked at beside the live picture, 2026-10-23."
+        "notes": "Re-shot on main fbbb86f57d: looked at beside the live picture, 2026-10-23."
       },
-      "foundry": {
+      "desert": {
         "accepted": true,
         "hashes": [
-          "bc5e72fa0b1fe3fd37b4d4cffd48b5459c8c7c469079ce4df175d058fa0543fc"
+          "0310705b5deb45d37968aba8963f8a7708c1f675e9c20548ae1fe3dab62b930f"
         ],
-        "notes": "Re-shot on main's world (world-polish-240): looked at beside the live picture, 2026-10-23."
+        "notes": "Re-shot on main fbbb86f57d: looked at beside the live picture, 2026-10-23."
       },
-      "winter": {
+      "saltwind": {
         "accepted": true,
         "hashes": [
-          "b2334bb660d9517822b06e6dca2b4033bc61ce58cd9d7652df3f1c12db6acc10"
+          "49ce3fb32fddedf44368c46072091974c58d0c0aa5e794d481226e9fb662d0c8"
         ],
-        "notes": "Re-shot on main's world (world-polish-240): looked at beside the live picture, 2026-10-23."
+        "notes": "Re-shot on main fbbb86f57d: looked at beside the live picture, 2026-10-23."
       },
-      "delta": {
+      "railyard": {
         "accepted": true,
         "hashes": [
-          "e7e9e421d6ea9a2cf21049fa2cc7c886c1f0b5b4e643c36e91e93ddc092b320b"
+          "87e7eb25868797958e01c8ecd5095a995974ddf2efc6979b3d3f8b0299bde1c7"
         ],
-        "notes": "Re-shot on main's world (world-polish-240): looked at beside the live picture, 2026-10-23."
+        "notes": "Re-shot on main fbbb86f57d: looked at beside the live picture, 2026-10-23."
       },
-      "mars": {
+      "fjord": {
         "accepted": true,
         "hashes": [
-          "37dfbb0c0fc113f68a63d34afb3ae8d56d7a18f4a8fa960b506b2446f8ed381f"
+          "bc108e7a16eaf85597785a1a4234385e41470db16b5bd2b05e6df3fdf5669f38"
         ],
-        "notes": "Re-shot on main's world (world-polish-240): looked at beside the live picture, 2026-10-23."
+        "notes": "Re-shot on main fbbb86f57d: looked at beside the live picture, 2026-10-23."
+      },
+      "orchard": {
+        "accepted": true,
+        "hashes": [
+          "48005d6bfffcb455e4f745c8f7165dae42341bdf92ac26ba847ceabc60cb846e"
+        ],
+        "notes": "Re-shot on main fbbb86f57d: looked at beside the live picture, 2026-10-23."
+      },
+      "caldera": {
+        "accepted": true,
+        "hashes": [
+          "3ef24c6be5080e08279a6ad41a712e51f5cd797138a6bb8f0d7c2c968b3ecc34"
+        ],
+        "notes": "Re-shot on main fbbb86f57d: looked at beside the live picture, 2026-10-23."
+      },
+      "alpine": {
+        "accepted": true,
+        "hashes": [
+          "5fba422a3925cd095de57f8568c6352f6aa6c45414d8bf75f2b2d248e4544756"
+        ],
+        "notes": "Re-shot on main fbbb86f57d: looked at beside the live picture, 2026-10-23."
+      },
+      "whiteout": {
+        "accepted": true,
+        "hashes": [
+          "ed3aacf2fc34537a7671f4cebf41ce65f76579d29ca2dc808128ae8c4f51d44d"
+        ],
+        "notes": "Re-shot on main fbbb86f57d: looked at beside the live picture, 2026-10-23."
+      },
+      "monsoon": {
+        "accepted": true,
+        "hashes": [
+          "8cb8974a1e113c19bbef893a5a38b170a911a3aa4faadf12d0d40e7ba484287d"
+        ],
+        "notes": "Re-shot on main fbbb86f57d: looked at beside the live picture, 2026-10-23."
       }
     }
   },
@@ -1947,18 +1982,6 @@
       },
       "assets": [
         {
-          "src": "/maps/caldera.webp",
-          "sha256": "59e8914c8018ea78f681ef8879bb090c5272d0ebce939e043a7476a01fa94307"
-        },
-        {
-          "src": "/maps/cards/caldera.webp",
-          "sha256": "ca8d4626676034536af6de037f6f0646f952b1c63be8958ad7eb2826153e807e"
-        },
-        {
-          "src": "/maps/thumbs/caldera.webp",
-          "sha256": "82c1b10274d68c08ddee222907aadf75ed28810e9b77c9b17a3154948d17f1e6"
-        },
-        {
           "src": "/maps/airfield.webp",
           "sha256": "0508cf7ad573fe0a3c263061f2acd2a5cfb109a8b998a5ca9d905bd6dc0f2220"
         },
@@ -1969,18 +1992,6 @@
         {
           "src": "/maps/thumbs/airfield.webp",
           "sha256": "811624a12e32032bcc03b6e75ede50063c176fa8710b4f4070c96a3f367d126f"
-        },
-        {
-          "src": "/maps/saltwind.webp",
-          "sha256": "9a45c3a819c51a1bde143398a86eea95a6865457c950fe2930f0d2cc0ca9aac6"
-        },
-        {
-          "src": "/maps/cards/saltwind.webp",
-          "sha256": "64e154c4bbc067a0d5e8daf3e38eadad463df747a4351ff0de1de344c94abc2d"
-        },
-        {
-          "src": "/maps/thumbs/saltwind.webp",
-          "sha256": "bdf49fc512dd153379e9787854b5c5d7a2d55946ca4fd340915f93b883b91b43"
         }
       ]
     },
@@ -2139,18 +2150,6 @@
           "sha256": "44dae0ff52f390338add4c4dd5fa9cc160b615b31263438e367ab71a00f55fa0"
         },
         {
-          "src": "/maps/coastal.webp",
-          "sha256": "f393cc4ed0a0737f18d8d52b5d3cdb121556a4aa166b7fcf5ac3ce2551775c1b"
-        },
-        {
-          "src": "/maps/cards/coastal.webp",
-          "sha256": "2e4d72ddb7e66db1ed03b7d381874012d8fe5c8f76bd207b904371646537bc97"
-        },
-        {
-          "src": "/maps/thumbs/coastal.webp",
-          "sha256": "8ee5b4b518862603ee92783ce75b7d109bce42f424410ed35bb38ccc5aa5d8f0"
-        },
-        {
           "src": "/maps/autumn.webp",
           "sha256": "09b74c03b45fa69587e94f7f5035e3ddcb1fa02f80476d7f5cc425ac230ec8c2"
         },
@@ -2173,42 +2172,6 @@
         {
           "src": "/maps/thumbs/steppe.webp",
           "sha256": "46652b318f9b8835229db247f505e4f499c7eec1a5811951d596598a785b9a48"
-        },
-        {
-          "src": "/maps/railyard.webp",
-          "sha256": "88373e5cbad773a1dabf523da34e1f193bf55ccba821ef768bd51a6335778dea"
-        },
-        {
-          "src": "/maps/cards/railyard.webp",
-          "sha256": "418b1979a841c1bbf1606ee18397652a21903e2d662aaffb587cdb6429d0ca3c"
-        },
-        {
-          "src": "/maps/thumbs/railyard.webp",
-          "sha256": "b322127035926a2d8e8ec64466afcbb1dfe2632d5c486826c00e85ef6535db29"
-        },
-        {
-          "src": "/maps/frontier.webp",
-          "sha256": "1aa5af979d1d379ebec206f4cda5e8b8bd8fa6da91569887f8fb6805acc2c1d5"
-        },
-        {
-          "src": "/maps/cards/frontier.webp",
-          "sha256": "69ffb2b939ed0bc954d1d9994c7d6409036c5df4a2b7dd7b3ed5224b0e913fc4"
-        },
-        {
-          "src": "/maps/thumbs/frontier.webp",
-          "sha256": "b66ed2ac371de3617bd6b684cf0ea560cac163274fd9c3972d99286570b6ffcd"
-        },
-        {
-          "src": "/maps/fjord.webp",
-          "sha256": "afd45412a685d7bd63b4b71de5e624a3d01caffda2ff31f777b58ebb71e48b28"
-        },
-        {
-          "src": "/maps/cards/fjord.webp",
-          "sha256": "36fa4e98cedf463d47a89fce2a191406d4776061aa8880da9dd6e455dddd350e"
-        },
-        {
-          "src": "/maps/thumbs/fjord.webp",
-          "sha256": "54d0a1deeb441d752497b104a253beaf3639379a3934d9f14a55bceeec871f12"
         },
         {
           "src": "/maps/badlands.webp",
@@ -2257,30 +2220,6 @@
         {
           "src": "/maps/thumbs/skybridge.webp",
           "sha256": "fad2798e95bac58595ac1d619ce0ff2bb89b139c5440e68d47d5466f1e670ef2"
-        },
-        {
-          "src": "/maps/whiteout.webp",
-          "sha256": "41f372faf9e06b3c41652d0f178f4ab910b56e03d418e18ff25ee148c36eee74"
-        },
-        {
-          "src": "/maps/cards/whiteout.webp",
-          "sha256": "1ea0a8ddd6928c44bc761523dc0ca7155be7e31a446c2b674093b03932f42ca8"
-        },
-        {
-          "src": "/maps/thumbs/whiteout.webp",
-          "sha256": "d7f4cfccf2511562a20ece3a1f60a05e4a8cd5981de54142df9453808b28660e"
-        },
-        {
-          "src": "/maps/orchard.webp",
-          "sha256": "77763e41b54285d769aecb2dfe4e560ceac752df47c5ffd9cc8552156babcdc7"
-        },
-        {
-          "src": "/maps/cards/orchard.webp",
-          "sha256": "5430374995af0fdf2c28de5d3079a4a69463233fffcb9f8260aadc57c4eb106c"
-        },
-        {
-          "src": "/maps/thumbs/orchard.webp",
-          "sha256": "524019e7ccad121ae55379c3a02df22b8cfb02fcd7fcf7949bf7799c0154b5ef"
         },
         {
           "src": "/maps/mangrove.webp",
@@ -2406,18 +2345,6 @@
       },
       "assets": [
         {
-          "src": "/maps/desert.webp",
-          "sha256": "eaa71dcf52f6560193c871bce35b83c614673e323409dc20c3a59eb5e939e85b"
-        },
-        {
-          "src": "/maps/cards/desert.webp",
-          "sha256": "723243df055fef583fce999059578f3d61a276e32dfbc0f143d3b17e8b7640a3"
-        },
-        {
-          "src": "/maps/thumbs/desert.webp",
-          "sha256": "28f0d1106b156d54e6cb3bee28bdc84ea798974d3ac5bffd0ceb4c57d392f610"
-        },
-        {
           "src": "/maps/longleaf.webp",
           "sha256": "9d846d6d0264f50e6d0a00f1785eabfb70ac727144c1bc9b9cec1a30cdbecb52"
         },
@@ -2428,18 +2355,6 @@
         {
           "src": "/maps/thumbs/longleaf.webp",
           "sha256": "2f17eff5787465e10f67278a38252d89f50eef39d9a67c86aa56b7a2bdddc516"
-        },
-        {
-          "src": "/maps/monsoon.webp",
-          "sha256": "c9ccea923effe7383e0f12e23e712635f71dbeffc71949703ce3946aae30965c"
-        },
-        {
-          "src": "/maps/cards/monsoon.webp",
-          "sha256": "161ea98a32865bb97663532e69a26e3379601257a743fde1ada8c5eb6a2d24fc"
-        },
-        {
-          "src": "/maps/thumbs/monsoon.webp",
-          "sha256": "84d631ebba1b0f455a62692c73db2f139228441671b44d43d708d07e57211130"
         },
         {
           "src": "/maps/reservoir.webp",
@@ -2454,18 +2369,6 @@
           "sha256": "7a823122ceb1918c21d7e5422e89def4a9d4002be1e6866fc8ba4d9d8a707ad5"
         },
         {
-          "src": "/maps/alpine.webp",
-          "sha256": "06fc9a4e8e9c19db6095e98e2e9ef43bb12dca5a1b99932cf9bf0c4002ffeb44"
-        },
-        {
-          "src": "/maps/cards/alpine.webp",
-          "sha256": "6c403029ffd7c9a7366758e56b983a07a23c3acf260ef690171b99625b6a9830"
-        },
-        {
-          "src": "/maps/thumbs/alpine.webp",
-          "sha256": "57a2e130cbd7c15e1a80b90d7556049f2df043ca0a975c6495c556659fbba084"
-        },
-        {
           "src": "/maps/oasis.webp",
           "sha256": "5089400e6c4cb57e04e48fdadf9d72869dc01b96f8cd5bf5aa46e28d62b4ce86"
         },
@@ -2476,6 +2379,133 @@
         {
           "src": "/maps/thumbs/oasis.webp",
           "sha256": "41c476345be4edd49f32819ce5baa3ae1882a45d5b8b87c921f256a6016bb7d0"
+        }
+      ]
+    },
+    {
+      "created": "2026-10-23T20:08:57.877Z",
+      "revision": "3e8c32658d9293e536da0fe4a4897360cd05537c",
+      "sourceDigest": "717b8d85b7255a2392c36246c6d55f92a6f29abe1ed87b0961586029d60b0610",
+      "review": {
+        "reviewedAt": "2026-10-23T19:53:19+00:00",
+        "notes": "Maps 240: the six battlefield pictures re-shot on world-polish-240 (3e8c32658d, on main), each looked at beside its live picture; they show the world as main now draws it (the owner, 10-23: \"just ship it all\").",
+        "maps": {
+          "copper_mesa": {
+            "accepted": true,
+            "hashes": [
+              "49b30b2ac53908b84295b51c3be07e127a49a61d8d8bc22485f096a1555fc8b8"
+            ],
+            "notes": "Re-shot on main's world (world-polish-240): looked at beside the live picture, 2026-10-23."
+          },
+          "ruinspires": {
+            "accepted": true,
+            "hashes": [
+              "a1fe73850b90ebfa2fa45040b111dc8878ed0ad18744f832beb4f782c57a1ccd"
+            ],
+            "notes": "Re-shot on main's world (world-polish-240): looked at beside the live picture, 2026-10-23."
+          },
+          "foundry": {
+            "accepted": true,
+            "hashes": [
+              "bc5e72fa0b1fe3fd37b4d4cffd48b5459c8c7c469079ce4df175d058fa0543fc"
+            ],
+            "notes": "Re-shot on main's world (world-polish-240): looked at beside the live picture, 2026-10-23."
+          },
+          "winter": {
+            "accepted": true,
+            "hashes": [
+              "b2334bb660d9517822b06e6dca2b4033bc61ce58cd9d7652df3f1c12db6acc10"
+            ],
+            "notes": "Re-shot on main's world (world-polish-240): looked at beside the live picture, 2026-10-23."
+          },
+          "delta": {
+            "accepted": true,
+            "hashes": [
+              "e7e9e421d6ea9a2cf21049fa2cc7c886c1f0b5b4e643c36e91e93ddc092b320b"
+            ],
+            "notes": "Re-shot on main's world (world-polish-240): looked at beside the live picture, 2026-10-23."
+          },
+          "mars": {
+            "accepted": true,
+            "hashes": [
+              "37dfbb0c0fc113f68a63d34afb3ae8d56d7a18f4a8fa960b506b2446f8ed381f"
+            ],
+            "notes": "Re-shot on main's world (world-polish-240): looked at beside the live picture, 2026-10-23."
+          }
+        }
+      },
+      "assets": [
+        {
+          "src": "/maps/copper_mesa.webp",
+          "sha256": "b3ee8b17a03d3a87ac92bde8d74b75646f51d3d87e8973927f6ccf0ef53db73f"
+        },
+        {
+          "src": "/maps/cards/copper_mesa.webp",
+          "sha256": "d46fedbaa05ea220437da3eb2ce250df164c07741114a347ae5b55f62f04899b"
+        },
+        {
+          "src": "/maps/thumbs/copper_mesa.webp",
+          "sha256": "afa3f2579f92eb9acb20dd5157ba328cb6028a506e1b67c3ae90afb64508d5aa"
+        },
+        {
+          "src": "/maps/ruinspires.webp",
+          "sha256": "ba620f4add3faf97f8eb1836dac6d72a3edfeb3d85ffe7a234119ff86c306d44"
+        },
+        {
+          "src": "/maps/cards/ruinspires.webp",
+          "sha256": "9a329b134e2c3151de5539b60bca311ddb9d835be65d8a0df56ce124560858d2"
+        },
+        {
+          "src": "/maps/thumbs/ruinspires.webp",
+          "sha256": "448dc0d6da2ea85916e59c144c9f1e552c539cf864097d023b8bd01d2032737a"
+        },
+        {
+          "src": "/maps/foundry.webp",
+          "sha256": "d9a6fee659e03c69a745648f1b43458a9ff81f086a9a0abb93b736a5587079dc"
+        },
+        {
+          "src": "/maps/cards/foundry.webp",
+          "sha256": "430010c04e2d812d860c3c8a0c4d55adaf55acd791cc76b01db90b35ba9509bc"
+        },
+        {
+          "src": "/maps/thumbs/foundry.webp",
+          "sha256": "8fed66f86d6125fd5a54ece4726629a1a38adc92734e21cff34c14cb731289e5"
+        },
+        {
+          "src": "/maps/winter.webp",
+          "sha256": "3b200338f9bf544563ef99e18995928047163ae45fab6396268f414fb0ad6379"
+        },
+        {
+          "src": "/maps/cards/winter.webp",
+          "sha256": "53869f8231d413c4528874454e1902caa01987c6b8d73826af132466875e5392"
+        },
+        {
+          "src": "/maps/thumbs/winter.webp",
+          "sha256": "0553ec66e1d26c0aec55838fd7e5d3a51c1e54b2a8fed55a077b07daa30866f3"
+        },
+        {
+          "src": "/maps/delta.webp",
+          "sha256": "132e81e3b9b21fc7b2c671e5aa7ab66c300aff689a387a36adc91c1387c248c8"
+        },
+        {
+          "src": "/maps/cards/delta.webp",
+          "sha256": "1faa01f9756fc79707ad188f90291a2ade983183ff15dd2810ee78d22164d5c7"
+        },
+        {
+          "src": "/maps/thumbs/delta.webp",
+          "sha256": "b2135c8b78860c1a7786fe8758d6ab8b24e36c9f489eba677e4060faf1571cd4"
+        },
+        {
+          "src": "/maps/mars.webp",
+          "sha256": "74d70b764b9d422e7fe83cae822a9da37b704d27cd5fec3964e83d5223e14b36"
+        },
+        {
+          "src": "/maps/cards/mars.webp",
+          "sha256": "cb8fca5ccb7dd5a18deac825cee28b6604011ce324ad332676c4e9ebfacbcae7"
+        },
+        {
+          "src": "/maps/thumbs/mars.webp",
+          "sha256": "c42071fb07d692074237f65e10cfb70c71a66d9669de4b74e304f2cb1c320dcb"
         }
       ]
     }

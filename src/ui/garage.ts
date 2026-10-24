@@ -62,6 +62,7 @@ import { getPlayerRecord, getRecentBattles } from '../game/profile.ts';
 import { battleLoadEstimateS } from '../game/battleLoadEstimate.ts';
 import { readFavouriteTanks, writeFavouriteTanks } from '../game/favouriteTanks.ts';
 import type { DeployDifficulty, DeployScreen } from './deployScreen.ts';
+import type { PhotoStill } from './photoMode.ts';
 import { minimapAssetUrl } from './minimapAssetUrl.ts';
 import type { GarageHotspots, HotspotFacts } from './garageHotspots.ts';
 import type { Object3D, PerspectiveCamera } from 'three';
@@ -92,6 +93,13 @@ import type { CustomCamoStudioAccess } from './customCamoStudioAccess.ts';
 import type { ImagePriority } from './imagePreload.ts';
 import type { FleetTake, FleetTakeIndex, FleetTakePlayer } from './fleetTakes.ts';
 import { countryOfVehicle } from '../sim/countries.ts';
+
+/** What the Garage's photo mode needs from the composition root (main.ts): the stage, its orbit and its capture. */
+interface GaragePhotoControl {
+  readonly stage: HTMLElement;
+  readonly showroom: { hold(on: boolean): void; aim(yawRad: number, pitchRad: number, zoomTo?: number): void; reset(): boolean };
+  readonly still: PhotoStill;
+}
 
 type BattleMode = PlayMode;
 // The fleet takes load with the battle gallery, never with the Garage (see the featured panel).
@@ -217,6 +225,8 @@ export interface GarageRuntime {
   attachSettingsControl(control: HTMLElement): void;
   /** The next battle's bot tier, for the Deploy screen's picker (the input settings own it; attached once they exist). */
   attachDifficulty(control: DeployDifficulty): void;
+  /** The photo mode's stage, orbit and capture (attached once the renderer and its post chain exist). */
+  attachPhoto(control: GaragePhotoControl): void;
   getSelectedMap(): string;
   startSolo(): void;
   /** Test drive a vehicle (default: the selected one) on the proving ground; false when it cannot launch now. */
@@ -774,6 +784,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="cot-room-reminder" type="button" aria-label="${t('garage.battle.roomReminder')}">` +
     `<span class="rr-dot"></span><span class="rr-copy" aria-live="polite"></span></button>` +
     `<button class="cot-room-ready" type="button" disabled aria-pressed="false">${t('playMenu.ready.iAmReady')}</button></div></div>` +
+    // a phone held upright (the direction's 91 page): the tab bar, under the Garage and the Deploy screen alike
+    `<nav class="cot-tabbar" aria-label="${t('garage.nav.menu')}">` +
+    `<button type="button" data-tabbar="garage" aria-current="page">${uiIconSVG('garage', 22)}<span>${t('garage.nav.garage')}</span></button>` +
+    `<button type="button" data-tabbar="deploy">${uiIconSVG('deploy', 22)}<span>${t('garage.battle')}</span></button>` +
+    `<button type="button" data-tabbar="gallery">${uiIconSVG('gallery', 22)}<span>${t('garage.nav.gallery')}</span></button>` +
+    `<button type="button" data-tabbar="record">${uiIconSVG('record', 22)}<span>${t('garage.nav.record')}</span></button>` +
+    `<button type="button" data-tabbar="more">${uiIconSVG('menu', 22)}<span>${t('garage.nav.more')}</span></button></nav>` +
     `<nav class="cot-garage-tools" aria-label="${t('garage.tools.stagingAreas')}">` +
     `<button class="cot-garage-tool cot-garage-preview-card" type="button" data-garage-panel="maps" ` +
     `aria-label="${t('garage.tools.chooseStaging')}" aria-expanded="false" aria-controls="cot-garage-maps">` +
@@ -825,7 +842,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<section class="cot-lower-third"><div aria-live="polite"><h2 class="cot-lt-name"></h2><div class="cot-lt-id"></div></div>` +
     `<div class="cot-lt-acts"><button type="button" class="cot-c-btn cot-c-btn--36" data-lt-anatomy>${uiIconSVG('layerXray', 16)}` +
     `<span>${t('garage.act.anatomy')}</span></button><button type="button" class="cot-c-btn cot-c-btn--36" data-lt-test-drive>` +
-    `${uiIconSVG('modeProving', 16)}<span>${t('garage.dossier.testDrive')}</span></button></div></section>` +
+    `${uiIconSVG('modeProving', 16)}<span>${t('garage.dossier.testDrive')}</span></button>` +
+    `<button type="button" class="cot-c-btn cot-c-btn--36" data-lt-photo hidden>${uiIconSVG('toolPhoto', 16)}` +
+    `<span>${t('garage.photo.open')}</span>${keycap('P')}</button></div></section>` +
     `<nav class="cot-stations" aria-label="${t('garage.station.aria')}"><div class="cot-stations-list" role="tablist" aria-orientation="vertical" aria-label="${t('garage.station.aria')}">` +
     GARAGE_STATIONS.map(([id, glyph], index) => `<button type="button" class="cot-station" role="tab" data-tab="${id}" data-station="${id}" ` +
       `aria-selected="${index === 0}" tabindex="${index === 0 ? 0 : -1}" aria-controls="cot-garage-dossier">${uiIconSVG(glyph, 18)}` +
@@ -1162,6 +1181,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const cardById = new Map<string, HTMLElement>();
   const cardsByCountry = new Map<string, HTMLElement[]>();
   const specsByCountry = new Map<string, GarageTankSpec[]>();
+  // the roster's every-nation strip (the direction's All chip): one more key in the national maps, so the strip, the
+  // count, the filter's fallback and the arrows read it as they read a nation
+  const ALL_COUNTRIES = 'all';
   const specById = new Map<string, GarageTankSpec>();
   // specById covers the FULL roster so direct tooling can still inspect a
   // delisted vehicle without exposing it in the player-facing carousel.
@@ -1173,6 +1195,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       group.push(spec);
       specsByCountry.set(countryId, group);
     }
+    specsByCountry.set(ALL_COUNTRIES, [...specs]);
   }
   indexGarageSpecs();
 
@@ -2501,6 +2524,20 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }, { root: chipsEl, threshold: [0.5] })
     : null;
   function initializeCountryChips(): void {
+    const all = document.createElement('button');
+    all.type = 'button';
+    all.className = 'cot-country-chip cot-country-all';
+    all.dataset.country = ALL_COUNTRIES;
+    all.setAttribute('aria-label', t('garage.country.allAria'));
+    all.innerHTML = `<span class="lbl">${t('garage.country.all')}</span><span class="ct num">${specs.length}</span>`;
+    // every nation keeps the selected tank where it is
+    all.addEventListener('click', () => {
+      emit('ui:click', {});
+      applyCountryFilter(ALL_COUNTRIES);
+      requestAnimationFrame(() => cardById.get(selectedId)?.scrollIntoView({ block: 'nearest', inline: 'center' }));
+    });
+    chipsEl.appendChild(all);
+    chipById.set(ALL_COUNTRIES, all);
     for (const group of countryGroups) {
       const count = group.count;
       const chip = document.createElement('button');
@@ -2613,7 +2650,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   });
   function setRosterFacetFilter(match: ((specId: string) => boolean) | null): void {
     rosterFacetMatch = match;
-    for (const group of countryGroups) {
+    for (const group of [{ id: ALL_COUNTRIES }, ...countryGroups]) {
       const pool = specsByCountry.get(group.id) || [];
       const shown = pool.filter((spec) => facetVisible(spec.id)).length;
       const chip = chipById.get(group.id);
@@ -2758,6 +2795,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       const countryCards = cardsByCountry.get(cardCountry) || [];
       countryCards.push(card);
       cardsByCountry.set(cardCountry, countryCards);
+      const allCards = cardsByCountry.get(ALL_COUNTRIES) || [];
+      allCards.push(card);
+      cardsByCountry.set(ALL_COUNTRIES, allCards);
     }
   }
   initializeTankCards();
@@ -3223,7 +3263,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     selectedId = specId;
     // Direct selection from another country (for example a screenshot
     // harness) switches the visible strip to that national fleet.
-    if (cardById.has(specId) && countryCodeOf(spec) !== countryFilter) {
+    if (cardById.has(specId) && countryFilter !== ALL_COUNTRIES && countryCodeOf(spec) !== countryFilter) {
       applyCountryFilter(countryCodeOf(spec));
     }
     // Remember one independent selection per nation. This also adopts valid
@@ -3380,7 +3420,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     camosEl.before(mapsEl);
     root.querySelector<HTMLElement>('[data-deploy-field]')?.setAttribute('aria-expanded', 'false');
   }
+  /** The phone's tab bar marks the screen that shows (the Garage or Deploy). */
+  function markTabbar(current: 'garage' | 'deploy'): void {
+    for (const tab of root.querySelectorAll<HTMLElement>('.cot-tabbar [data-tabbar]')) {
+      if (tab.dataset.tabbar === current) tab.setAttribute('aria-current', 'page'); else tab.removeAttribute('aria-current');
+    }
+  }
   function closeBattleMenu({ restoreFocus = false } = {}) {
+    markTabbar('garage');
     closeDeployField();
     arrangementPanel?.close();
     marsDropdowns.forEach(dropdown => dropdown.close());
@@ -3437,6 +3484,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     showDeployTab('quick');
     const campaign = campaignSummary();
     deployCampaignCount.textContent = `${campaign.cleared} / ${campaign.total}`;
+    markTabbar('deploy');
     battleMenu.classList.add('open');
     deployScreen?.drawObjectives();
     battleModeBtn.setAttribute('aria-expanded', 'true');
@@ -3969,11 +4017,36 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   requiredElement<HTMLElement>(root, '[data-nav="studio"]').addEventListener('click', openStudio);
   requiredElement<HTMLElement>(root, '[data-nav="gallery"]').addEventListener('click', () => openSelectedInGallery());
   requiredElement<HTMLElement>(root, '[data-nav="docs"]').addEventListener('click', openDocs);
+  // the phone's tab bar: the Garage, Deploy, the Gallery, the record, and the rest of the menu
+  requiredElement<HTMLElement>(root, '.cot-tabbar').addEventListener('click', (event) => {
+    const tab = (event.target as Element | null)?.closest<HTMLButtonElement>('[data-tabbar]')?.dataset.tabbar;
+    if (tab === 'deploy' && !battleMenu.classList.contains('open')) { emit('ui:click', {}); openBattleMenu(); }
+    else if (tab === 'garage' && battleMenu.classList.contains('open')) closeBattleMenu({ restoreFocus: true });
+    else if (tab === 'gallery') openSelectedInGallery();
+    else if (tab === 'record') recordTrigger.click();
+    else if (tab === 'more') mobileNavTrigger.click();
+  });
   requiredElement<HTMLElement>(root, '[data-nav="locale"]').addEventListener('click', switchLocale);
   requiredElement<HTMLElement>(root, '[data-nav="home"]').addEventListener('click', openHome);
   requiredElement<HTMLElement>(root, '[data-nav="deploy"]').addEventListener('click', () => { emit('ui:click', {}); openBattleMenu(); });
   requiredElement<HTMLElement>(root, '[data-lt-anatomy]').addEventListener('click', () => { emit('ui:click', {}); openSelectedInGallery('armor'); });
   requiredElement<HTMLElement>(root, '[data-lt-test-drive]').addEventListener('click', () => { emit('ui:click', {}); startTestDrive(selectedId); });
+  // photo mode (the direction's Photo action): loaded at its first use, off the game entry
+  const photoButton = requiredElement<HTMLButtonElement>(root, '[data-lt-photo]');
+  let photo: GaragePhotoControl | null = null;
+  let photoMode: Promise<typeof import('./photoMode.ts')> | null = null;
+  function openPhoto(): void {
+    if (!photo || !api.isOpen || battleMenu.classList.contains('open')) return;
+    const control = photo;
+    emit('ui:click', {});
+    photoMode ??= import('./photoMode.ts');
+    void photoMode.then(({ openPhotoMode }) => openPhotoMode({
+      stage: control.stage, showroom: control.showroom, still: control.still, keycap,
+      fileName: () => `claude-of-tanks_${selectedId || 'garage'}_${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.png`,
+      click: () => emit('ui:click', {}), onClose: () => photoButton.focus(),
+    })).catch(() => { photoMode = null; });
+  }
+  photoButton.addEventListener('click', openPhoto);
   requiredElement<HTMLElement>(root, '[data-nav="github"]').addEventListener('click', () => {
     emit('ui:click', {});
   });
@@ -4047,6 +4120,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       if (e.code === 'KeyB') { emit('ui:click', {}); openBattleMenu(); e.preventDefault(); return; }
       if (e.code === 'KeyV') { openSelectedInGallery(); e.preventDefault(); return; }
       if (e.code === 'KeyF') { toggleFavourite(selectedId); e.preventDefault(); return; }
+      if (e.code === 'KeyP' && photo) { openPhoto(); e.preventDefault(); return; }
       if (e.code === 'KeyR') { recordTrigger.click(); e.preventDefault(); return; }
       if (e.code === 'F1') { openDocs(); e.preventDefault(); return; }
     }
@@ -4152,6 +4226,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
 
     /** UI-free rectangle reserved for the 3D showroom hero (CSS pixels). */
     getStageRect() {
+      // photo mode (photoMode.ts) puts every panel away: the stage is the whole screen
+      if (document.body.classList.contains('cot-photo-on')) return { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
       const rr = root.getBoundingClientRect();
       const left = root.querySelector('.cot-leftcol')?.getBoundingClientRect();
       const stats = statsEl.getBoundingClientRect();
@@ -4252,6 +4328,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     },
 
     isVehicleLocked() { return vehicleLocked; },
+
+    attachPhoto(control) {
+      photo = control;
+      photoButton.hidden = false;
+    },
 
     attachDifficulty(control) {
       difficulty = control;

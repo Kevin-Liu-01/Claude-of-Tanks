@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { catalogText, CATALOG } from '../ui/i18nCatalog.ts';
 import {
   DEFAULT_LOCALE,
@@ -272,6 +273,22 @@ export function localizeBodyHtml(html: string, locale: SupportedLocale): string 
  * Produce a crawl-time locale document: discovery metadata, the canonical alternate-language graph, and (for a
  * non-default locale) the body copy itself (localizeBodyHtml).
  */
+/** The Field Manual's chapters prerendered in Chinese (tools/docs-prerender.mjs writes them beside the English ones). */
+let zhChapters: Record<string, string> | null = null;
+const PRERENDERED_CHAPTER = /<main id="topicRoot" data-prerendered="([a-z]+)" data-prerendered-locale="en-US">[\s\S]*?<\/main>/;
+
+/** A prerendered chapter in the page's own locale; one without Chinese markup renders in the page (topics.ts) instead of
+ *  showing English. */
+function localizeChapter(html: string, locale: SupportedLocale): string {
+  return html.replace(PRERENDERED_CHAPTER, (_whole, slug: string) => {
+    zhChapters ??= JSON.parse(readFileSync(new URL('../docs/topicPrerender.zh-CN.json', import.meta.url), 'utf8')) as Record<string, string>;
+    const markup = locale === 'zh-CN' ? zhChapters[slug] : undefined;
+    return markup
+      ? `<main id="topicRoot" data-prerendered="${slug}" data-prerendered-locale="${locale}">${renderProductStats(markup)}</main>`
+      : '<main id="topicRoot"></main>';
+  });
+}
+
 export function localizeHtmlDocument(
   html: string,
   route: PublicRouteRecord,
@@ -306,6 +323,7 @@ export function localizeHtmlDocument(
   output = addLocaleLinks(output, route);
   output = addLocaleCatalogPreload(output, locale);
   if (locale !== DEFAULT_LOCALE) output = localizeBodyHtml(output, locale);
+  if (locale !== DEFAULT_LOCALE) output = localizeChapter(output, locale);
   // Chinese documents carry the zh-CN label floor (the type rules) right after their type head; English ones never do.
   if (locale === 'zh-CN') output = addZhTypeFloor(output, route);
   return localizeStructuredData(output, route, locale);
