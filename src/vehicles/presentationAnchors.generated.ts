@@ -18,7 +18,7 @@ export const TANK_PRESENTATION_ANCHOR_SCHEMA_VERSION = 2;
 export const TANK_PRESENTATION_ANCHORS: Readonly<Record<string, TankPresentationAnchor>> = Object.freeze({
   abramsx: Object.freeze({ xM: 0.0026, zM: -0.0939 }),
   aft10: Object.freeze({ xM: 0.0005, zM: 0.1881 }),
-  ajax: Object.freeze({ xM: -0.0067, zM: -0.2982 }),
+  ajax: Object.freeze({ xM: -0.0066, zM: -0.2983 }),
   amx10p: Object.freeze({ xM: 0, zM: 0.0117 }),
   amx10p_25: Object.freeze({ xM: 0, zM: 0.0055 }),
   amx30: Object.freeze({ xM: -0.0037, zM: -0.0432 }),
@@ -249,7 +249,7 @@ export function presentationAnchorFor(id: string): TankPresentationAnchor | null
 export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresentationProjection>> = Object.freeze({
   abramsx: Object.freeze({ centerYM: 2.0715, topHalfM: 6.3541, sideHalfM: 3.177 }),
   aft10: Object.freeze({ centerYM: 2.6352, topHalfM: 4.4842, sideHalfM: 2.8201 }),
-  ajax: Object.freeze({ centerYM: 1.8514, topHalfM: 4.1778, sideHalfM: 2.0889 }),
+  ajax: Object.freeze({ centerYM: 1.8514, topHalfM: 4.1777, sideHalfM: 2.0888 }),
   amx10p: Object.freeze({ centerYM: 2.05, topHalfM: 3.1984, sideHalfM: 2.1935 }),
   amx10p_25: Object.freeze({ centerYM: 2.1, topHalfM: 3.1918, sideHalfM: 2.247 }),
   amx30: Object.freeze({ centerYM: 1.9989, topHalfM: 6.6958, sideHalfM: 3.3479 }),

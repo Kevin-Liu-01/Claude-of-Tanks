@@ -6861,12 +6861,12 @@
             "name": "turretRing",
             "min": [
               -0.9534,
-              1.7374,
+              1.7734,
               -1.7436
             ],
             "max": [
               0.8634,
-              1.9706,
+              2.0066,
               -0.1464
             ],
             "turretLocal": false
@@ -7068,30 +7068,30 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.2251,
-              -0.6699,
-              -0.8409
+              -0.0595,
+              0.0548,
+              -0.8959
             ],
             "max": [
-              0.5848,
-              0.513,
-              -0.0069
+              0.369,
+              0.4948,
+              -0.0569
             ],
             "turretLocal": true
           }
         ]
       },
-      "geometryHash": "f176b080",
-      "metadataHash": "9f1b5636",
+      "geometryHash": "718046b9",
+      "metadataHash": "bac246cf",
       "presentationAnchor": {
-        "xM": -0.0067,
-        "zM": -0.2982
+        "xM": -0.0066,
+        "zM": -0.2983
       },
-      "presentationHash": "2a72b30d",
+      "presentationHash": "9a62d9c7",
       "presentationProjection": {
         "centerYM": 1.8514,
-        "topHalfM": 4.1778,
-        "sideHalfM": 2.0889
+        "topHalfM": 4.1777,
+        "sideHalfM": 2.0888
       },
       "appearance": {
         "version": 1,
@@ -7107,7 +7107,7 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 7,
-          "gunmetal": 6,
+          "gunmetal": 7,
           "tireRubber": 1,
           "opticGlass": 2,
           "unclassified": 19,
@@ -7140,39 +7140,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 117672,
-          "sha256": "3710d4db2394a78744035d4201eb337f8a8ebb34192bf85f1f9883a9cf01f641"
+          "bytes": 121917,
+          "sha256": "3c8da2cda33dc086f769403557a01d7ff31c20242705e21669f9dcf52ccf6c6b"
         },
         "modulesSide": {
           "file": "ajax_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 125592,
-          "sha256": "50e31a8c1d612f20857f8352fa615e48922f8f8fa601ef5aec92fa0bb6706bba"
+          "bytes": 127961,
+          "sha256": "7747fc1735e44bbfa5528cc062f1850ad2184c2628073fa2e1667eeca4215f09"
         },
         "crewSide": {
           "file": "ajax_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 114760,
-          "sha256": "4b78cb5a2b6d488296ea95a5fd47fdaa23324282bccb663b004c6b565a2f53cc"
+          "bytes": 114616,
+          "sha256": "9a075070babace326c70c964e3a1daa656c0ca5e0a034f0ce1c0a4f3e71b4285"
         },
         "angle": {
           "file": "ajax_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26616,
-          "sha256": "90164ce7db8a0b82db94a2d90a221c8f85501525af57493e00d5325dadbd0a6c",
+          "bytes": 26532,
+          "sha256": "c53b640207209fc77969c19c9b09c80235b7abfd0d33c1219f97c6ea692528e1",
           "thumbnail": {
             "file": "thumbs/ajax_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10828,
-            "sha256": "0e9fe4f54e2a8c970515b80b7c10713661e193bc67eedcdf45a308176b21013b"
+            "bytes": 10790,
+            "sha256": "216ad910bb4fc95faafabf04dd5b905fbe8be5a3c1f0abae959e64f7e59471f0"
           }
         },
         "top": {
@@ -7180,32 +7180,32 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 15376,
-          "sha256": "469934061c001a404f779cae5e96ff46a1399196c5ce196c009a78003ec79e91"
+          "bytes": 15882,
+          "sha256": "bcae11ccf509829bace9c4a7eb25d3b807828be2a01dde3f98e78e1f24ed211b"
         },
         "side": {
           "file": "ajax_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 15536,
-          "sha256": "58eab7be5b54517a239df6406c73160626b51a5ee3b7d02c030a02d79b15674a"
+          "bytes": 15670,
+          "sha256": "c8f4f6aed1d055ae039f5a2c5c7ee8480c88073facf0369e6212ab217fec73f5"
         },
         "topSilhouette": {
           "file": "ajax_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1505,
-          "sha256": "3b881ae2d29aff7550510698796042c50d4b001506e3702d72476a82570b66f0"
+          "bytes": 1508,
+          "sha256": "9dc3a900746189a04fea77a4954e1ee1065dcc33da79093aeb6b0f3359517763"
         },
         "sideSilhouette": {
           "file": "ajax_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5381,
-          "sha256": "e0a46cfba750f9ab0720a9a5b1d06c70be8dda5d9083345849c95f95e5d3bf05"
+          "bytes": 5461,
+          "sha256": "b7aa8a06f0301881c22f392644cdea2a1103e3afba88f32cfee30ae5c21f94db"
         },
         "markings": {
           "file": "ajax_markings.png",
