@@ -401,15 +401,16 @@ body[data-cot-panels='overlay'] .cot-lt-band>*+*{padding-left:var(--s2);}
 body[data-cot-panels='overlay'] .cot-garage .cot-lt-loadout{flex:none;}
 body[data-cot-panels='overlay'] .cot-garage .cot-lt-loadout .eqslot{width:52px;}
 body[data-cot-panels='overlay'] .cot-lt-paint{flex:1 1 auto;}
-body[data-cot-panels='overlay'] .cot-lt-swatch{width:34px;}
-body[data-cot-panels='overlay'] .cot-lt-swatch.is-on{flex:1 1 auto;width:auto;min-width:44px;max-width:112px;}
+/* a phone shows the worn paint wide, one more paint and every paint, each a 44 px touch target */
+body[data-cot-panels='overlay'] .cot-lt-swatch{width:44px;}
+body[data-cot-panels='overlay'] .cot-lt-swatch.is-on{flex:1 1 0;width:auto;min-width:44px;max-width:112px;}
 body[data-cot-panels='overlay'] .cot-lt-swatch .nm{display:none;}
-body[data-cot-panels='overlay'] .cot-lt-swatch:nth-child(n+4):not(.cot-lt-paint-all){display:none;}
+body[data-cot-panels='overlay'] .cot-lt-swatch:nth-child(n+3):not(.cot-lt-paint-all){display:none;}
 /* a folded tablet has the room for wider slots, the third quick paint and the worn paint's name */
 @media (min-width:600px){
-  body[data-cot-panels='overlay'] .cot-garage .cot-lt-loadout .eqslot{width:72px;}
-  body[data-cot-panels='overlay'] .cot-lt-swatch:nth-child(4):not(.cot-lt-paint-all){display:block;}
-  body[data-cot-panels='overlay'] .cot-lt-swatch.is-on .nm{display:block;}
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-lt-loadout .eqslot{width:72px;}
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lt-swatch:is(:nth-child(3),:nth-child(4)):not(.cot-lt-paint-all){display:block;}
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lt-swatch.is-on .nm{display:block;}
 }
 body[data-cot-panels='overlay'] .cot-lt-paint-all{--h:44px;width:44px;flex:none;}
 /* the stage's acts stand at its top right, under the bar's buttons and clear of the tank framed above the name */
@@ -421,22 +422,59 @@ body[data-cot-panels='overlay'] .cot-lt-acts [data-lt-photo]{display:none;}
 /* ---- a phone on its side (and a folded tablet held wide): the stage and the fleet on the left, the column on the right
    with the name, the band, the figures and the battle card ---- */
 body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage{--cot-land-col:clamp(300px,46vw,440px);--slot:48px;--cot-figures-h:100px;
+  --cot-name-h:30px;--cot-col-gap:var(--s2);--cot-battle-h:64px;
   --cot-col-right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));--cot-col-top:max(60px,calc(env(safe-area-inset-top,0px) + 54px));
   --cot-fleet-right:calc(var(--cot-col-right) + var(--cot-land-col) + var(--s3));}
-body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lower-third{display:flex;flex-direction:column;gap:var(--s2);position:absolute;
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lower-third{display:flex;flex-direction:column;gap:var(--cot-col-gap);position:absolute;
   right:var(--cot-col-right);top:var(--cot-col-top);bottom:auto;left:auto;width:var(--cot-land-col);pointer-events:none;}
 body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-acts{right:calc(var(--cot-fleet-right) - var(--s3) + var(--s2));
   top:var(--cot-col-top);}
 body[data-cot-panels='overlay'][data-cot-orientation='landscape'][data-cot-width] .cot-garage:not([data-garage-panel='equipment']) .stats{
-  right:var(--cot-col-right);left:auto;top:calc(var(--cot-col-top) + 30px + var(--slot) + 2 * var(--s2) + var(--s2));bottom:auto;
+  right:var(--cot-col-right);left:auto;top:calc(var(--cot-col-top) + var(--cot-name-h) + var(--slot) + 3 * var(--cot-col-gap));bottom:auto;
   width:var(--cot-land-col);height:var(--cot-figures-h,60px);max-height:none;overflow:hidden;
   background:var(--glyph-plate);border:0;border-radius:var(--control-radius);box-shadow:var(--ring-1);}
 /* on its side the column has the room for all six figures, three across in two rows */
 body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage .stats .cot-headline>.cot-hrow:nth-child(n+4){display:block;}
 body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-battle-control{top:auto;left:auto;right:var(--cot-col-right);
-  bottom:max(var(--cot-overlay-edge),env(safe-area-inset-bottom,0px));width:var(--cot-land-col);height:64px;}
+  bottom:max(var(--cot-overlay-edge),env(safe-area-inset-bottom,0px));width:var(--cot-land-col);height:var(--cot-battle-h);}
 body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-multiplayer-entry{display:none;}
 body[data-cot-panels='overlay'][data-cot-orientation='landscape'][data-cot-width] :is(.cot-country-rail,.cot-carousel){right:var(--cot-fleet-right);}
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-head{height:var(--cot-name-h);}
+/* on its side the column is narrow: square slots, the worn paint, one more (two from 760 px) and every paint */
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage .cot-lt-loadout .eqslot{width:var(--slot);}
+body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-paint-all{--h:44px;width:44px;}
+@media (min-width:760px){
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-swatch:nth-child(3):not(.cot-lt-paint-all){display:block;}
+}
+@media (max-width:759px){
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-band{gap:var(--s1);}
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-band>*+*{padding-left:var(--s1);}
+}
+/* a very short window on its side (a browser bar over a phone, the 240 px minimum) closes the column up: a smaller name,
+   44 px slots, three figures without their scales and a lower battle card */
+@media (max-height:340px){
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage{--slot:44px;--cot-figures-h:44px;--cot-name-h:22px;
+    --cot-col-gap:var(--s1);--cot-battle-h:48px;--cot-col-top:max(56px,calc(env(safe-area-inset-top,0px) + 50px));}
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-name{font-size:var(--fs-18);}
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage .stats .cot-headline>.cot-hrow:nth-child(n+4),
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage .stats .cot-hrow .cot-c-scale{display:none;}
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-battle-control .cot-battle{font-size:var(--fs-20);}
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-battle-mode .sum-pic{width:64px;}
+  /* the acts lie in a row at the stage's top right, clear of the fleet's tools under them */
+  body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-acts{flex-direction:row;}
+}
+/* a narrow phone (under 360 px) narrows its slots to the touch floor */
+@media (max-width:359px){
+  body[data-cot-panels='overlay'] .cot-garage .cot-lt-loadout .eqslot{width:44px;}
+  body[data-cot-panels='overlay'] .cot-lt-band{gap:var(--s1);}
+  body[data-cot-panels='overlay'] .cot-lt-band>*+*{padding-left:var(--s1);}
+}
+/* a short phone held upright (under 640 px) closes its stack up so the tank keeps a stage */
+@media (max-height:640px){
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage{--cot-dock-h:52px;--cot-figures-h:48px;--slot:44px;--cot-stack-gap:6px;}
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .stats .cot-hrow .cot-c-scale{display:none;}
+  body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lt-name{font-size:var(--fs-20);}
+}
 /* the every-nation chip (the direction's All): its word where a nation shows its flag */
 .cot-country-all .lbl{font:600 var(--fs-13)/1 var(--font-display);color:var(--ink-1);}
 }
