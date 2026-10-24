@@ -27,14 +27,14 @@
 .cot-record-plate p{grid-area:line;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px var(--s2);min-width:0;margin:0}
 .cot-record-plate b{font:600 var(--fs-16)/1.2 var(--font-ui);color:var(--ink-1)}
 .cot-record-plate small{font-size:var(--fs-12);line-height:1.4;color:var(--ink-2)}
-.cot-record-result{font:700 var(--fs-12)/1 var(--font-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.cot-record-result{font:700 var(--fs-12)/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-2)}
 .result-victory .cot-record-result{color:var(--text-ok)}
 .result-defeat .cot-record-result{color:var(--text-danger)}
 
 /* the tabs: an underline marks the open one; each carries its count */
 .cot-record-tabs{display:flex;flex-shrink:0;gap:var(--s1);padding:0 var(--s6);border-bottom:1px solid var(--line-2);background:var(--surface-nav)}
 .cot-record-tab{display:inline-flex;align-items:center;gap:var(--s2);min-height:48px;padding:0 var(--s4);border:0;border-bottom:2px solid transparent;background:none;color:var(--ink-3);
-  font:600 var(--fs-13)/1 var(--font-ui);letter-spacing:.04em;text-transform:uppercase;cursor:pointer}
+  font:600 var(--fs-13)/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;cursor:pointer}
 .cot-record-tab svg{flex:none;width:18px;height:18px}
 .cot-record-tab small{font:500 var(--fs-12)/1 var(--font-data);letter-spacing:0;color:var(--ink-3)}
 .cot-record-tab:hover{color:var(--ink-1)}
@@ -71,7 +71,7 @@
 .cot-record-card{min-width:0;padding:var(--s5);background:var(--surface-page);box-shadow:var(--ring-1)}
 .cot-record-reasoning{background:linear-gradient(135deg,var(--accent-wash),transparent 60%),var(--surface-page)}
 .cot-record-card-head{display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s4);color:var(--accent)}
-.cot-record-card-head strong{font:600 var(--fs-12)/1.2 var(--font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-1)}
+.cot-record-card-head strong{font:600 var(--fs-12)/1.2 var(--font-ui);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-1)}
 .cot-record-card-head small{margin-left:auto;font-size:var(--fs-12);color:var(--ink-3)}
 .cot-record-reason-row,.cot-record-latest-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,96px),1fr));gap:var(--s3) var(--s2)}
 .cot-service-record :is(.cot-record-reason,.cot-record-latest-medal){display:flex;flex-direction:column;align-items:center;gap:var(--s2);min-width:0;min-height:44px;padding:var(--s2) var(--s1);
@@ -93,7 +93,7 @@
 /* medals: one card each; a locked medal's art is dimmed and says so to a screen reader only */
 .cot-record-medal-group+.cot-record-medal-group{margin-top:var(--s6)}
 .cot-record-medal-group h3{display:flex;justify-content:space-between;gap:var(--s4);margin:0 0 var(--s3);padding-bottom:var(--s2);border-bottom:1px solid var(--line-2);
-  font:600 var(--fs-12)/1.2 var(--font-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-2)}
+  font:600 var(--fs-12)/1.2 var(--font-ui);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-2)}
 .cot-record-medal-group h3 small{font:500 var(--fs-12)/1.2 var(--font-data);letter-spacing:0;color:var(--ink-3)}
 .cot-record-medal-group[data-group=reasoning] h3{color:var(--accent)}
 .cot-record-medal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:var(--s3)}

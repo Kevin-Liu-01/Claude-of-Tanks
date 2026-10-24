@@ -611,24 +611,24 @@
     "width": 1920,
     "height": 1080,
     "durationMs": 6600,
-    "videoBytes": 3017535,
-    "posterBytes": 359170,
+    "videoBytes": 3042523,
+    "posterBytes": 382555,
     "captureMode": "studio-ui",
     "actors": [
       {
-        "id": "type10_x",
+        "id": "type10",
         "name": "shooter"
       },
       {
-        "id": "k2_x",
+        "id": "k2_black_panther",
         "name": "ally1"
       },
       {
-        "id": "t90m_x",
+        "id": "t90m",
         "name": "victim"
       },
       {
-        "id": "t72b3m_x",
+        "id": "t72b3m_2016",
         "name": "foe1"
       }
     ],

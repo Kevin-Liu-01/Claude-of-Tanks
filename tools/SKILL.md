@@ -232,6 +232,21 @@ unlit vehicle tag (round 3), or one left registered after dispose:
 the material invariant behind the band. `tank:release:check` runs it on the released ids; `--ids=all` (220 tanks, two
 qualities) takes about 25 minutes in one process, so split it across processes for a fleet sweep.
 
+Standalone probes run by hand (each is its owning lane's reusable rig; none is in `npm test`):
+- `node tools/civic-census.mjs [--out=<file.jsonl>] [mapId…]` — read-only, from each map's collision shard and config:
+  its town pads, the legacy kerb pass replayed, and whether the map needs the civic-area or pathway kit (maps lane).
+- `node tools/click-timeline.mjs --base=<label>=<url> --out=<dir> [--paths=all|<id>,…] [--profile=desktop|phone]`, then
+  `--report=<dir>` — click to next paint for every in-game click path, A/B across builds served by
+  `tools/vercel-static-preview.mjs` (the click-perf rig beside `tools/nav-timeline.mjs`).
+- `node tools/gallery-shots.mjs --port=<n> --out=<dir> 'id@px,py,pz@tx,ty,tz;…'` — Tank Gallery stills at exact cameras
+  (a markup export's camera.position and camera.target), headless on SwiftShader against a served checkout.
+- `node tools/gunship-lens-strip.browser.mjs --runs=<tag>:<dist>:desktop+phone:daylight+thermal [--stamp=<ms>]` — frame
+  strips of the AC-130's guns firing through each lens on a manual clock, over built dists under the capture lock.
+- `node tools/icon-alpha-floor.mjs --ids=<id,…>|--all` — re-encodes published tank icons rendered before
+  `tools/icons-page.html` floored transparent pixels (the grey squares at antenna tips), rewriting their bytes and sha256.
+- `node tools/marking-flicker-probe.mjs --ids=<id,…> --out=<dir> [--views=hero,left,rear] [--roots=base,lane]` — the
+  Gallery's marking and prop flicker meter (blip, nudge) over scripted orbits, on the GPU under the capture lock.
+
 ## Gotchas
 <!-- agent-docs:fill:gotchas -->
 Collision-fixture codec changes use the maintained, headless

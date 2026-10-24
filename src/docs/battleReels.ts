@@ -1,4 +1,4 @@
-import { t } from '../ui/i18n.ts';
+import { onLocaleChange, t } from '../ui/i18n.ts';
 
 const MEDIA_ROOT = '/media/site50-r14/reels';
 
@@ -39,10 +39,11 @@ const REEL_SOURCES: ReadonlyArray<readonly [string, string, string]> = [
   ['s228-street-1v2', 'media.site50.short.s228Street1v2', 'map.urban'],
 ];
 
+// The names resolve on read: this list is built when the module loads, before a Chinese page's catalog has arrived.
 export const BATTLE_REELS: readonly BattleReel[] = Object.freeze(REEL_SOURCES.map(([id, titleKey, mapKey]) => Object.freeze({
   id,
-  title: t(titleKey),
-  map: t(mapKey),
+  get title() { return t(titleKey); },
+  get map() { return t(mapKey); },
   video: `${MEDIA_ROOT}/${id}.mp4`,
   poster: `${MEDIA_ROOT}/${id}.webp`,
 })));
@@ -86,6 +87,24 @@ export function mountBattleReels(scope: Document = document): void {
   const buttons = [...grid.querySelectorAll<HTMLButtonElement>('[data-battle-reel-index]')];
   let activeIndex = 0;
 
+  const caption = (index: number): void => {
+    const reel = BATTLE_REELS[index];
+    title.textContent = reel.title;
+    map.textContent = `${reel.map} · ${t('docs.studio.reelSpec')}`;
+    count.textContent = `${reelNumber(index)} / ${BATTLE_REELS.length}`;
+    video.setAttribute('aria-label', t('docs.studio.reelAria', { title: reel.title, map: reel.map }));
+  };
+  caption(0); // the page's static caption is the English one the media wiring writes
+  // A Chinese page's catalog can land after the mount: the cards and the caption follow it.
+  onLocaleChange(() => {
+    buttons.forEach((button, index) => {
+      const label = button.querySelector('strong'), place = button.querySelector('small');
+      if (label) label.textContent = BATTLE_REELS[index].title;
+      if (place) place.textContent = BATTLE_REELS[index].map;
+    });
+    caption(activeIndex);
+  });
+
   const selectReel = (index: number, play = true): void => {
     const reel = BATTLE_REELS[index];
     if (!reel) return;
@@ -93,10 +112,7 @@ export function mountBattleReels(scope: Document = document): void {
     buttons.forEach((button, buttonIndex) => {
       button.setAttribute('aria-pressed', String(buttonIndex === index));
     });
-    title.textContent = reel.title;
-    map.textContent = `${reel.map} · ${t('docs.studio.reelSpec')}`;
-    count.textContent = `${reelNumber(index)} / ${BATTLE_REELS.length}`;
-    video.setAttribute('aria-label', t('docs.studio.reelAria', { title: reel.title, map: reel.map }));
+    caption(index);
 
     if (activeIndex !== index) {
       video.pause();

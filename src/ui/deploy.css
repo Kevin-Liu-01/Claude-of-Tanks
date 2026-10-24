@@ -240,7 +240,7 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open[data-deploy
 /* the random battlefield has no one map to show: its mosaic takes the whole card */
 .cot-garage .cot-deploy-field-mm:has(img[hidden]){display:none;}
 /* the battlefield picker opens over the plate */
-.cot-garage .cot-deploy-field-pop{position:absolute;left:0;right:0;top:0;max-height:min(440px,58vh);overflow:auto;padding:var(--s3);
+.cot-garage .cot-deploy-field-pop{position:absolute;z-index:var(--z-menu);left:0;right:0;top:0;max-height:min(440px,58vh);overflow:auto;padding:var(--s3);
   border-radius:var(--control-radius);background:var(--surface-menu);box-shadow:var(--e3);}
 .cot-garage .cot-deploy-field-pop[hidden]{display:none;}
 .cot-garage .cot-deploy-field-pop .cot-maps{display:flex;}
