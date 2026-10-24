@@ -383,7 +383,10 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
       barElement.style.background = `linear-gradient(90deg, ${armorRampGradient()})`;
       const ticks = document.createElement('div');
       ticks.className = 'anatomy-ramp-ticks';
+      // the last tick sits right-aligned at the bar's end; a tick within 9 % of it would print into it (900 under 2,000+)
+      const lastAt = armorRampPosition(ARMOR_RAMP_TICKS[ARMOR_RAMP_TICKS.length - 1]);
       for (const mm of ARMOR_RAMP_TICKS) {
+        if (mm !== ARMOR_RAMP_TICKS[ARMOR_RAMP_TICKS.length - 1] && lastAt - armorRampPosition(mm) < 0.09) continue;
         const tick = document.createElement('span');
         tick.style.left = `${(armorRampPosition(mm) * 100).toFixed(1)}%`;
         tick.textContent = mm >= 1200 ? `${formatNumber(mm)}+` : formatNumber(mm);

@@ -51,6 +51,20 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 .toggles .cot-c-chip--compact{width:28px;padding:0}
 .toggles .cot-c-chip:disabled{color:var(--ink-4);cursor:default}
 .toggles--glyphs{gap:4px 10px}
+.toggles--glyphs .cot-c-chip{gap:6px}
+.toggles--glyphs .cot-c-chip .cot-i{width:14px;height:14px}
+/* More filters (247): the era, role and extra facets under one disclosure, named by their own labels once open */
+.more-facets summary{display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border-radius:var(--control-radius);
+  box-shadow:var(--ring-1);color:var(--ink-2);font:500 var(--fs-12)/1 var(--font-body);list-style:none;cursor:pointer}
+.more-facets summary::-webkit-details-marker{display:none}
+.more-facets summary .cot-i{margin-left:auto;transition:transform var(--dur-fast) var(--ease-enter)}
+.more-facets[open] summary .cot-i{transform:rotate(180deg)}
+.more-facets__n{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);
+  color:var(--ink-on-accent);font:600 var(--fs-11)/1 var(--font-data)}
+.more-facets__n[hidden]{display:none}
+.more-facets>.toggles--glyphs{display:grid;gap:8px;margin-top:8px}
+@media (hover:hover){.more-facets summary:hover{color:var(--ink-1)}}
+@media (prefers-reduced-motion:reduce){.more-facets summary .cot-i{transition:none}}
 .order{display:flex;align-items:center;gap:4px}
 .order__sort{position:relative;flex:1;min-width:0}
 .order__sort select,.vsc__pick select{width:100%;height:32px;padding:0 24px 0 10px;appearance:none;-webkit-appearance:none;border:0;
@@ -132,7 +146,8 @@ html:not(.gallery-ready) :is(.browse,.dossier-scroll,.views,.tools){visibility:h
 }
 .inset{left:16px;bottom:16px;width:150px;margin:0;padding:8px}
 .inset canvas{display:block;width:100%;height:auto;aspect-ratio:134/96}
-#viewport .legend:not(:empty){right:16px;bottom:16px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;
+/* the legend stands above the bottom row, so the turntable and photo bar in the middle never sit under it */
+#viewport .legend:not(:empty){right:16px;bottom:64px;display:flex;flex-direction:column;align-items:flex-start;gap:6px;
   max-width:min(340px,46%);padding:10px 12px}
 #viewport .legend>span{display:flex;align-items:center;gap:8px;color:var(--ink-2);font:500 var(--fs-12)/1 var(--font-body)}
 #viewport .legend svg{width:15px;height:15px}

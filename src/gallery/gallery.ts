@@ -657,10 +657,12 @@ const classes = VEHICLE_CLASS_ORDER.filter((id) => records.some((record) => reco
 const roles = VEHICLE_BATTLE_ROLE_ORDER.filter((id) => records.some((record) => record.battleRole?.id === id));
 
 /** A filter: a flag tile (`.flags`), a kit chip with a short label, or a glyph-only chip; the full name is its label. */
-function facetButton(attrs: string, pressed: boolean, label: string, content: string, kind: 'flag' | 'chip' | 'glyph', disabled = false): string {
-  const cls = kind === 'flag' ? '' : ` class="cot-c-chip${kind === 'glyph' ? ' cot-c-chip--compact' : ''}"`;
-  return `<button type="button"${cls} ${attrs} aria-pressed="${pressed}" aria-label="${esc(label)}" title="${esc(label)}" data-ui-sound="toggle"`
-    + `${disabled ? ' disabled' : ''}>${content}</button>`;
+/** A facet's button: a flag or a short chip named by its label, or (behind More filters) a glyph beside its own name. */
+function facetButton(attrs: string, pressed: boolean, label: string, content: string, kind: 'flag' | 'chip' | 'named', disabled = false): string {
+  const cls = kind === 'flag' ? '' : ' class="cot-c-chip"';
+  const name = kind === 'named' ? '' : ` aria-label="${esc(label)}" title="${esc(label)}"`;
+  const body = kind === 'named' ? `${content}<span>${esc(label)}</span>` : content;
+  return `<button type="button"${cls} ${attrs} aria-pressed="${pressed}"${name} data-ui-sound="toggle"${disabled ? ' disabled' : ''}>${body}</button>`;
 }
 function renderFacets(): void {
   $('#nationFacets').innerHTML = facetButton('data-facet="nation" data-value=""', !browse.nation, t('gallery.archive.filter.allNations'),
@@ -673,17 +675,27 @@ function renderFacets(): void {
       esc(vehicleFacetLabel(meta, t, { short: true })), 'chip');
   }).join('');
   $('#eraFacets').innerHTML = eras.map(([key, label]) => facetButton(`data-facet="era" data-value="${esc(key)}"`, browse.era === key, label,
-    icon(GALLERY_ERA_ICONS[key] || 'clock', { size: 16 }), 'glyph')).join('');
+    icon(GALLERY_ERA_ICONS[key] || 'clock', { size: 14 }), 'named')).join('');
   $('#roleFacets').innerHTML = roles.map((id) => facetButton(`data-facet="role" data-value="${esc(id)}"`, browse.role === id,
-    vehicleFacetLabel(VEHICLE_BATTLE_ROLE_META[id], t), icon(ROLE_ICONS[id] || 'vehicle', { size: 16 }), 'glyph')).join('');
+    vehicleFacetLabel(VEHICLE_BATTLE_ROLE_META[id], t), icon(ROLE_ICONS[id] || 'vehicle', { size: 14 }), 'named')).join('');
   $('#extraFacets').innerHTML = [
-    facetButton('data-facet="autoloader"', browse.autoloader, t('gallery.facet.autoloader'), icon('autoloader', { size: 16 }), 'glyph'),
-    facetButton('data-facet="take"', browse.take, t('gallery.facet.take'), icon('play', { size: 16 }), 'glyph', !takeIds),
-    facetButton('data-facet="concept"', browse.concept, vehicleFacetLabel(CONCEPT_PROTOTYPE_FILTER_META, t), icon('lightbulb', { size: 16 }), 'glyph'),
-    facetButton('data-facet="favourite"', browse.favourite, t('gallery.facet.favourite'), icon('star', { size: 16 }), 'glyph',
+    facetButton('data-facet="autoloader"', browse.autoloader, t('gallery.facet.autoloader'), icon('autoloader', { size: 14 }), 'named'),
+    facetButton('data-facet="take"', browse.take, t('gallery.facet.take'), icon('play', { size: 14 }), 'named', !takeIds),
+    facetButton('data-facet="concept"', browse.concept, vehicleFacetLabel(CONCEPT_PROTOTYPE_FILTER_META, t), icon('lightbulb', { size: 14 }), 'named'),
+    facetButton('data-facet="favourite"', browse.favourite, t('gallery.facet.favourite'), icon('star', { size: 14 }), 'named',
       !favourites.size && !browse.favourite),
   ].join('');
+  // More filters (247): the era, role and extra facets fold under one disclosure, which names how many of them are on
+  // and opens by itself when a link or a reload arrives with one set
+  const more = [browse.era, browse.role, browse.autoloader, browse.take, browse.concept, browse.favourite].filter(Boolean).length;
+  const count = $('#moreFacetCount');
+  count.textContent = String(more);
+  count.hidden = !more;
+  const disclosure = document.querySelector<HTMLDetailsElement>('#moreFacets');
+  if (disclosure && more && !moreFacetsShown) disclosure.open = true;
+  moreFacetsShown = true;
 }
+let moreFacetsShown = false;
 function onFacet(event: Event): void {
   const button = (event.target as Element | null)?.closest<HTMLButtonElement>('button[data-facet]');
   if (!button || button.disabled) return;
