@@ -102,12 +102,19 @@ function localizeStructuredData(
   const localizedCrumb = locale !== DEFAULT_LOCALE
     ? translation(locale, 'metadata.docs.crumb')
     : null;
+  // A node named by the page's title (WebPage, CollectionPage), or by its page part before " · " (a breadcrumb), takes
+  // the locale's title the same way.
+  const titleKey = route.id === 'notFound' ? 'notFound.metaTitle' : `metadata.${route.id}.title`;
+  const englishTitle = locale !== DEFAULT_LOCALE && localizedHas(titleKey) ? renderProductStats(translation('en-US', titleKey)) : null;
+  const localizedTitle = englishTitle ? renderProductStats(translation(locale, titleKey)) : null;
+  const pagePart = (title: string): string => title.split(' · ')[0];
 
   return html.replace(
     /<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi,
     (block, source: string) => {
       try {
-        const value = JSON.parse(source) as unknown;
+        // product-stat tokens may stand as bare numbers (the Gallery's numberOfItems): rendered first, the block parses
+        const value = JSON.parse(renderProductStats(source)) as unknown;
         const visit = (node: unknown): void => {
           if (!node || typeof node !== 'object') return;
           if (Array.isArray(node)) {
@@ -122,6 +129,11 @@ function localizeStructuredData(
               record[key] = localizedHeadline;
             } else if (localizedDescription && key === 'description' && child === englishDescription) {
               record[key] = localizedDescription;
+            } else if (englishTitle && localizedTitle && key === 'name' && child === englishTitle) {
+              record[key] = localizedTitle;
+            } else if (englishTitle && localizedTitle && key === 'name' && englishTitle.includes(' · ')
+              && child === pagePart(englishTitle) && child !== 'Claude of Tanks') {
+              record[key] = pagePart(localizedTitle);
             } else if (localizedHeadline && key === 'name' && typeof child === 'string') {
               if (child === englishHeadline) record[key] = localizedHeadline;
               else if (localizedCrumb && child === 'Documentation') record[key] = localizedCrumb;

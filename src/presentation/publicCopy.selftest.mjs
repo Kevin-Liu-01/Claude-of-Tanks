@@ -26,6 +26,9 @@ const retiredPhrases = [
   'Contact sheets are the visual gate.',
   'Start the engine.',
   'Tanks in context.',
+  // the manual's old names (248: one title form, "<page> · Claude of Tanks"; the manual is the Field Manual)
+  'Technical Field Manual',
+  'Claude of Tanks Technical Manual',
 ];
 
 for (const file of [...pageFiles, ...supportingFiles]) {
@@ -33,6 +36,15 @@ for (const file of [...pageFiles, ...supportingFiles]) {
   for (const phrase of retiredPhrases) {
     assert.ok(!source.includes(phrase), `${file} reintroduced retired campaign copy: ${phrase}`);
   }
+}
+
+// the manual's titles name the page, then the game, in both catalogs: no manual suffix after the brand
+for (const locale of ['en-US', 'zh-CN']) {
+  const catalog = JSON.parse(readFileSync(join(ROOT, `src/ui/i18nCatalog.${locale}.json`), 'utf8'));
+  for (const [key, value] of Object.entries(catalog).filter(([key]) => /^metadata\.docs[A-Za-z]*\.title$/.test(key))) {
+    assert.match(value, /^[^·]+ · Claude of Tanks$/, `${locale} ${key} "${value}" is "<page> · Claude of Tanks"`);
+  }
+  assert.equal(catalog['docs.topic.pageTitle'], 'Claude of Tanks', `${locale} a topic's run-time title ends with the game`);
 }
 
 for (const file of pageFiles) {
