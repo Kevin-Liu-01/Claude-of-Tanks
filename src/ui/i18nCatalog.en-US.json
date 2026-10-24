@@ -2698,6 +2698,7 @@
   "docs.controls.hud.setting": "On touch screens, turn on {setting} in Settings; a three-finger tap brings the full HUD back.",
   "docs.controls.watch.lede": "Watch a bots' battle from the Garage: Watch sits beside Deploy. Every seat is a bot's, every tank is visible and nothing is recorded. It works in {modes} modes.",
   "docs.controls.watch.rideAlt": "Riding a bot's tank in Watch: its name, the switch buttons and Drive at the top",
+  "docs.controls.watch.phoneAlt": "Watch on a phone: riding a tank across Verdant Fields, the Watch bar on top and its target ahead",
   "docs.controls.watch.drone.title": "Drone",
   "docs.controls.watch.drone.body": "Fly anywhere over the battle. You open {altitude} m up at {start} m/s; the wheel steps the speed ({speeds} m/s) and Shift boosts ×{boost}.",
   "docs.controls.watch.ride.title": "Ride along",
