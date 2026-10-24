@@ -11,9 +11,7 @@ import { staleChapters } from '../../tools/docs-prerender.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const expected = [
-  'modes',
-  'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance',
-  'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio', 'filming',
+  'start', 'controls', 'modes', 'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio', 'filming',
 ];
 
 assert.deepEqual([...TOPIC_ORDER], expected, 'the manual keeps one deliberate public topic order');

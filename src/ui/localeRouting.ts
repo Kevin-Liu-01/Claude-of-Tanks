@@ -30,6 +30,8 @@ type PublicRouteId =
   | 'docsStudio'
   | 'docsFilming'
   | 'docsModes'
+  | 'docsStart'
+  | 'docsControls'
   | 'notFound';
 
 export interface PublicRouteRecord {
@@ -42,7 +44,7 @@ export interface PublicRouteRecord {
 
 const DOCS_TOPICS = [
   'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai', 'multiplayer', 'audio',
-  'interface', 'studio', 'filming', 'modes',
+  'interface', 'studio', 'filming', 'modes', 'start', 'controls',
 ] as const;
 
 const route = (id: PublicRouteId, pathname: string, sourceHtml: string, localizedHtml = sourceHtml, indexable = true):

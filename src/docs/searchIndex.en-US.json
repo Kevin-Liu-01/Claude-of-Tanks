@@ -1,5 +1,77 @@
 [
  {
+  "href": "/docs/start",
+  "title": "From the Garage to a win",
+  "chapter": "Your first battle",
+  "text": "Five steps, in the order you meet them."
+ },
+ {
+  "href": "/docs/start#garage",
+  "title": "Pick a tank",
+  "chapter": "Your first battle",
+  "text": "01 The Garage opens on your fleet of 220 tanks. Pick one: its dossier shows the armour, the gun and how it moves, and the Tank Gallery opens its full anatomy."
+ },
+ {
+  "href": "/docs/start#deploy",
+  "title": "Deploy",
+  "chapter": "Your first battle",
+  "text": "02 Deploy sets the battle: one of 13 modes, a battlefield (or a random one of 31), the time of day, and the sides, 7 v 7 or 14 v 14."
+ },
+ {
+  "href": "/docs/start#drive",
+  "title": "Drive and aim",
+  "chapter": "Your first battle",
+  "text": "03 W A S D drive; the mouse turns the turret. L-SHIFT drops into the gunner's sight at ×2 / ×4 / ×8, the wheel zooms, and CAPS holds the gun while you look around."
+ },
+ {
+  "href": "/docs/start#fire",
+  "title": "Fire",
+  "chapter": "Your first battle",
+  "text": "04 LMB fires; hold it to fire at each reload. 1 2 3 pick the shell. 4 5 6 use the Repair Kit (35 s), the First Aid Kit (45 s) and the Fire Extinguisher (25 s); a kit's cooldown starts only once it has done something."
+ },
+ {
+  "href": "/docs/start#win",
+  "title": "Win",
+  "chapter": "Your first battle",
+  "text": "05 Standard Battle is won by destroying every enemy inside its 15-minute clock; every other mode sets its own goal. When you are knocked out, the camera follows your allies."
+ },
+ {
+  "href": "/docs/start#next",
+  "title": "Next",
+  "chapter": "Your first battle",
+  "text": "Controls and Watch Every key, the touch layout and Watch mode's three views. Game modes Every mode's goal, clock and rules, drawn on the map."
+ },
+ {
+  "href": "/docs/controls",
+  "title": "Every key, every view",
+  "chapter": "Controls and Watch",
+  "text": "Keyboard, mouse, gamepad and touch, then Watch mode's drone, ride along and take control."
+ },
+ {
+  "href": "/docs/controls#keys",
+  "title": "Keys, mouse and gamepad",
+  "chapter": "Controls and Watch",
+  "text": "Every action and its default keys, named as the settings list them. Change any of them in Settings. Movement Action Keys Gamepad Move Forward W ↑ — Move Back S ↓ — Steer Left A ← — Steer Right D → — Handbrake SPACE A Flip Tank F — Combat Action Keys Gamepad Fire Gun LMB RT Sniper Mode L-SHIFT LT Shell Slot 1 1 D-UP Shell Slot 2 2 D-LEFT Shell Slot 3 3 D-RIGHT Drop ammunition supplies J — Drop health supplies K — Cycle sensor view I — Drone V — Smoke G — Lights N — Auto gun B — Special Action E LB Reload Magazine C D-DOWN Auto-Aim Lock T — Armor Overlay (Hitboxes) H — Consumables Action Keys Gamepad Repair Kit 4 X First Aid Kit 5 Y Fire Extinguisher 6 B Camera Action Keys Gamepad Gun Hold (Free Aim) CAPS L-ALT RB Aim / Free Look (RMB) RMB — Zoom In WHEEL ↑ — Zoom Out WHEEL ↓ — Interface Action Keys Gamepad Minimap Zoom M BACK Shot Info Log L — Performance Overlay F8 — Network Details F3 — Leave Battle F4 — Reset Range R — Moving Targets Y — Settings Menu ESC START"
+ },
+ {
+  "href": "/docs/controls#hold",
+  "title": "Hold or toggle",
+  "chapter": "Controls and Watch",
+  "text": "Settings › Accessibility can switch each of these between holding the key and pressing it once. Fire Gun Handbrake Gun Hold (Free Aim) Aim / Free Look (RMB) Team rosters"
+ },
+ {
+  "href": "/docs/controls#touch",
+  "title": "Touch",
+  "chapter": "Controls and Watch",
+  "text": "On a phone or tablet the battle shows its own controls. Left thumb: the joystick drives. Swipe anywhere else to aim. Tap Fire to shoot. Hold and drag to aim, release to fire; hold longer to keep firing. Drag into the cancel zone to hold the shot. Scope enters the gunner's sight. Pinch to step the sight's zoom. Auto Aim locks onto the enemy nearest the reticle. Rocket jumps or rights the tank, in modes that have a jump."
+ },
+ {
+  "href": "/docs/controls#watch",
+  "title": "Watch mode",
+  "chapter": "Controls and Watch",
+  "text": "Watch a bots' battle from the Garage: Watch sits beside Deploy. Every seat is a bot's, every tank is visible and nothing is recorded. It works in 12 modes. Drone Fly anywhere over the battle. You open 70 m up at 14 m/s; the wheel steps the speed (4 / 8 / 14 / 24 / 40 / 64 m/s) and Shift boosts ×3. W A S D Fly SPACE C Climb and descend L-SHIFT Boost WHEEL ↑ WHEEL ↓ Step the speed Ride along Follow any tank from behind, or look through its gunner's sight at ×2 / ×4 / ×8. F Ride the tank in the middle of the view TAB Q E Next and previous tank L-SHIFT Gunner's sight V Back to the drone Take control Take over the tank you ride and fight it yourself. If it dies, the drone takes you back after 3.5 s. ENTER Take control, or hand it back"
+ },
+ {
   "href": "/docs/modes",
   "title": "Every way to fight",
   "chapter": "Game modes",

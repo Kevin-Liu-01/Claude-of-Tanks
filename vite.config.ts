@@ -401,6 +401,8 @@ export default defineConfig({
         docsStudio: resolve(process.cwd(), 'site/docs-studio.html'),
         docsFilming: resolve(process.cwd(), 'site/docs-filming.html'),
         docsModes: resolve(process.cwd(), 'site/docs-modes.html'),
+        docsStart: resolve(process.cwd(), 'site/docs-start.html'),
+        docsControls: resolve(process.cwd(), 'site/docs-controls.html'),
         gallery: resolve(process.cwd(), 'site/gallery.html'),
       },
       output: {
@@ -484,7 +486,7 @@ export default defineConfig({
       'site/docs-simulation.html', 'site/docs-vehicles.html', 'site/docs-rendering.html',
       'site/docs-performance.html', 'site/docs-worlds.html', 'site/docs-ai.html',
       'site/docs-multiplayer.html', 'site/docs-audio.html', 'site/docs-interface.html', 'site/docs-studio.html',
-      'site/docs-filming.html', 'site/docs-modes.html',
+      'site/docs-filming.html', 'site/docs-modes.html', 'site/docs-controls.html', 'site/docs-start.html',
     ],
     include: [
       'three',

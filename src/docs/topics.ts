@@ -22,8 +22,7 @@ interface TopicDefinition {
 }
 
 export const TOPIC_ORDER = [
-  'modes', 'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance',
-  'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio', 'filming',
+  'start', 'controls', 'modes', 'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio', 'filming',
 ] as const;
 
 export const topics: Record<string, TopicDefinition> = {
@@ -34,6 +33,30 @@ export const topics: Record<string, TopicDefinition> = {
     lede: t('docs.topic.modes.lede'),
     hero: '/media/site50-r14/loops/s21-fields-assault.webm',
     icon: 'modes',
+    sectionIcons: [],
+    sections: [],
+    media: [],
+    rich: true,
+  },
+  // Every action and its keys, touch and Watch mode, from the game's own bindings (src/docs/chapters/controls.ts).
+  controls: {
+    label: t('docs.topic.controls.label'),
+    title: t('docs.topic.controls.title'),
+    lede: t('docs.topic.controls.lede'),
+    hero: '/media/site50-r14/loops/s26-minaret-fire.webm',
+    icon: 'interface',
+    sectionIcons: [],
+    sections: [],
+    media: [],
+    rich: true,
+  },
+  // A first battle, step by step, with the game's own keys, clocks and counts (src/docs/chapters/start.ts).
+  start: {
+    label: t('docs.topic.start.label'),
+    title: t('docs.topic.start.title'),
+    lede: t('docs.topic.start.lede'),
+    hero: '/media/site50-r14/loops/s27-caravanserai-kill.webm',
+    icon: 'manual',
     sectionIcons: [],
     sections: [],
     media: [],
@@ -360,6 +383,7 @@ export const TOPIC_HERO_RUNGS: Readonly<Record<string, { readonly r960?: true; r
   's07-lake-shellfire': { r960: true, phone: true },
   's18-street-knockout': { r960: true, phone: true },
   's26-minaret-fire': { r960: true, phone: true },
+  's27-caravanserai-kill': { phone: true },
 };
 const LOOP_HERO = /^\/media\/site50-r14\/loops\/([\w-]+)\.webm$/;
 
@@ -406,7 +430,7 @@ type TopicGroupKey = 'play' | 'behind';
 
 /** The manual's two shelves (08-docs .side .grp): what a player meets in the game, and how it is engineered. */
 const TOPIC_GROUPS: ReadonlyArray<{ readonly key: TopicGroupKey; readonly icon: DocsIconKey; readonly topics: readonly TopicId[] }> = [
-  { key: 'play', icon: 'combat', topics: ['modes', 'vehicles', 'worlds', 'multiplayer', 'audio', 'interface', 'studio'] },
+  { key: 'play', icon: 'combat', topics: ['start', 'controls', 'modes', 'vehicles', 'worlds', 'multiplayer', 'audio', 'interface', 'studio'] },
   { key: 'behind', icon: 'architecture', topics: ['build', 'simulation', 'models', 'rendering', 'performance', 'ai', 'filming'] },
 ];
 const groupLabel = (key: TopicGroupKey): string => (key === 'play' ? t('docs.group.play') : t('docs.group.behind'));

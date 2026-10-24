@@ -11,6 +11,7 @@ import { WATCH_DRONE, WATCH_RIDE } from '../../engine/watchCamera.ts';
 import { WATCH_RULES } from '../../sim/matchRuleset.ts';
 import { icon, type IconId } from '../../ui/icons/icon.ts';
 import { t } from '../../ui/i18n.ts';
+import { pictureMarkup } from '../../presentation/responsivePicture.ts';
 import type { RichSection } from './types.ts';
 
 const esc = (text: string): string => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -58,7 +59,7 @@ export const WATCH_KEYS: ReadonlyArray<{ readonly codes: readonly string[]; read
   { codes: ['KeyF'], label: 'docs.controls.watch.rideCentre', view: 'ride' },
   { codes: ['Tab', 'KeyQ', 'KeyE'], label: 'docs.controls.watch.cycle', view: 'ride' },
   { codes: ['ShiftLeft'], label: 'docs.controls.watch.sight', view: 'ride' },
-  { codes: ['KeyV'], label: 'docs.controls.watch.drone', view: 'ride' },
+  { codes: ['KeyV'], label: 'docs.controls.watch.toDrone', view: 'ride' },
   { codes: ['Enter'], label: 'docs.controls.watch.take', view: 'drive' },
 ];
 
@@ -81,6 +82,13 @@ function watchSection(): string {
   return `<p>${esc(t('docs.controls.watch.lede', { modes: String(WATCH_RULES.modes.length) }))}</p><div class="dm-views">${cards}</div>`;
 }
 
+/** The battle on a phone (the mechanics still of the touch layout). */
+function touchFigure(): string {
+  const src = '/media/site50-r14/home/mechanics/mobile.webp';
+  return `<figure class="dm-figure">${pictureMarkup({ src, width: 1280, height: 720, alt: t('docs.controls.touchAlt'), sizes: '(width < 1100px) 100vw, 60vw',
+    rungs: [{ src: '/media/site50-r14/home/mechanics/mobile-640.webp', width: 640 }, { src, width: 1280 }] }, false)}</figure>`;
+}
+
 /** Hold or toggle: the actions the Accessibility settings can switch (the in-game names). */
 const SWITCHABLE: readonly ActionId[] = ['fire', 'handbrake', 'freeLook', 'freeCamera'];
 
@@ -90,8 +98,8 @@ export function controlsSections(): RichSection[] {
     ['hold', t('docs.controls.hold'), `<p>${esc(t('docs.controls.holdLede'))}</p><ul class="dm-chips">`
       + `${SWITCHABLE.map((id) => `<li>${esc(t(ACTION_DEFS.find((action) => action.id === id)?.label ?? id))}</li>`).join('')}`
       + `<li>${esc(t('docs.controls.holdRoster'))}</li></ul>`],
-    ['touch', t('docs.controls.touch'), `<p>${esc(t('docs.controls.touchLede'))}</p><ul class="dm-keylist">`
-      + ['move', 'aim', 'fire', 'scope', 'zoom', 'autoAim'].map((gesture) => `<li><span>${esc(t(`docs.controls.touch.${gesture}`))}</span></li>`).join('')
+    ['touch', t('docs.controls.touch'), `<p>${esc(t('docs.controls.touchLede'))}</p>${touchFigure()}<ul class="dm-keylist">`
+      + ['move', 'aim', 'fire', 'scope', 'zoom', 'autoAim', 'jump'].map((gesture) => `<li><span>${esc(t(`docs.controls.touch.${gesture}`))}</span></li>`).join('')
       + '</ul>'],
     ['watch', t('docs.controls.watch'), watchSection()],
   ];

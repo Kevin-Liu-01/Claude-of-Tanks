@@ -3,10 +3,14 @@
 // and writes the result into the chapter's page; a page that was not prerendered (or the search index) loads this
 // module on demand, so no chapter page carries the builders or their data up front.
 import { modesSections } from './modes.ts';
+import { startSections } from './start.ts';
+import { controlsSections } from './controls.ts';
 import type { RichSection } from './types.ts';
 
 const BUILDERS: Readonly<Record<string, () => RichSection[]>> = {
   modes: modesSections,
+  start: startSections,
+  controls: controlsSections,
 };
 
 /** A data-built chapter's sections, or null for a chapter written as text sections (src/docs/topics.ts). */
