@@ -46,6 +46,7 @@ const names = { vehicle: (id) => `veh:${id}`, map: (id) => `map:${id}`, modeIcon
 // An empty record still renders every tab.
 for (const tab of RECORD_TABS) assert.ok(recordTabMarkup(tab, names).length > 100, `${tab} renders before any battle`);
 assert.match(recordTabMarkup('history', names), /cot-record-empty/);
+assert.match(recordSummary(names).plate, /cot-record-plate is-empty/, 'before any battle the header plate has no tank');
 
 // One battle: a three-kill chain, then a kill 80 s later.
 bus.emit('ui:battleStart', { specId: 'type10_tk_x', mapId: 'arctic' });
@@ -61,9 +62,11 @@ kill('e1', 30); kill('e2', 36); kill('e3', 44); kill('e4', 124);
 bus.emit('battle:ended', { result: 'victory', mapId: 'arctic', durationS: 200, gameMode: 'standard', roster: [] });
 
 const view = getServiceRecord();
-const summary = recordSummary(view);
+const summary = recordSummary(names, view);
 assert.equal(summary.counts.medals, `${Object.keys(view.medals).length}/${MEDALS.length}`);
-assert.match(summary.chips, /cot-record-chip signature/);
+// the header plate is the last battle: its tank's render, the result, the tank, the map
+assert.match(summary.plate, /cot-record-plate result-victory"><img class="cot-record-vehicle"[^>]*type10_tk_x_angle/);
+assert.match(summary.plate, /<b>veh:type10_tk_x<\/b><small>map:arctic · /);
 
 const overview = recordTabMarkup('overview', names, view);
 for (const id of ['chain_of_thought', 'step_by_step', 'zero_shot', 'few_shot']) assert.ok(overview.includes(medalNameOf(id)), `overview lists ${id}`);
@@ -113,7 +116,7 @@ for (const medal of MEDALS) assert.ok(medalSVG(medal, 32).includes('<svg') && me
 assert.equal((achievementSVG(ACHIEVEMENTS[0], 2, 40).match(/<polygon/g) || []).length, 3);
 assert.match(achievementSVG(ACHIEVEMENTS[0], 0, 40), /is-locked/);
 
-// (ac130-fx-228 r3, the engineering critic: a multiplayer AC-130 battle's row and last-battle card named the garage tank
+// (ac130-fx-228 r3, the engineering critic: a multiplayer AC-130 battle's row and last-battle plate named the garage tank
 // beside the kills) a battle the player flew in the gunship names the AC-130, with its icon, in both
 {
   bus.emit('ui:battleStart', { specId: 't90am', mapId: 'verdant' });
@@ -130,10 +133,9 @@ assert.match(achievementSVG(ACHIEVEMENTS[0], 0, 40), /is-locked/);
   assert.match(first, /<b>AC-130<\/b>/, "the newest row names the AC-130");
   assert.doesNotMatch(first, /veh:t90am/, 'not the garage tank');
   assert.match(first, /cot-record-vehicle aircraft/, "the aircraft's icon in the picture's place");
-  const card = recordTabMarkup('overview', names, flown);
-  const last = card.slice(card.indexOf('cot-last-battle'));
-  assert.match(last, /cot-record-vehicle aircraft/, "the last-battle card shows the aircraft");
-  assert.match(last, /<b>AC-130 · map:verdant<\/b>/, 'and names it');
+  const plate = recordSummary(names, flown).plate;
+  assert.match(plate, /cot-record-vehicle aircraft/, "the header plate shows the aircraft");
+  assert.match(plate, /<b>AC-130<\/b><small>map:verdant · /, 'and names it');
 }
 
 function medalNameOf(id) {
