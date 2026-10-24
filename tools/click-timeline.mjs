@@ -184,7 +184,7 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
       .catch((cause) => { error = `not done: ${firstLine(cause)}`; });
   }
   await settle(page, quietMs);
-  const data = await page.evaluate((from, inputs) => {
+  const data = await page.evaluate((from, inputs, spanEnd) => {
     const rec = window.__click;
     const events = rec.events.filter((e) => e.start >= from - 5 && inputs.includes(e.name));
     const first = events.find((e) => e.id) || events[0] || null;
@@ -197,13 +197,24 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
     // Every event of the interaction ends at the same paint; its handlers' time is the largest of theirs (a click's
     // handlers, not its pointerdown's), its input delay the first event's.
     const processing = group.reduce((most, e) => Math.max(most, e.processingEnd - e.processingStart), 0);
+    // a transition's whole window (press to done): its long frames, the longest first, so a covered load names what
+    // held its main thread
+    const spanLoafs = spanEnd == null ? null : rec.loafs.filter((l) => l.start + l.duration >= from && l.start <= spanEnd)
+      .sort((a, b) => b.duration - a.duration).slice(0, 16);
+    const spanLong = spanEnd == null ? null : rec.longtasks.filter((t) => t.start + t.duration >= from && t.start <= spanEnd);
     const lastSwitch = Array.isArray(window.__GARAGE_SWITCH) ? window.__GARAGE_SWITCH[window.__GARAGE_SWITCH.length - 1] : null;
     return { duration, processing: Math.round(processing),
       inputDelay: first ? Math.round(first.processingStart - first.start) : 0, event: slowest?.name ?? null, target: slowest?.target ?? null,
       loafs, longtaskMs: Math.round(longtasks.reduce((sum, t) => sum + t.duration, 0)), longtasks: longtasks.length,
+      ...(spanLoafs ? { spanLoafs, spanLongtaskMs: Math.round(spanLong.reduce((sum, t) => sum + t.duration, 0)), spanLongtasks: spanLong.length } : {}),
       garageSwitch: lastSwitch ? JSON.parse(JSON.stringify(lastSwitch)) : null,
-      garageEntry: window.__GARAGE_ENTRY ? JSON.parse(JSON.stringify(window.__GARAGE_ENTRY)) : null };
-  }, t0, INPUT_EVENTS);
+      garageEntry: window.__GARAGE_ENTRY ? JSON.parse(JSON.stringify(window.__GARAGE_ENTRY)) : null,
+      battleLoad: window.__BATTLE_LOAD ? JSON.parse(JSON.stringify(window.__BATTLE_LOAD)) : null,
+      studioLoad: window.__STUDIO_LOAD ? JSON.parse(JSON.stringify(window.__STUDIO_LOAD)) : null,
+      countdownWarm: window.__BATTLE_COUNTDOWN_WARM ? JSON.parse(JSON.stringify(window.__BATTLE_COUNTDOWN_WARM)) : null,
+  deferredWarm: window.__BATTLE_DEFERRED_WARM ? JSON.parse(JSON.stringify(window.__BATTLE_DEFERRED_WARM)) : null,
+  visualLoads: Array.isArray(window.__VISUAL_LOAD_TIMINGS) ? JSON.parse(JSON.stringify(window.__VISUAL_LOAD_TIMINGS.slice(-40))) : null };
+  }, t0, INPUT_EVENTS, done && doneAt != null ? doneAt : null);
   return { error, layoutReads, selector: selector ?? key, shownMs: shownAt == null ? null : Math.round(shownAt - t0),
     doneMs: doneAt == null ? null : Math.round(doneAt - t0), ...data };
 }
@@ -259,6 +270,10 @@ export const PATHS = [
       await waitFor(page, `shown('.cot-settings.open')`, 15000); },
     press: (page, i) => target(page, `.cot-set-tab[data-tab="${SETTINGS_TABS[(i + 1) % SETTINGS_TABS.length]}"]`),
     shown: `document.querySelector('[data-click-target]')?.classList.contains('sel')`, teardown: closeSettings },
+  // the service record (Record in the top bar): its dialog, stylesheets and tooltip sheet load on first use
+  { id: 'record-open', doc: 'game', reps: 3,
+    press: (page) => target(page, '.cot-record-trigger'), shown: `shown('#cot-record-modal')`, shownTimeoutMs: 20000,
+    after: async (page) => { await pressKey(page, 'Escape'); await waitFor(page, `!shown('#cot-record-modal')`, 10000).catch(() => {}); } },
   { id: 'deploy-open', doc: 'game', reps: 5,
     press: (page) => target(page, '[data-nav=deploy], .cot-battle-mode'), shown: `shown('#cot-battle-menu.open')`, after: closeDeploy },
   { id: 'deploy-mode', doc: 'game', reps: 6, setup: openDeploy,
@@ -277,8 +292,8 @@ export const PATHS = [
       await run('deploy-map-pick', () => target(page, '.cot-map-card .cot-map-select', i + 1), {});
     } },
   { id: 'studio-open', doc: 'game', reps: 3,
-    press: (page) => target(page, '[data-nav=studio]'), shown: `shown('.cot-studio')`, done: `window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`,
-    doneTimeoutMs: 60000,
+    press: (page) => target(page, '[data-nav=studio]'), shown: `shown('.cot-studio')`, shownTimeoutMs: 60000,
+    done: `window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`, doneTimeoutMs: 90000,
     after: async (page) => { await pressKey(page, 'Escape'); await waitFor(page, GARAGE_BACK, 60000); } },
   { id: 'studio-workspace', doc: 'game', reps: 6,
     setup: async (page, ctx) => { await tapOrClick(page, await target(page, '[data-nav=studio]'), ctx); await waitFor(page, `window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`, 60000); },
@@ -287,18 +302,22 @@ export const PATHS = [
   { id: 'battle', doc: 'battle', reps: 2,
     script: async (page, i, run, ctx) => {
       await page.evaluate(() => { window.__BATTLE_REVEAL = null; });
+      await ctx.programs(`garage-${i}`);
       await openDeploy(page, ctx);
       await run('deploy-launch', () => target(page, '#cot-battle-menu [data-battle-launch], #cot-battle-menu .cot-battle'), {
         shown: `shown('.cot-bl.on')`, done: `!!window.__BATTLE_REVEAL`, doneTimeoutMs: 240000 });
+      await ctx.programs(`battle-${i}`);
       await page.evaluate(() => window.__DEBUG.slayEnemies());
       await waitFor(page, `shown('.cot-es.show') && shown('.cot-es [data-es-action="garage"]')`, 120000);
       await settle(page, 800, 8000);
       await run('end-to-garage', () => target(page, '.cot-es.show [data-es-action="garage"]'), { shown: `shown('.cot-trans.on') || shown('.cot-garage')`,
         done: GARAGE_BACK, doneTimeoutMs: 120000 });
+      await ctx.programs(`return-${i}`);
       if (i < 1) return;
       await openDeploy(page, ctx);
       await run('watch-enter', () => target(page, '#cot-battle-menu [data-battle-watch]'), {
-        shown: `document.documentElement.dataset.watch != null`, done: `!!document.querySelector('.cot-watch .who b')?.textContent`, doneTimeoutMs: 240000 });
+        shown: `document.documentElement.dataset.watch != null`, shownTimeoutMs: 120000,
+        done: `!!document.querySelector('.cot-watch .who b')?.textContent`, doneTimeoutMs: 240000 });
       await settle(page, 1500, 15000);
       for (let hop = 0; hop < 5; hop += 1) await run('watch-hop', () => target(page, `.cot-watch .wb.${hop % 2 ? 'prev' : 'next'}`), {});
       await run('watch-drone', () => target(page, '.cot-watch .wb.drone'), {});
@@ -317,9 +336,36 @@ export const PATHS = [
       && (window.__TANK_GALLERY.getState().mode === 'appearance' || window.__TANK_GALLERY.getState().overlayCount > 0)`, doneTimeoutMs: 60000 },
 ];
 
-async function runPath({ page, path, reps, touch, log, profileDir = null, label = '' }) {
+// The renderer's live programs (name, use count, key), so a path can diff the sets two states link: a long key keeps
+// its head, its length and a hash of the whole.
+const PROGRAM_KEYS = `(() => {
+  const hash = (text) => { let h = 2166136261; for (let i = 0; i < text.length; i += 1) h = Math.imul(h ^ text.charCodeAt(i), 16777619); return (h >>> 0).toString(16); };
+  const programs = (window.__DEBUG?.renderer?.info?.programs ?? []).map((program) => {
+    const key = String(program.cacheKey ?? '');
+    return { name: program.name, used: program.usedTimes, key: key.length > 900 ? key.slice(0, 900) + '…' + key.length + ':' + hash(key) : key };
+  });
+  // the scene's lights as a render collects them (visible down the chain), each with its owner chain
+  const lights = [];
+  window.__DEBUG?.scene?.traverse?.((object) => {
+    if (!object.isLight) return;
+    let shown = true;
+    const chain = [];
+    for (let node = object; node; node = node.parent) { shown = shown && node.visible; if (chain.length < 4) chain.push(node.name || node.type); }
+    lights.push({ type: object.type, shown, intensity: object.intensity, shadow: !!object.castShadow, layers: object.layers.mask, chain: chain.join(' < ') });
+  });
+  return { programs, lights };
+})()`;
+
+async function runPath({ page, path, reps, touch, log, profileDir = null, outDir = null, label = '' }) {
   const samples = [];
-  const ctx = { touch };
+  const ctx = {
+    touch,
+    programs: async (name) => {
+      if (!outDir) return;
+      const list = await page.evaluate(PROGRAM_KEYS).catch(() => null);
+      if (list) writeFileSync(join(outDir, `programs.${label}.${name}.json`), JSON.stringify(list, null, 1));
+    },
+  };
   const run = async (kind, pick, spec, i) => {
     let sample;
     try {
@@ -338,7 +384,13 @@ async function runPath({ page, path, reps, touch, log, profileDir = null, label 
   let failures = 0;
   for (let i = 0; i < reps && failures < 2; i += 1) {
     if (path.script) {
-      await path.script(page, i, (kind, pick, spec) => run(kind, pick, spec, i), ctx);
+      // a script that fails part way keeps the samples it took (the rest of the run goes on without it)
+      try {
+        await path.script(page, i, (kind, pick, spec) => run(kind, pick, spec, i), ctx);
+      } catch (cause) {
+        log(`  ${path.id} #${i} stopped: ${firstLine(cause)}`);
+        break;
+      }
     } else {
       const sample = await run(path.id, () => path.press(page, i), { shown: path.shown, done: path.done, doneTimeoutMs: path.doneTimeoutMs, key: path.key }, i);
       failures = sample.error ? failures + 1 : 0;
@@ -410,6 +462,12 @@ async function main() {
     rememberWarm(page, { url, ready: expression(DOCS[doc].ready), after: DOCS[doc].after ?? null });
     log(`warming ${base.label}:${doc} ${url}`);
     await rewarmPage(page);
+    // the boot's own stage timings (main.ts BOOT_TIMINGS), kept beside the run
+    const boot = await page.evaluate(() => ({ ms: window.__BOOT_MS ?? null, timings: window.__BOOT_TIMINGS ?? null })).catch(() => null);
+    if (boot?.timings) {
+      mkdirSync(join(out, base.label), { recursive: true });
+      writeFileSync(join(out, base.label, `boot.${doc}.${profileName}.json`), `${JSON.stringify(boot, null, 1)}\n`);
+    }
     return page;
   };
 
@@ -455,10 +513,12 @@ async function main() {
           log(`${base.label} ${path.id} (${profileName})`);
           let samples = [];
           let error = null;
+          mkdirSync(join(out, base.label), { recursive: true });
           try {
             if (path.setup) await path.setup(page, { touch });
             samples = await runPath({ page, path, reps: reps ?? path.reps, touch, log,
-              profileDir: option('cpu-profile', '') ? resolve(option('cpu-profile', '')) : null, label: `${base.label}.${profileName}` });
+              profileDir: option('cpu-profile', '') ? resolve(option('cpu-profile', '')) : null, outDir: join(out, base.label),
+              label: `${base.label}.${profileName}` });
             if (path.teardown) await path.teardown(page, { touch });
           } catch (cause) {
             error = firstLine(cause);
