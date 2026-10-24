@@ -964,7 +964,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   mapRowThumb.className = 'th';
   mapRowThumb.alt = '';
   mapRowThumb.decoding = 'async';
-  mapRow.pick.append(mapRowThumb, el('span', 'nm', ''));
+  mapRow.pick.append(mapRowThumb, el('span', 'nm', t('studio.chooseBattlefield')));
   const lightRow = outlineRow(() => { productionPanel.activate('battlefield'); secLight.scrollIntoView({ block: 'nearest' }); });
   lightRow.pick.innerHTML = uiIconSVG('timeDay', 16);
   lightRow.pick.append(el('span', 'nm', ''), el('span', 'd', ''));

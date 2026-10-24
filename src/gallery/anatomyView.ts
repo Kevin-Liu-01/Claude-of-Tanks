@@ -241,6 +241,7 @@ export function createAnatomyView(host: AnatomyHost): AnatomyView {
   host.console.insertBefore(bar, host.legend);
   const badges = document.createElement('div');
   badges.className = 'anatomy-badges';
+  badges.dataset.tipOff = '';
   badges.setAttribute('aria-label', t('gallery.anatomy.badgesAria'));
   badges.hidden = true;
   host.viewport.append(badges);
