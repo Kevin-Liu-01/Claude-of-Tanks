@@ -62,6 +62,21 @@ const CURVES = {
   ua_m1a2_abrams: [],
   // release 240: the rebuilt MBT-70 (its cast mantlet's chin raised over the glacis array, modern2.ts)
   mbt70: [],
+  // 242: the turrets whose squash 235 moved off rig_turret (turretScaleGunPitch.ts; mount windows: the sweep's
+  // mountConflicts, the geometry fixes to make)
+  t90am: [[4,4],[12,20],[179,180]],
+  t90m_proryv: [[13,18]],
+  t90a_burlak_proto: [],
+  strv81: [[2,34],[122,180]],
+  challenger1_mk2: [[140,140]],
+  fv4034: [],
+  challenger2: [],
+  challenger2e: [[177,177]],
+  fv510: [],
+  fv510_milan: [],
+  merkava1b: [[146,164]],
+  merkava2b: [[146,176]],
+  merkava2d: [[145,146],[152,176]],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type
