@@ -4835,9 +4835,9 @@ export function buildPuma(P: Modern3BuilderPort) {
   liftEye(P, 'hullDetail', 1.30, 1.89, 2.10);
   liftEye(P, 'hullDetail', -1.30, 2.12, -2.60);
   liftEye(P, 'hullDetail', 1.30, 2.12, -2.60);
-  stowage(P, 'hullCloth', rng, [[0.55, 2.15, -2.55, 0.42, 0.15, 0.75]]);       // strapped bergen row by the rack
-                                                                               //   (top 2.23 — under the 2.25
-                                                                               //   bustle sweep plane, §B5)
+  // (release 240, the owner: "make sure all tank turrets are clear of hulls": the bergen row 0.67 m aft on the flat
+  // 2.150 rear deck, 1.56 m off the ring's axis, past the turret's floor (2.155 to 1.45 m), which it stood 7 cm in at rest)
+  stowage(P, 'hullCloth', rng, [[0.55, 2.215, -3.22, 0.42, 0.15, 0.60]]);      // strapped bergen row by the rack
   P.decal('hull', 'number', num, 0.34, [1.87, 1.30, -0.35], Math.PI / 2);      // plates on the lower armor course
   P.decal('hull', 'number', num, 0.34, [-1.87, 1.30, -0.35], -Math.PI / 2);
   P.decal('hull', 'soot', null, 0.5, [-1.435, 1.75, 1.55], -Math.PI / 2);      // exhaust stain aft of the grille

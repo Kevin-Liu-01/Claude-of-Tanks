@@ -11,7 +11,7 @@ import type {TankBuilderPort} from '../tankFactoryCore.ts';
 const {box,cylX,cylY,cylZ}=KIT;
 export const OPLOT_FRAME={turret:[.008,1.535,.114315],gun:[0,.35,1.02],barrel:4.26} as const;
 export function buildOplotModern(P:TankBuilderPort):void {
-  buildT72B3MXHull(P);
+  buildT72B3MXHull(P,{lowDeckCrown:true});
   P.turretG.position.set(...OPLOT_FRAME.turret);P.gunG.position.set(...OPLOT_FRAME.gun);
   P.add('turret',cylY(.91,.98,.11,40),0,-.025,-.08);
   const wall=FLANK.wallTopY;
