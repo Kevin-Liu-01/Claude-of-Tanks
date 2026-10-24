@@ -12,7 +12,7 @@
   "width": 1920,
   "height": 1080
  },
- "count": 21,
+ "count": 25,
  "items": [
   {
    "id": "f6-leo2a6-steinburg-r6",
@@ -700,6 +700,130 @@
    "width": 1920,
    "height": 1080,
    "source": "vs10-steppe-chieftain-t64-r7-top-1920.webp"
+  },
+  {
+   "id": "f6-leo2a6-steinburg-r7-top",
+   "round": 3,
+   "map": "urban",
+   "hour": "day",
+   "title": {
+    "en": "Steinburg, day, from above: Leopard 2A6 v T-90M",
+    "zh": "斯泰因堡，白天，俯瞰：Leopard 2A6 对 T-90M"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "leo2a6",
+     "displayName": "Leopard 2A6",
+     "paint": "urbanblock"
+    },
+    {
+     "role": "foe",
+     "id": "t90m",
+     "displayName": "T-90M",
+     "paint": "digital"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/f6-leo2a6-steinburg-r7-top.json",
+   "path": "/media/versus-r1/f6-leo2a6-steinburg-r7-top.webp",
+   "bytes": 349576,
+   "sha256": "444a16904037953af78b4c977ffbb9e4aa930fbcb8b1458e3c1f4255fb74102b",
+   "width": 1920,
+   "height": 1080,
+   "source": "f6-leo2a6-steinburg-r7-top-1920.webp"
+  },
+  {
+   "id": "vs07-autumn-ariete-t62-r7-top",
+   "round": 4,
+   "map": "autumn",
+   "hour": "golden",
+   "title": {
+    "en": "Amberford, golden hour, from above: C2 Ariete v T-62MV-1",
+    "zh": "安伯福，黄金时刻，俯瞰：C2 Ariete 对 T-62MV-1"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "c2_ariete",
+     "displayName": "C2 Ariete",
+     "paint": "factory"
+    },
+    {
+     "role": "foe",
+     "id": "t62mv1",
+     "displayName": "T-62MV-1",
+     "paint": "factory"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs07-autumn-ariete-t62-r7-top.json",
+   "path": "/media/versus-r1/vs07-autumn-ariete-t62-r7-top.webp",
+   "bytes": 446346,
+   "sha256": "39ffcd2a419b469634ac1b02d4ad84f5f4fe587930c4e10d0a28e47b39fdea71",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs07-autumn-ariete-t62-r7-top-1920.webp"
+  },
+  {
+   "id": "vs08-winter-cv90-bmp3-r7-top",
+   "round": 4,
+   "map": "winter",
+   "hour": "day",
+   "title": {
+    "en": "Frosthollow, day, from above: CV90 Mk 4 v BMP-3",
+    "zh": "霜谷，白天，俯瞰：CV90 Mk 4 对 BMP-3"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "cv90_mk4",
+     "displayName": "CV90 Mk 4",
+     "paint": "winter"
+    },
+    {
+     "role": "foe",
+     "id": "bmp3",
+     "displayName": "BMP-3",
+     "paint": "winter"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs08-winter-cv90-bmp3-r7-top.json",
+   "path": "/media/versus-r1/vs08-winter-cv90-bmp3-r7-top.webp",
+   "bytes": 180572,
+   "sha256": "cef0eb1d7825e14c1daa1193b797034546c600c56c01d27285cd4b910f627f39",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs08-winter-cv90-bmp3-r7-top-1920.webp"
+  },
+  {
+   "id": "vs09-alpine-strv122-t80bv-r7-top",
+   "round": 4,
+   "map": "alpine",
+   "hour": "day",
+   "title": {
+    "en": "Glacier Pass, day, from above: Stridsvagn 122 v T-80BV",
+    "zh": "冰川关，白天，俯瞰：Stridsvagn 122 对 T-80BV"
+   },
+   "tanks": [
+    {
+     "role": "hero",
+     "id": "strv122",
+     "displayName": "Stridsvagn 122",
+     "paint": "winter"
+    },
+    {
+     "role": "foe",
+     "id": "t80bv",
+     "displayName": "T-80BV",
+     "paint": "winter"
+    }
+   ],
+   "scene": "tools/media-r5/versus/scenes/vs09-alpine-strv122-t80bv-r7-top.json",
+   "path": "/media/versus-r1/vs09-alpine-strv122-t80bv-r7-top.webp",
+   "bytes": 255362,
+   "sha256": "22f7a383890174ddab9a70cbfecc1d8a8a80922147c1d79ed347fa043a2cf956",
+   "width": 1920,
+   "height": 1080,
+   "source": "vs09-alpine-strv122-t80bv-r7-top-1920.webp"
   }
  ]
 }

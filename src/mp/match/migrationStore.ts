@@ -31,17 +31,32 @@ export function isMigrationEventKind(kind: string): boolean {
 export interface RetainedBlob {
   id: number;
   tick: number;
+  /** The host generation this client followed when the chunks arrived (its own view, never the sender's claim). */
+  generation: number;
   blob: Uint8Array;
   /** Local clock when the last chunk arrived. */
   receivedAtMs: number;
 }
 
 export class MigrationStore {
-  private readonly pending = new Map<string, { id: number; tick: number; parts: number; chunks: Array<Uint8Array | null>; received: number }>();
+  private generation = 0;
+  private readonly pending = new Map<string, { generation: number; id: number; tick: number; parts: number; chunks: Array<Uint8Array | null>; received: number }>();
   private readonly complete = new Map<string, RetainedBlob>();
   private chunksReceived = 0;
   private blobsCompleted = 0;
   private rejected = 0;
+
+  /**
+   * A newer host generation (the session followed a host change): its blobs outrank every older generation's whatever
+   * tick they claim — the chunk tick is the sealer's plaintext word, so an earlier host could otherwise pin its own state
+   * over every later host's (security audit 2026-10-22). Completed blobs stay (the elected seat resumes from them);
+   * partial chunks from the old host are dropped.
+   */
+  setGeneration(generation: number): void {
+    if (!Number.isInteger(generation) || generation <= this.generation) return;
+    this.generation = generation;
+    this.pending.clear();
+  }
 
   /** Feed one wire event; returns true when it was a migration event (consumed, never presented). */
   receive(event: WireEvent, nowMs: number): boolean {
@@ -49,7 +64,7 @@ export class MigrationStore {
     const payload = event.payload as Partial<MigrationChunkPayload>;
     const parts = payload.parts as number;
     const part = payload.part as number;
-    if (!Number.isInteger(payload.id) || !Number.isInteger(payload.tick) || !Number.isInteger(part) || !Number.isInteger(parts) ||
+    if (!Number.isSafeInteger(payload.id) || !Number.isSafeInteger(payload.tick) || (payload.tick as number) < 0 || !Number.isInteger(part) || !Number.isInteger(parts) ||
         typeof payload.data !== 'string' || parts < 1 || parts > MIGRATION_MAX_CHUNKS || part < 0 || part >= parts) {
       this.rejected++;
       return true;
@@ -58,8 +73,8 @@ export class MigrationStore {
     if (!chunk) { this.rejected++; return true; }
     this.chunksReceived++;
     let entry = this.pending.get(event.kind);
-    if (!entry || entry.id !== payload.id) {
-      entry = { id: payload.id as number, tick: payload.tick as number, parts, chunks: new Array<Uint8Array | null>(parts).fill(null), received: 0 };
+    if (!entry || entry.id !== payload.id || entry.generation !== this.generation) {
+      entry = { generation: this.generation, id: payload.id as number, tick: payload.tick as number, parts, chunks: new Array<Uint8Array | null>(parts).fill(null), received: 0 };
       this.pending.set(event.kind, entry);
     }
     if (entry.chunks[part] === null) entry.received++;
@@ -71,7 +86,8 @@ export class MigrationStore {
       let offset = 0;
       for (const piece of entry.chunks) { blob.set(piece!, offset); offset += piece!.byteLength; }
       const current = this.complete.get(event.kind);
-      if (!current || entry.tick >= current.tick) this.complete.set(event.kind, { id: entry.id, tick: entry.tick, blob, receivedAtMs: nowMs });
+      const newer = !current || entry.generation > current.generation || (entry.generation === current.generation && entry.tick >= current.tick);
+      if (newer) this.complete.set(event.kind, { id: entry.id, tick: entry.tick, generation: entry.generation, blob, receivedAtMs: nowMs });
       this.pending.delete(event.kind);
       this.blobsCompleted++;
     }
@@ -87,6 +103,7 @@ export class MigrationStore {
 
   /** A new match: nothing retained applies. */
   clear(): void {
+    this.generation = 0;
     this.pending.clear();
     this.complete.clear();
   }

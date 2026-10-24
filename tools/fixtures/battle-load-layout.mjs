@@ -1,4 +1,6 @@
 import '../../src/ui/tokens/tokens.css';
+// the shared kit, as the game's entry loads it (main.ts): the rules row's chips
+import '../../src/ui/components/components.css';
 // Real loading screen and viewport rules, without a WebGL world build.
 import '../../src/ui/motion.css';
 import '../../src/ui/responsiveSurfaces.css';

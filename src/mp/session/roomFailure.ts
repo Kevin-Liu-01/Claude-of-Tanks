@@ -6,7 +6,7 @@
 export type RoomFailureCode =
   | 'expired' | 'kicked' | 'resume_denied' | 'room_closed'
   | 'room_full' | 'invalid_room_code' | 'access_denied'
-  | 'room_service_unavailable' | 'connection_failed';
+  | 'room_service_unavailable' | 'room_service_limited' | 'connection_failed';
 
 interface RoomFailure {
   readonly code: RoomFailureCode;
@@ -38,6 +38,8 @@ const ALIASES: ReadonlyMap<string, RoomFailureCode> = new Map([
   ['room_service_unavailable', 'room_service_unavailable'],
   ['room_unreachable', 'room_service_unavailable'], ['room_unconfigured', 'room_service_unavailable'],
   ['exhausted', 'room_service_unavailable'], ['timeout', 'room_service_unavailable'],
+  // the room service's daily request allowance is spent (roomServiceLimit.ts): rooms open again after 00:00 UTC
+  ['room_service_limited', 'room_service_limited'],
 ]);
 const ENDED_ROOMS = new Set<RoomFailureCode>(['expired', 'kicked', 'resume_denied', 'room_closed']);
 const NO_RETRY = new Set<RoomFailureCode>([...ENDED_ROOMS, 'room_full', 'invalid_room_code', 'access_denied']);

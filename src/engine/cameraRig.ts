@@ -122,6 +122,8 @@ interface CameraEntityVisual {
   boundingRadiusM?: number;
   turretTopWorld(out: THREE.Vector3): RuntimeValue;
   gunPivotWorld(out: THREE.Vector3): RuntimeValue;
+  /** The gun's bore direction in the world (a watcher's gunner sight is slaved to it: engine/watchCamera.ts). */
+  gunDirWorld?(out: THREE.Vector3): RuntimeValue;
 }
 
 export interface CameraEntity {

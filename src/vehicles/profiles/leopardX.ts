@@ -236,14 +236,17 @@ function a5Evacuator(P:TankBuilderPort,d:Datum): void {
   P.add('gun',sectionSolid(sections));
 }
 
-function fans(P: TankBuilderPort, y: number, z: number, radius = .51): void {
+// (`flat`, release 240: a 1 cm rim and the guard bars on the disc, 3.4 cm over the deck for the 4.6 cm default, where a
+// bustle passes low over the fans)
+function fans(P: TankBuilderPort, y: number, z: number, radius = .51, flat = false): void {
+  const rim = flat ? .010 : .021, rimY = flat ? .016 : .024, barY = flat ? .016 : .028;
   for (const x of [-.54, .54]) {
     P.addEquipment('hullDark', cylY(radius, radius, .026, 36), x, y, z);
-    P.addEquipment('hullDetail', torus(radius - .015, .021, 36, 7), x, y + .024, z);
+    P.addEquipment('hullDetail', torus(radius - .015, rim, 36, 7), x, y + rimY, z);
     for (let i = -8; i <= 8; i++) {
       const off = i * radius / 9;
       const length = 2 * Math.sqrt(Math.max(0, (radius - .035) ** 2 - off ** 2));
-      P.addEquipment('hullDetail', box(Math.max(.04, length), .012, .015), x, y + .028, z + off);
+      P.addEquipment('hullDetail', box(Math.max(.04, length), .012, .015), x, y + barY, z + off);
     }
   }
 }
@@ -300,13 +303,17 @@ function recoveryCable(P:TankBuilderPort,name:string,path:THREE.CatmullRomCurve3
   P.hullG.add(mesh);
 }
 
-function driver(P: TankBuilderPort, y: number, x: number, z: number): void {
+// Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the station lies under the turret's lower
+// body, whose seated underside stands 3 cm over the deck round the ring, and the periscope heads stood 11 cm over the hatch,
+// into the turret at rest and through it in traverse; `sink` sets the heads and the handle down into the hatch's frame
+// under that underside (they show when the turret is turned off the station).
+function driver(P: TankBuilderPort, y: number, x: number, z: number, sink = 0): void {
   P.addHatch('hull', box(.66, .027, .58), x, y + .011, z);
   for (let i = -1; i <= 1; i++) {
-    P.addEquipment('hullDark', box(.145, .085, .12), x + i * .165, y + .07, z + .18);
-    P.addEquipment('hullGlass', box(.114, .043, .009), x + i * .165, y + .08, z + .245);
+    P.addEquipment('hullDark', box(.145, .085, .12), x + i * .165, y + .07 - sink, z + .18);
+    P.addEquipment('hullGlass', box(.114, .043, .009), x + i * .165, y + .08 - sink, z + .245);
   }
-  P.addEquipment('hullDetail', box(.18, .028, .035), x, y + .041, z - .06);
+  P.addEquipment('hullDetail', box(.18, .028, .035), x, y + .041 - Math.min(sink, .03), z - .06);
 }
 
 function roofHatch(P: TankBuilderPort, d: Datum, x: number, y: number, z: number, r = .32): void {
@@ -505,20 +512,22 @@ function a7TerminalSkirt(P:TankBuilderPort,side:number): void {
   P.add('hull',sectionSolid(sections));
 }
 
+// (release 240: posts and rails top out at 1.80, 4 cm under the turret's low cheek corners, which swing 2 m off the
+// ring's axis over the side cage; they stood to 1.905)
 function a6HullCage(P: TankBuilderPort): void {
   for(const side of [-1,1]) {
     for(let i=0;i<7;i++) skirt(P,side,-3.65+i*1.01,-2.66+i*1.01,1.805,1.68,
       i<2?1.0:.92,1.68,i===6?1.41:1.68);
     for(let i=0;i<8;i++) {
       const z=-3.90+i*1.00;
-      P.addEquipment('hullOpenLattice',box(.035,.93,.035),side*1.972,1.44,z);
+      P.addEquipment('hullOpenLattice',box(.035,.82,.035),side*1.972,1.385,z);
       P.addEquipment('hullOpenLatticeDark',box(.26,.035,.044),side*1.86,1.64,z);
     }
-    for(let j=0;j<13;j++) P.addEquipment('hullOpenLattice',box(.027,.018,7.05),side*1.972,.983+j*.071,-.38);
+    for(let j=0;j<13;j++) P.addEquipment('hullOpenLattice',box(.027,.018,7.05),side*1.972,.983+j*.0675,-.38);
     P.hangMudguard('a6m-x-rear-flap','hullRubber',box(.55,.48,.045),side*1.34,.72,-3.69);
   }
-  for(let j=0;j<13;j++) P.addEquipment('hullOpenLattice',box(3.96,.018,.027),0,.983+j*.071,-3.93);
-  for(const x of [-1.96,-.66,.66,1.96]) P.addEquipment('hullOpenLattice',box(.036,.94,.036),x,1.445,-3.93);
+  for(let j=0;j<13;j++) P.addEquipment('hullOpenLattice',box(3.96,.018,.027),0,.983+j*.0675,-3.93);
+  for(const x of [-1.96,-.66,.66,1.96]) P.addEquipment('hullOpenLattice',box(.036,.83,.036),x,1.39,-3.93);
 }
 
 function a5Skirts(P: TankBuilderPort): void {
@@ -1139,7 +1148,9 @@ export function buildLeopard2A7VX(P: TankBuilderPort): void {
   begin(P, d);
   const stations: Station[] = [
     [-3.86,1.80,1.955,2.00], [-3.47,1.80,1.22,1.994], [-3.08,1.80,.64,1.99],
-    [-1.52,1.80,.61,1.967], [-.85,1.80,.60,1.819], [1.64,1.80,.575,1.785],
+    // (release 240: the engine deck stays under 1.875 out to -1.88, 2.4 m off the ring's axis, past the sweep of the
+    // turret's low cheek corners (2 m at 1.88) and wedge nose (2.33 m at 1.91), and climbs behind it; it reached 1.967 at -1.52)
+    [-2.10,1.80,.61,1.967], [-1.88,1.80,.61,1.872], [-1.56,1.80,.61,1.852], [-.85,1.80,.60,1.819], [1.64,1.80,.575,1.785],
     [2.43,1.98,.56,1.628],[3.21,1.015,.68394,1.48155],
     [3.25,1.015,.71025,1.47377],[3.30,1.015,.74314,1.43897],
     [3.40,1.015,.85212,1.35682],[3.50,1.015,.96001,1.27468],
@@ -1154,7 +1165,7 @@ export function buildLeopard2A7VX(P: TankBuilderPort): void {
     paintedEnds:true, arms:true, coveredTop:true },[-2.05,-.35,1.25,2.20]));
   a7Skirts(P);
   fans(P,2.018,-2.82,.54);
-  driver(P,1.783,-.54,1.14);
+  driver(P,1.783,-.54,1.14,.07);
   a7BowFittings(P);
   a7Stern(P);
   shell(P,d,[[-2.80,-1.11,1.25,2.092,2.235],[-2.49,-1.14,1.26,2.084,2.628],
@@ -1211,8 +1222,8 @@ export function buildLeopard2A6MX(P: TankBuilderPort): void {
     returnRollerWidthM:.18,returnRollerInsetM:.03,
     paintedEnds:true,arms:true,coveredTop:true});
   a6HullCage(P);
-  fans(P,1.853,-2.86,.48);
-  driver(P,1.72,-.56,1.15);
+  fans(P,1.825,-2.86,.48,true);                                               // (release 240: flat, under the bustle cage's 1.88)
+  driver(P,1.72,-.56,1.15,.09);
   a6BowFittings(P);
   a6Stern(P);
   shell(P,d,[[-2.70,-1.14,1.15,1.948,1.979],[-2.39,-1.14,1.15,1.93,1.979],
@@ -1249,8 +1260,10 @@ export function buildLeopard2A6MX(P: TankBuilderPort): void {
 export function buildLeopard2A4MX(P: TankBuilderPort): void {
   const d=LEOPARD_X_DATUMS.leo2a5m;
   begin(P,d);
+  // (release 240: the engine deck's climb ends 4 cm lower at -1.90, outside the sweep of the turret's low front corners,
+  // 2.2 m off the ring's axis at 1.74, which ran into it with the turret turned aft)
   const stations: Station[]=[[-3.83,1.60,1.67,1.70],[-3.44,1.675,1.23,1.79],
-    [-3.06,1.675,.523,1.816],[-1.86,1.675,.525,1.778],[-1.14,1.70,.528,1.616],
+    [-3.06,1.675,.523,1.816],[-1.90,1.675,.525,1.735],[-1.14,1.70,.528,1.616],
     [-.77,1.85,.529,1.618],[1.60,1.85,.533,1.684],[2.75,1.85,.536,1.45],
     [3.44,1.82,.75,1.32],[3.86,1.018,.97,.994]];
   P.add('hull',sectionSolid(stations.map(s=>tub(s,1.40))));
@@ -1274,8 +1287,8 @@ export function buildLeopard2A4MX(P: TankBuilderPort): void {
       P.addMudguard('a4m-x-rear-flap-hanger','hullDetail',box(.06,.665,.022),side*1.36+dx,1.2625,-3.675);
     P.addEquipment('hullDetail',box(.53,.05,.014).translate(0,.185,-.0255),side*1.36,.75,-3.69,.07);
   }
-  fans(P,1.833,-2.95,.51);
-  driver(P,1.68,-.58,1.0);
+  fans(P,1.81,-2.95,.51,true);                                                // (release 240: flat, under the bustle's 1.842)
+  driver(P,1.68,-.58,1.0,.09);
   bowFittings(P,1.33,3.56,false);
   sternFittings(P,1.47,-3.79,1.65);
   shell(P,d,[[-2.82,-1.02,-.64,1.873,2.33],[-2.53,-1.05,.98,1.856,2.387],
@@ -1333,7 +1346,7 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
   a5Skirts(P);
   a5InnerSuspension(P);
   fans(P,1.811,-2.89,.514);
-  driver(P,1.661,-.54,1.20);
+  driver(P,1.661,-.54,1.20,.09);
   a5BowFittings(P);
   a5Stern(P);
   // Rear hull marker rod, present in the supplied x_root_107 node; unlike

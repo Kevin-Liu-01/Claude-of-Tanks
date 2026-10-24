@@ -19,9 +19,9 @@ const frame = { player, tanks:[player,enemy], timeS:10, spotting:{isSpotted:()=>
 const tick = () => { frame.timeS += 1; update(frame); };
 const ghosts=[], live=[];
 const blipSource = source.slice(source.indexOf('  function pushTankMinimapBlip('), source.indexOf('  function collectMinimapTankBlips('));
-const drawBlip = new Function('spotById','worldToMap','pushLiveBlip','drawGhostMarker','mmCtx','PEN_GREEN','PEN_RED','playerRef',
+const drawBlip = new Function('spotById','worldToMap','pushLiveBlip','drawGhostMarker','mmCtx','teamInk','playerRef',
   stripTypeScriptTypes(blipSource)+'\nreturn pushTankMinimapBlip;')(
-  spotById,(x,z)=>[x,z],(...args)=>live.push(args),(...args)=>ghosts.push(args),{},'green','red',player);
+  spotById,(x,z)=>[x,z],(...args)=>live.push(args),(...args)=>ghosts.push(args),{},()=>({own:'own',enemy:'enemy'}),player);
 
 tick();
 assert.equal(spotById.get(enemy.id).vis,true);

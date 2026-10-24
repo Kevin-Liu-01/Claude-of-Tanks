@@ -1,26 +1,25 @@
 {
   "name": "Claude of Tanks",
-  "short_name": "CoT",
-  "description": "Free browser-native armored combat with 220 production vehicles, 33 battlefields, multiplayer, Tank Gallery, and Scene Studio.",
+  "short_name": "Claude of Tanks",
+  "description": "Free browser-native armored combat: 220 production vehicles, 33 battlefields, multiplayer, the Tank Gallery and the Scene Studio.",
   "id": "/",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#05080b",
-  "theme_color": "#05080b",
+  "background_color": "#0b0e11",
+  "theme_color": "#0b0e11",
   "icons": [
-    {
-      "src": "/brand/favicon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/brand/apple-touch-icon.png",
-      "sizes": "180x180",
-      "type": "image/png",
-      "purpose": "any"
-    }
+    { "src": "/brand/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/brand/favicon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/brand/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Play", "url": "/", "icons": [{ "src": "/brand/favicon-192.png", "sizes": "192x192" }] },
+    { "name": "Tank Gallery", "url": "/gallery", "icons": [{ "src": "/brand/favicon-192.png", "sizes": "192x192" }] },
+    { "name": "Scene Studio", "url": "/studio", "icons": [{ "src": "/brand/favicon-192.png", "sizes": "192x192" }] },
+    { "name": "Field Manual", "url": "/docs", "icons": [{ "src": "/brand/favicon-192.png", "sizes": "192x192" }] }
   ]
 }

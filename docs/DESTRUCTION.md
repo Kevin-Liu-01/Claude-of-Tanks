@@ -617,6 +617,23 @@ overflow of stage changes waits a tick in the authority's FIFO; craters past fou
 reliable queue treats `structure_stage` (collapsed) and `terrain_crater` as heavy beats. Bandwidth: a full late-game
 log (300 stage entries, 160 craters) is 3.3 KB in a keyframe.
 
+**The log's wire budget** (security audit 2026-10-22, C3). A keyframe carries the whole log beside the entity rows,
+the shells, the mode state and the destroyed set inside one 64 KB message (`MAX_MESSAGE_BYTES`). A Ruinspires log
+grown past about 2,340 breach entries no longer fit, and every viewer's snapshots and the migration keyframe stopped
+for the rest of the match.
+
+The log now keeps to `DESTRUCTION_LOG_BUDGET_BYTES` (36 KB of worst-case entry sizes, `src/sim/destructionMatch.ts`):
+- Stage and crater entries are always logged. They are finite (three transitions a structure, `maxCraters`), and the
+  budget reserves room for every one the map can still produce.
+- Breaches share what that reserve leaves. Holes stop at three quarters of it, and a section's fall, which changes
+  collision, may use all of it.
+- A breach past the budget still opens live, and its `structure_breach` event reaches every connected viewer. Only a
+  late joiner or a migrated host lays the structure down without that hole or fall. It shows the structure as the log
+  left it, the same way a holed section already resumes whole on a new host (§8.3).
+- `DestructionMatch.unloggedBreaches` counts them.
+- `destructionLogBudget.selftest`: 3,000 125 mm HE hits on Ruinspires open 5,990 breaches live. The log keeps 659
+  (271 holes, then section falls) and all 1,095 stages, and its keyframe is 31 KB.
+
 ### 8.6 Audits
 
 The world-events audit (`tools/mp-world-events-audit.mjs`, its receipt in the core group) logs `structure_stage` like

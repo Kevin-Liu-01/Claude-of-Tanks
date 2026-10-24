@@ -1,4 +1,4 @@
-// Keep every shipped crest copy derived from the three editable mark masters.
+// Keep every shipped brand copy derived from its editable master: the crest's lockups and the boot title card.
 // Usage:
 //   node tools/sync-brand-marks.mjs
 //   node tools/sync-brand-marks.mjs --check
@@ -68,21 +68,22 @@ const fullMetal = replaceBetween(
 );
 syncFile('public/brand/logo-full-metal.svg', fullMetal);
 
-const favicon = metalMaster.replace(
-  'aria-label="Claude of Tanks — embossed metal crest: Claude Code commander in a tank"',
-  'aria-label="Claude of Tanks"',
-);
-syncFile('public/brand/favicon.svg', favicon);
-
-// (2026-10-16) the boot mark's opening tag carries whatever attributes the page gives it (78fd2819f added its
-// data-i18n-aria-label): the derived body starts after that tag, whichever attributes it has
+// (brand-ui 242) The crest retired with the Premiere identity (src/ui/components/DIRECTION.md, "The identity"): its
+// files above stay for the media kits, favicon.svg is the monogram tools/brand/wordmark.py writes, and the boot splash
+// carries the title card, its body inlined so the registration sting can move the caps' top halves.
+const titleCard = read('public/brand/title-card.svg');
+const cardViewBox = /^<svg [^>]*viewBox="([^"]+)"/.exec(titleCard);
+const cardBodyStart = titleCard.indexOf('-->') + 3;
+const cardBodyEnd = titleCard.lastIndexOf('</svg>');
+if (!cardViewBox || cardBodyStart < 3 || cardBodyEnd < cardBodyStart) throw new Error('invalid title-card master');
 const indexSource = read('index.html');
-const bootTag = /^ {6}<svg class="cot-boot-mark" viewBox="0 0 256 256"[^>\n]*>\n/m.exec(indexSource);
+const bootTag = /^ {6}<svg class="cot-boot-mark" [^>\n]*>\n/m.exec(indexSource);
 if (!bootTag) throw new Error('missing derived-brand marker: the cot-boot-mark <svg> opening tag in index.html');
-const bootStart = bootTag[0];
-const bootEnd = '\n</svg>\n\n      <div class="cot-boot-word">';
-const bootBody = `      <!-- GENERATED from public/brand/logo-mark.svg by tools/sync-brand-marks.mjs. -->\n${colorBody}`;
-const index = replaceBetween(indexSource, bootStart, bootEnd, bootBody);
+// the opening tag keeps whatever attributes the page gives it (its role and data-i18n-aria-label); only its frame follows
+const bootStart = bootTag[0].replace(/viewBox="[^"]*"/, `viewBox="${cardViewBox[1]}"`);
+const bootBody = '      <!-- GENERATED from public/brand/title-card.svg by tools/sync-brand-marks.mjs. -->\n'
+  + titleCard.slice(cardBodyStart, cardBodyEnd);
+const index = replaceBetween(indexSource.replace(bootTag[0], bootStart), bootStart, '\n      </svg>\n', bootBody);
 syncFile('index.html', index);
 
 if (!process.exitCode) {

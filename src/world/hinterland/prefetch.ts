@@ -91,7 +91,7 @@ export function startHinterlandBuild(
       root.userData.hinterlandLoad = stats;
       const attach = (): void => {
         if (!wire) return;
-        const object = createHinterlandObject(wire, context.engineCtx);
+        const object = createHinterlandObject(wire, context.engineCtx, context.ground);
         root.add(object);
         object.updateMatrixWorld(true);
         // (the world assembled first: its impostor atlas draws the near trees — trees.ts)

@@ -15,9 +15,11 @@
 // that fits, with the boots at most 20 cm over the floor under them (a seated person rests on a footrest or pedals; a
 // standing loader on the basket floor). "Inside the shell" is armour at every turret yaw (crewShell): hull crew inside
 // the hull; turret crew inside the turret, the hull under it at every yaw (the basket turns with the turret) or the
-// turret ring between them. The station box is the largest box inside that shell, within the body's bounds, grown
-// from its torso. Where no posture fits, the nearest best placement is kept and its shapes are trimmed into the shell
-// (`trimmed`, with the outside share it started from).
+// turret ring between them. The hit shapes are held to the armour proper: the combat shells leave the gap between the
+// hull's roof and the turret's floor open, so a capsule crossing it keeps only its pieces inside armour (crewArmour).
+// HE splash strikes a body at three points (head, torso, lap: `blastPoints`). The station box is the largest box
+// inside the shell, within the body's bounds, grown from its torso. Where no posture fits, the nearest best placement
+// is kept and its shapes are trimmed into the armour (`trimmed`, with the outside share it started from).
 // Pure numbers, no three.js; deterministic (fixed grids, fixed order).
 
 const H = 1.75;
@@ -113,6 +115,15 @@ function bodyParts(params) {
 
 // Surface samples dense enough that the surface between them sags less than the fit's margin (12 around: 4.4 mm on a
 // 13 cm torso), and the end caps sampled at every elevation (a cap straddling the turret ring's air gap is caught).
+// Spheres of 26 directions about 9 points along a capsule's axis (and about an ellipsoid's centre) add interior points:
+// the shell is a union of convex cells, so a surface inside it can still enclose a void a shot reaches.
+const GRID_DIRS = (() => {
+  const dirs = [];
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (let k = -1; k <= 1; k++) {
+    if (i || j || k) dirs.push([i, j, k].map((value) => value / Math.hypot(i, j, k)));
+  }
+  return dirs;
+})();
 const SPHERE_DIRS = (() => {
   const dirs = [[0, 1, 0], [0, -1, 0]];
   for (let i = 1; i < 8; i++) for (let j = 0; j < 12; j++) {
@@ -126,8 +137,12 @@ const SPHERE_DIRS = (() => {
 export function shapeSurfaceSamples(shape) {
   const out = [];
   if (shape.kind === 'ellipsoid') {
-    for (const d of SPHERE_DIRS) out.push(shape.center.map((value, axis) => value + d[axis] * shape.radii[axis]));
+    for (const d of [...SPHERE_DIRS, ...GRID_DIRS]) out.push(shape.center.map((value, axis) => value + d[axis] * shape.radii[axis]));
     return out;
+  }
+  for (let s = 0; s <= 8; s++) {
+    const c = shape.a.map((value, index) => value + (shape.b[index] - value) * s / 8);
+    for (const d of GRID_DIRS) out.push(c.map((value, index) => value + d[index] * shape.radius));
   }
   const axis = shape.b.map((value, index) => value - shape.a[index]);
   const length = Math.hypot(...axis);
@@ -294,10 +309,18 @@ function largestCircle(cells, y, margin) {
  * turret ring's opening between them. `inside(p, margin)` is `margin` in from every face (negative: a tolerance out).
  */
 export function crewShell(armor, frame) {
-  return makeShell(armor, frame);
+  return makeShell(armor, frame, true);
 }
 
-function makeShell(armor, frame) {
+/**
+ * The armour proper (crewShell without the turret ring's opening): the combat shells leave the gap between the hull's
+ * roof and the turret's floor open, so a body may sit through the ring but its hit shapes stay out of the gap.
+ */
+export function crewArmour(armor, frame) {
+  return makeShell(armor, frame, false);
+}
+
+function makeShell(armor, frame, withRing) {
   const pivot = armor.turretPivot || [0, 0, 0];
   const hull = armor.collisionShells?.hull || [];
   const turret = armor.collisionShells?.turret || [];
@@ -346,9 +369,10 @@ function makeShell(armor, frame) {
       if (swept.length) {
         const radii = basket(margin);
         const r = Math.hypot(x, z);
-        if (radii) for (const range of radii.lookup(r)) list.push(range.slice());
-        const opening = ringOf();
-        if (r <= opening.r - margin) list.push([opening.lo, opening.hi]);
+        // (a tolerance, a negative margin, also extends the basket's 1 cm height steps: checks get their slack there too)
+        if (radii) for (const range of radii.lookup(r)) list.push(margin < 0 ? [range[0] + margin, range[1] - margin] : range.slice());
+        const opening = withRing ? ringOf() : null;
+        if (opening && r <= opening.r - margin) list.push([opening.lo, opening.hi]);
       }
       return unionIntervals(list);
     },
@@ -558,8 +582,9 @@ function stationSide(station) {
  * Returns the seat record (rounded) or null when the frame has no shell.
  */
 function seatStation({ armor, anchor, frame, station, ladders, placed }) {
-  const shell = makeShell(armor, frame);
+  const shell = makeShell(armor, frame, true);
   if (!shell.cells.length) return null;
+  const armour = makeShell(armor, frame, false);
   const center = anchor.min.map((value, axis) => (value + anchor.max[axis]) / 2);
   const side = stationSide(station);
   const obstacleSets = [
@@ -625,7 +650,7 @@ function seatStation({ armor, anchor, frame, station, ladders, placed }) {
   // The armour alone first (a station where no posture fits it skips the obstacle passes); then the near misses: 1 cm
   // and 0.05 of tuck around the coarse placement that leaves most of the body inside; then the best effort, trimmed.
   let found = cascade();
-  if (found) return finishSeat({ ...found, shell, trimmed: null });
+  if (found) return finishSeat({ ...found, shell, armour, trimmed: null });
   const best = bestEffortPlacement(candidates, shell);
   if (!best) return null;
   const near = best.candidate;
@@ -641,9 +666,9 @@ function seatStation({ armor, anchor, frame, station, ladders, placed }) {
   }
   candidates.sort((a, b) => a.cost - b.cost || a.tuck - b.tuck || a.px - b.px || a.pz - b.pz);
   found = cascade();
-  if (found) return finishSeat({ ...found, shell, trimmed: null });
+  if (found) return finishSeat({ ...found, shell, armour, trimmed: null });
   const outside = 1 - best.inside / near.body.points.length;
-  return finishSeat({ candidate: near, py: best.py, shell, relaxed: 'modules+crew', trimmed: ROUND3(outside) });
+  return finishSeat({ candidate: near, py: best.py, shell, armour, relaxed: 'modules+crew', trimmed: ROUND3(outside) });
 }
 
 /** The coarse placement (10 cm, three tucks) that leaves the most of the body inside the shell. */
@@ -666,22 +691,60 @@ function bestEffortPlacement(candidates, shell) {
   return best;
 }
 
-function finishSeat({ candidate, py, shell, relaxed, trimmed }) {
+const CLIP_MARGIN = 0.004;
+
+/**
+ * A hit shape held to the armour proper: a capsule crossing the turret ring's open gap keeps the longest piece from
+ * each end that stays inside (a torso through the ring: the abdomen in the basket, the chest in the turret); a head is
+ * shrunk, or slid down and shrunk, into it.
+ */
+function clipToArmour(shape, armour) {
+  const valid = (candidate) => shapeSurfaceSamples(candidate).every((p) => armour.inside(p, CLIP_MARGIN));
+  if (valid(shape)) return [shape];
+  if (shape.kind === 'ellipsoid') {
+    const fitted = trimShape(shape, armour) ?? lowerHead(shape, armour);
+    return fitted ? [fitted] : [];
+  }
+  const length = Math.hypot(...shape.b.map((value, axis) => value - shape.a[axis]));
+  const at = (t) => shape.a.map((value, axis) => value + (shape.b[axis] - value) * t);
+  const piece = (from, to) => ({ kind: 'capsule', a: from, b: to, radius: shape.radius });
+  const out = [];
+  if (valid(piece(shape.a, shape.a))) {
+    let good = 0, bad = 1;
+    for (let i = 0; i < 12; i++) { const mid = (good + bad) / 2; if (valid(piece(shape.a, at(mid)))) good = mid; else bad = mid; }
+    if (good * length >= 0.02) out.push(piece(shape.a, at(good)));
+  }
+  if (valid(piece(shape.b, shape.b))) {
+    let good = 1, bad = 0;
+    for (let i = 0; i < 12; i++) { const mid = (good + bad) / 2; if (valid(piece(at(mid), shape.b))) good = mid; else bad = mid; }
+    if ((1 - good) * length >= 0.02) out.push(piece(at(good), shape.b));
+  }
+  return out;
+}
+
+const midpoint3 = (a, b) => a.map((value, axis) => (value + b[axis]) / 2);
+const capsuleCentre = (shape) => midpoint3(shape.a, shape.b);
+
+function finishSeat({ candidate, py, shell, armour, relaxed, trimmed }) {
   const { body, px, pz } = candidate;
   const offset = [px, py, pz];
-  let shapes = body.parts.shapes.map((shape) => translate(shape, offset));
-  let head = body.parts.head.map((value, axis) => value + offset[axis]);
+  const posed = body.parts.shapes.map((shape) => translate(shape, offset));
+  let shapes = posed;
   if (trimmed !== null) {
     // the head is never dropped: the Gallery pins the mannequin's head inside it
-    const trimmedHead = trimShape(shapes[0], shell);
-    const lowered = trimmedHead ? null : lowerHead(shapes[0], shell);
-    if (lowered) head = lowered.center.slice();
-    shapes = [trimmedHead ?? lowered, ...shapes.slice(1).map((shape) => trimShape(shape, shell))].filter(Boolean);
+    const trimmedHead = trimShape(shapes[0], armour);
+    shapes = [trimmedHead ?? lowerHead(shapes[0], armour), ...shapes.slice(1).map((shape) => trimShape(shape, armour))]
+      .filter(Boolean);
   }
+  shapes = shapes.flatMap((shape) => clipToArmour(shape, armour));
+  if (shapes[0]?.kind !== 'ellipsoid') throw new Error('crew seat lost its head shape');
+  const head = shapes[0].center.slice();
   const bounds = boundsOf([...shapes, ...body.parts.boots.map((shape) => translate(shape, offset))]);
   const torso = body.parts.shapes[1];
   const seed = torso.a.map((value, axis) => (value + body.parts.shapes[2].b[axis]) / 2 + offset[axis]);
   const box = growBoxInShell(bounds, shell, seed);
+  // HE splash strikes the body as head, torso and lap however its hit shapes are split
+  const blastPoints = [head, midpoint3(capsuleCentre(posed[1]), capsuleCentre(posed[2])), midpoint3(capsuleCentre(posed[3]), capsuleCentre(posed[4]))];
   const [trunk, hip, knee, shoulder, elbow, neck] = body.params.map(ROUND3);
   return {
     posture: { kind: candidate.kind, tuck: candidate.tuck, trunk, hip, knee, shoulder, elbow, neck },
@@ -690,6 +753,7 @@ function finishSeat({ candidate, py, shell, relaxed, trimmed }) {
     min: box.min.map(ROUND),
     max: box.max.map(ROUND),
     shapes: shapes.map(roundShape),
+    blastPoints: blastPoints.map((point) => point.map(ROUND)),
     ...(relaxed ? { relaxed } : {}),
     ...(trimmed !== null ? { trimmed } : {}),
   };

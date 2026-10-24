@@ -149,7 +149,7 @@ const siteLibrary = all().find(element => element.className === 'production-libr
 assert.deepEqual(siteLibrary.children.map(card => card.dataset.siteTake), ['s01-street', 's02-foreign'], 'the default list is the site\'s takes');
 const fleetSection = all().find(element => element.className === 'production-takes production-fleet');
 assert.equal(fleetSection.hidden, false, 'an index with fleet takes shows the finder');
-assert.ok(fleetSection.children.some(child => child.textContent === t('studio.director.fleet.intro', { count: 9 })), 'it counts the tanks');
+assert.equal(byData('fleetSearch').attributes['aria-description'], t('studio.director.fleet.intro', { count: 9 }), 'its search counts the tanks');
 const fleetCards = () => all().filter(element => element.dataset.siteTake?.includes('-fleet-'));
 const fleetStatus = () => fleetSection.children.find(child => child.className === 'production-status').textContent;
 assert.deepEqual(fleetCards().map(card => card.dataset.siteTake), ['s60-fleet-t90sm_2013'], 'the Garage tank\'s take, alone');
@@ -229,5 +229,7 @@ assert.equal(byData('siteTake', 's01-street').disabled, true, 'a take cannot be 
 assert.ok(fleetCards().length && fleetCards().every(card => card.disabled), 'nor a tank\'s own take');
 S.productionFormat = 'square'; panel.refresh();
 assert.equal(frame.value, 'square', 'loading or scripting a different format synchronizes the export selector');
-locale = 'zh-CN'; assert.equal(context.label('director'), '导演台');
+const zhCatalog = JSON.parse(readFileSync(new URL('./i18nCatalog.zh-CN.json', import.meta.url), 'utf8'));
+assert.equal(context.label('director'), 'Director');
+assert.equal(zhCatalog['studio.director.ui.director'], '导演台', 'the Director\'s words are in both catalogs');
 console.log('studioProductionPanel.selftest: workspace selection, the site\'s takes, every tank\'s take, staging races, exports, transport, recording locks and localization passed');

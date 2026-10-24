@@ -50,7 +50,7 @@ try{
     await frames(page);
     // Exceed optional's brief display period while the page remains readable.
     await new Promise(r=>setTimeout(r,350));
-    const fallback=await renderedFonts(page,'.cot-boot-word .l1');
+    const fallback=await renderedFonts(page,'.cot-boot-link span');
     assert.ok(fallback.length&&fallback.every(f=>!BRAND.test(f.familyName)),'the metric-matched fallback paints while fonts are delayed');
     await page.screenshot({path:resolve(out,`${name}-fallback.png`)});
     await page.evaluate(async()=>{
@@ -64,7 +64,7 @@ try{
     delivery='normal';for(const release of pending)release();pending=[];
     await page.waitForFunction(()=>document.fonts.check("500 16px 'Cot UI'")&&document.fonts.check("700 16px 'Cot UI'"));
     await frames(page);
-    const brand=await renderedFonts(page,'.cot-boot-word .l1');
+    const brand=await renderedFonts(page,'.cot-boot-link span');
     assert.ok(brand.some(f=>/Chakra Petch/.test(f.familyName)&&f.glyphCount>0),'late brand font is actually painted');
     const sign=await page.evaluate(async()=>{
       const {makeSignTexture,mulberry32}=await import('/src/ui/garageStage.ts');
@@ -72,14 +72,14 @@ try{
     });
     assert.deepEqual(sign,{changed:true,correct:true});
     await page.screenshot({path:resolve(out,`${name}-loaded.png`)});
-    // The boot screen paints three faces: the wordmark and labels (Chakra Petch Bold), its sentences (Plex Sans Medium)
+    // The boot screen paints three faces: its buttons (Chakra Petch Bold; the title card is outlined), its sentences (Plex Sans Medium)
     // and the loading percentage, a readout in the .num face (Plex Mono Medium). Each transfers once.
     assert.deepEqual([...requests].sort(),['/fonts/chakra-petch/ChakraPetch-Bold-Latin.woff2','/fonts/ibm-plex-mono/IBMPlexMono-Medium-Latin1.woff2',
       '/fonts/ibm-plex-sans/IBMPlexSans-Medium-Latin1.woff2'], 'only the boot screen\'s three faces transfer, once each');
     const coldRequests=requests.length;
     await page.reload({waitUntil:'load'});await frames(page);
     assert.equal(requests.length,coldRequests,'warm reload reuses both cached font files');
-    assert.ok((await renderedFonts(page,'.cot-boot-word .l1')).some(f=>BRAND.test(f.familyName)));
+    assert.ok((await renderedFonts(page,'.cot-boot-link span')).some(f=>BRAND.test(f.familyName)));
     reports.push({name,brand,sign,fontRequests:coldRequests,warmAdditionalRequests:requests.length-coldRequests});
     await context.close();
   }
@@ -87,10 +87,10 @@ try{
   delivery='failed';requests=[];
   const context=await browser.createBrowserContext(),page=await context.newPage();
   await page.goto(base,{waitUntil:'load'});await frames(page);
-  const fallback=await renderedFonts(page,'.cot-boot-word .l1');
+  const fallback=await renderedFonts(page,'.cot-boot-link span');
   assert.ok(fallback.length&&fallback.every(f=>!BRAND.test(f.familyName)));
   delivery='normal';await page.reload({waitUntil:'load'});await frames(page);
-  assert.ok((await renderedFonts(page,'.cot-boot-word .l1')).some(f=>BRAND.test(f.familyName)),'failed response does not poison the next visit');
+  assert.ok((await renderedFonts(page,'.cot-boot-link span')).some(f=>BRAND.test(f.familyName)),'failed response does not poison the next visit');
   reports.push({name:'failed-download',readableFallback:true,nextVisitRecovered:true});
   await context.close();
   console.log('fonts browser: delayed desktop/mobile paint, canvas repaint, cached reload and failed-download recovery PASS');

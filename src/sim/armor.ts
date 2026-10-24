@@ -156,8 +156,8 @@ interface ArmorModuleVolume extends ArmorVolumeBase {
 
 interface ArmorCrewVolume extends ArmorVolumeBase {
   crew: string;
-  /** A seated body (235 crew seats): its head centre; its shapes are head, torso (2), thighs (2), shins (2). */
-  head?: readonly number[];
+  /** A seated body (235 crew seats): where HE splash strikes it (head, torso, lap), however its hit shapes are split. */
+  blastPoints?: readonly (readonly number[])[];
 }
 
 interface TrackPrismShape {
@@ -1483,12 +1483,9 @@ function appendBlastCrewTargets(
   for (const box of crew) {
     const matrix = box.turretLocal ? _turretM : _hullM;
     const shapes = box.shapes?.length ? box.shapes : [box];
-    // A seated body is struck as three parts (head, torso, lap), however many shapes draw its limbs: a blast rolls each
-    // part once, as it rolled the torso and head of a legacy station.
-    const points = box.head && shapes.length === 7
-      ? [volumeCenter(shapes[0]), midpoint(volumeCenter(shapes[1]), volumeCenter(shapes[2])),
-        midpoint(volumeCenter(shapes[3]), volumeCenter(shapes[4]))]
-      : shapes.map(volumeCenter);
+    // A seated body is struck at three points (head, torso, lap) however many shapes draw its limbs: a blast rolls
+    // each once, as it rolled the torso and head fragments of a legacy station.
+    const points = box.blastPoints?.length ? box.blastPoints : shapes.map(volumeCenter);
     for (const center of points) {
       out.push({
         kind: 'crew',
@@ -1498,8 +1495,4 @@ function appendBlastCrewTargets(
       });
     }
   }
-}
-
-function midpoint(a: Vec3Tuple, b: Vec3Tuple): Vec3Tuple {
-  return [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5, (a[2] + b[2]) * 0.5];
 }
