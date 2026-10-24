@@ -852,6 +852,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/black-world-repro-summary.selftest.mjs',
     'src/engine/frameLoopScheduler.selftest.mjs',
     'src/engine/cameraRig.selftest.mjs',
+    // watch-mode-243: the drone's world clamp and flight, the ride-along's chase, sight, wreck hold and handovers
+    'src/engine/watchCamera.selftest.mjs',
     'src/engine/garageFramePacer.selftest.mjs',
     'src/engine/phaseSceneResidency.selftest.mjs',
     'src/engine/phaseGpuResidency.selftest.mjs',
@@ -1635,6 +1637,10 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/killcamGhostPolicy.selftest.mjs',
     'src/game/killcamPresentation.selftest.mjs',
     'src/game/killcamObserverInput.selftest.mjs',
+    // watch-mode-243: the ride-along's handoff on death, picking and cycling, Take control / Leave through the rig
+    'src/game/watchController.selftest.mjs',
+    // watch-mode-243: the Watch ruleset entry, bot -> player -> bot, the replay over the swap, every mode with no human seat
+    'src/game/watchSeat.selftest.mjs',
     'src/game/battleResultPresentationRuntime.selftest.mjs',
     'src/game/battleEnding.selftest.mjs',
     'src/game/battleEndingHold.selftest.mjs',

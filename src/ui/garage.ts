@@ -71,7 +71,7 @@ import { currentLocationHrefForLocale, hrefForLocale } from './localeRouting.ts'
 import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import { testDriveLaunch } from '../game/provingGroundSession.ts';
 import {
-  isWaveMode, matchRulesetFor, modeCopyValues, rulesetSides, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
+  isWatchableMode, isWaveMode, matchRulesetFor, modeCopyValues, rulesetSides, MARS_CACHE_IDS, MARS_GRAVITY_IDS, SIDES_PRESETS, STANDARD_SIDES, TEAM_ARRANGEMENT_LIMITS, sidesPresetOf,
 } from '../sim/matchRuleset.ts';
 import { readMarsSettings, readTeamArrangement, writeMarsSettings, writeTeamArrangement } from '../game/teamArrangement.ts';
 import { battleTimeChoicesMarkup, bindBattleTimeChoices } from './battleTimeChoices.ts';
@@ -177,7 +177,7 @@ interface GarageOptions {
   readonly onBattle?: (
     specId: string,
     mapId: string,
-    options: { readonly gameMode: GameModeId; readonly campaignOperationId?: string },
+    options: { readonly gameMode: GameModeId; readonly campaignOperationId?: string; readonly watch?: boolean },
   ) => void;
   readonly onPlayRequest?: (request: PlayRequest) => void;
   readonly onPlayModeIntent?: (mode: BattleMode) => void;
@@ -754,8 +754,12 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `</div></div>` +
     // the foot (the direction's .tank and .deploy): the tank you deploy with, its rounds and fittings, then Deploy
     `<div class="cot-battle-menu-foot"><div class="cot-deploy-tank" data-deploy-tank></div>` +
-    `<span data-setup-selection hidden></span><button type="button" data-battle-launch data-ui-sound="deploy">` +
-    `<span class="cot-deploy-go">${uiIconSVG('deploy', 20)}<span>${t('garage.battle')}</span></span>${keycap(t('garage.key.enter'))}</button></div>` +
+    // Watch (watch-mode-243) beside Deploy: the selected mode, map and sides with every seat a bot's, from the drone
+    `<span data-setup-selection hidden></span><div class="cot-deploy-acts">` +
+    `<button type="button" data-battle-watch data-ui-sound="deploy" aria-label="${t('watch.entry')}">` +
+    `${uiIconSVG('freeLook', 20)}<span>${t('watch.entry')}</span></button>` +
+    `<button type="button" data-battle-launch data-ui-sound="deploy">` +
+    `<span class="cot-deploy-go">${uiIconSVG('deploy', 20)}<span>${t('garage.battle')}</span></span>${keycap(t('garage.key.enter'))}</button></div></div>` +
     `</aside></div></div>` +
     `<button class="cot-multiplayer-entry" type="button" aria-haspopup="dialog">` +
     `${uiIconSVG('team', 17)}<span>${t('garage.multiplayer.open')}</span></button>` +
@@ -3225,10 +3229,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function launchBattle(
     specId: string,
     mapId: string,
-    { emitClick = true, gameMode = battleGameMode, campaignOperationId }: {
+    { emitClick = true, gameMode = battleGameMode, campaignOperationId, watch = false }: {
       emitClick?: boolean;
       gameMode?: GameModeId;
       campaignOperationId?: string;
+      watch?: boolean;
     } = {},
   ): void {
     // Battle entry must be unstoppable: the pre-battle emits fan out to five+
@@ -3242,7 +3247,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     } catch (err) {
       console.error('[garage] battle-start listener failed:', err);
     }
-    if (onBattle) onBattle(specId, mapId, campaignOperationId ? { gameMode, campaignOperationId } : { gameMode }); // MAP-CONFIG WIRING
+    if (onBattle) onBattle(specId, mapId, campaignOperationId ? { gameMode, campaignOperationId } : watch ? { gameMode, watch } : { gameMode }); // MAP-CONFIG WIRING
   }
 
   /** The proving ground with this vehicle (the dossier's button, the Gallery's link): never inside a room's lobby. */
@@ -3267,7 +3272,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     opts.onPlayRequest?.({ mode, specId: selectedId, mapId: selectedMapId, gameMode: battleGameMode });
   }
 
-  function battle() {
+  function battle(watch = false) {
     if (!selectedId) return;
     const specId = selectedId;
     const mapId = selectedMapId;
@@ -3275,18 +3280,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (opts.onPlayRequest) {
       try { emit('ui:click', {}); } catch (_) { /* presentation-only */ }
       opts.onPlayRequest({
-        mode: battleMode,
+        mode: watch ? 'solo' : battleMode,
         gameMode: battleGameMode,
         specId,
         mapId,
         startSolo: () => launchBattle(specId, mapId, {
           emitClick: false,
           gameMode: battleGameMode,
+          watch,
         }),
       });
       return;
     }
-    launchBattle(specId, mapId);
+    launchBattle(specId, mapId, { watch });
   }
 
   // A campaign operation is a Frontline Assault sortie on its own map, through the same play request as Deploy.
@@ -3439,8 +3445,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const warmMultiplayer = () => opts.onPlayModeIntent?.('private');
   multiplayerEntry.addEventListener('pointerenter', warmMultiplayer, { passive: true });
   multiplayerEntry.addEventListener('focus', warmMultiplayer);
-  battleBtn.addEventListener('click', battle);
-  requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-launch]').addEventListener('click', battle);
+  battleBtn.addEventListener('click', () => battle());
+  requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-launch]').addEventListener('click', () => battle());
   const signalBattleIntent = (event: Event) => {
     if (event.target instanceof Node && multiplayerEntry.contains(event.target)) return;
     if (!selectedId) return;
@@ -3551,6 +3557,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const setupIcon = requiredElement<HTMLElement>(battleMenu, '[data-setup-icon]');
   const setupSelection = requiredElement<HTMLElement>(battleMenu, '[data-setup-selection]');
   const setupLaunch = requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-launch]');
+  const setupWatch = requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-watch]');
+  setupWatch.addEventListener('click', () => { if (!setupWatch.disabled) battle(true); });
   // The mode settings and the TEAMS switch load with the battle menu's first render (round 2, the critic's E3: the TEAMS
   // control grew the game's entry chunk); MONO's switch leads with the selected vehicle's flag
   let arrangementPanel: { render(mode: GameModeId): void; close(): void } | null = null;
@@ -3713,6 +3721,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       : solo ? `playMenu.matchMode.${battleGameMode}.desc`
       : `garage.battle.${battleMode}SetupDescription`, solo ? modeCopyValues(battleGameMode) : undefined);
     setupLaunch.setAttribute('aria-label', battleBtn.getAttribute('aria-label') || meta.label);
+    // a mode whose human seat no bot plays (the AC-130's gunship) or a room cannot be watched (WATCH_RULES)
+    setupWatch.disabled = !solo || !isWatchableMode(battleGameMode);
     timeOptions.hidden = shown;
     galaxySky.hidden = !shown;
     soloOptions.hidden = !solo;

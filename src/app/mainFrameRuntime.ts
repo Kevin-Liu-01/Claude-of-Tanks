@@ -76,6 +76,8 @@ interface MainFrameRuntimeOptions {
   cameraInput: CameraFrameInput;
   getMobileAutoAim(): MainMobileAutoAimRuntime | null;
   rig: CameraRig;
+  /** Watch mode (watch-mode-243): true when the watch camera solved this frame's camera (the rig stays out). */
+  watchFrame?(dtSeconds: number): boolean;
   killcam: KillcamRuntime;
   veilHud(hidden: boolean): void;
   worldFramePresentation: WorldFramePresentationRuntime;
@@ -131,6 +133,7 @@ export function createMainFrameRuntime({
   cameraInput,
   getMobileAutoAim,
   rig,
+  watchFrame,
   killcam,
   veilHud,
   worldFramePresentation,
@@ -225,7 +228,7 @@ export function createMainFrameRuntime({
     cameraInput.autoAimPoint = getMobileAutoAim()
       ?.sample(frame.inBattle && !frame.paused && !frame.killcamActive) || null;
     if (frame.inBattle && !frame.paused && !frame.killcamActive) {
-      rig.update(dtSeconds, cameraInput);
+      if (!watchFrame?.(dtSeconds)) rig.update(dtSeconds, cameraInput);
     }
     if (frame.killcamActive) killcam.update(dtSeconds);
   };

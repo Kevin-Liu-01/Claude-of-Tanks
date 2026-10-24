@@ -48,7 +48,8 @@ import type {
 import {
   applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap, rulesetBotDifficulty,
   rulesetBotDoctrine, rulesetObjectiveAxisM, rulesetRoutePush, rulesetVerdictSide,
-  rulesetLoadout, rulesetSeatHullScale, rulesetUnlimitedFor, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
+  rulesetLoadout, rulesetSeatHullScale, rulesetUnlimitedFor, watchRulesetFor, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
+import { prepareWatchSeat, verdictSeat, type WatchSession } from './watchSeat.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
 import {
   DEFAULT_BRAIN_SETTINGS, readBrainSettings, readTeamArrangement, type BrainSettings,
@@ -374,6 +375,8 @@ interface SoloGameState extends Omit<RosterGameState, 'allTanks' | 'tankById' | 
   _wreckTurrets?: WreckTurrets | null;
   /** The pillboxes' damage this battle (sim/fortifiedCover.ts), as the authority keeps it. */
   _fortified?: FortifiedCoverLedger | null;
+  /** Watch mode (watch-mode-243; game/watchSeat.ts): the seat ledger of a watched battle, null otherwise. */
+  watch?: WatchSession<SoloAiController> | null;
   _destructionEvents?: StructureStageEvent[];
   _destructionBreaches?: StructureBreachEvent[];
   _destructionCraters?: TerrainCraterEvent[];
@@ -458,6 +461,8 @@ interface SetupBattleOptions {
   deferCamoRepaint?: boolean;
   deferVisuals?: boolean;
   deferOpeningRoutes?: boolean;
+  /** Watch mode (sim/matchRuleset.ts WATCH_RULES): every seat a bot's; ignored for a mode that cannot be watched. */
+  watch?: boolean;
 }
 
 interface CameraRig {
@@ -728,6 +733,8 @@ function resetBattleSession(game: SoloGameState, options: SetupBattleOptions): v
   game.campaignOperationId = game.gameMode === 'frontline_assault' ? (options.campaignOperationId ?? null) : null;
   game.ruleset = matchRulesetFor(game.gameMode, campaignRulesetInput(game.campaignOperationId),
     options.arrangement === undefined ? readTeamArrangement(game.gameMode) : options.arrangement);
+  if (options.watch) game.ruleset = watchRulesetFor(game.ruleset);
+  game.watch = null;
   game.matchModeState = null;
   game.matchModeController = null;
   game.modeEvents.length = 0;
@@ -1233,6 +1240,11 @@ function spawnBattleEntities(context: BattleSpawnContext): void {
     initializeBattleEntity(context, entity, spawn, isPlayer, isAlly);
     if (!isPlayer && context.provingLayout) seatProvingTarget(context, entity, spawn);
     else if (!isPlayer) createBattleBot(context, entity, index, spawn);
+    else if (game.ruleset.watch) {
+      // a watched battle's human seat: its brain is built as any bot's and parked until the battle opens (watchSeat.ts)
+      createBattleBot(context, entity, index, spawn);
+      prepareWatchSeat(game, entity);
+    }
     warmStartBattleEntity(entity, context.world);
   }
 }
@@ -2269,8 +2281,9 @@ function emitHeOutcomes(
 
 /** The ruleset launch for a shot: the fired direction and the shooter's stamped recoil launch scale, or null. */
 function recoilLaunchFor(entity: SoloEntity, dir: THREE.Vector3): RecoilLaunch | null {
-  // crews only: bots keep the ordinary hull kick so their driving and gunnery are not thrown around
-  const scale = entity.bot ? 1 : (entity.modeRecoilLaunchScale ?? 1);
+  // crews only: bots keep the ordinary hull kick so their driving and gunnery are not thrown around (a watcher driving a
+  // bot's seat is the crew: game/watchSeat.ts)
+  const scale = entity.bot && !entity.isPlayer ? 1 : (entity.modeRecoilLaunchScale ?? 1);
   return scale > 1 ? { scale, dirX: dir.x, dirY: dir.y, dirZ: dir.z } : null;
 }
 
@@ -3158,12 +3171,14 @@ function stepFireDamage(game: SoloGameState, bus: EventBus): void {
 
 function stepMatchMode(game: SoloGameState, bus: EventBus): MatchModeResult | null {
   const outcome = game.matchModeController?.step(SIM_DT, game.timeS) || null;
-  if (game.matchModeState && game.player) {
+  // a watched battle with no driver reads the mode from its human seat (watchSeat.ts verdictSeat)
+  const perspective = game.player ?? verdictSeat(game);
+  if (game.matchModeState && perspective) {
     if (game.ruleset.gunGame || game.ruleset.infection || game.ruleset.aerial) {
-      game.matchModeState = game.matchModeController!.serialize(game.player.id);
+      game.matchModeState = game.matchModeController!.serialize(perspective.id);
     }
-    game.matchModeState.playerAmmo = totalAmmunition(game.player.combat);
-    game.matchModeState.playerAmmoCapacity = totalAmmunitionCapacity(game.player.combat);
+    game.matchModeState.playerAmmo = totalAmmunition(perspective.combat);
+    game.matchModeState.playerAmmoCapacity = totalAmmunitionCapacity(perspective.combat);
   }
   for (const event of game.modeEvents) {
     bus.emit(event.type.replace(/^mode_/, 'mode:'), event.payload);
@@ -3190,7 +3205,7 @@ function applyEliminationResult(
   if (enemiesLeft === 0) {
     game.result = 'victory';
     game.resultReason = 'elimination';
-  } else if (game.player?.combat.destroyed && alliesLeft === 0) {
+  } else if (verdictSeat(game)?.combat.destroyed && alliesLeft === 0) {
     game.result = 'defeat';
     game.resultReason = 'elimination';
   } else if (game.ruleset.timeLimitS != null && game.timeS >= game.ruleset.timeLimitS) {
@@ -3212,7 +3227,9 @@ function emitBattleEnded(game: SoloGameState, bus: EventBus): void {
     campaignOperationId: game.campaignOperationId,
     timeLimitS: game.ruleset.timeLimitS,
     alliesLost: game.tanks.filter((entity) =>
-      entity.team === 'player' && entity.id !== game.player?.id && entity.combat.destroyed).length,
+      entity.team === 'player' && entity.id !== verdictSeat(game)?.id && entity.combat.destroyed).length,
+    // a watched battle (WATCH_RULES): no record reads it (matchRuleset.ts battleKeepsRecords)
+    watch: !!game.ruleset.watch,
     // campaign slice 4 (2026-09-12): the campaign record needs the mode and the line state
     gameMode: game.gameMode,
     line: game.matchModeState?.line ? { ...game.matchModeState.line } : null,
@@ -3239,15 +3256,17 @@ function settleBattleResult(
   bus: EventBus,
   modeOutcome: MatchModeResult | null,
 ): void {
-  if (game.result !== null || !game.player) return;
+  // the verdict's side is the player's, or a watched battle's human seat's whoever drives it (watchSeat.ts)
+  const seat = verdictSeat(game);
+  if (game.result !== null || !seat) return;
   let enemiesLeft = 0;
   let alliesLeft = 0;
   for (const entity of game.tanks) {
     if (entity.combat.destroyed) continue;
     if (entity.team === 'enemy') enemiesLeft++;
-    else if (entity.id !== game.player.id) alliesLeft++;
+    else if (entity.id !== seat.id) alliesLeft++;
   }
-  const playerTeam = rulesetVerdictSide(game.ruleset, game.player.team === 'enemy' ? 'bravo' : 'alpha');
+  const playerTeam = rulesetVerdictSide(game.ruleset, seat.team === 'enemy' ? 'bravo' : 'alpha');
   if (modeOutcome) {
     game.result = modeOutcome.result === 'draw' ? 'draw'
       : modeOutcome.result === playerTeam ? 'victory' : 'defeat';

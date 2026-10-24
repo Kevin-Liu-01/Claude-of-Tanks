@@ -242,6 +242,16 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
 @media (hover:hover){.cot-garage .cot-battle-menu.open [data-battle-launch]:hover{background:var(--btn-primary-hover);}}
 .cot-garage .cot-battle-menu.open [data-battle-launch]:active{background:var(--btn-primary-press);box-shadow:none;}
 .cot-garage .cot-battle-menu.open [data-battle-launch] .cot-c-kbd{color:var(--kbd-on-accent-ink);box-shadow:var(--kbd-on-accent-ring);}
+/* Watch (watch-mode-243): the secondary beside Deploy in one row, at its height */
+.cot-garage .cot-deploy-acts{display:flex;align-items:stretch;gap:12px;min-width:0;}
+.cot-garage .cot-battle-menu.open .cot-deploy-acts [data-battle-launch]{flex:1;width:auto;min-width:0;}
+.cot-garage .cot-battle-menu.open [data-battle-watch]{display:flex;align-items:center;gap:10px;flex:none;height:66px;padding:0 20px;border:0;
+  border-radius:var(--control-radius);background:var(--btn-secondary-fill);box-shadow:inset 0 0 0 1px var(--btn-secondary-edge);
+  color:var(--ink-1);cursor:pointer;font:700 var(--fs-18)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;}
+.cot-garage .cot-battle-menu.open [data-battle-watch] svg{width:20px;height:20px;}
+@media (hover:hover){.cot-garage .cot-battle-menu.open [data-battle-watch]:hover:not(:disabled){box-shadow:inset 0 0 0 1px var(--ink-2);}}
+.cot-garage .cot-battle-menu.open [data-battle-watch]:disabled{opacity:.4;cursor:default;}
+.cot-garage .cot-battle-menu.open[data-deploy-tab='campaign'] [data-battle-watch]{display:none;}
 
 /* ---- folded layouts: the direction's phone Deploy (91-phone-deploy.html): the bar, the ways to play as pills, the
    modes as rows with the chosen one opened over its picture, the plate under them, Deploy docked at the bottom ---- */
@@ -291,6 +301,8 @@ body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tank{flex:none;padding:0
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tank .cot-card{width:96px;height:58px;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tank :is(.info,.chg){display:none;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open [data-battle-launch]{flex:1;height:58px;padding:0 18px;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-acts{flex:1;gap:8px;}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open [data-battle-watch]{height:58px;padding:0 14px;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-go{font-size:var(--fs-24);}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op{grid-template-columns:48px minmax(0,1fr) auto;gap:12px;padding:12px;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op-map{display:none;}
