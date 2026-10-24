@@ -4,5 +4,5 @@
 import type { InteriorFillRecord } from '../interiorFills.ts';
 
 export const INTERIOR_FILLS: Readonly<Record<string, InteriorFillRecord>> = Object.freeze({
-  "t62mv1": { v: 0.025, o: [-1.89, 0.265, -3.605], t: [0, 1.4804, 0.676], g: [0, 1.697127, 1.977307], hull: "HQAtABIALAAtABIAMwAtABIARwAtABIATwAtABIAYwAtABIAagAtABIAeQAtABIAHQAwABcARwAwABgAUAAwABcAeQAwABgAIgAlAC8AIgApAC8AIgAoADAAIgApADAA" },
+  "t62mv1": { v: 0.025, o: [-1.89, 0.265, -3.605], t: [0, 1.57, 0.676], g: [0, 1.786727, 1.977307], hull: "HQAtABIALAAtABIAMwAtABIARwAtABIATwAtABIAYwAtABIAagAtABIAeQAtABIAHQAwABcARwAwABgAUAAwABcAeQAwABgAIgAlAC8AIgApAC8AIgAoADAAIgApADAA" },
 });

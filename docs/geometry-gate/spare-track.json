@@ -2930,7 +2930,7 @@
    "hostSweep": []
   },
   "t62mv1": {
-   "inputHash": "476ea79c3e6bf0ac",
+   "inputHash": "d3933456eb985bf7",
    "runs": [
     {
      "index": 0,
@@ -2943,8 +2943,8 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.585,
-      "gap": 0.415,
+      "support": 0.583,
+      "gap": 0.417,
       "air": 0,
       "hidden": 0,
       "sunkMaxM": 0.01,
@@ -2985,19 +2985,17 @@
      "classes": [],
      "primary": "OK",
      "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
+     "notes": [],
      "measures": {
-      "support": 0.017,
-      "gap": 0.983,
+      "support": 0.996,
+      "gap": 0.004,
       "air": 0,
       "hidden": 0,
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 1,
-      "host": "hull<<anon>@profiles/russia.ts:1282>"
+      "exposure": 0.978,
+      "host": "hull<loftHull@profiles/russia.ts:505>"
      }
     }
    ],
@@ -3913,7 +3911,7 @@
    "hostSweep": []
   },
   "ua_challenger2": {
-   "inputHash": "e2ed3d882b549ad9",
+   "inputHash": "192684ce3cbe08dd",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

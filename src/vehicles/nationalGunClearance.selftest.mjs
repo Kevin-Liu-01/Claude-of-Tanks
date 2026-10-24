@@ -83,6 +83,7 @@ const CURVES = {
   merkava3c: [],
   merkava3_baz: [],
   merkava4b: [],
+  t62mv1: [],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type
