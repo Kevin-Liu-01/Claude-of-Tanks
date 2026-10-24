@@ -211,6 +211,7 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
       garageEntry: window.__GARAGE_ENTRY ? JSON.parse(JSON.stringify(window.__GARAGE_ENTRY)) : null,
       battleLoad: window.__BATTLE_LOAD ? JSON.parse(JSON.stringify(window.__BATTLE_LOAD)) : null,
       studioLoad: window.__STUDIO_LOAD ? JSON.parse(JSON.stringify(window.__STUDIO_LOAD)) : null,
+      studioReentry: window.__STUDIO_REENTRY ?? null,
       countdownWarm: window.__BATTLE_COUNTDOWN_WARM ? JSON.parse(JSON.stringify(window.__BATTLE_COUNTDOWN_WARM)) : null,
   deferredWarm: window.__BATTLE_DEFERRED_WARM ? JSON.parse(JSON.stringify(window.__BATTLE_DEFERRED_WARM)) : null,
   visualLoads: Array.isArray(window.__VISUAL_LOAD_TIMINGS) ? JSON.parse(JSON.stringify(window.__VISUAL_LOAD_TIMINGS.slice(-40))) : null };
@@ -295,6 +296,33 @@ export const PATHS = [
     press: (page) => target(page, '[data-nav=studio]'), shown: `shown('.cot-studio')`, shownTimeoutMs: 60000,
     done: `window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`, doneTimeoutMs: 90000,
     after: async (page) => { await pressKey(page, 'Escape'); await waitFor(page, GARAGE_BACK, 60000); } },
+  // a cold Studio entry left with Escape while its battlefield still streams, then entered again: the second press's
+  // shell (shown) and its finished entry (done)
+  { id: 'studio-reenter', doc: 'game', reps: 1,
+    script: async (page, i, run, ctx) => {
+      // a phone's Studio button is in the Garage's menu: the menu opens before the measured press
+      const studio = async () => {
+        const inBar = await page.$eval('[data-nav=studio]', (el) => el.getBoundingClientRect().width > 0
+          && getComputedStyle(el).display !== 'none').catch(() => false);
+        if (inBar) return target(page, '[data-nav=studio]');
+        await tapOrClick(page, await target(page, '.cot-mobile-nav-trigger'), ctx);
+        await waitFor(page, `shown('#cot-mobile-nav-menu')`, 10000);
+        return target(page, '[data-mobile-nav="studio"]');
+      };
+      await run('studio-cold', studio, { shown: `shown('.cot-studio')`, shownTimeoutMs: 60000, quietMs: 1 });
+      await page.evaluate(() => { window.__STUDIO_REENTRY = { loadingAtExit: !!(window.__STUDIO_LOAD && !window.__STUDIO_LOAD.done) }; });
+      await pressKey(page, 'Escape');
+      await waitFor(page, GARAGE_BACK, 60000);
+      // the press waits out the exit's transition (a press during it is not taken), as a player's would
+      await waitFor(page, `!shown('.cot-trans.on')`, 30000).catch(() => {});
+      await sleep(800);
+      await run('studio-reenter', studio, { shown: `shown('.cot-studio')`, shownTimeoutMs: 60000,
+        done: `window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`, doneTimeoutMs: 120000 });
+      await pressKey(page, 'Escape');
+      await waitFor(page, GARAGE_BACK, 60000).catch(() => {});
+      await waitFor(page, `!shown('.cot-trans.on')`, 30000).catch(() => {});
+      await sleep(1500);
+    } },
   { id: 'studio-workspace', doc: 'game', reps: 6,
     setup: async (page, ctx) => { await tapOrClick(page, await target(page, '[data-nav=studio]'), ctx); await waitFor(page, `window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`, 60000); },
     press: (page, i) => target(page, '.cot-studio .workspace-nav button', i + 1),
@@ -355,7 +383,8 @@ const PROGRAM_KEYS = `(() => {
     for (let node = object; node; node = node.parent) { shown = shown && node.visible; if (chain.length < 5) chain.push(node.name || node.type); }
     for (const material of list) {
       const program = renderer?.properties?.get?.(material)?.currentProgram;
-      if (program) materials.push({ material: material.name || material.type, shown, chain: chain.join(' < '), hash: hash(String(program.cacheKey ?? '')) });
+      if (program) materials.push({ material: material.name || material.type, shown, chain: chain.join(' < '), hash: hash(String(program.cacheKey ?? '')),
+        skin: /juggernaut/.test(String(material.onBeforeCompile)), burn: !!material.userData?.__burnU, id: material.id });
     }
   });
   // the scene's lights as a render collects them (visible down the chain), each with its owner chain
@@ -367,7 +396,7 @@ const PROGRAM_KEYS = `(() => {
     for (let node = object; node; node = node.parent) { shown = shown && node.visible; if (chain.length < 4) chain.push(node.name || node.type); }
     lights.push({ type: object.type, shown, intensity: object.intensity, shadow: !!object.castShadow, layers: object.layers.mask, chain: chain.join(' < ') });
   });
-  return { programs, lights, materials };
+  return { programs, lights, materials, pedTrace: (window.__PED_TRACE ?? []).slice(-40) };
 })()`;
 
 async function runPath({ page, path, reps, touch, log, profileDir = null, outDir = null, label = '' }) {

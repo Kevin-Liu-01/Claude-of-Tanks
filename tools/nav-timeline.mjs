@@ -155,6 +155,12 @@ const JOURNEYS = [
       content: when(`location.pathname === '/studio' && ${HERO_DECODED}`),
       ready: when(`visible('.cot-studio') || visible('#cot-boot-gate.on')`) },
   ] },
+  // a cold /studio typed in (a phone's public menu has no Studio link)
+  { id: 'studio-direct', group: 'game', steps: [
+    { id: 'studio-load', act: direct('/studio'), window: 3000, timeoutMs: SHOW_TIMEOUT,
+      content: when(`location.pathname === '/studio' && ${HERO_DECODED}`),
+      ready: when(`visible('.cot-studio') || visible('#cot-boot-gate.on')`) },
+  ] },
   { id: 'game', group: 'game', steps: [
     { id: 'game-boot', act: direct('/'), window: 1500, timeoutMs: SHOW_TIMEOUT,
       content: when(HERO_DECODED), ready: when(`visible('#cot-boot-gate.on')`) },
