@@ -2161197,12 +2161197,12 @@
             "name": "turretRing",
             "min": [
               -0.5623,
-              1.7818,
+              1.7988,
               -1.0886
             ],
             "max": [
               0.9123,
-              1.9782,
+              1.9952,
               0.2486
             ],
             "turretLocal": false
@@ -2161444,16 +2161444,16 @@
           }
         ]
       },
-      "geometryHash": "c69d3d5a",
-      "metadataHash": "b855157d",
+      "geometryHash": "7f49abc0",
+      "metadataHash": "b5c4d68a",
       "presentationAnchor": {
         "xM": -0.0088,
-        "zM": 0.1474
+        "zM": 0.1471
       },
-      "presentationHash": "12f96cea",
+      "presentationHash": "0f01b563",
       "presentationProjection": {
         "centerYM": 1.9925,
-        "topHalfM": 3.7585,
+        "topHalfM": 3.7582,
         "sideHalfM": 2.132
       },
       "appearance": {
@@ -2161472,7 +2161472,7 @@
           "armorPaint": 7,
           "opticGlass": 2,
           "tireRubber": 1,
-          "gunmetal": 6,
+          "gunmetal": 7,
           "unclassified": 19,
           "gearShadow": 1
         }
@@ -2161503,39 +2161503,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 115163,
-          "sha256": "705d8fcf362459349b2f08dde2bf2edb0cf84bee8f89f8c0455426ad19d3928e"
+          "bytes": 120816,
+          "sha256": "92b7b529fbb8e68c7517b8f7d68a2d2b1fd543c21ae00915b15818f1a429c159"
         },
         "modulesSide": {
           "file": "warrior_tes_h_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 124527,
-          "sha256": "eb79942b25aa1f091e705011130c39c93772f724c99698872fda0a804625c87c"
+          "bytes": 130019,
+          "sha256": "bd86ea58fed0479cd1b0144b72cb07e67258ff72d4d9378ab3eafc1a14cb1f0c"
         },
         "crewSide": {
           "file": "warrior_tes_h_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 115413,
-          "sha256": "e0464791a792d3ad4735c38451352b661de430bfeb6423aff0f85b99f47f1276"
+          "bytes": 115672,
+          "sha256": "19eae4cd04be039d090f4aba41baba2db64b5f24e11ba18ddaa1ebcd8ca467b6"
         },
         "angle": {
           "file": "warrior_tes_h_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28384,
-          "sha256": "1d6c9567875b9497b1a8e1345cd89dfaf8d6f6800eb10e293dbe562908894157",
+          "bytes": 28448,
+          "sha256": "c66b765f08b805adcb24b481cc69ff7261918aadd417b723318959c7bdd96368",
           "thumbnail": {
             "file": "thumbs/warrior_tes_h_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10812,
-            "sha256": "e98b80265603a74686c0361196794a7db8d81e70dc2c0c7e30f95dfc6df7f72e"
+            "bytes": 10840,
+            "sha256": "f9bf89bed1926024082d06c1922427e6f4b711acf02ec73a8a6b90725e9b5136"
           }
         },
         "top": {
@@ -2161543,32 +2161543,32 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 21536,
-          "sha256": "7daec2dfba264f82f1447cc6d7d00aa379e9e55300e7756838a281c35f8f75e3"
+          "bytes": 21556,
+          "sha256": "a19baef059abac3c42220b17614b21d43d434c1823751180206a98587e6c9120"
         },
         "side": {
           "file": "warrior_tes_h_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 16378,
-          "sha256": "5258b4d5d1452fbd3a33a4454224ec94cb4d314a95043759b9f5330c695fa593"
+          "bytes": 14502,
+          "sha256": "0e254084f8f6ebb28eb9b417cb60b43bd8d057a4b7782c551292ebcc6fe78553"
         },
         "topSilhouette": {
           "file": "warrior_tes_h_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1992,
-          "sha256": "76cb76086b0c0f6d996bf76b1d3e2b0a8571663104ebb3edc994d1c6e203376b"
+          "bytes": 1999,
+          "sha256": "a6303827bb27a6dd6a6d1b2a007c2340fb7bd0e7383fded79ced958bdc2fb989"
         },
         "sideSilhouette": {
           "file": "warrior_tes_h_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5626,
-          "sha256": "5e730b338b2e42cab7ccf201d50dbbda04d381441c7087add201ecf12b33a3a7"
+          "bytes": 5669,
+          "sha256": "098435070362f70e30e73afaa4e7ebec110c3fbefd454be47a8d413892ccdfd6"
         },
         "markings": {
           "file": "warrior_tes_h_markings.png",
