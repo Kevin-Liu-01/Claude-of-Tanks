@@ -6,7 +6,7 @@
  "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
  "description": "The Field Manual's pictures: the current game, captured in the engine, one file per size rung.",
  "generatedBy": "shots/media-r5/landing-r6/site-all/docs-manifest.py",
- "count": 26,
+ "count": 30,
  "items": [
   {
    "id": "banner-1280",
@@ -27,6 +27,46 @@
    "bytes": 216070,
    "sha256": "202da529a8224300a868b1f12e5d5f543df8a83c83469f7b2f9b0e38fa642676",
    "shows": "The Field Manual index banner: a Leopard on Highland Reservoir's lakeside street laying its gun, a burst behind (21:9)."
+  },
+  {
+   "id": "combat-armor-1920",
+   "slot": "combat-armor",
+   "src": "/media/docs-r1/combat-armor-1920.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 466774,
+   "sha256": "60174c90d405673b8a8ac55de007afbc5c33b0eecc5c78c27a7e8ee1ac541280",
+   "shows": "The armour overlay (H) through the gunner's sight at x8: the enemy hull drawn green where a shell penetrates, red where it fails."
+  },
+  {
+   "id": "combat-armor-640",
+   "slot": "combat-armor",
+   "src": "/media/docs-r1/combat-armor-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 56870,
+   "sha256": "e665ed7798220f84fc563a6db6ec2ccd169502d1dde7073f3ec93ee29e2add2f",
+   "shows": "The armour overlay (H) through the gunner's sight at x8: the enemy hull drawn green where a shell penetrates, red where it fails."
+  },
+  {
+   "id": "combat-killcam-1920",
+   "slot": "combat-killcam",
+   "src": "/media/docs-r1/combat-killcam-1920.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 217620,
+   "sha256": "579db7be2820c370236e76ce4ca27687003db0275dbea94417239d5061c5008f",
+   "shows": "The kill cam's X-ray after a penetration: the hull made translucent, the shell's path, the modules it hit and passed, the damage, the ballistic analysis and who fired."
+  },
+  {
+   "id": "combat-killcam-640",
+   "slot": "combat-killcam",
+   "src": "/media/docs-r1/combat-killcam-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 24878,
+   "sha256": "dde55abbb44ca9da709d815e9c457454108bda65591b344258fd9d50538e9857",
+   "shows": "The kill cam's X-ray after a penetration: the hull made translucent, the shell's path, the modules it hit and passed, the damage, the ballistic analysis and who fired."
   },
   {
    "id": "combat-spotting-1920",

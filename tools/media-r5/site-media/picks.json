@@ -1682,6 +1682,10 @@
       "s18-street-knockout",
       "s05-barn-advance"
     ],
+    "chapterLoops": [
+      "s226-church-duel",
+      "s227-oasis-duel"
+    ],
     "figures": {
       "docs.graphics.figClose": {
         "id": "s21-fields-assault",
