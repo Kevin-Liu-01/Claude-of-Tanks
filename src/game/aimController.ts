@@ -74,7 +74,7 @@ interface AimTank {
   isPlayer?: boolean;
   _networkShellSlot?: number;
   _networkAmmoSelectionPending?: boolean;
-  input?: { shellSlot?: number; fire?: boolean };
+  input?: { shellSlot?: number; fire?: boolean; aimPoint?: THREE.Vector3 | null };
   state: AimState | null;
   combat: AimCombat | null;
   spec: AimSpec;
@@ -143,6 +143,11 @@ export interface AimController {
     dispersionRadM: number,
   ): number | null;
   update(frame: AimFrame): void;
+  /**
+   * Watch mode's ride-along (watch-mode-243): the same frame for a hull the watcher only looks through — its gunner's
+   * aim point, its reload, rounds and bore — read-only, with no armour targeting.
+   */
+  observe(frame: AimFrame, tankId: string, view: { readonly sight: boolean; readonly zoom: number }): void;
 }
 
 const AIM_STICKY_INFLATE = 1.15;
@@ -432,5 +437,26 @@ export function createAimController(deps: AimControllerDependencies): AimControl
     applyArmorSelection(frame, shellSpec);
   }
 
-  return { raycast, gunCenterRay, muzzlePathBlockDist, update };
+  const observedRig: AimRig = { aimPoint: new THREE.Vector3(), aimDist: 0, mode: 'ARCADE', zoom: 1 };
+  function observe(frame: AimFrame, tankId: string, view: { readonly sight: boolean; readonly zoom: number }): void {
+    frame.ammoSelectionPending = false;
+    let tank: AimTank | null = null;
+    for (const entry of deps.getGame().tanks) if (entry.id === tankId) { tank = entry; break; }
+    if (!tank?.state || !tank.combat || !tank.visual) return;
+    const laid = tank.input?.aimPoint;
+    if (laid) observedRig.aimPoint.copy(laid);
+    else observedRig.aimPoint.copy(tank.state.pos);
+    tank.visual.gunMuzzleWorld(muzzle);
+    observedRig.aimDist = Math.max(1, muzzle.distanceTo(observedRig.aimPoint));
+    observedRig.mode = view.sight ? 'SNIPER' : 'ARCADE';
+    observedRig.zoom = view.zoom;
+    writeBaseAimFrame(frame, tank, observedRig);
+    frame.gunDistM = gunCenterRay(tank, frame.point, muzzle, bore, gunTarget);
+    frame.gunTargetId = null;
+    frame.gunMarker.copy(gunTarget);
+    updateBlockedAimFrame(frame);
+    frame.penRatio = null;
+  }
+
+  return { raycast, gunCenterRay, muzzlePathBlockDist, update, observe };
 }

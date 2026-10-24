@@ -114,8 +114,11 @@ function hoodLeg(a:PlanPoint,b:PlanPoint,direction:number): THREE.BufferGeometry
 }
 
 export function addLeopardA5XSourceDetails(P: TankBuilderPort): void {
-  addPart(P, 'hull', 'ServiceCoverRight', serviceCover(.776058,-1.378049,1.813339));
-  addPart(P, 'hull', 'ServiceCoverLeft', serviceCover(-.765934,-1.365959,1.813270));
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): 0.35 m aft of their source stations, whose
+  // 12 cm domes stood inside the sweep of the right cheek's sight housing (its foot 2.11 m off the ring's axis at 1.70)
+  // and ran through it as the turret turned; their nearest edge is 2.21 m off the axis now, short of the fans.
+  addPart(P, 'hull', 'ServiceCoverRight', serviceCover(.776058,-1.728049,1.813339));
+  addPart(P, 'hull', 'ServiceCoverLeft', serviceCover(-.765934,-1.715959,1.813270));
   addPart(P, 'turret', 'BridgeBase', bridgeBase());
   addPart(P, 'turret', 'BridgeArch', bridgeArch());
   addPart(P, 'turret', 'HoodTop', hoodPlate());

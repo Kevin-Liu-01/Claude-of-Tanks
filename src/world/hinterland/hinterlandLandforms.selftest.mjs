@@ -57,7 +57,8 @@ assert.ok(jWall > 3, `a jebel's wall is sheer (${(Math.atan(jWall) * 180 / Math.
 const cone = { kind: 'cone', at, heightM: 300, lengthM: 2000, widthM: 2000 };
 assert.ok(P(cone, 0, 0) < P(cone, 120, 0), 'the crater dips at the top');
 const caldera = { kind: 'caldera', at, heightM: 300, lengthM: 6000, widthM: 6000 };
-assert.ok(P(caldera, 0, 0) < 0.15 * 300 && P(caldera, 2150, 0) > 0.85 * 300, 'the rim over the floor');
+// (233: the crest rises and falls round the ring, its saddles at 0.68 of the somma's height — no dead-level wall)
+assert.ok(P(caldera, 0, 0) < 0.15 * 300 && P(caldera, 2150, 0) > 0.85 * 0.68 * 300, 'the rim over the floor');
 
 // negative forms cut; notches open a wall; positive forms combine by maximum (authoring order never matters)
 const canyon = { kind: 'canyon', at, heightM: 150, lengthM: 2000, widthM: 600, strikeDeg: 0 };
@@ -165,7 +166,9 @@ for (let i = 0; i < 400; i++) {
   hash.update(`${pinRelief.heightAt(p.x, p.z, 0).toFixed(3)};${alp.heightAt(p.x * 3, p.z * 3, 0, 0).toFixed(3)};`);
 }
 const pin = hash.digest('hex').slice(0, 16);
-const PIN = process.env.HINTERLAND_PIN_PRINT ? null : '26ecad08bfa82075';
+// (horizons-240: the re-cut joins main's 233 caldera crest — its rim rising and falling round the ring — with the pairs
+// branch's landform rock slope, DRAFTS-FOLLOWUP 10; 26ecad08bfa82075 -> a58a37ef8b98ba5e)
+const PIN = process.env.HINTERLAND_PIN_PRINT ? null : 'a58a37ef8b98ba5e';
 if (PIN === null || PIN === '__PIN__') console.log(`hinterlandLandforms pin: ${pin}`);
 else assert.equal(pin, PIN, 'the landform or far law moved: re-pin with the reason (HINTERLAND_PIN_PRINT=1)');
 console.log(`hinterlandLandforms.selftest: ok — massif crest ${summits} summits, ${ledges} ledges, jebel wall ${(Math.atan(jWall) * 180 / Math.PI).toFixed(0)}°, alpine far ${maxAlp.toFixed(0)} m`);

@@ -7,9 +7,11 @@
  * the first error / halt / pagehide when boot never gets there — carrying
  * the whole boot as a timings map, the capability summary, the outcome and
  * whatever else happened before it left. After that only an `entry`
- * follow-up (a battle entry resolving) or an `error` record (uncaught
- * errors, coalesced over a second, deduplicated by message, three per
- * session) costs a request; the whole session is capped at three. Every
+ * follow-up (a battle entry resolving, carrying the errors since the last
+ * beacon) or, when the page leaves or hides with errors waiting, one `error`
+ * record costs a request: one beacon per session phase (2026-10-23, the
+ * telemetry Worker shares Workers Free's daily cap). Errors are deduplicated
+ * by message, three per session; the whole session is capped at three. Every
  * payload is anonymous: a random per-load session id, the build stamp,
  * stage names, timings, bounded error text and a capability summary. Never
  * a player name, room code, address or user agent.
@@ -367,12 +369,19 @@ export function createEntryTelemetry({
     ...(notes.length ? { notes: notes.splice(0, notes.length) } : {}),
   });
 
+  /** The errors since the last beacon as a record's fields: the first as `error`, the rest as `errors`. */
+  const takeErrors = (): { error?: PendingError; errors?: PendingError[] } => {
+    if (!errors.length) return {};
+    const [first, ...rest] = errors.splice(0, errors.length);
+    return { error: first, ...(rest.length ? { errors: rest } : {}) };
+  };
+
   const sendSession = (): void => {
     if (sessionSent) return;
     sessionSent = true;
     if (outcome === null) outcome = ready ? 'ready' : errors.length ? 'error' : 'left';
-    const first = errors.shift();
-    const clean = outcome === 'ready' && !first && (!entry || entry.outcome === 'ok');
+    const carried = takeErrors();
+    const clean = outcome === 'ready' && !carried.error && (!entry || entry.outcome === 'ok');
     const record: WireRecord = {
       kind: 'session', outcome, stage: currentStage,
       ms: bootMs ?? Math.max(0, Math.round(now() - startedAt)),
@@ -383,27 +392,36 @@ export function createEntryTelemetry({
       ...(capCode ? { capCode } : {}),
       ...(entry ? { entry: { outcome: entry.outcome, ...(entry.mode ? { mode: entry.mode } : {}),
         ...(entry.code ? { code: entry.code } : {}), ...(entry.ms !== undefined ? { ms: entry.ms } : {}) } } : {}),
-      ...(first ? { error: first } : entry?.error ? { error: entry.error } : {}),
+      ...(carried.error ? carried : entry?.error ? { error: entry.error } : {}),
     };
     entry = null;
     if (clean && sampledOut) return;
     post(endpoints.session, withCommon(record, clean));
   };
 
-  const sendFollowUps = (): void => {
+  /**
+   * One beacon per session phase (security audit 2026-10-22, NV-9; the telemetry Worker shares Workers Free's daily
+   * cap with the rooms Worker): a battle's entry record carries the errors since the last beacon, and the page's exit
+   * (`exit`: pagehide, or hidden with errors waiting) sends what is left in one error record. An error never sends a
+   * beacon of its own once the session record has left.
+   */
+  const sendFollowUps = (exit: boolean): void => {
     if (entry) {
       const pending = entry;
       entry = null;
-      const clean = pending.outcome === 'ok';
+      const carried = takeErrors();
+      const clean = pending.outcome === 'ok' && !carried.error;
       if (!(clean && sampledOut)) {
         post(endpoints.session, withCommon({
           kind: 'entry', outcome: pending.outcome, ...(pending.mode ? { mode: pending.mode } : {}),
           ...(pending.code ? { code: pending.code } : {}), ...(pending.ms !== undefined ? { ms: pending.ms } : {}),
-          ...(pending.error ? { error: pending.error } : {}),
+          ...(pending.error
+            ? { error: pending.error, ...(carried.error ? { errors: [carried.error, ...(carried.errors ?? [])] } : {}) }
+            : carried),
         }, clean));
       }
     }
-    if (errors.length) {
+    if (exit && errors.length) {
       const [first, ...rest] = errors.splice(0, errors.length);
       post(endpoints.error, withCommon({
         kind: 'error', stage: first.stage, ...(first.code ? { code: first.code } : {}), ready,
@@ -417,7 +435,7 @@ export function createEntryTelemetry({
   const runScheduled = (): void => {
     if (timer !== null) { cancel(timer); timer = null; }
     if (!sessionSent && errors.length) sendSession();
-    sendFollowUps();
+    sendFollowUps(false);
   };
 
   const arm = (delayMs: number): void => {
@@ -428,7 +446,7 @@ export function createEntryTelemetry({
     if (outcome === null) outcome = result;
     if (timer !== null) { cancel(timer); timer = null; }
     sendSession();
-    sendFollowUps();
+    sendFollowUps(false);
   };
 
   const note = (text: string): void => {
@@ -450,7 +468,8 @@ export function createEntryTelemetry({
     seenMessages.add(summary.message);
     errorCount += 1;
     errors.push({ stage: timingKey(stageName || currentStage), ...(code ? { code: telemetryCode(code) } : {}), ...summary });
-    arm(errorDelayMs);
+    // before the session record a failing boot reports within a second; after it the error waits for the next beacon
+    if (!sessionSent) arm(errorDelayMs);
     return true;
   };
 
@@ -489,7 +508,7 @@ export function createEntryTelemetry({
           ...(roundMs(event.ms) !== undefined ? { ms: roundMs(event.ms) } : {}),
           ...(event.error ? { error: event.error } : {}),
         };
-        if (sessionSent) sendFollowUps();
+        if (sessionSent) sendFollowUps(false);
         return true;
       }
       case 'slow_reveal':
@@ -532,7 +551,7 @@ export function createEntryTelemetry({
         if (sessionSent) {
           // The session record has left: the battle's link rides one `entry` follow-up (the session budget still holds).
           entry = { outcome: exit === 'dropped' || exit === 'lost' ? 'failed' : 'ok', mode: 'network', code: `mp_${exit}`, ...(roundMs(event.ms) !== undefined ? { ms: roundMs(event.ms) } : {}) };
-          sendFollowUps();
+          sendFollowUps(false);
         }
         return true;
       }
@@ -555,11 +574,13 @@ export function createEntryTelemetry({
       if (!enabled) return;
       if (timer !== null) { cancel(timer); timer = null; }
       sendSession();
-      sendFollowUps();
+      sendFollowUps(true);
     },
     flushPending() {
-      if (!enabled || timer === null) return;
-      runScheduled();
+      if (!enabled) return;
+      if (timer !== null) runScheduled();
+      // a hidden page may never come back: the errors since the last beacon leave now, in one record
+      else if (sessionSent && errors.length) sendFollowUps(true);
     },
   };
 }

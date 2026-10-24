@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import { battleSideStack, battleNotificationRows, battleRosterHeight, installBattleHudLayout, objectiveWidth, battleReportDock, REPORT_MAP_GAP,
   portraitSightClearTop, SIGHT_BAND_ABOVE, SIGHT_BAND_BELOW, SCOPE_BAND_BELOW } from './battleHudLayout.ts';
-import { detectionHeight, MOUSE_NOTICE_GAP_PX, mouseNoticePlanWork } from './mouseNoticePlan.ts';
+import { DETECTION_H, MOUSE_NOTICE_GAP_PX, mouseNoticePlanWork } from './mouseNoticePlan.ts';
 import { sightFurniture, sightNotice } from './sightFurniture.ts';
 const layoutSourceR10 = readFileSync(new URL('./battleHudLayout.ts', import.meta.url), 'utf8');
 
@@ -315,9 +315,10 @@ try {
       'revive-x','revive-top','revive-scale','roster-wide-left','roster-wide-right'])
       assert.equal(touch.properties.has(`--hud-${name}`),false,`the touch layout writes no --hud-${name}`);
     assert.deepEqual([...touch.root.classList.set].sort(),['cot-hud'],'nor a class on the HUD root');
-    // main's rule: under the score at 12 % of the height (no instrument in the way), the alert 8 px under a 48 px detection
+    // main's rule: under the score at 12 % of the height (no instrument in the way), the alert 8 px under the detection's
+    // one 32 px row
     assert.equal(touch.properties.get('--hud-notice-top'),`${Math.floor(Math.max(62+8,768*.12))}px`);
-    assert.equal(touch.properties.get('--hud-alert-top'),`${Math.floor(Math.max(62+8,768*.12)+48+8)}px`);
+    assert.equal(touch.properties.get('--hud-alert-top'),`${Math.floor(Math.max(62+8,768*.12)+32+8)}px`);
     // the mouse layout of the same window plans and carries it (the check above is not blind)
     mouseNoticePlanWork.bands=-1;
     const mouse=harness();
@@ -415,7 +416,7 @@ try {
       // marked as the feed's
       const [lit,litPlace,props,size]=feed(0,0,true);
       const px=v=>parseFloat(props.get(v)),dw=px('--hud-center-notice-width'),cw=size==='compact'?250:Math.min(380,390-32);
-      const det={x:390/2-dw/2,y:px('--hud-notice-top'),w:dw,h:detectionHeight(dw,false)};
+      const det={x:390/2-dw/2,y:px('--hud-notice-top'),w:dw,h:DETECTION_H};
       const card={x:390/2-cw/2,y:px('--hud-banner-top'),w:cw,h:size==='compact'?40:76},g=MOUSE_NOTICE_GAP_PX;
       const meets=card.x<det.x+det.w+g&&card.x+card.w>det.x-g&&card.y<det.y+det.h+g&&card.y+card.h>det.y-g;
       assert.ok(!/f$/.test(lit)&&(litPlace==='deferred')===meets&&/w$/.test(lit)===meets,
@@ -588,7 +589,7 @@ try {
     // every kind of furniture the reticle keeps clear of is published (r10 critic: dropping .cot-con, the 667x375 defect,
     // went unnoticed): one box a selector, nowhere near the seats
     const kinds = ['.cot-vehicle-controls>button', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .joy', '.cot-touch.on .quick',
-      '.cot-touch-aim.on .aimhint', '.cot-minimap', '.cot-mode-status.show', '.flight-identity', '.cot-ear'];
+      '.cot-minimap', '.cot-mode-status.show', '.flight-identity', '.cot-ear'];
     const every = Object.fromEntries(kinds.map((selector, i) => [selector, [box(300 + i * 30, 600, 320 + i * 30, 620)]]));
     const published = solve(900, 700, { ...every, '.cot-scope-vision': [right(900, 700)] }).boxes;
     for (const [i, selector] of kinds.entries()) {

@@ -1101,8 +1101,8 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, 
  *  the places that reach least far into it, and this is how far that is at worst, with a margin for the browser's own
  *  text metrics (r10, measured here and on the rendered fixture). Keys ending ':objective' are the recorded objective
  *  stage, which every mode but the standard battle shows (section 19c). 568x290: 3.34 px, a rack set over a 43 px ring
- *  under the score; with the objective panel 22.75 px, the panel over the sight and the systems row under it leaving the
- *  rack no room (only right of the ring is free). 320x568 with the objective panel: 10.59 px, the readout line set over
+ *  under the score; with the objective panel 22.75 px (23.88 with UI-06's 44 px tiles, recorded again in 242), the panel
+ *  over the sight and the systems row under it leaving the rack no room (only right of the ring is free). 320x568 with the objective panel: 10.59 px, the readout line set over
  *  the ring on the systems row's top slot, the panel, the chrome and the row stacked down to 203 px (its standard battle
  *  keeps 3 px since r10g parks the gun travel chip under the map: seated by the sight it met the left FIRE button by
  *  12.22 px, the drive gauge or the map's corner). 740x360 and 640x360 with the objective panel: 0.37 px, an empty rack under the widest ring
@@ -1113,7 +1113,7 @@ function reticleGaps(ops, at, { warn, scoped, vision = null, ringClear = false, 
  *  battle. Every other swept window, the listed capture sizes among them, keeps 3 px in a standard battle and in every
  *  mode. */
 const TIGHT_FLOOR = { '568x290t': -3.5,
-  '568x290t:objective': -23, '320x568t:objective': -11,
+  '568x290t:objective': -24, '320x568t:objective': -11,
   '740x360t:objective': -0.5, '640x360t:objective': -0.5, '1024x400:objective': -8 };
 const tightWorst = {};
 /** Every mark keeps 3 px from every recorded panel and control (sightFurniture.ts), or on the smallest windows no less
@@ -1179,9 +1179,16 @@ function assertFurnitureClear(items, boxes, at, key = null) {
           // beside the column under the marker, the row keeps a group gap (16 px) from every mark on its level, and starts
           // right past the nearest of them, never past a countdown painted on an earlier frame (r9b critic)
           modes.rowBeside++;
-          const left = Math.min(...stack.map((op) => op.box.x0));
-          const level = furniture.filter((item) => item !== tag && item.op !== 'dom'
-            && Math.min(item.box.y1, line[0].box.y1) > Math.max(item.box.y0, line[0].box.y0 - 10));
+          const onLevel = (item) => Math.min(item.box.y1, line[0].box.y1) > Math.max(item.box.y0, line[0].box.y0 - 10);
+          // (a short window's struck round rides the readout line, leading it: the row starts at the round, 740x360 since the
+          // aim hint went in 242)
+          const dry = furniture.filter((item) => item.op === 'stroke' && item.style === INK.dry && onLevel(item)
+            && item.box.x1 <= line[0].box.x0 + 0.5 && line[0].box.x0 - item.box.x1 < 16 - 0.5);
+          // (the round's strokes: its outline, its strike and the dark contour under them)
+          const x0 = Math.min(...dry.map((op) => op.box.x0)) - 1, x1 = Math.max(...dry.map((op) => op.box.x1)) + 1;
+          const leads = furniture.filter((item) => item.op === 'stroke' && onLevel(item) && item.box.x0 >= x0 && item.box.x1 <= x1);
+          const left = Math.min(...stack.map((op) => op.box.x0), ...leads.map((op) => op.box.x0));
+          const level = furniture.filter((item) => item !== tag && item.op !== 'dom' && !leads.includes(item) && onLevel(item));
           for (const op of level) {
             assert.ok(left - op.box.x1 >= 16 - 0.5, `${at}: the row beside the column keeps ${(left - op.box.x1).toFixed(2)} px from a mark on its level`);
           }
@@ -1440,8 +1447,8 @@ function assertFurnitureClear(items, boxes, at, key = null) {
 // the warning, over the rings, every cross arm segment keeps 3 px from every mark (the rack, the struck round, the
 // countdown, the readout line and zoom plate, the range tag, the chip) and from the furniture, every mil tick 2 px.
 {
-  const ARM_INK = new Set(['rgba(170,240,178,0.6)', 'rgba(4,7,6,0.38)']);
-  const TICK_INK = new Set(['rgba(176,242,184,0.70)', 'rgba(3,7,5,0.52)']);
+  const ARM_INK = new Set(['rgba(246,243,236,0.78)', 'rgba(5,6,8,0.55)']);
+  const TICK_INK = new Set(['rgba(246,243,236,0.86)', 'rgba(5,6,8,0.6)']);
   const apart = (a, b) => Math.max(a.x0 - b.x1, b.x0 - a.x1, a.y0 - b.y1, b.y0 - a.y1);
   // (a stroke's moveTo/lineTo pairs, each a segment, its line width either side)
   const segments = (op) => {

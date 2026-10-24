@@ -1,6 +1,6 @@
 // Deterministic 1200x630 social cards composed from approved in-engine captures.
 // The default game card and every route companion share the owner-approved
-// bottom-left Chakra Petch lockup (the display face), rendered from the current crest master.
+// bottom-left lockup: the Bracket Chevron and the outlined wordmark (public/brand/lockup.svg, tools/brand/wordmark.py).
 // Every card shows the current game (owner, 2026-10-15: "for the social link cards, they have to use the modern version
 // of the game, not the old"): the versus stills (public/media/versus-r1) for the game, the home page, private rooms,
 // the 404 and the manual's battle topics, performance and loading among them; two of the combat round's duels
@@ -21,7 +21,7 @@ import { filterPublishedImage, masterFilter } from '../media-r5/master-filter.mj
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const OUTPUT = join(ROOT, 'public/brand/og');
-const LOGO = join(ROOT, 'public/brand/logo-mark.svg');
+const LOCKUP = join(ROOT, 'public/brand/lockup.svg');
 
 export const OG_IMAGE_CARDS = [
   ['game', '', 'public/media/versus-r1/f6-leo2a6-steinburg-r6.webp', '50% 50%'],
@@ -70,7 +70,7 @@ function asDataUrl(path, mime) {
 
 export function cardHtml(label, source, position, fit = 'cover', lang = 'en') {
   const image = asDataUrl(join(ROOT, source), 'image/webp');
-  const logo = asDataUrl(LOGO, 'image/svg+xml');
+  const lockup = asDataUrl(LOCKUP, 'image/svg+xml');
   const font = asDataUrl(join(ROOT, 'public/fonts/chakra-petch/ChakraPetch-Bold-Latin.woff2'), 'font/woff2');
   const contain = fit === 'contain';
   return `<!doctype html><html><head><style>
@@ -82,24 +82,20 @@ export function cardHtml(label, source, position, fit = 'cover', lang = 'en') {
     .shade{background:linear-gradient(180deg,rgba(3,9,14,.46) 0%,rgba(3,9,14,.03) 42%,rgba(3,9,14,.18) 59%,rgba(3,9,14,.94) 100%),linear-gradient(90deg,rgba(3,9,14,.38),transparent 52%,rgba(3,9,14,.16))}
     .grain{opacity:.13;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.72' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.22'/%3E%3C/svg%3E");mix-blend-mode:soft-light}
     .rule{position:absolute;top:42px;right:48px;width:92px;height:3px;background:#f5a623;box-shadow:0 0 18px rgba(245,166,35,.28)}
-    .label{position:absolute;top:57px;right:48px;color:#f4f7f9;font:700 15px/1 Arial,sans-serif;letter-spacing:3.3px;text-shadow:0 2px 7px #000;text-align:right}
+    .label{position:absolute;top:57px;right:48px;color:#f4f7f9;font:700 16px/1 'Chakra Petch',sans-serif;letter-spacing:3.3px;text-shadow:0 2px 7px #000;text-align:right}
     .label:lang(zh){top:55px;font:600 19px/1 'PingFang SC','Hiragino Sans GB','Noto Sans CJK SC','Microsoft YaHei',sans-serif;letter-spacing:4px}
-    .lockup{position:absolute;left:64px;bottom:46px;display:flex;align-items:center;gap:20px;font-family:'Chakra Petch',sans-serif}
-    .crest{width:150px;height:150px;flex:none;object-fit:contain;filter:drop-shadow(0 6px 26px rgba(0,0,0,.65))}
-    .wordmark{font-weight:700;font-size:64px;letter-spacing:.10em;color:#f2f7fb;line-height:1;text-shadow:0 2px 24px rgba(0,0,0,.8)}
-    .wordmark-subtitle{margin-top:0;font-weight:700;font-size:25px;letter-spacing:.30em;color:#f0a030}
+    .lockup{position:absolute;left:60px;bottom:52px;height:76px;width:auto;filter:drop-shadow(0 2px 18px rgba(0,0,0,.75))}
     .edge{position:absolute;inset:14px;border:1px solid rgba(189,207,218,.2)}
     .game .backdrop,.game .grain,.game .edge{display:none}
     .game .hero{filter:none}
+    /* the game card's Leopard fills the lower left: its lockup takes the clear cobbles on the right (text never on a tank) */
+    .game .lockup{left:auto;right:48px;bottom:40px;height:64px}
     .game .shade{background:linear-gradient(0deg,rgba(5,8,11,.82) 0%,rgba(5,8,11,.42) 24%,rgba(5,8,11,0) 48%)}
   </style></head><body><div class="card${label ? '' : ' game'}" lang="${lang}">
     <img class="backdrop" src="${image}"><img class="hero" src="${image}">
     <div class="shade"></div><div class="grain"></div><div class="edge"></div>
     ${label ? `<div class="rule"></div><div class="label">${label}</div>` : ''}
-    <div class="lockup" aria-label="Claude of Tanks">
-      <img class="crest" src="${logo}" alt="">
-      <div><div class="wordmark">CLAUDE</div><div class="wordmark-subtitle">OF TANKS</div></div>
-    </div>
+    <img class="lockup" src="${lockup}" alt="Claude of Tanks">
   </div></body></html>`;
 }
 
@@ -122,8 +118,9 @@ async function generateOgImages(cards = OG_IMAGE_CARDS) {
       if (label === undefined) throw new Error(`${name}: no ${locale} label`);
       await page.setContent(cardHtml(label, source, position, fit, locale), { waitUntil: 'load' });
       await page.evaluate(async () => {
-        await document.fonts.ready;
-        if (!document.fonts.check('700 64px "Chakra Petch"')) throw new Error('brand font failed to load');
+        // the labels' face: loaded outright, so a card without a label still proves the face resolves
+        await document.fonts.load('700 16px "Chakra Petch"');
+        if (!document.fonts.check('700 16px "Chakra Petch"')) throw new Error('brand font failed to load');
         await Promise.all([...document.images].map((image) => image.complete
           ? (image.naturalWidth ? Promise.resolve() : Promise.reject(new Error('image failed to decode')))
           : new Promise((resolveImage, rejectImage) => {

@@ -5,7 +5,7 @@
  * frame behind a tiny busy label, and leaving a battle (or the studio)
  * snapped straight to the garage mid-frame. Every state change now passes
  * through the same loading-screen identity the boot splash and the
- * pre-battle screen established: featured action still + scrim, crest mark,
+ * pre-battle screen established: featured action still + scrim, the Bracket Chevron mark,
  * amber kicker, big condensed title, progress bar when there is real work
  * to track.
  *
@@ -150,7 +150,7 @@ export function createTransition(): TransitionScreen {
   root.innerHTML =
     `<div class="bg"></div><div class="scrim"></div><div class="vig"></div>` +
     `<div class="core">` +
-    `<img class="mark" src="/brand/logo-mark.svg" alt="" draggable="false">` +
+    `<img class="mark" src="/brand/mark.svg" alt="" draggable="false">` +
     `<div class="kick"></div><div class="title"></div><div class="sub"></div>` +
     `<div class="meter"><div class="mrow"><div class="mstage"></div>` +
     `<div class="mpct num">0%</div></div>` +

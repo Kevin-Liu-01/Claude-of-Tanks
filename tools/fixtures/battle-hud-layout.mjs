@@ -1,4 +1,6 @@
 import '../../src/ui/tokens/tokens.css';
+// the shared kit, as the game's entry loads it (main.ts): the HUD's flags, silhouettes, chips and key caps
+import '../../src/ui/components/components.css';
 import '../../src/ui/endScreenPresentation.css';
 import '../../src/ui/richTooltip.css';
 // Real production components, deterministic presentation data, no WebGL/simulation.
@@ -171,6 +173,9 @@ function state(name) {
   settings.close({noRelock:true});
   const modeId = name.startsWith('mode-') ? name.slice(5) : 'mars';
   frame.matchModeState = {id:modeId, score:{alpha:2,bravo:1}, target:modeId==='capture_the_flag'?3:modeId==='turbo_ball'?5:750, horde:{wave:3,alive:12},line:{index:1,total:3},playerAmmo:24,playerAmmoCapacity:40};
+  // zone control's three zones (the sector chips under the score and the map's badges): held, contested, lost
+  if(modeId==='zone_control')frame.matchModeState.zones=[{x:-150,z:90,control:1,owner:'alpha',contested:false},
+    {x:0,z:0,control:.4,owner:null,contested:true},{x:150,z:-90,control:-1,owner:'bravo',contested:false}];
   player.spec = TANK_SPECS[name==='special'?'bwp1':'m1a3'];
   player.combat = createCombatState(player.spec);
   player.specialAction = createSpecialActionState(player.spec);

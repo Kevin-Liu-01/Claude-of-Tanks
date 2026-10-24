@@ -245,4 +245,10 @@ export default {
   },
 
   shot: { pos: [-90, 44, -170], look: [50, 8, 160] },
+  // the horizons stream (horizons-240, 2026-10-23): the Hinterland past the red line (hinterland/drafts/mars.ts) —
+  // an invented Martian impact basin: the terraced crater rim, layered mesas and buttes, the station's masts and domes; its
+  // blind pair against the old ring won 9/0 (mean 3.7 -> 5.7, driver, gunner and chase under day, sunset and night, both
+  // sides on main 4178992761); the battlefield's ground carried past the edge (groundDetail.ts); rimH unchanged;
+  // `?hinterland=0` draws the old ring
+  hinterland: true,
 } satisfies import('./contracts.ts').MapCompositionConfig;
