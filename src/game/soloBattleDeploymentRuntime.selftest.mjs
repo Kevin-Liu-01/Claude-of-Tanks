@@ -13,7 +13,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
   night = false, failNight = false, pauseNight = false, cancelCover = false, failCover = false,
   compileSlices = 2, cancelCompile = false, lateCancelCompile = '', lateCancelWarm = '',
   streamedCadence = null, terrainPrograms = '', vegetationPrograms = '', failPost = false,
-  watchdog = 'healthy', pauseWatchdog = false, failRevealCover = false, panel = '', deferOpponents = false } = {}) {
+  watchdog = 'healthy', pauseWatchdog = false, failRevealCover = false, panel = '', deferOpponents = false, linkWaits = false } = {}) {
   const calls = [];
   let releaseAtmosphere;
   const atmosphereGate = new Promise((resolve) => { releaseAtmosphere = resolve; });
@@ -282,6 +282,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
         ...(watchdog === 'black' || watchdog === 'unrestorable' ? { failed: true } : {}) };
     },
     ...(deferOpponents ? { deferOpponentVisuals: () => true } : {}),
+    ...(linkWaits ? { awaitProgramLinks: async (yieldForBudget) => { calls.push(['links']); await yieldForBudget(true); } } : {}),
     getGeneration: () => generation,
     advanceGeneration: () => ++generation,
     setPending: (value) => { pending = value; },
@@ -540,6 +541,18 @@ for (const failPost of [false, true]) for (const watchdog of ['healthy', 'black'
 }
 assert.ok(order.indexOf('allies') < order.indexOf('enemies') && order.indexOf('enemies') < order.indexOf('terrain'),
   'hidden opponents stream under the cover, after the allies and before the terrain grid (transitions-249)');
+// transitions-249: the queued links are awaited between tasks before the shadow warm and before the post warm
+{
+  const h = createHarness({ linkWaits: true });
+  await h.runtime.warm(Promise.resolve());
+  const names = h.calls.map(([name]) => name);
+  const links = names.flatMap((name, index) => name === 'links' ? [index] : []);
+  assert.equal(links.length, 2, 'two link waits');
+  assert.ok(links[0] < names.indexOf('shadowWarm') && names.indexOf('shadowWarm') < links[1]
+    && links[1] < names.indexOf('postWarm'), 'one before the shadow warm, one before the post warm');
+  assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.deploymentLinkWaitMs.length, 2);
+  h.disposeWarmResources();
+}
 // deferOpponentVisuals leaves them to the revealed countdown's warm
 {
   const h = createHarness({ deferOpponents: true });

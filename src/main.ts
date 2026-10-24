@@ -2003,6 +2003,15 @@ bus.on('ui:debugHud', (payload) => {
   perfHud.setVisible(enabled);
 });
 const armorAimOverlay = createArmorAimOverlayAccess();
+// transitions-249: wait, between tasks, until the renderer's queued program links are in, so the draw that binds them
+// does not wait inside one task. Bounded: a link still pending at the deadline waits at its draw, as before.
+const awaitRendererProgramLinks = async (yieldForBudget: (force?: boolean) => Promise<void> | undefined): Promise<void> => {
+  const deadline = performance.now() + 12_000;
+  const programs = renderer.info.programs as unknown as Array<{ isReady?(): boolean }> | null;
+  while (performance.now() < deadline && programs?.some((program) => program.isReady?.() === false)) {
+    await yieldForBudget(true);
+  }
+};
 const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameState>({
   game,
   scene,
@@ -2020,14 +2029,8 @@ const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameStat
     for (const _batch of createIsolatedForwardWarmBatches({ scene, root, warmRender, cohortSize: Infinity })) { /* one cohort */ }
   },
   // transitions-249: a stream draws its staged tanks after every build, once the programs their compiles submitted have
-  // linked between tasks (bounded: a link still pending then waits at its draw, as before)
-  awaitProgramLinks: async (yieldForBudget) => {
-    const deadline = performance.now() + 12_000;
-    const programs = renderer.info.programs as unknown as Array<{ isReady?(): boolean }> | null;
-    while (performance.now() < deadline && programs?.some((program) => program.isReady?.() === false)) {
-      await yieldForBudget(true);
-    }
-  },
+  // linked between tasks
+  awaitProgramLinks: awaitRendererProgramLinks,
   recordTiming(timing) {
     if (typeof window !== 'undefined') (window.__VISUAL_LOAD_TIMINGS ||= []).push(timing);
   },
@@ -2226,6 +2229,7 @@ const soloBattleDeployment = createSoloBattleDeploymentAccess({
       assertCurrent();
       return result;
     },
+    awaitProgramLinks: awaitRendererProgramLinks,
     getGeneration: () => battleWarmGeneration,
     advanceGeneration: () => ++battleWarmGeneration,
     setPending: (pending: boolean) => { battleWarmPending = pending; },
