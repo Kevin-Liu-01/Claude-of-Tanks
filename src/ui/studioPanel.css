@@ -19,6 +19,8 @@
 .cot-studio :is(button,input,select,summary,canvas):focus-visible{outline:2px solid var(--accent-hi);outline-offset:1px}
 /* hidden wins over the panel's own display rules (the doubled attribute outranks their two classes, no !important) */
 .cot-studio [hidden][hidden]{display:none}
+/* Quick (brand-ui SPEC 12.6) leaves the fine controls to Pro; the doubled attribute outranks the rows' own display */
+.cot-studio[data-studio-mode='quick'] [data-pro][data-pro]{display:none}
 .cot-studio .cot-i{flex:none}
 
 /* the game's canvas (#app) takes the viewport cell while the Studio is open (studioPanel.ts measures the cell) */
@@ -39,6 +41,7 @@ body[data-studio-workspace] #app{position:fixed;left:var(--studio-vp-x,0px);top:
 .st-head .st svg{width:24px;height:24px}
 .st-head .pn{min-width:0;margin-left:10px;overflow:hidden;font:600 var(--fs-15)/1 var(--font-display);text-overflow:ellipsis;white-space:nowrap}
 .st-head .cot-c-seg__opt{height:28px;font-size:var(--fs-12)}
+.st-head .cot-c-seg{flex:none}
 .st-head .r{display:flex;align-items:center;gap:8px;margin-left:auto}
 .st-head .cot-c-chip{height:32px}
 button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
@@ -406,7 +409,7 @@ body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-out .gh>button:
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-insp{grid-row:5;border-left:0}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-shelf{grid-row:6}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-shelf .production-takes .production-library{grid-auto-columns:42%}
-body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .pn,.st-tl .tp .sl){display:none}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .pn,.st-head .st-mode,.st-tl .tp .sl){display:none}
 /* on a phone the header's, the transport's and the viewport's chips keep their glyphs; the names stay as accessible names, and
    the lanes keep their flags, silhouettes and glyphs */
 body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .st .wd,.st-head .r .cot-c-chip__label,.st-head .cot-c-btn__label,.st-tl .tp .r .cot-c-chip__label,

@@ -377,6 +377,11 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const GIZMO_RADIUS = 30;
 /** At most this many camouflage swatches paint in one frame (each a 2 m crop of the real pattern tile). */
 const SWATCHES_PER_FRAME = 3;
+/** Each viewer's Quick | Pro choice (a convenience: a private window starts on Quick). */
+const CONTROLS_MODE_KEY = 'cot.studio.controls';
+function readControlsMode(): 'quick' | 'pro' {
+  try { return localStorage.getItem(CONTROLS_MODE_KEY) === 'pro' ? 'pro' : 'quick'; } catch (_) { return 'quick'; }
+}
 
 /**
  * Build the Studio: the Premiere direction's page 09 (streams/brand-ui/phase2/bui01/src/pages/09-studio.html) on the
@@ -432,6 +437,31 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     formatSeg.appendChild(option);
     return option;
   });
+  // Quick | Pro (brand-ui SPEC 12.6): Quick keeps the essentials, Pro adds the fine controls; each viewer's own choice
+  const modeSeg = el('div', 'cot-c-seg st-mode');
+  modeSeg.setAttribute('role', 'radiogroup');
+  modeSeg.setAttribute('aria-label', t('studio.ws.controls'));
+  const modeButtons = (['quick', 'pro'] as const).map((mode) => {
+    const option = el('button', 'cot-c-seg__opt', t(`studio.ws.mode.${mode}`));
+    option.type = 'button';
+    option.setAttribute('role', 'radio');
+    option.dataset.value = mode;
+    option.addEventListener('click', () => setControlsMode(mode));
+    modeSeg.appendChild(option);
+    return option;
+  });
+  let proControls = readControlsMode() === 'pro';
+  function setControlsMode(mode: 'quick' | 'pro'): void {
+    proControls = mode === 'pro';
+    root.dataset.studioMode = mode;
+    for (const option of modeButtons) {
+      const on = option.dataset.value === mode;
+      option.setAttribute('aria-checked', String(on));
+      option.tabIndex = on ? 0 : -1;
+    }
+    try { localStorage.setItem(CONTROLS_MODE_KEY, mode); } catch (_) { /* private windows */ }
+    if (proControls && planShown) planView.refreshPlan();
+  }
   const headRight = el('div', 'r');
   const linkBtn = chipButton(t('studio.sceneLink.copyButton'), null);
   linkBtn.insertAdjacentHTML('afterbegin', SCENE_LINK_GLYPHS.link);
@@ -452,7 +482,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   exitBtn.insertAdjacentHTML('beforeend', `<kbd class="cot-c-kbd" aria-hidden="true">F8</kbd>`);
   exitBtn.addEventListener('click', () => S.exit());
   headRight.append(linkBtn, galleryBtn, exportBtn, exitBtn);
-  head.append(mark, projectName, formatSeg, headRight);
+  head.append(mark, projectName, modeSeg, formatSeg, headRight);
 
   // --- the viewport (09-studio .vp): chips, notices and the frame readout over the canvas ---------------------------
   const vpTop = el('div', 'st-vpt');
@@ -950,6 +980,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const gun = sliderRow(t('studio.ws.gun'), -10, 25, 0.5, (v) => patchSel({ gunDeg: v }), 'gun');
   const recoilBtn = chipButton(t('studio.recoilPose'), 'fireGun');
   recoilBtn.addEventListener('click', () => patchSel({ recoilAgeS: 0.05 }));
+  recoilBtn.dataset.pro = '';
   // the pose presets (09-studio .poses): the selected tank's silhouette over each pose's name
   const poses = el('div', 'poses');
   const poseSils: HTMLSpanElement[] = [];
@@ -1315,6 +1346,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // replaying the stack once per change
   const fxParamsBox = el('div', 'fxg');
   fxParamsBox.hidden = true;
+  fxParamsBox.dataset.pro = '';
   secFx.insertBefore(fxParamsBox, fxStack.nextSibling);
   let fxParamsKey = '';
   const fxParamRows = new Map<string, SliderControl>();
@@ -1392,7 +1424,10 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     press(planBtn, planShown);
     if (planShown) planView.refreshPlan();
   });
+  planBtn.dataset.pro = '';
+  planView.root.dataset.pro = '';
   secTime.append(planBtn, planView.root);
+  setControlsMode(proControls ? 'pro' : 'quick');
   const duelBtn = kitButton(t('studio.directDuel'), 'primary');
   duelBtn.classList.add('cot-c-btn--wide');
   let duelVariant = 0;
@@ -1428,6 +1463,8 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const fov = sliderRow(t('studio.ws.fov'), 15, 100, 1, (v) => S.setCamera({ fov: v }));
   const roll = sliderRow(t('studio.ws.roll'), -45, 45, 0.5, (v) => S.setCamera({ rollDeg: v }));
   const spd = sliderRow(t('studio.ws.flySpeed'), 2, 60, 1, (v) => { S._internal.cam.speed = v; });
+  roll.row.dataset.pro = '';
+  spd.row.dataset.pro = '';
   secCam.append(fov.row, roll.row, spd.row);
   globalGroup.body.appendChild(secCam);
   const secPicture = section('picture', t('studioPanel.section.picture'), 'visionThermal');
@@ -1485,6 +1522,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   }
   filmShake.select.title = t('studio.film.shakeTitle');
   filmBlurRow.append(filmBlur.row, filmShake.row);
+  filmBlurRow.dataset.pro = '';
   secCap.appendChild(filmBlurRow);
   const filmSummary = el('div', 'recStatus', '');
   secCap.appendChild(filmSummary);
@@ -1593,6 +1631,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   }
   // --- live recording, stills and the scene file ---------------------------------------------------------------
   const secLive = el('div', 'sec');
+  secLive.dataset.pro = '';
   secLive.appendChild(sectionHead(t('studio.film.liveHeading'), 'record'));
   const fpsSel = labelledSelect(t('studio.ws.video'));
   for (const fps of [60, 30]) {
@@ -1756,6 +1795,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   keyBtn.addEventListener('click', () => keyActorBtn.click());
   const shotBtn = chipButton(t('studio.addCameraShot'), 'toolPhoto');
   shotBtn.addEventListener('click', () => S.addCameraShot());
+  ts.row.dataset.pro = '';
   transportRight.append(duration.row, ts.row, shotBtn, keyBtn);
   transport.append(restartBtn, pauseBtn, stepBtn, clockNow, shuttleBadge, playKey, transportRight);
   const lanes = el('div', 'st-lanes');
@@ -2478,7 +2518,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       refreshAcc += dt;
       planAcc += dt;
       // the plan follows the playhead at ~15 fps while the take plays
-      if (planShown && S.playing && planAcc >= 1 / 15) { planAcc = 0; planView.refreshTime(); }
+      if (planShown && proControls && S.playing && planAcc >= 1 / 15) { planAcc = 0; planView.refreshTime(); }
       if (refreshAcc < 0.25) return;
       refreshAcc = 0;
       refreshSunCamera();

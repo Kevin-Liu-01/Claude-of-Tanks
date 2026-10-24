@@ -80,6 +80,7 @@ automatically so headless capture tools can enter Studio.
 - **Click terrain**: move the effect marker (amber ring)
 - **Click a tank**: select · **drag a tank**: move it and update terrain alignment
 - **Space**: play/pause the storyboard · **J/K/L**: shuttle back, stop, forward (each J or L press doubles the rate to 4x) · **Delete**: remove the selected effect
+- **Quick | Pro** (the header): Quick keeps the essentials; Pro adds the picture sliders, letterbox and depth of field, camera roll and fly speed, film blur and shake, live recording, the recoil chip, play speed, effect parameters and the plan view. Each viewer's choice is remembered in the browser
 - **Look through** (the viewport chip): the view is the shots' camera at the playhead. Dragging, the wheel, the fly keys or a camera edit leave it, after which scrubbing and playing keep the free view; selecting a shot, keying one from the view or loading a scene look through again. Recording and film export always ride the shots
   (or selected actor when no effect layer is selected)
 - The panel provides a scrollable workspace with **Battlefield**, **Tanks**,
