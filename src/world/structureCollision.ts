@@ -321,23 +321,6 @@ function dedupeProjectedTriangles(triangles: number[][]): number[][] {
   return [...deduped.values()];
 }
 
-function projectedPolygonKeys(polygon: number[], cache: Map<number[], Set<string>>): Set<string> {
-  let keys = cache.get(polygon);
-  if (!keys) {
-    keys = polygonVertexKeys(polygon);
-    cache.set(polygon, keys);
-  }
-  return keys;
-}
-
-function sharedVertexCount(
-  keys: ReadonlySet<string>, polygon: number[], cache: Map<number[], Set<string>>,
-): number {
-  let shared = 0;
-  for (const key of projectedPolygonKeys(polygon, cache)) if (keys.has(key)) shared++;
-  return shared;
-}
-
 function combinedConvexHull(first: number[], second: number[]): number[] | null {
   const vertices: Array<[number, number]> = [];
   for (const polygon of [first, second]) {
@@ -468,6 +451,32 @@ function clipPolygonToSlab(polygon: number[], y0: number, y1: number): number[] 
   return input;
 }
 
+/**
+ * (perf-247) Each source triangle's height range, once per solid. The shell bands clip every triangle of a solid at
+ * every half metre of its height (a church: dozens of bands over thousands of triangles); a triangle the band misses
+ * clips to nothing and one inside it clips to itself, so both skip the clip's work with an identical result.
+ */
+const triangleHeightRanges = new WeakMap<LocalSolid, Float64Array>();
+function triangleYRanges(solid: LocalSolid): Float64Array {
+  let ranges = triangleHeightRanges.get(solid);
+  if (ranges) return ranges;
+  ranges = new Float64Array(solid.triangles.length * 2);
+  for (let t = 0; t < solid.triangles.length; t++) {
+    const triangle = solid.triangles[t];
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 1; i < triangle.length; i += 3) {
+      const y = triangle[i];
+      if (y !== y) { lo = NaN; hi = NaN; break; } // NaN: every comparison below fails and the exact clip runs
+      if (y < lo) lo = y;
+      if (y > hi) hi = y;
+    }
+    ranges[t * 2] = lo;
+    ranges[t * 2 + 1] = hi;
+  }
+  triangleHeightRanges.set(solid, ranges);
+  return ranges;
+}
+
 /** Closed horizontal section loops of a solid at height `y` (welded segment chains; open chains are discarded). */
 function sliceContours(solid: LocalSolid, y: number): number[][] {
   const segments: Array<[number, number, number, number]> = [];
@@ -478,7 +487,11 @@ function sliceContours(solid: LocalSolid, y: number): number[][] {
     const t = (y - py) / (qy - py);
     return [Math.fround(px + (qx - px) * t), Math.fround(pz + (qz - pz) * t)];
   };
-  for (const tri of solid.triangles) {
+  const ranges = triangleYRanges(solid);
+  for (let t = 0; t < solid.triangles.length; t++) {
+    // (perf-247) a triangle wholly below the level or at and above it has no edge that crosses it
+    if (ranges[t * 2 + 1] < y || ranges[t * 2] >= y) continue;
+    const tri = solid.triangles[t];
     const points: Array<[number, number]> = [];
     for (let i = 0; i < 3; i++) {
       const j = (i + 1) % 3;
@@ -628,8 +641,13 @@ function bandProjection(solid: LocalSolid, bandMin: number, bandMax: number): { 
   let dense = solid.triangles.length > DENSE_SOURCE_LIMIT;
   const outline: Array<[number, number]> = [];
   let sliceMin = Infinity, sliceMax = -Infinity;
-  for (const triangle of solid.triangles) {
-    const clipped = clipPolygonToSlab(triangle, bandMin, bandMax);
+  const ranges = triangleYRanges(solid);
+  for (let t = 0; t < solid.triangles.length; t++) {
+    const lo = ranges[t * 2], hi = ranges[t * 2 + 1];
+    // (perf-247) wholly below or above the slab: the clip returns nothing; wholly inside: it returns the triangle
+    if (hi < bandMin || lo > bandMax) continue;
+    const triangle = solid.triangles[t];
+    const clipped = lo >= bandMin && hi <= bandMax && triangle.length >= 9 ? triangle : clipPolygonToSlab(triangle, bandMin, bandMax);
     if (clipped.length < 9) continue;
     const projected: number[] = [];
     let y0 = Infinity, y1 = -Infinity;
@@ -695,28 +713,83 @@ function mergeRangedPolygons(items: RangedPolygon[]): RangedPolygon[] {
   }
   // containment first: a section loop already inside a face projection must not widen a hull with air
   const polygons = uniqueRangedPolygons([...deduped.values()]);
-  const vertexKeys = new Map<number[], Set<string>>();
-  let merged = true;
-  while (merged) {
-    merged = false;
-    for (let first = 0; first < polygons.length && !merged; first++) {
-      const firstKeys = projectedPolygonKeys(polygons[first].points, vertexKeys);
-      for (let second = first + 1; second < polygons.length; second++) {
-        if (sharedVertexCount(firstKeys, polygons[second].points, vertexKeys) < 2) continue;
-        const hull = combinedConvexHull(polygons[first].points, polygons[second].points);
-        if (!hull) continue;
-        polygons[first] = {
-          points: hull,
-          y0: Math.min(polygons[first].y0, polygons[second].y0),
-          y1: Math.max(polygons[first].y1, polygons[second].y1),
-        };
-        polygons.splice(second, 1);
+  // (perf-247) the restarted pair search's merges in its order, found the way mergeProjectedTriangles finds them: a
+  // welded-corner index for the pairs, the rows before a new hull checked against it first, the search resumed after
+  // it (a landmark's shell bands spent 0.3 s of a Verdant build restarting it; structureCollisionMergeKeys.selftest.mjs
+  // holds the two to the original). A merge depends on the points alone: the extents only ride along.
+  const count = polygons.length;
+  const keys = polygons.map((polygon) => polygonVertexKeys(polygon.points));
+  const alive = new Uint8Array(count).fill(1);
+  const clean = new Uint8Array(count);
+  const slotsByKey = new Map<string, Set<number>>();
+  const index = (slot: number): void => {
+    for (const key of keys[slot]) {
+      let slots = slotsByKey.get(key);
+      if (!slots) slotsByKey.set(key, slots = new Set());
+      slots.add(slot);
+    }
+  };
+  const unindex = (slot: number): void => {
+    for (const key of keys[slot]) slotsByKey.get(key)!.delete(slot);
+  };
+  for (let slot = 0; slot < count; slot++) index(slot);
+  const shared = new Map<number, number>();
+  const partners = (slot: number, before: boolean): number[] => {
+    shared.clear();
+    for (const key of keys[slot]) {
+      for (const other of slotsByKey.get(key)!) {
+        if (other === slot || (before ? other > slot : other < slot)) continue;
+        shared.set(other, (shared.get(other) ?? 0) + 1);
+      }
+    }
+    const out: number[] = [];
+    for (const [other, corners] of shared) if (corners >= 2) out.push(other);
+    return out.sort((a, b) => a - b);
+  };
+  const join = (first: number, second: number): boolean => {
+    const hull = combinedConvexHull(polygons[first].points, polygons[second].points);
+    if (!hull) return false;
+    unindex(second);
+    unindex(first);
+    alive[second] = 0;
+    polygons[first] = {
+      points: hull,
+      y0: Math.min(polygons[first].y0, polygons[second].y0),
+      y1: Math.max(polygons[first].y1, polygons[second].y1),
+    };
+    keys[first] = polygonVertexKeys(hull);
+    index(first);
+    clean[first] = 0;
+    return true;
+  };
+  let row = 0;
+  let column = -1;
+  for (;;) {
+    if (column >= 0) {
+      const hullAt = column;
+      column = -1;
+      for (const earlier of partners(hullAt, true)) {
+        if (!join(earlier, hullAt)) continue;
+        column = earlier;
+        break;
+      }
+      if (column >= 0) continue;
+      row = hullAt;
+    }
+    let merged = false;
+    for (let first = row; first < count && !merged; first++) {
+      if (!alive[first] || clean[first]) continue;
+      for (const second of partners(first, false)) {
+        if (!join(first, second)) continue;
+        column = first;
         merged = true;
         break;
       }
+      if (!merged) clean[first] = 1;
     }
+    if (!merged) break;
   }
-  return uniqueRangedPolygons(polygons);
+  return uniqueRangedPolygons(polygons.filter((_, slot) => alive[slot] === 1));
 }
 
 /**
