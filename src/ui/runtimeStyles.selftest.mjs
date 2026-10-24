@@ -115,7 +115,6 @@ for (const headerClass of [
   'mtitle cot-sidebar-section-title',
   'ctitle cot-sidebar-section-title',
   'cot-stat-title cot-sidebar-section-title',
-  'eqhead cot-sidebar-section-title',
 ]) {
   assert.match(garageSource, new RegExp(headerClass),
     `Garage header ${headerClass} must consume the shared section-heading contract`);

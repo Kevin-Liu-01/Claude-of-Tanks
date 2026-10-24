@@ -1493,6 +1493,7 @@ export function createCameraRig(
 // therefore byte-identical whether or not the player had dragged the view.
 
 const SHOW_FOV_DEG = 42;               // stage lens (matches the authored bay)
+const SHOW_FOV_UPRIGHT_MAX_DEG = 70;   // a screen held upright opens the lens up to this (showFovDeg)
 const SHOW_HERO_FILL = 0.86;           // hero framing: fraction of the stage rect
 const SHOW_KEEP_FILL = 0.99;           // orbiting: pull back rather than crop
 // garage-scene r1: the ±72° yaw clamp is GONE — free continuous 360° orbit
@@ -1722,6 +1723,16 @@ export function createShowroomOrbit(
     return Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
   }
 
+  /** The stage lens (the 245 Garage redesign): 42° on a screen held wide. A screen held upright opens it until it sees as
+   *  wide as a square screen would (up to 70°), so a phone frames the whole tank inside the bay's 19 m reach instead of
+   *  cropping both ends of the hull. */
+  function showFovDeg(): number {
+    const aspect = viewAspect();
+    if (aspect >= 1) return SHOW_FOV_DEG;
+    const tanV = Math.tan(THREE.MathUtils.degToRad(SHOW_FOV_DEG) * 0.5);
+    return Math.min(SHOW_FOV_UPRIGHT_MAX_DEG, THREE.MathUtils.radToDeg(2 * Math.atan(tanV / aspect)));
+  }
+
   function measureFixedFrame(frame: ShowroomFixedFrame): void {
     _sbMin.set(-frame.hw, -frame.hh, -frame.hd);
     _sbMax.set(frame.hw, frame.hh, frame.hd);
@@ -1852,7 +1863,7 @@ export function createShowroomOrbit(
    */
   function solve(y: number, p: number, fill: number, fixedDist: number): ShowroomSolve {
     const w = readWindow();
-    const tanV = Math.tan(THREE.MathUtils.degToRad(SHOW_FOV_DEG) * 0.5);
+    const tanV = Math.tan(THREE.MathUtils.degToRad(showFovDeg()) * 0.5);
     const tanH = tanV * viewAspect();
     const maxPc = prepareCornerProjection(y, p);
     const dFloor = Math.max(maxPc + SHOW_NEAR_PAD_M, nearDist, 1);
@@ -1908,7 +1919,7 @@ export function createShowroomOrbit(
     const minY = (deps.floorY ? deps.floorY() : -Infinity) + SHOW_FLOOR_PAD_M;
     if (_sbPos.y < minY) _sbPos.y = minY;
     _sbLook.copy(_sbPos).addScaledVector(_sbC, -d);
-    rig.setExternalPose(_sbPos, _sbLook, SHOW_FOV_DEG);
+    rig.setExternalPose(_sbPos, _sbLook, showFovDeg());
     appliedAspect = viewAspect();
     appliedWin.cx = win.cx; appliedWin.cy = win.cy;
     appliedWin.hx = win.hx; appliedWin.hy = win.hy;
@@ -2182,7 +2193,7 @@ export function createShowroomOrbit(
         pitchMaxDeg: THREE.MathUtils.radToDeg(SHOW_PITCH_MAX),
         zoom, zoomMin: SHOW_ZOOM_MIN, zoomMax: SHOW_ZOOM_MAX,
         heroDist, dragging, sinceInputS,
-        fovDeg: SHOW_FOV_DEG,
+        fovDeg: showFovDeg(),
         box: haveBox
           ? { min: _sbMin.toArray(), max: _sbMax.toArray(), center: _sbCenter.toArray() }
           : null,

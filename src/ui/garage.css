@@ -882,10 +882,8 @@ body[data-cot-width='phone'] :is(.cot-custom-draw-wrap,.cot-custom-draw){min-hei
 .cot-garage .stats::-webkit-scrollbar-thumb:active{background:rgba(240,176,74,.62);}
 /* Stock stays neutral; the equipment-adjusted value is green. */
 .cot-garage .srow .lr b .eqmod{color:#9fd8a0;}
-.cot-garage .eqhead{justify-content:space-between;}
 .cot-garage .cot-stat-title .cot-info-trigger{margin-left:0;}
 .cot-garage .cot-stat-title small{margin-left:0;}
-.cot-garage .eqhead .cot-info-trigger{margin-left:0;}
 .cot-garage .cot-dossier-head > .cot-info-trigger{position:absolute;z-index:3;right:11px;top:11px}
 .cot-garage .eqrow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
 .cot-garage .eqslot{appearance:none;width:100%;padding:0;font:inherit;color:inherit;cursor:pointer;height:58px;display:flex;flex-direction:column;
@@ -1272,18 +1270,13 @@ body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage[da
   right:auto;width:min(420px,calc(100vw - (var(--cot-overlay-edge) * 2) - var(--cot-compact-left-width) - 8px));
 }
 body[data-cot-panels='overlay'] .cot-garage .stats>.cot-stat-section{display:none}
-body[data-cot-panels='overlay'] .cot-garage .stats>:is(.cot-technical-section,.cot-performance-section,.cot-loadout-section){display:block}
+body[data-cot-panels='overlay'] .cot-garage .stats>:is(.cot-technical-section,.cot-performance-section){display:block}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stats{
   z-index:11;top:calc(76px + var(--cot-room-row-space,0px));bottom:var(--cot-drawer-bottom);width:min(320px,calc(100vw - (var(--cot-overlay-edge) * 2)));
   max-height:none;padding:8px;overflow-y:auto;background:linear-gradient(160deg,rgba(11,16,21,.99),rgba(5,8,11,.99));
   border:1px solid rgba(174,194,209,.32);box-shadow:0 20px 54px rgba(0,0,0,.66);
 }
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stats>:is(.cot-technical-section,.cot-performance-section){display:none}
-body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stats>.cot-loadout-section{
-  display:block;margin:0;padding:12px;
-}
-body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .eqrow{gap:8px}
-body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .eqslot{min-height:64px}
 body[data-cot-panels='overlay'] .cot-eqpick.open{
   left:auto;right:calc(max(var(--cot-overlay-edge),env(safe-area-inset-right)) + var(--cot-compact-stats-width) + 8px);
   top:calc(76px + var(--cot-room-row-space,0px));bottom:var(--cot-drawer-bottom);width:min(420px,calc(100vw - var(--cot-compact-stats-width) - (var(--cot-overlay-edge) * 3)));
@@ -1329,15 +1322,6 @@ body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment'])
 body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .cot-performance-section .srow .lr>span{font-size:11px;line-height:1.15;color:#93a3af}
 body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .cot-performance-section .srow .lr b{display:block;margin-top:3px;font-size:13px;line-height:1.1;white-space:normal;overflow:visible}
 body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .cot-performance-section .srow .lr b.stat-comparison{display:flex}
-body[data-cot-panels='overlay'] .cot-garage .cot-loadout-section{
-  margin:0;padding:10px;border:0;box-shadow:none;background:rgba(8,12,16,.32);
-}
-body[data-cot-panels='overlay'] .cot-garage .cot-loadout-section .eqhead{margin-bottom:7px}
-body[data-cot-panels='overlay'] .cot-garage .cot-loadout-section .eqhead>span{font-size:11px;letter-spacing:.06em}
-body[data-cot-panels='overlay'] .cot-garage .cot-loadout-section .eqrow{gap:5px}
-body[data-cot-panels='overlay'] .cot-garage .cot-loadout-section .eqslot{height:52px;min-height:52px;gap:3px}
-body[data-cot-panels='overlay'] .cot-garage .cot-loadout-section .eqslot svg{width:22px;height:22px}
-body[data-cot-panels='overlay'] .cot-garage .cot-loadout-section .eqslot .sl{font-size:11px}
 @container garage-dossier (max-width:205px){
   .cot-garage .cot-performance-grid{grid-template-columns:1fr}
   .cot-garage .srow{min-height:40px}
@@ -1436,9 +1420,6 @@ body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage[data-g
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage[data-garage-panel] .cot-garage-tools{
   visibility:hidden;
 }
-body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage:not([data-garage-panel='equipment']) .stats>.cot-loadout-section{
-  display:none;
-}
 body[data-cot-width='phone'][data-cot-orientation='portrait'] .cot-garage .cot-dossier-head{
   min-height:44px;padding:6px 5px;
 }
@@ -1505,9 +1486,6 @@ body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels=
 }
 body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .stats{
   width:min(320px,calc(100vw - 16px));max-height:none;
-}
-body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .stats>.cot-loadout-section{
-  display:none;
 }
 body[data-cot-height='short'][data-cot-orientation='landscape'][data-cot-panels='overlay'] .cot-garage-preview-card{
   grid-template-rows:minmax(0,1fr);padding:3px;gap:0;
@@ -1727,7 +1705,7 @@ body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orient
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .cot-stat-title>.cot-info-trigger{display:inline-flex}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .stats h3{font-size:16px}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .stats .sub{font-size:11px;margin:6px 0}
-body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] :is(.cot-stat-title>span,.eqhead>span,.srow .lr){font-size:11px}
+body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] :is(.cot-stat-title>span,.srow .lr){font-size:11px}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .srow{min-height:44px;padding:8px}
 body[data-cot-panels='overlay'][data-cot-width][data-cot-height][data-cot-orientation] .cot-garage[data-garage-panel='equipment'] .srow .lr b{font-size:13px}
 body[data-cot-panels='overlay'] .cot-garage[data-garage-panel='equipment'] .cot-technical-section>.cot-technical-tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
