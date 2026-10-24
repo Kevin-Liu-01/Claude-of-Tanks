@@ -281,6 +281,8 @@ export const TOKENS = {
   'battle-edge-own': 'inset 3px 0 0 #f0a030,0 0 0 1px oklch(from #f0a030 l c h / .35),0 6px 18px rgba(0,0,0,.35)',
   'battle-veil': 'rgba(5,6,8,.6)',
   'battle-ring-ammo': 'inset 0 0 0 1px oklch(from #c4573f l c h / .6)',
+  'battle-text-halo': '0 1px 2px oklch(from #050608 l c h / .9),0 0 3px oklch(from #050608 l c h / .65)',
+  'battle-mark-ring': '0 0 0 2px oklch(from #050608 l c h / .55)',
   'battle-chip-danger': 'inset 3px 0 0 #ff5a4e,inset 0 0 0 1px oklch(from #ff5a4e l c h / .35),0 0 0 1px rgba(246,243,236,.07),0 6px 18px rgba(0,0,0,.35)',
   'battle-chip-warn': 'inset 3px 0 0 #ffd15c,inset 0 0 0 1px oklch(from #ffd15c l c h / .3),0 0 0 1px rgba(246,243,236,.07),0 6px 18px rgba(0,0,0,.35)',
   'battle-chip-ok': 'inset 3px 0 0 #5bd69b,inset 0 0 0 1px oklch(from #5bd69b l c h / .3),0 0 0 1px rgba(246,243,236,.07),0 6px 18px rgba(0,0,0,.35)',

@@ -1,7 +1,7 @@
 // hudKillRibbon.selftest.mjs — (brand-ui 242) the kill ribbon and the personal stream (the direction's 06-battle-hud.html
 // .ribbon), over the recording DOM: the victim's callsign and vehicle, the cause chip where the cause says more than a
-// shot, the streak's multiplier from the second kill in its window, the stream's kills and the damage the player dealt
-// the streak's victims, the 2.4 s hold, and a clean slate between battles.
+// shot, the streak's multiplier from the second kill in its window, the stream's kills, the damage the player dealt the
+// streak's victims, the zones taken and tanks lit in its window, the 2.4 s hold, and a clean slate between battles.
 import { created } from './hudDomHarness.test-support.mjs';
 import assert from 'node:assert/strict';
 import { createKillRibbon } from './hudKillRibbon.ts';
@@ -35,6 +35,13 @@ try {
   assert.equal(stream[0].children[1].textContent, t('hud.ribbon.kills', { count: 1 }));
   assert.equal(stream[1].children[1].textContent, t('hud.ribbon.damage', { amount: formatNumber(640) }),
     'the damage the player dealt the victim joins the stream');
+  assert.equal(stream[2].hidden, true, 'no capture, no zone line');
+  assert.equal(stream[3].hidden, true, 'no spot, no spot line');
+  ribbon.spot();
+  ribbon.spot();
+  ribbon.zone();
+  assert.equal(stream[2].children[1].textContent, t('hud.ribbon.zones', { count: 1 }), 'a zone the side took joins the stream');
+  assert.equal(stream[3].children[1].textContent, t('hud.ribbon.spots', { count: 2 }), 'and each tank the player lit');
 
   clock += 3000;
   ribbon.kill({ id: 'e2', callsign: 'Petrov', vehicle: 'T-14 Armata', flag: '', specId: 'm1a3' }, shot);
@@ -52,6 +59,7 @@ try {
   ribbon.kill({ id: 'e3', callsign: 'Wang', vehicle: 'ZTZ-99A2', flag: '', specId: 'm1a3' }, shot);
   assert.equal(part('x').hidden, true, 'a kill after the window starts a new streak');
   assert.equal(stream[1].hidden, true, 'no damage dealt, no damage line');
+  assert.equal(stream[3].hidden, true, 'spots age out with the streak window');
 
   ribbon.damage('e4', 500);
   ribbon.clear();
@@ -59,7 +67,11 @@ try {
   ribbon.kill({ id: 'e4', callsign: 'Haas', vehicle: 'Leclerc', flag: '', specId: 'm1a3' }, shot);
   assert.equal(stream[0].children[1].textContent, t('hud.ribbon.kills', { count: 1 }), 'and its streak');
   assert.equal(stream[1].hidden, true, 'and the damage ledger');
+  ribbon.zone();
+  ribbon.clear();
+  ribbon.kill({ id: 'e5', callsign: 'Moreau', vehicle: 'Leclerc', flag: '', specId: 'm1a3' }, shot);
+  assert.equal(stream[2].hidden, true, 'and the captures');
 } finally {
   globalThis.setTimeout = realTimeout;
 }
-console.log('hudKillRibbon.selftest: callsign first, cause chip, streak multiplier, stream (kills, dealt damage), hold and reset passed');
+console.log('hudKillRibbon.selftest: callsign first, cause chip, streak multiplier, stream (kills, dealt damage, zones, spots), hold and reset passed');

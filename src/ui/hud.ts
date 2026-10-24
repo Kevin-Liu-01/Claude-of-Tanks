@@ -354,6 +354,8 @@ interface HudHitEvent extends HitEventPresentation {
 interface HudEventPayload extends SpectatorCardPayload, Partial<HudHitEvent> {
   destroyed?: boolean;
   id?: string;
+  /** tank:spotted: who lit the tank (spotting.ts), when the sim names a spotter. */
+  spotterId?: string | null;
   killerId?: string;
   name?: string;
   vehicle?: string;
@@ -1963,50 +1965,33 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
   border-left:4px solid transparent;border-right:4px solid transparent;
   border-top:5px solid var(--hud-enemy);filter:drop-shadow(0 1px 1px #000);}
 .cot-hpb.ally::after{border-top-color:var(--hud-own);}
-/* Over-target marker: a stable-height instrument follows the exact projected
-   turret roof. Width changes only when its target copy changes, preserving
-   complete names without causing steady-state frame reflow. */
+/* Over-target marker (brand-ui 242, the direction's 06-battle-hud .tgt): one compact plate row on the target — its
+   flag, its silhouette facing the player, the callsign, the tier and vehicle, the range — over the hull bar and its
+   points, the enemy's diamond pointing into the tank. A stable-height instrument follows the exact projected turret
+   roof; its width changes only when its copy does, so names stay whole without steady-state frame reflow. The plate is
+   the row alone: the instrument around it paints nothing over the battlefield. */
 .cot-tgt{position:absolute;z-index:var(--hud-layer-world);width:176px;height:64px;text-align:center;display:none;
   will-change:transform;contain:layout paint style;transform:translate3d(0,0,0);}
-.cot-tgt .bk{height:64px;padding:4px 8px 3px;background:none;}
-/* Tight glyph shadows preserve contrast without painting a dark rectangle
-   across the battlefield behind the whole label.
-   r7-2: nickname in WoT crimson (#fa5252) — the salmon-pink read as damage
-   text, not an enemy nameplate. */
-.cot-tgt .nick{height:17px;font-size:13px;font-weight:700;color:var(--hud-enemy);letter-spacing:.025em;
-  white-space:nowrap;overflow:visible;text-overflow:clip;
-  text-shadow:0 1px 2px rgba(0,0,0,.9),0 0 3px rgba(0,0,0,.65);}
-.cot-tgt .vrow{height:17px;display:grid;grid-template-columns:30px 18px max-content;
-  align-items:center;justify-content:center;gap:4px;margin-top:1px;}
-.cot-tgt .cg{display:inline-flex;align-items:center;
-  filter:drop-shadow(0 1px 1px rgba(0,0,0,.7));}
-.cot-tgt .cg{justify-content:flex-end;}.cot-tgt .cg svg{display:block;}
-.cot-tgt .tier{font-size:11px;font-weight:700;line-height:1;color:var(--ink-2);
-  font-family:${FONT_COND};letter-spacing:0em;
-  text-shadow:0 1px 2px rgba(0,0,0,.75),0 0 6px rgba(0,0,0,.5);}
-.cot-tgt .veh{font-size:11px;font-weight:700;color:var(--ink-1);letter-spacing:.01em;text-align:left;
-  font-family:${FONT_COND};text-transform:uppercase;
-  white-space:nowrap;overflow:visible;text-overflow:clip;
-  text-shadow:0 1px 2px rgba(0,0,0,.86),0 0 3px rgba(0,0,0,.58);}
-/* r7-2 (round critique: "thick full-width red bar + separate 1000/1000 line
-   makes the plate feel oversized"): the HP bar slims to ~60% plate width at
-   4px and the WHITE numerals move INLINE to its right — one quiet gauge
-   line instead of two stacked rows. */
-.cot-tgt .hrow{height:16px;display:grid;grid-template-columns:104px 44px;align-items:center;
-  justify-content:center;gap:6px;margin-top:2px;}
-.cot-tgt .tr{height:6px;width:104px;background:rgba(4,6,8,.92);
-  border:1px solid rgba(0,0,0,.9);box-shadow:0 1px 3px rgba(0,0,0,.7);}
+.cot-tgt .bk{height:64px;padding:0;background:none;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.cot-tgt .pl{height:30px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:var(--r1);
+  background:var(--hud-plate);box-shadow:var(--hud-plate-ring);}
+.cot-tgt .flg{display:flex;flex:none;}.cot-tgt .flg:empty{display:none;}
+.cot-tgt .flg .cot-flag{display:block;box-shadow:var(--flag-ring);}
+.cot-tgt .cg{flex:none;width:34px;height:11px;color:var(--hud-enemy);transform:scaleX(-1);filter:var(--sil-shadow);}
+.cot-tgt .nick{flex:none;font:600 var(--battle-fs-13)/1 var(--hud-font);color:var(--ink-1);
+  white-space:nowrap;overflow:visible;text-overflow:clip;}
+.cot-tgt .tier{flex:none;font:600 var(--battle-fs-12)/1 var(--hud-font);color:var(--ink-3);}
+.cot-tgt .veh{flex:none;font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--ink-3);
+  white-space:nowrap;overflow:visible;text-overflow:clip;}
+.cot-tgt .rng{flex:none;font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--ink-3);}
+.cot-tgt .rng:empty{display:none;}
+/* the hull bar and its points (the direction's 118 x 4 gauge), quiet on the battlefield under the row */
+.cot-tgt .hrow{height:12px;display:flex;align-items:center;gap:6px;}
+.cot-tgt .tr{width:118px;height:4px;background:var(--battle-veil);box-shadow:var(--flag-ring);}
 .cot-tgt .fl{height:100%;background:var(--hud-enemy);}
-.cot-tgt .hp{width:44px;font-size:11px;font-weight:700;color:rgba(255,255,255,.92);line-height:1;
-  font-family:${FONT_COND};
-  letter-spacing:0em;
-  text-shadow:0 1px 2px rgba(0,0,0,.75),0 0 6px rgba(0,0,0,.5);}
-/* r5: anchor chevron — small downward triangle tying the plate to its
-   vehicle (the plate floated context-free above the turret before) */
-.cot-tgt .anch{width:0;height:0;margin:3px auto 0;
-  border-left:5px solid transparent;border-right:5px solid transparent;
-  border-top:6px solid var(--hud-enemy);
-  filter:drop-shadow(0 1px 1px rgba(0,0,0,.65));}
+.cot-tgt .hp{font:500 var(--battle-fs-11)/1 var(--font-data);color:var(--ink-1);text-shadow:var(--battle-text-halo);}
+.cot-tgt .anch{width:10px;height:10px;margin-top:2px;transform:rotate(45deg);background:var(--hud-enemy);
+  box-shadow:var(--battle-mark-ring);}
 /* The tactical map on its plate (brand-ui H3, the direction's .mm). On the wide mouse layouts the plate's padding holds a
    header over the map, the battlefield's name beside the map key's cap, so the map itself keeps its square. */
 .cot-minimap{position:absolute;z-index:var(--hud-layer-controls);right:16px;bottom:16px;width:220px;height:220px;
@@ -2115,12 +2100,16 @@ export function initHud(bus: EventBus): HudRuntime {
   const dmgLayer = el('div', 'cot-dmglayer', root);
 
   // --- over-target marker plate (WoT aiming loop feedback) ---
+  /** The width the plate keeps for its range ("1,240 m" at the data face's 12 px). */
+  const TARGET_RANGE_W = 52;
   const tgtEl = el('div', 'cot-tgt', root);
-  tgtEl.innerHTML = `<div class="bk"><div class="nick"></div>` +
-    `<div class="vrow"><span class="cg"></span><span class="tier"></span><span class="veh"></span></div>` +
+  tgtEl.innerHTML = `<div class="bk"><div class="pl"><span class="flg"></span><span class="cg"></span>` +
+    `<b class="nick"></b><span class="tier"></span><span class="veh"></span><span class="rng num"></span></div>` +
     `<div class="hrow"><div class="tr"><div class="fl"></div></div>` +
     `<div class="hp num"></div></div><div class="anch"></div></div>`;
   const tgtRefs = {
+    flg: requireElement<HTMLElement>(tgtEl, '.flg'),
+    rng: requireElement<HTMLElement>(tgtEl, '.rng'),
     nick: requireElement<HTMLElement>(tgtEl, '.nick'),
     tier: requireElement<HTMLElement>(tgtEl, '.tier'),
     veh: requireElement<HTMLElement>(tgtEl, '.veh'),
@@ -2129,6 +2118,8 @@ export function initHud(bus: EventBus): HudRuntime {
     cg: requireElement<HTMLElement>(tgtEl, '.cg'),
   };
   let tgtLastVehicleId: string | null = null; // cached silhouette key (avoid repeated mask writes)
+  let tgtLastFlagKey = ''; // the flag shown: its vehicle and whether the flag art had loaded
+  let tgtLastRangeM = -2; // the range shown, whole metres (-1: no player to range from)
   let tgtShown = false;
   let tgtRect: TargetPlateRect | null = null; // screen-px rect of the shown plate (sniper hairline gap)
   let tgtPlateWidth = 176; // expands only when a new full vehicle/name string needs it
@@ -3712,12 +3703,13 @@ export function initHud(bus: EventBus): HudRuntime {
     const radius = clampRetR(smoothRadPx);
     const gap = radius + 3;
     const armEnd = radius * 1.55 + 3;
-    paintScopeCrossArms(cx, cy, gap, armEnd, 'rgba(4,7,6,0.38)', 2.4);
-    paintScopeCrossArms(cx, cy, gap, armEnd, 'rgba(170,240,178,0.6)', 1.1);
+    // the direction's optic ink (06b-sniper-optic .optic): paper lines over a graphite under-stroke, no green tint
+    paintScopeCrossArms(cx, cy, gap, armEnd, 'rgba(5,6,8,0.55)', 2.4);
+    paintScopeCrossArms(cx, cy, gap, armEnd, 'rgba(246,243,236,0.78)', 1.1);
     const mil = THREE.MathUtils.clamp(8 + zoom * 1.2, 11, 22);
     const maxMil = Math.min(3, Math.max(1, Math.floor((armEnd - 4) / mil)));
-    paintScopeMilTicks(cx, cy, mil, maxMil, 'rgba(3,7,5,0.52)', 2.2);
-    paintScopeMilTicks(cx, cy, mil, maxMil, 'rgba(176,242,184,0.70)', 0.9);
+    paintScopeMilTicks(cx, cy, mil, maxMil, 'rgba(5,6,8,0.6)', 2.2);
+    paintScopeMilTicks(cx, cy, mil, maxMil, 'rgba(246,243,236,0.86)', 0.9);
     ctx.globalAlpha = 1;
   }
 
@@ -5538,6 +5530,7 @@ export function initHud(bus: EventBus): HudRuntime {
 
   function hideTargetPlate(): void {
     aimTargetId = null;
+    tgtLastRangeM = -2;
     if (tgtShown) {
       tgtEl.style.display = 'none';
       tgtShown = false;
@@ -5574,9 +5567,10 @@ export function initHud(bus: EventBus): HudRuntime {
       copyChanged = true;
     }
     if (!copyChanged) return;
-    const nickWidth = Math.ceil(tgtRefs.nick.scrollWidth) + 16;
-    const vehicleWidth = Math.ceil(tgtRefs.veh.scrollWidth) + 72;
-    tgtPlateWidth = Math.max(176, Math.min(320, Math.max(nickWidth, vehicleWidth)));
+    // the row: its padding, the flag, the silhouette, the callsign, the tier, the vehicle and the range's reserve
+    const rowWidth = 20 + 24 + 42 + Math.ceil(tgtRefs.nick.scrollWidth) + 8 + 22
+      + Math.ceil(tgtRefs.veh.scrollWidth) + 8 + TARGET_RANGE_W;
+    tgtPlateWidth = Math.max(176, Math.min(440, rowWidth));
     tgtEl.style.width = `${tgtPlateWidth}px`;
   }
 
@@ -5591,8 +5585,23 @@ export function initHud(bus: EventBus): HudRuntime {
   function updateTargetPlateContent(target: HudTargetTank): void {
     const vehicleId = target.spec?.id ?? null;
     if (vehicleId && vehicleId !== tgtLastVehicleId) {
-      maskIcon(tgtRefs.cg, vehicleId, 'side_silhouette', '#f0b4ab');
+      maskIcon(tgtRefs.cg, vehicleId, 'side_silhouette', 'currentColor');
       tgtLastVehicleId = vehicleId;
+    }
+    // the flag (flags.ts loads with its art after the HUD; the plate takes it once it has)
+    const nation = target.spec?.nation ?? '';
+    const flagKey = flagHtml && nation ? `${vehicleId}:${nation}` : '';
+    if (flagKey !== tgtLastFlagKey) {
+      tgtRefs.flg.innerHTML = flagKey && flagHtml ? flagHtml(nation) : '';
+      tgtLastFlagKey = flagKey;
+    }
+    // the range from the player's tank, in whole metres
+    const from = playerRef?.state?.pos;
+    const to = target.state.pos;
+    const rangeM = from ? Math.round(Math.hypot(to.x - from.x, to.y - from.y, to.z - from.z)) : -1;
+    if (rangeM !== tgtLastRangeM) {
+      tgtRefs.rng.textContent = rangeM >= 0 ? t('hud.target.range', { m: String(rangeM) }) : '';
+      tgtLastRangeM = rangeM;
     }
     const fraction = Math.max(0, Math.min(1, target.combat.hp / target.combat.maxHp));
     const hpWidth = `${(fraction * 100).toFixed(1)}%`;
@@ -7246,9 +7255,14 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   on('mode:zone_captured', ({ team }) => {
     const allied = team === objectiveTeam;
+    if (allied) killRibbon.zone();
     showAlert(t(allied ? 'hud.alert.sectorSecured' : 'hud.alert.sectorLost'), {
       icon: 'modeZones', tone: allied ? 'success' : 'danger',
     });
+  });
+  // the personal stream's spots (the direction's 06-battle-hud .stream): each enemy the player lit
+  on('tank:spotted', ({ id, spotterId }) => {
+    if (spotterId != null && playerId != null && spotterId === playerId && id !== playerId) killRibbon.spot();
   });
   on('mode:goal_scored', ({ team }) => {
     const allied = team === objectiveTeam;
