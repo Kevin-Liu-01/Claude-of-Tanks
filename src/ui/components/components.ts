@@ -14,13 +14,12 @@
 import { icon, type IconId } from '../icons/icon.ts';
 import { flagIconUrl } from '../flags.ts';
 import { iconUrl } from '../icons.ts';
+import { esc } from './escape.ts';
+/** Text and attribute values are escaped once (escape.ts). */
+export { esc };
 
 /** What a control sounds like when used (SPEC §10; src/audio/interfaceSounds.ts reads it). */
 type SoundRole = 'tick' | 'press' | 'confirm' | 'back' | 'tab' | 'toggle' | 'select' | 'deploy' | 'error';
-
-const ESCAPES: Readonly<Record<string, string>> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-/** Text and attribute values are escaped once, here. */
-export const esc = (value: string | number): string => String(value).replace(/[&<>"']/g, (ch) => ESCAPES[ch]);
 
 /** Extra attributes for a host element, escaped; `true` writes a bare attribute, false/null/undefined omit it. */
 type Attrs = Readonly<Record<string, string | number | boolean | null | undefined>>;
@@ -277,9 +276,12 @@ export function statRow(options: StatRowOptions): string {
 /* ----------------------------------------------------------------------------------------- vehicle identity */
 
 type FlagSize = 'sm' | 'md' | 'lg';
+/** Each size's box (components.css .cot-c-flag--*), as the image's own size so the first layout reserves it. */
+const FLAG_BOX: Readonly<Record<FlagSize, readonly [number, number]>> = { sm: [16, 12], md: [22, 17], lg: [30, 23] };
 /** A nation flag chip (3:2 hairline frame, SPEC §6.2 badge). Decorative: the nation is named beside it. */
 export function flag(nation: string, size: FlagSize = 'md'): string {
-  return `<img class="cot-c-flag cot-c-flag--${size}" src="${esc(flagIconUrl(nation))}" alt="" aria-hidden="true" draggable="false">`;
+  const [width, height] = FLAG_BOX[size];
+  return `<img class="cot-c-flag cot-c-flag--${size}" src="${esc(flagIconUrl(nation))}" alt="" aria-hidden="true" width="${width}" height="${height}" draggable="false">`;
 }
 
 /** A vehicle's side silhouette, tinted by the text colour (team colours come from the host). */

@@ -948,7 +948,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/docs/docsIcons.selftest.mjs',
     'src/docs/docsSearch.selftest.mjs',
     'src/docs/topics.selftest.mjs',
-    'src/docs/docsSearch.selftest.mjs',
     'src/docs/chapters/controls.selftest.mjs',
     'src/docs/chapters/chapters.selftest.mjs',
     'src/docs/filming.selftest.mjs',
@@ -996,6 +995,8 @@ export const SELFTEST_SUITES = Object.freeze({
     // 2026-10-24 (brand-ui 247, the public-site a11y pass): element colour resets sit under the components (the primary
     // buttons' ink); the landing's and the Gallery's remaining resets are a ratchet
     'tools/surface-element-resets.selftest.mjs',
+    // 2026-10-24 (brand-ui 247, the public-site perf pass): the Gallery's nation and class rows ship in its first layout
+    'tools/gallery-shell.selftest.mjs',
     'src/vehicles/camoPolicy.selftest.mjs',
     // 2026-10-09 (fix/camo-defaults): production's camouflage system, row for row (R113; the owner's 10-09 messages)
     'src/vehicles/camoCatalogProductionIndices.selftest.mjs',

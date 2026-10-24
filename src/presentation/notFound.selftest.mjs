@@ -24,8 +24,8 @@ assert.match(html, /<form class="not-found__search" role="search" data-nf-search
 assert.match(runtime, /import\('\.\.\/docs\/docsSearch\.ts'\), index, import\('\.\/fleetWall\.json'\)/, 'the search indexes load with the field, never at first paint');
 assert.match(runtime, /import\('\.\.\/docs\/searchIndex\.zh-CN\.json'/, 'the manual\'s prebuilt index in the reader\'s locale');
 assert.doesNotMatch(runtime, /^import (?!type )[^;]*(?:docsSearch|fleetWall|searchIndex)/m, 'no index in the page\'s first bytes');
-assert.match(html, /data-i18n-aria-label="publicNav\.menuAria"/,
-  'the recovery navigation keeps an accessible localized name');
+assert.match(html, /<nav class="not-found__go" aria-label="[^"]+" data-i18n-aria-label="notFound\.goAria">/,
+  'the recovery navigation has its own localized name (247 audit: the footer is "Site pages")');
 assert.match(html, /<!--cot:nav--><a class="public-skip"[\s\S]*?<nav class="public-nav"[\s\S]*?<!--\/cot:nav-->/,
   'the shared bar (tools/public-shell.mjs)');
 assert.match(html, /<!--cot:footer--><footer class="public-footer"/, 'the shared footer');

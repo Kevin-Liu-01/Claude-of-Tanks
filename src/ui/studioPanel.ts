@@ -27,7 +27,6 @@ import { STUDIO_FX_PARAMS } from '../game/studioFxSettings.ts';
 import { hrefForLocale } from './localeRouting.ts';
 import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioSceneLinkUi.ts';
 import { FILM_RESOLUTIONS, createFilmPlan, filmOutputSize, normalizeFilm } from '../game/studioFilmPlan.ts';
-import './studioPanel.css';
 
 /** The Studio's workspaces: the outliner's groups (the inspector shows one at a time). */
 type StudioGroupId = 'battlefield' | 'tanks' | 'effects' | 'cinematics' | 'output';

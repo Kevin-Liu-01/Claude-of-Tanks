@@ -289,6 +289,7 @@ export const TOKENS = {
   'gallery-take-fade': 'linear-gradient(0deg,#0b0e11 0,oklch(from #0b0e11 l c h / .5) 30%,oklch(from #0b0e11 l c h / 0) 55%)',
   'gallery-callout-on': 'rgba(30,20,6,.95)',
   'gallery-dot-ring': '0 0 0 3px #0b0e11',
+  'gallery-reveal-after': '20s',
   'studio-z': '58',
   'studio-pop-z': '40',
   'studio-track-mark': '.04em',
