@@ -466,8 +466,10 @@
       transition: opacity .19s cubic-bezier(.16,1,.3,1);
     }
     .cot-boot-gate.on { opacity: 1; animation: cot-gate 1.5s ease-in-out infinite; }
+    /* retry stands just under the centred column, outside its flow: a failure shows it without re-centring the splash */
     .cot-boot-retry {
-      display: none; height: 48px; margin: 18px auto 0; padding: 0 22px;
+      display: none; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
+      height: 48px; margin: 18px 0 0; padding: 0 22px; white-space: nowrap;
       border: 0; border-radius: 2px;
       background: #f0a030; color: #140d03; cursor: pointer;
       font: 700 15px/1 var(--font-ui);
@@ -496,6 +498,9 @@
       .cot-boot-mark { width: 172px; }
       .cot-boot-load { margin-top: 32px; }
       .cot-boot-tip { height: 144px; }
+      /* a failure's sentence takes the stage line and wraps to three on a phone: its room is held from the first
+         frame, so the centred splash never re-centres around it */
+      .cot-boot-stage { min-height: calc(3 * 1.3em); line-height: 1.3; }
     }
     }
   </style>
@@ -660,11 +665,11 @@
       }
       const MESSAGES = {
         chunk: 'A game file failed to download',
-        driver: 'The graphics driver refused to start — close other 3D tabs or reload',
-        script: 'The game hit an error while starting — reload',
-        slow: 'Loading is taking longer than expected on this connection — keep waiting or reload',
-        offline: 'Nothing has downloaded for a while — check your connection and reload',
-        stalled: 'Loading stalled — nothing arrived for a minute; reload',
+        driver: 'The graphics driver refused to start. Close other 3D tabs or reload.',
+        script: 'The game hit an error while starting. Reload to try again.',
+        slow: 'Loading is taking longer than expected on this connection. Keep waiting or reload.',
+        offline: 'Nothing has downloaded for a while, so check your connection and reload.',
+        stalled: 'Loading stalled. Nothing has arrived for a minute, so reload to try again.',
       };
       function describe(reason) {
         const kind = classify(reason);
