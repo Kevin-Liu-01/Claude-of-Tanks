@@ -104,7 +104,9 @@ function fittingRecords(root) {
   // loader's 7.62 mm M240 (body, mount and can, the can and belt riding the pitch rig) and the commander's station take
   // their own working slots, and the separate pintle can and belt slots fold into the station's; VEH-13 (TRACK-DECOR)
   // renames the spare links' slot (spareTrack -> spareLink). One owned buffer fewer (m1a1_abrams_hc 18 -> 17).
-  assert.equal(records.size, root.getObjectByName('fitting_americanRws_standard') ? 17 : 15, 'all actual shared-kit mount and articulated weapon buffers');
+  // 2026-10-21 (715151d24c, the distinct M1A1 marks): the Heavy Common's roof jerry-can pair (m1a1hc-roof-cans) is a
+  // shared fitting with its own dark and detail buffers (m1a1_abrams_hc 17 -> 19).
+  assert.equal(records.size, root.getObjectByName('fitting_americanRws_standard') ? 19 : 15, 'all actual shared-kit mount and articulated weapon buffers');
   return records;
 }
 
@@ -189,7 +191,7 @@ if (process.argv.includes('--native-child')) {
   };
   const before = run(true), after = run(false);
   assert.deepEqual(after, before, 'all native geometry/material/metadata/rig/instance/LOD results stay exact');
-  assert.equal(after.builds, 16); assert.equal(after.buffers, 256); // 8 builds x (17 m1a1_abrams_hc | 15 challenger3) x 2 visuals
+  assert.equal(after.builds, 16); assert.equal(after.buffers, 272); // 8 builds x (19 m1a1_abrams_hc | 15 challenger3) x 2 visuals
   assert.equal(after.detachedCases, 2); assert.equal(after.batchCases, 4);
   console.log(JSON.stringify({ test: 'fitting geometry ownership', pass: true,
     nativeNodeBuilds: before.builds + after.builds, fixedBuffersReleasedOnce: after.buffers,

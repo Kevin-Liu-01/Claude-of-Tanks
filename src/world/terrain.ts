@@ -69,7 +69,7 @@ import { canalWetness, carveCanals, compileCanals, inCanal, type CanalConfig } f
 import { canalLevelAt } from './canals.ts'; // (the ground lane, 2026-10-17: the sheet holds a canal's level)
 import { compilePaddies, inPaddy, inPaddyClearing, levelPaddies, paddyCanals, paddyRiceAt, paddyWaterLevelAt, paddyWaterQuads,
   resolvePaddyFloors, PADDY_DEPTH_M, type PaddyConfig, type PaddyRiceSeat, type PaddyWaterQuad } from './paddies.ts';
-import { createShallowWaterSurface, shallowWaterGeometrySteps } from './shallowWater.ts';
+import { createShallowWaterSurface, shallowWaterGeometrySteps, shallowWaterShoreSteps } from './shallowWater.ts';
 import { createWaterRippleField } from './waterRipples.ts';
 import { createOceanField, oceanFieldSupported, oceanGridSize, type OceanField } from './oceanFft.ts';
 import { oceanSpectrumSteps, resolveOceanState, type OceanConfig, type OceanSpectrumTexels } from './oceanSpectrum.ts';
@@ -9417,6 +9417,18 @@ function* terrainBuildSteps(
         }
         if (oceanSpectrum) ocean = createOceanField(engineCtx.renderer, oceanSpectrum, oceanState, { preset: oceanPreset });
       }
+      // (perf-253) the sheet's shore distance in slices: one task of 7.8 s on Coastal's desktop entry
+      let shoreDistance: THREE.DataTexture | null = null;
+      {
+        const shoreSteps = shallowWaterShoreSteps(step.value.geometry, materialStep.value.waterMask, heightField.size,
+          cfg.id || '', cfg.splat.seaRamp || [0.40, 0.78], ocean);
+        let shore = shoreSteps.next();
+        while (!shore.done) {
+          yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, false];
+          shore = shoreSteps.next();
+        }
+        shoreDistance = shore.value;
+      }
       const water = createShallowWaterSurface(step.value.geometry,
         materialStep.value.waterMask, materialStep.value.waterNormal,
         heightField.size, cfg.id || '', cfg.splat.seaRamp || [0.40, 0.78],
@@ -9424,7 +9436,7 @@ function* terrainBuildSteps(
         (material, hook) => engineCtx.setupShadowMaterial(material, hook), ripples,
         // round 47: the apron fades along the same baked bay contour the ring faces read
         seaOpenings.length ? { ...materialStep.value.outlandWater, sectorBlend: seaOpeningsSectorBlend, openings: seaOpenings } : null,
-        ocean); // round 66: the FFT ocean the sheet displaces and shades with
+        ocean, shoreDistance); // round 66: the FFT ocean the sheet displaces and shades with
       group.add(water.mesh);
       if (ripples) {
         heightField.addWaterImpulse = ripples.addImpulse;

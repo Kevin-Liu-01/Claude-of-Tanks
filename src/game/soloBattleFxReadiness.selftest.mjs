@@ -35,9 +35,11 @@ function createFixture(failure) {
   });
   scene.add(worldRoot, playerRoot, fxRoot, retainedRoot);
   const originalSceneRoots = [...scene.children];
-  const cell = { vertices: [[0, 0, 0], [1, 0, 0], [0, 1, 0]], faces: [{
-    indices: [0, 1, 2], normal: [0, 0, 1], center: [1 / 3, 1 / 3, 0], internal: false,
-  }] };
+  // a unit cube cell as the combat anatomy hands the overlay one (243's armour skin reads its bounds and its outward
+  // face planes n·x + c <= 0)
+  const cell = { min: [0, 0, 0], max: [1, 1, 1], faces: [
+    [1, 0, 0, -1], [-1, 0, 0, 0], [0, 1, 0, -1], [0, -1, 0, 0], [0, 0, 1, -1], [0, 0, -1, 0],
+  ].map(([x, y, z, constant]) => ({ normal: [x, y, z], constant, plate: 'hull', internal: false })) };
   const player = {
     id: 'player', specId: 'fixture', team: 'player', isPlayer: true,
     visual: { root: playerRoot }, state: { pos: new Vector3(), yaw: 0 },

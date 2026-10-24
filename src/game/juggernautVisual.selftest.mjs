@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import * as T from 'three';
-import {syncJuggernautVisual,pulseJuggernautImpact,clearJuggernautVisual} from './juggernautVisual.ts';
+import {syncJuggernautVisual,pulseJuggernautImpact,clearJuggernautVisual,parkGarageTankEnergyVisual,prepareGarageTankEnergyVisual,hasGarageTankEnergyVisual,syncTankEnergyVisual} from './juggernautVisual.ts';
 import {createThermalVehicles} from '../engine/thermalVehicles.ts';
 const dims={widthM:3,hullLengthM:7,heightM:2.6};
 const scene=new T.Group(),root=new T.Group(),turret=new T.Group();scene.add(root);root.add(turret);root.scale.set(2,2,2);
@@ -279,6 +279,50 @@ geometry.dispose();batch.dispose();source.dispose();wreck.dispose();glassMateria
   assert.equal(burnt2.uniforms.uBurnT,burnU.uBurnT,'driven by the visual\'s own burn');
   assert.match(skin.customProgramCacheKey(),/\|burn-r7\|tank-mode-energy-v7\|burn-r7$/,'its key names both hooks (one text a key)');
   clearJuggernautVisual(other,true);box.dispose();paint2.dispose();burnt.dispose();
+}
+
+// transitions-249: a battle start parks the Garage hero's dormant skin (off its meshes, kept with its materials and so
+// its programs); the clears on the way back leave it; the Garage's prepare puts the same materials back on; a battle
+// mode that lights the tank, or the paint's disposal, ends it as before
+{
+ const root=new T.Group(),paint=new T.MeshStandardMaterial(),mesh=new T.Mesh(new T.BoxGeometry(),paint);root.add(mesh);
+ prepareGarageTankEnergyVisual(root,dims);
+ const skin=mesh.material;
+ assert.ok(skin!==paint&&hasGarageTankEnergyVisual(root),'the dormant Garage skin');
+ let disposed=0;skin.addEventListener('dispose',()=>disposed++);
+ parkGarageTankEnergyVisual(root);
+ assert.ok(mesh.material===paint,'a parked skin is off the meshes: the battle draws its own paint');
+ clearJuggernautVisual(root);clearJuggernautVisual(root,true);
+ assert.equal(disposed,0,'the battle-end clears leave a parked skin');
+ assert.ok(mesh.material===paint);
+ prepareGarageTankEnergyVisual(root,dims);
+ assert.ok(mesh.material===skin,'the Garage puts the same skin back: its programs are the ones it linked');
+ assert.equal(disposed,0);
+ parkGarageTankEnergyVisual(root);
+ syncTankEnergyVisual(root,dims,1.12,100,100,.016);
+ assert.equal(disposed,1,'a battle mode that lights the tank ends a parked Garage skin');
+ clearJuggernautVisual(root,true);
+ const other=new T.Group(),otherPaint=new T.MeshStandardMaterial(),otherMesh=new T.Mesh(new T.BoxGeometry(),otherPaint);other.add(otherMesh);
+ prepareGarageTankEnergyVisual(other,dims);
+ const otherSkin=otherMesh.material;let otherDisposed=0;otherSkin.addEventListener('dispose',()=>otherDisposed++);
+ parkGarageTankEnergyVisual(other);otherPaint.dispose();
+ assert.equal(otherDisposed,1,'the paint\'s disposal ends a parked skin');
+ assert.ok(!hasGarageTankEnergyVisual(other));
+ const bare=new T.Group(),bareMesh=new T.Mesh(new T.BoxGeometry(),new T.MeshStandardMaterial());bare.add(bareMesh);
+ syncJuggernautVisual(bare,dims,1.12,100,100,.016);
+ const aura=bareMesh.material;let auraDisposed=0;aura.addEventListener('dispose',()=>auraDisposed++);
+ parkGarageTankEnergyVisual(bare);
+ assert.equal(auraDisposed,1,'anything but a Garage skin ends as a clear would');
+}
+{
+ const {readFileSync}=await import('node:fs');
+ const main=readFileSync(new URL('../main.ts',import.meta.url),'utf8');
+ assert.match(main,/bus\.on\('ui:battleStart', \(\) => \{[\s\S]{0,400}parkGarageTankEnergyVisual\(pedestal\.current\.root\);\s*garageModePreview\.clear\(\);/,
+  'a battle start parks the hero\'s Garage skin before the mode preview clears');
+ assert.match(main,/releaseVisual: \(visual\) => parkGarageTankEnergyVisual\(visual\.root\)/,'the lend parks it on every entry path');
+ const pedestal=readFileSync(new URL('./garagePedestalRuntime.ts',import.meta.url),'utf8');
+ assert.match(pedestal,/const revealCached = \(\) => \{[\s\S]{0,400}prepareVisual\?\.\(cached, getSpec\(specId\)\);\s*current = cached;/,
+  'a cached hero shown again wears its skin before it shows');
 }
 
 console.log('juggernautVisual: exact surfaces, instancing/batching, shared paint isolation, original hooks, articulation, hit pulse, thermal, death, removal and reuse passed; the skins keep the cascade registration; dormant battle skins make no material after staging');

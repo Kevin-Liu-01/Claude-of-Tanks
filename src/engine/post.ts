@@ -189,6 +189,8 @@ export interface PostRuntime {
   render(dt: number, frameWallDtSeconds?: number): void;
   setSize(width: number, height: number): void;
   prepareSoftParticles(): void;
+  /** (perf-253) The late pass's draws of the effects now visible, through its own target (LateFxPass.warmDraw). */
+  warmLateFxDraw(): void;
   attachLateFxState(state: LateFxSoftStateInput | null | undefined): void;
   pinDynScale(value: number | null): void;
   setQuality(level: 'high' | 'low'): void;
@@ -2022,6 +2024,32 @@ export class LateFxPass extends Pass {
     }
     this.prepared = true;
   }
+  /**
+   * (perf-253) The late layer drawn through this pass's own target and scene view as render() draws it, for a covered
+   * warm (soloBattleDeploymentRuntime, a few effects at a time). The FX warm drew the effects into its multisampled warm
+   * target, and a GPU pipeline is made per program and attachment set, so these single-sample, depth-texture draws built
+   * theirs in the first frame that ran the pass, the post warm: 2.4 s on a desktop and 1.2 s on a phone in one task.
+   * The target is scratch: every late frame clears it first.
+   */
+  warmDraw(renderer: THREE.WebGLRenderer): void {
+    this.prepare(renderer);
+    const priorTarget = renderer.getRenderTarget();
+    const oldAutoClear = renderer.autoClear;
+    const oldLayerMask = this.camera.layers.mask;
+    const oldBackground = this.scene.background;
+    renderer.autoClear = false;
+    this.scene.background = null;
+    try {
+      this.camera.layers.set(LATE_FX_LAYER);
+      renderer.setRenderTarget(this.target);
+      renderer.render(this.renderSceneView.select(this.camera), this.camera);
+    } finally {
+      this.scene.background = oldBackground;
+      this.camera.layers.mask = oldLayerMask;
+      renderer.autoClear = oldAutoClear;
+      renderer.setRenderTarget(priorTarget);
+    }
+  }
   render(
     renderer: THREE.WebGLRenderer,
     writeBuffer: THREE.WebGLRenderTarget,
@@ -3251,6 +3279,10 @@ export function createPost(
     /** Allocate the late-FX color/depth targets behind a loading screen. */
     prepareSoftParticles() {
       lateFx.prepare(renderer);
+    },
+
+    warmLateFxDraw() {
+      lateFx.warmDraw(renderer);
     },
 
     /**

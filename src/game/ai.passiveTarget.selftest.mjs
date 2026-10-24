@@ -146,10 +146,13 @@ console.log('[1] the flank exemption needs the gun on the hull: a crest masks it
 
 console.log('[2] three rounds in a row that do not reach the target give the spot up');
 // the host has been idle for 16 s when the gun opens up, so the flank spot is one the press would otherwise keep
+// (perf-249) the bots here are T-90Ms (the T-90AM's gun, reload and 6-degree depression): since 6a943e4eee the T-90AM's
+// clearance curve holds its gun at +2.7 degrees or higher over its front, so it never lays on the level host and fires
+// no round to miss or hit (ai.selftest [3] says why)
 {
   const ground = field(false);
   const host = idleHost();
-  const bot = entity('bot', 't90am', 'enemy', 60, 0, -Math.PI / 2);
+  const bot = entity('bot', 't90m', 'enemy', 60, 0, -Math.PI / 2);
   const ctl = controller(bot, ground, [host]);
   let verdictAt = null, leftAt = null, shotsAtVerdict = 0, spotHeld = true, shots = 0;
   shots = drive(bot, ctl, ground, host, 70, { gun: 'miss', heldS: 16, onTick: (t) => {
@@ -167,7 +170,7 @@ console.log('[2] three rounds in a row that do not reach the target give the spo
 {
   const ground = field(false);
   const host = idleHost();
-  const bot = entity('bot', 't90am', 'enemy', 60, 0, -Math.PI / 2);
+  const bot = entity('bot', 't90m', 'enemy', 60, 0, -Math.PI / 2);
   const ctl = controller(bot, ground, [host]);
   const shots = drive(bot, ctl, ground, host, 60, { gun: 'hit', heldS: 16 });
   ok(shots >= 3 && ctl.debugInfo().missVerdicts === 0 && bot.state.pos.distanceTo(new Vector3(60, 0, 0)) < 6,

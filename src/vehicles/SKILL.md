@@ -34,7 +34,12 @@ visual (`vehicleGraphClone.ts`) and run the same runtimes over the copy: shared 
 materials (`copyVehicleMaterial`), written buffers, gear state, burn, dents and lamps (`copyVehicleNightLighting`). A
 profile that patches the finished gear does it through a recorded helper the clone replays
 (`scaleRunningGearMotion`); a clone refuses (throws, the caller builds) any hook, callback, object kind or gear patch
-it does not know.
+it does not know. Since perf-252 a battle-batched build copies too (the MP roster's seats are the battle roster's
+builds): its end-wheel `BatchedMesh`es, detached LOD sentinels, battle detail groups, the dual merge's far copies and
+depth orders (the runtime's adoption installs them), program-variant twins over the copy's own originals
+(`programVariantCopy`), the shared depth materials, its own articulated shadow batch over the copied proxies and its
+own lease on the pooled rigid stock (`leaseSharedBattleGeometry`). A copy asked for another build (geometry tier,
+batching, battle detail, merge) refuses. `tankVisualClone.selftest.mjs` holds a copy to a fresh build's draws.
 The factory core's read-only analyses live beside it (round 46,
 `docs/CLEANUP-2026-09-23-structure.md`): `eraSurfaceFrame.ts` (ERA plate frames
 and PCA fit), `muzzleCapProfiles.ts` (barrel cap/mouth-edge walkers),
@@ -209,8 +214,15 @@ edits a vehicle buffer in place must be pinned in the factory's merge options
 Only parts already at their owner's frame fold by default, so every vertex byte
 is unchanged; `staticDrawMerge: 'translations'` also bakes pure translations but
 moved up to 1,615 px in the P21 float-target captures (float rounding of baked
-positions), so it stays an opt-in. `?staticmerge=off|translations` switches the
-mode on one build for probes.
+positions), so it stays an opt-in. Battle builds (the roster's and the MP seats':
+`fleetFactory.battleStaticDrawMerge`) take `'dual'` (perf-250/254): the identity
+build exactly, plus hidden far copies of each same-key group of parts (contiguous
+or not, translations baked), which `syncFromState` draws past `FAR_MERGE_ENTER_M`
+(30 m screen-equivalent; back under 27 m) with their own depth offsets. With no
+distance (killcam, Garage, Studio) and on a wreck the parts draw. A part in a
+detail wrapper, a battle detail group, a turret squash frame or the near-hull
+shadow never joins a copy. `?staticmerge=off|identity|translations|dual` switches
+the mode on one build for probes.
 Destroyed-only char and ember atlases must remain demand-owned. The battle warm
 pipeline prepares fielded variants before rollout, while `setDestroyed()` is
 the correctness fallback for Studio and diagnostic callers that skip warming;

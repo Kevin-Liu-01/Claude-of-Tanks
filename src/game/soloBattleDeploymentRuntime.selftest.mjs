@@ -13,7 +13,8 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
   night = false, failNight = false, pauseNight = false, cancelCover = false, failCover = false,
   compileSlices = 2, cancelCompile = false, lateCancelCompile = '', lateCancelWarm = '',
   streamedCadence = null, terrainPrograms = '', vegetationPrograms = '', failPost = false,
-  watchdog = 'healthy', pauseWatchdog = false, failRevealCover = false, panel = '' } = {}) {
+  watchdog = 'healthy', pauseWatchdog = false, failRevealCover = false, panel = '', deferOpponents = false, linkWaits = false,
+  lateFx = false } = {}) {
   const calls = [];
   let releaseAtmosphere;
   const atmosphereGate = new Promise((resolve) => { releaseAtmosphere = resolve; });
@@ -60,6 +61,18 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
     const material = new THREE.MeshBasicMaterial();
     warmResources.push(geometry, material);
     fxGroup.add(new THREE.Mesh(geometry, material), new THREE.Mesh(geometry, material));
+  }
+  // (perf-253) staged effects on the late pass's layer, and one the late pass never draws
+  if (lateFx) {
+    const geometry = new THREE.BoxGeometry();
+    const material = new THREE.MeshBasicMaterial();
+    warmResources.push(geometry, material);
+    for (const name of ['late-a', 'forward-only', 'late-b', 'late-c']) {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = name;
+      if (name.startsWith('late')) mesh.layers.set(LATE_FX_LAYER);
+      fxGroup.add(mesh);
+    }
   }
   const shadow = { autoUpdate: true, needsUpdate: true };
   const playerRoot = new THREE.Group();
@@ -197,6 +210,19 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
         calls.push(['postYielded']);
         return { passes: 1 };
       },
+      ...(lateFx ? {
+        // the late pass's own draw: the effects it would draw now (its layer, not masked out, the chain visible)
+        warmLateFxDraw() {
+          const drawn = [];
+          fxGroup.traverseVisible((object) => {
+            if (object.isMesh && object.layers.isEnabled(LATE_FX_LAYER)) drawn.push(object.name);
+          });
+          // (a root holding lights stays lit: hiding it would change the light set the programs key on)
+          const lit = (root) => { let found = false; root.traverse((object) => { if (object.isLight) found = true; }); return found; };
+          const others = scene.children.filter((child) => child !== fxGroup && child.visible && !lit(child));
+          calls.push(['lateDraw', drawn, others.length]);
+        },
+      } : {}),
     },
     lighting: { csm: { lights: lateCancelWarm === 'forward' ? [{ shadow }] : [] } },
     createShell: () => {},
@@ -207,6 +233,8 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
         assert.equal(predicate(entity), true);
         calls.push([hidden ? 'enemies' : 'allies']);
         onProgress?.(1);
+        // the opponents stage hidden (detached): no late actor joins the light set
+        if (hidden) return 1;
         if (!hidden && failAllies) throw new Error('allied warm failed');
         const ally = { id: 'late-ally', team: 'player', specId: 'late-ally',
           visual: { root: new THREE.Group() }, combat: { destroyed: false } };
@@ -279,6 +307,8 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
         after: null, rescued: false, stage: null,
         ...(watchdog === 'black' || watchdog === 'unrestorable' ? { failed: true } : {}) };
     },
+    ...(deferOpponents ? { deferOpponentVisuals: () => true } : {}),
+    ...(linkWaits ? { awaitProgramLinks: async (yieldForBudget) => { calls.push(['links']); await yieldForBudget(true); } } : {}),
     getGeneration: () => generation,
     advanceGeneration: () => ++generation,
     setPending: (value) => { pending = value; },
@@ -406,7 +436,7 @@ function createStreamedCadence(cancelAt = '') {
 
 {
   const cadence = createStreamedCadence();
-  const harness = createHarness({ streamedCadence: cadence });
+  const harness = createHarness({ streamedCadence: cadence, deferOpponents: true });
   const warmed = await harness.runtime.warm(Promise.resolve());
   assert.equal(warmed.revealPrimed, true);
   assert.equal(cadence.tasks.find(row => row.privateId)?.atMs, 12,
@@ -429,9 +459,23 @@ function createStreamedCadence(cancelAt = '') {
     'all seven hidden opponents remain deferred, not dropped or eagerly built');
 }
 
+// transitions-249: by default the seven hidden opponents are built under the cover too, after the allies, and staged
+// detached
+{
+  const cadence = createStreamedCadence();
+  const harness = createHarness({ streamedCadence: cadence });
+  const warmed = await harness.runtime.warm(Promise.resolve());
+  assert.equal(warmed.revealPrimed, true);
+  const opponents = cadence.game.tanks.filter(entity => entity.team === 'enemy');
+  assert.equal(opponents.length, 7);
+  assert.ok(opponents.every(entity => entity.visual && entity.visual.root.parent === null),
+    'every opponent is built under the cover and left detached until the battle spots it');
+  assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.enemyVisualsDeferred, false);
+}
+
 for (const [cancelAt, admitted] of [['before', 2], ['task', 3], ['frame', 8]]) {
   const cadence = createStreamedCadence(cancelAt);
-  const harness = createHarness({ streamedCadence: cadence });
+  const harness = createHarness({ streamedCadence: cadence, deferOpponents: true });
   cadence.cancel = () => { harness.generation++; };
   await assert.rejects(harness.runtime.warm(Promise.resolve()), /superseded/);
   assert.equal(cadence.checkpoints.length, admitted,
@@ -521,11 +565,31 @@ for (const failPost of [false, true]) for (const watchdog of ['healthy', 'black'
   assert.ok(!h.calls.some(([name]) => name === 'reveal' || name === 'watchdogSettled'));
   h.disposeWarmResources();
 }
-assert.equal(order.includes('enemies'), false,
-  'hidden opponents are deferred until the visible deployment countdown');
+assert.ok(order.indexOf('allies') < order.indexOf('enemies') && order.indexOf('enemies') < order.indexOf('terrain'),
+  'hidden opponents stream under the cover, after the allies and before the terrain grid (transitions-249)');
+// transitions-249: the queued links are awaited between tasks before the shadow warm and before the post warm
+{
+  const h = createHarness({ linkWaits: true });
+  await h.runtime.warm(Promise.resolve());
+  const names = h.calls.map(([name]) => name);
+  const links = names.flatMap((name, index) => name === 'links' ? [index] : []);
+  assert.equal(links.length, 2, 'two link waits');
+  assert.ok(links[0] < names.indexOf('shadowWarm') && names.indexOf('shadowWarm') < links[1]
+    && links[1] < names.indexOf('postWarm'), 'one before the shadow warm, one before the post warm');
+  assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.deploymentLinkWaitMs.length, 2);
+  h.disposeWarmResources();
+}
+// deferOpponentVisuals leaves them to the revealed countdown's warm
+{
+  const h = createHarness({ deferOpponents: true });
+  await h.runtime.warm(Promise.resolve());
+  assert.equal(h.calls.some(([name]) => name === 'enemies'), false, 'deferred opponents are not streamed under the cover');
+  assert.equal(globalThis.__BATTLE_COUNTDOWN_WARM.enemyVisualsDeferred, true);
+  h.disposeWarmResources();
+}
 assert.equal(happyTrace.done, true);
 assert.equal(happyTrace.doneBeforeRollout, true);
-assert.equal(happyTrace.enemyVisualsDeferred, true);
+assert.equal(happyTrace.enemyVisualsDeferred, false);
 assert.equal(happyTrace.deploymentUniformsDeferred, true);
 assert.equal(happyOpeningWarm.covered, true);
 assert.equal(happyTrace.deploymentProgramSubmission.submissionSlices, 3);
@@ -744,6 +808,26 @@ assert.throws(result.assertRevealReady, /superseded/, 'a returned receipt cannot
 delete globalThis.__BATTLE_COUNTDOWN_WARM;
 delete globalThis.__COMBAT_OPENING_WARM;
 console.log('soloBattleDeploymentRuntime.selftest: exact day/night light signatures, late actors, order, cancellation and fallback pass');
+
+// (perf-253) the late pass's own draws of the staged effects: its layer's only, two at a time, every other root hidden,
+// after the forward FX draws and before the effects are restored and the post warm runs
+{
+  const h = createHarness({ lateFx: true });
+  await h.runtime.warm(Promise.resolve());
+  const names = h.calls.map(([name]) => name);
+  const late = h.calls.filter(([name]) => name === 'lateDraw');
+  assert.deepEqual(late.map(([, drawn]) => drawn), [['late-a', 'late-b'], ['late-c']],
+    'the late pass draws its own layer\'s staged effects, two at a time');
+  assert.ok(late.every(([, , others]) => others === 0), 'every other root is hidden for its draws');
+  const first = names.indexOf('lateDraw'), lastLate = names.lastIndexOf('lateDraw');
+  assert.ok(names.slice(0, first).includes('warmRender'), 'after the forward FX draws');
+  assert.ok(lastLate < names.indexOf('restoreFx') && lastLate < names.indexOf('postWarm'), 'before the restore and the post warm');
+  const receipt = globalThis.__BATTLE_COUNTDOWN_WARM?.deploymentFxForwardWarm;
+  if (receipt) assert.equal(receipt.lateBatches, 2, 'the trace counts the late cohorts');
+  assert.equal(h.fxGroup.children.every((child) => child.layers.mask === (child.name.startsWith('late') ? 1 << LATE_FX_LAYER : 1)),
+    true, 'every mask restored');
+  h.disposeWarmResources();
+}
 
 for (const outcome of ['ready', 'cancelled', 'failed']) {
   const h = createHarness({ panel: outcome === 'failed' ? 'fail' : 'pause' });

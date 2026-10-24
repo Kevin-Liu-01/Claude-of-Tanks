@@ -23,6 +23,8 @@ export class VehicleGraphCopy {
   private readonly copyMaterial: (material: THREE.Material) => THREE.Material;
   /** User-data callbacks the copy's own runtime registers again (dropped here, never shared). */
   private readonly rebuiltCallbacks: ReadonlySet<string>;
+  /** Objects the caller rebuilds on the copy itself (leaveOut): never copied, and no reference to them may be. */
+  private readonly omitted = new Set<THREE.Object3D>();
 
   constructor(copyMaterial: (material: THREE.Material) => THREE.Material, rebuiltCallbacks: ReadonlySet<string> = new Set()) {
     this.copyMaterial = copyMaterial;
@@ -60,13 +62,21 @@ export class VehicleGraphCopy {
     return copy as T;
   }
 
+  /** Leave `source` (and its subtree) out of the copy: the caller makes the copy's own (the battle build's shadow batch). */
+  leaveOut(source: THREE.Object3D): void {
+    this.omitted.add(source);
+  }
+
   /** Copy a whole tree; every object in it becomes reachable through object(). */
   tree<T extends THREE.Object3D>(source: T): T {
     const copy = this.node(source);
-    for (const child of source.children) copy.add(this.tree(child));
+    for (const child of source.children) if (!this.omitted.has(child)) copy.add(this.tree(child));
     if ((source as THREE.Object3D as THREE.LOD).isLOD) {
       const lod = source as THREE.Object3D as THREE.LOD, target = copy as THREE.Object3D as THREE.LOD;
-      target.levels.push(...lod.levels.map((level) => ({ ...level, object: this.object(level.object) })));
+      // a far level's renderless sentinel a battle build detached from the tree (lodEmptySentinels.ts): the copy's own,
+      // detached as well
+      target.levels.push(...lod.levels.map((level) => ({ ...level, object: this.objects.get(level.object)
+        ?? (level.object.parent || level.object.children.length ? this.object(level.object) : this.node(level.object)) })));
       target.autoUpdate = lod.autoUpdate;
       (target as THREE.LOD & { _currentLevel: number })._currentLevel = (lod as THREE.LOD & { _currentLevel: number })._currentLevel;
     }
@@ -139,8 +149,9 @@ export class VehicleGraphCopy {
     const any = source as THREE.Object3D & Partial<THREE.Mesh> & { isInstancedMesh?: boolean; isBatchedMesh?: boolean;
       isSkinnedMesh?: boolean; isLOD?: boolean; isLine?: boolean; isPoints?: boolean; isSprite?: boolean; isGroup?: boolean };
     let copy: THREE.Object3D;
-    if (any.isBatchedMesh || any.isSkinnedMesh || any.isSprite) throw new Error(`${source.name || source.type}: a ${source.type} cannot be copied for another visual`);
-    if (any.isInstancedMesh) {
+    if (any.isSkinnedMesh || any.isSprite) throw new Error(`${source.name || source.type}: a ${source.type} cannot be copied for another visual`);
+    if (any.isBatchedMesh) copy = this.batched(source as THREE.BatchedMesh);
+    else if (any.isInstancedMesh) {
       const instanced = source as THREE.InstancedMesh;
       if (instanced.morphTexture) throw new Error(`${source.name}: a morphed instanced mesh cannot be copied for another visual`);
       const target = new THREE.InstancedMesh(this.geometry(instanced.geometry), this.materials(instanced.material), 0);
@@ -167,6 +178,10 @@ export class VehicleGraphCopy {
     source.userData = {};
     try { THREE.Object3D.prototype.copy.call(copy, source, false); }
     finally { source.userData = userData; }
+    // (perf-252) three's copy leaves a caster's depth materials out: they are the engine's shared ones (the vehicles'
+    // shadow proxies draw PROC_SHADOW_DEPTH_MAT), shared as a fresh build shares them
+    copy.customDepthMaterial = source.customDepthMaterial;
+    copy.customDistanceMaterial = source.customDistanceMaterial;
     for (const key of Object.keys(source)) {
       const own = (source as unknown as Record<string, unknown>)[key];
       if (typeof own !== 'function') continue;
@@ -178,6 +193,27 @@ export class VehicleGraphCopy {
     }
     this.objects.set(source, copy);
     return copy;
+  }
+
+  /**
+   * (perf-252) A plain BatchedMesh (the battle build's end-wheel spinners): its own geometry, instance records and
+   * matrix and indirect textures (three's BatchedMesh.copy), its own materials. A subclass, a sorted or coloured batch
+   * or one with children refuses the copy.
+   */
+  private batched(source: THREE.BatchedMesh): THREE.BatchedMesh {
+    const batch = source as THREE.BatchedMesh & { _maxInstanceCount: number; _maxVertexCount: number; _maxIndexCount: number;
+      _colorsTexture: THREE.DataTexture | null };
+    if (source.constructor !== THREE.BatchedMesh || batch._colorsTexture || source.customSort || source.children.length
+      || Array.isArray(source.material)) {
+      throw new Error(`${source.name || source.type}: this ${source.constructor.name} cannot be copied for another visual`);
+    }
+    const target = new THREE.BatchedMesh(batch._maxInstanceCount, batch._maxVertexCount, batch._maxIndexCount);
+    const userData = source.userData;
+    source.userData = {};
+    try { THREE.BatchedMesh.prototype.copy.call(target, source); }
+    finally { source.userData = userData; }
+    target.material = this.material(source.material);
+    return target;
   }
 
   private materials(source: THREE.Material | THREE.Material[]): THREE.Material | THREE.Material[] {

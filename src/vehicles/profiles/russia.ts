@@ -22,7 +22,7 @@ import { buildT64BV1 } from './t64bvK1.ts';
 // masks (gun overhang especially) line up. Everything is an original
 // primitive construction — measured dimensions only, no source topology.
 import * as THREE from 'three';
-import { KIT, FITTINGS, MUDGUARDS, muzzleBore } from './kit.ts';
+import { KIT, FITTINGS, MUDGUARDS, muzzleBore, orientedSlab } from './kit.ts';
 import { cloneRehookedVehicleMaterial } from '../materials.ts';
 import { addShtoraEyes } from './shtora.ts';
 import type { VehicleProfileRecord } from '../profileBuilderAdapter.ts';
@@ -248,6 +248,8 @@ interface SkirtBandOptions {
   readonly lipY?: number;
   readonly lipYL?: number;
   readonly firstLipY?: number;
+  /** The front panel's top falls this far toward its bow end (default 0: every panel square). */
+  readonly frontRake?: number;
 }
 
 interface FlapBaseOptions {
@@ -1060,11 +1062,19 @@ function addRuSkirtPanel(
   // The pt91m ref's legit warm class lives in this lower band (critic
   // r25 order 2); default 0 keeps the single-box call byte-identical.
   const rubberBottomH = options.rubberBotH ?? 0;
+  // frontRake (T-90M 249, opt-in): the front panel's top falls toward the bow, under the gun's sweep over the corner
+  const rake = last ? options.frontRake ?? 0 : 0;
   if (rubberBottomH > 0) {
     panel('hull', box(options.th ?? 0.04, panelH - rubberBottomH, panelD * 0.94),
       side * options.x, panelYMid + rubberBottomH / 2, z);
     P.add('hullRubber', box(options.th ?? 0.04, rubberBottomH, panelD * 0.94),
       side * options.x, panelYBot + rubberBottomH / 2, z);
+  } else if (rake > 0) {
+    const t = (options.th ?? 0.04) / 2, d = panelD * 0.47, h = panelH / 2;
+    panel('hull', orientedSlab(
+      [-t, -h, d], [t, -h, d], [t, -h, -d], [-t, -h, -d],
+      [-t, h - rake, d], [t, h - rake, d], [t, h, -d], [-t, h, -d],
+    ), side * options.x, panelYMid, z);
   } else {
     panel('hull', box(options.th ?? 0.04, panelH, panelD * 0.94),
       side * options.x, panelYMid, z);
@@ -1077,8 +1087,8 @@ function addRuSkirtPanel(
   // off it), and the course's last batten stood 16 mm past its panel's end with no backing strip; the dressed seats
   // stop 2 mm inside the panel's inner face, and the last batten caps its own panel's end.
   const thick = options.th ?? 0.04;
-  P.add('hullDark', box(0.048, panelH * 0.9, 0.02),
-    side * Math.max(options.x + 0.003 - dressIn, options.x - thick / 2 - 0.022), panelYMid,
+  P.add('hullDark', box(0.048, (panelH - rake) * 0.9, 0.02),
+    side * Math.max(options.x + 0.003 - dressIn, options.x - thick / 2 - 0.022), panelYMid - rake / 2,
     last ? z + panelD * 0.47 - 0.008 : z + panelD / 2);
   // A backing strip behind each joint carries the panels as one course and the joint's batten with them (owner
   // 2026-10-19 sweep: the 6 % joints left every panel, and every batten, on its own, and a panel with no fender over
@@ -1089,7 +1099,7 @@ function addRuSkirtPanel(
       side * (inner + outer) / 2, panelYMid, z + panelD / 2);
   }
   P.add('hullDark', KIT.cylZ(0.014, 0.014, 8),
-    side * Math.max(options.x + 0.015 - dressIn, options.x - thick / 2 - 0.005), options.yTop - 0.07, z,
+    side * Math.max(options.x + 0.015 - dressIn, options.x - thick / 2 - 0.005), options.yTop - rake / 2 - 0.07, z,
     0, side * Math.PI / 2, 0);
   // bottom lip segmented per panel (edge-on prism law: a full-length strip
   // has no station-visible faces mid-span). Explicit seats let individual

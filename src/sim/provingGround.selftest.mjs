@@ -23,6 +23,7 @@ import { createTankState } from './movement.ts';
 import { defaultRoomSettings } from '../mp/room/roomPolicy.ts';
 import { MAP_IDS } from '../world/maps/mapIds.ts';
 import { uiIconSVG } from '../ui/uiIcons.ts';
+import { ICON_IDS } from '../ui/icons/spriteIndex.ts';
 import { getSpec } from '../vehicles/specs.ts';
 import '../vehicles/tankFactory.ts';
 import { createDedicatedWorldCollision } from '../../server/dedicatedWorldCollision.ts';
@@ -74,7 +75,11 @@ assert.ok(!BATTLE_MODE_IDS.includes('proving_ground'), 'the range is never liste
 assert.ok(isPracticeMode('proving_ground') && !isPracticeMode('standard') && !isPracticeMode(null) && !isPracticeMode('bogus'));
 assert.equal(normalizeGameMode('proving_ground'), 'proving_ground', 'the solo sim plays the range');
 assert.equal(GAME_MODE_DEFINITIONS.proving_ground.respawns, true);
-assert.ok(uiIconSVG(GAME_MODE_DEFINITIONS.proving_ground.icon).includes('<path'), 'the mode wears an icon of the shared set');
+// the shared set is the sprite (src/ui/icons/sprite.svg): an icon draws as a <use> of its symbol, so the id must be one
+// of the sprite's (an unknown id would still render a <use>, of nothing)
+assert.ok(ICON_IDS.includes(GAME_MODE_DEFINITIONS.proving_ground.icon), 'the mode wears an icon of the shared set');
+assert.ok(uiIconSVG(GAME_MODE_DEFINITIONS.proving_ground.icon).includes(`<use href="#i-${GAME_MODE_DEFINITIONS.proving_ground.icon}"/>`),
+  'it draws the sprite\'s symbol');
 assert.equal(defaultRoomSettings({ gameMode: 'proving_ground' }).gameMode, 'standard', 'a room never hosts the range');
 assert.equal(defaultRoomSettings({ gameMode: 'zone_control' }).gameMode, 'zone_control', 'rooms keep every battle mode');
 assert.equal(TEST_DRIVE.gameMode, 'proving_ground');

@@ -195,7 +195,8 @@ assert.doesNotMatch(glyphSource, /\.rotate\(/, 'objective glyphs never rotate th
   const blipPainter = (playerRef) => hudPainter('pushTankMinimapBlip', 'collectMinimapTankBlips', {
     worldToMap: (x, z) => projectWorldToMinimap(x, z, worldSize, mapSize, painterPoint),
     pushLiveBlip, spotById: new Map([['enemy', { vis: true, ever: true }]]),
-    teamInk: () => ({ own: '#57b8ff', enemy: '#ff5a4e' }), playerRef,
+    // (hud.ts ownSide: a watched seat's side, else the player's team; 6642dbbdbd)
+    teamInk: () => ({ own: '#57b8ff', enemy: '#ff5a4e' }), playerRef, ownSide: () => playerRef?.team ?? 'player',
     drawGhostMarker() { assert.fail('a spotted enemy is a live arrow, not a ghost'); }, mmCtx: {},
   });
   const pushTankBlip = blipPainter({ id: 'me', team: 'player' });

@@ -85,7 +85,7 @@ interface BattleWarmPort {
   ): Promise<CombatFxSubmission> | CombatFxSubmission;
 }
 
-type PostWarmPort = Pick<PostRuntime, 'warmFirstFrame'> &
+type PostWarmPort = Pick<PostRuntime, 'warmFirstFrame'> & Partial<Pick<PostRuntime, 'warmLateFxDraw'>> &
   CombatFxSubmissionOptions['post'] & {
     sceneAA: Pick<PostRuntime['sceneAA'], 'sceneTarget'>;
   };
@@ -113,6 +113,8 @@ interface DeploymentWarmTrace {
   phase: 'transition';
   stages: Record<string, number>;
   enemyVisualsDeferred?: boolean;
+  /** (transitions-249) Waits, between tasks, for the queued program links ahead of the shadow and post warms (ms). */
+  deploymentLinkWaitMs?: number[];
   /** (ac130-fx-228 r2) gunship airframes staged for the covered compile */
   gunshipAirframes?: number;
   /** (ac130-fx-228 r2) the mode objective presentations built for the covered compile */
@@ -130,6 +132,10 @@ interface DeploymentWarmTrace {
     programAndDrawTotalMs?: number;
     programAndDrawSyncMs?: number;
     programAndDrawMaxMs?: number;
+    /** (perf-253) the late pass's own draws of the staged effects (post.warmLateFxDraw): cohorts, the longest, the sum */
+    lateBatches?: number;
+    lateMaxMs?: number;
+    lateTotalMs?: number;
     completed: boolean;
     error?: string;
     cleanupError?: string;
@@ -188,6 +194,10 @@ export interface SoloBattleDeploymentRuntimeOptions {
   prepareAtmosphere?(): Promise<void>;
   prepareNightLighting?(): Promise<void>;
   runSceneWatchdog(assertCurrent: () => void): Promise<SceneWatchdogResult | void>;
+  /** True leaves the opponents to the revealed countdown's warm instead of the cover. */
+  deferOpponentVisuals?(): boolean;
+  /** Wait, between tasks, until the renderer's queued program links are in (bounded by the owner). */
+  awaitProgramLinks?(yieldForBudget: WorkYielder): Promise<void>;
   getGeneration(): number;
   advanceGeneration(): number;
   setPending(pending: boolean): void;
@@ -493,6 +503,42 @@ async function warmDeploymentFx(
     } finally {
       batches.return(undefined);
     }
+    // (perf-253) and the late pass's own draws of the staged effects, two at a time, yielding every ~8 ms: the warm above
+    // drew them into the multisampled private target, and the late pass draws single-sample with a depth texture, so the
+    // post warm made every one of their pipelines in one task (2.4 s desktop, 1.2 s phone on a cold entry)
+    const warmLateFxDraw = options.post.warmLateFxDraw;
+    if (warmLateFxDraw) {
+      receipt.lateBatches = 0; receipt.lateMaxMs = 0; receipt.lateTotalMs = 0;
+      const late = createIsolatedForwardWarmBatches({
+        scene: options.scene, root, warmRender: () => warmLateFxDraw.call(options.post), cohortSize: 2, now,
+        select: (object) => object.layers.isEnabled(LATE_FX_LAYER),
+      });
+      let sinceYield = 0;
+      try {
+        for (;;) {
+          const stepAt = now();
+          let step: ReturnType<typeof late.next>;
+          try { step = late.next(); }
+          finally {
+            const elapsed = Math.max(0, now() - stepAt);
+            drawSyncMs += elapsed;
+            maxDrawStepMs = Math.max(maxDrawStepMs, elapsed);
+            sinceYield += elapsed;
+          }
+          if (step.done) break;
+          receipt.lateBatches++;
+          receipt.lateMaxMs = Math.max(receipt.lateMaxMs, step.value.ms);
+          receipt.lateTotalMs += step.value.ms;
+          if (sinceYield >= 8) {
+            sinceYield = 0;
+            await yieldCovered(true);
+            assertFxCurrent();
+          }
+        }
+      } finally {
+        late.return(undefined);
+      }
+    }
     cohortsCompleted = true;
   } catch (error) {
     receipt.error = String(error).slice(0, 320);
@@ -654,10 +700,22 @@ export function createSoloBattleDeploymentRuntime(
         requireCurrent(generation);
         mark('allyVisuals');
 
-        // Hidden opponents cannot participate in the first revealed frame.
-        // The deferred warm owner streams the same exact builders during the
-        // visible deployment countdown, before control is released.
-        trace.enemyVisualsDeferred = true;
+        // (2026-10-24, transitions-249) Opponents are built here, hidden, under the cover. The deferred warm owner
+        // streamed them in the revealed countdown at its 6 ms frame budget, and the count held at 3 until every one was
+        // built: 10.1-10.8 s on desktop and 41-44 s on a 4x phone, where the cover builds the same seven in about 3.5 s
+        // and 10 s. Hidden opponents still cannot appear in the first revealed frame; the countdown's stream finds them
+        // built and releases its hold at once. deferOpponentVisuals keeps them for the countdown.
+        if (options.deferOpponentVisuals?.()) {
+          trace.enemyVisualsDeferred = true;
+        } else {
+          await battleVisuals.stream(
+            (entity) => (entity as DeploymentEntity).team === 'enemy',
+            guardedCoveredYield,
+            (fraction) => battleLoad.progress(0.93 + fraction * 0.035, 'Painting vehicles'),
+            true,
+          );
+          trace.enemyVisualsDeferred = false;
+        }
         requireCurrent(generation);
         mark('enemyVisuals');
 
@@ -709,6 +767,17 @@ export function createSoloBattleDeploymentRuntime(
         // programs do not belong to this covered first-frame preparation.
         trace.deploymentUniformsDeferred = true;
         battleLoad.progress(0.969, 'Priming deployment shadows');
+        // (2026-10-24, transitions-249) the shadow and post warms draw: a draw binds programs the earlier submissions
+        // queued, and their links finish here between tasks instead of inside one draw's task (a 3.4 s frozen frame in a
+        // cold desktop entry's post pass once the tank draws stopped absorbing the queue)
+        const awaitProgramLinks = options.awaitProgramLinks;
+        const awaitLinks = async (wait: NonNullable<typeof awaitProgramLinks>): Promise<void> => {
+          const startedAt = now();
+          await wait(guardedCoveredYield);
+          requireCurrent(generation);
+          (trace.deploymentLinkWaitMs ??= []).push(Math.round(now() - startedAt));
+        };
+        if (awaitProgramLinks) await awaitLinks(awaitProgramLinks);
         trace.deploymentShadowWarm = await getDeploymentShadowWarm().prime(guardedCoveredYield);
         requireCurrent(generation);
         mark('shadowMaps');
@@ -746,6 +815,7 @@ export function createSoloBattleDeploymentRuntime(
         // (deferredCombatWarmRuntime), as it did de facto on every main entry probed (the covered warm missed its link
         // budget before reaching this stage). Nine programs off the covered link queue (the 10-15 census, Urban).
         trace.visionProgramsDeferred = true;
+        if (awaitProgramLinks) await awaitLinks(awaitProgramLinks);
         trace.deploymentPostWarm = await post.warmFirstFrame(() => guardedCoveredYield(true));
         requireCurrent(generation);
         mark('postPasses');

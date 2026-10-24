@@ -96,23 +96,25 @@ await import('./tankFactory.ts');
 // yaw frames must resolve correctly.
 const yawAxis = new Vector3(0, 1, 0);
 let runtimeTraceCount = 0;
-function posedPoint(raw, owner, yaw) {
+// A yawed station turns about the combat pivot the tracer turns the turret on (the armor's: since 4499464c2b the
+// combat-rig row, the authored C2.turretPivot rounded to 0.1 mm), so the witness and the trace share one axis.
+function posedPoint(raw, owner, yaw, pivot = C2.turretPivot) {
   const point = new Vector3(...raw).multiplyScalar(ARIETE_X_FAMILY_SCALE);
-  if (owner === 'turret') point.sub(new Vector3(...C2.turretPivot))
-    .applyAxisAngle(yawAxis, yaw).add(new Vector3(...C2.turretPivot));
+  if (owner === 'turret') point.sub(new Vector3(...pivot))
+    .applyAxisAngle(yawAxis, yaw).add(new Vector3(...pivot));
   return point;
 }
 function packTrace(armor, from, to, owner, yaw) {
   runtimeTraceCount++;
   const pose = tankPoseFromState({ pos: new Vector3(), yaw: 0, visualPitch: 0,
     visualRoll: 0, turretYaw: yaw, gunPitch: 0 });
-  return traceTank(posedPoint(from, owner, yaw), posedPoint(to, owner, yaw), pose, armor)
+  return traceTank(posedPoint(from, owner, yaw, armor.turretPivot), posedPoint(to, owner, yaw, armor.turretPivot), pose, armor)
     .filter(hit => hit.kind === 'plate' && hit.plate.surfaceGroup?.startsWith('ariete_c2_x:'));
 }
 function assertPack(armor, group, from, to, entry, owner, yaw) {
   const hits = packTrace(armor, from, to, owner, yaw).filter(hit => hit.plate.surfaceGroup === group);
   assert.equal(hits.length, 1, `${group}/${yaw}: closed stock is charged once, not entry plus exit`);
-  assert.ok(hits[0].point.distanceTo(posedPoint(entry, owner, yaw)) < 4e-6,
+  assert.ok(hits[0].point.distanceTo(posedPoint(entry, owner, yaw, armor.turretPivot)) < 4e-6,
     `${group}/${yaw}: actual tracer reaches the independently specified physical face`);
   assert.equal(hits[0].impactFrame, owner);
 }
