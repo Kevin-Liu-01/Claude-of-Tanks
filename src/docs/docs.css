@@ -1,3 +1,5 @@
+/* the manual-start block rides in this sheet: no extra stylesheet on the path to first paint */
+@import url('../presentation/manualStart.css');
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
 :root{color-scheme:dark;--bg:#080a0c;--panel:#0e1215;--panel2:#141a1e;--ink:#efeee9;--copy:#c5cbca;--muted:#919b9e;--dim:#697378;--line:rgba(220,230,233,.14);--line2:rgba(220,230,233,.26);--amber:#e7a34b;--amber2:#ffd69a;--cyan:#62cbd8;--green:#65ca95;--red:#eb6f60;--font:var(--font-ui);--mono:var(--font-mono)}
