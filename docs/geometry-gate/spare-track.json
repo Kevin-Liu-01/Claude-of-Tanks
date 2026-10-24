@@ -1257,27 +1257,20 @@
      "source": "strip",
      "frame": "turret",
      "registered": true,
-     "classes": [
-      "HANGING"
-     ],
-     "primary": "HANGING",
-     "why": {
-      "HANGING": [
-       "94% over air",
-       "only 6% supported"
-      ]
-     },
+     "classes": [],
+     "primary": "OK",
+     "why": {},
      "notes": [],
      "measures": {
-      "support": 0.06,
-      "gap": 0,
-      "air": 0.94,
+      "support": 0.94,
+      "gap": 0.06,
+      "air": 0,
       "hidden": 0,
       "sunkMaxM": 0.003,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.989,
-      "host": "turretDark<buildLeo2A4MarkingsStage2@profiles/leopard.ts:7351>"
+      "exposure": 0.897,
+      "host": "orphan:turret"
      }
     }
    ],
@@ -1315,27 +1308,20 @@
      "source": "strip",
      "frame": "turret",
      "registered": true,
-     "classes": [
-      "HANGING"
-     ],
-     "primary": "HANGING",
-     "why": {
-      "HANGING": [
-       "94% over air",
-       "only 6% supported"
-      ]
-     },
+     "classes": [],
+     "primary": "OK",
+     "why": {},
      "notes": [],
      "measures": {
-      "support": 0.061,
-      "gap": 0,
-      "air": 0.939,
+      "support": 0.914,
+      "gap": 0.086,
+      "air": 0,
       "hidden": 0,
       "sunkMaxM": 0.003,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.989,
-      "host": "turretDark<buildLeo2A4MarkingsStage2@profiles/leopard.ts:7351>"
+      "exposure": 0.9,
+      "host": "orphan:turret"
      }
     }
    ],
@@ -1725,25 +1711,19 @@
      "source": "decor",
      "frame": "turret",
      "registered": false,
-     "classes": [
-      "HANGING"
-     ],
-     "primary": "HANGING",
-     "why": {
-      "HANGING": [
-       "34% over air"
-      ]
-     },
+     "classes": [],
+     "primary": "OK",
+     "why": {},
      "notes": [],
      "measures": {
-      "support": 0.574,
-      "gap": 0.083,
-      "air": 0.343,
+      "support": 0.877,
+      "gap": 0.121,
+      "air": 0.002,
       "hidden": 0,
       "sunkMaxM": 0.006,
       "sweepM": 0,
       "traverseM": 0,
-      "exposure": 0.978,
+      "exposure": 0.956,
       "host": "turret<addLeopardTurretWithGunOpening@profiles/leopardGunOpening.ts:50>"
      }
     }

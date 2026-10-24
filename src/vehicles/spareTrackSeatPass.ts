@@ -139,6 +139,7 @@ export function buildSeatMotion(spec: SeatSpec, frames: SeatFrames, fixedMount: 
     turreted,
     arc,
     gun,
+    curved: (spec.gunPitchByYawDeg?.length ?? 0) > 0,
     pitchMin: (yaw) => minimumMechanicalGunPitch(spec, yaw),
     pitchMax: (spec.gunElevationDeg ?? 20) * D2R,
     // built on first use: only hull runs read the turret's underside
