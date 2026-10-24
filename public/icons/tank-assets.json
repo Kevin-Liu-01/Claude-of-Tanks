@@ -163417,14 +163417,14 @@
       "geometryHash": "43495ec0",
       "metadataHash": "b2214d10",
       "presentationAnchor": {
-        "xM": 0.0023,
-        "zM": 0.0927
+        "xM": 0.002,
+        "zM": 0.0947
       },
-      "presentationHash": "6944cc0a",
+      "presentationHash": "e8d59f59",
       "presentationProjection": {
         "centerYM": 2.0244,
-        "topHalfM": 6.6432,
-        "sideHalfM": 3.3216
+        "topHalfM": 6.6411,
+        "sideHalfM": 3.3205
       },
       "appearance": {
         "version": 1,
@@ -163477,15 +163477,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24240,
-          "sha256": "0a72b9a61c830fc8dc2ef78bd1fc12c36de806f743ed77d5ab7dbb48c6d4621b",
+          "bytes": 24262,
+          "sha256": "f4209303573c8c5f57fd328737b485a62e4814e77cd0176861b8fdc1ed3967be",
           "thumbnail": {
             "file": "thumbs/leclerc_s2_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10080,
-            "sha256": "e9035b76dc7f11759962eba8552294584f8c08dd5b8845965fa616bc83be9182"
+            "bytes": 10072,
+            "sha256": "dd2f74e9797f576bd81a5c226978a107fbcecec8785a1a07ce3f97446154ce00"
           }
         },
         "top": {
@@ -163493,56 +163493,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 10152,
-          "sha256": "c52c5d0f289c5e5880a3ea7da5276e0e594dddf22db1f799bfffd84bf996f76b"
+          "bytes": 10058,
+          "sha256": "964d0da7232e56e1c2801a8d9ba87158d09afc65191f85c081b1650af2c465fe"
         },
         "side": {
           "file": "leclerc_s2_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8978,
-          "sha256": "70e5506c86ad88be98195094887b2c8a5440f36aa6dcbd8cb08938e3a0f37cf9"
+          "bytes": 9046,
+          "sha256": "e40d77f10c3a14f3aed0c6b99ca2d701c0382f25b34c405b76e2ae14176d106b"
         },
         "topSilhouette": {
           "file": "leclerc_s2_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1338,
-          "sha256": "756c6da9ba2259a93869d6c006496e4cafc06c63af5b39cd8d4906950af3d2d4"
+          "bytes": 1378,
+          "sha256": "8523a13c3fd424108bae81e0570932d7e4ce67754ffcbe38ec816b8cf9f63b03"
         },
         "sideSilhouette": {
           "file": "leclerc_s2_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3759,
-          "sha256": "dbd98553eb6eec0dd84bbdf76fb6628ff3ec397195d1b43bc5362f03a8106d38"
+          "bytes": 3774,
+          "sha256": "ee67bf87bbe0fa610479ee50952146889aa642c077cde8ddfefca6c5625a904f"
         },
         "armorSide": {
           "file": "leclerc_s2_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84969,
-          "sha256": "2744075e18df285afa824f0ef895780d9dec34add096a246395100012ad4f9ec"
+          "bytes": 87357,
+          "sha256": "6bb10d32f507269061fccf4c56c56453a9bccbb7b8782a610c40d2d83982d1b9"
         },
         "modulesSide": {
           "file": "leclerc_s2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 89628,
-          "sha256": "a7cbc3e1b68125ed6329886e21330ef4a7427c2d75fc8de589c95bfd8d96607f"
+          "bytes": 91582,
+          "sha256": "9a4b77c0dae8f8033d467c0472d15b0c6d6f72f57f362567016903883f336e0d"
         },
         "crewSide": {
           "file": "leclerc_s2_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75974,
-          "sha256": "2e03f849c135724e0bfe55e396b039909ebde350da15e059809c990a9d22135c"
+          "bytes": 76611,
+          "sha256": "b9b5a72044ccddaa0797c3b7a6604a7444ca24e944a79258f3785109e349943e"
         },
         "markings": {
           "file": "leclerc_s2_markings.png",
