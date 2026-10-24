@@ -8,7 +8,8 @@ let hidden = false, opacity = 0, layout = true, current = true, time = 0, yields
 const root = { getClientRects: () => layout ? [{}] : [] };
 Object.defineProperty(globalThis, 'document', { configurable: true, value: { get hidden() { return hidden; } } });
 Object.defineProperty(globalThis, 'getComputedStyle', { configurable: true, value: () => ({ opacity: String(opacity) }) });
-const options = () => ({ isCurrent: () => current, now: () => time, maxWaitMs: 100,
+// minFrames 1: these cases pin the wall-clock deadline alone (the frame floor has its own cases below)
+const options = () => ({ isCurrent: () => current, now: () => time, maxWaitMs: 100, minFrames: 1,
   yieldPaint: async () => { time += 10; yields++; } });
 const reset = () => { hidden = false; opacity = 0; layout = true; current = true; time = 0; yields = 0; };
 try {
@@ -41,8 +42,36 @@ try {
   for (const maxWaitMs of [0, -1, NaN, Infinity]) {
     await assert.rejects(waitForOpaqueTransition(root, { ...options(), maxWaitMs }), RangeError);
   }
+  for (const minFrames of [0, 1.5, NaN]) {
+    await assert.rejects(waitForOpaqueTransition(root, { ...options(), minFrames }), RangeError);
+  }
+  // transitions-250: a slow main thread (a probe polling every 25 ms stranded a Studio exit at the 1 s deadline). Frames
+  // of 150 ms: the deadline waits for the frame floor too, and a fade still unfinished there is cut to opaque, not failed
+  const slow = (extra = {}) => ({ isCurrent: () => current, now: () => time, maxWaitMs: 1000, ...extra });
+  reset();
+  let forcedCalls = 0;
+  await waitForOpaqueTransition(root, slow({ forceOpaque: () => { forcedCalls++; opacity = 1; },
+    yieldPaint: async () => { time += 150; yields++; if (yields === 9) opacity = 1; } }));
+  assert.equal(forcedCalls, 0, 'a fade that finishes after a loaded second but within the frame floor is waited for');
+  assert.equal(yields, 10, 'and proceeds one paint after it reads opaque');
+  reset(); forcedCalls = 0;
+  await waitForOpaqueTransition(root, slow({ forceOpaque: () => { forcedCalls++; opacity = 1; },
+    yieldPaint: async () => { time += 150; yields++; } }));
+  assert.equal(forcedCalls, 1, 'a fade still not opaque at the deadline and the frame floor is cut to opaque');
+  assert.equal(yields, 14, 'twelve frames, the forced cover\'s frame, and the paint after it reads opaque');
+  reset(); forcedCalls = 0;
+  await assert.rejects(waitForOpaqueTransition(root, slow({ forceOpaque: () => { forcedCalls++; },
+    yieldPaint: async () => { time += 150; yields++; } })), /did not become opaque/);
+  assert.ok(forcedCalls === 1 && yields === 13, 'a cover that stays clear even when forced (broken CSS) still fails, one frame later');
+  reset();
+  await assert.rejects(waitForOpaqueTransition(root, slow({ yieldPaint: async () => { time += 150; yields++; } })),
+    /did not become opaque/);
+  assert.equal(yields, 12, 'without a fallback the frame floor still bounds the wait');
   const source = await readFile(new URL('./transition.ts', import.meta.url), 'utf8');
-  const coverAt = source.indexOf('await waitForOpaqueTransition(root, { isCurrent })');
+  const coverAt = source.indexOf('await waitForOpaqueTransition(root, { isCurrent, forceOpaque: () => {');
+  assert.match(source, /forceOpaque: \(\) => \{\s*root\.style\.transition = 'none';\s*root\.classList\.add\('lit'\);/,
+    'the real transition cuts an unfinished fade to its lit, opaque state');
+  assert.ok((source.match(/root\.style\.transition = '';/g) ?? []).length === 2, 'and show() and hide() fade normally again');
   assert.ok(coverAt >= 0 && coverAt < source.indexOf('result = await work('),
     'the real transition owner awaits coverage before invoking work');
   assert.match(source, /if \(isCurrent\(\)\) await api\.hide\(\)/,
