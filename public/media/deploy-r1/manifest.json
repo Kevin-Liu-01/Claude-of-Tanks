@@ -10,7 +10,7 @@
   "width": 640,
   "height": 360
  },
- "count": 19,
+ "count": 20,
  "items": [
   {
    "id": "standard",
@@ -285,6 +285,24 @@
     "t14_armata",
     "t90m",
     "t90m"
+   ],
+   "source": "Scene Studio still, 2560x1440 (campaign-briefing round 1, hulls standing)",
+   "objective": "line-1",
+   "width": 1280,
+   "height": 720
+  },
+  {
+   "id": "op-05",
+   "file": "op-05-1280.webp",
+   "operation": "frontier_basin",
+   "index": 5,
+   "map": "frontier",
+   "enemy": "china",
+   "attacker": "south_korea",
+   "cast": [
+    "k2_black_panther",
+    "k1a1",
+    "k2_black_panther"
    ],
    "source": "Scene Studio still, 2560x1440 (campaign-briefing round 1, hulls standing)",
    "objective": "line-1",
