@@ -10077,7 +10077,6 @@ export function* createTankRuntimeSteps(
       for (const range of cluster.ranges) pinnedPositions.add(range.position);
       for (const drape of cluster.drapes ?? []) pinnedPositions.add(drape.position);
     }
-    const isGear = (object: THREE.Object3D): boolean => !!object.userData?.runningGear || /^gear/.test(object.name || '');
     root.updateMatrixWorld(true);
     const hull = buildFarHull(root, (mesh) => ({
       depth: (mesh.userData.coplanarFarDepthOffset ?? mesh.userData.coplanarDepthOffset ?? 0) as number,
@@ -10096,28 +10095,65 @@ export function* createTankRuntimeSteps(
       return true;
     });
     for (const geometry of hull.geometries) disposables.push(geometry);
-    // the gear: every wheel layer's stations once (the largest radius at a station), each end wheel, as low cylinders
-    const wheels = new Map<string, FarWheel>();
+    // the gear: each wheel station once, each end wheel, as low cylinders. A station is its tyre layer's (its centre, its
+    // radius); its rubber share is the ring its tyre shows past its set's painted layers (discs, rims, faces), measured on
+    // the layers' own geometry about the axle. A wheel set with no tyre layer, and every end wheel, is steel (all paint).
+    const wheels: FarWheel[] = [];
     let tyre: THREE.Material | null = null, paint: THREE.Material | null = null;
+    const replaced = new Set<THREE.Object3D>();
+    /** A wheel layer's reach about its axle and its width along it, on its own geometry. */
+    const extentOf = (geometry: THREE.BufferGeometry): { radial: number; width: number } => {
+      const position = geometry.getAttribute('position');
+      let radial = 0, xMin = Infinity, xMax = -Infinity;
+      for (let i = 0; i < position.count; i++) {
+        radial = Math.max(radial, Math.hypot(position.getY(i), position.getZ(i)));
+        xMin = Math.min(xMin, position.getX(i)); xMax = Math.max(xMax, position.getX(i));
+      }
+      return { radial, width: position.count ? xMax - xMin : 0 };
+    };
+    const addStation = (wheel: FarWheel): void => {
+      const reach = (other: FarWheel): number => Math.max(other.r, wheel.r) * 0.5;
+      if (wheels.some((other) => Math.sign(other.x) === Math.sign(wheel.x) && Math.abs(other.z - wheel.z) < reach(other)
+        && Math.abs(other.y - wheel.y) < reach(other))) return;
+      wheels.push(wheel);
+    };
     const units = P.gear ? (P.gear.__units ?? [P.gear]) : [];
     for (const unit of units) {
       const env = GEAR_RUNTIME_ENVS.get(unit);
       if (!env) continue;
-      for (const { im, list } of env.made) {
+      const tyreLayers = env.made.filter(({ im }) => /Tires$/.test(im.name));
+      for (const { im } of env.made) {
+        replaced.add(im);
         // (a plain mesh draws the original: an instanced layer's material may be its instanced-variant twin)
         const material = programVariantOrigin(Array.isArray(im.material) ? im.material[0] : im.material);
         if (!tyre && /Tires$/.test(im.name)) tyre = material;
         if (!paint && /Discs$/.test(im.name)) paint = material;
+      }
+      for (const { im, list } of [...tyreLayers, ...env.made.filter((layer) => !tyreLayers.includes(layer))]) {
+        // a tyre layer's stations take its set's measures: the rubber ring past the painted layers, the width of the
+        // tyre or the disc (a dual wheel is one wide cylinder, as it reads); other stations a generic width, all paint
+        let share = 0, width = 0;
+        if (tyreLayers.some((layer) => layer.im === im)) {
+          const set = im.name.slice(0, -'Tires'.length);
+          const tyreExtent = extentOf(im.geometry);
+          let painted = 0;
+          width = tyreExtent.width;
+          for (const layer of env.made) {
+            if (layer.im === im || !layer.im.name.startsWith(set) || /(Tires|Insets)$/.test(layer.im.name)) continue;
+            const extent = extentOf(layer.im.geometry);
+            painted = Math.max(painted, extent.radial);
+            if (/Discs$/.test(layer.im.name)) width = Math.max(width, extent.width);
+          }
+          share = tyreExtent.radial > 0 ? Math.min(0.45, Math.max(0, 1 - painted / tyreExtent.radial)) : 0;
+        }
         for (const entry of list) {
-          const key = `${entry.x.toFixed(3)}|${entry.z.toFixed(3)}`;
-          const width = entry.road ? env.wheelW : env.wheelW * 0.6;
-          const known = wheels.get(key);
-          if (!known || entry.r > known.r) wheels.set(key, { x: entry.x, y: entry.y, z: entry.z, r: entry.r, w: width });
+          const w = width > 0 ? width : entry.road ? env.wheelW : env.wheelW * 0.6;
+          addStation({ x: entry.x, y: entry.y, z: entry.z, r: entry.r, w, tyre: share });
         }
       }
       for (const side of [-1, 1] as const) {
         for (const end of [env.sprocket, env.idler]) {
-          wheels.set(`end|${side}|${end.z.toFixed(3)}`, { x: side * env.xcForSide(side), y: end.y, z: end.z, r: end.r, w: env.wheelW * 0.8 });
+          wheels.push({ x: side * env.xcForSide(side), y: end.y, z: end.z, r: end.r, w: env.wheelW * 0.8, tyre: 0 });
         }
       }
     }
@@ -10125,8 +10161,8 @@ export function* createTankRuntimeSteps(
     paint ??= mats.wheels ?? mats.dark;
     let gear: THREE.Mesh | null = null;
     const gearParked: THREE.Object3D[] = [];
-    if (wheels.size) {
-      const geometry = farWheelsGeometry([...wheels.values()]);
+    if (wheels.length) {
+      const geometry = farWheelsGeometry(wheels);
       disposables.push(geometry);
       gear = new THREE.Mesh(geometry, [tyre, paint]);
       gear.name = 'farLodRunningGear';
@@ -10135,12 +10171,13 @@ export function* createTankRuntimeSteps(
       gear.receiveShadow = true;
       gear.userData.farLod = true;
       hullG.add(gear);
-      // the gear's instanced and batched draws, which the stand-in replaces (wheels, rollers, end wheels, shoes, links); the
-      // bands stay at the pose the gear last left them, and its static draws are the far hull's
+      // the draws the stand-in replaces: the wheel layers, the roller spindles and the end wheels. The bands stay at the
+      // pose the gear last left them, the shoes and links too (their own 150 m tiers hide them before this range), and
+      // the gear's static draws are the far hull's.
       hullG.traverse((object) => {
         const draw = object as THREE.Object3D & { isInstancedMesh?: boolean; isBatchedMesh?: boolean };
-        if (object === gear || !isGear(object) || !(draw.isInstancedMesh || draw.isBatchedMesh)) return;
-        gearParked.push(object);
+        if (object === gear || !(draw.isInstancedMesh || draw.isBatchedMesh)) return;
+        if (replaced.has(object) || /^gear(RoadWheel|ReturnRoller|EndWheel)/.test(object.name)) gearParked.push(object);
       });
     }
     const meshes = [...hull.meshes, ...(gear ? [gear] : [])];
@@ -10152,7 +10189,7 @@ export function* createTankRuntimeSteps(
     }
     for (const mesh of meshes) wrapVehicleGround(mesh, root);
     root.userData.farLod = { hullTrianglesBefore: hull.trianglesBefore, hullTrianglesAfter: hull.trianglesAfter,
-      hullDraws: hull.meshes.length, hullSources: hull.sources.length, gearParked: gearParked.length, wheels: wheels.size };
+      hullDraws: hull.meshes.length, hullSources: hull.sources.length, gearParked: gearParked.length, wheels: wheels.length };
     return { hull, gear, gearParked, meshes };
   };
   /** The far LOD built under the far detail state (the distance hand-offs' and the far copies'), whatever the vehicle
