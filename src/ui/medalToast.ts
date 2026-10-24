@@ -20,7 +20,7 @@ const CSS = `
 body.cot-battle-ui-hidden .cot-medal-toasts,body.cot-si-report .cot-medal-toasts{display:none;}
 .cot-medal-toast{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:var(--s3);
   box-sizing:border-box;min-width:min(250px,calc(100vw - 32px));max-width:min(380px,calc(100vw - 32px));padding:10px 26px;color:var(--ink-1);
-  --medal-fill:linear-gradient(100deg,oklch(from var(--surface-page) l c h / .97),oklch(from var(--surface-page) l c h / .94));--medal-edge:oklch(from var(--ink-3) .59 c h);
+  --medal-fill:linear-gradient(100deg,var(--hud-plate-strong),var(--hud-plate-strong));--medal-edge:oklch(from var(--ink-3) .59 c h);
   position:relative;isolation:isolate;background:var(--medal-edge);border:0;
   clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 50%,calc(100% - 14px) 100%,14px 100%,0 50%);
   box-shadow:0 10px 28px oklch(from var(--surface-scene) l c h / .5);opacity:0;transition:opacity var(--dur-base) ease-out;}
@@ -28,7 +28,7 @@ body.cot-battle-ui-hidden .cot-medal-toasts,body.cot-si-report .cot-medal-toasts
 .cot-medal-toast.show{opacity:1;}
 .cot-medal-toast.leave{opacity:0;transition:opacity var(--dur-base) ease-in;}
 .cot-medal-toast.signature{--medal-edge:var(--accent-lo);
-  --medal-fill:radial-gradient(120% 140% at 0 50%,oklch(from var(--accent) l c h / .24),oklch(from var(--surface-page) l c h / .94) 62%);
+  --medal-fill:radial-gradient(120% 140% at 0 50%,oklch(from var(--accent) l c h / .24),var(--hud-plate-strong) 62%);
   box-shadow:0 10px 30px oklch(from var(--surface-scene) l c h / .5),0 0 24px oklch(from var(--accent) l c h / .25);}
 .cot-medal-toast .cot-medal-art{display:block;filter:drop-shadow(0 4px 6px oklch(from var(--surface-scene) l c h / .6));}
 .cot-medal-toast .ey{display:block;font:700 var(--battle-fs-11) ${FONT_COND};letter-spacing:var(--track-label);text-transform:uppercase;color:var(--accent);}

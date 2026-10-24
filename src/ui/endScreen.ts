@@ -248,7 +248,7 @@ const ES_CSS = `
   flex-direction:column;align-items:center;justify-content:center;
   padding:2.2vh 0 2.6vh;overflow:hidden;font-family:${FONT_STACK};color:${COL.text};
   background:
-    radial-gradient(110% 80% at 50% -10%,oklch(from var(--accent) l c h / .13),transparent 48%),
+    radial-gradient(110% 80% at 50% -10%,var(--accent-wash),transparent 48%),
     linear-gradient(180deg,rgba(5,8,12,.985),rgba(4,7,10,.955) 44%,rgba(3,5,8,.99));}
 .cot-es.show{display:flex;}
 .cot-es.es-sheet-wait{visibility:hidden;}
@@ -296,7 +296,7 @@ const ES_CSS = `
 .cot-es .es-meta span{display:flex;align-items:center;gap:7px}.cot-es .es-meta svg{color:var(--ink-3)}
 .cot-es .es-meta b{color:var(--ink-2);font-weight:700;}
 .cot-es .es-campaign{margin:var(--s3) auto 0;width:min(560px,92vw);padding:10px 14px 11px;text-align:center;
-  border:1px solid oklch(from var(--accent) l c h / .5);border-left:3px solid var(--accent);border-radius:4px;background:oklch(from var(--surface-page) l c h / .72);}
+  border:1px solid oklch(from var(--accent) l c h / .5);border-left:3px solid var(--accent);border-radius:4px;background:var(--battle-chip-plate);}
 .cot-es .es-campaign .ck{font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.13em;text-transform:uppercase;color:var(--accent);}
 .cot-es .es-campaign .ct{margin-top:3px;font-family:${FONT_COND};font-size:19px;font-weight:700;letter-spacing:var(--battle-track-status);text-transform:uppercase;color:var(--ink-1);}
 .cot-es .es-campaign .cs{margin-top:5px;font-size:12.5px;color:var(--ink-2);}
@@ -310,7 +310,7 @@ const ES_CSS = `
   align-items:stretch;gap:var(--s3);width:1160px;max-width:96vw;height:clamp(300px,45vh,390px);
   flex:0 0 clamp(300px,45vh,390px);margin-top:var(--s3);min-height:0;}
 .cot-es .es-debrief{display:flex;flex-direction:column;min-width:0;min-height:0;height:100%;
-  overflow:hidden;background:linear-gradient(155deg,oklch(from var(--surface-raised) l c h / .96),oklch(from var(--surface-nav) l c h / .97));
+  overflow:hidden;background:linear-gradient(155deg,var(--hud-plate-strong),var(--hud-plate-strong));
   border:1px solid var(--line-3);box-shadow:0 12px 36px oklch(from var(--surface-scene) l c h / .42);pointer-events:auto;}
 .cot-es .es-dh{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);
   min-height:41px;padding:9px 14px;border-bottom:1px solid var(--line-3);}
@@ -323,11 +323,11 @@ const ES_CSS = `
   background:oklch(from var(--ink-2) l c h / .15);border-bottom:1px solid var(--line-2);}
 .cot-es .es-stat-grid.has-vehicle{grid-template-columns:minmax(112px,.72fr) repeat(2,minmax(0,1fr));}
 .cot-es .es-vehicle-card{position:relative;display:grid;place-items:center;min-width:0;min-height:80px;
-  overflow:hidden;background:radial-gradient(100% 85% at 50% 35%,oklch(from var(--accent) l c h / .13),oklch(from var(--surface-page) l c h / .98) 72%);}
+  overflow:hidden;background:radial-gradient(100% 85% at 50% 35%,var(--accent-wash),var(--hud-plate-strong) 72%);}
 .cot-es .es-vehicle-card img{display:block;width:100%;height:76px;padding:var(--s1) 7px 7px;object-fit:contain;
   object-position:center;opacity:.84;filter:grayscale(.12) contrast(1.12) drop-shadow(0 9px 11px oklch(from var(--surface-scene) l c h / .72));}
 .cot-es .es-tal{display:flex;flex-direction:column;justify-content:center;gap:3px;min-width:0;
-  min-height:80px;text-align:left;padding:var(--s3) var(--s4);background:oklch(from var(--surface-page) l c h / .98);}
+  min-height:80px;text-align:left;padding:var(--s3) var(--s4);background:var(--hud-plate-strong);}
 .cot-es .es-tal .v{font-family:${FONT_COND};font-weight:700;font-size:23px;
   letter-spacing:-.01em;color:var(--ink-1);line-height:1.05;text-align:left;}
 .cot-es .es-tal .v i{font-style:normal;font-size:var(--battle-fs-14);color:${COL.dim};font-weight:700;}
@@ -363,9 +363,9 @@ const ES_CSS = `
 .cot-es .es-awards .ak svg{flex:0 0 auto;}
 .cot-es .es-awards .al{display:flex;flex-wrap:wrap;gap:5px 6px;min-width:0;}
 .cot-es .es-awards .aw{display:flex;flex:0 0 auto;align-items:center;gap:6px;padding:3px 9px 3px var(--s1);
-  background:oklch(from var(--surface-page) l c h / .72);border:1px solid var(--line-3);}
+  background:var(--battle-chip-plate);border:1px solid var(--line-3);}
 .cot-es .es-awards .aw.icon{padding:3px var(--s1);}
-.cot-es .es-awards .aw.signature{border-color:oklch(from var(--accent) l c h / .65);background:oklch(from var(--accent) l c h / .1);}
+.cot-es .es-awards .aw.signature{border-color:oklch(from var(--accent) l c h / .65);background:var(--accent-wash);}
 .cot-es .es-awards .aw b{font:700 var(--battle-fs-11) ${FONT_COND};letter-spacing:.02em;text-transform:uppercase;color:var(--ink-1);white-space:nowrap;}
 .cot-es .es-awards .aw.tier b{color:var(--ink-2);}
 .cot-es .es-awards svg{display:block;flex:0 0 auto;}
@@ -384,7 +384,7 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-ph.ally{color:${COL.green};border-bottom-color:oklch(from var(--team-own) l c h / .35);}
 .cot-es .es-ph.foe{color:${COL.red};border-bottom-color:oklch(from var(--team-enemy) l c h / .35);}
 .cot-es .es-scoreboard{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;min-height:86px;
-  padding:10px 22px;border-bottom:1px solid var(--line-2);background:oklch(from var(--surface-nav) l c h / .72);}
+  padding:10px 22px;border-bottom:1px solid var(--line-2);background:var(--battle-chip-plate);}
 .cot-es .es-score-side{display:grid;grid-template-columns:1fr auto;align-items:center;gap:var(--s3);}
 .cot-es .es-score-side.foe{text-align:right;grid-template-columns:auto 1fr}.cot-es .es-score-copy{min-width:0}
 .cot-es .es-score-side .sl{font:700 var(--battle-fs-12) ${FONT_COND};letter-spacing:var(--track-label);text-transform:uppercase;}
@@ -443,25 +443,25 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-none{padding:9px 5px;font-size:var(--battle-fs-11);color:${COL.dim};letter-spacing:.02em;}
 /* persistent private/LAN room: results are one round inside a social session */
 .cot-es .es-rematch{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:0;width:1160px;
-  max-width:96vw;margin-top:var(--s3);padding:0;background:linear-gradient(100deg,oklch(from var(--surface-raised) l c h / .98),oklch(from var(--surface-raised) l c h / .98));
+  max-width:96vw;margin-top:var(--s3);padding:0;background:linear-gradient(100deg,var(--hud-plate-strong),var(--hud-plate-strong));
   border:1px solid oklch(from var(--accent) l c h / .45);border-left:3px solid ${COL.amber};pointer-events:auto;overflow:hidden;flex:0 0 auto}
 .cot-es .es-room-info{min-width:0;padding:13px var(--s4)}.cot-es .es-room-head{display:grid;grid-template-columns:36px minmax(0,1fr) auto;
   align-items:center;gap:11px}.cot-es .es-room-mode-icon{display:grid;place-items:center;width:36px;height:36px;color:${COL.amberHi};
-  background:oklch(from var(--accent) l c h / .1);border:1px solid oklch(from var(--accent) l c h / .32)}
+  background:var(--accent-wash);border:1px solid oklch(from var(--accent) l c h / .32)}
 .cot-es .es-room-title{min-width:0}.cot-es .es-room-title span{display:block;font:700 var(--battle-fs-11) ${FONT_COND};letter-spacing:.07em;
   text-transform:uppercase;color:${COL.amberHi}}.cot-es .es-room-title b{display:block;margin-top:2px;font:700 19px ${FONT_COND};
   letter-spacing:var(--track-label);color:var(--ink-1)}.cot-es .es-room-round{display:flex;align-items:center;gap:7px;font:700 var(--battle-fs-11) ${FONT_COND};
   letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-2)}.cot-es .es-room-round svg{color:${COL.amberHi}}
 .cot-es .es-room-players{display:flex;gap:var(--s2);flex-wrap:wrap;margin-top:10px}.cot-es .es-room-player{display:grid;
   grid-template-columns:44px minmax(100px,1fr) auto;align-items:center;gap:9px;min-width:245px;height:50px;padding:5px 10px;
-  background:oklch(from var(--surface-nav) l c h / .58);border-left:2px solid oklch(from var(--accent) l c h / .65)}
+  background:var(--battle-veil);border-left:2px solid oklch(from var(--accent) l c h / .65)}
 .cot-es .es-room-player.ready{border-left-color:${COL.green}}.cot-es .es-room-player .ri{width:44px;height:21px}
 .cot-es .es-room-player .room-copy{min-width:0}.cot-es .es-room-player .rn{display:block;min-width:0;overflow:hidden;
   text-overflow:ellipsis;white-space:nowrap;font-size:var(--battle-fs-12);font-weight:700}.cot-es .es-room-player .rv{display:block;margin-top:2px;
   font-size:var(--battle-fs-11);color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cot-es .es-room-player .rs{display:flex;
   align-items:center;gap:5px;font:700 var(--battle-fs-11) ${FONT_COND};letter-spacing:0em;color:var(--accent)}.cot-es .es-room-player .rs svg{flex:0 0 auto}
 .cot-es .es-room-player.ready .rs{color:${COL.green}}.cot-es .es-room-actions{display:flex;flex-direction:column;align-items:stretch;
-  justify-content:center;gap:var(--s2);padding:13px 14px;background:oklch(from var(--surface-nav) l c h / .65);border-left:1px solid oklch(from var(--accent) l c h / .22)}
+  justify-content:center;gap:var(--s2);padding:13px 14px;background:var(--battle-chip-plate);border-left:1px solid oklch(from var(--accent) l c h / .22)}
 .cot-es .es-ready-meter{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:var(--s2);margin-bottom:2px;color:var(--ink-3)}
 .cot-es .es-ready-meter .meter-label{font:700 var(--battle-fs-11) ${FONT_COND};letter-spacing:.04em;text-transform:uppercase}.cot-es .es-ready-meter b{
   font:700 var(--battle-fs-13) ${FONT_COND};color:var(--ink-1);}.cot-es .es-ready-track{grid-column:1/-1;height:3px;
@@ -477,8 +477,7 @@ body.cot-es-armed .cot-end{display:none !important;}
 /* --- actions -------------------------------------------------------------- */
 .cot-es .es-actions{display:flex;gap:14px;margin-top:1.8vh;padding:var(--s1) 10px;
   flex:0 0 auto;pointer-events:auto;z-index:2;}
-/* the actions are the kit's buttons (.cot-c-btn): this sheet only sets their width in the row */
-.cot-es .es-action{min-width:160px}
+/* the actions are the kit's buttons (.cot-c-btn); their width and padding in the row: endScreenPresentation.css */
 `;
 
 /**

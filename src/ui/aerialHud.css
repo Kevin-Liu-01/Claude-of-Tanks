@@ -12,7 +12,7 @@
  linear-gradient(currentColor,currentColor) right bottom/12px 1px,
  linear-gradient(currentColor,currentColor) right bottom/1px 12px;background-repeat:no-repeat}
 .flight-sight::after{content:'';position:absolute;left:50%;top:50%;width:3px;height:3px;transform:translate(-50%,-50%);background:currentColor}
-.cot-flight-hud .flight-console{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 48px));padding:10px var(--s3);background:linear-gradient(145deg,oklch(from var(--surface-hover) l c h / .96),oklch(from var(--surface-page) l c h / .95));border:1px solid var(--ink-4);border-top:2px solid var(--accent);box-shadow:0 4px 18px oklch(from var(--surface-scene) l c h / .6),inset 0 1px oklch(from var(--ink-1) l c h / .047);box-sizing:border-box;pointer-events:auto;color:var(--ink-1)}
+.cot-flight-hud .flight-console{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(560px,calc(100% - 48px));padding:10px var(--s3);background:linear-gradient(145deg,var(--hud-plate-strong),var(--hud-plate-strong));border:1px solid var(--ink-4);border-top:2px solid var(--accent);box-shadow:0 4px 18px oklch(from var(--surface-scene) l c h / .6),inset 0 1px oklch(from var(--ink-1) l c h / .047);box-sizing:border-box;pointer-events:auto;color:var(--ink-1)}
 .flight-heading{display:flex;align-items:center;gap:10px;min-height:38px}
 .flight-emblem{display:flex;align-items:center;justify-content:center;flex:0 0 40px;height:38px;color:var(--accent-hi);background:oklch(from var(--accent-lo) l c h / .169);clip-path:polygon(24% 0,76% 0,100% 50%,76% 100%,24% 100%,0 50%)}
 .flight-emblem svg{width:23px;height:23px}
@@ -142,7 +142,7 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 .flight-designation .flight-icon{color:inherit}.flight-designation svg{width:19px;height:19px}
 .cot-flight-hud[data-kind=drone] .flight-telemetry{
  grid-column:1/-1;grid-row:2;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;
- width:100%;margin:0;padding:5px 0;background:linear-gradient(90deg,transparent,oklch(from var(--surface-page) l c h / .702) 20% 80%,transparent);
+ width:100%;margin:0;padding:5px 0;background:linear-gradient(90deg,transparent,var(--battle-chip-plate) 20% 80%,transparent);
 }
 .cot-flight-hud[data-kind=drone] .flight-instrument{justify-content:center;gap:7px;font-size:var(--battle-fs-15);line-height:22px;font-weight:700;letter-spacing:.01em}
 .cot-flight-hud[data-kind=drone] .flight-instrument+.flight-instrument{border-left:1px solid var(--line-3)}
@@ -164,7 +164,7 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
  content:'';position:absolute;inset:0;z-index:-1;clip-path:var(--flight-cut);pointer-events:none;
 }
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return)::before{background:var(--ink-3)}
-.cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return)::after{inset:1px;background:linear-gradient(155deg,oklch(from var(--surface-hover) .32 c h / .925),oklch(from var(--surface-page) l c h / .961))}
+.cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return)::after{inset:1px;background:linear-gradient(155deg,oklch(from var(--surface-hover) .32 c h / .925),var(--hud-plate-strong))}
 .cot-flight-hud[data-kind=drone] .flight-view-switch{grid-column:1;grid-row:4;display:grid;grid-template-columns:22px minmax(0,1fr);grid-template-rows:auto 3px;column-gap:9px;row-gap:5px;align-content:center}
 .cot-flight-hud[data-kind=drone] .flight-view-switch::before{background:var(--flight-accent)}
 .cot-flight-hud[data-kind=drone] .flight-optic-icon{grid-column:1;grid-row:1/3;display:flex;color:var(--flight-accent)}
@@ -178,15 +178,15 @@ html[data-flight]:not([data-flight=""]) body[data-cot-battle-layout][data-cot-wi
 .cot-flight-hud[data-kind=drone] .cot-drone-return .flight-icon{color:var(--accent-hi)}
 .cot-flight-hud[data-kind=drone] .flight-key{border:0;border-radius:4px;background:oklch(from var(--ink-1) l c h / .11);color:var(--ink-1);min-width:19px;height:20px}
 .cot-flight-hud[data-kind=drone] .flight-hint{grid-column:1/-1;grid-row:5;max-width:none;text-align:center;font-size:var(--battle-fs-11);line-height:1.5;color:var(--ink-2)}
-.cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):hover::after{background:linear-gradient(155deg,oklch(from var(--surface-hover) .41 c h / .961),oklch(from var(--surface-hover) l c h / .961))}
-.cot-flight-hud[data-kind=drone] .cot-drone-return:disabled:hover::after{background:linear-gradient(155deg,oklch(from var(--surface-hover) .32 c h / .925),oklch(from var(--surface-page) l c h / .961))}
+.cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):hover::after{background:linear-gradient(155deg,oklch(from var(--surface-hover) .41 c h / .961),var(--hud-plate-strong))}
+.cot-flight-hud[data-kind=drone] .cot-drone-return:disabled:hover::after{background:linear-gradient(155deg,oklch(from var(--surface-hover) .32 c h / .925),var(--hud-plate-strong))}
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):focus-visible{outline:none;filter:drop-shadow(0 0 4px var(--ink-1))}
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):focus-visible::before{background:var(--ink-1)}
 .cot-flight-hud[data-kind=drone] :is(.flight-view-switch,.cot-drone-return):focus-visible::after{inset:3px}
 .cot-flight-hud[data-kind=drone] .flight-sight{width:36px;height:18px;background:none;border-inline:1px solid oklch(from var(--ink-1) l c h / .6)}
 .cot-flight-hud[data-kind=drone] .flight-sight::before{content:'';position:absolute;width:9px;height:1px;left:50%;top:50%;transform:translate(-50%,-50%);background:currentColor}
 .cot-flight-hud[data-kind=drone] .flight-sight::after{width:1px;height:9px}
-html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);background:oklch(from var(--surface-hover) l c h / .91);box-shadow:inset 0 2px var(--accent-hi),inset 0 -2px var(--accent-lo)}
+html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-path:polygon(25% 0,75% 0,100% 50%,75% 100%,25% 100%,0 50%);background:var(--hud-plate);box-shadow:inset 0 2px var(--accent-hi),inset 0 -2px var(--accent-lo)}
 @media(pointer:coarse){
  .cot-flight-hud[data-kind=drone] .flight-console{width:min(360px,calc(100% - 260px));gap:5px var(--s2)}
  .cot-flight-hud[data-kind=drone] .flight-designation{font-size:var(--battle-fs-11);line-height:16px;letter-spacing:.05em}
@@ -230,7 +230,7 @@ html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-p
  position:relative;isolation:isolate;min-width:0;min-height:50px;margin:0;padding:9px 18px;
  border:0;border-radius:0;background:none;box-shadow:none;color:var(--ink-1);pointer-events:auto;
  font:inherit;font-size:var(--battle-fs-11);line-height:1.2;filter:drop-shadow(0 2px 3px oklch(from var(--surface-scene) l c h / .6));cursor:pointer;
- --control-edge:oklch(from var(--ink-4) .58 c h);--control-fill:oklch(from var(--surface-menu) l c h / .922);
+ --control-edge:oklch(from var(--ink-4) .58 c h);--control-fill:var(--hud-plate);
 }
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply)::before,
 .cot-flight-hud[data-kind=gunship] :is(.flight-weapon,.flight-view-switch,.flight-supply)::after{
@@ -245,7 +245,7 @@ html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-p
 .cot-flight-hud[data-kind=gunship] .flight-weapon-copy strong{font-size:var(--battle-fs-11);line-height:1.2}
 .cot-flight-hud[data-kind=gunship] .flight-weapon small{font-size:var(--battle-fs-11);letter-spacing:0em;color:var(--ink-2)}
 .cot-flight-hud[data-kind=gunship] .flight-weapon-copy::after{content:'';position:absolute;left:18px;right:18px;bottom:5px;height:2px;background:oklch(from var(--ink-3) l c h / .533);transform:scaleX(var(--weapon-ready,1));transform-origin:left}
-.cot-flight-hud[data-kind=gunship] .flight-weapon[aria-pressed=true]{--control-edge:var(--accent-hi);--control-fill:linear-gradient(135deg,oklch(from var(--accent-lo) .43 .072 h / .925),oklch(from var(--surface-hover) l c h / .941));color:var(--accent-hi)}
+.cot-flight-hud[data-kind=gunship] .flight-weapon[aria-pressed=true]{--control-edge:var(--accent-hi);--control-fill:linear-gradient(135deg,oklch(from var(--accent-lo) .43 .072 h / .925),var(--hud-plate-strong));color:var(--accent-hi)}
 .cot-flight-hud[data-kind=gunship] .flight-weapon[aria-pressed=true] :is(.flight-weapon-icon,small){color:var(--accent-hi)}
 .cot-flight-hud[data-kind=gunship] .flight-weapon[aria-pressed=true] .flight-weapon-copy::after{background:var(--accent-hi)}
 .cot-flight-hud[data-kind=gunship] .flight-key{border:0;border-radius:3px;background:oklch(from var(--ink-1) l c h / .125);color:var(--ink-1);min-width:17px;height:17px}
@@ -339,12 +339,12 @@ html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-p
 }
 .cot-scope-vision::before,.cot-scope-vision::after{content:'';position:absolute;pointer-events:none;clip-path:var(--scope-cut);z-index:-1}
 .cot-scope-vision::before{inset:0;background:color-mix(in srgb,var(--scope-accent) 60%,oklch(from var(--surface-hover) .42 c h))}
-.cot-scope-vision::after{inset:1px;background:linear-gradient(165deg,oklch(from var(--surface-hover) .32 c h / .918),oklch(from var(--surface-page) l c h / .961))}
+.cot-scope-vision::after{inset:1px;background:linear-gradient(165deg,oklch(from var(--surface-hover) .32 c h / .918),var(--hud-plate-strong))}
 .cot-scope-vision[data-view=infrared]{--scope-accent:var(--ink-1)}
 .cot-scope-vision[data-view=thermal]{--scope-accent:var(--accent)}
 .cot-scope-vision[data-view=night]{--scope-accent:var(--battle-nv)}
 .cot-scope-vision:hover::before,.cot-scope-vision:focus-visible::before{background:var(--scope-accent)}
-.cot-scope-vision:hover::after{background:linear-gradient(165deg,oklch(from var(--surface-hover) .39 c h / .961),oklch(from var(--surface-menu) l c h / .961))}
+.cot-scope-vision:hover::after{background:linear-gradient(165deg,oklch(from var(--surface-hover) .39 c h / .961),var(--hud-plate-strong))}
 .cot-scope-vision:focus-visible{outline:none;filter:drop-shadow(0 0 4px var(--scope-accent))}
 .cot-scope-vision:focus-visible::after{inset:2px}
 .cot-scope-vision:active::after{background:oklch(from var(--surface-hover) .38 c h)}

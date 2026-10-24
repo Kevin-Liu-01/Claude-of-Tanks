@@ -19,13 +19,13 @@ body .cot-modal-root.cot-hud-editor .cot-modal__body{display:flex;flex-direction
 .hud-edit-viewport{position:relative;overflow:hidden}.hud-edit-stage{position:absolute;left:0;top:0;transform-origin:0 0;background-size:cover;background-position:center}
 .hud-edit-scene{position:absolute;inset:0;border:0;pointer-events:none;opacity:0}
 .hud-edit-scene[data-ready]{opacity:1}
-.hud-edit-loading{position:absolute;inset:0;margin:0;display:grid;place-items:center;background:oklch(from var(--surface-raised) l c h / .91);color:var(--accent);font-size:var(--battle-fs-12);z-index:4;text-align:center;padding:var(--s5)}
+.hud-edit-loading{position:absolute;inset:0;margin:0;display:grid;place-items:center;background:var(--hud-plate);color:var(--accent);font-size:var(--battle-fs-12);z-index:4;text-align:center;padding:var(--s5)}
 .hud-edit-loading[hidden]{display:none}
 .cot-hud-editor button.hud-edit-part{position:absolute;transform:translate(-50%,-50%);padding:0;min-height:0;border:1px solid transparent;touch-action:none;background:transparent;text-align:center;cursor:grab;overflow:visible;box-sizing:border-box}
 .cot-hud-editor .hud-edit-part[hidden]{display:none}.cot-hud-editor .hud-edit-part:active{cursor:grabbing}
 .hud-edit-part>*{pointer-events:none}.cot-hud-editor .hud-edit-part:hover{border-color:oklch(from var(--accent) l c h / .6);background:oklch(from var(--accent) l c h / .031)}
 .cot-hud-editor .hud-edit-part[aria-pressed=true]{border-color:var(--accent-hi);outline:1px solid oklch(from var(--surface-nav) l c h / .6);outline-offset:1px;z-index:3;background:oklch(from var(--accent) l c h / .031)}
-.hud-edit-tag{position:absolute;left:0;top:0;background:oklch(from var(--surface-raised) l c h / .933);font-size:var(--battle-fs-11);font-weight:700;padding:var(--s1) 7px;color:var(--accent-hi);opacity:0;transform:translateY(-100%);white-space:nowrap}
+.hud-edit-tag{position:absolute;left:0;top:0;background:var(--hud-plate);font-size:var(--battle-fs-11);font-weight:700;padding:var(--s1) 7px;color:var(--accent-hi);opacity:0;transform:translateY(-100%);white-space:nowrap}
 .hud-edit-part:hover .hud-edit-tag,.hud-edit-part:focus .hud-edit-tag,.hud-edit-part[aria-pressed=true] .hud-edit-tag{opacity:1}
 .hud-edit-inspector{min-height:0;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:9px;background:linear-gradient(120deg,var(--surface-menu),var(--surface-page));border:1px solid oklch(from var(--surface-hover) .40 c h)}
 .hud-edit-inspector h3{font-size:16px;margin:0 0 var(--s1);color:var(--ink-1)}.hud-edit-inspector p{font-size:var(--battle-fs-11);line-height:1.6;color:var(--ink-3);margin:2px 0 10px}

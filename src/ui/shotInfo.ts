@@ -483,7 +483,7 @@ const SI_CSS = `
   flex-direction:column;align-items:center;justify-content:center;
   padding:2vh 0 4vh;overflow:hidden;
   font-family:${FONT_STACK};color:${COL.text};
-  background:linear-gradient(180deg,oklch(from var(--surface-nav) l c h / .9),oklch(from var(--surface-scene) l c h / .8) 42%,oklch(from var(--surface-scene) l c h / .92));}
+  background:linear-gradient(180deg,var(--hud-plate),var(--battle-tip-plate) 42%,var(--hud-plate));}
 .cot-si-stats.show{display:flex;}
 .cot-si-stats *{box-sizing:border-box;margin:0;padding:0;}
 /* While the battle report is up, the integration end-overlay underneath
@@ -523,7 +523,7 @@ body.cot-si-report .cot-ret,body.cot-si-report .cot-hitmark{display:none !import
 .cot-si-hdr b{color:var(--ink-1);font-weight:700;}
 .cot-si-cols{display:flex;gap:var(--s4);width:1120px;max-width:94vw;align-items:stretch;
   min-height:220px;}
-.cot-si-panel{background:linear-gradient(180deg,oklch(from var(--surface-page) l c h / .92),oklch(from var(--surface-nav) l c h / .95));
+.cot-si-panel{background:linear-gradient(180deg,var(--hud-plate),var(--hud-plate-strong));
   border:1px solid var(--line-3);box-shadow:0 10px 40px oklch(from var(--surface-scene) l c h / .5);
   padding:14px 20px var(--s4);min-height:0;overflow:hidden;}
 .cot-si-panel .ph{font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.14em;color:${COL.dim};
@@ -558,7 +558,7 @@ body.cot-si-report .cot-ret,body.cot-si-report .cot-hitmark{display:none !import
   color:var(--ink-1);line-height:1.1;}
 .cot-si-econ{display:flex;gap:var(--s4);width:1120px;max-width:94vw;margin-bottom:14px;}
 .cot-si-ecoitem{flex:1;display:flex;flex-direction:column;
-  background:linear-gradient(180deg,oklch(from var(--surface-page) l c h / .92),oklch(from var(--surface-nav) l c h / .95));
+  background:linear-gradient(180deg,var(--hud-plate),var(--hud-plate-strong));
   border:1px solid var(--line-3);box-shadow:0 10px 40px oklch(from var(--surface-scene) l c h / .5);
   padding:10px var(--s4) 11px;}
 .cot-si-ecoitem .et{display:flex;align-items:baseline;justify-content:center;gap:10px;}
@@ -590,7 +590,7 @@ body.cot-si-report .cot-ret,body.cot-si-report .cot-hitmark{display:none !import
 .cot-si-kill .ex{color:${COL.dim};font-size:var(--battle-fs-11);width:10px;flex:0 0 auto;
   transition:transform var(--dur-fast) ease;}
 .cot-si-kill.open .ex{transform:rotate(90deg);}
-.cot-si-xd{display:none;background:oklch(from var(--surface-page) l c h / .6);
+.cot-si-xd{display:none;background:var(--battle-veil);
   border-bottom:1px solid var(--line-1);
   padding:3px 6px var(--s1) var(--s5);max-height:96px;overflow-y:auto;pointer-events:auto;}
 .cot-si-xd.open{display:block;}

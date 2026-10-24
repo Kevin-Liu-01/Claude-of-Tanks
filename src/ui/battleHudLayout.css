@@ -155,7 +155,7 @@ body:is(.cot-kc-live,.cot-si-report) :is(.cot-room-chat,.cot-touch,.cot-touch-ai
 .cot-vehicle-controls>button:focus-visible{outline:2px solid var(--ink-1);outline-offset:-2px;}
 .cot-vehicle-controls>button .si{grid-column:1;grid-row:1;display:flex;align-items:center;justify-content:center;filter:none;}
 .cot-vehicle-controls .si svg{width:var(--hud-tile-icon,13px)!important;height:var(--hud-tile-icon,13px)!important;}
-.cot-vehicle-controls>button .sk{grid-column:3;grid-row:1;display:grid;place-items:center;min-width:15px;height:15px;padding:0 2px;box-sizing:border-box;border:1px solid oklch(from var(--ink-3) .61 c h);border-radius:3px;background:oklch(from var(--surface-page) l c h / .6);font:700 var(--battle-fs-11)/1 var(--hud-font,system-ui);color:inherit;letter-spacing:0;}
+.cot-vehicle-controls>button .sk{grid-column:3;grid-row:1;display:grid;place-items:center;min-width:15px;height:15px;padding:0 2px;box-sizing:border-box;border:1px solid oklch(from var(--ink-3) .61 c h);border-radius:3px;background:var(--battle-veil);font:700 var(--battle-fs-11)/1 var(--hud-font,system-ui);color:inherit;letter-spacing:0;}
 .cot-vehicle-controls>button .sl{grid-column:2;grid-row:1;white-space:nowrap;font-size:var(--battle-fs-11);letter-spacing:0;text-align:center;}
 .cot-vehicle-controls .system-status{display:none;grid-column:2;grid-row:1;font:600 var(--battle-fs-11)/1 var(--hud-font,system-ui);letter-spacing:var(--battle-track-status);color:inherit;opacity:.85;white-space:nowrap;}
 body.cot-spectating .cot-vehicle-controls{display:none!important;}

@@ -152,7 +152,7 @@ function showContextLossOverlay(state: RecoveryNotice): void {
         <img src="/brand/mark.svg" alt="" width="72" height="41" style="display:block;margin:0 auto var(--s5)">
         <h2 id="cot-ctxlost-title" style="font-size:var(--fs-24);margin:0 0 var(--s3)"></h2>
         <p data-recovery-copy role="status" aria-live="polite" style="font-size:var(--fs-14);line-height:1.6;color:var(--ink-2);margin:0"></p>
-        <button id="cot-ctxlost-btn" class="cot-c-btn cot-c-btn--primary cot-c-btn--48" type="button" data-ui-sound="confirm" hidden style="margin-top:var(--s5)"></button>
+        <button id="cot-ctxlost-reload" class="cot-c-btn cot-c-btn--primary cot-c-btn--48" type="button" data-ui-sound="confirm" hidden style="margin-top:var(--s5)"></button>
       </div>`;
       (document.body || document.documentElement).appendChild(el);
       el.focus({ preventScroll: true });
@@ -160,15 +160,15 @@ function showContextLossOverlay(state: RecoveryNotice): void {
         event.stopPropagation();
         if (event.key === 'Tab') {
           event.preventDefault();
-          const reload = el?.querySelector<HTMLButtonElement>('#cot-ctxlost-btn');
+          const reload = el?.querySelector<HTMLButtonElement>('#cot-ctxlost-reload');
           if (reload && !reload.hidden) reload.focus();
         }
       });
-      el.querySelector('#cot-ctxlost-btn')?.addEventListener('click', () => window.location.reload());
+      el.querySelector('#cot-ctxlost-reload')?.addEventListener('click', () => window.location.reload());
     }
     const title = el.querySelector('#cot-ctxlost-title');
     const copy = el.querySelector('[data-recovery-copy]');
-    const button = el.querySelector<HTMLButtonElement>('#cot-ctxlost-btn');
+    const button = el.querySelector<HTMLButtonElement>('#cot-ctxlost-reload');
     const fallback = state === 'failed' || state === 'delayed';
     if (title) title.textContent = t(`graphics.recovery.${state}`);
     if (copy) copy.textContent = t(`graphics.recovery.${state === 'failed' ? 'failedCopy' : state === 'delayed' ? 'delayedCopy' : 'workingCopy'}`);

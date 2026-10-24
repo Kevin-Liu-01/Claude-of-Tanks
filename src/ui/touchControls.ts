@@ -19,7 +19,7 @@ const CSS = `
 .cot-touch{position:fixed;inset:0;z-index:60;display:none;pointer-events:none;
   font-family:${FONT_STACK};color:var(--ink-1);-webkit-user-select:none;user-select:none;
   touch-action:none;overflow:hidden;--edge:max(14px,env(safe-area-inset-left));
-  --touch-panel:oklch(from var(--surface-nav) l c h / .94);--touch-edge:var(--line-control);
+  --touch-panel:var(--hud-plate-strong);--touch-edge:var(--line-control);
   --touch-action:var(--accent);--touch-action-soft:oklch(from var(--accent) l c h / .18);}
 .cot-touch-aim{position:fixed;inset:0;z-index:39;display:none;pointer-events:none;
   font-family:${FONT_STACK};color:var(--ink-1);-webkit-user-select:none;user-select:none;
@@ -51,7 +51,7 @@ const CSS = `
 .cot-touch .arrow.r{transform:rotate(90deg)}
 .cot-touch .round{position:absolute;z-index:3;display:flex;align-items:center;justify-content:center;
   border-radius:50%;pointer-events:auto;touch-action:none;border:2px solid var(--line-control);
-  background:radial-gradient(circle at 38% 27%,oklch(from var(--ink-4) .57 c h / .8),oklch(from var(--surface-hover) l c h / .96) 48%,var(--touch-panel) 76%);
+  background:radial-gradient(circle at 38% 27%,oklch(from var(--ink-4) .57 c h / .8),var(--hud-plate-strong) 48%,var(--touch-panel) 76%);
   box-shadow:0 6px 18px oklch(from var(--surface-scene) l c h / .52),inset 0 0 0 4px oklch(from var(--surface-scene) l c h / .3),inset 0 1px 4px oklch(from var(--ink-1) l c h / .18);
   transition:transform var(--dur-instant) ease-out,border-color var(--dur-instant) ease,color var(--dur-instant) ease,box-shadow var(--dur-instant) ease;}
 .cot-touch .round::before{content:"";position:absolute;inset:7px;border-radius:50%;pointer-events:none;
@@ -71,7 +71,7 @@ const CSS = `
 /* out of ammo (owner 2026-10-17; critic r3 advisory): the selected gun is dry (hud.ts marks the body), so both FIRE
    buttons dim to a muted shell on a danger rim, in colour only */
 body.cot-gun-dry .cot-touch .fire{color:var(--hud-muted,#93a3af);border-color:oklch(from var(--danger) l c h / .5);opacity:.62;
-  background:radial-gradient(circle at 38% 27%,oklch(from var(--surface-hover) .44 c h / .86),oklch(from var(--surface-menu) l c h / .97) 48%,oklch(from var(--surface-nav) l c h / .98) 76%);}
+  background:radial-gradient(circle at 38% 27%,oklch(from var(--surface-hover) .44 c h / .86),var(--hud-plate-strong) 48%,var(--hud-plate-strong) 76%);}
 .cot-touch .fire.aiming{border-color:var(--accent-hi);box-shadow:0 0 0 5px oklch(from var(--accent) l c h / .13),
   0 0 22px rgba(240,150,40,.45),inset 0 2px 7px rgba(0,0,0,.65);}
 .cot-touch .fire.autofire{border-color:var(--accent-hi);box-shadow:0 0 0 5px oklch(from var(--accent-hi) l c h / .16),
@@ -79,7 +79,7 @@ body.cot-gun-dry .cot-touch .fire{color:var(--hud-muted,#93a3af);border-color:ok
 .cot-touch .fire-cancel{position:fixed;z-index:5;width:56px;height:56px;margin:-28px;
   display:flex;align-items:center;justify-content:center;pointer-events:none;visibility:hidden;
   opacity:0;transform:scale(.78);border-radius:50%;border:1.5px solid oklch(from var(--danger) l c h / .7);
-  background:oklch(from var(--surface-page) l c h / .68);color:oklch(from var(--danger) .77 .137 h);box-shadow:0 4px 13px oklch(from var(--surface-scene) l c h / .48);
+  background:var(--battle-chip-plate);color:oklch(from var(--danger) .77 .137 h);box-shadow:0 4px 13px oklch(from var(--surface-scene) l c h / .48);
   transition:opacity var(--dur-instant) ease,transform var(--dur-instant) ease,border-color var(--dur-instant) ease;}
 .cot-touch .fire-cancel b{font:400 var(--battle-fs-28)/1 ${FONT_COND};}
 .cot-touch.fire-armed .fire-cancel{visibility:visible;opacity:.82;transform:scale(1);}
@@ -97,7 +97,7 @@ body.cot-gun-dry .cot-touch .fire{color:var(--hud-muted,#93a3af);border-color:ok
   font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px var(--surface-scene);}
 .cot-touch .autoaim svg{width:28px;height:28px;filter:drop-shadow(0 2px 3px var(--surface-scene));}
 .cot-touch .autoaim.on{color:var(--accent-hi);border-color:var(--accent);
-  background:radial-gradient(circle at 35% 28%,oklch(from var(--accent-lo) .47 .085 h / .92),oklch(from var(--surface-hover) l c h / .96) 64%,oklch(from var(--surface-scene) l c h / .98));
+  background:radial-gradient(circle at 35% 28%,oklch(from var(--accent-lo) .47 .085 h / .92),var(--hud-plate-strong) 64%,var(--hud-plate-strong));
   box-shadow:0 0 18px oklch(from var(--accent) l c h / .42),inset 0 1px 4px oklch(from var(--accent-hi) .92 .078 h / .2);}
 .cot-touch .mobile-chrome{position:absolute;z-index:4;top:max(8px,env(safe-area-inset-top));
   right:max(10px,env(safe-area-inset-right));display:flex;gap:var(--s1);pointer-events:auto;}
@@ -107,10 +107,10 @@ body.cot-touch-layout[data-cot-orientation='portrait'] .cot-touch .mobile-chrome
 .cot-touch .quick{width:44px;height:44px;padding:3px 2px 2px;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:1px;pointer-events:auto;touch-action:none;
   border:1px solid var(--touch-edge);border-bottom:2px solid var(--line-control);border-radius:2px;
-  background:linear-gradient(180deg,oklch(from var(--surface-hover) l c h / .96),var(--touch-panel));
+  background:linear-gradient(180deg,var(--hud-plate-strong),var(--touch-panel));
   color:var(--ink-1);box-shadow:0 4px 13px oklch(from var(--surface-scene) l c h / .4),inset 0 1px oklch(from var(--ink-1) l c h / .05);
   transition:transform var(--dur-instant) ease-out,border-color var(--dur-instant) ease,color var(--dur-instant) ease;}
-.cot-touch .quick:active{transform:scale(.95);border-color:var(--accent);color:var(--accent-hi);background:oklch(from var(--surface-hover) l c h / .96);}
+.cot-touch .quick:active{transform:scale(.95);border-color:var(--accent);color:var(--accent-hi);background:var(--hud-plate-strong);}
 .cot-touch .quick svg{width:18px;height:18px;display:block;}
 .cot-touch .quick .ql{font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;line-height:1;
   letter-spacing:0em;text-transform:uppercase;white-space:nowrap;}
@@ -126,7 +126,7 @@ body.cot-touch-layout .cot-top{top:0;padding:5px 29px 7px;gap:10px;z-index:30;}
 body.cot-touch-layout .cot-top .fg,body.cot-touch-layout .cot-top .fe{font-size:22px;}
 body.cot-touch-layout .cot-top .tm{font-size:var(--battle-fs-12);}
 body.cot-touch-layout .cot-killfeed{top:48px;left:50%;transform:translateX(-50%);max-width:48%;align-items:center;}
-body.cot-touch-layout .cot-kf{font-size:var(--battle-fs-11);padding:3px 7px;background:oklch(from var(--surface-nav) l c h / .68);}
+body.cot-touch-layout .cot-kf{font-size:var(--battle-fs-11);padding:3px 7px;background:var(--battle-chip-plate);}
 /* Ammo is directly above the equipment/consumable stack, leaving the top
    edge to the three global mobile controls. */
 body.cot-touch-layout .cot-shells{left:auto;right:max(10px,env(safe-area-inset-right));
@@ -151,7 +151,7 @@ body.cot-touch-layout .cot-shell .cnt{font-size:var(--battle-fs-11);}
 /* stronger ACTIVE-AMMO read at glance distance: brighter amber frame, inner
    keyline + glow (the desktop .sel border alone washes out at phone size) */
 body.cot-touch-layout .cot-shell.sel{border-color:var(--accent-hi);border-bottom-color:var(--accent-hi);
-  background:linear-gradient(180deg,oklch(from var(--accent-lo) .30 .045 h / .97),oklch(from var(--surface-raised) l c h / .97));
+  background:linear-gradient(180deg,oklch(from var(--accent-lo) .30 .045 h / .97),var(--hud-plate-strong));
   box-shadow:inset 0 0 0 1px oklch(from var(--accent-hi) l c h / .5),0 0 16px oklch(from var(--accent) l c h / .5);}
 body.cot-touch-layout .cot-shell.sel .ty{font-size:var(--battle-fs-11);}
 /* out of ammo (owner 2026-10-17): the collapsed tray shows only the selected slot, so its empty state outranks the frame */
@@ -199,7 +199,7 @@ body.cot-touch-layout[data-cot-height-density='tight'] .cot-dp{
   display:block!important;left:50%!important;bottom:max(8px,env(safe-area-inset-bottom))!important;
   width:clamp(112px,38vw,184px);min-height:34px;padding:7px var(--s2) 6px;
   transform:translateX(-50%)!important;transform-origin:center bottom!important;
-  z-index:var(--hud-layer-controls,24);background:linear-gradient(180deg,oklch(from var(--surface-raised) l c h / .94),oklch(from var(--surface-nav) l c h / .92));
+  z-index:var(--hud-layer-controls,24);background:linear-gradient(180deg,var(--hud-plate-strong),var(--hud-plate));
 }
 body.cot-touch-layout[data-cot-width='compact'] .cot-dp canvas,
 body.cot-touch-layout[data-cot-width='compact'] .cot-dp .crew,

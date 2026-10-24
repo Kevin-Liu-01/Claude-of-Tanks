@@ -1049,7 +1049,7 @@ function proxMatForState(state: ModuleStateName): THREE.MeshLambertMaterial {
 // ---------------------------------------------------------------------------
 const KC_CSS = `
 .cot-kc{position:fixed;inset:0;z-index:60;pointer-events:none;display:none;isolation:isolate;
-  --kc-panel:oklch(from var(--surface-page) l c h / .95);--kc-panel-hi:oklch(from var(--surface-menu) l c h / .96);
+  --kc-panel:var(--hud-plate-strong);--kc-panel-hi:var(--hud-plate-strong);
   --kc-line:var(--line-3);--kc-line-soft:var(--line-2);
   --kc-muted:var(--ink-3);--kc-text:var(--ink-1);--kc-amber:var(--accent);--kc-red:var(--team-enemy);
   font-family:${FONT_STACK};color:var(--kc-text);}
@@ -1095,7 +1095,7 @@ body.cot-kc-live .cot-si-stats{visibility:hidden !important;}
 line.cot-kc-anim{animation-name:cotKcInLine;}
 @keyframes cotKcInLine{from{opacity:0;}to{opacity:.85;}}
 .cot-kc-micro{position:absolute;z-index:8;display:flex;align-items:center;gap:5px;white-space:nowrap;
-  background:linear-gradient(135deg,oklch(from var(--surface-menu) l c h / .92),oklch(from var(--surface-nav) l c h / .94));
+  background:linear-gradient(135deg,var(--hud-plate),var(--hud-plate-strong));
   border:1px solid var(--kc-line);border-left:2px solid var(--ink-3);color:var(--ink-2);padding:2px 6px 3px;
   font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);
   letter-spacing:var(--battle-track-status);text-transform:uppercase;line-height:1.2;
@@ -1166,7 +1166,7 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
    damage, distance — revealed during the x-ray hold in the Inter/amber HUD
    language. Right side; the armor annotation block owns the left. */
 .cot-kc-killer{position:absolute;z-index:9;right:28px;bottom:11.5vh;width:282px;
-  background:linear-gradient(145deg,var(--kc-panel-hi),var(--kc-panel) 62%,oklch(from var(--surface-nav) l c h / .97));
+  background:linear-gradient(145deg,var(--kc-panel-hi),var(--kc-panel) 62%,var(--hud-plate-strong));
   border:1px solid var(--kc-line);border-right:3px solid var(--kc-red);
   box-shadow:0 16px 38px oklch(from var(--surface-scene) l c h / .58),inset 0 1px oklch(from var(--ink-1) l c h / .035);
   padding:0 var(--s3) 10px;opacity:0;
@@ -1203,7 +1203,7 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-killer .kv.w{grid-column:1/-1;}
 .cot-kc-title{position:absolute;z-index:10;top:1.3vh;left:50%;min-width:330px;
   transform:translateX(-50%);text-align:center;padding:7px 28px var(--s2);
-  background:linear-gradient(90deg,transparent,oklch(from var(--surface-nav) l c h / .88) 18%,oklch(from var(--surface-raised) l c h / .94) 50%,oklch(from var(--surface-nav) l c h / .88) 82%,transparent);
+  background:linear-gradient(90deg,transparent,var(--hud-plate) 18%,var(--hud-plate-strong) 50%,var(--hud-plate) 82%,transparent);
   border-bottom:1px solid oklch(from var(--accent) l c h / .28);}
 .cot-kc-title::before,.cot-kc-title::after{content:"";position:absolute;bottom:-1px;width:48px;height:1px;
   background:var(--kc-amber);opacity:.78;}
@@ -1220,10 +1220,10 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
   color:var(--ink-3);text-transform:uppercase;}
 .cot-kc-skip .ico{color:oklch(from var(--ink-2) .76 c h);}
 .cot-kc-skip kbd{min-width:58px;padding:3px 6px var(--s1);border:1px solid var(--kc-line);
-  border-bottom-color:oklch(from var(--accent) l c h / .5);background:oklch(from var(--surface-raised) l c h / .85);color:var(--ink-2);
+  border-bottom-color:oklch(from var(--accent) l c h / .5);background:var(--hud-plate);color:var(--ink-2);
   font:700 var(--battle-fs-11)/1 ${FONT_COND};letter-spacing:.05em;text-align:center;}
 .cot-kc-annot{position:absolute;z-index:9;left:28px;bottom:11.5vh;width:300px;
-  background:linear-gradient(145deg,var(--kc-panel-hi),var(--kc-panel) 62%,oklch(from var(--surface-nav) l c h / .97));
+  background:linear-gradient(145deg,var(--kc-panel-hi),var(--kc-panel) 62%,var(--hud-plate-strong));
   border:1px solid var(--kc-line);border-left:3px solid var(--kc-amber);
   box-shadow:0 16px 38px oklch(from var(--surface-scene) l c h / .58),inset 0 1px oklch(from var(--ink-1) l c h / .035);padding:0 0 9px;}
 .cot-kc-annot .hd{padding:7px 11px 6px;border-bottom:1px solid var(--kc-line-soft);}
@@ -1253,13 +1253,13 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-banner{margin:7px 11px 0;padding:var(--s1) var(--s2);text-align:center;display:none;
   font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);
   letter-spacing:.18em;color:var(--danger);border:1px solid oklch(from var(--danger) l c h / .55);
-  background:linear-gradient(135deg,oklch(from var(--danger) .35 .087 h / .91),oklch(from var(--surface-menu) l c h / .929));box-shadow:inset 0 0 16px oklch(from var(--accent) l c h / .094);}
+  background:linear-gradient(135deg,oklch(from var(--danger) .35 .087 h / .91),var(--hud-plate));box-shadow:inset 0 0 16px oklch(from var(--accent) l c h / .094);}
 .cot-kc.ammo-racked .cot-kc-banner{padding:10px 14px;font-size:var(--battle-fs-13);color:var(--accent-hi);letter-spacing:.09em;}
 body[data-cot-width='phone'] .cot-kc.ammo-racked .cot-kc-banner{padding:7px 10px;font-size:var(--battle-fs-11);letter-spacing:.04em}
 .cot-kc-banner.on{display:flex;align-items:center;justify-content:center;gap:7px;}
 .cot-kc-labelhost{position:absolute;z-index:8;inset:0;overflow:hidden;}
 .cot-kc-label{position:absolute;white-space:nowrap;display:flex;align-items:center;gap:7px;
-  background:linear-gradient(135deg,oklch(from var(--surface-menu) l c h / .94),oklch(from var(--surface-nav) l c h / .96));
+  background:linear-gradient(135deg,var(--hud-plate-strong),var(--hud-plate-strong));
   border:1px solid var(--kc-line);border-left:2px solid currentColor;padding:var(--s1) var(--s2) 5px;
   font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-12);
   letter-spacing:.09em;text-transform:uppercase;line-height:1.25;
@@ -1270,7 +1270,7 @@ body[data-cot-width='phone'] .cot-kc.ammo-racked .cot-kc-banner{padding:7px 10px
 .cot-kc-label .s{display:block;font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.01em;
   color:var(--ink-1);}
 .cot-kc-label.ok{color:var(--ink-3);border-color:var(--kc-line);border-left-color:currentColor;
-  background:linear-gradient(135deg,oklch(from var(--surface-raised) l c h / .82),oklch(from var(--surface-nav) l c h / .86));
+  background:linear-gradient(135deg,var(--battle-tip-plate),var(--hud-plate));
   box-shadow:0 4px 12px oklch(from var(--surface-scene) l c h / .34);font-weight:700;}
 .cot-kc-label.ok .s{color:var(--ink-3);font-weight:600;}
 /* r8 near-miss tier (critic: the gray chip language read as a damaged-module
@@ -1278,17 +1278,17 @@ body[data-cot-width='phone'] .cot-kc.ammo-racked .cot-kc-banner{padding:7px 10px
    its organ like the micro identity tags, so it can never straddle the hull
    silhouette edge. Informational, never a casualty. */
 .cot-kc-label.nm{color:oklch(from var(--ink-3) .75 c h);border:1px dashed var(--line-control);border-left:2px solid oklch(from var(--ink-3) .62 c h);
-  background:oklch(from var(--surface-page) l c h / .82);box-shadow:0 4px 12px oklch(from var(--surface-scene) l c h / .3);font-weight:700;font-size:var(--battle-fs-11);
+  background:var(--battle-tip-plate);box-shadow:0 4px 12px oklch(from var(--surface-scene) l c h / .3);font-weight:700;font-size:var(--battle-fs-11);
   letter-spacing:.05em;padding:2px 6px 3px;opacity:.85;}
 .cot-kc-label.nm .copy{display:flex;align-items:center;}
 .cot-kc-label.nm .s{display:inline;font-size:var(--battle-fs-11);font-weight:600;color:oklch(from var(--ink-3) .61 c h);}
 .cot-kc-dot{position:absolute;z-index:8;width:8px;height:8px;border-radius:1px;
   transform:translate(-50%,-50%) rotate(45deg);background:currentColor;box-shadow:0 0 10px currentColor;}
-.cot-kc-dot.ok{background:oklch(from var(--surface-page) l c h / .8);border:1.5px solid currentColor;box-shadow:none;}
+.cot-kc-dot.ok{background:var(--battle-tip-plate);border:1.5px solid currentColor;box-shadow:none;}
 .cot-kc-dmg{position:absolute;z-index:8;display:flex;align-items:center;gap:7px;font-family:${FONT_COND};
   font-weight:700;font-size:25px;color:var(--accent-hi);
   letter-spacing:.045em;text-shadow:0 2px 12px oklch(from var(--surface-scene) l c h / .9);
-  background:linear-gradient(135deg,oklch(from var(--surface-menu) l c h / .96),oklch(from var(--surface-nav) l c h / .96));
+  background:linear-gradient(135deg,var(--hud-plate-strong),var(--hud-plate-strong));
   border:1px solid var(--kc-line);border-right:3px solid var(--kc-amber);
   box-shadow:0 9px 22px oklch(from var(--surface-scene) l c h / .52);padding:10px 10px 5px;line-height:1.1;}
 .cot-kc-dmg::before{content:attr(data-label);position:absolute;top:3px;right:9px;font:700 var(--battle-fs-11)/1 ${FONT_COND};

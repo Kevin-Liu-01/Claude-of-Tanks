@@ -1797,7 +1797,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
   opacity:0;transition:opacity var(--cot-motion-slow) var(--cot-ease-out);}
 .cot-prebattle.on{opacity:1;}
 .cot-prebattle::before{content:'';grid-area:1/1;width:100%;height:100%;border-radius:50%;
-  background:radial-gradient(closest-side,oklch(from var(--surface-nav) l c h / .62),oklch(from var(--surface-nav) l c h / .46) 70%,transparent);}
+  background:radial-gradient(closest-side,var(--battle-veil),oklch(from var(--surface-nav) l c h / .46) 70%,transparent);}
 .cot-prebattle .ring{grid-area:1/1;width:100%;height:100%;overflow:visible;}
 .cot-prebattle .ring circle{fill:none;}
 .cot-prebattle .trk{stroke:oklch(from var(--accent-hi) .95 .051 h / .16);stroke-width:2.5;}
@@ -1899,7 +1899,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 .cot-shell.empty .cnt{color:var(--hud-danger);}
 .cot-shell.deny{animation:cotAmmoDeny .34s ease-out 2;}
 @keyframes cotAmmoDeny{0%,100%{border-color:var(--line-control);box-shadow:none}
-  45%{border-color:var(--danger);background:linear-gradient(180deg,oklch(from var(--danger) .29 .099 h / .96),oklch(from var(--surface-page) l c h / .98));
+  45%{border-color:var(--danger);background:linear-gradient(180deg,oklch(from var(--danger) .29 .099 h / .96),var(--hud-plate-strong));
     color:var(--danger);box-shadow:0 0 18px oklch(from var(--danger) l c h / .58)}}
 /* r6-2: thin SHELL-CLASS color underline inside each ammo slot (silver
    kinetic / orange HEAT / olive HE) — class reads without the text label */
@@ -1998,7 +1998,7 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
 .cot-hpb.ally .nm{color:var(--hud-own);}
 .cot-hpb .nm .si{width:26px;height:11px;flex:0 0 auto;display:block;}
 .cot-hpb .nm span{min-width:0;flex:0 0 auto;overflow:visible;text-overflow:clip;}
-.cot-hpb .tr{height:6px;margin:0 7px;background:oklch(from var(--surface-scene) l c h / .94);border:1px solid oklch(from var(--surface-scene) l c h / .9);
+.cot-hpb .tr{height:6px;margin:0 7px;background:var(--hud-plate-strong);border:1px solid oklch(from var(--surface-scene) l c h / .9);
   box-shadow:0 2px 4px oklch(from var(--surface-scene) l c h / .72);position:relative;overflow:hidden;}
 .cot-hpb .fl{height:100%;background:var(--hud-enemy);transition:width var(--dur-fast) linear;}
 .cot-hpb.ally .fl{background:var(--hud-own);}
