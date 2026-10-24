@@ -4,13 +4,13 @@
  "author": "Kevin B. Liu",
  "copyright": "Copyright © 2026 Kevin B. Liu",
  "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
- "description": "The Deploy screen's mode pictures (brand-ui S3 and 245, the Premiere direction's 04-deploy page): each core mode's picture, a 640x360 cut of the approved in-engine still the direction chose for it, and each other mode's tile, a 480x270 centre cut of its in-engine still (tools/deploy-mode-art.mjs).",
- "generatedBy": "ffmpeg (scale lanczos; the tiles: centre crop) + cwebp -q 80 -m 6",
+ "description": "The Deploy screen's mode pictures (brand-ui S3, 245 and 246, the Premiere direction's 04-deploy page): each core mode's picture, a 640x360 cut of the approved in-engine still the direction chose for it; each other mode's tile, Proving Ground among them, a 480x270 cut of a battle frame of that mode with the HUD hidden (the media lane's captures: the rows with `capture`; tools/deploy-mode-art.mjs keeps them).",
+ "generatedBy": "the core cards: ffmpeg (scale lanczos) + cwebp -q 80 -m 6; the tiles and plates: the media lane (shots/media-r5/landing-r6/site-all/publish-stills.py)",
  "dimensions": {
   "width": 640,
   "height": 360
  },
- "count": 13,
+ "count": 14,
  "items": [
   {
    "id": "standard",
@@ -40,11 +40,12 @@
    "id": "turbo_ball-tile",
    "file": "turbo_ball-480.webp",
    "mode": "turbo_ball",
-   "source": "public/media/site50-r14/home/modes/turbo_ball.webp",
-   "cut": {
-    "w": 0.68,
-    "cx": 0.5,
-    "cy": 0.47
+   "source": "in-engine battle capture, HUD hidden (battle-243b/modes/turbo_ball #14, 3840x2160)",
+   "capture": {
+    "run": "battle-243b",
+    "slot": "modes/turbo_ball",
+    "candidate": 14,
+    "crop": null
    },
    "width": 480,
    "height": 270
@@ -53,11 +54,17 @@
    "id": "gun_game-tile",
    "file": "gun_game-480.webp",
    "mode": "gun_game",
-   "source": "public/media/site50-r14/home/modes/gun_game.webp",
-   "cut": {
-    "w": 0.68,
-    "cx": 0.5,
-    "cy": 0.47
+   "source": "in-engine battle capture, HUD hidden (battle-243c/modes/gun_game #13, 3840x2160)",
+   "capture": {
+    "run": "battle-243c",
+    "slot": "modes/gun_game",
+    "candidate": 13,
+    "crop": [
+     614,
+     216,
+     3072,
+     1728
+    ]
    },
    "width": 480,
    "height": 270
@@ -66,11 +73,12 @@
    "id": "mars-tile",
    "file": "mars-480.webp",
    "mode": "mars",
-   "source": "public/media/site50-r14/home/modes/mars.webp",
-   "cut": {
-    "w": 0.68,
-    "cx": 0.5,
-    "cy": 0.47
+   "source": "in-engine battle capture, HUD hidden (battle-243c/modes/mars #4, 3840x2160)",
+   "capture": {
+    "run": "battle-243c",
+    "slot": "modes/mars",
+    "candidate": 4,
+    "crop": null
    },
    "width": 480,
    "height": 270
@@ -79,11 +87,17 @@
    "id": "juggernaut-tile",
    "file": "juggernaut-480.webp",
    "mode": "juggernaut",
-   "source": "public/media/site50-r14/home/modes/juggernaut.webp",
-   "cut": {
-    "w": 0.68,
-    "cx": 0.5,
-    "cy": 0.47
+   "source": "in-engine battle capture, HUD hidden (battle-243c/modes/juggernaut #1, 3840x2160)",
+   "capture": {
+    "run": "battle-243c",
+    "slot": "modes/juggernaut",
+    "candidate": 1,
+    "crop": [
+     672,
+     400,
+     2880,
+     1620
+    ]
    },
    "width": 480,
    "height": 270
@@ -92,11 +106,12 @@
    "id": "infected-tile",
    "file": "infected-480.webp",
    "mode": "infected",
-   "source": "public/media/site50-r14/home/modes/infected.webp",
-   "cut": {
-    "w": 0.68,
-    "cx": 0.5,
-    "cy": 0.47
+   "source": "in-engine battle capture, HUD hidden (battle-243c/modes/infected #7, 3840x2160)",
+   "capture": {
+    "run": "battle-243c",
+    "slot": "modes/infected",
+    "candidate": 7,
+    "crop": null
    },
    "width": 480,
    "height": 270
@@ -105,11 +120,17 @@
    "id": "endless_horde-tile",
    "file": "endless_horde-480.webp",
    "mode": "endless_horde",
-   "source": "public/media/site50-r14/home/modes/endless_horde.webp",
-   "cut": {
-    "w": 0.68,
-    "cx": 0.5,
-    "cy": 0.47
+   "source": "in-engine battle capture, HUD hidden (battle-243c/modes/endless_horde #9, 3840x2160)",
+   "capture": {
+    "run": "battle-243c",
+    "slot": "modes/endless_horde",
+    "candidate": 9,
+    "crop": [
+     691,
+     108,
+     3072,
+     1728
+    ]
    },
    "width": 480,
    "height": 270
@@ -118,11 +139,17 @@
    "id": "realistic-tile",
    "file": "realistic-480.webp",
    "mode": "realistic",
-   "source": "public/media/site50-r14/home/modes/realistic.webp",
-   "cut": {
-    "w": 0.68,
-    "cx": 0.5,
-    "cy": 0.47
+   "source": "in-engine battle capture, HUD hidden (battle-243c/modes/realistic #14, 3840x2160)",
+   "capture": {
+    "run": "battle-243c",
+    "slot": "modes/realistic",
+    "candidate": 14,
+    "crop": [
+     864,
+     270,
+     2880,
+     1620
+    ]
    },
    "width": 480,
    "height": 270
@@ -131,11 +158,12 @@
    "id": "drone-tile",
    "file": "drone-480.webp",
    "mode": "drone",
-   "source": "public/media/site50-r14/home/modes/drone.webp",
-   "cut": {
-    "w": 0.68,
-    "cx": 0.5,
-    "cy": 0.47
+   "source": "in-engine battle capture, HUD hidden (battle-243c/modes/drone #16, 3840x2160)",
+   "capture": {
+    "run": "battle-243c",
+    "slot": "modes/drone",
+    "candidate": 16,
+    "crop": null
    },
    "width": 480,
    "height": 270
@@ -144,11 +172,31 @@
    "id": "ac130-tile",
    "file": "ac130-480.webp",
    "mode": "ac130",
-   "source": "public/media/site50-r14/home/modes/ac130.webp",
-   "cut": {
-    "w": 0.68,
-    "cx": 0.5,
-    "cy": 0.47
+   "source": "in-engine battle capture, HUD hidden (battle-243c/modes/ac130 #9, 3840x2160)",
+   "capture": {
+    "run": "battle-243c",
+    "slot": "modes/ac130",
+    "candidate": 9,
+    "crop": null
+   },
+   "width": 480,
+   "height": 270
+  },
+  {
+   "id": "proving_ground-tile",
+   "file": "proving_ground-480.webp",
+   "mode": "proving_ground",
+   "source": "in-engine battle capture, HUD hidden (battle-243b/deploy/proving_ground #1, 3840x2160)",
+   "capture": {
+    "run": "battle-243b",
+    "slot": "deploy/proving_ground",
+    "candidate": 1,
+    "crop": [
+     480,
+     378,
+     2880,
+     1620
+    ]
    },
    "width": 480,
    "height": 270

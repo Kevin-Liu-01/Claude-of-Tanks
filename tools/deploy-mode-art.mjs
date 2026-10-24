@@ -14,7 +14,8 @@ const ROOT = new URL('..', import.meta.url).pathname;
 const OUT = join(ROOT, 'public/media/deploy-r1');
 const MANIFEST = join(OUT, 'manifest.json');
 const SOURCE = 'public/media/site50-r14/home/modes';
-/** The rows' modes; Proving Ground has no still yet (its tile keeps the glyph). */
+/** The rows' modes. A row with `capture` (2026-10-24: the media lane's battle frame of the mode, HUD hidden) is kept;
+ * Proving Ground has no home still, so only that lane's tile. */
 const MODES = ['turbo_ball', 'gun_game', 'mars', 'juggernaut', 'infected', 'endless_horde', 'realistic', 'drone', 'ac130'];
 /** The cut, as fractions of the 1280x720 still: 68 % of its width and height round a centre a little above the middle. */
 const CUT = { w: 0.68, cx: 0.5, cy: 0.47 };
@@ -24,6 +25,8 @@ const manifest = JSON.parse(readFileSync(MANIFEST, 'utf8'));
 const scratch = mkdtempSync(join(tmpdir(), 'deploy-mode-art-'));
 try {
   for (const id of MODES) {
+    const kept = manifest.items.find((item) => item.id === `${id}-tile` && item.capture);
+    if (kept) { console.log('deploy-mode-art: keeps', kept.file, '(the media lane\'s HUD-free battle frame)'); continue; }
     const source = `${SOURCE}/${id}.webp`;
     const png = join(scratch, `${id}.png`);
     const file = `${id}-${SIZE.w}.webp`;

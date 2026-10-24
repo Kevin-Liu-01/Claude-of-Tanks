@@ -252,7 +252,7 @@ type GarageStation = (typeof GARAGE_STATIONS)[number][0];
 const deployCardArt = (id: string): string =>
   `<img class="cot-deploy-card-art" src="/media/deploy-r1/${id}-640.webp" alt="" width="640" height="360" loading="lazy" decoding="async">`;
 
-/** Another mode's tile picture (public/media/deploy-r1, a centre cut of its in-engine still: tools/deploy-mode-art.mjs). */
+/** Another mode's tile picture (public/media/deploy-r1: a battle frame of that mode, HUD hidden; Proving Ground's range too). */
 const deployTileArt = (id: string): string =>
   `<img class="cot-deploy-tile-art" src="/media/deploy-r1/${id}-480.webp" alt="" width="480" height="270" loading="lazy" decoding="async">`;
 
@@ -721,7 +721,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     deployCardsHTML(['turbo_ball', 'gun_game', 'mars', 'juggernaut', 'infected', 'endless_horde', 'realistic', 'drone', 'ac130'], false) +
     // the proving ground (2026-10-20): the selected tank straight onto the range, one press from the Deploy screen
     `<button class="cot-battle-choice" type="button" data-proving data-mode-tone="proving">` +
-    `<span class="choice-icon">${uiIconSVG('modeProving', 21)}</span>` +
+    `${deployTileArt('proving_ground')}<span class="choice-icon">${uiIconSVG('modeProving', 21)}</span>` +
     `<span class="cot-deploy-choice-t"><span class="choice-name">${t('playMenu.matchMode.proving_ground.label')}</span></span></button>` +
     // the lower band: the campaign's next operation and the player's recent battles (renderDeployLower)
     `</div><div class="cot-deploy-lower" data-deploy-lower></div></section>` +
