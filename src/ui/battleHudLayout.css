@@ -304,6 +304,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] :is(.compact-shot-
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='landscape'][data-cot-width='compact'] .cot-touch .fire.alt{left:12px}
 @media (max-height:340px) and (orientation:landscape){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-alert{font-size:var(--battle-fs-11);padding-block:5px;min-height:28px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-alert-copy{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 }
 @media (max-width:340px) and (orientation:portrait){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .joy{width:88px;height:88px}
@@ -331,6 +332,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-con{height:44px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{width:136px;font-size:var(--battle-fs-11)}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-alert{box-sizing:border-box;font-size:var(--battle-fs-11);line-height:1.2;padding:4px 12px;width:134px;max-width:134px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-alert-copy{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 }
 @media (max-width:340px) and (orientation:portrait){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{width:180px}
@@ -356,6 +358,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
 
 @media (max-height:549px) and (orientation:landscape){
   .cot-aim-warning{left:var(--hud-aim-warning-left,8px);top:var(--hud-aim-warning-top,118px);transform:none;width:106px;font-size:var(--battle-fs-11);line-height:12px;padding:2px 10px}
+  .cot-aim-warning .tx{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 }
 @media (max-height:340px) and (orientation:landscape){
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-touch .fire.alt{display:none}
@@ -365,6 +368,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
    8 px from the systems row's top slot (106 px ran 6 px under a wrapped row's second line) */
 @media (max-width:340px) and (orientation:portrait){
   .cot-aim-warning{left:8px;top:var(--hud-aim-warning-top,204px);transform:none;width:92px;font-size:var(--battle-fs-11);line-height:12px;padding:2px 8px}
+  .cot-aim-warning .tx{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 }
 
 /* Live FPS only appears after 30 frames. Reserve a small instrument row below
@@ -389,6 +393,10 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
   }
   body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-alert-icon,
   body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-alert-icon svg{width:12px;height:12px}
+  /* (the 11 px floor, 246) a mouse window this small seats its alert in the 9 px type's reserves (mouseNoticePlan.ts
+     ALERT_RESERVE_9): its alert is its glyph, the words in the live region and its title (a touch layout measures its box) */
+  body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-alert-copy{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) :is(.cot-alert-icon,.cot-alert-icon svg){width:16px;height:16px}
 }
 
 /* Mouse centre notices: battleHudLayout.ts sets each one's top (and the alert's width) from mouseNoticePlan.ts, off

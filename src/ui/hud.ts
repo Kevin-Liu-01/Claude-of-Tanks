@@ -1714,7 +1714,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud:not(.rost
 /* brand-ui 245: flying Watch mode's drone on touch, its bar (watchHud.ts) rides above the virtual stick (138 px, 24 px off
    the floor: the bar sat across it on a phone); a short landscape tucks it under the score, as riding does */
 html[data-watch=drone] body[data-cot-battle-layout].cot-touch-layout .cot-watch{bottom:calc(env(safe-area-inset-bottom) + 170px)}
-@media(max-height:500px){html[data-watch=drone] body[data-cot-battle-layout].cot-touch-layout .cot-watch{top:calc(var(--inset-top) + 40px);bottom:auto}}
+html[data-watch=drone] body[data-cot-battle-layout][data-cot-height='short'].cot-touch-layout .cot-watch{top:calc(var(--inset-top) + 40px);bottom:auto}
 /* the coordinator's 11 px floor (246): no HUD text under 11 px on any device. A label that cannot fit there reads as its
    glyph or its state's ink, its words in its title and for a screen reader; a figure stays visible (.num). The systems
    row: a control's name is its glyph, a count it shows (a cooldown, the smoke charges) a figure, as a touch tile shows it */
@@ -1728,21 +1728,14 @@ html[data-watch=drone] body[data-cot-battle-layout].cot-touch-layout .cot-watch{
 html body[data-cot-battle-layout].cot-touch-layout .cot-vehicle-controls>button.cot-drone-control[data-phase=returning]{opacity:1;color:#ffdc94;box-shadow:inset 0 -2px #efb84e99}
 /* the side kill lanes: an ammo-rack kill's cause is its glyph (its word in the glyph's label and title) */
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d b{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-/* the aim chip's glyph beside its words; a compact chip (the short landscapes, the narrowest portraits) keeps the glyph */
+/* the aim chip's glyph beside its words; a compact chip (the short landscapes, the narrowest portraits: battleHudLayout.css,
+   beside the media queries that size it) keeps the glyph */
 .cot-aim-warning:not([hidden]){display:flex;align-items:center;justify-content:center;gap:6px}
 .cot-aim-warning .g{display:flex;flex:none;color:var(--notice-edge)}.cot-aim-warning .g svg{display:block;width:14px;height:14px}
-@media (max-height:549px) and (orientation:landscape){.cot-aim-warning .tx{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}}
-@media (max-width:340px) and (orientation:portrait){.cot-aim-warning .tx{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}}
-/* a compact alert is its glyph on its severity's plate, its words in the live region and its title: the smallest touch
-   screens, the touch planner's compact form, and a mouse window that seats its alert in the 9 px type's reserves
-   (mouseNoticePlan.ts ALERT_RESERVE_9; a touch layout measures its alert's own box and keeps the words) */
-@media (max-height:340px) and (orientation:landscape){body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-alert-copy{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}}
-@media (max-width:340px) and (orientation:portrait){body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-alert-copy{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}}
+/* a compact alert is its glyph on its severity's plate, its words in the live region and its title: the touch planner's
+   compact form here; the smallest touch screens and a mouse window that seats its alert in the 9 px type's reserves
+   (mouseNoticePlan.ts ALERT_RESERVE_9) beside their media queries in battleHudLayout.css */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-compact'] .cot-alert-copy{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-@media (max-height:550px), (max-width:480px){
-body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-alert-copy{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) :is(.cot-alert-icon,.cot-alert-icon svg){width:16px;height:16px}
-}
 /* while spectating, the DEAD player's own-tank furniture is meaningless and
    collides with the bar — shell tray, damage panel (+ its camo lamp) and the
    reticle canvas hide; team panels / minimap / killfeed stay (that is the
