@@ -63,7 +63,7 @@ import { createRenderer } from './engine/renderer.ts';
 import {
   installShaderErrorCollector, relaxShaderChecks, runDeviceDiag, applyDiagRescue,
   mountDiagOverlay, runSceneBlackWatchdogAsync, reclaimShadows, scheduleSceneWatchdog, runSceneWatchdogNow,
-  battleProbeRadianceScale, type SceneWatchdogResult,
+  battleProbeRadianceScale, setSceneProbeTargetSource, type SceneWatchdogResult,
 } from './engine/deviceDiag.ts';
 import {
   resolveDeviceTier, resolvePresetName, resolveAutoTier,
@@ -1791,6 +1791,9 @@ const nightLighting = createNightLightingAccess({
       || game.spotting?.isSpotted(entity.id, game.player?.team ?? 'player', game.player) === true,
 });
 const post = createPost(renderer, scene, camera);
+// transitions-249: the scene probes (the black-world watchdogs) draw in the scene target's format, so the GPU pipelines
+// they build are the frames' own (deviceDiag.ts)
+setSceneProbeTargetSource(() => post.sceneAA.sceneTarget);
 // (black-screen-228) the network entry arms the black-world guard through the engine context
 (engineCtx as { post?: PostRuntime }).post = post;
 // 2026-10-01 (engine/post.ts AERIAL_LAYER_H): the aerial haze is a layer over the battlefield's ground
