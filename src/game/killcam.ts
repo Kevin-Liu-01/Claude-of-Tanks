@@ -627,6 +627,8 @@ interface KillcamDeps {
    * the replay opens on the victim.
    */
   prepareDestination?(position: THREE.Vector3, lookAt: THREE.Vector3, durationS: number): void;
+  /** False while the Garage's own light set is up (main.ts setGarageSpots): the replay lights then leave the count. */
+  battleLightsActive?(): boolean;
 }
 
 interface KillcamDebugSurface {
@@ -1378,6 +1380,16 @@ export function createKillCam(deps: KillcamDeps) {
     scene.add(L);
     kcLights.push(L);
   }
+  // (2026-10-24, transitions-249) the pool belongs to the battle's light set, not the Garage's: three keys every lit
+  // program on the count of visible lights, so the three left in the scene after a first battle re-keyed every lit
+  // Garage program and the first Return to Garage relinked them all (48 programs: 8 s desktop, 19 s on a 4x phone; the
+  // second return reused them). The Garage's light switch hides them (setBattleLights, from main.ts setGarageSpots: on
+  // before a Garage restore compiles, off before a battle's covered entry does), so the Garage keeps the set its boot
+  // linked and every battle keeps one count; a replay staged outside a battle (shot tooling) shows them.
+  const showLightPool = (shown: boolean): void => {
+    for (const light of kcLights) light.visible = shown;
+  };
+  showLightPool(deps.battleLightsActive?.() ?? true);
   let warmRig: THREE.Group | null = null;
   let warmSteps = 0;
   function buildWarmRig() {
@@ -1735,6 +1747,10 @@ export function createKillCam(deps: KillcamDeps) {
   }
 
   const api = {
+    /** The Garage's light set went up (false) or down (true): the replay lights follow, outside a replay. */
+    setBattleLights(shown: boolean) {
+      if (!active) showLightPool(shown);
+    },
     /**
      * Subscribe to capture-side bus events (shell muzzles, cleanup).
      * @param {{on:Function}} bus the game event bus
@@ -2602,6 +2618,7 @@ export function createKillCam(deps: KillcamDeps) {
   ): void {
     const d = ensureDom();
     sharedMats();
+    showLightPool(true);
     active = true;
     staged = false;
     lastBeginWallMs = performance.now();
@@ -6006,6 +6023,8 @@ export function createKillCam(deps: KillcamDeps) {
     pb = null!;
     active = false;
     staged = false;
+    // a replay staged with the Garage's lights up (shot tooling) gives its lights back to the Garage's set
+    showLightPool(deps.battleLightsActive?.() ?? true);
     // ALLY SPECTATE (killcam_endscreen r1): after the DEATH replay hands the
     // screen back — battle still live, allies still standing — land in the
     // spectate chase instead of the static wreck orbit the integration

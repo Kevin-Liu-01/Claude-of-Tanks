@@ -944,9 +944,14 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
 // campaign slice 5 (2026-09-14): the mission brief card for Frontline Assault sorties
 const missionBrief = createMissionBrief();
 let pendingCampaignOperationId: string | null = null;
+// transitions-249: the Garage's light set is up; the kill-cam's replay lights leave the light count while it is
+// (killcam.ts setBattleLights), so a return relinks nothing its boot linked
+let garageLightsUp = true;
 const setGarageSpots = (active: boolean): void => {
   if (active) { battleAtmosphere.reset(); nightLighting.reset(); frontline.reset(); mapAmbience.reset(); missionBrief.hide(); }
   garagePhasePresentation.setActive(active);
+  garageLightsUp = active;
+  killcamAccess.current?.setBattleLights(!active);
 };
 const setGarageSunTrim = (active: boolean): void => {
   // Network activation follows covered weather preparation. It must not
@@ -1663,7 +1668,9 @@ const killcamAccess = createKillcamAccess({
       // Replay impact uses the real pooled destruction effects.
       getFx: () => fxRuntimeAccess.current,
       prepareDestination: prepareCameraDestination, // perf-245: the attacker's surroundings warmed as the replay opens
-    }, 'killcam', ['getPlayer', 'getGame', 'isBattleEntryCovered', 'getEntity', 'getWorld', 'getFx', 'prepareDestination']));
+      battleLightsActive: () => !garageLightsUp,
+    }, 'killcam', ['getPlayer', 'getGame', 'isBattleEntryCovered', 'getEntity', 'getWorld', 'getFx', 'prepareDestination',
+      'battleLightsActive']));
     live.bindBus(bus);
     // Solo fixed-step capture gets the direct implementation after entry;
     // main/debug consumers keep the stable access facade below.
