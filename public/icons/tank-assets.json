@@ -2176460,12 +2176460,12 @@
             "name": "turretRing",
             "min": [
               -1.1525,
-              1.41,
+              1.43,
               -0.497
             ],
             "max": [
               1.1525,
-              1.55,
+              1.57,
               1.777
             ],
             "turretLocal": false
@@ -2176853,8 +2176853,8 @@
           }
         ]
       },
-      "geometryHash": "db8dc3ec",
-      "metadataHash": "fa3d0208",
+      "geometryHash": "284cc600",
+      "metadataHash": "8e4b154c",
       "presentationAnchor": {
         "xM": 0.0015,
         "zM": -0.2606
@@ -2176877,7 +2176877,7 @@
           "trackBand": 2,
           "trackPad": 1,
           "trackPadSimplified": 1,
-          "gunmetal": 16,
+          "gunmetal": 17,
           "armorPaint": 12,
           "tireRubber": 1,
           "opticGlass": 2,
@@ -2176915,15 +2176915,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26462,
-          "sha256": "78cff8a19ad828414c63c81ec24210f4fdb605d9cb084cafe4e72a583a93f51f",
+          "bytes": 26430,
+          "sha256": "397e356ddf7d6e9771d3ff102ddba405e67f7721ab2c83baf2b95d0219d05adf",
           "thumbnail": {
             "file": "thumbs/ztz99_longwei_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10884,
-            "sha256": "b3545e2332bd6b74e8c0b77d7053946533db047a675d7561a40bf4d6dfe4ce23"
+            "bytes": 10860,
+            "sha256": "1963f900967eb6e89e45fc14b8e76ce29d52d88142067e0cf7ea8ab9a7b72477"
           }
         },
         "top": {
@@ -2176931,16 +2176931,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 8046,
-          "sha256": "2dbdab5864ae6a4aff473965a1ddd10aebd51efff1fbc76274ab51c555b5ee1d"
+          "bytes": 8020,
+          "sha256": "787ec3cb314ff1d277ea485cd57986100cbb0c08b2d906c8112627a3d4c977d1"
         },
         "side": {
           "file": "ztz99_longwei_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8494,
-          "sha256": "56f50e51cb432946153451e82cea9e67d0cd5419cf3f1b5942514fadde79adf3"
+          "bytes": 8490,
+          "sha256": "1e300af72deadff080bf705bb0b23272c313aac669f7fa1831ea6df7e12f02e8"
         },
         "topSilhouette": {
           "file": "ztz99_longwei_top_silhouette.png",
@@ -2176955,32 +2176955,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3913,
-          "sha256": "8120c56713d735f8df3d172751b5bb1fc4a7debc62cb50031eb135ffd38ed5df"
+          "bytes": 3914,
+          "sha256": "0a10de92192dc69c3881d26f81fda8554e1a86282d383fdd621ecdb84467b84e"
         },
         "armorSide": {
           "file": "ztz99_longwei_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76993,
-          "sha256": "33746e5ca02a418424ae8cc565547c0428ec5310b8532a84282d25b4dfb7afd3"
+          "bytes": 77299,
+          "sha256": "e69eddea5848f320ba632f96b2c4ee52f9b1e66ee6815a85689b7e75bdd8175f"
         },
         "modulesSide": {
           "file": "ztz99_longwei_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77252,
-          "sha256": "024c8a163d370b74a12779c5d37d2b252a9f10abfde79555f90da4227191000a"
+          "bytes": 77945,
+          "sha256": "c3a5755a0f095091ac997a7a506b14a67779d991d07a467acc4e90cf0f071b83"
         },
         "crewSide": {
           "file": "ztz99_longwei_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 64219,
-          "sha256": "15d548e06155860528ffee6e88ad134bc8f38bca205c7f7ca1ea6ec862454e71"
+          "bytes": 64178,
+          "sha256": "5b33adf2917cc30dffa62e2f144d519bd1d0aa339e5a7b497bf942d72f55857f"
         },
         "markings": {
           "file": "ztz99_longwei_markings.png",
