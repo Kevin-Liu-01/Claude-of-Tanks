@@ -92,6 +92,9 @@ export async function handleTelemetryRequest(request: Request, env: TelemetryEnv
   }
   if (request.method === 'OPTIONS') return reply(204, null, origin);
   if (request.method !== 'POST') return reply(405, { error: 'method_not_allowed' }, origin, { allow: 'POST' });
+  // a declared body past the bound is refused before the limiter (Workers Free, 2026-10-23); readBounded still guards
+  // an undeclared one
+  if (Number(request.headers.get('content-length') ?? 0) > TELEMETRY_MAX_BODY_BYTES) return reply(413, { error: 'too_large' }, origin);
   const { success } = await env.TELEMETRY_LIMITER.limit({ key: request.headers.get('CF-Connecting-IP') || 'local' });
   if (!success) return reply(429, { error: 'rate_limited' }, origin, { 'retry-after': '60' });
   let text: string | null;

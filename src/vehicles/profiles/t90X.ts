@@ -454,8 +454,11 @@ function aGlacis(P:TankBuilderPort):void {
     plateBacker(P,side*.401,.440,2.125,2.306,1.456,1.388,.046,-1);
   }
   inclinedHullPlate(P,.0177,2.150,2.650,3.187,.479,.816,.041);
-  P.addEquipment('hullDetail',box(.372,.257,1.668),-1.087,1.481,-2.416);
-  P.addEquipment('hullDetail',box(1.220,.239,.334),-.2753,1.602,-1.710);
+  P.addEquipment('hullDetail',box(.372,.257,1.430),-1.087,1.481,-2.535);  // (release 240: its front 24 cm aft, past the front's sweep)
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the housing behind the ring stood 24 cm
+  // over the deck, 1.54-2.07 m off the ring's axis, where the cast bustle's floor (1.57-1.68) and the front's low edge
+  // (1.567 out to 1.9 m) pass: it sat 7 cm in the bustle at rest and 18 cm in its sweep. It is a low cover at 1.53.
+  P.addEquipment('hullDetail',box(1.220,.0475,.334),-.2753,1.50625,-1.710);
   // the unditching log stood 108 mm behind the sloped lower stern plate (its end brackets stand over the sprockets):
   // log and brackets run 95 mm forward, the log's crown on the plate
   P.addEquipment('hullDetail',cylX(.099,3.008,20),.0114,.913,-3.324);
@@ -1544,7 +1547,7 @@ function buildT90AX(P: TankBuilderPort): void {
   classicSkirts(P,'kontakt5-source-a',1.312,-3.28,3.24);
   addT90AXFenderClosures(P);
   engineDeck(P,1.465,-3.36,1.91);aDrums(P);
-  bowGear(P,1.092,3.207,false);aGlacis(P);
+  bowGear(P,1.092,3.207,false,1.49);aGlacis(P);  // (release 240: the driver's station 1 cm lower, its periscopes under the turret's front corners)
   P.add('turret',turretSolid(A,[
     [-1.456,.105,2.088,1.522],[-1.10,.82,2.149,1.521],[-.58,1.028,2.205,1.519],
     [.05,1.286,2.154,1.515],[.515,1.476,2.096,1.513],[.84,1.23,2.056,1.512],

@@ -64,7 +64,9 @@ export default {
   id: 'copper_mesa', name: 'Copper Mesa Mine',
   blurb: 'Ore terraces and haul-road switchbacks encircle an abandoned open-pit mine',
   terrain: {
-    hillScale: 0.72, microScale: 0.8, rimH: 38, quarryBenches: true,
+    // (horizons-240, 2026-10-23: rimH 38 -> 12 with its Hinterland draft, so Mount Owen and Mount Lyell show over the rim —
+    // edge-e 20 % -> 81 %, corner-sw 47 % -> 67 %, the spawn's view 100 % -> 97 %; the pair won 6/3 with this rim)
+    hillScale: 0.72, microScale: 0.8, rimH: 12, quarryBenches: true,
     village: { x0: 64, x1: 256, z0: -190, z1: 128, cx: 160, cz: -24, feather: 40, flatten: 0.78, relief: 0.18 },
     // (2026-10-06, the batch-4 integration: round 2's gullied hills set nine cells of zone 1's 30 m disc past the seat's
     // 0.94 slope, so the match placement moved it 24 m off its hint, and zone 3 8 m off its own to keep clear of it; an
@@ -327,4 +329,9 @@ export default {
       horizonTintHex: 0xe2b896, horizonTintAmount: 0.45, horizonBandDeg: 6, zenithTintHex: 0x3f6fb8, zenithTintAmount: 0.25 } },
   minimap: { base: [124, 98, 73], hard: [133, 110, 86], soft: [83, 71, 59], forest: 'rgba(75,83,49,.8)', forestStroke: 'rgba(46,52,31,.92)', bog: 'rgba(128,92,60,.62)', bogStroke: 'rgba(78,54,34,.6)', roadCasing: 'rgba(51,40,32,.94)', roadFill: 'rgba(179,156,126,.96)', buildingFill: '#c4b6a3' },
   shot: { pos: [-284, 68, -282], look: [-30, -4, 90] },
+  // the horizons stream (horizons-240, 2026-10-23): the Hinterland past the red line (hinterland/drafts/copper_mesa.ts) —
+  // Queenstown under bare Mount Owen and Mount Lyell; its blind pair against the old ring won 6/3 (mean 4.9 -> 6.0, driver,
+  // gunner and chase under day, sunset and night, both sides on main 4178992761) with rimH 12 (above); the battlefield's
+  // ground carried past the edge (groundDetail.ts); `?hinterland=0` draws the old ring
+  hinterland: true,
 } satisfies import('./contracts.ts').MapCompositionConfig;

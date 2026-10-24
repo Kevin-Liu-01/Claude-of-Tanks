@@ -74,9 +74,12 @@ export function sightFurnitureGap(x0: number, y0: number, x1: number, y1: number
 /**
  * The lowest baseline at or above `y` where a mark spanning [x0, x1], `top` over its baseline and `foot` under it, keeps
  * `gap` from every furniture box that crosses its columns and sits under its top (the boxes over it stay where they are:
- * a mark only ever rises past what lies under it).
+ * a mark only ever rises past what lies under it). `over` is the top that tells under from over where the mark hangs
+ * under another that it rises with (the scope's zoom plate under its readout line: at 360x640 the left FIRE button's top
+ * sat 4 px over the plate's own top, under the line's, and the row stayed on it).
  */
-export function sightFurnitureRise(x0: number, x1: number, y: number, top: number, foot: number, gap: number): number {
+export function sightFurnitureRise(x0: number, x1: number, y: number, top: number, foot: number, gap: number,
+  over = top): number {
   for (let pass = 0; pass < 4; pass++) {
     let moved = false;
     for (let i = 0; i < sightFurniture.count; i++) {
@@ -84,7 +87,7 @@ export function sightFurnitureRise(x0: number, x1: number, y: number, top: numbe
       if (box.x0 - x1 >= gap || x0 - box.x1 >= gap) continue;
       if (box.y1 + gap <= y - top || box.y0 - gap >= y + foot) continue;
       // (a box whose top sits over the mark's own top is over it, not under it)
-      if (box.y0 < y - top) continue;
+      if (box.y0 < y - over) continue;
       y = box.y0 - gap - foot;
       moved = true;
     }

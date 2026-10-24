@@ -249,7 +249,7 @@ function read(tank) {
   const hud = readFileSync(new URL('./hud.ts', import.meta.url), 'utf8');
   const layout = readFileSync(new URL('./battleHudLayout.css', import.meta.url), 'utf8');
   const touch = readFileSync(new URL('./touchControls.ts', import.meta.url), 'utf8');
-  assert.match(hud, /--hud-danger:#[0-9a-f]{6};/, 'the danger ink is a HUD token');
+  assert.match(hud, /--hud-danger:var\(--danger\);/, 'the danger ink is a HUD token (the brand danger, brand-ui H1)');
   assert.match(layout, /\.cot-vehicle-controls>button\.empty \.si::after\{[^}]*background:var\(--hud-danger\)/,
     'the struck control reads the token');
   assert.match(touch, /\.cot-shell\.sel\.empty\{[^}]*border-bottom-color:var\(--hud-danger\)/,

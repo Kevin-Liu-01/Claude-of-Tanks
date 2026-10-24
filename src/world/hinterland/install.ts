@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { createHinterlandMesh } from './mesh.ts';
 import { wirePyramid, type HinterlandWire } from './wire.ts';
 import { createHinterlandSurface } from './material.ts';
+import { hinterlandGroundFrom, hinterlandRoadColor } from './groundDetail.ts';
 import { createHinterlandOutlandObjects } from './buildings.ts';
 import { createHinterlandAir } from './air.ts';
 import { presetLightWorld } from '../../engine/quality.ts';
@@ -16,7 +17,7 @@ interface EngineLike {
 }
 
 /** The Hinterland's group: the land, then (HL-6) the outland's buildings and trees. */
-export function createHinterlandObject(wire: HinterlandWire, engineCtx: unknown): THREE.Object3D {
+export function createHinterlandObject(wire: HinterlandWire, engineCtx: unknown, ground: unknown = null): THREE.Object3D {
   const engine = (engineCtx ?? {}) as EngineLike;
   const group = new THREE.Group();
   group.name = 'hinterland';
@@ -25,7 +26,9 @@ export function createHinterlandObject(wire: HinterlandWire, engineCtx: unknown)
   // (the light tiers — a phone, the light presets — draw the land without its bedding, shoulders and ground bump: the
   // coordinator, "nothing at the phone/Ultra Low tiers"; read at the world's build, as the presets' light world is)
   const lite = engine.getDeviceTier?.() === 'mobile' || presetLightWorld();
-  const surface = createHinterlandSurface(wire, { lite });
+  // (a map whose pair the carried ground lost keeps the near band's own atlas: wire.nearGround, spec.ts)
+  const battlefieldGround = wire.nearGround === false ? null : hinterlandGroundFrom(ground);
+  const surface = createHinterlandSurface(wire, { lite, ground: battlefieldGround });
   // (one air for the land and the outland: their far haze ends in the dome's own sky)
   const air = createHinterlandAir(wire.air ?? 1);
   const land = createHinterlandMesh({
@@ -39,7 +42,7 @@ export function createHinterlandObject(wire: HinterlandWire, engineCtx: unknown)
     patchQuads: lite ? 16 : 32,
   });
   group.add(land.mesh);
-  const outland = createHinterlandOutlandObjects(wire, pyramid, engine, air);
+  const outland = createHinterlandOutlandObjects(wire, pyramid, engine, air, battlefieldGround ? hinterlandRoadColor(battlefieldGround) : null);
   if (outland) group.add(outland);
   group.userData.hinterlandLand = land;
   // (drawn after the battlefield's opaque objects — a group's order sorts its whole subtree — so the ground, props and

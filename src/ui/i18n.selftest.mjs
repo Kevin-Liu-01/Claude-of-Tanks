@@ -140,6 +140,45 @@ for (const [key, enVal] of en) {
     ' | extra in zh: [' + extra.join(', ') + ']');
 }
 
+// Attributes too (security audit 2026-10-22): the zh-CN catalog comes back from the translation service and
+// reaches innerHTML and the /cn <title>, and the name-only parity above skips `<img/src=x/onerror=…>` and ignores
+// attributes. Every markup `<` in a zh-CN value must open a tag this check can read, and each such tag must repeat
+// an en-US tag of the same key exactly (name and attributes; <br>/<wbr> free).
+const fullTagRegex = /<\/?([a-zA-Z][a-zA-Z0-9-]*)(?:\s[^<>]*?)?\/?>/g;
+function fullTagMultiset(value) {
+  const out = new Map();
+  for (const m of value.matchAll(fullTagRegex)) {
+    if (['br', 'wbr'].includes(m[1].toLowerCase())) continue;
+    const tag = m[0].replace(/\s+/g, ' ');
+    out.set(tag, (out.get(tag) || 0) + 1);
+  }
+  return out;
+}
+/** What the zh-CN value adds over the en-US value that HTML would read as markup; empty when nothing. */
+function zhMarkupProblems(enVal, zhVal) {
+  const problems = [];
+  // a `<` that HTML would read as markup (a letter, `/`, `!` or `?` after it); `< 80 mm` stays text
+  if (/<[a-zA-Z/!?]/.test(zhVal.replace(fullTagRegex, ''))) problems.push('unreadable markup');
+  const enTags = fullTagMultiset(enVal);
+  for (const [tag, n] of fullTagMultiset(zhVal)) {
+    if ((enTags.get(tag) || 0) < n) problems.push('tag not in en-US: ' + tag);
+  }
+  return problems;
+}
+for (const [key, zhVal] of zh) {
+  const problems = zhMarkupProblems(en.get(key) ?? '', zhVal);
+  assert.deepEqual(problems, [], 'zh-CN markup at ' + key + ': ' + problems.join('; '));
+}
+// the four forms the name-only parity let through, and the text it must keep allowing
+const docsLink = 'See <a href="/docs#studio">the Studio guide</a>.';
+assert.ok(zhMarkupProblems('Made by Kevin', '作者 Kevin<img/src="x"/onerror="alert(1)">').length);
+assert.ok(zhMarkupProblems(docsLink, '见 <a href="javascript:alert(1)">工作室指南</a>。').length);
+assert.ok(zhMarkupProblems('Local only.', '仅本地。<img src="x" onerror="alert(1)">').length);
+assert.ok(zhMarkupProblems('Claude of Tanks', '坦克</title/><img/src="x"/onerror="alert(1)">').length);
+assert.deepEqual(zhMarkupProblems(docsLink, '见<a href="/docs#studio">工作室指南</a>。'), []);
+assert.deepEqual(zhMarkupProblems('Armor < 80 mm', '装甲 < 80 mm'), []);
+assert.deepEqual(zhMarkupProblems('One<br>two', '一<br/>二'), []);
+
 // Plain text translation hosts must not own nested markup. textContent would
 // erase links, emphasis, output values, or other controls on first apply.
 const rootHtmlFiles = fs.readdirSync(REPO).filter((name) => name.endsWith('.html'));
