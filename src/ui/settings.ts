@@ -476,6 +476,11 @@ const HINT_BATTLES = 3;
  *   toggle:Function,isOpen:()=>boolean,showHints:Function,root:HTMLElement}}
  */
 export function createSettings(opts: SettingsOptions): SettingsRuntime {
+  // the game document's shared behaviours (the kit's hover tip, the mark's roll) install with the panel every screen has,
+  // once the boot is idle: they act only on a hover, so they stay off the game's entry
+  const behaviours = (): void => void import('./components/pageBehaviours.ts').then(({ installPageBehaviours }) => installPageBehaviours());
+  if (typeof requestIdleCallback === 'function') requestIdleCallback(behaviours, { timeout: 4000 });
+  else setTimeout(behaviours, 1000);
   ensureFonts();
   const { input, bus } = opts;
   const isBattleActive = opts.isBattleActive || (() => false);
@@ -1182,6 +1187,18 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   }
 
   // --- GRAPHICS tab -----------------------------------------------------------
+  // A graphics preset waits for the panel to close (owner, 2026-10-24: "changing graphics should only apply once we
+  // press resume"): the picker stages it and closing the panel applies it, by Resume back into the battle or by the
+  // Garage's close. Applying resizes the frame and reallocates the shadow targets, so it never runs under the menu.
+  let stagedPreset: string | null = null;
+  function commitGraphics(): void {
+    const name = stagedPreset;
+    stagedPreset = null;
+    if (name === null) return;
+    if (getDeviceTier() === 'mobile') { if (name !== getMobilePresetChoice()) setMobilePresetName(name); }
+    else if (name !== getStoredChoice()) setPresetName(name);
+  }
+
   function renderGraphics() {
     body.textContent = '';
     const card = groupCard(body, t('settings.graphics.title'));
@@ -1201,8 +1218,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         : t(PRESET_LABEL_KEYS[name] || 'settings.preset.ultra').toLowerCase();
       b.dataset.name = name;
       b.addEventListener('click', () => {
-        if (mobile) setMobilePresetName(name);
-        else setPresetName(name); // live-applies post resize + shadow RT realloc
+        stagedPreset = name; // applied when the panel closes (commitGraphics)
         for (const x of btns) x.classList.toggle('sel', x.dataset.name === name);
         chosen = name;
         showPreview(name);
@@ -1213,7 +1229,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       b.addEventListener('focus', () => showPreview(name));
       btns.push(b);
     }
-    const selected = mobile ? getMobilePresetChoice() : getStoredChoice();
+    const selected = stagedPreset ?? (mobile ? getMobilePresetChoice() : getStoredChoice());
     let chosen: string = selected;
     for (const x of btns) x.classList.toggle('sel', x.dataset.name === selected);
     seg.addEventListener('pointerleave', () => showPreview(chosen));
@@ -1234,10 +1250,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       if (src && previewImage.getAttribute('src') !== src) previewImage.src = src;
     }
     showPreview(selected);
-    const note = el('div', 'cot-set-note', card);
-    note.textContent = mobile
-      ? t('settings.graphics.note.mobile')
-      : t('settings.graphics.note.desktop');
 
     // entry telemetry (2026-09-24): the anonymous load/crash beacon
     // (docs/ENTRY-RESILIENCE.md) is a player choice stored beside the presets.
@@ -1798,6 +1810,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
    */
   function closePanel(o: { noRelock?: boolean } = {}): void {
     if (!open) return;
+    commitGraphics();
     crewSelectController?.close();
     if (o && o.noRelock) relockOnClose = false;
     cancelCapture();
@@ -1827,8 +1840,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     cancelCapture();
     clearConflict();
     if (activeTab === 'graphics') {
-      if (getDeviceTier() === 'mobile') setMobilePresetName('mobile');
-      else setPresetName('auto');
+      stagedPreset = getDeviceTier() === 'mobile' ? 'mobile' : 'auto';
       renderTab();
       return;
     }

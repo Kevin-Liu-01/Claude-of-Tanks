@@ -1,4 +1,4 @@
-import { layoutViewportSize } from './responsiveLayout.ts';
+import { layoutViewportSize, placeFloat } from './responsiveLayout.ts';
 
 /** A single reusable, viewport-clamped tooltip for delegated hover/focus/tap targets. */
 let serial = 0;
@@ -7,6 +7,7 @@ export function createRichTooltip(host: HTMLElement, selector: string, content: 
   tip.className = 'cot-rich-tooltip'; tip.id = `cot-rich-tooltip-${++serial}`;
   tip.setAttribute('role', 'tooltip'); tip.setAttribute('popover', 'manual'); tip.hidden = true;
   document.body.append(tip);
+  host.dataset.richTipTargets = selector; // the kit's hover tip (components/hoverTip.ts) stands down on these targets
   let anchor: HTMLElement | null = null, timer = 0;
   let previousDescription: string | null = null;
   let dismissing = false;
@@ -27,14 +28,10 @@ export function createRichTooltip(host: HTMLElement, selector: string, content: 
     const bounds = anchor.getBoundingClientRect();
     // anchor rects and the fixed popover are layout-viewport coordinates: clamp in that space, so a pinch only
     // magnifies the tooltip where it would sit unzoomed
-    const { width: w, height: h } = layoutViewportSize(window);
-    const above = Math.max(0, bounds.top - 18), belowSpace = Math.max(0, h - bounds.bottom - 18);
-    const useBelow = belowSpace >= above;
-    tip.style.maxHeight = `${Math.max(48, useBelow ? belowSpace : above)}px`;
-    const rect = tip.getBoundingClientRect();
-    const x = Math.max(8, Math.min(w - rect.width - 8, bounds.left + bounds.width / 2 - rect.width / 2));
-    const below = bounds.bottom + 10;
-    const y = useBelow ? Math.min(h - rect.height - 8, below) : Math.max(8, bounds.top - rect.height - 10);
+    const viewport = layoutViewportSize(window);
+    // the side it opens to caps its height; then it is placed at its measured size (placeFloat, shared with the hover tip)
+    tip.style.maxHeight = `${Math.max(48, placeFloat(bounds, { width: 0, height: 0 }, viewport).room)}px`;
+    const { x, y } = placeFloat(bounds, tip.getBoundingClientRect(), viewport);
     tip.style.left = `${x}px`; tip.style.top = `${y}px`;
   }
   function show(target: HTMLElement) {
@@ -65,7 +62,7 @@ export function createRichTooltip(host: HTMLElement, selector: string, content: 
   window.addEventListener('pointerdown', outside, true); window.addEventListener('keydown', key, true);
   window.addEventListener('resize', hide); host.addEventListener('scroll', scroll, true);
   return { hide, dispose() {
-    hide(); tip.remove(); host.removeEventListener('pointerover', enter); host.removeEventListener('pointerout', leave);
+    hide(); tip.remove(); delete host.dataset.richTipTargets; host.removeEventListener('pointerover', enter); host.removeEventListener('pointerout', leave);
     host.removeEventListener('focusin', focus); host.removeEventListener('focusout', leave); host.removeEventListener('click', click);
     window.removeEventListener('pointerdown', outside, true); window.removeEventListener('keydown', key, true);
     window.removeEventListener('resize', hide); host.removeEventListener('scroll', scroll, true);

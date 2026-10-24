@@ -40,9 +40,10 @@ const LID = 'M77.6 68.9 71.4 53.4a1.6 1.6 0 0 1 .9-2.1l2.6-1a1.6 1.6 0 0 1 2.1.9
 const HINGE = '<rect x="74.6" y="65.6" width="8.4" height="4" rx="1.2"/>';
 const ANTENNA = 'M64 76 56 41';
 const PENNANT = 'M56 38.5 41 43l15 4.5Z';
-/** The turret and its bustle as one form (the bustle overhangs the rear deck), and the cupola sunk into its roof. */
+/** The turret and its bustle as one form (the bustle overhangs the rear deck), and the cupola sunk into its roof: its front
+ *  foot reaches below the roof's slope (owner, 2026-10-24: the hatch sat a hair above the roof at the front). */
 const TURRET = 'M151.4 92.6 140 77.5 82 74 61.5 72.8 58 76.5V88l4.5 3.5H73l1.5 1.1Z';
-const CUPOLA = 'M77.5 75.5 80 68.2h53l2.6 8.4Z';
+const CUPOLA = 'M77.5 75.5 80 68.2h53l3.1 10Z';
 const HELMET = 'M87.5 52.5a18.5 12 0 0 1 37 0ZM94 45.2h24.5v5.2H94Z';
 const HELMET_RIM = '<rect x="85.5" y="52.3" width="41" height="4.2" rx="2.1"/>';
 const LENSES = '<circle cx="102.5" cy="47.8" r="2.9"/><circle cx="111" cy="47.8" r="2.9"/>';

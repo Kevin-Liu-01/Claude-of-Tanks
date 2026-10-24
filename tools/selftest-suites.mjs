@@ -984,6 +984,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/styleLayers.selftest.mjs',
     // 2026-10-22 (brand-ui BUI-F5): the shared component kit (markup, ARIA, roving focus, one tokens-only sheet)
     'src/ui/components/components.selftest.mjs',
+    'src/ui/components/hoverTip.selftest.mjs',
+    'src/ui/brandMarkRoll.selftest.mjs',
     'tools/style-literal-census.selftest.mjs',
     // 2026-10-18 (brand-ui BUI-F9): the accessibility core — the record, :root as its runtime source (the head seed and
     // applyAccessibility agree), text and HUD scale, colour presets through tokens.ts, Custom pairs under the floors
