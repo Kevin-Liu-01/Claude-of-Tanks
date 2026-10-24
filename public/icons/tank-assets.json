@@ -1997899,12 +1997899,12 @@
             "name": "turretRing",
             "min": [
               -1.0798,
-              1.3428,
+              1.3304,
               -1.2585
             ],
             "max": [
               1.0798,
-              1.498,
+              1.4856,
               0.8585
             ],
             "turretLocal": false
@@ -1998179,12 +1998179,12 @@
             "min": [
               -0.6701,
               0.6237,
-              1.641
+              1.5796
             ],
             "max": [
               -0.2107,
-              1.17,
-              3.4334
+              1.18,
+              3.372
             ],
             "turretLocal": false
           },
@@ -1998193,13 +1998193,13 @@
             "name": "gunner",
             "min": [
               0.315,
-              -0.72,
-              -0.5378
+              -0.7199,
+              -0.4953
             ],
             "max": [
               0.7744,
-              0.5892,
-              0.2805
+              0.5994,
+              0.282
             ],
             "turretLocal": true
           },
@@ -1998207,21 +1998207,21 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.2483,
-              -0.8212,
+              0.3483,
+              -0.8122,
               -0.8238
             ],
             "max": [
-              0.7077,
-              0.4001,
+              0.8077,
+              0.4091,
               -0.0073
             ],
             "turretLocal": true
           }
         ]
       },
-      "geometryHash": "2ac9dc8d",
-      "metadataHash": "32af52f9",
+      "geometryHash": "6476c026",
+      "metadataHash": "fe8f25d1",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": -0.223
@@ -1998236,7 +1998236,7 @@
         "version": 1,
         "issues": [],
         "roles": {
-          "gunmetal": 13,
+          "gunmetal": 14,
           "wheelTire": 2,
           "wheelDish": 6,
           "suspensionLink": 1,
@@ -1998281,15 +1998281,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23088,
-          "sha256": "eba63abfc25642aa14b09efcf6f7693f707aa8d944c7a7d7a6d8f0fbffd84b8f",
+          "bytes": 23052,
+          "sha256": "5a563b010ac4f2a45d9c275ce9516da808770742053e7d7daaea5fd4fe6bd467",
           "thumbnail": {
             "file": "thumbs/type90_kyumaru_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 9668,
-            "sha256": "fc741f945ca55e7a35b1d49efd25effd1ad1882000b746339c89362fe73f5b19"
+            "bytes": 9678,
+            "sha256": "c35e4cc888ce17007dd5a35798c5585f55d4a060b59bbeffd2944e1f75af27a2"
           }
         },
         "top": {
@@ -1998297,16 +1998297,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9842,
-          "sha256": "fadf7b7851211a77ddd2e8627dfef0e64cf138b2f85091cff03a162dc97cc733"
+          "bytes": 9848,
+          "sha256": "30b8de27ef5597ef27a62028b5d723c49d1a2a06150ce620cf8e05118387db63"
         },
         "side": {
           "file": "type90_kyumaru_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9242,
-          "sha256": "9bdf977ba105a7c638a7d078a8dab24c3102c7bc5d72c4160942ca5c7213519d"
+          "bytes": 9382,
+          "sha256": "e8e63afaf7f1f323e247dc3772af30728eb00a9f21eac14be00a776e4cbdada6"
         },
         "topSilhouette": {
           "file": "type90_kyumaru_top_silhouette.png",
@@ -1998321,32 +1998321,32 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4025,
-          "sha256": "97fdf5a0faefeffcf0f587c8fe545f89f7b0a5dc00f93df3ba33a40367aee870"
+          "bytes": 4107,
+          "sha256": "1bc4e15c4c2e21e56b0ea9f866c1e7cdb7fd5e585b0562087cc7e67b7bfa8c4f"
         },
         "armorSide": {
           "file": "type90_kyumaru_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84167,
-          "sha256": "53bd4ab51fe8d91136118918ec2192b34949e793b58dafc0c970e84d847b35b6"
+          "bytes": 83802,
+          "sha256": "5f98421c90a6116150b9fec26813ecd32f2908de2eb091d24961dbe1f6cad49a"
         },
         "modulesSide": {
           "file": "type90_kyumaru_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 88662,
-          "sha256": "905fe1cfbd0d6d2b23aa2a2fc9954c78785124399b9506fb0d6d1c4e4196d98c"
+          "bytes": 88603,
+          "sha256": "15ee99691d7303c70813212979dbb57cbf8a1ec10ea89f4c3f6adbca0f988357"
         },
         "crewSide": {
           "file": "type90_kyumaru_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73113,
-          "sha256": "184644afd30a64560480d50c7aeadd4e242e17991813dacee644de003e75e114"
+          "bytes": 73755,
+          "sha256": "bf404dd7c31a3e13edb099533854ff43bc9f434e9b8494e8647241fa5fd3c1fd"
         },
         "markings": {
           "file": "type90_kyumaru_markings.png",
