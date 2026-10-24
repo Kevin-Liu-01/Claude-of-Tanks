@@ -14,8 +14,8 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 // sliders, the crew voices (national crews / one nation's pack) and the
 // concussion toggle (persisted with the gameplay settings; broadcast live over
 // the bus as 'ui:volumes' for src/audio/audioEngine.ts). All state persists via the input
-// layer's localStorage stores. Also owns the fading controls-hint strip
-// shown on battle start and the garage gear button, and broadcasts
+// layer's localStorage stores. Also owns the pause veil, the fading controls-hint strip
+// a player's first battles show at the rollout, and the garage gear button, and broadcasts
 // 'ui:bindingsChanged' so the HUD's shell/consumable hotkey labels stay honest.
 // KILL-CAM aware: while a replay owns the screen ('killcam:begin'/'done' on
 // the bus) the panel never auto-opens, never veils, and closes itself — the
@@ -469,26 +469,30 @@ const SETTINGS_CSS = `
   background:rgba(11,15,20,.8);border:1px solid rgba(146,164,180,.3);
   transition:border-color .12s,color var(--dur-fast);pointer-events:auto;color:var(--ink-3);}
 .cot-gear:hover{border-color:rgba(240,176,74,.6);color:#f0b04a;}
-.cot-hints{position:fixed;left:50%;bottom:100px;transform:translateX(-50%);z-index:45;
-  display:none;align-items:center;gap:16px;padding:8px 20px;pointer-events:none;
-  background:linear-gradient(180deg,rgba(9,13,17,.82),rgba(7,10,14,.7));
-  border:1px solid rgba(146,164,180,.3);box-shadow:0 4px 18px rgba(0,0,0,.45);
-  font-family:${FONT_STACK};font-size:11px;font-weight:600;letter-spacing:.09em;
-  color:#9fb0bf;text-transform:uppercase;white-space:nowrap;
-  opacity:1;transition:opacity 1.2s ease;}
-.cot-hints .hg{display:flex;align-items:center;gap:5px;}
-.cot-hints kbd{font-family:${FONT_STACK};font-size:11px;font-weight:700;color:#e6edf3;
-  letter-spacing:.01em;padding:2px 6px;line-height:14px;
-  background:linear-gradient(180deg,rgba(34,42,50,.95),rgba(18,23,28,.95));
-  border:1px solid rgba(146,164,180,.45);border-bottom:2px solid rgba(146,164,180,.6);}
-.cot-resume{position:fixed;inset:0;z-index:79;display:none;align-items:center;justify-content:center;
-  flex-direction:column;gap:14px;cursor:pointer;background:rgba(4,7,10,.55);
-  font-family:${FONT_STACK};color:#e6edf3;-webkit-user-select:none;user-select:none;}
-.cot-resume.show{display:flex;}
-.cot-resume .rz-title{font-size:22px;font-weight:700;letter-spacing:.34em;text-transform:uppercase;
-  color:#f0b04a;text-shadow:0 2px 14px rgba(0,0,0,.8);}
-.cot-resume .rz-sub{font-size:11px;font-weight:600;letter-spacing:.22em;color:#9fb0bf;
+/* The strip clears the HUD's bottom stack (the shell tray and the vehicle-controls row above it end 120 px up). A fixed
+   box at left:50% shrinks to half the viewport, so max-content keeps one row until the edge clamps it. */
+.cot-hints{position:fixed;left:50%;bottom:132px;transform:translateX(-50%);z-index:45;width:max-content;
+  display:none;align-items:center;gap:var(--s5);padding:var(--s2) var(--s4);pointer-events:none;
+  background:var(--hud-plate);box-shadow:var(--e1);
+  font:600 var(--fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);color:var(--ink-2);
+  text-transform:uppercase;white-space:nowrap;transition:opacity var(--dur-base) var(--ease-exit);}
+.cot-hints.show{display:flex;}
+.cot-hints.fade{opacity:0;}
+.cot-hints .hg{display:flex;align-items:center;gap:var(--s2);}
+.cot-hints .hk{display:flex;gap:2px;}
+/* a flight (a drone, the gunship) flies on other keys */
+body:has(.cot-hud.aerial-active) .cot-hints{display:none;}
+/* The pause veil (247): one plate over a dimmed battle. The whole veil resumes (a click inside the gesture relocks);
+   Settings, the Esc menu, is its one other way out. */
+.cot-resume{position:fixed;inset:0;z-index:79;display:none;place-items:center;cursor:pointer;
+  background:oklch(from var(--scrim) l c h / .5);color:var(--ink-1);-webkit-user-select:none;user-select:none;}
+.cot-resume.show{display:grid;animation:cot-rz-in var(--dur-base) var(--ease-enter);}
+@keyframes cot-rz-in{from{opacity:0}}
+.cot-resume .rz-plate{display:grid;justify-items:center;gap:var(--s5);padding:var(--s6) var(--s7);
+  background:var(--hud-plate);box-shadow:var(--e2);}
+.cot-resume .rz-title{margin:0;font:600 var(--fs-28)/1 var(--font-display);letter-spacing:var(--track-title);
   text-transform:uppercase;}
+.cot-resume .rz-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:var(--s3);}
 
 /* ACCESSIBILITY tab (brand-ui BUI-F9; BUI-S4 redesigns it): the live preview draws the team shapes in the team tokens
    and a text and HUD sample in the type tokens, so every choice shows before the player leaves the panel. */
@@ -529,20 +533,21 @@ const MAX_PAD_BUTTONS = 17;
 // deliberately opening the menu after a skip is always slower than 250 ms.
 const KC_DONE_GRACE_MS = 250;
 
-/** Canonical compact battle-control reference, shared by the hint UI and tests. */
+/** The first-battle controls strip (247): driving, the gun, the right button's role, the sight and the menu. The shell
+ *  and consumable keys stay off it, since the HUD tray's tiles carry their own caps. */
 export function battleControlHintGroups(rmbMode: RmbMode = 'hold'): Array<[string, ActionId[]]> {
   return [
     [t('settings.group.move'), ['forward', 'left', 'back', 'right']],
     [t('settings.group.fire'), ['fire']],
-    [t('settings.group.sniper'), ['sniperToggle']],
-    [t('settings.group.gunHold'), ['freeLook']],
     [rmbMode === 'freelook' ? t('settings.group.gunHold') : t('settings.group.aim'), ['freeCamera']],
-    [t('settings.group.shells'), ['shell1', 'shell2', 'shell3']],
-    [t('settings.group.repairs'), ['consumable1', 'consumable2', 'consumable3']],
-    [t('settings.group.handbrake'), ['handbrake']],
+    [t('settings.group.sniper'), ['sniperToggle']],
     [t('settings.group.menu'), ['settingsMenu']],
   ];
 }
+
+/** A player's first battles show the controls strip as the tanks roll out; the count is the browser's. */
+const HINTS_KEY = 'cot.battle.hints.v1';
+const HINT_BATTLES = 3;
 
 /**
  * Create the settings panel + garage gear button + battle controls-hint strip.
@@ -676,10 +681,16 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // / focus loss must NOT throw the options menu at the player (WoT returns
   // you to the battle). The veil relocks inside its own click gesture.
   const resume = el('div', 'cot-resume');
+  resume.setAttribute('role', 'dialog');
+  resume.setAttribute('aria-labelledby', 'cot-rz-title');
   resume.innerHTML =
-    `<div class="rz-title">${t('settings.pauseTitle')}</div>` +
-    `<div class="rz-sub">${t('settings.pauseSub')}</div>`;
-  const resumeSub = requiredElement<HTMLElement>(resume, '.rz-sub');
+    `<div class="rz-plate"><h2 class="rz-title" id="cot-rz-title">${t('settings.pauseTitle')}</h2>` +
+    '<div class="rz-actions">' +
+    `<button type="button" class="cot-c-btn cot-c-btn--56 cot-c-btn--primary rz-go">${t('settings.pauseResume')}</button>` +
+    `<button type="button" class="cot-c-btn cot-c-btn--56 rz-set">${t('settings.title')}<kbd class="cot-c-kbd"></kbd></button>` +
+    '</div></div>';
+  const resumeSettings = requiredElement<HTMLButtonElement>(resume, '.rz-set');
+  const resumeSettingsKey = requiredElement<HTMLElement>(resume, '.rz-set kbd');
   document.body.appendChild(resume);
   let relockRetry: TimerHandle | null = null; // see relockRefused
 
@@ -699,8 +710,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     // A touch layout never holds the lock either.
     if (input.isCursorAim && input.isCursorAim()) return;
     if (trigger === 'relock' && input.isTouchLayout && input.isTouchLayout()) return;
-    // the veil's line names the gesture of the layout that shows it (Watch 243: a touch layout taps)
-    resumeSub.innerHTML = t(input.isTouchLayout?.() ? 'settings.pauseSubTouch' : 'settings.pauseSub');
+    // Settings carries the menu's current key (the cap hides on a touch layout: Watch 243, a touch layout taps)
+    resumeSettingsKey.textContent = bindLabel('settingsMenu');
+    hideHints();
     resume.classList.add('show');
     emit('ui:click', {});
   }
@@ -729,11 +741,23 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     }, retryInMs);
   }
 
-  resume.addEventListener('mousedown', (e) => {
-    e.stopPropagation();
+  function resumeBattle() {
     hideResumeVeil();
     if (isBattleActive()) input.requestLock({ onRefused: relockRefused }); // inside the click gesture
     emit('ui:click', {});
+  }
+  resume.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+    if (e.target instanceof Element && e.target.closest('.rz-set')) return; // Settings opens on its click
+    resumeBattle();
+  });
+  // a keyboard press on Resume (a pointer press resumed on mousedown, so the veil is gone by its click)
+  requiredElement<HTMLButtonElement>(resume, '.rz-go').addEventListener('click', () => {
+    if (resume.classList.contains('show')) resumeBattle();
+  });
+  resumeSettings.addEventListener('click', () => {
+    emit('ui:click', {});
+    openPanel();
   });
 
   // --- state ---------------------------------------------------------------------
@@ -2015,13 +2039,14 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         ? Reflect.get(ev, 'phase')
         : undefined;
       battleUiVisibility.setBattle(phase === 'battle');
-      if (phase !== 'battle') hideResumeVeil();
+      if (phase !== 'battle') { hideResumeVeil(); hideHints(); }
       // belt for the kill-cam flag: killcam.cancel() only emits killcam:done
       // while a replay is live, so a phase flip is the reset of last resort
       kcReplay = false;
     });
     bus.on('ui:battleStart', () => { battleUiVisibility.setBattle(true); updateGear(); });
-    bus.on('battle:ended', () => battleUiVisibility.setBattle(false));
+    bus.on('battle:ended', () => { battleUiVisibility.setBattle(false); hideHints(); });
+    bus.on('battle:rollout', () => { if (!open && takeFirstBattleHint()) showHints(); });
     // KILL-CAM ownership window (controls_gunnery r7 MAJOR — see kcReplay).
     // begin() emits synchronously in the same task as the death branch's
     // exitPointerLock, ahead of any pointerlockchange this panel could react
@@ -2058,15 +2083,30 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   // --- controls hint strip -----------------------------------------------------------
   function hintGroup(label: string, actionIds: readonly ActionId[]): string {
     const kbds = actionIds
-      .map((id) => `<kbd>${bindLabel(id)}</kbd>`)
+      .map((id) => `<kbd class="cot-c-kbd">${bindLabel(id)}</kbd>`)
       .join('');
-    return `<span class="hg">${kbds}<span>${label}</span></span>`;
+    return `<span class="hg"><span class="hk">${kbds}</span><span>${label}</span></span>`;
+  }
+
+  // First-battle hints (247): a keyboard and mouse player's first HINT_BATTLES battles show the strip at the rollout,
+  // solo and network alike. A touch layout and a connected pad show none (the caps name keyboard keys), and a storage
+  // the browser refuses keeps the count for this page.
+  let hintBattles: number | null = null;
+  function takeFirstBattleHint(): boolean {
+    if (input.isTouchLayout?.() || input.isPadConnected()) return false;
+    if (hintBattles === null) {
+      try { hintBattles = Math.max(0, Number(window.localStorage.getItem(HINTS_KEY)) || 0); } catch { hintBattles = 0; }
+    }
+    if (hintBattles >= HINT_BATTLES) return false;
+    hintBattles += 1;
+    try { window.localStorage.setItem(HINTS_KEY, String(hintBattles)); } catch { /* the count lasts this page */ }
+    return true;
   }
 
   function hideHints() {
     if (hintTimer) { clearTimeout(hintTimer); hintTimer = null; }
     if (hintFadeTimer) { clearTimeout(hintFadeTimer); hintFadeTimer = null; }
-    hints.style.display = 'none';
+    hints.classList.remove('show', 'fade');
   }
 
   function showHints() {
@@ -2074,11 +2114,10 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     hints.innerHTML = battleControlHintGroups(input.getSettings().rmbMode)
       .map(([label, actionIds]) => hintGroup(label, actionIds))
       .join('');
-    hints.style.display = 'flex';
-    hints.style.opacity = '1';
+    hints.classList.add('show');
     hintTimer = setTimeout(() => {
-      hints.style.opacity = '0';
-      hintFadeTimer = setTimeout(() => { hints.style.display = 'none'; }, 1300);
+      hints.classList.add('fade');
+      hintFadeTimer = setTimeout(() => { hints.classList.remove('show', 'fade'); }, 400);
     }, 8000);
   }
 

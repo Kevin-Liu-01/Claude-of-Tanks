@@ -368,8 +368,8 @@ assert.match(responsiveSurfaces,
   /body\[data-cot-width\] \.cot-trans \.core\{width:min\(680px,100%\)[\s\S]*body\[data-cot-width='phone'\] \.cot-trans \.title/,
   'state transitions must cap their core and recompose long titles on phones');
 assert.match(responsiveSurfaces,
-  /body\[data-cot-width='phone'\] \.cot-resume \.rz-title\{[\s\S]*letter-spacing:\.18em/,
-  'the pointer-lock resume veil must keep its title within phone width');
+  /body\[data-cot-width\] \.cot-resume \.rz-title\{max-width:100%;overflow-wrap:anywhere[\s\S]*body\[data-cot-width='phone'\] \.cot-resume \.rz-actions\{display:grid;grid-template-columns:1fr/,
+  'the pause veil keeps its title within phone width and stacks its buttons');
 assert.match(responsiveSurfaces,
   /body\[data-cot-width\] \.cot-hints\{[\s\S]*flex-wrap:wrap;white-space:normal/,
   'keyboard hints must wrap as groups instead of clipping on intermediate widths');
