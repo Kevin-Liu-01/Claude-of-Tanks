@@ -127712,17 +127712,17 @@
           }
         ]
       },
-      "geometryHash": "2c9d58a6",
+      "geometryHash": "e17e6585",
       "metadataHash": "d99b6b04",
       "presentationAnchor": {
-        "xM": -0.0006,
-        "zM": 0.1138
+        "xM": -0.0017,
+        "zM": 0.0996
       },
-      "presentationHash": "6b3b6329",
+      "presentationHash": "f83ec844",
       "presentationProjection": {
         "centerYM": 1.6964,
-        "topHalfM": 3.9738,
-        "sideHalfM": 1.9869
+        "topHalfM": 3.9586,
+        "sideHalfM": 1.9793
       },
       "appearance": {
         "version": 1,
@@ -127772,15 +127772,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 26656,
-          "sha256": "19faf63fa550774b2e33fb4cf16dea9e8fc35e251ac01fc944cd4228dcb7125b",
+          "bytes": 26402,
+          "sha256": "40ed363aa044e32b126c3c1d214d3aaea1dd518252b97b4add49118d115fd2aa",
           "thumbnail": {
             "file": "thumbs/fv510_milan_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10508,
-            "sha256": "e72533f290a9cf953f9698d2e6790391561ce021c251521fb1bd2dbd6b6ebdca"
+            "bytes": 10506,
+            "sha256": "eddba35f95c19cd0caa47296c745fd679ec7219e0973e33b7ad2935493399c31"
           }
         },
         "top": {
@@ -127788,56 +127788,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17952,
-          "sha256": "960f966837fec0a8b837c1690df804aacdbec4e6c0412a9787006999011fc033"
+          "bytes": 17726,
+          "sha256": "c1870743c4dabed633b827d28e731fe0627de6bdc7476f98baea7949f5aaaa57"
         },
         "side": {
           "file": "fv510_milan_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 18538,
-          "sha256": "e5758460cd9a168a8baf4eaba188317d018886b96ad1a7f2045b10a2297f0496"
+          "bytes": 17524,
+          "sha256": "6b6486b1e4dbfda2d38d5c1a139a8b80cde9fa0623b4e3d9581f9a781678aa2b"
         },
         "topSilhouette": {
           "file": "fv510_milan_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1550,
-          "sha256": "437d025b67df6aa0e263d9cf9ab352690421f6d17d131d24543135e1c14d22b0"
+          "bytes": 1523,
+          "sha256": "ced602a2379757474ac9ff1039c3249cb9693c130becb5ae511579df44cc5f80"
         },
         "sideSilhouette": {
           "file": "fv510_milan_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 6881,
-          "sha256": "a7f12f6747de445588efb8538cc7f9a6821bd68ebdb38841f6e52b2ab85cc7b6"
+          "bytes": 6427,
+          "sha256": "66bc337f37bad42687fc4ecabb2ba467e36221e8c7f370b43323a9c398a19594"
         },
         "armorSide": {
           "file": "fv510_milan_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 136583,
-          "sha256": "74f17e891589a17aab73eefd4baf138bc195d0e06a55424dc3c54a399b1087a0"
+          "bytes": 135409,
+          "sha256": "8b6726e6d6f9d7df1686b0e04c3ec531705ddf0f63e9247be4bba6b2c401de2c"
         },
         "modulesSide": {
           "file": "fv510_milan_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 142478,
-          "sha256": "ac9e0ee7e970f6e7f7888bfef0093fcef5d7e852b0a8c794f16c26e5b8594baf"
+          "bytes": 141515,
+          "sha256": "4e8a389059bb2b83e5db70dfa90581add49aa7de6818dab042d384e2063b6886"
         },
         "crewSide": {
           "file": "fv510_milan_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 124548,
-          "sha256": "fd300ca90c7da0cb35a2bcd7210fb196953b898873503aa062621d3c05a26fd9"
+          "bytes": 123139,
+          "sha256": "1bb6d2faeb4d57b1707dabed9124a967a2854548f784381173fee90540834b07"
         },
         "markings": {
           "file": "fv510_milan_markings.png",
