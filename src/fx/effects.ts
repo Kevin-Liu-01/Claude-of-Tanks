@@ -678,8 +678,10 @@ const THERMAL_FIRE_COOL = 0.3;
  *  smoke and dust, but they drew at full opacity to it: from the gunship a wreck's own column laid dark noise-edged blots
  *  over its hot hull. Under a heat-imaging camera a cold puff (pooled or simulated) keeps this share of its opacity; hot gas
  *  and a burst's lit heart keep all of it; a smoke screen (its own shader) keeps all. 233 tried a quarter (withdrawn with
- *  the wreck curve); a little under half keeps the column's shape in the lens. */
-const THERMAL_SMOKE_ALPHA = 0.45;
+ *  the wreck curve). (245 r2: the pinned re-take's crops at 0.45 still showed soft dark blots over the hottest deck at
+ *  7-20 s) a fifth: soot's micron particles barely touch long-wave light, so cold smoke is a faint veil to the lens and
+ *  only the hot gas over the fire stays solid. */
+const THERMAL_SMOKE_ALPHA = 0.2;
 /** the grade's own vision code (engine/post.ts uThermal): 1 infrared, 2 thermal (heat); 0 daylight, 3 intensified */
 function imagesHeat(camera: THREE.Camera | null | undefined): boolean {
   const ud = camera?.userData as { sensorVision?: number; thermalFlight?: boolean; flightVision?: number } | undefined;
@@ -732,6 +734,8 @@ const MUZZLE_LIGHT_RANGE = 12;
  *  muzzle, as a burst's own pulse does (blastRecipes' albedoK): snow returns about four times turf's light, so a third
  *  of the peak, sand two thirds. */
 const MUZZLE_LIGHT_REF_MM = 122.5, MUZZLE_LIGHT_BORE_POW = 1.2;
+/** (245) a gun under this bore (mm) throws no ground ring at its muzzle (emitMuzzleGroundBlast) */
+const MUZZLE_RING_MIN_MM = 20;
 const MUZZLE_LIGHT_SNOW_K = 0.33, MUZZLE_LIGHT_SAND_K = 0.66;
 /** The muzzle light's hue by day ("r5: less saturated kiss"), and (240) at night a propellant flame's warm yellow-orange
  *  (muzzleLightPulse, by the dark level) */
@@ -2657,8 +2661,15 @@ function* createFxSteps(
     const gy = groundY(pos.x, pos.z);
     const hK = THREE.MathUtils.clamp(1 - (pos.y - gy - 1.2) / 3.4, 0, 1);
     if (hK <= 0.05) return;
-    spawnShockRing(pos.x + dir.x * 1.2, pos.z + dir.z * 1.2,
-      Math.max(0, -birthOffset), 0.42 + 0.22 * hK, 0.7 * (0.5 + 0.5 * hK));
+    // (245, the muzzle light's critic: "neither build makes the lit area much smaller for the smaller flashes") the ground
+    // ring sweeps and shows by the bore (a 30 mm shot's half a 125 mm gun's), lit warm as it leaves the muzzle; a machine
+    // gun throws none (the coax raised a 125 mm gun's 10 m ring)
+    const boreMm = Number.isFinite(caliberMm) && caliberMm > 0 ? caliberMm : MUZZLE_LIGHT_REF_MM;
+    if (boreMm >= MUZZLE_RING_MIN_MM) {
+      const boreK = THREE.MathUtils.clamp(Math.sqrt(boreMm / MUZZLE_LIGHT_REF_MM), 0.3, 1.2);
+      spawnShockRing(pos.x + dir.x * 1.2, pos.z + dir.z * 1.2,
+        Math.max(0, -birthOffset), (0.42 + 0.22 * hK) * boreK, 0.7 * (0.5 + 0.5 * hK) * Math.min(1, boreK));
+    }
     if (!dust) return; // destruction-fx lane: the media layer lifts the ground's own dust (blastRecipes muzzleBlast)
     for (let i = 0; i < 8; i++) {
       const a = (i / 8) * Math.PI * 2 + rng() * 0.6;
