@@ -51,19 +51,22 @@ function buildCrewHull(P: Port): void {
   ]));
   // A long three-person protected capsule and stepped engine deck replace
   // the old flat deck, tiny hatch hood and shallow arrow-shaped bow.
+  // (release 240, the owner: "make sure all tank turrets are clear of hulls": the capsule's roof 9.5 cm lower, 1.765, its
+  // bow 1.745, under the turret's APS banks (1.77 to 1.5 m off the ring's axis) and bustle (1.82-1.83 to 2.2 m) as they
+  // turn over it; at 1.86 the roof and its hatches stood 5 cm into them. The hatch latches are 1.5 cm lower.)
   P.add('hull', sectionSolid([
-    armorSection(.70,1.24,1.64,1.78,1.06,.055),
-    armorSection(1.15,1.24,1.64,1.86,1.06,.055),
-    armorSection(2.05,1.24,1.64,1.86,1.06,.055),
+    armorSection(.70,1.24,1.64,1.745,1.06,.045),
+    armorSection(1.15,1.24,1.64,1.765,1.06,.055),
+    armorSection(2.05,1.24,1.64,1.765,1.06,.055),
     armorSection(2.43,1.12,1.64,1.71,.95,.025),
   ]));
   for (const x of [-.70,0,.70]) {
-    P.addEquipment('hullDetail',box(.53,.028,.64),x,1.871,1.56);
-    P.add('hullDark',box(.43,.014,.025),x,1.893,1.81);
+    P.addEquipment('hullDetail',box(.53,.028,.64),x,1.776,1.56);
+    P.add('hullDark',box(.43,.014,.025),x,1.798,1.81);
     for (const dx of [-.14,.14]) {
-      P.addEquipment('hullDetail',box(.055,.04,.10),x+dx,1.894,1.27);
+      P.addEquipment('hullDetail',box(.055,.025,.10),x+dx,1.799,1.27);
     }
-    KIT.periscope(P,'hullDetail',x,1.873,2.02);
+    KIT.periscope(P,'hullDetail',x,1.778,2.02);
   }
   // Two broad, flush bow armor leaves retain a readable central seam.
   for (const side of [-1,1]) {
@@ -76,11 +79,13 @@ function buildCrewHull(P: Port): void {
     }
   }
   // Engine service panels and physically seated cooling louvres.
+  // (release 240: the stack 2.5 cm lower, its louvres' crests 1.819 under the bustle's 1.826-1.833 underside at rest;
+  // they stood 1.4 cm into it)
   for (const side of [-1,1]) {
-    P.addEquipment('hullDetail',box(1.19,.055,1.66),side*.80,1.766,-2.84);
-    P.add('hullDark',box(.97,.015,1.26),side*.80,1.799,-2.84);
+    P.addEquipment('hullDetail',box(1.19,.055,1.66),side*.80,1.741,-2.84);
+    P.add('hullDark',box(.97,.015,1.26),side*.80,1.774,-2.84);
     for (let row=0;row<8;row++) {
-      P.addEquipment('hullDetail',box(.98,.035,.065),side*.80,1.820,-3.38+row*.155,.2,0,0);
+      P.addEquipment('hullDetail',box(.98,.035,.065),side*.80,1.795,-3.38+row*.155,.2,0,0);
     }
     P.addEquipment('hullDetail',box(.54,.22,.16),side*1.05,1.53,-4.25);
     P.add('hullDark',box(.43,.135,.018),side*1.05,1.53,-4.339);
