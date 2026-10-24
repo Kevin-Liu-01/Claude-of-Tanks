@@ -18,12 +18,16 @@ import {
 
 /** How far the shell stands proud of the armour cells (m): over skirts, ERA and fittings, as the old inflation did. */
 const SKIN_LIFT_M = 0.06;
-/** Longest panel edge between two samples (m). */
-const SAMPLE_EDGE_M = 0.8;
+/** Longest panel edge between two samples (m): the corner samples interpolate across it. */
+const SAMPLE_EDGE_M = 1.25;
 /** A corner's sample sits this far into its panel (m), so the ray resolves that panel, not its neighbour. */
 const SAMPLE_INSET_M = 0.05;
-/** Panels of one plate meeting at less than this angle read as one surface: no outline between them. */
-const SOFT_CREASE_COS = Math.cos(THREE.MathUtils.degToRad(16));
+/**
+ * Panels of one plate meeting at less than this angle read as one surface: no outline between them. The cells are
+ * slices hulled on 45-degree supports, so their facets meet at 20-45 degrees; outlined, they drew every facet as a seam.
+ * Plates and true edges keep their outline.
+ */
+const SOFT_CREASE_COS = Math.cos(THREE.MathUtils.degToRad(50));
 const ON_PLANE_M = 0.012;
 const KEY_QUANTUM_M = 5e-4;
 
