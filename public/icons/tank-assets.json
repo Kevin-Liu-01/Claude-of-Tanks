@@ -42431,85 +42431,17 @@
             "turretLocal": true,
             "gunFollow": false,
             "min": [
-              1.1106,
-              0.3951,
-              0.6795
-            ],
-            "max": [
-              1.3014,
-              0.5859,
-              0.8145
-            ],
-            "physicalMm": 10,
-            "surfaceFingerprint": "43ae0c47"
-          },
-          {
-            "module": "missileRack",
-            "turretLocal": true,
-            "gunFollow": false,
-            "min": [
-              1.1097,
-              0.3942,
-              0.7267
-            ],
-            "max": [
-              1.3023,
-              0.5868,
-              0.7493
-            ],
-            "physicalMm": 10,
-            "surfaceFingerprint": "284409e5"
-          },
-          {
-            "module": "missileRack",
-            "turretLocal": true,
-            "gunFollow": false,
-            "min": [
               1.1313,
               0.4158,
-              0.738
+              0.405
             ],
             "max": [
               1.2807,
               0.5652,
-              0.819
+              0.837
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "b53a0639"
-          },
-          {
-            "module": "missileRack",
-            "turretLocal": true,
-            "gunFollow": false,
-            "min": [
-              1.1106,
-              0.6201,
-              0.6795
-            ],
-            "max": [
-              1.3014,
-              0.8109,
-              0.8145
-            ],
-            "physicalMm": 10,
-            "surfaceFingerprint": "16eec2df"
-          },
-          {
-            "module": "missileRack",
-            "turretLocal": true,
-            "gunFollow": false,
-            "min": [
-              1.1097,
-              0.6192,
-              0.7267
-            ],
-            "max": [
-              1.3023,
-              0.8118,
-              0.7493
-            ],
-            "physicalMm": 10,
-            "surfaceFingerprint": "951059f1"
+            "surfaceFingerprint": "3110fe27"
           },
           {
             "module": "missileRack",
@@ -42518,15 +42450,15 @@
             "min": [
               1.1313,
               0.6408,
-              0.738
+              0.405
             ],
             "max": [
               1.2807,
               0.7902,
-              0.819
+              0.837
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "af9a6e57"
+            "surfaceFingerprint": "2fbff43f"
           },
           {
             "module": "missileRack",
@@ -42543,7 +42475,7 @@
               0.126
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "4583800f"
+            "surfaceFingerprint": "9c466dbf"
           },
           {
             "module": "missileRack",
@@ -42560,7 +42492,7 @@
               0.819
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "268a2ba3"
+            "surfaceFingerprint": "cf5b5b2b"
           },
           {
             "module": "missileRack",
@@ -42577,7 +42509,7 @@
               0.819
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "0c7d25e1"
+            "surfaceFingerprint": "8a8d9c01"
           },
           {
             "module": "missileRack",
@@ -42594,7 +42526,7 @@
               0.819
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "c06699dd"
+            "surfaceFingerprint": "e1bfd15d"
           },
           {
             "module": "missileRack",
@@ -42611,7 +42543,7 @@
               0.819
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "7901a793"
+            "surfaceFingerprint": "f8274d15"
           },
           {
             "module": "missileRack",
@@ -42628,41 +42560,58 @@
               -0.513
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "4027903b"
+            "surfaceFingerprint": "0210f1d1"
           },
           {
             "module": "missileRack",
             "turretLocal": true,
             "gunFollow": false,
             "min": [
-              1.1088,
-              0.3933,
-              0.819
+              1.035,
+              0.396,
+              0.792
             ],
             "max": [
-              1.3032,
-              0.5877,
-              0.819
+              1.377,
+              0.81,
+              0.81
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "c1d51c4a"
+            "surfaceFingerprint": "b7ef91b5"
           },
           {
             "module": "missileRack",
             "turretLocal": true,
             "gunFollow": false,
             "min": [
-              1.1088,
-              0.6183,
-              0.819
+              1.1151,
+              0.3996,
+              0.405
             ],
             "max": [
-              1.3032,
-              0.8127,
-              0.819
+              1.2969,
+              0.5814,
+              0.837
             ],
             "physicalMm": 10,
-            "surfaceFingerprint": "25c9d744"
+            "surfaceFingerprint": "a364db37"
+          },
+          {
+            "module": "missileRack",
+            "turretLocal": true,
+            "gunFollow": false,
+            "min": [
+              1.1151,
+              0.6246,
+              0.405
+            ],
+            "max": [
+              1.2969,
+              0.8064,
+              0.837
+            ],
+            "physicalMm": 10,
+            "surfaceFingerprint": "e51d2f99"
           }
         ],
         "turretPivot": [
@@ -44559,14 +44508,14 @@
             "volumeId": "C01",
             "name": "driver",
             "min": [
-              -0.65,
-              0.513,
-              1.6925
+              -0.5764,
+              1.0715,
+              1.3636
             ],
             "max": [
-              -0.0433,
-              1.6605,
-              3.0271
+              -0.117,
+              1.4815,
+              3.156
             ],
             "turretLocal": false
           },
@@ -44574,14 +44523,14 @@
             "volumeId": "C02",
             "name": "gunner",
             "min": [
-              0.4678,
-              0.5834,
-              -0.6763
+              0.5414,
+              0.5361,
+              -0.4197
             ],
             "max": [
-              1.0745,
-              1.6396,
-              0.6583
+              1.0008,
+              1.839,
+              0.4017
             ],
             "turretLocal": false
           },
@@ -44589,21 +44538,21 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              -1.0745,
-              0.5834,
-              -0.6763
+              -0.9508,
+              0.4513,
+              -0.4303
             ],
             "max": [
-              -0.4678,
-              1.6396,
-              0.6583
+              -0.4914,
+              1.839,
+              0.4123
             ],
             "turretLocal": false
           }
         ]
       },
-      "geometryHash": "17eb492c",
-      "metadataHash": "e71c4f15",
+      "geometryHash": "826b8cbf",
+      "metadataHash": "ad2962bf",
       "presentationAnchor": {
         "xM": 0.0001,
         "zM": -0.001
@@ -44661,39 +44610,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 96022,
-          "sha256": "5e9f433e7f7c70d881450caace115aba8cf1b17f368a8dae6081811b9fb322a0"
+          "bytes": 101172,
+          "sha256": "46f5db9f767a4b467c225753386d0f003b44ee6d5b85b26f8005db9f9e8acb22"
         },
         "modulesSide": {
           "file": "borsuk_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 105653,
-          "sha256": "aade48808bee078e5b3ee194d39cdae33b883a2a79e5867a825f7949deec65df"
+          "bytes": 109598,
+          "sha256": "6fd426a0f21c64fc01571282c93b9d1bace7f123fa4bddc73b88e518f593570a"
         },
         "crewSide": {
           "file": "borsuk_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 86632,
-          "sha256": "e85f8025871e282225c50fba8d39ebb1a4b426ff8ca8313afac0aaf4fbe5d177"
+          "bytes": 92274,
+          "sha256": "17eeca4cd259438f079d6884fe86172db4b0c40570aacf994fcbac78971b0aa3"
         },
         "angle": {
           "file": "borsuk_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 24194,
-          "sha256": "b08639259a772ac7e00f2a09f6af5002fb4a3f43a4d51c5f03decdc96a30c112",
+          "bytes": 24920,
+          "sha256": "aa0c7a7db3aebd50b04cf6686127eaff277a1403c3230b9d481dedc710eeffcf",
           "thumbnail": {
             "file": "thumbs/borsuk_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10400,
-            "sha256": "cb711d2fc20af1a7fb0e7daab1a17b370113d89f4b77f1289f553a8df92c0178"
+            "bytes": 10544,
+            "sha256": "78b2846c89c56867056a99d6cedbb8dea7fdc92d7ce987156bfd286c4d950e6b"
           }
         },
         "top": {
@@ -44701,16 +44650,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 12782,
-          "sha256": "e9e0c5cdaeebc886be6bff802a7e5878182b66d6d6d491cc19c1521391258530"
+          "bytes": 14938,
+          "sha256": "234ee95b28b0c60380b443de0d2904d7e344af34d9967f4aa067f836777f34c6"
         },
         "side": {
           "file": "borsuk_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9744,
-          "sha256": "d3958242656dc597e84318e76a2f54aaef60cdfeced50f76d577243ddd608c50"
+          "bytes": 12442,
+          "sha256": "d5086a51a4ff77ede2307ea2a6b13e3dca9b7c3b11501e89765bcb1e6f99bf67"
         },
         "topSilhouette": {
           "file": "borsuk_top_silhouette.png",
@@ -44725,8 +44674,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4579,
-          "sha256": "da878a371aebd54a70da2631e1f6d5f80e83c8f1976903ae9567db6a2ee81cdf"
+          "bytes": 4615,
+          "sha256": "e03157be6fa5cb5c10278b4c568da2c5bfd4fa9051907ccb52843b0c20aa539d"
         },
         "markings": {
           "file": "borsuk_markings.png",
