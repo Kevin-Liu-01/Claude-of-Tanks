@@ -69,8 +69,9 @@ function driver(P: TankBuilderPort): void {
     P.addEquipment('hullDetail', box(.087, .064, .084), x + side * .180, 1.349, 1.863, 0, side * .60);
     P.addEquipment('hullGlass', box(.064, .033, .004), x + side * .204, 1.355, 1.898, 0, side * .60);
   }
-  P.addEquipment('hullDetail', box(.172, .065, .076), x, 1.346, 1.709);
-  P.addEquipment('hullGlass', box(.139, .033, .004), x, 1.352, 1.749);
+  // (release 240: 5 mm lower, under the turret's cheek as it turns over the station)
+  P.addEquipment('hullDetail', box(.172, .065, .076), x, 1.341, 1.709);
+  P.addEquipment('hullGlass', box(.139, .033, .004), x, 1.347, 1.749);
 }
 
 function rearHeadArc(path: THREE.Shape, inner: boolean, from: number, to: number): void {
