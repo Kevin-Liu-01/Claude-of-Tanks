@@ -160,9 +160,14 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
     const end = from + duration + 1500;
     const loafs = rec.loafs.filter((l) => l.start + l.duration >= from && l.start <= end);
     const longtasks = rec.longtasks.filter((t) => t.start + t.duration >= from && t.start <= end);
-    return { duration, processing: slowest ? Math.round(slowest.processingEnd - slowest.processingStart) : 0,
-      inputDelay: slowest ? Math.round(slowest.processingStart - slowest.start) : 0, event: slowest?.name ?? null, target: slowest?.target ?? null,
-      loafs, longtaskMs: Math.round(longtasks.reduce((sum, t) => sum + t.duration, 0)), longtasks: longtasks.length };
+    // Every event of the interaction ends at the same paint; its handlers' time is the largest of theirs (a click's
+    // handlers, not its pointerdown's), its input delay the first event's.
+    const processing = group.reduce((most, e) => Math.max(most, e.processingEnd - e.processingStart), 0);
+    const lastSwitch = Array.isArray(window.__GARAGE_SWITCH) ? window.__GARAGE_SWITCH[window.__GARAGE_SWITCH.length - 1] : null;
+    return { duration, processing: Math.round(processing),
+      inputDelay: first ? Math.round(first.processingStart - first.start) : 0, event: slowest?.name ?? null, target: slowest?.target ?? null,
+      loafs, longtaskMs: Math.round(longtasks.reduce((sum, t) => sum + t.duration, 0)), longtasks: longtasks.length,
+      garageSwitch: lastSwitch ? JSON.parse(JSON.stringify(lastSwitch)) : null };
   }, t0, INPUT_EVENTS);
   return { error, selector: selector ?? key, shownMs: shownAt == null ? null : Math.round(shownAt - t0),
     doneMs: doneAt == null ? null : Math.round(doneAt - t0), ...data };
