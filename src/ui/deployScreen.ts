@@ -12,13 +12,15 @@ import { uiIconSVG } from './uiIcons.ts';
 
 /**
  * Each operation's briefing plate (public/media/deploy-r1/op-0N-1280.webp, the media lane's Scene Studio stills from
- * behind the attacker's lead tank at Frontline sector 1). An operation without one shows its battlefield's card.
+ * behind the attacker's lead tank at Frontline sector 1; Frontier Basin's from 20 m, over the wood 245 put round its
+ * sector). An operation without one shows its battlefield's card.
  */
 const CAMPAIGN_PLATES: Readonly<Record<string, string>> = Object.freeze({
   first_light: '/media/deploy-r1/op-01-1280.webp',
   iron_ridge: '/media/deploy-r1/op-02-1280.webp',
   steinburg: '/media/deploy-r1/op-03-1280.webp',
   tarkhan_steppe: '/media/deploy-r1/op-04-1280.webp',
+  frontier_basin: '/media/deploy-r1/op-05-1280.webp',
   delta_crossing: '/media/deploy-r1/op-06-1280.webp',
 });
 
