@@ -2393,6 +2393,7 @@
   "deviceDiag.shadowSaver.aria": "COT Shadow Saver diagnostics",
   "deviceDiag.shadowSaver.collapseAria": "Collapse Shadow Saver",
   "docs.topic.navAria": "Technical manual sections",
+  "docs.topic.pagerAria": "Previous and next chapters",
   "docs.topic.onThisPage": "On this page",
   "docs.topic.pageTitle": "Claude of Tanks Technical Manual",
   "docs.group.play": "Play",
