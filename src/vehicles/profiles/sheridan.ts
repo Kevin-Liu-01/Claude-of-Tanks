@@ -684,20 +684,24 @@ function buildSheridanTtsUpgrade(P: SheridanBuilderPort) {
   ], 0.62), 14 * D2R), 0, 0, -1.30);
   P.addEquipment('turret', box(0.62, 0.33, 0.46), -0.48, 0.43, -1.66);
   P.addEquipment('turret', box(0.48, 0.27, 0.42), 0.42, 0.40, -1.68);
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the basket's floor rails ride at 0.28,
+  // 1.4 cm over the rear deck's crest (1.707) as the basket swings across it; at 0.23 they hung 4 cm into it, 3.3 cm
+  // already at rest. The uprights and diagonals span the shallower basket.
+  const floorY = 0.28, topY = 0.79, midY = (floorY + topY) / 2, postH = topY - floorY;
   for (const side of [-1, 1]) {
-    for (const y of [0.23, 0.79]) {
+    for (const y of [floorY, topY]) {
       P.add('turretDark', box(0.050, 0.050, 0.92), side * 1.19, y, -1.84);
     }
-    P.add('turretDark', box(0.045, 0.045, 1.03), side * 1.19, 0.51, -1.84,
-      side * 0.59, 0, 0);
-    P.add('turretDark', box(0.045, 0.56, 0.045), side * 1.19, 0.51, -1.43);
+    P.add('turretDark', box(0.045, 0.045, Math.hypot(0.92, postH) - 0.02), side * 1.19, midY, -1.84,
+      side * Math.atan2(postH, 0.92), 0, 0);
+    P.add('turretDark', box(0.045, postH, 0.045), side * 1.19, midY, -1.43);
   }
-  for (const y of [0.23, 0.79]) {
+  for (const y of [floorY, topY]) {
     P.add('turretDark', box(2.42, 0.050, 0.050), 0, y, -2.26);
   }
   for (const x of [-1.19, -0.595, 0, 0.595, 1.19]) {
-    P.add('turretDark', box(0.045, 0.56, 0.045), x, 0.51, -2.26);
-    P.add('turretDetail', box(0.045, 0.045, 0.84), x, 0.23, -1.84);
+    P.add('turretDark', box(0.045, postH, 0.045), x, midY, -2.26);
+    P.add('turretDetail', box(0.045, 0.045, 0.84), x, floorY, -1.84);
   }
   for (const z of [-1.55, -1.90, -2.25]) {
     P.add('turretDetail', box(2.38, 0.040, 0.040), 0, 0.79, z);
