@@ -222,10 +222,9 @@ assert.doesNotMatch(gallerySource, /GALLERY_SECTION_INFO\[['"]?label/,
   'gallery contextual help must not index help content by translated display text');
 
 const studioSource = fs.readFileSync(path.join(REPO, 'src/ui/studioPanel.ts'), 'utf8');
-assert.match(studioSource, /STUDIO_GROUP_INFO_KEYS\[infoId\]/,
-  'Studio group help must use stable ids instead of translated headings');
-assert.match(studioSource, /STUDIO_SECTION_INFO_KEYS\[infoId\]/,
-  'Studio section help must use stable ids instead of translated headings');
+// (247, less is more) the Studio's help-only info panels left, as the Gallery's did; the scene file keeps its JSON panel
+assert.doesNotMatch(studioSource, /studioPanel\.info\.group\./, 'no help panels on the Studio workspaces');
+assert.match(studioSource, /if \(id === 'output'\) h\.appendChild\(createInfoButton\(/, 'the scene file keeps its JSON panel, by its stable id');
 assert.doesNotMatch(studioSource, /STUDIO_(?:GROUP|SECTION)_INFO\[title\]/,
   'Studio contextual help must not index help content by translated display text');
 

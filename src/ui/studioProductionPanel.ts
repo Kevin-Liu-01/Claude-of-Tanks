@@ -35,7 +35,7 @@ const FLEET_RESULTS = 6;
 
 /** The Director's words: the catalogs' studio.director.ui.* (the Studio's demand-loaded slice). */
 type CopyKey = 'director' | 'scene' | 'actors' | 'effects' | 'timeline' | 'output' | 'library' | 'stage' | 'staging' |
-  'ready' | 'format' | 'landscape' | 'portrait' | 'square' | 'card' | 'subject' | 'defaultTank' | 'shotlist' | 'empty' |
+  'ready' | 'format' | 'landscape' | 'portrait' | 'square' | 'card' | 'subject' | 'defaultTank' | 'shotlist' |
   'camera' | 'hero' | 'track' | 'rear' | 'overhead' | 'detail' | 'lens' | 'wide' | 'natural' | 'tight' | 'guides' |
   'play' | 'pause' | 'restart' | 'scrub' | 'export' | 'photo' | 'video' | 'stop' | 'saved' | 'unsupported' |
   'workspace' | 'hide' | 'show' | 'takes' | 'takesLoading' | 'takesUnavailable' | 'takeLoading' | 'takeLoaded';
@@ -469,7 +469,6 @@ export function mountStudioProductionPanel(
     const signature = JSON.stringify(storyboard.shots.map((shot) => [shot.id, shot.label, shot.tMs]));
     if (signature !== shotSignature) {
       shotSignature = signature; shots.replaceChildren();
-      if (!storyboard.shots.length) shots.append(node('p', '', productionLabel('empty')));
       shotRuns(storyboard.shots, S.durationMs).forEach((run, index) => {
         const shot = run.first;
         const entry = button('', () => { S.pause(); S.seek(shot.tMs); S.selectCameraShot(shot.id); refreshAll(); }, 'production-shot');
