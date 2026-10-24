@@ -5,6 +5,7 @@ import {ALL_TANK_IDS} from './specs.ts';
 import {SECOND_WAVE_X_IDS} from './sourceXSecondWaveSpecs.ts';
 import {SUPPLIED_SOURCE_IDS} from './suppliedSourceFleetSpecs.ts';
 import {SURFACE_MARKING_STYLE,VEHICLE_MARKING_ANCHORS} from './vehicleMarkings.ts';
+import {renderedMarkingFootprints} from './markingFootprints.test-support.mjs';
 
 // 2026-10-01 (owner: retire frozen pins): the pinned count and sha256 of the 141 original c26b319 anchor
 // records (and the later-addition bookkeeping that isolated them) are gone. The live contract is that
@@ -27,21 +28,6 @@ for(const id of ALL_TANK_IDS)assert.ok(VEHICLE_MARKING_ANCHORS[id],`${id}: every
 // Owner 2026-09-21: XK2 now wears the current K1A1 turret and its marking seat.
 assert.deepEqual(VEHICLE_MARKING_ANCHORS.xk2_black_panther, VEHICLE_MARKING_ANCHORS.k1a1);
 
-function markingNodes(mesh) {
-  const p=mesh.geometry.attributes.position,index=mesh.geometry.index,nodes=new Map();
-  for(let offset=0;offset<(index?.count??p.count);offset+=3) {
-    const triangle=[0,1,2].map(j=>new THREE.Vector3()
-      .fromBufferAttribute(p,index?index.getX(offset+j):offset+j).applyMatrix4(mesh.matrixWorld));
-    const normal=new THREE.Triangle(...triangle).getNormal(new THREE.Vector3());
-    const keys=triangle.map(point=>point.toArray().map(v=>v.toFixed(8)).join(','));
-    for(let j=0;j<3;j++) {
-      if(!nodes.has(keys[j]))nodes.set(keys[j],{point:triangle[j],normal,neighbors:new Set()});
-      for(const key of keys)nodes.get(keys[j]).neighbors.add(key);
-    }
-  }
-  return nodes;
-}
-
 function footprintOwner(mesh) {
   for(let node=mesh;node;node=node.parent) {
     if(node.name==='rig_hull')return'hull';
@@ -50,25 +36,18 @@ function footprintOwner(mesh) {
   assert.fail('actual marking buffer has no hull/turret owner');
 }
 
+// 2026-10-23 (lane 243): markings are films cut to the armour under their seats (markingFilm.ts), so a footprint is no
+// longer a quad's four corners. Each draw records its seats' footprints (low detail's batch included);
+// renderedMarkingFootprints holds the rendered paint to them: every painted triangle inside one, each mostly painted
+// (the 23 second-wave seats carry paint over most of their footprints; plate edges and hatch rims cut the rest).
+const MIN_PAINT_COVERAGE=.75;
 function connectedFootprints(mesh) {
-  const nodes=markingNodes(mesh),pending=new Set(nodes.keys()),footprints=[];
-  while(pending.size) {
-    const seed=pending.values().next().value,stack=[seed],points=[];
-    while(stack.length) {
-      const key=stack.pop();
-      if(!pending.delete(key))continue;
-      const vertex=nodes.get(key);points.push(vertex.point);stack.push(...vertex.neighbors);
-    }
-    assert.equal(points.length,4,'each actual connected paint buffer has four corners');
-    const center=points.reduce((sum,point)=>sum.add(point),new THREE.Vector3()).multiplyScalar(.25);
-    const adjacent=points.slice(1).sort((a,b)=>a.distanceToSquared(points[0])-b.distanceToSquared(points[0]));
-    const u=adjacent[0].clone().sub(points[0]),v=adjacent[1].clone().sub(points[0]);
+  return renderedMarkingFootprints(mesh,{minCoverage:MIN_PAINT_COVERAGE}).map(({center,u,v,normal})=>{
     assert.ok(Math.abs(u.dot(v))<1e-7,'actual marking retains perpendicular edges');
     assert.ok(Math.min(u.length(),v.length())>=SURFACE_MARKING_STYLE.minimumReadableSizeM-1e-6,
       'the actual high/low quad remains readable, not a tiny success marker');
-    footprints.push({center,u,v,normal:nodes.get(seed).normal,owner:footprintOwner(mesh)});
-  }
-  return footprints;
+    return {center,u,v,normal,owner:footprintOwner(mesh)};
+  });
 }
 
 function markingMeshes(tank) {

@@ -713,17 +713,15 @@ body[data-cot-height='short'] .cot-trans .meter{margin-top:17px}
 body[data-cot-width] .cot-resume{
   box-sizing:border-box;padding:var(--cot-edge);text-align:center;
 }
-body[data-cot-width] .cot-resume .rz-title,
-body[data-cot-width] .cot-resume .rz-sub{
-  box-sizing:border-box;width:min(680px,100%);max-width:100%;overflow-wrap:anywhere;line-height:1.25;
-}
+body[data-cot-width] .cot-resume .rz-plate{box-sizing:border-box;max-width:100%}
+body[data-cot-width] .cot-resume .rz-title{max-width:100%;overflow-wrap:anywhere;line-height:1.1}
+body[data-cot-width='compact'] .cot-resume .rz-plate,
+body[data-cot-width='phone'] .cot-resume .rz-plate{width:100%;padding:var(--s5) var(--s4);gap:var(--s4)}
 body[data-cot-width='compact'] .cot-resume .rz-title,
-body[data-cot-width='phone'] .cot-resume .rz-title{
-  font-size:clamp(17px,5.8vw,22px);letter-spacing:.18em;text-indent:.18em;
-}
-body[data-cot-width='compact'] .cot-resume .rz-sub,
-body[data-cot-width='phone'] .cot-resume .rz-sub{font-size:11px;letter-spacing:.05em;text-indent:.12em}
-body[data-cot-height='short'] .cot-resume{gap:8px}
+body[data-cot-width='phone'] .cot-resume .rz-title{font-size:var(--fs-24)}
+body[data-cot-width='phone'] .cot-resume .rz-actions{display:grid;grid-template-columns:1fr;justify-self:stretch;width:100%}
+body[data-cot-width='phone'] .cot-resume .rz-actions>.cot-c-btn{width:100%}
+body[data-cot-height='short'] .cot-resume .rz-plate{padding:var(--s4) var(--s5);gap:var(--s3)}
 
 body[data-cot-width] .cot-hints{
   box-sizing:border-box;max-width:calc(100vw - (var(--cot-edge) * 2));justify-content:center;
@@ -732,11 +730,11 @@ body[data-cot-width] .cot-hints{
 body[data-cot-width] .cot-hints .hg{white-space:nowrap}
 body[data-cot-width='compact'] .cot-hints,
 body[data-cot-width='phone'] .cot-hints{
-  bottom:max(10px,env(safe-area-inset-bottom));gap:5px 9px;padding:6px 9px;
+  gap:var(--s2) var(--s3);padding:6px 9px;
   font-size:11px;letter-spacing:.01em;
 }
 body[data-cot-width='compact'] .cot-hints kbd,
-body[data-cot-width='phone'] .cot-hints kbd{font-size:11px;padding:1px 4px;line-height:12px}
+body[data-cot-width='phone'] .cot-hints kbd{min-width:20px;height:20px;padding:0 4px;font-size:11px}
 body[data-cot-height='short'] .cot-hints{display:none!important}
 body[data-cot-panels='overlay']>.cot-gear{
   top:max(12px,calc(env(safe-area-inset-top) + 8px));right:max(12px,calc(env(safe-area-inset-right) + 8px));

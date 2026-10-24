@@ -54,7 +54,11 @@ assert.match(access, /if \(!input\.isTouchLayout\(\)\) return autoAim \? Promise
 assert.match(hud, /jumpHint.innerHTML = `[^`]*uiIconSVG\('rocket', 18\)[^`]*system-status/, 'jump has its rocket, keycap and status');
 assert.match(hud, /setControlsJumpMode\(isJumpMode\(ruleset\)\)/, 'only jump rulesets expose the control');
 assert.match(hud, /function setControlsJumpMode\(on:boolean\):void\{\n\s*jumpHint\.classList\.toggle\('on',on\);/, 'the jump flag shows the control');
-assert.match(hud, /jumpHint.addEventListener\('pointerdown',[^\n]*bus.emit\('ui:selfRight',\{\}\)/, 'the shared control fires the real jump edge');
+// the shared control fires the real jump edge through the HUD's one binder (bindControl: a mouse press acts on its
+// pointerdown, a touch tap on its release inside the slop; raw hold handlers trip the a11y census)
+assert.match(hud, /bindControl\(jumpHint, \(\) => bus\.emit\('ui:selfRight', \{\}\)\)/, 'the shared control fires the real jump edge');
+assert.match(hud, /const bindControl = \(button: HTMLButtonElement, act: \(\) => void\): void => \{[\s\S]*?button\.addEventListener\('pointerdown', \(event\) => \{[\s\S]*?if \(event\.pointerType === 'mouse'\) \{ act\(\); return; \}/,
+  'a mouse press on the control acts on its pointerdown, the same edge as the F key');
 assert.match(hud, /bus.emit\('ui:jumpAvailable', \{ on: false \}\)/, 'the legacy touch button stays hidden to avoid duplicate controls');
 const touch = read('../ui/touchControls.ts');
 assert.match(touch, /<button class="round jump" type="button" aria-label="\$\{t\('touch\.jumpAria'\)\}" hidden>\$\{ROCKET\}/, 'a hidden rocket button waits in the touch layer');

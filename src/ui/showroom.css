@@ -172,12 +172,17 @@ body[data-cot-panels='persistent'][data-cot-width] .cot-garage>.cot-featured{pos
   bottom:calc(var(--edge) + var(--battle-h) + var(--s3));width:var(--col-w);height:var(--take-h);}
 body[data-cot-panels='persistent'] .cot-garage>.cot-featured .fshot{height:var(--take-h);}
 body[data-cot-panels='overlay'] .cot-garage>.cot-featured{display:none;}
-@media (max-height:1199px){body[data-cot-panels='persistent'] .cot-garage>.cot-featured{display:none;}}
-@media (min-height:1200px){body[data-cot-panels='persistent'][data-cot-width='desktop'] .cot-garage .stats{
+/* the take needs a readout that keeps its full plates beside it: 1200 px, above the tall band's 900 px edge, so it stays a
+   height query */
+@media (height < 1200px){body[data-cot-panels='persistent'] .cot-garage>.cot-featured{display:none;}}
+@media (height >= 1200px){body[data-cot-panels='persistent'][data-cot-width='desktop'] .cot-garage .stats{
   bottom:calc(var(--edge) + var(--battle-h) + var(--take-h) + 2 * var(--s3));}}
 
 /* ---- the lower third: the name on the floor in front of the tank, its identity, then the band ---- */
 .cot-lt-head{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3);max-width:100%;}
+/* the band fits its own space: the lower third is its query container (its width is set by its edges, never its words), so
+   the band's trims follow the room it has rather than a device width */
+.cot-lower-third{container:lt / inline-size;}
 .cot-lt-name,.cot-lt-id{width:fit-content;max-width:100%;}
 body[data-cot-panels='persistent'][data-cot-width] .cot-lower-third{position:absolute;display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3);
   left:var(--edge);right:calc(var(--fleet-right) + var(--s4));bottom:var(--band-bottom);pointer-events:none;}
@@ -216,8 +221,9 @@ body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-lt-id{font-si
 .cot-lt-paint-all[aria-expanded='true']{box-shadow:var(--ring-accent);color:var(--accent);}
 .cot-lt-acts{display:flex;}
 .cot-garage.vehicle-locked :is(.cot-lt-paint,.cot-lt-loadout){pointer-events:none;opacity:.42;}
-/* a narrow docked window keeps what the tank wears and every paint, and the acts close up */
-@media (max-width:1279px){
+/* a narrow docked band (under 760 px: a window under about 1180 px) keeps what the tank wears and every paint, and the acts
+   close up */
+@container lt (width < 760px){
   body[data-cot-panels='persistent'] .cot-lt-swatch:not(.is-on){display:none;}
   body[data-cot-panels='persistent'] .cot-lt-band .cot-c-btn{--h:44px;}
   body[data-cot-panels='persistent'] .cot-garage .cot-lt-loadout .eqslot{width:60px;}
@@ -240,7 +246,8 @@ body[data-cot-panels='persistent'] .cot-country-chips{grid-column:4;justify-cont
 body[data-cot-panels='persistent'] .cot-country-edge.next{grid-column:5;}
 body[data-cot-panels='persistent'][data-cot-width] .cot-carousel{left:var(--edge);right:var(--fleet-right);bottom:var(--edge);
   height:var(--card-h);transform:none;max-width:none;}
-@media (max-width:1279px){body[data-cot-panels='persistent'] .cot-roster-search{width:160px;}}
+body[data-cot-panels='persistent'] .cot-country-rail{container:rail / inline-size;}
+@container rail (width < 900px){body[data-cot-panels='persistent'] .cot-roster-search{width:160px;}}
 .cot-roster-search{display:flex;align-items:center;gap:var(--s2);width:220px;height:var(--btn-h-m);margin-right:var(--s2);
   padding:0 var(--s2) 0 var(--s3);border:1px solid var(--line-2);border-radius:var(--control-radius);
   background:var(--plate-fill);color:var(--ink-3);cursor:text;}
@@ -268,7 +275,9 @@ body[data-cot-panels='persistent'] .cot-battle-mode .sum-pic{display:block;posit
 body[data-cot-panels='persistent'] .cot-battle-mode>:not(.sum-pic){position:relative;}
 body[data-cot-panels='persistent'] .cot-battle-mode .sum-pic::after{content:'';position:absolute;inset:0;
   background:linear-gradient(180deg,transparent 30%,var(--glyph-plate));}
-.cot-battle-mode .sum-pic .random-map-mosaic{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);gap:1px;}
+/* Random's four battlefields: one row of four on the wide card, two by two in a phone's small picture; no empty cell */
+.cot-battle-mode .sum-pic .random-map-mosaic{position:absolute;inset:0;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;}
+body[data-cot-panels='overlay'] .cot-battle-mode .sum-pic .random-map-mosaic{grid-template:repeat(2,1fr)/repeat(2,1fr);}
 .cot-battle-mode .sum-pic .random-map-tile{background:center/cover no-repeat;}
 body[data-cot-panels='persistent'] .cot-battle-mode .sum-map{grid-column:1/-1;grid-row:2;min-width:0;overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap;opacity:1;color:var(--ink-1);font:600 var(--fs-18)/1.1 var(--font-display);letter-spacing:var(--track-label-s);
@@ -387,8 +396,8 @@ body[data-cot-panels='overlay'] .cot-lt-swatch{width:44px;}
 body[data-cot-panels='overlay'] .cot-lt-swatch.is-on{flex:1 1 0;width:auto;min-width:44px;max-width:112px;}
 body[data-cot-panels='overlay'] .cot-lt-swatch .nm{display:none;}
 body[data-cot-panels='overlay'] .cot-lt-swatch:nth-child(n+3):not(.cot-lt-paint-all){display:none;}
-/* a folded tablet has the room for wider slots, the third quick paint and the worn paint's name */
-@media (min-width:600px){
+/* a folded tablet's band has the room for wider slots, the third quick paint and the worn paint's name */
+@container lt (width >= 560px){
   body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-lt-loadout .eqslot{width:72px;}
   body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lt-swatch:is(:nth-child(3),:nth-child(4)):not(.cot-lt-paint-all){display:block;}
   body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lt-swatch.is-on .nm{display:block;}
@@ -421,19 +430,21 @@ body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-battle-co
 body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-multiplayer-entry{display:none;}
 body[data-cot-panels='overlay'][data-cot-orientation='landscape'][data-cot-width] :is(.cot-country-rail,.cot-carousel){right:var(--cot-fleet-right);}
 body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-head{height:var(--cot-name-h);}
-/* on its side the column is narrow: square slots, the worn paint, one more (two from 760 px) and every paint */
+/* on its side the column is narrow: square slots, the worn paint, one more (two once the column reaches 350 px) and every
+   paint */
 body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage .cot-lt-loadout .eqslot{width:var(--slot);}
 body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-paint-all{--h:44px;width:44px;}
-@media (min-width:760px){
+@container lt (width >= 350px){
   body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-swatch:nth-child(3):not(.cot-lt-paint-all){display:block;}
 }
-@media (max-width:759px){
+@container lt (width < 350px){
   body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-band{gap:var(--s1);}
   body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-band>*+*{padding-left:var(--s1);}
 }
 /* a very short window on its side (a browser bar over a phone, the 240 px minimum) closes the column up: a smaller name,
-   44 px slots, three figures without their scales and a lower battle card */
-@media (max-height:340px){
+   44 px slots, three figures without their scales and a lower battle card. No band or density edge falls between this
+   column's 340 px floor and the 430 px tight density (844 x 390 keeps its six figures), so it stays a height query. */
+@media (height <= 340px){
   body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-garage{--slot:44px;--cot-figures-h:44px;--cot-name-h:22px;
     --cot-col-gap:var(--s1);--cot-battle-h:48px;--cot-col-top:max(56px,calc(env(safe-area-inset-top,0px) + 50px));}
   body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-name{font-size:var(--fs-18);}
@@ -444,18 +455,18 @@ body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-paint-
   /* the acts lie in a row at the stage's top right, clear of the fleet's tools under them */
   body[data-cot-panels='overlay'][data-cot-orientation='landscape'] .cot-lt-acts{flex-direction:row;}
 }
-/* a narrow phone (under 360 px) narrows its slots to the touch floor */
-@media (max-width:359px){
+/* a narrow phone's band (under 340 px: a phone under 360 px) narrows its slots to the touch floor */
+@container lt (width < 340px){
   body[data-cot-panels='overlay'] .cot-garage .cot-lt-loadout .eqslot{width:44px;}
   body[data-cot-panels='overlay'] .cot-lt-band{gap:var(--s1);}
   body[data-cot-panels='overlay'] .cot-lt-band>*+*{padding-left:var(--s1);}
 }
-/* a short phone held upright (under 640 px) closes its stack up so the tank keeps a stage */
-@media (max-height:640px){
-  body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage{--cot-dock-h:52px;--cot-figures-h:48px;--slot:44px;--cot-stack-gap:6px;}
-  body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .stats .cot-hrow .cot-c-scale{display:none;}
-  body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lt-name{font-size:var(--fs-20);}
-}
+/* a short phone held upright (the short and compact height bands, under 720 px) closes its stack up so the tank keeps a
+   stage */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:is([data-cot-height='short'],[data-cot-height='compact']) .cot-garage{
+  --cot-dock-h:52px;--cot-figures-h:48px;--slot:44px;--cot-stack-gap:6px;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:is([data-cot-height='short'],[data-cot-height='compact']) .cot-garage .stats .cot-hrow .cot-c-scale{display:none;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait']:is([data-cot-height='short'],[data-cot-height='compact']) .cot-lt-name{font-size:var(--fs-20);}
 /* the every-nation chip (the direction's All): its word where a nation shows its flag */
 .cot-country-all .lbl{font:600 var(--fs-13)/1 var(--font-display);color:var(--ink-1);}
 }

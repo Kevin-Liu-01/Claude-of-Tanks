@@ -19,9 +19,9 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 /** The public entries that share the bar (the seventeen pages of brand-ui SPEC 12.3.1, and the missing page, 12.3.4). */
 export const PUBLIC_SHELL_ENTRIES = Object.freeze([
   'site/home.html', '404.html', 'site/gallery.html', 'site/docs.html', 'site/docs-topic.html',
-  'site/docs-build.html', 'site/docs-models.html', 'site/docs-simulation.html', 'site/docs-vehicles.html',
-  'site/docs-rendering.html', 'site/docs-performance.html', 'site/docs-worlds.html', 'site/docs-ai.html',
-  'site/docs-multiplayer.html', 'site/docs-audio.html', 'site/docs-interface.html', 'site/docs-studio.html',
+  'site/docs-build.html', 'site/docs-models.html', 'site/docs-simulation.html',
+  'site/docs-rendering.html', 'site/docs-ai.html',
+  'site/docs-multiplayer.html', 'site/docs-audio.html', 'site/docs-studio.html',
   'site/docs-filming.html',
   'site/docs-modes.html',
   'site/docs-battlefields.html',

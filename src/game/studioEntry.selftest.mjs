@@ -10,14 +10,14 @@ import { createGaragePhasePresentationRuntime } from './garagePhasePresentationR
 // of setSunTrim alone cannot reproduce first-use Studio with no world.
 const source = ts.createSourceFile('studio.ts',
   readFileSync(new URL('./studio.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
-const names = new Set(['enter', 'doEnter', 'doExit']);
+const names = new Set(['enter', 'doEnter', 'doExit', 'withStage']);
 const functions = [];
 function visit(node) {
   if (ts.isFunctionDeclaration(node) && names.has(node.name?.text)) functions.push(node.getText(source));
   ts.forEachChild(node, visit);
 }
 visit(source);
-assert.equal(functions.length, 3);
+assert.equal(functions.length, 4);
 
 const noop = () => {};
 async function scenario({ directBoot, priorWorld = null, fail = false, time = 'day' }) {
@@ -49,7 +49,9 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     timeOfDay: time,
     studioLight: null, // media r5: the scene's sun override, forwarded with the time
     ctx: { prepareStudioAtmosphere: async (selected) => calls.push(['atmosphere', selected]) },
-    window: { __GAME_READY: !directBoot }, game, camera,
+    // the rest of the fleet warms when the Studio is up, never inside the entry (247)
+    window: { __GAME_READY: !directBoot, requestIdleCallback: (callback) => { calls.push('idle'); callback(); } }, game, camera,
+    warmFleet: () => { calls.push('fleet-warm'); return Promise.resolve(); },
     resolveMapId: (id) => id, urlParam: () => null, getMapConfig: (id) => ({ name: id }),
     post: { resetAdaptiveResolution: noop, render: () => calls.push('covered-frame') },
     garage: { hide: noop }, showroom: { stop: noop }, hud: null,
@@ -60,7 +62,8 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     getWorld: () => world, actors: [], _v1: new THREE.Vector3(), _v2: new THREE.Vector3(),
     cam: { fov: 50, roll: 0, orbit: { target: new THREE.Vector3(), dist: 0 } }, lookAt: noop,
     lighting: { updateFrustums: noop, update: noop }, invalidate: noop,
-    panel: { show: noop, hide: () => calls.push('panel-hidden'), setBusy: noop, refreshAll: noop },
+    panel: { show: () => calls.push('panel-shown'), hide: () => calls.push('panel-hidden'), setBusy: noop, refreshAll: noop,
+      setStage: (stage) => calls.push(stage ? 'stage-on' : 'stage-off'), setStageProgress: noop },
     transition: { run: async (work) => { calls.push('transition'); return work(noop); } },
     syncRoute: noop, docBrand: noop, marker: { group: { visible: true } }, keys: new Set(),
     clearActors: () => calls.push('actors-cleared'), shells: [], effectLog: [], activeEffectIds: new Set(),
@@ -106,6 +109,16 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
   assert.deepEqual(calls[sunIndex - 1], ['atmosphere', time],
     'the selected atmosphere is prepared after world activation and before restoring its sun');
   assert.equal(calls.includes('covered-frame'), directBoot);
+  // shell-first (247): an F8 entry shows the Studio's own panels at once over the battlefield's stage, which clears once
+  // the world is in; a direct boot stays under the boot veil
+  assert.equal(calls.includes('stage-on'), !directBoot);
+  if (!directBoot) {
+    assert.ok(calls.indexOf('stage-on') < calls.indexOf('panel-shown') && calls.indexOf('panel-shown') < calls.indexOf('world-activated'),
+      'the panels show before the battlefield is in');
+    assert.ok(calls.indexOf('stage-off') > calls.indexOf('world-activated'), 'the stage clears after the battlefield is in');
+  }
+  assert.equal(calls.filter((entry) => entry === 'fleet-warm').length, 1, 'the fleet warms once');
+  assert.ok(calls.indexOf('fleet-warm') > calls.indexOf('picture-applied'), 'the fleet warms after the entry, never inside it');
   assert.ok(calls.indexOf('picture-applied') > calls.indexOf('world-activated'),
     'a picture set before entry applies once the Studio owns the frame');
   await studio.doExit();

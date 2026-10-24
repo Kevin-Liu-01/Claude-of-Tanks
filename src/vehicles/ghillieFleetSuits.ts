@@ -538,6 +538,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   t90am: {
     id: 't90am', seed: 9004, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 0.72,
+    // 245: under its measured curve (turretScaleGunPitch.ts) the front deck's net lay 10.9 mm under the barrel at yaw 37
+    clothClearsGunStops: true,
     turret: {
       top: [laid({ x0: -1.87, x1: 1.87, z0: -3.55, z1: 1.40, nx: 47, nz: 62, y: 0.94,
         holes: [rect(0.50, 1.10, 0.45, 1.25), rect(0.08, 0.62, 0.40, 0.90)], garnishRiseM: 0.16, seed: 11 })],
@@ -546,7 +548,10 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
     },
     hull: {
       top: [
-        laid({ x0: -1.80, x1: 1.80, z0: -3.85, z1: 0.14, nx: 36, nz: 40, y: 1.60, holes: [rect(-1.95, -1.40, -3.50, -2.20)], garnishRiseM: 0.14, seed: 31 }),
+        // 245: the engine deck's centre lane carries no garnish under the gun turned aft, whose curve dips to -0.5 degrees
+        // at yaw 180 (its leaves stood 19.3 mm under the barrel there)
+        laid({ x0: -1.80, x1: 1.80, z0: -3.85, z1: 0.14, nx: 36, nz: 40, y: 1.60, holes: [rect(-1.95, -1.40, -3.50, -2.20)], garnishRiseM: 0.14, seed: 31,
+          foliageExclude: [rect(-0.40, 0.40, -3.95, -1.20)] }),
         laid({ x0: -1.80, x1: 1.80, z0: 0.14, z1: 3.70, nx: 36, nz: 36, y: 1.55, garnishRiseM: 0.08, garnishDensity: 0.8, seed: 37 }),
       ],
       side: skirts(-3.05, 3.35, 1.52, 0.48, 1.95, 41, (side) => (side < 0 ? [cut(-3.50, -2.20, 1.00, 1.90)] : [])),
@@ -647,6 +652,8 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   m1a2_abrams_tusk: {
     id: 'm1a2_abrams_tusk', seed: 1305, style: 'leafy', ...DENSE, ...WOODLAND, ...M1A2_X_OPEN_NET,
     fieldClearanceM: 0.03, maxHalfWidth: 2.22, hemFloorM: 0.7,
+    // 245: the hull net lay 22 mm under the barrel at its -9.6 degree stop over the deck at yaw 124
+    clothClearsGunStops: true,
     turret: {
       top: [laid({ x0: -1.82, x1: 1.70, z0: -3.15, z1: 1.62, nx: 44, nz: 60, y: 0.92, garnishRiseM: 0.16, seed: 11 })],
       side: flanks(-2.45, -0.10, 0.90, 0.46, 1.70, 17),

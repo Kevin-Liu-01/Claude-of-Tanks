@@ -9,7 +9,7 @@
       },
       "capture_the_flag": {
         "en-US": "Capture the Flag", "zh-CN": "夺旗战",
-        "keys": ["playMenu.matchMode.capture_the_flag.label", "garage.battle.ctfLabel", "docs.reference.ctf", "docs.guide.simulation.2.t"],
+        "keys": ["playMenu.matchMode.capture_the_flag.label", "garage.battle.ctfLabel", "docs.reference.ctf"],
         "short": { "en-US": "CTF", "zh-CN": "夺旗", "keys": ["playMenu.matchMode.capture_the_flag.short"] }
       },
       "zone_control": {
@@ -19,7 +19,7 @@
       },
       "turbo_ball": {
         "en-US": "Turbo Ball", "zh-CN": "极速球",
-        "keys": ["playMenu.matchMode.turbo_ball.label", "garage.battle.ballLabel", "docs.reference.ball", "docs.guide.simulation.4.t"],
+        "keys": ["playMenu.matchMode.turbo_ball.label", "garage.battle.ballLabel", "docs.reference.ball"],
         "short": { "en-US": "Turbo", "zh-CN": "极速", "keys": ["playMenu.matchMode.turbo_ball.short"] }
       },
       "endless_horde": {

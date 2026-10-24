@@ -173,7 +173,7 @@ guidance, suspension, ammunition, anatomy, and control behavior while remaining 
 <td width="50%"><img src="public/media/site50-r14/stills/s19-roof-tiles.webp" alt="Roof tiles rain down as a PL-01 fires up the street"><br><sub><b>Shared world kit:</b> destructible buildings, camps, wreck families, debris, utility lines, loose physical props, and narrow hitboxes.</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="public/media/showcase-r2/11_gallery_hero.webp" alt="Current Tank Gallery showing a T-90M Proryv and technical dossier"><br><sub><b>Tank Gallery:</b> search 220 production vehicles, orbit and articulate the current vehicle rig, inspect armor, modules, and crew, and export exact-surface review packets.</sub></td>
+<td width="50%"><img src="public/media/showcase-r2/11_gallery_hero.webp" alt="Current Tank Gallery showing a T-90M Proryv and technical dossier"><br><sub><b>Tank Gallery:</b> search 221 production vehicles, orbit and articulate the current vehicle rig, inspect armor, modules, and crew, and export exact-surface review packets.</sub></td>
 <td width="50%"><img src="public/media/presentation-r1/ui_tank_closeup_modern.webp" alt="Close inspection of a first-party procedural modern tank"><br><sub><b>Shared vehicle specification:</b> geometry, armor, modules, gun limits, ammunition, mobility, garage cards, bots, icons, diagrams, Gallery, and Studio.</sub></td>
 </tr>
 </table>

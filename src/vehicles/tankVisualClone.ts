@@ -157,6 +157,7 @@ export function cloneTankVisual(source: TankVisual, engineContext: RuntimeValue,
     // the render hooks every finished mesh carries: its coplanar depth layer, then the ground reference around it
     const depthLayers = record.depthLayers.map((layer) => ({
       object: object(layer.object), materials: layer.materials.map((material) => copy.material(material)), layer: layer.layer,
+      depth: layer.depth, ties: layer.ties,
     }));
     installCoplanarDepthLayers(root, depthLayers);
     installVehicleGroundReference(root);

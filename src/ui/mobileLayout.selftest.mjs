@@ -5,7 +5,7 @@ import { viewportQueryViolations } from './viewportQueries.test-support.mjs';
 
 const [
   garageSource, touch, battleLoad, hud, shotInfo, playMenu, settings, publicNav, responsiveSurfaces, input,
-  transition, perfHud, deviceDiag, renderer, main, pointerLockFeedback, gallery, docs,
+  transition, perfHud, deviceDiag, renderer, main, pointerLockFeedback, gallery, docs, battleHudLayoutCss,
 ] = await Promise.all([
   readFile(new URL('./garage.ts', import.meta.url), 'utf8'),
   readFile(new URL('./touchControls.ts', import.meta.url), 'utf8'),
@@ -25,19 +25,29 @@ const [
   readFile(new URL('../game/pointerLockFeedbackRuntime.ts', import.meta.url), 'utf8'),
   readFile(new URL('../gallery/gallery.css', import.meta.url), 'utf8'),
   readFile(new URL('../docs/docs.css', import.meta.url), 'utf8'),
+  readFile(new URL('./battleHudLayout.css', import.meta.url), 'utf8'),
 ]);
 const garage = `${garageSource}\n${await readFile(new URL('./garage.css', import.meta.url), 'utf8')}`;
 
-assert.match(responsiveSurfaces,
-  /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-prebattle\{\s*top:max\(255px,30%\);transform:translateX\(-50%\);/,
-  'portrait countdown labels must clear the initial minimap and room-chat controls');
+// owner 2026-10-21 (8339df05b1): the countdown sits on the centre line, a dial over the crosshair; a touch layout seats it
+// from the touch notice planner (touchNoticePlan.ts placeCountdown), clear of the initial minimap, the room chat and the
+// controls, where a fixed portrait seat (top:max(255px,30%)) once kept it off them
+assert.match(battleHudLayoutCss,
+  /\.cot-touch-layout\[data-touch-notices\] \.cot-prebattle\{top:var\(--hud-touch-countdown-top\);/,
+  'a touch countdown takes the touch notice planner\'s seat');
+assert.doesNotMatch(responsiveSurfaces, /\.cot-prebattle\{\s*top:max\(255px,30%\)/,
+  'no fixed portrait countdown seat outlives the planner');
 
 assert.doesNotMatch(garage, /@media \((?:min|max)-width:\d+px\)/,
   'Garage composition must not retain independent device-width breakpoint logic');
 assert.doesNotMatch(garage, /@media \([^)]*orientation:/,
   'Garage composition must consume semantic orientation attributes instead of media-query guesses');
-assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-header-nav \.nav-label\{display:none\}/,
-  'laptop navigation must collapse through the shared width-band contract');
+// The laptop bar keeps its destinations labelled and folds GitHub, the locale and Record to glyphs, all through the width
+// band (36af9d7638 kept the labels; the 246 pass moved its sub-1280 fold onto the band itself).
+assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-header-nav :is\(\.cot-github,\.cot-locale-switcher,\.cot-record-trigger\) \.nav-label\{display:none\}/,
+  'laptop navigation folds GitHub, the locale and Record through the shared width-band contract');
+assert.doesNotMatch(garage, /body\[data-cot-width='laptop'\] \.cot-header-nav \.nav-label\{display:none\}/,
+  'laptop navigation keeps Garage, Deploy, Gallery, Studio and Docs labelled');
 assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-featured\{display:none\}/,
   'laptop garages must hide the decorative Battle Gallery instead of crowding the vehicle stage');
 // The 245 redesign: the band under the name carries the slots and the paint in every layout (every paint opens its
@@ -57,9 +67,10 @@ assert.match(garage,
 assert.match(garage,
   /function refreshBattlefield\(\): void[\s\S]*selected\.thumb[\s\S]*backgroundImage[\s\S]*function refreshBandPaint\(spec: GarageTankSpec, selectedPatternId: string\): void[\s\S]*paintBandSwatch\(canvas, spec,/,
   'the battle card renders the selected map art and the band paints what the tank wears and its quick paints');
-assert.match(garage,
-  /class="cot-compact-equipment-trigger"[\s\S]*data-garage-panel="equipment"[\s\S]*aria-controls="cot-garage-dossier"[\s\S]*data-garage-panel='equipment'\] \.stats>\.cot-loadout-section\{[\s\S]*display:block/,
-  'compact garages must expose the real tank loadout slots through an accessible equipment drawer');
+assert.match(garage, /loadoutEl\.innerHTML = equipmentSlots\(eqIds\);/, 'every layout keeps the real loadout slots in the band');
+assert.match(garage, /<button type="button" class="eqslot" data-slot="\$\{index\}"/, 'each slot is a native, keyboard-operable button');
+assert.match(garage, /class="cot-overview-more" data-garage-panel="equipment" aria-expanded="false" aria-controls="cot-garage-dossier"/,
+  'the folded figures open the whole dossier through an accessible control');
 assert.match(garage,
   /data-cot-panels='overlay'\] \.cot-eqpick\.open\{[\s\S]*left:max\(var\(--cot-overlay-edge\)[\s\S]*right:max\(var\(--cot-overlay-edge\)[\s\S]*bottom:max\(8px,env\(safe-area-inset-bottom\)\)/,
   'the compact equipment picker must stay inside the usable viewport');
@@ -73,17 +84,16 @@ assert.match(garage,
   /body\[data-cot-panels='overlay'\] \.cot-leftcol\{display:none\}[\s\S]*body\[data-cot-panels='overlay'\] \.cot-garage \.stats\{[\s\S]*display:block;z-index:8;right:max\(var\(--cot-overlay-edge\),env\(safe-area-inset-right\)\)[\s\S]*\.cot-performance-grid>\.srow:nth-child\(n\+5\)\{display:none\}/,
   'compact layouts must keep a four-item vehicle summary fixed to the right');
 assert.match(garage,
-  /--cot-compact-stats-width:clamp\(196px,22vw,230px\)[\s\S]*container:garage-dossier \/ inline-size[\s\S]*stats>:is\(\.cot-technical-section,\.cot-performance-section,\.cot-loadout-section\)\{display:block\}/,
-  'tablet overlays must render one legible dossier with identity, loadout, and combat stats');
+  /--cot-compact-stats-width:clamp\(196px,22vw,230px\)[\s\S]*container:garage-dossier \/ inline-size[\s\S]*stats>:is\(\.cot-technical-section,\.cot-performance-section\)\{display:block\}/,
+  'tablet overlays must render one legible dossier with identity and combat stats (the loadout stays in the band)');
 assert.match(garage,
   /data-cot-width='tablet'\]\[data-cot-panels='overlay'\] \.cot-header-nav \.cot-github\{\s*width:78px;min-width:78px[\s\S]*data-cot-width='compact'\]\[data-cot-panels='overlay'\] \.cot-nav \.github-stars,[\s\S]*min-width:24px;height:14px/,
   'repository stars must retain a readable inline slot on tablets and a bounded badge on tighter headers');
 assert.match(garage,
   /@container garage-dossier \(max-width:205px\)\{[\s\S]*\.cot-performance-grid\{grid-template-columns:1fr\}[\s\S]*data-cot-height='short'[\s\S]*\.cot-performance-grid\{\s*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/,
   'narrow tablet dossiers must switch to readable stat rows while short landscape retains its 2x2 summary');
-assert.match(garage,
-  /data-cot-width='phone'\]\[data-cot-orientation='portrait'\][\s\S]*\.cot-garage:not\(\[data-garage-panel='equipment'\]\) \.stats>\.cot-loadout-section\{\s*display:none[\s\S]*data-cot-height='short'[\s\S]*\.cot-garage:not\(\[data-garage-panel='equipment'\]\) \.stats>\.cot-loadout-section\{\s*display:none/,
-  'only true phone and short-landscape rails may collapse loadout slots behind the equipment trigger');
+assert.doesNotMatch(garage, /cot-loadout-section/,
+  'no layout collapses the loadout slots behind a trigger: the band shows them everywhere');
 assert.match(garage,
   /\.cot-garage \.stats\.has-scroll-mask\{[\s\S]*mask-image:linear-gradient\(180deg,transparent 0,[\s\S]*var\(--cot-dossier-head-fade,0px\)[\s\S]*var\(--cot-dossier-tail-fade,0px\)[\s\S]*transparent 100%\)/,
   'the dossier must fade scrolled cards into the garage at both viewport edges instead of clipping them');
@@ -106,7 +116,7 @@ assert.match(garage,
   /const openMobileNavigation = \(\) => \{[\s\S]*closeBattleMenu\(\);[\s\S]*setGaragePanel\(''\);/,
   'page navigation must close garage disclosures instead of stacking over them');
 assert.match(garage,
-  /function openBattleMenu\(\) \{[\s\S]*closeMobileNavigation\(\);[\s\S]*setGaragePanel\(''\);/,
+  /function openBattleMenu\(\)(?:: void)? \{[\s\S]*closeMobileNavigation\(\);[\s\S]*setGaragePanel\(''\);/,
   'battle selection must close garage disclosures instead of stacking over them');
 assert.match(garage,
   /if \(!openGaragePanel\(\) \|\| event\.code !== 'Escape' \|\| isAnyModalOpen\(\) \|\| eqOpenSlot >= 0\) return;[\s\S]*event\.stopImmediatePropagation\(\);[\s\S]*setGaragePanel\('', \{ restoreFocus: true \}\);/,
@@ -147,8 +157,10 @@ assert.match(responsiveSurfaces,
 assert.match(responsiveSurfaces,
   /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-net\{[\s\S]*top:calc\(max\(8px[\s\S]*left:auto;right:max\(10px/,
   'short landscape FPS and ping must clear both the score plate and minimap');
+// owner 2026-10-22 (2a5d944a3f, "not centered in screen"): the plate sits on the true centre line and narrows to the lane
+// the corner controls leave it, instead of a fixed 294 px set 18 px off centre
 assert.match(responsiveSurfaces,
-  /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-top\{[\s\S]*left:calc\(50% - 18px\);width:294px[\s\S]*grid-template-columns:minmax\(62px,1fr\) 72px/,
+  /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-top\{[\s\S]*left:50%;width:min\(294px,calc\(100vw - 2 \* \(max\(10px,env\(safe-area-inset-right\)\) \+ 146px\)\)\)[\s\S]*grid-template-columns:minmax\(62px,1fr\) 72px/,
   'short landscape score plate must stay inside the lane between corner controls');
 assert.match(responsiveSurfaces,
   /data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-touch \.scope\{[\s\S]*bottom:105px/,
@@ -273,11 +285,13 @@ assert.match(await readFile(new URL('./battleHudLayout.ts', import.meta.url), 'u
   'ballistic reports and logs must share the live lane between the enemy roster and minimap');
 assert.doesNotMatch(shotInfo, /\.cot-si-card::before/,
   'ballistic reports must not retain the orange top-edge accent');
+// (9cb467b27c: the card is led by its outcome, so its ballistic glyph left with the old header)
 assert.match(shotInfo,
-  /ballistic: uiIconSVG\('scope', 10\)[\s\S]*shell: uiIconSVG\('shell', 10\)[\s\S]*armor: uiIconSVG\('shield', 10\)[\s\S]*damage: uiIconSVG\('damage', 10\)[\s\S]*pen: uiIconSVG\('penetration', 10\)/,
+  /shell: uiIconSVG\('shell', 10\)[\s\S]*angle: uiIconSVG\('scope', 10\)[\s\S]*armor: uiIconSVG\('shield', 10\)[\s\S]*damage: uiIconSVG\('damage', 10\)[\s\S]*pen: uiIconSVG\('penetration', 10\)/,
   'ballistic reports must use the shared vector icon language for their key readings');
+// (bc8de4d713: the rule is the Premiere plates' line token)
 assert.match(shotInfo,
-  /\.cot-si-kv\.pen\{margin-top:2px;padding-top:3px;border-top:1px solid rgba\(146,164,180,\.24\);\}/,
+  /\.cot-si-kv\.pen\{margin-top:2px;padding-top:3px;border-top:1px solid var\(--line-2\);\}/,
   'penetration analysis must be separated visually from the damage row');
 assert.match(shotInfo,
   /body\.cot-touch-layout \.cot-si-cardhost,[\s\S]*body\.cot-touch-layout \.cot-si-log\{display:none!important;\}/,
@@ -354,8 +368,8 @@ assert.match(responsiveSurfaces,
   /body\[data-cot-width\] \.cot-trans \.core\{width:min\(680px,100%\)[\s\S]*body\[data-cot-width='phone'\] \.cot-trans \.title/,
   'state transitions must cap their core and recompose long titles on phones');
 assert.match(responsiveSurfaces,
-  /body\[data-cot-width='phone'\] \.cot-resume \.rz-title\{[\s\S]*letter-spacing:\.18em/,
-  'the pointer-lock resume veil must keep its title within phone width');
+  /body\[data-cot-width\] \.cot-resume \.rz-title\{max-width:100%;overflow-wrap:anywhere[\s\S]*body\[data-cot-width='phone'\] \.cot-resume \.rz-actions\{display:grid;grid-template-columns:1fr/,
+  'the pause veil keeps its title within phone width and stacks its buttons');
 assert.match(responsiveSurfaces,
   /body\[data-cot-width\] \.cot-hints\{[\s\S]*flex-wrap:wrap;white-space:normal/,
   'keyboard hints must wrap as groups instead of clipping on intermediate widths');

@@ -526,6 +526,8 @@ if (!STUDIO_BOOT_INTENT) lighting.setFarCascadeDormant(true);
 lighting.onEnclosureChange((enclosed) => { if (!enclosed) sky.syncEnvironmentEnclosure(); });
 mountDiagOverlay({ tier: resolveDeviceTier(renderer), diag: _diag, rescue: _diagRescue, renderer });
 
+// perf-247: bound once the forward program owner exists (below); world builds start after it.
+let submitWorldPrograms = (_root: THREE.Object3D): void => {};
 const engineCtx = {
   renderer,
   scene,
@@ -539,6 +541,7 @@ const engineCtx = {
   releaseShadowMaterial: (mat: THREE.Material) => lighting.releaseShadowMaterial(mat),
   anisotropy: Math.min(8, renderer.capabilities.getMaxAnisotropy()),
   quality: 'high',
+  submitBuiltPrograms: (root: THREE.Object3D) => submitWorldPrograms(root),
 };
 // --- MAP-CONFIG WIRING + DEFERRED WORLD BUILD ------------------------------
 // Worlds are lazy-built per map config and cached. One typed runtime owns the
@@ -1798,6 +1801,11 @@ const forwardProgramWarm = createForwardProgramWarmOwner({
   camera,
   getTarget: () => post?.composer?.renderTarget1 || null,
 });
+// perf-247: a Studio world submits each finished subsystem's forward programs while the rest of it builds (map.ts), so
+// the GPU process links them beside the build's CPU work instead of under the first covered frame (5.7 s of link waits
+// on the profile). Studio only: a battle's covered atmosphere must precede its program warm (worldActivationRuntime),
+// and a background build behind the Garage presents nothing.
+submitWorldPrograms = (root) => { if (game.phase === 'studio') forwardProgramWarm.compile(root); };
 // Shader, FX, shadow, private-render-target, and deferred rollout warm state
 // share one renderer-lifetime owner. Its lazy ports preserve the boot order:
 // battle visuals and the frame owner may be declared later, but are only read
@@ -3418,6 +3426,8 @@ const mainFrame = createMainFrameRuntime({
   garageFramePacer,
   battleFrame,
   isBattleLoadCovering: () => battleLoad.covering === true,
+  // perf-247: a direct /studio boot draws nothing until its covered entry's own frame (studio.ts) and the boot's end
+  isBootCovering: () => STUDIO_BOOT_INTENT && !bootComplete,
   isTransitionHoldingSceneForFadeIn: () => transition.holdingSceneForFadeIn,
   isPresentationRestoreCovering: () => garagePhasePresentation.restoringGpu || (game.phase === 'garage' && (garageReturn.current?.lastTrace?.presentationUnready === true || garageReturn.current?.lastTrace?.awaitingHandoff === true)),
   cameraInput: camInput,
@@ -3602,9 +3612,15 @@ window.__SHOTS = {
 // shell-card presentation from the selected spec; the solo/network start
 // owners replace it with the real player after covered roster construction.
 playerBattleActions.setTank(getSpec(selectedVehicle.id));
-garage.show(selectedVehicle.id);
-garageEnvironmentPresentation.poseCamera(); // fallback pose until the orbit measures the hero
-showroom.start();
+// perf-247: a direct /studio boot presents no Garage behind its veil. Showing it selected the hero (its build, 1.2 s on
+// the profile) and started the showroom, and the Garage frames that woke linked the Garage's programs (5.4 s) before the
+// Studio's chunk could run. The Studio's exit enters the Garage the canonical way (garageReturn); the hero builds in the
+// idle after boot (below).
+if (!STUDIO_BOOT_INTENT) {
+  garage.show(selectedVehicle.id);
+  garageEnvironmentPresentation.poseCamera(); // fallback pose until the orbit measures the hero
+  showroom.start();
+}
 garageFramePacer.reset(performance.now());
 setGarageSunTrim(true); // camo_spotting r2: boot lands on the garage screen
 currentHud()?.setMode('hidden');
