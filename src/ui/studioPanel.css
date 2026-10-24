@@ -35,7 +35,7 @@ body[data-studio-workspace] #app{position:fixed;left:var(--studio-vp-x,0px);top:
 .st-load[hidden]{display:none}
 .st-load__art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55}
 .st-load::after{content:'';position:absolute;inset:0;background:var(--media-fade-full);pointer-events:none}
-.st-load__copy{position:relative;z-index:var(--z-lift);display:grid;gap:10px;width:min(460px,calc(100% - 48px));margin:0 0 var(--s6) var(--s6)}
+.st-load__copy{position:relative;z-index:var(--z-lift);display:grid;gap:var(--s3);width:min(460px,calc(100% - 48px));margin:0 0 var(--s6) var(--s6)}
 .st-load__name{font:700 var(--fs-36)/.94 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
 .st-load__label{min-height:1.4em;color:var(--ink-2);font:500 var(--fs-13)/1.4 var(--font-body)}
 .st-load__bar{height:4px;overflow:hidden;background:var(--fill-scale)}
@@ -48,12 +48,12 @@ body[data-studio-workspace] #app{position:fixed;left:var(--studio-vp-x,0px);top:
 .st-head,.st-out,.st-insp,.st-shelf,.st-tl{background:var(--surface-page)}
 
 /* the header (09-studio header): the mark, the battlefield, the frame, and the scene's actions */
-.st-head{position:relative;z-index:var(--studio-pop-z);grid-column:1/-1;display:flex;align-items:center;gap:var(--s3);min-width:0;padding:0 14px;
+.st-head{position:relative;z-index:var(--studio-pop-z);grid-column:1/-1;display:flex;align-items:center;gap:var(--s3);min-width:0;padding:0 var(--s4);
   border-bottom:1px solid var(--line-1)}
-.st-head .st{display:flex;align-items:center;gap:9px;flex:none;font:700 var(--fs-15)/1 var(--font-display);letter-spacing:var(--studio-track-mark);
+.st-head .st{display:flex;align-items:center;gap:var(--s3);flex:none;font:700 var(--fs-15)/1 var(--font-display);letter-spacing:var(--studio-track-mark);
   text-transform:uppercase}
 .st-head .st svg{width:24px;height:24px}
-.st-head .pn{min-width:0;margin-left:10px;overflow:hidden;font:600 var(--fs-15)/1 var(--font-display);text-overflow:ellipsis;white-space:nowrap}
+.st-head .pn{min-width:0;margin-left:var(--s3);overflow:hidden;font:600 var(--fs-15)/1 var(--font-display);text-overflow:ellipsis;white-space:nowrap}
 .st-head .cot-c-seg__opt{height:28px;font-size:var(--fs-12)}
 .st-head .cot-c-seg{flex:none}
 .st-head .r{display:flex;align-items:center;gap:var(--s2);margin-left:auto}
@@ -66,7 +66,7 @@ body[data-studio-workspace] #app{position:fixed;left:var(--studio-vp-x,0px);top:
 .st-head .cmd .cot-c-kbd{margin-left:2px}
 /* the scene's safety (09-studio header .sv, the undo/redo pair): the autosave's lamp and age, the steps either side */
 .st-head .hist{display:flex;flex:none;align-items:center;gap:var(--s1)}
-.st-head .sv{display:flex;align-items:center;gap:6px;margin-right:6px;color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body);white-space:nowrap}
+.st-head .sv{display:flex;align-items:center;gap:var(--s2);margin-right:var(--s2);color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body);white-space:nowrap}
 .st-head .sv i{width:6px;height:6px;border-radius:50%;background:var(--ok)}
 .st-head .ib{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:var(--r1);background:none;color:var(--ink-2)}
 .st-head .ib:disabled{color:var(--ink-4);cursor:default}
@@ -76,30 +76,30 @@ body[data-studio-workspace] #app{position:fixed;left:var(--studio-vp-x,0px);top:
 button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 
 /* the outliner (09-studio .out): a head per workspace, its rows under it */
-.st-out{grid-column:1;grid-row:2/span 2;display:flex;flex-direction:column;gap:2px;min-height:0;padding:10px var(--s2);overflow-y:auto;
+.st-out{grid-column:1;grid-row:2/span 2;display:flex;flex-direction:column;gap:2px;min-height:0;padding:var(--s3) var(--s2);overflow-y:auto;
   border-right:1px solid var(--line-1);scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
 .st-out .og{display:flex;flex-direction:column;gap:2px}
-.st-out .gh{display:flex;align-items:center;gap:6px;padding:6px 0 2px}
-.st-out .gh>button:first-child{display:flex;flex:1;align-items:center;gap:var(--s2);min-width:0;min-height:28px;padding:var(--s1) 6px;border:0;
+.st-out .gh{display:flex;align-items:center;gap:var(--s2);padding:var(--s2) 0 2px}
+.st-out .gh>button:first-child{display:flex;flex:1;align-items:center;gap:var(--s2);min-width:0;min-height:28px;padding:var(--s1) var(--s2);border:0;
   border-radius:var(--r1);background:none;color:var(--ink-2);font:600 var(--fs-13)/1 var(--font-display);text-align:left}
 .st-out .gh>button:first-child[aria-current=true]{color:var(--accent)}
 .st-out .gh .cot-i,.st-out .add .cot-i{width:15px;height:15px;color:var(--ink-3)}
 .st-out .add{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:var(--r1);background:none}
-.st-out .it{display:flex;align-items:center;gap:var(--s2);min-height:32px;padding:0 6px;border:0;border-radius:var(--r1);background:transparent;
+.st-out .it{display:flex;align-items:center;gap:var(--s2);min-height:32px;padding:0 var(--s2);border:0;border-radius:var(--r1);background:transparent;
   color:var(--ink-2);font:500 var(--fs-13)/1 var(--font-body);text-align:left}
 .st-out .it>button:first-child{display:flex;flex:1;align-items:center;gap:var(--s2);min-width:0;height:32px;padding:0;border:0;background:none;text-align:left}
 .st-out .it .cot-c-sil{width:34px;height:11px}
 .st-out .it .cot-i{width:16px;height:16px}
 .st-out .it .th{width:44px;height:25px;flex:none;border-radius:var(--r1);object-fit:cover;box-shadow:var(--ring-2)}
 .st-out .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.st-out .it .e{display:flex;align-items:center;gap:6px;margin-left:auto;color:var(--ink-3)}
+.st-out .it .e{display:flex;align-items:center;gap:var(--s2);margin-left:auto;color:var(--ink-3)}
 .st-out .it .e .cot-i{width:14px;height:14px}
 .st-out .it .d{margin-left:auto;color:var(--ink-3);font:500 var(--fs-11)/1 var(--font-data);white-space:nowrap}
 .st-out .it .x{display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;border-radius:var(--r1);background:none;color:var(--ink-3)}
 .st-out .it[aria-current=true]{background:var(--accent-wash);box-shadow:var(--studio-row-on);color:var(--ink-1)}
 .st-out .it.is-warn .cot-c-sil{color:var(--text-warn)}
 .st-out .it.is-bad .cot-c-sil{color:var(--text-danger)}
-.st-out .empty{padding:2px 6px 6px;color:var(--ink-4);font:500 var(--fs-12)/1.3 var(--font-body)}
+.st-out .empty{padding:2px var(--s2) var(--s2);color:var(--ink-4);font:500 var(--fs-12)/1.3 var(--font-body)}
 @media (hover:hover){
   .st-out .it:hover,.st-out .gh>button:first-child:hover{color:var(--ink-1)}
   .st-out .add:hover .cot-i,.st-out .it .x:hover{color:var(--ink-1)}
@@ -116,7 +116,7 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 /* the selection (09-studio .sel, .giz): the outline, its name tag, and the move and turn gizmo, from the live camera */
 .st-vp>:is(.st-sel,.st-sel-tag,.st-giz){pointer-events:none}
 .st-sel{position:absolute;border:1.5px solid var(--accent);border-radius:var(--r1)}
-.st-sel-tag{position:absolute;display:flex;align-items:center;gap:6px;max-width:calc(100% - 8px);height:22px;padding:0 var(--s2);overflow:hidden;
+.st-sel-tag{position:absolute;display:flex;align-items:center;gap:var(--s2);max-width:calc(100% - 8px);height:22px;padding:0 var(--s2);overflow:hidden;
   border-radius:var(--r1);background:var(--accent);color:var(--ink-on-accent);font:600 var(--fs-11)/1 var(--font-body);white-space:nowrap}
 .st-sel-tag .cot-c-flag{width:14px;height:10.5px}
 .st-giz{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
@@ -126,7 +126,7 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-giz .ax--y{stroke:var(--ok)}
 .st-giz .hd{fill:var(--ink-1)}
 .st-giz .o{fill:var(--accent)}
-.st-fc{position:absolute;left:16px;bottom:10px;z-index:var(--z-lift);padding:5px var(--s2);border-radius:var(--r1);background:var(--hud-plate);
+.st-fc{position:absolute;left:16px;bottom:10px;z-index:var(--z-lift);padding:var(--s2) var(--s2);border-radius:var(--r1);background:var(--hud-plate);
   color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-data);white-space:nowrap}
 .st-fc b{color:var(--ink-1);font-weight:500}
 /* the frame (09-studio .frame): the format's aspect, the dark outside, thirds and a safe area; never in an export */
@@ -140,15 +140,15 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .studio-frame-guide::after{content:'';position:absolute;inset:5%;border:1px dashed var(--line-3)}
 .studio-frame-guide small{display:none}
 /* busy and scene-link notices: one plate over the top of the picture */
-.cot-studio .busy{position:absolute;top:52px;left:50%;z-index:var(--z-lift);display:none;max-width:calc(100% - 32px);padding:var(--s2) 14px;
+.cot-studio .busy{position:absolute;top:52px;left:50%;z-index:var(--z-lift);display:none;max-width:calc(100% - 32px);padding:var(--s2) var(--s4);
   transform:translateX(-50%);border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-accent);color:var(--ink-1);
   font:500 var(--fs-12)/1.3 var(--font-body);text-align:center}
 .cot-studio .notice{position:absolute;top:52px;left:50%;z-index:var(--z-lift);display:none;width:max-content;max-width:min(540px,calc(100% - 32px));
-  grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:var(--s3);padding:var(--s3) 10px var(--s3) 14px;transform:translateX(-50%);
+  grid-template-columns:auto minmax(0,1fr) auto;align-items:start;gap:var(--s3);padding:var(--s3) var(--s3) var(--s3) var(--s4);transform:translateX(-50%);
   border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--ring-accent)}
 .cot-studio .notice[data-open]{display:grid}
 .cot-studio .notice .ng svg{display:block;margin-top:1px;color:var(--accent-hi)}
-.cot-studio .notice .nt{display:grid;gap:5px;min-width:0}
+.cot-studio .notice .nt{display:grid;gap:var(--s2);min-width:0}
 .cot-studio .notice .nt b{font:500 var(--fs-13)/1.4 var(--font-body)}
 .cot-studio .notice .nd summary{width:max-content;cursor:pointer;color:var(--ink-3);font:500 var(--fs-12)/1.3 var(--font-body)}
 .cot-studio .notice .nd code{display:block;margin-top:var(--s1);color:var(--ink-3);font:500 var(--fs-11)/1.4 var(--font-data);overflow-wrap:anywhere}
@@ -158,22 +158,22 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .notice[data-tone=error] .ng svg{color:var(--text-danger)}
 
 /* ------------------------------------------------------------------------------- the inspector (09-studio .insp) */
-.st-insp{grid-column:3;grid-row:2/span 2;display:flex;flex-direction:column;gap:var(--s3);min-height:0;padding:10px var(--s3) var(--s4);overflow-y:auto;
+.st-insp{grid-column:3;grid-row:2/span 2;display:flex;flex-direction:column;gap:var(--s3);min-height:0;padding:var(--s3) var(--s3) var(--s4);overflow-y:auto;
   border-left:1px solid var(--line-1);scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
-.st-insp>[data-group]{display:flex;flex-direction:column;gap:14px}
+.st-insp>[data-group]{display:flex;flex-direction:column;gap:var(--s4)}
 .st-insp .sec,.director>section{display:flex;flex-direction:column;gap:var(--s2);min-width:0}
 .st-insp :is(.sh,.director h3){display:flex;align-items:center;gap:var(--s2);margin:0;color:var(--ink-2);font:600 var(--fs-13)/1 var(--font-display)}
 .st-insp .sh .cot-i{width:15px;height:15px;color:var(--ink-3)}
 .st-insp .sh .cot-info-trigger{margin-left:auto}
-.st-insp .row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
-.st-insp .col{display:flex;flex-direction:column;gap:6px}
+.st-insp .row{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2)}
+.st-insp .col{display:flex;flex-direction:column;gap:var(--s2)}
 .st-insp .col>*{width:100%}
 /* buttons never share a row in the inspector (two to a row wrap their names); chips still do */
 .st-insp .grid:has(>.cot-c-btn),.cot-studio .st-insp :is(.production-exports,.production-transport){grid-template-columns:minmax(0,1fr)}
-.st-insp .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-.st-insp .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.st-insp .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2)}
+.st-insp .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
 .st-insp .grid .cot-c-btn,.st-insp .grid3 .cot-c-btn,.st-insp .grid .cot-c-chip,.st-insp .grid3 .cot-c-chip{width:100%;min-width:0}
-.st-insp .cot-c-chip{height:auto;min-height:30px;padding:6px var(--s2);justify-content:center;white-space:normal;line-height:1.15;text-align:center}
+.st-insp .cot-c-chip{height:auto;min-height:30px;padding:var(--s2) var(--s2);justify-content:center;white-space:normal;line-height:1.15;text-align:center}
 .st-insp .cot-c-btn{white-space:normal;line-height:1.1}
 .st-insp .cot-c-btn--wide{width:100%}
 .st-insp .k{color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body);white-space:nowrap}
@@ -188,8 +188,8 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-hero-name{display:flex;align-items:center;gap:var(--s2);min-width:0;color:var(--ink-1);font:700 var(--fs-13)/1.05 var(--font-display);
   text-transform:uppercase;white-space:nowrap}
 .st-hero-name>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
-.st-insp .fld{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-.st-insp .fld label{display:flex;align-items:center;justify-content:space-between;gap:6px;height:30px;padding:0 var(--s2);border-radius:var(--r1);
+.st-insp .fld{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
+.st-insp .fld label{display:flex;align-items:center;justify-content:space-between;gap:var(--s2);height:30px;padding:0 var(--s2);border-radius:var(--r1);
   box-shadow:var(--ring-2);color:var(--ink-1);font:500 var(--fs-12)/1 var(--font-data)}
 .st-insp .fld small{color:var(--ink-3);font:inherit}
 .st-insp .fld input{width:100%;min-width:0;height:auto;padding:0;border:0;background:none;box-shadow:none;color:inherit;font:inherit;text-align:right}
@@ -201,8 +201,8 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-insp .sl .val{color:var(--ink-1);text-align:right;white-space:nowrap}
 .st-insp .sl>.cot-c-chip{grid-column:1/-1}
 /* the pose presets (09-studio .poses): a silhouette over each pose's name */
-.st-insp .poses{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-.st-insp .poses button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;height:52px;padding:0 var(--s1);
+.st-insp .poses{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
+.st-insp .poses button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--s2);min-width:0;height:52px;padding:0 var(--s1);
   border:0;border-radius:var(--r1);background:none;box-shadow:var(--ring-2);color:var(--ink-2);font:500 var(--fs-11)/1.1 var(--font-body);text-align:center}
 .st-insp .poses .cot-c-sil{width:40px;height:13px}
 @media (hover:hover){.st-insp .poses button:hover{color:var(--ink-1);box-shadow:var(--ring-3)}}
@@ -221,13 +221,13 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio select option{background:var(--surface-menu);color:var(--ink-1)}
 .cot-studio input[type=number]{width:64px;font-family:var(--font-data)}
 .cot-studio :is(select,input):disabled{opacity:.45;cursor:default}
-.st-insp .sw{display:flex;flex-wrap:wrap;gap:6px;max-height:92px;padding:2px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
+.st-insp .sw{display:flex;flex-wrap:wrap;gap:var(--s2);max-height:92px;padding:2px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
 .st-insp .sw button{width:30px;height:22px;padding:0;overflow:hidden;border:0;border-radius:var(--r1);background:var(--surface-raised);box-shadow:var(--flag-ring)}
 .st-insp .sw button canvas{display:block;width:100%;height:100%;object-fit:cover}
 .st-insp .sw button[aria-pressed=true]{box-shadow:var(--studio-swatch-on)}
 .st-insp .sw .cot-c-chip{width:auto;height:22px;padding:0 var(--s2);font-size:var(--fs-11)}
 .st-insp .cot-c-seg{display:flex;flex-wrap:wrap}
-.st-insp .cot-c-seg__opt{flex:1 1 auto;height:28px;padding:0 10px;font-size:var(--fs-12)}
+.st-insp .cot-c-seg__opt{flex:1 1 auto;height:28px;padding:0 var(--s3);font-size:var(--fs-12)}
 /* the map and tank pickers */
 .cot-studio .mapPick,.cot-studio .pick{position:relative;width:100%}
 .cot-studio .mapBtn{position:relative;display:block;width:100%;height:132px;padding:0;overflow:hidden;border:0;border-radius:var(--r1);
@@ -246,24 +246,24 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .mapPop{max-height:min(65vh,560px)}
 .cot-studio .pickPop{max-height:340px}
 .cot-studio :is(.mapPop,.pickPop).open{display:flex}
-.cot-studio .mapGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:max-content;align-content:start;gap:6px;
+.cot-studio .mapGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:max-content;align-content:start;gap:var(--s2);
   min-height:0;padding:var(--s2);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
 .cot-studio .mapCard{position:relative;display:block;min-width:0;padding:0;overflow:hidden;border:0;border-radius:var(--r1);
   background:var(--surface-raised);box-shadow:var(--e1);text-align:left}
 .cot-studio .mapCard img{display:block;width:100%;aspect-ratio:16/9;object-fit:cover}
-.cot-studio .mapCard .cn{display:block;padding:6px 7px;overflow:hidden;color:var(--ink-2);font:500 var(--fs-12)/1.1 var(--font-body);
+.cot-studio .mapCard .cn{display:block;padding:var(--s2) var(--s2);overflow:hidden;color:var(--ink-2);font:500 var(--fs-12)/1.1 var(--font-body);
   text-overflow:ellipsis;white-space:nowrap}
 .cot-studio .mapCard .check{display:none}
 .cot-studio .mapCard[aria-selected=true]{box-shadow:var(--ring-accent)}
 .cot-studio .mapCard[aria-selected=true] .cn{color:var(--ink-1)}
-.cot-studio .pickBtn{display:flex;align-items:center;gap:var(--s2);width:100%;height:34px;padding:0 10px;border:0;border-radius:var(--r1);
+.cot-studio .pickBtn{display:flex;align-items:center;gap:var(--s2);width:100%;height:34px;padding:0 var(--s3);border:0;border-radius:var(--r1);
   background:var(--fill-quiet);box-shadow:var(--ring-2);color:var(--ink-1);font:500 var(--fs-13)/1 var(--font-body);text-align:left}
 .cot-studio .pickBtn .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cot-studio .pickBtn .cot-c-sil{width:38px;height:12px}
 .cot-studio .pickPop .flt{margin:var(--s2);width:calc(100% - 16px)}
 .cot-studio .pickPop .lst{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
-.cot-studio .pgh{padding:var(--s2) 10px var(--s1);color:var(--ink-3);font:600 var(--fs-12)/1 var(--font-display)}
-.cot-studio .prow{display:flex;align-items:center;gap:var(--s2);width:100%;height:32px;padding:0 10px;border:0;background:none;color:var(--ink-2);
+.cot-studio .pgh{padding:var(--s2) var(--s3) var(--s1);color:var(--ink-3);font:600 var(--fs-12)/1 var(--font-display)}
+.cot-studio .prow{display:flex;align-items:center;gap:var(--s2);width:100%;height:32px;padding:0 var(--s3);border:0;background:none;color:var(--ink-2);
   font:500 var(--fs-13)/1 var(--font-body);text-align:left}
 .cot-studio .prow .cot-c-sil{width:38px;height:12px}
 .cot-studio .prow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -271,7 +271,7 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .prow.cur{background:var(--accent-wash);box-shadow:var(--studio-row-on);color:var(--ink-1)}
 @media (hover:hover){.cot-studio .prow:hover{background:var(--surface-hover);color:var(--ink-1)}}
 /* the sun: a north-up compass (09-studio's light row, drawn) */
-.cot-studio .sun{display:grid;grid-template-columns:78px minmax(0,1fr);align-items:center;gap:10px}
+.cot-studio .sun{display:grid;grid-template-columns:78px minmax(0,1fr);align-items:center;gap:var(--s3)}
 .cot-studio .sunDial{display:block;width:78px;height:78px;border-radius:50%;background:var(--fill-quiet);box-shadow:var(--ring-2);cursor:grab;touch-action:none}
 .cot-studio .sunDial.drag{cursor:grabbing}
 .cot-studio .sunDial .ring{fill:none;stroke:var(--line-2)}
@@ -283,14 +283,14 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .sunDial .sun{fill:var(--accent);stroke:var(--surface-page)}
 .cot-studio .sunDial .sun.dusk{fill:var(--danger)}
 .cot-studio .sunDial .sun.night{fill:var(--ink-1)}
-.cot-studio .sunSide{display:grid;gap:6px;min-width:0}
-.cot-studio .sunRead{display:flex;justify-content:space-between;gap:6px;color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body)}
+.cot-studio .sunSide{display:grid;gap:var(--s2);min-width:0}
+.cot-studio .sunRead{display:flex;justify-content:space-between;gap:var(--s2);color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body)}
 .cot-studio .sunRead b{color:var(--ink-1);font:500 var(--fs-12)/1 var(--font-data)}
 .cot-studio .sunPresets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s1)}
 .cot-studio .sunPresets .cot-c-chip{height:26px;padding:0 var(--s1);font-size:var(--fs-11)}
 /* the effects: the stack, the board, the selected layer's parameters */
 .cot-studio .fxstack{display:grid;gap:2px;max-height:188px;overflow-y:auto;scrollbar-width:thin}
-.cot-studio .fxrow{display:grid;grid-template-columns:minmax(0,1fr) 64px 22px;align-items:center;gap:6px;min-height:34px;padding:0 var(--s1) 0 var(--s2);
+.cot-studio .fxrow{display:grid;grid-template-columns:minmax(0,1fr) 64px 22px;align-items:center;gap:var(--s2);min-height:34px;padding:0 var(--s1) 0 var(--s2);
   border-radius:var(--r1);background:transparent;cursor:pointer}
 .cot-studio .fxrow .fn{display:grid;gap:3px;min-width:0}
 .cot-studio .fxrow .n1{overflow:hidden;color:var(--ink-1);font:500 var(--fs-13)/1 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
@@ -298,12 +298,12 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .fxrow .ftime{width:64px;height:26px}
 .cot-studio .fxrow .x{display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;background:none;color:var(--ink-3)}
 .cot-studio .fxrow[aria-selected=true]{background:var(--accent-wash);box-shadow:var(--studio-row-on)}
-.cot-studio .fxempty{padding:10px var(--s2);border-radius:var(--r1);box-shadow:var(--ring-1);color:var(--ink-3);font:400 var(--fs-12)/1.45 var(--font-body)}
-.cot-studio .fxg{display:flex;flex-direction:column;gap:6px}
+.cot-studio .fxempty{padding:var(--s3) var(--s2);border-radius:var(--r1);box-shadow:var(--ring-1);color:var(--ink-3);font:400 var(--fs-12)/1.45 var(--font-body)}
+.cot-studio .fxg{display:flex;flex-direction:column;gap:var(--s2)}
 .cot-studio .fxg .gh{color:var(--ink-3);font:600 var(--fs-12)/1 var(--font-display)}
 /* the shots: one card per camera key */
 .cot-studio .shotboard{display:grid;gap:var(--s1);max-height:210px;overflow-y:auto;scrollbar-width:thin}
-.cot-studio .shotcard{display:grid;grid-template-columns:24px minmax(0,1fr) 80px auto 22px;align-items:center;gap:6px;min-height:36px;padding:0 var(--s1);
+.cot-studio .shotcard{display:grid;grid-template-columns:24px minmax(0,1fr) 80px auto 22px;align-items:center;gap:var(--s2);min-height:36px;padding:0 var(--s1);
   border-radius:var(--r1)}
 .cot-studio .shotcard .num{color:var(--ink-3);font:500 var(--fs-11)/1 var(--font-data);text-align:center}
 .cot-studio .shotcard .copy{display:grid;gap:3px;min-width:0;cursor:pointer}
@@ -312,16 +312,16 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .shotcard select{height:26px}
 .cot-studio .shotcard .x{display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;background:none;color:var(--ink-3)}
 .cot-studio .shotcard.sel{background:var(--accent-wash);box-shadow:var(--studio-row-on)}
-.cot-studio .planView{display:grid;gap:6px}
+.cot-studio .planView{display:grid;gap:var(--s2)}
 .cot-studio .planView canvas{border-radius:var(--r1);box-shadow:var(--ring-1)}
 .cot-studio .recStatus{color:var(--ink-3);font:500 var(--fs-12)/1.4 var(--font-data)}
 .cot-studio .recStatus.on{color:var(--text-danger)}
 /* the Director (studioProductionPanel.ts): curated sequences, a featured tank, the shot list, rigs and exports */
 .cot-studio .director{display:flex;flex-direction:column;gap:var(--s4)}
 .cot-studio .director-head{display:none}
-.cot-studio .production-library{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.cot-studio .production-library{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2)}
 /* a card is its still and, on a line under it, its name and length: no text sits on a tank (the owner's rule) */
-.cot-studio .production-card{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:start;gap:5px 6px;
+.cot-studio .production-card{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:start;gap:var(--s2) var(--s2);
   min-width:0;padding:0;border:0;background:none;color:var(--ink-1);text-align:left}
 .cot-studio .production-card img{grid-column:1/-1;grid-row:1;display:block;width:100%;height:auto;min-height:0;aspect-ratio:16/10;object-fit:cover;
   border-radius:var(--r1);background:var(--surface-raised);box-shadow:var(--e1)}
@@ -333,8 +333,8 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .production-card[aria-pressed=true] img{box-shadow:var(--ring-accent)}
 .cot-studio .production-card:disabled{cursor:default;opacity:.5}
 .cot-studio .production-description,.cot-studio .production-note{display:none}
-.cot-studio .production-fields{display:grid;gap:6px}
-.cot-studio .production-fields label,.cot-studio .production-lens{display:grid;gap:6px;color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body)}
+.cot-studio .production-fields{display:grid;gap:var(--s2)}
+.cot-studio .production-fields label,.cot-studio .production-lens{display:grid;gap:var(--s2);color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body)}
 .cot-studio .production-status{min-height:0;color:var(--ink-3);font:400 var(--fs-12)/1.45 var(--font-body)}
 .cot-studio .production-status:empty{display:none}
 .cot-studio .production-transport{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:var(--s2)}
@@ -342,21 +342,22 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 /* in the inspector the timeline's clock already reads the playhead: the two buttons share the row */
 .st-insp .production-transport output{display:none}
 .cot-studio .production-shots{display:grid;gap:2px;max-height:205px;overflow:auto;scrollbar-width:thin}
-.cot-studio .production-shot{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:var(--s2);min-height:32px;padding:0 6px;
+.cot-studio .production-shot{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:var(--s2);min-height:32px;padding:0 var(--s2);
   border:0;border-radius:var(--r1);background:transparent;color:var(--ink-2);font:500 var(--fs-13)/1 var(--font-body);text-align:left}
 .cot-studio .production-shot span:first-child,.cot-studio .production-shot span:last-child{color:var(--ink-3);font:500 var(--fs-11)/1 var(--font-data)}
 .cot-studio .production-shot[aria-current=true]{background:var(--accent-wash);box-shadow:var(--studio-row-on);color:var(--ink-1)}
-.cot-studio .production-rigs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.cot-studio .production-rigs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2)}
 .cot-studio .production-guide{display:none}
-.cot-studio .production-exports{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-.cot-studio .production-fleet-search{display:grid;gap:6px;color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body)}
+.cot-studio .production-exports{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2)}
+.cot-studio .production-fleet-search{display:grid;gap:var(--s2);color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body)}
 .cot-studio .production-fleet-search input{width:100%}
 /* ------------------------------------------------------------------------------------ the shelf (09-studio .shelf) */
-.st-shelf{grid-column:2;grid-row:3;display:flex;flex-direction:column;gap:var(--s2);min-width:0;padding:10px 14px;overflow:hidden;
+/* the shelf's 10 px block padding snaps down to 8, not up to 12: at 12 its takes clip by 4 px at 900 wide */
+.st-shelf{grid-column:2;grid-row:3;display:flex;flex-direction:column;gap:var(--s2);min-width:0;padding:var(--s2) var(--s4);overflow:hidden;
   border-top:1px solid var(--line-1)}
 .st-shelf>.h{display:flex;align-items:center;justify-content:space-between;gap:var(--s3)}
 .st-shelf>.h b{font:700 var(--fs-18)/1 var(--font-display);letter-spacing:var(--studio-track-shelf);text-transform:uppercase;white-space:nowrap}
-.st-shelf>.h b .t-accent{margin-right:6px;color:var(--accent)}
+.st-shelf>.h b .t-accent{margin-right:var(--s2);color:var(--accent)}
 .st-shelf>.h .cot-c-chip{height:30px}
 .st-shelf .production-takes{display:flex;flex:1;flex-direction:column;min-height:0}
 .st-shelf .production-takes .production-library{display:grid;flex:1;grid-auto-flow:column;grid-template-columns:none;
@@ -374,15 +375,15 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-tl .ib[aria-pressed=true]{color:var(--accent)}
 .st-tl .tc{font:500 var(--fs-15)/1 var(--font-data);white-space:nowrap}
 .st-tl .tc small{color:var(--ink-3);font:inherit}
-.st-tl .rate{padding:3px 6px;border-radius:var(--r1);background:var(--accent-wash);color:var(--accent);font:500 var(--fs-12)/1 var(--font-data)}
-.st-tl .tp .sl{display:grid;grid-template-columns:auto 96px 36px;align-items:center;gap:6px;color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-data)}
+.st-tl .rate{padding:3px var(--s2);border-radius:var(--r1);background:var(--accent-wash);color:var(--accent);font:500 var(--fs-12)/1 var(--font-data)}
+.st-tl .tp .sl{display:grid;grid-template-columns:auto 96px 36px;align-items:center;gap:var(--s2);color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-data)}
 .st-tl .tp .sl>label{color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body);white-space:nowrap}
 .st-tl .tp .sl .val{color:var(--ink-1);text-align:right}
 .st-tl .tp .r{display:flex;align-items:center;gap:var(--s2);margin-left:auto}
 .st-tl .tp .cot-c-chip{height:28px;font-size:var(--fs-12)}
 .st-lanes{position:relative;display:grid;flex:1;grid-template-columns:150px minmax(0,1fr);grid-template-rows:20px;grid-auto-rows:minmax(24px,1fr);min-height:0;
   overflow-y:auto;scrollbar-width:thin}
-.st-tl .lb{display:flex;align-items:center;gap:7px;min-width:0;padding:0 var(--s3);overflow:hidden;border-bottom:1px solid var(--line-1);
+.st-tl .lb{display:flex;align-items:center;gap:var(--s2);min-width:0;padding:0 var(--s3);overflow:hidden;border-bottom:1px solid var(--line-1);
   color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body);white-space:nowrap}
 .st-tl .lb .cot-i{width:14px;height:14px}
 .st-tl .lb .cot-c-sil{width:28px;height:9px}
@@ -391,7 +392,7 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-tl .tk{position:relative;min-width:0;overflow:hidden;border-bottom:1px solid var(--line-1);border-left:1px solid var(--line-1);cursor:crosshair}
 .st-tl .tk--ruler{display:flex;align-items:center;padding:0 2px}
 .st-tl .scrub{width:100%}
-.st-tl .clip{position:absolute;top:4px;bottom:4px;display:flex;align-items:center;gap:6px;min-width:6px;padding:0 6px;overflow:hidden;border:0;
+.st-tl .clip{position:absolute;top:4px;bottom:4px;display:flex;align-items:center;gap:var(--s2);min-width:6px;padding:0 var(--s2);overflow:hidden;border:0;
   border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-3);color:var(--ink-1);font:500 var(--fs-11)/1 var(--font-body);
   white-space:nowrap;cursor:pointer}
 .st-tl .clip .th{flex:none;width:56px;height:100%;margin-left:-6px;object-fit:cover}
@@ -410,11 +411,11 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-tl .ph::before{content:'';position:absolute;top:0;left:-5px;border:6px solid transparent;border-top-color:var(--accent)}
 
 /* --------------------------------------------------------------------- the render queue (09-studio header Queue · N) */
-.st-queue{position:absolute;top:calc(100% + 4px);right:14px;display:flex;flex-direction:column;gap:10px;width:min(460px,calc(100% - 28px));
+.st-queue{position:absolute;top:calc(100% + 4px);right:14px;display:flex;flex-direction:column;gap:var(--s3);width:min(460px,calc(100% - 28px));
   max-height:min(70vh,560px);padding:var(--s3);overflow-y:auto;border-radius:var(--r2);background:var(--surface-menu);box-shadow:var(--e2)}
 .st-queue :is(.qp,.ql){display:flex;flex-direction:column;gap:2px}
 .st-queue .ql:not(:empty){padding-top:var(--s2);border-top:1px solid var(--line-1)}
-.st-queue .qr{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;min-height:34px;padding:0 var(--s1) 0 var(--s2);
+.st-queue .qr{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:var(--s3);min-height:34px;padding:0 var(--s1) 0 var(--s2);
   border-radius:var(--r1);color:var(--ink-2);font:500 var(--fs-13)/1.2 var(--font-body)}
 .st-queue .qn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .st-queue .qc{color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-data);white-space:nowrap}
@@ -424,7 +425,7 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-queue .qr--running .qc{color:var(--accent)}
 .st-queue .qr--done .qc{color:var(--text-ok)}
 .st-queue :is(.qr--failed,.qr--cancelled) .qc{color:var(--text-danger)}
-.st-queue .qe{margin:0;padding:6px var(--s2);color:var(--ink-3);font:400 var(--fs-12)/1.4 var(--font-body)}
+.st-queue .qe{margin:0;padding:var(--s2) var(--s2);color:var(--ink-3);font:400 var(--fs-12)/1.4 var(--font-body)}
 .st-queue .qf{display:flex;justify-content:flex-end;gap:var(--s2)}
 
 /* ------------------------------------------------------------------------------- the command palette (Ctrl/Cmd+K) */
@@ -435,16 +436,16 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio input.st-cmd-input{flex:none;width:100%;height:48px;padding:0 var(--s4);border-bottom:1px solid var(--line-1);border-radius:0;
   background:transparent;box-shadow:none;font:500 var(--fs-15)/1 var(--font-body)}
 .cot-studio input.st-cmd-input:focus-visible{outline:none}
-.st-cmd-list{min-height:0;padding:6px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
-.st-cmd-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:34px;padding:0 10px;border-radius:var(--r1);
+.st-cmd-list{min-height:0;padding:var(--s2);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.st-cmd-row{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);min-height:34px;padding:0 var(--s3);border-radius:var(--r1);
   color:var(--ink-2);font:500 var(--fs-13)/1.2 var(--font-body);cursor:pointer}
 .st-cmd-row>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .st-cmd-row[aria-selected=true]{background:var(--accent-wash);box-shadow:var(--studio-row-on);color:var(--ink-1)}
-.st-cmd-empty{padding:14px var(--s4);color:var(--ink-3);font:400 var(--fs-13)/1.4 var(--font-body)}
+.st-cmd-empty{padding:var(--s4) var(--s4);color:var(--ink-3);font:400 var(--fs-13)/1.4 var(--font-body)}
 
 /* ------------------------------------------------------------------------------------------- the film veil */
 .cot-studio .filmVeil{position:absolute;inset:0;z-index:var(--studio-pop-z);display:none;flex-direction:column;align-items:center;justify-content:center;
-  gap:14px;padding:var(--s5) var(--s4);pointer-events:auto;background:var(--scrim)}
+  gap:var(--s4);padding:var(--s5) var(--s4);pointer-events:auto;background:var(--scrim)}
 .cot-studio .filmVeil.on{display:flex}
 .cot-studio .filmVeil .fvTitle{font:700 var(--fs-20)/1 var(--font-display);text-transform:uppercase}
 .cot-studio .filmVeil .fvPreview{display:block;max-width:min(78vw,960px);max-height:58vh;border-radius:var(--r1);background:var(--surface-scene);
@@ -457,10 +458,10 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio-archive{--font-display:var(--font-ui);width:min(94vw,1560px);max-width:none;padding:0;border:0;border-radius:var(--r2);background:var(--surface-page);
   box-shadow:var(--e4);color:var(--ink-1);font-family:var(--font-ui)}
 .cot-studio-archive::backdrop{background:var(--scrim)}
-.cot-studio-archive>header{display:flex;align-items:center;justify-content:space-between;gap:var(--s5);padding:var(--s4) 20px;border-bottom:1px solid var(--line-1)}
+.cot-studio-archive>header{display:flex;align-items:center;justify-content:space-between;gap:var(--s5);padding:var(--s4) var(--s5);border-bottom:1px solid var(--line-1)}
 .cot-studio-archive>header strong{font:700 var(--fs-28)/1 var(--font-display);text-transform:uppercase}
 .cot-studio-archive>header :is(small,span){display:none}
-.cot-studio-archive .archiveBody{padding:18px 18px var(--s5)}
+.cot-studio-archive .archiveBody{padding:var(--s5) var(--s5) var(--s5)}
 
 /* ---------------------------------------------------------------- collapsed controls and the shell's width bands */
 .cot-studio[data-controls-collapsed=true] .st-app{grid-template-columns:0 minmax(0,1fr) 0;grid-template-rows:50px minmax(0,1fr) 0 0}
@@ -488,7 +489,7 @@ body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .pn,.s
 body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .st .wd,.st-head .r .cot-c-chip__label,.st-head .cot-c-btn__label,.st-tl .tp .r .cot-c-chip__label,
   .st-vpt .cot-c-chip+.cot-c-chip .cot-c-chip__label,.st-vpb .cot-c-chip:first-child .cot-c-chip__label,.st-tl .lb .nm){position:absolute;width:1px;
   height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-head .r .cot-c-btn{padding:0 9px}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-head .r .cot-c-btn{padding:0 var(--s3)}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-vpt,.st-vpb){top:8px}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpt{left:8px;max-width:calc(100% - 156px)}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpb{right:8px}
