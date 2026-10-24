@@ -1636,6 +1636,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/battleKeyActions.selftest.mjs',
     'src/game/playerFrameInput.selftest.mjs',
     'src/app/combatWarmComposition.selftest.mjs',
+    'src/app/battleEndGarageWarm.selftest.mjs',
     'src/app/mainFrameRuntime.selftest.mjs',
     'src/app/mainBattleHudRuntime.selftest.mjs',
     'src/game/battleFrameRuntime.selftest.mjs',

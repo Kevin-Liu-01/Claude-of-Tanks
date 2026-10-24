@@ -113,11 +113,24 @@ interface GarageGpuRestoreOptions {
   simDt: number;
   resourcesReleased: boolean;
   programsNeedWarm?: boolean;
+  /**
+   * (perf-246) False once the caller abandoned the restore — Battle Again over a Garage being prepared behind the
+   * report. Checked after every program step, shadow cascade and upload batch; the settle frame never runs.
+   */
+  isCurrent?: () => boolean;
   createYielder?: (budgetMs: number) => WarmYield;
   /** GPU readiness needs frame/task progress, not a task-only polling loop. */
   yieldProgramReadiness?: () => Promise<void>;
   warmScene?: typeof warmSceneOffscreenBatched;
   now?: () => number;
+}
+
+/** The restore's caller abandoned it (perf-246); never a reason to fall back to an unbounded compile. */
+export class GarageRestoreAbandonedError extends Error {
+  constructor() {
+    super('The Garage restore was abandoned by its caller.');
+    this.name = 'GarageRestoreAbandonedError';
+  }
 }
 
 const GARAGE_CRITICAL_SHADOW_CASCADES = 2;
@@ -139,11 +152,13 @@ function createGarageReturnYielder(budgetMs: number): WarmYield {
 async function drainWarmSteps(
   steps: Generator<void, void, void>,
   yieldReadiness: () => Promise<void>,
+  assertCurrent: () => void = () => {},
 ): Promise<number> {
   let slices = 0;
   for (const _ of steps) {
     slices += 1;
     await yieldReadiness();
+    assertCurrent();
   }
   return slices;
 }
@@ -164,13 +179,21 @@ export async function restoreGarageGpuPipeline({
   simDt,
   resourcesReleased,
   programsNeedWarm = resourcesReleased,
+  isCurrent,
   createYielder = createGarageReturnYielder,
   yieldProgramReadiness = nextPaintFrame,
   warmScene = warmSceneOffscreenBatched,
   now = () => performance.now(),
 }: GarageGpuRestoreOptions): Promise<GarageGpuRestoreReceipt> {
   const startedAt = now();
-  const yieldGpu = createYielder(8);
+  const assertCurrent = (): void => {
+    if (isCurrent && !isCurrent()) throw new GarageRestoreAbandonedError();
+  };
+  const budgetYield = createYielder(8);
+  const yieldGpu = async (): Promise<void> => {
+    await budgetYield();
+    assertCurrent();
+  };
   const programStats: ForwardProgramWarmStats = {};
   let programWarmSlices = 0;
   let linkerSlices = 0;
@@ -193,12 +216,15 @@ export async function restoreGarageGpuPipeline({
         programWarmSlices = await drainWarmSteps(
           forwardPrograms.initializeSteps(scene, programStats, { requireCompletion: true }),
           yieldProgramReadiness,
+          assertCurrent,
         );
         linkerSlices = await drainWarmSteps(
           forwardPrograms.linkerBreathingSlices(GARAGE_LINKER_BREATHING_SLICES),
           yieldProgramReadiness,
+          assertCurrent,
         );
       } catch (error) {
+        if (error instanceof GarageRestoreAbandonedError) throw error;
         // A failed readiness proof (a lost or replaced context, a failed query or reflection) is not permission to
         // force the same cold reflection in an unbounded fallback render.
         if (error instanceof ProgramUniformPreparationError && error.preparation.reason !== 'budget') throw error;
@@ -231,6 +257,7 @@ export async function restoreGarageGpuPipeline({
         yieldBeforeBatch: async () => { await yieldGpu(); },
       });
     }
+    assertCurrent();
     const settleFrameAt = now();
     post.render(simDt);
     settleFrameMs = Math.round(now() - settleFrameAt);

@@ -919,7 +919,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   },
   // Renderer ports are initialized before any covered return can run. The
   // engine owner splits restoration into paintable shadow/upload batches.
-  restorePresentationGpu: async ({ resourcesReleased }) => {
+  restorePresentationGpu: async ({ resourcesReleased, isCurrent }) => {
     const programRoot = pedestal.current?.root ?? scene;
     const programsNeedWarm = resourcesReleased || lastGarageProgramRoot !== programRoot;
     const receipt = await restoreGarageGpuPipeline({
@@ -932,6 +932,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
       simDt: SIM_DT,
       resourcesReleased,
       programsNeedWarm,
+      isCurrent,
     });
     lastGarageProgramRoot = programRoot;
     return receipt;
@@ -2011,6 +2012,8 @@ async function ensureBattleVisualStreamer() {
   battleVisuals = await battleVisualStreamerAccess.preload();
   return battleVisuals;
 }
+// perf-246: bound once the Garage return owner exists (below); settings is composed first.
+let garageAwaitingHandoff = (): boolean => false;
 const settings = createSettingsAccess({
   input,
   bus,
@@ -2018,9 +2021,11 @@ const settings = createSettingsAccess({
   // keeps pointer-unlock from opening settings over the death camera.
   isBattleActive: battlePhase.canOpenBattleSettings,
   isSpectating: () => !!killcam.spectate?.active,
-  canLeaveBattle: battlePhase.canLeaveBattle,
+  // perf-246: a Garage prepared behind the battle report is still the battle's end to the player: its Esc menu
+  // leaves (the handoff) and the Garage gear stays hidden until the handoff.
+  canLeaveBattle: () => battlePhase.canLeaveBattle() || garageAwaitingHandoff(),
   onLeaveBattle: () => leaveBattleToGarage(),
-  gearVisible: battlePhase.isGarage,
+  gearVisible: () => battlePhase.isGarage() && !garageAwaitingHandoff(),
   // PAUSE: the overlay shows its PAUSED treatment exactly when opening it
   // freezes a live battle — same predicate the tick() pause gate derives its
   // livePaused from (kill-cam replays close the panel themselves; the end
@@ -2216,7 +2221,7 @@ input.onAction('networkPanel', () => { multiplayerV2.current?.toggleStatusPanel(
 input.onAction('leaveBattle', () => {
   const v2 = multiplayerV2.current;
   if (v2?.inMatch && v2.pressLeave() !== 'ignored') return;
-  if (battlePhase.canLeaveBattle()) settings.open();
+  if (battlePhase.canLeaveBattle() || garageAwaitingHandoff()) settings.open();
 });
 // The proving ground (v2 progression, 2026-10-17): R resets the range, Y switches moving targets; the range card's buttons
 // say the same through the bus. Inert in every other battle (a network battle's local session never plays the range).
@@ -3043,8 +3048,8 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
   },
   audio,
   transition,
-  restoreGaragePresentation: async () => {
-    const receipt = await garagePhasePresentation.restoreGpu();
+  restoreGaragePresentation: async (isCurrent?: () => boolean) => {
+    const receipt = await garagePhasePresentation.restoreGpu(isCurrent);
     garagePresentationDirty = false;
     return receipt;
   },
@@ -3066,6 +3071,34 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
   }),
 });
 const enterGarage = garageReturn.enter;
+garageAwaitingHandoff = () => garageReturn.awaitingHandoff;
+// perf-246: the Garage return paid behind the battle report (src/app/battleEndGarageWarm.ts). Loaded with the first
+// battle, off the boot graph; it registers itself as the report's backdrop owner (src/ui/reportBackdrop.ts).
+let battleEndGarageWarmLoad: Promise<void> | null = null;
+const loadBattleEndGarageWarm = (): void => {
+  battleEndGarageWarmLoad ??= import('./app/battleEndGarageWarm.ts').then(({ installBattleEndGarageWarm }) => {
+    const warm = installBattleEndGarageWarm({
+      bus,
+      prepare: () => garageReturn.prepare(),
+      isEligible: () => game.phase === 'battle' && game.result !== null && !shotMode && !studio.active
+        && !multiplayerV2.current?.active && !multiplayerV2.current?.room && !battleEntryLifecycle.pending
+        && !garageReturn.transitioning && !graphicsContextLost,
+      renderFrame: () => {
+        if (graphicsContextLost) return null;
+        post.render(0);
+        return renderer.domElement;
+      },
+      enabled: new URLSearchParams(location.search).get('garagePrewarm') !== '0',
+      reportError: (message, error) => console.warn(message, error),
+    });
+    window.__GARAGE_PREWARM = warm.stats;
+  }, (error: RuntimeValue) => {
+    battleEndGarageWarmLoad = null;
+    console.warn('battle-end Garage warm unavailable', error);
+  });
+};
+bus.on('ui:battleStart', loadBattleEndGarageWarm);
+bus.on('phase:change', loadBattleEndGarageWarm);
 const leaveBattleToGarage = (): Promise<void> => {
   const v2 = multiplayerV2.current;
   if (v2?.active && battleEntryLifecycle.pending) {
@@ -3386,7 +3419,7 @@ const mainFrame = createMainFrameRuntime({
   battleFrame,
   isBattleLoadCovering: () => battleLoad.covering === true,
   isTransitionHoldingSceneForFadeIn: () => transition.holdingSceneForFadeIn,
-  isPresentationRestoreCovering: () => garagePhasePresentation.restoringGpu || (game.phase === 'garage' && garageReturn.current?.lastTrace?.presentationUnready === true),
+  isPresentationRestoreCovering: () => garagePhasePresentation.restoringGpu || (game.phase === 'garage' && (garageReturn.current?.lastTrace?.presentationUnready === true || garageReturn.current?.lastTrace?.awaitingHandoff === true)),
   cameraInput: camInput,
   getMobileAutoAim: mobileBattleInput.getAutoAim,
   rig,
@@ -3711,7 +3744,8 @@ const studioAccess = createStudioAccess({
     // idle there: lend it for flares/night firelight (scene light count fixed).
     borrowLight: () => sniperFill.light,
   }),
-  getPhase: () => game.phase,
+  // perf-246: a Garage prepared behind the battle report is not on screen yet: F8 waits for the handoff.
+  getPhase: () => (garageAwaitingHandoff() ? 'battle' : game.phase),
   keyTarget: window,
 });
 studio = studioAccess.presentation;
