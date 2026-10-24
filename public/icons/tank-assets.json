@@ -137897,13 +137897,13 @@
             "name": "driver",
             "min": [
               -0.7368,
-              0.8102,
-              1.4913
+              0.7768,
+              1.7413
             ],
             "max": [
               -0.2774,
-              1.3666,
-              3.2837
+              1.3632,
+              3.5337
             ],
             "turretLocal": false
           },
@@ -137912,13 +137912,13 @@
             "name": "gunner",
             "min": [
               0.4319,
-              -0.9358,
-              -0.873
+              -0.95,
+              -0.9476
             ],
             "max": [
-              0.8913,
-              -0.0558,
-              -0.1381
+              0.7816,
+              0.4021,
+              -0.1949
             ],
             "turretLocal": true
           },
@@ -137926,21 +137926,21 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.47,
-              -0.8561,
-              -1.5335
+              0.17,
+              -0.943,
+              -1.4911
             ],
             "max": [
-              0.8997,
-              -0.1361,
-              -0.9183
+              0.6294,
+              -0.083,
+              -0.7481
             ],
             "turretLocal": true
           }
         ]
       },
       "geometryHash": "084447b0",
-      "metadataHash": "0e460ccf",
+      "metadataHash": "b53b67f2",
       "presentationAnchor": {
         "xM": -0.0002,
         "zM": 0.0439
@@ -138000,24 +138000,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 73673,
-          "sha256": "19da1015f1178ada97117ebce676ae2c478c8571ca3424ba555abce3c1ddf106"
+          "bytes": 71225,
+          "sha256": "b6a9178f90492bf7708f283a6473600765fc00891c8ae6dae4bed8923d5eef5c"
         },
         "modulesSide": {
           "file": "k2_black_panther_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 68886,
-          "sha256": "cfc56b753c27b7086838153f6f1a70e1ad0c5066ac497ab303aacaf9101cfe59"
+          "bytes": 69412,
+          "sha256": "10dfc75c0a27de57dbbd0842c43d10e3f313847f9570e137f6195ddbbfe3aa90"
         },
         "crewSide": {
           "file": "k2_black_panther_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 63872,
-          "sha256": "090080adef3e1b8c0ee32f60e097b6ccbca9a42dacf1392783913fcef036b28c"
+          "bytes": 63644,
+          "sha256": "79205e5ad82790939aa9a65bc56d335d2e69d678b70a201fea69f12c4734637e"
         },
         "angle": {
           "file": "k2_black_panther_angle.webp",
