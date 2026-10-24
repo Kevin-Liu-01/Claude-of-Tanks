@@ -150,8 +150,13 @@ export function mountStudioProductionPanel(
     const card = button('', () => selectPreset(preset.id), 'production-card');
     card.dataset.productionPreset = preset.id;
     card.title = presetText(preset.id, 'description', preset.description);
+    // the sequence's own frame, rendered by the engine (public/media/studio-r1, its manifest); its battlefield's card if
+    // a still is missing. Sized, so the library never shifts as the pictures arrive.
     const photo = node('img');
-    photo.src = `/maps/cards/${preset.map}.webp`;
+    photo.src = `/media/studio-r1/sequence-${preset.id}-640.webp`;
+    photo.width = 640;
+    photo.height = 400;
+    photo.addEventListener('error', () => { photo.src = `/maps/cards/${preset.map}.webp`; }, { once: true });
     photo.alt = '';
     photo.loading = 'lazy';
     photo.decoding = 'async';
