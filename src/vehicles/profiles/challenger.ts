@@ -2514,12 +2514,14 @@ function buildChallenger2VariantPackage(
         };
         buildChallenger2VariantPackageAssemblyStage15();
         const buildChallenger2VariantPackageHullStage2 = (): void => {
-          // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): 200 L drums (0.88 m long after the
-          // 1.1 vehicle scale) on the tail, their fronts 4.41 m off the ring's axis, past the bustle rack's floor (1.933
-          // world to 4.3 m); 1.12 m long from -3.07 world, they stood 32 cm into it.
+          // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the Ukrainian's drums are 200 L size
+          // (0.88 m long after the 1.1 vehicle scale) on the tail, their fronts 4.41 m off the ring's axis, past its
+          // bustle rack's floor (1.933 world to 4.3 m); 1.12 m long from -3.07 world, they stood 32 cm into it. The 2E's
+          // turret ends 3.9 m off the axis, clear of its drums as built.
+          const drumLength = ukrainian ? 0.80 : 1.02, drumZ = ukrainian ? -3.41 : -3.30;
           for (const side of [-1, 1]) {
-            P.add('hullDetail', cylZ(0.25, 0.80, P.q ? 20 : 14), side * 0.62, 1.80, -3.41);
-            for (const z of [-3.74, -3.08]) {
+            P.add('hullDetail', cylZ(0.25, drumLength, P.q ? 20 : 14), side * 0.62, 1.80, drumZ);
+            for (const z of ukrainian ? [-3.74, -3.08] : [-3.63, -2.97]) {
               P.add('hullDark', torus(0.255, 0.018, P.q ? 18 : 12), side * 0.62, 1.80, z,
                 Math.PI / 2, 0, 0);
               P.add('hullDetail', box(0.42, 0.055, 0.10), side * 0.62, 1.56, z);
