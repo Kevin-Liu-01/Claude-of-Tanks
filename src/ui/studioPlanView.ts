@@ -112,14 +112,13 @@ const COLORS = { ground: '#1d2418', grid: 'rgba(255,255,255,0.06)', road: '#a89f
 export function createPlanView(S: PlanSource, t: (key: string) => string): { readonly root: HTMLElement; refreshPlan(): void; refreshTime(): void } {
   const root = document.createElement('div');
   root.className = 'planView';
-  root.style.cssText = 'display:grid;gap:6px;margin-top:8px';
   const map = document.createElement('canvas'), graph = document.createElement('canvas');
   map.setAttribute('role', 'img'); map.setAttribute('aria-label', t('studioPanel.plan.aria'));
   graph.setAttribute('role', 'slider'); graph.setAttribute('aria-label', t('studioPanel.plan.graphAria'));
-  map.style.cssText = 'width:100%;aspect-ratio:1;border-radius:3px;display:block;background:' + COLORS.ground;
-  graph.style.cssText = 'width:100%;height:64px;border-radius:3px;display:block;cursor:ew-resize;background:' + COLORS.ink;
+  map.style.cssText = 'width:100%;aspect-ratio:1;border-radius:var(--r1);display:block;background:' + COLORS.ground;
+  graph.style.cssText = 'width:100%;height:64px;border-radius:var(--r1);display:block;cursor:ew-resize;background:' + COLORS.ink;
   const legend = document.createElement('div');
-  legend.style.cssText = 'font:11px/1.3 var(--font-mono);letter-spacing:.06em;color:' + COLORS.text;
+  legend.style.cssText = 'font:500 var(--fs-11)/1.3 var(--font-data);color:var(--ink-3)';
   root.append(map, graph, legend);
   let plan: PlanGeometry | null = null, features: StudioPlanFeatures | null = null, base: HTMLCanvasElement | null = null, mapKey = '';
   const cam: CameraRailSample = {}, track: ActorTrackSample = {};

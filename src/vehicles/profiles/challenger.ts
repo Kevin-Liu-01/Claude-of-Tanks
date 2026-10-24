@@ -88,7 +88,7 @@ interface ChallengerBuilderPort extends UKBuilderPort {
   addEquipment(owner: EquipmentOwner, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   addMudguard(key: string, slot: string, geometry: THREE.BufferGeometry, ...transform: number[]): void;
   eraCluster(key: string, build: (place: EraPlacer) => void, turretOwned?: boolean): void;
-  postAssemble?: (assembly: { readonly turretG: THREE.Group }) => void;
+  postAssemble?: (assembly: { readonly turretG: THREE.Group; readonly gunG: THREE.Group; readonly recoilG: THREE.Group }) => void;
 }
 
 interface ChallengerToneOptions {
@@ -328,6 +328,14 @@ const CR1_HULL = {
   // (push-2: re-pinned on the 1.578 face).
   numberSize: 0.34, numberR: [1.579, 1.15, 0.5], numberL: [-1.579, 1.15, 0.5],
 };
+
+/** The Challenger 1 casting's group correction (challenger1Build stage 5): seven percent broader, eight lower. */
+const CH1_CASTING_SCALE = [1.12, 0.84, 1.0] as const;
+/** The L11's trunnion on the gun line, metres ahead of its authored origin: the cradle's front at the turret face. */
+const CH1_TRUNNION_Z = 1.90;
+/** Where the tube ends on the gun line (authored frame): inside the cradle, 1.1 m behind the trunnion, so that at full
+ * depression it stays under the roof over the cradle (0.33 m over the bore there). */
+const CH1_BREECH_Z = 0.80;
 
 function challenger1Build(P: ChallengerBuilderPort): void {
   const g = CR1_HULL;
@@ -1091,8 +1099,16 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     // the same buried depth and gun axis but present an oval armored collar
     // whose rear half enters the casting and whose front half receives the
     // thermal sleeve.
-    P.addGunExtraDark(xform(cylZ(0.43, 0.80, 20, 0.36), 0, 0, 0, 0, 0, 0, [1.18, 0.74, 1]), 0, -0.02, 0.55);
-    P.addGunExtraDark(xform(cylZ(0.24, 0.58, 18, 0.19), 0, 0, 0, 0, 0, 0, [1.10, 0.78, 1]), 0, 0, 1.60);
+    // 242: the collar is the gun's static cradle, cast into the turret: it no longer pitches with the gun (at full
+    // elevation, pitched about a pivot 1.9 m behind the face, it rose up to 0.75 m through the roof trough). Authored
+    // in the gun's frame, it is seated in the turret's: the gun seat plus the gun's counter-scale of the casting squash.
+    const cradle = (geometry: THREE.BufferGeometry, [sx, sy, sz]: readonly [number, number, number], x: number, y: number, z: number): void => {
+      const [cx, cy, cz] = CH1_CASTING_SCALE;
+      P.add('turretWeaponSteel', xform(geometry, 0, 0, 0, 0, 0, 0, [sx / cx, sy / cy, sz / cz]),
+        P.gunG.position.x + x / cx, P.gunG.position.y + y / cy, P.gunG.position.z + z / cz);
+    };
+    cradle(cylZ(0.43, 0.80, 20, 0.36), [1.18, 0.74, 1], 0, -0.02, 0.55);
+    cradle(cylZ(0.24, 0.58, 18, 0.19), [1.10, 0.78, 1], 0, 0, 1.60);
     // push-2: sleeve sections ride +0.02 (ref tube-top cols 1.981 vs our
     // 1.96 print) — offset only, the elevation pivot/cradle stay put.
     // r4: the FORWARD sleeve is segmented like the real L11 thermal sleeve —
@@ -1498,8 +1514,8 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     // its local vertical section eight percent; the hull and turret pivot are
     // untouched.  Counter-scale the gun geometry so the L11 tube remains
     // circular while its trunnion follows the corrected casting seat.
-    P.turretG.scale.set(1.12, 0.84, 1.0);
-    P.gunG.scale.set(1 / 1.12, 1 / 0.84, 1.0);
+    P.turretG.scale.set(...CH1_CASTING_SCALE);
+    P.gunG.scale.set(1 / CH1_CASTING_SCALE[0], 1 / CH1_CASTING_SCALE[1], 1 / CH1_CASTING_SCALE[2]);
     // The casting was authored in world-like station coordinates and its idle
     // silhouette is correct, but the live yaw pivot was left 0.562 m behind the
     // recovered Challenger ring center (z=0.362). Re-seat the articulation at
@@ -1507,11 +1523,28 @@ function challenger1Build(P: ChallengerBuilderPort): void {
     // assembly. Yaw zero therefore remains visually identical, while the shell,
     // gun, basket and all roof equipment now rotate about the center of the hull
     // ring instead of orbiting around an aft point.
-    P.postAssemble = ({ turretG }) => {
+    P.postAssemble = ({ turretG, gunG, recoilG }) => {
       const ringZ = 0.362;
       const dz = ringZ - turretG.position.z;
       for (const child of turretG.children) child.position.z -= dz / turretG.scale.z;
       turretG.position.z = ringZ;
+      // 242: the L11 pitches about its trunnion at the turret face (the cradle's front), not 1.9 m behind it. The gun's
+      // parts keep their place at rest; rig_recoil stays at the gun's origin (the recoil stroke sets its z outright).
+      gunG.position.z += CH1_TRUNNION_Z * gunG.scale.z;
+      for (const child of gunG.children) if (child !== recoilG) child.position.z -= CH1_TRUNNION_Z;
+      for (const child of recoilG.children) child.position.z -= CH1_TRUNNION_Z;
+      P.muzzleZ -= CH1_TRUNNION_Z;
+      // The breech end ran 2.1 m behind the trunnion, under the roof: at full depression it rose through it. The tube
+      // inside the cradle is never seen, so it ends there (its rear rings and caps close on that plane).
+      // (every level of the tube's LOD sits at its wrapper's origin, the authored frame)
+      recoilG.traverse((mesh: THREE.Object3D) => {
+        if (!(mesh instanceof THREE.Mesh) || (mesh.name !== 'gun' && mesh.name !== 'gunDark')) return;
+        const position = mesh.geometry.getAttribute('position');
+        for (let i = 0; i < position.count; i++) if (position.getZ(i) < CH1_BREECH_Z) position.setZ(i, CH1_BREECH_Z);
+        position.needsUpdate = true;
+        mesh.geometry.computeBoundingBox();
+        mesh.geometry.computeBoundingSphere();
+      });
     };
     P.topY = 1.35;
   };
