@@ -208,6 +208,12 @@ export const PATHS = [
     // Cards 1-4, twice: the first round builds each tank, the second reveals it from the hero cache.
     press: (page, i) => target(page, '.cot-cards .cot-card', (i % 4) + 1),
     shown: ROSTER_SHOWN, done: ROSTER_DONE, doneTimeoutMs: 60000 },
+  // Garage tank switching by the carousel's next arrow and by the ArrowRight key (2026-10-24: "switching between tanks
+  // in garage is very laggy"); a key press marks <body> so the switch's done check reads the selected card.
+  { id: 'roster-next', doc: 'game', reps: 8,
+    press: (page) => target(page, '.cot-car-arrow.next'), done: ROSTER_DONE, doneTimeoutMs: 60000 },
+  { id: 'roster-key', doc: 'game', reps: 8, key: 'ArrowRight',
+    press: (page) => target(page, 'body'), done: ROSTER_DONE, doneTimeoutMs: 60000 },
   { id: 'roster-chip', doc: 'game', reps: 5,
     press: (page, i) => target(page, '.cot-country-chips .cot-country-chip', i + 1), done: ROSTER_DONE, doneTimeoutMs: 60000,
     teardown: async (page, ctx) => { await tapOrClick(page, await target(page, '.cot-country-chips .cot-country-chip', 0), ctx).catch(() => {}); } },
@@ -299,7 +305,7 @@ async function runPath({ page, path, reps, touch, log }) {
     if (path.script) {
       await path.script(page, i, (kind, pick, spec) => run(kind, pick, spec, i), ctx);
     } else {
-      const sample = await run(path.id, () => path.press(page, i), { shown: path.shown, done: path.done, doneTimeoutMs: path.doneTimeoutMs }, i);
+      const sample = await run(path.id, () => path.press(page, i), { shown: path.shown, done: path.done, doneTimeoutMs: path.doneTimeoutMs, key: path.key }, i);
       failures = sample.error ? failures + 1 : 0;
       if (path.after) await path.after(page, ctx).catch((cause) => log(`  after: ${firstLine(cause)}`));
     }
