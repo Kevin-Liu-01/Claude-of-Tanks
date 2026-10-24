@@ -37,6 +37,13 @@ export interface TallGrassBiome {
   reedMargin: number;
   /** Prevailing wind in world xz (the blades' gust field runs along it). */
   windDir: readonly [number, number];
+  /**
+   * (2026-10-24, the Frontier follow-ups; the blind critic: "straw-yellow grass tufts dominate the beech-wood floor ... a
+   * savanna feel instead of a green summer meadow and woodland floor") a summer sward's straw only where the ground is
+   * dry: under a closing canopy the shade grass stays green (it never cures), and last season's straw (swardPatch.ts
+   * `cured`) shows only on the terrain's own dry patches. Absent, as before.
+   */
+  strawOnDry?: true;
 }
 
 interface GroundReduxProfile {
@@ -229,7 +236,8 @@ const PROFILES: Readonly<Record<string, GroundReduxProfile>> = Object.freeze({
   // shade and "flat orange leaf sprites" standing on the floor) the Fulda basin's sward is a hay meadow's, not a savanna's
   // straw: green tufts with their seed heads and flowers, and under the beech the herb layer green (dog's mercury, woodruff,
   // fern), not the straw biome's rust bracken
-  frontier: { ...TEMPERATE, foldMoist: 0.55, scree: 0.3, grass: meadow(0.9) },
+  // (2026-10-24) its straw only on the dry patches: the wood floor's grass and the fresh sward green (TallGrassBiome.strawOnDry)
+  frontier: { ...TEMPERATE, foldMoist: 0.55, scree: 0.3, grass: meadow(0.9, 0.85, { strawOnDry: true }) },
   fjord: { ...COAST, swashPeriodS: 9.5, swashReachM: 4, swashStrength: 1.0, scree: 0.4, grass: dune(0.5) },
   delta: { ...STILL_WATER, rimTint: MOSS, grass: reed(0.75, 1.6, 0.85, 0.5) },
   // (the Redrock lane, round 9, the gauntlet's wave 261: the walls meet the sand "with no talus, sand ramps or contact

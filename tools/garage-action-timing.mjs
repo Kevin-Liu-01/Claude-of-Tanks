@@ -335,7 +335,7 @@ export function installGarageActionTiming({ canvasActions = false } = {}) {
             ...numeric(measurement, ['startTime', 'endTime', 'setupMs', 'renderMs', 'readbackMs',
               'enqueueMs', 'waitMs', 'reduceMs', 'restoreMs', 'programsBeforeRender', 'programsAfterRender']),
             readbackSteps: measurement.readbackSteps ? numeric(measurement.readbackSteps,
-              ['contextQuery', 'createBuffer', 'bindingQuery', 'bindBuffer', 'bufferData', 'sizeQuery',
+              ['contextQuery', 'createBuffer', 'bindingQuery', 'bindBuffer', 'bufferData',
                 'readPixels', 'fence', 'flush', 'wait', 'copy', 'release']) : null,
           })),
         })),

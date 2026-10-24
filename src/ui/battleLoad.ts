@@ -25,6 +25,8 @@ import { MAP_THUMBS } from './mapThumbs.ts';
 import { MAP_ART_TONES, MAP_ART_TONE_DEFAULT } from './mapArtTones.ts';
 import { minimapAssetUrl } from './minimapAssetUrl.ts';
 import { recordBattleLoad } from '../game/battleLoadEstimate.ts';
+import { matchRulesetFor } from '../sim/matchRuleset.ts';
+import type { GameModeId } from '../sim/matchModes.ts';
 
 // Backward-compatible re-export for main.ts, killcam and end-screen callers.
 export { tierNumeral };
@@ -89,16 +91,29 @@ export function primeMapLqip(): Promise<void> {
 }
 /** The placeholder chunk in the browser's idle time (a short timeout where requestIdleCallback is missing). */
 export function primeMapLqipWhenIdle(): void {
-  if (mapLqip || mapLqipLoad) return;
+  if ((mapLqip || mapLqipLoad) && isImagePreloaded(MARK_MOTION_URL)) return;
+  const prime = (): void => { void primeMapLqip(); void preloadImage(MARK_MOTION_URL); };
   const idle = (globalThis as { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
-  if (typeof idle === 'function') idle(() => { void primeMapLqip(); }, { timeout: 4000 });
-  else setTimeout(() => { void primeMapLqip(); }, 1500);
+  if (typeof idle === 'function') idle(prime, { timeout: 4000 });
+  else setTimeout(prime, 1500);
 }
+
+// The living mark by the progress (brand-ui 245, the owner's commander rolling along): the brand's own animated master
+// (tools/brand-marks.mjs writes public/brand/mark-motion.svg from brandMarkMotion.ts; its reduced-motion rule is inside),
+// primed in idle time with the placeholders. As an image it adds no script: importing brandMarkMotion.ts, a lazy chunk
+// that needs brandMark.ts, split the boot graph's shared brandMark chunk into one request more.
+const MARK_MOTION_URL = '/brand/mark-motion.svg';
+/** The mark's height in the foot (its slot is sized from it, so the mark never moves the stage line). */
+const MARK_H = 22;
 
 /** The windows the direction's composition is for (bui01/src/pages/10-battle-load.html, 1440 x 900): laptop and desktop
  *  widths, 720 px and taller, with persistent panels; smaller windows keep the compact sheets (responsiveSurfaces.css). */
 const WIDE = "body:is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall'])"
   + ":not([data-cot-panels='overlay'])";
+/** The portrait phones and tablets of standard height and up: the battlefield's plan sits between the rules and the
+ *  rosters, in the band the art leaves clear there (the tip stays a wide-layout part). */
+const PORTRAIT = "body[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-width='tablet'])"
+  + ":is([data-cot-height='standard'],[data-cot-height='tall'])";
 /** A side this size or smaller shows a hero card a tank on the wide layouts (the direction's seven a side). */
 const CARD_TEAM_MAX = 7;
 /** The progress's steps (the direction's five). */
@@ -151,12 +166,12 @@ const CSS = `
   height:min(100%,calc(var(--bl-count) * (var(--bl-row-height) + var(--bl-row-gap)) + var(--bl-heading) + var(--bl-row-inset) - var(--bl-row-gap)));
   display:grid;grid-template-rows:auto minmax(0,1fr);}
 .cot-bl .thead{height:var(--bl-heading);display:flex;align-items:center;gap:9px;padding:0 8px 8px;
-  font:600 var(--fs-12)/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;}
+  font:600 var(--fs-12)/1 var(--font-ui);letter-spacing:var(--track-label-s);text-transform:uppercase;text-shadow:var(--battle-text-halo);}
 .cot-bl .thead .flags{display:inline-flex;align-items:center;gap:4px;}
 .cot-bl .team.ally .thead{color:var(--text-own);border-bottom:1px solid var(--team-own);}
 .cot-bl .team.foe .thead{color:var(--text-enemy);border-bottom:1px solid var(--team-enemy);flex-direction:row-reverse;}
-.cot-bl .thead .n{margin-left:auto;color:var(--ink-3);}
-.cot-bl .team.foe .thead .n{margin-left:0;margin-right:auto;}
+/* the rules row says the sides ("7 v 7"): each heading's count stays for assistive technology alone */
+.cot-bl .thead .n{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 /* Center each roster as a block. Rows never stretch when a team is small.
    Fixed silhouette boxes keep asset loading from moving the rows. */
 .cot-bl .rows{display:grid;grid-template-rows:repeat(var(--bl-count),var(--bl-row-height));align-content:start;
@@ -164,21 +179,34 @@ const CSS = `
   scrollbar-width:none;}
 .cot-bl .rows:focus-visible{outline:1px solid var(--accent);outline-offset:-1px}
 .cot-bl .rows::-webkit-scrollbar{display:none}
-.cot-bl .row{position:relative;display:flex;align-items:center;gap:10px;min-height:0;padding:0 8px;border-radius:var(--r1);
-  background:var(--fill-quiet);outline:1px solid var(--line-1);outline-offset:-1px;}
+/* A sheet row on the HUD's plate (the art behind it is busy): the side's ink on its outer edge, the nation's flag, the
+   vehicle's own side render facing the other side, its name, and who drives it at the row's far end. */
+.cot-bl .row{position:relative;display:flex;align-items:center;gap:8px;min-height:0;padding:0 8px;border-radius:var(--r1);
+  background:var(--battle-chip-plate);box-shadow:var(--ring-1);}
 .cot-bl .team.foe .row{flex-direction:row-reverse;}
 .cot-bl .team.ally .row{border-left:2px solid var(--team-own);}
 .cot-bl .team.foe .row{border-right:2px solid var(--team-enemy);}
-.cot-bl .row.slot{background:var(--fill-faint);}
-.cot-bl .row.me{background:var(--accent-wash);border-left-color:var(--accent);box-shadow:var(--ring-accent);outline:0;}
-.cot-bl .row .tier{flex:0 0 26px;text-align:center;font:500 var(--fs-11)/1 var(--font-mono);color:var(--accent-hi);}
-.cot-bl .row .sil{flex:0 0 52px;height:100%;max-height:24px;background-repeat:no-repeat;
-  background-position:center;background-size:contain;}
+.cot-bl .row.slot{background:var(--fill-faint);box-shadow:none;}
+.cot-bl .row.me{background:var(--accent-wash);border-left-color:var(--accent);box-shadow:var(--ring-accent);}
+/* the tier only where the battle mixes tiers (a rank every row shares says nothing) */
+.cot-bl .row .tier{flex:0 0 22px;text-align:center;font:500 var(--fs-11)/1 var(--font-mono);color:var(--accent-hi);}
+.cot-bl:not(.mixed-tiers) .row .tier{display:none;}
+.cot-bl .row .sil{flex:0 0 56px;height:100%;max-height:26px;background-repeat:no-repeat;
+  background-image:var(--side-img),radial-gradient(closest-side,var(--fill-scale),transparent);
+  background-size:118% auto,100% 100%;background-position:42% 50%,center;filter:brightness(1.18);}
 .cot-bl .team.foe .row .sil{transform:scaleX(-1);}
-.cot-bl .row .nm{flex:1 1 auto;min-width:0;font:600 var(--fs-13)/1.2 var(--font-ui);color:var(--ink-1);
+/* a flag's box is held before flags.ts fills it (after the rows), so the name beside it never moves when it lands */
+.cot-bl .row .fl{display:flex;flex:none;}.cot-bl .row .fl:empty:not([data-nation]){display:none;}
+.cot-bl .row .fl[data-nation]{width:16px;height:12px;}
+.cot-bl .row .fl .cot-flag{display:block;box-shadow:var(--flag-ring);}
+.cot-bl .row .nm{flex:0 1 auto;min-width:0;font:600 var(--fs-13)/1.2 var(--font-ui);color:var(--ink-1);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-bl .team.foe .row .nm{text-align:right;}
 .cot-bl .row.me .nm{color:var(--accent-hi);}
+.cot-bl .row .cs{flex:0 4 auto;min-width:0;margin-left:auto;font:500 var(--fs-11)/1.2 var(--font-mono);color:var(--ink-3);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cot-bl .team.foe .row .cs{margin-left:0;margin-right:auto;}
+.cot-bl .row.me .cs{color:var(--accent-hi);}
 .cot-bl .vs{display:grid;place-items:center;justify-self:center;align-self:center;
   font:700 var(--fs-28)/1 var(--font-ui);color:var(--accent);}
 /* --- footer: the stage, the five-step progress, the countdown ------------- */
@@ -186,7 +214,10 @@ const CSS = `
 .cot-bl .fmeta{display:flex;align-items:center;gap:16px;}
 .cot-bl .fstage{flex:0 1 auto;min-width:0;display:flex;align-items:center;gap:8px;font:500 var(--fs-14)/1.3 var(--font-body);
   color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cot-bl .fstage .gi{display:flex;flex:none;color:var(--accent);}
+/* the living mark rolls beside the stage while the battle builds, its slot sized before it lands (no shift) from the
+   mark's own viewBox (brandMark.ts BRAND_TANK_VIEWBOX, 184 x 106: imported, its chunk would split off the boot graph) */
+.cot-bl .fstage .mk{display:block;flex:none;height:${MARK_H}px;aspect-ratio:184 / 106;color:var(--ink-1);}
+.cot-bl .fstage .mk img{display:block;width:100%;height:100%;}
 .cot-bl .fbar{flex:1 1 auto;min-width:80px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;}
 .cot-bl .fbar i{position:relative;display:block;height:4px;overflow:hidden;background:var(--fill-scale);}
 .cot-bl .fbar i b{position:absolute;inset:0;background:var(--ink-1);transform:scaleX(0);transform-origin:left center;
@@ -215,6 +246,28 @@ ${WIDE} .cot-bl .side{grid-column:2;grid-row:1 / span 2;display:flex;flex-direct
 ${WIDE} .cot-bl .map{align-self:flex-end;width:250px;padding:8px;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--e2);}
 ${WIDE} .cot-bl .map[hidden]{display:none;}
 ${WIDE} .cot-bl .map img{display:block;width:234px;height:234px;object-fit:cover;box-shadow:var(--ring-3);}
+.cot-bl .map .mp{position:relative;display:block;}
+.cot-bl .map .obj{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+${PORTRAIT} .cot-bl .briefing{grid-template-rows:auto auto minmax(0,1fr) auto;}
+${PORTRAIT} .cot-bl .side{display:flex;justify-content:center;padding-bottom:clamp(12px,2.5vh,24px);}
+${PORTRAIT} .cot-bl .side .tip{display:none;}
+${PORTRAIT} .cot-bl .map{width:min(58vw,260px);padding:6px;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--e2);}
+${PORTRAIT} .cot-bl .map[hidden]{display:none;}
+${PORTRAIT} .cot-bl .map img{display:block;width:100%;aspect-ratio:1;object-fit:cover;box-shadow:var(--ring-3);}
+/* a portrait sheet is narrow: two lines a row, the vehicle over its driver beside the flag and the render (the tier
+   would take the name's room) */
+${PORTRAIT} .cot-bl .team{--bl-row-height:36px;--bl-row-gap:4px;}
+${PORTRAIT} .cot-bl .row{display:grid;grid-template-columns:auto auto minmax(0,1fr);grid-template-rows:auto auto;
+  column-gap:6px;row-gap:2px;align-content:center;}
+${PORTRAIT} .cot-bl .team.foe .row{grid-template-columns:minmax(0,1fr) auto auto;}
+${PORTRAIT} .cot-bl .row .tier{display:none;}
+${PORTRAIT} .cot-bl .row :is(.fl,.sil){grid-row:1 / span 2;}
+${PORTRAIT} .cot-bl .row .sil{width:44px;height:22px;}
+${PORTRAIT} .cot-bl .team.ally .row .fl{grid-column:1;}${PORTRAIT} .cot-bl .team.ally .row .sil{grid-column:2;}
+${PORTRAIT} .cot-bl .team.ally .row :is(.nm,.cs){grid-column:3;}
+${PORTRAIT} .cot-bl .team.foe .row .fl{grid-column:3;}${PORTRAIT} .cot-bl .team.foe .row .sil{grid-column:2;}
+${PORTRAIT} .cot-bl .team.foe .row :is(.nm,.cs){grid-column:1;text-align:right;}
+${PORTRAIT} .cot-bl .row .nm{grid-row:1;}${PORTRAIT} .cot-bl .row .cs{grid-row:2;margin:0;}
 ${WIDE} .cot-bl .teams{grid-column:1 / -1;grid-row:3;align-items:end;gap:28px;}
 ${WIDE} .cot-bl .foot{grid-column:1 / -1;grid-row:4;padding-top:24px;}
 ${WIDE} .cot-bl .count{position:absolute;left:0;right:0;top:calc(100% + 1.2vh);margin:0;}
@@ -231,13 +284,22 @@ ${WIDE} .cot-bl .team.cards .row.card{display:block;padding:0;overflow:hidden;is
 ${WIDE} .cot-bl .team.ally.cards .row.card{border:0;border-bottom:2px solid var(--team-own);}
 ${WIDE} .cot-bl .team.foe.cards .row.card{border:0;border-bottom:2px solid var(--team-enemy);}
 ${WIDE} .cot-bl .team.cards .row.card.me{box-shadow:var(--battle-card-me);}
-${WIDE} .cot-bl .team.cards .row.card .sil{position:absolute;left:10%;right:10%;top:22%;height:36%;max-height:none;opacity:.5;}
+${WIDE} .cot-bl .team.cards .row.card .sil{position:absolute;left:10%;right:10%;top:22%;height:36%;max-height:none;opacity:.5;
+  background-image:var(--sil-img);background-size:contain;background-position:center;filter:none;}
+/* a card's flag is its hero layer's (the sheet row's seat stays empty there) */
+${WIDE} .cot-bl .team.cards .row.card .fl{display:none;}
 ${WIDE} .cot-bl .team.cards .row.card.cot-hc .sil{display:none;}
 ${WIDE} .cot-bl .team.cards .row.card::after{content:'';position:absolute;z-index:var(--battle-z-card-fade);left:0;right:0;bottom:0;height:calc(var(--hc-band) + 8px);
   background:var(--media-fade);pointer-events:none;}
 ${WIDE} .cot-bl .team.cards .row.card .nm{position:absolute;z-index:var(--battle-z-card-text);left:8px;right:8px;bottom:8px;font:600 var(--fs-11)/1.1 var(--font-ui);
   text-transform:uppercase;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-align:left;}
 ${WIDE} .cot-bl .team.foe.cards .row.card .nm{text-align:left;}
+/* the driver under the vehicle's name: the band grows a line so the tank keeps clear of both */
+${WIDE} .cot-bl .team.cards .row.card.has-cs{--hc-band:42px;}
+${WIDE} .cot-bl .team.cards .row.card.has-cs .nm{bottom:24px;}
+${WIDE} .cot-bl .team.cards .row.card .cs{position:absolute;z-index:var(--battle-z-card-text);left:8px;right:8px;bottom:7px;margin:0;
+  font:500 var(--fs-11)/1.2 var(--font-mono);color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+${WIDE} .cot-bl .team.cards .row.card.me .cs{color:var(--accent-hi);}
 ${WIDE} .cot-bl .team.cards .row.card .tier{position:absolute;z-index:var(--battle-z-card-text);top:6px;left:6px;flex:none;padding:2px 4px;border-radius:var(--r1);
   background:var(--glyph-plate);}
 /* the hero layers show on the cards alone (a window that narrows to the compact sheets keeps the rows plain) */
@@ -266,6 +328,10 @@ export interface BattleLoadRosterRow {
   readonly tier?: string;
   readonly name?: string;
   readonly isPlayer?: boolean;
+  /** Who drives it (a room player's name, a bot's callsign as the HUD names it); the viewer's card reads "You". */
+  readonly callsign?: string;
+  /** The vehicle's nation: its flag on a sheet row (a card carries the hero flag). */
+  readonly nation?: string;
 }
 
 interface BattleLoadInfo {
@@ -273,6 +339,11 @@ interface BattleLoadInfo {
   readonly thumb?: string;
   readonly biome?: string;
   readonly mode?: string;
+  /** The battle's mode id: its opening objectives on the battlefield's plan (deployObjectives.ts), its clock and respawn
+   *  on the rules row (sim/matchRuleset.ts). */
+  readonly modeId?: string;
+  /** A campaign operation keeps its own clock (matchRuleset's campaign input), so its rules row leaves the clock off. */
+  readonly campaign?: boolean;
   readonly allies: readonly BattleLoadRosterRow[];
   readonly enemies: readonly BattleLoadRosterRow[];
   /** Rows each empty team sheet holds open until rosters() fills it (a solo entry: the default split). */
@@ -285,6 +356,15 @@ interface BattleLoadInfo {
  * (2026-10-22, nav-perf-240: the sheets grew from one row to seven and moved up 99 px about 20 s into the load).
  */
 export const PENDING_ROSTER_SLOTS = 7;
+
+/**
+ * The rules row's mode chip: the mode alone, as its normalized id names it ("Turbo Ball"; a Standard battle reads
+ * "Random Battle · Standard"). The screen names the battlefield in its title, so the chip carries no battlefield
+ * subtitle, and the plan's objectives (modeId) are this same mode's.
+ */
+export function battleLoadModeLabel(modeId: string): string {
+  return modeId === 'standard' ? t('battleLoad.randomStandard') : t(`playMenu.matchMode.${modeId}.label`);
+}
 
 /** The battlefield a pending entry is about to load, known before its loading owner is imported. */
 export interface PendingBattlefield {
@@ -345,8 +425,10 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     `<i class="lb t" aria-hidden="true"></i><i class="lb b" aria-hidden="true"></i>` +
     `<main class="briefing"><div class="cap"><h1 class="mapname"></h1>` +
     `<div class="rules"><span class="cot-c-chip"><span class="kicker">${t('battleLoad.kicker')}</span></span>` +
-    `<span class="cot-c-chip sides" hidden><span class="gi">${uiIconSVG('team', 16)}</span><span class="sv"></span></span></div></div>` +
-    `<div class="side"><div class="tip"></div><div class="map" hidden><img alt="" decoding="async" draggable="false"></div></div>` +
+    `<span class="cot-c-chip sides" hidden><span class="gi">${uiIconSVG('team', 16)}</span><span class="sv"></span></span>` +
+    `<span class="cot-c-chip clock" hidden><span class="gi">${uiIconSVG('clock', 16)}</span><span class="v num"></span></span>` +
+    `<span class="cot-c-chip respawn" hidden><span class="gi">${uiIconSVG('rematch', 16)}</span><span class="v num"></span></span></div></div>` +
+    `<div class="side"><div class="tip"></div><div class="map" hidden><span class="mp"><img alt="" decoding="async" draggable="false"><canvas class="obj" aria-hidden="true"></canvas></span></div></div>` +
     `<div class="teams">` +
     `<div class="team ally"><div class="thead"><span>${t('battleLoad.allies')}</span><span class="flags" aria-hidden="true"></span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
@@ -355,7 +437,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     `<div class="rows"></div></div>` +
     `</div>` +
     `<div class="foot" aria-live="polite"><div class="fmeta">` +
-    `<div class="fstage"><span class="gi">${uiIconSVG('map', 16)}</span><span class="st">${t('battleLoad.loading')}</span></div>` +
+    `<div class="fstage"><span class="mk" aria-hidden="true"></span><span class="st">${t('battleLoad.loading')}</span></div>` +
     `<div class="fbar" role="progressbar" aria-label="${t('battleLoad.loading')}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">` +
     `${'<i><b></b></i>'.repeat(PROGRESS_STEPS)}</div><div class="fpct num">0%</div></div>` +
     `<div class="count"></div></div></main>`;
@@ -401,8 +483,45 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   const nameEl = requiredElement<HTMLHeadingElement>(root, '.mapname');
   const sidesChip = requiredElement<HTMLSpanElement>(root, '.rules .sides');
   const sidesEl = requiredElement<HTMLSpanElement>(root, '.rules .sv');
+  const clockChip = requiredElement<HTMLSpanElement>(root, '.rules .clock');
+  const respawnChip = requiredElement<HTMLSpanElement>(root, '.rules .respawn');
+  /** The mode's clock and respawn as the direction's chips (10-battle-load .rules: glyph and figure, no words); an entry
+   *  without a mode (a pending cover, a room) or a campaign operation (its own clock) leaves them off. */
+  function showRules(modeId: string | undefined, campaign: boolean): void {
+    const rules = modeId ? matchRulesetFor(modeId as GameModeId) : null;
+    const clock = !campaign ? rules?.timeLimitS ?? null : null;
+    const respawn = rules?.respawnS ?? null;
+    clockChip.hidden = clock == null;
+    if (clock != null) {
+      requiredElement<HTMLSpanElement>(clockChip, '.v').textContent = `${Math.floor(clock / 60)}:${String(Math.round(clock % 60)).padStart(2, '0')}`;
+      clockChip.title = t('battleLoad.rule.clock');
+    }
+    respawnChip.hidden = respawn == null;
+    if (respawn != null) {
+      requiredElement<HTMLSpanElement>(respawnChip, '.v').textContent = t('battleLoad.rule.respawnValue', { s: respawn });
+      respawnChip.title = t('battleLoad.rule.respawn');
+    }
+  }
+  const markEl = requiredElement<HTMLSpanElement>(root, '.fstage .mk');
+  /** The living mark in its sized slot (primed in idle time; a cold first load paints it on arrival, in place). */
+  function seatMark(): void {
+    if (markEl.firstChild) return;
+    markEl.innerHTML = `<img src="${MARK_MOTION_URL}" alt="" decoding="async" draggable="false">`;
+  }
   const mapEl = requiredElement<HTMLDivElement>(root, '.map');
   const mapImg = requiredElement<HTMLImageElement>(root, '.map img');
+  const objCanvas = requiredElement<HTMLCanvasElement>(root, '.map .obj');
+  let objectivesPass = 0;
+  /** The battle's opening objectives over the plan, as the Deploy screen draws them (its lazy module, once the plate is
+   *  laid out); a later entry supersedes this one, and an entry without a mode clears them. */
+  function drawObjectives(mapId: string | undefined, modeId: string | undefined): void {
+    const pass = ++objectivesPass;
+    if (!mapId || !modeId) { objCanvas.getContext?.('2d')?.clearRect(0, 0, objCanvas.width, objCanvas.height); return; }
+    void import('./deployObjectives.ts').then(({ drawDeployObjectives }) => {
+      const draw = (): void => { if (pass === objectivesPass) void drawDeployObjectives(objCanvas, mapId, modeId); };
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(draw); else draw();
+    }, () => { /* the plan stays bare */ });
+  }
   /** The battlefield's name: its first word solid, the rest hollow (the direction's title; zh-CN stays solid). */
   const setMapName = (name: string): void => {
     const space = name.indexOf(' ');
@@ -451,6 +570,8 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   }
 
   let visible = false;
+  /** The thumb and battlefield whose art the screen staged last (show() keeps it while the cover stays up). */
+  let stagedArt = '';
   // `visible` is the requested open state and flips false when hide() starts.
   // `covering` follows the actual composited surface through its exit fade so
   // battle input cannot steer a camera that is only partly exposed yet.
@@ -479,6 +600,24 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     });
   }
 
+  /** Tiers show only where the battle mixes them: a rank every vehicle shares says nothing (less text). */
+  function markTiers(allies: readonly BattleLoadRosterRow[], enemies: readonly BattleLoadRosterRow[]): void {
+    const tiers = new Set([...allies, ...enemies].filter((row) => row.kind !== 'aircraft').map((row) => row.tier || tierNumeral(row.id)));
+    if (tiers.size > 1) root.classList.add('mixed-tiers'); else root.classList.remove('mixed-tiers');
+  }
+
+  /** The sheet rows' flags: flags.ts loads with its art once, after the rows (a later fill of this side supersedes it). */
+  let rowFlagsPass = 0;
+  function fillRowFlags(host: HTMLElement, rows: readonly BattleLoadRosterRow[]): void {
+    const pass = String(++rowFlagsPass);
+    host.dataset.rowFlagsPass = pass;
+    if (!rows.some((row) => row.nation)) return;
+    void import('./flags.ts').then(({ flagIconHTML }) => {
+      if (host.dataset.rowFlagsPass !== pass) return;
+      for (const seat of host.querySelectorAll<HTMLElement>('.fl[data-nation]')) seat.innerHTML = flagIconHTML(seat.dataset.nation || '', 16, 12);
+    }, () => { /* the rows keep their silhouettes */ });
+  }
+
   function fillTeam(
     host: HTMLElement,
     countEl2: HTMLElement,
@@ -487,6 +626,10 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     slots = 0,
   ): void {
     const reserved = rows.length ? 0 : Math.max(0, Math.floor(slots));
+    // a cover the press already drew (showPending, then the loading owner's first show with the same open slots) keeps
+    // its rows: one sheet build in the press's task, not two (click-perf-244)
+    if (!rows.length && reserved && host.dataset.pendingSlots === String(reserved) && host.childElementCount === reserved) return;
+    if (reserved) host.dataset.pendingSlots = String(reserved); else delete host.dataset.pendingSlots;
     team.style.setProperty('--bl-count', String(Math.max(1, rows.length, reserved)));
     // a side of seven or fewer shows a hero card a tank where the layout is wide (CSS), the rows otherwise
     const cards = rows.length > 0 && rows.length <= CARD_TEAM_MAX;
@@ -512,16 +655,35 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       if (aircraft) {
         sil.innerHTML = uiIconSVG(aircraft.icon, 25);
         sil.style.display = 'grid'; sil.style.placeItems = 'center';
-      } else sil.style.backgroundImage = `url(${iconUrl(r.id, 'side_silhouette')})`;
+      } else {
+        // a sheet row shows the vehicle's own side render, a card its silhouette until the hero layers land; only the
+        // one the layout draws is fetched (a box the CSS never paints loads no background)
+        sil.style.setProperty('--side-img', `url(${iconUrl(r.id, 'side')})`);
+        sil.style.setProperty('--sil-img', `url(${iconUrl(r.id, 'side_silhouette')})`);
+      }
       const nm = document.createElement('div');
       nm.className = 'nm';
       nm.textContent = aircraft?.label || r.name || r.id;
-      el.append(tier, sil, nm);
+      // every vehicle with its flag (owner UI rules): a sheet row's beside its render (a wide card's is its hero layer)
+      const flag = document.createElement('span');
+      flag.className = 'fl';
+      if (r.nation && !aircraft) flag.dataset.nation = r.nation;
+      el.append(tier, flag, sil, nm);
+      // who drives it: a card names its driver under the vehicle (the direction's 10-battle-load .cs), a row at its end
+      const callsign = r.isPlayer ? t('hud.feed.you') : r.callsign;
+      if (callsign) {
+        const cs = document.createElement('div');
+        cs.className = 'cs';
+        cs.textContent = callsign;
+        el.append(cs);
+        if (cards) el.className += ' has-cs';
+      }
       host.appendChild(el);
       if (cards && !aircraft) decorated.push([el, r.id]);
     }
     countEl2.textContent = reserved ? '' : String(rows.length);
     decorateCards(host, decorated);
+    fillRowFlags(host, rows);
   }
 
   /** The sides on the rules row ("7 v 7"), once both are known. */
@@ -560,18 +722,27 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     show(info: BattleLoadInfo) {
       setMapName(info.mapName || t('battleLoad.fallbackMapName'));
       if (info.mode) kickEl.textContent = info.mode;
-      stageArt(info.thumb, info.biome);
+      // the art a covered entry already staged stays (the loading owner's first show names the same battlefield)
+      const artKey = `${info.thumb ?? ''}|${info.biome ?? ''}`;
+      if (!visible || artKey !== stagedArt) stageArt(info.thumb, info.biome);
+      stagedArt = artKey;
       // the battlefield's own plan (its baked tactical map, which the battle's minimap loads next)
       mapEl.hidden = !info.biome;
       if (info.biome) mapImg.src = minimapAssetUrl(info.biome);
+      drawObjectives(info.biome, info.modeId);
+      showRules(info.modeId, !!info.campaign);
       fillTeam(allyRows, allyN, allyTeam, info.allies, info.slots);
       fillTeam(foeRows, foeN, foeTeam, info.enemies, info.slots);
+      markTiers(info.allies, info.enemies);
       showSides(info.allies.length, info.enemies.length);
-      // the tip's body alone (less text): its glyph says what it is
-      const [, body] = localizedTip(
-        BATTLE_TIPS[Math.floor(Math.random() * BATTLE_TIPS.length)],
-      );
-      tipEl.innerHTML = `<span class="gi">${uiIconSVG('shield', 22)}</span><span>${body}</span>`;
+      seatMark();
+      // the tip's body alone (less text): its glyph says what it is; a cover already up keeps its tip
+      if (!visible || !tipEl.firstChild) {
+        const [, body] = localizedTip(
+          BATTLE_TIPS[Math.floor(Math.random() * BATTLE_TIPS.length)],
+        );
+        tipEl.innerHTML = `<span class="gi">${uiIconSVG('shield', 22)}</span><span>${body}</span>`;
+      }
       countEl.textContent = '';
       api.progress(0, t('battleLoad.loading'));
       if (!visible) loadStartedAt = performance.now();
@@ -592,6 +763,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     ) {
       fillTeam(allyRows, allyN, allyTeam, allies);
       fillTeam(foeRows, foeN, foeTeam, enemies);
+      markTiers(allies, enemies);
       showSides(allies.length, enemies.length);
       fillFlags(allyFlags, teams?.allied ?? null, teams?.alliedFills ?? []);
       fillFlags(foeFlags, teams?.enemy ?? null, teams?.enemyFills ?? []);

@@ -60,7 +60,11 @@ const HULL_STATIONS: readonly HullStation[] = [
   [-3.472775, 1.067035, 1.759, .648044, 1.697365],
   [-3.156965, 1.067035, 1.759, .439834, 1.697365],
   [-3.079295, 1.067035, 1.759, .388613, 1.697365],
-  [-2.274, 1.067035, 1.759, .388613, 1.697365],
+  // release 240: the side shelves keep the centre engine-bay sheet's breaks (mainStock), 3.2 mm over it
+  [-2.36, 1.067035, 1.759, .388613, 1.697365],
+  [-2.274, 1.067035, 1.759, .388613, 1.6812],
+  [-2.03, 1.067035, 1.759, .388613, 1.6352],
+  [-1.75, 1.067035, 1.759, .388613, 1.5732],
   [-1.112, 1.067035, 1.759, .388613, 1.482805],
   [1.37, 1.067035, 1.759, .388613, 1.482805],
   [2.043025, 1.067035, 1.759, .439764, 1.38874],
@@ -208,8 +212,15 @@ function mainStock(P: TankBuilderPort): void {
   P.add('hull', withAbramsSourceXStern(closedSectionLoft(HULL_STATIONS.slice(1).map(hullSection))));
   // Source panels close the engine bay above the hollow lower tub. Distinct
   // side shelves leave the measured circular ring mouth open in the middle.
-  P.add('hull', sheet(-1.10, 1.10, -3.81, -2.274, 1.694155, 1.694155, .047));
-  P.add('hull', sheet(-1.10, 1.10, -2.274, -1.11, 1.694155, 1.481555, .042));
+  P.add('hull', sheet(-1.10, 1.10, -3.81, -2.36, 1.694155, 1.694155, .047));
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the engine-bay slope breaks three times
+  // under the turret's sweep (its front underside 1.58 out to 2.14 m from the ring's axis at z .393, its sides 1.62-1.64
+  // to 2.22-2.42 m and their lower rear edge 1.685 at 2.67 m) and meets the flat engine deck 9 cm further aft, up to
+  // 3 cm under the straight source plane, which the turret's front ran 1.6 cm through at the rear bearings.
+  for (const [z0, z1, y0, y1] of [[-2.36, -2.274, 1.694155, 1.678], [-2.274, -2.03, 1.678, 1.632],
+    [-2.03, -1.75, 1.632, 1.570], [-1.75, -1.11, 1.570, 1.481555]]) {
+    P.add('hull', sheet(-1.10, 1.10, z0, z1, y0, y1, .042));
+  }
   P.add('hull', bearingDeck());
   P.add('hull', frontDeck());
   P.add('hull', bearing());
@@ -385,8 +396,10 @@ function rearEquipment(P: TankBuilderPort): void {
   }
   // release 231 (the gun-hull fleet lane): the access plates lie 8 mm proud of the deck (were 25 mm); the turret's belly,
   // which runs below the deck line, cut them as it traversed
-  P.addEquipment('hullDetail', box(.744, .008, .50), .70184, 1.698, -2.4721);
-  P.addEquipment('hullDetail', box(.41, .008, 1.02), -.8331, 1.698, -2.20);
+  // (release 240: both plates on the flat deck behind the slope's last break, -2.36, out of the turret's sweep; the left,
+  // 1.02 m long, ran 0.67 m forward over the slope, its front 11 cm proud)
+  P.addEquipment('hullDetail', box(.744, .008, .36), .70184, 1.698, -2.5421);
+  P.addEquipment('hullDetail', box(.41, .008, .34), -.8331, 1.698, -2.54);
   // the SEPv3's sponson boxes and auxiliary power unit live in abramsSourceXSepv3Kit.ts (2026-09-15)
 }
 

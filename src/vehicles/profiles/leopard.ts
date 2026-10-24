@@ -9513,7 +9513,10 @@ function buildKF51(P: TankBuilderPort) {
   // (front at=−1.72 col reads 1.87 there but the LEFT ±1.72 tops 1.59 —
   // front-trace 'at' is MIRRORED world x), and the last 0.12 m narrows to
   // ±1.46 (ref plan rear ±1.7 ends −3.78/−3.69: full-width tail lit −3.813)
-  const deck = [[2.22, 1.60, 1.70], [0.30, 1.62, 1.70], [-0.49, 1.615, 1.70], [-0.80, 1.73, 1.70], [-1.20, 1.755, 1.70], [-1.94, 1.79, 1.70], [-2.30, 1.805, 1.70], [-3.30, 1.815, 1.70], [-3.72, 1.805, 1.70], [-3.84, 1.80, 1.46]];
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the deck stays under the bustle (1.686,
+  // 2.8 m off the ring's axis) to -2.17 and steps to the aft band at -2.30. The staircase rose from -0.49 to 1.79, the
+  // bustle sat 9-11 cm in it at rest, and the turret ran through it at every bearing.
+  const deck = [[2.22, 1.60, 1.70], [0.30, 1.62, 1.70], [-0.49, 1.615, 1.70], [-2.17, 1.66, 1.70], [-2.30, 1.805, 1.70], [-3.30, 1.815, 1.70], [-3.72, 1.805, 1.70], [-3.84, 1.80, 1.46]];
   const buildKF51HullStage2 = (): void => {
     for (let i = 0; i < deck.length - 1; i++) {
       const [zF, yF, wF] = deck[i], [zR, yR] = deck[i + 1];
@@ -9564,7 +9567,8 @@ function buildKF51(P: TankBuilderPort) {
     P.add('hull', box(0.055, 0.09, 0.51), -1.7275, 1.755, -2.215);
     P.add('hull', pbox(0.205, 0.131, 0.72), -1.6525, 1.776, -2.83);              // L band x −1.755..−1.55, top 1.8415 (ref front 1.838)
     P.add('hull', pbox(0.15, 0.131, 0.72), 1.625, 1.776, -2.83);                 // R band x +1.55..+1.70 (ref front +1.60/+1.65 cols 1.84)
-    P.add('hull', box(0.055, 0.09, 0.70), -1.7275, 1.74, -1.60);
+    // (release 240: its top at 1.68, under the bustle's 1.686 underside as it turns; it stood 1.785)
+    P.add('hull', box(0.055, 0.09, 0.70), -1.7275, 1.635, -1.60);
     // glacis: crease (2.22,1.60) → knee (2.55,1.43) → prow band. Fresh plan
     // read: the ref beak stays near full width to its 3.71 side line (±1.66),
     // with only the centre band running to 3.80.
@@ -9830,7 +9834,9 @@ function buildKF51(P: TankBuilderPort) {
             }
             // outer strip: LEFT tall (0.71..1.79) ONLY aft of z −1.5 — forward it
             // capped 1.79 over the ref's bare 1.6 deck line on ~15 side columns
-            P.add('hull', pbox(s < 0 ? 0.06 : 0.02, (s < 0 && zc < -1.5 ? 1.08 : 0.65), 0.45), s * (s < 0 ? 1.7375 : 1.765), (s < 0 && zc < -1.5) ? 1.25 : 1.035, zc);
+            // (release 240: the tall run tops at 1.68 forward of -2.3, under the sweep of the bustle's 1.686 underside)
+            const tall = s < 0 && zc < -1.5, low = tall && zc > -2.3;
+            P.add('hull', pbox(s < 0 ? 0.06 : 0.02, (tall ? (low ? 0.97 : 1.08) : 0.65), 0.45), s * (s < 0 ? 1.7375 : 1.765), tall ? (low ? 1.195 : 1.25) : 1.035, zc);
             if (s > 0) P.add('hull', box(0.02, 0.41, 0.44), s * 1.79, 0.915, zc);    // outer rail 0.71..1.12 @ +1.80 (ref body course)
             else P.add('hull', box(0.02, 0.10, 0.44), s * 1.79, 0.795, zc);
           };
@@ -10059,9 +10065,11 @@ function buildKF51(P: TankBuilderPort) {
     // driver station (deck step fore-right) + episcopes
     P.add('hull', cylY(0.26, 0.26, 0.03, 14), 0.58, 1.625, 1.30);
     P.add('hullDark', torus(0.26, 0.012, 14), 0.58, 1.638, 1.30);
-    periscope(P, 'hullDetail', 0.36, 1.63, 1.72);
-    periscope(P, 'hullDetail', 0.58, 1.63, 1.75);
-    periscope(P, 'hullDetail', 0.80, 1.63, 1.72, 0.3);
+    // (release 240: the episcopes 12 mm lower, under the turret's dark skirt (1.66, 1.41 m off the ring's axis); the
+    // right one's head stood 5 mm into it)
+    periscope(P, 'hullDetail', 0.36, 1.618, 1.72);
+    periscope(P, 'hullDetail', 0.58, 1.618, 1.75);
+    periscope(P, 'hullDetail', 0.80, 1.618, 1.72, 0.3);
     // headlight pods ON the glacis (the oracle's 1.445 bump at z 3.02, falling
     // 1.415 by 3.14 — pods slimmed so the 3.14 column reads the bare glacis)
     for (const s of [-1, 1] as const) {
@@ -10129,13 +10137,15 @@ function buildKF51(P: TankBuilderPort) {
       P.add('hullDark', box(0.36, 0.010, 0.028), s * 1.30, 1.833, -2.24);
       P.add('hullDark', box(0.32, 0.010, 0.028), s * 1.28, 1.833, -2.80);
       // 2026-10-19 (owner float sweep): the caps hung 27 mm over the 1.778 deck; they now sit 2 mm into it.
-      P.add('hullDetail', cylY(0.09, 0.09, 0.02, 12), s * 1.30, 1.786, -1.60);   // torsion caps (kept — real deck fittings)
+      // (release 240: on the lowered deck, 1.645 there)
+      P.add('hullDetail', cylY(0.09, 0.09, 0.02, 12), s * 1.30, 1.653, -1.60);   // torsion caps (kept — real deck fittings)
     }
     P.add('hullDark', box(2.6, 0.016, 0.44), 0, 1.826, -3.28);                   // transverse grille inset (dark panel kept; pale slats -> dot rows in the tone block)
     P.add('hullDark', box(1.9, 0.014, 0.03), 0, 1.6074, 2.20);                   // crease weld seam (2026-10-22: on the 1.6004 crease, it stood 5 mm over it)
     // flat tie-down cleats, NOT proud lift eyes (a6 law: a 0.07 eye ring was
     // the +0.09 side_hull column over the bare deck line)
-    P.add('hullDetail', box(0.16, 0.022, 0.07), -1.35, 1.80, -1.9);
+    // (release 240: the aft cleat on the lowered deck, 1.653 there; it stood on the old 1.789 step, 13 cm into the bustle)
+    P.add('hullDetail', box(0.16, 0.022, 0.07), -1.35, 1.662, -1.9);
     P.add('hullDetail', box(0.16, 0.022, 0.07), 1.35, 1.625, 0.6);
     // VISUAL r1 #4b — turret/hull boundary from straight top: near-black ring
     // strips on the deck along the turret base sides (turret and deck share
@@ -10156,15 +10166,14 @@ function buildKF51(P: TankBuilderPort) {
       P.add('hullShadow', slab(                                                  // z 0.30..2.18 (deck 1.62 → 1.6004)
         [bx0, 1.5934, 2.18], [bx1, 1.5934, 2.18], [bx1, 1.613, 0.30], [bx0, 1.613, 0.30],
         [bx0, 1.6034, 2.18], [bx1, 1.6034, 2.18], [bx1, 1.623, 0.30], [bx0, 1.623, 0.30]));
-      P.add('hullShadow', slab(                                                  // z −0.49..−0.80 (deck step 1.615 → 1.73)
-        [bx0, 1.608, -0.49], [bx1, 1.608, -0.49], [bx1, 1.723, -0.80], [bx0, 1.723, -0.80],
-        [bx0, 1.618, -0.49], [bx1, 1.618, -0.49], [bx1, 1.733, -0.80], [bx0, 1.733, -0.80]));
-      P.add('hullShadow', slab(                                                  // z −0.80..−1.94 (deck 1.73 → 1.79)
-        [bx0, 1.723, -0.80], [bx1, 1.723, -0.80], [bx1, 1.783, -1.94], [bx0, 1.783, -1.94],
-        [bx0, 1.733, -0.80], [bx1, 1.733, -0.80], [bx1, 1.793, -1.94], [bx0, 1.793, -1.94]));
-      P.add('hullShadow', slab(                                                  // z −1.94..−2.30 (deck 1.79 → 1.805)
-        [bx0, 1.783, -1.94], [bx1, 1.783, -1.94], [bx1, 1.798, -2.30], [bx0, 1.798, -2.30],
-        [bx0, 1.793, -1.94], [bx1, 1.793, -1.94], [bx1, 1.808, -2.30], [bx0, 1.808, -2.30]));
+      // (release 240: the aft strips follow the lowered deck; on the old 1.73-1.79 staircase they stood 13 cm over it,
+      // into the bustle)
+      P.add('hullShadow', slab(                                                  // z −0.49..−2.17 (deck 1.615 → 1.66)
+        [bx0, 1.608, -0.49], [bx1, 1.608, -0.49], [bx1, 1.653, -2.17], [bx0, 1.653, -2.17],
+        [bx0, 1.618, -0.49], [bx1, 1.618, -0.49], [bx1, 1.663, -2.17], [bx0, 1.663, -2.17]));
+      P.add('hullShadow', slab(                                                  // z −2.17..−2.30 (deck 1.66 → 1.805)
+        [bx0, 1.653, -2.17], [bx1, 1.653, -2.17], [bx1, 1.798, -2.30], [bx0, 1.798, -2.30],
+        [bx0, 1.663, -2.17], [bx1, 1.663, -2.17], [bx1, 1.808, -2.30], [bx0, 1.808, -2.30]));
     }
     P.add('hullShadow', box(3.06, 0.006, 0.085), 0, 1.811, -2.3425);             // rear cross strip (fan discs start −2.39: 5 mm clear; +9 mm over the 1.805 deck row)
     P.add('hullShadow', slab(                                                    // front cross strip ON the glacis slope (crease 2.22 → knee: y 1.5897@2.24 → 1.5382@2.34)
@@ -11047,7 +11056,8 @@ function buildKF51(P: TankBuilderPort) {
           // applies the same box-projected camouflage UVs as the main shell.
           P.add(toTurret ? 'turret' : 'hull', geo);
         };
-        const moatDeck: Vec2Tuple[] = [[2.18, 1.6004], [0.30, 1.62], [-0.49, 1.615], [-0.80, 1.73], [-1.20, 1.755], [-1.94, 1.79], [-2.30, 1.805], [-2.42, 1.8062]];
+        // (release 240: the lowered deck's line; the seam rode the old 1.73-1.79 staircase)
+        const moatDeck: Vec2Tuple[] = [[2.18, 1.6004], [0.30, 1.62], [-0.49, 1.615], [-2.17, 1.66], [-2.30, 1.805], [-2.42, 1.8062]];
         const buildKF51AssemblyStage8 = (): void => {
           for (const s of [-1, 1] as const) {
             // Keep only a narrow bearing seam at the turret foot. The previous
@@ -11714,7 +11724,11 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
   const buildKF51OwnerExactAssemblyStage1 = (): void => {
     leoHullV3(P, {
       bodyHW: 1.56, sponsonY: 1.19, trackW: 0.587, xc: 1.262,
-      deck: [[1.55, 1.615], [-0.58, 1.64], [-1.40, 1.73], [-2.25, 1.82], [-3.66, 1.82]],
+      // release 240 (the owner: "make sure all tank turrets are clear of hulls"): the deck stays under the bustle's
+      // underside (1.71, 2.98 m off the ring's axis) to -2.34, under its stowage (1.777, 3.08 m) to -2.44, and meets the
+      // power-pack plateau at -2.52; it rose from -0.58, and the bustle sat 10 cm in it at rest (authored metres, before
+      // the 5% enlargement)
+      deck: [[1.55, 1.615], [-0.58, 1.64], [-1.90, 1.665], [-2.34, 1.70], [-2.44, 1.765], [-2.52, 1.82], [-3.66, 1.82]],
       glacis: [[1.55, 1.615], [2.20, 1.512], [3.08, 1.375], [3.60, 1.275], [3.84, 1.225]],
       glacisLaneCut: { x: 0.93, z0: 2.90 },
       sponsonLaneLift: { z0: -3.66, z1: 2.95, x0: 0.94, y: 1.50 },
@@ -11745,7 +11759,8 @@ function buildKF51OwnerExact(P: TankBuilderPort) {
       dedupeLoopPoints: true,
       padHex: 0x2c2d25, chainHex: 0x24251f,
       gearFloor: true,
-      fans: { z: -3.05, x: 0.62, r: 0.30 }, fanWell: true,
+      // (radiatorWellLength, release 240: the wells end at -2.48, on the power-pack plateau behind the lowered deck)
+      fans: { z: -3.05, x: 0.62, r: 0.30 }, fanWell: true, radiatorWellLength: 0.52,
       splashArms: false, jackDark: true,
     });
 
@@ -12434,9 +12449,16 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
     // Source-derived deck crown.  The Leopard 1 engine deck is appreciably
     // higher at the stern and falls through two clean breaks into the glacis;
     // the former flat 1.5 m lid made the whole vehicle read as a modern box.
+    // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): under the turret's sweep (its seated
+    // underside 1.779, out to 2.95 m off the ring's axis) the engine deck lies flat at 1.75 to -2.45 with its kit on it,
+    // and climbs to the stern's crown behind; the deck and its grilles, bars, fans and caps stood 1.78-1.82 there, and the
+    // turret ran through them at every rear bearing.
     P.add('hull', slab(
-      [-1.28, 1.76, -3.34], [1.28, 1.76, -3.34], [1.28, 1.71, -1.25], [-1.28, 1.71, -1.25],
-      [-1.28, 1.82, -3.34], [1.28, 1.82, -3.34], [1.28, 1.77, -1.25], [-1.28, 1.77, -1.25]));
+      [-1.28, 1.7387, -2.45], [1.28, 1.7387, -2.45], [1.28, 1.71, -1.25], [-1.28, 1.71, -1.25],
+      [-1.28, 1.75, -2.45], [1.28, 1.75, -2.45], [1.28, 1.75, -1.25], [-1.28, 1.75, -1.25]));
+    P.add('hull', slab(
+      [-1.28, 1.76, -3.34], [1.28, 1.76, -3.34], [1.28, 1.7387, -2.45], [-1.28, 1.7387, -2.45],
+      [-1.28, 1.82, -3.34], [1.28, 1.82, -3.34], [1.28, 1.75, -2.45], [-1.28, 1.75, -2.45]));
     P.add('hull', slab(
       [-1.28, 1.71, centerDeckRearZ], [1.28, 1.71, centerDeckRearZ],
       [1.24, upperGlacisRearY, upperGlacisRearZ], [-1.24, upperGlacisRearY, upperGlacisRearZ],
@@ -12554,14 +12576,15 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
     // Leopard engine deck: long intake fields, twin fan rings, transverse
     // exhaust bank and rear louvres, all below the rotating basket.
     for (const s of [-1, 1] as const) {
-      P.add('hullDark', box(0.82, 0.018, 1.04), s * 0.52, 1.785, -1.72);
-      P.addEquipment('hull', box(0.86, 0.022, 0.035), s * 0.52, 1.786, -1.20);
-      P.addEquipment('hull', box(0.86, 0.022, 0.035), s * 0.52, 1.806, -2.24);
-      for (let k = 0; k < 6; k++) P.addEquipment('hull', box(0.78, 0.014, 0.035), s * 0.52, 1.792, -1.29 - k * 0.17);
-      P.add('hullDark', cylY(0.23, 0.23, 0.012, P.q ? 24 : 16), s * 0.55, 1.794, -2.50);
-      P.addEquipment('hull', torus(0.23, 0.014, P.q ? 24 : 16), s * 0.55, 1.811, -2.50);
-      P.addEquipment('hull', cylY(0.055, 0.055, 0.022, 10), s * 0.55, 1.814, -2.50);
-      P.addEquipment('hull', cylY(0.085, 0.085, 0.025, 12), s * 1.08, 1.805, -2.08);
+      // (release 240: on the lowered deck, under the turret's sweep)
+      P.add('hullDark', box(0.82, 0.018, 1.04), s * 0.52, 1.759, -1.72);
+      P.addEquipment('hull', box(0.86, 0.022, 0.035), s * 0.52, 1.762, -1.20);
+      P.addEquipment('hull', box(0.86, 0.022, 0.035), s * 0.52, 1.762, -2.24);
+      for (let k = 0; k < 6; k++) P.addEquipment('hull', box(0.78, 0.014, 0.035), s * 0.52, 1.762, -1.29 - k * 0.17);
+      P.add('hullDark', cylY(0.23, 0.23, 0.012, P.q ? 24 : 16), s * 0.55, 1.756, -2.50);
+      P.addEquipment('hull', torus(0.23, 0.014, P.q ? 24 : 16), s * 0.55, 1.765, -2.50);
+      P.addEquipment('hull', cylY(0.055, 0.055, 0.022, 10), s * 0.55, 1.768, -2.50);
+      P.addEquipment('hull', cylY(0.085, 0.085, 0.025, 12), s * 1.08, 1.7605, -2.08);
     }
     P.add('hullDark', box(1.78, 0.018, 0.44), 0, 1.806, -3.00);
     for (let k = 0; k < 4; k++) P.addEquipment('hull', box(1.70, 0.014, 0.045), 0, 1.819, -2.84 - k * 0.11);
@@ -12809,7 +12832,9 @@ function buildLeo1A5ArticulatedProfile(P: TankBuilderPort) {
       [-0.56, 0.51, -2.54, 0.52, 0.32, 0.48], [0, 0.50, -2.55, 0.50, 0.31, 0.48],
       [0.56, 0.51, -2.54, 0.46, 0.31, 0.46],
     ]);
-    jerryCan(P, 'turretCloth', 0.68, 0.47, -2.65, 0.16);
+    // (release 240, the owner: "make sure all tank turrets are clear of hulls": the can pair stands on the basket floor; it
+    // hung 7 cm under it, into the engine deck's exhaust bank at rest)
+    jerryCan(P, 'turretCloth', 0.68, 0.57, -2.65, 0.16);
     tarpRoll(P, 'turretCloth', -0.04, 0.736, -2.45, 0.96, 0.095, true, P.q ? 12 : 8); // 2026-10-19 (owner float sweep): stood 21 mm over the load
     ammoCan(P, 'turretDark', -0.72, 0.45, -2.66, 0.12);
 

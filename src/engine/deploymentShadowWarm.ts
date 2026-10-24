@@ -384,6 +384,9 @@ export function createDeploymentShadowWarmOwner({
     const batchMs = await warmSceneOffscreenBatched(renderer, scene, camera, {
       maxObjects: 12,
       maxWeight: 45_000,
+      // (perf-245) every object's buffers, not only the deployment camera's: the far side of the map uploaded at its
+      // first live draw
+      uncull: true,
       async prepareObjects(objects) {
         preparation = await prepareDeploymentUploadPrograms(objects, uploadMaterial,
           warmRender, () => yieldCovered(yieldForBudget), now, yieldProgramFrame);
@@ -413,9 +416,18 @@ export function createDeploymentShadowWarmOwner({
     shadowOnlyCamera.layers.mask = camera.layers.mask;
     for (const batch of state.batches) {
       for (const object of batch) object.castShadow = true;
+      // (2026-10-24, perf-245) every caster draws into the cascade, not only those its frustum holds: a caster kind
+      // found only away from the spawn (a rock field, a stone wall, a crown's dapple, a wreck) made its depth pipeline
+      // when a camera was thrown onto it — cut off by the GPU's own clip here, its vertices alone are the cost
+      const culled = batch.filter((object) => object.frustumCulled);
+      for (const object of culled) object.frustumCulled = false;
       firstLight.shadow.needsUpdate = true;
       const startedAt = now();
-      observeRender('caster-batch', batchTimes.length, firstLight);
+      try {
+        observeRender('caster-batch', batchTimes.length, firstLight);
+      } finally {
+        for (const object of culled) object.frustumCulled = true;
+      }
       batchTimes.push(Math.round(now() - startedAt));
       firstLight.shadow.needsUpdate = false;
       for (const object of batch) object.castShadow = false;

@@ -1800,6 +1800,9 @@ function buildType10Native2026(
       sprocketDepthScale: 0.68, idlerDepthScale: 0.78,
       frontArcSteps: 12, tautFrontSpan: true,
       linkPitchM: 0.138, shoeRadialScale: 0.85,
+      // 240: the roller-carried sag lengthens the upper run; the shoes at rest stay centred on the 4.16 m loaded run, so
+      // all 30 it carries stand on the ground (type10TrackReseat)
+      shoeRestPhase: 'loadedRunCentred',
       pinCapOuter: 0.252,                                                         // caps outer 1.586 (2 mm proud of the 1.5837 pad face; 3.6 cm inside the 1.622 skirt inner — §B4 voxel-margin law)
       padHex: 0x31322a, chainHex: 0x292a24,
       gearFloor: true,

@@ -1,0 +1,298 @@
+{
+ "libraryId": "claude-of-tanks-brand-245",
+ "author": "Kevin B. Liu",
+ "copyright": "Copyright © 2026 Kevin B. Liu",
+ "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
+ "thirdParty": "The commander figure is the Claude Code mascot glyph (Anthropic), verbatim; see docs/ATTRIBUTION.md.",
+ "generatedBy": "node tools/brand-marks.mjs (src/ui/brandMark.ts, src/ui/brandMarkMotion.ts)",
+ "count": 62,
+ "items": [
+  {
+   "file": "mark.svg",
+   "use": "the mark on dark"
+  },
+  {
+   "file": "mark-paper.svg",
+   "use": "the mark on paper"
+  },
+  {
+   "file": "mark-mono.svg",
+   "use": "one colour, paper"
+  },
+  {
+   "file": "mark-mono-ink.svg",
+   "use": "one colour, ink"
+  },
+  {
+   "file": "mark-motion.svg",
+   "use": "the living mark (CSS loop)"
+  },
+  {
+   "file": "bust.svg",
+   "use": "the icon on dark"
+  },
+  {
+   "file": "bust-paper.svg",
+   "use": "the icon on paper"
+  },
+  {
+   "file": "bust-mono.svg",
+   "use": "icon, one colour, paper"
+  },
+  {
+   "file": "bust-mono-ink.svg",
+   "use": "icon, one colour, ink"
+  },
+  {
+   "file": "favicon.svg",
+   "use": "browser tab"
+  },
+  {
+   "file": "app-icon.svg",
+   "use": "app icon master (full bleed)"
+  },
+  {
+   "file": "maskable.svg",
+   "use": "maskable and tile master (80 % safe zone)"
+  },
+  {
+   "file": "social-avatar.svg",
+   "use": "X / GitHub avatar"
+  },
+  {
+   "file": "lockup.svg",
+   "use": "horizontal lockup on dark"
+  },
+  {
+   "file": "lockup-paper.svg",
+   "use": "horizontal lockup on paper"
+  },
+  {
+   "file": "lockup-mono.svg",
+   "use": "horizontal lockup, one colour"
+  },
+  {
+   "file": "lockup-stacked.svg",
+   "use": "stacked lockup on dark"
+  },
+  {
+   "file": "lockup-stacked-paper.svg",
+   "use": "stacked lockup on paper"
+  },
+  {
+   "file": "title-card.svg",
+   "use": "the boot card (living mark over the stacked wordmark)"
+  },
+  {
+   "file": "og-logo.svg",
+   "use": "OG brand card"
+  },
+  {
+   "file": "favicon-16.png",
+   "from": "favicon.svg",
+   "size": "16x16"
+  },
+  {
+   "file": "favicon-32.png",
+   "from": "favicon.svg",
+   "size": "32x32"
+  },
+  {
+   "file": "favicon-48.png",
+   "from": "favicon.svg",
+   "size": "48x48"
+  },
+  {
+   "file": "favicon-192.png",
+   "from": "favicon.svg",
+   "size": "192x192"
+  },
+  {
+   "file": "apple-touch-icon.png",
+   "from": "app-icon.svg",
+   "size": "180x180"
+  },
+  {
+   "file": "../apple-touch-icon.png",
+   "from": "app-icon.svg",
+   "size": "180x180"
+  },
+  {
+   "file": "icon-192.png",
+   "from": "app-icon.svg",
+   "size": "192x192"
+  },
+  {
+   "file": "icon-512.png",
+   "from": "app-icon.svg",
+   "size": "512x512"
+  },
+  {
+   "file": "maskable-192.png",
+   "from": "maskable.svg",
+   "size": "192x192"
+  },
+  {
+   "file": "maskable-512.png",
+   "from": "maskable.svg",
+   "size": "512x512"
+  },
+  {
+   "file": "mstile-150.png",
+   "from": "maskable.svg",
+   "size": "150x150"
+  },
+  {
+   "file": "mstile-310.png",
+   "from": "maskable.svg",
+   "size": "310x310"
+  },
+  {
+   "file": "app-icons/ios/icon-20.png",
+   "from": "app-icon.svg",
+   "size": "20x20"
+  },
+  {
+   "file": "app-icons/ios/icon-29.png",
+   "from": "app-icon.svg",
+   "size": "29x29"
+  },
+  {
+   "file": "app-icons/ios/icon-40.png",
+   "from": "app-icon.svg",
+   "size": "40x40"
+  },
+  {
+   "file": "app-icons/ios/icon-58.png",
+   "from": "app-icon.svg",
+   "size": "58x58"
+  },
+  {
+   "file": "app-icons/ios/icon-60.png",
+   "from": "app-icon.svg",
+   "size": "60x60"
+  },
+  {
+   "file": "app-icons/ios/icon-76.png",
+   "from": "app-icon.svg",
+   "size": "76x76"
+  },
+  {
+   "file": "app-icons/ios/icon-80.png",
+   "from": "app-icon.svg",
+   "size": "80x80"
+  },
+  {
+   "file": "app-icons/ios/icon-87.png",
+   "from": "app-icon.svg",
+   "size": "87x87"
+  },
+  {
+   "file": "app-icons/ios/icon-120.png",
+   "from": "app-icon.svg",
+   "size": "120x120"
+  },
+  {
+   "file": "app-icons/ios/icon-152.png",
+   "from": "app-icon.svg",
+   "size": "152x152"
+  },
+  {
+   "file": "app-icons/ios/icon-167.png",
+   "from": "app-icon.svg",
+   "size": "167x167"
+  },
+  {
+   "file": "app-icons/ios/icon-180.png",
+   "from": "app-icon.svg",
+   "size": "180x180"
+  },
+  {
+   "file": "app-icons/ios/icon-1024.png",
+   "from": "app-icon.svg",
+   "size": "1024x1024"
+  },
+  {
+   "file": "app-icons/macos/icon-16.png",
+   "from": "app-icon.svg",
+   "size": "16x16"
+  },
+  {
+   "file": "app-icons/macos/icon-32.png",
+   "from": "app-icon.svg",
+   "size": "32x32"
+  },
+  {
+   "file": "app-icons/macos/icon-64.png",
+   "from": "app-icon.svg",
+   "size": "64x64"
+  },
+  {
+   "file": "app-icons/macos/icon-128.png",
+   "from": "app-icon.svg",
+   "size": "128x128"
+  },
+  {
+   "file": "app-icons/macos/icon-256.png",
+   "from": "app-icon.svg",
+   "size": "256x256"
+  },
+  {
+   "file": "app-icons/macos/icon-512.png",
+   "from": "app-icon.svg",
+   "size": "512x512"
+  },
+  {
+   "file": "app-icons/macos/icon-1024.png",
+   "from": "app-icon.svg",
+   "size": "1024x1024"
+  },
+  {
+   "file": "social-avatar-400.png",
+   "from": "social-avatar.svg",
+   "size": "400x400"
+  },
+  {
+   "file": "mark-1024.png",
+   "from": "mark.svg",
+   "size": "1024x1024"
+  },
+  {
+   "file": "mark-paper-1024.png",
+   "from": "mark-paper.svg",
+   "size": "1024x1024"
+  },
+  {
+   "file": "bust-512.png",
+   "from": "bust.svg",
+   "size": "512x512"
+  },
+  {
+   "file": "lockup-2400.png",
+   "from": "lockup.svg",
+   "size": "2400x2400"
+  },
+  {
+   "file": "lockup-paper-2400.png",
+   "from": "lockup-paper.svg",
+   "size": "2400x2400"
+  },
+  {
+   "file": "og-logo.png",
+   "from": "og-logo.svg",
+   "size": "1200x630"
+  },
+  {
+   "file": "favicon.ico",
+   "sizes": "16,32,48"
+  },
+  {
+   "file": "../favicon.ico",
+   "sizes": "16,32,48"
+  },
+  {
+   "file": "../browserconfig.xml",
+   "use": "Windows tile"
+  }
+ ]
+}

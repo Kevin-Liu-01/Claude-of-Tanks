@@ -204,7 +204,7 @@ interface GrowthProfile {
    * -x) cut down and in, the crest swept to leeward (vegetation.ts turns each field cushion's +x to its place's leeward,
    * treeBiomes.ts TreeBiome.wind; the understorey, sheltered under the wood, grows unshorn).
    */
-  cushion?: Readonly<{ density: number; size: number; height: number; clip: number; lobes: number; shorn: number }>;
+  cushion?: ShrubCushion;
   /**
    * Trees lane: each near variant's own shape over the profile (the Streuobst form's plum, apple and pear), grown at the
    * variant's age as every profile is; unset, the variants are the profile at three ages.
@@ -1559,7 +1559,18 @@ export const GROWTH_SHRUB_VALUE: Readonly<Partial<Record<GrowthSpecies, number>>
  * the top). The understorey is the smaller stand-edge growth. Unit scale (the pools scale it; the bush stays inside
  * its cover disc's reach), grounded at y = 0, deterministic in `rng`.
  */
-export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'understorey', rng: Rng): TreeSkeleton {
+/**
+ * A cushion shrub's habit (GrowthProfile.cushion): `density` times a shrub's sprays at `size` times their length, the
+ * mound `height` times a shrub's, its shell's superellipse exponent `clip` and the share of its lobing kept `lobes`, the
+ * salt wind's shear `shorn`. A place may grow its bush slot's own form in one (treeBiomes.ts TreeBiome.shrubHabit).
+ */
+export type ShrubCushion = Readonly<{ density: number; size: number; height: number; clip: number; lobes: number; shorn: number }>;
+
+/**
+ * A shrub's skeleton: its sprays on the clumps of its envelope. `habit` (a place's TreeBiome.shrubHabit) grows the form
+ * in that cushion over the profile's own; absent, the profile's.
+ */
+export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'understorey', rng: Rng, habit: ShrubCushion | null = null): TreeSkeleton {
   const profile = TREE_GROWTH_PROFILES[species];
   if (profile.fountain) return growFountainShrub(species, kind, rng);
   const under = kind === 'understorey';
@@ -1567,7 +1578,7 @@ export function growShrubSkeleton(species: GrowthSpecies, kind: 'bush' | 'unders
   // narrow sprays (birch, willow) come more to a shrub and a little wider, so its shell closes as a broad spray's does
   const narrow = Math.min(1, profile.aspect / 0.8);
   // the trees lane (2026-10-08, wave 278): a cushion form's denser, smaller sprays, lower clipped mound and its shear
-  const cushion = profile.cushion;
+  const cushion = habit ?? profile.cushion;
   const count = Math.round(GROWTH_SHRUB_SPRAYS[kind] * Math.min(4 / 3, 1 / narrow) * (cushion?.density ?? 1));
   const widen = Math.sqrt(1 / Math.max(0.75, narrow));
   // the envelope: radius and height, its widest level; a conifer's top runs to a point (the superellipse exponent)

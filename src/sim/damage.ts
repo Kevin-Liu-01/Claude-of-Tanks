@@ -317,7 +317,7 @@ const DEG_TO_RAD = Math.PI / 180;
  * 1.0 makes long rods and jets see plain line-of-sight thickness.
  * spallBonus: through-armor splash multiplier (shells doc §6 — HESH 1.25).
  */
-const SHELL_BEHAVIOR = {
+export const SHELL_BEHAVIOR = {
   AP: { kindClass: 'KE', normDeg: 5, ricochetDeg: 70, slopeExp: 1.4 },
   APCR: { kindClass: 'KE', normDeg: 2, ricochetDeg: 70, slopeExp: 1.4 },
   APFSDS: { kindClass: 'KE', normDeg: 2, ricochetDeg: 78, slopeExp: 1.0 },
@@ -351,21 +351,21 @@ export function isHeClass(type: string): boolean {
   return behaviorOf(type).kindClass === 'HE';
 }
 
-const CREW_HIT_CHANCE = 0.33;
-const CREW_HIT_CHANCE_HE = 0.1;
-const ENGINE_FIRE_CHANCE = 0.15;
+export const CREW_HIT_CHANCE = 0.33;
+export const CREW_HIT_CHANCE_HE = 0.1;
+export const ENGINE_FIRE_CHANCE = 0.15;
 /** Reload-time multiplier while the ammo rack is damaged (armor doc §9). */
-const AMMORACK_RELOAD_MULT = 1.5;
-const OVERMATCH_NO_RICOCHET = 3.0;
+export const AMMORACK_RELOAD_MULT = 1.5;
+export const OVERMATCH_NO_RICOCHET = 3.0;
 const OVERMATCH_NORM_BOOST = 2.0; // caliber ≥ 2×T ⇒ norm × 1.4·C/T
 const POSTPEN_CALIBERS = 10;
 // Autocannon penetrators still create a useful internal fragment corridor.
 // Without this floor, the CV90/FV510 could penetrate but could never reach
 // their own central transmission or turret-ring volumes.
 const POSTPEN_MIN_M = 1.25;
-const HEAT_GAP_LOSS_PER_M = 0.5; // 5% pen per 10 cm of air gap
+export const HEAT_GAP_LOSS_PER_M = 0.5; // 5% pen per 10 cm of air gap
 const HE_ARMOR_ABSORB = 1.1;
-const RICOCHET_MAX_BOUNCES = 2;
+export const RICOCHET_MAX_BOUNCES = 2;
 // Gun barrel as spaced armor (armor doc §4/§7): crossing the cylinder costs
 // a radius-scaled slice of pen (two steel walls), clamped 30–60 mm.
 const BARREL_SCREEN_MIN_MM = 30;
@@ -375,10 +375,10 @@ const BARREL_DEFAULT_RADIUS_M = 0.08;
 /** Red-module repair duration (seconds) — the count-up target consumed by
  * tickModuleRepairs below (the game loop calls it; no duplicate constant). */
 export const REPAIR_S = 10;
-const FIRE_BASE_TICKS = 10;
-const FIRE_TICK_HP_FRAC = 0.005;
+export const FIRE_BASE_TICKS = 10;
+export const FIRE_TICK_HP_FRAC = 0.005;
 const FIRE_TICK_MODULE_DMG = 10;
-const FIRE_EXTINGUISH_CHANCE = 0.12;
+export const FIRE_EXTINGUISH_CHANCE = 0.12;
 const DEFAULT_CREW = ['commander', 'gunner', 'driver', 'loader'];
 
 // --- SHOT-INFO ENRICHMENT scratch (additive UI metadata; src/ui/shotInfo.ts).
@@ -407,7 +407,7 @@ const _heTo = new Vector3();
 const HE_NEAREST_INSET_M = 0.01;
 
 /** The ±25% uniform roll's low end and span (rollUniform; estimateHurtChance prices the pen roll over the same). */
-const ROLL_LOW = 0.75, ROLL_SPAN = 0.5;
+export const ROLL_LOW = 0.75, ROLL_SPAN = 0.5;
 /** ±25% uniform roll. @param {function} rng @param {number} avg @returns {number} */
 function rollUniform(rng: Rng, avg: number): number {
   return avg * (ROLL_LOW + rng() * ROLL_SPAN);
@@ -600,7 +600,7 @@ function overmatchCaliberMm(shellSpec: DamageShellSpec): number {
  * @param {number} impactAngleDeg raw angle from the outward normal
  * @returns {{effMm: number, effAngleDeg: number}}
  */
-function effectiveThickness(
+export function effectiveThickness(
   shellSpec: DamageShellSpec,
   plate: DamageArmorPlate,
   impactAngleDeg: number,

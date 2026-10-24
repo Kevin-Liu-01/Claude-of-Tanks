@@ -482,7 +482,7 @@
    "hostSweep": []
   },
   "c2_ariete_proto": {
-   "inputHash": "912b27ff92a83b58",
+   "inputHash": "d70b6869dc50c830",
    "runs": [
     {
      "index": 0,
@@ -542,7 +542,7 @@
    "hostSweep": []
   },
   "centurion3": {
-   "inputHash": "90ba94762be71a7a",
+   "inputHash": "1ad3e6ae19380f57",
    "runs": [
     {
      "index": 0,
@@ -615,7 +615,7 @@
    "hostSweep": []
   },
   "centurion5_2": {
-   "inputHash": "2dd8769a2d719d35",
+   "inputHash": "8ce7a6a689b1ce90",
    "runs": [
     {
      "index": 0,
@@ -688,37 +688,37 @@
    "hostSweep": []
   },
   "challenger1_mk2": {
-   "inputHash": "c78af9a91079cf77",
+   "inputHash": "934aabd09a496167",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger1_mk3": {
-   "inputHash": "674e192a84bca65c",
+   "inputHash": "4db3bf4019ded1fa",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger2": {
-   "inputHash": "b175d5be7f3594f1",
+   "inputHash": "9ebb027a05c21c8c",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger2e": {
-   "inputHash": "797b93fc14b1af08",
+   "inputHash": "7d6a81e9cfc64365",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger3": {
-   "inputHash": "0cf665f2fd0d119d",
+   "inputHash": "8c1e4b21c3187a6a",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "challenger3_proto": {
-   "inputHash": "ee4ba214b61148c7",
+   "inputHash": "cad999790c35ad2d",
    "runs": [
     {
      "index": 0,
@@ -746,7 +746,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.966,
-      "host": "turretDetail<buildChallenger3TurretStage1@profiles/challenger.ts:4923>"
+      "host": "turretDetail<buildChallenger3TurretStage1@profiles/challenger.ts:4931>"
      }
     }
    ],
@@ -754,25 +754,25 @@
    "hostSweep": []
   },
   "chieftain3": {
-   "inputHash": "05109bb25484cecf",
+   "inputHash": "bb4668ae60863d74",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "chieftain5": {
-   "inputHash": "d9cc1611b8cfe4a6",
+   "inputHash": "3f0a460252043380",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "chieftain_mk10": {
-   "inputHash": "1072ab00d2a46ba7",
+   "inputHash": "5a950c539ad53645",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "chieftain_mk9": {
-   "inputHash": "79301e650b1dc0b8",
+   "inputHash": "5ab26d5cbd1dc207",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -784,25 +784,25 @@
    "hostSweep": []
   },
   "cv90105_tml": {
-   "inputHash": "d9128515dc6b73ad",
+   "inputHash": "d8a1e9558c0fddf4",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "cv9040c": {
-   "inputHash": "30abac4008044547",
+   "inputHash": "a252aa723944ab1c",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "cv90_mk4": {
-   "inputHash": "c0c8049242a5d00a",
+   "inputHash": "b95bf03a9314bec4",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "cv90_mk4_concept": {
-   "inputHash": "659e6b50d0ad9ea0",
+   "inputHash": "5291dfc3d025953d",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -814,7 +814,7 @@
    "hostSweep": []
   },
   "fv4034": {
-   "inputHash": "38e2c08d48c00f5a",
+   "inputHash": "c10f4f14e8f73f3f",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -851,7 +851,7 @@
    "hostSweep": []
   },
   "fv510_milan": {
-   "inputHash": "44fa78a7a0703a90",
+   "inputHash": "3fc7397bcc719d62",
    "runs": [
     {
      "index": 0,
@@ -1015,19 +1015,19 @@
    "hostSweep": []
   },
   "kf51_evo": {
-   "inputHash": "cc2c480cab733d9b",
+   "inputHash": "4bd96f61c60f7f51",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "kf51_panther": {
-   "inputHash": "6f95a0723ac21334",
+   "inputHash": "5e4e6a4e28935ef6",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "kf51_u": {
-   "inputHash": "f1622bff5f3100e6",
+   "inputHash": "321f75ce31b05528",
    "runs": [
     {
      "index": 0,
@@ -1048,7 +1048,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<cutSlab@profiles/leopard.ts:1586>"
+      "host": "hull<cutSlab@profiles/leopard.ts:1611>"
      }
     }
    ],
@@ -1115,7 +1115,7 @@
    "hostSweep": []
   },
   "leclerc_s1": {
-   "inputHash": "43f22253f7532f9a",
+   "inputHash": "b7181c50f87de4b1",
    "runs": [
     {
      "index": 0,
@@ -1123,20 +1123,30 @@
      "source": "adhoc",
      "frame": "turret",
      "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
+     "classes": [
+      "HANGING",
+      "FLOATING"
+     ],
+     "primary": "HANGING",
+     "why": {
+      "HANGING": [
+       "only 0% supported"
+      ],
+      "FLOATING": [
+       "98% hovers 3-30 cm up (median gap 11.9 cm)"
+      ]
+     },
      "notes": [],
      "measures": {
-      "support": 0.671,
-      "gap": 0.311,
+      "support": 0,
+      "gap": 0.982,
       "air": 0.018,
       "hidden": 0,
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 1,
-      "host": "turret<buildLeclercTurretStage4@profiles/misc.ts:1651>"
+      "host": "turret<buildLeclercTurretStage3@profiles/misc.ts:1575>"
      }
     }
    ],
@@ -1144,7 +1154,7 @@
    "hostSweep": []
   },
   "leclerc_s2": {
-   "inputHash": "d7136b36242a2490",
+   "inputHash": "33f55fdd8333a830",
    "runs": [
     {
      "index": 0,
@@ -1152,20 +1162,30 @@
      "source": "adhoc",
      "frame": "turret",
      "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
+     "classes": [
+      "HANGING",
+      "FLOATING"
+     ],
+     "primary": "HANGING",
+     "why": {
+      "HANGING": [
+       "only 0% supported"
+      ],
+      "FLOATING": [
+       "98% hovers 3-30 cm up (median gap 11.9 cm)"
+      ]
+     },
      "notes": [],
      "measures": {
-      "support": 0.671,
-      "gap": 0.311,
+      "support": 0,
+      "gap": 0.982,
       "air": 0.018,
       "hidden": 0,
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 1,
-      "host": "turret<buildLeclercTurretStage4@profiles/misc.ts:1651>"
+      "host": "turret<buildLeclercTurretStage3@profiles/misc.ts:1575>"
      }
     }
    ],
@@ -1173,7 +1193,7 @@
    "hostSweep": []
   },
   "leclerc_sxxi": {
-   "inputHash": "2622d0f269cb76c3",
+   "inputHash": "2c73438fff021f9e",
    "runs": [
     {
      "index": 0,
@@ -1181,20 +1201,34 @@
      "source": "adhoc",
      "frame": "turret",
      "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
+     "classes": [
+      "HANGING",
+      "FLOATING",
+      "WEIRD"
+     ],
+     "primary": "HANGING",
+     "why": {
+      "HANGING": [
+       "only 0% supported"
+      ],
+      "FLOATING": [
+       "98% hovers 3-30 cm up (median gap 9.0 cm)"
+      ],
+      "WEIRD": [
+       "on launcher (turret<buildLeclercXLR@profiles/misc.ts:2040>; 54% of footprint)"
+      ]
+     },
      "notes": [],
      "measures": {
-      "support": 0.671,
-      "gap": 0.311,
+      "support": 0,
+      "gap": 0.982,
       "air": 0.018,
       "hidden": 0,
       "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 1,
-      "host": "turret<buildLeclercTurretStage4@profiles/misc.ts:1651>"
+      "host": "turret<buildLeclercXLR@profiles/misc.ts:2040>"
      }
     }
    ],
@@ -1202,13 +1236,13 @@
    "hostSweep": []
   },
   "leclerc_xlr": {
-   "inputHash": "f883fa680fdcb913",
+   "inputHash": "7734b1e9e32abf22",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "leo1a5": {
-   "inputHash": "b6750bb3f6b1ecc1",
+   "inputHash": "dca2d88212c7da1a",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -1764,13 +1798,13 @@
    "hostSweep": []
   },
   "m1a1": {
-   "inputHash": "9ecab354ae627eaa",
+   "inputHash": "f9f2ebebc968f72e",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "m1a1_abrams_aim": {
-   "inputHash": "428a6c3889d4af3f",
+   "inputHash": "a64e1b9416543803",
    "runs": [
     {
      "index": 0,
@@ -1793,7 +1827,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.933,
-      "host": "hull<loftBand@profiles/abrams.ts:473>"
+      "host": "hull<loftBand@profiles/abrams.ts:486>"
      }
     }
    ],
@@ -1801,13 +1835,13 @@
    "hostSweep": []
   },
   "m1a1_abrams_fep": {
-   "inputHash": "e44d1ddf913f983d",
+   "inputHash": "5b510ccab5a19232",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "m1a1_abrams_hc": {
-   "inputHash": "bc39f032e557a7e4",
+   "inputHash": "862b379ac75fcfff",
    "runs": [
     {
      "index": 0,
@@ -1828,7 +1862,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<abramsHullHullCourse3@profiles/abrams.ts:1440>"
+      "host": "hull<abramsHullHullCourse3@profiles/abrams.ts:1454>"
      }
     }
    ],
@@ -1836,7 +1870,7 @@
    "hostSweep": []
   },
   "m1a1_abrams_sa": {
-   "inputHash": "65ac4d78c640dfa5",
+   "inputHash": "2b77d4d6de3446d2",
    "runs": [
     {
      "index": 0,
@@ -1859,7 +1893,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.933,
-      "host": "hull<loftBand@profiles/abrams.ts:483>"
+      "host": "hull<loftBand@profiles/abrams.ts:486>"
      }
     }
    ],
@@ -1896,25 +1930,25 @@
    "hostSweep": []
   },
   "m1a2_abrams": {
-   "inputHash": "c4d0f7fa10525ecf",
+   "inputHash": "06fad7ac6fb80292",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "m1a2_abrams_sepv2": {
-   "inputHash": "5f9f9c5ffa9693be",
+   "inputHash": "1a06859f042adaa2",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "m1a2_abrams_sepv3": {
-   "inputHash": "87b534bbfc11187b",
+   "inputHash": "c58b75361a198966",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "m1a2_abrams_tusk": {
-   "inputHash": "dadcc323d8184dbd",
+   "inputHash": "a5465e36762dc11d",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2258,7 +2292,7 @@
    "hostSweep": []
   },
   "merkava2d": {
-   "inputHash": "aef656bca86793a1",
+   "inputHash": "f058d36ae2a929b7",
    "runs": [
     {
      "index": 0,
@@ -3400,7 +3434,7 @@
    "hostSweep": []
   },
   "t90am": {
-   "inputHash": "79202281e23a9527",
+   "inputHash": "ac259813e417dcfe",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3412,7 +3446,7 @@
    "hostSweep": []
   },
   "t90m_proryv": {
-   "inputHash": "e100d8d3633f0ec2",
+   "inputHash": "3d9f855abe029aa4",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3932,7 +3966,7 @@
    "hostSweep": []
   },
   "ua_m1a2_abrams": {
-   "inputHash": "f6ea3be88e264403",
+   "inputHash": "877393bc5e386c08",
    "runs": [
     {
      "index": 0,

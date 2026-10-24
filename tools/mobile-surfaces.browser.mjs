@@ -60,7 +60,9 @@ for(const [name,width,height,locale='en-US',pseudo=false] of [
     });
     assert.ok(result,`${name}: ${selector} reachable by touch`);
   }
-  await check('garage',['.cot-battle-control','.cot-nav','.cot-garage-tools','.cot-garage .stats','.cot-carousel']);
+  await check('garage',['.cot-battle-control','.cot-nav','.cot-lower-third','.cot-garage .stats','.cot-carousel']);
+  // the band under the name (the 245 redesign): the slots and the paint are always in reach
+  await reachable('.cot-lt-loadout .eqslot');await reachable('.cot-lt-paint-all');
   await tap('.cot-battle-mode');
   for(const mode of ['standard','capture_the_flag','zone_control','turbo_ball','endless_horde','frontline_assault','mars']){
     await tap(mode==='standard'?'.cot-battle-regular':`.cot-battle-choice[data-game-mode="${mode}"]`);
@@ -74,26 +76,32 @@ for(const [name,width,height,locale='en-US',pseudo=false] of [
     await reachable('[data-battle-launch]');
   }
   await tap('[data-battle-close]');
-  for(const panel of ['maps','appearance','equipment']){
-    await tap(`button[data-garage-panel="${panel}"]`);
+  // every paint opens from the band, the dossier from the figures' more button
+  for(const [panel,trigger] of [['appearance','.cot-lt-paint-all'],['equipment','.cot-overview-more']]){
+    await tap(trigger);
     await check(panel,[panel==='equipment'?'.cot-garage .stats':'.cot-leftcol']);
-    if(panel==='maps'){
-      const inspect=page.locator('.cot-map-card').filter({has:page.locator('.mthumb.verdant')}).locator('.cot-map-inspect');
-      assert.equal(await inspect.isDisabled(),true,'unselected map cannot be enlarged');
-      await tap('.cot-map-card:has(.mthumb.verdant) .cot-map-select');
-      assert.equal(await page.locator('.cot-modal-root.is-open').count(),0,'first tap only selects the map');
-      assert.equal(await inspect.isEnabled(),true,'selected map can now be enlarged');
-      await tap('button[data-garage-panel="maps"]');
-      await tap('.cot-map-card:has(.mthumb.verdant) .cot-map-select');
-      await page.locator('.cot-modal-root.is-open .cot-modal').waitFor({state:'visible'});
-      await check('map-preview',['.cot-modal-root.is-open .cot-modal']);
-      await page.locator('.cot-modal-root.is-open .cot-modal__close').tap();
-    }
     if(panel==='appearance')await reachable('.cot-camos .cot-camo-card:not([hidden]):last-of-type');
-    if(panel==='equipment')await reachable('.eqslot');
     await page.screenshot({path:resolve(out,`${name}-${panel}.png`)});
     await closeDrawer();
   }
+  // the battlefields: the battle card opens the Deploy screen, whose field holds the map grid
+  await tap('.cot-battle-mode');
+  await tap('[data-deploy-field]');
+  await check('maps',['[data-deploy-field-pop]']);
+  {
+    const inspect=page.locator('.cot-map-card').filter({has:page.locator('.mthumb.verdant')}).locator('.cot-map-inspect');
+    assert.equal(await inspect.isDisabled(),true,'unselected map cannot be enlarged');
+    await tap('.cot-map-card:has(.mthumb.verdant) .cot-map-select');
+    assert.equal(await page.locator('.cot-modal-root.is-open').count(),0,'first tap only selects the map');
+    assert.equal(await inspect.isEnabled(),true,'selected map can now be enlarged');
+    await tap('[data-deploy-field]');
+    await tap('.cot-map-card:has(.mthumb.verdant) .cot-map-select');
+    await page.locator('.cot-modal-root.is-open .cot-modal').waitFor({state:'visible'});
+    await check('map-preview',['.cot-modal-root.is-open .cot-modal']);
+    await page.locator('.cot-modal-root.is-open .cot-modal__close').tap();
+  }
+  await page.screenshot({path:resolve(out,`${name}-maps.png`)});
+  await tap('[data-battle-close]');
   await page.evaluate(()=>window.__MOBILE_SURFACES.settings.open());
   for(const tab of ['gameplay','sound','graphics','language']){
     await tap(`[data-tab="${tab}"]`);

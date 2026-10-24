@@ -20,6 +20,7 @@ import { routeShadowOnlyLayer } from './renderLayers.ts';
 import { installContextResourceLifetime } from './contextResourceLifetime.ts';
 
 import { createContextRecovery, type ContextRecoveryOwner, type RecoveryNotice } from './contextRecovery.ts';
+import { shapeLampPointLights } from './lampLightShape.ts';
 
 type GameRenderer = THREE.WebGLRenderer & {
   userData: {
@@ -90,6 +91,9 @@ export function createRenderer(container: HTMLElement): GameRenderer {
     recordLoss: noteGraphicsContextLoss,
     notice: showContextLossOverlay,
   });
+  // (240) the night pool's town lamps light as lanterns: their halo kept, dark up the facade over them (lampLightShape.ts;
+  // its own line of the chunk, apart from the falloff floor's)
+  shapeLampPointLights();
   // (2026-10-08, the owner's black screens) a point or spot light's falloff 1 / max(d^decay, 0.01) reaches 100x at 0.1 m:
   // a pooled explosion or muzzle light a few centimetres from glossy paint, glass or water pushed GGX specular past the
   // half-float HDR range (Inf, then NaN through TAA and bloom: a black frame). The floor sits at 0.25 m (16x).

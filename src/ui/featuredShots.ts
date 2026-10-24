@@ -30,7 +30,7 @@ export const FEATURED_SHOTS: readonly FeaturedShot[] = Object.freeze([
     img: '/media/site50-r14/stills/s21-fields-assault-close.webp',
     bootImg: '/media/site50-r14/stills/s21-fields-assault-boot.webp',
     capKey: 'media.site50.title.s21FieldsAssault',
-    maps: ['verdant'], focal: '52% 62%',
+    maps: ['verdant'], focal: '45% 62%',
   },
   {
     img: '/media/site50-r14/stills/s07-lake-shellfire.webp',
@@ -40,17 +40,17 @@ export const FEATURED_SHOTS: readonly FeaturedShot[] = Object.freeze([
   {
     img: '/media/site50-r14/stills/s19-roof-tiles-close.webp',
     capKey: 'media.site50.title.s19RoofTiles',
-    maps: ['urban', 'ruinspires'], focal: '50% 55%',
+    maps: ['urban', 'ruinspires'], focal: '57% 55%',
   },
   {
     img: '/media/site50-r14/stills/s29-fjord-road-kill.webp',
     capKey: 'media.site50.title.s29FjordRoadKill',
-    maps: ['fjord', 'saltwind', 'coastal'], focal: '50% 55%',
+    maps: ['fjord', 'saltwind', 'coastal'], focal: '38% 55%',
   },
   {
     img: '/media/site50-r14/stills/s13-farm-race.webp',
     capKey: 'media.site50.title.s13FarmRace',
-    maps: ['frontier', 'steppe', 'longleaf'], focal: '58% 55%',
+    maps: ['frontier', 'steppe', 'longleaf'], focal: '64% 55%',
   },
   {
     img: '/media/site50-r14/stills/s26-minaret-fire.webp',
@@ -60,12 +60,12 @@ export const FEATURED_SHOTS: readonly FeaturedShot[] = Object.freeze([
   {
     img: '/media/site50-r14/stills/s05-barn-advance-close.webp',
     capKey: 'media.site50.title.s05BarnAdvance',
-    maps: ['polders'], focal: '50% 50%',
+    maps: ['polders'], focal: '64% 50%',
   },
   {
     img: '/media/site50-r14/stills/s30-temple-village-close.webp',
     capKey: 'media.site50.title.s30TempleVillage',
-    maps: ['monsoon', 'mangrove'], focal: '45% 55%',
+    maps: ['monsoon', 'mangrove'], focal: '57% 55%',
   },
   {
     img: '/media/site50-r14/stills/s33-water-tower-close.webp',
@@ -75,27 +75,27 @@ export const FEATURED_SHOTS: readonly FeaturedShot[] = Object.freeze([
   {
     img: '/media/site50-r14/stills/s34-furnace-salvo-4k.webp',
     capKey: 'media.site50.title.s34FurnaceSalvo',
-    maps: ['foundry', 'caldera', 'blackglass'], focal: '50% 50%',
+    maps: ['foundry', 'caldera', 'blackglass'], focal: '38% 50%',
   },
   {
     img: '/media/site50-r14/stills/s38-church-knockout-close.webp',
     capKey: 'media.site50.title.s38ChurchKnockout',
-    maps: ['winter'], focal: '50% 50%',
+    maps: ['winter'], focal: '39% 50%',
   },
   {
     img: '/media/site50-r14/stills/s49-orchard-sunset.webp',
     capKey: 'media.site50.title.s49OrchardSunset',
-    maps: ['orchard', 'autumn'], focal: '50% 62%',
+    maps: ['orchard', 'autumn'], focal: '78% 62%',
   },
   {
     img: '/media/site50-r14/stills/s37-river-village-close.webp',
     capKey: 'media.site50.title.s37RiverVillage',
-    maps: ['delta'], focal: '50% 50%',
+    maps: ['delta'], focal: '26% 50%',
   },
   {
     img: '/media/site50-r14/stills/s39-lakeside-village.webp',
     capKey: 'media.site50.title.s39LakesideVillage',
-    maps: ['reservoir', 'cliffbridge', 'titan_gorge', 'skybridge'], focal: '50% 50%',
+    maps: ['reservoir', 'cliffbridge', 'titan_gorge', 'skybridge'], focal: '43% 50%',
   },
   {
     img: '/media/site50-r14/stills/s23-village-crossroads.webp',

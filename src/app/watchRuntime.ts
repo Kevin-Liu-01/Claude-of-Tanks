@@ -22,7 +22,9 @@ export interface WatchRuntimePorts<TEntity extends WatchRuntimeEntity> extends C
   camera: PerspectiveCamera;
   heightField: WatchCameraDeps['heightField'];
   raycast: WatchCameraDeps['raycast'];
-  hud: { root(): HTMLElement | null; setWatchDrone(pose: { x: number; z: number } | null): void };
+  /** Stream a hop's or a far lock's destination ahead of the camera (perf-245's warm; absent until it is wired). */
+  prepareDestination?: WatchCameraDeps['prepareDestination'];
+  hud: { root(): HTMLElement | null; setWatchDrone(pose: { x: number; z: number } | null): void; setWatchSide(team: string | null): void };
 }
 
 /** What the HUD frame reads (battleHudFrameRuntime's watch view). */
@@ -49,7 +51,8 @@ const _bravo = new Vector3();
 
 export function createWatchRuntime<TEntity extends WatchRuntimeEntity>(ports: WatchRuntimePorts<TEntity>): WatchRuntime<TEntity> {
   const { game, camera, heightField } = ports;
-  const watchCamera = createWatchCamera(camera, { heightField, raycast: ports.raycast });
+  const watchCamera = createWatchCamera(camera, { heightField, raycast: ports.raycast,
+    prepareDestination: ports.prepareDestination ? (position, lookAt, durationS) => ports.prepareDestination?.(position, lookAt, durationS) : undefined });
 
   /** The drone opens behind the human seat's side over the line between the two deployments, looking at the field. */
   const openingFrame: WatchControllerOptions<TEntity>['openingFrame'] = (out) => {
@@ -80,6 +83,7 @@ export function createWatchRuntime<TEntity extends WatchRuntimeEntity>(ports: Wa
   const hud = createWatchHud(() => ports.hud.root(), {
     cycle: (direction) => controller.cycle(direction),
     drone: () => controller.drone(),
+    toggleLock: () => controller.toggleLock(),
     toggleSeat: () => controller.toggleSeat(),
     setClimb: (direction) => controller.setClimb(direction),
   });
@@ -90,12 +94,15 @@ export function createWatchRuntime<TEntity extends WatchRuntimeEntity>(ports: Wa
     return null;
   };
   const hudState = { view: 'off' as WatchController['view'], tank: null as TEntity | null, canTake: false, speedIndex: 0,
-    speedSteps: WATCH_DRONE.speeds.length };
+    speedSteps: WATCH_DRONE.speeds.length, locked: false };
   const dronePose = { x: 0, z: 0 };
 
   const present = (): void => {
     hudState.view = controller.view;
-    hudState.tank = byId(controller.focusId);
+    // flying, the bar names the tank the drone's orbit is locked on (the battle HUD's focus stays the drone's)
+    const lockedId = controller.view === 'drone' ? controller.lockedId : null;
+    hudState.locked = !!lockedId;
+    hudState.tank = byId(lockedId ?? controller.focusId);
     hudState.canTake = controller.canTake;
     hudState.speedIndex = controller.speedIndex;
     hud.update(hudState);
@@ -104,6 +111,10 @@ export function createWatchRuntime<TEntity extends WatchRuntimeEntity>(ports: Wa
       dronePose.z = camera.position.z;
       ports.hud.setWatchDrone(dronePose);
     } else ports.hud.setWatchDrone(null);
+    // flying or riding, the HUD reads the battle from the watched seat's side (its score, rosters, kill feed and inks),
+    // the ridden tank only highlighted; a taken seat is the player's own HUD
+    const spectating = controller.view === 'drone' || controller.view === 'ride';
+    ports.hud.setWatchSide(spectating ? game.watch?.team ?? 'player' : null);
   };
 
   const hudView: WatchHudPort<TEntity> = {
@@ -135,8 +146,9 @@ export function createWatchRuntime<TEntity extends WatchRuntimeEntity>(ports: Wa
     },
     stop() {
       controller.stop();
-      hud.update({ view: 'off', tank: null, canTake: false, speedIndex: 0, speedSteps: WATCH_DRONE.speeds.length });
+      hud.update({ view: 'off', tank: null, canTake: false, speedIndex: 0, speedSteps: WATCH_DRONE.speeds.length, locked: false });
       ports.hud.setWatchDrone(null);
+      ports.hud.setWatchSide(null);
     },
   };
 }

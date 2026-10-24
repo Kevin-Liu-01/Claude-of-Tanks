@@ -219,8 +219,8 @@ function wireHome() {
   const cta = PICKS.home.cta;
   swap(H, /(<section class="v5-cta">)<img [^>]*>/,
     (_, open) => `${open}<img src="${still(cta.id, cta.still)}" alt="${esc(take(cta.id).en)}" data-i18n-alt="${titleKey(cta.id)}" loading="lazy">`, 'closing image');
-  for (const key of ['home.reel.title', 'home.reel.lede', 'home.reel.cta', 'home.shots.lede', 'home.mosaic.lede',
-    'home.versus.title', 'home.trailers.title', 'home.trailers.lede']) swapText(H, key, COPY.en[key]);
+  // (242: the section ledes left the landing with the owner's 10-22 rule; their keys left the catalogs)
+  for (const key of ['home.reel.title', 'home.reel.cta', 'home.versus.title', 'home.trailers.title']) swapText(H, key, COPY.en[key]);
   wireHomeShots(H);
 }
 /** A trailer the landing's row plays: its built files, length and shape, and its name's catalog keys. */
@@ -473,13 +473,9 @@ function studioContract() {
 const COPY = {
   en: {
     'home.reel.title': 'Watch tank combat in the game engine',
-    'home.reel.lede': "Every vehicle, shot, impact, fire and wreck in this reel is the game's own, rendered by its engine at 4K.",
     'home.reel.cta': `Watch ${PICKS.docs.reels.length} battle takes`,
-    'home.shots.lede': 'Each scene was staged in Scene Studio and rendered at 4K in the game engine.',
-    'home.mosaic.lede': "These frames show close combat and long-range fire across the game's battlefields, by day, at sunset and at night.",
     'home.versus.title': 'Pit any two tanks against each other',
     'home.trailers.title': 'Watch the trailers',
-    'home.trailers.lede': 'The trailer, its 30-second cut and its vertical cut for phones, each filmed in the game engine with its score and battle sound.',
     'home.trailers.trailer': 'Trailer',
     'home.trailers.trailer30': '30-second cut',
     'home.trailers.trailerVertical': 'Vertical cut',
@@ -513,13 +509,9 @@ const COPY = {
   },
   zh: {
     'home.reel.title': '观看游戏引擎中的坦克战斗',
-    'home.reel.lede': '这段影片中的每辆载具、每次射击、命中、火焰与残骸都来自游戏本身，由游戏引擎以 4K 渲染。',
     'home.reel.cta': `观看 ${PICKS.docs.reels.length} 段战斗镜头`,
-    'home.shots.lede': '每个场景都在 Scene Studio 中编排，并在游戏引擎中以 4K 渲染。',
-    'home.mosaic.lede': '这些画面呈现游戏各个战场上的近距离交火与远程射击，白昼、日落与夜间皆有。',
     'home.versus.title': '让任意两辆坦克正面交锋',
     'home.trailers.title': '观看预告片',
-    'home.trailers.lede': '预告片、它的 30 秒剪辑版与适合手机的竖屏版，均在游戏引擎中拍摄，配有配乐与战场音效。',
     'home.trailers.trailer': '预告片',
     'home.trailers.trailer30': '30 秒剪辑版',
     'home.trailers.trailerVertical': '竖屏版',
