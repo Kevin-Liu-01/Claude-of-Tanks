@@ -73,7 +73,7 @@ for (const player of [true, false]) for (const mobile of [true, false]) for (con
     id: 'merkava1b', options: { camoSeed: 4242, quality: player ? 'preview' : 'ai',
       geometryQuality: player && !mobile ? 'high' : 'low',
       batchStatic: true, battleDetailLod: !player && !mobile,
-      eraVisualBindingReceipt: false, staticDrawMerge: 'identity' },
+      eraVisualBindingReceipt: false, staticDrawMerge: 'dual' }, // (perf-254: every battle build takes the dual merge)
   }];
   for (const staged of [false, true]) {
     const f = fixture({ player, mobile, pooled });

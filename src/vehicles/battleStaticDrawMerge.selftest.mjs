@@ -1,12 +1,13 @@
-// perf-250 (the coordinator's rulings of 2026-10-24): the source-X Abrams family's BATTLE builds take the 'dual' static
-// merge (fleetFactory battleStaticDrawMerge): the identity build exactly, plus each translated run's merged copy, drawn only
+// perf-250/254 (the coordinator's rulings of 2026-10-24): every vehicle's BATTLE build takes the 'dual' static merge
+// (fleetFactory battleStaticDrawMerge): the identity build exactly, plus far copies of its same-key parts, drawn only
 // past FAR_MERGE_ENTER_M of screen-equivalent distance. The player's own tank (the chase camera), a ridden or spectated
-// vehicle and the killcam's subjects (synced without a distance) therefore draw the identity build; every other vehicle,
-// and every Garage, Gallery and hero build, keeps the identity merge. Held here:
+// vehicle and the killcam's subjects (synced without a distance) therefore draw the identity build; every Garage,
+// Gallery and hero build keeps the identity merge. Held here:
 // - the policy, per attempt in the battle roster, and the probes' ?staticmerge= override;
 // - NEAR (under the threshold, with no distance, and on a wreck) a dual build draws what the identity build draws at the
 //   same distance, to the byte: the same meshes, matrices, materials, geometry bytes and depth-hook offsets;
-// - FAR it draws the copies in their runs' place, 30+ fewer draws on a SEPv3 bot, with the hysteresis the runtime keeps.
+// - FAR it draws the copies in their parts' place (55+ fewer draws on a SEPv3 bot, 25+ on a Leopard 2A7V), with the
+//   hysteresis the runtime keeps.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
@@ -22,9 +23,10 @@ const { createTankState } = await import('../sim/movement.ts');
 
 assert.deepEqual([...ABRAMS_SOURCE_X_IDS].sort(),
   ['m1a2_abrams', 'm1a2_abrams_sepv2', 'm1a2_abrams_sepv3', 'm1a2_abrams_tusk', 'ua_m1a2_abrams'], 'the family the ruling names');
-for (const id of ABRAMS_SOURCE_X_IDS) assert.equal(battleStaticDrawMerge(id), 'dual', `${id} takes the dual merge`);
-for (const id of ['m1a1_abrams_hc', 'm1a1_abrams_fep', 't90m', 'leo2_improved', 'challenger2']) {
-  assert.equal(battleStaticDrawMerge(id), 'identity', `${id} keeps the identity merge`);
+// (perf-254) every vehicle's battle build: the far copies are drawn past the threshold only, and fold the same-key parts
+// whether or not they are contiguous (the loader M240's two vertex layouts)
+for (const id of [...ABRAMS_SOURCE_X_IDS, 'm1a1_abrams_hc', 'm1a1_abrams_fep', 't90m', 'leo2_improved', 'challenger2']) {
+  assert.equal(battleStaticDrawMerge(id), 'dual', `${id} takes the dual merge`);
 }
 // the probes' same-build pairs: ?staticmerge= wins for every build
 const realLocation = globalThis.location;
@@ -45,11 +47,8 @@ for (const path of ['../game/garagePedestalRuntime.ts', '../game/garageDressing.
   assert.doesNotMatch(readFileSync(new URL(path, import.meta.url), 'utf8'), /staticDrawMerge|battleStaticDrawMerge/, `${path} builds no battle merge`);
 }
 
-// ---- a SEPv3 bot (low geometry, battle detail), identity and dual, synced side by side ---------------------------------
-const ID = 'm1a2_abrams_sepv3';
-await ensureTankBuilder(ID);
-const build = (mode) => createTank(ID, null, { camoSeed: 7, quality: 'ai', geometryQuality: 'low', batchStatic: true,
-  battleDetailLod: true, eraVisualBindingReceipt: false, staticDrawMerge: mode });
+// ---- bots (low geometry, battle detail), identity and dual, synced side by side: a SEPv3 (its loader M240's two vertex
+// layouts fold far, perf-254) and a Leopard 2A7V
 const camera = new THREE.PerspectiveCamera(55, 16 / 9, 0.1, 2000);
 const geometryDigests = new WeakMap();
 function geometryDigest(g) {
@@ -90,6 +89,11 @@ function drawn(visual) {
   visit(visual.root);
   return out;
 }
+const rows = [];
+for (const [ID, minSaved] of [['m1a2_abrams_sepv3', 55], ['leo2a7v', 25]]) {
+await ensureTankBuilder(ID);
+const build = (mode) => createTank(ID, null, { camoSeed: 7, quality: 'ai', geometryQuality: 'low', batchStatic: true,
+  battleDetailLod: true, eraVisualBindingReceipt: false, staticDrawMerge: mode });
 const state = createTankState(getSpec(ID), new THREE.Vector3(0, 0, 0), 0);
 const identity = build('identity'), dual = build('dual');
 assert.ok(dual.root.userData.staticMergeFarCopies > 0, 'the dual build made far copies');
@@ -107,7 +111,7 @@ for (const [label, dist] of [['8 m (the chase camera)', 8], ['under the threshol
 const near = pair(10).identity.length;
 const farPair = pair(100);
 const saved = farPair.identity.length - farPair.dual.length;
-assert.ok(saved >= 30, `far: 30+ fewer draws (${farPair.identity.length} -> ${farPair.dual.length})`);
+assert.ok(saved >= minSaved, `${ID} far: ${minSaved}+ fewer draws (${farPair.identity.length} -> ${farPair.dual.length})`);
 assert.equal(saved, dual.root.userData.staticMergeFarSavedDraws, 'the saving the build records');
 // the hysteresis: the copies hold to the return distance, the parts come back under it, and need the full entry distance
 assert.equal(pair(FAR_MERGE_RETURN_M + 0.01).dual.length, pair(FAR_MERGE_RETURN_M + 0.01).identity.length - saved,
@@ -128,7 +132,11 @@ pair(100);
 dual.resetForGaragePresentation?.();
 identity.resetForGaragePresentation?.();
 assert.deepEqual(drawn(dual), drawn(identity), 'the Garage reset draws the identity build');
+rows.push(`${ID} ${near} draws near, ${saved} fewer past it`);
+identity.dispose();
+dual.dispose();
+}
 restoreCanvas();
-console.log(`battleStaticDrawMerge.selftest: the source-X Abrams family takes the dual merge in battle (SEPv3 bot: ${near} draws `
-  + `near, the identity build's to the byte with no distance, under ${FAR_MERGE_ENTER_M} m and as a wreck; ${saved} fewer `
-  + 'past it), every other vehicle and every Garage, Gallery and hero build keeps identity, the probe override holds PASS');
+console.log(`battleStaticDrawMerge.selftest: every vehicle's battle build takes the dual merge (${rows.join('; ')}): `
+  + `the identity build's draws to the byte with no distance, under ${FAR_MERGE_ENTER_M} m and as a wreck; every Garage, `
+  + 'Gallery and hero build keeps identity; the probe override holds PASS');
