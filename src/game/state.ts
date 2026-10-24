@@ -1269,7 +1269,8 @@ function attachBattleCommander(game: SoloGameState): void {
   // the proving ground's targets have no brain to command
   const teams: TeamId[] = game.ruleset.provingGround ? []
     : brains.opponent === 'jev' ? (brains.allies ? ['enemy', 'player'] : ['enemy']) : [];
-  if (teams.length) {
+  // a transport Jev halted this session (out of credit, a TypeSafe 429, the budget spent) leaves the classic brain
+  if (teams.length && !jevTransport?.halted) {
     jevTransport ??= createJevFetchTransport({ url: jevEndpointUrl() });
     game.jev = createJevCommander({ transport: jevTransport, teams });
     game._jevView = createJevBattleView(game);

@@ -2344,6 +2344,8 @@
   "playMenu.failure.returnGarage": "返回车库",
   "playMenu.roomFailure.roomServiceUnavailable.title": "房间服务不可用",
   "playMenu.roomFailure.roomServiceUnavailable.detail": "无法连接房间服务。请检查你的网络连接，待服务恢复后再试。",
+  "playMenu.roomFailure.roomServiceLimited.title": "多人模式已达今日上限",
+  "playMenu.roomFailure.roomServiceLimited.detail": "免费房间服务今日额度已用完。练习、机器人对战和局域网游戏仍可正常进行。房间将在 UTC 时间 00:00 后重新开放。",
   "playMenu.roomFailure.invalidRoomCode.title": "请检查房间代码",
   "playMenu.roomFailure.invalidRoomCode.detail": "输入主机提供的六位房间代码，或打开其完整邀请链接。",
   "playMenu.roomFailure.expired.title": "房间不存在或已过期",

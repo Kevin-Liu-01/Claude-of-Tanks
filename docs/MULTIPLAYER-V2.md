@@ -2383,6 +2383,39 @@ The room now elects at once only when a strict majority of the match's connected
 counting only claims made after the host's latest accepted report; in a two-commander match the lone peer is a majority.
 A crashed host is silent to every peer, so the fast election holds. `tools/mp-p2p-room-double.ts` mirrors the rule.
 
+### 13.29 The rooms Worker on Workers Free: fewer invocations, one limit state (round 243, 2026-10-23)
+
+The owner ruled on 2026-10-23 that the account stays on Cloudflare Workers Free: 100,000 Worker requests and 100,000
+Durable Object requests a day, shared by cot-rooms and cot-telemetry. The security audit's NV-5 and NV-9 are mitigated
+in code.
+
+**Fewer invocations per player.**
+- The room keepalive was already the Durable Object's hibernation auto-response, never a billed request.
+- The p2p host's periodic `match_report` goes every 30 s instead of 10 (`ROOM_MATCH_POLL_MS`; phase changes and the
+  verdict still go at once). That is about 120 billed requests an hour per running match instead of 360. A host
+  that stays connected and stops reporting is now declared stale after 90 s. A host that leaves or crashes is found
+  as before: its socket's grace and the peers' corroborated `host_unreachable`. **Release order:** the rooms Worker
+  goes first. The old Worker declares a host stale after 3 × 10 s, exactly the new report interval, so a new site on
+  the old Worker could trigger false host migrations. A new Worker with old hosts (10 s reports) is fine.
+- Telemetry sends one beacon per session phase (docs/ENTRY-RESILIENCE.md).
+
+**Junk is dropped before the limiter and the Durable Object.** The rooms Worker answers 405 to anything but GET
+before it parses a route. A query string, a fragment, `/match` and a foreign Origin are all answered without the
+limiter. Only an allowed, well-formed upgrade reaches it and then a room. The telemetry Worker refuses a declared
+oversize body before its limiter.
+
+**One limit state.** Past the daily cap Cloudflare refuses every request with error 1027 until 00:00 UTC, and a
+browser cannot see why its WebSocket upgrade failed.
+- After a failed admission, or a room interrupted mid-lobby, the Play menu asks `/api/rooms-status` once. That Vercel
+  function reads the rooms Worker's `/healthz` from the server and is cached at the edge.
+- `limited` shows one state: "Multiplayer is at today's limit", with practice, bots and LAN unaffected. The client
+  stops the interrupted room instead of reconnecting into the refusal, and remembers the limit until 00:00 UTC. While
+  it lasts, an attempt asks the status again and opens no socket.
+- LAN helpers never ask. A room lost mid-battle keeps its bounded reconnect window: the battle runs between the
+  browsers.
+- `roomServiceLimit.selftest` covers this over real sockets.
+
+
 ### 13.27 The room's bots: seated by one planner, TEAM NATIONS (gameplay-modes-228, 2026-10-18)
 
 **Why.** Every room bot cloned a human's pick (an empty side cloned the host's tank), and the co-op rooms seated no

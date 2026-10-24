@@ -139,7 +139,7 @@ function cleanBoot(f, { readyMs = 4200 } = {}) {
   assert.deepEqual(f.timers.map(({ delayMs }) => delayMs), [1000]);
   f.advance(1000);
   f.runTimers();
-  assert.equal(f.bodies.length, 2, 'the first error sends the session record; the burst rides in one error record');
+  assert.equal(f.bodies.length, 1, 'the first error sends the session record and the burst rides in it: one beacon for the phase');
   const session = accepted(f.bodies[0].body);
   assert.equal(session.kind, 'session');
   assert.equal(session.outcome, 'error');
@@ -154,21 +154,26 @@ function cleanBoot(f, { readyMs = 4200 } = {}) {
     'at run (/assets/main-Ef56Gh78.js:30:40)',
     'at async boot (/assets/main-Ef56Gh78.js:50:60)',
   ], 'three origin-stripped frames travel with the message');
-  assert.equal(f.bodies[1].endpoint, endpoints.error);
-  const second = accepted(f.bodies[1].body);
-  assert.equal(second.kind, 'error');
-  assert.equal(second.stage, 'sky');
-  assert.equal(second.code, 'unhandled_rejection');
-  assert.equal(second.ready, false);
-  assert.equal(second.error.message, 'Second failure');
+  assert.equal(session.errors.length, 1);
+  assert.equal(session.errors[0].stage, 'sky');
+  assert.equal(session.errors[0].code, 'unhandled_rejection');
+  assert.equal(session.errors[0].message, 'Second failure');
   assert.equal(f.telemetry.outcome, 'error');
   assert.equal(f.telemetry.error('sky', new Error('Third failure')), true);
   assert.equal(f.telemetry.error('sky', new Error('Fourth failure')), false, 'three errors per session');
   f.runTimers();
-  assert.equal(f.bodies.length, 3, 'a failing session is at most three requests');
-  assert.equal(accepted(f.bodies[2].body).error.message, 'Third failure');
+  assert.equal(f.bodies.length, 1, 'after the session record an error waits for the next beacon');
+  f.telemetry.flushPending();
+  assert.equal(f.bodies.length, 2, 'hiding the page sends the waiting errors in one error record');
+  assert.equal(f.bodies[1].endpoint, endpoints.error);
+  const third = accepted(f.bodies[1].body);
+  assert.equal(third.kind, 'error');
+  assert.equal(third.ready, false);
+  assert.equal(third.error.message, 'Third failure');
+  f.telemetry.flushPending();
+  assert.equal(f.bodies.length, 2, 'nothing waits, nothing leaves');
   f.telemetry.send({ kind: 'boot_ready', ms: 9000 });
-  assert.equal(f.bodies.length, 3, 'a late ready after the session record left changes nothing');
+  assert.equal(f.bodies.length, 2, 'a late ready after the session record left changes nothing');
 }
 
 {
@@ -229,6 +234,8 @@ function cleanBoot(f, { readyMs = 4200 } = {}) {
   assert.equal(accepted(out.bodies[0].body).w, undefined);
   out.telemetry.error('post', new Error('sampled-out error'));
   out.runTimers();
+  assert.equal(out.bodies.length, 1, 'an error after ready waits for the next beacon');
+  out.telemetry.flushPending();
   assert.equal(out.bodies.length, 2);
   assert.equal(accepted(out.bodies[1].body).ready, true, 'an error after ready says so');
 
@@ -348,7 +355,7 @@ function cleanBoot(f, { readyMs = 4200 } = {}) {
     ['lighting', 'uncaught', 'source-less failure'],
     ['lighting', 'unhandled_rejection', 'rejected promise'],
   ], 'same-origin and source-less exceptions plus rejections report against the current stage, three per session; extensions and resources do not');
-  assert.equal(f.bodies.length, 2, 'the burst is the session record plus one error record');
+  assert.equal(f.bodies.length, 1, 'the burst rides the session record: one beacon for the boot phase');
   dispose();
   assert.equal(listeners.size, 0);
 }
@@ -473,4 +480,25 @@ console.log('entry telemetry client: one session record, coalesced errors, follo
   g.telemetry.send({ kind: 'mp_exit', mode: 'network', code: 'left', reason: 'good', link: { health: 'good', reconnects: 0, roomReconnects: 0, drops: 0, lastDrop: null, impairedMs: 0, hosted: 1, migrations: 0 } });
   assert.deepEqual(g.bodies.at(-1).body.notes, ['mp:left:good:r0:d0:none:i0:h1:m0'], 'a summary that names them wins over the counters');
   console.log('telemetry.selftest: mp_host and mp_migrate fold into the exit note');
+}
+
+// One beacon per session phase (2026-10-23, NV-9: the telemetry Worker shares Workers Free's daily cap): an error after
+// the session record sends nothing on its own; the battle's entry record carries it.
+{
+  const phase = fixture();
+  cleanBoot(phase);
+  const before = phase.bodies.length;
+  assert.equal(before, 1, 'the boot phase: the session record');
+  phase.telemetry.error('hud', new Error('mid-battle failure'));
+  phase.runTimers();
+  assert.equal(phase.bodies.length, before, 'an error after the session record waits');
+  phase.telemetry.send({ kind: 'entry_result', mode: 'solo', outcome: 'ok' });
+  assert.equal(phase.bodies.length, before + 1, 'the battle phase: one entry record');
+  const record = accepted(phase.bodies.at(-1).body);
+  assert.equal(record.kind, 'entry');
+  assert.equal(record.outcome, 'ok');
+  assert.equal(record.error.message, 'mid-battle failure', 'it carries the waiting error');
+  phase.telemetry.flush();
+  assert.equal(phase.bodies.length, before + 1, 'nothing left for the exit');
+  console.log('telemetry.selftest: one beacon per session phase');
 }
