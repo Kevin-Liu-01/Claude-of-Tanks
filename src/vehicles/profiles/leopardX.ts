@@ -854,25 +854,28 @@ function a7BowFittings(P:TankBuilderPort): void {
 function a5CrewBasket(P: TankBuilderPort,d:Datum): void {
   // Source floor extrema fix an ellipse: retain transverse radius and Y,
   // correcting only the former circular contour's 10.4 mm axial overhang.
-  const axialScale=.97573431/.986,centerZ=.66115932;
+  // Release 240: the carrier turns inside the hull's ring bore (rim .965 m), so its .986 m wall comes in to .975 m. At
+  // .986 the wall stood past the turret seat's keep radius (rim + 2 cm), and the seat lifted the whole basket, floor and
+  // all, from .82 m to the deck.
+  const outer=.975,inner=outer-.065,axialScale=.97573431/.986,centerZ=.66115932;
   const band=(bottom:number,top:number) => new THREE.LatheGeometry([
-    new THREE.Vector2(.921,bottom),new THREE.Vector2(.986,bottom),
-    new THREE.Vector2(.986,top),new THREE.Vector2(.921,top),
-    new THREE.Vector2(.921,bottom),
+    new THREE.Vector2(inner,bottom),new THREE.Vector2(outer,bottom),
+    new THREE.Vector2(outer,top),new THREE.Vector2(inner,top),
+    new THREE.Vector2(inner,bottom),
   ],48).scale(1,1,axialScale);
   equip(P,d,'turretDetail',band(.84,1.025),0,0,centerZ);
   equip(P,d,'turretDetail',band(1.515,1.71),0,0,centerZ);
-  equip(P,d,'turretDetail',cylY(.986,.986,.025,40).scale(1,1,axialScale),0,.8328,centerZ);
+  equip(P,d,'turretDetail',cylY(outer,outer,.025,40).scale(1,1,axialScale),0,.8328,centerZ);
   for(let i=0;i<4;i++) {
     const start=Math.PI/8+i*Math.PI/2;
     const outline:THREE.Vector2[]=[];
     for(let j=0;j<=12;j++) {
       const a=start+j*Math.PI/48;
-      outline.push(new THREE.Vector2(.986*Math.cos(a),.986*Math.sin(a)));
+      outline.push(new THREE.Vector2(outer*Math.cos(a),outer*Math.sin(a)));
     }
     for(let j=12;j>=0;j--) {
       const a=start+j*Math.PI/48;
-      outline.push(new THREE.Vector2(.921*Math.cos(a),.921*Math.sin(a)));
+      outline.push(new THREE.Vector2(inner*Math.cos(a),inner*Math.sin(a)));
     }
     const wall=new THREE.ExtrudeGeometry(new THREE.Shape(outline),{depth:.49,steps:1,bevelEnabled:false});
     wall.rotateX(-Math.PI/2);
