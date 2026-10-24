@@ -62,7 +62,13 @@ function buildHull(P: TankBuilderPort): void {
 
 function buildTurret(P: TankBuilderPort): void {
   const [, py, pz] = P.spec.armor.turretPivot;
-  P.add('turret',cylY(.73,.77,.075,32),0,.015,0);
+  // Release 240 (the owner: "make sure all tank turrets have a proper turret ring/attachment area"): the ring collar is
+  // coaxial and its foot (0.77) reaches past the seat's keep radius (rim 0.711 + 2 cm, turretSeatRace.ts), which lifted
+  // that rim and its bottom cap over its top and turned it inside out (gun-junction openings beside the 25 mm). The seat
+  // keeps it as built (a body of revolution turns unseen), and it stands up to the seated floor (1.815) so the seam
+  // over the deck reads as the collar, not a slot under the turret.
+  P.turretG.userData.turretSeatKeepR=.79;
+  P.add('turret',cylY(.73,.77,.1125,32),0,.03375,0);
   P.add('turret',armorLoft([
     [-1.45,.68,.91,.64,1.89,2.03,2.40],
     [-1.10,.79,1.01,.74,1.77,1.93,2.42],
