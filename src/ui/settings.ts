@@ -477,7 +477,7 @@ const HINT_BATTLES = 3;
  *   toggle:Function,isOpen:()=>boolean,showHints:Function,root:HTMLElement}}
  */
 export function createSettings(opts: SettingsOptions): SettingsRuntime {
-  // the game document's shared behaviours (the kit's hover tip) install with the panel every screen has
+  // the game document's shared behaviours (the kit's hover tip, the mark's roll) install with the panel every screen has
   installPageBehaviours();
   ensureFonts();
   const { input, bus } = opts;

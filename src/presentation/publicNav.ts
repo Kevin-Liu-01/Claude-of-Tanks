@@ -17,7 +17,7 @@ import {
 // deferred GitHub star count.
 
 installResponsiveLayout();
-installPageBehaviours(); // the kit's hover tip
+installPageBehaviours(); // the kit's hover tip and the mark's roll
 /** True when the page is moving to its other-locale route (the rest of the page then stands down). */
 export const localeRouteChanged = synchronizeLocaleRoute(getLocale());
 if (!localeRouteChanged) {

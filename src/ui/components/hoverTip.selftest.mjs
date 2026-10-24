@@ -56,7 +56,7 @@ const viewport = { width: 1440, height: 900 };
 {
   assert.match(read('../../presentation/publicNav.ts'), /installPageBehaviours\(\);/);
   assert.match(read('../settings.ts'), /\n  installPageBehaviours\(\);\n/);
-  assert.match(read('./pageBehaviours.ts'), /installHoverTips\(doc\);/);
+  assert.match(read('./pageBehaviours.ts'), /installHoverTips\(doc\);\s*installMarkRoll\(doc\);/);
 }
 
 console.log('hoverTip.selftest: ok');
