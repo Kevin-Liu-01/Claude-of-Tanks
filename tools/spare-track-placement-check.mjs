@@ -55,6 +55,7 @@ const pitchMod = await imp('src/sim/gunPitchLimits.ts');
 // the shared semantic tags (absent on trees older than the seat solver: the source-text tags then stand alone)
 const seatMod = fs.existsSync(path.join(WT, 'src/vehicles/spareTrackSeat.ts')) ? await imp('src/vehicles/spareTrackSeat.ts') : null;
 const idMod = await imp('src/vehicles/tankIdAliases.ts');
+const calibrationMod = await imp('src/vehicles/combatAnatomyCalibrationRegistry.ts');
 // the seat pass re-runs its search beside the recorded plan (spareTrackSeatPlan.ts) and reports where they differ
 const PLAN_REL = 'src/vehicles/spareTrackSeatPlan.ts';
 const passMod = fs.existsSync(path.join(WT, PLAN_REL)) ? await imp('src/vehicles/spareTrackSeatPass.ts') : null;
@@ -628,8 +629,15 @@ function collect(visual, spec) {
   // VERIFY: rendered bucket-mesh triangles not covered by any live census part (orphans)
   const diag = { orphanMeshes: [] };
   const cKey = (T, k) => `${Math.round((T[k] + T[k + 3] + T[k + 6]) * 3333)},${Math.round((T[k + 1] + T[k + 4] + T[k + 7]) * 3333)},${Math.round((T[k + 2] + T[k + 5] + T[k + 8]) * 3333)}`;
+  // A turret seated over its ring (src/vehicles/turretSeatRace.ts seatTurretOverDeck) draws its own copy of each turret
+  // mesh with the corners under the seat plane lifted onto it, so a census part there matches no drawn vertex (dead) or
+  // keeps corners the seat moved (243: challenger3_proto's left wall, lifted 10 cm, read as air under its spare links).
+  // A seated turret mesh is measured as drawn: its parts keep their drawn triangles, its lifted ones stand as armour.
+  const ring = calibrationMod.combatAnatomyCalibration(spec.id)?.turretRing;
+  const seatedTurret = !!ring && ring.rimR > 0.3 && Number.isFinite(ring.deckY);
   for (const m of allMeshes) {
     if (excludedMesh(m) || !bucketNames.has(m.name)) continue;
+    const seated = seatedTurret && rigOf(m) === 'turret';
     const have = new Map();
     for (const c of census) {
       if (c.hostMesh !== m || !c.part) continue;
@@ -637,11 +645,25 @@ function collect(visual, spec) {
       for (let k = 0; k < T.length; k += 9) { const key = cKey(T, k); have.set(key, (have.get(key) || 0) + 1); }
     }
     const T = trisOf(m.geometry, null);
+    if (seated) {
+      const drawn = new Set();
+      for (let k = 0; k < T.length; k += 9) drawn.add(cKey(T, k));
+      for (const c of census) {
+        if (c.hostMesh !== m || !c.body) continue;
+        const L = trisOf(c.part, null), keep = [];
+        for (let k = 0; k < L.length; k += 9) if (drawn.has(cKey(L, k))) keep.push(k);
+        if (keep.length * 9 === L.length) continue;
+        const W = new Float32Array(keep.length * 9);
+        keep.forEach((k, i) => W.set(c.body.tris.subarray(k, k + 9), i * 9));
+        c.body.tris = W;
+        c.body.aabb = aabbOf(W);
+      }
+    }
     const orphanIdx = [];
     for (let k = 0; k < T.length; k += 9) { const key = cKey(T, k); const n = have.get(key) || 0; if (n > 0) have.set(key, n - 1); else orphanIdx.push(k); }
     if (orphanIdx.length) {
       diag.orphanMeshes.push({ mesh: pathOf(m), tris: T.length / 9, orphanTris: orphanIdx.length, rig: rigOf(m) });
-      if (process.env.V_ORPHANS === '1') {
+      if (process.env.V_ORPHANS === '1' || seated) {
         const O = new Float32Array(orphanIdx.length * 9);
         orphanIdx.forEach((k, i) => O.set(T.subarray(k, k + 9), i * 9));
         const W = trisOf({ getAttribute: (n) => (n === 'position' ? { count: O.length / 3, getX: (i) => O[i * 3], getY: (i) => O[i * 3 + 1], getZ: (i) => O[i * 3 + 2] } : null), index: null }, m.matrixWorld);
