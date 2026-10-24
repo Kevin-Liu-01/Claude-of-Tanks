@@ -214988,23 +214988,23 @@
             "verts": [
               [
                 -0.89,
-                1.7175,
-                1.44
+                1.6055,
+                2.4108
               ],
               [
                 -0.23,
-                1.7175,
-                1.44
+                1.6055,
+                2.4108
               ],
               [
                 -0.23,
-                1.7445,
-                1.44
+                1.7049,
+                2.4108
               ],
               [
                 -0.89,
-                1.7445,
-                1.44
+                1.7049,
+                2.4108
               ]
             ]
           },
@@ -215019,23 +215019,23 @@
             "verts": [
               [
                 -0.23,
-                1.7175,
-                0.86
+                1.6055,
+                1.832
               ],
               [
                 -0.89,
-                1.7175,
-                0.86
+                1.6055,
+                1.832
               ],
               [
                 -0.89,
-                1.7445,
-                0.86
+                1.7049,
+                1.832
               ],
               [
                 -0.23,
-                1.7445,
-                0.86
+                1.7049,
+                1.832
               ]
             ]
           },
@@ -215050,23 +215050,23 @@
             "verts": [
               [
                 -0.23,
-                1.7175,
-                1.44
+                1.6055,
+                2.4108
               ],
               [
                 -0.23,
-                1.7175,
-                0.86
+                1.6055,
+                1.832
               ],
               [
                 -0.23,
-                1.7445,
-                0.86
+                1.7049,
+                1.832
               ],
               [
                 -0.23,
-                1.7445,
-                1.44
+                1.7049,
+                2.4108
               ]
             ]
           },
@@ -215081,23 +215081,23 @@
             "verts": [
               [
                 -0.89,
-                1.7175,
-                0.86
+                1.6055,
+                1.832
               ],
               [
                 -0.89,
-                1.7175,
-                1.44
+                1.6055,
+                2.4108
               ],
               [
                 -0.89,
-                1.7445,
-                1.44
+                1.7049,
+                2.4108
               ],
               [
                 -0.89,
-                1.7445,
-                0.86
+                1.7049,
+                1.832
               ]
             ]
           },
@@ -215112,23 +215112,23 @@
             "verts": [
               [
                 -0.89,
-                1.7445,
-                1.44
+                1.7049,
+                2.4108
               ],
               [
                 -0.23,
-                1.7445,
-                1.44
+                1.7049,
+                2.4108
               ],
               [
                 -0.23,
-                1.7445,
-                0.86
+                1.7049,
+                1.832
               ],
               [
                 -0.89,
-                1.7445,
-                0.86
+                1.7049,
+                1.832
               ]
             ]
           },
@@ -216663,14 +216663,14 @@
             "volumeId": "C02",
             "name": "gunner",
             "min": [
-              0.1463,
-              -0.8706,
-              0.0327
+              0.0963,
+              -0.8928,
+              -0.0383
             ],
             "max": [
-              0.536,
-              0.4816,
-              0.3513
+              0.5557,
+              -0.1072,
+              0.7251
             ],
             "turretLocal": true
           },
@@ -216678,14 +216678,14 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.0724,
-              -0.9563,
-              -0.4359
+              0.1724,
+              -0.9109,
+              -0.6585
             ],
             "max": [
-              0.5318,
-              -0.09,
-              0.3289
+              0.6318,
+              -0.1009,
+              0.0131
             ],
             "turretLocal": true
           },
@@ -216693,30 +216693,30 @@
             "volumeId": "C04",
             "name": "loader",
             "min": [
-              -0.5811,
-              -0.95,
-              -0.0251
+              -0.5808,
+              -0.9164,
+              -0.0668
             ],
             "max": [
-              -0.1714,
-              0.782,
-              0.2792
+              -0.1214,
+              -0.1055,
+              0.7042
             ],
             "turretLocal": true
           }
         ]
       },
       "geometryHash": "3b34f745",
-      "metadataHash": "6210b6f5",
+      "metadataHash": "7750c20f",
       "presentationAnchor": {
-        "xM": 0.0002,
-        "zM": -0.0371
+        "xM": 0.0004,
+        "zM": -0.0413
       },
-      "presentationHash": "eeab351f",
+      "presentationHash": "eca6c196",
       "presentationProjection": {
         "centerYM": 1.6944,
-        "topHalfM": 7.5723,
-        "sideHalfM": 3.7861
+        "topHalfM": 7.5768,
+        "sideHalfM": 3.7884
       },
       "appearance": {
         "version": 1,
@@ -216766,39 +216766,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75635,
-          "sha256": "b36d9de4bcfeb145bac936642e4068ad630e699205789a857f96c58796339e30"
+          "bytes": 77332,
+          "sha256": "88dbe5d6e836c28251905d91a7e3b6ae221dd861218de98a6f7b862dfa191e69"
         },
         "modulesSide": {
           "file": "leo2a6m_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74030,
-          "sha256": "dc21564ef88bff496f5360cc6698c18295bbc19321e38056f4b465c29b523933"
+          "bytes": 74852,
+          "sha256": "6a8ae00180d06973d2e026c66dc0bfa6f48edb010ae5533731f08982956b14dc"
         },
         "crewSide": {
           "file": "leo2a6m_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 67552,
-          "sha256": "684adaf7afc7f7d2ac451216be431a32aa83b0b3efcf41ade92389029048de74"
+          "bytes": 67601,
+          "sha256": "c5b42b80454ce90271c6d7df4ad58625d450624e8d6a4a8e9663361d6f2367b6"
         },
         "angle": {
           "file": "leo2a6m_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 32108,
-          "sha256": "5b4c48d9591e0775bd691e3d7ebba163546f16b8c47c16187e2b58dc408bb96e",
+          "bytes": 32112,
+          "sha256": "ecadb06897482247db035ed829dbcaaad7465b5b71d66e297eacf5e90bdc536f",
           "thumbnail": {
             "file": "thumbs/leo2a6m_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11572,
-            "sha256": "ad1ea1ad02b68bd5b632b5c240bb1ac07c3fb884319f7ce22c95d1a9e8d451da"
+            "bytes": 11564,
+            "sha256": "a97d39caacf2aa1abcddf87a09c160191d3d172841718078603be1b58e63dfd7"
           }
         },
         "top": {
@@ -216806,32 +216806,32 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 12558,
-          "sha256": "a9e1e24f1c0cd0389bc78979b59e298710a47da5be0270dbc91e2b877dfc498d"
+          "bytes": 12276,
+          "sha256": "8235aea1e2de16ef6e704364140083e5f2015ef8be020f0c55640749d33af9dc"
         },
         "side": {
           "file": "leo2a6m_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 11322,
-          "sha256": "724be08e82a078cdf59ce401418d7d999ac3e76fb2817513c42eed243174d7b1"
+          "bytes": 11332,
+          "sha256": "fc963e7403a1aaf21368c406afa5e06587b6d70d6a209c25645ab755356d2b9e"
         },
         "topSilhouette": {
           "file": "leo2a6m_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1452,
-          "sha256": "a24d1633d20b00d63150cad7a9c4c65f4a6af3b89c5328d1e35ca96bccf32559"
+          "bytes": 1458,
+          "sha256": "511535ca4f95554af9d938ddedc1338f90d27f44d9edff756588439b8b27057f"
         },
         "sideSilhouette": {
           "file": "leo2a6m_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4774,
-          "sha256": "adf587f68eeee0def2b682c4e81f874869f5e6ad5f91190bce13e734ebfaf33e"
+          "bytes": 4677,
+          "sha256": "c65090d6c07bf656a9ada2d9c37c1f0367aaad5ba48153a0d1f12455ce90c0a1"
         },
         "markings": {
           "file": "leo2a6m_markings.png",
