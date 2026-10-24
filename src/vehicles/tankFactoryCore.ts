@@ -546,6 +546,10 @@ export interface RunningGearConfig {
   smoothRearTopTangent?: boolean;
   dedupeLoopPoints?: boolean;
   linkPitchM?: number;
+  /** 2026-10-23 (240): 'loadedRunCentred' phases the shoes at rest so the ones the loaded run can carry sit centred on
+   * it (loadedRunCentredPhase), whatever length the rest of the loop takes; the default phase starts at the loop's
+   * first point. A rolling track keeps the same constant offset. */
+  shoeRestPhase?: 'loadedRunCentred';
   wheelPattern?: WheelPatternId;
   trackPattern?: TrackPatternId;
   trackShoeDimensions?: TrackShoeDimensions;
@@ -3536,6 +3540,29 @@ function insertLoadedRunStations(
   }
 }
 
+/**
+ * 2026-10-23 (240; type10TrackReseat: the roller-carried sag lengthened the TK-X's upper run by 1.4 cm, the default
+ * phase slid one shoe off the end of the loaded run and 29 of its 30 stood on the ground): the rest-pose distance, in
+ * [0, pitch), at which the shoes the course's flat loaded run can carry sit centred on it, a half-pitch or more from
+ * each end. The loaded run is the longest stretch of segments at the course's lowest height.
+ */
+function loadedRunCentredPhase(segments: readonly TrackCourseSegment[], pitchM: number): number {
+  let lowY = Infinity;
+  for (const segment of segments) lowY = Math.min(lowY, segment.y);
+  let best: [number, number] | null = null, run: [number, number] | null = null;
+  for (let index = 0; index < segments.length; index++) {
+    const segment = segments[index], next = segments[(index + 1) % segments.length];
+    if (Math.abs(segment.y - lowY) > 1e-9 || Math.abs(next.y - lowY) > 1e-9) { run = null; continue; }
+    run = run ? [run[0], segment.c0 + segment.l] : [segment.c0, segment.c0 + segment.l];
+    if (!best || run[1] - run[0] > best[1] - best[0]) best = [run[0], run[1]];
+  }
+  if (!best) return 0;
+  const lengthM = best[1] - best[0];
+  const fit = Math.max(1, Math.floor(lengthM / pitchM + 1e-9));
+  const first = best[0] + (lengthM - (fit - 1) * pitchM) / 2;
+  return ((first % pitchM) + pitchM) % pitchM;
+}
+
 function trackCourseSegments(points: TrackPoint[]): {
   segments: TrackCourseSegment[];
   loopLengthM: number;
@@ -5762,10 +5789,11 @@ export function createRunningGearRuntime(env: RunningGearRuntimeEnv): RunningGea
     _m.compose(_v, _q, _s);
     for(const mesh of linkMeshes) mesh.setMatrixAt(instanceIndex,_m);
   };
+  const shoeRestPhaseM = cfg.shoeRestPhase === 'loadedRunCentred' ? loadedRunCentredPhase(segsT, lp) : 0;
   const placeTrackSide = (side: -1 | 1, scroll: number): void => {
     const baseIndex = side < 0 ? 0 : nLinks;
     const bandPosition = (side < 0 ? tgL : tgR).getAttribute('position');
-    const startDistance = ((scroll % loopLen) + loopLen) % loopLen;
+    const startDistance = (((scroll + shoeRestPhaseM) % loopLen) + loopLen) % loopLen;
     let segmentIndex = findTrackSegment(startDistance);
     let previousDistance = startDistance;
     for (let linkIndex = 0; linkIndex < nLinks; linkIndex++) {
