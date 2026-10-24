@@ -23,6 +23,7 @@ import { isImagePreloaded, preloadImage } from './imagePreload.ts';
 import { mapCardFor } from './mapBackdrop.ts';
 import { MAP_THUMBS } from './mapThumbs.ts';
 import { MAP_ART_TONES, MAP_ART_TONE_DEFAULT } from './mapArtTones.ts';
+import { recordBattleLoad } from '../game/battleLoadEstimate.ts';
 
 // Backward-compatible re-export for main.ts, killcam and end-screen callers.
 export { tierNumeral };
@@ -382,6 +383,8 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   // `covering` follows the actual composited surface through its exit fade so
   // battle input cannot steer a camera that is only partly exposed yet.
   let covering = false;
+  // the load's first frame, until its countdown (the Deploy button's estimate reads these, battleLoadEstimate.ts)
+  let loadStartedAt = 0;
   let shownFill = '';
   let shownPercent = -1;
   let shownStage = '';
@@ -481,6 +484,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       tipEl.innerHTML = `<b>${h}</b>${b}`;
       countEl.textContent = '';
       api.progress(0, t('battleLoad.loading'));
+      if (!visible) loadStartedAt = performance.now();
       visible = true;
       covering = true;
       // Entry is a safety cover, not an animation: it must own the very next
@@ -533,6 +537,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
 
     /** Countdown line. @param {number} n seconds left (0 clears to "GO") */
     countdown(n: number) {
+      if (loadStartedAt) { recordBattleLoad((performance.now() - loadStartedAt) / 1000); loadStartedAt = 0; }
       countEl.innerHTML = n > 0
         ? t('battleLoad.countdown', { n }) + ''
         : `<b>${t('battleLoad.go')}</b>`;
@@ -542,6 +547,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     hide() {
       if (!visible) return Promise.resolve();
       visible = false;
+      loadStartedAt = 0;
       // hold display through the opacity transition (.on carries display:flex,
       // so removing it alone would cut the fade to a hard pop)
       root.classList.add('leaving');

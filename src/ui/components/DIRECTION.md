@@ -42,6 +42,10 @@ load for boot, and the landing for the 404.
    - no eyebrows, taglines or helper lines;
    - text never sits on a tank;
    - every vehicle shows its flag and silhouette.
+5. A page's sample data becomes live data, never a literal: rules from the mode's ruleset (`sim/matchRuleset.ts`),
+   records from the profile, and drawings that need a built world from a baked file. The Deploy map's objectives come
+   from `public/minimaps/objectives.json`, which `tools/deploy-objectives-bake.mjs` writes through the battle's own
+   placement and controller; re-run it when a map's layout or a mode's placement changes.
 
 ## Classes
 

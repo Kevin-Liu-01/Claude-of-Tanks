@@ -1986,6 +1986,8 @@ const settings = createSettingsAccess({
   isGamePaused: battlePhase.isPauseEligible,
 });
 garage.attachSettingsControl(settings.gear);
+// the Deploy screen's bot tier is the settings' own (the next battle's), so both pickers read one value
+garage.attachDifficulty({ get: () => input.getSettings().aiDifficulty, set: (tier) => input.setSetting('aiDifficulty', tier) });
 const mobileBattleInput = createMobileBattleInputAccess<MainEntity>({
   input,
   bus,
