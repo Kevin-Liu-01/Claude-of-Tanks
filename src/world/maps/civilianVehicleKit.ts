@@ -26,6 +26,7 @@ import {
 import { LEGACY_DRAWS } from './civilianVehicleLegacy.ts';
 import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
 import { crumpleBurntVehicle } from '../wreckCrumple.ts';
+import type { BrokenVehicleJob } from '../brokenVehicleJob.ts';
 
 type Rng = () => number;
 type Builder = (rng: Rng) => THREE.BufferGeometry;
@@ -179,26 +180,47 @@ function roleFootprint(fleet: Fleet, role: CivilianVehicleKind): VehicleFootprin
   return footprint;
 }
 
+/** The seed a builder takes from exactly `draws` values of the destructible stream (the legacy builder's count). */
+function spendDraws(draws: number, rng: Rng): number {
+  let seed = 0x5eed;
+  if (draws > 0) {
+    seed = Math.floor(rng() * 0x7fffffff);
+    for (let k = 1; k < draws; k++) rng();
+  }
+  return seed;
+}
+
 /**
  * A builder that spends exactly `draws` values of the destructible stream (the legacy builder's count) and builds
  * from a seed taken from the first: the pools built after it read the stream where they always did.
  */
 function spending(draws: number, make: (seed: number) => THREE.BufferGeometry): Builder {
-  return (rng: Rng) => {
-    let seed = 0x5eed;
-    if (draws > 0) {
-      seed = Math.floor(rng() * 0x7fffffff);
-      for (let k = 1; k < draws; k++) rng();
-    }
-    return make(seed);
-  };
+  return (rng: Rng) => make(spendDraws(draws, rng));
 }
 
-function roleBuilders(role: CivilianVehicleKind, ctx: BuildContext): Pick<CivilianVehicleOverride, 'build' | 'broken' | 'shadowBuild' | 'collisionSolid'> {
+const buildContext = (mapId: string, mobile: boolean): BuildContext =>
+  ({ fleet: fleetForMap(mapId), climate: climateForMap(mapId), coarse: mobile });
+
+/**
+ * (perf-248) A map's burnt vehicle body for a role, from the seed its pool's draws gave (props.ts: built in the
+ * broken-vehicle pool's worker from a job, or on the main thread at the join; the same function as `broken`).
+ */
+export function buildBrokenCivilianVehicle(mapId: string, mobile: boolean, role: string, seed: number): THREE.BufferGeometry {
+  const ctx = buildContext(mapId, mobile), kind = role as CivilianVehicleKind;
+  if (!ctx.fleet.roles[kind]) throw new Error(`no ${role} in the fleet of ${mapId}`);
+  return buildRole(ctx.fleet.roles[kind], kind, ctx, true, seed);
+}
+
+function roleBuilders(
+  role: CivilianVehicleKind, ctx: BuildContext, map: { mapId: string; mobile: boolean } | null = null,
+): Pick<CivilianVehicleOverride, 'build' | 'broken' | 'brokenJob' | 'shadowBuild' | 'collisionSolid'> {
   const entry = ctx.fleet.roles[role];
   return {
     build: spending(LEGACY_DRAWS[role].build, (seed) => buildRole(entry, role, ctx, false, seed)),
     broken: spending(LEGACY_DRAWS[role].broken, (seed) => buildRole(entry, role, ctx, true, seed)),
+    // (perf-248) the same draws as `broken`; the body itself is built from the job (buildBrokenCivilianVehicle)
+    ...(map ? { brokenJob: (rng: Rng): BrokenVehicleJob => ({ kit: 'civilian', mapId: map.mapId, mobile: map.mobile, role,
+      seed: spendDraws(LEGACY_DRAWS[role].broken, rng) }) } : {}),
     // the mobile tier's body is already the coarse one: it casts itself
     ...(ctx.coarse ? {} : { shadowBuild: () => canonicalSolid(entry, role) }),
     collisionSolid: () => canonicalSolid(entry, role), // (physics, 2026-10-16: the trucks' slab shells, the same on every tier)
@@ -245,6 +267,8 @@ export const CIVILIAN_VEHICLE_RECEIPTS = {
 interface CivilianVehicleOverride {
   build: Builder;
   broken: Builder;
+  /** (perf-248) `broken`'s draws, the body left to the job (props.ts: the broken-vehicle pool) */
+  brokenJob?: (rng: Rng) => BrokenVehicleJob;
   instancePaint: (out: THREE.Color, x: number, z: number, slot: number) => void;
   /** Desktop tiers: the shadow caster that stands in for the full body in the shadow passes (no stream draws). */
   shadowBuild?: () => THREE.BufferGeometry;
@@ -260,13 +284,13 @@ interface CivilianVehicleOverride {
  * `mobile` builds the coarse tier (collision never depends on it: roleFootprint is the same on every tier).
  */
 export function civilianVehicleOverrides(mapId: string, mobile: boolean): Record<CivilianVehicleKind, CivilianVehicleOverride> {
-  const ctx: BuildContext = { fleet: fleetForMap(mapId), climate: climateForMap(mapId), coarse: mobile };
+  const ctx = buildContext(mapId, mobile);
   let salt = 0;
   for (let i = 0; i < mapId.length; i++) salt = (Math.imul(salt, 31) + mapId.charCodeAt(i)) | 0;
   const out = {} as Record<CivilianVehicleKind, CivilianVehicleOverride>;
   for (const role of Object.keys(ROLE_BOXES) as CivilianVehicleKind[]) {
     out[role] = {
-      ...roleBuilders(role, ctx), ...roleFootprint(ctx.fleet, role),
+      ...roleBuilders(role, ctx, { mapId, mobile }), ...roleFootprint(ctx.fleet, role),
       instancePaint: paintPicker(ctx.fleet.roles[role], salt + role.length * 101),
     };
   }

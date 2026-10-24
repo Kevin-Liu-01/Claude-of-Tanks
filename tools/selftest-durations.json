@@ -1244,6 +1244,7 @@
     "src/world/borderFarmsteads.selftest.mjs": 36000,
     "src/world/borderLandform.selftest.mjs": 3000,
     "src/world/broadleafBranchlets.selftest.mjs": 44000,
+    "src/world/brokenVehiclePool.selftest.mjs": 60000,
     "src/world/buildingDetail.selftest.mjs": 23000,
     "src/world/bunkerShells.selftest.mjs": 19000,
     "src/world/bushOverlappingSprays.selftest.mjs": 5000,

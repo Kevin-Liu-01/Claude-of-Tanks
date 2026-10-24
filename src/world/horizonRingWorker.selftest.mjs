@@ -37,8 +37,9 @@ if (TIER_CHILD) {
   if (quality.getDeviceTier() !== 'mobile') throw new Error('the child did not resolve the mobile tier');
 }
 const { MAP_IDS, getMapConfig } = await import('./maps/index.ts');
-const { createHeightField } = await import('./terrain.ts');
-const { buildHorizonRingSteps, horizonRingGeometrySteps } = await import('./maps/horizon.ts');
+const { createHeightField, createShoreAt, foldFieldSteps } = await import('./terrain.ts');
+const { buildHorizonRingSteps, horizonRingGeometrySteps, HORIZON_SEGMENTS } = await import('./maps/horizon.ts');
+const { finishHorizonRingGeometry, horizonRingFinished } = await import('./horizonRingFinish.ts');
 const { buildHorizonRingWire } = await import('./horizonRingWorker.ts');
 const { unpackHorizonRing, packHorizonRing } = await import('./horizonRingWire.ts');
 const { startHorizonRingBuild, horizonRingKey, forgetHorizonRing } = await import('./horizonRingPrefetch.ts');
@@ -46,6 +47,22 @@ const { horizonRing, horizonRingSupplyFor, supplyHorizonRing, withdrawHorizonRin
 const { worldBuildConfig } = await import('./worldBuildConfig.ts');
 
 const drain = (g) => { let s = g.next(); while (!s.done) s = g.next(); return s.value; };
+/**
+ * (perf-248) The page's finish of a ring it built itself (terrain.ts horizonRingStage): its own shore and folds, and
+ * the ring's exits, columns and ridge row as the built ring reports them — from the mesh's userData when there is one
+ * (the terrain stage's source), else the same values from the pipeline's rows.
+ */
+function finishOnPage(cfg, field, geometry, ringInfo) {
+  const folds = drain(foldFieldSteps(field));
+  finishHorizonRingGeometry(geometry, {
+    ground: field, shoreAt: createShoreAt(cfg, field), foldAt: folds?.foldAt ?? null, roadExits: ringInfo.roadExits ?? null,
+    columns: ringInfo.columns ?? HORIZON_SEGMENTS, bands: Math.max(2, ringInfo.ridgeRow ?? 3),
+  });
+}
+const pipelineRingInfo = (field, pipeline) => ({
+  columns: HORIZON_SEGMENTS, ridgeRow: pipeline.ring.rows.findIndex((row) => !row.skirt && !row.interpolated),
+  roadExits: field._roadExitOnRing ? field._roadExitOnRing({ positions: pipeline.ring.positions, heights: pipeline.ring.heights }) : null,
+});
 const bytes = (v) => Buffer.from(v.buffer, v.byteOffset, v.byteLength);
 /**
  * A digest of plain data and typed arrays (array class and bytes), timings and uuids aside. A three.js object met inside
@@ -120,12 +137,15 @@ for (const mapId of maps) {
   const cfg = getMapConfig(mapId);
   const field = createHeightField(1337, cfg);
   const inline = drain(horizonRingGeometrySteps(cfg, 1337, field, { vista: true }));
+  const unfinished = pipelineDigest(inline);
+  finishOnPage(cfg, field, inline.geometry, pipelineRingInfo(field, inline));
+  assert.ok(horizonRingFinished(inline.geometry) && pipelineDigest(inline) !== unfinished, `${mapId}: the page's finish changes the ring`);
   // the worker's handler, posted the way postMessage posts it (structured clone, its arrays transferred)
   const { wire, transfer } = buildHorizonRingWire({ mapId, terrainVariant: null, fieldSeed: 1337, ringSeed: 1337, vista: true, debugColors: false });
   const posted = structuredClone(wire, { transfer });
   assert.ok(transfer.every((buffer) => buffer.byteLength === 0), `${mapId}: the worker's arrays were handed over, not copied`);
   const fromWorker = unpackHorizonRing(posted);
-  assert.equal(pipelineDigest(fromWorker), pipelineDigest(inline), `${mapId}: the worker's ring pipeline is the page's`);
+  assert.equal(pipelineDigest(fromWorker), pipelineDigest(inline), `${mapId}: the worker's finished ring pipeline is the page's`);
   inlineByMap.set(mapId, { cfg, field, inline });
   checked++;
   vertices += inline.geometry.attributes.position.count;
@@ -139,6 +159,7 @@ for (const mapId of maps) {
   for (const vista of [true, false]) {
     const field = createHeightField(1337, cfg);
     const inline = drain(horizonRingGeometrySteps(cfg, 1337, field, { vista }));
+    finishOnPage(cfg, field, inline.geometry, pipelineRingInfo(field, inline));
     const { wire, transfer } = buildHorizonRingWire({ mapId, terrainVariant: 'assault-trenches', fieldSeed: 1337, ringSeed: 1337, vista, debugColors: false });
     assert.equal(pipelineDigest(unpackHorizonRing(structuredClone(wire, { transfer }))), pipelineDigest(inline), `trenches, vista ${vista}`);
   }
@@ -162,9 +183,14 @@ function meshDigest(mesh) {
   });
   return h.digest('hex');
 }
+// (perf-248) the page's path for a ring it builds itself: built unfinished, then finished from the built ring's own
+// userData (its exits, columns and ridge row), as terrain.ts's ring stage does — the worker's finished ring is that ring
 for (const mapId of ['verdant', 'badlands', 'coastal']) {
   const { cfg } = inlineByMap.get(mapId);
-  const builtInline = drain(buildHorizonRingSteps(null, cfg, 1337, createHeightField(1337, cfg), { terrainBound: true }));
+  const pageField = createHeightField(1337, cfg);
+  const builtInline = drain(buildHorizonRingSteps(null, cfg, 1337, pageField, { terrainBound: true }));
+  assert.equal(horizonRingFinished(builtInline.geometry), false, `${mapId}: a ring built on the page arrives unfinished`);
+  finishOnPage(cfg, pageField, builtInline.geometry, builtInline.userData.horizonRing);
   const field = createHeightField(1337, cfg);
   const { wire, transfer } = buildHorizonRingWire({ mapId, terrainVariant: null, fieldSeed: 1337, ringSeed: 1337, vista: true, debugColors: false });
   const builtFromWorker = drain(buildHorizonRingSteps(null, cfg, 1337, field, {

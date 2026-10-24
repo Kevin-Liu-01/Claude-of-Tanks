@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { ensureTankBuilder } from '../vehicles/fleetFactory.ts';
 import { bakeTankWreck, bakeTankWreckSteps, bakeWreckDebris, wreckPool } from './wrecks.ts';
+import { buildWreckDebris } from './wreckDebris.ts';
 
 assert.ok(wreckPool('modern').length >= 14, 'modern wreck pool spans the first-party fleet');
 assert.deepEqual(wreckPool('ww2'), ['kv2', 'jpz_e100'],
@@ -170,4 +171,17 @@ assert.ok(first.geo.boundingBox.min.x >= -8 && first.geo.boundingBox.max.x <= 8,
 first.geo.dispose();
 second.geo.dispose();
 
-console.log('wrecks.selftest: deterministic debris and two-family wreck bakes (seated, compact, deterministic, sync/step parity) with reusable color scratch');
+// 248 (the owner: "fix our double guns that are visible from wrecks of certain tanks"): the hulk keeps its own roof gun
+// on its turret, so the debris round it lays none; every piece is one of the hull's own kinds of parts
+const PART_KINDS = new Set(['track', 'wheel', 'plate', 'skirt', 'bin', 'lid', 'drum']);
+for (const modern of [true, false]) {
+  for (let seed = 0; seed < 400; seed++) {
+    const debris = buildWreckDebris(17001 + seed * 97, { modern });
+    for (const piece of debris.pieces) {
+      assert.ok(PART_KINDS.has(piece.kind), `seed ${seed}: a debris ${piece.kind} beside the hulk (no gun: the hulk keeps its own)`);
+      piece.geo.dispose();
+    }
+  }
+}
+
+console.log('wrecks.selftest: deterministic gunless debris and two-family wreck bakes (seated, compact, deterministic, sync/step parity) with reusable color scratch');

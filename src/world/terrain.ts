@@ -1,7 +1,7 @@
 import { smoothRoadGradesByDistance, blendRoadNetworkGrades } from './maps/roadGradeSmoothing.ts';
 import { fadeDistantCoastShadows } from './coastShadow.ts';
 import { bindAutumnHorizonGround, refreshHorizonGroundTone } from './horizonAutumnGround.ts';
-import { continueHorizonFold } from './horizonSeam.ts';
+import { finishHorizonRingGeometry, horizonRingFinished } from './horizonRingFinish.ts';
 import { continuedGroundAt } from './horizonSurface.ts';
 import { planAssaultTrenchLines, planFieldTrenchLines, assaultTeamCenters, assaultTrenchCarveDepth, FIELD_TRENCH, type AssaultTrenchPlan } from '../sim/assaultLines.ts';
 import type { NavigationWaterPolicy } from '../sim/botRoutePlanner.ts';
@@ -9036,6 +9036,94 @@ function horizonRingGeometrySteps(
   return horizonRing().horizonRingGeometrySteps(...args);
 }
 
+/**
+ * Round 73b (2026-09-26): the shore distance the strand reads, from the map's own shoreline contours (null on a dry or
+ * frozen map). (perf-248) Shared by the terrain build and the horizon ring worker, which finishes the ring's shore
+ * stream where it builds the ring (horizonRingFinish.ts).
+ */
+export function createShoreAt(
+  cfg: TerrainMapConfig | null, heightField: HeightField,
+): ((x: number, z: number) => number) | null {
+  if (cfg?.splat?.seaLake && !heightField._layout.terrain.frozenMarshes) {
+    const rampStart = cfg.splat.seaRamp?.[0] ?? 0.40;
+    // the contour fraction t at which the wetness ramp 1 − t²(3 − 2t) crosses the sea ramp's start (bisection)
+    let lo = 0, hi = 1;
+    for (let i = 0; i < 28; i++) { const m = (lo + hi) / 2; if (1 - m * m * (3 - 2 * m) > rampStart) lo = m; else hi = m; }
+    const tLine = (lo + hi) / 2;
+    const discs = [
+      ...(heightField._layout.lakes ?? []).map((d) => ({ d, lake: true })),
+      ...(heightField._layout.marshes ?? []).map((d) => ({ d, lake: false })),
+    ];
+    if (discs.length) {
+      // (2026-10-08, lakeCandidateIndex.ts) the lakes that can reach a point (the minimum is order-free; the marshes all)
+      const lakeCount = heightField._layout.lakes?.length ?? 0;
+      const shoreIndex = buildLakeCandidateIndex(heightField._layout.lakes ?? [], null);
+      const marshIds = Array.from({ length: discs.length - lakeCount }, (_, i) => lakeCount + i);
+      return (x: number, z: number): number => {
+        let best = 32;
+        const near = shoreIndex ? lakeCandidatesAt(shoreIndex, x, z) : null;
+        const count = near ? near.length + marshIds.length : discs.length;
+        for (let k = 0; k < count; k++) {
+          const i = near ? (k < near.length ? near[k] : marshIds[k - near.length]) : k;
+          const { d, lake } = discs[i];
+          const dist = shorelineDistance(d, x, z, 1.32);
+          if (!Number.isFinite(dist)) continue;
+          const radius = shorelineRadiusAt(d, Math.atan2(z - d.z, x - d.x));
+          const shelf = (d as { shelfM?: number }).shelfM;
+          const start = lake ? (shelf !== undefined ? Math.min(0.94, 1 - shelf / Math.max(1, radius)) : 0.80) : 0.45;
+          const m = (dist - (start + tLine * ((lake ? 0.96 : 1) - start))) * radius;
+          if (m < best) best = m;
+        }
+        return best < 0 ? 0 : best;
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Round 73 (2026-09-25, the ground redux): the relief's folds, baked once per world from an 8 m grid of the map's own
+ * heights (±528 m) — the 8 m and 24 m Laplacians, hollows positive; a step per sixteen grid rows; null for a height
+ * field without heights (receipt sandboxes). (perf-248) Shared by the terrain build (the chunks' `fold` byte, the jebel
+ * light) and the horizon ring worker (the ring's fold, horizonRingFinish.ts).
+ */
+export function* foldFieldSteps(heightField: HeightField): Generator<void, {
+  foldAt: (x: number, z: number) => number; heights: Float32Array; grid: Float32Array; n: number; origin: number; step: number;
+} | null, void> {
+  if (typeof heightField.getHeightAt !== 'function') return null;
+  const FOLD_STEP = 8, FOLD_MARGIN = 3;
+  const FOLD_N = MAP_SIZE / FOLD_STEP + 1 + 2 * FOLD_MARGIN;
+  const FOLD_ORIGIN = -HALF - FOLD_MARGIN * FOLD_STEP;
+  const foldHeights = new Float32Array(FOLD_N * FOLD_N);
+  for (let j = 0; j < FOLD_N; j++) {
+    for (let i = 0; i < FOLD_N; i++) {
+      foldHeights[j * FOLD_N + i] = heightField.getHeightAt(FOLD_ORIGIN + i * FOLD_STEP, FOLD_ORIGIN + j * FOLD_STEP);
+    }
+    if ((j & 15) === 15) yield;
+  }
+  const foldGrid = new Float32Array(FOLD_N * FOLD_N);
+  const hAt = (i: number, j: number): number =>
+    foldHeights[Math.max(0, Math.min(FOLD_N - 1, j)) * FOLD_N + Math.max(0, Math.min(FOLD_N - 1, i))];
+  for (let j = 0; j < FOLD_N; j++) {
+    for (let i = 0; i < FOLD_N; i++) {
+      const h = hAt(i, j);
+      const lap1 = (hAt(i - 1, j) + hAt(i + 1, j) + hAt(i, j - 1) + hAt(i, j + 1)) * 0.25 - h;
+      const lap3 = (hAt(i - 3, j) + hAt(i + 3, j) + hAt(i, j - 3) + hAt(i, j + 3)) * 0.25 - h;
+      const f = lap1 / 1.2 + lap3 / 3.6;
+      foldGrid[j * FOLD_N + i] = f > 1 ? 1 : f < -1 ? -1 : f;
+    }
+  }
+  const foldAt = (x: number, z: number): number => {
+    const u = (x - FOLD_ORIGIN) / FOLD_STEP, v = (z - FOLD_ORIGIN) / FOLD_STEP;
+    const i0 = Math.max(0, Math.min(FOLD_N - 2, Math.floor(u))), j0 = Math.max(0, Math.min(FOLD_N - 2, Math.floor(v)));
+    const fu = Math.max(0, Math.min(1, u - i0)), fv = Math.max(0, Math.min(1, v - j0));
+    const a = foldGrid[j0 * FOLD_N + i0], b = foldGrid[j0 * FOLD_N + i0 + 1];
+    const c = foldGrid[(j0 + 1) * FOLD_N + i0], d = foldGrid[(j0 + 1) * FOLD_N + i0 + 1];
+    return (a + (b - a) * fu) * (1 - fv) + (c + (d - c) * fu) * fv;
+  };
+  return { foldAt, heights: foldHeights, grid: foldGrid, n: FOLD_N, origin: FOLD_ORIGIN, step: FOLD_STEP };
+}
+
 function* terrainBuildSteps(
   heightField: HeightField,
   engineCtx: TerrainEngineContext,
@@ -9104,40 +9192,20 @@ function* terrainBuildSteps(
   // heights (receipt sandboxes) bakes nothing and the vertices carry zeros.
   let foldAt: ((x: number, z: number) => number) | null = null;
   let jebelLit: JebelLit | null = null;
-  if (typeof heightField.getHeightAt === 'function') {
-    const FOLD_STEP = 8, FOLD_MARGIN = 3;
-    const FOLD_N = MAP_SIZE / FOLD_STEP + 1 + 2 * FOLD_MARGIN;
-    const FOLD_ORIGIN = -HALF - FOLD_MARGIN * FOLD_STEP;
-    const foldHeights = new Float32Array(FOLD_N * FOLD_N);
-    for (let j = 0; j < FOLD_N; j++) {
-      for (let i = 0; i < FOLD_N; i++) {
-        foldHeights[j * FOLD_N + i] = heightField.getHeightAt(FOLD_ORIGIN + i * FOLD_STEP, FOLD_ORIGIN + j * FOLD_STEP);
-      }
-      if ((j & 15) === 15) yield [1, CHUNKS * CHUNKS + 2, false];
+  {
+    const folds = foldFieldSteps(heightField);
+    let fold = folds.next();
+    while (!fold.done) {
+      yield [1, CHUNKS * CHUNKS + 2, false];
+      fold = folds.next();
     }
-    const foldGrid = new Float32Array(FOLD_N * FOLD_N);
-    const hAt = (i: number, j: number): number =>
-      foldHeights[Math.max(0, Math.min(FOLD_N - 1, j)) * FOLD_N + Math.max(0, Math.min(FOLD_N - 1, i))];
-    for (let j = 0; j < FOLD_N; j++) {
-      for (let i = 0; i < FOLD_N; i++) {
-        const h = hAt(i, j);
-        const lap1 = (hAt(i - 1, j) + hAt(i + 1, j) + hAt(i, j - 1) + hAt(i, j + 1)) * 0.25 - h;
-        const lap3 = (hAt(i - 3, j) + hAt(i + 3, j) + hAt(i, j - 3) + hAt(i, j + 3)) * 0.25 - h;
-        const f = lap1 / 1.2 + lap3 / 3.6;
-        foldGrid[j * FOLD_N + i] = f > 1 ? 1 : f < -1 ? -1 : f;
+    if (fold.value) {
+      foldAt = fold.value.foldAt;
+      heightField._foldAt = foldAt;
+      if (cfg?.splat?.jebelFace) {
+        const { heights, grid, n, origin, step } = fold.value;
+        jebelLit = makeJebelLit(heights, grid, n, origin, step, skySunDirection(cfg.sky));
       }
-    }
-    foldAt = (x: number, z: number): number => {
-      const u = (x - FOLD_ORIGIN) / FOLD_STEP, v = (z - FOLD_ORIGIN) / FOLD_STEP;
-      const i0 = Math.max(0, Math.min(FOLD_N - 2, Math.floor(u))), j0 = Math.max(0, Math.min(FOLD_N - 2, Math.floor(v)));
-      const fu = Math.max(0, Math.min(1, u - i0)), fv = Math.max(0, Math.min(1, v - j0));
-      const a = foldGrid[j0 * FOLD_N + i0], b = foldGrid[j0 * FOLD_N + i0 + 1];
-      const c = foldGrid[(j0 + 1) * FOLD_N + i0], d = foldGrid[(j0 + 1) * FOLD_N + i0 + 1];
-      return (a + (b - a) * fu) * (1 - fv) + (c + (d - c) * fu) * fv;
-    };
-    heightField._foldAt = foldAt;
-    if (cfg?.splat?.jebelFace) {
-      jebelLit = makeJebelLit(foldHeights, foldGrid, FOLD_N, FOLD_ORIGIN, FOLD_STEP, skySunDirection(cfg.sky));
     }
   }
   // Ground lane (2026-10-03): the vegetation's woods mask (vegetation.ts _woodsMask, 256² over the square) lands in the
@@ -9171,41 +9239,7 @@ function* terrainBuildSteps(
   // wetness ramp crosses the map's sea ramp). The mask's ramp is two or three metres wide on a real beach, so the
   // band could never be sized in it; an exact per-vertex evaluation (bounded early-outs per disc) costs the build
   // nothing it can measure. Sea and lake maps only; a frozen map or a dry one bakes nothing.
-  let shoreAt: ((x: number, z: number) => number) | null = null;
-  if (cfg?.splat?.seaLake && !heightField._layout.terrain.frozenMarshes) {
-    const rampStart = cfg.splat.seaRamp?.[0] ?? 0.40;
-    // the contour fraction t at which the wetness ramp 1 − t²(3 − 2t) crosses the sea ramp's start (bisection)
-    let lo = 0, hi = 1;
-    for (let i = 0; i < 28; i++) { const m = (lo + hi) / 2; if (1 - m * m * (3 - 2 * m) > rampStart) lo = m; else hi = m; }
-    const tLine = (lo + hi) / 2;
-    const discs = [
-      ...(heightField._layout.lakes ?? []).map((d) => ({ d, lake: true })),
-      ...(heightField._layout.marshes ?? []).map((d) => ({ d, lake: false })),
-    ];
-    if (discs.length) {
-      // (2026-10-08, lakeCandidateIndex.ts) the lakes that can reach a point (the minimum is order-free; the marshes all)
-      const lakeCount = heightField._layout.lakes?.length ?? 0;
-      const shoreIndex = buildLakeCandidateIndex(heightField._layout.lakes ?? [], null);
-      const marshIds = Array.from({ length: discs.length - lakeCount }, (_, i) => lakeCount + i);
-      shoreAt = (x: number, z: number): number => {
-        let best = 32;
-        const near = shoreIndex ? lakeCandidatesAt(shoreIndex, x, z) : null;
-        const count = near ? near.length + marshIds.length : discs.length;
-        for (let k = 0; k < count; k++) {
-          const i = near ? (k < near.length ? near[k] : marshIds[k - near.length]) : k;
-          const { d, lake } = discs[i];
-          const dist = shorelineDistance(d, x, z, 1.32);
-          if (!Number.isFinite(dist)) continue;
-          const radius = shorelineRadiusAt(d, Math.atan2(z - d.z, x - d.x));
-          const shelf = (d as { shelfM?: number }).shelfM;
-          const start = lake ? (shelf !== undefined ? Math.min(0.94, 1 - shelf / Math.max(1, radius)) : 0.80) : 0.45;
-          const m = (dist - (start + tLine * ((lake ? 0.96 : 1) - start))) * radius;
-          if (m < best) best = m;
-        }
-        return best < 0 ? 0 : best;
-      };
-    }
-  }
+  const shoreAt = createShoreAt(cfg, heightField);
   // Alternative LOD geometries are retained in `chunks` even when another
   // level is mounted on the mesh. Register the complete live set so world
   // eviction releases uploaded dormant buffers as well as the visible tree.
@@ -9321,97 +9355,24 @@ function* terrainBuildSteps(
     // (the terrain's first child, where it stood when it was built before the chunks)
     group.children.unshift(group.children.pop()!);
     yield [CHUNKS * CHUNKS + 1, CHUNKS * CHUNKS + 2, true]; // horizon ring built
-    // The continued coast uses the same strand distances as the playable shore.
-    // Leaving the ring's default attribute at zero made the sand/wrack band stop
-    // on an exact square even when the bank geometry was continuous.
-    if (shoreAt && horizonStep.value.userData.horizonRing) {
-      const geometry = horizonStep.value.geometry;
-      const position = geometry.getAttribute('position');
-      const shore = new Uint8Array(position.count);
-      for (let i = 0; i < position.count; i++) {
-        const metres = shoreAt(position.getX(i), position.getZ(i));
-        shore[i] = metres >= 32 ? 0 : 255 - Math.round(Math.max(0, metres) * (255 / 32));
-      }
-      geometry.setAttribute('shore', new THREE.BufferAttribute(shore, 1, true));
-    }
-    // The map-borders lane (2026-10-03): the roads that leave the square run on across the ring — the carriageway rides
-    // the ring's vertices as [signed offset from the exit line, presence] (terrain.ts roadExits); set before the seam's
-    // refinement, which carries every attribute into its new vertices
-    if (heightField._roadExitAt && horizonStep.value.userData.horizonRing) {
-      const geometry = horizonStep.value.geometry;
-      const position = geometry.getAttribute('position');
-      const exitAttr = new Float32Array(position.count * 2);
-      const hit: [number, number] = [0, 0];
-      // the exits as they lie on this ring (horizon.ts: each runs out at the foot of the ranges unless they open a pass)
-      const ringExits = (horizonStep.value.userData.horizonRing as { roadExits?: RoadExitsOnRing | null }).roadExits;
-      const exitAt = ringExits ? ringExits.at : heightField._roadExitAt;
-      let any = false;
-      for (let i = 0; i < position.count; i++) {
-        exitAt(position.getX(i), position.getZ(i), hit);
-        exitAttr[i * 2] = hit[0]; exitAttr[i * 2 + 1] = hit[1];
-        if (hit[1] > 0) any = true;
-      }
-      if (any) geometry.setAttribute('roadExit', new THREE.BufferAttribute(exitAttr, 2));
-    }
-    // The map-borders lane (2026-10-03, owner: "rolling ground with field patterns"): the farmland past the edge in
-    // parcels between the hedgerows — each ring vertex carries its field's crop, premultiplied (borderLandform.ts parcelTintAt)
-    if (heightField._borderParcelAt && horizonStep.value.userData.horizonRing) {
-      const geometry = horizonStep.value.geometry;
-      const position = geometry.getAttribute('position');
-      const tintAttr = new Float32Array(position.count * 4);
-      const tint: [number, number, number, number] = [0, 0, 0, 1];
-      let any = false;
-      for (let i = 0; i < position.count; i++) {
-        heightField._borderParcelAt(position.getX(i), position.getZ(i), tint);
-        tintAttr.set(tint, i * 4);
-        if (tint[3] < 1) any = true;
-      }
-      if (any) geometry.setAttribute('borderTint', new THREE.BufferAttribute(tintAttr, 4));
-    }
-    // ... and a railway's open line past the edge (terrain.ts railExitAt): its ballast rides the ring's vertices as
-    // [signed offset from the line, presence]
-    if (heightField._railExitAt && horizonStep.value.userData.horizonRing) {
-      const geometry = horizonStep.value.geometry;
-      const position = geometry.getAttribute('position');
-      const railAttr = new Float32Array(position.count * 2);
-      const hit: [number, number] = [0, 0];
-      let any = false;
-      for (let i = 0; i < position.count; i++) {
-        heightField._railExitAt(position.getX(i), position.getZ(i), hit, position.getY(i));
-        railAttr[i * 2] = hit[0]; railAttr[i * 2 + 1] = hit[1];
-        if (hit[1] > 0) any = true;
-      }
-      if (any) geometry.setAttribute('railExit', new THREE.BufferAttribute(railAttr, 2));
-    }
-    // ... and the farm tracks down some of the field boundaries (borderLandform.ts trackAt): per family the metres from the
-    // nearest track and its boundary, so the shader draws a 3 m dirt track beside the hedge
-    if (heightField._borderTrackAt && horizonStep.value.userData.horizonRing) {
-      const geometry = horizonStep.value.geometry;
-      const position = geometry.getAttribute('position');
-      const trackAttr = new Float32Array(position.count * 4);
-      const track: [number, number, number, number] = [0, 0, 0, 0];
-      let any = false;
-      for (let i = 0; i < position.count; i++) {
-        heightField._borderTrackAt(position.getX(i), position.getZ(i), track);
-        trackAttr.set(track, i * 4);
-        if (track[0] > 0) any = true;
-      }
-      if (any) geometry.setAttribute('borderTrack', new THREE.BufferAttribute(trackAttr, 4));
-    }
     // All surrounding ground shares the live terrain material. Its distant
     // detail is controlled by screen footprint, not a map-boundary switch.
     {
       const horizonMesh = horizonStep.value;
-      const ringInfo = horizonMesh.userData.horizonRing as { columns?: number; ridgeRow?: number } | undefined;
+      const ringInfo = horizonMesh.userData.horizonRing as { columns?: number; ridgeRow?: number; roadExits?: RoadExitsOnRing | null } | undefined;
       // only a real ring reports its topology; a horizon-less build (receipt sandboxes, headless audits) has no bands
       if (ringInfo) {
+        const columns = ringInfo.columns ?? horizonRing().HORIZON_SEGMENTS, bands = Math.max(2, ringInfo.ridgeRow ?? 3);
+        // (perf-248) the vertex streams, the seam's refinement and the fold (horizonRingFinish.ts): a ring from the worker
+        // arrives finished; one built here is finished here, by the same function
+        if (!horizonRingFinished(horizonMesh.geometry)) {
+          finishHorizonRingGeometry(horizonMesh.geometry, {
+            ground: heightField, shoreAt, foldAt, roadExits: ringInfo.roadExits ?? null, columns, bands,
+          });
+        }
         bindAutumnHorizonGround(horizonMesh, mat, splatTextures, {
-          columns: ringInfo.columns ?? horizonRing().HORIZON_SEGMENTS, bands: Math.max(2, ringInfo.ridgeRow ?? 3),
-          continuousGround: true, ground: heightField,
+          columns, bands, continuousGround: true, ground: heightField, seamFinished: true,
         });
-        // Curvature also controls turf moisture and ambient light. A missing
-        // attribute reset both at the map edge even with identical materials.
-        if (foldAt) continueHorizonFold(horizonMesh.geometry, foldAt);
         // ground albedo mean → meadow tint (round 29); rock albedo mean → rock and scree tints (round 35)
         // (the ring's stage is a hoisted generator: it reads the material's promise, not the narrowed step)
         void sourcedReady?.then(() => refreshHorizonGroundTone(horizonMesh, splatTextures[0], splatTextures[4]));

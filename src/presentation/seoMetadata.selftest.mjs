@@ -7,6 +7,7 @@ import { PRODUCT_STATS, renderProductStats } from '../productStats.ts';
 import '../ui/i18nCatalog.ts';
 import { privateRoomMetadata, STUDIO_METADATA } from './siteMetadata.ts';
 import { hrefForLocale, PUBLIC_ROUTE_RECORDS } from '../ui/localeRouting.ts';
+import { localizeHtmlDocument } from './localizedHtml.ts';
 import { resolveVercelRequest, vercelJsonRoutes } from '../../tools/vercelRoutes.test-support.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -47,7 +48,14 @@ for (const [file, canonical] of indexedPages) {
   const html = renderProductStats(readFileSync(join(ROOT, file), 'utf8'));
   const title = html.match(/<title>([^<]+)<\/title>/i)?.[1] ?? '';
   const description = attribute(html, 'meta', 'name', 'description');
-  assert.ok(title.length >= 30 && title.length <= 80, `${file} needs a descriptive title`);
+  assert.ok(title.length <= 80 && title.includes('Claude of Tanks'), `${file} needs a title that names the game`);
+  // one title form (coordinator, 248): the manual's pages read "<page> · Claude of Tanks" in the tab and in both share
+  // titles; the "Field Manual" wording belongs in the description
+  if (/^site\/docs/.test(file)) {
+    assert.match(title, /^[^·]+ · Claude of Tanks$/, `${file} title "${title}" is "<page> · Claude of Tanks"`);
+    assert.equal(attribute(html, 'meta', 'property', 'og:title'), title, `${file} Open Graph title repeats the tab title`);
+    assert.equal(attribute(html, 'meta', 'name', 'twitter:title'), title, `${file} Twitter title repeats the tab title`);
+  }
   assert.ok(description.length >= 100 && description.length <= 240, `${file} needs a detailed meta description`);
   const head = html.match(/<head>([\s\S]*?)<\/head>/i)?.[1] ?? '';
   for (const [, total] of head.matchAll(/\b(\d+)\s+(?:authored\s+)?battlefields\b/gi)) {
@@ -91,6 +99,48 @@ for (const [file, canonical] of indexedPages) {
   const blocks = [...html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)];
   assert.ok(blocks.length > 0, `${file} needs JSON-LD`);
   for (const [, json] of blocks) assert.doesNotThrow(() => JSON.parse(json), `${file} has invalid JSON-LD`);
+}
+
+// /cn: the manual's pages carry the Chinese title in the tab and both share titles, and their JSON-LD names and
+// headlines are the zh catalog's (the localizer renders product-stat tokens first, so every block parses)
+for (const route of PUBLIC_ROUTE_RECORDS.filter((record) => record.id === 'docs' || /^docs[A-Z]/.test(record.id))) {
+  const file = `site/${route.sourceHtml}`;
+  const zh = localizeHtmlDocument(readFileSync(join(ROOT, file), 'utf8'), route, 'zh-CN');
+  const title = zh.match(/<title>([^<]+)<\/title>/i)?.[1] ?? '';
+  assert.match(title, /^[^·]*[一-鿿][^·]* · Claude of Tanks$/, `/cn ${file} title "${title}" is "<页面> · Claude of Tanks"`);
+  assert.equal(attribute(zh, 'meta', 'property', 'og:title'), title, `/cn ${file} Open Graph title repeats the tab title`);
+  const english = [];
+  for (const [, json] of zh.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+    const visit = (node) => {
+      if (!node || typeof node !== 'object') return;
+      for (const [key, value] of Object.entries(node)) {
+        if ((key === 'name' || key === 'headline') && typeof value === 'string' && !/[一-鿿]/.test(value)
+          && !['Claude of Tanks', 'Kevin B. Liu'].includes(value)) english.push(`${key} "${value}"`);
+        else visit(value);
+      }
+    };
+    visit(JSON.parse(json));
+  }
+  assert.deepEqual(english, [], `/cn ${file} JSON-LD names and headlines are Chinese`);
+}
+
+// /cn: the landing's and the Gallery's JSON-LD names are the zh catalog's too (the landing's page names itself by its
+// catalog title; the Gallery's fleet list by metadata.gallery.listName)
+for (const route of PUBLIC_ROUTE_RECORDS.filter((record) => record.id === 'home' || record.id === 'gallery')) {
+  const zh = localizeHtmlDocument(readFileSync(join(ROOT, `site/${route.sourceHtml}`), 'utf8'), route, 'zh-CN');
+  const english = [];
+  for (const [, json] of zh.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+    const visit = (node) => {
+      if (!node || typeof node !== 'object') return;
+      for (const [key, value] of Object.entries(node)) {
+        if (key === 'name' && typeof value === 'string' && !/[一-鿿]/.test(value)
+          && !['Claude of Tanks', 'Kevin B. Liu'].includes(value)) english.push(`name "${value}"`);
+        else visit(value);
+      }
+    };
+    visit(JSON.parse(json));
+  }
+  assert.deepEqual(english, [], `/cn ${route.sourceHtml} JSON-LD names are Chinese`);
 }
 
 function imageDimensions(path) {

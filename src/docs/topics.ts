@@ -400,7 +400,7 @@ function mountSearchEntry(root: HTMLElement): void {
     input.select();
   });
   const kbd = root.querySelector('.dm-search kbd');
-  if (kbd && !/Mac|iP(?:hone|ad|od)/.test(navigator.platform)) kbd.textContent = 'Ctrl K';
+  if (kbd) kbd.textContent = t(/Mac|iP(?:hone|ad|od)/.test(navigator.platform) ? 'docs.search.shortcutMac' : 'docs.search.shortcut');
 }
 
 /** "On this page" follows the reader: the section crossing the top third of the screen is the current one. */
@@ -454,7 +454,7 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
   // the search field leads the shelf (08 .side .search); docsSearch.ts fills its status and hits
   const search = `<div class="dm-search" role="search"><label class="dm-search__field"><span data-doc-icon="search"></span>`
     + `<input type="search" placeholder="${t('docs.search.placeholder')}" aria-label="${t('docs.search.label')}" aria-controls="dmSearchHits" autocomplete="off" spellcheck="false" enterkeyhint="search">`
-    + `<kbd class="cot-c-kbd" aria-hidden="true">Cmd K</kbd></label><p class="dm-search__status" role="status"></p><div class="dm-search__hits" id="dmSearchHits" hidden></div></div>`;
+    + `<kbd class="cot-c-kbd" aria-hidden="true">${t('docs.search.shortcutMac')}</kbd></label><p class="dm-search__status" role="status"></p><div class="dm-search__hits" id="dmSearchHits" hidden></div></div>`;
   return `<div class="dm">`
     + `<aside class="dm-side" aria-label="${t('docs.topic.navAria')}"><a class="dm-home" href="${docsHref()}"><span data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${search}${shelves}</aside>`
     // the article column is the skip link's target (#main); a loop hero's picture is named by its take, whose caption
