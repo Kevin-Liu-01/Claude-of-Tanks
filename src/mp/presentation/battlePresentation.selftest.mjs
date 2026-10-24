@@ -6,6 +6,7 @@ import { ENTITY_FLAGS, NO_ENTITY, PHASE, TEAM, VERDICT, eraPlateNames, quantizeP
 import { createEntitySample } from '../match/interpolation.ts';
 import { RecordingPresentation, createBattlePresentation } from './index.ts';
 import { prebuildRosterVisuals, prewarmRosterVisuals } from './battlePresentation.ts';
+import { battleStaticDrawMerge } from '../../vehicles/fleetFactory.ts';
 
 // ------------------------------------------------------------ fixtures
 const visuals = [];
@@ -607,17 +608,19 @@ console.log('mp battle presentation: roster → hidden visuals, frames → game 
 }
 
 // ---- the roster prebuild (2026-10-23, item/mp-rejoin-levers-242): the seats the room names are built beside the world,
-// one build per vehicle and paint (the viewer's seat the source), the others copied from it, the burnt bake after it;
-// the roster takes every one with its own options and builds none; a seat the WELCOME does not name is disposed; an
-// abort stops the prebuild and disposes what it made
+// one build per vehicle, paint and build tier (the viewer's seat the source where it shares one), the others copied from
+// it, the burnt bake after it; the roster takes every one with its own options and builds none; a seat the WELCOME does
+// not name is disposed; an abort stops the prebuild and disposes what it made. perf-252: every seat is the battle
+// roster's build (static batches, the vehicle's battle merge), the viewer's at its device's geometry (here a desktop:
+// high, so it builds alone) and every other seat's at low geometry with the battle detail hand-offs.
 {
   const quick = { yieldFrame: () => Promise.resolve(), yieldTask: () => Promise.resolve() };
-  const built = [], copied = [], baked = [], burnt = [];
-  const steps = function* (specId, _engineCtx, opts) { built.push(`${specId}:${opts.quality}`); yield; yield; return fakeVisual(specId, null, opts); };
+  const built = [], copied = [], baked = [], burnt = [], builds = [];
+  const steps = function* (specId, _engineCtx, opts) { built.push(`${specId}:${opts.quality}`); builds.push(opts); yield; yield; return fakeVisual(specId, null, opts); };
   const deps = {
     engineCtx: { scene, anisotropy: 1 }, scheduling: quick,
     createTankVisualSteps: steps,
-    cloneTankVisual: (source, _engineCtx, opts) => { copied.push(opts.quality); return fakeVisual('m1a1_abrams_hc', null, opts); },
+    cloneTankVisual: (source, _engineCtx, opts) => { copied.push(opts.quality); builds.push(opts); return fakeVisual('m1a1_abrams_hc', null, opts); },
     prepareVisualTextures: async (spec, _aniso, quality, _tick, camo) => { baked.push(`${spec.id}:${camo}:${quality}`); },
     ensureBuilder: async () => {},
     prebakeBurnt: function* (specId, _aniso, selection) { burnt.push(`${specId}:${selection}`); yield; },
@@ -630,8 +633,14 @@ console.log('mp battle presentation: roster → hidden visuals, frames → game 
     { playerId: 'bot-9', specId: spec, camo: 'winter', isViewer: false },
   ], deps);
   await prebuilt.settled;
-  assert.deepEqual(built, [`${spec}:high`, `${spec}:ai`], 'one build per vehicle and paint, the viewer\'s seat the source of its group');
-  assert.deepEqual(copied, ['ai', 'ai'], 'the other seats are copies');
+  assert.deepEqual(built, [`${spec}:ai`, `${spec}:high`, `${spec}:ai`], 'one build per vehicle, paint and build tier: the viewer\'s own (high geometry on a desktop) builds alone');
+  assert.deepEqual(copied, ['ai'], 'the other seats of a build are copies');
+  for (const opts of builds) {
+    assert.equal(opts.batchStatic, true, 'a seat is a battle-batched build');
+    assert.equal(opts.staticDrawMerge, battleStaticDrawMerge(spec), 'with its vehicle\'s battle merge');
+    assert.deepEqual([opts.geometryQuality, opts.battleDetailLod], opts.quality === 'high' ? ['high', false] : ['low', true],
+      'the viewer\'s own at its device\'s geometry, every other seat at low geometry with the battle detail hand-offs');
+  }
   assert.deepEqual(burnt, [`${spec}:summer`, `${spec}:winter`], 'the burnt bake follows each group\'s build');
   const state = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0 };
   const rosterBuilds = [];

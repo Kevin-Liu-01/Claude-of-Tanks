@@ -171,6 +171,10 @@ class ArticulatedShadowBatch extends BatchedMesh {
 
   override raycast(): void {}
 
+  sources(): Mesh[] {
+    return this.records.map(({ source }) => source);
+  }
+
   private setEntryVisible(record: SourceRecord, visible: boolean): void {
     if (record.visible === visible) return;
     this.setVisibleAt(record.instance, visible);
@@ -249,6 +253,12 @@ class ArticulatedShadowBatch extends BatchedMesh {
     // here would shift that traversal's child array and skip later owners.
     super.dispose();
   }
+}
+
+/** (perf-252) The proxies a batch draws, in its order, when `object` is one (a copied visual installs its own:
+ * tankVisualClone.ts); null otherwise. */
+export function articulatedShadowBatchSources(object: Object3D): readonly Mesh[] | null {
+  return object instanceof ArticulatedShadowBatch ? object.sources() : null;
 }
 
 /**

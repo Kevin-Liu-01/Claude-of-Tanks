@@ -113,8 +113,12 @@ console.log('[2] moving-friendly prediction');
 }
 
 console.log('[3] trigger hold and firing-lane response');
+// (perf-249) the bots of [3] and [3b] lay on a level target dead ahead: the T-90M (the T-90AM's gun, reload and 6-degree
+// depression). Since 6a943e4eee (turret-scale-242) the T-90AM's gun clearance curve holds its gun at +2.7 degrees or
+// higher over its front 12 degrees and over +0.4 out to 30 (its mount's standing conflict, a geometry fix the curve's
+// notes name), so a T-90AM never lays on level ground ahead and these contracts could not be reached.
 {
-  const bot = entity('bot', 't90am', 'player', 0, 0);
+  const bot = entity('bot', 't90m', 'player', 0, 0);
   const ally = entity('ally', 'm1a1_abrams_hc', 'player', 0, 35);
   const target = entity('target', 'm1a1_abrams_hc', 'enemy', 0, 80);
   const ctl = controller(bot, [target], [ally]);
@@ -130,7 +134,7 @@ console.log('[3] trigger hold and firing-lane response');
 
 console.log('[3b] a lane search that finds no lane waits before the next one (Steinburg 7v7 seed 88677 CPU)');
 {
-  const bot = entity('bot', 't90am', 'player', 0, 0);
+  const bot = entity('bot', 't90m', 'player', 0, 0);
   const ally = entity('ally', 'm1a1_abrams_hc', 'player', 0, 35);
   const target = entity('target', 'm1a1_abrams_hc', 'enemy', 0, 80);
   // every other sight line is clear; the lateral lane points (22-46 m to either side) are masked, so no search can

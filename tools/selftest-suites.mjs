@@ -1755,6 +1755,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/articulatedShadowBatchIntegration.selftest.mjs',
     'src/vehicles/battleGeometrySharing.selftest.mjs',
     'src/vehicles/staticDrawMerge.selftest.mjs',
+    'src/vehicles/battleStaticDrawMerge.selftest.mjs', // perf-250/251: the source-X Abrams' battle builds take the dual merge
+    'src/vehicles/tankVisualClone.selftest.mjs', // perf-252: a copied visual (battle builds too) draws as a fresh build
     'src/vehicles/recoilRig.selftest.mjs',
     'src/fx/fxRuntimeAccess.selftest.mjs',
     'src/game/garageDressingAccess.selftest.mjs',

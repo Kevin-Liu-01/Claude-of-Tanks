@@ -27,7 +27,10 @@ import type { SpecialActionState } from '../../sim/specialActionPolicy.ts';
 import { AERIAL_RULES, matchRulesetFor, rulesetVerdictSide } from '../../sim/matchRuleset.ts';
 import type { MatchRuleset } from '../../sim/matchRuleset.ts';
 import { normalizeGameMode } from '../../sim/gameModeCatalog.ts';
-import { createTank, createTankSteps, ensureTankBuilder } from '../../vehicles/fleetFactory.ts';
+import {
+  battleGeometryQuality, battleStaticDrawMerge, createTank, createTankSteps, ensureTankBuilder,
+} from '../../vehicles/fleetFactory.ts';
+import { getDeviceTier } from '../../engine/quality.ts';
 import { cloneTankVisual } from '../../vehicles/tankVisualClone.ts';
 import { prebakeBurntSteps, prebakeSharedTextures } from '../../vehicles/materials.ts';
 import type { FleetTankSpec } from '../../vehicles/specContracts.ts';
@@ -178,6 +181,10 @@ interface TankVisualOptions {
   camoSeed: number;
   camoPattern: string;
   quality: 'high' | 'ai' | 'low' | 'preview';
+  geometryQuality: 'high' | 'low';
+  batchStatic: true;
+  battleDetailLod: boolean;
+  staticDrawMerge: 'off' | 'identity' | 'translations' | 'dual';
   eraVisualBindingReceipt: false;
 }
 
@@ -263,15 +270,33 @@ function textureQuality(isViewer: boolean): 'high' | 'ai' {
   return isViewer ? 'high' : 'ai';
 }
 
-/** What a seat's vehicle is built with: every client paints a seat alike (the camouflage seed from the player's id). */
-function seatVisualOptions(playerId: string, camoPattern: string, isViewer: boolean): TankVisualOptions {
+/**
+ * What a seat's vehicle is built with: every client paints a seat alike (the camouflage seed from the player's id).
+ * (perf-252) The build is the battle roster's own (rosterState buildRosterVisual): the viewer's tank at its device's
+ * geometry, every other seat at low geometry with the battle detail hand-offs (not on a phone), all with
+ * articulation-local static batches and the vehicle's battle merge (fleetFactory battleStaticDrawMerge). A remote
+ * tank drew 180-205 times as an unbatched high-geometry build, against 86-112 for a battle bot.
+ */
+function seatVisualOptions(playerId: string, camoPattern: string, isViewer: boolean, specId: string): TankVisualOptions {
+  const deviceTier = getDeviceTier();
   return {
     camoSeed: 4000 + (hashString(playerId) % 100000),
     camoPattern,
     quality: textureQuality(isViewer),
+    geometryQuality: battleGeometryQuality(isViewer, deviceTier),
+    batchStatic: true,
+    battleDetailLod: !isViewer && deviceTier !== 'mobile',
+    staticDrawMerge: battleStaticDrawMerge(specId),
     // Generated anatomy and live strip/reset clusters already own gameplay; the authoring audit stays off.
     eraVisualBindingReceipt: false,
   };
+}
+
+/** The seats whose vehicles are one build (a source and its copies, cloneTankVisual): the same vehicle and paint, built
+ * with the same options but the texture tier and the camouflage seed, which a copy takes as its own. */
+function seatBuildKey(specId: string, camoPattern: string, isViewer: boolean): string {
+  const { geometryQuality, batchStatic, battleDetailLod, staticDrawMerge } = seatVisualOptions('', camoPattern, isViewer, specId);
+  return `${specId}:${camoPattern}:${geometryQuality}:${batchStatic}:${battleDetailLod}:${staticDrawMerge}`;
 }
 
 /** A seat the room already names before the WELCOME (its vehicle, its paint, whether it is this viewer's). */
@@ -366,9 +391,11 @@ export function prebuildRosterVisuals(
   const stopped = (): boolean => disposed || !!signal?.aborted;
   const schedule = createOpaqueLoadingYielder(8, 50, scheduling);
   const groups = new Map<string, RosterPrebuildSeat[]>();
+  /** The vehicles and paints whose burnt bake ran (two build tiers of one vehicle and paint bake it once). */
+  const burntBaked = new Set<string>();
   for (const seat of seats) {
     if (!seat.specId || !seat.playerId || built.has(seat.playerId)) continue;
-    const key = `${seat.specId}:${seat.camo}`;
+    const key = seatBuildKey(seat.specId, seat.camo, seat.isViewer);
     let group = groups.get(key);
     if (!group) groups.set(key, group = []);
     if (!group.some((other) => other.playerId === seat.playerId)) group.push(seat);
@@ -379,7 +406,7 @@ export function prebuildRosterVisuals(
   };
   const buildGroup = async (group: RosterPrebuildSeat[]): Promise<void> => {
     const source = group.find((seat) => seat.isViewer) ?? group[0]!;
-    const options = seatVisualOptions(source.playerId, source.camo, source.isViewer);
+    const options = seatVisualOptions(source.playerId, source.camo, source.isViewer, source.specId);
     await ensureBuilder(source.specId);
     if (stopped()) return;
     await prepareVisualTextures(getSpec(source.specId), anisotropy, options.quality, () => schedule(), source.camo);
@@ -400,11 +427,14 @@ export function prebuildRosterVisuals(
     // its other seats first, while it is pristine (cloneTankVisual copies only an untouched source)
     for (const seat of group) {
       if (seat === source) continue;
-      const seatOptions = seatVisualOptions(seat.playerId, seat.camo, seat.isViewer);
+      const seatOptions = seatVisualOptions(seat.playerId, seat.camo, seat.isViewer, seat.specId);
       try { keep(seat, seatOptions, cloneVisual(visual, engineCtx, seatOptions)); } catch { /* this seat builds its own */ }
     }
     keep(source, options, visual);
     // the wreck warm's burnt bake for this vehicle and paint (battleWarmRuntime warmBurntVariant finds it baked)
+    const burnt = `${source.specId}:${source.camo}`;
+    if (burntBaked.has(burnt)) return;
+    burntBaked.add(burnt);
     for (const _step of prebakeBurnt(source.specId, anisotropy, source.camo)) {
       await schedule();
       if (stopped()) return;
@@ -429,6 +459,8 @@ export function prebuildRosterVisuals(
       built.delete(playerId);
       if (entry.specId === getSpec(specId).id && entry.options.camoSeed === options.camoSeed
         && entry.options.camoPattern === options.camoPattern && entry.options.quality === options.quality
+        && entry.options.geometryQuality === options.geometryQuality && entry.options.batchStatic === options.batchStatic
+        && entry.options.battleDetailLod === options.battleDetailLod && entry.options.staticDrawMerge === options.staticDrawMerge
         && !entry.visual.root.parent) return entry.visual;
       entry.visual.dispose();
       return null;
@@ -514,7 +546,7 @@ export function createBattlePresentation({
   // ------------------------------------------------------------ roster
 
   function visualOptions(entry: RosterEntry, isViewer: boolean): TankVisualOptions {
-    return seatVisualOptions(entry.playerId, camoFor(entry), isViewer);
+    return seatVisualOptions(entry.playerId, camoFor(entry), isViewer, entry.specId);
   }
 
   /**
@@ -598,7 +630,7 @@ export function createBattlePresentation({
     for (const entry of active) {
       if (actors.has(entry.playerId) || (game.gameMode === 'ac130' && entry.team === TEAM.ALPHA && !entry.bot)) continue;
       if (prebuilt?.has(entry.playerId)) continue;
-      const vehicle = `${entry.specId}:${camoFor(entry)}`;
+      const vehicle = seatBuildKey(entry.specId, camoFor(entry), !spectator && entry.entityId === rosterContext.ownEntityId);
       let group = shared.get(vehicle);
       if (!group) shared.set(vehicle, group = []);
       group.push(entry);
@@ -613,9 +645,10 @@ export function createBattlePresentation({
       const camo = camoFor(entry);
       const quality = textureQuality(isViewer);
       const key = `${entry.specId}:${camo}:${quality}`;
-      const group = shared.get(`${entry.specId}:${camo}`);
+      const vehicle = seatBuildKey(entry.specId, camo, isViewer);
+      const group = shared.get(vehicle);
       if (group && group.length > 1 && !actors.has(entry.playerId) && !preparedVisuals.has(entry.playerId)) {
-        shared.delete(`${entry.specId}:${camo}`);
+        shared.delete(vehicle);
         await prepareSharedVisuals(group, rosterContext, textureTick, assertActive);
       }
       if (!gunship && !warmed.has(key) && !preparedVisuals.has(entry.playerId) && !prebuilt?.has(entry.playerId)) {
