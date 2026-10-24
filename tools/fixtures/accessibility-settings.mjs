@@ -7,6 +7,8 @@
 // A coarse pointer (a phone, or a browser emulating touch) gets the touch layout through responsiveLayout.ts.
 import '../../src/ui/tokens/tokens.css';
 import '../../src/ui/motion.css';
+import '../../src/ui/components/components.css';
+import '../../src/ui/battleTimeChoices.css';
 import '../../src/ui/responsiveSurfaces.css';
 import { createInput } from '../../src/game/input.ts';
 import { createSettings } from '../../src/ui/settings.ts';

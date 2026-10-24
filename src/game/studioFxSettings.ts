@@ -3,6 +3,7 @@
  * schema (scene JSON `fx` block, the cinematic effect types' parameters and
  * their panel controls). Node-runnable: no DOM, WebGL or game state.
  */
+import { t } from '../ui/i18n.ts';
 
 /** Scene-level FX quality: `battle` is the game's exact look (the default). */
 export const STUDIO_FX_QUALITIES = ['battle', 'cinematic'] as const;
@@ -73,7 +74,7 @@ export const STUDIO_FX_PARAMS: Readonly<Record<string, readonly StudioFxParamDef
 /** Clamped numeric parameter: authored value, else the schema default. */
 export function fxParam(type: string, key: string, value: unknown): number {
   const def = STUDIO_FX_PARAMS[type]?.find((entry) => entry.key === key);
-  if (!def) throw new RangeError(`Unknown Studio FX parameter ${type}.${key}`);
+  if (!def) throw new RangeError(t('studio.error.fxParam', { name: `${type}.${key}` }));
   const n = typeof value === 'number' && Number.isFinite(value) ? value : def.value;
   return Math.max(def.min, Math.min(def.max, n));
 }

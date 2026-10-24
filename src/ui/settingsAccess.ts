@@ -129,6 +129,8 @@ export function createSettingsAccess(
   };
 
   gear.addEventListener('click', open);
+  // the battle HUD's corner gear (hud.ts): the same opening as the settings key
+  options.bus?.on('ui:openSettings', open);
   options.input.onAction('settingsMenu', (code) => {
     if (code === 'Escape' && options.isSpectating?.()) { options.input.releaseLock(); return; }
     if (!access.isOpen()) open();

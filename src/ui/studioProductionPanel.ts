@@ -484,5 +484,8 @@ export function mountStudioProductionPanel(
     }
   }
   refresh();
+  // the takes index is fetched as the panel is built, so the Director's lists are filled before it first shows: a list
+  // arriving after the panel opened pushed every section under it 75 px down (248, a cold /studio)
+  loadSiteTakes();
   return { refresh, setVisible, activate };
 }

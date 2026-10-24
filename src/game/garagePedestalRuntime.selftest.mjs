@@ -750,6 +750,20 @@ for (const reason of ['selection', 'same-id', 'return-current', 'battle', 'dispo
   assert.equal(await h.runtime.buildSpeculative('bravo'), false, 'the selected hero is never built twice');
   h.runtime.dispose();
 }
+{
+  // click-perf-248: a phone builds only the next card ahead (the neighbours come next first), within its residents.
+  const h = createHarness({ residentLimit: 3, deviceTier: 'mobile' });
+  await h.runtime.set('alpha');
+  h.setBootComplete(true);
+  h.setSelected('alpha');
+  assert.equal(await h.runtime.buildSpeculative('charlie', () => true, ['bravo', 'charlie']), false,
+    'a phone skips the card behind');
+  assert.equal(await h.runtime.buildSpeculative('bravo', () => true, ['bravo', 'charlie']), true,
+    'and builds the next card ahead');
+  assert.ok(h.runtime.hasCached('bravo'));
+  assert.equal(h.runtime.current?.specId, 'alpha', 'never shown on its own');
+  h.runtime.dispose();
+}
 
 console.log('garagePedestalRuntime.selftest: private sliced construction, cancellation, timing, program link preparation, speculative neighbors, detached warm LRU, resource preservation and battle handoff passed');
 

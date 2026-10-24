@@ -23,6 +23,7 @@ import { climateForMap, type VehicleClimate } from './vehicleFleets.ts';
 import { LEGACY_DRAWS } from './civilianVehicleLegacy.ts';
 import { deriveRuntimeStructureContactBand, type StructureCollisionRuntimeBand } from '../structureCollision.ts';
 import { convexHull2 } from '../collision.ts';
+import type { BrokenVehicleJob } from '../brokenVehicleJob.ts';
 
 type Rng = () => number;
 type Builder = (rng: Rng) => THREE.BufferGeometry;
@@ -333,16 +334,29 @@ function cartFootprint(e: CartEntry, role: CartRole): CartFootprint {
   return footprint;
 }
 
+/** The seed a builder takes from exactly `draws` values of the destructible stream (the legacy builder's count). */
+function spendDraws(draws: number, rng: Rng): number {
+  let seed = 0x5eed;
+  if (draws > 0) {
+    seed = Math.floor(rng() * 0x7fffffff);
+    for (let k = 1; k < draws; k++) rng();
+  }
+  return seed;
+}
+
 /** A builder that spends exactly `draws` values of the destructible stream and builds from a seed taken from the first. */
 function spending(draws: number, make: (seed: number) => THREE.BufferGeometry): Builder {
-  return (rng: Rng) => {
-    let seed = 0x5eed;
-    if (draws > 0) {
-      seed = Math.floor(rng() * 0x7fffffff);
-      for (let k = 1; k < draws; k++) rng();
-    }
-    return make(seed);
-  };
+  return (rng: Rng) => make(spendDraws(draws, rng));
+}
+
+/**
+ * (perf-248) A map's broken cart for a role, from the seed its pool's draws gave (props.ts: built in the broken-vehicle
+ * pool's worker from a job, or on the main thread at the join; the same function as `broken`).
+ */
+export function buildBrokenCart(mapId: string, mobile: boolean, role: string, seed: number): THREE.BufferGeometry {
+  const kind = role as CartRole, entry = cartsForMap(mapId)[kind];
+  if (!entry) throw new Error(`no ${role} cart on ${mapId}`);
+  return buildRole(entry, kind, { climate: climateForMap(mapId), coarse: mobile }, true, seed);
 }
 
 function hash01(x: number, z: number, salt: number): number {
@@ -365,6 +379,8 @@ function paintPicker(e: CartEntry, salt: number): (out: THREE.Color, x: number, 
 interface CartOverride {
   build: Builder;
   broken: Builder;
+  /** (perf-248) `broken`'s draws, the body left to the job (props.ts: the broken-vehicle pool) */
+  brokenJob: (rng: Rng) => BrokenVehicleJob;
   instancePaint: (out: THREE.Color, x: number, z: number, slot: number) => void;
   /** Desktop tiers: the coarse solid casts the pool's shadows (no stream draws). */
   shadowBuild?: () => THREE.BufferGeometry;
@@ -398,6 +414,7 @@ export function cartOverrides(mapId: string, mobile: boolean): Record<CartRole, 
     const o = {
       build: spending(LEGACY_DRAWS[role].build, (seed) => buildRole(e, role, ctx, false, seed)),
       broken: spending(LEGACY_DRAWS[role].broken, (seed) => buildRole(e, role, ctx, true, seed)),
+      brokenJob: (rng: Rng): BrokenVehicleJob => ({ kit: 'cart', mapId, mobile, role, seed: spendDraws(LEGACY_DRAWS[role].broken, rng) }),
       instancePaint: paintPicker(e, salt + role.length * 131),
       ...(mobile ? {} : { shadowBuild: () => canonicalSolid(e, role) }),
       ...(ctx.climate.snow ? { runners: fittedRunners(e, role) } : {}),

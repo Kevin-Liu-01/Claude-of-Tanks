@@ -1,0 +1,641 @@
+{
+ "libraryId": "claude-of-tanks-ui-246",
+ "schemaVersion": 1,
+ "author": "Kevin B. Liu",
+ "copyright": "Copyright © 2026 Kevin B. Liu",
+ "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
+ "description": "The game's screens as release 246 draws them (S12, the post-overhaul interface set), captured in the engine at f02eb8653a, one file per size rung. They replace the pre-overhaul interface pictures (presentation-r1 ui_*, showcase-r2 11-25, multiplayer-r1, the library's field-guide map card).",
+ "generatedBy": "shots/media-r5/landing-r6/site-all/ui246-plan.py",
+ "release": 246,
+ "render": "f02eb8653ae152501312315ddeae938731cb0294",
+ "count": 39,
+ "items": [
+  {
+   "id": "garage",
+   "slot": "garage",
+   "src": "/media/ui-246/garage.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 223646,
+   "sha256": "a02757f6cecaf63c06b82e35ea94ad299a5bc0c0a230310820a0c4473e5f5e6f",
+   "shows": "The Garage: a KF51 Panther on the turntable with its firepower figures, paint band and the vehicle rail",
+   "replaces": "(a new figure)",
+   "captured": {
+    "slot": "features/garage",
+    "at": "2026-10-24T14:18:51.691Z",
+    "staged": "Garage"
+   }
+  },
+  {
+   "id": "garage-640",
+   "slot": "garage",
+   "src": "/media/ui-246/garage-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 43192,
+   "sha256": "c10f7202ddfca0f822a4e854f97470ff27a560432741be9f03d86613becb0539",
+   "shows": "The Garage: a KF51 Panther on the turntable with its firepower figures, paint band and the vehicle rail",
+   "replaces": "(a new figure)",
+   "captured": {
+    "slot": "features/garage",
+    "at": "2026-10-24T14:18:51.691Z",
+    "staged": "Garage"
+   }
+  },
+  {
+   "id": "garage-closeup",
+   "slot": "garage-closeup",
+   "src": "/media/ui-246/garage-closeup.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 248994,
+   "sha256": "6a1c506014407073d3e2567f43495c021655134231be466d86589c0fa7fbc1a5",
+   "shows": "The Garage's photo mode: a Challenger 3 alone on the stage with the framing bar",
+   "replaces": "/media/presentation-r1/ui_tank_closeup_modern.webp",
+   "captured": {
+    "slot": "ui/garage-closeup",
+    "at": "2026-10-24T14:48:53.287Z",
+    "staged": "Garage photo mode"
+   }
+  },
+  {
+   "id": "garage-closeup-640",
+   "slot": "garage-closeup",
+   "src": "/media/ui-246/garage-closeup-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 46636,
+   "sha256": "28dd5fc671047c094ae3dc35ead56b2dec5ca87cf74dc8e14ed8d99abf0f1905",
+   "shows": "The Garage's photo mode: a Challenger 3 alone on the stage with the framing bar",
+   "replaces": "/media/presentation-r1/ui_tank_closeup_modern.webp",
+   "captured": {
+    "slot": "ui/garage-closeup",
+    "at": "2026-10-24T14:48:53.287Z",
+    "staged": "Garage photo mode"
+   }
+  },
+  {
+   "id": "camo-picker",
+   "slot": "camo-picker",
+   "src": "/media/ui-246/camo-picker.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 95972,
+   "sha256": "fe089820f5a6daee171c80cbba8a17b436f822843fcedbf5c8b1cc6fd0c6fac1",
+   "shows": "The Garage's camouflage drawer: 105 paints, filtered by nation and theme",
+   "replaces": "(a new figure)",
+   "captured": {
+    "slot": "ui/camo-picker",
+    "at": "2026-10-24T14:40:46.111Z",
+    "staged": "Garage paints drawer"
+   }
+  },
+  {
+   "id": "camo-picker-640",
+   "slot": "camo-picker",
+   "src": "/media/ui-246/camo-picker-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 21922,
+   "sha256": "b4a0875120ed6af2f1876b31d8bc80479fc1b8418f6b58ab67296e4e40ca7e13",
+   "shows": "The Garage's camouflage drawer: 105 paints, filtered by nation and theme",
+   "replaces": "(a new figure)",
+   "captured": {
+    "slot": "ui/camo-picker",
+    "at": "2026-10-24T14:40:46.111Z",
+    "staged": "Garage paints drawer"
+   }
+  },
+  {
+   "id": "map-picker",
+   "slot": "map-picker",
+   "src": "/media/ui-246/map-picker.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 205910,
+   "sha256": "5b39b552a326a41987b7c6ac3238178084c5e8f58b4748d5d5a4920bc88014ff",
+   "shows": "The Deploy sheet with its battlefield picker open on Verdant Fields",
+   "replaces": "/field-guide/maps.webp (the library's every-battlefield card)",
+   "captured": {
+    "slot": "ui/map-picker",
+    "at": "2026-10-24T15:00:13.038Z",
+    "staged": "Deploy battlefield popover"
+   }
+  },
+  {
+   "id": "map-picker-640",
+   "slot": "map-picker",
+   "src": "/media/ui-246/map-picker-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 42878,
+   "sha256": "0f433f19cc750fa0628e4e916326c42596f3b855dc205067055c16b96bbf4070",
+   "shows": "The Deploy sheet with its battlefield picker open on Verdant Fields",
+   "replaces": "/field-guide/maps.webp (the library's every-battlefield card)",
+   "captured": {
+    "slot": "ui/map-picker",
+    "at": "2026-10-24T15:00:13.038Z",
+    "staged": "Deploy battlefield popover"
+   }
+  },
+  {
+   "id": "battle-hud",
+   "slot": "battle-hud",
+   "src": "/media/ui-246/battle-hud.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 413762,
+   "sha256": "dd4678b8bc902029bdc3ff4e6ab9a158ec9fd4fd216bc19bff1c3e045f77b289",
+   "shows": "The battle HUD in a live Standard battle: score and clock, both teams, ammunition and the minimap",
+   "replaces": "/media/showcase-r2/17_live_player_hud.webp",
+   "captured": {
+    "slot": "docs/start-hud",
+    "at": "2026-10-24T14:42:48.222Z",
+    "staged": "battle HUD (third person)"
+   }
+  },
+  {
+   "id": "battle-hud-640",
+   "slot": "battle-hud",
+   "src": "/media/ui-246/battle-hud-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 58460,
+   "sha256": "c1a19db1c4facef674d3694724b6a941c781b9e83025d7eae329d994634a0c93",
+   "shows": "The battle HUD in a live Standard battle: score and clock, both teams, ammunition and the minimap",
+   "replaces": "/media/showcase-r2/17_live_player_hud.webp",
+   "captured": {
+    "slot": "docs/start-hud",
+    "at": "2026-10-24T14:42:48.222Z",
+    "staged": "battle HUD (third person)"
+   }
+  },
+  {
+   "id": "battle-sight",
+   "slot": "battle-sight",
+   "src": "/media/ui-246/battle-sight.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 342952,
+   "sha256": "3470e04a01c4b1b9a795443aa8b408e2aa9e3a885107c09a61678940252305c5",
+   "shows": "The gunner's sight at four-power zoom, laid on a Leopard 2A4 beside a windmill",
+   "replaces": "/media/showcase-r2/19_live_sniper.webp",
+   "captured": {
+    "slot": "docs/start-sight",
+    "at": "2026-10-24T14:52:10.372Z",
+    "staged": "gunner's sight"
+   }
+  },
+  {
+   "id": "battle-sight-640",
+   "slot": "battle-sight",
+   "src": "/media/ui-246/battle-sight-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 47450,
+   "sha256": "991c634ccc8d559b3594f511dc123e7d2823581fcb507688df061a43464489ab",
+   "shows": "The gunner's sight at four-power zoom, laid on a Leopard 2A4 beside a windmill",
+   "replaces": "/media/showcase-r2/19_live_sniper.webp",
+   "captured": {
+    "slot": "docs/start-sight",
+    "at": "2026-10-24T14:52:10.372Z",
+    "staged": "gunner's sight"
+   }
+  },
+  {
+   "id": "battle-firing",
+   "slot": "battle-firing",
+   "src": "/media/ui-246/battle-firing.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 280024,
+   "sha256": "1d756b38a94eb7c3e96b28d3a87b603dd0cca6fb196ab6e4da6921089d838ef7",
+   "shows": "A tank fires in a live battle, the muzzle flash and recoil in frame",
+   "replaces": "/media/presentation-r1/ui_combat_firing.webp",
+   "captured": {
+    "slot": "modes/standard",
+    "at": null,
+    "staged": "a Standard battle on Sirocco Wadi: the player fires, HUD on"
+   }
+  },
+  {
+   "id": "battle-firing-640",
+   "slot": "battle-firing",
+   "src": "/media/ui-246/battle-firing-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 45004,
+   "sha256": "dc4717e30ffae78be715aa4b7d993547777dad3e5e08796d424002ef00de6757",
+   "shows": "A tank fires in a live battle, the muzzle flash and recoil in frame",
+   "replaces": "/media/presentation-r1/ui_combat_firing.webp",
+   "captured": {
+    "slot": "modes/standard",
+    "at": null,
+    "staged": "a Standard battle on Sirocco Wadi: the player fires, HUD on"
+   }
+  },
+  {
+   "id": "killcam-xray",
+   "slot": "killcam-xray",
+   "src": "/media/ui-246/killcam-xray.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 212958,
+   "sha256": "3079549c87cb37326e89ab754c4e7c9de5f4e87ed2ea504c1f4e1622c5d6554c",
+   "shows": "The X-ray kill cam: the fatal shot's path through the target's armour and modules",
+   "replaces": "/media/showcase-r2/25_live_killcam_xray.webp",
+   "captured": {
+    "slot": "features/killcam",
+    "at": null,
+    "staged": "the live kill cam (X-ray) after the player is destroyed"
+   }
+  },
+  {
+   "id": "killcam-xray-640",
+   "slot": "killcam-xray",
+   "src": "/media/ui-246/killcam-xray-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 27242,
+   "sha256": "bdff8f6a792a280a9ed568a40902c0ec454edddac8247d7a8f637e850db72b3c",
+   "shows": "The X-ray kill cam: the fatal shot's path through the target's armour and modules",
+   "replaces": "/media/showcase-r2/25_live_killcam_xray.webp",
+   "captured": {
+    "slot": "features/killcam",
+    "at": null,
+    "staged": "the live kill cam (X-ray) after the player is destroyed"
+   }
+  },
+  {
+   "id": "watch-1440",
+   "slot": "watch-1440",
+   "src": "/media/ui-246/watch-1440.webp",
+   "width": 1440,
+   "height": 900,
+   "bytes": 259838,
+   "sha256": "6b2d5e6042786e2dcd5ca5f973ba7c8eaef22c9b321c2c48fa37bb245d85944b",
+   "shows": "Watch mode riding along with a T-90MS by the church on Verdant Fields, the tank switcher above",
+   "replaces": "/media/presentation-r1/ui_spectator_switcher.webp, /media/showcase-r2/18_live_spectator.webp",
+   "note": "A pair matched in framing, not one moment: both ride along on Verdant Fields with the watched tank from behind, its target ahead and the Watch bar on top. watch-1440 is a desktop page riding a T-90MS, watch-mobile a phone-booted touch page riding a Leopard 2 Revolution. A same-moment twin (the frozen desktop page switched to phone emulation) kept the desktop layout and the fine pointer, so the phone page was shot on its own.",
+   "captured": {
+    "slot": "docs/watch",
+    "at": "2026-10-24T14:48:13.595Z",
+    "staged": "Watch mode (a watched solo battle)"
+   }
+  },
+  {
+   "id": "watch-1440-640",
+   "slot": "watch-1440",
+   "src": "/media/ui-246/watch-1440-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 60966,
+   "sha256": "ea07fdcb6ff6167efbc8de3f93db9a6f195b3f3027dadcfdfe80f445e2cc7126",
+   "shows": "Watch mode riding along with a T-90MS by the church on Verdant Fields, the tank switcher above",
+   "replaces": "/media/presentation-r1/ui_spectator_switcher.webp, /media/showcase-r2/18_live_spectator.webp",
+   "note": "A pair matched in framing, not one moment: both ride along on Verdant Fields with the watched tank from behind, its target ahead and the Watch bar on top. watch-1440 is a desktop page riding a T-90MS, watch-mobile a phone-booted touch page riding a Leopard 2 Revolution. A same-moment twin (the frozen desktop page switched to phone emulation) kept the desktop layout and the fine pointer, so the phone page was shot on its own.",
+   "captured": {
+    "slot": "docs/watch",
+    "at": "2026-10-24T14:48:13.595Z",
+    "staged": "Watch mode (a watched solo battle)"
+   }
+  },
+  {
+   "id": "watch-mobile",
+   "slot": "watch-mobile",
+   "src": "/media/ui-246/watch-mobile.webp",
+   "width": 780,
+   "height": 1688,
+   "bytes": 157468,
+   "sha256": "7ae3651b901cab2f8a37d188c77cdf4110cc075ac18b965e210e080be8e2f675",
+   "shows": "Watch mode on a phone held upright, riding along with a Leopard 2 Revolution",
+   "replaces": "/media/presentation-r1/ui_spectator_switcher_mobile.webp",
+   "note": "A pair matched in framing, not one moment: both ride along on Verdant Fields with the watched tank from behind, its target ahead and the Watch bar on top. watch-1440 is a desktop page riding a T-90MS, watch-mobile a phone-booted touch page riding a Leopard 2 Revolution. A same-moment twin (the frozen desktop page switched to phone emulation) kept the desktop layout and the fine pointer, so the phone page was shot on its own.",
+   "captured": {
+    "slot": "docs/watch-mobile",
+    "at": "2026-10-24T14:30:28.174Z",
+    "staged": "Watch mode on a 390x844 phone (portrait, touch): a ride-along, framed as watch-1440 (the watched tank from behind, its target ahead, the Watch bar on top)"
+   }
+  },
+  {
+   "id": "multiplayer-pair",
+   "slot": "multiplayer-pair",
+   "src": "/media/ui-246/multiplayer-pair.webp",
+   "width": 2400,
+   "height": 700,
+   "bytes": 330256,
+   "sha256": "dfc20cc4a8f069a3030f54e529f270555a6066d1a499fbcaa144f84ddb082238",
+   "shows": "Two players' live views of one private room, side by side",
+   "replaces": "/media/multiplayer-r1/dual-perspective.webp",
+   "captured": {
+    "slot": "features/multiplayer",
+    "at": null,
+    "staged": "one private room (the rooms double), both players' whole screens side by side, composed by landing-r6/site-all/ui246-pair.py from pair003-a/b"
+   }
+  },
+  {
+   "id": "multiplayer-pair-640",
+   "slot": "multiplayer-pair",
+   "src": "/media/ui-246/multiplayer-pair-640.webp",
+   "width": 640,
+   "height": 187,
+   "bytes": 34136,
+   "sha256": "54b7ca7efc423b3603d08ed3a3ad5b2fd6b0d6b1c16f0677ad64ebd771f7d8f0",
+   "shows": "Two players' live views of one private room, side by side",
+   "replaces": "/media/multiplayer-r1/dual-perspective.webp",
+   "captured": {
+    "slot": "features/multiplayer",
+    "at": null,
+    "staged": "one private room (the rooms double), both players' whole screens side by side, composed by landing-r6/site-all/ui246-pair.py from pair003-a/b"
+   }
+  },
+  {
+   "id": "load",
+   "slot": "load",
+   "src": "/media/ui-246/load.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 211206,
+   "sha256": "4b01610776cd45ddf3a4b6ef677d495f31060d6e50dc616632e85e69410b5200",
+   "shows": "The battle loader: Verdant Fields, both teams' rosters, a tip and the minimap",
+   "replaces": "(a new figure)",
+   "captured": {
+    "slot": "ui/load",
+    "at": "2026-10-24T14:46:35.645Z",
+    "staged": "the battle loader (.cot-bl.on) while a solo battle builds"
+   }
+  },
+  {
+   "id": "load-640",
+   "slot": "load",
+   "src": "/media/ui-246/load-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 35170,
+   "sha256": "3fe4ac80902744c7b82d636efebd208c55a8d1f54393939737fdf3e09e3297c8",
+   "shows": "The battle loader: Verdant Fields, both teams' rosters, a tip and the minimap",
+   "replaces": "(a new figure)",
+   "captured": {
+    "slot": "ui/load",
+    "at": "2026-10-24T14:46:35.645Z",
+    "staged": "the battle loader (.cot-bl.on) while a solo battle builds"
+   }
+  },
+  {
+   "id": "pause",
+   "slot": "pause",
+   "src": "/media/ui-246/pause.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 222952,
+   "sha256": "9486772375258fff349a18a295f1e4e7828d70bda0cfc921c8191e83297d13f5",
+   "shows": "The pause veil over a live battle: Resume and Settings",
+   "replaces": "(a new figure)",
+   "captured": {
+    "slot": "ui/pause",
+    "at": "2026-10-24T14:51:09.087Z",
+    "staged": "the pause veil over a live battle (docs/start-hud's view)"
+   }
+  },
+  {
+   "id": "pause-640",
+   "slot": "pause",
+   "src": "/media/ui-246/pause-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 34020,
+   "sha256": "d76a51c23ea2ea415dce9afd973f7a51cc56f0e985789f837572a2ac9704f688",
+   "shows": "The pause veil over a live battle: Resume and Settings",
+   "replaces": "(a new figure)",
+   "captured": {
+    "slot": "ui/pause",
+    "at": "2026-10-24T14:51:09.087Z",
+    "staged": "the pause veil over a live battle (docs/start-hud's view)"
+   }
+  },
+  {
+   "id": "end-victory",
+   "slot": "end-victory",
+   "src": "/media/ui-246/end-victory.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 104456,
+   "sha256": "613fe3455f3f724c2ee2b33ef6656cafb64549c78fba60861ca92d79403a9f8f",
+   "shows": "The end screen after a won Standard battle: two kills, 4,435 damage, the medals and both teams",
+   "replaces": "(a new figure)",
+   "captured": {
+    "slot": "docs/start-win",
+    "at": "2026-10-24T14:59:03.640Z",
+    "staged": "end screen after a win"
+   }
+  },
+  {
+   "id": "end-victory-640",
+   "slot": "end-victory",
+   "src": "/media/ui-246/end-victory-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 21686,
+   "sha256": "6539c1fe7587cda19d8c3c7ba5a3899a2dd4d7a56448d14119cf7b61251fd432",
+   "shows": "The end screen after a won Standard battle: two kills, 4,435 damage, the medals and both teams",
+   "replaces": "(a new figure)",
+   "captured": {
+    "slot": "docs/start-win",
+    "at": "2026-10-24T14:59:03.640Z",
+    "staged": "end screen after a win"
+   }
+  },
+  {
+   "id": "record",
+   "slot": "record",
+   "src": "/media/ui-246/record.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 67662,
+   "sha256": "a5d6823c407d230a2b21a5f5e5894d4b4fbd0ee229bcb0e933bd0daa8ebc4d41",
+   "shows": "The Service Record after that battle: one victory, two destroyed, 4,435 damage and the medals",
+   "replaces": "(a new figure)",
+   "captured": {
+    "slot": "ui/record",
+    "at": "2026-10-24T14:59:07.702Z",
+    "staged": "the Service Record in the Garage, after a real win (docs/start-win)"
+   }
+  },
+  {
+   "id": "record-640",
+   "slot": "record",
+   "src": "/media/ui-246/record-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 13628,
+   "sha256": "e9de98b0db31fe04d9811e9e6dd4abe0f8d2d72c292b5ef51c9ccce905082fce",
+   "shows": "The Service Record after that battle: one victory, two destroyed, 4,435 damage and the medals",
+   "replaces": "(a new figure)",
+   "captured": {
+    "slot": "ui/record",
+    "at": "2026-10-24T14:59:07.702Z",
+    "staged": "the Service Record in the Garage, after a real win (docs/start-win)"
+   }
+  },
+  {
+   "id": "gallery-hero",
+   "slot": "gallery-hero",
+   "src": "/media/ui-246/gallery-hero.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 105862,
+   "sha256": "a6920559d6ae47b83fcf8115b6507fb7af029c11416d99153da4127c43bc1bae",
+   "shows": "The Tank Gallery inspecting a T-90M Proryv",
+   "replaces": "/media/showcase-r2/11_gallery_hero.webp",
+   "captured": {
+    "slot": null,
+    "at": null,
+    "staged": null
+   }
+  },
+  {
+   "id": "gallery-hero-640",
+   "slot": "gallery-hero",
+   "src": "/media/ui-246/gallery-hero-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 23880,
+   "sha256": "bb417e11c505dbf0598175f88f2c586ef8f487f9fbf9a4df2914401e76f2b6e7",
+   "shows": "The Tank Gallery inspecting a T-90M Proryv",
+   "replaces": "/media/showcase-r2/11_gallery_hero.webp",
+   "captured": {
+    "slot": null,
+    "at": null,
+    "staged": null
+   }
+  },
+  {
+   "id": "gallery-armor",
+   "slot": "gallery-armor",
+   "src": "/media/ui-246/gallery-armor.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 106224,
+   "sha256": "29170380b882f35d42095e87467014f1e55b01350af2ce3b5222be645cc97222",
+   "shows": "The Tank Gallery's armour layer on a Stridsvagn 122",
+   "replaces": "/media/showcase-r2/12_gallery_armor.webp",
+   "captured": {
+    "slot": null,
+    "at": null,
+    "staged": null
+   }
+  },
+  {
+   "id": "gallery-armor-640",
+   "slot": "gallery-armor",
+   "src": "/media/ui-246/gallery-armor-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 23502,
+   "sha256": "c8fc9f7089b4e7150629b634f4429b61fb68b67ac567fb005bce8ef1d1d0f31b",
+   "shows": "The Tank Gallery's armour layer on a Stridsvagn 122",
+   "replaces": "/media/showcase-r2/12_gallery_armor.webp",
+   "captured": {
+    "slot": null,
+    "at": null,
+    "staged": null
+   }
+  },
+  {
+   "id": "gallery-modules",
+   "slot": "gallery-modules",
+   "src": "/media/ui-246/gallery-modules.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 111862,
+   "sha256": "8752e14f6a972b003e7381d9523e7a05f5267481f7d301d31817f5ed2ebb3f1c",
+   "shows": "The Tank Gallery's internal modules of a Leclerc XLR",
+   "replaces": "/media/showcase-r2/13_gallery_modules.webp",
+   "captured": {
+    "slot": null,
+    "at": null,
+    "staged": null
+   }
+  },
+  {
+   "id": "gallery-modules-640",
+   "slot": "gallery-modules",
+   "src": "/media/ui-246/gallery-modules-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 24904,
+   "sha256": "4797a36a45c46e1715de89310d6d8565a5a6db8a37638305788137125a7c4320",
+   "shows": "The Tank Gallery's internal modules of a Leclerc XLR",
+   "replaces": "/media/showcase-r2/13_gallery_modules.webp",
+   "captured": {
+    "slot": null,
+    "at": null,
+    "staged": null
+   }
+  },
+  {
+   "id": "gallery-crew",
+   "slot": "gallery-crew",
+   "src": "/media/ui-246/gallery-crew.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 100764,
+   "sha256": "9df0671703ee39e2adb598074273288891a47c61c2f82fa817890399e40ba1c6",
+   "shows": "The Tank Gallery's crew layout of a ZTZ-99A2",
+   "replaces": "/media/showcase-r2/14_gallery_crew.webp",
+   "captured": {
+    "slot": null,
+    "at": null,
+    "staged": null
+   }
+  },
+  {
+   "id": "gallery-crew-640",
+   "slot": "gallery-crew",
+   "src": "/media/ui-246/gallery-crew-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 23758,
+   "sha256": "b5453cd37f59c4fd56f095951534fe89b8ab2875ac8f034d32eaef7b336958a2",
+   "shows": "The Tank Gallery's crew layout of a ZTZ-99A2",
+   "replaces": "/media/showcase-r2/14_gallery_crew.webp",
+   "captured": {
+    "slot": null,
+    "at": null,
+    "staged": null
+   }
+  },
+  {
+   "id": "studio-workspace",
+   "slot": "studio-workspace",
+   "src": "/media/ui-246/studio-workspace.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 259156,
+   "sha256": "2b71a749162d432e0152a7e18d0d4f1d3f295a4d2c958732cb7b707ad4b8a773",
+   "shows": "The Scene Studio composing a battle scene on Verdant Fields",
+   "replaces": "/media/showcase-r2/15_studio_workspace.webp",
+   "captured": {
+    "slot": "docs/studio-workspace",
+    "at": "2026-10-24T14:19:51.490Z",
+    "staged": "Scene Studio"
+   }
+  },
+  {
+   "id": "studio-workspace-640",
+   "slot": "studio-workspace",
+   "src": "/media/ui-246/studio-workspace-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 51912,
+   "sha256": "6e169eb229f3894d842d371399c1ea77f4455fb03beab05c120e4558afa4e094",
+   "shows": "The Scene Studio composing a battle scene on Verdant Fields",
+   "replaces": "/media/showcase-r2/15_studio_workspace.webp",
+   "captured": {
+    "slot": "docs/studio-workspace",
+    "at": "2026-10-24T14:19:51.490Z",
+    "staged": "Scene Studio"
+   }
+  }
+ ]
+}

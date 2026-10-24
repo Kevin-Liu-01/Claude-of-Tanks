@@ -26,6 +26,9 @@ const MAX_RAISE_M = 3;
 /** The terrain contact lattice (terrainContactSurface.ts): 1,024 m in 768 cells. */
 const LATTICE_STEP = 128 / 96;
 const LATTICE_CELLS = 768;
+const LATTICE_VERTICES = LATTICE_CELLS + 1;
+/** The lattice offsets' cache (createTerrainDeformation): direct-mapped slots, a power of two. */
+const LATTICE_CACHE_SLOTS = 8192;
 /** A crater's influence reaches 2 R (its rim's broad outer flank); the flank fades out over the last 0.4 R. */
 const CRATER_REACH = 2;
 const CRATER_FADE_START = 1.6;
@@ -352,6 +355,19 @@ export function createTerrainDeformation(): TerrainDeformation {
   const rising: number[] = [];
   const growthOf = (stamp: TerrainStamp): number =>
     stamp.kind === 'rubble' && Number.isFinite(stamp.t0) && Number.isFinite(now) ? rubbleGrowth(now - stamp.t0, stamp.growS) : 1;
+  // (perf-249, the battle-scale profile: a contact read near a crater re-summed every stamp at three lattice corners, a
+  // crater's profile six sines and an atan2, ~5 % of a 16 v 16 Verdant step) the lattice vertices' offsets, kept per vertex
+  // until the overlay can read differently: a stamp added, a reset, or a clock step while a timed heap stands (its growth
+  // is the clock's). A slot holds offsetAt's own value, so a read is the same number to the bit.
+  const latticeKeys = new Int32Array(LATTICE_CACHE_SLOTS).fill(-1);
+  const latticeEpochs = new Uint32Array(LATTICE_CACHE_SLOTS);
+  const latticeValues = new Float64Array(LATTICE_CACHE_SLOTS);
+  let latticeEpoch = 1;
+  /** Rubble stamps on the clock (a finite t0): while any stands, a clock step can move the ground. */
+  let timedHeaps = 0;
+  function invalidateLattice(): void {
+    if (++latticeEpoch > 0xfffffff0) { latticeEpoch = 1; latticeKeys.fill(-1); }
+  }
 
   function bucketsOf(x0: number, z0: number, x1: number, z1: number, visit: (bucket: number) => boolean): boolean {
     for (let bz = bucketIndex(z0); bz <= bucketIndex(z1); bz++) {
@@ -373,6 +389,7 @@ export function createTerrainDeformation(): TerrainDeformation {
       return true;
     });
     revision++;
+    invalidateLattice();
     return true;
   }
 
@@ -399,7 +416,17 @@ export function createTerrainDeformation(): TerrainDeformation {
   }
 
   function latticeOffset(ix: number, iz: number): number {
-    return offsetAt(-WORLD_HALF_M + ix * LATTICE_STEP, -WORLD_HALF_M + iz * LATTICE_STEP);
+    const key = iz * LATTICE_VERTICES + ix;
+    const x = -WORLD_HALF_M + ix * LATTICE_STEP, z = -WORLD_HALF_M + iz * LATTICE_STEP;
+    // (a non-finite query's corner is no vertex: read through)
+    if (!(key >= 0 && key < LATTICE_VERTICES * LATTICE_VERTICES)) return offsetAt(x, z);
+    const slot = key & (LATTICE_CACHE_SLOTS - 1);
+    if (latticeKeys[slot] === key && latticeEpochs[slot] === latticeEpoch) return latticeValues[slot];
+    const value = offsetAt(x, z);
+    latticeKeys[slot] = key;
+    latticeEpochs[slot] = latticeEpoch;
+    latticeValues[slot] = value;
+    return value;
   }
 
   function contactOffsetAt(x: number, z: number, flipped = false): number {
@@ -448,6 +475,7 @@ export function createTerrainDeformation(): TerrainDeformation {
         c: Math.cos(yaw), s: Math.sin(yaw), falloffM: falloff, t0: start, growS: RUBBLE_GROW_S,
         crown: heapCrown(cx, cz, hw, hd, new Float64Array(CROWN_PARAMS)) };
       if (Number.isFinite(start) && growthOf(stamp) < 1) rising.push(stamps.length);
+      if (Number.isFinite(start)) timedHeaps++;
       const ex = Math.abs(stamp.s) * hd + Math.abs(stamp.c) * hw + falloff;
       const ez = Math.abs(stamp.c) * hd + Math.abs(stamp.s) * hw + falloff;
       admit(stamp, cx - ex, cz - ez, cx + ex, cz + ez, true);
@@ -467,8 +495,11 @@ export function createTerrainDeformation(): TerrainDeformation {
       maxRaise = 0;
       courseRaise = 0;
       rising.length = 0;
+      timedHeaps = 0;
+      invalidateLattice();
     },
     setTime(timeS) {
+      if (timedHeaps > 0 && !Object.is(timeS, now)) invalidateLattice();
       now = timeS;
       if (!rising.length) return;
       growthRevision++;

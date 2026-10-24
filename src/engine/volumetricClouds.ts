@@ -751,6 +751,9 @@ export class VolumetricCloudLayer {
    * reads their link synchronously (2026-10-14, the MP stream: the 224 returning tab's Garage freeze).
    */
   private linkPending: Promise<void> | null = null;
+  /** (perf-249) A tier's trace linking in parallel while the current tier draws (syncTier). */
+  private pendingTrace: { tier: string; material: THREE.ShaderMaterial; linked: boolean } | null = null;
+  private quadLinkGeometry: THREE.BufferGeometry | null = null;
   private since = 0;
   private readonly prevCam = { pos: new THREE.Vector3(), right: new THREE.Vector3(1, 0, 0), up: new THREE.Vector3(0, 1, 0), fwd: new THREE.Vector3(0, 0, -1), tan: new THREE.Vector2(1, 1) };
   private readonly cam = { pos: new THREE.Vector3(), right: new THREE.Vector3(1, 0, 0), up: new THREE.Vector3(0, 1, 0), fwd: new THREE.Vector3(0, 0, -1), tan: new THREE.Vector2(1, 1) };
@@ -1147,15 +1150,72 @@ export class VolumetricCloudLayer {
   }
 
   /** The quality tier's trace program (rebuilt only when the tier changes). */
-  private syncTier(): void {
+  /**
+   * The trace at the quality tier the preset resolves to. `immediate` (the warms, under a cover) swaps the program at
+   * once, as always; a live frame (beforeSceneRender) links the new tier's program in parallel and keeps drawing the old
+   * tier until it is linked (perf-249, the battle-scale traces: a tier change in battle — the auto ladder, a recovery
+   * preset lifting, the settings — made the next frame's trace read the ray march's link synchronously, a 0.4 s freeze
+   * at 7 v 7 and seconds at 14 v 14 while the GPU process was loaded). Without KHR_parallel_shader_compile the swap is
+   * immediate.
+   */
+  private syncTier(immediate = false): void {
+    const pending = this.pendingTrace;
+    if (pending && (immediate || pending.linked)) {
+      this.pendingTrace = null;
+      if (pending.linked && !immediate) {
+        this.adoptTrace(pending.material, pending.tier);
+        return;
+      }
+      pending.material.dispose();
+    }
     // (2026-10-07, the cost rule's CPU: the preset is resolved once — it reads the stored choice — and every 15 frames; a
     // settings change takes a quarter of a second)
-    if (this.frame % 15 !== 0 && this.traceTier) return;
+    if (this.frame % 15 !== 0 && this.traceTier && !immediate) return;
     const name = resolvePresetName();
     const tier = CLOUD_TIERS[name] ? name : 'high';
+    if (this.pendingTrace) {
+      if (this.pendingTrace.tier === tier) return;
+      // the preset moved again while a tier was linking: that tier is not drawn
+      this.pendingTrace.material.dispose();
+      this.pendingTrace = null;
+    }
     if (tier === this.traceTier) return;
+    const next = this.makeTraceMaterial(tier, this.traceMaterial.uniforms.uAtmoKnee.value as THREE.Vector3);
+    const renderer = this.renderer as THREE.WebGLRenderer & { compileAsync?: THREE.WebGLRenderer['compileAsync'] };
+    if (immediate || !this.traceTier || typeof renderer.compileAsync !== 'function') {
+      this.adoptTrace(next, tier);
+      return;
+    }
+    const entry = { tier, material: next, linked: false };
+    this.pendingTrace = entry;
+    // the variant renderQuad draws: the trace target (its output space), no tone mapping, no XR, the quad's geometry
+    const scene = new THREE.Scene();
+    const mesh = new THREE.Mesh(this.quadLinkGeometry ??= new THREE.PlaneGeometry(2, 2).deleteAttribute('normal'), next);
+    mesh.frustumCulled = false;
+    scene.add(mesh);
+    const prevTarget = renderer.getRenderTarget();
+    const prevFace = renderer.getActiveCubeFace(), prevMip = renderer.getActiveMipmapLevel();
+    const prevXr = renderer.xr.enabled, prevToneMapping = renderer.toneMapping;
+    let compiled: Promise<unknown>;
+    try {
+      renderer.xr.enabled = false;
+      renderer.toneMapping = THREE.NoToneMapping;
+      renderer.setRenderTarget(this.trace);
+      compiled = renderer.compileAsync(scene, new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1));
+    } catch (error) {
+      compiled = Promise.reject(error);
+    } finally {
+      renderer.xr.enabled = prevXr;
+      renderer.toneMapping = prevToneMapping;
+      renderer.setRenderTarget(prevTarget, prevFace, prevMip);
+    }
+    // (a failed parallel link still swaps: the draw then links it as it always did)
+    void compiled.then(() => undefined, () => undefined).then(() => { entry.linked = true; });
+  }
+
+  /** Draw the trace with `next` from now on: every uniform object carried over from the old one, the old disposed. */
+  private adoptTrace(next: THREE.ShaderMaterial, tier: string): void {
     const old = this.traceMaterial;
-    const next = this.makeTraceMaterial(tier, old.uniforms.uAtmoKnee.value as THREE.Vector3);
     // carry every uniform object over (the medium's and the lookup's are shared by reference)
     for (const key of Object.keys(old.uniforms)) {
       if (key === 'uMarchMax' || key === 'uStepMin' || key === 'uStepGrowth' || key === 'uDetailRange') continue;
@@ -1809,7 +1869,7 @@ export class VolumetricCloudLayer {
     if (!this.active) return Promise.resolve();
     const renderer = this.renderer as THREE.WebGLRenderer & { compileAsync?: THREE.WebGLRenderer['compileAsync'] };
     if (typeof renderer.compileAsync !== 'function') { this.warm(); return Promise.resolve(); }
-    this.syncTier();
+    this.syncTier(true);
     const bake = this.volumes ? null : cloudVolumeBake();
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
@@ -1869,7 +1929,7 @@ export class VolumetricCloudLayer {
     const prevW = this.targetWidth, prevH = this.targetHeight;
     if (!prevW || !prevH) this.resize(16, 16);
     try {
-      this.syncTier();
+      this.syncTier(true);
       // (round 2, D1) the warm's 1 x 1 trace never samples a live target's depth
       this.releaseSceneDepth();
       this.renderQuad(this.traceMaterial, this.trace);
@@ -1895,6 +1955,9 @@ export class VolumetricCloudLayer {
     this.copyTarget?.dispose();
     this.copyMaterial?.dispose();
     this.traceMaterial.dispose();
+    this.pendingTrace?.material.dispose();
+    this.pendingTrace = null;
+    this.quadLinkGeometry?.dispose();
     this.resolveMaterial.dispose();
     this.domeMaterial.dispose();
     this.bsmMaterial.dispose();

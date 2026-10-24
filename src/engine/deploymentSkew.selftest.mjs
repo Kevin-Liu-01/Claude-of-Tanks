@@ -69,7 +69,7 @@ globalThis.fetch = async (request) => {
 
 const studioResponse = await middleware(new Request('https://cot.kevinliu.studio/studio'));
 const studioHtml = await studioResponse.text();
-assert.match(studioHtml, /<title>Scene Studio — Stage Cinematic Tank Battles \| Claude of Tanks<\/title>/);
+assert.match(studioHtml, /<title>Scene Studio · Claude of Tanks<\/title>/, 'the ruling\'s form: the page, then the game');
 assert.match(studioHtml, /brand\/og\/studio\.jpg/);
 assert.match(studioHtml, /<main id="game-shell">Playable app<\/main>/,
   'route metadata must preserve the playable document body');
@@ -78,7 +78,7 @@ const inviteResponse = await middleware(new Request(
   'https://cot.kevinliu.studio/?room=HKP5XW&mode=lan&host=Commander%2009HY',
 ));
 const inviteHtml = await inviteResponse.text();
-assert.match(inviteHtml, /Join Commander 09HY’s LAN Battle — Claude of Tanks/);
+assert.match(inviteHtml, /Join Commander 09HY’s LAN Battle · Claude of Tanks/);
 assert.match(inviteHtml, /LAN battle room HKP5XW/);
 assert.match(inviteHtml, /brand\/og\/private-room\.jpg/);
 assert.match(inviteHtml, /name="robots" content="noindex, nofollow, noarchive, max-image-preview:large"/);

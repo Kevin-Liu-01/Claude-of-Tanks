@@ -30,10 +30,11 @@ let media: MediaPlayerModule | null = null;
 const pageVideos = document.querySelectorAll<HTMLVideoElement>('video[data-media-player], video[data-autoplay-video]');
 const videoLabels = (playing: boolean, video: HTMLVideoElement): string => t(playing ? 'publicPages.video.pauseAria'
   : 'publicPages.video.playAria', { label: video.dataset.i18nLabel ? t(video.dataset.i18nLabel) : video.dataset.label || '' });
+const videoTips = (playing: boolean): string => t(playing ? 'publicPages.video.pauseTip' : 'publicPages.video.playTip');
 const mediaModule = pageVideos.length
   ? Promise.all([import('./mediaPlayer.ts'), import('./mediaPlayer.css')]).then(([module]) => {
     media = module;
-    module.mountMediaPlayers(pageVideos, videoLabels);
+    module.mountMediaPlayers(pageVideos, videoLabels, videoTips);
     return module;
   })
   : null;

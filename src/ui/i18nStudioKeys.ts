@@ -22,6 +22,8 @@ const STUDIO_KEY_PREFIXES = Object.freeze([
   'studio.sceneLink.',
   // the Premiere workspace: header, outliner, inspector, shelf and timeline (studioPanel.ts, brand-ui 242)
   'studio.ws.',
+  // every message a Studio module throws, which the panel shows (brand-ui 247, the zh audit)
+  'studio.error.',
 ]);
 // single keys it added beside older Studio families
 const STUDIO_KEYS = new Set([

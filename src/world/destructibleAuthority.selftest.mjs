@@ -26,7 +26,11 @@ const source = readFileSync(new URL('./props.ts', import.meta.url), 'utf8');
 const start = source.indexOf('  const D_CELL = 8;');
 const end = source.indexOf('\n  return { group, obstacles, colliders,', start);
 assert.ok(start > 0 && end > start, 'production post-build runtime boundaries exist');
-const runtimeSource = stripTypeScriptTypes(`function fixture() {${source.slice(start, end)}
+// (perf-248) the async build's join for the broken-vehicle pool is a generator step; the fixture has no pool (vehiclePool
+// null below), so the yield becomes a no-op statement and the plain function compiles
+const BROKEN_JOIN = "yield { stage: 'broken-vehicles', brokenVehicles: vehiclePool.settled(BROKEN_VEHICLE_WAIT_MS), stealBrokenVehicle };";
+assert.ok(source.slice(start, end).includes(BROKEN_JOIN), 'the runtime tail joins the broken-vehicle pool (perf-248)');
+const runtimeSource = stripTypeScriptTypes(`function fixture() {${source.slice(start, end).replace(BROKEN_JOIN, 'void 0;')}
 return { crushDestructible, resetDestructibles, updateProps, crushAnims, pendingBlasts, registerDestructibles };
 }`);
 const runtimeBody = runtimeSource.slice(runtimeSource.indexOf('{') + 1, runtimeSource.lastIndexOf('}'));
@@ -121,6 +125,8 @@ function fixture(specs = [['crate', 0, 0], ['wallstone', 0, 0], ['barrel', 0, 0]
     joinStructureShells() {},
     // (F2, 2026-10-13) and merges its buildings' roof decks into the records before it returns; no structures here either
     mergeStructureDecks() {}, colliders: [],
+    // (perf-248) and joins its pooled broken vehicle bodies; no pool here
+    vehiclePool: null, pendingBroken: [], joinBrokenVehicles() {}, BROKEN_VEHICLE_WAIT_MS: 15000, stealBrokenVehicle: () => false,
     // (the maps lane, 228) the props' stream counters the runtime's tail publishes (the civic receipts read them)
     placementDraws: null, mainDraws: 0,
   };

@@ -91,12 +91,12 @@ export function publicNavHtml(shell: PublicShellPage, text: ShellText): string {
     + `<a class="public-nav__brand" href="/home"${shell.page === 'home' ? ' aria-current="page"' : ''} aria-label="${escapeHtml(text('publicNav.brandAria'))}" data-i18n-aria-label="publicNav.brandAria">${markMarkup(28)}${WORDMARK}</a>`
     + `<div class="public-nav__links">${pageLinks(shell.page, text)}</div>`
     + `<div class="public-nav__tools">${languageLinks(shell.path, text, 'public-nav__lang')}${github}`
-    + `<a class="cot-btn cot-btn--primary cot-btn--sm public-nav__cta" href="/">${play}</a>`
+    + `<a class="cot-c-btn cot-c-btn--primary cot-c-btn--36 public-nav__cta" href="/">${play}</a>`
     + `<button class="public-nav__menu-trigger" type="button" aria-expanded="false" aria-controls="public-nav-menu" aria-label="${escapeHtml(text('publicNav.openMenu'))}" data-i18n-aria-label="publicNav.openMenu">${iconMarkup('menu', 24)}</button></div>`
     + `</div><div class="public-nav__menu" id="public-nav-menu" role="group" aria-label="${escapeHtml(text('publicNav.menuAria'))}" data-i18n-aria-label="publicNav.menuAria" hidden>`
     + `<div class="public-nav__menu-links">${pageLinks(shell.page, text)}</div>`
     + `<div class="public-nav__menu-tools">${languageLinks(shell.path, text, 'public-nav__lang')}${github}</div>`
-    + `<a class="cot-btn cot-btn--primary cot-btn--lg public-nav__menu-play" href="/">${play}</a></div></nav>`;
+    + `<a class="cot-c-btn cot-c-btn--primary cot-c-btn--56 public-nav__menu-play" href="/">${play}</a></div></nav>`;
 }
 
 /** The footer: mark, pages, language, source with its deferred star count, the credit line. */

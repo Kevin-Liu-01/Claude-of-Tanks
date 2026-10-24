@@ -17,7 +17,8 @@
  */
 import * as THREE from 'three';
 import {
-  planStudioLight, type StudioCloudIdentity, type StudioLight, type StudioLightLab, type StudioLightPlan, type StudioTimeOfDay,
+  planStudioLight, studioTimeLightsLamps, type StudioCloudIdentity, type StudioLight, type StudioLightLab, type StudioLightPlan,
+  type StudioTimeOfDay,
 } from './studioLight.ts';
 import { MARS_SKY_PRESET } from '../engine/marsAtmosphere.ts';
 import { setVehicleReadabilityScale } from '../vehicles/vehicleReadability.ts';
@@ -25,6 +26,7 @@ import type { MapSkyConfig } from '../world/maps/horizon.ts';
 import type { bakeHorizonRelief, HorizonReliefField } from '../world/horizonRelief.ts';
 import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
 import { createNightLightingRuntime, type NightLightingBudget, type NightLightingRuntime } from '../engine/nightLightingRuntime.ts';
+import { t } from '../ui/i18n.ts';
 
 interface StudioLightWorld {
   readonly mapId: string;
@@ -267,7 +269,7 @@ export function createStudioLightRuntime(options: StudioLightRuntimeOptions): St
 
   function syncNight(): void {
     const world = options.getWorld();
-    const on = !!world && !!current && (current.time === 'dusk' || current.time === 'night');
+    const on = !!world && !!current && studioTimeLightsLamps(current.time);
     if (!on) {
       if (nightRoot) night?.reset();
       nightRoot = null;
@@ -284,7 +286,7 @@ export function createStudioLightRuntime(options: StudioLightRuntimeOptions): St
 
   function apply(time: StudioTimeOfDay, light: StudioLight | null): StudioLightPlan {
     const world = options.getWorld();
-    if (!world) throw new Error('Studio light requires an active battlefield');
+    if (!world) throw new Error(t('studio.error.lightNeedsMap'));
     const authored = studioAuthoredSky(world);
     // QA calibration probes may set window.__STUDIO_LIGHT_LAB before applying a light (never set by the product)
     const lab = (globalThis as { __STUDIO_LIGHT_LAB?: StudioLightLab }).__STUDIO_LIGHT_LAB ?? null;

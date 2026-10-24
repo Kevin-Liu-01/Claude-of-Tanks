@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
  * Two real player views of ONE live multiplayer v2 match, side by side: public/media/multiplayer-r1/dual-perspective.webp
- * (2400×700; the home page's and the manual's multiplayer figure, and the source of the
- * docs-multiplayer social card in tools/marketing-shots/generate-og-images.mjs), with manifest.json beside it.
+ * (2400×700), with manifest.json beside it. Since S12 (2026-10-24) the pages' multiplayer figure and the docs-multiplayer
+ * social card show public/media/ui-246/multiplayer-pair.webp instead, the post-overhaul pair from
+ * mode-battle-shots.mjs features/multiplayer --rooms-double.
  *
  * The v1 tool of the same name drove v1's signaling server and browser host, and filmed each perspective in a match of
  * its own; it left the tree with the v1 stack (docs/MULTIPLAYER-V2.md §13.10). This one seats both players in one v2

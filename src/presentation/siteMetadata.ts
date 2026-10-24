@@ -29,7 +29,7 @@ const INDEX_ROBOTS = 'index, follow, max-image-preview:large, max-snippet:-1, ma
 const PRIVATE_ROBOTS = 'noindex, nofollow, noarchive, max-image-preview:large';
 
 const GAME_METADATA: SiteMetadata = {
-  title: `Claude of Tanks — Free Browser Tank Game | ${PRODUCT_STATS.productionVehicles} Tanks, ${PRODUCT_STATS.battlefields} Battlefields`,
+  title: `Claude of Tanks · Free Browser Tank Game · ${PRODUCT_STATS.productionVehicles} Tanks, ${PRODUCT_STATS.battlefields} Battlefields`,
   description: `Claude of Tanks is a free browser-native armored warfare game with ${PRODUCT_STATS.productionVehicles} production vehicles, ${PRODUCT_STATS.battlefields} battlefields, bot and multiplayer battles, X-ray killcams, and a cinematic scene studio — pure Three.js, no install, no account.`,
   canonical: `${SITE_ORIGIN}/`,
   url: `${SITE_ORIGIN}/`,
@@ -37,12 +37,12 @@ const GAME_METADATA: SiteMetadata = {
   imageAlt: 'Claude of Tanks in-engine armored battle with the commander mark',
   type: 'website',
   robots: INDEX_ROBOTS,
-  ogTitle: 'Claude of Tanks — Free Browser Tank Game',
-  ogDescription: `Free-roam armored warfare in the browser — ${PRODUCT_STATS.productionVehicles} production vehicles, ${PRODUCT_STATS.battlefields} battlefields, bot and multiplayer battles, and killcam X-rays. Pure Three.js, no install.`,
+  ogTitle: 'Claude of Tanks · Free Browser Tank Game',
+  ogDescription: `Free-roam armored warfare in the browser, with ${PRODUCT_STATS.productionVehicles} production vehicles, ${PRODUCT_STATS.battlefields} battlefields, bot and multiplayer battles, and killcam X-rays. Pure Three.js, no install.`,
 };
 
 export const STUDIO_METADATA: SiteMetadata = {
-  title: 'Scene Studio — Stage Cinematic Tank Battles | Claude of Tanks',
+  title: 'Scene Studio · Claude of Tanks',
   description: 'Open the Claude of Tanks Scene Studio to stage vehicles, maps, cameras, weather, articulation, effects, timelines, stills, GIFs, and cinematic battle videos directly in your browser.',
   canonical: `${SITE_ORIGIN}/studio`,
   url: `${SITE_ORIGIN}/studio`,
@@ -50,7 +50,7 @@ export const STUDIO_METADATA: SiteMetadata = {
   imageAlt: 'Claude of Tanks Scene Studio composing an in-engine urban tank battle',
   type: 'website',
   robots: INDEX_ROBOTS,
-  ogTitle: 'Scene Studio — Claude of Tanks',
+  ogTitle: 'Scene Studio · Claude of Tanks',
   ogDescription: 'Compose cinematic tank scenes with current vehicles, maps, cameras, weather, effects, timelines, stills, GIFs, and video.',
 };
 
@@ -136,7 +136,7 @@ export function privateRoomMetadata(url: URL, locale: SupportedLocale = 'en-US')
     imageAlt: catalogText(locale, 'metadata.room.imageAlt'),
     type: 'website',
     robots: PRIVATE_ROBOTS,
-    ogTitle: title.replace(' — Claude of Tanks', ''),
+    ogTitle: title.replace(' · Claude of Tanks', ''),
     ogDescription: description,
   };
 }

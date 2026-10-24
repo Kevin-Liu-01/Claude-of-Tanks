@@ -10,7 +10,7 @@ import {
 import { graphLabels } from '../../tools/receipt-kit.test-support.mjs';
 
 assert.deepEqual(residentResourceLimits('mobile'), {
-  pedestalVisuals: 2,
+  pedestalVisuals: 3,
   worldScenes: 1,
 });
 assert.deepEqual(residentResourceLimits('desktop'), {

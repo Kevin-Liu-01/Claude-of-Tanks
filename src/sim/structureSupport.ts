@@ -114,12 +114,13 @@ export function structureTopAt(
   // neither — not of the underside's lowest point over the whole record, which read the stone under a raised nose as a wall
   const planeCeiling = plane ? plane.y + plane.slopeX * (x - plane.cx) + plane.slopeZ * (z - plane.cz) + SUPPORT_STEP_UP_M : NaN;
   for (let i = 0; i < count; i++) {
-    const ceiling = (floors ? floors[i] : bellyY) + SUPPORT_STEP_UP_M;
     const record = candidates[i];
+    // (perf-249: the point's box test first, the cheapest of these skips and the one most candidates fail; each only skips)
+    if (x < record.min[0] || x > record.max[0] || z < record.min[2] || z > record.max[2]) continue;
     if (record.crushed || record.dead || record.crushable) continue; // crushable cover is crushed, not stood on
     // (a drawn top is the stone's own surface, a floor however low: the push holds a hull off only its section a step up)
     if (record.max[1] - record.min[1] < SUPPORT_MIN_HEIGHT_M && !collisionRecordHasDrawnTop(record)) continue;
-    if (x < record.min[0] || x > record.max[0] || z < record.min[2] || z > record.max[2]) continue;
+    const ceiling = (floors ? floors[i] : bellyY) + SUPPORT_STEP_UP_M;
     const shape = record.shape2;
     if (shape && shape.kind === 'compound') {
       const standing = stand ? stand.parts[i] : null;
