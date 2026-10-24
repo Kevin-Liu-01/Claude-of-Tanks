@@ -141,7 +141,10 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
       againOf = offered && last?.mapId && host.mapIds.has(last.mapId) ? { mode: offered.mode, mapId: last.mapId } : null;
       again.hidden = !againOf;
       if (againOf && offered) {
-        again.innerHTML = `${uiIconSVG('rematch', 15)}<span>${t('garage.deploy.again', { mode: offered.label, map: t(`map.${againOf.mapId}`) })}</span>`;
+        // the full chip on a wide screen, "Again" alone on a phone (the mode and the battlefield stay its accessible name)
+        const full = t('garage.deploy.again', { mode: offered.label, map: t(`map.${againOf.mapId}`) });
+        again.innerHTML = `${uiIconSVG('rematch', 15)}<span class="full">${full}</span><span class="short">${t('garage.deploy.againShort')}</span>`;
+        again.setAttribute('aria-label', full);
       }
       renderTiers();
       const seconds = host.loadEstimateS();

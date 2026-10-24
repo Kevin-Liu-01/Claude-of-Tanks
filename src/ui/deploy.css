@@ -319,8 +319,14 @@ body[data-cot-panels='overlay'] .cot-garage .cot-battle-choice.cot-deploy-card[a
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-choice.cot-deploy-card[aria-pressed='true'] .choice-name{font:700 var(--fs-24)/1 var(--font-display);}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-rows .cot-battle-choice{min-height:56px;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-rows .choice-icon{width:40px;height:40px;}
-body[data-cot-panels='overlay'] .cot-garage :is(.cot-deploy-lower,.cot-deploy-keys,.cot-deploy-again,.cot-deploy-badge){display:none;}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-end>span{display:none;}
+body[data-cot-panels='overlay'] .cot-garage :is(.cot-deploy-lower,.cot-deploy-keys,.cot-deploy-badge){display:none;}
+/* the head's last battle again, as "Again" (91's .bar .again), and the Deploy bar's estimate */
+.cot-garage .cot-deploy-again .short{display:none;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-again{order:1;margin:0 0 0 auto;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tabs{order:2;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-again .full{display:none;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-again .short{display:inline;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-end{font-size:var(--fs-13);}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-plate{display:block;padding:10px;box-shadow:var(--e1);}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-details{overflow:visible;gap:10px;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-preview{display:none;}
@@ -340,4 +346,8 @@ body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op{grid-template-columns
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op-map{display:none;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op-index{font-size:var(--fs-32);}
 @media (prefers-reduced-motion:reduce){.cot-garage .cot-battle-menu.open *{transition:none;}}
+/* a phone held upright keeps the tab bar under the Deploy screen (showroom.css): the dock and the scroll stand over it */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-battle-menu.open{bottom:calc(var(--cot-tabbar-h) + env(safe-area-inset-bottom,0px));}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-battle-menu.open .cot-battle-menu-foot{
+  bottom:calc(var(--cot-tabbar-h) + env(safe-area-inset-bottom,0px));padding-bottom:10px;}
 }
