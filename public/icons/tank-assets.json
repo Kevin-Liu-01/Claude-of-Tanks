@@ -698716,13 +698716,13 @@
             "name": "turretRing",
             "min": [
               -0.9379,
-              1.761,
-              -2.0817
+              1.7695,
+              -2.11
             ],
             "max": [
               0.9379,
-              2.011,
-              -0.2183
+              2.0195,
+              -0.2466
             ],
             "turretLocal": false
           },
@@ -699001,8 +699001,8 @@
           }
         ]
       },
-      "geometryHash": "dd1251b2",
-      "metadataHash": "2b00663d",
+      "geometryHash": "350ed652",
+      "metadataHash": "67108bcf",
       "presentationAnchor": {
         "xM": 0.0016,
         "zM": -0.0149
@@ -699028,7 +699028,7 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 8,
-          "gunmetal": 5,
+          "gunmetal": 6,
           "opticGlass": 2,
           "fittingPaint": 1,
           "unclassified": 17,
@@ -699062,39 +699062,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 135891,
-          "sha256": "2b96b39dd24c7f98560ae42956ec780d6dc5f76c58f592969d2a9308b8d4bea3"
+          "bytes": 136989,
+          "sha256": "c6849b891af42dae615092656f82b4262e97c1bc850b0f911593aa251ce34243"
         },
         "modulesSide": {
           "file": "namer_ifv_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 142970,
-          "sha256": "bca387d96e173a22c6d4b31d0c572b50453e317dec2e20041c8e74f61d833c9b"
+          "bytes": 144457,
+          "sha256": "0dabe4bab7e4eec10e835f57dc2845600d6bec1b1e61997eff2233323223fa74"
         },
         "crewSide": {
           "file": "namer_ifv_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 132512,
-          "sha256": "914ab62611d5da091fcace7c247589f1068de5635047ed6991ba86f0fee015fc"
+          "bytes": 132379,
+          "sha256": "c2debcfaa53b6057d0511b269fd313f1f27790a436a9aec6177773a4b77760ba"
         },
         "angle": {
           "file": "namer_ifv_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 28460,
-          "sha256": "7436ada8c2589617571c1f00bd33baf083c98bf65226c3e594a3ed1d08e0bab4",
+          "bytes": 28470,
+          "sha256": "77d6005c3d6ec28a5bfb46d76c38979e9e79146116ca13157aff53cd3ac578bf",
           "thumbnail": {
             "file": "thumbs/namer_ifv_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11508,
-            "sha256": "c507e61c97e764ba22b4c523eb0607a3471a28e751438d974b4feedecd467670"
+            "bytes": 11490,
+            "sha256": "4b5d27e939f9f210b236df6e99cd57d74d071251efce22e7a69953f82f843cb5"
           }
         },
         "top": {
@@ -699102,16 +699102,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17244,
-          "sha256": "7a61d569ff8fa853808bc671126ca117115d6488da2f4bae490351f8a7e1bf76"
+          "bytes": 17306,
+          "sha256": "b8eb7b077eb704e92bbaa12dfe1c99ffb85b6d47b3c016de029aeb534f783888"
         },
         "side": {
           "file": "namer_ifv_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 18112,
-          "sha256": "d37da15e9bf2c8dfc7f0e5aec47b7069cb8caf44d9b2e177b25f4e70275c8ef7"
+          "bytes": 18110,
+          "sha256": "f23a6a6a2c9d0ac3cd35b90e8bcb31e03fcd0b7a95106ee865fbc6cef6cb6bfd"
         },
         "topSilhouette": {
           "file": "namer_ifv_top_silhouette.png",
@@ -699126,8 +699126,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5871,
-          "sha256": "d096a0500165d8e33603c6f109cbae4455a8c0c51e3720aa2ed9b82678c8bf0d"
+          "bytes": 5862,
+          "sha256": "a26af043dc1764e43849077154a7cd955aede57efdc866bc0dc34ce4cfcf4f37"
         },
         "markings": {
           "file": "namer_ifv_markings.png",
