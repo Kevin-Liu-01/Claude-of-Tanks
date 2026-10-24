@@ -1901151,24 +1901151,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 90808,
-          "sha256": "7e0414a113e4fb4299f81b2baa36af47402052c97f98f0ac68428433e3bb16c0"
+          "bytes": 92307,
+          "sha256": "ac0ceed7e77304825a53bb460d54f331c13b6d2198e34ca20541ace8bf364162"
         },
         "modulesSide": {
           "file": "t90ms_tagil_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 88294,
-          "sha256": "34442f7dab1cb68595c0b0358ac53ba02be94d66ddc5f1a1422874c0895a2911"
+          "bytes": 89781,
+          "sha256": "5e9f4863a4c3e44957d89b974cacdada279ef4abf03271f7a02a536a5829ff11"
         },
         "crewSide": {
           "file": "t90ms_tagil_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 77374,
-          "sha256": "c28c8bf3526ab0434d16a0109831f46f5882fc5a2718185373ea85bb4b6ef861"
+          "bytes": 77386,
+          "sha256": "575da65de11bb23619371674d7b1f6257ef05c6adc20ded0562d9ebfbe91705f"
         },
         "angle": {
           "file": "t90ms_tagil_angle.webp",

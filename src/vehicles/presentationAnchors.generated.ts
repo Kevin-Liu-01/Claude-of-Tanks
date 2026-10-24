@@ -432,7 +432,7 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   t90m: Object.freeze({ centerYM: 1.6126, topHalfM: 6.7707, sideHalfM: 3.3854 }),
   t90m_proryv: Object.freeze({ centerYM: 1.6659, topHalfM: 6.5203, sideHalfM: 3.2602 }),
   t90ms_2011: Object.freeze({ centerYM: 2.4953, topHalfM: 7.1479, sideHalfM: 3.5739 }),
-  t90ms_tagil: Object.freeze({ centerYM: 2.3735, topHalfM: 6.7479, sideHalfM: 3.374 }),
+  t90ms_tagil: Object.freeze({ centerYM: 2.3734, topHalfM: 6.7479, sideHalfM: 3.374 }),
   t90sm: Object.freeze({ centerYM: 1.723, topHalfM: 7.5463, sideHalfM: 3.7731 }),
   t90sm_2013: Object.freeze({ centerYM: 1.6166, topHalfM: 6.9539, sideHalfM: 3.477 }),
   tos1a_tagil: Object.freeze({ centerYM: 1.7277, topHalfM: 4.0993, sideHalfM: 2.0497 }),
