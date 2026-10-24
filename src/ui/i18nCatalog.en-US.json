@@ -1721,6 +1721,8 @@
   "publicPages.fleet.count": "{count, plural, one {# vehicle} other {# vehicles}}",
   "publicPages.fleet.none": "No vehicle matches",
   "publicPages.video.pauseAria": "Pause {label}",
+  "publicPages.video.playTip": "Play",
+  "publicPages.video.pauseTip": "Pause",
   "gallery.archive.h1": "Tank Gallery",
   "gallery.archive.searchPlaceholder": "Search",
   "gallery.archive.filter.nation": "Nation",
