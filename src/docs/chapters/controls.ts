@@ -84,9 +84,10 @@ function watchSection(): string {
 
 /** The battle on a phone (the mechanics still of the touch layout). */
 function touchFigure(): string {
-  const src = '/media/site50-r14/home/mechanics/mobile.webp';
-  return `<figure class="dm-figure">${pictureMarkup({ src, width: 1280, height: 720, alt: t('docs.controls.touchAlt'), sizes: '(width < 1100px) 100vw, 60vw',
-    rungs: [{ src: '/media/site50-r14/home/mechanics/mobile-640.webp', width: 640 }, { src, width: 1280 }] }, false)}</figure>`;
+  // the touch HUD on a phone in portrait (public/media/docs-r1 controls-touch)
+  const src = '/media/docs-r1/controls-touch-1920.webp';
+  return `<figure class="dm-figure dm-figure--phone">${pictureMarkup({ src, width: 887, height: 1920, alt: t('docs.controls.touchAlt'), sizes: '(width < 768px) 70vw, 320px',
+    rungs: [{ src: '/media/docs-r1/controls-touch-640.webp', width: 296 }, { src, width: 887 }] }, false)}</figure>`;
 }
 
 /** Hold or toggle: the actions the Accessibility settings can switch (the in-game names). */

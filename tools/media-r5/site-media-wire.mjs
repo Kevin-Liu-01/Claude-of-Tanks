@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 // site-media-wire.mjs — wires the public site and the game to the site fifty's media (public/media/site50-r14, built
-// by site-media.mjs from tools/media-r5/site-media/picks.json): the landing page's hero, screenshot rail, feature
-// reel, destruction loop, camera-path grid, mosaic and closing image, and its own shots (the Garage, multiplayer and
-// kill-cam images, the Scene Studio loop, the mechanic and mode cards: each its delivered shot under home/, or its
-// stand-in still until that is delivered); the manual's hero, trailer, chapter cards, battle
+// by site-media.mjs from tools/media-r5/site-media/picks.json): the manual's hero, trailer, chapter cards, battle
 // takes, contact sheets and archive; each topic's hero loop and figures; the game's featured stills (boot splash, Garage
-// gallery, loading screens), its JSON-LD screenshots, the 404 page and the HUD editor's backdrop (the social cards draw
-// their own pictures: tools/marketing-shots/generate-og-images.mjs); the landing contract
-// (public/media/landing-r1/manifest.json); and the catalog copy in both locales.
+// gallery, loading screens), its JSON-LD screenshots, the 404 page's social card and the HUD editor's backdrop (the
+// social cards draw their own pictures: tools/marketing-shots/generate-og-images.mjs); the landing's social-card
+// backdrops; the landing contract (public/media/landing-r1/manifest.json); and the catalog copy in both locales.
+// The landing page itself (2026-10-24, the Premiere landing) is tools/home-premiere.mjs's: its hero, rails, walls,
+// trailers and its own shots (each data-home-slot) are generated there, so the v5 landing's swaps are retired here, as
+// are the 404 page's preload and background (the Premiere 404 is built by hand).
 //
 //   node tools/media-r5/site-media-wire.mjs --root=<tree> [--dry-run]
 // Run it on an export of main after site-media.mjs. Every rewrite matches its block exactly once, or the run stops
@@ -102,38 +102,11 @@ function swapText(path, key, value, html = false) {
 }
 
 // --- the landing page's own shots (home r2, 2026-10-12) -------------------------------------------------------------
-// picks.home.features / mechanics / modes: { id, alt: { en, zh }, standIn: { id, still }, size?, sizes? }. A slot whose
-// shot site-media.mjs built (home/<group>/<id>.webp and its -640 preview) shows it with the slot's own alt text
-// (media.home.<group>.<id>); until then it shows its stand-in still with the take's title. Each <img data-home-slot>
-// in home.html is rewritten whole, so the page's srcset, sizes and alt always follow the media.
+// picks.home.features / mechanics / modes: { id, alt: { en, zh }, standIn: { id, still }, size?, sizes? }. Since the
+// Premiere landing (2026-10-24) tools/home-premiere.mjs draws each slot from home/<group>/<id>.webp; the catalogs keep
+// each slot's alt text (media.home.<group>.<id>) here.
 const HOME_GROUPS = Object.freeze({ features: [1920, 1080], mechanics: [1280, 720], modes: [1280, 720] });
-// how wide each group's images draw (home.css: the features beside their copy, the cards four to a row on a laptop,
-// two on a tablet, one at a time in the phone rails)
-const HOME_SIZES = Object.freeze({
-  features: '(max-width: 1099px) 100vw, 72vw',
-  mechanics: '(max-width: 767px) 82vw, (max-width: 1099px) 50vw, 25vw',
-  modes: '(max-width: 767px) 82vw, (max-width: 1099px) 50vw, 25vw',
-});
 const homeAltKey = (group, id) => `media.home.${group}.${camel(id)}`;
-function homeImage(group, entry) {
-  const [w, h] = entry.size ?? HOME_GROUPS[group];
-  const sizes = entry.sizes ?? HOME_SIZES[group];
-  const own = `${C}/home/${group}/${entry.id}.webp`;
-  if (BUILT.has(own)) {
-    const preview = built(`${C}/home/${group}/${entry.id}-640.webp`);
-    return { src: own, srcset: `${preview} 640w, ${own} ${w}w`, sizes, width: w, height: h, alt: entry.alt.en, altKey: homeAltKey(group, entry.id) };
-  }
-  // no stand-in may show the wrong subject (the coordinator, 2026-10-13): a slot whose stand-in is null hides until its
-  // shot lands (wireHomeShots marks its card hidden)
-  if (!entry.standIn) return null;
-  const { id, still: kind } = entry.standIn;
-  const full = still(id, kind);
-  const preview = built(`${C}/stills/${id}${kind === 'close' ? '-close' : ''}-thumb.webp`);
-  return { src: full, srcset: `${preview} 640w, ${full} 1920w`, sizes, width: 1920, height: 1080, alt: take(id).en, altKey: titleKey(id) };
-}
-const homeImageTag = (slot, im) => `<img data-home-slot="${slot}" src="${im.src}" srcset="${im.srcset}" sizes="${im.sizes}" width="${im.width}" height="${im.height}" alt="${esc(im.alt)}" data-i18n-alt="${im.altKey}" loading="lazy" decoding="async">`;
-/** A slot waiting for its shot: the plain panel in the page's own tones (home.css .v5-slot-pending), no image fetched. */
-const homePendingTag = (slot) => `<div data-home-slot="${slot}" class="v5-slot-pending" data-home-pending aria-hidden="true"></div>`;
 // the Scene Studio card's loop: the delivered recording (home/features/studio.mp4, its poster and receipt) or, until
 // then, picks.home.studio.standIn (the landing-r1 recording)
 function homeStudio() {
@@ -141,87 +114,6 @@ function homeStudio() {
   if (!BUILT.has(own)) return { ...PICKS.home.studio.standIn, own: false };
   return { video: own, poster: built(`${C}/home/features/studio.jpg`), mobile: '/media/web-video-r1/home-studio-mobile.mp4',
     label: PICKS.home.studio.label, own: true };
-}
-function wireHomeShots(H) {
-  const slots = new Set(['features/studio']);
-  for (const group of Object.keys(HOME_GROUPS)) {
-    for (const entry of PICKS.home[group] ?? []) {
-      const slot = `${group}/${entry.id}`;
-      slots.add(slot);
-      // with its shot or a stand-in the slot shows its image (and a standalone section that waited hidden shows again);
-      // with neither, a mechanic or mode card keeps its title and copy over the plain panel, and a feature's own
-      // section (an <article> or <figure>) hides until its shot lands
-      const im = homeImage(group, entry), quoted = slot.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const element = `(?:<img data-home-slot="${quoted}"[^>]*>|<div data-home-slot="${quoted}"[^>]*></div>)`;
-      const waited = new RegExp(`(<(?:article|figure)\\b[^>]*?) hidden>(?=<(?:img|div) data-home-slot="${quoted}")`);
-      if (im || group !== 'features') {
-        swap(H, new RegExp(element), () => (im ? homeImageTag(slot, im) : homePendingTag(slot)), `home slot ${slot}${im ? '' : ' (the plain panel)'}`);
-        if (waited.test(get(H))) swap(H, waited, (_, open) => `${open}>`, `home slot ${slot} shown`);
-      } else {
-        swap(H, new RegExp(`(<(?:article|figure)\\b[^>]*?)(?: hidden)?>${element}`), (_, open) => `${open} hidden>${homePendingTag(slot)}`,
-          `home slot ${slot} (no shot and no stand-in: its section must be an article or a figure to hide)`);
-      }
-    }
-  }
-  const v = homeStudio();
-  swap(H, /<video data-home-slot="features\/studio" [^\n]*?<\/video>/,
-    () => `<video data-home-slot="features/studio" muted loop playsinline preload="none" data-poster="${v.poster}" data-autoplay-video data-i18n-label="home.evidence.studioTitle" data-label="${esc(v.label)}" aria-hidden="true"><source data-src="${v.video}" data-type="video/mp4" data-mobile-src="${v.mobile}" data-mobile-type="video/mp4"></video>`,
-    'home slot features/studio');
-  // every slot on the page is a pick: a card added to home.html without one would keep whatever it was written with
-  const orphans = [...get(H).matchAll(/data-home-slot="([^"]+)"/g)].map((m) => m[1]).filter((slot) => !slots.has(slot));
-  if (orphans.length) throw new Error(`${H}: slots without a pick in picks.home: ${orphans.join(', ')}`);
-}
-
-// --- the landing page ---------------------------------------------------------------------------------------------
-const loopVideo = (id) => `<video muted loop playsinline preload="none" data-poster="${built(`${C}/loops/${id}.jpg`)}" data-autoplay-video data-i18n-label="${titleKey(id)}" data-label="${esc(take(id).en)}" aria-hidden="true"><source data-src="${built(`${C}/loops/${id}.webm`)}" data-type="video/webm" data-mobile-src="/media/web-video-r1/${id}-mobile.mp4" data-mobile-type="video/mp4"></video>`;
-function wireHome() {
-  const H = 'site/home.html';
-  const hero = PICKS.home.hero;
-  swap(H, /<link rel="preload" href="\/media\/[^"]+" as="image" type="image\/webp" fetchpriority="high">/,
-    () => `<link rel="preload" href="${heroSrc(hero[0])}" as="image" type="image/webp" fetchpriority="high">`, 'hero preload');
-  const slides = hero.map((h, i) => (i === 0
-    ? `<img class="is-active" data-hero-slide src="${heroSrc(h)}" alt="" width="1920" height="1080" fetchpriority="high" style="--hero-focus:${h.focus}">`
-    : `<img data-hero-slide data-src="${heroSrc(h)}" alt="" width="1920" height="1080" decoding="async" style="--hero-focus:${h.focus}">`));
-  swap(H, /(<div class="v5-hero-rail" data-hero-rail>\n)(?:[ \t]*<img [^\n]*\n)+([ \t]*<\/div>)/,
-    (_, open, close) => `${open}${slides.map((s) => `        ${s}\n`).join('')}${close}`, 'hero rail');
-  const rail = PICKS.home.rail.map((id) => `          <figure><img data-deferred-src="${still(id)}" alt="${esc(take(id).en)}" data-i18n-alt="${titleKey(id)}" decoding="async"></figure>\n`);
-  swap(H, /(<div class="v5-shot-rail" data-shot-rail[^>]*>\n)(?:[ \t]*<figure>[^\n]*<\/figure>\n)+([ \t]*<\/div>)/,
-    (_, open, close) => `${open}${rail.join('')}${close}`, 'screenshot rail');
-  swap(H, /(<span data-shot-position aria-live="polite">)1 \/ \d+(<\/span>)/, (_, open, close) => `${open}1 / ${PICKS.home.rail.length}${close}`, 'screenshot position');
-  // the versus wall (2026-10-19): every versus still, its matchup and its place under it
-  const wall = PICKS.home.versus.map((id) => {
-    const v = versus(id), { place, match } = versusParts(v.title.en);
-    return `        <figure><img src="${v.path}" alt="${esc(v.title.en)}" data-i18n-alt="${versusKey('title', id)}" width="${v.width}" height="${v.height}" loading="lazy" decoding="async"><figcaption><b data-i18n="${versusKey('match', id)}">${esc(match)}</b><span data-i18n="${versusKey('place', id)}">${esc(place)}</span></figcaption></figure>\n`;
-  });
-  swap(H, /(<div class="v5-versus-wall">\n)(?:[ \t]*<figure>[^\n]*<\/figure>\n)+([ \t]*<\/div>)/, (_, open, close) => `${open}${wall.join('')}${close}`, 'versus wall');
-  // the versus films (2026-10-22): each scene's moving take above the wall, a muted loop that plays in view
-  // (publicPages.ts mountViewportVideo), its first frame the poster, the phone's own 540p mp4
-  const films = PICKS.home.versusFilms.map((id) => {
-    const f = versusFilm(id);
-    return `        <figure><video muted loop playsinline preload="none" data-poster="${f.poster.path}" data-autoplay-video data-label="${esc(f.title.en)}" aria-hidden="true"><source data-src="${f.film.path}" data-type="video/mp4" data-mobile-src="${f.mobile.path}" data-mobile-type="video/mp4"></video></figure>\n`;
-  });
-  swap(H, /(<div class="v5-versus-wall v5-versus-films">\n)(?:[ \t]*<figure>[^\n]*<\/figure>\n)+([ \t]*<\/div>)/, (_, open, close) => `${open}${films.join('')}${close}`, 'versus films');
-  // the trailers row (2026-10-19): each trailer plays on a click; its poster loads as the row nears the viewport and one
-  // plays at a time (publicPages.ts mountTrailerRow)
-  const trailers = PICKS.home.trailers.map((name) => {
-    const f = trailerFilm(name), vars = `data-i18n-vars='{"seconds":"${f.seconds}"}'`;
-    return `        <figure class="v5-trailer v5-trailer--${f.shape}"><video controls playsinline preload="none" data-trailer data-poster="${f.poster}" aria-label="${esc(COPY.en[f.ariaKey].replace('{seconds}', f.seconds))}" data-i18n-aria-label="${f.ariaKey}" ${vars}><source src="${f.webm}" type="video/webm"><source src="${f.mp4}" type="video/mp4"></video><figcaption><b data-i18n="${f.nameKey}">${esc(COPY.en[f.nameKey])}</b><span data-i18n="home.trailers.seconds" ${vars}>${esc(COPY.en['home.trailers.seconds'].replace('{seconds}', f.seconds))}</span></figcaption></figure>\n`;
-  });
-  swap(H, /(<div class="v5-trailer-grid" data-trailer-row>\n)(?:[ \t]*<figure [^\n]*<\/figure>\n)+([ \t]*<\/div>)/, (_, open, close) => `${open}${trailers.join('')}${close}`, 'trailers row');
-  // the feature reel: its 900p VP9 webm, the same in H.264 for a browser that plays no VP9 (2026-10-14), the phone's mp4
-  swap(H, /(<section class="v5-film"[^>]*>\n[ \t]*)<video [^\n]*?<\/video>/,
-    (_, open) => `${open}<video muted loop playsinline preload="none" data-poster="${built(`${C}/films/reel.jpg`)}" data-autoplay-video data-i18n-label="home.reel.title" data-label="Claude of Tanks battle reel, rendered in the game engine" aria-hidden="true"><source data-src="${built(`${C}/films/reel.webm`)}" data-type="video/webm" data-fallback-src="${built(`${C}/films/reel.mp4`)}" data-fallback-type="video/mp4" data-mobile-src="/media/web-video-r1/reel-mobile.mp4" data-mobile-type="video/mp4"></video>`, 'feature reel');
-  swap(H, /(<section class="v5-destruction"[^>]*>)<video [^\n]*?<\/video>/, (_, open) => `${open}${loopVideo(PICKS.home.destruction)}`, 'destruction loop');
-  const paths = PICKS.home.paths.map((id) => `        <article>${loopVideo(id)}<div><p data-i18n="${titleKey(id)}">${esc(take(id).en)}</p></div></article>\n`);
-  swap(H, /(<div class="v5-rail-grid">\n)(?:[ \t]*<article>[^\n]*<\/article>\n)+([ \t]*<\/div>)/, (_, open, close) => `${open}${paths.join('')}${close}`, 'camera-path grid');
-  const mosaic = PICKS.home.mosaic.map((m) => `        <figure><img src="${still(m.id, m.still)}" alt="${esc(take(m.id).en)}" data-i18n-alt="${titleKey(m.id)}" loading="lazy" decoding="async"></figure>\n`);
-  swap(H, /(<div class="v5-mosaic-grid">\n)(?:[ \t]*<figure>[^\n]*<\/figure>\n)+([ \t]*<\/div>)/, (_, open, close) => `${open}${mosaic.join('')}${close}`, 'mosaic');
-  const cta = PICKS.home.cta;
-  swap(H, /(<section class="v5-cta">)<img [^>]*>/,
-    (_, open) => `${open}<img src="${still(cta.id, cta.still)}" alt="${esc(take(cta.id).en)}" data-i18n-alt="${titleKey(cta.id)}" loading="lazy">`, 'closing image');
-  // (242: the section ledes left the landing with the owner's 10-22 rule; their keys left the catalogs)
-  for (const key of ['home.reel.title', 'home.reel.cta', 'home.versus.title', 'home.trailers.title']) swapText(H, key, COPY.en[key]);
-  wireHomeShots(H);
 }
 /** A trailer the landing's row plays: its built files, length and shape, and its name's catalog keys. */
 function trailerFilm(name) {
@@ -347,9 +239,6 @@ function wireGame() {
   swap(F, /(export const FEATURED_SHOTS: readonly FeaturedShot\[\] = Object\.freeze\(\[\n)[\s\S]*?(\n\]\);)/, (_, open, close) => `${open}${entries.join('\n')}${close}`, 'featured shots');
   const shots = PICKS.featured.slice(0, 4).map((f) => `          "https://cot.kevinliu.studio${still(f.id, f.still)}"`);
   swap('index.html', /("screenshot": \[\n)(?:[ \t]*"https:\/\/cot\.kevinliu\.studio\/media\/[^"]+",?\n)+/, (_, open) => `${open}${shots.join(',\n')}\n`, 'JSON-LD screenshots');
-  const nf = PICKS.notFound;
-  swap('404.html', /<link rel="preload" href="\/media\/[^"]+" as="image">/, () => `<link rel="preload" href="${still(nf.id, nf.still)}" as="image">`, '404 preload');
-  swap('src/presentation/notFound.css', /url\('\/media\/[^']+'\) [\d.]+% [\d.]+%\/cover/, () => `url('${still(nf.id, nf.still)}') 50% 50%/cover`, '404 background');
   swap('src/ui/garage.ts', /  \/\/ Assets \+ captions come from the marketing-shots pipeline\n  \/\/ \(tools\/marketing-shots, encoded to public\/media\/featured\/\)\. The panel is\n/,
     () => `  // Assets + captions are the site fifty's stills (public/media/${PICKS.collection}/stills, picked in\n  // tools/media-r5/site-media/picks.json; captions from the catalog). The panel is\n`, 'Garage panel comment',
     /Assets \+ captions are the site fifty's stills/);
@@ -472,10 +361,6 @@ function studioContract() {
 // Copy that changes with the media, in both locales. Keys the pages already use keep their names.
 const COPY = {
   en: {
-    'home.reel.title': 'Watch tank combat in the game engine',
-    'home.reel.cta': `Watch ${PICKS.docs.reels.length} battle takes`,
-    'home.versus.title': 'Pit any two tanks against each other',
-    'home.trailers.title': 'Watch the trailers',
     'home.trailers.trailer': 'Trailer',
     'home.trailers.trailer30': '30-second cut',
     'home.trailers.trailerVertical': 'Vertical cut',
@@ -508,10 +393,6 @@ const COPY = {
     'docs.topic.studio.media2': 'Ten of the fifty frames on one contact sheet, used for visual review',
   },
   zh: {
-    'home.reel.title': '观看游戏引擎中的坦克战斗',
-    'home.reel.cta': `观看 ${PICKS.docs.reels.length} 段战斗镜头`,
-    'home.versus.title': '让任意两辆坦克正面交锋',
-    'home.trailers.title': '观看预告片',
     'home.trailers.trailer': '预告片',
     'home.trailers.trailer30': '30 秒剪辑版',
     'home.trailers.trailerVertical': '竖屏版',
@@ -575,7 +456,6 @@ function wireCatalogs() {
 
 function main() {
   if (!existsSync(join(ROOT, 'site/home.html'))) throw new Error(`--root=${ROOT} is not a tree with site/home.html`);
-  wireHome();
   wireDocs();
   wireTopics();
   wireReels();

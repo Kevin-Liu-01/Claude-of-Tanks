@@ -136,7 +136,8 @@ export function combatSections(): RichSection[] {
       + list([['docs.combat.fact.close', { min: String(MIN_SPOT_RANGE_M) }], ['docs.combat.fact.linger', { linger: String(SPOT_LINGER_S) }],
         ['docs.combat.fact.sixth', { delay: String(SIXTH_SENSE_DELAY_S), show: String(SIXTH_SENSE_SHOW_S) }],
         ['docs.combat.fact.firing', {}], ['docs.combat.fact.bushes', { bush: pct(MAX_BUSH_BONUS), paint: pct1(CAMO_PAINT_BONUS) }]])
-      + `<figure class="dm-figure">${still('spotting', t('docs.combat.spottingAlt'))}</figure>`],
+      + `<figure class="dm-figure">${pictureMarkup({ src: '/media/docs-r1/combat-spotting-1920.webp', width: 1920, height: 1080, alt: t('docs.combat.spottingAlt'), sizes: '(width < 1100px) 100vw, 50vw',
+        rungs: [{ src: '/media/docs-r1/combat-spotting-640.webp', width: 640 }, { src: '/media/docs-r1/combat-spotting-1920.webp', width: 1920 }] }, false)}</figure>`],
   ];
   return sections.map(([id, title, html]) => ({ id, title, html, text: plain(html) }));
 }

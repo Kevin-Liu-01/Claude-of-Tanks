@@ -1750,7 +1750,7 @@
         "verdant"
       ],
       "boot": true,
-      "focal": "52% 62%"
+      "focal": "45% 62%"
     },
     {
       "id": "s07-lake-shellfire",
@@ -1767,7 +1767,7 @@
         "urban",
         "ruinspires"
       ],
-      "focal": "50% 55%"
+      "focal": "57% 55%"
     },
     {
       "id": "s29-fjord-road-kill",
@@ -1776,7 +1776,7 @@
         "saltwind",
         "coastal"
       ],
-      "focal": "50% 55%"
+      "focal": "38% 55%"
     },
     {
       "id": "s13-farm-race",
@@ -1785,7 +1785,7 @@
         "steppe",
         "longleaf"
       ],
-      "focal": "58% 55%"
+      "focal": "64% 55%"
     },
     {
       "id": "s26-minaret-fire",
@@ -1798,6 +1798,7 @@
     },
     {
       "id": "s05-barn-advance",
+      "focal": "64% 50%",
       "still": "close",
       "maps": [
         "polders"
@@ -1810,7 +1811,7 @@
         "monsoon",
         "mangrove"
       ],
-      "focal": "45% 55%"
+      "focal": "57% 55%"
     },
     {
       "id": "s33-water-tower",
@@ -1823,6 +1824,7 @@
     },
     {
       "id": "s34-furnace-salvo",
+      "focal": "38% 50%",
       "maps": [
         "foundry",
         "caldera",
@@ -1832,6 +1834,7 @@
     },
     {
       "id": "s38-church-knockout",
+      "focal": "39% 50%",
       "still": "close",
       "maps": [
         "winter"
@@ -1843,10 +1846,11 @@
         "orchard",
         "autumn"
       ],
-      "focal": "50% 62%"
+      "focal": "78% 62%"
     },
     {
       "id": "s37-river-village",
+      "focal": "26% 50%",
       "still": "close",
       "maps": [
         "delta"
@@ -1854,6 +1858,7 @@
     },
     {
       "id": "s39-lakeside-village",
+      "focal": "43% 50%",
       "maps": [
         "reservoir",
         "cliffbridge",
