@@ -7,7 +7,9 @@
 import { createGunshipBattleVisual } from './gunshipVisual.ts';
 import { Vector3, type Object3D, type Scene } from 'three';
 import { getSpec, PRODUCTION_TANK_IDS, TANK_IDS } from '../vehicles/specs.ts';
-import { battleStaticDrawMerge, createTank, createTankSteps, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
+import {
+  battleGeometryQuality, battleStaticDrawMerge, createTank, createTankSteps, type CreateTankOptions,
+} from '../vehicles/fleetFactory.ts';
 import { rosterVisualAttempts } from './rosterVisualFallback.ts';
 import { ERA_NEIGHBOURS, isBotTankId, rankMatchCandidates } from './matchmaking.ts';
 import { ENEMY_NATION_OPTIONS } from './teamArrangement.ts';
@@ -248,14 +250,6 @@ export function nextStagedBake<Entity extends RosterEntity>(
   const ent = game.tanks.find((e) => !e.visual && (!predicate || predicate(e)));
   if (!ent) return null;
   return { ent, quality: textureQualityFor(game, ent) };
-}
-
-/** Visual-only battle geometry policy; garage/Studio use separate builders. */
-export function battleGeometryQuality(
-  playerActor: boolean,
-  deviceTier: string = getDeviceTier(),
-): NonNullable<CreateTankOptions['geometryQuality']> {
-  return !playerActor || deviceTier === 'mobile' ? 'low' : 'high';
 }
 
 /**

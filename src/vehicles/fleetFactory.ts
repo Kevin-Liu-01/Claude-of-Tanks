@@ -56,6 +56,13 @@ export interface CreateTankOptions {
   staticDrawMerge?: 'off' | 'identity' | 'translations' | 'dual';
 }
 
+/** (perf-252, from rosterState) The geometry tier of a BATTLE build — the battle roster's and the multiplayer seats'
+ * (battlePresentation seatVisualOptions); the Garage and the Studio use their own builders: the player's own tank at
+ * full geometry on a desktop, every other tank and every phone build at low. */
+export function battleGeometryQuality(playerActor: boolean, deviceTier: string): NonNullable<CreateTankOptions['geometryQuality']> {
+  return !playerActor || deviceTier === 'mobile' ? 'low' : 'high';
+}
+
 /**
  * The P21 static merge a BATTLE build of `specId` takes (the battle roster's builds; never the Garage, Gallery or hero
  * builds). The source-X Abrams family takes the 'dual' merge (coordinator rulings 2026-10-24, perf-249/250): the identity

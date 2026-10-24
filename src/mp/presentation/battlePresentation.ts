@@ -27,8 +27,9 @@ import type { SpecialActionState } from '../../sim/specialActionPolicy.ts';
 import { AERIAL_RULES, matchRulesetFor, rulesetVerdictSide } from '../../sim/matchRuleset.ts';
 import type { MatchRuleset } from '../../sim/matchRuleset.ts';
 import { normalizeGameMode } from '../../sim/gameModeCatalog.ts';
-import { battleStaticDrawMerge, createTank, createTankSteps, ensureTankBuilder } from '../../vehicles/fleetFactory.ts';
-import { battleGeometryQuality } from '../../game/rosterState.ts';
+import {
+  battleGeometryQuality, battleStaticDrawMerge, createTank, createTankSteps, ensureTankBuilder,
+} from '../../vehicles/fleetFactory.ts';
 import { getDeviceTier } from '../../engine/quality.ts';
 import { cloneTankVisual } from '../../vehicles/tankVisualClone.ts';
 import { prebakeBurntSteps, prebakeSharedTextures } from '../../vehicles/materials.ts';
