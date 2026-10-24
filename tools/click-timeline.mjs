@@ -59,6 +59,21 @@ const PROBE = `(() => {
       if (s.display === 'none' || s.visibility === 'hidden' || Number(s.opacity) < 0.05) return false; }
     return true; };
   rec.shown = (sel) => rec.visible(document.querySelector(sel));
+  // --layout-trace: while armed, each layout-reading DOM call records its caller (the frame below this probe)
+  rec.layoutReads = []; rec.layoutArmed = false;
+  const traceRead = (name) => { if (!rec.layoutArmed) return;
+    const frames = String(new Error().stack || '').split('\\n').slice(3, 6).map((line) => line.trim());
+    rec.layoutReads.push({ name, frames }); };
+  const wrapMethod = (proto, name) => { const original = proto[name]; if (typeof original !== 'function') return;
+    proto[name] = function (...args) { traceRead(name); return original.apply(this, args); }; };
+  const wrapGetter = (proto, name) => { const d = Object.getOwnPropertyDescriptor(proto, name); if (!d || !d.get) return;
+    Object.defineProperty(proto, name, { ...d, get() { traceRead(name); return d.get.call(this); } }); };
+  if (window.__cotLayoutTrace) {
+    for (const name of ['getBoundingClientRect', 'getClientRects', 'scrollIntoView']) wrapMethod(Element.prototype, name);
+    for (const name of ['offsetWidth', 'offsetHeight', 'offsetLeft', 'offsetTop']) wrapGetter(HTMLElement.prototype, name);
+    for (const name of ['clientWidth', 'clientHeight', 'scrollWidth', 'scrollHeight', 'scrollTop', 'scrollLeft']) wrapGetter(Element.prototype, name);
+    const gcs = window.getComputedStyle; window.getComputedStyle = function (...args) { traceRead('getComputedStyle'); return gcs.apply(window, args); };
+  }
   const describe = (node) => { if (!node || node.nodeType !== 1) return null;
     const cls = typeof node.className === 'string' ? node.className.trim().split(/\\s+/).slice(0, 2).join('.') : '';
     return node.tagName.toLowerCase() + (node.id ? '#' + node.id : '') + (cls ? '.' + cls : ''); };
@@ -133,11 +148,30 @@ async function settle(page, quietMs = 600, maxMs = 6000) {
 }
 
 /** One measured press: INP, processing, input delay, the overlapping LoAF scripts, long tasks, time to shown / done. */
-async function measure(page, { selector, key = null, shown = null, done = null, shownTimeoutMs = 15000, doneTimeoutMs = 30000, touch, quietMs }) {
-  const t0 = await page.evaluate(() => performance.now());
+async function measure(page, { selector, key = null, shown = null, done = null, shownTimeoutMs = 15000, doneTimeoutMs = 30000, touch, quietMs, cpuProfile = null }) {
+  // --cpu-profile=<dir>: a sampled V8 profile of the press and its next two frames, for attributing inside one handler
+  // (it stalled on the game page's first press in click-perf-248; --layout-trace names the forced layouts instead)
+  const profiler = cpuProfile ? await page.createCDPSession() : null;
+  if (profiler) {
+    await profiler.send('Profiler.enable');
+    await profiler.send('Profiler.setSamplingInterval', { interval: 500 });
+    await profiler.send('Profiler.start');
+  }
+  const t0 = await page.evaluate(() => { window.__click.layoutReads.length = 0; window.__click.layoutArmed = true; return performance.now(); });
   let error = null;
   if (key) await page.keyboard.press(key).catch((cause) => { error = firstLine(cause); });
   else await press(page, selector, touch).catch((cause) => { error = firstLine(cause); });
+  // the press's task and its next two frames: what the layout tracer (when on) attributes
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)))).catch(() => {});
+  const layoutReads = await page.evaluate(() => { window.__click.layoutArmed = false; return window.__click.layoutReads.splice(0); }).catch(() => []);
+  if (profiler) {
+    const { profile } = await profiler.send('Profiler.stop').catch(() => ({ profile: null }));
+    if (profile) {
+      mkdirSync(cpuProfile.dir, { recursive: true });
+      writeFileSync(join(cpuProfile.dir, `${cpuProfile.name}.cpuprofile`), JSON.stringify(profile));
+    }
+    await profiler.detach().catch(() => {});
+  }
   const stamp = () => page.evaluate(() => performance.now());
   let shownAt = null;
   let doneAt = null;
@@ -170,7 +204,7 @@ async function measure(page, { selector, key = null, shown = null, done = null, 
       garageSwitch: lastSwitch ? JSON.parse(JSON.stringify(lastSwitch)) : null,
       garageEntry: window.__GARAGE_ENTRY ? JSON.parse(JSON.stringify(window.__GARAGE_ENTRY)) : null };
   }, t0, INPUT_EVENTS);
-  return { error, selector: selector ?? key, shownMs: shownAt == null ? null : Math.round(shownAt - t0),
+  return { error, layoutReads, selector: selector ?? key, shownMs: shownAt == null ? null : Math.round(shownAt - t0),
     doneMs: doneAt == null ? null : Math.round(doneAt - t0), ...data };
 }
 
@@ -283,14 +317,15 @@ export const PATHS = [
       && (window.__TANK_GALLERY.getState().mode === 'appearance' || window.__TANK_GALLERY.getState().overlayCount > 0)`, doneTimeoutMs: 60000 },
 ];
 
-async function runPath({ page, path, reps, touch, log }) {
+async function runPath({ page, path, reps, touch, log, profileDir = null, label = '' }) {
   const samples = [];
   const ctx = { touch };
   const run = async (kind, pick, spec, i) => {
     let sample;
     try {
       const selector = await pick();
-      sample = await measure(page, { selector, touch, ...spec });
+      const cpuProfile = profileDir ? { dir: profileDir, name: `${label}.${kind}.${i}` } : null;
+      sample = await measure(page, { selector, touch, cpuProfile, ...spec });
     } catch (cause) {
       sample = { error: firstLine(cause), duration: null, loafs: [], longtaskMs: 0, longtasks: 0 };
     }
@@ -367,7 +402,9 @@ async function main() {
     page.setDefaultTimeout(180000);
     await page.setViewport(profile.viewport);
     if (profile.userAgent) await page.setUserAgent(profile.userAgent);
+    page.on('pageerror', (error) => log(`  [${base.label}:${doc} page error] ${firstLine(error)}`));
     if (DOCS[doc].automation) await page.evaluateOnNewDocument('window.__cotAutomation = true;');
+    if (flag('layout-trace')) await page.evaluateOnNewDocument('window.__cotLayoutTrace = true;');
     await page.evaluateOnNewDocument(PROBE);
     const url = new URL(DOCS[doc].url, base.url).href;
     rememberWarm(page, { url, ready: expression(DOCS[doc].ready), after: DOCS[doc].after ?? null });
@@ -420,7 +457,8 @@ async function main() {
           let error = null;
           try {
             if (path.setup) await path.setup(page, { touch });
-            samples = await runPath({ page, path, reps: reps ?? path.reps, touch, log });
+            samples = await runPath({ page, path, reps: reps ?? path.reps, touch, log,
+              profileDir: option('cpu-profile', '') ? resolve(option('cpu-profile', '')) : null, label: `${base.label}.${profileName}` });
             if (path.teardown) await path.teardown(page, { touch });
           } catch (cause) {
             error = firstLine(cause);

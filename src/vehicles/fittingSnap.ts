@@ -46,17 +46,38 @@ function soupOf(geometry: THREE.BufferGeometry): Float32Array {
   return out;
 }
 
+/** A triangle spanning more than this many cells is kept out of the cells (click-perf-248: a hull plate binned into
+ *  thousands of 5 cm cells was most of a seated build's snap pass) and visited by its cell box instead. */
+const LARGE_TRIANGLE_CELLS = 64;
+
+interface LargeTriangle {
+  readonly soup: number;
+  readonly offset: number;
+  readonly order: number;
+  readonly x0: number; readonly x1: number; readonly y0: number; readonly y1: number; readonly z0: number; readonly z1: number;
+}
+
 /** Triangles binned in a uniform 3D grid. */
 class TriangleGrid {
   private readonly cells = new Map<number, number[]>();
   private readonly soups: Float32Array[] = [];
+  /** The first triangle's order in each soup: a triangle's order is the order the grid was given it in. */
+  private readonly bases: number[] = [];
+  private readonly large: LargeTriangle[] = [];
+  private count = 0;
   private key(i: number, j: number, k: number): number { return ((i + 512) * 1024 + (j + 512)) * 1024 + (k + 512); }
   add(soup: Float32Array): void {
     const s = this.soups.push(soup) - 1, c = (v: number) => Math.floor(v / CELL_M);
+    this.bases.push(this.count);
+    this.count += soup.length / 9;
     for (let o = 0; o < soup.length; o += 9) {
       const x0 = c(Math.min(soup[o], soup[o + 3], soup[o + 6])), x1 = c(Math.max(soup[o], soup[o + 3], soup[o + 6]));
       const y0 = c(Math.min(soup[o + 1], soup[o + 4], soup[o + 7])), y1 = c(Math.max(soup[o + 1], soup[o + 4], soup[o + 7]));
       const z0 = c(Math.min(soup[o + 2], soup[o + 5], soup[o + 8])), z1 = c(Math.max(soup[o + 2], soup[o + 5], soup[o + 8]));
+      if ((x1 - x0 + 1) * (y1 - y0 + 1) * (z1 - z0 + 1) > LARGE_TRIANGLE_CELLS) {
+        this.large.push({ soup: s, offset: o, order: this.bases[s]! + o / 9, x0, x1, y0, y1, z0, z1 });
+        continue;
+      }
       for (let i = x0; i <= x1; i++) for (let j = y0; j <= y1; j++) for (let k = z0; k <= z1; k++) {
         const key = this.key(i, j, k);
         let list = this.cells.get(key);
@@ -65,17 +86,40 @@ class TriangleGrid {
       }
     }
   }
-  /** Visits each triangle once whose cells meet the box. */
+  /** Visits each triangle once whose cells meet the box, in the order a grid holding every triangle in every cell it
+   *  meets would: cell by cell (x, then y, then z), each cell's triangles in the order the grid was given them. A large
+   *  triangle is met first at its box's nearest corner within the query's. */
   query(min: THREE.Vector3, max: THREE.Vector3, visit: (soup: Float32Array, offset: number) => void): void {
     const c = (v: number) => Math.floor(v / CELL_M), seen = new Set<number>();
-    for (let i = c(min.x); i <= c(max.x); i++) for (let j = c(min.y); j <= c(max.y); j++) for (let k = c(min.z); k <= c(max.z); k++) {
-      const list = this.cells.get(this.key(i, j, k));
-      if (!list) continue;
-      for (let n = 0; n < list.length; n += 2) {
-        const id = list[n] * 1e8 + list[n + 1];
+    const qx0 = c(min.x), qx1 = c(max.x), qy0 = c(min.y), qy1 = c(max.y), qz0 = c(min.z), qz1 = c(max.z);
+    let firstAt: Map<number, LargeTriangle[]> | null = null;
+    for (const t of this.large) {
+      if (t.x1 < qx0 || t.x0 > qx1 || t.y1 < qy0 || t.y0 > qy1 || t.z1 < qz0 || t.z0 > qz1) continue;
+      const key = this.key(Math.max(qx0, t.x0), Math.max(qy0, t.y0), Math.max(qz0, t.z0));
+      firstAt ??= new Map();
+      const list = firstAt.get(key);
+      if (list) list.push(t); else firstAt.set(key, [t]);
+    }
+    for (let i = qx0; i <= qx1; i++) for (let j = qy0; j <= qy1; j++) for (let k = qz0; k <= qz1; k++) {
+      const key = this.key(i, j, k);
+      const list = this.cells.get(key), large = firstAt?.get(key);
+      if (!list && !large) continue;
+      // both runs are already in the grid's order (cells fill as triangles arrive; large ones were kept in arrival order)
+      let n = 0, m = 0;
+      const cellCount = list ? list.length : 0, largeCount = large ? large.length : 0;
+      while (n < cellCount || m < largeCount) {
+        const cellOrder = n < cellCount ? this.bases[list![n]!]! + list![n + 1]! / 9 : Infinity;
+        if (m < largeCount && large![m]!.order < cellOrder) {
+          const t = large![m++]!;
+          visit(this.soups[t.soup]!, t.offset);
+          continue;
+        }
+        const soup = list![n]!, offset = list![n + 1]!;
+        n += 2;
+        const id = soup * 1e8 + offset;
         if (seen.has(id)) continue;
         seen.add(id);
-        visit(this.soups[list[n]], list[n + 1]);
+        visit(this.soups[soup]!, offset);
       }
     }
   }
