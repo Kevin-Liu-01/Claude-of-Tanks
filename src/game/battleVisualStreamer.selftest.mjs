@@ -312,4 +312,52 @@ for (const mode of ['current', 'pooled', 'malformed']) {
   await streamer.stageBattleVisualReveal(skipped, async () => {}, false, { compilePrograms: false });
   assert.equal(draws.length, 1, 'no draw when nothing is compiled');
 }
+// (2026-10-24, transitions-249) with awaitProgramLinks, a stream draws its roots after every build and the link wait: each
+// root's links run while the next tank builds; a hidden opponent is detached as soon as it is staged and attached only
+// inside its own draw; one the battle's spotting attached meanwhile draws as it stands
+{
+  const scene = new THREE.Scene();
+  const order = [];
+  const ents = ['a', 'b', 'c'].map((specId) => ({ specId }));
+  const queue = [...ents];
+  let spotted = null;
+  const streamer = createBattleVisualStreamer({ game: { tanks: ents }, scene,
+    renderer: { initTexture() {} }, anisotropy: 1,
+    async ensureTankBuilders() {},
+    nextStagedBake() { const ent = queue.find((e) => !e.visual); return ent ? { ent, quality: 'ai' } : null; },
+    *ensureStagedVisualsSteps() {
+      const ent = queue.find((e) => !e.visual);
+      yield;
+      const root = new THREE.Group();
+      root.name = ent.specId;
+      scene.add(root);
+      ent.visual = { root, setVisible(visible) { root.visible = visible; }, prewarmBurn() {} };
+      order.push(['build', ent.specId]);
+      return true;
+    },
+    getSpec() { return {}; }, async prebakeSharedTextures() {},
+    armorAimOverlay: { prime() {}, warm() { return () => {}; } },
+    forwardProgramWarm: { compile(root) { order.push(['compile', root.name]); } },
+    drawWarm(root) { order.push(['draw', root.name, root.parent === scene && root.visible]); },
+    async awaitProgramLinks(yieldForBudget) {
+      order.push(['links']);
+      await yieldForBudget(true);
+      // the battle's spotting attaches the second opponent before its draw
+      spotted = ents[1].visual.root;
+      scene.add(spotted);
+      ents[1].visual.setVisible(true);
+    },
+  });
+  const outside = [];
+  assert.equal(await streamer.stream(null, async () => {
+    for (const ent of ents) if (ent.visual && ent.visual.root !== spotted && ent.visual.root.parent) outside.push(ent.specId);
+  }, null, true), 3);
+  const kinds = order.map(([kind]) => kind);
+  assert.deepEqual(kinds, ['build', 'compile', 'build', 'compile', 'build', 'compile', 'links', 'draw', 'draw', 'draw'],
+    'every build and compile, then the link wait, then the draws');
+  assert.ok(order.filter(([kind]) => kind === 'draw').every(([, , shown]) => shown), 'each draw sees its root attached');
+  assert.deepEqual(outside, [], 'no hidden opponent stays attached across a yield');
+  assert.equal(ents[0].visual.root.parent, null, 'a hidden opponent is detached again after its draw');
+  assert.equal(ents[1].visual.root.parent, scene, 'a spotted opponent keeps the attachment the battle gave it');
+}
 console.log('battleVisualStreamer.selftest: cooperative construction, exact iterator/non-await/wait receipts, cancellation, default compile, exact uploads, hidden reveal and player deferral passed');

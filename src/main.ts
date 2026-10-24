@@ -2019,6 +2019,15 @@ const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameStat
   drawWarm: (root) => {
     for (const _batch of createIsolatedForwardWarmBatches({ scene, root, warmRender, cohortSize: Infinity })) { /* one cohort */ }
   },
+  // transitions-249: a stream draws its staged tanks after every build, once the programs their compiles submitted have
+  // linked between tasks (bounded: a link still pending then waits at its draw, as before)
+  awaitProgramLinks: async (yieldForBudget) => {
+    const deadline = performance.now() + 12_000;
+    const programs = renderer.info.programs as unknown as Array<{ isReady?(): boolean }> | null;
+    while (performance.now() < deadline && programs?.some((program) => program.isReady?.() === false)) {
+      await yieldForBudget(true);
+    }
+  },
   recordTiming(timing) {
     if (typeof window !== 'undefined') (window.__VISUAL_LOAD_TIMINGS ||= []).push(timing);
   },

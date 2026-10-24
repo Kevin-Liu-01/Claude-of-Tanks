@@ -188,6 +188,8 @@ export interface SoloBattleDeploymentRuntimeOptions {
   prepareAtmosphere?(): Promise<void>;
   prepareNightLighting?(): Promise<void>;
   runSceneWatchdog(assertCurrent: () => void): Promise<SceneWatchdogResult | void>;
+  /** True leaves the opponents to the revealed countdown's warm instead of the cover. */
+  deferOpponentVisuals?(): boolean;
   getGeneration(): number;
   advanceGeneration(): number;
   setPending(pending: boolean): void;
@@ -654,10 +656,22 @@ export function createSoloBattleDeploymentRuntime(
         requireCurrent(generation);
         mark('allyVisuals');
 
-        // Hidden opponents cannot participate in the first revealed frame.
-        // The deferred warm owner streams the same exact builders during the
-        // visible deployment countdown, before control is released.
-        trace.enemyVisualsDeferred = true;
+        // (2026-10-24, transitions-249) Opponents are built here, hidden, under the cover. The deferred warm owner
+        // streamed them in the revealed countdown at its 6 ms frame budget, and the count held at 3 until every one was
+        // built: 10.1-10.8 s on desktop and 41-44 s on a 4x phone, where the cover builds the same seven in about 3.5 s
+        // and 10 s. Hidden opponents still cannot appear in the first revealed frame; the countdown's stream finds them
+        // built and releases its hold at once. deferOpponentVisuals keeps them for the countdown.
+        if (options.deferOpponentVisuals?.()) {
+          trace.enemyVisualsDeferred = true;
+        } else {
+          await battleVisuals.stream(
+            (entity) => (entity as DeploymentEntity).team === 'enemy',
+            guardedCoveredYield,
+            (fraction) => battleLoad.progress(0.93 + fraction * 0.035, 'Painting vehicles'),
+            true,
+          );
+          trace.enemyVisualsDeferred = false;
+        }
         requireCurrent(generation);
         mark('enemyVisuals');
 

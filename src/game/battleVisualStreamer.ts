@@ -59,6 +59,8 @@ interface VisualLoadTiming {
   textureUploadMs?: number;
   compileMs?: number;
   postCompileYieldMs?: number;
+  /** The root's draw warm when its stream drew it after every build (awaitProgramLinks). */
+  drawWarmMs?: number;
   totalMs?: number;
 }
 
@@ -118,6 +120,12 @@ export interface BattleVisualStreamerOptions<TGame extends { tanks: BattleVisual
    * GPU pipelines of a hidden opponent were made at its first sight — the mode-sheen lane's 7.4 s boss reveal.
    */
   drawWarm?: (root: Object3D) => void;
+  /**
+   * Wait, between tasks, until the programs the staged roots submitted have linked (2026-10-24, transitions-249). With
+   * it, a stream draws its roots once all are built: each root's links run while the next tank builds, where a draw
+   * straight after its compile waited on them inside one task (5.4 s, the first ally on a 4x phone).
+   */
+  awaitProgramLinks?: (yieldForBudget: VisualBudgetYield) => Promise<void>;
   onVisualReady?: (entity: TGame['tanks'][number]) => void;
   recordTiming?: (timing: VisualLoadTiming) => void;
   now?: () => number;
@@ -218,6 +226,7 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
   armorAimOverlay,
   forwardProgramWarm,
   drawWarm,
+  awaitProgramLinks,
   onVisualReady,
   recordTiming = () => {},
   now = () => performance.now(),
@@ -248,12 +257,18 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     return { textures: textures.size, totalMs: Math.round(now() - startedAt) };
   };
 
-  const stageBattleVisualReveal = async (
+  /**
+   * Stage a built root: textures, programs, and its draw warm. `deferDraw` returns the draw (and, for a hidden opponent,
+   * a moment's re-attachment around it) as `draw` for the caller to run once its links are in; the root is already in
+   * its final state (a hidden opponent detached) when this returns.
+   */
+  const stageRoot = async (
     entity: Entity,
     yieldForBudget: VisualBudgetYield,
-    initiallyHidden = false,
-    options: BattleVisualStageOptions = {},
-  ): Promise<BattleVisualStageReceipt> => {
+    initiallyHidden: boolean,
+    options: BattleVisualStageOptions,
+    deferDraw: boolean,
+  ): Promise<{ receipt: BattleVisualStageReceipt; draw: (() => number) | null }> => {
     const visual = entity.visual;
     const root = visual?.root;
     const emptyReceipt: BattleVisualStageReceipt = {
@@ -263,7 +278,7 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
       postCompileYieldMs: 0,
       totalMs: 0,
     };
-    if (!root || root.userData.loadStaged) return emptyReceipt;
+    if (!root || root.userData.loadStaged) return { receipt: emptyReceipt, draw: null };
     const stageAt = now();
     const parent = root.parent;
     if (parent) parent.remove(root);
@@ -272,7 +287,8 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     const preUploadYieldMs = Math.round(now() - mark);
     const textureUpload = await stageRootTextureUploads(root, yieldForBudget);
     root.userData.loadStaged = true;
-    (parent || scene).add(root);
+    const home = parent || scene;
+    home.add(root);
     if (entity.state && visual.syncFromState) visual.syncFromState(entity.state);
     visual.setVisible?.(true);
     onVisualReady?.(entity);
@@ -286,8 +302,23 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     finally { restoreArmorWarmVisibility(); }
     // (perf-245) and draws once while it is attached, before a hidden opponent detaches: its pipelines are made here,
     // within the staging budget, not on the frame it is first seen
-    if (options.compilePrograms !== false && drawWarm) {
-      try { drawWarm(root); } catch { /* first render fallback */ }
+    const warmDraw = options.compilePrograms !== false && drawWarm ? drawWarm : null;
+    let draw: (() => number) | null = null;
+    if (warmDraw && deferDraw) {
+      draw = () => {
+        const drawAt = now();
+        // a hidden opponent is attached and shown only inside this one task (no frame can present it); one the
+        // battle's spotting has attached meanwhile draws as it stands
+        const borrowed = initiallyHidden && !root.parent;
+        if (borrowed) { home.add(root); visual.setVisible?.(true); }
+        try { warmDraw(root); } catch { /* first render fallback */ }
+        finally {
+          if (borrowed) { visual.setVisible?.(false); root.removeFromParent(); }
+        }
+        return Math.round(now() - drawAt);
+      };
+    } else if (warmDraw) {
+      try { warmDraw(root); } catch { /* first render fallback */ }
     }
     const compileMs = options.compilePrograms === false ? 0 : Math.round(now() - compileAt);
     root.userData.loadCompileMs = compileMs;
@@ -306,8 +337,15 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
       totalMs: Math.round(now() - stageAt),
     };
     root.userData.loadStageReceipt = receipt;
-    return receipt;
+    return { receipt, draw };
   };
+
+  const stageBattleVisualReveal = async (
+    entity: Entity,
+    yieldForBudget: VisualBudgetYield,
+    initiallyHidden = false,
+    options: BattleVisualStageOptions = {},
+  ): Promise<BattleVisualStageReceipt> => (await stageRoot(entity, yieldForBudget, initiallyHidden, options, false)).receipt;
 
   const stream = async (
     predicate: VisualPredicate<Entity> | null,
@@ -320,9 +358,20 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     const total = pending.length;
     await ensureTankBuilders(pending.map((entity) => entity.specId));
     let built = 0;
+    const deferDraws = !!awaitProgramLinks && !!drawWarm;
+    const draws: Array<{ draw: () => number; timing: VisualLoadTiming }> = [];
     for (;;) {
       const next = nextStagedBake(game, predicate);
-      if (!next) return built;
+      if (!next) {
+        if (draws.length && awaitProgramLinks) {
+          await awaitProgramLinks(yieldForBudget);
+          for (const { draw, timing } of draws) {
+            timing.drawWarmMs = draw();
+            await yieldForBudget();
+          }
+        }
+        return built;
+      }
       const timing: VisualLoadTiming = {
         specId: next.ent.specId,
         quality: next.quality,
@@ -360,11 +409,8 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
       timing.buildCheckpointCount = buildCheckpointCount;
       recordCurrentCoreBuildTiming(next.ent.visual?.root, timing);
       mark = now();
-      const stageReceipt = await stageBattleVisualReveal(
-        next.ent,
-        yieldForBudget,
-        initiallyHidden,
-      );
+      const { receipt: stageReceipt, draw } = await stageRoot(next.ent, yieldForBudget, initiallyHidden, {}, deferDraws);
+      if (draw) draws.push({ draw, timing });
       timing.uploadMs = Math.round(now() - mark);
       timing.preUploadYieldMs = stageReceipt.preUploadYieldMs;
       timing.textureUploadMs = stageReceipt.textureUploadMs;
