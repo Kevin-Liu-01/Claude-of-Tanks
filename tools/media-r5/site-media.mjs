@@ -377,22 +377,27 @@ function buildProxies() {
   const jobs = proxyIds.map((id) => ({ path: `${id}-mobile.mp4`, source: delivery(id)?.hd, crf: 27, url: `${BASE_URL}/loops/${id}.webm` }))
     .concat([{ path: 'reel-mobile.mp4', source: join(OUT, 'films', 'reel.mp4'), crf: 29, url: `${BASE_URL}/films/reel.mp4` }])
     .concat(studio ? [{ path: HOME_STUDIO_PROXY, source: studioDelivery.video, crf: 27, kbps: 610, url: `${BASE_URL}/home/features/studio.mp4` }] : [])
+    // the Field Manual's chapter heroes' phone rung (2026-10-24: a topic header's H.264 file, media-fallback.selftest),
+    // the same 960x540 encode at 1250 kbit/s in two passes (site-video-budget.selftest: a phone rung holds 1.0 MB per
+    // 6 s of its loop; s27's CRF 27 rung was over it), kept out of the landing's budget (the landing never plays them)
+    .concat(chapterLoops.map((id) => ({ path: `${id}-mobile.mp4`, source: delivery(id)?.hd, crf: 27, kbps: 1250, url: `${BASE_URL}/loops/${id}.webm`, chapter: true })))
     .filter((job) => job.source && existsSync(job.source));
   if (studio) for (const p of PROXY_KEPT) if (existsSync(join(PROXIES, p))) rmSync(join(PROXIES, p));
   const kept = PROXY_KEPT.filter((p) => existsSync(join(PROXIES, p)));
   const keptBytes = kept.reduce((sum, p) => sum + statSync(join(PROXIES, p)).size, 0);
   for (let pass = 0; pass < 6; pass++) {
     for (const job of jobs) {
+      if (pass > 0 && job.chapter) continue;   // a budget pass re-encodes the landing's own proxies only
       const out = join(PROXIES, job.path);
       if (pass > 0 || force || !existsSync(out) || statSync(out).mtimeMs < statSync(job.source).mtimeMs) {
         proxy(job.source, `${out}.tmp.mp4`, job.crf, job.kbps);
         renameSync(`${out}.tmp.mp4`, out);
       }
     }
-    const total = keptBytes + jobs.reduce((sum, job) => sum + statSync(join(PROXIES, job.path)).size, 0);
+    const total = keptBytes + jobs.filter((job) => !job.chapter).reduce((sum, job) => sum + statSync(join(PROXIES, job.path)).size, 0);
     if (total < PROXY_BUDGET_BYTES) break;
     console.log(`[site-media] proxies ${total} B over the ${PROXY_BUDGET_BYTES} B budget: one CRF step down`);
-    for (const job of jobs) {
+    for (const job of jobs.filter((j) => !j.chapter)) {
       job.crf += 1;
       if (job.kbps) job.kbps = Math.round(job.kbps * 0.9);
     }

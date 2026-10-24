@@ -537,6 +537,197 @@
    ]
   ]
  },
+ "media/site50-r14/loops/s226-church-duel-960.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    960,
+    540
+   ],
+   "audio": "none",
+   "floor": 90,
+   "capFloor": 85,
+   "crfs": [
+    36,
+    39,
+    42,
+    45,
+    48,
+    51
+   ],
+   "capKbps": 2000
+  },
+  "source": "shots/media-r5/site50/deliver-combat226/s226-church-duel/s226-church-duel.mp4",
+  "crf": 45,
+  "kbps": 1214,
+  "vmaf": {
+   "mean": 90,
+   "harmonic": 89.78,
+   "min": 74.04
+  },
+  "bytes": 699486,
+  "tried": [
+   [
+    42,
+    1450,
+    91.55,
+    77.89
+   ],
+   [
+    45,
+    1214,
+    90,
+    74.04
+   ],
+   [
+    48,
+    1021,
+    87.83,
+    70.23
+   ]
+  ]
+ },
+ "media/site50-r14/loops/s226-church-duel.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    1920,
+    1080
+   ],
+   "audio": "keep",
+   "floor": 93,
+   "capFloor": 90,
+   "crfs": [
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46
+   ],
+   "capKbps": 8000
+  },
+  "source": "shots/media-r5/site50/deliver-combat226/s226-church-duel/s226-church-duel.mp4",
+  "crf": 40,
+  "kbps": 4740,
+  "vmaf": {
+   "mean": 93.56,
+   "harmonic": 93.44,
+   "min": 83.96
+  },
+  "bytes": 2773757,
+  "tried": [
+   [
+    40,
+    4740,
+    93.56,
+    83.96
+   ],
+   [
+    42,
+    4148,
+    92.76,
+    80.94
+   ]
+  ]
+ },
+ "media/site50-r14/loops/s227-oasis-duel-960.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    960,
+    540
+   ],
+   "audio": "none",
+   "floor": 90,
+   "capFloor": 85,
+   "crfs": [
+    36,
+    39,
+    42,
+    45,
+    48,
+    51
+   ],
+   "capKbps": 2000
+  },
+  "source": "shots/media-r5/site50/deliver-combat226/s227-oasis-duel/s227-oasis-duel.mp4",
+  "crf": 39,
+  "kbps": 1919,
+  "vmaf": {
+   "mean": 88,
+   "harmonic": 87.63,
+   "min": 76.15
+  },
+  "bytes": 1443151,
+  "tried": [
+   [
+    42,
+    1882,
+    87.94,
+    72.04
+   ],
+   [
+    39,
+    1919,
+    88,
+    76.15
+   ],
+   [
+    36,
+    1911,
+    87.1,
+    73.05
+   ]
+  ],
+  "capped": true
+ },
+ "media/site50-r14/loops/s227-oasis-duel.webm": {
+  "settings": {
+   "codec": "vp9",
+   "size": [
+    1920,
+    1080
+   ],
+   "audio": "keep",
+   "floor": 93,
+   "capFloor": 90,
+   "crfs": [
+    34,
+    36,
+    38,
+    40,
+    42,
+    44,
+    46
+   ],
+   "capKbps": 8000
+  },
+  "source": "shots/media-r5/site50/deliver-combat226/s227-oasis-duel/s227-oasis-duel.mp4",
+  "crf": 40,
+  "kbps": 6469,
+  "vmaf": {
+   "mean": 93.26,
+   "harmonic": 92.91,
+   "min": 77.21
+  },
+  "bytes": 4925387,
+  "tried": [
+   [
+    40,
+    6469,
+    93.26,
+    77.21
+   ],
+   [
+    42,
+    6248,
+    92.79,
+    74.54
+   ]
+  ]
+ },
  "media/site50-r14/loops/s23-village-crossroads.webm": {
   "settings": {
    "codec": "vp9",
