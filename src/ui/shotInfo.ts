@@ -270,6 +270,8 @@ interface EndInfo {
   readonly brains: { readonly enemy: string; readonly allies: string } | null;
   readonly watch: boolean;
   readonly score: { readonly alpha: number; readonly bravo: number } | null;
+  /** The battle's mode id (the report's mode chip). */
+  readonly gameMode: string | null;
 }
 
 interface SummaryTeamRow extends EndScreenTeamRow {
@@ -1553,6 +1555,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       revives,
       map: summaryMapName(),
       mapId: endInfo?.mapId || endInfo?.map || null,
+      mode: endInfo?.gameMode ?? null,
       timeS: summaryTime(),
       stats: {
         dealt: stats.dealt,
@@ -1872,6 +1875,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       watch: p.watch === true,
       score: p.score && Number.isFinite(p.score.alpha) && Number.isFinite(p.score.bravo)
         ? { alpha: p.score.alpha, bravo: p.score.bravo } : null,
+      gameMode: typeof p.gameMode === 'string' && p.gameMode ? p.gameMode : null,
     } : null;
     if (rulesetRevives(p?.gameMode)) revives = true;
     pendingReport = p ? (p.result || '') : '';
