@@ -90,6 +90,11 @@ type EngineContext = Parameters<typeof buildTerrainMeshes>[1] &
   scene: THREE.Scene;
   /** Releases a lit material from the cascaded-shadow setup (main.ts engine context). */
   releaseShadowMaterial?(material: THREE.Material): void;
+  /**
+   * (perf-247) A finished subsystem (the terrain, the vegetation, the props), offered for its forward programs while the
+   * rest of the world builds: the GPU process links them beside the build instead of under the first frame.
+   */
+  submitBuiltPrograms?(root: THREE.Object3D): void;
 };
 
 interface WorldOptions {
@@ -451,6 +456,9 @@ export async function createMapAsync(
     const step = async (label: string, fraction: number): Promise<void> => {
       if (onStep) await onStep(label, fraction);
     };
+    const submitPrograms = (root: THREE.Object3D): void => {
+      try { engineCtx.submitBuiltPrograms?.(root); } catch { /* the activation's compile and the first frame remain */ }
+    };
     // perf-r3 (play-session probe): the old five-yield build left each
     // subsystem ATOMIC — 1.5-2.4 s tasks that pinned the loading bar (and
     // fused into a single ~29 s task on a loaded machine). Each subsystem now
@@ -474,9 +482,11 @@ export async function createMapAsync(
         streamFarLods: true,
         focus: heightField._layout.spawns.player,
       }, terrainSources));
+    submitPrograms(terrain);
     await step('Planting vegetation', 0.58);
     const vegetation = await createVegetationAsync(heightField, engineCtx, 2001, config,
       sub('Planting vegetation', 0.58, 0.82), fineSlices);
+    submitPrograms(vegetation.group);
     await step('Placing structures', 0.82);
     const kitsAwaitStart = performance.now();
     await kitsReady;
@@ -496,6 +506,7 @@ export async function createMapAsync(
       (props._buildDetail as typeof props._buildDetail & { kitsAwait?: typeof props._buildDetail.propModelsAwait }).kitsAwait = {
         count: 1, totalMs: kitsMs, maxMs: kitsMs, startMs: kitsAwaitStart, endMs: propModelsAwaitStart };
     }
+    submitPrograms(props.group);
     await step('Sealing the battlefield', 0.96);
     // (the time-to-battle lane, 2026-10-08) the horizon ring last: the worker started with this build has had the whole
     // build to answer (terrain.ts finishHorizonRingAsync: built here meanwhile if it has not); its source and timing for

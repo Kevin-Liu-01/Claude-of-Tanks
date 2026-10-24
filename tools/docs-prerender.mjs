@@ -30,22 +30,45 @@ if (emit) {
   await import('../src/ui/i18nCatalog.ts');
   const { setLocale } = await import('../src/ui/i18n.ts');
   await setLocale(emit);
-  const { TOPIC_ORDER, topicPageMarkup } = await import('../src/docs/topics.ts');
+  const { TOPIC_GROUPS, TOPIC_ORDER, topicPageMarkup } = await import('../src/docs/topics.ts');
+  const { t } = await import('../src/ui/i18n.ts');
   const { richSections } = await import('../src/docs/chapters/index.ts');
   const { manualRecords } = await import('../src/docs/searchIndex.ts');
   const { fillDocsIcons } = await import('../src/docs/docsIcons.ts');
   // exit only once the pipe has taken the whole payload (an early exit cuts a piped stdout at 64 KB)
   const pages = Object.fromEntries(TOPIC_ORDER.map((slug) => [slug, fillDocsIcons(topicPageMarkup(slug, false, richSections(slug)))]));
-  process.stdout.write(JSON.stringify({ pages, index: manualRecords() }), () => process.exit(0));
+  const groups = TOPIC_GROUPS.map(({ key, icon, topics }) => ({ key, icon, topics, label: t(`docs.group.${key}`) }));
+  process.stdout.write(JSON.stringify({ pages, index: manualRecords(), groups }), () => process.exit(0));
   await new Promise(() => {});
 }
 
 const render = (locale) => JSON.parse(execFileSync(process.execPath, ['--max-old-space-size=2048', SELF, `--emit=${locale}`],
   { cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
 
+// The manual's index is the chapter map: site/docs.html's <!--docs:map--> region holds one card per chapter (its picture,
+// title and lede; tools/add-chapter writes a new chapter's card there) and this step shelves them as TOPIC_GROUPS does.
+const MAP = /<!--docs:map-->[\s\S]*?<!--\/docs:map-->/;
+const CARD = /<a (?:class="[^"]*" )?href="\/docs\/([a-z]+)">[\s\S]*?<\/a>/g;
+function chapterMap(html, groups) {
+  const region = MAP.exec(html)?.[0];
+  if (!region) throw new Error('docs-prerender: site/docs.html has no <!--docs:map--> region');
+  const cards = new Map([...region.matchAll(CARD)].map(([card, slug]) => [slug, card]));
+  // each card's number is its chapter's place in the manual, in shelf order
+  const order = groups.flatMap((group) => group.topics);
+  const numbered = (slug) => cards.get(slug).replace(/<b>\d+<\/b>/, `<b>${String(order.indexOf(slug) + 1).padStart(2, '0')}</b>`);
+  const shelves = groups.map((group) => {
+    const missing = group.topics.filter((slug) => !cards.has(slug));
+    if (missing.length) throw new Error(`docs-prerender: site/docs.html has no card for ${missing.join(', ')}`);
+    return `      <section class="docs-shelf" id="${group.key}" aria-labelledby="shelf-${group.key}">\n`
+      + `        <h2 id="shelf-${group.key}"><span data-doc-icon="${group.icon}"></span><span data-i18n="docs.group.${group.key}">${group.label}</span></h2>\n`
+      + `        <div class="docs-chapter-grid">\n${group.topics.map((slug) => `          ${numbered(slug)}`).join('\n')}\n        </div>\n      </section>`;
+  });
+  return html.replace(MAP, () => `<!--docs:map-->\n${shelves.join('\n')}\n    <!--/docs:map-->`);
+}
+
 /** Bring every chapter page and the zh fragments to the current markup (`write`), or list the stale ones. */
 function prerender(write) {
-  const { pages: en, index: enIndex } = render('en-US');
+  const { pages: en, index: enIndex, groups } = render('en-US');
   const { pages: zh, index: zhIndex } = render('zh-CN');
   const stale = [];
   // a generated file: written when it changed, or listed as stale
@@ -63,6 +86,7 @@ function prerender(write) {
     if (next === html) continue;
     if (write) writeFileSync(path, next); else stale.push(`site/docs-${slug}.html`);
   }
+  keep('site/docs.html', chapterMap(readFileSync(join(ROOT, 'site/docs.html'), 'utf8'), groups));
   keep(ZH_FRAGMENTS, `${JSON.stringify(zh, null, 1)}\n`);
   // the search index per locale (src/docs/docsSearch.ts loads the reader's with the field's first use)
   keep('src/docs/searchIndex.en-US.json', `${JSON.stringify(enIndex, null, 1)}\n`);

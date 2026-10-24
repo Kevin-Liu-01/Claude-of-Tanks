@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { localizeBodyHtml, localizeHtmlDocument } from './localizedHtml.ts';
 import { renderProductStats } from '../productStats.ts';
 import { catalogText } from '../ui/i18nCatalog.ts';
-import { PUBLIC_ROUTE_RECORDS } from '../ui/localeRouting.ts';
+import { hrefForLocale, PUBLIC_ROUTE_RECORDS } from '../ui/localeRouting.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const sourcePath = (html) => join(ROOT, html === 'index.html' || html === '404.html' ? html : `site/${html}`);
@@ -35,6 +35,12 @@ for (const route of PUBLIC_ROUTE_RECORDS) {
   const en = localizeHtmlDocument(source, route, 'en-US');
   assert.equal(body(en), body(source), `${route.id}: an English document keeps its body byte-for-byte`);
   assert.equal(localizeBodyHtml(zh, 'zh-CN'), zh, `${route.id}: body localization is idempotent`);
+  // the Chinese document's own links name its Chinese routes (localizedHtml.ts localizeLinks); language links keep theirs
+  for (const [tag] of body(zh).replace(/<(script|style|template)\b[\s\S]*?<\/\1>/gi, '').matchAll(/<a\b[^>]*>/gi)) {
+    const href = attr(tag, 'href');
+    if (!href?.startsWith('/') || href.startsWith('//') || /\shreflang=/i.test(tag)) continue;
+    assert.equal(hrefForLocale(href, 'zh-CN'), href, `${route.id}: ${href} names its Chinese route`);
+  }
   for (const match of body(zh).matchAll(/<([a-z][\w-]*)\b[^>]*\sdata-i18n[\w-]*=[^>]*>/gi)) {
     const tag = match[0];
     let vars;
@@ -57,9 +63,10 @@ for (const route of PUBLIC_ROUTE_RECORDS) {
     textHosts++;
   }
 }
-assert.ok(textHosts > 650, `every public page's text hosts are checked (${textHosts})`);
+// (246: the landing's legacy sections and the manual index's card copy left on purpose: 612 text hosts, 609 change)
+assert.ok(textHosts > 580, `every public page's text hosts are checked (${textHosts})`);
 assert.ok(attributeHosts > 190, `and attribute hosts (${attributeHosts})`);
-assert.ok(changed > 620, `most hosts change language (${changed})`);
+assert.ok(changed > 580, `most hosts change language (${changed})`);
 
 // Synthetic edges.
 const doc = (inner) => `<!doctype html><html><head><title data-i18n="x">Head stays</title></head><body>${inner}</body></html>`;

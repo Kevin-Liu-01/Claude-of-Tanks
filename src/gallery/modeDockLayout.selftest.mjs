@@ -28,7 +28,8 @@ assert.match(css, /\.layers\{left:16px;top:14px;display:flex;gap:2px;padding:3px
 assert.match(css, /\.views\{right:16px;top:14px;display:flex;flex-direction:column;gap:2px;padding:3px\}/);
 assert.match(css, /\.tools\{left:50%;bottom:16px;transform:translateX\(-50%\)/);
 assert.match(css, /\.inset\{left:16px;bottom:16px;width:150px/);
-assert.match(css, /#viewport \.legend:not\(:empty\)\{right:16px;bottom:16px/);
+// (247) the legend stands above the bottom row, clear of the centred turntable and photo bar
+assert.match(css, /#viewport \.legend:not\(:empty\)\{right:16px;bottom:64px/);
 // Five layers, each with its key; the label leaves the picture under 1440 px and stays in the button's name.
 assert.equal([...html.matchAll(/<button type="button"[^>]*data-mode="(appearance|armor|modules|crew|markup)" data-key="([1-5])"/g)].length, 5,
   'five layers, keys 1 to 5');

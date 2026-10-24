@@ -12,7 +12,7 @@ import { heroFlagMaskCss } from '../ui/heroCardPolicy.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const expected = [
-  'start', 'controls', 'modes', 'tanks', 'combat', 'battlefields', 'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio', 'filming',
+  'start', 'controls', 'modes', 'tanks', 'combat', 'battlefields', 'multiplayer', 'audio', 'studio', 'build', 'simulation', 'models', 'rendering', 'ai', 'filming',
 ];
 
 assert.deepEqual([...TOPIC_ORDER], expected, 'the manual keeps one deliberate public topic order');
@@ -83,32 +83,29 @@ assert.match(modelText, /Generate icons and technical cards/);
 assert.match(modelText, /tank:anatomy:update/);
 assert.match(modelText, /tank:release:check/);
 
-// The audio manual is player-facing copy over docs/AUDIO.md; its counts follow the engine.
-const audioText = [topics.audio.lede, ...topics.audio.sections.flat()].join(' ');
-const NUMBER_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
-  'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
-const reportClasses = NUMBER_WORDS[Object.keys(WEAPON_CLASSES).length];
-assert.ok(reportClasses, 'the weapon report-class count must be expressible in the manual');
-assert.match(audioText, new RegExp(`\\b${reportClasses} report classes\\b`),
-  'the audio manual states the engine weapon report-class count');
+// The sound chapter is built from the audio engine's own tables (src/docs/chapters/audio.ts); its counts follow the engine.
+const audioSections = richSections('audio');
+const audioText = audioSections.map((section) => section.text).join(' ');
+assert.match(audioText, new RegExp(`\\b${Object.keys(WEAPON_CLASSES).length} report classes\\b`),
+  'the sound chapter states the engine weapon report-class count');
 const CREW_LANGUAGE_NAMES = {
   'en-US': 'American', 'en-GB': 'British', de: 'German', ru: 'Russian', uk: 'Ukrainian', zh: 'Chinese',
   fr: 'French', sv: 'Swedish', ja: 'Japanese', ko: 'Korean', it: 'Italian', pl: 'Polish', he: 'Hebrew',
 };
-const crewRadioText = topics.audio.sections.find(([title]) => title === 'Crew radio')?.join(' ') ?? '';
+const crewRadioText = audioSections.find((section) => section.id === 'radio')?.text ?? '';
 for (const language of CREW_LANGUAGES) {
   const name = CREW_LANGUAGE_NAMES[language];
-  assert.ok(name, `crew language ${language} needs a name in the audio manual`);
-  assert.match(crewRadioText, new RegExp(`\\b${name}\\b`), `the audio manual names the ${name} crews`);
+  assert.ok(name, `crew language ${language} needs a name in the sound chapter`);
+  assert.match(crewRadioText, new RegExp(`\\b${name}\\b`), `the sound chapter names the ${name} crews`);
 }
 assert.match(audioText, /ElevenLabs/);
 assert.match(audioText, /nothing is generated while you play/);
 assert.match(audioText, /No interface sound tells you a shot hit/);
 assert.match(audioText, /Short\. Adjusting\./);
 assert.match(audioText, /National crews/);
-assert.match(audioText, /13 existing national crews for every tank/);
+assert.match(audioText, new RegExp(`\\b${CREW_LANGUAGES.length} existing national crews for every tank\\b`));
 assert.match(audioText, /saved across battles and reloads/);
-assert.doesNotMatch(audioText, /selftest|node (?:src|tools)\//, 'the audio manual is written for players, not as a test checklist');
+assert.doesNotMatch(audioText, /selftest|node (?:src|tools)\//, 'the sound chapter is written for players, not as a test checklist');
 
 // brand-ui SPEC 12.4: every chapter ships in its page in both locales, so the first paint is the chapter (no stub)
 assert.deepEqual(staleChapters(), [], 'the prerendered chapters match topics.ts (node tools/docs-prerender.mjs --write)');

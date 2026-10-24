@@ -19,14 +19,10 @@ type PublicRouteId =
   | 'docsBuild'
   | 'docsModels'
   | 'docsSimulation'
-  | 'docsVehicles'
   | 'docsRendering'
-  | 'docsPerformance'
-  | 'docsWorlds'
   | 'docsAi'
   | 'docsMultiplayer'
   | 'docsAudio'
-  | 'docsInterface'
   | 'docsStudio'
   | 'docsFilming'
   | 'docsModes'
@@ -46,8 +42,8 @@ export interface PublicRouteRecord {
 }
 
 const DOCS_TOPICS = [
-  'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai', 'multiplayer', 'audio',
-  'interface', 'studio', 'filming', 'modes', 'battlefields', 'combat', 'tanks', 'start', 'controls',
+  'build', 'models', 'simulation', 'rendering', 'ai', 'multiplayer', 'audio',
+  'studio', 'filming', 'modes', 'battlefields', 'combat', 'tanks', 'start', 'controls',
 ] as const;
 
 const route = (id: PublicRouteId, pathname: string, sourceHtml: string, localizedHtml = sourceHtml, indexable = true):

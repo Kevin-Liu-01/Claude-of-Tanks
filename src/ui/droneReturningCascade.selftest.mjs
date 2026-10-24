@@ -253,6 +253,12 @@ function mediaMatches(query, env) {
       term = term.trim();
       if (term === 'screen' || term === 'all') return true;
       if (term === 'print') return false;
+      // range syntax (showroom.css since garage-redesign-245): (height < 1200px), (height >= 1200px), (height <= 340px)
+      const range = term.match(/^\(\s*(width|height)\s*(<=|>=|<|>)\s*([\d.]+)(px|em|rem)?\s*\)$/);
+      if (range) {
+        const [, axis, op, n, unit] = range; const limit = +n * (unit === 'em' || unit === 'rem' ? 16 : 1); const v = env[axis];
+        return op === '<' ? v < limit : op === '<=' ? v <= limit : op === '>' ? v > limit : v >= limit;
+      }
       const m = term.match(/^\(\s*([\w-]+)\s*(?::\s*([^)]+?))?\s*\)$/);
       assert.ok(m, `media term "${term}"`);
       const [, feature, raw] = m; const value = raw?.trim();

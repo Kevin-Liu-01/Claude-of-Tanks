@@ -1,23 +1,16 @@
-// The fleet as the manual's chapters show it: each tank's name, nation and tier (public/icons/tank-assets.json) and its
-// hero card, the tank render over its waving flag (public/icons/hero, src/ui/heroCard.css), composed as the landing's
-// fleet plate composes it (tools/home-premiere.mjs heroLayers). Copyright © 2026 Kevin B. Liu.
-// Node only: the asset table is 48 MB; tools/docs-prerender.mjs reads it once per locale.
+// The fleet as the manual's chapters show it: each tank's name, nation and tier (the asset manifest's rows, read
+// tool-side by tools/docsFleetTable.ts) and its hero card, the tank render over its waving flag (public/icons/hero,
+// src/ui/heroCard.css), composed as the landing's fleet plate composes it (tools/home-premiere.mjs heroLayers).
+// Copyright © 2026 Kevin B. Liu. Node only: tools/docs-prerender.mjs runs it.
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { docsFleetRows, type DocsFleetRow } from '../../../tools/docsFleetTable.ts';
 import type { HeroFacing } from '../../ui/heroCardPolicy.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
-export interface FleetTank {
-  readonly id: string;
-  readonly name: string;
-  readonly countryCode: string;
-  readonly nation: string;
-  readonly tier: number;
-  readonly tierNumeral: string;
-  readonly shells: ReadonlyArray<{ readonly name: string; readonly type: string; readonly pen100Mm: number; readonly pen1000Mm: number; readonly pen2000Mm: number | null }>;
-}
+export type FleetTank = DocsFleetRow;
 interface HeroRow { readonly flag: string; readonly b: readonly number[]; readonly face?: readonly string[]; readonly sha: readonly string[] }
 interface HeroCards { readonly facing: HeroFacing; readonly tanks: Readonly<Record<string, HeroRow>>; readonly flags: Readonly<Record<string, { readonly sha: readonly string[] }>> }
 
@@ -25,8 +18,7 @@ let tanks: ReadonlyMap<string, FleetTank> | null = null;
 /** Every playable tank's name, nation and tier, by id. */
 export function fleetTanks(): ReadonlyMap<string, FleetTank> {
   if (tanks) return tanks;
-  const table = JSON.parse(readFileSync(join(ROOT, 'public/icons/tank-assets.json'), 'utf8')).tanks as Record<string, FleetTank & { gun?: { shells?: FleetTank['shells'] } }>;
-  tanks = new Map(Object.values(table).map(({ id, name, countryCode, nation, tier, tierNumeral, gun }) => [id, { id, name, countryCode, nation, tier, tierNumeral, shells: gun?.shells ?? [] }]));
+  tanks = new Map(docsFleetRows().map((row) => [row.id, row]));
   return tanks;
 }
 
