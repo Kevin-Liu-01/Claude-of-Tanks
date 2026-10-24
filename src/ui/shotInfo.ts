@@ -369,7 +369,7 @@ const SI_CSS = `
   padding:0 0 4px;transition:opacity .8s ease;}
 .cot-si-card.out{opacity:0;}
 
-.cot-si-missile-blast{flex:0 0 30px;min-height:30px;padding:5px 9px!important;font-size:11px;color:var(--warn);overflow:hidden;line-height:1.3;}
+.cot-si-missile-blast{flex:0 0 30px;min-height:30px;padding:5px 9px!important;font-size:var(--battle-fs-11);color:var(--warn);overflow:hidden;line-height:1.3;}
 .cot-si-hd{min-height:38px;display:flex;align-items:center;justify-content:space-between;gap:8px;
   padding:4px 9px 3px;border-bottom:1px solid var(--line-1);}
 .cot-si-state{display:flex;min-width:0;}
@@ -383,20 +383,20 @@ const SI_CSS = `
 .cot-si-dmg{flex:0 0 auto;text-align:right;font-family:${FONT_COND};letter-spacing:-.02em;font-weight:700;font-size:20px;
   color:var(--warn);display:flex;justify-content:flex-end;align-items:center;gap:4px;}
 .cot-si-dmg svg{width:12px;height:12px;flex:0 0 auto;}
-.cot-si-sub{height:21px;padding:3px 9px;font-size:11px;color:var(--ink-2);letter-spacing:0em;
+.cot-si-sub{height:21px;padding:3px 9px;font-size:var(--battle-fs-11);color:var(--ink-2);letter-spacing:0em;
   display:grid;grid-template-columns:minmax(0,1fr) minmax(80px,1fr);align-items:center;gap:8px;}
 .cot-si-sub>span{min-width:0;display:flex;align-items:center;gap:4px;overflow:hidden;white-space:nowrap;}
 .cot-si-sub>span:last-child{text-align:right;color:var(--ink-1);font-weight:700;}
 .cot-si-sub>span:last-child{justify-content:flex-end;}
 .cot-si-sub svg{width:9px;height:9px;flex:0 0 auto;color:var(--ink-3);}
 .cot-si-sub .cot-si-subtext{min-width:0;overflow:hidden;text-overflow:ellipsis;}
-.cot-si-sub .ty{font-weight:700;font-size:11px;letter-spacing:.02em;
+.cot-si-sub .ty{font-weight:700;font-size:var(--battle-fs-11);letter-spacing:.02em;
   font-family:${FONT_COND};display:inline-flex;align-items:center;gap:3px;}
 .cot-si-sub .ty svg{color:inherit;}
 .cot-si-body{display:flex;flex-direction:column;gap:3px;padding:4px 9px 0;}
 .cot-si-rows{padding:0;display:grid;grid-template-columns:1fr;gap:1px;}
 .cot-si-kv{min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:7px;
-  align-items:center;font-size:11px;line-height:1.15;color:var(--ink-3);letter-spacing:0em;}
+  align-items:center;font-size:var(--battle-fs-11);line-height:1.15;color:var(--ink-3);letter-spacing:0em;}
 .cot-si-kv .cot-si-k{display:flex;align-items:center;gap:4px;}
 .cot-si-kv .cot-si-k svg{width:9px;height:9px;flex:0 0 auto;color:var(--ink-3);}
 .cot-si-kv b{min-width:0;text-align:right;color:var(--ink-1);font-weight:700;font-family:${FONT_COND};
@@ -409,11 +409,11 @@ const SI_CSS = `
 .cot-si-kv.pen{margin-top:2px;padding-top:3px;border-top:1px solid var(--line-2);}
 .cot-si-kv.pen b{white-space:nowrap;}
 .cot-si-kv b .q{display:inline-block;margin-left:5px;padding:0 3px 1px;
-  border:1px solid currentColor;font-size:11px;letter-spacing:.04em;
+  border:1px solid currentColor;font-size:var(--battle-fs-11);letter-spacing:.04em;
   vertical-align:1px;line-height:1.25;font-weight:700;}
 .cot-si-kv.armor{padding:2px 0;border-top:1px solid var(--line-1);border-bottom:1px solid var(--line-1);}
 .cot-si-kv.result b{color:var(--accent-hi);letter-spacing:.06em;}
-.cot-si-pencap{grid-column:1/-1;font-size:11px;color:var(--ink-3);letter-spacing:0em;
+.cot-si-pencap{grid-column:1/-1;font-size:var(--battle-fs-11);color:var(--ink-3);letter-spacing:0em;
   text-align:right;margin-top:-2px;text-transform:uppercase;}
 .cot-si-diag{display:grid;grid-template-columns:90px 172px;gap:9px;align-items:center;
   justify-content:center;width:100%;margin:0;padding:4px 5px;border:1px solid var(--line-1);border-radius:var(--r1);}
@@ -435,11 +435,11 @@ const SI_CSS = `
 .cot-si-diag svg.ov{position:absolute;inset:0;overflow:visible;}
 .cot-si-diag svg.ov .wdg{animation:cotSiWedge 1.6s ease-in-out infinite;}
 @keyframes cotSiWedge{0%,100%{opacity:.5;}50%{opacity:1;}}
-.cot-si-zone{min-width:0;font-size:11px;color:var(--accent-hi);font-weight:700;letter-spacing:0em;
+.cot-si-zone{min-width:0;font-size:var(--battle-fs-11);color:var(--accent-hi);font-weight:700;letter-spacing:0em;
   text-transform:uppercase;font-family:${FONT_COND};text-align:right;line-height:1.3;}
-.cot-si-zone .cap{display:block;color:var(--ink-3);font-weight:700;letter-spacing:.05em;font-size:11px;}
+.cot-si-zone .cap{display:block;color:var(--ink-3);font-weight:700;letter-spacing:.05em;font-size:var(--battle-fs-11);}
 .cot-si-mods{display:flex;flex-wrap:wrap;gap:4px;padding:5px 10px 0;}
-.cot-si-mod{display:flex;align-items:center;gap:3px;font-size:11px;font-weight:700;
+.cot-si-mod{display:flex;align-items:center;gap:3px;font-size:var(--battle-fs-11);font-weight:700;
   letter-spacing:0em;font-family:${FONT_COND};text-transform:uppercase;
   border:1px solid currentColor;padding:1.5px 4px 1.5px 3px;line-height:1;}
 .cot-si-mod svg{width:11px;height:11px;display:block;}
@@ -448,19 +448,19 @@ const SI_CSS = `
   box-shadow:var(--battle-plate-shadow);
   max-height:calc(var(--cot-viewport-height,100dvh) - 560px);min-height:120px;overflow-y:auto;}
 .cot-si-log.open{display:block;}
-.cot-si-log .sec{font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--ink-3);
+.cot-si-log .sec{font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.1em;color:var(--ink-3);
   font-family:${FONT_COND};text-transform:uppercase;
   padding:6px 9px 3px;display:flex;justify-content:space-between;
   border-bottom:1px solid var(--line-1);}
-.cot-si-lrow{display:flex;align-items:baseline;gap:6px;padding:3px 9px;font-size:11px;
+.cot-si-lrow{display:flex;align-items:baseline;gap:6px;padding:3px 9px;font-size:var(--battle-fs-11);
   color:var(--ink-2);border-bottom:1px solid var(--line-1);}
 .cot-si-lrow .b{font-family:${FONT_COND};font-weight:700;
-  font-size:11px;letter-spacing:0em;width:92px;flex:0 0 auto;white-space:nowrap;}
+  font-size:var(--battle-fs-11);letter-spacing:0em;width:92px;flex:0 0 auto;white-space:nowrap;}
 .cot-si-lrow .d{font-weight:700;color:var(--warn);width:36px;flex:0 0 auto;text-align:right;
   font-family:${FONT_COND};letter-spacing:-.01em;}
 .cot-si-lrow .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cot-si-lrow .z{color:var(--ink-3);font-size:11px;flex:0 0 auto;}
-.cot-si-empty{padding:6px 9px;font-size:11px;color:var(--ink-3);letter-spacing:0em;}
+.cot-si-lrow .z{color:var(--ink-3);font-size:var(--battle-fs-11);flex:0 0 auto;}
+.cot-si-empty{padding:6px 9px;font-size:var(--battle-fs-11);color:var(--ink-3);letter-spacing:0em;}
 .cot-si-toasthost{position:absolute;left:0;bottom:452px;width:240px;min-height:84px;
   display:flex;flex-direction:column;justify-content:flex-end;gap:3px;contain:layout style;}
 .cot-si-toast{height:26px;overflow:hidden;contain:layout paint style;
@@ -469,14 +469,14 @@ const SI_CSS = `
   transition:opacity .7s ease;text-shadow:var(--battle-text-halo);}
 .cot-si-toast.out{opacity:0;}
 .cot-si-toast .l1{height:100%;display:flex;justify-content:space-between;align-items:center;gap:6px;
-  font-size:11px;font-weight:700;color:var(--ink-1);}
+  font-size:var(--battle-fs-11);font-weight:700;color:var(--ink-1);}
 .cot-si-toast .l1 span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-si-toast .l1 .attacker{flex:1;}
 .cot-si-toast .l1 .si{display:inline-block;width:22px;height:12px;flex:0 0 22px;}
 .cot-si-toast .l1 b{flex:0 0 auto;color:var(--danger);font-family:${FONT_COND};letter-spacing:-.01em;
-  font-size:11px;display:flex;align-items:center;gap:4px;
+  font-size:var(--battle-fs-11);display:flex;align-items:center;gap:4px;
   white-space:nowrap;}
-.cot-si-toast .l1 b .hit-count{font-size:11px;color:var(--ink-1);flex-shrink:0;}
+.cot-si-toast .l1 b .hit-count{font-size:var(--battle-fs-11);color:var(--ink-1);flex-shrink:0;}
 .cot-si-toast .l1 b svg{width:11px;height:11px;flex:0 0 auto;}
 .cot-si-stats{position:fixed;inset:0;z-index:71;display:none;pointer-events:none;
   flex-direction:column;align-items:center;justify-content:center;
@@ -514,9 +514,9 @@ body.cot-si-report .cot-ret,body.cot-si-report .cot-hitmark{display:none !import
 .cot-si-ban{font-family:${FONT_COND};font-weight:700;font-size:56px;
   letter-spacing:.34em;text-indent:.34em;line-height:1;text-shadow:0 2px 22px rgba(0,0,0,.85);}
 .cot-si-ban.v{color:#7ee87e;}.cot-si-ban.d{color:#f05a5a;}.cot-si-ban.n{color:#cfd9e2;}
-.cot-si-bansub{font-size:11px;letter-spacing:.24em;color:${COL.dim};margin:7px 0 2.6vh;
+.cot-si-bansub{font-size:var(--battle-fs-11);letter-spacing:.24em;color:${COL.dim};margin:7px 0 2.6vh;
   text-transform:uppercase;font-family:${FONT_COND};font-weight:700;}
-.cot-si-hdr{font-size:11px;letter-spacing:.16em;color:#a9b6c2;margin:0 0 2.2vh;
+.cot-si-hdr{font-size:var(--battle-fs-11);letter-spacing:.16em;color:#a9b6c2;margin:0 0 2.2vh;
   text-transform:uppercase;font-family:${FONT_COND};font-weight:700;
   }
 .cot-si-hdr b{color:#dbe6ef;font-weight:700;}
@@ -525,27 +525,27 @@ body.cot-si-report .cot-ret,body.cot-si-report .cot-hitmark{display:none !import
 .cot-si-panel{background:linear-gradient(180deg,rgba(10,14,18,.92),rgba(6,9,12,.95));
   border:1px solid rgba(146,164,180,.3);box-shadow:0 10px 40px rgba(0,0,0,.5);
   padding:14px 20px 16px;min-height:0;overflow:hidden;}
-.cot-si-panel .ph{font-size:11px;font-weight:700;letter-spacing:.14em;color:${COL.dim};
+.cot-si-panel .ph{font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.14em;color:${COL.dim};
   text-transform:uppercase;font-family:${FONT_COND};
   padding-bottom:6px;border-bottom:1px solid rgba(146,164,180,.2);margin-bottom:7px;
   display:flex;justify-content:space-between;}
 .cot-si-pl{flex:1.15;}
 .cot-si-pr{flex:1;}
-.cot-si-you{display:flex;align-items:center;gap:8px;font-size:11px;padding:3px 0 6px;
+.cot-si-you{display:flex;align-items:center;gap:8px;font-size:var(--battle-fs-11);padding:3px 0 6px;
   border-bottom:1px solid rgba(146,164,180,.14);
   margin-bottom:5px;}
 .cot-si-you .si{width:62px;height:24px;flex:0 0 auto;}
 .cot-si-you .n{flex:1;color:#f2f7fb;font-weight:700;font-family:${FONT_COND};
   letter-spacing:.1em;}
-.cot-si-meta{margin-top:12px;font-size:11px;letter-spacing:.12em;color:${COL.dim};
+.cot-si-meta{margin-top:12px;font-size:var(--battle-fs-11);letter-spacing:.12em;color:${COL.dim};
   text-transform:uppercase;font-family:${FONT_COND};
   font-weight:700;text-align:center;}
-.cot-si-you .s{color:${COL.dim};font-size:11px;}
+.cot-si-you .s{color:${COL.dim};font-size:var(--battle-fs-11);}
 .cot-si-you .dm{color:#ffd166;font-weight:700;font-family:${FONT_COND};letter-spacing:-.01em;
   width:60px;text-align:right;}
 .cot-si-ribbons{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px;}
 .cot-si-rib{border:1px solid rgba(214,178,94,.75);color:#e8c86a;font-family:${FONT_COND};
-  font-weight:700;font-size:11px;letter-spacing:.06em;
+  font-weight:700;font-size:var(--battle-fs-11);letter-spacing:.06em;
   padding:3px 8px;text-transform:uppercase;background:rgba(120,90,20,.16);
   display:inline-flex;align-items:center;gap:5px;}
 .cot-si-rib svg{width:12px;height:12px;display:block;flex:0 0 auto;}
@@ -561,20 +561,20 @@ body.cot-si-report .cot-ret,body.cot-si-report .cot-hitmark{display:none !import
   border:1px solid rgba(146,164,180,.3);box-shadow:0 10px 40px rgba(0,0,0,.5);
   padding:10px 16px 11px;}
 .cot-si-ecoitem .et{display:flex;align-items:baseline;justify-content:center;gap:10px;}
-.cot-si-ecoitem .ek{font-size:11px;font-weight:700;letter-spacing:.14em;color:${COL.dim};
+.cot-si-ecoitem .ek{font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.14em;color:${COL.dim};
   text-transform:uppercase;font-family:${FONT_COND};}
 .cot-si-ecoitem .ev{font-size:30px;font-weight:700;font-family:${FONT_COND};letter-spacing:-.01em;
   line-height:1;}
 .cot-si-ecoitem.cr .ev{color:#ffd166;}
 .cot-si-ecoitem.xp .ev{color:#9fd0ff;}
-.cot-si-ecoitem .eb{font-size:11px;color:${COL.dim};letter-spacing:0em;
+.cot-si-ecoitem .eb{font-size:var(--battle-fs-11);color:${COL.dim};letter-spacing:0em;
   }
 /* itemized earnings receipt (r4, WoT detailed-results depth): one line item
    per source, each printing its exact inputs x rate — the strip total above
    MUST reconcile with the visible rows (rounding stated on the total row) */
 .cot-si-erows{margin-top:7px;border-top:1px solid rgba(146,164,180,.16);
   padding-top:5px;display:flex;flex-direction:column;gap:1px;}
-.cot-si-erows>div{display:flex;justify-content:space-between;font-size:11px;
+.cot-si-erows>div{display:flex;justify-content:space-between;font-size:var(--battle-fs-11);
   color:${COL.dim};letter-spacing:0em;}
 .cot-si-erows b{color:#cfdae4;font-weight:700;font-family:${FONT_COND};letter-spacing:-.01em;
   }
@@ -586,18 +586,18 @@ body.cot-si-report .cot-ret,body.cot-si-report .cot-hitmark{display:none !import
    the same resolved events the floating cards / toasts already showed */
 .cot-si-kill.x{pointer-events:auto;cursor:pointer;}
 .cot-si-kill.x:hover{background:rgba(146,164,180,.07);}
-.cot-si-kill .ex{color:${COL.dim};font-size:11px;width:10px;flex:0 0 auto;
+.cot-si-kill .ex{color:${COL.dim};font-size:var(--battle-fs-11);width:10px;flex:0 0 auto;
   transition:transform .15s ease;}
 .cot-si-kill.open .ex{transform:rotate(90deg);}
 .cot-si-xd{display:none;background:rgba(8,12,16,.6);
   border-bottom:1px solid rgba(146,164,180,.08);
   padding:3px 6px 4px 24px;max-height:96px;overflow-y:auto;pointer-events:auto;}
 .cot-si-xd.open{display:block;}
-.cot-si-xd .xr{display:flex;gap:7px;align-items:baseline;font-size:11px;
+.cot-si-xd .xr{display:flex;gap:7px;align-items:baseline;font-size:var(--battle-fs-11);
   color:#b9c6d2;padding:1px 0;}
 .cot-si-xd .xr .t{color:${COL.dim};width:30px;flex:0 0 auto;}
 .cot-si-xd .xr .w{font-family:${FONT_COND};font-weight:700;
-  font-size:11px;letter-spacing:.02em;width:52px;flex:0 0 auto;}
+  font-size:var(--battle-fs-11);letter-spacing:.02em;width:52px;flex:0 0 auto;}
 .cot-si-xd .xr .d{color:#ffd166;font-weight:700;width:34px;text-align:right;
   flex:0 0 auto;font-family:${FONT_COND};letter-spacing:-.01em;}
 .cot-si-xd .xr .z{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
@@ -606,16 +606,16 @@ body.cot-si-report .cot-ret,body.cot-si-report .cot-hitmark{display:none !import
    (.cot-end, z 72) sits above it solely to host its RETURN button */
 body.cot-si-report .cot-end{pointer-events:none !important;}
 body.cot-si-report .cot-end button{pointer-events:auto !important;}
-.cot-si-stat .k{font-size:11px;font-weight:700;letter-spacing:.07em;color:${COL.dim};
+.cot-si-stat .k{font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.07em;color:${COL.dim};
   text-transform:uppercase;font-family:${FONT_COND};}
 .cot-si-shell{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:8px;
-  font-size:11px;color:${COL.dim};letter-spacing:0em;}
+  font-size:var(--battle-fs-11);color:${COL.dim};letter-spacing:0em;}
 .cot-si-shell b{color:#dbe6ef;font-family:${FONT_COND};letter-spacing:-.01em;font-weight:700;}
 .cot-si-shell .ty{font-weight:700;font-family:${FONT_COND};
-  letter-spacing:.02em;font-size:11px;}
+  letter-spacing:.02em;font-size:var(--battle-fs-11);}
 .cot-si-tl{margin-bottom:9px;}
 .cot-si-tl svg{display:block;width:100%;height:58px;}
-.cot-si-tl .cap{font-size:11px;letter-spacing:.05em;color:${COL.dim};text-transform:uppercase;
+.cot-si-tl .cap{font-size:var(--battle-fs-11);letter-spacing:.05em;color:${COL.dim};text-transform:uppercase;
   font-family:${FONT_COND};font-weight:700;text-align:center;margin-top:2px;}
 .cot-si-kills{padding-top:2px;margin-bottom:6px;}
 .cot-si-kill{display:flex;align-items:center;gap:8px;font-size:11.5px;padding:3px 0;
@@ -624,23 +624,23 @@ body.cot-si-report .cot-end button{pointer-events:auto !important;}
 .cot-si-kill .n{flex:1;color:#dbe6ef;font-weight:600;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;}
 .cot-si-kill .n .you{color:#ffd166;font-family:${FONT_COND};
-  font-weight:700;font-size:11px;letter-spacing:.05em;border:1px solid rgba(255,209,102,.6);
+  font-weight:700;font-size:var(--battle-fs-11);letter-spacing:.05em;border:1px solid rgba(255,209,102,.6);
   padding:0 4px 1px;margin-right:4px;vertical-align:1px;}
-.cot-si-kill .kd{color:${COL.red};font-weight:700;font-size:11px;letter-spacing:.05em;
+.cot-si-kill .kd{color:${COL.red};font-weight:700;font-size:var(--battle-fs-11);letter-spacing:.05em;
   font-family:${FONT_COND};width:38px;text-align:right;flex:0 0 auto;}
-.cot-si-kill .al{color:${COL.green};font-weight:700;font-size:11px;letter-spacing:.05em;
+.cot-si-kill .al{color:${COL.green};font-weight:700;font-size:var(--battle-fs-11);letter-spacing:.05em;
   font-family:${FONT_COND};width:38px;text-align:right;flex:0 0 auto;
   opacity:.75;}
-.cot-si-kill .s{color:${COL.dim};font-size:11px;}
+.cot-si-kill .s{color:${COL.dim};font-size:var(--battle-fs-11);}
 .cot-si-kill .k{color:#dbe6ef;font-weight:700;font-family:${FONT_COND};letter-spacing:-.01em;
-  width:30px;text-align:right;font-size:11px;flex:0 0 auto;}
+  width:30px;text-align:right;font-size:var(--battle-fs-11);flex:0 0 auto;}
 .cot-si-kill .dm{color:#ffd166;font-weight:700;font-family:${FONT_COND};letter-spacing:-.01em;
   width:48px;text-align:right;flex:0 0 auto;}
 /* roster column micro-captions (r6): the right-hand figure is the
    combatant's TOTAL battle damage output — un-headed it read as damage
    done to you next to 'no engagement with you' */
 .cot-si-kill.cap{padding:0 0 1px;border-bottom:none;}
-.cot-si-kill.cap span{color:${COL.dim} !important;font-size:11px;font-weight:700;
+.cot-si-kill.cap span{color:${COL.dim} !important;font-size:var(--battle-fs-11);font-weight:700;
   letter-spacing:.03em;text-transform:uppercase;font-family:${FONT_COND};
   }
 /* The game owns an explicit touch-layout state; do not make battle UI depend
@@ -656,8 +656,8 @@ body.cot-touch-layout .cot-si-log{display:none!important;}
 body.cot-touch-layout .cot-si-toasthost{top:calc(max(8px,env(safe-area-inset-top)) + 108px);
   bottom:auto;left:max(8px,env(safe-area-inset-left));right:auto;width:min(200px,48vw);min-height:26px;}
 body.cot-touch-layout .cot-si-toast{height:26px;padding:4px 6px;}
-body.cot-touch-layout .cot-si-toast .l1{font-size:11px;}
-body.cot-touch-layout .cot-si-toast .l1 b{font-size:11px;}
+body.cot-touch-layout .cot-si-toast .l1{font-size:var(--battle-fs-11);}
+body.cot-touch-layout .cot-si-toast .l1 b{font-size:var(--battle-fs-11);}
 @media (prefers-reduced-motion:reduce){
   .cot-si-card,.cot-si-toast,.cot-si-diag svg.ov .wdg{animation:none;transition:none;}
 }
