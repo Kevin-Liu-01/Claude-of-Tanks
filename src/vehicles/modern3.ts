@@ -1656,12 +1656,16 @@ function buildType10Native2026(
       P.add('hull', box(0.077, 0.517, 4.73), s2 * 0.780, 0.6325, 0.11);           // lower tub side strake remains inside the scaled shoe lane
     }
     P.add('hull', box(3.124, 0.0605, 4.202), 0, 1.6583, 0.154);                   // MID deck plate 1.6885 (z -1.95..+2.26)
-    P.add('hull', box(3.124, 0.154, 1.815), 0, 1.705, -2.8545);                   // REAR engine deck 1.782 (z -3.76..-1.95; the print's raised powerpack roof)
-    P.add('hull', box(2.42, 0.033, 0.55), 0, 1.7985, -2.20);                      // raised intake strip 1.815 (print deck corners ×1.10)
+    // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the raised powerpack roof starts at -2.40,
+    // behind a low fore section (the transition's 1.7105 lip) and the raked step, out of the sweep of the turret's prow
+    // (1.782, 2.2 m off the ring's axis), which ran into it with the turret turned aft; its intake strip rides on it.
+    P.add('hull', box(3.124, 0.0825, 0.253), 0, 1.669, -2.0735);                  // fore engine-deck section 1.7105 (z -2.20..-1.947)
+    P.add('hull', box(3.124, 0.154, 1.362), 0, 1.705, -3.081);                    // REAR engine deck 1.782 (z -3.76..-2.40; the print's raised powerpack roof)
+    P.add('hull', box(2.42, 0.033, 0.55), 0, 1.7735, -2.70);                      // intake strip 1.79 (the print's raised 1.815 corners ×1.10, 2.5 cm lower, under the bustle's floor)
     P.add('hull', box(1.43, 0.033, 0.44), -0.385, 1.7974, -3.19);                 // raised filler/hatch strip aft
-    P.add('hull', slab(                                                           // deck TRANSITION step 1.6885 -> 1.782 at z -1.95 (one raked face, §B1)
-      [-1.562, 1.6885, -1.782], [1.562, 1.6885, -1.782], [1.562, 1.782, -1.98], [-1.562, 1.782, -1.98],
-      [-1.562, 1.7105, -1.782], [1.562, 1.7105, -1.782], [1.562, 1.804, -1.98], [-1.562, 1.804, -1.98]));
+    P.add('hull', slab(                                                           // deck TRANSITION step 1.6885 -> 1.782 at z -2.40 (one raked face, §B1)
+      [-1.562, 1.6885, -2.20], [1.562, 1.6885, -2.20], [1.562, 1.782, -2.40], [-1.562, 1.782, -2.40],
+      [-1.562, 1.7105, -2.20], [1.562, 1.7105, -2.20], [1.562, 1.804, -2.40], [-1.562, 1.804, -2.40]));
     // UPPER GLACIS: two-plane fall to the beak (print knees 1.51@2.20 ->
     // 1.35@2.87 -> 1.22@3.17 -> nose 0.93, all ×1.10). One raked surface per
     // course (§B1 — the rake motivates the whole bow mass).
@@ -1841,9 +1845,11 @@ function buildType10Native2026(
     }
     // ---- hull furniture (print stations ×1.10; every top follows the deck
     // lines; §B3.2 density: the type's full common kit) -----------------------
-    P.add('hull', box(0.682, 0.0495, 0.462), -0.44, 1.7358, 1.936);               // driver plateau front-LEFT
-    P.add('hull', cylY(0.286, 0.286, 0.0286, 16), -0.44, 1.7732, 1.958);          // driver hatch on the plateau
-    P.add('hullDark', torus(0.286, 0.0132, 16), -0.44, 1.7842, 1.958);
+    // (release 240, the owner: "make sure all tank turrets are clear of hulls": the driver's plateau and hatch 6 cm lower,
+    // under the turret's front overhang, in which they stood 4 cm at rest)
+    P.add('hull', box(0.682, 0.0495, 0.462), -0.44, 1.6758, 1.936);               // driver plateau front-LEFT
+    P.add('hull', cylY(0.286, 0.286, 0.0286, 16), -0.44, 1.7132, 1.958);          // driver hatch on the plateau
+    P.add('hullDark', torus(0.286, 0.0132, 16), -0.44, 1.7242, 1.958);
     periscope(P, 'hullDetail', -0.605, 1.683, 2.134);
     periscope(P, 'hullDetail', -0.44, 1.6885, 2.145);                             // center driver periscope (real three-block fan)
     periscope(P, 'hullDetail', -0.286, 1.694, 2.156);
@@ -1895,8 +1901,8 @@ function buildType10Native2026(
       P.add('hullDetail', torus(0.0825, 0.0165, 10), s * 0.77, 1.034, 3.74, Math.PI / 2, 0, 0); // bow tow eyes on the beak
       P.add('hullDetail', box(0.121, 0.055, 0.055), s * 0.77, 0.99, 3.729);
     }
-    liftEye(P, 'hullDetail', -1.474, 1.705, 1.21);
-    liftEye(P, 'hullDetail', 1.474, 1.705, 1.21);
+    liftEye(P, 'hullDetail', -1.474, 1.625, 1.21);                                // (release 240: 8 cm deeper, under the turret's side)
+    liftEye(P, 'hullDetail', 1.474, 1.625, 1.21);
     liftEye(P, 'hullDetail', -1.474, 1.7985, -3.355);
     liftEye(P, 'hullDetail', 1.474, 1.7985, -3.355);
     // engine deck: flush radiator field + louvres + intake mesh + filler caps
@@ -1912,20 +1918,14 @@ function buildType10Native2026(
   buildType10Native2026HullStage1();               // intake mesh ahead of the step
   const buildType10Native2026MarkingsStage1 = (): void => {
     for (const s of [-1, 1]) P.add('hullDetail', cylY(0.088, 0.088, 0.0176, 12), s * 1.298, 1.7028, -1.43);
-    P.add('hullDetail', box(0.90, 0.0165, 0.033), 0.55, 1.799, -1.87);            // access panel seams
-    P.add('hullDetail', box(0.90, 0.0165, 0.033), -0.55, 1.799, -1.87);
+    P.add('hullDetail', box(0.90, 0.0165, 0.033), 0.55, 1.799, -2.47);            // access panel seams (release 240: on the raised roof's fore edge)
+    P.add('hullDetail', box(0.90, 0.0165, 0.033), -0.55, 1.799, -2.47);
     P.add('hullDark', box(0.066, 0.11, 0.935), -1.5785, 1.6225, -2.882);          // exhaust louvre bank, left flank HIGH on the bay-roof side (§5.308-B §B4 fix carried ×1.10: the low band sat inside the raised sprocket-wrap corridor — measured again this round, 33 band / 18 shoe voxels)
     for (let k = 0; k < 2; k++) P.add('hullDetail', box(0.0682, 0.0418, 0.264), -1.5807, 1.5895 + k * 0.0605, -2.882);
-    KIT.shovelTool(P, 1.30, 1.797, -2.35, 0.62);                                  // pioneer shovel, right rear deck shelf
-    // stern stowage rack (hull-side; rails at the engine-deck line)
-    P.add('hullDetail', box(3.08, 0.0385, 0.0385), 0, 1.8095, -2.7995);
-    P.add('hullDetail', box(3.08, 0.0385, 0.0385), 0, 1.8095, -3.4485);
-    for (const s of [-1, 1]) P.add('hullDetail', box(0.0385, 0.0385, 0.66), s * 1.529, 1.8095, -3.124);
-    stowage(P, 'hullCloth', rng, [
-      [-0.792, 1.793, -3.08, 0.935, 0.11, 0.528],
-      [0.33, 1.7952, -3.058, 0.968, 0.121, 0.506],
-    ]);
-    ammoCan(P, 'hullDark', 1.298, 1.7985, -3.036, 0.12);
+    KIT.shovelTool(P, 1.30, 1.797, -2.80, 0.62);                                  // pioneer shovel, right rear deck shelf (release 240: on the raised roof)
+    // (release 240, the owner: "make sure all tank turrets are clear of hulls": the hull-side stern stowage rack, its two
+    // bags and its ammunition can are gone; they stood under the turret's own bustle rack, which covers them at rest and
+    // sat 15 cm into them)
     // §5.364 fender toolboxes (JGSDF common kit): long tool stowage riding the
     // front fenders — real geometry closing the fender-gully daylight cells
     // (receipt after1z sweep y 1.38, z 2.28..2.49) on both flanks.
@@ -1978,9 +1978,12 @@ function buildType10Native2026(
   const buildType10Native2026TurretStage1 = (): void => {
     P.add('turret', polyMultiLoft(type10ShellPlan, [
       // underside: mid undercut, rising to the bustle tail and over the
-      // cheeks (print yMin bands ×1.10)
-      { height: [0.11, 0.11, 0.099, 0.066, 0.022, -0.011, 0.022, 0.055, 0.088, 0.11,
-        0.11, 0.088, 0.055, 0.022, -0.011, 0.022, 0.066, 0.099].map((y) => y + shellLift), inset: 1 },
+      // cheeks (print yMin bands ×1.10). Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the
+      // bustle's floor rides at 0.18 aft of its taper (it fell to 0.055-0.11, into the raised engine deck it swings over,
+      // and sat in it at rest); the floor's middle keeps its height.
+      { height: [0.11, 0.11, 0.099, 0.066, 0.022, -0.011, 0.15, 0.18, 0.18, 0.18,
+        0.18, 0.18, 0.18, 0.15, -0.011, 0.022, 0.066, 0.099].map((y) => y + shellLift), inset: 1,
+        centerHeight: 0.0623 + shellLift },
       // shoulder ring at the wall top
       { height: [0.506, 0.506, 0.528, 0.572, 0.605, 0.605, 0.572, 0.55, 0.506, 0.484,
         0.484, 0.506, 0.55, 0.572, 0.605, 0.605, 0.572, 0.528].map((y) => y + shellLift),
@@ -2197,7 +2200,8 @@ function buildType10Native2026(
   // gussets + cross-brace, LOADED (JGSDF field config) ----------------------
   const buildType10Native2026MarkingsStage2 = (): void => {
     {
-      const yLo = 0.165, yHi = 0.583;                                             // world 1.837 / 2.255
+      // (release 240: the lower rails, floor and load 6 cm higher, over the engine deck's strips and links)
+      const yLo = 0.225, yHi = 0.583, rackLift = 0.06;                            // world 1.897 / 2.255
       const zF = -2.7214 + bustleRackSeatShift;
       const zR = -3.5134 + bustleRackSeatShift;
       const zMid = (zF + zR) * 0.5;
@@ -2206,26 +2210,26 @@ function buildType10Native2026(
       for (const s of [-1, 1]) {
         P.add('turretDetail', box(0.0495, 0.0495, 0.77), s * 1.243, yLo, zMid);   // lower side returns (0.77 ties the forward and rear posts; at 0.682 they stood 8-11 mm short of both: owner 2026-10-19 sweep)
         P.add('turretDetail', box(0.0495, 0.0495, 0.77), s * 1.243, yHi, zMid);   // upper side returns
-        P.add('turretDetail', box(0.044, 0.462, 0.044), s * 1.243, 0.374, zF - 0.022); // forward posts into the bustle shoulder (§B2)
-        P.add('turretDetail', box(0.044, 0.462, 0.044), s * 1.243, 0.374, zR + 0.022); // rear corner posts
+        P.add('turretDetail', box(0.044, 0.462 - rackLift, 0.044), s * 1.243, 0.374 + rackLift / 2, zF - 0.022); // forward posts into the bustle shoulder (§B2)
+        P.add('turretDetail', box(0.044, 0.462 - rackLift, 0.044), s * 1.243, 0.374 + rackLift / 2, zR + 0.022); // rear corner posts
         P.add('turretDetail', box(0.066, 0.066, 0.033), s * 1.243, yHi + 0.044, zR + 0.022); // corner gussets
-        P.add('turretDetail', box(0.033, 0.62, 0.033), s * 0.55, 0.374, zR + 0.022, 0, 0, s * 0.75); // rear-face X-brace ties both rails
+        P.add('turretDetail', box(0.033, 0.55, 0.033), s * 0.55, 0.374 + rackLift / 2, zR + 0.022, 0, 0, s * 0.75); // rear-face X-brace ties both rails
       }
       for (let k = 0; k < 9; k++) {                                               // VERTICAL SLATS across the rear face (identity)
         const x = -1.144 + k * 0.286;
-        P.add('turretDetail', box(0.0308, 0.44, 0.0308), x, 0.374, zR + 0.022);
+        P.add('turretDetail', box(0.0308, 0.44 - rackLift, 0.0308), x, 0.374 + rackLift / 2, zR + 0.022);
       }
       for (let k = 0; k < 3; k++) {                                               // side slats
-        for (const s of [-1, 1]) P.add('turretDetail', box(0.0308, 0.44, 0.0308), s * 1.243, 0.374, zF - 0.1386 - k * 0.176);
+        for (const s of [-1, 1]) P.add('turretDetail', box(0.0308, 0.44 - rackLift, 0.0308), s * 1.243, 0.374 + rackLift / 2, zF - 0.1386 - k * 0.176);
       }
       P.add('turretDark', openRackGrid(2.47, 0.638, 0.018, 6, 10), 0, yLo + 0.022, zMid); // open mesh floor (2.47 laps the lower returns: owner 2026-10-19 sweep)
       stowage(P, 'turretCloth', rng, [
-        [-0.66, 0.363, -2.992 + bustleRackSeatShift, 0.792, 0.286, 0.55],
-        [0.33, 0.374, -3.036 + bustleRackSeatShift, 0.726, 0.308, 0.572],
-        [1.10, 0.341, -2.97 + bustleRackSeatShift, 0.44, 0.242, 0.506],
+        [-0.66, 0.363 + rackLift, -2.992 + bustleRackSeatShift, 0.792, 0.286, 0.55],
+        [0.33, 0.374 + rackLift, -3.036 + bustleRackSeatShift, 0.726, 0.308, 0.572],
+        [1.10, 0.341 + rackLift, -2.97 + bustleRackSeatShift, 0.44, 0.242, 0.506],
       ]);
-      P.add('turretCloth', cylX(0.088, 0.72, 10), -0.30, yHi - 0.055, -3.245 + bustleRackSeatShift); // rolled tarp on the load
-      ammoCan(P, 'turretDark', -1.122, 0.33, -2.882 + bustleRackSeatShift, 0.2);
+      P.add('turretCloth', cylX(0.088, 0.72, 10), -0.30, yHi - 0.055 + rackLift, -3.245 + bustleRackSeatShift); // rolled tarp on the load
+      ammoCan(P, 'turretDark', -1.122, 0.33 + rackLift, -2.882 + bustleRackSeatShift, 0.2);
 
       P.turretG.userData.type10RoofBustleReceipt = {
         opticVariant: compactRightGunnerSight ? 'compact-right' : 'type10b-standard-left',

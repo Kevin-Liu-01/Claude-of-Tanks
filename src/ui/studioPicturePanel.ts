@@ -60,14 +60,21 @@ function option(select: HTMLSelectElement, value: string, label: string): void {
 
 function labelledSelect(label: string): { row: HTMLLabelElement; select: HTMLSelectElement } {
   const row = document.createElement('label');
-  row.className = 'row';
-  const k = document.createElement('span');
-  k.className = 'k';
-  k.textContent = label;
+  row.className = 'production-lens';
   const select = document.createElement('select');
-  select.setAttribute('aria-label', label);
-  row.append(k, select);
+  row.append(label, select);
   return { row, select };
+}
+
+/** A kit chip (src/ui/components) that toggles: aria-pressed carries its state. */
+function chip(label: string): HTMLButtonElement {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'cot-c-chip';
+  button.dataset.uiSound = 'toggle';
+  button.setAttribute('aria-pressed', 'false');
+  button.textContent = label;
+  return button;
 }
 
 /** Mount the Picture controls into `section`; returns the refresh hook the panel calls. */
@@ -110,10 +117,7 @@ export function mountStudioPicturePanel(
   // depth of field
   const dofRow = document.createElement('div');
   dofRow.className = 'grid';
-  dofRow.style.marginTop = '4px';
-  const dofBtn = document.createElement('button');
-  dofBtn.type = 'button';
-  dofBtn.textContent = t('studioPanel.picture.dof');
+  const dofBtn = chip(t('studioPanel.picture.dof'));
   dofBtn.addEventListener('click', () => set({ dof: { enabled: !S.getPicture().dof.enabled } }));
   const format = document.createElement('select');
   format.setAttribute('aria-label', t('studioPanel.picture.sensor'));
@@ -124,23 +128,17 @@ export function mountStudioPicturePanel(
 
   const focusRow = document.createElement('div');
   focusRow.className = 'grid';
-  focusRow.style.marginTop = '5px';
-  const focusTank = document.createElement('button');
-  focusTank.type = 'button';
-  focusTank.textContent = t('studioPanel.picture.focusSelected');
+  const focusTank = chip(t('studioPanel.picture.focusSelected'));
   focusTank.addEventListener('click', () => {
     const actor = kit.selectedActor();
     if (!actor) { kit.flash(t('studioPanel.picture.focusNeedsTank')); return; }
     set({ dof: { enabled: true, focusActor: actor.name || actor.uid } });
   });
-  const focusDistanceBtn = document.createElement('button');
-  focusDistanceBtn.type = 'button';
-  focusDistanceBtn.textContent = t('studioPanel.picture.focusDistance');
+  const focusDistanceBtn = chip(t('studioPanel.picture.focusDistance'));
   focusDistanceBtn.addEventListener('click', () => set({ dof: { enabled: true, focusActor: null } }));
   focusRow.append(focusTank, focusDistanceBtn);
   section.appendChild(focusRow);
   const distance = kit.sliderRow(t('studioPanel.picture.focusMeters'), 1, 200, 0.5, (v) => set({ dof: { focusDistance: v, focusActor: null } }));
-  distance.row.style.marginTop = '5px';
   section.appendChild(distance.row);
   const aperture = labelledSelect(t('studioPanel.picture.fStop'));
   for (const stop of F_STOPS) option(aperture.select, String(stop), `f/${stop}`);
@@ -149,9 +147,8 @@ export function mountStudioPicturePanel(
 
   const reset = document.createElement('button');
   reset.type = 'button';
+  reset.className = 'cot-c-btn cot-c-btn--36 cot-c-btn--wide';
   reset.textContent = t('studioPanel.picture.reset');
-  reset.style.width = '100%';
-  reset.style.marginTop = '4px';
   reset.addEventListener('click', () => set(null));
   section.appendChild(reset);
 
@@ -171,11 +168,10 @@ export function mountStudioPicturePanel(
       sliders.vignette.set(p.vignette.amount);
       sliders.grain.set(p.grain.amount);
       matte.select.value = p.letterbox;
-      dofBtn.classList.toggle('on', p.dof.enabled);
       dofBtn.setAttribute('aria-pressed', String(p.dof.enabled));
       format.value = p.dof.sensor;
-      focusTank.classList.toggle('on', p.dof.enabled && p.dof.focusActor != null);
-      focusDistanceBtn.classList.toggle('on', p.dof.enabled && p.dof.focusActor == null);
+      focusTank.setAttribute('aria-pressed', String(p.dof.enabled && p.dof.focusActor != null));
+      focusDistanceBtn.setAttribute('aria-pressed', String(p.dof.enabled && p.dof.focusActor == null));
       distance.set(p.dof.focusDistance);
       const nearest = F_STOPS.reduce((best, stop) => (Math.abs(stop - p.dof.fStop) < Math.abs(best - p.dof.fStop) ? stop : best));
       aperture.select.value = String(nearest);

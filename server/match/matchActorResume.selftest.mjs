@@ -4,7 +4,7 @@
 // `entityForWireId` / `wireIdOf` name the entities behind the wire ids in seat-then-bot order; a fresh actor is
 // unchanged (tick 0, the countdown, no offset); invalid resume options are refused.
 import assert from 'node:assert/strict';
-import { MESSAGE_TYPE, PHASE, PROTOCOL_VERSION } from '../../src/mp/wire/constants.ts';
+import { CLOSE_REASON, MESSAGE_TYPE, NO_TICK, PHASE, PROTOCOL_VERSION } from '../../src/mp/wire/constants.ts';
 import { applySnapshotPacket, decodeMessage, encodeMessage } from '../../src/mp/wire/codec.ts';
 import { quantizeAngle, quantizePosition, quantizeVelocity } from '../../src/mp/wire/quantize.ts';
 import { createDedicatedWorldCollision } from '../dedicatedWorldCollision.ts';
@@ -28,7 +28,8 @@ const bots = [{ playerId: 'bot-a', name: 'Bot A', team: 'alpha', specId: 'leo2_i
 
 function attachViewer(actor, seat, playerId, team = 'alpha') {
   const link = createLoopbackLink(playerId);
-  const viewer = { frames: [], welcome: null, closed: null, history: new Map(), send: (message) => link.client.send(encodeMessage(message)) };
+  const viewer = { frames: [], welcome: null, closed: null, linkClose: null, history: new Map(), send: (message) => link.client.send(encodeMessage(message)) };
+  link.client.onClose?.((reason, detail) => { viewer.linkClose = { reason, detail }; });
   link.client.onMessage((bytes) => {
     const decoded = decodeMessage(bytes, { resolveBaseline: (tick) => viewer.history.get(tick) ?? null });
     assert.ok(decoded.ok, decoded.ok ? '' : decoded.error.code);
@@ -172,6 +173,53 @@ for (const resume of [{ tick: -1, battleTimeMs: 0 }, { tick: 1.5, battleTimeMs: 
   await advance(actor, 6);
   const own = p1.frames.at(-1).entities.find((row) => row.entityId === 1);
   assert.ok(own && Math.abs(own.x / 1000 - (x0 + 20)) < 2, `the next rows carry the hinted pose (${(own.x / 1000 - x0).toFixed(2)} m from the restored one)`);
+  actor.stop();
+}
+// ---- a revoked seat (security audit 2026-10-22): the room removed p2 mid-match (a kick); the actor detaches it at once
+// and refuses its seat token for the rest of the match, while p1 plays on
+{
+  const actor = createMatchActor({ roomId: 'revoked-seat', mapId: 'verdant', seed: 35, seats, bots, world: 'terrain', now, schedule });
+  const p1 = attachViewer(actor, 0, 'p1');
+  const p2 = attachViewer(actor, 1, 'p2', 'bravo');
+  await flush();
+  assert.ok(p1.welcome && p2.welcome, 'both seats welcomed');
+  assert.equal(actor.revokeSeat('p2'), true, 'the revoked seat was attached');
+  await flush();
+  assert.equal(p2.linkClose?.reason, CLOSE_REASON.ROOM_CLOSED, `p2's link is closed ROOM_CLOSED (${JSON.stringify(p2.linkClose)})`);
+  const again = attachViewer(actor, 1, 'p2', 'bravo');
+  await flush();
+  assert.equal(again.welcome, null, 'its token is refused afterwards');
+  assert.equal(again.linkClose?.reason, CLOSE_REASON.ROOM_CLOSED, 'refused ROOM_CLOSED');
+  assert.equal(p1.linkClose, null, 'p1 plays on');
+  assert.equal(actor.revokeSeat('nobody'), false);
+  actor.stop();
+}
+// ---- a late hint (security audit 2026-10-22): once the resumed actor has driven the hull from its seat's inputs, its
+// pose is this authority's own; a withheld hint sent afterwards (mid-fight) is refused 'late', and a new migration re-arms it
+{
+  const hintFor = (tick, x, z) => ({
+    type: MESSAGE_TYPE.RESUME_HINT, tick, x: quantizePosition(x), y: quantizePosition(5), z: quantizePosition(z), speed: 0, verticalSpeed: 0,
+    yaw: 0, pitch: 0, roll: 0, turretYaw: 0, gunPitch: 0,
+  });
+  const actor = createMatchActor({ roomId: 'resumed-late-hint', mapId: 'verdant', seed: 34, seats, bots, world: 'terrain', now, schedule, resume: { tick: 1200, battleTimeMs: 30_000 } });
+  const p1Entity = actor.entityForWireId(1);
+  const x0 = p1Entity.state.pos.x;
+  const z0 = p1Entity.state.pos.z;
+  actor.noteRestoredRow(1, 1000, x0, z0);
+  const p1 = attachViewer(actor, 0, 'p1');
+  await flush();
+  p1.send({ type: MESSAGE_TYPE.INPUT, clientTick: actor.tick + 1, snapshotAckTick: NO_TICK, interpDelayMs: 100,
+    controls: [{ throttle: 127, steer: 0, flags: 0, aimYaw: 0, aimPitch: 0, aimDistance: 0, shellSlot: 0, fireSeq: 0, actionSeq: 0, actionBits: 0 }] });
+  await flush();
+  const before = { x: p1Entity.state.pos.x, z: p1Entity.state.pos.z };
+  p1.send(hintFor(1100, x0 + 20, z0)); await flush();
+  const late = actor.stats().resumeHints;
+  assert.equal(late.reasons.late, 1, 'a hint after the seat has driven under the resumed actor is refused late');
+  assert.equal(late.applied, 0);
+  assert.ok(Math.abs(p1Entity.state.pos.x - before.x) < 1e-6 && Math.abs(p1Entity.state.pos.z - before.z) < 1e-6, 'and the hull did not move');
+  actor.noteRestoredRow(1, 1000, p1Entity.state.pos.x, p1Entity.state.pos.z); // a new migration re-arms the seed
+  p1.send(hintFor(1100, p1Entity.state.pos.x + 5, p1Entity.state.pos.z)); await flush();
+  assert.equal(actor.stats().resumeHints.applied, 1, 'a fresh migration takes one hint again');
   actor.stop();
   const fresh = createMatchActor({ roomId: 'fresh-hint', mapId: 'verdant', seed: 34, seats, world: 'terrain', now, schedule });
   fresh.noteRestoredRow(1, 10, 0, 0);

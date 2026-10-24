@@ -29,7 +29,7 @@ const slope = { getHeightAt: (x, z) => 0.12 * x - 0.05 * z };
 const FORMS = [
   ['tor', 'granite', 6, 5], ['outcrop', 'sandstone', 7, 3], ['crag', 'slate', 6, 5], ['pavement', 'limestone', 12, 0],
   ['scree', 'slate', 8, 0], ['hoodoo', 'sandstone', 3.2, 6], ['menhir', 'granite', 1.2, 4.5], ['cairn', 'limestone', 4.2, 2.6],
-  ['calvary', 'granite', 1.6, 5.6], ['blocks', 'breccia', 6, 2.6],
+  ['calvary', 'granite', 1.6, 5.6], ['blocks', 'breccia', 6, 2.6], ['chaos', 'granite', 5.5, 6],
 ];
 const plain = (masses) => JSON.parse(JSON.stringify(masses));
 let compared = 0, standing = 0, phoneEmpty = 0, fallenMasses = 0;

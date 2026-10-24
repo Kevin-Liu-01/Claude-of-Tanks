@@ -3,7 +3,7 @@
 // seniority migration, co-op modes, the serialized shapes.
 import assert from 'node:assert/strict';
 import {
-  ROOM_MAX_PLAYERS, ROOM_MAX_SPECTATORS, ROOM_MAX_TEAM_SIZE, RoomError, readRoomSnapshot,
+  ROOM_MAX_PLAYERS, ROOM_MAX_SPECTATORS, ROOM_MAX_TEAM_SIZE, RoomError, normalizePlayerName, normalizeRoomChat, readRoomSnapshot,
 } from './protocol.ts';
 import {
   applyRoomCommand, assignAdmin, canStart, createRoom, finishMatch, joinRoom, markMatchPlaying, migrateAdminIfAbsent, planStart,
@@ -261,5 +261,25 @@ function fullRoom({ teamSize = 14 } = {}) {
   assert.equal(room.players.find((p) => p.id === 'second').hostDeclined, true, 'unable is a decline for the policy; the actor reads the flag');
   reject(() => applyRoomCommand(room, 'second', { type: 'host_decline', declined: true, unable: 'yes' }, T0 + 7), 'invalid_command');
 }
+
+
+// ---- the planner's bot ids are never a seat's (security audit 2026-10-22): a seat named `bot-bravo-3` made every
+// elected host's createMatchActor throw 'duplicate bot', so no match could boot while it sat in the room
+{
+  assert.throws(() => createRoom({ roomCode: 'ROOMBT', mode: 'private', creator: { id: 'mode-alpha-0', name: 'Creator' }, selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 3 }, now: T0 }), /invalid_player/);
+  const room = createRoom({ roomCode: 'ROOMBT', mode: 'private', creator: { id: 'creator', name: 'Creator' }, selection: { specId: 'm1a1_abrams_hc' }, settings: { teamSize: 3 }, now: T0 });
+  for (const id of ['bot-bravo-3', 'bot-alpha-1', 'mode-bravo-0']) {
+    assert.throws(() => joinRoom(room, { player: { id, name: 'Watcher' }, team: 'spectator', now: T0 + 1 }), /invalid_player/, `${id} is refused`);
+  }
+  joinRoom(room, { player: { id: 'p_0123abcd', name: 'Guest' }, now: T0 + 2 });
+  joinRoom(room, { player: { id: 'robot-fan', name: 'Fan' }, now: T0 + 3 });
+  assert.deepEqual(room.players.map((p) => p.id), ['creator', 'p_0123abcd', 'robot-fan']);
+}
+
+// ---- names and chat drop controls and bidi overrides/isolates (security audit 2026-10-22): a name cannot reorder its row
+assert.equal(normalizePlayerName('  Ada\u202e\u2066 Lovelace\u0085\u0007  '), 'Ada Lovelace');
+assert.equal(normalizePlayerName('a\tb'), 'a b', 'whitespace still collapses to one space');
+assert.equal(normalizePlayerName('سارا \u200fقنبری'), 'سارا \u200fقنبری', 'right-to-left text and its marks stay');
+assert.equal(normalizeRoomChat('gg\u202e wp\u2069'), 'gg wp');
 
 console.log('roomPolicy: PASS');

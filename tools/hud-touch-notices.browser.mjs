@@ -5,7 +5,7 @@
 // countdown on the ring and the medal card on the scope's readout row. This rendered regression stages the critic's
 // scenes (out-of-ammo states, the battle sight and the scope, at full bloom and at rest, with the detection, the alert,
 // the countdown and a medal) at every touch size, records the reticle's real ink (recordReticle) and measures each notice
-// against it, the seated warning chip, the vision plate, the aim hint and the other notices, and (r10g: the alert sat on
+// against it, the seated warning chip, the vision plate and the other notices, and (r10g: the alert sat on
 // the AUTO AIM and SCOPE labels at 375x667) the controls, their labels and the panels: each keeps 3 px. Where the
 // layout found no place that keeps clear (body[data-touch-notices~='uncleared'], touchNoticePlan.ts) the gaps are notes,
 // not failures, and the report lists them, except through a portrait phone's scope: there a notice keeps 3 px from the
@@ -42,7 +42,7 @@ const FURNITURE = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.c
   '.cot-touch.on .joy', '.cot-touch.on .quick', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show',
   '.cot-ear', '.flight-identity'];
 
-/** In the page: stages a scene and returns the notices' boxes, the reticle's ink, the chip, the plate and the hint. */
+/** In the page: stages a scene and returns the notices' boxes, the reticle's ink, the chip and the plate. */
 async function stageScene([stage, sight, bloom, warn, set, furniture]) {
   const { MEDALS } = await import('/src/game/serviceRecord.ts');
   const f = window.__HUD_LAYOUT;
@@ -76,7 +76,7 @@ async function stageScene([stage, sight, bloom, warn, set, furniture]) {
   return {
     detection: box('.cot-sixth.on'), alert: box('.cot-alert.show'), countdown: box('.cot-prebattle.on'),
     medal: document.querySelector('.cot-medal-toasts')?.dataset.placement === 'ready' ? box('.cot-medal-toasts .cot-medal-toast') : null,
-    chip: box('.cot-aim-warning:not([hidden])'), vision: box('.cot-scope-vision'), hint: box('.cot-touch-aim.on .aimhint'),
+    chip: box('.cot-aim-warning:not([hidden])'), vision: box('.cot-scope-vision'),
     ink: window.__RETICLE_LOG.paint.filter((op) => op.box).map((op) => ({ ...op.box, what: op.text ?? (op.ring ? 'ring' : op.op) })),
     furniture: furniture.flatMap((selector) => [...document.querySelectorAll(selector)]
       .filter((node) => node.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }))
@@ -101,7 +101,7 @@ async function stageScene([stage, sight, bloom, warn, set, furniture]) {
   };
 }
 
-/** Every notice's least gap to the ink, the chip, the plate, the hint and the other notices, and to what. */
+/** Every notice's least gap to the ink, the chip, the plate and the other notices, and to what. */
 function noticeGaps(scene) {
   const apart = (a, b) => Math.max(a.x0 - b.x1, b.x0 - a.x1, a.y0 - b.y1, b.y0 - a.y1);
   const gaps = {};
@@ -111,7 +111,7 @@ function noticeGaps(scene) {
     let least = [Infinity, ''];
     for (const ink of scene.ink) { const gap = apart(notice, ink); if (gap < least[0]) least = [gap, `ink ${ink.what}`]; }
     for (const box of scene.furniture) { const gap = apart(notice, box); if (gap < least[0]) least = [gap, box.what]; }
-    for (const other of ['chip', 'vision', 'hint', ...NOTICES]) {
+    for (const other of ['chip', 'vision', ...NOTICES]) {
       if (other === name || !scene[other]) continue;
       const gap = apart(notice, scene[other]);
       if (gap < least[0]) least = [gap, other];

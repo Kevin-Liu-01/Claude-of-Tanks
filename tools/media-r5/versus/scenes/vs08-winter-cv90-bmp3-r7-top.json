@@ -1,0 +1,648 @@
+{
+ "map": "winter",
+ "timeOfDay": "day",
+ "seed": 1908,
+ "light": {
+  "sunAzimuthDeg": 298,
+  "sunElevationDeg": 24
+ },
+ "actors": [
+  {
+   "id": "cv90_mkiv_x",
+   "name": "hero",
+   "pos": [
+    -164.97,
+    -26.18
+   ],
+   "facingDeg": 251.29,
+   "turretDeg": -92,
+   "gunDeg": -2.8,
+   "camo": "winter",
+   "camoSeed": 7811,
+   "recoilAgeS": 0.11
+  },
+  {
+   "id": "bmp3",
+   "name": "foe0",
+   "pos": [
+    -160.69,
+    -37.5
+   ],
+   "facingDeg": 342.08,
+   "turretDeg": -12.79,
+   "gunDeg": -1.05,
+   "camo": "winter",
+   "camoSeed": 7812
+  }
+ ],
+ "effects": [
+  {
+   "type": "dust",
+   "at": [
+    -148.4,
+    -30.15
+   ],
+   "tMs": 5500,
+   "params": {
+    "count": 18,
+    "intensity": 0.78,
+    "dirDeg": 294.8
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -149.51,
+    -32.55
+   ],
+   "tMs": 5500,
+   "params": {
+    "count": 18,
+    "intensity": 0.78,
+    "dirDeg": 294.8
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -151.67,
+    -28.53
+   ],
+   "tMs": 5900,
+   "params": {
+    "count": 18,
+    "intensity": 0.78,
+    "dirDeg": 294.8
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -152.7,
+    -30.97
+   ],
+   "tMs": 5900,
+   "params": {
+    "count": 18,
+    "intensity": 0.78,
+    "dirDeg": 294.8
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -154.92,
+    -26.73
+   ],
+   "tMs": 6250,
+   "params": {
+    "count": 18,
+    "intensity": 0.78,
+    "dirDeg": 288.98
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -155.48,
+    -29.32
+   ],
+   "tMs": 6250,
+   "params": {
+    "count": 18,
+    "intensity": 0.78,
+    "dirDeg": 288.98
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -157.78,
+    -25.33
+   ],
+   "tMs": 6550,
+   "params": {
+    "count": 16,
+    "intensity": 0.78,
+    "dirDeg": 281.31
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -157.77,
+    -27.98
+   ],
+   "tMs": 6550,
+   "params": {
+    "count": 16,
+    "intensity": 0.78,
+    "dirDeg": 281.31
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -160.06,
+    -24.55
+   ],
+   "tMs": 6780,
+   "params": {
+    "count": 14,
+    "intensity": 0.78,
+    "dirDeg": 274.59
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -159.62,
+    -27.16
+   ],
+   "tMs": 6780,
+   "params": {
+    "count": 14,
+    "intensity": 0.78,
+    "dirDeg": 274.59
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -161.54,
+    -24.2
+   ],
+   "tMs": 6910,
+   "params": {
+    "count": 10,
+    "intensity": 0.78,
+    "dirDeg": 274.59
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -160.85,
+    -26.76
+   ],
+   "tMs": 6910,
+   "params": {
+    "count": 10,
+    "intensity": 0.78,
+    "dirDeg": 274.59
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -157.18,
+    -25.59
+   ],
+   "tMs": 6350,
+   "params": {
+    "count": 15,
+    "intensity": 0.81,
+    "dirDeg": 188.04
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -159.77,
+    -24.73
+   ],
+   "tMs": 6620,
+   "params": {
+    "count": 14,
+    "intensity": 0.81,
+    "dirDeg": 176.92
+   }
+  },
+  {
+   "type": "dust",
+   "at": [
+    -162.12,
+    -24.26
+   ],
+   "tMs": 6840,
+   "params": {
+    "count": 11,
+    "intensity": 0.81,
+    "dirDeg": 167.87
+   }
+  },
+  {
+   "type": "muzzle_flash",
+   "actor": "hero",
+   "tMs": 6890,
+   "params": {
+    "caliberMm": 40,
+    "quality": "battle"
+   }
+  },
+  {
+   "type": "muzzle_flash",
+   "actor": "hero",
+   "tMs": 6670,
+   "params": {
+    "caliberMm": 40,
+    "quality": "battle"
+   }
+  },
+  {
+   "type": "tracer",
+   "at": [
+    -165.67,
+    4.05,
+    -24.33
+   ],
+   "tMs": 6957,
+   "params": {
+    "from": [
+     -165.67,
+     4.05,
+     -24.33
+    ],
+    "to": [
+     -161.58,
+     3.47,
+     -34.76
+    ],
+    "shellType": "APFSDS",
+    "speedMps": 240,
+    "caliberMm": 40
+   }
+  },
+  {
+   "type": "tracer",
+   "at": [
+    -165.67,
+    4.05,
+    -24.33
+   ],
+   "tMs": 6971,
+   "params": {
+    "from": [
+     -165.67,
+     4.05,
+     -24.33
+    ],
+    "to": [
+     -161.93,
+     3.32,
+     -34.76
+    ],
+    "shellType": "APFSDS",
+    "speedMps": 240,
+    "caliberMm": 41
+   }
+  },
+  {
+   "type": "impact",
+   "at": [
+    -161.83,
+    3.42,
+    -34.76
+   ],
+   "tMs": 6700,
+   "params": {
+    "kind": "ricochet",
+    "caliberMm": 40,
+    "normal": [
+     -0.09,
+     0.88,
+     0.25
+    ]
+   }
+  },
+  {
+   "type": "sparks",
+   "at": [
+    -161.83,
+    3.42,
+    -34.76
+   ],
+   "tMs": 6710,
+   "params": {
+    "caliberMm": 40,
+    "normal": [
+     -0.09,
+     0.88,
+     0.25
+    ]
+   }
+  },
+  {
+   "type": "impact",
+   "at": [
+    -161.48,
+    3.27,
+    -34.76
+   ],
+   "tMs": 6905,
+   "params": {
+    "kind": "pen",
+    "caliberMm": 40,
+    "normal": [
+     -0.09,
+     0.88,
+     0.25
+    ]
+   }
+  },
+  {
+   "type": "debris",
+   "at": [
+    -161.48,
+    3.27,
+    -34.76
+   ],
+   "tMs": 6910,
+   "params": {
+    "count": 12,
+    "speedMps": 6,
+    "hot": 0.85,
+    "scale": 0.4
+   }
+  },
+  {
+   "type": "engine_smoke",
+   "actor": "foe0",
+   "tMs": 4000,
+   "params": {}
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -156.1,
+    -35.25
+   ],
+   "tMs": 5400,
+   "params": {
+    "munition": "he",
+    "wall": true,
+    "dirDeg": 135.65,
+    "hitH": 4.5
+   }
+  },
+  {
+   "type": "fire_field",
+   "at": [
+    -152.5,
+    -39.6
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 3,
+    "durationS": 40,
+    "intensity": 1.1,
+    "smoke": true
+   }
+  },
+  {
+   "type": "embers",
+   "at": [
+    -152.5,
+    -39.6
+   ],
+   "tMs": 0,
+   "params": {
+    "radiusM": 3,
+    "rate": 45,
+    "durationS": 20,
+    "rise": 3
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -96,
+    -96
+   ],
+   "tMs": 0,
+   "params": {
+    "size": "huge"
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -95.4,
+    -95.4
+   ],
+   "tMs": 1000,
+   "params": {
+    "size": "huge"
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -128,
+    -82
+   ],
+   "tMs": 5900,
+   "params": {
+    "munition": "howitzer"
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -112,
+    -101
+   ],
+   "tMs": 6480,
+   "params": {
+    "munition": "howitzer"
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -122.3,
+    -9.9
+   ],
+   "tMs": 6220,
+   "params": {
+    "munition": "howitzer"
+   }
+  },
+  {
+   "type": "explosion",
+   "at": [
+    -153.73,
+    -30.12
+   ],
+   "tMs": 6100,
+   "params": {
+    "munition": "howitzer"
+   }
+  }
+ ],
+ "fxTime": 7000,
+ "timeScale": 0,
+ "storyboard": {
+  "version": 1,
+  "durationMs": 8500,
+  "shots": [],
+  "actorTracks": [
+   {
+    "actor": "hero",
+    "keys": [
+     {
+      "id": "hero-0",
+      "tMs": 5500,
+      "pos": [
+       -151.66,
+       -30.1
+      ],
+      "facingDeg": 294.77,
+      "turretDeg": -92,
+      "gunDeg": -2.8,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-1",
+      "tMs": 6000,
+      "pos": [
+       -155.75,
+       -28.21
+      ],
+      "facingDeg": 292.44,
+      "turretDeg": -92,
+      "gunDeg": -2.8,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-2",
+      "tMs": 6400,
+      "pos": [
+       -159.53,
+       -26.91
+      ],
+      "facingDeg": 275.98,
+      "turretDeg": -92,
+      "gunDeg": -2.8,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-3",
+      "tMs": 6700,
+      "pos": [
+       -161.98,
+       -26.42
+      ],
+      "facingDeg": 263.63,
+      "turretDeg": -92,
+      "gunDeg": -2.8,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-4",
+      "tMs": 7000,
+      "pos": [
+       -164.97,
+       -26.18
+      ],
+      "facingDeg": 251.29,
+      "turretDeg": -92,
+      "gunDeg": -2.8,
+      "transition": "linear"
+     },
+     {
+      "id": "hero-5",
+      "tMs": 7400,
+      "pos": [
+       -168.47,
+       -26.12
+      ],
+      "facingDeg": 251.29,
+      "turretDeg": -92,
+      "gunDeg": -2.8,
+      "transition": "linear"
+     }
+    ]
+   }
+  ]
+ },
+ "picture": {
+  "grain": {
+   "amount": 0.05,
+   "size": 1,
+   "color": 0.1,
+   "response": 0.7
+  },
+  "vignette": {
+   "amount": 0.36,
+   "roundness": 0.55,
+   "softness": 0.6
+  },
+  "dof": {
+   "enabled": false
+  },
+  "chromaticAberration": 0,
+  "exposure": -0.03,
+  "vibrance": 0.14,
+  "contrast": 1.05
+ },
+ "fx": {
+  "quality": "cinematic",
+  "trackDust": true
+ },
+ "autoPlace": false,
+ "meta": {
+  "id": "vs08-winter-cv90-bmp3-r7-top",
+  "kind": "versus-still",
+  "pair": "cv90_mkiv_x v bmp3",
+  "round": 7,
+  "stillExposureMs": 4,
+  "idea": "the village corner in the snow, from above: a crane over the pass road looks down on the CV90 skidding round the junction, its burst crossing to the BMP-3 in the back lane",
+  "lens": "a",
+  "pick": "vs08-winter-cv90-bmp3-r7-top:a",
+  "restage": [
+   "r7c: hero flash 6957 -> 6890 ms; wall planks removed (1); dust trails x0.6",
+   "r7d: foe turret -2.79 -> -12.79 (10° off centre, on the hero's front corner)",
+   "r7e: lens [-172.47, 5, -24.75] fov 42.77 -> [-169.3, 11.01, -34.19] fov 58",
+   "r7f: lens {\"pos\":[-172.47,5,-24.75],\"lookAt\":[-164.78,0,-28.58],\"fov\":42.77,\"rollDeg\":-9.28}",
+   "r7g: lens {\"pos\":[-176.05,7.5,-22.97],\"lookAt\":[-163.92,0,-29.84],\"fov\":46.77,\"rollDeg\":-9.28}",
+   "r7k-base: camera and cameraVariants back to before r7g (the owner wanted the frame shifted up, not the eye raised)",
+   "r7k: tilted up 2.24° (a frame shift up); lens {\"pos\":[-172.47,5,-24.75],\"lookAt\":[-164.59,0.34,-28.61],\"fov\":42.77,\"rollDeg\":-9.28}"
+  ],
+  "view": "top-down"
+ },
+ "camera": {
+  "name": "a",
+  "pos": [
+   -172.47,
+   5,
+   -24.75
+  ],
+  "lookAt": [
+   -164.59,
+   0.34,
+   -28.61
+  ],
+  "fov": 42.77,
+  "rollDeg": -9.28,
+  "groundRel": true
+ },
+ "cameraVariants": [
+  {
+   "name": "a",
+   "pos": [
+    -172.47,
+    5,
+    -24.75
+   ],
+   "lookAt": [
+    -164.59,
+    0.34,
+    -28.61
+   ],
+   "fov": 42.77,
+   "rollDeg": -9.28,
+   "groundRel": true
+  }
+ ]
+}

@@ -133,7 +133,8 @@ function localizeStructuredData(
           }
         };
         visit(value);
-        return `<script type="application/ld+json">${JSON.stringify(value)}</script>`;
+        // `<` as \u003c: a localized headline can never close the script element (security audit 2026-10-22).
+        return `<script type="application/ld+json">${JSON.stringify(value).replace(/</g, '\\u003c')}</script>`;
       } catch (_) {
         return block;
       }
@@ -287,7 +288,8 @@ export function localizeHtmlDocument(
 
   let output = html.replace(/<html\b[^>]*>/i, (tag) => replaceAttribute(tag, 'lang', locale));
   if (locale !== DEFAULT_LOCALE || route.id === 'notFound') {
-    output = output.replace(/<title>[\s\S]*?<\/title>/i, `<title>${title}</title>`);
+    // Catalog text, not markup (security audit 2026-10-22): escaped, and a function replacer so `$&` stays literal.
+    output = output.replace(/<title>[\s\S]*?<\/title>/i, () => `<title>${escapeAttribute(title)}</title>`);
     output = replaceMeta(output, 'name', 'description', description);
     output = replaceMeta(output, 'property', 'og:title', title);
     output = replaceMeta(output, 'property', 'og:description', description);

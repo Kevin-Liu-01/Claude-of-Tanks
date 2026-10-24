@@ -3,18 +3,34 @@
  * acknowledge, chooses keyframe or delta against the acknowledged baseline
  * (keyframe every KEYFRAME_INTERVAL_TICKS or when the baseline is gone), and
  * encodes the wire bytes. Backpressure accounting lives with the link.
+ *
+ * Keyframes the viewer forces (no usable baseline, or a NO_TICK request) draw
+ * on a small bucket (security audit 2026-10-22, NV-11): FORCED_KEYFRAME_BURST
+ * at once, which covers an honest viewer's first round trip after a join or a
+ * recovery, then one per FORCED_KEYFRAME_REFILL_TICKS. A seat or spectator
+ * that withholds, freezes or retracts its acknowledgements otherwise drew a
+ * full keyframe on every snapshot, about 8x an honest stream on the host
+ * player's uplink. With the bucket empty it gets nothing until a token
+ * returns: without a baseline it has nothing to apply a delta to. The 2 s
+ * cadence never draws on the bucket.
  */
 import { NO_TICK, TICK_HZ } from '../../src/mp/wire/constants.ts';
 import { buildSnapshotPacket, encodeMessage } from '../../src/mp/wire/codec.ts';
 import type { SnapshotFrame } from '../../src/mp/wire/messages.ts';
 
 const KEYFRAME_INTERVAL_TICKS = TICK_HZ * 2;
+const FORCED_KEYFRAME_BURST = 8;
+const FORCED_KEYFRAME_REFILL_TICKS = TICK_HZ / 2;
 const HISTORY_FRAMES = 64;
 
 export interface ViewerPublisher {
   readonly ackedTick: number;
   readonly lastKeyframeTick: number;
-  readonly stats: { keyframes: number; deltas: number; bytes: number; missingBaselines: number; keyframeRequests: number };
+  readonly stats: {
+    keyframes: number; deltas: number; bytes: number; missingBaselines: number; keyframeRequests: number;
+    /** Snapshots withheld because the viewer forced a keyframe with the bucket empty. */
+    forcedKeyframesWithheld: number;
+  };
   /**
    * Acknowledge a sent frame. Returns the round trip (ms) measured from the
    * frame's send time the first time that tick is acknowledged, else null —
@@ -24,8 +40,11 @@ export interface ViewerPublisher {
    * delta baseline asks this way instead of waiting for the 2 s cadence).
    */
   ack(tick: number, nowMs: number): number | null;
-  /** Encode `frame` for this viewer; the frame is retained until acknowledged or aged out. */
-  publish(frame: SnapshotFrame, nowMs: number): { bytes: Uint8Array; keyframe: boolean };
+  /**
+   * Encode `frame` for this viewer; the frame is retained until acknowledged or aged out. Null when the viewer forced
+   * a keyframe with its bucket empty: nothing is sent this snapshot.
+   */
+  publish(frame: SnapshotFrame, nowMs: number): { bytes: Uint8Array; keyframe: boolean } | null;
   reset(): void;
 }
 
@@ -33,11 +52,21 @@ interface HeldFrame { frame: SnapshotFrame; sentAtMs: number; acked: boolean }
 
 export function createViewerPublisher(): ViewerPublisher {
   const history = new Map<number, HeldFrame>();
-  const stats = { keyframes: 0, deltas: 0, bytes: 0, missingBaselines: 0, keyframeRequests: 0 };
+  const stats = { keyframes: 0, deltas: 0, bytes: 0, missingBaselines: 0, keyframeRequests: 0, forcedKeyframesWithheld: 0 };
   let ackedTick = NO_TICK;
   let lastKeyframeTick = -Infinity;
   // latched so a later acknowledgement of an older baseline cannot cancel the request
   let keyframeRequested = false;
+  let forcedTokens = FORCED_KEYFRAME_BURST;
+  let refilledAtTick = -Infinity;
+  const refill = (tick: number): void => {
+    if (forcedTokens >= FORCED_KEYFRAME_BURST) { refilledAtTick = tick; return; }
+    const earned = Math.floor((tick - refilledAtTick) / FORCED_KEYFRAME_REFILL_TICKS);
+    if (earned > 0) {
+      forcedTokens = Math.min(FORCED_KEYFRAME_BURST, forcedTokens + earned);
+      refilledAtTick += earned * FORCED_KEYFRAME_REFILL_TICKS;
+    }
+  };
   return {
     get ackedTick() { return ackedTick; },
     get lastKeyframeTick() { return lastKeyframeTick; },
@@ -67,7 +96,18 @@ export function createViewerPublisher(): ViewerPublisher {
     publish(frame, nowMs) {
       const baseline = ackedTick === NO_TICK ? null : history.get(ackedTick)?.frame ?? null;
       if (ackedTick !== NO_TICK && !baseline) stats.missingBaselines++;
-      const keyframe = keyframeRequested || !baseline || frame.tick - lastKeyframeTick >= KEYFRAME_INTERVAL_TICKS;
+      const due = frame.tick - lastKeyframeTick >= KEYFRAME_INTERVAL_TICKS;
+      const forced = keyframeRequested || !baseline;
+      refill(frame.tick);
+      if (forced && !due) {
+        if (forcedTokens < 1) {
+          // the request stays latched: the keyframe goes out with the next token
+          stats.forcedKeyframesWithheld++;
+          return null;
+        }
+        forcedTokens--;
+      }
+      const keyframe = forced || due;
       keyframeRequested = false;
       const packet = buildSnapshotPacket(frame, keyframe ? null : baseline);
       const bytes = encodeMessage(packet, keyframe ? null : baseline);
@@ -82,6 +122,8 @@ export function createViewerPublisher(): ViewerPublisher {
       ackedTick = NO_TICK;
       lastKeyframeTick = -Infinity;
       keyframeRequested = false;
+      forcedTokens = FORCED_KEYFRAME_BURST;
+      refilledAtTick = -Infinity;
     },
   };
 }
