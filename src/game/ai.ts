@@ -49,6 +49,7 @@ import {
   rayCollisionClearanceEntry2,
   type CollisionRecord,
   type CollisionShape,
+  type ObstacleQuery,
 } from '../world/collision.ts';
 import type { ArmorModel } from '../sim/armor.ts';
 import type { DamageShellSpec, CombatState, HitEvent } from '../sim/damage.ts';
@@ -375,6 +376,9 @@ export function mulberry32(a: number): RandomSource {return function(){a|=0;a=a+
 
 const TAU = Math.PI * 2;
 const DEFAULT_SEED = 7001;
+/** The widest box (in obstacle-grid cells) the bots' box queries walk on the grid (ai.ts obstaclesInBox). */
+const BOX_GRID_MAX_CELLS = 256;
+const ascending = (a: number, b: number): number => a - b;
 
 /**
  * Difficulty tiers (§3.6 locked values):
@@ -2795,6 +2799,43 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     return true;
   }
 
+  /**
+   * (perf-249, the battle-scale profile: findBlockingObstacle read every solid's box on the map, ~2.5 % of a 16 v 16
+   * Verdant step) the indices into `obstacles`, ascending, of the solids whose box meets [minX, maxX] x [minZ, maxZ], from
+   * the obstacle grid (world/collision.ts createObstacleGrid: its box test is the scan's own); or null where the grid
+   * cannot answer for the list, and the caller scans it whole: no grid, a grid over another list or another order, or a
+   * box it cannot walk (not finite, or wider than BOX_GRID_MAX_CELLS cells). The same solids, in the list's order: the
+   * same first nearest entry, ties included.
+   */
+  const boxRecords: CollisionRecord[] = [];
+  const boxSlots: number[] = [];
+  let gridList: readonly AiObstacle[] | null = null, gridListLength = -1, gridMatchesList = false;
+  function obstaclesInBox(minX: number, minZ: number, maxX: number, maxZ: number): readonly number[] | null {
+    const query = deps.queryObstacles as ((ObstacleQuery & NonNullable<AiDependencies['queryObstacles']>) | null | undefined);
+    const order = query?.rayOrder;
+    if (!query || !order) return null;
+    if (gridList !== obstacles || gridListLength !== obstacles.length) {
+      gridList = obstacles;
+      gridListLength = obstacles.length;
+      gridMatchesList = order.count === obstacles.length;
+      // (a box the grid cannot place, not finite, is one the scan never passes: the list is scanned whole)
+      for (let i = 0; gridMatchesList && i < obstacles.length; i++) {
+        const o = obstacles[i];
+        if (order.slotOf.get(o as CollisionRecord) !== i || !(Number.isFinite(o.min[0]) && Number.isFinite(o.max[0])
+          && Number.isFinite(o.min[2]) && Number.isFinite(o.max[2]))) gridMatchesList = false;
+      }
+    }
+    if (!gridMatchesList || !(Number.isFinite(minX) && Number.isFinite(minZ) && Number.isFinite(maxX) && Number.isFinite(maxZ))) return null;
+    const cells = (Math.floor(maxX * order.inv) - Math.floor(minX * order.inv) + 1)
+      * (Math.floor(maxZ * order.inv) - Math.floor(minZ * order.inv) + 1);
+    if (!(cells <= BOX_GRID_MAX_CELLS)) return null;
+    query(minX, minZ, maxX, maxZ, boxRecords);
+    boxSlots.length = boxRecords.length;
+    for (let i = 0; i < boxRecords.length; i++) boxSlots[i] = order.slotOf.get(boxRecords[i])!;
+    boxRecords.length = 0;
+    return boxSlots.sort(ascending);
+  }
+
   function findBlockingObstacle(
     sourceX: number,
     sourceZ: number,
@@ -2816,8 +2857,10 @@ export function createAI(entity: AiEntity, opts: CreateAiOptions): AiController 
     const pad = margin * 2 + 0.01;
     const minX = Math.min(sourceX, endX) - pad, maxX = Math.max(sourceX, endX) + pad;
     const minZ = Math.min(sourceZ, endZ) - pad, maxZ = Math.max(sourceZ, endZ) + pad;
-    for (let i = 0; i < obstacles.length; i++) {
-      const o = obstacles[i];
+    const inBox = obstaclesInBox(minX, minZ, maxX, maxZ);
+    const count = inBox ? inBox.length : obstacles.length;
+    for (let i = 0; i < count; i++) {
+      const o = inBox ? obstacles[inBox[i]] : obstacles[i];
       if (o.max[0] < minX || o.min[0] > maxX || o.max[2] < minZ || o.min[2] > maxZ) continue;
       if (o.crushed || hullYieldingRecord(o) || o.kind === 'bridge') continue;
       const entry = rayCollisionClearanceEntry2(
