@@ -4,13 +4,13 @@
  "author": "Kevin B. Liu",
  "copyright": "Copyright © 2026 Kevin B. Liu",
  "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
- "description": "The Deploy screen's mode pictures (brand-ui S3, 245 and 246, the Premiere direction's 04-deploy page): each core mode's picture, a 640x360 cut of the approved in-engine still the direction chose for it; each other mode's tile, Proving Ground among them, a 480x270 cut of a battle frame of that mode with the HUD hidden (the media lane's captures: the rows with `capture`; tools/deploy-mode-art.mjs keeps them).",
+ "description": "The Deploy screen's mode pictures (brand-ui S3, 245 and 246, the Premiere direction's 04-deploy page): each core mode's picture, a 640x360 cut of the approved in-engine still the direction chose for it; each other mode's tile, Proving Ground among them, a 480x270 cut of a battle frame of that mode with the HUD hidden (the media lane's captures: the rows with `capture`; tools/deploy-mode-art.mjs keeps them); and the Campaign tab's briefing plates, op-0N-1280, one Scene Studio still per operation.",
  "generatedBy": "the core cards: ffmpeg (scale lanczos) + cwebp -q 80 -m 6; the tiles and plates: the media lane (shots/media-r5/landing-r6/site-all/publish-stills.py)",
  "dimensions": {
   "width": 640,
   "height": 360
  },
- "count": 14,
+ "count": 19,
  "items": [
   {
    "id": "standard",
@@ -200,6 +200,96 @@
    },
    "width": 480,
    "height": 270
+  },
+  {
+   "id": "op-01",
+   "file": "op-01-1280.webp",
+   "operation": "first_light",
+   "index": 1,
+   "map": "verdant",
+   "enemy": "russia",
+   "attacker": "usa",
+   "cast": [
+    "m1a2_abrams_sepv3",
+    "m1a2_abrams_sepv2",
+    "m1a2_abrams_sepv3"
+   ],
+   "source": "Scene Studio still, 2560x1440 (campaign-briefing round 1, hulls advancing)",
+   "objective": "line-1",
+   "width": 1280,
+   "height": 720
+  },
+  {
+   "id": "op-02",
+   "file": "op-02-1280.webp",
+   "operation": "iron_ridge",
+   "index": 2,
+   "map": "alpine",
+   "enemy": "germany",
+   "attacker": "russia",
+   "cast": [
+    "t90m",
+    "t72b3m_2022",
+    "t90m"
+   ],
+   "source": "Scene Studio still, 2560x1440 (campaign-briefing round 1, hulls standing)",
+   "objective": "line-1",
+   "width": 1280,
+   "height": 720
+  },
+  {
+   "id": "op-03",
+   "file": "op-03-1280.webp",
+   "operation": "steinburg",
+   "index": 3,
+   "map": "urban",
+   "enemy": "germany",
+   "attacker": "china",
+   "cast": [
+    "ztz99a2",
+    "ztz99a",
+    "type96b"
+   ],
+   "source": "Scene Studio still, 2560x1440 (campaign-briefing round 1, hulls standing)",
+   "objective": "line-1",
+   "width": 1280,
+   "height": 720
+  },
+  {
+   "id": "op-04",
+   "file": "op-04-1280.webp",
+   "operation": "tarkhan_steppe",
+   "index": 4,
+   "map": "steppe",
+   "enemy": "russia",
+   "attacker": "uk",
+   "cast": [
+    "challenger3",
+    "challenger2e",
+    "challenger3"
+   ],
+   "source": "Scene Studio still, 2560x1440 (campaign-briefing round 1, hulls standing)",
+   "objective": "line-1",
+   "width": 1280,
+   "height": 720
+  },
+  {
+   "id": "op-06",
+   "file": "op-06-1280.webp",
+   "operation": "delta_crossing",
+   "index": 6,
+   "map": "delta",
+   "enemy": "usa",
+   "attacker": "russia",
+   "cast": [
+    "t14_armata",
+    "t90m",
+    "t90m"
+   ],
+   "source": "Scene Studio still, 2560x1440 (campaign-briefing round 1, hulls standing)",
+   "objective": "line-1",
+   "width": 1280,
+   "height": 720
   }
  ]
 }
