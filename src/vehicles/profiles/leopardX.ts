@@ -307,13 +307,20 @@ function recoveryCable(P:TankBuilderPort,name:string,path:THREE.CatmullRomCurve3
 // body, whose seated underside stands 3 cm over the deck round the ring, and the periscope heads stood 11 cm over the hatch,
 // into the turret at rest and through it in traverse; `sink` sets the heads and the handle down into the hatch's frame
 // under that underside (they show when the turret is turned off the station).
-function driver(P: TankBuilderPort, y: number, x: number, z: number, sink = 0): void {
-  P.addHatch('hull', box(.66, .027, .58), x, y + .011, z);
+// `rake`: the plate the station lies on falls toward the bow by this angle (the upper glacis plate), the station flat on
+// it, `y` that plate's height under the hatch's middle.
+function driver(P: TankBuilderPort, y: number, x: number, z: number, sink = 0, rake = 0): void {
+  const at = (dy: number, dz: number): [number, number] =>
+    [y + dy * Math.cos(rake) - dz * Math.sin(rake), z + dy * Math.sin(rake) + dz * Math.cos(rake)];
+  const [hy, hz] = at(.011, 0);
+  P.addHatch('hull', box(.66, .027, .58), x, hy, hz, rake, 0, 0);
   for (let i = -1; i <= 1; i++) {
-    P.addEquipment('hullDark', box(.145, .085, .12), x + i * .165, y + .07 - sink, z + .18);
-    P.addEquipment('hullGlass', box(.114, .043, .009), x + i * .165, y + .08 - sink, z + .245);
+    const [py, pz] = at(.07 - sink, .18), [gy, gz] = at(.08 - sink, .245);
+    P.addEquipment('hullDark', box(.145, .085, .12), x + i * .165, py, pz, rake, 0, 0);
+    P.addEquipment('hullGlass', box(.114, .043, .009), x + i * .165, gy, gz, rake, 0, 0);
   }
-  P.addEquipment('hullDetail', box(.18, .028, .035), x, y + .041 - Math.min(sink, .03), z - .06);
+  const [ly, lz] = at(.041 - Math.min(sink, .03), -.06);
+  P.addEquipment('hullDetail', box(.18, .028, .035), x, ly, lz, rake, 0, 0);
 }
 
 function roofHatch(P: TankBuilderPort, d: Datum, x: number, y: number, z: number, r = .32): void {
@@ -1346,7 +1353,10 @@ export function buildLeopard2A5X(P: TankBuilderPort): void {
   a5Skirts(P);
   a5InnerSuspension(P);
   fans(P,1.811,-2.89,.514);
-  driver(P,1.661,-.54,1.20,.09);
+  // Release 240: the driver's station at the source's hatch_01 (X -1.106..-.331, Z 2.050..2.571: on the upper glacis
+  // plate, 0.31 m ahead of the deck's break), flat on that plate; it stood at Z 1.20 inside the ring's circle (the
+  // source's basket, radius .986 about Z .661), so a kill's ring cut took part of it.
+  driver(P,1.568,-.718,2.34,.03,Math.atan2(1.661-1.5003,2.78-1.74));
   a5BowFittings(P);
   a5Stern(P);
   // Rear hull marker rod, present in the supplied x_root_107 node; unlike
