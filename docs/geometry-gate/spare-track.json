@@ -1670,7 +1670,7 @@
    "hostSweep": []
   },
   "leo2a5": {
-   "inputHash": "7b1c00278f1d4d0c",
+   "inputHash": "c3eb5dafc5c2bfd3",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2198,7 +2198,7 @@
    "hostSweep": []
   },
   "merkava1b": {
-   "inputHash": "58e2cf1a13aaae06",
+   "inputHash": "9e9a83220b2070bc",
    "runs": [
     {
      "index": 0,
@@ -2229,7 +2229,7 @@
    "hostSweep": []
   },
   "merkava2b": {
-   "inputHash": "6f266a6296992690",
+   "inputHash": "e8884f6778a148bc",
    "runs": [
     {
      "index": 0,
@@ -2258,7 +2258,7 @@
    "hostSweep": []
   },
   "merkava2d": {
-   "inputHash": "b7c01029b57e9341",
+   "inputHash": "aef656bca86793a1",
    "runs": [
     {
      "index": 0,
@@ -2287,7 +2287,7 @@
    "hostSweep": []
   },
   "merkava3_baz": {
-   "inputHash": "bf35aae31753a8e2",
+   "inputHash": "98a6bdcd4626d86f",
    "runs": [
     {
      "index": 0,
@@ -2318,7 +2318,7 @@
    "hostSweep": []
   },
   "merkava3c": {
-   "inputHash": "565a5c9aa6cd1dfa",
+   "inputHash": "ada811927571fd8c",
    "runs": [
     {
      "index": 0,
@@ -2439,33 +2439,8 @@
    "hostSweep": []
   },
   "merkava4b": {
-   "inputHash": "d56508bc1135a712",
-   "runs": [
-    {
-     "index": 0,
-     "site": "adhoc:merkava-bow-links@merkavaChassisHullCourse27@profiles/merkava.ts",
-     "source": "adhoc",
-     "frame": "hull",
-     "registered": true,
-     "classes": [],
-     "primary": "OK",
-     "why": {},
-     "notes": [
-      "carried on its rack"
-     ],
-     "measures": {
-      "support": 0.234,
-      "gap": 0.766,
-      "air": 0,
-      "hidden": 0,
-      "sunkMaxM": 0,
-      "sweepM": 0,
-      "traverseM": null,
-      "exposure": 1,
-      "host": "hull<merkavaChassisHullCourse25@profiles/merkava.ts:3448>"
-     }
-    }
-   ],
+   "inputHash": "2c8463a2b55b21c6",
+   "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
@@ -3922,7 +3897,7 @@
    "hostSweep": []
   },
   "ua_challenger2": {
-   "inputHash": "7516052d419b1f86",
+   "inputHash": "5c67dc75a790fd4a",
    "runs": [],
    "uncovered": [],
    "hostSweep": []

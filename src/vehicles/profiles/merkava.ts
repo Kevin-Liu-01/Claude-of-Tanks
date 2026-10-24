@@ -9165,9 +9165,12 @@ function merkavaSourceOracleTurret(
 
   // A closed, shallow ring apron overlaps the hull deck and the casting
   // floor.  It prevents the turret from appearing perched while preserving
-  // the deep undercuts visible on the supplied references.
+  // the deep undercuts visible on the supplied references.  (245) Its bottom is
+  // capped: the turret seat (turretSeatRace.ts) lifts the apron's lower ring off
+  // the deck, and merkava2d's open underside then showed its inner walls beside
+  // the gun (gun-junction census: 6 openings).
   const apronPlan = cfg.plan.map(([x, z]): Vec2Tuple => [x * 0.72, L(z * 0.72 + p.pivotZ * 0.28)]);
-  P.add('turretDark', polyTurret(apronPlan, 0.15, 0.98, 0.94), 0, V(cfg.base - 0.10), 0);
+  P.add('turretDark', polyTurret(apronPlan, 0.15, 0.98, 0.94, true), 0, V(cfg.base - 0.10), 0);
 
   const addArmorSlab = (points: readonly Vec3Tuple[]): void => P.add('turret', slab(...points.map(M)));
   if (cfg.applique || cfg.modular) {

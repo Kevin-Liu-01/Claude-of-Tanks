@@ -67,7 +67,7 @@ const CURVES = {
   t90am: [[4,4],[12,20],[179,180]],
   t90m_proryv: [[13,18]],
   t90a_burlak_proto: [],
-  strv81: [[2,34],[122,180]],
+  strv81: [[2,34],[124,150]],
   challenger1_mk2: [[140,140]],
   fv4034: [],
   challenger2: [],
@@ -77,6 +77,12 @@ const CURVES = {
   merkava1b: [[146,164]],
   merkava2b: [[146,176]],
   merkava2d: [[145,146],[152,176]],
+  ua_challenger2: [[177,177]],
+  leo2a5: [],
+  leo2a6m: [],
+  merkava3c: [[0,54],[134,180]],
+  merkava3_baz: [[0,60],[133,180]],
+  merkava4b: [[0,82],[98,180]],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type

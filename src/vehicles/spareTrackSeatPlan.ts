@@ -123,7 +123,7 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
     "merkava3d-basket-links@turret(0.35,0.49,-2.70)": 1,
   },
   "merkava4b": {
-    "merkava-bow-links@hull(0.00,1.32,3.12)": [0.927, -1.24479, 1.74153, 0.04189, -0.69606, -0.15015, 0.70085, 1],
+    "merkava-bow-links@hull(0.00,1.32,3.12)": -1,
   },
   "spz_puma": {
     "fitting@hull(-0.72,1.79,2.30)": [-1.11831, 1.77062, 2.77705, 0.22242, -0.00052, 0.01438, 0.97484, 1],
