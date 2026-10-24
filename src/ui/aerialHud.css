@@ -316,10 +316,12 @@ html[data-flight=drone] .cot-touch .flight-climb{border:0;border-radius:0;clip-p
 @media(prefers-reduced-motion:reduce){.cot-flight-hud[data-kind=gunship] .flight-sight{transition:none}}
 
 .cot-drone-signal-loss{position:absolute;inset:0;z-index:90;display:flex;align-items:center;justify-content:center;pointer-events:none;background:var(--surface-menu);color:var(--ink-1);font-size:var(--battle-fs-12);letter-spacing:.18em;text-shadow:0 2px 4px var(--surface-scene);isolation:isolate}
-.cot-drone-signal-loss::before{content:'';position:absolute;inset:0;z-index:-1;background-image:var(--signal-noise);background-size:128px 128px;opacity:.55;animation:drone-signal-grain .16s steps(2) infinite}
+/* the grain moves as a layer (a transform the compositor runs), not by repainting its background's position (249) */
+.cot-drone-signal-loss{overflow:hidden}
+.cot-drone-signal-loss::before{content:'';position:absolute;inset:-48px;z-index:-1;background-image:var(--signal-noise);background-size:128px 128px;opacity:.55;will-change:transform;animation:drone-signal-grain .16s steps(2) infinite}
 .cot-drone-signal-loss::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 3px,oklch(from var(--surface-scene) l c h / .2) 3px 4px);pointer-events:none}
 .cot-drone-signal-loss[hidden],.cot-scope-vision[hidden]{display:none!important}
-@keyframes drone-signal-grain{to{background-position:41px 27px}}
+@keyframes drone-signal-grain{to{transform:translate(41px,27px)}}
 @media(prefers-reduced-motion:reduce){.cot-drone-signal-loss::before{animation:none}}
 /* Drone static off (Accessibility): a lost feed shows its plain plate and words, no noise and no scan lines */
 :root[data-drone-static=off] .cot-drone-signal-loss::before,:root[data-drone-static=off] .cot-drone-signal-loss::after{display:none}
