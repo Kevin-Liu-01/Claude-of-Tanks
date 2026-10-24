@@ -23,6 +23,9 @@ export const PUBLIC_SHELL_ENTRIES = Object.freeze([
   'site/docs-rendering.html', 'site/docs-performance.html', 'site/docs-worlds.html', 'site/docs-ai.html',
   'site/docs-multiplayer.html', 'site/docs-audio.html', 'site/docs-interface.html', 'site/docs-studio.html',
   'site/docs-filming.html',
+  'site/docs-modes.html',
+  'site/docs-start.html',
+  'site/docs-controls.html',
 ]);
 
 const catalog = JSON.parse(readFileSync(join(ROOT, 'src/ui/i18nCatalog.en-US.json'), 'utf8'));

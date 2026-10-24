@@ -1,6 +1,7 @@
 import { mountDocsIcons, type DocsIconKey } from './docsIcons.ts';
 import { getLocale, t } from '../ui/i18n.ts';
 import { pictureMarkup, stillDataSaver } from '../presentation/responsivePicture.ts';
+import type { RichSection } from './chapters/types.ts';
 
 type TopicSection = readonly [string, ...string[]];
 type TopicMedia = readonly [string, string];
@@ -16,14 +17,51 @@ interface TopicDefinition {
   media: readonly TopicMedia[];
   /** The sections the two figures follow (default the second and the fourth). */
   mediaAt?: readonly [number, number];
+  /** Built from the game's own tables (src/docs/chapters): its sections come from richSections(), not `sections`. */
+  rich?: boolean;
 }
 
 export const TOPIC_ORDER = [
-  'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance',
-  'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio', 'filming',
+  'start', 'controls', 'modes', 'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio', 'filming',
 ] as const;
 
 export const topics: Record<string, TopicDefinition> = {
+  // Every mode, its goal and its rules, from the game's own tables (src/docs/chapters/modes.ts).
+  modes: {
+    label: t('docs.topic.modes.label'),
+    title: t('docs.topic.modes.title'),
+    lede: t('docs.topic.modes.lede'),
+    hero: '/media/site50-r14/loops/s21-fields-assault.webm',
+    icon: 'modes',
+    sectionIcons: [],
+    sections: [],
+    media: [],
+    rich: true,
+  },
+  // Every action and its keys, touch and Watch mode, from the game's own bindings (src/docs/chapters/controls.ts).
+  controls: {
+    label: t('docs.topic.controls.label'),
+    title: t('docs.topic.controls.title'),
+    lede: t('docs.topic.controls.lede'),
+    hero: '/media/site50-r14/loops/s26-minaret-fire.webm',
+    icon: 'interface',
+    sectionIcons: [],
+    sections: [],
+    media: [],
+    rich: true,
+  },
+  // A first battle, step by step, with the game's own keys, clocks and counts (src/docs/chapters/start.ts).
+  start: {
+    label: t('docs.topic.start.label'),
+    title: t('docs.topic.start.title'),
+    lede: t('docs.topic.start.lede'),
+    hero: '/media/site50-r14/loops/s27-caravanserai-kill.webm',
+    icon: 'manual',
+    sectionIcons: [],
+    sections: [],
+    media: [],
+    rich: true,
+  },
   build: {
     label: t('docs.topic.build.label'),
     title: t('docs.topic.build.title'),
@@ -345,6 +383,7 @@ export const TOPIC_HERO_RUNGS: Readonly<Record<string, { readonly r960?: true; r
   's07-lake-shellfire': { r960: true, phone: true },
   's18-street-knockout': { r960: true, phone: true },
   's26-minaret-fire': { r960: true, phone: true },
+  's27-caravanserai-kill': { phone: true },
 };
 const LOOP_HERO = /^\/media\/site50-r14\/loops\/([\w-]+)\.webm$/;
 
@@ -387,14 +426,14 @@ export function topicSectionId(index: number): string {
 }
 
 type TopicId = typeof TOPIC_ORDER[number];
-type TopicGroupKey = 'mechanics' | 'engineering';
+type TopicGroupKey = 'play' | 'behind';
 
 /** The manual's two shelves (08-docs .side .grp): what a player meets in the game, and how it is engineered. */
 const TOPIC_GROUPS: ReadonlyArray<{ readonly key: TopicGroupKey; readonly icon: DocsIconKey; readonly topics: readonly TopicId[] }> = [
-  { key: 'mechanics', icon: 'combat', topics: ['simulation', 'vehicles', 'worlds', 'ai', 'multiplayer', 'audio'] },
-  { key: 'engineering', icon: 'architecture', topics: ['build', 'models', 'rendering', 'performance', 'interface', 'studio', 'filming'] },
+  { key: 'play', icon: 'combat', topics: ['start', 'controls', 'modes', 'vehicles', 'worlds', 'multiplayer', 'audio', 'interface', 'studio'] },
+  { key: 'behind', icon: 'architecture', topics: ['build', 'simulation', 'models', 'rendering', 'performance', 'ai', 'filming'] },
 ];
-const groupLabel = (key: TopicGroupKey): string => (key === 'mechanics' ? t('docs.group.mechanics') : t('docs.group.engineering'));
+const groupLabel = (key: TopicGroupKey): string => (key === 'play' ? t('docs.group.play') : t('docs.group.behind'));
 
 /** The title in the direction's two voices (08 h1): its first words solid, its last words in the hollow outline. A
  *  Chinese title has no spaces and stays one solid line (the type package keeps CJK solid, SPEC 4.7). */
@@ -406,8 +445,8 @@ function titleMarkup(title: string): string {
 }
 
 /** Minutes to read a topic: 200 Latin words, or 400 Chinese characters, a minute. */
-function readMinutes(topic: TopicDefinition): number {
-  const text = [topic.lede, ...topic.sections.flat()].join(' ');
+function readMinutes(topic: TopicDefinition, rich: readonly RichSection[] | null): number {
+  const text = [topic.lede, ...(rich ? rich.map((section) => section.text) : topic.sections.flat())].join(' ');
   const cjk = (text.match(/[㐀-鿿]/g) ?? []).length;
   const words = text.replace(/[㐀-鿿]/g, ' ').split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.round(words / 200 + cjk / 400));
@@ -461,7 +500,7 @@ const isTopicId = (value: string): value is TopicId => (TOPIC_ORDER as readonly 
  * figures), "on this page" and the neighbouring chapters. DOM-free, so tools/docs-prerender.mjs writes it into each
  * chapter's page at build time in both locales (brand-ui SPEC 12.4: prerendered topics, no client-only stub).
  */
-export function topicPageMarkup(slug: TopicId, saving = stillDataSaver()): string {
+export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: readonly RichSection[] | null = null): string {
   const topic = topics[slug];
   const group = TOPIC_GROUPS.find((shelf) => shelf.topics.includes(slug)) ?? TOPIC_GROUPS[0];
   const order = TOPIC_GROUPS.flatMap((shelf) => shelf.topics);
@@ -471,7 +510,9 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver()): strin
   const shelves = TOPIC_GROUPS.map((shelf) => `<p class="dm-grp"><span data-doc-icon="${shelf.icon}"></span><span>${groupLabel(shelf.key)}</span></p>`
     + shelf.topics.map((topicId) => `<a href="/docs/${topicId}"${topicId === slug ? ' aria-current="page"' : ''}>${topics[topicId].label}</a>`).join('')).join('');
   const reference = REFERENCE_TOPICS.includes(slug);
-  const toc = topic.sections.map(([title], index) => `<a href="#${topicSectionId(index)}">${title}</a>`).join('')
+  if (topic.rich && !rich) throw new Error(`topics: ${slug} is built from the game's tables: pass its richSections()`);
+  const toc = (rich ? rich.map(({ id, title }) => `<a href="#${id}">${title}</a>`)
+    : topic.sections.map(([title], index) => `<a href="#${topicSectionId(index)}">${title}</a>`)).join('')
     + (reference ? `<a href="#reference">${t(`docs.reference.${slug}.title`)}</a>` : '');
   const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
   const neighbour = (topicId: TopicId | undefined, side: 'prev' | 'next'): string => (topicId
@@ -487,9 +528,10 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver()): strin
     + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="/docs">${t('publicNav.fieldManual')}</a><i aria-hidden="true">›</i>`
     + `<span>${groupLabel(group.key)}</span><i aria-hidden="true">›</i><span aria-current="page">${topic.label}</span></nav>`
     + `<h1>${titleMarkup(topic.title)}</h1></div>${caption ? `<p class="dm-banner__cap cot-c-cap"><span data-doc-icon="filming"></span><span>${caption}</span></p>` : ''}</header>`
-    + `<div class="dm-body"><article class="dm-article"><p class="dm-lede">${topic.lede}</p>`
-    + `<p class="dm-meta"><span data-doc-icon="simulation"></span><span>${t('docs.topic.readTime', { minutes: readMinutes(topic) })}</span></p>`
-    + topic.sections.map((section, index) => sectionMarkup(section, index, topic.media[index === firstFigureAt ? 0 : index === secondFigureAt ? 1 : -1])).join('')
+    + `<div class="dm-body"><article class="dm-article${topic.rich ? ' dm-article--wide' : ''}"><p class="dm-lede">${topic.lede}</p>`
+    + `<p class="dm-meta"><span data-doc-icon="simulation"></span><span>${t('docs.topic.readTime', { minutes: readMinutes(topic, rich) })}</span></p>`
+    + (rich ? rich.map(({ id, title, html }) => `<section class="dm-section" id="${id}"><h2>${title}</h2>${html}</section>`).join('')
+      : topic.sections.map((section, index) => sectionMarkup(section, index, topic.media[index === firstFigureAt ? 0 : index === secondFigureAt ? 1 : -1])).join(''))
     + `</article><aside class="dm-toc"><nav aria-label="${t('docs.topic.onThisPage')}">${toc}</nav></aside></div>`
     + `<nav class="dm-pager" aria-label="${t('docs.topic.navAria')}">${neighbour(order[at - 1], 'prev')}${neighbour(order[at + 1], 'next')}</nav></div></div>`;
 }
@@ -510,7 +552,15 @@ function renderTopicPage(): void {
   if (!root) throw new Error('technical manual topic root is unavailable');
   const prerendered = root.dataset.prerendered === slug && root.dataset.prerenderedLocale === getLocale() && root.querySelector('.dm');
   // data saving swaps the banner's take for its 640 still, which the prerender (written for every reader) does not carry
-  if (!prerendered || stillDataSaver()) root.innerHTML = topicPageMarkup(slug);
+  if (!prerendered || stillDataSaver()) {
+    // a chapter built from the game's tables is always prerendered: its builders run in Node only (src/docs/chapters)
+    if (!topic.rich) root.innerHTML = topicPageMarkup(slug);
+  }
+  wireTopicPage(root, slug);
+}
+
+/** The chapter's behaviour over its markup: icons, the contents spy, search, the banner's player and the shelf. */
+function wireTopicPage(root: HTMLElement, slug: TopicId): void {
   const reference = REFERENCE_TOPICS.includes(slug);
   mountDocsIcons(root);
   mountTocSpy(root);
