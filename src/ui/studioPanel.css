@@ -43,6 +43,7 @@ body[data-studio-workspace] #app{position:fixed;left:var(--studio-vp-x,0px);top:
 .st-head .cot-c-seg__opt{height:28px;font-size:var(--fs-12)}
 .st-head .cot-c-seg{flex:none}
 .st-head .r{display:flex;align-items:center;gap:8px;margin-left:auto}
+.st-head .cmd .cot-c-kbd{margin-left:2px}
 /* the scene's safety (09-studio header .sv, the undo/redo pair): the autosave's lamp and age, the steps either side */
 .st-head .hist{display:flex;flex:none;align-items:center;gap:4px}
 .st-head .sv{display:flex;align-items:center;gap:6px;margin-right:6px;color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body);white-space:nowrap}
@@ -378,6 +379,21 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
   background:var(--accent);pointer-events:none}
 .st-tl .ph::before{content:'';position:absolute;top:0;left:-5px;border:6px solid transparent;border-top-color:var(--accent)}
 
+/* ------------------------------------------------------------------------------- the command palette (Ctrl/Cmd+K) */
+.st-cmd{position:absolute;inset:0;z-index:var(--studio-pop-z);display:flex;align-items:flex-start;justify-content:center;padding:64px 16px 16px;
+  pointer-events:auto;background:var(--scrim)}
+.st-cmd-box{display:flex;flex-direction:column;width:min(560px,100%);max-height:min(60vh,520px);overflow:hidden;border-radius:var(--r2);
+  background:var(--surface-menu);box-shadow:var(--e2)}
+.cot-studio input.st-cmd-input{flex:none;width:100%;height:48px;padding:0 16px;border-bottom:1px solid var(--line-1);border-radius:0;
+  background:transparent;box-shadow:none;font:500 var(--fs-15)/1 var(--font-body)}
+.cot-studio input.st-cmd-input:focus-visible{outline:none}
+.st-cmd-list{min-height:0;padding:6px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.st-cmd-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:34px;padding:0 10px;border-radius:var(--r1);
+  color:var(--ink-2);font:500 var(--fs-13)/1.2 var(--font-body);cursor:pointer}
+.st-cmd-row>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.st-cmd-row[aria-selected=true]{background:var(--accent-wash);box-shadow:var(--studio-row-on);color:var(--ink-1)}
+.st-cmd-empty{padding:14px 16px;color:var(--ink-3);font:400 var(--fs-13)/1.4 var(--font-body)}
+
 /* ------------------------------------------------------------------------------------------- the film veil */
 .cot-studio .filmVeil{position:absolute;inset:0;z-index:var(--studio-pop-z);display:none;flex-direction:column;align-items:center;justify-content:center;
   gap:14px;padding:24px 16px;pointer-events:auto;background:var(--scrim)}
@@ -417,12 +433,14 @@ body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-out .gh>button:
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-insp{grid-row:5;border-left:0}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-shelf{grid-row:6}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-shelf .production-takes .production-library{grid-auto-columns:42%}
-body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .pn,.st-head .st-mode,.st-head .hist,.st-tl .tp .sl){display:none}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .pn,.st-head .st-mode,.st-head .hist,.st-head .r .cmd,.st-head .r .gal,
+  .st-head .r .studio-panel-toggle,.st-head .r .cot-c-kbd,.st-tl .tp .sl){display:none}
 /* on a phone the header's, the transport's and the viewport's chips keep their glyphs; the names stay as accessible names, and
    the lanes keep their flags, silhouettes and glyphs */
 body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .st .wd,.st-head .r .cot-c-chip__label,.st-head .cot-c-btn__label,.st-tl .tp .r .cot-c-chip__label,
   .st-vpt .cot-c-chip+.cot-c-chip .cot-c-chip__label,.st-vpb .cot-c-chip:first-child .cot-c-chip__label,.st-tl .lb .nm){position:absolute;width:1px;
   height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-head .r .cot-c-btn{padding:0 9px}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-vpt,.st-vpb){top:8px}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpt{left:8px;max-width:calc(100% - 156px)}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpb{right:8px}

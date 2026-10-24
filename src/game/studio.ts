@@ -1830,6 +1830,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       }
       return;
     }
+    // Ctrl/Cmd+K opens the command palette, from a field too
+    if (active && (e.metaKey || e.ctrlKey) && !e.altKey && e.code === 'KeyK') {
+      e.preventDefault();
+      if (!e.repeat) panel.openCommands();
+      return;
+    }
     if (!active || typingInUI(e)) return;
     // Ctrl/Cmd+Z undoes, Shift+Ctrl/Cmd+Z and Ctrl/Cmd+Y redo
     if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.code === 'KeyZ' || e.code === 'KeyY')) {

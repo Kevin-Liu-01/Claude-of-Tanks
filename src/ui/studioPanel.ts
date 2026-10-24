@@ -2,7 +2,9 @@ import { STUDIO_TIMES, type StudioLight, type StudioTimeOfDay } from '../game/st
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { galleryHref } from '../game/tankIdBoundaries.ts';
 import type { ProductionFormat, ProductionRigId } from '../game/studioProduction.ts';
-import { mountStudioProductionPanel, productionLabel, shotLabel, type WorkspaceId } from './studioProductionPanel.ts';
+import { mountStudioProductionPanel, presetText, productionLabel, shotLabel, type WorkspaceId } from './studioProductionPanel.ts';
+import { PRODUCTION_PRESETS } from '../game/studioProduction.ts';
+import { createCommandPalette, type StudioCommand } from './studioCommands.ts';
 import { mountStudioPicturePanel, type StudioPicturePanelApi } from './studioPicturePanel.ts';
 /**
  * studioPanel.ts — the Studio's interface (src/game/studio.ts's UI): the Premiere direction's page 09 on the live kit
@@ -359,6 +361,8 @@ interface StudioPanelRuntime {
   tick(dt: number): void;
   /** The header's undo, redo and saved state after a step or an autosave. */
   refreshHistory(): void;
+  /** The command palette (Ctrl/Cmd+K). */
+  openCommands(): void;
   /** After a live frame: the selection's outline, name tag and gizmo follow the tank. */
   drawSelection(): void;
   /** A shot's new thumbnail, into its outliner row and its clip on the camera lane. */
@@ -382,6 +386,15 @@ const OUTLINE: ReadonlyArray<readonly [WorkspaceId, IconId]> = Object.freeze([
 const SHOT_TRANSITIONS = Object.freeze(['smooth', 'linear', 'cut', 'bezier', 'spline'] as const);
 const FILM_FORMATS = Object.freeze([['landscape', '16:9'], ['portrait', '9:16'], ['square', '1:1'], ['card', '1.91:1']] as const);
 const SVG_NS = 'http://www.w3.org/2000/svg';
+/** The palette's shortcut as this platform writes it. */
+const PALETTE_KEY = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl K';
+const UNDO_KEY = PALETTE_KEY === '⌘K' ? '⌘Z' : 'Ctrl Z';
+/** The Studio's shortcuts a focused panel lets through to the runtime. */
+function studioShortcut(e: KeyboardEvent): boolean {
+  if (e.altKey) return false;
+  if (e.metaKey || e.ctrlKey) return e.code === 'KeyZ' || e.code === 'KeyY' || e.code === 'KeyK';
+  return e.code === 'KeyJ' || e.code === 'KeyK' || e.code === 'KeyL' || e.code === 'F8';
+}
 /** The gizmo's turn ring, in CSS pixels (09-studio .giz: an 86 px plate, a 30 px ring). */
 const GIZMO_RADIUS = 30;
 /** At most this many camouflage swatches paint in one frame (each a 2 m crop of the real pattern tile). */
@@ -421,11 +434,14 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const timeline = el('section', 'st-tl');
   timeline.setAttribute('aria-label', t('studio.ws.timelineAria'));
   app.append(head, out, vp, dock, shelf, timeline);
-  // keep the canvas's drag-look and fly keys from firing while a panel is in use (the viewport passes them through)
+  // keep the canvas's drag-look and fly keys from firing while a panel is in use (the viewport passes them through); the
+  // Studio's own shortcuts (J/K/L, undo and redo, the palette, F8) still reach it from a focused button, and the runtime
+  // ignores them while a field is being typed in
   for (const panel of [head, out, dock, shelf, timeline]) {
-    for (const evName of ['pointerdown', 'pointermove', 'pointerup', 'wheel', 'keydown']) {
+    for (const evName of ['pointerdown', 'pointermove', 'pointerup', 'wheel']) {
       panel.addEventListener(evName, (e) => e.stopPropagation());
     }
+    panel.addEventListener('keydown', (e) => { if (!studioShortcut(e)) e.stopPropagation(); });
   }
 
   // --- the header (09-studio header) ---------------------------------------------------------------------------
@@ -508,6 +524,11 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     if (proControls && planShown) planView.refreshPlan();
   }
   const headRight = el('div', 'r');
+  // Commands (09-studio header): the palette over every action, with its shortcut
+  const commandsBtn = chipButton(t('studio.ws.commands'), 'search');
+  commandsBtn.classList.add('cmd');
+  commandsBtn.append(el('kbd', 'cot-c-kbd', PALETTE_KEY));
+  commandsBtn.addEventListener('click', () => commandPalette.open());
   const linkBtn = chipButton(t('studio.sceneLink.copyButton'), null);
   linkBtn.insertAdjacentHTML('afterbegin', SCENE_LINK_GLYPHS.link);
   linkBtn.title = t('studio.sceneLink.copyTitle');
@@ -517,16 +538,17 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       .then((result) => api.notice(result.message, result.ok ? 'info' : 'error', result.detail));
   });
   const galleryBtn = chipButton(t('studioPanel.tankGallery'), 'gallery');
+  galleryBtn.classList.add('gal');
   galleryBtn.addEventListener('click', () => {
     const id = S._internal.selected?.spec?.id;
     window.location.href = hrefForLocale(id ? galleryHref(id) : '/gallery', getLocale());
   });
   const exportBtn = kitButton(t('studio.ws.exportFilm'), 'primary', 'record');
   exportBtn.addEventListener('click', () => startFilmExport());
-  const exitBtn = kitButton(t('studio.ws.exit'), 'ghost');
+  const exitBtn = kitButton(t('studio.ws.exit'), 'ghost', 'close');
   exitBtn.insertAdjacentHTML('beforeend', `<kbd class="cot-c-kbd" aria-hidden="true">F8</kbd>`);
   exitBtn.addEventListener('click', () => S.exit());
-  headRight.append(linkBtn, galleryBtn, exportBtn, exitBtn);
+  headRight.append(commandsBtn, linkBtn, galleryBtn, exportBtn, exitBtn);
   head.append(mark, projectName, historyTools, modeSeg, formatSeg, headRight);
 
   // --- the viewport (09-studio .vp): chips, notices and the frame readout over the canvas ---------------------------
@@ -675,6 +697,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   // --- the outliner (09-studio .out): one group per workspace, its head the workspace's switch ----------------------
   const outlineGroups = new Map<WorkspaceId, HTMLDivElement>();
   const outlineHeads = new Map<WorkspaceId, HTMLButtonElement>();
+  const workspaceNames = new Map<WorkspaceId, string>();
   for (const [id] of OUTLINE) {
     const group = el('div', 'og');
     group.dataset.og = id;
@@ -1889,6 +1912,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     head(id, button) {
       const glyph = OUTLINE.find(([outlineId]) => outlineId === id)?.[1] ?? 'studio';
       const label = button.textContent ?? '';
+      workspaceNames.set(id, label);
       button.innerHTML = uiIconSVG(glyph, 15);
       button.append(el('span', 'nm', label));
       outlineHeads.set(id, button);
@@ -1949,6 +1973,70 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       cancelAnimationFrame(viewportFrame);
       viewportFrame = requestAnimationFrame(syncViewport);
     }).observe(vp);
+  }
+
+  // --- the command palette (Ctrl/Cmd+K): every action, run through the control that does it -------------------------
+  const commandPalette = createCommandPalette(studioCommands);
+  root.appendChild(commandPalette.root);
+  function studioCommands(): StudioCommand[] {
+    const list: StudioCommand[] = [];
+    const add = (id: string, label: string, run: () => void, extra: Omit<Partial<StudioCommand>, 'id' | 'label' | 'run'> = {}): void => {
+      list.push({ id, label, run, ...extra });
+    };
+    const via = (button: HTMLButtonElement) => () => { if (!button.disabled) button.click(); };
+    const text = (node: Element): string => node.textContent?.trim() ?? '';
+    const selected = S._internal.selected;
+    add('play', S.playing ? t('studio.pause') : t('studio.play'), via(pauseBtn), { hint: 'Space', keywords: 'play pause' });
+    add('restart', t('studio.restart'), via(restartBtn), { keywords: 'restart beginning' });
+    add('step', t('studio.stepOneFrame'), via(stepBtn), { keywords: 'step frame next' });
+    if (!undoBtn.disabled) add('undo', t('studio.ws.cmd.undo'), via(undoBtn), { hint: UNDO_KEY, keywords: 'undo' });
+    if (!redoBtn.disabled) add('redo', t('studio.ws.cmd.redo'), via(redoBtn), { hint: `Shift ${UNDO_KEY}`, keywords: 'redo' });
+    if (!restoreBtn.hidden) add('restore', t('studio.ws.restore'), via(restoreBtn), { keywords: 'restore autosave last scene' });
+    add('shot', t('studio.addCameraShot'), via(shotBtn), { keywords: 'add camera shot key' });
+    if (!keyBtn.disabled) add('key', t('studio.keySelectedTank'), via(keyBtn), { keywords: 'key selected tank keyframe' });
+    if (!lookChip.disabled) add('look', t('studio.ws.lookThrough'), via(lookChip), { keywords: 'look through camera view shot' });
+    add('guides', t('studio.ws.guides'), via(guidesChip), { keywords: 'guides thirds safe frame' });
+    if (selected) {
+      for (const option of poses.querySelectorAll<HTMLButtonElement>('[data-pose]')) {
+        add(`pose-${option.dataset.pose}`, t('studio.ws.cmd.pose', { name: text(option) }), via(option), { keywords: `pose ${option.dataset.pose}` });
+      }
+      add('remove', t('studio.ws.cmd.remove', { name: selected.spec.name }), () => { S.removeActor(selected); }, { hint: 'Del', keywords: 'remove delete tank' });
+    }
+    for (const [id, button] of outlineHeads) {
+      add(`go-${id}`, t('studio.ws.cmd.workspace', { name: workspaceNames.get(id) ?? text(button) }), via(button), { keywords: `go workspace ${id}` });
+    }
+    for (const option of formatButtons) {
+      add(`frame-${option.dataset.value}`, t('studio.ws.cmd.frame', { ratio: text(option) }), via(option), { keywords: `frame format aspect ${option.dataset.value}` });
+    }
+    for (const option of modeButtons) {
+      add(`controls-${option.dataset.value}`, t('studio.ws.cmd.controls', { name: text(option) }), via(option), { keywords: `controls ${option.dataset.value}` });
+    }
+    for (const option of snapButtons) {
+      add(`snap-${option.dataset.value}`, t('studio.ws.cmd.snap', { name: text(option) }), via(option), { keywords: `snap ${option.dataset.value}` });
+    }
+    for (const [time, button] of timeOptions) {
+      if (!button.disabled) add(`time-${time}`, t('studio.ws.cmd.time', { name: t(`atmosphere.${time}`) }), via(button), { keywords: `light time ${time}` });
+    }
+    for (const preset of PRODUCTION_PRESETS) {
+      add(`stage-${preset.id}`, t('studio.ws.cmd.stage', { name: presetText(preset.id, 'title', preset.title) }), () => {
+        S.directProduction({ presetId: preset.id, format: S.productionFormat })
+          .then(() => api.refreshAll())
+          .catch((error: RuntimeValue) => api.notice(errorMessage(error), 'error'));
+      }, { keywords: `stage sequence director ${preset.id}` });
+    }
+    add('export', t('studio.ws.exportFilm'), via(exportBtn), { keywords: 'export film render video' });
+    add('link', t('studio.sceneLink.copyButton'), via(linkBtn), { keywords: 'copy scene link share' });
+    add('gallery', t('studioPanel.tankGallery'), via(galleryBtn), { keywords: 'tank gallery' });
+    add('exit', t('studio.ws.exit'), via(exitBtn), { hint: 'F8', keywords: 'exit close garage' });
+    // named only: the battlefields and the fleet
+    for (const [id, card] of mapCards) {
+      add(`map-${id}`, t('studio.ws.cmd.map', { name: S.getMapInfo(id).name }), via(card), { searchOnly: true, keywords: `battlefield map ${id}` });
+    }
+    for (const id of S.TANK_IDS) {
+      add(`tank-${id}`, t('studio.ws.cmd.addTank', { name: specInfo(id).name }), () => { setPicked(id); addAtMarker.click(); },
+        { searchOnly: true, keywords: `add tank ${id}` });
+    }
+    return list;
   }
 
   // --- helpers -------------------------------------------------------------------
@@ -2572,6 +2660,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       refreshSaved();
     },
     drawSelection,
+    openCommands() { commandPalette.open(); },
     refreshHistory() {
       const history = S.history;
       undoBtn.disabled = !history.undo;
