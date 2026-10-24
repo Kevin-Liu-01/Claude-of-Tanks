@@ -198,8 +198,8 @@
    "low": {"meshes":70,"vertices":196195,"triangles":67614,"digest":"adb6e1871852c38f","groups":{"hull":"95b8719ec625a51e","turret":"85d790616cfcef61","gun":"48b008872786ad2d","runningGear":"895cc3ebb372ccd1","other":"e3b0c44298fc1c14"}}
   },
   "fv510_milan": {
-   "high": {"meshes":81,"vertices":243561,"triangles":85532,"digest":"44725f8ecfa88e19","groups":{"hull":"f5b02da8ba9878ca","turret":"ff6f0af37eebcb47","gun":"be81c89a0dc32a5c","runningGear":"76590ecfa9c41102","other":"e3b0c44298fc1c14"}},
-   "low": {"meshes":78,"vertices":209049,"triangles":71900,"digest":"f953c7d2d38638c5","groups":{"hull":"f5b02da8ba9878ca","turret":"409d2ae110949210","gun":"ca24df389c018972","runningGear":"3ec34ddd7b51c40c","other":"e3b0c44298fc1c14"}}
+   "high": {"meshes":82,"vertices":243951,"triangles":86172,"digest":"11361e36d8768505","groups":{"hull":"e99c201b2fbbea03","turret":"65b76e62ffca3e38","gun":"be81c89a0dc32a5c","runningGear":"8bf2fba66a605496","other":"e3b0c44298fc1c14"}},
+   "low": {"meshes":79,"vertices":209343,"triangles":72380,"digest":"56d856b4bb3808f9","groups":{"hull":"dfbc46af93ab4d6b","turret":"75d9aa57dee84732","gun":"ca24df389c018972","runningGear":"0b65f7920c756a2d","other":"e3b0c44298fc1c14"}}
   },
   "griffin50mm": {
    "high": {"meshes":40,"vertices":212942,"triangles":71180,"digest":"ef1dd0818e371d00","groups":{"hull":"2c12bb6f4a41114e","turret":"3e34dd434c026bbb","gun":"270bcb47e600e433","runningGear":"574868f2b457743e","other":"e3b0c44298fc1c14"}},

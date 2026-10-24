@@ -52,7 +52,7 @@
     "dardo": {"panYM":0.4,"bottomYM":0,"hullMin":[-1.4,0.4,-3.28],"hullMax":[1.4,1.75,3.31],"turretMinY":-0.0225},
     "fv4034": {"panYM":0.4125,"bottomYM":0,"hullMin":[-1.755,0.375,-4.095],"hullMax":[1.755,1.58,4.105],"turretMinY":-0.03},
     "fv510": {"panYM":0.3787,"bottomYM":0,"hullMin":[-1.6599,0.3787,-3.267],"hullMax":[1.6599,1.7335,3.476],"turretMinY":-0.154},
-    "fv510_milan": {"panYM":0.3787,"bottomYM":0,"hullMin":[-1.6863,0.3787,-3.267],"hullMax":[1.6863,1.7335,3.476],"turretMinY":-0.154},
+    "fv510_milan": {"panYM":0.3787,"bottomYM":0,"hullMin":[-1.6863,0.3787,-3.267],"hullMax":[1.6863,1.7335,3.476],"turretMinY":-0.1247,"accepted":{"reason":"release 245 interior fills regenerated against the current hull (the 231 turret-on-hull change shipped stale fills)","by":"kevinliu","date":"2026-10-24","from":{"turretFloorY":-0.1294}}},
     "griffin50mm": {"panYM":0.2907,"bottomYM":0,"hullMin":[-1.6173,0.509,-2.9932],"hullMax":[1.6173,1.8982,3.4302],"turretMinY":-0.0571},
     "griffin_viper": {"panYM":0.2907,"bottomYM":0,"hullMin":[-1.6173,0.509,-2.9932],"hullMax":[1.6173,1.8982,3.4302],"turretMinY":0},
     "hayate_ifv": {"panYM":0.45,"bottomYM":0,"hullMin":[-1.6,0.45,-3.45],"hullMax":[1.6,1.86,3.41],"turretMinY":-0.04},
