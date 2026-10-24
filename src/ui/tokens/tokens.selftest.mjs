@@ -48,7 +48,7 @@ const meta = (key) => key.startsWith('$');
 const first = generate(source);
 const again = generate(structuredClone(source));
 assert.deepEqual(again, first, 'gen-tokens is idempotent: the same tokens.json always yields the same bytes');
-for (const path of [TOKENS_CSS, TOKENS_TS, SELECTION_TS]) {
+for (const path of Object.keys(first)) {
   assert.equal(readFileSync(path, 'utf8'), first[path],
     `${relative(ROOT, path)} drifted from tokens.json: run node tools/gen-tokens.mjs`);
 }
@@ -131,6 +131,27 @@ assert.throws(() => generate({ ...JSON.parse(readFileSync(TOKENS_JSON, 'utf8')),
   /overrides unknown token --no-such-token/);
 assert.equal(cssLeft.trim(), '', 'tokens.css has no rule but :root token blocks');
 assert.equal(cssBlocks.filter((b) => b.axis === null).length, 1, 'one :root block of defaults');
+
+// A group's own sheet ("$sheet": the landing's and the manual's tokens) is a pure token sheet in the tokens layer, holds
+// exactly its group's tokens, and tokens.css holds none of them: the game's document and the other pages load none.
+const sheetPaths = Object.keys(first).filter((path) => ![TOKENS_CSS, TOKENS_TS, SELECTION_TS].includes(path));
+assert.deepEqual(sheetPaths.map((path) => relative(ROOT, path)).sort(), ['src/ui/tokens/surface-docs.css', 'src/ui/tokens/surface-home.css'],
+  'the landing and the manual each have their own token sheet');
+const sheetDecls = new Map();
+for (const path of sheetPaths) {
+  const body = /^@layer reset,tokens,base,components,surfaces,utilities,overrides;\s*@layer tokens\{\s*:root\{([^}]*)\}\s*\}\s*$/
+    .exec(first[path].replace(/\/\*[\s\S]*?\*\//g, '').trim());
+  assert.ok(body, `${relative(ROOT, path)} is one :root block in the tokens layer`);
+  const decls = parseDecls(body[1]);
+  assert.deepEqual([...decls.keys()], tokens.filter((t) => t.sheet === relative(ROOT, path)).map((t) => t.name), `${relative(ROOT, path)} holds exactly its group`);
+  for (const [name, value] of decls) {
+    assert.ok(!cssBlocks[0].decls.has(name) && !cssBody.includes(`--${name}:`), `tokens.css leaves --${name} to ${relative(ROOT, path)}`);
+    sheetDecls.set(name, value);
+  }
+}
+assert.throws(() => generate({ ...source, component: { ...source.component, 'surface-x': { $sheet: 'src/ui/tokens/x.css', 'x-only': '1px' },
+  'surface-y': { 'y-reads': '{x-only}' } } }), /--y-reads reads --x-only, which only src\/ui\/tokens\/x.css declares/,
+'a shared token cannot read a token only one surface\'s sheet declares');
 
 /* 2. the SPEC 4.14 sheet -------------------------------------------------------------------------------------- */
 // Starting values for tokens.json, verbatim from SPEC 4.14 (the font families follow the owner's 2026-10-17 ruling).
@@ -502,7 +523,8 @@ assert.deepEqual([...mediaBlocks[0].decls], [...reduceBlock.decls], 'the OS swit
 // BUI-F9: the OS copy applies only while the player follows the OS (no data-motion attribute): data-motion=reduce collapses
 // the durations whatever the OS says, data-motion=full keeps them whatever it says (SPEC 9, both ways).
 assert.equal(mediaBlocks[0].guard, 'motion', 'the OS reduce-motion copy yields to an explicit data-motion choice');
-const defaults = cssBlocks.find((b) => b.axis === null).decls;
+// the cascade on a page: tokens.css, and the surface's own sheet where the page imports it
+const defaults = new Map([...cssBlocks.find((b) => b.axis === null).decls, ...sheetDecls]);
 const resolveCss = (text, decls, depth = 0) => {
   assert.ok(depth < 32, `tokens.css reference cycle near ${text}`);
   return text.replace(/var\(--([a-z0-9-]+)\)/g, (m, n) => (decls.has(n) ? resolveCss(decls.get(n), decls, depth + 1) : m));
