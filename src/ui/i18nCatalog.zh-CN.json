@@ -1464,7 +1464,6 @@
   "contextInfo.thisSection": "此区域",
   "contextInfo.aboutSection": "关于 {title}",
   "modal.titleDefault": "详情",
-  "modal.eyebrowDefault": "操作手册",
   "modal.closeLabel": "关闭对话框",
   "transition.kicker.leavingBattle": "正在离开战斗",
   "transition.kicker.regrouping": "正在重新集结",

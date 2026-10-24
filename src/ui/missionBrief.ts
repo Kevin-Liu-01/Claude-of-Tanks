@@ -4,7 +4,7 @@
 // then it fades; leaving the battlefield removes it at once. Pure DOM over the i18n catalog.
 import { t } from './i18n.ts';
 import { ensureStyle } from './styleLayers.ts';
-import { ensureFonts, FONT_COND, FONT_STACK } from './fonts.ts';
+import { ensureFonts } from './fonts.ts';
 import {
   CAMPAIGN_OBJECTIVE_KEYS, CAMPAIGN_OPERATIONS, campaignOperationById, campaignOperationForMap,
   type CampaignOperation,
@@ -12,19 +12,21 @@ import {
 
 const STYLE_ID = 'cot-mission-brief-style';
 const CSS = `
-.cot-brief{position:fixed;left:22px;top:clamp(220px,30vh,320px);z-index:34;width:min(380px,calc(100vw - 44px));padding:14px 16px 13px;
-  color:#e9eef2;background:linear-gradient(180deg,rgba(9,13,18,.92),rgba(9,13,18,.84));border:1px solid rgba(230,154,54,.55);
-  border-left:3px solid #e69a36;border-radius:4px;box-shadow:0 14px 34px rgba(0,0,0,.45);font-family:${FONT_STACK};
-  opacity:0;transform:translateX(-14px);transition:opacity .35s ease,transform .35s ease;pointer-events:none}
+.cot-brief{position:fixed;left:22px;top:clamp(220px,30vh,320px);z-index:34;width:min(380px,calc(100vw - 44px));padding:var(--s3) var(--s4);
+  color:var(--ink-1);background:var(--hud-plate);border-radius:var(--plate-radius);box-shadow:inset 2px 0 0 var(--accent),var(--e2);
+  font-family:var(--font-ui);opacity:0;transform:translateX(-14px);
+  transition:opacity var(--dur-screen) var(--ease-enter),transform var(--dur-screen) var(--ease-enter);pointer-events:none}
 .cot-brief.show{opacity:1;transform:none}
-.cot-brief .kicker{font:700 11px ${FONT_COND};letter-spacing:.13em;text-transform:uppercase;color:#e2b56a}
-.cot-brief h3{margin:4px 0 6px;font:700 19px ${FONT_COND};letter-spacing:.06em;text-transform:uppercase;color:#fff0d8}
-.cot-brief p{margin:0 0 9px;font-size:13px;line-height:1.45;color:#c8d3db}
-.cot-brief .objectives{font:700 11px ${FONT_COND};letter-spacing:.09em;text-transform:uppercase;color:#8ea2b0;margin:0 0 4px}
-.cot-brief ul{margin:0 0 8px;padding:0;list-style:none}
-.cot-brief li{position:relative;padding-left:14px;font-size:13px;line-height:1.4;color:#dfe7ec}
-.cot-brief li::before{content:'';position:absolute;left:0;top:5px;width:6px;height:6px;border:1px solid #e69a36;transform:rotate(45deg)}
-.cot-brief .enemy{font:700 11px ${FONT_COND};letter-spacing:.05em;text-transform:uppercase;color:#f0a4a4}
+.cot-brief .kicker{font:600 max(11px,var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--ink-3)}
+.cot-brief h3{margin:var(--s1) 0 var(--s2);font:600 max(20px,var(--fs-20))/1.15 var(--font-display);letter-spacing:var(--track-title);color:var(--ink-1)}
+.cot-brief p{margin:0 0 var(--s2);font:400 max(13px,var(--fs-13))/1.45 var(--font-body);color:var(--ink-2)}
+.cot-brief .objectives{margin:0 0 var(--s1);font:600 max(11px,var(--fs-11))/1 var(--font-display);letter-spacing:var(--track-label);
+  text-transform:uppercase;color:var(--ink-3)}
+.cot-brief ul{margin:0 0 var(--s2);padding:0;list-style:none}
+.cot-brief li{position:relative;padding-left:14px;font:400 max(13px,var(--fs-13))/1.4 var(--font-body);color:var(--ink-1)}
+.cot-brief li::before{content:'';position:absolute;left:1px;top:6px;width:5px;height:5px;background:var(--accent)}
+.cot-brief .enemy{font:600 max(11px,var(--fs-11))/1.3 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;
+  color:var(--text-enemy)}
 `;
 
 interface MissionBriefRequest {

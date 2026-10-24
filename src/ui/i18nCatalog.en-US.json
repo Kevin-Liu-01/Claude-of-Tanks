@@ -1440,7 +1440,6 @@
   "contextInfo.thisSection": "this section",
   "contextInfo.aboutSection": "About {title}",
   "modal.titleDefault": "Details",
-  "modal.eyebrowDefault": "Field manual",
   "modal.closeLabel": "Close dialog",
   "transition.kicker.leavingBattle": "Leaving battle",
   "transition.kicker.regrouping": "Regrouping",
