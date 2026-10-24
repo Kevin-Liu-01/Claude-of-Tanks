@@ -17,7 +17,7 @@ export const TANK_PRESENTATION_ANCHOR_SCHEMA_VERSION = 2;
 
 export const TANK_PRESENTATION_ANCHORS: Readonly<Record<string, TankPresentationAnchor>> = Object.freeze({
   abramsx: Object.freeze({ xM: 0.0026, zM: -0.0939 }),
-  aft10: Object.freeze({ xM: 0.0005, zM: 0.1881 }),
+  aft10: Object.freeze({ xM: 0.0003, zM: 0.1879 }),
   ajax: Object.freeze({ xM: -0.0066, zM: -0.2983 }),
   amx10p: Object.freeze({ xM: 0, zM: 0.0117 }),
   amx10p_25: Object.freeze({ xM: 0, zM: 0.0055 }),
@@ -30,9 +30,9 @@ export const TANK_PRESENTATION_ANCHORS: Readonly<Record<string, TankPresentation
   ares_apc: Object.freeze({ xM: 0.0018, zM: -0.0014 }),
   bmp2: Object.freeze({ xM: -0.0017, zM: -0.0611 }),
   bmp3: Object.freeze({ xM: 0.0051, zM: -0.0738 }),
-  bmp3_rok: Object.freeze({ xM: 0.0018, zM: -0.0395 }),
-  bmp3m_dragun125: Object.freeze({ xM: 0, zM: 0.2988 }),
-  bmpt_t90: Object.freeze({ xM: 0.0018, zM: -0.0101 }),
+  bmp3_rok: Object.freeze({ xM: 0.0016, zM: -0.0394 }),
+  bmp3m_dragun125: Object.freeze({ xM: 0, zM: 0.2987 }),
+  bmpt_t90: Object.freeze({ xM: 0.0023, zM: -0.0049 }),
   bmpt_terminator2: Object.freeze({ xM: 0.0017, zM: -0.0856 }),
   borsuk: Object.freeze({ xM: 0.0001, zM: -0.001 }),
   bwp1: Object.freeze({ xM: 0.0007, zM: 0.0275 }),
@@ -248,7 +248,7 @@ export function presentationAnchorFor(id: string): TankPresentationAnchor | null
 // without re-deriving scale from symmetric published dimensions.
 export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresentationProjection>> = Object.freeze({
   abramsx: Object.freeze({ centerYM: 2.0715, topHalfM: 6.3541, sideHalfM: 3.177 }),
-  aft10: Object.freeze({ centerYM: 2.6352, topHalfM: 4.4842, sideHalfM: 2.8201 }),
+  aft10: Object.freeze({ centerYM: 2.6352, topHalfM: 4.484, sideHalfM: 2.8201 }),
   ajax: Object.freeze({ centerYM: 1.8514, topHalfM: 4.1777, sideHalfM: 2.0888 }),
   amx10p: Object.freeze({ centerYM: 2.05, topHalfM: 3.1984, sideHalfM: 2.1935 }),
   amx10p_25: Object.freeze({ centerYM: 2.1, topHalfM: 3.1918, sideHalfM: 2.247 }),
@@ -261,9 +261,9 @@ export const TANK_PRESENTATION_PROJECTIONS: Readonly<Record<string, TankPresenta
   ares_apc: Object.freeze({ centerYM: 1.9517, topHalfM: 3.8797, sideHalfM: 2.0883 }),
   bmp2: Object.freeze({ centerYM: 1.6801, topHalfM: 4.0912, sideHalfM: 2.0456 }),
   bmp3: Object.freeze({ centerYM: 2.094, topHalfM: 4.2115, sideHalfM: 2.2412 }),
-  bmp3_rok: Object.freeze({ centerYM: 1.7972, topHalfM: 3.9694, sideHalfM: 1.9847 }),
-  bmp3m_dragun125: Object.freeze({ centerYM: 1.9423, topHalfM: 4.6163, sideHalfM: 2.3082 }),
-  bmpt_t90: Object.freeze({ centerYM: 1.8705, topHalfM: 4.579, sideHalfM: 2.2895 }),
+  bmp3_rok: Object.freeze({ centerYM: 1.7972, topHalfM: 3.9695, sideHalfM: 1.9847 }),
+  bmp3m_dragun125: Object.freeze({ centerYM: 1.9423, topHalfM: 4.6164, sideHalfM: 2.3082 }),
+  bmpt_t90: Object.freeze({ centerYM: 1.8705, topHalfM: 4.5734, sideHalfM: 2.2867 }),
   bmpt_terminator2: Object.freeze({ centerYM: 1.7084, topHalfM: 3.9964, sideHalfM: 1.9982 }),
   borsuk: Object.freeze({ centerYM: 2.229, topHalfM: 3.6857, sideHalfM: 2.385 }),
   bwp1: Object.freeze({ centerYM: 1.5821, topHalfM: 4.0173, sideHalfM: 2.0087 }),
