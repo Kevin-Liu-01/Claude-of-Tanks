@@ -113,6 +113,24 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     `<span>${keycap(t('garage.key.enter'))}${t('garage.battle')}</span><span>${keycap('Esc')}${t('garage.nav.garage')}</span>`;
   menu.append(keys);
 
+  // a folded layout opens the chosen mode in place (91's .sel): the plate's rules, battlefield and pickers stand right
+  // under its card or row, one block; a wide layout keeps them on the plate
+  const details = menu.querySelector<HTMLElement>('.cot-battle-details');
+  const plate = menu.querySelector<HTMLElement>('.cot-deploy-plate');
+  function placeDetails(): void {
+    if (!details || !plate) return;
+    const chosen = document.body.dataset.cotPanels === 'overlay'
+      ? menu.querySelector<HTMLElement>('#cot-deploy-quick .cot-battle-choice[aria-pressed="true"]') : null;
+    if (chosen) {
+      if (chosen.nextElementSibling !== details) chosen.after(details);
+      details.classList.add('is-inline');
+    } else if (details.parentElement !== plate) {
+      plate.prepend(details);
+      details.classList.remove('is-inline');
+    }
+  }
+  new MutationObserver(placeDetails).observe(document.body, { attributes: true, attributeFilter: ['data-cot-panels'] });
+
   function renderTiers(): void {
     const control = host.difficulty();
     tiers.hidden = !control;
@@ -146,6 +164,7 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
         again.innerHTML = `${uiIconSVG('rematch', 15)}<span class="full">${full}</span><span class="short">${t('garage.deploy.againShort')}</span>`;
         again.setAttribute('aria-label', full);
       }
+      placeDetails();
       renderTiers();
       const seconds = host.loadEstimateS();
       estimate.textContent = seconds ? t('garage.deploy.loadEstimate', { value: String(seconds) }) : '';

@@ -357,6 +357,10 @@ body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tank :is(.info,.chg){dis
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open [data-battle-launch]{flex:1;height:58px;padding:0 18px;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-acts{flex:1;gap:8px;}
 body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open [data-battle-watch]{height:58px;padding:0 14px;}
+/* a phone's dock holds the tank, Watch and Deploy: Watch is its glyph (its name stays its accessible name) */
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open [data-battle-watch]>span{position:absolute;width:1px;height:1px;overflow:hidden;
+  clip-path:inset(50%);white-space:nowrap;}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-deploy-acts{flex:1;min-width:0;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-go{font-size:var(--fs-24);}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op{grid-template-columns:48px minmax(0,1fr) auto;gap:12px;padding:12px;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op-map{display:none;}
@@ -366,4 +370,12 @@ body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op-index{font-size:var(-
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-battle-menu.open{bottom:calc(var(--cot-tabbar-h) + env(safe-area-inset-bottom,0px));}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-battle-menu.open .cot-battle-menu-foot{
   bottom:calc(var(--cot-tabbar-h) + env(safe-area-inset-bottom,0px));padding-bottom:10px;}
+/* a folded layout opens the chosen mode in place (91's .sel, deployScreen.ts): the plate's rules, battlefield and pickers
+   under its card or row, the two framed as one block in the accent; the plate keeps only the docked foot */
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-details.is-inline{display:flex;flex-direction:column;gap:10px;
+  margin-top:-6px;padding:12px 10px 10px;border:1px solid var(--accent);border-top:0;border-radius:0 0 var(--control-radius) var(--control-radius);
+  background:var(--side-plate);}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-choice[aria-pressed='true']:has(+ .cot-battle-details.is-inline){
+  outline:0;border:1px solid var(--accent);border-bottom:0;border-radius:var(--control-radius) var(--control-radius) 0 0;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-plate:not(:has(.cot-battle-details)){padding:0;background:none;box-shadow:none;}
 }
