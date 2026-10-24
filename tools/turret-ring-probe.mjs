@@ -32,8 +32,18 @@
 // GUARD_HALF_M-square opening cut through the deck inside that radius, and one outside it, must each add more than
 // GATE_EXT_PX hole pixels over the player's wreck without them, or --gate fails.
 //
+// The cut's reshaping (243). Within the zone the cut's corners follow the field and past it they lie on their face's own
+// dented plane, so a long face's pieces carry the zone's reshaping out along them (vt4a1 seed 77: 2.7 m out), and a
+// grazing view reads a sag of a few cm as many cm deeper (5 deg down: 2 cm reads 23 cm): 7 340 of its pixels, none of
+// them an opening (the trace: the same deck, lower). So the exterior also lets a pixel pass when the cut wreck still has a
+// face of the mesh the eye saw, facing the same way, along that face's normal within the most the cut can move that face
+// (reshapeBound: the field's departure from the face's dented plane over its part inside the zone, sampled; 0 for a face
+// clear of the zone or undented, so a crack anywhere else still counts), and reports what is left by kind: see-through
+// inside the wreck's outline, see-through at it (the outline receded: a pixel both rasters see past within
+// SILHOUETTE_PX), and a deeper hit. The guard's openings must still count, and do (vt4a1: 194 / 216 px).
+//
 //   node tools/turret-ring-probe.mjs --ids=t90m_proryv,t72b3 [--seeds=77,4242,9001] [--stress] [--no-live] [--no-hulk]
-//        [--receipts=<receipts.json>] [--render=<dir>] --out=<rows.jsonl> [--gate]
+//        [--receipts=<receipts.json>] [--render=<dir>] [--far-samples=<n>] --out=<rows.jsonl> [--gate]
 import * as THREE from 'three';
 import { appendFileSync } from 'node:fs';
 
@@ -57,6 +67,7 @@ const SKIP_HULK = args.includes('--no-hulk');
 const STRESS = args.includes('--stress');
 const SKIP_LIVE = args.includes('--no-live');
 const RENDER = opt('render');
+const FAR_SAMPLES = Number(opt('far-samples', '0'));
 const { createCanvas } = await import('@napi-rs/canvas');
 const { writeFileSync } = await import('node:fs');
 
@@ -149,6 +160,7 @@ function collect(owner, skip, dent = null, filter = () => true) {
         for (let k = g.start; k + 2 < end; k += 3) {
           const i0 = index ? index.getX(k) : k, i1 = index ? index.getX(k + 1) : k + 1, i2 = index ? index.getX(k + 2) : k + 2;
           const vs = [_a.fromBufferAttribute(pos, i0), _b.fromBufferAttribute(pos, i1), _c.fromBufferAttribute(pos, i2)];
+          const rest = dents ? [_a.x, _a.y, _a.z, _b.x, _b.y, _b.z, _c.x, _c.y, _c.z] : null;
           for (const v of vs) {
             if (dents) {
               let dx = 0, dy = 0, dz = 0;
@@ -163,12 +175,14 @@ function collect(owner, skip, dent = null, filter = () => true) {
             v.applyMatrix4(_m);
           }
           out.pos.push(_a.x, _a.y, _a.z, _b.x, _b.y, _b.z, _c.x, _c.y, _c.z);
+          (out.rest ??= [])[out.flags.length] = rest;
           out.flags.push((two ? 1 : 0) | (o.userData.interiorFill ? 2 : 0) | (o.isInstancedMesh ? 4 : 0) | (dents ? 8 : 0) | (flip ? 16 : 0));
           out.names.push(o.name || '?');
         }
       }
     }
   }
+  if (dent) out.dent = { list: dent.list, share };
   return out;
 }
 
@@ -273,6 +287,8 @@ const SHARE_AGES = [0, 0.175, 1000];
 const LIVE_ZONE_M = 0.36;                                    // turretRingWell.ts LIVE_ZONE_M
 const EXT_TOL_M = 0.05, EXT_TOL_R_M = LIVE_ZONE_M + 0.3;
 const GUARD_HALF_M = 0.03, GATE_EXT_PX = 20;
+// a see-through pixel this near (px) a pixel both rasters see past: the cut wreck's outline receded there
+const SILHOUETTE_PX = 3;
 
 /** A convex polygon's part (flat xyz) on one side of the vertical plane x (axis 0) or z (axis 2) = value, or null. */
 function clipAxis(poly, axis, value, keepLess) {
@@ -320,11 +336,113 @@ function carveOpening(tris, hullWorld, box) {
   return { tris: out, removed };
 }
 
+/** (243) How far the cut may reshape one dented face of the uncut wreck: its pieces' corners inside the live dent zone
+ *  follow the field (its own, and those a neighbour's cut gives its edges), those past it lie on the face's own dented
+ *  plane, and the pieces interpolate, so every point of them lies within the most the field departs from that plane
+ *  over the face's part inside the zone (sampled: its inside and, finely, its edges). 0: a face the cut cannot reshape
+ *  (undented, or clear of the zone). */
+function reshapeBound(tris, t, seat) {
+  const rest = tris.rest?.[t];
+  if (!rest || !tris.dent) return 0;
+  const bounds = (tris.bounds ??= new Map());
+  if (bounds.has(t)) return bounds.get(t);
+  const { list, share } = tris.dent, zone = seat.rimR + LIVE_ZONE_M + 0.01, N = 16;
+  const field = (x, y, z, out) => {
+    out[0] = out[1] = out[2] = 0;
+    for (const d of list) {
+      const ex = x - d.cx, ey = y - d.cy, ez = z - d.cz, r2 = ex * ex + ey * ey + ez * ez;
+      if (r2 >= d.r2) continue;
+      const q = 1 - r2 / d.r2, k = q * q * d.depth * share;
+      out[0] += d.dx * k; out[1] += d.dy * k; out[2] += d.dz * k;
+    }
+    return out;
+  };
+  const fa = field(rest[0], rest[1], rest[2], [0, 0, 0]), fb = field(rest[3], rest[4], rest[5], [0, 0, 0]), fc = field(rest[6], rest[7], rest[8], [0, 0, 0]);
+  const f = [0, 0, 0];
+  let most = 0;
+  // the face's inside (an N grid) and its edges, finely (a large face whose corner alone reaches the zone, and the
+  // corners a neighbour's cut gives its edges)
+  const samples = [];
+  for (let i = 0; i <= N; i++) for (let j = 0; i + j <= N; j++) samples.push([i / N, j / N]);
+  for (let k = 0; k <= 4 * N; k++) { const t = k / (4 * N); samples.push([t, 1 - t], [t, 0], [0, t]); }
+  for (const [u, v] of samples) {
+    const w = 1 - u - v;
+    const x = u * rest[0] + v * rest[3] + w * rest[6], y = u * rest[1] + v * rest[4] + w * rest[7], z = u * rest[2] + v * rest[5] + w * rest[8];
+    if (Math.hypot(x - seat.cx, z - seat.cz) > zone) continue;
+    field(x, y, z, f);
+    most = Math.max(most, Math.hypot(f[0] - (u * fa[0] + v * fb[0] + w * fc[0]), f[1] - (u * fa[1] + v * fb[1] + w * fc[1]), f[2] - (u * fa[2] + v * fb[2] + w * fc[2])));
+  }
+  bounds.set(t, most);
+  return most;
+}
+
+/** The faces of a raster near a point (world frame, GRID_M cells), built once per raster. */
+const GRID_M = 0.1;
+const grids = new WeakMap();
+function triangleGrid(tris) {
+  let grid = grids.get(tris);
+  if (grid) return grid;
+  grid = new Map();
+  const P = tris.pos;
+  for (let t = 0; t < tris.flags.length; t++) {
+    const o = t * 9;
+    const lo = [0, 1, 2].map((c) => Math.floor(Math.min(P[o + c], P[o + 3 + c], P[o + 6 + c]) / GRID_M));
+    const hi = [0, 1, 2].map((c) => Math.floor(Math.max(P[o + c], P[o + 3 + c], P[o + 6 + c]) / GRID_M));
+    if ((hi[0] - lo[0] + 1) * (hi[1] - lo[1] + 1) * (hi[2] - lo[2] + 1) > 4096) continue; // (a face metres across: never near a short segment's few cells alone)
+    for (let i = lo[0]; i <= hi[0]; i++) for (let j = lo[1]; j <= hi[1]; j++) for (let k = lo[2]; k <= hi[2]; k++) {
+      const key = `${i},${j},${k}`;
+      let list = grid.get(key);
+      if (!list) grid.set(key, list = []);
+      list.push(t);
+    }
+  }
+  grids.set(tris, grid);
+  return grid;
+}
+const _e1 = new THREE.Vector3(), _e2 = new THREE.Vector3(), _pv = new THREE.Vector3(), _tv = new THREE.Vector3(), _qv = new THREE.Vector3(), _nv = new THREE.Vector3();
+/** Whether the segment a→b crosses a face of `tris` on mesh `name` facing along `n` (the reshaped surface the eye saw). */
+function segmentMeetsSurface(tris, a, b, name, n) {
+  const grid = triangleGrid(tris), P = tris.pos;
+  const dir = b.clone().sub(a);
+  const lo = [a.x, a.y, a.z].map((v, c) => Math.floor(Math.min(v, [b.x, b.y, b.z][c]) / GRID_M));
+  const hi = [a.x, a.y, a.z].map((v, c) => Math.floor(Math.max(v, [b.x, b.y, b.z][c]) / GRID_M));
+  const seen = new Set();
+  for (let i = lo[0]; i <= hi[0]; i++) for (let j = lo[1]; j <= hi[1]; j++) for (let k = lo[2]; k <= hi[2]; k++) {
+    for (const t of grid.get(`${i},${j},${k}`) ?? []) {
+      if (seen.has(t) || tris.names[t] !== name) continue;
+      seen.add(t);
+      const o = t * 9;
+      _e1.set(P[o + 3] - P[o], P[o + 4] - P[o + 1], P[o + 5] - P[o + 2]);
+      _e2.set(P[o + 6] - P[o], P[o + 7] - P[o + 1], P[o + 8] - P[o + 2]);
+      _nv.crossVectors(_e1, _e2);
+      if (tris.flags[t] & 16) _nv.negate();
+      if (!(tris.flags[t] & 1) && _nv.dot(n) <= 0) continue;
+      // Möller–Trumbore on the segment
+      _pv.crossVectors(dir, _e2);
+      const det = _e1.dot(_pv);
+      if (Math.abs(det) < 1e-14) continue;
+      _tv.set(a.x - P[o], a.y - P[o + 1], a.z - P[o + 2]);
+      const u = _tv.dot(_pv) / det;
+      if (u < -1e-6 || u > 1 + 1e-6) continue;
+      _qv.crossVectors(_tv, _e1);
+      const v = dir.dot(_qv) / det;
+      if (v < -1e-6 || u + v > 1 + 1e-6) continue;
+      const s = _e2.dot(_qv) / det;
+      if (s >= 0 && s <= 1) return true;
+    }
+  }
+  return false;
+}
+
 /** The live exterior: per view (the elevations x 16 azimuths) the pixels where the cut wreck shows something deeper by
  *  2 cm than the uncut one, whose first hit is not the plate, nor the deck inside the race (the ring takes it by design:
  *  the verifier's rule), nor the dents' reshaping (EXT_TOL_M on the same mesh within EXT_TOL_R_M of the rim). */
 function exteriorHoles(intactTris, destroyedTris, seat, hull, elevations, keepSamples = 10) {
   let holes = 0, holesFar = 0, changed = 0, tolerated = 0;
+  // the holes by kind: see-through (no hit on the cut wreck) inside the outline, see-through at the outline (the cut
+  // wreck's silhouette receded: a background pixel of both rasters within SILHOUETTE_PX), a deeper hit; and by radius
+  let seeThrough = 0, silhouette = 0, deeperHit = 0, reshaped = 0;
+  const byR = {};
   const samples = [];
   const toHull = hull.matrixWorld.clone().invert();
   const centre = new THREE.Vector3(seat.cx, seat.deckY - 0.3, seat.cz).applyMatrix4(hull.matrixWorld);
@@ -343,8 +461,44 @@ function exteriorHoles(intactTris, destroyedTris, seat, hull, elevations, keepSa
         if (r <= seat.rimR + 0.01 && q0.y >= seat.deckY - 0.03) continue;
         const deeper = B.zFront[p] - A.zFront[p];
         if (deeper < EXT_TOL_M && r <= seat.rimR + EXT_TOL_R_M && now === intactTris.names[A.triFront[p]]) { tolerated++; continue; }
+        // (243) the reshaping, seen at any angle (a few cm of sag reads as many cm deeper along a grazing ray, and a long
+        // face's pieces carry it out past the radius): the surface the eye saw counts as reshaped, not opened, when the
+        // cut wreck still has a face of that mesh facing the same way along its normal within the most the cut may move
+        // that face (reshapeBound, + 1 cm); a crack or an opening has none there (the plate's far face faces the other
+        // way), and a face the cut cannot reshape has no allowance at all
+        const bound = reshapeBound(intactTris, A.triFront[p], seat);
+        if (bound > 0) {
+          const t = A.triFront[p], o = t * 9, P = intactTris.pos;
+          const n = new THREE.Vector3().crossVectors(new THREE.Vector3(P[o + 3] - P[o], P[o + 4] - P[o + 1], P[o + 5] - P[o + 2]),
+            new THREE.Vector3(P[o + 6] - P[o], P[o + 7] - P[o + 1], P[o + 8] - P[o + 2])).normalize();
+          if (intactTris.flags[t] & 16) n.negate();
+          if (n.dot(v.d) > 0) n.negate();
+          const at = pixelPoint(v, p, A.zFront[p]);
+          const reach = bound + 0.01;
+          if (segmentMeetsSurface(destroyedTris, at.clone().addScaledVector(n, reach), at.clone().addScaledVector(n, -reach),
+            intactTris.names[t], n)) { tolerated++; reshaped++; continue; }
+        }
         holes++;
         if (deeper > 0.2) holesFar++;
+        if (now === null) {
+          let rim = false;
+          const pi = p % v.n, pj = (p / v.n) | 0;
+          for (let dj = -SILHOUETTE_PX; dj <= SILHOUETTE_PX && !rim; dj++) {
+            for (let di = -SILHOUETTE_PX; di <= SILHOUETTE_PX; di++) {
+              const qi = pi + di, qj = pj + dj;
+              if (qi < 0 || qj < 0 || qi >= v.n || qj >= v.n) continue;
+              const q = qj * v.n + qi;
+              if (!Number.isFinite(A.zFront[q]) && !Number.isFinite(B.zFront[q])) { rim = true; break; }
+            }
+          }
+          if (rim) silhouette++; else seeThrough++;
+        } else deeperHit++;
+        const bin = (Math.floor(r * 10) / 10).toFixed(1);
+        byR[bin] = (byR[bin] || 0) + 1;
+        if (FAR_SAMPLES && deeper > 0.2 && (samples.farN = (samples.farN || 0) + 1) % 7 === 1 && (samples.far ??= []).length < FAR_SAMPLES) {
+          const q = pixelPoint(v, p, A.zFront[p]).applyMatrix4(toHull), q1 = Number.isFinite(B.zFront[p]) ? pixelPoint(v, p, B.zFront[p]).applyMatrix4(toHull) : null;
+          samples.far.push({ el, az, world: pixelPoint(v, p, A.zFront[p]).toArray().map(r4), at: [r4(q.x), r4(q.y), r4(q.z)], r: r4(r), was: intactTris.names[A.triFront[p]], now, nowAt: q1 ? [r4(q1.x), r4(q1.y), r4(q1.z)] : null, deeper: r4(deeper) });
+        }
         if (samples.length < keepSamples) {
           const q = pixelPoint(v, p, A.zFront[p]), q1 = Number.isFinite(B.zFront[p]) ? pixelPoint(v, p, B.zFront[p]) : null;
           samples.push({ el, az, at: [r4(q.x), r4(q.y), r4(q.z)], was: intactTris.names[A.triFront[p]], now, nowAt: q1 ? [r4(q1.x), r4(q1.y), r4(q1.z)] : null, deeper: r4(deeper) });
@@ -352,7 +506,8 @@ function exteriorHoles(intactTris, destroyedTris, seat, hull, elevations, keepSa
       }
     }
   }
-  return { changedPx: changed, holePx: holes, holeFarPx: holesFar, toleratedPx: tolerated, samples };
+  return { changedPx: changed, holePx: holes, holeFarPx: holesFar, toleratedPx: tolerated, reshapedPx: reshaped, seeThroughPx: seeThrough,
+    silhouettePx: silhouette, deeperPx: deeperHit, byR, samples, ...(samples.far ? { far: samples.far } : {}) };
 }
 function platesOf(root) { const l = []; root.traverse((o) => { if (o.userData?.turretRingPlate) l.push(o); }); return l; }
 function discTris(plate, positions) {
