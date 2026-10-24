@@ -358,7 +358,7 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-tl .tp .sl .val{color:var(--ink-1);text-align:right}
 .st-tl .tp .r{display:flex;align-items:center;gap:8px;margin-left:auto}
 .st-tl .tp .cot-c-chip{height:28px;font-size:var(--fs-12)}
-.st-lanes{position:relative;display:grid;flex:1;grid-template-columns:150px minmax(0,1fr);grid-auto-rows:minmax(26px,1fr);min-height:0;
+.st-lanes{position:relative;display:grid;flex:1;grid-template-columns:150px minmax(0,1fr);grid-template-rows:20px;grid-auto-rows:minmax(24px,1fr);min-height:0;
   overflow-y:auto;scrollbar-width:thin}
 .st-tl .lb{display:flex;align-items:center;gap:7px;min-width:0;padding:0 12px;overflow:hidden;border-bottom:1px solid var(--line-1);
   color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body);white-space:nowrap}
@@ -376,6 +376,10 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-tl .clip--fx{background:var(--studio-clip-fx)}
 .st-tl .key{position:absolute;top:50%;width:8px;height:8px;padding:0;border:0;background:var(--ink-1);transform:translate(-50%,-50%) rotate(45deg);
   cursor:pointer}
+/* the sound lane: the film's soundtrack as peaks, dimmed while a changed scene is being mixed again */
+.st-tl .tk--sound svg{position:absolute;inset:4px 0;width:100%;height:calc(100% - 8px);pointer-events:none}
+.st-tl .tk--sound path{stroke:var(--ink-3);stroke-width:1;vector-effect:non-scaling-stroke}
+.st-tl .tk--sound svg.stale path{stroke:var(--ink-4)}
 .st-tl .ph{position:absolute;top:0;bottom:0;left:calc(150px + (100% - 150px) * var(--t,0));z-index:var(--z-lift);width:2px;margin-left:-1px;
   background:var(--accent);pointer-events:none}
 .st-tl .ph::before{content:'';position:absolute;top:0;left:-5px;border:6px solid transparent;border-top-color:var(--accent)}

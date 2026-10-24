@@ -4956,6 +4956,53 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     });
   }
 
+  /**
+   * The timeline's sound lane: the take replayed to its end without rendering to collect every combat sound (as a film
+   * export does), mixed as the film mixes it (studioFilmAudio.ts, at a preview sample rate) and reduced to `buckets`
+   * peaks over the timeline. The playhead returns where it was; null while the Studio is busy or playing.
+   */
+  async function soundPreview(buckets: number): Promise<{ readonly peaks: Float32Array; readonly cues: number } | null> {
+    if (recording || filming || filmExport || loading || productionLoading || restoringHistory || timeScale > 0 || reverseRate > 0
+      || filmCues || pointerHeld || dragActor || dragging || !active) return null;
+    const count = Math.max(1, Math.min(2000, buckets | 0));
+    const playhead = clockMs;
+    let cues: FilmSoundCue[] = [];
+    filmCues = cues;
+    try {
+      rebuildEffects(storyboard.durationMs);
+    } finally {
+      filmCues = null;
+      rebuildEffects(playhead);
+      invalidate();
+    }
+    if (!cues.length) return { peaks: new Float32Array(count), cues: 0 };
+    const { renderFilmSoundtrack } = await import('./studioFilmAudio.ts');
+    const aspect = renderer.domElement.width / Math.max(1, renderer.domElement.height);
+    const buffer = await renderFilmSoundtrack(cues, {
+      listenerAt(timelineMs, out) {
+        poseMotionCamera(timelineMs, aspect);
+        const e = _motionCam.matrixWorld.elements;
+        out.x = e[12]; out.y = e[13]; out.z = e[14];
+        out.rightX = e[0]; out.rightY = e[1]; out.rightZ = e[2];
+      },
+      filmMsAt: (timelineMs) => timelineMs,
+      speedAt: () => 1,
+    }, { durationS: storyboard.durationMs / 1000, sampleRate: 16000, seed: sceneMeta.seed || 5000, mapId: getWorld()?.mapId ?? null });
+    const peaks = new Float32Array(count);
+    if (!buffer) return { peaks, cues: cues.length };
+    const left = buffer.getChannelData(0), right = buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : left;
+    const per = left.length / count;
+    for (let bucket = 0; bucket < count; bucket++) {
+      let peak = 0;
+      for (let i = Math.floor(bucket * per), end = Math.min(left.length, Math.floor((bucket + 1) * per)); i < end; i++) {
+        const value = Math.max(Math.abs(left[i]), Math.abs(right[i]));
+        if (value > peak) peak = value;
+      }
+      peaks[bucket] = peak;
+    }
+    return { peaks, cues: cues.length };
+  }
+
   function cancelFilmExport(): boolean {
     if (!filmExport) return false;
     filmExport.controller.abort();
@@ -5938,6 +5985,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     get history() { return { undo: undoStack.length, redo: redoStack.length, savedAt: lastSavedAt }; },
     autosaved,
     restoreAutosave,
+    soundPreview,
     get placementSnap() { return placementSnap; },
     setPlacementSnap,
     applyPosePreset,

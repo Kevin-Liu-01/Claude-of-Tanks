@@ -80,6 +80,7 @@ automatically so headless capture tools can enter Studio.
 - **Click terrain**: move the effect marker (amber ring)
 - **Click a tank**: select · **drag a tank**: move it and update terrain alignment
 - **Space**: play/pause the storyboard · **J/K/L**: shuttle back, stop, forward (each J or L press doubles the rate to 4x) · **Delete**: remove the selected effect
+- **Sound lane** (the timeline's last lane): the film's soundtrack as it will mix, drawn as peaks. Once the scene has settled for 1.5 s (not while playing or dragging) the take replays to its end without rendering to collect every combat sound, as a film export does, mixes them as the film does (studioFilmAudio.ts, at a preview sample rate) and returns the playhead; the lane dims while a changed scene is being mixed again. Silent effects (the cinematic moments, dust) leave it flat, as they leave the film
 - **Queue** (the header, Queue · N): deliveries in the scene's frame (films at 1080p30, 1440p60, 2160p30; a still at every shot; a still at the playhead), each with its time and size before it starts (size from the encoder's bitrate rule, time from this browser's last measured render rate). Start runs them one after another through the film veil and names the files (`verdant_1080p30_16x9.mp4`, `verdant_shot-02-gunline-portrait_16x9.png`); a cancelled film stops the queue, a notice says when it is done
 - **Commands** (the header, **Ctrl/⌘ K**, from a field too): one search over every action, run through the control that does it; battlefields and tanks are listed once named ("t-90" adds that tank in view). Arrows move, Enter runs, Esc closes the palette, never the Studio. The Studio's shortcuts (J/K/L, undo, redo, the palette, F8) work from a focused panel button
 - **Undo / redo** (the header, **Ctrl/⌘ Z**, **Shift Ctrl/⌘ Z** or **Ctrl/⌘ Y**): settled edits are steps (the camera, the playhead and playing never are); the same battlefield and tanks restore in place, anything else reloads. Every step autosaves the scene to this browser (never an empty one), and an empty Studio offers **Restore last scene**
@@ -142,6 +143,7 @@ __STUDIO.setCamera(cfg) / .getCamera()                // leaves look-through
 __STUDIO.setLookThrough(on) / .lookThrough
 __STUDIO.undo() / .redo() / .history           // { undo, redo, savedAt }
 __STUDIO.autosaved() / .restoreAutosave()      // the last autosaved scene in this browser
+__STUDIO.soundPreview(buckets)                 // { peaks, cues }: the soundtrack over the timeline
 __STUDIO.setPlacementSnap('road'|'terrain'|'off') / .placementSnap  // where a dragged or placed tank lands
 __STUDIO.applyPosePreset(actor, 'hull-down'|'firing'|'knocked-out')  // false: no crest within 24 m ahead
 __STUDIO.setPicture(patch) / .getPicture()          // film-grade picture (see "Picture")

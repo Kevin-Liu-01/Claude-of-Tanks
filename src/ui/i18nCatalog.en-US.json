@@ -5138,6 +5138,7 @@
   "studio.ws.queue.state.failed": "Failed",
   "studio.ws.queue.state.cancelled": "Cancelled",
   "studio.ws.queue.done": "The queue finished: {count, plural, one {# file} other {# files}} saved",
+  "studio.ws.laneSound": "Sound",
   "media.versus.title.f6Leo2a6SteinburgR7Top": "Steinburg, day, from above: Leopard 2A6 v T-90M",
   "media.versus.match.f6Leo2a6SteinburgR7Top": "Leopard 2A6 v T-90M",
   "media.versus.place.f6Leo2a6SteinburgR7Top": "Steinburg, day, from above",
