@@ -1,10 +1,11 @@
 // Field Manual search (bui01/src/pages/08-docs .side .search). Copyright © 2026 Kevin B. Liu.
-// topics.ts loads this module with the field's first focus or ⌘K. The index is the chapters themselves in the reader's
-// locale (each chapter's title and lede, each section's title and paragraphs), matched in the browser: search costs no
-// request and nothing at first paint. While a query is typed its hits take the shelf's place in the side column.
+// topics.ts loads this module with the field's first focus or ⌘K, and it loads the reader's locale's index
+// (src/docs/searchIndex.<locale>.json: every chapter's title and lede and every section's heading and text, written by
+// tools/docs-prerender.mjs), matched in the browser: search costs nothing at first paint. While a query is typed its hits
+// take the shelf's place in the side column.
 import { getLocale, t } from '../ui/i18n.ts';
 import { hrefForLocale } from '../ui/localeRouting.ts';
-import { TOPIC_ORDER, topicSectionId, topics } from './topics.ts';
+import type { ManualRecord } from './searchIndex.ts';
 
 export interface ManualEntry {
   readonly href: string;
@@ -17,18 +18,20 @@ export interface ManualEntry {
 
 /** Case and accents folded (Kyū-maru finds "kyu"; full-width Latin finds its ASCII). */
 const fold = (text: string): string => text.normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase();
-const plain = (text: string): string => text.replace(/`/g, '');
 
 export const entryOf = (href: string, title: string, chapter: string, text: string): ManualEntry =>
   ({ href, title, chapter, text, folded: [fold(title), fold(chapter), fold(text)] });
 
-/** Every chapter and every section, in manual order. */
-export function manualEntries(): ManualEntry[] {
-  return TOPIC_ORDER.flatMap((slug) => {
-    const { label, title, lede, sections } = topics[slug];
-    return [entryOf(`/docs/${slug}`, title, label, plain(lede)),
-      ...sections.map(([heading, ...paragraphs], index) => entryOf(`/docs/${slug}#${topicSectionId(index)}`, heading, label, plain(paragraphs.join(' '))))];
-  });
+/** The index's records as search entries. */
+export const entriesOf = (records: readonly ManualRecord[]): ManualEntry[] =>
+  records.map((record) => entryOf(record.href, record.title, record.chapter, record.text));
+
+/** The reader's locale's index (a chunk of its own, fetched once). */
+async function loadEntries(locale: string): Promise<ManualEntry[]> {
+  const module = locale === 'zh-CN'
+    ? await import('./searchIndex.zh-CN.json', { with: { type: 'json' } })
+    : await import('./searchIndex.en-US.json', { with: { type: 'json' } });
+  return entriesOf(module.default as readonly ManualRecord[]);
 }
 
 /** A query's terms: words in a spaced script; Chinese, written without spaces, matches as typed. */
@@ -78,13 +81,13 @@ export function snippetOf(text: string, query: string, room = 64): string {
   return `${start > 0 ? '…' : ''}${text.slice(start, end).trim()}${end < text.length ? '…' : ''}`;
 }
 
-export function mountDocsSearch(root: HTMLElement, input: HTMLInputElement): void {
+export async function mountDocsSearch(root: HTMLElement, input: HTMLInputElement): Promise<void> {
   const side = root.querySelector<HTMLElement>('.dm-side');
   const status = root.querySelector<HTMLElement>('.dm-search__status');
   const list = root.querySelector<HTMLElement>('.dm-search__hits');
   if (!side || !status || !list) return;
-  const entries = manualEntries();
   const locale = getLocale();
+  const entries = await loadEntries(locale);
   const links = (): HTMLAnchorElement[] => [...list.querySelectorAll<HTMLAnchorElement>('a')];
   const update = (): void => {
     const query = input.value.trim();

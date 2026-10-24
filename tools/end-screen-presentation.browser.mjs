@@ -17,15 +17,17 @@ try{
   for(const result of ['victory','defeat','draw']){
    await page.evaluate(result=>window.__DEBRIEF.show(result),result);
    await page.waitForFunction(()=>document.querySelector('[data-stat=accuracy] .v')?.textContent==='85');
-   await page.screenshot({path:resolve(out,`${name}-debug.png`)});await bounds('.es-actions');await bounds('.es-view-tabs');await bounds('.es-report');
+   // the wide windows (1280 x 700 and up) set the record and the rosters side by side, without the views' tabs
+   const wide=width>=1280&&height>=700;
+   await page.screenshot({path:resolve(out,`${name}-debug.png`)});await bounds('.es-actions');if(!wide)await bounds('.es-view-tabs');await bounds('.es-report');
    assert.equal(await page.locator('.es-report').evaluate(n=>n.scrollWidth<=n.clientWidth+1),true,`${name}/${result}: no sideways scroll sizes=${await page.locator('.es-report').evaluate(n=>[n.clientWidth,n.scrollWidth,n.getBoundingClientRect().width].join(','))}: ${JSON.stringify(await page.locator('.es-report').evaluate(n=>[...n.querySelectorAll('*')].filter(e=>e.getBoundingClientRect().right>n.getBoundingClientRect().right+1).map(e=>[e.className,e.getBoundingClientRect().width]).slice(0,12)))}`);
    assert.equal(await page.locator('.es-awards .aw').count(),5);
-   assert.equal(await page.locator('.es-debrief.teams').isVisible(),false);
+   assert.equal(await page.locator('.es-debrief.teams').isVisible(),wide);
    await page.screenshot({path:resolve(out,`${name}-${result}.png`)});
    const medal=page.locator('[data-medal-tip]').first();await medal.scrollIntoViewIfNeeded();await medal.click();
    await page.waitForSelector('.cot-rich-tooltip:popover-open');await bounds('.cot-rich-tooltip');await page.keyboard.press('Escape');
    await page.locator('.es-combat-details summary').click();assert.equal(await page.locator('.es-stat-secondary').isVisible(),true);
-   await page.locator('[data-report-view="teams"]').click();assert.equal(await page.locator('.es-tr').count(),42);
+   if(!wide)await page.locator('[data-report-view="teams"]').click();assert.equal(await page.locator('.es-tr').count(),42);
    await page.locator('.es-tr').last().scrollIntoViewIfNeeded();assert.equal(await page.locator('.es-tr').last().isVisible(),true);
    await page.screenshot({path:resolve(out,`${name}-${result}-teams.png`)});
   }

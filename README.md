@@ -8,7 +8,7 @@
 
 <p align="center">
 <!-- product-summary:start -->
-A World of Tanks-style armored combat simulator built directly with Three.js and Vite: 220 vehicles, 33 destructible battlefields, and 13 modes, with plate-level armor, ballistics, modules, spotting, and physics. Play in your browser on desktop or mobile. Built end-to-end by a multi-agent Claude/Codex pipeline.
+A World of Tanks-style armored combat simulator built directly with Three.js and Vite: 221 vehicles, 33 destructible battlefields, and 13 modes, with plate-level armor, ballistics, modules, spotting, and physics. Play in your browser on desktop or mobile. Built end-to-end by a multi-agent Claude/Codex pipeline.
 <!-- product-summary:end -->
 </p>
 
@@ -59,7 +59,7 @@ screenshots of the rail, the feature reel, the four camera-path loops, the destr
 
 | | Current runtime |
 | --- | --- |
-| Fleet | **220** first-party procedural vehicles in production and local development; **0** GLB-sourced playables |
+| Fleet | **221** first-party procedural vehicles in production and local development; **0** GLB-sourced playables |
 | Worlds | **33** authored battlefields with shared structures, wrecks, utility networks, loose props, placement, collision, and destruction |
 | Authority | Fixed **60 Hz** movement, ballistics, armor, damage, spotting, bots, destructibles, and result |
 | Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** test path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
@@ -72,7 +72,7 @@ Language selection lives under **Settings → Language → Language**. See the
 [localization guide](docs/LOCALIZATION.md) for coverage, intentional exclusions,
 the General Translation workflow, and release gates.
 
-The provenance gate currently reports **220 first-party procedural battle playables and 0 GLB-sourced playables**. Comparison inputs are never a playable loading path and are stripped from public builds.
+The provenance gate currently reports **221 first-party procedural battle playables and 0 GLB-sourced playables**. Comparison inputs are never a playable loading path and are stripped from public builds.
 
 ## Field footage
 

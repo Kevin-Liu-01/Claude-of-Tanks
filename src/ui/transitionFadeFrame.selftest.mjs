@@ -293,7 +293,6 @@ function createComposition(host, { pendingPreviousEntry = false } = {}) {
     transition, root, garageReturn, game, scene, oldBattle, lifecycleCalls, paints,
     get reportVisible() { return reportVisible; },
     finishPreviousEntry() { previousEntryPending = false; },
-    finishRestore() { restoreGate.resolve({ totalMs: 0, resourcesReleased: false }); },
     finishNextEntry() { nextEntryCovering = false; },
     tick() {
       frameCalls.length = 0;
@@ -365,18 +364,14 @@ function assertHeld(fixture, label) {
     await host.advance(150);
     assert.equal(fixture.lifecycleCalls.includes('clear-presentation'), true);
     assert.equal(fixture.lifecycleCalls.includes('hide-report'), true);
-    assert.equal(fixture.lifecycleCalls.includes('restore-garage'), true);
-    assert.equal(fixture.lifecycleCalls.includes('trigger-next-battle'), false);
-    assert.equal(fixture.game.phase, 'garage');
-    assert.equal(fixture.garageReturn.lastTrace.presentationUnready, true);
-    assert.equal(fixture.transition.holdingSceneForFadeIn, false);
-    assert.deepEqual(fixture.tick(), ['schedule', 'network'],
-      'the distinct Garage restore owner still protects its incomplete scene');
-
-    fixture.finishRestore();
     await flushMicrotasks();
+    // perf-246: Battle Again never pays the Garage restore; the next battle's cover takes the screen at once.
+    assert.equal(fixture.lifecycleCalls.includes('restore-garage'), false);
     assert.equal(fixture.lifecycleCalls.includes('trigger-next-battle'), true);
-    assert.equal(fixture.garageReturn.lastTrace.presentationUnready, false);
+    assert.equal(fixture.garageReturn.lastTrace.restoreSkipped, true);
+    assert.equal(fixture.garageReturn.lastTrace.presentationUnready, true,
+      'the skipped Garage never claims a ready presentation');
+    assert.equal(fixture.transition.holdingSceneForFadeIn, false);
     assert.deepEqual(fixture.tick(), ['schedule', 'network'], 'next-entry coverage retains its own frame gate');
     await host.advance(420 - host.now());
     assert.equal(fixture.transition.visible, false, 'the actual rematch reaches fade-out');

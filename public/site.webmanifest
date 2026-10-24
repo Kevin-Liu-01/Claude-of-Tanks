@@ -10,16 +10,77 @@
   "background_color": "#0b0e11",
   "theme_color": "#0b0e11",
   "icons": [
-    { "src": "/brand/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "/brand/favicon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/brand/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
-    { "src": "/brand/maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "/brand/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/brand/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    { "src": "/brand/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    { "src": "/brand/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    { "src": "/brand/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    { "src": "/brand/maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    { "src": "/brand/maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ],
   "shortcuts": [
-    { "name": "Play", "url": "/", "icons": [{ "src": "/brand/favicon-192.png", "sizes": "192x192" }] },
-    { "name": "Tank Gallery", "url": "/gallery", "icons": [{ "src": "/brand/favicon-192.png", "sizes": "192x192" }] },
-    { "name": "Scene Studio", "url": "/studio", "icons": [{ "src": "/brand/favicon-192.png", "sizes": "192x192" }] },
-    { "name": "Field Manual", "url": "/docs", "icons": [{ "src": "/brand/favicon-192.png", "sizes": "192x192" }] }
+    {
+      "name": "Play",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/brand/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Tank Gallery",
+      "url": "/gallery",
+      "icons": [
+        {
+          "src": "/brand/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Scene Studio",
+      "url": "/studio",
+      "icons": [
+        {
+          "src": "/brand/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Field Manual",
+      "url": "/docs",
+      "icons": [
+        {
+          "src": "/brand/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }

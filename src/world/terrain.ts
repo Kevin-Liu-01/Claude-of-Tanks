@@ -9518,6 +9518,8 @@ function* terrainBuildSteps(
   let streamFrame = 0;
   let streamCameraX = 0;
   let streamCameraZ = 0;
+  const streamFocusPoint = new THREE.Vector3();
+  let streamFocus: THREE.Vector3 | null = null;
   const streamJob: TerrainLodBuild = { index: -1, level: 2, distanceM: 0, urgent: false };
   let pendingStream: Generator<TerrainBuildProgress, void, void> | null = null;
   function* buildStreamJob(job: TerrainLodBuild): Generator<TerrainBuildProgress, void, void> {
@@ -9584,14 +9586,18 @@ function* terrainBuildSteps(
       }
     }
     if (!streamFarLods) return;
-    streamCameraX = camPos.x;
-    streamCameraZ = camPos.z;
+    // (2026-10-24, perf-245) a camera on its way somewhere else (a Watch hop, a spectate handover, the killcam) aims the
+    // stream there (setStreamFocus): the jobs it picks are the destination's, one may start every update, and the
+    // ground under the arriving camera is refined before it lands. Mounting above still follows the camera itself.
+    const focus = streamFocus;
+    streamCameraX = focus ? focus.x : camPos.x;
+    streamCameraZ = focus ? focus.z : camPos.z;
     // Start at the established four-update cadence, then advance ONE pending
     // job on each update. No independent timer wakes a dormant world. The 2 ms
     // target is checked between one-row checkpoints, with a 32-checkpoint
     // ceiling even on a fast clock. A row or final skirt/index/bounds submission
     // is atomic and may overshoot the target; it is not a hard frame-time cap.
-    const mayStart = (++streamFrame & 3) === 0;
+    const mayStart = (++streamFrame & 3) === 0 || focus !== null;
     if (!pendingStream && (!mayStart || !startStreamJob())) return;
     const deadline = performance.now() + 2;
     for (let checkpoint = 0; checkpoint < 32; checkpoint++) {
@@ -9603,6 +9609,10 @@ function* terrainBuildSteps(
   // this with a one-job budget between painted countdown frames, completing
   // the same exact meshes before controls unlock without a quality change.
   group.userData.warmStreaming = warmStreamJobs;
+  // (perf-245) the live stream's destination while a camera travels (cameraDestinationWarm.ts); null follows the camera
+  group.userData.setStreamFocus = (position: THREE.Vector3 | null): void => {
+    streamFocus = position ? streamFocusPoint.copy(position) : null;
+  };
   group.userData.streamingStats = streamStats;
   streamStats.indexPool = terrainIndexPoolReceipt(terrainIndexPool);
   group.userData.sourcedTexturesReady = mat.userData.sourcedTexturesReady;

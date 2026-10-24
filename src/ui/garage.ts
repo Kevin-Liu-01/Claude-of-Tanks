@@ -41,7 +41,7 @@ import { equipIconSVG } from './equipIcons.ts';
 import { uiIconSVG } from './uiIcons.ts';
 import { keycap, rules, scale20, wireRoving } from './components/components.ts';
 import { BRAND_WORDMARK_HTML, brandMarkSVG } from './brandMark.ts';
-import { CAMPAIGN_OPERATIONS, campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
+import { CAMPAIGN_ENEMY_NATIONS, CAMPAIGN_OPERATIONS, campaignLadder, campaignSummary } from '../game/campaignOperations.ts';
 import { mapRegionTags, regionTagIcon } from './regionTags.ts';
 import { shellIconSVG } from './shellIcons.ts';
 import {
@@ -255,16 +255,20 @@ type GarageStation = (typeof GARAGE_STATIONS)[number][0];
 const deployCardArt = (id: string): string =>
   `<img class="cot-deploy-card-art" src="/media/deploy-r1/${id}-640.webp" alt="" width="640" height="360" loading="lazy" decoding="async">`;
 
+/** Another mode's tile picture (public/media/deploy-r1, a centre cut of its in-engine still: tools/deploy-mode-art.mjs). */
+const deployTileArt = (id: string): string =>
+  `<img class="cot-deploy-tile-art" src="/media/deploy-r1/${id}-480.webp" alt="" width="480" height="270" loading="lazy" decoding="async">`;
+
 /**
  * The Deploy screen's rule choices (the Premiere direction's 04-deploy page): the four core modes as picture cards, the
- * glyph on a plate and the rules the ruleset sets at the foot (renderDeployChips); the rest as rows, a glyph well, the
- * name and its rules.
+ * glyph on a plate and the rules the ruleset sets at the foot (renderDeployChips); the rest as picture tiles in the same
+ * grammar on a wide screen (rows, a glyph well, the name and its rules, on a folded one).
  */
 function deployCardsHTML(ids: readonly GameModeId[], card: boolean): string {
   return ids.map((id) => {
     const name = `<span class="choice-name">${t(`playMenu.matchMode.${id}.label`)}</span><span class="cot-deploy-chips" data-deploy-chips="${id}"></span>`;
     return `<button class="cot-battle-choice${card ? ' cot-deploy-card' : ''}" type="button" data-game-mode="${id}" data-mode-tone="${id}" ` +
-      `aria-pressed="false">${card ? deployCardArt(id) : ''}<span class="choice-icon">${uiIconSVG(MODE_GLYPH[id] || 'modeStandard', 21)}</span>` +
+      `aria-pressed="false">${card ? deployCardArt(id) : deployTileArt(id)}<span class="choice-icon">${uiIconSVG(MODE_GLYPH[id] || 'modeStandard', 21)}</span>` +
       `<span class="cot-deploy-choice-t">${name}</span></button>`;
   }).join('');
 }
@@ -729,6 +733,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<section class="cot-deploy-panel cot-deploy-campaign" id="cot-deploy-campaign" role="tabpanel" aria-labelledby="cot-deploy-tab-campaign" data-deploy-panel="campaign" hidden>` +
     `<div class="cot-deploy-ops" role="list" data-deploy-ops></div></section>` +
     `<aside class="cot-deploy-plate" aria-labelledby="cot-deploy-mode-title" aria-describedby="cot-deploy-mode-about">` +
+    // the campaign tab's plate: the operation in focus (deployScreen.ts brief)
+    `<section class="cot-deploy-brief" data-deploy-brief aria-live="polite"></section>` +
     `<div class="cot-battle-details">` +
     `<div class="cot-battle-preview"><span class="cot-battle-preview-icon" data-setup-icon aria-hidden="true"></span>` +
     `<h3 id="cot-deploy-mode-title" data-setup-title></h3>` +
@@ -3521,7 +3527,21 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         difficulty: () => difficulty,
         lastBattle: () => getRecentBattles()[0], loadEstimateS: battleLoadEstimateS, keycap,
         click: () => emit('ui:click', {}),
+        // the campaign tab's plate: the operation in focus, as facts the screen sets (the next to play by default)
+        ops: deployOps,
+        operation(id) {
+          const ladder = campaignLadder();
+          const entry = ladder.find((step) => step.operation.id === id)
+            ?? ladder.find((step) => step.status === 'ready') ?? ladder.find((step) => step.status !== 'locked') ?? ladder[0];
+          if (!entry) return null;
+          const { operation, status, stars } = entry;
+          return { id: operation.id, index: operation.index, mapId: operation.mapId, status, stars, difficulty: operation.difficulty,
+            difficulties: CAMPAIGN_OPERATIONS.length, clock: clockText(operation.timeLimitS), enemy: CAMPAIGN_ENEMY_NATIONS[operation.enemy][0] };
+        },
+        operationIds: CAMPAIGN_OPERATIONS.map((operation) => operation.id),
+        flag: (nation) => flagIconHTML(nation, 24, 18), rules, minimap: minimapAssetUrl,
       });
+      if (battleMenu.dataset.deployTab === 'campaign') deployScreen.brief();
       deployStyled = true;
     }));
   const preloadDeployStyles = (): void => {
@@ -3624,19 +3644,30 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   multiplayerEntry.addEventListener('focus', warmMultiplayer);
   battleBtn.addEventListener('click', () => battle());
   requiredElement<HTMLButtonElement>(battleMenu, '[data-battle-launch]').addEventListener('click', () => battle());
+  // (click-perf-244) the warm work starts after the press has painted, in an idle slot (a timer where there is none),
+  // and once however many intents arrive first: on a phone the touch that signals it is the first press on the Deploy
+  // screen, and the prep and the HUD chunk it pulls ran about 0.2 s of long tasks inside it
+  let battleIntentQueued = false;
   const signalBattleIntent = (event: Event) => {
     if (event.target instanceof Node && multiplayerEntry.contains(event.target)) return;
-    if (!selectedId) return;
-    try {
-      if (battleMode === 'solo') {
-        opts.onBattleIntent?.({ specId: selectedId, mapId: selectedMapId });
-      } else {
-        // Opening a room is not solo-battle intent. Warming the bot roster and
-        // current garage map here made the lobby compete with irrelevant
-        // terrain generation; transfer only the selected network path.
-        opts.onPlayModeIntent?.(battleMode);
-      }
-    } catch (_) { /* optional warm path */ }
+    if (!selectedId || battleIntentQueued) return;
+    battleIntentQueued = true;
+    const warm = (): void => {
+      battleIntentQueued = false;
+      if (!selectedId) return;
+      try {
+        if (battleMode === 'solo') {
+          opts.onBattleIntent?.({ specId: selectedId, mapId: selectedMapId });
+        } else {
+          // Opening a room is not solo-battle intent. Warming the bot roster and
+          // current garage map here made the lobby compete with irrelevant
+          // terrain generation; transfer only the selected network path.
+          opts.onPlayModeIntent?.(battleMode);
+        }
+      } catch (_) { /* optional warm path */ }
+    };
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(warm, { timeout: 600 });
+    else setTimeout(warm, 120);
   };
   // Choosing rules is not deployment intent. Preparing an entire battlefield
   // here competed with the selected mode's Garage preview and tank shaders.
@@ -3806,6 +3837,16 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     copy.removeAttribute('title');
     copy.setAttribute('aria-hidden', 'true');
     copy.inert = true;
+    // the hero render shows once it has loaded (heroCard.ts marks the card); a copy taken before that keeps its own
+    // watch, and outside the roster strip it carries the strip's flag feather itself
+    const tank = copy.querySelector<HTMLImageElement>('img.hc-tank');
+    if (tank && !copy.classList.contains('hc-loaded')) {
+      if (tank.complete && tank.naturalWidth) copy.classList.add('hc-loaded');
+      else tank.addEventListener('load', () => copy.classList.add('hc-loaded'), { once: true });
+      tank.loading = 'eager';
+    }
+    const feather = cardsEl.style.getPropertyValue('--hc-flag-mask');
+    if (feather) copy.style.setProperty('--hc-flag-mask', feather);
     return copy;
   }
   // the tank you deploy with (the direction's .tank): its hero card, its name over its flag, its rounds and fittings,
@@ -3879,7 +3920,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function showDeployTab(id: string): void {
     battleMenu.dataset.deployTab = id;
     for (const panel of deployPanels) panel.hidden = panel.dataset.deployPanel !== id;
-    if (id === 'campaign') renderDeployCampaign();
+    if (id === 'campaign') { renderDeployCampaign(); deployScreen?.brief(); }
   }
   wireRoving(deployTabs, (id) => { emit('ui:click', {}); showDeployTab(id); });
   for (const room of battleMenu.querySelectorAll<HTMLButtonElement>('[data-deploy-room]')) {
@@ -3889,7 +3930,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     emit('ui:click', {});
     if (requiredElement<HTMLElement>(battleMenu, '[data-deploy-field-pop]').hidden) openDeployField(); else closeDeployField();
   });
-  for (const host of [deployOps, deployLower]) host.addEventListener('click', (event) => {
+  for (const host of [deployOps, deployLower, requiredElement<HTMLElement>(battleMenu, '[data-deploy-brief]')]) host.addEventListener('click', (event) => {
     const launch = (event.target as Element | null)?.closest<HTMLButtonElement>('[data-campaign-launch]');
     if (launch?.dataset.campaignLaunch && launch.dataset.mapId) deployCampaign(launch.dataset.campaignLaunch, launch.dataset.mapId);
   });

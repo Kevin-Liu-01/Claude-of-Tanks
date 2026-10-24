@@ -392,6 +392,9 @@ html[lang^='zh'] :is(h1,h2,h3,.v5-mode--hero h3){line-height:1.15}
   .hero__still{top:0;bottom:auto;height:640px;object-position:54% 50%}
   .hero__grade{bottom:auto;height:641px;background:var(--home-phone-grade)}
   .hero__lockup{width:100%}
+  /* the fixed Play bar lives in the hero's isolated layer: the layer itself rises above the content-visibility sections
+     after it (versus, fleet, ...), which paint as layers of their own, and stays under the site bar (z-shell) */
+  .hero{z-index:var(--z-lift)}
   .hero__ctas{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-shell);margin:0;padding:12px var(--s4) calc(12px + env(safe-area-inset-bottom,0px));gap:10px;background:var(--side-plate);box-shadow:var(--home-bar-edge)}
   .hero__play{flex:1;--h:58px;font-size:var(--fs-18)}
   .hero__trailer{--h:58px;width:58px;padding:0}

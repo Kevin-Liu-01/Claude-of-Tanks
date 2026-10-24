@@ -236,7 +236,7 @@ a{color:inherit}button{font:inherit;color:inherit}a:focus-visible,button:focus-v
 .dm-section .topic-figure{margin:var(--s5) 0 var(--s3);overflow:hidden;border-radius:var(--r1);background:var(--surface-scene);box-shadow:var(--e1)}
 .dm-section .topic-figure img{display:block;width:100%;height:auto}
 .dm-section .topic-figure figcaption{padding:11px 12px;border-top:1px solid var(--line-1);font:500 var(--fs-13)/1.4 var(--font-body);color:var(--ink-2)}
-.dm-toc{position:sticky;top:calc(var(--shell-nav-h) + var(--s5));display:flex;flex-direction:column;gap:14px;padding-top:var(--s5)}
+.dm-toc{position:sticky;top:calc(var(--shell-nav-h) + var(--s5));align-self:start;display:flex;flex-direction:column;gap:14px;padding-top:var(--s5)}
 .dm-toc nav{display:flex;flex-direction:column;border-left:1px solid var(--line-2)}
 .dm-toc a{padding:7px 0 7px 14px;font:400 var(--fs-13)/1.3 var(--font-body);color:var(--ink-3);text-decoration:none}
 .dm-toc a:hover{color:var(--ink-1)}

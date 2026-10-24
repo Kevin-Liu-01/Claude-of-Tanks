@@ -75,7 +75,10 @@ try {
       releaseShadowMaterial(material) { return registered.delete(material); },
     };
     const steps = createTankSteps('m1a3', context, DEFERRED_ASSEMBLY_BUILDS.garage);
-    assert.equal(steps.next().done, false, 'the core checkpoint is reached');
+    // click-perf-244: the core's own stage checkpoints come first; the completed core is the first captured one
+    let reached = steps.next();
+    while (!reached.done && !capture) reached = steps.next();
+    assert.equal(reached.done, false, 'the core checkpoint is reached');
     const { visual, disposables, mats } = capture;
     const atCore = [];
     visual.root.traverse((object) => atCore.push([object, object.parent]));

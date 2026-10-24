@@ -38,6 +38,7 @@
     "server/roadCrossingSweep.selftest.mjs": 346000,
     "server/telemetry.selftest.mjs": 1000,
     "server/telemetryRecord.selftest.mjs": 1000,
+    "src/app/battleEndGarageWarm.selftest.mjs": 1000,
     "src/app/checkedIntegrationPort.selftest.mjs": 1000,
     "src/app/combatWarmComposition.selftest.mjs": 2000,
     "src/app/garageModePreviewRuntime.selftest.mjs": 1000,

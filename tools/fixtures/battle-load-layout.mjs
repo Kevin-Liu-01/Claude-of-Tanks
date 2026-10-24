@@ -10,11 +10,14 @@ import { battleLoadModeLabel, createBattleLoadScreen } from '../../src/ui/battle
 installResponsiveLayout();
 const screen = createBattleLoadScreen();
 const vehicles = [
-  ['m1a1_abrams_hc', 'M1A2 Abrams'], ['leo2a4_v', 'Leopard 2A5'], ['t90am', 'T-90M'],
+  ['m1a1_abrams_hc', 'M1A2 Abrams', 'USA'], ['leo2a4_v', 'Leopard 2A5', 'Germany'], ['t90am', 'T-90M', 'Russia'],
 ];
+// the drivers as rosterPresentation.ts names them (a room player's name, a bot's HUD callsign)
+const callsigns = ['Kestrel', 'IronMaus', 'SteppeWolf_71', 'Kranvagn', 'DustDevil', 'Bogatyr', 'HullDown_Hank', 'PzKpfwPete',
+  'Kettenkrad', 'RicochetRita', 'TokTokkie', 'GeneralLee42', 'Zaseka', 'MudCrawler'];
 const rows = (count, ally) => Array.from({length:count}, (_,i) => ({
-  id:vehicles[i%vehicles.length][0], name:vehicles[i%vehicles.length][1],
-  tier:'X', isPlayer:ally && i===0,
+  id:vehicles[i%vehicles.length][0], name:vehicles[i%vehicles.length][1], nation:vehicles[i%vehicles.length][2],
+  tier:'X', isPlayer:ally && i===0, callsign:callsigns[(i + (ally ? 0 : 7)) % callsigns.length],
 }));
 window.__LOAD_LAYOUT = {
   screen,

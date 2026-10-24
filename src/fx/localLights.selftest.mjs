@@ -39,8 +39,10 @@ const parts = await readFile(new URL('./particles.ts', import.meta.url), 'utf8')
 assert.match(parts, /vEmit \+= vColor\.rgb \* localLightAt\( wpos, 0\.0 \);/, 'the pooled puffs take the local light');
 assert.match(parts, /\}, localLightUniforms\),/, 'their materials hold the shared slots');
 const media = await readFile(new URL('./volumeMedia.ts', import.meta.url), 'utf8');
-assert.match(media, /vLocal = localLightAt\( wpos, 1\.0 \);/, 'the media take it at each corner, the bursts skipped');
-assert.match(media, /col \+= vColor\.rgb \* vLocal \* \( 0\.35 \+ 0\.65 \* cov \);/, 'scattered in the medium\'s own colour');
+assert.match(media, /vLocal = localLightAt\( mix\( mix\( center, wpos, 0\.35 \), wpos, uGrade2\.y \), 1\.0 \);/,
+  'the media take it at each corner (by day a third of the way in from the heart), the bursts skipped');
+assert.match(media, /col \+= max\( vColor\.rgb, vec3\( 0\.07 \* \( 1\.0 - uGrade2\.y \) \) \) \* vLocal \* \( 0\.35 \+ 0\.65 \* cov \);/,
+  'scattered in the medium\'s own colour (by day at least soot\'s 7 %)');
 assert.match(media, /\.\.\.localLightUniforms,/, 'the media material holds the shared slots');
 const fx = await readFile(new URL('./effects.ts', import.meta.url), 'utf8');
 assert.match(fx, /updateWreckLight\(\);\s*writeLocalLights\(\);/, 'gathered every frame after the wreck light');
@@ -65,8 +67,8 @@ assert.ok(LOCAL_LIGHTS_DEFINE in mat.defines && LOCAL_LIGHTS_DEFINE in late.defi
 assert.match(parts, /#ifdef FX_LOCAL_LIGHTS\s*\$\{LOCAL_LIGHT_GLSL\}\s*#endif/, 'the puff shader declares the loop only in the variant');
 assert.match(parts, /#ifdef FX_LOCAL_LIGHTS\s*vEmit \+= vColor\.rgb \* localLightAt\( wpos, 0\.0 \);\s*#endif/, 'and reads it only there');
 assert.match(media, /#ifdef FX_LOCAL_LIGHTS\s*varying vec3 vLocal;[^#]*\$\{LOCAL_LIGHT_GLSL\}\s*#endif/, 'the media declare it only in the variant');
-assert.match(media, /#ifdef FX_LOCAL_LIGHTS\s*vLocal = localLightAt\( wpos, 1\.0 \);\s*#endif/);
-assert.match(media, /#ifdef FX_LOCAL_LIGHTS\s*col \+= vColor\.rgb \* vLocal \* \( 0\.35 \+ 0\.65 \* cov \);\s*#endif/);
+assert.match(media, /#ifdef FX_LOCAL_LIGHTS\s*vLocal = localLightAt\([^;]*;\s*#endif/);
+assert.match(media, /#ifdef FX_LOCAL_LIGHTS\s*col \+= [^;]*vLocal[^;]*;\s*#endif/);
 assert.match(media, /registerLocalLightMaterial\(material\);/);
 assert.match(parts, /registerLocalLightMaterial\(mat\);/);
 assert.match(fx, /setLocalLightsCompiled\(localLightsForPreset\(resolvePresetName\(\)\)\);\s*onPresetChange\(/, 'the preset picks the variant, and every change');

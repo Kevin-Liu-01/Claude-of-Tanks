@@ -5,6 +5,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
+// a static import, evaluated before this file's body as in the app (CSMShader copies the chunk when it loads)
+import { CSMShader } from 'three/examples/jsm/csm/CSMShader.js';
 import { LAMP_LIGHT_DECAY, shapeLampPointLights } from './lampLightShape.ts';
 
 const before = THREE.ShaderChunk.lights_pars_begin;
@@ -18,7 +20,17 @@ assert.ok(Math.abs(LAMP_LIGHT_DECAY - 2) > 0.0015 * 2, 'the muzzle, burst and fi
 // the night pool's building lights carry the mark; the renderer installs the shape before any compile
 const runtime = readFileSync(new URL('./nightLightingRuntime.ts', import.meta.url), 'utf8');
 assert.match(runtime, /new THREE\.PointLight\(0xffd79e, 0, 18, LAMP_LIGHT_DECAY\)/, 'the pool\'s lamp lights are marked');
-assert.match(readFileSync(new URL('./renderer.ts', import.meta.url), 'utf8'), /limitPointLightFalloff\(\);[\s\S]{0,200}shapeLampPointLights\(\);/);
+assert.match(readFileSync(new URL('./renderer.ts', import.meta.url), 'utf8'), /shapeLampPointLights\(\);[\s\S]{0,500}limitPointLightFalloff\(\);/);
+// (245) CSM's constructor replaces lights_pars_begin with CSMShader's copy of the stock chunk, taken when that module loaded:
+// the renderer's patches are gone by the time anything compiles. lighting.ts lays them again on CSM's chunk, whose copy
+// keeps both anchors.
+THREE.ShaderChunk.lights_pars_begin = CSMShader.lights_pars_begin;
+assert.ok(!THREE.ShaderChunk.lights_pars_begin.includes('cotLampUp'), 'CSM\'s chunk is the stock one (the patch lost)');
+assert.ok(shapeLampPointLights() && THREE.ShaderChunk.lights_pars_begin.includes('cotLampUp'), 'the lantern lands on CSM\'s chunk');
+const lighting = readFileSync(new URL('./lighting.ts', import.meta.url), 'utf8');
+const csmAt = lighting.indexOf('new CSM('), relaid = lighting.search(/limitPointLightFalloff\(\);\s*shapeLampPointLights\(\);/);
+assert.ok(csmAt > 0 && relaid > csmAt, 'lighting.ts lays the falloff floor and the lantern after CSM swaps the chunk');
+THREE.ShaderChunk.lights_pars_begin = after;
 
 // the CPU mirror: the factor a lamp's light takes at a point `up` metres over its glass and `out` metres off it
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };

@@ -49,7 +49,7 @@ import {
   applyRulesetToCombat, endingHoldExpired, matchRulesetFor, refillUnlimitedAmmunition, rulesetAllyCap, rulesetBotDifficulty,
   rulesetBotDoctrine, rulesetObjectiveAxisM, rulesetRoutePush, rulesetVerdictSide,
   rulesetLoadout, rulesetSeatHullScale, rulesetUnlimitedFor, watchRulesetFor, type MatchRuleset, type RulesetPhysics, type TeamArrangement } from '../sim/matchRuleset.ts';
-import { prepareWatchSeat, verdictSeat, type WatchSession } from './watchSeat.ts';
+import { prepareWatchSeat, verdictSeat, watchViewer, type WatchSession } from './watchSeat.ts';
 import { campaignRulesetInput } from './campaignOperations.ts';
 import {
   DEFAULT_BRAIN_SETTINGS, readBrainSettings, readTeamArrangement, type BrainSettings,
@@ -1649,7 +1649,7 @@ const CRUSH_SPEED_KEEP = 0.94;   // per-prop momentum bite (v *= keep on crush)
 // slow-speed tree behind it for 4+ s, because a wedged tank can never reach
 // 6 km/h again; WoT tanks push saplings over from a standstill). A parked
 // nudge (no throttle) still never fells anything.
-const CRUSH_PRESS_S = 0.45;      // s of held-throttle contact that fells a trunk
+const CRUSH_PRESS_S = 0.45;      // s of contact under throttle or steer (DST-02) that fells a trunk
 const CRUSH_PRESS_GAP_S = 0.2;   // press bookkeeping resets after this gap
 
 function queueRamFromPush(
@@ -1749,7 +1749,10 @@ function shouldCrushObstacle(
   if (crushableLoadedFromAbove(obstacle, spanBottom, (state._ride.groundV ?? 0) - state._ride.v, obstacleContactTop(),
       obstacleContactBottom())) return true;
   if (speed > (obstacle.crushMin ?? CRUSH_MIN_MPS)) return true;
-  if (Math.abs(self.input.throttle || 0) <= 0.35) return false;
+  // (physics DST-02, 2026-10-17) a hull turning on the spot presses what it turns into as one driven into it does: its
+  // tracks run either way (a pivoting hull set down by a yard's bench and trough was pushed off them 1.6 m, never crushing
+  // them)
+  if (Math.abs(self.input.throttle || 0) <= 0.35 && Math.abs(self.input.steer || 0) <= 0.35) return false;
   if (game.timeS - (obstacle._pressT || -1e9) > CRUSH_PRESS_GAP_S) {
     obstacle._pressS = 0;
   }
@@ -3171,8 +3174,8 @@ function stepFireDamage(game: SoloGameState, bus: EventBus): void {
 
 function stepMatchMode(game: SoloGameState, bus: EventBus): MatchModeResult | null {
   const outcome = game.matchModeController?.step(SIM_DT, game.timeS) || null;
-  // a watched battle with no driver reads the mode from its human seat (watchSeat.ts verdictSeat)
-  const perspective = game.player ?? verdictSeat(game);
+  // a watched battle with no driver reads the mode from the battle's side (watchSeat.ts watchViewer)
+  const perspective = game.player ?? (game.watch ? watchViewer(game) : null);
   if (game.matchModeState && perspective) {
     if (game.ruleset.gunGame || game.ruleset.infection || game.ruleset.aerial) {
       game.matchModeState = game.matchModeController!.serialize(perspective.id);
@@ -3274,7 +3277,9 @@ function settleBattleResult(
     if (entity.team === 'enemy') enemiesLeft++;
     else if (entity.id !== seat.id) alliesLeft++;
   }
-  const playerTeam = rulesetVerdictSide(game.ruleset, seat.team === 'enemy' ? 'bravo' : 'alpha');
+  // a watched battle's verdict reads the side the seat opened on (an Infected seat may since have risen infected)
+  const seatTeam = game.watch?.team ?? seat.team;
+  const playerTeam = rulesetVerdictSide(game.ruleset, seatTeam === 'enemy' ? 'bravo' : 'alpha');
   if (modeOutcome) {
     game.result = modeOutcome.result === 'draw' ? 'draw'
       : modeOutcome.result === playerTeam ? 'victory' : 'defeat';

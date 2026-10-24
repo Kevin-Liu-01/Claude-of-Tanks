@@ -157,6 +157,11 @@ export interface CameraRigDeps {
   aimRaycast?: CameraAimRaycast;
   getPlayer(): CameraEntity | null;
   getIsometricView?(): boolean;
+  /**
+   * A spectate handover is about to carry the camera to `position` (looking at `lookAt`) over `durationS`
+   * (2026-10-24, perf-245; cameraDestinationWarm.ts): the destination is warmed on the way.
+   */
+  prepareDestination?(position: THREE.Vector3, lookAt: THREE.Vector3, durationS: number): void;
 }
 
 interface CameraInputFrame {
@@ -342,6 +347,15 @@ export function createCameraRig(
   // unlocked cursor must reach all the way around before it hits the screen
   // edge). Damped by SPEC_LOOK_TAU_S above, so the higher gain stays smooth.
   const SPEC_SENS = BASE_SENS * 1.8;
+
+  /** (perf-245) where a spectate handover lands: the chase pose behind `ent` (tank forward is local +Z). */
+  const _specDest = new THREE.Vector3();
+  function announceSpectate(ent: CameraEntity, durationS: number): void {
+    if (!deps.prepareDestination || !ent.state?.pos) return;
+    const p = ent.state.pos, yaw = ent.state.yaw ?? 0;
+    _specDest.set(p.x - Math.sin(yaw) * SPEC_DIST_M, p.y + 3, p.z - Math.cos(yaw) * SPEC_DIST_M);
+    deps.prepareDestination(_specDest, p as THREE.Vector3, durationS);
+  }
 
   function spectateBlendDuration(ent: CameraEntity | null): number {
     if (!ent || !ent.state || !ent.state.pos) return SPEC_BLEND_S;
@@ -1135,6 +1149,7 @@ export function createCameraRig(
         fromLook: _specFromLook,
         fromFov: specFromFov,
       };
+      announceSpectate(ent, spec.blendDur);
       rig.mode = 'ARCADE';
       applyPlayerVisibility(getPlayer(), true);
     },
@@ -1169,6 +1184,7 @@ export function createCameraRig(
       spec.blendT = 0;
       spec.blendDur = spectateBlendDuration(ent);
       spec.fromFov = specFromFov;
+      announceSpectate(ent, spec.blendDur);
     },
 
     /**

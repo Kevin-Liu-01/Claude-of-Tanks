@@ -346,7 +346,9 @@ function addKV2FenderStowage(P: SovietHeavyBuilderPort): void {
   P.add('hullWood', box(0.026, 0.020, 0.82), -1.36, 1.697, -2.32);             // axe handle on locker A
   P.add('hullDark', box(0.048, 0.070, 0.14), -1.36, 1.715, -1.955);            // axe head
   P.add('hullDark', box(0.060, 0.014, 0.026), -1.36, 1.702, -2.55);            // axe strap
-  KIT.tarpRoll(P, 'hullCloth', -1.3225, 1.759, 1.12, 0.80, 0.072, false);      // rolled tarp on locker C
+  // (release 240, the owner: "make sure all tank turrets are clear of hulls": the tarp rides locker A beside the axe, out of
+  // the sweep of the turret's low front corner, 1.34 m off the ring's axis at 1.75, which ran through it on locker C)
+  KIT.tarpRoll(P, 'hullCloth', -1.13, 1.759, -2.34, 0.80, 0.072, false);       // rolled tarp on locker A
   // RIGHT kit: shovel + jack block on locker A, screw jack on locker B,
   // census-stamped spare-link strip on locker C.
   KIT.shovelTool(P, 1.27, 1.703, -2.42, 0.92);
@@ -364,10 +366,12 @@ function addKV2FenderStowage(P: SovietHeavyBuilderPort): void {
     P.hullG.add(links);
   }
   // radio whip on the right sponson deck (71-TK-3 seat, KV right-front) —
-  // census-stamped; top 2.95 stays under the turret roof band.
+  // census-stamped; its tip stays under the turret.
   {
-    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 1.15, r: 0.011, rake: 0.07, seed: 4 });
-    whip.position.set(0.90, 1.675, 1.62);
+    // (release 240: 0.38 m forward, 1.9 m off the ring's axis, past the turret's corners; a 0.86 m rod on its 12 cm pot,
+    // its tip at 2.655 under the turret's rear fitting, 2.675 up and 2.10 m off the axis as it turns)
+    const whip = FITTINGS.antennaWhip({ mats: P.mats, h: 0.86, r: 0.011, rake: 0.07, seed: 4 });
+    whip.position.set(0.90, 1.675, 2.00);
     P.hullG.add(whip);
   }
   // fender end flaps (KV mudguards): front pair dropping over the idler,

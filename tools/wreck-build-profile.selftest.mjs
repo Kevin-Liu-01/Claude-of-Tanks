@@ -195,7 +195,7 @@ for (const [path, kind] of [['../src/vehicles/tankFactoryCore.ts', 'factory'], [
       assert.ok(expressions.has(stage), `${stage}: owned construction body keeps its stage-level timing coverage`);
     }
     assert.ok(Object.keys(observed.stages).length >= 40, 'owned construction body keeps its stage-level timing coverage');
-    assert.throws(() => transformConstructor(source.replace('function* createTankOwnedSteps(', 'function* unrecognizedOwner('), kind),
+    assert.throws(() => transformConstructor(source.replace('function* buildTankCoreSteps(', 'function* unrecognizedOwner('), kind),
       /Expected constructor attribution coverage/, 'missing the actual generator owner must not silently profile only wrappers');
   }
 }

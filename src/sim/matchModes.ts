@@ -11,6 +11,7 @@ import {
 } from './ammunition.ts';
 import { createGunshipEscort, ESCORT_RULES, type EscortState } from './gunshipEscort.ts';
 import { applyJuggernautScale } from './juggernautScale.ts';
+import { botDriven } from './botDriven.ts';
 import type { MatchPlacement } from './matchPlacement.ts';
 import { placementTankRadius } from './hullRadius.ts';
 import { ASSAULT_LINE_FRACTIONS } from './assaultLines.ts';
@@ -83,6 +84,8 @@ export interface MatchModeEntity {
   id: string;
   team: string;
   bot?: boolean;
+  /** Driven by a player (a watcher's taken seat keeps `bot`, its role): botDriven.ts. */
+  isPlayer?: boolean;
   spec?: {dims:{widthM:number;heightM:number;hullLengthM:number};armor:{boundingRadiusM?:number};role?:string;topSpeedKmh?:number};
   state: { pos: Vec3Like; yaw: number; speed: number; modeScale?:number };
   combat: {
@@ -1752,7 +1755,7 @@ export function createMatchModeController<Entity extends MatchModeEntity>({
   };
 
   const collectPickup = (pickup: PickupState, entity: Entity): boolean => {
-    if ((entity.bot && !pickup.airDrop) || entity.aerial?.kind==='gunship' || entity.modeActive === false || entity.combat.destroyed ||
+    if ((botDriven(entity) && !pickup.airDrop) || entity.aerial?.kind==='gunship' || entity.modeActive === false || entity.combat.destroyed ||
         squaredDistance(entity, pickup.x, pickup.z) > PICKUP_RADIUS_M ** 2) return false;
     if(pickup.airDrop&&!needsSupply(entity,pickup))return false;
     if (pickup.kind === 'ammo') {

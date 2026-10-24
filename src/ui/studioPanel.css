@@ -29,7 +29,7 @@ body[data-studio-workspace] #app{position:fixed;left:var(--studio-vp-x,0px);top:
 
 /* ------------------------------------------------------------------------------------------------- the app grid */
 .st-app{position:absolute;inset:0;display:grid;grid-template-columns:236px minmax(0,1fr) 296px;
-  grid-template-rows:50px minmax(0,1fr) 132px 176px}
+  grid-template-rows:50px minmax(0,1fr) 148px 176px}
 .st-app>*{pointer-events:auto}
 .st-app>.st-vp{pointer-events:none}
 .st-head,.st-out,.st-insp,.st-shelf,.st-tl{background:var(--surface-page)}
@@ -163,12 +163,12 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-insp .note[data-error=true],.st-insp .production-status[data-error=true]{color:var(--text-danger)}
 /* the selected tank: its hero card, transform, pose, paint and state */
 .st-hero{position:relative;flex:none;height:118px;overflow:hidden;border-radius:var(--r1);background:var(--surface-raised);box-shadow:var(--e1);
-  --hc-band:24px;--hc-share:0.7;--hc-hshare:0.78;--hc-cxr:0.5}
+  --hc-band:6px;--hc-share:0.7;--hc-hshare:0.78;--hc-cxr:0.5}
 .st-hero>.cot-c-sil{position:absolute;left:12%;right:12%;top:18%;width:auto;height:52%;color:var(--ink-4)}
 .st-hero.cot-hc>.cot-c-sil,.st-hero:has(.hc-host)>.cot-c-sil{visibility:hidden}
-.st-hero .nm{position:absolute;left:10px;right:10px;bottom:9px;z-index:var(--z-lift);display:flex;align-items:center;gap:8px;color:var(--ink-1);
-  font:700 var(--fs-13)/1.05 var(--font-display);text-transform:uppercase;white-space:nowrap;overflow:hidden}
-.st-hero::after{content:'';position:absolute;inset:0;pointer-events:none;background:var(--media-fade-soft)}
+.st-hero-name{display:flex;align-items:center;gap:8px;min-width:0;color:var(--ink-1);font:700 var(--fs-13)/1.05 var(--font-display);
+  text-transform:uppercase;white-space:nowrap}
+.st-hero-name>span{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .st-insp .fld{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .st-insp .fld label{display:flex;align-items:center;justify-content:space-between;gap:6px;height:30px;padding:0 8px;border-radius:var(--r1);
   box-shadow:var(--ring-2);color:var(--ink-1);font:500 var(--fs-12)/1 var(--font-data)}
@@ -301,16 +301,16 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .director{display:flex;flex-direction:column;gap:16px}
 .cot-studio .director-head{display:none}
 .cot-studio .production-library{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
-.cot-studio .production-card{position:relative;display:block;aspect-ratio:16/10;min-width:0;padding:0;overflow:hidden;border:0;
-  border-radius:var(--r1);background:var(--surface-raised);box-shadow:var(--e1);text-align:left}
-.cot-studio .production-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.cot-studio .production-card::after{content:'';position:absolute;inset:0;pointer-events:none;background:var(--media-fade-soft)}
-.cot-studio .production-card .production-duration{position:absolute;right:6px;top:6px;z-index:var(--z-lift);display:flex;align-items:center;
-  height:18px;padding:0 6px;border-radius:var(--r1);background:var(--glyph-plate);color:var(--ink-2);font:500 var(--fs-11)/1 var(--font-data)}
-.cot-studio .production-card strong{position:absolute;left:8px;right:8px;bottom:6px;z-index:var(--z-lift);overflow:hidden;color:var(--ink-1);
+/* a card is its still and, on a line under it, its name and length: no text sits on a tank (the owner's rule) */
+.cot-studio .production-card{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto auto;align-items:center;gap:5px 6px;
+  min-width:0;padding:0;border:0;background:none;color:var(--ink-1);text-align:left}
+.cot-studio .production-card img{grid-column:1/-1;grid-row:1;display:block;width:100%;height:auto;min-height:0;aspect-ratio:16/10;object-fit:cover;
+  border-radius:var(--r1);background:var(--surface-raised);box-shadow:var(--e1)}
+.cot-studio .production-card .production-duration{grid-column:2;grid-row:2;color:var(--ink-3);font:500 var(--fs-11)/1 var(--font-data)}
+.cot-studio .production-card strong{grid-column:1;grid-row:2;min-width:0;overflow:hidden;color:var(--ink-1);
   font:600 var(--fs-12)/1.15 var(--font-display);text-overflow:ellipsis;white-space:nowrap}
 .cot-studio .production-card small{display:none}
-.cot-studio .production-card[aria-pressed=true]{box-shadow:var(--ring-accent)}
+.cot-studio .production-card[aria-pressed=true] img{box-shadow:var(--ring-accent)}
 .cot-studio .production-card:disabled{cursor:default;opacity:.5}
 .cot-studio .production-description,.cot-studio .production-note{display:none}
 .cot-studio .production-fields{display:grid;gap:6px}
@@ -341,10 +341,9 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-shelf .production-takes{display:flex;flex:1;flex-direction:column;min-height:0}
 .st-shelf .production-takes .production-library{display:grid;flex:1;grid-auto-flow:column;grid-template-columns:none;
   grid-auto-columns:calc((100% - 32px) / 5);gap:8px;min-height:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
-.st-shelf .production-card{aspect-ratio:auto}
-.st-shelf .production-card strong{right:34px}
-.st-shelf .production-card::before{content:'';position:absolute;right:6px;bottom:5px;z-index:var(--z-lift);width:22px;height:22px;
-  border-radius:var(--r1);background:var(--glyph-plate);box-shadow:var(--ring-3)}
+/* on the shelf the still fills the row above its caption */
+.st-shelf .production-card{grid-template-rows:minmax(0,1fr) auto;min-height:0}
+.st-shelf .production-card img{height:100%;aspect-ratio:auto}
 .st-shelf .production-status{flex:none}
 
 /* ------------------------------------------------------------------------------- the timeline (09-studio .tl) */
@@ -447,10 +446,10 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio[data-controls-collapsed=true] .st-app{grid-template-columns:0 minmax(0,1fr) 0;grid-template-rows:50px minmax(0,1fr) 0 0}
 .cot-studio[data-controls-collapsed=true] :is(.st-out,.st-insp,.st-shelf,.st-tl){display:none}
 .cot-studio[data-controls-collapsed=true] .st-vp{grid-column:1/-1;grid-row:2/-1}
-body:is([data-cot-width='laptop'],[data-cot-width='tablet']) .st-app{grid-template-columns:208px minmax(0,1fr) 272px;grid-template-rows:50px minmax(0,1fr) 116px 160px}
+body:is([data-cot-width='laptop'],[data-cot-width='tablet']) .st-app{grid-template-columns:208px minmax(0,1fr) 272px;grid-template-rows:50px minmax(0,1fr) 132px 160px}
 body:is([data-cot-width='laptop'],[data-cot-width='tablet']) :is(.st-head .pn,.st-head .sv),body[data-cot-width='tablet'] .st-head .r .cot-c-chip__label{display:none}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-app{grid-template-columns:minmax(0,1fr);
-  grid-template-rows:50px 40dvh auto auto minmax(0,1fr) 112px}
+  grid-template-rows:50px 40dvh auto auto minmax(0,1fr) 128px}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head,.st-vp,.st-tl,.st-out,.st-insp,.st-shelf){grid-column:1}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vp{grid-row:2}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-tl{grid-row:3;max-height:132px}

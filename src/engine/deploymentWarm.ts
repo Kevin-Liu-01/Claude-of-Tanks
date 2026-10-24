@@ -116,24 +116,32 @@ function renderWithoutShadowUpdates(lights: readonly ShadowLight[], render: () =
 }
 
 /** Mask a draw, never its descendants; freeze the already-selected LODs only
- * during this synchronous render. No temporary state survives a checkpoint. */
+ * during this synchronous render. No temporary state survives a checkpoint.
+ * (2026-10-24, perf-245) The cohort draws whatever the warm camera frames: its
+ * frustum culling is off for this one private render. Culled to the deployment
+ * camera, the rest of the map — and a staged opponent anywhere but in front —
+ * met its first draw live, when a camera was thrown onto it (a Watch hop, the
+ * killcam, spectating: up to 7.4 s of GPU work on a cold pipeline cache). */
 function renderSelectedCohort(
   root: Object3D, selected: ReadonlySet<Object3D> | null, render: () => void,
 ): void {
   const masks: Array<{ object: Object3D; mask: number }> = [];
   const lods: Array<{ object: WarmLod; autoUpdate: boolean | undefined }> = [];
+  const culled: Object3D[] = [];
   root.traverseVisible((object) => {
     const lod = object as WarmLod;
     if (lod.isLOD) lods.push({ object: lod, autoUpdate: lod.autoUpdate });
-    if (selected && isRenderable(object) && !selected.has(object)) {
-      masks.push({ object, mask: object.layers.mask });
-    }
+    if (!isRenderable(object)) return;
+    if (selected && !selected.has(object)) masks.push({ object, mask: object.layers.mask });
+    else if (object.frustumCulled) culled.push(object);
   });
   try {
     for (const { object } of lods) object.autoUpdate = false;
     for (const { object } of masks) object.layers.mask = 0;
+    for (const object of culled) object.frustumCulled = false;
     render();
   } finally {
+    for (const object of culled) object.frustumCulled = true;
     for (const state of masks) state.object.layers.mask = state.mask;
     for (const state of lods) state.object.autoUpdate = state.autoUpdate;
   }
