@@ -160349,22 +160349,22 @@
             "verts": [
               [
                 0.3142,
-                -0.3051,
+                -0.0013,
                 2.1463
               ],
               [
                 1.545,
-                -0.3051,
+                -0.0013,
                 0.9267
               ],
               [
                 1.545,
-                0.7271,
+                0.7343,
                 0.7832
               ],
               [
                 0.3142,
-                0.7271,
+                0.7343,
                 2.0028
               ]
             ]
@@ -160380,22 +160380,22 @@
             "verts": [
               [
                 -1.545,
-                -0.3051,
+                -0.0013,
                 0.9267
               ],
               [
                 -0.3142,
-                -0.3051,
+                -0.0013,
                 2.1463
               ],
               [
                 -0.3142,
-                0.7271,
+                0.7343,
                 2.0028
               ],
               [
                 -1.545,
-                0.7271,
+                0.7343,
                 0.7832
               ]
             ]
@@ -160411,22 +160411,22 @@
             "verts": [
               [
                 -0.3404,
-                -0.131,
+                0.1228,
                 2.175
               ],
               [
                 0.3404,
-                -0.131,
+                0.1228,
                 2.175
               ],
               [
                 0.3404,
-                0.466,
+                0.5482,
                 2.1176
               ],
               [
                 -0.3404,
-                0.466,
+                0.5482,
                 2.1176
               ]
             ]
@@ -160442,22 +160442,22 @@
             "verts": [
               [
                 1.545,
-                -0.33,
+                -0.019,
                 0.9984
               ],
               [
                 1.545,
-                -0.33,
+                -0.019,
                 -2.1583
               ],
               [
                 1.4523,
-                0.7271,
+                0.7343,
                 -2.1583
               ],
               [
                 1.4523,
-                0.7271,
+                0.7343,
                 0.9984
               ]
             ]
@@ -160473,22 +160473,22 @@
             "verts": [
               [
                 -1.545,
-                -0.33,
+                -0.019,
                 -2.1583
               ],
               [
                 -1.545,
-                -0.33,
+                -0.019,
                 0.9984
               ],
               [
                 -1.4523,
-                0.7271,
+                0.7343,
                 0.9984
               ],
               [
                 -1.4523,
-                0.7271,
+                0.7343,
                 -2.1583
               ]
             ]
@@ -160504,22 +160504,22 @@
             "verts": [
               [
                 1.3905,
-                -0.33,
+                -0.019,
                 -2.1583
               ],
               [
                 -1.3905,
-                -0.33,
+                -0.019,
                 -2.1583
               ],
               [
                 -1.3905,
-                0.7271,
+                0.7343,
                 -2.23
               ],
               [
                 1.3905,
-                0.7271,
+                0.7343,
                 -2.23
               ]
             ]
@@ -161926,12 +161926,12 @@
             "name": "gun",
             "min": [
               -0.2619,
-              -0.1061,
+              0.1405,
               -0.4795
             ],
             "max": [
               0.2619,
-              0.4908,
+              0.5659,
               2.1463
             ],
             "turretLocal": true
@@ -161941,12 +161941,12 @@
             "name": "turretRing",
             "min": [
               -0.9493,
-              1.1798,
+              1.4548,
               -1.1146
             ],
             "max": [
               0.9493,
-              1.3602,
+              1.6352,
               0.9146
             ],
             "turretLocal": false
@@ -161956,12 +161956,12 @@
             "name": "autoloader",
             "min": [
               -0.8899,
-              -0.0441,
+              0.1905,
               -1.9158
             ],
             "max": [
               0.8899,
-              0.332,
+              0.4585,
               -1.0376
             ],
             "turretLocal": true
@@ -162016,12 +162016,12 @@
             "name": "ammoRack",
             "min": [
               -1.236,
-              -0.2678,
+              0.0253,
               -2.0865
             ],
             "max": [
               1.236,
-              0.5157,
+              0.5836,
               -0.8669
             ],
             "turretLocal": true
@@ -162260,12 +162260,12 @@
             "min": [
               0.1592,
               -1.1619,
-              -0.1623
+              -0.1123
             ],
             "max": [
               0.6186,
               -0.1126,
-              0.6591
+              0.7091
             ],
             "turretLocal": true
           },
@@ -162273,30 +162273,30 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.6479,
-              -1.1284,
-              -0.2835
+              0.0479,
+              -1.2263,
+              -0.4165
             ],
             "max": [
-              1.1073,
-              -0.1368,
-              0.4043
+              0.5073,
+              -0.12,
+              0.362
             ],
             "turretLocal": true
           }
         ]
       },
-      "geometryHash": "2412a9e3",
-      "metadataHash": "d60d34e9",
+      "geometryHash": "08ff3ba6",
+      "metadataHash": "e2e33cfb",
       "presentationAnchor": {
-        "xM": 0.0087,
-        "zM": 0.1037
+        "xM": 0.0084,
+        "zM": 0.1056
       },
-      "presentationHash": "868b1929",
+      "presentationHash": "926f79bd",
       "presentationProjection": {
         "centerYM": 1.4783,
-        "topHalfM": 6.6314,
-        "sideHalfM": 3.3157
+        "topHalfM": 6.6294,
+        "sideHalfM": 3.3147
       },
       "appearance": {
         "version": 1,
@@ -162312,7 +162312,7 @@
           "trackPadSimplified": 1,
           "armorPaint": 11,
           "tireRubber": 1,
-          "gunmetal": 8,
+          "gunmetal": 9,
           "opticGlass": 3,
           "canvas": 3,
           "wood": 1,
@@ -162349,15 +162349,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23650,
-          "sha256": "831097cdbc79239c9a21e7722c08c1c33f1c08675bcf8854de0871aa65981261",
+          "bytes": 23370,
+          "sha256": "a0372820add5967b26ee5842aefcba7c4bad22367e3032e2243113ff08303129",
           "thumbnail": {
             "file": "thumbs/leclerc_s1_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 9792,
-            "sha256": "09847b9aebcf750b277d2d92f1c04de66d757e1e9f2d664d8eeacae67928f7b6"
+            "bytes": 9820,
+            "sha256": "8ac4a334545373ca9ebaf29d78169c1853e5b437a55a408f4a0acdf68f0d4328"
           }
         },
         "top": {
@@ -162365,56 +162365,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 11930,
-          "sha256": "7954880f243a2e3d101f3a313101ca727d6b136233b77cc7cb0a3ee4065a866a"
+          "bytes": 11894,
+          "sha256": "8570058ad1588bea37fac8d791498b3238b44866fd0e5c98f0f5d4c12d531a3b"
         },
         "side": {
           "file": "leclerc_s1_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 9316,
-          "sha256": "df50a303ab03322d437d994fa931172702a4e6455a4a30f040e425eb8533025d"
+          "bytes": 9486,
+          "sha256": "3f61f2276ebdbfbdd7d89ceaf2fe5e60f48298b5f4669351eddc0934d60288a1"
         },
         "topSilhouette": {
           "file": "leclerc_s1_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1681,
-          "sha256": "2a7491fbff0e17dec5d51aa9e374711ff8d95069e931cf330ab3cb84782c01db"
+          "bytes": 1668,
+          "sha256": "a234c03ef2700b0c99964672a3b382f6050cf4f35fba72e4a939e8ccb2d6206c"
         },
         "sideSilhouette": {
           "file": "leclerc_s1_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3901,
-          "sha256": "69f0152114c365d3b279fd9f4e92cdb0ccdaf0a3109f3220ff844d6f4bc0bbd9"
+          "bytes": 3944,
+          "sha256": "7f00942fc123e377aec9b21498eff5c6bb500e4fc0b92d0ec857a23256c58b80"
         },
         "armorSide": {
           "file": "leclerc_s1_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 88378,
-          "sha256": "17e0518ff13adbc64ac29946311ed8af63cb4a9987f2f26484a72c76e079b2ef"
+          "bytes": 90035,
+          "sha256": "3398f96becb65ac59be0a727fc12e8ef161cd00b459d3c9b42612f0bc98a55e5"
         },
         "modulesSide": {
           "file": "leclerc_s1_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 87908,
-          "sha256": "55a7c264357b3b7afa28f827aaf23a956656ad0413b869711f9ca3a80e48ce26"
+          "bytes": 88951,
+          "sha256": "a4b459b05b502f54e7791d55953b3da62466be7beb717c19899427a518438db0"
         },
         "crewSide": {
           "file": "leclerc_s1_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 76724,
-          "sha256": "f3c7dfc76007de814e59c863af828ffa70183b27c6946afcd8132dfb40762a59"
+          "bytes": 77264,
+          "sha256": "a764924f5f2544513bd15025ce681ddc6d18cd3388c1b1ec4e02e69497fa0adc"
         },
         "markings": {
           "file": "leclerc_s1_markings.png",
