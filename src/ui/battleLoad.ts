@@ -99,6 +99,10 @@ export function primeMapLqipWhenIdle(): void {
  *  widths, 720 px and taller, with persistent panels; smaller windows keep the compact sheets (responsiveSurfaces.css). */
 const WIDE = "body:is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall'])"
   + ":not([data-cot-panels='overlay'])";
+/** The portrait phones and tablets of standard height and up: the battlefield's plan sits between the rules and the
+ *  rosters, in the band the art leaves clear there (the tip stays a wide-layout part). */
+const PORTRAIT = "body[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-width='tablet'])"
+  + ":is([data-cot-height='standard'],[data-cot-height='tall'])";
 /** A side this size or smaller shows a hero card a tank on the wide layouts (the direction's seven a side). */
 const CARD_TEAM_MAX = 7;
 /** The progress's steps (the direction's five). */
@@ -215,6 +219,14 @@ ${WIDE} .cot-bl .side{grid-column:2;grid-row:1 / span 2;display:flex;flex-direct
 ${WIDE} .cot-bl .map{align-self:flex-end;width:250px;padding:8px;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--e2);}
 ${WIDE} .cot-bl .map[hidden]{display:none;}
 ${WIDE} .cot-bl .map img{display:block;width:234px;height:234px;object-fit:cover;box-shadow:var(--ring-3);}
+.cot-bl .map .mp{position:relative;display:block;}
+.cot-bl .map .obj{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;}
+${PORTRAIT} .cot-bl .briefing{grid-template-rows:auto auto minmax(0,1fr) auto;}
+${PORTRAIT} .cot-bl .side{display:flex;justify-content:center;padding-bottom:clamp(12px,2.5vh,24px);}
+${PORTRAIT} .cot-bl .side .tip{display:none;}
+${PORTRAIT} .cot-bl .map{width:min(58vw,260px);padding:6px;border-radius:var(--r1);background:var(--hud-plate);box-shadow:var(--e2);}
+${PORTRAIT} .cot-bl .map[hidden]{display:none;}
+${PORTRAIT} .cot-bl .map img{display:block;width:100%;aspect-ratio:1;object-fit:cover;box-shadow:var(--ring-3);}
 ${WIDE} .cot-bl .teams{grid-column:1 / -1;grid-row:3;align-items:end;gap:28px;}
 ${WIDE} .cot-bl .foot{grid-column:1 / -1;grid-row:4;padding-top:24px;}
 ${WIDE} .cot-bl .count{position:absolute;left:0;right:0;top:calc(100% + 1.2vh);margin:0;}
@@ -273,6 +285,8 @@ interface BattleLoadInfo {
   readonly thumb?: string;
   readonly biome?: string;
   readonly mode?: string;
+  /** The battle's mode id: its opening objectives on the battlefield's plan (deployObjectives.ts). */
+  readonly modeId?: string;
   readonly allies: readonly BattleLoadRosterRow[];
   readonly enemies: readonly BattleLoadRosterRow[];
   /** Rows each empty team sheet holds open until rosters() fills it (a solo entry: the default split). */
@@ -346,7 +360,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     `<main class="briefing"><div class="cap"><h1 class="mapname"></h1>` +
     `<div class="rules"><span class="cot-c-chip"><span class="kicker">${t('battleLoad.kicker')}</span></span>` +
     `<span class="cot-c-chip sides" hidden><span class="gi">${uiIconSVG('team', 16)}</span><span class="sv"></span></span></div></div>` +
-    `<div class="side"><div class="tip"></div><div class="map" hidden><img alt="" decoding="async" draggable="false"></div></div>` +
+    `<div class="side"><div class="tip"></div><div class="map" hidden><span class="mp"><img alt="" decoding="async" draggable="false"><canvas class="obj" aria-hidden="true"></canvas></span></div></div>` +
     `<div class="teams">` +
     `<div class="team ally"><div class="thead"><span>${t('battleLoad.allies')}</span><span class="flags" aria-hidden="true"></span><span class="n">0</span></div>` +
     `<div class="rows"></div></div>` +
@@ -403,6 +417,18 @@ export function createBattleLoadScreen(): BattleLoadScreen {
   const sidesEl = requiredElement<HTMLSpanElement>(root, '.rules .sv');
   const mapEl = requiredElement<HTMLDivElement>(root, '.map');
   const mapImg = requiredElement<HTMLImageElement>(root, '.map img');
+  const objCanvas = requiredElement<HTMLCanvasElement>(root, '.map .obj');
+  let objectivesPass = 0;
+  /** The battle's opening objectives over the plan, as the Deploy screen draws them (its lazy module, once the plate is
+   *  laid out); a later entry supersedes this one, and an entry without a mode clears them. */
+  function drawObjectives(mapId: string | undefined, modeId: string | undefined): void {
+    const pass = ++objectivesPass;
+    if (!mapId || !modeId) { objCanvas.getContext?.('2d')?.clearRect(0, 0, objCanvas.width, objCanvas.height); return; }
+    void import('./deployObjectives.ts').then(({ drawDeployObjectives }) => {
+      const draw = (): void => { if (pass === objectivesPass) void drawDeployObjectives(objCanvas, mapId, modeId); };
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(draw); else draw();
+    }, () => { /* the plan stays bare */ });
+  }
   /** The battlefield's name: its first word solid, the rest hollow (the direction's title; zh-CN stays solid). */
   const setMapName = (name: string): void => {
     const space = name.indexOf(' ');
@@ -564,6 +590,7 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       // the battlefield's own plan (its baked tactical map, which the battle's minimap loads next)
       mapEl.hidden = !info.biome;
       if (info.biome) mapImg.src = minimapAssetUrl(info.biome);
+      drawObjectives(info.biome, info.modeId);
       fillTeam(allyRows, allyN, allyTeam, info.allies, info.slots);
       fillTeam(foeRows, foeN, foeTeam, info.enemies, info.slots);
       showSides(info.allies.length, info.enemies.length);

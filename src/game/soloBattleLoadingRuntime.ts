@@ -381,6 +381,7 @@ export function createSoloBattleLoadingRuntime(
         thumb: getMapThumb(resolved),
         biome: resolved,
         mode: soloBattleLoadingModeLabel(normalizedGameMode, mapId),
+        modeId: normalizedGameMode,
         allies: [],
         enemies: [],
         slots: PENDING_ROSTER_SLOTS,
