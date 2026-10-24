@@ -1368,7 +1368,7 @@ function assembleRingCut(split: RingSplit, cut: TurretRingCut, corners: RingEdge
  * (233, 244) A dented mesh's new corners placed for the dents: the burn hook's vertex dent (the field at the vertex, at
  * full share) carries each one to a blend of where its source triangle's corners carry it (the triangle moving as one
  * plane) and where the field at its own point does, by its plane share (planeShare: none on the rim, all from
- * PLANE_DENT_M past it). A long face split out there then bends as it did whole: no crack along a neighbour's edge that
+ * PLANE_RAMP_M past it). A long face split out there then bends as it did whole: no crack along a neighbour's edge that
  * holds none of its points, no sliver of it folded over by the field between its corners (the Hetman II's deck: up to
  * 11 cm cracks and a fan of holes beside the ring). Near the rim the field at their own points bends them, with the
  * plate on the same law. Every rule here depends on the point alone (an edge's corner on that edge's two ends), so two
@@ -1428,20 +1428,24 @@ const PLANE_DENT_M = 0.3;
 const FIELD_SLOPE = 0.72;
 /** The share of its distance past the rim a corner may be pulled toward the axis at any share of the dents' ramp. */
 const RIM_CLEAR = 0.9;
+/** How far past the rim a new corner takes all of its face's dented plane (planeShare). */
+const PLANE_RAMP_M = 0.1;
 
 /**
  * (244) The share of its face's dented plane a new corner takes (the rest the field at its own point), d past the rim:
- * none on the rim (the plate's rim follows the field), all of it from PLANE_DENT_M out, and between them the most that
- * still keeps it outside the rim, (1 − FIELD_SLOPE)·d / (PLANE_DENT_M − FIELD_SLOPE·d) (the field moves it in at most
- * FIELD_SLOPE·d, the plane at most PLANE_DENT_M). Through 243 the share stepped from none to all at the zone's edge,
- * and the zone's field carried a few centimetres off the uncut surface out along every long face that reached in: a
- * thin strip or a wall's top beside the ring moved off its outline (challenger2e's fender strip, type74's wall, the
- * AMX-40's relief), seen as holes at grazing angles. Depends on the point alone.
+ * none on the rim (the plate's rim follows the field), all of it from PLANE_RAMP_M out, between them
+ * (1 − FIELD_SLOPE)·d / (PLANE_RAMP_M − FIELD_SLOPE·d); placeForDents then holds each corner outside the rim
+ * (RIM_CLEAR). Through 243 the share stepped from none to all at the zone's edge, and the zone's field carried a few
+ * centimetres off the uncut surface out along every long face that reached in: a thin strip or a wall's top beside the
+ * ring moved off its outline (challenger2e's fender strip, type74's wall, the AMX-40's relief), seen as holes at grazing
+ * angles. The uncut surface is the face's plane (the hook dents its corners only), so the ramp is short: over 0.3 m
+ * type74's side wall, one 6.45 m triangle lifted 5 cm by a dent 3 m off, still dropped under its fender beside the ring
+ * and opened a sky sliver over it from below. Depends on the point alone.
  */
 function planeShare(cut: TurretRingCut, x: number, z: number): number {
   const d = Math.hypot(x - cut.cx, z - cut.cz) - cut.r;
   if (d <= 0) return 0;
-  const room = PLANE_DENT_M - FIELD_SLOPE * d;
+  const room = PLANE_RAMP_M - FIELD_SLOPE * d;
   return room <= 0 ? 1 : Math.min(1, ((1 - FIELD_SLOPE) * d) / room);
 }
 
