@@ -114,10 +114,11 @@ function bowServicePanels(P:TankBuilderPort):void {
     P.addHatch('hullDetail',box(width,.027,aftDepth),x,2.111,(rear+1.30)/2);
     const frontZ=(front+1.30)/2;
     P.addHatch('hullDetail',box(width,.027,forwardDepth/Math.cos(pitch)),x,surface(frontZ)+.012,frontZ,pitch);
+    // (release 240: the hinges 8 mm lower, their knuckles under the turret's 2.178 underside as it turns)
     for(const dx of [-width*.31,width*.31]) {
       const z=rear+.055;
-      P.addEquipment('hullDetail',box(.075,.036,.075),x+dx,2.137,z);
-      P.addEquipment('hullDetail',cylX(.023,.086,10),x+dx,2.157,z);
+      P.addEquipment('hullDetail',box(.075,.036,.075),x+dx,2.129,z);
+      P.addEquipment('hullDetail',cylX(.023,.086,10),x+dx,2.149,z);
     }
   }
   // The central bow housing has an angled back and an open handle beside it.

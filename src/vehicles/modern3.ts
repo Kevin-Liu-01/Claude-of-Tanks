@@ -1184,8 +1184,11 @@ export function buildK2(P: Modern3BuilderPort, options: { hullOnly?: boolean } =
   // at 10.68/1.13% via column quantization; 10.74 sits safely in grace)
   muzzleBore(P, 5.57, 0.10, 0.05, 14);
   P.muzzleZ = 5.57;
-  P.decal('turret', 'number', '325', 0.30, [1.505, 0.30, -0.85], Math.PI / 2, 0, 0.05);
-  P.decal('turret', 'number', '325', 0.30, [-1.505, 0.30, -0.85], -Math.PI / 2, 0, -0.05);
+  // (release 240: authored 0.14 m off the seated flank (1.40 at this station), past the surface solver's 0.12 m inner
+  // probe, which otherwise starts inside the armour and ties the outer one at the same hit with its normal turned in;
+  // at 1.505 the K2B's seated flank won that tie inward and both numbers read 0/9 and were dropped)
+  P.decal('turret', 'number', '325', 0.30, [1.54, 0.30, -0.85], Math.PI / 2, 0, 0.05);
+  P.decal('turret', 'number', '325', 0.30, [-1.54, 0.30, -0.85], -Math.PI / 2, 0, -0.05);
   addHullDecals();
   };
   buildK2Weapon();
@@ -4868,7 +4871,12 @@ export function buildPuma(P: Modern3BuilderPort) {
   // stepped tower. Pivot y/z stay the print's (2.03, -1.374); gun stays at
   // the print's world x 0.085 via the spec gunPivot. All furniture below
   // yaws (§B5); the Spike pod pitches (rig_gun, print shooter00/01). ======
-  P.add('turret', cylY(0.58, 0.64, 0.10, 22), 0, 0.01, 0.10);                  // ring collar on the deck
+  // ring collar on the deck. Release 240 (the owner: "make sure all tank turrets have a proper turret ring/attachment
+  // area"): coaxial with the yaw axis and 16 cm tall, up to the seated turret's 2.155 floor (turretSeatRace.ts), so the
+  // seam over the deck reads as the collar. 10 cm forward of the axis its front reached 0.74 m, past the seat's keep
+  // radius (0.7365): the seat lifted that wall's corners onto its plane, turning it and the cap inside out (the
+  // gun-junction census's openings under the gun).
+  P.add('turret', cylY(0.58, 0.64, 0.16, 22), 0, 0.04, 0);
   // core: low flat wedge — roof descends toward the muzzle (print stepped
   // 2.72->2.60 x1.0444); walls rake inward 11-13 deg (§B1 + §B8 order 3).
   P.add('turret', slab(
