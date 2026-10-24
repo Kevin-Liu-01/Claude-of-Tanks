@@ -431,6 +431,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/spare-track-outline.selftest.mjs',
     // 2026-10-18 (228): ledger keys hold no line number; a line-shifted tree gates green; --update then --gate round-trips
     'tools/spare-track-key.selftest.mjs',
+    // 247: plate-fitted collision cells lie on their slice's plates, hold its hull to the tolerance, carry no sliver
+    'tools/plate-fitted-cell.selftest.mjs',
     'src/vehicles/turretBarrelCircularity.selftest.mjs',
     'src/vehicles/profiles/gunTopFixturePlacement.selftest.mjs',
     'src/vehicles/profiles/bradleyHullClosure.selftest.mjs',
