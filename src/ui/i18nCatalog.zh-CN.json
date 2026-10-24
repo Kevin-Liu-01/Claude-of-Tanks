@@ -891,6 +891,8 @@
   "garage.record.localSession": "本地会话",
   "garage.record.decisiveResults": "胜负局",
   "garage.record.nonDraw": "非平局",
+  "garage.country.all": "全部",
+  "garage.country.allAria": "显示所有国家的战车",
   "garage.country.filterAria": "按国家筛选战车",
   "garage.country.scrollLeft": "向左滚动国家列表",
   "garage.country.scrollRight": "向右滚动国家列表",
