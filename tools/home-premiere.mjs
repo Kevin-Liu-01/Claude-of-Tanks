@@ -38,14 +38,15 @@ const heroSrcset = () => HERO_RUNGS.items.map((rung) => `${rung.path} ${rung.wid
 const heroDefault = () => HERO_RUNGS.items.find((rung) => rung.width === 1440).path;
 const TAKES = json('public/media/site50-r14/fleet/index.json');
 const SITE = json('public/media/site50-r14/manifest.json');
-// The horizontal lockup (public/brand/lockup.svg: the Bracket Chevron and the outlined wordmark, SPEC 3.1), inline so it
-// paints with the document: the words and brackets take the ink, the chevron and the "of" the accent.
+// The horizontal lockup (public/brand/lockup.svg: the commander mark and the outlined wordmark, SPEC 3.1), inline so it
+// paints with the document: the words and the tank take the ink, the mark's accents and the "of" the accent.
 const LOCKUP = readFileSync(join(ROOT, 'public/brand/lockup.svg'), 'utf8');
 function lockupMarkup(titleId) {
   const viewBox = /viewBox="([^"]+)"/.exec(LOCKUP)?.[1];
   const body = LOCKUP.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '').replace(/<!--[\s\S]*?-->/g, '')
     .replace(/stroke="#f6f3ec"/g, 'stroke="currentColor"').replace(/stroke="#f0a030"/g, 'style="stroke:var(--accent)"')
-    .replace(/fill="#f6f3ec"/g, 'fill="currentColor"').replace(/fill="#f0a030"/g, 'style="fill:var(--accent)"');
+    .replace(/fill="#f6f3ec"/g, 'fill="currentColor"').replace(/fill="#f0a030"/g, 'style="fill:var(--accent)"')
+    .replace(/style="fill:#f0a030"/g, 'style="fill:var(--accent)"');
   if (!viewBox || /#[0-9a-f]{3,8}\b/i.test(body)) throw new Error('home-premiere: public/brand/lockup.svg is not the two-ink lockup');
   return `<svg class="hero__lockup" viewBox="${viewBox}" role="img" aria-labelledby="${titleId}"><title id="${titleId}">Claude of Tanks</title>${body}</svg>`;
 }
