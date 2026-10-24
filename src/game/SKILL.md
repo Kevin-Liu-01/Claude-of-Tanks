@@ -95,6 +95,23 @@ only by main.ts's Studio port, applies a plan over the battle owner's authored
 day (sky, key, readability, the baked horizon light, the ring's shadow re-bake,
 blue-hour/night lamps) and restores every value on a return to day, a world
 switch or Studio exit. Battles never import either file.
+The Studio opens shell-first: entering it or changing its battlefield runs under
+`studio.ts` `withStage()` — the panels show at once and wait inert while the
+viewport shows the map's card and the build's stage (`studioPanel.ts`
+`setStage`/`setStageProgress`); a loaded scene loads only its own tanks and the
+rest of the fleet warms at idle (`__STUDIO.ready()` awaits it), and
+`window.__STUDIO_LOAD` names each part of the load. The exit keeps the cover and
+a direct `/studio` boot the boot veil (docs/STUDIO.md).
+Watch mode (watch-mode-243) is a watched battle: any listed mode
+(`sim/matchRuleset.ts` `WATCH_RULES`) set up as a solo battle whose human seat a
+bot drives. `watchSeat.ts` owns the seats (`openWatchSeats` hands the player's
+seat to its parked brain; `takeWatchSeat`/`leaveWatchSeat` swap a living bot's
+hull with the watcher between fixed steps, so a replay is still the replay of its
+inputs); `watchController.ts` turns the watcher's input into the three views —
+the drone, a ride-along on any living tank, and Drive in that bot's seat through
+the player's own path — over `engine/watchCamera.ts`; `src/app/watchRuntime.ts`
+composes it into the battle, and `battleHudFrameRuntime.ts` shows the ridden
+tank's HUD read-only. The sim never reads the controller.
 `garagePedestalRuntime.ts` owns hero construction, shader submission, warm LRU
 residency, switch convergence, and battle visual handoff; it composes
 `garagePedestalPreloader.ts` for exact card-intent and quiet neighbor warming.

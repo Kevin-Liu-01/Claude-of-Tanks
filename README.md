@@ -50,6 +50,8 @@ screenshots of the rail, the feature reel, the four camera-path loops, the destr
 - **Fight:** enter Standard Battle, Capture the Flag, Zone Control, armed low-gravity Turbo Ball, Gravity Mode, cooperative
   Endless Horde, the six-operation Frontline Assault campaign, Juggernaut, Infected, Realistic, Gun Game, Drone, or AC-130 in solo or multiplayer, with physical shell travel, armor geometry, component damage, spotting,
   terrain, collision, destructible structures, persistent wrecks, mode-specific respawns, and authority-owned results.
+- **Watch:** start a watched battle in any of twelve modes on any map: fly a spectator drone over it, ride along in any
+  tank, or take a living bot's seat and fight from there.
 - **Inspect:** open any vehicle in Tank Gallery, articulate the live rig, isolate armor or internal anatomy, and export an
   exact-surface review packet from the same specification used in combat.
 - **Direct:** stage any roster vehicle on any battlefield in Scene Studio, animate actors and cameras, schedule game FX,
@@ -63,7 +65,7 @@ screenshots of the rail, the feature reel, the four camera-path loops, the destr
 | Worlds | **33** authored battlefields with shared structures, wrecks, utility networks, loose props, placement, collision, and destruction |
 | Authority | Fixed **60 Hz** movement, ballistics, armor, damage, spotting, bots, destructibles, and result |
 | Presentation | Direct Three.js/WebGL renderer with a measured **120 FPS** test path, adaptive quality, stable shadows, SMAA/FSR, and GPU recovery |
-| Play | **13 battle modes**, solo bots, browser-hosted private rooms, LAN rooms, room chat, spectators, respawns, and rematches |
+| Play | **13 battle modes**, solo bots, Watch mode (drone, ride-along, take control), browser-hosted private rooms, LAN rooms, room chat, spectators, respawns, and rematches |
 | Platforms | Mouse/keyboard and complete touch controls with safe-area layout and device-adaptive rendering |
 | Languages | English and Simplified Chinese across the game, Garage, Studio, Gallery, and public docs; local reviewed catalogs managed with General Translation |
 | Tools | Scene Studio, Tank Gallery, exact-surface review, deterministic capture, vehicle anatomy, and release gates |
@@ -355,12 +357,15 @@ controls ──► deterministic authority ──► filtered state + reliable e
 
 ```text
 src/engine/    renderer, camera, lighting, post, quality, telemetry, GPU recovery
-src/world/     thirty-one maps, terrain, vegetation, props, collision, destruction
+src/world/     thirty-three maps, terrain, vegetation, props, collision, destruction
 src/vehicles/  specs, procedural geometry, materials, profiles, asset verification
 src/sim/       DOM-free movement, aiming, ballistics, armor, damage, spotting
 src/game/      local composition, bots, input, profile, killcam, Scene Studio
 src/mp/        rooms, the wire, transports, the match client, the browser host, sessions
-src/ui/        garage, battle HUD, reports, settings, diagnostics, touch controls
+src/ui/        garage, battle HUD, reports, Service Record, settings, the component kit, tokens, type
+src/presentation/  the public site's shell, landing, media player and the /cn build
+src/docs/      the Field Manual: chapters built from the game's own tables, prerendered
+src/gallery/   Tank Gallery
 server/        the match actor, the LAN room helper, collision manifests, ICE, telemetry
 ```
 
@@ -378,6 +383,16 @@ npm run test:net:v2:p2p
 npm run tank:native:check
 npm run build
 npm run build:private
+```
+
+The public pages carry generated parts; after a change to a chapter, the landing,
+the shell or the tokens, rewrite them (each checks without `--write`):
+
+```bash
+node tools/docs-prerender.mjs --write
+node tools/home-premiere.mjs --write
+node tools/public-shell.mjs --write
+node tools/gen-tokens.mjs
 ```
 
 The public build strips quarantined comparison assets. Simulation, networking, browser multiplayer, maps, collision,

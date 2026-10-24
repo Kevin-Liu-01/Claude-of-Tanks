@@ -11,9 +11,13 @@ Present game and session state with fast, legible desktop/mobile interactions.
 
 ## Mental model & key files
 <!-- agent-docs:fill:model -->
-`serviceRecordView.ts` renders the garage's tabbed Service Record (overview,
-medals, achievements, history with each battle's kill trace) into the dialog
-`garage.ts` owns, only while it is open; `medalArt.ts` draws every medal and
+`serviceRecordDialog.ts` owns the Service Record dialog the Garage's RECORD
+trigger opens: its header is the last battle as a plate (the map behind, the
+tank's render, result, tank, map, time), four tabs carry their counts, and the X
+closes it (no footer). `serviceRecordView.ts` renders the plate and the tabs
+(overview scoreboard over a victory/draw/defeat bar, medals, achievements, the
+battle log with each battle's kill trace) only while it is open, on tokens
+(`serviceRecord.css`); `medalArt.ts` draws every medal and
 achievement as inline SVG; `medalToast.ts` shows medals as they are earned;
 `garage.ts` owns roster/loadout presentation; its Filter toggle lazily loads
 `garageFacetPanel.ts` (class, role, era chips and facet search over the pure
@@ -101,9 +105,14 @@ beats an earlier one regardless of specificity, and an `!important` reverses
 that, so moving a sheet between layers changes contests that specificity decides
 today: every sheet that predates the layers (shell, HUD, pages, the legacy
 shared controls, the document defaults, the generated type head and zh-CN floor)
-sits in `surfaces`, `tokens.css` and `motion.css` in `tokens`; `components`
-fills as BUI-F5 builds controls for it. `styleLayers.selftest.mjs` enforces the
-structure.
+sits in `surfaces`, `tokens.css` and `motion.css` in `tokens`; `components` holds
+the shared kit (`components/components.ts`, markup factories over
+`components/components.css`: buttons, key caps, chips, segmented controls, tabs,
+toggles, stat rows, vehicle identity). `styleLayers.selftest.mjs` enforces the
+structure. Element colour resets (`a`, `button`, form controls) go in `base`: in
+`surfaces` they beat every component's colour, whatever the specificity (the
+primary buttons' ink, 247); `tools/surface-element-resets.selftest.mjs` keeps them
+out (a ratchet for the sheets that still have one).
 `tools/style-literal-census.mjs` counts colour, font-size, letter-spacing,
 z-index, shadow, duration and `!important` literals outside the token package
 (CSS, CSS-in-TS, HTML); `tools/style-literal-baseline.json` may only fall (a
@@ -143,10 +152,17 @@ capitals: tank names) come from `'Cot Accents'` (`tools/type/cot-accents.py`,
 assembled from Plex Sans's own glyphs under its own name), named after each Plex
 stack's Latin face. The receipt reads every face's cmap from its WOFF2 bytes and
 fails if a catalog string or tank name prints a character no shipped face draws.
-Chinese views are `/cn/` documents: `zhTypeFloor.ts` lists, per route, the label
-elements a Chinese string fills below 13 px, and `localizedHtml.ts` adds that floor
-to zh-CN documents only (English documents and the game entry carry none of it).
-A new Chinese label under 13 px joins its route's list there.
+Chinese views are `/cn/` documents: `localizedHtml.ts` adds the zh-CN floor to
+them only (English documents carry none). The floor raises `--fs-11` and `--fs-12`
+to 13 px, so a label sized with those tokens is lifted on every route, and lists
+per route (`zhTypeFloor.ts`) the selectors that set a literal size below 13 px.
+In the game `--fs-*` also multiply `--cot-ui-scale` (0.78-1.08, responsiveLayout.ts),
+so a game label must not swap a literal 11 px for the bare token (English would
+shrink on small windows). Use `max(11px,var(--fs-11))` (never smaller than before,
+lifted to 13 px in Chinese by the tokens; `mediaArchive.css`), the battle's fixed
+`--battle-fs-*` tokens (tokens.json's zh-CN locale lifts them; the HUD sheets), or a
+`zhTypeFloor.ts` entry; each route's floor is capped at 2600 raw / 640 brotli
+(`typeSystem.selftest.mjs`), so measure `zhTypeFloorCss(route)` before adding to it.
 check:bundle reports a document's inline CSS as `inlineCss`, and the receipt holds
 each head to a brotli budget. Never add an
 `@font-face`, a font preload or a face file elsewhere. Code asks only for

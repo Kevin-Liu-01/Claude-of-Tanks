@@ -7,8 +7,10 @@
 ## Overview
 <!-- agent-docs:fill:overview -->
 Browser-native Three.js armored combat game. The runtime combines a fixed-step
-60 Hz simulation, procedural first-party vehicle fleet, thirty battlefields,
-garage/showroom presentation, bots, armor/ballistics/modules, and mobile input.
+60 Hz simulation, procedural first-party vehicle fleet, thirty-three battlefields,
+garage/showroom presentation, bots, Watch mode, armor/ballistics/modules, and
+mobile input, plus a public site (landing, Field Manual, Tank Gallery) in English
+and Chinese.
 Treat current `origin/main` as active shared work: isolate broad changes in a
 worktree and never stage generated tank work wholesale.
 
@@ -41,6 +43,9 @@ worktree and never stage generated tank work wholesale.
 - `src/game/state.ts` — battle roster and authoritative simulation integration.
 - `src/sim/` — movement, armor, damage, spotting, and ballistics logic.
 - `src/mp/` — rooms, the binary wire, transports, the match client, the browser host and the session owner.
+- `src/docs/SKILL.md` — the Field Manual: chapters built from the game's own tables and
+  prerendered by `tools/docs-prerender.mjs`; the public pages' other generators are listed in
+  `docs/DEVELOPMENT.md#generated-parts-of-the-public-pages`.
 
 ## Stack
 <!-- agent-docs:auto:stack start -->
