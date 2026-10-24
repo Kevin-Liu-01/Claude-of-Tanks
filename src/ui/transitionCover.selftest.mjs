@@ -53,4 +53,11 @@ try {
   if (originalDocument) Object.defineProperty(globalThis, 'document', originalDocument); else delete globalThis.document;
   if (originalStyle) Object.defineProperty(globalThis, 'getComputedStyle', originalStyle); else delete globalThis.getComputedStyle;
 }
+// transitions-249: a fading cover passes clicks to the screen showing through it (a Garage press in its last ~180 ms was
+// swallowed); an opaque or fading-in cover still takes them
+{
+  const transition = await readFile(new URL('./transition.ts', import.meta.url), 'utf8');
+  assert.match(transition, /\.cot-trans\.out\{[^}]*pointer-events:none/, 'a fading-out cover lets clicks through');
+  assert.doesNotMatch(transition, /\.cot-trans(?:\.on|\.lit)?\{[^}]*pointer-events:none/, 'a shown cover still takes them');
+}
 console.log('transitionCover.selftest: actual opacity, paint opportunity, hidden fallback, failure and supersession pass');
