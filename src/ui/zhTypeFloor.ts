@@ -16,19 +16,8 @@
 /** styleLayers.ts STYLE_LAYER_ORDER, repeated so this module stays dependency-free (styleLayers.selftest pins it). */
 const LAYER_ORDER = '@layer reset,tokens,base,components,surfaces,utilities,overrides;';
 
-/** The redesigned Garage's own Chinese labels at a literal 11-12 px (the readout's tables and chips, the equipment picker,
- *  the paint catalog's heading, the facet filter, the phone menu): lifted here, never by switching them to the type
- *  tokens, which follow the game's UI scale and would shrink the English below its fixed size (246). */
-const GARAGE: readonly string[] = [
-  '.cot-garage .shellhead', '.cot-garage .shellrow .nm small', '.cot-garage .magazine-spec', '.cot-garage .armorline span',
-  '.cot-layer-link', '.cot-technical-tab', '.cot-module-chip', '.cot-crew-chip',
-  '.cot-eqpick .ph .t', '.cot-eqpick .chip', '.cot-eqtile .n', '.cot-eqtile .e', '.cot-eqtooltip .detail',
-  '.cot-camos .ctitle', '.cot-facet-option', '.cot-mobile-nav-copy strong',
-];
-
 /** The Garage, Deploy, settings, service record and mission brief (the game document and the Studio's). */
 const SHELL: readonly string[] = [
-  ...GARAGE,
   // game bar and garage
   '.nv .nav-label', '.cot-locale-options span', '.cot-battle-mode span', '.cot-multiplayer-entry span',
   '.cot-garage-variant-trigger-copy strong', '.cot-garage-variant-trigger-copy small span', '.cot-garage-variant-action span',
