@@ -85,7 +85,7 @@ interface BattleWarmPort {
   ): Promise<CombatFxSubmission> | CombatFxSubmission;
 }
 
-type PostWarmPort = Pick<PostRuntime, 'warmFirstFrame'> &
+type PostWarmPort = Pick<PostRuntime, 'warmFirstFrame'> & Partial<Pick<PostRuntime, 'warmLateFxDraw'>> &
   CombatFxSubmissionOptions['post'] & {
     sceneAA: Pick<PostRuntime['sceneAA'], 'sceneTarget'>;
   };
@@ -130,6 +130,10 @@ interface DeploymentWarmTrace {
     programAndDrawTotalMs?: number;
     programAndDrawSyncMs?: number;
     programAndDrawMaxMs?: number;
+    /** (perf-253) the late pass's own draws of the staged effects (post.warmLateFxDraw): cohorts, the longest, the sum */
+    lateBatches?: number;
+    lateMaxMs?: number;
+    lateTotalMs?: number;
     completed: boolean;
     error?: string;
     cleanupError?: string;
@@ -492,6 +496,42 @@ async function warmDeploymentFx(
       }
     } finally {
       batches.return(undefined);
+    }
+    // (perf-253) and the late pass's own draws of the staged effects, two at a time, yielding every ~8 ms: the warm above
+    // drew them into the multisampled private target, and the late pass draws single-sample with a depth texture, so the
+    // post warm made every one of their pipelines in one task (2.4 s desktop, 1.2 s phone on a cold entry)
+    const warmLateFxDraw = options.post.warmLateFxDraw;
+    if (warmLateFxDraw) {
+      receipt.lateBatches = 0; receipt.lateMaxMs = 0; receipt.lateTotalMs = 0;
+      const late = createIsolatedForwardWarmBatches({
+        scene: options.scene, root, warmRender: () => warmLateFxDraw.call(options.post), cohortSize: 2, now,
+        select: (object) => object.layers.isEnabled(LATE_FX_LAYER),
+      });
+      let sinceYield = 0;
+      try {
+        for (;;) {
+          const stepAt = now();
+          let step: ReturnType<typeof late.next>;
+          try { step = late.next(); }
+          finally {
+            const elapsed = Math.max(0, now() - stepAt);
+            drawSyncMs += elapsed;
+            maxDrawStepMs = Math.max(maxDrawStepMs, elapsed);
+            sinceYield += elapsed;
+          }
+          if (step.done) break;
+          receipt.lateBatches++;
+          receipt.lateMaxMs = Math.max(receipt.lateMaxMs, step.value.ms);
+          receipt.lateTotalMs += step.value.ms;
+          if (sinceYield >= 8) {
+            sinceYield = 0;
+            await yieldCovered(true);
+            assertFxCurrent();
+          }
+        }
+      } finally {
+        late.return(undefined);
+      }
     }
     cohortsCompleted = true;
   } catch (error) {

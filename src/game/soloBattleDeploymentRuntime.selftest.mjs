@@ -13,7 +13,7 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
   night = false, failNight = false, pauseNight = false, cancelCover = false, failCover = false,
   compileSlices = 2, cancelCompile = false, lateCancelCompile = '', lateCancelWarm = '',
   streamedCadence = null, terrainPrograms = '', vegetationPrograms = '', failPost = false,
-  watchdog = 'healthy', pauseWatchdog = false, failRevealCover = false, panel = '' } = {}) {
+  watchdog = 'healthy', pauseWatchdog = false, failRevealCover = false, panel = '', lateFx = false } = {}) {
   const calls = [];
   let releaseAtmosphere;
   const atmosphereGate = new Promise((resolve) => { releaseAtmosphere = resolve; });
@@ -60,6 +60,18 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
     const material = new THREE.MeshBasicMaterial();
     warmResources.push(geometry, material);
     fxGroup.add(new THREE.Mesh(geometry, material), new THREE.Mesh(geometry, material));
+  }
+  // (perf-253) staged effects on the late pass's layer, and one the late pass never draws
+  if (lateFx) {
+    const geometry = new THREE.BoxGeometry();
+    const material = new THREE.MeshBasicMaterial();
+    warmResources.push(geometry, material);
+    for (const name of ['late-a', 'forward-only', 'late-b', 'late-c']) {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = name;
+      if (name.startsWith('late')) mesh.layers.set(LATE_FX_LAYER);
+      fxGroup.add(mesh);
+    }
   }
   const shadow = { autoUpdate: true, needsUpdate: true };
   const playerRoot = new THREE.Group();
@@ -197,6 +209,19 @@ function createHarness({ failAllies = false, failAtmosphere = false, pauseAtmosp
         calls.push(['postYielded']);
         return { passes: 1 };
       },
+      ...(lateFx ? {
+        // the late pass's own draw: the effects it would draw now (its layer, not masked out, the chain visible)
+        warmLateFxDraw() {
+          const drawn = [];
+          fxGroup.traverseVisible((object) => {
+            if (object.isMesh && object.layers.isEnabled(LATE_FX_LAYER)) drawn.push(object.name);
+          });
+          // (a root holding lights stays lit: hiding it would change the light set the programs key on)
+          const lit = (root) => { let found = false; root.traverse((object) => { if (object.isLight) found = true; }); return found; };
+          const others = scene.children.filter((child) => child !== fxGroup && child.visible && !lit(child));
+          calls.push(['lateDraw', drawn, others.length]);
+        },
+      } : {}),
     },
     lighting: { csm: { lights: lateCancelWarm === 'forward' ? [{ shadow }] : [] } },
     createShell: () => {},
@@ -744,6 +769,26 @@ assert.throws(result.assertRevealReady, /superseded/, 'a returned receipt cannot
 delete globalThis.__BATTLE_COUNTDOWN_WARM;
 delete globalThis.__COMBAT_OPENING_WARM;
 console.log('soloBattleDeploymentRuntime.selftest: exact day/night light signatures, late actors, order, cancellation and fallback pass');
+
+// (perf-253) the late pass's own draws of the staged effects: its layer's only, two at a time, every other root hidden,
+// after the forward FX draws and before the effects are restored and the post warm runs
+{
+  const h = createHarness({ lateFx: true });
+  await h.runtime.warm(Promise.resolve());
+  const names = h.calls.map(([name]) => name);
+  const late = h.calls.filter(([name]) => name === 'lateDraw');
+  assert.deepEqual(late.map(([, drawn]) => drawn), [['late-a', 'late-b'], ['late-c']],
+    'the late pass draws its own layer\'s staged effects, two at a time');
+  assert.ok(late.every(([, , others]) => others === 0), 'every other root is hidden for its draws');
+  const first = names.indexOf('lateDraw'), lastLate = names.lastIndexOf('lateDraw');
+  assert.ok(names.slice(0, first).includes('warmRender'), 'after the forward FX draws');
+  assert.ok(lastLate < names.indexOf('restoreFx') && lastLate < names.indexOf('postWarm'), 'before the restore and the post warm');
+  const receipt = globalThis.__BATTLE_COUNTDOWN_WARM?.deploymentFxForwardWarm;
+  if (receipt) assert.equal(receipt.lateBatches, 2, 'the trace counts the late cohorts');
+  assert.equal(h.fxGroup.children.every((child) => child.layers.mask === (child.name.startsWith('late') ? 1 << LATE_FX_LAYER : 1)),
+    true, 'every mask restored');
+  h.disposeWarmResources();
+}
 
 for (const outcome of ['ready', 'cancelled', 'failed']) {
   const h = createHarness({ panel: outcome === 'failed' ? 'fail' : 'pause' });

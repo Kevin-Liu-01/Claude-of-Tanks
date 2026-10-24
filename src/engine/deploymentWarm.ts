@@ -54,6 +54,8 @@ export interface IsolatedForwardWarmOptions {
   warmRender: () => void;
   cohortSize?: number;
   now?: () => number;
+  /** (perf-253) Only these of the root's renderables (the late pass's warm: its layer's effects). */
+  select?: ((object: Object3D) => boolean) | null;
 }
 
 function isRenderable(object: Object3D): object is RenderableObject {
@@ -227,6 +229,7 @@ export function* createIsolatedForwardWarmBatches({
   warmRender,
   cohortSize = 4,
   now = () => performance.now(),
+  select = null,
 }: IsolatedForwardWarmOptions): Generator<DeploymentForwardWarmBatch> {
   const lightRoots = sceneLightRoots(scene);
   const rootWasVisible = root.visible;
@@ -234,6 +237,7 @@ export function* createIsolatedForwardWarmBatches({
   try {
     root.visible = true;
     renderables = renderablesUnder(root);
+    if (select) renderables = renderables.filter(select);
   } finally { root.visible = rootWasVisible; }
   if (!renderables.length) return;
 
