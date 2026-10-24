@@ -30,6 +30,9 @@ export const OG_IMAGE_CARDS = [
   ['studio', 'SCENE STUDIO', 'public/media/showcase-r2/15_studio_workspace.webp', '50% 0%'],
   ['private-room', 'PRIVATE BATTLE', 'public/media/versus-r1/vs01-desert-abrams-t90m-r6.webp', '50% 50%'],
   ['docs', 'TECHNICAL FIELD MANUAL', 'public/media/versus-r1/vs05-oasis-merkava-t72b3-r6.webp', '50% 50%'],
+  ['docs-modes', 'GAME MODES', 'public/media/site50-r14/home/modes/zone_control.webp', '50% 50%'],
+  ['docs-controls', 'CONTROLS & WATCH MODE', 'public/media/site50-r14/home/mechanics/mobile.webp', '50% 50%'],
+  ['docs-start', 'YOUR FIRST BATTLE', 'public/media/site50-r14/home/features/garage.webp', '50% 50%'],
   ['docs-build', 'HOW THE GAME WAS BUILT', 'public/media/showcase-r2/13_gallery_modules.webp', '50% 48%'],
   ['docs-models', 'PROCEDURAL MODEL PIPELINE', 'public/media/showcase-r2/12_gallery_armor.webp', '50% 48%'],
   ['docs-simulation', 'SIMULATION AND COMBAT', 'public/media/site50-r14/stills/s226-church-duel.webp', '50% 100%'],
@@ -57,7 +60,7 @@ export const OG_ZH_LABELS = Object.freeze({
   studio: ZH['studio.title'],
   'private-room': ZH['playMenu.private.title'],
   docs: zhTitle('metadata.docs.title'),
-  ...Object.fromEntries(['build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai',
+  ...Object.fromEntries(['modes', 'start', 'controls', 'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai',
     'multiplayer', 'audio', 'interface', 'studio', 'filming'].map((topic) => [`docs-${topic}`, zhTopic(topic)])),
   404: zhTitle('notFound.metaTitle'),
 });
