@@ -79,8 +79,9 @@ archiveOpen?.addEventListener('click', () => {
   // The dialog's loops play under the site's one policy (publicPages.ts mounts them through mediaPlayer.ts): once the
   // dialog shows them, two at most, one transfer at a time, never under reduced motion or data saving.
   archiveDialog.showModal();
-  archiveMountPromise ??= import('../presentation/mediaArchive.ts')
-    .then(({ mountMediaArchive }) => mountMediaArchive(
+  // the wall's sheet loads with its module (the dialog's frame is docs.css): nothing on the page's first paint waits for it
+  archiveMountPromise ??= Promise.all([import('../presentation/mediaArchive.ts'), import('../presentation/mediaArchive.css')])
+    .then(([{ mountMediaArchive }]) => mountMediaArchive(
       document.querySelector('#docsArchiveBody'),
       { mode: 'wall', limit: 330, filters: false },
     ))

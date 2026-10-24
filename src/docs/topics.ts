@@ -457,16 +457,18 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
     + `<kbd class="cot-c-kbd" aria-hidden="true">Cmd K</kbd></label><p class="dm-search__status" role="status"></p><div class="dm-search__hits" id="dmSearchHits" hidden></div></div>`;
   return `<div class="dm">`
     + `<aside class="dm-side" aria-label="${t('docs.topic.navAria')}"><a class="dm-home" href="${docsHref()}"><span data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${search}${shelves}</aside>`
-    + `<div class="dm-main"><header class="dm-banner">${topicHeroMarkup(topic.hero, t('docs.topic.heroAlt', { label: topic.label }), saving)}`
+    // the article column is the skip link's target (#main); a loop hero's picture is named by its take, whose caption
+    // then stays visual only
+    + `<div class="dm-main" id="main" tabindex="-1"><header class="dm-banner">${topicHeroMarkup(topic.hero, caption || t('docs.topic.heroAlt', { label: topic.label }), saving)}`
     + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="${docsHref()}">${t('publicNav.fieldManual')}</a><i aria-hidden="true">›</i>`
     + `<span>${groupLabel(group.key)}</span><i aria-hidden="true">›</i><span aria-current="page">${topic.label}</span></nav>`
-    + `<h1>${titleMarkup(topic.title)}</h1></div>${caption ? `<p class="dm-banner__cap cot-c-cap"><span data-doc-icon="filming"></span><span>${caption}</span></p>` : ''}</header>`
+    + `<h1>${titleMarkup(topic.title)}</h1></div>${caption ? `<p class="dm-banner__cap cot-c-cap" aria-hidden="true"><span data-doc-icon="filming"></span><span>${caption}</span></p>` : ''}</header>`
     + `<div class="dm-body"><article class="dm-article${topic.rich ? ' dm-article--wide' : ''}"><p class="dm-lede">${topic.lede}</p>`
     + `<p class="dm-meta"><span data-doc-icon="simulation"></span><span>${t('docs.topic.readTime', { minutes: readMinutes(topic, rich) })}</span></p>`
     + (rich ? rich.map(({ id, title, html }) => `<section class="dm-section" id="${id}"><h2>${title}</h2>${html}</section>`).join('')
       : topic.sections.map((section, index) => sectionMarkup(section, index, topic.media[index === firstFigureAt ? 0 : index === secondFigureAt ? 1 : -1])).join(''))
     + `</article><aside class="dm-toc"><nav aria-label="${t('docs.topic.onThisPage')}">${toc}</nav></aside></div>`
-    + `<nav class="dm-pager" aria-label="${t('docs.topic.navAria')}">${neighbour(order[at - 1], 'prev')}${neighbour(order[at + 1], 'next')}</nav></div></div>`;
+    + `<nav class="dm-pager" aria-label="${t('docs.topic.pagerAria')}">${neighbour(order[at - 1], 'prev')}${neighbour(order[at + 1], 'next')}</nav></div></div>`;
 }
 
 const REFERENCE_TOPICS: readonly TopicId[] = ['tanks'];
