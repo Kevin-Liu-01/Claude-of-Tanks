@@ -677,17 +677,17 @@
     "s123-type90-cliffbridge": {
       "map": "cliffbridge",
       "en": "A Type 90 (Kyū-maru) fires on the move at Aegis Crossing at sunset",
-      "zh": "日落时分，一辆 Type 90 (Kyū-maru) 在Aegis Crossing行进间射击",
+      "zh": "日落时分，一辆 Type 90 (Kyū-maru) 在神盾渡口行进间射击",
       "shortEn": "Type 90 (Kyū-maru), Aegis Crossing",
-      "shortZh": "Type 90 (Kyū-maru)，Aegis Crossing",
+      "shortZh": "Type 90 (Kyū-maru)，神盾渡口",
       "fleet": true
     },
     "s124-type90a-cliffbridge": {
       "map": "cliffbridge",
       "en": "A Type 90A knocks out a T-72B at Aegis Crossing at sunset",
-      "zh": "日落时分，一辆 Type 90A 在Aegis Crossing击毁一辆 T-72B",
+      "zh": "日落时分，一辆 Type 90A 在神盾渡口击毁一辆 T-72B",
       "shortEn": "Type 90A, Aegis Crossing",
-      "shortZh": "Type 90A，Aegis Crossing",
+      "shortZh": "Type 90A，神盾渡口",
       "fleet": true
     },
     "s126-bwp1-winter": {
@@ -701,17 +701,17 @@
     "s128-pl-t72b3-zubr-ii-moon": {
       "map": "moon",
       "en": "A T-72B3 Zubr II knocks out a T-72B3 at Earthrise Basin",
-      "zh": "一辆 T-72B3 Zubr II 在Earthrise Basin击毁一辆 T-72B3",
+      "zh": "一辆 T-72B3 Zubr II 在地出盆地击毁一辆 T-72B3",
       "shortEn": "T-72B3 Zubr II, Earthrise Basin",
-      "shortZh": "T-72B3 Zubr II，Earthrise Basin",
+      "shortZh": "T-72B3 Zubr II，地出盆地",
       "fleet": true
     },
     "s129-pl-t72b3m-modern-moon": {
       "map": "moon",
       "en": "A T-72B3M Wilk fires across Earthrise Basin",
-      "zh": "一辆 T-72B3M Wilk 在Earthrise Basin开火",
+      "zh": "一辆 T-72B3M Wilk 在地出盆地开火",
       "shortEn": "T-72B3M Wilk, Earthrise Basin",
-      "shortZh": "T-72B3M Wilk，Earthrise Basin",
+      "shortZh": "T-72B3M Wilk，地出盆地",
       "fleet": true
     },
     "s131-pt91-twardy-longleaf": {
@@ -1682,6 +1682,10 @@
       "s18-street-knockout",
       "s05-barn-advance"
     ],
+    "chapterLoops": [
+      "s226-church-duel",
+      "s227-oasis-duel"
+    ],
     "figures": {
       "docs.graphics.figClose": {
         "id": "s21-fields-assault",
@@ -1750,7 +1754,7 @@
         "verdant"
       ],
       "boot": true,
-      "focal": "52% 62%"
+      "focal": "45% 62%"
     },
     {
       "id": "s07-lake-shellfire",
@@ -1767,7 +1771,7 @@
         "urban",
         "ruinspires"
       ],
-      "focal": "50% 55%"
+      "focal": "57% 55%"
     },
     {
       "id": "s29-fjord-road-kill",
@@ -1776,7 +1780,7 @@
         "saltwind",
         "coastal"
       ],
-      "focal": "50% 55%"
+      "focal": "38% 55%"
     },
     {
       "id": "s13-farm-race",
@@ -1785,7 +1789,7 @@
         "steppe",
         "longleaf"
       ],
-      "focal": "58% 55%"
+      "focal": "64% 55%"
     },
     {
       "id": "s26-minaret-fire",
@@ -1798,6 +1802,7 @@
     },
     {
       "id": "s05-barn-advance",
+      "focal": "64% 50%",
       "still": "close",
       "maps": [
         "polders"
@@ -1810,7 +1815,7 @@
         "monsoon",
         "mangrove"
       ],
-      "focal": "45% 55%"
+      "focal": "57% 55%"
     },
     {
       "id": "s33-water-tower",
@@ -1823,6 +1828,7 @@
     },
     {
       "id": "s34-furnace-salvo",
+      "focal": "38% 50%",
       "maps": [
         "foundry",
         "caldera",
@@ -1832,6 +1838,7 @@
     },
     {
       "id": "s38-church-knockout",
+      "focal": "39% 50%",
       "still": "close",
       "maps": [
         "winter"
@@ -1843,10 +1850,11 @@
         "orchard",
         "autumn"
       ],
-      "focal": "50% 62%"
+      "focal": "78% 62%"
     },
     {
       "id": "s37-river-village",
+      "focal": "26% 50%",
       "still": "close",
       "maps": [
         "delta"
@@ -1854,6 +1862,7 @@
     },
     {
       "id": "s39-lakeside-village",
+      "focal": "43% 50%",
       "maps": [
         "reservoir",
         "cliffbridge",

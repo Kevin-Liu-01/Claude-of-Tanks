@@ -995,6 +995,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/inputHoldToggle.selftest.mjs',
     'src/audio/captions.selftest.mjs',
     'src/ui/topAccentBorders.selftest.mjs',
+    // 2026-10-24 (brand-ui 247, the public-site a11y pass): element colour resets sit under the components (the primary
+    // buttons' ink); the landing's and the Gallery's remaining resets are a ratchet
+    'tools/surface-element-resets.selftest.mjs',
     'src/vehicles/camoPolicy.selftest.mjs',
     // 2026-10-09 (fix/camo-defaults): production's camouflage system, row for row (R113; the owner's 10-09 messages)
     'src/vehicles/camoCatalogProductionIndices.selftest.mjs',
@@ -1096,6 +1099,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/soloBattleRuntime.selftest.mjs',
     'tools/boot-static-closure.selftest.mjs',
     'src/vehicles/coplanarDepthLayers.selftest.mjs',
+    // 243: markings painted on the armour under their seats (the owner's "insignias and marks ... still glitching")
+    'src/vehicles/markingFilm.selftest.mjs',
     'src/fx/effectAttachments.selftest.mjs',
     'src/fx/trackContact.selftest.mjs',
     'src/fx/trailCadence.selftest.mjs',

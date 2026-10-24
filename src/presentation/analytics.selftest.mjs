@@ -8,19 +8,9 @@ const entrypoints = [
   'site/home.html',
   'site/docs.html',
   'site/docs-topic.html',
-  'site/docs-build.html',
-  'site/docs-models.html',
-  'site/docs-simulation.html',
-  'site/docs-vehicles.html',
-  'site/docs-rendering.html',
-  'site/docs-performance.html',
-  'site/docs-worlds.html',
-  'site/docs-ai.html',
-  'site/docs-multiplayer.html',
-  'site/docs-audio.html',
-  'site/docs-interface.html',
-  'site/docs-studio.html',
-  'site/docs-filming.html',
+  // every manual chapter (src/ui/localeRouting.ts DOCS_TOPICS)
+  ...(/const DOCS_TOPICS = \[([^\]]+)\]/.exec(await readFile('src/ui/localeRouting.ts', 'utf8'))[1].match(/'[a-z]+'/g) ?? [])
+    .map((topic) => `site/docs-${topic.slice(1, -1)}.html`),
   'site/gallery.html',
 ];
 // GA4 runs on every public non-game page: the Vercel Analytics pages above plus the 404 (GA only).

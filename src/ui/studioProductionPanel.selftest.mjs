@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import { runInNewContext } from 'node:vm';
 import { sceneLinkPath } from '../game/studioSceneLink.ts';
-import { productionAspect } from '../game/studioProduction.ts';
+import { PRODUCTION_PRESETS, productionAspect } from '../game/studioProduction.ts';
 import { LAST_TANK_STORAGE_KEY } from '../game/tankIdStorageMigration.ts';
 import { resolveTankId, TANK_IDS } from '../vehicles/tankIdAliases.ts';
 import { t } from './i18n.ts';
@@ -235,4 +235,16 @@ assert.equal(frame.value, 'square', 'loading or scripting a different format syn
 const zhCatalog = JSON.parse(readFileSync(new URL('./i18nCatalog.zh-CN.json', import.meta.url), 'utf8'));
 assert.equal(context.label('director'), 'Director');
 assert.equal(zhCatalog['studio.director.ui.director'], '导演台', 'the Director\'s words are in both catalogs');
+// The Sequence library's cards show each sequence's own frame (public/media/studio-r1, the media lane's renders), sized,
+// with the battlefield's card behind a missing still.
+const studioMedia = JSON.parse(readFileSync(new URL('../../public/media/studio-r1/manifest.json', import.meta.url), 'utf8'));
+assert.match(source, /photo\.src = `\/media\/studio-r1\/sequence-\$\{preset\.id\}-640\.webp`;\s*photo\.width = 640;\s*photo\.height = 400;/,
+  'a Sequence card shows its own 640 x 400 frame, sized before it loads');
+assert.match(source, /photo\.addEventListener\('error', \(\) => \{ photo\.src = `\/maps\/cards\/\$\{preset\.map\}\.webp`; \}, \{ once: true \}\);/,
+  'a missing still falls back to the battlefield card once');
+for (const preset of PRODUCTION_PRESETS.map((entry) => entry.id)) {
+  const item = studioMedia.items.find((entry) => entry.preset === preset);
+  assert.ok(item && item.src === `/media/studio-r1/sequence-${preset}-640.webp` && item.width === 640 && item.height === 400,
+    `the studio-r1 manifest carries ${preset}'s 640 x 400 frame`);
+}
 console.log('studioProductionPanel.selftest: workspace selection, the site\'s takes, every tank\'s take, staging races, exports, transport, recording locks and localization passed');

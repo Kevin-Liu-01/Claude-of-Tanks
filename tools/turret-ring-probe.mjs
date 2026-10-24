@@ -11,7 +11,9 @@
 //            and the hull are compared at one share), the hull standing over the plate's race and opening (strict and
 //            by more than 1 cm); synthetic dents the planner can make (a roof dent near the rim, the same climbing, a
 //            side corner's climbing shear) and, with --stress, the deepest it makes (0.28 m) tight and wide round the ring
-//            pushing in flat and climbing — each through the runtime's own plate law (turretRingPlateDents); the exterior
+//            pushing in flat and climbing — each capped round the race as the planner caps it (capTurretRingDents; with
+//            --uncapped, as asked), joined to the wreck's own plan and cut and plated for it as a kill cuts (with
+//            --no-recut, on the kill's own cut) through the runtime's own plate law (turretRingPlateDents); the exterior
 //            from 80 directions against the same wreck with its hull's meshes back on their geometry, both with the wreck's
 //            settled dents (a pixel deeper by 2 cm whose first hit is not the plate is a hole the cut opened, unless it is
 //            the dents' own reshaping: see below); with the player's build, the exterior's guard; the lifecycle and
@@ -42,7 +44,7 @@
 // inside the wreck's outline, see-through at it (the outline receded: a pixel both rasters see past within
 // SILHOUETTE_PX), and a deeper hit. The guard's openings must still count, and do (vt4a1: 194 / 216 px).
 //
-//   node tools/turret-ring-probe.mjs --ids=t90m_proryv,t72b3 [--seeds=77,4242,9001] [--stress] [--no-live] [--no-hulk]
+//   node tools/turret-ring-probe.mjs --ids=t90m_proryv,t72b3 [--seeds=77,4242,9001] [--stress] [--uncapped] [--no-recut] [--no-live] [--no-hulk]
 //        [--receipts=<receipts.json>] [--render=<dir>] [--far-samples=<n>] --out=<rows.jsonl> [--gate]
 import * as THREE from 'three';
 import { appendFileSync } from 'node:fs';
@@ -54,7 +56,8 @@ const { geometryFingerprint } = await import('../src/vehicles/tankAssets.ts');
 const { bakeTankWreck } = await import('../src/world/wrecks.ts');
 const { collectWreckSolids } = await import('../src/world/wreckCollision.ts');
 const { createTank, ensureTankBuilder } = await import('../src/vehicles/fleetFactory.ts');
-const { turretRingPlateDents, turretRingDentShare } = await import('../src/vehicles/turretRingWell.ts');
+const { turretRingPlateDents, turretRingDentShare, capTurretRingDents, createTurretRingPresentation } = await import('../src/vehicles/turretRingWell.ts');
+const { getSpec } = await import('../src/vehicles/specs.ts');
 const { combatAnatomyCalibration, registerCombatAnatomyCalibrations } = await import('../src/vehicles/combatAnatomyCalibrationRegistry.ts');
 import { readFileSync } from 'node:fs';
 
@@ -65,6 +68,12 @@ const OUT = opt('out');
 const SEEDS = opt('seeds', '77,4242,9001').split(',').map(Number);
 const SKIP_HULK = args.includes('--no-hulk');
 const STRESS = args.includes('--stress');
+// (246) synthetic dents as the planner leaves them: capTurretRingDents holds each one's field on the race's rim to 3 cm
+const UNCAPPED = args.includes('--uncapped');
+// (246) each synthetic dent joins the wreck's own plan, and the hull is cut and plated for that plan as a kill cuts it
+// (at shares 0, 0.5 and 1, the worst kept). With --no-recut, as through 244: the dent alone on the cut the kill placed
+// for its own plan, whose corners near the rim sit pre-placed for dents the check leaves out
+const RECUT = !args.includes('--no-recut');
 const SKIP_LIVE = args.includes('--no-live');
 const RENDER = opt('render');
 const FAR_SAMPLES = Number(opt('far-samples', '0'));
@@ -620,7 +629,7 @@ function liveProbe(id, buildName, camoSeed) {
     row.seat = { source: seat.source, deckY: r4(seat.deckY), openR: r4(seat.openR), rimR: r4(seat.rimR), skirt: r4(seat.skirt), depth: r4(seat.depth), car: seat.carousel?.count ?? 0 };
     // the last state (share 1): synthetic dents the planner can pick, through the runtime's own plate law
     {
-      const { burnU } = readDents(root);
+      const { burnU, list: planList } = readDents(root);
       visual.resetDestroyed();
       visual.setDestroyed({ pop: true, ageS: 0 });
       plate = platesOf(root)[0];
@@ -671,17 +680,62 @@ function liveProbe(id, buildName, camoSeed) {
       }
       row.synthetic = [];
       for (const syn of synthetic) {
-        const dents = { centres: [new THREE.Vector4(syn.c[0], syn.c[1], syn.c[2], syn.R * syn.R)], dirs: [new THREE.Vector4(...syn.dir, syn.depth)] };
-        const off = turretRingPlateDents(plate.geometry, plate.position, dents);
-        const positions = new Float32Array(rest.length);
-        for (let i = 0; i < rest.length; i++) positions[i] = rest[i] + (off ? off[i] : 0);
-        const P = raster(view, discTris(plate, positions));
-        const list = [{ cx: syn.c[0], cy: syn.c[1], cz: syn.c[2], r2: syn.R * syn.R, dx: syn.dir[0], dy: syn.dir[1], dz: syn.dir[2], depth: syn.depth }];
-        turret.visible = false;
-        const TS = collect(root, new Set([turret, plate]), { burnU: readDents(root).burnU, hullWorld: hull.matrixWorld, list, share: 1 });
-        const HS = raster(view, TS);
-        turret.visible = true;
-        row.synthetic.push({ name: syn.name, at: syn.c.map(r4), dir: syn.dir, strict: coverage(view, P, HS, hull, seat, 0.0005, TS), cm: coverage(view, P, HS, hull, seat, 0.01) });
+        // (246) the planner caps every hull dent round the race before the kill's cut (tankFactoryCore planLiveCrumple);
+        // the stress battery's deepest dent, uncapped, moved amx40_proto's rim 5.4 cm, past anything the game makes
+        const planned = [{ cx: syn.c[0], cy: syn.c[1], cz: syn.c[2], r2: syn.R * syn.R, depth: syn.depth }];
+        if (!UNCAPPED) capTurretRingDents(planned, seat);
+        const asked = syn.depth;
+        syn.depth = planned[0].depth;
+        const synList = { cx: syn.c[0], cy: syn.c[1], cz: syn.c[2], r2: syn.R * syn.R, dx: syn.dir[0], dy: syn.dir[1], dz: syn.dir[2], depth: syn.depth };
+        const measured = { name: syn.name, at: syn.c.map(r4), dir: syn.dir, depth: r4(syn.depth), ...(asked !== syn.depth ? { asked } : {}) };
+        if (!RECUT) {
+          const dents = { centres: [new THREE.Vector4(syn.c[0], syn.c[1], syn.c[2], syn.R * syn.R)], dirs: [new THREE.Vector4(...syn.dir, syn.depth)] };
+          const off = turretRingPlateDents(plate.geometry, plate.position, dents);
+          const positions = new Float32Array(rest.length);
+          for (let i = 0; i < rest.length; i++) positions[i] = rest[i] + (off ? off[i] : 0);
+          const P = raster(view, discTris(plate, positions));
+          turret.visible = false;
+          const TS = collect(root, new Set([turret, plate]), { burnU: readDents(root).burnU, hullWorld: hull.matrixWorld, list: [synList], share: 1 });
+          const HS = raster(view, TS);
+          turret.visible = true;
+          row.synthetic.push({ ...measured, strict: coverage(view, P, HS, hull, seat, 0.0005, TS), cm: coverage(view, P, HS, hull, seat, 0.01) });
+          continue;
+        }
+        // the kill's cut undone (its meshes on their geometry before the kill, its plate off) and this plan's on
+        const plan = [...planList, synList];
+        const planDents = { centres: plan.map((d) => new THREE.Vector4(d.cx, d.cy, d.cz, d.r2)), dirs: plan.map((d) => new THREE.Vector4(d.dx, d.dy, d.dz, d.depth)) };
+        const swapped = [];
+        root.traverse((o) => { if (o.isMesh && o.geometry.userData?.turretRingCut && heldBefore.has(o)) { swapped.push([o, o.geometry]); o.geometry = heldBefore.get(o); } });
+        const plateParent = plate.parent;
+        plate.removeFromParent();
+        const ring = createTurretRingPresentation({ specId: id, root, hull, turret, armor: getSpec(id)?.armor, engineCtx: null,
+          high: BUILDS[buildName](camoSeed).geometryQuality !== 'low', rendered: true, dents: () => planDents });
+        try {
+          ring.show();
+          root.updateMatrixWorld(true);
+          const planPlate = platesOf(root)[0];
+          const planRest = planPlate.geometry.getAttribute('position').array.slice();
+          const off = turretRingPlateDents(planPlate.geometry, planPlate.position, planDents);
+          let worst = null;
+          for (const share of [0, 0.5, 1]) {
+            const positions = new Float32Array(planRest.length);
+            for (let i = 0; i < planRest.length; i++) positions[i] = planRest[i] + (off ? off[i] * share : 0);
+            const P = raster(view, discTris(planPlate, positions));
+            turret.visible = false;
+            const TS = collect(root, new Set([turret, planPlate]), { burnU: readDents(root).burnU, hullWorld: hull.matrixWorld, list: plan, share });
+            const HS = raster(view, TS);
+            turret.visible = true;
+            const cm = coverage(view, P, HS, hull, seat, 0.01);
+            if (!worst || cm.open + cm.race > worst.cm.open + worst.cm.race) worst = { share, strict: coverage(view, P, HS, hull, seat, 0.0005, TS), cm };
+          }
+          row.synthetic.push({ ...measured, recut: true, ...worst });
+        } finally {
+          ring.hide();
+          ring.dispose();
+          for (const [o, g] of swapped) o.geometry = g;
+          plateParent.add(plate);
+          root.updateMatrixWorld(true);
+        }
       }
     }
     // the exterior: the cut hull with its plate (turret hidden) against the intact hull from 80 directions, both dented as

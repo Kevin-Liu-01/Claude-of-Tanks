@@ -1,37 +1,74 @@
 /* The missing page (404.html), in the landing's grammar (bui01/src/pages/01-landing-hero; brand-ui SPEC 12.3.4): the
-   shared bar and footer, an in-engine still under the hero's grade, the code in the accent and one sentence in the
-   hollow display type, the site's destinations as kit buttons. Tokens only; the kit is imported here. */
+   shared bar and footer, an in-engine still under a grade that keeps its left side for the words, the code in the
+   accent over one solid sentence (no outline type), the search over the fleet and the manual, and the site's
+   destinations as a strip of their own pictures along the foot. Tokens only; the kit is imported here. */
 @import url('../ui/components/components.css');
 @import url('../ui/tokens/surface-home.css');
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
 /* the landing's display sizes (home.css), on the type steps so the reader's text scale reaches them */
-:root{--home-h1:clamp(var(--fs-76),5.9vw,var(--fs-112));--home-h2:clamp(var(--fs-60),5vw,var(--fs-88))}
+:root{--home-h1:clamp(var(--fs-76),5.9vw,var(--fs-112));--home-h2:clamp(var(--fs-60),5vw,var(--fs-88));--nf-line:clamp(var(--fs-36),3.6vw,var(--fs-52));
+  --nf-plate-shadow:var(--ring-2),var(--e2)}
 *{box-sizing:border-box}
 html{min-width:280px;background:var(--surface-scene)}
 /* the page declares only the shell's weight-voiced family (Chakra Petch from 550, IBM Plex Sans below): the kit's display
    and reading voices read it, so the head stays inside its type budget */
 body.not-found-page{--font-display:var(--font-ui);--font-body:var(--font-ui);display:flex;flex-direction:column;min-height:var(--cot-viewport-height,100dvh);margin:0;background:var(--surface-scene);color:var(--ink-1);font-family:var(--font-ui);-webkit-font-smoothing:antialiased}
-.not-found{position:relative;isolation:isolate;flex:1;display:grid;align-content:center;min-height:max(560px,calc(var(--cot-viewport-height,100dvh) - var(--shell-nav-h)));
-  padding:var(--s8) max(var(--shell-gutter),calc((100% - var(--shell-max)) / 2)) var(--s8);overflow:hidden}
-.not-found__still{position:absolute;inset:0;z-index:-2;width:100%;height:100%;max-width:none;object-fit:cover;object-position:50% 55%}
-.not-found__grade{position:absolute;inset:0;z-index:-1;pointer-events:none;background:var(--home-hero-grade)}
-.not-found__content{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s6);max-width:min(1100px,100%)}
-.not-found h1{display:flex;flex-direction:column;gap:var(--s3);margin:0;font:700 var(--home-h1)/.86 var(--font-display);text-transform:uppercase;color:var(--ink-1);text-shadow:var(--home-headline-shadow)}
-.not-found__line{font-size:var(--home-h2);line-height:.9}
-.not-found__line.t-hollow{--hollow-stroke:1.8px;--hollow-ink:var(--ink-1);text-shadow:var(--hollow-shadow)}
+.not-found{position:relative;isolation:isolate;flex:1;display:grid;grid-template-rows:1fr auto;gap:var(--s7);
+  min-height:max(620px,calc(var(--cot-viewport-height,100dvh) - var(--shell-nav-h)));
+  padding:var(--s8) max(var(--shell-gutter),calc((100% - var(--shell-max)) / 2)) var(--s6);overflow:hidden}
+.not-found__still{position:absolute;inset:0;z-index:-2;width:100%;height:100%;max-width:none;object-fit:cover;object-position:70% 50%}
+.not-found__grade{position:absolute;inset:0;z-index:-1;pointer-events:none;background:var(--home-closing-grade)}
+.not-found__content{align-self:center;display:flex;flex-direction:column;align-items:flex-start;gap:var(--s5);width:min(640px,100%)}
+.not-found h1{display:flex;flex-direction:column;gap:var(--s3);margin:0;color:var(--ink-1);text-shadow:var(--home-headline-shadow);text-transform:uppercase}
+.not-found__code{font:700 var(--home-h1)/.8 var(--font-display)}
+.not-found__line{font:700 var(--nf-line)/.94 var(--font-display);text-wrap:balance}
 /* the page's own Play is its one primary: the bar keeps its pages, language and source */
 .not-found-page .public-nav__tools>.public-nav__cta{display:none}
-.not-found__actions{display:flex;flex-wrap:wrap;gap:10px}
-.not-found__actions a{min-width:0}
-.not-found__report{margin-top:calc(var(--s4) * -1)}
+/* the search: the fleet's field (home.css .fleet-search) at reading size, its hits a plate under it */
+.not-found__search{position:relative;width:100%}
+.nf-field{display:flex;align-items:center;gap:10px;height:52px;padding:0 16px;border-radius:var(--control-radius);background:var(--side-plate);box-shadow:var(--ring-2);color:var(--ink-3)}
+.nf-field:focus-within{box-shadow:var(--ring-3);color:var(--ink-2)}
+.nf-field input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;font:400 var(--fs-16)/1 var(--font-body);color:var(--ink-1);outline:none}
+.nf-field input::placeholder{color:var(--ink-3)}
+.nf-field input::-webkit-search-cancel-button{display:none}
+.nf-hits{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:var(--z-lift);margin:0;padding:6px;list-style:none;border-radius:var(--control-radius);background:var(--side-plate);box-shadow:var(--nf-plate-shadow)}
+.nf-hits[hidden],.nf-empty[hidden]{display:none}
+.nf-hit{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--r1);color:var(--ink-1);text-decoration:none}
+.nf-hit:hover,.nf-hit:focus-visible{background:var(--surface-hover);outline:none}
+.nf-hit .cot-i{width:18px;height:18px;color:var(--accent)}
+.nf-hit b{overflow:hidden;font:600 var(--fs-15)/1.2 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
+.nf-hit small{font:500 var(--fs-12)/1 var(--font-data);color:var(--ink-3);white-space:nowrap}
+.nf-empty{margin:8px 0 0;font:400 var(--fs-14)/1.4 var(--font-body);color:var(--ink-2)}
+.not-found__report{display:inline-flex;align-items:center;gap:8px;font:500 var(--fs-14)/1 var(--font-body);color:var(--ink-2);text-decoration:none}
+.not-found__report:hover,.not-found__report:focus-visible{color:var(--ink-1);text-decoration:underline;text-underline-offset:3px}
+.not-found__report .cot-i{width:16px;height:16px}
+/* the destinations: Play in the accent, then each page over its own picture */
+.not-found__go{display:grid;grid-template-columns:minmax(0,1.1fr) repeat(4,minmax(0,1fr));gap:12px}
+.nf-go{display:flex;align-items:flex-end;aspect-ratio:16/9;padding:14px 16px;border-radius:var(--control-radius);color:var(--ink-1);text-decoration:none}
+.nf-go:hover,.nf-go:focus-visible{outline:none;box-shadow:var(--home-pick-ring)}
+.nf-go__nm{display:inline-flex;align-items:center;gap:9px}
+.nf-go__nm .cot-i{width:18px;height:18px;color:var(--accent)}
+.nf-go b{font:700 var(--fs-16)/1 var(--font-display);text-transform:uppercase}
+.nf-go--play{flex-direction:column;align-items:flex-start;justify-content:space-between;background:var(--accent);color:var(--ink-on-accent);box-shadow:var(--e1)}
+.nf-go--play .cot-i{width:30px;height:30px;fill:currentColor}
+.nf-go--play b{font-size:var(--fs-24)}
+.nf-go--play:hover,.nf-go--play:focus-visible{background:var(--accent-hi);box-shadow:var(--e2)}
 :lang(zh-CN) .not-found h1,:lang(zh-CN) .not-found__line{line-height:1.15}
+@media (width < 1100px){
+  .not-found__go{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .nf-go--play{grid-column:1 / -1;flex-direction:row;align-items:center;justify-content:flex-start;gap:12px;aspect-ratio:auto;min-height:64px}
+}
 @media (width < 768px){
-  .not-found{align-content:end;padding-block:var(--s7) var(--s6)}
-  .not-found h1{font-size:var(--fs-76)}
-  .not-found__line{font-size:var(--fs-36)}
-  .not-found__line.t-hollow{--hollow-stroke:1.4px}
-  .not-found__actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
-  .not-found__actions a:first-child{grid-column:1 / -1}
+  /* the still is a banner over the words: the tank keeps the top of the screen, the code and the search sit under it */
+  .not-found{grid-template-rows:auto auto;align-content:start;gap:var(--s6);padding-block:calc(260px + var(--s5)) var(--s5)}
+  .not-found__still,.not-found__grade{bottom:auto;height:260px}
+  .not-found__still{object-position:70% 50%}
+  .not-found__grade{background:linear-gradient(0deg,var(--surface-scene),transparent 40%)}
+  .not-found__code{font-size:var(--fs-76)}
+  .not-found__line{font-size:var(--fs-28)}
+  .not-found__go{gap:8px}
+  .nf-go{padding:10px 12px}
+  .nf-go b{font-size:var(--fs-14)}
 }
 }

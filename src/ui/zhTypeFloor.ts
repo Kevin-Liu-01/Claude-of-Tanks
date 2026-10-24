@@ -33,9 +33,9 @@ const SHELL: readonly string[] = [
   // settings
   '.cot-set-group', '.cot-set-colhdr span', '.lb .cot-setting-label-text', '.cot-set-btn', '.cot-set-btn.resume',
   // service record
-  '.cot-service-record .cot-record-stat-label', '.cot-record-metric small', '.cot-record-chip small', '.cot-record-card-head small',
-  '.cot-record-card-head strong', '.cot-record-reason small', '.cot-record-reason strong', '.cot-record-footnote',
-  '.cot-modal-root.cot-service-record .cot-modal__button', "body[data-cot-width='phone'] .cot-modal__subtitle",
+  '.cot-service-record .cot-record-stat-label', '.cot-record-metric small', '.cot-record-card-head small',
+  '.cot-record-card-head strong', '.cot-record-reason small', '.cot-record-reason strong', '.cot-record-plate small',
+  '.cot-service-record .cot-record-tab', "body[data-cot-width='phone'] .cot-modal__subtitle",
   // mission brief
   '.cot-brief .kicker', '.cot-brief .objectives', '.cot-brief .enemy',
 ];
@@ -48,7 +48,7 @@ const PUBLIC_NAV: readonly string[] = [
 /** The field manual's overview and topic pages (src/docs/docs.css). */
 const DOCS: readonly string[] = [
   ...PUBLIC_NAV,
-  '.docs-hero-actions a', '.doc-hero-reel figcaption', '.doc-hero-reel figcaption strong', '.docs-evidence dt',
+  '.docs-hero-actions a', '.docs-evidence dt',
   '.docs-evidence dd', '.kicker', '.docs-chapters-heading>p', '.docs-chapter-grid span', '.docs-chapter-grid strong', '.toc-head',
   '.docs-toc a', '.docs-toc a span', '.toc-footer', '.callout', '.callout strong', '.principle p',
   '.aside-card p:first-child', '.aside-card strong', '.aside-card p:last-child', '.aside-card-kicker', '.aside-card-copy',
@@ -63,8 +63,8 @@ const HOME: readonly string[] = [
   '.v5-social-proof__reddit>header p', '.v5-social-proof__snapshot',
 ];
 
-/** The 404 page (src/presentation/notFound.css). */
-const NOT_FOUND: readonly string[] = [...PUBLIC_NAV, '.not-found__actions a'];
+/** The 404 page (src/presentation/notFound.css): the search hits' chapter line (12 px); its other labels are 14 px and up. */
+const NOT_FOUND: readonly string[] = [...PUBLIC_NAV, '.nf-hit small'];
 
 const ROUTES: Readonly<Record<string, readonly string[]>> = {
   game: SHELL,

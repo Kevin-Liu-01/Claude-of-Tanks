@@ -751,12 +751,15 @@ function appendShotCardHeader(
   if (!(ev.damage > 0)) damage.style.color = COL.dim;
 }
 
+/** The round's type chip classes: a missile's chip carries its own class (class names, not copy). */
+const shellTypeClass = (missile: boolean): string => (missile ? 'ty missile' : 'ty');
+
 function appendShotCardSubtitle(card: HTMLDivElement, ev: ShotHitEvent): void {
   const subtitle = el('div', 'cot-si-sub', card);
   const typeColor = SHELL_TYPE_COLOR[ev.shellType] || '#9fb0bf';
   const missile = weaponHitKind(ev) === 'missile';
   subtitle.innerHTML =
-    `<span><span class="ty${missile ? ' missile' : ''}" style="color:${typeColor}">${missile ? uiIconSVG('missileRack', 10) : GLYPH.shell}${escapeHtml(ev.shellType)}</span>` +
+    `<span><span class="${shellTypeClass(missile)}" style="color:${typeColor}">${missile ? uiIconSVG('missileRack', 10) : GLYPH.shell}${escapeHtml(ev.shellType)}</span>` +
     `<span class="cot-si-subtext">${escapeHtml(shellDisplayName(ev))}</span></span>` +
     `<span>${GLYPH.target}<span class="cot-si-subtext">${escapeHtml(ev.targetName || '')}</span></span>`;
 }

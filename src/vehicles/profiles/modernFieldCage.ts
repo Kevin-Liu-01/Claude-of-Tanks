@@ -6,8 +6,9 @@ type Port=Pick<TankBuilderPort,'turretG'|'forEachBucketPart'|'addEquipment'> & {
 type Point=readonly[number,number,number];
 
 /** Three independently supported side panels and folded shoulder returns.
- * The central roof, hatch openings and main-gun corridor stay open. */
-export function addModernFieldCage(P:Port):void {
+ * The central roof, hatch openings and main-gun corridor stay open.
+ * `lowRail`: the panels' low rail no lower than this (turret frame), where the turret turns over a raised engine deck. */
+export function addModernFieldCage(P:Port,opts:{readonly lowRail?:number}={}):void {
  const material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide}),stock:THREE.Mesh[]=[],outerStock:THREE.Mesh[]=[],bounds=new THREE.Box3();
  P.forEachBucketPart(['turret'],geometry=>{
   const mesh=new THREE.Mesh(geometry,material);mesh.updateMatrixWorld();stock.push(mesh);bounds.expandByObject(mesh);
@@ -16,7 +17,7 @@ export function addModernFieldCage(P:Port):void {
   const mesh=new THREE.Mesh(geometry,material);mesh.updateMatrixWorld();outerStock.push(mesh);
  });
  const z0=bounds.min.z+.22,z1=Math.min(.12,bounds.max.z-.35),height=bounds.max.y-bounds.min.y;
- const mid=bounds.min.y+height*.48,low=mid-.22,top=mid+.28;
+ const mid=bounds.min.y+height*.48,low=Math.max(mid-.22,opts.lowRail??-Infinity),top=mid+.28;
  // 2026-10-08 (the accessories lane, on the tree merged with main; the defect came from main's 6763d7cc0): a foot and
  // its standoff keep clear of the turret's smoke-discharger banks. On the Leopard 2A6 UA the rearmost panels' rear feet
  // stood in the 2A6M's banks (78 crossings); a field kit's bracket is bolted round a bank, so a foot whose standoff would

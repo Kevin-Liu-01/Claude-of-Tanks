@@ -22,6 +22,7 @@ import { installCarvedMuzzleBore, verifyCarvedMuzzleBore } from './carvedMuzzleB
 import { vehicleProvenance } from '../authorship.ts';
 import { isBattleShareableMesh, shareBattleGeometry } from './battleGeometrySharing.ts';
 import { mergeContiguousStaticRuns, type CoplanarLayerRecord } from './staticDrawMerge.ts';
+import { assignCoplanarDepth, coplanarDepthUnits, markingDepthRecords } from './coplanarDepth.ts';
 import { releaseStaticMergeParts } from './staticMergeParts.ts';
 import { combatVisibleObjects, retainCombatLods } from './combatVisibility.ts';
 import { detachEmptyLodSentinels } from '../engine/lodEmptySentinels.ts';
@@ -78,8 +79,10 @@ import {
   type RestContactReceipt,
 } from './restPoseContact.ts';
 import {
-  applyVerifiedVehicleMarkingSeats, finalizeVehicleMarkingSeats, isVerifiedMarkingSeat, type VerifiedMarkingSeat,
+  applyVerifiedVehicleMarkingSeats, finalizeVehicleMarkingSeats, isVerifiedMarkingSeat, vehicleMarkingSurfaces,
+  type VerifiedMarkingSeat,
 } from './vehicleMarkingSeating.ts';
+import { markingFilmGeometry } from './markingFilm.ts';
 import { deduplicateEraSurfaces } from './eraSurfaceDeduplication.ts';
 import { createInvocationEraWholeReuse } from './eraWholeFitReuse.ts';
 import { EquipmentDamage, markEquipmentLid, type EquipmentDamageEvent } from './equipmentDamage.ts';
@@ -1708,7 +1711,9 @@ function installBattleDetailGroups(records: readonly StaticDetailRecord[]): {
 // Give every raster-visible mesh a deterministic sub-depth in semantic order.
 // `polygonOffsetFactor = 0` avoids slope-dependent crawling; one depth-buffer
 // unit between layers is enough to break equality without changing silhouette
-// geometry or pulling a fitting visibly away from its support. The callback is
+// geometry or pulling a fitting visibly away from its support. Each draws with
+// an offset bounded by contact (coplanarDepth.ts, 243): a unit per mesh grew to
+// centimetres of eye depth at Gallery and battle range. The callback is
 // object-local even though materials are shared: Three invokes it immediately
 // before applying the material's raster state for that draw. Shadow materials
 // are deliberately ignored, so the arbitration cannot introduce shadow acne.
@@ -1775,8 +1780,12 @@ function collectCoplanarDepthLayers(root: THREE.Object3D): CoplanarLayerRecord[]
 }
 
 export function installCoplanarDepthLayers(root: THREE.Object3D, records: readonly CoplanarLayerRecord[]): void {
-  for (const { object, materials, layer } of records) {
+  let top = 0;
+  for (const { object, materials, layer, depth = layer, ties = 0 } of records) {
     object.userData.coplanarDepthLayer = layer;
+    object.userData.coplanarDepthOffset = depth;
+    object.userData.coplanarDepthTies = ties;
+    top = Math.max(top, depth);
     const previous = object.onBeforeRender;
     object.onBeforeRender = function applyCoplanarDepthLayer(
       renderer: THREE.WebGLRenderer,
@@ -1790,10 +1799,14 @@ export function installCoplanarDepthLayers(root: THREE.Object3D, records: readon
       if (!materials.includes(renderedMaterial) || renderedMaterial.depthTest === false) return;
       renderedMaterial.polygonOffset = true;
       renderedMaterial.polygonOffsetFactor = 0;
-      renderedMaterial.polygonOffsetUnits = -layer;
+      // exact ties climb more under a deeper near plane (the Gallery's tight one): coplanarDepth.ts coplanarDepthUnits
+      renderedMaterial.polygonOffsetUnits = -coplanarDepthUnits(depth, ties,
+        (camera as THREE.PerspectiveCamera | null)?.near ?? 0);
     };
   }
   root.userData.coplanarDepthLayerCount = records.length;
+  // the deepest offset any record draws with: one unit past it is in front of every layer
+  root.userData.coplanarDepthTop = top;
 }
 
 // LOD1: greeble-class objects vanish past this range; the camo hull/turret
@@ -9236,8 +9249,22 @@ function* buildTankCoreSteps(
   disposables.push(decalGeo);
   const decalMeshes: VehicleMesh[] = [];
   let proceduralShadowSources: THREE.Mesh[] = [];
+  // 243: each seated marking is painted on the armour under it (markingFilm.ts); the flat quad stays only where no
+  // armour under the seat faces it (a seat on a suit built after the core)
+  root.updateMatrixWorld(true);
+  const markingSurfaces = { hull: vehicleMarkingSurfaces(hullG, 'hull', spec.id),
+    turret: vehicleMarkingSurfaces(turretG, 'turret', spec.id) };
   for (const d of decals) {
-    const mesh = new THREE.Mesh(decalGeo, mats.decal(d.kind, d.text));
+    const owner = d.parent === 'turret' ? turretG : hullG;
+    const film = d.surfaceSupported && d.quaternion
+      ? markingFilmGeometry(markingSurfaces[d.parent === 'turret' ? 'turret' : 'hull'], owner,
+        new THREE.Vector3(d.pos[0], d.pos[1], d.pos[2]), d.quaternion, d.size)
+      : null;
+    if (film) disposables.push(film);
+    const mesh = new THREE.Mesh(film ?? decalGeo, mats.decal(d.kind, d.text));
+    mesh.userData.markingFilm = film !== null;
+    // the seat's footprint in this draw's frame (the unit quad the film is cut to): receipts read the paint's extent here
+    mesh.userData.markingFootprints = [{ center: [0, 0, 0], u: [1, 0, 0], v: [0, 1, 0] }];
     mesh.name = `vehicleMarking_${d.kind}`;
     mesh.userData.vehicleMarking = true;
     mesh.userData.markingCode = marking.markingCode;
@@ -11391,6 +11418,19 @@ export function* createTankRuntimeSteps(
           }
           if (markingBatch) {
             batch.userData.vehicleMarking = true;
+            // each folded marking's footprint, carried into the batch's frame as createStaticBatch carried its paint
+            batch.updateMatrix();
+            const toBatch = new THREE.Matrix4().copy(batch.matrix).invert();
+            batch.userData.markingFootprints = sources.flatMap((source) => {
+              const local = new THREE.Matrix4().multiplyMatrices(toBatch, source.matrix);
+              return ((source.userData.markingFootprints ?? []) as { center: number[]; u: number[]; v: number[] }[])
+                .map(({ center, u, v }) => {
+                  const origin = new THREE.Vector3().fromArray(center).applyMatrix4(local);
+                  const at = (axis: number[]) => new THREE.Vector3().fromArray(center)
+                    .add(new THREE.Vector3().fromArray(axis)).applyMatrix4(local).sub(origin).toArray();
+                  return { center: origin.toArray(), u: at(u), v: at(v) };
+                });
+            });
             decalMeshes.push(batch);
           }
         });
@@ -11476,6 +11516,9 @@ export function* createTankRuntimeSteps(
     if (batchStatic && staticDrawMerge !== 'off') {
       depthLayers = mergeBattleStaticRuns(depthLayers, staticDrawMerge === 'translations');
     }
+    // 243: offsets bounded by contact, then the markings' draws above the armour they are painted on (coplanarDepth.ts)
+    depthLayers = assignCoplanarDepth(root, depthLayers);
+    depthLayers = [...depthLayers, ...markingDepthRecords(root, depthLayers, decalMeshes)];
     installCoplanarDepthLayers(root, depthLayers);
     // after the static merge, so the merged draws carry it too; it wraps the layer hook, as on main
     installVehicleGroundReference(root);

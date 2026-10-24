@@ -58,7 +58,10 @@ export function addChallenger1SuppliedGun(P:TankBuilderPort):void{
     [202.401581,4.212599],[202.834641,3.779528],[floor,3.574],[floor,0]];
   P.add('gun',turned(barrel));
   P.add('gun',octagonalThroat());
-  const mantle:readonly(readonly[number,number])[]=[[17.834646,0],[17.834646,9.783465],
+  // (release 240: the boss behind the trunnion trimmed from 9.78 to 6.6 source units: at 9.78 it hung 1.598 m, under the
+  // 1.622 roof round the turret, at every pitch and bearing, so the gun had no clear pitch at any yaw; at 6.6 its rear
+  // edge keeps 4 cm over that roof at full elevation)
+  const mantle:readonly(readonly[number,number])[]=[[17.834646,0],[17.834646,6.6],
     [25.35433,7.46063],[32.007874,6.00394],[38.661419,5.41339],
     [58.228348,5.37402],[58.228348,0]];
   P.add('gunMount',turned(mantle));

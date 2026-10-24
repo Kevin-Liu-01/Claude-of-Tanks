@@ -146,7 +146,7 @@ const env = (sources, frame = 'hull', motion = null) => ({
   const turretSrc = [src(wall, 'armor')];
   const hullSrc = [src(step, 'armor')];
   const motion = {
-    pivot, gunPivot: new THREE.Vector3(), turreted: true, arc: 0, gun: null,
+    pivot, gunPivot: new THREE.Vector3(), turretScale: new THREE.Vector3(1, 1, 1), curved: false, turreted: true, arc: 0, gun: null,
     pitchMin: () => 0, pitchMax: 0.3,
     turretLow: seatRadialProfile(turretSrc.map((s) => ({ ...s, matrix: new THREE.Matrix4().makeTranslation(0, 1.4, 0) })),
       0, 0, true),

@@ -44,6 +44,39 @@ export function resizeGalleryCamera(
   return nextFit;
 }
 
+/** The nearest the near plane may come: a camera inside the specimen's bounds keeps the old close-range clip. */
+export const GALLERY_MIN_NEAR_M = 0.05;
+
+/**
+ * Depth range per frame (2026-10-23, lane 243; the owner: "insignias and marks on tanks are still glitching, for
+ * example if u drag them around the tank gallery"). A perspective depth step spans about d² × 2^-24 / near metres at
+ * distance d: at the old fixed 5 cm near that was 0.08 mm at 8 m and 1.7 mm at 38 m, and every polygon offset the
+ * vehicle draws with (its coplanar depth layers, the markings' own) grew with it. The near plane now stands just
+ * short of the nearest thing the camera can see: 60 % of the way to the specimen's bounds (`stage`, already padded
+ * for articulation), and 80 % of the eye depth of the plinth where the frustum's lower edge meets it.
+ */
+export function fitGalleryDepth(camera: PerspectiveCamera, stage: Box3, floorY: number): void {
+  let near = GALLERY_MIN_NEAR_M;
+  if (!stage.isEmpty()) {
+    near = Math.max(near, stage.distanceToPoint(camera.position) * .6);
+    const height = camera.position.y - floorY;
+    if (height > 0) {
+      camera.getWorldDirection(direction);
+      const pitch = Math.asin(Math.max(-1, Math.min(1, -direction.y)));
+      const lowerEdge = Math.min(pitch + camera.fov * Math.PI / 360, Math.PI - 1e-3);
+      // a plane's eye depth is constant along a screen row: the lower edge holds its nearest visible point
+      if (lowerEdge > 0) {
+        const plinth = height * (Math.cos(pitch) / Math.tan(lowerEdge) + Math.sin(pitch));
+        near = Math.max(GALLERY_MIN_NEAR_M, Math.min(near, plinth * .8));
+      }
+    }
+  }
+  if (Math.abs(camera.near - near) > near * .01) {
+    camera.near = near;
+    camera.updateProjectionMatrix();
+  }
+}
+
 /** A valid narrow-screen fit must survive controls.update and remain visible. */
 export function applyGalleryCameraRange(
   camera: PerspectiveCamera, controls: { maxDistance: number; target: Vector3 },

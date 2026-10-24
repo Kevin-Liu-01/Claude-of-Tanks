@@ -10,6 +10,7 @@
   --home-headline-shadow:0 6px 40px rgba(5,6,8,.35);--home-lockup-shadow:drop-shadow(0 6px 40px rgba(5,6,8,.35));
   --home-vs-ring:inset 0 0 0 1px rgba(240,160,48,.5);--home-pick-ring:0 0 0 2px var(--accent);--home-inset-ring:0 0 0 1px rgba(246,243,236,.35),0 4px 12px rgba(0,0,0,.5);
   --home-idx-ink:rgba(246,243,236,.75);--home-idx-shadow:0 1px 2px rgba(0,0,0,.6);--home-bar-edge:0 -1px 0 var(--line-2);
+  --home-closing-grade:linear-gradient(90deg,rgba(5,6,8,.86) 0,rgba(5,6,8,.6) 34%,rgba(5,6,8,0) 56%),linear-gradient(0deg,rgba(11,14,17,1) 0,rgba(11,14,17,.5) 22%,rgba(11,14,17,0) 48%);
   --home-reddit:#ff4208;--home-card-z:3;
 }
 }
