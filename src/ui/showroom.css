@@ -74,36 +74,36 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-gallery-link{height:v
    2 drops the armament's two lines, the view tabs and the links the band already holds, and lays the modules as chips;
    3 keeps the figures and the tables alone: the technical drawing gives up its room last;
    4 (a short docked window) keeps each station's first plate only, without the rival. */
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .cot-stat-section{padding:var(--s2) var(--s3);margin-bottom:var(--s1);}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] :is(.cot-special-section,
+.cot-garage .stats[data-density~='1'] .cot-stat-section{padding:var(--s2) var(--s3);margin-bottom:var(--s1);}
+.cot-garage[data-station] .stats[data-density~='1'] :is(.cot-special-section,
   .cot-performance-section .cot-stat-title,.shellrow .nm small){display:none;}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .cot-headline{gap:var(--s2);}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .cot-ammo-tiles{margin-top:var(--s3);}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .srow{padding:3px 6px 4px;}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .srow .lr b{font-size:var(--fs-13);}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .shellrow{min-height:0;padding-block:4px;}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .magazine-spec{min-height:0;padding-block:5px;}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .cot-technical-figure img{max-height:clamp(96px,18vh,200px);}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] :is(.cot-technical-tabs,.cot-layer-link,
+.cot-garage .stats[data-density~='1'] .cot-headline{gap:var(--s2);}
+.cot-garage .stats[data-density~='1'] .cot-ammo-tiles{margin-top:var(--s3);}
+.cot-garage .stats[data-density~='1'] .srow{padding:3px 6px 4px;}
+.cot-garage .stats[data-density~='1'] .srow .lr b{font-size:var(--fs-13);}
+.cot-garage .stats[data-density~='1'] .shellrow{min-height:0;padding-block:4px;}
+.cot-garage .stats[data-density~='1'] .magazine-spec{min-height:0;padding-block:5px;}
+.cot-garage[data-station] .stats[data-density~='1'] .cot-technical-figure img{max-height:clamp(96px,18vh,200px);}
+.cot-garage .stats[data-density~='2'] :is(.cot-technical-tabs,.cot-layer-link,
   .cot-technical-gallery,.cot-stat-title){display:none;}
-body[data-cot-panels='persistent'] .cot-garage[data-station='firepower'] .stats[data-density~='2'] [data-stations='firepower']:has(.armor-grid){display:none;}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-module-grid{display:flex;flex-wrap:wrap;gap:var(--s1);}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-module-chip{height:26px;padding:0 var(--s2) 0 var(--s1);}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-crew-chip{flex-direction:row;justify-content:center;padding:var(--s1);}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .armorline{min-height:0;padding-block:var(--s1);}
+.cot-garage[data-station='firepower'] .stats[data-density~='2'] [data-stations='firepower']:has(.armor-grid){display:none;}
+.cot-garage .stats[data-density~='2'] .cot-module-grid{display:flex;flex-wrap:wrap;gap:var(--s1);}
+.cot-garage .stats[data-density~='2'] .cot-module-chip{height:26px;padding:0 var(--s2) 0 var(--s1);}
+.cot-garage .stats[data-density~='2'] .cot-crew-chip{flex-direction:row;justify-content:center;padding:var(--s1);}
+.cot-garage .stats[data-density~='2'] .armorline{min-height:0;padding-block:var(--s1);}
 body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='3'] :is(.cot-technical-section,.cot-ammo-tiles,.magazine-spec){display:none;}
 body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='4'] :is(.cot-stat-section:not(.cot-primary),.cot-rival,.cot-ammo-tiles){display:none;}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='4'] .cot-headline{gap:var(--s1);}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='4'] .srow .cot-c-scale{display:none;}
+.cot-garage .stats[data-density~='4'] .cot-headline{gap:var(--s1);}
+.cot-garage .stats[data-density~='4'] .srow .cot-c-scale{display:none;}
 /* the rounds' rows close to one line: the glyph beside its type, each figure beside its unit */
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .shellkind{flex-direction:row;gap:var(--s1);}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .shellkind svg{width:12px;height:18px;}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .shellmetric b{display:inline;margin:0 2px 0 0;}
+.cot-garage .stats[data-density~='1'] .shellkind{flex-direction:row;gap:var(--s1);}
+.cot-garage .stats[data-density~='1'] .shellkind svg{width:12px;height:18px;}
+.cot-garage .stats[data-density~='1'] .shellmetric b{display:inline;margin:0 2px 0 0;}
 /* each performance card sets its label and value on one line over its scale */
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow{display:flex;flex-wrap:wrap;align-items:baseline;
+.cot-garage .stats[data-density~='2'] .srow{display:flex;flex-wrap:wrap;align-items:baseline;
   column-gap:var(--s1);}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .lr b{margin:0 0 0 auto;}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .cot-c-scale{flex:1 0 100%;}
+.cot-garage .stats[data-density~='2'] .srow .lr b{margin:0 0 0 auto;}
+.cot-garage .stats[data-density~='2'] .srow .cot-c-scale{flex:1 0 100%;}
 /* folded layouts lead the dossier with the overview's six rows, one fact each: the icon and its label, the value, the
    scale. The rival needs the docked column's width, so its picker, its deltas and its tick stay docked */
 body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .stats>.cot-stat-section.cot-overview-section{
@@ -119,7 +119,6 @@ body[data-cot-panels='overlay'] .cot-garage .cot-hrow .k{font-size:var(--fs-11);
 body[data-cot-panels='overlay'] .cot-garage .cot-hrow .v{display:flex;margin-top:var(--s1);}
 body[data-cot-panels='overlay'] .cot-garage .cot-hrow .v b{font-size:var(--fs-14);}
 body[data-cot-panels='overlay'] .cot-garage .cot-hrow .cot-c-scale{margin-top:var(--s1);height:5px;gap:1px;}
-
 
 /* Overview: the rival picker, six headline rows on the 20-cell scale with the rival's tick, the rounds */
 .cot-garage .cot-rival{display:flex;align-items:center;gap:var(--s2);height:var(--btn-h-s);padding:0 var(--s3);margin-bottom:var(--s3);
@@ -180,8 +179,8 @@ body[data-cot-panels='overlay'] .cot-garage>.cot-featured{display:none;}
 /* ---- the lower third: the name on the floor in front of the tank, its identity, then the band ---- */
 .cot-lt-head{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3);max-width:100%;}
 .cot-lt-name,.cot-lt-id{width:fit-content;max-width:100%;}
-body[data-cot-panels='persistent'][data-cot-width] .cot-lower-third{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3);
-  left:var(--edge);right:calc(var(--fleet-right) + var(--s4));bottom:var(--band-bottom);padding:0;margin:0;background:none;}
+body[data-cot-panels='persistent'][data-cot-width] .cot-lower-third{position:absolute;display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3);
+  left:var(--edge);right:calc(var(--fleet-right) + var(--s4));bottom:var(--band-bottom);pointer-events:none;}
 /* the words keep a local shade over the turntable's bright rim; the band is its own plate */
 body[data-cot-panels='persistent'] .cot-lt-head{padding:var(--s6) var(--s8) var(--s2) var(--s4);margin:calc(-1 * var(--s6)) 0 0 calc(-1 * var(--s4));
   background:var(--stage-scrim);}
@@ -290,24 +289,6 @@ body[data-cot-panels='persistent'] .cot-battle .battle-active-icon{display:none;
 @media (hover:hover){body[data-cot-panels='persistent'] .cot-battle:hover{background:var(--btn-primary-hover);}}
 body[data-cot-panels='persistent'] .cot-multiplayer-entry{display:none;}
 body[data-cot-panels='persistent'][data-cot-height='compact'] .cot-battle-control{grid-template-rows:minmax(0,1fr) var(--btn-h-m);}
-/* ---- the stage's numbered hotspots (the direction's 05-garage .hs): an accent dot on the part, a hairline to its plate
-   (the numeral, the part's glyph and its values) standing off the tank; garageHotspots.ts writes each place per frame ---- */
-.cot-hotspots{position:absolute;inset:0;pointer-events:none;overflow:hidden;}
-.cot-hotspots[hidden]{display:none;}
-.cot-hotspot-dot{position:absolute;left:0;top:0;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;
-  background:var(--accent);outline:1.5px solid var(--glyph-plate);will-change:transform;}
-.cot-hotspot-lead{position:absolute;left:0;top:0;width:1px;height:1px;margin-top:-.5px;transform-origin:0 50%;
-  background:var(--line-control);will-change:transform;}
-.cot-hotspot{position:absolute;left:0;top:0;display:flex;align-items:center;gap:8px;margin:-15px 0 0 -12px;will-change:transform;}
-.cot-hotspot[hidden],.cot-hotspot-dot[hidden],.cot-hotspot-lead[hidden]{display:none;}
-.cot-hotspot.l{flex-direction:row-reverse;translate:calc(-100% + 24px) 0;}
-.cot-hotspot .n{display:grid;place-items:center;width:24px;height:24px;flex:none;border-radius:50%;background:var(--accent);
-  box-shadow:var(--ring-3);color:var(--ink-on-accent);font:700 var(--fs-12)/1 var(--font-display);}
-.cot-hotspot .v{display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border-radius:var(--control-radius);
-  background:var(--glyph-plate);box-shadow:var(--ring-2);white-space:nowrap;}
-.cot-hotspot .v svg{flex:none;color:var(--ink-3);}
-.cot-hotspot .v b{font:600 var(--fs-13)/1 var(--font-display);color:var(--ink-1);}
-.cot-hotspot .v small{font:500 var(--fs-12)/1 var(--font-data);color:var(--ink-2);}
 /* the roster's count, at the rail's end */
 .cot-roster-count{display:none;}
 body[data-cot-panels='persistent'] .cot-roster-count{display:block;grid-column:7;align-self:center;padding:0 var(--s2);
@@ -327,7 +308,7 @@ body[data-cot-panels='persistent'] .cot-roster-fav[hidden]{display:none;}
    battle card (the battlefield's picture, its name and mode, Deploy), the fleet, three of the readout's figures with the
    rest one press away, then the name over the band (slots and paint); the stage's acts stand at its right edge ---- */
 .cot-tabbar{display:none;}
-body[data-cot-panels='overlay'] .cot-garage-tools{display:none;}
+
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage{
   --cot-tabbar-h:60px;--cot-dock-h:60px;--cot-figures-h:60px;--slot:52px;
   --cot-roster-bottom:calc(var(--cot-tabbar-h) + env(safe-area-inset-bottom,0px) + var(--cot-dock-h) + 2 * var(--cot-stack-gap));}

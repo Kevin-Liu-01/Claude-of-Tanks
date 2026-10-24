@@ -40,25 +40,23 @@ assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-header-nav \.nav-lab
   'laptop navigation must collapse through the shared width-band contract');
 assert.match(garage, /body\[data-cot-width='laptop'\] \.cot-featured\{display:none\}/,
   'laptop garages must hide the decorative Battle Gallery instead of crowding the vehicle stage');
-assert.match(garage,
-  /data-garage-panel="maps"[\s\S]*data-garage-panel="appearance"/,
-  'overlay garages must expose explicit map and camouflage drawers');
+// The 245 redesign: the band under the name carries the slots and the paint in every layout (every paint opens its
+// drawer), and the battle card carries the battlefield (its picture opens the Deploy screen's field); the folded tool
+// cards are gone (the 246 CSS diet).
 assert.match(garageSource,
-  /<nav class="cot-garage-tools" aria-label="\$\{t\('garage\.tools\.stagingAreas'\)\}">[\s\S]*aria-label="\$\{t\('garage\.tools\.chooseStaging'\)\}"[\s\S]*cot-garage-map-preview[\s\S]*aria-label="\$\{t\('garage\.tools\.appearanceHint'\)\}"[\s\S]*cot-garage-camo-preview/,
-  'compact garages must expose real map and camouflage preview cards without a disclosure step');
-assert.equal((garageSource.match(/<canvas width="64" height="44">/g) || []).length, 4,
-  'the compact camouflage card must mirror the map card with four live previews');
-assert.doesNotMatch(garage, /cot-garage-tools-(?:trigger|menu)/,
-  'compact garage panel actions must not regress to a single setup dropdown');
-assert.match(garage,
-  /\.cot-garage-preview-card\{[^}]*height:var\(--cot-preview-card-height,150px\)[^}]*grid-template-rows:18px auto 22px[\s\S]*\.cot-garage-map-preview,\.cot-garage-camo-preview\{[^}]*aspect-ratio:16\/9;[^}]*background-size:cover[\s\S]*body\[data-cot-panels='overlay'\] \.cot-garage-tools\{\s*display:flex;left:max\(var\(--cot-overlay-edge\),env\(safe-area-inset-left\)\);right:auto;\s*top:calc\(76px \+ var\(--cot-room-row-space,0px\)\);bottom:auto[\s\S]*body\[data-cot-panels='overlay'\] \.cot-garage-preview-card\{\s*height:var\(--cot-preview-card-height\);min-height:0;flex:0 0 auto/,
-  'map and camouflage cards must share one bounded anatomy and preserve widescreen preview proportions');
+  /<div class="cot-lt-band"><div class="cot-lt-loadout eqrow"[\s\S]*?<div class="cot-lt-paint"/,
+  'every layout keeps the equipment slots and the paint in view under the name');
+assert.match(garageSource, /class="cot-c-btn cot-c-btn--icon cot-lt-paint-all" data-garage-panel="appearance"/,
+  'the band\'s last swatch opens every paint');
+assert.match(garageSource, /data-deploy-pic aria-hidden="true"[\s\S]*data-deploy-field aria-expanded="false"/,
+  'the battle card shows the battlefield and the Deploy screen\'s field chooses it');
+assert.doesNotMatch(garage, /cot-garage-tools|cot-garage-preview-card/, 'the folded tool cards stay gone');
 assert.match(garage,
   /--cot-roster-bottom:max\(8px,env\(safe-area-inset-bottom\)\);[\s\S]*--cot-country-bottom:calc\(var\(--cot-roster-bottom\) \+ var\(--cot-roster-height\) \+ var\(--cot-stack-gap\)\);[\s\S]*--cot-side-panel-bottom:calc\(var\(--cot-country-bottom\) \+ var\(--cot-country-height\) \+ var\(--cot-stack-gap\)\)/,
   'the roster, country rail, and side panels must share one non-overlapping stack contract');
 assert.match(garage,
-  /function refreshCompactMapPreview\(\): void[\s\S]*selected\.thumb[\s\S]*backgroundImage[\s\S]*function refreshCompactCamoPreview\(spec: GarageTankSpec, selectedPatternId: string\): void[\s\S]*compactCamoPreviews\.forEach[\s\S]*paintAutoCamoSwatch\(canvas, spec\)[\s\S]*paintCamoSwatch\(canvas, spec, previewPattern\)/,
-  'compact preview cards must render the selected map art and four deterministic camouflage swatches');
+  /function refreshBattlefield\(\): void[\s\S]*selected\.thumb[\s\S]*backgroundImage[\s\S]*function refreshBandPaint\(spec: GarageTankSpec, selectedPatternId: string\): void[\s\S]*paintBandSwatch\(canvas, spec,/,
+  'the battle card renders the selected map art and the band paints what the tank wears and its quick paints');
 assert.match(garage,
   /class="cot-compact-equipment-trigger"[\s\S]*data-garage-panel="equipment"[\s\S]*aria-controls="cot-garage-dossier"[\s\S]*data-garage-panel='equipment'\] \.stats>\.cot-loadout-section\{[\s\S]*display:block/,
   'compact garages must expose the real tank loadout slots through an accessible equipment drawer');
