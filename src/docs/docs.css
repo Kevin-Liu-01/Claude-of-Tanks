@@ -185,6 +185,27 @@ a{color:inherit}button{font:inherit;color:inherit}a:focus-visible,button:focus-v
   font:400 var(--fs-14)/1.25 var(--font-body);text-decoration:none}
 .dm-side a:not(.dm-home):hover{color:var(--ink-1)}
 .dm-side a[aria-current=page]{color:var(--ink-1);background:var(--accent-wash);box-shadow:var(--docs-side-on)}
+/* the manual's search (08 .side .search, docsSearch.ts): the field leads the shelf; while a query is typed its hits
+   take the shelf's place in the column */
+.dm-search{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.dm-search__field{display:flex;align-items:center;gap:8px;height:36px;padding:0 6px 0 10px;border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-3);cursor:text}
+.dm-search__field:focus-within{box-shadow:var(--ring-3);color:var(--ink-2)}
+.dm-search__field .doc-icon{width:16px;height:16px}
+.dm-search input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;font:400 var(--fs-13)/1 var(--font-body);color:var(--ink-1);outline:none}
+.dm-search input::placeholder{color:var(--ink-3)}
+.dm-search input::-webkit-search-cancel-button{display:none}
+.dm-search kbd{flex:none}
+.dm-search__status{margin:0;font:500 var(--fs-12)/1.3 var(--font-body);color:var(--ink-3)}
+.dm-search__status:empty{display:none}
+.dm-search__hits{display:flex;flex-direction:column;gap:2px}
+.dm-search__hits[hidden]{display:none}
+.dm-side a.dm-hit{flex-direction:column;align-items:stretch;gap:4px;min-height:0;padding:8px 10px;color:var(--ink-3)}
+.dm-hit b{font:600 var(--fs-14)/1.25 var(--font-display);color:var(--ink-1)}
+.dm-hit small{font:500 var(--fs-12)/1.2 var(--font-body);color:var(--ink-3)}
+.dm-hit span{font:400 var(--fs-13)/1.4 var(--font-body)}
+.dm-hit mark{background:none;color:var(--accent)}
+.dm-side a.dm-hit:hover,.dm-side a.dm-hit:focus-visible{color:var(--ink-2);background:var(--accent-wash);box-shadow:var(--docs-side-on);outline:none}
+.dm-side.is-searching>.dm-grp,.dm-side.is-searching>a:not(.dm-home){display:none}
 .dm-main{min-width:0}
 .dm-banner{position:relative;isolation:isolate;height:clamp(250px,33vh,360px);overflow:hidden;background:var(--surface-scene)}
 .dm-banner>picture,.dm-banner>picture>img,.dm-banner>img,.dm-banner>video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:50% 62%}
@@ -231,6 +252,7 @@ a{color:inherit}button{font:inherit;color:inherit}a:focus-visible,button:focus-v
   .dm-side{position:static;flex-direction:row;flex-wrap:nowrap;gap:6px;height:auto;overflow-x:auto;padding:10px var(--s4);box-shadow:var(--docs-side-edge)}
   .dm-home{margin:0;flex:none}
   .dm-grp{display:none}
+  .dm-search{display:none}
   .dm-side a:not(.dm-home){flex:none;padding:4px 12px;white-space:nowrap}
   .dm-body{grid-template-columns:minmax(0,1fr)}
   .dm-toc{display:none}

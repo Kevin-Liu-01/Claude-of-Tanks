@@ -419,6 +419,21 @@ function sectionMarkup(section: TopicSection, index: number, media?: TopicMedia)
     + `${media ? mediaFigure(media) : ''}</section>`;
 }
 
+/** The manual's search: its matching loads with the field's first focus, and ⌘K (Ctrl K elsewhere) goes to the field. */
+function mountSearchEntry(root: HTMLElement): void {
+  const input = root.querySelector<HTMLInputElement>('.dm-search input');
+  if (!input) return;
+  input.addEventListener('focus', () => { void import('./docsSearch.ts').then(({ mountDocsSearch }) => mountDocsSearch(root, input)); }, { once: true });
+  document.addEventListener('keydown', (event) => {
+    if (event.key.toLowerCase() !== 'k' || !(event.metaKey || event.ctrlKey) || event.altKey || !input.offsetParent) return;
+    event.preventDefault();
+    input.focus();
+    input.select();
+  });
+  const kbd = root.querySelector('.dm-search kbd');
+  if (kbd && !/Mac|iP(?:hone|ad|od)/.test(navigator.platform)) kbd.textContent = 'Ctrl K';
+}
+
 /** "On this page" follows the reader: the section crossing the top third of the screen is the current one. */
 function mountTocSpy(root: HTMLElement): void {
   const links = [...root.querySelectorAll<HTMLAnchorElement>('.dm-toc a[href^="#"]')];
@@ -462,8 +477,12 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver()): strin
   const neighbour = (topicId: TopicId | undefined, side: 'prev' | 'next'): string => (topicId
     ? `<a class="cot-c-btn cot-c-btn--ghost dm-pager__${side}" href="/docs/${topicId}"><span data-doc-icon="${topics[topicId].icon}"></span><span>${topics[topicId].label}</span></a>`
     : '');
+  // the search field leads the shelf (08 .side .search); docsSearch.ts fills its status and hits
+  const search = `<div class="dm-search" role="search"><label class="dm-search__field"><span data-doc-icon="search"></span>`
+    + `<input type="search" placeholder="${t('docs.search.placeholder')}" aria-label="${t('docs.search.label')}" aria-controls="dmSearchHits" autocomplete="off" spellcheck="false" enterkeyhint="search">`
+    + `<kbd class="cot-c-kbd" aria-hidden="true">⌘K</kbd></label><p class="dm-search__status" role="status"></p><div class="dm-search__hits" id="dmSearchHits" hidden></div></div>`;
   return `<div class="dm">`
-    + `<aside class="dm-side" aria-label="${t('docs.topic.navAria')}"><a class="dm-home" href="/docs"><span data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${shelves}</aside>`
+    + `<aside class="dm-side" aria-label="${t('docs.topic.navAria')}"><a class="dm-home" href="/docs"><span data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${search}${shelves}</aside>`
     + `<div class="dm-main"><header class="dm-banner">${topicHeroMarkup(topic.hero, t('docs.topic.heroAlt', { label: topic.label }), saving)}`
     + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="/docs">${t('publicNav.fieldManual')}</a><i aria-hidden="true">›</i>`
     + `<span>${groupLabel(group.key)}</span><i aria-hidden="true">›</i><span aria-current="page">${topic.label}</span></nav>`
@@ -495,6 +514,7 @@ function renderTopicPage(): void {
   const reference = REFERENCE_TOPICS.includes(slug);
   mountDocsIcons(root);
   mountTocSpy(root);
+  mountSearchEntry(root);
   const heroVideos = root.querySelectorAll<HTMLVideoElement>('video[data-media-player]');
   if (heroVideos.length) {
     void Promise.all([import('../presentation/mediaPlayer.ts'), import('../presentation/mediaPlayer.css')]).then(([{ mountMediaPlayers }]) => mountMediaPlayers(heroVideos,

@@ -14,6 +14,7 @@ interface DocsIconSpec {
 /** One typed visual vocabulary for the field manual. */
 export const DOCS_ICON_SPECS = Object.freeze({
   manual: { id: 'manual', tone: 'accent' },
+  search: { id: 'search', tone: 'steel' },
   github: { id: 'github', tone: 'steel' },
   fleet: { id: 'vehicle', tone: 'accent' },
   battlefields: { id: 'map', tone: 'accent' },
