@@ -1067,16 +1067,15 @@ body[data-cot-height='tall'] .cot-featured{display:block;}
 body[data-cot-width='laptop'] .cot-garage{
   --cot-garage-sidebar-width:clamp(232px,20vw,272px);
 }
-/* Laptop keeps every destination labelled; GitHub and the locale fold to icons, and below 1280 px Home and Record do too. */
-body[data-cot-width='laptop'] .cot-header-nav :is(.cot-github,.cot-locale-switcher) .nav-label{display:none}
+/* Laptop keeps the destinations labelled (Garage, Deploy, Gallery, Studio, Docs); GitHub, the locale and Record fold to
+   their glyphs, Record's count riding its corner. The width band decides it (responsiveLayout.ts), never a device-width
+   query: the narrowest laptop bar (1100 px) is the one that must fit. */
+body[data-cot-width='laptop'] .cot-header-nav :is(.cot-github,.cot-locale-switcher,.cot-record-trigger) .nav-label{display:none}
 body[data-cot-width='laptop'] .cot-header-nav .nv{padding-inline:var(--s2)}
 body[data-cot-width='laptop'] .cot-header-nav .cot-locale-switcher{width:34px;padding:0}
 body[data-cot-width='laptop'] .cot-header-nav .cot-locale-options{display:none}
-@media (max-width:1279px){
-  body[data-cot-width='laptop'] .cot-header-nav :is([data-nav='home'],.cot-record-trigger) .nav-label{display:none}
-  body[data-cot-width='laptop'] .cot-header-nav .record-badge{
-    position:absolute;right:-5px;top:-5px;min-width:14px;height:14px;padding:0 3px;font-size:var(--fs-11);
-  }
+body[data-cot-width='laptop'] .cot-header-nav .record-badge{
+  position:absolute;right:-5px;top:-5px;min-width:14px;height:14px;padding:0 3px;font-size:var(--fs-11);
 }
 body[data-cot-width='laptop'] .cot-leftcol{left:clamp(18px,2vw,30px)}
 body[data-cot-width='laptop'] .cot-garage-variant-menu{left:clamp(18px,2vw,30px)}
