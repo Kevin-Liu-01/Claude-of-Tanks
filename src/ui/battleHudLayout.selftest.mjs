@@ -315,9 +315,10 @@ try {
       'revive-x','revive-top','revive-scale','roster-wide-left','roster-wide-right'])
       assert.equal(touch.properties.has(`--hud-${name}`),false,`the touch layout writes no --hud-${name}`);
     assert.deepEqual([...touch.root.classList.set].sort(),['cot-hud'],'nor a class on the HUD root');
-    // main's rule: under the score at 12 % of the height (no instrument in the way), the alert 8 px under a 48 px detection
+    // main's rule: under the score at 12 % of the height (no instrument in the way), the alert 8 px under the detection's
+    // one 32 px row
     assert.equal(touch.properties.get('--hud-notice-top'),`${Math.floor(Math.max(62+8,768*.12))}px`);
-    assert.equal(touch.properties.get('--hud-alert-top'),`${Math.floor(Math.max(62+8,768*.12)+48+8)}px`);
+    assert.equal(touch.properties.get('--hud-alert-top'),`${Math.floor(Math.max(62+8,768*.12)+32+8)}px`);
     // the mouse layout of the same window plans and carries it (the check above is not blind)
     mouseNoticePlanWork.bands=-1;
     const mouse=harness();

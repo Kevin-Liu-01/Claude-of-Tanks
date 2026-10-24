@@ -46,8 +46,13 @@ export const ROOM_HOST_UNREACHABLE_TTL_MS = 3_000;
 export const ROOM_SIGNAL_MAX_BYTES = 8 * 1024;
 /** The browser-hosted authority emits a keyframe snapshot at least this often so any peer can become the host. */
 export const ROOM_MATCH_KEYFRAME_INTERVAL_MS = 2_000;
-/** The room polls the match host at this cadence while a match runs. */
-export const ROOM_MATCH_POLL_MS = 10_000;
+/**
+ * The room polls the match host at this cadence while a match runs; a p2p host reports at least this often. 30 s, not
+ * 10 (security audit 2026-10-22, NV-5/NV-9; Workers Free): every report is a billed Durable Object request, about 360
+ * an hour per running match at 10 s. A host that leaves or crashes is still found at once (its socket's grace, the
+ * peers' corroborated host_unreachable); only a host that stays connected and stops reporting waits out three.
+ */
+export const ROOM_MATCH_POLL_MS = 30_000;
 /** A match that has not answered two polls in a row is lost. */
 export const ROOM_MATCH_LOST_AFTER_POLLS = 2;
 /** Seat tokens issued at start are valid this long (reconnects through the whole match). */
