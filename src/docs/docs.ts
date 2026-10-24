@@ -5,7 +5,7 @@ import { mountDocsIcons } from './docsIcons.ts';
 
 mountDocsIcons();
 
-// The index's search: the field loads the manual's index with its first use (docsSearch.ts); ⌘K or Ctrl K focuses it.
+// The index's search: the field loads the manual's index with its first use (docsSearch.ts); Cmd K or Ctrl K focuses it.
 const searchHost = document.querySelector<HTMLElement>('[data-docs-search]');
 const searchInput = searchHost?.querySelector<HTMLInputElement>('input');
 if (searchHost && searchInput) {

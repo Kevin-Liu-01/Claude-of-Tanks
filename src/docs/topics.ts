@@ -388,7 +388,7 @@ function sectionMarkup(section: TopicSection, index: number, media?: TopicMedia)
     + `${media ? mediaFigure(media) : ''}</section>`;
 }
 
-/** The manual's search: its matching loads with the field's first focus, and ⌘K (Ctrl K elsewhere) goes to the field. */
+/** The manual's search: its matching loads with the field's first focus, and Cmd K (Ctrl K elsewhere) goes to the field. */
 function mountSearchEntry(root: HTMLElement): void {
   const input = root.querySelector<HTMLInputElement>('.dm-search input');
   if (!input) return;
@@ -454,7 +454,7 @@ export function topicPageMarkup(slug: TopicId, saving = stillDataSaver(), rich: 
   // the search field leads the shelf (08 .side .search); docsSearch.ts fills its status and hits
   const search = `<div class="dm-search" role="search"><label class="dm-search__field"><span data-doc-icon="search"></span>`
     + `<input type="search" placeholder="${t('docs.search.placeholder')}" aria-label="${t('docs.search.label')}" aria-controls="dmSearchHits" autocomplete="off" spellcheck="false" enterkeyhint="search">`
-    + `<kbd class="cot-c-kbd" aria-hidden="true">⌘K</kbd></label><p class="dm-search__status" role="status"></p><div class="dm-search__hits" id="dmSearchHits" hidden></div></div>`;
+    + `<kbd class="cot-c-kbd" aria-hidden="true">Cmd K</kbd></label><p class="dm-search__status" role="status"></p><div class="dm-search__hits" id="dmSearchHits" hidden></div></div>`;
   return `<div class="dm">`
     + `<aside class="dm-side" aria-label="${t('docs.topic.navAria')}"><a class="dm-home" href="${docsHref()}"><span data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${search}${shelves}</aside>`
     + `<div class="dm-main"><header class="dm-banner">${topicHeroMarkup(topic.hero, t('docs.topic.heroAlt', { label: topic.label }), saving)}`
