@@ -58,8 +58,20 @@ assert.match(garageSource, /e\.code === 'KeyI' && document\.body\.dataset\.cotPa
 assert.match(garageSource, /aria-orientation="horizontal"/, 'the station tabs are one horizontal row');
 assert.match(garageSource, /function fitReadout\(force = false\): void \{[\s\S]*?while \(density < 4 && statsEl\.scrollHeight > statsEl\.clientHeight \+ 1\) statsEl\.dataset\.density = READOUT_DENSITY\[\+\+density\];/,
   'the readout steps through its four densities until the station fits');
-assert.match(garageSource, /statsEl\.scrollTop = 0;\s*queueReadoutFit\(\);/, 'a station change refits the readout in the frame, not in the press');
-assert.match(garageSource, /else queueReadoutFit\(\);\s*requestAnimationFrame\(syncScrollFades\);/, 'a tank change refits the readout in the frame, not in the press');
+assert.match(garageSource, /activateTechnicalTab\(view\);\s*queueReadoutFit\(false, true\);/,
+  'a station change refits the readout and returns it to its top in the frame, not in the press');
+assert.match(garageSource, /else queueReadoutFit\(false, vehicleChanged\);\s*requestAnimationFrame\(syncScrollFades\);/,
+  'a tank change refits the readout (and a new tank returns it to its top) in the frame, not in the press');
+assert.match(garageSource, /fitReadout\(forced\);\s*if \(reset\) statsEl\.scrollTop = 0;/,
+  'the readout\'s scroll reset shares the fit\'s layout (click-perf-248: a scroll write in the press laid the Garage out)');
+assert.doesNotMatch(garageSource, /if \(vehicleChanged\) statsEl\.scrollTop = 0;/, 'no scroll write in a tank switch\'s press');
+// a folded layout's switch builds the overview's figures only; the dossier builds when it opens or the window unfolds
+assert.match(garageSource, /if \(dossierFolded\(\)\) \{\s*statsEl\.innerHTML = overviewSection\(spec, eqM, shells\);[\s\S]*?dossierStale = true;/,
+  'a folded switch leaves the hidden dossier for its press (click-perf-248)');
+assert.match(garageSource, /if \(next === 'equipment'\) renderStaleDossier\(\);/, 'opening the dossier builds it');
+assert.match(garageSource, /renderStaleDossier\(\);\s*fitReadout\(forced\);/, 'an unfolded window builds the dossier before its fit');
+assert.match(garageSource, /requestAnimationFrame\(\(\) => \{ cardsEl\.scrollLeft = 0; \}\);/,
+  'a nation switch returns the strip to its start in the frame, not in the press');
 assert.match(garageSource, /const key = `\$\{station\}\|\$\{statsFor\}\|\$\{window\.innerWidth\}x\$\{window\.innerHeight\}`;/,
   'a station, tank and window fitted before take their density from memory');
 assert.match(garageSource, /statsEl\.addEventListener\('load', \(\) => queueReadoutFit\(true\), true\);/, 'the technical drawing refits the readout as it loads');
