@@ -99,6 +99,15 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 /* Keep touch health inside the gap between thumbs; the old inline schematic
    width overrode the responsive HP-only width and hit the joystick. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-dp{left:270px}
+/* the status chips hug the panel's right edge at their own width: a strip the panel's width began 5 px off the joystick,
+   inside its 8 px margin, so the dock lifted it 102 px onto the alt-fire button (statusDockBottom) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-status{left:auto;right:0;width:auto}
+/* the narrow touch strip (112-150 px, phone, compact, tight): 32 px chips (status, not controls: their tooltip is the
+   tap), so the strip sits on the panel under the round buttons' labels (AUTO AIM, SCOPE end 12 px above it) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-status-box{
+  flex:0 0 32px;width:32px;height:32px;min-width:32px;min-height:32px;padding:4px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-status-box svg{
+  width:18px;height:18px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-dp{width:clamp(112px,30vw,150px)!important}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-width-density='narrow'][data-cot-orientation='portrait'] .cot-touch .autoaim{right:172px}
 /* Spectating has no driving/weapon actions. Keep just navigation and the
@@ -143,10 +152,10 @@ body:is(.cot-kc-live,.cot-si-report) :is(.cot-room-chat,.cot-touch,.cot-touch-ai
 /* One compact instrument strip. Every available system owns the same cell. */
 .cot-vehicle-controls{position:absolute;z-index:var(--hud-layer-controls);left:var(--hud-systems-left,12px);top:var(--hud-systems-top,80px);bottom:auto;transform:none;display:flex;gap:3px;max-width:var(--hud-systems-width,var(--hud-side-width,300px));padding:2px;border:0;border-radius:0;background:none;box-shadow:none;pointer-events:auto;overflow-x:auto;scrollbar-width:none;}
 .cot-vehicle-controls::-webkit-scrollbar{display:none;}
-.cot-vehicle-controls>button{pointer-events:auto;position:static!important;transform:none!important;flex:0 0 74px;width:var(--hud-tile-w,74px)!important;height:var(--hud-tile-h,32px)!important;min-width:0;min-height:32px;box-sizing:border-box;grid-template-columns:13px minmax(0,1fr) 13px;grid-template-rows:1fr;gap:2px;align-items:center;justify-items:center;padding:3px 2px;border:0;border-bottom:1px solid #b6c8d966;border-radius:var(--hud-tile-radius,0)!important;background:none;color:#c6d1d9;font:700 10px/1.15 var(--hud-font,system-ui);letter-spacing:.015em;text-transform:none;box-shadow:none;text-shadow:0 1px 3px #000,0 0 5px #000;}
+.cot-vehicle-controls>button{pointer-events:auto;position:static!important;transform:none!important;flex:0 0 74px;width:var(--hud-tile-w,74px)!important;height:var(--hud-tile-h,32px)!important;min-width:0;min-height:32px;box-sizing:border-box;grid-template-columns:13px minmax(0,1fr) 13px;grid-template-rows:1fr;gap:2px;align-items:center;justify-items:center;padding:3px 2px;border:0;border-bottom:1px solid #b6c8d966;border-radius:var(--hud-tile-radius,0)!important;background:none;color:#c6d1d9;font:700 10px/1.15 var(--hud-font,system-ui);letter-spacing:var(--battle-track-control);text-transform:none;box-shadow:none;text-shadow:var(--battle-control-label-halo);}
 .cot-vehicle-controls>.cot-auxiliary,.cot-vehicle-controls>.cot-special.show,.cot-vehicle-controls>.cot-jump.on{display:grid;}
 .cot-vehicle-controls>button[hidden],.cot-vehicle-controls>button[data-off],.cot-vehicle-controls[hidden]{display:none!important;}
-.cot-vehicle-controls>button.active{--hud-tile-on-edge:#c89a50;--hud-tile-on-mark:inset 0 -2px #efb84e;color:#ffdc94;border-color:var(--hud-tile-on-edge);background:none;box-shadow:var(--hud-tile-on-mark);}
+.cot-vehicle-controls>button.active{--hud-tile-on-edge:#c89a50;--hud-tile-on-mark:var(--battle-control-on);color:#ffdc94;border-color:var(--hud-tile-on-edge);background:none;box-shadow:var(--hud-tile-on-mark);}
 .cot-vehicle-controls>button:disabled{opacity:.64;}
 /* Owner 2026-10-17 (out of ammo): a spent launcher or magazine control is struck through in the danger ink, no text. */
 .cot-vehicle-controls>button.empty{color:var(--hud-muted);border-bottom-color:var(--hud-danger);background:none;box-shadow:none;}
