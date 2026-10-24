@@ -106,16 +106,28 @@ export function createTerrainContactSampler(
     }
     return flipped;
   }
+  // (perf-249, the battle-scale profile: the hulls' support solve is a quarter of a 16 v 16 step, and most of its samples
+  // fall on the cell the last one read) the last cell sampled, its four corners and its split (a ready vertex and a
+  // cell's split never change), and the last point: the battle's ground overlay asks the split of the very point it has
+  // just sampled (terrainDeformation.ts createDeformedHeightField)
+  let lastIx = -1, lastIz = -1, lastA = 0, lastB = 0, lastC = 0, lastD = 0, lastFlipped = false;
+  let lastX = NaN, lastZ = NaN;
   const sample = ((x: number, z: number): number => {
     if (!Number.isFinite(x) || !Number.isFinite(z)) return 0;
     if (x < -HALF || x > HALF || z < -HALF || z > HALF) return heightAt(x, z);
     const ix = cell(x), iz = cell(z);
     const u = (x - coordinates[ix]) / (coordinates[ix + 1] - coordinates[ix]);
     const v = (z - coordinates[iz]) / (coordinates[iz + 1] - coordinates[iz]);
-    const a = vertex(ix, iz), b = vertex(ix + 1, iz), c = vertex(ix, iz + 1), d = vertex(ix + 1, iz + 1);
-    return terrainCellHeight(a, b, c, d, u, v, flippedCell(ix, iz, a, b, c, d));
+    if (ix !== lastIx || iz !== lastIz) {
+      lastA = vertex(ix, iz); lastB = vertex(ix + 1, iz); lastC = vertex(ix, iz + 1); lastD = vertex(ix + 1, iz + 1);
+      lastFlipped = flippedCell(ix, iz, lastA, lastB, lastC, lastD);
+      lastIx = ix; lastIz = iz;
+    }
+    lastX = x; lastZ = z;
+    return terrainCellHeight(lastA, lastB, lastC, lastD, u, v, lastFlipped);
   }) as TerrainContactSampler;
   sample.cellFlippedAt = (x, z) => {
+    if (x === lastX && z === lastZ) return lastFlipped;
     if (!Number.isFinite(x) || !Number.isFinite(z) || x < -HALF || x > HALF || z < -HALF || z > HALF) return false;
     const ix = cell(x), iz = cell(z);
     return flippedCell(ix, iz, vertex(ix, iz), vertex(ix + 1, iz), vertex(ix, iz + 1), vertex(ix + 1, iz + 1));

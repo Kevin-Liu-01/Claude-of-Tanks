@@ -56,7 +56,10 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     post: { resetAdaptiveResolution: noop, render: () => calls.push('covered-frame') },
     garage: { hide: noop }, showroom: { stop: noop }, hud: null,
     setGarageSpots: noop, setGarageSunTrim: (enabled) => presentation.setSunTrim(enabled),
-    ensureFxBus: noop, ensureFullFleet: async () => {}, ensureWorld: () => acquisition,
+    // (perf-248) the build links its programs early unless the entry's time lights the lamps (studioLight.ts)
+    ensureFxBus: noop, ensureFullFleet: async () => {},
+    ensureWorld: (_id, _progress, options) => { calls.push(['early-programs', options?.earlyPrograms]); return acquisition; },
+    studioTimeFor: (_mapId, requested) => requested, studioTimeLightsLamps: (rendered) => rendered === 'dusk' || rendered === 'night',
     warmStudioPipeline: async () => {}, setWorldDormant: (value) => calls.push(['dormant', value]),
     setCamoBiome: noop, applyCamoPatterns: noop, sweepPool: noop, resetFx: noop,
     getWorld: () => world, actors: [], _v1: new THREE.Vector3(), _v2: new THREE.Vector3(),
@@ -126,6 +129,9 @@ async function scenario({ directBoot, priorWorld = null, fail = false, time = 'd
     return;
   }
   await pending;
+  assert.deepEqual(calls.find((entry) => Array.isArray(entry) && entry[0] === 'early-programs'),
+    ['early-programs', time !== 'dusk' && time !== 'night'],
+    'the build links its programs early unless the entry\'s time lights the lamps (their lights re-key every lit program)');
   const sunIndex = calls.findIndex((entry) => Array.isArray(entry) && entry[0] === 'sun');
   assert.ok(calls.indexOf('world-activated') < sunIndex);
   assert.strictEqual(calls[sunIndex][1], world.skyConfig, 'untrim restores the actual newly activated world');
@@ -164,6 +170,7 @@ await scenario({ directBoot: true });
 await scenario({ directBoot: false });
 await scenario({ directBoot: false, priorWorld: { mapId: 'desert', skyConfig: { sunIntensity: 5 } } });
 await scenario({ directBoot: false, time: 'sunset' });
+await scenario({ directBoot: false, time: 'night' });
 await scenario({ directBoot: true, fail: true });
 await scenario({ directBoot: false, reenter: true });
 console.log('studioEntry.selftest: actual cold, F8, warm-map replacement, failed acquisition, a re-entry during the load and Garage return ordering pass');

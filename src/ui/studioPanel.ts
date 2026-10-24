@@ -961,7 +961,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   mapRowThumb.className = 'th';
   mapRowThumb.alt = '';
   mapRowThumb.decoding = 'async';
-  mapRow.pick.append(mapRowThumb, el('span', 'nm', ''));
+  mapRow.pick.append(mapRowThumb, el('span', 'nm', t('studio.chooseBattlefield')));
   const lightRow = outlineRow(() => { productionPanel.activate('battlefield'); secLight.scrollIntoView({ block: 'nearest' }); });
   lightRow.pick.innerHTML = uiIconSVG('timeDay', 16);
   lightRow.pick.append(el('span', 'nm', ''), el('span', 'd', ''));
@@ -1740,7 +1740,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   for (const fps of [60, 30]) {
     const option = document.createElement('option');
     option.value = String(fps);
-    option.textContent = `${t('studio.film.fpsOption', { fps })} · 12 Mbps`;
+    option.textContent = t('studio.film.fpsBitrate', { fps, mbps: 12 });
     fpsSel.select.appendChild(option);
   }
   const recordBtn = kitButton(t('studio.recordVideo'), undefined, 'record');

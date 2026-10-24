@@ -72,6 +72,7 @@
 <symbol id="i-zoomIn"><path d="M15.5 15.5l5 5M17.5 10.5a7 7 0 1 1-14 0 7 7 0 1 1 14 0ZM10.5 7.5v6M7.5 10.5h6"/></symbol>
 <symbol id="i-zoomOut"><path d="M15.5 15.5l5 5M17.5 10.5a7 7 0 1 1-14 0 7 7 0 1 1 14 0ZM7.5 10.5h6"/></symbol>
 <symbol id="i-search"><path d="M15.5 15.5l5 5M17.5 10.5a7 7 0 1 1-14 0 7 7 0 1 1 14 0Z"/></symbol>
+<symbol id="i-filter"><path d="M3.5 5h17L14 12.5v6l-4 2v-8Z"/></symbol>
 <symbol id="i-battleBots"><path d="M5 8.5h14V19H5ZM12 8.5V5M10 4.5h4M9 12.5v1M15 12.5v1M9 16h6M2.5 12v3M21.5 12v3"/></symbol>
 <symbol id="i-battlePrivate"><path d="M5.5 10.5h13v10h-13ZM8 10.5V7.5L10 5h4l2 2.5v3M12 14v3"/></symbol>
 <symbol id="i-battleLan"><path d="M9.5 3.5h5v4h-5ZM3 16.5h5v4H3ZM16 16.5h5v4h-5ZM12 7.5V12M5.5 16.5V12h13v4.5"/></symbol>

@@ -160,7 +160,7 @@ assert.match(responsiveSurfaces,
 // owner 2026-10-22 (2a5d944a3f, "not centered in screen"): the plate sits on the true centre line and narrows to the lane
 // the corner controls leave it, instead of a fixed 294 px set 18 px off centre
 assert.match(responsiveSurfaces,
-  /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-top\{[\s\S]*left:50%;width:min\(294px,calc\(100vw - 2 \* \(max\(10px,env\(safe-area-inset-right\)\) \+ 146px\)\)\)[\s\S]*grid-template-columns:minmax\(62px,1fr\) 72px/,
+  /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-top\{[\s\S]*left:50%;width:min\(294px,calc\(100vw - 2 \* \(env\(safe-area-inset-right\) \+ 164px\)\)\)[\s\S]*grid-template-columns:minmax\(62px,1fr\) 72px/,
   'short landscape score plate must stay inside the lane between corner controls');
 assert.match(responsiveSurfaces,
   /data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-touch \.scope\{[\s\S]*bottom:105px/,
@@ -391,7 +391,7 @@ assert.match(responsiveSurfaces,
   /body\[data-cot-width='phone'\] #cot-diag\{[\s\S]*max-height:62dvh!important;overflow:auto!important/,
   'the compatibility diagnostics panel must stay bounded and scrollable on phones');
 assert.match(responsiveSurfaces,
-  /body\[data-cot-width='phone'\] #cot-ctxlost>div>div:first-child\{[\s\S]*letter-spacing:\.18em!important/,
+  /body\[data-cot-width='phone'\] #cot-ctxlost h2\{[\s\S]*overflow-wrap:anywhere/,
   'the graphics recovery title must reflow without overflowing small screens');
 assert.match(gallery, /\.toast\{[^}]*max-width:calc\(100vw - 24px\)[^}]*white-space:normal/,
   'Gallery feedback toasts must be viewport-bounded');

@@ -144,6 +144,9 @@ export function createArmorAimOverlay(): ArmorAimOverlayRuntime {
       if (!built || !owner) continue;
       const mesh = new THREE.Mesh(built.geometry, material);
       mesh.name = `armor_flashlight_${key}`;
+      // combat coordinates carry no rig scale (tools/rigid-hull-frame.mjs: the CR2/CR3 families' 1.1, the Improved's
+      // narrowing): the cells drawn under a scaled rig undo it
+      mesh.scale.set(1 / owner.scale.x, 1 / owner.scale.y, 1 / owner.scale.z);
       mesh.renderOrder = 92;
       mesh.visible = false;
       mesh.frustumCulled = true;

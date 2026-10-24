@@ -1,7 +1,9 @@
 // Tank hero cards, changed-only planner (CPU only): which ids need a new GPU tank layer and which
 // nations a new flag layer, and why. A card is fingerprinted by what it shows:
 //   - geometry: the tank's geometryHash in public/icons/tank-assets.json, which the combat-anatomy
-//     procedure keeps current for every geometry or profile change (genIcons);
+//     procedure keeps current for every geometry or profile change (genIcons). Since 244 it is the exterior
+//     fingerprint (tankAssets.ts exteriorFingerprint: only meshes a colour camera draws), so interior-only work
+//     (crew seats, fills, shadow proxies, hidden parts) never stales a card;
 //   - look: the sha256 of that tank's packaged angle render in the same manifest, which moves when
 //     its paint or markings move (genIcons renders the finished vehicle);
 //   - flag: the nation's flag code (src/ui/flagCodes.ts), its flag-icons SVG bytes and the flag policy;

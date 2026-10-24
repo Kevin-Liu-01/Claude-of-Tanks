@@ -1,6 +1,7 @@
 /**
- * studioFilmMux.ts — minimal, dependency-free containers for the Studio's
- * offline film export (WebCodecs output). Pure: Node-testable, no DOM.
+ * studioFilmMux.ts — minimal containers for the Studio's offline film export
+ * (WebCodecs output). Pure: Node-testable, no DOM; its one import is the
+ * catalog's translator, for the messages it throws (studio.error.*).
  *
  * - muxMp4: ISO BMFF with the movie box before the media ("fast start"):
  *   one H.264 video track (avc1 + avcC from the encoder's decoder config,
@@ -12,6 +13,7 @@
  * Both return an array of byte parts (header + the encoded chunks, not
  * copied) that a caller hands to `new Blob(parts)`.
  */
+import { t } from '../ui/i18n.ts';
 
 export interface MuxSample {
   readonly data: Uint8Array;
@@ -65,11 +67,11 @@ const u8 = (value: number): Bytes => Uint8Array.of(value & 0xff);
 const u16 = (value: number): Bytes => Uint8Array.of((value >>> 8) & 0xff, value & 0xff);
 const u24 = (value: number): Bytes => Uint8Array.of((value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff);
 function u32(value: number): Bytes {
-  if (!(value >= 0 && value <= 0xffffffff) || !Number.isInteger(value)) throw new RangeError(`u32 out of range: ${value}`);
+  if (!(value >= 0 && value <= 0xffffffff) || !Number.isInteger(value)) throw new RangeError(t('studio.error.u32Range', { value }));
   return Uint8Array.of((value >>> 24) & 0xff, (value >>> 16) & 0xff, (value >>> 8) & 0xff, value & 0xff);
 }
 function u64(value: number): Bytes {
-  if (!(value >= 0 && value <= Number.MAX_SAFE_INTEGER) || !Number.isInteger(value)) throw new RangeError(`u64 out of range: ${value}`);
+  if (!(value >= 0 && value <= Number.MAX_SAFE_INTEGER) || !Number.isInteger(value)) throw new RangeError(t('studio.error.u64Range', { value }));
   const high = Math.floor(value / 0x100000000), low = value % 0x100000000;
   return concat([u32(high), u32(low)]);
 }
@@ -183,9 +185,9 @@ export function mp4VideoTimescale(fps: number): number {
  * header block, then every video chunk, then every audio chunk.
  */
 export function muxMp4(video: Mp4VideoTrack, audio: MuxAudioTrack | null = null): Bytes[] {
-  if (!video.samples.length) throw new RangeError('A film needs at least one frame');
-  if (!video.samples[0].key) throw new RangeError('The first frame must be a keyframe');
-  if (!(Number.isInteger(video.fps) && video.fps > 0)) throw new RangeError('Constant integer frame rate required');
+  if (!video.samples.length) throw new RangeError(t('studio.error.filmEmpty'));
+  if (!video.samples[0].key) throw new RangeError(t('studio.error.firstKeyframe'));
+  if (!(Number.isInteger(video.fps) && video.fps > 0)) throw new RangeError(t('studio.error.constantRate'));
   const timescale = mp4VideoTimescale(video.fps), delta = 1000;
   const mediaDuration = video.samples.length * delta;
   const movieDuration = Math.round(video.samples.length * 1000 / video.fps);
@@ -228,7 +230,7 @@ export function muxMp4(video: Mp4VideoTrack, audio: MuxAudioTrack | null = null)
   const moovSize = build(0, 0).length;
   const dataStart = ftyp.length + moovSize + mdatHeaderSize;
   const moov = build(dataStart, dataStart + videoBytes);
-  if (moov.length !== moovSize) throw new Error('MP4 header size changed while patching offsets');
+  if (moov.length !== moovSize) throw new Error(t('studio.error.mp4Header'));
   const payload = videoBytes + audioBytes;
   const mdatHeader = large
     ? concat([u32(1), ascii('mdat'), u64(payload + 16)])
@@ -258,7 +260,7 @@ function ebmlSize(size: number): Bytes {
       return out;
     }
   }
-  throw new RangeError('EBML element too large');
+  throw new RangeError(t('studio.error.ebmlSize'));
 }
 
 function element(id: number, ...payload: Bytes[]): Bytes {
@@ -292,8 +294,8 @@ interface WebmVideoTrack {
 
 /** WebM with keyframe-aligned clusters and Cues; timestamps in milliseconds. */
 export function muxWebm(video: WebmVideoTrack, audio: MuxAudioTrack | null = null): Bytes[] {
-  if (!video.samples.length) throw new RangeError('A film needs at least one frame');
-  if (!video.samples[0].key) throw new RangeError('The first frame must be a keyframe');
+  if (!video.samples.length) throw new RangeError(t('studio.error.filmEmpty'));
+  if (!video.samples[0].key) throw new RangeError(t('studio.error.firstKeyframe'));
   const frameNs = Math.round(1e9 / video.fps);
   const frameMs = (index: number) => Math.round(index * 1000 / video.fps);
   const durationMs = video.samples.length * 1000 / video.fps;
@@ -347,7 +349,7 @@ export function muxWebm(video: WebmVideoTrack, audio: MuxAudioTrack | null = nul
     const parts: Bytes[] = [];
     for (const block of blocks) {
       const relative = block.ms - baseMs;
-      if (relative > 32767) throw new RangeError('WebM cluster too long');
+      if (relative > 32767) throw new RangeError(t('studio.error.webmCluster'));
       const prefix = concat([u8(0x80 | block.track), u16(relative & 0xffff), u8(block.key ? 0x80 : 0)]);
       parts.push(concat([u8(0xa3), ebmlSize(prefix.length + block.data.length), prefix]), block.data);
     }

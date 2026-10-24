@@ -40,12 +40,12 @@ export function spectatorSwitcherMarkup(): string {
       `<span class="cursor-hint" hidden>${t('spectator.releaseCursor')}</span>` +
     '</div></div>' +
     '<div class="switch" role="group" aria-label="' + t('spectator.switchGroupAria') + '">' +
-      '<button type="button" class="cycle prev" aria-keyshortcuts="A" aria-label="' + t('spectator.cyclePrevAria') + '">' +
+      '<button type="button" class="cycle prev" data-tip aria-keyshortcuts="A" aria-label="' + t('spectator.cyclePrevAria') + '">' +
         '<span class="cycle-icon" aria-hidden="true">' + uiIconSVG('chevronLeft', 13) + '</span>' +
         '<kbd aria-hidden="true">A</kbd>' +
       '</button>' +
       `<b class="idx" aria-label="${t('spectator.idxAria')}" hidden></b>` +
-      '<button type="button" class="cycle next" aria-keyshortcuts="D" aria-label="' + t('spectator.cycleNextAria') + '">' +
+      '<button type="button" class="cycle next" data-tip aria-keyshortcuts="D" aria-label="' + t('spectator.cycleNextAria') + '">' +
         '<kbd aria-hidden="true">D</kbd>' +
         '<span class="cycle-icon" aria-hidden="true">' + uiIconSVG('chevronRight', 13) + '</span>' +
       '</button>' +

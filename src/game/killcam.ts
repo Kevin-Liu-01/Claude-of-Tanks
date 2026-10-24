@@ -152,6 +152,7 @@ interface KillcamArmor extends Omit<ArmorEnvelope, 'modules' | 'crew'> {
   modules: KillcamModuleBox[];
   crew: KillcamCrewBox[];
   trackShapes?: TrackShape[];
+  collisionShells?: { hull?: readonly { min: Vec3Tuple; max: Vec3Tuple }[] };
 }
 
 interface KillcamSpec extends FleetTankSpec {
@@ -1049,9 +1050,9 @@ function proxMatForState(state: ModuleStateName): THREE.MeshLambertMaterial {
 // ---------------------------------------------------------------------------
 const KC_CSS = `
 .cot-kc{position:fixed;inset:0;z-index:60;pointer-events:none;display:none;isolation:isolate;
-  --kc-panel:rgba(7,12,16,.95);--kc-panel-hi:rgba(17,25,31,.96);
-  --kc-line:rgba(139,158,173,.3);--kc-line-soft:rgba(139,158,173,.16);
-  --kc-muted:#8b9aa6;--kc-text:#e7eef4;--kc-amber:#f2a536;--kc-red:#f05b50;
+  --kc-panel:var(--hud-plate-strong);--kc-panel-hi:var(--hud-plate-strong);
+  --kc-line:var(--line-3);--kc-line-soft:var(--line-2);
+  --kc-muted:var(--ink-3);--kc-text:var(--ink-1);--kc-amber:var(--accent);--kc-red:var(--team-enemy);
   font-family:${FONT_STACK};color:var(--kc-text);}
 .cot-kc.on{display:block;}
 .cot-kc *{box-sizing:border-box;margin:0;padding:0;}
@@ -1095,17 +1096,17 @@ body.cot-kc-live .cot-si-stats{visibility:hidden !important;}
 line.cot-kc-anim{animation-name:cotKcInLine;}
 @keyframes cotKcInLine{from{opacity:0;}to{opacity:.85;}}
 .cot-kc-micro{position:absolute;z-index:8;display:flex;align-items:center;gap:5px;white-space:nowrap;
-  background:linear-gradient(135deg,rgba(17,25,31,.92),rgba(6,10,14,.94));
-  border:1px solid var(--kc-line);border-left:2px solid #86a9bf;color:#b8d3e4;padding:2px 6px 3px;
-  font-family:${FONT_COND};font-weight:700;font-size:11px;
-  letter-spacing:.06em;text-transform:uppercase;line-height:1.2;
-  box-shadow:0 4px 12px rgba(0,0,0,.38);}
+  background:linear-gradient(135deg,var(--hud-plate),var(--hud-plate-strong));
+  border:1px solid var(--kc-line);border-left:2px solid var(--ink-3);color:var(--ink-2);padding:2px 6px 3px;
+  font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);
+  letter-spacing:var(--battle-track-status);text-transform:uppercase;line-height:1.2;
+  box-shadow:0 4px 12px oklch(from var(--surface-scene) l c h / .38);}
 .cot-kc-bart,.cot-kc-barb{position:absolute;left:0;right:0;height:9vh;}
-.cot-kc-bart{top:0;border-bottom:1px solid rgba(242,165,54,.18);
-  background:repeating-linear-gradient(90deg,transparent 0 63px,rgba(139,158,173,.035) 64px),
+.cot-kc-bart{top:0;border-bottom:1px solid oklch(from var(--accent) l c h / .18);
+  background:repeating-linear-gradient(90deg,transparent 0 63px,oklch(from var(--ink-3) l c h / .035) 64px),
     linear-gradient(180deg,rgba(1,4,6,.98),rgba(3,7,10,.78) 70%,transparent);}
-.cot-kc-barb{bottom:0;border-top:1px solid rgba(242,165,54,.16);
-  background:repeating-linear-gradient(90deg,transparent 0 63px,rgba(139,158,173,.03) 64px),
+.cot-kc-barb{bottom:0;border-top:1px solid oklch(from var(--accent) l c h / .16);
+  background:repeating-linear-gradient(90deg,transparent 0 63px,oklch(from var(--ink-3) l c h / .03) 64px),
     linear-gradient(0deg,#010304 38%,rgba(3,7,10,.82) 68%,transparent);}
 /* ENTRY / EXIT TRANSITIONS (killcam_endscreen r1): the replay never pops in a
    single frame. Entry: the letterbox bars SLIDE shut while title/annot/skip
@@ -1144,7 +1145,7 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc.now .cot-kc-skip{opacity:1;}
 .cot-kc.now .cot-kc-annot{opacity:1;transform:none;}
 .cot-kc-flash{position:absolute;inset:0;
-  background:radial-gradient(circle at 50% 52%,rgba(255,244,218,.78),rgba(242,165,54,.2) 34%,transparent 72%);
+  background:radial-gradient(circle at 50% 52%,oklch(from var(--ink-1) l c h / .78),oklch(from var(--accent) l c h / .2) 34%,transparent 72%);
   opacity:0;pointer-events:none;}
 .cot-kc-flash.go{animation:cotKcFlash var(--cot-motion-scene) var(--cot-ease-out) forwards;}
 @keyframes cotKcFlash{0%{opacity:calc(.62*var(--cot-flash-scale,1));}33%{opacity:calc(.28*var(--cot-flash-scale,1));}100%{opacity:0;}}
@@ -1155,10 +1156,10 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
   transition:opacity var(--cot-motion-scene) var(--cot-ease-out);
   -webkit-backdrop-filter:saturate(.62) contrast(1.05);
   backdrop-filter:saturate(.62) contrast(1.05);
-  background:radial-gradient(ellipse 80% 70% at 50% 50%,rgba(0,0,0,0) 50%,
+  background:radial-gradient(ellipse 80% 70% at 50% 50%,transparent 50%,
     rgba(6,8,11,.34) 84%,rgba(4,6,9,.5) 100%);}
 .cot-kc.grade .cot-kc-grade{opacity:1;}
-.cot-kc-fadeblk{position:fixed;inset:0;z-index:80;background:#000;opacity:0;
+.cot-kc-fadeblk{position:fixed;inset:0;z-index:80;background:var(--surface-scene);opacity:0;
   pointer-events:none;transition:opacity var(--cot-motion-slow) var(--cot-ease-out);}
 .cot-kc-fadeblk.in{opacity:1;}
 .cot-kc-fadeblk.lift{transition:opacity var(--cot-motion-base) var(--cot-ease-out);}
@@ -1166,132 +1167,133 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
    damage, distance — revealed during the x-ray hold in the Inter/amber HUD
    language. Right side; the armor annotation block owns the left. */
 .cot-kc-killer{position:absolute;z-index:9;right:28px;bottom:11.5vh;width:282px;
-  background:linear-gradient(145deg,var(--kc-panel-hi),var(--kc-panel) 62%,rgba(5,8,11,.97));
+  background:linear-gradient(145deg,var(--kc-panel-hi),var(--kc-panel) 62%,var(--hud-plate-strong));
   border:1px solid var(--kc-line);border-right:3px solid var(--kc-red);
-  box-shadow:0 16px 38px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.035);
-  padding:0 12px 10px;opacity:0;
+  box-shadow:0 16px 38px oklch(from var(--surface-scene) l c h / .58),inset 0 1px oklch(from var(--ink-1) l c h / .035);
+  padding:0 var(--s3) 10px;opacity:0;
   transform:translateY(10px);
   transition:opacity var(--cot-motion-slow) var(--cot-ease-out),
     transform var(--cot-motion-slow) var(--cot-ease-out);
   display:none;}
 .cot-kc-killer.on{display:block;}
 .cot-kc-killer.rv{opacity:1;transform:none;}
-.cot-kc-killer .kk{display:flex;align-items:center;gap:7px;padding:8px 0 6px;
-  border-bottom:1px solid var(--kc-line-soft);font-family:${FONT_COND};font-weight:700;font-size:11px;
-  letter-spacing:.14em;color:#ff8d83;text-transform:uppercase;}
-.cot-kc-killer .kk svg{color:var(--kc-red);filter:drop-shadow(0 0 5px rgba(240,91,80,.48));}
+.cot-kc-killer .kk{display:flex;align-items:center;gap:7px;padding:var(--s2) 0 6px;
+  border-bottom:1px solid var(--kc-line-soft);font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);
+  letter-spacing:.14em;color:var(--danger);text-transform:uppercase;}
+.cot-kc-killer .kk svg{color:var(--kc-red);filter:drop-shadow(0 0 5px oklch(from var(--team-enemy) l c h / .48));}
 .cot-kc-killer .nm{margin-top:7px;font-weight:700;font-size:14.5px;
-  letter-spacing:.01em;color:#f4f8fc;display:flex;align-items:center;gap:8px;}
+  letter-spacing:.01em;color:var(--ink-1);display:flex;align-items:center;gap:var(--s2);}
 .cot-kc-killer .nm .sil{width:50px;height:24px;flex:0 0 auto;padding:2px;
   background-repeat:no-repeat;background-position:center;background-size:contain;
-  filter:drop-shadow(0 1px 2px rgba(0,0,0,.7));
-  border:1px solid var(--kc-line-soft);background-color:rgba(139,158,173,.045);}
+  filter:drop-shadow(0 1px 2px oklch(from var(--surface-scene) l c h / .7));
+  border:1px solid var(--kc-line-soft);background-color:oklch(from var(--ink-3) l c h / .045);}
 .cot-kc-killer .nm .t{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;
   white-space:nowrap;}
 .cot-kc-killer .nm .t i{display:block;font-style:normal;font-family:${FONT_COND};
-  font-weight:700;font-size:11px;letter-spacing:.07em;color:#9fb0bf;
+  font-weight:700;font-size:var(--battle-fs-11);letter-spacing:.07em;color:oklch(from var(--ink-3) .75 c h);
   text-transform:uppercase;margin-top:1px;}
 .cot-kc-killer .rows{margin-top:7px;display:grid;grid-template-columns:1fr 1fr;
-  gap:3px 12px;border-top:1px solid var(--kc-line-soft);padding-top:6px;}
-.cot-kc-killer .kv{display:flex;justify-content:space-between;font-size:11px;
+  gap:3px var(--s3);border-top:1px solid var(--kc-line-soft);padding-top:6px;}
+.cot-kc-killer .kv{display:flex;justify-content:space-between;font-size:var(--battle-fs-11);
   color:var(--kc-muted);letter-spacing:.01em;}
 .cot-kc-killer .kv>span,.cot-kc-kv>span{display:flex;align-items:center;gap:5px;}
-.cot-kc-killer .kv>span svg,.cot-kc-kv>span svg{color:#71818d;}
-.cot-kc-killer .kv b{color:#ffd9a0;font-weight:700;font-family:${FONT_COND};
+.cot-kc-killer .kv>span svg,.cot-kc-kv>span svg{color:oklch(from var(--ink-3) .59 c h);}
+.cot-kc-killer .kv b{color:var(--accent-hi);font-weight:700;font-family:${FONT_COND};
   letter-spacing:-.01em;}
-.cot-kc-killer .kv.dmg b{color:#ffd166;font-size:12px;}
+.cot-kc-killer .kv.dmg b{color:var(--accent-hi);font-size:var(--battle-fs-12);}
 .cot-kc-killer .kv.w{grid-column:1/-1;}
 .cot-kc-title{position:absolute;z-index:10;top:1.3vh;left:50%;min-width:330px;
-  transform:translateX(-50%);text-align:center;padding:7px 28px 8px;
-  background:linear-gradient(90deg,transparent,rgba(6,11,15,.88) 18%,rgba(12,18,23,.94) 50%,rgba(6,11,15,.88) 82%,transparent);
-  border-bottom:1px solid rgba(242,165,54,.28);}
+  transform:translateX(-50%);text-align:center;padding:7px 28px var(--s2);
+  background:linear-gradient(90deg,transparent,var(--hud-plate) 18%,var(--hud-plate-strong) 50%,var(--hud-plate) 82%,transparent);
+  border-bottom:1px solid oklch(from var(--accent) l c h / .28);}
 .cot-kc-title::before,.cot-kc-title::after{content:"";position:absolute;bottom:-1px;width:48px;height:1px;
   background:var(--kc-amber);opacity:.78;}
 .cot-kc-title::before{left:16px;}.cot-kc-title::after{right:16px;}
-.cot-kc-title .tl{display:flex;align-items:center;justify-content:center;gap:8px;}
-.cot-kc-title .tl svg{color:var(--kc-amber);filter:drop-shadow(0 0 7px rgba(242,165,54,.26));}
+.cot-kc-title .tl{display:flex;align-items:center;justify-content:center;gap:var(--s2);}
+.cot-kc-title .tl svg{color:var(--kc-amber);filter:drop-shadow(0 0 7px oklch(from var(--accent) l c h / .26));}
 .cot-kc-title .t{font-family:${FONT_COND};font-weight:700;
-  font-size:15px;letter-spacing:.42em;color:#ffd59b;text-shadow:0 1px 10px rgba(0,0,0,.9);}
-.cot-kc-title .s{font-family:${FONT_COND};font-size:11px;font-weight:700;
-  letter-spacing:.08em;color:#9fadb8;margin-top:3px;text-transform:uppercase;
+  font-size:var(--battle-fs-15);letter-spacing:.42em;color:var(--accent-hi);text-shadow:0 1px 10px oklch(from var(--surface-scene) l c h / .9);}
+.cot-kc-title .s{font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;
+  letter-spacing:var(--track-label-s);color:var(--ink-3);margin-top:3px;text-transform:uppercase;
   }
 .cot-kc-skip{position:absolute;z-index:10;bottom:1.4vh;right:28px;display:flex;align-items:center;
-  gap:8px;font-family:${FONT_COND};font-weight:700;font-size:11px;letter-spacing:.07em;
-  color:#83919c;text-transform:uppercase;}
-.cot-kc-skip .ico{color:#a7b3bd;}
-.cot-kc-skip kbd{min-width:58px;padding:3px 6px 4px;border:1px solid var(--kc-line);
-  border-bottom-color:rgba(242,165,54,.5);background:rgba(13,20,25,.85);color:#c9d3db;
-  font:700 11px/1 ${FONT_COND};letter-spacing:.05em;text-align:center;}
+  gap:var(--s2);font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);letter-spacing:.07em;
+  color:var(--ink-3);text-transform:uppercase;}
+.cot-kc-skip .ico{color:oklch(from var(--ink-2) .76 c h);}
+.cot-kc-skip kbd{min-width:58px;padding:3px 6px var(--s1);border:1px solid var(--kc-line);
+  border-bottom-color:oklch(from var(--accent) l c h / .5);background:var(--hud-plate);color:var(--ink-2);
+  font:700 var(--battle-fs-11)/1 ${FONT_COND};letter-spacing:.05em;text-align:center;}
 .cot-kc-annot{position:absolute;z-index:9;left:28px;bottom:11.5vh;width:300px;
-  background:linear-gradient(145deg,var(--kc-panel-hi),var(--kc-panel) 62%,rgba(5,8,11,.97));
+  background:linear-gradient(145deg,var(--kc-panel-hi),var(--kc-panel) 62%,var(--hud-plate-strong));
   border:1px solid var(--kc-line);border-left:3px solid var(--kc-amber);
-  box-shadow:0 16px 38px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.035);padding:0 0 9px;}
+  box-shadow:0 16px 38px oklch(from var(--surface-scene) l c h / .58),inset 0 1px oklch(from var(--ink-1) l c h / .035);padding:0 0 9px;}
 .cot-kc-annot .hd{padding:7px 11px 6px;border-bottom:1px solid var(--kc-line-soft);}
 .cot-kc-annot .hd .m{display:flex;align-items:center;gap:6px;margin-bottom:3px;
-  font-family:${FONT_COND};font-size:11px;font-weight:700;letter-spacing:.07em;color:#8796a1;text-transform:uppercase;}
+  font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.07em;color:var(--ink-3);text-transform:uppercase;}
 .cot-kc-annot .hd .m svg{color:var(--kc-amber);}
 .cot-kc-annot .shellrow{display:flex;align-items:center;gap:7px;}
-.cot-kc-annot .shellrow>svg{color:#ffd49a;}
+.cot-kc-annot .shellrow>svg{color:var(--accent-hi);}
 .cot-kc-annot .hd .k{font-family:${FONT_COND};font-weight:700;
-  font-size:12.5px;letter-spacing:.08em;color:#ffd49a;}
-.cot-kc-annot .hd .w{font-size:11px;color:#bcc8d1;margin-top:2px;letter-spacing:0em;}
+  font-size:12.5px;letter-spacing:var(--track-label-s);color:var(--accent-hi);}
+.cot-kc-annot .hd .w{font-size:var(--battle-fs-11);color:var(--ink-2);margin-top:2px;letter-spacing:0em;}
+.cot-kc .kc-cut{display:inline-block;margin:0 3px;vertical-align:-1px}
 .cot-kc-rows{padding:6px 11px 0;display:grid;grid-template-columns:1fr 1fr;gap:3px 13px;}
-.cot-kc-kv{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--kc-muted);
+.cot-kc-kv{display:flex;justify-content:space-between;gap:var(--s2);font-size:var(--battle-fs-11);color:var(--kc-muted);
   letter-spacing:0em;}
-.cot-kc-kv b{color:#e4edf4;font-weight:700;font-family:${FONT_COND};letter-spacing:-.01em;}
+.cot-kc-kv b{color:var(--ink-1);font-weight:700;font-family:${FONT_COND};letter-spacing:-.01em;}
 /* r8: the pen row spans the card on ONE line (it wrapped into a mangled
    two-line label/value jumble); the ERA/screens qualifier is a suffix chip
    and a dim caption legends the number format once. */
 .cot-kc-kv.w{grid-column:1/-1;}
 .cot-kc-kv.pen b{white-space:nowrap;}
 .cot-kc-kv b .q{display:inline-block;margin-left:6px;padding:0 3px 1px;
-  border:1px solid currentColor;font-size:11px;letter-spacing:.05em;
+  border:1px solid currentColor;font-size:var(--battle-fs-11);letter-spacing:.05em;
   vertical-align:1.5px;line-height:1.25;font-weight:700;}
-.cot-kc-pencap{grid-column:1/-1;font-size:11px;color:#5f6d7a;letter-spacing:0em;
+.cot-kc-pencap{grid-column:1/-1;font-size:var(--battle-fs-11);color:var(--ink-4);letter-spacing:0em;
   text-align:right;margin-top:-2px;}
-.cot-kc-banner{margin:7px 11px 0;padding:4px 8px;text-align:center;display:none;
-  font-family:${FONT_COND};font-weight:700;font-size:11px;
-  letter-spacing:.18em;color:#ff8a7d;border:1px solid rgba(240,91,80,.55);
-  background:linear-gradient(135deg,#602719e8,#25130fed);box-shadow:inset 0 0 16px #ff9a3b18;}
-.cot-kc.ammo-racked .cot-kc-banner{padding:10px 14px;font-size:13px;color:#ffcc92;letter-spacing:.09em;}
-body[data-cot-width='phone'] .cot-kc.ammo-racked .cot-kc-banner{padding:7px 10px;font-size:11px;letter-spacing:.04em}
+.cot-kc-banner{margin:7px 11px 0;padding:var(--s1) var(--s2);text-align:center;display:none;
+  font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-11);
+  letter-spacing:.18em;color:var(--danger);border:1px solid oklch(from var(--danger) l c h / .55);
+  background:linear-gradient(135deg,oklch(from var(--danger) .35 .087 h / .91),var(--hud-plate));box-shadow:inset 0 0 16px oklch(from var(--accent) l c h / .094);}
+.cot-kc.ammo-racked .cot-kc-banner{padding:10px 14px;font-size:var(--battle-fs-13);color:var(--accent-hi);letter-spacing:.09em;}
+body[data-cot-width='phone'] .cot-kc.ammo-racked .cot-kc-banner{padding:7px 10px;font-size:var(--battle-fs-11);letter-spacing:.04em}
 .cot-kc-banner.on{display:flex;align-items:center;justify-content:center;gap:7px;}
 .cot-kc-labelhost{position:absolute;z-index:8;inset:0;overflow:hidden;}
 .cot-kc-label{position:absolute;white-space:nowrap;display:flex;align-items:center;gap:7px;
-  background:linear-gradient(135deg,rgba(18,26,32,.94),rgba(5,9,12,.96));
-  border:1px solid var(--kc-line);border-left:2px solid currentColor;padding:4px 8px 5px;
-  font-family:${FONT_COND};font-weight:700;font-size:12px;
+  background:linear-gradient(135deg,var(--hud-plate-strong),var(--hud-plate-strong));
+  border:1px solid var(--kc-line);border-left:2px solid currentColor;padding:var(--s1) var(--s2) 5px;
+  font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-12);
   letter-spacing:.09em;text-transform:uppercase;line-height:1.25;
-  box-shadow:0 7px 18px rgba(0,0,0,.5),inset 0 1px rgba(255,255,255,.025);}
+  box-shadow:0 7px 18px oklch(from var(--surface-scene) l c h / .5),inset 0 1px oklch(from var(--ink-1) l c h / .025);}
 .cot-kc-label .ico,.cot-kc-micro .ico{display:flex;align-items:center;color:currentColor;}
 .cot-kc-label .copy{display:block;min-width:0;}
 .cot-kc-label .main{display:block;}
-.cot-kc-label .s{display:block;font-size:11px;font-weight:700;letter-spacing:.01em;
-  color:#e8f0f6;}
-.cot-kc-label.ok{color:#8a97a3;border-color:var(--kc-line);border-left-color:currentColor;
-  background:linear-gradient(135deg,rgba(16,22,27,.82),rgba(5,8,11,.86));
-  box-shadow:0 4px 12px rgba(0,0,0,.34);font-weight:700;}
-.cot-kc-label.ok .s{color:#7d8a96;font-weight:600;}
+.cot-kc-label .s{display:block;font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.01em;
+  color:var(--ink-1);}
+.cot-kc-label.ok{color:var(--ink-3);border-color:var(--kc-line);border-left-color:currentColor;
+  background:linear-gradient(135deg,var(--battle-tip-plate),var(--hud-plate));
+  box-shadow:0 4px 12px oklch(from var(--surface-scene) l c h / .34);font-weight:700;}
+.cot-kc-label.ok .s{color:var(--ink-3);font-weight:600;}
 /* r8 near-miss tier (critic: the gray chip language read as a damaged-module
    callout): dashed border, smaller caps, one line, no leader dot — sits ON
    its organ like the micro identity tags, so it can never straddle the hull
    silhouette edge. Informational, never a casualty. */
-.cot-kc-label.nm{color:#9fb0bf;border:1px dashed rgba(150,166,180,.48);border-left:2px solid #758896;
-  background:rgba(7,12,16,.82);box-shadow:0 4px 12px rgba(0,0,0,.3);font-weight:700;font-size:11px;
+.cot-kc-label.nm{color:oklch(from var(--ink-3) .75 c h);border:1px dashed var(--line-control);border-left:2px solid oklch(from var(--ink-3) .62 c h);
+  background:var(--battle-tip-plate);box-shadow:0 4px 12px oklch(from var(--surface-scene) l c h / .3);font-weight:700;font-size:var(--battle-fs-11);
   letter-spacing:.05em;padding:2px 6px 3px;opacity:.85;}
 .cot-kc-label.nm .copy{display:flex;align-items:center;}
-.cot-kc-label.nm .s{display:inline;font-size:11px;font-weight:600;color:#788695;}
+.cot-kc-label.nm .s{display:inline;font-size:var(--battle-fs-11);font-weight:600;color:oklch(from var(--ink-3) .61 c h);}
 .cot-kc-dot{position:absolute;z-index:8;width:8px;height:8px;border-radius:1px;
   transform:translate(-50%,-50%) rotate(45deg);background:currentColor;box-shadow:0 0 10px currentColor;}
-.cot-kc-dot.ok{background:rgba(7,12,16,.8);border:1.5px solid currentColor;box-shadow:none;}
+.cot-kc-dot.ok{background:var(--battle-tip-plate);border:1.5px solid currentColor;box-shadow:none;}
 .cot-kc-dmg{position:absolute;z-index:8;display:flex;align-items:center;gap:7px;font-family:${FONT_COND};
-  font-weight:700;font-size:25px;color:#ffd166;
-  letter-spacing:.045em;text-shadow:0 2px 12px rgba(0,0,0,.9);
-  background:linear-gradient(135deg,rgba(22,27,28,.96),rgba(7,11,14,.96));
+  font-weight:700;font-size:25px;color:var(--accent-hi);
+  letter-spacing:.045em;text-shadow:0 2px 12px oklch(from var(--surface-scene) l c h / .9);
+  background:linear-gradient(135deg,var(--hud-plate-strong),var(--hud-plate-strong));
   border:1px solid var(--kc-line);border-right:3px solid var(--kc-amber);
-  box-shadow:0 9px 22px rgba(0,0,0,.52);padding:10px 10px 5px;line-height:1.1;}
-.cot-kc-dmg::before{content:attr(data-label);position:absolute;top:3px;right:9px;font:700 11px/1 ${FONT_COND};
-  letter-spacing:.07em;color:#8f9ca6;text-align:right;}
+  box-shadow:0 9px 22px oklch(from var(--surface-scene) l c h / .52);padding:10px 10px 5px;line-height:1.1;}
+.cot-kc-dmg::before{content:attr(data-label);position:absolute;top:3px;right:9px;font:700 var(--battle-fs-11)/1 ${FONT_COND};
+  letter-spacing:.07em;color:var(--ink-3);text-align:right;}
 .cot-kc-dmg .ico{color:var(--kc-amber);}
 .cot-kc-leader{position:absolute;z-index:7;inset:0;width:100%;height:100%;overflow:visible;}
 .cot-kc-flash{z-index:12;}
@@ -2471,13 +2473,15 @@ export function createKillCam(deps: KillcamDeps) {
     const cut = fresh > residual + 1;
     const qualifier = penetrationQualifier(event, fresh, residual, nominal);
     const value = residual > 0
-      ? `${cut ? `${fresh} → ` : ''}${residual}${nominal > 0 ? ` / ${nominal}` : ''} mm`
+      ? `${residual}${nominal > 0 ? ` / ${nominal}` : ''} mm`
       : '—';
     const row = appendReplayStat(d, t('killcam.stat.pen'), value, true);
+    // what the screens or ERA cut: the fresh roll, the sprite's chevron, then what reached the plate
+    if (cut && residual > 0) row.lastElementChild?.insertAdjacentHTML('afterbegin', `${fresh}${uiIconSVG('chevronRight', 10, 'currentColor', 'kc-cut')}`);
     row.classList.add('pen');
     appendPenetrationQualifier(row, qualifier);
     const legend = penetrationLegend(cut, qualifier, residual, nominal);
-    row.title = legend
+    row.dataset.tip = legend
       ? t('killcam.penTitle', { legend })
       : t('killcam.penTitleRoll');
     if (legend) el('div', 'cot-kc-pencap', d.rows).textContent = legend;
@@ -2527,7 +2531,11 @@ export function createKillCam(deps: KillcamDeps) {
     d.hdK.textContent = shellName
       ? `${event.shellType || ''} · ${shellName}`
       : (event.shellType || '');
-    d.hdW.textContent = `${attackerName || t('killcam.enemy')} → ${event.targetName || ''}`;
+    // attacker, the sprite's chevron, target (the names stay text nodes)
+    d.hdW.textContent = '';
+    d.hdW.append(attackerName || t('killcam.enemy'));
+    d.hdW.insertAdjacentHTML('beforeend', uiIconSVG('chevronRight', 10, 'currentColor', 'kc-cut'));
+    d.hdW.append(event.targetName || '');
     d.rows.textContent = '';
     if (pb.replayKind === 'collision') populateCollisionStats(d, event);
     else populateBallisticStats(d, event);
@@ -4626,8 +4634,15 @@ export function createKillCam(deps: KillcamDeps) {
   ): T {
     const dimensions = context.snap.targetEnt?.spec?.dims;
     if (!dimensions || box.turretLocal || box.gunFollow) return box;
-    const halfWidth = dimensions.widthM / 2 + 0.03;
-    const halfLength = (dimensions.hullLengthM || dimensions.overallLengthM * 0.8) / 2 + 0.08;
+    // 248: or the combat hull's own extent, where it outgrows the published dims (the CR2/CR3 families measure their
+    // hull in their 1.1-scaled vehicle frame, tools/rigid-hull-frame.mjs)
+    let hullHalfWidth = 0, hullHalfLength = 0;
+    for (const cell of context.armor.collisionShells?.hull ?? []) {
+      hullHalfWidth = Math.max(hullHalfWidth, -cell.min[0], cell.max[0]);
+      hullHalfLength = Math.max(hullHalfLength, -cell.min[2], cell.max[2]);
+    }
+    const halfWidth = Math.max(dimensions.widthM / 2, hullHalfWidth) + 0.03;
+    const halfLength = Math.max((dimensions.hullLengthM || dimensions.overallLengthM * 0.8) / 2, hullHalfLength) + 0.08;
     const min: Vec3Tuple = [
       Math.max(box.min[0], -halfWidth),
       Math.max(box.min[1], -0.05),

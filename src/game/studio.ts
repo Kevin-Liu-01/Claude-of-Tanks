@@ -11,7 +11,7 @@ import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
 import {
   STUDIO_TIMES, STUDIO_TIME_BANDS, isStudioTime, normalizeStudioLight, planStudioLight, studioElevationBand,
-  studioTimeFor, studioTimesFor, type StudioLight, type StudioTimeOfDay,
+  studioTimeFor, studioTimeLightsLamps, studioTimesFor, type StudioLight, type StudioTimeOfDay,
 } from './studioLight.ts';
 import { studioAuthoredSky } from './studioLightRuntime.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -233,7 +233,11 @@ interface StudioContext {
   showroom: { stop(): void };
   hfProxy: MovementHeightField;
   getWorld(): WorldRuntime | null;
-  ensureWorld(mapId: string, onProgress?: ProgressListener): Promise<WorldRuntime>;
+  /**
+   * `earlyPrograms` (perf-248): the build may link its subsystems' programs while it builds (map.ts submitBuiltPrograms).
+   * False when the light applied after the build adds the lamps' lights, which re-key every lit program.
+   */
+  ensureWorld(mapId: string, onProgress?: ProgressListener, options?: { readonly earlyPrograms?: boolean }): Promise<WorldRuntime>;
   setWorldDormant(dormant: boolean): void;
   /** Apply a Studio time of day and sun override over the active world (main.ts → studioLightRuntime). */
   prepareStudioAtmosphere?(time: StudioTimeOfDay, light?: StudioLight | null): Promise<unknown>;
@@ -3959,7 +3963,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   async function directProduction(options: ProductionOptions): Promise<ReturnType<typeof stateJson>> {
-    if (recording || loading || productionLoading) throw new Error('Finish the current Studio operation first');
+    if (recording || loading || productionLoading) throw new Error(t('studio.error.busy'));
     const preset = productionPreset(options.presetId);
     productionLoading = true;
     try {
@@ -3976,7 +3980,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function applyProductionCamera(rig: ProductionRigId): void {
     if (recording || loading) return;
     const actor = selected ?? actors[0];
-    if (!actor) throw new Error('Stage or select a tank first');
+    if (!actor) throw new Error(t('studio.error.selectTank'));
     pauseTimeline();
     leaveShotView();
     const p = actor.state.pos;
@@ -3988,8 +3992,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   /** Build an immediately recordable 15-second battle from the first two actors. */
   function directDuel(opts: { variant?: number } = {}) {
-    if (recording) throw new Error('Stop recording before replacing the storyboard');
-    if (actors.length < 2) throw new Error('Direct Duel needs at least two staged tanks');
+    if (recording) throw new Error(t('studio.error.stopRecordingStoryboard'));
+    if (actors.length < 2) throw new Error(t('studio.error.duelNeedsTwo'));
     const alpha = actors[0];
     const bravo = actors[1];
     const ax = alpha.pose.x; const az = alpha.pose.z;
@@ -4440,9 +4444,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    */
   function recordVideo(opts: VideoOptions = {}): Promise<VideoResult> {
     if (recording) return recording.promise;
-    if (filming) return Promise.reject(new Error('Finish the film render first'));
+    if (filming) return Promise.reject(new Error(t('studio.error.finishFilm')));
     if (typeof MediaRecorder === 'undefined' || !renderer.domElement.captureStream) {
-      return Promise.reject(new Error('This browser does not support Studio video recording'));
+      return Promise.reject(new Error(t('studio.error.recordUnsupported')));
     }
     const fps = Math.max(24, Math.min(60, Math.round(opts.fps || 60)));
     const mimeType = opts.mimeType || videoMimeType();
@@ -4529,7 +4533,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     });
     mediaRecorder.addEventListener('error', (event: Event) => {
       const error = 'error' in event ? event.error : null;
-      failRecording(error || new Error('Studio video recording failed'));
+      failRecording(error || new Error(t('studio.error.recordFailed')));
     });
     mediaRecorder.addEventListener('stop', () => {
       clearStartupTimer();
@@ -4566,7 +4570,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       mediaRecorder.start(50);
       session.startupTimer = setTimeout(() => {
         if (session.awaitingFirstChunk && recording === session) {
-          failRecording(new Error('Studio video encoder did not start. Please try recording again.'));
+          failRecording(new Error(t('studio.error.encoderNoStart')));
         }
       }, 10000);
       // The preflight render precedes MediaRecorder.start and may never become
@@ -4894,7 +4898,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * unless `download: false`).
    */
   function exportFilmFile(opts: FilmExportRequest = {}): Promise<FilmExportResult> {
-    if (filmExport) return Promise.reject(new Error('A film export is already running'));
+    if (filmExport) return Promise.reject(new Error(t('studio.error.exportRunning')));
     const busy = filmBusy();
     if (busy) return Promise.reject(new Error(busy));
     let settings: FilmSettings;
@@ -5039,7 +5043,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   /** Author the scene's `film` block (merged onto the current one); null removes it. */
   function setFilm(patch: FilmSettingsInput | null): FilmSettings | null {
-    if (filmRenderer.active) throw new Error('Finish the film render first');
+    if (filmRenderer.active) throw new Error(t('studio.error.finishFilm'));
     sceneFilm = patch === null ? null : normalizeFilm({ ...(sceneFilm ?? FILM_DEFAULTS), ...patch });
     return getFilm();
   }
@@ -5356,12 +5360,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     productionAspect(loadedFormat); // Validate before replacing any scene state.
     if (!opts.keepView) lookThrough = true; // an undo keeps the view it was given; a new scene looks through its shots
     const loadedFilm = json.film == null ? null : normalizeFilm(json.film);
-    if (filmRenderer.active) throw new Error('Finish the film render before loading a scene');
-    if (json.timeOfDay !== undefined && !isStudioTime(json.timeOfDay)) throw new RangeError('Unknown time of day');
+    if (filmRenderer.active) throw new Error(t('studio.error.finishFilmBeforeLoad'));
+    if (json.timeOfDay !== undefined && !isStudioTime(json.timeOfDay)) throw new RangeError(t('studio.error.unknownTime'));
     const loadedLight = normalizeStudioLight(json.light); // throws on a malformed block before any state changes
     const loadedPicture = resolvePicture(json.picture); // validate before replacing scene state
-    if (recording) throw new Error('Stop recording before loading a scene');
-    if (loading) throw new Error('studio.load already in flight');
+    if (recording) throw new Error(t('studio.error.stopRecordingLoad'));
+    if (loading) throw new Error(t('studio.error.loadInFlight'));
     loading = true;
     try {
       const yieldForFrameBudget = createFrameBudgetYielder(10);
@@ -5418,9 +5422,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * `light` (an object, or null to clear) to set the override with it. Space maps render their authored day.
    */
   async function setTimeOfDay(time: StudioTimeOfDay, light?: StudioLight | null): Promise<StudioTimeOfDay> {
-    if (!isStudioTime(time)) throw new RangeError('Unknown time of day');
-    if (recording) throw new Error('Stop recording before changing the light');
-    if (filming) throw new Error('Finish the film render first');
+    if (!isStudioTime(time)) throw new RangeError(t('studio.error.unknownTime'));
+    if (recording) throw new Error(t('studio.error.stopRecordingLight'));
+    if (filming) throw new Error(t('studio.error.finishFilm'));
     // a new time keeps the bearing and the headlights choice; its elevation band is its own
     const kept = studioLight ? normalizeStudioLight({ sunAzimuthDeg: studioLight.sunAzimuthDeg, headlights: studioLight.headlights }) : null;
     const nextLight = light !== undefined ? normalizeStudioLight(light) : time === timeOfDay ? studioLight : kept;
@@ -5433,9 +5437,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    * elevation is clamped into the current time's band (getLight().band).
    */
   async function setLight(patch: StudioLight | null): Promise<ReturnType<typeof getLight>> {
-    if (recording) throw new Error('Stop recording before changing the light');
-    if (filming) throw new Error('Finish the film render first');
-    if (patch !== null && (typeof patch !== 'object' || Array.isArray(patch))) throw new TypeError('Studio light must be an object or null');
+    if (recording) throw new Error(t('studio.error.stopRecordingLight'));
+    if (filming) throw new Error(t('studio.error.finishFilm'));
+    if (patch !== null && (typeof patch !== 'object' || Array.isArray(patch))) throw new TypeError(t('studio.error.lightObjectOrNull'));
     const next = patch === null ? null : normalizeStudioLight({ ...(studioLight ?? {}), ...patch });
     const mapId = getWorld()?.mapId ?? 'verdant';
     // keep the stored elevation inside the band so state() reports what renders
@@ -5479,7 +5483,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       progress(0.03, 'Surveying battlefield');
       await ensureWorld(id, (f: number, label: string) => {
         progress(0.03 + f * 0.86, label);
-      });
+      }, { earlyPrograms: !studioTimeLightsLamps(studioTimeFor(id, timeOfDay)) });
       setWorldDormant(false);
       // a space map renders its authored day; the requested time returns on the next terrestrial map
       await ctx.prepareStudioAtmosphere?.(timeOfDay, studioLight);
@@ -5625,7 +5629,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         timed('world', ensureWorld(mapId, (f: number, label: string) => {
           worldProgress = Math.max(worldProgress, f);
           report(label);
-        })),
+        }, { earlyPrograms: !studioTimeLightsLamps(studioTimeFor(mapId, timeOfDay)) })),
         timed('fx', warmStudioPipeline((f: number, label: string) => {
           fxProgress = Math.max(fxProgress, f);
           report(label);
@@ -5657,7 +5661,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       p(0.96, 'Positioning camera');
       // default vantage: over the player spawn, looking across the field
       const w = getWorld();
-      if (!w) throw new Error(`Studio world '${mapId}' was not activated`);
+      if (!w) throw new Error(t('studio.error.worldNotActivated', { map: mapId }));
       const sp = w.spawnPoints.player;
       _v2.set(sp.pos[0], sp.pos[1], sp.pos[2]);
       camera.position.set(
@@ -5939,7 +5943,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     exit,
     /** Offline export: monotonic fixed steps, no wall clock or MediaRecorder frame drops. */
     advanceFrame(ms: number) {
-      if (recording || filming || !Number.isFinite(ms) || ms < 0 || ms > 1000) throw new RangeError('Invalid export step');
+      if (recording || filming || !Number.isFinite(ms) || ms < 0 || ms > 1000) throw new RangeError(t('studio.error.invalidExportStep'));
       timeScale = 0;
       if (!flareOnExportClock) { flareOnExportClock = true; post.lensFlare?.setClock?.(() => clockMs); }
       advanceTimeline(ms);
@@ -5983,7 +5987,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     get ambience() { return fxSettings.ambience; },
     cinematicStats: () => cinematics?.stats() ?? null,
     setMap: (id: string) => recording || filming
-      ? Promise.reject(new Error(filming ? 'Finish the film render first' : 'Stop recording before changing battlefield'))
+      ? Promise.reject(new Error(t(filming ? 'studio.error.finishFilm' : 'studio.error.stopRecordingMap')))
       : setMap(id),
     get active() { return active; },
     /** The Studio entered and every tank's builder in (the scripted addActor's precondition; load() needs only its own). */
@@ -6229,7 +6233,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const scenePath = sceneLinkPath(urlParam('scene'));
     if (!scenePath) return null;
     const scene = fetch(scenePath).then((response) => {
-      if (!response.ok) throw new Error(`${scenePath}: HTTP ${response.status}`);
+      if (!response.ok) throw new Error(t('studio.error.sceneHttp', { path: scenePath, status: response.status }));
       return response.json() as Promise<StudioSceneInput>;
     }).catch((err: RuntimeValue) => {
       console.error('[studio] scene link failed', err);

@@ -122,7 +122,6 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   closeButton.type = 'button';
   closeButton.className = 'cot-facet-close';
   closeButton.setAttribute('aria-label', t('fleet.filter.close'));
-  closeButton.title = t('fleet.filter.close');
   closeButton.innerHTML = uiIconSVG('close', 18);
 
   // Search: the field shows its icon and placeholder; the facet grammar is its description, not a paragraph.
@@ -135,7 +134,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
   input.spellcheck = false;
   input.enterKeyHint = 'search';
   input.placeholder = t('fleet.filter.searchPlaceholder');
-  input.title = t('fleet.filter.searchHint');
+  input.dataset.tip = t('fleet.filter.searchHint');
   input.setAttribute('aria-label', t('fleet.filter.search'));
   input.setAttribute('aria-describedby', 'cot-garage-facets-hint');
   const hint = document.createElement('span');
@@ -174,7 +173,7 @@ export function mountGarageFacetPanel(host: GarageFacetHost): GarageFacetPanel {
       button.className = 'cot-facet-option';
       button.dataset.facet = group;
       button.dataset.value = value;
-      if (view.title !== view.label) button.title = view.title;
+      if (view.title !== view.label) button.dataset.tip = view.title;
       // constant glyph markup (vehicleFacetIcons.ts / uiIcons.ts); the label and count are text nodes
       button.innerHTML = view.glyph;
       const name = document.createElement('span');

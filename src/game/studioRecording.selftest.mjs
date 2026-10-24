@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {stripTypeScriptTypes} from 'node:module';
+import {t} from '../ui/i18n.ts';
 
 // Exercise the real recording functions with a controlled browser encoder.
 // Event order and failure injection are independent of production internals.
@@ -24,7 +25,7 @@ function fixture() {
   }
   const track=()=>{const t={stopped:false,stop(){this.stopped=true;},requestFrame(){if(throwAt==='requestFrame')throw Error('requestFrame');if(++submitted===chunkAfter)encoders.at(-1).chunk();}};tracks.push(t);return t;};
   const make=new Function('ports',`
-    const {MediaRecorder,renderer,performance,setTimeout,clearTimeout,document,post}=ports;
+    const {MediaRecorder,renderer,performance,setTimeout,clearTimeout,document,post,t}=ports;
     let recording=null,timeScale=0,clockMs=0,filming=false;
     const storyboard={durationMs:15000},videoMimeType=()=> 'video/webm';
     const rail={updateVisibility(){}},lighting={update(){},updateFrustums(){}},panel={tick(){},refreshStoryboard(){},refreshTime(){},drawSelection(){}},grabShotThumbnail=()=>{},reverseRate=0,stepReverseShuttle=()=>{};
@@ -36,7 +37,8 @@ function fixture() {
     ${tickFunction}
     return {recordVideo,stopRecording,frame:(dt=1/60,wall=dt)=>tick(dt,wall),perf,clockValue:()=>clockMs,state:()=>({active:!!recording,timeScale}),clock:t=>{clockMs=t;}};
   `);
-  const api=make({MediaRecorder:Recorder,renderer:{domElement:{captureStream(){const t=track();return {getTracks:()=>[t],getVideoTracks:()=>[t]};}}},
+  // the Studio's messages come from the catalog (studio.error.*): the sandbox reads them through the real translator
+  const api=make({t,MediaRecorder:Recorder,renderer:{domElement:{captureStream(){const t=track();return {getTracks:()=>[t],getVideoTracks:()=>[t]};}}},
     performance:{now:()=>now},setTimeout(fn){timers.set(++timerId,fn);return timerId;},clearTimeout(id){timers.delete(id);},
     document:{createElement(){return {click(){downloads++;}}}},post:{render(){if(throwAt==='render')throw Error('render');}}});
   return {...api,frame:(dt=1/60,wall=dt)=>{now+=wall*1000;api.frame(dt,wall);},encoders,tracks,timers,throwAt:x=>{throwAt=x;},tick:()=>{for(const fn of [...timers.values()])fn();},

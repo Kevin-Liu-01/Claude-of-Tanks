@@ -4,15 +4,23 @@
 // tools/anatomy-floor-blame.mjs, which must see the hull exactly as the anatomy measured it.
 import * as THREE from 'three';
 
+// 248 (the turret-scale lane; the coordinator's CR2 combat-frame ruling): a hull rig carrying a uniform scale (the
+// Challenger 2 and 3 families' 1.1, scaleChallenger2Family/scaleChallenger3Family) is measured the same way. Their turret
+// pivot, gun, track contact and track hitboxes are already in the scaled vehicle frame; measured under the scaled rig, the
+// hull's cells, plates, modules and crew stations were 10% small and 15.5 cm under the turret's ring.
 export function rigidHullFrame(tank, id) {
-  if (id !== 'leo2_improved') return;
   const hullRig = tank.root.getObjectByName('rig_hull');
-  const widthTransform = new THREE.Matrix4().makeScale(hullRig.scale.x, 1, 1);
+  const scale = hullRig?.scale;
+  const uniform = scale && Math.abs(scale.x - 1) > 1e-6 && Math.abs(scale.y - scale.x) < 1e-9 && Math.abs(scale.z - scale.x) < 1e-9;
+  if (id !== 'leo2_improved' && !uniform) return;
+  const transform = id === 'leo2_improved' ? new THREE.Matrix4().makeScale(scale.x, 1, 1)
+    : new THREE.Matrix4().makeScale(scale.x, scale.y, scale.z);
   for (const child of hullRig.children) {
     if (child.matrixAutoUpdate) child.updateMatrix();
-    child.matrix.premultiply(widthTransform);
+    child.matrix.premultiply(transform);
     child.matrixAutoUpdate = false;
   }
-  hullRig.scale.x = 1;
+  if (id === 'leo2_improved') hullRig.scale.x = 1;
+  else hullRig.scale.set(1, 1, 1);
   tank.root.updateMatrixWorld(true);
 }

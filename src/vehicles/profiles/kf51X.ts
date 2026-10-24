@@ -306,7 +306,11 @@ export function buildKF51X(P: TankBuilderPort): void {
     hullRing(-3.60,1.61,1.86045,1.02930),hullRing(-3.51,1.61,1.827,.92091),
     hullRing(-3.365,1.61,1.827,.74638),hullRing(-3.322,1.61,1.827,.74638),
     hullRing(-2.973,1.61,1.827,.4699),
-    hullRing(-2.33,1.61,1.827,.47),hullRing(-1.00,1.61,1.761,.47),
+    // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the engine deck's rise starts at -1.48,
+    // 2.0 m off the ring's axis, past the sweep of the turret's cheeks (1.673), and climbs to its 1.827 plateau at -2.33
+    // under the bustle (1.844 there). It rose from -1.00 to 1.761, and the cheeks ran 11 cm through it at every rear
+    // bearing.
+    hullRing(-2.33,1.61,1.827,.47),hullRing(-1.48,1.61,1.66,.47),
     hullRing(-.845,1.61,1.603,.47),hullRing(1.47,1.61,1.603,.47),
     hullRing(2.447,1.61,1.420,.47),hullRing(3.005,1.61,1.366,.52),
     hullRing(3.745,1.61,1.234,1.06),hullRing(3.85,.95,1.225,1.16),
@@ -320,9 +324,10 @@ export function buildKF51X(P: TankBuilderPort): void {
   // aesthetic stations collided with the unchanged wheels at full stroke.
   },[-1.81915,-.25325,1.21905,1.9664],0,.90));
   pantherSkirts(P);
+  // (release 240: the grille fields 3.5 cm lower, under the bustle's 1.844 rear underside as it turns)
   for(const x of[-.53,.53]){
-    P.addEquipment('hullDark',box(.88,.024,1.07),x,1.843,-2.86);
-    for(let j=0;j<14;j++)P.addEquipment('hullDetail',box(.83,.014,.036),x,1.864,-3.34+j*.074);
+    P.addEquipment('hullDark',box(.88,.024,1.07),x,1.808,-2.86);
+    for(let j=0;j<14;j++)P.addEquipment('hullDetail',box(.83,.014,.036),x,1.829,-3.34+j*.074);
   }
   P.addEquipment('hullDetail',box(.54,.050,.68),-.57,1.505,2.12,.18);
   for(let i=0;i<3;i++){

@@ -39,27 +39,27 @@
       },
       "juggernaut": {
         "en-US": "Juggernaut", "zh-CN": "重装巨兽",
-        "keys": ["playMenu.matchMode.juggernaut.label", "hud.objective.juggernaut"],
+        "keys": ["playMenu.matchMode.juggernaut.label"],
         "short": { "en-US": "Juggernaut", "zh-CN": "巨兽", "keys": ["playMenu.matchMode.juggernaut.short"] }
       },
       "infected": {
         "en-US": "Infected", "zh-CN": "感染模式",
-        "keys": ["playMenu.matchMode.infected.label", "hud.objective.infected"],
+        "keys": ["playMenu.matchMode.infected.label"],
         "short": { "en-US": "Infected", "zh-CN": "感染", "keys": ["playMenu.matchMode.infected.short"] }
       },
       "realistic": {
         "en-US": "Realistic", "zh-CN": "真实模式",
-        "keys": ["playMenu.matchMode.realistic.label", "hud.objective.realistic"],
+        "keys": ["playMenu.matchMode.realistic.label"],
         "short": { "en-US": "Realistic", "zh-CN": "真实", "keys": ["playMenu.matchMode.realistic.short"] }
       },
       "gun_game": {
         "en-US": "Gun Game", "zh-CN": "武器进阶",
-        "keys": ["playMenu.matchMode.gun_game.label", "hud.objective.gun_game"],
+        "keys": ["playMenu.matchMode.gun_game.label"],
         "short": { "en-US": "Gun Game", "zh-CN": "进阶", "keys": ["playMenu.matchMode.gun_game.short"] }
       },
       "drone": {
         "en-US": "Drone", "zh-CN": "无人机",
-        "keys": ["playMenu.matchMode.drone.label", "hud.objective.drone"],
+        "keys": ["playMenu.matchMode.drone.label"],
         "short": { "en-US": "Drone", "zh-CN": "无人机", "keys": ["playMenu.matchMode.drone.short"] }
       },
       "ac130": {
