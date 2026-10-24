@@ -227,6 +227,7 @@ export function createTransition(): TransitionScreen {
       activeFadeOutMs = quick ? QUICK_FADE_OUT_MS : FADE_OUT_MS;
       visible = true;
       shownAt = performance.now();
+      root.style.transition = '';
       root.classList.remove('out');
       root.classList.toggle('quick', quick);
       root.classList.add('on');
@@ -248,6 +249,7 @@ export function createTransition(): TransitionScreen {
       if (skipTransitions() || !visible) return;
       const token = ++hideToken;
       visible = false;
+      root.style.transition = '';
       root.classList.add('out');
       root.classList.remove('lit');
       const fadeOutMs = activeFadeOutMs;
@@ -275,7 +277,12 @@ export function createTransition(): TransitionScreen {
       try {
         // A nominal timer can expire before CSS has painted its final frame,
         // especially if GPU/program work delayed the transition's first frame.
-        await waitForOpaqueTransition(root, { isCurrent });
+        // (transitions-250) a fade a loaded main thread has not finished by the deadline is cut to opaque, not failed:
+        // an exit that threw here never landed
+        await waitForOpaqueTransition(root, { isCurrent, forceOpaque: () => {
+          root.style.transition = 'none';
+          root.classList.add('lit');
+        } });
         if (!isCurrent()) throw new DOMException('Transition cover was superseded', 'AbortError');
         // Covered work may render the destination explicitly. Never carry the
         // old-frame hold into that work, the dwell, or the new scene's reveal.
