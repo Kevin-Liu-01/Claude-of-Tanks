@@ -10,7 +10,7 @@
    "hostSweep": []
   },
   "aft10": {
-   "inputHash": "a3b08ec454d9c8ae",
+   "inputHash": "8e2e24dda9bf4a20",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -22,13 +22,13 @@
    "hostSweep": []
   },
   "amx10p": {
-   "inputHash": "1acb45850d711e6e",
+   "inputHash": "f8bed4a6bf5cc54b",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "amx10p_25": {
-   "inputHash": "3115c546caf669a6",
+   "inputHash": "d4c3fd876d678228",
    "runs": [
     {
      "index": 0,
@@ -79,7 +79,7 @@
    "hostSweep": []
   },
   "amx30": {
-   "inputHash": "6bab429025ce52fb",
+   "inputHash": "3f56b02a6f849417",
    "runs": [
     {
      "index": 0,
@@ -102,7 +102,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.978,
-      "host": "hull<buildAMX30HullStage1@profiles/misc.ts:3390>"
+      "host": "hull<buildAMX30HullStage1@profiles/misc.ts:3393>"
      }
     }
    ],
@@ -116,7 +116,7 @@
    "hostSweep": []
   },
   "amx30b2": {
-   "inputHash": "9454f53b0991a18b",
+   "inputHash": "d4a16ee02504854d",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -169,7 +169,7 @@
    "hostSweep": []
   },
   "bmp2": {
-   "inputHash": "f76107e5cde6832c",
+   "inputHash": "be3b5ce956134a9a",
    "runs": [
     {
      "index": 0,
@@ -192,7 +192,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.922,
-      "host": "hull<buildBMP2@modern3.ts:3951>"
+      "host": "hull<buildBMP2@modern3.ts:3968>"
      }
     }
    ],
@@ -200,7 +200,7 @@
    "hostSweep": []
   },
   "bmp3": {
-   "inputHash": "12198739709aeab8",
+   "inputHash": "9e9ba2538706ed52",
    "runs": [
     {
      "index": 0,
@@ -229,7 +229,7 @@
    "hostSweep": []
   },
   "bmp3_rok": {
-   "inputHash": "a8272855a9d0e55c",
+   "inputHash": "7ceb179b62afa92b",
    "runs": [
     {
      "index": 0,
@@ -253,7 +253,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.944,
-      "host": "hull<buildBMP2@modern3.ts:3951>"
+      "host": "hull<buildBMP2@modern3.ts:3968>"
      }
     }
    ],
@@ -261,13 +261,13 @@
    "hostSweep": []
   },
   "bmp3m_dragun125": {
-   "inputHash": "807449f931d949be",
+   "inputHash": "f2a7f0a7887b6b66",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "bmpt_t90": {
-   "inputHash": "c1b98a27319028a0",
+   "inputHash": "6dc3e894daa1f55e",
    "runs": [
     {
      "index": 0,
@@ -305,11 +305,11 @@
       "carried on its rack"
      ],
      "measures": {
-      "support": 0.111,
-      "gap": 0.889,
+      "support": 0.13,
+      "gap": 0.87,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.025,
+      "sunkMaxM": 0.039,
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.967,
