@@ -64,7 +64,7 @@
   "dardo": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"62ed431f483d5bad","gun":"a1a6cc888b0f1686"}},
   "fv4034": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"5d2628a938f845e3","gun":"7f7c8c024ccff7a7"}},
   "fv510": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"07ffc480b422429a","gun":"4e2680d154adc2ce"}},
-  "fv510_milan": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"ff6f0af37eebcb47","gun":"be81c89a0dc32a5c"}},
+  "fv510_milan": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"65b76e62ffca3e38","gun":"be81c89a0dc32a5c"}},
   "griffin50mm": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"3e34dd434c026bbb","gun":"270bcb47e600e433"}},
   "griffin_viper": {"status":"launcher","kind":"none","mouths":0,"geometry":{"turret":"d906378c26912160","gun":"253bbdb9d8dcb290"}},
   "hayate_ifv": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"4f75ef75e250af9b","gun":"0fde77489f8a11b4"}},

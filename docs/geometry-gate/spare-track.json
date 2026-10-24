@@ -128,7 +128,7 @@
    "hostSweep": []
   },
   "amx40_proto": {
-   "inputHash": "128f83fbc4544de6",
+   "inputHash": "61c390b752cd202e",
    "runs": [
     {
      "index": 0,
@@ -846,7 +846,7 @@
    "hostSweep": []
   },
   "fv510_milan": {
-   "inputHash": "ec977e414eba19f3",
+   "inputHash": "65ab62fe8715c388",
    "runs": [
     {
      "index": 0,
@@ -3903,13 +3903,13 @@
    "hostSweep": []
   },
   "type90_kyumaru": {
-   "inputHash": "9597bf720d93ecf5",
+   "inputHash": "f77f826da6841da5",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "type90a": {
-   "inputHash": "4faa3f99355e8b79",
+   "inputHash": "657a6abede8316a5",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
