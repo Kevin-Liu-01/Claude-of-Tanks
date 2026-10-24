@@ -28,13 +28,15 @@ const savingData = (): boolean => {
 type MediaPlayerModule = typeof import('./mediaPlayer.ts');
 let media: MediaPlayerModule | null = null;
 const pageVideos = document.querySelectorAll<HTMLVideoElement>('video[data-media-player], video[data-autoplay-video]');
-if (pageVideos.length) {
-  void Promise.all([import('./mediaPlayer.ts'), import('./mediaPlayer.css')]).then(([module]) => {
+const videoLabels = (playing: boolean, video: HTMLVideoElement): string => t(playing ? 'publicPages.video.pauseAria'
+  : 'publicPages.video.playAria', { label: video.dataset.i18nLabel ? t(video.dataset.i18nLabel) : video.dataset.label || '' });
+const mediaModule = pageVideos.length
+  ? Promise.all([import('./mediaPlayer.ts'), import('./mediaPlayer.css')]).then(([module]) => {
     media = module;
-    module.mountMediaPlayers(pageVideos, (playing, video) => t(playing ? 'publicPages.video.pauseAria'
-      : 'publicPages.video.playAria', { label: video.dataset.i18nLabel ? t(video.dataset.i18nLabel) : video.dataset.label || '' }));
-  });
-}
+    module.mountMediaPlayers(pageVideos, videoLabels);
+    return module;
+  })
+  : null;
 const savingPictures = savingData() ? import('./responsivePicture.ts') : null;
 void savingPictures?.then(({ applyDataSaverStills }) => applyDataSaverStills(document, true));
 
@@ -143,44 +145,10 @@ function mountVersusFilter(section: HTMLElement): void {
 
 document.querySelectorAll<HTMLElement>('#versus').forEach(mountVersusFilter);
 
-interface FleetFeature {
-  readonly name: string; readonly flag: string; readonly tier: string; readonly cal: number; readonly pen: number;
-  readonly tank: readonly [string, string]; readonly banner: readonly [string, string]; readonly place: string;
-  readonly anatomy: string; readonly drive: string;
-}
-
-// The landing's fleet wall (03): pointing at or focusing a tank's take shows its hero card, flag and facts on the
-// featured plate; the take itself opens the vehicle's Gallery dossier. The plate's box never changes size.
-function mountFleetFeature(section: HTMLElement): void {
-  const plate = section.querySelector<HTMLElement>('[data-fleet-feature]');
-  const tiles = [...section.querySelectorAll<HTMLAnchorElement>('a[data-feature]')];
-  if (!plate || !tiles.length) return;
-  const fact = <T extends Element>(name: string): T | null => plate.querySelector<T>(`[data-fact="${name}"]`);
-  const show = (tile: HTMLAnchorElement): void => {
-    let feature: FleetFeature;
-    try { feature = JSON.parse(tile.dataset.feature || '') as FleetFeature; } catch { return; }
-    for (const other of tiles) other.classList.toggle('is-featured', other === tile);
-    fact<HTMLSourceElement>('banner-set')?.setAttribute('srcset', feature.banner[0]);
-    fact<HTMLImageElement>('banner')?.setAttribute('src', feature.banner[1]);
-    fact<HTMLSourceElement>('tank-set')?.setAttribute('srcset', feature.tank[0]);
-    const tank = fact<HTMLImageElement>('tank');
-    if (tank) { tank.setAttribute('src', feature.tank[1]); tank.setAttribute('style', feature.place); }
-    const name = fact<HTMLElement>('name');
-    if (name) name.textContent = feature.name;
-    plate.querySelector('.fleet-feature__flag use')?.setAttribute('href', `#f-${feature.flag}`);
-    const values: Record<string, string> = { tier: feature.tier, caliber: String(feature.cal), penetration: String(feature.pen) };
-    for (const [key, value] of Object.entries(values)) { const node = fact<HTMLElement>(key); if (node) node.textContent = value; }
-    fact<HTMLAnchorElement>('anatomy')?.setAttribute('href', feature.anatomy);
-    fact<HTMLAnchorElement>('drive')?.setAttribute('href', feature.drive);
-  };
-  for (const tile of tiles) {
-    tile.addEventListener('pointerenter', () => show(tile));
-    tile.addEventListener('focus', () => show(tile));
-  }
-  tiles[0].classList.add('is-featured');
-}
-
-document.querySelectorAll<HTMLElement>('#fleet').forEach(mountFleetFeature);
+// The landing's fleet wall (03): its plate, the playing take's progress and the facets load beside the page
+// (homeFleet.ts), so the other public pages and the landing's first bytes carry none of it.
+const fleetSection = document.querySelector<HTMLElement>('#fleet');
+if (fleetSection) void import('./homeFleet.ts').then(({ mountFleet }) => mountFleet(fleetSection, mediaModule, videoLabels));
 
 // The battlefields rail (03): the landscape options show the maps of that landscape, the first of them leading.
 function mountMapFilter(section: HTMLElement): void {

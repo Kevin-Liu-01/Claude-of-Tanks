@@ -103,10 +103,33 @@ button{font:inherit;color:inherit}
 /* ---- 03 the fleet wall: twelve takes around the featured vehicle's plate ---- */
 .fleet{padding:var(--s7) 0 var(--s8)}
 .fleet-wall{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+/* the wall's facets (03 .facets): All, the nations' flags and the classes, the search at the row's end, the count */
+.fleet-facets{display:flex;align-items:center;gap:6px;min-width:0;margin-bottom:12px}
+.fleet-facets__set{display:flex;align-items:center;gap:6px}
+.fleet-facets__set+.fleet-facets__set{margin-left:var(--s3)}
+.fleet-facets .cot-c-flag{display:block}
+.fleet-search{display:flex;align-items:center;gap:8px;width:250px;height:30px;margin-left:auto;padding:0 10px;border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-3);cursor:text}
+.fleet-search:focus-within{box-shadow:var(--ring-3);color:var(--ink-2)}
+.fleet-search input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;font:400 var(--fs-13)/1 var(--font-body);color:var(--ink-1);outline:none}
+.fleet-search input::placeholder{color:var(--ink-3)}
+.fleet-search input::-webkit-search-cancel-button{display:none}
+.fleet-count{flex:none;margin:0;font:500 var(--fs-13)/1 var(--font-data);color:var(--ink-3)}
+.fleet-count:empty{display:none}
+@media (width < 1100px){.fleet-facets{flex-wrap:wrap}.fleet-search{order:1;flex:1 1 100%;width:auto;margin-left:0}}
+@media (width < 768px){.fleet-facets__set{flex-wrap:wrap}.fleet-facets__set+.fleet-facets__set{margin-left:0}}
 .fleet-tile{display:block;aspect-ratio:16/9;text-decoration:none}
+/* a filtered wall's empty cells (fleetWall.ts): the desktop grid keeps its three rows; the narrow ones close up */
+.fleet-gap{aspect-ratio:16/9}
+@media (width < 1100px){.fleet-gap{display:none}}
 .fleet-tile>video{opacity:0;transition:opacity var(--dur-screen) var(--ease-enter)}
 .fleet-tile>video.has-frame{opacity:1}
 .fleet-tile:hover,.fleet-tile:focus-visible,.fleet-tile.is-featured{outline:none;box-shadow:var(--home-pick-ring)}
+/* the playing take's progress (03): publicPages.ts sets the loop's length and position as it plays */
+.fleet-tile__progress{position:absolute;left:0;right:0;bottom:0;height:2px;overflow:hidden;background:var(--fill-scale);opacity:0;pointer-events:none;transition:opacity var(--dur-fast) var(--ease-enter)}
+.fleet-tile__progress i{display:block;height:100%;background:var(--accent);transform:scaleX(0);transform-origin:left center}
+.fleet-tile.is-playing .fleet-tile__progress{opacity:1}
+.fleet-tile.is-playing .fleet-tile__progress i{animation:fleet-progress var(--loop-s) linear var(--loop-at) infinite}
+@keyframes fleet-progress{to{transform:scaleX(1)}}
 .fleet-tile__id{position:absolute;left:10px;right:10px;bottom:9px;display:flex;align-items:center;gap:7px;min-width:0}
 .fleet-tile__id .cot-c-sil{width:34px;height:11px;color:var(--ink-1);filter:var(--sil-shadow)}
 .fleet-tile__id b{overflow:hidden;font:700 var(--fs-13)/1 var(--font-display);text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap;color:var(--ink-1)}
@@ -341,7 +364,7 @@ html[lang^='zh'] :is(h1,h2,h3,.v5-mode--hero h3){line-height:1.15}
   .vs-tile--mid,.vs-tile--sm{grid-column:span 6}
   .fleet-wall{grid-template-columns:repeat(3,minmax(0,1fr))}
   .fleet-feature{grid-column:1 / -1;grid-row:auto;order:-1}
-  .fleet-feature__art{min-height:300px}
+  .fleet-feature__art{flex:none;height:300px;min-height:0}
   .bf-rail{grid-auto-columns:calc((100% - 20px) / 2.6)}
   .v5-social-proof__intro{grid-template-columns:1fr;align-items:start}
   .v5-social-proof__x-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -394,7 +417,7 @@ html[lang^='zh'] :is(h1,h2,h3,.v5-mode--hero h3){line-height:1.15}
   .vs-tile--big .vs-tile__meta{left:14px;right:14px;bottom:12px;gap:10px}
   .vs-row2{flex-direction:column;align-items:flex-start;gap:10px}
   .fleet-wall{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .fleet-feature__art{min-height:220px}
+  .fleet-feature__art{height:220px}
   .bf-rail{grid-auto-columns:72vw}
   :is(.v5-authored,.v5-trailers,.v5-multiplayer,.v5-rails,.v5-modes,.v5-mechanics,.v5-evidence,.v5-mosaic,.v5-film,.v5-split,.v5-destruction,.v5-cta) h2{font-size:var(--fs-36)}
   .v5-social-proof h2{font-size:var(--fs-28)}
@@ -432,5 +455,6 @@ html[lang^='zh'] :is(h1,h2,h3,.v5-mode--hero h3){line-height:1.15}
   .cot-media-toggle{top:14px;left:14px}
 }
 @media(hover:hover) and (pointer:fine){.v5-social-card:hover,.v5-reddit-grid article:hover{box-shadow:var(--e2)}.v5-social-card:hover::after{opacity:.34;transform:scale(1.03)}}
+@media(prefers-reduced-motion:reduce){.fleet-tile__progress{display:none}}
 @media(prefers-reduced-motion:reduce){.v5-social-card,.v5-social-card::after,.v5-reddit-grid article{transition:none}html{scroll-behavior:auto}.v5-social-card::after{transform:none}.vs-tile__film,.fleet-tile>video,.v5-shot-progress span,.v5-trailer figcaption,.v5-shot-controls button{transition:none}}
 }

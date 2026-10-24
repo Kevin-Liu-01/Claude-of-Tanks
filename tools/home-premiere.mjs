@@ -15,12 +15,17 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { flagMarkup, iconMarkup } from '../src/presentation/publicShell.ts';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
+import '../src/vehicles/tankFactory.ts';
+import { getSpec } from '../src/vehicles/specs.ts';
+import { CONCEPT_PROTOTYPE_CLASS_FILTER, CONCEPT_PROTOTYPE_FILTER_META, VEHICLE_CLASS_META, vehicleFacetSearchWords, vehicleFacetsForId }
+  from '../src/vehicles/vehicleFacets.ts';
 import { MAP_IDS } from '../src/world/maps/mapIds.ts';
 import { mapRegionTags, regionTagIcon } from '../src/ui/regionTags.ts';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const json = (path) => JSON.parse(readFileSync(join(ROOT, path), 'utf8'));
 const EN = json('src/ui/i18nCatalog.en-US.json');
+const ZH = json('src/ui/i18nCatalog.zh-CN.json');
 const ASSETS = json('public/icons/tank-assets.json').tanks;
 const HERO = json('public/icons/hero/hero-cards.json');
 const FILMS = new Map(json('public/media/versus-films-r1/manifest.json').items.map((item) => [item.id, item]));
@@ -173,20 +178,89 @@ function heroLayers(id, a) {
 const takeKey = (take) => `media.site50.title.${camel(take.take)}`;
 const PLATE_SIZES = '(width < 1100px) 100vw, 34vw';
 const pen = (a) => Math.max(0, ...(a.gun?.shells ?? []).map((s) => Number(s.pen100Mm) || 0));
-function fleetBlock() {
-  const cards = FLEET.map((take) => {
-    const entry = TAKES.vehicles[take];
-    if (!entry) throw new Error(`home-premiere: no fleet take ${take}`);
-    const id = TANK_IDS.resolve(take, String(TAKES.tankIdSchema ?? 1));
-    const a = tank(id);
-    return { id, a, take: entry, hero: heroLayers(id, a) };
+// the direction's crew, weight and top speed: the spec's crew volumes and mobility figures (the Gallery's dossier reads them too)
+function mobility(id) {
+  const spec = getSpec(id);
+  const crew = spec.armor?.crew?.length ?? 0, weight = Number(spec.weightTons) || 0, speed = Number(spec.topSpeedKmh) || 0;
+  if (!crew || !weight || !speed) throw new Error(`home-premiere: ${id} has no crew, weight or top speed`);
+  return { crew, weight: String(Math.round(weight * 10) / 10), speed: Math.round(speed) };
+}
+// ---- 03 .facets: the fleet wall's nation and class chips and its search --------------------------------------------
+// Every vehicle with a fleet take, in src/presentation/fleetWall.json for fleetWall.ts (which loads with the first chip
+// or keystroke): its tile, its plate facts and the Garage's facet-search entry (vehicleFacets.ts, vehicleFacetSearch.ts),
+// with the English and Chinese words of its name, nation and facets. The curated twelve lead, in their order.
+const WALL_JSON = join(ROOT, 'src/presentation/fleetWall.json');
+const NATION_ORDER = ['us', 'gb', 'de', 'fr', 'ru', 'ua', 'cn', 'kr', 'jp', 'il', 'it', 'se', 'pl'];
+/** The class chips: the classes the takes fill (others answer `class:` in the search), and concept-and-prototype. */
+const WALL_CLASSES = ['mbt', 'ifv', 'light', 'td', CONCEPT_PROTOTYPE_CLASS_FILTER];
+const classMeta = (value) => (value === CONCEPT_PROTOTYPE_CLASS_FILTER ? CONCEPT_PROTOTYPE_FILTER_META : VEHICLE_CLASS_META[value]);
+const lower = (value) => String(value || '').toLocaleLowerCase('en-US');
+function fleetCard(take, entry) {
+  const id = TANK_IDS.resolve(take, String(TAKES.tankIdSchema ?? 1));
+  const a = tank(id);
+  return { id, a, take: entry, hero: heroLayers(id, a), m: mobility(id) };
+}
+/** The plate's facts of one vehicle (publicPages.ts FleetFeature): what a tile shows when it is pointed at. */
+const feature = (c) => ({ name: c.a.name, flag: c.a.countryCode, tier: c.a.tierNumeral, cal: c.a.gun?.caliberMm ?? 0,
+  pen: pen(c.a), crew: c.m.crew, weight: c.m.weight, speed: c.m.speed, tank: c.hero.tank, banner: c.hero.flag, place: c.hero.place,
+  anatomy: galleryHref(c.id, 'modules').replace(/&amp;/g, '&'), drive: driveHref(c.id).replace(/&amp;/g, '&') });
+let wall = null;
+function fleetWall() {
+  if (wall) return wall;
+  const curated = FLEET.map((take) => [take, TAKES.vehicles[take]]);
+  const rest = Object.entries(TAKES.vehicles).filter(([take]) => !FLEET.includes(take));
+  const cards = [...curated, ...rest].map(([take, entry]) => fleetCard(take, entry));
+  const rank = (c) => NATION_ORDER.indexOf(c.a.countryCode);
+  const ordered = [...cards.slice(0, FLEET.length), ...cards.slice(FLEET.length)
+    .sort((x, y) => rank(x) - rank(y) || y.a.tier - x.a.tier || x.a.name.localeCompare(y.a.name))];
+  const records = ordered.map((c) => {
+    const facets = vehicleFacetsForId(c.id);
+    if (!facets) throw new Error(`home-premiere: ${c.id} has no class, role or status (src/vehicles/vehicleFacets.ts)`);
+    const nationKey = `nation.${c.a.nation}`;
+    const nationTerms = [...new Set([c.a.nation, c.a.markings?.countryLabel, c.a.countryCode, ZH[nationKey]].filter(Boolean).map(lower))];
+    const words = [c.a.name, ...(c.a.label?.searchAliases ?? []), ...nationTerms, c.a.era, `tier ${c.a.tier}`, c.a.tierNumeral,
+      vehicleFacetSearchWords(facets, (key) => EN[key] ?? key), vehicleFacetSearchWords(facets, (key) => ZH[key] ?? key)];
+    return {
+      id: c.id, name: c.a.name, flag: c.a.countryCode, href: galleryHref(c.id).replace(/&amp;/g, '&'), poster: c.take.poster, loop: c.take.loop, title: c.take.title,
+      // each word once (the facet labels and their aliases repeat across the English and Chinese words)
+      entry: { searchText: [...new Set(lower(words.join(' ')).split(/\s+/).filter(Boolean))].join(' '), facets, era: c.a.era, nationTerms, tier: c.a.tier },
+      feature: feature(c),
+    };
   });
-  const feature = (c) => JSON.stringify({ name: c.a.name, flag: c.a.countryCode, tier: c.a.tierNumeral, cal: c.a.gun?.caliberMm ?? 0,
-    pen: pen(c.a), tank: c.hero.tank, banner: c.hero.flag, place: c.hero.place,
-    anatomy: galleryHref(c.id, 'modules').replace(/&amp;/g, '&'), drive: driveHref(c.id).replace(/&amp;/g, '&') });
+  wall = { cards: ordered, records };
+  return wall;
+}
+const wallJson = () => `[\n${fleetWall().records.map((record) => JSON.stringify(record)).join(',\n')}\n]\n`;
+function fleetFacets() {
+  const { cards } = fleetWall();
+  // each flag's nation name: the name its vehicles carry most (the catalog's nation.* key)
+  const nationOf = (code) => {
+    const counts = new Map();
+    for (const c of cards) if (c.a.countryCode === code) counts.set(c.a.nation, (counts.get(c.a.nation) ?? 0) + 1);
+    return [...counts].sort((x, y) => y[1] - x[1])[0]?.[0];
+  };
+  const nations = NATION_ORDER.filter((code) => nationOf(code)).map((code) => {
+    const key = `nation.${nationOf(code)}`;
+    return `<button class="cot-c-chip cot-c-chip--compact" type="button" aria-pressed="false" data-fleet-nation="${code}" aria-label="${esc(text(key))}" data-i18n-aria-label="${key}">${flag(code, 'sm')}</button>`;
+  }).join('');
+  const classes = WALL_CLASSES.map((value) => `<button class="cot-c-chip" type="button" aria-pressed="false" data-fleet-class="${value}">${t(classMeta(value).shortKey)}</button>`).join('');
+  const count = String(cards.length);
+  return `<div class="fleet-facets">`
+    + `<button class="cot-c-chip" type="button" aria-pressed="true" data-fleet-all>${t('camoTag.all')}</button>`
+    + `<div class="fleet-facets__set" role="group" aria-label="${esc(text('home.fleet.nationAria'))}" data-i18n-aria-label="home.fleet.nationAria">${nations}</div>`
+    + `<div class="fleet-facets__set" role="group" aria-label="${esc(text('home.fleet.classAria'))}" data-i18n-aria-label="home.fleet.classAria">${classes}</div>`
+    + `<label class="fleet-search">${iconMarkup('search', 16)}<input type="search" placeholder="${esc(text('home.fleet.searchPlaceholder').replace('{count}', count))}"`
+    + ` data-i18n-placeholder="home.fleet.searchPlaceholder" data-i18n-vars='{"count":"${count}"}' aria-label="${esc(text('home.fleet.searchAria'))}"`
+    + ` data-i18n-aria-label="home.fleet.searchAria" autocomplete="off" spellcheck="false" enterkeyhint="search"></label>`
+    + `<p class="fleet-count" role="status"></p></div>`;
+}
+function fleetBlock() {
+  for (const take of FLEET) if (!TAKES.vehicles[take]) throw new Error(`home-premiere: no fleet take ${take}`);
+  const cards = fleetWall().cards.slice(0, FLEET.length);
   const first = cards[0];
+  // a unit is a symbol (lang="en" in either locale) or a catalog key (the crew count's word)
   const fact = (icon, key, value, unit = '') => `<div>${iconMarkup(icon, 16)}<dt>${t(key)}</dt><dd><b data-fact="${key.split('.').pop()}">${value}</b>`
-    + `${unit ? `<small lang="en">${unit}</small>` : ''}</dd></div>`;
+    + `${unit.startsWith('home.') ? t(unit, 'small') : unit ? `<small lang="en">${unit}</small>` : ''}</dd></div>`;
   const plate = `<article class="fleet-feature" data-fleet-feature>`
     + `<div class="fleet-feature__art cot-hc hc-loaded" data-hero-facing="${HERO.facing}">`
     + `<picture><source type="image/avif" data-fact="banner-set" srcset="${first.hero.flag[0]}" sizes="${PLATE_SIZES}">`
@@ -195,19 +269,21 @@ function fleetBlock() {
     + `<img class="hc-tank" data-fact="tank" src="${first.hero.tank[1]}" width="480" height="300" alt="" loading="lazy" decoding="async" style="${first.hero.place}"></picture>`
     + `<h3 class="fleet-feature__name">${flag(first.a.countryCode, 'lg', 'fleet-feature__flag')}<span data-fact="name">${esc(first.a.name)}</span></h3></div>`
     + `<dl class="fleet-facts">${fact('star', 'home.fleet.tier', first.a.tierNumeral)}${fact('gun', 'home.fleet.caliber', first.a.gun?.caliberMm ?? 0, 'mm')}`
-    + `${fact('penetration', 'home.fleet.penetration', pen(first.a), 'mm')}</dl>`
+    + `${fact('penetration', 'home.fleet.penetration', pen(first.a), 'mm')}${fact('team', 'home.fleet.crew', first.m.crew, 'home.fleet.crewUnit')}`
+    + `${fact('track', 'home.fleet.weight', first.m.weight, 't')}${fact('speed', 'home.fleet.speed', first.m.speed, 'km/h')}</dl>`
     + `<div class="fleet-feature__acts"><a class="${btn('primary', '36')}" data-fact="anatomy" href="${galleryHref(first.id, 'modules')}">${iconMarkup('layerModules', 16)}${t('home.fleet.anatomy')}</a>`
     + `<a class="${btn('', '36')}" data-fact="drive" href="${driveHref(first.id)}">${iconMarkup('vehicle', 16)}${t('home.testDrive')}</a></div></article>`;
-  const tile = (c) => `<a class="fleet-tile cot-c-media cot-c-media--soft" href="${galleryHref(c.id)}" data-feature="${esc(feature(c))}">`
+  const tile = (c) => `<a class="fleet-tile cot-c-media cot-c-media--soft" href="${galleryHref(c.id)}" data-feature="${esc(JSON.stringify(feature(c)))}">`
     + `<img src="${c.take.poster}" alt="" width="640" height="360" loading="lazy" decoding="async">`
     + `<video data-media-player="hover" muted loop playsinline preload="none" aria-hidden="true" data-label="${esc(text(takeKey(c.take)))}" data-i18n-label="${takeKey(c.take)}">`
-    + `<source data-src="${c.take.loop}" type="video/webm"></video>`
+    + `<source data-src="${c.take.loop}" type="video/webm"></video><span class="fleet-tile__progress" aria-hidden="true"><i></i></span>`
     + `<span class="fleet-tile__id">${flag(c.a.countryCode, 'sm')}${sil(c.id)}<b>${esc(c.a.name)}</b></span></a>`;
   const tiles = cards.map(tile);
   return `<section class="fleet" id="fleet" aria-labelledby="fleet-title"><div class="home-shell">`
     + `<header class="home-head"><h2 class="home-h2" id="fleet-title"><span class="t-accent">{{COT_PRODUCTION_VEHICLES}}</span> ${t('home.fleet.tanks', 'span', 't-hollow')}</h2>`
     + `<a class="${btn('', '')}" href="/gallery">${iconMarkup('gallery', 18)}${t('home.fleet.gallery')}</a></header>`
-    + `<div class="fleet-wall">${tiles.slice(0, 4).join('')}${plate}${tiles.slice(4).join('')}</div>`
+    + fleetFacets()
+    + `<div class="fleet-wall" data-fleet-wall>${tiles.slice(0, 4).join('')}${plate}${tiles.slice(4).join('')}</div>`
     + battlefields() + `</div></section>`;
 }
 
@@ -246,7 +322,15 @@ export function renderHome(html) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const html = readFileSync(HOME, 'utf8');
   const next = renderHome(html);
-  if (process.argv.includes('--write')) { if (next !== html) writeFileSync(HOME, next); console.log('home-premiere: written'); }
-  else if (next !== html) { console.error('home-premiere: site/home.html is stale (node tools/home-premiere.mjs --write)'); process.exit(1); }
-  else console.log('home-premiere: site/home.html is current');
+  const json = wallJson();
+  let current = '';
+  try { current = readFileSync(WALL_JSON, 'utf8'); } catch { /* first write */ }
+  if (process.argv.includes('--write')) {
+    if (next !== html) writeFileSync(HOME, next);
+    if (json !== current) writeFileSync(WALL_JSON, json);
+    console.log(`home-premiere: written (${fleetWall().records.length} vehicles in src/presentation/fleetWall.json)`);
+  } else if (next !== html || json !== current) {
+    console.error('home-premiere: site/home.html or src/presentation/fleetWall.json is stale (node tools/home-premiere.mjs --write)');
+    process.exit(1);
+  } else console.log('home-premiere: site/home.html and src/presentation/fleetWall.json are current');
 }
