@@ -8,7 +8,8 @@
 // every pixel decision the separate draws made is kept:
 //
 // - Only a CONTIGUOUS run of the final layer order merges. Every mesh gets a
-//   unique polygon offset (tankFactoryCore installCoplanarDepthLayers); a run
+//   unique place in the layer order (its polygon offset, coplanarDepth.ts,
+//   keeps every exact tie's winner; tankFactoryCore installCoplanarDepthLayers); a run
 //   with no foreign layer between its members can share one offset without
 //   reversing any cross-mesh winner. Unmerged meshes keep their exact layer.
 //   Inside the run the parts are concatenated in layer order, so a later part
@@ -44,7 +45,10 @@ import { isTurretSectionFrame } from './turretRigScale.ts';
 export interface CoplanarLayerRecord {
   object: VehicleMesh;
   materials: THREE.Material[];
+  /** Its place in the semantic order (unique per vehicle). */
   layer: number;
+  /** The polygon offset it draws with (coplanarDepth.ts assignCoplanarDepth); the layer itself when absent. */
+  depth?: number;
 }
 
 interface StaticMergeOptions {

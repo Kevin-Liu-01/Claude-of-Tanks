@@ -46,7 +46,7 @@ import { cameraViewGlyphSVG } from './viewGlyphs.ts';
 import { drawTrueScale } from './trueScale.ts';
 import { t, getLocale, formatNumber } from '../ui/i18n.ts';
 import { bindStaticI18nAuto } from '../presentation/staticI18n.ts';
-import { applyGalleryCameraRange, galleryFitDistance, resizeGalleryCamera } from './cameraFit.ts';
+import { applyGalleryCameraRange, fitGalleryDepth, galleryFitDistance, resizeGalleryCamera } from './cameraFit.ts';
 
 type GalleryMode = 'appearance' | AnatomyMode | 'markup';
 const GALLERY_MODES: readonly GalleryMode[] = ['appearance', 'armor', 'modules', 'crew', 'markup'];
@@ -194,6 +194,9 @@ const engineCtx = {
 const raycaster = new THREE.Raycaster();
 const pointerNdc = new THREE.Vector2();
 const currentBounds = new THREE.Box3();
+// The specimen's posed bounds, padded for the damage lab's loose parts: the near plane's nearest specimen (fitGalleryDepth).
+const stageBounds = new THREE.Box3();
+const STAGE_DEPTH_MARGIN_M = .5;
 const currentCenter = new THREE.Vector3();
 const viewDirection = new THREE.Vector3();
 const presentationCenter = new THREE.Vector3();
@@ -1128,6 +1131,7 @@ function updateArticulation(): void {
   if (turret) turret.rotation.y = THREE.MathUtils.degToRad(turretYaw);
   if (gun) gun.rotation.x = -THREE.MathUtils.degToRad(gunPitch);
   visual.root.updateMatrixWorld(true);
+  stageBounds.copy(visibleBox(visual.root)).expandByScalar(STAGE_DEPTH_MARGIN_M);
   anatomyView?.update();
   $('#hullYawValue').textContent = `${hullYaw}°`;
   $('#turretYawValue').textContent = `${turretYaw}°`;
@@ -1267,6 +1271,7 @@ async function writeClipboard(text: string, successMessage: string): Promise<voi
 }
 
 function renderFrame(): void {
+  if (visual) fitGalleryDepth(camera, stageBounds, GALLERY_FLOOR_Y_M);
   if (anatomyView?.mode) anatomyView.render();
   else renderer.render(scene, camera);
 }
