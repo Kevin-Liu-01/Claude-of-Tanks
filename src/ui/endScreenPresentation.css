@@ -7,6 +7,8 @@ body[data-cot-width] .cot-es.cot-es--record *{box-sizing:border-box;min-width:0}
    chips, the report on the HUD's plates, the actions as the kit's buttons. Every live part stays (the views, awards, the
    comparison, the rosters, the rematch room, the campaign). */
 body[data-cot-width] .cot-es.cot-es--record{box-sizing:border-box;justify-content:flex-start;gap:0;padding:clamp(12px,3vh,30px) max(16px,calc((100vw - 1280px)/2));overflow:hidden;pointer-events:auto;background:var(--battle-end-grade),var(--report-map,none) center 40%/cover no-repeat var(--surface-scene)}
+/* over the battle's last frame (endScreen.ts .es-over-scene): the grade alone, the scene's canvas under it */
+body[data-cot-width] .cot-es.cot-es--record.es-over-scene{background:var(--battle-end-grade)}
 body[data-cot-width] .cot-es.cot-es--record .es-hero{width:100%;max-width:none;flex:0 0 auto;padding:calc(clamp(12px,3vh,30px) + 8px) 24px;max-height:30dvh;overflow:auto;scrollbar-width:thin}
 body[data-cot-width] .cot-es.cot-es--record :is(.es-kick,.es-ban,.es-sub,.es-meta,.es-blow){text-align:left;justify-content:flex-start;text-indent:0;letter-spacing:normal}
 body[data-cot-width] .cot-es.cot-es--record .es-kick{font-size:var(--fs-13);letter-spacing:0;color:var(--ink-3)}
@@ -36,6 +38,18 @@ body[data-cot-width] .cot-es.cot-es--record .es-stat-grid{display:grid;grid-temp
 body[data-cot-width] .cot-es.cot-es--record .es-stat-grid.has-vehicle{grid-template-columns:180px repeat(3,minmax(0,1fr))}
 body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card{min-height:100px;background:transparent;border:0;box-shadow:none}
 body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card img{object-fit:contain;width:100%;height:100%;max-height:130px}
+/* the vehicle's name under its card, the variant in the hollow tungsten outline (the policy's end-screen card); a
+   phone's card (66 px) has no room for it, and the line under the headline names the vehicle there */
+body[data-cot-width] .cot-es.cot-es--record .es-vn{display:none}
+/* a phone's tile lifts its tank off the floor (the policy's 4 px tile band left its tracks cut there) */
+@media(max-width:700px){body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card .hc-host{--hc-band:14px}}
+@media(min-width:701px){
+body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card:has(.es-vn){grid-template-rows:1fr auto;align-content:end}
+body[data-cot-width] .cot-es.cot-es--record .es-vehicle-card:has(.es-vn) .hc-host{--hc-band:30px}
+body[data-cot-width] .cot-es.cot-es--record .es-vn{display:block;position:relative;z-index:var(--battle-z-card-text);grid-row:2;justify-self:stretch;padding:4px 8px 6px;
+  font:600 var(--fs-18)/1.05 var(--font-ui);color:var(--ink-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:left}
+body[data-cot-width] .cot-es.cot-es--record .es-vn .hv{color:var(--hollow-fill);-webkit-text-stroke:var(--hollow-stroke) var(--hollow-accent);paint-order:stroke fill}
+}
 /* the tallies as the direction's stat tiles (11-end-screen .me .k): a quiet tile on a hairline, the figure in the display voice */
 body[data-cot-width] .cot-es.cot-es--record .es-tal{background:var(--fill-quiet);border:0;border-radius:var(--r1);box-shadow:var(--ring-1);padding:12px;gap:8px}
 body[data-cot-width] .cot-es.cot-es--record .es-tal .v{font:700 var(--fs-40)/1.1 var(--font-ui);letter-spacing:var(--track-title);color:var(--ink-1)}
@@ -104,6 +118,22 @@ body[data-cot-width] .cot-es.cot-es--record .es-tr:nth-child(even){background:va
 body[data-cot-width] .cot-es.cot-es--record .es-tr.me{background:var(--accent-wash);box-shadow:var(--battle-row-me)}
 body[data-cot-width] .cot-es.cot-es--record .es-roster-list{border-top-color:#93a5b438}
 body[data-cot-width] .cot-es.cot-es--record .es-report .es-rematch{border:1px solid #93a5b438}
+/* the wide windows (the direction's 11-end-screen): the player's report and the rosters side by side, each on its plate
+   and scrolling on its own, the views' tabs gone; the scoreboard over the rosters carries the sides' totals (the
+   comparison's figures), and the rosters stack. A report of the rosters alone (a watched battle) keeps its one column. */
+@media(min-width:1280px) and (min-height:700px){
+body[data-cot-width] .cot-es.cot-es--record:has(.es-report>.personal) .es-view-tabs{display:none}
+body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal){display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);
+  grid-template-rows:minmax(0,1fr);gap:12px;overflow:hidden;background:none;box-shadow:none;margin-top:16px}
+body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>:is(.es-debrief,.es-debrief[hidden]){display:block;min-height:0;
+  height:auto;overflow:auto;scrollbar-width:thin;border-radius:var(--r1);box-shadow:var(--e2)}
+body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal) .es-debrief .es-comparison{display:none}
+body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>.es-debrief.more{-webkit-mask-image:var(--battle-scroll-fade);
+  mask-image:var(--battle-scroll-fade)}
+body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>.personal>.es-stat-secondary{grid-column:1/-1;margin-right:0}
+body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal) .es-rosters{grid-template-columns:minmax(0,1fr)}
+body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>.es-rematch{grid-column:1/-1}
+}
 /* every vehicle carries its flag beside its silhouette (11-end-screen .who) */
 body[data-cot-width] .cot-es.cot-es--record .fl{display:inline-flex;flex:0 0 auto}
 /* the battle's timeline (11-end-screen .beat): one line from the start to the result, a diamond per beat (the enemy's

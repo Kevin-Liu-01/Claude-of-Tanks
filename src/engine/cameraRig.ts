@@ -1637,6 +1637,11 @@ interface ShowroomOrbit {
   drag(dxPx: number, dyPx: number): void;
   endDrag(): void;
   wheel(notches: number): void;
+  /** Hold the framing: no idle spring back to the hero pose while held (the Garage's photo mode). */
+  hold(on: boolean): void;
+  /** Steer toward a view: yaw and pitch in radians (the pitch kept inside the turntable's clamp), the dolly (1 = the
+   *  hero fit). */
+  aim(yawRad: number, pitchRad: number, zoomTo?: number): void;
   debugState(): Record<string, RuntimeValue>;
 }
 
@@ -1672,6 +1677,7 @@ export function createShowroomOrbit(
   let yawVel = 0, pitchVel = 0;
   let dragging = false;
   let running = false;
+  let held = false;
   let sinceInputS = 999;
   let lastDragMs = 0;
   let lastInputMs = -Infinity;
@@ -1950,7 +1956,7 @@ export function createShowroomOrbit(
     // idle spring and explicit reset still restore the canonical hero view.
     // Use wall time here: the settled Garage only ticks every five seconds,
     // with a clamped simulation delta. That must not extend this input grace.
-    if (dragging || performance.now() - lastInputMs <= SHOW_IDLE_RETURN_S * 1000) return;
+    if (held || dragging || performance.now() - lastInputMs <= SHOW_IDLE_RETURN_S * 1000) return;
     tYaw = yaw + wrapPi(heroYaw - yaw);
     tPitch = heroPitch;
     tZoom = 1;
@@ -1981,7 +1987,7 @@ export function createShowroomOrbit(
   }
 
   function returnOrbitTargets(dt: number): void {
-    if (sinceInputS <= SHOW_IDLE_RETURN_S) return;
+    if (held || sinceInputS <= SHOW_IDLE_RETURN_S) return;
     const follow = 1 - Math.exp(-dt / SHOW_RETURN_TAU_S);
     tYaw += wrapPi(heroYaw - tYaw) * follow;
     tPitch += (heroPitch - tPitch) * follow;
@@ -2138,6 +2144,20 @@ export function createShowroomOrbit(
       const n = THREE.MathUtils.clamp(notches, -3, 3);
       tZoom = THREE.MathUtils.clamp(tZoom * Math.pow(SHOW_ZOOM_STEP, n),
         SHOW_ZOOM_MIN, SHOW_ZOOM_MAX);
+      sinceInputS = 0;
+      lastInputMs = performance.now();
+    },
+
+    hold(on: boolean): void {
+      held = on;
+    },
+
+    aim(yawRad: number, pitchRad: number, zoomTo = 1): void {
+      if (!haveBox || !Number.isFinite(yawRad) || !Number.isFinite(pitchRad)) return;
+      tYaw = yaw + wrapPi(yawRad - yaw);
+      tPitch = THREE.MathUtils.clamp(pitchRad, SHOW_PITCH_MIN, SHOW_PITCH_MAX);
+      tZoom = THREE.MathUtils.clamp(zoomTo, SHOW_ZOOM_MIN, SHOW_ZOOM_MAX);
+      yawVel = pitchVel = 0;
       sinceInputS = 0;
       lastInputMs = performance.now();
     },

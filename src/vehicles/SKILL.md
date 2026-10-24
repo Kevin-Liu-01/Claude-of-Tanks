@@ -182,7 +182,9 @@ against committed rows with `--crew-only [--ids=…]`): a P50 1.75 m body (the
 Gallery mannequin's segment table) in its role's posture — modern MBT drivers
 recline, turret crew sit in the basket below the ring, a turret loader stands
 where the headroom allows — placed nearest its authored station inside the
-exact shell and off the powerplant, autoloader, gun and stowage. Its hit
+exact shell and off the powerplant, autoloader, gun and stowage (where no
+posture fits, a turret seat reaches across the ring's full width and a hull
+crew capsule's gunner, commander or operator reclines like a driver). Its hit
 shapes stay inside armour proper: where the combat shells leave a gap between
 the hull roof and the turret floor (the Challenger 2 family, Leclerc, KF51 …),
 the piece of a body crossing it is cut out of the hit shapes, and HE splash

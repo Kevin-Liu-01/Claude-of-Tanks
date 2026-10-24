@@ -20,6 +20,7 @@ const CURRENT = Object.freeze({
   'capture-recipes-r1.json': 'the Studio recipes behind the archive\'s media',
   'versus-r1': 'the versus stills (the GO renders, media/land226)',
   'versus-films-r1': 'the versus films (round 7, 2026-10-22): the landing\'s versus wall',
+  'home-hero-r1': 'the landing hero\'s responsive rungs of its versus still (243, from the 2560 px master)',
   'showcase-r2/process': 'the review sheets of the filming process',
   maps: 'the battlefields\' art and cards (the S2 re-renders land under the same names)',
   'brand/og': 'the social cards (regenerated from their sources)',

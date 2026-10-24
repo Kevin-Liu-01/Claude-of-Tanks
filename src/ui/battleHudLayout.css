@@ -2,6 +2,8 @@
    These selectors intentionally outrank battle-lazy injected component CSS. */
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
+/* (a touch landscape's kill lanes leave the centre line a compact notice and its gaps: battleHudLayout.ts TOUCH_CENTRE_HALF) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='landscape']{--hud-message-width:min(400px,calc(50vw - 74px))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]{--hud-side-width:min(300px,calc(50vw - 24px));--hud-feed-width:min(240px,calc(50vw - 24px));--hud-message-width:min(400px,calc(50vw - 24px))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-drive{left:184px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout) .cot-minimap{
@@ -141,22 +143,22 @@ body:is(.cot-kc-live,.cot-si-report) :is(.cot-room-chat,.cot-touch,.cot-touch-ai
 /* One compact instrument strip. Every available system owns the same cell. */
 .cot-vehicle-controls{position:absolute;z-index:var(--hud-layer-controls);left:var(--hud-systems-left,12px);top:var(--hud-systems-top,80px);bottom:auto;transform:none;display:flex;gap:3px;max-width:var(--hud-systems-width,var(--hud-side-width,300px));padding:2px;border:0;border-radius:0;background:none;box-shadow:none;pointer-events:auto;overflow-x:auto;scrollbar-width:none;}
 .cot-vehicle-controls::-webkit-scrollbar{display:none;}
-.cot-vehicle-controls>button{pointer-events:auto;position:static!important;transform:none!important;flex:0 0 74px;width:74px!important;height:32px!important;min-width:0;min-height:32px;box-sizing:border-box;grid-template-columns:13px minmax(0,1fr) 13px;grid-template-rows:1fr;gap:2px;align-items:center;justify-items:center;padding:3px 2px;border:0;border-bottom:1px solid #b6c8d966;border-radius:0!important;background:none;color:#c6d1d9;font:700 10px/1.15 var(--hud-font,system-ui);letter-spacing:.015em;text-transform:none;box-shadow:none;text-shadow:0 1px 3px #000,0 0 5px #000;}
+.cot-vehicle-controls>button{pointer-events:auto;position:static!important;transform:none!important;flex:0 0 74px;width:var(--hud-tile-w,74px)!important;height:var(--hud-tile-h,32px)!important;min-width:0;min-height:32px;box-sizing:border-box;grid-template-columns:13px minmax(0,1fr) 13px;grid-template-rows:1fr;gap:2px;align-items:center;justify-items:center;padding:3px 2px;border:0;border-bottom:1px solid #b6c8d966;border-radius:var(--hud-tile-radius,0)!important;background:none;color:#c6d1d9;font:700 10px/1.15 var(--hud-font,system-ui);letter-spacing:.015em;text-transform:none;box-shadow:none;text-shadow:0 1px 3px #000,0 0 5px #000;}
 .cot-vehicle-controls>.cot-auxiliary,.cot-vehicle-controls>.cot-special.show,.cot-vehicle-controls>.cot-jump.on{display:grid;}
-.cot-vehicle-controls>button[hidden],.cot-vehicle-controls[hidden]{display:none!important;}
-.cot-vehicle-controls>button.active{color:#ffdc94;border-color:#c89a50;background:none;box-shadow:inset 0 -2px #efb84e;}
+.cot-vehicle-controls>button[hidden],.cot-vehicle-controls>button[data-off],.cot-vehicle-controls[hidden]{display:none!important;}
+.cot-vehicle-controls>button.active{--hud-tile-on-edge:#c89a50;--hud-tile-on-mark:inset 0 -2px #efb84e;color:#ffdc94;border-color:var(--hud-tile-on-edge);background:none;box-shadow:var(--hud-tile-on-mark);}
 .cot-vehicle-controls>button:disabled{opacity:.64;}
 /* Owner 2026-10-17 (out of ammo): a spent launcher or magazine control is struck through in the danger ink, no text. */
 .cot-vehicle-controls>button.empty{color:var(--hud-muted);border-bottom-color:var(--hud-danger);background:none;box-shadow:none;}
 .cot-vehicle-controls>button.empty .si{position:relative;color:var(--hud-danger);opacity:1;filter:none;}
-.cot-vehicle-controls>button.empty .si::after{content:'';position:absolute;left:-2px;right:-2px;top:calc(50% - .75px);height:1.5px;border-radius:1px;background:var(--hud-danger);box-shadow:0 0 0 1px #05080bd9;transform:rotate(-45deg);}
+.cot-vehicle-controls>button.empty .si::after{content:'';position:absolute;left:-2px;right:-2px;top:calc(50% - .75px);height:1.5px;border-radius:1px;background:var(--hud-danger);box-shadow:var(--battle-control-slash-ring);transform:rotate(-45deg);}
 .cot-vehicle-controls>button:hover:not(:disabled){border-color:#d7b16b;}
 .cot-vehicle-controls>button:focus-visible{outline:2px solid #fff;outline-offset:-2px;}
 .cot-vehicle-controls>button .si{grid-column:1;grid-row:1;display:flex;align-items:center;justify-content:center;filter:none;}
-.cot-vehicle-controls .si svg{width:13px!important;height:13px!important;}
+.cot-vehicle-controls .si svg{width:var(--hud-tile-icon,13px)!important;height:var(--hud-tile-icon,13px)!important;}
 .cot-vehicle-controls>button .sk{grid-column:3;grid-row:1;display:grid;place-items:center;min-width:13px;height:13px;padding:0 1px;box-sizing:border-box;border:1px solid #78848d;border-radius:3px;background:#07101799;font:700 9px/1 var(--hud-font,system-ui);color:inherit;letter-spacing:0;}
 .cot-vehicle-controls>button .sl{grid-column:2;grid-row:1;white-space:nowrap;font-size:9px;letter-spacing:0;text-align:center;}
-.cot-vehicle-controls .system-status{display:none;grid-column:1/-1;grid-row:2;font:600 9px/1 var(--hud-font,system-ui);letter-spacing:.06em;color:inherit;opacity:.85;white-space:nowrap;}
+.cot-vehicle-controls .system-status{display:none;grid-column:1/-1;grid-row:2;font:600 9px/1 var(--hud-font,system-ui);letter-spacing:var(--battle-track-status);color:inherit;opacity:.85;white-space:nowrap;}
 body.cot-spectating .cot-vehicle-controls{display:none!important;}
 
 
@@ -238,19 +240,18 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
    the consumables' form that never scroll, each its icon alone (its name is its label; a keycap means nothing on glass),
    with a count in its corner while it has one (a cooldown, the smoke charges); the More tile pages through what the row
    cannot hold (battleHudLayout.ts data-off, hud.ts) */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls{overflow:visible;gap:3px}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button{flex:0 0 44px;width:44px!important;min-width:44px;height:44px!important;min-height:44px;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);place-items:center;padding:0;border:1px solid #92a4b447;border-bottom:2px solid #92a4b447;background:linear-gradient(180deg,#0e1318eb,#080b0ef2);box-shadow:inset 0 1px #ffffff09,0 4px 13px #00000042}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button.active{border-color:#c89a50;box-shadow:inset 0 -2px #efb84e}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls{overflow:visible;gap:3px;--hud-tile-icon:22px}
+/* (the consumables' tile, hud.ts .cot-con: the HUD plate, its line-2 edge, ring and radius) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button{--hud-tile-w:44px;--hud-tile-h:44px;flex:0 0 44px;min-width:44px;min-height:44px;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);place-items:center;padding:0;--hud-tile-radius:var(--r1);border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);background:var(--hud-plate);box-shadow:var(--hud-plate-ring)}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button.active{border-color:var(--hud-tile-on-edge);box-shadow:var(--hud-tile-on-mark)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button.empty{border-bottom-color:var(--hud-danger)}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button[data-off]{display:none!important}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button .si{grid-column:1;grid-row:1}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls .si svg{width:22px!important;height:22px!important}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button :is(.sl,.sk,.system-status){display:none}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button :is(.sl[data-count],.system-status:not(:empty)){display:block;grid-column:1;grid-row:1;align-self:end;justify-self:end;margin:0 3px 2px 0;font:700 11px/1 var(--hud-font,system-ui);letter-spacing:-.01em;color:#cfd9e2;text-shadow:0 1px 2px #000e}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button :is(.sl[data-count],.system-status:not(:empty)){display:block;grid-column:1;grid-row:1;align-self:end;justify-self:end;margin:0 3px 2px 0;font:700 11px/1 var(--hud-font,system-ui);color:var(--ink-1)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>button .sl[data-count]~.system-status{display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-controls>.cot-systems-more:not([hidden]){display:grid}
-.cot-systems-more .back,.cot-systems-more.last .next{display:none!important}
-.cot-systems-more.last .back{display:flex!important}
+/* (on the last page the chevron turns back to the first) */
+.cot-systems-more.last .si svg{transform:scaleX(-1)}
 body[data-cot-battle-layout] .cot-kill-lane.r .cot-kf{background:var(--hud-plate)}
 
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] :is(.cot-dp,.cot-drive){bottom:128px}
@@ -481,4 +482,4 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
    240: "for example spotting or broken equipment stuff, they are nnot actually centered in screen"): each is placed at
    50 % and translated back by half its own width (its rules above), and the planners move it only up or down. No other
    rule sets one aside; a part the player moved in the HUD editor keeps its own place (hudCustomization.css). */
-body[data-cot-battle-layout] :is(.cot-sixth,.cot-alert,.cot-prebattle,.cot-prebattle-rules,.cot-revive,.cot-medal-toasts):not([data-hud-positioned]){left:50%!important;right:auto!important}
+body[data-cot-battle-layout] :is(.cot-sixth,.cot-alert,.cot-prebattle,.cot-prebattle-rules,.cot-revive,.cot-medal-toasts):not([data-hud-positioned]){left:50%;right:auto}

@@ -32,24 +32,24 @@
    ],
    "film": {
     "path": "/media/versus-films-r1/f6-leo2a6-steinburg-r7.mp4",
-    "bytes": 3760243,
-    "sha256": "1288fb1b62e65b79008a77924a2a79ae304ae36ff05864903857b001fb201e4d",
+    "bytes": 2668631,
+    "sha256": "e3fba3ea7161c3b0de9e3ff31f4fa648aa8f36f42fe8c9bad0b454e7108034a1",
     "width": 1280,
     "height": 720,
-    "seconds": 8.5
+    "seconds": 5.9
    },
    "mobile": {
     "path": "/media/versus-films-r1/f6-leo2a6-steinburg-r7-mobile.mp4",
-    "bytes": 1681753,
-    "sha256": "d4e48019673f0f6bf70b63ce93ffcc998b54184b83f3edd05e6b642a0268225a",
+    "bytes": 1254117,
+    "sha256": "76048d6117b7f60fe232f05fa175e7554a4ef31228cddf5d0d59526d8894ce48",
     "width": 960,
     "height": 540,
-    "seconds": 8.5
+    "seconds": 5.9
    },
    "poster": {
     "path": "/media/versus-films-r1/f6-leo2a6-steinburg-r7.jpg",
-    "bytes": 190520,
-    "sha256": "530ef95d67e9d9ca0559599418a0ea1515793fcf6fb2c9981413e0a93332c365",
+    "bytes": 149554,
+    "sha256": "9106eed70aa050e43a50805017215daa7c95387ff21b81ba600c647ddc221f3b",
     "width": 1280,
     "height": 720,
     "seconds": 0.04
@@ -103,24 +103,24 @@
    ],
    "film": {
     "path": "/media/versus-films-r1/f7-t90m-column-r5.mp4",
-    "bytes": 4197098,
-    "sha256": "521c72c244919a0ed50c7a3f4443fb732e6cb85a0515ee438b3b0d8751a4f4a9",
+    "bytes": 3145099,
+    "sha256": "ec70da883bc69107a6ca801439ad3219b6e7c371f92bef650c2c0e1a5a4d864b",
     "width": 1280,
     "height": 720,
-    "seconds": 10.5
+    "seconds": 7.23
    },
    "mobile": {
     "path": "/media/versus-films-r1/f7-t90m-column-r5-mobile.mp4",
-    "bytes": 1677846,
-    "sha256": "a1af60ed9b43b2c9c65573816c428fdb478f0ec33ba5bcce6805b0238f0ab494",
+    "bytes": 1294332,
+    "sha256": "30e2d8e9ece6dd5ac21f4e1fd74fe5f0fefaceb51bb782023f17318d4666977e",
     "width": 960,
     "height": 540,
-    "seconds": 10.5
+    "seconds": 7.23
    },
    "poster": {
     "path": "/media/versus-films-r1/f7-t90m-column-r5.jpg",
-    "bytes": 162859,
-    "sha256": "cade1a66dcdde5b838e57b7051742862d7b04af24e02185c9f5086583546db10",
+    "bytes": 175277,
+    "sha256": "c8bdfc617fab4f354ed7004e6f4deb3f512f4b28fcaf2d6cd2acdeb63512ef5e",
     "width": 1280,
     "height": 720,
     "seconds": 0.04
@@ -150,24 +150,24 @@
    ],
    "film": {
     "path": "/media/versus-films-r1/vs01-desert-abrams-t90m-r6.mp4",
-    "bytes": 2375989,
-    "sha256": "f32f28016eb959f54841fd5360cceeda15af3510fbfe1d241a39a7001d3e1e8a",
+    "bytes": 2416715,
+    "sha256": "ca877cff637bdb2e772303af24518c851a83fc5d88ece1c51482a28aca97cdd0",
     "width": 1280,
     "height": 720,
-    "seconds": 8.5
+    "seconds": 7.23
    },
    "mobile": {
     "path": "/media/versus-films-r1/vs01-desert-abrams-t90m-r6-mobile.mp4",
-    "bytes": 973115,
-    "sha256": "dea234db9f200ccdc6cb53b70e2b8b425a2122fcea97f0ea2c52bb68132dd568",
+    "bytes": 976004,
+    "sha256": "845ec4659bf611625c1954f7078d5035bdf3898f48ea575075aa4492de94d10b",
     "width": 960,
     "height": 540,
-    "seconds": 8.5
+    "seconds": 7.23
    },
    "poster": {
     "path": "/media/versus-films-r1/vs01-desert-abrams-t90m-r6.jpg",
-    "bytes": 103074,
-    "sha256": "541b23fc2071e70af8100b856a85ee0c1565191ddc3d117f4f3994fa5d8c500c",
+    "bytes": 99738,
+    "sha256": "175b0cbab95a14d507e4a080e6dc493bdee53ddcb866138466a91d8cdfb8bbcd",
     "width": 1280,
     "height": 720,
     "seconds": 0.04
@@ -197,24 +197,24 @@
    ],
    "film": {
     "path": "/media/versus-films-r1/vs02-verdant-challenger-t80u-r6.mp4",
-    "bytes": 3309308,
-    "sha256": "630f2d6f21f1d3b0910c44508eed9a3c88f4bea0a47198a6fc492f0e1067097c",
+    "bytes": 2001535,
+    "sha256": "6fae40714403368ffb0886ac1ca14981208f4a273b09a60aa96c7033f6181700",
     "width": 1280,
     "height": 720,
-    "seconds": 8.5
+    "seconds": 4.87
    },
    "mobile": {
     "path": "/media/versus-films-r1/vs02-verdant-challenger-t80u-r6-mobile.mp4",
-    "bytes": 1345696,
-    "sha256": "e9de0b73462732a79b52dd2885b8b5a13663d3ff1d5c5003faf8c1852dbbd465",
+    "bytes": 810857,
+    "sha256": "74cb78f453a7ed92d1eb6da4fc7627d8477aaedaa15edb169cc401bd2d0b5e8e",
     "width": 960,
     "height": 540,
-    "seconds": 8.5
+    "seconds": 4.87
    },
    "poster": {
     "path": "/media/versus-films-r1/vs02-verdant-challenger-t80u-r6.jpg",
-    "bytes": 141687,
-    "sha256": "9e64489798aed3d7263b7129ae07c7b572b5706afba73f84ea8c19c4f30307a6",
+    "bytes": 135083,
+    "sha256": "722102f3cf599d37b9c343a89aece3de2c4405e2664dc26c0c1962e17dc3f179",
     "width": 1280,
     "height": 720,
     "seconds": 0.04
@@ -244,24 +244,24 @@
    ],
    "film": {
     "path": "/media/versus-films-r1/vs03-reservoir-k2-ztz99-r6.mp4",
-    "bytes": 3439340,
-    "sha256": "4f180718968bae8201cc70d3656325884e82f4588f716ee27109b33df334b980",
+    "bytes": 2415550,
+    "sha256": "b89a7b1d5b88508fbb36ba5eed1199afe7b358fd55528d7fb68ce5e3ad3211c1",
     "width": 1280,
     "height": 720,
-    "seconds": 8.5
+    "seconds": 7.23
    },
    "mobile": {
     "path": "/media/versus-films-r1/vs03-reservoir-k2-ztz99-r6-mobile.mp4",
-    "bytes": 1463329,
-    "sha256": "85efa098b4eaa86468255214ba0743752501c65aa35d50712722c527ad470e46",
+    "bytes": 989536,
+    "sha256": "10a242b8711c7206b51baa8b72fc39d436051d4705c0eb45ec1c65535298a1ee",
     "width": 960,
     "height": 540,
-    "seconds": 8.5
+    "seconds": 7.23
    },
    "poster": {
     "path": "/media/versus-films-r1/vs03-reservoir-k2-ztz99-r6.jpg",
-    "bytes": 121210,
-    "sha256": "100eecb1d9c2218f1a61d769ce39a6f92338e460bd591ddbb40d61c108dc53a4",
+    "bytes": 142940,
+    "sha256": "ea0e1e5fb1427bf75d58102830cc56223c4e6acdd07ea9ac9cdc50758c3c59a6",
     "width": 1280,
     "height": 720,
     "seconds": 0.04
@@ -291,24 +291,24 @@
    ],
    "film": {
     "path": "/media/versus-films-r1/vs04-railyard-leclerc-t14-r7.mp4",
-    "bytes": 2918899,
-    "sha256": "6492b86153de09c62846d7e5cc81ba046f0b13090871daae565d6562452f9af4",
+    "bytes": 2288533,
+    "sha256": "3834d3c23a4c51b05bb5877b8e09b8df829db47b23420642f7a40342e57d9f02",
     "width": 1280,
     "height": 720,
-    "seconds": 8.5
+    "seconds": 6.23
    },
    "mobile": {
     "path": "/media/versus-films-r1/vs04-railyard-leclerc-t14-r7-mobile.mp4",
-    "bytes": 1227171,
-    "sha256": "9a7d9f4395c8cc21c3fe6104371dd2801cf0af86f9553d0b901a7d7b9bce2c50",
+    "bytes": 984651,
+    "sha256": "d0c2a9f1ebed50f84055ee6c12fc98d0f76cc7614e28ae90795384114847366b",
     "width": 960,
     "height": 540,
-    "seconds": 8.5
+    "seconds": 6.23
    },
    "poster": {
     "path": "/media/versus-films-r1/vs04-railyard-leclerc-t14-r7.jpg",
-    "bytes": 123366,
-    "sha256": "291988fd23601f897156179ba302b2a304cf948b464b478d2b25df6fedf87784",
+    "bytes": 118533,
+    "sha256": "64e4bdbfe69632099ee5ec4fa3f17d6d3850975e530dea8642f04df182c6ed1f",
     "width": 1280,
     "height": 720,
     "seconds": 0.04
@@ -344,24 +344,24 @@
    ],
    "film": {
     "path": "/media/versus-films-r1/vs05-oasis-merkava-t72b3-r6.mp4",
-    "bytes": 3967719,
-    "sha256": "707c26d70246d1ce807ff9f07602eb245161a76be10777619ab20b6ac77e6d0d",
+    "bytes": 3444922,
+    "sha256": "d40210e568b7d8c4c703d11483e9cb23cffc93e202d24ff1b93e6cca628dbf77",
     "width": 1280,
     "height": 720,
-    "seconds": 8.5
+    "seconds": 7.23
    },
    "mobile": {
     "path": "/media/versus-films-r1/vs05-oasis-merkava-t72b3-r6-mobile.mp4",
-    "bytes": 1707102,
-    "sha256": "200c0b3e9923ac0fbbb779d03a626679dba9948d873553547b553a3438dfd961",
+    "bytes": 1576643,
+    "sha256": "8de3e90c569579cffdc7a8cb527e7bf6826702f4018318a30a33c64f07a7e187",
     "width": 960,
     "height": 540,
-    "seconds": 8.5
+    "seconds": 7.23
    },
    "poster": {
     "path": "/media/versus-films-r1/vs05-oasis-merkava-t72b3-r6.jpg",
-    "bytes": 124055,
-    "sha256": "2ee37c820dcbba341006aa35fe4bf019f641d1005ca25a0df6c6e307aa62cfa4",
+    "bytes": 112599,
+    "sha256": "083591a824ac6720a487e981803837e92d779eacd206028736e660dba76ba6dd",
     "width": 1280,
     "height": 720,
     "seconds": 0.04
@@ -397,24 +397,24 @@
    ],
    "film": {
     "path": "/media/versus-films-r1/vs06-coastal-type10-ztz99a2-r7.mp4",
-    "bytes": 2983055,
-    "sha256": "c195fde73f03bad3ce0fdf921a7224eb507a586215c7d57f9641dcdd6ac19d2c",
+    "bytes": 2768333,
+    "sha256": "15a2f000928366effd7934e63b84113b366733a1488aac1216beb9b43ea07721",
     "width": 1280,
     "height": 720,
-    "seconds": 8.5
+    "seconds": 7.23
    },
    "mobile": {
     "path": "/media/versus-films-r1/vs06-coastal-type10-ztz99a2-r7-mobile.mp4",
-    "bytes": 1265027,
-    "sha256": "afc817ff5d9c911e607cdf28fa7bab4f3874b3e211b3aebd419c58fa37d3efa0",
+    "bytes": 1160342,
+    "sha256": "1197b41701f4bd826bcd6328d338e70a027b5b227d375ad931b678e6a70df34a",
     "width": 960,
     "height": 540,
-    "seconds": 8.5
+    "seconds": 7.23
    },
    "poster": {
     "path": "/media/versus-films-r1/vs06-coastal-type10-ztz99a2-r7.jpg",
-    "bytes": 95990,
-    "sha256": "a76e8a7de5bf03a99f477a3e10a8e3dfb24d166243711d428ff0503d436a1b50",
+    "bytes": 77910,
+    "sha256": "b7e3f7ce8ba410042ff1f67140cd7ad583d88d94c9c500271ed1062f928fe148",
     "width": 1280,
     "height": 720,
     "seconds": 0.04
@@ -444,24 +444,24 @@
    ],
    "film": {
     "path": "/media/versus-films-r1/vs07-autumn-ariete-t62-r7.mp4",
-    "bytes": 3650640,
-    "sha256": "aaae4f812d03192a5e3a847a9eea5eee0c597495f452d62b358c498379c2f628",
+    "bytes": 2186208,
+    "sha256": "a2c666a6b4214099e9422bdef6497ee150f2fb0c80ae6903afba491d383ce718",
     "width": 1280,
     "height": 720,
-    "seconds": 8.5
+    "seconds": 4.9
    },
    "mobile": {
     "path": "/media/versus-films-r1/vs07-autumn-ariete-t62-r7-mobile.mp4",
-    "bytes": 1555285,
-    "sha256": "4e228a307c2100b9d9892a79f77ea8f87bab493866fe1a31b0b9510840da0de0",
+    "bytes": 933675,
+    "sha256": "e414c61ff6d5eebbb2d1b9fce0076af1b3e1607fcc4c81a8fa240b210e0f43cb",
     "width": 960,
     "height": 540,
-    "seconds": 8.5
+    "seconds": 4.9
    },
    "poster": {
     "path": "/media/versus-films-r1/vs07-autumn-ariete-t62-r7.jpg",
-    "bytes": 166534,
-    "sha256": "30d1d64b59806b2b660f177f0511298f0fb6ba5b8fae9d398340a0a987b592bd",
+    "bytes": 143340,
+    "sha256": "9d507b538b23f1b70f1dbf7ef4aac4d278f6430572890301741202bc58da1f74",
     "width": 1280,
     "height": 720,
     "seconds": 0.04
@@ -491,24 +491,24 @@
    ],
    "film": {
     "path": "/media/versus-films-r1/vs08-winter-cv90-bmp3-r7.mp4",
-    "bytes": 2033065,
-    "sha256": "a79f974481f5d97b05d7a3653abbdea5f6dcbc9f51b0939f552ce0d34034d9c6",
+    "bytes": 1435636,
+    "sha256": "c13ad310b6b08a0ce13abe699d44bdb178de9da63e1d41d349a5a0a900a5d476",
     "width": 1280,
     "height": 720,
-    "seconds": 8.5
+    "seconds": 5.57
    },
    "mobile": {
     "path": "/media/versus-films-r1/vs08-winter-cv90-bmp3-r7-mobile.mp4",
-    "bytes": 877259,
-    "sha256": "cc270690357ac08cce3b3dd88580f9e8f5562e8a5dcbf53129cb1627e69200d2",
+    "bytes": 614796,
+    "sha256": "8a8715052ad88bf7ba294a87d258c76dfe3027806ad18128ac8bffd3c5139b0f",
     "width": 960,
     "height": 540,
-    "seconds": 8.5
+    "seconds": 5.57
    },
    "poster": {
     "path": "/media/versus-films-r1/vs08-winter-cv90-bmp3-r7.jpg",
-    "bytes": 83357,
-    "sha256": "cb4594ba62eee9036ff3dc2f097bbea89f729e0d1f598c258aa4ae50f96f1d29",
+    "bytes": 80843,
+    "sha256": "466fc01499b71cc1a0b831e05f95268e15607931e059909e41944b89c1924bb0",
     "width": 1280,
     "height": 720,
     "seconds": 0.04
@@ -538,24 +538,24 @@
    ],
    "film": {
     "path": "/media/versus-films-r1/vs09-alpine-strv122-t80bv-r7.mp4",
-    "bytes": 2410308,
-    "sha256": "ed8ab02eb0011e7c4b2be48531ecc715015694744bd9c3aba51801c3d1e95fcb",
+    "bytes": 2136781,
+    "sha256": "f9ad7692c73849c70e0f4fa1f67c76296a05088f3e221f07ee3537abfcbc4361",
     "width": 1280,
     "height": 720,
-    "seconds": 8.5
+    "seconds": 5.47
    },
    "mobile": {
     "path": "/media/versus-films-r1/vs09-alpine-strv122-t80bv-r7-mobile.mp4",
-    "bytes": 1012270,
-    "sha256": "6e4f1ba397df6eda8ae79734e8c456c512ba92999a2d3a55292d1482e0984d87",
+    "bytes": 910439,
+    "sha256": "376c56105904d18846c9851118ae03b861b13e1478bb432500e74c6447411a9b",
     "width": 960,
     "height": 540,
-    "seconds": 8.5
+    "seconds": 5.47
    },
    "poster": {
     "path": "/media/versus-films-r1/vs09-alpine-strv122-t80bv-r7.jpg",
-    "bytes": 65411,
-    "sha256": "fbb672a9f8fb2eb00740063928726d8b1525bdb245db943b89dcc2c2ac87d047",
+    "bytes": 55256,
+    "sha256": "3e90a9fa53178dc2f48826e9ed5a875ae46951e3c34a9a58d7c091170ec352c1",
     "width": 1280,
     "height": 720,
     "seconds": 0.04
@@ -585,24 +585,24 @@
    ],
    "film": {
     "path": "/media/versus-films-r1/vs10-steppe-chieftain-t64-r7.mp4",
-    "bytes": 3993275,
-    "sha256": "4c0a126b8b4d9ff2f91e6a859d75a940dfc4d4861cd44a2ef2d34e2c0181a86e",
+    "bytes": 3323567,
+    "sha256": "1eba95d42aaa7cecdd54e8f6e2ee7815e81910be811d0c1d7ecc0b4771d57989",
     "width": 1280,
     "height": 720,
-    "seconds": 8.5
+    "seconds": 6.9
    },
    "mobile": {
     "path": "/media/versus-films-r1/vs10-steppe-chieftain-t64-r7-mobile.mp4",
-    "bytes": 1830533,
-    "sha256": "ab14d3ac9f6578e648a51a03975d202476637940b8a5157f664d40fe20f96965",
+    "bytes": 1525728,
+    "sha256": "5d1e1b259dd1fbe4c8668ee20450ad9b50565b518781280ce371b5e7a108d3ff",
     "width": 960,
     "height": 540,
-    "seconds": 8.5
+    "seconds": 6.9
    },
    "poster": {
     "path": "/media/versus-films-r1/vs10-steppe-chieftain-t64-r7.jpg",
-    "bytes": 214488,
-    "sha256": "28eb88e6435341076ac58e83a2c6beb2fe1219e0b071856cb0bfdb780781b91f",
+    "bytes": 180158,
+    "sha256": "89b9a71bb62de7d981dde1bc331f1fa911896810e7a2ea70525b71b825443f5c",
     "width": 1280,
     "height": 720,
     "seconds": 0.04

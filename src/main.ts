@@ -1967,7 +1967,8 @@ const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameStat
   recordTiming(timing) {
     if (typeof window !== 'undefined') (window.__VISUAL_LOAD_TIMINGS ||= []).push(timing);
   },
-  onVisualReady: (entity) => nightLighting.appendEntity(entity),
+  // (mode-sheen-perf-243) the mode's energy skin goes on before the staging's burn hook and program compile
+  onVisualReady: (entity) => { nightLighting.appendEntity(entity); battlePresentation.prepareModeEnergy(entity); },
 });
 let battleVisuals: BattleVisualStreamer<MainEntity> | null = null;
 async function ensureBattleVisualStreamer() {
@@ -1993,6 +1994,13 @@ const settings = createSettingsAccess({
 garage.attachSettingsControl(settings.gear);
 // the Deploy screen's bot tier is the settings' own (the next battle's), so both pickers read one value
 garage.attachDifficulty({ get: () => input.getSettings().aiDifficulty, set: (tier) => input.setSetting('aiDifficulty', tier) });
+// the Garage's photo mode (garage.ts attachPhoto): the stage, the showroom orbit held for framing, and the renderer, post
+// chain and lighting its lazy module draws a still with
+garage.attachPhoto({
+  stage: renderer.domElement,
+  showroom,
+  still: { renderer, camera, post, lighting, size: () => renderer.getSize(new THREE.Vector2()) },
+});
 const mobileBattleInput = createMobileBattleInputAccess<MainEntity>({
   input,
   bus,
@@ -2497,7 +2505,7 @@ function loadMultiplayerV2Composition(): Promise<BrowserComposition> {
           getFx: requireFxRuntime,
           resetRoundState: () => resetRoundState(game),
           clearVehicleDecals: (visual) => requireFxRuntime().clearVehicleDecals(visual),
-          onVisualReady: (actor) => nightLighting.appendEntity(actor),
+          onVisualReady: (actor) => { nightLighting.appendEntity(actor); battlePresentation.prepareModeEnergy(actor); },
         },
         warm: options.warm,
         presentation: { activate: activation.activate, ...options.presentation },

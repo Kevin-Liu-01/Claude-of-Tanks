@@ -45,6 +45,6 @@ assert.equal(stored.get('cot.locale'), 'en-US', 'explicit locale persists');
 assert.equal(documentElement.lang, 'en-US');
 assert.deepEqual(localeEvent, { locale: 'en-US', previous: 'zh-CN' });
 assert.equal(css.size, 0, 'locale text in CSS reads attributes the surfaces write, never root variables');
-assert.equal(t('garage.battle'), 'BATTLE');
+assert.equal(t('garage.battle'), 'Deploy');
 
 console.log('i18nRuntime.selftest: detection, persistence, DOM language, events, and lookup passed');

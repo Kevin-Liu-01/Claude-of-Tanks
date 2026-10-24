@@ -84,6 +84,7 @@ import { pinchRestoresPage } from '../ui/pinchZoomGuard.ts';
 import type {
   StudioActor as StudioPanelActor,
   StudioPanelApi,
+  StudioSelectionFrame,
 } from '../ui/studioPanel.ts';
 import {
   STUDIO_MAX_DURATION_MS,
@@ -102,6 +103,7 @@ import type {
   ActorTrack,
   ActorTrackSample,
   CameraRailSample,
+  CameraShot,
   CameraShotInput,
   Storyboard,
   StoryboardInput,
@@ -277,6 +279,11 @@ interface StudioActorInput {
   /** a siege vehicle's sight-line elevation through its hydropneumatic aim (setHydropneumaticAim), degrees */
   suspensionAimDeg?: number | null;
 }
+
+/** Where a dragged or placed tank lands (the inspector's snap). */
+type PlacementSnap = 'road' | 'terrain' | 'off';
+/** The inspector's pose presets. */
+type PosePreset = 'hull-down' | 'firing' | 'knocked-out';
 
 interface StudioActorPatch extends StudioActorInput {
   x?: number;
@@ -613,6 +620,13 @@ const CAPTURE_MAX_W = 6144;    // sanity cap (also clamped by GPU max texture)
 const MAX_STUDIO_EFFECTS = 256; // bounded authoring/replay stack
 
 /** Actor damage-state ids (panel + scene JSON `state`). */
+/** Undo/redo: edits settle this long before they commit as one step; the history keeps this many steps. */
+const HISTORY_SETTLE_MS = 500;
+const HISTORY_LIMIT = 60;
+/** The autosave (each viewer's browser): the scene as authored, at most this many characters. */
+const AUTOSAVE_KEY = 'cot.studio.autosave';
+const AUTOSAVE_MAX_CHARS = 2_000_000;
+
 export const ACTOR_STATES = [
   'intact', 'engine-smoking', 'burning', 'wrecked', 'wrecked-burnt', 'turret-popped',
 ];
@@ -699,6 +713,16 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let timeOfDay: StudioTimeOfDay = 'day';
   let studioLight: StudioLight | null = null; // scene JSON `light`: the sun override (absolute bearing / elevation)
   let timeScale = 1;           // fx time multiplier; 0 = frozen
+  /** The view is the shots' camera (the rail at the playhead); navigating away leaves it until a shot or the chip returns. */
+  let lookThrough = true;
+  /** Undo/redo: the scene document as last committed, the steps either side of it, and a pending commit. */
+  let historyHead: string | null = null;
+  const undoStack: string[] = [], redoStack: string[] = [];
+  let historyTimer: ReturnType<typeof setTimeout> | 0 = 0;
+  let restoringHistory = false, pointerHeld = false, lastSavedAt = 0;
+  /** J/K/L: the reverse shuttle's rate (1, 2 or 4; 0 = off); forward runs on timeScale. */
+  let reverseRate = 0;
+  let reverseShuttleMs = 0, reverseWallS = 0;
   let clockMs = 0;             // studio fx timeline (ms since last fx reset)
   // the lens flare eases on the export clock while advanceFrame drives the timeline (one ease per step, whatever the
   // live renders between steps), on the wall clock again in playback and outside the Studio
@@ -758,7 +782,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let paletteId = 'verdant';
   let effectFireS = 0; // authored cue time of the effect being fired
 
-  function invalidate() { frameDirty = true; }
+  function invalidate() {
+    frameDirty = true;
+    if (!historyTimer && !restoringHistory) historyTimer = setTimeout(flushHistory, HISTORY_SETTLE_MS);
+  }
 
   // fx event channel: a PRIVATE bus bound to the fx system only, so synthetic
   // events (muzzle flash, impact, smoke column, detrack burst) reuse the real
@@ -931,11 +958,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function updateCamera(dt: number): boolean {
-    if (timeScale > 0 && storyboard.shots.length) return false;
+    if (timeScale > 0 && storyboard.shots.length && lookThrough) return false;
     const boost = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 4 : 1;
     const v = cam.speed * boost * dt;
     if (cam.mode === 'fly') {
       if (!flyCameraIsMoving() && !cameraDirty) return false;
+      if (flyCameraIsMoving()) leaveShotView();
       translateFlyCamera(v);
       applyCameraPose();
       return true;
@@ -1396,6 +1424,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     a.authoredStateAgeS = ageS;
     if (effectLog.length) rebuildEffects();
     else applyActorState(a, stateName, ageS);
+    selectionBoxes.delete(a);
     return true;
   }
 
@@ -1462,6 +1491,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     applyActorStatePatch(a, patch);
     applyActorRecoilPatch(a, patch);
     if (effectLog.length && !patch._drag) rebuildEffects(clockMs);
+    if (!patch._drag) selectionBoxes.delete(a);
     invalidate();
     return a;
   }
@@ -1476,6 +1506,89 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
     panel.setSelected(selected);
     return selected;
+  }
+
+  // --- the viewport's selection overlay (studioPanel.ts draws the outline, its name tag and the gizmo) ----------------
+  /** Each tank's extent in its own frame, measured once per edit from its visible meshes. */
+  const selectionBoxes = new WeakMap<StudioActor, THREE.Box3>();
+  const _selBox = new THREE.Box3(), _selMat = new THREE.Matrix4(), _selInv = new THREE.Matrix4();
+  const _selP = new THREE.Vector3(), _selC = new THREE.Vector3();
+  function actorLocalBox(a: StudioActor): THREE.Box3 {
+    let box = selectionBoxes.get(a);
+    if (box) return box;
+    const extent = new THREE.Box3();
+    const root = a.visual.root;
+    root.updateMatrixWorld(true);
+    _selInv.copy(root.matrixWorld).invert();
+    root.traverseVisible((object) => {
+      const mesh = object as THREE.Mesh & { boundingBox?: THREE.Box3 | null; computeBoundingBox?: () => void };
+      if (!mesh.isMesh || (!Array.isArray(mesh.material) && mesh.material?.visible === false)) return;
+      // instanced, batched and skinned meshes measure their instances; a plain mesh, its geometry
+      if (typeof mesh.computeBoundingBox === 'function') {
+        if (!mesh.boundingBox) mesh.computeBoundingBox();
+        if (!mesh.boundingBox) return;
+        _selBox.copy(mesh.boundingBox);
+      } else {
+        if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+        if (!mesh.geometry.boundingBox) return;
+        _selBox.copy(mesh.geometry.boundingBox);
+      }
+      if (!_selBox.isEmpty()) extent.union(_selBox.applyMatrix4(_selMat.multiplyMatrices(_selInv, mesh.matrixWorld)));
+    });
+    if (extent.isEmpty()) {
+      const dims = a.spec.dims;
+      const halfL = (dims.overallLengthM || dims.hullLengthM || 7) / 2, halfW = (dims.widthM || 3.6) / 2;
+      extent.set(_selP.set(-halfW, 0, -halfL), _selC.set(halfW, dims.heightM || 2.4, halfL));
+    }
+    selectionBoxes.set(a, extent);
+    return extent;
+  }
+  /** A world point to CSS pixels of the canvas; false behind the lens. */
+  function screenPoint(p: THREE.Vector3, width: number, height: number): boolean {
+    _selC.copy(p).applyMatrix4(camera.matrixWorldInverse);
+    if (_selC.z > -camera.near) return false;
+    p.project(camera);
+    p.set((p.x + 1) / 2 * width, (1 - p.y) / 2 * height, 0);
+    return true;
+  }
+  /**
+   * Where the selected tank sits on the canvas, in CSS pixels: the box around its extent, and for the gizmo its ground
+   * centre, the hull's own right axis and the up axis (a metre each) and a metre ring on the ground, as offsets from that
+   * centre. False while nothing is selected or the tank is behind the lens.
+   */
+  function projectSelection(out: StudioSelectionFrame): boolean {
+    out.visible = false;
+    const a = selected;
+    const width = renderer.domElement.clientWidth, height = renderer.domElement.clientHeight;
+    if (!a || !active || filming || !width || !height) return false;
+    const box = actorLocalBox(a);
+    const m = a.visual.root.matrixWorld;
+    camera.updateMatrixWorld();
+    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+    for (let i = 0; i < 8; i++) {
+      _selP.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z).applyMatrix4(m);
+      if (!screenPoint(_selP, width, height)) return false;
+      left = Math.min(left, _selP.x); right = Math.max(right, _selP.x);
+      top = Math.min(top, _selP.y); bottom = Math.max(bottom, _selP.y);
+    }
+    const cx = (box.min.x + box.max.x) / 2, cz = (box.min.z + box.max.z) / 2, gy = box.min.y;
+    if (!screenPoint(_selP.set(cx, gy, cz).applyMatrix4(m), width, height)) return false;
+    const ox = _selP.x, oy = _selP.y;
+    if (!screenPoint(_selP.set(cx + 1, gy, cz).applyMatrix4(m), width, height)) return false;
+    out.rx = _selP.x - ox; out.ry = _selP.y - oy;
+    if (!screenPoint(_selP.set(cx, gy, cz).applyMatrix4(m).add(_up), width, height)) return false;
+    out.ux = _selP.x - ox; out.uy = _selP.y - oy;
+    const points = out.ring.length / 2;
+    for (let k = 0; k < points; k++) {
+      const turn = (k / points) * Math.PI * 2;
+      if (!screenPoint(_selP.set(cx + Math.cos(turn), gy, cz + Math.sin(turn)).applyMatrix4(m), width, height)) return false;
+      out.ring[k * 2] = _selP.x - ox;
+      out.ring[k * 2 + 1] = _selP.y - oy;
+    }
+    out.left = left; out.top = top; out.right = right; out.bottom = bottom;
+    out.cx = ox; out.cy = oy;
+    out.visible = true;
+    return true;
   }
 
   function pointerNdc(e: PointerEvent): THREE.Vector2 {
@@ -1497,6 +1610,96 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return out;
   }
 
+  // --- placement snaps and pose presets (09-studio .insp Transform's snap and Pose's presets) --------------------------
+  /** Where a dragged or placed tank lands: on the nearest road and along it, on the ground under the pointer, or on the
+   *  level through the tank (off: no jumping onto rooftops or the hill behind). */
+  let placementSnap: PlacementSnap = 'terrain';
+  const ROAD_SNAP_M = 20;
+  const _snapPoint = { x: 0, z: 0, facingDeg: 0 };
+  const _snapPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  let roadCache: { map: string | null; roads: ReadonlyArray<ReadonlyArray<readonly [number, number]>> } | null = null;
+  function mapRoads(): ReadonlyArray<ReadonlyArray<readonly [number, number]>> {
+    const world = getWorld();
+    if (!world) return [];
+    if (roadCache?.map !== world.mapId) roadCache = { map: world.mapId, roads: world.getMinimapFeatures().roads };
+    return roadCache.roads;
+  }
+  /** The nearest road point within ROAD_SNAP_M of (x, z), the road's heading there turned the nearer way to `facingDeg`. */
+  function roadSnap(x: number, z: number, facingDeg: number, out: { x: number; z: number; facingDeg: number }): boolean {
+    let best = ROAD_SNAP_M * ROAD_SNAP_M;
+    let found = false;
+    for (const road of mapRoads()) {
+      for (let i = 1; i < road.length; i++) {
+        const ax = road[i - 1][0], az = road[i - 1][1], dx = road[i][0] - ax, dz = road[i][1] - az;
+        const length2 = dx * dx + dz * dz;
+        if (!length2) continue;
+        const along = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / length2));
+        const px = ax + dx * along, pz = az + dz * along;
+        const d2 = (px - x) * (px - x) + (pz - z) * (pz - z);
+        if (d2 >= best) continue;
+        best = d2;
+        found = true;
+        out.x = px;
+        out.z = pz;
+        let heading = Math.atan2(dx, dz) / DEG;
+        const turn = ((heading - facingDeg) % 360 + 540) % 360 - 180;
+        if (Math.abs(turn) > 90) heading += 180;
+        out.facingDeg = ((heading % 360) + 360) % 360;
+      }
+    }
+    return found;
+  }
+  /** The pointer on the level through the tank's ground (the off snap). */
+  function planeHit(e: PointerEvent, a: StudioActor, out: THREE.Vector3): THREE.Vector3 | null {
+    _ray.setFromCamera(pointerNdc(e), camera);
+    _snapPlane.constant = -a.state.pos.y;
+    return _ray.ray.intersectPlane(_snapPlane, out);
+  }
+  function setPlacementSnap(snap: PlacementSnap): PlacementSnap {
+    if (snap === 'road' || snap === 'terrain' || snap === 'off') placementSnap = snap;
+    return placementSnap;
+  }
+  /**
+   * Hull-down: the nearest spot within HULL_DOWN_SEARCH_M where the ground ahead of the tank (along its facing) rises
+   * enough to hide the hull and still shows the turret, on ground level enough to stand on; null when none.
+   */
+  const HULL_DOWN_SEARCH_M = 24;
+  function hullDownSpot(a: StudioActor): { x: number; z: number } | null {
+    const dims = a.spec.dims;
+    const height = dims.heightM || 2.4;
+    const half = (dims.overallLengthM || dims.hullLengthM || 7) / 2;
+    const hull = height * 0.55; // the hull below the turret ring
+    const yaw = a.pose.facingDeg * DEG, fx = Math.sin(yaw), fz = Math.cos(yaw);
+    let best: { x: number; z: number } | null = null;
+    let bestScore = Infinity;
+    for (let r = 0; r <= HULL_DOWN_SEARCH_M; r += 2) {
+      const count = r === 0 ? 1 : Math.max(8, Math.round((Math.PI * 2 * r) / 3));
+      for (let k = 0; k < count; k++) {
+        const turn = (k / count) * Math.PI * 2;
+        const x = a.pose.x + Math.cos(turn) * r, z = a.pose.z + Math.sin(turn) * r;
+        const ground = hfProxy.getHeightAt(x, z);
+        if (Math.abs(hfProxy.getHeightAt(x + fx * half, z + fz * half) - hfProxy.getHeightAt(x - fx * half, z - fz * half)) > 2.5) continue;
+        let crest = -Infinity;
+        for (let d = half + 0.5; d <= half + 8; d += 0.5) crest = Math.max(crest, hfProxy.getHeightAt(x + fx * d, z + fz * d));
+        const masked = crest - ground;
+        if (masked < hull * 0.8 || masked > height - 0.5) continue;
+        const score = r + Math.abs(masked - hull) * 6;
+        if (score < bestScore) { bestScore = score; best = { x, z }; }
+      }
+    }
+    return best;
+  }
+  /** A pose preset on a tank: hull-down behind the nearest crest ahead, firing (gun forward, recoiling), or knocked out. */
+  function applyPosePreset(ref: ActorRef, preset: PosePreset): boolean {
+    const a = findActor(ref);
+    if (!a || recording || filming) return false;
+    if (preset === 'firing') return !!updateActor(a, { turretDeg: 0, gunDeg: 2, recoilAgeS: 0.05, state: 'intact' });
+    if (preset === 'knocked-out') return !!updateActor(a, { turretDeg: 28, gunDeg: -20, state: 'wrecked' });
+    const spot = hullDownSpot(a);
+    if (!spot) return false;
+    return !!updateActor(a, { x: spot.x, z: spot.z, turretDeg: 0, gunDeg: 0 });
+  }
+
   function pickActor(e: PointerEvent): StudioActor | null {
     if (!actors.length) return null;
     _ray.setFromCamera(pointerNdc(e), camera);
@@ -1514,6 +1717,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function onPointerDown(e: PointerEvent): void {
+    pointerHeld = true; // a drag or a slider held anywhere: history waits for the release
     if (!active || e.target !== renderer.domElement) return;
     if (recording || filming) return;
     if (e.button === 0) {
@@ -1533,8 +1737,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function onPointerMove(e: PointerEvent): void {
     if (!active || filming) return;
     if (dragActor) {
-      if (terrainHit(e, _v3)) {
-        updateActor(dragActor, { x: _v3.x, z: _v3.z, _drag: true });
+      if (placementSnap === 'off' ? planeHit(e, dragActor, _v3) : terrainHit(e, _v3)) {
+        const patch: StudioActorPatch = { x: _v3.x, z: _v3.z, _drag: true };
+        if (placementSnap === 'road' && roadSnap(_v3.x, _v3.z, dragActor.pose.facingDeg, _snapPoint)) {
+          patch.x = _snapPoint.x; patch.z = _snapPoint.z; patch.facingDeg = _snapPoint.facingDeg;
+        }
+        updateActor(dragActor, patch);
         panel.refreshSelected();
       }
       return;
@@ -1543,6 +1751,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const dx = e.movementX || 0;
     const dy = e.movementY || 0;
     dragMoved += Math.abs(dx) + Math.abs(dy);
+    if (dragMoved >= 5) leaveShotView();
     cam.yaw -= dx * 0.0032;
     cam.pitch = Math.max(-1.45, Math.min(1.45, cam.pitch - dy * 0.0032));
     cameraDirty = true;
@@ -1551,6 +1760,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function onPointerUp(e: PointerEvent): void {
+    pointerHeld = false;
     if (!active) return;
     if (dragActor) {
       updateActor(dragActor, {}); // full-precision settle on release
@@ -1565,7 +1775,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       if (terrainHit(e, _v3)) {
         marker.set(_v3);
         if (placeArmed) {
-          const a = addActor({ id: placeArmed, pos: [_v3.x, _v3.z] });
+          const snapped = placementSnap === 'road' && roadSnap(_v3.x, _v3.z, 0, _snapPoint);
+          const a = addActor({ id: placeArmed, pos: snapped ? [_snapPoint.x, _snapPoint.z] : [_v3.x, _v3.z],
+            ...(snapped ? { facingDeg: _snapPoint.facingDeg } : {}) });
           selectActor(a);
           placeArmed = null;
           panel.setPlaceArmed(null);
@@ -1588,6 +1800,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (filming) return;
     const units = wheelNotchUnits(e);
     if (!units) return;
+    leaveShotView();
     if (cam.mode === 'orbit') {
       cam.orbit.dist = Math.max(3, Math.min(400, cam.orbit.dist * wheelDollyFactor(units, 0.12)));
       cameraDirty = true;
@@ -1617,10 +1830,28 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       }
       return;
     }
+    // Ctrl/Cmd+K opens the command palette, from a field too
+    if (active && (e.metaKey || e.ctrlKey) && !e.altKey && e.code === 'KeyK') {
+      e.preventDefault();
+      if (!e.repeat) panel.openCommands();
+      return;
+    }
     if (!active || typingInUI(e)) return;
+    // Ctrl/Cmd+Z undoes, Shift+Ctrl/Cmd+Z and Ctrl/Cmd+Y redo
+    if ((e.metaKey || e.ctrlKey) && !e.altKey && (e.code === 'KeyZ' || e.code === 'KeyY')) {
+      e.preventDefault();
+      if (!e.repeat) void (e.code === 'KeyY' || e.shiftKey ? redo() : undo());
+      return;
+    }
     if (e.code === 'Escape') { exit(); return; }
     keys.add(e.code);
     if (e.code === 'Space' && !e.repeat) api.setTimeScale(timeScale === 0 ? 1 : 0);
+    // J/K/L, the editors' shuttle: L forward at 1x, 2x, 4x; J back at the same steps; K stops
+    if (!e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      if (e.code === 'KeyJ') shuttle(-1);
+      else if (e.code === 'KeyK') shuttle(0);
+      else if (e.code === 'KeyL') shuttle(1);
+    }
     if (e.code === 'Delete' || e.code === 'Backspace') {
       if (selectedEffect) removeEffect(selectedEffect);
       else if (selected) removeActor(selected);
@@ -1635,6 +1866,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   window.addEventListener('pointerup', onPointerUp, true);
   window.addEventListener('wheel', onWheel, { passive: false, capture: true });
   window.addEventListener('blur', () => keys.clear());
+  window.addEventListener('pagehide', () => commitHistory());
   window.addEventListener('resize', invalidate, { passive: true });
   window.addEventListener('cot:layoutchange', invalidate, { passive: true });
 
@@ -2994,7 +3226,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       for (const a of actors) syncActorVisual(a, dt);
       remainingS -= dt;
     }
-    applyStoryboardCamera(clockMs);
+    if (lookThrough || recording || filming) applyStoryboardCamera(clockMs);
     invalidate();
   }
 
@@ -3086,6 +3318,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if ((recording && !opts.recording) || filming) return Math.round(clockMs);
     const target = clampStudioTime(timeMs, storyboard.durationMs);
     if (opts.pause !== false) timeScale = 0;
+    reverseRate = 0;
     rebuildEffects(target);
     post.lensFlare?.snap?.();
     panel.refreshAll();
@@ -3129,8 +3362,57 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return Math.round(clockMs);
   }
 
+  /** Navigating the view (a drag, the wheel, the fly keys) leaves the shot's camera; the chip shows it. */
+  function leaveShotView(): void {
+    if (!lookThrough || recording || filming || !storyboard.shots.length) return;
+    lookThrough = false;
+    panel.refreshCamera();
+  }
+  /** Look through the shots' camera (the rail at the playhead), or keep a free view that scrubs and plays leave alone. */
+  function setLookThrough(on: boolean): boolean {
+    if (recording || filming) return lookThrough;
+    lookThrough = !!on;
+    if (lookThrough && applyStoryboardCamera(clockMs)) rail.updateVisibility();
+    panel.refreshCamera();
+    invalidate();
+    return lookThrough;
+  }
+  /** J/K/L: forward doubles the play rate up to 4x, back runs the reverse shuttle at 1x, 2x, 4x, and K stops both. */
+  function shuttle(direction: -1 | 0 | 1): void {
+    if (recording || filming) return;
+    if (direction === 0) {
+      reverseRate = 0;
+      pauseTimeline();
+      return;
+    }
+    if (direction > 0) {
+      api.setTimeScale(timeScale >= 1 ? Math.min(4, timeScale * 2) : 1);
+      return;
+    }
+    const rate = reverseRate >= 1 ? Math.min(4, reverseRate * 2) : 1;
+    if (timeScale > 0) pauseTimeline();
+    reverseRate = clockMs > 0 ? rate : 0;
+    reverseShuttleMs = 0;
+    reverseWallS = 0;
+    panel.refreshTime();
+  }
+  /** The reverse shuttle: the playhead steps back about twelve times a second (each step replays the effects to it). */
+  function stepReverseShuttle(wallDt: number): void {
+    reverseWallS += wallDt;
+    reverseShuttleMs += wallDt * 1000 * reverseRate;
+    if (reverseWallS < 1 / 12) return;
+    const target = Math.max(0, clockMs - reverseShuttleMs);
+    reverseWallS = 0;
+    reverseShuttleMs = 0;
+    rebuildEffects(target);
+    post.lensFlare?.snap?.();
+    if (target <= 0) reverseRate = 0;
+    panel.refreshTime();
+  }
+
   function playTimeline() {
     if (filming) return false;
+    reverseRate = 0;
     if (clockMs >= storyboard.durationMs - 0.5) seekTimeline(0, { pause: false });
     flareToWallClock();
     timeScale = 1;
@@ -3143,6 +3425,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function pauseTimeline() {
     if (recording) return Math.round(clockMs);
     timeScale = 0;
+    reverseRate = 0;
     rail.updateVisibility();
     panel.refreshTime();
     invalidate();
@@ -3425,7 +3708,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   function applyStoryboardFrame(timeMs: number, dt = 0, settle = false): void {
     applyStoryboardActors(timeMs, dt, settle);
-    applyStoryboardCamera(timeMs);
+    if (lookThrough || recording || filming) applyStoryboardCamera(timeMs);
     rail.updateVisibility();
     invalidate();
   }
@@ -3484,8 +3767,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       transition: cfg.transition || existing?.transition || 'smooth',
     });
     selectedShotId = id;
+    // a shot keyed from the view at the playhead is that view: the lens looks through it again
+    if (!cfg.pos) lookThrough = true;
     rail.rebuild();
     panel.refreshStoryboard();
+    panel.refreshCamera();
     return storyboard.shots.find((shot) => shot.id === id) || null;
   }
 
@@ -3512,12 +3798,69 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     return true;
   }
 
+  // --- the shots' thumbnails: the live frame at a shot's key, cropped to the frame (the outliner and the camera lane) --
+  interface ShotThumb { x: number; y: number; z: number; lx: number; ly: number; lz: number; fov: number; tMs: number;
+    map: string | null; at: number; url: string }
+  const SHOT_THUMB_H = 64;
+  const shotThumbs = new Map<string, ShotThumb>();
+  let shotThumbCanvas: HTMLCanvasElement | null = null;
+  const _thumbDir = new THREE.Vector3(), _thumbFwd = new THREE.Vector3();
+  function thumbCurrent(thumb: ShotThumb | undefined, shot: CameraShot, map: string | null): thumb is ShotThumb {
+    return !!thumb && thumb.x === shot.pos[0] && thumb.y === shot.pos[1] && thumb.z === shot.pos[2]
+      && thumb.lx === shot.lookAt[0] && thumb.ly === shot.lookAt[1] && thumb.lz === shot.lookAt[2]
+      && thumb.fov === shot.fov && thumb.tMs === shot.tMs && thumb.map === map;
+  }
+  /** A shot's thumbnail (a data URL), while it still shows the shot as authored; null until the lens has sat on it. */
+  function shotThumbnail(id: string): string | null {
+    const shot = storyboard.shots.find((item) => item.id === id);
+    const thumb = shotThumbs.get(id);
+    return shot && thumbCurrent(thumb, shot, getWorld()?.mapId ?? null) ? thumb.url : null;
+  }
+  /**
+   * After a live frame: when the playhead stands at a shot's key (or the take just passed it) and the lens is on that
+   * key, the frame becomes the shot's thumbnail, at most once a second per shot unless the shot itself changed.
+   */
+  function grabShotThumbnail(): void {
+    if (recording || filming || !storyboard.shots.length) return;
+    let shot: CameraShot | null = null;
+    for (const item of storyboard.shots) if (item.tMs <= clockMs + 0.5 && (!shot || item.tMs >= shot.tMs)) shot = item;
+    if (!shot || clockMs - shot.tMs > 160) return;
+    if (camera.position.distanceToSquared(_thumbDir.set(shot.pos[0], shot.pos[1], shot.pos[2])) > 0.25) return;
+    _thumbDir.set(shot.lookAt[0], shot.lookAt[1], shot.lookAt[2]).sub(camera.position).normalize();
+    if (_thumbDir.dot(camera.getWorldDirection(_thumbFwd)) < 0.998 || Math.abs(camera.fov - shot.fov) > 1) return;
+    const map = getWorld()?.mapId ?? null;
+    const prior = shotThumbs.get(shot.id);
+    const now = performance.now();
+    if (thumbCurrent(prior, shot, map) && now - prior.at < 1000) return;
+    // the frame guide's crop: the format's aspect inside the canvas, 20 px in from its edges (studioPanel.css)
+    const source = renderer.domElement;
+    const inset = 40 * renderer.getPixelRatio();
+    const aspect = productionAspect(productionFormat);
+    const cropW = Math.max(1, Math.min(source.width - inset, (source.height - inset) * aspect));
+    const cropH = cropW / aspect;
+    shotThumbCanvas ??= document.createElement('canvas');
+    shotThumbCanvas.height = SHOT_THUMB_H;
+    shotThumbCanvas.width = Math.max(1, Math.round(SHOT_THUMB_H * aspect));
+    const context = shotThumbCanvas.getContext('2d');
+    if (!context) return;
+    context.drawImage(source, (source.width - cropW) / 2, (source.height - cropH) / 2, cropW, cropH,
+      0, 0, shotThumbCanvas.width, shotThumbCanvas.height);
+    const url = shotThumbCanvas.toDataURL('image/jpeg', 0.82);
+    shotThumbs.set(shot.id, { x: shot.pos[0], y: shot.pos[1], z: shot.pos[2], lx: shot.lookAt[0], ly: shot.lookAt[1],
+      lz: shot.lookAt[2], fov: shot.fov, tMs: shot.tMs, map, at: now, url });
+    panel.setShotThumbnail(shot.id, url);
+  }
+
   function selectCameraShot(ref: RuntimeValue, seek = true): string | null {
     const shot = storyboard.shots.find((item) => item.id === String(ref || ''));
     if (!shot) return null;
     selectedShotId = shot.id;
-    if (seek) seekTimeline(shot.tMs);
+    if (seek) {
+      lookThrough = true;
+      seekTimeline(shot.tMs);
+    }
     panel.refreshStoryboard();
+    panel.refreshCamera();
     return shot.id;
   }
 
@@ -3615,6 +3958,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     const actor = selected ?? actors[0];
     if (!actor) throw new Error('Stage or select a tank first');
     pauseTimeline();
+    leaveShotView();
     const p = actor.state.pos;
     applyCamera(productionCamera(rig, [p.x, p.y + 1.7, p.z], actor.state.yaw / DEG,
       (x, z) => hfProxy.getHeightAt(x, z), productionFormat));
@@ -4441,7 +4785,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     if (busy) throw new Error(busy);
     const settings = filmSettingsFor(opts);
     const [defaultW, defaultH] = productionFormat === 'portrait' ? [1080, 1920]
-      : productionFormat === 'square' ? [1080, 1080] : [1920, 1080];
+      : productionFormat === 'square' ? [1080, 1080] : productionFormat === 'card' ? [2062, 1080] : [1920, 1080];
     timeScale = 0;
     filmShake = settings.shake;
     const session = filmRenderer.begin({
@@ -4598,8 +4942,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         const url = URL.createObjectURL(result.blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = opts.name ||
-          `studio_${getWorld()?.mapId || 'film'}_${size.height}p${settings.fps}.${result.container}`;
+        // a name without an extension takes the container the encoder chose (MP4, else WebM)
+        link.download = opts.name ? (/\.[a-z0-9]{2,4}$/i.test(opts.name) ? opts.name : `${opts.name}.${result.container}`)
+          : `studio_${getWorld()?.mapId || 'film'}_${size.height}p${settings.fps}.${result.container}`;
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 30000);
       }
@@ -4609,6 +4954,53 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       seekTimeline(playhead);
       panel.refreshAll();
     });
+  }
+
+  /**
+   * The timeline's sound lane: the take replayed to its end without rendering to collect every combat sound (as a film
+   * export does), mixed as the film mixes it (studioFilmAudio.ts, at a preview sample rate) and reduced to `buckets`
+   * peaks over the timeline. The playhead returns where it was; null while the Studio is busy or playing.
+   */
+  async function soundPreview(buckets: number): Promise<{ readonly peaks: Float32Array; readonly cues: number } | null> {
+    if (recording || filming || filmExport || loading || productionLoading || restoringHistory || timeScale > 0 || reverseRate > 0
+      || filmCues || pointerHeld || dragActor || dragging || !active) return null;
+    const count = Math.max(1, Math.min(2000, buckets | 0));
+    const playhead = clockMs;
+    let cues: FilmSoundCue[] = [];
+    filmCues = cues;
+    try {
+      rebuildEffects(storyboard.durationMs);
+    } finally {
+      filmCues = null;
+      rebuildEffects(playhead);
+      invalidate();
+    }
+    if (!cues.length) return { peaks: new Float32Array(count), cues: 0 };
+    const { renderFilmSoundtrack } = await import('./studioFilmAudio.ts');
+    const aspect = renderer.domElement.width / Math.max(1, renderer.domElement.height);
+    const buffer = await renderFilmSoundtrack(cues, {
+      listenerAt(timelineMs, out) {
+        poseMotionCamera(timelineMs, aspect);
+        const e = _motionCam.matrixWorld.elements;
+        out.x = e[12]; out.y = e[13]; out.z = e[14];
+        out.rightX = e[0]; out.rightY = e[1]; out.rightZ = e[2];
+      },
+      filmMsAt: (timelineMs) => timelineMs,
+      speedAt: () => 1,
+    }, { durationS: storyboard.durationMs / 1000, sampleRate: 16000, seed: sceneMeta.seed || 5000, mapId: getWorld()?.mapId ?? null });
+    const peaks = new Float32Array(count);
+    if (!buffer) return { peaks, cues: cues.length };
+    const left = buffer.getChannelData(0), right = buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : left;
+    const per = left.length / count;
+    for (let bucket = 0; bucket < count; bucket++) {
+      let peak = 0;
+      for (let i = Math.floor(bucket * per), end = Math.min(left.length, Math.floor((bucket + 1) * per)); i < end; i++) {
+        const value = Math.max(Math.abs(left[i]), Math.abs(right[i]));
+        if (value > peak) peak = value;
+      }
+      peaks[bucket] = peak;
+    }
+    return { peaks, cues: cues.length };
   }
 
   function cancelFilmExport(): boolean {
@@ -4686,6 +5078,164 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       ...pictureStateEntry(),
       ...(sceneMeta.sections ? {} : { destruction: { sections: false } }),
     };
+  }
+
+  // --- undo/redo and the autosave (brand-ui SPEC 12.6 Safety) ---------------------------------------------------------
+  /**
+   * The scene as authored, what undo steps between and the autosave keeps: state() without the view (camera, playhead,
+   * play rate) and with each tank's authored state, so playing the take or moving the camera is never a step.
+   */
+  function documentJson(): StudioSceneInput {
+    const { camera: _camera, fxTime: _fxTime, timeScale: _timeScale, actors: _actors, ...scene } = stateJson();
+    return { ...scene, actors: actors.map(actorDocumentJson) } as StudioSceneInput;
+  }
+  function actorDocumentJson(a: StudioActor): StudioActorInput {
+    return {
+      id: a.specId,
+      ...(a.name ? { name: a.name } : {}),
+      pos: [r2(a.pose.x), r2(a.pose.z)],
+      facingDeg: r2(a.pose.facingDeg),
+      turretDeg: r2(a.pose.turretDeg),
+      gunDeg: r2(a.pose.gunDeg),
+      ...(a.camo ? { camo: a.camo } : {}),
+      camoSeed: a.camoSeed,
+      state: a.authoredStateName,
+      ...(a.authoredStateAgeS != null ? { stateAgeS: a.authoredStateAgeS } : {}),
+      ...(a.authoredRecoilAgeS != null ? { recoilAgeS: a.authoredRecoilAgeS } : {}),
+      ...(a.authoredSuspensionAimDeg != null ? { suspensionAimDeg: r2(a.authoredSuspensionAimDeg) } : {}),
+      ...(a.authoredSmoking ? { smoking: true } : {}),
+      ...(a.authoredBurning ? { burning: true } : {}),
+    };
+  }
+  const emptyDocument = (doc: StudioSceneInput): boolean => {
+    const shots = (doc.storyboard as { readonly shots?: readonly unknown[] } | undefined)?.shots;
+    return !doc.actors?.length && !(Array.isArray(shots) && shots.length) && !doc.effects?.length;
+  };
+  /** Settled edits commit as one step (a held pointer, a load or a restore waits). */
+  function flushHistory(): void {
+    historyTimer = 0;
+    if (restoringHistory) return;
+    if (pointerHeld || dragActor || dragging || loading || productionLoading) {
+      historyTimer = setTimeout(flushHistory, HISTORY_SETTLE_MS);
+      return;
+    }
+    commitHistory();
+  }
+  function commitHistory(): void {
+    if (historyTimer) { clearTimeout(historyTimer); historyTimer = 0; }
+    if (restoringHistory || loading || recording || filming || !active) return;
+    const doc = documentJson();
+    const text = JSON.stringify(doc);
+    if (text === historyHead) return;
+    if (historyHead !== null) {
+      undoStack.push(historyHead);
+      if (undoStack.length > HISTORY_LIMIT) undoStack.shift();
+      redoStack.length = 0;
+    }
+    historyHead = text;
+    if (!emptyDocument(doc)) writeAutosave(text);
+    panel.refreshHistory();
+  }
+  function writeAutosave(text: string): void {
+    if (text.length > AUTOSAVE_MAX_CHARS) return;
+    try {
+      localStorage.setItem(AUTOSAVE_KEY, JSON.stringify({ savedAt: Date.now(), doc: text }));
+      lastSavedAt = Date.now();
+    } catch (_) { /* private windows, full storage: the session keeps its history */ }
+  }
+  function readAutosave(): { savedAt: number; doc: StudioSceneInput } | null {
+    try {
+      const raw = localStorage.getItem(AUTOSAVE_KEY);
+      if (!raw) return null;
+      const saved = JSON.parse(raw) as { savedAt?: number; doc?: string };
+      if (typeof saved.doc !== 'string' || typeof saved.savedAt !== 'number') return null;
+      return { savedAt: saved.savedAt, doc: JSON.parse(saved.doc) as StudioSceneInput };
+    } catch (_) { return null; }
+  }
+  /** The last autosaved scene, for the header's Restore: when it was saved, its battlefield and how many tanks. */
+  function autosaved(): { savedAt: number; map: string; tanks: number } | null {
+    const saved = readAutosave();
+    return saved ? { savedAt: saved.savedAt, map: String(saved.doc.map || 'verdant'), tanks: saved.doc.actors?.length ?? 0 } : null;
+  }
+  async function restoreAutosave(): Promise<boolean> {
+    const saved = readAutosave();
+    if (!saved || recording || filming || loading) return false;
+    await load(saved.doc);
+    commitHistory(); // opening the saved scene is a step: undo returns to the empty Studio
+    return true;
+  }
+  async function undo(): Promise<boolean> { return stepHistory(undoStack, redoStack); }
+  async function redo(): Promise<boolean> { return stepHistory(redoStack, undoStack); }
+  async function stepHistory(from: string[], to: string[]): Promise<boolean> {
+    if (restoringHistory || loading || recording || filming || !active) return false;
+    commitHistory(); // a pending edit becomes its own step first
+    const target = from.pop();
+    if (target == null || historyHead == null) return false;
+    to.push(historyHead);
+    try {
+      await restoreDocument(JSON.parse(target) as StudioSceneInput);
+    } catch (error) {
+      console.error('[studio] undo/redo could not restore the scene', error);
+    }
+    historyHead = JSON.stringify(documentJson()); // the restored scene as this build writes it
+    const doc = JSON.parse(historyHead) as StudioSceneInput;
+    if (!emptyDocument(doc)) writeAutosave(historyHead);
+    panel.refreshHistory();
+    return true;
+  }
+  /** The same tanks in the same order, which a restore can patch in place instead of rebuilding. */
+  function sameActorSet(doc: StudioSceneInput): boolean {
+    const list = doc.actors || [];
+    return list.length === actors.length && list.every((json, i) => {
+      const a = actors[i];
+      return json.id === a.specId && (json.name || null) === (a.name || null) && (json.camoSeed ?? a.camoSeed) === a.camoSeed
+        && (json.stateAgeS ?? null) === a.authoredStateAgeS && (json.suspensionAimDeg ?? null) === (a.authoredSuspensionAimDeg ?? null)
+        && !!json.smoking === a.authoredSmoking && !!json.burning === a.authoredBurning;
+    });
+  }
+  /**
+   * Put the scene back to a document, keeping the view. The same battlefield and tanks patch in place (no tank is
+   * rebuilt); anything else loads the document as Load JSON would.
+   */
+  async function restoreDocument(doc: StudioSceneInput): Promise<void> {
+    if (historyTimer) { clearTimeout(historyTimer); historyTimer = 0; }
+    restoringHistory = true;
+    try {
+      const world = getWorld();
+      if (!world || world.mapId !== doc.map || !sameActorSet(doc)) {
+        await load({ ...doc, fxTime: Math.round(clockMs), timeScale: 0 }, { keepView: true }); // no camera: the view stays
+        return;
+      }
+      const light = normalizeStudioLight(doc.light);
+      if ((doc.timeOfDay ?? 'day') !== studioTimeFor(world.mapId, timeOfDay) || !sameLight(light, studioLight)) {
+        await setTimeOfDay(doc.timeOfDay ?? 'day', light);
+      }
+      applyFxSettings(normalizeStudioFx(doc.fx));
+      timeScale = 0;
+      (doc.actors || []).forEach((json, i) => {
+        const pos = json.pos ?? [actors[i].pose.x, actors[i].pose.z];
+        updateActor(actors[i], {
+          x: pos[0], z: pos[pos.length >= 3 ? 2 : 1], facingDeg: json.facingDeg, turretDeg: json.turretDeg, gunDeg: json.gunDeg,
+          camo: json.camo ?? null, state: json.state, recoilAgeS: json.recoilAgeS ?? null,
+        });
+      });
+      storyboard = loadedStoryboard(doc);
+      bindStoryboardTracks();
+      if (!storyboard.shots.some((shot) => shot.id === selectedShotId)) selectedShotId = storyboard.shots[0]?.id || null;
+      rail.rebuild();
+      effectLog.length = 0;
+      selectedEffect = null;
+      replaceLoadEffects(doc, clampStudioTime(clockMs, storyboard.durationMs));
+      productionFormat = doc.productionFormat ?? 'landscape';
+      sceneFilm = doc.film == null ? null : normalizeFilm(doc.film);
+      picture = resolvePicture(doc.picture);
+      applyPictureRuntime();
+      rail.updateVisibility();
+      panel.refreshAll();
+      invalidate();
+    } finally {
+      restoringHistory = false;
+    }
   }
 
   /** Scenes without a picture keep exactly the earlier state() shape. */
@@ -4776,12 +5326,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    */
   async function load(
     json: StudioSceneInput = {},
-    _opts: Readonly<Record<string, RuntimeValue>> = {},
+    opts: Readonly<Record<string, RuntimeValue>> = {},
   ): Promise<ReturnType<typeof stateJson>> {
     // A scene names its vehicles under the id schema it was written in (SSOT 2.19).
     json = sceneInCurrentTankIds(json);
     const loadedFormat = json.productionFormat ?? 'landscape';
     productionAspect(loadedFormat); // Validate before replacing any scene state.
+    if (!opts.keepView) lookThrough = true; // an undo keeps the view it was given; a new scene looks through its shots
     const loadedFilm = json.film == null ? null : normalizeFilm(json.film);
     if (filmRenderer.active) throw new Error('Finish the film render before loading a scene');
     if (json.timeOfDay !== undefined && !isStudioTime(json.timeOfDay)) throw new RangeError('Unknown time of day');
@@ -5107,6 +5658,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
    */
   let exiting = false;
   function exit() {
+    commitHistory(); // the last edit reaches the autosave before the Studio closes
     if (!active || exiting) return;
     exiting = true;
     transition.run(() => doExit(), {
@@ -5164,6 +5716,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       sweepPool();
     }
     panel.tick(dt);
+    if (reverseRate > 0) stepReverseShuttle(frameWallDtSeconds);
     const playbackScale = timeScale;
     const animating = playbackScale > 0;
     // Canvas encoders may need several frame timestamps before yielding their
@@ -5196,6 +5749,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
     lighting.update();
     post.render(dt, frameWallDtSeconds);
+    grabShotThumbnail();
+    panel.drawSelection();
     if (primingEncoder && recording) {
       const session = recording;
       try {
@@ -5409,6 +5964,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     advanceFx: (ms: number) => seekTimeline(clockMs + ms),
     setTimeScale: (v: number) => {
       if (recording || filming) return timeScale;
+      reverseRate = 0;
       const next = Math.max(0, Math.min(4, v));
       if (next > 0 && clockMs >= storyboard.durationMs - 0.5) {
         seekTimeline(0, { pause: false });
@@ -5420,6 +5976,19 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       return timeScale;
     },
     get timeScale() { return timeScale; },
+    /** The shuttle's signed rate: negative while J runs the playhead back. */
+    get shuttleRate() { return reverseRate > 0 ? -reverseRate : timeScale; },
+    get lookThrough() { return lookThrough; },
+    setLookThrough,
+    undo,
+    redo,
+    get history() { return { undo: undoStack.length, redo: redoStack.length, savedAt: lastSavedAt }; },
+    autosaved,
+    restoreAutosave,
+    soundPreview,
+    get placementSnap() { return placementSnap; },
+    setPlacementSnap,
+    applyPosePreset,
     get fxTimeMs() { return Math.round(clockMs); },
     // cinematic storyboard + transport
     getStoryboard,
@@ -5429,6 +5998,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     updateCameraShot,
     removeCameraShot,
     selectCameraShot,
+    shotThumbnail,
+    projectSelection,
     keyActor,
     clearActorTrack,
     setRailVisible,
@@ -5470,7 +6041,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     filmExportStatus,
     FILM_DEFAULTS,
     // camera
-    setCamera: (cfg: CameraConfig) => recording ? getCamera() : applyCamera(cfg),
+    setCamera: (cfg: CameraConfig) => {
+      if (recording) return getCamera();
+      leaveShotView(); // a new lens, roll or camera mode is no longer the shot's view
+      return applyCamera(cfg);
+    },
     getCamera,
     // picture (docs/STUDIO.md "Picture")
     setPicture: (patch: PicturePatch | null) => recording ? getPicture() : setPicture(patch),

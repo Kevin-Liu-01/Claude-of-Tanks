@@ -20,6 +20,7 @@ import { applyTacticalRoleBalance } from './tacticalRoleBalance.ts';
 import { applyVehicleSizePolicy } from './vehicleSizePolicy.ts';
 import { prepareXk2DonorMetadata, synchronizeXk2CombatMetadata } from './xk2Specs.ts';
 import { applyFleetBalancePass } from './fleetBalancePass.ts';
+import { applyTurretScaleGunPitch } from './turretScaleGunPitch.ts';
 import { applyM1A1GunLimits } from './m1a1GunLimits.ts';
 
 import './combatVariantSpecs.ts';
@@ -76,6 +77,7 @@ synchronizeFleetRenewalMetadata();
 synchronizeNationalModernizationMetadata();
 applyTacticalRoleBalance(TANK_SPECS);
 applyM1A1GunLimits(TANK_SPECS);
+applyTurretScaleGunPitch(TANK_SPECS);
 finalizeFirstPartyRoster();
 applyVehicleSizePolicy(TANK_SPECS);
 applyNativeFamilyOrderToCatalogs();

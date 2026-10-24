@@ -19,6 +19,8 @@
 .cot-studio :is(button,input,select,summary,canvas):focus-visible{outline:2px solid var(--accent-hi);outline-offset:1px}
 /* hidden wins over the panel's own display rules (the doubled attribute outranks their two classes, no !important) */
 .cot-studio [hidden][hidden]{display:none}
+/* Quick (brand-ui SPEC 12.6) leaves the fine controls to Pro; the doubled attribute outranks the rows' own display */
+.cot-studio[data-studio-mode='quick'] [data-pro][data-pro]{display:none}
 .cot-studio .cot-i{flex:none}
 
 /* the game's canvas (#app) takes the viewport cell while the Studio is open (studioPanel.ts measures the cell) */
@@ -33,13 +35,24 @@ body[data-studio-workspace] #app{position:fixed;left:var(--studio-vp-x,0px);top:
 .st-head,.st-out,.st-insp,.st-shelf,.st-tl{background:var(--surface-page)}
 
 /* the header (09-studio header): the mark, the battlefield, the frame, and the scene's actions */
-.st-head{grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;padding:0 14px;border-bottom:1px solid var(--line-1)}
+.st-head{position:relative;z-index:var(--studio-pop-z);grid-column:1/-1;display:flex;align-items:center;gap:12px;min-width:0;padding:0 14px;
+  border-bottom:1px solid var(--line-1)}
 .st-head .st{display:flex;align-items:center;gap:9px;flex:none;font:700 var(--fs-15)/1 var(--font-display);letter-spacing:var(--studio-track-mark);
   text-transform:uppercase}
 .st-head .st svg{width:24px;height:24px}
 .st-head .pn{min-width:0;margin-left:10px;overflow:hidden;font:600 var(--fs-15)/1 var(--font-display);text-overflow:ellipsis;white-space:nowrap}
 .st-head .cot-c-seg__opt{height:28px;font-size:var(--fs-12)}
+.st-head .cot-c-seg{flex:none}
 .st-head .r{display:flex;align-items:center;gap:8px;margin-left:auto}
+.st-head .cmd .cot-c-kbd{margin-left:2px}
+/* the scene's safety (09-studio header .sv, the undo/redo pair): the autosave's lamp and age, the steps either side */
+.st-head .hist{display:flex;flex:none;align-items:center;gap:4px}
+.st-head .sv{display:flex;align-items:center;gap:6px;margin-right:6px;color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body);white-space:nowrap}
+.st-head .sv i{width:6px;height:6px;border-radius:50%;background:var(--ok)}
+.st-head .ib{display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;border-radius:var(--r1);background:none;color:var(--ink-2)}
+.st-head .ib:disabled{color:var(--ink-4);cursor:default}
+.st-head .redo .cot-i{transform:scaleX(-1)}
+@media (hover:hover){.st-head .ib:not(:disabled):hover{color:var(--ink-1)}}
 .st-head .cot-c-chip{height:32px}
 button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 
@@ -81,6 +94,19 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-vpt{left:16px}
 .st-vpb{right:16px}
 .st-vp .cot-c-chip{height:28px;font-size:var(--fs-12);background:var(--hud-plate)}
+/* the selection (09-studio .sel, .giz): the outline, its name tag, and the move and turn gizmo, from the live camera */
+.st-vp>:is(.st-sel,.st-sel-tag,.st-giz){pointer-events:none}
+.st-sel{position:absolute;border:1.5px solid var(--accent);border-radius:var(--r1)}
+.st-sel-tag{position:absolute;display:flex;align-items:center;gap:6px;max-width:calc(100% - 8px);height:22px;padding:0 8px;overflow:hidden;
+  border-radius:var(--r1);background:var(--accent);color:var(--ink-on-accent);font:600 var(--fs-11)/1 var(--font-body);white-space:nowrap}
+.st-sel-tag .cot-c-flag{width:14px;height:10.5px}
+.st-giz{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.st-giz .ring{fill:none;stroke:var(--accent);stroke-width:1.6;stroke-dasharray:3 3}
+.st-giz .ax{stroke-width:2.2}
+.st-giz .ax--x{stroke:var(--danger)}
+.st-giz .ax--y{stroke:var(--ok)}
+.st-giz .hd{fill:var(--ink-1)}
+.st-giz .o{fill:var(--accent)}
 .st-fc{position:absolute;left:16px;bottom:10px;z-index:var(--z-lift);padding:5px 8px;border-radius:var(--r1);background:var(--hud-plate);
   color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-data);white-space:nowrap}
 .st-fc b{color:var(--ink-1);font-weight:500}
@@ -121,6 +147,10 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-insp .sh .cot-i{width:15px;height:15px;color:var(--ink-3)}
 .st-insp .sh .cot-info-trigger{margin-left:auto}
 .st-insp .row{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.st-insp .col{display:flex;flex-direction:column;gap:6px}
+.st-insp .col>*{width:100%}
+/* buttons never share a row in the inspector (two to a row wrap their names); chips still do */
+.st-insp .grid:has(>.cot-c-btn),.cot-studio .st-insp :is(.production-exports,.production-transport){grid-template-columns:minmax(0,1fr)}
 .st-insp .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .st-insp .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
 .st-insp .grid .cot-c-btn,.st-insp .grid3 .cot-c-btn,.st-insp .grid .cot-c-chip,.st-insp .grid3 .cot-c-chip{width:100%;min-width:0}
@@ -144,13 +174,19 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
   box-shadow:var(--ring-2);color:var(--ink-1);font:500 var(--fs-12)/1 var(--font-data)}
 .st-insp .fld small{color:var(--ink-3);font:inherit}
 .st-insp .fld input{width:100%;min-width:0;height:auto;padding:0;border:0;background:none;box-shadow:none;color:inherit;font:inherit;text-align:right}
-.st-insp .sl{display:grid;grid-template-columns:72px minmax(0,1fr) 40px;align-items:center;gap:8px;color:var(--ink-2);
+.st-insp .sl{display:grid;grid-template-columns:96px minmax(0,1fr) 40px;align-items:center;gap:8px;color:var(--ink-2);
   font:500 var(--fs-12)/1 var(--font-data)}
 .st-insp .sl>label{min-width:0;overflow:hidden;color:var(--ink-3);font:500 var(--fs-12)/1.1 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
 .st-insp .sl--glyph{grid-template-columns:20px minmax(0,1fr) 40px}
 .st-insp .sl--glyph>label .cot-i{width:15px;height:15px;color:var(--ink-3)}
 .st-insp .sl .val{color:var(--ink-1);text-align:right;white-space:nowrap}
 .st-insp .sl>.cot-c-chip{grid-column:1/-1}
+/* the pose presets (09-studio .poses): a silhouette over each pose's name */
+.st-insp .poses{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.st-insp .poses button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;min-width:0;height:52px;padding:0 4px;
+  border:0;border-radius:var(--r1);background:none;box-shadow:var(--ring-2);color:var(--ink-2);font:500 var(--fs-11)/1.1 var(--font-body);text-align:center}
+.st-insp .poses .cot-c-sil{width:40px;height:13px}
+@media (hover:hover){.st-insp .poses button:hover{color:var(--ink-1);box-shadow:var(--ring-3)}}
 .cot-studio input[type=range]{-webkit-appearance:none;appearance:none;width:100%;min-width:0;height:16px;margin:0;background:transparent}
 .cot-studio input[type=range]::-webkit-slider-runnable-track{height:3px;background:linear-gradient(90deg,var(--accent) var(--fill,0%),var(--fill-scale) 0)}
 .cot-studio input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;margin-top:-4px;border-radius:50%;
@@ -283,6 +319,8 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio .production-status:empty{display:none}
 .cot-studio .production-transport{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:8px}
 .cot-studio .production-transport output{white-space:nowrap;color:var(--ink-1);font:500 var(--fs-12)/1 var(--font-data);text-align:center}
+/* in the inspector the timeline's clock already reads the playhead: the two buttons share the row */
+.st-insp .production-transport output{display:none}
 .cot-studio .production-shots{display:grid;gap:2px;max-height:205px;overflow:auto;scrollbar-width:thin}
 .cot-studio .production-shot{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:32px;padding:0 6px;
   border:0;border-radius:var(--r1);background:transparent;color:var(--ink-2);font:500 var(--fs-13)/1 var(--font-body);text-align:left}
@@ -317,31 +355,73 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .st-tl .ib[aria-pressed=true]{color:var(--accent)}
 .st-tl .tc{font:500 var(--fs-15)/1 var(--font-data);white-space:nowrap}
 .st-tl .tc small{color:var(--ink-3);font:inherit}
+.st-tl .rate{padding:3px 6px;border-radius:var(--r1);background:var(--accent-wash);color:var(--accent);font:500 var(--fs-12)/1 var(--font-data)}
 .st-tl .tp .sl{display:grid;grid-template-columns:auto 96px 36px;align-items:center;gap:6px;color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-data)}
 .st-tl .tp .sl>label{color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body);white-space:nowrap}
 .st-tl .tp .sl .val{color:var(--ink-1);text-align:right}
 .st-tl .tp .r{display:flex;align-items:center;gap:8px;margin-left:auto}
 .st-tl .tp .cot-c-chip{height:28px;font-size:var(--fs-12)}
-.st-lanes{position:relative;display:grid;flex:1;grid-template-columns:150px minmax(0,1fr);grid-auto-rows:minmax(26px,1fr);min-height:0;
+.st-lanes{position:relative;display:grid;flex:1;grid-template-columns:150px minmax(0,1fr);grid-template-rows:20px;grid-auto-rows:minmax(24px,1fr);min-height:0;
   overflow-y:auto;scrollbar-width:thin}
 .st-tl .lb{display:flex;align-items:center;gap:7px;min-width:0;padding:0 12px;overflow:hidden;border-bottom:1px solid var(--line-1);
   color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body);white-space:nowrap}
 .st-tl .lb .cot-i{width:14px;height:14px}
 .st-tl .lb .cot-c-sil{width:28px;height:9px}
 .st-tl .lb .cot-c-flag{width:14px;height:10.5px}
+.st-tl .lb .nm{min-width:0;overflow:hidden;text-overflow:ellipsis}
 .st-tl .tk{position:relative;min-width:0;overflow:hidden;border-bottom:1px solid var(--line-1);border-left:1px solid var(--line-1);cursor:crosshair}
 .st-tl .tk--ruler{display:flex;align-items:center;padding:0 2px}
 .st-tl .scrub{width:100%}
 .st-tl .clip{position:absolute;top:4px;bottom:4px;display:flex;align-items:center;gap:6px;min-width:6px;padding:0 6px;overflow:hidden;border:0;
   border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-3);color:var(--ink-1);font:500 var(--fs-11)/1 var(--font-body);
   white-space:nowrap;cursor:pointer}
+.st-tl .clip .th{flex:none;width:56px;height:100%;margin-left:-6px;object-fit:cover}
+.st-tl .clip .cl{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.st-tl .clip .ck{position:absolute;top:3px;bottom:3px;width:1px;background:var(--line-3);pointer-events:none}
 .st-tl .clip[aria-pressed=true]{box-shadow:var(--ring-accent)}
 .st-tl .clip--fx{background:var(--studio-clip-fx)}
 .st-tl .key{position:absolute;top:50%;width:8px;height:8px;padding:0;border:0;background:var(--ink-1);transform:translate(-50%,-50%) rotate(45deg);
   cursor:pointer}
+/* the sound lane: the film's soundtrack as peaks, dimmed while a changed scene is being mixed again */
+.st-tl .tk--sound svg{position:absolute;inset:4px 0;width:100%;height:calc(100% - 8px);pointer-events:none}
+.st-tl .tk--sound path{stroke:var(--ink-3);stroke-width:1;vector-effect:non-scaling-stroke}
+.st-tl .tk--sound svg.stale path{stroke:var(--ink-4)}
 .st-tl .ph{position:absolute;top:0;bottom:0;left:calc(150px + (100% - 150px) * var(--t,0));z-index:var(--z-lift);width:2px;margin-left:-1px;
   background:var(--accent);pointer-events:none}
 .st-tl .ph::before{content:'';position:absolute;top:0;left:-5px;border:6px solid transparent;border-top-color:var(--accent)}
+
+/* --------------------------------------------------------------------- the render queue (09-studio header Queue · N) */
+.st-queue{position:absolute;top:calc(100% + 4px);right:14px;display:flex;flex-direction:column;gap:10px;width:min(460px,calc(100% - 28px));
+  max-height:min(70vh,560px);padding:12px;overflow-y:auto;border-radius:var(--r2);background:var(--surface-menu);box-shadow:var(--e2)}
+.st-queue :is(.qp,.ql){display:flex;flex-direction:column;gap:2px}
+.st-queue .ql:not(:empty){padding-top:8px;border-top:1px solid var(--line-1)}
+.st-queue .qr{display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:10px;min-height:34px;padding:0 4px 0 8px;
+  border-radius:var(--r1);color:var(--ink-2);font:500 var(--fs-13)/1.2 var(--font-body)}
+.st-queue .qn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.st-queue .qc{color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-data);white-space:nowrap}
+.st-queue .qr .cot-c-chip{height:26px;padding:0 8px;font-size:var(--fs-12)}
+.st-queue .qr .x{display:grid;place-items:center;width:22px;height:22px;padding:0;border:0;border-radius:var(--r1);background:none;color:var(--ink-3)}
+.st-queue .qr--running{background:var(--accent-wash);box-shadow:var(--studio-row-on);color:var(--ink-1)}
+.st-queue .qr--running .qc{color:var(--accent)}
+.st-queue .qr--done .qc{color:var(--text-ok)}
+.st-queue :is(.qr--failed,.qr--cancelled) .qc{color:var(--text-danger)}
+.st-queue .qe{margin:0;padding:6px 8px;color:var(--ink-3);font:400 var(--fs-12)/1.4 var(--font-body)}
+.st-queue .qf{display:flex;justify-content:flex-end;gap:8px}
+
+/* ------------------------------------------------------------------------------- the command palette (Ctrl/Cmd+K) */
+.st-cmd{position:absolute;inset:0;z-index:var(--studio-pop-z);display:flex;align-items:flex-start;justify-content:center;padding:64px 16px 16px;
+  pointer-events:auto;background:var(--scrim)}
+.st-cmd-box{display:flex;flex-direction:column;width:min(560px,100%);max-height:min(60vh,520px);overflow:hidden;border-radius:var(--r2);
+  background:var(--surface-menu);box-shadow:var(--e2)}
+.cot-studio input.st-cmd-input{flex:none;width:100%;height:48px;padding:0 16px;border-bottom:1px solid var(--line-1);border-radius:0;
+  background:transparent;box-shadow:none;font:500 var(--fs-15)/1 var(--font-body)}
+.cot-studio input.st-cmd-input:focus-visible{outline:none}
+.st-cmd-list{min-height:0;padding:6px;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+.st-cmd-row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:34px;padding:0 10px;border-radius:var(--r1);
+  color:var(--ink-2);font:500 var(--fs-13)/1.2 var(--font-body);cursor:pointer}
+.st-cmd-row>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.st-cmd-row[aria-selected=true]{background:var(--accent-wash);box-shadow:var(--studio-row-on);color:var(--ink-1)}
+.st-cmd-empty{padding:14px 16px;color:var(--ink-3);font:400 var(--fs-13)/1.4 var(--font-body)}
 
 /* ------------------------------------------------------------------------------------------- the film veil */
 .cot-studio .filmVeil{position:absolute;inset:0;z-index:var(--studio-pop-z);display:none;flex-direction:column;align-items:center;justify-content:center;
@@ -368,7 +448,7 @@ button.cot-c-chip[aria-pressed=false]{color:var(--ink-2)}
 .cot-studio[data-controls-collapsed=true] :is(.st-out,.st-insp,.st-shelf,.st-tl){display:none}
 .cot-studio[data-controls-collapsed=true] .st-vp{grid-column:1/-1;grid-row:2/-1}
 body:is([data-cot-width='laptop'],[data-cot-width='tablet']) .st-app{grid-template-columns:208px minmax(0,1fr) 272px;grid-template-rows:50px minmax(0,1fr) 116px 160px}
-body:is([data-cot-width='laptop'],[data-cot-width='tablet']) .st-head .pn,body[data-cot-width='tablet'] .st-head .r .cot-c-chip__label{display:none}
+body:is([data-cot-width='laptop'],[data-cot-width='tablet']) :is(.st-head .pn,.st-head .sv),body[data-cot-width='tablet'] .st-head .r .cot-c-chip__label{display:none}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-app{grid-template-columns:minmax(0,1fr);
   grid-template-rows:50px 40dvh auto auto minmax(0,1fr) 112px}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head,.st-vp,.st-tl,.st-out,.st-insp,.st-shelf){grid-column:1}
@@ -382,11 +462,33 @@ body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-out .gh>button:
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-insp{grid-row:5;border-left:0}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-shelf{grid-row:6}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-shelf .production-takes .production-library{grid-auto-columns:42%}
-body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .pn,.st-head .r .cot-c-chip__label,.st-head .cot-c-btn__label,.st-tl .tp .sl,.st-tl .tp .r .cot-c-chip__label){display:none}
-body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-lanes{grid-template-columns:72px minmax(0,1fr)}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .pn,.st-head .st-mode,.st-head .hist,.st-head .r .cmd,.st-head .r .gal,
+  .st-head .r .studio-panel-toggle,.st-head .r .que,.st-head .r .cot-c-kbd,.st-tl .tp .sl){display:none}
+/* on a phone the header's, the transport's and the viewport's chips keep their glyphs; the names stay as accessible names, and
+   the lanes keep their flags, silhouettes and glyphs */
+body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-head .st .wd,.st-head .r .cot-c-chip__label,.st-head .cot-c-btn__label,.st-tl .tp .r .cot-c-chip__label,
+  .st-vpt .cot-c-chip+.cot-c-chip .cot-c-chip__label,.st-vpb .cot-c-chip:first-child .cot-c-chip__label,.st-tl .lb .nm){position:absolute;width:1px;
+  height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-head .r .cot-c-btn{padding:0 9px}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) :is(.st-vpt,.st-vpb){top:8px}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpt{left:8px;max-width:calc(100% - 156px)}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpb{right:8px}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpt .cot-c-chip:first-child{min-width:0}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-vpt .cot-c-chip:first-child .cot-c-chip__label{min-width:0;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-lanes{grid-template-columns:72px minmax(0,1fr);grid-auto-rows:minmax(24px,1fr)}
 body:is([data-cot-width='phone'],[data-cot-width='compact']) .st-tl .ph{left:calc(72px + (100% - 72px) * var(--t,0))}
 body[data-cot-height='short'] .st-app{grid-template-rows:44px minmax(0,1fr) 0 120px}
 body[data-cot-height='short'] .st-shelf{display:none}
 body[data-cot-height='short'] :is(.st-out,.st-insp){grid-row:2/span 2}
+/* coarse pointers: the shell's touch floor (responsiveSurfaces.css) for rows, heads and the transport, never for what sits inside a
+   lane (the clips, the keys, the scrub) or the round info glyph; those reach their touch size through a hit area */
 body[data-cot-input='coarse'] .cot-studio :is(.st-out .it,.st-out .gh>button:first-child,.st-tl .ib){min-height:40px}
+body[data-cot-input='coarse'] .st-tl :is(.clip,.key,.scrub){min-height:0}
+body[data-cot-input='coarse'] .st-tl .key::after{content:'';position:absolute;inset:-9px}
+body[data-cot-input='coarse'] .st-tl .tp{height:44px}
+body[data-cot-input='coarse'] .st-tl .tp .cot-c-chip{min-height:36px}
+body[data-cot-input='coarse'] .cot-studio .cot-info-trigger{min-height:20px}
+body[data-cot-input='coarse'] .cot-studio .cot-info-trigger::after{inset:-12px -6px}
+body[data-cot-input='coarse']:is([data-cot-width='phone'],[data-cot-width='compact']) .st-tl{max-height:142px}
 }

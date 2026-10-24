@@ -203,9 +203,12 @@ const COL = {
  * The player's vehicle tile takes its tank hero card (the 3/4 render over its waving flag) from the lazy
  * hero chunk; the packaged angle icon stays until the layers are placed, and for good when they are not.
  */
-function showHeroVehicle(card: HTMLElement, specId: string, fallback: HTMLImageElement): void {
-  Promise.all([import('./heroCard.ts'), import('./heroCard.css')])
-    .then(([hero]) => hero.decorateHeroTile(card, specId, { tankSizes: '220px', flagSizes: '260px', priority: true }))
+function showHeroVehicle(card: HTMLElement, specId: string, fallback: HTMLImageElement, name: string): void {
+  Promise.all([import('./heroCard.ts'), import('./heroCard.css'), import('./heroCardPolicy.ts')])
+    .then(([hero, , policy]) => {
+      nameVehicleCard(card, name, policy.nameParts);
+      return hero.decorateHeroTile(card, specId, { tankSizes: '220px', flagSizes: '260px', priority: true });
+    })
     .then((decorated) => {
       if (!decorated) return;
       card.setAttribute('role', 'img');
@@ -213,6 +216,22 @@ function showHeroVehicle(card: HTMLElement, specId: string, fallback: HTMLImageE
       fallback.remove();
     })
     .catch(() => { /* the angle icon stays */ });
+}
+
+/**
+ * The vehicle's name under its card: the name solid, its variant (the last word) in the hollow tungsten outline, as the
+ * policy's end-screen card sets it (HERO_CARD_LAYOUT.endScreen hollow; owner 2026-10-22: "love the outline text tho").
+ */
+function nameVehicleCard(card: HTMLElement, name: string, split: (name: string) => { solid: string; variant: string }): void {
+  if (!name || card.querySelector('.es-vn')) return;
+  const { solid, variant } = split(name);
+  const label = el('span', 'es-vn', card);
+  label.setAttribute('aria-hidden', 'true');
+  label.append(solid);
+  if (variant) {
+    label.append(' ');
+    el('span', 'hv', label).textContent = variant;
+  }
 }
 
 const ES_CSS = `
@@ -587,6 +606,19 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   host.setAttribute('aria-hidden', 'true');
 
   const awardTooltip = createRichTooltip(host, '[data-medal-tip],[data-achievement-tip]', awardDetails);
+  /** A report column that scrolls (the wide windows' side-by-side record) fades at its foot while more lies below. */
+  const markMore = (panel: HTMLElement): void => {
+    panel.classList.toggle('more', panel.scrollHeight - panel.scrollTop - panel.clientHeight > 2);
+  };
+  // the column's box (a resize) and its sections (late art, the hero tile, a tab's swap) change what lies below
+  const moreObserver = typeof ResizeObserver === 'function'
+    ? new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const panel = (entry.target as HTMLElement).closest<HTMLElement>('.es-debrief');
+        if (panel) markMore(panel);
+      }
+    })
+    : null;
   host.classList.add('cot-es--record');
   host.addEventListener('keydown', event => { if (host.classList.contains('show')) containModalTab(event,host,host.querySelector<HTMLButtonElement>('button') || host); });
   let visible = false;
@@ -903,6 +935,9 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   function renderReportHero(result: EndScreenResult, sum: EndScreenSummary): void {
     const art = battleMapArt(sum.mapId);
     host.style.setProperty('--report-map', art ? `url("${art}")` : 'none');
+    // page 11: the result stands over the battle's last frame (the scene's canvas keeps it under the report) under the
+    // direction's grade; with no scene behind (a capture harness, a report without a battle) the battlefield's art does
+    host.classList.toggle('es-over-scene', !!document.querySelector('canvas[data-scene-msaa-samples]'));
     const hero = el('div', 'es-hero', host);
     const kick = el('div', 'es-kick es-in', hero);
     kick.style.setProperty('--i', nextI());
@@ -1247,7 +1282,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       const vehicle = el('img', '', vehicleCard);
       vehicle.src = iconUrl(sum.playerSpecId, 'angle');
       vehicle.alt = sum.playerVehicle ? t('endScreen.vehicle.alt', { name: sum.playerVehicle }) : t('endScreen.vehicle.altFallback');
-      showHeroVehicle(vehicleCard, sum.playerSpecId, vehicle);
+      showHeroVehicle(vehicleCard, sum.playerSpecId, vehicle, sum.playerVehicle || '');
     }
     tile(statGrid, 'dealt', t('endScreen.tile.dealt'), {
       value: Math.round(sum.stats.dealt), hot: true, icon: 'damage',
@@ -1434,6 +1469,13 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       renderEndRematch(report);
       if (rematchPanel) report.prepend(rematchPanel);
       renderBattleBeats(res, sum);
+      moreObserver?.disconnect();
+      for (const panel of report.querySelectorAll<HTMLElement>('.es-debrief')) {
+        panel.addEventListener('scroll', () => markMore(panel), { passive: true });
+        moreObserver?.observe(panel);
+        for (const section of panel.children) moreObserver?.observe(section);
+        markMore(panel); // at once too: the observer's first word waits on a rendering step
+      }
       renderEndActions(sum);
       fillFlags();
 
