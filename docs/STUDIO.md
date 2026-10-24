@@ -136,6 +136,8 @@ __STUDIO.cancelFilmExport() / .filmExportStatus()
 __STUDIO.getFilm() / .setFilm(patch | null) / .FILM_DEFAULTS / .filming / .filmInfo
 __STUDIO.setCamera(cfg) / .getCamera()                // leaves look-through
 __STUDIO.setLookThrough(on) / .lookThrough
+__STUDIO.setPlacementSnap('road'|'terrain'|'off') / .placementSnap  // where a dragged or placed tank lands
+__STUDIO.applyPosePreset(actor, 'hull-down'|'firing'|'knocked-out')  // false: no crest within 24 m ahead
 __STUDIO.setPicture(patch) / .getPicture()          // film-grade picture (see "Picture")
 __STUDIO.pictureInfo({width, height}?)              // focal length, focus, mattes, stages
 __STUDIO.PICTURE_PRESETS                            // [{id, label}] named looks
