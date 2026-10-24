@@ -230,6 +230,21 @@ export interface GhillieConfig {
    */
   clothClearsGunStops?: boolean;
   /**
+   * Release 247 (the turret-scale lane; nationalGunClearance.selftest: the Merkava 3C's front-deck leaves 1-17 mm under
+   * its gun at yaws 8-22 either side, once its cut mask's re-sweep set the front stop near -2 degrees): a leaf card keeps
+   * the vehicle's clearances across its face, sampled densely, not only at its corners. A card lying across the barrel's
+   * path passed with every corner clear. Needs fieldClearanceM.
+   */
+  cardsClearGunStops?: boolean;
+  /**
+   * Release 248 (the turret-scale lane; the coordinator: the Leopard 2A2's suit, laid before its gun had a measured curve,
+   * lay 0-18 mm under the barrel across the rear arc): an older suit without fieldClearanceM keeps this clearance from the
+   * main gun at its published stops (gunPitchByYawDeg) and nothing else: the hull's cloth and garnish the gun's sweep
+   * reaches are cut once the suit is laid (cells and cards whole, sampled at their corners, edges and centres), the rest
+   * of the suit as authored.
+   */
+  gunStopTrimM?: number;
+  /**
    * Release 227 (round 2, 2026-10-16; the critic on the new national frontal ERA: "net blades and leaf clumps sink into the
    * new brick rows and stick out between them"): no point of a garnish card may lie inside the owner's armour (the
    * nearest surface over it faces up: the top of the block it is in), sampled densely over the card's face. The net's
@@ -3560,6 +3575,10 @@ export const GHILLIE_SUIT_CONFIGS = Object.freeze({
   leo2a2: {
     id: 'leo2a2', seed: 2404, style: 'leafy', density: 0.9, leafScale: 0.96, foliageKind: 'beech', maxHalfWidth: 1.845, hemFloorM: 0.565,
     light: 0x64794a, dark: 0x34462d, netColor: 'rgba(34,48,27,0.72)',
+    // 248 (the coordinator): under its measured curve (turretScaleGunPitch.ts: -1.9 deg astern, -5.7 to -4 over the rear
+    // quarter, -9 over the bow corners) the net, its drapes' rolls and its garnish lay 0-18 mm under the barrel; what the
+    // gun's sweep reaches is cut, 3 cm clear of it (the receipt keeps 25 mm)
+    gunStopTrimM: 0.03,
     hull: {
       // the deck under the turret and gun sweep keeps its garnish to a low band along its edges (round 3)
       top: [{ x0: -1.72, x1: 1.72, z0: -3.80, z1: 3.82, nx: 24, nz: 48, yAt: leo2A4HullBlanketY,
@@ -4694,6 +4713,8 @@ interface FieldClearance {
   garnishOk(owner: GhillieOwner, p: readonly number[]): boolean;
   /** Only the thin lines: a point outside every lens view and smoke line of the owner. */
   linesOk(owner: GhillieOwner, p: readonly number[]): boolean;
+  /** Only the main gun: a hull point its sweep at its published stops does not reach (GhillieConfig.gunStopTrimM). */
+  gunOk(owner: GhillieOwner, p: readonly number[]): boolean;
   /**
    * The fix round's field garnish: the lens views as a crew keeps them on a camouflaged vehicle (nothing within 85 cm in
    * front of any glass; beyond, to 1.6 m, a bough may stand only lower than 10 degrees under the line of sight), the
@@ -5161,17 +5182,18 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
   };
   const envelopeFloor = conservativeGun ? gunEnvelopeFloor(P) : null;
   const hullToTurret = new THREE.Matrix4().copy(turret.matrixWorld).invert().multiply(hull.matrixWorld), envelopePoint = new THREE.Vector3();
-  const workingOk = (owner: GhillieOwner, p: readonly number[], garnish = false): boolean => {
+  // `gunOnly`: the main gun's sweep alone (GhillieConfig.gunStopTrimM)
+  const workingOk = (owner: GhillieOwner, p: readonly number[], garnish = false, gunOnly = false): boolean => {
     if (owner === 'hull') {
       const dx = p[0] - pivot.x, dz = p[2] - pivot.z, r = Math.hypot(dx, dz);
       const qy = p[1] - pivot.y;
       // off the running gear
-      if (nearGear(p)) return false;
+      if (!gunOnly && nearGear(p)) return false;
       // clear of whatever the turret carries round over this radius and height through its traverse
-      if (inTurretSweep(r, qy)) return false;
+      if (!gunOnly && inTurretSweep(r, qy)) return false;
       // under the receipt's continuous gun envelope (GhillieConfig.conservativeGunEnvelope), 5 cm clear of its lowest
       // reach within 10 cm of the point's radius (the receipt boxes each triangle, whose corners reach farther out)
-      if (envelopeFloor) {
+      if (envelopeFloor && !gunOnly) {
         const tp = envelopePoint.set(p[0], p[1], p[2]).applyMatrix4(hullToTurret);
         const rr = Math.hypot(tp.x, tp.z);
         let lowest = Infinity;
@@ -5306,6 +5328,7 @@ function fieldClearance(P: GhillieBuilderPort, clearance: number, conservativeGu
       return linesOk(owner, p);
     },
     linesOk,
+    gunOk: (owner, p) => owner !== 'hull' || workingOk('hull', p, true, true),
     fieldLinesOk,
     keepColumns: (owner) => (owner === 'turret'
       ? cradleStations.map(([sx, , sz]) => [sx - CRADLE_KEEP_M, sx + CRADLE_KEEP_M, sz - CRADLE_KEEP_M, sz + CRADLE_KEEP_M] as const) : []),
@@ -5719,10 +5742,12 @@ function* addGhillieOwner(
         ? (x, y, z) => surfacesAt(x, z).some((h) => !h.gear && h.y > y + 0.001 && h.y < y + OVERHUNG_M) : undefined,
       // the card's own vertices keep the vehicle's clearances; its face, sampled densely, keeps the thin lens views
       // and smoke lines clear (a line can pass between a card's vertices)
-      cardClear: clearance ? field ? (card) => denseCardPoints(card).every((p) => clearance.fieldLinesOk(owner, p))
+      cardClear: clearance ? field ? (card) => denseCardPoints(card).every((p) => clearance.fieldLinesOk(owner, p)
+          && (!cfg.cardsClearGunStops || clearance.netOk(owner, p, true)))
           && (!markRays || !cardHidesMarking(card, markRays))
         : (card) => cardPoints(card).every((p) => clearance.netOk(owner, p))
-          && denseCardPoints(card).every((p) => clearance.linesOk(owner, p)) : undefined,
+          && denseCardPoints(card).every((p) => clearance.linesOk(owner, p) && (!cfg.cardsClearGunStops || clearance.netOk(owner, p)))
+        : undefined,
     };
     for (let k = 0; k < surfaces.length; k++) {
       (field ? addFieldTufts : addTufts)(foliage, surfaces[k], ctx, cfg.seed + k * 1000 + (owner === 'turret' ? 37 : owner === 'gun' ? 71 : 0));
@@ -5901,6 +5926,49 @@ function* buildGhillieSuit(P: GhillieBuilderPort, cfg: GhillieConfig): Generator
   if (cfg.dropOverSpentEra && P.eraClusterAt && P.bindEraDrape) {
     yield;
     drapeSuitOverSpentEra({eraClusterAt: P.eraClusterAt, bindEraDrape: P.bindEraDrape}, owners.filter(([o]) => o !== 'gun').map(([, parent, others]) => [parent, others] as const));
+  }
+  if (cfg.gunStopTrimM !== undefined && !clearance) {
+    yield;
+    trimHullSuitUnderGun(P.hullG, fieldClearance(P, cfg.gunStopTrimM, false, true));
+  }
+}
+
+/**
+ * GhillieConfig.gunStopTrimM: the hull suit's cells and cards (6-vertex pairs of the non-indexed net and leaf meshes,
+ * identity under rig_hull) the main gun's sweep reaches, cut whole. Each is sampled at its corners, edge midpoints and
+ * triangle centres.
+ */
+function trimHullSuitUnderGun(hull: THREE.Object3D, clearance: FieldClearance): void {
+  const p = [0, 0, 0];
+  const ok = (x: number, y: number, z: number): boolean => { p[0] = x; p[1] = y; p[2] = z; return clearance.gunOk('hull', p); };
+  for (const mesh of hull.children) {
+    if (!(mesh instanceof THREE.Mesh) || !/_ghillie_hull_/.test(mesh.name) || mesh.geometry.index) continue;
+    const geometry = mesh.geometry as THREE.BufferGeometry, position = geometry.getAttribute('position');
+    const group = position.count % 6 === 0 ? 6 : 3;
+    const keep: number[] = [];
+    for (let g = 0; g < position.count; g += group) {
+      let clear = true;
+      for (let t = g; t < g + group && clear; t += 3) {
+        const ax = position.getX(t), ay = position.getY(t), az = position.getZ(t);
+        const bx = position.getX(t + 1), by = position.getY(t + 1), bz = position.getZ(t + 1);
+        const cx = position.getX(t + 2), cy = position.getY(t + 2), cz = position.getZ(t + 2);
+        clear = ok(ax, ay, az) && ok(bx, by, bz) && ok(cx, cy, cz)
+          && ok((ax + bx) / 2, (ay + by) / 2, (az + bz) / 2) && ok((bx + cx) / 2, (by + cy) / 2, (bz + cz) / 2)
+          && ok((ax + cx) / 2, (ay + cy) / 2, (az + cz) / 2) && ok((ax + bx + cx) / 3, (ay + by + cy) / 3, (az + bz + cz) / 3);
+      }
+      if (clear) keep.push(g);
+    }
+    if (keep.length * group === position.count) continue;
+    const trimmed = new THREE.BufferGeometry();
+    for (const [name, attribute] of Object.entries(geometry.attributes)) {
+      const { itemSize } = attribute, source = attribute.array as ArrayLike<number>;
+      const out = new (attribute.array.constructor as Float32ArrayConstructor)(keep.length * group * itemSize);
+      keep.forEach((g, k) => { for (let i = 0; i < group * itemSize; i++) out[k * group * itemSize + i] = source[g * itemSize + i]; });
+      trimmed.setAttribute(name, new THREE.BufferAttribute(out, itemSize, attribute.normalized));
+    }
+    trimmed.computeBoundingBox(); trimmed.computeBoundingSphere();
+    geometry.dispose();
+    mesh.geometry = trimmed;
   }
 }
 
