@@ -305,6 +305,28 @@ function fixture(overrides = {}) {
 }
 
 {
+  console.log('[4b] out of credit (2026-10-23: the org credit is hard-capped and shared): one upstream refusal holds every request');
+  for (const upstream of [fakeUpstream({ status: 402, body: { error: 'payment required' } }),
+    fakeUpstream({ status: 429, body: { error: 'Insufficient credit balance' } }),
+    fakeUpstream({ status: 403, body: { detail: 'quota exceeded for this organization' } })]) {
+    const f = fixture({ upstream });
+    const first = await invoke(f.handler, { body: request() });
+    assert.equal(first.status, 503);
+    assert.equal(first.body.error, 'upstream_out_of_credit');
+    assert.match(f.warnings[0], /out of credit/);
+    f.advance(60_000);
+    const held = await invoke(f.handler, { body: request(fixtureState(), 'another-session-7') });
+    assert.equal(held.body.error, 'upstream_out_of_credit', 'every session is held');
+    assert.equal(f.upstream.calls.length, 1, 'no upstream call while held');
+    f.advance(15 * 60_000);
+    await invoke(f.handler, { body: request() });
+    assert.equal(f.upstream.calls.length, 2, 'the hold ends after fifteen minutes');
+  }
+  const plain = fixture({ upstream: fakeUpstream({ status: 429, body: { error: 'too many requests' } }) });
+  assert.equal((await invoke(plain.handler, { body: request() })).body.error, 'upstream_rate_limited', 'a plain 429 stays a rate limit');
+}
+
+{
   console.log('[5] rate limits and the session budget');
   const f = fixture({ options: { sessionBucketCapacity: 3, sessionBucketRefillPerSecond: 1 } });
   for (let i = 0; i < 3; i++) assert.equal((await invoke(f.handler, { body: request() })).status, 200);

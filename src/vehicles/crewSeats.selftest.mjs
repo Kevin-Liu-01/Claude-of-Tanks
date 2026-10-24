@@ -18,10 +18,11 @@ import { crewArmour, crewPostureLadders, crewShell, shapeSurfaceSamples } from '
 // there, shapes trimmed inside. The Challenger 2 / FV4034 turret is ~0.56 m tall over a ~0.65 m-radius hull collar,
 // the ZTZ-100s', TOS-1A's and Type 96B's turrets and the BMPT's hull bays are as low; the rest miss by under 1 %.
 const TRIMMED = Object.freeze({
-  'abramsx/gunner': 0.006, 't90a_2006/gunner': 0.005, 't90a_2006/commander': 0.006,
-  't90a_burlak_proto/gunner': 0.028, 't90a_burlak_proto/commander': 0.017, 'cv90_mk4/gunner': 0.008,
-  'cv90_mk4/commander': 0.003, 'leo2a4m_can/gunner': 0.003, 'leo2a4m_can/commander': 0.006,
-  'leo2a4m_can/loader': 0.003, 'type96b/gunner': 0.043, 'type96_80_feng/gunner': 0.004, 'ztz100/gunner': 0.021,
+  // 243: t90a_2006 and t90a_burlak_proto seat untrimmed on gun-hull 49bf1fd16a's T-90 fixes (the crew refit on the
+  // merged tree); leo2a4m_can at 242's crew refit of the rows both lanes moved (bb3b58a894)
+  'abramsx/gunner': 0.006, 'cv90_mk4/gunner': 0.008,
+  'cv90_mk4/commander': 0.003, 'leo2a4m_can/gunner': 0.007, 'leo2a4m_can/commander': 0.008,
+  'leo2a4m_can/loader': 0.007, 'type96b/gunner': 0.043, 'type96_80_feng/gunner': 0.004, 'ztz100/gunner': 0.021,
   'ztz100/commander': 0.022, 'ztz100_prototype/gunner': 0.034, 'ztz100_prototype/commander': 0.012,
   'm60a3/driver': 0.001, 'tos1a_tagil/gunner': 0.017, 'tos1a_tagil/commander': 0.017,
   'bmpt_t90/weaponOperatorLeft': 0.008, 'bmpt_t90/weaponOperatorRight': 0.059, 'k2_black_panther/commander': 0.005,

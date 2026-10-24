@@ -8,11 +8,13 @@
  *
  * Every function draws centred on (x, y) in the current transform; `r` is
  * the glyph's nominal radius in the caller's units (CSS px on the minimap,
- * texture px for sprites). Colours arrive from OBJECTIVE_PALETTE: own team
- * green, enemy red, neutral chalk, contested amber — the HUD's blip colours.
+ * texture px for sprites). Colours arrive from sideColor / sideFill: own and
+ * enemy in the team tokens under the player's colour preset (the HUD's blip
+ * colours), neutral chalk and contested amber from OBJECTIVE_PALETTE.
  */
 
-import { TOKENS, tokenValue } from './tokens/tokens.ts';
+import { TOKENS, liveToken } from './tokens/tokens.ts';
+import { tokenEpoch } from './tokens/tokenSelection.ts';
 
 export type ObjectiveSide = 'own' | 'enemy' | 'neutral' | 'contested';
 
@@ -22,37 +24,43 @@ function withAlpha(hex: string, alpha: number): string {
   return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${alpha})`;
 }
 
-/**
- * Team colours follow the HUD's blips, which keep the classic green/red identity until the HUD token restyle
- * (brand-ui BUI-H1) moves every team mark at once; the rest are the brand tokens.
- */
-const TEAM_PRESET = { cvd: 'classic' } as const;
-const OWN = tokenValue('team-own', TEAM_PRESET);
-const ENEMY = tokenValue('team-enemy', TEAM_PRESET);
-
+/** The brand tokens of the sides no team owns; the team sides follow the player's colour preset (sideColor). */
 export const OBJECTIVE_PALETTE = Object.freeze({
-  own: OWN,
-  enemy: ENEMY,
   neutral: TOKENS['team-neutral'],
   contested: TOKENS.accent,
-  ownFill: withAlpha(OWN, 0.34),
-  enemyFill: withAlpha(ENEMY, 0.34),
   neutralFill: withAlpha(TOKENS['team-neutral'], 0.16),
   contestedFill: withAlpha(TOKENS.accent, 0.34),
   keyline: withAlpha(TOKENS['graphite-950'], 0.86),
+  /** the sector chip's hexagon well (drawObjectiveChip) */
+  well: withAlpha(TOKENS['graphite-950'], 0.9),
   chalk: TOKENS['ink-1'],
   heal: TOKENS.ok,
   ammo: TOKENS.accent,
   ball: TOKENS['ink-1'],
 });
 
+/** Own and enemy in the team tokens under the player's colour preset (brand-ui H1: the HUD's blips and every team
+ *  mark share them), re-read only when the preset changes. */
+const TEAM = { epoch: -1, own: '', enemy: '', ownFill: '', enemyFill: '' };
+function team(): typeof TEAM {
+  const epoch = tokenEpoch();
+  if (epoch !== TEAM.epoch) {
+    TEAM.epoch = epoch;
+    TEAM.own = liveToken('team-own');
+    TEAM.enemy = liveToken('team-enemy');
+    TEAM.ownFill = withAlpha(TEAM.own, 0.34);
+    TEAM.enemyFill = withAlpha(TEAM.enemy, 0.34);
+  }
+  return TEAM;
+}
+
 export function sideColor(side: ObjectiveSide): string {
-  return OBJECTIVE_PALETTE[side];
+  return side === 'own' || side === 'enemy' ? team()[side] : OBJECTIVE_PALETTE[side];
 }
 
 export function sideFill(side: ObjectiveSide): string {
-  return side === 'own' ? OBJECTIVE_PALETTE.ownFill
-    : side === 'enemy' ? OBJECTIVE_PALETTE.enemyFill
+  return side === 'own' ? team().ownFill
+    : side === 'enemy' ? team().enemyFill
       : side === 'contested' ? OBJECTIVE_PALETTE.contestedFill
         : OBJECTIVE_PALETTE.neutralFill;
 }
@@ -131,6 +139,46 @@ export function drawProgressArc(
   ctx.arc(x, y, r, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2);
   ctx.stroke();
   ctx.restore();
+}
+
+interface ChipStyle {
+  side: ObjectiveSide;
+  label: string;
+  /** capture progress 0..1 toward `progressSide` (the ring's share) */
+  progress: number;
+  progressSide?: 'own' | 'enemy';
+  font?: string;
+}
+
+/**
+ * The HUD's sector chip under the score (brand-ui H3, the direction's 06-battle-hud.html .sectors): the zone's hexagon
+ * on a dark well, rimmed and lettered in its side's ink, inside a capture ring whose arc is the progress toward its side.
+ * A contested zone's ring is dashed all round in the contested ink. `r` is the hexagon's radius; the ring runs at 1.23 r.
+ */
+export function drawObjectiveChip(ctx: Ctx, x: number, y: number, r: number, chip: ChipStyle): void {
+  const ring = r * 1.23;
+  const width = r * 0.15;
+  ctx.save();
+  ctx.lineWidth = width + r * 0.06;
+  ctx.strokeStyle = OBJECTIVE_PALETTE.keyline;
+  ctx.beginPath();
+  ctx.arc(x, y, ring, 0, Math.PI * 2);
+  ctx.stroke();
+  if (chip.side === 'contested') {
+    ctx.setLineDash([r * 0.2, r * 0.13]);
+    ctx.lineWidth = width;
+    ctx.strokeStyle = sideColor('contested');
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  ctx.restore();
+  if (chip.side !== 'contested') {
+    drawProgressArc(ctx, x, y, ring, chip.progress, sideColor(chip.progressSide ?? chip.side), width);
+  }
+  const color = sideColor(chip.side);
+  drawHexBadge(ctx, x, y, r, {
+    fill: OBJECTIVE_PALETTE.well, stroke: color, label: chip.label, labelColor: color, ringWidth: r * 0.11, font: chip.font,
+  });
 }
 
 /** Swallow-tail pennant on a pole; `h` is the pole height, the pennant hangs from its top. */

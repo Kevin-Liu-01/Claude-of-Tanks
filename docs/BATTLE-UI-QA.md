@@ -629,6 +629,13 @@ button's top; now it stands with the alert under the gun-travel chip, and the
 plan clears. The census's objective is the one-row panel's 30 px (41 before).
 1024 x 600 and 1000 x 600 still put the alert's foot over the arm's tip at full
 bloom (tier 1). 360 x 640 still finds no clear place, 2 px short over the sight.
+844 x 390 with both kill lanes holding a row is unchanged from 241: the band over
+the sight holds 71 px, and the compact detection (32), its gap (6) and the
+compact alert's 40 px reserve need 78. The detection then goes under the sight,
+past the marks' 76 px, and covers 16 px of the controls row (the Lights and Auto
+gun tiles). Two fixes would clear it: plan the compact alert at its measured
+height (28 px for one alert's two lines), or let the kill lanes give way as the
+mouse plan's do.
 
 ### Scope skeleton and polish (r10f, r10g)
 

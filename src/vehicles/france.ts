@@ -193,19 +193,22 @@ function buildAMX40(P: FranceBuilderPort): void {
   // ENGINE DECK (identity: REAR-RAISED, stepped): plateau 1.763 (receipt
   // -3.11..-2.32), low step 1.738 (-2.28..-1.72), ramp down to the fore
   // deck under the bustle.
-  segZ('hull', 3.04, 0.10, 0, 1.713, -3.27, -2.28);                             // plateau course y 1.663..1.763 (flat to ±1.52)
-  segZ('hull', 3.04, 0.075, 0, 1.7005, -2.28, -1.72);                           // step course y 1.663..1.738
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the step course stands at 1.70 and runs on
+  // to -2.65, where the plateau starts, out of the sweep of the turret's floor (1.73, 2.1-2.16 m off the ring's axis fore
+  // and aft), which ran through the step, the plateau's fore end and its intake (and sat in them at rest).
+  segZ('hull', 3.04, 0.10, 0, 1.713, -3.27, -2.65);                             // plateau course y 1.663..1.763 (flat to ±1.52)
+  segZ('hull', 3.04, 0.037, 0, 1.6815, -2.65, -1.72);                           // step course y 1.663..1.70
   for (const s of [-1, 1]) {                                                    // deck side shoulders: chamfer 1.763/1.738 -> 1.663 at the ±1.61 edge
     P.add('hull', slab(                                                         //   (receipt front cols fall 1.75 -> 1.67 over |x| 1.55..1.66)
-      [s * 1.52, 1.663, -2.28], [s * 1.61, 1.663, -2.28], [s * 1.61, 1.663, -3.27], [s * 1.52, 1.663, -3.27],
-      [s * 1.52, 1.763, -2.28], [s * 1.605, 1.665, -2.28], [s * 1.605, 1.665, -3.27], [s * 1.52, 1.763, -3.27]));
+      [s * 1.52, 1.663, -2.65], [s * 1.61, 1.663, -2.65], [s * 1.61, 1.663, -3.27], [s * 1.52, 1.663, -3.27],
+      [s * 1.52, 1.763, -2.65], [s * 1.605, 1.665, -2.65], [s * 1.605, 1.665, -3.27], [s * 1.52, 1.763, -3.27]));
     P.add('hull', slab(
-      [s * 1.52, 1.663, -1.72], [s * 1.61, 1.663, -1.72], [s * 1.61, 1.663, -2.28], [s * 1.52, 1.663, -2.28],
-      [s * 1.52, 1.738, -1.72], [s * 1.605, 1.665, -1.72], [s * 1.605, 1.665, -2.28], [s * 1.52, 1.738, -2.28]));
+      [s * 1.52, 1.663, -1.72], [s * 1.61, 1.663, -1.72], [s * 1.61, 1.663, -2.65], [s * 1.52, 1.663, -2.65],
+      [s * 1.52, 1.70, -1.72], [s * 1.605, 1.665, -1.72], [s * 1.605, 1.665, -2.65], [s * 1.52, 1.70, -2.65]));
   }
-  P.add('hull', slab(                                                           // ramp 1.738 -> 1.658 (one raked plane, §B1)
+  P.add('hull', slab(                                                           // ramp 1.70 -> 1.658 (one raked plane, §B1)
     [-1.61, 1.60, -1.02], [1.61, 1.60, -1.02], [1.61, 1.60, -1.72], [-1.61, 1.60, -1.72],
-    [-1.61, 1.658, -1.05], [1.61, 1.658, -1.05], [1.61, 1.738, -1.72], [-1.61, 1.738, -1.72]));
+    [-1.61, 1.658, -1.05], [1.61, 1.658, -1.05], [1.61, 1.70, -1.72], [-1.61, 1.70, -1.72]));
   P.add('hull', slab(                                                           // stern chamfer lip: 1.662 @ -3.40 -> the 1.758 plateau edge @ -3.27
     [-1.52, 1.60, -3.24], [1.52, 1.60, -3.24], [1.52, 1.60, -3.38], [-1.52, 1.60, -3.38],
     [-1.52, 1.758, -3.27], [1.52, 1.758, -3.27], [1.52, 1.662, -3.40], [-1.52, 1.662, -3.40])); //   (±1.52 — the ref's stern corners stop at -3.27/-3.29 outboard)
@@ -398,12 +401,13 @@ function buildAMX40(P: FranceBuilderPort): void {
   liftEye(P, 'hullDetail', -1.45, 1.658, -3.05);
   liftEye(P, 'hullDetail', 1.45, 1.658, -3.05);
   // engine plateau furniture: intake mesh + louvre rows + filler caps
-  P.add('hullDark', box(2.30, 0.018, 0.80), 0, 1.772, -2.72);
+  // (release 240: the intake and its louvres on the plateau aft of -2.66, the filler caps behind them)
+  P.add('hullDark', box(2.30, 0.018, 0.46), 0, 1.772, -2.89);
   for (const k of KIT.grilleIndices(P.q, 4, 2)) {
-    P.add('hullDetail', box(2.20, 0.016, 0.05), 0, 1.776, -2.99 + k * 0.18);
+    P.add('hullDetail', box(2.20, 0.016, 0.05), 0, 1.776, -3.08 + k * 0.13);
   }
-  P.add('hullDark', box(1.80, 0.016, 0.42), 0, 1.747, -2.02);                   // step-course mesh field
-  for (const s of [-1, 1]) P.add('hullDetail', cylY(0.085, 0.085, 0.018, 12), s * 1.15, 1.772, -2.42);
+  P.add('hullDark', box(1.80, 0.016, 0.42), 0, 1.704, -2.02);                   // step-course mesh field
+  for (const s of [-1, 1]) P.add('hullDetail', cylY(0.085, 0.085, 0.018, 12), s * 1.15, 1.772, -2.78);
   P.add('hullDetail', box(0.30, 0.028, 0.38), -1.18, 1.769, -3.05);             // filler hump (top 1.783 — 2cm over the plateau)
   // pioneer tools on the fore-deck right lane
   P.add('hullWood', box(0.035, 0.025, 0.85), 1.10, 1.653, 0.45);                // shovel haft

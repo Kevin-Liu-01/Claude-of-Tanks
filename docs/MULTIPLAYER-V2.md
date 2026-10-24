@@ -418,7 +418,8 @@ after the shooter looked is missed live and hit rewound.
 
 - A `NO_TICK` acknowledgement (INPUT, PING or `SNAPSHOT_ACK`) drops the viewer's baseline and
   latches a keyframe for the next snapshot when the viewer held one; a viewer that never
-  acknowledged is already on keyframes until it does.
+  acknowledged is already on keyframes until it does. (2026-10-23: such forced keyframes draw on a burst of eight,
+  then one per 500 ms, §13.28.)
 - The first control applied after admission or a seat replacement seeds `fireSeq` /
   `actionSeq` without an edge — no stray shot on reconnect.
 - A new `actionSeq` skips bits the previous sequence applied within 500 ms, so a union of two
@@ -2382,6 +2383,39 @@ The room now elects at once only when a strict majority of the match's connected
 counting only claims made after the host's latest accepted report; in a two-commander match the lone peer is a majority.
 A crashed host is silent to every peer, so the fast election holds. `tools/mp-p2p-room-double.ts` mirrors the rule.
 
+### 13.29 The rooms Worker on Workers Free: fewer invocations, one limit state (round 243, 2026-10-23)
+
+The owner ruled on 2026-10-23 that the account stays on Cloudflare Workers Free: 100,000 Worker requests and 100,000
+Durable Object requests a day, shared by cot-rooms and cot-telemetry. The security audit's NV-5 and NV-9 are mitigated
+in code.
+
+**Fewer invocations per player.**
+- The room keepalive was already the Durable Object's hibernation auto-response, never a billed request.
+- The p2p host's periodic `match_report` goes every 30 s instead of 10 (`ROOM_MATCH_POLL_MS`; phase changes and the
+  verdict still go at once). That is about 120 billed requests an hour per running match instead of 360. A host
+  that stays connected and stops reporting is now declared stale after 90 s. A host that leaves or crashes is found
+  as before: its socket's grace and the peers' corroborated `host_unreachable`. **Release order:** the rooms Worker
+  goes first. The old Worker declares a host stale after 3 × 10 s, exactly the new report interval, so a new site on
+  the old Worker could trigger false host migrations. A new Worker with old hosts (10 s reports) is fine.
+- Telemetry sends one beacon per session phase (docs/ENTRY-RESILIENCE.md).
+
+**Junk is dropped before the limiter and the Durable Object.** The rooms Worker answers 405 to anything but GET
+before it parses a route. A query string, a fragment, `/match` and a foreign Origin are all answered without the
+limiter. Only an allowed, well-formed upgrade reaches it and then a room. The telemetry Worker refuses a declared
+oversize body before its limiter.
+
+**One limit state.** Past the daily cap Cloudflare refuses every request with error 1027 until 00:00 UTC, and a
+browser cannot see why its WebSocket upgrade failed.
+- After a failed admission, or a room interrupted mid-lobby, the Play menu asks `/api/rooms-status` once. That Vercel
+  function reads the rooms Worker's `/healthz` from the server and is cached at the edge.
+- `limited` shows one state: "Multiplayer is at today's limit", with practice, bots and LAN unaffected. The client
+  stops the interrupted room instead of reconnecting into the refusal, and remembers the limit until 00:00 UTC. While
+  it lasts, an attempt asks the status again and opens no socket.
+- LAN helpers never ask. A room lost mid-battle keeps its bounded reconnect window: the battle runs between the
+  browsers.
+- `roomServiceLimit.selftest` covers this over real sockets.
+
+
 ### 13.27 The room's bots: seated by one planner, TEAM NATIONS (gameplay-modes-228, 2026-10-18)
 
 **Why.** Every room bot cloned a human's pick (an empty side cloned the host's tank), and the co-op rooms seated no
@@ -2442,6 +2476,42 @@ rooms Worker bundle imports `roomPolicy` → `roomBots` → `teamNations` / `nat
 Worker (cot-rooms, 2026-10-13 at 5797d9750) keeps the old `planStart` bots and drops `teamNations` (MONO) until a
 `node tools/release.mjs workers <sha> --only=rooms` release after this lands (docs/DEPLOYS.md); the Vercel deploy does
 not ship the Worker. No protocol or room version moves.
+
+### 13.28 Security audit findings in the match protocol (round 243, 2026-10-23)
+
+**Forced keyframes draw on a bucket (NV-11).** The publisher sent a keyframe whenever the viewer had no usable
+acknowledged baseline or asked for one with `NO_TICK`, with no limit. So a seat or spectator that never acknowledged,
+or that retracted every acknowledgement, drew a full keyframe on every 20 Hz snapshot. The audit measured 100 of 100
+snapshots as keyframes, about 8x an honest stream, all on the host player's home uplink.
+
+Now keyframes the viewer forces draw on a bucket (`server/match/publisher.ts`):
+- the bucket holds `FORCED_KEYFRAME_BURST` = 8;
+- one token returns every `FORCED_KEYFRAME_REFILL_TICKS` = 30 ticks (500 ms);
+- with the bucket empty the viewer gets nothing, since without a baseline it has nothing to apply a delta to.
+
+The burst covers an honest viewer's first round trip after a join or a recovery, up to about 400 ms at 20 Hz. The 2 s
+cadence never draws on it.
+
+- `forcedKeyframes.selftest` covers four viewers:
+  - a silent viewer and a retracting viewer each get 1 + 8 keyframes, then 2/s (about 18 in 5 s, down from 100);
+  - a viewer that acknowledges 300 ms late loses no snapshot while it joins;
+  - two honest recoveries in a row are each answered with the next snapshot.
+- `matchActor.selftest` first exposed a plain 500 ms floor: its viewers acknowledge 100 ms late and lost their first
+  round trip of snapshots. The bucket replaced the floor before landing. Its spectator and its replacement link now
+  acknowledge as the shipped client does (`matchClient` `maintainAcks`, a seat's INPUT). A silent viewer is the case
+  `forcedKeyframes.selftest` owns.
+- No wire or protocol version moved.
+
+**A demoted host keeps the per-match secret (C7): accepted for now.** `hostSecret` is derived per match, not per
+host generation. A former host therefore still holds the key that seals the migration keyframes, and could open a
+successor's sealed keyframe, which carries every entity, hidden enemies included. The coordinator accepted this on
+2026-10-23 under the trade-off in §13.3: the host is a player, and the same principal already held host authority
+over that match. The seat-takeover half of the finding is closed: the host's HELLO gate binds the seat to the
+room-authenticated signaling peer (round 242).
+
+The remedy waits for the next migration-format change. It is a per-generation key,
+`sha256(MATCH_SEAT_SECRET:matchId:generation)`, plus a successor that opens the previous generation's blob with a
+key the room hands only to the newly elected host. Log the change here when it lands.
 
 ## 10. Decisions for the owner
 
