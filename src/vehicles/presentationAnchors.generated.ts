@@ -130,7 +130,7 @@ export const TANK_PRESENTATION_ANCHORS: Readonly<Record<string, TankPresentation
   merkava2b: Object.freeze({ xM: 0, zM: -0.6398 }),
   merkava2d: Object.freeze({ xM: 0.0014, zM: -0.527 }),
   merkava3_baz: Object.freeze({ xM: -0.0053, zM: -0.8152 }),
-  merkava3c: Object.freeze({ xM: -0.0023, zM: -0.8015 }),
+  merkava3c: Object.freeze({ xM: -0.0024, zM: -0.8015 }),
   merkava3d: Object.freeze({ xM: 0, zM: -0.0039 }),
   merkava4: Object.freeze({ xM: -0.0005, zM: -0.0078 }),
   merkava4_barak: Object.freeze({ xM: -0.0005, zM: 0.01 }),
