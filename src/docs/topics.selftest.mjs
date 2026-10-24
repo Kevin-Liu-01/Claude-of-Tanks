@@ -4,12 +4,14 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DOCS_ICON_SPECS } from './docsIcons.ts';
 import { TOPIC_ORDER, topicSectionId, topics } from './topics.ts';
+import { richSections } from './chapters/index.ts';
 import { CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
 import { WEAPON_CLASSES } from '../audio/weaponAudio.ts';
 import { staleChapters } from '../../tools/docs-prerender.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const expected = [
+  'modes',
   'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance',
   'worlds', 'ai', 'multiplayer', 'audio', 'interface', 'studio', 'filming',
 ];
@@ -29,16 +31,31 @@ for (const id of TOPIC_ORDER) {
   const topic = topics[id];
   assert.ok(topic, `${id} has a topic definition`);
   assert.ok(Object.hasOwn(DOCS_ICON_SPECS, topic.icon), `${id} has a typed custom icon`);
-  assert.ok(topic.sections.length >= 5, `${id} remains a substantive manual`);
-  assert.equal(topic.sectionIcons.length, topic.sections.length, `${id} has an icon for every section`);
-  for (const icon of topic.sectionIcons) {
-    assert.ok(Object.hasOwn(DOCS_ICON_SPECS, icon), `${id} section icon ${icon} is registered`);
-  }
-  assert.equal(topic.media.length, 2, `${id} has two current visual evidence anchors`);
-  const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
-  assert.ok(firstFigureAt < secondFigureAt && secondFigureAt < topic.sections.length, `${id} places both figures after its own sections`);
-  for (const asset of [topic.hero, ...topic.media.map(([src]) => src)]) {
-    assert.ok(existsSync(join(ROOT, 'public', asset)), `${id}: referenced media exists (${asset})`);
+  const rich = richSections(id);
+  if (rich) {
+    // a chapter built from the game's tables (src/docs/chapters): its own sections, anchors and pictures
+    assert.ok(topic.rich && rich.length >= 3, `${id} remains a substantive manual`);
+    assert.equal(new Set(rich.map((section) => section.id)).size, rich.length, `${id}: one anchor per section`);
+    for (const section of rich) {
+      assert.match(section.id, /^[a-z][a-z0-9-]*$/, `${id}#${section.id}: a plain anchor`);
+      assert.ok(section.title && section.html && section.text, `${id}#${section.id}: a heading, markup and text`);
+      for (const [, src] of section.html.matchAll(/(?:src|srcset)="(\/[^" ,?]+)/g)) {
+        assert.ok(existsSync(join(ROOT, 'public', src)), `${id}#${section.id}: ${src} is on disk`);
+      }
+    }
+    assert.ok(existsSync(join(ROOT, 'public', topic.hero)), `${id}: its banner take exists`);
+  } else {
+    assert.ok(topic.sections.length >= 5, `${id} remains a substantive manual`);
+    assert.equal(topic.sectionIcons.length, topic.sections.length, `${id} has an icon for every section`);
+    for (const icon of topic.sectionIcons) {
+      assert.ok(Object.hasOwn(DOCS_ICON_SPECS, icon), `${id} section icon ${icon} is registered`);
+    }
+    assert.equal(topic.media.length, 2, `${id} has two current visual evidence anchors`);
+    const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
+    assert.ok(firstFigureAt < secondFigureAt && secondFigureAt < topic.sections.length, `${id} places both figures after its own sections`);
+    for (const asset of [topic.hero, ...topic.media.map(([src]) => src)]) {
+      assert.ok(existsSync(join(ROOT, 'public', asset)), `${id}: referenced media exists (${asset})`);
+    }
   }
   assert.ok(existsSync(join(ROOT, `site/docs-${id}.html`)), `${id} has an independently indexed HTML entry`);
   assert.match(landing, new RegExp(`href="/docs/${id}"`), `${id} is discoverable from the manual index`);
@@ -46,7 +63,7 @@ for (const id of TOPIC_ORDER) {
 
 // (242, the direction's 08-docs) every chapter sits on the shelf beside the page, in its two groups; the narrow
 // layout folds the shelf into one scrolling row that opens on the current chapter
-assert.match(topicsSource, /const TOPIC_GROUPS[\s\S]*?'mechanics'[\s\S]*?'engineering'/, 'the shelf names its two groups');
+assert.match(topicsSource, /const TOPIC_GROUPS[\s\S]*?'play'[\s\S]*?'behind'/, 'the shelf names its two groups: the player\'s chapters first, then behind the game');
 const shelved = [...topicsSource.matchAll(/topics: \[([^\]]+)\]/g)].flatMap((m) => m[1].match(/'([a-z]+)'/g).map((q) => q.slice(1, -1)));
 assert.deepEqual([...shelved].sort(), [...TOPIC_ORDER].sort(), 'every chapter is on the shelf exactly once');
 assert.match(docsCss, /\.dm\{display:grid;grid-template-columns:var\(--docs-side-w\) minmax\(0,1fr\)/, 'wide manuals keep the shelf beside the page');

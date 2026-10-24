@@ -30,6 +30,7 @@ export const OG_IMAGE_CARDS = [
   ['studio', 'SCENE STUDIO', 'public/media/showcase-r2/15_studio_workspace.webp', '50% 0%'],
   ['private-room', 'PRIVATE BATTLE', 'public/media/versus-r1/vs01-desert-abrams-t90m-r6.webp', '50% 50%'],
   ['docs', 'TECHNICAL FIELD MANUAL', 'public/media/versus-r1/vs05-oasis-merkava-t72b3-r6.webp', '50% 50%'],
+  ['docs-modes', 'GAME MODES', 'public/media/site50-r14/home/modes/zone_control.webp', '50% 50%'],
   ['docs-build', 'HOW THE GAME WAS BUILT', 'public/media/showcase-r2/13_gallery_modules.webp', '50% 48%'],
   ['docs-models', 'PROCEDURAL MODEL PIPELINE', 'public/media/showcase-r2/12_gallery_armor.webp', '50% 48%'],
   ['docs-simulation', 'SIMULATION AND COMBAT', 'public/media/site50-r14/stills/s226-church-duel.webp', '50% 100%'],
@@ -57,7 +58,7 @@ export const OG_ZH_LABELS = Object.freeze({
   studio: ZH['studio.title'],
   'private-room': ZH['playMenu.private.title'],
   docs: zhTitle('metadata.docs.title'),
-  ...Object.fromEntries(['build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai',
+  ...Object.fromEntries(['modes', 'build', 'models', 'simulation', 'vehicles', 'rendering', 'performance', 'worlds', 'ai',
     'multiplayer', 'audio', 'interface', 'studio', 'filming'].map((topic) => [`docs-${topic}`, zhTopic(topic)])),
   404: zhTitle('notFound.metaTitle'),
 });
@@ -103,7 +104,8 @@ async function generateOgImages(cards = OG_IMAGE_CARDS) {
   mkdirSync(OUTPUT, { recursive: true });
   const browser = await puppeteer.launch({
     headless: 'new',
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--allow-file-access-from-files'],
+    // the machine rule for capture browsers (coordinator, 10-23): a 3 GB JS heap
+    args: ['--no-sandbox', '--disable-dev-shm-usage', '--allow-file-access-from-files', '--js-flags=--max-old-space-size=3072'],
   });
   try {
     const page = await browser.newPage();
