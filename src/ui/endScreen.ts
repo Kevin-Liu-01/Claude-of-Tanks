@@ -862,9 +862,19 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const bannerText = result === 'victory' ? t('endScreen.victory')
       : result === 'defeat' ? t('endScreen.defeat')
         : result === 'draw' ? t('endScreen.draw') : t('endScreen.battleOver');
-    const banner = el('div', `es-ban ${bannerClass}`, hero);
+    // the direction's head (11-end-screen .head h1): the result as the display headline, the score beside it, the sides'
+    // kills, own solid and enemy hollow in the team inks
+    const headline = el('div', 'es-headline', hero);
+    const banner = el('div', `es-ban ${bannerClass}`, headline);
     banner.textContent = bannerText;
     host.dataset.banner = bannerText;
+    if (sum.allies.length || sum.enemies.length) {
+      const own = fmtN(summarizeTeam(sum.allies).kills), enemy = fmtN(summarizeTeam(sum.enemies).kills);
+      const score = el('div', 'es-score', headline);
+      score.setAttribute('role', 'img');
+      score.setAttribute('aria-label', t('endScreen.scoreAria', { own, enemy }));
+      score.innerHTML = `<span class="o">${own}</span><span class="e">${enemy}</span>`;
+    }
     el('div', 'es-rule', hero);
     const sub = el('div', 'es-sub es-in', hero);
     sub.style.setProperty('--i', nextI());

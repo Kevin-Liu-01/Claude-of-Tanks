@@ -16,7 +16,8 @@ function measure() {
   return {
     cap:rect(document.querySelector('.cap')), area:rect(document.querySelector('.teams')), foot:rect(document.querySelector('.foot')),
     teams:[...document.querySelectorAll('.team')].map(el=>({
-      ...rect(el), rows:[...el.querySelectorAll('.row')].map(rect),
+      ...rect(el), cards:el.classList.contains('cards')&&getComputedStyle(el.querySelector('.rows')).gridTemplateColumns.split(' ').length>1,
+      rows:[...el.querySelectorAll('.row')].map(rect),
       viewport:rect(el.querySelector('.rows')), scrollHeight:el.querySelector('.rows').scrollHeight,
     })),
   };
@@ -45,10 +46,11 @@ try {
         assert.ok(Math.abs(team.y+team.height/2-(m.area.y+m.area.height/2))<1,`${name}: center team ${i}`);
         assert.ok(team.y>=m.cap.bottom-1 && team.bottom<=m.foot.y+1,`${name}: team must not overlap header/footer`);
         assert.ok(team.x>=0 && team.right<=width,`${name}: team stays on screen`);
-        for(const row of team.rows) assert.ok(row.height>=15 && row.height<=72,`${name} ${allies}v${enemies}: bounded readable row height (${row.height})`);
+        // (a side of seven or fewer on a wide window is a row of hero cards, the direction's 10-battle-load: up to 120 px)
+        for(const row of team.rows) assert.ok(row.height>=15 && row.height<=(team.cards?120:72),`${name} ${allies}v${enemies}: bounded readable row height (${row.height})`);
         if(count && count<=14 && height>=720) assert.ok(team.scrollHeight<=team.viewport.height+1,`${name}: all 14 rows visible on tall screens`);
       }
-      if(allies===enemies && allies) sizes.set(allies,m.teams[0].rows[0].height);
+      if(allies===enemies && allies) sizes.set(allies,[m.teams[0].rows[0].height,m.teams[0].cards]);
       // Both lists remain scrollable, independent of the header and footer.
       for(const list of await page.locator('.team .rows').all()) {
         assert.equal(await list.evaluate(el=>getComputedStyle(el).scrollbarWidth),'none',`${name}: no roster scrollbar`);
@@ -60,8 +62,10 @@ try {
       if(allies===41||enemies===41)await page.screenshot({path:resolve(out,`${name}-${allies}v${enemies}.png`)});
       reports.push({name,allies,enemies,...m});
     }
-    for (const [count,rowHeight] of sizes) {
-      assert.ok(Math.abs(rowHeight-sizes.get(7))<0.1,`${name}: ${count} players must keep the same row height as seven`);
+    // every roster in the same form keeps the same row height: the cards as seven's, the rows as fourteen's
+    for (const [count,[rowHeight,cards]] of sizes) {
+      const reference=[...sizes.values()].find(([,form])=>form===cards)[0];
+      assert.ok(Math.abs(rowHeight-reference)<0.1,`${name}: ${count} players must keep the same row height as its form's`);
     }
     const before=await page.evaluate(measure);
     release(); await page.waitForLoadState('networkidle');

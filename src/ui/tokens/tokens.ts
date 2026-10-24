@@ -292,6 +292,14 @@ export const TOKENS = {
   'battle-fs-18': '18px',
   'battle-fs-20': '20px',
   'battle-fs-28': '28px',
+  'battle-load-grade': 'linear-gradient(90deg,oklch(from #050608 l c h / .9) 0,oklch(from #050608 l c h / .55) 30%,oklch(from #050608 l c h / 0) 52%),linear-gradient(0deg,oklch(from #050608 l c h / .96) 0,oklch(from #050608 l c h / .7) 22%,oklch(from #050608 l c h / 0) 44%)',
+  'battle-end-grade': 'linear-gradient(90deg,oklch(from #050608 l c h / .94) 0,oklch(from #050608 l c h / .78) 38%,oklch(from #050608 l c h / .35) 64%,oklch(from #050608 l c h / .55) 100%),linear-gradient(0deg,oklch(from #050608 l c h / .97) 0,oklch(from #050608 l c h / .6) 30%,oklch(from #050608 l c h / 0) 52%)',
+  'battle-chip-plate': 'rgba(5,6,8,.7)',
+  'battle-tip-plate': 'rgba(5,6,8,.82)',
+  'battle-row-me': 'inset 2px 0 0 #f0a030,inset 0 0 0 1px #f0a030',
+  'battle-card-me': '0 0 0 2px #f0a030',
+  'battle-z-card-fade': '2',
+  'battle-z-card-text': '3',
 } as const;
 
 export type TokenName = keyof typeof TOKENS;
