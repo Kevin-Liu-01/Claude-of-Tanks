@@ -6,7 +6,7 @@
  "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
  "description": "The Field Manual's pictures: the current game, captured in the engine, one file per size rung.",
  "generatedBy": "shots/media-r5/landing-r6/site-all/docs-manifest.py",
- "count": 2,
+ "count": 26,
  "items": [
   {
    "id": "banner-1280",
@@ -27,6 +27,246 @@
    "bytes": 216070,
    "sha256": "202da529a8224300a868b1f12e5d5f543df8a83c83469f7b2f9b0e38fa642676",
    "shows": "The Field Manual index banner: a Leopard on Highland Reservoir's lakeside street laying its gun, a burst behind (21:9)."
+  },
+  {
+   "id": "combat-spotting-1920",
+   "slot": "combat-spotting",
+   "src": "/media/docs-r1/combat-spotting-1920.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 365920,
+   "sha256": "f6aef84ea20355877c57d70a09673c9208c0fc7199c7851bd5dede0b6e39c69b",
+   "shows": "Spotting: the sixth-sense lamp lit as an enemy across the field spots the player on Verdant Fields."
+  },
+  {
+   "id": "combat-spotting-640",
+   "slot": "combat-spotting",
+   "src": "/media/docs-r1/combat-spotting-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 55952,
+   "sha256": "7ca104369b88a8152be6e5a8a9222e65d3399dd2399f98d475dd14c01ae4f614",
+   "shows": "Spotting: the sixth-sense lamp lit as an enemy across the field spots the player on Verdant Fields."
+  },
+  {
+   "id": "controls-touch-1920",
+   "slot": "controls-touch",
+   "src": "/media/docs-r1/controls-touch-1920.webp",
+   "width": 887,
+   "height": 1920,
+   "bytes": 193392,
+   "sha256": "7a1c88bb3ab3277c5297ab5e409cf6c4121f898dfb1b6cf704285e2ba5003b23",
+   "shows": "The touch HUD on a phone in portrait: the stick, fire and scope, the consumables and the minimap."
+  },
+  {
+   "id": "controls-touch-640",
+   "slot": "controls-touch",
+   "src": "/media/docs-r1/controls-touch-640.webp",
+   "width": 296,
+   "height": 640,
+   "bytes": 40954,
+   "sha256": "075f4a04a6dfd182d1e82ca8c636ba4fbd339daac88e745c35880b681f4e0fcb",
+   "shows": "The touch HUD on a phone in portrait: the stick, fire and scope, the consumables and the minimap."
+  },
+  {
+   "id": "mp-lobby-1920",
+   "slot": "mp-lobby",
+   "src": "/media/docs-r1/mp-lobby-1920.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 58194,
+   "sha256": "291f0ca829c7f28d7f55d22039c0c30293626d349f7aec5ba470e85628b3e854",
+   "shows": "A private room's lobby: the room code and invite link, the battlefield briefing, the players and their ready states."
+  },
+  {
+   "id": "mp-lobby-640",
+   "slot": "mp-lobby",
+   "src": "/media/docs-r1/mp-lobby-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 11262,
+   "sha256": "1aba41be33b7b16b3cb5740695b058355e23b53f47ee3f6d6045537353aaf0e1",
+   "shows": "A private room's lobby: the room code and invite link, the battlefield briefing, the players and their ready states."
+  },
+  {
+   "id": "mp-lobby-mobile-1920",
+   "slot": "mp-lobby-mobile",
+   "src": "/media/docs-r1/mp-lobby-mobile-1920.webp",
+   "width": 887,
+   "height": 1920,
+   "bytes": 88920,
+   "sha256": "b4fd56a0aef61e1f2c0a69faa5361da23a7853b014be1580ff1481ba4286d15d",
+   "shows": "The same private room lobby on a phone in portrait."
+  },
+  {
+   "id": "mp-lobby-mobile-640",
+   "slot": "mp-lobby-mobile",
+   "src": "/media/docs-r1/mp-lobby-mobile-640.webp",
+   "width": 296,
+   "height": 640,
+   "bytes": 20292,
+   "sha256": "29b48c31ec58a5521936fe32d72bad204e1052691abde48b9e21cdb1b1909cd0",
+   "shows": "The same private room lobby on a phone in portrait."
+  },
+  {
+   "id": "start-deploy-1920",
+   "slot": "start-deploy",
+   "src": "/media/docs-r1/start-deploy-1920.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 175020,
+   "sha256": "f09a7f7385dd7d6ddb2a16930c809db12dc772d095e8da221ee5db7817bba1a8",
+   "shows": "The Deploy screen: the core modes as cards, the other modes beside them, the battlefield and loadout plate on the right."
+  },
+  {
+   "id": "start-deploy-640",
+   "slot": "start-deploy",
+   "src": "/media/docs-r1/start-deploy-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 37826,
+   "sha256": "fd46da8b378670ebb97e52a9abdb084a458963df2a216f030c4f85c5b09000f0",
+   "shows": "The Deploy screen: the core modes as cards, the other modes beside them, the battlefield and loadout plate on the right."
+  },
+  {
+   "id": "start-garage-1920",
+   "slot": "start-garage",
+   "src": "/media/docs-r1/start-garage-1920.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 230392,
+   "sha256": "306b8c2de96821730cbbd4b453c2007dac22568d6512b82b4588642121a6bc52",
+   "shows": "The Garage: a Leopard 2A7V on the turntable, the stations on the left, the fleet strip and DEPLOY below."
+  },
+  {
+   "id": "start-garage-640",
+   "slot": "start-garage",
+   "src": "/media/docs-r1/start-garage-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 45570,
+   "sha256": "dfde84acdfc4ea5b173790efe8f64bfe4bb73ba6f80758da885453aa83dfafe2",
+   "shows": "The Garage: a Leopard 2A7V on the turntable, the stations on the left, the fleet strip and DEPLOY below."
+  },
+  {
+   "id": "start-hud-1920",
+   "slot": "start-hud",
+   "src": "/media/docs-r1/start-hud-1920.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 410642,
+   "sha256": "397460df11c3871a2a88dcf16eccb3e62534e0069f1aa46801a4af45662b9a8f",
+   "shows": "The battle HUD in third person on Verdant Fields: score and clock, both team lists, hull state, ammunition and the minimap."
+  },
+  {
+   "id": "start-hud-640",
+   "slot": "start-hud",
+   "src": "/media/docs-r1/start-hud-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 54440,
+   "sha256": "1c355bd884af2f4b03778d68f96d97145588fa6bf92ee1e57c18f7ccd52c21a0",
+   "shows": "The battle HUD in third person on Verdant Fields: score and clock, both team lists, hull state, ammunition and the minimap."
+  },
+  {
+   "id": "start-sight-1920",
+   "slot": "start-sight",
+   "src": "/media/docs-r1/start-sight-1920.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 452756,
+   "sha256": "947ab022158ba5336321f8e828cd6eac12ff72775d25ad4ff3808bef704c39e3",
+   "shows": "The gunner's sight at x4 on Verdant Fields, the reticle on an enemy across the field."
+  },
+  {
+   "id": "start-sight-640",
+   "slot": "start-sight",
+   "src": "/media/docs-r1/start-sight-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 61026,
+   "sha256": "ddd70c7d4350e849b42c87748adc0ac17ff2252c1d0e9d255ee50abe407d1a4a",
+   "shows": "The gunner's sight at x4 on Verdant Fields, the reticle on an enemy across the field."
+  },
+  {
+   "id": "start-win-1920",
+   "slot": "start-win",
+   "src": "/media/docs-r1/start-win-1920.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 64574,
+   "sha256": "a3793c871d948753df7ce09491e351573c376275c0eb6c758bcd6ed425b34479",
+   "shows": "The end screen after a win: the result, your performance, the battle comparison and the medals earned."
+  },
+  {
+   "id": "start-win-640",
+   "slot": "start-win",
+   "src": "/media/docs-r1/start-win-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 14348,
+   "sha256": "70e940c44ec7d4bf1c35fa731fbaf6b5dc8400361bf7d670aedde2d71e24dae0",
+   "shows": "The end screen after a win: the result, your performance, the battle comparison and the medals earned."
+  },
+  {
+   "id": "studio-workspace-1920",
+   "slot": "studio-workspace",
+   "src": "/media/docs-r1/studio-workspace-1920.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 255126,
+   "sha256": "b4d6e89e324b3890b22cca46287d7c495cc4b2b7a4acf3249a83c628fc9d9a9e",
+   "shows": "The Scene Studio workspace on a Verdant assault: the viewport, the outliner and inspector, the timeline below."
+  },
+  {
+   "id": "studio-workspace-640",
+   "slot": "studio-workspace",
+   "src": "/media/docs-r1/studio-workspace-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 50536,
+   "sha256": "2d63b7d1791cc86133745a0d310808fd056fa7996bcf28b0a96c89308e7abde2",
+   "shows": "The Scene Studio workspace on a Verdant assault: the viewport, the outliner and inspector, the timeline below."
+  },
+  {
+   "id": "tanks-equipment-1920",
+   "slot": "tanks-equipment",
+   "src": "/media/docs-r1/tanks-equipment-1920.webp",
+   "width": 1920,
+   "height": 1080,
+   "bytes": 228154,
+   "sha256": "1fcb65e55c137853a5279b1d8099a28b45d66ccd1093fb449f9301caa4f25c42",
+   "shows": "The Garage's equipment station: the Challenger 3's slots and the equipment to fit them."
+  },
+  {
+   "id": "tanks-equipment-640",
+   "slot": "tanks-equipment",
+   "src": "/media/docs-r1/tanks-equipment-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 45300,
+   "sha256": "f11ba0c9e63e468230ae8cc168e186310b2f343fa464790aac9919e10a96f618",
+   "shows": "The Garage's equipment station: the Challenger 3's slots and the equipment to fit them."
+  },
+  {
+   "id": "tanks-equipment-crop-1280",
+   "slot": "tanks-equipment-crop",
+   "src": "/media/docs-r1/tanks-equipment-crop-1280.webp",
+   "width": 1280,
+   "height": 960,
+   "bytes": 80348,
+   "sha256": "c7c8670ca5a6a0df39f19340b398e656f61bc552eaa869cf5beb7c8285914ead",
+   "shows": "The equipment station's list and loadout, cut to 4:3."
+  },
+  {
+   "id": "tanks-equipment-crop-640",
+   "slot": "tanks-equipment-crop",
+   "src": "/media/docs-r1/tanks-equipment-crop-640.webp",
+   "width": 640,
+   "height": 480,
+   "bytes": 34278,
+   "sha256": "9e2db5cac105857bf885101cf5332c792687885c95fb98433798be6f44de690f",
+   "shows": "The equipment station's list and loadout, cut to 4:3."
   }
  ]
 }

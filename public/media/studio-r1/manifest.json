@@ -1,0 +1,42 @@
+{
+ "libraryId": "claude-of-tanks-studio-r1",
+ "schemaVersion": 1,
+ "author": "Kevin B. Liu",
+ "copyright": "Copyright © 2026 Kevin B. Liu",
+ "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
+ "description": "The Scene Studio's Sequence library cards: each built-in sequence's frame, rendered by the engine with the Studio chrome hidden (src/game/studioProduction.ts presets).",
+ "generatedBy": "shots/media-r5/landing-r6/site-all/docs-manifest.py",
+ "count": 3,
+ "items": [
+  {
+   "id": "sequence-coast-recon-640",
+   "preset": "coast-recon",
+   "src": "/media/studio-r1/sequence-coast-recon-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 40478,
+   "sha256": "50d32b192235257ab64faeb83c46e55406000c0972424fa20c77c7195903ceef",
+   "shows": "The Coast Recon sequence's frame at 4.0 s of 8: the coast by day."
+  },
+  {
+   "id": "sequence-desert-crossfire-640",
+   "preset": "desert-crossfire",
+   "src": "/media/studio-r1/sequence-desert-crossfire-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 32698,
+   "sha256": "a87196076e28eeffc95ea12d11fc760532cb3ac4ce1bdef96426a0e428710f92",
+   "shows": "The Desert Crossfire sequence's frame at 2.0 s of 8: the desert at sunset."
+  },
+  {
+   "id": "sequence-steel-pursuit-640",
+   "preset": "steel-pursuit",
+   "src": "/media/studio-r1/sequence-steel-pursuit-640.webp",
+   "width": 640,
+   "height": 400,
+   "bytes": 67464,
+   "sha256": "583e77cbc873114d6bc154596b846ffd6c8ebcd1be7024717a5f509792959a26",
+   "shows": "The Steel Pursuit sequence's frame at 4.0 s of 8: Verdant Fields by day."
+  }
+ ]
+}
