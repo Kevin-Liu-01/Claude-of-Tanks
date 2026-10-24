@@ -2208,6 +2208,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/hud-ammo-frame-ink.selftest.mjs',
     'src/ui/hudAmmunitionPresentation.selftest.mjs',
     'src/ui/hudConsumablePresentation.selftest.mjs',
+    // brand-ui 242 (the direction's battle HUD): the team strip under the score and the kill ribbon
+    'src/ui/hudTeamPips.selftest.mjs',
+    'src/ui/hudKillRibbon.selftest.mjs',
     // 2026-10-14 (owner): a jump mode puts the jump farthest left in the vehicle-controls row, for every loadout
     'src/ui/vehicleControlOrder.selftest.mjs',
     'src/ui/battleHudLayout.selftest.mjs',

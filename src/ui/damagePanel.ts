@@ -25,7 +25,7 @@ import { DAMAGE_PANEL_CSS } from './damagePanelStyle.ts';
 import { ensureFonts } from './fonts.ts';
 import { telemetryTankId } from '../game/tankIdBoundaries.ts';
 import { ensureStyle } from './styleLayers.ts';
-import { t } from './i18n.ts';
+import { formatNumber, t } from './i18n.ts';
 import {
   getTopDownMasks,
   prepareTopDownMasks,
@@ -200,10 +200,8 @@ export interface DamagePanelController {
   setState(sample: DamagePanelStateSample | DamagePanelCombatState): void;
 }
 
-
-function hpColor(frac: number): string {
-  return frac > 0.5 ? '#7ee87e' : frac > 0.25 ? '#f0b04a' : '#f05a5a';
-}
+/** The hull points bar's cells (the direction's .seg20). */
+const HP_CELLS = 20;
 
 function canvas2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   const context = canvas.getContext('2d');
@@ -510,12 +508,16 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
 
   const root = document.createElement('div');
   root.className = 'cot-dp';
+  // the hull points over the direction's 20-cell bar (brand-ui H4): each cell 5 % of the hull, lit while it stands
   root.innerHTML =
-    `<div class="hprow"><span class="hplabel">HP</span><span class="hpnum num">—</span></div>` +
-    `<div class="hptrack"><div class="hpfill"></div></div>` +
+    `<div class="hprow"><span class="hplabel">HP</span><span class="hpnum num">—</span><small class="hpmax num"></small></div>` +
+    `<div class="hptrack" aria-hidden="true"></div>` +
     `<div class="fire">${t('damagePanel.onFire')}</div>`;
   const hpNum = requiredElement<HTMLElement>(root, '.hpnum');
-  const hpFill = requiredElement<HTMLElement>(root, '.hpfill');
+  const hpMax = requiredElement<HTMLElement>(root, '.hpmax');
+  const hpTrack = requiredElement<HTMLElement>(root, '.hptrack');
+  const hpCells = Array.from({ length: HP_CELLS }, () => hpTrack.appendChild(document.createElement('i')));
+  let hpLit = -1;
   const fireEl = requiredElement<HTMLElement>(root, '.fire');
 
   // Fixed camera-up stage. Fit the armored vehicle body rather than the full
@@ -1012,11 +1014,18 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
   function refreshDom(): void {
     if (!combat) return;
     const frac = Math.max(0, Math.min(1, combat.hp / combat.maxHp));
-    const txt = `${Math.max(0, Math.round(combat.hp))} / ${Math.round(combat.maxHp)}`;
+    const hp = Math.max(0, Math.round(combat.hp)), max = Math.round(combat.maxHp);
+    const txt = `${hp} / ${max}`;
     if (txt !== lastHpText) {
-      hpNum.textContent = txt;
-      hpFill.style.width = `${(frac * 100).toFixed(1)}%`;
-      hpFill.style.background = hpColor(frac);
+      hpNum.textContent = formatNumber(hp);
+      hpMax.textContent = `/ ${formatNumber(max)}`;
+      const lit = frac > 0 ? Math.max(1, Math.ceil(frac * HP_CELLS - 1e-6)) : 0;
+      if (lit !== hpLit) {
+        for (let i = 0; i < HP_CELLS; i++) hpCells[i].className = i < lit ? 'on' : '';
+        hpLit = lit;
+      }
+      const tone = frac <= 0.25 ? 'danger' : frac <= 0.5 ? 'warn' : '';
+      if ((hpTrack.dataset.tone ?? '') !== tone) hpTrack.dataset.tone = tone;
       lastHpText = txt;
     }
     const burning = !!(combat.fire && combat.fire.burning);
@@ -1195,7 +1204,7 @@ export function createDamagePanel(options: DamagePanelOptions = {}): DamagePanel
         const name = t(`equipment.${id}.name`);
         const desc = t(`equipment.${id}.desc`);
         const tooltip = t('damagePanel.equipmentTooltip', { name, desc });
-        html += `<span class="eq" title="${tooltip}">${equipIconSVG(id, 15)}</span>`;
+        html += `<span class="eq" title="${tooltip}">${equipIconSVG(id, 15, 'currentColor')}</span>`;
       }
       equipRow.innerHTML = html;
     },
