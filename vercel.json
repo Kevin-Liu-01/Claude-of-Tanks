@@ -1,5 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "npm install --no-audit",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "git": { "deploymentEnabled": false },
   "regions": ["sfo1"],
   "functions": {

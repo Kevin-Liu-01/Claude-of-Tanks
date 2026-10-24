@@ -28,6 +28,16 @@ by hand. `node tools/release.mjs rollback` promotes the production deployment be
 (`vercel promote` also turns production-domain auto-assignment back on), and
 `node tools/release.mjs workers <sha>` deploys the edge services tagged with the commit.
 
+Since round 243 (security audit 2026-10-22, NV-13), `vercel.json` pins the build settings that `vercel pull` would
+otherwise take from the dashboard. They are the values the dashboard's Vite preset resolved to:
+- `framework`: `vite`
+- `installCommand`: `npm install --no-audit`, the CLI's own npm install
+- `buildCommand`: `npm run build`
+- `outputDirectory`: `dist`
+
+A dashboard edit can no longer change what a release runs on the operator's machine. `tools/vercel-config.selftest.mjs`
+asserts the four values, so changing one takes a reviewed commit.
+
 **Git auto-deploys are off.** `vercel.json` carries `"git": { "deploymentEnabled": false }` (2026-09-15, owner: the
 Aug 26 – Sep 10 commit storm built 1,220 times — one Vercel build per pushed commit, ~1,400 billed
 build minutes). The first form listed only `main` and `codex/*`, so every other branch still
