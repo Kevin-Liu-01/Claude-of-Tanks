@@ -17,7 +17,7 @@ import {
 import type { BattleClientAccess } from './battleClientAccess.ts';
 import { tankContactRect } from '../sim/tankContactShape.ts';
 import type { TankPresentationTracker } from './presentationPose.ts';
-import type { GameState } from './stateCore.ts';
+import { watchRevealsAll, type GameState } from './stateCore.ts';
 
 // The mission-attachment visual is battle-only (2026-10-07): its seats read the vehicle auxiliary inventory and weapons
 // (sim/missionAttachment.ts, main c6b60311c), about 400 kB that a static import here put in the garage boot
@@ -139,7 +139,7 @@ interface BattlePresentationRuntime {
 }
 
 interface BattlePresentationRuntimeOptions {
-  game: Pick<GameState, 'phase' | 'tanks' | 'player' | 'spotting' | 'matchModeState'> & { _wreckTurrets?: WreckTurretPoses | null };
+  game: Pick<GameState, 'phase' | 'tanks' | 'player' | 'spotting' | 'matchModeState' | 'ruleset' | 'watch'> & { _wreckTurrets?: WreckTurretPoses | null };
   camera: PerspectiveCamera;
   scene: Scene;
   battleClient: PosePorts;
@@ -231,7 +231,8 @@ export function createBattlePresentationRuntime({
     const visual = entity.visual as TankVisual;
     const combat = entity.combat as NonNullable<TankEntity['combat']>;
     if (game.phase !== 'battle') return true;
-    if (spotState && entity.team !== (currentPlayer?.team ?? 'player')) {
+    // a watched battle with no driver shows every hull (stateCore.ts watchRevealsAll)
+    if (spotState && !watchRevealsAll(game) && entity.team !== (currentPlayer?.team ?? 'player')) {
       const spotted = combat.destroyed
         || spotState.isSpotted(entity.id, currentPlayer?.team ?? 'player', currentPlayer);
       const target = spotted ? 1 : 0;
@@ -243,6 +244,8 @@ export function createBattlePresentationRuntime({
       visual.setVisible(actorVisible);
       return actorVisible;
     }
+    // a hull this owner detached while unspotted (the reveal's countdown) is attached again once the watcher sees all
+    if (watchRevealsAll(game)) setVisualResident(visual, true);
     if (!entity.isPlayer) visual.setVisible(true);
     return true;
   };
@@ -493,7 +496,7 @@ export function createBattlePresentationRuntime({
   ): void => {
     const state = entity.state;
     if (!state || !entity.combat || entity.combat.destroyed || entity.aerial || state.grounded === false) return;
-    if (spotState && entity.team !== (currentPlayer?.team ?? 'player')
+    if (spotState && !watchRevealsAll(game) && entity.team !== (currentPlayer?.team ?? 'player')
       && !spotState.isSpotted(entity.id, currentPlayer?.team ?? 'player', currentPlayer)) return;
     const spec = entity.spec;
     const trackWidthM = spec.visual?.trackWidthM ?? spec.dims.widthM * 0.16;

@@ -182,6 +182,16 @@ orders applied, discards by reason, tokens, latency, back-off) — `window.__DEB
 - One structured log line per call (`tag: cot-jev`: counts, status, upstream status, latency, tokens,
   the session's request ordinal) — never the key, the session id, an address or the document.
 
+**Out of credit (2026-10-23).** The TypeSafe org's monthly credit is hard-capped: no card and no auto-recharge. It
+shares one credit pool and one rate limit with the owner's other keys.
+- A 402, or a 401/403/429 whose body names the credit, the balance or the quota, answers
+  `503 upstream_out_of_credit`. It then holds every request on that instance for 15 minutes without an upstream call.
+- The game ends Jev for the page session on `upstream_out_of_credit`, a TypeSafe `upstream_rate_limited` or
+  `session_budget_spent`. The transport halts, the commander issues nothing more, and the next battle of the session
+  starts on the classic brain.
+- No error is shown. The proxy's own throttles stay a back-off.
+- Receipts: `jev.selftest` [4b] and `jevCommander.selftest` [12].
+
 ## Cost and latency (measured 2026-09-25, `jev-1.13.0`, `.qa-dev/jev-measure.mjs`)
 
 | Team document | Questions | Input tokens | Output tokens | Latency |

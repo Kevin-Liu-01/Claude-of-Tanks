@@ -194,4 +194,9 @@ export default {
   // round 66 (2026-09-24, the FFT ocean): a still spring pool with a breath of desert wind — clear water over pale
   // sand, so its caustics are the strongest of the fleet
   ocean: { windSpeed: 2.8, windDirDeg: 120, fetchKm: 2, amplitude: 0.7, foam: 0, breakers: 0.1, caustics: 0.9 },
+  // the horizons stream (horizons-240, 2026-10-23): the Hinterland past the red line (hinterland/drafts/oasis.ts) —
+  // Siwa's northern scarp, Lake Siwa and Fatnas, Aghurmi and Dakrur; its blind pair against the old ring won 9/0 (mean
+  // 3.2 -> 6.4, driver, gunner and chase under day, sunset and night, both sides on main 4178992761); the battlefield's
+  // ground carried past the edge (groundDetail.ts); rimH unchanged; `?hinterland=0` draws the old ring
+  hinterland: true,
 } satisfies import('./contracts.ts').MapCompositionConfig;

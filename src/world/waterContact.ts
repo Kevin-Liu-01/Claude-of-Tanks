@@ -14,6 +14,10 @@ interface WaterContactProfile {
   shallowColor: number;
   /** Water 2026-09-12: shoreline foam and crest strength (0 disables). */
   foam: number;
+  /** (2026-10-23) A sea's shelf look, the shallow-water shader's SEA_TINT per body: the sand shelf's turquoise share and
+   *  the deep blue's share past it. Absent: the shared tint (shallowWater.ts SEA_TINT). */
+  seaTurquoise?: number;
+  seaDeepBlue?: number;
 }
 
 const COAST: Readonly<WaterContactProfile> = Object.freeze({
@@ -129,8 +133,12 @@ const CLEAR_OASIS: Readonly<WaterContactProfile> = Object.freeze({
 const MONSOON_FLOOD: Readonly<WaterContactProfile> = Object.freeze({
   ...MONSOON, color: 0x4d4a2e, shallowColor: 0x5a5233, opacity: 0.78, foam: 0.12,
 });
+// (2026-10-23, item/maps-frontier-saltmere-242; the blind critic on Saltmere Bay: "the bay and shallows are bright
+// Caribbean turquoise, not the grey-green / deep blue of a temperate Channel coast") the Léon's water: over the sand the
+// shelf a jade grey-green, its turquoise share a fifth of the shared one; past it a slate blue-green, the deep navy's share
+// halved
 const COLD_SEA: Readonly<WaterContactProfile> = Object.freeze({
-  ...COAST, color: 0x1b4a63, shallowColor: 0x4a90a0,
+  ...COAST, color: 0x1f4652, shallowColor: 0x587d72, seaTurquoise: 0.12, seaDeepBlue: 0.4,
 });
 
 export function waterContactProfile(mapId: string): Readonly<WaterContactProfile> {

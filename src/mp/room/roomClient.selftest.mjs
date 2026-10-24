@@ -269,6 +269,33 @@ try {
     clients.push(deadJoin);
     await assert.rejects(deadJoin.join({ roomCode: 'ABCDEF' }), (error) => error instanceof RoomConnectError && error.transportReason === 'timeout');
   }
+  // ---- the LAN helper holds at most `maxRooms` rooms (security audit 2026-10-22): a new code past it is refused 503, a held
+  // code still connects, and a room released when its last socket leaves frees the slot
+  {
+    const full = await createRoomsServer({ host: '127.0.0.1', port: 0, seatSecret: SECRET, world: 'terrain', matchTransport: 'p2p', log: silentLogger, maxRooms: 1 });
+    const open = (code) => new Promise((resolve) => {
+      const ws = new WebSocket(`${full.url}/rooms/${code}`);
+      ws.once('open', () => resolve({ ws, status: 101 }));
+      ws.once('unexpected-response', (_request, response) => { resolve({ ws, status: response.statusCode }); ws.terminate(); });
+      ws.on('error', () => {});
+    });
+    const closeOf = (ws) => new Promise((resolve) => { ws.once('close', resolve); ws.close(); });
+    try {
+      const first = await open('AAAAAA');
+      assert.equal(first.status, 101, 'the first room connects');
+      assert.equal((await open('BBBBBB')).status, 503, 'a second code past maxRooms is refused');
+      const again = await open('AAAAAA');
+      assert.equal(again.status, 101, 'the held code still connects');
+      await closeOf(first.ws);
+      await closeOf(again.ws);
+      await until(() => full.roomService.rooms.size === 0, 'the empty room was released');
+      const later = await open('BBBBBB');
+      assert.equal(later.status, 101, 'the freed slot takes a new code');
+      await closeOf(later.ws);
+    } finally {
+      await full.close();
+    }
+  }
   console.log('roomClient: PASS');
 } finally {
   for (const entry of clients) entry.dispose();

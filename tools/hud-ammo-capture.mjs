@@ -280,7 +280,7 @@ export function readHud(rules) {
   // combat log and the centre notices are passing overlays the reticle never dodges (its marks would jump as they come
   // and go); only the vision switch, a control, keeps clear of them, below.)
   const controls = ['.cot-vehicle-controls>button', '.cot-shell', '.cot-con', '.cot-touch.on .round', '.cot-touch.on .joy',
-    '.cot-touch.on .quick', '.cot-touch-aim.on .aimhint', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show',
+    '.cot-touch.on .quick', '.cot-dp', '.cot-drive', '.cot-minimap', '.cot-top', '.cot-mode-status.show',
     '.cot-aim-warning:not([hidden])', '.cot-scope-vision', '.flight-identity', '.cot-ear'].flatMap((selector) => [...document.querySelectorAll(selector)].filter(visible)
     .map((el) => ({ name: selector, box: rect(el) })));
   // every mark of the sight keeps FURNITURE_GAP from every control (critic r8: the stack's foot 4.77 px into the row)

@@ -308,4 +308,9 @@ export default {
   },
   minimap: { ...verdant.minimap, base: [89, 110, 67], hard: [116, 107, 85], soft: [55, 79, 56], bog: 'rgba(99,88,51,.71)', bogStroke: 'rgba(54,49,27,.66)' },
   shot: { pos: [-244, 56, -256], look: [60, 1, 98] },
+  // the horizons stream (horizons-240, 2026-10-23): the Hinterland past the red line (hinterland/drafts/orchard.ts) —
+  // the Chouf, the Barouk's cedars and the fall to the sea; its blind pair against the old ring won 7/2 (mean 5.1 -> 5.8,
+  // driver, gunner and chase under day, sunset and night); the battlefield's ground carried past the edge (groundDetail.ts);
+  // `?hinterland=0` draws the old ring
+  hinterland: true,
 } satisfies import('./contracts.ts').MapCompositionConfig;

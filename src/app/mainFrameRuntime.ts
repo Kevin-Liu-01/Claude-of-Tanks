@@ -64,6 +64,8 @@ interface MainFrameRuntimeOptions {
   showroom: GarageShowroomRuntime;
   pedestal: GaragePedestalRuntime;
   garageModePreview?: { readonly animated: boolean; readonly pending?: boolean; update(dt: number): void; clear(): void };
+  /** The Garage's stage overlays (its numbered hotspots), placed after the showroom moves on each rendered frame. */
+  garageOverlay?: { frame(): void };
   /** The one network pump every phase shares (the multiplayer composition's session owner). */
   networkSession: { pump(dtSeconds: number, nowMs: number): void };
   garageFramePacer: GarageFramePacer;
@@ -74,6 +76,8 @@ interface MainFrameRuntimeOptions {
   cameraInput: CameraFrameInput;
   getMobileAutoAim(): MainMobileAutoAimRuntime | null;
   rig: CameraRig;
+  /** Watch mode (watch-mode-243): true when the watch camera solved this frame's camera (the rig stays out). */
+  watchFrame?(dtSeconds: number): boolean;
   killcam: KillcamRuntime;
   veilHud(hidden: boolean): void;
   worldFramePresentation: WorldFramePresentationRuntime;
@@ -119,6 +123,7 @@ export function createMainFrameRuntime({
   showroom,
   pedestal,
   garageModePreview,
+  garageOverlay,
   networkSession,
   garageFramePacer,
   battleFrame,
@@ -128,6 +133,7 @@ export function createMainFrameRuntime({
   cameraInput,
   getMobileAutoAim,
   rig,
+  watchFrame,
   killcam,
   veilHud,
   worldFramePresentation,
@@ -211,6 +217,7 @@ export function createMainFrameRuntime({
     if (!garageFramePacer.shouldRender(nowMs, garageFrameRequest)) return false;
     showroom.update(dtSeconds);
     garageModePreview?.update(dtSeconds);
+    garageOverlay?.frame();
     return !garageModePreview?.pending;
   };
 
@@ -221,7 +228,7 @@ export function createMainFrameRuntime({
     cameraInput.autoAimPoint = getMobileAutoAim()
       ?.sample(frame.inBattle && !frame.paused && !frame.killcamActive) || null;
     if (frame.inBattle && !frame.paused && !frame.killcamActive) {
-      rig.update(dtSeconds, cameraInput);
+      if (!watchFrame?.(dtSeconds)) rig.update(dtSeconds, cameraInput);
     }
     if (frame.killcamActive) killcam.update(dtSeconds);
   };

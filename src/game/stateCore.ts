@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { matchRulesetFor, type MatchRuleset } from '../sim/matchRuleset.ts';
+import type { WatchSession } from './watchSeat.ts';
 /**
  * Lightweight integration state shared by the garage, Studio, and battle
  * runtime. This module deliberately has no Three.js, DOM, WebGL, vehicle, or
@@ -50,6 +51,20 @@ export interface GameState<Entity = RuntimeValue, Spotting = RuntimeValue, Match
   ruleset: MatchRuleset;
   /** Campaign ladder operation of the current sortie; null for free sorties. */
   campaignOperationId: string | null;
+  /** Watch mode (game/watchSeat.ts): a watched battle's seat ledger; null otherwise. */
+  watch?: WatchSession | null;
+}
+
+/**
+ * Watch mode (game/watchSeat.ts): the local view shows every hull — a watched battle, opened, with no seat taken (nothing to hide from a watcher with
+ * no side). A taken seat sees as its side does, spotting and all.
+ */
+export function watchRevealsAll(game: {
+  player: unknown;
+  ruleset?: { readonly watch?: { readonly revealAll: boolean } | null } | null;
+  watch?: { readonly opened: boolean } | null;
+}): boolean {
+  return !!game.ruleset?.watch?.revealAll && !!game.watch?.opened && !game.player;
 }
 
 /** Canonical deterministic PRNG used by the legacy solo runtime. */

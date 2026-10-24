@@ -322,7 +322,8 @@ export const VEHICLE_MARKING_ANCHORS: Readonly<Record<string, VehicleMarkingAnch
   m1a1ha: anchor('turret', 'left', 0.42, 0.44, 0.27, 1),
   m1a1_abrams_aim: anchor('turret', 'right', 0.40, 0.43, 0.27, -1),
   // 2026-10-21 (the owner: "the FEP's star should be on the turret, not the hull"): the right turret flank ahead of the
-  // add-on side armour, in the window its ULCANS drape leaves (ghillieSuit.ts); the designation keeps the left flank
+  // add-on side armour; 2026-10-23 ("Paint it on the drape"): painted on its ULCANS drape (vehicleMarkingPaintsOnSuit),
+  // no window cut in the cloth; the designation keeps the left flank's drape
   m1a1_abrams_fep: anchor('turret', 'right', 0.48, 0.44, 0.27, 1),
   m1a3: anchor('hull', 'right', 0.48, 0.62, 0.26, -1),
   m60a1: anchor('turret', 'right', 0.44, 0.48, 0.25, -1),
@@ -390,6 +391,18 @@ export function vehicleMarkingAnchor(
 ): VehicleMarkingAnchor | null {
   const id = typeof specOrId === 'string' ? specOrId : specOrId?.id;
   return VEHICLE_MARKING_ANCHORS[id as string] || null;
+}
+
+/**
+ * Markings painted on the vehicle's camouflage suit rather than the armour under it (2026-10-23, the owner on the M1A1
+ * FEP's star: "Paint it on the drape"): its suit's net carries the paint (ghillieSuit.ts tags it backsMarkingPaint), the
+ * solver seats on it and the visibility receipt reads the cloth as the paint's backing (vehicleMarkingSeating.ts).
+ */
+export function vehicleMarkingPaintsOnSuit(
+  specOrId: string | Pick<VehicleMarkingSpec, 'id'> | null | undefined,
+): boolean {
+  const id = typeof specOrId === 'string' ? specOrId : specOrId?.id;
+  return id === 'm1a1_abrams_fep';
 }
 
 /** Continuous side modules may carry markings outside the core hull. */
