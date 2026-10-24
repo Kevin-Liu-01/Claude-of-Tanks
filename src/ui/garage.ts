@@ -60,6 +60,8 @@ import { tankTier, tierNumeral } from '../vehicles/tier.ts';
 import { vehicleEraLabelI18n } from '../vehicles/taxonomy.ts';
 import { getPlayerRecord, getRecentBattles } from '../game/profile.ts';
 import { minimapAssetUrl } from './minimapAssetUrl.ts';
+import type { GarageHotspots, HotspotFacts } from './garageHotspots.ts';
+import type { Object3D, PerspectiveCamera } from 'three';
 import { mountGitHubStars } from './githubStars.ts';
 import {
   viewRangeOf, baseCamoOf, equipViewMult, equipCamoBonus,
@@ -194,6 +196,8 @@ interface GarageOptions {
 
 export interface GarageRuntime {
   readonly root: HTMLElement;
+  /** Place the stage's numbered hotspots for this Garage frame (the frame runtime calls it after the showroom moves). */
+  frameHotspots(camera: PerspectiveCamera, model: Object3D | null): void;
   isOpen: boolean;
   show(selected?: string): void;
   hide(): void;
@@ -2538,8 +2542,17 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const rosterSearch = document.createElement('label');
   rosterSearch.className = 'cot-roster-search';
   rosterSearch.innerHTML = `${uiIconSVG('search', 16)}<input type="search" data-roster-search autocomplete="off" ` +
-    `spellcheck="false" enterkeyhint="search" aria-label="${t('garage.search.aria')}">${keycap('/')}`;
+    `spellcheck="false" enterkeyhint="search" aria-label="${t('garage.search.aria')}" ` +
+    `placeholder="${escapeHtmlAttribute(t('garage.search.placeholder', { count: allSpecs.length }))}">${keycap('/')}`;
   countryRailEl.insertBefore(rosterSearch, facetToggle);
+  // how many of the fleet the strip shows under the nation, the filter and the search (the direction's "18 of 220")
+  const rosterCount = document.createElement('span');
+  rosterCount.className = 'cot-roster-count num';
+  countryRailEl.append(rosterCount);
+  const updateRosterCount = (): void => {
+    const shown = (specsByCountry.get(countryFilter) || []).filter((spec) => facetVisible(spec.id)).length;
+    rosterCount.textContent = t('garage.roster.count', { shown, total: allSpecs.length });
+  };
   const rosterSearchInput = requiredElement<HTMLInputElement>(rosterSearch, 'input');
   rosterSearchInput.addEventListener('input', () => {
     rosterQuery = rosterSearchInput.value.trim().toLowerCase();
@@ -2564,6 +2577,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const hasMatch = (countryId: string) => (specsByCountry.get(countryId) || []).some((spec) => facetVisible(spec.id));
     applyCountryFilter(facetFilteredCountry(countryFilter, countryGroups.map((group) => group.id), hasMatch)
       || countryFilter);
+    updateRosterCount();
     // The stage never shows a vehicle the filter hides: once the filter settles (typing stays cheap), the strip's first
     // match takes the pedestal.
     if (facetSelectTimer !== null) clearTimeout(facetSelectTimer);
@@ -2595,6 +2609,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   function applyCountryFilter(countryId: string): void {
     const previousCountry = renderedCountryFilter;
     countryFilter = countryId;
+    updateRosterCount();
     if (previousCountry !== countryId) chipById.get(previousCountry || '')?.classList.remove('sel');
     chipById.get(countryId)?.classList.add('sel');
     // Programmatic tank selection can cross national groups. Keep the active
@@ -2873,6 +2888,21 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     'next-generation': 'eraNextGeneration', modern: 'eraModern', 'cold-war': 'eraColdWar', ww2: 'eraWorldWarII', interwar: 'eraInterwar',
   });
   const lowerThird = requiredElement<HTMLElement>(root, '.cot-lower-third');
+  // the stage's numbered hotspots (the direction's 05-garage page): the selected tank's gun, turret, powerpack and
+  // running gear, each with its real values, on the tank itself. The module loads off the entry once the Garage is
+  // playable and idle; the latest facts wait for it.
+  let hotspots: GarageHotspots | null = null;
+  let hotspotFacts: HotspotFacts | null = null;
+  const setHotspotFacts = (facts: HotspotFacts | null): void => { hotspotFacts = facts; hotspots?.setFacts(facts); };
+  const loadHotspots = (): void => {
+    if (window.__GAME_READY !== true) { setTimeout(loadHotspots, 300); return; }
+    const load = () => void import('./garageHotspots.ts').then(({ createGarageHotspots }) => {
+      hotspots = createGarageHotspots(root);
+      hotspots.setFacts(hotspotFacts);
+    }, () => undefined);
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(load, { timeout: 2500 }); else setTimeout(load, 900);
+  };
+  loadHotspots();
   const lowerName = requiredElement<HTMLElement>(lowerThird, '.cot-lt-name');
   const lowerId = requiredElement<HTMLElement>(lowerThird, '.cot-lt-id');
   let lowerClassFor = '';
@@ -2950,6 +2980,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const reloadLabel = autoloader ? t('garage.stat.magazineReload') : t('garage.stat.reload');
     const magazineSpec = magazineDescription(spec.gun, reloadS, eqM.reload);
     const aimS = spec.gun.aimTimeS * eqM.aimTime;
+    const head = headlineOf(spec, eqM.reload, eqM.turret);
+    setHotspotFacts({
+      gun: { lead: `${spec.gun.caliberMm} mm`, more: t('garage.hotspot.reload', { value: head.reload.toFixed(1) }) },
+      turret: { lead: `${head.turret.toFixed(0)}°/s`, more: `+${spec.gunElevationDeg} / −${spec.gunDepressionDeg}°` },
+      engine: { lead: `${Math.round(spec.enginePowerHp)} hp`, more: `${head.hpt.toFixed(1)} hp/t` },
+      tracks: { lead: `${Math.round(spec.topSpeedKmh)} km/h`, more: `${spec.weightTons.toFixed(0)} t` },
+    });
     // Small equipment bonuses should not round into a misleading 1.4 > 1.4.
     const aimPrecision = eqM.aimTime !== 1 ? 2 : 1;
     const vrBase = viewRangeOf(spec);
@@ -3940,6 +3977,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const api: GarageRuntime = {
     root,
     isOpen: false,
+    // the hotspots show on the docked overview, never over Deploy, a panel or a folded layout
+    frameHotspots(camera, model) {
+      hotspots?.frame(camera, model, api.isOpen && document.body.dataset.cotPanels === 'persistent'
+        && root.dataset.station === 'overview' && !battleMenu.classList.contains('open'));
+    },
 
     /**
      * Open the garage screen.
