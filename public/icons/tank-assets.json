@@ -23628,12 +23628,12 @@
             "name": "gunner",
             "min": [
               0.4185,
-              -0.5609,
-              -0.3363
+              -0.584,
+              -0.3263
             ],
             "max": [
               0.8779,
-              0.6683,
+              0.6453,
               0.4765
             ],
             "turretLocal": true
@@ -23642,14 +23642,14 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.8557,
-              -0.7428,
-              -0.5845
+              0.2557,
+              -0.8568,
+              -1.0267
             ],
             "max": [
-              1.3151,
-              0.0909,
-              0.2188
+              0.7151,
+              0.1,
+              -0.339
             ],
             "turretLocal": true
           },
@@ -23658,20 +23658,20 @@
             "name": "loader",
             "min": [
               -0.8779,
-              -0.571,
-              -0.3306
+              -0.5673,
+              -0.2806
             ],
             "max": [
               -0.4185,
-              0.7902,
-              0.2558
+              0.7916,
+              0.1758
             ],
             "turretLocal": true
           }
         ]
       },
       "geometryHash": "75f3b84a",
-      "metadataHash": "c7bac2b2",
+      "metadataHash": "98a121c2",
       "presentationAnchor": {
         "xM": 0.0064,
         "zM": -0.0566
@@ -23782,24 +23782,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85650,
-          "sha256": "9fa66bb67cc209b05053e63755b88ca4220c3beaec423aa4bea303818f5b2384"
+          "bytes": 85606,
+          "sha256": "2fa1931c1860e3173ebfb594e48dd622177275de859fe43f69f5f0af57e4a03e"
         },
         "modulesSide": {
           "file": "amx40_proto_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84079,
-          "sha256": "445c969760eab98732fc7925b792417a077d3df0b74651dfe198091da3d05bda"
+          "bytes": 83892,
+          "sha256": "8064cf32aa99f697a1b276181a02d83cbe3a20d0ba69dc9e885ad40fbb673bbe"
         },
         "crewSide": {
           "file": "amx40_proto_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 75832,
-          "sha256": "b78c4c08626cf6a89af8782bea3cdbe499d6ef79f2d488d22a8bf13991f57770"
+          "bytes": 75613,
+          "sha256": "fb09fc5153d2a4098d208f1a8942d7cf421753ec3c83b6181a4e9a2d9e55b286"
         },
         "markings": {
           "file": "amx40_proto_markings.png",
