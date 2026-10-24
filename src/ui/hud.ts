@@ -7441,7 +7441,7 @@ export function initHud(bus: EventBus): HudRuntime {
       flier?.aerial?.kind !== 'gunship' || flier.visual?.root?.visible === false);
     updateDriveReadout(frame.player || playerRef, frame.timeS);
     updateDamagePanelPose(state.camera);
-    shotInfo.setPlayer(playerId);
+    shotInfo.setPlayer(playerId, frame.timeS, objectiveTeam);
     indexHudTankNames(frame.tanks || []);
     return state;
   }
