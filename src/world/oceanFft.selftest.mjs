@@ -259,7 +259,7 @@ assert.deepEqual(['low', 'medium', 'high', 'ultra'].map(oceanFrameStride), [2, 2
     "const oceanState = resolveOceanState(waterContactProfile(cfg.id || '').kind, cfg.ocean);",
     'for (const slice of oceanSpectrumSteps(oceanState, oceanGridSize(oceanPreset))) {',
     'if (oceanSpectrum) ocean = createOceanField(engineCtx.renderer, oceanSpectrum, oceanState, { preset: oceanPreset });',
-    'ocean); // round 66: the FFT ocean the sheet displaces and shades with',
+    'ocean, shoreDistance); // round 66: the FFT ocean the sheet displaces and shades with', // (perf-253: then its sliced shore)
     'group.userData.disposeWater = ripples.dispose;',
     'group.userData.disposeWater = () => { disposeRipples?.(); disposeOcean(); };',
     'ocean?: OceanConfig;']) assert.ok(terrain.includes(line), `terrain: ${line}`);

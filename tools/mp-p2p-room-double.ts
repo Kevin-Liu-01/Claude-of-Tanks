@@ -106,6 +106,9 @@ export interface P2pRoomDoubleOptions {
   now?: () => number;
   /** What a seat's `room_relay` is answered with (§13.14); no server by default (the scripted link needs none). */
   relayGrant?: RoomRelayPayload;
+  /** (perf-254) Each match's seed (its bot fill, vehicles and countries: room/roomBots.ts); a random one by default. A
+   * proof that judges what particular bots do (the world-events audit's scripted ram, crater and breach) fixes it. */
+  matchSeed?: (round: number) => number;
 }
 
 export interface P2pRoomDouble {
@@ -116,7 +119,7 @@ export interface P2pRoomDouble {
   close(): Promise<void>;
 }
 
-export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSecret, hostGraceMs = ROOM_HOST_DISCONNECT_GRACE_MS, reportStaleMs = ROOM_MATCH_REPORT_STALE_AFTER_MS, seatTtlMs = ROOM_SEAT_DISCONNECT_TTL_MS, onEvent = () => {}, now = () => Date.now(), relayGrant = { iceServers: [], relay: false } }: P2pRoomDoubleOptions): Promise<P2pRoomDouble> {
+export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSecret, hostGraceMs = ROOM_HOST_DISCONNECT_GRACE_MS, reportStaleMs = ROOM_MATCH_REPORT_STALE_AFTER_MS, seatTtlMs = ROOM_SEAT_DISCONNECT_TTL_MS, onEvent = () => {}, now = () => Date.now(), relayGrant = { iceServers: [], relay: false }, matchSeed }: P2pRoomDoubleOptions): Promise<P2pRoomDouble> {
   if (typeof seatSecret !== 'string' || seatSecret.length < 16) throw new TypeError('seatSecret must be at least 16 characters');
   const rooms = new Map<string, RoomState>();
   const sockets = new Map<string, { socket: WebSocket; code: string; playerId: string | null }>();
@@ -329,7 +332,7 @@ export async function createP2pRoomDouble({ host = '127.0.0.1', port = 0, seatSe
 
   const startMatch = (room: RoomState, playerId: string): void => {
     const at = now();
-    const seed = Math.floor(Math.random() * 0xffffffff) >>> 0;
+    const seed = (matchSeed ? matchSeed(room.room!.round + 1) : Math.floor(Math.random() * 0xffffffff)) >>> 0;
     const plan = planStart(room.room!, { seed, now: at });
     const matchId = `m${plan.round}-${Math.floor(Math.random() * 0xffffffff).toString(16).padStart(8, '0')}`;
     const hostId = electHost(room, null);

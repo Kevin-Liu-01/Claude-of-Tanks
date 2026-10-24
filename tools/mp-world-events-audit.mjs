@@ -103,13 +103,21 @@ function busKeyOf(type, payload) {
     default: return null;
   }
 }
+/**
+ * (perf-254) The audit's match seed: the room's bot fill (its vehicles) follows it, and the scripted cases judge what
+ * particular bots do — a rammer heavy enough to bring a house down, a digger and a sheller whose guns lay on their
+ * targets. The room double drew a fresh seed each match, so the same tree alternated PASS, "house 0 not brought down"
+ * and "0 craters dug" (248's sweep). `--seed=random` (seed null) keeps the old draw.
+ */
+export const AUDIT_MATCH_SEED = 1;
 const pct = (sorted, p) => (sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))] : null);
 const dist = (a, b) => (a && b ? Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) : null);
 
-export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, hostGraceMs = 1500, frameHz = 30, teamSize = 4, scripted = true, minLiveCrushes = 3, log = () => {} } = {}) {
+export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, hostGraceMs = 1500, frameHz = 30, teamSize = 4, scripted = true, minLiveCrushes = 3, seed = AUDIT_MATCH_SEED, log = () => {} } = {}) {
   const SECRET = 'mp-world-events-audit-seat-secret-0123456789abcdef';
   const roomEvents = [];
-  const rooms = await createP2pRoomDouble({ seatSecret: SECRET, hostGraceMs, onEvent: (event) => roomEvents.push(event) });
+  const rooms = await createP2pRoomDouble({ seatSecret: SECRET, hostGraceMs, onEvent: (event) => roomEvents.push(event),
+    matchSeed: seed === null ? undefined : () => seed });
   const rtc = new RtcWorld();
   const reference = createDedicatedWorldCollision(MAP_ID);
   const referenceObstacles = reference.getObstacles();
@@ -410,7 +418,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       const authority = core1.core.actor.authority;
       const bots = authority.entities.filter((entity) => entity.bot && !entity.combat.destroyed);
       const groundAt = (x, z) => authority.heightField.getHeightAt(x, z);
-      report.steps.scripted = {};
+      report.steps.scripted = { seed, bots: bots.map((bot) => `${bot.id}:${bot.specId}`) };
       if (scriptedSites.hedgehog && bots[0]) {
         const [x, , z] = scriptedSites.hedgehog.center;
         bots[0].state.pos.set(x, groundAt(x, z - 4.5) + 0.05, z - 4.5);
@@ -429,20 +437,23 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
         bots[1].combat.hp = 1;
         report.steps.scripted.fall = { botId: bots[1].id, tree: scriptedSites.tree.index };
       }
-      if (scriptedSites.ram && bots[2]) {
+      // (perf-254) the rammer is the heaviest of the bots left: a light tank (an M551 the fill drew) only damages the house
+      const rammer = bots.slice(2).reduce((best, bot) => (!best || bot.spec.weightTons > best.spec.weightTons ? bot : best), null);
+      if (scriptedSites.ram && rammer) {
         const [x, z] = scriptedSites.ram.start;
-        bots[2].state.pos.set(x, groundAt(x, z) + 0.05, z);
-        bots[2].state.yaw = scriptedSites.ram.yaw;
-        bots[2].state.speed = 14;
+        rammer.state.pos.set(x, groundAt(x, z) + 0.05, z);
+        rammer.state.yaw = scriptedSites.ram.yaw;
+        rammer.state.speed = 14;
         // its AI off and its throttle held open: a bot's own plan braked or turned it away from the wall in about one
         // run in three under load (2026-10-08), and the ram is what this case judges
-        bots[2].aiCtl = null;
-        Object.assign(bots[2].input, { throttle: 1, steer: 0, brake: false });
-        report.steps.scripted.ram = { botId: bots[2].id, structureId: scriptedSites.ram.structureId };
+        rammer.aiCtl = null;
+        Object.assign(rammer.input, { throttle: 1, steer: 0, brake: false });
+        report.steps.scripted.ram = { botId: rammer.id, specId: rammer.specId, weightTons: rammer.spec.weightTons, structureId: scriptedSites.ram.structureId };
       }
+      const free = bots.slice(2).filter((bot) => bot !== rammer);
       // craters (2026-10-08, crater-render-spec §F): the remaining bot with the round that digs deepest fires it into open
       // ground 22 m ahead, its AI off and its gun reloaded; with the switch off the case records that nothing was dug
-      const diggers = bots.slice(3).map((bot) => {
+      const diggers = free.map((bot) => {
         const slot = bot.spec.gun.shells.findIndex((shell) => isHeClass(shell.type));
         if (slot < 0) return null;
         const shell = bot.spec.gun.shells[slot], munition = munitionClassForShell(shell);
@@ -464,7 +475,7 @@ export async function runWorldEventsAudit({ playMs = 30_000, afterMs = 12_000, h
       }
       // sections (P2): a bot shells another house's wall with its HE round, its AI off and its gun reloaded (with the
       // switch off it only damages the house)
-      const sheller = bots.slice(3).filter((bot) => bot !== digger).map((bot) => ({ bot, slot: bot.spec.gun.shells.findIndex((shell) => isHeClass(shell.type)) }))
+      const sheller = free.filter((bot) => bot !== digger).map((bot) => ({ bot, slot: bot.spec.gun.shells.findIndex((shell) => isHeClass(shell.type)) }))
         .find((entry) => entry.slot >= 0);
       if (scriptedSites.breach && sheller) {
         const { bot, slot } = sheller;
@@ -808,7 +819,9 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const arg = (name, fallback) => { const hit = process.argv.find((a) => a.startsWith(`--${name}=`)); return hit ? hit.slice(name.length + 3) : fallback; };
   const outDir = arg('out', null);
   const label = arg('label', null);
-  const report = await runWorldEventsAudit({ playMs: Number(arg('play', 30)) * 1000, afterMs: Number(arg('after', 12)) * 1000, log: (line) => process.stderr.write(`[world-events] ${line}\n`) });
+  const seedArg = arg('seed', String(AUDIT_MATCH_SEED));
+  const report = await runWorldEventsAudit({ playMs: Number(arg('play', 30)) * 1000, afterMs: Number(arg('after', 12)) * 1000,
+    seed: seedArg === 'random' ? null : Number(seedArg) >>> 0, log: (line) => process.stderr.write(`[world-events] ${line}\n`) });
   report.label = label;
   const text = formatMatrix(report);
   console.log(text);

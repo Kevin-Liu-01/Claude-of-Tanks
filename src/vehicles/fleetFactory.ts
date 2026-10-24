@@ -64,21 +64,20 @@ export function battleGeometryQuality(playerActor: boolean, deviceTier: string):
 }
 
 /**
- * The P21 static merge a BATTLE build of `specId` takes (the battle roster's builds; never the Garage, Gallery or hero
- * builds). The source-X Abrams family takes the 'dual' merge (coordinator rulings 2026-10-24, perf-249/250): the identity
- * build exactly, plus each translated run's merged copy, drawn only past ~30 m of screen-equivalent distance
- * (tankFactoryCore FAR_MERGE_ENTER_M). Their roof stations, gun rigs and CROWS fold from 86-112 draws a bot to 68-77 at
- * range, where the CPU render pairs showed the float rounding nowhere a player looks, while the player's own hull, a
- * spectated or ridden one, a killcam subject and anything the camera comes near draw byte-for-byte as before. Every other
- * vehicle keeps the identity merge. `?staticmerge=` (off | identity | translations | dual) still selects one mode for
- * every build, for the probes' same-build pairs.
+ * The P21 static merge a BATTLE build takes (the battle roster's builds and the multiplayer seats'; never the Garage,
+ * Gallery or hero builds): 'dual' for every vehicle (coordinator rulings 2026-10-24, perf-250/254): the identity build
+ * exactly, plus far copies of its same-key parts, drawn only past ~30 m of screen-equivalent distance (tankFactoryCore
+ * FAR_MERGE_ENTER_M). The player's own hull, a spectated or ridden one, a killcam subject and anything the camera comes
+ * near draw byte-for-byte as the identity build; at range the copies fold the roof stations, gun rigs and loader guns
+ * (a SEPv3 bot 112 -> 50 draws, a Leopard 2A7V 100 -> 65; the CPU render pairs at 50 m moved at most 12 px).
+ * `?staticmerge=` (off | identity | translations | dual) still selects one mode for every build, for the probes'
+ * same-build pairs.
  */
-export function battleStaticDrawMerge(specId: string): NonNullable<CreateTankOptions['staticDrawMerge']> {
+export function battleStaticDrawMerge(_specId: string): NonNullable<CreateTankOptions['staticDrawMerge']> {
   const requested = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('staticmerge') : null;
   if (requested === 'off' || requested === 'identity' || requested === 'translations' || requested === 'dual') return requested;
-  return BATTLE_TRANSLATION_MERGE_IDS.has(specId) ? 'dual' : 'identity';
+  return 'dual';
 }
-const BATTLE_TRANSLATION_MERGE_IDS: ReadonlySet<string> = new Set(ABRAMS_SOURCE_X_IDS);
 
 let profileKit: ProfileBuildFunctions | null = null;
 let factoryReady = false;

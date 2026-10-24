@@ -332,25 +332,11 @@ export function mergeContiguousStaticRuns(
   options: StaticMergeOptions,
 ): StaticMergeResult {
   const ordered = [...records].sort((a, b) => a.layer - b.layer);
+  if (options.dual) return farCopies(ordered, disposables, options);
   const output: CoplanarLayerRecord[] = [];
-  const duals: FarMergeRun[] = [];
   let sourceMeshes = 0, merges = 0;
   let run: Candidate[] = [];
   const mergeChunk = (chunk: Candidate[]): void => {
-    if (options.dual) {
-      // a far copy: the parts stay as they are (their records unchanged); a run with no translated part is the identity
-      // merge's already
-      for (const candidate of chunk) output.push(candidate.record);
-      if (chunk.length < 2 || chunk.every((candidate) => candidate.matrix.equals(IDENTITY))) return;
-      const copy = mergeRun(chunk, duals.length, disposables, options);
-      if (!copy) return;
-      copy.name = `staticMergeFar_${duals.length}`;
-      copy.visible = false;
-      chunk[0].owner.owner.add(copy);
-      duals.push({ copy, sources: chunk.map(({ record }) => record.object), layer: chunk[chunk.length - 1].record.layer,
-        detail: options.detail.has(chunk[0].record.object) });
-      return;
-    }
     const mesh = chunk.length > 1 ? mergeRun(chunk, merges, disposables, options) : null;
     if (!mesh) {
       for (const candidate of chunk) output.push(candidate.record);
@@ -395,5 +381,46 @@ export function mergeContiguousStaticRuns(
   }
   flush();
   output.sort((a, b) => a.layer - b.layer);
-  return { records: output, sourceMeshes, merges, savedDraws: sourceMeshes - merges, duals };
+  return { records: output, sourceMeshes, merges, savedDraws: sourceMeshes - merges, duals: [] };
+}
+
+/**
+ * (perf-250/254) The dual merge's far copies: every record stays as it is; each same-key group of the order becomes
+ * one hidden copy in its members' layer order, whether or not its members are contiguous (perf-254: the far view
+ * keeps no near tie to arbitrate: a source-X Abrams' loader M240 alternates two vertex layouts part by part, and its 30
+ * draws merged nowhere), bounded by the near merge's vertex cap.
+ */
+function farCopies(ordered: readonly CoplanarLayerRecord[], disposables: GeometryOwnerList,
+  options: StaticMergeOptions): StaticMergeResult {
+  const groups = new Map<string, Candidate[]>();
+  for (const record of ordered) {
+    const candidate = candidateFor(record, options);
+    if (!candidate) continue;
+    let group = groups.get(candidate.key);
+    if (!group) groups.set(candidate.key, group = []);
+    group.push(candidate);
+  }
+  const duals: FarMergeRun[] = [];
+  const copyOf = (chunk: Candidate[]): void => {
+    if (chunk.length < 2) return;
+    const copy = mergeRun(chunk, duals.length, disposables, options);
+    if (!copy) return;
+    copy.name = `staticMergeFar_${duals.length}`;
+    copy.visible = false;
+    chunk[0].owner.owner.add(copy);
+    duals.push({ copy, sources: chunk.map(({ record }) => record.object), layer: chunk[chunk.length - 1].record.layer,
+      detail: options.detail.has(chunk[0].record.object) });
+  };
+  for (const group of groups.values()) {
+    let chunk: Candidate[] = [], vertices = 0;
+    for (const candidate of group) {
+      const count = candidate.record.object.geometry.getAttribute('position').count;
+      if (count > MAX_MERGED_VERTICES) continue;
+      if (vertices + count > MAX_MERGED_VERTICES) { copyOf(chunk); chunk = []; vertices = 0; }
+      chunk.push(candidate);
+      vertices += count;
+    }
+    copyOf(chunk);
+  }
+  return { records: [...ordered], sourceMeshes: 0, merges: 0, savedDraws: 0, duals };
 }

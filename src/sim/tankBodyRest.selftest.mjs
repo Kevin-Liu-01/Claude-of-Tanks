@@ -133,7 +133,18 @@ console.log('[4] a hull spinning and pitching on the roof stops and rights itsel
 console.log('[5] controls: a hard roof landing is still an impact, and a hull jumping off a roof is let go');
 {
   const lower = hull('lower', 't90am', 0, 0, 0, 0);
-  const upper = hull('upper', 'm1a1_abrams_hc', 0.6, 2.45, 0.4, 0);
+  // (2026-10-24) the upper hull where the contact pass first meets the lower's top, wherever that top is: the T-90AM's
+  // turret-scale rig (242) lowered its roof under the 2.45 m this case stood at, where a hull now falls clear of it
+  const meets = (y) => {
+    const probe = hull('probe', 'm1a1_abrams_hc', 0.6, y, 0.4, 0);
+    airborne(probe, -6);
+    resolveTankBodyContacts([hull('below', 't90am', 0, 0, 0, 0), probe], SIM_DT);
+    return probe.state.pos.y !== y;
+  };
+  let contactY = 3;
+  while (contactY > 1 && !meets(contactY)) contactY = Math.round((contactY - 0.01) * 100) / 100;
+  ok(contactY > 1.5, `the landing meets the roof (${contactY.toFixed(2)} m)`);
+  const upper = hull('upper', 'm1a1_abrams_hc', 0.6, contactY, 0.4, 0);
   airborne(upper, -6);
   resolveTankBodyContacts([lower, upper], SIM_DT);
   ok(upper.state.grounded === false && upper.state._body.dynamicSupport === true
