@@ -56,7 +56,7 @@ assert.match(garageCss,
   /\.cot-garage \.stats::-webkit-scrollbar-track\{background:transparent;\}/,
   'Garage dossier scrollbar must not draw a permanent track');
 assert.match(garageCss,
-  /\.cot-garage \.stats::-webkit-scrollbar-thumb\{background:rgba\(146,164,180,\.28\);border-radius:999px;\}/,
+  /\.cot-garage \.stats::-webkit-scrollbar-thumb\{background:var\(--line-3\);border-radius:999px;\}/,
   'Garage dossier scrollbar thumb must stay quiet and rounded');
 assert.match(garageCss,
   /@media \(hover:hover\) and \(pointer:fine\)\{\s*\.cot-garage \.stats:hover::-webkit-scrollbar-thumb/,
@@ -90,10 +90,10 @@ assert.match(garageCss,
   /\.cot-eqtooltip \.metric\{display:grid;grid-template-columns:14px minmax\(0,1fr\) auto;/,
   'Garage equipment tooltip must align icons and stat labels with current-to-projected values');
 assert.match(garageCss,
-  /\.cot-eqtooltip \.metric\.improved \.metric-values b\{color:#9fd8a0;\}/,
+  /\.cot-eqtooltip \.metric\.improved \.metric-values b\{color:var\(--text-ok\);\}/,
   'Garage equipment improvements must be visually distinguishable');
 assert.match(garageCss,
-  /\.cot-eqtooltip \.metric\.degraded \.metric-values b\{color:#e6a0a0;\}/,
+  /\.cot-eqtooltip \.metric\.degraded \.metric-values b\{color:var\(--text-danger\);\}/,
   'Garage equipment replacement tradeoffs must be visually distinguishable');
 assert.match(garageCss,
   /body\[data-cot-width='phone'\] \.cot-eqtooltip\{display:none!important;\}/,
@@ -108,7 +108,7 @@ assert.match(garageCss,
   /body\[data-cot-panels='overlay'\] \.cot-eqpick \.pgrid\{[^}]*min-height:0;[^}]*max-height:none;[^}]*flex:1 1 auto/,
   'Compact Garage equipment choices must scroll inside the bounded picker');
 assert.match(garageCss,
-  /\.cot-sidebar-section-title\{[^}]*font:600 var\(--fs-12\)\/1 var\(--font-display\);letter-spacing:var\(--track-label-s\);text-transform:uppercase;/,
+  /\.cot-sidebar-section-title\{[^}]*font:600 max\(11px,var\(--fs-12\)\)\/1 var\(--font-display\);letter-spacing:var\(--track-label-s\);text-transform:uppercase;/,
   'Garage sidebars must share one section-heading typography contract');
 for (const headerClass of [
   'ftitle cot-sidebar-section-title',
