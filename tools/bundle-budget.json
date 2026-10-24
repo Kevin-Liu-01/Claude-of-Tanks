@@ -9,11 +9,11 @@
       "brotli": 1045067,
       "inlineCss": 4318,
       "entryRaw": 848157,
-      "entryBrotli": 233618
+      "entryBrotli": 233624
     },
     "home": {
       "requests": 8,
-      "raw": 109907,
+      "raw": 110167,
       "gzip": 31581,
       "brotli": 28044,
       "inlineCss": 702
@@ -27,7 +27,7 @@
     },
     "gallery": {
       "requests": 76,
-      "raw": 2518995,
+      "raw": 2519186,
       "gzip": 763918,
       "brotli": 643109,
       "inlineCss": 846
@@ -46,7 +46,7 @@
       "brotli": 1088053,
       "inlineCss": 4742,
       "entryRaw": 848157,
-      "entryBrotli": 233618
+      "entryBrotli": 233624
     }
   }
 }
