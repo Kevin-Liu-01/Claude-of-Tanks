@@ -647012,17 +647012,17 @@
           }
         ]
       },
-      "geometryHash": "85673bef",
+      "geometryHash": "4ea6130f",
       "metadataHash": "68c36ad3",
       "presentationAnchor": {
-        "xM": 0,
-        "zM": 0.0094
+        "xM": -0.0002,
+        "zM": 0.0093
       },
-      "presentationHash": "72dc32b4",
+      "presentationHash": "c1e839ba",
       "presentationProjection": {
         "centerYM": 2.0619,
-        "topHalfM": 6.206,
-        "sideHalfM": 3.103
+        "topHalfM": 6.2061,
+        "sideHalfM": 3.1031
       },
       "appearance": {
         "version": 1,
@@ -647070,39 +647070,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 91820,
-          "sha256": "bbf44a7b15e6e769097ae532b102224be66fb3395210e7456ccec8d7a7357095"
+          "bytes": 91500,
+          "sha256": "e6c476117f81c7982bdca8934c3240e11b99e3116da38bb8cc1fd22b1e7c01fa"
         },
         "modulesSide": {
           "file": "m1a2_abrams_tusk_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 94237,
-          "sha256": "13f9f4f10b31b58b7d3059f2fc2776c48eba1e7467b0bcafb2aade454000a7bd"
+          "bytes": 94097,
+          "sha256": "6dd418ed8e200263cc1468921cf302611b14dfa2283084bc7cffe068fee8f299"
         },
         "crewSide": {
           "file": "m1a2_abrams_tusk_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 80749,
-          "sha256": "12d9756751709779a622fdd56590af7a0c1419ae7787f215c43ba71140eb1eec"
+          "bytes": 80902,
+          "sha256": "d3e3fc133050b5a05f3356eae0a72bb3e4b6ea96c3ebd331e2cf2b5b6b94f958"
         },
         "angle": {
           "file": "m1a2_abrams_tusk_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 34892,
-          "sha256": "8fb1c842503eac9eb37e09dbcae3d53d5dc8db9ee01adaa79ec27618a87a1d19",
+          "bytes": 34890,
+          "sha256": "39480079f87536f39b0c2e5b85fb578fb23ebc6878dfe9f30026a16cce70ab45",
           "thumbnail": {
             "file": "thumbs/m1a2_abrams_tusk_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
             "bytes": 13542,
-            "sha256": "acd7661800fb86802911ee40ab68ae7661686c0915611cb42e7ebdeb131d5b32"
+            "sha256": "76c92811d4527490cc5a567ae9b6d90c7ea2d3b4d385104316b5c922c6aa411c"
           }
         },
         "top": {
@@ -647110,32 +647110,32 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 22364,
-          "sha256": "2fc0c80088e065d53e9b9214607f4b4869ee9b7810b214c7a25f213be001c873"
+          "bytes": 22366,
+          "sha256": "9e4b84262e884e09645eb2b90ba3956fdfc426902a94a7a641671101ff2b0b17"
         },
         "side": {
           "file": "m1a2_abrams_tusk_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 16372,
-          "sha256": "f1199e7d329385a0f91b915d0e722fb37c4767f100ff784321c1cd04f0ae284a"
+          "bytes": 16350,
+          "sha256": "e059061001b224e01ebcf48aae03bc93090b8a866b2bff8ceb1582e7d5078912"
         },
         "topSilhouette": {
           "file": "m1a2_abrams_tusk_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1407,
-          "sha256": "2d462c4e9e90269b91498ed4fd7922774b897000eac93e4f17765da67dcb6128"
+          "bytes": 1422,
+          "sha256": "c2f2848fd8682fb90e3af8be5d963dd2be2e54b9301ce22e094b364cd3da4029"
         },
         "sideSilhouette": {
           "file": "m1a2_abrams_tusk_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5077,
-          "sha256": "194dd9f0bbd64bdc7c42b24b047374a85019cd1090189db88c47f404725d69e7"
+          "bytes": 5123,
+          "sha256": "62efceff23ad2d35a1c4f6b1badf4d06534b5347cedfff39843291658f4072f5"
         },
         "markings": {
           "file": "m1a2_abrams_tusk_markings.png",
