@@ -3,6 +3,8 @@ import { readFile } from 'node:fs/promises';
 
 import { objectiveMarkers, markersStandOnSpawns, zoneLetter, objectiveSide } from './minimapObjectives.ts';
 import { OBJECTIVE_PALETTE, sideColor, sideFill } from './objectiveGlyphs.ts';
+import { TOKENS } from './tokens/tokens.ts';
+import { setActiveTokens } from './tokens/tokenSelection.ts';
 
 // tactical map 2026-09-15: the minimap and the world presentation share one derivation of
 // objective markers from the mode state — sides from the viewer's team, zone letters,
@@ -25,9 +27,16 @@ assert.equal(objectiveSide('alpha', 'alpha'), 'own');
 assert.equal(objectiveSide('alpha', 'bravo'), 'enemy');
 assert.equal(objectiveSide(null, 'alpha'), 'enemy');
 
-// palette: the HUD blip colours
-assert.equal(sideColor('own'), '#7ee87e');
-assert.equal(sideColor('enemy'), '#f05a5a');
+// palette: the HUD blip colours, the team tokens under the player's colour preset (brand-ui H1)
+assert.equal(sideColor('own'), TOKENS['team-own']);
+assert.equal(sideColor('enemy'), TOKENS['team-enemy']);
+setActiveTokens({ cvd: 'classic' });
+assert.equal(sideColor('own'), '#7ee87e', 'the Classic preset keeps the old green');
+assert.equal(sideColor('enemy'), '#f05a5a', 'and the old red');
+setActiveTokens({ cvd: 'deutan' });
+assert.equal(sideColor('enemy'), '#e69f00', 'a deutan player sees the enemy in orange');
+assert.match(sideFill('enemy'), /^rgba\(230,159,0,/);
+setActiveTokens({});
 assert.equal(sideColor('contested'), OBJECTIVE_PALETTE.contested);
 assert.match(sideFill('neutral'), /^rgba\(/);
 

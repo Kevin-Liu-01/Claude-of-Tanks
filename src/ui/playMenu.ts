@@ -35,6 +35,7 @@ import { isIntentionalRoomCloseReason } from '../mp/session/roomFailure.ts';
 // entry resilience (2026-09-25): room failure codes and ICE degradation are beaconed (never prose or codes of rooms)
 import { getEntryTelemetry } from '../entry/telemetry.ts';
 import { roomFailurePresentation } from './roomFailurePresentation.ts';
+import { createRoomServiceLimit } from '../mp/session/roomServiceLimit.ts';
 export type { PlayMode } from '../mp/session/playMode.ts';
 import { automaticPlayerName, normalizePlayerName } from '../mp/session/playerNames.ts';
 import { normalizeRoomCode } from '../mp/room/protocol.ts';
@@ -1331,6 +1332,8 @@ export function createPlayMenu({
   const connectionOptions: RoomConnectionOptions = {
     storage: localStorage,
     clientBuild: import.meta.env.MODE,
+    // the rooms Worker's daily limit (Workers Free): one status ask after a failure, no socket into the refusal
+    serviceLimit: createRoomServiceLimit({ storage: localStorage }),
     onHostStart: (lobbyState, connection) => {
       adoptRoomConnection(connection);
       beginNetworkHandoff(lobbyState, 'host');

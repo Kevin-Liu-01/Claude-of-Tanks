@@ -42,6 +42,10 @@ load for boot, and the landing for the 404.
    - no eyebrows, taglines or helper lines;
    - text never sits on a tank;
    - every vehicle shows its flag and silhouette.
+5. A page's sample data becomes live data, never a literal: rules from the mode's ruleset (`sim/matchRuleset.ts`),
+   records from the profile, and drawings that need a built world from a baked file. The Deploy map's objectives come
+   from `public/minimaps/objectives.json`, which `tools/deploy-objectives-bake.mjs` writes through the battle's own
+   placement and controller; re-run it when a map's layout or a mode's placement changes.
 
 ## Classes
 
@@ -100,9 +104,10 @@ Decided on 10-23, carrying the direction forward. The name stays Claude of Tanks
   watermarks.
 - **Regenerating:** `node tools/brand/wordmark-layout.mjs > layout.json`, then
   `python3 tools/brand/wordmark.py layout.json <ChakraPetch-Bold.ttf> <ChakraPetch-Medium.ttf>`. The icons come from
-  `tools/brand-render.mjs export` and `ico`.
+  `tools/brand-render.mjs export` and `ico`. `node tools/sync-brand-marks.mjs` then inlines the title card in the boot
+  splash (`index.html`), where the registration sting moves its parts: `.t` the caps' top halves, `.rl` and `.rr` the
+  "of" rules.
 - **Social cards:** they come from `tools/marketing-shots/generate-og-images.mjs`, with the lockup clear of every tank.
   The game page also carries `og:video` (`public/brand/og/game.mp4`): the f6 Steinburg film with the lockup.
-- **Archived** in `docs/references/brand/`: `v1`, `v2-roundel` and `og-logo.png`. Three consumers still use the crest
-  files (`logo-*`, `v3-shield`): the boot screen, the garage signage atlas and the film tools. They retire as those
-  consumers move.
+- **Archived** in `docs/references/brand/`: `v1`, `v2-roundel` and `og-logo.png`. Two consumers still use the crest
+  files (`logo-*`, `v3-shield`): the garage signage atlas and the film tools. They retire as those consumers move.

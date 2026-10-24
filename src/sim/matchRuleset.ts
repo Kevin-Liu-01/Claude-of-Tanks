@@ -1115,6 +1115,71 @@ export interface MatchRuleset {
   readonly records: boolean;
   /** The proving ground's range: the firing line, the lanes, the reference plates and the moving-target option. */
   readonly provingGround?: ProvingGroundRules;
+  /** A watched battle (WATCH_RULES): no human seat, every seat a bot's, and the watcher's camera and seat rules. */
+  readonly watch?: WatchRules;
+}
+
+/**
+ * Watch (watch-mode-243; owner 2026-10-23: "watch tank battles and be able to go into a spectator view you can control
+ * like a drone and then into any tank currently fighting (being controlled by a bot)", and the same day through Main: "be
+ * able to ride along in spectator mode but go into tank describes driving it"). A watched battle is a listed mode on any
+ * map with no human seat: the seat the player would take is set up exactly as ever (its side, spawn, role and vehicle)
+ * and a bot drives it, so every mode fields the sides it always does. The mode keeps its own clock, respawns, scores
+ * and objectives. The watcher flies a drone, rides along any tank, and may take a living bot's seat: the bot's planner
+ * pauses for that hull while the watcher's input drives it through the player's own input path, and resumes from the
+ * hull's state when the watcher leaves. A watched battle keeps no record.
+ */
+export interface WatchRules {
+  /**
+   * The modes a battle can be watched in: every battle mode whose human seat a bot plays as any other. The AC-130 is
+   * left out (its gunship is the human's alone: no bot flies it) and the proving ground has no fight to watch.
+   */
+  readonly modes: readonly GameModeId[];
+  /** The watcher may take a living bot's seat and hand it back. */
+  readonly takeControl: boolean;
+  /** A watched tank's wreck is held in a slow orbit this long before the camera rides on with its killer (or flies). */
+  readonly deathHoldS: number;
+  /** A taken seat destroyed: the player's death beat runs this long, then the watcher is back on the drone. */
+  readonly takenDeathS: number;
+  /**
+   * The watcher sees every tank (the minimap, the markers): a local battle with no human side has nothing to hide. A
+   * taken seat sees as its side does again, spotting and all.
+   */
+  readonly revealAll: boolean;
+  /** The drone opens this high over the midpoint of the two deployments, this far back along the axis, looking down. */
+  readonly openAltitudeM: number;
+  readonly openBackM: number;
+  readonly openPitchDeg: number;
+}
+export const WATCH_RULES: WatchRules = Object.freeze({
+  modes: Object.freeze(['standard', 'capture_the_flag', 'zone_control', 'turbo_ball', 'endless_horde', 'frontline_assault',
+    'mars', 'juggernaut', 'infected', 'realistic', 'gun_game', 'drone'] as const),
+  takeControl: true,
+  deathHoldS: 1.6,
+  takenDeathS: 3.5,
+  revealAll: true,
+  openAltitudeM: 70,
+  openBackM: 140,
+  openPitchDeg: -24,
+});
+
+/** A mode a battle can be watched in. */
+export function isWatchableMode(mode: GameModeId | string | null | undefined): boolean {
+  return (WATCH_RULES.modes as readonly string[]).includes(String(mode));
+}
+
+/** The ruleset a watched battle plays: its mode's own, with the watch rules and no record (unwatchable: unchanged). */
+export function watchRulesetFor(ruleset: MatchRuleset): MatchRuleset {
+  if (!isWatchableMode(ruleset.mode)) return ruleset;
+  return Object.freeze({ ...ruleset, records: false, watch: WATCH_RULES });
+}
+
+/**
+ * A finished battle the records read (the profile tally, the service record, the campaign ladder): its mode keeps
+ * records and it was played, not watched (`battle:ended` carries `watch`).
+ */
+export function battleKeepsRecords(event: { readonly gameMode?: unknown; readonly watch?: unknown } | null | undefined): boolean {
+  return event?.watch !== true && rulesetKeepsRecords(typeof event?.gameMode === 'string' ? event.gameMode : null);
 }
 
 /** A battlefield variant a mode can play (the map built with that variant's config, its own collision manifest). */
