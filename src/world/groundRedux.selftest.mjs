@@ -168,7 +168,8 @@ assert.ok(terrain.includes('attribute float fold;\\nvarying float vFold;') && te
 assert.ok(terrain.includes('attribute float shore;\\nvarying float vShore;') && terrain.includes('vShore = (1.0 - shore) * 32.0;'), 'the vertex shader forwards the shore distance in metres');
 assert.ok(terrain.includes("geo.setAttribute('shore', new THREE.BufferAttribute(shore, 1, true));"), 'one normalised shore byte per vertex');
 assert.ok(terrain.includes('shore[vi] = m >= 32 ? 0 : 255 - Math.round(Math.max(0, m) * (255 / 32));'), 'inverted: 255 at the waterline, 0 at 32 m and beyond');
-assert.ok(terrain.includes('shoreAt = (x: number, z: number): number => {') && terrain.includes('const dist = shorelineDistance(d, x, z, 1.32);'), 'baked from the map\'s own shoreline contours');
+// (perf-248: the shore is createShoreAt's, shared by the terrain build and the ring worker)
+assert.ok(terrain.includes('const shoreAt = createShoreAt(cfg, heightField);') && terrain.includes('const dist = shorelineDistance(d, x, z, 1.32);'), 'baked from the map\'s own shoreline contours');
 assert.ok(!/uniform sampler2D uShore/.test(material), 'the shore is an attribute, not a sampler');
 assert.ok(terrain.includes("'#include <aomap_fragment>\\nreflectedLight.indirectDiffuse *= gFoldAO;'"), 'fold occlusion is indirect only');
 assert.ok(terrain.includes('heightField._foldAt = foldAt;'), 'the tall grass reads the same folds');

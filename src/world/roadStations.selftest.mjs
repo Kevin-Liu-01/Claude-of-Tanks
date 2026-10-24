@@ -54,6 +54,10 @@ const factory = new Function('deps', `
   let placedW = 0;
   function* placeWreck(...args) { wreckRecords.push(args); return true; }
   function* placePairedWreck() {}
+  // (the destructible-kits lane, 64cba413b0: PropsMapConfig.rotationalCentre) the props build's twin centre, as production
+  // sets it; a fixture map with one places its hulks in pairs about it (recorded as one placement each)
+  const twinCentre = P?.rotationalCentre ?? null;
+  function* placeWreckPair(...args) { wreckRecords.push(args); return 2; }
   const wreckSpotIsClear = () => true;
   // (a nest's bedding draws its own stream and places nothing: the scenery lane's buildSandbagBedding, wave 34)
   const bedSandbagNest = () => {};

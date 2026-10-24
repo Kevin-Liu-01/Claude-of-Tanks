@@ -2173,6 +2173,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // (the 225 gate, 2026-10-15) a world build never depends on the maps built before it in the process
     'tools/worldBuildIndependence.selftest.mjs',
     'src/world/structureShellPool.selftest.mjs', // 2026-10-13 (the perf stream, Plan W): pooled structure shells equal the inline build
+    'src/world/brokenVehiclePool.selftest.mjs', // perf-248: pooled broken vehicle bodies equal the inline build
     'src/world/structureCollisionVertexCache.selftest.mjs',
     'src/world/structureCollisionReuse.selftest.mjs',
     'src/world/structureCollisionMergeKeys.selftest.mjs',
