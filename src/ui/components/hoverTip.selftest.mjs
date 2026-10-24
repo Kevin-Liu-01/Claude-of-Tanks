@@ -1,8 +1,8 @@
-// The kit's hover tip (hoverTip.ts) and its placement (floatPlacement.ts), shared with the rich tooltip (owner,
+// The kit's hover tip (hoverTip.ts) and its placement (responsiveLayout.ts placeFloat), shared with the rich tooltip (owner,
 // 2026-10-24: "have little tooltips ... when we hover over long enough"). Copyright © 2026 Kevin B. Liu.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { placeFloat } from './floatPlacement.ts';
+import { placeFloat } from '../responsiveLayout.ts';
 
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const viewport = { width: 1440, height: 900 };
@@ -25,9 +25,12 @@ const viewport = { width: 1440, height: 900 };
 // 2. The rich tooltip places through the same helper and leaves its targets to itself.
 {
   const rich = read('../richTooltip.ts');
-  assert.match(rich, /import \{ placeFloat \} from '\.\/components\/floatPlacement\.ts';/);
-  assert.match(rich, /registerRichTipTargets\(host, selector\)/);
-  assert.match(rich, /unregister\(\)/, 'a disposed rich tooltip gives its targets back');
+  assert.match(rich, /placeFloat\(bounds, tip\.getBoundingClientRect\(\), viewport\)/, 'the rich tooltip places through the same helper');
+  assert.match(read('./hoverTip.ts'), /import \{ placeFloat \} from '\.\.\/responsiveLayout\.ts';/);
+  assert.match(rich, /host\.dataset\.richTipTargets = selector;/);
+  assert.match(rich, /delete host\.dataset\.richTipTargets;/, 'a disposed rich tooltip gives its targets back');
+  assert.doesNotMatch(rich, /from '\.\/components\/hoverTip\.ts'/, 'the rich tooltip keeps the hover tip off the game\'s first load');
+  assert.match(read('./hoverTip.ts'), /closest<HTMLElement>\('\[data-rich-tip-targets\]'\)/);
 }
 
 // 3. The hover tip's contract, as source: the dwell, the hold, touch, the targets and the opt-out.
@@ -54,8 +57,12 @@ const viewport = { width: 1440, height: 900 };
 
 // 5. One install per document, by every shell: the public pages and the game's settings panel.
 {
-  assert.match(read('../../presentation/publicNav.ts'), /installPageBehaviours\(\);/);
-  assert.match(read('../settings.ts'), /\n  installPageBehaviours\(\);\n/);
+  // off each page's first load: imported when the page is idle (they act only on a hover)
+  for (const shell of ['../../presentation/publicNav.ts', '../settings.ts']) {
+    const text = read(shell);
+    assert.match(text, /import\('[./]+(?:ui\/)?components\/pageBehaviours\.ts'\)\.then\(\(\{ installPageBehaviours \}\) => installPageBehaviours\(\)\)/, shell);
+    assert.doesNotMatch(text, /^import .*pageBehaviours/m, `${shell} keeps the behaviours off its static graph`);
+  }
   assert.match(read('./pageBehaviours.ts'), /installHoverTips\(doc\);\s*installMarkRoll\(doc\);/);
 }
 

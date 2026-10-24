@@ -1,6 +1,5 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import { installResponsiveLayout } from '../ui/responsiveLayout.ts';
-import { installPageBehaviours } from '../ui/components/pageBehaviours.ts';
 import { bindStaticI18nAuto } from './staticI18n.ts';
 import { getLocale, setLocale, t } from '../ui/i18n.ts';
 import {
@@ -17,7 +16,6 @@ import {
 // deferred GitHub star count.
 
 installResponsiveLayout();
-installPageBehaviours(); // the kit's hover tip and the mark's roll
 /** True when the page is moving to its other-locale route (the rest of the page then stands down). */
 export const localeRouteChanged = synchronizeLocaleRoute(getLocale());
 if (!localeRouteChanged) {
@@ -113,3 +111,8 @@ window.setTimeout(() => {
   if ('requestIdleCallback' in window) requestIdleCallback(mountStars, { timeout: 2500 });
   else mountStars();
 }, 2400);
+
+// the kit's hover tip and the mark's roll act only on a hover: they load once the page is idle, off its first load
+const behaviours = (): void => void import('../ui/components/pageBehaviours.ts').then(({ installPageBehaviours }) => installPageBehaviours());
+if ('requestIdleCallback' in window) requestIdleCallback(behaviours, { timeout: 1500 });
+else setTimeout(behaviours, 300);

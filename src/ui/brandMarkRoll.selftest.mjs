@@ -17,7 +17,12 @@ assert.ok(LOOP_S > 0 && BRAND_MOTION_CSS.includes('prefers-reduced-motion'));
 assert.match(source, /if \(event\.pointerType === 'touch' \|\| reduced\?\.matches\) return;/);
 assert.match(source, /'rolling' in found\.mark\.dataset/, 'a hover during the roll does not restart it');
 assert.match(source, /found\.host\.contains\(event\.relatedTarget\)/, 'a move inside the lockup is the same hover');
-assert.match(source, /setTimeout\(done, LOOP_S \* 1000\)/);
+assert.match(source, /'animationiteration'/, 'a roll is one loop: it ends on the wheels\' first iteration');
 assert.match(source, /mark\.innerHTML = still;/);
-assert.match(source, /import\('\.\/brandMarkMotion\.ts'\)/, 'the motion loads on the first hover, off every shell');
+assert.doesNotMatch(source, /brandMarkMotion\.ts'/, 'no motion module: it would split the boot graph\'s brandMark chunk');
+assert.match(source, /const MOTION_URL = '\/brand\/mark-motion-inline\.svg';/);
+// the file is the motion module's own drawing and rules, in the host's ink and accent
+const inline = readFileSync(new URL('../../public/brand/mark-motion-inline.svg', import.meta.url), 'utf8');
+assert.ok(inline.includes(BRAND_MOTION_CSS.trim()), 'the loop\'s rules, scoped to .cot-mark--motion');
+assert.ok(inline.includes(living.replace(/^<svg[^>]*>/, '').replace(/<\/svg>$/, '')), 'the living drawing, currentColor and var(--accent)');
 console.log('brandMarkRoll.selftest: ok');

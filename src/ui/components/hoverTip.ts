@@ -9,9 +9,9 @@
  * text). data-tip-off on a control or a region opts it out; the rich tooltip's own targets (richTooltip.ts) are skipped.
  * What it says: data-tip's text, else the control's name (aria-label, aria-labelledby, else title). A title moves into
  * the tip the first time it is targeted, so the browser's own tooltip never stacks on it.
- * Where: the kit's placement (floatPlacement.ts), clear of every edge, in the top layer. Copyright © 2026 Kevin B. Liu.
+ * Where: the rich tooltip's placement (responsiveLayout.ts placeFloat), clear of every edge, in the top layer. Copyright © 2026 Kevin B. Liu.
  */
-import { placeFloat } from './floatPlacement.ts';
+import { placeFloat } from '../responsiveLayout.ts';
 
 const TIP_DWELL_MS = 600;
 const TIP_HOLD_MS = 500;
@@ -21,11 +21,13 @@ const HOLD_LINGER_MS = 1500;
 
 const CONTROL = 'button, a[href], summary, [role="button"], [role="tab"], [role="menuitem"], [role="option"], [data-tip]';
 
-/** The rich tooltip's hosts and their target selectors: the hover tip leaves those targets to it. */
-const richTargets = new Map<HTMLElement, string>();
-export function registerRichTipTargets(host: HTMLElement, selector: string): () => void {
-  richTargets.set(host, selector);
-  return () => { if (richTargets.get(host) === selector) richTargets.delete(host); };
+/** The rich tooltip's targets (richTooltip.ts names them on its host as data-rich-tip-targets): the hover tip leaves them to it. */
+function richTarget(control: HTMLElement): boolean {
+  for (let host = control.closest<HTMLElement>('[data-rich-tip-targets]'); host; host = host.parentElement?.closest<HTMLElement>('[data-rich-tip-targets]') ?? null) {
+    const selector = host.dataset.richTipTargets;
+    if (selector && control.closest(selector)) return true;
+  }
+  return false;
 }
 
 function nameOf(control: HTMLElement): string {
@@ -43,7 +45,7 @@ function nameOf(control: HTMLElement): string {
 /** The tip a control shows, or '' for none. */
 function tipText(control: HTMLElement): string {
   if (control.closest('[data-tip-off]')) return '';
-  for (const [host, selector] of richTargets) if (host.contains(control) && control.closest(selector)) return '';
+  if (richTarget(control)) return '';
   // a title would also raise the browser's tooltip: it moves into the tip (and names an otherwise unnamed control)
   const title = control.getAttribute('title');
   if (title !== null) {
