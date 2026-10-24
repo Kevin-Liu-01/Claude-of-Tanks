@@ -5,7 +5,7 @@ import { viewportQueryViolations } from './viewportQueries.test-support.mjs';
 
 const [
   garageSource, touch, battleLoad, hud, shotInfo, playMenu, settings, publicNav, responsiveSurfaces, input,
-  transition, perfHud, deviceDiag, renderer, main, pointerLockFeedback, gallery, docs,
+  transition, perfHud, deviceDiag, renderer, main, pointerLockFeedback, gallery, docs, battleHudLayoutCss,
 ] = await Promise.all([
   readFile(new URL('./garage.ts', import.meta.url), 'utf8'),
   readFile(new URL('./touchControls.ts', import.meta.url), 'utf8'),
@@ -25,12 +25,18 @@ const [
   readFile(new URL('../game/pointerLockFeedbackRuntime.ts', import.meta.url), 'utf8'),
   readFile(new URL('../gallery/gallery.css', import.meta.url), 'utf8'),
   readFile(new URL('../docs/docs.css', import.meta.url), 'utf8'),
+  readFile(new URL('./battleHudLayout.css', import.meta.url), 'utf8'),
 ]);
 const garage = `${garageSource}\n${await readFile(new URL('./garage.css', import.meta.url), 'utf8')}`;
 
-assert.match(responsiveSurfaces,
-  /body\[data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-prebattle\{\s*top:max\(255px,30%\);transform:translateX\(-50%\);/,
-  'portrait countdown labels must clear the initial minimap and room-chat controls');
+// owner 2026-10-21 (8339df05b1): the countdown sits on the centre line, a dial over the crosshair; a touch layout seats it
+// from the touch notice planner (touchNoticePlan.ts placeCountdown), clear of the initial minimap, the room chat and the
+// controls, where a fixed portrait seat (top:max(255px,30%)) once kept it off them
+assert.match(battleHudLayoutCss,
+  /\.cot-touch-layout\[data-touch-notices\] \.cot-prebattle\{top:var\(--hud-touch-countdown-top\);/,
+  'a touch countdown takes the touch notice planner\'s seat');
+assert.doesNotMatch(responsiveSurfaces, /\.cot-prebattle\{\s*top:max\(255px,30%\)/,
+  'no fixed portrait countdown seat outlives the planner');
 
 assert.doesNotMatch(garage, /@media \((?:min|max)-width:\d+px\)/,
   'Garage composition must not retain independent device-width breakpoint logic');
@@ -151,8 +157,10 @@ assert.match(responsiveSurfaces,
 assert.match(responsiveSurfaces,
   /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-net\{[\s\S]*top:calc\(max\(8px[\s\S]*left:auto;right:max\(10px/,
   'short landscape FPS and ping must clear both the score plate and minimap');
+// owner 2026-10-22 (2a5d944a3f, "not centered in screen"): the plate sits on the true centre line and narrows to the lane
+// the corner controls leave it, instead of a fixed 294 px set 18 px off centre
 assert.match(responsiveSurfaces,
-  /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-top\{[\s\S]*left:calc\(50% - 18px\);width:294px[\s\S]*grid-template-columns:minmax\(62px,1fr\) 72px/,
+  /data-cot-height='short'\]\[data-cot-orientation='landscape'\] \.cot-top\{[\s\S]*left:50%;width:min\(294px,calc\(100vw - 2 \* \(max\(10px,env\(safe-area-inset-right\)\) \+ 146px\)\)\)[\s\S]*grid-template-columns:minmax\(62px,1fr\) 72px/,
   'short landscape score plate must stay inside the lane between corner controls');
 assert.match(responsiveSurfaces,
   /data-cot-width='phone'\]\[data-cot-orientation='portrait'\] \.cot-touch \.scope\{[\s\S]*bottom:105px/,
@@ -277,11 +285,13 @@ assert.match(await readFile(new URL('./battleHudLayout.ts', import.meta.url), 'u
   'ballistic reports and logs must share the live lane between the enemy roster and minimap');
 assert.doesNotMatch(shotInfo, /\.cot-si-card::before/,
   'ballistic reports must not retain the orange top-edge accent');
+// (9cb467b27c: the card is led by its outcome, so its ballistic glyph left with the old header)
 assert.match(shotInfo,
-  /ballistic: uiIconSVG\('scope', 10\)[\s\S]*shell: uiIconSVG\('shell', 10\)[\s\S]*armor: uiIconSVG\('shield', 10\)[\s\S]*damage: uiIconSVG\('damage', 10\)[\s\S]*pen: uiIconSVG\('penetration', 10\)/,
+  /shell: uiIconSVG\('shell', 10\)[\s\S]*angle: uiIconSVG\('scope', 10\)[\s\S]*armor: uiIconSVG\('shield', 10\)[\s\S]*damage: uiIconSVG\('damage', 10\)[\s\S]*pen: uiIconSVG\('penetration', 10\)/,
   'ballistic reports must use the shared vector icon language for their key readings');
+// (bc8de4d713: the rule is the Premiere plates' line token)
 assert.match(shotInfo,
-  /\.cot-si-kv\.pen\{margin-top:2px;padding-top:3px;border-top:1px solid rgba\(146,164,180,\.24\);\}/,
+  /\.cot-si-kv\.pen\{margin-top:2px;padding-top:3px;border-top:1px solid var\(--line-2\);\}/,
   'penetration analysis must be separated visually from the damage row');
 assert.match(shotInfo,
   /body\.cot-touch-layout \.cot-si-cardhost,[\s\S]*body\.cot-touch-layout \.cot-si-log\{display:none!important;\}/,
