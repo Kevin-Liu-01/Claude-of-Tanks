@@ -145,6 +145,8 @@ for (const gunSide of ['left', 'right']) {
   // Every surface that shows cards loads the card module and its stylesheet together, lazily (no static CSS import
   // in a graph, and no extra static chunk on the game page: the boundary is inline at each surface).
   assert.doesNotMatch(cardTs, /^import ['"][^'"]+\.css['"]/m, 'heroCard.ts imports no stylesheet statically');
+  assert.match(cardTs, /img\.loading = priority \? 'eager' : 'lazy';/,
+    'the selected card\'s layers load eagerly (a lazy LCP waits for layout); the rest stay lazy until drainHeroCards');
   for (const surface of ['../src/ui/garage.ts', '../src/ui/endScreen.ts', '../src/gallery/gallery.ts']) {
     const source = readFileSync(new URL(surface, import.meta.url), 'utf8');
     assert.match(source, /Promise\.all\(\[import\('(?:\.\/|\.\.\/ui\/)heroCard\.ts'\), import\('(?:\.\/|\.\.\/ui\/)heroCard\.css'\)\]\)/, `${surface} loads the card module with its stylesheet`);
