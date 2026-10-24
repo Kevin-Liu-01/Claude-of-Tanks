@@ -51,7 +51,7 @@ client trims to 1.5 KB). Three routes on the Worker:
 |---|---|---|
 | `POST /v1/session` | `session` | once per page load: at boot-ready, or on the first error, a capability halt, or `pagehide` when boot never got there |
 | `POST /v1/session` | `entry` | one small follow-up when a battle entry resolves after the session record left |
-| `POST /v1/error` | `error` | uncaught errors and unhandled rejections (coalesced for a second, deduplicated by message, three per session), and the inline watchdog's terminal verdicts |
+| `POST /v1/error` | `error` | uncaught errors and unhandled rejections (deduplicated by message, three per session) when the page leaves or hides with errors waiting, and the inline watchdog's terminal verdicts. Since 2026-10-23 (Workers Free) a session sends one beacon per phase: before boot-ready the errors of the first second ride the session record (`error` + `errors`), and after it the next battle's entry record carries them |
 
 Every record carries `v: 2`, `sid` (a random per-load id, minted by the
 inline watchdog and reused by the module — `window.__COT_TELEMETRY_SID`),

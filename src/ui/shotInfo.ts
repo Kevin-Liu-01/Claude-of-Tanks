@@ -30,6 +30,7 @@ import { uiIconSVG } from './uiIcons.ts';
 import { maskIcon, iconUrl } from './icons.ts';
 import { schematicUrl as prepareSchematicUrl } from './shotSchematicClient.ts';
 import { moduleName } from './moduleRegistry.ts';
+import { createBattleBeatLog } from './battleBeats.ts';
 import {
   createShotDiagramProjection,
   impactForShotDiagram,
@@ -284,7 +285,7 @@ export interface ShotInfoRuntime {
   readonly statsRoot: HTMLDivElement;
   warmSchematics(specIds: readonly string[]): void;
   toggleLog(): void;
-  setPlayer(id: EntityId | null): void;
+  setPlayer(id: EntityId | null, timeS?: number, perspective?: string): void;
   setTeamResolver(resolve: (id: EntityId) => string | undefined): void;
   hideStats(): void;
   reset(): void;
@@ -1029,6 +1030,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   const stats = newStats();
   const firedRounds = new FiredRoundLedger();
   const killLedger = new BattleKillLedger();
+  const beatLog = createBattleBeatLog(); // the end screen's timeline (battleBeats.ts)
   let teamOf: (id: EntityId) => string | undefined = () => undefined;
   let endInfo: EndInfo | null = null;      // battle:ended report header
   // battle endings (2026-09-25): the final blow — the last lethal shell:hit on any pair and the last
@@ -1565,6 +1567,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       hordeWave: endInfo?.hordeWave ?? null,
       brains: endInfo?.brains ?? null,
       awards: getLastBattleAwards(),
+      beats: beatLog.list(),
     };
   }
 
@@ -1645,10 +1648,9 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     const outcome = hitOutcomeFor(ev);
     stats.received += ev.damage || 0;
     if ((ev.damage || 0) <= 0 && outcome.blocked) stats.blocked += ev.dmgRoll || 0;
-    const mods = (ev.modulesHit || [])
-      .filter((module) => module.newState === 'red')
-      .map((module) => moduleName(module.module))
-      .join(', ');
+    const knocked = (ev.modulesHit || []).filter((module) => module.newState === 'red');
+    for (const module of knocked) beatLog.loss(module.module, ev.timeS);
+    const mods = knocked.map((module) => moduleName(module.module)).join(', ');
     receivedLog.push({
       t: ev.timeS || 0,
       dmg: ev.damage || 0,
@@ -1682,6 +1684,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   bus.on('tank:spotted', (payload) => {
     const ev = eventPayload<TankSpottedEvent | null>(payload);
     if (!ev || ev.id == null) return;
+    beatLog.clock(ev.timeS);
     // a spot is a sim-asserted cross-team fact: the spotting TEAM ('player'
     // side) opposes the target — feed the parity graph the same way a direct
     // hit would (helps side resolution for combatants that never traded fire)
@@ -1691,11 +1694,13 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     if (playerId != null && ev.spotterId === playerId && ev.id !== playerId) {
       spotWindow.set(ev.id, ev.timeS || 0);
       spottedSet.add(ev.id);
+      beatLog.spot(ev.timeS);
     }
   });
 
   bus.on('shell:hit', (payload) => {
     const ev = eventPayload<ShotHitEvent>(payload);
+    beatLog.clock(ev.timeS);
     recordHitCombatants(ev);
     if (ev.destroyed && ev.targetId != null) {
       lastLethalHit = {
@@ -1719,6 +1724,9 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     if (!killLedger.record(p.id, p.killerId, teamOf(p.id), p.killerId ? teamOf(p.killerId) : undefined)) return;
     // team-wide roster bookkeeping (fire deaths included — no shell:hit fires)
     recordCombatantDestroyed(combatant(p.id, null, p.specId));
+    // the timeline's beats: the player's death, and each tank the player destroyed (fire and rams included)
+    if (playerId != null && p.id === playerId) beatLog.death();
+    else if (playerId != null && p.killerId === playerId) beatLog.kill(String(p.id), p.specId);
     lastDestroyedRow = { id: String(p.id), killerId: p.killerId == null ? null : String(p.killerId), cause: p.cause ?? null,
       source: p.source ?? null };
     if (p.killerId != null && p.killerId !== p.id) {
@@ -1746,6 +1754,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     const p = eventPayload<{ id?: EntityId | null } | null>(payload);
     if (!p || p.id == null) return;
     revives = true;
+    if (p.id === playerId) beatLog.revive();
     killLedger.respawn(p.id);
     recordCombatantRevived(combatant(p.id));
   });
@@ -1844,6 +1853,13 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     pendingReport = p ? (p.result || '') : '';
     scheduleReportFlush();
   });
+  // the mode's objective moments for the timeline (sim/matchModes.ts via state.ts: zone, flag, goal)
+  bus.on('mode:zone_captured', (payload) => {
+    const p = eventPayload<{ team?: string; zoneId?: string } | null>(payload);
+    beatLog.objective('zone', p?.team, p?.zoneId);
+  });
+  bus.on('mode:flag_captured', (payload) => beatLog.objective('flag', eventPayload<{ team?: string } | null>(payload)?.team));
+  bus.on('mode:goal_scored', (payload) => beatLog.objective('goal', eventPayload<{ team?: string } | null>(payload)?.team));
   bus.on('ui:shotLog', () => toggleLog());
   bus.on('ui:battleStart', () => api.reset());
 
@@ -1875,7 +1891,11 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     toggleLog,
 
     /** Latch the player entity id (hud.ts forwards it each frame). */
-    setPlayer(id: EntityId | null): void { playerId = id; },
+    setPlayer(id: EntityId | null, timeS?: number, perspective?: string): void {
+      playerId = id;
+      beatLog.clock(timeS);
+      if (perspective) beatLog.setPerspective(perspective);
+    },
     setTeamResolver(resolve: (id: EntityId) => string | undefined): void { teamOf = resolve; },
 
     /** Hide the end-of-battle stats card (garage/hidden HUD). */
@@ -1910,6 +1930,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       Object.assign(stats, newStats());
       firedRounds.clear();
       killLedger.clear();
+      beatLog.clear();
       stats.perTarget = new Map();
       logOpen = false;
       logPanel.classList.remove('open');

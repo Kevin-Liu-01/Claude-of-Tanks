@@ -69,9 +69,10 @@ function mountPanel(module) {
   };
   runInNewContext(`${executable}\nglobalThis.featuredPanel = featuredPanel;`, context);
   harness.panel = context.featuredPanel;
-  harness.element = column.querySelector('.cot-featured');
-  harness.shot = column.querySelector('.fshot');
-  harness.caption = column.querySelector('.fcap');
+  // the take sits under the dossier on the Garage root (brand-ui S2), not in the left column
+  harness.element = root.querySelector('.cot-featured');
+  harness.shot = root.querySelector('.fshot');
+  harness.caption = root.querySelector('.fcap');
   harness.video = () => harness.shot.querySelector('video');
   harness.play = async () => {
     harness.window.__GAME_READY = true;

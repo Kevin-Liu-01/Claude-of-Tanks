@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { createTank } from '../tankFactory.ts';
 import { getSpec } from '../specs.ts';
+import { combatAnatomyCalibration } from '../combatAnatomyCalibrationRegistry.ts';
 
 const modernProfiles = new Map([
   ['leo2a4_v', 'leopard-2a5'],
@@ -71,6 +72,21 @@ const hasVertex = (position, expected, epsilon = 1e-6) => {
     if (Math.abs(position.getX(index) - expected[0]) <= epsilon
         && Math.abs(position.getY(index) - expected[1]) <= epsilon
         && Math.abs(position.getZ(index) - expected[2]) <= epsilon) return true;
+  }
+  return false;
+};
+
+// Release 240: a tank with a published ring receipt has its turret seated (turretSeatRace.ts): every underside corner
+// outside the rim that stands under the seat's plane comes up onto it, the armor's lower roots with them. Such a root
+// is authored at its plan point, at its own height or lifted onto the plane (no more than the seam and the swept rise).
+const SEAT_LIFT_MAX_M = 0.10;
+const hasRootVertex = (position, expected, seated, epsilon = 1e-6) => {
+  if (hasVertex(position, expected, epsilon)) return true;
+  if (!seated) return false;
+  for (let index = 0; index < position.count; index++) {
+    const lift = position.getY(index) - expected[1];
+    if (Math.abs(position.getX(index) - expected[0]) <= epsilon && Math.abs(position.getZ(index) - expected[2]) <= epsilon
+        && lift > 0 && lift <= SEAT_LIFT_MAX_M) return true;
   }
   return false;
 };
@@ -258,6 +274,7 @@ for (const [id, expectedProfile] of modernProfiles) {
 
   const turret = findMergedMesh(turretRig, 'turret');
   const position = turret.geometry.getAttribute('position');
+  const seated = !!combatAnatomyCalibration(id)?.turretRing;
   for (const sideReceipt of receipt.sides) {
     const side = sideReceipt.side === 'left' ? -1 : 1;
     assert.equal(sideReceipt.courseCount, sideReceipt.stations.length - 1,
@@ -395,7 +412,7 @@ for (const [id, expectedProfile] of modernProfiles) {
         `${id} ${sideReceipt.side} station ${index} ridge is shared by upper, lower and closure triangles`);
       assert.ok(hasVertex(position, [side * (station.upperX ?? station.x), station.upperY, station.upperZ]),
         `${id} ${sideReceipt.side} station ${index} upper root is authored in the merged armor`);
-      assert.ok(hasVertex(position, [side * (station.lowerX ?? station.x), station.lowerY, station.lowerZ]),
+      assert.ok(hasRootVertex(position, [side * (station.lowerX ?? station.x), station.lowerY, station.lowerZ], seated),
         `${id} ${sideReceipt.side} station ${index} lower root is authored in the merged armor`);
     }
   }

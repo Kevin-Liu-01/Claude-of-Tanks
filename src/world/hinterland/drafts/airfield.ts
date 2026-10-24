@@ -23,6 +23,9 @@ const DRAFT: HinterlandConfig = {
     + 'the boggy valleys of the Irpin\'s tributaries round it, dacha villages in the clearings, Hostomel\'s panel blocks '
     + 'and water tower south, the gold domes of Bucha and Irpin beyond, the Irpin\'s floodplain east',
   region: 'kyivPinelands',
+  // (horizons-240: the region is snow-covered for the February of the assault; the map's summer has none — the pair's
+  // "wrong-season snow blanket that begins in a hard line at the summer grass")
+  snowLineM: Infinity,
   lab: true,
   outland: {
     // (the critics: continuous forest mass past the border — the pine forest the outland's main cover, the fields the

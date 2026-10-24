@@ -38,6 +38,13 @@ export const JEV_GLOBAL_PER_MINUTE = 900;
 const JEV_UPSTREAM_TIMEOUT_MS = 2500;
 const COOLDOWN_MIN_MS = 1000;
 const COOLDOWN_MAX_MS = 30_000;
+/**
+ * TypeSafe out of credit (2026-10-23): the org's monthly credit is hard-capped (no card, no auto-recharge) and shared
+ * with the owner's other keys. A 402, or a refusal whose body names the credit, the balance or the quota, holds every
+ * request on this instance for this long without an upstream call, so a spent pool is not hammered.
+ */
+const OUT_OF_CREDIT_HOLD_MS = 15 * 60_000;
+const OUT_OF_CREDIT_TEXT = /credit|balance|billing|insufficient|quota|payment/i;
 
 const LOCAL_ORIGIN_RE = /^http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d{1,5})?$/;
 
@@ -203,6 +210,7 @@ export function createJevHandler({
   let minuteCount = 0;
   let cooldownUntil = 0;
   let cooldownStep = COOLDOWN_MIN_MS;
+  let outOfCreditUntil = 0;
   let missingKeyWarned = false;
 
   const takeGlobal = (): boolean => {
@@ -266,6 +274,11 @@ export function createJevHandler({
       const usage = readUsage(parsed.usage);
       const model = typeof parsed.model === 'string' ? parsed.model.slice(0, 32) : '';
       return { status: 200, body: null, upstreamStatus: status, error: null, questions: count, answers, usage, model };
+    }
+    if (status === 402 || ((status === 401 || status === 403 || status === 429) && OUT_OF_CREDIT_TEXT.test(text))) {
+      outOfCreditUntil = now() + OUT_OF_CREDIT_HOLD_MS;
+      warn(`[jev] upstream is out of credit (${status}): held ${OUT_OF_CREDIT_HOLD_MS / 60_000} min`);
+      return failure(503, 'upstream_out_of_credit', status);
     }
     if (status === 401) {
       warn('[jev] upstream refused the API key (401)');
@@ -356,6 +369,10 @@ export function createJevHandler({
       return;
     }
     const at = now();
+    if (at < outOfCreditUntil) {
+      send(response, 503, { error: 'upstream_out_of_credit' }, corsOrigin);
+      return;
+    }
     if (at < cooldownUntil) {
       const retryAfterMs = cooldownUntil - at;
       response.setHeader('retry-after', String(Math.ceil(retryAfterMs / 1000)));

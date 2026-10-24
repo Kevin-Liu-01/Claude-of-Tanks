@@ -1,6 +1,6 @@
 {
  "version": 2,
- "count": 845,
+ "count": 849,
  "collections": [
   {
    "key": "scenes",
@@ -14,7 +14,7 @@
    },
    "count": 227,
    "sets": 14,
-   "bytes": 10523324
+   "bytes": 5145905
   },
   {
    "key": "vehicles",
@@ -28,7 +28,7 @@
    },
    "count": 394,
    "sets": 14,
-   "bytes": 23923244
+   "bytes": 23923262
   },
   {
    "key": "duels",
@@ -40,9 +40,9 @@
     "en-US": "Two tanks, one frame: the duels, by time of day.",
     "zh-CN": "两辆坦克，同框对决：按时段分组的对决。"
    },
-   "count": 25,
+   "count": 29,
    "sets": 3,
-   "bytes": 338709
+   "bytes": 359072
   },
   {
    "key": "combat",
@@ -98,7 +98,7 @@
    },
    "count": 67,
    "sets": 2,
-   "bytes": 948301
+   "bytes": 946631
   },
   {
    "key": "interface",
@@ -112,7 +112,7 @@
    },
    "count": 11,
    "sets": 3,
-   "bytes": 189662
+   "bytes": 49827
   }
  ]
 }

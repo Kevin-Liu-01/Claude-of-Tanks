@@ -213,6 +213,8 @@ interface ServiceContext {
   playerTeam(): string | null;
   teamOf(id: string): string | null;
   gameMode(): string;
+  /** Watch mode (sim/matchRuleset.ts WATCH_RULES): a watched battle keeps no record, a taken seat's drive included. */
+  watched?(): boolean;
   /** The battle clock in seconds (it restarts at zero every battle). */
   clockS(): number;
   playerHpFraction(): number | null;
@@ -540,7 +542,7 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
   // A medal earned mid-battle is announced the moment it happens; the ones judged at the end wait for the debrief.
   const award = (id: MedalId, live = true) => {
     // a practice mode keeps no record: nothing on the proving ground earns a medal (sim/matchRuleset.ts records)
-    if (!battle || battle.medals.has(id) || !rulesetKeepsRecords(ctx.gameMode())) return;
+    if (!battle || battle.medals.has(id) || ctx.watched?.() || !rulesetKeepsRecords(ctx.gameMode())) return;
     battle.medals.add(id);
     if (live) bus.emit('service:medal', { id });
   };
@@ -711,7 +713,7 @@ export function installServiceRecord(bus: ServiceEventBus | null | undefined, ct
     const tracker = battle;
     if (!tracker) return;
     if (event.reason === 'network_disconnect') { battle = null; return; }
-    if (!rulesetKeepsRecords(text(event.gameMode) || ctx.gameMode())) { battle = null; return; }
+    if (event.watch === true || !rulesetKeepsRecords(text(event.gameMode) || ctx.gameMode())) { battle = null; return; }
     settleShots(ctx.clockS(), true);
     const result = resultOf(event.result);
     const player = me();
