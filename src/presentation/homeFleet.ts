@@ -79,7 +79,9 @@ function mountFleetFacets(section: HTMLElement, show: (tile: HTMLAnchorElement) 
       status.textContent = isEmptyFilter(filter) ? '' : total ? t('publicPages.fleet.count', { count: total }) : t('publicPages.fleet.none');
       for (const tile of tiles) if (tile.dataset.progress === undefined) mountTakeProgress(tile);
       const videos = tiles.map((tile) => tile.querySelector('video')).filter((video): video is HTMLVideoElement => video !== null);
-      void media?.then((module) => module.mountMediaPlayers(videos, labels));
+      // the discs' hover tip says Play or Pause (the name keeps the take's sentence), as on every public page
+      void media?.then((module) => module.mountMediaPlayers(videos, labels,
+        (playing) => t(playing ? 'publicPages.video.pauseTip' : 'publicPages.video.playTip')));
       if (tiles[0]) show(tiles[0]);
     });
   };
