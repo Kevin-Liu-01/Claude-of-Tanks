@@ -174154,14 +174154,14 @@
             "volumeId": "M02",
             "name": "turretRing",
             "min": [
-              -0.8925,
-              1.1501,
+              -0.8926,
+              1.3926,
               -0.2391
             ],
             "max": [
               0.8882,
-              1.3562,
-              1.6816
+              1.5988,
+              1.6815
             ],
             "turretLocal": false
           },
@@ -174386,7 +174386,7 @@
             "name": "driver",
             "min": [
               -0.26,
-              0.8847,
+              0.8846,
               1.3419
             ],
             "max": [
@@ -174428,8 +174428,8 @@
           }
         ]
       },
-      "geometryHash": "4560d5a0",
-      "metadataHash": "b9127b4f",
+      "geometryHash": "becb2721",
+      "metadataHash": "561020a7",
       "presentationAnchor": {
         "xM": -0.0026,
         "zM": 0.0017
@@ -174453,7 +174453,7 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 17,
-          "gunmetal": 9,
+          "gunmetal": 10,
           "opticGlass": 3,
           "fittingPaint": 2,
           "wood": 1,
@@ -174489,39 +174489,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 91046,
-          "sha256": "46a8497db38bb526a46d3af2f95a003e1c10d53a56f1f72a25552d292db459e0"
+          "bytes": 93702,
+          "sha256": "25a0f3c1352bad8c184360d2b204396f0ff393f819eb50ca9e40f97836d8cfb1"
         },
         "modulesSide": {
           "file": "leclerc_xlr_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 93657,
-          "sha256": "f7a0682e3e8eff1090b644c6f75839a10f2a7a8e87603b97a8e181270afed03b"
+          "bytes": 96296,
+          "sha256": "a480a59f0b8796ed3752867db930a5c40f692b7cf7d1d7d4e913729545610e1f"
         },
         "crewSide": {
           "file": "leclerc_xlr_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81240,
-          "sha256": "9a41a61104a1166cb428ff958ceeaae194d47f66252cee918a1723a59cf81e17"
+          "bytes": 81502,
+          "sha256": "d248b35d281e15d3ca875689db3e7809741203a10642f598e1ca4af6b54f3041"
         },
         "angle": {
           "file": "leclerc_xlr_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 27318,
-          "sha256": "7d18b830f6ca4ed5577dc85ef681969a3541939f8aff0f648dd08af182c91e8f",
+          "bytes": 27274,
+          "sha256": "c3d15507f2bb8a358034555af0d046def6ce78abcd506a90f028baa46bffe5e5",
           "thumbnail": {
             "file": "thumbs/leclerc_xlr_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10706,
-            "sha256": "60c2be9019651fb7d70880ce7a81a706b04da38b2131dc3da3992d701d5ffcdd"
+            "bytes": 10732,
+            "sha256": "41995790ca458e308e11fd2ab6b871f635f3da6cff8324462cb4664430f75725"
           }
         },
         "top": {
@@ -174529,16 +174529,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 14912,
-          "sha256": "0359c3a8bf6ac5acc76d3dc847508804dc3ce03d875fd8a586dc5089c02a1654"
+          "bytes": 14964,
+          "sha256": "0e0cf37cf166284835926f3c96160506b9f9519554a011394822b99b2dcebf44"
         },
         "side": {
           "file": "leclerc_xlr_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 10314,
-          "sha256": "2e7c03dc6c63942e9f64bc1ea71da4ca65aa32754f5677801c88d0d842a1f2d9"
+          "bytes": 10364,
+          "sha256": "fdd4c878c7a9bf0316b2359af1280dacb3760025b7cd7acd4f01e1101032caa8"
         },
         "topSilhouette": {
           "file": "leclerc_xlr_top_silhouette.png",
@@ -174553,8 +174553,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4189,
-          "sha256": "32b76248ef24a631872d226bca216e1f5312a303af7eab3b845f24e0922ed62d"
+          "bytes": 4259,
+          "sha256": "cd3730e07a4bb1b0f18ce888b0045019f14992df67e4207939c09d3d82dd245e"
         },
         "markings": {
           "file": "leclerc_xlr_markings.png",
