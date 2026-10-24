@@ -27,25 +27,25 @@ body.not-found-page{--font-display:var(--font-ui);--font-body:var(--font-ui);dis
 .not-found-page .public-nav__tools>.public-nav__cta{display:none}
 /* the search: the fleet's field (home.css .fleet-search) at reading size, its hits a plate under it */
 .not-found__search{position:relative;width:100%}
-.nf-field{display:flex;align-items:center;gap:10px;height:52px;padding:0 16px;border-radius:var(--control-radius);background:var(--side-plate);box-shadow:var(--ring-2);color:var(--ink-3)}
+.nf-field{display:flex;align-items:center;gap:10px;height:52px;padding:0 var(--s4);border-radius:var(--control-radius);background:var(--side-plate);box-shadow:var(--ring-2);color:var(--ink-3)}
 .nf-field:focus-within{box-shadow:var(--ring-3);color:var(--ink-2)}.nf-field:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
 .nf-field input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;font:400 var(--fs-16)/1 var(--font-body);color:var(--ink-1);outline:none}
 .nf-field input::placeholder{color:var(--ink-3)}
 .nf-field input::-webkit-search-cancel-button{display:none}
 .nf-hits{position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:var(--z-lift);margin:0;padding:6px;list-style:none;border-radius:var(--control-radius);background:var(--side-plate);box-shadow:var(--nf-plate-shadow)}
 .nf-hits[hidden],.nf-empty[hidden]{display:none}
-.nf-hit{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--r1);color:var(--ink-1);text-decoration:none}
+.nf-hit{display:grid;grid-template-columns:18px minmax(0,1fr) auto;align-items:center;gap:var(--s3);padding:10px var(--s3);border-radius:var(--r1);color:var(--ink-1);text-decoration:none}
 .nf-hit:hover,.nf-hit:focus-visible{background:var(--surface-hover);outline:none}
 .nf-hit .cot-i{width:18px;height:18px;color:var(--accent)}
 .nf-hit b{overflow:hidden;font:600 var(--fs-15)/1.2 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
 .nf-hit small{font:500 var(--fs-12)/1 var(--font-data);color:var(--ink-3);white-space:nowrap}
-.nf-empty{margin:8px 0 0;font:400 var(--fs-14)/1.4 var(--font-body);color:var(--ink-2)}
-.not-found__report{display:inline-flex;align-items:center;gap:8px;font:500 var(--fs-14)/1 var(--font-body);color:var(--ink-2);text-decoration:none}
+.nf-empty{margin:var(--s2) 0 0;font:400 var(--fs-14)/1.4 var(--font-body);color:var(--ink-2)}
+.not-found__report{display:inline-flex;align-items:center;gap:var(--s2);font:500 var(--fs-14)/1 var(--font-body);color:var(--ink-2);text-decoration:none}
 .not-found__report:hover,.not-found__report:focus-visible{color:var(--ink-1);text-decoration:underline;text-underline-offset:3px}
 .not-found__report .cot-i{width:16px;height:16px}
 /* the destinations: Play in the accent, then each page over its own picture */
-.not-found__go{display:grid;grid-template-columns:minmax(0,1.1fr) repeat(4,minmax(0,1fr));gap:12px}
-.nf-go{display:flex;align-items:flex-end;aspect-ratio:16/9;padding:14px 16px;border-radius:var(--control-radius);color:var(--ink-1);text-decoration:none}
+.not-found__go{display:grid;grid-template-columns:minmax(0,1.1fr) repeat(4,minmax(0,1fr));gap:var(--s3)}
+.nf-go{display:flex;align-items:flex-end;aspect-ratio:16/9;padding:14px var(--s4);border-radius:var(--control-radius);color:var(--ink-1);text-decoration:none}
 .nf-go:hover,.nf-go:focus-visible{outline:none;box-shadow:var(--home-pick-ring)}
 .nf-go__nm{display:inline-flex;align-items:center;gap:9px}
 .nf-go__nm .cot-i{width:18px;height:18px;color:var(--accent)}
@@ -57,7 +57,7 @@ body.not-found-page{--font-display:var(--font-ui);--font-body:var(--font-ui);dis
 :lang(zh-CN) .not-found h1,:lang(zh-CN) .not-found__line{line-height:1.15}
 @media (width < 1100px){
   .not-found__go{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .nf-go--play{grid-column:1 / -1;flex-direction:row;align-items:center;justify-content:flex-start;gap:12px;aspect-ratio:auto;min-height:64px}
+  .nf-go--play{grid-column:1 / -1;flex-direction:row;align-items:center;justify-content:flex-start;gap:var(--s3);aspect-ratio:auto;min-height:64px}
 }
 @media (width < 768px){
   /* the still is a banner over the words: the tank keeps the top of the screen, the code and the search sit under it */
@@ -67,8 +67,8 @@ body.not-found-page{--font-display:var(--font-ui);--font-body:var(--font-ui);dis
   .not-found__grade{background:linear-gradient(0deg,var(--surface-scene),transparent 40%)}
   .not-found__code{font-size:var(--fs-76)}
   .not-found__line{font-size:var(--fs-28)}
-  .not-found__go{gap:8px}
-  .nf-go{padding:10px 12px}
+  .not-found__go{gap:var(--s2)}
+  .nf-go{padding:10px var(--s3)}
   .nf-go b{font-size:var(--fs-14)}
 }
 }

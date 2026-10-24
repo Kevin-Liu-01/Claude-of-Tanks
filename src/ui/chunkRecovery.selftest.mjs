@@ -360,7 +360,7 @@ function createNetworkHarness({ href = 'https://game.test/?tank=leo1a5', online 
   h.context.navigator.onLine = false;
   const offline = createNetworkHarness({ href: 'https://game.test/?tank=leo1a5&_bootretry=2-x', online: false });
   offline.listeners.get('vite:preloadError')({ payload: new Error('Failed to fetch /assets/hud-Ab12Cd34.js') });
-  assert.match(offline.stage.textContent, /\(hud-Ab12Cd34\.js\) — you appear to be offline/, 'an offline chunk failure says so');
+  assert.match(offline.stage.textContent, /\(hud-Ab12Cd34\.js\)\. You appear to be offline\./, 'an offline chunk failure says so');
   assert.equal(offline.recovery(), false, 'offline failures wait for the online event instead of reloading');
 }
 

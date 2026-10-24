@@ -358,13 +358,13 @@ interface StudioPanelRuntime {
   setShotThumbnail(id: string, url: string): void;
 }
 
-/** Glyphs the sprite does not draw (step back, pause, step forward, add) and the brand's badge: constant markup. */
+/** The transport and add glyphs from the sprite (brand-ui 247: one glyph set), and the brand's badge. */
 const STUDIO_GLYPHS = Object.freeze({
   mark: brandMarkSVG(24),
-  stepBack: '<svg class="cot-i" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M6 5v14M18 5 9 12l9 7Z"/></svg>',
-  pause: '<svg class="cot-i" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M8 5v14M16 5v14"/></svg>',
-  stepForward: '<svg class="cot-i" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M18 5v14M6 5l9 7-9 7Z"/></svg>',
-  plus: '<svg class="cot-i" viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"><path d="M12 5v14M5 12h14"/></svg>',
+  stepBack: uiIconSVG('stepBack', 16),
+  pause: uiIconSVG('pause', 16),
+  stepForward: uiIconSVG('stepForward', 16),
+  plus: uiIconSVG('plus', 15),
 });
 
 /** The outliner's order (09-studio .out: Scene, Actors, Shots, Effects), the Director first and Export last. */

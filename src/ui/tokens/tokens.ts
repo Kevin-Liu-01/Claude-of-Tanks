@@ -315,6 +315,8 @@ export const TOKENS = {
   'battle-chip-ok': 'inset 3px 0 0 #5bd69b,inset 0 0 0 1px oklch(from #5bd69b l c h / .3),0 0 0 1px rgba(246,243,236,.07),0 6px 18px rgba(0,0,0,.35)',
   'battle-fs-11': '11px',
   'battle-fs-12': '12px',
+  'fs-floor-11': '11px',
+  'fs-floor-12': '12px',
   'battle-fs-13': '13px',
   'battle-fs-14': '14px',
   'battle-fs-15': '15px',

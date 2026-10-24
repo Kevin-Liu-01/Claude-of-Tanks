@@ -45,7 +45,7 @@ img{display:block;max-width:100%}
 
 /* ---- vehicle identity: flag, silhouette, name (direction .flag, .silm; the kit's cot-c-flag, cot-c-sil) ---- */
 .vs-duel{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:nowrap}
-.vs-side{display:inline-flex;align-items:center;gap:8px;min-width:0}
+.vs-side{display:inline-flex;align-items:center;gap:var(--s2);min-width:0}
 .vs-side b{overflow:hidden;font:700 var(--vs-name,var(--fs-15))/1 var(--font-display);text-overflow:ellipsis;text-transform:uppercase;white-space:nowrap;color:var(--ink-1)}
 .vs-side .cot-c-sil{width:var(--sil-w,42px);height:var(--sil-h,14px);color:var(--ink-1);filter:var(--sil-shadow)}
 .vs-side .cot-c-flag{width:var(--flag-w,16px);height:calc(var(--flag-w,16px) * .75)}
@@ -64,14 +64,14 @@ img{display:block;max-width:100%}
 .hero__title{margin:0;line-height:0;color:var(--ink-1);filter:var(--home-lockup-shadow)}
 .hero__lockup{display:block;width:clamp(520px,60vw,940px);max-width:100%;height:auto}
 .hero__ctas{display:flex;align-items:center;gap:14px;margin-top:26px}
-.hero__trailer{padding-left:8px}
+.hero__trailer{padding-left:var(--s2)}
 .hero__thumb{position:relative;display:block;flex:none;width:84px;height:46px;overflow:hidden;border-radius:var(--r1);outline:1px solid var(--line-3);outline-offset:-1px}
 .hero__thumb img{width:100%;height:100%;object-fit:cover}
 .hero__thumb .cot-i{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:var(--ink-1)}
 .hero__dur{font:500 var(--fs-14)/1 var(--font-data);letter-spacing:normal}
 .hero__matchup{grid-area:match;align-self:end;display:flex;align-items:center;gap:18px;margin-bottom:26px;--vs-name:var(--fs-24);--sil-w:74px;--sil-h:24px;--flag-w:30px;--vs-mark:var(--fs-15)}
 .hero__matchup .vs-duel{gap:18px}
-.hero__matchup .vs-side{gap:12px}
+.hero__matchup .vs-side{gap:var(--s3)}
 .hero__matchup .vs-mark{padding:6px 10px;letter-spacing:var(--track-label);box-shadow:var(--home-vs-ring)}
 .hero__matchup .vs-where{gap:10px;margin-left:10px;padding-left:20px;border-left:1px solid var(--line-2);font-size:var(--fs-14)}
 .hero__matchup .vs-where .cot-i{width:16px;height:16px}
@@ -83,7 +83,7 @@ img{display:block;max-width:100%}
 
 /* ---- 02 the versus wall: one big duel that plays, two beside it, the rest below play on hover ---- */
 .versus{padding:var(--s8) 0 var(--s7)}
-.vs-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-flow:dense;gap:12px}
+.vs-grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-flow:dense;gap:var(--s3)}
 .vs-tile{margin:0;aspect-ratio:16/9;--sil-w:34px;--sil-h:11px;--vs-name:var(--fs-13)}
 .vs-tile[hidden]{display:none}
 .vs-tile--big{grid-column:span 8;grid-row:span 2;aspect-ratio:auto;--sil-w:74px;--sil-h:24px;--flag-w:30px;--vs-name:var(--fs-28);--vs-mark:var(--fs-14)}
@@ -94,16 +94,16 @@ img{display:block;max-width:100%}
 .vs-tile__film{opacity:0;transition:opacity var(--dur-screen) var(--ease-enter)}
 .vs-tile__film.has-frame{opacity:1}
 .vs-tile__idx{position:absolute;right:12px;top:10px;font:500 var(--fs-12)/1 var(--font-data);color:var(--home-idx-ink);text-shadow:var(--home-idx-shadow)}
-.vs-tile__meta{position:absolute;left:16px;right:16px;bottom:13px;display:flex;flex-direction:column;gap:8px;margin:0}
-.vs-tile--big .vs-tile__meta{left:26px;bottom:24px;gap:12px}
-.vs-tile--big .vs-mark{padding:5px 8px;box-shadow:var(--home-vs-ring)}
+.vs-tile__meta{position:absolute;left:16px;right:16px;bottom:13px;display:flex;flex-direction:column;gap:var(--s2);margin:0}
+.vs-tile--big .vs-tile__meta{left:26px;bottom:24px;gap:var(--s3)}
+.vs-tile--big .vs-mark{padding:5px var(--s2);box-shadow:var(--home-vs-ring)}
 .vs-tile--big .vs-where{font-size:var(--fs-14)}
 .vs-tile--big .vs-where .cot-i{width:16px;height:16px}
 .vs-tile--sm .vs-tile__meta{left:12px;right:12px;bottom:10px}
-.vs-tile:not(.vs-tile--big) .vs-duel{gap:8px}
+.vs-tile:not(.vs-tile--big) .vs-duel{gap:var(--s2)}
 .vs-tile:not(.vs-tile--big) .vs-side{gap:6px}
-.vs-row2{display:flex;align-items:center;justify-content:space-between;gap:16px}
-.vs-acts{display:flex;gap:10px;margin-top:4px}
+.vs-row2{display:flex;align-items:center;justify-content:space-between;gap:var(--s4)}
+.vs-acts{display:flex;gap:10px;margin-top:var(--s1)}
 .vs-tile .cot-media-toggle{top:12px;bottom:auto;left:12px;right:auto}
 .vs-tile:not(.vs-tile--big) .cot-media-toggle,.fleet-tile .cot-media-toggle{display:none}
 
@@ -111,11 +111,11 @@ img{display:block;max-width:100%}
 .fleet{padding:var(--s7) 0 var(--s8)}
 .fleet-wall{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
 /* the wall's facets (03 .facets): All, the nations' flags and the classes, the search at the row's end, the count */
-.fleet-facets{display:flex;align-items:center;gap:6px;min-width:0;margin-bottom:12px}
+.fleet-facets{display:flex;align-items:center;gap:6px;min-width:0;margin-bottom:var(--s3)}
 .fleet-facets__set{display:flex;align-items:center;gap:6px}
 .fleet-facets__set+.fleet-facets__set{margin-left:var(--s3)}
 .fleet-facets .cot-c-flag{display:block}
-.fleet-search{display:flex;align-items:center;gap:8px;width:250px;height:30px;margin-left:auto;padding:0 10px;border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-3);cursor:text}
+.fleet-search{display:flex;align-items:center;gap:var(--s2);width:250px;height:30px;margin-left:auto;padding:0 10px;border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-3);cursor:text}
 .fleet-search:focus-within{box-shadow:var(--ring-3);color:var(--ink-2)}.fleet-search:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
 .fleet-search input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;font:400 var(--fs-13)/1 var(--font-body);color:var(--ink-1);outline:none}
 .fleet-search input::placeholder{color:var(--ink-3)}
@@ -148,18 +148,18 @@ img{display:block;max-width:100%}
   --hc-flag-mask:radial-gradient(ellipse 70% 84% at 96% 0%,var(--ink-1) 0%,var(--ink-1) 40%,color-mix(in srgb,var(--ink-1) 68.4%,transparent) 62.5%,color-mix(in srgb,var(--ink-1) 31.6%,transparent) 77.5%,transparent 100%)}
 .fleet-feature__name{position:absolute;left:18px;top:16px;right:18px;z-index:var(--z-lift);display:flex;align-items:center;gap:10px;margin:0;font:700 var(--fs-28)/1 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
 .fleet-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;margin:0;background:var(--line-1);border-top:1px solid var(--line-1)}
-.fleet-facts div{display:flex;flex-direction:column;gap:6px;padding:11px 12px;background:var(--surface-page)}
+.fleet-facts div{display:flex;flex-direction:column;gap:6px;padding:11px var(--s3);background:var(--surface-page)}
 .fleet-facts .cot-i{width:17px;height:17px;color:var(--ink-3)}
 .fleet-facts dt{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 .fleet-facts dd{margin:0}
 .fleet-facts b{font:700 var(--fs-18)/1 var(--font-display);color:var(--ink-1)}
 .fleet-facts small{margin-left:3px;font:500 var(--fs-11)/1 var(--font-data);color:var(--ink-3)}
-.fleet-feature__acts{display:flex;gap:10px;padding:12px 14px;background:var(--surface-page);border-top:1px solid var(--line-1)}
+.fleet-feature__acts{display:flex;gap:10px;padding:var(--s3) 14px;background:var(--surface-page);border-top:1px solid var(--line-1)}
 .fleet-feature__acts .cot-c-btn--primary{flex:1}
 
 /* the battlefields (03 .bf): every map in a rail, its art, its minimap, its landscapes */
 .bf{margin-top:var(--s7)}
-.bf-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s3) var(--s5);margin-bottom:12px}
+.bf-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s3) var(--s5);margin-bottom:var(--s3)}
 .bf-title{margin:0;font:700 var(--fs-36)/.9 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
 .bf-rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 50px) / 5.4);gap:10px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none}
 .bf-rail::-webkit-scrollbar{display:none}
@@ -169,7 +169,7 @@ img{display:block;max-width:100%}
 .bf-card.is-lead,.bf-card:hover,.bf-card:focus-visible{outline:none;box-shadow:var(--home-pick-ring)}
 .bf-card__mm{position:absolute;right:9px;top:9px;width:30%;aspect-ratio:1;overflow:hidden;border-radius:var(--r1);box-shadow:var(--home-inset-ring)}
 .bf-card__mm img{width:100%;height:100%;object-fit:cover}
-.bf-card__nm{position:absolute;left:12px;right:12px;bottom:11px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.bf-card__nm{position:absolute;left:12px;right:12px;bottom:11px;display:flex;align-items:center;justify-content:space-between;gap:var(--s2)}
 .bf-card__nm b{font:700 var(--fs-16)/1 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
 .bf-card__tags{display:flex;gap:5px;color:var(--ink-2)}
 .bf-card__tags .cot-i{width:14px;height:14px}
@@ -177,7 +177,7 @@ img{display:block;max-width:100%}
 /* ---- the beats under the walls: the trailer beside its loops, the modes and mechanics behind one switch, the kill
    cam and the Studio. Names sit over the pictures' fade, as on the walls; no copy under them ---- */
 .motion{padding:var(--s7) 0 var(--s8)}
-.motion-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.motion-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s3)}
 .motion-trailer{position:relative;grid-column:span 2;grid-row:span 2;margin:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-scene);box-shadow:var(--e1)}
 .motion-trailer video{display:block;width:100%;height:100%;object-fit:cover;background:var(--surface-scene)}
 .motion-trailer video[hidden]{display:none}
@@ -192,7 +192,7 @@ img{display:block;max-width:100%}
 .motion-loop{margin:0;aspect-ratio:16/9}
 .motion-loop .cot-media-toggle{top:10px;bottom:auto;left:10px;right:auto}
 .play{padding:var(--s8) 0 0}
-.play-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-flow:dense;gap:12px}
+.play-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-flow:dense;gap:var(--s3)}
 .play-grid[hidden],.play-more[hidden]{display:none}
 .play-tile{margin:0;aspect-ratio:16/9}
 .play-tile--lead{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}
@@ -204,15 +204,15 @@ img{display:block;max-width:100%}
 .play-tile--lead .play-tile__nm b{font-size:var(--fs-36);line-height:.94;white-space:normal}
 .play-more{display:flex;justify-content:flex-end;margin:var(--s5) 0 0}
 .shots{padding-top:var(--s7)}
-.shots-acts{display:flex;align-items:center;gap:8px}
+.shots-acts{display:flex;align-items:center;gap:var(--s2)}
 .shots-acts .cot-c-btn--icon:disabled{opacity:.4;cursor:default}
-.shots-rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 48px) / 4.4);gap:12px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none}
+.shots-rail{display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 48px) / 4.4);gap:var(--s3);overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x mandatory;scrollbar-width:none}
 .shots-rail::-webkit-scrollbar{display:none}
 .shots-rail:focus-visible{outline-offset:2px}
 .shots-tile{margin:0;aspect-ratio:16/9;scroll-snap-align:start}
 /* nothing sits on a screenshot, so it keeps its whole frame: no fade */
 .shots-tile::after{content:none}
-.replay{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding-top:var(--s7)}
+.replay{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3);padding-top:var(--s7)}
 .replay-card{min-width:0;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--e1)}
 .replay-card__media{position:relative;margin:0;aspect-ratio:16/9;background:var(--surface-scene)}
 .replay-card__media>:is(img,video){position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -224,7 +224,7 @@ img{display:block;max-width:100%}
 /* social proof */
 .v5-social-proof{position:relative;padding-block:var(--s8);overflow:hidden;background:var(--surface-page)}
 .v5-social-proof__intro{position:relative;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(410px,.6fr);align-items:end;gap:var(--s7);margin-bottom:var(--s6)}
-.v5-social-proof__platforms{display:flex;align-items:center;gap:8px;margin:0 0 var(--s4)}
+.v5-social-proof__platforms{display:flex;align-items:center;gap:var(--s2);margin:0 0 var(--s4)}
 .v5-social-proof__intro header>p:last-child{max-width:760px;margin:var(--s4) 0 0;color:var(--ink-2);font:400 var(--fs-16)/1.55 var(--font-body)}
 .v5-social-proof h2{max-width:960px;margin:0;font:700 var(--fs-52)/.94 var(--font-display);text-transform:uppercase}
 .v5-social-proof h2 span{display:block;white-space:nowrap}
@@ -234,10 +234,10 @@ img{display:block;max-width:100%}
 .v5-social-platform-icon--reddit{--social-platform-icon:url('/brand/social/reddit.svg');color:var(--home-reddit)}
 .v5-social-proof__signals{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;margin:0;background:var(--line-1);box-shadow:var(--e1)}
 .v5-social-proof__signals div{min-height:104px;padding:var(--s5);background:var(--surface-scene)}
-.v5-social-proof__signals dt{display:flex;align-items:center;gap:8px;color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body)}
+.v5-social-proof__signals dt{display:flex;align-items:center;gap:var(--s2);color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body)}
 .v5-social-proof__signals dt .v5-social-metric-icon{width:16px;height:16px}
 .v5-social-proof__signals dd{margin:var(--s2) 0 0;color:var(--gold);font:700 var(--fs-40)/1 var(--font-display)}
-.v5-social-proof__x-grid{position:relative;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px}
+.v5-social-proof__x-grid{position:relative;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:var(--s3)}
 .v5-social-card{--social-accent:var(--ink-3);position:relative;isolation:isolate;grid-column:span 4;min-width:0;min-height:318px;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--e1);transition:box-shadow var(--dur-fast) var(--ease-enter)}
 .v5-social-card::before{content:'';position:absolute;z-index:var(--home-card-z);top:0;left:0;width:78px;height:3px;background:var(--social-accent);pointer-events:none}
 .v5-social-card::after{content:'';position:absolute;z-index:0;inset:0;background:var(--social-card-image) var(--social-card-position,center)/cover no-repeat;opacity:.26;pointer-events:none;transform:scale(1.015);transition:opacity var(--dur-fast) var(--ease-enter),transform var(--dur-base) var(--ease-enter)}
@@ -250,10 +250,10 @@ img{display:block;max-width:100%}
 .v5-social-card--verdant-column{--social-card-image:url('/media/site50-r14/stills/s04-column-under-fire.webp');--social-card-position:50% 52%}
 .v5-social-card--coastal-harbor{--social-card-image:url('/media/site50-r14/stills/s29-fjord-road-kill.webp');--social-card-position:50% 55%}
 .v5-social-card>a{position:relative;z-index:2;display:flex;height:100%;min-height:inherit;flex-direction:column;padding:var(--s6);background:linear-gradient(180deg,transparent,var(--scrim))}
-.v5-social-card__identity{display:flex;align-items:center;gap:12px}
+.v5-social-card__identity{display:flex;align-items:center;gap:var(--s3)}
 .v5-social-card__identity>span:nth-child(2){display:flex;min-width:0;flex-direction:column;line-height:1.15}
 .v5-social-card__identity strong{overflow:hidden;color:var(--ink-1);font:600 var(--fs-14)/1.2 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
-.v5-social-card__identity small{margin-top:4px;color:var(--ink-3);font:400 var(--fs-12)/1 var(--font-body)}
+.v5-social-card__identity small{margin-top:var(--s1);color:var(--ink-3);font:400 var(--fs-12)/1 var(--font-body)}
 .v5-social-card__identity em{margin-left:auto;padding:0 7px;height:20px;display:inline-flex;align-items:center;border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--social-accent);font:600 var(--fs-11)/1 var(--font-display);font-style:normal;letter-spacing:var(--track-label-s);text-transform:uppercase;white-space:nowrap}
 .v5-social-card__avatar{display:block;width:42px;height:42px;flex:none;border-radius:50%;background:var(--ink-1);outline:1px solid var(--line-3);object-fit:cover}
 .v5-social-card__body{display:flex;flex:1;flex-direction:column;justify-content:center;padding:var(--s6) 0}
@@ -271,7 +271,7 @@ img{display:block;max-width:100%}
 .v5-social-metric-icon--bookmark{--social-metric-icon:url('/brand/social/bookmark.svg');color:#91a1ac}
 .v5-social-proof__reddit{position:relative;margin-top:var(--s7)}
 .v5-social-proof__reddit>header{display:flex;align-items:end;justify-content:space-between;gap:var(--s5);margin-bottom:var(--s5);padding-bottom:var(--s4);border-bottom:1px solid var(--line-1)}
-.v5-social-proof__reddit>header>div{display:flex;align-items:center;gap:12px}
+.v5-social-proof__reddit>header>div{display:flex;align-items:center;gap:var(--s3)}
 .v5-social-proof__reddit>header .v5-social-platform-icon{width:32px;height:32px}
 .v5-social-proof__reddit>header span:last-child{display:flex;flex-direction:column}
 .v5-social-proof__reddit>header small{color:var(--home-reddit);font:500 var(--fs-12)/1.2 var(--font-body)}
@@ -284,7 +284,7 @@ img{display:block;max-width:100%}
 .v5-reddit-card__meta>img{display:block;width:42px;height:42px;flex:none;border-radius:50%;background:var(--home-reddit);object-fit:contain;object-position:center bottom}
 .v5-reddit-card__meta>span{display:flex;min-width:0;flex-direction:column;line-height:1.15}
 .v5-reddit-card__meta strong{overflow:hidden;color:var(--home-reddit);font:600 var(--fs-12)/1.2 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
-.v5-reddit-card__meta small{overflow:hidden;margin-top:4px;color:var(--ink-3);font:400 var(--fs-12)/1 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
+.v5-reddit-card__meta small{overflow:hidden;margin-top:var(--s1);color:var(--ink-3);font:400 var(--fs-12)/1 var(--font-body);text-overflow:ellipsis;white-space:nowrap}
 .v5-reddit-grid h3{flex:1;margin:var(--s5) 0;color:var(--ink-1);font:600 var(--fs-18)/1.2 var(--font-display)}
 .v5-reddit-grid .v5-social-metrics{gap:14px}
 .v5-reddit-grid .v5-social-metric-icon{width:16px;height:16px}
@@ -351,7 +351,7 @@ html[lang^='zh'] :is(h1,h2,h3,.play-tile--lead .play-tile__nm b){line-height:1.1
   /* the fixed Play bar lives in the hero's isolated layer: the layer itself rises above the content-visibility sections
      after it (versus, fleet, ...), which paint as layers of their own, and stays under the site bar (z-shell) */
   .hero{z-index:var(--z-lift)}
-  .hero__ctas{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-shell);margin:0;padding:12px var(--s4) calc(12px + env(safe-area-inset-bottom,0px));gap:10px;background:var(--side-plate);box-shadow:var(--home-bar-edge)}
+  .hero__ctas{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-shell);margin:0;padding:var(--s3) var(--s4) calc(var(--s3) + env(safe-area-inset-bottom,0px));gap:10px;background:var(--side-plate);box-shadow:var(--home-bar-edge)}
   .hero__play{flex:1;--h:58px;font-size:var(--fs-18)}
   .hero__trailer{--h:58px;width:58px;padding:0}
   .hero__trailer{position:relative}
@@ -365,11 +365,11 @@ html[lang^='zh'] :is(h1,h2,h3,.play-tile--lead .play-tile__nm b){line-height:1.1
   .hero__matchup .vs-side--foe{flex-direction:row-reverse}
   .hero__matchup .vs-mark{position:absolute;right:0;top:12px;padding:0;box-shadow:none;font-size:var(--fs-24);color:transparent;-webkit-text-stroke:1.2px var(--accent)}
   :lang(zh-CN) .hero__matchup .vs-mark{color:var(--accent);-webkit-text-stroke:0}
-  .hero__matchup .vs-where{margin:0;padding:0;border:0;gap:8px;font-size:var(--fs-13)}
+  .hero__matchup .vs-where{margin:0;padding:0;border:0;gap:var(--s2);font-size:var(--fs-13)}
   .hero__matchup .vs-where .cot-i{width:15px;height:15px}
   .hero__scene{justify-content:flex-start;margin:var(--s4) 0 0}
   .hero__stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;height:auto;margin:0;padding:0;border:0}
-  .hero__stats li{flex-direction:column;align-items:flex-start;gap:5px;padding:8px 8px 7px;border-radius:var(--r1);background:var(--glyph-plate);box-shadow:var(--ring-1);font-size:var(--fs-11)}
+  .hero__stats li{flex-direction:column;align-items:flex-start;gap:5px;padding:var(--s2) var(--s2) 7px;border-radius:var(--r1);background:var(--glyph-plate);box-shadow:var(--ring-1);font-size:var(--fs-11)}
   .hero__stats li .cot-i{display:none}
   .hero__stats b{font-size:var(--fs-20)}
   .hero__stats li:last-child{display:none}
@@ -382,8 +382,8 @@ html[lang^='zh'] :is(h1,h2,h3,.play-tile--lead .play-tile__nm b){line-height:1.1
   .fleet-feature{grid-template-rows:220px auto auto}
   .bf-rail{grid-auto-columns:72vw}
   .motion,.play{padding-top:var(--s7)}
-  .motion-grid{gap:8px}
-  .play-grid{gap:8px}
+  .motion-grid{gap:var(--s2)}
+  .play-grid{gap:var(--s2)}
   .play-tile__nm{left:10px;right:10px;bottom:9px;gap:7px}
   .play-tile__nm b{font-size:var(--fs-13)}
   .play-tile__nm .cot-i{width:15px;height:15px}
@@ -391,7 +391,7 @@ html[lang^='zh'] :is(h1,h2,h3,.play-tile--lead .play-tile__nm b){line-height:1.1
   .play-tile--lead .play-tile__nm b{font-size:var(--fs-24)}
   .play-tile--lead .play-tile__nm .cot-i{width:22px;height:22px}
   .play-more{justify-content:flex-start}
-  .shots-rail{grid-auto-columns:72vw;gap:8px}
+  .shots-rail{grid-auto-columns:72vw;gap:var(--s2)}
   .shots-acts>.cot-c-btn--icon{display:none}
   .replay-card__row{flex-direction:column;align-items:flex-start;padding:var(--s4)}
   .replay-card h2{font-size:var(--fs-20)}
