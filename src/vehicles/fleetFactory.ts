@@ -53,7 +53,22 @@ export interface CreateTankOptions {
   proceduralOnly?: boolean;
   quality?: 'high' | 'ai' | 'low' | 'preview';
   staticPreview?: boolean;
+  staticDrawMerge?: 'off' | 'identity' | 'translations';
 }
+
+/**
+ * The P21 static merge a BATTLE build of `specId` takes (the battle roster's builds; never the Garage, Gallery or hero
+ * builds). The source-X Abrams family bakes pure translations (coordinator ruling 2026-10-24, perf-249: their roof
+ * stations, gun rigs and CROWS fold from 86-112 draws a bot to 68-77; the CPU render pairs at battle range showed the
+ * float rounding nowhere a player looks); every other vehicle keeps the byte-exact identity merge. `?staticmerge=`
+ * (off | identity | translations) still selects one mode for every build, for the probes' same-build pairs.
+ */
+export function battleStaticDrawMerge(specId: string): NonNullable<CreateTankOptions['staticDrawMerge']> {
+  const requested = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('staticmerge') : null;
+  if (requested === 'off' || requested === 'identity' || requested === 'translations') return requested;
+  return BATTLE_TRANSLATION_MERGE_IDS.has(specId) ? 'translations' : 'identity';
+}
+const BATTLE_TRANSLATION_MERGE_IDS: ReadonlySet<string> = new Set(ABRAMS_SOURCE_X_IDS);
 
 let profileKit: ProfileBuildFunctions | null = null;
 let factoryReady = false;

@@ -4,6 +4,7 @@ import ts from 'typescript-compiler-api';
 import * as THREE from 'three';
 import { createGunshipBattleVisual, loadGunshipAirframe, syncGunshipVisual } from './gunshipVisual.ts';
 import { rosterVisualAttempts } from './rosterVisualFallback.ts';
+import { battleStaticDrawMerge } from '../vehicles/fleetFactory.ts';
 
 const candidateSource = readFileSync(new URL('./rosterState.ts', import.meta.url), 'utf8');
 const names = ['ensureStagedVisuals', 'ensureStagedVisualsSteps', 'nextStagedBake',
@@ -15,8 +16,9 @@ function load(source, ports) {
     compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.None },
   }).outputText;
   return new Function('createTank', 'createTankSteps', 'getDeviceTier', 'HERO_TEX_SPECS', 'createGunshipBattleVisual',
-    'rosterVisualAttempts', `${code}\nreturn {${functions.map(node => node.name.text).join(',')}};`)(
-    ports.sync, ports.steps, ports.tier, new Set(['m1a1_abrams_hc', 't90am']), createGunshipBattleVisual, rosterVisualAttempts);
+    'rosterVisualAttempts', 'battleStaticDrawMerge', `${code}\nreturn {${functions.map(node => node.name.text).join(',')}};`)(
+    ports.sync, ports.steps, ports.tier, new Set(['m1a1_abrams_hc', 't90am']), createGunshipBattleVisual, rosterVisualAttempts,
+    battleStaticDrawMerge);
 }
 function fixture({ mobile = false, player = false, pooled = false, fail = null } = {}) {
   const scene = new THREE.Scene(), trace = [], created = [], ground = () => 0;
@@ -71,7 +73,7 @@ for (const player of [true, false]) for (const mobile of [true, false]) for (con
     id: 'merkava1b', options: { camoSeed: 4242, quality: player ? 'preview' : 'ai',
       geometryQuality: player && !mobile ? 'high' : 'low',
       batchStatic: true, battleDetailLod: !player && !mobile,
-      eraVisualBindingReceipt: false },
+      eraVisualBindingReceipt: false, staticDrawMerge: 'identity' },
   }];
   for (const staged of [false, true]) {
     const f = fixture({ player, mobile, pooled });

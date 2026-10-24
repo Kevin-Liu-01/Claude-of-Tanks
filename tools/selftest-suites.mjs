@@ -1754,6 +1754,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/vehicles/articulatedShadowBatchIntegration.selftest.mjs',
     'src/vehicles/battleGeometrySharing.selftest.mjs',
     'src/vehicles/staticDrawMerge.selftest.mjs',
+    'src/vehicles/battleStaticDrawMerge.selftest.mjs', // perf-250: the source-X Abrams' battle builds bake translations
     'src/vehicles/recoilRig.selftest.mjs',
     'src/fx/fxRuntimeAccess.selftest.mjs',
     'src/game/garageDressingAccess.selftest.mjs',

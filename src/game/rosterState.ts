@@ -7,7 +7,7 @@
 import { createGunshipBattleVisual } from './gunshipVisual.ts';
 import { Vector3, type Object3D, type Scene } from 'three';
 import { getSpec, PRODUCTION_TANK_IDS, TANK_IDS } from '../vehicles/specs.ts';
-import { createTank, createTankSteps, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
+import { battleStaticDrawMerge, createTank, createTankSteps, type CreateTankOptions } from '../vehicles/fleetFactory.ts';
 import { rosterVisualAttempts } from './rosterVisualFallback.ts';
 import { ERA_NEIGHBOURS, isBotTankId, rankMatchCandidates } from './matchmaking.ts';
 import { ENEMY_NATION_OPTIONS } from './teamArrangement.ts';
@@ -347,10 +347,12 @@ function* buildRosterVisual(
     let failure: unknown = null;
     const variantOf = typeof ent.spec?.variantOf === 'string' ? ent.spec.variantOf : undefined;
     for (const attempt of rosterVisualAttempts(specId, options, variantOf, firstParticipant?.specId)) {
+      // the static merge is the vehicle's own (a fallback build takes its donor's)
+      const attemptOptions = { ...attempt.options, staticDrawMerge: battleStaticDrawMerge(attempt.specId) };
       try {
         visual = cooperative
-          ? yield* createTankSteps(attempt.specId, engineCtx, attempt.options)
-          : createTank(attempt.specId, engineCtx, attempt.options);
+          ? yield* createTankSteps(attempt.specId, engineCtx, attemptOptions)
+          : createTank(attempt.specId, engineCtx, attemptOptions);
         if (failure) console.error(`[battle roster] ${specId} visual built as ${attempt.reason} ${attempt.specId}`);
         return;
       } catch (error) {
