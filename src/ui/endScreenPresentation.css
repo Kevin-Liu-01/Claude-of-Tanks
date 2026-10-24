@@ -128,6 +128,8 @@ body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal){display:g
 body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>:is(.es-debrief,.es-debrief[hidden]){display:block;min-height:0;
   height:auto;overflow:auto;scrollbar-width:thin;border-radius:var(--r1);box-shadow:var(--e2)}
 body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal) .es-debrief .es-comparison{display:none}
+body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>.es-debrief.more{-webkit-mask-image:var(--battle-scroll-fade);
+  mask-image:var(--battle-scroll-fade)}
 body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>.personal>.es-stat-secondary{grid-column:1/-1;margin-right:0}
 body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal) .es-rosters{grid-template-columns:minmax(0,1fr)}
 body[data-cot-width] .cot-es.cot-es--record .es-report:has(>.personal)>.es-rematch{grid-column:1/-1}

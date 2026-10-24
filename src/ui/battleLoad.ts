@@ -300,6 +300,15 @@ interface BattleLoadInfo {
  */
 export const PENDING_ROSTER_SLOTS = 7;
 
+/**
+ * The rules row's mode chip: the mode alone, as its normalized id names it ("Turbo Ball"; a Standard battle reads
+ * "Random Battle · Standard"). The screen names the battlefield in its title, so the chip carries no battlefield
+ * subtitle, and the plan's objectives (modeId) are this same mode's.
+ */
+export function battleLoadModeLabel(modeId: string): string {
+  return modeId === 'standard' ? t('battleLoad.randomStandard') : t(`playMenu.matchMode.${modeId}.label`);
+}
+
 /** The battlefield a pending entry is about to load, known before its loading owner is imported. */
 export interface PendingBattlefield {
   readonly mapId: string;
