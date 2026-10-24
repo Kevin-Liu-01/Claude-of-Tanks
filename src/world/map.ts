@@ -309,6 +309,11 @@ export interface WorldRuntime {
     viewCamera?: THREE.Camera | null,
   ): void;
   warmTerrainLookahead(cameraPosition: THREE.Vector3, maxJobs?: number): number;
+  /**
+   * Aim the terrain's live LOD stream at a point the camera is travelling to, or release it to follow the camera
+   * (2026-10-24, perf-245; engine/cameraDestinationWarm.ts): a Watch hop, a spectate handover, the killcam.
+   */
+  setTerrainStreamFocus(position: THREE.Vector3 | null): void;
   /** Round 77c: bake the vegetation's impostor atlas under cover (the activation / solo loading warm). */
   warmImpostors(): boolean;
   setWindTime(timeSeconds: number): void;
@@ -1140,6 +1145,9 @@ function assembleWorld(
      */
     warmTerrainLookahead(cameraPos: THREE.Vector3, maxJobs = 1) {
       return terrain.userData.warmStreaming?.(cameraPos, maxJobs) || 0;
+    },
+    setTerrainStreamFocus(position: THREE.Vector3 | null) {
+      (terrain.userData.setStreamFocus as ((p: THREE.Vector3 | null) => void) | undefined)?.(position);
     },
     warmImpostors: () => { bakePanorama(); return vegetation.warmImpostors(); },
     /** Freeze hook for screenshots. @param {number} t wind time, seconds */

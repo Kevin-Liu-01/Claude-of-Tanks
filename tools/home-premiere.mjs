@@ -38,14 +38,15 @@ const heroSrcset = () => HERO_RUNGS.items.map((rung) => `${rung.path} ${rung.wid
 const heroDefault = () => HERO_RUNGS.items.find((rung) => rung.width === 1440).path;
 const TAKES = json('public/media/site50-r14/fleet/index.json');
 const SITE = json('public/media/site50-r14/manifest.json');
-// The horizontal lockup (public/brand/lockup.svg: the Bracket Chevron and the outlined wordmark, SPEC 3.1), inline so it
-// paints with the document: the words and brackets take the ink, the chevron and the "of" the accent.
+// The horizontal lockup (public/brand/lockup.svg: the commander mark and the outlined wordmark, tools/brand-marks.mjs), inline
+// so it paints with the document: the paper parts take the ink, the accent parts (style= or fill=) the accent.
 const LOCKUP = readFileSync(join(ROOT, 'public/brand/lockup.svg'), 'utf8');
 function lockupMarkup(titleId) {
   const viewBox = /viewBox="([^"]+)"/.exec(LOCKUP)?.[1];
   const body = LOCKUP.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, '').replace(/<!--[\s\S]*?-->/g, '')
     .replace(/stroke="#f6f3ec"/g, 'stroke="currentColor"').replace(/stroke="#f0a030"/g, 'style="stroke:var(--accent)"')
-    .replace(/fill="#f6f3ec"/g, 'fill="currentColor"').replace(/fill="#f0a030"/g, 'style="fill:var(--accent)"');
+    .replace(/fill="#f6f3ec"/g, 'fill="currentColor"').replace(/fill="#f0a030"/g, 'style="fill:var(--accent)"')
+    .replace(/style="(fill|stroke):#f0a030"/g, 'style="$1:var(--accent)"');
   if (!viewBox || /#[0-9a-f]{3,8}\b/i.test(body)) throw new Error('home-premiere: public/brand/lockup.svg is not the two-ink lockup');
   return `<svg class="hero__lockup" viewBox="${viewBox}" role="img" aria-labelledby="${titleId}"><title id="${titleId}">Claude of Tanks</title>${body}</svg>`;
 }
@@ -244,13 +245,13 @@ function fleetFacets() {
     return `<button class="cot-c-chip cot-c-chip--compact" type="button" aria-pressed="false" data-fleet-nation="${code}" aria-label="${esc(text(key))}" data-i18n-aria-label="${key}">${flag(code, 'sm')}</button>`;
   }).join('');
   const classes = WALL_CLASSES.map((value) => `<button class="cot-c-chip" type="button" aria-pressed="false" data-fleet-class="${value}">${t(classMeta(value).shortKey)}</button>`).join('');
-  const count = String(cards.length);
   return `<div class="fleet-facets">`
     + `<button class="cot-c-chip" type="button" aria-pressed="true" data-fleet-all>${t('camoTag.all')}</button>`
     + `<div class="fleet-facets__set" role="group" aria-label="${esc(text('home.fleet.nationAria'))}" data-i18n-aria-label="home.fleet.nationAria">${nations}</div>`
     + `<div class="fleet-facets__set" role="group" aria-label="${esc(text('home.fleet.classAria'))}" data-i18n-aria-label="home.fleet.classAria">${classes}</div>`
-    + `<label class="fleet-search">${iconMarkup('search', 16)}<input type="search" placeholder="${esc(text('home.fleet.searchPlaceholder').replace('{count}', count))}"`
-    + ` data-i18n-placeholder="home.fleet.searchPlaceholder" data-i18n-vars='{"count":"${count}"}' aria-label="${esc(text('home.fleet.searchAria'))}"`
+    + `<label class="fleet-search">${iconMarkup('search', 16)}<input type="search" placeholder="${esc(text('home.fleet.searchPlaceholder'))}"`
+    // no count in the placeholder: the headline already gives the fleet's one
+    + ` data-i18n-placeholder="home.fleet.searchPlaceholder" aria-label="${esc(text('home.fleet.searchAria'))}"`
     + ` data-i18n-aria-label="home.fleet.searchAria" autocomplete="off" spellcheck="false" enterkeyhint="search"></label>`
     + `<p class="fleet-count" role="status"></p></div>`;
 }

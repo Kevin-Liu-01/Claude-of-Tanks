@@ -492,6 +492,21 @@
     }
     .cot-boot-retry.on { display: block; }
     .cot-boot-retry:focus-visible { outline: 2px solid #f0a030; outline-offset: 3px; }
+    /* a browser the game cannot run in (src/engine/capabilityGate.ts shows Retry): the load's bar, its count and the
+       tip step aside, the reason stands centred under the mark, and the tank holds still */
+    #cot-boot:has(.cot-boot-retry.on) :is(.cot-boot-bar, .cot-boot-pct, .cot-boot-tip) { display: none; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { justify-content: center; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage {
+      max-width: 46ch; font-size: 16px; line-height: 1.5; text-align: center; color: #f6f3ec;
+    }
+    #cot-boot:has(.cot-boot-retry.on) .cot-mark--motion * { animation-play-state: paused; }
+    /* Retry joins the column right under the reason, before the links */
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-inner { display: flex; flex-direction: column; align-items: center; }
+    #cot-boot:has(.cot-boot-retry.on) :is(.cot-boot-load, .cot-boot-links) { align-self: stretch; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-load { order: 1; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-retry { order: 2; position: static; transform: none; margin: 24px auto 0; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-links { order: 3; margin-top: 28px; }
+    #cot-boot:has(.cot-boot-retry.on) .cot-boot-gate { order: 4; }
     /* capability gate (2026-09-24): one-line notice under the bar — software rendering, blocked storage */
     .cot-boot-notice {
       margin: 8px auto 0; max-width: 420px; min-height: 0;

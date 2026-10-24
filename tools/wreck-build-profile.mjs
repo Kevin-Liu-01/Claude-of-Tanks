@@ -143,7 +143,7 @@ export function transformConstructor(source, kind) {
       // wrappers, so every plain call the owned body makes directly is one
       // stage: attribute it when the body executes, not when an iterator is made.
       const ownedStage = ts.isIdentifier(node.expression) && enclosing && ts.isFunctionDeclaration(enclosing)
-        && ['createTank', 'createTankOwnedSteps'].includes(enclosing.name?.text);
+        && ['createTank', 'createTankOwnedSteps', 'buildTankCoreSteps', 'createTankRuntimeSteps'].includes(enclosing.name?.text);
       const explicit = ['finalizeVehicleMarkingSeats', 'applyVerifiedVehicleMarkingSeats', 'installProceduralShadowProxies',
         'normalizeTankAppearance', 'finalizeVehicleNightLighting', 'attachTankDecorations'].includes(name);
       if (ownedStage || explicit) instrument(node, name);
@@ -155,6 +155,12 @@ export function transformConstructor(source, kind) {
   for (const edit of edits.sort((a, b) => b.at - a.at)) transformed = transformed.slice(0, edit.at) + edit.text + transformed.slice(edit.at);
   assert.equal(ts.createSourceFile(`${kind}.ts`, transformed, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS).parseDiagnostics.length, 0);
   assert.ok(Object.keys(stages).length >= (kind === 'factory' ? 30 : PROFILE_STAGES.size), 'Expected constructor attribution coverage');
+  // The core (buildTankCoreSteps) and the runtime (createTankRuntimeSteps) both own stages: losing either owner's
+  // attribution must fail, not profile the other alone.
+  if (kind === 'factory') {
+    const expressions = new Set(Object.values(stages).map((stage) => stage.expression));
+    assert.ok(['createTankMaterials', 'applyInteriorFills'].every((name) => expressions.has(name)), 'Expected constructor attribution coverage');
+  }
   return { source: transformed, stages };
 }
 

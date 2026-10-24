@@ -581,7 +581,7 @@ for (const [path, text] of sources) {
 // html[lang^='zh'], directly or through an :is() list, by selector or by its heading tag) at 1.1 or more. The 404 numeral
 // is digits in every locale.
 const ZH_DISPLAY_EXEMPT = new Set(['.not-found h1']);
-for (const path of ['src/presentation/home.css', 'src/docs/docs.css', 'src/gallery/gallery.css', 'src/presentation/notFound.css',
+for (const path of ['src/presentation/home.css', 'src/docs/docs.css', 'src/docs/chapters.css', 'src/gallery/gallery.css', 'src/presentation/notFound.css',
   'src/presentation/mediaArchive.css', 'src/presentation/manualStart.css', 'src/presentation/publicNav.css']) {
   const css = stripComments(path, read(path));
   const covered = new Set();

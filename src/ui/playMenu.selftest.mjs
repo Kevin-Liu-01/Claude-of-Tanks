@@ -167,7 +167,7 @@ assert.doesNotMatch(source, /ice_degraded|relayUnavailable|relayAvailable|degrad
 console.log('playMenu.selftest: the failure panel classifies and beacons every room error');
 
 // Room setup is a separate intent and cannot emit a battle-start or mutate the solo rule.
-const openMultiplayer = garage.slice(garage.indexOf('  function openMultiplayer('), garage.indexOf('  function battle()'))
+const openMultiplayer = garage.slice(garage.indexOf('  function openMultiplayer('), garage.indexOf('  function battle('))
   .replace("mode: 'private' | 'lan' = 'private'", "mode = 'private'").replace('): void {', ') {');
 for (const requested of [undefined, 'private', 'lan']) {
   const calls = [];

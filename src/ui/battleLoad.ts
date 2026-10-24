@@ -172,7 +172,6 @@ const CSS = `
 .cot-bl .team.foe .thead{color:var(--text-enemy);border-bottom:1px solid var(--team-enemy);flex-direction:row-reverse;}
 /* the rules row says the sides ("7 v 7"): each heading's count stays for assistive technology alone */
 .cot-bl .thead .n{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
-.cot-bl .rules .cot-c-chip .v{font-variant-numeric:tabular-nums;}
 /* Center each roster as a block. Rows never stretch when a team is small.
    Fixed silhouette boxes keep asset loading from moving the rows. */
 .cot-bl .rows{display:grid;grid-template-rows:repeat(var(--bl-count),var(--bl-row-height));align-content:start;
@@ -427,8 +426,8 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     `<main class="briefing"><div class="cap"><h1 class="mapname"></h1>` +
     `<div class="rules"><span class="cot-c-chip"><span class="kicker">${t('battleLoad.kicker')}</span></span>` +
     `<span class="cot-c-chip sides" hidden><span class="gi">${uiIconSVG('team', 16)}</span><span class="sv"></span></span>` +
-    `<span class="cot-c-chip clock" hidden><span class="gi">${uiIconSVG('clock', 16)}</span><span class="v"></span></span>` +
-    `<span class="cot-c-chip respawn" hidden><span class="gi">${uiIconSVG('rematch', 16)}</span><span class="v"></span></span></div></div>` +
+    `<span class="cot-c-chip clock" hidden><span class="gi">${uiIconSVG('clock', 16)}</span><span class="v num"></span></span>` +
+    `<span class="cot-c-chip respawn" hidden><span class="gi">${uiIconSVG('rematch', 16)}</span><span class="v num"></span></span></div></div>` +
     `<div class="side"><div class="tip"></div><div class="map" hidden><span class="mp"><img alt="" decoding="async" draggable="false"><canvas class="obj" aria-hidden="true"></canvas></span></div></div>` +
     `<div class="teams">` +
     `<div class="team ally"><div class="thead"><span>${t('battleLoad.allies')}</span><span class="flags" aria-hidden="true"></span><span class="n">0</span></div>` +

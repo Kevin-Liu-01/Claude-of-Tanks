@@ -24,28 +24,38 @@ const strv = getSpec('strv103b');
   assert.ok(wreckTurretProfile(strv).hullHalf[2] > 2, 'but stands as a hull box for the others');
 }
 
-// --- launch velocities: a cook-off throws high over its fireball (an MBT's turret 6–14 m over the ring), well off to a
-// side, tumbling end over end; the speed is the charge's work on the turret's mass; a plain death unseats
+// --- launch velocities: a cook-off throws high over its fireball (an MBT's turret 12–19 m over the ring), well off to a
+// side, tumbling end over end; the speed is the charge's work on the turret's mass, easing toward a ceiling past a knee
+// so no throw pins at one height (244); a plain death unseats
 {
   const out = new Float64Array(6);
   let seed = 1;
   const random = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  const ups = [];
   for (let n = 0; n < 50; n++) {
     turretLaunchVelocity('ammorack', 66.8, random, out);
-    assert.ok(out[1] > 10.4 && out[1] < 16.6, `cook-off up ${out[1].toFixed(2)} (apex ${(out[1] ** 2 / 19.62).toFixed(1)} m)`);
-    assert.ok(Math.hypot(out[0], out[2]) >= 1.79 && Math.hypot(out[0], out[2]) <= 4.41, 'thrown well off to a side');
+    assert.ok(out[1] > 15.4 && out[1] < 18.8, `cook-off up ${out[1].toFixed(2)} (apex ${(out[1] ** 2 / 19.62).toFixed(1)} m)`);
+    ups.push(out[1]);
+    assert.ok(Math.hypot(out[0], out[2]) >= 2.19 && Math.hypot(out[0], out[2]) <= 4.81, 'thrown well off to a side');
     assert.ok(Math.hypot(out[3], out[4], out[5]) > 1.3, 'tumbling');
     turretLaunchVelocity('shot', 66.8, random, out);
     assert.ok(out[1] > 1.5 && out[1] < 2.7 && Math.hypot(out[0], out[2]) < 0.81, 'a plain kill unseats it');
   }
-  // the same rack throws a light turret higher than a heavy one, never past the cap
+  // the heights keep their spread: no two of fifty throws share a speed (a hard cap held most at one), the spread a third
+  // of the band or more
+  assert.equal(new Set(ups.map((up) => up.toFixed(3))).size, ups.length, 'no throw pins at one height');
+  assert.ok(Math.max(...ups) - Math.min(...ups) > 2.4, `a spread of heights (${Math.min(...ups).toFixed(2)}–${Math.max(...ups).toFixed(2)} m/s)`);
+  // the same rack throws a light turret higher than a heavy one, easing toward the 21 m/s ceiling, never past it
   const draws = (k) => { let i = 0; return () => [0.5, 0.5, 0.5, 0.5, 0.5, k, 0.5, 0.5, 0.5][i++ % 9]; };
-  turretLaunchVelocity('ammorack', 66.8, draws(0.5), out, 16000);
+  turretLaunchVelocity('ammorack', 66.8, draws(0.5), out, 30000);
   const heavy = out[1];
-  turretLaunchVelocity('ammorack', 66.8, draws(0.5), out, 9000);
+  turretLaunchVelocity('ammorack', 66.8, draws(0.5), out, 16000);
   assert.ok(out[1] > heavy * 1.25, `a lighter turret flies faster (${heavy.toFixed(1)} → ${out[1].toFixed(1)} m/s)`);
   turretLaunchVelocity('ammorack', 66.8, draws(1), out, 1500);
-  assert.ok(out[1] <= 19 + 1e-9, 'capped');
+  const light = out[1];
+  assert.ok(light > 20.5 && light < 21, `a very light turret eases toward the ceiling (${light.toFixed(2)} m/s)`);
+  turretLaunchVelocity('ammorack', 66.8, draws(1), out, 1200);
+  assert.ok(out[1] > light && out[1] < 21, `and a lighter one still flies faster: past the knee the order holds (${out[1].toFixed(3)} m/s)`);
 }
 
 // --- the outline: a turret meets the world where its armour reaches, not on its box's faces. Its base is a face (it

@@ -18,6 +18,12 @@ interface WaterContactProfile {
    *  the deep blue's share past it. Absent: the shared tint (shallowWater.ts SEA_TINT). */
   seaTurquoise?: number;
   seaDeepBlue?: number;
+  /**
+   * (2026-10-24) A sea tied to its own sky: the share by which the sky's mirror takes the place's horizon haze (the scene
+   * fog's colour, at the mirror's own luminance; more toward the horizon) and the deep body's navy that haze's depth.
+   * Absent: none (the sky's mirror as the environment gives it, the shared navy).
+   */
+  seaSkyGrade?: number;
 }
 
 const COAST: Readonly<WaterContactProfile> = Object.freeze({
@@ -136,9 +142,11 @@ const MONSOON_FLOOD: Readonly<WaterContactProfile> = Object.freeze({
 // (2026-10-23, item/maps-frontier-saltmere-242; the blind critic on Saltmere Bay: "the bay and shallows are bright
 // Caribbean turquoise, not the grey-green / deep blue of a temperate Channel coast") the Léon's water: over the sand the
 // shelf a jade grey-green, its turquoise share a fifth of the shared one; past it a slate blue-green, the deep navy's share
-// halved
+// halved. (2026-10-24, the Saltmere follow-up: the open sea "reflects a too-blue sky" and reads as one mid-blue sheet)
+// its mirror and its deep body tied to the bay's own sky: half way to the Atlantic haze over the horizon (coastal.ts sky:
+// fogTintHex, the salt-white horizon band), the deep water that haze's slate, not a clear-sky navy
 const COLD_SEA: Readonly<WaterContactProfile> = Object.freeze({
-  ...COAST, color: 0x1f4652, shallowColor: 0x587d72, seaTurquoise: 0.12, seaDeepBlue: 0.4,
+  ...COAST, color: 0x1f4652, shallowColor: 0x587d72, seaTurquoise: 0.12, seaDeepBlue: 0.4, seaSkyGrade: 0.5,
 });
 
 export function waterContactProfile(mapId: string): Readonly<WaterContactProfile> {

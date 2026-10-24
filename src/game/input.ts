@@ -57,7 +57,7 @@ const PAD_MAX_BUTTONS = 17;
  *  Labels and groups are i18n keys resolved by the settings UI
  *  (see `src/ui/settings.ts` — `t()` is applied to both `label` and
  *  `group` before render). */
-const ACTION_DEFS = [
+export const ACTION_DEFS = [
   { id: 'forward', label: 'action.forward', group: 'settings.group.movement' },
   { id: 'back', label: 'action.back', group: 'settings.group.movement' },
   { id: 'left', label: 'action.left', group: 'settings.group.movement' },
@@ -278,7 +278,7 @@ export const DEFAULT_BINDINGS: Partial<Record<ActionId, string>> = {
 };
 
 /** Default secondary bindings: arrow keys as alternate movement (WoT staple). */
-const DEFAULT_BINDINGS2: Partial<Record<ActionId, string>> = {
+export const DEFAULT_BINDINGS2: Partial<Record<ActionId, string>> = {
   forward: 'ArrowUp',
   back: 'ArrowDown',
   left: 'ArrowLeft',
@@ -289,7 +289,7 @@ const DEFAULT_BINDINGS2: Partial<Record<ActionId, string>> = {
 /** Default gamepad buttons (standard mapping): RT fire, LT sniper, A handbrake,
  *  LB special action, RB dedicated free-look, d-pad shells, BACK minimap, START menu. Sticks are fixed:
  *  left = drive, right = aim. */
-const DEFAULT_PAD_BINDINGS: Partial<Record<ActionId, number>> = {
+export const DEFAULT_PAD_BINDINGS: Partial<Record<ActionId, number>> = {
   fire: 7, // RT
   sniperToggle: 6, // LT
   handbrake: 0, // A
@@ -425,7 +425,7 @@ const LABEL_SPECIAL: Record<string, string> = {
  * @param {?string} code
  * @returns {string}
  */
-function labelForCode(code: string | null) {
+export function labelForCode(code: string | null) {
   if (!code) return '—';
   if (LABEL_SPECIAL[code]) return LABEL_SPECIAL[code];
   if (code.startsWith('Key')) return code.slice(3);
@@ -439,7 +439,7 @@ function labelForCode(code: string | null) {
  * @param {?number} index
  * @returns {string}
  */
-function labelForPadButton(index: number | null) {
+export function labelForPadButton(index: number | null) {
   if (index == null || index < 0) return '—';
   return PAD_BUTTON_LABELS[index] || `PAD ${index}`;
 }

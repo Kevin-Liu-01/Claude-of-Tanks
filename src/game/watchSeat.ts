@@ -42,6 +42,12 @@ export interface WatchSeatEntity<TController = unknown> {
 export interface WatchSession<TController = unknown> {
   /** The human seat (the reference side's verdict and the drone's opening frame read it). */
   readonly seatId: string;
+  /**
+   * The human seat's side as the battle opened ('player' or 'enemy'): the battle's frame for its verdict, the mode's
+   * perspective and the spectator's HUD. The seat itself can change sides (an Infected survivor rises infected); the
+   * watched battle's frame never does.
+   */
+  readonly team: string;
   /** The seat the watcher drives, or null while watching. */
   takenId: string | null;
   /** True once the battle opened: the human seat's brain drives it. */
@@ -84,7 +90,7 @@ export function prepareWatchSeat<TEntity extends WatchSeatEntity<TController>, T
   const parked = new Map<string, TController>();
   if (seat.aiCtl) parked.set(seat.id, seat.aiCtl);
   seat.aiCtl = null;
-  game.watch = { seatId: seat.id, takenId: null, opened: false, parked };
+  game.watch = { seatId: seat.id, team: seat.team, takenId: null, opened: false, parked };
 }
 
 /** The battle opens: the human seat's brain drives it and the session has no player. Idempotent. */
@@ -160,6 +166,21 @@ export function leaveWatchSeat<TEntity extends WatchSeatEntity<TController>, TCo
   }
   if (game.player === entity) game.player = null;
   return entity;
+}
+
+/**
+ * Whose view the mode serializes while nobody drives (state.ts stepMatchMode): the human seat while it fights on the
+ * battle's side, else the first hull still on that side (a converted seat must not turn the spectator's frame).
+ */
+export function watchViewer<TEntity extends WatchSeatEntity<TController>, TController>(
+  game: WatchSeatGame<TEntity, TController>,
+): TEntity | null {
+  const watch = game.watch;
+  if (!watch) return null;
+  const seat = seatById(game, watch.seatId);
+  if (seat?.team === watch.team) return seat;
+  for (const entity of game.tanks) if (entity.team === watch.team) return entity;
+  return seat;
 }
 
 /** The verdict's reference seat in a watched battle (the human seat, whoever drives it); else the player. */

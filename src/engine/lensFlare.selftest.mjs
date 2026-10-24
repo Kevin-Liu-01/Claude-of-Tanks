@@ -176,4 +176,30 @@ assert.match(post, /new LensFlarePass\(camera, scene, sceneDepth, lightFxTarget\
     'advanceFrame puts the flare on the export clock');
   assert.match(studioSrc, /restoreLoadedPresentation\(json, fxMs\);\s*\/\/[^\n]*\n\s*post\.lensFlare\?\.snap\?\.\(\);/, 'a loaded clip starts snapped');
 }
+// (2026-10-24, perf-245) the post warm's gated draw: the flare draws once with no colour whatever the sun's visibility
+// (its pipeline made under the loading cover, not at the first frame the sun comes into view), then clears the light
+// target; off the warm an inactive pass draws nothing
+{
+  const THREE = await import('three');
+  const camera = new THREE.PerspectiveCamera(55, 16 / 9, 0.1, 1000);
+  camera.updateMatrixWorld(true);
+  const scene = new THREE.Scene();
+  const output = new THREE.WebGLRenderTarget(4, 4);
+  const { LensFlarePass } = await import('./lensFlare.ts');
+  const pass = new LensFlarePass(camera, scene, new THREE.DepthTexture(4, 4), output);
+  const log = [];
+  let current = null;
+  const renderer = { autoClear: true, getRenderTarget: () => current, setRenderTarget(t) { current = t; },
+    setClearColor() {}, clear() { log.push(['clear', current]); }, render(mesh) { log.push(['draw', mesh.material, current]); } };
+  pass.update(false);
+  pass.render(renderer);
+  assert.equal(log.filter(([kind]) => kind === 'draw').length, 0, 'inactive: no draw');
+  pass.warmGated(true);
+  try { pass.render(renderer); } finally { pass.warmGated(false); }
+  const flare = log.findLast(([kind, material]) => kind === 'draw' && material === pass.flareMaterial);
+  assert.ok(flare && flare[2] === output, 'the flare drew into the light target');
+  assert.deepEqual(pass.flareMaterial.uniforms.uColor.value.toArray(), [0, 0, 0], 'with no colour');
+  assert.deepEqual(log.at(-1), ['clear', output], 'and the light target is left cleared');
+  output.dispose();
+}
 console.log('lensFlare.selftest: tap disc, visibility twin, easing, frame fade, moon share, disc radius, GLSL parts and chain wiring pinned; the ghosts and the halo turned down; the clouds\' transmittance gates the flare and the shafts; the Studio export clock eases it once per step');

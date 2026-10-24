@@ -1,5 +1,5 @@
 export type Rgba8ReadbackStage = 'contextQuery' | 'createBuffer' | 'bindingQuery' | 'bindBuffer'
-  | 'bufferData' | 'sizeQuery' | 'readPixels' | 'fence' | 'flush' | 'wait' | 'copy' | 'release';
+  | 'bufferData' | 'readPixels' | 'fence' | 'flush' | 'wait' | 'copy' | 'release';
 type ReadbackTimings = Partial<Record<Rgba8ReadbackStage, number>>;
 type ReadbackMeasure = <Result>(stage: Rgba8ReadbackStage, run: () => Result) => Result;
 
@@ -166,11 +166,11 @@ export async function beginRgba8Readback(
     finally { recordTiming(timings, 'wait', waitStartedAt, now); }
     assertReadable(gl, deadline, now, measure);
     withPackBuffer(gl, buffer, () => {
-      // A size query during enqueue can flush preceding render work. Keep the
-      // OOM/storage check, but perform it only after the owned fence signals.
-      if (measure('sizeQuery', () => gl.getBufferParameter(gl.PIXEL_PACK_BUFFER, gl.BUFFER_SIZE)) !== byteLength) {
-        throw new Error('rgba8_readback_allocation_failed');
-      }
+      // (2026-10-24, perf-245) no size query: in Chrome a getBufferParameter is a full command-buffer round trip, so after
+      // the fence it waited for every frame queued since — 66-305 ms on the main thread per cloud sun-mean read whenever
+      // the GPU was behind (a camera jump into a new place, a cold pipeline). The copy after a signalled fence on a
+      // STREAM_READ pack buffer is served from the client's readback shadow without one; an allocation that failed
+      // leaves it an INVALID_VALUE that writes nothing.
       assertReadable(gl, deadline, now, measure);
       measure('copy', () => gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, pixels, 0, byteLength));
     }, measure);

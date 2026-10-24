@@ -101,6 +101,7 @@ import {
   warmGarageGpuPipeline,
 } from './engine/garageGpuWarmRuntime.ts';
 import { createIsolatedForwardWarmBatches } from './engine/deploymentWarm.ts';
+import { createCameraDestinationWarmer } from './engine/cameraDestinationWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.ts';
 import {
@@ -918,7 +919,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
   },
   // Renderer ports are initialized before any covered return can run. The
   // engine owner splits restoration into paintable shadow/upload batches.
-  restorePresentationGpu: async ({ resourcesReleased }) => {
+  restorePresentationGpu: async ({ resourcesReleased, isCurrent }) => {
     const programRoot = pedestal.current?.root ?? scene;
     const programsNeedWarm = resourcesReleased || lastGarageProgramRoot !== programRoot;
     const receipt = await restoreGarageGpuPipeline({
@@ -931,6 +932,7 @@ const garagePhasePresentation = createGaragePhasePresentationRuntime({
       simDt: SIM_DT,
       resourcesReleased,
       programsNeedWarm,
+      isCurrent,
     });
     lastGarageProgramRoot = programRoot;
     return receipt;
@@ -1069,6 +1071,8 @@ const pedestal = createGaragePedestalRuntime({
     visibleRoot: root, strict: true, sliceMs: 4, timing,
   }),
   nextFrame,
+  // click-perf-244: a roster press paints before an uncached hero's build starts
+  waitForPaint: nextPaintFrame,
   getDeviceTier,
   getPhase: () => game.phase,
   isBootComplete: () => bootComplete,
@@ -1086,17 +1090,33 @@ const pedestal = createGaragePedestalRuntime({
   debugTarget: typeof window !== 'undefined' ? window : null,
 });
 
-const noteGarageActivity = () => {
+// A press paints its own interface first; the Garage scene's activity frames (and their shadow refresh) start one
+// paint later (click-perf-244: every Garage press's paint carried a full scene render). The dressing and preload pauses
+// still start at the press. Wheel and resize move the view itself, so they wake it at once.
+let garageActivityAfterPaint = false;
+const noteGarageViewActivity = () => {
   if (game.phase !== 'garage') return;
   invalidateGaragePresentation();
   garageDressingScheduler.noteActivity();
   pedestal.invalidatePreload();
 };
+const noteGarageActivity = () => {
+  if (game.phase !== 'garage') return;
+  garageDressingScheduler.noteActivity();
+  pedestal.invalidatePreload();
+  if (garageActivityAfterPaint) return;
+  garageActivityAfterPaint = true;
+  void nextPaintFrame().then(() => {
+    garageActivityAfterPaint = false;
+    invalidateGaragePresentation(); // outside the Garage it only marks the return dirty
+  });
+};
 // Resize can arrive without pointer input (split view, orientation, browser
 // chrome collapse). Treat it as presentation activity so the new viewport is
 // painted immediately instead of waiting for the five-second safety frame.
 for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart', 'resize']) {
-  window.addEventListener(type, noteGarageActivity, { capture: true, passive: true });
+  window.addEventListener(type, type === 'wheel' || type === 'resize' ? noteGarageViewActivity : noteGarageActivity,
+    { capture: true, passive: true });
 }
 // The garage hero uses the dedicated close-up preview tier. A 2048²/1024²
 // repaint was visually redundant at showroom distance and added a large cold
@@ -1552,6 +1572,17 @@ const audio = await bootStage('audio', () => {
 // bore. Solo, private-room and diagnostic presentation therefore share the
 // same reticle, obstruction and penetration contract.
 let playerBattleActions: PlayerBattleActions | null = null;
+// (2026-10-24, perf-245) a camera about to be thrown somewhere it has not drawn — a Watch hop, a spectate handover, the
+// killcam's look at the attacker — warms that place on the way: the terrain stream aimed there, its view drawn
+// offscreen a batch a frame (engine/cameraDestinationWarm.ts; mainFrameRuntime calls update on battle frames)
+const cameraDestinationWarm = createCameraDestinationWarmer({
+  renderer, scene, camera,
+  samples: () => post.msaaSamples,
+  setTerrainStreamFocus: (position) => currentWorld()?.setTerrainStreamFocus?.(position),
+});
+const prepareCameraDestination = (position: THREE.Vector3, lookAt: THREE.Vector3, durationS: number): void => {
+  if (game.phase === 'battle') cameraDestinationWarm.prepare(position, lookAt, durationS);
+};
 const {
   battleClient: battleClientAccess,
   rig,
@@ -1563,6 +1594,7 @@ const {
   worldRaycast,
   getShellCards: () => playerBattleActions?.shellCards || [],
   getIsometricView: () => input.getSettings().isometricView,
+  prepareDestination: prepareCameraDestination,
 });
 const {
   aimController,
@@ -1627,7 +1659,8 @@ const killcamAccess = createKillcamAccess({
       getWorld: currentWorld, // r6: flight-cam LOS solve (foliage/terrain/props)
       // Replay impact uses the real pooled destruction effects.
       getFx: () => fxRuntimeAccess.current,
-    }, 'killcam', ['getPlayer', 'getGame', 'isBattleEntryCovered', 'getEntity', 'getWorld', 'getFx']));
+      prepareDestination: prepareCameraDestination, // perf-245: the attacker's surroundings warmed as the replay opens
+    }, 'killcam', ['getPlayer', 'getGame', 'isBattleEntryCovered', 'getEntity', 'getWorld', 'getFx', 'prepareDestination']));
     live.bindBus(bus);
     // Solo fixed-step capture gets the direct implementation after entry;
     // main/debug consumers keep the stable access facade below.
@@ -1964,6 +1997,10 @@ const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameStat
   prebakeSharedTextures,
   armorAimOverlay,
   forwardProgramWarm,
+  // (perf-245) a staged tank draws once offscreen, every mesh at once, whatever the warm camera frames
+  drawWarm: (root) => {
+    for (const _batch of createIsolatedForwardWarmBatches({ scene, root, warmRender, cohortSize: Infinity })) { /* one cohort */ }
+  },
   recordTiming(timing) {
     if (typeof window !== 'undefined') (window.__VISUAL_LOAD_TIMINGS ||= []).push(timing);
   },
@@ -1975,6 +2012,8 @@ async function ensureBattleVisualStreamer() {
   battleVisuals = await battleVisualStreamerAccess.preload();
   return battleVisuals;
 }
+// perf-246: bound once the Garage return owner exists (below); settings is composed first.
+let garageAwaitingHandoff = (): boolean => false;
 const settings = createSettingsAccess({
   input,
   bus,
@@ -1982,9 +2021,11 @@ const settings = createSettingsAccess({
   // keeps pointer-unlock from opening settings over the death camera.
   isBattleActive: battlePhase.canOpenBattleSettings,
   isSpectating: () => !!killcam.spectate?.active,
-  canLeaveBattle: battlePhase.canLeaveBattle,
+  // perf-246: a Garage prepared behind the battle report is still the battle's end to the player: its Esc menu
+  // leaves (the handoff) and the Garage gear stays hidden until the handoff.
+  canLeaveBattle: () => battlePhase.canLeaveBattle() || garageAwaitingHandoff(),
   onLeaveBattle: () => leaveBattleToGarage(),
-  gearVisible: battlePhase.isGarage,
+  gearVisible: () => battlePhase.isGarage() && !garageAwaitingHandoff(),
   // PAUSE: the overlay shows its PAUSED treatment exactly when opening it
   // freezes a live battle — same predicate the tick() pause gate derives its
   // livePaused from (kill-cam replays close the panel themselves; the end
@@ -2180,7 +2221,7 @@ input.onAction('networkPanel', () => { multiplayerV2.current?.toggleStatusPanel(
 input.onAction('leaveBattle', () => {
   const v2 = multiplayerV2.current;
   if (v2?.inMatch && v2.pressLeave() !== 'ignored') return;
-  if (battlePhase.canLeaveBattle()) settings.open();
+  if (battlePhase.canLeaveBattle() || garageAwaitingHandoff()) settings.open();
 });
 // The proving ground (v2 progression, 2026-10-17): R resets the range, Y switches moving targets; the range card's buttons
 // say the same through the bus. Inert in every other battle (a network battle's local session never plays the range).
@@ -3007,8 +3048,8 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
   },
   audio,
   transition,
-  restoreGaragePresentation: async () => {
-    const receipt = await garagePhasePresentation.restoreGpu();
+  restoreGaragePresentation: async (isCurrent?: () => boolean) => {
+    const receipt = await garagePhasePresentation.restoreGpu(isCurrent);
     garagePresentationDirty = false;
     return receipt;
   },
@@ -3030,6 +3071,34 @@ const garageReturn = createGarageReturnAccess<BattleVisual>({
   }),
 });
 const enterGarage = garageReturn.enter;
+garageAwaitingHandoff = () => garageReturn.awaitingHandoff;
+// perf-246: the Garage return paid behind the battle report (src/app/battleEndGarageWarm.ts). Loaded with the first
+// battle, off the boot graph; it registers itself as the report's backdrop owner (src/ui/reportBackdrop.ts).
+let battleEndGarageWarmLoad: Promise<void> | null = null;
+const loadBattleEndGarageWarm = (): void => {
+  battleEndGarageWarmLoad ??= import('./app/battleEndGarageWarm.ts').then(({ installBattleEndGarageWarm }) => {
+    const warm = installBattleEndGarageWarm({
+      bus,
+      prepare: () => garageReturn.prepare(),
+      isEligible: () => game.phase === 'battle' && game.result !== null && !shotMode && !studio.active
+        && !multiplayerV2.current?.active && !multiplayerV2.current?.room && !battleEntryLifecycle.pending
+        && !garageReturn.transitioning && !graphicsContextLost,
+      renderFrame: () => {
+        if (graphicsContextLost) return null;
+        post.render(0);
+        return renderer.domElement;
+      },
+      enabled: new URLSearchParams(location.search).get('garagePrewarm') !== '0',
+      reportError: (message, error) => console.warn(message, error),
+    });
+    window.__GARAGE_PREWARM = warm.stats;
+  }, (error: RuntimeValue) => {
+    battleEndGarageWarmLoad = null;
+    console.warn('battle-end Garage warm unavailable', error);
+  });
+};
+bus.on('ui:battleStart', loadBattleEndGarageWarm);
+bus.on('phase:change', loadBattleEndGarageWarm);
 const leaveBattleToGarage = (): Promise<void> => {
   const v2 = multiplayerV2.current;
   if (v2?.active && battleEntryLifecycle.pending) {
@@ -3159,6 +3228,7 @@ const watchOwner = createLazyRuntimeOwner(
     camera,
     heightField: hfProxy,
     raycast: worldRaycast,
+    prepareDestination: prepareCameraDestination,
     rig,
     input,
     cameraInput: camInput,
@@ -3349,7 +3419,7 @@ const mainFrame = createMainFrameRuntime({
   battleFrame,
   isBattleLoadCovering: () => battleLoad.covering === true,
   isTransitionHoldingSceneForFadeIn: () => transition.holdingSceneForFadeIn,
-  isPresentationRestoreCovering: () => garagePhasePresentation.restoringGpu || (game.phase === 'garage' && garageReturn.current?.lastTrace?.presentationUnready === true),
+  isPresentationRestoreCovering: () => garagePhasePresentation.restoringGpu || (game.phase === 'garage' && (garageReturn.current?.lastTrace?.presentationUnready === true || garageReturn.current?.lastTrace?.awaitingHandoff === true)),
   cameraInput: camInput,
   getMobileAutoAim: mobileBattleInput.getAutoAim,
   rig,
@@ -3357,6 +3427,7 @@ const mainFrame = createMainFrameRuntime({
   killcam,
   veilHud,
   worldFramePresentation,
+  destinationWarm: cameraDestinationWarm,
   matchModeWorld,
   audioListener,
   isGaragePresentationDirty: () => garagePresentationDirty,
@@ -3673,7 +3744,8 @@ const studioAccess = createStudioAccess({
     // idle there: lend it for flares/night firelight (scene light count fixed).
     borrowLight: () => sniperFill.light,
   }),
-  getPhase: () => game.phase,
+  // perf-246: a Garage prepared behind the battle report is not on screen yet: F8 waits for the handoff.
+  getPhase: () => (garageAwaitingHandoff() ? 'battle' : game.phase),
   keyTarget: window,
 });
 studio = studioAccess.presentation;

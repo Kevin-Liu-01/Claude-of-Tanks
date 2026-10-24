@@ -1,6 +1,7 @@
 import { battleEndArt, shotAccuracy } from './battleReportMedia.ts';
 import { battleLoadModeLabel } from './battleLoad.ts';
 import { GAME_MODE_DEFINITIONS } from '../sim/gameModeCatalog.ts';
+import { reportBackdrop } from './reportBackdrop.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
 /**
  * endScreen.ts — typed cinematic battle end screen (killcam_endscreen r1).
@@ -964,11 +965,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   }
 
   function renderReportHero(result: EndScreenResult, sum: EndScreenSummary): void {
-    const art = battleEndArt(sum.mapId);
-    host.style.setProperty('--report-map', art ? `url("${art}")` : 'none');
-    // page 11: the result stands over the battle's last frame (the scene's canvas keeps it under the report) under the
-    // direction's grade; with no scene behind (a capture harness, a report without a battle) the battlefield's art does
-    host.classList.toggle('es-over-scene', !!document.querySelector('canvas[data-scene-msaa-samples]'));
+    // perf-246: the report covers the scene (the Garage warms on the canvas behind it): the battlefield's end still
+    // (battle-end-r1) under the direction's grade, else the battle's frozen last frame (src/ui/reportBackdrop.ts)
+    const backdrop = reportBackdrop(battleEndArt(sum.mapId));
+    host.style.setProperty('--report-map', backdrop ? `url("${backdrop}")` : 'none');
     const hero = el('div', 'es-hero', host);
     const kick = el('div', 'es-kick es-in', hero);
     kick.style.setProperty('--i', nextI());
