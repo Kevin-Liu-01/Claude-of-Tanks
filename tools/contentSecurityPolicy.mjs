@@ -12,7 +12,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { SPECULATION_RULES } from './viteSpeculationRules.ts';
+import { SPECULATION_RULES_TAG, speculationRulesFor } from './viteSpeculationRules.ts';
 import { bundleSeed } from './viteResponsiveSeed.ts';
 
 export const CSP_HEADER = 'Content-Security-Policy-Report-Only';
@@ -40,7 +40,12 @@ export function inlineScriptHashes(html) {
 export async function contentSecurityPolicy(root = ROOT) {
   const hashes = new Set();
   for (const file of documentSources(root)) for (const hash of inlineScriptHashes(readFileSync(`${root}${file}`, 'utf8'))) hashes.add(hash);
-  hashes.add(inlineScriptHashes(`<script type="speculationrules">${JSON.stringify(SPECULATION_RULES)}</script>`)[0]);
+  // the speculation tag (242: an inline script that adds one speculationrules block, picked by `(hover: hover)`), and
+  // both blocks it can add at run time: an inserted speculationrules script is inline script to CSP too
+  hashes.add(inlineScriptHashes(SPECULATION_RULES_TAG)[0]);
+  for (const eagerness of ['moderate', 'conservative']) {
+    hashes.add(inlineScriptHashes(`<script type="speculationrules">${JSON.stringify(speculationRulesFor(eagerness))}</script>`)[0]);
+  }
   hashes.add(inlineScriptHashes(`<script>${await bundleSeed(root)}</script>`)[0]);
   const scriptSrc = ["'self'", 'https://www.googletagmanager.com', ...[...hashes].sort().map((hash) => `'${hash}'`)];
   return [`script-src ${scriptSrc.join(' ')}`, "worker-src 'self' blob:", "object-src 'none'", "base-uri 'self'"].join('; ');
