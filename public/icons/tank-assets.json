@@ -1712530,24 +1712530,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82961,
-          "sha256": "106ae2880541a4f571a701f988a86fbf22741200d15598b1b4a3472c614e09d6"
+          "bytes": 83400,
+          "sha256": "710319cb8651cb261a8fff81d5bcd06218be6418f7c9fb3d731c4abc0036dacd"
         },
         "modulesSide": {
           "file": "t80u_kursk_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85688,
-          "sha256": "a3d4fe20031d351cff050d9531203a8d4a8b2872e65e54b4424488e4fc9f5e20"
+          "bytes": 85756,
+          "sha256": "94ccaaf3ddf44f6462aaa79e6efa2bd297582e611118e50a702fd4758ee3b89f"
         },
         "crewSide": {
           "file": "t80u_kursk_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 70116,
-          "sha256": "6380be1814fd96a744bfd3eb9c18c8d1f33bca77476e9a4501d187c77c6a8576"
+          "bytes": 70381,
+          "sha256": "1e85ce40b6f6747f55b2e11f4f1bf3b881d10f534f79019fc06f5eda7877ccdc"
         },
         "markings": {
           "file": "t80u_kursk_markings.png",
