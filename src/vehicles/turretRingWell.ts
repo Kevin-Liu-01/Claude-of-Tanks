@@ -1070,7 +1070,7 @@ interface RingEdgeCorners {
  * partly shares, a source mesh's T-joint, takes the other's placed corners as well).
  */
 function ringEdgeCorners(cut: TurretRingCut, splits: readonly RingSplit[]): RingEdgeCorners | null {
-  const reach = cut.r + LIVE_ZONE_M + CONFORM_MARGIN_M;
+  const reach = cut.r + PLANE_DENT_M + CONFORM_MARGIN_M;
   const found: number[] = [];
   const bent: number[] = [];
   let any = false;
@@ -1377,16 +1377,16 @@ function assembleRingCut(split: RingSplit, cut: TurretRingCut, corners: RingEdge
  */
 function placeForDents(array: NumericArray, base: number, extra: number, blends: readonly number[],
   words: ArrayLike<number>, stride: number, offset: number, cut: TurretRingCut, dents: TurretRingDents): number {
-  const zone = cut.r + LIVE_ZONE_M;
   const f = new Float64Array(3);
   let moved = 0;
   for (let e = 0; e < extra; e++) {
     const o = (base + e) * 3;
     const x = array[o], y = array[o + 1], z = array[o + 2];
-    if (Math.hypot(x - cut.cx, z - cut.cz) <= zone) continue;
-    // where the source triangle's corners carry it
+    let share = planeShare(cut, x, z);
+    if (share <= 0) continue;
+    // where the source triangle's corners carry it (its plane), and the field at its own point
     const b = e * 6;
-    let tx = x, ty = y, tz = z;
+    let tx = 0, ty = 0, tz = 0;
     for (let j = 0; j < 3; j++) {
       const w = blends[b + 3 + j];
       if (!w) continue;
@@ -1394,6 +1394,18 @@ function placeForDents(array: NumericArray, base: number, extra: number, blends:
       dentAt(dents, words[i], words[i + 1], words[i + 2], f);
       tx += w * f[0]; ty += w * f[1]; tz += w * f[2];
     }
+    if (share < 1) {
+      dentAt(dents, x, y, z, f);
+      // and no more of the plane than keeps it outside the rim through the ramp: placed, the corner rests the plane's
+      // share of (plane − field) off its point and the ramp carries it on to its target, so its pull toward the axis at
+      // either end stays under RIM_CLEAR of its distance past the rim
+      const r = Math.hypot(x - cut.cx, z - cut.cz), d = r - cut.r;
+      const ux = (cut.cx - x) / r, uz = (cut.cz - z) / r;
+      const plane = tx * ux + tz * uz, field = f[0] * ux + f[2] * uz;
+      if (plane > field) share = Math.max(0, Math.min(share, (RIM_CLEAR * d) / (plane - field), (RIM_CLEAR * d - field) / (plane - field)));
+      tx = share * tx + (1 - share) * f[0]; ty = share * ty + (1 - share) * f[1]; tz = share * tz + (1 - share) * f[2];
+    }
+    tx += x; ty += y; tz += z;
     // the rest point the field carries there (the field's slope under 1: the iteration contracts)
     let px = x, py = y, pz = z;
     for (let it = 0; it < 32; it++) {
@@ -1407,6 +1419,29 @@ function placeForDents(array: NumericArray, base: number, extra: number, blends:
     moved = Math.max(moved, Math.hypot(px - x, py - y, pz - z));
   }
   return moved;
+}
+
+/** (244) The deepest a planned dent moves a point (planDents' 0.28 m, and a hair), and the most the field moves a corner as
+ *  a share of its distance from the rim (the zone's own bound, above). */
+const PLANE_DENT_M = 0.3;
+const FIELD_SLOPE = 0.72;
+/** The share of its distance past the rim a corner may be pulled toward the axis at any share of the dents' ramp. */
+const RIM_CLEAR = 0.9;
+
+/**
+ * (244) The share of its face's dented plane a new corner takes (the rest the field at its own point), d past the rim:
+ * none on the rim (the plate's rim follows the field), all of it from PLANE_DENT_M out, and between them the most that
+ * still keeps it outside the rim, (1 − FIELD_SLOPE)·d / (PLANE_DENT_M − FIELD_SLOPE·d) (the field moves it in at most
+ * FIELD_SLOPE·d, the plane at most PLANE_DENT_M). Through 243 the share stepped from none to all at the zone's edge,
+ * and the zone's field carried a few centimetres off the uncut surface out along every long face that reached in: a
+ * thin strip or a wall's top beside the ring moved off its outline (challenger2e's fender strip, type74's wall, the
+ * AMX-40's relief), seen as holes at grazing angles. Depends on the point alone.
+ */
+function planeShare(cut: TurretRingCut, x: number, z: number): number {
+  const d = Math.hypot(x - cut.cx, z - cut.cz) - cut.r;
+  if (d <= 0) return 0;
+  const room = PLANE_DENT_M - FIELD_SLOPE * d;
+  return room <= 0 ? 1 : Math.min(1, ((1 - FIELD_SLOPE) * d) / room);
 }
 
 /** A mesh the ring's cut may take: a drawn, non-instanced hull mesh (not the turret's, not a shadow proxy's, not the

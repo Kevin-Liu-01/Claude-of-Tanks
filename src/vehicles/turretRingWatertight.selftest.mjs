@@ -174,13 +174,16 @@ const pairDents = (cx, deckY, cz, rimR) => ({
   // (every corner on the seam a corner of both faces: none lies inside an edge, or one that does stays on it)
   const shut = seams([{ geometry: dented }], dents, isNew);
   assert.ok(shut.worst < 1e-5, `the dented pair is watertight (${shut.checked} T-corners, worst ${shut.worst} m at ${shut.worstAt})`);
-  // N's area is all there (the corners split it, they take nothing)
+  // N's area is all there (the corners split it, they take nothing): its side of the shared edge, seen from above (the
+  // dent pushes straight down, so placing a corner for it moves it only up or down)
+  const edgeZ = SEAT.cz + SEAT.rimR + 0.11;
   let area = 0;
   for (let k = 0; k < index.count; k += 3) {
     const c = [0, 1, 2].map((j) => new THREE.Vector3().fromBufferAttribute(dented.attributes.position, index.getX(k + j)));
-    if (c.every((p) => Math.abs(p.y - (SEAT.deckY - 0.3)) < 1e-5)) area += new THREE.Triangle(...c).getArea();
+    if ((c[0].z + c[1].z + c[2].z) / 3 >= edgeZ) continue;
+    area += Math.abs((c[1].x - c[0].x) * (c[2].z - c[0].z) - (c[2].x - c[0].x) * (c[1].z - c[0].z)) / 2;
   }
-  assert.ok(Math.abs(area - new THREE.Triangle(...N.map((p) => new THREE.Vector3(...p))).getArea()) < 1e-6, 'N keeps its whole area');
+  assert.ok(Math.abs(area - new THREE.Triangle(...N.map((p) => new THREE.Vector3(...p))).getArea()) < 1e-6, `N keeps its whole area (${area})`);
   // no dents in the field (a kill whose planner made none): the cut gives nothing
   const still = cutGeometryAtTurretRing(pair, cut, null, null, true,
     { centres: [new THREE.Vector4(0, 0, 0, 0)], dirs: [new THREE.Vector4(0, 0, 0, 0)] });
