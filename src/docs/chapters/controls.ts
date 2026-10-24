@@ -63,6 +63,8 @@ export const WATCH_KEYS: ReadonlyArray<{ readonly codes: readonly string[]; read
   { codes: ['Enter'], label: 'docs.controls.watch.take', view: 'drive' },
 ];
 
+const SWITCHER_STILL = '/media/presentation-r1/ui_spectator_switcher.webp';
+
 function watchSection(): string {
   const values = {
     speeds: WATCH_DRONE.speeds.join(' / '),
@@ -79,7 +81,10 @@ function watchSection(): string {
     return `<article class="dm-view"><h3>${icon(glyph, { size: 20 })}<span>${esc(t(`docs.controls.watch.${view}.title`))}</span></h3>`
       + `<p>${esc(t(`docs.controls.watch.${view}.body`, values))}</p><ul class="dm-keylist">${keys}</ul></article>`;
   }).join('');
-  return `<p>${esc(t('docs.controls.watch.lede', { modes: String(WATCH_RULES.modes.length) }))}</p><div class="dm-views">${cards}</div>`;
+  // riding a bot's tank, the switcher and Drive at the top (public/media/presentation-r1, the media lane's UI shots)
+  const ride = `<figure class="dm-figure">${pictureMarkup({ src: SWITCHER_STILL, width: 1440, height: 900, alt: t('docs.controls.watch.rideAlt'),
+    sizes: '(width < 1100px) 100vw, 60vw', rungs: [{ src: SWITCHER_STILL, width: 1440 }] }, false)}</figure>`;
+  return `<p>${esc(t('docs.controls.watch.lede', { modes: String(WATCH_RULES.modes.length) }))}</p><div class="dm-views">${cards}</div>${ride}`;
 }
 
 /** The battle on a phone (the mechanics still of the touch layout). */
