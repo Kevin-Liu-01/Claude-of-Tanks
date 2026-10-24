@@ -32,8 +32,18 @@
 // GUARD_HALF_M-square opening cut through the deck inside that radius, and one outside it, must each add more than
 // GATE_EXT_PX hole pixels over the player's wreck without them, or --gate fails.
 //
+// The cut's reshaping (243). Within the zone the cut's corners follow the field and past it they lie on their face's own
+// dented plane, so a long face's pieces carry the zone's reshaping out along them (vt4a1 seed 77: 2.7 m out), and a
+// grazing view reads a sag of a few cm as many cm deeper (5 deg down: 2 cm reads 23 cm): 7 340 of its pixels, none of
+// them an opening (the trace: the same deck, lower). So the exterior also lets a pixel pass when the cut wreck still has a
+// face of the mesh the eye saw, facing the same way, along that face's normal within the most the cut can move that face
+// (reshapeBound: the field's departure from the face's dented plane over its part inside the zone, sampled; 0 for a face
+// clear of the zone or undented, so a crack anywhere else still counts), and reports what is left by kind: see-through
+// inside the wreck's outline, see-through at it (the outline receded: a pixel both rasters see past within
+// SILHOUETTE_PX), and a deeper hit. The guard's openings must still count, and do (vt4a1: 194 / 216 px).
+//
 //   node tools/turret-ring-probe.mjs --ids=t90m_proryv,t72b3 [--seeds=77,4242,9001] [--stress] [--no-live] [--no-hulk]
-//        [--receipts=<receipts.json>] [--render=<dir>] --out=<rows.jsonl> [--gate]
+//        [--receipts=<receipts.json>] [--render=<dir>] [--far-samples=<n>] --out=<rows.jsonl> [--gate]
 import * as THREE from 'three';
 import { appendFileSync } from 'node:fs';
 

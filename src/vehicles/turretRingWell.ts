@@ -962,17 +962,22 @@ function boxReaches(box: THREE.Box3, cut: TurretRingCut, margin = 0): boolean {
  * them), and inside the zone the field bends each one at its own point; a neighbour across that edge which the cut left
  * whole (one lying wholly under the prism's floor, past the zone's polygon, short of a long face's length, or one the
  * planes miss) holds only the edge's two ends, so its edge stays their straight chord while the corners bow off it: a
- * crack as wide as the bow (up to 7 cm 0.3 m under the vt4a1's deck, its sky seen through it at seed 77). So a dented
- * cut splits every dented mesh of the hull first (splitGeometryAtRing), gathers every new corner it puts on a face's
- * edge within the zone (ringEdgeCorners), and gives each one to every dented face with that edge, whole or split, in
- * every mesh (assembleRingCut): on every edge both sides then hold the same corners, bent by the same law at every share
- * of the dents' ramp. A corner past the zone needs no giving: placed for the dents, it lands on its edge's chord.
+ * crack as wide as the bow (the fleet census at three seeds: 397 of 651 wrecks over 1 mm, 7 cm 0.3 m under the vt4a1's
+ * deck, 41 cm on the M60A3's). So a dented cut splits every dented mesh of the hull first (splitGeometryAtRing),
+ * gathers the new corners on every face's edge that holds one within the zone, the field's (ringEdgeCorners: once the
+ * far side holds that one the edge is no longer its chord, so the placed ones on it go too), and gives each to every
+ * dented face with that edge, whole or split, in every mesh (assembleRingCut): on every edge both sides then hold the
+ * same corners, bent by the same law at every share of the dents' ramp. An edge whose new corners all lie past the zone
+ * needs no giving: placed for the dents, they land on its chord.
  */
-/** The given corners reach this far past the zone (m): past a corner the rounding moves across its edge. */
+/** An edge holding a corner this near past the zone counts as holding one within it (m), and a dented mesh's box this
+ *  near it is split with the rest. */
 const CONFORM_MARGIN_M = 0.002;
-/** A corner this near a face's edge lies on it (m), and one this near another corner, or an edge's end, is it (m). */
+/** A corner this near a face's edge lies on it (m), and one this near another corner, or an edge's end, is it (m: a
+ *  hair a sliver would fill, over which the field bows by nothing; a face a hair under the prism's floor leaves its
+ *  neighbours' corners that near its own). */
 const CONFORM_ON_EDGE_M = 2e-6;
-const CONFORM_SAME_M = 1e-6;
+const CONFORM_SAME_M = 1e-4;
 /** The edge corners' grid (its cells, m). */
 const CONFORM_CELL_M = 0.05;
 
