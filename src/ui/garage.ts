@@ -64,7 +64,7 @@ import { readFavouriteTanks, writeFavouriteTanks } from '../game/favouriteTanks.
 import type { DeployDifficulty, DeployScreen } from './deployScreen.ts';
 import type { PhotoStill } from './photoMode.ts';
 import { minimapAssetUrl } from './minimapAssetUrl.ts';
-import type { GarageHotspots, HotspotFacts } from './garageHotspots.ts';
+import type { GarageHotspots, HotspotFacts, HotspotRoom } from './garageHotspots.ts';
 import type { Object3D, PerspectiveCamera } from 'three';
 import { mountGitHubStars } from './githubStars.ts';
 import {
@@ -241,10 +241,13 @@ const MODE_GLYPH: Readonly<Partial<Record<GameModeId, string>>> = Object.freeze(
   endless_horde: 'modeHorde', realistic: 'modeRealistic', drone: 'modeDrone', ac130: 'modeAc130',
 });
 
-/** The showroom's stations (brand-ui S2): the rail's six views of the selected tank, keys 1 to 6. */
+/** The showroom's stations (brand-ui S2, the 245 redesign): the readout's five views of the selected tank, keys 1 to 5.
+ *  The paint left the stations for the band under the name, where it is always in view. */
+/** The paints the band offers beside the one the tank wears, in this order (those the catalog carries). */
+const BAND_PAINT_PICKS: readonly string[] = Object.freeze(['factory', 'auto', 'summer', 'desert', 'winter', 'digital']);
 const GARAGE_STATIONS = Object.freeze([
   ['overview', 'performance'], ['firepower', 'gun'], ['mobility', 'speed'],
-  ['protection', 'shield'], ['crew', 'crew'], ['appearance', 'camouflage'],
+  ['protection', 'shield'], ['crew', 'crew'],
 ] as const);
 type GarageStation = (typeof GARAGE_STATIONS)[number][0];
 
@@ -689,6 +692,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<span class="battle-word">${t('garage.battle')}</span>${keycap(t('garage.key.enter'))}</button>` +
     `<button class="cot-battle-mode" type="button" aria-haspopup="dialog" aria-expanded="false" ` +
     `aria-controls="cot-battle-menu" aria-label="${t('garage.battle.menuTypeBots')}">` +
+    // the battle card (the 245 redesign): the battlefield it deploys to as a picture, its name, and the mode
+    `<span class="sum-pic" data-deploy-pic aria-hidden="true"></span>` +
     `<span class="sum-icon">${uiIconSVG('modeStandard', 16)}</span><span class="sum-mode">${t('garage.battle.soloLabel')}</span>` +
     `<span class="sum-map" data-deploy-map></span></button>` +
     // The Deploy screen (brand-ui S3, SPEC 12.1.4): the battle menu opens as one full screen. Its head returns to the
@@ -845,16 +850,22 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `aria-label="${t('garage.tools.environments')}" hidden></div>` +
     // The showroom's lower third (brand-ui S2): the selected tank's name, once and large, over its identity as a flag and
     // glyphs. Desktop shows it beside the stage; layouts that fold the panels keep the name in the dossier's head instead.
-    `<section class="cot-lower-third"><div aria-live="polite"><h2 class="cot-lt-name"></h2><div class="cot-lt-id"></div></div>` +
-    `<div class="cot-lt-acts"><button type="button" class="cot-c-btn cot-c-btn--36" data-lt-anatomy>${uiIconSVG('layerXray', 16)}` +
-    `<span>${t('garage.act.anatomy')}</span></button><button type="button" class="cot-c-btn cot-c-btn--36" data-lt-test-drive>` +
-    `${uiIconSVG('modeProving', 16)}<span>${t('garage.dossier.testDrive')}</span></button>` +
-    `<button type="button" class="cot-c-btn cot-c-btn--36" data-lt-photo hidden>${uiIconSVG('toolPhoto', 16)}` +
-    `<span>${t('garage.photo.open')}</span>${keycap('P')}</button></div></section>` +
-    `<nav class="cot-stations" aria-label="${t('garage.station.aria')}"><div class="cot-stations-list" role="tablist" aria-orientation="vertical" aria-label="${t('garage.station.aria')}">` +
+    // The band under the name (the 245 redesign): the three equipment slots, the paint (what the tank wears, three more to
+    // try and every paint) and the stage's acts, always in view, so nothing about the tank hides behind a tab.
+    `<section class="cot-lower-third"><div class="cot-lt-head" aria-live="polite"><h2 class="cot-lt-name"></h2><div class="cot-lt-id"></div></div>` +
+    `<div class="cot-lt-band"><div class="cot-lt-loadout eqrow" role="group" aria-label="${t('garage.dossier.equipment.heading')}"></div>` +
+    `<div class="cot-lt-paint" role="group" aria-label="${t('garage.tools.camos')}"></div>` +
+    `<div class="cot-lt-acts"><button type="button" class="cot-c-btn cot-c-btn--icon" data-lt-anatomy ` +
+    `aria-label="${t('garage.act.anatomy')}" title="${t('garage.act.anatomy')}">${uiIconSVG('layerXray', 18)}</button>` +
+    `<button type="button" class="cot-c-btn cot-c-btn--icon" data-lt-test-drive ` +
+    `aria-label="${t('garage.dossier.testDrive')}" title="${t('garage.dossier.testDrive')}">${uiIconSVG('modeProving', 18)}</button>` +
+    `<button type="button" class="cot-c-btn cot-c-btn--icon" data-lt-photo hidden aria-keyshortcuts="P" ` +
+    `aria-label="${t('garage.photo.open')}" title="${t('garage.photo.open')} (P)">${uiIconSVG('toolPhoto', 18)}</button></div></div></section>` +
+    // the readout's station tabs (the 245 redesign): one row of glyphs over the readout, each named under its glyph
+    `<nav class="cot-stations" aria-label="${t('garage.station.aria')}"><div class="cot-stations-list" role="tablist" aria-orientation="horizontal" aria-label="${t('garage.station.aria')}">` +
     GARAGE_STATIONS.map(([id, glyph], index) => `<button type="button" class="cot-station" role="tab" data-tab="${id}" data-station="${id}" ` +
-      `aria-selected="${index === 0}" tabindex="${index === 0 ? 0 : -1}" aria-controls="cot-garage-dossier">${uiIconSVG(glyph, 18)}` +
-      `<span>${t(`garage.station.${id}`)}</span>${keycap(String(index + 1))}</button>`).join('') + `</div></nav>`;
+      `aria-selected="${index === 0}" tabindex="${index === 0 ? 0 : -1}" aria-controls="cot-garage-dossier" aria-keyshortcuts="${index + 1}">` +
+      `${uiIconSVG(glyph, 18)}<span>${t(`garage.station.${id}`)}</span></button>`).join('') + `</div></nav>`;
   document.body.appendChild(root);
   mountGitHubStars(root);
 
@@ -1046,6 +1057,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   })();
 
   const statsEl = requiredElement<HTMLElement>(root, '.stats');
+  // the band under the name: the equipment slots and the paint, re-drawn for each tank (renderStats, refreshCamoSel)
+  const loadoutEl = requiredElement<HTMLElement>(root, '.cot-lt-loadout');
+  const paintEl = requiredElement<HTMLElement>(root, '.cot-lt-paint');
   const cardsEl = requiredElement<HTMLElement>(root, '.cot-cards');
   const countryRailEl = requiredElement<HTMLElement>(root, '.cot-country-rail');
   const chipsEl = requiredElement<HTMLElement>(root, '.cot-country-chips');
@@ -1100,9 +1114,32 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const view = layer ? statsEl.querySelector<HTMLButtonElement>(`.cot-technical-tab[data-technical-layer="${layer}"]`) : null;
     if (view && view.getAttribute('aria-selected') !== 'true') activateTechnicalTab(view);
     statsEl.scrollTop = 0;
+    fitReadout();
     if (sound) emit('ui:click', {});
   }
   wireRoving(stationTabs, (id) => setStation(id as GarageStation));
+  // The readout never scrolls (the 245 redesign): a docked column steps its station through four densities (showroom.css)
+  // until it fits. It reads layout only when the station, the tank or the window changes, never per frame.
+  // Each density carries the lighter ones as tokens ("1 2 3"), so a rule names the lightest density it belongs to.
+  function fitReadout(): void {
+    if (document.body.dataset.cotPanels === 'overlay') { delete statsEl.dataset.density; return; }
+    let density = 0;
+    statsEl.dataset.density = '0';
+    while (density < 4 && statsEl.scrollHeight > statsEl.clientHeight + 1) {
+      density++;
+      statsEl.dataset.density = density === 1 ? '1' : `${statsEl.dataset.density} ${density}`;
+    }
+  }
+  let readoutFitQueued = false;
+  const queueReadoutFit = (): void => {
+    if (readoutFitQueued) return;
+    readoutFitQueued = true;
+    requestAnimationFrame(() => { readoutFitQueued = false; fitReadout(); });
+  };
+  window.addEventListener('resize', queueReadoutFit);
+  window.addEventListener('cot:layoutchange', queueReadoutFit);
+  // the technical drawing loads after its station opens: its arrival may need a closer density
+  statsEl.addEventListener('load', queueReadoutFit, true);
 
   // --- OVERVIEW (brand-ui S2): the headline rows against a rival of the same tier and class, both on the tank's own peer
   // scale, so a tick on the 20 cells is the rival and the delta is the gap.
@@ -1154,7 +1191,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
         `</select>${uiIconSVG('chevronDown', 14)}</label>`
       : '';
     const turretless = spec.armor.turretless && spec.hydropneumaticAim;
-    return `<section class="cot-stat-section cot-overview-section" data-stations="overview">${picker}<div class="cot-headline">` +
+    return `<section class="cot-stat-section cot-overview-section cot-primary" data-stations="overview">${picker}<div class="cot-headline">` +
       row('damage', t('garage.dossier.stat.damage'), 'dmg', 'hp', 0) +
       row('clock', spec.gun.autoloader ? t('garage.stat.magazineReload') : t('garage.stat.reload'), 'reload', 's', 1, true) +
       row('speed', t('garage.dossier.stat.speed'), 'speed', 'km/h', 0) +
@@ -1163,7 +1200,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       (turretless ? '' : row('turretRing', t('garage.equipment.metric.turretTraverse'), 'turret', '°/s', 1)) +
       `</div><div class="cot-ammo-tiles">${shells.map((shell) => `<div class="cot-ammo-tile">${shellIconSVG(shell.type, 28)}` +
         `<b class="num">${shell.pen100Mm}<small>mm</small></b><span class="ft"><span>${shellTypeLabel(shell.type)}</span>` +
-        `<span class="num">${shell.dmg}</span></span></div>`).join('')}</div></section>`;
+        `<span class="num">${shell.dmg}</span></span></div>`).join('')}</div>` +
+      // a folded layout shows three of the rows; this opens the whole dossier
+      `<button type="button" class="cot-overview-more" data-garage-panel="equipment" aria-expanded="false" aria-controls="cot-garage-dossier" ` +
+      `aria-label="${t('garage.dossier.vehicleDossier')}" title="${t('garage.dossier.vehicleDossier')}">${uiIconSVG('chevronRight', 18)}</button></section>`;
   }
   statsEl.addEventListener('change', (event) => {
     const select = (event.target as Element | null)?.closest<HTMLSelectElement>('[data-rival]');
@@ -1340,7 +1380,8 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const openGaragePanel = () => root.dataset.garagePanel || '';
   const setGaragePanel = (panel = '', { restoreFocus = false } = {}) => {
     const previous = openGaragePanel();
-    const next = isOverlayPanelLayout() && panel ? panel : '';
+    // every paint (the band's last swatch) opens over the stage in a docked layout too; the other panels fold away there
+    const next = panel && (isOverlayPanelLayout() || panel === 'appearance') ? panel : '';
     if (next) root.dataset.garagePanel = next;
     else delete root.dataset.garagePanel;
     for (const [element, active, label] of [
@@ -1365,7 +1406,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       button.setAttribute('aria-expanded', String(expanded));
     });
     if (restoreFocus && previous) {
-      root.querySelector<HTMLButtonElement>(`[data-garage-panel="${previous}"]`)?.focus();
+      // the panel's visible trigger (the band's every-paint swatch, the figures' more button, a folded tool card)
+      [...root.querySelectorAll<HTMLButtonElement>(`button[data-garage-panel="${previous}"]`)]
+        .find((button) => button.getClientRects().length > 0)?.focus();
     }
     requestAnimationFrame(() => {
       syncSidebarPanelHeight();
@@ -1469,6 +1512,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!isOverlayPanelLayout()) setGaragePanel('');
     syncSidebarPanelHeight();
   });
+  // a docked layout has no scrim under every paint: a press anywhere else closes it (in capture, before the stage's drag)
+  document.addEventListener('pointerdown', (event) => {
+    if (isOverlayPanelLayout() || openGaragePanel() !== 'appearance') return;
+    const target = eventElement(event);
+    if (target?.closest('.cot-leftcol, .cot-garage-variant-menu, button[data-garage-panel="appearance"], .cot-modal-root')) return;
+    setGaragePanel('');
+  }, true);
   const openMobileNavigation = () => {
     closeBattleMenu();
     setGaragePanel('');
@@ -1601,6 +1651,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     if (!selected) return;
     compactMapName.textContent = selected.name;
     requiredElement<HTMLElement>(root, '[data-deploy-map]').textContent = selected.name;
+    // the battle card's picture: the battlefield's 512 px still (never its 4K hero), or every battlefield for Random
+    const deployPic = requiredElement<HTMLElement>(root, '[data-deploy-pic]');
+    deployPic.style.backgroundImage = selected.id !== 'random' && selected.thumb ? `url("${selected.thumb.replace(/"/g, '%22')}")` : '';
+    deployPic.replaceChildren();
+    if (selected.id === 'random') deployPic.appendChild(createRandomMapMosaic(maps));
     requiredElement<HTMLElement>(root, '[data-deploy-field-name]').textContent = selected.name;
     // the battlefield's region, its tactical map and how many there are to choose from (the direction's .bfield)
     requiredElement<HTMLElement>(root, '[data-deploy-field-tags]').innerHTML = rules(mapRegionTags(selected.id)
@@ -2193,7 +2248,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const slot = eqOpenSlot;
     closeEqPicker();
     renderStats(spec); // slots + modified stat bars
-    statsEl.querySelector<HTMLElement>(`.eqslot[data-slot="${slot}"]`)?.focus({ preventScroll: true });
+    loadoutEl.querySelector<HTMLElement>(`.eqslot[data-slot="${slot}"]`)?.focus({ preventScroll: true });
   }
 
   function renderEqPicker() {
@@ -2209,7 +2264,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<div class="chips">${chips}</div>` +
       `<div class="pgrid">${tiles}</div>`;
     // slot highlight on the card
-    for (const el of statsEl.querySelectorAll<HTMLElement>('.eqslot')) {
+    for (const el of loadoutEl.querySelectorAll<HTMLElement>('.eqslot')) {
       el.classList.toggle('open', Number(el.dataset.slot) === eqOpenSlot);
     }
   }
@@ -2229,10 +2284,10 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     hideEqTooltip(false);
     eqOpenSlot = -1;
     eqpickEl.classList.remove('open');
-    for (const el of statsEl.querySelectorAll<HTMLElement>('.eqslot')) el.classList.remove('open');
+    for (const el of loadoutEl.querySelectorAll<HTMLElement>('.eqslot')) el.classList.remove('open');
     document.removeEventListener('keydown', eqKeydown);
     document.removeEventListener('mousedown', eqOutside, true);
-    statsEl.querySelector<HTMLElement>(`.eqslot[data-slot="${slot}"]`)?.focus({ preventScroll: true });
+    loadoutEl.querySelector<HTMLElement>(`.eqslot[data-slot="${slot}"]`)?.focus({ preventScroll: true });
   }
   function eqKeydown(e: KeyboardEvent): void {
     containModalTab(e, eqpickEl, eqpickEl);
@@ -2288,10 +2343,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   });
   eqpickEl.addEventListener('scroll', () => hideEqTooltip(false), true);
 
-  // slot boxes are re-created by every renderStats — delegate their clicks
   statsEl.addEventListener('click', (e) => {
     const target = eventElement(e);
-    const equipmentTrigger = target?.closest<HTMLButtonElement>('.cot-compact-equipment-trigger');
+    const equipmentTrigger = target?.closest<HTMLButtonElement>('.cot-compact-equipment-trigger, .cot-overview-more');
     if (equipmentTrigger) {
       emit('ui:click', {});
       const closing = openGaragePanel() === 'equipment';
@@ -2316,11 +2370,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       return;
     }
     const galleryLink = target?.closest<HTMLElement>('[data-gallery-layer]');
-    if (galleryLink) {
-      openSelectedInGallery(galleryLink.dataset.galleryLayer || 'appearance');
-      return;
-    }
-    const slot = target?.closest<HTMLElement>('.eqslot');
+    if (galleryLink) openSelectedInGallery(galleryLink.dataset.galleryLayer || 'appearance');
+  });
+  // slot boxes are re-created by every renderStats — delegate their clicks
+  loadoutEl.addEventListener('click', (e) => {
+    const slot = eventElement(e)?.closest<HTMLElement>('.eqslot');
     if (!slot) return;
     emit('ui:click', {});
     const idx = Number(slot.dataset.slot);
@@ -2403,11 +2457,56 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     }
   }
 
-  function refreshCompactCamoPreview(spec: GarageTankSpec, selectedPatternId: string): void {
-    const genericKey = `garage.camo.generic.${selectedPatternId}`;
+  const camoPatternLabel = (patternId: string): string => {
+    const genericKey = `garage.camo.generic.${patternId}`;
     const genericLabel = t(genericKey);
-    compactCamoName.textContent = genericLabel !== genericKey ? genericLabel
-      : camoOpts?.label?.[selectedPatternId] || selectedPatternId || t('camoPattern.factory');
+    return genericLabel !== genericKey ? genericLabel : camoOpts?.label?.[patternId] || patternId || t('camoPattern.factory');
+  };
+  const paintBandSwatch = (canvas: HTMLCanvasElement, spec: GarageTankSpec, patternId: string): void => {
+    if (patternId === 'auto') { paintAutoCamoSwatch(canvas, spec); return; }
+    paintCamoSwatch(canvas, spec, patternId === CUSTOM_CAMO_ID && camoOpts?.getCustom
+      ? customCamoPatternId(camoOpts.getCustom(spec.id)) : patternId);
+  };
+  // The band's paint (the 245 redesign): what the tank wears, named, then three more to try in one press and every paint.
+  function refreshBandPaint(spec: GarageTankSpec, selectedPatternId: string): void {
+    if (!camoOpts) { paintEl.hidden = true; return; }
+    const patterns = camoOpts.patterns;
+    const picks = [selectedPatternId, ...BAND_PAINT_PICKS.filter((id) => id !== selectedPatternId && patterns.includes(id))].slice(0, 4);
+    const allLabel = t('garage.tools.appearanceHint');
+    paintEl.innerHTML = picks.map((patternId, index) => {
+      const label = escapeHtmlAttribute(camoPatternLabel(patternId));
+      return `<button type="button" class="cot-lt-swatch${index ? '' : ' is-on'}" data-lt-paint="${escapeHtmlAttribute(patternId)}" ` +
+        `aria-pressed="${index === 0}" aria-label="${label}" title="${label}"><canvas width="${index ? 48 : 96}" height="48"></canvas>` +
+        (index ? '' : `<span class="nm">${label}</span>`) + `</button>`;
+    }).join('') +
+      `<button type="button" class="cot-c-btn cot-c-btn--icon cot-lt-paint-all" data-garage-panel="appearance" aria-expanded="${openGaragePanel() === 'appearance'}" ` +
+      `aria-controls="cot-garage-camos" aria-label="${escapeHtmlAttribute(allLabel)}" title="${escapeHtmlAttribute(allLabel)}">${uiIconSVG('camouflage', 18)}</button>`;
+    paintEl.querySelectorAll<HTMLButtonElement>('[data-lt-paint]').forEach((button) => {
+      const canvas = button.querySelector('canvas');
+      if (canvas) paintBandSwatch(canvas, spec, button.dataset.ltPaint || selectedPatternId);
+    });
+  }
+  paintEl.addEventListener('click', (event) => {
+    const target = eventElement(event);
+    if (target?.closest('[data-garage-panel]')) {
+      emit('ui:click', {});
+      setGaragePanel(openGaragePanel() === 'appearance' ? '' : 'appearance');
+      return;
+    }
+    const swatch = target?.closest<HTMLButtonElement>('[data-lt-paint]');
+    const patternId = swatch?.dataset.ltPaint;
+    if (!patternId || !camoOpts || !selectedId || vehicleLocked) return;
+    emit('ui:click', {});
+    if (camoOpts.get(selectedId) === patternId) return;
+    camoOpts.set(selectedId, patternId);
+    refreshCamoSel();
+    requeueTankThumbs(selectedId);
+    paintEl.querySelector<HTMLButtonElement>('[data-lt-paint]')?.focus({ preventScroll: true });
+  });
+
+  function refreshCompactCamoPreview(spec: GarageTankSpec, selectedPatternId: string): void {
+    compactCamoName.textContent = camoPatternLabel(selectedPatternId);
+    refreshBandPaint(spec, selectedPatternId);
     const patternIds = [selectedPatternId, ...(camoOpts?.patterns || [])]
       .filter((patternId, index, ids) => ids.indexOf(patternId) === index);
     while (patternIds.length < compactCamoPreviews.length) patternIds.push(selectedPatternId);
@@ -2983,15 +3082,19 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   });
   const lowerThird = requiredElement<HTMLElement>(root, '.cot-lower-third');
   // the stage's numbered hotspots (the direction's 05-garage page): the selected tank's gun, turret, powerpack and
-  // running gear, each with its real values, on the tank itself. The module loads off the entry once the Garage is
-  // playable and idle; the latest facts wait for it.
+  // running gear, each with its real values, a dot on its part and a plate off the tank. The module loads off the entry
+  // once the Garage is playable and idle; the latest facts wait for it.
   let hotspots: GarageHotspots | null = null;
+  // where the plates may stand: the stage the tank is framed in, less the name, its identity and the band under them
+  const hotspotRoom: HotspotRoom = { stage: () => api.getStageRect(),
+    avoid: () => [...lowerThird.querySelectorAll('.cot-lt-name, .cot-lt-id, .cot-lt-band > *'), root.querySelector('.cot-eqpick.open')] };
   let hotspotFacts: HotspotFacts | null = null;
   const setHotspotFacts = (facts: HotspotFacts | null): void => { hotspotFacts = facts; hotspots?.setFacts(facts); };
   const loadHotspots = (): void => {
     if (window.__GAME_READY !== true) { setTimeout(loadHotspots, 300); return; }
     const load = () => void import('./garageHotspots.ts').then(({ createGarageHotspots }) => {
-      hotspots = createGarageHotspots(root);
+      // over the Garage's edge bands (which dim the scene), under every panel
+      hotspots = createGarageHotspots(root, hotspotRoom, root.querySelector('.band-r')?.nextElementSibling ?? null);
       hotspots.setFacts(hotspotFacts);
     }, () => undefined);
     if (typeof requestIdleCallback === 'function') requestIdleCallback(load, { timeout: 2500 }); else setTimeout(load, 900);
@@ -3147,18 +3250,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<span class="mi">${uiIconSVG(row.icon, 16)}</span><span>${row.label}</span></div>`).join('');
     const crewChips = crewRows.map((row) =>
       `<div class="cot-crew-chip"><span>${uiIconSVG(row.icon, 16)}</span><span>${row.label}</span></div>`).join('');
-    const slotBoxes = equipmentSlots(eqIds);
-    const equipmentSection =
-      `<section class="cot-stat-section cot-loadout-section">` +
-      `<div class="eqhead cot-sidebar-section-title">${uiIconSVG('repair', 13)}` +
-      `<span>${t('garage.dossier.equipment.heading')}</span></div>` +
-      `<div class="eqrow">${slotBoxes}</div></section>`;
+    // the slots live in the band under the name, in every layout; their picker opens over the stage
+    loadoutEl.innerHTML = equipmentSlots(eqIds);
     // the overview follows the dossier head, which folded layouts keep at the top of their column
     statsEl.innerHTML =
-      equipmentSection.replace('<section class="cot-stat-section', '<section data-stations="firepower mobility" class="cot-stat-section') +
       technicalSection.replace('<section class="cot-stat-section', '<section data-stations="protection crew" class="cot-stat-section') +
       overviewSection(spec, eqM, shells) +
-      `<section class="cot-stat-section cot-performance-section" data-stations="firepower">${statSectionTitle('gun', t('garage.station.firepower'), `${spec.gun.caliberMm} mm`, 'Performance')}` +
+      `<section class="cot-stat-section cot-performance-section cot-primary" data-stations="firepower">${statSectionTitle('gun', t('garage.station.firepower'), `${spec.gun.caliberMm} mm`, 'Performance')}` +
       `<div class="cot-performance-grid">` +
       statBar(reloadLabel, `${reloadS.toFixed(1)} s`, statFrac(grp, 'reload', reloadS, true),
         { icon: 'clock', mod: eqM.reload !== 1, stock: stockReloadS.toFixed(1), title: eqTitle(`${stockReloadS.toFixed(1)} s`) }) +
@@ -3183,7 +3281,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<div class="armor-grid">` +
       `<div class="armorline">${uiIconSVG('gun', 19)}<span>${t('garage.dossier.armament.gun')}</span><b>${spec.gun.caliberMm} mm</b></div>` +
       `<div class="armorline">${uiIconSVG('scope', 19)}<span>${t('garage.dossier.armament.arc')}</span><b>&minus;${spec.gunDepressionDeg}&deg; / +${spec.gunElevationDeg}&deg;</b></div></div></section>` +
-      `<section class="cot-stat-section cot-performance-section" data-stations="mobility">${statSectionTitle('speed', t('garage.station.mobility'), `${spec.weightTons.toFixed(1)} t`, 'Performance')}` +
+      `<section class="cot-stat-section cot-performance-section cot-primary" data-stations="mobility">${statSectionTitle('speed', t('garage.station.mobility'), `${spec.weightTons.toFixed(1)} t`, 'Performance')}` +
       `<div class="cot-performance-grid">` +
       statBar(t('garage.dossier.stat.speed'), `${spec.topSpeedKmh} km/h`, statFrac(grp, 'speed', spec.topSpeedKmh), { icon: 'speed' }) +
       statBar(t('garage.dossier.stat.hpt'), `${hpT.toFixed(1)} hp/t`, statFrac(grp, 'hpt', hpT), { icon: 'engine' }) +
@@ -3204,7 +3302,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<section class="cot-stat-section cot-performance-section" data-stations="protection"><div class="cot-performance-grid">` +
       statBar(t('garage.dossier.stat.hp'), `${spec.hp}`, statFrac(grp, 'hp', spec.hp), { icon: 'shield' }) +
       `</div></section>` +
-      `<section class="cot-stat-section" data-stations="protection">${statSectionTitle('shield', t('garage.dossier.section.protection'), '', 'Protection')}` +
+      `<section class="cot-stat-section cot-primary" data-stations="protection">${statSectionTitle('shield', t('garage.dossier.section.protection'), '', 'Protection')}` +
       `<div class="armor-grid">` +
       `<div class="armorline">${uiIconSVG('shield', 19)}<span>${t('garage.dossier.protection.hull')}</span><b>${hullMm != null ? `${Math.round(hullMm)} mm` : '&mdash;'}</b></div>` +
       `<div class="armorline">${uiIconSVG('turretRing', 19)}<span>${t('garage.dossier.protection.turret')}</span><b>${turMm != null ? `${Math.round(turMm)} mm` : '&mdash;'}</b></div></div>` +
@@ -3212,7 +3310,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<section class="cot-stat-section" data-stations="crew">${statSectionTitle('engine', t('garage.dossier.section.modules'), `${moduleRows.length} ${t('garage.dossier.modules.systems')}`, 'Modules')}` +
       `<div class="cot-module-grid">${moduleChips}</div>` +
       `<button class="cot-layer-link" type="button" data-gallery-layer="modules">${uiIconSVG('gallery', 13)}${t('garage.dossier.modules.open')}</button></section>` +
-      `<section class="cot-stat-section" data-stations="crew">${statSectionTitle('crew', t('garage.dossier.section.crew'), `${crewRows.length} ${t('garage.dossier.crew.stations')}`, 'Crew')}` +
+      `<section class="cot-stat-section cot-primary" data-stations="crew">${statSectionTitle('crew', t('garage.dossier.section.crew'), `${crewRows.length} ${t('garage.dossier.crew.stations')}`, 'Crew')}` +
       `<div class="cot-crew-grid">${crewChips}</div></section>`;
     renderLowerThird(spec, crewRows.length);
     const dossierName = requiredElement<HTMLElement>(statsEl, 'h3');
@@ -3249,15 +3347,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       info.innerHTML=button.innerHTML;info.setAttribute('aria-label',button.getAttribute('aria-label')||'');
       button.replaceWith(info);
     });
-    const equipmentHead = statsEl.querySelector('.eqhead');
-    equipmentHead?.appendChild(createInfoButton({
-      label: t('garage.dossier.equipment.about'),
-      title: t('garage.dossier.equipment.aboutTitle'),
-      text: GARAGE_INFO.Equipment,
-      guide: 'equipment', vehicle: { id: spec.id, name: spec.label?.displayName || spec.name },
-    }));
     if (vehicleChanged) statsEl.scrollTop = 0;
     if (station === 'protection' || station === 'crew') setStation(station, { sound: false });
+    else fitReadout();
     requestAnimationFrame(syncScrollFades);
   }
 
@@ -4151,7 +4243,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // The Deploy screen covers the showroom: behind it only Enter (deploy) and Escape (above) act.
     const deployOpen = battleMenu.classList.contains('open');
     if (!typing && !deployOpen && !e.metaKey && !e.ctrlKey && !e.altKey) {
-      const stationKey = /^Digit([1-6])$/.exec(e.code);
+      const stationKey = /^Digit([1-5])$/.exec(e.code);
       if (e.key === '/') { rosterSearchInput.focus(); e.preventDefault(); return; }
       if (stationKey && document.body.dataset.cotPanels === 'persistent') {
         setStation(GARAGE_STATIONS[Number(stationKey[1]) - 1][0]);
@@ -4269,15 +4361,23 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     getStageRect() {
       // photo mode (photoMode.ts) puts every panel away: the stage is the whole screen
       if (document.body.classList.contains('cot-photo-on')) return { x: 0, y: 0, w: window.innerWidth, h: window.innerHeight };
+      // The stage (the 245 redesign): the docked layout frames the tank between the left edge and the readout's column,
+      // over the band's controls (the name may stand on the floor in front of it); a phone held upright frames it over its
+      // name, and one on its side between the left edge and the column, over the fleet.
       const rr = root.getBoundingClientRect();
-      const left = root.querySelector('.cot-leftcol')?.getBoundingClientRect();
       const stats = statsEl.getBoundingClientRect();
       const carousel = root.querySelector('.cot-carousel')?.getBoundingClientRect();
-      const reservePanels = !isOverlayPanelLayout();
-      const x0 = reservePanels && left && left.width ? left.right + 14 : rr.left + 18;
-      const x1 = reservePanels && stats.width ? stats.left - 14 : rr.right - 18;
-      const y0 = rr.top + (isOverlayPanelLayout() ? 66 : 78);
-      const y1 = Math.min(rr.bottom, carousel && carousel.height ? carousel.top - 14 : rr.bottom - 190);
+      const band = lowerThird.querySelector('.cot-lt-band')?.getBoundingClientRect();
+      const head = lowerThird.querySelector('.cot-lt-head')?.getBoundingClientRect();
+      const docked = !isOverlayPanelLayout();
+      const sideways = !docked && document.body.dataset.cotOrientation === 'landscape';
+      const column = sideways ? lowerThird.getBoundingClientRect() : null;
+      const x0 = rr.left + 18;
+      const x1 = docked && stats.width ? stats.left - 14 : column && column.width ? column.left - 14 : rr.right - 18;
+      const y0 = rr.top + (docked ? 78 : 66);
+      const floor = docked ? band : sideways ? countryRailEl.getBoundingClientRect() : head;
+      const y1 = Math.min(rr.bottom, floor && floor.height ? floor.top - 10
+        : carousel && carousel.height ? carousel.top - 14 : rr.bottom - 190);
       return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
     },
 

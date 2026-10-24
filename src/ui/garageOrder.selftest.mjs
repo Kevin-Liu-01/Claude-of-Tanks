@@ -36,9 +36,41 @@ assert.match(garageSource,
   'selection keeps the focusable vehicle catalog accessibility state synchronized');
 assert.match(garageSource, /t\('garage\.dossier\.shell\.carried', \{ n: shellAmmunitionCapacity\(shell\) \}\)/,
   'the dossier exposes authoritative per-channel ammunition capacity');
+// The 245 redesign: the equipment, the paint and the acts live in the band under the name in every layout; the readout
+// holds the stations' figures and never scrolls; the battle card shows the battlefield it deploys to.
+const showroomSource = await readFile(new URL('./showroom.css', import.meta.url), 'utf8');
+assert.match(garageSource, /loadoutEl\.innerHTML = equipmentSlots\(eqIds\);[\s\S]*?statsEl\.innerHTML =\s*technicalSection\.replace\([^)]*\) \+\s*overviewSection\(/,
+  'the slots render into the band, and the readout opens with the technical drawing and the overview');
+assert.doesNotMatch(garageSource, /cot-loadout-section/, 'the readout carries no second copy of the equipment slots');
 assert.match(garageSource,
-  /technicalSection \+\s*equipmentSection \+\s*`<section class="cot-stat-section cot-performance-section">\$\{statSectionTitle\('speed', t\('garage\.dossier\.section\.performance'\)/,
-  'the persistent equipment loadout appears above primary performance instead of below the dossier fold');
+  /<section class="cot-lower-third"><div class="cot-lt-head"[^`]*`[\s\S]*?<div class="cot-lt-band"><div class="cot-lt-loadout eqrow"[\s\S]*?<div class="cot-lt-paint"[\s\S]*?<div class="cot-lt-acts">/,
+  'the band under the name holds the slots, then the paint, then the acts');
+assert.match(garageSource, /const GARAGE_STATIONS = Object\.freeze\(\[\s*\['overview', 'performance'\], \['firepower', 'gun'\], \['mobility', 'speed'\],\s*\['protection', 'shield'\], \['crew', 'crew'\],\s*\] as const\);/,
+  'the readout has five stations; the paint left them for the band');
+assert.match(garageSource, /\/\^Digit\(\[1-5\]\)\$\//, 'the station keys run 1 to 5');
+assert.match(garageSource, /aria-orientation="horizontal"/, 'the station tabs are one horizontal row');
+assert.match(garageSource, /function fitReadout\(\): void \{[\s\S]*?while \(density < 4 && statsEl\.scrollHeight > statsEl\.clientHeight \+ 1\)/,
+  'the readout steps through its four densities until the station fits');
+assert.match(garageSource, /statsEl\.scrollTop = 0;\s*fitReadout\(\);/, 'a station change refits the readout');
+assert.match(garageSource, /statsEl\.addEventListener\('load', queueReadoutFit, true\);/, 'the technical drawing refits the readout as it loads');
+assert.match(showroomSource, /body\[data-cot-panels='persistent'\]\[data-cot-width\] \.cot-garage \.stats\{[^}]*overflow:hidden;\}/,
+  'the docked readout never scrolls');
+for (const density of ['1', '2', '3', '4']) assert.match(showroomSource, new RegExp(`\\.stats\\[data-density~='${density}'\\]`),
+  `the readout's density ${density} has its rules`);
+assert.match(garageSource, /statsEl\.dataset\.density = density === 1 \? '1' : `\$\{statsEl\.dataset\.density\} \$\{density\}`;/,
+  'each density carries the lighter ones as tokens, so a rule names the lightest density it belongs to');
+assert.match(showroomSource, /\.stats\[data-density~='4'\] :is\(\.cot-stat-section:not\(\.cot-primary\)/, 'the densest readout keeps each station\'s first plate');
+assert.equal((garageSource.match(/cot-stat-section[^"]*cot-primary/g) || []).length, 5, 'each of the five stations marks one first plate');
+assert.match(garageSource, /const floor = docked \? band : sideways \? countryRailEl\.getBoundingClientRect\(\) : head;/,
+  'the stage ends at the band docked, at the fleet on a phone on its side and at the name held upright');
+assert.match(garageSource, /data-deploy-pic aria-hidden="true"/, 'the battle card carries the battlefield picture');
+assert.match(garageSource, /deployPic\.style\.backgroundImage = selected\.id !== 'random' && selected\.thumb \?/,
+  'the battle card draws the battlefield\'s 512 px still, never its 4K hero');
+assert.match(garageSource, /const BAND_PAINT_PICKS: readonly string\[\] = Object\.freeze\(\['factory', 'auto',/,
+  'the band keeps the service coat among its quick paints');
+assert.match(garageSource, /panel && \(isOverlayPanelLayout\(\) \|\| panel === 'appearance'\)/, 'every paint opens on a docked layout too');
+assert.match(garageSource, /button\[data-garage-panel="appearance"\], \.cot-modal-root'\)\) return;\s*setGaragePanel\(''\);\s*\}, true\);/,
+  'a press outside every paint closes it (the root carries the panel attribute too, so only its button is exempt)');
 assert.match(garageSource,
   /<button type="button" class="eqslot"[\s\S]*<button type="button" class="eqslot empty"/,
   'equipment slots must remain native keyboard-operable controls');
@@ -46,8 +78,8 @@ assert.match(garageSource,
   /class="cot-compact-equipment-trigger"[\s\S]*aria-label="\$\{t\('garage\.dossier\.vehicleDossier'\)\}"/,
   'compact dossier affordance labels its selected-tank details action');
 assert.match(garageSource,
-  /target\?\.closest<HTMLButtonElement>\('\.cot-compact-equipment-trigger'\)[\s\S]*const closing = openGaragePanel\(\) === 'equipment'[\s\S]*setGaragePanel\(closing/,
-  'compact equipment affordance opens the selected tank loadout instead of becoming a dead summary icon');
+  /target\?\.closest<HTMLButtonElement>\('\.cot-compact-equipment-trigger, \.cot-overview-more'\)[\s\S]*const closing = openGaragePanel\(\) === 'equipment'[\s\S]*setGaragePanel\(closing/,
+  'the compact dossier affordance and the folded figures\' more button open the selected tank\'s dossier');
 assert.match(garageSource,
   /\.cot-card \.nm\{position:absolute;z-index:3;left:var\(--hc-pad\);right:var\(--hc-pad\);bottom:calc\(var\(--hc-pad\) \* 0\.8\);[^}]*white-space:normal;/,
   'tank titles sit on the card padding as a stable bottom inset and wrap instead of truncating');
