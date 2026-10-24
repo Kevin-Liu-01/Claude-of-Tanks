@@ -253,7 +253,9 @@ const garageSource = readFileSync(new URL('../ui/garage.ts', import.meta.url), '
 assert.match(garageSource, /Promise\.all\(\[import\('\.\.\/vehicles\/vehicleFacets\.ts'\),[^\]]*import\('\.\/fleetStrings\.ts'\)/,
   'the Garage loads the fleet slice with the facet tables it shows');
 for (const module of panelModulesShowingFleet) {
-  const importers = importersOf(module).filter((file) => !panelClosure.has(file) && !file.startsWith('src/gallery/'));
+  // (245) the Field Manual's data-built chapters (src/docs/chapters) run in Node only, at prerender (tools/docs-prerender.mjs):
+  // no page imports them, and their words come from both catalogs whole
+  const importers = importersOf(module).filter((file) => !panelClosure.has(file) && !file.startsWith('src/gallery/') && !file.startsWith('src/docs/chapters/'));
   assert.deepEqual(importers, module === PANEL_ENTRY || module === 'src/vehicles/vehicleFacets.ts' ? ['src/ui/garage.ts'] : [],
     `${module} shows the fleet slice; its importers outside the panel load it without the slice: ${importers.join(', ')}`);
   assert.ok(!gameClosure.has(module), `the game statically loads ${module}: ${importChain(gameClosure, module)}`);
