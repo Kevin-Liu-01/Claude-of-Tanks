@@ -168,7 +168,7 @@ import {
 } from './game/garagePresentationPose.ts';
 import { createGaragePedestalRuntime } from './game/garagePedestalRuntime.ts';
 import { createGarageModePreviewRuntime, prepareGarageModePrograms } from './app/garageModePreviewRuntime.ts';
-import { clearJuggernautVisual, prepareGarageTankEnergyVisual } from './game/juggernautVisual.ts';
+import { parkGarageTankEnergyVisual, prepareGarageTankEnergyVisual } from './game/juggernautVisual.ts';
 import { createGarageShowroomRuntime } from './game/garageShowroomRuntime.ts';
 import { createGarageIdleWorkCoordinator } from './game/garageIdleWorkCoordinator.ts';
 import { createGarageReturnAccess } from './game/garageReturnAccess.ts';
@@ -1075,7 +1075,7 @@ const pedestal = createGaragePedestalRuntime({
     prepareGarageTankEnergyVisual(visual.root, getSpec(visual.specId).dims);
   },
   // (the time-to-battle lane, 2026-10-08) the dormant skin ends where the hero becomes the battle's, on every entry path
-  releaseVisual: (visual) => clearJuggernautVisual(visual.root, true),
+  releaseVisual: (visual) => parkGarageTankEnergyVisual(visual.root),
   compilePrograms: (root) => forwardProgramWarm.compile(root),
   // FSP-01: strict first-use preparation (submission, readiness polling,
   // uniform reflection) of the parked hero's forward programs against the
@@ -1373,8 +1373,10 @@ const playSurface = createPlaySurfaceRuntime({
 // and solo all dismiss the operation picker before the next painted frame.
 bus.on('ui:battleStart', () => {
   sceneWatchdogEntryGeneration++;
+  // transitions-249: the hero's dormant Garage skin is parked (off its meshes, kept with its programs for the return's
+  // adoption), before the mode preview's clear, which leaves a parked skin alone
+  if(pedestal.current)parkGarageTankEnergyVisual(pedestal.current.root);
   garageModePreview.clear();
-  if(pedestal.current)clearJuggernautVisual(pedestal.current.root);
   coveredBattleWatchdog = null;
   playSurface.hideForBattle();
 });
