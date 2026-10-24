@@ -2,9 +2,16 @@ import type { RuntimeValue } from '../runtimeTypes.ts';
 import { t } from '../ui/i18n.ts';
 import { createInfoButton } from '../ui/contextInfo.ts';
 import type { InfoButton } from '../ui/contextInfo.ts';
+import { icon } from '../ui/icons/icon.ts';
 import { loadCaptureRecipes, recipeForMedia } from './captureRecipes.ts';
 
 const MANIFEST_URL = '/media/site50-r14/archive.json';
+/** The manifest's feature names in filter order; each is worded by mediaArchive.feature.<camelCase>, others show as written. */
+const FEATURES = ['all', 'studio direction', 'interface', 'killcam', 'gunnery', 'destruction', 'armor impacts', 'track physics', 'world system', 'tank design', 'battlefield atmosphere'];
+const featureLabel = (feature: string): string => {
+  const name = feature.trim().toLowerCase();
+  return FEATURES.includes(name) ? t('mediaArchive.feature.' + name.replace(/ (\w)/g, (_, c: string) => c.toUpperCase())) : feature;
+};
 interface PresentationShot {
   src: string;
   previewSrc?: string;
@@ -55,7 +62,7 @@ function ensureLightbox(): HTMLDialogElement {
   if (dialog) return dialog;
   dialog = document.createElement('dialog');
   dialog.className = 'media-lightbox';
-  dialog.innerHTML = `<figure><img alt=""><figcaption><div><span></span><strong></strong><small></small></div><button type="button" aria-label="${t('mediaArchive.lightbox.closeAria')}">×</button></figcaption></figure>`;
+  dialog.innerHTML = `<figure><img alt=""><figcaption><div><span></span><strong></strong><small></small></div><button type="button" aria-label="${t('mediaArchive.lightbox.closeAria')}">${icon('close', { size: 20 })}</button></figcaption></figure>`;
   const closeButton = dialog.querySelector<HTMLButtonElement>('button');
   if (!closeButton) throw new Error('media lightbox close control is unavailable');
   closeButton.addEventListener('click', () => dialog.close());
@@ -73,9 +80,9 @@ function openShot(shot: PresentationShot): void {
   if (!image || !feature || !title || !effects) throw new Error('media lightbox is incomplete');
   image.src = shot.src;
   image.alt = shot.alt;
-  feature.textContent = `${shot.feature} // ${shot.map}`;
+  feature.textContent = `${featureLabel(shot.feature)} // ${shot.map}`;
   title.textContent = shot.title;
-  effects.textContent = shot.effects?.length ? shot.effects.join(' · ').replaceAll('_', ' ') : 'Game-rendered capture';
+  effects.textContent = shot.effects?.length ? shot.effects.join(' · ').replaceAll('_', ' ') : t('mediaArchive.lightbox.fallbackCaption');
   dialog.showModal();
 }
 
@@ -93,7 +100,7 @@ function shotCard(shot: PresentationShot, index: number, recipe: RuntimeValue): 
   image.decoding = 'async';
   const copy = document.createElement('span');
   copy.className = 'media-archive-card-copy';
-  copy.innerHTML = `<span><span>${shot.feature}</span><strong>${shot.title}</strong></span><small>${shot.map}</small>`;
+  copy.innerHTML = `<span><span>${featureLabel(shot.feature)}</span><strong>${shot.title}</strong></span><small>${shot.map}</small>`;
   const count = document.createElement('span');
   count.className = 'media-archive-card-index';
   count.textContent = String(shot.sequence || index + 1).padStart(2, '0');
@@ -110,7 +117,7 @@ function shotCard(shot: PresentationShot, index: number, recipe: RuntimeValue): 
       image: {
         src: shot.src,
         fit: 'contain',
-        alt: shot.alt || `${shot.title} game-rendered frame`,
+        alt: shot.alt || t('mediaArchive.recipe.fallbackAlt', { title: shot.title }),
         caption: `${shot.title} // ${shot.map}`,
       },
     }));
@@ -159,19 +166,21 @@ export async function mountMediaArchive(
   const grid = document.createElement('div');
   grid.className = 'media-archive-grid';
 
-  const featureOrder = ['all', 'studio direction', 'interface', 'killcam', 'gunnery', 'destruction', 'armor impacts', 'track physics', 'world system', 'tank design', 'battlefield atmosphere'];
   const available = new Set(source.map((shot) => normalize(shot.feature)));
-  const features = featureOrder.filter((feature) => feature === 'all' || available.has(feature));
+  const features = FEATURES.filter((feature) => feature === 'all' || available.has(feature));
   function render(): void {
     grid.querySelectorAll<InfoButton>('.cot-info-trigger').forEach((button) => button.disposeInfo());
     const filtered = source.filter((shot) => active === 'all' || normalize(shot.feature) === active).slice(0, limit);
     const visible = filtered.slice(0, visibleLimit);
     grid.replaceChildren(...visible.map((shot, index) =>
       shotCard(shot, index, recipeForMedia(recipes, shot.src))));
-    count.value = `${String(visible.length).padStart(2, '0')} / ${String(filtered.length).padStart(2, '0')} frames`;
+    count.value = t('mediaArchive.count', {
+      shown: String(visible.length).padStart(2, '0'),
+      total: String(filtered.length).padStart(2, '0'),
+    });
     const remaining = filtered.length - visible.length;
     loadMore.hidden = remaining <= 0;
-    loadMore.textContent = remaining > 0 ? `Load ${Math.min(pageSize, remaining)} more` : '';
+    loadMore.textContent = remaining > 0 ? t('mediaArchive.loadMore', { count: Math.min(pageSize, remaining) }) : '';
     filters.querySelectorAll('button').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.feature === active)));
   }
   if (options.filters !== false) {
@@ -180,7 +189,7 @@ export async function mountMediaArchive(
       button.type = 'button';
       button.className = 'media-archive-filter';
       button.dataset.feature = feature;
-      button.textContent = feature;
+      button.textContent = featureLabel(feature);
       button.setAttribute('aria-pressed', String(feature === active));
       button.addEventListener('click', () => { active = feature; visibleLimit = Math.min(pageSize, limit); render(); });
       filters.appendChild(button);

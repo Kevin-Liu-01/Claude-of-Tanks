@@ -74,9 +74,9 @@ const pageText = [
   'docs/GALLERY.md', 'docs/HOW-IT-WORKS.md', 'docs/INDEX.md',
   'docs/FEATURES.md', 'docs/STUDIO.md',
 ].map((file) => readFileSync(join(ROOT, file), 'utf8')).join('\n');
-for (const keptFamily of [
-  '/media/presentation-r1/ui_', '/media/feature-evidence-r2/', '/media/multiplayer-r1/', '/media/site50-r14/',
-]) {
+// S12 (2026-10-24): the post-overhaul interface captures (public/media/ui-246) took over from presentation-r1's ui_*
+// frames, showcase-r2's interface frames 11-25 and multiplayer-r1's dual view
+for (const keptFamily of ['/media/feature-evidence-r2/', '/media/site50-r14/', '/media/ui-246/']) {
   assert.ok(pageText.includes(keptFamily), `media family must remain in use: ${keptFamily}`);
 }
 // the gameplay families the site fifty replaced stay off the public surfaces (docs/ may record their history)
@@ -86,11 +86,10 @@ for (const retiredFamily of ['/media/showcase-r1/', '/media/featured/', '/media/
   '/media/battle-reels-v3/', '/media/feature-loops-r1/', '/media/director-r4/']) {
   assert.ok(!publicText.includes(retiredFamily), `retired gameplay media must not return to the public surfaces: ${retiredFamily}`);
 }
-assert.doesNotMatch(publicText, /\/media\/presentation-r1\/(?!ui_)/, 'only the interface captures remain from presentation-r1');
-assert.ok(pageText.includes('/media/multiplayer-r1/dual-perspective.webp'),
-  'the original dual-client multiplayer image must remain in use');
-assert.ok(!pageText.includes('/media/showcase-r2/18_live_spectator.webp'),
-  'the replaced spectator frame must not remain on public pages');
-assert.ok(pageText.includes('/media/showcase-r2/'), 'current UI frames must remain in use');
+assert.doesNotMatch(publicText, /\/media\/presentation-r1\//, 'presentation-r1 is off the public surfaces');
+assert.doesNotMatch(publicText, /\/media\/(?:showcase-r2\/(?:1[1-9]|2[0-5])_|multiplayer-r1\/)/,
+  'the pre-overhaul interface frames are off the public surfaces');
+assert.ok(publicText.includes('/media/ui-246/multiplayer-pair.webp'), 'the dual-client multiplayer view is the ui-246 pair');
+assert.ok(pageText.includes('/media/showcase-r2/'), 'the Garage frames remain in use');
 
-console.log('showcase-r2 selftest: ok (22 UI frames, the site fifty archive, kept interface and multiplayer libraries)');
+console.log('showcase-r2 selftest: ok (22 UI frames, the site fifty archive, the ui-246 interface set)');

@@ -210,12 +210,29 @@ The default local URL is usually http://localhost:5173.
 | --- | --- |
 | / | Game boot and garage |
 | /home | Public visual showcase |
-| /docs | Public technical field manual |
+| /docs | The Field Manual's index; `/docs/<chapter>` its fifteen prerendered chapters |
 | /studio | Scene Studio entry |
 | /gallery | Tank Gallery, diagnostics, and surface markup |
 
 The home and docs routes are separate Vite entries. They must remain able to
-load without preloading the game module graph.
+load without preloading the game module graph. Each route has a `/cn` twin built
+from the same entry (`src/presentation/localizedHtml.ts`); the retired manual
+chapters (vehicles, worlds, interface, performance) answer 308 to their successors.
+
+### Generated parts of the public pages
+
+Four generators own parts of the public HTML. Each checks by default (exit 1
+naming what is stale) and rewrites with `--write`; commit what they write.
+
+| Generator | Writes |
+| --- | --- |
+| `node tools/docs-prerender.mjs` | each chapter's `<main id="topicRoot">` (`site/docs-*.html`), the Chinese chapters (`src/docs/topicPrerender.zh-CN.json`), the search indexes (`src/docs/searchIndex.*.json`), the index's chapter map (`site/docs.html`) |
+| `node tools/home-premiere.mjs` | the landing's `<!--home:NAME-->` blocks and `src/presentation/fleetWall.json` |
+| `node tools/public-shell.mjs` | the bar, footer and inline symbol block of every public entry (run it after the landing's generator) |
+| `node tools/gen-tokens.mjs` | `src/ui/tokens/tokens.css`, `tokens.ts`, `tokenSelection.ts` and the per-surface token sheets from `tokens.json` |
+
+Run the prerender after any change to a chapter, its copy or a game table a
+chapter reads (the data-built chapters quote the code; `src/docs/SKILL.md`).
 
 `vercel.json` publishes them with pattern rewrites (`/docs/:topic(...)` →
 `/docs-:topic.html` and the `/cn` twins; the topic list matches
@@ -1179,6 +1196,17 @@ Encode the deployable set and manifest:
 The checked-in scene JSON is the source. Deployable WebP images are output, not
 hand-edited inputs.
 
+The public pages take their media through one wiring step: the picks
+(`tools/media-r5/site-media/picks.json`) build `public/media/site50-r14`
+(`site-media.mjs`), and `node tools/media-r5/site-media-wire.mjs --root=<tree>`
+rewrites every block that shows them (the manual's hero loops, reels and figures,
+the game's featured stills, the catalog copy in both locales), each rewrite matching
+its block exactly once or writing nothing. The Field Manual's own screens are
+`public/media/docs-r1` (its `manifest.json`). Every referenced collection must be a
+current round in `tools/media-freshness.selftest.mjs` (a retiring one passes only
+until its replacement lands), and `tools/media-r5/site-video-budget.selftest.mjs`
+holds the loops' rungs and pre-scroll bytes.
+
 Generate and validate the 60-frame 4K battle campaign:
 
     npm run shots:battle:generate
@@ -1218,7 +1246,9 @@ verification.
 Current documentation has three layers:
 
 1. README.md: public technical overview.
-2. docs.html and FEATURES.md: public field manual and feature evidence.
+2. The Field Manual (`src/docs`: `topics.ts`, the data-built chapters in
+   `src/docs/chapters`, prerendered by `tools/docs-prerender.mjs`) and
+   FEATURES.md: the public manual and feature evidence.
 3. SYSTEMS.md plus subsystem guides: internal architecture and operations.
 
 Update the nearest authoritative document when behavior changes. Do not add

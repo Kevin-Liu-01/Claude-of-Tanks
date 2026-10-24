@@ -1,4 +1,5 @@
 import { getLocale, onLocaleChange, t } from '../ui/i18n.ts';
+import { icon } from '../ui/icons/icon.ts';
 
 // The media library: every finished picture of the media rounds' current takes (library-r3, 2026-10-21: r2's one final
 // a subject left out "so many pictures"; r1's 11,215, every render, review sheet and candidate, were "way too much"),
@@ -95,10 +96,10 @@ function createViewer(): Viewer {
   dialog.setAttribute('aria-label', t('mediaLibrary.viewerAria'));
   dialog.innerHTML = `<figure><div class="media-library-stage"><img alt=""><p class="media-library-wait" hidden></p></div>`
     + `<figcaption><div><strong data-library-name></strong><p data-library-about></p></div>`
-    + `<div class="media-library-controls"><button type="button" data-library-step="-1" aria-label="${t('mediaLibrary.previousAria')}">‹</button>`
+    + `<div class="media-library-controls"><button type="button" data-library-step="-1" aria-label="${t('mediaLibrary.previousAria')}">${icon('chevronLeft', { size: 20 })}</button>`
     + `<output data-library-position></output>`
-    + `<button type="button" data-library-step="1" aria-label="${t('mediaLibrary.nextAria')}">›</button>`
-    + `<button type="button" data-library-close aria-label="${t('mediaLibrary.closeAria')}">×</button></div></figcaption></figure>`;
+    + `<button type="button" data-library-step="1" aria-label="${t('mediaLibrary.nextAria')}">${icon('chevronRight', { size: 20 })}</button>`
+    + `<button type="button" data-library-close aria-label="${t('mediaLibrary.closeAria')}">${icon('close', { size: 20 })}</button></div></figcaption></figure>`;
   document.body.appendChild(dialog);
   const image = dialog.querySelector<HTMLImageElement>('img')!;
   const wait = dialog.querySelector<HTMLElement>('.media-library-wait')!;
