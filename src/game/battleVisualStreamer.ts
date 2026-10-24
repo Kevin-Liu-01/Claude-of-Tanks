@@ -112,11 +112,6 @@ export interface BattleVisualStreamerOptions<TGame extends { tanks: BattleVisual
   ): Promise<RuntimeValue>;
   armorAimOverlay: ArmorAimWarmOwner<TGame['tanks'][number]>;
   forwardProgramWarm: ForwardCompileOwner;
-  /**
-   * One real private draw of a staged root after its compile (mode-sheen-perf-243): the first draw's GPU work (the
-   * driver's pipelines, the buffers) happens at the staging, not on the frame an unseen enemy is first sighted.
-   */
-  warmDraw?: (root: Object3D) => void;
   onVisualReady?: (entity: TGame['tanks'][number]) => void;
   recordTiming?: (timing: VisualLoadTiming) => void;
   now?: () => number;
@@ -216,7 +211,6 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
   prebakeSharedTextures,
   armorAimOverlay,
   forwardProgramWarm,
-  warmDraw,
   onVisualReady,
   recordTiming = () => {},
   now = () => performance.now(),
@@ -280,10 +274,7 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     armorAimOverlay.prime(entity);
     const restoreArmorWarmVisibility = armorAimOverlay.warm();
     try {
-      if (options.compilePrograms !== false) {
-        forwardProgramWarm.compile(root);
-        warmDraw?.(root);
-      }
+      if (options.compilePrograms !== false) forwardProgramWarm.compile(root);
     } catch { /* first render fallback */ }
     finally { restoreArmorWarmVisibility(); }
     const compileMs = options.compilePrograms === false ? 0 : Math.round(now() - compileAt);

@@ -81,15 +81,6 @@ const isolated = [...createIsolatedForwardWarmBatches({
 })];
 assert.deepEqual(isolated.map((batch) => batch.objects), [2, 2, 2, 1]);
 assert.equal(isolatedCalls, 4);
-// (mode-sheen-perf-243) a warm between live frames names the cascade lights: no map refreshes for its private draw
-const latch = { autoUpdate: true, needsUpdate: true };
-let guarded = 0;
-for (const _batch of createIsolatedForwardWarmBatches({
-  scene, root: player, cohortSize: Infinity, shadowLights: [{ shadow: latch }],
-  warmRender() { guarded += 1; assert.deepEqual(latch, { autoUpdate: false, needsUpdate: false }, 'the cascades hold during the draw'); },
-})) { /* drain */ }
-assert.equal(guarded, 1);
-assert.deepEqual(latch, { autoUpdate: true, needsUpdate: true }, 'and their latches come back after it');
 assert.equal(world.visible, true);
 assert.equal(player.visible, true);
 

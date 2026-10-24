@@ -1967,13 +1967,7 @@ const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameStat
   recordTiming(timing) {
     if (typeof window !== 'undefined') (window.__VISUAL_LOAD_TIMINGS ||= []).push(timing);
   },
-  // (mode-sheen-perf-243) the mode's energy skin goes on before the staging's burn hook and program compile, and the
-  // staged root takes one real private draw: a hidden enemy's first sight (the Juggernaut boss) no longer pays it
-  warmDraw: (root) => {
-    for (const _batch of createIsolatedForwardWarmBatches({
-      scene, root, warmRender, cohortSize: Infinity, shadowLights: lighting.csm?.lights,
-    })) { /* drain */ }
-  },
+  // (mode-sheen-perf-243) the mode's energy skin goes on before the staging's burn hook and program compile
   onVisualReady: (entity) => { nightLighting.appendEntity(entity); battlePresentation.prepareModeEnergy(entity); },
 });
 let battleVisuals: BattleVisualStreamer<MainEntity> | null = null;
