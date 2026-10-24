@@ -27,7 +27,7 @@ export const WATCH_DRONE = Object.freeze({
   speeds: Object.freeze([4, 8, 14, 24, 40, 64]),
   speedIndex: 2,
   boostScale: 3,
-  climbScale: 0.8,
+  climbScale: 1,
   /** Velocity ease toward the stick (s): a quick start, a longer glide out. */
   accelTauS: 0.28,
   brakeTauS: 0.45,
@@ -48,8 +48,9 @@ export const WATCH_DRONE = Object.freeze({
   radiusM: 0.8,
   fovDeg: 70,
   boostFovDeg: 78,
-  /** Bank into a strafe (rad per m/s of lateral speed, capped). */
+  /** Bank into a strafe (rad per m/s of lateral speed) and into a turn (rad per rad/s of yaw), capped. */
   bankPerMps: 0.006,
+  bankPerRadS: 0.07,
   bankMax: 0.09,
   /** Leaving a tank: the drone lifts and backs off from the chase pose. */
   liftOffUpMps: 5,
@@ -64,6 +65,8 @@ export const WATCH_RIDE = Object.freeze({
   pivotAboveTurretM: 1.0,
   pivotTauS: 0.1,
   distTauS: 0.15,
+  /** The chase looks this much further down than the gunner's lay: the camera rides over the hull, out of the grass. */
+  chasePitchBiasRad: THREE.MathUtils.degToRad(8),
   /** The view follows the gunner's lay (its aim point) at this ease; the sight follows tighter. */
   aimTauS: 0.18,
   sightTauS: 0.1,
@@ -87,8 +90,10 @@ export const WATCH_BLEND = Object.freeze({
   baseS: 0.82,
   metersPerS: 190,
   /** Long hops arc over the ground: up to this lift, a share of the hop's length. */
-  arcMaxM: 45,
-  arcShare: 0.16,
+  arcMaxM: 35,
+  arcShare: 0.12,
+  /** The lens turns from where it looked to the new subject over this first share of the move, then holds it. */
+  lookLeadShare: 0.55,
 });
 
 export interface WatchCameraInput {
@@ -121,6 +126,8 @@ export interface WatchCamera {
   readonly orbitStep: number;
   readonly speedIndex: number;
   readonly blending: boolean;
+  /** The handover's progress, 0..1 (1 when no blend runs): the HUD changes subject at its midpoint. */
+  readonly blendProgress: number;
   /** The drone's integrated position (the receipts read the clamp from it). */
   readonly dronePosition: THREE.Vector3;
   readonly droneVelocity: THREE.Vector3;
@@ -173,7 +180,7 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
   // --- drone state ---
   const dronePos = new THREE.Vector3();
   const droneVel = new THREE.Vector3();
-  let droneYaw = 0, droneYawT = 0, dronePitch = 0, dronePitchT = 0, droneRoll = 0;
+  let droneYaw = 0, droneYawT = 0, dronePitch = 0, dronePitchT = 0, droneRoll = 0, prevYaw = 0;
   let droneFov: number = WATCH_DRONE.fovDeg;
   let speedIndex: number = WATCH_DRONE.speedIndex;
 
@@ -231,9 +238,20 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
     const k = u * u * u * (u * (u * 6 - 15) + 10); // smootherstep
     _desired.lerpVectors(fromPos, _desired, k);
     _desired.y += Math.sin(Math.PI * k) * blendArcM;
-    _look.lerpVectors(fromLook, _look, k);
     const floor = heightField.getHeightAt(_desired.x, _desired.z) + WATCH_RIDE.minClearanceM;
     if (_desired.y < floor) _desired.y = floor;
+    // the look is a direction, not a point: it turns from the old facing onto the subject early in the move and then
+    // keeps the subject in view from wherever the arc carries the lens (a blended look point would sink under it)
+    const v = Math.min(1, u / WATCH_BLEND.lookLeadShare);
+    const kl = v * v * v * (v * (v * 6 - 15) + 10);
+    _aim.copy(fromLook).sub(fromPos).normalize();
+    _viewDir.copy(_look).sub(_desired);
+    const toLen = _viewDir.length();
+    if (toLen > 1e-4) _viewDir.multiplyScalar(1 / toLen);
+    else _viewDir.copy(_aim);
+    _aim.lerp(_viewDir, kl);
+    if (_aim.lengthSq() < 0.01) _aim.copy(_viewDir);
+    _look.copy(_desired).addScaledVector(_aim.normalize(), Math.max(14, toLen));
     return fromFov + (fov - fromFov) * k;
   }
 
@@ -306,7 +324,10 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
 
     // bank into the lateral speed, and widen the lens a touch under boost
     const lateral = droneVel.x * rx + droneVel.z * rz;
-    const bankT = THREE.MathUtils.clamp(-lateral * WATCH_DRONE.bankPerMps, -WATCH_DRONE.bankMax, WATCH_DRONE.bankMax) * A11Y.shake;
+    const yawRate = dt > 0 ? wrapPi(droneYaw - prevYaw) / dt : 0;
+    prevYaw = droneYaw;
+    const bankT = THREE.MathUtils.clamp(-lateral * WATCH_DRONE.bankPerMps + yawRate * WATCH_DRONE.bankPerRadS,
+      -WATCH_DRONE.bankMax, WATCH_DRONE.bankMax) * A11Y.shake;
     droneRoll += (bankT - droneRoll) * ease(dt, 0.25);
     const fovT = input.boost && stick ? WATCH_DRONE.boostFovDeg : WATCH_DRONE.fovDeg;
     droneFov += (fovT - droneFov) * ease(dt, 0.3);
@@ -321,7 +342,7 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
   function adoptCameraPose(): void {
     dronePos.copy(camera.position);
     camera.getWorldDirection(_viewDir);
-    droneYaw = droneYawT = Math.atan2(_viewDir.x, _viewDir.z);
+    droneYaw = droneYawT = prevYaw = Math.atan2(_viewDir.x, _viewDir.z);
     dronePitch = dronePitchT = THREE.MathUtils.clamp(Math.asin(THREE.MathUtils.clamp(_viewDir.y, -1, 1)),
       WATCH_DRONE.pitchMin, WATCH_DRONE.pitchMax);
     droneRoll = 0;
@@ -422,7 +443,8 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
       aimYaw += wrapPi(lay.yaw - aimYaw) * k;
       aimPitch += (lay.pitch - aimPitch) * k;
     }
-    const viewPitch = THREE.MathUtils.clamp(aimPitch + lookPitch, WATCH_RIDE.pitchMin, WATCH_RIDE.pitchMax);
+    const viewPitch = THREE.MathUtils.clamp(aimPitch + lookPitch - WATCH_RIDE.chasePitchBiasRad,
+      WATCH_RIDE.pitchMin, WATCH_RIDE.pitchMax);
     dirFromAngles(aimYaw + lookYaw, viewPitch, _viewDir);
     _desired.copy(pivot).addScaledVector(_viewDir, -dist);
     _rayDir.copy(_desired).sub(pivot);
@@ -480,6 +502,7 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
     get orbitStep() { return orbitIndex; },
     get speedIndex() { return speedIndex; },
     get blending() { return blendT < blendDur; },
+    get blendProgress() { return blendDur > 0 && blendT < blendDur ? blendT / blendDur : 1; },
     get dronePosition() { return dronePos; },
     get droneVelocity() { return droneVel; },
 
@@ -507,7 +530,7 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
       blendT = blendDur = 0;
       dronePos.copy(position);
       droneVel.set(0, 0, 0);
-      droneYaw = droneYawT = yaw;
+      droneYaw = droneYawT = prevYaw = yaw;
       dronePitch = dronePitchT = THREE.MathUtils.clamp(pitch, WATCH_DRONE.pitchMin, WATCH_DRONE.pitchMax);
       droneRoll = 0;
       droneFov = WATCH_DRONE.fovDeg;

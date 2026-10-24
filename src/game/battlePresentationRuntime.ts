@@ -244,6 +244,8 @@ export function createBattlePresentationRuntime({
       visual.setVisible(actorVisible);
       return actorVisible;
     }
+    // a hull this owner detached while unspotted (the reveal's countdown) is attached again once the watcher sees all
+    if (watchRevealsAll(game)) setVisualResident(visual, true);
     if (!entity.isPlayer) visual.setVisible(true);
     return true;
   };

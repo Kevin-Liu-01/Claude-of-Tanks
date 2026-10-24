@@ -158,9 +158,17 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
     return null;
   };
   const rideTarget = (): TEntity | null => (watchCamera.mode === 'ride' ? watchCamera.target as TEntity | null : null);
+  /** The ridden hull the HUD and bar show: the camera's subject once its handover is half done (the view leads). */
+  let shown: TEntity | null = null;
+  const updateShown = (): void => {
+    const target = rideTarget();
+    if (!target) { shown = null; return; }
+    if (target !== shown && watchCamera.blendProgress >= 0.5) shown = target;
+  };
 
   function emitChange(): void {
-    const target = driving ?? rideTarget();
+    updateShown();
+    const target = driving ?? shown;
     const view = api.view, id = target?.id ?? null, sight = watchCamera.sight, canTake = api.canTake;
     if (view === announced.view && id === announced.id && sight === announced.sight && canTake === announced.canTake) return;
     announced.view = view;
@@ -241,7 +249,8 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
 
   function take(): void {
     const target = rideTarget();
-    if (!watching() || !target || watchSeatRefusal(game, target) !== null) return;
+    // a seat is taken only once its ride-along is on screen (past the handover's midpoint)
+    if (!watching() || !target || target !== shown || watchSeatRefusal(game, target) !== null) return;
     const sight = watchCamera.sight;
     const zoom = watchCamera.zoom;
     const step = watchCamera.orbitStep;
@@ -406,15 +415,15 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
     get view(): WatchView {
       if (!live) return 'off';
       if (driving) return 'drive';
-      return watchCamera.mode === 'ride' ? 'ride' : 'drone';
+      return shown ? 'ride' : 'drone';
     },
-    get focusId() { return driving?.id ?? rideTarget()?.id ?? null; },
+    get focusId() { return driving?.id ?? shown?.id ?? null; },
     get sight() { return watchCamera.sight; },
     get zoom() { return watchCamera.zoom; },
     get speedIndex() { return watchCamera.speedIndex; },
     get canTake() {
       const target = rideTarget();
-      return watching() && !!target && watchSeatRefusal(game, target) === null;
+      return watching() && !!target && target === shown && watchSeatRefusal(game, target) === null;
     },
     setClimb(direction) {
       // the rail presses the keyboard's own actions: one hold, one Accessibility choice
@@ -488,6 +497,7 @@ export function createWatchController<TEntity extends WatchEntity>(options: Watc
     stop(): void {
       if (driving) leaveWatchSeat(game);
       driving = null;
+      shown = null;
       // the ledger ends with the battle: nothing after it (a room, the next sortie) reads a stale watch
       game.watch = null;
       live = false;

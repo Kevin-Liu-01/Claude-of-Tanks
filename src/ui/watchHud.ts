@@ -102,6 +102,13 @@ html[data-watch=drone] body[data-cot-battle-layout][data-cot-width][data-cot-hei
  .cot-watch .who .cot-c-sil{width:44px}
  .cot-watch .wb.seat{min-width:48px}.cot-watch .wb.seat .label{display:none}
 }
+/* a short landscape phone: riding and driving, a slimmer bar tucked under the score keeps the horizon clear */
+@media(max-height:500px){
+ html:is([data-watch=ride],[data-watch=drive]) .cot-watch{top:calc(var(--inset-top) + 40px)}
+ .cot-watch .who,.cot-watch .wb{height:38px}.cot-watch .wb{min-width:38px;padding:0 var(--s2)}
+ .cot-watch .who{width:240px;grid-template-columns:auto 40px minmax(0,1fr)}.cot-watch .who .cot-c-sil{width:40px;height:16px}
+ .cot-watch .who b{font-size:var(--fs-14)}.cot-watch .wb.seat{min-width:96px}
+}
 @media(prefers-reduced-motion:reduce){.cot-watch .wb{transition:none}}
 `;
 

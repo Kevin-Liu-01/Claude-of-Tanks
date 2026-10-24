@@ -166,13 +166,25 @@ function tank(x, z) {
   watch.update(DT, idle());
   assert.equal(a.visual.root.visible, true, 'hull shown again');
 
-  // tank to tank: a blend from the first chase
+  // tank to tank: a blend from the first chase; the lens turns onto the new tank and never stares at the ground under it
   const b = tank(60, -120);
   const before = camera.position.clone();
   watch.ride(b);
   watch.update(DT, idle());
   assert.ok(camera.position.distanceTo(before) < 2, 'tank-to-tank opens on the old chase');
-  for (let i = 0; i < 200; i++) watch.update(DT, idle());
+  const look = new Vector3(), toB = new Vector3();
+  let steepest = 1, lastFacing = -1;
+  for (let i = 0; i < 200; i++) {
+    watch.update(DT, idle());
+    camera.getWorldDirection(look);
+    steepest = Math.min(steepest, look.y);
+    if (watch.blendProgress > 0.6 && watch.blending) {
+      toB.copy(b.state.pos).sub(camera.position).normalize();
+      lastFacing = look.dot(toB);
+    }
+  }
+  assert.ok(steepest > -0.75, `the hop never looks straight down (steepest look ${steepest.toFixed(2)})`);
+  assert.ok(lastFacing > 0.85, `past the lead the lens faces the new tank (${lastFacing.toFixed(2)})`);
   assert.equal(watch.target, b);
 
   // the wreck hold: the sight closes, the camera orbits the wreck

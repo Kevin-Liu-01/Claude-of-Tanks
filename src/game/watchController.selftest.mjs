@@ -83,7 +83,8 @@ const byId = (tanks, id) => tanks.find((tank) => tank.id === id);
 
 // --- the reveal, the open, picking and cycling ------------------------------------------------------------------------
 {
-  const { game, tanks, camera, controller } = setup();
+  const { game, tanks, camera, watchCamera, controller } = setup();
+  const subject = () => watchCamera.target?.id ?? null;
   assert.equal(controller.prepareReveal(), true, 'a watched battle places the drone before the reveal');
   assert.deepEqual(camera.position.toArray(), [0, 60, -250], 'on its opening frame');
   assert.equal(controller.frame(DT), true, 'before the battle opens the drone holds the frame (the rig stays out)');
@@ -95,16 +96,22 @@ const byId = (tanks, id) => tanks.find((tank) => tank.id === id);
   camera.lookAt(0, 2, 100);
   camera.updateMatrixWorld(true);
   assert.equal(controller.rideAt(0, 0), true, 'a click on a tank rides it');
-  assert.equal(controller.focusId, 'foe', 'the tank under the sight');
+  assert.equal(subject(), 'foe', 'the tank under the sight');
+  assert.equal(controller.focusId, null, 'the HUD keeps the drone until the handover is half done');
+  assert.equal(controller.view, 'drone');
+  while (watchCamera.blendProgress < 0.5) controller.frame(DT);
+  controller.frame(DT);
+  assert.equal(controller.focusId, 'foe', 'then it is the ridden tank\'s');
+  assert.equal(controller.view, 'ride');
   assert.equal(controller.rideAt(0.98, 0.98), false, 'empty ground picks nothing');
   key('Tab');
-  assert.equal(controller.focusId, 'foe2', 'Tab cycles in roster order');
+  assert.equal(subject(), 'foe2', 'Tab cycles in roster order');
   key('Tab', { shiftKey: true });
-  assert.equal(controller.focusId, 'foe', 'Shift+Tab steps back');
+  assert.equal(subject(), 'foe', 'Shift+Tab steps back');
   key('KeyQ');
-  assert.equal(controller.focusId, 'ally', 'Q steps back while riding');
+  assert.equal(subject(), 'ally', 'Q steps back while riding');
   key('KeyE');
-  assert.equal(controller.focusId, 'foe');
+  assert.equal(subject(), 'foe');
   key('KeyV');
   assert.equal(controller.view, 'drone', 'V flies off again');
   controller.stop();
@@ -129,25 +136,30 @@ const byId = (tanks, id) => tanks.find((tank) => tank.id === id);
 
 // --- the ride-along's handoff on death ----------------------------------------------------------------------------------
 {
-  const { tanks, bus, controller } = setup();
+  const { tanks, bus, watchCamera, controller } = setup();
+  const subject = () => watchCamera.target?.id ?? null;
   controller.prepareReveal();
   controller.open();
   controller.rideId('foe');
-  run(controller, 1);
+  run(controller, 3);
   byId(tanks, 'foe').combat.destroyed = true;
   bus.emit('tank:destroyed', { id: 'foe', killerId: 'ally', cause: 'shot' });
   run(controller, WATCH_RULES.deathHoldS - 0.2);
-  assert.equal(controller.focusId, 'foe', 'the wreck is held a beat');
+  assert.equal(subject(), 'foe', 'the wreck is held a beat');
+  assert.equal(controller.focusId, 'foe', 'with the wreck\'s HUD');
   run(controller, 0.4);
-  assert.equal(controller.focusId, 'ally', 'then the camera rides on with its killer');
+  assert.equal(subject(), 'ally', 'then the camera rides on with its killer');
   assert.equal(controller.view, 'ride');
+  run(controller, 3);
+  assert.equal(controller.focusId, 'ally', 'and the HUD is the killer\'s once the camera is there');
 
   // a fire or a crash names the hull itself: the last hull that hit it is the killer
   bus.emit('shell:hit', { attackerId: 'foe2', targetId: 'ally' });
   byId(tanks, 'ally').combat.destroyed = true;
   bus.emit('tank:destroyed', { id: 'ally', killerId: 'ally', cause: 'fire' });
   run(controller, WATCH_RULES.deathHoldS + 0.2);
-  assert.equal(controller.focusId, 'foe2', 'a burn-out credits the last attacker');
+  assert.equal(subject(), 'foe2', 'a burn-out credits the last attacker');
+  run(controller, 3);
 
   // a killer already dead: the drone lifts off the wreck
   byId(tanks, 'foe2').combat.destroyed = true;
@@ -200,6 +212,7 @@ const byId = (tanks, id) => tanks.find((tank) => tank.id === id);
   assert.ok(byId(tanks, 'foe2').aiCtl, 'the wreck goes back to its bot (it revives with it where the mode revives)');
   // a verdict ends watching: no seat is taken and no tank ridden after it
   controller.rideId('ally');
+  run(controller, 3);
   game.result = 'victory';
   key('Enter');
   assert.equal(controller.view, 'ride', 'Enter after the verdict takes no seat');
