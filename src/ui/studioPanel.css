@@ -28,6 +28,19 @@ body[data-studio-workspace] #app{position:fixed;left:var(--studio-vp-x,0px);top:
   height:var(--studio-vp-h,100dvh)}
 
 /* ------------------------------------------------------------------------------------------------- the app grid */
+/* the battlefield's build (studioPanel.ts setStage, 247): the panels wait under it, the viewport shows the map's picture,
+   its name, the stage and one bar until the first real frame */
+.st-app[aria-busy]>:not(.st-vp){opacity:.55;transition:opacity var(--dur-base) var(--ease-enter)}
+.st-load{position:absolute;inset:0;z-index:var(--studio-pop-z);display:flex;align-items:flex-end;overflow:hidden;background:var(--surface-scene)}
+.st-load[hidden]{display:none}
+.st-load__art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55}
+.st-load::after{content:'';position:absolute;inset:0;background:var(--media-fade-full);pointer-events:none}
+.st-load__copy{position:relative;z-index:var(--z-lift);display:grid;gap:10px;width:min(460px,calc(100% - 48px));margin:0 0 32px 32px}
+.st-load__name{font:700 var(--fs-36)/.94 var(--font-display);text-transform:uppercase;color:var(--ink-1)}
+.st-load__label{min-height:1.4em;color:var(--ink-2);font:500 var(--fs-13)/1.4 var(--font-body)}
+.st-load__bar{height:4px;overflow:hidden;background:var(--fill-scale)}
+.st-load__bar i{display:block;height:100%;background:var(--accent);transform:scaleX(0);transform-origin:left center;transition:transform var(--dur-fast) linear}
+@media (prefers-reduced-motion:reduce){.st-load__bar i,.st-app[aria-busy]>:not(.st-vp){transition:none}}
 .st-app{position:absolute;inset:0;display:grid;grid-template-columns:236px minmax(0,1fr) 296px;
   grid-template-rows:50px minmax(0,1fr) 148px 176px}
 .st-app>*{pointer-events:auto}

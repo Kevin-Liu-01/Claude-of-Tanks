@@ -42,6 +42,8 @@ function studio() {
   };
   const ports = {
     sceneMeta: {}, clearActors: () => { actors.length = 0; }, resetFx: () => {}, addActor,
+    // a loaded scene brings its own tanks' builders (247), here already in
+    ensureTankBuilders: async () => {}, DEFAULT_ACTOR_ID: 'm1a1_abrams_hc',
     findActor: (ref) => (typeof ref === 'object' ? ref : actors.find((a) => a.name === ref || a.uid === ref) ?? null),
     actorRootPosition: (a, x, z, yaw, out) => Object.assign(out, { x, z }),
     // the solver settles the hull on the aim it is given: the sight line's pitch out of the aim point
@@ -57,7 +59,7 @@ function studio() {
   const code = stripTypeScriptTypes(`
     function make(ports, calls) {
       const { sceneMeta, clearActors, resetFx, addActor, findActor, actorRootPosition, updateTank, actorSupport, invalidate,
-        SIM_DT, DEG, THREE, r2 } = ports;
+        SIM_DT, DEG, THREE, r2, ensureTankBuilders, DEFAULT_ACTOR_ID } = ports;
       let timeScale = 1;
       const _v3 = { x: 0, y: 0, z: 0 };
       ${functions.join('\n')}

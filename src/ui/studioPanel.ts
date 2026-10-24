@@ -347,6 +347,12 @@ interface StudioPanelRuntime {
   hide(): void;
   setBusy(text: string | null): void;
   /**
+   * The battlefield's build in the viewport (shell-first, 247): the Studio's own panels stay up and wait (inert) while
+   * the viewport shows the map's picture, its name and the build's progress; null hands the viewport to the scene.
+   */
+  setStage(stage: { readonly mapId: string; readonly name: string } | null): void;
+  setStageProgress(fraction: number, label: string): void;
+  /**
    * A scene-link notice: the sentence, and an optional technical detail on its own line. Information fades after a few
    * seconds; an error stays until dismissed or replaced, and announces assertively.
    */
@@ -443,6 +449,24 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const timeline = el('section', 'st-tl');
   timeline.setAttribute('aria-label', t('studio.ws.timelineAria'));
   app.append(head, out, vp, dock, shelf, timeline);
+  // the battlefield's build (setStage): the map's picture under its name, the stage and one bar, over the viewport cell
+  const stagePlate = el('div', 'st-load');
+  stagePlate.hidden = true;
+  const stageArt = el('img', 'st-load__art');
+  stageArt.alt = '';
+  stageArt.decoding = 'async';
+  stageArt.width = 1280;
+  stageArt.height = 720;
+  const stageName = el('h2', 'st-load__name');
+  const stageLabel = el('p', 'st-load__label');
+  stageLabel.setAttribute('role', 'status');
+  const stageBar = el('div', 'st-load__bar');
+  const stageFill = el('i');
+  stageBar.append(stageFill);
+  const stageCopy = el('div', 'st-load__copy');
+  stageCopy.append(stageName, stageLabel, stageBar);
+  stagePlate.append(stageArt, stageCopy);
+  vp.append(stagePlate);
   // keep the canvas's drag-look and fly keys from firing while a panel is in use (the viewport passes them through); the
   // Studio's own shortcuts (J/K/L, undo and redo, the palette, F8) still reach it from a focused button, and the runtime
   // ignores them while a field is being typed in
@@ -2698,6 +2722,24 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     setBusy(text) {
       busy.style.display = text ? 'block' : 'none';
       if (text) busy.textContent = text;
+    },
+    setStage(stage) {
+      app.inert = !!stage;
+      app.toggleAttribute('aria-busy', !!stage);
+      if (!stage) {
+        stagePlate.hidden = true;
+        return;
+      }
+      const src = `/maps/cards/${stage.mapId}.webp`;
+      if (stageArt.getAttribute('src') !== src) stageArt.src = src;
+      stageName.textContent = stage.name;
+      stageLabel.textContent = '';
+      stageFill.style.transform = 'scaleX(0)';
+      stagePlate.hidden = false;
+    },
+    setStageProgress(fraction, label) {
+      stageFill.style.transform = `scaleX(${Math.max(0, Math.min(1, fraction)).toFixed(3)})`;
+      if (label) stageLabel.textContent = label;
     },
     notice(text, tone = 'info', detail = '') {
       hideNotice();
