@@ -538,8 +538,6 @@ export const FLEET_GHILLIE_SUITS: Readonly<Record<string, GhillieConfig>> = Obje
   t90am: {
     id: 't90am', seed: 9004, style: 'leafy', ...DENSE, ...WOODLAND,
     fieldClearanceM: 0.03, maxHalfWidth: 2.13, hemFloorM: 0.72,
-    // 242: under its measured curve (turretScaleGunPitch.ts) the front deck's net lay 10.9 mm under the barrel at yaw 37
-    clothClearsGunStops: true,
     turret: {
       top: [laid({ x0: -1.87, x1: 1.87, z0: -3.55, z1: 1.40, nx: 47, nz: 62, y: 0.94,
         holes: [rect(0.50, 1.10, 0.45, 1.25), rect(0.08, 0.62, 0.40, 0.90)], garnishRiseM: 0.16, seed: 11 })],

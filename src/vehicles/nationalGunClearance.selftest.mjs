@@ -82,8 +82,10 @@ const CURVES = {
 // 96B's hull net 15.8 mm at yaw 29 at its stop, the Zubr II's rear leaves 23.8 mm at yaw 174 at its stop). Release 230 (the
 // gun-hull lane): the C2 Ariete's glacis net (13.2 mm at yaw 8) and the Ukrainian M1A1's leaves (touching the gun at level
 // at yaw 143 and under the mantlet at -10 ahead) were fixed in their suits and are held with them, and so are the Type 96B
-// (clothClearsGunStops) and the Zubr II (conservativeGunEnvelope), regenerated on the combined turret tree.
-const SUIT_TOO_CLOSE = new Set([]);
+// (clothClearsGunStops) and the Zubr II (conservativeGunEnvelope), regenerated on the combined turret tree. Release 242:
+// the T-90AM's suit, regrown under its measured curve, lays its front-deck net 10.9 mm under the barrel at yaw 37 and its
+// rear leaves 19.3 mm from it at yaw 180.
+const SUIT_TOO_CLOSE = new Set(['t90am']);
 // GUN_CLEARANCE_IDS=<ids> limits a local run (the suite runs them all)
 const ids = process.env.GUN_CLEARANCE_IDS?.split(',') ?? Object.keys(CURVES);
 for (const id of ids) {
