@@ -9,8 +9,8 @@ import { renderProductStats } from '../../src/productStats.ts';
 import { PUBLIC_ROUTE_RECORDS } from '../../src/ui/localeRouting.ts';
 
 const root = new URL('../../', import.meta.url);
-// The Premiere identity's lockup (src/ui/components/DIRECTION.md, "The identity"): the Bracket Chevron and the outlined
-// wordmark, one master; the retired crest and the text wordmark stay off every card.
+// The identity's lockup (the owner's pick, 2026-10-24): the commander mark and the outlined wordmark, one master
+// (tools/brand-marks.mjs); the retired crest, the Bracket Chevron and the text wordmark stay off every card.
 const lockupSvg = readFileSync(new URL('public/brand/lockup.svg', root), 'utf8');
 const lockup = Buffer.from(lockupSvg).toString('base64');
 const [, , vbW, vbH] = /viewBox="([^"]+)"/.exec(lockupSvg)[1].split(/\s+/).map(Number);
@@ -39,9 +39,9 @@ for (const { id, label, source, position, fit, locale } of renders) {
     `${id}: use the current lockup master verbatim (public/brand/lockup.svg)`);
   assert.doesNotMatch(html, /class="(?:crest|wordmark|wordmark-subtitle)"/, `${id}: the retired crest and text wordmark stay off`);
   assert.ok(html.includes(`data:font/woff2;base64,${font}`), `${id}: embed the approved brand font`);
-  assert.match(html, /\.lockup\{position:absolute;left:60px;bottom:52px;height:76px;width:auto;/);
+  assert.match(html, /\.lockup\{position:absolute;left:60px;bottom:48px;height:100px;width:auto;/);
   // the game card's tank fills the lower left: its lockup stands on the right (text never on a tank)
-  assert.match(html, /\.game \.lockup\{left:auto;right:48px;bottom:40px;height:64px\}/);
+  assert.match(html, /\.game \.lockup\{left:auto;right:48px;bottom:40px;height:84px\}/);
   assert.ok(html.includes(` lang="${locale}">`), `${id}: the card declares its language`);
   if (label) assert.ok(html.includes(`<div class="label">${label}</div>`));
 
@@ -52,10 +52,10 @@ for (const { id, label, source, position, fit, locale } of renders) {
   context.drawImage(image, 0, 0);
   sheet?.getContext('2d').drawImage(image, (cardIndex % 3) * 400, Math.floor(cardIndex / 3) * 210, 400, 210);
   cardIndex++;
-  // Inspect the shipped raster, not just the template: the lockup's tungsten (the chevron and the "of") stands in its
-  // box, bottom left, or bottom right on the game card (576 to 803 pixels on the shipped set)
-  const h = label ? 76 : 64, w = Math.round(h * LOCKUP_ASPECT);
-  const pixels = context.getImageData(label ? 60 : 1200 - 48 - w, 630 - (label ? 52 : 40) - h, w, h).data;
+  // Inspect the shipped raster, not just the template: the lockup's tungsten (the commander, the pennant and the "of")
+  // stands in its box, bottom left, or bottom right on the game card
+  const h = label ? 100 : 84, w = Math.round(h * LOCKUP_ASPECT);
+  const pixels = context.getImageData(label ? 60 : 1200 - 48 - w, 630 - (label ? 48 : 40) - h, w, h).data;
   let amber = 0;
   for (let i = 0; i < pixels.length; i += 4) {
     if (pixels[i] > 175 && pixels[i + 1] > 90 && pixels[i + 1] < 195 && pixels[i + 2] < 105) amber++;

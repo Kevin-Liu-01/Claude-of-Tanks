@@ -5,7 +5,7 @@
  * frame behind a tiny busy label, and leaving a battle (or the studio)
  * snapped straight to the garage mid-frame. Every state change now passes
  * through the same loading-screen identity the boot splash and the
- * pre-battle screen established: featured action still + scrim, the Bracket Chevron mark,
+ * pre-battle screen established: featured action still + scrim, the commander mark,
  * amber kicker, big condensed title, progress bar when there is real work
  * to track.
  *
