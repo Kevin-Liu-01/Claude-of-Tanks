@@ -191,4 +191,55 @@ body[data-cot-panels='persistent'] .cot-roster-fav[hidden]{display:none;}
 .cot-card.is-fav .cot-fav{position:absolute;z-index:var(--z-lift);right:8px;top:8px;display:grid;place-items:center;width:22px;height:22px;
   border-radius:var(--control-radius);background:var(--glyph-plate);color:var(--accent);}
 .cot-card.is-fav .cot-fav svg{width:14px;height:14px;}
+
+/* ---- a phone held upright (the direction's phone pages, 90 and 91): the tab bar along the foot, Deploy docked over it,
+   the roster over Deploy, and the dossier's six figures in one band under the name in place of a column over the tank;
+   rooms open from the Deploy screen's Room and LAN tabs, and the menu from More ---- */
+.cot-tabbar{display:none;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage{
+  --cot-tabbar-h:60px;--cot-dock-h:52px;--cot-figures-h:116px;
+  --cot-roster-bottom:calc(var(--cot-tabbar-h) + env(safe-area-inset-bottom,0px) + var(--cot-dock-h) + 2 * var(--cot-stack-gap));}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-tabbar{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-hud-controls);
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));height:calc(var(--cot-tabbar-h) + env(safe-area-inset-bottom,0px));
+  padding:0 env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);
+  background:var(--surface-page);border-top:1px solid var(--line-1);pointer-events:auto;}
+.cot-tabbar button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0;
+  padding:0;border:0;background:none;color:var(--ink-3);cursor:pointer;font:500 var(--fs-12)/1 var(--font-body);}
+.cot-tabbar button svg{width:22px;height:22px;}
+.cot-tabbar button[aria-current='page']{color:var(--ink-1);}
+.cot-tabbar button[aria-current='page']::before{content:'';position:absolute;left:22%;right:22%;top:-1px;height:2px;background:var(--accent);}
+.cot-tabbar button:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:-4px;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] :is(.cot-multiplayer-entry,.cot-nav .cot-mobile-nav-trigger){display:none;}
+/* Deploy: one flat tungsten bar over the tab bar, the mode it deploys beside its word */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-battle-control{top:auto;transform:none;width:auto;
+  left:max(var(--cot-overlay-edge),env(safe-area-inset-left,0px));right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));
+  bottom:calc(var(--cot-tabbar-h) + env(safe-area-inset-bottom,0px) + var(--cot-stack-gap));height:var(--cot-dock-h);
+  background:var(--btn-primary-fill);border-radius:var(--control-radius);box-shadow:var(--btn-primary-shadow);}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-battle{flex:1 1 auto;justify-content:flex-start;gap:var(--s3);
+  padding:0 var(--s4);color:var(--btn-primary-ink);font:700 var(--fs-24)/1 var(--font-display);letter-spacing:var(--track-label-s);}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-battle .battle-active-icon{color:var(--btn-primary-ink);filter:none;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-battle .cot-c-kbd{display:none;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-battle-control .cot-battle-mode{flex:0 1 auto;display:flex;align-items:center;
+  gap:var(--s2);min-width:0;padding:0 var(--s7) 0 var(--s3);color:var(--btn-primary-ink);}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-battle-mode .sum-mode{position:static;width:auto;height:auto;overflow:hidden;
+  clip-path:none;text-overflow:ellipsis;font:600 var(--fs-13)/1.1 var(--font-body);}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-battle-mode :is(.sum-icon,.sum-map){display:none;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-battle-control .cot-battle-mode::after{left:auto;right:var(--s3);margin-left:0;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-room-controls{top:auto;bottom:calc(100% + var(--s2));}
+/* the dossier's six figures, three across in two rows, between the name and the roster */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage:not([data-garage-panel='equipment']) .stats{
+  left:max(var(--cot-overlay-edge),env(safe-area-inset-left,0px));right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));
+  top:auto;bottom:var(--cot-side-panel-bottom);width:auto;height:var(--cot-figures-h);max-height:none;overflow:hidden;
+  background:var(--glyph-plate);border:0;border-radius:var(--control-radius);box-shadow:var(--ring-1);}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage:not([data-garage-panel='equipment']) .stats>:not(.cot-overview-section){display:none;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage:not([data-garage-panel='equipment']) .stats>.cot-stat-section.cot-overview-section{
+  padding:var(--s3);border:0;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-headline{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:var(--s3) var(--s3);}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-hrow .k{display:block;overflow:hidden;white-space:nowrap;
+  text-overflow:ellipsis;}
+/* in the band each figure is its label, value and scale: the row's glyph would take a line of its own */
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-garage .cot-hrow>.cot-i{display:none;}
+body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-lower-third{right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));
+  bottom:calc(var(--cot-side-panel-bottom) + var(--cot-figures-h) + var(--s2));}
 }

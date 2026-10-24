@@ -2205,6 +2205,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/endOverlayRuntime.selftest.mjs',
     'src/ui/endScreen.selftest.mjs',
     'src/ui/battleBeats.selftest.mjs',
+    // (watch-mode-243) a watched battle's HUD frame and its neutral report: the sides by name, the ridden tank highlighted
+    'src/ui/watchBattleReport.selftest.mjs',
     'src/game/battleEventStats.selftest.mjs',
     'src/ui/killPresentation.selftest.mjs',
     'src/ui/shotInfo.selftest.mjs',

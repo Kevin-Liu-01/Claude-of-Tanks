@@ -774,6 +774,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     `<button class="cot-room-reminder" type="button" aria-label="${t('garage.battle.roomReminder')}">` +
     `<span class="rr-dot"></span><span class="rr-copy" aria-live="polite"></span></button>` +
     `<button class="cot-room-ready" type="button" disabled aria-pressed="false">${t('playMenu.ready.iAmReady')}</button></div></div>` +
+    // a phone held upright (the direction's 91 page): the tab bar, under the Garage and the Deploy screen alike
+    `<nav class="cot-tabbar" aria-label="${t('garage.nav.menu')}">` +
+    `<button type="button" data-tabbar="garage" aria-current="page">${uiIconSVG('garage', 22)}<span>${t('garage.nav.garage')}</span></button>` +
+    `<button type="button" data-tabbar="deploy">${uiIconSVG('deploy', 22)}<span>${t('garage.battle')}</span></button>` +
+    `<button type="button" data-tabbar="gallery">${uiIconSVG('gallery', 22)}<span>${t('garage.nav.gallery')}</span></button>` +
+    `<button type="button" data-tabbar="record">${uiIconSVG('record', 22)}<span>${t('garage.nav.record')}</span></button>` +
+    `<button type="button" data-tabbar="more">${uiIconSVG('menu', 22)}<span>${t('garage.nav.more')}</span></button></nav>` +
     `<nav class="cot-garage-tools" aria-label="${t('garage.tools.stagingAreas')}">` +
     `<button class="cot-garage-tool cot-garage-preview-card" type="button" data-garage-panel="maps" ` +
     `aria-label="${t('garage.tools.chooseStaging')}" aria-expanded="false" aria-controls="cot-garage-maps">` +
@@ -3380,7 +3387,14 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     camosEl.before(mapsEl);
     root.querySelector<HTMLElement>('[data-deploy-field]')?.setAttribute('aria-expanded', 'false');
   }
+  /** The phone's tab bar marks the screen that shows (the Garage or Deploy). */
+  function markTabbar(current: 'garage' | 'deploy'): void {
+    for (const tab of root.querySelectorAll<HTMLElement>('.cot-tabbar [data-tabbar]')) {
+      if (tab.dataset.tabbar === current) tab.setAttribute('aria-current', 'page'); else tab.removeAttribute('aria-current');
+    }
+  }
   function closeBattleMenu({ restoreFocus = false } = {}) {
+    markTabbar('garage');
     closeDeployField();
     arrangementPanel?.close();
     marsDropdowns.forEach(dropdown => dropdown.close());
@@ -3437,6 +3451,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     showDeployTab('quick');
     const campaign = campaignSummary();
     deployCampaignCount.textContent = `${campaign.cleared} / ${campaign.total}`;
+    markTabbar('deploy');
     battleMenu.classList.add('open');
     deployScreen?.drawObjectives();
     battleModeBtn.setAttribute('aria-expanded', 'true');
@@ -3969,6 +3984,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   requiredElement<HTMLElement>(root, '[data-nav="studio"]').addEventListener('click', openStudio);
   requiredElement<HTMLElement>(root, '[data-nav="gallery"]').addEventListener('click', () => openSelectedInGallery());
   requiredElement<HTMLElement>(root, '[data-nav="docs"]').addEventListener('click', openDocs);
+  // the phone's tab bar: the Garage, Deploy, the Gallery, the record, and the rest of the menu
+  requiredElement<HTMLElement>(root, '.cot-tabbar').addEventListener('click', (event) => {
+    const tab = (event.target as Element | null)?.closest<HTMLButtonElement>('[data-tabbar]')?.dataset.tabbar;
+    if (tab === 'deploy' && !battleMenu.classList.contains('open')) { emit('ui:click', {}); openBattleMenu(); }
+    else if (tab === 'garage' && battleMenu.classList.contains('open')) closeBattleMenu({ restoreFocus: true });
+    else if (tab === 'gallery') openSelectedInGallery();
+    else if (tab === 'record') recordTrigger.click();
+    else if (tab === 'more') mobileNavTrigger.click();
+  });
   requiredElement<HTMLElement>(root, '[data-nav="locale"]').addEventListener('click', switchLocale);
   requiredElement<HTMLElement>(root, '[data-nav="home"]').addEventListener('click', openHome);
   requiredElement<HTMLElement>(root, '[data-nav="deploy"]').addEventListener('click', () => { emit('ui:click', {}); openBattleMenu(); });

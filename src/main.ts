@@ -3157,7 +3157,8 @@ const watchOwner = createLazyRuntimeOwner(
     bus,
     killcam,
     resultPresentation: battleResultPresentation,
-    hud: { root: () => currentHud()?.root ?? null, setWatchDrone: (pose) => currentHud()?.setWatchDrone(pose) },
+    hud: { root: () => currentHud()?.root ?? null, setWatchDrone: (pose) => currentHud()?.setWatchDrone(pose),
+      setWatchSide: (team) => currentHud()?.setWatchSide(team) },
     onSeat: (entity) => {
       // a taken seat's shot log and consumables are the player's from here; the panels follow watch:change
       if (entity) currentHud()?.shotInfo.setPlayer(entity.id);

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { damageComparisonPercent, rosterRowDetails, summarizeTeam } from './endScreen.ts';
+import { damageComparisonPercent, rosterRowDetails, summarizeTeam, watchedResult } from './endScreen.ts';
 
 // battle endings (2026-09-25): the hero names the final blow from the ledger's resolved events (finalBlow.ts,
 // receipted on its own) and the Horde wave the last stand fell on
@@ -63,5 +63,22 @@ assert.deepEqual(summarizeTeam([
   { dead: false, deaths: 2, kills: 0, dmg: 0 },
   { dead: true, deaths: 1, kills: 0, dmg: 0 },
 ]), { total: 2, alive: 1, kills: 0, damage: 0 }, 'a revived vehicle with deaths counts as alive');
+
+// a watched battle (watch-mode-243): the verdict reads Alpha's seat, so the head names the side that won, and the score
+// is the mode's by side where it keeps one, else each side's kills; the watched head never says VICTORY or DEFEAT
+{
+  const allies = [{ dead: false, kills: 2, dmg: 0 }, { dead: true, kills: 1, dmg: 0 }];
+  const enemies = [{ dead: true, kills: 1, dmg: 0 }];
+  assert.deepEqual(watchedResult('victory', { allies, enemies, score: null }), { winner: 'alpha', alpha: 3, bravo: 1 });
+  assert.deepEqual(watchedResult('defeat', { allies, enemies, score: { alpha: 2, bravo: 3 } }), { winner: 'bravo', alpha: 2, bravo: 3 },
+    'a mode score outranks the kills');
+  assert.equal(watchedResult('draw', { allies, enemies }).winner, null);
+  assert.equal(watchedResult('', { allies, enemies }).winner, null);
+  const source = readFileSync(new URL('./endScreen.ts', import.meta.url), 'utf8');
+  const head = /function renderWatchedHead\([\s\S]*?\n  \}\n/.exec(source)?.[0] ?? '';
+  assert.ok(head.includes("t('endScreen.watch.wins'"), 'the watched head names the winning side');
+  assert.ok(!/endScreen\.(victory|defeat)'/.test(head), 'and never the player\'s verdict');
+  assert.match(source, /watchedView = !!sum\.watched;/, 'the summary\'s watched flag picks the view');
+}
 
 console.log('endScreen.selftest: team summary, damage comparison and reviving-mode death lines PASS');
