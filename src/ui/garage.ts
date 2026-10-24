@@ -1095,8 +1095,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const layer = next === 'protection' ? 'armor' : next === 'crew' ? 'crew' : null;
     const view = layer ? statsEl.querySelector<HTMLButtonElement>(`.cot-technical-tab[data-technical-layer="${layer}"]`) : null;
     if (view && view.getAttribute('aria-selected') !== 'true') activateTechnicalTab(view);
-    statsEl.scrollTop = 0;
-    queueReadoutFit();
+    queueReadoutFit(false, true);
     if (sound) emit('ui:click', {});
   }
   wireRoving(stationTabs, (id) => setStation(id as GarageStation));
@@ -1119,15 +1118,23 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   }
   let readoutFitQueued = false;
   let readoutFitForced = false;
-  const queueReadoutFit = (force = false): void => {
+  let readoutScrollReset = false;
+  // `toTop` puts the readout at its top in the same callback: a scroll write lays out what it scrolls, so a press that
+  // rebuilds the dossier and then resets its scroll laid the whole Garage out inside the press (click-perf-248).
+  const queueReadoutFit = (force = false, toTop = false): void => {
     readoutFitForced ||= force;
+    readoutScrollReset ||= toTop;
     if (readoutFitQueued) return;
     readoutFitQueued = true;
     requestAnimationFrame(() => {
-      const forced = readoutFitForced;
+      const forced = readoutFitForced, reset = readoutScrollReset;
       readoutFitQueued = false;
       readoutFitForced = false;
+      readoutScrollReset = false;
+      // a window that unfolds shows the dossier whole
+      renderStaleDossier();
       fitReadout(forced);
+      if (reset) statsEl.scrollTop = 0;
     });
   };
   window.addEventListener('resize', () => queueReadoutFit());
@@ -1374,12 +1381,21 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   };
   const isOverlayPanelLayout = () => document.body.dataset.cotPanels === 'overlay';
   const openGaragePanel = () => root.dataset.garagePanel || '';
+  // a folded layout shows the overview's figures until its dossier opens: the rest of the dossier waits for that press
+  // (click-perf-248: rebuilding the hidden dossier was most of a phone's tank switch)
+  let dossierStale = false;
+  const dossierFolded = (): boolean => isOverlayPanelLayout() && openGaragePanel() !== 'equipment';
+  const renderStaleDossier = (): void => {
+    const spec = dossierStale && !dossierFolded() ? specById.get(selectedId) : null;
+    if (spec) renderStats(spec);
+  };
   const setGaragePanel = (panel = '', { restoreFocus = false } = {}) => {
     const previous = openGaragePanel();
     // every paint (the band's last swatch) opens over the stage in a docked layout too; the other panels fold away there
     const next = panel && (isOverlayPanelLayout() || panel === 'appearance') ? panel : '';
     if (next) root.dataset.garagePanel = next;
     else delete root.dataset.garagePanel;
+    if (next === 'equipment') renderStaleDossier();
     if (next === 'appearance' && previous !== next) refreshCamoSel(); // the swatches it left for the drawer
     for (const [element, active, label] of [
       [statsEl, next === 'equipment', t('garage.dossier.vehicleDossier')],
@@ -2786,7 +2802,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       cardsEl.animate([{ opacity: 0.76 }, { opacity: 1 }],
         { duration: 140, easing: 'ease-out' });
     }
-    cardsEl.scrollLeft = 0;
+    // the strip returns to its start in the frame's callback, ahead of the selection's reveal (queued after it): a
+    // scroll write here laid the strip out inside the press (click-perf-248)
+    requestAnimationFrame(() => { cardsEl.scrollLeft = 0; });
     queueCarouselAffordances();
     queueCountryRailAffordances();
   }
@@ -3229,6 +3247,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       `<div class="cot-crew-chip"><span>${uiIconSVG(row.icon, 16)}</span><span>${row.label}</span></div>`).join('');
     // the slots live in the band under the name, in every layout; their picker opens over the stage
     loadoutEl.innerHTML = equipmentSlots(eqIds);
+    if (dossierFolded()) {
+      statsEl.innerHTML = overviewSection(spec, eqM, shells);
+      renderLowerThird(spec, crewRows.length);
+      dossierStale = true;
+      queueReadoutFit(false, vehicleChanged);
+      requestAnimationFrame(syncScrollFades);
+      return;
+    }
+    dossierStale = false;
     // the overview follows the dossier head, which folded layouts keep at the top of their column
     statsEl.innerHTML =
       technicalSection.replace('<section class="cot-stat-section', '<section data-stations="protection crew" class="cot-stat-section') +
@@ -3319,14 +3346,13 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       }));
     });
     statsEl.querySelectorAll<HTMLButtonElement>('.cot-system-preview button').forEach(button=>{
-      const info=createInfoButton({title:button.textContent||'',text:button.title,guide:button.dataset.guide==='smoke'?'smoke':'special',
+      const info=createInfoButton({title:button.textContent||'',text:button.dataset.tip||'',guide:button.dataset.guide==='smoke'?'smoke':'special',
         vehicle:{id:spec.id,name:spec.label?.displayName||spec.name},className:'cot-system-control'});
       info.innerHTML=button.innerHTML;info.setAttribute('aria-label',button.getAttribute('aria-label')||'');
       button.replaceWith(info);
     });
-    if (vehicleChanged) statsEl.scrollTop = 0;
     if (station === 'protection' || station === 'crew') setStation(station, { sound: false });
-    else queueReadoutFit();
+    else queueReadoutFit(false, vehicleChanged);
     requestAnimationFrame(syncScrollFades);
   }
 
