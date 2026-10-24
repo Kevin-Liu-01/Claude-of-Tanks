@@ -957,11 +957,231 @@ function boxReaches(box: THREE.Box3, cut: TurretRingCut, margin = 0): boolean {
 }
 
 /**
+ * (243) A dented cut keeps the hull watertight: its split faces and their neighbours meet corner to corner. A face the
+ * cut splits takes new corners on its edges (where a sector's line, the band's or the prism's side or a cap crosses
+ * them), and inside the zone the field bends each one at its own point; a neighbour across that edge which the cut left
+ * whole (one lying wholly under the prism's floor, past the zone's polygon, short of a long face's length, or one the
+ * planes miss) holds only the edge's two ends, so its edge stays their straight chord while the corners bow off it: a
+ * crack as wide as the bow (up to 7 cm 0.3 m under the vt4a1's deck, its sky seen through it at seed 77). So a dented
+ * cut splits every dented mesh of the hull first (splitGeometryAtRing), gathers every new corner it puts on a face's
+ * edge within the zone (ringEdgeCorners), and gives each one to every dented face with that edge, whole or split, in
+ * every mesh (assembleRingCut): on every edge both sides then hold the same corners, bent by the same law at every share
+ * of the dents' ramp. A corner past the zone needs no giving: placed for the dents, it lands on its edge's chord.
+ */
+/** The given corners reach this far past the zone (m): past a corner the rounding moves across its edge. */
+const CONFORM_MARGIN_M = 0.002;
+/** A corner this near a face's edge lies on it (m), and one this near another corner, or an edge's end, is it (m). */
+const CONFORM_ON_EDGE_M = 2e-6;
+const CONFORM_SAME_M = 1e-6;
+/** The edge corners' grid (its cells, m). */
+const CONFORM_CELL_M = 0.05;
+
+/** A mesh split at the ring (a live cut's first stage): per source triangle (in group order) its three vertices, its
+ *  first piece and its pieces' count (KEPT_WHOLE: none, the face stays as it is; 0: the prism took all of it). */
+interface RingSplit {
+  readonly geometry: THREE.BufferGeometry;
+  readonly toHull: THREE.Matrix4 | null;
+  readonly faces: number[];
+  /** Per group of the source: its triangles' count and its material. */
+  readonly groups: readonly { faces: number; materialIndex?: number }[];
+  readonly pieces: number[][];
+  /** Whether the cut split or took any face. */
+  readonly touched: boolean;
+}
+const KEPT_WHOLE = -1;
+const FACE_STRIDE = 5;
+
+/** A mesh's triangles at the cutter (null: no position, or a morph target); `whole`: none split (a dented mesh clear
+ *  of the prism that can still be given corners on its edges). */
+function splitGeometryAtRing(geometry: THREE.BufferGeometry, cutter: RingCutter, toHull: THREE.Matrix4 | null,
+  rim: Float64Array | null, whole = false): RingSplit | null {
+  const position = geometry.getAttribute('position');
+  if (!position || Object.keys(geometry.morphAttributes).length) return null;
+  const cut = cutter.prism.cut;
+  const index = geometry.index;
+  const total = index ? index.count : position.count;
+  const sourceGroups = geometry.groups.length ? geometry.groups : [{ start: 0, count: total, materialIndex: undefined }];
+  const faces: number[] = [], pieces: number[][] = [], groups: { faces: number; materialIndex?: number }[] = [];
+  const tri = new Float64Array(9);
+  const emit = (poly: number[]): void => { pieces.push(poly); };
+  const onRim = rim ? (k: number, y: number): void => noteRim(rim, cut.sides, k, y) : null;
+  let touched = false;
+  for (const group of sourceGroups) {
+    const before = faces.length;
+    const end = Math.min(total, group.start + group.count);
+    for (let k = group.start; k + 2 < end; k += 3) {
+      const i0 = index ? index.getX(k) : k, i1 = index ? index.getX(k + 1) : k + 1, i2 = index ? index.getX(k + 2) : k + 2;
+      const first = pieces.length;
+      let split = false;
+      if (!whole) {
+        readTriangle(position, i0, i1, i2, toHull, tri);
+        split = splitAtRing(cutter, tri, emit, onRim);
+      }
+      if (split) touched = true;
+      faces.push(i0, i1, i2, first, split ? pieces.length - first : KEPT_WHOLE);
+    }
+    groups.push({ faces: (faces.length - before) / FACE_STRIDE, materialIndex: group.materialIndex });
+  }
+  return { geometry, toHull, faces, groups, pieces, touched };
+}
+
+/** The new corners a dented cut gives across its faces' edges (hull frame), on a grid over them (CONFORM_CELL_M cells
+ *  from x0, z0; `start`: each cell's first corner in `xyz`, by cell), and their height's span. */
+interface RingEdgeCorners {
+  readonly x0: number;
+  readonly z0: number;
+  readonly nx: number;
+  readonly nz: number;
+  readonly start: Int32Array;
+  readonly xyz: Float64Array;
+  readonly yLo: number;
+  readonly yHi: number;
+}
+
+/**
+ * The corners the split faces put on their edges (a piece's corner with exactly one weight 0: on that edge, off both its
+ * ends), every one of them on an edge that holds one within the zone: the field bends that one at its own point, so the
+ * face across the edge needs it, and then every other one on the edge (one past the zone, placed on the edge's chord, no
+ * longer lies on the far side's edge once it bends).
+ */
+function ringEdgeCorners(cut: TurretRingCut, splits: readonly RingSplit[]): RingEdgeCorners | null {
+  const reach = cut.r + LIVE_ZONE_M + CONFORM_MARGIN_M;
+  const found: number[] = [];
+  let yLo = Infinity, yHi = -Infinity, xLo = Infinity, xHi = -Infinity, zLo = Infinity, zHi = -Infinity;
+  const near = [false, false, false];
+  for (const split of splits) {
+    const { faces, pieces } = split;
+    for (let f = 0; f < faces.length; f += FACE_STRIDE) {
+      const first = faces[f + 3], count = faces[f + 4];
+      if (count <= 0) continue;
+      // which of the face's edges (edge e: off corner e + 2) hold a corner within the zone
+      near[0] = near[1] = near[2] = false;
+      for (let p = first; p < first + count; p++) {
+        const poly = pieces[p];
+        for (let o = 0; o < poly.length; o += POLY_STRIDE) {
+          const e = edgeOfCorner(poly, o);
+          if (e >= 0 && Math.hypot(poly[o] - cut.cx, poly[o + 2] - cut.cz) <= reach) near[e] = true;
+        }
+      }
+      if (!near[0] && !near[1] && !near[2]) continue;
+      for (let p = first; p < first + count; p++) {
+        const poly = pieces[p];
+        for (let o = 0; o < poly.length; o += POLY_STRIDE) {
+          const e = edgeOfCorner(poly, o);
+          if (e < 0 || !near[e]) continue;
+          const x = poly[o], y = poly[o + 1], z = poly[o + 2];
+          found.push(x, y, z);
+          yLo = Math.min(yLo, y); yHi = Math.max(yHi, y);
+          xLo = Math.min(xLo, x); xHi = Math.max(xHi, x);
+          zLo = Math.min(zLo, z); zHi = Math.max(zHi, z);
+        }
+      }
+    }
+  }
+  if (!found.length) return null;
+  const x0 = xLo - CONFORM_CELL_M, z0 = zLo - CONFORM_CELL_M;
+  const nx = Math.ceil((xHi - x0) / CONFORM_CELL_M) + 1, nz = Math.ceil((zHi - z0) / CONFORM_CELL_M) + 1;
+  const cellOf = (i: number): number => Math.floor((found[i] - x0) / CONFORM_CELL_M) * nz
+    + Math.floor((found[i + 2] - z0) / CONFORM_CELL_M);
+  const start = new Int32Array(nx * nz + 1);
+  for (let i = 0; i < found.length; i += 3) start[cellOf(i) + 1]++;
+  for (let c = 0; c < nx * nz; c++) start[c + 1] += start[c];
+  const fill = start.slice(0, nx * nz), xyz = new Float64Array(found.length);
+  for (let i = 0; i < found.length; i += 3) {
+    const at = fill[cellOf(i)]++ * 3;
+    xyz[at] = found[i]; xyz[at + 1] = found[i + 1]; xyz[at + 2] = found[i + 2];
+  }
+  return { x0, z0, nx, nz, start, xyz, yLo, yHi };
+}
+
+/** The edge of its source triangle a clip corner lies on, off both its ends (edge e: corners e and e + 1, weight 0 on
+ *  corner e + 2), or −1 (a corner of the triangle itself, or inside it). */
+function edgeOfCorner(poly: ArrayLike<number>, o: number): number {
+  const z0 = poly[o + 3] === 0, z1 = poly[o + 4] === 0, z2 = poly[o + 5] === 0;
+  if ((z0 ? 1 : 0) + (z1 ? 1 : 0) + (z2 ? 1 : 0) !== 1) return -1;
+  return z2 ? 0 : z0 ? 1 : 2;
+}
+
+/** Whether a hull-frame box reaches any of the edge corners (by a hair). */
+function boxReachesCorners(box: THREE.Box3, corners: RingEdgeCorners): boolean {
+  const e = CONFORM_ON_EDGE_M;
+  return !(box.max.y < corners.yLo - e || box.min.y > corners.yHi + e || box.max.x < corners.x0
+    || box.min.x > corners.x0 + corners.nx * CONFORM_CELL_M || box.max.z < corners.z0
+    || box.min.z > corners.z0 + corners.nz * CONFORM_CELL_M);
+}
+
+/**
+ * The edge corners on each edge of one triangle (hull frame `t`: corners 0, 1, 2; edge e from corner e to e + 1): per
+ * edge into `along[e]` the parameters along it (from corner e, ascending, one per point), and the edge's length into
+ * `length[e]`. Returns whether any edge has one.
+ */
+function edgeCornersOf(corners: RingEdgeCorners, t: Float64Array, along: number[][], length: Float64Array): boolean {
+  const e0 = CONFORM_ON_EDGE_M, { x0, z0, nx, nz, start, xyz } = corners;
+  let any = false;
+  for (let e = 0; e < 3; e++) {
+    const list = along[e];
+    list.length = 0;
+    const a = e * 3, b = ((e + 1) % 3) * 3;
+    const ax = t[a], ay = t[a + 1], az = t[a + 2];
+    const dx = t[b] - ax, dy = t[b + 1] - ay, dz = t[b + 2] - az;
+    const l2 = dx * dx + dy * dy + dz * dz;
+    length[e] = Math.sqrt(l2);
+    if (!(length[e] > 2 * CONFORM_SAME_M)) continue;
+    if (Math.max(ay, t[b + 1]) < corners.yLo - e0 || Math.min(ay, t[b + 1]) > corners.yHi + e0) continue;
+    const i0 = Math.floor((Math.min(ax, t[b]) - e0 - x0) / CONFORM_CELL_M), i1 = Math.floor((Math.max(ax, t[b]) + e0 - x0) / CONFORM_CELL_M);
+    const j0 = Math.floor((Math.min(az, t[b + 2]) - e0 - z0) / CONFORM_CELL_M), j1 = Math.floor((Math.max(az, t[b + 2]) + e0 - z0) / CONFORM_CELL_M);
+    if (i1 < 0 || j1 < 0 || i0 >= nx || j0 >= nz) continue;
+    const ends = CONFORM_SAME_M / length[e];
+    for (let i = Math.max(0, i0); i <= Math.min(nx - 1, i1); i++) {
+      for (let j = Math.max(0, j0); j <= Math.min(nz - 1, j1); j++) {
+        for (let p = start[i * nz + j] * 3, end = start[i * nz + j + 1] * 3; p < end; p += 3) {
+          const px = xyz[p] - ax, py = xyz[p + 1] - ay, pz = xyz[p + 2] - az;
+          const s = (px * dx + py * dy + pz * dz) / l2;
+          if (!(s > ends && s < 1 - ends)) continue;
+          if (Math.hypot(px - s * dx, py - s * dy, pz - s * dz) > e0) continue;
+          list.push(s);
+        }
+      }
+    }
+    if (!list.length) continue;
+    // one per point (a corner both faces of an edge put there is one)
+    list.sort((u, v) => u - v);
+    let kept = 1;
+    for (let k = 1; k < list.length; k++) if (list[k] - list[kept - 1] > ends) list[kept++] = list[k];
+    list.length = kept;
+    any = true;
+  }
+  return any;
+}
+
+/** A corner of an output triangle: its weights on the source triangle's corners and, once made, its vertex. */
+interface RingCorner { w0: number; w1: number; w2: number; id: number }
+const NO_CORNERS: readonly RingCorner[] = Object.freeze([]);
+
+/**
+ * Triangle (a, b, c) with the corners each edge is given (`ab` from a to b, and so on) as corners of its own: split at
+ * one of them through the far corner, and its parts again until none is left. Each part keeps a corner off the line of
+ * the edge it was split on, so none of them is flat.
+ */
+function emitGiven(a: RingCorner, b: RingCorner, c: RingCorner, ab: readonly RingCorner[], bc: readonly RingCorner[],
+  ca: readonly RingCorner[], emit: (a: RingCorner, b: RingCorner, c: RingCorner) => void): void {
+  if (ab.length) {
+    const m = ab.length >> 1, p = ab[m];
+    emitGiven(a, p, c, ab.slice(0, m), NO_CORNERS, ca, emit);
+    emitGiven(p, b, c, ab.slice(m + 1), bc, NO_CORNERS, emit);
+  } else if (bc.length) emitGiven(b, c, a, bc, ca, NO_CORNERS, emit);
+  else if (ca.length) emitGiven(c, a, b, ca, NO_CORNERS, NO_CORNERS, emit);
+  else emit(a, b, c);
+}
+
+/**
  * A live mesh's geometry without the prism (`toHull`: its positions to the hull frame; null, the hull frame itself):
  * indexed, every attribute and group of the source kept (a clipped corner interpolates them on its source triangle;
  * its normal renormalized), the source's bounds kept (a subset of them). Null when nothing of it reaches the prism.
  * `rim` takes the cut faces' reach per side. `dents`: the mesh takes the burn hook's vertex dents (its frame the hull's),
- * and its new corners past the zone are placed for them (placeForDents).
+ * its new corners on an edge within the zone go into the faces of its own on that edge (a dented live cut gives them
+ * to every dented mesh of the hull: cutTurretRingMeshes), and its new corners past the zone are placed for them
+ * (placeForDents).
  */
 export function cutGeometryAtTurretRing(
   geometry: THREE.BufferGeometry,
@@ -971,31 +1191,37 @@ export function cutGeometryAtTurretRing(
   refine = true,
   dents: TurretRingDents | null = null,
 ): THREE.BufferGeometry | null {
-  const position = geometry.getAttribute('position');
-  if (!position || Object.keys(geometry.morphAttributes).length) return null;
+  if (!geometry.getAttribute('position')) return null;
   if (!geometry.boundingBox) geometry.computeBoundingBox();
   const box = geometry.boundingBox!.clone();
   if (toHull) box.applyMatrix4(toHull);
   if (!boxReaches(box, cut, refine ? LIVE_ZONE_M : 0)) return null;
-  const cutter = ringCutter(cut, refine);
-  const index = geometry.index;
-  const total = index ? index.count : position.count;
-  const groups = geometry.groups.length ? geometry.groups : [{ start: 0, count: total, materialIndex: undefined }];
+  const split = splitGeometryAtRing(geometry, ringCutter(cut, refine), toHull, rim);
+  if (!split) return null;
+  return assembleRingCut(split, cut, dents && refine ? ringEdgeCorners(cut, [split]) : null, dents);
+}
+
+/** The cut copy of a split mesh: its kept faces, its pieces, the edge corners given to both (null: none). */
+function assembleRingCut(split: RingSplit, cut: TurretRingCut, corners: RingEdgeCorners | null,
+  dents: TurretRingDents | null): THREE.BufferGeometry | null {
+  const { geometry, toHull, faces, pieces } = split;
+  const position = geometry.getAttribute('position');
   const base = position.count;
   const indices: number[] = [];
   const outGroups: { start: number; count: number; materialIndex?: number }[] = [];
   // the clipped corners: their source triangle's three vertices and weights
   const blends: number[] = [];
-  const tri = new Float64Array(9);
-  let touched = false;
   let id0 = 0, id1 = 0, id2 = 0;
-  const corner = (poly: number[], c: number): number => {
-    const o = c * POLY_STRIDE, w0 = poly[o + 3], w1 = poly[o + 4], w2 = poly[o + 5];
+  const vertex = (w0: number, w1: number, w2: number): number => {
     if (w0 > 1 - 1e-9) return id0;
     if (w1 > 1 - 1e-9) return id1;
     if (w2 > 1 - 1e-9) return id2;
     blends.push(id0, id1, id2, w0, w1, w2);
     return base + blends.length / 6 - 1;
+  };
+  const corner = (poly: number[], c: number): number => {
+    const o = c * POLY_STRIDE;
+    return vertex(poly[o + 3], poly[o + 4], poly[o + 5]);
   };
   const piece = (poly: number[]): void => {
     const n = poly.length / POLY_STRIDE;
@@ -1007,16 +1233,72 @@ export function cutGeometryAtTurretRing(
       previous = next;
     }
   };
-  const onRim = rim ? (k: number, y: number): void => noteRim(rim, cut.sides, k, y) : null;
-  for (const group of groups) {
+  // the given corners: per edge of the current face its corners' parameters along it, and its length
+  const tri = new Float64Array(9);
+  const along: number[][] = [[], [], []];
+  const length = new Float64Array(3);
+  const idOf = (c: RingCorner): number => (c.id >= 0 ? c.id : (c.id = vertex(c.w0, c.w1, c.w2)));
+  const emit = (a: RingCorner, b: RingCorner, c: RingCorner): void => { indices.push(idOf(a), idOf(b), idOf(c)); };
+  const weight = (c: RingCorner, k: number): number => (k === 0 ? c.w0 : k === 1 ? c.w1 : c.w2);
+  const at = (e: number, s: number): RingCorner => {
+    const w = [0, 0, 0];
+    w[e] = 1 - s; w[(e + 1) % 3] = s;
+    return { w0: w[0], w1: w[1], w2: w[2], id: -1 };
+  };
+  // the corners given to a piece's edge from u to v (in its order): those of its face's edge it lies on, between them
+  const givenBetween = (u: RingCorner, v: RingCorner): readonly RingCorner[] => {
+    for (let e = 0; e < 3; e++) {
+      const opposite = (e + 2) % 3, next = (e + 1) % 3;
+      if (weight(u, opposite) !== 0 || weight(v, opposite) !== 0) continue;
+      if (!along[e].length) return NO_CORNERS;
+      const su = weight(u, next), sv = weight(v, next), ends = CONFORM_SAME_M / length[e];
+      const lo = Math.min(su, sv) + ends, hi = Math.max(su, sv) - ends;
+      const out: RingCorner[] = [];
+      for (const s of along[e]) if (s > lo && s < hi) out.push(at(e, s));
+      if (sv < su) out.reverse();
+      return out;
+    }
+    return NO_CORNERS;
+  };
+  const givePiece = (poly: number[]): void => {
+    const n = poly.length / POLY_STRIDE;
+    const ring: RingCorner[] = [];
+    for (let c = 0; c < n; c++) {
+      const o = c * POLY_STRIDE;
+      ring.push({ w0: poly[o + 3], w1: poly[o + 4], w2: poly[o + 5], id: -1 });
+    }
+    const edges = ring.map((u, c) => givenBetween(u, ring[(c + 1) % n]));
+    if (!edges.some((list) => list.length)) { piece(poly); return; }
+    // the piece's fan (as piece() makes it), each triangle with the corners given to its edges on the piece's rim
+    for (let c = 1; c + 1 < n; c++) {
+      emitGiven(ring[0], ring[c], ring[c + 1], c === 1 ? edges[0] : NO_CORNERS, edges[c],
+        c === n - 2 ? edges[n - 1] : NO_CORNERS, emit);
+    }
+  };
+  let touched = split.touched;
+  let face = 0;
+  for (const group of split.groups) {
     const start = indices.length;
-    const end = Math.min(total, group.start + group.count);
-    for (let k = group.start; k + 2 < end; k += 3) {
-      const i0 = index ? index.getX(k) : k, i1 = index ? index.getX(k + 1) : k + 1, i2 = index ? index.getX(k + 2) : k + 2;
-      readTriangle(position, i0, i1, i2, toHull, tri);
-      id0 = i0; id1 = i1; id2 = i2;
-      if (!splitAtRing(cutter, tri, piece, onRim)) { indices.push(i0, i1, i2); continue; }
-      touched = true;
+    for (let g = 0; g < group.faces; g++, face++) {
+      const f = face * FACE_STRIDE;
+      id0 = faces[f]; id1 = faces[f + 1]; id2 = faces[f + 2];
+      const first = faces[f + 3], count = faces[f + 4];
+      let given = false;
+      if (corners) {
+        readTriangle(position, id0, id1, id2, toHull, tri);
+        given = edgeCornersOf(corners, tri, along, length);
+      }
+      if (count === KEPT_WHOLE) {
+        if (!given) { indices.push(id0, id1, id2); continue; }
+        touched = true;
+        const a = { w0: 1, w1: 0, w2: 0, id: id0 }, b = { w0: 0, w1: 1, w2: 0, id: id1 }, c = { w0: 0, w1: 0, w2: 1, id: id2 };
+        emitGiven(a, b, c, along[0].map((s) => at(0, s)), along[1].map((s) => at(1, s)), along[2].map((s) => at(2, s)), emit);
+        continue;
+      }
+      for (let p = first; p < first + count; p++) {
+        if (given) givePiece(pieces[p]);
+        else piece(pieces[p]);
+      }
     }
     outGroups.push({ start, count: indices.length - start, materialIndex: group.materialIndex });
   }
@@ -1160,7 +1442,20 @@ function takesDents(mesh: THREE.Mesh, hull: THREE.Object3D, dents: TurretRingDen
     && programVariantOrigin(material).userData.__burnU?.uCrHull?.value === dents.centres);
 }
 
-/** Swap every hull mesh crossing the prism for its cut copy (the kill), its new corners placed for the hull's dents. */
+/** One hull mesh at the kill: its frame to the hull's, whether it takes the dents, its cut copies' key; its split (a dented
+ *  one's, while the meshes are cut together) and the cut faces' reach it noted. */
+interface TurretRingCutJob {
+  mesh: THREE.Mesh;
+  geometry: THREE.BufferGeometry;
+  toHull: THREE.Matrix4 | null;
+  dented: TurretRingDents | null;
+  key: string;
+  split: RingSplit | null;
+  rim: Float64Array;
+}
+
+/** Swap every hull mesh crossing the prism for its cut copy (the kill), its new corners placed for the hull's dents and
+ *  (243) its dented meshes cut together, every edge corner within the zone given to every dented face on its edge. */
 function cutTurretRingMeshes(root: THREE.Object3D, hull: THREE.Object3D, cut: TurretRingCut,
   dents: TurretRingDents | null): TurretRingHullCut {
   root.updateMatrixWorld(true);
@@ -1168,29 +1463,58 @@ function cutTurretRingMeshes(root: THREE.Object3D, hull: THREE.Object3D, cut: Tu
   const result: TurretRingHullCut = { swaps: [], rim: emptyTurretRingRim(cut.sides) };
   const live = dents && dents.centres.some((c) => c.w > 0) ? dents : null;
   const dentKey = live ? `|${live.centres.concat(live.dirs).map((v) => v.toArray().map((x) => x.toFixed(5)).join(',')).join(';')}` : '';
+  const jobs: TurretRingCutJob[] = [];
   hullSideMeshes(root, (mesh) => {
-    const geometry = mesh.geometry;
     const toHull = new THREE.Matrix4().multiplyMatrices(hullInverse, mesh.matrixWorld);
     const dented = live && takesDents(mesh, hull, live) ? live : null;
-    const key = cutEntryKey(geometry, cut, toHull) + (dented ? dentKey : '');
-    let byKey = RING_CUTS.get(geometry);
-    let entry = byKey?.get(key);
+    jobs.push({ mesh, geometry: mesh.geometry, toHull: isIdentity(toHull) ? null : toHull, dented,
+      key: cutEntryKey(mesh.geometry, cut, toHull) + (dented ? dentKey : ''), split: null, rim: emptyTurretRingRim(cut.sides) });
+  });
+  const cached = (job: TurretRingCutJob): TurretRingCutEntry | undefined => RING_CUTS.get(job.geometry)?.get(job.key);
+  // the dented meshes split together (unless every one of them is cut already), then their edge corners gathered
+  let corners: RingEdgeCorners | null = null;
+  const dented = jobs.filter((job) => job.dented);
+  if (dented.some((job) => !cached(job))) {
+    const cutter = ringCutter(cut, true);
+    const box = new THREE.Box3();
+    const boxOf = (job: TurretRingCutJob): THREE.Box3 => {
+      if (!job.geometry.boundingBox) job.geometry.computeBoundingBox();
+      box.copy(job.geometry.boundingBox!);
+      return job.toHull ? box.applyMatrix4(job.toHull) : box;
+    };
+    for (const job of dented) {
+      // (a second mesh on the same geometry and frame takes the first one's copy)
+      if (dented.some((other) => other.split && other.geometry === job.geometry && other.key === job.key)) continue;
+      if (boxReaches(boxOf(job), cut, LIVE_ZONE_M + CONFORM_MARGIN_M)) job.split = splitGeometryAtRing(job.geometry, cutter, job.toHull, job.rim);
+    }
+    corners = ringEdgeCorners(cut, dented.flatMap((job) => (job.split ? [job.split] : [])));
+    // and a dented mesh clear of the prism (wholly under its floor, say) whose faces' edges hold some of them
+    if (corners) {
+      for (const job of dented) {
+        if (!job.split && boxReachesCorners(boxOf(job), corners)) job.split = splitGeometryAtRing(job.geometry, cutter, job.toHull, null, true);
+      }
+    }
+  }
+  for (const job of jobs) {
+    let byKey = RING_CUTS.get(job.geometry);
+    let entry = byKey?.get(job.key);
     if (!entry) {
-      const rim = emptyTurretRingRim(cut.sides);
-      const cutGeometry = cutGeometryAtTurretRing(geometry, cut, isIdentity(toHull) ? null : toHull, rim, true, dented);
-      if (!cutGeometry) return;
-      entry = { geometry: cutGeometry, rim, refs: 0 };
-      if (!byKey) RING_CUTS.set(geometry, byKey = new Map());
-      byKey.set(key, entry);
+      const cutGeometry = job.dented
+        ? (job.split ? assembleRingCut(job.split, cut, corners, job.dented) : null)
+        : cutGeometryAtTurretRing(job.geometry, cut, job.toHull, job.rim, true, null);
+      if (!cutGeometry) continue;
+      entry = { geometry: cutGeometry, rim: job.rim, refs: 0 };
+      if (!byKey) RING_CUTS.set(job.geometry, byKey = new Map());
+      byKey.set(job.key, entry);
     }
     entry.refs++;
     for (let k = 0; k < cut.sides; k++) {
       if (entry.rim[k] > result.rim[k]) result.rim[k] = entry.rim[k];
       if (entry.rim[cut.sides + k] < result.rim[cut.sides + k]) result.rim[cut.sides + k] = entry.rim[cut.sides + k];
     }
-    result.swaps.push([mesh, geometry, entry]);
-    mesh.geometry = entry.geometry;
-  });
+    result.swaps.push([job.mesh, job.geometry, entry]);
+    job.mesh.geometry = entry.geometry;
+  }
   return result;
 }
 
