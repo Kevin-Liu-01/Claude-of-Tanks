@@ -342,7 +342,21 @@ const PROGRAM_KEYS = `(() => {
   const hash = (text) => { let h = 2166136261; for (let i = 0; i < text.length; i += 1) h = Math.imul(h ^ text.charCodeAt(i), 16777619); return (h >>> 0).toString(16); };
   const programs = (window.__DEBUG?.renderer?.info?.programs ?? []).map((program) => {
     const key = String(program.cacheKey ?? '');
-    return { name: program.name, used: program.usedTimes, key: key.length > 900 ? key.slice(0, 900) + '…' + key.length + ':' + hash(key) : key };
+    return { name: program.name, used: program.usedTimes, hash: hash(key), key: key.length > 900 ? key.slice(0, 900) + '…' + key.length + ':' + hash(key) : key };
+  });
+  // every material in the scene with the program it last bound (hash of its key), the object and whether it draws
+  const renderer = window.__DEBUG?.renderer;
+  const materials = [];
+  window.__DEBUG?.scene?.traverse?.((object) => {
+    const list = Array.isArray(object.material) ? object.material : object.material ? [object.material] : [];
+    if (!list.length) return;
+    let shown = true;
+    const chain = [];
+    for (let node = object; node; node = node.parent) { shown = shown && node.visible; if (chain.length < 5) chain.push(node.name || node.type); }
+    for (const material of list) {
+      const program = renderer?.properties?.get?.(material)?.currentProgram;
+      if (program) materials.push({ material: material.name || material.type, shown, chain: chain.join(' < '), hash: hash(String(program.cacheKey ?? '')) });
+    }
   });
   // the scene's lights as a render collects them (visible down the chain), each with its owner chain
   const lights = [];
@@ -353,7 +367,7 @@ const PROGRAM_KEYS = `(() => {
     for (let node = object; node; node = node.parent) { shown = shown && node.visible; if (chain.length < 4) chain.push(node.name || node.type); }
     lights.push({ type: object.type, shown, intensity: object.intensity, shadow: !!object.castShadow, layers: object.layers.mask, chain: chain.join(' < ') });
   });
-  return { programs, lights };
+  return { programs, lights, materials };
 })()`;
 
 async function runPath({ page, path, reps, touch, log, profileDir = null, outDir = null, label = '' }) {
