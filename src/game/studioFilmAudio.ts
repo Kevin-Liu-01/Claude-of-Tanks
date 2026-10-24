@@ -18,6 +18,7 @@
  * file fails the soundtrack.
  */
 import type { MuxAudioTrack } from './studioFilmMux.ts';
+import { t } from '../ui/i18n.ts';
 
 /**
  * The film's seeded variant picks: audioMath.ts's mulberry32, written here because a Studio import of audioMath.ts
@@ -294,7 +295,7 @@ export async function renderFilmSoundtrack(
   const buffers = new Map<string, AudioBuffer>();
   await Promise.all([...files].map(async (file) => {
     const response = await fetch(file);
-    if (!response.ok) throw new Error(`Missing film sound ${file}`);
+    if (!response.ok) throw new Error(t('studio.error.filmSoundMissing', { file }));
     buffers.set(file, await context.decodeAudioData(await response.arrayBuffer()));
   }));
   // Gentle bus glue, then a final peak normalisation below.

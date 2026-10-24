@@ -11,6 +11,7 @@
  */
 import { muxMp4, muxWebm, type MuxAudioTrack, type MuxColor, type MuxSample } from './studioFilmMux.ts';
 import type { FilmFrameInfo, FilmSessionInfo } from './studioFilm.ts';
+import { t } from '../ui/i18n.ts';
 
 interface FilmExportPorts {
   /** Open the film session at the export size (studio.beginFilm). */
@@ -94,7 +95,7 @@ export function defaultFilmBitrate(width: number, height: number, fps: number): 
 
 async function chooseEncoder(options: FilmExportOptions, bitrate: number): Promise<EncoderChoice> {
   if (typeof VideoEncoder === 'undefined' || typeof VideoFrame === 'undefined') {
-    throw new Error('This browser cannot encode video offline (WebCodecs is unavailable)');
+    throw new Error(t('studio.error.noWebCodecs'));
   }
   const { width, height, fps } = options;
   const base = { width, height, framerate: fps, bitrate, bitrateMode: 'variable' as const, latencyMode: 'quality' as const };
@@ -115,11 +116,11 @@ async function chooseEncoder(options: FilmExportOptions, bitrate: number): Promi
       if (support.supported) return candidate;
     } catch { /* an unknown codec string is simply unsupported */ }
   }
-  throw new Error(`This browser cannot encode ${width}×${height} at ${fps} fps`);
+  throw new Error(t('studio.error.encodeUnsupported', { width, height, fps }));
 }
 
 function abortError(): Error {
-  const error = new Error('Film export cancelled');
+  const error = new Error(t('studio.error.exportCancelled'));
   error.name = 'AbortError';
   return error;
 }
@@ -169,7 +170,7 @@ export async function exportFilm(ports: FilmExportPorts, options: FilmExportOpti
     output(chunk, metadata) {
       const data = new Uint8Array(chunk.byteLength);
       chunk.copyTo(data);
-      if (chunk.timestamp < lastTimestamp) failure ??= new Error('The encoder reordered frames; this export path needs in-order output');
+      if (chunk.timestamp < lastTimestamp) failure ??= new Error(t('studio.error.encoderReordered'));
       lastTimestamp = chunk.timestamp;
       samples.push({ data, key: chunk.type === 'key' });
       const config = metadata?.decoderConfig;
@@ -188,7 +189,7 @@ export async function exportFilm(ports: FilmExportPorts, options: FilmExportOpti
     encoder.configure(choice.config);
     session = ports.begin();
     if (session.width !== options.width || session.height !== options.height || session.fps !== options.fps) {
-      throw new Error('The film session does not match the encoder configuration');
+      throw new Error(t('studio.error.encoderMismatch'));
     }
     const frames = session.frames, frameUs = 1e6 / session.fps, gop = session.fps * 2;
     let renderStart = performance.now();
@@ -218,7 +219,7 @@ export async function exportFilm(ports: FilmExportPorts, options: FilmExportOpti
     report('finishing', frames, frames, 0);
     await encoder.flush();
     if (failure) throw failure;
-    if (samples.length !== frames) throw new Error(`The encoder returned ${samples.length} of ${frames} frames`);
+    if (samples.length !== frames) throw new Error(t('studio.error.encoderShort', { got: samples.length, want: frames }));
     let audio: MuxAudioTrack | null = null;
     if (ports.soundtrack) {
       const mix = await ports.soundtrack(session);
@@ -231,7 +232,7 @@ export async function exportFilm(ports: FilmExportPorts, options: FilmExportOpti
     let parts: Uint8Array[];
     let mimeType: string;
     if (choice.container === 'mp4') {
-      if (!description) throw new Error('The H.264 encoder did not provide its decoder configuration');
+      if (!description) throw new Error(t('studio.error.encoderNoConfig'));
       parts = muxMp4({ width: session.width, height: session.height, fps: session.fps, description, samples, color }, audio);
       mimeType = 'video/mp4';
     } else {

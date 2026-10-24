@@ -1,5 +1,6 @@
 import type { RuntimeValue } from '../runtimeTypes.ts';
 import type { CinemaSettings } from '../engine/cinemaPost.ts';
+import { t } from '../ui/i18n.ts';
 /**
  * studioPicture.ts — Scene Studio "picture settings": the pure, JSON-safe schema behind the
  * film-grade grade, lens and finish (media r5, 2026-10-01).
@@ -380,7 +381,7 @@ const quantize = (value: number): number => Math.round(value * 10000) / 10000 + 
 
 function normalizeNumber(path: string, raw: RuntimeValue, range: NumberRange, wrap: boolean): number {
   const value = typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : raw;
-  if (typeof value !== 'number' || !Number.isFinite(value)) throw new RangeError(`picture.${path} must be a finite number`);
+  if (typeof value !== 'number' || !Number.isFinite(value)) throw new RangeError(t('studio.error.pictureNumber', { path }));
   if (wrap) {
     const span = range[1] - range[0];
     return quantize(((((value - range[0]) % span) + span) % span) + range[0]);
@@ -393,28 +394,28 @@ function normalizeField(path: string, spec: FieldSpec, raw: RuntimeValue, base: 
     case 'number': return normalizeNumber(path, raw, spec.range, !!spec.wrap);
     case 'rgb': {
       if (typeof raw === 'number') return [0, 1, 2].map((i) => normalizeNumber(`${path}[${i}]`, raw, spec.range, false));
-      if (!Array.isArray(raw) || raw.length !== 3) throw new RangeError(`picture.${path} must be [r, g, b]`);
+      if (!Array.isArray(raw) || raw.length !== 3) throw new RangeError(t('studio.error.pictureColor', { path }));
       return raw.map((channel: RuntimeValue, i: number) => normalizeNumber(`${path}[${i}]`, channel, spec.range, false));
     }
     case 'enum': {
       const value = typeof raw === 'number' && path === 'letterbox' ? raw.toFixed(2) : String(raw);
-      if (!spec.values.includes(value)) throw new RangeError(`picture.${path}: unknown value "${String(raw)}"`);
+      if (!spec.values.includes(value)) throw new RangeError(t('studio.error.pictureValue', { path, value: String(raw) }));
       return value;
     }
     case 'boolean':
-      if (typeof raw !== 'boolean') throw new RangeError(`picture.${path} must be true or false`);
+      if (typeof raw !== 'boolean') throw new RangeError(t('studio.error.pictureBoolean', { path }));
       return raw;
     case 'ref':
       if (raw == null || raw === '') return null;
-      if (typeof raw !== 'string' && typeof raw !== 'number') throw new RangeError(`picture.${path} must be an actor name, uid or index`);
+      if (typeof raw !== 'string' && typeof raw !== 'number') throw new RangeError(t('studio.error.pictureActor', { path }));
       return String(raw);
     case 'group': {
-      if (!isPlainObject(raw)) throw new RangeError(`picture.${path} must be an object`);
+      if (!isPlainObject(raw)) throw new RangeError(t('studio.error.pictureObject', { path }));
       const baseGroup = isPlainObject(base) ? base : {};
       const out: Record<string, RuntimeValue> = { ...baseGroup };
       for (const [key, value] of Object.entries(raw)) {
         const child = spec.fields[key];
-        if (!child) throw new RangeError(`picture.${path}.${key} is not a picture setting`);
+        if (!child) throw new RangeError(t('studio.error.pictureSetting', { path: `${path}.${key}` }));
         if (value === undefined) continue;
         out[key] = normalizeField(`${path}.${key}`, child, value, baseGroup[key]);
       }
@@ -428,7 +429,7 @@ function mergePatch(base: StudioPicture, patch: PicturePatch): StudioPicture {
   for (const [key, value] of Object.entries(patch)) {
     if (key === 'preset' || value === undefined) continue;
     const spec = PICTURE_FIELDS[key];
-    if (!spec) throw new RangeError(`picture.${key} is not a picture setting`);
+    if (!spec) throw new RangeError(t('studio.error.pictureSetting', { path: key }));
     out[key] = normalizeField(key, spec, value, (base as unknown as Record<string, RuntimeValue>)[key]);
   }
   return deepFreeze(out as unknown as StudioPicture);
@@ -436,7 +437,7 @@ function mergePatch(base: StudioPicture, patch: PicturePatch): StudioPicture {
 
 function lookBase(id: string): StudioPicture {
   const look = LOOK_BY_ID.get(id);
-  if (!look) throw new RangeError(`Unknown picture preset "${id}"`);
+  if (!look) throw new RangeError(t('studio.error.picturePreset', { name: id }));
   return deepFreeze({ ...mergePatch(NEUTRAL_PICTURE, look.values), preset: id });
 }
 
@@ -445,7 +446,7 @@ const LOOK_BASES = new Map(LOOKS.map((look) => [look.id, lookBase(look.id)]));
 /** A look's resolved values (no overrides). */
 export function resolvePictureLook(id: string): StudioPicture {
   const base = LOOK_BASES.get(id);
-  if (!base) throw new RangeError(`Unknown picture preset "${id}"`);
+  if (!base) throw new RangeError(t('studio.error.picturePreset', { name: id }));
   return base;
 }
 
@@ -455,7 +456,7 @@ export function resolvePictureLook(id: string): StudioPicture {
  */
 export function applyPicturePatch(current: StudioPicture, patch: PicturePatch | null | undefined): StudioPicture {
   if (patch == null) return NEUTRAL_PICTURE;
-  if (!isPlainObject(patch)) throw new RangeError('picture must be an object');
+  if (!isPlainObject(patch)) throw new RangeError(t('studio.error.pictureRoot'));
   const presetRaw = patch.preset;
   const base = presetRaw === undefined ? current : resolvePictureLook(String(presetRaw));
   const merged = mergePatch(base, patch);

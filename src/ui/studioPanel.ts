@@ -1743,7 +1743,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   for (const fps of [60, 30]) {
     const option = document.createElement('option');
     option.value = String(fps);
-    option.textContent = `${t('studio.film.fpsOption', { fps })} · 12 Mbps`;
+    option.textContent = t('studio.film.fpsBitrate', { fps, mbps: 12 });
     fpsSel.select.appendChild(option);
   }
   const recordBtn = kitButton(t('studio.recordVideo'), undefined, 'record');
