@@ -41,7 +41,8 @@ const viewport = { width: 1440, height: 900 };
   assert.match(tip, /if \(event\.pointerType === 'touch'\) return;/, 'a touch never shows the tip by hover');
   assert.match(tip, /event\.preventDefault\(\);\s*event\.stopImmediatePropagation\(\);/, 'the release that ends a hold does not press');
   assert.match(tip, /closest\('\[data-tip-off\]'\)/, 'data-tip-off opts a control or region out');
-  assert.match(tip, /control\.removeAttribute\('title'\)/, 'a title moves into the tip: the browser tooltip never stacks on it');
+  assert.match(tip, /if \(control\.hasAttribute\('title'\)\) return '';/, 'a titled control keeps the browser tooltip: they never stack');
+  assert.doesNotMatch(tip, /removeAttribute\('title'\)|setAttribute\('aria-label'/, 'the tip never edits the page');
   assert.match(tip, /tip\.setAttribute\('role', 'tooltip'\)/);
 }
 

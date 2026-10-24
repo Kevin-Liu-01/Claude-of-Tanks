@@ -786,7 +786,7 @@ export function createPlayMenu({
   // the battle modes only: the practice modes launch from the Garage dossier and the Gallery, never a room
   const ruleCards = BATTLE_MODE_IDS.map((id) => GAME_MODE_DEFINITIONS[id])
     .sort((a, b) => modeRank(a.id) - modeRank(b.id)).map((rule) =>
-    `<button class="rule" data-game-mode="${rule.id}" type="button" title="${t(`playMenu.matchMode.${rule.id}.desc`, modeCopyValues(rule.id))}">
+    `<button class="rule" data-game-mode="${rule.id}" type="button" data-tip="${t(`playMenu.matchMode.${rule.id}.desc`, modeCopyValues(rule.id))}">
       ${uiIconSVG(rule.icon, 23)}<span class="rule-copy"><b>${t(`playMenu.matchMode.${rule.id}.label`)}</b>${
         ruleLineCopy(rule.id) ? `<small class="rule-lines" data-rule-lines>${ruleLineCopy(rule.id)}</small>` : ''}${
         rule.id === 'frontline_assault' ? `<small class="rule-progress" data-rule-progress>${frontlineProgressLabel()}</small>` : ''}</span></button>`).join('');
@@ -1472,7 +1472,6 @@ export function createPlayMenu({
   function setClosePurpose(inRoom: boolean): void {
     const label = t(inRoom ? 'playMenu.close.backToGarage' : 'playMenu.close');
     closeBtn.setAttribute('aria-label', label);
-    closeBtn.title = label;
   }
 
   function ownId(): string | undefined {

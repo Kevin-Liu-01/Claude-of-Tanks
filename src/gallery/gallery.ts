@@ -846,7 +846,6 @@ function syncSortDirection(): void {
   const label = t(browse.descending ? 'gallery.sort.descending' : 'gallery.sort.ascending');
   button.setAttribute('aria-pressed', String(browse.descending));
   button.setAttribute('aria-label', label);
-  button.title = label;
 }
 function syncLayoutSwitch(): void {
   for (const button of document.querySelectorAll<HTMLElement>('.layout-switch [data-value]')) {
@@ -944,7 +943,7 @@ function renderOverview(record: GalleryRecord): void {
     ['team', formatNumber(record.metrics.crewCount), unit('gallery.unit.crew'), t('gallery.stat.crew')],
     ['track', formatNumber(record.metrics.weightTons, { maximumFractionDigits: 1 }), unit('gallery.unit.t'), t('gallery.dossier.spec.weight')],
     ['shield', formatNumber(record.metrics.hp), unit('gallery.unit.hitPoints'), t('gallery.dossier.spec.hp')],
-  ].map(([glyph, value, suffix, label]) => `<div title="${esc(label)}">${icon(glyph as IconId, { size: 16 })}`
+  ].map(([glyph, value, suffix, label]) => `<div data-tip="${esc(label)}">${icon(glyph as IconId, { size: 16 })}`
     + `<b class="num">${value}${suffix}</b><span class="sr-only">${esc(label)}</span></div>`).join('');
   const rival = rivalId ? recordById.get(rivalId) : null;
   $('#ratingGrid').innerHTML = RATINGS.map(([key, label, glyph]) => {
@@ -1000,9 +999,9 @@ function renderAmmo(record: GalleryRecord): void {
     const type = String(shell.type || '').toUpperCase();
     const glyph = SHELL_ICONS[type] || (/ATGM|MISSILE/.test(type) ? 'shellAtgm' : /HEAT/.test(type) ? 'shellHeat' : /FSDS/.test(type) ? 'shellApfsds' : 'shell');
     return `<div class="shell">${icon(glyph, { size: 24 })}<span class="shell-id"><b>${esc(shell.name || shell.type)}</b><small>${esc(shell.type)}</small></span>`
-      + `<span class="shell-nums"><span title="${esc(t('gallery.stat.penetration'))}"><b class="num">${formatNumber(shell.penetrationMm)}</b>${esc(t('gallery.unit.mm'))}</span>`
-      + `<span title="${esc(t('gallery.stat.damage'))}">${icon('damage', { size: 14 })}<b class="num">${formatNumber(shell.damage)}</b></span>`
-      + `<span title="${esc(t('gallery.stat.velocity'))}">${icon('speed', { size: 14 })}<b class="num">${formatNumber(shell.velocityMps)}</b>${esc(t('gallery.unit.mps'))}</span></span>`
+      + `<span class="shell-nums"><span data-tip="${esc(t('gallery.stat.penetration'))}"><b class="num">${formatNumber(shell.penetrationMm)}</b>${esc(t('gallery.unit.mm'))}</span>`
+      + `<span data-tip="${esc(t('gallery.stat.damage'))}">${icon('damage', { size: 14 })}<b class="num">${formatNumber(shell.damage)}</b></span>`
+      + `<span data-tip="${esc(t('gallery.stat.velocity'))}">${icon('speed', { size: 14 })}<b class="num">${formatNumber(shell.velocityMps)}</b>${esc(t('gallery.unit.mps'))}</span></span>`
       + `<span class="sr-only">${esc(t('gallery.stat.penetration'))}</span>`
       + `${scale20(scaleCells(shell.penetrationMm, 0, best))}</div>`;
   }).join('');
@@ -1054,7 +1053,7 @@ function renderVersus(record: GalleryRecord): void {
     const digits = glyph === 'reload' ? 1 : 0;
     const value = (n: number, wins: boolean): string => `<em class="num${wins ? ' w' : ''}">${formatNumber(n, { maximumFractionDigits: digits })}`
       + `<small>${esc(t(unitKey))}</small></em>`;
-    return `<div title="${esc(t(label))}">${value(own, ownBetter)}${icon(glyph, { size: 14, label: t(label) })}${value(other, otherBetter)}</div>`;
+    return `<div data-tip="${esc(t(label))}">${value(own, ownBetter)}${icon(glyph, { size: 14, label: t(label) })}${value(other, otherBetter)}</div>`;
   }).join('');
   void drawTrueScale($<HTMLCanvasElement>('#versusScale'), [
     { id: record.id, lengthM: record.dimensions.overallLengthM, tone: '--ink-1', facing: 'right' },
@@ -1084,7 +1083,7 @@ function renderDossier(record: GalleryRecord): void {
   $('#dossierName').style.setProperty('--name-fit', String(Math.max(0.62, Math.min(1, 15 / Math.max(1, record.displayName.length)))));
   const flagImage = $<HTMLImageElement>('#dossierFlag');
   flagImage.src = flagIconUrl(record.nation);
-  flagImage.title = nationName(record.nation);
+  flagImage.dataset.tip = nationName(record.nation);
   // the data voice's rules (the kit's .cot-c-rules): tier, class, role and era, a glyph and a value each
   const tags = [
     `<span>${esc(t('gallery.tier', { tier: record.tierNumeral }))}</span>`,

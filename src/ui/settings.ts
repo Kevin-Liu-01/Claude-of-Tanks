@@ -577,7 +577,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   gear.type = 'button';
   gear.setAttribute('aria-label', t('settings.gearAria'));
   gear.innerHTML = GEAR_SVG;
-  gear.title = t('settings.gearAria');
   if (!gear.parentNode) document.body.appendChild(gear);
 
   installHudCustomization();
@@ -746,9 +745,9 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     const chip = el('button', `cot-chip${slotKey === 'pad' ? ' padcol' : ''}`, parent);
     chip.type = 'button';
     const labelText = t(def.label);
-    chip.title = slotKey === 'pad'
-      ? `${labelText} — ${t('settings.bind.pad')}. ${t('settings.bind.rightClickClear')}`
-      : `${labelText} — ${SLOT_NAME[slotKey]} ${t('settings.bind.key')}. ${t('settings.bind.rightClickClear')}`;
+    chip.dataset.tip = slotKey === 'pad'
+      ? `${labelText}, ${t('settings.bind.pad')}. ${t('settings.bind.rightClickClear')}`
+      : `${labelText}, ${SLOT_NAME[slotKey]} ${t('settings.bind.key')}. ${t('settings.bind.rightClickClear')}`;
     chip.addEventListener('click', () => {
       emit('ui:click', {});
       beginCapture(def.id, slotKey, chip);
@@ -1532,7 +1531,6 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
         button.type = 'button';
         button.setAttribute('aria-expanded', 'false');
         button.setAttribute('aria-label', t('settings.notes.toggle'));
-        button.title = t('settings.notes.toggle');
         button.innerHTML = uiIconSVG('info', 16);
         button.addEventListener('click', () => {
           const open = !card.classList.contains('notes-open');
