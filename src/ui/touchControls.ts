@@ -99,10 +99,14 @@ body.cot-gun-dry .cot-touch .fire{color:var(--hud-muted,#93a3af);border-color:ok
 .cot-touch .autoaim.on{color:var(--accent-hi);border-color:var(--accent);
   background:radial-gradient(circle at 35% 28%,oklch(from var(--accent-lo) .47 .085 h / .92),var(--hud-plate-strong) 64%,var(--hud-plate-strong));
   box-shadow:0 0 18px oklch(from var(--accent) l c h / .42),inset 0 1px 4px oklch(from var(--accent-hi) .92 .078 h / .2);}
-.cot-touch .mobile-chrome{position:absolute;z-index:4;top:max(8px,env(safe-area-inset-top));
-  right:max(10px,env(safe-area-inset-right));display:flex;gap:var(--s1);pointer-events:auto;}
+/* The toolbar hangs from the window's right edge as the HUD's corner plate (owner 2026-10-24, the battle HUD's corner
+   plates on every device): its buttons sit on the plate without plates of their own. */
+.cot-touch .mobile-chrome{position:absolute;z-index:4;top:0;right:0;display:flex;gap:2px;pointer-events:auto;
+  padding:max(2px,env(safe-area-inset-top)) max(4px,env(safe-area-inset-right)) 2px 18px;
+  background:var(--hud-plate);clip-path:polygon(0 0,100% 0,100% 100%,14px 100%);}
+.cot-touch .mobile-chrome .quick{border-color:transparent;border-bottom-color:transparent;background:transparent;box-shadow:none;}
 body.cot-touch-layout[data-cot-orientation='portrait'] .cot-touch .mobile-chrome{
-  top:calc(max(8px,env(safe-area-inset-top)) + 60px);
+  top:calc(env(safe-area-inset-top) + 64px);padding-top:2px;
 }
 .cot-touch .quick{width:44px;height:44px;padding:3px 2px 2px;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:1px;pointer-events:auto;touch-action:none;
@@ -126,7 +130,7 @@ body.cot-touch-layout .cot-top{top:0;padding:5px 29px 7px;gap:10px;z-index:30;}
 body.cot-touch-layout .cot-top .fg,body.cot-touch-layout .cot-top .fe{font-size:22px;}
 body.cot-touch-layout .cot-top .tm{font-size:var(--battle-fs-12);}
 body.cot-touch-layout .cot-killfeed{top:48px;left:50%;transform:translateX(-50%);max-width:48%;align-items:center;}
-body.cot-touch-layout .cot-kf{font-size:var(--battle-fs-11);padding:3px 7px;background:var(--battle-chip-plate);}
+body.cot-touch-layout .cot-kf{font-size:var(--battle-fs-11);padding:3px 7px;}
 /* Ammo is directly above the equipment/consumable stack, leaving the top
    edge to the three global mobile controls. */
 body.cot-touch-layout .cot-shells{left:auto;right:max(10px,env(safe-area-inset-right));

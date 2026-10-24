@@ -803,6 +803,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       consumables: (['consumable1', 'consumable2', 'consumable3'] as const).map(bindLabel),
       specialAction: bindLabel('specialAction'),
       minimapZoom: bindLabel('minimapZoom'),
+      settingsMenu: bindLabel('settingsMenu'),
     });
   }
 
