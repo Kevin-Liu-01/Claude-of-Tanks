@@ -29,7 +29,8 @@ import type {
   MainWorld,
 } from './mainContracts.ts';
 
-type CombatWarmPost = CombatWarmRuntimeContext['post'];
+/** (perf-245) the live scene target's MSAA sample count: the warm target matches it (offscreenWarm.ts samples) */
+type CombatWarmPost = CombatWarmRuntimeContext['post'] & { readonly msaaSamples?: number };
 type IsolatedForwardWarmFactory = CombatWarmRuntimeContext['createIsolatedForwardWarmBatches'];
 
 interface TraceSink {
@@ -121,7 +122,7 @@ export function createCombatWarmComposition({
 }: CombatWarmCompositionOptions): CombatWarmComposition {
   const thermalVehicles = createThermalVehicles();
   let destructionWarmed = false;
-  const warmRender = createOffscreenSceneWarmer(renderer, scene, camera, 0.125);
+  const warmRender = createOffscreenSceneWarmer(renderer, scene, camera, 0.125, { samples: () => post.msaaSamples ?? 0 });
   const deploymentShadowWarm = createDeploymentShadowWarmOwner({
     renderer,
     scene,

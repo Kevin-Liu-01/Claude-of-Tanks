@@ -114,6 +114,11 @@ export interface WatchCameraDeps {
   heightField: { getHeightAt(x: number, z: number): number };
   /** World-only ray (terrain, structures): the chase's pull-in and the drone's structure clamp. */
   raycast: CameraRaycast;
+  /**
+   * A handover is about to carry the camera to `position` (looking at `lookAt`) over `durationS` (2026-10-24, perf-245;
+   * cameraDestinationWarm.ts): the subject's surroundings are warmed during the hop, not met at its last frame.
+   */
+  prepareDestination?(position: THREE.Vector3, lookAt: THREE.Vector3, durationS: number): void;
 }
 
 type WatchCameraMode = 'off' | 'drone' | 'ride';
@@ -182,6 +187,7 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
   let mode: WatchCameraMode = 'off';
 
   // --- drone state ---
+  const _hopDest = new THREE.Vector3();
   const dronePos = new THREE.Vector3();
   const droneVel = new THREE.Vector3();
   let droneYaw = 0, droneYawT = 0, dronePitch = 0, dronePitchT = 0, droneRoll = 0, prevYaw = 0;
@@ -602,6 +608,12 @@ export function createWatchCamera(camera: THREE.PerspectiveCamera, deps: WatchCa
       if (snap) { blendT = blendDur = 0; return; }
       pivotFor(next, _pivotTarget);
       beginBlend(_pivotTarget);
+      if (deps.prepareDestination && next.state?.pos) {
+        // (perf-245) where the ride lands: behind the subject at the orbit's distance (tank forward is local +Z)
+        const yaw = next.state.yaw ?? 0;
+        _hopDest.set(_pivotTarget.x - Math.sin(yaw) * dist, _pivotTarget.y + 3, _pivotTarget.z - Math.cos(yaw) * dist);
+        deps.prepareDestination(_hopDest, _pivotTarget, blendDur);
+      }
     },
 
     setSight(on: boolean): void {

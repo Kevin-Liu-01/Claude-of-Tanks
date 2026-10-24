@@ -53,6 +53,22 @@ interface OffscreenWarmBatchOptions {
   prepareObjects?: ((objects: readonly Object3D[]) => Promise<void>) | null;
   /** Synchronous, caller-owned offscreen render; never disposed by this helper. */
   renderBatch?: (() => void) | null;
+  /**
+   * Draw each batch whatever the camera frames (2026-10-24, perf-245): its objects' frustum culling is off for that one
+   * private render. A warm that culled to the deployment camera left everything outside it to its first live draw —
+   * a camera thrown into the far side of the map (a Watch hop, the killcam, spectating) met those draws all at once.
+   */
+  uncull?: boolean;
+}
+
+/** Options of a scene warmer's private target. */
+interface OffscreenSceneWarmerOptions {
+  /**
+   * The live scene target's MSAA sample count (post.msaaSamples), read at each render (2026-10-24, perf-245). A GPU
+   * pipeline is made per program, vertex layout and attachment set — sample count included — so a single-sample warm
+   * target bound the programs but left the multisampled scene pass's pipelines to the first live frame that drew them.
+   */
+  samples?: (() => number) | null;
 }
 
 interface WarmBatchSelection {
@@ -73,6 +89,7 @@ export function createOffscreenSceneWarmer(
   scene: Scene,
   camera: Camera,
   scale = 0.25,
+  { samples = null }: OffscreenSceneWarmerOptions = {},
 ): OffscreenSceneWarmer {
   const size = new Vector2();
   let target: WebGLRenderTarget | null = null;
@@ -81,12 +98,19 @@ export function createOffscreenSceneWarmer(
     renderer.getDrawingBufferSize(size);
     const width = Math.max(8, Math.floor(size.x * scale));
     const height = Math.max(8, Math.floor(size.y * scale));
+    const wantSamples = samples ? Math.max(0, Math.floor(samples() || 0)) : 0;
 
+    if (target && target.samples !== wantSamples) {
+      // (perf-245) the live scene target's sample count changed (a preset or the guard's H3): a new attachment set
+      target.dispose();
+      target = null;
+    }
     if (!target) {
       target = new WebGLRenderTarget(width, height, {
         type: HalfFloatType,
         depthBuffer: true,
         stencilBuffer: false,
+        samples: wantSamples,
       });
       target.texture.name = 'CombatWarm.color';
       target.texture.colorSpace = LinearSRGBColorSpace;
@@ -176,6 +200,7 @@ export async function warmSceneOffscreenBatched(
   yieldBeforeBatch = null,
   prepareObjects = null,
   renderBatch = null,
+  uncull = false,
   }: OffscreenWarmBatchOptions = {},
 ): Promise<number[]> {
   const ownedWarmer = renderBatch ? null : createOffscreenSceneWarmer(renderer, scene, camera, scale);
@@ -188,13 +213,23 @@ export async function warmSceneOffscreenBatched(
     for (let index = 0; index < batches.length; index++) {
       if (yieldBeforeBatch) await yieldBeforeBatch(index);
       const startedAt = performance.now();
-      renderSelectedWarmBatch(renderables, batches[index]!, lods, warmer);
+      renderSelectedWarmBatch(renderables, batches[index]!, lods, warmer, uncull);
       timings.push(Math.round(performance.now() - startedAt));
     }
   } finally {
     ownedWarmer?.dispose();
   }
   return timings;
+}
+
+/**
+ * Render `batch` alone through `render` (2026-10-24, perf-245; cameraDestinationWarm.ts): every other renderable of
+ * `scene` masked by its layers, the LODs frozen and the batch's frustum culling off for this one synchronous call — the
+ * batched warm's isolation for a caller that chose its objects itself. Nothing survives the call.
+ */
+export function renderBatchAlone(scene: Scene, camera: Camera, batch: readonly Object3D[], render: () => void): void {
+  const { renderables, lods } = collectWarmBatchSelection(scene, camera);
+  renderSelectedWarmBatch(renderables, batch as WarmRenderable[], lods, render, true);
 }
 
 function collectWarmBatchSelection(scene: Scene, camera: Camera): WarmBatchSelection {
@@ -242,7 +277,7 @@ function splitWarmBatches(
 
 function renderSelectedWarmBatch(
   renderables: WarmBatchSelection['renderables'], batch: WarmRenderable[],
-  lods: WarmBatchSelection['lods'], render: () => void,
+  lods: WarmBatchSelection['lods'], render: () => void, uncull = false,
 ): void {
   // Layers gate a renderable without pruning its descendants. Toggling
   // `visible` would accidentally hide a child batch whenever a renderable
@@ -250,11 +285,14 @@ function renderSelectedWarmBatch(
   const layerMasks = renderables.map(({ object }) => ({ object, mask: object.layers.mask }));
   const selected = new Set(batch);
   const lodStates = lods.map(object => ({ object, autoUpdate: object.autoUpdate }));
+  const culled = uncull ? batch.filter((object) => object.frustumCulled) : [];
   try {
     for (const { object } of lodStates) object.autoUpdate = false;
     for (const { object } of layerMasks) if (!selected.has(object)) object.layers.mask = 0;
+    for (const object of culled) object.frustumCulled = false;
     render();
   } finally {
+    for (const object of culled) object.frustumCulled = true;
     for (const { object, autoUpdate } of lodStates) object.autoUpdate = autoUpdate;
     for (const state of layerMasks) state.object.layers.mask = state.mask;
   }

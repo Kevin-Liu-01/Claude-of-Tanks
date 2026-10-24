@@ -621,6 +621,12 @@ interface KillcamDeps {
   getEntity?(id: string): KillcamEntity | null;
   getWorld?(): KillcamWorld | null;
   getFx?(): FxRuntime | null;
+  /**
+   * The replay is about to show `position` (the attacker's muzzle), looking at `lookAt` (the victim), within
+   * `durationS` (2026-10-24, perf-245; engine/cameraDestinationWarm.ts): the attacker's surroundings are warmed while
+   * the replay opens on the victim.
+   */
+  prepareDestination?(position: THREE.Vector3, lookAt: THREE.Vector3, durationS: number): void;
 }
 
 interface KillcamDebugSurface {
@@ -2600,7 +2606,20 @@ export function createKillCam(deps: KillcamDeps) {
     openReplayOverlay(d);
     pb.xcam = computeXrayCam(snap);
     configureReplayFillLight();
+    announceAttacker(snap);
     startReplayPhase(xrayOnly, wreckHold);
+  }
+
+  /** (perf-245) the replay's far end: the attacker's muzzle (or hull), looking at the victim. */
+  const _killDest = new THREE.Vector3(), _killLook = new THREE.Vector3();
+  function announceAttacker(snap: ReplaySnapshot): void {
+    if (!deps.prepareDestination) return;
+    const from = snap.muzzle ?? (snap.attackerEnt?.state?.pos ? [snap.attackerEnt.state.pos.x, snap.attackerEnt.state.pos.y, snap.attackerEnt.state.pos.z] : null);
+    const to = snap.targetEnt?.state?.pos;
+    if (!from || !to) return;
+    _killDest.set(from[0], from[1] + 3, from[2]);
+    _killLook.set(to.x, to.y, to.z);
+    deps.prepareDestination(_killDest, _killLook, 2);
   }
 
   /**

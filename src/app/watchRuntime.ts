@@ -22,6 +22,8 @@ export interface WatchRuntimePorts<TEntity extends WatchRuntimeEntity> extends C
   camera: PerspectiveCamera;
   heightField: WatchCameraDeps['heightField'];
   raycast: WatchCameraDeps['raycast'];
+  /** (perf-245) a hop's destination, warmed during the hop (engine/cameraDestinationWarm.ts). */
+  prepareDestination?: WatchCameraDeps['prepareDestination'];
   hud: { root(): HTMLElement | null; setWatchDrone(pose: { x: number; z: number } | null): void };
 }
 
@@ -49,7 +51,7 @@ const _bravo = new Vector3();
 
 export function createWatchRuntime<TEntity extends WatchRuntimeEntity>(ports: WatchRuntimePorts<TEntity>): WatchRuntime<TEntity> {
   const { game, camera, heightField } = ports;
-  const watchCamera = createWatchCamera(camera, { heightField, raycast: ports.raycast });
+  const watchCamera = createWatchCamera(camera, { heightField, raycast: ports.raycast, prepareDestination: ports.prepareDestination });
 
   /** The drone opens behind the human seat's side over the line between the two deployments, looking at the field. */
   const openingFrame: WatchControllerOptions<TEntity>['openingFrame'] = (out) => {
