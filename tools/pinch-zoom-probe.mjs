@@ -55,11 +55,11 @@ const GAME_QUERY = 'nosplash=1&tier=desktop';
 const SURFACES = {
   home: {
     route: '/home', kind: 'public', title: 'the landing page on arrival',
-    keys: ['nav.public-nav', 'header.v5-hero', 'header.v5-hero > *', 'section.manual-start', 'section.v5-social-proof', 'section.v5-authored'],
+    keys: ['nav.public-nav', 'header.hero', 'header.hero > *', 'section.versus', 'section.motion', 'section.fleet'],
   },
   'home-scrolled': {
     route: '/home', kind: 'public', title: 'the landing page read part-way down',
-    keys: ['nav.public-nav', 'header.v5-hero', 'section.v5-authored', 'section.v5-facts', 'section.v5-film', 'section.v5-split--garage'],
+    keys: ['nav.public-nav', 'header.hero', 'section.fleet', 'section.play', 'section.shots', 'section.v5-social-proof'],
     scrollWindowTo: 2600,
   },
   docs: {

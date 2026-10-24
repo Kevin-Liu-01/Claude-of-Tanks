@@ -65,16 +65,16 @@ assert.doesNotMatch(galleryHtmlSource, /Live simulation data|galleryArchiveOpen|
 assert.ok(new RegExp(`id="docsArchiveOpen"[\\s\\S]*?Visual archive[\\s\\S]*?${archiveCount} field frames`).test(docsSource),
   'the archive card counts the archive');
 assert.match(docsSource, /id="docsArchive"[\s\S]*?id="docsArchiveBody"/);
-// the home page loops cut-30 silent; the manual leads with its banner (the trailer is the landing's, public/media/site50-r14/films), and
-// (2026-10-19, the owner: "all our new medai has to be shhown soomewhhere") the home page's trailers row plays the
-// trailers with their score on a click only: outside that row the home page names no trailer
+// the home page loops the reel silent; the manual leads with its banner (the trailer is the landing's, public/media/site50-r14/films), and
+// (2026-10-19, the owner: "all our new medai has to be shhown soomewhhere") the home page's motion stage plays the
+// trailer's three cuts with their score on a click only: outside that stage the home page names no trailer
 assert.match(homeSource, /\/media\/site50-r14\/films\/reel\.mp4/);
-const homeTrailerRow = homeSource.match(/<div class="v5-trailer-grid" data-trailer-row>[\s\S]*?\n[ \t]*<\/div>/)?.[0] ?? '';
-assert.match(homeTrailerRow, /<video controls playsinline preload="none" data-trailer [^>]*><source src="\/media\/site50-r14\/films\/trailer\.webm"/,
-  'the trailers row plays the trailer on a click');
-assert.doesNotMatch(homeSource.replace(homeTrailerRow, ''), /\/media\/site50-r14\/films\/trailer[^"]*\.(?:mp4|webm)/,
-  'no trailer plays on the home page outside its trailers row');
-// (245: the manual's hero is its own banner, public/media/docs-r1, and the trailer plays in the landing's trailers row)
+const homeTrailerStage = homeSource.match(/<figure class="motion-trailer" data-trailer-stage>[\s\S]*?<\/figure>/)?.[0] ?? '';
+assert.match(homeTrailerStage, /<video controls playsinline preload="none" data-trailer [^>]*><source src="\/media\/site50-r14\/films\/trailer\.webm"/,
+  'the motion stage plays the trailer on a click');
+assert.doesNotMatch(homeSource.replace(homeTrailerStage, ''), /\/media\/site50-r14\/films\/trailer[^"]*\.(?:mp4|webm)/,
+  'no trailer plays on the home page outside its motion stage');
+// (245: the manual's hero is its own banner, public/media/docs-r1, and the trailer plays in the landing's motion stage)
 assert.match(docsSource, /<img src="\/media\/docs-r1\/banner-2560\.webp" srcset="\/media\/docs-r1\/banner-1280\.webp 1280w/, 'the manual leads with its banner');
 assert.doesNotMatch(docsSource, /\/media\/site50-r14\/films\/trailer/, 'the trailer plays on the landing, not in the manual');
 assert.doesNotMatch(`${homeSource}${docsSource}`, /promo-v13/, 'the v13 reel is retired from both pages');
@@ -92,11 +92,12 @@ assert.match(TYPE_STACK.ui, /^'Cot UI','Cot Accents','Cot Symbols','Cot Fallback
 // Landing and README pictograms come from the one icon sprite (brand-ui BUI-F4): the page references its symbols, the
 // README shows the accent exports tools/gen-icon-sprite.mjs writes; the retired product-mark folders stay gone.
 // (242, the direction's pages: the section eyebrow pictograms went with the eyebrows; the walls carry the duel, map, time
-// and fact glyphs)
-const landingIcons = ['play', 'vehicle', 'map', 'gpu', 'team', 'fireGun', 'layerModules', 'cameraPath', 'gallery', 'star',
-  'globe', 'media'];
+// and fact glyphs; 246: the facts strip's renderer glyph left with the strip, the modes and mechanics switch carries the
+// modes' own glyphs; a glyph drawn at 18 px or less uses its small master, #i-<id>-s)
+const landingIcons = ['play', 'vehicle', 'map', 'team', 'fireGun', 'layerModules', 'cameraPath', 'gallery', 'star',
+  'globe', 'media', 'modeStandard', 'chevronLeft', 'phone'];
 for (const icon of landingIcons) {
-  assert.ok(homeSource.includes(`href="#i-${icon}"`), `landing page must use the ${icon} glyph`);
+  assert.match(homeSource, new RegExp(`href="#i-${icon}(?:-s)?"`), `landing page must use the ${icon} glyph`);
 }
 for (const [, icon] of readmeSource.matchAll(/docs\/media\/icons\/([A-Za-z]+)\.svg/g)) {
   const asset = readFileSync(join(ROOT, 'docs/media/icons', `${icon}.svg`), 'utf8');

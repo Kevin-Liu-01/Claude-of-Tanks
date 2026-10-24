@@ -259,7 +259,9 @@ for (const key of markupKeys(readFileSync(resolve(ROOT, 'index.html'), 'utf8')))
 assert.ok(game.keys.length > fullKeys.length * 0.4 && game.keys.length < fullKeys.length,
   `the game shows ${game.keys.length} of ${fullKeys.length} keys`);
 assert.deepEqual([game.lazyKeys, game.lazy], [[], []], 'the game has no lazy chunk');
-assert.ok(real.catalogs.notFound.keys.length <= 16 && real.catalogs.notFound.keys.includes('notFound.metaTitle'),
+// (246) the shared shell's bar, menu and footer carry seventeen keys of their own; the page adds its title, its sentence,
+// its search's three and its report link
+assert.ok(real.catalogs.notFound.keys.length <= 24 && real.catalogs.notFound.keys.includes('notFound.metaTitle'),
   `the 404 page needs a handful of strings: ${real.catalogs.notFound.keys.join(', ')}`);
 // the gallery's damage workbench, a static import, boots with the page (its garage.module.*, garage.crew.* and
 // gallery.damage.* names); the field guides behind the info buttons load with infoGuides.ts
