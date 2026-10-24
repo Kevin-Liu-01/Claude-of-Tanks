@@ -510,6 +510,24 @@ export function alertReserve(w: number, small: boolean): number {
 const ALERT_WIDTHS_12 = [520, 409, 334, 260, 234, 180] as const;
 const ALERT_WIDTHS_9 = [340, 200, 159] as const;
 
+/**
+ * The band the detection and the alert take stacked at their widest under the objective (searchPair's first stack: the
+ * detection at its preferred top, the alert in its widest slot under it, each MOUSE_NOTICE_GAP_PX apart, the gap kept
+ * under the alert too) and the half width of that slot round the centre line. The shot report's dock starts below this
+ * band wherever its column would cross the slot (battleHudLayout.ts), so the two notices stack there instead of
+ * splitting round it (1024 x 600: the dock at x 708 from y 196 met the 520 px slot by 4 px, and DETECTED went under the
+ * sight, over the scope's zoom readout).
+ */
+export function mouseNoticeStackBand(width: number, height: number, top: number, small: boolean):
+  { readonly bottom: number; readonly halfWidth: number } {
+  const aw = Math.min(small ? ALERT_WIDTHS_9[0] : ALERT_WIDTHS_12[0], width - 2 * EDGE_PX);
+  const y = Math.max(Math.ceil(top + MOUSE_NOTICE_GAP_PX), Math.ceil(height * .12));
+  return {
+    bottom: y + DETECTION_H + MOUSE_NOTICE_GAP_PX + alertReserve(aw, small) + MOUSE_NOTICE_GAP_PX,
+    halfWidth: aw / 2 + MOUSE_NOTICE_GAP_PX,
+  };
+}
+
 // Costs: a px down from main's top costs 1, a px up from it .5 (a place never moves sideways: noticeCentreLine.ts).
 const UP_COST = .5;
 const SPLIT_COST = 60;

@@ -1,6 +1,7 @@
 import { layoutViewportSize } from './responsiveLayout.ts';
 import {
-  mouseAlertBox, mouseMedalWaits, planMouseNotices, type MouseNoticeInput, type MouseNoticePlan, type PlanLane, type PlanRect,
+  mouseAlertBox, mouseMedalWaits, mouseNoticeStackBand, planMouseNotices, type MouseNoticeInput, type MouseNoticePlan, type PlanLane,
+  type PlanRect,
 } from './mouseNoticePlan.ts';
 import { addSightFurniture, addSightNoticeCut, clearSightFurniture, setSightNotice, settleSightFurniture } from './sightFurniture.ts';
 import { planTouchNotices, TOUCH_COMPACT_ALERT, TOUCH_COMPACT_NOTICE, TOUCH_NOTICE_GAP, type TouchBox, type TouchSize } from './touchNoticePlan.ts';
@@ -68,6 +69,9 @@ export const REPORT_MAP_GAP = 12;
 const NETWORK_CORNER_TOP = 8;
 const NETWORK_CORNER_RIGHT = 10;
 /** A bottom-anchored report budget; notification counts never enter this policy. */
+/** The shortest dock the shot report is moved down to (a tight card: its rows hidden, its plans scaled to the dock). */
+const REPORT_DOCK_MIN = 140;
+
 export function battleReportDock(bottom: number, ceiling: number, compact: boolean) {
   const height = Math.min(compact ? 160 : 260, Math.max(0, bottom - ceiling));
   return { top: bottom - height, height, bottom };
@@ -828,8 +832,15 @@ export function installBattleHudLayout(root: HTMLElement): void {
     const rosterStart = rosterTopRight ?? earRight?.top ?? scoreBottom + 8;
     const rosterCount = Number(root.querySelector<HTMLElement>('.cot-ear.r')?.dataset.count) || 0;
     const rosterMinimum = earRight ? (root.querySelector('.cot-ear.r.icon-grid') ? 124 : 22 + Math.min(14, rosterCount) * 12) : 0;
-    const report = battleReportDock(rightBottom,
-      Math.max(top + 12, rosterStart + rosterMinimum + (earRight ? 32 : 0), networkBottom + 8),
+    // The shot report docks under the right roster. On the mouse layout, where its column would cross the centre notices'
+    // widest slot, it starts below their stacked band (mouseNoticeStackBand) while that leaves it a tight card's height,
+    // so the detection and the alert stack under the objective instead of splitting round it.
+    const reportCeiling = Math.max(top + 12, rosterStart + rosterMinimum + (earRight ? 32 : 0), networkBottom + 8);
+    const reportHost = touch ? null : read('.cot-si-cardhost');
+    const noticeBand = reportHost ? mouseNoticeStackBand(width, height, top, height <= 550 || width <= 480) : null;
+    const reportUnderBand = !!noticeBand && reportHost!.left < width / 2 + noticeBand.halfWidth
+      && rightBottom - noticeBand.bottom >= REPORT_DOCK_MIN;
+    const report = battleReportDock(rightBottom, reportUnderBand ? Math.max(reportCeiling, noticeBand!.bottom) : reportCeiling,
       root.classList.contains('compact-shot-report'));
     const dockReport = !touch;
     const rightKillFloor = dockReport ? report.top - 8 : rightBottom;
