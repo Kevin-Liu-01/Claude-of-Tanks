@@ -2522,19 +2522,19 @@
    "hostSweep": []
   },
   "pt91m": {
-   "inputHash": "3dcc382ec1c9c081",
+   "inputHash": "8679c94670a23187",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "puma_s1": {
-   "inputHash": "25aee4131cf7bae9",
+   "inputHash": "360e1a3aec0d8732",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "raiju_ifv": {
-   "inputHash": "e6cc6e907e603fe0",
+   "inputHash": "cf639057e05bbfc2",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2577,7 +2577,7 @@
    "hostSweep": []
   },
   "spz_wotan": {
-   "inputHash": "27ed71a463c3f239",
+   "inputHash": "f3dd9d006c11e20b",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2770,7 +2770,7 @@
    "hostSweep": []
   },
   "strv122": {
-   "inputHash": "403a7b15971ffca8",
+   "inputHash": "826bd5a6f7c51d3c",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -2849,13 +2849,13 @@
    "hostSweep": []
   },
   "t14_armata": {
-   "inputHash": "52b6332fab42d78b",
+   "inputHash": "2a4047c3e70ae7b1",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t62_1975": {
-   "inputHash": "62b7df28716fa28c",
+   "inputHash": "12604ca088241fc0",
    "runs": [
     {
      "index": 0,
@@ -2868,15 +2868,15 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.963,
-      "gap": 0.037,
+      "support": 0.941,
+      "gap": 0.059,
       "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.002,
+      "sunkMaxM": 0.017,
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.943,
-      "host": "turret<meshDome@profiles/russia.ts:570>"
+      "host": "orphan:turret"
      }
     },
     {
@@ -3013,19 +3013,19 @@
    "hostSweep": []
   },
   "t64bv_donbas": {
-   "inputHash": "eec3341c1c0ed875",
+   "inputHash": "f0d579591bae5e2d",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t72_rys": {
-   "inputHash": "8e1080c1ce3f327d",
+   "inputHash": "708fa281879599df",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t72b3": {
-   "inputHash": "412906f4e8bfef7b",
+   "inputHash": "86a8802b03424a29",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3037,13 +3037,13 @@
    "hostSweep": []
   },
   "t72b3_qilin": {
-   "inputHash": "18434cbaf8ec2202",
+   "inputHash": "81ada2b883119229",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "t72b3_sich": {
-   "inputHash": "a39060ceb9f6ca90",
+   "inputHash": "e215602d4bccbbf1",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3061,7 +3061,7 @@
    "hostSweep": []
   },
   "t72b3m_2016": {
-   "inputHash": "2f13a0bc881e2d48",
+   "inputHash": "f06169afa9829215",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
