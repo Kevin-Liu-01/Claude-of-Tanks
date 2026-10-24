@@ -185,6 +185,11 @@ function addK2BPackage(P: ProceduralBuilderPort): void {
 function buildK2B(P: ProceduralBuilderPort & Modern3BuilderPort): void {
   buildK2(P);
   addK2BPackage(P);
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the ring receipt reads the deck at its
+  // well's floor (1.56), so its seat (turretSeatRace.ts) stopped at 1.63, 3 cm into the 1.66 roof round the ring, and the
+  // loft's underside swept the roof and its kit (to 1.679) at every bearing. The seat takes that roof's plane with its
+  // 3 cm seam as a floor.
+  P.turretG.userData.turretSeatMinY = 1.69;
 }
 
 export const KOREA_PROFILES = {
