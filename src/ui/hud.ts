@@ -1696,6 +1696,46 @@ body:is([data-cot-width='laptop'],[data-cot-width='desktop']):not(.cot-touch-lay
 .cot-kf .si.src>svg{display:block;flex:none;}
 .cot-dmglayer{position:absolute;z-index:calc(var(--hud-layer-world) + 1);inset:0;}
 ${spectatorSwitcherStyles}
+/* brand-ui 245: the battle layout's touch and roster rules that only matter once the HUD is up ride this lazy sheet, not
+   the boot CSS (battleHudLayout.css); their selectors keep the layout sheet's weight */
+/* the status chips hug the panel's right edge at their own width: a strip the panel's width began 5 px off the joystick,
+   inside its 8 px margin, so the dock lifted it 102 px onto the alt-fire button (statusDockBottom) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-vehicle-status{left:auto;right:0;width:auto}
+/* the narrow touch strip (112-150 px, phone, compact, tight): 32 px chips (status, not controls: their tooltip is the
+   tap), so the strip sits on the panel under the round buttons' labels (AUTO AIM, SCOPE end 12 px above it) */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-status-box{
+  flex:0 0 32px;width:32px;height:32px;min-width:32px;min-height:32px;padding:4px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-status-box svg{
+  width:18px;height:18px}
+/* brand-ui 245 (less text): at rest a roster row is its silhouette and its commander, one line; Tab's held roster
+   (rosters-expanded) adds each vehicle and its tier */
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud:not(.rosters-expanded) .cot-ear:not(.icon-grid) .cot-er .n .veh{display:none}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-hud:not(.rosters-expanded) .cot-ear:not(.icon-grid) .cot-er .n .nick{font-size:var(--battle-fs-12)}
+/* brand-ui 245: flying Watch mode's drone on touch, its bar (watchHud.ts) rides above the virtual stick (138 px, 24 px off
+   the floor: the bar sat across it on a phone); a short landscape tucks it under the score, as riding does */
+html[data-watch=drone] body[data-cot-battle-layout].cot-touch-layout .cot-watch{bottom:calc(env(safe-area-inset-bottom) + 170px)}
+html[data-watch=drone] body[data-cot-battle-layout][data-cot-height='short'].cot-touch-layout .cot-watch{top:calc(var(--inset-top) + 40px);bottom:auto}
+/* the coordinator's 11 px floor (246): no HUD text under 11 px on any device. A label that cannot fit there reads as its
+   glyph or its state's ink, its words in its title and for a screen reader; a figure stays visible (.num). The systems
+   row: a control's name is its glyph, a count it shows (a cooldown, the smoke charges) a figure, as a touch tile shows it */
+.cot-vehicle-controls>button .sl:not([data-count]){position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.cot-vehicle-controls>button:not(:has(.sl[data-count],.system-status:not(:empty))) .si{grid-column:1 / 3}
+.cot-vehicle-controls>button .system-status:not(:empty){display:block}
+.cot-vehicle-controls>button .sl[data-count]~.system-status{display:none}
+/* a recalled drone's tile on the touch strip keeps the Returning cue (aerialHud.css data-phase=returning: its amber ink
+   and underline) over the strip tile's plate ring (battleHudLayout.css), by specificity alone (droneReturningCascade.selftest.mjs): at
+   (0,5,3) it outranks the strip's tile at (0,5,2) and yields to the action dock's own cue at (0,6,2) */
+html body[data-cot-battle-layout].cot-touch-layout .cot-vehicle-controls>button.cot-drone-control[data-phase=returning]{opacity:1;color:#ffdc94;box-shadow:inset 0 -2px #efb84e99}
+/* the side kill lanes: an ammo-rack kill's cause is its glyph (its word in the glyph's label and title) */
+body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d b{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+/* the aim chip's glyph beside its words; a compact chip (the short landscapes, the narrowest portraits: battleHudLayout.css,
+   beside the media queries that size it) keeps the glyph */
+.cot-aim-warning:not([hidden]){display:flex;align-items:center;justify-content:center;gap:6px}
+.cot-aim-warning .g{display:flex;flex:none;color:var(--notice-edge)}.cot-aim-warning .g svg{display:block;width:14px;height:14px}
+/* a compact alert is its glyph on its severity's plate, its words in the live region and its title: the touch planner's
+   compact form here; the smallest touch screens and a mouse window that seats its alert in the 9 px type's reserves
+   (mouseNoticePlan.ts ALERT_RESERVE_9) beside their media queries in battleHudLayout.css */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-compact'] .cot-alert-copy{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 /* while spectating, the DEAD player's own-tank furniture is meaningless and
    collides with the bar — shell tray, damage panel (+ its camo lamp) and the
    reticle canvas hide; team panels / minimap / killfeed stay (that is the
@@ -2090,6 +2130,11 @@ export function initHud(bus: EventBus): HudRuntime {
   const touchAimWarning = el('div', 'cot-aim-warning', root);
   touchAimWarning.hidden = true;
   touchAimWarning.setAttribute('role', 'status');
+  // the chip's glyph and words: a compact chip (battleHudLayout.css, the 11 px floor) reads as its glyph alone, the words
+  // for a screen reader and in its title
+  const touchAimWarningGlyph = el('span', 'g', touchAimWarning);
+  touchAimWarningGlyph.setAttribute('aria-hidden', 'true');
+  const touchAimWarningText = el('span', 'tx', touchAimWarning);
   const retCanvas = el('canvas', 'cot-ret', root);
   const ctx = requireCanvasContext(retCanvas);
   const markCanvas = el('canvas', 'cot-hitmark', root);
@@ -2570,6 +2615,7 @@ export function initHud(bus: EventBus): HudRuntime {
   const jumpLabel = requireElement<HTMLElement>(jumpHint, '.sl');
   jumpLabel.textContent=t('hud.jump');
   jumpHint.setAttribute('aria-label', t('hud.jump'));
+  jumpHint.title = t('hud.jump'); // (its name reads as its glyph at the 11 px floor: the word on hover)
   const jumpKey = requireElement<HTMLElement>(jumpHint, '.sk');
   const specialIcon = requireElement<HTMLElement>(specialButton, '.si');
   const specialLabel = requireElement<HTMLElement>(specialButton, '.sl');
@@ -2580,11 +2626,13 @@ export function initHud(bus: EventBus): HudRuntime {
   const droneButton = el('button', 'cot-auxiliary cot-drone-control', controlsRow); droneButton.type = 'button'; droneButton.hidden = true;
   droneButton.innerHTML = `<span class="si">${uiIconSVG('modeDrone',18)}</span><span class="sl"></span><span class="sk">V</span>`;
   droneButton.setAttribute('aria-label', t('systems.drone.help'));
+  droneButton.title = t('systems.drone.help');
   bindControl(droneButton, () => { if (!droneButton.disabled) bus.emit('ui:drone', {}); });
   // The drone altimeter reads the same terrain height field as the spotting line-of-sight tests (set on map load).
   const aerialHud = createAerialHud(root,bus,() => heightFieldRef);
   const missileButton=el('button','cot-auxiliary',controlsRow);missileButton.type='button';missileButton.hidden=true;
   missileButton.innerHTML=`<span class="si">${uiIconSVG('missileRack',18)}</span><span class="sl">${t('systems.atgm')}</span><span class="sk"></span><small class="system-status"></small>`;
+  missileButton.title=t('systems.atgm.help');
   let missilePlayer:HudTank|null|undefined=null,previousConventionalSlot=0;
   function toggleExtraMissile(){
     if(missileButton.hidden||missileButton.disabled||!missilePlayer)return;
@@ -2597,7 +2645,7 @@ export function initHud(bus: EventBus): HudRuntime {
   bus.on('auxiliary:defaultLights',payload=>{defaultLightsOn=!!(payload as {on:boolean}).on;});
   const auxiliaryButtons = (['smoke','lights','roofGun'] as const).map(action=>{
     const button=el('button','cot-auxiliary',controlsRow);button.type='button';button.hidden=true;
-    button.innerHTML=`<span class="si">${uiIconSVG(action==='lights'?'lightbulb':action,18)}</span><span class="sl">${t(`systems.${action}`)}</span><span class="sk"></span><small class="system-status"></small>`;
+    button.innerHTML=`<span class="si">${uiIconSVG(action==='lights'?'lightbulb':action,18)}</span><span class="sl">${t(`systems.${action}`)}</span><span class="sk"></span><small class="system-status num"></small>`;
     button.title=t(`systems.${action}.help`);button.setAttribute('aria-label',button.title);
     bindControl(button, () => { if (!button.disabled) bus.emit(`ui:${action==='lights' ? 'lightsToggle' : action}`, {}); });
     return {action,button,label:button.querySelector<HTMLElement>('.sl')!,status:button.querySelector('small')!,key:button.querySelector<HTMLElement>('.sk')!};
@@ -2634,6 +2682,8 @@ export function initHud(bus: EventBus): HudRuntime {
   const setControlText = (label: Element, text: string, count: boolean): void => {
     label.textContent = text;
     label.toggleAttribute('data-count', count);
+    // a count is a figure (the .num voice); a name reads as the control's glyph (battleHudLayout.css, the 11 px floor)
+    label.classList.toggle('num', count);
   };
   const reloadForSlot=createVehicleCooldownReader();
   function updateSpecialAction(player: HudTank | null | undefined, aim: HudAimInput | null | undefined = null): void {
@@ -2906,6 +2956,17 @@ export function initHud(bus: EventBus): HudRuntime {
   let directionalHitValuesEnabled = false;
   let mmLastPaintMs = -1e9; // minimap repaint throttle (PERF: 20 Hz, time-based)
   let mmDirty = true; // force an immediate minimap paint on the next update()
+  // The grid's coordinates read at the HUD's 11 px floor on the map as shown (the coordinator, 246): their type scales
+  // against the plate's shown width, and a plate too small for a cell to hold one (under 140 px, the phones') keeps its
+  // grid lines alone. Its observer keeps layout reads out of the frame loop.
+  let mmLabelPx = 11;
+  if (typeof ResizeObserver === 'function') {
+    new ResizeObserver((entries) => {
+      const shown = entries[entries.length - 1]?.contentRect.width ?? MM;
+      const next = shown >= 140 ? 11 * MM / shown : 0;
+      if (Math.abs(next - mmLabelPx) > 0.05) { mmLabelPx = next; mmDirty = true; }
+    }).observe(mmWrap);
+  }
   let mmBuildGeneration = 0;
   const minimapAssetCache = new Map<string, Promise<HTMLImageElement>>();
   const minimapForestX = new Float32Array(12);
@@ -4021,7 +4082,7 @@ export function initHud(bus: EventBus): HudRuntime {
       ? Math.round(Math.min(Math.max(frame.minDimension * 0.023, 14), 19))
       : Math.round(Math.min(Math.max(
         frame.minDimension * (label.length > 13 ? 0.015 : 0.018),
-        10,
+        11, // the HUD's 11 px floor (the coordinator, 246)
       ), 14));
     const valueRadius = frame.radius + paint.thickness + (indicator.numeric ? 14 : 16);
     ctx.save();
@@ -4047,7 +4108,7 @@ export function initHud(bus: EventBus): HudRuntime {
     ctx.fillText(label, x, y);
     if (indicator.crit && indicator.numeric) {
       const critRadius = valueRadius + fontPx + 5;
-      const critFontPx = Math.max(9, Math.round(fontPx * 0.55));
+      const critFontPx = Math.max(11, Math.round(fontPx * 0.55)); // the 11 px floor
       ctx.font = `700 ${critFontPx}px ${FONT_COND}`;
       // A localized word behind a drawn diamond (never a Latin-only code; BUI-F8): 暴击 in zh, CRIT in en.
       const crit = t('hud.dmg.crit');
@@ -5195,8 +5256,14 @@ export function initHud(bus: EventBus): HudRuntime {
         draw.warningX + draw.warningW / 2, draw.warningY + AIM_WARNING_CHIP_BELOW);
     }
     if (touchWarning) {
-      if (touchAimWarning.textContent !== warning.text) touchAimWarning.textContent = warning.text;
-      if (touchAimWarning.dataset.kind !== warning.kind) touchAimWarning.dataset.kind = warning.kind;
+      if (touchAimWarningText.textContent !== warning.text) {
+        touchAimWarningText.textContent = warning.text;
+        touchAimWarning.title = warning.text;
+      }
+      if (touchAimWarning.dataset.kind !== warning.kind) {
+        touchAimWarning.dataset.kind = warning.kind;
+        touchAimWarningGlyph.innerHTML = uiIconSVG(warning.kind === 'rollover' ? 'rematch' : 'turretRing', 14);
+      }
       seatTouchWarning(seated, draw);
       return;
     }
@@ -6386,22 +6453,26 @@ export function initHud(bus: EventBus): HudRuntime {
     // cells — the old solid dark gutter strips ate map area.
     // The label voice (Chakra Petch SemiBold) at the 11 px floor, inset from the frame so the corner pair (1 / A)
     // never touches the keyline, and a touch more translucent so the map stays the subject.
-    octx.font = `600 11px ${FONT_COND}`;
-    octx.textAlign = 'center';
-    octx.textBaseline = 'middle';
-    octx.save();
-    octx.shadowColor = 'rgba(0,0,0,0.9)';
-    octx.shadowBlur = 2.5;
-    octx.fillStyle = 'rgba(255,255,255,0.66)';
-    for (let i = 0; i < 10; i++) {
-      const c = i * MM / 10 + MM / 20;
-      // column numbers across the top edge (WoT prints "0" for the 10th)
-      octx.fillText(String((i + 1) % 10), i === 0 ? Math.max(c, 14) : c, 8.5);
-      // row letters down the left edge (skip the corner-sharing squeeze:
-      // A's cell also hosts the "1", so it sits a touch lower)
-      octx.fillText(GRID_LETTERS[i], 8, i === 0 ? Math.max(c, 17) : c + 0.5);
+    if (mmLabelPx > 0) {
+      // (the insets scale with the type, so the corner pair keeps its room at every shown size)
+      const k = mmLabelPx / 11;
+      octx.font = `600 ${mmLabelPx.toFixed(1)}px ${FONT_COND}`;
+      octx.textAlign = 'center';
+      octx.textBaseline = 'middle';
+      octx.save();
+      octx.shadowColor = 'rgba(0,0,0,0.9)';
+      octx.shadowBlur = 2.5;
+      octx.fillStyle = 'rgba(255,255,255,0.66)';
+      for (let i = 0; i < 10; i++) {
+        const c = i * MM / 10 + MM / 20;
+        // column numbers across the top edge (WoT prints "0" for the 10th)
+        octx.fillText(String((i + 1) % 10), i === 0 ? Math.max(c, 14 * k) : c, 8.5 * k);
+        // row letters down the left edge (skip the corner-sharing squeeze:
+        // A's cell also hosts the "1", so it sits a touch lower)
+        octx.fillText(GRID_LETTERS[i], 8 * k, i === 0 ? Math.max(c, 17 * k) : c + 0.5);
+      }
+      octx.restore();
     }
-    octx.restore();
     octx.textAlign = 'left';
     octx.textBaseline = 'alphabetic';
     // corner vignette (cached gradient): the plate darkens toward the frame
@@ -6907,7 +6978,7 @@ export function initHud(bus: EventBus): HudRuntime {
     item.innerHTML = `<span class="k"></span>` + flag(kNation) +
       (source ? `<span class="si ksi src" aria-hidden="true">${uiIconSVG(source.icon, 16, 'currentColor')}</span>`
         : kSpec ? `<span class="si ksi"></span>` : '') +
-      `<span class="d" aria-label="${presentation.label}">${uiIconSVG(presentation.icon, 16)}${presentation.cause === 'ammorack' ? `<b>${presentation.label}</b>` : ''}</span>` +
+      `<span class="d" aria-label="${presentation.label}" title="${presentation.label}">${uiIconSVG(presentation.icon, 16)}${presentation.cause === 'ammorack' ? `<b>${presentation.label}</b>` : ''}</span>` +
       (vSpec ? `<span class="si vsi"></span>` : '') + flag(vNation) + `<span class="v"></span>` +
       (presentation.relation ? `<span class="relation" aria-label="${presentation.relationLabel}">${uiIconSVG(presentation.relationIcon, 13)}</span>` : '');
     // both silhouettes take their side's team ink from the lane (.cot-kill-lane.l / .r)
@@ -7121,6 +7192,8 @@ export function initHud(bus: EventBus): HudRuntime {
     // their space an ordinary one, r10f. A no-break space there set narrower than the space before the dot, "EMPTY
     // ·SELECT", and a word joiner after an ordinary space left the break in Chrome, r10g.)
     const parts = text.split(' · ');
+    // (a compact alert reads as its glyph: its words in the live region and on hover)
+    alertEl.title = text;
     alertCopyEl.replaceChildren(parts[0]);
     for (let i = 1; i < parts.length; i++) {
       const space = parts[i].indexOf(' ');

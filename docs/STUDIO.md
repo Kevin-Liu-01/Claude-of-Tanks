@@ -116,7 +116,8 @@ Additional methods used by the panel:
 
 ```js
 __STUDIO.enter({map}) / .exit() / .setMap(mapId)      // async
-__STUDIO.addActor(cfg) / .updateActor(ref, patch) / .removeActor(ref)
+await __STUDIO.ready()                                 // entered, and every tank's builder in (247)
+__STUDIO.addActor(cfg) / .updateActor(ref, patch) / .removeActor(ref)   // addActor: after ready(); load() needs only its own tanks
 __STUDIO.setActorState(ref, state, ageS?) / .selectActor(ref) / .clearActors()
 __STUDIO.setHydropneumaticAim(ref, pitchDeg)          // real siege-suspension settle
 __STUDIO.effect({type, actor|at, params})             // fire one effect NOW

@@ -8,7 +8,8 @@
 // every pixel decision the separate draws made is kept:
 //
 // - Only a CONTIGUOUS run of the final layer order merges. Every mesh gets a
-//   unique polygon offset (tankFactoryCore installCoplanarDepthLayers); a run
+//   unique place in the layer order (its polygon offset, coplanarDepth.ts,
+//   keeps every exact tie's winner; tankFactoryCore installCoplanarDepthLayers); a run
 //   with no foreign layer between its members can share one offset without
 //   reversing any cross-mesh winner. Unmerged meshes keep their exact layer.
 //   Inside the run the parts are concatenated in layer order, so a later part
@@ -44,7 +45,12 @@ import { isTurretSectionFrame } from './turretRigScale.ts';
 export interface CoplanarLayerRecord {
   object: VehicleMesh;
   materials: THREE.Material[];
+  /** Its place in the semantic order (unique per vehicle). */
   layer: number;
+  /** The polygon offset it draws with (coplanarDepth.ts assignCoplanarDepth); the layer itself when absent. */
+  depth?: number;
+  /** The exact ties below it, whose extra units scale with the drawing camera's near plane (coplanarDepthUnits). */
+  ties?: number;
 }
 
 interface StaticMergeOptions {
@@ -201,7 +207,8 @@ function commonUserData(sources: readonly VehicleMesh[]): Record<string, unknown
   const shared: Record<string, unknown> = {};
   const [first, ...rest] = sources;
   for (const [key, value] of Object.entries(first.userData)) {
-    if (key === 'smokeSockets' || key === 'coplanarDepthLayer') continue;
+    if (key === 'smokeSockets' || key === 'coplanarDepthLayer' || key === 'coplanarDepthOffset'
+      || key === 'coplanarDepthTies') continue;
     if (rest.every((source) => Object.prototype.hasOwnProperty.call(source.userData, key)
       && source.userData[key] === value)) shared[key] = value;
   }

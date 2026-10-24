@@ -15,7 +15,7 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
     "fitting@hull(1.38,1.27,-2.60)": [0.745, 0.86963, -3.12336, 0.51656, -0.48287, 0.51656, -0.48287, 1],
   },
   "bmp3": {
-    "fitting@hull(-1.42,1.40,-2.10)": [-1.5405, 1.623, -2.065, 0, 0, 0.70711, 0.70711, 0],
+    "fitting@hull(-1.42,1.40,-2.10)": [-1.5405, 1.623, -1.915, 0, 0, 0.70711, 0.70711, 0],
   },
   "bmp3_rok": {
     "fitting@hull(1.38,1.27,-2.60)": [0.83726, 0.71871, -3.08698, -0.46405, 0.40298, -0.58104, 0.53353, 1],
@@ -116,7 +116,7 @@ export const SPARE_TRACK_SEAT_PLAN: Readonly<Record<string, Readonly<Record<stri
     "merkava-bow-links@hull(0.00,1.30,2.92)": [0.78431, -0.10117, 0.08335, 0.25238, 0.00018, -0.00113, 0.96763, 1],
   },
   "merkava3c": {
-    "merkava-bow-links@hull(0.00,1.34,2.61)": [0.78217, -0.74395, 1.18073, 0.17887, -0.68715, -0.18244, 0.6801, 1],
+    "merkava-bow-links@hull(0.00,1.34,2.61)": [0.7725, -0.0431, 0.1396, 0.30807, 0, 0, 0.95136, 1],
   },
   "merkava3d": {
     "merkava3d-basket-links@turret(-0.45,0.48,-2.78)": 1,

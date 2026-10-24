@@ -104,7 +104,9 @@ export function bakeTurretRigScale(turretG: THREE.Object3D, gunG: THREE.Object3D
   if (gunG.parent !== turretG || !squashThrough(gunG, squash) || !composedFromTransform(gunG)) return null;
   const wrapped: string[] = [];
   for (const child of [...turretG.children]) {
-    if (child === gunG || takeSquash(child, squash)) continue;
+    // a vehicle marking keeps the seat its solver recorded (vehicleMarkingSeatGroups): it takes a section, never the
+    // squash (243: strv81's sideways insignia took it, its local seat no longer the generated one)
+    if (child === gunG || (child.userData.vehicleMarking !== true && takeSquash(child, squash))) continue;
     // keeps the child's place among its siblings: the coplanar depth layers follow the traversal order
     const section = new THREE.Group();
     section.name = `turretSection_${child.name || child.type}`;

@@ -1,6 +1,8 @@
 // The geometry digest a spare-track ledger row is measured against (tools/spare-track-placement-check.mjs, STALE):
 // every visible mesh's name, positions and world matrix, in scene order (LOD level 0 only). A row whose digest differs
 // from the build's must be re-measured. Its runs are matched on ledgerSiteKeys (below), never on source line numbers.
+// Shadow-only casters (markShadowOnly: the procShadow_* proxies, which the receipt's excludedMesh never measures) stay
+// out, so a shadow proxy change leaves every row current (243: the gun proxy rebuild staled the whole ledger).
 import { createHash } from 'node:crypto';
 
 /** The build options both the receipt and its selftest use, so their digests agree. */
@@ -14,7 +16,7 @@ export function spareTrackGeometryDigest(root) {
   const visit = (o) => {
     if (o.visible === false) return;
     if (o.isLOD) { if (o.levels?.length && o.levels[0].object) visit(o.levels[0].object); return; }
-    const p = o.isMesh ? o.geometry?.getAttribute?.('position') : null;
+    const p = o.isMesh && !o.userData?.shadowOnly ? o.geometry?.getAttribute?.('position') : null;
     if (p) {
       h.update(o.name || '-');
       h.update(new Uint8Array(p.array.buffer, p.array.byteOffset, p.array.byteLength));

@@ -206,6 +206,17 @@ function state(name) {
   if(name==='chat'||name==='combined'||name==='spectator'){
   }
   if(name==='spectator')hud.stageSpectateBar({specId:'leo2a4_v',name:'Commander_Long_Name',vehicle:'Leopard 2A5',count:7,index:2});
+  // ?state=watch-ride | watch-drone: Watch mode's bar over the HUD (src/app/watchRuntime.ts), riding an ally or flying
+  if(name.startsWith('watch-')){
+    const view=name.slice(6), seat=tanks[3];
+    hud.setWatchSide('player');
+    void import('../../src/ui/watchHud.ts').then(({createWatchHud})=>{
+      const watch=createWatchHud(()=>hud.root,{cycle(){},drone(){},toggleSeat(){},setClimb(){}});
+      watch.update({view,tank:view==='drone'?null:{id:seat.id,team:'player',spec:{id:seat.spec.id,name:seat.spec.name,nation:seat.spec.nation}},
+        canTake:true,speedIndex:2,speedSteps:5});
+      window.__HUD_LAYOUT.watch=watch;
+    });
+  }
   if(name==='settings')settings.open();
   if(name==='sniper')hud.setMode('sniper');
   if(name==='large-map'){

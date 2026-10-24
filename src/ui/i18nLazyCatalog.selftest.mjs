@@ -183,7 +183,8 @@ for (const locale of ['en-US', 'zh-CN']) {
 const STUDIO_MODULE = /^src\/(?:ui|game)\/studio[A-Za-z]*\.ts$/;
 const studioFamilies = ['studio.film.', 'studioPanel.picture.', 'studioPanel.light.', 'studioPanel.fxParam.'];
 for (const file of sources) {
-  if (STUDIO_MODULE.test(file) || file === 'src/ui/i18nStudioKeys.ts') continue;
+  // (246) the data-built Field Manual chapters run in Node only, at prerender, with both catalogs whole (as below)
+  if (STUDIO_MODULE.test(file) || file === 'src/ui/i18nStudioKeys.ts' || file.startsWith('src/docs/chapters/')) continue;
   const text = readFileSync(resolve(ROOT, file), 'utf8');
   const shown = studioKeys.find((key) => ["'", '"', '`'].some((quote) => text.includes(`${quote}${key}${quote}`)))
     ?? studioFamilies.find((family) => text.includes(`\`${family}\${`));

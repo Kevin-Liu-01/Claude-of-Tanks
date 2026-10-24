@@ -111,8 +111,8 @@ const tickEnd = studioSource.indexOf('\n  function urlParam(', tickStart);
 assert(tickStart >= 0 && tickEnd > tickStart);
 const tickSource = stripTypeScriptTypes(studioSource.slice(tickStart, tickEnd));
 const frameCalls = [];
-const tick = new Function('calls', `
-  let poolSweepAcc = 0, lastFov = 55, frameDirty = true;
+const makeTick = (plateUp) => new Function('calls', `
+  let poolSweepAcc = 0, lastFov = 55, frameDirty = true, buildPlateUp = ${plateUp};
   const recording = null, timeScale = 1, clockMs = 0, _fwd = {}, filming = false;
   const perf = { skippedFrames: 0, renderedFrames: 0 }, storyboard = { durationMs: 1000 };
   const updateCamera = dt => { calls.push(['camera', dt]); return true; };
@@ -124,10 +124,15 @@ const tick = new Function('calls', `
   ${tickSource}
   return tick;
 `)(frameCalls);
+const tick = makeTick(false);
 tick(.1, .5);
 assert.deepEqual(frameCalls, [['camera', .1], ['panel', .1], ['timeline', 100], ['post', .1, .5]]);
 frameCalls.length = 0;
 tick(.02);
 assert.deepEqual(frameCalls.at(-1), ['post', .02, .02]);
+// (perf-247) under the build's opaque plate (withStage) the panel ticks and no scene frame renders
+frameCalls.length = 0;
+makeTick(true)(.1, .5);
+assert.deepEqual(frameCalls, [['camera', .1], ['panel', .1]]);
 
 console.log('studioAccess.selftest: intent, retry, F8 ownership, and runtime proxy passed');

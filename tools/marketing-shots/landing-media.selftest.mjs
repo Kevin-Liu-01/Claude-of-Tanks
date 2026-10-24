@@ -18,20 +18,16 @@ for (const retiredTitle of ['Ground rush', 'Charge thread', 'Overhead dive', 'Sh
   'Terrain changes the fight', 'From resolved impact to directed scene']) {
   assert.equal(main.includes(retiredTitle), false, `landing copy does not use the retired title: ${retiredTitle}`);
 }
-assert.equal(home.match(/<div class="v5-shot-rail"[\s\S]*?<\/section>/)?.[0].includes('<figcaption>'), false,
-  'the screenshot rail does not overlay promotional shot names');
-assert.equal(home.match(/<section class="v5-mosaic"[\s\S]*?<\/section>/)?.[0].includes('<figcaption>'), false,
-  'the screenshot mosaic does not overlay promotional shot names');
-assert.match(home, /data-shot-previous[\s\S]*data-shot-position[\s\S]*data-shot-next/,
-  'the screenshot gallery provides previous, position, and next controls');
-assert.match(home, /data-shot-rail/);
-assert.match(home, /data-shot-progress/);
-assert.match(presentation, /\.v5-shot-rail\{[^}]*scrollbar-width:none/,
-  'the screenshot gallery hides the large native scrollbar');
-assert.match(presentation, /\.v5-shot-rail::\-webkit-scrollbar\{display:none\}/,
-  'the screenshot gallery hides the WebKit scrollbar');
-assert.match(publicPages, /function mountShotRail\(rail(?:: HTMLElement)?\)/,
-  'the screenshot gallery mounts accessible controls and progress');
+// (246, owner 2026-10-24: "less clutter") the screenshot rail and the mosaic are one strip that scrolls: every still of
+// both, once, under no caption, with previous and next arrows and the way into the library
+const shotsMarkup = home.match(/<!--home:shots-->([\s\S]*?)<!--\/home:shots-->/)?.[1] || '';
+assert.equal(shotsMarkup.includes('<figcaption'), false, 'the screenshots strip does not overlay promotional shot names');
+assert.match(shotsMarkup, /data-rail-prev disabled[\s\S]*data-rail-next/, 'the screenshots strip provides previous and next arrows');
+assert.match(shotsMarkup, /data-shots-rail tabindex="0" role="region"/, 'the strip scrolls by keyboard too');
+assert.match(shotsMarkup, /href="\/docs\/filming#library" data-i18n="home\.mosaic\.library"/, 'the strip leads into the whole library');
+assert.match(presentation, /\.shots-rail\{[^}]*scrollbar-width:none/, 'the strip hides the large native scrollbar');
+assert.match(presentation, /\.shots-rail::-webkit-scrollbar\{display:none\}/, 'the strip hides the WebKit scrollbar');
+assert.match(publicPages, /function mountShotsRail\(section(?:: HTMLElement)?\)/, 'the strip mounts its arrows');
 assert.match(threeMark, /viewBox="0 0 226\.77 226\.77"/,
   'the local Three.js asset retains the official icon geometry');
 
@@ -95,15 +91,15 @@ assert.equal((heroMarkup.match(/<img /g) || []).length, 2, 'the hero holds its s
 assert.match(heroMarkup, /<a class="cot-c-btn cot-c-btn--64 hero__trailer" href="#trailers" data-trailer-open><span class="hero__thumb" aria-hidden="true"><img src="\/media\/site50-r14\/stills\/s16-street-duel-thumb\.webp" alt="" width="84" height="46"/,
   'the trailer button shows a dimensioned thumbnail');
 
-// the screenshot rail: the picks in their order, the eleven of 2026-10-19 kept after the new ones
-const railMarkup = home.match(/<div class="v5-shot-rail"[^>]*>([\s\S]*?)<\/div>/)?.[1] || '';
+// the screenshot rail's picks open the strip in their order, the eleven of 2026-10-19 kept after the new ones
 assert.deepEqual(manifest.rail.map((shot) => shot.id), picks.home.rail, 'the rail shows the picks in their order');
-assert.equal((railMarkup.match(/<figure>/g) || []).length, picks.home.rail.length);
+assert.equal((shotsMarkup.match(/<figure class="shots-tile/g) || []).length, picks.home.rail.length + manifest.mosaic.length,
+  'the strip holds the rail and the mosaic');
 for (const id of KEPT_RAIL) assert.ok(picks.home.rail.includes(id), `${id} stays in the rail (no removals)`);
 assert.ok(picks.home.rail.length > KEPT_RAIL.length, 'the rail adds the new renders');
-assert.match(home, new RegExp(`<span data-shot-position aria-live="polite">1 / ${picks.home.rail.length}</span>`));
+const stripOrder = [...shotsMarkup.matchAll(/srcset="[^"]* 640w, ([^" ]+) 1920w"/g)].map((m) => m[1]);
+assert.deepEqual(stripOrder, [...manifest.rail, ...manifest.mosaic].map((shot) => shot.src), 'the rail\'s picks, then the mosaic\'s, in order');
 for (const shot of manifest.rail) {
-  assert.equal(railMarkup.includes(`data-deferred-src="${shot.src}"`), true, `${shot.id} is mounted in the rail`);
   assert.ok((await stat(resolve(root, 'public', shot.src.slice(1)))).size > 50_000, `${shot.id} is a substantial image`);
 }
 
@@ -120,21 +116,22 @@ for (const film of wallFilms) {
 }
 assert.equal((versusMarkup.match(/data-media-player muted/g) || []).length, 1, 'the big duel plays by itself; the others play on hover');
 
-// the trailers row: each trailer plays on a click and loads nothing before the row nears the viewport (no poster
-// attribute in the markup, preload none; publicPages.ts sets the poster)
-const trailerMarkup = home.match(/<div class="v5-trailer-grid" data-trailer-row>([\s\S]*?)\n[ \t]*<\/div>/)?.[1] || '';
+// the trailers: the motion stage's cut buttons swap in each cut, which plays on that click and loads nothing before it
+// (no poster attribute in the markup, preload none; publicPages.ts sets the poster as the cut shows)
+const trailerMarkup = home.match(/<figure class="motion-trailer" data-trailer-stage>([\s\S]*?)<\/figure>/)?.[1] || '';
 assert.deepEqual(manifest.trailers.map((f) => f.film), picks.home.trailers);
 assert.ok(picks.home.trailers.every((film) => picks.films.includes(film)), 'the row plays the films the site ships');
-assert.equal((trailerMarkup.match(/<video /g) || []).length, picks.home.trailers.length);
+assert.equal((trailerMarkup.match(/<video [^>]*data-trailer/g) || []).length, picks.home.trailers.length, 'the stage holds each trailer cut once, beside the reel');
 for (const film of manifest.trailers) {
   const tag = trailerMarkup.match(new RegExp(`<video [^>]*data-poster="${film.poster}"[^>]*>`))?.[0] || '';
-  assert.ok(tag.includes('controls') && tag.includes('preload="none"') && tag.includes('data-trailer'), `${film.film} plays on a click`);
+  assert.ok(tag.includes('controls') && tag.includes('preload="none"') && tag.includes('data-trailer') && / hidden>$/.test(tag), `${film.film} plays on a click`);
   assert.equal(/\sposter=/.test(tag), false, `${film.film} loads its poster only near the viewport`);
   assert.equal(trailerMarkup.includes(`<source src="${film.webm}" type="video/webm"><source src="${film.mp4}" type="video/mp4">`), true,
     `${film.film}: its webm, then its mp4`);
   for (const path of [film.webm, film.mp4, film.poster]) assert.ok((await stat(resolve(root, 'public', path.slice(1)))).size > 100_000, `${path} ships`);
 }
-assert.match(publicPages, /function mountTrailerRow\(row(?:: HTMLElement)?\)/, 'the trailers row loads its posters and plays one at a time');
+assert.equal((trailerMarkup.match(/<button [^>]*data-trailer-cut/g) || []).length, picks.home.trailers.length, 'one cut button per trailer');
+assert.match(publicPages, /function mountTrailerStage\(stage(?:: HTMLElement)?\)/, 'the stage swaps in a cut, sets its poster and plays one at a time');
 // every other landing video is an autoplay loop gated on the viewport
 assert.equal([...home.matchAll(/<video (?![^>]*data-trailer)[^>]*>/g)].every((m) => /data-autoplay-video|data-media-player/.test(m[0]) && m[0].includes('preload="none"')), true,
   'every video outside the trailers row is a viewport-gated loop');
@@ -153,8 +150,8 @@ for (const path of [manifest.featureReel.video, manifest.featureReel.poster]) {
 }
 
 assert.equal('gameplay' in manifest, false, 'the retired duplicate gameplay block is absent from the landing contract');
-assert.equal(home.split('Watch tank combat in the game engine').length - 1, 1,
-  'the combat heading appears once on the reel');
+assert.equal(home.split('data-i18n-label="media.site50.title.reel"').length - 1, 1,
+  'the reel opens the motion stage, named once');
 // (242: the owner's 10-22 rule cut the section ledes; the reel shows its heading and its call only)
 assert.equal(home.includes('data-i18n="home.reel.lede"'), false, 'the reel carries no helper line');
 assert.equal(home.includes('Watch live tank combat'), false,
@@ -207,7 +204,7 @@ assert.equal(manifest.mosaic.filter((shot) => shot.still === 'close').length, 12
 assert.ok(manifest.mosaic.every((shot) => shot.src.startsWith(`${site50}/stills/`)));
 assert.equal(new Set(manifest.mosaic.map((shot) => shot.src)).size, manifest.mosaic.length);
 for (const shot of manifest.mosaic) {
-  assert.equal(home.split(shot.src).length - 1, 1, `${shot.id} appears once in the bottom mosaic`);
+  assert.equal(home.split(`${shot.src} 1920w`).length - 1, 1, `${shot.id} appears once, in the screenshots strip`);
   const file = resolve(root, 'public', shot.src.replace(/^\//, ''));
   assert.ok((await stat(file)).size > 50_000, `${shot.id} is a substantial image`);
 }
@@ -229,7 +226,7 @@ for (const [path, bytes] of [[manifest.studio.video, manifest.studio.videoBytes]
   assert.equal((await stat(file)).size, bytes, `${path} byte receipt`);
 }
 
-console.log('landing-media.selftest: the site fifty hero, reel, loops, mosaic and the Studio knockout pass');
+console.log('landing-media.selftest: the site fifty hero, the motion stage, the screenshots strip and the Studio knockout pass');
 
 const published = JSON.parse(await readFile(resolve(root, 'public/media/production-r1/manifest.json'), 'utf8'));
 assert.ok(published.shots.length > 0);

@@ -73,6 +73,8 @@ interface MainFrameRuntimeOptions {
   isBattleLoadCovering(): boolean;
   isPresentationRestoreCovering(): boolean;
   isTransitionHoldingSceneForFadeIn(): boolean;
+  /** (perf-247) An opaque boot veil over a phase that presents nothing yet (a direct /studio boot): no scene frame. */
+  isBootCovering?(): boolean;
   cameraInput: CameraFrameInput;
   getMobileAutoAim(): MainMobileAutoAimRuntime | null;
   rig: CameraRig;
@@ -132,6 +134,7 @@ export function createMainFrameRuntime({
   isBattleLoadCovering,
   isPresentationRestoreCovering,
   isTransitionHoldingSceneForFadeIn,
+  isBootCovering = () => false,
   cameraInput,
   getMobileAutoAim,
   rig,
@@ -341,7 +344,7 @@ export function createMainFrameRuntime({
     trace?.frame(dtR * 1000);
     if (isGraphicsContextLost()) return;
     if (battleEntryLifecycle.renderingCovered || isPresentationRestoreCovering()
-      || isTransitionHoldingSceneForFadeIn()) {
+      || isTransitionHoldingSceneForFadeIn() || isBootCovering()) {
       // Opaque entry and Garage-restore veils suppress expensive/incomplete
       // scene frames, not transport progress. Fresh peers still need the
       // browser network pump while worlds and presentation state warm behind
