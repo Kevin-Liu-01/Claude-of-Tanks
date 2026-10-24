@@ -110,7 +110,7 @@
    "hostSweep": []
   },
   "amx30b": {
-   "inputHash": "df9369325b75677b",
+   "inputHash": "9260a5df382d77fa",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -122,13 +122,13 @@
    "hostSweep": []
   },
   "amx40": {
-   "inputHash": "fa00d5151d19338e",
+   "inputHash": "784630a25454fb16",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "amx40_proto": {
-   "inputHash": "70fd7f77ad6e1121",
+   "inputHash": "128f83fbc4544de6",
    "runs": [
     {
      "index": 0,
@@ -149,7 +149,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.59,
-      "host": "hull<buildSkirts@france.ts:286>"
+      "host": "hull<buildSkirts@france.ts:289>"
      }
     }
    ],
@@ -3732,7 +3732,7 @@
    "hostSweep": []
   },
   "type10_tk_x": {
-   "inputHash": "56a3ea5164935368",
+   "inputHash": "c4133876c692c7db",
    "runs": [
     {
      "index": 0,
@@ -3745,15 +3745,15 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.812,
-      "gap": 0.127,
-      "air": 0.061,
+      "support": 0.914,
+      "gap": 0.026,
+      "air": 0.06,
       "hidden": 0,
-      "sunkMaxM": 0.01,
+      "sunkMaxM": 0.005,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.944,
-      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1726>"
+      "exposure": 0.911,
+      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1731>"
      }
     },
     {
@@ -3775,7 +3775,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1702>"
+      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1707>"
      }
     }
    ],
@@ -3783,7 +3783,7 @@
    "hostSweep": []
   },
   "type10b": {
-   "inputHash": "0f98265df08adbfb",
+   "inputHash": "c4421f602c5989d4",
    "runs": [
     {
      "index": 0,
@@ -3796,15 +3796,15 @@
      "why": {},
      "notes": [],
      "measures": {
-      "support": 0.812,
-      "gap": 0.127,
-      "air": 0.061,
+      "support": 0.97,
+      "gap": 0.03,
+      "air": 0,
       "hidden": 0,
-      "sunkMaxM": 0.01,
+      "sunkMaxM": 0,
       "sweepM": 0,
       "traverseM": null,
-      "exposure": 0.944,
-      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1726>"
+      "exposure": 0.911,
+      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1732>"
      }
     },
     {
@@ -3826,7 +3826,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 1,
-      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1702>"
+      "host": "hull<buildType10Native2026RunningGearStage1@modern3.ts:1707>"
      }
     }
    ],
@@ -3885,7 +3885,7 @@
    "hostSweep": []
   },
   "type74": {
-   "inputHash": "87dd2115089ebec1",
+   "inputHash": "26e2e1a66f7f94c5",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3903,13 +3903,13 @@
    "hostSweep": []
   },
   "type90_kyumaru": {
-   "inputHash": "fc9e1f27ff5950bd",
+   "inputHash": "9597bf720d93ecf5",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "type90a": {
-   "inputHash": "44970ea8aeb0aa77",
+   "inputHash": "4faa3f99355e8b79",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
