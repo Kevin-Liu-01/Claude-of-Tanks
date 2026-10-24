@@ -10,11 +10,11 @@ export const MAP_ART_TONES: Readonly<Record<string, readonly [string, string, st
   desert: ['#a2b1c2', '#d7a273', '#d69966'],
   winter: ['#b5c8d2', '#b2b9b7', '#a0aaa9'],
   urban: ['#9fbbcf', '#716c62', '#636443'],
-  coastal: ['#a2c3db', '#889487', '#6d7f5b'],
+  coastal: ['#a2c3db', '#889486', '#6e7f5a'],
   autumn: ['#9bbdd9', '#949589', '#736539'],
   steppe: ['#a2b8d0', '#989488', '#927d51'],
   railyard: ['#afbfc8', '#68685e', '#625e3f'],
-  frontier: ['#b2c4d2', '#5c6b65', '#5f6243'],
+  frontier: ['#b2c4d2', '#5c6b65', '#606344'],
   fjord: ['#a4bfd3', '#7d8e8d', '#38463b'],
   delta: ['#aac0ce', '#6e7f6f', '#506339'],
   badlands: ['#8c9fb9', '#ad886e', '#b8825a'],
@@ -42,4 +42,4 @@ export const MAP_ART_TONES: Readonly<Record<string, readonly [string, string, st
 });
 
 /** The bands' mean over every battlefield: the gradient before the battlefield is known. */
-export const MAP_ART_TONE_DEFAULT: readonly [string, string, string] = ['#9caebd', '#817f74', '#706a54'];
+export const MAP_ART_TONE_DEFAULT: readonly [string, string, string] = ['#9caebd', '#817f74', '#716a54'];
