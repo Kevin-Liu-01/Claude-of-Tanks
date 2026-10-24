@@ -10,6 +10,18 @@ import type { IconId } from './icons/icon.ts';
 import { t } from './i18n.ts';
 import { uiIconSVG } from './uiIcons.ts';
 
+/**
+ * Each operation's briefing plate (public/media/deploy-r1/op-0N-1280.webp, the media lane's Scene Studio stills from
+ * behind the attacker's lead tank at Frontline sector 1). An operation without one shows its battlefield's card.
+ */
+const CAMPAIGN_PLATES: Readonly<Record<string, string>> = Object.freeze({
+  first_light: '/media/deploy-r1/op-01-1280.webp',
+  iron_ridge: '/media/deploy-r1/op-02-1280.webp',
+  steinburg: '/media/deploy-r1/op-03-1280.webp',
+  tarkhan_steppe: '/media/deploy-r1/op-04-1280.webp',
+  delta_crossing: '/media/deploy-r1/op-06-1280.webp',
+});
+
 /** The next battle's bot tier (the input settings own it). */
 export interface DeployDifficulty { get(): AiDifficulty; set(tier: AiDifficulty): void }
 
@@ -189,7 +201,7 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
     const bars = Array.from({ length: op.difficulties }, (_, slot) => `<i class="${slot < op.difficulty ? 'on' : ''}"></i>`).join('');
     const stars = [0, 1, 2].map((slot) => `<i class="${slot < op.stars ? 'on' : ''}">${uiIconSVG('star', 14)}</i>`).join('');
     plateBrief.innerHTML =
-      `<div class="cot-deploy-brief-art"><img src="/maps/cards/${op.mapId}.webp" alt="" width="1280" height="720" decoding="async"></div>` +
+      `<div class="cot-deploy-brief-art"><img src="${CAMPAIGN_PLATES[op.id] ?? `/maps/cards/${op.mapId}.webp`}" alt="" width="1280" height="720" decoding="async"></div>` +
       `<div class="cot-deploy-brief-head"><span class="cot-deploy-brief-ix" aria-hidden="true">${String(op.index).padStart(2, '0')}</span>` +
       `<h3 class="cot-deploy-brief-name">${t(`campaign.op.${op.id}.title`)}</h3></div>` +
       `<p class="cot-deploy-brief-text">${t(`campaign.op.${op.id}.brief`)}</p>` +
