@@ -107865,22 +107865,22 @@
             "verts": [
               [
                 0.1913,
-                0,
+                0.0653,
                 1.4765
               ],
               [
                 1.376,
-                0,
+                0.0653,
                 0.479
               ],
               [
                 1.376,
-                0.9026,
+                0.9036,
                 0.3744
               ],
               [
                 0.1913,
-                0.9026,
+                0.9036,
                 1.372
               ]
             ]
@@ -107896,22 +107896,22 @@
             "verts": [
               [
                 -1.4447,
-                0,
+                0.0653,
                 0.479
               ],
               [
                 -0.26,
-                0,
+                0.0653,
                 1.4765
               ],
               [
                 -0.26,
-                0.9026,
+                0.9036,
                 1.372
               ],
               [
                 -1.4447,
-                0.9026,
+                0.9036,
                 0.3744
               ]
             ]
@@ -107927,22 +107927,22 @@
             "verts": [
               [
                 -0.4309,
-                0.0821,
+                0.1415,
                 1.5557
               ],
               [
                 0.3622,
-                0.0821,
+                0.1415,
                 1.5557
               ],
               [
                 0.3622,
-                0.7385,
+                0.7512,
                 1.5161
               ],
               [
                 -0.4309,
-                0.7385,
+                0.7512,
                 1.5161
               ]
             ]
@@ -107958,22 +107958,22 @@
             "verts": [
               [
                 1.376,
-                0,
+                0.0653,
                 0.5067
               ],
               [
                 1.376,
-                0,
+                0.0653,
                 -2.2182
               ],
               [
                 1.376,
-                0.9026,
+                0.9036,
                 -2.2182
               ],
               [
                 1.376,
-                0.9026,
+                0.9036,
                 0.5067
               ]
             ]
@@ -107989,22 +107989,22 @@
             "verts": [
               [
                 -1.4447,
-                0,
+                0.0653,
                 -2.2182
               ],
               [
                 -1.4447,
-                0,
+                0.0653,
                 0.5067
               ],
               [
                 -1.4447,
-                0.9026,
+                0.9036,
                 0.5067
               ],
               [
                 -1.4447,
-                0.9026,
+                0.9036,
                 -2.2182
               ]
             ]
@@ -108020,22 +108020,22 @@
             "verts": [
               [
                 1.3055,
-                0,
+                0.0653,
                 -2.2182
               ],
               [
                 -1.3742,
-                0,
+                0.0653,
                 -2.2182
               ],
               [
                 -1.3742,
-                0.9026,
+                0.9036,
                 -2.2182
               ],
               [
                 1.3055,
-                0.9026,
+                0.9036,
                 -2.2182
               ]
             ]
@@ -108078,12 +108078,12 @@
             "name": "gun",
             "min": [
               -0.2987,
-              0.1094,
+              0.1669,
               -1.1296
             ],
             "max": [
               0.23,
-              0.7659,
+              0.7766,
               1.4765
             ],
             "turretLocal": true
@@ -108093,13 +108093,13 @@
             "name": "turretRing",
             "min": [
               -0.8672,
-              1.4108,
+              1.4639,
               -0.222
             ],
             "max": [
               0.8672,
-              1.6151,
-              1.4125
+              1.6681,
+              1.4124
             ],
             "turretLocal": false
           },
@@ -108168,12 +108168,12 @@
             "name": "radio",
             "min": [
               -0.8806,
-              0.0684,
+              0.1288,
               -1.951
             ],
             "max": [
               -0.1754,
-              0.4964,
+              0.5264,
               -1.2384
             ],
             "turretLocal": true
@@ -108379,15 +108379,15 @@
         ]
       },
       "geometryHash": "28860119",
-      "metadataHash": "ba38b4cd",
+      "metadataHash": "ca458585",
       "presentationAnchor": {
         "xM": 0.0065,
-        "zM": 0.1509
+        "zM": 0.151
       },
-      "presentationHash": "842018a3",
+      "presentationHash": "884c5cf5",
       "presentationProjection": {
         "centerYM": 2.1245,
-        "topHalfM": 7.4285,
+        "topHalfM": 7.4284,
         "sideHalfM": 3.7142
       },
       "appearance": {
@@ -108404,7 +108404,7 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 9,
-          "gunmetal": 7,
+          "gunmetal": 8,
           "opticGlass": 2,
           "unclassified": 19,
           "gearShadow": 1,
@@ -108426,7 +108426,7 @@
         "designation": 1,
         "verifiedInsignia": 1,
         "verifiedDesignation": 1,
-        "minimumVisibilityRatio": 1,
+        "minimumVisibilityRatio": 0.6666667,
         "codes": [
           "GB:gb-roundel:22"
         ]
@@ -108437,39 +108437,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 89083,
-          "sha256": "ee91d927d53c7e35a112557de835dd4734c46cf7db543085e106a0e5356ff7e4"
+          "bytes": 88244,
+          "sha256": "abd9a8caa306ab39ecfd17ef7253b9387ea3e1066d7ed6f1c6b4392240f44000"
         },
         "modulesSide": {
           "file": "chieftain_mk10_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 86660,
-          "sha256": "3c81580c093e12b0aebd4f0240683b03bb61e1ebacf173aff8aebe708d8749d6"
+          "bytes": 86322,
+          "sha256": "1e35e84adbc30e6369839e3749d01abbe4a9739271f9eb8efeb0592a16ae9007"
         },
         "crewSide": {
           "file": "chieftain_mk10_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74459,
-          "sha256": "6fde1e12ac67492fa5abcd8531596ce39f52eb7d552d24d71b7b15d1c439ebd1"
+          "bytes": 74521,
+          "sha256": "b0b23adbba128b8e5a81abafef3cdd84aa21adfbdcbdab927eac2f67a7cb6577"
         },
         "angle": {
           "file": "chieftain_mk10_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 23918,
-          "sha256": "7728922a58ca4b4b5425de4710a4a6f7017abe8ee6a7d373fac9268a975d0e62",
+          "bytes": 24002,
+          "sha256": "e22f814cacf78afd3c68aa7bb6a9145c3d7f54d74cd0f9532b177c8bf43705be",
           "thumbnail": {
             "file": "thumbs/chieftain_mk10_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 10120,
-            "sha256": "d5c704f746428b23fc7b40a81d2332353bf0a09c00426f31a42762eb01e974cd"
+            "bytes": 10128,
+            "sha256": "02346034e4ee66870270aa17503b9fe9dee7538516b585dbfd024e96869ad3d8"
           }
         },
         "top": {
@@ -108477,16 +108477,16 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 9260,
-          "sha256": "d0c9aa226e228b7576b91e68a2fd5e33337cbe85f7ae88589273ad8e4a07b4c9"
+          "bytes": 9232,
+          "sha256": "02c3f02e2917e9cdec506cd3b1f048bbaf76eb1b71a1d9b74541b3a44a6675bb"
         },
         "side": {
           "file": "chieftain_mk10_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8712,
-          "sha256": "cfd03c8f09e8308572ddc957aebdf1e07f5d19baa2849ff8c1d8e04dc54f925f"
+          "bytes": 8686,
+          "sha256": "09eea1e1a8e4380056daa97c7dc25139807120c589352a6ffd3fe3f320761295"
         },
         "topSilhouette": {
           "file": "chieftain_mk10_top_silhouette.png",
@@ -108501,8 +108501,8 @@
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 4354,
-          "sha256": "7b3e6fd29cc339d9b8682fd7f5f21d2880258ecf55514ba73c6b0abfad0be0e1"
+          "bytes": 4369,
+          "sha256": "eccb89ad49fcfc403b03d0c8d474bf19f87c7e88a7b41de835c68bc3c48b0f80"
         },
         "markings": {
           "file": "chieftain_mk10_markings.png",
