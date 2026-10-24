@@ -33,6 +33,7 @@ export interface Modern3BuilderPort {
   readonly mats: { readonly rubber: THREE.Material };
   readonly disposables: TankBuilderPort['disposables'];
   readonly spec: {
+    readonly id: string;
     readonly armor: { readonly gunPivot: readonly [number, number, number] };
     readonly visual: { readonly number?: string };
   };
