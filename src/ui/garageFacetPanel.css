@@ -22,7 +22,7 @@
 .cot-facet-toggle[aria-expanded='true'],.cot-facet-toggle.is-active{color:#ffd27a;border-color:rgba(240,176,74,.65);
   border-bottom-color:#f0a030;background:linear-gradient(180deg,rgba(32,24,12,.97),rgba(14,10,6,.98));}
 .cot-facet-toggle .ct{min-width:14px;padding:0 4px;line-height:14px;text-align:center;
-  font:700 max(11px,var(--fs-11))/14px var(--font-ui);color:#1a1105;background:#f0a030;}
+  font:700 max(var(--fs-floor-11),var(--fs-11))/14px var(--font-ui);color:#1a1105;background:#f0a030;}
 .cot-facet-toggle .ct[hidden]{display:none;}
 .cot-country-chip.is-facet-empty{opacity:.42;}
 .cot-facet-panel .cot-sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;
@@ -64,11 +64,11 @@
 .cot-facet-option{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:4px 10px 3px;cursor:pointer;
   color:#b3c1cc;background:rgba(11,15,20,.82);border:1px solid rgba(146,164,180,.26);
   border-bottom:2px solid rgba(146,164,180,.34);outline:none;white-space:nowrap;
-  font:700 max(12px,var(--fs-12)) var(--facet-font);letter-spacing:.02em;transition:color .14s,border-color .14s,background .14s;}
+  font:700 max(var(--fs-floor-12),var(--fs-12)) var(--facet-font);letter-spacing:.02em;transition:color .14s,border-color .14s,background .14s;}
 .cot-facet-option svg{display:block;flex:0 0 auto;color:#aebdc9;transition:color .14s;}
 .cot-facet-option[data-facet='vehicleClass'] svg{width:32px;height:16px;}
 .cot-facet-option[data-facet='battleRole'] svg,.cot-facet-option[data-facet='era'] svg{width:17px;height:17px;}
-.cot-facet-option .ct{font-size:max(11px,var(--fs-11));font-weight:600;color:#7f909e;}
+.cot-facet-option .ct{font-size:max(var(--fs-floor-11),var(--fs-11));font-weight:600;color:#7f909e;}
 .cot-facet-option:hover:not(:disabled),.cot-facet-option:focus-visible{color:#e6eef4;border-color:rgba(210,225,240,.55);}
 .cot-facet-option:hover:not(:disabled) svg,.cot-facet-option:focus-visible svg{color:#dbe5ec;}
 .cot-facet-option:focus-visible{outline:2px solid #f0a030;outline-offset:1px;}
