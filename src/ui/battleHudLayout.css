@@ -22,7 +22,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
   width:min(var(--hud-side-width),max(176px,calc(50vw - max(15vmin + 8px,80px) - var(--hud-report-right,12px))))}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-cardhost:empty{pointer-events:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-card{flex-shrink:0}
-body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log .sec{gap:8px;flex-wrap:wrap}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log .sec{gap:var(--s2);flex-wrap:wrap}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow{display:grid;grid-template-columns:minmax(0,1fr) 36px;gap:3px 6px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow .b{width:auto;overflow:hidden;text-overflow:ellipsis}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-lrow .z{text-align:right}
@@ -37,7 +37,7 @@ body[data-cot-battle-layout] :is(.cot-si-toast,.cot-kf)[hidden]{display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-room-chat{
   left:12px;top:var(--hud-chat-top);bottom:auto;transform:none;
   width:var(--hud-message-width);min-width:0;max-height:var(--hud-chat-height);
-  grid-template-rows:minmax(0,1fr) auto;gap:4px;
+  grid-template-rows:minmax(0,1fr) auto;gap:var(--s1);
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-room-chat-log{
   min-height:0;max-height:max(0px,calc(var(--hud-chat-height) - 62px));overflow:auto;
@@ -54,7 +54,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-height='s
 /* A narrow mouse window still needs all six keyboard/click actions. Move its
    status instruments above that tray, instead of letting the tray hit them. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-shells{
-  left:auto;right:8px;bottom:8px;transform:none;gap:4px;
+  left:auto;right:8px;bottom:8px;transform:none;gap:var(--s1);
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) :is(.cot-shell,.cot-con){width:44px;height:52px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout):is([data-cot-width='phone'],[data-cot-width='compact']) .cot-dp{
@@ -66,16 +66,16 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-cot-height='short'] .cot-dp canvas{display:none}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='phone']{--hud-side-width:calc(50vw - 20px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='phone'] .cot-si-diag{display:none}
-body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='phone'] .cot-room-chat-controls{padding:4px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='phone'] .cot-room-chat-controls{padding:var(--s1)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='phone'] .cot-room-chat-send{min-width:42px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-width='phone'] .cot-si-sub{height:auto;flex-wrap:wrap;gap:3px}
 /* The full report is a scrollable reader; it never paints over the map. */
-body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log:focus-visible{outline:2px solid #f0a030;outline-offset:2px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-si-log:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 
 /* Tablet mouse layouts cannot fit health, speed, six actions and a map on
    one row. Keep the ammo tray at floor level and lift the two instruments. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked']:not([data-cot-width='phone']):not([data-cot-width='compact']) .cot-shells{
-  left:12px;right:auto;bottom:12px;transform:none;gap:4px;
+  left:12px;right:auto;bottom:12px;transform:none;gap:var(--s1);
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked']:not([data-cot-width='phone']):not([data-cot-width='compact']) :is(.cot-shell,.cot-con){width:48px;height:52px}
 body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-layout)[data-hud-tray='stacked'] :is(.cot-dp,.cot-drive){bottom:84px}
@@ -125,14 +125,14 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 /* Debrief actions get their own row. Only the report scrolls, so the last
    combatant can never disappear behind a fixed Battle Again/Garage footer. */
 body[data-cot-width][data-cot-height][data-cot-input] .cot-es{
-  height:var(--cot-viewport-height,100dvh);box-sizing:border-box;padding:12px var(--cot-edge);overflow:hidden;
+  height:var(--cot-viewport-height,100dvh);box-sizing:border-box;padding:var(--s3) var(--cot-edge);overflow:hidden;
 }
 body[data-cot-width][data-cot-height][data-cot-input] .cot-es .es-report{
   flex:1 1 0;min-height:0;max-height:600px;overflow:auto;overscroll-behavior:contain;
   scrollbar-width:thin;pointer-events:auto;
 }
 body[data-cot-width][data-cot-height][data-cot-input] .cot-es .es-actions{
-  position:relative;inset:auto;flex:0 0 auto;margin:8px 0 0;padding:4px 0;
+  position:relative;inset:auto;flex:0 0 auto;margin:var(--s2) 0 0;padding:var(--s1) 0;
   width:min(1160px,100%);justify-content:center;
 }
 /* Chat and touch controls are siblings of the HUD, so its cinematic veil
@@ -142,20 +142,20 @@ body:is(.cot-kc-live,.cot-si-report) :is(.cot-room-chat,.cot-touch,.cot-touch-ai
 /* One compact instrument strip. Every available system owns the same cell. */
 .cot-vehicle-controls{position:absolute;z-index:var(--hud-layer-controls);left:var(--hud-systems-left,12px);top:var(--hud-systems-top,80px);bottom:auto;transform:none;display:flex;gap:3px;max-width:var(--hud-systems-width,var(--hud-side-width,300px));padding:2px;border:0;border-radius:0;background:none;box-shadow:none;pointer-events:auto;overflow-x:auto;scrollbar-width:none;}
 .cot-vehicle-controls::-webkit-scrollbar{display:none;}
-.cot-vehicle-controls>button{pointer-events:auto;position:static!important;transform:none!important;flex:0 0 74px;width:var(--hud-tile-w,74px)!important;height:var(--hud-tile-h,32px)!important;min-width:0;min-height:32px;box-sizing:border-box;grid-template-columns:13px minmax(0,1fr) 13px;grid-template-rows:1fr;gap:2px;align-items:center;justify-items:center;padding:3px 2px;border:0;border-bottom:1px solid #b6c8d966;border-radius:var(--hud-tile-radius,0)!important;background:none;color:#c6d1d9;font:700 var(--battle-fs-11)/1.15 var(--hud-font,system-ui);letter-spacing:var(--battle-track-control);text-transform:none;box-shadow:none;text-shadow:var(--battle-control-label-halo);}
+.cot-vehicle-controls>button{pointer-events:auto;position:static!important;transform:none!important;flex:0 0 74px;width:var(--hud-tile-w,74px)!important;height:var(--hud-tile-h,32px)!important;min-width:0;min-height:32px;box-sizing:border-box;grid-template-columns:13px minmax(0,1fr) 13px;grid-template-rows:1fr;gap:2px;align-items:center;justify-items:center;padding:3px 2px;border:0;border-bottom:1px solid var(--line-control);border-radius:var(--hud-tile-radius,0)!important;background:none;color:var(--ink-2);font:700 var(--battle-fs-11)/1.15 var(--hud-font,system-ui);letter-spacing:var(--battle-track-control);text-transform:none;box-shadow:none;text-shadow:var(--battle-control-label-halo);}
 .cot-vehicle-controls>.cot-auxiliary,.cot-vehicle-controls>.cot-special.show,.cot-vehicle-controls>.cot-jump.on{display:grid;}
 .cot-vehicle-controls>button[hidden],.cot-vehicle-controls>button[data-off],.cot-vehicle-controls[hidden]{display:none!important;}
-.cot-vehicle-controls>button.active{--hud-tile-on-edge:#c89a50;--hud-tile-on-mark:var(--battle-control-on);color:#ffdc94;border-color:var(--hud-tile-on-edge);background:none;box-shadow:var(--hud-tile-on-mark);}
+.cot-vehicle-controls>button.active{--hud-tile-on-edge:var(--accent);--hud-tile-on-mark:var(--battle-control-on);color:var(--accent-hi);border-color:var(--hud-tile-on-edge);background:none;box-shadow:var(--hud-tile-on-mark);}
 .cot-vehicle-controls>button:disabled{opacity:.64;}
 /* Owner 2026-10-17 (out of ammo): a spent launcher or magazine control is struck through in the danger ink, no text. */
 .cot-vehicle-controls>button.empty{color:var(--hud-muted);border-bottom-color:var(--hud-danger);background:none;box-shadow:none;}
 .cot-vehicle-controls>button.empty .si{position:relative;color:var(--hud-danger);opacity:1;filter:none;}
 .cot-vehicle-controls>button.empty .si::after{content:'';position:absolute;left:-2px;right:-2px;top:calc(50% - .75px);height:1.5px;border-radius:1px;background:var(--hud-danger);box-shadow:var(--battle-control-slash-ring);transform:rotate(-45deg);}
-.cot-vehicle-controls>button:hover:not(:disabled){border-color:#d7b16b;}
-.cot-vehicle-controls>button:focus-visible{outline:2px solid #fff;outline-offset:-2px;}
+.cot-vehicle-controls>button:hover:not(:disabled){border-color:var(--accent);}
+.cot-vehicle-controls>button:focus-visible{outline:2px solid var(--ink-1);outline-offset:-2px;}
 .cot-vehicle-controls>button .si{grid-column:1;grid-row:1;display:flex;align-items:center;justify-content:center;filter:none;}
 .cot-vehicle-controls .si svg{width:var(--hud-tile-icon,13px)!important;height:var(--hud-tile-icon,13px)!important;}
-.cot-vehicle-controls>button .sk{grid-column:3;grid-row:1;display:grid;place-items:center;min-width:15px;height:15px;padding:0 2px;box-sizing:border-box;border:1px solid #78848d;border-radius:3px;background:#07101799;font:700 var(--battle-fs-11)/1 var(--hud-font,system-ui);color:inherit;letter-spacing:0;}
+.cot-vehicle-controls>button .sk{grid-column:3;grid-row:1;display:grid;place-items:center;min-width:15px;height:15px;padding:0 2px;box-sizing:border-box;border:1px solid oklch(from var(--ink-3) .61 c h);border-radius:3px;background:oklch(from var(--surface-page) l c h / .6);font:700 var(--battle-fs-11)/1 var(--hud-font,system-ui);color:inherit;letter-spacing:0;}
 .cot-vehicle-controls>button .sl{grid-column:2;grid-row:1;white-space:nowrap;font-size:var(--battle-fs-11);letter-spacing:0;text-align:center;}
 .cot-vehicle-controls .system-status{display:none;grid-column:2;grid-row:1;font:600 var(--battle-fs-11)/1 var(--hud-font,system-ui);letter-spacing:var(--battle-track-status);color:inherit;opacity:.85;white-space:nowrap;}
 body.cot-spectating .cot-vehicle-controls{display:none!important;}
@@ -168,7 +168,7 @@ body.cot-spectating .cot-vehicle-controls{display:none!important;}
    carried on in its slant, flush under it (H1 critics: a rectangle hung under the trapezoid). */
 body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-mode-status{
   --objective-accent:var(--accent);left:var(--hud-objective-left,50%);top:var(--hud-objective-top,64px);width:var(--hud-objective-width,278px);
-  box-sizing:border-box;min-height:30px;padding:4px 22px 5px;gap:0 8px;align-items:center;
+  box-sizing:border-box;min-height:30px;padding:var(--s1) 22px 5px;gap:0 var(--s2);align-items:center;
   grid-template-columns:18px minmax(0,1fr);grid-template-rows:auto;
   clip-path:polygon(0 0,100% 0,calc(100% - 12px) 100%,12px 100%);border:0;border-radius:0;padding-top:6px;
   background:var(--hud-plate);box-shadow:none;white-space:normal;
@@ -183,15 +183,15 @@ body[data-cot-battle-layout] .cot-mode-status.show.quiet{display:none}
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status.show,
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status.show.quiet{display:flex}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-objective-seat='corner'] .cot-mode-status{
-  left:16px;top:14px;transform:none;width:auto;min-height:48px;padding:0 14px 0 10px;gap:12px;align-items:center;
+  left:16px;top:14px;transform:none;width:auto;min-height:48px;padding:0 14px 0 10px;gap:var(--s3);align-items:center;
   clip-path:none;border-radius:var(--r1);box-shadow:var(--battle-plate-shadow);white-space:nowrap;letter-spacing:normal}
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mi{display:grid;place-items:center;flex:none;width:30px;height:30px}
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mi svg{width:24px;height:24px}
-body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mt{display:flex;flex-direction:column;gap:4px;min-width:0}
+body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mt{display:flex;flex-direction:column;gap:var(--s1);min-width:0}
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mn{display:block;font:700 var(--battle-fs-15)/1 var(--hud-font);
   text-transform:uppercase;color:var(--ink-1)}
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mv{font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--ink-3)}
-body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mp:not([hidden]){display:flex;align-items:center;gap:12px;flex:none}
+body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mp:not([hidden]){display:flex;align-items:center;gap:var(--s3);flex:none}
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .mp::before{content:'';width:1px;height:26px;background:var(--line-2)}
 body[data-cot-battle-layout][data-objective-seat='corner'] .cot-mode-status .ping{display:flex;align-items:center;gap:6px;
   font:500 var(--battle-fs-12)/1 var(--font-data);color:var(--text-ok)}
@@ -214,7 +214,7 @@ body[data-cot-battle-layout] .cot-mode-status .seg{white-space:nowrap}
 /* A short landscape's side seat (battleHudLayout.ts OBJECTIVE_COMPACT_H): the objective under the map, each part of its
    progress on its own line */
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-objective-seat='side'] .cot-mode-status{
-  min-height:0;clip-path:none;padding:4px 6px;gap:0 6px;grid-template-columns:15px minmax(0,1fr);box-shadow:var(--battle-plate-shadow)}
+  min-height:0;clip-path:none;padding:var(--s1) 6px;gap:0 6px;grid-template-columns:15px minmax(0,1fr);box-shadow:var(--battle-plate-shadow)}
 body[data-cot-battle-layout][data-objective-seat='side'] .cot-mode-status .sep{display:none}
 body[data-cot-battle-layout][data-objective-seat='side'] .cot-mode-status .seg{display:block;white-space:normal}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-orientation='portrait']:is([data-cot-width='phone'],[data-cot-width='compact']) .cot-touch .mobile-chrome{top:calc(var(--hud-objective-bottom,64px) + 8px)}
@@ -225,7 +225,7 @@ body[data-cot-battle-layout] .cot-kill-lane{
 }
 body[data-cot-battle-layout] .cot-kill-lane.r{left:auto;right:0;top:var(--hud-kill-right-top);max-height:var(--hud-kill-right-height)}
 body[data-cot-battle-layout] .cot-kill-lane:empty{display:none}
-body[data-cot-battle-layout] .cot-kill-lane .cot-kf{width:100%;flex:0 0 26px;padding:4px 6px;font-size:var(--battle-fs-11);gap:4px}
+body[data-cot-battle-layout] .cot-kill-lane .cot-kf{width:100%;flex:0 0 26px;padding:var(--s1) 6px;font-size:var(--battle-fs-11);gap:var(--s1)}
 
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .si{width:22px}
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d{font-size:var(--battle-fs-11);letter-spacing:0}
@@ -331,7 +331,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-cons{top:116px;bottom:auto!important}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-con{height:44px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-sixth{width:136px;font-size:var(--battle-fs-11)}
-  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-alert{box-sizing:border-box;font-size:var(--battle-fs-11);line-height:1.2;padding:4px 12px;width:134px;max-width:134px}
+  body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-alert{box-sizing:border-box;font-size:var(--battle-fs-11);line-height:1.2;padding:var(--s1) var(--s3);width:134px;max-width:134px}
   body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .cot-alert-copy{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 }
 @media (max-width:340px) and (orientation:portrait){
@@ -343,7 +343,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
 
 /* Physical gun warnings used to be painted on the reticle canvas, invisible
    to layout checks and directly over the system buttons on short phones. */
-.cot-aim-warning{--notice-edge:var(--ink-2);position:fixed;left:50%;top:calc(50% + 48px);transform:translateX(-50%);width:180px;box-sizing:border-box;min-height:24px;padding:4px 12px;background:var(--hud-plate-strong);border:1px solid transparent;border-radius:var(--r1);box-shadow:inset 3px 0 0 var(--notice-edge),var(--hud-plate-ring);color:var(--ink-1);font:700 var(--battle-fs-11)/1.2 var(--hud-font,system-ui);text-align:center;text-transform:uppercase;pointer-events:none}
+.cot-aim-warning{--notice-edge:var(--ink-2);position:fixed;left:50%;top:calc(50% + 48px);transform:translateX(-50%);width:180px;box-sizing:border-box;min-height:24px;padding:var(--s1) var(--s3);background:var(--hud-plate-strong);border:1px solid transparent;border-radius:var(--r1);box-shadow:inset 3px 0 0 var(--notice-edge),var(--hud-plate-ring);color:var(--ink-1);font:700 var(--battle-fs-11)/1.2 var(--hud-font,system-ui);text-align:center;text-transform:uppercase;pointer-events:none}
 .cot-aim-warning[hidden]{display:none}
 /* the notice grammar: a plate, the severity's bar on the leading edge and its ink */
 .cot-aim-warning[data-kind='blocked']{--notice-edge:var(--danger);color:var(--danger)}
@@ -367,7 +367,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-kill-lane.r .
    where no seat by the sight kept clear of the left FIRE button, the map and the speedometer; the map's width, so it keeps
    8 px from the systems row's top slot (106 px ran 6 px under a wrapped row's second line) */
 @media (max-width:340px) and (orientation:portrait){
-  .cot-aim-warning{left:8px;top:var(--hud-aim-warning-top,204px);transform:none;width:92px;font-size:var(--battle-fs-11);line-height:12px;padding:2px 8px}
+  .cot-aim-warning{left:8px;top:var(--hud-aim-warning-top,204px);transform:none;width:92px;font-size:var(--battle-fs-11);line-height:12px;padding:2px var(--s2)}
   .cot-aim-warning .tx{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 }
 
@@ -389,7 +389,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height]:not(.cot-touch-lay
 /* Keep long status copy readable without consuming the control strip below. */
 @media (max-height:550px), (max-width:480px){
   body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-alert{
-    font-size:var(--battle-fs-11);line-height:1.2;letter-spacing:.035em;padding:4px 12px;gap:4px;min-height:28px;
+    font-size:var(--battle-fs-11);line-height:1.2;letter-spacing:.035em;padding:var(--s1) var(--s3);gap:var(--s1);min-height:28px;
   }
   body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-alert-icon,
   body[data-cot-battle-layout][data-cot-width][data-cot-height] .cot-alert-icon svg{width:12px;height:12px}
@@ -428,18 +428,18 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientati
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .rosters-expanded .cot-ear.r{width:min(320px,calc(50vw - 184px),var(--hud-roster-wide-right,320px))}
 /* The compact card (short landscape's own form): the name in 12 px beside a 24 px medal, no description. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-medal-toasts[data-size='compact'] .cot-medal-toast{
-  min-width:0;max-width:min(250px,calc(100vw - 24px));gap:8px;padding:4px 20px;
+  min-width:0;max-width:min(250px,calc(100vw - 24px));gap:var(--s2);padding:var(--s1) 20px;
 }
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-medal-toasts[data-size='compact'] .cot-medal-art{width:24px;height:auto}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-medal-toasts[data-size='compact'] strong{font-size:var(--battle-fs-12);overflow-wrap:anywhere}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation][data-hud-notices]:not(.cot-touch-layout) .cot-medal-toasts[data-size='compact'] small{display:none}
 
 /* Inner-edge tallies keep both rosters mirrored, including compact icon tiles. */
-.cot-hud .cot-er .kills{flex:0 0 auto;min-width:14px;text-align:center;color:#ffd18a;font-weight:800;font-variant-numeric:tabular-nums;font-size:var(--battle-fs-11);line-height:1}
+.cot-hud .cot-er .kills{flex:0 0 auto;min-width:14px;text-align:center;color:var(--accent-hi);font-weight:800;font-variant-numeric:tabular-nums;font-size:var(--battle-fs-11);line-height:1}
 .cot-hud .cot-er .kills[hidden]{display:none}
 .cot-hud .cot-ear.icon-grid .cot-er .kills{position:absolute;bottom:2px;right:3px;min-width:12px;padding:1px 2px;font-size:var(--battle-fs-11);background:var(--hud-plate-strong)}
 .cot-hud .cot-ear.icon-grid.r .cot-er .kills{right:auto;left:3px}
-body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d{display:inline-flex;align-items:center;gap:4px;color:var(--ink-2)}
+body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d{display:inline-flex;align-items:center;gap:var(--s1);color:var(--ink-2)}
 .cot-kf .relation{display:inline-flex;align-items:center;justify-content:center;align-self:center;line-height:1;flex:none;color:var(--accent-hi)}
 /* an ammo-rack kill names its cause in the ammunition system's ink */
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf[data-kill-cause=ammorack]{background:var(--hud-plate-strong);border:1px solid var(--sys-ammo)}
@@ -460,13 +460,13 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert{top:var(--hud-alert-top);bottom:auto;width:max-content;max-width:var(--hud-touch-alert-w,214px);transform:translate(-50%,7px)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices] .cot-alert.show{transform:translate(-50%,0)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='notice-compact'] .cot-sixth{width:136px;font-size:var(--battle-fs-11)}
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-compact'] .cot-alert{box-sizing:border-box;font-size:var(--battle-fs-11);line-height:1.2;padding:4px 12px;min-height:28px}
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-touch-notices~='alert-compact'] .cot-alert{box-sizing:border-box;font-size:var(--battle-fs-11);line-height:1.2;padding:var(--s1) var(--s3);min-height:28px}
 /* (the card's own width: a fixed box shrinks to the room right of its left edge, and the plan measures it) */
 body.cot-touch-layout[data-touch-notices] .cot-medal-toasts{width:max-content}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation].cot-touch-layout[data-touch-notices] .cot-prebattle{top:var(--hud-touch-countdown-top);transform:translateX(-50%) scale(var(--hud-touch-countdown-scale,1));transform-origin:50% 0}
 body[data-cot-battle-layout][data-cot-width][data-cot-height][data-cot-orientation].cot-touch-layout[data-touch-notices] .cot-prebattle-rules{top:var(--hud-touch-rules-top);transform:translateX(-50%) scale(var(--hud-touch-rules-scale,1))}
 /* (a touch screen's rules in 12 px: the planner may take them to 92 %, the 11 px floor) */
-body.cot-touch-layout .cot-prebattle-rules{max-width:calc(100vw - 24px);gap:5px 14px;padding:8px 14px;font-size:var(--battle-fs-12)}
+body.cot-touch-layout .cot-prebattle-rules{max-width:calc(100vw - 24px);gap:5px 14px;padding:var(--s2) 14px;font-size:var(--battle-fs-12)}
 body.cot-touch-layout .cot-prebattle-rules b{font-size:var(--battle-fs-12)}
 
 /* r10f (the notices critic: the drive gauge 2 px from the APFSDS slot at 1024 wide): the inline tray, centred, moves right

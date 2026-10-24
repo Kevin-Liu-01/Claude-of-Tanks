@@ -1472,12 +1472,12 @@ const HUD_CSS = `
   clip-path:polygon(0 0,100% 0,94% 100%,6% 100%);}
 
 .cot-top .sc,.cot-top .tm-block{position:relative;z-index:1;}
-.cot-top .sc{display:flex;align-items:center;gap:12px;min-width:0;}
+.cot-top .sc{display:flex;align-items:center;gap:var(--s3);min-width:0;}
 .cot-top .sc.enemy{flex-direction:row-reverse;}
 /* the side carries the team; a label shows only where it says more (the Horde's wave and remaining) */
 .cot-top .team-label[data-default]{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);}
 .cot-top .team-label,.cot-top .tm-label{font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;
-  line-height:1;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap;}
+  line-height:1;letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--ink-3);white-space:nowrap;}
 .cot-top .fg,.cot-top .fe{font-family:${FONT_COND};font-size:36px;font-weight:700;line-height:1;
   letter-spacing:0;}
 .cot-top .fg{color:var(--hud-own);}
@@ -1499,12 +1499,12 @@ const HUD_CSS = `
 .cot-top .tm-label:empty{display:none;}
 .cot-top .tm{font:500 30px/1 var(--font-mono);color:var(--ink-1);letter-spacing:.02em;}
 /* battle endings (2026-09-25): the clock flashes amber through the time's-up beat */
-.cot-top.times-up .tm{color:var(--warn);animation:cotTimesUp .36s steps(1,end) 7;}
+.cot-top.times-up .tm{color:var(--warn);animation:cotTimesUp var(--dur-screen) steps(1,end) 7;}
 .cot-top.times-up .tm-label{color:var(--warn);}
 @keyframes cotTimesUp{50%{opacity:.18;}}
 .cot-mode-status{position:absolute;z-index:var(--hud-layer-score);top:64px;left:50%;transform:translateX(-50%);
-  min-height:28px;display:none;align-items:center;gap:8px;padding:5px 11px;color:var(--ink-1);
-  background:var(--hud-plate);border:1px solid var(--line-2);box-shadow:0 5px 14px rgba(0,0,0,.38);
+  min-height:28px;display:none;align-items:center;gap:var(--s2);padding:5px 11px;color:var(--ink-1);
+  background:var(--hud-plate);border:1px solid var(--line-2);box-shadow:0 5px 14px oklch(from var(--surface-scene) l c h / .38);
   font:700 var(--battle-fs-11) ${FONT_COND};letter-spacing:.05em;text-transform:uppercase;white-space:nowrap;}
 .cot-mode-status.show{display:flex}.cot-mode-status .mi,.cot-mode-status .mi svg{display:block;width:15px;height:15px}
 .cot-mode-status .mi{color:var(--accent)}.cot-mode-status .mv{color:var(--ink-1);}
@@ -1516,11 +1516,11 @@ const HUD_CSS = `
    engineering dashboard folds this strip into its richer top-right panel
    instead of allowing two readouts to overlap. */
 .cot-net{position:absolute;z-index:var(--hud-layer-controls);top:8px;right:10px;display:flex;align-items:center;
-  min-height:28px;padding:4px 0;font-family:${FONT_COND};
-  text-transform:uppercase;text-shadow:0 1px 3px #000,0 0 5px #000;}
+  min-height:28px;padding:var(--s1) 0;font-family:${FONT_COND};
+  text-transform:uppercase;text-shadow:0 1px 3px var(--surface-scene),0 0 5px var(--surface-scene);}
 .cot-net-unit{min-width:42px;display:grid;grid-template-columns:auto auto;align-items:baseline;
-  justify-content:center;column-gap:4px;color:var(--ink-1);}
-.cot-net-unit+.cot-net-unit{margin-left:7px;padding-left:8px;}
+  justify-content:center;column-gap:var(--s1);color:var(--ink-1);}
+.cot-net-unit+.cot-net-unit{margin-left:7px;padding-left:var(--s2);}
 .cot-net .metric{font-size:var(--battle-fs-11);font-weight:700;line-height:1;letter-spacing:.02em;}
 .cot-net .label{font-size:var(--battle-fs-11);font-weight:700;line-height:1;letter-spacing:.03em;color:var(--ink-2);}
 .cot-net-unit.good .metric{color:var(--ok)}.cot-net-unit.warn .metric{color:var(--warn)}
@@ -1571,27 +1571,27 @@ body.cot-debug-hud .cot-net{display:none!important;}
 .cot-ear.r{right:0;top:var(--hud-roster-top-right,52px);}
 .cot-ear .hd{flex-shrink:0;font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.13em;color:var(--ink-3);
   font-family:${FONT_COND};
-  text-transform:uppercase;padding:4px 10px;display:flex;justify-content:space-between;
+  text-transform:uppercase;padding:var(--s1) 10px;display:flex;justify-content:space-between;
   background:var(--hud-plate);}
 .cot-ear.l .hd{border-left:2px solid var(--hud-own);}
 .cot-ear.r .hd{border-right:2px solid var(--hud-enemy);text-align:right;}
-.cot-er{display:flex;align-items:center;gap:5px;padding:3px 10px 4px 8px;font-size:var(--battle-fs-11);
+.cot-er{display:flex;align-items:center;gap:5px;padding:3px 10px var(--s1) var(--s2);font-size:var(--battle-fs-11);
   font-weight:600;letter-spacing:.02em;color:var(--ink-1);position:relative;
-  text-shadow:0 1px 2px rgba(0,0,0,.85);}
+  text-shadow:0 1px 2px oklch(from var(--surface-scene) l c h / .85);}
 /* r5: FLAT single translucent dark strips + a 1px separator line (WoT ears)
    — the old fade-to-transparent gradients read as glossy web chrome */
 .cot-ear.l .cot-er{background:var(--hud-plate);
   border-left:2px solid var(--hud-own);
-  box-shadow:0 1px 0 rgba(0,0,0,.45);}
+  box-shadow:0 1px 0 oklch(from var(--surface-scene) l c h / .45);}
 /* battle_hud r1: the right ear is a TRUE mirror of the left — row-reverse
    flips the flex order but not the padding, so the enemy silhouette sat
    10px off its edge vs the ally's 8px. Mirrored padding keeps both panels'
    row metrics identical. */
-.cot-ear.r .cot-er{background:var(--hud-plate);padding:3px 8px 4px 10px;
+.cot-ear.r .cot-er{background:var(--hud-plate);padding:3px var(--s2) var(--s1) 10px;
   border-right:2px solid var(--hud-enemy);flex-direction:row-reverse;
-  box-shadow:0 1px 0 rgba(0,0,0,.45);}
+  box-shadow:0 1px 0 oklch(from var(--surface-scene) l c h / .45);}
 .cot-er .ic{width:29px;height:14px;flex:0 0 auto;display:block;
-  filter:drop-shadow(0 1px 1px rgba(0,0,0,.78));}
+  filter:drop-shadow(0 1px 1px oklch(from var(--surface-scene) l c h / .78));}
 /* Generated side silhouettes face right. Mirror only the enemy ear so both
    rosters point inward toward the battlefield instead of toward the bezel. */
 .cot-ear.r .cot-er .ic{transform:scaleX(-1);}
@@ -1603,7 +1603,7 @@ body.cot-debug-hud .cot-net{display:none!important;}
   white-space:nowrap;max-width:100%;}
 .cot-er .n .veh{font-size:var(--battle-fs-11);font-weight:600;color:var(--ink-3);letter-spacing:0em;
   font-family:${FONT_COND};text-transform:uppercase;
-  max-width:100%;display:flex;gap:4px;align-items:baseline;}
+  max-width:100%;display:flex;gap:var(--s1);align-items:baseline;}
 .cot-ear.r .cot-er .n .veh{justify-content:flex-end;}
 /* r7: BARE roman tier numeral next to the vehicle name (WoT) — the boxed
    badge chips read as foreign UI furniture in the blind side-by-side.
@@ -1644,9 +1644,9 @@ body.cot-debug-hud .cot-net{display:none!important;}
   scrollbar-width:none;pointer-events:auto;}
 .cot-ear-rows::-webkit-scrollbar{display:none}
 .cot-ear-rows:focus-visible{outline:1px solid var(--accent);outline-offset:-1px}
-.cot-ear.dense .hd{padding:3px 8px;}
-.cot-ear.dense .cot-er{padding:1px 8px 2px 6px;font-size:var(--battle-fs-11);}
-.cot-ear.dense.r .cot-er{padding:1px 6px 2px 8px;}
+.cot-ear.dense .hd{padding:3px var(--s2);}
+.cot-ear.dense .cot-er{padding:1px var(--s2) 2px 6px;font-size:var(--battle-fs-11);}
+.cot-ear.dense.r .cot-er{padding:1px 6px 2px var(--s2);}
 .cot-ear.dense .cot-er .ic{width:22px;height:11px;}
 .cot-ear.dense .cot-er .n .nick{font-size:var(--battle-fs-11);}
 .cot-ear.dense .cot-er .n .veh{font-size:var(--battle-fs-11);}
@@ -1671,7 +1671,7 @@ body.cot-debug-hud .cot-net{display:none!important;}
   background:var(--danger);transform:rotate(-25deg);pointer-events:none;}
 .cot-killfeed{position:absolute;z-index:var(--hud-layer-status);top:52px;left:210px;display:flex;flex-direction:column;
   gap:5px;align-items:flex-start;max-width:420px;}
-.cot-kf{display:flex;gap:7px;align-items:center;padding:5px 16px 5px 12px;font-size:12.5px;line-height:1.2;
+.cot-kf{display:flex;gap:7px;align-items:center;padding:5px var(--s4) 5px var(--s3);font-size:12.5px;line-height:1.2;
   letter-spacing:.03em;background:var(--hud-plate);box-shadow:var(--hud-plate-ring);border-radius:var(--r1);
   transition:opacity var(--cot-motion-slow) var(--cot-ease-out);opacity:1;
   box-sizing:border-box;max-width:100%;min-width:0;overflow:hidden;white-space:nowrap;}
@@ -1686,7 +1686,7 @@ body:is([data-cot-width='laptop'],[data-cot-width='desktop']):not(.cot-touch-lay
 .cot-kill-lane.r .cot-kf .ksi,.cot-kill-lane.l .cot-kf .vsi{color:var(--hud-enemy);}
 /* the player's own kills and deaths ride on the tungsten edge */
 .cot-kf:is([data-relation=you],[data-relation=victim],[data-relation=ridden]){box-shadow:var(--battle-edge-own);}
-.cot-kf .d{display:inline-flex;align-items:center;justify-content:center;line-height:1;color:var(--ink-2);font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;flex:0 0 auto;}
+.cot-kf .d{display:inline-flex;align-items:center;justify-content:center;line-height:1;color:var(--ink-2);font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:var(--track-label-s);flex:0 0 auto;}
 .cot-kf .c{color:var(--accent-hi);font-size:var(--battle-fs-11);letter-spacing:.05em;font-weight:700;flex:0 0 auto;}
 .cot-kf .d>svg,.cot-kf .relation>svg{display:block;flex:none;}
 .cot-kf .si{width:30px;height:12px;flex:0 0 auto;align-self:center;display:inline-block;}
@@ -1704,7 +1704,7 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout .
 /* the narrow touch strip (112-150 px, phone, compact, tight): 32 px chips (status, not controls: their tooltip is the
    tap), so the strip sits on the panel under the round buttons' labels (AUTO AIM, SCOPE end 12 px above it) */
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-status-box{
-  flex:0 0 32px;width:32px;height:32px;min-width:32px;min-height:32px;padding:4px}
+  flex:0 0 32px;width:32px;height:32px;min-width:32px;min-height:32px;padding:var(--s1)}
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:is([data-cot-width='phone'],[data-cot-width='compact'],[data-cot-height-density='tight']) .cot-status-box svg{
   width:18px;height:18px}
 /* brand-ui 245 (less text): at rest a roster row is its silhouette and its commander, one line; Tab's held roster
@@ -1725,7 +1725,7 @@ html[data-watch=drone] body[data-cot-battle-layout][data-cot-height='short'].cot
 /* a recalled drone's tile on the touch strip keeps the Returning cue (aerialHud.css data-phase=returning: its amber ink
    and underline) over the strip tile's plate ring (battleHudLayout.css), by specificity alone (droneReturningCascade.selftest.mjs): at
    (0,5,3) it outranks the strip's tile at (0,5,2) and yields to the action dock's own cue at (0,6,2) */
-html body[data-cot-battle-layout].cot-touch-layout .cot-vehicle-controls>button.cot-drone-control[data-phase=returning]{opacity:1;color:#ffdc94;box-shadow:inset 0 -2px #efb84e99}
+html body[data-cot-battle-layout].cot-touch-layout .cot-vehicle-controls>button.cot-drone-control[data-phase=returning]{opacity:1;color:var(--accent-hi);box-shadow:inset 0 -2px oklch(from var(--accent-hi) l c h / .6)}
 /* the side kill lanes: an ammo-rack kill's cause is its glyph (its word in the glyph's label and title) */
 body[data-cot-battle-layout] .cot-kill-lane .cot-kf .d b{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 /* the aim chip's glyph beside its words; a compact chip (the short landscapes, the narrowest portraits: battleHudLayout.css,
@@ -1743,24 +1743,24 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[d
 body.cot-spectating .cot-shells,body.cot-spectating .cot-special,body.cot-spectating .cot-dp,
 body.cot-spectating .cot-drive,
 body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !important;}
-.cot-dmgnum{position:absolute;font-family:${FONT_COND};font-weight:700;font-size:18px;
-  letter-spacing:-.02em;color:#ffd166;white-space:nowrap;text-transform:uppercase;
-  text-shadow:-1px 0 #05080b,1px 0 #05080b,0 -1px #05080b,0 2px #05080b;
+.cot-dmgnum{position:absolute;font-family:${FONT_COND};font-weight:700;font-size:var(--battle-fs-18);
+  letter-spacing:-.02em;color:var(--accent-hi);white-space:nowrap;text-transform:uppercase;
+  text-shadow:-1px 0 var(--surface-nav),1px 0 var(--surface-nav),0 -1px var(--surface-nav),0 2px var(--surface-nav);
   animation:cotFloat 1.7s cubic-bezier(.2,.6,.3,1) forwards;will-change:transform,opacity;}
 .cot-dmgnum.burst{animation:none;opacity:1;transform:translate(-50%,-30%);}
 .cot-dmgnum.burst-ending{animation:cotBurstFade 1s ease-out forwards;}
 @keyframes cotBurstFade{from{opacity:1;transform:translate(-50%,-30%)}to{opacity:0;transform:translate(-50%,-190%)}}
-.cot-dmgnum.miss{color:#bcc8d2;font-size:13px;font-weight:700;letter-spacing:.1em;}
+.cot-dmgnum.miss{color:var(--ink-2);font-size:var(--battle-fs-13);font-weight:700;letter-spacing:.1em;}
 .cot-dmgnum .crit{position:absolute;left:50%;bottom:calc(100% + 1px);transform:translateX(-50%);
-  font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.06em;color:#ff9b72;margin:0;}
+  font-size:var(--battle-fs-11);font-weight:700;letter-spacing:var(--battle-track-status);color:var(--accent);margin:0;}
 @keyframes cotFloat{0%{opacity:0;transform:translate(-50%,-30%)}10%{opacity:1}
   70%{opacity:.95}100%{opacity:0;transform:translate(-50%,-190%)}}
 .cot-alert{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:23%;max-width:calc(100vw - 32px);min-height:38px;
-  display:flex;align-items:center;justify-content:center;gap:12px;padding:0 16px 0 12px;
-  transform:translate(-50%,7px);font-family:var(--hud-font);font-size:15px;font-weight:700;
-  letter-spacing:.08em;text-align:center;text-transform:uppercase;color:var(--notice-edge);white-space:nowrap;
+  display:flex;align-items:center;justify-content:center;gap:var(--s3);padding:0 var(--s4) 0 var(--s3);
+  transform:translate(-50%,7px);font-family:var(--hud-font);font-size:var(--battle-fs-15);font-weight:700;
+  letter-spacing:var(--track-label-s);text-align:center;text-transform:uppercase;color:var(--notice-edge);white-space:nowrap;
   --notice-edge:var(--warn);
-  text-shadow:0 1px 3px rgba(0,0,0,.9);opacity:0;
+  text-shadow:0 1px 3px oklch(from var(--surface-scene) l c h / .9);opacity:0;
   transition:opacity var(--cot-motion-base) var(--cot-ease-out),
     transform var(--cot-motion-base) var(--cot-ease-out);}
 .cot-alert-icon{width:19px;height:19px;display:grid;place-items:center;flex:0 0 auto;color:var(--notice-edge);}
@@ -1780,10 +1780,10 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 .cot-revive.on{opacity:1;}
 .cot-revive .k{display:inline-block;padding:7px 18px 6px;font-family:${FONT_COND};font-size:17px;font-weight:700;
   line-height:1;letter-spacing:.3em;text-indent:.3em;text-transform:uppercase;color:var(--accent-hi);
-  text-shadow:-1px -1px 0 rgba(4,7,10,.98),1px -1px 0 rgba(4,7,10,.98),-1px 1px 0 rgba(4,7,10,.98),1px 1px 0 rgba(4,7,10,.98),
+  text-shadow:-1px -1px 0 oklch(from var(--surface-scene) l c h / .98),1px -1px 0 oklch(from var(--surface-scene) l c h / .98),-1px 1px 0 oklch(from var(--surface-scene) l c h / .98),1px 1px 0 oklch(from var(--surface-scene) l c h / .98),
     0 2px 8px rgba(0,0,0,.9),0 0 16px rgba(240,160,48,.24);}
 .cot-revive .n{font-family:${FONT_COND};font-size:84px;font-weight:700;line-height:92px;color:var(--ink-1);
-  text-shadow:-2px -2px 0 rgba(4,7,10,.98),2px -2px 0 rgba(4,7,10,.98),-2px 2px 0 rgba(4,7,10,.98),2px 2px 0 rgba(4,7,10,.98),
+  text-shadow:-2px -2px 0 oklch(from var(--surface-scene) l c h / .98),2px -2px 0 oklch(from var(--surface-scene) l c h / .98),-2px 2px 0 oklch(from var(--surface-scene) l c h / .98),2px 2px 0 oklch(from var(--surface-scene) l c h / .98),
     0 3px 14px rgba(0,0,0,.9);}
 /* battle_countdown r4 (owner 2026-10-21: "the 3 2 1 area can be a lot better but regardless it needs to be in center of
    screen"): a dial on the centre line just over the crosshair, the rules panel on that line under the sight (both placed
@@ -1797,17 +1797,17 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
   opacity:0;transition:opacity var(--cot-motion-slow) var(--cot-ease-out);}
 .cot-prebattle.on{opacity:1;}
 .cot-prebattle::before{content:'';grid-area:1/1;width:100%;height:100%;border-radius:50%;
-  background:radial-gradient(closest-side,rgba(5,8,12,.62),rgba(5,8,12,.46) 70%,rgba(5,8,12,0));}
+  background:radial-gradient(closest-side,oklch(from var(--surface-nav) l c h / .62),oklch(from var(--surface-nav) l c h / .46) 70%,transparent);}
 .cot-prebattle .ring{grid-area:1/1;width:100%;height:100%;overflow:visible;}
 .cot-prebattle .ring circle{fill:none;}
-.cot-prebattle .trk{stroke:rgba(255,236,200,.16);stroke-width:2.5;}
-.cot-prebattle .tks{stroke:rgba(255,236,200,.5);stroke-width:2.5;stroke-dasharray:.5 9.5;}
+.cot-prebattle .trk{stroke:oklch(from var(--accent-hi) .95 .051 h / .16);stroke-width:2.5;}
+.cot-prebattle .tks{stroke:oklch(from var(--accent-hi) .95 .051 h / .5);stroke-width:2.5;stroke-dasharray:.5 9.5;}
 .cot-prebattle .arc{stroke:var(--pb-ink);stroke-width:3;stroke-linecap:round;stroke-dasharray:100;stroke-dashoffset:0;
-  filter:drop-shadow(0 0 3px rgba(255,170,60,.6));}
+  filter:drop-shadow(0 0 3px oklch(from var(--accent) l c h / .6));}
 .cot-prebattle .n{grid-area:1/1;position:relative;top:.03em;font:700 100px/1 var(--font-ui);letter-spacing:0;
-  white-space:nowrap;color:var(--ink-1);text-shadow:0 2px 14px rgba(0,0,0,.6),0 0 2px rgba(0,0,0,.75);}
-.cot-prebattle .k{grid-area:2/1;margin-top:8px;font:600 14px/1.2 var(--font-ui);letter-spacing:.14em;text-indent:.14em;
-  text-transform:uppercase;white-space:nowrap;color:var(--accent-hi);text-shadow:0 1px 3px rgba(0,0,0,.9),0 0 10px rgba(0,0,0,.6);}
+  white-space:nowrap;color:var(--ink-1);text-shadow:0 2px 14px oklch(from var(--surface-scene) l c h / .6),0 0 2px oklch(from var(--surface-scene) l c h / .75);}
+.cot-prebattle .k{grid-area:2/1;margin-top:var(--s2);font:600 var(--battle-fs-14)/1.2 var(--font-ui);letter-spacing:.14em;text-indent:.14em;
+  text-transform:uppercase;white-space:nowrap;color:var(--accent-hi);text-shadow:0 1px 3px oklch(from var(--surface-scene) l c h / .9),0 0 10px oklch(from var(--surface-scene) l c h / .6);}
 .cot-prebattle:not(.preparing,.waiting) .k{position:absolute;width:1px;height:1px;margin:0;overflow:hidden;clip-path:inset(50%);}
 .cot-prebattle .n.tick{animation:cot-pb-pop var(--cot-motion-slow) var(--cot-ease-out);}
 .cot-prebattle .n.tick-alt{animation:cot-pb-pop-alt var(--cot-motion-slow) var(--cot-ease-out);}
@@ -1819,7 +1819,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 .cot-prebattle.rollout .ring,.cot-prebattle.rollout::before{animation:cot-pb-burst 900ms var(--cot-ease-out) both;}
 .cot-prebattle.waiting{grid-template-columns:auto;grid-template-rows:auto;}
 .cot-prebattle.waiting::before,.cot-prebattle.waiting .ring{display:none;}
-.cot-prebattle.waiting .n{font-size:40px;letter-spacing:.08em;text-indent:.08em;}
+.cot-prebattle.waiting .n{font-size:40px;letter-spacing:var(--track-label-s);text-indent:.08em;}
 @keyframes cot-pb-pop{from{transform:scale(1.45);opacity:0;}to{transform:scale(1);opacity:1;}}
 @keyframes cot-pb-pop-alt{from{transform:scale(1.45);opacity:0;}to{transform:scale(1);opacity:1;}}
 @keyframes cot-pb-drain{from{stroke-dashoffset:0;}to{stroke-dashoffset:-100;}}
@@ -1830,31 +1830,31 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 .cot-prebattle-rules{position:absolute;z-index:var(--hud-layer-status);left:50%;top:calc(50% + 84px);transform:translateX(-50%);
   transform-origin:50% 0;box-sizing:border-box;width:max-content;max-width:min(840px,calc(100vw - 32px));display:flex;
   flex-wrap:wrap;justify-content:center;gap:7px 20px;padding:10px 20px;border:1px solid var(--line-2);
-  border-radius:var(--r1);background:var(--hud-plate);box-shadow:0 10px 30px rgba(0,0,0,.32);font:600 13px/1.25 var(--font-ui);
+  border-radius:var(--r1);background:var(--hud-plate);box-shadow:0 10px 30px oklch(from var(--surface-scene) l c h / .32);font:600 var(--battle-fs-13)/1.25 var(--font-ui);
   letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);pointer-events:none;opacity:0;visibility:hidden;
   transition:opacity var(--cot-motion-slow) var(--cot-ease-out),visibility 0s linear var(--cot-motion-slow);}
 .cot-prebattle-rules:empty{display:none;}
 .cot-prebattle.on:not(.rollout,.waiting)~.cot-prebattle-rules:not(.unplaced){opacity:1;visibility:visible;transition-delay:0s;}
 .cot-prebattle-rules>span{display:inline-flex;align-items:baseline;gap:.4em;white-space:nowrap;}
-.cot-prebattle-rules b{font:500 13px/1.25 var(--font-mono);letter-spacing:0;color:var(--accent-hi);}
+.cot-prebattle-rules b{font:500 var(--battle-fs-13)/1.25 var(--font-mono);letter-spacing:0;color:var(--accent-hi);}
 @media (prefers-reduced-motion:reduce){
   .cot-prebattle .n.tick,.cot-prebattle .n.tick-alt{animation:none;}
   .cot-prebattle .n~.ring .arc,.cot-prebattle.preparing .arc{animation:none;}
   .cot-prebattle.rollout .ring,.cot-prebattle.rollout::before{animation:none;}
 }
 .cot-alert.show{opacity:1;transform:translate(-50%,0);}
-.cot-jump{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:150px;transform:translateX(-50%);display:none;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--line-2);border-radius:var(--r1);background:var(--hud-plate);color:var(--ink-1);font:600 var(--battle-fs-12)/1 var(--hud-font,system-ui);letter-spacing:.14em;text-transform:uppercase;pointer-events:none}
+.cot-jump{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:150px;transform:translateX(-50%);display:none;align-items:center;gap:var(--s2);padding:6px var(--s3);border:1px solid var(--line-2);border-radius:var(--r1);background:var(--hud-plate);color:var(--ink-1);font:600 var(--battle-fs-12)/1 var(--hud-font,system-ui);letter-spacing:.14em;text-transform:uppercase;pointer-events:none}
 .cot-jump.on{display:flex}
 .cot-jump .sk{padding:2px 6px;border:1px solid var(--line-3);border-radius:var(--r1);font-weight:700;color:var(--ink-2)}
 .cot-jump .si{display:inline-flex;color:var(--accent-hi)}.cot-jump .si svg{width:18px;height:18px}
 .cot-special{position:absolute;z-index:var(--hud-layer-controls);left:50%;bottom:88px;transform:translateX(-50%);
-  min-width:164px;min-height:42px;padding:5px 12px 5px 8px;display:none;
+  min-width:164px;min-height:42px;padding:5px var(--s3) 5px var(--s2);display:none;
   grid-template-columns:24px 1fr auto;align-items:center;gap:7px;pointer-events:auto;
   cursor:pointer;color:var(--ink-1);background:var(--hud-plate);
   border:1px solid var(--line-2);border-bottom:2px solid var(--line-3);border-radius:var(--r1);
-  box-shadow:0 5px 16px rgba(0,0,0,.42);
+  box-shadow:0 5px 16px oklch(from var(--surface-scene) l c h / .42);
   font-family:${FONT_COND};text-transform:uppercase;
-  transition:transform .1s ease-out,border-color .12s ease,color .12s ease,background-color .12s ease;}
+  transition:transform var(--dur-instant) ease-out,border-color var(--dur-instant) ease,color var(--dur-instant) ease,background-color var(--dur-instant) ease;}
 .cot-special.show{display:grid;}
 .cot-special:hover{border-color:var(--accent);color:var(--accent-hi);}
 .cot-special:active{transform:translateX(-50%) scale(.97);}
@@ -1866,9 +1866,9 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 .cot-special.pending .si{animation:cotSpecialPulse .8s ease-in-out infinite alternate;}
 .cot-special .si{display:flex;align-items:center;justify-content:center;}
 .cot-special .si svg{width:22px;height:22px;display:block;}
-.cot-special .sl{font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.06em;white-space:nowrap;text-align:left;}
+.cot-special .sl{font-size:var(--battle-fs-11);font-weight:700;letter-spacing:var(--battle-track-status);white-space:nowrap;text-align:left;}
 .cot-special .sk{font-size:var(--battle-fs-11);font-weight:700;color:var(--ink-3);border:1px solid var(--line-3);
-  padding:1px 4px;line-height:13px;}
+  padding:1px var(--s1);line-height:13px;}
 .cot-special.active .sk{color:var(--accent-hi);border-color:var(--accent);}
 .cot-special:focus-visible,.cot-shell:focus-visible,.cot-con:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px;}
 @keyframes cotSpecialPulse{from{opacity:.45}to{opacity:1}}
@@ -1882,7 +1882,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
   border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);border-radius:var(--r1);
   appearance:none;color:inherit;font:inherit;padding:0;cursor:pointer;position:relative;
   box-shadow:var(--hud-plate-ring);
-  transition:border-color .12s,background .12s,transform .1s ease-out;}
+  transition:border-color var(--dur-instant),background var(--dur-instant),transform var(--dur-instant) ease-out;}
 .cot-shell:active{transform:scale(.97);}
 .cot-shell.sel .ty{color:var(--accent);}
 .cot-shell.sel{border-color:var(--accent);border-bottom-color:var(--accent);
@@ -1893,14 +1893,14 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 .cot-shell.empty{color:var(--ink-4);border-color:var(--line-1);border-bottom-color:var(--hud-danger);
   background:var(--hud-plate);box-shadow:inset 0 -2px 0 var(--hud-danger);}
 .cot-shell.empty::before{content:'';position:absolute;left:16px;right:16px;top:calc(50% - .75px);height:1.5px;
-  border-radius:1px;background:var(--hud-danger);box-shadow:0 0 0 1px #05080bd9;transform:rotate(-45deg);z-index:2;}
+  border-radius:1px;background:var(--hud-danger);box-shadow:0 0 0 1px oklch(from var(--surface-nav) l c h / .851);transform:rotate(-45deg);z-index:2;}
 .cot-shell.empty canvas,.cot-shell.empty .ty,.cot-shell.empty .clr{filter:grayscale(1);opacity:.34;}
 .cot-shell.empty .key{color:var(--ink-4);border-color:var(--line-1);}
 .cot-shell.empty .cnt{color:var(--hud-danger);}
 .cot-shell.deny{animation:cotAmmoDeny .34s ease-out 2;}
-@keyframes cotAmmoDeny{0%,100%{border-color:rgba(105,115,123,.32);box-shadow:none}
-  45%{border-color:#ff4338;background:linear-gradient(180deg,rgba(82,15,12,.96),rgba(32,7,6,.98));
-    color:#ff8d84;box-shadow:0 0 18px rgba(255,54,45,.58)}}
+@keyframes cotAmmoDeny{0%,100%{border-color:var(--line-control);box-shadow:none}
+  45%{border-color:var(--danger);background:linear-gradient(180deg,oklch(from var(--danger) .29 .099 h / .96),oklch(from var(--surface-page) l c h / .98));
+    color:var(--danger);box-shadow:0 0 18px oklch(from var(--danger) l c h / .58)}}
 /* r6-2: thin SHELL-CLASS color underline inside each ammo slot (silver
    kinetic / orange HEAT / olive HE) — class reads without the text label */
 .cot-shell .clr{position:absolute;left:0;right:0;bottom:0;height:2px;z-index:2;
@@ -1921,7 +1921,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
   border:1px solid var(--line-2);border-radius:var(--r1);padding:0 3px;z-index:4;}
 .cot-shell.sel .key{color:var(--accent-hi);border-color:var(--accent);}
 /* the count takes the top-right corner, 3 px in from the slot's edge */
-.cot-shell .cnt{position:absolute;top:2px;right:3px;font-size:15px;line-height:13px;font-weight:700;
+.cot-shell .cnt{position:absolute;top:2px;right:3px;font-size:var(--battle-fs-15);line-height:13px;font-weight:700;
   font-family:var(--hud-font);
   color:var(--ink-1);letter-spacing:.02em;z-index:4;}
 /* Owner 2026-10-17 (endless ammo): the ammo ∞ reads as a count — the glyph draws small, so it is set larger, in the
@@ -1937,7 +1937,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 .cot-shell .tip{display:none;position:absolute;bottom:70px;left:50%;transform:translateX(-50%);
   white-space:nowrap;background:var(--hud-plate-strong);border:1px solid var(--line-2);border-radius:var(--r1);
   padding:5px 9px 6px;font-size:var(--battle-fs-11);color:var(--ink-2);letter-spacing:.02em;z-index:5;
-  box-shadow:0 4px 14px rgba(0,0,0,.5);text-align:center;}
+  box-shadow:0 4px 14px oklch(from var(--surface-scene) l c h / .5);text-align:center;}
 .cot-shell .tip b{color:var(--ink-1);font-weight:600;}
 .cot-shell .tip .tnm{font-size:var(--battle-fs-11);font-weight:600;color:var(--ink-1);margin-bottom:2px;}
 @media (hover:hover) and (pointer:fine){
@@ -1958,7 +1958,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
   border:1px solid var(--line-2);border-bottom:2px solid var(--line-2);border-radius:var(--r1);
   appearance:none;color:inherit;font:inherit;padding:0;display:flex;align-items:center;justify-content:center;
   box-shadow:var(--hud-plate-ring);
-  transition:border-color .12s,transform .1s ease-out;}
+  transition:border-color var(--dur-instant),transform var(--dur-instant) ease-out;}
 .cot-con svg{width:26px;height:26px;display:block;}
 .cot-con:active{transform:scale(.97);}
 @media (hover:hover) and (pointer:fine){.cot-con:hover{border-color:var(--line-control);}}
@@ -1978,7 +1978,7 @@ body.cot-spectating .cot-ret,body.cot-spectating .cot-hitmark{display:none !impo
 @keyframes cotConDeny{0%,100%{border-color:var(--line-2);}50%{border-color:var(--danger);}}
 .aerial-drone .cot-shells{visibility:hidden}
 .cot-shell[hidden]{display:none!important}
-.cot-aerial-readout{position:absolute;top:calc(50% + 64px);left:50%;transform:translateX(-50%);max-width:80vw;color:var(--ink-1);font:700 var(--battle-fs-11) var(--font-mono);letter-spacing:.08em;text-align:center;pointer-events:none;text-shadow:0 1px 3px #000}
+.cot-aerial-readout{position:absolute;top:calc(50% + 64px);left:50%;transform:translateX(-50%);max-width:80vw;color:var(--ink-1);font:700 var(--battle-fs-11) var(--font-mono);letter-spacing:var(--track-label-s);text-align:center;pointer-events:none;text-shadow:0 1px 3px var(--surface-scene)}
 .cot-aerial-readout[hidden]{display:none}
 /* the proving ground: no sides to count (the rosters and the two scores leave; the clock keeps its place) */
 .range-mode .cot-ear,.range-mode .cot-top .sc{visibility:hidden!important}
@@ -1992,19 +1992,19 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
   contain:layout paint style;transform:translate3d(0,0,0);}
 .cot-hpb .nm{height:21px;padding:2px 7px 3px;font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.045em;color:var(--hud-enemy);
   font-family:${FONT_COND};
-  text-shadow:0 1px 2px rgba(0,0,0,.92),0 0 3px rgba(0,0,0,.68);white-space:nowrap;
+  text-shadow:0 1px 2px oklch(from var(--surface-scene) l c h / .92),0 0 3px oklch(from var(--surface-scene) l c h / .68);white-space:nowrap;
   display:flex;align-items:center;justify-content:center;gap:5px;
   background:none;}
 .cot-hpb.ally .nm{color:var(--hud-own);}
 .cot-hpb .nm .si{width:26px;height:11px;flex:0 0 auto;display:block;}
 .cot-hpb .nm span{min-width:0;flex:0 0 auto;overflow:visible;text-overflow:clip;}
-.cot-hpb .tr{height:6px;margin:0 7px;background:rgba(4,6,8,.94);border:1px solid rgba(0,0,0,.9);
-  box-shadow:0 2px 4px rgba(0,0,0,.72);position:relative;overflow:hidden;}
-.cot-hpb .fl{height:100%;background:var(--hud-enemy);transition:width .15s linear;}
+.cot-hpb .tr{height:6px;margin:0 7px;background:oklch(from var(--surface-scene) l c h / .94);border:1px solid oklch(from var(--surface-scene) l c h / .9);
+  box-shadow:0 2px 4px oklch(from var(--surface-scene) l c h / .72);position:relative;overflow:hidden;}
+.cot-hpb .fl{height:100%;background:var(--hud-enemy);transition:width var(--dur-fast) linear;}
 .cot-hpb.ally .fl{background:var(--hud-own);}
 .cot-hpb::after{content:"";display:block;width:0;height:0;margin:1px auto 0;
   border-left:4px solid transparent;border-right:4px solid transparent;
-  border-top:5px solid var(--hud-enemy);filter:drop-shadow(0 1px 1px #000);}
+  border-top:5px solid var(--hud-enemy);filter:drop-shadow(0 1px 1px var(--surface-scene));}
 .cot-hpb.ally::after{border-top-color:var(--hud-own);}
 /* Over-target marker (brand-ui 242, the direction's 06-battle-hud .tgt): one compact plate row on the target — its
    flag, its silhouette facing the player, the callsign, the tier and vehicle, the range — over the hull bar and its
@@ -2013,8 +2013,8 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
    the row alone: the instrument around it paints nothing over the battlefield. */
 .cot-tgt{position:absolute;z-index:var(--hud-layer-world);width:176px;height:64px;text-align:center;display:none;
   will-change:transform;contain:layout paint style;transform:translate3d(0,0,0);}
-.cot-tgt .bk{height:64px;padding:0;background:none;display:flex;flex-direction:column;align-items:center;gap:4px;}
-.cot-tgt .pl{height:30px;display:flex;align-items:center;gap:8px;padding:0 10px;border-radius:var(--r1);
+.cot-tgt .bk{height:64px;padding:0;background:none;display:flex;flex-direction:column;align-items:center;gap:var(--s1);}
+.cot-tgt .pl{height:30px;display:flex;align-items:center;gap:var(--s2);padding:0 10px;border-radius:var(--r1);
   background:var(--hud-plate);box-shadow:var(--hud-plate-ring);}
 .cot-tgt .flg{display:flex;flex:none;}.cot-tgt .flg:empty{display:none;}
 .cot-tgt .flg .cot-flag{display:block;box-shadow:var(--flag-ring);}
@@ -2040,9 +2040,9 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
 .cot-minimap canvas{display:block;width:100%;height:100%;}
 .cot-mm-hd{display:none}
 body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-minimap{
-  box-sizing:content-box;padding:32px 8px 8px;}
+  box-sizing:content-box;padding:var(--s6) var(--s2) var(--s2);}
 body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-mm-hd{
-  position:absolute;left:8px;right:8px;top:6px;height:20px;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  position:absolute;left:8px;right:8px;top:6px;height:20px;display:flex;align-items:center;justify-content:space-between;gap:var(--s2);
   font:600 var(--battle-fs-13)/1 var(--hud-font);color:var(--ink-1);white-space:nowrap;}
 .cot-mm-hd .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;}
 .cot-mm-hd .cot-c-kbd{flex:none;height:19px;min-width:19px;padding:0 5px;font-size:var(--battle-fs-11);}
@@ -2052,7 +2052,7 @@ body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='deskto
 .cot-sixth{position:absolute;z-index:var(--hud-layer-controls);top:12%;left:50%;
   width:min(248px,calc(100vw - 28px));min-height:32px;transform:translate(-50%,-6px);
   display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;align-items:center;
-  padding:4px 22px;box-sizing:border-box;color:var(--warn);--notice-edge:var(--warn);
+  padding:var(--s1) 22px;box-sizing:border-box;color:var(--warn);--notice-edge:var(--warn);
   opacity:0;transition:opacity var(--cot-motion-fast) var(--cot-ease-out),
     transform var(--cot-motion-base) var(--cot-ease-out);pointer-events:none;}
 .cot-sixth.on{opacity:1;transform:translate(-50%,0);
@@ -2060,7 +2060,7 @@ body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='deskto
 .cot-sixth .sig{display:grid;place-items:center;color:var(--warn);}
 .cot-sixth .sig svg{width:24px;height:24px;display:block;}
 .cot-sixth .copy{min-width:0;padding:0;display:flex;flex-direction:column;gap:3px;}
-.cot-sixth .lb{font:700 15px/1 var(--hud-font);letter-spacing:.08em;text-transform:uppercase;color:var(--warn);}
+.cot-sixth .lb{font:700 var(--battle-fs-15)/1 var(--hud-font);letter-spacing:var(--track-label-s);text-transform:uppercase;color:var(--warn);}
 /* the lamp and its label read alone (owner 2026-10-22: no secondary labels); the line stays for a screen reader */
 .cot-sixth .sub{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 /* Every notice is one strong HUD plate: a hairline and a 3 px bar in its severity's ink on the leading edge. */
