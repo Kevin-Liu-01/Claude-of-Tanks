@@ -659,6 +659,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
   resume.innerHTML =
     `<div class="rz-title">${t('settings.pauseTitle')}</div>` +
     `<div class="rz-sub">${t('settings.pauseSub')}</div>`;
+  const resumeSub = requiredElement<HTMLElement>(resume, '.rz-sub');
   document.body.appendChild(resume);
 
   function showResumeVeil() {
@@ -672,6 +673,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     // never depended on it — showing the veil would only swallow the next
     // battle click (input.isCursorAim() means every lock attempt is denied).
     if (input.isCursorAim && input.isCursorAim()) return;
+    // a touch layout (a battle or a watched one) has no click and no Esc: it taps
+    resumeSub.innerHTML = t(input.isTouchLayout?.() ? 'settings.pauseSubTouch' : 'settings.pauseSub');
     resume.classList.add('show');
     emit('ui:click', {});
   }

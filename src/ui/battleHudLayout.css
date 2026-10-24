@@ -101,7 +101,8 @@ body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout:i
 body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-touch-layout[data-cot-width-density='narrow'][data-cot-orientation='portrait'] .cot-touch .autoaim{right:172px}
 /* Spectating has no driving/weapon actions. Keep just navigation and the
    spectator strip at the floor, leaving chat above it. */
-body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-spectating :is(.cot-dp,.cot-drive,.cot-touch .joy,.cot-touch .round){display:none!important}
+/* (watch-mode-243) flying Watch's drone on touch, the drive stick is the drone's: the spectator hide skips it */
+body[data-cot-battle-layout][data-cot-width][data-cot-height].cot-spectating :is(.cot-dp,.cot-drive,html:not([data-watch=drone]) .cot-touch .joy,.cot-touch .round){display:none!important}
 /* A short mouse-driven window has no touch controls to clear: keep the
    spectator identity and its Escape hint below the battlefield. */
 body[data-cot-battle-layout][data-cot-width][data-cot-height='short']:not(.cot-touch-layout)[data-cot-orientation='landscape'] .cot-spec{

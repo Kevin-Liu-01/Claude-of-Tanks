@@ -55,13 +55,16 @@ interface PipTank {
   combat?: { destroyed?: boolean } | null;
 }
 
-interface Pip { node: HTMLElement; own: boolean; dead: boolean | null; seen: number }
+interface Pip { node: HTMLElement; own: boolean; dead: boolean | null; me: boolean; seen: number }
 interface Chip { canvas: HTMLCanvasElement; key: string }
 
 interface TeamPipsRuntime {
   root: HTMLElement;
-  /** The rosters as the HUD tallies them; `ownTeam` is the player's side. Writes only what changed. */
-  updateTeams(tanks: readonly PipTank[], ownTeam: string | undefined, playerId: string | null): void;
+  /**
+   * The rosters as the HUD tallies them; `ownTeam` is the player's side. `ringId` rings one more tank than the player's
+   * (a watched battle's ridden tank, on whichever side it fights). Writes only what changed.
+   */
+  updateTeams(tanks: readonly PipTank[], ownTeam: string | undefined, playerId: string | null, ringId?: string | null): void;
   /** The mode's zone and sector markers (the rest are ignored). */
   updateSectors(markers: readonly ObjectiveMarker[]): void;
 }
@@ -84,20 +87,20 @@ export function createTeamPips(parent: HTMLElement): TeamPipsRuntime {
     if (root.classList.contains('show') !== shown) root.classList.toggle('show', shown);
   }
 
-  function createPip(tank: PipTank, own: boolean): Pip {
+  function createPip(tank: PipTank, own: boolean, me: boolean): Pip {
     const node = el('span', 'pip');
     node.style.setProperty('--sil', `url(${JSON.stringify(iconUrl(tank.spec!.id, 'side_silhouette'))})`);
     el('i', '', node);
-    if (tank.isPlayer) {
+    if (me) {
       node.classList.add('me');
       (own ? ownSide : enemySide).prepend(node);
     } else (own ? ownSide : enemySide).append(node);
-    const pip = { node, own, dead: null, seen: pass };
+    const pip = { node, own, dead: null, me, seen: pass };
     pips.set(tank.id, pip);
     return pip;
   }
 
-  function updateTeams(tanks: readonly PipTank[], ownTeam: string | undefined, playerId: string | null): void {
+  function updateTeams(tanks: readonly PipTank[], ownTeam: string | undefined, playerId: string | null, ringId: string | null = null): void {
     pass++;
     let own = 0, enemy = 0;
     for (const tank of tanks) {
@@ -107,7 +110,9 @@ export function createTeamPips(parent: HTMLElement): TeamPipsRuntime {
       let pip = pips.get(tank.id);
       // a tank that changed sides (a lobby reshuffle) takes a new pip on its new side
       if (pip && pip.own !== ally) { pip.node.remove(); pips.delete(tank.id); pip = undefined; }
-      pip ??= createPip(tank, ally);
+      const me = !!tank.isPlayer || (ringId != null && tank.id === ringId);
+      pip ??= createPip(tank, ally, me);
+      if (pip.me !== me) { pip.node.classList.toggle('me', me); pip.me = me; }
       pip.seen = pass;
       const dead = !!tank.combat?.destroyed;
       if (pip.dead !== dead) { pip.node.classList.toggle('dead', dead); pip.dead = dead; }

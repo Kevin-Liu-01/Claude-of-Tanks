@@ -30,7 +30,7 @@ import { uiIconSVG } from './uiIcons.ts';
 import { maskIcon, iconUrl } from './icons.ts';
 import { schematicUrl as prepareSchematicUrl } from './shotSchematicClient.ts';
 import { moduleName } from './moduleRegistry.ts';
-import { createBattleBeatLog } from './battleBeats.ts';
+import { createBattleBeatLog, type BattleSide } from './battleBeats.ts';
 import {
   createShotDiagramProjection,
   impactForShotDiagram,
@@ -153,6 +153,10 @@ interface BattleEndedEvent {
   readonly hordeWave?: number | null;
   /** Jev commander (2026-09-25): who commanded each side's bots */
   readonly brains?: { readonly enemy?: string; readonly allies?: string } | null;
+  /** A watched battle (watch-mode-243): no human side, the report is the battle's. */
+  readonly watch?: boolean;
+  /** A watched battle's mode score by side (absent where the score is the kills). */
+  readonly score?: { readonly alpha: number; readonly bravo: number } | null;
 }
 
 interface Combatant {
@@ -264,6 +268,8 @@ interface EndInfo {
   readonly campaign: CampaignDebrief | null;
   readonly hordeWave: number | null;
   readonly brains: { readonly enemy: string; readonly allies: string } | null;
+  readonly watch: boolean;
+  readonly score: { readonly alpha: number; readonly bravo: number } | null;
 }
 
 interface SummaryTeamRow extends EndScreenTeamRow {
@@ -1518,6 +1524,7 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
   }
 
   function buildSummary(result: EndScreenResult): EndScreenSummary {
+    const watched = !!endInfo?.watch;
     const rows = summaryRows();
     const { allies, enemies } = summaryTeams(rows);
     const kills = summaryKills();
@@ -1562,12 +1569,14 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       allies,
       enemies,
       campaign: endInfo?.campaign ?? null,
-      finalBlow: resolveFinalBlow(lastLethalHit, lastDestroyedRow, playerId == null ? null : String(playerId),
+      // a watched battle's last blow reads as the battle's, whichever tank was ridden
+      finalBlow: resolveFinalBlow(lastLethalHit, lastDestroyedRow, playerId == null || watched ? null : String(playerId),
         (id) => combatants.get(id)?.name ?? null),
       hordeWave: endInfo?.hordeWave ?? null,
       brains: endInfo?.brains ?? null,
       awards: getLastBattleAwards(),
-      beats: beatLog.list(),
+      beats: watched ? beatLog.battleList() : beatLog.list(),
+      ...(watched ? { watched, score: endInfo?.score ?? null } : {}),
     };
   }
 
@@ -1727,6 +1736,10 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     // the timeline's beats: the player's death, and each tank the player destroyed (fire and rams included)
     if (playerId != null && p.id === playerId) beatLog.death();
     else if (playerId != null && p.killerId === playerId) beatLog.kill(String(p.id), p.specId);
+    // and the battle's own line: every kill, to the killer's side (a fire or a fall: the victim's enemy)
+    const killerSide = p.killerId != null && p.killerId !== p.id ? battleSide(teamOf(p.killerId)) : null;
+    const victimSide = battleSide(teamOf(p.id));
+    beatLog.battleKill(String(p.id), p.specId, killerSide ?? (victimSide && (victimSide === 'alpha' ? 'bravo' : 'alpha')));
     lastDestroyedRow = { id: String(p.id), killerId: p.killerId == null ? null : String(p.killerId), cause: p.cause ?? null,
       source: p.source ?? null };
     if (p.killerId != null && p.killerId !== p.id) {
@@ -1848,6 +1861,9 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
       hordeWave: typeof p.hordeWave === 'number' && Number.isFinite(p.hordeWave) ? p.hordeWave : null,
       brains: p.brains && typeof p.brains === 'object'
         ? { enemy: String(p.brains.enemy || 'classic'), allies: String(p.brains.allies || 'classic') } : null,
+      watch: p.watch === true,
+      score: p.score && Number.isFinite(p.score.alpha) && Number.isFinite(p.score.bravo)
+        ? { alpha: p.score.alpha, bravo: p.score.bravo } : null,
     } : null;
     if (rulesetRevives(p?.gameMode)) revives = true;
     pendingReport = p ? (p.result || '') : '';
@@ -1940,4 +1956,9 @@ export function createShotInfo(bus: EventBus): ShotInfoRuntime {
     },
   };
   return api;
+}
+
+/** A tank's side on the battle line: the solo roster's teams ('player', 'enemy') or a room's ('alpha', 'bravo'). */
+function battleSide(team: string | undefined): BattleSide | null {
+  return team === 'player' || team === 'alpha' ? 'alpha' : team === 'enemy' || team === 'bravo' ? 'bravo' : null;
 }
