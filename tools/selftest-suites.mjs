@@ -1311,6 +1311,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/mp/match/prediction.selftest.mjs',
     'src/mp/match/predictionStall.selftest.mjs', // 2026-10-13 MP plan step 9: a stalled seat's gap stepped on the authority's hold-and-release
     'src/mp/match/matchClient.selftest.mjs',
+    'src/mp/match/migrationStore.selftest.mjs', // 242 security round 2 (3a55e00a60); in no suite since
     'src/mp/match/matchBuildGate.selftest.mjs',
     'src/mp/wire/matchBuild.selftest.mjs',
     'src/mp/wire/destroyedSet.selftest.mjs',
@@ -1381,6 +1382,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/movementPredictionState.selftest.mjs',
     'src/mp/transport/iceConfig.selftest.mjs',
     'src/mp/session/roomFailure.selftest.mjs',
+    'src/mp/session/roomServiceLimit.selftest.mjs', // 243 Workers Free: one limit state over real sockets
     'src/ui/multiplayerStatus.selftest.mjs',
     'src/ui/roomFailurePresentation.selftest.mjs',
     'src/ui/playMenu.selftest.mjs',
@@ -1397,6 +1399,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/jev.selftest.mjs',
     'tools/deployment-policy.selftest.mjs',
     'tools/vercel-routes.selftest.mjs',
+    'tools/contentSecurityPolicy.selftest.mjs', // 243 security: the report-only script-src names every inline script
     'tools/middleware-diet.selftest.mjs',
     'tools/worker-generated-types.selftest.mjs',
     'server/dedicatedWorldCollision.selftest.mjs',
@@ -1413,6 +1416,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'server/match/inputBuffer.selftest.mjs',
     'server/match/seatToken.selftest.mjs',
     'server/match/matchActor.selftest.mjs',
+    'server/match/forcedKeyframes.selftest.mjs', // 243 security: forced keyframes from a bucket of 8, refilling at 2/s
     'server/match/interestTiers.selftest.mjs',
     'server/match/matchActorResume.selftest.mjs',
     'server/match/service.selftest.mjs',
@@ -1481,6 +1485,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/combat.selftest.mjs',
     'src/sim/combatMaintenance.selftest.mjs',
     'src/sim/spotting.selftest.mjs',
+    'src/sim/hiddenShotEvents.selftest.mjs', // 242 security round 2 (3a55e00a60, the hidden-shooter shell_hit); in no suite since
     'src/sim/spottingHullBushGrid.selftest.mjs',
     'src/sim/shellSurface.selftest.mjs',
     // 2026-10-07 (destruction core lane): the munition blast catalog over every round in the game (docs/DESTRUCTION.md §4).
@@ -1494,6 +1499,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/sim/terrainDeformation.selftest.mjs',
     'src/sim/destructionNavigation.selftest.mjs',
     'src/sim/destructionShard.selftest.mjs',
+    'src/sim/destructionLogBudget.selftest.mjs', // 243 security C3: the destruction log's budget
     'src/sim/destructionCraters.selftest.mjs',
     // 2026-10-15 (destruction lane, DST-04): the world's ray march reads the dug ground (craters' bowls, heaps), both worlds
     'src/world/groundOverlayRaycast.selftest.mjs',
