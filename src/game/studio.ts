@@ -59,7 +59,7 @@ import { createStudioDestruction, type StudioDestruction } from './studioDestruc
  */
 import * as THREE from 'three';
 import { VISIBLE_TANK_IDS, getSpec } from '../vehicles/specs.ts';
-import { createTank, ensureFullFleet } from '../vehicles/fleetFactory.ts';
+import { createTank, ensureFullFleet, ensureTankBuilder, ensureTankBuilders, isTankBuilderReady } from '../vehicles/fleetFactory.ts';
 import {
   createTankState, resetTankVerticalState, updateTank, SIM_DT,
 } from '../sim/movement.ts';
@@ -608,6 +608,8 @@ interface StudioRuntime {
 }
 
 const DEG = Math.PI / 180;
+/** The tank an actor without an id stands in for. */
+const DEFAULT_ACTOR_ID = 'm1a1_abrams_hc';
 /** What the Studio reads of a building's anatomy (world/structureDamageSeam.ts): its footprint, height and placement. */
 interface StudioStructureAnatomy {
   massClass: string; placement: { x: number; y: number; z: number; yaw: number }; w: number; d: number; h: number;
@@ -710,6 +712,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   let entering: Promise<void> | null = null; // in-flight enter() promise (shared latch)
   let loading = false;         // load() in flight (blocks re-entrant loads)
   let mapChange: Promise<string> | null = null; // serialized map switch
+  // the whole fleet's builders (247): warmed once the Studio is up, never part of its entry (__STUDIO.ready() awaits it)
+  let fleetReady: Promise<void> | null = null;
+  const warmFleet = (): Promise<void> => (fleetReady ??= ensureFullFleet().catch((error: unknown) => {
+    fleetReady = null; // a failed chunk stays retryable
+    throw error;
+  }));
   let timeOfDay: StudioTimeOfDay = 'day';
   let studioLight: StudioLight | null = null; // scene JSON `light`: the sun override (absolute bearing / elevation)
   let timeScale = 1;           // fx time multiplier; 0 = frozen
@@ -1309,8 +1317,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   }
 
   function addActor(cfg: StudioActorInput = {}): StudioActor {
-    const specId = cfg.id || cfg.specId || 'm1a1_abrams_hc';
+    const specId = cfg.id || cfg.specId || DEFAULT_ACTOR_ID;
     const spec = getSpec(specId); // throws on unknown id (deliberate)
+    if (!isTankBuilderReady(specId)) {
+      throw new Error(`Studio: '${specId}' is still loading; await __STUDIO.ready() (or load the scene) before addActor`);
+    }
     const engineCtx = game._engineCtx;
     const camoSeed = cfg.camoSeed != null ? cfg.camoSeed | 0 : 4200 + uidSeq * 17;
     const visual = createTank(specId, engineCtx, { camoSeed, quality: 'high' });
@@ -1776,9 +1787,12 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         marker.set(_v3);
         if (placeArmed) {
           const snapped = placementSnap === 'road' && roadSnap(_v3.x, _v3.z, 0, _snapPoint);
-          const a = addActor({ id: placeArmed, pos: snapped ? [_snapPoint.x, _snapPoint.z] : [_v3.x, _v3.z],
-            ...(snapped ? { facingDeg: _snapPoint.facingDeg } : {}) });
-          selectActor(a);
+          const cfg: StudioActorInput = { id: placeArmed, pos: snapped ? [_snapPoint.x, _snapPoint.z] : [_v3.x, _v3.z],
+            ...(snapped ? { facingDeg: _snapPoint.facingDeg } : {}) };
+          // the armed tank's builder loads when it is armed (_internal.placeArmed); a click that beats it waits for it
+          const place = (): void => { if (active) selectActor(addActor(cfg)); };
+          if (isTankBuilderReady(placeArmed)) place();
+          else void ensureTankBuilder(placeArmed).then(place).catch((error: unknown) => console.error('[studio] tank load failed', error));
           placeArmed = null;
           panel.setPlaceArmed(null);
         } else if (!pickActor(e)) {
@@ -5260,6 +5274,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     timeScale = 0;
     clearActors();
     resetFx(sceneMeta.seed);
+    // the scene's own tanks, not the fleet (247: the entry no longer loads every builder)
+    await ensureTankBuilders((json.actors || []).map((cfg) => cfg.id || cfg.specId || DEFAULT_ACTOR_ID));
     await yieldForFrameBudget();
     for (const cfg of json.actors || []) {
       const a = addActor(cfg);
@@ -5454,10 +5470,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       if (latest && latest.mapId === id) return id;
     }
     const work = async (progress: ProgressListener): Promise<string> => {
-      panel.setBusy(`Building ${getMapConfig(id).name || id}…`);
       progress(0.03, 'Surveying battlefield');
       await ensureWorld(id, (f: number, label: string) => {
-        panel.setBusy(`${label} ${Math.round(f * 100)}%`);
         progress(0.03 + f * 0.86, label);
       });
       setWorldDormant(false);
@@ -5489,18 +5503,25 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       progress(1, 'Studio ready');
       return world?.mapId || id;
     };
-    mapChange = transition.run(work, {
-      kicker: 'Scene Studio',
-      title: getMapConfig(id).name || id,
-      sub: 'Switching battlefield',
-      mapId: id,
-      minShowMs: 360,
-    });
+    mapChange = withStage(id, work);
     try {
       return await mapChange;
     } finally {
       mapChange = null;
-      panel.setBusy(null);
+    }
+  }
+
+  /**
+   * Shell-first (247): while a battlefield builds, the Studio's own panels stay on screen and wait, and the viewport
+   * shows the map's picture, its name and the build's progress (panel.setStage). The entry and a battlefield change both
+   * run under it; the exit to the Garage keeps the branded cover.
+   */
+  async function withStage<T>(mapId: string, work: (progress: ProgressListener) => Promise<T>): Promise<T> {
+    panel.setStage({ mapId, name: getMapConfig(mapId).name || mapId });
+    try {
+      return await work((fraction: number, label: string) => panel.setStageProgress(fraction, label));
+    } finally {
+      panel.setStage(null);
     }
   }
 
@@ -5534,6 +5555,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       mapId: string;
       directBoot: boolean;
       stages: Record<string, number>;
+      loads?: Record<string, number>;
+      labels?: Record<string, number>;
       totalMs?: number;
     } = { mapId, directBoot: !!opts.coveredByBoot, stages: {} };
     const startedAt = performance.now();
@@ -5562,21 +5585,32 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       // battlefield has finished assembling.
       let worldProgress = 0;
       let fxProgress = 0;
-      const report = (label: string): void => p(
-        0.04 + worldProgress * 0.78 + fxProgress * 0.18,
-        label,
-      );
+      // each progress label's first appearance, from the entry's start (window.__STUDIO_LOAD.labels)
+      const labels: Record<string, number> = {};
+      const report = (label: string): void => {
+        if (label && labels[label] === undefined) labels[label] = Math.round(performance.now() - startedAt);
+        p(0.04 + worldProgress * 0.78 + fxProgress * 0.18, label);
+      };
+      // each load's own finish, from the entry's start (window.__STUDIO_LOAD.loads), so a slow open names its part
+      const loads: Record<string, number> = {};
+      const timed = (name: string, load: Promise<unknown>): Promise<void> => load.then(() => {
+        loads[name] = Math.round(performance.now() - startedAt);
+      });
+      // 247: the fleet is not part of the entry. An empty scene draws no tank, a loaded scene and a placed tank load their
+      // own builders, and the rest of the fleet warms once the Studio is up (fleetReady); on a cold /studio boot the full
+      // fleet's download held the battlefield's survey back by about ten seconds.
       await Promise.all([
-        ensureFullFleet(),
-        ensureWorld(mapId, (f: number, label: string) => {
+        timed('world', ensureWorld(mapId, (f: number, label: string) => {
           worldProgress = Math.max(worldProgress, f);
           report(label);
-        }),
-        warmStudioPipeline((f: number, label: string) => {
+        })),
+        timed('fx', warmStudioPipeline((f: number, label: string) => {
           fxProgress = Math.max(fxProgress, f);
           report(label);
-        }),
+        })),
       ]);
+      trace.loads = loads;
+      trace.labels = labels;
       mark('worldAndFx');
       setWorldDormant(false);
       await ctx.prepareStudioAtmosphere?.(timeOfDay, studioLight);
@@ -5627,17 +5661,8 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       mark('present');
     };
     try {
-      if (opts.coveredByBoot) {
-        await work(opts.onProgress || (() => {}));
-      } else {
-        await transition.run(work, {
-          kicker: 'Scene Studio',
-          title: getMapConfig(mapId).name || mapId,
-          sub: 'Staging rig · Free camera',
-          mapId,
-          minShowMs: 360,
-        });
-      }
+      if (opts.coveredByBoot) await work(opts.onProgress || (() => {}));
+      else await withStage(mapId, work);
     } catch (error) {
       active = false;
       panel.hide();
@@ -5646,6 +5671,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     }
     trace.totalMs = Math.round(performance.now() - startedAt);
     window.__STUDIO_LOAD = trace;
+    // the rest of the fleet, while the first frames are on screen
+    const idle = window.requestIdleCallback ?? ((callback: () => void) => window.setTimeout(callback, 1));
+    idle(() => { void warmFleet().catch(() => undefined); }, { timeout: 4000 });
     syncRoute(true);
     docBrand('studio');
   }
@@ -5926,6 +5954,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       ? Promise.reject(new Error(filming ? 'Finish the film render first' : 'Stop recording before changing battlefield'))
       : setMap(id),
     get active() { return active; },
+    /** The Studio entered and every tank's builder in (the scripted addActor's precondition; load() needs only its own). */
+    ready: async (): Promise<void> => {
+      if (entering) await entering;
+      await warmFleet();
+    },
     get mapId() { const w = getWorld(); return w ? w.mapId : null; },
     performance: () => ({ ...perf }),
     // actors
@@ -6082,7 +6115,10 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       get selected() { return selected; },
       get selectedEffect() { return selectedEffect; },
       get placeArmed() { return placeArmed; },
-      set placeArmed(v: string | null) { placeArmed = v; },
+      set placeArmed(v: string | null) {
+        placeArmed = v;
+        if (v) void ensureTankBuilder(v).catch(() => undefined); // the click that places it finds it built
+      },
       get markerPos() { return marker.pos; },
       get markerActive() { return marker.group.visible; },
       get storyboard() { return storyboard; },
