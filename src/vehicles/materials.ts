@@ -2942,9 +2942,10 @@ export function chainVehicleMaterialHook<T extends THREE.Material>(
 /**
  * The vehicle's own shader switches, which three's copy drops with the rest of the defines and a clone keeps (the wheel
  * paint's floor). The cascade's defines (USE_CSM, CSM_*, COT_CLOUD_SHADE) belong to the registration and come back
- * with it.
+ * with it. COT_NO_FIELD_DUST (2026-10-24, transitions-249; the owner: rubber stays rubber): the tyres', tracks', mats'
+ * and glass's opt-out of the field dust, which the Garage hero's dormant energy skins (clones) dropped, dusting them.
  */
-const VEHICLE_SHADER_SWITCHES = ['COT_WHEEL_PAINT_READABILITY', 'COT_GEAR_CAVITY', 'COT_VEHICLE_FLOORLESS'] as const;
+const VEHICLE_SHADER_SWITCHES = ['COT_WHEEL_PAINT_READABILITY', 'COT_GEAR_CAVITY', 'COT_VEHICLE_FLOORLESS', 'COT_NO_FIELD_DUST'] as const;
 
 /**
  * A clone of a cascade-registered material outside vehicleMaterialSetup: a dev build and the node receipts say so; the

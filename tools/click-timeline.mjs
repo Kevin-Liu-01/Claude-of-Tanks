@@ -323,6 +323,42 @@ export const PATHS = [
       await waitFor(page, `!shown('.cot-trans.on')`, 30000).catch(() => {});
       await sleep(1500);
     } },
+  // a Studio press as soon as the Garage is back from a Studio exit, its transition still on (the press was dropped
+  // before brand-ui-248 cb70fbec8a): whether the transition was on at the press is in studioReentry.transOnAtPress
+  { id: 'studio-exit-press', doc: 'game', reps: 3,
+    script: async (page, i, run, ctx) => {
+      await tapOrClick(page, await target(page, '[data-nav=studio]'), ctx);
+      await waitFor(page, `window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`, 120000).catch(async (cause) => {
+        console.log(`    #${i} entry did not open, state: ${JSON.stringify(await page.evaluate(() => ({
+          phase: window.__DEBUG?.game?.phase ?? null, trans: !!document.querySelector('.cot-trans.on'),
+          studioEl: !!document.querySelector('.cot-studio'), bodyData: Object.entries(document.body.dataset).map(([k, v]) => `${k}=${v}`).join(' ').slice(0, 300),
+        })).catch(() => null))}`);
+        throw cause;
+      });
+      await sleep(800);
+      await pressKey(page, 'Escape');
+      await waitFor(page, GARAGE_BACK, 60000);
+      const studioState = () => page.evaluate(() => ({
+        phase: window.__DEBUG?.game?.phase ?? null, studioActive: window.__STUDIO?.active ?? null,
+        trans: !!document.querySelector('.cot-trans.on'), studioEl: !!document.querySelector('.cot-studio'),
+        studioShown: !!document.querySelector('.cot-studio') && getComputedStyle(document.querySelector('.cot-studio')).display !== 'none',
+        garage: !!document.querySelector('.cot-garage'), button: (() => { const b = document.querySelector('[data-nav=studio]');
+          return b ? { disabled: b.disabled, aria: b.getAttribute('aria-disabled'), pe: getComputedStyle(b).pointerEvents } : null; })(),
+        bodyData: Object.entries(document.body.dataset).map(([k, v]) => `${k}=${v}`).join(' ').slice(0, 300),
+        studioLoad: window.__STUDIO_LOAD ? { done: window.__STUDIO_LOAD.done, stage: window.__STUDIO_LOAD.stage } : null,
+      })).catch((error) => ({ error: String(error).slice(0, 120) }));
+      const sample = await run('studio-exit-press', async () => {
+        const selector = await target(page, '[data-nav=studio]');
+        await page.evaluate(() => { window.__STUDIO_REENTRY = { transOnAtPress: !!document.querySelector('.cot-trans.on') }; });
+        return selector;
+      }, { shown: `shown('.cot-studio')`, shownTimeoutMs: 30000,
+        done: `window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`, doneTimeoutMs: 60000 });
+      if (sample.error) console.log(`    #${i} missed press, state: ${JSON.stringify(await studioState())}`);
+      await pressKey(page, 'Escape');
+      await waitFor(page, GARAGE_BACK, 60000).catch(() => {});
+      await waitFor(page, `!shown('.cot-trans.on')`, 30000).catch(() => {});
+      await sleep(1500);
+    } },
   { id: 'studio-workspace', doc: 'game', reps: 6,
     setup: async (page, ctx) => { await tapOrClick(page, await target(page, '[data-nav=studio]'), ctx); await waitFor(page, `window.__STUDIO && shown('.cot-studio') && !shown('.cot-trans.on')`, 60000); },
     press: (page, i) => target(page, '.cot-studio .workspace-nav button', i + 1),
