@@ -690858,7 +690858,7 @@
           }
         ]
       },
-      "geometryHash": "57e887f1",
+      "geometryHash": "38bc238a",
       "metadataHash": "91f6ee58",
       "presentationAnchor": {
         "xM": -0.0022,
@@ -690970,16 +690970,16 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 118682,
-          "sha256": "93b2323cfff597ef7f2ba5f622789039b5284d0d79db51115c43bfb804614e26"
+          "bytes": 118596,
+          "sha256": "891b15f346495045d2c2cd0c9a100865b314421828c39f9163113bb5451c31d1"
         },
         "modulesSide": {
           "file": "merkava3c_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 118985,
-          "sha256": "fb162c0973bbe482244f4be4dfeba11793610abf7c4a5f669472750322f21960"
+          "bytes": 118791,
+          "sha256": "aa7da1fbd0a2aa6e8f4cbbc388668a0cf897b6fafa091dbfa96e3472cf85b7b5"
         },
         "crewSide": {
           "file": "merkava3c_crew_side.png",
