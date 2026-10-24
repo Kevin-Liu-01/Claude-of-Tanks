@@ -1094,6 +1094,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/soloBattleRuntime.selftest.mjs',
     'tools/boot-static-closure.selftest.mjs',
     'src/vehicles/coplanarDepthLayers.selftest.mjs',
+    // 243: markings painted on the armour under their seats (the owner's "insignias and marks ... still glitching")
+    'src/vehicles/markingFilm.selftest.mjs',
     'src/fx/effectAttachments.selftest.mjs',
     'src/fx/trackContact.selftest.mjs',
     'src/fx/trailCadence.selftest.mjs',
