@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { Euler, Quaternion, Vector3 } from 'three';
 import '../vehicles/tankFactory.ts'; // register the full authored fleet
 import { createAuthoritativeMatch, authoritativeTerrainCacheStats } from './authoritativeMatch.ts';
@@ -377,6 +378,63 @@ assert.equal(crushSnapshot.meta.destructibleRevision, 1,
   'destructible state carries a persistent monotonic revision');
 assert.deepEqual(crushSnapshot.meta.destroyedObstacleIndices, [0],
   'keyframes can reconstruct destroyed collision state after reconnect');
+
+// (physics DST-02, 2026-10-17; landed 244) a hull turning on the spot presses what it turns into, as one driven into it
+// does: its tracks run either way. A bench 12 cm off each front flank (one front corner sweeps outward whichever way the
+// hull turns): neutral steer with no throttle fells one through the press; a hull standing still fells neither.
+const pivotBenches = (prefix) => [1, -1].map((side, index) => ({
+  min: [side > 0 ? 1.95 : -2.55, -100, -47.4], max: [side > 0 ? 2.55 : -1.95, 100, -46.4], kind: 'bench', crushable: true,
+  propIdx: 60 + index, id: `${prefix}-${index}`,
+  shape2: { kind: 'obb', cx: side * 2.25, cz: -46.9, hw: 0.3, hl: 0.5, yaw: 0 } }));
+const pivotMatch = (benches) => {
+  const world = {
+    mapId: 'verdant',
+    getObstacles: () => benches,
+    queryObstacles: (minX, minZ, maxX, maxZ, out) => {
+      out.length = 0;
+      for (const r of benches) if (!r.crushed && r.max[0] >= minX && r.min[0] <= maxX && r.max[2] >= minZ && r.min[2] <= maxZ) out.push(r);
+      return out;
+    },
+    raycast: () => null,
+    crushObstacle(obstacle) { obstacle.crushed = true; return true; },
+  };
+  const match = createAuthoritativeMatch({
+    mapId: 'verdant', countdownS: 0, worldCollision: world,
+    players: [
+      { id: 'pivot-a', specId: 'm1a1_abrams_hc', team: 'alpha', spawn: { x: 0, z: -50, yaw: 0 } },
+      { id: 'pivot-b', specId: 'm1a1_abrams_hc', team: 'bravo', spawn: { x: 0, z: 50, yaw: Math.PI } },
+    ],
+  });
+  match.onMatchReady();
+  return match;
+};
+{
+  assert.ok(tankContactRect(createAuthoritativeMatch({ mapId: 'verdant', countdownS: 0, players: [
+    { id: 'rect-a', specId: 'm1a1_abrams_hc', team: 'alpha' }, { id: 'rect-b', specId: 'm1a1_abrams_hc', team: 'bravo' },
+  ] }).entityById.get('rect-a').spec).halfWidth < 1.95, 'the benches stand clear of the parked hull\'s flanks');
+  const turning = pivotBenches('turn');
+  const turn = pivotMatch(turning);
+  const pivot = new Map([['pivot-a', { throttle: 0, steer: 1, brake: false, fire: false, aimYaw: 0, aimPitch: 0, shellSlot: 0 }]]);
+  // (before DST-02 the bench held the turning hull off it, 1.2 m, and stood: the press read the throttle alone)
+  for (let i = 0; i < 60; i++) turn.step({ dt: 1 / 60, inputs: pivot });
+  assert.equal(turning.filter((bench) => bench.crushed).length, 1,
+    'the bench its front corner turns into falls through the press inside the first second (0.57 s)');
+  for (let i = 60; i < 120; i++) turn.step({ dt: 1 / 60, inputs: pivot });
+  const a = turn.entityById.get('pivot-a').state;
+  assert.ok(Math.abs(a.yaw) > 0.2, `the hull turns on (yaw ${a.yaw.toFixed(2)} rad)`);
+  assert.ok(turn.snapshot({ tick: 120, serverTimeMs: 2000, viewerId: 'pivot-a', ackInputSeq: 1 }).events
+    .some((event) => event.type === 'world_prop_destroyed' && event.kind === 'bench'), 'and replicates as a world prop destroyed');
+  const standing = pivotBenches('stand');
+  const stand = pivotMatch(standing);
+  for (let i = 0; i < 120; i++) stand.step({ dt: 1 / 60, inputs: new Map() });
+  assert.equal(standing.filter((bench) => bench.crushed).length, 0, 'a hull standing still beside them fells neither');
+  // the solo battle prices the press by the same gate (game/state.ts shouldCrushObstacle)
+  const solo = readFileSync(new URL('../game/state.ts', import.meta.url), 'utf8');
+  const authority = readFileSync(new URL('./authoritativeMatch.ts', import.meta.url), 'utf8');
+  assert.ok(/Math\.abs\(self\.input\.throttle \|\| 0\) <= 0\.35 && Math\.abs\(self\.input\.steer \|\| 0\) <= 0\.35\) return false/.test(solo)
+    && /Math\.abs\(entity\.input\.throttle \|\| 0\) <= 0\.35 && Math\.abs\(entity\.input\.steer \|\| 0\) <= 0\.35\) return false/.test(authority),
+  'the solo battle and the authority both press on the throttle or the steer');
+}
 
 // A resumed match (a host migration, world state audit 2026-10-01) restores the previous authority's destroyed props
 // silently — crushed in this world, no event — and continues its revision, so every client's persistent-state check
