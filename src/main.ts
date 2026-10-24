@@ -528,6 +528,8 @@ mountDiagOverlay({ tier: resolveDeviceTier(renderer), diag: _diag, rescue: _diag
 
 // perf-247: bound once the forward program owner exists (below); world builds start after it.
 let submitWorldPrograms = (_root: THREE.Object3D): void => {};
+// perf-248: a Studio entry at dusk or night lights the lamps after the build, re-keying every lit program: no early links
+let studioEarlyPrograms = true;
 const engineCtx = {
   renderer,
   scene,
@@ -1805,7 +1807,7 @@ const forwardProgramWarm = createForwardProgramWarmOwner({
 // the GPU process links them beside the build's CPU work instead of under the first covered frame (5.7 s of link waits
 // on the profile). Studio only: a battle's covered atmosphere must precede its program warm (worldActivationRuntime),
 // and a background build behind the Garage presents nothing.
-submitWorldPrograms = (root) => { if (game.phase === 'studio') forwardProgramWarm.compile(root); };
+submitWorldPrograms = (root) => { if (game.phase === 'studio' && studioEarlyPrograms) forwardProgramWarm.compile(root); };
 // Shader, FX, shadow, private-render-target, and deferred rollout warm state
 // share one renderer-lifetime owner. Its lazy ports preserve the boot order:
 // battle visuals and the frame owner may be declared later, but are only read
@@ -3698,11 +3700,18 @@ const studioAccess = createStudioAccess({
   createContext: (studioFx: RuntimeValue) => ({
     renderer, scene, camera, post, lighting, game, hud: currentHud(), garage, showroom,
     hfProxy, getWorld: currentWorld,
-    ensureWorld: (id: string, onProgress: (fraction: number, label: string) => void) => ensureWorld(id, onProgress, {
-      precompile: false,
-      compilePrograms: true,
-      services: false,
-    }),
+    ensureWorld: async (
+      id: string,
+      onProgress: (fraction: number, label: string) => void,
+      { earlyPrograms = true }: { readonly earlyPrograms?: boolean } = {},
+    ) => {
+      studioEarlyPrograms = earlyPrograms;
+      try {
+        return await ensureWorld(id, onProgress, { precompile: false, compilePrograms: true, services: false });
+      } finally {
+        studioEarlyPrograms = true;
+      }
+    },
     setWorldDormant,
     setGarageSpots, setGarageSunTrim, enterGarage,
     // media r5: Studio times of day and sun direction. The battle owner keeps the authored day (its Garage-return

@@ -17,7 +17,8 @@
  */
 import * as THREE from 'three';
 import {
-  planStudioLight, type StudioCloudIdentity, type StudioLight, type StudioLightLab, type StudioLightPlan, type StudioTimeOfDay,
+  planStudioLight, studioTimeLightsLamps, type StudioCloudIdentity, type StudioLight, type StudioLightLab, type StudioLightPlan,
+  type StudioTimeOfDay,
 } from './studioLight.ts';
 import { MARS_SKY_PRESET } from '../engine/marsAtmosphere.ts';
 import { setVehicleReadabilityScale } from '../vehicles/vehicleReadability.ts';
@@ -267,7 +268,7 @@ export function createStudioLightRuntime(options: StudioLightRuntimeOptions): St
 
   function syncNight(): void {
     const world = options.getWorld();
-    const on = !!world && !!current && (current.time === 'dusk' || current.time === 'night');
+    const on = !!world && !!current && studioTimeLightsLamps(current.time);
     if (!on) {
       if (nightRoot) night?.reset();
       nightRoot = null;

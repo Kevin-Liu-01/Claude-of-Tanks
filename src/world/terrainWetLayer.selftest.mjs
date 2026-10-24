@@ -51,6 +51,8 @@ function fixture({ text = source, observe = null } = {}) {
   const declarations = ['mulberry32', 'smoothstep', 'clamp', 'applyTone', 'makeGroundLayer',
     'makeGroundLayerSteps', 'createWetSplatLayer', 'createWetSplatLayerSteps',
     'selectTerrainLandformMask', 'snowRockHoldLine', 'createSplatMaterialSteps', 'stackLandUseBake', 'buildTerrainMeshes',
+    // (perf-248) the shore and the folds the build and the ring worker share
+    'createShoreAt', 'foldFieldSteps',
     'buildTerrainMeshesAsync', 'terrainBuildSteps'].map(name => declaration(name, text)).join('\n');
   // The actual ground, wet selector, material, terrain generator and async
   // consumer run together. Unrelated horizon/geometry/source I/O is peripheral;

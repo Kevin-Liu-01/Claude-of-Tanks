@@ -11,7 +11,7 @@ import { minimumMechanicalGunPitch } from '../sim/gunPitchLimits.ts';
 import { usesLauncherMuzzles, isUnguidedRocket, launcherMuzzleIndex } from '../sim/launcherPolicy.ts';
 import {
   STUDIO_TIMES, STUDIO_TIME_BANDS, isStudioTime, normalizeStudioLight, planStudioLight, studioElevationBand,
-  studioTimeFor, studioTimesFor, type StudioLight, type StudioTimeOfDay,
+  studioTimeFor, studioTimeLightsLamps, studioTimesFor, type StudioLight, type StudioTimeOfDay,
 } from './studioLight.ts';
 import { studioAuthoredSky } from './studioLightRuntime.ts';
 import type { RuntimeValue } from '../runtimeTypes.ts';
@@ -233,7 +233,11 @@ interface StudioContext {
   showroom: { stop(): void };
   hfProxy: MovementHeightField;
   getWorld(): WorldRuntime | null;
-  ensureWorld(mapId: string, onProgress?: ProgressListener): Promise<WorldRuntime>;
+  /**
+   * `earlyPrograms` (perf-248): the build may link its subsystems' programs while it builds (map.ts submitBuiltPrograms).
+   * False when the light applied after the build adds the lamps' lights, which re-key every lit program.
+   */
+  ensureWorld(mapId: string, onProgress?: ProgressListener, options?: { readonly earlyPrograms?: boolean }): Promise<WorldRuntime>;
   setWorldDormant(dormant: boolean): void;
   /** Apply a Studio time of day and sun override over the active world (main.ts → studioLightRuntime). */
   prepareStudioAtmosphere?(time: StudioTimeOfDay, light?: StudioLight | null): Promise<unknown>;
@@ -5474,7 +5478,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
       progress(0.03, 'Surveying battlefield');
       await ensureWorld(id, (f: number, label: string) => {
         progress(0.03 + f * 0.86, label);
-      });
+      }, { earlyPrograms: !studioTimeLightsLamps(studioTimeFor(id, timeOfDay)) });
       setWorldDormant(false);
       // a space map renders its authored day; the requested time returns on the next terrestrial map
       await ctx.prepareStudioAtmosphere?.(timeOfDay, studioLight);
@@ -5609,7 +5613,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
         timed('world', ensureWorld(mapId, (f: number, label: string) => {
           worldProgress = Math.max(worldProgress, f);
           report(label);
-        })),
+        }, { earlyPrograms: !studioTimeLightsLamps(studioTimeFor(mapId, timeOfDay)) })),
         timed('fx', warmStudioPipeline((f: number, label: string) => {
           fxProgress = Math.max(fxProgress, f);
           report(label);

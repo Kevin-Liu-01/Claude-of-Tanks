@@ -213,6 +213,8 @@ import {
   deriveRuntimeStructureContactBand, deriveRuntimeStructureShellBands, type StructureCollisionRuntimeBand,
 } from './structureCollision.ts';
 import { structureShellPoolFor } from './structureShellPool.ts';
+import { brokenVehiclePoolFor } from './brokenVehiclePool.ts';
+import { buildBrokenVehicle } from './brokenVehicleBuild.ts';
 import { unpackStructureShellWire } from './structureShellWire.ts';
 import {
   attachGroundCoverSolidProfile, createGroundCoverSolidProfile, GROUND_COVER_PLACEMENT_BYTES, letGroundCoverLap,
@@ -355,6 +357,8 @@ type PropsStructureBuilder = (
 interface EngineContext {
   anisotropy?: number;
   setupShadowMaterial(material: THREE.Material, hook?: MaterialShaderHook | null): void;
+  /** (perf-248) A finished part of the props, offered for its programs while the rest builds (map.ts, Studio only). */
+  submitBuiltPrograms?(root: THREE.Object3D): void;
 }
 
 interface SurfaceTextureOptions {
@@ -1023,6 +1027,10 @@ export interface PropsBuildSlice {
   surfacePaint?: { key: string; result: Record<string, unknown> | null };
   /** (the perf stream, Plan W) the structures' shells still in the pool's workers: the async build waits for them here */
   structureShells?: Promise<void>;
+  /** (perf-248) the broken-vehicle pool's join: settles when its workers have answered (brokenVehiclePool.ts) */
+  brokenVehicles?: Promise<void>;
+  /** builds the newest unanswered broken body on the main thread; false when none is left */
+  stealBrokenVehicle?: () => boolean;
   /** Derive the newest unanswered structure's shells on the main thread meanwhile; false when none is left. */
   stealStructureShell?: () => boolean;
   stage?: string;
@@ -1037,6 +1045,8 @@ interface PropsAwaitTiming {
 interface PropsBuildDetail {
   /** (Plan W) the structure shell pool's counts (absent when every structure derived inline) */
   structureShells?: { posted: number; answered: number; failed: number; packMs: number };
+  /** (perf-248) the broken-vehicle pool's jobs */
+  brokenVehicles?: { posted: number; answered: number; failed: number; stolen: number };
   sliceCount: number;
   synchronousMs: number;
   maxSliceMs: number;
@@ -1057,6 +1067,9 @@ interface PropsBuildDetail {
     /** (Plan W) the pacing ticks while the build waited at the join for the shell pool, and the waits themselves */
     structureShells: PropsAwaitTiming;
     structureShellWaits: PropsAwaitTiming;
+    /** (perf-248) the same at the broken-vehicle pool's join */
+    brokenVehicles: PropsAwaitTiming;
+    brokenVehicleWaits: PropsAwaitTiming;
     wreckRowsLimit: number;
     wreckRowsDropped: number;
     wreckRows: Array<{ specId: string; startMs: number; endMs: number;
@@ -1143,6 +1156,7 @@ export interface PropsRuntime {
   structureMaterials: StructureMaterialEntry[];
   /** (Plan W) the shell pool's counts for this build, null when every structure derived inline */
   structureShellStats?: { posted: number; answered: number; failed: number; packMs: number; stolen?: number } | null;
+  brokenVehicleStats?: { posted: number; answered: number; failed: number; stolen: number } | null;
   _buildDetail?: PropsBuildDetail;
 }
 
@@ -3648,6 +3662,8 @@ export async function createPropsAsync(
     wreckBakes: { count: 0, totalMs: 0, maxMs: 0 },
     structureShells: { count: 0, totalMs: 0, maxMs: 0 },
     structureShellWaits: { count: 0, totalMs: 0, maxMs: 0 },
+    brokenVehicles: { count: 0, totalMs: 0, maxMs: 0 },
+    brokenVehicleWaits: { count: 0, totalMs: 0, maxMs: 0 },
     wreckRowsLimit: 32, wreckRowsDropped: 0, wreckRows: [],
   };
   const wreckFallbacks = { count: 0, missing: 0 };
@@ -3680,6 +3696,24 @@ export async function createPropsAsync(
   // went silent or reported an error), the rest of this build bakes its wrecks on the main thread
   let wreckWorkerFailure: unknown = null;
   const wreckCheckpoint = (): Promise<void> | void => observeTick(awaitTimings.wreckCheckpoints);
+  /** A pool's join: its workers' answers awaited at the build's pacing, the newest unanswered job taken meanwhile. */
+  const awaitPoolJoin = async (
+    join: Promise<void>, steal: (() => boolean) | undefined, ticks: PropsAwaitTiming, waits: PropsAwaitTiming,
+  ): Promise<void> => {
+    const startedAt = performance.now();
+    let settled = false;
+    void join.then(() => { settled = true; });
+    while (!settled) {
+      // (2026-10-15) work at the other end of the queue instead of idling, one job a turn
+      if (steal?.()) {
+        await observeTick(ticks);
+        continue;
+      }
+      await new Promise<void>((resolve) => { setTimeout(resolve, 16); });
+      if (!settled) await observeTick(ticks);
+    }
+    recordPropsAwait(waits, startedAt);
+  };
   try {
     r = g.next();
     // (the time-to-battle lane, 2026-10-08) with the map's planned bakes already running in the prefetch's own worker, this
@@ -3698,21 +3732,13 @@ export async function createPropsAsync(
           try { step.surfacePaint.result = await ahead; } catch { step.surfacePaint.result = null; }
         }
       }
+      // (Plan W) the pool's workers finish the structures' shells; the loading screen keeps its pacing meanwhile
       if (step?.structureShells) {
-        // (Plan W) the pool's workers finish the structures' shells; the loading screen keeps its pacing meanwhile
-        const startedAt = performance.now();
-        let settled = false;
-        void step.structureShells.then(() => { settled = true; });
-        while (!settled) {
-          // (2026-10-15) work at the other end of the queue instead of idling, one structure a turn
-          if (step.stealStructureShell?.()) {
-            await observeTick(awaitTimings.structureShells);
-            continue;
-          }
-          await new Promise<void>((resolve) => { setTimeout(resolve, 16); });
-          if (!settled) await observeTick(awaitTimings.structureShells);
-        }
-        recordPropsAwait(awaitTimings.structureShellWaits, startedAt);
+        await awaitPoolJoin(step.structureShells, step.stealStructureShell, awaitTimings.structureShells, awaitTimings.structureShellWaits);
+      }
+      // (perf-248) and the broken-vehicle pool's workers its bodies, the same way
+      if (step?.brokenVehicles) {
+        await awaitPoolJoin(step.brokenVehicles, step.stealBrokenVehicle, awaitTimings.brokenVehicles, awaitTimings.brokenVehicleWaits);
       }
       if (step?.tankBuilder && !wreckWorker) {
         const startedAt = performance.now();
@@ -3787,6 +3813,7 @@ export async function createPropsAsync(
       ...(wreckPrefetch ? { wreckPrefetch: { ...wreckPrefetch.stats } } : {}),
       ...(surfacePrefetch ? { surfacePaints: { ...surfacePrefetch.stats } } : {}),
       ...(runtime.structureShellStats ? { structureShells: runtime.structureShellStats } : {}),
+      ...(runtime.brokenVehicleStats ? { brokenVehicles: runtime.brokenVehicleStats } : {}),
       ...(wreckFallbacks.count ? { wreckFallbacks: { ...wreckFallbacks,
         reason: describePropsFailure(wreckWorkerFailure) } } : {}),
     };
@@ -3875,6 +3902,8 @@ function pendingShellRecord(id: string): CollisionRecord {
 }
 /** How long the async build waits at the join for the pool's answers before deriving the rest itself (ms). */
 const STRUCTURE_SHELL_WAIT_MS = 15000;
+/** (perf-248) And at the broken vehicles' join before building the rest itself (ms). */
+const BROKEN_VEHICLE_WAIT_MS = 15000;
 
 function* propsBuildSteps(
   heightField: HeightField,
@@ -3945,6 +3974,9 @@ function* propsBuildSteps(
   const aniso = engineCtx.anisotropy ?? 4;
   const group = new THREE.Group();
   group.name = 'props';
+  const offerPrograms = (root: THREE.Object3D): void => {
+    try { engineCtx.submitBuiltPrograms?.(root); } catch { /* the activation's compile and the first frame remain */ }
+  };
   const decorationGroundingReceipts: DecorationGroundingReceipt[] = [];
   const v = L.village;
   // maps lane B (2026-10-03): the settlement the props dress (P.town, default the village rect); the scatter below keeps
@@ -5155,6 +5187,11 @@ ${snowCap ? `
   // wharf's fishery) derives everything here, as every structure does in the Node builds.
   const shellPool = structureShellPoolFor(sourceApplication.worker === true);
   let shellsJoined = false;
+  // (perf-248) the burnt vehicles' and the broken carts' bodies, built off the main thread (brokenVehiclePool.ts): posted
+  // as their pools finalize, taken at joinBrokenVehicles; a cancelled build stops the pool's workers
+  const vehiclePool = brokenVehiclePoolFor(sourceApplication.worker === true);
+  sourceApplication.signal?.addEventListener('abort', () => vehiclePool?.dispose(), { once: true });
+  const pendingBroken: { id: number; imB: THREE.InstancedMesh; pool: DestructiblePool; kind: string; castsShadow: boolean }[] = [];
   interface PendingShells {
     structureIdx: number; job: number; placeholder: CollisionRecord; id: string;
     x: number; baseY: number; z: number; yaw: number; contact: CollisionRecord;
@@ -11532,6 +11569,9 @@ ${snowCap ? `
     }
   }
   yield* mergeMaterialBuckets();
+  // (perf-248) the merged buckets are most of the props' programs: offered now, ahead of the destructible pools (each
+  // offered as it is made) and the rest of the build, instead of with the whole props at its end
+  offerPrograms(group);
   // the scenery lane (wave 34): the snow drifts banked against the walls draw as one mesh of their own on the plaster
   // (a drift is a low ramp: it receives the cascades and casts none), so a frame can show and hide them
   if (wallDressing.drifts.length) {
@@ -11917,10 +11957,12 @@ ${snowCap ? `
       const caster = vehicleShadowCaster(imI, shadowGeo, casterHeightM(shadowGeo, pool.mats4));
       if (far) caster.customDepthMaterial = vehicleCasterDepthMaterial();
       group.add(caster);
+      offerPrograms(caster);
     }
     else if (castsDynamicShadow) setShadowCasterProfile(imI, { heightM: casterHeightM(geoI, pool.mats4), instanced: true }); // round 79
     if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imI, true);
     group.add(imI);
+    offerPrograms(imI);
     pool.imI = imI;
     // (Lane C, #8 r2) a set piece kind draws its intact instances in the baked bucket (setPieceSpans): this mesh draws
     // nothing and mirrors every hide (a zero-scale matrix: a break, the crush copy taking the prop) and show (a restore,
@@ -11939,7 +11981,10 @@ ${snowCap ? `
       // (destruction core, 2026-10-09; the owner: "destructible objects/props: not looking good") the light dressing's broken
       // state is its intact build broken (propFracture.ts); the legacy builder still runs first, so it spends its draws from
       // the destructible stream and every later pool builds from the stream it always did
-      const legacyB = meta.broken(drng);
+      // (perf-248) a burnt vehicle's or a broken cart's body spends a fixed count of those draws (the kits' `spending`): the
+      // draws are taken here and the broken-vehicle pool builds the body while the pools after it finalize
+      const brokenJob = vehiclePool && meta.brokenJob ? meta.brokenJob(drng) : null;
+      const legacyB = brokenJob ? null : meta.broken(drng);
       // (E1, the props census, 2026-10-14) a kind whose intact build names its pieces (userData.fracture, a
       // KitFractureAnatomy that checks against the build) breaks into the settled heap of those pieces (lightWreck.ts),
       // not PROP_FRACTURE's flat raft; a kind that keeps its own broken builder (a map's structure variant: the ksar
@@ -11950,9 +11995,12 @@ ${snowCap ? `
       const settled = !!anatomy && Array.isArray(anatomy.pieces)
         && checkKitFracture(anatomy, (geoI.index ? geoI.toNonIndexed() : geoI).getAttribute('position').array).length === 0;
       const fracture = own ? undefined : PROP_FRACTURE[kind];
+      // (a job's body is the kit's builder's own, which a settled or fractured kind would discard: not built at all then)
+      const pendingJob = brokenJob && !settled && !fracture ? vehiclePool!.post(brokenJob) : null;
       const geoB = settled ? settleLightWreck(geoI, anatomy!, fractureSeed(seed, kind))
-        : fracture ? fractureProp(geoI, fracture, fractureSeed(seed, kind)) : legacyB;
-      if (geoB !== legacyB) legacyB.dispose();
+        : fracture ? fractureProp(geoI, fracture, fractureSeed(seed, kind))
+          : pendingJob !== null ? new THREE.BufferGeometry() : legacyB!; // (the job's body replaces this at the join)
+      if (legacyB && geoB !== legacyB) legacyB.dispose();
       const imB = new THREE.InstancedMesh(geoB, material, pool.mats4.length);
       imB.count = 0;
       imB.visible = false;
@@ -11961,12 +12009,45 @@ ${snowCap ? `
       imB.matrixAutoUpdate = false;
       imB.frustumCulled = false; // slots appended over the battle
       imB.name = 'destructible-' + kind + '-broken';
-      if (castsDynamicShadow) setShadowCasterProfile(imB, { heightM: casterHeightM(geoB, pool.mats4), instanced: true }); // round 79
-      if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imB, false);
+      if (pendingJob === null) finishBrokenMesh(imB, pool, kind, castsDynamicShadow);
+      else pendingBroken.push({ id: pendingJob, imB, pool, kind, castsShadow: castsDynamicShadow });
       group.add(imB);
+      if (pendingJob === null) offerPrograms(imB);
       pool.imB = imB;
     }
   }
+  /** A broken pool's mesh, its body in place: its caster profile and its night fixture. */
+  function finishBrokenMesh(imB: THREE.InstancedMesh, pool: DestructiblePool, kind: string, castsShadow: boolean): void {
+    if (castsShadow) setShadowCasterProfile(imB, { heightM: casterHeightM(imB.geometry, pool.mats4), instanced: true }); // round 79
+    if (DESTRUCTIBLE_BUILDING_TYPES[kind]) prepareWorldStructureNightFixture(imB, false);
+  }
+  /**
+   * (perf-248) The bodies the broken-vehicle pool built (or the build makes now from the same jobs: an answer not yet
+   * arrived, a failed or missing worker) take their meshes' places, and the meshes are finished as their pools left them.
+   */
+  function joinBrokenVehicles(): void {
+    if (!vehiclePool) return;
+    for (const pending of pendingBroken) {
+      const geoB = vehiclePool.take(pending.id) ?? buildBrokenVehicle(vehiclePool.job(pending.id));
+      const placeholder = pending.imB.geometry;
+      pending.imB.geometry = geoB;
+      placeholder.dispose();
+      finishBrokenMesh(pending.imB, pending.pool, pending.kind, pending.castsShadow);
+      offerPrograms(pending.imB);
+    }
+    pendingBroken.length = 0;
+    vehiclePool.dispose();
+  }
+  const stealBrokenVehicle = (): boolean => {
+    const stolen = vehiclePool?.steal();
+    if (!stolen) return false;
+    try {
+      vehiclePool!.complete(stolen.id, buildBrokenVehicle(stolen.job));
+      return true;
+    } catch {
+      return false; // the join builds it again and fails there as the inline build would
+    }
+  };
   function* finalizeDestructiblePools(): Generator<PropsBuildSlice | undefined, void, void> {
     for (const [kind, pool] of dPools) {
       yield; // perf-r3: one instanced-pool build per slice (geometry per kind)
@@ -12852,6 +12933,12 @@ ${snowCap ? `
   // (physics stream F2) the buildings' decks join their movement records now the world is laid out: every placement above
   // read the ground band alone, as before decks existed (structureCollision.ts mergeStructureDecks)
   mergeStructureDecks(obstacles, colliders);
+  // (perf-248) the broken bodies the pool built while the pools after theirs and everything since went on; the async
+  // build waits here for its workers, and builds the newest unanswered bodies itself meanwhile
+  if (vehiclePool && pendingBroken.length) {
+    yield { stage: 'broken-vehicles', brokenVehicles: vehiclePool.settled(BROKEN_VEHICLE_WAIT_MS), stealBrokenVehicle };
+  }
+  joinBrokenVehicles();
   nearMeshVertexHeights = null; // (a query after the build asks the field)
   joinStructureShells(); // (Plan W) no pooled structure outlives the build, whatever path it took
   group.userData.streamDraws = { placement: placementDraws, main: mainDraws };
@@ -12865,5 +12952,6 @@ ${snowCap ? `
     getLoosePropStats: () => ({ total: looseRecords.length, active: activeLoose.length }),
     features: { buildings: buildingFeatures, tacticalBeats: tacticalBeatFeatures, hearths: hearthAnchors },
     // (Plan W) last, so the runtime's return still opens `{ group, obstacles, colliders,` (destructibleAuthority's anchor)
-    structureShellStats: shellPool ? { ...shellPool.stats } : null };
+    structureShellStats: shellPool ? { ...shellPool.stats } : null,
+    brokenVehicleStats: vehiclePool ? { ...vehiclePool.stats } : null };
 }
