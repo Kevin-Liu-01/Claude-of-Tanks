@@ -65,6 +65,9 @@ html,body{min-height:var(--cot-viewport-height,100dvh)}
 .public-nav__cta{margin-left:var(--s2)}
 .public-nav__menu-trigger{display:none;place-items:center;width:44px;height:44px;margin-right:-10px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-1);cursor:pointer}
 .public-nav__menu[hidden]{display:none}
+/* the bar's blur makes it the containing block of its fixed descendants: while the menu is open the bar drops it, so
+   the menu fills the screen under the bar instead of the bar's own 56 px */
+.public-nav:has(.public-nav__menu:not([hidden])){-webkit-backdrop-filter:none;backdrop-filter:none}
 .public-nav__menu{position:fixed;inset:var(--shell-nav-h) 0 0;z-index:var(--z-menu);display:flex;flex-direction:column;gap:var(--s5);padding:var(--s5) var(--shell-gutter) calc(var(--s5) + env(safe-area-inset-bottom,0px));
   overflow:auto;background:var(--surface-page)}
 .public-nav__menu-links{display:flex;flex-direction:column}
