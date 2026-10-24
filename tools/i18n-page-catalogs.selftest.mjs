@@ -264,7 +264,7 @@ assert.deepEqual([game.lazyKeys, game.lazy], [[], []], 'the game has no lazy chu
 assert.ok(real.catalogs.notFound.keys.length <= 24 && real.catalogs.notFound.keys.includes('notFound.metaTitle'),
   `the 404 page needs a handful of strings: ${real.catalogs.notFound.keys.join(', ')}`);
 // the gallery's damage workbench, a static import, boots with the page (its garage.module.*, garage.crew.* and
-// gallery.damage.* names); the field guides behind the info buttons load with infoGuides.ts
+// gallery.damage.* names)
 const gallery = real.catalogs.gallery;
 for (const prefix of ['garage.module.', 'garage.crew.', 'gallery.damage.']) {
   assert.ok(gallery.keys.some((key) => key.startsWith(prefix)), `the workbench's ${prefix}* keys boot with the gallery`);
