@@ -710,6 +710,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   // --- studio state ----------------------------------------------------------
   let active = false;
   let entering: Promise<void> | null = null; // in-flight enter() promise (shared latch)
+  // (248) an exit during an entry abandons it: its battlefield keeps streaming into the world cache, and the next entry
+  // shows its own shell at once and joins that build (the coordinator shares it, progress included). An abandoned entry
+  // stops at its next await, so its late steps never move the Garage's camera or route.
+  let entryGeneration = 0;
+  class EntryAbandoned extends Error {}
   let loading = false;         // load() in flight (blocks re-entrant loads)
   let mapChange: Promise<string> | null = null; // serialized map switch
   // the whole fleet's builders (247): warmed once the Studio is up, never part of its entry (__STUDIO.ready() awaits it)
@@ -5520,14 +5525,18 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   // (perf-247) the build's plate (studioPanel .st-load) is opaque over the viewport: no scene frame renders under it. Its
   // first frames linked programs against a scene still being built (0.66 s of link waits on the cold profile).
   let buildPlateUp = false;
-  async function withStage<T>(mapId: string, work: (progress: ProgressListener) => Promise<T>): Promise<T> {
+  async function withStage<T>(mapId: string, work: (progress: ProgressListener) => Promise<T>,
+    owns: () => boolean = () => true): Promise<T> {
     panel.setStage({ mapId, name: getMapConfig(mapId).name || mapId });
     buildPlateUp = true;
     try {
-      return await work((fraction: number, label: string) => panel.setStageProgress(fraction, label));
+      return await work((fraction: number, label: string) => { if (owns()) panel.setStageProgress(fraction, label); });
     } finally {
-      buildPlateUp = false;
-      panel.setStage(null);
+      // an abandoned entry leaves the plate to the entry that replaced it
+      if (owns()) {
+        buildPlateUp = false;
+        panel.setStage(null);
+      }
     }
   }
 
@@ -5540,11 +5549,15 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
   function enter(opts: EnterOptions = {}): Promise<void> {
     if (active) return Promise.resolve();
     if (entering) return entering; // share the in-flight entry (load() awaits it)
-    entering = doEnter(opts).finally(() => { entering = null; });
-    return entering;
+    const mine: Promise<void> = doEnter(opts).finally(() => { if (entering === mine) entering = null; });
+    entering = mine;
+    return mine;
   }
 
   async function doEnter(opts: EnterOptions): Promise<void> {
+    const generation = ++entryGeneration;
+    const owns = (): boolean => generation === entryGeneration;
+    const stillOwned = (): void => { if (!owns()) throw new EntryAbandoned(); };
     // never race the boot tail: everything the studio touches exists once
     // the game declares readiness. Direct /studio boot is explicitly invoked
     // by main.ts from its final covered stage, where all Studio dependencies
@@ -5555,6 +5568,7 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           if (window.__GAME_READY) { clearInterval(t); resolve(); }
         }, 60);
       });
+      stillOwned();
     }
     const mapId = resolveMapId(opts.map || urlParam('map') || 'verdant', () => 0.01);
     const trace: {
@@ -5615,11 +5629,13 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
           report(label);
         })),
       ]);
+      stillOwned();
       trace.loads = loads;
       trace.labels = labels;
       mark('worldAndFx');
       setWorldDormant(false);
       await ctx.prepareStudioAtmosphere?.(timeOfDay, studioLight);
+      stillOwned();
       // Cold /studio and first-use F8 have no battlefield preset until the
       // awaited acquisition has activated its world. Never borrow the Garage
       // (or previous map's) sun while the requested map is still loading.
@@ -5668,8 +5684,9 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
     };
     try {
       if (opts.coveredByBoot) await work(opts.onProgress || (() => {}));
-      else await withStage(mapId, work);
+      else await withStage(mapId, work, owns);
     } catch (error) {
+      if (error instanceof EntryAbandoned) return; // an exit took it back; a later entry runs its own
       active = false;
       panel.hide();
       game.phase = 'garage';
@@ -5704,6 +5721,11 @@ export function createStudio(ctx: StudioContext): StudioRuntime {
 
   async function doExit() {
     if (!active) return;
+    // an entry still loading is abandoned (the next entry starts its own); its plate goes with the panel
+    entryGeneration++;
+    entering = null;
+    buildPlateUp = false;
+    panel.setStage(null);
     if (recording) stopRecording();
     flareToWallClock();
     active = false;

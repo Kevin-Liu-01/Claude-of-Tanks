@@ -28,7 +28,7 @@ function fixture() {
     let recording=null,timeScale=0,clockMs=0,filming=false;
     const storyboard={durationMs:15000},videoMimeType=()=> 'video/webm';
     const rail={updateVisibility(){}},lighting={update(){},updateFrustums(){}},panel={tick(){},refreshStoryboard(){},refreshTime(){},drawSelection(){}},grabShotThumbnail=()=>{},reverseRate=0,stepReverseShuttle=()=>{};
-    let poolSweepAcc=0,frameDirty=false,lastFov=60;
+    let poolSweepAcc=0,frameDirty=false,lastFov=60,buildPlateUp=false;
     const camera={fov:60,position:{},getWorldDirection(){}},_fwd={},perf={skippedFrames:0,renderedFrames:0};
     const updateCamera=()=>false,sweepPool=()=>{},advanceTimeline=ms=>{clockMs+=ms;},syncCrushPlan=()=>{};
     const invalidate=()=>{frameDirty=true;},stepFx=()=>{},seekTimeline=t=>{clockMs=t;},getWorld=()=>({mapId:'test',update(){}}),flareToWallClock=()=>{};
