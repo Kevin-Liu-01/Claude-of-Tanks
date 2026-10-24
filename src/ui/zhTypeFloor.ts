@@ -63,8 +63,8 @@ const HOME: readonly string[] = [
   '.v5-social-proof__reddit>header p', '.v5-social-proof__snapshot',
 ];
 
-/** The 404 page (src/presentation/notFound.css). */
-const NOT_FOUND: readonly string[] = [...PUBLIC_NAV, '.not-found__actions a'];
+/** The 404 page (src/presentation/notFound.css): the search hits' chapter line (12 px); its other labels are 14 px and up. */
+const NOT_FOUND: readonly string[] = [...PUBLIC_NAV, '.nf-hit small'];
 
 const ROUTES: Readonly<Record<string, readonly string[]>> = {
   game: SHELL,

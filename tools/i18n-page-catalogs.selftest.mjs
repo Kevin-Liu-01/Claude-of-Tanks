@@ -264,13 +264,16 @@ assert.deepEqual([game.lazyKeys, game.lazy], [[], []], 'the game has no lazy chu
 assert.ok(real.catalogs.notFound.keys.length <= 24 && real.catalogs.notFound.keys.includes('notFound.metaTitle'),
   `the 404 page needs a handful of strings: ${real.catalogs.notFound.keys.join(', ')}`);
 // the gallery's damage workbench, a static import, boots with the page (its garage.module.*, garage.crew.* and
-// gallery.damage.* names); the field guides behind the info buttons load with infoGuides.ts
+// gallery.damage.* names)
 const gallery = real.catalogs.gallery;
 for (const prefix of ['garage.module.', 'garage.crew.', 'gallery.damage.']) {
   assert.ok(gallery.keys.some((key) => key.startsWith(prefix)), `the workbench's ${prefix}* keys boot with the gallery`);
 }
-assert.ok(gallery.lazy.includes('src/ui/infoGuides.ts') && gallery.lazyKeys.some((key) => key.startsWith('fieldGuide.')),
-  'the field guides load with infoGuides.ts');
+// (247) the Gallery's per-section field guides left with its Premiere port (less is more, 2026-10-22; b514984c5e): its
+// graph no longer reaches infoGuides.ts. The info buttons that remain (the Studio's scene JSON, the media archive) still
+// load their guide's strings with it (below)
+assert.ok(!gallery.lazy.includes('src/ui/infoGuides.ts') && !gallery.keys.some((key) => key.startsWith('fieldGuide.')),
+  'the Gallery shows no field guides');
 assert.deepEqual(real.lazySites['src/ui/contextInfo.ts'], ['./infoGuides.ts'], 'the info button\'s guide waits for its strings');
 // every rewritten site imports a module that some page with a lazy chunk reaches only through import()
 const lazyTargets = new Set(Object.values(real.catalogs).filter(({ lazyKeys }) => lazyKeys.length).flatMap(({ lazy }) => lazy));
@@ -484,8 +487,9 @@ plugin.configResolved({ root: ROOT, command: 'serve', build: config.build });
 assert.equal(plugin.resolveId(pageCatalogModuleUrl('notFound', 'zh-CN')), '\0cot-i18n:notFound.zh-CN');
 assert.equal(plugin.resolveId('/src/ui/i18n.ts'), null);
 const served = plugin.load('\0cot-i18n:notFound.zh-CN');
+// (dev serves a page's boot and lazy keys as one subset: the 246 404 has a lazy half, its search's docs.search.* keys)
 assert.deepEqual(JSON.parse(served.replace(/^export default /, '').replace(/;\n$/, '')),
-  catalogSubset(zh, real.catalogs.notFound.keys), 'the dev subset is the scan\'s, in the locale\'s strings');
+  catalogSubset(zh, [...real.catalogs.notFound.keys, ...real.catalogs.notFound.lazyKeys]), 'the dev subset is the scan\'s, in the locale\'s strings');
 assert.throws(() => plugin.load('\0cot-i18n:nowhere.en-US'), /no page declares the page catalog "nowhere"/);
 assert.equal(plugin.load('/src/ui/i18n.ts'), null);
 const devHtml = plugin.transformIndexHtml.handler(readFileSync(resolve(ROOT, '404.html'), 'utf8'), {});
