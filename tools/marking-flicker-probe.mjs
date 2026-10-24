@@ -64,7 +64,32 @@ function installHarness() {
   const gl = R.getContext();
   const MF = { R, S, camera: null };
   const render = R.render.bind(R);
-  R.render = (scene, camera) => { if (scene === S) MF.camera = camera; return render(scene, camera); };
+  // a variant's levers (--variants): the near plane the Gallery's camera draws with, and the slope share per offset unit
+  MF.lever = { near: null, slope: null, radius: 0, target: [0, 0, 0] };
+  const leverNear = (camera) => {
+    const { near } = MF.lever;
+    if (near === null) return;
+    const t = MF.lever.target;
+    const toBounds = Math.hypot(camera.position.x - t[0], camera.position.y - t[1], camera.position.z - t[2]) - MF.lever.radius;
+    const value = near.startsWith('fixed') ? Number(near.slice(5)) : Math.max(0.05, Number(near.slice(5)) * toBounds);
+    if (Math.abs(camera.near - value) > 1e-6) { camera.near = value; camera.updateProjectionMatrix(); }
+  };
+  R.render = (scene, camera) => { if (scene === S) { MF.camera = camera; leverNear(camera); } return render(scene, camera); };
+  const leveredHooks = new WeakSet();
+  const installSlopeLever = (meshes) => {
+    for (const mesh of meshes) {
+      if (leveredHooks.has(mesh) || !Number.isFinite(mesh.userData.coplanarDepthOffset)) continue;
+      leveredHooks.add(mesh);
+      const original = mesh.onBeforeRender;
+      mesh.onBeforeRender = function leverSlope(...args) {
+        original.apply(this, args);
+        const material = args[4];
+        if (MF.lever.slope !== null && material?.polygonOffset) {
+          material.polygonOffsetFactor = -mesh.userData.coplanarDepthOffset * MF.lever.slope;
+        }
+      };
+    }
+  };
   const SHELL = /^(hull|turret|hullTrackGuard[LR]|hullExternalArmor|turretExternalArmor|turretCupola|turretHatch|gun|gunMount|turretPermanentMarkingSurface|hullGlass|turretGlass|gunMountGlass|muzzleBore.*)$/;
   const GEAR = /^gear|track|wheel|roller|sprocket|idler|suspension/i;
   const effectiveVisible = (object) => { for (let n = object; n; n = n.parent) if (!n.visible) return false; return true; };
@@ -200,18 +225,26 @@ function installHarness() {
         const material = idMaterial(mesh, category, template);
         const source = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
         let units = 0, factor = 0;
+        // refA orders exact ties by rank, refB by reverse rank (both under a near plane tight on the tank, no slope
+        // share): where they agree the front-most part is geometry's, where they differ it is a tie
+        const rank = mesh.userData.coplanarDepthLayer;
+        const actSlope = (offset) => (MF.lever.slope !== null ? -offset * MF.lever.slope : null);
         if (category === 0) {
-          if (mode === 'ref') units = -(maxRank + 2);
-          else if (Number.isFinite(mesh.userData.coplanarDepthOffset)) units = -mesh.userData.coplanarDepthOffset;
-          else { units = source.polygonOffset ? source.polygonOffsetUnits : 0; factor = source.polygonOffset ? source.polygonOffsetFactor : 0; }
-        } else if (Number.isFinite(mesh.userData.coplanarDepthLayer)) {
-          units = -(mode === 'ref' ? mesh.userData.coplanarDepthLayer
-            : (mesh.userData.coplanarDepthOffset ?? mesh.userData.coplanarDepthLayer));
-          // the reference orders exact ties by rank at every slope; the actual draw uses whatever slope share it has
-          factor = mode === 'ref' ? units / 32 : (mesh.userData.coplanarDepthFactor ?? 0);
+          if (mode !== 'act') units = -(maxRank + 2);
+          else if (Number.isFinite(mesh.userData.coplanarDepthOffset)) {
+            units = -mesh.userData.coplanarDepthOffset;
+            factor = actSlope(mesh.userData.coplanarDepthOffset) ?? mesh.userData.coplanarDepthFactor ?? 0;
+          } else { units = source.polygonOffset ? source.polygonOffsetUnits : 0; factor = source.polygonOffset ? source.polygonOffsetFactor : 0; }
+        } else if (Number.isFinite(rank)) {
+          if (mode === 'refA') units = -rank;
+          else if (mode === 'refB') units = -(maxRank + 1 - rank);
+          else {
+            const offset = mesh.userData.coplanarDepthOffset ?? rank;
+            units = -offset;
+            factor = Number.isFinite(mesh.userData.coplanarDepthOffset)
+              ? (actSlope(offset) ?? mesh.userData.coplanarDepthFactor ?? 0) : 0;
+          }
         }
-        if (category === 0 && mode === 'act' && Number.isFinite(mesh.userData.coplanarDepthFactor)) factor = mesh.userData.coplanarDepthFactor;
-        if (category === 0 && mode === 'ref') factor = units / 32;
         saved.push([mesh, mesh.material, mesh.onBeforeRender, mesh.onAfterRender, mesh.renderOrder]);
         mesh.material = Array.isArray(mesh.material) ? mesh.material.map(() => material) : material;
         mesh.onBeforeRender = () => { material.polygonOffsetUnits = units; material.polygonOffsetFactor = factor; };
@@ -252,7 +285,10 @@ function installHarness() {
       const scale = mesh.matrixWorld.getMaxScaleOnAxis();
       radius = Math.max(radius, Math.hypot(center.x - target[0], center.y - target[1], center.z - target[2]) + sphere.radius * scale);
     }
-    const depthStats = { marking: { ref: 0, err: 0, toggle: 0 }, prop: { ref: 0, err: 0, toggle: 0 }, tank: { ref: 0, err: 0, toggle: 0 } };
+    MF.lever.radius = radius;
+    const depthStats = { marking: { ref: 0, err: 0, toggle: 0 }, prop: { ref: 0, err: 0, toggle: 0 }, tank: { ref: 0, err: 0, toggle: 0 }, ties: 0 };
+    MF.lever.target = target;
+    installSlopeLever(set.all);
     let previousErr = null;
     const stats = {
       frames, stepDeg, distance: +distance.toFixed(2),
@@ -279,10 +315,12 @@ function installHarness() {
       const toTarget = Math.hypot(MF.camera.position.x - target[0], MF.camera.position.y - target[1], MF.camera.position.z - target[2]);
       reference.near = Math.max(0.05, (toTarget - radius) * 0.9);
       reference.updateProjectionMatrix();
-      const exact = depthPass(set, 'ref', reference);
+      const exact = depthPass(set, 'refA', reference);
+      const reverse = depthPass(set, 'refB', reference);
       const err = new Uint8Array(exact.length);
       for (let i = 0; i < exact.length; i++) {
         const r = exact[i], a = actual[i];
+        if (r !== reverse[i]) { depthStats.ties++; continue; }
         if (r === 1 || a === 1) { if (r === 1) depthStats.marking.ref++; if (r !== a) { depthStats.marking.err++; err[i] |= 1; } }
         if (r === 2 || a === 2) { if (r === 2) depthStats.prop.ref++; if (r !== a) { depthStats.prop.err++; err[i] |= 2; } }
         if (r) { depthStats.tank.ref++; if (r !== a) { depthStats.tank.err++; err[i] |= 4; } }
@@ -369,6 +407,8 @@ function installHarness() {
       depthErrPerMille: Object.fromEntries(['marking', 'prop', 'tank'].map((k) => [k, depthStats[k].ref ? +(1000 * depthStats[k].err / depthStats[k].ref).toFixed(3) : null])),
       depthTogglePerMille: Object.fromEntries(['marking', 'prop', 'tank'].map((k) => [k, depthStats[k].ref ? +(1000 * depthStats[k].toggle / depthStats[k].ref).toFixed(3) : null])),
       referencePx: { marking: depthStats.marking.ref, prop: depthStats.prop.ref, tank: depthStats.tank.ref },
+      tiePerMille: depthStats.tank.ref ? +(1000 * depthStats.ties / (depthStats.tank.ref + depthStats.ties)).toFixed(3) : null,
+      lever: { ...MF.lever, target: undefined },
     };
     return { summary, kept, hotspotImage };
   };
@@ -384,11 +424,25 @@ function installHarness() {
 // for each orbit capture (one tank on one checkout) and closed after it. The vite servers stay warm across captures.
 const roots = (arg('roots', '') ? arg('roots', '').split(',') : [root]).map((path) => resolve(path));
 const labels = arg('labels', roots.length > 1 ? 'before,after' : 'run').split(',');
+// --variants=label:near=fixed0.05|scale0.1,slope=0.0078125;...: lever settings shot on the last checkout (after the
+// first checkout's own run), e.g. to choose the Gallery's near plane and the per-unit slope share in one hold
+const variants = arg('variants', '').split(';').filter(Boolean).map((entry) => {
+  const [label, settings = ''] = entry.split(':');
+  const lever = { near: null, slope: null };
+  for (const pair of settings.split(',').filter(Boolean)) {
+    const [key, value] = pair.split('=');
+    lever[key] = key === 'slope' ? Number(value) : value;
+  }
+  return { label, lever };
+});
+const plan = variants.length
+  ? [{ index: 0, label: labels[0], lever: null }, ...variants.map((v) => ({ index: roots.length - 1, ...v }))]
+  : labels.map((label, index) => ({ index, label, lever: null }));
 const RSS_LIMIT_KB = 6 * 1024 * 1024;
 const servers = [];
 let browser = null, refresher = null, guard = null, overLimit = null;
 const report = { startedAt: new Date().toISOString(), roots, labels, ids, views, zooms, slowFrames, fastFrames,
-  slowStepDeg, fastStepDeg, runs: Object.fromEntries(labels.map((label) => [label, {}])) };
+  slowStepDeg, fastStepDeg, variants, runs: Object.fromEntries(plan.map(({ label }) => [label, {}])) };
 
 /** The browser and every process under it, by resident size (KB). */
 function browserTreeRss(rootPid) {
@@ -464,8 +518,9 @@ try {
   else await acquireCaptureLock(60 * 60 * 1000, { prepare: warm, place: `marking-flicker-243-${labels.join('-')}` });
   if (!swiftshader) { refresher = setInterval(refreshCaptureLock, 60_000); refresher.unref(); }
   for (const id of ids) {
-    for (const [index, label] of labels.entries()) {
+    for (const { index, label, lever } of plan) {
       const page = await openGallery(index, id);
+      await page.evaluate((settings) => Object.assign(window.__MF.lever, settings), lever ?? { near: null, slope: null });
       console.log('gpu', label, id, JSON.stringify(report.gpu));
       const tank = report.runs[label][id] = {};
       for (const view of views) {
