@@ -294,9 +294,13 @@ for (const [build, options] of [
   const hull = visual.root.getObjectByName('rig_hull'), turret = visual.root.getObjectByName('rig_turret');
   const uncapped = measureTurretRing(hull, turret, turretRingRadius(getSpec('mbt70').armor));
   assert.ok(uncapped.rimR > cap + 0.1, `the uncapped race runs out past the hull's sides (${uncapped.rimR})`);
+  // 247: the MBT-70's calibration row carries its ring receipt now (triangle-guns' seated rows; gen-combat-anatomy
+  // measures it under the same cap), so the live seat reads the receipt; a build without one measures, capped alike
   const seat = visual.turretRingSeat();
-  assert.equal(seat.source, 'measured', 'a measured ring (no calibration receipt)');
+  assert.equal(seat.source, 'receipt', 'the calibration receipt, measured under the cap');
   assert.ok(seat.rimR <= cap + 1e-9, `the live seat is held inside them (${seat.rimR} <= ${cap})`);
+  const measured = measureTurretRing(hull, turret, turretRingRadius(getSpec('mbt70').armor), { rimCap: cap });
+  assert.ok(measured.rimR <= cap + 1e-9, `the receiptless measure takes the cap too (${measured.rimR} <= ${cap})`);
   visual.setDestroyed({ pop: true, ageS: 1000 });
   let plate = null;
   visual.root.traverse((o) => { if (o.userData?.turretRingPlate) plate = o; });
