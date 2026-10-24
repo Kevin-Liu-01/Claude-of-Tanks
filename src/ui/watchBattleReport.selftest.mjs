@@ -46,6 +46,10 @@ frame(); frame();
 const label = created.find((element) => element.text === t('hud.side.alpha'));
 assert.ok(label, 'the score\'s own side reads Alpha');
 assert.ok(created.some((element) => element.text === t('hud.side.bravo')), 'and the other Bravo, whichever tank is ridden');
+const earTitle = (ear) => created.find((element) => element.classes.has('hd') && element.parentNode?.classes.has('cot-ear')
+  && element.parentNode.classes.has(ear));
+assert.equal(earTitle('l').text, t('hud.side.alpha'), 'the left roster is titled Alpha, not Allies');
+assert.equal(earTitle('r').text, t('hud.side.bravo'), 'the right one Bravo, not Enemies');
 const pips = created.filter((element) => element.classes.has('pip') && element.parentNode);
 const ringed = pips.filter((pip) => pip.classes.has('me'));
 assert.equal(ringed.length, 1, 'one pip is ringed: the ridden tank\'s');
@@ -75,6 +79,7 @@ ridden.isPlayer = true;
 hud.setWatchSide(null);
 frame();
 assert.equal(label.text, t('hud.allies'), 'driving, the score is the player\'s again');
+assert.equal(earTitle('l').text, t('hud.team.ally'), 'and the rosters are the player\'s allies and enemies');
 const drivenRows = created.filter((element) => element.classes.has('cot-er') && element.parentNode && element.classes.has('me'));
 assert.equal(drivenRows.length, 1, 'the rosters re-seat with the driven tank\'s row as the player\'s');
 bus.emit('tank:destroyed', { id: 'a0', specId: 'm1a1_abrams_hc', killerId: 'b0', cause: 'shot', pos: [0, 0, 0], timeS: 230 });
