@@ -64,7 +64,7 @@ const CSS = `
     radial-gradient(circle at 38% 27%,rgba(118,103,75,.88),rgba(36,31,24,.97) 48%,rgba(10,10,9,.98) 76%);}
 .cot-touch .fire svg{width:34px;height:54px;filter:drop-shadow(0 2px 3px rgba(0,0,0,.8));}
 .cot-touch .fire .lb,.cot-touch .scope .lb,.cot-touch .autoaim .lb{position:absolute;bottom:-17px;
-  left:50%;transform:translateX(-50%);font-family:${FONT_COND};font-size:11px;font-weight:700;
+  left:50%;transform:translateX(-50%);font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;
   letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px #000;}
 .cot-touch .fire.alt{left:166px;right:auto;bottom:156px;width:64px;height:64px;opacity:.86;}
 .cot-touch .fire.alt svg{width:20px;height:34px}.cot-touch .fire.alt .lb{display:none}
@@ -93,7 +93,7 @@ body.cot-gun-dry .cot-touch .fire{color:var(--hud-muted,#93a3af);border-color:rg
     radial-gradient(circle at 38% 27%,rgba(96,78,48,.9),rgba(34,28,18,.97) 48%,rgba(10,10,9,.98) 76%);}
 .cot-touch .jump[hidden]{display:none!important;}
 .cot-touch .jump svg{width:40px;height:40px;filter:drop-shadow(0 2px 3px #000);}
-.cot-touch .jump .lb{position:absolute;bottom:-17px;left:50%;transform:translateX(-50%);font-family:${FONT_COND};font-size:11px;
+.cot-touch .jump .lb{position:absolute;bottom:-17px;left:50%;transform:translateX(-50%);font-family:${FONT_COND};font-size:var(--battle-fs-11);
   font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap;text-shadow:0 1px 3px #000;}
 .cot-touch .autoaim svg{width:28px;height:28px;filter:drop-shadow(0 2px 3px #000);}
 .cot-touch .autoaim.on{color:#ffd27a;border-color:#f0ad45;
@@ -112,7 +112,7 @@ body.cot-touch-layout[data-cot-orientation='portrait'] .cot-touch .mobile-chrome
   transition:transform 90ms ease-out,border-color 90ms ease,color 90ms ease;}
 .cot-touch .quick:active{transform:scale(.95);border-color:#f0ad45;color:#ffd27a;background:rgba(48,32,12,.96);}
 .cot-touch .quick svg{width:18px;height:18px;display:block;}
-.cot-touch .quick .ql{font-family:${FONT_COND};font-size:11px;font-weight:700;line-height:1;
+.cot-touch .quick .ql{font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;line-height:1;
   letter-spacing:0em;text-transform:uppercase;white-space:nowrap;}
 /* A 44 px button holds an 11 px word of four or five letters: the sound and settings buttons speak through their icons
    (their names stay for assistive technology), and the graphics button prints only its level under the monitor. */
@@ -124,9 +124,9 @@ body.cot-touch-layout #app canvas{touch-action:none;}
 body.cot-touch-layout .cot-hints,body.cot-touch-layout .cot-ear{display:none!important;}
 body.cot-touch-layout .cot-top{top:0;padding:5px 29px 7px;gap:10px;z-index:30;}
 body.cot-touch-layout .cot-top .fg,body.cot-touch-layout .cot-top .fe{font-size:22px;}
-body.cot-touch-layout .cot-top .tm{font-size:12px;}
+body.cot-touch-layout .cot-top .tm{font-size:var(--battle-fs-12);}
 body.cot-touch-layout .cot-killfeed{top:48px;left:50%;transform:translateX(-50%);max-width:48%;align-items:center;}
-body.cot-touch-layout .cot-kf{font-size:11px;padding:3px 7px;background:rgba(7,10,14,.68);}
+body.cot-touch-layout .cot-kf{font-size:var(--battle-fs-11);padding:3px 7px;background:rgba(7,10,14,.68);}
 /* Ammo is directly above the equipment/consumable stack, leaving the top
    edge to the three global mobile controls. */
 body.cot-touch-layout .cot-shells{left:auto;right:max(10px,env(safe-area-inset-right));
@@ -146,14 +146,14 @@ body.cot-touch-layout .cot-shells.touch-open .cot-shell.sel::after{content:'›'
 body.cot-touch-layout .cot-shell canvas{top:auto;bottom:11px;transform:translateX(-50%) scale(.76);transform-origin:50% 100%;}
 body.cot-touch-layout .cot-shell .key,body.cot-touch-layout .cot-con .key{display:none;}
 body.cot-touch-layout .cot-shell .tip{display:none!important;}
-body.cot-touch-layout .cot-shell .ty{font-size:11px;left:0;right:0;text-align:center;letter-spacing:-.04em}
-body.cot-touch-layout .cot-shell .cnt{font-size:11px;}
+body.cot-touch-layout .cot-shell .ty{font-size:var(--battle-fs-11);left:0;right:0;text-align:center;letter-spacing:-.04em}
+body.cot-touch-layout .cot-shell .cnt{font-size:var(--battle-fs-11);}
 /* stronger ACTIVE-AMMO read at glance distance: brighter amber frame, inner
    keyline + glow (the desktop .sel border alone washes out at phone size) */
 body.cot-touch-layout .cot-shell.sel{border-color:#ffbd5c;border-bottom-color:#ffbd5c;
   background:linear-gradient(180deg,rgba(58,42,17,.97),rgba(30,20,9,.97));
   box-shadow:inset 0 0 0 1px rgba(255,196,107,.5),0 0 16px rgba(240,160,48,.5);}
-body.cot-touch-layout .cot-shell.sel .ty{font-size:11px;}
+body.cot-touch-layout .cot-shell.sel .ty{font-size:var(--battle-fs-11);}
 /* out of ammo (owner 2026-10-17): the collapsed tray shows only the selected slot, so its empty state outranks the frame */
 body.cot-touch-layout .cot-shell.sel.empty{border-color:var(--hud-edge);border-bottom-color:var(--hud-danger);
   background:var(--hud-panel);box-shadow:inset 0 -2px 0 var(--hud-danger);}
@@ -216,12 +216,12 @@ body.cot-touch-layout[data-cot-height-density='tight'] .cot-dp .fire{display:non
 body.cot-touch-layout[data-cot-width='compact'] .cot-dp .hptrack,
 body.cot-touch-layout[data-cot-width='phone'] .cot-dp .hptrack,
 body.cot-touch-layout[data-cot-height-density='tight'] .cot-dp .hptrack{margin-bottom:0;height:6px;}
-body.cot-touch-layout .cot-alert{bottom:28%;max-width:calc(100vw - 24px);font-size:11px;white-space:normal;}
+body.cot-touch-layout .cot-alert{bottom:28%;max-width:calc(100vw - 24px);font-size:var(--battle-fs-11);white-space:normal;}
 body.cot-touch-layout .cot-sixth{top:max(70px,12%);width:min(214px,calc(100vw - 24px));
   min-height:32px;grid-template-columns:21px minmax(0,1fr);gap:8px;}
 body.cot-touch-layout .cot-sixth .sig svg{width:21px;height:21px;}
 body.cot-touch-layout .cot-sixth .copy{padding:0;}
-body.cot-touch-layout .cot-sixth .lb{font-size:11px;}
+body.cot-touch-layout .cot-sixth .lb{font-size:var(--battle-fs-11);}
 
 /* Shell chip label/count collision: at the 48px touch chip the
    selected slot's long class label (APFSDS, 35px) ran under the ammo count
@@ -231,7 +231,7 @@ body.cot-touch-layout .cot-shell .cnt{top:2px;right:3px;bottom:auto;}
 /* A three-digit count (an autocannon's 180) reaches the slot's centre: it sets smaller in the corner and the shell
    shrinks and steps left, out from under it (critic r4: the dart's tip ran into the 1; r4b: the 1 met it on a
    landscape slot), standing 1 px higher so the stepped fins keep 3 px from the label (r6: 2.5 px on the phone). */
-body.cot-touch-layout .cot-shell.wide .cnt{top:1px;right:2px;font-size:11px;}
+body.cot-touch-layout .cot-shell.wide .cnt{top:1px;right:2px;font-size:var(--battle-fs-11);}
 body.cot-touch-layout .cot-shell.wide canvas{bottom:12px;transform:translateX(calc(-50% - 5px)) scale(.6);}
 /* Touch-target floor for garage chrome the phone shares with desktop. */
 body.cot-touch-layout .nv{padding:9px 14px;}
