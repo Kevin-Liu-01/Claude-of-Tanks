@@ -6,6 +6,7 @@ import { createVehicleCooldownReader } from './vehicleControlCooldown.ts';
 import { dronePhase } from './droneControlState.ts';
 import { uiIconSVG, type UiIconId } from './uiIcons.ts';
 import { t, getLocale } from './i18n.ts';
+import { setAttr, setData, setDisabled, setHidden, setStyle, setText } from './domWrite.ts';
 import { getAerialVision, nextAerialVision, setAerialVision, getScopeVision, cycleScopeVision, AERIAL_VIEWS, type AerialVision } from '../engine/aerialVision.ts';
 
 const GUNSHIP_UNLIMITED=matchRulesetFor('ac130').ammo==='unlimited';
@@ -16,7 +17,7 @@ function icon(parent:HTMLElement,name:UiIconId,cls='flight-icon'):HTMLElement {
   const host=node('span',cls,parent);host.innerHTML=uiIconSVG(name,22);host.setAttribute('aria-hidden','true');return host;
 }
 function instrument(parent:HTMLElement,name:UiIconId,label:string){
-  const host=node('span','flight-instrument',parent);host.title=label;host.setAttribute('aria-label',label);
+  const host=node('span','flight-instrument',parent);host.dataset.tip=label;host.setAttribute('aria-label',label);
   icon(host,name);const value=node('b','num',host);return {host,value};
 }
 function gunshipDesignation(escort:HudMatchModeState['escort']):string {
@@ -125,20 +126,21 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
   function updateWeapons(player:HudTank|null|undefined,now:number):void {
     for(let slot=0;slot<cards.length;slot++){
       const card=cards[slot]!,wait=reload(player?.combat,slot,now),selected=player?.combat?.shellSlot===slot;
-      card.button.setAttribute('aria-pressed',String(selected));card.button.classList.toggle('reloading',wait>0);
+      setAttr(card.button,'aria-pressed',String(selected));card.button.classList.toggle('reloading',wait>0);
       const ammo=player?.combat?.ammo?.[slot];
-      card.status.textContent=wait>0?`${wait.toFixed(1)}s`:t('flight.ready',{ammo:GUNSHIP_UNLIMITED||ammo===Infinity?'∞':String(ammo??0)});
-      card.button.setAttribute('aria-label',`${t(`flight.weapon.${slot}`)} · ${card.status.textContent}`);
+      setText(card.status,wait>0?`${wait.toFixed(1)}s`:t('flight.ready',{ammo:GUNSHIP_UNLIMITED||ammo===Infinity?'∞':String(ammo??0)}));
+      setAttr(card.button,'aria-label',`${t(`flight.weapon.${slot}`)} · ${card.status.textContent}`);
       const total=player?.combat?.reloadChannels?.[slot]?.totalS??player?.spec?.gun.shells[slot]?.reloadS??1;
-      card.button.style.setProperty('--weapon-ready',String(1-Math.min(1,wait/Math.max(.01,total))));
+      // (the ring steps in hundredths: an unchanged step writes nothing)
+      setStyle(card.button,'--weapon-ready',(1-Math.min(1,wait/Math.max(.01,total))).toFixed(2));
       if(selected){
-        root.dataset.weapon=String(slot);root.classList.toggle('weapon-reloading',wait>0);
-        solutionLabel.textContent=`${t(`flight.weapon.${slot}`)}${wait>0?` · ${wait.toFixed(1)}s`:''}`;
+        setData(root,'weapon',String(slot));root.classList.toggle('weapon-reloading',wait>0);
+        setText(solutionLabel,`${t(`flight.weapon.${slot}`)}${wait>0?` · ${wait.toFixed(1)}s`:''}`);
       }
     }
   }
   function updateScopeControls(visible:boolean,active:boolean,scoped:boolean,viewKey:string):void {
-    scopeView.hidden=!visible||active||!scoped;
+    setHidden(scopeView,!visible||active||!scoped);
     const scope=getScopeVision(),scopeLocale=getLocale(),now=performance.now();
     if(!scopeView.hidden&&(!scopeShown||scope!==priorScope))scopeUnfoldUntil=now+SCOPE_PLATE_UNFOLD_MS;
     scopeShown=!scopeView.hidden;
@@ -149,7 +151,7 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
       scopeLabel.textContent=t('flight.view.'+scope);scopeKey.textContent=viewKey;scopeTag.textContent=t(`flight.view.tag.${scope}`);
       scopeGlyph.innerHTML=uiIconSVG(scopeIcons[scope],22);scopeView.dataset.view=scope;
       for(const step of scopeSteps)step.classList.toggle('active',step.dataset.view===scope);
-      scopeView.title=`${t('flight.view.scope',{view:t('flight.view.'+scope)})} · ${t('flight.view.next',{view:t('flight.view.'+next)})}`;
+      scopeView.dataset.tip=`${t('flight.view.scope',{view:t('flight.view.'+scope)})} · ${t('flight.view.next',{view:t('flight.view.'+next)})}`;
       scopeView.setAttribute('aria-label',t('flight.view.switch',{current:t('flight.view.'+scope),next:t('flight.view.'+next)}));
       scopeView.setAttribute('aria-keyshortcuts',viewKey);
       priorScope=scope;priorScopeKey=viewKey;priorScopeLocale=scopeLocale;
@@ -158,10 +160,10 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
   function updateSupplyControls(supplies?:{ammoReadyInS:number;healReadyInS:number},supplyKeys?:{ammo:string;heal:string}):void {
     for(const item of supplyButtons){
       const remaining=item.kind==='ammo'?supplies?.ammoReadyInS??0:supplies?.healReadyInS??0;
-      item.button.disabled=remaining>0;item.status.textContent=remaining>0?`${Math.ceil(remaining)}s`:t('flight.supply.short.'+item.kind);
-      item.key.textContent=supplyKeys?.[item.kind]??(item.kind==='ammo'?'J':'K');
-      item.button.setAttribute('aria-keyshortcuts',item.key.textContent);
-      item.button.title=t('flight.supply.'+item.kind);item.button.setAttribute('aria-label',item.button.title+(remaining>0?` · ${Math.ceil(remaining)}s`:''));
+      setDisabled(item.button,remaining>0);setText(item.status,remaining>0?`${Math.ceil(remaining)}s`:t('flight.supply.short.'+item.kind));
+      setText(item.key,supplyKeys?.[item.kind]??(item.kind==='ammo'?'J':'K'));
+      setAttr(item.button,'aria-keyshortcuts',item.key.textContent||'');
+      const name=t('flight.supply.'+item.kind);setData(item.button,'tip',name);setAttr(item.button,'aria-label',name+(remaining>0?` · ${Math.ceil(remaining)}s`:''));
     }
   }
   return {
@@ -169,54 +171,55 @@ export function createAerialHud(parent:HTMLElement,bus:EventBus,ground:AerialGro
       const view=player?.aerial,active=!!view?.active&&visible;
       // A recall the authority accepted closes the feed cleanly (the airframe is flying home); a loss breaks it in static.
       const signalLevel=transition.step(active&&view?.kind==='drone'&&thermalReady,active,visible,performance.now(),(view?.returnS??0)>0);
-      signal.hidden=signalLevel<=0;signal.style.opacity=String(Math.min(1,signalLevel*2));
+      setHidden(signal,signalLevel<=0);if(signalLevel>0)setStyle(signal,'opacity',Math.min(1,signalLevel*2).toFixed(2));
       updateScopeControls(visible,active,scoped,viewKey);
-      root.hidden=!active;document.documentElement.dataset.flight=active?view!.kind:'';
+      // (the root's attribute only on a change: written each frame it invalidated the whole document's style)
+      setHidden(root,!active);setData(document.documentElement,'flight',active?view!.kind:'');
       if(!active||!view){wasActive=false;return;}
-      identity.disabled=!thermalReady;visionKey.textContent=viewKey;
+      setDisabled(identity,!thermalReady);setText(visionKey,viewKey);
       const flightVision=getAerialVision();
-      viewLabel.textContent=t('flight.view.'+flightVision);
-      root.dataset.view=flightVision;
+      setText(viewLabel,t('flight.view.'+flightVision));
+      setData(root,'view',flightVision);
       if(flightVision!==priorFlightVision){
         flightGlyph.innerHTML=uiIconSVG(scopeIcons[flightVision],22);
         for(const step of flightSteps)step.classList.toggle('active',step.dataset.view===flightVision);
         priorFlightVision=flightVision;
       }
-      identity.setAttribute('aria-keyshortcuts',viewKey);
-      identity.title=t('flight.view.next',{view:t('flight.view.'+nextAerialVision())});
-      identity.setAttribute('aria-label',t('flight.view.switch',{current:t('flight.view.'+getAerialVision()),next:t('flight.view.'+nextAerialVision())}));
-      const drone=view.kind==='drone';support.hidden=drone;role.hidden=drone;
+      setAttr(identity,'aria-keyshortcuts',viewKey);
+      setData(identity,'tip',t('flight.view.next',{view:t('flight.view.'+nextAerialVision())}));
+      setAttr(identity,'aria-label',t('flight.view.switch',{current:t('flight.view.'+getAerialVision()),next:t('flight.view.'+nextAerialVision())}));
+      const drone=view.kind==='drone';setHidden(support,drone);setHidden(role,drone);
       // (ac130-fx-228 r2) the gimbal's sight and solution belong to its lens: an external camera (the ending's orbit, a
       // replay) keeps the console and drops them
-      solution.hidden=drone||!lensUp;sight.hidden=!drone&&!lensUp;
-      role.textContent=gunshipDesignation(escort);
+      setHidden(solution,drone||!lensUp);setHidden(sight,!drone&&!lensUp);
+      setText(role,gunshipDesignation(escort));
       updateSupplyControls(supplies,supplyKeys);
-      root.dataset.kind=view.kind;backKey.textContent=key;
-      back.setAttribute('aria-keyshortcuts',key);
+      setData(root,'kind',view.kind);setText(backKey,key);
+      setAttr(back,'aria-keyshortcuts',key);
       if(kind!==view.kind){kind=view.kind;emblem.innerHTML=uiIconSVG(drone?'modeDrone':'modeAc130',24);designationIcon.innerHTML=uiIconSVG(drone?'modeDrone':'modeAc130',22);}
-      title.textContent=drone?t(view.launching?'flight.launching':'flight.drone'):t('flight.gunship');
-      designation.hidden=false;designationLabel.textContent=title.textContent;
+      setText(title,drone?t(view.launching?'flight.launching':'flight.drone'):t('flight.gunship'));
+      setHidden(designation,false);setText(designationLabel,title.textContent||'');
       const elapsed=now-priorTime;
       if(wasActive&&elapsed>0)speed+=.2*(Math.hypot(view.x-priorX,view.y-priorY,view.z-priorZ)/elapsed-speed);
       priorTime=now;priorX=view.x;priorY=view.y;priorZ=view.z;wasActive=true;
       const carrier=player?.state?.pos,range=carrier?Math.hypot(view.x-carrier.x,view.z-carrier.z):0;
-      timer.host.hidden=link.host.hidden=speedometer.host.hidden=altimeter.host.hidden=!drone;
+      setHidden(timer.host,!drone);setHidden(link.host,!drone);setHidden(speedometer.host,!drone);setHidden(altimeter.host,!drone);
       const field=drone?ground():null;
-      altimeter.value.textContent=field?formatDroneAltitude(view.y-field.getHeightAt(view.x,view.z)):'—';
-      zoom.host.hidden=distance.host.hidden=drone;
-      timer.value.textContent=`${Math.ceil(view.batteryS)}s`;link.value.textContent=`${Math.round(range)}m`;speedometer.value.textContent=`${Math.round(speed*3.6)}km/h`;
-      zoom.value.textContent=`×${(55/fov).toFixed(1)}`;distance.value.textContent=`${Math.round(dist)}m`;
-      battery.hidden=!drone;battery.value=view.batteryS;
+      setText(altimeter.value,field?formatDroneAltitude(view.y-field.getHeightAt(view.x,view.z)):'—');
+      setHidden(zoom.host,drone);setHidden(distance.host,drone);
+      setText(timer.value,`${Math.ceil(view.batteryS)}s`);setText(link.value,`${Math.round(range)}m`);setText(speedometer.value,`${Math.round(speed*3.6)}km/h`);
+      setText(zoom.value,`×${(55/fov).toFixed(1)}`);setText(distance.value,`${Math.round(dist)}m`);
+      setHidden(battery,!drone);if(battery.value!==view.batteryS)battery.value=view.batteryS;
       root.classList.toggle('low-battery',drone&&view.batteryS<10);
-      weapons.hidden=drone;back.hidden=!drone;
+      setHidden(weapons,drone);setHidden(back,!drone);
       // Owner 2026-10-14: the authority accepts a recall only once the pilot is in the drone's feed; until then the return
       // control stands disabled and says why.
       const recallLocked=drone&&dronePhase(view)==='locked';
       if(recallLocked!==priorRecallLocked){
         priorRecallLocked=recallLocked;back.disabled=recallLocked;back.classList.toggle('recall-locked',recallLocked);
-        back.title=t(recallLocked?'flight.return.locked':'flight.return');
+        back.dataset.tip=t(recallLocked?'flight.return.locked':'flight.return');
       }
-      hint.textContent=t(drone?(recallLocked?'flight.hint.recallLocked':'flight.hint.drone'):'flight.hint.gunship');
+      setText(hint,t(drone?(recallLocked?'flight.hint.recallLocked':'flight.hint.drone'):'flight.hint.gunship'));
       updateWeapons(player,now);
     },
   };
