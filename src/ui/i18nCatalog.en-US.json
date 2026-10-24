@@ -1892,7 +1892,7 @@
   "home.fleet.speed": "Top speed",
   "home.fleet.nationAria": "Nation",
   "home.fleet.classAria": "Class",
-  "home.fleet.searchPlaceholder": "Search {count} vehicles",
+  "home.fleet.searchPlaceholder": "Search vehicles",
   "home.fleet.searchAria": "Search the fleet",
   "publicNav.menuAria": "Site pages",
   "publicNav.openMenu": "Open navigation menu",
