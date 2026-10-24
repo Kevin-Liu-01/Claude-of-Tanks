@@ -1171,6 +1171,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/dev/perfDiagnosticsAccess.selftest.mjs',
     'src/engine/deploymentSkew.selftest.mjs',
     'src/engine/offscreenWarm.selftest.mjs',
+    'src/engine/cameraDestinationWarm.selftest.mjs', // perf-245 (2026-10-24): a camera hop's destination warmed on the way (batches alone and uncull'd, the terrain focus)
     'src/engine/lodEmptySentinels.selftest.mjs',
     // sealed lane round 2 (2026-10-10): screen-size vehicle LODs, the sniper sight draws near detail
     'src/engine/lodDistanceScale.selftest.mjs',

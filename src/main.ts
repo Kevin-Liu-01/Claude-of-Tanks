@@ -102,6 +102,7 @@ import {
   warmGarageGpuPipeline,
 } from './engine/garageGpuWarmRuntime.ts';
 import { createIsolatedForwardWarmBatches } from './engine/deploymentWarm.ts';
+import { createCameraDestinationWarmer } from './engine/cameraDestinationWarm.ts';
 // DESTRUCTIBLES r1: prop-destruction bus seam (audio subscribes to the event)
 import { setDestroyedEventSink } from './world/destructibles.ts';
 import {
@@ -1553,6 +1554,17 @@ const audio = await bootStage('audio', () => {
 // bore. Solo, private-room and diagnostic presentation therefore share the
 // same reticle, obstruction and penetration contract.
 let playerBattleActions: PlayerBattleActions | null = null;
+// (2026-10-24, perf-245) a camera about to be thrown somewhere it has not drawn — a Watch hop, a spectate handover, the
+// killcam's look at the attacker — warms that place on the way: the terrain stream aimed there, its view drawn
+// offscreen a batch a frame (engine/cameraDestinationWarm.ts; mainFrameRuntime calls update on battle frames)
+const cameraDestinationWarm = createCameraDestinationWarmer({
+  renderer, scene, camera,
+  samples: () => post.msaaSamples,
+  setTerrainStreamFocus: (position) => currentWorld()?.setTerrainStreamFocus?.(position),
+});
+const prepareCameraDestination = (position: THREE.Vector3, lookAt: THREE.Vector3, durationS: number): void => {
+  if (game.phase === 'battle') cameraDestinationWarm.prepare(position, lookAt, durationS);
+};
 const {
   battleClient: battleClientAccess,
   rig,
@@ -1564,6 +1576,7 @@ const {
   worldRaycast,
   getShellCards: () => playerBattleActions?.shellCards || [],
   getIsometricView: () => input.getSettings().isometricView,
+  prepareDestination: prepareCameraDestination,
 });
 const {
   aimController,
@@ -1628,7 +1641,8 @@ const killcamAccess = createKillcamAccess({
       getWorld: currentWorld, // r6: flight-cam LOS solve (foliage/terrain/props)
       // Replay impact uses the real pooled destruction effects.
       getFx: () => fxRuntimeAccess.current,
-    }, 'killcam', ['getPlayer', 'getGame', 'isBattleEntryCovered', 'getEntity', 'getWorld', 'getFx']));
+      prepareDestination: prepareCameraDestination, // perf-245: the attacker's surroundings warmed as the replay opens
+    }, 'killcam', ['getPlayer', 'getGame', 'isBattleEntryCovered', 'getEntity', 'getWorld', 'getFx', 'prepareDestination']));
     live.bindBus(bus);
     // Solo fixed-step capture gets the direct implementation after entry;
     // main/debug consumers keep the stable access facade below.
@@ -1965,6 +1979,10 @@ const battleVisualStreamerAccess = createBattleVisualStreamerAccess<MainGameStat
   prebakeSharedTextures,
   armorAimOverlay,
   forwardProgramWarm,
+  // (perf-245) a staged tank draws once offscreen, every mesh at once, whatever the warm camera frames
+  drawWarm: (root) => {
+    for (const _batch of createIsolatedForwardWarmBatches({ scene, root, warmRender, cohortSize: Infinity })) { /* one cohort */ }
+  },
   recordTiming(timing) {
     if (typeof window !== 'undefined') (window.__VISUAL_LOAD_TIMINGS ||= []).push(timing);
   },
@@ -3160,6 +3178,7 @@ const watchOwner = createLazyRuntimeOwner(
     camera,
     heightField: hfProxy,
     raycast: worldRaycast,
+    prepareDestination: prepareCameraDestination,
     rig,
     input,
     cameraInput: camInput,
@@ -3358,6 +3377,7 @@ const mainFrame = createMainFrameRuntime({
   killcam,
   veilHud,
   worldFramePresentation,
+  destinationWarm: cameraDestinationWarm,
   matchModeWorld,
   audioListener,
   isGaragePresentationDirty: () => garagePresentationDirty,
