@@ -86463,13 +86463,13 @@
             "name": "driver",
             "min": [
               -0.2297,
-              1.0323,
-              2.242
+              0.9586,
+              2.0256
             ],
             "max": [
               0.2297,
-              1.3378,
-              3.8391
+              1.3486,
+              3.8025
             ],
             "turretLocal": false
           },
@@ -86477,14 +86477,14 @@
             "volumeId": "C02",
             "name": "gunner",
             "min": [
-              0.427,
-              -0.9942,
-              -0.0157
+              0.177,
+              -0.9939,
+              0.1228
             ],
             "max": [
-              0.8864,
-              -0.0709,
-              0.7252
+              0.6364,
+              -0.0383,
+              0.8862
             ],
             "turretLocal": true
           },
@@ -86493,13 +86493,13 @@
             "name": "commander",
             "min": [
               0.3136,
-              -1.008,
-              -0.662
+              -1.0056,
+              -0.5997
             ],
             "max": [
               0.773,
-              -0.0668,
-              0.0809
+              -0.0256,
+              0.2186
             ],
             "turretLocal": true
           },
@@ -86507,21 +86507,21 @@
             "volumeId": "C04",
             "name": "loader",
             "min": [
-              -0.7333,
-              -1.02,
-              -0.1291
+              -0.9933,
+              -1,
+              -0.4222
             ],
             "max": [
-              -0.3136,
-              0.712,
-              0.2552
+              -0.6136,
+              0.6485,
+              -0.1263
             ],
             "turretLocal": true
           }
         ]
       },
       "geometryHash": "bda9cf82",
-      "metadataHash": "cb3afbd2",
+      "metadataHash": "0b3647c8",
       "presentationAnchor": {
         "xM": -0.01,
         "zM": 0.2
@@ -86630,24 +86630,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 82104,
-          "sha256": "eee90e3d80ff15f869c831d05b6bfa8ba67a9dbc168fabc534cf2dc377c84506"
+          "bytes": 80629,
+          "sha256": "43796cd41d252f0994f638a427ec590a16892ebe1be1bb0eb79a1c86676a665f"
         },
         "modulesSide": {
           "file": "challenger1_mk2_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84518,
-          "sha256": "1e437f9c592f170f8c73230c26158199b5d4a980e4c15b2673eaf9c046d370ca"
+          "bytes": 84403,
+          "sha256": "d3bca1c7664e7f1b2ac22decd1ec2c2e4663efc16942ddd4283b03ea3b4f4012"
         },
         "crewSide": {
           "file": "challenger1_mk2_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 71720,
-          "sha256": "19ac99f976be5800c34ec583b670df2e082d8db74a5069fc353d1f37f052a4fa"
+          "bytes": 72505,
+          "sha256": "a72d5762c2570975c1eb460773cdd4005962826a0622656021712ee85f8d4af2"
         },
         "markings": {
           "file": "challenger1_mk2_markings.png",
