@@ -74,36 +74,36 @@ body[data-cot-panels='persistent'] .cot-garage .stats .cot-gallery-link{height:v
    2 drops the armament's two lines, the view tabs and the links the band already holds, and lays the modules as chips;
    3 keeps the figures and the tables alone: the technical drawing gives up its room last;
    4 (a short docked window) keeps each station's first plate only, without the rival. */
-body[data-cot-panels='persistent'] .cot-garage .stats:not([data-density='0']) .cot-stat-section{padding:var(--s2) var(--s3);margin-bottom:var(--s1);}
-body[data-cot-panels='persistent'] .cot-garage .stats:not([data-density='0']) :is(.cot-special-section,
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .cot-stat-section{padding:var(--s2) var(--s3);margin-bottom:var(--s1);}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] :is(.cot-special-section,
   .cot-performance-section .cot-stat-title,.shellrow .nm small){display:none;}
-body[data-cot-panels='persistent'] .cot-garage .stats:not([data-density='0']) .cot-headline{gap:var(--s2);}
-body[data-cot-panels='persistent'] .cot-garage .stats:not([data-density='0']) .cot-ammo-tiles{margin-top:var(--s3);}
-body[data-cot-panels='persistent'] .cot-garage .stats:not([data-density='0']) .srow{padding:3px 6px 4px;}
-body[data-cot-panels='persistent'] .cot-garage .stats:not([data-density='0']) .srow .lr b{font-size:var(--fs-13);}
-body[data-cot-panels='persistent'] .cot-garage .stats:not([data-density='0']) .shellrow{min-height:0;padding-block:4px;}
-body[data-cot-panels='persistent'] .cot-garage .stats:not([data-density='0']) .magazine-spec{min-height:0;padding-block:5px;}
-body[data-cot-panels='persistent'] .cot-garage .stats:not([data-density='0']) .cot-technical-figure img{max-height:clamp(96px,18vh,200px);}
-body[data-cot-panels='persistent'] .cot-garage .stats:is([data-density='2'],[data-density='3'],[data-density='4']) :is(.cot-technical-tabs,.cot-layer-link,
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .cot-headline{gap:var(--s2);}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .cot-ammo-tiles{margin-top:var(--s3);}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .srow{padding:3px 6px 4px;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .srow .lr b{font-size:var(--fs-13);}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .shellrow{min-height:0;padding-block:4px;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .magazine-spec{min-height:0;padding-block:5px;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .cot-technical-figure img{max-height:clamp(96px,18vh,200px);}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] :is(.cot-technical-tabs,.cot-layer-link,
   .cot-technical-gallery,.cot-stat-title){display:none;}
-body[data-cot-panels='persistent'] .cot-garage[data-station='firepower'] .stats:is([data-density='2'],[data-density='3'],[data-density='4']) [data-stations='firepower']:has(.armor-grid){display:none;}
-body[data-cot-panels='persistent'] .cot-garage .stats:is([data-density='2'],[data-density='3'],[data-density='4']) .cot-module-grid{display:flex;flex-wrap:wrap;gap:var(--s1);}
-body[data-cot-panels='persistent'] .cot-garage .stats:is([data-density='2'],[data-density='3'],[data-density='4']) .cot-module-chip{height:26px;padding:0 var(--s2) 0 var(--s1);}
-body[data-cot-panels='persistent'] .cot-garage .stats:is([data-density='2'],[data-density='3'],[data-density='4']) .cot-crew-chip{flex-direction:row;justify-content:center;padding:var(--s1);}
-body[data-cot-panels='persistent'] .cot-garage .stats:is([data-density='2'],[data-density='3'],[data-density='4']) .armorline{min-height:0;padding-block:var(--s1);}
-body[data-cot-panels='persistent'] .cot-garage[data-station] .stats:is([data-density='3'],[data-density='4']) :is(.cot-technical-section,.cot-ammo-tiles,.magazine-spec){display:none;}
-body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density='4'] :is(.cot-stat-section:not(.cot-primary),.cot-rival,.cot-ammo-tiles){display:none;}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density='4'] .cot-headline{gap:var(--s1);}
-body[data-cot-panels='persistent'] .cot-garage .stats[data-density='4'] .srow .cot-c-scale{display:none;}
+body[data-cot-panels='persistent'] .cot-garage[data-station='firepower'] .stats[data-density~='2'] [data-stations='firepower']:has(.armor-grid){display:none;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-module-grid{display:flex;flex-wrap:wrap;gap:var(--s1);}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-module-chip{height:26px;padding:0 var(--s2) 0 var(--s1);}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .cot-crew-chip{flex-direction:row;justify-content:center;padding:var(--s1);}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .armorline{min-height:0;padding-block:var(--s1);}
+body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='3'] :is(.cot-technical-section,.cot-ammo-tiles,.magazine-spec){display:none;}
+body[data-cot-panels='persistent'] .cot-garage[data-station] .stats[data-density~='4'] :is(.cot-stat-section:not(.cot-primary),.cot-rival,.cot-ammo-tiles){display:none;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='4'] .cot-headline{gap:var(--s1);}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='4'] .srow .cot-c-scale{display:none;}
 /* the rounds' rows close to one line: the glyph beside its type, each figure beside its unit */
-body[data-cot-panels='persistent'] .cot-garage .stats:not([data-density='0']) .shellkind{flex-direction:row;gap:var(--s1);}
-body[data-cot-panels='persistent'] .cot-garage .stats:not([data-density='0']) .shellkind svg{width:12px;height:18px;}
-body[data-cot-panels='persistent'] .cot-garage .stats:not([data-density='0']) .shellmetric b{display:inline;margin:0 2px 0 0;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .shellkind{flex-direction:row;gap:var(--s1);}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .shellkind svg{width:12px;height:18px;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='1'] .shellmetric b{display:inline;margin:0 2px 0 0;}
 /* each performance card sets its label and value on one line over its scale */
-body[data-cot-panels='persistent'] .cot-garage .stats:is([data-density='2'],[data-density='3'],[data-density='4']) .srow{display:flex;flex-wrap:wrap;align-items:baseline;
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow{display:flex;flex-wrap:wrap;align-items:baseline;
   column-gap:var(--s1);}
-body[data-cot-panels='persistent'] .cot-garage .stats:is([data-density='2'],[data-density='3'],[data-density='4']) .srow .lr b{margin:0 0 0 auto;}
-body[data-cot-panels='persistent'] .cot-garage .stats:is([data-density='2'],[data-density='3'],[data-density='4']) .srow .cot-c-scale{flex:1 0 100%;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .lr b{margin:0 0 0 auto;}
+body[data-cot-panels='persistent'] .cot-garage .stats[data-density~='2'] .srow .cot-c-scale{flex:1 0 100%;}
 /* folded layouts lead the dossier with the overview's six rows, one fact each: the icon and its label, the value, the
    scale. The rival needs the docked column's width, so its picker, its deltas and its tick stay docked */
 body[data-cot-panels='overlay'] .cot-garage:not([data-garage-panel='equipment']) .stats>.cot-stat-section.cot-overview-section{
@@ -402,9 +402,15 @@ body[data-cot-panels='overlay'] .cot-garage .cot-lt-loadout{flex:none;}
 body[data-cot-panels='overlay'] .cot-garage .cot-lt-loadout .eqslot{width:52px;}
 body[data-cot-panels='overlay'] .cot-lt-paint{flex:1 1 auto;}
 body[data-cot-panels='overlay'] .cot-lt-swatch{width:34px;}
-body[data-cot-panels='overlay'] .cot-lt-swatch.is-on{flex:1 1 auto;width:auto;min-width:44px;}
+body[data-cot-panels='overlay'] .cot-lt-swatch.is-on{flex:1 1 auto;width:auto;min-width:44px;max-width:112px;}
 body[data-cot-panels='overlay'] .cot-lt-swatch .nm{display:none;}
 body[data-cot-panels='overlay'] .cot-lt-swatch:nth-child(n+4):not(.cot-lt-paint-all){display:none;}
+/* a folded tablet has the room for wider slots, the third quick paint and the worn paint's name */
+@media (min-width:600px){
+  body[data-cot-panels='overlay'] .cot-garage .cot-lt-loadout .eqslot{width:72px;}
+  body[data-cot-panels='overlay'] .cot-lt-swatch:nth-child(4):not(.cot-lt-paint-all){display:block;}
+  body[data-cot-panels='overlay'] .cot-lt-swatch.is-on .nm{display:block;}
+}
 body[data-cot-panels='overlay'] .cot-lt-paint-all{--h:44px;width:44px;flex:none;}
 /* the stage's acts stand at its top right, under the bar's buttons and clear of the tank framed above the name */
 body[data-cot-panels='overlay'] .cot-lt-acts{position:fixed;right:max(var(--cot-overlay-edge),env(safe-area-inset-right,0px));

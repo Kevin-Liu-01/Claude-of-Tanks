@@ -55,9 +55,11 @@ assert.match(garageSource, /statsEl\.scrollTop = 0;\s*fitReadout\(\);/, 'a stati
 assert.match(garageSource, /statsEl\.addEventListener\('load', queueReadoutFit, true\);/, 'the technical drawing refits the readout as it loads');
 assert.match(showroomSource, /body\[data-cot-panels='persistent'\]\[data-cot-width\] \.cot-garage \.stats\{[^}]*overflow:hidden;\}/,
   'the docked readout never scrolls');
-for (const density of ['1', '2', '3', '4']) assert.match(showroomSource, new RegExp(`data-density='${density}'|:not\\(\\[data-density='0'\\]\\)`),
+for (const density of ['1', '2', '3', '4']) assert.match(showroomSource, new RegExp(`\\.stats\\[data-density~='${density}'\\]`),
   `the readout's density ${density} has its rules`);
-assert.match(showroomSource, /\.stats\[data-density='4'\] :is\(\.cot-stat-section:not\(\.cot-primary\)/, 'the densest readout keeps each station\'s first plate');
+assert.match(garageSource, /statsEl\.dataset\.density = density === 1 \? '1' : `\$\{statsEl\.dataset\.density\} \$\{density\}`;/,
+  'each density carries the lighter ones as tokens, so a rule names the lightest density it belongs to');
+assert.match(showroomSource, /\.stats\[data-density~='4'\] :is\(\.cot-stat-section:not\(\.cot-primary\)/, 'the densest readout keeps each station\'s first plate');
 assert.equal((garageSource.match(/cot-stat-section[^"]*cot-primary/g) || []).length, 5, 'each of the five stations marks one first plate');
 assert.match(garageSource, /const floor = docked \? band : sideways \? countryRailEl\.getBoundingClientRect\(\) : head;/,
   'the stage ends at the band docked, at the fleet on a phone on its side and at the name held upright');

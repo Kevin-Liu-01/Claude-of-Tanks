@@ -1114,11 +1114,15 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   wireRoving(stationTabs, (id) => setStation(id as GarageStation));
   // The readout never scrolls (the 245 redesign): a docked column steps its station through four densities (showroom.css)
   // until it fits. It reads layout only when the station, the tank or the window changes, never per frame.
+  // Each density carries the lighter ones as tokens ("1 2 3"), so a rule names the lightest density it belongs to.
   function fitReadout(): void {
     if (document.body.dataset.cotPanels === 'overlay') { delete statsEl.dataset.density; return; }
     let density = 0;
     statsEl.dataset.density = '0';
-    while (density < 4 && statsEl.scrollHeight > statsEl.clientHeight + 1) statsEl.dataset.density = String(++density);
+    while (density < 4 && statsEl.scrollHeight > statsEl.clientHeight + 1) {
+      density++;
+      statsEl.dataset.density = density === 1 ? '1' : `${statsEl.dataset.density} ${density}`;
+    }
   }
   let readoutFitQueued = false;
   const queueReadoutFit = (): void => {
@@ -1396,7 +1400,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       button.setAttribute('aria-expanded', String(expanded));
     });
     if (restoreFocus && previous) {
-      root.querySelector<HTMLButtonElement>(`[data-garage-panel="${previous}"]`)?.focus();
+      // the panel's visible trigger (the band's every-paint swatch, the figures' more button, a folded tool card)
+      [...root.querySelectorAll<HTMLButtonElement>(`button[data-garage-panel="${previous}"]`)]
+        .find((button) => button.getClientRects().length > 0)?.focus();
     }
     requestAnimationFrame(() => {
       syncSidebarPanelHeight();
