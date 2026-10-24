@@ -10,7 +10,7 @@
 // Per station it reports:
 // The shell is armour at every turret yaw: a hull crew member's is the hull's cells (the turret turns over them); a
 // turret crew member's is the turret's cells, the hull's under it at every turret yaw (the basket turns with it) and
-// the turret ring's opening between them.
+// the turret ring between them (its full width).
 //   boxOut    share of the station box (3 cm grid, corners included) outside the shell by more than 1 cm, and the
 //             farthest such point (boxOutM);
 //   shapesOut share of the crew hit shapes' surface samples outside the armour by more than 1 cm (crewArmour: the shell
@@ -18,7 +18,7 @@
 //   body      whether a 1.75 m body (head, torso, thighs, shins, boots, the Gallery mannequin's segment table) in the
 //             role's posture family fits entirely inside the shell, 5 mm in, with its head centre at a point of a 5 cm
 //             grid over the station box grown 15 cm each way: drivers seated or reclined, gunners and commanders seated
-//             (upright or hunched), turret loaders standing or seated.
+//             (upright or hunched; in a hull crew capsule also reclined), turret loaders standing or seated.
 // The search and the containment here are independent of the seat fitter (tools/crew-seat-fit.mjs): it judges it.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { crewArmour, crewShell } from './crew-seat-fit.mjs';
@@ -125,12 +125,12 @@ function postureBodies(posture) {
   }
   return BODY_CACHE.get(posture);
 }
-/** The postures a role may take: any driver may sit or recline; a turret loader may stand. */
+/** The postures a role may take: any driver may sit or recline; a turret loader may stand; hull capsule crew recline. */
 function roleFamilies(crew, frame) {
   if (/driver|radio/i.test(crew)) return ['driverSeated', 'driverReclined'];
   if (/loader/i.test(crew)) return frame === 'turret' ? ['loaderStanding', 'loaderSeated', 'seatedHunched'] : ['loaderSeated', 'seatedHunched'];
-  if (/commander/i.test(crew)) return ['commander', 'seatedHunched'];
-  return ['gunner', 'seatedHunched'];
+  const seated = /commander/i.test(crew) ? ['commander', 'seatedHunched'] : ['gunner', 'seatedHunched'];
+  return frame === 'hull' ? [...seated, 'driverReclined'] : seated;
 }
 
 function bodyFit(shell, box, frame, crew) {

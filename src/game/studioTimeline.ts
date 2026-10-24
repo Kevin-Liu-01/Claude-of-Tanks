@@ -35,7 +35,7 @@ export interface CameraShotInput {
   transition?: RuntimeValue;
 }
 
-interface CameraShot {
+export interface CameraShot {
   id: string;
   label: string;
   tMs: number;

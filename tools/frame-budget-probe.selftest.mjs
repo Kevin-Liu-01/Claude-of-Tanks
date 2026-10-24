@@ -10,10 +10,12 @@ import {
 } from './frame-pass-timer.mjs';
 import * as THREE from 'three';
 import {
-  acquireProbeLocks, borderAdditionsToggle, buildFrameReport, buildProfileReport, chunkOfUrl, judgeScenes, parseFrameProbeArgs, pinnedOpponents,
-  profileSelfByChunk,
+  acquireProbeLocks, borderAdditionsToggle, buildFrameReport, buildProfileReport, cacheOfUnits, cacheTrace, chunkOfUrl, hideOtherVehicles,
+  judgeScenes, parseFrameProbeArgs, pinnedOpponents, profileSelfByChunk, shadowCacheCopyToggle, streamedDuring,
 } from './frame-budget-probe.mjs';
+import { readFileSync } from 'node:fs';
 import { compareCaptureSet, crc32, decodeLum, encodeLum, encodeRgbPng, interiorChanges } from './frame-capture-compare.mjs';
+import { VEHICLE_SHADOW_DETAIL_KEY } from '../src/engine/nearVehicleShadowDetail.ts';
 
 // ---------------------------------------------------------------------------------------------- fake page
 
@@ -185,6 +187,8 @@ assert.equal(stats([]).med, null);
   assert.equal(o.port, 5395);
   assert.throws(() => parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=AB']), /no root/);
   assert.throws(() => parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--toggle=nope']), /toggle/);
+  // the trees lane's near-pool view cull (2026-10-07): a same-page switch like the others
+  assert.equal(parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--toggle=tree-cull']).toggle, 'tree-cull');
   assert.throws(() => parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--sides=14']), /sides/);
   assert.deepEqual(parseFrameProbeArgs(['--roots=a', '--maps=verdant', '--pattern=A', '--views=chase,chase@7']).views, ['chase', 'chase@7'],
     'a moving view glides at <m/s>');
@@ -410,4 +414,138 @@ assert.equal(stats([]).med, null);
   }
 }
 
-console.log('frame-budget probe: per-pass timer label algebra, whole-frame check, restore, pair deltas, roster pin, lock order, projection, border-additions toggle, the pages\' agreement (gate and report) PASS');
+{
+  // --hide-bots (2026-10-07, the whole-PR census): a hidden hull leaves the near-vehicle shadow policy too — the policy reads
+  // a scene child's `visible` and its userData.nearShadowDetail, the battle re-shows every ally each frame, so the hidden
+  // allies nearer the camera took the slots and the player's hull cast through its proxies on some layouts only
+  const hull = (isPlayer) => {
+    const root = { visible: true, userData: { nearShadowDetail: { detail: [{}], proxies: [{}] } }, layersOff: 0,
+      layers: { disableAll() { root.layersOff++; } }, traverse(fn) { fn(root); } };
+    return { isPlayer, visual: { root } };
+  };
+  const tanks = [hull(true), hull(false), hull(false), { isPlayer: false, visual: null }];
+  const saved = globalThis.window;
+  globalThis.window = { __DEBUG: { game: { tanks } } };
+  try {
+    assert.equal(hideOtherVehicles(), 2, 'the two bots with a vehicle are hidden');
+    const player = tanks[0].visual.root;
+    assert.equal(player.visible, true);
+    assert.ok(player.userData.nearShadowDetail, 'the player keeps its near-shadow detail record');
+    assert.equal(player.layersOff, 0);
+    for (const { visual: { root } } of tanks.slice(1, 3)) {
+      assert.equal(root.visible, false);
+      assert.equal(root.layersOff, 1, 'every layer of a hidden hull is off');
+      assert.equal(root.userData.nearShadowDetail, undefined, 'a hidden hull takes no near-shadow slot');
+    }
+  } finally {
+    globalThis.window = saved;
+  }
+  // the key the policy reads is still the one the probe clears
+  assert.equal(VEHICLE_SHADOW_DETAIL_KEY, 'nearShadowDetail');
+}
+
+{
+  // the terrain LOD stream (2026-10-07, mr3): every still pose settles the stream before it samples, and each sample records
+  // the geometries streamed while it ran — 0 when the settle held, the count when a chunk was still building
+  assert.equal(streamedDuring({ terrainStreamed: 41 }, { terrainStreamed: 41 }), 0);
+  assert.equal(streamedDuring({ terrainStreamed: 41 }, { terrainStreamed: 44 }), 3);
+  assert.equal(streamedDuring({ terrainStreamed: null }, { terrainStreamed: 44 }), null, 'a build without the stream count reads null, not 0');
+  assert.equal(streamedDuring(null, { terrainStreamed: 1 }), null);
+  const tool = readFileSync(new URL('./frame-budget-probe.mjs', import.meta.url), 'utf8');
+  const body = tool.slice(tool.indexOf('async function measureOnPage'), tool.indexOf('async function run('));
+  const settles = [...body.matchAll(/await settleTerrainStream\(page\)/g)].map((m) => m.index);
+  const samples = [...body.matchAll(/__FRAME_PASS_TIMER\.sample\(cfg\)|await sampleView\(page/g)].map((m) => m.index);
+  assert.equal(settles.length, 2, 'the gate\'s staging pose and every measured pose settle the stream');
+  assert.ok(settles[0] < samples[0] && settles[1] < samples[1], 'each settle precedes the sample it guards');
+  assert.ok(/streamedDuring: streamedDuring\(graphics, after\)/.test(body), 'every sample records what streamed while it ran');
+}
+
+{
+  // the static shadow cache's record of a block (2026-10-08, the perf lane): read frame by frame from the telemetry, per
+  // cascade and by reason, and a side's blocks pooled per frame — first a build without the cache's frame record (its
+  // rebuilds charged to the frame's last reason)
+  const frames = [];
+  let tel = { enabled: true, failed: null, rebuilds: [], reuses: [], copies: 0, fullRenders: 0, unsettled: 0, contentChanges: 0,
+    promotions: 0, demotions: 0, promoted: 0, staticCasters: 70, lastRebuildReason: '', hashMs: 0.1, targetBytes: 1 };
+  let lighting = { getShadowTelemetry: () => ({ staticCache: tel }) };
+  const step = (fn) => { tel = structuredClone(tel); fn(tel); frames.shift()?.(); };
+  const saved = { window: globalThis.window, raf: globalThis.requestAnimationFrame };
+  globalThis.window = { __DEBUG: { get lighting() { return lighting; } } };
+  globalThis.requestAnimationFrame = (cb) => frames.push(cb);
+  try {
+    cacheTrace('start'); // the record at 'start' is the baseline; each poll after it is one frame
+    step((t) => { t.rebuilds = [1, 1, 1, 1]; t.copies += 4; t.contentChanges++; t.lastRebuildReason = 'content'; });
+    step((t) => { t.reuses = [1, 1, 1, 1]; t.copies += 4; });
+    step((t) => { t.reuses = [2, 2, 2, 1]; t.copies += 3; });
+    step((t) => { t.rebuilds = [2, 1, 1, 1]; t.reuses = [2, 3, 3, 1]; t.copies += 3; t.lastRebuildReason = 'pose'; });
+    step((t) => { t.fullRenders += 4; t.unsettled += 4; });
+    const r = cacheTrace('stop');
+    assert.equal(r.frames, 5);
+    assert.deepEqual(r.perCascade, [{ rebuilds: 2, reuses: 2 }, { rebuilds: 1, reuses: 3 }, { rebuilds: 1, reuses: 3 }, { rebuilds: 1, reuses: 1 }]);
+    assert.deepEqual([r.rebuilds, r.reuses, r.copies, r.full, r.unsettled, r.contentChanges], [5, 9, 14, 4, 4, 1]);
+    assert.deepEqual([r.reasons, r.exactReasons], [{ content: 4, pose: 1 }, false], 'a frame\'s rebuilds are charged to its last reason');
+    assert.equal(r.pattern, 'R..Rf');
+    const pooled = cacheOfUnits([{ cache: r }, { cache: { ...r, reasons: { pose: 5 } } }, { cache: null }]);
+    assert.deepEqual([pooled.frames, pooled.rebuilds, pooled.reuses, pooled.copies], [10, 1, 1.8, 2.8], 'per frame over the side\'s blocks');
+    assert.deepEqual(pooled.reasons, { content: 4, pose: 6 });
+    assert.equal(cacheOfUnits([{ cache: null }]), null);
+
+    // a build with the frame record (shadowStaticCache.ts frameRecord, 2026-10-08): the rebuilds by their own reasons, the
+    // content changes by kind and caster, each cascade's pose moves — counted once per lighting update (a dormant frame
+    // keeps the last update's record)
+    tel = { ...structuredClone(tel), rebuilds: [], reuses: [], reasons: {}, contentKinds: {} };
+    const rec = { frame: 10, moveMask: 0, content: '', changed: '' };
+    lighting = { getShadowTelemetry: () => ({ staticCache: tel }), staticCacheFrame: rec };
+    const update = (fields) => Object.assign(rec, { frame: rec.frame + 1, moveMask: 0, content: '', changed: '' }, fields);
+    cacheTrace('start');
+    step((t) => {
+      t.rebuilds = [1, 1, 1, 1]; t.copies += 4; t.contentChanges++; t.lastRebuildReason = 'content';
+      t.reasons = { cold: 1, content: 3 }; t.contentKinds = { matrix: 1 }; update({ content: 'matrix', changed: 'crate' });
+    });
+    step((t) => { t.reuses = [0, 0, 1, 1]; t.copies += 2; t.fullRenders += 2; t.unsettled += 2; update({ moveMask: 0b0011 }); });
+    step(() => {}); // a dormant frame: no lighting update, the record unchanged
+    step((t) => {
+      t.rebuilds = [2, 2, 1, 1]; t.reuses = [0, 0, 2, 2]; t.copies += 4; t.lastRebuildReason = 'pose';
+      t.reasons = { cold: 1, content: 3, pose: 2 }; update({});
+    });
+    const e = cacheTrace('stop');
+    assert.deepEqual([e.reasons, e.exactReasons], [{ cold: 1, content: 3, pose: 2 }, true], 'the reasons the cache gave each re-render');
+    assert.deepEqual(e.perCascade.map((c) => c.moves), [1, 1, 0, 0], 'the moved cascades, once per lighting update');
+    assert.deepEqual([e.contentKinds, e.changed, e.moves], [{ matrix: 1 }, ['matrix:crate'], 1]);
+    assert.equal(e.pattern, 'Ru-R');
+    const both = cacheOfUnits([{ cache: e }, { cache: e }]);
+    assert.deepEqual([both.exactReasons, both.contentKinds, both.changed, both.moves], [true, { matrix: 2 }, ['matrix:crate'], 0.25]);
+    // the report carries a side's pooled record beside its blocks' timings
+    const block = (side) => ({ side, state: {}, cache: e, summary: { gpuFrame: { med: 10, p25: 10 }, cpuFrame: { med: 4 }, calls: { med: 500 },
+      tris: { med: 1 }, interval: { med: 16.7 }, passes: {}, prefixPasses: { shadow: { med: 2, p25: 2 } } } });
+    const toggled = buildFrameReport([{ mapId: 'verdant', label: 'new', key: 'verdant-s0-new', samples: [{ viewport: '1600x900', view: 'chase',
+      toggle: 'shadow-cache-copy2', blocks: [block('off'), block('on'), block('on'), block('off')] }] }]);
+    const row = toggled['verdant 1600x900 chase toggle:shadow-cache-copy2'];
+    assert.equal(row.byLabel.on.cache.frames, 8);
+    assert.equal(row.byLabel.on.interval, 16.7, 'the presented frame interval beside the GPU');
+    assert.deepEqual(row.deltas.interval.deltas, [0, 0]);
+  } finally {
+    globalThis.window = saved.window;
+    globalThis.requestAnimationFrame = saved.raf;
+  }
+  // the copy toggle: the cache on both sides, each depth copy made twice on 'on' and once on 'off', colour copies untouched
+  const calls = [];
+  const R = { copyTextureToTexture(src, dst) { calls.push(`${src.name}>${dst.name}`); } };
+  globalThis.window = { __DEBUG: { renderer: R }, __SHADOW_DEBUG: { noStaticCache: true } };
+  try {
+    const depth = { name: 'd', isDepthTexture: true }, colour = { name: 'c' };
+    assert.deepEqual((0, eval)(shadowCacheCopyToggle(true)), { copies: 2 });
+    assert.equal(window.__SHADOW_DEBUG.noStaticCache, false, 'the cache is on');
+    R.copyTextureToTexture(depth, depth); R.copyTextureToTexture(colour, colour);
+    assert.deepEqual(calls.splice(0), ['d>d', 'd>d', 'c>c']);
+    (0, eval)(shadowCacheCopyToggle(false));
+    (0, eval)(shadowCacheCopyToggle(true)); (0, eval)(shadowCacheCopyToggle(false)); // the wrapper is installed once
+    R.copyTextureToTexture(depth, depth);
+    assert.deepEqual(calls.splice(0), ['d>d']);
+    assert.equal(window.__SHADOW_DEBUG.noStaticCache, false);
+  } finally {
+    globalThis.window = saved.window;
+  }
+}
+
+console.log('frame-budget probe: per-pass timer label algebra, whole-frame check, restore, pair deltas, roster pin, lock order, projection, border-additions toggle, the pages\' agreement (gate and report), hidden hulls out of the near-shadow slots, the terrain stream settled before every sample, the static shadow cache\'s block record and the copy toggle PASS');

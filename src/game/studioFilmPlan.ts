@@ -492,13 +492,15 @@ export const FILM_RESOLUTIONS = [1080, 1440, 2160] as const;
 
 /** Native export size for a production format at a short-side resolution. */
 export function filmOutputSize(
-  format: 'landscape' | 'portrait' | 'square',
+  format: 'landscape' | 'portrait' | 'square' | 'card',
   resolution: number,
 ): { width: number; height: number } {
   if (!(FILM_RESOLUTIONS as readonly number[]).includes(resolution)) throw new RangeError('Film resolution must be 1080, 1440 or 2160');
   const long = Math.round(resolution * 16 / 9);
   if (format === 'portrait') return { width: resolution, height: long };
   if (format === 'square') return { width: resolution, height: resolution };
+  // the 1.91:1 link card, its long side rounded to an even width (4:2:0 video)
+  if (format === 'card') return { width: Math.round(resolution * 1.91 / 2) * 2, height: resolution };
   if (format !== 'landscape') throw new RangeError('Unknown production format');
   return { width: long, height: resolution };
 }

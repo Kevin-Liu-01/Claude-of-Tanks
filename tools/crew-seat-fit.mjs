@@ -18,8 +18,11 @@
 // turret ring between them. The hit shapes are held to the armour proper: the combat shells leave the gap between the
 // hull's roof and the turret's floor open, so a capsule crossing it keeps only its pieces inside armour (crewArmour).
 // HE splash strikes a body at three points (head, torso, lap: `blastPoints`). The station box is the largest box
-// inside the shell, within the body's bounds, grown from its torso. Where no posture fits, the nearest best placement
-// is kept and its shapes are trimmed into the armour (`trimmed`, with the outside share it started from).
+// inside the shell, within the body's bounds, grown from its torso. The ring a seat first passes through is the opening
+// over the turret axis; where no posture fits, a turret seat may reach across the ring's full width (domed roofs and
+// floors keep the axis opening narrow) and a gunner, commander or operator in a hull crew capsule reclines like a
+// driver. Where still none fits, the nearest best placement is kept and its shapes are trimmed into the armour
+// (`trimmed`, with the outside share it started from).
 // Pure numbers, no three.js; deterministic (fixed grids, fixed order).
 
 const H = 1.75;
@@ -67,6 +70,12 @@ export function crewPostureLadders(id, layoutKey, role, frame) {
   if (/commander/i.test(role)) return ['commander', 'seatedHunched'];
   if (/radio|assistant/i.test(role)) return ['driverSeated', 'driverReclined'];
   return ['gunner', 'seatedHunched'];
+}
+
+/** Where none of those fits: a gunner, commander or operator in a hull crew capsule reclines like a driver. */
+export function crewFallbackLadders(id, layoutKey, role, frame) {
+  const ladders = crewPostureLadders(id, layoutKey, role, frame);
+  return frame === 'hull' && !ladders.includes('driverReclined') && !/loader/i.test(role) ? [...ladders, 'driverReclined'] : ladders;
 }
 
 function poseParams(kind, tuck) {
@@ -309,7 +318,7 @@ function largestCircle(cells, y, margin) {
  * turret ring's opening between them. `inside(p, margin)` is `margin` in from every face (negative: a tolerance out).
  */
 export function crewShell(armor, frame) {
-  return makeShell(armor, frame, true);
+  return makeShell(armor, frame, 'full');
 }
 
 /**
@@ -320,7 +329,15 @@ export function crewArmour(armor, frame) {
   return makeShell(armor, frame, false);
 }
 
-function makeShell(armor, frame, withRing) {
+/** How far under the hull's roof and over the turret's floor the full ring's radius is measured. */
+const RING_DEPTH_M = 0.12;
+
+/**
+ * `ring`: false (the armour proper), 'axis' (the opening over the turret axis: the hull's roof to the turret's floor,
+ * as wide as both hold 5 cm in) or 'full' (also the whole ring: out to the radius both hold RING_DEPTH_M in, between
+ * the hull's top at each radius and the turret's bottom over it).
+ */
+function makeShell(armor, frame, ring) {
   const pivot = armor.turretPivot || [0, 0, 0];
   const hull = armor.collisionShells?.hull || [];
   const turret = armor.collisionShells?.turret || [];
@@ -331,10 +348,12 @@ function makeShell(armor, frame, withRing) {
   // The turret ring, from the geometry (margin 0): where the hull's roof and the turret's floor meet over the axis, the
   // opening between them is as wide as the smaller of the hull's circle under its roof and the turret's circle over its
   // floor. A margin insets its radius; the band overlaps the basket and the turret by 5 cm, so its ends need none.
-  let ring = null;
+  // Domed roofs and floors keep those circles small; the full ring is as wide as both hold RING_DEPTH_M in, and bridges
+  // the gap between the hull's top at each radius (the basket's) and the turret's bottom over it.
+  let opening = null;
   const ringOf = () => {
-    if (ring) return ring;
-    ring = { r: -Infinity, lo: 0, hi: 0 };
+    if (opening) return opening;
+    opening = { r: -Infinity, full: -Infinity, lo: 0, hi: 0 };
     const radii = swept.length ? basketRadii(swept, 0) : null;
     if (radii && radii.roofY !== null) {
       let floorY = Infinity;
@@ -343,14 +362,15 @@ function makeShell(armor, frame, withRing) {
         if (range) floorY = Math.min(floorY, range[0]);
       }
       if (Number.isFinite(floorY) && floorY - radii.roofY < 0.25) {
-        ring = {
+        opening = {
           r: Math.min(radii.topRadius, largestCircle(own, floorY + 0.05, 0)),
+          full: Math.min(largestCircle(swept, radii.roofY - RING_DEPTH_M, 0), largestCircle(own, floorY + RING_DEPTH_M, 0)),
           lo: Math.min(radii.roofY, floorY) - 0.05,
           hi: Math.max(radii.roofY, floorY) + 0.05,
         };
       }
     }
-    return ring;
+    return opening;
   };
   const baskets = new Map();
   const basket = (margin) => {
@@ -362,17 +382,25 @@ function makeShell(armor, frame, withRing) {
     /** The y-intervals of column (x, z) inside the shell. */
     column(x, z, margin = MARGIN) {
       const list = [];
+      let turretBottom = Infinity;
       for (let index = 0; index < own.length; index++) {
         const range = cellColumn(own[index], x, z, margin);
-        if (range) list.push(range);
+        if (range) { list.push(range); turretBottom = Math.min(turretBottom, range[0]); }
       }
       if (swept.length) {
         const radii = basket(margin);
         const r = Math.hypot(x, z);
+        let hullTop = -Infinity;
         // (a tolerance, a negative margin, also extends the basket's 1 cm height steps: checks get their slack there too)
-        if (radii) for (const range of radii.lookup(r)) list.push(margin < 0 ? [range[0] + margin, range[1] - margin] : range.slice());
-        const opening = withRing ? ringOf() : null;
-        if (opening && r <= opening.r - margin) list.push([opening.lo, opening.hi]);
+        if (radii) for (const range of radii.lookup(r)) {
+          list.push(margin < 0 ? [range[0] + margin, range[1] - margin] : range.slice());
+          hullTop = Math.max(hullTop, list[list.length - 1][1]);
+        }
+        const ringBand = ring ? ringOf() : null;
+        if (ringBand && r <= ringBand.r - margin) list.push([ringBand.lo, ringBand.hi]);
+        if (ring === 'full' && ringBand && r <= ringBand.full - margin && turretBottom > hullTop && turretBottom - hullTop < 0.25) {
+          list.push([hullTop, turretBottom]);
+        }
       }
       return unionIntervals(list);
     },
@@ -581,8 +609,8 @@ function stationSide(station) {
  * Seat one station. `anchor` is the station's legacy combat box (frame-local); `frame` 'hull' | 'turret'.
  * Returns the seat record (rounded) or null when the frame has no shell.
  */
-function seatStation({ armor, anchor, frame, station, ladders, placed }) {
-  const shell = makeShell(armor, frame, true);
+function seatStation({ armor, anchor, frame, station, ladders, fallback, placed }) {
+  const shell = makeShell(armor, frame, 'axis');
   if (!shell.cells.length) return null;
   const armour = makeShell(armor, frame, false);
   const center = anchor.min.map((value, axis) => (value + anchor.max[axis]) / 2);
@@ -593,34 +621,50 @@ function seatStation({ armor, anchor, frame, station, ladders, placed }) {
     { relaxed: 'modules', boxes: [], crew: true },
     { relaxed: 'modules+crew', boxes: [], crew: false },
   ];
-  const candidates = [];
-  ladders.forEach((kind, rank) => {
-    for (const tuck of TUCKS) {
-      // a standing loader may crouch, not squat: deeper than that he sits
-      if (kind === 'loaderStanding' && tuck > 0.6) continue;
-      const body = posedBody(kind, tuck);
-      // the pelvis that centres the posed body on the station
-      const ax = center[0] - body.center[0], az = center[2] - body.center[2];
-      for (let ix = -8; ix <= 8; ix++) {
-        const px = ax + ix * 0.05;
-        // a side station keeps its side of the centreline (it may move outboard freely)
-        if (side < 0 && ix > 0 && px > -0.05) continue;
-        if (side > 0 && ix < 0 && px < 0.05) continue;
-        for (let iz = -16; iz <= 16; iz++) {
-          const pz = az + iz * 0.05;
-          candidates.push({ body, kind, tuck, px, pz, ix, iz, cost: Math.abs(ix) * 0.05 + Math.abs(iz) * 0.05 * 0.7 + tuck * 0.35 + rank * 0.6 });
+  const coarse = (kinds) => {
+    const candidates = [];
+    kinds.forEach((kind, rank) => {
+      for (const tuck of TUCKS) {
+        // a standing loader may crouch, not squat: deeper than that he sits
+        if (kind === 'loaderStanding' && tuck > 0.6) continue;
+        const body = posedBody(kind, tuck);
+        // the pelvis that centres the posed body on the station
+        const ax = center[0] - body.center[0], az = center[2] - body.center[2];
+        for (let ix = -8; ix <= 8; ix++) {
+          const px = ax + ix * 0.05;
+          // a side station keeps its side of the centreline (it may move outboard freely)
+          if (side < 0 && ix > 0 && px > -0.05) continue;
+          if (side > 0 && ix < 0 && px < 0.05) continue;
+          for (let iz = -16; iz <= 16; iz++) {
+            const pz = az + iz * 0.05;
+            candidates.push({ body, kind, tuck, px, pz, ix, iz, cost: Math.abs(ix) * 0.05 + Math.abs(iz) * 0.05 * 0.7 + tuck * 0.35 + rank * 0.6 });
+          }
         }
       }
+    });
+    return candidates.sort((a, b) => a.cost - b.cost || a.tuck - b.tuck || a.px - b.px || a.pz - b.pz);
+  };
+  // 1 cm and 0.05 of tuck around a near miss
+  const fine = (near) => {
+    const candidates = [];
+    for (let dt = -4; dt <= 4; dt++) {
+      const tuck = Math.round((near.tuck + dt * 0.05) * 100) / 100;
+      if (tuck < 0 || tuck > 1 || (near.kind === 'loaderStanding' && tuck > 0.6)) continue;
+      const body = posedBody(near.kind, tuck);
+      for (let ix = -5; ix <= 5; ix++) for (let iz = -5; iz <= 5; iz++) {
+        const px = near.px + ix * 0.01, pz = near.pz + iz * 0.01;
+        candidates.push({ body, kind: near.kind, tuck, px, pz, ix, iz, cost: Math.abs(ix) * 0.01 + Math.abs(iz) * 0.007 + Math.abs(dt) * 0.0175 });
+      }
     }
-  });
-  candidates.sort((a, b) => a.cost - b.cost || a.tuck - b.tuck || a.px - b.px || a.pz - b.pz);
-  const scan = (set) => {
+    return candidates.sort((a, b) => a.cost - b.cost || a.tuck - b.tuck || a.px - b.px || a.pz - b.pz);
+  };
+  const scan = (candidates, within, set) => {
     const states = new Map();
     for (const candidate of candidates) {
       const { body } = candidate;
       let state = states.get(body);
       if (!state) states.set(body, state = { order: body.points.map((_, index) => index) });
-      const feasible = feasibleHeights(body, shell, set.boxes, candidate.px, candidate.pz, state);
+      const feasible = feasibleHeights(body, within, set.boxes, candidate.px, candidate.pz, state);
       if (!feasible.length) continue;
       let py = chooseHeight(candidate.kind, feasible);
       // a seat over a crew member already seated may rise within the feasible heights (a commander over his gunner)
@@ -638,37 +682,40 @@ function seatStation({ armor, anchor, frame, station, ladders, placed }) {
     }
     return null;
   };
-  const cascade = () => {
-    const bare = scan(obstacleSets[obstacleSets.length - 1]);
+  const cascade = (candidates, within) => {
+    const bare = scan(candidates, within, obstacleSets[obstacleSets.length - 1]);
     if (!bare) return null;
     for (const set of obstacleSets.slice(0, -1)) {
-      const found = scan(set);
+      const found = scan(candidates, within, set);
       if (found) return found;
     }
     return bare;
   };
-  // The armour alone first (a station where no posture fits it skips the obstacle passes); then the near misses: 1 cm
-  // and 0.05 of tuck around the coarse placement that leaves most of the body inside; then the best effort, trimmed.
-  let found = cascade();
-  if (found) return finishSeat({ ...found, shell, armour, trimmed: null });
-  const best = bestEffortPlacement(candidates, shell);
-  if (!best) return null;
-  const near = best.candidate;
-  candidates.length = 0;
-  for (let dt = -4; dt <= 4; dt++) {
-    const tuck = Math.round((near.tuck + dt * 0.05) * 100) / 100;
-    if (tuck < 0 || tuck > 1 || (near.kind === 'loaderStanding' && tuck > 0.6)) continue;
-    const body = posedBody(near.kind, tuck);
-    for (let ix = -5; ix <= 5; ix++) for (let iz = -5; iz <= 5; iz++) {
-      const px = near.px + ix * 0.01, pz = near.pz + iz * 0.01;
-      candidates.push({ body, kind: near.kind, tuck, px, pz, ix, iz, cost: Math.abs(ix) * 0.01 + Math.abs(iz) * 0.007 + Math.abs(dt) * 0.0175 });
-    }
+  // The armour alone first (a station where no posture fits it skips the obstacle passes); then the near misses around
+  // the coarse placement that leaves most of the body inside.
+  const attempt = (kinds, within) => {
+    const candidates = coarse(kinds);
+    const found = cascade(candidates, within);
+    if (found) return { found, within };
+    const best = bestEffortPlacement(candidates, within);
+    if (!best) return null;
+    const near = cascade(fine(best.candidate), within);
+    return near ? { found: near, within } : { best, within };
+  };
+  // Where no posture fits, the fallback: a hull crew capsule's seat reclines, a turret seat reaches across the full
+  // ring; then the best effort, trimmed.
+  let result = attempt(ladders, shell);
+  if (result?.found) return finishSeat({ ...result.found, shell, armour, trimmed: null });
+  const wide = frame === 'turret' ? makeShell(armor, frame, 'full') : shell;
+  if (result && (fallback.length > ladders.length || wide !== shell)) {
+    const second = attempt(fallback, wide);
+    if (second?.found) return finishSeat({ ...second.found, shell: wide, armour, trimmed: null });
+    if (second) result = second;
   }
-  candidates.sort((a, b) => a.cost - b.cost || a.tuck - b.tuck || a.px - b.px || a.pz - b.pz);
-  found = cascade();
-  if (found) return finishSeat({ ...found, shell, armour, trimmed: null });
-  const outside = 1 - best.inside / near.body.points.length;
-  return finishSeat({ candidate: near, py: best.py, shell, armour, relaxed: 'modules+crew', trimmed: ROUND3(outside) });
+  if (!result) return null;
+  const { best, within } = result;
+  const outside = 1 - best.inside / best.candidate.body.points.length;
+  return finishSeat({ candidate: best.candidate, py: best.py, shell: within, armour, relaxed: 'modules+crew', trimmed: ROUND3(outside) });
 }
 
 /** The coarse placement (10 cm, three tucks) that leaves the most of the body inside the shell. */
@@ -771,6 +818,7 @@ export function fitCrewSeats(spec, layoutKey) {
   for (const anchor of armor.crew || []) {
     const frame = anchor.turretLocal ? 'turret' : 'hull';
     const ladders = crewPostureLadders(spec.id, layoutKey, anchor.crew, frame);
+    const fallback = crewFallbackLadders(spec.id, layoutKey, anchor.crew, frame);
     // the crew already seated, in this station's frame (turret at rest)
     const others = placed.map((entry) => {
       if (entry.frame === frame) return entry;
@@ -778,7 +826,7 @@ export function fitCrewSeats(spec, layoutKey) {
       const shapes = entry.shapes.map((shape) => translate(shape, shift));
       return { frame, shapes, ...boundsOf(shapes) };
     });
-    const seat = seatStation({ armor, anchor, frame, station: anchor.station, ladders, placed: others });
+    const seat = seatStation({ armor, anchor, frame, station: anchor.station, ladders, fallback, placed: others });
     if (!seat) continue;
     seats.push({ crew: anchor.crew, frame, ...seat });
     placed.push({ frame, shapes: seat.shapes, ...boundsOf(seat.shapes) });

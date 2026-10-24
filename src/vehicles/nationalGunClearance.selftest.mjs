@@ -62,14 +62,30 @@ const CURVES = {
   ua_m1a2_abrams: [],
   // release 240: the rebuilt MBT-70 (its cast mantlet's chin raised over the glacis array, modern2.ts)
   mbt70: [],
+  // 242: the turrets whose squash 235 moved off rig_turret (turretScaleGunPitch.ts; mount windows: the sweep's
+  // mountConflicts, the geometry fixes to make)
+  t90am: [[4,4],[12,20],[179,180]],
+  t90m_proryv: [[13,18]],
+  t90a_burlak_proto: [],
+  strv81: [[2,34],[122,180]],
+  challenger1_mk2: [[140,140]],
+  fv4034: [],
+  challenger2: [],
+  challenger2e: [[177,177]],
+  fv510: [],
+  fv510_milan: [],
+  merkava1b: [[146,164]],
+  merkava2d: [[145,146],[152,176]],
 };
 // Tanks whose camouflage suit (ghillieSuit.ts, cut to the gun's own stops, so it regrows under any stop it is given) comes
 // within 25 mm of the gun: the curve holds their hull stock and the suit's working clearance is the suit's to fix (the Type
 // 96B's hull net 15.8 mm at yaw 29 at its stop, the Zubr II's rear leaves 23.8 mm at yaw 174 at its stop). Release 230 (the
 // gun-hull lane): the C2 Ariete's glacis net (13.2 mm at yaw 8) and the Ukrainian M1A1's leaves (touching the gun at level
 // at yaw 143 and under the mantlet at -10 ahead) were fixed in their suits and are held with them, and so are the Type 96B
-// (clothClearsGunStops) and the Zubr II (conservativeGunEnvelope), regenerated on the combined turret tree.
-const SUIT_TOO_CLOSE = new Set([]);
+// (clothClearsGunStops) and the Zubr II (conservativeGunEnvelope), regenerated on the combined turret tree. Release 242:
+// the T-90AM's suit, regrown under its measured curve, lays its front-deck net 10.9 mm under the barrel at yaw 37 and its
+// rear leaves 19.3 mm from it at yaw 180.
+const SUIT_TOO_CLOSE = new Set(['t90am']);
 // GUN_CLEARANCE_IDS=<ids> limits a local run (the suite runs them all)
 const ids = process.env.GUN_CLEARANCE_IDS?.split(',') ?? Object.keys(CURVES);
 for (const id of ids) {

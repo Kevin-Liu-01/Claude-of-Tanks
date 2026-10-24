@@ -105,13 +105,18 @@ export function mountStudioPicturePanel(
     vignette: kit.sliderRow(t('studioPanel.picture.vignette'), 0, 1, 0.01, (v) => set({ vignette: { amount: v } })),
     grain: kit.sliderRow(t('studioPanel.picture.grain'), 0, 1, 0.01, (v) => set({ grain: { amount: v } })),
   };
-  for (const slider of Object.values(sliders)) section.appendChild(slider.row);
+  // Quick shows the look alone; the fine controls, the matte and depth of field are Pro (brand-ui SPEC 12.6)
+  for (const slider of Object.values(sliders)) {
+    slider.row.dataset.pro = '';
+    section.appendChild(slider.row);
+  }
 
   const matte = labelledSelect(t('studioPanel.picture.letterbox'));
   for (const box of PICTURE_LETTERBOXES) {
     option(matte.select, box, box === 'none' ? t('studioPanel.picture.letterboxNone') : `${box} : 1`);
   }
   matte.select.addEventListener('change', () => set({ letterbox: matte.select.value }));
+  matte.row.dataset.pro = '';
   section.appendChild(matte.row);
 
   // depth of field
@@ -124,6 +129,7 @@ export function mountStudioPicturePanel(
   for (const sensor of SENSORS) option(format, sensor, t(`studioPanel.picture.sensor.${sensor}`));
   format.addEventListener('change', () => set({ dof: { sensor: format.value } }));
   dofRow.append(dofBtn, format);
+  dofRow.dataset.pro = '';
   section.appendChild(dofRow);
 
   const focusRow = document.createElement('div');
@@ -137,12 +143,15 @@ export function mountStudioPicturePanel(
   const focusDistanceBtn = chip(t('studioPanel.picture.focusDistance'));
   focusDistanceBtn.addEventListener('click', () => set({ dof: { enabled: true, focusActor: null } }));
   focusRow.append(focusTank, focusDistanceBtn);
+  focusRow.dataset.pro = '';
   section.appendChild(focusRow);
   const distance = kit.sliderRow(t('studioPanel.picture.focusMeters'), 1, 200, 0.5, (v) => set({ dof: { focusDistance: v, focusActor: null } }));
+  distance.row.dataset.pro = '';
   section.appendChild(distance.row);
   const aperture = labelledSelect(t('studioPanel.picture.fStop'));
   for (const stop of F_STOPS) option(aperture.select, String(stop), `f/${stop}`);
   aperture.select.addEventListener('change', () => set({ dof: { fStop: Number(aperture.select.value) } }));
+  aperture.row.dataset.pro = '';
   section.appendChild(aperture.row);
 
   const reset = document.createElement('button');

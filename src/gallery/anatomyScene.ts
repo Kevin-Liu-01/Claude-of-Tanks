@@ -126,6 +126,30 @@ function hitShapeGeometry(shape: AnatomyShape): THREE.BufferGeometry {
   return geometry.translate((shape.a[0] + shape.b[0]) / 2, (shape.a[1] + shape.b[1]) / 2, (shape.a[2] + shape.b[2]) / 2);
 }
 
+/**
+ * The seam lines of one armour mesh: a shell surface brings its skin outline (plate borders and creases, 243), every
+ * other surface its own 24° edges. Edges of the merged triangles drew every clipping cut and slice ring as a seam.
+ */
+function seamGeometry(surfaces: readonly ArmorSurface[]): THREE.BufferGeometry {
+  const segments: number[] = [];
+  const rest: number[] = [];
+  for (const surface of surfaces) {
+    if (surface.seams) segments.push(...surface.seams);
+    else rest.push(...surface.positions);
+  }
+  if (rest.length) {
+    const own = new THREE.BufferGeometry();
+    own.setAttribute('position', new THREE.Float32BufferAttribute(rest, 3));
+    const edges = new THREE.EdgesGeometry(own, 24);
+    segments.push(...(edges.getAttribute('position').array as Float32Array));
+    own.dispose();
+    edges.dispose();
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(segments, 3));
+  return geometry;
+}
+
 const HIT_VERTEX = /* glsl */ `
 #include <common>
 varying vec3 vViewPosition;
@@ -248,7 +272,7 @@ export function buildAnatomyScene(armor: AnatomyArmor, options: AnatomySceneOpti
       mesh.name = `anatomy_armor_${frame}_${layer}`;
       mesh.userData.anatomyArmor = true;
       holder(layer === 'main' ? 'armor' : 'addOns', frame).add(mesh);
-      const seams = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 24), layer === 'main' ? seamMaterial : addOnSeamMaterial);
+      const seams = new THREE.LineSegments(seamGeometry(indices.map(({ surface }) => surface)), layer === 'main' ? seamMaterial : addOnSeamMaterial);
       seams.name = `${mesh.name}_seams`;
       seams.raycast = () => {};
       holder(layer === 'main' ? 'armor' : 'addOns', frame).add(seams);

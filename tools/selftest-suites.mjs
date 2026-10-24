@@ -62,6 +62,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/engine/thermalWreckCooling.selftest.mjs',
     'src/engine/thermalHullHeat.selftest.mjs',
     'src/engine/thermalLensBloom.selftest.mjs',
+    // (fx-redo-240) the night pool's town lamps as lanterns
+    'src/engine/lampLightShape.selftest.mjs',
     'src/ui/aerialHitMark.selftest.mjs',
     'src/ui/killFeedSource.selftest.mjs',
     'src/ui/endScreenAircraft.selftest.mjs',
@@ -403,6 +405,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/studioProductionPersistence.selftest.mjs',
     'src/game/studioLight.selftest.mjs',
     'src/ui/studioProductionPanel.selftest.mjs',
+    'src/ui/studioQueue.selftest.mjs',
     'tools/media-production/campaign.selftest.mjs',
     'tools/media-production/campaignPublication.selftest.mjs',
     'tools/publish-gameplay-capture.selftest.mjs',
@@ -777,6 +780,7 @@ export const SELFTEST_SUITES = Object.freeze({
     // is busy and takes it when it frees (the old step-behind rule handed it to the newer); the cap; no FIFO lock waiting
     'tools/visual-census-lock.selftest.mjs',
     'tools/frame-budget-probe.selftest.mjs',
+    'tools/pr-census.selftest.mjs', // 2026-10-07 (the perf census lane, ported 2026-10-23): the whole-PR draw census's report, batches, FIFO hold and terrain settle
     'tools/capture-command.selftest.mjs',
     'tools/tank-release-plan.selftest.mjs',
     // 2026-10-16 (227, owner: "no regenerating for tanks or anything else that didn't change"): the changed-only
@@ -871,6 +875,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/gallery/damageLab.selftest.mjs',
     'src/gallery/combatHitboxes.selftest.mjs',
     'src/game/armorAimOverlay.selftest.mjs',
+    // 243: the armour skin (the cells' outer surface the flashlight and the Gallery heat map draw) is closed and exact
+    'src/game/armorSkin.selftest.mjs',
     'src/game/loadingIntent.selftest.mjs',
     'src/game/battleIntentRuntime.selftest.mjs',
     'src/game/combatFeedbackRuntime.selftest.mjs',
@@ -939,6 +945,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/localeRouting.selftest.mjs',
     'tools/gt-enforcement.selftest.mjs',
     'src/docs/docsIcons.selftest.mjs',
+    'src/docs/docsSearch.selftest.mjs',
     'src/docs/topics.selftest.mjs',
     'src/docs/filming.selftest.mjs',
     'tools/generate-manual-reference.selftest.mjs',
@@ -1090,6 +1097,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/trackSurface.selftest.mjs',
     'src/world/roadPave.selftest.mjs',
     'src/presentation/analytics.selftest.mjs',
+    'src/presentation/fleetWall.selftest.mjs',
     'src/game/presentationPose.selftest.mjs',
     'src/game/battlePresentationRuntime.selftest.mjs',
     'src/game/battleVisualPool.selftest.mjs',
@@ -1181,6 +1189,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/oasisShoreline.selftest.mjs',
     'src/world/authoredLakeComposition.selftest.mjs',
     'src/world/treePoolCapacity.selftest.mjs',
+    // trees perf (2026-10-07): the near pools (the adopted ones over the line too) culled to the main camera's view and their shadows' reach
+    'src/world/treeViewCull.selftest.mjs',
     // the trees lane (2026-10-08, wave 260): a bush grown as its slot's leafy birch draws its leaves as the slot's trees do
     'src/world/leafyBush.selftest.mjs',
     'src/vehicles/vehicleNightLighting.selftest.mjs',
@@ -1615,6 +1625,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/consumables.selftest.mjs',
     'src/game/wheelNotches.selftest.mjs',
     'src/game/input.selftest.mjs',
+    // 2026-10-23 (aim-focus 243): refused Settings relocks never latch cursor aim; a menu click is never an aim point
+    'src/game/inputPointerLockFocus.selftest.mjs',
     'src/game/playerBattleActions.selftest.mjs',
     'src/game/battleKeyActions.selftest.mjs',
     'src/game/playerFrameInput.selftest.mjs',
@@ -2112,6 +2124,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/orchardBathhouse.selftest.mjs',
     // regional-buildings lane (2026-10-03): the regional architecture kits and their placement-preserving swap
     'src/world/maps/regional/regionalArchitecture.selftest.mjs',
+    // 2026-10-15 (the perf lane): the kit registries — one row per style and set piece, every kit in Node, a map's own in the browser
+    'src/world/kitRegistry.selftest.mjs',
     // the buildings stream (2026-10-12; the owner: "make sure our roofs dont have empty spots in them"): every kit
     // builder, catalog builder and set piece closed and seated — no floating part, open underside, hole, inside seen
     // through a gap, sky through the building or inside-out face — held to its ledger row
@@ -2205,6 +2219,8 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/ui/endOverlayRuntime.selftest.mjs',
     'src/ui/endScreen.selftest.mjs',
     'src/ui/battleBeats.selftest.mjs',
+    // (watch-mode-243) a watched battle's HUD frame and its neutral report: the sides by name, the ridden tank highlighted
+    'src/ui/watchBattleReport.selftest.mjs',
     'src/game/battleEventStats.selftest.mjs',
     'src/ui/killPresentation.selftest.mjs',
     'src/ui/shotInfo.selftest.mjs',

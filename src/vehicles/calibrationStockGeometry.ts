@@ -1,16 +1,19 @@
-// Independent convex stocks need an interior orientation point, not the
-// midpoint of their bounding box (which can lie outside a thin wedge).
+// Convex cells orient their faces away from an interior point: the vertex mean, never the midpoint of their bounding
+// box (which can lie outside a thin wedge or a slanted slice).
 import type { AnatomyCalibrationCell } from './combatAnatomyCalibrationRegistry.ts';
 
 export function calibrationOrientationPoint(source: AnatomyCalibrationCell): number[] {
   const interiorPoint = source.interiorPoint;
-  if (interiorPoint === undefined) {
-    if (source.sourceStock !== undefined) throw new Error('Independent collision stock is missing its interior point');
-    return [0, 1, 2].map(axis => (source.min[axis] + source.max[axis]) * 0.5);
-  }
   const mean = [0, 1, 2].map(axis => source.vertices.reduce(
     (sum, vertex) => sum + vertex[axis], 0,
   ) / source.vertices.length);
+  if (interiorPoint === undefined) {
+    if (source.sourceStock !== undefined) throw new Error('Independent collision stock is missing its interior point');
+    // 243 (owner: "regenerate all hitboxes ... make them work"): the generated shell slices kept the bounds midpoint,
+    // and where a slanted slice does not contain it a face pointed inward: its half-plane cut up to 0.78 m out of the
+    // slice traceTank tests (24 vehicles, 36 faces; mbt70, m1a2_abrams, challenger1_mk3, strv103a, challenger3 ...).
+    return mean;
+  }
   if (interiorPoint.length !== 3 || mean.some((value, axis) => (
     !Number.isFinite(value) || !Number.isFinite(interiorPoint[axis])
     || Math.abs(value - interiorPoint[axis]) > 1e-9

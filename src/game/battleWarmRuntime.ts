@@ -1155,7 +1155,8 @@ export interface CombatWarmRuntimeContext {
   scratch3: Vector3;
   anisotropy: number;
   ensureStagedVisuals(count: number): boolean;
-  prepareModeVisuals?(): void;
+  /** Mode equipment and energy skins; returns the roots given new skin materials (their programs to compile). */
+  prepareModeVisuals?(): readonly Object3D[] | void;
   prebakeBurntSteps(specId: string, anisotropy: number): Iterable<void>;
   warmWreckTextures(renderer: WebGLRenderer): void;
   createIsolatedForwardWarmBatches(
@@ -1480,8 +1481,13 @@ export function* createCombatOpeningWarmSteps(
   yield;
   markWarmStage('visuals');
   // Attach mode equipment and aura materials before opening-frame shader warm.
-  context.prepareModeVisuals?.();
+  const energized = context.prepareModeVisuals?.() ?? [];
   for (const entity of game.tanks) entity.visual?.prewarmBurn?.();
+  // (mode-sheen-perf-243) a tank whose energy skin went on here (the player's lent visual, a tank staged before the mode's
+  // skins) compiles it now, its burn hook on, rather than on the first frame it draws: a parked enemy root included
+  for (const root of energized) {
+    try { context.forwardProgramWarm.compile(root); } catch { /* the first draw remains the fallback */ }
+  }
   markWarmStage('rosterHooks');
 
   const effectDetail: Record<string, RuntimeValue> = {};

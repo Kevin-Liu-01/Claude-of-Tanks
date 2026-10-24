@@ -4,8 +4,7 @@ import type { MainFxRuntime } from '../app/mainContracts.ts';
 import type { LazyAudio } from '../audio/lazyAudio.ts';
 import { normalizeGameMode } from '../sim/gameModeCatalog.ts';
 import type { WorkYielder } from '../engine/frameScheduler.ts';
-import { t } from '../ui/i18n.ts';
-import { PENDING_ROSTER_SLOTS, type BattleLoadRosterRow, type BattleLoadScreen } from '../ui/battleLoad.ts';
+import { PENDING_ROSTER_SLOTS, battleLoadModeLabel, type BattleLoadRosterRow, type BattleLoadScreen } from '../ui/battleLoad.ts';
 import type { MaterialTankSpec } from '../vehicles/materials.ts';
 import type { WorldRuntime } from '../world/map.ts';
 import type { BattlefieldMapConfig } from '../world/maps/index.ts';
@@ -170,17 +169,9 @@ export interface SoloBattleLoadingStartOptions {
   watch?: boolean;
 }
 
-export function soloBattleLoadingModeLabel(gameMode: string, requestedMapId: string | null): string {
-  const battlefield = requestedMapId === 'random'
-    ? t('battleLoad.battlefieldAny')
-    : t('battleLoad.battlefieldSelected');
-  if (gameMode === 'standard') {
-    return requestedMapId === 'random'
-      ? `${t('battleLoad.randomAnyBattlefield')}`
-      : `${t('battleLoad.randomStandard')}`;
-  }
-  const mode = normalizeGameMode(gameMode);
-  return `${t(`playMenu.matchMode.${mode}.label`)} · ${battlefield}`;
+/** The load screen's mode chip: the mode alone (battleLoad.ts battleLoadModeLabel); the screen names the battlefield. */
+export function soloBattleLoadingModeLabel(gameMode: string): string {
+  return battleLoadModeLabel(normalizeGameMode(gameMode));
 }
 
 function plannedWorldVehicleIds(mapConfig: BattlefieldMapConfig): string[] {
@@ -380,7 +371,8 @@ export function createSoloBattleLoadingRuntime(
         mapName: mapName || resolved,
         thumb: getMapThumb(resolved),
         biome: resolved,
-        mode: soloBattleLoadingModeLabel(normalizedGameMode, mapId),
+        mode: soloBattleLoadingModeLabel(normalizedGameMode),
+        modeId: normalizedGameMode,
         allies: [],
         enemies: [],
         slots: PENDING_ROSTER_SLOTS,

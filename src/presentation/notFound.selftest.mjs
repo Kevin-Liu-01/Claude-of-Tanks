@@ -12,50 +12,38 @@ const vercel = readFileSync(join(ROOT, 'vercel.json'), 'utf8');
 
 assert.match(html, /<meta name="robots" content="noindex, nofollow">/,
   'missing routes must never enter the search index');
-assert.match(html, /<main class="not-found" aria-labelledby="not-found-title">/,
+assert.match(html, /<main class="not-found" id="main" aria-labelledby="not-found-title">/,
   'the error page must expose one semantic main landmark');
-assert.match(html, /<h1 id="not-found-title">404<\/h1>/,
-  'the error page must reduce its visible message to a centered 404');
+// brand-ui SPEC 12.3.4 (the Premiere direction, 242): the missing page speaks the landing's grammar (01-landing-hero):
+// the shared bar and footer, the code in the accent over one hollow sentence, the site's destinations.
+assert.match(html, /<h1 class="not-found__title" id="not-found-title"><span class="not-found__code t-accent num" lang="en">404<\/span><span class="not-found__line t-hollow" data-i18n="notFound\.title">[^<]+<\/span><\/h1>/,
+  'the code and one sentence, the sentence localized');
 assert.match(html, /data-i18n-aria-label="publicNav\.menuAria"/,
-  'the standalone recovery navigation must keep an accessible localized name');
-for (const key of ['publicNav.garage', 'publicNav.home', 'publicNav.docs']) {
-  assert.ok(html.includes(`data-i18n="${key}"`), `404 recovery link must localize ${key}`);
-}
-assert.doesNotMatch(html, /public-nav|not-found__(?:eyebrow|panel|status|lede|coordinate|footer|reticle)/,
-  'the minimal 404 must not bring back global navigation, diagnostics, cards, or decoration');
+  'the recovery navigation keeps an accessible localized name');
+assert.match(html, /<!--cot:nav--><a class="public-skip"[\s\S]*?<nav class="public-nav"[\s\S]*?<!--\/cot:nav-->/,
+  'the shared bar (tools/public-shell.mjs)');
+assert.match(html, /<!--cot:footer--><footer class="public-footer"/, 'the shared footer');
 const recovery = /<nav class="not-found__actions"[\s\S]*?<\/nav>/.exec(html)?.[0] ?? '';
-const recoveryLinks = [...recovery.matchAll(/<a(?: class="([^"]+)")? href="([^"]+)">([\s\S]*?)<\/a>/g)]
-  .map((match) => ({ classes: match[1] ?? '', href: match[2], contents: match[3] }));
-assert.deepEqual(recoveryLinks.map(({ href }) => href), ['/', '/home', '/docs'],
-  'the minimal 404 must expose exactly Garage, Home, and Docs recovery actions');
-assert.ok(recoveryLinks[0]?.classes.includes('not-found__primary'),
-  'Return to Garage must remain the primary recovery action');
-for (const icon of ['garage', 'home', 'docs']) {
-  assert.ok(recovery.includes(`not-found__icon--${icon}`), `the ${icon} recovery action must carry its icon`);
+const recoveryLinks = [...recovery.matchAll(/<a class="([^"]+)" href="([^"]+)">([\s\S]*?)<\/a>/g)]
+  .map((match) => ({ classes: match[1], href: match[2], contents: match[3] }));
+assert.deepEqual(recoveryLinks.map(({ href }) => href), ['/', '/gallery', '/docs', '/studio', '/docs/filming#library'],
+  'the destinations: Play, Tank Gallery, Field Manual, Studio, Media');
+assert.ok(recoveryLinks[0]?.classes.includes('cot-c-btn--primary'), 'Play is the one primary action');
+for (const [i, key] of ['publicNav.playNow', 'publicNav.tankGallery', 'publicNav.fieldManual', 'publicNav.studio', 'publicNav.media'].entries()) {
+  assert.ok(recoveryLinks[i]?.contents.includes(`data-i18n="${key}"`) && recoveryLinks[i].contents.includes('<use href="#i-'),
+    `${key}: its icon and its localized name`);
 }
-assert.match(runtime, /bindStaticI18nAuto\(\)/,
-  'the standalone 404 runtime must bind localized static copy');
-assert.match(runtime, /localizeDocumentLinks\(document, locale\)/,
-  'the standalone 404 runtime must keep recovery links inside the active locale');
-assert.match(runtime, /synchronizeLocaleRoute\(locale\)/,
-  'the standalone 404 runtime must preserve locale-prefixed missing routes');
+assert.match(html, /data-i18n="notFound\.report"/, 'a broken link can be reported');
+assert.match(runtime, /from '\.\/publicNav\.ts'/,
+  'the shell runtime binds the static copy, keeps links in the active locale and preserves locale-prefixed routes');
 assert.match(runtime, /document\.title = t\('notFound\.metaTitle'\)/,
   'the localized 404 must update its browser title');
 // (the site media, 7acc117fd: the site fifty replaced the old gameplay stills; the 404 wears take s38's knockout still)
-assert.match(css, /url\('\/media\/site50-r14\/stills\/s38-church-knockout\.webp'\)/,
-  'the branded 404 must use an in-engine battle capture');
-assert.match(css, /place-items:center/,
-  'the minimal 404 composition must remain centered in the viewport');
-assert.match(css, /\.not-found h1\{[^}]*color:transparent;[^}]*-webkit-text-stroke:2px/,
-  'the 404 numerals must render as an outline instead of a solid fill');
-assert.match(css, /\.not-found__actions \.not-found__primary\{[^}]*background:var\(--nf-amber\);[^}]*color:#171006/,
-  'Return to Garage must use the full solid-orange primary treatment');
-assert.doesNotMatch(css, /\.not-found__content::before/,
-  'the 404 warning tape must not sit directly above the centered copy');
-assert.match(css, /body\.not-found-page::after\{[^}]*right:0;[^}]*bottom:0;[^}]*left:0;[^}]*background:var\(--cot-warning-tape\)/,
-  'the minimal 404 must use warning tape as a full-width viewport boundary');
-assert.match(css, /@media \(max-width:480px\)/,
-  'the error composition must have a dedicated compact layout');
+assert.match(html, /<img class="not-found__still" src="\/media\/site50-r14\/stills\/s38-church-knockout\.webp" alt="" width="1920" height="1080"/,
+  'the branded 404 must use an in-engine battle capture, dimensioned');
+assert.match(css, /@import url\('\.\.\/ui\/components\/components\.css'\)/, 'the 404 wears the shared kit');
+assert.match(css, /\.not-found__grade\{[^}]*background:var\(--home-hero-grade\)/, 'the hero\'s grade');
+assert.doesNotMatch(css, /(?:^|\})\s*(?:html|body)\b[^{}]*\{[^}]*overflow:hidden/m, 'no overflow trap on the page (the root and body scroll)');
 assert.match(vite, /notFound: resolve\(process\.cwd\(\), '404\.html'\)/,
   'the 404 page must ship as a production build entry');
 assert.match(vite, /function forceNotFoundStatus\([\s\S]*?res\.statusCode = 404;[\s\S]*?args\[0\] = 404;/,
@@ -65,4 +53,4 @@ assert.match(vite, /forceNotFoundStatus\(res\);[\s\S]*?const entry = localePath\
 assert.doesNotMatch(vercel, /"source":\s*"\/\(\.\*\)"/,
   'a catch-all production rewrite must not mask Vercel static 404 handling');
 
-console.log('notFound.selftest: minimal centered localized missing-route contract passed');
+console.log('notFound.selftest: the missing page in the landing grammar passed');
