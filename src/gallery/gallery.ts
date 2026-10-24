@@ -339,16 +339,20 @@ function anatomyVehicle(): AnatomyVehicle | null {
 function showAnatomy(mode: AnatomyMode, announce: boolean): void {
   const slow = setTimeout(() => showToast(t('gallery.anatomy.loading')), 250);
   anatomyReady = loadAnatomy().then(async (module) => {
-    clearTimeout(slow);
     // The pressed mode paints before its scene is built: with the module loaded the build ran in the press's own
-    // microtask and held its paint (click-perf-244).
+    // microtask and held its paint (click-perf-244). The layer shows once its programs are linked (click-perf-248: its
+    // first frame compiled them); the loading toast covers a slow build or link.
     await afterNextPaint();
-    const vehicle = anatomyVehicle();
-    if (!vehicle || activeMode !== mode) return;
+    let vehicle = anatomyVehicle();
+    if (!vehicle || activeMode !== mode) { clearTimeout(slow); return; }
     if (!anatomyView) {
       anatomyView = module.createAnatomyView(anatomyHost());
       anatomyView.setMetric(armorMetric);
     }
+    await anatomyView.prepare(vehicle);
+    clearTimeout(slow);
+    vehicle = anatomyVehicle();
+    if (!vehicle || activeMode !== mode) return;
     anatomyView.show(mode, vehicle);
     colorDamageOverlay();
     if (announce) showToast(t('gallery.view.toast.modeVisible', { count: anatomyView.count, mode: t(`gallery.view.mode.${mode}`).toLowerCase() }));
