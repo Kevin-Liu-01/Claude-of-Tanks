@@ -3867,7 +3867,7 @@
    "hostSweep": []
   },
   "type89": {
-   "inputHash": "d1b95045f050e832",
+   "inputHash": "567daba3ffce375f",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3891,7 +3891,7 @@
    "hostSweep": []
   },
   "type96_72_long": {
-   "inputHash": "c85e2cce001a6a71",
+   "inputHash": "4a0413fe82679a69",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3903,13 +3903,13 @@
    "hostSweep": []
   },
   "type96_80_feng": {
-   "inputHash": "5ceb4d9673550471",
+   "inputHash": "3530f13a09a34157",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
   },
   "type96b": {
-   "inputHash": "0788691c40862246",
+   "inputHash": "7979cf111da906c7",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -3921,7 +3921,7 @@
    "hostSweep": []
   },
   "ua_m1a1": {
-   "inputHash": "5eb154716173bfd7",
+   "inputHash": "d664ecf3b0c319ef",
    "runs": [
     {
      "index": 0,
@@ -3942,7 +3942,7 @@
       "sweepM": 0,
       "traverseM": 0,
       "exposure": 0.978,
-      "host": "turret<tejasRoofKitModulesStage3@profiles/abrams.ts:3227>"
+      "host": "turret<tejasRoofKitModulesStage3@profiles/abrams.ts:3244>"
      }
     }
    ],
@@ -3981,7 +3981,7 @@
    "hostSweep": []
   },
   "ua_m2a3_bradley": {
-   "inputHash": "6f6d3c6ead13b630",
+   "inputHash": "f5319f69a94a87fa",
    "runs": [
     {
      "index": 0,
@@ -4005,7 +4005,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.978,
-      "host": "hull<buildBradleyHullStage3@modern3.ts:2498>"
+      "host": "hull<buildBradleyHullStage3@modern3.ts:2514>"
      }
     }
    ],
@@ -4013,7 +4013,7 @@
    "hostSweep": []
   },
   "ua_t80bv": {
-   "inputHash": "fcceaee18a32cb23",
+   "inputHash": "9f38b32224ec41be",
    "runs": [],
    "uncovered": [],
    "hostSweep": []
@@ -4025,7 +4025,7 @@
    "hostSweep": []
   },
   "upior": {
-   "inputHash": "200e85144a174060",
+   "inputHash": "73f044ca79a4a23b",
    "runs": [
     {
      "index": 0,
@@ -4054,7 +4054,7 @@
    "hostSweep": []
   },
   "vickers_mk1": {
-   "inputHash": "25b31b83356eb457",
+   "inputHash": "f09c74a632601e82",
    "runs": [
     {
      "index": 0,
@@ -4097,7 +4097,7 @@
    "hostSweep": []
   },
   "xk2_black_panther": {
-   "inputHash": "2e2196b2ff22beea",
+   "inputHash": "f33dabfe8b5d3b35",
    "runs": [
     {
      "index": 0,
@@ -4120,7 +4120,7 @@
       "sweepM": 0,
       "traverseM": null,
       "exposure": 0.978,
-      "host": "hull<buildK2HullBody@modern3.ts:251>"
+      "host": "hull<buildK2HullBody@modern3.ts:252>"
      }
     }
    ],
