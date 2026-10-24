@@ -24,7 +24,7 @@
 .cot-nav{position:absolute;top:20px;right:26px;display:flex;align-items:stretch;gap:2px;
   height:36px;pointer-events:auto;z-index:8;}
 /* Tabs, not boxes (brand-ui S2): the display voice, the current destination on an accent underline. */
-.cot-header-nav .nv{font:600 max(11px,var(--fs-13))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;
+.cot-header-nav .nv{font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;
   color:var(--ink-2);cursor:pointer;display:inline-flex;align-items:center;gap:var(--s2);padding:0 var(--s3);
   background:transparent;border:0;border-radius:var(--control-radius);text-decoration:none;
   transition:color var(--dur-fast) var(--ease-enter),background-color var(--dur-fast) var(--ease-enter);}
@@ -354,10 +354,10 @@ body[data-cot-panels='overlay'] .cot-garage .stats h3.is-long{-webkit-line-clamp
   filter:drop-shadow(0 4px 6px rgba(0,0,0,.78));}
 .cot-gallery-link{width:100%;height:36px;margin-top:var(--s3);padding:0 var(--s3);display:flex;align-items:center;gap:var(--s2);
   color:var(--ink-1);background:var(--btn-secondary-fill);border:1px solid var(--btn-secondary-edge);border-radius:var(--control-radius);
-  cursor:pointer;text-align:left;font:600 max(11px,var(--fs-13))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;
+  cursor:pointer;text-align:left;font:600 max(var(--fs-floor-11),var(--fs-13))/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;
   transition:background-color var(--dur-fast) var(--ease-enter),border-color var(--dur-fast) var(--ease-enter);}
 .cot-gallery-link svg{width:16px;height:16px;color:var(--ink-2);flex:0 0 auto;}
-.cot-gallery-link .go{margin-left:auto;color:var(--ink-3);font-size:max(11px,var(--fs-14));line-height:1;}
+.cot-gallery-link .go{margin-left:auto;color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-14));line-height:1;}
 .cot-gallery-link:hover,.cot-gallery-link:focus-visible{background:var(--surface-hover);border-color:var(--line-3);outline:none;}
 .cot-gallery-link:focus-visible{box-shadow:var(--focus-ring);}
 .cot-stat-section{position:relative;padding:var(--s3) var(--s4) var(--s4);margin-bottom:var(--s2);

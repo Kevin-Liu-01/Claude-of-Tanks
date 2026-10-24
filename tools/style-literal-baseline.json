@@ -50,7 +50,6 @@
     "src/ui/settings.ts": {"colour":205,"fontSize":24,"letterSpacing":16,"zIndex":4,"shadow":16,"duration":11,"important":1},
     "src/ui/settingsAccess.ts": {"colour":4,"fontSize":0,"letterSpacing":0,"zIndex":1,"shadow":0,"duration":1,"important":0},
     "src/ui/shotInfo.ts": {"colour":86,"fontSize":50,"letterSpacing":36,"zIndex":3,"shadow":6,"duration":4,"important":15},
-    "src/ui/showroom.css": {"colour":0,"fontSize":12,"letterSpacing":0,"zIndex":0,"shadow":0,"duration":0,"important":0},
     "src/ui/spectatorSwitcher.ts": {"colour":27,"fontSize":12,"letterSpacing":4,"zIndex":3,"shadow":4,"duration":5,"important":0},
     "src/ui/studioPanel.ts": {"colour":222,"fontSize":62,"letterSpacing":36,"zIndex":7,"shadow":14,"duration":3,"important":0},
     "src/ui/studioPlanView.ts": {"colour":0,"fontSize":1,"letterSpacing":1,"zIndex":0,"shadow":0,"duration":0,"important":0},
