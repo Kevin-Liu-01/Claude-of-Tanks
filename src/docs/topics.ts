@@ -56,7 +56,7 @@ export const topics: Record<string, TopicDefinition> = {
     label: t('docs.topic.start.label'),
     title: t('docs.topic.start.title'),
     lede: t('docs.topic.start.lede'),
-    hero: '/media/site50-r14/loops/s27-caravanserai-kill.webm',
+    hero: '/media/site50-r14/loops/s226-church-duel.webm',
     icon: 'manual',
     sectionIcons: [],
     sections: [],
@@ -312,8 +312,8 @@ export const TOPIC_HERO_RUNGS: Readonly<Record<string, { readonly r960?: true; r
   's05-barn-advance': { r960: true, phone: true },
   's07-lake-shellfire': { r960: true, phone: true },
   's18-street-knockout': { r960: true, phone: true },
+  's226-church-duel': { r960: true, phone: true },
   's26-minaret-fire': { r960: true, phone: true },
-  's27-caravanserai-kill': { phone: true },
 };
 const LOOP_HERO = /^\/media\/site50-r14\/loops\/([\w-]+)\.webm$/;
 
