@@ -2376,6 +2376,12 @@ with the production lease: the host's socket and links drop at once, both peers 
 against 8.0 s), `mp-p2p-headless.selftest`, `mp-room-lifecycle.selftest`, `roomWorkerProgram.selftest` (the Worker
 program typechecks). Ships with the rooms Worker (a planned Worker release) and the client; either alone is inert.
 
+**Corroboration (security audit 2026-10-22).** One commander's claim alone no longer skips the lease: a seat could
+claim falsely and move a healthy match on any blip of the host's room socket (and win the host role if it ranked first).
+The room now elects at once only when a strict majority of the match's connected commanders (seat-token holders) claim,
+counting only claims made after the host's latest accepted report; in a two-commander match the lone peer is a majority.
+A crashed host is silent to every peer, so the fast election holds. `tools/mp-p2p-room-double.ts` mirrors the rule.
+
 ### 13.27 The room's bots: seated by one planner, TEAM NATIONS (gameplay-modes-228, 2026-10-18)
 
 **Why.** Every room bot cloned a human's pick (an empty side cloned the host's tank), and the co-op rooms seated no

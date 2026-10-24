@@ -32,7 +32,12 @@ interface PlayerRecord {
   damage: number;
   bestDamage: number;
   lastBattle: BattleRecord | null;
+  /** The latest completed battles, newest first (the Deploy screen's recent battles), at most RECENT_BATTLES. */
+  recentBattles: BattleRecord[];
 }
+
+/** How many completed battles the profile keeps for the Deploy screen. */
+const RECENT_BATTLES = 3;
 
 interface BattleResultInput {
   result?: RuntimeValue;
@@ -94,6 +99,7 @@ function blankProfile(): PlayerRecord {
     damage: 0,
     bestDamage: 0,
     lastBattle: null,
+    recentBattles: [],
   };
 }
 
@@ -125,7 +131,14 @@ function sanitizeProfile(value: RuntimeValue): PlayerRecord {
     damage: finiteInt(source.damage),
     bestDamage: finiteInt(source.bestDamage),
     lastBattle: sanitizeBattle(source.lastBattle),
+    recentBattles: recentOf(source.recentBattles, source.lastBattle),
   };
+}
+
+/** The stored recent battles, or the last battle alone for a profile saved before the list existed. */
+function recentOf(value: RuntimeValue, last: RuntimeValue): BattleRecord[] {
+  const list = Array.isArray(value) ? value : [last];
+  return list.map(sanitizeBattle).filter((battle): battle is BattleRecord => battle !== null).slice(0, RECENT_BATTLES);
 }
 
 function loadProfile(): PlayerRecord {
@@ -164,6 +177,11 @@ export function getLastBattleRecord(): BattleRecord | null {
   return clone(lastBattle);
 }
 
+/** Copies of the latest completed battles, newest first, including across page reloads. */
+export function getRecentBattles(): BattleRecord[] {
+  return clone(loadProfile().recentBattles);
+}
+
 /** Persist one completed battle without awarding fictional currencies. */
 export function recordBattleResult({
   result,
@@ -195,6 +213,7 @@ export function recordBattleResult({
   profile.damage += battle.damage;
   profile.bestDamage = Math.max(profile.bestDamage, battle.damage);
   profile.lastBattle = battle;
+  profile.recentBattles = [battle, ...profile.recentBattles].slice(0, RECENT_BATTLES);
   lastBattle = battle;
   saveProfile();
   return clone(battle);

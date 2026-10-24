@@ -1,227 +1,311 @@
 /* The Deploy screen (brand-ui S3, SPEC 12.1.4). Copyright © 2026 Kevin B. Liu.
-   The Garage's battle menu opens as one full screen: the modes on the left as four cards and a grid of rows, the
-   selected mode's plate on the right with its rules, sides, time and the tank, and one Deploy button under it. Every
-   value reads a design token (src/ui/tokens); the markup and its behaviour stay in garage.ts. */
+   The Premiere direction's own Deploy page, streams/brand-ui/phase2/bui01/src/pages/04-deploy.html (and the phone page
+   91-phone-deploy.html for folded layouts), on the design tokens and the live markup (garage.ts):
+   - the bar: back to the Garage, the title, the four ways to play;
+   - the main column: the four core modes as picture cards, the rest as rows, then the campaign's next operation and the
+     player's recent battles;
+   - the side plate: the selected mode and its six rules, the battlefield beside its tactical map, the sides and the
+     time, the tank and its loadout, and one Deploy bar. */
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
 @layer surfaces{
-.cot-garage .cot-battle-menu{--deploy-plate-w:clamp(360px,32vw,520px);}
 .cot-garage .cot-battle-menu.open{position:fixed;inset:0;z-index:var(--z-modal);width:auto;max-width:none;max-height:none;
-  transform:none;margin:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);border:0;border-radius:0;box-shadow:none;clip-path:none;
-  background:var(--surface-page);color:var(--ink-1);font-family:var(--font-ui);overflow:hidden;}
+  transform:none;margin:0;display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);border:0;border-radius:0;
+  box-shadow:none;clip-path:none;background:var(--surface-scene);color:var(--ink-1);font-family:var(--font-body);overflow:hidden;}
 body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right:0;bottom:0;left:0;max-height:none;}
+/* The Garage shell passes the pointer through (.cot-garage is pointer-events:none, its controls opt in). The open
+   screen takes every press itself: without this, Back hit the Garage's wordmark under it and left for /home, and every
+   card and tab hit the Garage beneath (nav-perf-242 recording, 2026-10-23). */
+.cot-garage .cot-battle-menu.open{pointer-events:auto;}
 
-/* head: back to the Garage, the title, the four ways to play */
-.cot-garage .cot-deploy-head{grid-column:1/-1;display:flex;align-items:center;gap:var(--s6);min-height:72px;
-  padding:var(--s3) var(--s6);border-bottom:1px solid var(--line-1);}
-.cot-garage .cot-deploy-back{display:inline-flex;align-items:center;gap:var(--s2);height:var(--btn-h-m);padding:0 var(--s3);
-  border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-2);cursor:pointer;
-  font:600 var(--fs-14)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;}
-.cot-garage .cot-deploy-back:hover{color:var(--ink-1);background:var(--surface-hover);}
-.cot-garage .cot-deploy-title{margin:0;font:700 var(--fs-32)/1 var(--font-display);letter-spacing:var(--track-title);
-  text-transform:uppercase;color:var(--ink-1);}
+/* ---- the bar (.bar) ---- */
+.cot-garage .cot-deploy-head{grid-column:1/-1;display:flex;align-items:center;gap:26px;height:60px;padding:0 24px;
+  border-bottom:1px solid var(--line-1);}
+.cot-garage .cot-deploy-back{display:flex;align-items:center;gap:8px;height:44px;padding:0;border:0;background:transparent;
+  color:var(--ink-2);cursor:pointer;font:500 var(--fs-14)/1 var(--font-body);}
+.cot-garage .cot-deploy-back svg{width:18px;height:18px;}
+@media (hover:hover){.cot-garage .cot-deploy-back:hover{color:var(--ink-1);}}
+.cot-garage .cot-deploy-title{margin:0 8px 0 0;font:700 var(--fs-28)/1 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
 .cot-garage .cot-deploy-tablist{display:contents;}
-.cot-garage .cot-deploy-tabs{display:flex;align-items:stretch;gap:var(--s1);min-width:0;overflow-x:auto;scrollbar-width:none;}
-.cot-garage .cot-deploy-tab{display:inline-flex;align-items:center;gap:var(--s2);height:var(--btn-h-l);padding:0 var(--s4);
-  border:0;border-radius:0;background:transparent;color:var(--ink-2);cursor:pointer;white-space:nowrap;
-  font:600 var(--fs-16)/1 var(--font-display);letter-spacing:var(--track-label-s);}
-.cot-garage .cot-deploy-tab:hover{color:var(--ink-1);}
-.cot-garage .cot-deploy-tab[aria-selected='true']{color:var(--ink-1);
-  background:linear-gradient(var(--accent),var(--accent)) bottom/100% 2px no-repeat;}
-.cot-garage .cot-deploy-tab .cot-deploy-count{padding:var(--s1) var(--s2);border:1px solid var(--line-2);border-radius:var(--chip-radius);
-  font:500 var(--fs-12)/1 var(--font-mono);color:var(--ink-2);}
+.cot-garage .cot-deploy-tabs{display:flex;align-items:stretch;gap:28px;height:60px;min-width:0;overflow-x:auto;scrollbar-width:none;}
+.cot-garage .cot-deploy-tab{position:relative;display:inline-flex;align-items:center;gap:8px;height:60px;padding:0;border:0;
+  background:transparent;color:var(--ink-3);cursor:pointer;white-space:nowrap;font:600 var(--fs-15)/1 var(--font-display);}
+.cot-garage .cot-deploy-tab svg{width:16px;height:16px;}
+@media (hover:hover){.cot-garage .cot-deploy-tab:hover{color:var(--ink-1);}}
+.cot-garage .cot-deploy-tab[aria-selected='true']{color:var(--ink-1);}
+.cot-garage .cot-deploy-tab[aria-selected='true']::after{content:'';position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--accent);}
+.cot-garage .cot-deploy-tab .cot-deploy-count{margin-left:2px;display:inline-flex;align-items:center;height:20px;padding:0 7px;
+  border-radius:var(--control-radius);box-shadow:var(--ring-2);font:600 var(--fs-11)/1 var(--font-display);color:var(--ink-2);}
 
-/* the two columns: the modes scroll on their own, the plate scrolls above its Deploy button */
+/* ---- the columns: the main column (61 %) and the side plate (39 %), each scrolling on its own ---- */
 .cot-garage .cot-battle-menu.open .cot-battle-menu-scroll{grid-row:2;display:grid;min-height:0;overflow:hidden;
-  grid-template-columns:minmax(0,1fr) var(--deploy-plate-w);padding:0;background:none;}
-.cot-garage .cot-battle-menu.open .cot-battle-mode-list{min-height:0;overflow:auto;display:grid;align-content:start;gap:var(--s3);
-  padding:var(--s6);scrollbar-gutter:stable;}
+  grid-template-columns:minmax(0,61fr) minmax(0,39fr);gap:12px;padding:16px 24px 24px;background:none;}
+.cot-garage .cot-battle-menu.open .cot-battle-mode-list{min-height:0;overflow:auto;display:flex;flex-direction:column;gap:14px;
+  padding:0;scrollbar-width:thin;}
 .cot-garage .cot-battle-menu.open .cot-deploy-panel[hidden]{display:none;}
-/* the campaign takes both columns: each operation launches from its own row */
-/* the campaign: the plate keeps only the tank you deploy with; each operation launches from its own row */
+.cot-garage .cot-battle-menu.open .cot-deploy-campaign{min-height:0;overflow:auto;padding:0;}
+/* the campaign tab: each operation launches from its own row; the plate keeps the tank you deploy with */
 .cot-garage .cot-battle-menu.open[data-deploy-tab='campaign'] :is(.cot-battle-details,[data-battle-launch]){display:none;}
 .cot-garage .cot-battle-menu.open[data-deploy-tab='campaign'] .cot-battle-menu-foot{grid-row:2;}
-.cot-garage .cot-battle-menu.open .cot-deploy-campaign{min-height:0;overflow:auto;padding:var(--s6);}
 
-/* four cards: the core modes, the glyph as their picture */
-.cot-garage .cot-deploy-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3);}
-.cot-garage .cot-battle-choice.cot-deploy-card{min-height:clamp(208px,30vh,320px);display:grid;grid-template-columns:none;
-  grid-template-rows:1fr auto auto;align-items:end;gap:var(--s2);padding:var(--s5);text-align:left;
-  border:1px solid var(--line-1);border-radius:var(--card-radius);
-  background:radial-gradient(120% 90% at 0% 0%,color-mix(in oklab,var(--mode-color) 22%,transparent),transparent 62%),var(--surface-plate);}
-.cot-garage .cot-deploy-card .choice-icon{align-self:start;width:56px;height:56px;color:var(--mode-color);}
-.cot-garage .cot-deploy-card .choice-icon svg{width:44px;height:44px;}
-.cot-garage .cot-deploy-card .choice-name{font:700 var(--fs-24)/1.05 var(--font-display);letter-spacing:var(--track-title);color:var(--ink-1);}
-.cot-garage .cot-battle-choice.cot-deploy-card::after{display:none;}
+/* ---- the four core modes (.core, .mode) ---- */
+.cot-garage .cot-deploy-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;flex:none;}
+.cot-garage .cot-battle-choice.cot-deploy-card{position:relative;display:block;height:clamp(196px,25vh,280px);padding:0;overflow:hidden;
+  border:0;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--e1);color:var(--ink-1);
+  text-align:left;cursor:pointer;}
+.cot-garage .cot-deploy-card-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.cot-garage .cot-deploy-card .choice-icon{position:absolute;z-index:var(--z-lift);left:12px;top:12px;width:38px;height:38px;
+  display:grid;place-items:center;border-radius:var(--control-radius);background:var(--glyph-plate);box-shadow:var(--ring-3);
+  color:var(--mode-color);}
+.cot-garage .cot-deploy-card .choice-icon svg{width:21px;height:21px;}
+.cot-garage .cot-deploy-card .cot-deploy-choice-t{position:absolute;z-index:var(--z-lift);left:14px;right:12px;bottom:12px;
+  display:flex;flex-direction:column;gap:9px;}
+.cot-garage .cot-deploy-card .choice-name{font:700 var(--fs-20)/1 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
+.cot-garage .cot-battle-choice.cot-deploy-card[aria-pressed='true']{outline:2px solid var(--accent);outline-offset:0;}
+.cot-garage .cot-battle-choice.cot-deploy-card[aria-pressed='true'] .choice-icon{background:var(--accent);color:var(--ink-on-accent);box-shadow:none;}
 
-/* the specialist modes as rows */
-.cot-garage .cot-deploy-rows{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2);}
-.cot-garage .cot-deploy-rows .cot-battle-choice{min-height:68px;grid-template-columns:40px minmax(0,1fr);gap:var(--s3);
-  padding:var(--s3) var(--s4);text-align:left;border:1px solid var(--line-1);border-radius:var(--control-radius);
-  background:var(--surface-plate);}
-.cot-garage .cot-deploy-rows .choice-icon{width:40px;height:40px;color:var(--mode-color);}
-.cot-garage .cot-deploy-rows .choice-icon svg{width:24px;height:24px;}
-.cot-garage .cot-deploy-rows .choice-name{font:600 var(--fs-16)/1.1 var(--font-display);letter-spacing:var(--track-label-s);color:var(--ink-1);}
+/* ---- the rest as rows (.specs, .row) ---- */
+.cot-garage .cot-deploy-rows{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;flex:none;}
+.cot-garage .cot-deploy-rows .cot-battle-choice{display:flex;align-items:center;gap:12px;min-height:54px;padding:0 12px 0 8px;border:0;
+  border-radius:var(--control-radius);background:var(--row-plate);box-shadow:var(--e1);color:var(--ink-1);text-align:left;cursor:pointer;}
+.cot-garage .cot-deploy-rows .choice-icon{display:grid;place-items:center;width:38px;height:38px;flex:none;border-radius:var(--control-radius);
+  background:var(--fill-soft);color:var(--mode-color);}
+.cot-garage .cot-deploy-rows .choice-icon svg{width:21px;height:21px;}
+.cot-garage .cot-deploy-rows .choice-name{display:block;margin-bottom:6px;font:600 var(--fs-15)/1 var(--font-display);text-transform:uppercase;}
+.cot-garage .cot-deploy-rows .cot-battle-choice[aria-pressed='true']{box-shadow:var(--ring-accent);background:var(--accent-wash);}
+@media (hover:hover){.cot-garage .cot-deploy-rows .cot-battle-choice:hover{background-color:var(--surface-hover);}}
 .cot-garage .cot-deploy-rows .cot-battle-choice::after{display:none;}
+/* the selection ring says which mode is chosen; the old menu's tick stays off */
+.cot-garage .cot-deploy-panel .cot-battle-choice::before{display:none;}
+/* a card's fade sits under the type set on its foot */
+.cot-garage .cot-battle-choice.cot-deploy-card::after{content:'';display:block;position:absolute;inset:0;background:var(--media-fade);}
 
-/* every choice: its rule chips, its selected state */
-.cot-garage .cot-deploy-chips{display:flex;flex-wrap:wrap;gap:var(--s1) var(--s3);margin-top:var(--s1);
-  font:500 var(--fs-12)/1.2 var(--font-mono);color:var(--ink-2);}
-.cot-garage .cot-deploy-chips span{display:inline-flex;align-items:center;gap:var(--s1);white-space:nowrap;}
-.cot-garage .cot-deploy-chips .cot-i{color:var(--ink-3);}
-.cot-garage .cot-deploy-panel .cot-battle-choice{color:var(--ink-1);}
-.cot-garage .cot-deploy-panel .cot-battle-choice:hover{border-color:var(--line-3);background-color:var(--surface-hover);}
-.cot-garage .cot-deploy-panel .cot-battle-choice[aria-pressed='true']{border-color:var(--mode-color);color:var(--ink-1);
-  outline:1px solid var(--mode-color);outline-offset:-2px;}
-.cot-garage .cot-deploy-panel .cot-battle-choice[aria-pressed='true'] .choice-icon{color:var(--mode-color);}
+/* every choice's rules: the data voice (.rules) */
+.cot-garage .cot-deploy-chips{display:flex;gap:12px;font:500 var(--fs-12)/1 var(--font-data);color:var(--ink-2);}
+.cot-garage .cot-deploy-rows .cot-deploy-chips{gap:10px;}
+.cot-garage .cot-deploy-chips span{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;}
+.cot-garage .cot-deploy-chips svg{width:14px;height:14px;color:var(--ink-3);}
 
-/* the campaign: six operations, the hollow index as their mark */
-.cot-garage .cot-deploy-ops{display:grid;gap:var(--s2);}
-.cot-garage .cot-deploy-op{display:grid;grid-template-columns:72px 176px minmax(0,1fr) auto;align-items:center;gap:var(--s4);
-  min-height:88px;padding:var(--s3) var(--s5);border:1px solid var(--line-1);border-radius:var(--control-radius);background:var(--surface-plate);}
-.cot-garage .cot-deploy-op-index{font:700 var(--fs-44)/1 var(--font-display);color:var(--hollow-fill);
-  -webkit-text-stroke:var(--hollow-stroke) var(--hollow-ink);}
+/* ---- the lower band: the campaign's next operation and the recent battles (.lower, .camp-card, .rec) ---- */
+.cot-garage .cot-deploy-lower{display:grid;grid-template-columns:1.05fr 1fr 1fr 1fr;gap:10px;flex:1 0 auto;min-height:clamp(220px,30vh,320px);}
+.cot-garage .cot-deploy-lower:empty{display:none;}
+/* before the first battle the campaign card takes the band's first half */
+.cot-garage .cot-deploy-camp:only-child{grid-column:span 2;}
+.cot-garage .cot-deploy-camp{position:relative;overflow:hidden;border-radius:var(--control-radius);background:var(--surface-raised);box-shadow:var(--e1);}
+.cot-garage .cot-deploy-camp>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.cot-garage .cot-deploy-camp::after{content:'';position:absolute;inset:0;background:var(--media-fade-full);}
+.cot-garage .cot-deploy-camp .t{position:absolute;z-index:var(--z-lift);left:14px;right:14px;bottom:12px;display:flex;flex-direction:column;gap:8px;}
+.cot-garage .cot-deploy-camp .t b{font:700 var(--fs-20)/1.05 var(--font-display);text-transform:uppercase;}
+.cot-garage .cot-deploy-camp .op{display:flex;gap:4px;}
+.cot-garage .cot-deploy-camp .op i{flex:1;height:4px;background:var(--fill-scale);}
+.cot-garage .cot-deploy-camp .op i.d{background:var(--ink-1);}
+.cot-garage .cot-deploy-camp .op i.c{background:var(--accent);}
+.cot-garage .cot-deploy-camp .cot-c-btn{align-self:flex-start;}
+.cot-garage .cot-deploy-rec{position:relative;display:flex;flex-direction:column;overflow:hidden;border-radius:var(--control-radius);
+  background:var(--row-plate);box-shadow:var(--e1);}
+.cot-garage .cot-deploy-rec .cot-card{position:relative;flex:0 0 58%;width:100%;height:auto;min-height:0;margin:0;border-radius:0;
+  box-shadow:none;pointer-events:none;}
+.cot-garage .cot-deploy-rec .res{display:flex;flex-direction:column;gap:7px;padding:9px 12px;}
+.cot-garage .cot-deploy-rec .w{display:flex;align-items:center;gap:7px;font:700 var(--fs-15)/1 var(--font-display);text-transform:uppercase;}
+.cot-garage .cot-deploy-rec .w svg{width:15px;height:15px;}
+.cot-garage .cot-deploy-rec .w.v{color:var(--ok);}
+.cot-garage .cot-deploy-rec .w.d{color:var(--danger);}
+.cot-garage .cot-deploy-rec .w.n{color:var(--ink-2);}
+.cot-garage .cot-deploy-rec .cot-c-rules{gap:4px 10px;color:var(--ink-3);}
+
+/* ---- the campaign tab: six operations, the hollow index as their mark ---- */
+.cot-garage .cot-deploy-ops{display:grid;gap:8px;}
+.cot-garage .cot-deploy-op{display:grid;grid-template-columns:72px 176px minmax(0,1fr) auto;align-items:center;gap:16px;
+  min-height:88px;padding:12px 18px;border-radius:var(--control-radius);background:var(--row-plate);box-shadow:var(--e1);}
+.cot-garage .cot-deploy-op-index{font:700 var(--fs-44)/1 var(--font-display);color:var(--hollow-fill);-webkit-text-stroke:var(--hollow-stroke) var(--hollow-ink);}
 .cot-garage .cot-deploy-op.cleared .cot-deploy-op-index{color:var(--accent);-webkit-text-stroke:0;}
-.cot-garage .cot-deploy-op-name{display:block;font:600 var(--fs-18)/1.15 var(--font-display);color:var(--ink-1);}
-.cot-garage .cot-deploy-op-meta{display:flex;flex-wrap:wrap;gap:var(--s1) var(--s4);margin-top:var(--s2);
-  font:500 var(--fs-12)/1.2 var(--font-mono);color:var(--ink-2);}
-.cot-garage .cot-deploy-op-meta span{display:inline-flex;align-items:center;gap:var(--s1);}
-.cot-garage .cot-deploy-op-stars{display:inline-flex;gap:var(--s1);color:var(--ink-4);}
+.cot-garage .cot-deploy-op-name{display:block;font:600 var(--fs-18)/1.15 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
+.cot-garage .cot-deploy-op-meta{display:flex;flex-wrap:wrap;gap:4px 16px;margin-top:8px;font:500 var(--fs-12)/1.2 var(--font-data);color:var(--ink-2);}
+.cot-garage .cot-deploy-op-meta span{display:inline-flex;align-items:center;gap:5px;}
+.cot-garage .cot-deploy-op-meta svg{color:var(--ink-3);}
+.cot-garage .cot-deploy-op-stars{display:inline-flex;gap:4px;color:var(--ink-4);}
 .cot-garage .cot-deploy-op-stars .on{color:var(--accent);}
-.cot-garage .cot-deploy-op-map{display:block;height:66px;border-radius:var(--r1);background:var(--surface-raised) center/cover no-repeat;}
+.cot-garage .cot-deploy-op-map{display:block;height:66px;border-radius:var(--control-radius);background:var(--surface-raised) center/cover no-repeat;}
 .cot-garage .cot-deploy-op.locked{opacity:.72;}
 .cot-garage .cot-deploy-op-diff{display:inline-flex;gap:2px;}
 .cot-garage .cot-deploy-op-diff i{width:4px;height:12px;border-radius:1px;background:var(--line-2);}
 .cot-garage .cot-deploy-op-diff i.on{background:var(--ink-2);}
-.cot-garage .cot-deploy-op.ready .cot-deploy-op-launch{border-color:var(--btn-primary-fill);background:var(--btn-primary-fill);color:var(--btn-primary-ink);}
-.cot-garage .cot-deploy-op.ready .cot-deploy-op-launch:hover{background:var(--btn-primary-hover);}
-.cot-garage .cot-deploy-op-launch{height:var(--btn-h-m);padding:0 var(--s5);border:1px solid var(--btn-secondary-edge);
-  border-radius:var(--control-radius);background:var(--btn-secondary-fill);color:var(--ink-1);cursor:pointer;
-  font:600 var(--fs-14)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;}
-.cot-garage .cot-deploy-op-launch:hover{background:var(--surface-hover);}
+.cot-garage .cot-deploy-op-launch{height:var(--btn-h-m);padding:0 22px;border:0;border-radius:var(--control-radius);background:var(--btn-media-fill);
+  box-shadow:var(--ring-3);color:var(--ink-1);cursor:pointer;font:600 var(--fs-15)/1 var(--font-display);letter-spacing:var(--track-label-s);
+  text-transform:uppercase;}
+.cot-garage .cot-deploy-op.ready .cot-deploy-op-launch{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-shadow);}
+@media (hover:hover){.cot-garage .cot-deploy-op-launch:hover{background:var(--surface-hover);}
+  .cot-garage .cot-deploy-op.ready .cot-deploy-op-launch:hover{background:var(--btn-primary-hover);}}
 .cot-garage .cot-deploy-op-lock{color:var(--ink-3);}
 
-/* the plate: the selected mode, its rules and the deployment */
-.cot-garage .cot-deploy-plate{min-height:0;display:grid;grid-template-rows:minmax(0,1fr) auto;
-  border-left:1px solid var(--line-1);background:var(--surface-plate);}
-.cot-garage .cot-battle-menu.open .cot-battle-details{min-height:0;overflow:auto;display:grid;align-content:start;gap:var(--s4);
-  padding:var(--s5) var(--s6);border:0;background:none;}
-.cot-garage .cot-battle-menu.open .cot-battle-preview{display:grid;grid-template-columns:56px minmax(0,1fr);align-items:center;gap:var(--s4);margin:0;}
-.cot-garage .cot-battle-menu.open .cot-battle-preview-icon{display:grid;place-items:center;width:56px;height:56px;border:0;border-radius:var(--control-radius);
-  background:var(--mode-color);color:var(--ink-on-accent);}
-.cot-garage .cot-battle-menu.open .cot-battle-preview-icon svg{width:32px;height:32px;}
-.cot-garage .cot-battle-menu.open .cot-battle-preview h3{margin:0;font:700 var(--fs-32)/1 var(--font-display);
-  letter-spacing:var(--track-title);text-transform:uppercase;color:var(--ink-1);}
-.cot-garage .cot-deploy-rules{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2);margin:0;}
-.cot-garage .cot-deploy-rule{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:'value value' 'icon label';
-  align-items:center;gap:var(--s1);padding:var(--s2) var(--s3);border:1px solid var(--line-1);
-  border-radius:var(--control-radius);background:var(--surface-raised);}
-.cot-garage .cot-deploy-rule .cot-i{grid-area:icon;width:14px;height:14px;color:var(--ink-3);}
-.cot-garage .cot-deploy-rule dd{grid-area:value;margin:0;font:600 var(--fs-16)/1.1 var(--font-display);color:var(--ink-1);}
-.cot-garage .cot-deploy-rule dt{grid-area:label;min-width:0;font:500 var(--fs-12)/1.2 var(--font-ui);color:var(--ink-3);}
-.cot-garage .cot-battle-menu.open .cot-battle-menu-label{padding:0 0 var(--s2);color:var(--ink-2);
-  font:600 var(--fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;}
-/* the plate packs its controls: the time and sides chips speak for themselves (their group names stay accessible), the
-   teams and the enemy nation share a row, and the arrangement's rules readout, which the six tiles already show, stays
-   only for assistive technology */
-.cot-garage .cot-battle-menu.open .cot-battle-solo-options{gap:var(--s3);}
+/* ---- the side plate (.side) ---- */
+.cot-garage .cot-deploy-plate{container:deploy-plate/inline-size;min-height:0;display:grid;grid-template-rows:minmax(0,1fr) auto;padding:18px;gap:12px;
+  border-radius:var(--control-radius);background:var(--side-plate);box-shadow:var(--e2);}
+.cot-garage .cot-battle-menu.open .cot-battle-details{min-height:0;overflow:auto;display:flex;flex-direction:column;gap:12px;
+  padding:0;border:0;background:none;scrollbar-width:thin;}
+/* the selected mode (.sel-h) */
+.cot-garage .cot-battle-menu.open .cot-battle-preview{display:flex;align-items:center;gap:14px;margin:0;}
+.cot-garage .cot-battle-menu.open .cot-battle-preview-icon{display:grid;place-items:center;width:46px;height:46px;flex:none;border:0;
+  border-radius:var(--control-radius);background:var(--accent);color:var(--ink-on-accent);}
+.cot-garage .cot-battle-menu.open .cot-battle-preview-icon svg{width:26px;height:26px;}
+.cot-garage .cot-battle-menu.open .cot-battle-preview h3{margin:0;font:700 var(--fs-32)/1 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
+/* its six rules (.rc): the glyph, the value, the name */
+.cot-garage .cot-deploy-rules{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin:0;}
+.cot-garage .cot-deploy-rule{display:flex;flex-direction:column;align-items:center;gap:7px;padding:9px 6px 8px;border-radius:var(--control-radius);
+  background:var(--fill-quiet);box-shadow:var(--ring-1);text-align:center;}
+.cot-garage .cot-deploy-rule>svg{width:19px;height:19px;color:var(--ink-2);}
+.cot-garage .cot-deploy-rule dd{order:1;margin:0;font:700 var(--fs-15)/1 var(--font-display);white-space:nowrap;color:var(--ink-1);}
+.cot-garage .cot-deploy-rule dt{order:2;min-width:0;font:400 var(--fs-11)/1 var(--font-body);color:var(--ink-3);}
+/* a plate narrower than the six values' widest ("Elimination") sets them three across */
+@container deploy-plate (max-width:640px){.cot-garage .cot-deploy-rules{grid-template-columns:repeat(3,minmax(0,1fr));}}
+/* the battlefield (.bfield): its art, name and region over a fade, the count to pick from, the tactical map beside it */
+.cot-garage .cot-deploy-field{position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;flex:1 0 auto;
+  min-height:clamp(150px,22vh,240px);overflow:hidden;border-radius:var(--control-radius);background:var(--surface-page);box-shadow:var(--e1);}
+.cot-garage .cot-deploy-field-card{position:relative;display:block;min-width:0;height:100%;padding:0;border:0;background:none;
+  color:var(--ink-1);cursor:pointer;text-align:left;overflow:hidden;}
+.cot-garage .cot-deploy-field-card[aria-expanded='true']{outline:2px solid var(--accent);outline-offset:-2px;}
+.cot-garage .cot-deploy-field-thumb{position:absolute;inset:0;display:block;background:var(--surface-hover) center/cover no-repeat;}
+.cot-garage .cot-deploy-field-thumb::after{content:'';position:absolute;inset:0;background:var(--media-fade-soft);}
+.cot-garage .cot-deploy-field-thumb .random-map-mosaic{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;width:100%;height:100%;}
+.cot-garage .cot-deploy-field-thumb .random-map-tile{display:block;background:center/cover no-repeat;}
+.cot-garage .cot-deploy-field-nm{position:absolute;z-index:var(--z-lift);left:14px;right:12px;bottom:12px;display:flex;flex-direction:column;gap:8px;}
+.cot-garage .cot-deploy-field-name{font:700 var(--fs-24)/1 var(--font-display);text-transform:uppercase;}
+.cot-garage .cot-deploy-field-tags .cot-c-rules{gap:10px;font-family:var(--font-body);color:var(--ink-2);}
+.cot-garage .cot-deploy-field-all{position:absolute;z-index:var(--z-lift);left:12px;top:12px;background:var(--glyph-plate);}
+.cot-garage .cot-deploy-field-mm{position:relative;height:100%;aspect-ratio:1;background:var(--surface-page);border-left:1px solid var(--line-2);}
+.cot-garage .cot-deploy-field-mm img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+.cot-garage .cot-deploy-field-mm img[hidden]{display:none;}
+/* the random battlefield has no one map to show: its mosaic takes the whole card */
+.cot-garage .cot-deploy-field-mm:has(img[hidden]){display:none;}
+/* the battlefield picker opens over the plate */
+.cot-garage .cot-deploy-field-pop{position:absolute;left:0;right:0;top:0;max-height:min(440px,58vh);overflow:auto;padding:12px;
+  border-radius:var(--control-radius);background:var(--surface-menu);box-shadow:var(--e3);}
+.cot-garage .cot-deploy-field-pop[hidden]{display:none;}
+.cot-garage .cot-deploy-field-pop .cot-maps{display:flex;}
+/* the sides, the time and the mode's own settings (.ctl, .seg) */
+.cot-garage .cot-battle-menu.open .cot-battle-solo-options{display:flex;flex-wrap:wrap;align-items:flex-start;gap:10px;}
 .cot-garage .cot-battle-menu.open [data-team-options]>.cot-battle-menu-label,
 .cot-garage .cot-battle-menu.open .cot-battle-times legend,
 .cot-garage .cot-battle-menu.open .cot-mode-features{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
-.cot-garage .cot-battle-menu.open .cot-battle-times{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s2);}
-.cot-garage .cot-battle-menu.open .cot-mode-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:end;gap:var(--s3);margin:0;}
+.cot-garage .cot-battle-menu.open :is(.cot-battle-sides,.cot-battle-times){display:inline-flex;gap:0;margin:0;padding:3px;border:0;
+  border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-1);}
+.cot-garage .cot-battle-menu.open :is(.cot-sides-choice,.cot-time-content){display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  min-height:34px;height:34px;padding:0 13px;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-3);
+  font:500 var(--fs-13)/1 var(--font-body);letter-spacing:normal;cursor:pointer;}
+.cot-garage .cot-battle-menu.open .cot-time-choice{flex:none;min-width:0;}
+.cot-garage .cot-battle-menu.open .cot-time-content{flex-direction:row;}
+.cot-garage .cot-battle-menu.open .cot-time-content svg{width:16px;height:16px;flex:none;}
+.cot-garage .cot-battle-menu.open :is(.cot-sides-choice[aria-pressed='true'],.cot-time-choice input:checked+.cot-time-content){
+  background:var(--surface-hover);color:var(--ink-1);box-shadow:var(--seg-on-shadow);}
+.cot-garage .cot-battle-menu.open .cot-time-choice input:focus-visible+.cot-time-content{outline:2px solid var(--focus-bracket-color);outline-offset:1px;}
+.cot-garage .cot-battle-menu.open .cot-battle-times small,.cot-garage .cot-battle-menu.open .cot-time-check{display:none;}
+.cot-garage .cot-battle-menu.open .cot-battle-sides-custom{display:flex;flex-wrap:wrap;gap:8px;align-items:end;}
+.cot-garage .cot-battle-menu.open .cot-battle-sides-custom[hidden]{display:none;}
+.cot-garage .cot-battle-menu.open .cot-battle-sides-custom label{display:grid;gap:6px;font:500 var(--fs-12)/1 var(--font-body);color:var(--ink-3);}
+.cot-garage .cot-battle-menu.open .cot-battle-sides-custom input{width:72px;height:34px;padding:0 10px;border:0;border-radius:var(--control-radius);
+  background:var(--fill-quiet);box-shadow:var(--ring-2);color:var(--ink-1);font:500 var(--fs-13)/1 var(--font-data);}
+.cot-garage .cot-battle-menu.open .cot-sides-readout{font:500 var(--fs-12)/1 var(--font-data);line-height:34px;color:var(--ink-2);}
+.cot-garage .cot-battle-menu.open .cot-battle-menu-label{padding:0 0 6px;color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body);}
+.cot-garage .cot-battle-menu.open .cot-battle-mars{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;flex:1 1 100%;}
+.cot-garage .cot-battle-menu.open .cot-battle-mars[hidden],.cot-garage .cot-battle-menu.open [data-mars-label][hidden]{display:none;}
+.cot-garage .cot-battle-menu.open .cot-battle-mars label{display:grid;gap:6px;font:500 var(--fs-12)/1 var(--font-body);color:var(--ink-3);}
+.cot-garage .cot-battle-menu.open .cot-battle-galaxy{display:flex;align-items:center;gap:10px;height:34px;padding:0 12px;border-radius:var(--control-radius);
+  background:var(--fill-quiet);box-shadow:var(--ring-1);color:var(--ink-1);font:600 var(--fs-13)/1 var(--font-display);}
+.cot-garage .cot-battle-menu.open .cot-battle-galaxy[hidden]{display:none;}
+.cot-garage .cot-battle-menu.open .cot-mode-settings{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:end;gap:10px;margin:0;flex:1 1 100%;}
 .cot-garage .cot-battle-menu.open .cot-mode-settings>label[hidden]{display:none;}
-/* every form label in the plate reads alike */
-.cot-garage .cot-battle-menu.open :is(.cot-teams>b,.cot-mode-settings label>span){display:block;padding:0 0 var(--s2);color:var(--ink-2);
-  font:600 var(--fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;}
-.cot-garage .cot-battle-menu.open .cot-teams{display:grid;justify-items:start;}
-/* sides and times as chips */
-.cot-garage .cot-battle-menu.open .cot-battle-sides{gap:var(--s2);}
-.cot-garage .cot-battle-menu.open .cot-sides-choice,.cot-garage .cot-battle-menu.open .cot-time-content{min-height:var(--btn-h-s);
-  border:1px solid var(--chip-edge);border-radius:var(--control-radius);background:var(--chip-fill);color:var(--ink-1);
-  font:600 var(--fs-14)/1 var(--font-display);letter-spacing:var(--track-label-s);}
-.cot-garage .cot-battle-menu.open .cot-time-content{flex-direction:row;gap:var(--s2);padding:0 var(--s3);}
-.cot-garage .cot-battle-menu.open .cot-sides-choice[aria-pressed='true'],
-.cot-garage .cot-battle-menu.open .cot-time-choice input:checked+.cot-time-content{border-color:var(--chip-edge-on);
-  background:var(--chip-fill-on);color:var(--ink-1);}
-/* the time choices keep their form label; their hint line stays only as the checkboxes' description */
-.cot-garage .cot-battle-menu.open .cot-battle-times legend{padding:0 0 var(--s2);color:var(--ink-2);
-  font:600 var(--fs-12)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;}
-.cot-garage .cot-battle-menu.open .cot-battle-times small{display:none;}
-.cot-garage .cot-deploy-pick{position:relative;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2);}
-.cot-garage .cot-deploy-field-card{display:grid;grid-template-columns:96px minmax(0,1fr) auto;align-items:center;gap:var(--s3);
-  width:100%;height:100%;padding:var(--s2);border:1px solid var(--line-1);border-radius:var(--control-radius);
-  background:var(--surface-raised);color:var(--ink-1);cursor:pointer;text-align:left;}
-.cot-garage .cot-deploy-field-card[aria-expanded='true']{border-color:var(--accent);}
-.cot-garage .cot-deploy-field-thumb{display:block;width:96px;height:60px;overflow:hidden;border-radius:var(--r1);
-  background:var(--surface-hover) center/cover no-repeat;}
-.cot-garage .cot-deploy-field-name{min-width:0;font:700 var(--fs-16)/1.1 var(--font-display);text-transform:uppercase;}
-.cot-garage .cot-deploy-field-thumb .random-map-mosaic{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;width:100%;height:100%;}
-.cot-garage .cot-deploy-field-thumb .random-map-tile{display:block;background:center/cover no-repeat;}
-/* the battlefield's map picker opens above the deployment row, over the plate (later in the order, so above it) */
-.cot-garage .cot-deploy-field-pop{position:absolute;left:0;right:0;bottom:calc(100% + var(--s2));max-height:min(440px,58vh);
-  overflow:auto;padding:var(--s3);border:1px solid var(--line-2);border-radius:var(--plate-radius);background:var(--surface-menu);
-  box-shadow:var(--e3);}
-.cot-garage .cot-deploy-field-pop[hidden]{display:none;}
-.cot-garage .cot-deploy-field-pop .cot-maps{display:flex;}
-.cot-garage .cot-deploy-tank{display:grid;grid-template-columns:96px minmax(0,1fr);align-items:center;gap:var(--s4);
-  padding:var(--s2);border:1px solid var(--line-1);border-radius:var(--control-radius);background:var(--surface-raised);}
-.cot-garage .cot-deploy-tank .cot-card{position:relative;width:96px;height:60px;min-height:0;flex:none;margin:0;pointer-events:none;}
-.cot-garage .cot-deploy-tank .cot-card :is(.nm,.hc-tier){display:none;}
-.cot-garage .cot-deploy-tank b{display:block;margin-top:var(--s1);font:700 var(--fs-16)/1.1 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
-.cot-garage .cot-deploy-tank span{display:inline-flex;}
+.cot-garage .cot-battle-menu.open :is(.cot-teams>b,.cot-mode-settings label>span){display:block;padding:0 0 6px;color:var(--ink-3);font:500 var(--fs-12)/1 var(--font-body);}
 
-/* one Deploy button under the plate */
-.cot-garage .cot-battle-menu.open .cot-battle-menu-foot{display:grid;gap:var(--s3);padding:var(--s4) var(--s6) var(--s6);
-  border:0;border-top:1px solid var(--line-1);background:var(--surface-plate);}
+/* ---- the foot: the tank (.tank) and one Deploy bar (.deploy) ---- */
+.cot-garage .cot-battle-menu.open .cot-battle-menu-foot{display:flex;flex-direction:column;gap:12px;padding:0;border:0;background:none;}
 .cot-garage .cot-battle-menu.open .cot-battle-menu-foot::before,.cot-garage .cot-battle-menu.open .cot-battle-menu-foot::after{display:none;}
 .cot-garage .cot-battle-menu.open .cot-battle-menu-foot>span{display:none;}
-.cot-garage .cot-battle-menu.open [data-battle-launch]{width:100%;height:var(--btn-h-xl);min-height:0;display:flex;align-items:center;
-  justify-content:flex-start;gap:var(--s3);padding:0 var(--s5);border:0;border-radius:var(--control-radius);
-  background:var(--btn-primary-fill);box-shadow:var(--btn-primary-bevel);color:var(--btn-primary-ink);cursor:pointer;
-  font:700 var(--fs-24)/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;}
-.cot-garage .cot-battle-menu.open [data-battle-launch]:hover{background:var(--btn-primary-hover);}
-.cot-garage .cot-battle-menu.open [data-battle-launch] .cot-c-kbd{margin-left:auto;height:26px;padding:0 var(--s2);
-  color:var(--btn-primary-ink);border-color:currentColor;}
-/* Watch (watch-mode-243): the secondary beside Deploy, its height, the selected mode and map with every seat a bot's */
-.cot-garage .cot-battle-menu.open .cot-battle-menu-foot{grid-template-columns:auto minmax(0,1fr);}
-.cot-garage .cot-battle-menu.open .cot-battle-menu-foot>.cot-deploy-pick{grid-column:1/-1;}
-.cot-garage .cot-battle-menu.open [data-battle-watch]{height:var(--btn-h-xl);display:flex;align-items:center;gap:var(--s2);
-  padding:0 var(--s4);border:0;border-radius:var(--control-radius);background:var(--btn-secondary-fill);
-  box-shadow:inset 0 0 0 1px var(--btn-secondary-edge);color:var(--ink-1);cursor:pointer;
-  font:700 var(--fs-16)/1 var(--font-display);letter-spacing:var(--track-label);text-transform:uppercase;}
-.cot-garage .cot-battle-menu.open [data-battle-watch]:hover:not(:disabled){box-shadow:inset 0 0 0 1px var(--ink-2);}
+.cot-garage .cot-deploy-tank{display:flex;align-items:stretch;gap:12px;padding:8px;border-radius:var(--control-radius);background:var(--fill-quiet);box-shadow:var(--ring-1);}
+.cot-garage .cot-deploy-tank:empty{display:none;}
+.cot-garage .cot-deploy-tank .cot-card{position:relative;width:132px;height:80px;min-height:0;flex:none;margin:0;pointer-events:none;}
+.cot-garage .cot-deploy-tank .cot-card :is(.nm,.hc-tier){display:none;}
+.cot-garage .cot-deploy-tank .info{display:flex;flex-direction:column;justify-content:center;gap:9px;flex:1;min-width:0;}
+.cot-garage .cot-deploy-tank .info b{display:flex;align-items:center;gap:8px;min-width:0;font:700 var(--fs-20)/1 var(--font-display);text-transform:uppercase;color:var(--ink-1);}
+.cot-garage .cot-deploy-tank .info b>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cot-garage .cot-deploy-tank .info b img{flex:none;box-shadow:var(--flag-ring);border-radius:1px;}
+.cot-garage .cot-deploy-tank .load{display:flex;align-items:center;gap:7px;flex-wrap:nowrap;}
+.cot-garage .cot-deploy-tank .sh{display:inline-flex;align-items:center;gap:4px;font:500 var(--fs-12)/1 var(--font-data);color:var(--ink-2);}
+.cot-garage .cot-deploy-tank .sh svg{width:24px;height:9px;color:var(--ink-2);}
+.cot-garage .cot-deploy-tank .eq{display:grid;place-items:center;width:24px;height:24px;border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-2);}
+.cot-garage .cot-deploy-tank .eq svg{width:15px;height:15px;}
+.cot-garage .cot-deploy-tank .chg{align-self:center;flex:none;}
+.cot-garage .cot-battle-menu.open [data-battle-launch]{display:flex;align-items:center;justify-content:space-between;width:100%;height:66px;min-height:0;
+  padding:0 22px;border:0;border-radius:var(--control-radius);background:var(--btn-primary-fill);box-shadow:var(--btn-primary-shadow);
+  color:var(--btn-primary-ink);cursor:pointer;}
+.cot-garage .cot-deploy-go{display:flex;align-items:center;gap:14px;font:700 var(--fs-28)/1 var(--font-display);letter-spacing:var(--track-label-s);
+  text-transform:uppercase;}
+.cot-garage .cot-deploy-go svg{width:20px;height:20px;}
+@media (hover:hover){.cot-garage .cot-battle-menu.open [data-battle-launch]:hover{background:var(--btn-primary-hover);}}
+.cot-garage .cot-battle-menu.open [data-battle-launch]:active{background:var(--btn-primary-press);box-shadow:none;}
+.cot-garage .cot-battle-menu.open [data-battle-launch] .cot-c-kbd{color:var(--kbd-on-accent-ink);box-shadow:var(--kbd-on-accent-ring);}
+/* Watch (watch-mode-243): the secondary beside Deploy in one row, at its height */
+.cot-garage .cot-deploy-acts{display:flex;align-items:stretch;gap:12px;min-width:0;}
+.cot-garage .cot-battle-menu.open .cot-deploy-acts [data-battle-launch]{flex:1;width:auto;min-width:0;}
+.cot-garage .cot-battle-menu.open [data-battle-watch]{display:flex;align-items:center;gap:10px;flex:none;height:66px;padding:0 20px;border:0;
+  border-radius:var(--control-radius);background:var(--btn-secondary-fill);box-shadow:inset 0 0 0 1px var(--btn-secondary-edge);
+  color:var(--ink-1);cursor:pointer;font:700 var(--fs-18)/1 var(--font-display);letter-spacing:var(--track-label-s);text-transform:uppercase;}
+.cot-garage .cot-battle-menu.open [data-battle-watch] svg{width:20px;height:20px;}
+@media (hover:hover){.cot-garage .cot-battle-menu.open [data-battle-watch]:hover:not(:disabled){box-shadow:inset 0 0 0 1px var(--ink-2);}}
 .cot-garage .cot-battle-menu.open [data-battle-watch]:disabled{opacity:.4;cursor:default;}
 .cot-garage .cot-battle-menu.open[data-deploy-tab='campaign'] [data-battle-watch]{display:none;}
-.cot-garage .cot-battle-menu.open .cot-battle-galaxy{display:flex;align-items:center;gap:var(--s3);padding:var(--s3);
-  border:1px solid var(--line-1);border-radius:var(--control-radius);color:var(--ink-1);font:600 var(--fs-14)/1.2 var(--font-display);}
-.cot-garage .cot-battle-menu.open .cot-battle-galaxy[hidden]{display:none;}
 
-/* folded layouts: one column, the plate under the modes, Deploy pinned to the bottom edge */
-body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-menu-scroll{grid-template-columns:minmax(0,1fr);
-  grid-auto-rows:max-content;overflow:auto;padding-bottom:calc(var(--btn-h-xl) + 96px);}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-plate{display:block;border-left:0;}
-body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open :is(.cot-battle-mode-list,.cot-battle-details){overflow:visible;padding:var(--s4);}
-body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-details{border-top:1px solid var(--line-1);}
-body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-menu-foot{position:fixed;left:0;right:0;bottom:0;
-  padding:var(--s3) var(--s4) max(var(--s3),env(safe-area-inset-bottom));background:var(--surface-page);}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-head{flex-wrap:wrap;gap:var(--s2) var(--s4);min-height:0;
-  padding:max(var(--s3),env(safe-area-inset-top)) var(--s4) 0;}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-title{font-size:var(--fs-24);}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tabs{flex:1 0 100%;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible;}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tab{height:var(--btn-h-m);padding:0 var(--s2);font-size:var(--fs-14);}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2);}
-body[data-cot-panels='overlay'] .cot-garage .cot-battle-choice.cot-deploy-card{min-height:136px;padding:var(--s4);}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-card .choice-icon{width:40px;height:40px;}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-card .choice-icon svg{width:32px;height:32px;}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-card .choice-name{font-size:var(--fs-18);}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-rows{grid-template-columns:repeat(auto-fill,minmax(220px,1fr));}
-body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-preview h3{font-size:var(--fs-24);}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op{grid-template-columns:48px minmax(0,1fr) auto;gap:var(--s3);padding:var(--s3);}
+/* ---- folded layouts: the direction's phone Deploy (91-phone-deploy.html): the bar, the ways to play as pills, the
+   modes as rows with the chosen one opened over its picture, the plate under them, Deploy docked at the bottom ---- */
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-head{flex-wrap:wrap;gap:6px 10px;height:auto;padding:max(6px,env(safe-area-inset-top)) 12px 6px 4px;
+  background:var(--surface-page);border-bottom:1px solid var(--line-1);}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-back{width:44px;justify-content:center;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-back>span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-back svg{width:22px;height:22px;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-title{font-size:var(--fs-20);}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tabs{flex:1 0 100%;height:auto;gap:6px;padding:0 0 0 8px;overflow-x:auto;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tab{flex:none;height:36px;gap:6px;padding:0 12px;border-radius:var(--control-radius);
+  box-shadow:var(--ring-1);font-size:var(--fs-13);}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tab svg{width:15px;height:15px;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tab[aria-selected='true']{color:var(--ink-1);box-shadow:var(--ring-accent);background:var(--accent-wash);}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tab[aria-selected='true']::after{display:none;}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-menu-scroll{grid-template-columns:minmax(0,1fr);grid-auto-rows:max-content;
+  overflow:auto;gap:10px;padding:12px 12px calc(96px + env(safe-area-inset-bottom));}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-mode-list{overflow:visible;gap:6px;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-cards,body[data-cot-panels='overlay'] .cot-garage .cot-deploy-rows{display:flex;flex-direction:column;gap:6px;}
+/* a core mode folds to a row; the chosen one opens over its picture (.sel .art) */
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-choice.cot-deploy-card{height:auto;min-height:56px;display:flex;align-items:center;gap:12px;
+  padding:0 12px 0 8px;background:var(--row-plate);}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-choice.cot-deploy-card:not([aria-pressed='true'])::after,
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-choice.cot-deploy-card:not([aria-pressed='true']) .cot-deploy-card-art{display:none;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-card .choice-icon{position:static;width:40px;height:40px;flex:none;background:var(--fill-soft);box-shadow:none;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-card .cot-deploy-choice-t{position:static;gap:6px;}
+body[data-cot-panels='overlay'] .cot-garage :is(.cot-deploy-card,.cot-deploy-rows) .choice-name{font:600 var(--fs-15)/1 var(--font-display);}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-choice.cot-deploy-card[aria-pressed='true']{height:150px;align-items:flex-end;padding:0 12px 10px;
+  outline:1.5px solid var(--accent);outline-offset:0;}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-choice.cot-deploy-card[aria-pressed='true'] .choice-icon{position:relative;z-index:var(--z-lift);background:var(--accent);}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-choice.cot-deploy-card[aria-pressed='true'] .cot-deploy-choice-t{position:relative;z-index:var(--z-lift);}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-choice.cot-deploy-card[aria-pressed='true'] .choice-name{font:700 var(--fs-24)/1 var(--font-display);}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-rows .cot-battle-choice{min-height:56px;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-rows .choice-icon{width:40px;height:40px;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-lower{display:none;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-plate{display:block;padding:10px;box-shadow:var(--e1);}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-details{overflow:visible;gap:10px;}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-preview{display:none;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-rules{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-field{min-height:120px;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-field-name{font-size:var(--fs-18);}
+/* the dock (.dock .dep): the tank and Deploy, over the safe area */
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open .cot-battle-menu-foot{position:fixed;z-index:var(--z-lift);left:0;right:0;bottom:0;
+  flex-direction:row;align-items:center;gap:10px;padding:10px 12px max(10px,env(safe-area-inset-bottom));background:var(--surface-page);
+  border-top:1px solid var(--line-1);}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tank{flex:none;padding:0;background:none;box-shadow:none;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tank .cot-card{width:96px;height:58px;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tank :is(.info,.chg){display:none;}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open [data-battle-launch]{flex:1;height:58px;padding:0 18px;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-acts{flex:1;gap:8px;}
+body[data-cot-panels='overlay'] .cot-garage .cot-battle-menu.open [data-battle-watch]{height:58px;padding:0 14px;}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-go{font-size:var(--fs-24);}
+body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op{grid-template-columns:48px minmax(0,1fr) auto;gap:12px;padding:12px;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op-map{display:none;}
 body[data-cot-panels='overlay'] .cot-garage .cot-deploy-op-index{font-size:var(--fs-32);}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tank{grid-template-columns:72px minmax(0,1fr);padding:0;border:0;background:none;}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-field-card{grid-template-columns:72px minmax(0,1fr) auto;}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-field-thumb{width:72px;height:46px;}
-body[data-cot-panels='overlay'] .cot-garage .cot-deploy-tank .cot-card{width:72px;height:46px;min-height:0;}
 @media (prefers-reduced-motion:reduce){.cot-garage .cot-battle-menu.open *{transition:none;}}
 }

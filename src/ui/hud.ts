@@ -1994,9 +1994,9 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
    sixth-sense delay. A finite entry sweep replaces the old forever-pulsing
    bulb, keeping motion quiet while the state remains active. */
 .cot-sixth{position:absolute;z-index:var(--hud-layer-controls);top:12%;left:50%;
-  width:min(248px,calc(100vw - 28px));min-height:48px;transform:translate(-50%,-6px);
+  width:min(248px,calc(100vw - 28px));min-height:32px;transform:translate(-50%,-6px);
   display:grid;grid-template-columns:24px minmax(0,1fr);gap:10px;align-items:center;
-  padding:8px 22px;box-sizing:border-box;color:#ffd46f;
+  padding:4px 22px;box-sizing:border-box;color:#ffd46f;
   --notice-fill:linear-gradient(105deg,rgba(29,22,8,.96),rgba(9,13,17,.94));--notice-edge:#e9ad3e;
   box-shadow:0 10px 28px rgba(0,0,0,.45),inset 0 1px rgba(255,226,181,.06);
   opacity:0;transition:opacity var(--cot-motion-fast) var(--cot-ease-out),
@@ -2007,7 +2007,8 @@ body[data-cot-height-density='tight'] .cot-aerial-readout{top:calc(50% + 38px);f
 .cot-sixth .sig svg{width:24px;height:24px;display:block;filter:drop-shadow(0 0 7px rgba(255,202,72,.46));}
 .cot-sixth .copy{min-width:0;padding:0;display:flex;flex-direction:column;gap:3px;}
 .cot-sixth .lb{font:700 12px/1 ${FONT_COND};letter-spacing:.23em;text-transform:uppercase;color:#ffd46f;}
-.cot-sixth .sub{font:700 11px/1.35 ${FONT_COND};letter-spacing:.06em;text-transform:uppercase;color:#aebbc5;}
+/* the lamp and its label read alone (owner 2026-10-22: no secondary labels); the line stays for a screen reader */
+.cot-sixth .sub{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;}
 /* Six-sided overlays keep their full outline during the entry animation. */
 .cot-sixth,.cot-alert{isolation:isolate;border:0;background:var(--notice-edge);
   clip-path:polygon(12px 0,calc(100% - 12px) 0,100% 50%,calc(100% - 12px) 100%,12px 100%,0 50%);}
@@ -4735,7 +4736,9 @@ export function initHud(bus: EventBus): HudRuntime {
       for (let part = 0; part < 3; part++) {
         if (!sniperRowPart(draw, part, mode)) continue;
         const p = sniperPartScratch;
-        y = Math.min(y, sightFurnitureRise(p.x0, p.x1, y, p.top, p.foot, SIGHT_MARK_RING_GAP));
+        // (a part hung under the line rises with it: what starts under the line's top is under the part too)
+        y = Math.min(y, sightFurnitureRise(p.x0, p.x1, y, p.top, p.foot, SIGHT_MARK_RING_GAP,
+          Math.max(p.top, sniperRowScratch.lineTop)));
       }
     }
     return y;

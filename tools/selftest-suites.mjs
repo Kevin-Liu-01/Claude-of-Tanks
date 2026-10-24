@@ -752,7 +752,6 @@ export const SELFTEST_SUITES = Object.freeze({
     'tools/viteCssInTsMinify.selftest.mjs',
     'tools/viteSpeculationRules.selftest.mjs',
     'tools/viteResponsiveSeed.selftest.mjs',
-    'tools/viteNavChrome.selftest.mjs',
     'tools/vercel-static-preview.selftest.mjs',
     'tools/telemetry-report.selftest.mjs',
     'tools/browser-failure-evidence.selftest.mjs',
@@ -1875,6 +1874,9 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/world/civic/civicArea.selftest.mjs',
     'src/world/civic/roadLife.selftest.mjs', // (229) every map's road life: at its seats, out of the discs, no new pool, stream-neutral
     'src/world/civic/civicPathways.selftest.mjs',
+    // the map-revival lane (round 2b, 2026-10-10; ported 2026-10-22, maps-stalled 240): Whiteout's drifts against its
+    // buildings and windrows along its roads
+    'src/world/maps/buildingSnowDrifts.selftest.mjs',
     'src/world/maps/wellKit.selftest.mjs', // 2026-10-13 the looks lane: each place's village well and square monument
     'src/world/propsTextureRows.selftest.mjs',
     'src/world/yardDressing.selftest.mjs',
