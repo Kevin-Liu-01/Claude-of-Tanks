@@ -20,9 +20,9 @@
     },
     "docs": {
       "requests": 13,
-      "raw": 169006,
-      "gzip": 47992,
-      "brotli": 41743,
+      "raw": 136007,
+      "gzip": 38695,
+      "brotli": 33970,
       "inlineCss": 846
     },
     "gallery": {
@@ -42,11 +42,11 @@
     "cn": {
       "requests": 131,
       "raw": 4135818,
-      "gzip": 1287446,
-      "brotli": 1084983,
+      "gzip": 1287574,
+      "brotli": 1085111,
       "inlineCss": 4757,
       "entryRaw": 847515,
-      "entryBrotli": 233232
+      "entryBrotli": 233360
     }
   }
 }
