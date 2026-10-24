@@ -1,5 +1,5 @@
 import { mountDocsIcons, type DocsIconKey } from './docsIcons.ts';
-import { t } from '../ui/i18n.ts';
+import { getLocale, t } from '../ui/i18n.ts';
 import { pictureMarkup, stillDataSaver } from '../presentation/responsivePicture.ts';
 
 type TopicSection = readonly [string, ...string[]];
@@ -363,7 +363,7 @@ export function topicHeroMarkup(hero: string, alt: string, saving = stillDataSav
   const loops = '/media/site50-r14/loops';
   const poster = pictureMarkup({
     src: `${loops}/${take}.jpg`, rungs: [{ src: `${loops}/${take}.jpg`, width: 1920 }], width: 1920, height: 1080, alt,
-    eager: true, className: 'topic-hero-poster', tone: '#0b0e11',
+    eager: true, className: 'topic-hero-poster', tone: 'var(--surface-page)',
     // a phone and data saving show the take's 640 still (the phone pre-scroll budget, SPEC 8.3); the loop crossfades in
     saveData: { src: `/media/site50-r14/stills/${take}-thumb.webp`, width: 640 },
     phone: { src: `/media/site50-r14/stills/${take}-thumb.webp`, width: 640 },
@@ -441,17 +441,13 @@ const camelTake = (take: string): string => take.replace(/-([a-z0-9])/g, (_, c: 
 const isTopicId = (value: string): value is TopicId => (TOPIC_ORDER as readonly string[]).includes(value);
 
 /**
- * A chapter of the Field Manual (bui01/src/pages/08-docs): the shelf of chapters, the banner (the take under its
- * fade, the breadcrumb, the two-voice title, the take's caption), the reading column (lede, reading time, sections,
- * figures), "on this page" with the reader's place, and the neighbouring chapters.
+ * A chapter of the Field Manual (bui01/src/pages/08-docs) as markup: the shelf of chapters, the banner (the take under
+ * its fade, the breadcrumb, the two-voice title, the take's caption), the reading column (lede, reading time, sections,
+ * figures), "on this page" and the neighbouring chapters. DOM-free, so tools/docs-prerender.mjs writes it into each
+ * chapter's page at build time in both locales (brand-ui SPEC 12.4: prerendered topics, no client-only stub).
  */
-function renderTopicPage(): void {
-  const last = location.pathname.split('/').filter(Boolean).at(-1) || 'simulation';
-  const slug: TopicId = isTopicId(last) ? last : 'simulation';
+export function topicPageMarkup(slug: TopicId, saving = stillDataSaver()): string {
   const topic = topics[slug];
-  document.title = `${topic.label} — ${t('docs.topic.pageTitle')}`;
-  const root = document.querySelector<HTMLElement>('#topicRoot');
-  if (!root) throw new Error('technical manual topic root is unavailable');
   const group = TOPIC_GROUPS.find((shelf) => shelf.topics.includes(slug)) ?? TOPIC_GROUPS[0];
   const order = TOPIC_GROUPS.flatMap((shelf) => shelf.topics);
   const at = order.indexOf(slug);
@@ -459,16 +455,16 @@ function renderTopicPage(): void {
   const caption = take ? t(`media.site50.title.${camelTake(take)}`) : '';
   const shelves = TOPIC_GROUPS.map((shelf) => `<p class="dm-grp"><span data-doc-icon="${shelf.icon}"></span><span>${groupLabel(shelf.key)}</span></p>`
     + shelf.topics.map((topicId) => `<a href="/docs/${topicId}"${topicId === slug ? ' aria-current="page"' : ''}>${topics[topicId].label}</a>`).join('')).join('');
-  const reference = ['vehicles', 'worlds', 'simulation'].includes(slug);
+  const reference = REFERENCE_TOPICS.includes(slug);
   const toc = topic.sections.map(([title], index) => `<a href="#${topicSectionId(index)}">${title}</a>`).join('')
     + (reference ? `<a href="#reference">${t(`docs.reference.${slug}.title`)}</a>` : '');
   const [firstFigureAt, secondFigureAt] = topic.mediaAt ?? [1, 3];
   const neighbour = (topicId: TopicId | undefined, side: 'prev' | 'next'): string => (topicId
     ? `<a class="cot-c-btn cot-c-btn--ghost dm-pager__${side}" href="/docs/${topicId}"><span data-doc-icon="${topics[topicId].icon}"></span><span>${topics[topicId].label}</span></a>`
     : '');
-  root.innerHTML = `<div class="dm">`
+  return `<div class="dm">`
     + `<aside class="dm-side" aria-label="${t('docs.topic.navAria')}"><a class="dm-home" href="/docs"><span data-doc-icon="manual"></span><span>${t('docs.topic.manualIndex')}</span></a>${shelves}</aside>`
-    + `<div class="dm-main"><header class="dm-banner">${topicHeroMarkup(topic.hero, t('docs.topic.heroAlt', { label: topic.label }))}`
+    + `<div class="dm-main"><header class="dm-banner">${topicHeroMarkup(topic.hero, t('docs.topic.heroAlt', { label: topic.label }), saving)}`
     + `<div class="dm-banner__t"><nav class="dm-crumb" aria-label="${t('docs.topic.crumbAria')}"><a href="/docs">${t('publicNav.fieldManual')}</a><i aria-hidden="true">›</i>`
     + `<span>${groupLabel(group.key)}</span><i aria-hidden="true">›</i><span aria-current="page">${topic.label}</span></nav>`
     + `<h1>${titleMarkup(topic.title)}</h1></div>${caption ? `<p class="dm-banner__cap cot-c-cap"><span data-doc-icon="filming"></span><span>${caption}</span></p>` : ''}</header>`
@@ -477,6 +473,26 @@ function renderTopicPage(): void {
     + topic.sections.map((section, index) => sectionMarkup(section, index, topic.media[index === firstFigureAt ? 0 : index === secondFigureAt ? 1 : -1])).join('')
     + `</article><aside class="dm-toc"><nav aria-label="${t('docs.topic.onThisPage')}">${toc}</nav></aside></div>`
     + `<nav class="dm-pager" aria-label="${t('docs.topic.navAria')}">${neighbour(order[at - 1], 'prev')}${neighbour(order[at + 1], 'next')}</nav></div></div>`;
+}
+
+const REFERENCE_TOPICS: readonly TopicId[] = ['vehicles', 'worlds', 'simulation'];
+
+/**
+ * The chapter page's behaviour. A page the build prerendered (tools/docs-prerender.mjs: `data-prerendered` names the
+ * chapter and its locale) keeps its markup; a page without it (the topic template, or a locale the build did not write)
+ * renders the chapter here first.
+ */
+function renderTopicPage(): void {
+  const last = location.pathname.split('/').filter(Boolean).at(-1) || 'simulation';
+  const slug: TopicId = isTopicId(last) ? last : 'simulation';
+  const topic = topics[slug];
+  document.title = `${topic.label} — ${t('docs.topic.pageTitle')}`;
+  const root = document.querySelector<HTMLElement>('#topicRoot');
+  if (!root) throw new Error('technical manual topic root is unavailable');
+  const prerendered = root.dataset.prerendered === slug && root.dataset.prerenderedLocale === getLocale() && root.querySelector('.dm');
+  // data saving swaps the banner's take for its 640 still, which the prerender (written for every reader) does not carry
+  if (!prerendered || stillDataSaver()) root.innerHTML = topicPageMarkup(slug);
+  const reference = REFERENCE_TOPICS.includes(slug);
   mountDocsIcons(root);
   mountTocSpy(root);
   const heroVideos = root.querySelectorAll<HTMLVideoElement>('video[data-media-player]');

@@ -6,6 +6,7 @@ import { DOCS_ICON_SPECS } from './docsIcons.ts';
 import { TOPIC_ORDER, topicSectionId, topics } from './topics.ts';
 import { CREW_LANGUAGES } from '../audio/vehicleAudioProfiles.ts';
 import { WEAPON_CLASSES } from '../audio/weaponAudio.ts';
+import { staleChapters } from '../../tools/docs-prerender.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const expected = [
@@ -93,4 +94,13 @@ assert.match(audioText, /13 existing national crews for every tank/);
 assert.match(audioText, /saved across battles and reloads/);
 assert.doesNotMatch(audioText, /selftest|node (?:src|tools)\//, 'the audio manual is written for players, not as a test checklist');
 
-console.log(`topics.selftest: ${TOPIC_ORDER.length} indexed manuals with complete icon, workflow, and audio coverage passed`);
+// brand-ui SPEC 12.4: every chapter ships in its page in both locales, so the first paint is the chapter (no stub)
+assert.deepEqual(staleChapters(), [], 'the prerendered chapters match topics.ts (node tools/docs-prerender.mjs --write)');
+for (const slug of TOPIC_ORDER) {
+  assert.match(readFileSync(join(ROOT, `site/docs-${slug}.html`), 'utf8'), new RegExp(`<main id="topicRoot" data-prerendered="${slug}" data-prerendered-locale="en-US"><div class="dm">`),
+    `site/docs-${slug}.html carries its chapter`);
+}
+assert.match(topicsSource, /root\.dataset\.prerendered === slug && root\.dataset\.prerenderedLocale === getLocale\(\)/,
+  'the script keeps a chapter prerendered for its locale and only wires it');
+
+console.log(`topics.selftest: ${TOPIC_ORDER.length} indexed manuals with complete icon, workflow, and audio coverage passed; every chapter prerendered in en-US and zh-CN`);

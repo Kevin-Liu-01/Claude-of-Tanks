@@ -9,7 +9,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT, pageMedia, publicPages, stillIdentity, topicPageMedia, topicSlug } from './media-page-scan.mjs';
+import { ROOT, pageMedia, pageShell, publicPages, stillIdentity, topicPageMedia, topicSlug } from './media-page-scan.mjs';
 
 /** The uses of each still on one page: identity -> number of elements. */
 function stillUses(records) {
@@ -31,25 +31,14 @@ function stillUses(records) {
 }
 
 /** Duplicates that predate the receipt, with the package that removes them (the count may only fall). */
-const KNOWN_DUPLICATES = Object.freeze({
-  'site/docs.html': {
-    task: 'the Field Manual overhaul (its chapter cards and figures reuse the interface pictures S12 retires)',
-    stills: {
-      '/media/showcase-r2/11_gallery_hero': 2,
-      '/media/showcase-r2/15_studio_workspace': 2,
-      '/media/showcase-r2/16_mobile_garage': 2,
-      '/media/showcase-r2/17_live_player_hud': 2,
-      '/media/showcase-r2/25_live_killcam_xray': 2,
-    },
-  },
-});
+const KNOWN_DUPLICATES = Object.freeze({});
 /** Social cards that share one source today, each until its package re-sources it (BUI-W4: social cards). */
 const KNOWN_SHARED_CARDS = new Set(['studio|docs-studio', 'docs-ai|404']);
 
 const failures = [];
 let pages = 0, stills = 0, ledgered = 0;
 for (const page of publicPages()) {
-  const records = pageMedia(readFileSync(join(ROOT, page), 'utf8'));
+  const records = pageMedia(pageShell(readFileSync(join(ROOT, page), 'utf8')));
   const slug = topicSlug(page);
   if (slug) {
     const { hero, figures } = await topicPageMedia(slug);
@@ -83,6 +72,7 @@ for (const [id, source] of cards) {
 }
 
 assert.deepEqual(failures, [], `stills used twice:\n  ${failures.join('\n  ')}`);
-console.log(`media-page-unique.selftest: ${pages} pages, ${stills} distinct stills, none twice on a page `
-  + `(${ledgered} ledgered on site/docs.html until ${KNOWN_DUPLICATES['site/docs.html'].task.split(' (')[0]}); `
+const ledger = Object.entries(KNOWN_DUPLICATES).map(([page, { task }]) => `${page} until ${task.split(' (')[0]}`);
+console.log(`media-page-unique.selftest: ${pages} pages, ${stills} distinct stills, none twice on a page`
+  + `${ledger.length ? ` (${ledgered} ledgered: ${ledger.join('; ')})` : ''}; `
   + `${cards.length} social cards, ${sources.size} distinct sources`);

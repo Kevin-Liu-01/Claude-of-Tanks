@@ -84,6 +84,15 @@ export function docsIconKeys(): DocsIconKey[] {
   return Object.keys(DOCS_ICON_SPECS) as DocsIconKey[];
 }
 
+/** The same fill as markup, for a page written at build time (tools/docs-prerender.mjs): its icons paint with the
+ *  document, and the shared shell inlines the symbols they reference. */
+export function fillDocsIcons(html: string): string {
+  return html.replace(/<span data-doc-icon="(\w+)"><\/span>/g, (whole, key: string) => {
+    const spec = (DOCS_ICON_SPECS as Readonly<Record<string, DocsIconSpec>>)[key];
+    return spec ? `<span data-doc-icon="${key}" class="doc-icon tone-${spec.tone}" aria-hidden="true">${icon(spec.id, { size: 24 })}</span>` : whole;
+  });
+}
+
 /** Fill decorative placeholders without changing their accessible text. */
 export function mountDocsIcons(root: ParentNode = document): void {
   root.querySelectorAll<HTMLElement>('[data-doc-icon]').forEach((element) => {
