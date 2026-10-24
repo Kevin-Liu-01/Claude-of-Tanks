@@ -606,6 +606,19 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
   host.setAttribute('aria-hidden', 'true');
 
   const awardTooltip = createRichTooltip(host, '[data-medal-tip],[data-achievement-tip]', awardDetails);
+  /** A report column that scrolls (the wide windows' side-by-side record) fades at its foot while more lies below. */
+  const markMore = (panel: HTMLElement): void => {
+    panel.classList.toggle('more', panel.scrollHeight - panel.scrollTop - panel.clientHeight > 2);
+  };
+  // the column's box (a resize) and its sections (late art, the hero tile, a tab's swap) change what lies below
+  const moreObserver = typeof ResizeObserver === 'function'
+    ? new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const panel = (entry.target as HTMLElement).closest<HTMLElement>('.es-debrief');
+        if (panel) markMore(panel);
+      }
+    })
+    : null;
   host.classList.add('cot-es--record');
   host.addEventListener('keydown', event => { if (host.classList.contains('show')) containModalTab(event,host,host.querySelector<HTMLButtonElement>('button') || host); });
   let visible = false;
@@ -1456,6 +1469,13 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       renderEndRematch(report);
       if (rematchPanel) report.prepend(rematchPanel);
       renderBattleBeats(res, sum);
+      moreObserver?.disconnect();
+      for (const panel of report.querySelectorAll<HTMLElement>('.es-debrief')) {
+        panel.addEventListener('scroll', () => markMore(panel), { passive: true });
+        moreObserver?.observe(panel);
+        for (const section of panel.children) moreObserver?.observe(section);
+        markMore(panel); // at once too: the observer's first word waits on a rendering step
+      }
       renderEndActions(sum);
       fillFlags();
 
