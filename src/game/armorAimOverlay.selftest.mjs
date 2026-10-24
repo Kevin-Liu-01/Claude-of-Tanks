@@ -78,7 +78,7 @@ assert(secondEntry && secondEntry.frames.length === 1, 'every scoped enemy recei
 assert(entry.frames.every((frame) => !frame.mesh.visible), 'primed meshes stay hidden before entering scope');
 
 // 243: the shell is the cells' outer skin, evenly lifted: closed and outward (its area-weighted normals cancel), every
-// vertex 5-9 cm off the box, panel outlines marked, every vertex painted by exactly one sample.
+// vertex 5-9 cm off the box, crease outlines marked, every vertex painted by its panel's one sample.
 {
   const frame = entry.frames[0];
   const position = frame.geometry.getAttribute('position');
@@ -102,7 +102,7 @@ assert(entry.frames.every((frame) => !frame.mesh.visible), 'primed meshes stay h
   assert.ok(outlined > 0, 'the box edges are panel outlines');
   const painted = new Uint8Array(position.count);
   for (const sample of frame.samples) for (let index = sample.start; index < sample.end; index++) painted[frame.targets[index]]++;
-  assert.ok(painted.every((count) => count === 1), 'every skin vertex takes exactly one corner sample');
+  assert.ok(painted.every((count) => count === 1), 'every skin vertex takes exactly one panel sample');
   assert.equal(secondEntry.frames[0].geometry.getAttribute('position'), position, 'vehicles of one spec share the shell');
   assert.notEqual(secondEntry.frames[0].color, frame.color, 'each vehicle paints its own colours');
 }

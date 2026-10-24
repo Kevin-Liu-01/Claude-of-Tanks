@@ -1,5 +1,5 @@
 // The scoped armour flashlight's mesh (243): the armour skin (armorSkin.ts) as one closed, evenly lifted shell per
-// frame, with a sample per panel corner and the panel outlines drawn in the one overlay draw.
+// frame, one sample and one flat colour per panel, and the shell's creases outlined in the one overlay draw.
 //
 // Before 243 every collision-cell triangle was drawn on its own, each cell blown up about its own centroid: the
 // slices overlapped in bands at every seam, the cells' insides (shared slice faces, cupola walls inside the turret)
@@ -8,9 +8,10 @@
 //   - only the union's outer surface is drawn, one panel per plate and plane;
 //   - the shell is lifted SKIN_LIFT_M along a normal field that depends on position alone, so panels that meet keep
 //     meeting (no seam opens, no band doubles), just proud of skirts, ERA and fittings;
-//   - panels are cut no coarser than SAMPLE_EDGE_M and sampled at their corners, the colour interpolating across a
-//     panel and stopping at its outline;
-//   - plate and crease outlines draw as anti-aliased lines in the fill's own shader (no second draw).
+//   - each panel (one plate, one plane) takes one sample inside it and one flat colour: zones read crisp, with no
+//     gradient shard from an odd corner and no more samples than panels;
+//   - creases of 50 degrees or more draw as anti-aliased lines in the fill's own shader (no second draw); the cells'
+//     shallower facets and plate changes on one surface are not outlined (the colours show a plate).
 import * as THREE from 'three';
 import {
   armorSkinPanels, indexSkinPanels, onSkinPanel, skinBorderTest, type SkinPanelIndex, type SkinPoint,
@@ -18,10 +19,6 @@ import {
 
 /** How far the shell stands proud of the armour cells (m): over skirts, ERA and fittings, as the old inflation did. */
 const SKIN_LIFT_M = 0.06;
-/** Longest panel edge between two samples (m): the corner samples interpolate across it. */
-const SAMPLE_EDGE_M = 1.25;
-/** A corner's sample sits this far into its panel (m), so the ray resolves that panel, not its neighbour. */
-const SAMPLE_INSET_M = 0.05;
 /**
  * Panels of one plate meeting at less than this angle read as one surface: no outline between them. The cells are
  * slices hulled on 45-degree supports, so their facets meet at 20-45 degrees; outlined, they drew every facet as a seam.
@@ -50,19 +47,12 @@ interface Triangle { panel: number; points: [SkinPoint, SkinPoint, SkinPoint] }
 
 const sub = (a: readonly number[], b: readonly number[]): SkinPoint => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const dot = (a: readonly number[], b: readonly number[]): number => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-const mid = (a: readonly number[], b: readonly number[]): SkinPoint => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+const cross = (a: readonly number[], b: readonly number[]): SkinPoint =>
+  [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const length = (a: readonly number[]): number => Math.hypot(a[0], a[1], a[2]);
 const key = (p: readonly number[]): string =>
   `${Math.round(p[0] / KEY_QUANTUM_M)},${Math.round(p[1] / KEY_QUANTUM_M)},${Math.round(p[2] / KEY_QUANTUM_M)}`;
 
-function subdivide(panel: number, a: SkinPoint, b: SkinPoint, c: SkinPoint, out: Triangle[]): void {
-  const ab = length(sub(b, a)), bc = length(sub(c, b)), ca = length(sub(a, c));
-  const longest = Math.max(ab, bc, ca);
-  if (longest <= SAMPLE_EDGE_M) { out.push({ panel, points: [a, b, c] }); return; }
-  if (longest === ab) { const m = mid(a, b); subdivide(panel, a, m, c, out); subdivide(panel, m, b, c, out); }
-  else if (longest === bc) { const m = mid(b, c); subdivide(panel, b, m, a, out); subdivide(panel, m, c, a, out); }
-  else { const m = mid(c, a); subdivide(panel, c, m, b, out); subdivide(panel, m, a, b, out); }
-}
 
 /**
  * The lift of a point on the skin: the mean normal of every panel the point lies on, scaled so each of those panels
@@ -117,18 +107,19 @@ function buildTemplate(cells: Parameters<typeof armorSkinPanels>[0]): Flashlight
   const triangles: Triangle[] = [];
   panels.forEach((panel, panelIndex) => {
     for (const piece of panel.pieces) {
-      for (let i = 1; i + 1 < piece.length; i++) subdivide(panelIndex, piece[0], piece[i], piece[i + 1], triangles);
+      for (let i = 1; i + 1 < piece.length; i++) triangles.push({ panel: panelIndex, points: [piece[0], piece[i], piece[i + 1]] });
     }
   });
   if (!triangles.length) return null;
   const lift = liftField(index);
-  const isBorder = skinBorderTest(index, SOFT_CREASE_COS);
+  const isBorder = skinBorderTest(index, SOFT_CREASE_COS, false);
   const count = triangles.length * 3;
   const positions = new Float32Array(count * 3);
   const bary = new Float32Array(count * 3);
   const borders = new Float32Array(count * 3);
-  // one sample per panel corner: the corner's copies (one per triangle meeting there) take its colour
-  const corners = new Map<string, { point: SkinPoint; toward: SkinPoint; vertices: number[] }>();
+  // one sample per panel, at the centroid of its largest piece (convex, so the point is on the panel): every copy of
+  // the panel's vertices takes its colour
+  const panelVertices: number[][] = panels.map(() => []);
   triangles.forEach((triangle, t) => {
     const [a, b, c] = triangle.points;
     const centroid: SkinPoint = [(a[0] + b[0] + c[0]) / 3, (a[1] + b[1] + c[1]) / 3, (a[2] + b[2] + c[2]) / 3];
@@ -140,27 +131,27 @@ function buildTemplate(cells: Parameters<typeof armorSkinPanels>[0]): Flashlight
       positions.set([point[0] + l[0], point[1] + l[1], point[2] + l[2]], vertex * 3);
       bary[vertex * 3 + k] = 1;
       borders.set([edge[0] ? 1 : 0, edge[1] ? 1 : 0, edge[2] ? 1 : 0], vertex * 3);
-      const cornerKey = `${triangle.panel}|${key(point)}`;
-      let corner = corners.get(cornerKey);
-      if (!corner) { corner = { point, toward: [0, 0, 0], vertices: [] }; corners.set(cornerKey, corner); }
-      corner.vertices.push(vertex);
-      corner.toward[0] += centroid[0]; corner.toward[1] += centroid[1]; corner.toward[2] += centroid[2];
+      panelVertices[triangle.panel].push(vertex);
     });
   });
   const samples: FlashlightSample[] = [];
   const targets = new Uint32Array(count);
   let cursor = 0;
-  for (const corner of corners.values()) {
-    const n = corner.vertices.length;
-    const toward: SkinPoint = [corner.toward[0] / n, corner.toward[1] / n, corner.toward[2] / n];
-    const inward = sub(toward, corner.point);
-    const distance = length(inward);
-    const step = distance > 1e-9 ? Math.min(SAMPLE_INSET_M, distance * 0.5) / distance : 0;
-    const center = [corner.point[0] + inward[0] * step, corner.point[1] + inward[1] * step, corner.point[2] + inward[2] * step];
-    samples.push({ center, start: cursor, end: cursor + n });
-    targets.set(corner.vertices, cursor);
-    cursor += n;
-  }
+  panels.forEach((panel, panelIndex) => {
+    const vertices = panelVertices[panelIndex];
+    if (!vertices.length) return;
+    let largest = panel.pieces[0], largestArea = -1;
+    for (const piece of panel.pieces) {
+      let area = 0;
+      for (let i = 1; i + 1 < piece.length; i++) area += length(cross(sub(piece[i], piece[0]), sub(piece[i + 1], piece[0]))) / 2;
+      if (area > largestArea) { largestArea = area; largest = piece; }
+    }
+    const center = [0, 0, 0];
+    for (const point of largest) for (let axis = 0; axis < 3; axis++) center[axis] += point[axis] / largest.length;
+    samples.push({ center, start: cursor, end: cursor + vertices.length });
+    targets.set(vertices, cursor);
+    cursor += vertices.length;
+  });
   const position = new THREE.Float32BufferAttribute(positions, 3);
   const sphere = new THREE.Sphere();
   new THREE.Box3().setFromBufferAttribute(position).getBoundingSphere(sphere);

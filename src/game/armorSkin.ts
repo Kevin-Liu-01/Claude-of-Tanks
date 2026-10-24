@@ -299,13 +299,15 @@ const PROBE_M = 0.015;
 const NEIGHBOUR_M = 0.012;
 
 /**
- * Whether the edge a–b of a piece of panel `panelIndex` is on the skin's outline: a plate border or a crease of at
- * least the soft-crease angle. `inward` is any point of the piece on the edge's inner side. An edge between two pieces
+ * Whether the edge a–b of a piece of panel `panelIndex` is on the skin's outline: a plate border (unless
+ * `plateBorders` is false) or a crease of at least the soft-crease angle. `inward` is any point of the piece on the edge's inner side. An edge between two pieces
  * of one panel (a clipping cut), or between panels of one plate meeting at a shallower angle, is not.
  */
 export function skinBorderTest(
   index: readonly SkinPanelIndex[],
   softCreaseCos: number,
+  /** False: a plate change alone is no outline (the panels' colours show it); only creases are. */
+  plateBorders = true,
 ): (panelIndex: number, a: readonly number[], b: readonly number[], inward: readonly number[]) => boolean {
   return (panelIndex, a, b, inward) => {
     const own = index[panelIndex].panel;
@@ -318,7 +320,7 @@ export function skinBorderTest(
     for (let other = 0; other < index.length; other++) {
       if (other === panelIndex) continue;
       const entry = index[other], panel = entry.panel;
-      if (panel.plate !== own.plate || dot(panel.normal, own.normal) < softCreaseCos) continue;
+      if ((plateBorders && panel.plate !== own.plate) || dot(panel.normal, own.normal) < softCreaseCos) continue;
       if (!onSkinPanel(entry, m, NEIGHBOUR_M)) continue;
       const distance = dot(panel.normal, probe) + panel.constant;
       const projected: SkinPoint = [probe[0] - panel.normal[0] * distance, probe[1] - panel.normal[1] * distance,
