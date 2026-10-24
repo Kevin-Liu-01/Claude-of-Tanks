@@ -1071,6 +1071,8 @@ const pedestal = createGaragePedestalRuntime({
     visibleRoot: root, strict: true, sliceMs: 4, timing,
   }),
   nextFrame,
+  // click-perf-244: a roster press paints before an uncached hero's build starts
+  waitForPaint: nextPaintFrame,
   getDeviceTier,
   getPhase: () => game.phase,
   isBootComplete: () => bootComplete,
