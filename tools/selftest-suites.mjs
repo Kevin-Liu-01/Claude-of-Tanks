@@ -934,6 +934,7 @@ export const SELFTEST_SUITES = Object.freeze({
     'src/game/deploymentParity.selftest.mjs',
     'src/game/rosterVisualStaging.selftest.mjs',
     'src/game/rosterPresentation.selftest.mjs',
+    'src/ui/botCallsigns.selftest.mjs',
     'src/presentation/publicCopy.selftest.mjs',
     'src/presentation/socialProof.selftest.mjs',
     'src/presentation/publicLoading.selftest.mjs',

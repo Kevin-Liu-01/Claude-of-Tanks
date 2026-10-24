@@ -703,6 +703,7 @@ installMedalToasts(bus);
 const rosterPresentation = createRosterPresentation({
   getVehicleName: (specId) => getSpec(specId)?.name,
   getTier: tierNumeral,
+  getNation: (specId) => getSpec(specId)?.nation,
 });
 const playerShellLog: PlayerShellTelemetryRecord[] = [];
 const botPressure: BotPressureTelemetry = {

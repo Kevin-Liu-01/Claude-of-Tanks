@@ -179,6 +179,8 @@ const CSS = `
 .cot-bl .row .sil{flex:0 0 52px;height:100%;max-height:24px;background-repeat:no-repeat;
   background-position:center;background-size:contain;}
 .cot-bl .team.foe .row .sil{transform:scaleX(-1);}
+.cot-bl .row .fl{display:flex;flex:none;}.cot-bl .row .fl:empty{display:none;}
+.cot-bl .row .fl .cot-flag{display:block;box-shadow:var(--flag-ring);}
 .cot-bl .row .nm{flex:1 1 auto;min-width:0;font:600 var(--fs-13)/1.2 var(--font-ui);color:var(--ink-1);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cot-bl .team.foe .row .nm{text-align:right;}
@@ -250,6 +252,14 @@ ${WIDE} .cot-bl .team.cards .row.card::after{content:'';position:absolute;z-inde
 ${WIDE} .cot-bl .team.cards .row.card .nm{position:absolute;z-index:var(--battle-z-card-text);left:8px;right:8px;bottom:8px;font:600 var(--fs-11)/1.1 var(--font-ui);
   text-transform:uppercase;white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-align:left;}
 ${WIDE} .cot-bl .team.foe.cards .row.card .nm{text-align:left;}
+/* the driver under the vehicle's name: the band grows a line so the tank keeps clear of both */
+${WIDE} .cot-bl .team.cards .row.card.has-cs{--hc-band:42px;}
+${WIDE} .cot-bl .team.cards .row.card.has-cs .nm{bottom:24px;}
+${WIDE} .cot-bl .team.cards .row.card .cs{position:absolute;z-index:var(--battle-z-card-text);left:8px;right:8px;bottom:7px;
+  font:500 var(--fs-11)/1.2 var(--font-mono);color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+${WIDE} .cot-bl .team.cards .row.card.me .cs{color:var(--accent-hi);}
+.cot-bl .row .cs{display:none;}
+${WIDE} .cot-bl .team.cards .row.card .cs{display:block;}
 ${WIDE} .cot-bl .team.cards .row.card .tier{position:absolute;z-index:var(--battle-z-card-text);top:6px;left:6px;flex:none;padding:2px 4px;border-radius:var(--r1);
   background:var(--glyph-plate);}
 /* the hero layers show on the cards alone (a window that narrows to the compact sheets keeps the rows plain) */
@@ -278,6 +288,10 @@ export interface BattleLoadRosterRow {
   readonly tier?: string;
   readonly name?: string;
   readonly isPlayer?: boolean;
+  /** Who drives it (a room player's name, a bot's callsign as the HUD names it); the viewer's card reads "You". */
+  readonly callsign?: string;
+  /** The vehicle's nation: its flag on a sheet row (a card carries the hero flag). */
+  readonly nation?: string;
 }
 
 interface BattleLoadInfo {
@@ -514,6 +528,18 @@ export function createBattleLoadScreen(): BattleLoadScreen {
     });
   }
 
+  /** The sheet rows' flags: flags.ts loads with its art once, after the rows (a later fill of this side supersedes it). */
+  let rowFlagsPass = 0;
+  function fillRowFlags(host: HTMLElement, rows: readonly BattleLoadRosterRow[]): void {
+    const pass = String(++rowFlagsPass);
+    host.dataset.rowFlagsPass = pass;
+    if (!rows.some((row) => row.nation)) return;
+    void import('./flags.ts').then(({ flagIconHTML }) => {
+      if (host.dataset.rowFlagsPass !== pass) return;
+      for (const seat of host.querySelectorAll<HTMLElement>('.fl[data-nation]')) seat.innerHTML = flagIconHTML(seat.dataset.nation || '', 16, 12);
+    }, () => { /* the rows keep their silhouettes */ });
+  }
+
   function fillTeam(
     host: HTMLElement,
     countEl2: HTMLElement,
@@ -551,12 +577,26 @@ export function createBattleLoadScreen(): BattleLoadScreen {
       const nm = document.createElement('div');
       nm.className = 'nm';
       nm.textContent = aircraft?.label || r.name || r.id;
-      el.append(tier, sil, nm);
+      // every vehicle with its flag (owner UI rules): a sheet row's beside its silhouette, a card's is its hero layer
+      const flag = document.createElement('span');
+      flag.className = 'fl';
+      if (r.nation && !aircraft && !cards) flag.dataset.nation = r.nation;
+      el.append(tier, flag, sil, nm);
+      // a card names its driver under the vehicle (the direction's 10-battle-load .cs)
+      const callsign = r.isPlayer ? t('hud.feed.you') : r.callsign;
+      if (cards && callsign) {
+        const cs = document.createElement('div');
+        cs.className = 'cs';
+        cs.textContent = callsign;
+        el.append(cs);
+        el.className += ' has-cs';
+      }
       host.appendChild(el);
       if (cards && !aircraft) decorated.push([el, r.id]);
     }
     countEl2.textContent = reserved ? '' : String(rows.length);
     decorateCards(host, decorated);
+    fillRowFlags(host, rows);
   }
 
   /** The sides on the rules row ("7 v 7"), once both are known. */

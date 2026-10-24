@@ -1,5 +1,5 @@
 import { isRapidFireHit } from '../game/weaponHitKind.ts';
-import { tankSeedId } from '../vehicles/tankIdAliases.ts';
+import { botCallsign, PLAYER_CALLSIGN } from './botCallsigns.ts';
 import { accumulateDamage, canAccumulateDamage, DAMAGE_BURST_GAP_MS, type DamageNumberBurst } from './damageNumberBurst.ts';
 import { BattleKillLedger } from '../game/battleEventStats.ts';
 import { killPresentation } from './killPresentation.ts';
@@ -1295,22 +1295,9 @@ function shellCount(shell: HudShellCard): number {
   return ammunitionSlotViewState(shell).count;
 }
 
-// Roster identity: WoT rows read "Nickname (Vehicle)" with a tier numeral.
-// Bot nicknames are assigned deterministically per battle from this pool
-// (hashed off the entity id, collisions probe forward), the player is Claude.
-const BOT_NICKS = [
-  'IronMaus', 'SteppeWolf_71', 'Kranvagn', 'DustDevil', 'Bogatyr',
-  'HullDown_Hank', 'PzKpfwPete', 'Kettenkrad', 'RicochetRita', 'TokTokkie',
-  'GeneralLee42', 'Zaseka', 'MudCrawler', 'BiaTheBear', 'SabotSally',
-  'Feldwebel_K', 'OldNikolai', 'TinCanAlly', 'GrilleGuy', 'VodkaVanya',
-  'CamoNet', 'LongStop', 'DerbyDozer', 'PakWagen',
-];
-const PLAYER_NICK = 'Claude';
-function hashStr(s: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
-  return h >>> 0;
-}
+// Roster identity: WoT rows read "Nickname (Vehicle)" with a tier numeral. Bot nicknames come from botCallsigns.ts,
+// assigned over the frame's tanks in their order (the battle load's cards name them alike), the player is Claude.
+const PLAYER_NICK = PLAYER_CALLSIGN;
 
 // minimap grid letters (WoT convention skips "I")
 const GRID_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K'];
@@ -3215,13 +3202,7 @@ export function initHud(bus: EventBus): HudRuntime {
     if (t.isPlayer) return PLAYER_NICK;
     let nick = nickById.get(t.id);
     if (!nick) {
-      const used = new Set(nickById.values());
-      let i = hashStr(String(t.id) + (t.spec ? tankSeedId(t.spec.id) : '')) % BOT_NICKS.length; // schema-1 spelling
-      for (let n = 0; n < BOT_NICKS.length; n++) {
-        const cand = BOT_NICKS[(i + n) % BOT_NICKS.length];
-        if (!used.has(cand)) { nick = cand; break; }
-      }
-      nick = nick || `Bot_${(hashStr(String(t.id)) % 90) + 10}`;
+      nick = botCallsign(t.id, t.spec?.id ?? null, new Set(nickById.values()));
       nickById.set(t.id, nick);
     }
     return nick;
@@ -3280,7 +3261,14 @@ export function initHud(bus: EventBus): HudRuntime {
     for (const row of earRows.values()) row.root.remove();
     earRows.clear();
     nickById.clear();
+    assignNicknames(tanks);
     lastScore = '';
+  }
+
+  /** The bots' nicknames over the battle's tanks in their order (botCallsigns.ts rosterCallsigns' walk), before any
+   *  surface asks for one, so the order the HUD's parts ask in never reorders them. */
+  function assignNicknames(tanks: readonly HudTank[]): void {
+    for (const tank of tanks) if (tank && !tank.displayName && !tank.isPlayer) nickFor(tank);
   }
 
   function createEarRow(tank: HudTank, ally: boolean): EarRow {
@@ -7937,6 +7925,7 @@ export function initHud(bus: EventBus): HudRuntime {
       // always advance timeS, so real frames still supersede immediately.
       const cursorReleased = !document.pointerLockElement;
       if (specCursorHint.hidden !== cursorReleased) specCursorHint.hidden = cursorReleased;
+      if (!nickById.size && frame.tanks?.length) assignNicknames(frame.tanks);
       const state = prepareHudFrame(frame);
       if (mode === 'hidden') { ctx.clearRect(0, 0, w, h); hideAerialHitMark(); return; }
       updateHudWorldPanels(frame, state.camera);
