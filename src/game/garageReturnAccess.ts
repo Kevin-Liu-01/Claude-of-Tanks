@@ -39,6 +39,7 @@ export function createGarageReturnAccess<Visual = RuntimeValue>({
     get current() { return owner.current; },
     get transitioning() { return owner.current?.transitioning ?? false; },
     get lastTrace(): GarageReturnTrace | null { return owner.current?.lastTrace ?? null; },
+    get awaitingHandoff() { return owner.current?.awaitingHandoff ?? false; },
     async enter(returnOptions?: GarageReturnOptions) {
       return (await owner.preload()).enter(returnOptions);
     },
@@ -51,6 +52,9 @@ export function createGarageReturnAccess<Visual = RuntimeValue>({
     },
     async battleAgain(trigger?: () => boolean) {
       return (await owner.preload()).battleAgain(trigger);
+    },
+    async prepare() {
+      return (await owner.preload()).prepare();
     },
   });
 }

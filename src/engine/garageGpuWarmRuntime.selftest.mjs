@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { BoxGeometry, Group, Mesh, MeshStandardMaterial, PerspectiveCamera, Scene } from 'three';
 import { createForwardProgramWarmOwner, ProgramUniformPreparationError } from './programWarm.ts';
 import {
+  GarageRestoreAbandonedError,
   restoreGarageGpuPipeline,
   warmGarageGpuPipeline,
 } from './garageGpuWarmRuntime.ts';
@@ -458,4 +459,65 @@ for (const mode of ['task-only-negative', 'actual-frame-ready', 'cancel-during-f
   }
 }
 
-console.log('garageGpuWarmRuntime.selftest: bounded warms, real readiness scheduling, and fail-closed cancellation passed');
+// perf-246: Battle Again over a Garage being prepared behind the report abandons the restore. It stops at the next
+// program step: no compile fallback, no shadow pass, no upload, no settle frame; the static presentation re-sleeps.
+for (const abandonAt of ['program', 'linker', 'shadow', 'upload']) {
+  const seen = [];
+  let current = true;
+  const abandon = (stage) => { if (stage === abandonAt) current = false; };
+  await assert.rejects(restoreGarageGpuPipeline({
+    renderer,
+    scene,
+    camera,
+    lighting: {
+      setStaticPresentationDormant(value) { seen.push(['staticDormant', value]); },
+      update() {},
+      async primeShadowMaps(_renderer, _scene, _camera, options) {
+        seen.push(['shadow']);
+        abandon('shadow');
+        await options.yieldBeforeCascade(0);
+        seen.push(['shadowPass']);
+        return [3];
+      },
+    },
+    forwardPrograms: {
+      *initializeSteps() {
+        seen.push(['program']);
+        abandon('program');
+        yield;
+        seen.push(['programAfterAbandon']);
+        yield;
+      },
+      *linkerBreathingSlices() {
+        seen.push(['linker']);
+        abandon('linker');
+        yield;
+        seen.push(['linkerAfterAbandon']);
+      },
+      compile() { seen.push(['compileFallback']); },
+    },
+    post: { render() { seen.push(['settleFrame']); } },
+    simDt: 1 / 60,
+    resourcesReleased: true,
+    programsNeedWarm: true,
+    isCurrent: () => current,
+    createYielder: () => async () => {},
+    yieldProgramReadiness: async () => {},
+    warmScene: async (_renderer, _scene, _camera, options) => {
+      seen.push(['upload']);
+      abandon('upload');
+      await options.yieldBeforeBatch(0);
+      seen.push(['uploadBatch']);
+      return [1];
+    },
+  }), (error) => error instanceof GarageRestoreAbandonedError, `${abandonAt}: the abandoned restore rejects`);
+  const names = seen.map(([name]) => name);
+  const order = ['program', 'programAfterAbandon', 'linker', 'linkerAfterAbandon', 'shadow', 'shadowPass', 'upload',
+    'uploadBatch', 'settleFrame'];
+  for (const never of ['compileFallback', ...order.slice(order.indexOf(abandonAt) + 1)]) {
+    assert.equal(names.includes(never), false, `${abandonAt}: an abandoned restore never runs ${never}`);
+  }
+  assert.deepEqual(seen.at(-1), ['staticDormant', true], `${abandonAt}: the static presentation sleeps again`);
+}
+
+console.log('garageGpuWarmRuntime.selftest: bounded warms, real readiness scheduling, fail-closed cancellation and abandonment passed');
