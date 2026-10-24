@@ -23,8 +23,9 @@ export function mountReference(article: HTMLElement, slug: string): void {
   records.innerHTML = data.vehicles.map(v => {
     const systems = [v.smoke ? `${text('smoke')} (${v.smoke})` : '', v.lights ? text('lights') : '',
       v.roofGun ? text('roofGun') : '', v.missile ? text('missile') : '', v.suspension ? text('suspension') : ''].filter(Boolean);
-    // the nation and the class by the reader's catalog (nation.*, fleet.class.*), the tier as the fleet writes it
-    const nation = named(`nation.${v.nation}`, v.nation), role = named(`fleet.class.${v.role}`, v.role);
+    // the nation and the class by the reader's catalog (nation.*, docs.reference.class.*: the Filter panel's fleet.class.*
+    // strings load only with the panel), the tier as the fleet writes it
+    const nation = named(`nation.${v.nation}`, v.nation), role = named(`docs.reference.class.${v.role}`, v.role);
     const tier = t('killcam.tier', { tier: ROMAN[v.tier] ?? String(v.tier) });
     return `<details class="manual-record" data-vehicle="${escape(v.id)}" data-search="${escape(`${v.name} ${nation} ${role} ${v.nation} ${v.role}`)}">
       <summary><strong>${escape(v.name)}</strong><span>${escape(nation)} · ${escape(role)} · ${escape(tier)}</span></summary>
