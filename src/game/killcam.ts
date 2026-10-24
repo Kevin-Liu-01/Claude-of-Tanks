@@ -1235,6 +1235,7 @@ line.cot-kc-anim{animation-name:cotKcInLine;}
 .cot-kc-annot .hd .k{font-family:${FONT_COND};font-weight:700;
   font-size:12.5px;letter-spacing:.08em;color:#ffd49a;}
 .cot-kc-annot .hd .w{font-size:11px;color:#bcc8d1;margin-top:2px;letter-spacing:0em;}
+.cot-kc .kc-cut{display:inline-block;margin:0 3px;vertical-align:-1px}
 .cot-kc-rows{padding:6px 11px 0;display:grid;grid-template-columns:1fr 1fr;gap:3px 13px;}
 .cot-kc-kv{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--kc-muted);
   letter-spacing:0em;}
@@ -2471,9 +2472,11 @@ export function createKillCam(deps: KillcamDeps) {
     const cut = fresh > residual + 1;
     const qualifier = penetrationQualifier(event, fresh, residual, nominal);
     const value = residual > 0
-      ? `${cut ? `${fresh} → ` : ''}${residual}${nominal > 0 ? ` / ${nominal}` : ''} mm`
+      ? `${residual}${nominal > 0 ? ` / ${nominal}` : ''} mm`
       : '—';
     const row = appendReplayStat(d, t('killcam.stat.pen'), value, true);
+    // what the screens or ERA cut: the fresh roll, the sprite's chevron, then what reached the plate
+    if (cut && residual > 0) row.lastElementChild?.insertAdjacentHTML('afterbegin', `${fresh}${uiIconSVG('chevronRight', 10, 'currentColor', 'kc-cut')}`);
     row.classList.add('pen');
     appendPenetrationQualifier(row, qualifier);
     const legend = penetrationLegend(cut, qualifier, residual, nominal);
@@ -2527,7 +2530,11 @@ export function createKillCam(deps: KillcamDeps) {
     d.hdK.textContent = shellName
       ? `${event.shellType || ''} · ${shellName}`
       : (event.shellType || '');
-    d.hdW.textContent = `${attackerName || t('killcam.enemy')} → ${event.targetName || ''}`;
+    // attacker, the sprite's chevron, target (the names stay text nodes)
+    d.hdW.textContent = '';
+    d.hdW.append(attackerName || t('killcam.enemy'));
+    d.hdW.insertAdjacentHTML('beforeend', uiIconSVG('chevronRight', 10, 'currentColor', 'kc-cut'));
+    d.hdW.append(event.targetName || '');
     d.rows.textContent = '';
     if (pb.replayKind === 'collision') populateCollisionStats(d, event);
     else populateBallisticStats(d, event);

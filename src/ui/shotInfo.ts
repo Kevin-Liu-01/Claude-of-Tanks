@@ -413,6 +413,7 @@ const SI_CSS = `
   vertical-align:1px;line-height:1.25;font-weight:700;}
 .cot-si-kv.armor{padding:2px 0;border-top:1px solid var(--line-1);border-bottom:1px solid var(--line-1);}
 .cot-si-kv.result b{color:var(--accent-hi);letter-spacing:.06em;}
+.si-cut{display:inline-block;margin:0 3px;vertical-align:-1px}
 .cot-si-pencap{grid-column:1/-1;font-size:var(--battle-fs-11);color:var(--ink-3);letter-spacing:0em;
   text-align:right;margin-top:-2px;text-transform:uppercase;}
 .cot-si-diag{display:grid;grid-template-columns:90px 172px;gap:9px;align-items:center;
@@ -812,7 +813,8 @@ function penetrationPresentation(
   card.dataset.penfresh = String(fresh);
   const cut = fresh > roll + 1;
   const qualifier = penetrationQualifier(ev, nominal, roll, fresh);
-  const arrow = cut ? `${fresh} → ` : '';
+  // the fresh roll, the sprite's chevron, then what reached the plate (the card's html)
+  const arrow = cut ? `${fresh}${uiIconSVG('chevronRight', 10, 'currentColor', 'si-cut')}` : '';
   const legend = cut
     ? t('killcam.legend.fresh', { tag: t(qualifier === 'era' ? 'killcam.era' : 'killcam.screens') })
     : roll > 0 && nominal > 0 ? t('killcam.legend.roll') : '';

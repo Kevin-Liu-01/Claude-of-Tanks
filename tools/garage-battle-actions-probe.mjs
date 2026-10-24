@@ -213,7 +213,7 @@ async function finishFixtureBattle() {
   // The live solo result owner observes these eliminated enemies and presents
   // the ordinary report. Do not directly synthesize result DOM or ui:battleAgain.
   await page.evaluate(() => window.__DEBUG.slayEnemies());
-  await page.waitForSelector('.cot-es-btn.prime', { visible: true, timeout: timeoutMs });
+  await page.waitForSelector('.cot-es [data-es-action="again"]', { visible: true, timeout: timeoutMs });
 }
 
 try {
@@ -277,9 +277,9 @@ try {
   await page.click('.cot-battle-choice[data-mode="solo"]');
   await runAction('battle', '.cot-battle');
   await finishFixtureBattle();
-  await runAction('battle-again', '.cot-es-btn.prime');
+  await runAction('battle-again', '.cot-es [data-es-action="again"]');
   await finishFixtureBattle();
-  await runAction('return-to-garage', '.cot-es-btn.ghost');
+  await runAction('return-to-garage', '.cot-es [data-es-action="garage"]');
   assertProbeActive();
   report.failures.push(...checkGarageBattleActions(report.actions, { coverLimitMs }));
 } catch (error) {

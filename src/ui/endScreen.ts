@@ -301,9 +301,9 @@ const ES_CSS = `
 .cot-es .es-campaign .ct{margin-top:3px;font-family:${FONT_COND};font-size:19px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff0d8;}
 .cot-es .es-campaign .cs{margin-top:5px;font-size:12.5px;color:#c8d3db;}
 .cot-es .es-campaign .cs b{color:#ffe4b0;font-weight:700;}
-.cot-es .es-campaign .stars{display:inline-flex;gap:3px;margin:6px 0 0;font-size:20px;line-height:1;letter-spacing:.04em;}
-.cot-es .es-campaign .stars i{font-style:normal;color:#4a5560;}
-.cot-es .es-campaign .stars i.on{color:#ffcc55;text-shadow:0 0 10px rgba(255,190,70,.55);}
+.cot-es .es-campaign .stars{display:inline-flex;gap:var(--s1);margin:6px 0 0;line-height:0;}
+.cot-es .es-campaign .stars i{color:var(--ink-4);}
+.cot-es .es-campaign .stars i.on{color:var(--accent);}.cot-es .es-campaign .stars i.on svg{fill:currentColor}
 .cot-es .es-campaign .cn{margin-top:6px;font-family:${FONT_COND};font-size:var(--battle-fs-11);font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#8ea2b0;}
 /* --- two-column debrief --------------------------------------------------- */
 .cot-es .es-report{display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);
@@ -466,33 +466,34 @@ body.cot-es-armed .cot-end{display:none !important;}
 .cot-es .es-ready-meter .meter-label{font:700 var(--battle-fs-11) ${FONT_COND};letter-spacing:.04em;text-transform:uppercase}.cot-es .es-ready-meter b{
   font:700 13px ${FONT_COND};color:#f5e7d3;}.cot-es .es-ready-track{grid-column:1/-1;height:3px;
   background:rgba(151,171,186,.16);overflow:hidden}.cot-es .es-ready-fill{display:block;height:100%;background:${COL.green};
-  box-shadow:0 0 10px rgba(127,220,138,.45);transition:width .25s ease}.cot-es .es-room-actions .cot-es-btn{width:100%;min-width:0;
-  min-height:44px;padding:9px 14px;font-size:11.5px}
-.cot-es .cot-es-btn.ready-now{color:#b8f2c2;border-color:rgba(127,220,138,.6);background:rgba(31,88,45,.68)}
-@keyframes cotEsReadyPulse{50%{box-shadow:0 0 0 5px rgba(240,160,48,.16),0 0 26px rgba(240,160,48,.42)}}
-.cot-es .cot-es-btn.can-start,.cot-es .cot-es-btn.needs-ready:not(:disabled){animation:cotEsReadyPulse 1.35s ease-in-out infinite}
+  box-shadow:0 0 10px rgba(127,220,138,.45);transition:width .25s ease}.cot-es .es-room-actions .es-action{width:100%;min-width:0}
+.cot-es .es-action.ready-now{color:var(--text-ok);box-shadow:var(--ring-ok)}
+@keyframes cotEsReadyPulse{50%{box-shadow:0 0 0 5px oklch(from var(--accent) l c h / .16),0 0 26px oklch(from var(--accent) l c h / .42)}}
+.cot-es .es-action.can-start,.cot-es .es-action.needs-ready:not(:disabled){animation:cotEsReadyPulse 1.35s ease-in-out infinite}
 @media (prefers-reduced-motion:reduce){
-  .cot-es .es-in,.cot-es .es-ban,.cot-es .cot-es-btn.can-start,
-  .cot-es .cot-es-btn.needs-ready:not(:disabled){animation:none!important;opacity:1;transform:none;}
+  .cot-es .es-in,.cot-es .es-ban,.cot-es .es-action.can-start,
+  .cot-es .es-action.needs-ready:not(:disabled){animation:none!important;opacity:1;transform:none;}
 }
 /* --- actions -------------------------------------------------------------- */
 .cot-es .es-actions{display:flex;gap:14px;margin-top:1.8vh;padding:4px 10px;
   flex:0 0 auto;pointer-events:auto;z-index:2;}
-.cot-es .cot-es-btn{font-family:${FONT_COND};font-weight:700;font-size:13.5px;
-  letter-spacing:.22em;text-indent:.11em;text-transform:uppercase;cursor:pointer;
-  min-width:230px;min-height:52px;padding:13px 40px;
-  transition:transform .12s ease,box-shadow .12s ease,filter .12s ease;}
-.cot-es .cot-es-btn .btn-inner{display:flex;align-items:center;justify-content:center;gap:10px}.cot-es .cot-es-btn svg{flex:0 0 auto}
-.cot-es .cot-es-btn:hover{transform:translateY(-1px);filter:brightness(1.08);}
-.cot-es .cot-es-btn:active{transform:translateY(0);}
-.cot-es .cot-es-btn:disabled{cursor:not-allowed;opacity:.62;transform:none;filter:none}
-.cot-es .cot-es-btn.prime{color:#1a0e02;border:1px solid #ffc169;
-  background:linear-gradient(180deg,#ffb64f,#e07a10);
-  box-shadow:0 6px 22px rgba(240,150,40,.35);}
-.cot-es .cot-es-btn.ghost{color:#f4e9d8;border:1px solid rgba(240,193,105,.55);
-  background:rgba(240,160,48,.08);}
-.cot-es .cot-es-btn.ghost:hover{background:rgba(240,160,48,.16);}
+/* the actions are the kit's buttons (.cot-c-btn): this sheet only sets their width in the row */
+.cot-es .es-action{min-width:160px}
 `;
+
+/**
+ * One report action in the kit's vocabulary (.cot-c-btn, 48 tall): its icon, then its label. data-es-action names it
+ * for the spectator bar's Garage and the probes; `state` adds the room's ready / start states.
+ */
+function action(parent: HTMLElement, variant: 'primary' | 'secondary', name: string, iconId: string, label: string,
+  state = ''): HTMLButtonElement {
+  const button = el('button', `cot-c-btn cot-c-btn--${variant} cot-c-btn--48 es-action${state ? ` ${state}` : ''}`, parent);
+  button.type = 'button';
+  button.dataset.esAction = name;
+  button.dataset.uiSound = variant === 'primary' ? 'confirm' : 'press';
+  button.innerHTML = `${uiIconSVG(iconId, 18)}<span class="cot-c-btn__label">${label}</span>`;
+  return button;
+}
 
 const fmtTime = (s: number): string => {
   const t = Math.max(0, Math.floor(s || 0));
@@ -698,9 +699,10 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     if (overlay) {
       const btn = overlay.querySelector<HTMLButtonElement>('button');
       if (btn) {
-        btn.removeAttribute('style'); // shed the inline amber pill styling
-        btn.classList.add('cot-es-btn', 'ghost');
-        btn.innerHTML = `<span class="btn-inner">${uiIconSVG('garage', 18)}<span>${t('endScreen.returnToGarage')}</span></span>`;
+        btn.removeAttribute('style');
+        btn.className = 'cot-c-btn cot-c-btn--secondary cot-c-btn--48 es-action';
+        btn.dataset.esAction = 'garage';
+        btn.innerHTML = `${uiIconSVG('garage', 18)}<span class="cot-c-btn__label">${t('endScreen.returnToGarage')}</span>`;
         garageBtn = btn;
       }
       overlay.style.display = 'none';
@@ -801,10 +803,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     me: LobbyPlayer | undefined,
   ): void {
     if (!me || me.team === 'spectator') return;
-    const ready = el('button', `cot-es-btn ${me.ready ? 'ready-now' : 'prime needs-ready'}`, controls);
-    ready.type = 'button';
-    ready.innerHTML = `<span class="btn-inner">${uiIconSVG(me.ready ? 'close' : 'check', 17)}` +
-      `<span>${me.ready ? t('endScreen.notReady') : t('endScreen.readyNext')}</span></span>`;
+    const ready = action(controls, me.ready ? 'secondary' : 'primary', 'ready', me.ready ? 'close' : 'check',
+      me.ready ? t('endScreen.notReady') : t('endScreen.readyNext'), me.ready ? 'ready-now' : 'needs-ready');
     ready.disabled = state.phase !== 'waiting' || me.connected === false || !me.specId;
     ready.setAttribute('aria-pressed', String(!!me.ready));
     ready.setAttribute('aria-label', me.ready ? t('playMenu.ready.markNotReady') : t('playMenu.ready.markReady'));
@@ -819,10 +819,8 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     state: SerializedLobby,
     everyoneReady: boolean,
   ): void {
-    const start = el('button', `cot-es-btn ghost${everyoneReady ? ' can-start' : ''}`, controls);
-    start.type = 'button';
-    start.innerHTML = `<span class="btn-inner">${uiIconSVG(everyoneReady ? 'rematch' : 'clock', 17)}` +
-      `<span>${everyoneReady ? t('endScreen.startNext') : t('endScreen.waitingTeam')}</span></span>`;
+    const start = action(controls, 'secondary', 'start', everyoneReady ? 'rematch' : 'clock',
+      everyoneReady ? t('endScreen.startNext') : t('endScreen.waitingTeam'), everyoneReady ? 'can-start' : '');
     start.disabled = state.phase !== 'waiting' || !everyoneReady;
     start.addEventListener('click', () => {
       bus.emit('ui:click', {});
@@ -1097,7 +1095,7 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
     const lit = [debrief.cleared, debrief.underPar, debrief.noAllyLost];
     labels.forEach((key, index) => {
       const star = el('i', lit[index] ? 'on' : '', stars);
-      star.textContent = '★';
+      star.innerHTML = uiIconSVG('star', 20); // the sprite's star, filled when earned
       star.title = t(key);
     });
     const next = el('div', 'cn', block);
@@ -1394,21 +1392,16 @@ export function createEndScreen(bus: EventBus, host: HTMLElement): EndScreenRunt
       // campaign ladder: the next (or the same, after a loss) operation is one click away
       const debrief = sum.campaign;
       const next = debrief.next!;
-      const cta = el('button', 'cot-es-btn prime', actions);
-      cta.type = 'button';
+      const cta = action(actions, 'primary', 'campaign', 'modeZones',
+        t(debrief.cleared ? 'endScreen.campaign.next' : 'endScreen.campaign.retry', { title: t(`campaign.op.${next.id}.title`) }));
       cta.dataset.campaignNext = next.id;
-      cta.innerHTML = `<span class="btn-inner">${uiIconSVG('modeZones', 18)}` +
-        `<span>${t(debrief.cleared ? 'endScreen.campaign.next' : 'endScreen.campaign.retry', { title: t(`campaign.op.${next.id}.title`) })}</span></span>`;
       cta.addEventListener('click', () => {
         bus.emit('ui:click', {});
         bus.emit('ui:campaignNext', { operationId: next.id, mapId: next.mapId });
       });
     }
     if (!roomContext?.state) {
-      const again = el('button', 'cot-es-btn prime', actions);
-      again.type = 'button';
-      again.innerHTML = `<span class="btn-inner">${uiIconSVG('rematch', 18)}` +
-        `<span>${t('endScreen.battleAgain')}</span></span>`;
+      const again = action(actions, 'primary', 'again', 'rematch', t('endScreen.battleAgain'));
       again.addEventListener('click', () => {
         bus.emit('ui:click', {});
         bus.emit('ui:battleAgain', {});

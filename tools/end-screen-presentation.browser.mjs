@@ -31,8 +31,8 @@ try{
    await page.locator('.es-tr').last().scrollIntoViewIfNeeded();assert.equal(await page.locator('.es-tr').last().isVisible(),true);
    await page.screenshot({path:resolve(out,`${name}-${result}-teams.png`)});
   }
-  await page.evaluate(()=>window.__DEBRIEF.show('victory',true));await bounds('.es-actions');assert.equal(await page.locator('.es-rematch').isVisible(),true);await page.locator('.es-rematch .cot-es-btn').last().scrollIntoViewIfNeeded();await bounds('.es-rematch .cot-es-btn:last-child');
-  assert.equal(await page.locator('.es-rematch .cot-es-btn').count(),2);
+  await page.evaluate(()=>window.__DEBRIEF.show('victory',true));await bounds('.es-actions');assert.equal(await page.locator('.es-rematch').isVisible(),true);await page.locator('.es-rematch .es-action').last().scrollIntoViewIfNeeded();await bounds('.es-rematch .es-action:last-child');
+  assert.equal(await page.locator('.es-rematch .es-action').count(),2);
   await page.evaluate(()=>window.__DEBRIEF.show('defeat',false,false));assert.equal(await page.locator('.es-awards').count(),0);
   assert.deepEqual(errors,[]);results.push({name,results:3,roster:42,passed:true});await context.close();
  }

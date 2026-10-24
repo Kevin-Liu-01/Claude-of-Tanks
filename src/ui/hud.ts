@@ -2409,7 +2409,7 @@ export function initHud(bus: EventBus): HudRuntime {
   // Driven by killcam.ts's ally-spectate controller over the bus (additive
   // spectate:begin/change/end events). The GARAGE action adopts the
   // integration end button's existing click handler — either where main.ts
-  // built it (.cot-end) or where the end screen reparented it (.cot-es-btn).
+  // built it (.cot-end) or where the end screen reparented it ([data-es-action="garage"]).
   const specBar = el('div', 'cot-spec', root);
   specBar.innerHTML = spectatorSwitcherMarkup();
   specBar.setAttribute('role', 'region');
@@ -2430,7 +2430,7 @@ export function initHud(bus: EventBus): HudRuntime {
   });
   requireElement<HTMLButtonElement>(specBar, '.gar').addEventListener('click', () => {
     const btn = document.querySelector<HTMLButtonElement>('.cot-end button')
-      || document.querySelector<HTMLButtonElement>('.cot-es-btn.ghost');
+      || document.querySelector<HTMLButtonElement>('.cot-es [data-es-action="garage"]');
     if (btn) btn.click(); // existing endOverlayRuntime Garage handler
   });
   function specPopulate(p: HudEventPayload, first: boolean): void {
