@@ -12,7 +12,7 @@ import { ensureInteriorFills } from '/src/vehicles/interiorFills.ts';
 import { physicalMuzzleRimSample, muzzleBoreLuminance, sampleMuzzleRingSeams } from '/tools/muzzle-seat-policy.mjs';
 import { ALL_TANK_IDS, DEVELOPMENT_TANK_IDS, getSpec } from '/src/vehicles/specs.ts';
 import {
-  TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, geometryFingerprint, metadataFingerprint,
+  TANK_ASSET_SCHEMA_VERSION, TANK_ASSET_VIEWS, exteriorFingerprint, metadataFingerprint,
   requiredTankAssetFiles, tankAssetFile, tankAssetMetadata,
 } from '/src/vehicles/tankAssets.ts';
 import { auditTankAppearance } from '/src/vehicles/appearanceAudit.ts';
@@ -796,7 +796,8 @@ function inspectOne(id, renderFiles, requestedViews = null) {
     const { center, size, extentX, extentZ } = projection;
     const spec = getSpec(id);
     const metadata = tankAssetMetadata(spec);
-    const geometryHash = geometryFingerprint(root);
+    // 244: the staleness key is the exterior fingerprint (what the camera draws); interior-only changes never stale a render
+    const geometryHash = exteriorFingerprint(root);
     const presentationAnchor = {
       xM: Number(assetAnchor.xM.toFixed(4)),
       zM: Number(assetAnchor.zM.toFixed(4)),
