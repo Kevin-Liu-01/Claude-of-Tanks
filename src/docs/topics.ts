@@ -482,7 +482,7 @@ function renderTopicPage(): void {
   const last = location.pathname.split('/').filter(Boolean).at(-1) || 'simulation';
   const slug: TopicId = isTopicId(last) ? last : 'simulation';
   const topic = topics[slug];
-  document.title = `${topic.label} — ${t('docs.topic.pageTitle')}`;
+  document.title = `${topic.label} · ${t('docs.topic.pageTitle')}`;
   const root = document.querySelector<HTMLElement>('#topicRoot');
   if (!root) throw new Error('technical manual topic root is unavailable');
   const prerendered = root.dataset.prerendered === slug && root.dataset.prerenderedLocale === getLocale() && root.querySelector('.dm');
