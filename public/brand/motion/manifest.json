@@ -1,0 +1,35 @@
+{
+ "libraryId": "claude-of-tanks-brand-motion-245",
+ "author": "Kevin B. Liu",
+ "copyright": "Copyright © 2026 Kevin B. Liu",
+ "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
+ "thirdParty": "The commander figure is the Claude Code mascot glyph (Anthropic), verbatim; see docs/ATTRIBUTION.md.",
+ "generatedBy": "node tools/brand-motion-export.mjs (src/ui/brandMarkMotion.ts), ffmpeg (libx264 crf 18, libvpx-vp9 crf 30, GIF palette 64)",
+ "loop": {
+  "seconds": 1.2,
+  "fps": 30,
+  "loops": 4
+ },
+ "items": [
+  {
+   "file": "commander-loop.mp4",
+   "size": "1280x720"
+  },
+  {
+   "file": "commander-loop.webm",
+   "size": "1280x720"
+  },
+  {
+   "file": "commander-loop.gif",
+   "size": "640x360"
+  },
+  {
+   "file": "title-card-loop.mp4",
+   "size": "1080x1080"
+  },
+  {
+   "file": "title-card-loop.webm",
+   "size": "1080x1080"
+  }
+ ]
+}
