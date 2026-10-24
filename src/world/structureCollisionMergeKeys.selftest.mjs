@@ -39,11 +39,57 @@ const originals = {
   while (mergeFirstProjectedPair(polygons)) { /* restart after each exact merge */ }
   return uniquePolygons(polygons);
 }`,
+  // (perf-247) the shell bands' ranged merge before it took the same resumed, indexed search (b6635ae4a1), and the
+  // cached corner keys it read; the original sharedVertexCount above serves it (its cache argument unused)
+  projectedPolygonKeys: `function projectedPolygonKeys(polygon: number[], cache: Map<number[], Set<string>>): Set<string> {
+  let keys = cache.get(polygon);
+  if (!keys) {
+    keys = polygonVertexKeys(polygon);
+    cache.set(polygon, keys);
+  }
+  return keys;
+}`,
+  mergeRangedPolygons: `function mergeRangedPolygons(items: RangedPolygon[]): RangedPolygon[] {
+  // same pairwise exact-hull merge as the whole-solid projection, carrying the union of the vertical extents
+  const deduped = new Map<string, RangedPolygon>();
+  for (const item of items) {
+    const key = [...polygonVertexKeys(item.points)].sort().join('|');
+    const prior = deduped.get(key);
+    if (!prior) deduped.set(key, { points: item.points, y0: item.y0, y1: item.y1 });
+    else { prior.y0 = Math.min(prior.y0, item.y0); prior.y1 = Math.max(prior.y1, item.y1); }
+  }
+  // containment first: a section loop already inside a face projection must not widen a hull with air
+  const polygons = uniqueRangedPolygons([...deduped.values()]);
+  const vertexKeys = new Map<number[], Set<string>>();
+  let merged = true;
+  while (merged) {
+    merged = false;
+    for (let first = 0; first < polygons.length && !merged; first++) {
+      const firstKeys = projectedPolygonKeys(polygons[first].points, vertexKeys);
+      for (let second = first + 1; second < polygons.length; second++) {
+        if (sharedVertexCount(firstKeys, polygons[second].points, vertexKeys) < 2) continue;
+        const hull = combinedConvexHull(polygons[first].points, polygons[second].points);
+        if (!hull) continue;
+        polygons[first] = {
+          points: hull,
+          y0: Math.min(polygons[first].y0, polygons[second].y0),
+          y1: Math.max(polygons[first].y1, polygons[second].y1),
+        };
+        polygons.splice(second, 1);
+        merged = true;
+        break;
+      }
+    }
+  }
+  return uniqueRangedPolygons(polygons);
+}`,
 };
 const originalHashes = {
   sharedVertexCount: '2f918a6665014d639d03cb4be23ecd96213d25465505976f97c68d58eec913ac',
   mergeFirstProjectedPair: 'f076d48de68a0b4c050f30e453c8a655599f0610c7f5cd4983df5bc95782bdc6',
   mergeProjectedTriangles: 'cc8d03fad5a500dc72aaa8cb93662a138737ade75981ad360a7b0450975e5665',
+  projectedPolygonKeys: '7cb18d047b30d1b751af8622174e39bea2e3dc5231f5dc2fdf85d175b4606623',
+  mergeRangedPolygons: '4207da7daebadcad5a9708b9dae36c7f422d0262e3d3822b3902cf335a5c111d',
 };
 const sha256 = text => createHash('sha256').update(text).digest('hex');
 for (const [name, source] of Object.entries(originals)) {
@@ -57,16 +103,22 @@ const hooks = registerHooks({ load(url, context, nextLoad) {
   let text = source;
   const isOriginal = url.endsWith('?keys-original');
   if (isOriginal) {
-    // (the ranged band merge keeps the shared-corner count; mergeFirstProjectedPair is gone from the current source and
-    // goes back in ahead of the original mergeProjectedTriangles)
-    for (const name of ['sharedVertexCount', 'mergeProjectedTriangles']) assert.ok(functionPattern(name).test(text), `${name}: actual function boundary exists`);
-    assert.ok(!functionPattern('mergeFirstProjectedPair').test(text), 'mergeFirstProjectedPair: gone from the current source');
-    text = text.replace(functionPattern('sharedVertexCount'), () => originals.sharedVertexCount)
-      .replace(functionPattern('mergeProjectedTriangles'), () => `${originals.mergeFirstProjectedPair}\n\n${originals.mergeProjectedTriangles}`);
+    // (mergeFirstProjectedPair, and since perf-247 the shared-corner count and its key cache, are gone from the current
+    // source: they go back in ahead of the original mergeProjectedTriangles, and the original ranged merge replaces
+    // the current one)
+    for (const name of ['mergeProjectedTriangles', 'mergeRangedPolygons']) assert.ok(functionPattern(name).test(text), `${name}: actual function boundary exists`);
+    for (const name of ['mergeFirstProjectedPair', 'sharedVertexCount', 'projectedPolygonKeys']) {
+      assert.ok(!functionPattern(name).test(text), `${name}: gone from the current source`);
+    }
+    text = text.replace(functionPattern('mergeProjectedTriangles'), () => [originals.sharedVertexCount, originals.projectedPolygonKeys,
+      originals.mergeFirstProjectedPair, originals.mergeProjectedTriangles].join('\n\n'))
+      .replace(functionPattern('mergeRangedPolygons'), () => originals.mergeRangedPolygons);
   }
   const counters = [['polygonVertexKeys', 'keys'], ['sharedVertexCount', 'pairs'], ['combinedConvexHull', 'hulls']];
   for (const [name, counter] of counters) {
     const declaration = text.match(new RegExp(`function ${name}\\([^]*?\\{`))?.[0];
+    // (perf-247) the current merges count no shared corners: they draw their pairs from the welded-corner index
+    if (!declaration && name === 'sharedVertexCount' && !isOriginal) continue;
     assert.ok(declaration, `${name}: instrumentation stays inside actual source function`);
     text = text.replace(declaration, `${declaration} __mergeCounts.${counter}++;`);
   }
@@ -77,7 +129,7 @@ const hooks = registerHooks({ load(url, context, nextLoad) {
   text += `
     const __mergeCounts = { keys: 0, pairs: 0, hulls: 0 };
     const __mergeTrace = [];
-    export { mergeProjectedTriangles as testMerge };
+    export { mergeProjectedTriangles as testMerge, mergeRangedPolygons as testRangedMerge };
     export function mergeReceipt() { return { counts: { ...__mergeCounts }, trace: __mergeTrace.slice() }; }
     export function resetMergeReceipt() {
       for (const key of Object.keys(__mergeCounts)) __mergeCounts[key] = 0;
@@ -174,6 +226,30 @@ for (const [label, triangles] of cases) {
   assert.equal(refused.counts.original.hulls, 12 + 13, 'the restarted search: the dart again after each of the 12 merges');
   assert.equal(refused.counts.candidate.hulls, 12 + 1, 'the resumed search: the dart once');
   console.log(`lattice soups: ${merges} merges; hull tests ${hullTests.candidate} against ${hullTests.original} restarted, key builds ${keyBuilds.candidate} against ${keyBuilds.original}`);
+}
+// (perf-247) the shell bands' ranged merge, held to its restarted original the same way: lattice soups whose pieces carry
+// vertical extents (a merge reads the points alone and unions the extents), exact values, order and Float bits
+{
+  const random = seeded(0x247a1);
+  let shed = 0;
+  for (let soup = 0; soup < 48; soup++) {
+    const size = 3 + Math.floor(random.rng() * 4), wanted = 6 + Math.floor(random.rng() * 40);
+    const items = [];
+    for (let k = 0; k < wanted; k++) {
+      const x = Math.floor(random.rng() * size), z = Math.floor(random.rng() * size), up = random.rng() < 0.5;
+      const cell = random.rng() < 0.5 ? [true, false] : [up];
+      const y0 = Math.floor(random.rng() * 4) * 0.5, y1 = y0 + 0.5 + Math.floor(random.rng() * 2) * 0.5;
+      for (const half of cell) {
+        const p = half ? [x, z, x + 1, z, x, z + 1] : [x + 1, z, x + 1, z + 1, x, z + 1];
+        items.push({ points: random.rng() < 0.3 ? [p[4], p[5], p[2], p[3], p[0], p[1]] : p, y0, y1 });
+      }
+    }
+    const result = compare('testRangedMerge', items, `ranged lattice soup ${soup}`);
+    shed += items.length - result.actual.length;
+  }
+  assert.ok(shed > 200, 'the ranged soups merge often');
+  compare('testRangedMerge', [], 'ranged: empty');
+  compare('testRangedMerge', [{ points: [0, 0, 1, 0, 0, 1], y0: 0, y1: 0.5 }], 'ranged: single');
 }
 const pairHeavy = Array.from({ length: 32 }, (_, index) => [index * 3, 0, index * 3 + 1, 0, index * 3, 1]);
 const work = compare('testMerge', pairHeavy, 'deterministic rejected-pair work reduction');
