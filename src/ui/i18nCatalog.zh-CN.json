@@ -5144,6 +5144,7 @@
   "studio.ws.queue.state.failed": "失败",
   "studio.ws.queue.state.cancelled": "已取消",
   "studio.ws.queue.done": "队列完成：已保存 {count} 个文件",
+  "studio.ws.laneSound": "声音",
   "media.versus.title.f6Leo2a6SteinburgR7Top": "斯泰因堡，白天，俯瞰：Leopard 2A6 对 T-90M",
   "media.versus.match.f6Leo2a6SteinburgR7Top": "Leopard 2A6 对 T-90M",
   "media.versus.place.f6Leo2a6SteinburgR7Top": "斯泰因堡，白天，俯瞰",

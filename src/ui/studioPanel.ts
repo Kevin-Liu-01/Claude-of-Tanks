@@ -235,6 +235,8 @@ export interface StudioPanelApi extends StudioPicturePanelApi {
   /** The last autosaved scene (this browser), and opening it. */
   autosaved(): { readonly savedAt: number; readonly map: string; readonly tanks: number } | null;
   restoreAutosave(): Promise<boolean>;
+  /** The film's soundtrack as peaks over the timeline (the sound lane); null while busy or playing. */
+  soundPreview(buckets: number): Promise<{ readonly peaks: Float32Array; readonly cues: number } | null>;
   /** Where a dragged or placed tank lands: on the nearest road, on the ground under the pointer, or on its own level. */
   readonly placementSnap: 'road' | 'terrain' | 'off';
   setPlacementSnap(snap: 'road' | 'terrain' | 'off'): string;
@@ -2600,9 +2602,57 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       clip.addEventListener('click', (event) => { event.stopPropagation(); S.selectEffect(effect.id); S.seek(effect.tMs); });
       effectLane.appendChild(clip);
     }
+    // the sound lane (09-studio .tl Sound): the film's soundtrack as it will mix, redrawn once the scene settles
+    const soundLane = timelineLane(t('studio.ws.laneSound'), 'sound');
+    soundLane.classList.add('tk--sound');
+    soundLane.appendChild(soundWave);
+    scheduleSound();
     if (!board.shots.length) {
       shotboard.appendChild(el('div', 'fxempty', t('studioPanel.storyboard.empty')));
     }
+  }
+
+  // the sound lane's waveform: one element kept across the timeline's rebuilds, redrawn when the scene changes
+  const SOUND_BUCKETS = 400;
+  const soundWave = document.createElementNS(SVG_NS, 'svg');
+  soundWave.setAttribute('viewBox', `0 0 ${SOUND_BUCKETS} 20`);
+  soundWave.setAttribute('preserveAspectRatio', 'none');
+  soundWave.setAttribute('aria-hidden', 'true');
+  const soundPath = document.createElementNS(SVG_NS, 'path');
+  soundWave.appendChild(soundPath);
+  let soundKey = '';
+  let soundTimer: ReturnType<typeof setTimeout> | 0 = 0;
+  /** What the soundtrack depends on: the effects, the take's length, the shots (the listener) and the tanks. */
+  function soundSignature(): string {
+    return JSON.stringify([S.mapId, S.durationMs, S.listEffects().map((effect) => [effect.id, effect.type, effect.tMs, effect.actor ?? null, effect.params ?? null]),
+      // the shots place the listener (the panel's shot type leaves the camera out; the storyboard carries it)
+      (S.getStoryboard().shots as ReadonlyArray<StudioCameraShot & { readonly pos?: readonly number[]; readonly lookAt?: readonly number[] }>)
+        .map((shot) => [shot.tMs, shot.pos ?? null, shot.lookAt ?? null, shot.transition]),
+      S._internal.actors.map((actor) => [actor.uid, actor.spec.id, actor.pose.x, actor.pose.z, actor.pose.facingDeg, actor.pose.turretDeg, actor.pose.gunDeg])]);
+  }
+  function scheduleSound(): void {
+    const key = soundSignature();
+    if (key === soundKey) return;
+    soundKey = key;
+    soundWave.classList.add('stale');
+    if (soundTimer) clearTimeout(soundTimer);
+    soundTimer = setTimeout(drawSound, 1500);
+  }
+  async function drawSound(): Promise<void> {
+    soundTimer = 0;
+    const key = soundKey;
+    const result = root.style.display === 'block' ? await S.soundPreview(SOUND_BUCKETS).catch(() => null) : null;
+    if (!result) { soundTimer = setTimeout(drawSound, 1500); return; } // busy or playing: again once it settles
+    if (key !== soundKey) return; // the scene moved on while it mixed; its own redraw is queued
+    let peak = 0;
+    for (const value of result.peaks) peak = Math.max(peak, value);
+    let d = '';
+    for (let i = 0; i < result.peaks.length; i++) {
+      const half = (peak > 0 ? (result.peaks[i] / peak) * 9.4 : 0) + 0.3;
+      d += `M${i + 0.5} ${(10 - half).toFixed(2)}V${(10 + half).toFixed(2)}`;
+    }
+    soundPath.setAttribute('d', d);
+    soundWave.classList.remove('stale');
   }
 
   // --- public panel API -------------------------------------------------------
@@ -2678,6 +2728,7 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       if (planShown) planView.refreshPlan();
     },
     refreshSelected() {
+      scheduleSound();
       const a = S._internal.selected;
       secSel.hidden = !a;
       selEmpty.hidden = !!a;
