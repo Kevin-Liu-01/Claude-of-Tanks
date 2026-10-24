@@ -29,7 +29,7 @@
       "requests": 76,
       "raw": 2519186,
       "gzip": 764049,
-      "brotli": 643109,
+      "brotli": 643132,
       "inlineCss": 846
     },
     "notFound": {
