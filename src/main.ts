@@ -1090,17 +1090,33 @@ const pedestal = createGaragePedestalRuntime({
   debugTarget: typeof window !== 'undefined' ? window : null,
 });
 
-const noteGarageActivity = () => {
+// A press paints its own interface first; the Garage scene's activity frames (and their shadow refresh) start one
+// paint later (click-perf-244: every Garage press's paint carried a full scene render). The dressing and preload pauses
+// still start at the press. Wheel and resize move the view itself, so they wake it at once.
+let garageActivityAfterPaint = false;
+const noteGarageViewActivity = () => {
   if (game.phase !== 'garage') return;
   invalidateGaragePresentation();
   garageDressingScheduler.noteActivity();
   pedestal.invalidatePreload();
 };
+const noteGarageActivity = () => {
+  if (game.phase !== 'garage') return;
+  garageDressingScheduler.noteActivity();
+  pedestal.invalidatePreload();
+  if (garageActivityAfterPaint) return;
+  garageActivityAfterPaint = true;
+  void nextPaintFrame().then(() => {
+    garageActivityAfterPaint = false;
+    invalidateGaragePresentation(); // outside the Garage it only marks the return dirty
+  });
+};
 // Resize can arrive without pointer input (split view, orientation, browser
 // chrome collapse). Treat it as presentation activity so the new viewport is
 // painted immediately instead of waiting for the five-second safety frame.
 for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart', 'resize']) {
-  window.addEventListener(type, noteGarageActivity, { capture: true, passive: true });
+  window.addEventListener(type, type === 'wheel' || type === 'resize' ? noteGarageViewActivity : noteGarageActivity,
+    { capture: true, passive: true });
 }
 // The garage hero uses the dedicated close-up preview tier. A 2048²/1024²
 // repaint was visually redundant at showroom distance and added a large cold

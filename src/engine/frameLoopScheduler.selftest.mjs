@@ -679,13 +679,14 @@ function mainBlock(start, end) {
 const garageBoot = mainBlock('let garagePresentationDirty = true;',
   'let invalidateGaragePresentation = () => { garagePresentationDirty = true; };');
 const garageInvalidate = mainBlock('\ninvalidateGaragePresentation = () => {', '\n};');
-const garageActivity = mainBlock('const noteGarageActivity = () => {', '\n};');
+const garageActivity = mainBlock('let garageActivityAfterPaint = false;', '\n// Resize can arrive');
 const garageListeners = mainBlock("for (const type of ['pointerdown', 'wheel', 'keydown', 'touchstart', 'resize']) {", '\n}');
 assert.equal(runInNewContext(`${garageBoot}\ngaragePresentationDirty = false;
   invalidateGaragePresentation(); garagePresentationDirty;`), true,
 'the early boot callback only marks dirty, without reading later live owners');
 
-function garageActivityFixture(harness, phase, legacy = false) {
+// `paints` (an array) collects the wake each press defers to after its paint; without it the paint is immediate.
+function garageActivityFixture(harness, phase, legacy = false, paints = null) {
   const game = { phase }, effects = [], listeners = new Map();
   const callbacks = `${garageInvalidate}\n${garageActivity}`;
   const body = legacy ? callbacks.replaceAll("  if (game.phase !== 'garage') return;\n", '') : callbacks;
@@ -697,6 +698,7 @@ function garageActivityFixture(harness, phase, legacy = false) {
     lighting: { setStaticPresentationDormant: value => effects.push(['lighting', value]) },
     garageDressingScheduler: { noteActivity: () => effects.push(['dressing']) },
     pedestal: { invalidatePreload: () => effects.push(['preload']) },
+    nextPaintFrame: () => (paints ? new Promise((resolve) => paints.push(resolve)) : { then: (next) => next() }),
     window: { addEventListener(type, listener, options) {
       assert.equal(options.capture, true); assert.equal(options.passive, true);
       listeners.set(type, listener);
@@ -761,7 +763,36 @@ for (const phase of ['battle', 'studio']) {
   activity.listeners.get('keydown')();
   assert.equal(harness.delayed, null, 'Garage input still wakes the sleeping presentation clock');
   assert.equal(harness.frames.size, 1);
+  assert.deepEqual(activity.effects, [['dressing'], ['preload'], ['pacer', 1234], ['lighting', false]]);
+  harness.scheduler.dispose();
+}
+
+// click-perf-244: a press paints its own interface before the scene wakes (its frame used to carry a full scene and
+// shadow render); presses before that paint share one wake. Wheel and resize move the view, so they wake it at once.
+{
+  const harness = createHarness(), paints = [];
+  const activity = garageActivityFixture(harness, 'garage', false, paints);
+  harness.setBoot(true); harness.setIdle(true);
+  harness.scheduler.restart(); harness.fireFrame(harness.frames.keys().next().value, 0); harness.scheduler.schedule();
+  assert.ok(harness.delayed, 'the settled Garage sleeps');
+  activity.listeners.get('pointerdown')();
+  activity.listeners.get('keydown')();
+  assert.deepEqual(activity.effects, [['dressing'], ['preload'], ['dressing'], ['preload']],
+    'a press pauses the dressing and the preloads at once');
+  assert.ok(harness.delayed, 'and leaves the scene asleep through its own paint');
+  assert.equal(paints.length, 1, 'presses before that paint share one wake');
+  paints[0]();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(harness.delayed, null, 'the scene wakes once the press has painted');
+  assert.equal(harness.frames.size, 1);
+  assert.deepEqual(activity.effects.slice(4), [['pacer', 1234], ['lighting', false]]);
+  harness.fireFrame(harness.frames.keys().next().value, 64); harness.scheduler.schedule();
+  assert.ok(harness.delayed, 'the woken scene returns to its idle cadence');
+  activity.effects.length = 0;
+  activity.listeners.get('wheel')();
+  assert.equal(harness.delayed, null, 'a wheel moves the view: it wakes the scene at once');
   assert.deepEqual(activity.effects, [['pacer', 1234], ['lighting', false], ['dressing'], ['preload']]);
+  assert.equal(paints.length, 1, 'with no deferred wake');
   harness.scheduler.dispose();
 }
 
