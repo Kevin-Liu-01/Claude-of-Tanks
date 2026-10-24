@@ -276,6 +276,7 @@
    "sha256": "6b2d5e6042786e2dcd5ca5f973ba7c8eaef22c9b321c2c48fa37bb245d85944b",
    "shows": "Watch mode riding along with a T-90MS by the church on Verdant Fields, the tank switcher above",
    "replaces": "/media/presentation-r1/ui_spectator_switcher.webp, /media/showcase-r2/18_live_spectator.webp",
+   "note": "A pair matched in framing, not one moment: both ride along on Verdant Fields with the watched tank from behind, its target ahead and the Watch bar on top. watch-1440 is a desktop page riding a T-90MS, watch-mobile a phone-booted touch page riding a Leopard 2 Revolution. A same-moment twin (the frozen desktop page switched to phone emulation) kept the desktop layout and the fine pointer, so the phone page was shot on its own.",
    "captured": {
     "slot": "docs/watch",
     "at": "2026-10-24T14:48:13.595Z",
@@ -292,6 +293,7 @@
    "sha256": "ea07fdcb6ff6167efbc8de3f93db9a6f195b3f3027dadcfdfe80f445e2cc7126",
    "shows": "Watch mode riding along with a T-90MS by the church on Verdant Fields, the tank switcher above",
    "replaces": "/media/presentation-r1/ui_spectator_switcher.webp, /media/showcase-r2/18_live_spectator.webp",
+   "note": "A pair matched in framing, not one moment: both ride along on Verdant Fields with the watched tank from behind, its target ahead and the Watch bar on top. watch-1440 is a desktop page riding a T-90MS, watch-mobile a phone-booted touch page riding a Leopard 2 Revolution. A same-moment twin (the frozen desktop page switched to phone emulation) kept the desktop layout and the fine pointer, so the phone page was shot on its own.",
    "captured": {
     "slot": "docs/watch",
     "at": "2026-10-24T14:48:13.595Z",
@@ -308,6 +310,7 @@
    "sha256": "7ae3651b901cab2f8a37d188c77cdf4110cc075ac18b965e210e080be8e2f675",
    "shows": "Watch mode on a phone held upright, riding along with a Leopard 2 Revolution",
    "replaces": "/media/presentation-r1/ui_spectator_switcher_mobile.webp",
+   "note": "A pair matched in framing, not one moment: both ride along on Verdant Fields with the watched tank from behind, its target ahead and the Watch bar on top. watch-1440 is a desktop page riding a T-90MS, watch-mobile a phone-booted touch page riding a Leopard 2 Revolution. A same-moment twin (the frozen desktop page switched to phone emulation) kept the desktop layout and the fine pointer, so the phone page was shot on its own.",
    "captured": {
     "slot": "docs/watch-mobile",
     "at": "2026-10-24T14:30:28.174Z",
