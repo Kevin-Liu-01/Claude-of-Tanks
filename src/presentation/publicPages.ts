@@ -145,6 +145,7 @@ document.querySelectorAll<HTMLElement>('#versus').forEach(mountVersusFilter);
 
 interface FleetFeature {
   readonly name: string; readonly flag: string; readonly tier: string; readonly cal: number; readonly pen: number;
+  readonly crew: number; readonly weight: string; readonly speed: number;
   readonly tank: readonly [string, string]; readonly banner: readonly [string, string]; readonly place: string;
   readonly anatomy: string; readonly drive: string;
 }
@@ -168,7 +169,8 @@ function mountFleetFeature(section: HTMLElement): void {
     const name = fact<HTMLElement>('name');
     if (name) name.textContent = feature.name;
     plate.querySelector('.fleet-feature__flag use')?.setAttribute('href', `#f-${feature.flag}`);
-    const values: Record<string, string> = { tier: feature.tier, caliber: String(feature.cal), penetration: String(feature.pen) };
+    const values: Record<string, string> = { tier: feature.tier, caliber: String(feature.cal), penetration: String(feature.pen),
+      crew: String(feature.crew), weight: feature.weight, speed: String(feature.speed) };
     for (const [key, value] of Object.entries(values)) { const node = fact<HTMLElement>(key); if (node) node.textContent = value; }
     fact<HTMLAnchorElement>('anatomy')?.setAttribute('href', feature.anatomy);
     fact<HTMLAnchorElement>('drive')?.setAttribute('href', feature.drive);

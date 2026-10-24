@@ -15,6 +15,8 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { flagMarkup, iconMarkup } from '../src/presentation/publicShell.ts';
 import { TANK_IDS } from '../src/vehicles/tankIdAliases.ts';
+import '../src/vehicles/tankFactory.ts';
+import { getSpec } from '../src/vehicles/specs.ts';
 import { MAP_IDS } from '../src/world/maps/mapIds.ts';
 import { mapRegionTags, regionTagIcon } from '../src/ui/regionTags.ts';
 
@@ -173,20 +175,28 @@ function heroLayers(id, a) {
 const takeKey = (take) => `media.site50.title.${camel(take.take)}`;
 const PLATE_SIZES = '(width < 1100px) 100vw, 34vw';
 const pen = (a) => Math.max(0, ...(a.gun?.shells ?? []).map((s) => Number(s.pen100Mm) || 0));
+// the direction's crew, weight and top speed: the spec's crew volumes and mobility figures (the Gallery's dossier reads them too)
+function mobility(id) {
+  const spec = getSpec(id);
+  const crew = spec.armor?.crew?.length ?? 0, weight = Number(spec.weightTons) || 0, speed = Number(spec.topSpeedKmh) || 0;
+  if (!crew || !weight || !speed) throw new Error(`home-premiere: ${id} has no crew, weight or top speed`);
+  return { crew, weight: String(Math.round(weight * 10) / 10), speed: Math.round(speed) };
+}
 function fleetBlock() {
   const cards = FLEET.map((take) => {
     const entry = TAKES.vehicles[take];
     if (!entry) throw new Error(`home-premiere: no fleet take ${take}`);
     const id = TANK_IDS.resolve(take, String(TAKES.tankIdSchema ?? 1));
     const a = tank(id);
-    return { id, a, take: entry, hero: heroLayers(id, a) };
+    return { id, a, take: entry, hero: heroLayers(id, a), m: mobility(id) };
   });
   const feature = (c) => JSON.stringify({ name: c.a.name, flag: c.a.countryCode, tier: c.a.tierNumeral, cal: c.a.gun?.caliberMm ?? 0,
-    pen: pen(c.a), tank: c.hero.tank, banner: c.hero.flag, place: c.hero.place,
+    pen: pen(c.a), crew: c.m.crew, weight: c.m.weight, speed: c.m.speed, tank: c.hero.tank, banner: c.hero.flag, place: c.hero.place,
     anatomy: galleryHref(c.id, 'modules').replace(/&amp;/g, '&'), drive: driveHref(c.id).replace(/&amp;/g, '&') });
   const first = cards[0];
+  // a unit is a symbol (lang="en" in either locale) or a catalog key (the crew count's word)
   const fact = (icon, key, value, unit = '') => `<div>${iconMarkup(icon, 16)}<dt>${t(key)}</dt><dd><b data-fact="${key.split('.').pop()}">${value}</b>`
-    + `${unit ? `<small lang="en">${unit}</small>` : ''}</dd></div>`;
+    + `${unit.startsWith('home.') ? t(unit, 'small') : unit ? `<small lang="en">${unit}</small>` : ''}</dd></div>`;
   const plate = `<article class="fleet-feature" data-fleet-feature>`
     + `<div class="fleet-feature__art cot-hc hc-loaded" data-hero-facing="${HERO.facing}">`
     + `<picture><source type="image/avif" data-fact="banner-set" srcset="${first.hero.flag[0]}" sizes="${PLATE_SIZES}">`
@@ -195,7 +205,8 @@ function fleetBlock() {
     + `<img class="hc-tank" data-fact="tank" src="${first.hero.tank[1]}" width="480" height="300" alt="" loading="lazy" decoding="async" style="${first.hero.place}"></picture>`
     + `<h3 class="fleet-feature__name">${flag(first.a.countryCode, 'lg', 'fleet-feature__flag')}<span data-fact="name">${esc(first.a.name)}</span></h3></div>`
     + `<dl class="fleet-facts">${fact('star', 'home.fleet.tier', first.a.tierNumeral)}${fact('gun', 'home.fleet.caliber', first.a.gun?.caliberMm ?? 0, 'mm')}`
-    + `${fact('penetration', 'home.fleet.penetration', pen(first.a), 'mm')}</dl>`
+    + `${fact('penetration', 'home.fleet.penetration', pen(first.a), 'mm')}${fact('team', 'home.fleet.crew', first.m.crew, 'home.fleet.crewUnit')}`
+    + `${fact('track', 'home.fleet.weight', first.m.weight, 't')}${fact('speed', 'home.fleet.speed', first.m.speed, 'km/h')}</dl>`
     + `<div class="fleet-feature__acts"><a class="${btn('primary', '36')}" data-fact="anatomy" href="${galleryHref(first.id, 'modules')}">${iconMarkup('layerModules', 16)}${t('home.fleet.anatomy')}</a>`
     + `<a class="${btn('', '36')}" data-fact="drive" href="${driveHref(first.id)}">${iconMarkup('vehicle', 16)}${t('home.testDrive')}</a></div></article>`;
   const tile = (c) => `<a class="fleet-tile cot-c-media cot-c-media--soft" href="${galleryHref(c.id)}" data-feature="${esc(feature(c))}">`
