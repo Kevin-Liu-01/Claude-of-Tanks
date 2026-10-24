@@ -51,7 +51,8 @@ const CATALOG_MODULE_RE = /^src\/ui\/i18nCatalog(?:\.[a-zA-Z-]+\.json|EnUS\.ts|Z
 const SCRIPT_RE = /\.(?:[cm]?[jt]s)$/;
 const NAMESPACE_RE = /^[A-Za-z][\w-]*\./;
 const PREFIX_LITERAL_RE = /^[A-Za-z][\w-]*(?:\.[\w-]+)*\.$/;
-const DATA_I18N_RE = /\bdata-i18n(?:-[a-z-]+)?\s*=\s*(["'])([^"'<>{}$`\s]+)\1/g;
+// (a key may hold a space, as the nation names do: nation.South Korea; values with braces, data-i18n-vars, never match)
+const DATA_I18N_RE = /\bdata-i18n(?:-[a-z-]+)?\s*=\s*(["'])([^"'<>{}$`\s][^"'<>{}$`]*)\1/g;
 
 const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const toPosix = (path) => path.split(sep).join('/');

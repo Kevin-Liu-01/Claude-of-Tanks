@@ -9,6 +9,8 @@
 @import url('./manualStart.css');
 @import url('../ui/heroCard.css');
 @layer reset,tokens,base,components,surfaces,utilities,overrides;
+/* element resets live in base: in surfaces they outranked every component's colour (the primary button's ink) */
+@layer base{a{color:inherit;text-decoration:none}button{font:inherit;color:inherit}}
 @layer surfaces{
 :root{--home-h1:clamp(var(--fs-76),5.9vw,var(--fs-112));--home-h2:clamp(var(--fs-60),5vw,var(--fs-88));--home-gutter:clamp(16px,4.45vw,64px);--home-x:max(var(--home-gutter),calc((100% - var(--shell-max)) / 2));--gold:var(--text-accent)}
 *{box-sizing:border-box}
@@ -17,9 +19,7 @@ html{scroll-behavior:smooth;scroll-padding-top:calc(var(--shell-nav-h) + var(--s
    reading and data voices read it, so the head stays inside its type budget */
 body{--font-display:var(--font-ui);--font-body:var(--font-ui);--font-data:var(--font-ui);margin:0;background:var(--surface-page);color:var(--ink-1);font-family:var(--font-ui);font-size:var(--fs-16);line-height:var(--lh-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 ::selection{background:var(--accent);color:var(--ink-on-accent)}
-a{color:inherit;text-decoration:none}
 img{display:block;max-width:100%}
-button{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent-hi);outline-offset:4px}
 .home main{overflow:hidden}
 .home h1,.home h2,.home h3{text-wrap:balance}
@@ -116,7 +116,7 @@ button{font:inherit;color:inherit}
 .fleet-facets__set+.fleet-facets__set{margin-left:var(--s3)}
 .fleet-facets .cot-c-flag{display:block}
 .fleet-search{display:flex;align-items:center;gap:8px;width:250px;height:30px;margin-left:auto;padding:0 10px;border-radius:var(--control-radius);box-shadow:var(--ring-2);color:var(--ink-3);cursor:text}
-.fleet-search:focus-within{box-shadow:var(--ring-3);color:var(--ink-2)}
+.fleet-search:focus-within{box-shadow:var(--ring-3);color:var(--ink-2)}.fleet-search:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
 .fleet-search input{flex:1;min-width:0;height:100%;padding:0;border:0;background:none;font:400 var(--fs-13)/1 var(--font-body);color:var(--ink-1);outline:none}
 .fleet-search input::placeholder{color:var(--ink-3)}
 .fleet-search input::-webkit-search-cancel-button{display:none}
@@ -354,7 +354,9 @@ html[lang^='zh'] :is(h1,h2,h3,.play-tile--lead .play-tile__nm b){line-height:1.1
   .hero__ctas{position:fixed;left:0;right:0;bottom:0;z-index:var(--z-shell);margin:0;padding:12px var(--s4) calc(12px + env(safe-area-inset-bottom,0px));gap:10px;background:var(--side-plate);box-shadow:var(--home-bar-edge)}
   .hero__play{flex:1;--h:58px;font-size:var(--fs-18)}
   .hero__trailer{--h:58px;width:58px;padding:0}
-  .hero__trailer>:not(.hero__thumb),.hero__thumb img{display:none}
+  .hero__trailer{position:relative}
+  .hero__trailer>:not(.hero__thumb){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+  .hero__thumb img{display:none}
   .hero__thumb{width:24px;height:24px;outline:0}
   .hero__thumb .cot-i{width:22px;height:22px}
   .hero__matchup{position:relative;flex-direction:column;align-items:flex-start;gap:9px;margin:0 0 var(--s5);--vs-name:var(--fs-20);--sil-w:58px;--sil-h:19px}
