@@ -25,6 +25,7 @@ import type { MapSkyConfig } from '../world/maps/horizon.ts';
 import type { bakeHorizonRelief, HorizonReliefField } from '../world/horizonRelief.ts';
 import type { CloudscapeConfig } from '../engine/cloudscapes.ts';
 import { createNightLightingRuntime, type NightLightingBudget, type NightLightingRuntime } from '../engine/nightLightingRuntime.ts';
+import { t } from '../ui/i18n.ts';
 
 interface StudioLightWorld {
   readonly mapId: string;
@@ -284,7 +285,7 @@ export function createStudioLightRuntime(options: StudioLightRuntimeOptions): St
 
   function apply(time: StudioTimeOfDay, light: StudioLight | null): StudioLightPlan {
     const world = options.getWorld();
-    if (!world) throw new Error('Studio light requires an active battlefield');
+    if (!world) throw new Error(t('studio.error.lightNeedsMap'));
     const authored = studioAuthoredSky(world);
     // QA calibration probes may set window.__STUDIO_LIGHT_LAB before applying a light (never set by the product)
     const lab = (globalThis as { __STUDIO_LIGHT_LAB?: StudioLightLab }).__STUDIO_LIGHT_LAB ?? null;

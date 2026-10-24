@@ -53,10 +53,13 @@ function equipment(P: TankBuilderPort, bucket: string, g: THREE.BufferGeometry,
 }
 
 function hull(P: TankBuilderPort): void {
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the roof behind the turret stays at 1.56 to
+  // -1.95, under the sweep of the bustle's underside (1.566, 2.7 m off the ring's axis), and ramps to the stern's 1.599
+  // by -2.64; it stood 1.578-1.595 there and the bustle sat in it at rest.
   const rows = [
     [-3.2068, .948, 1.6029], [-3.0, .70743, 1.60175], [-2.80, .4248, 1.60039],
-    [-2.64, .321, 1.5993], [-1.9535, .3104, 1.5946], [-1.6777, .3061, 1.5850],
-    [-1.3274, .3007, 1.5781], [-.8307, .2951, 1.5785], [-.6610, .2946, 1.50967],
+    [-2.64, .321, 1.5993], [-1.9535, .3104, 1.56], [-1.6777, .3061, 1.56],
+    [-1.3274, .3007, 1.56], [-.8307, .2951, 1.56], [-.6610, .2946, 1.50967],
     [.3832, .2915, 1.507034], [1.8387, .2929, 1.457137], [2.1627, .3017, 1.431081],
     [2.4152, .312, 1.415], [2.80, .4448, 1.344], [3.14, .613, 1.285], [3.3454, 1.04, 1.25308],
   ];
@@ -165,7 +168,8 @@ function skirts(P: TankBuilderPort): void {
 }
 
 function deck(P: TankBuilderPort): void {
-  P.addEquipment('hullDetail', box(1.89, .019, .110), -.00082, 1.6035, -2.0026, -.0068);
+  // (release 240: the deck strip 0.10 m aft, on the roof's ramp past the bustle's sweep)
+  P.addEquipment('hullDetail', box(1.89, .019, .110), -.00082, 1.5775, -2.1026, -.0068);
   for (const side of [-1, 1]) {
     P.addEquipment('hullDetail', box(.70, .025, .89), side * 1.30, 1.615, -2.72);
     for (let i = 0; i < 9; i++) P.addEquipment('hullDark', box(.65, .012, .027),
@@ -179,8 +183,9 @@ function deck(P: TankBuilderPort): void {
   }
   P.addEquipment('hullDetail', cylY(.102, .102, .21, 20), 1.496, 1.477, -3.312);  // 2026-10-19 (owner float sweep): was 102 mm behind the stern
   P.addHatch('hullDetail', box(.63, .034, .41), .70, 1.513, 1.77, .080);
-  P.addEquipment('hullDetail', box(.53, .075, .108), .70, 1.528, 1.972);
-  P.addEquipment('hullDark', box(.45, .034, .028), .70, 1.556, 2.018);
+  // (release 240: the driver's vision block 2 cm lower, under the turret's front underside, 1.566, which sat on it)
+  P.addEquipment('hullDetail', box(.53, .075, .108), .70, 1.508, 1.972);
+  P.addEquipment('hullDark', box(.45, .034, .028), .70, 1.536, 2.018);
 }
 
 function turretShell(P: TankBuilderPort): void {

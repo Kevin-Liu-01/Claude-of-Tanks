@@ -119,7 +119,6 @@ export function mountDeployScreen(host: DeployScreenHost): DeployScreen {
   more.className = 'cot-deploy-more';
   more.setAttribute('aria-expanded', 'false');
   more.setAttribute('aria-label', t('garage.deploy.moreSettings'));
-  more.title = t('garage.deploy.moreSettings');
   more.innerHTML = uiIconSVG('settings', 18);
   more.addEventListener('click', () => {
     host.click();

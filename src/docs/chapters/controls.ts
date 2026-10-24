@@ -63,7 +63,9 @@ export const WATCH_KEYS: ReadonlyArray<{ readonly codes: readonly string[]; read
   { codes: ['Enter'], label: 'docs.controls.watch.take', view: 'drive' },
 ];
 
-const SWITCHER_STILL = '/media/presentation-r1/ui_spectator_switcher.webp';
+// the ride-along on Verdant Fields, desktop and phone (public/media/ui-246, the media lane's interface set)
+const WATCH_STILL = '/media/ui-246/watch-1440.webp';
+const WATCH_PHONE_STILL = '/media/ui-246/watch-mobile.webp';
 
 function watchSection(): string {
   const values = {
@@ -81,9 +83,11 @@ function watchSection(): string {
     return `<article class="dm-view"><h3>${icon(glyph, { size: 20 })}<span>${esc(t(`docs.controls.watch.${view}.title`))}</span></h3>`
       + `<p>${esc(t(`docs.controls.watch.${view}.body`, values))}</p><ul class="dm-keylist">${keys}</ul></article>`;
   }).join('');
-  // riding a bot's tank, the switcher and Drive at the top (public/media/presentation-r1, the media lane's UI shots)
-  const ride = `<figure class="dm-figure">${pictureMarkup({ src: SWITCHER_STILL, width: 1440, height: 900, alt: t('docs.controls.watch.rideAlt'),
-    sizes: '(width < 1100px) 100vw, 60vw', rungs: [{ src: SWITCHER_STILL, width: 1440 }] }, false)}</figure>`;
+  // riding a tank with the Watch bar on top, on a desktop and on a phone, side by side at one height
+  const ride = `<div class="dm-watch-shots"><figure class="dm-figure">${pictureMarkup({ src: WATCH_STILL, width: 1440, height: 900,
+    alt: t('docs.controls.watch.rideAlt'), sizes: '(width < 768px) 100vw, 580px' }, false)}</figure>`
+    + `<figure class="dm-figure dm-figure--phone">${pictureMarkup({ src: WATCH_PHONE_STILL, width: 780, height: 1688,
+      alt: t('docs.controls.watch.phoneAlt'), sizes: '(width < 768px) 70vw, 170px' }, false)}</figure></div>`;
   return `<p>${esc(t('docs.controls.watch.lede', { modes: String(WATCH_RULES.modes.length) }))}</p><div class="dm-views">${cards}</div>${ride}`;
 }
 

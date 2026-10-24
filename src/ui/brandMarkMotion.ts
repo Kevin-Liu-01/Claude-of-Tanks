@@ -12,7 +12,7 @@
 import { BRAND_TANK_ASPECT, BRAND_TANK_VIEWBOX, ROAD_WHEELS, brandTankBody } from './brandMark.ts';
 
 /** The loop, in seconds, and the ground it covers per loop in the mark's units. */
-const LOOP_S = 1.2;
+export const LOOP_S = 1.2;
 const WHEEL_R = 5.4;
 /** 240° of wheel per loop: two steps of the three spokes, so the loop closes. */
 const TRAVEL = (240 / 360) * 2 * Math.PI * WHEEL_R;

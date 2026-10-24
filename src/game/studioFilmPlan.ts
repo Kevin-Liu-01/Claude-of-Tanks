@@ -20,6 +20,7 @@
  * the last sample of a frame never passes the first sample of the next one,
  * so the timeline only ever advances (effects cannot step backward).
  */
+import { t } from '../ui/i18n.ts';
 
 const FILM_FRAME_RATES = [24, 30, 60] as const;
 type FilmFps = typeof FILM_FRAME_RATES[number];
@@ -94,23 +95,23 @@ export function normalizeFilm(input: FilmSettingsInput | null | undefined = {}):
   const source = input ?? {};
   const fps = finite(source.fps, FILM_DEFAULTS.fps);
   if (!(FILM_FRAME_RATES as readonly number[]).includes(fps)) {
-    throw new RangeError('Film frame rate must be 24, 30 or 60');
+    throw new RangeError(t('studio.error.filmFps'));
   }
   const filter = source.filter ?? FILM_DEFAULTS.filter;
-  if (!(FILM_FILTERS as readonly string[]).includes(filter)) throw new RangeError('Unknown film filter');
+  if (!(FILM_FILTERS as readonly string[]).includes(filter)) throw new RangeError(t('studio.error.filmFilter'));
   const samples = Math.round(Math.min(FILM_MAX_SAMPLES, Math.max(1, finite(source.samples, FILM_DEFAULTS.samples))));
   const maxSamples = Math.round(Math.min(FILM_MAX_ADAPTIVE_SAMPLES,
     Math.max(samples, finite(source.maxSamples, Math.max(samples, FILM_DEFAULTS.maxSamples)))));
   const shutterDeg = Math.min(360, Math.max(0, finite(source.shutterDeg, FILM_DEFAULTS.shutterDeg)));
   const shake = Math.min(2, Math.max(0, finite(source.shake, FILM_DEFAULTS.shake)));
   const rawKeys = Array.isArray(source.speed) ? source.speed : [];
-  if (rawKeys.length > FILM_MAX_SPEED_KEYS) throw new RangeError(`A film supports at most ${FILM_MAX_SPEED_KEYS} speed keys`);
+  if (rawKeys.length > FILM_MAX_SPEED_KEYS) throw new RangeError(t('studio.error.speedKeys', { max: FILM_MAX_SPEED_KEYS }));
   const keys: FilmSpeedKey[] = [];
   for (const raw of rawKeys) {
     const ease = raw?.ease ?? 'smooth';
-    if (!(FILM_SPEED_EASES as readonly string[]).includes(ease)) throw new RangeError('Unknown film speed ease');
+    if (!(FILM_SPEED_EASES as readonly string[]).includes(ease)) throw new RangeError(t('studio.error.speedEase'));
     const tMs = Number(raw?.tMs);
-    if (!Number.isFinite(tMs) || tMs < 0) throw new RangeError('Film speed keys need a timeline time');
+    if (!Number.isFinite(tMs) || tMs < 0) throw new RangeError(t('studio.error.speedKeyTime'));
     keys.push({
       tMs: Math.round(tMs * 1000) / 1000,
       speed: Math.min(FILM_MAX_SPEED, Math.max(FILM_MIN_SPEED, finite(raw?.speed, 1))),
@@ -238,7 +239,7 @@ export function createFilmTimeMap(
   endMs: number,
 ): FilmTimeMap {
   if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || !(endMs > startMs) || startMs < 0) {
-    throw new RangeError('A film needs a positive timeline range');
+    throw new RangeError(t('studio.error.filmRange'));
   }
   const speedModel = (t: number): Omit<SpeedSegment, 'a' | 'b' | 'f0' | 'span'> => {
     if (!keys.length) return { s0: 1, s1: 1, t0: 0, t1: 1, ease: 'constant' };
@@ -357,8 +358,8 @@ export function exposureSampleTimes(
   durationMs: number,
   out: Float64Array,
 ): Float64Array {
-  if (!(Number.isInteger(count) && count >= 1)) throw new RangeError('Sample count must be a positive integer');
-  if (out.length < count) throw new RangeError('Sample buffer is too small');
+  if (!(Number.isInteger(count) && count >= 1)) throw new RangeError(t('studio.error.sampleCount'));
+  if (out.length < count) throw new RangeError(t('studio.error.sampleBuffer'));
   const exposure = Math.min(FILM_MAX_EXPOSURE_MS, Math.max(0, finite(exposureMs, 0)));
   for (let i = 0; i < count; i++) {
     const offset = count === 1 ? 0 : ((i + 0.5) / count - 0.5) * exposure;
@@ -404,8 +405,8 @@ export function createFilmPlan(
     frameFilmMs: (frame: number) => frame * frameMs,
     frameTimelineMs: (frame: number) => map.timelineAt(frame * frameMs),
     sampleTimes(frame: number, out: Float64Array, count = samples): Float64Array {
-      if (!(Number.isInteger(count) && count >= 1)) throw new RangeError('Sample count must be a positive integer');
-      if (out.length < count) throw new RangeError('Sample buffer is too small');
+      if (!(Number.isInteger(count) && count >= 1)) throw new RangeError(t('studio.error.sampleCount'));
+      if (out.length < count) throw new RangeError(t('studio.error.sampleBuffer'));
       const centre = frame * frameMs;
       for (let i = 0; i < count; i++) {
         const offset = count === 1 ? 0 : ((i + 0.5) / count - 0.5) * shutterMs;
@@ -468,7 +469,7 @@ function probit(p: number): number {
  * the unjittered instantaneous render.
  */
 export function filmJitter(samples: number, filter: FilmFilter, out: Float64Array): Float64Array {
-  if (out.length < samples * 2) throw new RangeError('Jitter buffer is too small');
+  if (out.length < samples * 2) throw new RangeError(t('studio.error.jitterBuffer'));
   if (samples <= 1) {
     out[0] = 0; out[1] = 0;
     return out;
@@ -495,12 +496,12 @@ export function filmOutputSize(
   format: 'landscape' | 'portrait' | 'square' | 'card',
   resolution: number,
 ): { width: number; height: number } {
-  if (!(FILM_RESOLUTIONS as readonly number[]).includes(resolution)) throw new RangeError('Film resolution must be 1080, 1440 or 2160');
+  if (!(FILM_RESOLUTIONS as readonly number[]).includes(resolution)) throw new RangeError(t('studio.error.filmResolution'));
   const long = Math.round(resolution * 16 / 9);
   if (format === 'portrait') return { width: resolution, height: long };
   if (format === 'square') return { width: resolution, height: resolution };
   // the 1.91:1 link card, its long side rounded to an even width (4:2:0 video)
   if (format === 'card') return { width: Math.round(resolution * 1.91 / 2) * 2, height: resolution };
-  if (format !== 'landscape') throw new RangeError('Unknown production format');
+  if (format !== 'landscape') throw new RangeError(t('studio.error.productionFormat'));
   return { width: long, height: resolution };
 }

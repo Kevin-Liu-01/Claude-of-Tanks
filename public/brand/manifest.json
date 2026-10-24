@@ -5,7 +5,7 @@
  "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
  "thirdParty": "The commander figure is the Claude Code mascot glyph (Anthropic), verbatim; see docs/ATTRIBUTION.md.",
  "generatedBy": "node tools/brand-marks.mjs (src/ui/brandMark.ts, src/ui/brandMarkMotion.ts)",
- "count": 62,
+ "count": 63,
  "items": [
   {
    "file": "mark.svg",
@@ -26,6 +26,10 @@
   {
    "file": "mark-motion.svg",
    "use": "the living mark (CSS loop)"
+  },
+  {
+   "file": "mark-motion-inline.svg",
+   "use": ""
   },
   {
    "file": "bust.svg",

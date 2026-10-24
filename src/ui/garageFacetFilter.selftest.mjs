@@ -113,7 +113,7 @@ assert.doesNotMatch(panelSource, /cot-facet-label|cot-facet-hint/, 'no visible e
 // Blind critic round 1 (2026-10-21): the panel sits above the phone Garage's side cards, takes the height above the
 // rail, shows Clear only once something narrows, cues the swipe rows, and the stage follows the filter.
 assert.match(panelSource, /clearButton\.hidden = active === 0;/, 'Clear shows only while a filter is active');
-assert.match(panelSource, /panel\.style\.maxHeight = `\$\{Math\.round\(Math\.max\(160, Math\.min\(520, top - 16\)\)\)\}px`;/,
+assert.match(panelSource, /const fitHeight = Math\.round\(Math\.max\(160, Math\.min\(520, top - 16\)\)\);\s*panel\.style\.maxHeight = `\$\{fitHeight\}px`;/,
   'the panel takes the height above the rail');
 assert.match(panelSource, /wrap\.dataset\.more = max <= 1 \? '' :/, 'swipe rows mark the side with more chips');
 const panelCss = readFileSync(new URL('./garageFacetPanel.css', import.meta.url), 'utf8');

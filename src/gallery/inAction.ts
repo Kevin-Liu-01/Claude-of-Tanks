@@ -26,7 +26,6 @@ export function mountInAction(frame: HTMLElement, actions: HTMLElement): InActio
   studio.hidden = true;
   const studioLabel = t('gallery.dossier.inAction.studio');
   studio.setAttribute('aria-label', studioLabel);
-  studio.title = studioLabel;
   studio.innerHTML = icon('studio', { size: 18 });
   actions.append(studio);
 

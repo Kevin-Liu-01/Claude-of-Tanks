@@ -1501,12 +1501,14 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
   const deckY = c.deckY, rd = c.rearDeckZ;
   const merkavaChassisHullStage18 = (): void => {
     P.add(c.grilleSoft ? 'hull' : (c.paleVents ? 'hullDetail' : 'hullDark'), box(w * 0.30, 0.016, 0.55), -w * 0.19, deckY + 0.008, rd + 0.55);
+    // (release 240, the owner: "make sure all tank turrets are clear of hulls": the louvres stand 15 mm, not 20-23, and
+    // the lift eyes 2 cm lower, under the 2B turret's floor 2 cm over this deck (1.700 to 1.55 m off the ring's axis))
     for (let i = 0; i < 4; i++) {
       if (c.grilleSoft) { // tone-on-tone deck grille (see the louvre note)
-        P.add('hullDetail', box(w * 0.27, 0.014, 0.038), -w * 0.19, deckY + 0.013, rd + 0.35 + i * 0.135);
-        P.add('hullDark', box(w * 0.26, 0.005, 0.008), -w * 0.19, deckY + 0.011, rd + 0.33 + i * 0.135);
+        P.add('hullDetail', box(w * 0.27, 0.010, 0.038), -w * 0.19, deckY + 0.010, rd + 0.35 + i * 0.135);
+        P.add('hullDark', box(w * 0.26, 0.005, 0.008), -w * 0.19, deckY + 0.009, rd + 0.33 + i * 0.135);
       } else {
-        P.add(c.paleVents ? 'hullDark' : 'hullDetail', box(w * 0.27, 0.018, 0.04), -w * 0.19, deckY + 0.014, rd + 0.35 + i * 0.135);
+        P.add(c.paleVents ? 'hullDark' : 'hullDetail', box(w * 0.27, 0.012, 0.04), -w * 0.19, deckY + 0.009, rd + 0.35 + i * 0.135);
       }
     }
     for (const fz of [rd + 0.35, rd + 0.95]) {
@@ -1515,8 +1517,8 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
         P.add('hullDetail', KIT.cylY(0.055, 0.055, 0.030, 10), w * 0.36, deckY + 0.012, fz);
       }, { reachM: 0.07, mode: 'down' });
     }
-    liftEye(P, 'hullDetail', -w * 0.34, deckY - 0.055, rd + 0.32);
-    liftEye(P, 'hullDetail', w * 0.34, deckY - 0.055, rd + 0.32);
+    liftEye(P, 'hullDetail', -w * 0.34, deckY - 0.075, rd + 0.32);
+    liftEye(P, 'hullDetail', w * 0.34, deckY - 0.075, rd + 0.32);
   };
   merkavaChassisHullStage18();
 
@@ -3424,12 +3426,12 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
   // lane.  Density increases by mark so the vehicles stay related without
   // collapsing into one generic modernized silhouette.
   const hullUpgrade = {
-    merkava1b: { rows: 2, cols: 5, side: 5, sideRows: 1, depth: 0.24, rear: 3, shoulder: 2, spare: 3, rolls: 1 },
-    merkava2b: { rows: 3, cols: 5, side: 6, sideRows: 1, depth: 0.25, rear: 4, shoulder: 2, spare: 4, rolls: 1 },
-    merkava2d: { rows: 3, cols: 6, side: 7, sideRows: 2, depth: 0.25, rear: 4, shoulder: 3, spare: 4, rolls: 2 },
-    merkava3c: { rows: 3, cols: 6, side: 7, sideRows: 2, depth: 0.26, rear: 5, shoulder: 3, spare: 5, rolls: 2 },
-    merkava3_baz: { rows: 4, cols: 6, side: 8, sideRows: 2, depth: 0.26, rear: 6, shoulder: 3, spare: 5, rolls: 3 },
-    merkava4b: { rows: 4, cols: 7, side: 8, sideRows: 2, depth: 0.27, rear: 6, shoulder: 4, spare: 6, rolls: 3 },
+    merkava1b: { rows: 2, cols: 5, side: 5, sideRows: 1, depth: 0.24, shoulder: 2, spare: 3 },
+    merkava2b: { rows: 3, cols: 5, side: 6, sideRows: 1, depth: 0.25, shoulder: 2, spare: 4 },
+    merkava2d: { rows: 3, cols: 6, side: 7, sideRows: 2, depth: 0.25, shoulder: 3, spare: 4 },
+    merkava3c: { rows: 3, cols: 6, side: 7, sideRows: 2, depth: 0.26, shoulder: 3, spare: 5 },
+    merkava3_baz: { rows: 4, cols: 6, side: 8, sideRows: 2, depth: 0.26, shoulder: 3, spare: 5 },
+    merkava4b: { rows: 4, cols: 7, side: 8, sideRows: 2, depth: 0.27, shoulder: 4, spare: 6 },
   }[P.spec.id];
   const merkavaChassisHullStage27 = (): void => {
     if (hullUpgrade) {
@@ -3525,36 +3527,9 @@ function merkavaChassis(P: TankBuilderPort, c: MerkavaChassisConfig): void {
           merkavaChassisHullCourse28();
         }
 
-        // Rear-deck service boxes and tied-down spare fittings occupy the broad
-        // engine shoulders, with visible shoes and straps returning into armor.
-        for (let i = 0; i < hullUpgrade.rear; i++) {
-          const merkavaChassisHullCourse29 = (): void => {
-            const s = i % 2 ? 1 : -1;
-          const z = Math.max(c.body.at(-2)!.z + 0.25, c.rearDeckZ - 0.24 - Math.floor(i / 2) * 0.34);
-            const x = s * (0.52 + (i % 3) * 0.22);
-            const y = gTop(z);
-            P.add('hull', box(0.34, 0.045, 0.30), x, y + 0.008, z, rxAt(z), s * 0.05, 0);
-            P.add(i % 3 === 2 ? 'hullCloth' : 'hullDetail', box(0.30, 0.13, 0.26),
-              x, y + 0.078, z, rxAt(z), s * 0.05, 0);
-            P.add('hullDark', box(0.024, 0.142, 0.28), x, y + 0.078, z, rxAt(z), s * 0.05, 0);
-          };
-          merkavaChassisHullCourse29();
-        }
-
-        // Canvas recovery rolls on broad deck shoes finish the rear equipment
-        // field.  Unequal positions and visible cinch straps keep them readable
-        // as tied-down kit instead of another rectangular armor wall.
-        for (let i = 0; i < hullUpgrade.rolls; i++) {
-          const merkavaChassisHullCourse30 = (): void => {
-            const s = i % 2 ? 1 : -1;
-            const z = c.rearDeckZ + 0.18 - Math.floor(i / 2) * 0.34;
-            const x = s * (0.76 - Math.floor(i / 2) * 0.10);
-            const y = gTop(z);
-            P.add('hull', box(0.52, 0.045, 0.28), x, y + 0.006, z, rxAt(z), s * 0.05, 0);
-            KIT.tarpRoll(P, 'hullCloth', x, y + 0.125, z, 0.46, 0.105, true, 14);
-          };
-          merkavaChassisHullCourse30();
-        }
+        // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the rear-deck service boxes and canvas
+        // rolls are gone. The rear deck lies wholly under the bustle's sweep, its underside 8-19 cm over the deck, and the
+        // boxes (14.9 cm) and rolls (23 cm) stood 7-25 cm into it at every rear bearing, 5-19 cm already at rest.
       };
       merkavaChassisHullCourse9();
     }
@@ -12219,13 +12194,16 @@ const MERKAVA_PROFILE_DATA = {
       // under the 1.825 width guard.
       { z: 1.55, yT: 1.585, yB: 1.005, wT: 1.66, wB: 1.72 },
       { z: 1.30, yT: 1.645, yB: 1.02, wT: 1.66, wB: 1.71 },
-      { z: 0.72, yT: 1.725, yB: 1.02, wT: 1.55, wB: 1.71 },
-      { z: 0.30, yT: 1.72, yB: 1.02, wT: 1.62, wB: 1.71 },
-      { z: 0.02, yT: 1.70, yB: 1.02, wT: 1.66, wB: 1.71 },
+      // release 240 (the owner: "make sure all tank turrets are clear of hulls"): the deck humps fore and aft of the
+      // ring and the rear rise sink under the turret's long nose (1.670 to 2.2 m off the ring's axis); at 1.70-1.73 it
+      // sat 6 cm in the front one at rest and swept them all
+      { z: 0.72, yT: 1.655, yB: 1.02, wT: 1.55, wB: 1.71 },
+      { z: 0.30, yT: 1.655, yB: 1.02, wT: 1.62, wB: 1.71 },
+      { z: 0.02, yT: 1.65, yB: 1.02, wT: 1.66, wB: 1.71 },
       { z: -0.34, yT: 1.60, yB: 1.02, wT: 1.66, wB: 1.71 },
       { z: -2.20, yT: 1.60, yB: 1.02, wT: 1.66, wB: 1.71 },
       { z: -2.50, yT: 1.625, yB: 1.02, wT: 1.66, wB: 1.71 },
-      { z: -2.67, yT: 1.73, yB: 1.00, wT: 1.55, wB: 1.71 },
+      { z: -2.67, yT: 1.655, yB: 1.00, wT: 1.55, wB: 1.71 },
       { z: -2.87, yT: 1.65, yB: 1.00, wT: 1.66, wB: 1.71 },
       // r13 §B4 (order 0): the loft tail's bottom flange + lower side walls
       // ran THROUGH the rising idler band + wrap annulus (the rear audit's
@@ -12236,7 +12214,7 @@ const MERKAVA_PROFILE_DATA = {
       // surfaces: rack body/sub-slab (rear), wedge risen via tail.yB
       // (center), deckStow slot filler (the y 1.12..1.20 interior slot —
       // §B2). wT/yT/plan untouched; stations measure width+top only.
-      { z: -3.30, yT: 1.69, yB: 1.17, wT: 1.70, wB: 1.70 },
+      { z: -3.30, yT: 1.66, yB: 1.17, wT: 1.70, wB: 1.70 },
       { z: -3.79, yT: 1.62, yB: 1.20, wT: 1.69, wB: 1.675 },
       { z: -4.215, yT: 1.55, yB: 1.20, wT: 1.64, wB: 1.64 },
     ],
@@ -12342,7 +12320,9 @@ const MERKAVA_PROFILE_DATA = {
       // / whole -0.4; slimmed to minimal legal breaks: +0.020 = 2.7px,
       // 2-3 cols each way)
       { x: -1.60, y: 1.680, z: -3.30, w: 0.06, h: 0.060, d: 0.07, ry: 0.12, detail: true }, // small can (top 1.710)
-      { x: -1.38, y: 1.740, z: -2.68, w: 0.06, h: 0.056, d: 0.07, ry: -0.18 },              // pouch (top 1.768)
+      // (release 240: the pouch 0.40 m aft on the lowered rear deck, 2.37 m off the ring's axis; at -2.68 it stood 10 cm
+      // into the turret's long nose (1.670 to 2.2 m) as it turned, and the crest it broke is gone)
+      { x: -1.38, y: 1.676, z: -3.08, w: 0.06, h: 0.056, d: 0.07, ry: -0.18 },              // pouch (top 1.704)
       { x: 1.55, y: 1.682, z: -3.30, w: 0.055, h: 0.056, d: 0.07, ry: 0.10 },               // pouch (top 1.710)
       // r13 §B4 slot filler: the raised tail loft bottom (1.17-1.20) opened
       // an interior y 1.12..1.20 slot over the belly-step tops between the
@@ -12593,11 +12573,14 @@ const MERKAVA_PROFILE_DATA = {
       { z: 2.60, yT: 1.42, yB: 1.00, wT: 1.65, wB: 1.35 },
       { z: 2.25, yT: 1.54, yB: 1.00, wT: 1.74, wB: 1.74 },
       { z: 1.45, yT: 1.65, yB: 0.98, wT: 1.74, wB: 1.74 },
-      { z: 0.85, yT: 1.71, yB: 0.98, wT: 1.74, wB: 1.74 },
-      { z: 0.15, yT: 1.70, yB: 0.96, wT: 1.74, wB: 1.74 },
+      // release 240 (the owner: "make sure all tank turrets are clear of hulls"): the front deck at 1.69 and the rear
+      // rise at 1.70, under the turret's nose (1.700-1.716 to 2.1 m off the ring's axis), which sat 1.5 cm in the front
+      // one at rest and swept the rear one
+      { z: 0.85, yT: 1.69, yB: 0.98, wT: 1.74, wB: 1.74 },
+      { z: 0.15, yT: 1.69, yB: 0.96, wT: 1.74, wB: 1.74 },
       { z: -0.30, yT: 1.63, yB: 0.96, wT: 1.74, wB: 1.74 },
       { z: -2.40, yT: 1.63, yB: 0.95, wT: 1.74, wB: 1.74 },
-      { z: -2.62, yT: 1.75, yB: 0.95, wT: 1.74, wB: 1.74 },
+      { z: -2.62, yT: 1.70, yB: 0.95, wT: 1.74, wB: 1.74 },
       { z: -3.00, yT: 1.71, yB: 0.92, wT: 1.72, wB: 1.72 },
       { z: -3.42, yT: 1.66, yB: 0.90, wT: 1.72, wB: 1.72 },
       { z: -3.40, yT: 1.65, yB: 0.90, wT: 1.71, wB: 1.71 },
@@ -12724,9 +12707,13 @@ const MERKAVA_PROFILE_DATA = {
     sprocketForwardM: 0.47, sprocketRaiseM: 0.28,
     rollers: [1.35, 0.5, -0.4, -1.3, -2.15],
     skirt: { z0: 2.46, z1: -2.65, top: 1.14, bot: 0.62, scallop: true, x: 1.83, idlerFlapDz: 0.24 },
-    markerRods: { x: 1.76, y: 1.62, z: -3.50, h: [0.93, 0.89], mountX: 1.68 },
+    // (release 240: 0.16 m aft, 3.57 m off the ring's axis, past the bustle and its chain vane (3.5 m), which swept them
+    // 0.75 m under their tops; the bracket follows the hull's taper there)
+    markerRods: { x: 1.76, y: 1.62, z: -3.66, h: [0.93, 0.89], mountX: 1.66 },
     // 2026-10-19 (owner float sweep): the bow post's foot stood 153 mm over the glacis tiles (base 1.60); it reaches them
-    hullPosts: [{ x: -0.60, z: 2.85, top: 2.33, base: 1.395 }],
+    // (release 240: 0.17 m forward, 3.6 m off the ring's axis, past the bustle's chain vane (3.53 m), which swept it
+    // 0.52 m under its top at the reversed bearings; its foot on the plate ahead of the glacis tiles, 1.20)
+    hullPosts: [{ x: -0.60, z: 3.02, top: 2.33, base: 1.20 }],
     tailRack: {
       z0: -3.60, z1: -4.06, top: 1.58, bot: 0.55, hw: 1.70, x0: 0.35,
       frontClear: { z: -3.76, bot: 1.12 },
@@ -12797,13 +12784,17 @@ const MERKAVA_PROFILE_DATA = {
       { z: 1.58, yT: 1.60, yB: 1.00, wT: 1.66, wB: 1.74 },
       { z: 1.42, yT: 1.615, yB: 1.00, wT: 1.63, wB: 1.74 },
       { z: 1.24, yT: 1.67, yB: 1.00, wT: 1.60, wB: 1.74 },
+      // release 240 (the owner: "make sure all tank turrets are clear of hulls"): the deck humps fore and aft of the
+      // ring sink under the turret's nose (1.674 to 1.75 m off the ring's axis); at 1.73 the nose sat 5 cm in the front
+      // one at rest and both stood in its sweep
       { z: 0.75, yT: 1.73, yB: 1.00, wT: 1.43, wB: 1.74 },
-      { z: 0.40, yT: 1.73, yB: 1.00, wT: 1.43, wB: 1.74 },
+      { z: 0.64, yT: 1.665, yB: 1.00, wT: 1.43, wB: 1.74 },
       { z: 0.05, yT: 1.65, yB: 1.00, wT: 1.60, wB: 1.74 },
       { z: -0.15, yT: 1.60, yB: 1.00, wT: 1.66, wB: 1.74 },
       { z: -2.35, yT: 1.60, yB: 0.99, wT: 1.66, wB: 1.74 },
       { z: -2.72, yT: 1.63, yB: 0.99, wT: 1.66, wB: 1.74 },
-      { z: -2.80, yT: 1.725, yB: 0.98, wT: 1.43, wB: 1.74 },
+      { z: -2.80, yT: 1.66, yB: 0.98, wT: 1.43, wB: 1.74 },
+      { z: -2.86, yT: 1.665, yB: 0.98, wT: 1.43, wB: 1.74 },
       { z: -2.94, yT: 1.725, yB: 0.98, wT: 1.43, wB: 1.74 },
       { z: -3.00, yT: 1.68, yB: 0.98, wT: 1.66, wB: 1.74 },
       { z: -3.47, yT: 1.675, yB: 1.06, wT: 1.66, wB: 1.74 },
@@ -13010,13 +13001,18 @@ const MERKAVA_PROFILE_DATA = {
       { z: 1.75, yT: 1.60, yB: 1.13, wT: 1.66, wB: 1.74 },
       { z: 1.40, yT: 1.625, yB: 1.00, wT: 1.63, wB: 1.74 },
       { z: 1.05, yT: 1.69, yB: 1.00, wT: 1.60, wB: 1.74 },
-      { z: 0.75, yT: 1.725, yB: 1.00, wT: 1.43, wB: 1.74 },
-      { z: 0.13, yT: 1.725, yB: 1.00, wT: 1.43, wB: 1.74 },
+      // release 240 (the owner: "make sure all tank turrets are clear of hulls"): the deck humps fore and aft of the
+      // ring sink under the turret's nose (1.670 to 1.8 m off the ring's axis); at 1.725 the nose sat 6 cm in the front
+      // one at rest and both stood in its sweep
+      { z: 0.80, yT: 1.70, yB: 1.00, wT: 1.43, wB: 1.74 },
+      { z: 0.72, yT: 1.66, yB: 1.00, wT: 1.43, wB: 1.74 },
+      { z: 0.13, yT: 1.66, yB: 1.00, wT: 1.43, wB: 1.74 },
       { z: -0.05, yT: 1.65, yB: 1.00, wT: 1.60, wB: 1.74 },
       { z: -0.19, yT: 1.60, yB: 1.00, wT: 1.66, wB: 1.74 },
       { z: -2.33, yT: 1.60, yB: 0.99, wT: 1.66, wB: 1.74 },
       { z: -2.72, yT: 1.625, yB: 0.99, wT: 1.66, wB: 1.74 },
-      { z: -2.83, yT: 1.725, yB: 0.98, wT: 1.43, wB: 1.74 },
+      { z: -2.83, yT: 1.66, yB: 0.98, wT: 1.43, wB: 1.74 },
+      { z: -2.87, yT: 1.662, yB: 0.98, wT: 1.43, wB: 1.74 },
       { z: -2.92, yT: 1.725, yB: 0.98, wT: 1.43, wB: 1.74 },
       { z: -2.99, yT: 1.68, yB: 0.98, wT: 1.66, wB: 1.74 },
       { z: -3.47, yT: 1.665, yB: 1.12, wT: 1.66, wB: 1.74 },

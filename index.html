@@ -12,7 +12,7 @@
        the touch HUD keeps its controls off the notch/home bar with them. -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="cot-i18n-catalog" content="game" />
-  <title>Claude of Tanks — Free Browser Tank Game | {{COT_PRODUCTION_VEHICLES}} Tanks, {{COT_BATTLEFIELDS}} Battlefields</title>
+  <title>Claude of Tanks · Free Browser Tank Game · {{COT_PRODUCTION_VEHICLES}} Tanks, {{COT_BATTLEFIELDS}} Battlefields</title>
   <meta name="author" content="Kevin B. Liu" />
   <meta name="copyright" content="Copyright © 2026 Kevin B. Liu" />
   <!-- SEO/AEO: factual public-build metadata. Keep counts aligned with the
@@ -29,8 +29,8 @@
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
   <meta name="theme-color" content="#05080b" />
   <meta property="og:site_name" content="Claude of Tanks" />
-  <meta property="og:title" content="Claude of Tanks — Free Browser Tank Game" />
-  <meta property="og:description" content="Free-roam armored warfare in the browser — {{COT_PRODUCTION_VEHICLES}} production vehicles, {{COT_BATTLEFIELDS}} battlefields, bot and multiplayer battles, killcam X-rays. Pure Three.js, no install." />
+  <meta property="og:title" content="Claude of Tanks · Free Browser Tank Game" />
+  <meta property="og:description" content="Free-roam armored warfare in the browser, with {{COT_PRODUCTION_VEHICLES}} production vehicles, {{COT_BATTLEFIELDS}} battlefields, bot and multiplayer battles, killcam X-rays. Pure Three.js, no install." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://cot.kevinliu.studio/" />
   <meta property="og:locale" content="en_US" />
@@ -46,8 +46,8 @@
   <meta property="og:video:width" content="1280" />
   <meta property="og:video:height" content="720" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Claude of Tanks — Free Browser Tank Game" />
-  <meta name="twitter:description" content="{{COT_PRODUCTION_VEHICLES}} production vehicles, {{COT_BATTLEFIELDS}} battlefields, bot and multiplayer battles — armored warfare rendered live in your browser. No install, no account." />
+  <meta name="twitter:title" content="Claude of Tanks · Free Browser Tank Game" />
+  <meta name="twitter:description" content="{{COT_PRODUCTION_VEHICLES}} production vehicles, {{COT_BATTLEFIELDS}} battlefields, bot and multiplayer battles. Armored warfare rendered live in your browser. No install, no account." />
   <meta name="twitter:image" content="https://cot.kevinliu.studio/brand/og-image.png" />
   <meta name="twitter:image:alt" content="Claude of Tanks in-engine armored battle with the commander mark" />
   <script type="application/ld+json">
@@ -204,7 +204,7 @@
       font-optical-sizing: auto;
     }
     html, body { margin: 0; padding: 0; width: var(--cot-viewport-width, 100dvw);
-      height: var(--cot-viewport-height, 100dvh); overflow: hidden; background: #05080b;
+      height: var(--cot-viewport-height, 100dvh); overflow: hidden; background: var(--surface-scene);
       /* MOBILE-UX r1: no double-tap zoom anywhere (taps stay instant); menus
          keep one-finger scrolling — their own overflow containers pan as
          normal under touch-action: manipulation. */
@@ -246,8 +246,8 @@
       height: var(--cot-viewport-height, 100dvh); z-index: 200; overflow: hidden;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       font-family: var(--font-ui);
-      color: #e6edf3; -webkit-user-select: none; user-select: none; cursor: default;
-      background: #05080b;
+      color: var(--ink-1); -webkit-user-select: none; user-select: none; cursor: default;
+      background: var(--surface-scene);
       opacity: 1; transition: opacity .5s ease;
     }
     #cot-boot.cot-boot-out { opacity: 0; pointer-events: none; }
@@ -267,8 +267,8 @@
     #cot-boot-hero::after {
       content: ''; position: absolute; inset: 0;
       background:
-        linear-gradient(180deg, rgba(5,8,11,.78) 0%, rgba(5,8,11,.44) 28%, rgba(5,8,11,.42) 58%, rgba(5,8,11,.86) 100%),
-        radial-gradient(120% 95% at 50% 34%, rgba(5,8,11,.08) 0%, rgba(5,8,11,.60) 88%);
+        linear-gradient(180deg, oklch(from var(--surface-scene) l c h / .78) 0%, oklch(from var(--surface-scene) l c h / .44) 28%, oklch(from var(--surface-scene) l c h / .42) 58%, oklch(from var(--surface-scene) l c h / .86) 100%),
+        radial-gradient(120% 95% at 50% 34%, oklch(from var(--surface-scene) l c h / .08) 0%, oklch(from var(--surface-scene) l c h / .60) 88%);
     }
     .cot-boot-inner { position: relative; z-index: 2; width: min(760px, 86vw); text-align: center; }
 
@@ -300,8 +300,8 @@
     /* /cot:brand-motion */
     .cot-boot-invite {
       display: none; width: fit-content; max-width: min(560px, 84vw); margin: 25px auto -20px;
-      padding: 9px 15px; color: #fff0d2; border: 1px solid rgba(240,160,48,.48);
-      background: rgba(9,13,18,.72); box-shadow: 0 10px 34px rgba(0,0,0,.28);
+      padding: 9px 15px; color: var(--ink-1); border: 1px solid oklch(from var(--accent) l c h / .48);
+      background: oklch(from var(--surface-plate) l c h / .72); box-shadow: var(--e2);
       font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
     }
     .cot-boot-invite.on { display: block; }
@@ -329,16 +329,16 @@
       font-family: var(--font-ui);
     }
     .cot-boot-stage {
-      font-size: 14px; font-weight: 500; text-align: left; min-height: 14px; color: #c9c5bb;
+      font-size: 14px; font-weight: 500; text-align: left; min-height: 14px; color: var(--ink-2);
     }
-    .cot-boot-pct { width: 64px; flex: 0 0 64px; font-size: 13px; font-weight: 500; color: #9a9a95; text-align: right; }
+    .cot-boot-pct { width: 64px; flex: 0 0 64px; font-size: 13px; font-weight: 500; color: var(--ink-3); text-align: right; }
     /* one continuous tungsten fill (bootScreen.ts eases it toward the real load, creeping inside a long stage) */
-    .cot-boot-bar { position: relative; height: 4px; overflow: hidden; background: rgba(246,243,236,.16); }
-    .cot-boot-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: #f0a030; }
+    .cot-boot-bar { position: relative; height: 4px; overflow: hidden; background: oklch(from var(--ink-1) l c h / .16); }
+    .cot-boot-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: var(--accent); }
     /* a travelling sheen: the load is alive even inside a long stage */
     .cot-boot-fill::after {
       content: ''; position: absolute; inset: 0;
-      background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.36) 50%, rgba(255,255,255,0) 100%);
+      background: linear-gradient(90deg, oklch(from var(--ink-1) l c h / 0) 0%, oklch(from var(--ink-1) l c h / .36) 50%, oklch(from var(--ink-1) l c h / 0) 100%);
       background-size: 40% 100%; background-repeat: no-repeat;
       animation: cot-boot-sheen 1.4s linear infinite;
     }
@@ -347,13 +347,13 @@
     /* --- tips + gate ------------------------------------------------------- */
     .cot-boot-tip {
       box-sizing: border-box; height: 84px; max-width: 560px; margin: 34px auto 0; overflow: hidden;
-      font-size: 14px; font-weight: 500; line-height: 1.4; color: #c9c5bb;
+      font-size: 14px; font-weight: 500; line-height: 1.4; color: var(--ink-2);
       opacity: 1; transition: opacity .19s cubic-bezier(.16,1,.3,1);
     }
     #cot-boot.cot-boot-enter .cot-boot-tip {
       animation: cot-boot-rise .34s cubic-bezier(.16,1,.3,1) .18s backwards;
     }
-    .cot-boot-tip span { display: inline-block; padding: 12px 14px; border-radius: 2px; background: rgba(9,11,14,.82); text-align: left; }
+    .cot-boot-tip span { display: inline-block; padding: 12px 14px; border-radius: 2px; background: oklch(from var(--surface-plate) l c h / .82); text-align: left; }
     .cot-boot-tip.fade { opacity: 0; }
     .cot-boot-links {
       display: grid; grid-template-columns: repeat(2, 1fr); width: max-content;
@@ -361,8 +361,8 @@
     }
     .cot-boot-link {
       box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-      min-width: 118px; padding: 10px 15px; border: 1px solid rgba(246,243,236,.24); border-radius: 2px;
-      background: rgba(9,11,14,.55); color: #f6f3ec; cursor: pointer;
+      min-width: 118px; padding: 10px 15px; border: 1px solid var(--line-3); border-radius: 2px;
+      background: oklch(from var(--surface-plate) l c h / .55); color: var(--ink-1); cursor: pointer;
       font: 700 13px/1 var(--font-ui);
       letter-spacing: .06em; text-transform: uppercase; text-decoration: none;
       transition: transform .14s cubic-bezier(.16,1,.3,1), border-color .14s ease,
@@ -384,7 +384,7 @@
     .cot-boot-link-icon.github { fill: currentColor; stroke: none; }
     .cot-github-stars {
       display: inline-flex; align-items: center; gap: 3px; padding-left: 7px;
-      border-left: 1px solid rgba(246,243,236,.24); color: #f0a030;
+      border-left: 1px solid var(--line-3); color: var(--accent);
        letter-spacing: .04em;
     }
     .cot-github-stars svg { width: 9px; height: 9px; fill: currentColor; stroke: none; }
@@ -399,12 +399,12 @@
     .cot-github-stars:has([data-github-stars-state='unavailable']) { visibility: hidden; }
     @keyframes cot-github-star-spin { to { transform: rotate(1turn); } }
     .cot-boot-link:hover {
-      transform: translateY(-2px); border-color: #f0a030; color: #f6f3ec;
-      background: rgba(9,11,14,.82); box-shadow: 0 8px 20px rgba(0,0,0,.30);
+      transform: translateY(-2px); border-color: var(--accent); color: var(--ink-1);
+      background: oklch(from var(--surface-plate) l c h / .82); box-shadow: var(--e2);
     }
     .cot-boot-link:hover .cot-boot-link-icon { transform: scale(1.1); }
     .cot-boot-link:active { transform: translateY(0); box-shadow: none; transition-duration: .06s; }
-    .cot-boot-link:focus-visible { outline: 2px solid #f0a030; outline-offset: 3px; }
+    .cot-boot-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
     /* The splash paints before any module writes body[data-cot-*]: its phone sizes read the same bands
        (src/ui/responsiveLayout.ts) as media queries, so the first frame already has them (brand-ui SPEC 5.5). */
     @media (width <= 380px) {
@@ -425,49 +425,52 @@
       .cot-boot-link:active { transform: none; }
       .cot-github-stars [data-github-stars][data-github-stars-state='loading']::before { animation: none; }
     }
-    /* Baseline for visible game scrollbars. Component rules still own hidden rails. */
-    :where(html,body,body *){scrollbar-width:thin;scrollbar-color:#596976 #0c1319}
+    /* Baseline for visible game scrollbars (the line ramp on the scene). Component rules still own hidden rails. */
+    :where(html,body,body *){scrollbar-width:thin;scrollbar-color:var(--line-3) transparent}
     :where(html,body,body *)::-webkit-scrollbar{width:6px;height:6px}
-    :where(html,body,body *)::-webkit-scrollbar-track{background:#0c1319}
-    :where(html,body,body *)::-webkit-scrollbar-thumb{background:#596976;border-radius:6px}
-    :where(html,body,body *)::-webkit-scrollbar-thumb:hover{background:#c59650}
-    :where(html,body,body *)::-webkit-scrollbar-corner{background:#0c1319}
+    :where(html,body,body *)::-webkit-scrollbar-track{background:transparent}
+    :where(html,body,body *)::-webkit-scrollbar-thumb{background:var(--line-3);border-radius:6px}
+    :where(html,body,body *)::-webkit-scrollbar-thumb:hover{background:var(--ink-3)}
+    :where(html,body,body *)::-webkit-scrollbar-corner{background:transparent}
+    /* the credits: the one modal's plate (src/ui/modal.ts), no glass (brand-ui 247, the consistency pass) */
     .cot-credits {
       box-sizing:border-box;width:min(860px,calc(100vw - 32px));max-width:none;
       max-height:calc(var(--cot-viewport-height,100dvh) - 32px);padding:0;overflow:hidden;
-      border:1px solid #3a4853;border-top-color:#b1803f;color:#e6edf3;background:#0b1117;
-      box-shadow:0 28px 90px rgba(0,0,0,.75);font-family:var(--font-ui);
+      border:0;border-radius:var(--plate-radius);color:var(--ink-1);background:var(--surface-plate);box-shadow:var(--e4);
+      font-family:var(--font-ui);
     }
-    .cot-credits::backdrop{background:rgba(2,4,7,.84);backdrop-filter:blur(9px)}
+    .cot-credits::backdrop{background:oklch(from var(--scrim) l c h / .8)}
     .cot-credits-scroll{box-sizing:border-box;max-height:calc(var(--cot-viewport-height,100dvh) - 34px);
       overflow:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
     .cot-credits-grid{display:grid;grid-template-columns:250px minmax(0,1fr);min-width:0}
-    .cot-credits-profile{margin:0;padding:38px 24px;background:linear-gradient(155deg,#1a2530,#0c141d);
-      border-right:1px solid #283641;display:flex;flex-direction:column;gap:23px}
+    .cot-credits-profile{margin:0;padding:38px var(--s5);background:var(--surface-page);
+      border-right:1px solid var(--line-1);display:flex;flex-direction:column;gap:var(--s5)}
     .cot-credits-portrait{box-sizing:border-box;display:block;width:100%;height:auto;aspect-ratio:1;
-      object-fit:cover;object-position:center;border:1px solid #64707a;background:#18232e}
-    .cot-credits-signature{display:flex;align-items:center;gap:12px;color:#d4dfe7;font-size:12px;line-height:1.6}
+      object-fit:cover;object-position:center;border-radius:var(--control-radius);background:var(--surface-raised)}
+    .cot-credits-signature{display:flex;align-items:center;gap:var(--s3);color:var(--ink-2);font-size:max(var(--fs-floor-12),var(--fs-12));line-height:1.6}
     .cot-credits-signature img{width:36px;height:36px;object-fit:contain}
-    .cot-credits-signature strong{display:block;font-size:12px;letter-spacing:.08em}
-    .cot-credits-signature span{display:block;color:#8296a6;font-size:11px}
+    .cot-credits-signature strong{display:block;font-size:max(var(--fs-floor-12),var(--fs-12));letter-spacing:var(--track-label-s)}
+    .cot-credits-signature span{display:block;color:var(--ink-3);font-size:max(var(--fs-floor-12),var(--fs-12))}
     .cot-credits-copy{min-width:0;padding:45px 34px 34px;text-align:left}
-    .cot-credits-kicker{display:block;max-width:calc(100% - 20px);color:#edac53;font-size:11px;
-      font-weight:700;letter-spacing:.09em;text-transform:uppercase;line-height:1.7}
-    .cot-credits h2{margin:12px 0 23px;font-size:38px;line-height:1.06;letter-spacing:-.035em}
-    .cot-credits p{margin:0 0 16px;color:#aebdc9;font-size:14px;line-height:1.75}
-    .cot-credits-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px;padding-top:20px;border-top:1px solid #293641}
-    .cot-credits-actions .cot-boot-link{box-sizing:border-box;min-height:40px;padding:10px 13px;
-      font-size:11px;letter-spacing:.03em;background:#101a23;border-color:#3b4c59}
-    .cot-credits-actions .cot-boot-link:first-child{border-color:#b78035;background:#322619;color:#ffd18a}
-    .cot-credits-actions .cot-boot-link:last-child{border-color:transparent;background:transparent;color:#8fa4b4}
+    .cot-credits-kicker{display:block;max-width:calc(100% - 20px);color:var(--ink-3);font:600 max(var(--fs-floor-12),var(--fs-12))/1.7 var(--font-display);
+      letter-spacing:var(--track-label);text-transform:uppercase}
+    .cot-credits h2{margin:var(--s3) 0 var(--s5);font:600 38px/1.06 var(--font-display);letter-spacing:var(--track-title)}
+    .cot-credits p{margin:0 0 var(--s4);color:var(--ink-2);font:400 max(14px,var(--fs-14))/1.75 var(--font-body)}
+    .cot-credits-actions{display:flex;flex-wrap:wrap;gap:var(--s2);margin-top:var(--s5);padding-top:var(--s5);border-top:1px solid var(--line-1)}
+    .cot-credits-actions .cot-boot-link{box-sizing:border-box;min-height:40px;padding:var(--s2) var(--s3);
+      font-size:max(var(--fs-floor-12),var(--fs-12));letter-spacing:var(--track-label-s);background:var(--btn-secondary-fill);border-color:transparent;
+      box-shadow:var(--btn-secondary-ring)}
+    .cot-credits-actions .cot-boot-link:first-child{background:var(--btn-primary-fill);color:var(--btn-primary-ink);box-shadow:var(--btn-primary-shadow)}
+    .cot-credits-actions .cot-boot-link:last-child{background:transparent;box-shadow:none;color:var(--ink-3)}
     .cot-credits-close{position:absolute;z-index:2;top:12px;right:12px;display:grid;place-items:center;
-      width:36px;height:36px;padding:0;border:1px solid #3d4d59;background:#0d151e;color:#b8c7d2;cursor:pointer;font-size:24px;line-height:1}
-    .cot-credits-close:hover{color:#ffd18a;border-color:#b78035}
-    .cot-credits-close:focus-visible,.cot-credits-actions a:focus-visible{outline:2px solid #f0b04a;outline-offset:3px}
+      width:36px;height:36px;padding:0;border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-2);cursor:pointer}
+    .cot-credits-close svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round}
+    .cot-credits-close:hover{color:var(--ink-1);background:var(--surface-hover)}
+    .cot-credits-close:focus-visible,.cot-credits-actions a:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits{width:calc(100vw - 16px);max-height:calc(var(--cot-viewport-height,100dvh) - 16px)}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-scroll{max-height:calc(var(--cot-viewport-height,100dvh) - 18px)}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-grid{grid-template-columns:1fr}
-    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-profile{flex-direction:row;align-items:center;padding:22px;gap:18px;border-right:0;border-bottom:1px solid #283641}
+    :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-profile{flex-direction:row;align-items:center;padding:22px;gap:18px;border-right:0;border-bottom:1px solid var(--line-1)}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-portrait{width:100px;flex:none}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-signature{display:block;padding-right:18px}
     :where(body[data-cot-width='compact'],body[data-cot-width='phone']) .cot-credits-signature img{width:28px;height:28px;margin-bottom:7px}
@@ -477,8 +480,8 @@
       margin-top: 26px; height: 22px;
       font-family: var(--font-ui);
       font-size: 14px; font-weight: 500;
-      color: #c9c5bb; opacity: 0;
-      transition: opacity .19s cubic-bezier(.16,1,.3,1);
+      color: var(--ink-2); opacity: 0;
+      transition: opacity var(--dur-base) var(--ease-enter);
     }
     .cot-boot-gate.on { opacity: 1; animation: cot-gate 1.5s ease-in-out infinite; }
     /* retry stands just under the centred column, outside its flow: a failure shows it without re-centring the splash */
@@ -486,18 +489,18 @@
       display: none; position: absolute; left: 50%; top: 100%; transform: translateX(-50%);
       height: 48px; margin: 18px 0 0; padding: 0 22px; white-space: nowrap;
       border: 0; border-radius: 2px;
-      background: #f0a030; color: #140d03; cursor: pointer;
+      background: var(--btn-primary-fill); color: var(--btn-primary-ink); cursor: pointer;
       font: 700 15px/1 var(--font-ui);
       letter-spacing: .06em; text-transform: uppercase;
     }
     .cot-boot-retry.on { display: block; }
-    .cot-boot-retry:focus-visible { outline: 2px solid #f0a030; outline-offset: 3px; }
+    .cot-boot-retry:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
     /* a browser the game cannot run in (src/engine/capabilityGate.ts shows Retry): the load's bar, its count and the
        tip step aside, the reason stands centred under the mark, and the tank holds still */
     #cot-boot:has(.cot-boot-retry.on) :is(.cot-boot-bar, .cot-boot-pct, .cot-boot-tip) { display: none; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-meta { justify-content: center; }
     #cot-boot:has(.cot-boot-retry.on) .cot-boot-stage {
-      max-width: 46ch; font-size: 16px; line-height: 1.5; text-align: center; color: #f6f3ec;
+      max-width: 46ch; font-size: 16px; line-height: 1.5; text-align: center; color: var(--ink-1);
     }
     #cot-boot:has(.cot-boot-retry.on) .cot-mark--motion * { animation-play-state: paused; }
     /* Retry joins the column right under the reason, before the links */
@@ -512,14 +515,14 @@
       margin: 8px auto 0; max-width: 420px; min-height: 0;
       font-family: var(--font-ui);
       font-size: 13px; font-weight: 500; line-height: 1.45;
-      color: #9a9a95; text-align: center; opacity: 0; transition: opacity .2s ease;
+      color: var(--ink-3); text-align: center; opacity: 0; transition: opacity var(--dur-base) var(--ease-enter);
     }
     .cot-boot-notice.on { opacity: 1; }
     @keyframes cot-gate { 0%,100% { opacity: .45; } 50% { opacity: 1; } }
     .cot-boot-foot {
       position: absolute; left: 0; right: 0; bottom: 20px; z-index: 2;
       font-family: var(--font-ui);
-      font-size: 12px; font-weight: 500; color: #5d636a; text-align: center;
+      font-size: 12px; font-weight: 500; color: var(--ink-4); text-align: center;
     }
     #cot-boot.cot-boot-enter .cot-boot-foot {
       animation: cot-boot-fade .42s cubic-bezier(.16,1,.3,1) .18s backwards;
@@ -707,7 +710,7 @@
         const nav = globalThis.navigator;
         let text = MESSAGES[kind];
         if (kind === 'chunk' && file) text += ' (' + file + ')';
-        if (kind === 'chunk' && nav && nav.onLine === false) text += ' — you appear to be offline; it retries when the connection returns';
+        if (kind === 'chunk' && nav && nav.onLine === false) text += '. You appear to be offline. The game retries when the connection returns.';
         return { kind, text };
       }
       // A failed import names the entry script, not the dependency that 404ed;
@@ -759,8 +762,9 @@
         if (!retry && window.__GAME_READY) {
           retry = document.createElement('button');
           retry.id = 'cot-runtime-retry';
-          retry.textContent = verdict.text + ' — reload';
-          retry.style.cssText = 'position:fixed;z-index:10000;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 18px;border:1px solid #f0a030;background:#0b1117;color:#ffe4b0;font:700 12px var(--font-ui);cursor:pointer';
+          retry.textContent = 'Reload';
+          retry.title = verdict.text;
+          retry.style.cssText = 'position:fixed;z-index:10000;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 18px;border:0;border-radius:var(--control-radius);background:var(--btn-primary-fill);color:var(--btn-primary-ink);font:700 12px var(--font-ui);cursor:pointer';
           document.body.appendChild(retry);
         }
         if (retry) {
@@ -1046,7 +1050,7 @@
       <!-- The title card (brand-ui 245): the living commander mark over the stacked wordmark; its body is generated. -->
       <svg class="cot-boot-mark" viewBox="55 -2187 3946 4709" role="img" aria-label="Claude of Tanks" data-i18n-aria-label="aria.claudeoftanks">
       <!-- GENERATED from public/brand/title-card.svg by tools/sync-brand-marks.mjs. -->
-<g class="cot-mark--motion"><g transform="translate(-379.06 -2858.20) scale(19.73000)"><g class="mk-run" fill="#f6f3ec"><path fill-rule="evenodd" d="M50 119h126a9.5 9.5 0 0 1 0 19H50a9.5 9.5 0 0 1 0-19ZM61.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM84.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM107.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM130.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM153.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM176.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0Z"/><path class="mk-links mk-links--top" d="M50 120.4H176" fill="none" stroke="var(--mk-ground, #0b0e11)" stroke-width="1.5" stroke-dasharray="2.38 3.28"/><path class="mk-links mk-links--low" d="M50 136.6H176" fill="none" stroke="var(--mk-ground, #0b0e11)" stroke-width="1.5" stroke-dasharray="2.38 3.28"/><g fill="#f6f3ec"><g class="mk-wheel"><circle cx="56" cy="128.5" r="5.4" fill="none"/><circle cx="56" cy="128.5" r="1.7"/><rect x="55.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 56 128.5)"/><rect x="55.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 56 128.5)"/><rect x="55.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 56 128.5)"/></g><g class="mk-wheel"><circle cx="79" cy="128.5" r="5.4" fill="none"/><circle cx="79" cy="128.5" r="1.7"/><rect x="78.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 79 128.5)"/><rect x="78.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 79 128.5)"/><rect x="78.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 79 128.5)"/></g><g class="mk-wheel"><circle cx="102" cy="128.5" r="5.4" fill="none"/><circle cx="102" cy="128.5" r="1.7"/><rect x="101.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 102 128.5)"/><rect x="101.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 102 128.5)"/><rect x="101.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 102 128.5)"/></g><g class="mk-wheel"><circle cx="125" cy="128.5" r="5.4" fill="none"/><circle cx="125" cy="128.5" r="1.7"/><rect x="124.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 125 128.5)"/><rect x="124.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 125 128.5)"/><rect x="124.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 125 128.5)"/></g><g class="mk-wheel"><circle cx="148" cy="128.5" r="5.4" fill="none"/><circle cx="148" cy="128.5" r="1.7"/><rect x="147.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 148 128.5)"/><rect x="147.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 148 128.5)"/><rect x="147.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 148 128.5)"/></g><g class="mk-wheel"><circle cx="171" cy="128.5" r="5.4" fill="none"/><circle cx="171" cy="128.5" r="1.7"/><rect x="170.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 171 128.5)"/><rect x="170.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 171 128.5)"/><rect x="170.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 171 128.5)"/></g></g></g><g class="mk-hull"><g class="mk-exhaust" fill="#f6f3ec"><circle class="mk-puff" style="animation-delay:0.00s" cx="37" cy="101" r="1.6"/><circle class="mk-puff" style="animation-delay:-0.40s" cx="37" cy="101" r="1.6"/><circle class="mk-puff" style="animation-delay:-0.80s" cx="37" cy="101" r="1.6"/></g><path fill="#f6f3ec" d="M34 116.6 40 94h108l52 18-2.4 4.6Z"/><g class="mk-turret"><g fill="#f6f3ec"><g transform="rotate(-10 140 82)"><rect x="136" y="76" width="18" height="12" rx="1.5"/><rect x="154" y="78.3" width="52" height="7.4"/><rect x="168" y="76.4" width="16" height="11.2" rx="4.4"/><rect x="203" y="77.3" width="7" height="9.4" rx="1"/></g><path d="M77.6 68.9 71.4 53.4a1.6 1.6 0 0 1 .9-2.1l2.6-1a1.6 1.6 0 0 1 2.1.9l6.3 15.6Z"/><rect x="74.6" y="65.6" width="8.4" height="4" rx="1.2"/></g><g class="mk-antenna"><path d="M64 76 56 41" fill="none" stroke="#f6f3ec" stroke-width="1.6"/><path style="fill:#f0a030" d="M56 38.5 41 43l15 4.5Z"/></g><g class="mk-crew"><g style="fill:#f0a030"><path fill-rule="evenodd" d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z" transform="translate(82.65 42.75) scale(1.95)"/></g><g fill="#f6f3ec"><path fill-rule="evenodd" d="M87.5 52.5a18.5 12 0 0 1 37 0ZM94 45.2h24.5v5.2H94Z"/><rect x="85.5" y="52.3" width="41" height="4.2" rx="2.1"/></g><g fill="none" stroke="#f6f3ec" stroke-width="1.3"><circle cx="102.5" cy="47.8" r="2.9"/><circle cx="111" cy="47.8" r="2.9"/></g></g><g fill="#f6f3ec"><path d="M151.4 92.6 140 77.5 82 74 61.5 72.8 58 76.5V88l4.5 3.5H73l1.5 1.1Z"/><path d="M77.5 75.5 80 68.2h53l2.6 8.4Z"/></g></g></g></g></g><path fill="#f6f3ec" d="M55 727V257L170 142H512L625 255V362H489V305L442 258H242L191 309V675L242 726H442L489 679V622H625V729L512 842H170ZM760 142H896V727H1246V842H760ZM1557 142H1681L1937 842H1799L1742 687H1496L1439 842H1301ZM1712 575 1619 309H1617L1527 575ZM2027 722V142H2163V675L2214 726H2410L2461 675V142H2597V722L2477 842H2147ZM2767 142H3215L3335 262V722L3215 842H2767ZM3148 726 3199 675V309L3148 258H2903V726ZM3495 142H4001V257H3631V434H3972V547H3631V727H4001V842H3495ZM612 1937H403V1822H957V1937H748V2522H612ZM1183 1822H1307L1563 2522H1425L1368 2367H1122L1065 2522H927ZM1338 2255 1245 1989H1243L1153 2255ZM1673 1822H1795L2107 2297H2109V1822H2240V2522H2118L1806 2048H1804V2522H1673ZM2410 1822H2546V2115H2652L2821 1822H2974L2769 2171L2991 2522H2835L2651 2231H2546V2522H2410ZM3061 2414V2314H3195V2373L3228 2406H3435L3469 2372V2256L3436 2223H3171L3063 2115V1930L3171 1822H3487L3595 1930V2031H3461V1971L3428 1938H3230L3197 1971V2074L3230 2107H3495L3603 2215V2412L3493 2522H3169Z"/><path fill="#f0a030" d="M1665.2 1459.8V1212.2L1723.4 1154H1895L1953.2 1212.2V1459.8L1895 1518H1723.4ZM1871.1 1474.3 1903.3 1442.1V1229.9L1871.1 1197.7H1747.3L1715.1 1229.9V1442.1L1747.3 1474.3ZM2109.2 1154H2348.4V1197.7H2159.2V1318.3H2323.5V1362H2159.2V1518H2109.2ZM352 1295h1144v90h-1144ZM2580 1295h1144v90h-1144Z"/>
+<g class="cot-mark--motion"><g transform="translate(-379.06 -2858.20) scale(19.73000)"><g class="mk-run" fill="#f6f3ec"><path fill-rule="evenodd" d="M50 119h126a9.5 9.5 0 0 1 0 19H50a9.5 9.5 0 0 1 0-19ZM61.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM84.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM107.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM130.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM153.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0ZM176.4 128.5a5.4 5.4 0 1 0 -10.8 0a5.4 5.4 0 1 0 10.8 0Z"/><path class="mk-links mk-links--top" d="M50 120.4H176" fill="none" stroke="var(--mk-ground, #0b0e11)" stroke-width="1.5" stroke-dasharray="2.38 3.28"/><path class="mk-links mk-links--low" d="M50 136.6H176" fill="none" stroke="var(--mk-ground, #0b0e11)" stroke-width="1.5" stroke-dasharray="2.38 3.28"/><g fill="#f6f3ec"><g class="mk-wheel"><circle cx="56" cy="128.5" r="5.4" fill="none"/><circle cx="56" cy="128.5" r="1.7"/><rect x="55.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 56 128.5)"/><rect x="55.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 56 128.5)"/><rect x="55.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 56 128.5)"/></g><g class="mk-wheel"><circle cx="79" cy="128.5" r="5.4" fill="none"/><circle cx="79" cy="128.5" r="1.7"/><rect x="78.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 79 128.5)"/><rect x="78.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 79 128.5)"/><rect x="78.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 79 128.5)"/></g><g class="mk-wheel"><circle cx="102" cy="128.5" r="5.4" fill="none"/><circle cx="102" cy="128.5" r="1.7"/><rect x="101.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 102 128.5)"/><rect x="101.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 102 128.5)"/><rect x="101.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 102 128.5)"/></g><g class="mk-wheel"><circle cx="125" cy="128.5" r="5.4" fill="none"/><circle cx="125" cy="128.5" r="1.7"/><rect x="124.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 125 128.5)"/><rect x="124.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 125 128.5)"/><rect x="124.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 125 128.5)"/></g><g class="mk-wheel"><circle cx="148" cy="128.5" r="5.4" fill="none"/><circle cx="148" cy="128.5" r="1.7"/><rect x="147.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 148 128.5)"/><rect x="147.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 148 128.5)"/><rect x="147.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 148 128.5)"/></g><g class="mk-wheel"><circle cx="171" cy="128.5" r="5.4" fill="none"/><circle cx="171" cy="128.5" r="1.7"/><rect x="170.45" y="123.1" width="1.1" height="5.4" transform="rotate(0 171 128.5)"/><rect x="170.45" y="123.1" width="1.1" height="5.4" transform="rotate(120 171 128.5)"/><rect x="170.45" y="123.1" width="1.1" height="5.4" transform="rotate(240 171 128.5)"/></g></g></g><g class="mk-hull"><g class="mk-exhaust" fill="#f6f3ec"><circle class="mk-puff" style="animation-delay:0.00s" cx="37" cy="101" r="1.6"/><circle class="mk-puff" style="animation-delay:-0.40s" cx="37" cy="101" r="1.6"/><circle class="mk-puff" style="animation-delay:-0.80s" cx="37" cy="101" r="1.6"/></g><path fill="#f6f3ec" d="M34 116.6 40 94h108l52 18-2.4 4.6Z"/><g class="mk-turret"><g fill="#f6f3ec"><g transform="rotate(-10 140 82)"><rect x="136" y="76" width="18" height="12" rx="1.5"/><rect x="154" y="78.3" width="52" height="7.4"/><rect x="168" y="76.4" width="16" height="11.2" rx="4.4"/><rect x="203" y="77.3" width="7" height="9.4" rx="1"/></g><path d="M77.6 68.9 71.4 53.4a1.6 1.6 0 0 1 .9-2.1l2.6-1a1.6 1.6 0 0 1 2.1.9l6.3 15.6Z"/><rect x="74.6" y="65.6" width="8.4" height="4" rx="1.2"/></g><g class="mk-antenna"><path d="M64 76 56 41" fill="none" stroke="#f6f3ec" stroke-width="1.6"/><path style="fill:#f0a030" d="M56 38.5 41 43l15 4.5Z"/></g><g class="mk-crew"><g style="fill:#f0a030"><path fill-rule="evenodd" d="M20.998 10.949H24v3.102h-3v3.028h-1.487V20H18v-2.921h-1.487V20H15v-2.921H9V20H7.488v-2.921H6V20H4.487v-2.921H3V14.05H0V10.95h3V5h17.998v5.949zM6 10.949h1.488V8.102H6v2.847zm10.51 0H18V8.102h-1.49v2.847z" transform="translate(82.65 42.75) scale(1.95)"/></g><g fill="#f6f3ec"><path fill-rule="evenodd" d="M87.5 52.5a18.5 12 0 0 1 37 0ZM94 45.2h24.5v5.2H94Z"/><rect x="85.5" y="52.3" width="41" height="4.2" rx="2.1"/></g><g fill="none" stroke="#f6f3ec" stroke-width="1.3"><circle cx="102.5" cy="47.8" r="2.9"/><circle cx="111" cy="47.8" r="2.9"/></g></g><g fill="#f6f3ec"><path d="M151.4 92.6 140 77.5 82 74 61.5 72.8 58 76.5V88l4.5 3.5H73l1.5 1.1Z"/><path d="M77.5 75.5 80 68.2h53l3.1 10Z"/></g></g></g></g></g><path fill="#f6f3ec" d="M55 727V257L170 142H512L625 255V362H489V305L442 258H242L191 309V675L242 726H442L489 679V622H625V729L512 842H170ZM760 142H896V727H1246V842H760ZM1557 142H1681L1937 842H1799L1742 687H1496L1439 842H1301ZM1712 575 1619 309H1617L1527 575ZM2027 722V142H2163V675L2214 726H2410L2461 675V142H2597V722L2477 842H2147ZM2767 142H3215L3335 262V722L3215 842H2767ZM3148 726 3199 675V309L3148 258H2903V726ZM3495 142H4001V257H3631V434H3972V547H3631V727H4001V842H3495ZM612 1937H403V1822H957V1937H748V2522H612ZM1183 1822H1307L1563 2522H1425L1368 2367H1122L1065 2522H927ZM1338 2255 1245 1989H1243L1153 2255ZM1673 1822H1795L2107 2297H2109V1822H2240V2522H2118L1806 2048H1804V2522H1673ZM2410 1822H2546V2115H2652L2821 1822H2974L2769 2171L2991 2522H2835L2651 2231H2546V2522H2410ZM3061 2414V2314H3195V2373L3228 2406H3435L3469 2372V2256L3436 2223H3171L3063 2115V1930L3171 1822H3487L3595 1930V2031H3461V1971L3428 1938H3230L3197 1971V2074L3230 2107H3495L3603 2215V2412L3493 2522H3169Z"/><path fill="#f0a030" d="M1665.2 1459.8V1212.2L1723.4 1154H1895L1953.2 1212.2V1459.8L1895 1518H1723.4ZM1871.1 1474.3 1903.3 1442.1V1229.9L1871.1 1197.7H1747.3L1715.1 1229.9V1442.1L1747.3 1474.3ZM2109.2 1154H2348.4V1197.7H2159.2V1318.3H2323.5V1362H2159.2V1518H2109.2ZM352 1295h1144v90h-1144ZM2580 1295h1144v90h-1144Z"/>
       </svg>
       <div class="cot-boot-invite" id="cot-boot-invite" aria-live="polite"></div>
       <div class="cot-boot-load">
@@ -1083,7 +1087,7 @@
   </div>
 
   <dialog class="cot-credits" id="cot-credits" data-cot-boot-control aria-labelledby="cot-credits-title">
-    <button class="cot-credits-close" id="cot-credits-close" type="button" aria-label="Close credits" data-i18n-aria-label="aria.closecredits" data-i18n-aria="credits.closeAria" autofocus>&times;</button>
+    <button class="cot-credits-close" id="cot-credits-close" type="button" aria-label="Close credits" data-i18n-aria-label="aria.closecredits" data-i18n-aria="credits.closeAria" autofocus><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5.5 5.5l13 13M18.5 5.5l-13 13"/></svg></button>
     <div class="cot-credits-scroll">
     <div class="cot-credits-grid">
       <figure class="cot-credits-profile">
@@ -1126,7 +1130,7 @@
         invite.textContent = invitationTitle;
         invite.classList.add('on');
         boot.classList.add('has-invite');
-        document.title = invitationTitle + ' — Claude of Tanks';
+        document.title = invitationTitle + ' · Claude of Tanks';
       }
 
       const dialog = document.getElementById('cot-credits');

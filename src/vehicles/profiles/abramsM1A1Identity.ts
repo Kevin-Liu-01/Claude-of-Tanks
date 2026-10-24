@@ -310,6 +310,20 @@ function addSaFit(P: AbramsIdentityPort): void {
       P.addEquipment('turretDetail', box(0.05, 0.04, 0.10), x, 0.6075, RACK_REAR_Z - 0.03);
     }
   }, { reachM: 0.05 });
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the hull's jerry-can pair rides a bracket
+  // on the extension's rear fence, uprights against it and braced to its top rail. On the left rear deck its tops (2.2)
+  // stood 28 cm into the extension, which sweeps 4.06 m off the ring's axis above 1.92, past the deck's own end.
+  P.snapGroup('m1a1sa-rack-cans', () => {
+    const fenceZ = RACK_REAR_Z - 0.03 - 0.42, shelfZ = fenceZ - 0.205, floorY = RACK_FLOOR_Y - 0.02;
+    P.addEquipment('turretDetail', box(0.50, 0.025, 0.42), -0.55, floorY - 0.0125, shelfZ);
+    for (const x of [-0.79, -0.31]) {
+      P.addEquipment('turretDetail', beam([x, floorY - 0.02, shelfZ - 0.20], [x, floorY + 0.40, fenceZ - 0.01], 0.03, 0.03));
+    }
+    const cans = FITTINGS.jerryCans({ mats: P.mats, count: 2, gap: 0.04, slot: 'canvasCloth', seed: 9,
+      rotation: [0, Math.PI, 0] });
+    cans.position.set(-0.55, floorY, shelfZ);
+    P.turretG.add(cans);
+  }, { reachM: 0.05 });
   // TUSK tank-infantry phone box on the right rear of the hull.
   P.snapGroup('m1a1sa-tusk-phone', () => {
     const x = 1.30, y = 1.50, z = -3.99;
