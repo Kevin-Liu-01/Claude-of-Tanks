@@ -387,6 +387,13 @@ function launchers(P: TankBuilderPort): void {
 export function buildChieftainMk10X(P: TankBuilderPort): void {
   P.hullG.position.set(0, 0, 0);
   P.turretG.position.set(...D.turretPivot);
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the source turret's lower body (1.636)
+  // sits under the hull's roof (1.697), its shoulders (1.73) and the forward engine-deck covers (1.74) past 1.35 m off
+  // the ring's axis, over a 1.566 ring deck, so its seat (turretSeatRace.ts) may rise past the default 4 cm: whatever of
+  // the turret passes over them stands its seam over them, and its buried bustle stops turning through the covers and the
+  // driver's periscopes.
+  P.turretG.userData.turretSeatRiseM = 0.30;
+  P.turretG.userData.turretSeatReadM = 0.30;
   P.gunG.position.set(...D.trunnion.map((v, i) => v - D.turretPivot[i]) as [number, number, number]);
   P.topY = D.structuralRoofY - D.turretPivot[1];
   hull(P);
