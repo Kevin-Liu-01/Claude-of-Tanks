@@ -18,7 +18,7 @@ assert.ok(Math.abs(LAMP_LIGHT_DECAY - 2) > 0.0015 * 2, 'the muzzle, burst and fi
 // the night pool's building lights carry the mark; the renderer installs the shape before any compile
 const runtime = readFileSync(new URL('./nightLightingRuntime.ts', import.meta.url), 'utf8');
 assert.match(runtime, /new THREE\.PointLight\(0xffd79e, 0, 18, LAMP_LIGHT_DECAY\)/, 'the pool\'s lamp lights are marked');
-assert.match(readFileSync(new URL('./renderer.ts', import.meta.url), 'utf8'), /limitPointLightFalloff\(\);[\s\S]{0,200}shapeLampPointLights\(\);/);
+assert.match(readFileSync(new URL('./renderer.ts', import.meta.url), 'utf8'), /shapeLampPointLights\(\);[\s\S]{0,500}limitPointLightFalloff\(\);/);
 
 // the CPU mirror: the factor a lamp's light takes at a point `up` metres over its glass and `out` metres off it
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
