@@ -89,10 +89,9 @@ const DENT_RAMP_S = 0.35;
  * race's outer radius held inside them, m). There the cut opened the hull's side wall into a slot that no band closes:
  * the MBT-70's deck runs on flush over its fender roofs, its measured race past the upper hull's sides at ±0.97 m, and
  * from under the fender roof the eye saw through the 0.2 m slot into the hull (30-45 px at every seed; the Object 148's
- * 31-65 px the same way). The exterior
- * pass finds them (the hull's skin the eye reaches inside the race's radius within that depth); it is too slow for a
- * battle's warm, so the scan's result is kept here (tools/turret-ring-side-caps.mjs --check). Measured rings only: a
- * calibration receipt's ring is the intact seat's too.
+ * 31-65 px the same way). The exterior pass finds them (the hull's skin the eye reaches inside the race's radius within
+ * that depth); it is too slow for a battle's warm, so the scan's result is kept here (tools/turret-ring-side-caps.mjs
+ * --check). Measured rings only: a calibration receipt's ring is the intact seat's too.
  */
 export const TURRET_RING_SIDE_CAPS: Readonly<Record<string, number>> = Object.freeze({
   mbt70: 0.93,
@@ -1366,14 +1365,16 @@ function assembleRingCut(split: RingSplit, cut: TurretRingCut, corners: RingEdge
 }
 
 /**
- * (233) A dented mesh's new corners past the zone, placed so that the burn hook's vertex dent (the field at the vertex,
- * at full share) carries each one where its source triangle's corners carry it, the triangle moving as one plane. A long
- * face split out there then bends as it did whole: no crack along a neighbour's edge that holds none of its points, no
- * sliver of it folded over by the field between its corners (the Hetman II's deck: up to 11 cm cracks and a fan of
- * holes beside the ring). Inside the zone the field at their own points bends them, with the plate on the same law.
- * Every rule here depends on the point alone, so two faces sharing an edge place its points alike. Returns the farthest
- * a corner moved. The burn hook ramps the dents in over 0.35 s (DENT_RAMP_S): during the blast the placed corners sit
- * that share off their faces.
+ * (233, 244) A dented mesh's new corners placed for the dents: the burn hook's vertex dent (the field at the vertex, at
+ * full share) carries each one to a blend of where its source triangle's corners carry it (the triangle moving as one
+ * plane) and where the field at its own point does, by its plane share (planeShare: none on the rim, all from
+ * PLANE_DENT_M past it). A long face split out there then bends as it did whole: no crack along a neighbour's edge that
+ * holds none of its points, no sliver of it folded over by the field between its corners (the Hetman II's deck: up to
+ * 11 cm cracks and a fan of holes beside the ring). Near the rim the field at their own points bends them, with the
+ * plate on the same law. Every rule here depends on the point alone (an edge's corner on that edge's two ends), so two
+ * faces sharing an edge place its points alike. Returns the farthest a corner moved. The burn hook ramps the dents in
+ * over 0.35 s (DENT_RAMP_S): during the blast a placed corner sits that share off its target, and no corner's share of
+ * the plane carries it in over the rim at either end of the ramp (RIM_CLEAR).
  */
 function placeForDents(array: NumericArray, base: number, extra: number, blends: readonly number[],
   words: ArrayLike<number>, stride: number, offset: number, cut: TurretRingCut, dents: TurretRingDents): number {
