@@ -196,13 +196,14 @@ interface TouchNoticePlan {
 /** A label's cost in a least intrusive place, per px² (the footprint's is 1, a panel's or a control's PANEL_WEIGHT), and a
  *  notice already placed (the countdown, the first of the detection and the alert). */
 const LABEL_WEIGHT = 0.25;
-const PLACED_WEIGHT = 1000;
+const PLACED_WEIGHT = 1e7;
 /** A panel's or a control's cost per px²: more than a whole notice reaching into the footprint, so a notice covers none
  *  while any place over the footprint alone remains (the module's rule; at 10, the shorter one-row objective sent the
- *  detection 2 px onto a consumable at 568x256 rather than a little further into the footprint). */
-const PANEL_WEIGHT = 100;
+ *  detection 2 px onto a consumable at 568x256 rather than a little further into the footprint; at 100, a notice 2 px
+ *  onto the joystick at 360x640 still cost less than one reaching into the reserve over the ring). */
+const PANEL_WEIGHT = 1e5;
 /** How much more a notice over a block costs than one in its gap (leastIntrusive), and the most a gap costs: a notice
- *  already placed weighs ten times a panel over it, never in its margin (at 568x256 the two notices fit side by
+ *  already placed weighs a hundred times a panel over it, never in its margin (at 568x256 the two notices fit side by
  *  side only touching, and a margin at its weight sent the second 10 px onto a consumable). */
 const OVER_FACTOR = 3;
 const MARGIN_WEIGHT = 10;
@@ -238,7 +239,7 @@ export function planTouchNotices(input: TouchNoticeInput): TouchNoticePlan {
     cleared: true, bannerTop: start, bannerReady: false };
   // (where nothing clears, a notice reaches into the footprint before it covers a panel or a control: the footprint is
   // modelled at full bloom, and the panels are there whole)
-  // (a notice already placed counts ten times a panel: the notices never stack on each other while any other place
+  // (a notice already placed counts a hundred times a panel: the notices never stack on each other while any other place
   // remains, r10g: at 568x256 the gap-wide costs set the detection on the alert)
   const sight = scope ? keep.slice(0, 1) : keep;
   const readouts = scope ? keep.slice(1) : [];
