@@ -49,15 +49,25 @@ assert.match(garageSource, /const GARAGE_STATIONS = Object\.freeze\(\[\s*\['over
   'the readout has five stations; the paint left them for the band');
 assert.match(garageSource, /\/\^Digit\(\[1-5\]\)\$\//, 'the station keys run 1 to 5');
 assert.match(garageSource, /aria-orientation="horizontal"/, 'the station tabs are one horizontal row');
-assert.match(garageSource, /function fitReadout\(\): void \{[\s\S]*?while \(density < 4 && statsEl\.scrollHeight > statsEl\.clientHeight \+ 1\)/,
+assert.match(garageSource, /function fitReadout\(force = false\): void \{[\s\S]*?while \(density < 4 && statsEl\.scrollHeight > statsEl\.clientHeight \+ 1\) statsEl\.dataset\.density = READOUT_DENSITY\[\+\+density\];/,
   'the readout steps through its four densities until the station fits');
-assert.match(garageSource, /statsEl\.scrollTop = 0;\s*fitReadout\(\);/, 'a station change refits the readout');
-assert.match(garageSource, /statsEl\.addEventListener\('load', queueReadoutFit, true\);/, 'the technical drawing refits the readout as it loads');
+assert.match(garageSource, /statsEl\.scrollTop = 0;\s*queueReadoutFit\(\);/, 'a station change refits the readout in the frame, not in the press');
+assert.match(garageSource, /else queueReadoutFit\(\);\s*requestAnimationFrame\(syncScrollFades\);/, 'a tank change refits the readout in the frame, not in the press');
+assert.match(garageSource, /const key = `\$\{station\}\|\$\{statsFor\}\|\$\{window\.innerWidth\}x\$\{window\.innerHeight\}`;/,
+  'a station, tank and window fitted before take their density from memory');
+assert.match(garageSource, /statsEl\.addEventListener\('load', \(\) => queueReadoutFit\(true\), true\);/, 'the technical drawing refits the readout as it loads');
+// click-perf-244 carried into the redesign: one layout per selection, the catalog painted only while it shows
+assert.match(garageSource, /requestAnimationFrame\(\(\) => \{\s*if \(selectedId === specId\) card\.scrollIntoView\(/,
+  'the selected card is revealed in the frame, after the dossier rebuild, not before it');
+assert.match(garageSource, /if \(swatchesFor === selectedId\) return;[\s\S]{0,240}if \(openGaragePanel\(\) !== 'appearance'\) return;\s*repaintTankCamoSwatches\(spec\);/,
+  'the paint catalog repaints only while every paint is open');
+assert.match(garageSource, /if \(next === 'appearance' && previous !== next\) refreshCamoSel\(\);/, 'opening every paint repaints the catalog it left');
+assert.doesNotMatch(garageSource, /compactCamoPreviews\.forEach/, 'the hidden tool cards no longer repaint their canvases');
 assert.match(showroomSource, /body\[data-cot-panels='persistent'\]\[data-cot-width\] \.cot-garage \.stats\{[^}]*overflow:hidden;\}/,
   'the docked readout never scrolls');
 for (const density of ['1', '2', '3', '4']) assert.match(showroomSource, new RegExp(`\\.stats\\[data-density~='${density}'\\]`),
   `the readout's density ${density} has its rules`);
-assert.match(garageSource, /statsEl\.dataset\.density = density === 1 \? '1' : `\$\{statsEl\.dataset\.density\} \$\{density\}`;/,
+assert.match(garageSource, /const READOUT_DENSITY = Object\.freeze\(\['0', '1', '1 2', '1 2 3', '1 2 3 4'\]\);/,
   'each density carries the lighter ones as tokens, so a rule names the lightest density it belongs to');
 assert.match(showroomSource, /\.stats\[data-density~='4'\] :is\(\.cot-stat-section:not\(\.cot-primary\)/, 'the densest readout keeps each station\'s first plate');
 assert.equal((garageSource.match(/cot-stat-section[^"]*cot-primary/g) || []).length, 5, 'each of the five stations marks one first plate');

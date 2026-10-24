@@ -1086,7 +1086,6 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   const mobileNavMenu = requiredElement<HTMLElement>(root, '.cot-mobile-nav-menu');
   const compactMapPreview = requiredElement<HTMLElement>(root, '.cot-garage-map-preview');
   const compactMapName = requiredElement<HTMLElement>(root, '[data-garage-map-name]');
-  const compactCamoPreviews = [...root.querySelectorAll<HTMLCanvasElement>('.cot-garage-camo-preview canvas')];
   const compactCamoName = requiredElement<HTMLElement>(root, '[data-garage-camo-name]');
   const garagePanelButtons = [...root.querySelectorAll<HTMLButtonElement>('.cot-garage-tool')];
   const garagePanelScrim = requiredElement<HTMLButtonElement>(root, '.cot-garage-panel-scrim');
@@ -1108,32 +1107,46 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const view = layer ? statsEl.querySelector<HTMLButtonElement>(`.cot-technical-tab[data-technical-layer="${layer}"]`) : null;
     if (view && view.getAttribute('aria-selected') !== 'true') activateTechnicalTab(view);
     statsEl.scrollTop = 0;
-    fitReadout();
+    queueReadoutFit();
     if (sound) emit('ui:click', {});
   }
   wireRoving(stationTabs, (id) => setStation(id as GarageStation));
   // The readout never scrolls (the 245 redesign): a docked column steps its station through four densities (showroom.css)
-  // until it fits. It reads layout only when the station, the tank or the window changes, never per frame.
-  // Each density carries the lighter ones as tokens ("1 2 3"), so a rule names the lightest density it belongs to.
-  function fitReadout(): void {
+  // until it fits. Each density carries the lighter ones as tokens ("1 2 3"), so a rule names the lightest density it
+  // belongs to. The fit runs in the frame's callback, before that frame paints, so a press (a station, a tank) reads no
+  // layout of its own (click-perf-244); a station, tank and window it has fitted before takes its density from memory.
+  const READOUT_DENSITY = Object.freeze(['0', '1', '1 2', '1 2 3', '1 2 3 4']);
+  const readoutDensities = new Map<string, number>();
+  function fitReadout(force = false): void {
     if (document.body.dataset.cotPanels === 'overlay') { delete statsEl.dataset.density; return; }
+    const key = `${station}|${statsFor}|${window.innerWidth}x${window.innerHeight}`;
+    const known = force ? undefined : readoutDensities.get(key);
+    if (known !== undefined) { statsEl.dataset.density = READOUT_DENSITY[known]; return; }
     let density = 0;
-    statsEl.dataset.density = '0';
-    while (density < 4 && statsEl.scrollHeight > statsEl.clientHeight + 1) {
-      density++;
-      statsEl.dataset.density = density === 1 ? '1' : `${statsEl.dataset.density} ${density}`;
-    }
+    statsEl.dataset.density = READOUT_DENSITY[0];
+    while (density < 4 && statsEl.scrollHeight > statsEl.clientHeight + 1) statsEl.dataset.density = READOUT_DENSITY[++density];
+    if (readoutDensities.size > 64) readoutDensities.clear();
+    readoutDensities.set(key, density);
   }
   let readoutFitQueued = false;
-  const queueReadoutFit = (): void => {
+  let readoutFitForced = false;
+  const queueReadoutFit = (force = false): void => {
+    readoutFitForced ||= force;
     if (readoutFitQueued) return;
     readoutFitQueued = true;
-    requestAnimationFrame(() => { readoutFitQueued = false; fitReadout(); });
+    requestAnimationFrame(() => {
+      const forced = readoutFitForced;
+      readoutFitQueued = false;
+      readoutFitForced = false;
+      fitReadout(forced);
+    });
   };
-  window.addEventListener('resize', queueReadoutFit);
-  window.addEventListener('cot:layoutchange', queueReadoutFit);
-  // the technical drawing loads after its station opens: its arrival may need a closer density
-  statsEl.addEventListener('load', queueReadoutFit, true);
+  window.addEventListener('resize', () => queueReadoutFit());
+  window.addEventListener('cot:layoutchange', () => queueReadoutFit(true));
+  // the technical drawing loads after its station opens: its arrival is measured afresh
+  statsEl.addEventListener('load', () => queueReadoutFit(true), true);
+  // the display and data faces settle the readout's line heights: what was fitted before they arrived is fitted again
+  void document.fonts?.ready.then(() => { readoutDensities.clear(); queueReadoutFit(true); });
 
   // --- OVERVIEW (brand-ui S2): the headline rows against a rival of the same tier and class, both on the tank's own peer
   // scale, so a tick on the 20 cells is the rival and the delta is the gap.
@@ -1378,6 +1391,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     const next = panel && (isOverlayPanelLayout() || panel === 'appearance') ? panel : '';
     if (next) root.dataset.garagePanel = next;
     else delete root.dataset.garagePanel;
+    if (next === 'appearance' && previous !== next) refreshCamoSel(); // the swatches it left for the drawer
     for (const [element, active, label] of [
       [statsEl, next === 'equipment', t('garage.dossier.vehicleDossier')],
       [requiredElement<HTMLElement>(root, '.cot-leftcol'), next === 'maps' || next === 'appearance',
@@ -2436,7 +2450,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       card.setAttribute('aria-pressed', String(selected));
       // The grid scrolls, so restoring a persisted selection must keep its
       // active card visible without disturbing a deliberately filtered list.
-      if (selected && !card.hidden) card.scrollIntoView?.({ block: 'nearest' });
+      if (selected && !card.hidden && openGaragePanel() === 'appearance') card.scrollIntoView?.({ block: 'nearest' });
     }
   }
 
@@ -2498,23 +2512,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     paintEl.querySelector<HTMLButtonElement>('[data-lt-paint]')?.focus({ preventScroll: true });
   });
 
+  // The folded tool cards (garage.css) no longer show in any layout: the band carries the paint, so only their name stays
+  // current and their four canvases are left unpainted.
   function refreshCompactCamoPreview(spec: GarageTankSpec, selectedPatternId: string): void {
     compactCamoName.textContent = camoPatternLabel(selectedPatternId);
     refreshBandPaint(spec, selectedPatternId);
-    const patternIds = [selectedPatternId, ...(camoOpts?.patterns || [])]
-      .filter((patternId, index, ids) => ids.indexOf(patternId) === index);
-    while (patternIds.length < compactCamoPreviews.length) patternIds.push(selectedPatternId);
-    compactCamoPreviews.forEach((canvas, index) => {
-      const patternId = patternIds[index] || selectedPatternId;
-      canvas.dataset.camoPattern = patternId;
-      if (patternId === 'auto') {
-        paintAutoCamoSwatch(canvas, spec);
-        return;
-      }
-      const previewPattern = patternId === CUSTOM_CAMO_ID && camoOpts?.getCustom
-        ? customCamoPatternId(camoOpts.getCustom(spec.id)) : patternId;
-      paintCamoSwatch(canvas, spec, previewPattern);
-    });
   }
 
   function refreshCamoSel() {
@@ -2533,6 +2535,9 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     // repaint swatch tiles for THIS tank (factory palette + nation digital
     // differ per vehicle — the preview must show what the hull will wear)
     if (swatchesFor === selectedId) return;
+    // The catalog lives in the every-paint drawer in every layout (the 245 redesign): it repaints when that opens, not on
+    // every press (click-perf-244).
+    if (openGaragePanel() !== 'appearance') return;
     repaintTankCamoSwatches(spec);
     swatchesFor = selectedId;
   }
@@ -3343,7 +3348,7 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
     });
     if (vehicleChanged) statsEl.scrollTop = 0;
     if (station === 'protection' || station === 'crew') setStation(station, { sound: false });
-    else fitReadout();
+    else queueReadoutFit();
     requestAnimationFrame(syncScrollFades);
   }
 
@@ -3375,7 +3380,11 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
       // opens. Reveal it before the next paint instead of animating
       // through every intermediate card (which also exposed clipped cards
       // during the sweep).
-      card.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'auto' });
+      // It runs in the frame's own callback, after this selection's writes (the dossier below), so the reveal and the
+      // paint share one layout (click-perf-244: it forced one before the rebuild).
+      requestAnimationFrame(() => {
+        if (selectedId === specId) card.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'auto' });
+      });
     }
     queueCarouselAffordances();
     renderStats(spec);
