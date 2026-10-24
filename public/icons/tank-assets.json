@@ -690334,22 +690334,22 @@
             "verts": [
               [
                 0.2275,
-                -0.025,
+                0.057,
                 2.5742
               ],
               [
                 1.87,
-                -0.025,
+                0.057,
                 -0.279
               ],
               [
                 1.87,
-                0.9058,
+                0.9079,
                 -1.028
               ],
               [
                 0.2275,
-                0.9058,
+                0.9079,
                 1.8252
               ]
             ]
@@ -690365,22 +690365,22 @@
             "verts": [
               [
                 -1.875,
-                -0.025,
+                0.057,
                 -0.279
               ],
               [
                 -0.2325,
-                -0.025,
+                0.057,
                 2.5742
               ],
               [
                 -0.2325,
-                0.9058,
+                0.9079,
                 1.8252
               ],
               [
                 -1.875,
-                0.9058,
+                0.9079,
                 -1.028
               ]
             ]
@@ -690396,22 +690396,22 @@
             "verts": [
               [
                 -0.2653,
-                0.0705,
+                0.1443,
                 2.3959
               ],
               [
                 0.2603,
-                0.0705,
+                0.1443,
                 2.3959
               ],
               [
                 0.2603,
-                0.5717,
+                0.6024,
                 2.2532
               ],
               [
                 -0.2653,
-                0.5717,
+                0.6024,
                 2.2532
               ]
             ]
@@ -690489,22 +690489,22 @@
             "verts": [
               [
                 1.64,
-                -0.025,
+                0.057,
                 0.6126
               ],
               [
                 1.64,
-                -0.025,
+                0.057,
                 -2.1515
               ],
               [
                 1.3937,
-                0.9058,
+                0.9079,
                 -2.1515
               ],
               [
                 1.3937,
-                0.9058,
+                0.9079,
                 0.6126
               ]
             ]
@@ -690520,22 +690520,22 @@
             "verts": [
               [
                 -1.645,
-                -0.025,
+                0.057,
                 -2.1515
               ],
               [
                 -1.645,
-                -0.025,
+                0.057,
                 0.6126
               ],
               [
                 -1.3987,
-                0.9058,
+                0.9079,
                 0.6126
               ],
               [
                 -1.3987,
-                0.9058,
+                0.9079,
                 -2.1515
               ]
             ]
@@ -690551,22 +690551,22 @@
             "verts": [
               [
                 1.3937,
-                -0.025,
+                0.057,
                 -2.3298
               ],
               [
                 -1.3987,
-                -0.025,
+                0.057,
                 -2.3298
               ],
               [
                 -1.3987,
-                0.8104,
+                0.8206,
                 -2.3298
               ],
               [
                 1.3937,
-                0.8104,
+                0.8206,
                 -2.3298
               ]
             ]
@@ -691291,12 +691291,12 @@
             "name": "gun",
             "min": [
               -0.2982,
-              0.0943,
+              0.1661,
               -0.4574
             ],
             "max": [
               0.2932,
-              0.691,
+              0.7115,
               1.5042
             ],
             "turretLocal": true
@@ -691306,12 +691306,12 @@
             "name": "turretRing",
             "min": [
               -0.9805,
-              1.5428,
+              1.5948,
               -1.6426
             ],
             "max": [
               0.9805,
-              1.7678,
+              1.8198,
               0.1942
             ],
             "turretLocal": false
@@ -691381,12 +691381,12 @@
             "name": "radio",
             "min": [
               0.4903,
-              0.0943,
+              0.1661,
               -1.884
             ],
             "max": [
               1.3115,
-              0.6314,
+              0.657,
               -0.9923
             ],
             "turretLocal": true
@@ -691536,14 +691536,14 @@
             "volumeId": "C02",
             "name": "gunner",
             "min": [
-              0.6301,
-              -0.922,
+              0.4301,
+              -1.0319,
               0.2465
             ],
             "max": [
-              1.0895,
-              0.4301,
-              0.8651
+              0.8895,
+              0.0073,
+              1.0679
             ],
             "turretLocal": true
           },
@@ -691551,14 +691551,14 @@
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.6712,
-              -1.0469,
-              -0.9408
+              0.3712,
+              -1.0598,
+              -0.7908
             ],
             "max": [
-              1.1306,
-              0.0031,
-              -0.0981
+              0.8306,
+              0.0131,
+              0.0519
             ],
             "turretLocal": true
           },
@@ -691566,29 +691566,29 @@
             "volumeId": "C04",
             "name": "loader",
             "min": [
-              -0.8459,
-              -1.0811,
-              -0.4813
+              -0.8659,
+              -1.12,
+              -0.1833
             ],
             "max": [
-              -0.4762,
-              0.6923,
-              -0.2066
+              -0.4262,
+              0.6534,
+              0.2082
             ],
             "turretLocal": true
           }
         ]
       },
-      "geometryHash": "a48d7992",
-      "metadataHash": "1a13a88e",
+      "geometryHash": "60080fca",
+      "metadataHash": "6c9d573a",
       "presentationAnchor": {
-        "xM": 0.0014,
-        "zM": -0.0086
+        "xM": 0,
+        "zM": -0.0039
       },
-      "presentationHash": "07bc5f45",
+      "presentationHash": "e06579c6",
       "presentationProjection": {
         "centerYM": 2.5759,
-        "topHalfM": 5.2051,
+        "topHalfM": 5.2001,
         "sideHalfM": 2.7635
       },
       "appearance": {
@@ -691607,9 +691607,9 @@
           "trackPad": 1,
           "trackPadSimplified": 1,
           "armorPaint": 14,
-          "gunmetal": 7,
+          "gunmetal": 8,
           "opticGlass": 2,
-          "unclassified": 15,
+          "unclassified": 17,
           "gearShadow": 1,
           "machineGun": 7,
           "fittingPaint": 3,
@@ -691642,39 +691642,39 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81775,
-          "sha256": "37374bf9f7d920e8404e24e8a224e39bc3fed2269a9d8e9d3c8a5b426d81f90e"
+          "bytes": 87610,
+          "sha256": "9736b2d18d400099996bd563459453d81423dfd78dc5d66f13acba009e8e52c4"
         },
         "modulesSide": {
           "file": "merkava3d_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 84527,
-          "sha256": "b8346997c030df95744e94ec09e7b25d99768f7f56736e7fcbc0421963b31167"
+          "bytes": 84146,
+          "sha256": "b0664c057647de968d8cd249179c0f783a6e74337b62771b26b7a04300061cc0"
         },
         "crewSide": {
           "file": "merkava3d_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 78154,
-          "sha256": "61dc870487821c24a8bdfa7ba013e9f9b7fdfb28b80296257535131ec0828fc5"
+          "bytes": 78832,
+          "sha256": "3624634e8def079b9fdee932ac62c8b43554da61b734dd17d335523eed0ac2d1"
         },
         "angle": {
           "file": "merkava3d_angle.webp",
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 29808,
-          "sha256": "49b0ceade540c59b626daa6ccfc9be70bc3ec2f56bea73a96f91d30501804efb",
+          "bytes": 29764,
+          "sha256": "8d57d89144caedeb96e4f30abe12121b9f59ab0654b1bcfafdae9078784ff8af",
           "thumbnail": {
             "file": "thumbs/merkava3d_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 12090,
-            "sha256": "b75e9a305bb17c43475607bc3acc0e0c699b32128e3ce3a3c670820387a5e1e4"
+            "bytes": 12062,
+            "sha256": "1dc4fcb0ee11c1b92e60cd71ecafa07781b04922d9384fd873557c444dde6bc6"
           }
         },
         "top": {
@@ -691682,32 +691682,32 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 17984,
-          "sha256": "722a8cbaede83c10eff1de177f95deea33749d6c7a752028b616d0878e66adf0"
+          "bytes": 18160,
+          "sha256": "763de1a74f15435c0ca3340b697c95113ca097a2fd49526408433a6f6bb27b6a"
         },
         "side": {
           "file": "merkava3d_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 17026,
-          "sha256": "e586247ff72daea7f07868e60348eda1b63267df6703a6eda3e1e37eb9145d5e"
+          "bytes": 17336,
+          "sha256": "2ed2051140102edcf6afe579da0da784dd24b142b0e467730d0055430fc0dc3f"
         },
         "topSilhouette": {
           "file": "merkava3d_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1637,
-          "sha256": "a05e85e5b3d9699c8673ef6d19b844bbd260319b9a0de80b6e89f48c3e101fad"
+          "bytes": 1603,
+          "sha256": "9735fd3bb679317cb9d0054cc4d4f101e1cadbcae4d82a9f6d97f6e55f042905"
         },
         "sideSilhouette": {
           "file": "merkava3d_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 5839,
-          "sha256": "8e28eccb87c723a0b8dd429e40225611754662f3ac431716fd41074716215ca7"
+          "bytes": 6034,
+          "sha256": "108e2c5a7edf1d822c9eb6c77eda2db8bb2b3a2527ee5ea7c6753300f77ab4c2"
         },
         "markings": {
           "file": "merkava3d_markings.png",
