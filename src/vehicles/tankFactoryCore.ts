@@ -9203,8 +9203,19 @@ function* buildTankCoreSteps(
   }
   // The turret seated over the deck round its ring (2026-10-22; the owner: "make sure all tank turrets are clear of hulls
   // ... and have a proper turret ring/attachment area"), from the calibration's ring receipt (turretSeatRace.ts). Here,
-  // on the finished armour: the markings' solver, a suit and the decor all lay against the seated turret.
-  seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables });
+  // on the finished armour: the markings' solver, a suit and the decor all lay against the seated turret. A seated mesh
+  // draws its own copy of its geometry: an ERA cluster's vertex spans follow the copy and keep its seated corners as the
+  // ones a reset restores (else a hit cassette on a seated turret stayed drawn, and a reset laid the built corners back).
+  seatTurretOverDeck({ specId, hullG, turretG, gunG, disposables, onSeated: (built, seated) => {
+    const was = built.getAttribute('position'), now = seated.getAttribute('position');
+    for (const cluster of destructibleClusters.values()) {
+      for (const range of cluster.ranges) {
+        if (range.position !== was) continue;
+        range.position = now;
+        range.original = now.array.slice(range.start * now.itemSize, (range.start + range.count) * now.itemSize);
+      }
+    }
+  } });
   // Equipment laid against the finished armour (a camouflage suit or field net) is built after the core, in slices of its
   // own, against the vehicle exactly as it stands here (runDeferredAssembly).
   // 2026-10-21 (the M1A1 Abrams FEP's marking row, stale since the deferral): the live marking solver below measures
