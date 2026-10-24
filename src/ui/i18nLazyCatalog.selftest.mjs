@@ -198,7 +198,8 @@ for (const module of ['src/game/studio.ts', 'src/ui/studioPanel.ts', 'src/ui/stu
   assert.ok(!gameClosure.has(module), `the game statically loads ${module}: ${importChain(gameClosure, module)}`);
 }
 assert.match(readFileSync(resolve(ROOT, 'src/main.ts'), 'utf8'),
-  /loadModule: \(\) => Promise\.all\(\[import\('\.\/game\/studio\.ts'\), import\('\.\/ui\/studioStrings\.ts'\)\.then\(\(strings\) => strings\.ensureStudioStrings\(\)\)\]\)/,
+  // (247) its panel's sheet loads in the same Promise.all (runtimeStyles: a lazy surface's CSS at its boundary)
+  /loadModule: \(\) => Promise\.all\(\[import\('\.\/game\/studio\.ts'\), import\('\.\/ui\/studioPanel\.css'\),\s*import\('\.\/ui\/studioStrings\.ts'\)\.then\(\(strings\) => strings\.ensureStudioStrings\(\)\)\]\)/,
   'the Studio opens once its strings are resident');
 // Runtime: the Studio merges each resident locale's slice into its dictionary (here English and, after section 3's
 // switch, Chinese); a failed slice merges nothing.
