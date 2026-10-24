@@ -2148716,24 +2148716,24 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 85708,
-          "sha256": "a7a6c2d1aa7ec384caf01ef764a0c575e6a152a1fbf9e4eb275d3b37fc66c2c3"
+          "bytes": 85667,
+          "sha256": "67ddd43abfd53a132f3f54cd56a9151b2ee7f5c8595a419a3a3ed72a03f6d579"
         },
         "modulesSide": {
           "file": "ua_t80bv_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 88964,
-          "sha256": "4b333fd390834699903adf9249354641e67a1fa977b927c038d41a19dd7da4c3"
+          "bytes": 88727,
+          "sha256": "5737b20904b26fff9136c8298346b3e463379ec90baf5c0865780f00e6993806"
         },
         "crewSide": {
           "file": "ua_t80bv_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 74090,
-          "sha256": "b9736cfe165c511a25726234130fa630f033d4cca1281ce42147e56a62cc6bd9"
+          "bytes": 73988,
+          "sha256": "4d7a7b7d262a2f2cbed0b2dfd69fc0ad81590dd333fe42777eee75618e4b9bb6"
         },
         "markings": {
           "file": "ua_t80bv_markings.png",
