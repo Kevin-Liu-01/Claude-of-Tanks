@@ -53,6 +53,16 @@ export const townHall: LandmarkBuilder = (ctx) => {
     const x = -W / 2 + bw * i;
     sink.span('structureWood', x - 0.12, plinth + g - 0.32, zWall, x + 0.12, plinth + g - 0.02, zIn, { colour: OAK, decor: true, fine: true });
   }
+  // (2026-10-23, item/maps-frontier-saltmere-242; the building-integrity census of Frontier's Rathaus: holes seen from
+  // below where the upper storey oversails the hall, and the sky seen straight through the arcade's open ends) the upper
+  // storey's soffit across its whole plan, facing down, and the arcade closed at both ends by the wall's own masonry, so it
+  // reads as a loggia on the market, not a tunnel under the hall
+  sink.quad(wall, [-W / 2, plinth + g + 0.001, -D / 2], [W / 2, plinth + g + 0.001, -D / 2], [W / 2, plinth + g + 0.001, D / 2],
+    [-W / 2, plinth + g + 0.001, D / 2], { shade: 0.6 });
+  for (const sx of [-1, 1]) {
+    const xa = sx > 0 ? W / 2 - 0.6 : -W / 2, xb = sx > 0 ? W / 2 : -W / 2 + 0.6;
+    sink.span(wall, xa, plinth, zWall - 0.05, xb, plinth + g, zIn + 0.05);
+  }
   const stalls = Math.max(0, Math.min(bays - 1, Math.round(Number(ctx.params.stalls ?? 2))));
   const arcadeStalls = Array.from({ length: stalls }, (_, k) => ({ kind: 'stall', x: -W / 2 + bw * (k * 2 + 0.5 + (bays > 4 ? 1 : 0)), z: (zIn + zWall) / 2, yawDeg: 0 }))
     .filter((d) => Math.abs(d.x) > 1.6);
@@ -188,6 +198,21 @@ export const townHall: LandmarkBuilder = (ctx) => {
   const lanternTop = ty1 + 2.6;
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) sink.span('structureWood', sx * (tb / 2 - 0.3) - 0.12, ty1, sz * (tb / 2 - 0.3) - 0.12, sx * (tb / 2 - 0.3) + 0.12, lanternTop, sz * (tb / 2 - 0.3) + 0.12, { colour: rgb(0x3a3430) });
   sink.span('structureWood', -tb / 2 + 0.2, lanternTop, -tb / 2 + 0.2, tb / 2 - 0.2, lanternTop + 0.25, tb / 2 - 0.2, { colour: rgb(0x3a3430) });
+  // (2026-10-23; the integrity census: the sky through the open lantern and down into the turret's hollow body) the
+  // lantern's deck over the body, and on each side between the posts the sound louvres (Schallläden): boards slanted
+  // down and out, each over the next, from a hand over the deck to the bell's lip; the bell shows over them
+  const louvre = rgb(0x4a4038), inset = tb / 2 - 0.3, run = tb / 2 - 0.42;
+  sink.span('structureWood', -inset - 0.12, ty1 - 0.02, -inset - 0.12, inset + 0.12, ty1 + 0.08, inset + 0.12, { colour: rgb(0x3a3430) });
+  const tilt = 50 * Math.PI / 180;
+  for (let k = 0; k < 8; k++) {
+    const y = ty1 + 0.36 + k * 0.17;
+    for (const [nx, nz] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+      const out: Vec3 = [nx * Math.cos(tilt), Math.sin(tilt), nz * Math.cos(tilt)];
+      const a: Vec3 = nx === 0 ? [-run, y, nz * inset] : [nx * inset, y, -run];
+      const b: Vec3 = nx === 0 ? [run, y, nz * inset] : [nx * inset, y, run];
+      sink.member('structureWood', a, b, 0.28, 0.035, out, { colour: louvre, exposed: true, decor: true }, 0);
+    }
+  }
   bell(sink, 0, lanternTop - 0.2, 0, 0.42);
   const helm = dome(sink, 'structureMetal', 0, lanternTop + 0.25, 0, tb * 0.52, 'onion', 12, { colour: SLATE_BLUE });
   revolve(sink, 'structureMetal', 0, 0, [[0.12, helm - 0.1], [0.02, Math.max(helm + 1.5, towerTop)], [0, Math.max(helm + 1.6, towerTop + 0.1)]], 6, { colour: GILT, decor: true });

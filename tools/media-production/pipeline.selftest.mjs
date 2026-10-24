@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { digest, requireReview, leaseClock } from './pipeline.mjs';
+import { digest, requireReview, leaseClock, cinemaLeaseMs, CINEMA_LEASE_CAP_MIN } from './pipeline.mjs';
 import { shorelineSurvey, landscapeSurvey, mapScene, sunForCamera, MAP_SUN_MODES } from './recipes.mjs';
 import { mergePublication } from './mergePublication.mjs';
 
@@ -79,5 +79,13 @@ assert.equal(mapScene(shotWorld,'dusk','back').timeOfDay,'dusk');
   t = 500 * min;
   assert.equal(leaseClock(45 * min, 0, () => t).endBefore(), false, 'a lease that began late still renders its first film');
   assert.equal(leaseClock(0, 0, () => t).endBefore(), false, 'no budget: no lease end');
+  // 2026-10-23: a cinema lease is held to the house cap; --lease-min can only lower it
+  assert.equal(CINEMA_LEASE_CAP_MIN, 18);
+  assert.equal(cinemaLeaseMs(undefined), 18 * min, 'no --lease-min: the cap');
+  assert.equal(cinemaLeaseMs('0'), 18 * min, 'the old "no budget" is the cap');
+  assert.equal(cinemaLeaseMs('12'), 12 * min, 'a shorter lease stands');
+  assert.equal(cinemaLeaseMs('45'), 18 * min, 'a longer lease (site50-finals asked 45) is clamped to the cap');
+  assert.throws(() => cinemaLeaseMs('-1'), /expected minutes/);
+  assert.throws(() => cinemaLeaseMs('soon'), /expected minutes/);
 }
 console.log('media production: rejects missing/stale/unreviewed/tampered captures; complete shoreline coverage; overview sun bearings; cinema lease clock PASS');

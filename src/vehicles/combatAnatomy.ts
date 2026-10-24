@@ -105,6 +105,8 @@ interface CrewVolume extends AnatomyVolume {
   head?: Vec3;
   /** 235: the P50 body's posture at its seat (the Gallery mannequin's joint angles), from the calibration's crew seat. */
   posture?: AnatomyCrewSeatReceipt['posture'];
+  /** 235: where HE splash strikes the seated body (head, torso, lap). */
+  blastPoints?: Vec3[];
 }
 
 interface CollisionFace {
@@ -669,6 +671,7 @@ function applyCrewSeat(volume: CrewVolume, seat: AnatomyCrewSeatReceipt): void {
   volume.shapes = seat.shapes.map(copyAnatomyShape);
   volume.head = seat.head.slice();
   volume.posture = { ...seat.posture };
+  volume.blastPoints = seat.blastPoints.map((point) => point.slice());
 }
 
 function addPreciseInternalShapes(armor: ArmorAnatomy, calibration: CombatAnatomyCalibration | null): void {

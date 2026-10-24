@@ -24,7 +24,7 @@ body[data-cot-viewport='visual'] :is(
 /* BATTLE HUD -------------------------------------------------------------- */
 body[data-cot-width='laptop'] .cot-ear{width:clamp(172px,14vw,194px)}
 body[data-cot-width='laptop'] .cot-killfeed{left:clamp(184px,15vw,210px)}
-body[data-cot-width='tablet'] .cot-top{width:min(326px,calc(100vw - 120px))}
+body[data-cot-width='tablet'] .cot-top{width:min(326px,calc(100vw - 120px));padding:0 25px}
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-ear{top:58px;width:160px}
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-ear.r{top:var(--hud-roster-top-right,58px)}
 body[data-cot-width='tablet']:not(.cot-touch-layout) .cot-er{padding-inline:6px;font-size:11px}
@@ -488,11 +488,6 @@ body.cot-touch-layout[data-cot-width='phone'] .cot-special{
 }
 body.cot-touch-layout[data-cot-width='compact'] .cot-minimap,
 body.cot-touch-layout[data-cot-width='phone'] .cot-minimap{width:92px!important;height:92px!important}
-/* r10e (the notices critic: the hint ran under the speedometer and the left FIRE button on a 360 px phone): the advice on
-   its own line, right-aligned under the hint, which stays where it was (the scope's readouts rest over it), in a tighter
-   spacing that keeps both lines clear of the left controls */
-body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch-aim .aimhint{text-align:right;bottom:calc(31% - 12px)}
-body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch-aim .aimhint::after{content:attr(data-landscape);display:block;margin-top:2px;font-size:11px;letter-spacing:.02em}
 body[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-touch .mobile-chrome{top:calc(max(8px,env(safe-area-inset-top)) + 48px)}
 body.cot-touch-layout[data-cot-panels='overlay'][data-cot-orientation='portrait'] .cot-minimap{
   top:calc(max(8px,env(safe-area-inset-top)) + 100px);
@@ -553,7 +548,6 @@ body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch .auto
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-drive{
   left:max(140px,calc(env(safe-area-inset-left) + 140px));bottom:max(18px,env(safe-area-inset-bottom));transform:scale(.72);
 }
-body[data-cot-height='short'][data-cot-orientation='landscape'] .cot-touch-aim .aimhint{right:20%;bottom:27%}
 body.cot-touch-layout[data-cot-height='short'][data-cot-orientation='landscape'] .cot-minimap{width:106px!important;height:106px!important}
 /* The centre line (owner 2026-10-22: "a bunch of ui elements ... are not centered in screen"): a centred element stays on
    the viewport's centre and narrows by the wider corner's reserve on both sides where a corner panel would reach it, never

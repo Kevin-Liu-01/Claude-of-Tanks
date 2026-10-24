@@ -24,11 +24,50 @@ rule the battle does not keep.
 | Frontline Assault | Take three trench sectors in turn, then hold the last one | +35 % hull for the attack (the defenders field their own), unlimited rounds, three allied bots (back 30 s after a death), a twelve-strong one-country formation (the operation's, the arranged country, or AUTO's), 3 / 4 / 5 defenders dug in on each sector's line from the start (out of the attack's reach and terrain sight) whose guns reload 1.35× slower, a two-tank counter-attack on a sector just taken, one more defender from the rear every 45 s while a sector is contested and its line short, 12:00 clock that loses the sortie when it expires; defenders escalate per sector and per campaign operation | No | The last sector held for 20 s, the human attacker destroyed, or the clock |
 | Mars Mode | Hold the three station sectors of Olympus Basin | 0.38 g, +25 % speed, +20 % hull, −10 % damage, +11 % reload rate, rocket jump 9.5 m/s (F, boosts again in the air), ×3 recoil launch, ×0.9 impact knock, unlimited rounds; repair caches every 22 s | 6 s | First team to 750 points, or the 12:00 clock (score) |
 | Juggernaut | Defeat the boss, or survive as the boss | Choose the boss or hunter role; boss has 8× hull, half reload time and 90% speed; unlimited rounds | Hunters: 6 s; boss: none | Boss destroyed, or boss survives 10:00 |
-| Infected | Survive the outbreak, or convert every survivor | Survivors at 130 % hull; five initial infected at 25 % hull and 30 % more speed rise round the survivors (70–120 m out, out of sight where the ground allows) and rush them as a pack, gathering and firing on one survivor at a time; destroyed survivors join them; unlimited rounds | 5 s | No survivors remain, or survivors reach 7:00 |
+| Infected | Survive the outbreak, or convert every survivor | Survivors at 130 % hull; five initial infected at 20 % hull and 30 % more speed rise round the survivors (70–120 m out, out of sight where the ground allows) and rush them as a pack, gathering and firing on one survivor at a time; destroyed survivors join them; unlimited rounds | 5 s | No survivors remain, or survivors reach 3:00 |
 | Realistic | Destroy the opposing force through critical damage | Normal spotting; no hull HP attrition, automatic module repair or consumables | No | Crew eliminated or ammunition destruction eliminates a team; 15:00 draw |
 | Gun Game | Complete a five-weapon ladder | Two confirmed kills per stage; unlimited ammunition | 4 s | First player to complete the ladder; 15:00 score decision |
 | Drone | Destroy opponents with tanks and directly piloted drones | Launch a physical FPV quadcopter; its shaped charge interacts with cages, ERA and spaced armor at the impact point; unlimited rounds | 6 s | First team to 20 kills (configurable), or 10:00 score decision |
 | AC-130 | Protect ground allies until at least half reach extraction | Fragile escorts, a marked exit, overhead scope, three independent weapon channels and unlimited ammunition | No | Half extracted; defeat if too few survive or 8:00 expires |
+
+## Watch (watch-mode-243, 2026-10-23)
+
+Owner: "watch tank battles and be able to go into a spectator view you can control like a drone and then into any tank
+currently fighting (being controlled by a bot)"; through Main the same day, "be able to ride along in spectator mode but
+go into tank describes driving it". Deploy's **Watch** button starts the selected mode on the selected map with every
+seat a bot's. The rules are the `WATCH_RULES` entry in `src/sim/matchRuleset.ts` (`watchRulesetFor`):
+
+- Every battle mode but the AC-130 can be watched (its gunship is the human's alone; the proving ground has no fight).
+- The human seat is set up exactly as ever (side, spawn, role, your Garage tank) and a bot drives it, so every mode
+  fields its own sides and keeps its own clock, respawns, scores and objectives. That seat stays the mode's human seat
+  (`bot: false`), so Frontline and the Horde still end when it falls.
+- Nothing is recorded (`battle:ended` carries `watch: true`; `battleKeepsRecords`).
+- The watcher sees every hull (`watchRevealsAll`) until they take a seat; a taken seat sees as its side does.
+
+| View | Desktop | Gamepad | Touch |
+| --- | --- | --- | --- |
+| Drone | WASD/arrows move, mouse looks, Space climbs, C descends, Shift boosts (the handbrake, reload and sniper actions: Accessibility's hold-or-toggle applies), wheel sets cruise speed | Left stick moves, right stick looks, RT/LT climb/descend, L3 boosts | Stick moves, drag looks, the climb rail |
+| Ride along | Click a tank, F (the one in view) or Tab; Q/E and Shift+Tab cycle; Shift or wheel-in for the gunner sight; V flies off | Y rides the tank in view; LB/RB cycle; B flies off | Tap a tank or the cycle buttons |
+| Take control | Enter (again to leave) | R3 | The Drive / Leave button |
+
+A ridden tank's wreck is held `deathHoldS`, then the camera rides on with its killer (a burn-out or crash credits the
+last hull that hit it), or the drone lifts off. Every handover is an eased pose blend that arcs over long hops
+(`src/engine/watchCamera.ts`).
+
+**Take control** is the player's own path: `src/game/watchSeat.ts` parks the hull's AI controller and makes the hull
+`game.player`. The fixed step drives a hull from its controller only while `aiCtl` is set, so the frame input
+(`playerFrameInput.ts`) is the only writer of the hull's input while it is driven. Leaving gives the controller back,
+and it resumes from the hull's live state. A driven hull's death plays the player's death flow (death camera, replay),
+then the watcher is back on the drone.
+
+Receipts:
+- `src/game/watchSeat.selftest.mjs`: the ruleset entry, bot → player → bot leaves the hull identical, an exact replay
+  over the swap, no controller step while driven, every watchable mode running with no human seat.
+- `src/game/watchController.selftest.mjs`: the death handoff, picking and cycling, take and leave.
+- `src/engine/watchCamera.selftest.mjs`: the drone's clamp to the terrain floor, structures (slide), the world square
+  and the ceiling.
+
+The controller, camera and bar load as one lazy chunk with a watched battle (`src/app/watchRuntime.ts`).
 
 ## Aerial sensor views
 
@@ -156,10 +195,10 @@ hunter, you join allies against one bot boss. In hosted rooms the boss role belo
 to the first participating human when that role is selected; other humans hunt it.
 The boss is 12% larger, including its armor and module hit geometry, and carries a subtle blue surface highlight that follows the hull, turret, barrel, and running gear with traveling energy bands. Shell contacts, including ricochets, create short, undulating blue-white ripples at the actual impact location; turret and gun contacts follow those moving parts. There is no enclosing bubble, and the glow does not reveal the tank through cover. Battle impact ripples and enlargement are cleared on Garage return. If Juggernaut remains selected, the Garage applies a fresh animated energy preview to the selected tank; switching modes removes it. It never respawns. Its survival clock and health are shown in the objective.
 
-**Infected** begins with five infected opponents (at least three in a custom setup). Survivors have 130% of their normal HP (150% until gameplay-modes-233); infected have 25% (30% until gameplay-modes-228), 30% more speed and their own reload (80% longer in round 2 only), and their bots rush the survivors their side spots (`infection.hunt`, the honest hunt) as a pack (`infectionBots.packPullM`, the doctrine's `packFire`). Every respawn takes five seconds. Rounds are unlimited. A survivor's destruction changes
+**Infected** begins with five infected opponents (at least three in a custom setup). Survivors have 130% of their normal HP (150% until gameplay-modes-233); infected have 20% (25% until 240, 30% until gameplay-modes-228), 30% more speed and their own reload (80% longer in round 2 only), and their bots rush the survivors their side spots (`infection.hunt`, the honest hunt) as a pack (`infectionBots.packPullM`, the doctrine's `packFire`). Every respawn takes five seconds. Rounds are unlimited. A survivor's destruction changes
 that player's team before their next spawn, including their allied/enemy roster
 and bot targeting. Bots discard a cached enemy as soon as either tank changes sides;
-the converted player’s spotting readout follows their new team. The remaining survivors win by lasting five minutes (seven until round 2 of gameplay-modes-228); infected
+the converted player’s spotting readout follows their new team. The remaining survivors win by lasting three minutes (since 240; seven from round 3 of gameplay-modes-228, five in its round 2); infected
 win when nobody remains unconverted.
 
 **Gun Game** keeps the selected chassis, armor and crew, but replaces its main
@@ -538,7 +577,7 @@ harness's Standard and Juggernaut rows reproduce the baseline field for field).
 | Mode, side | Doctrine |
 | --- | --- |
 | Endless Horde zombies (RUSH) | no opening read, no hold band, no cover, never falls back, no kite, scoot or settle, no spearhead guard, rounds never conserved, the stalemate push after 4 s, missions at full speed and never broken off, hard turns driven round (`rollingTurns`, round 3); the hunt's drive: a spotted target inside 70 m is run in on, aimed 24 m beside it on the side it will circle (round 3: aimed at its hull the run-in met the no-ram brake and stood), then orbited at 16–28 m with the turret laid, each friendly hunter already nearer it putting this one 10 m further out, at most 3 rings (`RUSH_DRIVE`); it steers off a ram: a seen enemy hull in the lane ahead (the two half-widths plus 3 m, its place 1 s on; round 3b, was 2 m and 0.6 s) slows it to a swerve inside 12 m and stops it only inside its stopping distance plus 3 m, backing off inside 1.5 m; a target is claimed inside 60 m (`claimRangeM`) and let go past 90 m; hits ignored; they arrive 320-440 m round the humans (pulled in to 26 s of the hull's own pace, `spawnReachS`), their first 60 m of approach out of sight too at the wave's pace (`sightLeadM`), reload at their own rate and aim at the battle's tier (`hostileDifficultyStep` 0, round 3b: a tier down a human fell once every 18-21 zombie kills); a straggler that gains no ground on the humans for 40 s is benched and re-arrives on a 160-230 m ring (`strandedRingM`), and a slot benched more than twice in one wave is retired from it (`strandedRetireAfter`, round 3b: on Verdant one zombie re-arrived twenty times and wave 1 never cleared) |
-| Infected (RUSH, second only to the zombies) | the RUSH table, a target claimed at any range, the hull angled to a hit (driven round at the rolling steer, round 3b); they rise on a ring 70–120 m round the survivors (`infectionBots.arrival`: out of their sight where the ground allows, never inside 60 m) and, where that ring has no clear point, on a 120–200 m ring before their base (`fallbackRingM`, round 3b: with ten survivors spread to their rally reach three of five rose 400-740 m off, a minute from the fight); a quarter of their own hull, +30 % speed, their own reload and the plan's seven-minute round (round 3: round 2's ×1.8 reload and five minutes made it a shooting gallery); the pack hunt (gameplay-modes-233: each infected already on a survivor pulls the next hunter 60 m nearer it, `infectionBots.packPullM`, where the shared hunt rules spread them one a survivor, and each friend already laid on a hull makes it read 1.5 times nearer, the doctrine's `packFire` 0.5) against survivors at 130 % hull |
+| Infected (RUSH, second only to the zombies) | the RUSH table, a target claimed at any range, the hull angled to a hit (driven round at the rolling steer, round 3b); they rise on a ring 70–120 m round the survivors (`infectionBots.arrival`: out of their sight where the ground allows, never inside 60 m) and, where that ring has no clear point, on a 120–200 m ring before their base (`fallbackRingM`, round 3b: with ten survivors spread to their rally reach three of five rose 400-740 m off, a minute from the fight); a fifth of their own hull (a quarter until 240), +30 % speed, their own reload and a three-minute round (seven until 240) (round 3: round 2's ×1.8 reload and five minutes made it a shooting gallery); the pack hunt (gameplay-modes-233: each infected already on a survivor pulls the next hunter 60 m nearer it, `infectionBots.packPullM`, where the shared hunt rules spread them one a survivor, and each friend already laid on a hull makes it read 1.5 times nearer, the doctrine's `packFire` 0.5) against survivors at 130 % hull |
 | Endless Horde allies | no opening read, rounds never conserved, the spotted search; they hunt spotted zombies only within 120 m of the humans (`hordeBots.allyLeashM`) and otherwise rejoin them; with none in reach they screen the humans 40 m toward the threat, 22 m apart (`allyScreenM`, round 3); the rushers' no-ram lane (round 3b: the humans' side drove into fodder hulls — 0.31 -> 1.0 bot ram deaths a run) |
 | Infected survivors ("fight back hard") | no opening read, rounds never conserved, half the fallback, angled hits, the push after 6 s of silence, spearhead guard and scout kite kept, the full hold band (range is their weapon), the spotted search, the no-ram lane (round 3b); unengaged survivors rally on their own living centroid (`infectionBots.survivorRallyM`, 90 m) |
 | Frontline attackers | no opening read, rounds never conserved, missions at full speed and never broken off, half cover, a quarter fallback and no shoot-and-scoot (round 2), angled hits, the push after 6 s, a 0.6 hold band, the spotted search; `assaultBots`: odd ranks approach on lanes 60 m off the axis and converge in the last 80 m, and at the zone's edge a push waits for 2 friends within 80 m, or 15 s |
@@ -746,6 +785,8 @@ rounds recorded (Infected 1-16 and 101-108, Horde 1-8 and 101-108, the before ro
 | Infected, 240 re-measure, hold-out (32) | 0 / 32 | 162 s | 110 s / — | — | — | 2.89 | — |
 | Endless Horde, 240 re-measure (32 seeds) | 0 / 32 | 324 s | 324 s / 298 s | — | — | 10.39 | 4.16 (7) |
 | Endless Horde, 240 re-measure, hold-out (16) | 0 / 16 | 296 s | 296 s / 274 s | — | — | 10.68 | 3.94 |
+| Infected, 240 fix (48 seeds; a 3:00 round, infected at 20 %) | 17 / 48 | 163 s median | — | — | — | 3.92 | — |
+| Infected, 240 fix, hold-out (32) | 12 / 32 | 170 s median | — | — | — | 3.99 | — |
 
 The humans now cut through the zombies — four to ten zombies for every human lost — and the numbers still decide:
 the outbreak takes two rounds in three (the survivors won 6 of the 16 tuning seeds, 16 of 48 on seeds 17-64 and 2 of 8
@@ -791,7 +832,14 @@ zombieBalance.selftest now fails on: the outbreak takes every Infected round (0 
 run, 10.4 zombies a loss, every run overrun). Seed 108 hit the 90-minute wall cap under a load of 300 and was re-run
 with a four-hour cap. A screen of single rule changes on seeds 1-6 (infected respawn 10 s and 15 s, their reload
 x1.6, survivors at 180 %) gave the survivors no round either (the best, a 15 s respawn: median end 3:44, 4.1 a loss)
-while each slowed the first infection to 60-77 s: the fix is open (`.qa-dev` screen rows on the 240 lane).
+while each slowed the first infection to 60-77 s. A second screen (infected at 20 % and 15 %, survivors at 150 %) gave
+no round at seven minutes either; since a shorter clock changes nothing before it runs out, every seed's round under a
+clock T is the same round cut at T, and only a shorter round with weaker infected put the survivors in the band. The
+fix (the round three minutes, the infected at 20 % of their hull; the pack hunt and the arrival untouched) measured on
+the same 48 seeds: survivors 17 of 48 (hold-out 12 of 32), the outbreak's median end 2:43 (hold-out 2:50), 3.92
+infected a survivor lost (hold-out 3.99), the first infection at a median 41 s on seeds 1-8 (40 s before). At 15 % and
+3:30 the survivors won 5 of 48. The record's rows ran through `--rules`; seeds 1 and 2 re-run on the edited table
+reproduced them field for field.
 
 Re-measure (about 1.5-4 minutes of wall time per seed under load; gate on `headroom can-start`):
 

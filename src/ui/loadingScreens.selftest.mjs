@@ -118,7 +118,7 @@ assert.ok(bootFaces.length >= 3 && bootFaces.every((rule) => /font-display:swap/
   'late inline game fonts must replace the fallback instead of abandoning the brand face');
 assert.match(bootHtml, /\.cot-boot-pct \{ width: 64px; flex: 0 0 64px;/,
   'boot percentage updates must keep a stable reserved width');
-assert.match(bootHtml, /\.cot-boot-ticks \{[\s\S]*?min-height: 2px;/,
+assert.match(bootHtml, /\.cot-boot-ticks \{[\s\S]*?min-height: 4px;/,
   'boot stage ticks must reserve their height before JavaScript mounts them');
 assert.match(bootHtml, /\.cot-boot-tip \{[\s\S]*?height: 84px;[\s\S]*?overflow: hidden;/,
   'rotating boot tips must not resize the vertically centered splash');
@@ -284,7 +284,7 @@ assert.ok(schedulerBinding.pos < replacementCall.pos,
 assert.match(studioSource, /hud\?\.setMode\?\.\('hidden'\)/,
   'a pristine direct Studio visit must not require the battle-only HUD runtime');
 assert.match(mainSource,
-  /clearBattle: \(\) => \{[\s\S]{0,500}currentHud\(\)\?\.setMode\?\.\('hidden'\)/,
+  /clearBattle: \([^)]*\) => \{[\s\S]{0,500}currentHud\(\)\?\.setMode\?\.\('hidden'\)/, // 242: clearBattle({ keepScreens })
   'direct Studio exit cleanup must not require the battle-only HUD runtime');
 assert.match(mainSource,
   /function veilHud\(on(?::\s*boolean)?\)[\s\S]{0,180}battleHudRuntime\?\.veil\(on\)/,

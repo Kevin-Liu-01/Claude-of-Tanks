@@ -360,7 +360,7 @@ assert.deepEqual(table, {
   // stratocumulus deck for Verdant's fair-weather cumulus tuned to their place; cloudsBan.selftest.mjs keeps it out)
   fjord: { regime: 'fair-weather-cumulus', coverage: 0.38, baseM: 1100, thicknessM: 760, shadow: true, streets: 0.4, cirrus: 0.15, farBand: 0.35, contrails: 0, rain: 0, virga: 0, fogBank: 0.4 },
   // (2026-10-22, world-polish-240: the Delta's towering row read as a grey deck; fair-weather cumulus, some built taller)
-  delta: { regime: 'fair-weather-cumulus', coverage: 0.5, baseM: 1400, thicknessM: 1000, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
+  delta: { regime: 'towering-cumulus', coverage: 0.38, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.15, cirrus: 0.1, farBand: 0.3, contrails: 0, rain: 0.45, virga: 0.1, fogBank: 0 },
   badlands: { regime: 'cumulus-humilis', coverage: 0.18, baseM: 1700, thicknessM: 380, shadow: true, streets: 0.3, cirrus: 0.35, farBand: 0.15, contrails: 0, rain: 0.3, virga: 0.9, fogBank: 0 },
   // (233: Monsoon's congestus at 2 km under the front's wind and rain — the front's 4.8 km towers drew a translucent box)
   monsoon: { regime: 'cumulonimbus-front', coverage: 0.45, baseM: 1200, thicknessM: 1500, shadow: true, streets: 0.1, cirrus: 0.25, farBand: 0.4, contrails: 0, rain: 0.85, virga: 0, fogBank: 0 },
@@ -370,7 +370,7 @@ assert.deepEqual(table, {
   // (2026-10-22, world-polish-240: Ironworks' 0.71 field at 1100 m closed into a grey deck; 0.55 at 1350 m)
   foundry: { regime: 'fair-weather-cumulus', coverage: 0.55, baseM: 1350, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   // (2026-10-22, world-polish-240: Ruinspires' smeared grey masses at 1100 m; Verdant's height, a little virga)
-  ruinspires: { regime: 'fair-weather-cumulus', coverage: 0.44, baseM: 1450, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0, virga: 0.2, fogBank: 0 },
+  ruinspires: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1100, thicknessM: 820, shadow: true, streets: 0.3, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0.25, virga: 0.6, fogBank: 0 },
   // (2026-10-15: Suzhou Creek's ash veil, a low broken cell deck, moved to Verdant's cumulus — the 10-13 ruling on every map)
   blackglass: { regime: 'fair-weather-cumulus', coverage: 0.42, baseM: 1250, thicknessM: 820, shadow: true, streets: 0.35, cirrus: 0.12, farBand: 0.25, contrails: 0, rain: 0, virga: 0, fogBank: 0 },
   // (2026-10-04: a dense overcast is closed — Titan Gorge's deck opened a blue hole at 0.96 under a light model at overcast 1)
@@ -477,7 +477,7 @@ assert.deepEqual(table, {
   assert.equal(+(coastal.cirrusAngleRad - coastal.windDirRad).toFixed(5), +CLOUD_LAYER_RULES.cirrusVeerRad.toFixed(5), 'the cirrus veers off the wind by the rule');
   // the towering regimes lean downwind by a share of their thickness; a lenticular cap is stationary and smooth
   // (2026-10-22, world-polish-240: the Delta went onto fair-weather cumulus) the towering row's lean on its old block
-  const delta = deriveCloudLayerPreset({ ...skyOf('delta'), cloudscape: { regime: 'towering-cumulus', windDirDeg: 110 } });
+  const delta = deriveCloudLayerPreset(skyOf('delta'));
   assert.equal(delta.shearM, 0.3 * 1500);
   const alpine = deriveCloudLayerPreset(skyOf('alpine'));
   assert.deepEqual([alpine.windSpeed, alpine.shearM, alpine.towers, alpine.anvil, alpine.fieldMix], [4, 90, 0.3, 0, 0.92], 'alpine: slow mountain cumulus in big masses (the broad field, few small cells), bulging tops, no anvils');

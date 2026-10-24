@@ -39,7 +39,6 @@ import { cssInTsMinify } from './tools/viteCssInTsMinify.ts';
 import { BOOT_RUNTIME_MODULES, i18nPageCatalogs, VITE_PRELOAD_HELPER } from './tools/viteI18nPageCatalogs.ts';
 import { i18nStudioCatalog } from './tools/viteI18nStudioCatalog.ts';
 import { gameEntryMeta } from './tools/viteGameEntryMeta.ts';
-import { navChrome } from './tools/viteNavChrome.ts';
 import { responsiveSeed } from './tools/viteResponsiveSeed.ts';
 import { speculationRules } from './tools/viteSpeculationRules.ts';
 
@@ -313,11 +312,9 @@ export default defineConfig({
     // every string the game's graph and its workers cannot show (the docs, home, gallery and media pages' strings).
     i18nStudioCatalog({ gameKeys: gameCatalogKeys }),
     pageCatalogs,
-    // 2026-10-22 (nav-perf-240): every public page prerenders or prefetches the next page on hover (the rules' comment),
-    // paints its top bar with its language switch and menu button in place, and every document paints its first frame
-    // with its viewport bands (each plugin's comment).
+    // 2026-10-22 (nav-perf-240): every public page readies the next page before the click (the rules' comment), and
+    // every document paints its first frame with its viewport bands (the seed's comment).
     speculationRules(),
-    navChrome(),
     responsiveSeed(),
     {
       name: 'cot-site-entry-output',

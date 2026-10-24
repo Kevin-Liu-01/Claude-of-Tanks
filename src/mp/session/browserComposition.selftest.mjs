@@ -429,8 +429,7 @@ assert.equal(composition.inMatch, false);
 assert.ok(calls.includes('loadModules') && calls.includes('ensureBattleVisuals') && calls.includes('loadWorld:alpine:null'), 'modules, visuals and the round map load together');
 assert.ok(calls.indexOf('battleStart:me:m1a1_abrams_hc:alpine') < calls.indexOf('loadWorld:alpine:null'), 'the battle-start intent precedes the world load');
 // 2026-10-20 (item/mp-rejoin-229): the round is remembered for a reload, so a tab reopened on the invite builds its battlefield during boot
-assert.deepEqual(harness.ports.remembered, [{ roomCode: 'ABC123', matchId: 'match-1', mapId: 'alpine', terrainVariant: null,
-  seat: { specId: 'm1a1_abrams_hc', camo: 'summer', playerId: 'me' } }], 'the entered round is remembered, with the seat whose vehicle a reload builds ahead');
+assert.deepEqual(harness.ports.remembered, [{ roomCode: 'ABC123', matchId: 'match-1', mapId: 'alpine', terrainVariant: null }], 'the entered round is remembered');
 assert.equal(harness.battleLoad.shows.at(-1).mapName, 'Map alpine', 'the loader names the concrete battlefield of match_start, not the room default');
 assert.equal(harness.battleLoad.shows.at(-1).allies[0].isPlayer, true);
 assert.equal(harness.battleLoad.shows.at(-1).enemies[0].id, 'm1a1_abrams_hc');

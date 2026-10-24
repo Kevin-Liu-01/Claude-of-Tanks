@@ -14,7 +14,7 @@ export type RockGeology = 'granite' | 'sandstone' | 'limestone' | 'slate' | 'bre
  * The rock forms: what made the rock decides its shape. The last three are rock that people shaped — a standing stone,
  * a clearance cairn, a granite calvary — built through the same pipeline so they weather with the map's rock.
  */
-export type RockForm = 'tor' | 'outcrop' | 'crag' | 'pavement' | 'scree' | 'hoodoo' | 'menhir' | 'cairn' | 'calvary' | 'blocks';
+export type RockForm = 'tor' | 'chaos' | 'outcrop' | 'crag' | 'pavement' | 'scree' | 'hoodoo' | 'menhir' | 'cairn' | 'calvary' | 'blocks';
 
 /** A rock formation as a map authors it. */
 interface SceneryRock {
@@ -36,7 +36,8 @@ interface SceneryRock {
 }
 
 /** The destructible landmark kinds (maps/sceneryKit.ts). */
-type SceneryDestructibleKind = 'bildstock' | 'waysidecross' | 'orthodoxcross' | 'windpump' | 'tomb' | 'strawstack' | 'lumberstack' | 'logdeck' | 'strawrick' | 'windmotor';
+type SceneryDestructibleKind = 'bildstock' | 'waysidecross' | 'orthodoxcross' | 'windpump' | 'tomb' | 'strawstack' | 'lumberstack' | 'logdeck' | 'strawrick' | 'windmotor'
+  | 'kelpkiln' | 'weedstack';
 /** The landmark kinds: stone ones are rock forms, the rest the kit's destructibles. */
 type SceneryLandmarkKind = 'calvary' | 'menhir' | 'cairn' | SceneryDestructibleKind;
 
@@ -270,7 +271,7 @@ export const STONE_LANDMARKS: Readonly<Record<'calvary' | 'menhir' | 'cairn', { 
 /** The destructible landmarks' record radii at scale 1 (the kit's `r`). */
 export const LANDMARK_RADIUS: Readonly<Record<SceneryDestructibleKind, number>> = Object.freeze({
   bildstock: 0.5, waysidecross: 0.75, orthodoxcross: 0.65, windpump: 2.4, tomb: 1.9, strawstack: 1.6, lumberstack: 2.7, logdeck: 4.1, strawrick: 4.8,
-  windmotor: 3.2,
+  windmotor: 3.2, kelpkiln: 3.6, weedstack: 2.3,
 });
 
 /** A pylon's leg half-spread at its height (maps/sceneryKit.ts buildPylon: 4.2 m at 34 m). */

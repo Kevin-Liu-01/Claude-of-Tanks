@@ -34,4 +34,14 @@ const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.
 assert.equal(manifest.engines?.node, '24.x', 'package.json engines.node names the deployed Node line');
 assert.match(readFileSync(new URL('../.nvmrc', import.meta.url), 'utf8').trim(), /^24(?:\.\d+){0,2}$/,
   '.nvmrc selects the same Node major as engines.node');
-console.log(`vercel-config.selftest: no immutable asset rule, git auto-deploys off for every branch, one api/*.ts function glob (${apiFunctions.length} functions), Node 24.x pinned`);
+// Security audit 2026-10-22 (NV-13): `vercel pull` writes the dashboard's Build & Development settings into the release
+// worktree, and `vercel build` then runs that install and build command on the operator's machine with the production
+// environment loaded. The repository pins them, with the values the dashboard's Vite preset resolved to on 2026-10-23
+// (framework vite, every command at its default): the CLI's own npm install, the package's build script, Vite's dist.
+// A dashboard edit can no longer change what a release runs; changing it is a reviewed commit here.
+assert.equal(config.framework, 'vite', 'framework pinned');
+assert.equal(config.installCommand, 'npm install --no-audit', 'install pinned to the CLI default for npm (build-utils runNpmInstall)');
+assert.equal(config.buildCommand, 'npm run build', 'build pinned to the package build script (static-build runs it when unset)');
+assert.equal(config.outputDirectory, 'dist', 'output pinned to the Vite preset default');
+assert.ok(manifest.scripts?.build, 'the pinned build command names an existing script');
+console.log(`vercel-config.selftest: no immutable asset rule, git auto-deploys off for every branch, one api/*.ts function glob (${apiFunctions.length} functions), Node 24.x pinned, build settings pinned`);

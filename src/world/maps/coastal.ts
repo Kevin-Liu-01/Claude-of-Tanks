@@ -29,6 +29,51 @@ const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
 // (terrain.ts buildGridRoads, jitter 2.2, index 0), so a border stub can start exactly on its end.
 const inlandRoadAt = (z: number): [number, number] => [-90 + Math.sin(z * 0.011 + 0 * 2.3) * 2.2, z];
 
+// 2026-10-06 (the map-revival lane; the coordinator approved the plan: Kerlouan, Brignogan-Plages and Meneham on the
+// Pays de Léon coast, late summer 1944): the bourg is rebuilt as the Léon's granite fishing bourgs stand. The roadside
+// builder places nothing; the sites below are authored (and mirrored across the axis, z = 22). The high street is the
+// coast road between the two shore lanes, lined both sides with two-storey granite houses in terraces (the Breton kit's
+// bourg house), the inn among them; the chapel stands in its walled enclos on the street's west side at the axis, the
+// covered market opposite it; the cannery and the fish hall stand at the shore lanes' ends by the strand, the
+// boathouses on the sand, the fishermen's cottages between them and the street; the longère farms with their walled
+// yards stand along the lanes inland.
+const round1 = (v: number): number => Math.round(v * 10) / 10;
+type Site = { structure: string; x: number; z: number; yawDeg: number };
+/** The site's mirror across the map's axis (z = 22), its heading mirrored with it: the bourg's other half. */
+const mirrorSite = (site: Site): Site => ({ ...site, z: round1(44 - site.z), yawDeg: round1(180 - site.yawDeg) });
+/** The coast road through the bourg (grid road 1, x 168 under its jitter law). */
+const STREET_X = 168;
+/** A building on the high street, its front `setback` m off the road's line and `d` deep, facing the street (`side` +1
+ * east of it, -1 west). */
+const onStreet = (structure: string, z: number, side: 1 | -1, d: number, setback = 6.5): Site =>
+  ({ structure, x: round1(STREET_X + side * (setback + d / 2)), z, yawDeg: side > 0 ? -90 : 90 });
+/** The south shore lane (grid road z -52; its mirror is the north lane, z 96). */
+const LANE_Z = -52;
+/** A building on the south shore lane, its front `setback` m off the lane's line and `d` deep, facing it (`side` +1 north of
+ * it, toward the axis; -1 south). */
+const onLane = (structure: string, x: number, side: 1 | -1, d: number, setback = 7): Site =>
+  ({ structure, x, z: round1(LANE_Z + side * (setback + d / 2)), yawDeg: side > 0 ? 180 : 0 });
+/** The south half of the bourg (the north half is its mirror). */
+const BOURG_HALF: Site[] = [
+  // the high street's terraces, west and east of the road, from the south lane's corner to the square
+  // (the inn last of the west row: a site keeps its pad from the buildings placed before it, and the inn's is wide)
+  // (2026-10-07, gauntlet wave 184: "an identical house model repeats at regular intervals on both sides of the street")
+  // the two-storey bourg houses alternate with cottages, half of them low longères gable-on to the street, so the
+  // terraces step up and down and no two neighbours match
+  onStreet('cornershop', -36, -1, 9.8), onStreet('cottage', -25.5, -1, 8.4), onStreet('cornershop', -1.5, -1, 9.8),
+  onStreet('tavern', -13, -1, 14.7),
+  onStreet('cottage', -36, 1, 8.4), onStreet('cornershop', -25.5, 1, 9.8), onStreet('cottage', -15, 1, 8.4),
+  onStreet('cornershop', -5, 1, 9.8),
+  // the harbour end of the shore lane: the cannery on its south side by the strand, the fishermen's cottages on its
+  // north side, the boathouses on the sand (their doors to the water)
+  // (on the dune's dry edge: the strand's sand past x ~246 takes no building, and the cannery stands where the ground
+  // falls less than the kit's 2.2 m across it)
+  onLane('fishery', 214, -1, 20), onLane('cottage', 198, 1, 8.4), onLane('cottage', 212, 1, 8.4),
+  { structure: 'boatshed', x: 242, z: -34, yawDeg: 90 }, { structure: 'boatshed', x: 242, z: -18, yawDeg: 90 },
+  // the longère farms along the lane inland, their yards walled (the kit's yard)
+  onLane('farmhouse', 112, 1, 10.6), onLane('barn', 100, -1, 12.5), onLane('cottage', 128, -1, 8.4),
+];
+
 export default {
   id: 'coastal',
   name: 'Saltmere Bay',
@@ -63,16 +108,14 @@ export default {
     // (r2: the mesa bluffs are OUT — the noise-placed walls landed as grey
     // slab cliffs mid-meadow and read as artifacts, not headlands)
     village: { x0: 40, x1: 250, z0: -80, z1: 150, cx: 150, cz: 30, feather: 45, flatten: 0.86 },
-    villageWear: 'activity-patches',
+    // 2026-10-06 (the map-revival lane): the bourg's ground in its plots — the walled yards, gardens and courts behind
+    // the houses (terrain.ts createVillagePlotWear), not wear patches round lone houses
+    villageWear: 'plots',
     workedGround: [
       // Sandy turning courts explain the two shore-road termini. They meet
       // the existing capped lanes on dry land without paving across the bay.
       { feather: 4, strength: 0.9, boundary: [[247, -66], [261, -70], [276, -63], [280, -50], [270, -37], [251, -38], [241, -49]] },
       { feather: 4, strength: 0.9, boundary: [[245, 81], [262, 78], [277, 86], [280, 99], [269, 112], [250, 110], [241, 96]] },
-      // Market stalls flank the actual road junction (163.77, 95.66).
-      { feather: 8, strength: 0.92, boundary: [[140, 76], [174, 71], [192, 88], [185, 113], [149, 118], [136, 99]] },
-      // Fishery/boatshed frontages on both sides of the x≈168 coast road.
-      { feather: 7, strength: 0.82, boundary: [[141, -77], [171, -77], [197, -45], [190, 7], [199, 40], [176, 51], [141, 45], [145, 9], [134, -28]] },
     ],
     landforms: [
       // The granite downs, south and north: long swells that screen each pad from the axis.
@@ -128,9 +171,8 @@ export default {
   },
 
   layoutBrief: { exceptions: {
-    solidPropsInRoad: 'one fishing-village frontage building at the shore lane\'s junction with the coast road, '
-      + 'unchanged from the original map (whose village frontage its shore receipts pin), stands 1.4 m into the coast '
-      + 'road\'s carriageway',
+    solidPropsInWater: 'the fishing harbour\'s mole, its arm and its round head with the green light (props.landmarks, '
+      + 'src/world/landmarks/harbour.ts) stand in the south cove\'s water by design, the basin between them and the strand',
   } },
 
   spawns: {
@@ -152,22 +194,26 @@ export default {
     // pale grey headland rock (chalk-adjacent, never desert-red)
     rockTone: (h: number, s: number, l: number) => [0.10, clamp01(s * 0.35), clamp01(l * 1.06 + 0.05)],
     // r3: deepen + green the authored water — the raw layer under fresnel +
-    // sun spec read as pale sparkle, not a teal bay
-    mudTone: (h: number, s: number, l: number) => [clamp01(h * 0.98), clamp01(s * 1.1), clamp01(l * 0.82)],
+    // sun spec read as pale sparkle, not a teal bay. (2026-10-07, the map-revival lane; gauntlet wave 184: "a stylised
+    // turquoise sea colour that reads more tropical than Channel coast") the Channel's grey-green: less saturated, darker
+    mudTone: (h: number, s: number, l: number) => [clamp01(h * 0.98), clamp01(s * 0.75), clamp01(l * 0.78)],
     // open-water mode: surf line + whitecaps + sand shoals in the shallows
     seaLake: true,
     seaFoam: 0.62,
     seaRamp: [0.30, 0.62], // the lake mask is hard-edged — water reads to shore
-    iceDrift: 0.12,     // sand-shoal coverage in the SHALLOWS (D layer)
+    iceDrift: 0.03,     // sand-shoal coverage in the SHALLOWS (D layer): (2026-10-07) a narrow strip at the strand, no turquoise shoals
     marshGloss: 0.95,   // water gloss response
-    iceSky: [0.30, 0.46, 0.58], // restrained reflection; water keeps visible depth
+    iceSky: [0.34, 0.40, 0.42], // restrained reflection; water keeps visible depth (2026-10-07: the Channel's grey sky, not a blue one)
     tintA: [1.10, 1.04, 0.82], tintB: [0.80, 0.82, 0.68], tintC: [1.06, 1.05, 0.92],
-    roadTint: [0.96, 0.90, 0.78], // sandy coast lanes
+    // (2026-10-07, wave 184: "flat beige sand roads") the Léon's lanes in granite gravel, grey, not beach sand
+    roadTint: [0.74, 0.73, 0.69],
     microAmp: 0.8,
     rippleDir: [0.85, 0.5],
     rippleAmp: 0.20, // faint wind ripple on the dune band
     rippleShoreOnly: true, // pasture stays grass; wind relief belongs to the strand
-    wornDirtStrength: 0.32, // inland wear stays muted turf, not broad beach-sand islands (map pass 2026-09-12: back toward the reference breakup)
+    // inland wear stays muted turf, not broad beach-sand islands (map pass 2026-09-12: back toward the reference breakup);
+    // (2026-10-07, wave 184: "dry tan ground … reading as arid savanna") the grazed turf closes over most of it
+    wornDirtStrength: 0.18,
   },
 
   vegetation: {
@@ -179,14 +225,25 @@ export default {
     // map pass 2026-09-12: the pasture between the strand and the crofts read
     // as an empty lawn from the establishing shot; gorse/marram scrub, more
     // windswept lone trees and grey shore boulders close the foreground.
-    clusterCount: 42,
-    loneCount: 116,
+    // (2026-10-07, wave 184: "lone pines like savanna") few trees on this coast: the lone trees mostly gone, the
+    // woodlots fewer, the farms' windbreaks (belts below) where the trees stand
+    clusterCount: 32,
+    loneCount: 36,
     rimCount: 70,
-    grassDensity: 0.85,
+    grassDensity: 1.0, // (2026-10-07, wave 184: "sparse … grass cards") a closed sward
     bushCount: 1.25,
     bushSpecies: 'oak',
-    grassTexTone: (h: number, s: number, l: number) => [0.155, clamp01(s * 0.8), clamp01(l * 1.02 + 0.04)],
-    tuftTone: (h: number, s: number, l: number) => [0.145, 0.26, clamp01(l * 0.92 + 0.08)],
+    // (2026-10-07, the map-revival lane; wave 184: few trees on this coast, "wind-shaped Monterey pine or elm windbreaks
+    // by farms") a pine windbreak on the weather side (west) of each farmstead and field barn, in a row
+    belts: [
+      { x0: -244, z0: -128, x1: -244, z1: -72, gap: 8, jitter: 1.4, skip: 0.1, species: 'pine' },
+      { x0: -214, z0: 128, x1: -214, z1: 184, gap: 8, jitter: 1.4, skip: 0.1, species: 'pine' },
+      { x0: -74, z0: -122, x1: -74, z1: -84, gap: 8, jitter: 1.4, skip: 0.1, species: 'pine' },
+      { x0: -44, z0: 128, x1: -44, z1: 166, gap: 8, jitter: 1.4, skip: 0.1, species: 'pine' },
+    ],
+    // (2026-10-07, wave 184: "sparse, evenly spaced yellow grass cards") the Léon's grazed sward green, not straw
+    grassTexTone: (h: number, s: number, l: number) => [0.215, clamp01(s * 0.85), clamp01(l * 0.98 + 0.02)],
+    tuftTone: (h: number, s: number, l: number) => [0.205, 0.30, clamp01(l * 0.9 + 0.06)],
     palettes: {
       // maritime pines: a touch bluer/darker than the verdant stand
       pine: {
@@ -207,10 +264,26 @@ export default {
     dressingRules: { fencesClearBuildings: true },
     // regional-buildings lane: the Breton granite kit (maps/regional/breton.ts)
     architecture: 'breton',
-    // world-dressing r1: + chapel and granary in the fishing village
-    plan: ['fishery', 'boatshed', 'chapel', 'netyard', 'market', 'cottage',
-      'lighthouse', 'cottage', 'ruin', 'barn', 'granary', 'boatshed',
-      'netyard', 'cottage', 'tower', 'cottage'],
+    // The landmarks lane (round 3, 2026-10-07; src/world/landmarks/harbour.ts harbour; the plan agreed with the map-revival
+    // lane on its identity round; gauntlet wave 202: "the mole rooted in the shore with its road, the quay with coping and
+    // steps round a basin, boats and nets, the light at the mole head"): the bourg's fishing harbour as one structure. The
+    // south shore lane comes out to the strand on its embankment and goes on as the mole: rooted on the turning court's
+    // crest at (263, -52), its deck level with the lane (4.2 m over the sand), it runs 47 m east over the strand into the
+    // water and turns its arm 70 degrees south for 24 m to its round head and the green feu de port (the starboard hand
+    // coming in from the south, IALA region A). South of it lies the basin: the mole's faces there are a quay — granite
+    // coping, bollards, two iron ladders and two flights of steps down to the sand — and its sea side a parapet; from a
+    // platform at the root the slipway runs down the quay face onto the sand (the boats' way into the water; a hull leaves
+    // the basin by its strand, open to the south shore). Canots lie heeled on the sand, a caseyeur lies alongside the arm,
+    // two more ride at their
+    // moorings; nets dry in heaps on the deck by the root beside the pots and the fish boxes. Set into the finished map
+    // (ground 'veto').
+    landmarks: [
+      { kind: 'harbour', x: 263, z: -52, yawDeg: 90, ground: 'veto', name: 'the harbour and its green light',
+        params: { length: 47, arm: 24, turn: 70, basin: 'right', light: 'green' } },
+    ],
+    // 2026-10-06 (the map-revival lane): the roadside builder places nothing — the bourg is authored (BOURG_HALF and
+    // its mirror, the chapel and the market hall on the axis); the harbour lights are the landmarks lane's, on the mole
+    plan: [],
     destructibleBuildings: ['fishershack', 'saunahut', 'leanto', 'guardpost'],
     tacticalBeats: [
       { id: 'south-bocage-croft', role: 'brawl', x: -260, z: -103, yawDeg: 0,
@@ -233,8 +306,16 @@ export default {
       { structure: 'farmhouse', x: -138, z: 154, yawDeg: 180 }, { structure: 'barn', x: -186, z: 166, yawDeg: 270 },
       // the field barns on the hedge banks between the bocage lane and the coast lane
       { structure: 'barn', x: -50, z: -102, yawDeg: 90 }, { structure: 'barn', x: -20, z: 146, yawDeg: 270 },
+      // the bourg (2026-10-06): the chapel in its walled enclos on the high street's west side at the axis, the covered
+      // market opposite it across the street, the two halves either side
+      { structure: 'chapel', x: 136, z: 22, yawDeg: 90 }, { structure: 'market', x: 182, z: 22, yawDeg: -90 },
+      ...BOURG_HALF, ...BOURG_HALF.map(mirrorSite),
+      // (step 4) the guardhouse (Meneham's corps de garde) among the strand's boulders, its door to the sea, and its
+      // reflection: the kit's small granite outbuilding
+      { structure: 'granary', x: 238, z: -114, yawDeg: 90 }, mirrorSite({ structure: 'granary', x: 238, z: -114, yawDeg: 90 }),
     ],
-    sideSkip: 0.12, spacingPad: 7,
+    // the bourg's terraces stand a metre apart (the roadside builder's 7 m pad was for lone houses)
+    sideSkip: 0.12, spacingPad: 2,
     buildingLat: [11, 4.5], maxSpread: 2.2,
     tones: {
       plaster: (h: number, s: number, l: number) => [0.095, clamp01(s * 0.35), clamp01(l * 1.10 + 0.08)], // whitewash
@@ -244,11 +325,12 @@ export default {
       straw: null,
     },
     rockTone: (h: number, s: number, l: number) => [0.10, 0.08, clamp01(l * 1.02 + 0.04)], // grey shore boulders
+    // (2026-10-23: the props' wall picker as it was — its draws place the bourg's dressing; the Breton kit limewashes a
+    // third of its bourg houses on its own key, breton.ts stateFor)
     wallStoneChance: 0.85,
     wallRuns: [
-      // village crofts
-      [60, -34, 118, -34, 2], [196, 60, 196, 116, 3], [80, 120, 140, 120, 1],
-      [126, -64, 126, -18, 2],
+      // the chapel's enclos (2026-10-06): its wall round three sides, open to the square
+      [122, 8, 150, 8, 2], [122, 36, 150, 36, 2], [122, 8, 122, 36, 2],
       // bocage field walls on the hedge banks, each with its reflection across the axis
       [-320, -170, -250, -170, 3], [-320, 214, -250, 214, 3],
       [-120, -60, -60, -60, 2], [-120, 104, -60, 104, 2],
@@ -271,14 +353,18 @@ export default {
     // crofts; stone-post rail fences on the field boundaries
     wallStyle: 'fieldstone',
     inhabit: {
-      stalls: 2, benches: 2, coreClutter: 9,
+      // (2026-10-07, wave 184: the square an empty lot) more of the bourg's benches and market stalls
+      stalls: 3, benches: 4, coreClutter: 9,
       bales: 4,
       troughs: 1, laundry: 1, handcarts: 1, carts: 2,
-      roadFence: 'fencerail', yardFence: 'fencepicket',
+      // (2026-10-07) the free-standing garden runs in the Breton kit's own granite dry walls (its yard fence): the white
+      // picket is gone (waves 183–184; the props layer's default is still the picket in this tree)
+      roadFence: 'fencerail', yardFence: 'wallstone',
       // DESTRUCTIBLES r1: quayside logistics — trucks at the harbor lanes,
       // fuel-drum points, a shore bivouac
       trucks: 3, jeeps: 2, drumClusters: 3, camps: 2,
-      modernClutter: { barrier: 4, roadsign: 5, cone: 7, transformer: 3, cablespool: 3 },
+      // (2026-10-07, wave 184: "a modern traffic cone in a 1944 street") no cones
+      modernClutter: { barrier: 4, roadsign: 5, cone: 0, transformer: 3, cablespool: 3 },
     },
     cropFields: 3,
   },
@@ -296,17 +382,45 @@ export default {
       { form: 'tor', geology: 'granite', x: -222, z: 22, radius: 7, height: 5.5, yawDeg: 24, name: 'the axis tor' },
       { form: 'tor', geology: 'granite', x: 14, z: -152, radius: 5, height: 4.2, yawDeg: 70, name: 'the south downs tor' },
       { form: 'tor', geology: 'granite', x: 14, z: 196, radius: 5, height: 4.2, yawDeg: -70, name: 'the north downs tor' },
+      // (2026-10-23, item/maps-frontier-saltmere-242; the blind critic: the strand's boulders "stacked rectangular blocks that read
+      // as cubes or rubble rather than rounded, weathered granite") the boulders and the strand fields' standing stone are the
+      // chaos form (sceneryRocks.ts graniteChaos: rounded corestones), the downs keep their tors
+      // (the map-revival lane, 2026-10-06, step 4: the strand of Kerlouan and Meneham) the great rounded granite boulders
+      // on the beach south of the harbour and their reflection north of the axis, the guardhouse wedged among them
+      ...[[262, -100, 5, 5.5, 30], [256, -128, 6, 6.5, -20], [264, -152, 4.5, 4.5, 60]].flatMap(([x, z, radius, height, yaw]) => [
+        { form: 'chaos' as const, geology: 'granite' as const, x, z, radius, height, yawDeg: yaw, name: 'a strand boulder' },
+        { form: 'chaos' as const, geology: 'granite' as const, x, z: 44 - z, radius, height, yawDeg: -yaw, name: 'a strand boulder' },
+      ]),
     ],
     // the granite showing through the thin soil of the downs' swells: whalebacks, small tors and their stone
     rockFields: [
       { geology: 'granite', x: -40, z: -236, radius: 120, count: 7, slopeBias: 0.5, size: [2.5, 5.5], name: 'the south downs granite' },
       { geology: 'granite', x: -40, z: 280, radius: 120, count: 7, slopeBias: 0.5, size: [2.5, 5.5], name: 'the north downs granite' },
+      // (2026-10-07, the map-revival lane; gauntlet wave 184: "a smooth, rockless arc … like a lake edge") the granite at
+      // the waterline: rock platforms, boulder strands and clitter along each half's strand, where the sand meets the
+      // sea (the south strand's edge near x 290, the north's near x 336)
+      // (the landmarks lane, round 3: the field keeps off the harbour, its mole, basin and boats — agreed with mr4)
+      { geology: 'granite', x: 286, z: -84, radius: 46, count: 9, forms: [['pavement', 0.45], ['scree', 0.3], ['chaos', 0.25]], size: [1.6, 3.8], name: 'the south strand granite',
+        avoid: [[295, -62, 33]] },
+      { geology: 'granite', x: 332, z: 136, radius: 50, count: 9, forms: [['pavement', 0.45], ['scree', 0.3], ['chaos', 0.25]], size: [1.6, 3.8], name: 'the north strand granite' },
     ],
     landmarks: [
+      // (2026-10-07, wave 184: "the square is an empty lot") the bourg's granite calvary on its square, between the
+      // enclos's open side and the high street, facing the street
+      { kind: 'calvary', x: 157, z: 22, yawDeg: 90, name: 'the bourg calvary' },
       { kind: 'calvary', x: -78, z: -140, yawDeg: 15, name: 'the south crossroads calvary' },
       { kind: 'calvary', x: -78, z: 184, yawDeg: -15, name: 'the north crossroads calvary' },
       { kind: 'menhir', x: -70, z: -236, height: 4.6, name: 'the south downs standing stone' },
       { kind: 'menhir', x: -70, z: 280, height: 4.6, name: 'the north downs standing stone' },
+      // (step 4) the goémoniers' dunes behind the boulders: the long stone kelp kilns black with their burnings and the
+      // dried wrack in its stacks, each with its reflection across the axis
+      ...([
+        ['kelpkiln', 214, -132, 2], ['kelpkiln', 220, -146, -4],
+        ['weedstack', 230, -128, 15], ['weedstack', 206, -150, 75], ['weedstack', 233, -142, -10],
+      ] as const).flatMap(([kind, x, z, yaw]) => [
+        { kind, x, z, yawDeg: yaw, name: kind === 'kelpkiln' ? 'a kelp kiln' : 'a seaweed stack' },
+        { kind, x, z: 44 - z, yawDeg: 180 - yaw, name: kind === 'kelpkiln' ? 'a kelp kiln' : 'a seaweed stack' },
+      ]),
     ],
   },
 
@@ -349,5 +463,7 @@ export default {
   shot: { pos: [356, 40, -300], look: [96, -10, 190] },
   // round 66 (2026-09-24, the FFT ocean): an onshore breeze off the open sea to the east with a little swell behind
   // it — a real coast, its breakers on the bay's strand; amplitude 0.7 keeps the swell under the jetty deck
-  ocean: { windSpeed: 5.2, windDirDeg: 190, fetchKm: 30, swell: 0.35, swellDirDeg: 185, amplitude: 0.7, choppiness: 0.9, foam: 0.5, breakers: 0.85, caustics: 0.6 },
+  // (2026-10-07, the map-revival lane; wave 184) the Channel's water carries little caustic light (0.6 lit the shallows
+  // tropical); the Atlantic's foam and breakers stay
+  ocean: { windSpeed: 5.2, windDirDeg: 190, fetchKm: 30, swell: 0.35, swellDirDeg: 185, amplitude: 0.7, choppiness: 0.9, foam: 0.5, breakers: 0.85, caustics: 0.2 },
 } satisfies import('./contracts.ts').MapCompositionConfig;

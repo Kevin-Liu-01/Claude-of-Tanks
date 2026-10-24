@@ -1,11 +1,11 @@
 import type { CamoTagId } from '../vehicles/camoPolicy.ts';
 import { isMapId, type MapId } from '../world/maps/catalog.ts';
-import type { UiIconId } from './uiIcons.ts';
+import type { IconId } from './icons/spriteIndex.ts';
 
 const REGION_ICONS = {
   woodland: 'regionWoodland', desert: 'regionDesert', winter: 'regionWinter',
   urban: 'regionUrban', tropical: 'regionTropical', maritime: 'regionMaritime', night: 'regionNight',
-} as const satisfies Partial<Record<CamoTagId, UiIconId>>;
+} as const satisfies Partial<Record<CamoTagId, IconId>>;
 type RegionTagId = keyof typeof REGION_ICONS;
 
 // Landscape labels shared with the camouflage browser. These describe the
@@ -22,8 +22,9 @@ const MAP_REGIONS: Readonly<Record<MapId, readonly RegionTagId[]>> = {
   saltwind: ['maritime', 'desert'], reservoir: ['woodland'], mars: ['desert'], moon: ['night'], cliffbridge: ['woodland'],
 };
 
-export function regionTagIcon(tag: CamoTagId): UiIconId | undefined {
-  const icons: Partial<Record<CamoTagId, UiIconId>> = REGION_ICONS;
+/** The region's sprite glyph (every region glyph is in the sprite, so it serves icon() and uiIconSVG() alike). */
+export function regionTagIcon(tag: CamoTagId): IconId | undefined {
+  const icons: Partial<Record<CamoTagId, IconId>> = REGION_ICONS;
   return icons[tag];
 }
 

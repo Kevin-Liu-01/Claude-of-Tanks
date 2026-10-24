@@ -22,7 +22,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { resolve } from 'node:path';
 import puppeteer from 'puppeteer';
 import { ticketAt } from './capture-lock.mjs';
-import { runWarmHold, startViteChild } from './capture-hold.mjs';
+import { rememberWarm, rewarmPage, runWarmHold, startViteChild, stubViteSocket } from './capture-hold.mjs';
 import { fleetIds, planHeroCards, tankPolicyKey } from './hero-cards-plan.mjs';
 import { uniqueIds } from './id-list.mjs';
 
@@ -91,7 +91,8 @@ try {
         config: {
           root: process.cwd(), configFile: false, cacheDir: viteCacheDir, logLevel: 'error',
           optimizeDeps: { noDiscovery: true },
-          server: { host: '127.0.0.1', port: 7600 + (process.pid % 200), strictPort: false, hmr: false, watch: null },
+          // no HMR socket: a frozen page must not take a Vite reload at the thaw (capture-hold.mjs, 2026-10-23)
+          server: { host: '127.0.0.1', port: 7600 + (process.pid % 200), strictPort: false, hmr: false, ws: false, watch: null },
         },
       });
       let browser = null;
@@ -107,9 +108,12 @@ try {
         page.on('console', (message) => {
           if (message.type() === 'error' && !/favicon|404/.test(message.text())) pageErrors.push(message.text());
         });
-        await page.goto(`${server.url}/tools/hero-cards-page.html`, { waitUntil: 'domcontentloaded', timeout: 600000 });
-        await page.waitForFunction('window.__HERO_READY === true', { timeout: 600000 });
-        await page.evaluate((list) => window.__HERO_WARM(list), ids);
+        await stubViteSocket(page);
+        // loaded through the shared warm record, so the hold checks the page after the thaw and loads it again
+        // (__HERO_WARM included) if it lost its context
+        rememberWarm(page, { url: `${server.url}/tools/hero-cards-page.html`, ready: 'window.__HERO_READY === true',
+          after: (warmed) => warmed.evaluate((list) => window.__HERO_WARM(list), ids) });
+        await rewarmPage(page);
         const close = async () => {
           try { await browser.close(); } catch { /* closed */ }
           await server.close();

@@ -35,7 +35,7 @@ import {
   ROOM_RATE_WINDOW_MS, ROOM_RELAY_ROOM_LIMIT, ROOM_RELAY_SEAT_LIMIT, ROOM_RELAY_WINDOW_MS, ROOM_RESUME_TOKEN_RE, ROOM_SEAT_DISCONNECT_TTL_MS,
   ROOM_SEAT_TOKEN_TTL_MS, ROOM_SERVER_MESSAGE, ROOM_SIGNAL_MAX_BYTES,
   ROOM_STATE_COALESCE_MS,
-  ROOM_UNAUTHENTICATED_TIMEOUT_MS, RoomError, cleanId, isRecord, isRoomTeam, noElection, normalizeRoomChat, p2pMatchUrl,
+  ROOM_UNAUTHENTICATED_TIMEOUT_MS, RoomError, cleanId, cleanSeatId, isRecord, isRoomTeam, noElection, normalizeRoomChat, p2pMatchUrl,
   parseRoomEnvelope, publicRoomError, readRoomMatchReport, readRoomRelayPayload, readRoomSignalPayload, utf8ByteLength,
 } from './protocol.ts';
 import type {
@@ -637,7 +637,7 @@ export class RoomActor {
     const payload = message.payload;
     if (payload.roomCode !== undefined && payload.roomCode !== this.roomCode) throw new RoomError('invalid_room_code');
     if (!isRecord(payload.player)) throw new RoomError('invalid_player');
-    const playerId = cleanId(payload.player.id);
+    const playerId = cleanSeatId(payload.player.id);
     const name = String(payload.player.name ?? '');
     const resume = this.readResume(payload);
     const selection = this.readSelection(payload.selection);
@@ -993,9 +993,17 @@ export class RoomActor {
   /** The running host's room socket is gone and a peer heard nothing from it within the claim window: elect now (§13.22). */
   private electIfHostLost(now: number): void {
     const hostId = this.runningP2pHostId();
-    if (!hostId || this.socketOfPlayer.has(hostId) || this.hostLeaseAt === null) return;
-    const witnesses = [...this.hostUnreachable].filter(([playerId, at]) => playerId !== hostId && now - at <= ROOM_HOST_UNREACHABLE_TTL_MS);
-    if (!witnesses.length) return;
+    const room = this.room;
+    if (!room || !hostId || this.socketOfPlayer.has(hostId) || this.hostLeaseAt === null) return;
+    // corroboration (security audit 2026-10-22): one seat's word skipped the lease and moved a healthy match; a strict
+    // majority of the match's connected commanders must hear nothing, and a claim the host's later report answered
+    // (its page was alive then) no longer counts. A crashed host is silent to every peer, so the fast election stays.
+    const reportAt = this.hostReport && this.hostReport.generation === room.host.generation ? this.hostReport.at : room.host.since;
+    const peers = room.players.filter((player) => player.id !== hostId && player.team !== 'spectator'
+      && this.matchTokens.has(player.id) && this.socketOfPlayer.has(player.id));
+    const witnesses = [...this.hostUnreachable].filter(([playerId, at]) => peers.some((player) => player.id === playerId)
+      && at >= reportAt && now - at <= ROOM_HOST_UNREACHABLE_TTL_MS);
+    if (!witnesses.length || witnesses.length * 2 <= peers.length) return;
     this.log('info', 'host lost: its socket is gone and its peers hear nothing', { host: hostId, witnesses: witnesses.map(([playerId]) => playerId).join(','),
       leaseLeftMs: Math.max(0, this.hostLeaseAt - now) });
     // the same election the lease would hold at its end, without the wait (old clients read the detail they know)

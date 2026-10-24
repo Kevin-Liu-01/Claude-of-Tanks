@@ -21,8 +21,12 @@ const { createHeightField, mulberry32 } = await import('./terrain.ts');
 const { SimplexNoise } = await import('../engine/simplexFast.ts');
 const { buildGourSkin, traceOutline } = await import('./gourSkin.ts');
 
-const cfg = getMapConfig('desert');
-assert.ok(cfg.terrain.mesas?.capCliff, 'the mesas carry the caprock cliff');
+// (the maps-restyle lane, 2026-10-23: Sirocco Wadi leaves the mesas' caprock cliff off — a cliff on the mesas alone, their
+// counterparts across the ford dunes, tilted the field — so the cliff is pinned here on the map's own mesas with it set,
+// the round-1 cliff, the skins traced over it)
+const mapCfg = getMapConfig('desert');
+assert.ok(!mapCfg.terrain.mesas?.capCliff, 'the map leaves the caprock cliff off (fairness)');
+const cfg = { ...mapCfg, terrain: { ...mapCfg.terrain, mesas: { ...mapCfg.terrain.mesas, capCliff: { share: 0.2, from: 0.88, to: 0.92 } } } };
 const gours = cfg.scenery.gours;
 assert.equal(gours.length, 2, 'the North Mesa and the Gara');
 for (const id of MAP_IDS) if (id !== 'desert') assert.ok(!getMapConfig(id).scenery?.gours?.length, `${id} declares no gours`);

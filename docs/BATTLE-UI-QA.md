@@ -533,9 +533,9 @@ The countdown goes first, in the detection's place, scaled down to 60 % where
 it must. The detection and the alert then take integ's place where that keeps
 clear. Otherwise they take the highest free place, as a stack, then apart, then
 compact (the 136 px notice, the alert in 8 px type). The medal card takes the
-highest free place off all of them, or waits with its time kept. A phone's aim
-hint sets its "LANDSCAPE RECOMMENDED" advice on its own right-aligned line. On
-one line it ran under the speedometer and the left FIRE button at 360x640.
+highest free place off all of them, or waits with its time kept. The aim pad
+carries no hint: "SWIPE TO AIM" and "LANDSCAPE RECOMMENDED" went with the owner's
+2026-10-22 rule on helper text, and the pad keeps its accessible name.
 
 Where no place keeps clear, each notice takes the least intrusive place.
 `body[data-touch-notices~='uncleared']` marks this. The notice reaches into the
@@ -618,6 +618,24 @@ scales only, and one rule at the end of `battleHudLayout.css` centres them all
 roll-out takes its own place off the countdown (`countdownAlert`). Where no
 centred place clears the reticle and the instruments, the notices clear the
 resting sight and reach least far into the instruments.
+
+Two trade-offs of the hotfix closed in 242. The detection is one 32 px row at
+every size: its "ENEMY HAS VISUAL CONTACT" line is a screen reader's alone (the
+owner's rule on secondary labels). The alert under it then clears the scope's
+upper arm. At 1280 x 720 it had covered the arm's last 6 px; at 1366 x 768 it
+had stood 7 px off it, and now stands 23 px off. On the 390 x 844 phone the aim
+hints had held the band under the sight. DETECTED had stood on the left FIRE
+button's top; now it stands with the alert under the gun-travel chip, and the
+plan clears. The census's objective is the one-row panel's 30 px (41 before).
+1024 x 600 and 1000 x 600 still put the alert's foot over the arm's tip at full
+bloom (tier 1). 360 x 640 still finds no clear place, 2 px short over the sight.
+844 x 390 with both kill lanes holding a row is unchanged from 241: the band over
+the sight holds 71 px, and the compact detection (32), its gap (6) and the
+compact alert's 40 px reserve need 78. The detection then goes under the sight,
+past the marks' 76 px, and covers 16 px of the controls row (the Lights and Auto
+gun tiles). Two fixes would clear it: plan the compact alert at its measured
+height (28 px for one alert's two lines), or let the kill lanes give way as the
+mouse plan's do.
 
 ### Scope skeleton and polish (r10f, r10g)
 

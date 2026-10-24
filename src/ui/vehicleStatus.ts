@@ -6,19 +6,21 @@ import { createRichTooltip } from './richTooltip.ts';
 import { createVehicleStatusReader, vehicleStatusCapacity, MAX_VEHICLE_STATUS_BOXES,
   type ConcealmentStatus, type VehicleStatus } from './vehicleStatusPolicy.ts';
 
+// The status chips over the damage panel on the direction's grammar (brand-ui H4, 06-battle-hud.html .al): each on the
+// HUD plate, a 3 px edge and a hairline in its severity's ink, the repair filling it from the floor.
 const CSS = `
 .cot-vehicle-status{position:absolute;left:0;bottom:calc(100% + var(--hud-status-lift,5px));display:flex;gap:4px;width:100%;pointer-events:auto;}
 .cot-vehicle-status[hidden],.cot-status-box[hidden]{display:none!important}
 .cot-status-box{position:relative;isolation:isolate;flex:0 0 34px;height:34px;padding:5px;display:grid;place-items:center;overflow:hidden;
- border:1px solid #64727e;background:linear-gradient(#152029f2,#080e14ed);color:#f36e69;font:700 11px/1 var(--font-ui);cursor:help;box-shadow:0 2px 5px #0006;}
-.cot-status-box[data-tone=warning]{color:#ffbf60;border-color:#a77b3e}
-.cot-status-box[data-tone=danger]{border-color:#b65551}
-.cot-status-box[data-tone=positive]{color:#9ae8a6;border-color:#5b9667}
-.cot-status-box svg{width:23px;height:23px;position:relative;z-index:1;filter:drop-shadow(0 1px 2px #000)}
+ border:0;border-radius:var(--r1);background:var(--hud-plate);color:var(--danger);font:700 var(--battle-fs-11)/1 var(--font-ui);cursor:help;
+ box-shadow:var(--battle-chip-danger);}
+.cot-status-box[data-tone=warning]{color:var(--warn);box-shadow:var(--battle-chip-warn)}
+.cot-status-box[data-tone=positive]{color:var(--ok);box-shadow:var(--battle-chip-ok)}
+.cot-status-box svg{width:23px;height:23px;position:relative;z-index:var(--z-lift)}
 .cot-status-fill{position:absolute;inset:0;background:currentColor;opacity:.25;transform-origin:bottom;transform:scaleY(var(--repair-fill,0));pointer-events:none;}
-.cot-status-mark{position:absolute;bottom:0;right:1px;z-index:2;min-width:9px;text-align:center;font:700 11px/1 var(--font-ui);color:inherit;text-shadow:0 1px 2px #000}
-.cot-status-box:focus-visible{outline:2px solid #ffe0a6;outline-offset:2px}
-.cot-status-box:hover{background:#253542}
+.cot-status-mark{position:absolute;bottom:1px;right:2px;z-index:var(--z-lift);min-width:9px;text-align:center;font:700 var(--battle-fs-11)/1 var(--font-ui);color:inherit}
+.cot-status-box:focus-visible{outline:2px solid var(--accent-hi);outline-offset:2px}
+.cot-status-box:hover{background:var(--hud-plate-strong)}
 .cot-status-summary{white-space:pre-line}
 .cot-touch-layout .cot-status-box{flex-basis:44px;height:44px;padding:9px}
 `;

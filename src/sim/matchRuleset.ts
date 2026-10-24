@@ -1115,6 +1115,71 @@ export interface MatchRuleset {
   readonly records: boolean;
   /** The proving ground's range: the firing line, the lanes, the reference plates and the moving-target option. */
   readonly provingGround?: ProvingGroundRules;
+  /** A watched battle (WATCH_RULES): no human seat, every seat a bot's, and the watcher's camera and seat rules. */
+  readonly watch?: WatchRules;
+}
+
+/**
+ * Watch (watch-mode-243; owner 2026-10-23: "watch tank battles and be able to go into a spectator view you can control
+ * like a drone and then into any tank currently fighting (being controlled by a bot)", and the same day through Main: "be
+ * able to ride along in spectator mode but go into tank describes driving it"). A watched battle is a listed mode on any
+ * map with no human seat: the seat the player would take is set up exactly as ever (its side, spawn, role and vehicle)
+ * and a bot drives it, so every mode fields the sides it always does. The mode keeps its own clock, respawns, scores
+ * and objectives. The watcher flies a drone, rides along any tank, and may take a living bot's seat: the bot's planner
+ * pauses for that hull while the watcher's input drives it through the player's own input path, and resumes from the
+ * hull's state when the watcher leaves. A watched battle keeps no record.
+ */
+export interface WatchRules {
+  /**
+   * The modes a battle can be watched in: every battle mode whose human seat a bot plays as any other. The AC-130 is
+   * left out (its gunship is the human's alone: no bot flies it) and the proving ground has no fight to watch.
+   */
+  readonly modes: readonly GameModeId[];
+  /** The watcher may take a living bot's seat and hand it back. */
+  readonly takeControl: boolean;
+  /** A watched tank's wreck is held in a slow orbit this long before the camera rides on with its killer (or flies). */
+  readonly deathHoldS: number;
+  /** A taken seat destroyed: the player's death beat runs this long, then the watcher is back on the drone. */
+  readonly takenDeathS: number;
+  /**
+   * The watcher sees every tank (the minimap, the markers): a local battle with no human side has nothing to hide. A
+   * taken seat sees as its side does again, spotting and all.
+   */
+  readonly revealAll: boolean;
+  /** The drone opens this high over the midpoint of the two deployments, this far back along the axis, looking down. */
+  readonly openAltitudeM: number;
+  readonly openBackM: number;
+  readonly openPitchDeg: number;
+}
+export const WATCH_RULES: WatchRules = Object.freeze({
+  modes: Object.freeze(['standard', 'capture_the_flag', 'zone_control', 'turbo_ball', 'endless_horde', 'frontline_assault',
+    'mars', 'juggernaut', 'infected', 'realistic', 'gun_game', 'drone'] as const),
+  takeControl: true,
+  deathHoldS: 1.6,
+  takenDeathS: 3.5,
+  revealAll: true,
+  openAltitudeM: 70,
+  openBackM: 140,
+  openPitchDeg: -24,
+});
+
+/** A mode a battle can be watched in. */
+export function isWatchableMode(mode: GameModeId | string | null | undefined): boolean {
+  return (WATCH_RULES.modes as readonly string[]).includes(String(mode));
+}
+
+/** The ruleset a watched battle plays: its mode's own, with the watch rules and no record (unwatchable: unchanged). */
+export function watchRulesetFor(ruleset: MatchRuleset): MatchRuleset {
+  if (!isWatchableMode(ruleset.mode)) return ruleset;
+  return Object.freeze({ ...ruleset, records: false, watch: WATCH_RULES });
+}
+
+/**
+ * A finished battle the records read (the profile tally, the service record, the campaign ladder): its mode keeps
+ * records and it was played, not watched (`battle:ended` carries `watch`).
+ */
+export function battleKeepsRecords(event: { readonly gameMode?: unknown; readonly watch?: unknown } | null | undefined): boolean {
+  return event?.watch !== true && rulesetKeepsRecords(typeof event?.gameMode === 'string' ? event.gameMode : null);
 }
 
 /** A battlefield variant a mode can play (the map built with that variant's config, its own collision manifest). */
@@ -1370,8 +1435,14 @@ const BASE_RULESETS: Readonly<Record<GameModeId, MatchRuleset>> = Object.freeze(
   // packFire) — and the survivors stand at 130 % hull (was 150 %). The A/B on seeds 401, 403, 404, 408: the first
   // infection 92 / 90 / 88 s -> 28 / 25 / 26 s on Steinburg, Desert and Coastal; Verdant (a WWII E-100 pick, the
   // survivors' 128 mm rounds ~1040 a hit against a 313 hp infected) stays the survivors' round. A 3 s respawn was worse.
-  infected: Object.freeze({ ...STANDARD, mode: 'infected', ammo: 'unlimited', allies: 9, enemies: 5, respawnS: 5, timeLimitS: 420,
-    infection: Object.freeze({ infectedSpeed: 1.3, survivorHpScale: 1.3, infectedHpScale: .25, infectedReloadScale: 1, hunt: true }),
+  // 240 (the coordinator: survivors could never win; zombieBalance re-measured on 233's rules, 48 seeds: 0 survivor
+  // rounds, the outbreak done by a median 2:29, 2.79 infected a survivor lost): the round is three minutes (was seven)
+  // and the infected stand at a fifth of their hull (was a quarter), the pack hunt and its opening untouched. Over seeds
+  // 1-48: survivors 17 of 48 (hold-out 12 of 32), a median end 2:43, 3.92 infected a loss; the first infection 40 -> 41 s
+  // on seeds 1-8. A longer respawn (10 or 15 s), a x1.6 reload or 150-180 % survivors won no round at seven minutes and
+  // slowed the first infection to 50-77 s; at 15 % and 3:30 the survivors won 5 of 48.
+  infected: Object.freeze({ ...STANDARD, mode: 'infected', ammo: 'unlimited', allies: 9, enemies: 5, respawnS: 5, timeLimitS: 180,
+    infection: Object.freeze({ infectedSpeed: 1.3, survivorHpScale: 1.3, infectedHpScale: .2, infectedReloadScale: 1, hunt: true }),
     bots: Object.freeze({ bravo: INFECTED_DOCTRINE, alpha: SURVIVOR_DOCTRINE }),
     infectionBots: Object.freeze({ survivorRallyM: 90, packPullM: 60, arrival: Object.freeze({
       spawnRingM: Object.freeze([70, 120] as const), fallbackRingM: Object.freeze([120, 200] as const), spawnSectors: 3, sectorWidthDeg: 60, sectorSpreadDeg: 70,

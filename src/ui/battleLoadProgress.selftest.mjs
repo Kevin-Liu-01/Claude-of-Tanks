@@ -65,15 +65,18 @@ try {
   assert.ok(screen.root === pendingRoot, 'the loaded transaction enriches the same already-opaque surface');
   assert.equal(screen.root.classList.contains('leaving'), false);
   assert.equal(selectors.get('.mapname').textContent, 'Verdant');
-  const fill = selectors.get('.ffill');
+  // the direction's five steps (10-battle-load .prog .reg): each fills its fifth of the load
+  const steps = [1, 2, 3, 4, 5].map((n) => selectors.get(`.fbar i:nth-child(${n}) b`));
+  const fills = () => steps.map((step) => step.style.transform).join(' ');
+  const scales = (...shares) => shares.map((share) => `scaleX(${share.toFixed(3)})`).join(' ');
   const pct = selectors.get('.fpct');
   const progress = selectors.get('.fbar');
-  const stage = selectors.get('.fstage');
+  const stage = selectors.get('.fstage .st');
   assert.equal(screen.visible, true);
   assert.equal(screen.covering, true);
-  assert.equal(fill.style.transform, 'scaleX(0.000)');
+  assert.equal(fills(), scales(0, 0, 0, 0, 0));
   screen.progress(0.25, 'Building terrain meshes');
-  assert.equal(fill.style.transform, 'scaleX(0.250)');
+  assert.equal(fills(), scales(1, 0.25, 0, 0, 0));
   assert.equal(pct.textContent, '25%');
   assert.equal(progress.getAttribute('aria-valuenow'), '25');
   assert.equal(stage.textContent, t('battleLoad.stage.buildingTerrain'));
@@ -81,17 +84,17 @@ try {
   for (let index = 0; index < 100; index++) screen.progress(0.25001, 'Building terrain meshes');
   assert.deepEqual(mutations, [], 'identical displayed progress does not churn styles or the live region');
   screen.progress(0.251);
-  assert.deepEqual(mutations, [['.ffill', 'style', 'transform', 'scaleX(0.251)']],
-    'sub-percent progress moves the fill without repeating percentage announcements');
+  assert.deepEqual(mutations, [['.fbar i:nth-child(2) b', 'style', 'transform', 'scaleX(0.255)']],
+    'sub-percent progress moves the step it is in without repeating percentage announcements');
   assert.equal(stage.textContent, t('battleLoad.stage.buildingTerrain'));
   screen.progress(0.251, 'Custom loading stage');
   assert.equal(stage.textContent, 'Custom loading stage');
   screen.rosters([], []);
-  assert.equal(fill.style.transform, 'scaleX(0.251)', 'roster refresh does not reset progress');
-  for (const [fraction, scale, percent] of [[-5, '0.000', '0'], [2, '1.000', '100'],
-    [NaN, '0.000', '0'], [Infinity, '1.000', '100'], [-Infinity, '0.000', '0']]) {
+  assert.equal(fills(), scales(1, 0.255, 0, 0, 0), 'roster refresh does not reset progress');
+  for (const [fraction, share, percent] of [[-5, 0, '0'], [2, 1, '100'],
+    [NaN, 0, '0'], [Infinity, 1, '100'], [-Infinity, 0, '0']]) {
     screen.progress(fraction);
-    assert.equal(fill.style.transform, `scaleX(${scale})`);
+    assert.equal(fills(), scales(share, share, share, share, share));
     assert.equal(progress.getAttribute('aria-valuenow'), percent);
   }
   screen.progress(1, 'Ready');
@@ -110,7 +113,7 @@ try {
   const gradientOf = (tones) => `linear-gradient(180deg,${tones[0]},${tones[1]} 48%,${tones[2]})`;
   assert.equal(selectors.get('.art').style.backgroundImage, gradientOf(MAP_ART_TONE_DEFAULT),
     'an unknown battlefield opens on every map\'s mean tones, not near-black');
-  assert.equal(fill.style.transform, 'scaleX(0.000)', 'a new load resets the previous completed fill');
+  assert.equal(fills(), scales(0, 0, 0, 0, 0), 'a new load resets the previous completed fill');
   const hidden = screen.hide();
   timers.shift()();
   await hidden;
@@ -172,7 +175,10 @@ try {
     // 2026-10-13 (222's Slow 4G entry read "BATTLEFIELD" for ~1.8 s while the loading owner downloaded): the pending
     // cover's very first frame names the chosen battlefield, over its own tones, with its art on the way
     screen.showPending({ mapId: 'railyard', mapName: 'Cinder Junction', thumb: '/maps/railyard.webp' });
-    assert.equal(selectors.get('.mapname').textContent, 'Cinder Junction', 'the first loader frame names the map');
+    // (its first word solid, the rest hollow: the direction's title)
+    const title = selectors.get('.mapname');
+    assert.equal(title.textContent + title.children.map((part) => part.textContent).join(''), 'Cinder Junction',
+      'the first loader frame names the map');
     assert.equal(selectors.get('.kicker').textContent, t('battleLoad.kicker'));
     assert.equal(art.style.backgroundImage, `url(${MAP_LQIP.railyard}),${gradientOf(MAP_ART_TONES.railyard)}`);
     assert.equal(art.className, 'art railyard');
@@ -188,11 +194,11 @@ try {
   }
 
   const css = elements.find(item => item.id === 'cot-bl-style').textContent;
-  assert.match(css, /\.cot-bl \.ffill\{[^}]*width:100%;[^}]*transform:scaleX\(0\);[^}]*transform-origin:left center;[^}]*transition:transform/);
+  assert.match(css, /\.cot-bl \.fbar i b\{[^}]*inset:0;[^}]*transform:scaleX\(0\);[^}]*transform-origin:left center;[^}]*transition:transform/);
   assert.doesNotMatch(css, /transition:width/);
-  assert.match(css, /\.cot-bl\.on \.ffill\{will-change:transform;/,
+  assert.match(css, /\.cot-bl\.on \.fbar i b\{will-change:transform;/,
     'compositor hint is limited to the visible loader');
-  assert.match(css, /prefers-reduced-motion:reduce[^\n]*\.cot-bl \.ffill\{transition-duration:1ms/);
+  assert.match(css, /prefers-reduced-motion:reduce[^\n]*\.cot-bl \.fbar i b\{transition-duration:1ms/);
 } finally {
   if (priorDocument) Object.defineProperty(globalThis, 'document', priorDocument);
   else delete globalThis.document;

@@ -49,7 +49,8 @@ export function createCombatAimComposition({
   let rig!: CameraRig;
   const targetVisible: AimControllerDependencies['targetVisible'] = (target) => {
     const game = getGame();
-    return !game.spotting || game.spotting.isSpotted(target.id, 'player', game.player);
+    // the local view's side: the player's (a watcher's taken seat may be on either), the allied side otherwise
+    return !game.spotting || game.spotting.isSpotted(target.id, game.player?.team ?? 'player', game.player);
   };
   const battleClient = createBattleClientAccess(() => {
     const game = getGame();

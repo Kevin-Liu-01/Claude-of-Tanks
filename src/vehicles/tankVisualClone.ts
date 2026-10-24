@@ -3,7 +3,7 @@
 // runs the same runtimes over the copy (createTankRuntimeSteps, createRunningGearRuntime).
 import * as THREE from 'three';
 import { mulberry32 } from './factoryGeometry.ts';
-import { acquireTankTextureLease, copyVehicleMaterial, resolveMultiplayerCamoPattern } from './materials.ts';
+import { acquireTankTextureLease, copyVehicleMaterial } from './materials.ts';
 import { runningGearMotionScaleOf, scaleRunningGearMotion } from './scaledGroundSampler.ts';
 import {
   GEAR_OWN_METHODS, GEAR_RUNTIME_ENVS, TANK_CLONE_SOURCES, combineGearUnits, createRunningGearRuntime,
@@ -45,10 +45,7 @@ export function cloneTankVisual(source: TankVisual, engineContext: RuntimeValue,
   const engineCtx = normalizeTankEngineContext(engineContext);
   if (env.batchStatic) throw new Error(`${env.specId}: a battle-batched visual cannot be cloned`);
   if ((quality === 'low' ? 'low' : 'high') !== env.geometryQuality) throw new Error(`${env.specId}: a clone keeps its source's geometry tier`);
-  // the scheme as painted now: 'auto' is the active battlefield's pick, so a source built with that pick named outright
-  // (a returning tab's boot, main.ts) is the same paint, and 'auto' built under another battlefield is not
-  const paint = (pattern: string | null) => (pattern == null ? null : resolveMultiplayerCamoPattern(env.specId, pattern));
-  if (paint(camoPattern) !== paint(env.opts.camoPattern ?? null)) throw new Error(`${env.specId}: a clone keeps its source's paint scheme`);
+  if (camoPattern !== (env.opts.camoPattern ?? null)) throw new Error(`${env.specId}: a clone keeps its source's paint scheme`);
   if (engineCtx !== env.engineCtx) throw new Error(`${env.specId}: a clone registers through its source's engine context`);
   if (source.isDestroyed() || source.root.parent) throw new Error(`${env.specId}: only a pristine visual can be cloned`);
   for (const cluster of env.destructibleClusters.values()) {

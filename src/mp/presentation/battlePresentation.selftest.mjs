@@ -5,8 +5,7 @@ import { getSpec } from '../../vehicles/specs.ts';
 import { ENTITY_FLAGS, NO_ENTITY, PHASE, TEAM, VERDICT, eraPlateNames, quantizePosition, quantizeReloadS, zeroEntityRow } from '../wire/index.ts';
 import { createEntitySample } from '../match/interpolation.ts';
 import { RecordingPresentation, createBattlePresentation } from './index.ts';
-import { prewarmRosterVisuals } from './battlePresentation.ts';
-import { seatVisualOptions } from './seatVisualOptions.ts';
+import { prebuildRosterVisuals, prewarmRosterVisuals } from './battlePresentation.ts';
 
 // ------------------------------------------------------------ fixtures
 const visuals = [];
@@ -607,22 +606,52 @@ console.log('mp battle presentation: roster → hidden visuals, frames → game 
   assert.deepEqual(stopped, [specA], 'an aborted round stops warming');
 }
 
-// ---- lever 5b (2026-10-22, item/mp-rejoin-seat-241): the viewer's seat takes the vehicle the app built ahead (a returning
-// tab's boot) when the roster's own options name it; it is then the source its group's copies come from, nothing builds
-// it, and the other seats never ask
+// ---- the roster prebuild (2026-10-23, item/mp-rejoin-levers-242): the seats the room names are built beside the world,
+// one build per vehicle and paint (the viewer's seat the source), the others copied from it, the burnt bake after it;
+// the roster takes every one with its own options and builds none; a seat the WELCOME does not name is disposed; an
+// abort stops the prebuild and disposes what it made
 {
+  const quick = { yieldFrame: () => Promise.resolve(), yieldTask: () => Promise.resolve() };
+  const built = [], copied = [], baked = [], burnt = [];
+  const steps = function* (specId, _engineCtx, opts) { built.push(`${specId}:${opts.quality}`); yield; yield; return fakeVisual(specId, null, opts); };
+  const deps = {
+    engineCtx: { scene, anisotropy: 1 }, scheduling: quick,
+    createTankVisualSteps: steps,
+    cloneTankVisual: (source, _engineCtx, opts) => { copied.push(opts.quality); return fakeVisual('m1a1_abrams_hc', null, opts); },
+    prepareVisualTextures: async (spec, _aniso, quality, _tick, camo) => { baked.push(`${spec.id}:${camo}:${quality}`); },
+    ensureBuilder: async () => {},
+    prebakeBurnt: function* (specId, _aniso, selection) { burnt.push(`${specId}:${selection}`); yield; },
+  };
+  const spec = roster[0].specId;
+  const prebuilt = prebuildRosterVisuals([
+    { playerId: 'bot-3', specId: spec, camo: 'summer', isViewer: false },
+    { playerId: 'me', specId: spec, camo: 'summer', isViewer: true },
+    { playerId: 'foe', specId: spec, camo: 'winter', isViewer: false },
+    { playerId: 'bot-9', specId: spec, camo: 'winter', isViewer: false },
+  ], deps);
+  await prebuilt.settled;
+  assert.deepEqual(built, [`${spec}:high`, `${spec}:ai`], 'one build per vehicle and paint, the viewer\'s seat the source of its group');
+  assert.deepEqual(copied, ['ai', 'ai'], 'the other seats are copies');
+  assert.deepEqual(burnt, [`${spec}:summer`, `${spec}:winter`], 'the burnt bake follows each group\'s build');
   const state = { tanks: [], tankById: new Map(), player: null, shells: [], spotting: null, allTanks: [], timeS: 0 };
-  const asked = [], built = [], copiedFrom = [];
-  const ahead = fakeVisual('m1a1_abrams_hc', null, { eraVisualBindingReceipt: false });
-  const p = createBattlePresentation({ engineCtx: { scene, anisotropy: 1 }, game: state, bus: { emit() {} },
-    createTankVisual: (id, ...rest) => { built.push(id); return fakeVisual(id, ...rest); },
-    cloneTankVisual: (source, _engineCtx, opts) => { copiedFrom.push(source); return fakeVisual(roster[0].specId, null, opts); },
-    takeViewerVisual: (specId, opts) => { asked.push([specId, opts]); return ahead; },
-    camoFor: () => 'summer', prepareVisualTextures: async () => {}, clock: () => nowMs });
-  await p.applyRoster([roster[0], roster[2], roster[1]], context);
-  assert.deepEqual(asked, [[roster[0].specId, seatVisualOptions('me', 'summer', true)]], 'only the viewer asks, with the roster\'s own options');
-  assert.equal(p.actors.get('me').visual, ahead, 'the viewer\'s seat wears the vehicle built ahead');
-  assert.deepEqual(copiedFrom, [ahead, ahead], 'its group\'s copies come from it');
-  assert.deepEqual(built, [], 'nothing builds it again');
+  const rosterBuilds = [];
+  const p = createBattlePresentation({ engineCtx: { scene, anisotropy: 1 }, game: state, bus: { emit() {} }, prebuilt,
+    createTankVisual: (id, ...rest) => { rosterBuilds.push(id); return fakeVisual(id, ...rest); },
+    camoFor: (entry) => (entry.team === TEAM.ALPHA ? 'summer' : 'winter'), prepareVisualTextures: async () => {}, clock: () => nowMs });
+  const bot9 = prebuilt.has('bot-9');
+  await p.applyRoster(roster, context);
+  assert.equal(bot9, true);
+  assert.deepEqual(rosterBuilds, [], 'the roster built none of the seats the prebuild held');
+  assert.equal(prebuilt.has('bot-9'), false, 'a seat the WELCOME does not name is let go once the roster is done');
   p.dispose();
+  // an abort stops the prebuild and disposes what it made
+  const abort = new AbortController();
+  const made = [];
+  const stopping = prebuildRosterVisuals([
+    { playerId: 'a', specId: spec, camo: 'summer', isViewer: false },
+    { playerId: 'b', specId: spec, camo: 'winter', isViewer: false },
+  ], { ...deps, signal: abort.signal,
+    createTankVisualSteps: function* (specId, _engineCtx, opts) { const visual = fakeVisual(specId, null, opts); made.push(visual); abort.abort(); yield; return visual; } });
+  await stopping.settled;
+  assert.equal(stopping.has('a') || stopping.has('b'), false, 'an aborted prebuild holds nothing');
 }

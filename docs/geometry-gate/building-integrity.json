@@ -4667,9 +4667,9 @@
    "floating": 0,
    "sliver": 0,
    "floatingM2": 0,
-   "holeM2": 3.73,
-   "insideM2": 0,
-   "gapM2": 7.53,
+   "holeM2": 0,
+   "insideM2": 0.276,
+   "gapM2": 2.21,
    "invertedM2": 0
   },
   "landmark/frontier:church#1": {
@@ -4707,7 +4707,16 @@
    "insideM2": 0,
    "gapM2": 0,
    "invertedM2": 0
+  },
+  "landmark/coastal:harbour#0": {
+   "floating": 2,
+   "sliver": 0,
+   "floatingM2": 8.746,
+   "holeM2": 0,
+   "insideM2": 0,
+   "gapM2": 0,
+   "invertedM2": 0
   }
  },
- "updatedAt": "2026-10-23T06:25:30.139Z"
+ "updatedAt": "2026-10-23T17:17:02.254Z"
 }

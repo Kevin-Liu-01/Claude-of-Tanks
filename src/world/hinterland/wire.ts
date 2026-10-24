@@ -7,6 +7,12 @@ import type { HinterlandLevel, HinterlandPyramid } from './pyramid.ts';
 import type { HinterlandSurfaceLevel } from './surface.ts';
 import type { HinterlandOutlandGeometry, HinterlandShapeArrays } from './outlandGeometry.ts';
 
+/** The road ribbons' surfaces (sRGB bytes): a road's tarmac, a dike road's, a farm track's gravel and earth, a line's
+ * ballast (outlandGeometry.ts draws them; buildings.ts gives the roads the battlefield's packed earth). */
+export const HINTERLAND_ROAD_SRGB: Readonly<Record<string, readonly [number, number, number]>> = Object.freeze({
+  road: [78, 76, 72], dikeRoad: [88, 84, 78], track: [118, 104, 84], rail: [66, 60, 54],
+});
+
 /** The surface's edge offsets' encoding (surface.ts, material.ts): (s + HL_EDGE_OFFSET_M) × HL_EDGE_SCALE in 16 bits
  * (±256 m at 1/128 m); 65535 is "no edge". Here, where both sides read it without the page importing the field. */
 export const HL_EDGE_OFFSET_M = 256;
@@ -29,6 +35,8 @@ export interface HinterlandWire {
    * slope (deg) past which bare rock shows, and the beds' dip (deg). */
   rock?: { rgb: [number, number, number]; snowy: boolean; slopeDeg: number; dipDeg: number };
   canopyM: number;
+  /** The battlefield's ground carried past the edge (spec.nearGround; absent: true). */
+  nearGround?: boolean;
   levels: { texelM: number; halfM: number; n: number; heights: Float32Array }[];
   /** Per level the land's surface (surface.ts: sRGB albedo and a flags byte, the fields' edge offsets), when baked. */
   surface: HinterlandSurfaceLevel[] | null;
@@ -80,7 +88,7 @@ export function packHinterlandPlan(
   const wire: HinterlandWire = {
     mapId: spec.mapId, regionId: spec.region.id, kit: spec.kit, season: spec.season, fogDensity: spec.fogDensity, air: spec.region.far.air ?? 1,
     rock: rockOf(build.field.spec.geology),
-    canopyM: spec.region.vegetation.canopyM, levels, surface, outland, trees, species, buildings, buildingKinds,
+    canopyM: spec.region.vegetation.canopyM, nearGround: spec.nearGround, levels, surface, outland, trees, species, buildings, buildingKinds,
     landRot: build.field.landUse && build.field.landUse.strength > 0 ? [Math.cos(build.field.landUse.heading), Math.sin(build.field.landUse.heading)] : null,
     settlements: plan.settlements, roads: plan.roads, verticals: plan.verticals, ms: build.ms, evaluated: pyramid.evaluated,
   };
