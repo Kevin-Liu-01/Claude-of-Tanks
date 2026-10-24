@@ -258,6 +258,27 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
   };
 
   /**
+   * A root's draw warm, run later by its stream (after the links): a hidden opponent is attached and shown only inside
+   * this one task, so no frame can present it; one the battle's spotting has attached meanwhile draws as it stands.
+   */
+  const laterDraw = (
+    warmDraw: (root: Object3D) => void,
+    visual: NonNullable<Entity['visual']>,
+    home: Object3D,
+    initiallyHidden: boolean,
+  ) => (): number => {
+    const root = visual.root!;
+    const drawAt = now();
+    const borrowed = initiallyHidden && !root.parent;
+    if (borrowed) { home.add(root); visual.setVisible?.(true); }
+    try { warmDraw(root); } catch { /* first render fallback */ }
+    finally {
+      if (borrowed) { visual.setVisible?.(false); root.removeFromParent(); }
+    }
+    return Math.round(now() - drawAt);
+  };
+
+  /**
    * Stage a built root: textures, programs, and its draw warm. `deferDraw` returns the draw (and, for a hidden opponent,
    * a moment's re-attachment around it) as `draw` for the caller to run once its links are in; the root is already in
    * its final state (a hidden opponent detached) when this returns.
@@ -303,21 +324,8 @@ export function createBattleVisualStreamer<TGame extends { tanks: BattleVisualEn
     // (perf-245) and draws once while it is attached, before a hidden opponent detaches: its pipelines are made here,
     // within the staging budget, not on the frame it is first seen
     const warmDraw = options.compilePrograms !== false && drawWarm ? drawWarm : null;
-    let draw: (() => number) | null = null;
-    if (warmDraw && deferDraw) {
-      draw = () => {
-        const drawAt = now();
-        // a hidden opponent is attached and shown only inside this one task (no frame can present it); one the
-        // battle's spotting has attached meanwhile draws as it stands
-        const borrowed = initiallyHidden && !root.parent;
-        if (borrowed) { home.add(root); visual.setVisible?.(true); }
-        try { warmDraw(root); } catch { /* first render fallback */ }
-        finally {
-          if (borrowed) { visual.setVisible?.(false); root.removeFromParent(); }
-        }
-        return Math.round(now() - drawAt);
-      };
-    } else if (warmDraw) {
+    const draw = warmDraw && deferDraw ? laterDraw(warmDraw, visual, home, initiallyHidden) : null;
+    if (warmDraw && !deferDraw) {
       try { warmDraw(root); } catch { /* first render fallback */ }
     }
     const compileMs = options.compilePrograms === false ? 0 : Math.round(now() - compileAt);

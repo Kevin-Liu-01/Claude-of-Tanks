@@ -730,14 +730,14 @@ export function createSoloBattleDeploymentRuntime(
         // (2026-10-24, transitions-249) the shadow and post warms draw: a draw binds programs the earlier submissions
         // queued, and their links finish here between tasks instead of inside one draw's task (a 3.4 s frozen frame in a
         // cold desktop entry's post pass once the tank draws stopped absorbing the queue)
-        const awaitLinks = async (): Promise<void> => {
-          if (!options.awaitProgramLinks) return;
+        const awaitProgramLinks = options.awaitProgramLinks;
+        const awaitLinks = async (wait: NonNullable<typeof awaitProgramLinks>): Promise<void> => {
           const startedAt = now();
-          await options.awaitProgramLinks(guardedCoveredYield);
+          await wait(guardedCoveredYield);
           requireCurrent(generation);
           (trace.deploymentLinkWaitMs ??= []).push(Math.round(now() - startedAt));
         };
-        await awaitLinks();
+        if (awaitProgramLinks) await awaitLinks(awaitProgramLinks);
         trace.deploymentShadowWarm = await getDeploymentShadowWarm().prime(guardedCoveredYield);
         requireCurrent(generation);
         mark('shadowMaps');
@@ -775,7 +775,7 @@ export function createSoloBattleDeploymentRuntime(
         // (deferredCombatWarmRuntime), as it did de facto on every main entry probed (the covered warm missed its link
         // budget before reaching this stage). Nine programs off the covered link queue (the 10-15 census, Urban).
         trace.visionProgramsDeferred = true;
-        await awaitLinks();
+        if (awaitProgramLinks) await awaitLinks(awaitProgramLinks);
         trace.deploymentPostWarm = await post.warmFirstFrame(() => guardedCoveredYield(true));
         requireCurrent(generation);
         mark('postPasses');
