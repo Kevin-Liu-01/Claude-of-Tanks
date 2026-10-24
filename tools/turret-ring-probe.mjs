@@ -337,9 +337,10 @@ function carveOpening(tris, hullWorld, box) {
 }
 
 /** (243) How far the cut may reshape one dented face of the uncut wreck: its pieces' corners inside the live dent zone
- *  follow the field, those past it lie on the face's own dented plane, and the pieces interpolate, so every point of
- *  them lies within the most the field departs from that plane over the face's part inside the zone (sampled). 0: a
- *  face the cut cannot reshape (undented, or clear of the zone). */
+ *  follow the field (its own, and those a neighbour's cut gives its edges), those past it lie on the face's own dented
+ *  plane, and the pieces interpolate, so every point of them lies within the most the field departs from that plane
+ *  over the face's part inside the zone (sampled: its inside and, finely, its edges). 0: a face the cut cannot reshape
+ *  (undented, or clear of the zone). */
 function reshapeBound(tris, t, seat) {
   const rest = tris.rest?.[t];
   if (!rest || !tris.dent) return 0;
@@ -359,8 +360,13 @@ function reshapeBound(tris, t, seat) {
   const fa = field(rest[0], rest[1], rest[2], [0, 0, 0]), fb = field(rest[3], rest[4], rest[5], [0, 0, 0]), fc = field(rest[6], rest[7], rest[8], [0, 0, 0]);
   const f = [0, 0, 0];
   let most = 0;
-  for (let i = 0; i <= N; i++) for (let j = 0; i + j <= N; j++) {
-    const u = i / N, v = j / N, w = 1 - u - v;
+  // the face's inside (an N grid) and its edges, finely (a large face whose corner alone reaches the zone, and the
+  // corners a neighbour's cut gives its edges)
+  const samples = [];
+  for (let i = 0; i <= N; i++) for (let j = 0; i + j <= N; j++) samples.push([i / N, j / N]);
+  for (let k = 0; k <= 4 * N; k++) { const t = k / (4 * N); samples.push([t, 1 - t], [t, 0], [0, t]); }
+  for (const [u, v] of samples) {
+    const w = 1 - u - v;
     const x = u * rest[0] + v * rest[3] + w * rest[6], y = u * rest[1] + v * rest[4] + w * rest[7], z = u * rest[2] + v * rest[5] + w * rest[8];
     if (Math.hypot(x - seat.cx, z - seat.cz) > zone) continue;
     field(x, y, z, f);
