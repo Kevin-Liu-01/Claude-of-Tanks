@@ -260,9 +260,6 @@ const SETTINGS_CSS = `
 .cot-set-tab.sel{color:#ffd27a;background:linear-gradient(180deg,rgba(240,160,48,.10),rgba(240,160,48,0));}
 .cot-set-tab.sel::after{content:'';position:absolute;left:6px;right:6px;bottom:-1px;height:2px;
   background:#f0a030;box-shadow:0 -1px 8px rgba(240,160,48,.45);}
-.cot-set-tab .ct{margin-left:7px;font-style:normal;font-weight:600;font-size:11px;
-  color:#6d7a86;letter-spacing:0em;}
-.cot-set-tab.sel .ct{color:#d8a04c;}
 /* scrolling rows area — thin steel scrollbar + overflow-gated fade masks
    (.fade-top/.fade-bot toggled by JS from live scroll position; the garage
    r9 .can-scroll pattern, split per edge) */
@@ -438,6 +435,13 @@ const SETTINGS_CSS = `
 .cot-set-seg.onoff button{padding:5px 13px 4px;min-width:48px;}
 .cot-set-note{font-size:13px;font-weight:400;letter-spacing:0;color:#8d9ba7;margin:10px 10px 2px;line-height:1.55;max-width:72ch;text-wrap:pretty;}
 .cot-set-note b{color:#c3cfd8;font-family:var(--font-body);font-weight:600;}
+.cot-set-note.folded{display:none;}
+.cot-set-card.notes-open .cot-set-note.folded{display:block;}
+.cot-set-info{order:2;display:inline-grid;place-items:center;width:28px;height:28px;flex:none;margin:-6px -4px -6px 0;padding:0;
+  border:0;border-radius:var(--control-radius);background:transparent;color:var(--ink-3);cursor:pointer;}
+.cot-set-info[aria-expanded='true']{color:var(--accent);}
+@media (hover:hover){.cot-set-info:hover{color:var(--ink-1);background:var(--fill-quiet);}}
+.cot-set-info:focus-visible{outline:2px solid var(--focus-bracket-color);outline-offset:1px;}
 /* settings_ui r2: the panel respects reduced motion — enter transition,
    paused lamp and listening pulse all freeze; hover transitions collapse */
 @media (prefers-reduced-motion:reduce){
@@ -572,9 +576,8 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     `<span class="cot-set-paused">${t('settings.paused')}</span>` +
     `<button class="cot-set-close" type="button" title="${t('settings.close.title')}">&#10005;</button></div>` +
     `<div class="cot-set-tabs">` +
-    // settings_ui r2: CONTROLS carries its action count (era-chip .ct read);
-    // the other tabs stay clean — a count of sliders is noise, not signal.
-    `<button class="cot-set-tab sel" data-tab="controls" type="button">${t('settings.tab.controls')}<i class="ct">${input.actionDefs.length}</i></button>` +
+    // every tab is its name alone (the 10-24 sweep: the controls tab's action count was one more number to read)
+    `<button class="cot-set-tab sel" data-tab="controls" type="button">${t('settings.tab.controls')}</button>` +
     `<button class="cot-set-tab" data-tab="gameplay" type="button">${t('settings.tab.gameplay')}</button>` +
     `<button class="cot-set-tab" data-tab="sound" type="button">${t('settings.tab.sound')}</button>` +
     `<button class="cot-set-tab" data-tab="graphics" type="button">${t('settings.tab.graphics')}</button>` +
@@ -1096,7 +1099,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
 
     const pad = groupCard(body, t('settings.pad.title'));
     sliderRow(pad, t('settings.gameplay.aimPad'), 'padSensitivity', 0.2, 3);
-    const padNote = el('div', 'cot-set-note', pad);
+    const padNote = el('div', 'cot-set-note keep', pad);
     padNote.textContent = input.isPadConnected()
       ? t('settings.pad.detected')
       : t('settings.pad.absent');
@@ -1197,7 +1200,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     onOffRow(alarms, t('settings.alarms.heartbeat'), 'alarmHeartbeat', emitVolumes);
     onOffRow(alarms, t('settings.alarms.concussion'), 'audioConcussion', emitVolumes);
 
-    const note = el('div', 'cot-set-note', body);
+    const note = el('div', 'cot-set-note keep', body);
     note.textContent = t('settings.sound.note');
   }
 
@@ -1264,7 +1267,7 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
       diagBtns.push(b);
     }
     syncDiag();
-    el('div', 'cot-set-note', diagnostics).textContent = t('settings.diagnostics.note');
+    el('div', 'cot-set-note keep', diagnostics).textContent = t('settings.diagnostics.note');
   }
 
   // --- ACCESSIBILITY tab (brand-ui SPEC 12.1.6 and 14; the core is accessibilityPreferences.ts, BUI-S4 redesigns this)
@@ -1496,7 +1499,40 @@ export function createSettings(opts: SettingsOptions): SettingsRuntime {
     else if (activeTab === 'language') renderLanguage();
     else renderGameplay();
     applyZebra();
+    foldNotes();
     updateScrollFades(); // fades follow the fresh content's real overflow
+  }
+
+  // (owner, the 10-24 UI sweep: no helper text in view) a card's explanations fold behind one info button in its
+  // title, which shows and hides them; a live status, the sound credits and the privacy disclosure (.keep) and a refusal
+  // stay in view. A note outside any card (the controls tab's) folds without a button: the chips' titles carry it.
+  let noteSerial = 0;
+  function foldNotes(): void {
+    for (const note of body.querySelectorAll<HTMLElement>('.cot-set-note:not(.keep):not(.refused)')) {
+      note.id ||= `cot-set-note-${++noteSerial}`;
+      note.classList.add('folded');
+      const card = note.closest<HTMLElement>('.cot-set-card');
+      const group = card?.querySelector<HTMLElement>(':scope > .cot-set-group');
+      if (!card || !group) continue;
+      let info = group.querySelector<HTMLButtonElement>('.cot-set-info');
+      if (!info) {
+        const button = el('button', 'cot-set-info', group) as HTMLButtonElement;
+        button.type = 'button';
+        button.setAttribute('aria-expanded', 'false');
+        button.setAttribute('aria-label', t('settings.notes.toggle'));
+        button.title = t('settings.notes.toggle');
+        button.innerHTML = uiIconSVG('info', 16);
+        button.addEventListener('click', () => {
+          const open = !card.classList.contains('notes-open');
+          card.classList.toggle('notes-open', open);
+          button.setAttribute('aria-expanded', String(open));
+          emit('ui:click', {});
+          updateScrollFades();
+        });
+        info = button;
+      }
+      info.setAttribute('aria-controls', [info.getAttribute('aria-controls'), note.id].filter(Boolean).join(' '));
+    }
   }
 
   // --- rebind capture ------------------------------------------------------------
