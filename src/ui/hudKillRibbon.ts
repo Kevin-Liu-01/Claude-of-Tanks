@@ -35,7 +35,8 @@ const CSS = `
   pointer-events:none;opacity:0;visibility:hidden;transition:opacity var(--dur-base) var(--ease-exit),visibility var(--dur-base) step-end}
 body:not(.cot-touch-layout):is([data-cot-width='laptop'],[data-cot-width='desktop']):is([data-cot-height='standard'],[data-cot-height='tall']) .cot-ribbon{display:flex}
 .cot-ribbon.on{opacity:1;visibility:visible;transition:opacity var(--dur-fast) var(--ease-enter)}
-.cot-ribbon.on.yield,body.cot-spectating .cot-ribbon.on{opacity:0;visibility:hidden}
+/* it steps aside for a notice that meets it, while spectating, and in the scope (the direction's 06b .sniper .ribbon) */
+.cot-ribbon.on.yield,body.cot-spectating .cot-ribbon.on,html[data-cot-scoped] .cot-ribbon.on{opacity:0;visibility:hidden}
 .cot-ribbon .top{display:flex;align-items:center;gap:10px;height:44px;padding:0 0 0 14px;min-width:0}
 .cot-ribbon .top>:is(.id,.cause){display:contents}
 .cot-ribbon .w{flex:none;font:700 var(--battle-fs-14)/1 var(--hud-font);letter-spacing:var(--track-label);text-transform:uppercase;color:var(--accent)}
