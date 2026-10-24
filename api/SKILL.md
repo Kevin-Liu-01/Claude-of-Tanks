@@ -21,7 +21,12 @@ entry-telemetry fallback sink (`docs/ENTRY-RESILIENCE.md`), used only while
 `VITE_TELEMETRY_URL` is unset: one v2 record per request validated through the
 shared schema `server/telemetryRecord.ts` (personal field names refused), one
 log line per record, no store. The production sink is the Cloudflare Worker
-`cloudflare/telemetry` (Workers Analytics Engine). `jev.ts` is the Jev commander
+`cloudflare/telemetry` (Workers Analytics Engine). `rooms-status.ts` (2026-10-23, the
+Workers Free ruling) reads the rooms Worker's `/healthz` from the server and answers
+`{ state: 'ok' | 'limited' | 'unavailable' }`. It names Cloudflare's daily-limit refusal
+(error 1027, a 429), which a browser cannot read from a failed WebSocket upgrade. It is
+cached at the edge, and the Play menu asks it once after a failed or interrupted room
+(`src/mp/session/roomServiceLimit.ts`). `jev.ts` is the Jev commander
 proxy (`docs/JEV-COMMANDER.md`): one text-only team document per request,
 validated and bounded, the TypeSafe questions built server-side, the
 server-held `TYPESAFE_API_KEY` never leaving the function, upstream
