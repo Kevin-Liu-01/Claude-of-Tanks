@@ -106027,17 +106027,17 @@
           }
         ]
       },
-      "geometryHash": "b4f0bac9",
+      "geometryHash": "58780056",
       "metadataHash": "e2dcd947",
       "presentationAnchor": {
         "xM": 0,
-        "zM": -0.0178
+        "zM": -0.018
       },
-      "presentationHash": "9d78220a",
+      "presentationHash": "53f5743b",
       "presentationProjection": {
         "centerYM": 2.7776,
-        "topHalfM": 8.6614,
-        "sideHalfM": 4.3307
+        "topHalfM": 8.6616,
+        "sideHalfM": 4.3308
       },
       "appearance": {
         "version": 1,
@@ -106089,15 +106089,15 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 29204,
-          "sha256": "d1fc36feb2d65245d9c4b5e9f6e6cc731cab2803c1ad7b81562c6553015beda5",
+          "bytes": 29326,
+          "sha256": "7146bc042fe726215b860578682885f4ab7edd65fc1f31e501250ce692cb228d",
           "thumbnail": {
             "file": "thumbs/challenger3_angle.webp",
             "width": 256,
             "height": 256,
             "mime": "image/webp",
-            "bytes": 11690,
-            "sha256": "0918382a4a03995a9459b525cc529b231e2038b6a3ad2b236538332f0c4444e4"
+            "bytes": 11772,
+            "sha256": "ec029269d1995ec47daa228d6e67df6a6facd92c0d67e84aba0601d3488321ed"
           }
         },
         "top": {
@@ -106105,56 +106105,56 @@
           "width": 512,
           "height": 512,
           "mime": "image/webp",
-          "bytes": 12076,
-          "sha256": "1e664ab54f6741091959346932d69d2c9134c3acaa87dc8980cb5750eabb8081"
+          "bytes": 12034,
+          "sha256": "32e60e2f0889824cbdb28fc7b33a9c10c9d89012a6fda37b8dd5d7cc7739e848"
         },
         "side": {
           "file": "challenger3_side.webp",
           "width": 512,
           "height": 256,
           "mime": "image/webp",
-          "bytes": 8810,
-          "sha256": "e22609063908f622fe5b435a8041bb661cfa656b4260900291899cebdebb5a95"
+          "bytes": 8902,
+          "sha256": "171e0c8d5466d130741a09628a2b52f6a814a0acb2e1c365fce00ad8e69577b1"
         },
         "topSilhouette": {
           "file": "challenger3_top_silhouette.png",
           "width": 128,
           "height": 128,
           "mime": "image/png",
-          "bytes": 1385,
-          "sha256": "00b2cdc1f11dcf9340dbacdfac35f4625a475e50b40844c99683f514cdb53ee2"
+          "bytes": 1384,
+          "sha256": "f96fa026a054bc1f45a9c319aeb853100d18e98735f221f8b61c0634e236e0e5"
         },
         "sideSilhouette": {
           "file": "challenger3_side_silhouette.png",
           "width": 256,
           "height": 128,
           "mime": "image/png",
-          "bytes": 3901,
-          "sha256": "0df09ed3cfd95ef504d58967a548a3334e7127816fcc68974d3f25708eafffb3"
+          "bytes": 3946,
+          "sha256": "8b9e54ad3de593aa04d4ef109ce1341ada66d6229fc94cef473a17b9daa9d9ea"
         },
         "armorSide": {
           "file": "challenger3_armor_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 81823,
-          "sha256": "a0367951e59df7e422a735a216e3ef2308489841edb07cee9d928979cea8aa68"
+          "bytes": 81538,
+          "sha256": "8c813646c3126e1e204737c9775f2d84dc192005bc2926d1858bea0077648d9c"
         },
         "modulesSide": {
           "file": "challenger3_modules_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 83684,
-          "sha256": "95fe1baef5ac35b6ffb911e9e839f0717ae3771dc14937ffa8b0c5f8a6f3b921"
+          "bytes": 83436,
+          "sha256": "8cbcc4be2068ffc26d9462dfe39f48c918d0c63d4bc5d70f47ace5a6819d85d7"
         },
         "crewSide": {
           "file": "challenger3_crew_side.png",
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 72663,
-          "sha256": "f4fe3237de35de09c4fa20be74b040ec38dacdaa30482e4a5d86443a87e8217b"
+          "bytes": 72700,
+          "sha256": "565269477d35036323a89abd3dde5beaa4d311bb79a5918530d6239e2b208d17"
         },
         "markings": {
           "file": "challenger3_markings.png",
