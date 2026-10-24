@@ -50,6 +50,7 @@ import {
 } from './materials.ts';
 import { programVariantOrigin } from '../engine/programVariants.ts';
 import { TURRET_SWEEP_BIN_M, TURRET_SWEEP_FLOOR_M } from './turretSeatRace.ts';
+import { coplanarDepthUnits } from './coplanarDepth.ts';
 
 const TURRET_RING_WELL_ASSET_ID = 'urn:claude-of-tanks:vehicle-helper:turret-ring-well';
 /** The plate's object name (the census and the bake find it by it). */
@@ -2049,7 +2050,21 @@ function releaseTurretRingWellMaterial(material: THREE.Material, engineCtx: Ring
   material.dispose();
 }
 
-/** The plate mesh: seated on the ring (hull frame), the vehicle's ground reference and its top coplanar layer per draw. */
+/**
+ * (246) The plate's coplanar depth: one unit in front of the vehicle's deepest (tankFactoryCore
+ * installCoplanarDepthLayers' coplanarDepthTop, bounded by contact since 243's marking flicker: 9-23 units where the
+ * old ladder's rank count ran 52-173), with the most exact ties any record carries, which climb with a tight near
+ * plane as theirs do (coplanarDepth.ts coplanarDepthUnits). Read once, as the plate is made. A root the layers never
+ * reached (a fixture, a bake) falls back to its layer count, or none.
+ */
+function plateCoplanarDepth(root: THREE.Object3D): { depth: number; ties: number } {
+  const top = Number(root.userData.coplanarDepthTop ?? root.userData.coplanarDepthLayerCount) || 0;
+  let ties = 0;
+  root.traverse((object) => { ties = Math.max(ties, Number(object.userData.coplanarDepthTies) || 0); });
+  return { depth: top + 1, ties };
+}
+
+/** The plate mesh: seated on the ring (hull frame), the vehicle's ground reference and in front of its coplanar layers per draw. */
 function turretRingPlateMesh(
   seat: TurretRingSeat,
   material: THREE.MeshStandardMaterial,
@@ -2068,12 +2083,14 @@ function turretRingPlateMesh(
   mesh.userData.turretRingPlate = true;
   mesh.userData.turretRingSeat = seat;
   mesh.userData.provenance = { ...FIRST_PARTY_VEHICLE_AUTHORSHIP, assetId: TURRET_RING_WELL_ASSET_ID };
-  mesh.onBeforeRender = function turretRingPlateBefore(_renderer, _scene, _camera, _geometry, drawn) {
+  const coplanar = plateCoplanarDepth(root);
+  mesh.onBeforeRender = function turretRingPlateBefore(_renderer, _scene, camera, _geometry, drawn) {
     setVehicleGroundFromRoot(root);
     if (drawn !== material) return;
     material.polygonOffset = true;
     material.polygonOffsetFactor = 0;
-    material.polygonOffsetUnits = -((Number(root.userData.coplanarDepthLayerCount) || 0) + 1);
+    material.polygonOffsetUnits = -coplanarDepthUnits(coplanar.depth, coplanar.ties,
+      (camera as THREE.PerspectiveCamera | null)?.near ?? 0);
   };
   mesh.onAfterRender = function turretRingPlateAfter() { resetVehicleGround(); };
   return mesh;

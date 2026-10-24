@@ -41,8 +41,18 @@
     },
     {
       "path": "home-studio-mobile.mp4",
-      "bytes": 509302,
+      "bytes": 496305,
       "source": "/media/site50-r14/home/features/studio.mp4"
+    },
+    {
+      "path": "s226-church-duel-mobile.mp4",
+      "bytes": 697405,
+      "source": "/media/site50-r14/loops/s226-church-duel.webm"
+    },
+    {
+      "path": "s227-oasis-duel-mobile.mp4",
+      "bytes": 947944,
+      "source": "/media/site50-r14/loops/s227-oasis-duel.webm"
     }
   ]
 }

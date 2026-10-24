@@ -85,7 +85,7 @@ body[data-cot-panels='persistent'] .cot-garage .cot-battle-menu.open{top:0;right
 @media (hover:hover){.cot-garage .cot-deploy-rows .cot-battle-choice:hover{background-color:var(--surface-hover);}}
 .cot-garage .cot-deploy-rows .cot-battle-choice::after{display:none;}
 /* a wide screen sets the other modes as picture tiles, the cards' grammar at a smaller size: five to a row, Proving Ground
-   the tenth (its glyph on the plate, no still yet); a folded layout keeps the rows above, whose pictures never load */
+   the tenth (its range); a folded layout keeps the rows above, whose pictures never load */
 .cot-garage .cot-deploy-tile-art{display:none;}
 body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows{grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;}
 body[data-cot-panels='persistent'] .cot-garage .cot-deploy-rows .cot-battle-choice{position:relative;display:block;

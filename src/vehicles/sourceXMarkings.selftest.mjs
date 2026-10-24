@@ -3,44 +3,21 @@ import * as THREE from 'three';
 import { createTank } from './tankFactory.ts';
 import { SOURCE_X_IDS } from './sourceXFleetSpecs.ts';
 import { SURFACE_MARKING_STYLE } from './vehicleMarkings.ts';
+import { renderedMarkingFootprints } from './markingFootprints.test-support.mjs';
 
-function markingVertices(mesh) {
-  const p=mesh.geometry.attributes.position,index=mesh.geometry.index,nodes=new Map();
-  for(let offset=0;offset<(index?.count??p.count);offset+=3) {
-    const triangle=[0,1,2].map(j=>new THREE.Vector3()
-      .fromBufferAttribute(p,index?index.getX(offset+j):offset+j).applyMatrix4(mesh.matrixWorld));
-    const normal=new THREE.Triangle(...triangle).getNormal(new THREE.Vector3());
-    const keys=triangle.map(point=>point.toArray().map(v=>v.toFixed(8)).join(','));
-    for(let j=0;j<3;j++) {
-      if(!nodes.has(keys[j]))nodes.set(keys[j],{point:triangle[j],normal,neighbors:new Set()});
-      for(const key of keys)nodes.get(keys[j]).neighbors.add(key);
-    }
-  }
-  return nodes;
-}
-
+// 2026-10-23 (lane 243): markings are films cut to the armour under their seats (markingFilm.ts), so a footprint is no
+// longer a quad's four corners. Each draw records its seats' footprints (low detail's batch included);
+// renderedMarkingFootprints holds the rendered paint to them: every painted triangle inside one, each mostly painted.
+// (the thirteen source-X seats carry paint over 81-100 % of their footprints: plate edges and hatch rims cut the rest)
+const MIN_PAINT_COVERAGE = .75;
 function actualMarkingFootprints(marks) {
-  // Geometry-receipt low detail merges equal-material decals. Recover the two
-  // actual connected quad buffers; do not infer two missing high-detail nodes
-  // or substitute pristine proxy meshes for the rendered low-detail geometry.
   const footprints=[];
   for(const mesh of marks) {
-    const nodes=markingVertices(mesh),pending=new Set(nodes.keys());
-    while(pending.size) {
-      const seed=pending.values().next().value,stack=[seed],points=[];
-      while(stack.length) {
-        const key=stack.pop();
-        if(!pending.delete(key))continue;
-        const vertex=nodes.get(key);points.push(vertex.point);
-        stack.push(...vertex.neighbors);
-      }
-      assert.equal(points.length,4,'each real connected marking is a complete four-corner plane');
-      const center=points.reduce((sum,point)=>sum.add(point),new THREE.Vector3()).multiplyScalar(.25);
-      const adjacent=points.slice(1).sort((a,b)=>a.distanceToSquared(points[0])-b.distanceToSquared(points[0]));
-      const u=adjacent[0].clone().sub(points[0]),v=adjacent[1].clone().sub(points[0]);
+    for(const footprint of renderedMarkingFootprints(mesh,{minCoverage:MIN_PAINT_COVERAGE})) {
+      const {center,u,v,normal}=footprint;
       assert.ok(Math.abs(u.dot(v))<1e-7,'actual marking footprint retains perpendicular sides');
       assert.ok(u.length()>=.219&&v.length()>=.219,'native low-detail batch retains the full source-sized markings');
-      footprints.push({name:`${mesh.name}/${footprints.length}`,center,u,v,normal:nodes.get(seed).normal});
+      footprints.push({name:`${mesh.name}/${footprints.length}`,center,u,v,normal});
     }
   }
   return footprints;
