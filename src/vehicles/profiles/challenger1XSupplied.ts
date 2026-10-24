@@ -18,5 +18,17 @@ export function buildChallenger1Supplied(P: TankBuilderPort): void {
   addChallenger1SuppliedGear(P);
   addChallenger1SuppliedTurret(P);
   addChallenger1SuppliedGun(P);
-  addModernFieldCage(P);
+  // Release 240 (the owner: "make sure all tank turrets are clear of hulls"): the bustle cage's low rail at .225 in the
+  // turret frame (1.761 m), its lowest bar 1.742, so the cage clears the 1.73 engine deck behind the fighting compartment
+  // as the turret turns; at the default it hung to 1.641 and swept 9 cm through the deck and its grilles.
+  addModernFieldCage(P, { lowRail: .225 });
+  // The ring receipt reads the deck at its well's floor (1.268), so its swept deck cannot seat the turret. The deck round
+  // the ring is 1.622, and the turret's lower body (1.57) stood 5 cm into it; its seat (turretSeatRace.ts) takes that
+  // deck's plane with its 3 cm seam as a floor (the engine roof steps up past the turret's sweep: the hull).
+  P.turretG.userData.turretSeatMinY = 1.652;
+  // Its measured rim reads the interior fills (.8237 with one set, .8657 with the next), so the chain never settles; the
+  // seat keeps a fixed radius, the hull opening's (.8237) with its 2 cm clearance, so the turret's lower collar over the
+  // deck's edge (1.57, out to .88) comes up too.
+  P.turretG.userData.turretSeatKeepR = .8437;
+
 }

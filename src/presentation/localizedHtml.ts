@@ -289,6 +289,24 @@ function localizeChapter(html: string, locale: SupportedLocale): string {
   });
 }
 
+/**
+ * A localized document's own links stay in its locale: every public route a body anchor names takes the locale's prefix
+ * (hrefForLocale; assets, anchors and other sites are left as they are), and a language link, which names its own
+ * locale with hreflang, keeps its href. publicNav.ts still rewrites a link on click, but crawlers, link prefetch and
+ * readers without scripts now follow the Chinese routes from a Chinese page.
+ */
+function localizeLinks(html: string, locale: SupportedLocale): string {
+  const bodyAt = html.search(/<body\b/i);
+  if (bodyAt < 0) return html;
+  return html.slice(0, bodyAt) + html.slice(bodyAt).replace(/<(script|style|template)\b[\s\S]*?<\/\1>|<a\b[^>]*>/gi, (tag) => {
+    if (!/^<a\b/i.test(tag) || /\shreflang=/i.test(tag)) return tag;
+    const href = attributeValue(tag, 'href');
+    if (!href || !href.startsWith('/') || href.startsWith('//')) return tag;
+    const localized = hrefForLocale(href, locale);
+    return localized === href ? tag : setTagAttribute(tag, 'href', localized);
+  });
+}
+
 export function localizeHtmlDocument(
   html: string,
   route: PublicRouteRecord,
@@ -324,6 +342,7 @@ export function localizeHtmlDocument(
   output = addLocaleCatalogPreload(output, locale);
   if (locale !== DEFAULT_LOCALE) output = localizeBodyHtml(output, locale);
   if (locale !== DEFAULT_LOCALE) output = localizeChapter(output, locale);
+  if (locale !== DEFAULT_LOCALE) output = localizeLinks(output, locale);
   // Chinese documents carry the zh-CN label floor (the type rules) right after their type head; English ones never do.
   if (locale === 'zh-CN') output = addZhTypeFloor(output, route);
   return localizeStructuredData(output, route, locale);

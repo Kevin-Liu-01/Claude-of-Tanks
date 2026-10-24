@@ -8,10 +8,11 @@ import { uiIconIds, uiIconSVG } from './uiIcons.ts';
 const originalLocale = getLocale();
 setLocale('en-US');
 
+// (247) the first-battle strip: driving, the gun, the right button's role (by the setting), the sight and the menu; the
+// tray's tiles carry the shell and consumable caps, so the strip names none of them
 const holdGroups = battleControlHintGroups('hold');
-assert.deepEqual(holdGroups.find(([label]) => label === 'Gun Hold'),
-  ['Gun Hold', ['freeLook']],
-  'compact controls reference includes the dedicated remappable gun-hold action');
+assert.deepEqual(holdGroups.map(([, actionIds]) => actionIds[0]), ['forward', 'fire', 'freeCamera', 'sniperToggle', 'settingsMenu'],
+  'the strip keeps the first battle\'s essentials');
 assert.deepEqual(holdGroups.find(([, actionIds]) => actionIds[0] === 'freeCamera'),
   ['Aim', ['freeCamera']],
   'default RMB role stays distinct from dedicated gun hold');
@@ -20,6 +21,8 @@ const classicGroups = battleControlHintGroups('freelook');
 assert.deepEqual(classicGroups.find(([, actionIds]) => actionIds[0] === 'freeCamera'),
   ['Gun Hold', ['freeCamera']],
   'controls reference follows the selected RMB behavior');
+assert.ok(!holdGroups.some(([, actionIds]) => actionIds.some((id) => /^(shell|consumable)\d$/.test(id))),
+  'the strip leaves the tray\'s keys to the tray');
 
 const iconIds = new Set(uiIconIds());
 for (const action of ['smoke', 'lights', 'roofGun', 'drone', 'aerialVision']) assert.ok(SETTINGS_ACTION_ICONS[action]);
@@ -53,14 +56,20 @@ const armorSvg = uiIconSVG(SETTINGS_OPTION_ICONS.armorAimOverlay.id, 16);
 assert.match(armorSvg, /href="#i-armorFlashlight"/, 'the armour overlay draws its own glyph');
 assert.doesNotMatch(armorSvg, /#[0-9a-f]{6}/i, 'the armour overlay glyph carries no baked colour');
 
-// (watch-mode-243 follow-up) the resume veil speaks to the layout under it: a touch layout, a battle's or a watched
-// one's, has no click and no Esc, so it taps
+// (watch-mode-243 follow-up; 247) the pause veil is one plate: its title, Resume, and Settings with the menu's current
+// key, whose cap the touch layout hides (a touch layout taps); no line of instructions, so no em dash
 {
   const source = readFileSync(new URL('./settings.ts', import.meta.url), 'utf8');
-  assert.match(source, /resumeSub\.innerHTML = t\(input\.isTouchLayout\?\.\(\) \? 'settings\.pauseSubTouch' : 'settings\.pauseSub'\);/,
-    'the veil picks its line by the layout when it shows');
-  assert.doesNotMatch(t('settings.pauseSubTouch'), /click|esc/i, 'the touch line names no click and no Esc');
-  assert.match(t('settings.pauseSub'), /Esc/, 'the mouse line keeps its Esc');
+  assert.match(source, /resumeSettingsKey\.textContent = bindLabel\('settingsMenu'\);/,
+    'the veil\'s Settings names the menu\'s bound key when it shows');
+  assert.match(source, /cot-c-btn--primary rz-go">\$\{t\('settings\.pauseResume'\)\}/, 'Resume is the veil\'s one primary');
+  assert.doesNotMatch(source, /settings\.pauseSub/, 'the veil carries no instruction line');
+  assert.equal(t('settings.pauseResume'), 'Resume');
+  // the first battles show the strip at the rollout, and only on a keyboard and mouse
+  assert.match(source, /bus\.on\('battle:rollout', \(\) => \{ if \(!open && takeFirstBattleHint\(\)\) showHints\(\); \}\);/,
+    'the rollout shows the first battles\' strip');
+  assert.match(source, /if \(input\.isTouchLayout\?\.\(\) \|\| input\.isPadConnected\(\)\) return false;/,
+    'a touch layout and a pad show no keyboard caps');
 }
 
 console.log('settingsControls.selftest: controls references and exhaustive setting icons passed');

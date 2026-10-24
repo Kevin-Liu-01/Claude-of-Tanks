@@ -87,7 +87,12 @@ try {
           assert.equal(await page.locator('.cot-record-overview [data-stat-icon] svg').count(), 10);
           assert.equal(await page.locator('.cot-record-ring').count(), 0);
           assert.equal(await page.locator('.cot-modal__eyebrow').isVisible(), false);
-          assert.equal(await page.locator('.cot-modal__title').evaluate(el => getComputedStyle(el).color), 'rgb(240, 172, 76)');
+          // the title is the accent token's colour (247: the record's colours are all tokens)
+          assert.equal(await page.locator('.cot-modal__title').evaluate(el => {
+            const probe = document.createElement('i'); probe.style.color = 'var(--accent)'; el.append(probe);
+            const accent = getComputedStyle(probe).color; probe.remove(); return getComputedStyle(el).color === accent;
+          }), true);
+          assert.equal(await page.locator('.cot-record-plate-host img.cot-record-vehicle').count(), state === 'earned' ? 1 : 0, 'the header plate shows the last battle\'s tank');
         }
         if (state === 'earned') await page.screenshot({ path: resolve(out, `${name}-${tab}.png`) });
         receipts.push({ name, state, tab, violations });

@@ -30,7 +30,7 @@ const STUDIO_KEYS = new Set([
   'studioPanel.fx.ambienceOn', 'studioPanel.fx.ambienceOff',
   'studioPanel.fx.smokeScreen', 'studioPanel.fx.flare', 'studioPanel.fx.embers', 'studioPanel.fx.fireField',
   'studioPanel.fx.shockwave', 'studioPanel.fx.debris', 'studioPanel.fx.explHuge',
-  'studioPanel.section.picture', 'studioPanel.section.pictureSub', 'studioPanel.info.section.picture',
+  'studioPanel.section.picture', 'studioPanel.section.pictureSub',
   'studioPanel.fxGroup.cinematic', 'studioPanel.fxParams.title',
   // the Studio's extra times of day (the battle picker offers day, sunset and night)
   'atmosphere.dawn', 'atmosphere.morning', 'atmosphere.golden', 'atmosphere.dusk',

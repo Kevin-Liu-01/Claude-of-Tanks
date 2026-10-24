@@ -38,8 +38,8 @@ for (const reel of BATTLE_REELS) {
   }
 }
 
-const library = /<div class="battle-reels"[\s\S]*?<\/div>\s*<h3[^>]*data-i18n="docs\.studio\.contactTitle"[^>]*>Contact-sheet review<\/h3>/.exec(docs)?.[0];
-assert.ok(library, 'Docs Studio chapter must contain the take library before the review process');
+const library = /<div class="battle-reels"[\s\S]*?<\/noscript>/.exec(docs)?.[0];
+assert.ok(library, 'the manual index carries the take library');
 assert.equal((library.match(/<video\b/g) || []).length, 1, 'Docs must load takes through one shared player');
 assert.ok(library.includes(`src="${BATTLE_REELS[0].video}"`), 'the player opens on the first take');
 assert.match(home, new RegExp(`href="/docs#battle-reels"[^>]*>[\\s\\S]*?Watch ${picks.docs.reels.length} battle takes`));

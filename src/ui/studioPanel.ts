@@ -29,34 +29,13 @@ import { SCENE_LINK_GLYPHS, browserSceneLinkEnv, copySceneLink } from './studioS
 import { FILM_RESOLUTIONS, createFilmPlan, filmOutputSize, normalizeFilm } from '../game/studioFilmPlan.ts';
 import './studioPanel.css';
 
-const STUDIO_GUIDES = {
-  battlefield: 'environment', map: 'environment', tanks: 'actors', addTanks: 'actors',
-  selectedTank: 'actors', effects: 'effects', layersEvents: 'effects', cinematics: 'timeline',
-  storyboard: 'timeline', camera: 'camera', picture: 'camera', output: 'output', productionArchive: 'recipe',
-} as const;
-
-const STUDIO_GROUP_INFO_KEYS = Object.freeze({
-  battlefield: 'studioPanel.info.group.battlefield',
-  tanks: 'studioPanel.info.group.tanks',
-  effects: 'studioPanel.info.group.effects',
-  cinematics: 'studioPanel.info.group.cinematics',
-  output: 'studioPanel.info.group.output',
-} as const);
-
-const STUDIO_SECTION_INFO_KEYS = Object.freeze({
-  map: 'studioPanel.info.section.map',
-  addTanks: 'studioPanel.info.section.addTanks',
-  selectedTank: 'studioPanel.info.section.selectedTank',
-  layersEvents: 'studioPanel.info.section.layersEvents',
-  storyboard: 'studioPanel.info.section.storyboard',
-  camera: 'studioPanel.info.section.camera',
-  picture: 'studioPanel.info.section.picture',
-  output: 'studioPanel.info.section.output',
-  productionArchive: 'studioPanel.info.section.productionArchive',
-} as const);
-
-type StudioGroupInfoId = keyof typeof STUDIO_GROUP_INFO_KEYS;
-type StudioSectionInfoId = keyof typeof STUDIO_SECTION_INFO_KEYS;
+/** The Studio's workspaces: the outliner's groups (the inspector shows one at a time). */
+type StudioGroupId = 'battlefield' | 'tanks' | 'effects' | 'cinematics' | 'output';
+/**
+ * The inspector's sections. Only the scene file's head carries a panel of its own, the scene's complete JSON; the
+ * help-only panels left in the 247 sweep (less is more), as the Gallery's did in its Premiere port.
+ */
+type StudioSectionId = 'map' | 'selectedTank' | 'addTanks' | 'layersEvents' | 'storyboard' | 'camera' | 'picture' | 'output';
 
 type StudioActorState = string;
 
@@ -347,6 +326,12 @@ interface StudioPanelRuntime {
   hide(): void;
   setBusy(text: string | null): void;
   /**
+   * The battlefield's build in the viewport (shell-first, 247): the Studio's own panels stay up and wait (inert) while
+   * the viewport shows the map's picture, its name and the build's progress; null hands the viewport to the scene.
+   */
+  setStage(stage: { readonly mapId: string; readonly name: string } | null): void;
+  setStageProgress(fraction: number, label: string): void;
+  /**
    * A scene-link notice: the sentence, and an optional technical detail on its own line. Information fades after a few
    * seconds; an error stays until dismissed or replaced, and announces assertively.
    */
@@ -443,6 +428,24 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
   const timeline = el('section', 'st-tl');
   timeline.setAttribute('aria-label', t('studio.ws.timelineAria'));
   app.append(head, out, vp, dock, shelf, timeline);
+  // the battlefield's build (setStage): the map's picture under its name, the stage and one bar, over the viewport cell
+  const stagePlate = el('div', 'st-load');
+  stagePlate.hidden = true;
+  const stageArt = el('img', 'st-load__art');
+  stageArt.alt = '';
+  stageArt.decoding = 'async';
+  stageArt.width = 1280;
+  stageArt.height = 720;
+  const stageName = el('h2', 'st-load__name');
+  const stageLabel = el('p', 'st-load__label');
+  stageLabel.setAttribute('role', 'status');
+  const stageBar = el('div', 'st-load__bar');
+  const stageFill = el('i');
+  stageBar.append(stageFill);
+  const stageCopy = el('div', 'st-load__copy');
+  stageCopy.append(stageName, stageLabel, stageBar);
+  stagePlate.append(stageArt, stageCopy);
+  vp.append(stagePlate);
   // keep the canvas's drag-look and fly keys from firing while a panel is in use (the viewport passes them through); the
   // Studio's own shortcuts (J/K/L, undo and redo, the palette, F8) still reach it from a focused button, and the runtime
   // ignores them while a field is being typed in
@@ -1954,14 +1957,6 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
       outlineHeads.set(id, button);
       const row = outlineGroups.get(id)?.querySelector('.gh');
       row?.prepend(button);
-      // the workspace's help, beside its head (the groups' own heads are the outliner's)
-      if (id in STUDIO_GROUP_INFO_KEYS) {
-        const infoId = id as StudioGroupInfoId;
-        const title = label;
-        row?.appendChild(createInfoButton({
-          label: t('studioPanel.info.about', { title }), title, text: t(STUDIO_GROUP_INFO_KEYS[infoId]), guide: STUDIO_GUIDES[infoId],
-        }));
-      }
     },
     takes: shelf,
     toggle: headRight,
@@ -2303,29 +2298,29 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     row.appendChild(pickButton);
     return { row, pick: pickButton };
   }
-  function sectionHead(title: string, glyph: IconId, infoId?: StudioSectionInfoId): HTMLDivElement {
+  function sectionHead(title: string, glyph: IconId, id?: StudioSectionId): HTMLDivElement {
     const h = el('div', 'sh');
     h.innerHTML = uiIconSVG(glyph, 16);
     h.append(title);
-    const helpKey = infoId ? STUDIO_SECTION_INFO_KEYS[infoId] : null;
-    if (infoId && helpKey) h.appendChild(createInfoButton({
+    // the scene file's own panel: the complete JSON that __STUDIO.load() takes
+    if (id === 'output') h.appendChild(createInfoButton({
       label: t('studioPanel.info.about', { title }),
       title,
-      text: t(helpKey),
-      json: infoId === 'output' ? () => S.state() : null,
-      guide: STUDIO_GUIDES[infoId],
+      text: t('studioPanel.info.section.output'),
+      json: () => S.state(),
+      guide: 'output',
     }));
     return h;
   }
-  function section(infoId: StudioSectionInfoId, title: string, glyph: IconId): HTMLDivElement {
+  function section(id: StudioSectionId, title: string, glyph: IconId): HTMLDivElement {
     const s = el('div', 'sec');
-    s.appendChild(sectionHead(title, glyph, infoId));
+    s.appendChild(sectionHead(title, glyph, id));
     return s;
   }
   /** One workspace's controls in the inspector; the production panel shows one group at a time. */
-  function panelGroup(index: string, infoId: StudioGroupInfoId, title: string): PanelGroup {
+  function panelGroup(index: string, id: StudioGroupId, title: string): PanelGroup {
     const groupRoot = el('section', 'pgroup');
-    groupRoot.dataset.group = infoId;
+    groupRoot.dataset.group = id;
     groupRoot.dataset.index = index;
     groupRoot.setAttribute('aria-label', title);
     return { root: groupRoot, body: groupRoot };
@@ -2698,6 +2693,24 @@ export function createStudioPanel(S: StudioPanelApi): StudioPanelRuntime {
     setBusy(text) {
       busy.style.display = text ? 'block' : 'none';
       if (text) busy.textContent = text;
+    },
+    setStage(stage) {
+      app.inert = !!stage;
+      app.toggleAttribute('aria-busy', !!stage);
+      if (!stage) {
+        stagePlate.hidden = true;
+        return;
+      }
+      const src = `/maps/cards/${stage.mapId}.webp`;
+      if (stageArt.getAttribute('src') !== src) stageArt.src = src;
+      stageName.textContent = stage.name;
+      stageLabel.textContent = '';
+      stageFill.style.transform = 'scaleX(0)';
+      stagePlate.hidden = false;
+    },
+    setStageProgress(fraction, label) {
+      stageFill.style.transform = `scaleX(${Math.max(0, Math.min(1, fraction)).toFixed(3)})`;
+      if (label) stageLabel.textContent = label;
     },
     notice(text, tone = 'info', detail = '') {
       hideNotice();

@@ -1,5 +1,5 @@
 // Field Manual search (bui01/src/pages/08-docs .side .search). Copyright © 2026 Kevin B. Liu.
-// topics.ts loads this module with the field's first focus or ⌘K, and it loads the reader's locale's index
+// topics.ts loads this module with the field's first focus or Cmd K, and it loads the reader's locale's index
 // (src/docs/searchIndex.<locale>.json: every chapter's title and lede and every section's heading and text, written by
 // tools/docs-prerender.mjs), matched in the browser: search costs nothing at first paint. While a query is typed its hits
 // take the shelf's place in the side column.
@@ -82,7 +82,8 @@ export function snippetOf(text: string, query: string, room = 64): string {
 }
 
 export async function mountDocsSearch(root: HTMLElement, input: HTMLInputElement): Promise<void> {
-  const side = root.querySelector<HTMLElement>('.dm-side');
+  // a chapter's shelf, or the index's own search host (site/docs.html [data-docs-search])
+  const side = root.querySelector<HTMLElement>('.dm-side') ?? (root.matches('[data-docs-search]') ? root : null);
   const status = root.querySelector<HTMLElement>('.dm-search__status');
   const list = root.querySelector<HTMLElement>('.dm-search__hits');
   if (!side || !status || !list) return;

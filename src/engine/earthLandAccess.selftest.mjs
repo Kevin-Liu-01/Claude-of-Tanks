@@ -78,6 +78,8 @@ function moonBuild(earthLand) {
     worldBuildConfig: () => moon, getDeviceTier: () => 'desktop', preloadPropModels: () => Promise.resolve(),
     skyDrawsEarth, loadEarthLand: () => { events.push('earth-load'); return earthLand; },
     prepareSourcedTerrain: () => ({}), startPlannedWreckBakes: () => null, startSurfacePaints: () => null, plannedSurfacePaints: () => [],
+    // (perf-242's lazy kit registries: a map's own kits load beside its terrain, worldKits.ts) none to load here
+    loadMapKits: () => Promise.resolve(),
     selectHinterland: () => false, startHinterlandBuild: () => null, supplyHinterland: () => {}, withdrawHinterland: () => {},
     startHorizonRingBuild: () => ({ stats: {}, dispose() {} }), supplyHorizonRing: () => {}, withdrawHorizonRing: () => {},
     finishHorizonRingAsync: async () => {},

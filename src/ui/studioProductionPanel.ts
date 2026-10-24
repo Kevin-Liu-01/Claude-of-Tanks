@@ -35,7 +35,7 @@ const FLEET_RESULTS = 6;
 
 /** The Director's words: the catalogs' studio.director.ui.* (the Studio's demand-loaded slice). */
 type CopyKey = 'director' | 'scene' | 'actors' | 'effects' | 'timeline' | 'output' | 'library' | 'stage' | 'staging' |
-  'ready' | 'format' | 'landscape' | 'portrait' | 'square' | 'card' | 'subject' | 'defaultTank' | 'shotlist' | 'empty' |
+  'ready' | 'format' | 'landscape' | 'portrait' | 'square' | 'card' | 'subject' | 'defaultTank' | 'shotlist' |
   'camera' | 'hero' | 'track' | 'rear' | 'overhead' | 'detail' | 'lens' | 'wide' | 'natural' | 'tight' | 'guides' |
   'play' | 'pause' | 'restart' | 'scrub' | 'export' | 'photo' | 'video' | 'stop' | 'saved' | 'unsupported' |
   'workspace' | 'hide' | 'show' | 'takes' | 'takesLoading' | 'takesUnavailable' | 'takeLoading' | 'takeLoaded';
@@ -150,8 +150,13 @@ export function mountStudioProductionPanel(
     const card = button('', () => selectPreset(preset.id), 'production-card');
     card.dataset.productionPreset = preset.id;
     card.title = presetText(preset.id, 'description', preset.description);
+    // the sequence's own frame, rendered by the engine (public/media/studio-r1, its manifest); its battlefield's card if
+    // a still is missing. Sized, so the library never shifts as the pictures arrive.
     const photo = node('img');
-    photo.src = `/maps/cards/${preset.map}.webp`;
+    photo.src = `/media/studio-r1/sequence-${preset.id}-640.webp`;
+    photo.width = 640;
+    photo.height = 400;
+    photo.addEventListener('error', () => { photo.src = `/maps/cards/${preset.map}.webp`; }, { once: true });
     photo.alt = '';
     photo.loading = 'lazy';
     photo.decoding = 'async';
@@ -464,7 +469,6 @@ export function mountStudioProductionPanel(
     const signature = JSON.stringify(storyboard.shots.map((shot) => [shot.id, shot.label, shot.tMs]));
     if (signature !== shotSignature) {
       shotSignature = signature; shots.replaceChildren();
-      if (!storyboard.shots.length) shots.append(node('p', '', productionLabel('empty')));
       shotRuns(storyboard.shots, S.durationMs).forEach((run, index) => {
         const shot = run.first;
         const entry = button('', () => { S.pause(); S.seek(shot.tMs); S.selectCameraShot(shot.id); refreshAll(); }, 'production-shot');

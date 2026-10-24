@@ -43,7 +43,6 @@ assert.equal(Object.keys(PRODUCT_STAT_TOKENS).length, Object.keys(PRODUCT_STATS)
 
 const htmlTemplates = [
   'index.html', 'site/home.html', 'site/gallery.html', 'site/docs.html',
-  'site/docs-vehicles.html', 'site/docs-worlds.html',
 ];
 for (const file of htmlTemplates) {
   const source = readFileSync(join(ROOT, file), 'utf8');

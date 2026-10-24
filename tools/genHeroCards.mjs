@@ -101,7 +101,8 @@ try {
           headless: 'new',
           timeout: 180_000,
           protocolTimeout: 15 * 60 * 1000,
-          args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage'],
+          // a 3 GB V8 heap per renderer (the capture-browser rule, 2026-10-23: a jetsam report showed a 14 GB renderer)
+          args: ['--use-gl=angle', '--enable-webgl', '--no-sandbox', '--disable-dev-shm-usage', '--js-flags=--max-old-space-size=3072'],
         });
         const page = await browser.newPage();
         page.on('pageerror', (error) => pageErrors.push(String(error)));

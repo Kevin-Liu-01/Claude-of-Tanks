@@ -1,0 +1,133 @@
+{
+ "libraryId": "claude-of-tanks-settings-r1",
+ "schemaVersion": 1,
+ "author": "Kevin B. Liu",
+ "copyright": "Copyright © 2026 Kevin B. Liu",
+ "license": "LicenseRef-Claude-of-Tanks-Proprietary-Content-1.0",
+ "description": "The Settings screen's graphics-quality previews: one Verdant frame per preset, the engine's own render at 1280x720 with the preset switched live (the Settings picker's call), shown as a 640x360 cut at 1:1 pixels round a tank, its grass and the trees behind it, where the presets differ: grass density, contact shadows, edge aliasing, shading. Scaled whole to 640 the four read the same.",
+ "generatedBy": "tools/marketing-shots/quality-previews-243.mjs (capture) + shots/media-r5/landing-r6/site-all/publish-stills.py",
+ "capture": {
+  "map": "verdant",
+  "tank": "leo2a7v",
+  "viewport": [
+   1280,
+   720
+  ],
+  "deviceScaleFactor": 1,
+  "cut": [
+   620,
+   300,
+   640,
+   360
+  ]
+ },
+ "count": 4,
+ "items": [
+  {
+   "id": "quality-low",
+   "preset": "low",
+   "label": "Low",
+   "file": "quality-low-640.webp",
+   "src": "/media/settings-r1/quality-low-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 78844,
+   "sha256": "b4efda0c694cbcf25d18dcaceeb86b6a324c8ed3ac462654248a0fdd04d9c3f5",
+   "settings": {
+    "msaaSamples": 0,
+    "tallGrass": 0.25,
+    "maxPixelRatio": 1,
+    "aoScale": 0,
+    "bloomScale": 0.5,
+    "shadowMapSizes": [
+     2048,
+     2048,
+     1024,
+     1024
+    ],
+    "shadowMaxFar": 380
+   }
+  },
+  {
+   "id": "quality-medium",
+   "preset": "medium",
+   "label": "Medium",
+   "file": "quality-medium-640.webp",
+   "src": "/media/settings-r1/quality-medium-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 79516,
+   "sha256": "c508c34fec0711da5a8a98197260a63d09a0fb9e9991384858337613ed2a9d19",
+   "settings": {
+    "msaaSamples": 0,
+    "tallGrass": 0.5,
+    "maxPixelRatio": 1,
+    "aoScale": 0,
+    "bloomScale": 0.5,
+    "shadowMapSizes": [
+     2048,
+     2048,
+     1024,
+     1024
+    ],
+    "shadowMaxFar": 520,
+    "contactShadows": true,
+    "sunShafts": true
+   }
+  },
+  {
+   "id": "quality-high",
+   "preset": "high",
+   "label": "High",
+   "file": "quality-high-640.webp",
+   "src": "/media/settings-r1/quality-high-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 82962,
+   "sha256": "f0f6ba346744ba02e59e8c35d9cebf0ced66acdbf19ee28d6f243c5c9e56dbe9",
+   "settings": {
+    "msaaSamples": 0,
+    "tallGrass": 1,
+    "maxPixelRatio": 1.5,
+    "aoScale": 0,
+    "bloomScale": 0.6,
+    "shadowMapSizes": [
+     2048,
+     2048,
+     4096,
+     1024
+    ],
+    "shadowMaxFar": 700,
+    "contactShadows": true,
+    "sunShafts": true
+   }
+  },
+  {
+   "id": "quality-ultra",
+   "preset": "ultra",
+   "label": "Ultra",
+   "file": "quality-ultra-640.webp",
+   "src": "/media/settings-r1/quality-ultra-640.webp",
+   "width": 640,
+   "height": 360,
+   "bytes": 76886,
+   "sha256": "4afded8dc07cf250aa7b9113f95b77d7b8e239c430a858414e8ff6caaccc1fb1",
+   "settings": {
+    "msaaSamples": 4,
+    "tallGrass": 1,
+    "maxPixelRatio": 2,
+    "aoScale": 0,
+    "bloomScale": 1,
+    "shadowMapSizes": [
+     4096,
+     4096,
+     4096,
+     2048
+    ],
+    "shadowMaxFar": 700,
+    "contactShadows": true,
+    "sunShafts": true
+   }
+  }
+ ]
+}
