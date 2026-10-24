@@ -2164421,53 +2164421,53 @@
         "crew": [
           {
             "volumeId": "C01",
-            "name": "driver",
+            "name": "gunner",
             "min": [
-              -0.6783,
-              0.8,
-              0.9184
+              -1.0899,
+              0.8642,
+              0.7325
             ],
             "max": [
-              -0.2189,
-              1.26,
-              2.778
+              -0.6305,
+              1.2642,
+              2.5922
             ],
             "turretLocal": false
           },
           {
             "volumeId": "C02",
-            "name": "gunner",
+            "name": "driver",
             "min": [
-              0.4228,
-              0.0874,
-              -0.706
+              -0.6283,
+              0.808,
+              0.9684
             ],
             "max": [
-              0.8822,
-              0.8074,
-              -0.0609
+              -0.1689,
+              1.258,
+              2.828
             ],
-            "turretLocal": true
+            "turretLocal": false
           },
           {
             "volumeId": "C03",
             "name": "commander",
             "min": [
-              0.4603,
-              0.0874,
-              -0.6818
+              0.7805,
+              0.8497,
+              0.9325
             ],
             "max": [
-              0.9197,
-              0.8074,
-              -0.0366
+              1.2399,
+              1.2597,
+              2.7922
             ],
-            "turretLocal": true
+            "turretLocal": false
           }
         ]
       },
       "geometryHash": "20b95e35",
-      "metadataHash": "e2f67dae",
+      "metadataHash": "720fb908",
       "presentationAnchor": {
         "xM": 0.0002,
         "zM": -0.0049
@@ -2164539,8 +2164539,8 @@
           "width": 512,
           "height": 256,
           "mime": "image/png",
-          "bytes": 94755,
-          "sha256": "fad3cc6d868640a76d2dba5f4dadf0b19c24de8687d3b98ffd58b150c6c51088"
+          "bytes": 94338,
+          "sha256": "d7cc5c1d75b0aac77fce115a6664fa6abbfd897592f0c3f5848f7fd44dec6b58"
         },
         "angle": {
           "file": "ztz100_angle.webp",
