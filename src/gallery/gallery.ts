@@ -1257,6 +1257,10 @@ async function loadTank(
   const spec = getSpec(id) as GalleryVehicleSpec;
   const built = await buildGalleryTank(id, () => version === loadVersion);
   if (!built) return;
+  // Its programs link before it shows (KHR_parallel_shader_compile where the GPU has it): the first frame with a new
+  // tank used to compile them inside the render loop (click-perf-244: ~300 ms per row press on desktop).
+  await renderer.compileAsync(built.root, camera, scene).catch(() => { /* the first frame compiles what is left */ });
+  if (version !== loadVersion) { built.dispose(); return; }
   disposeTank();
   visual = built;
   visual.centerOnPresentationPoint?.(0, 0);
