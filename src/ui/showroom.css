@@ -164,17 +164,22 @@ body[data-cot-panels='persistent'] .cot-battle-mode .sum-mode{font-weight:600;wh
 body[data-cot-panels='persistent'] .cot-battle-mode .sum-map{opacity:.72;}
 body[data-cot-panels='persistent'] .cot-multiplayer-entry{display:none;}
 
-/* ---- the stage's numbered hotspots (the direction's 05-garage .hs): an accent numeral on the tank, its values on a
-   plate reading outward from the stage's centre; garageHotspots.ts writes each one's place per rendered frame ---- */
+/* ---- the stage's numbered hotspots (the direction's 05-garage .hs): an accent dot on the part, a hairline to its plate
+   (the numeral, the part's glyph and its values) standing off the tank; garageHotspots.ts writes each place per frame ---- */
 .cot-hotspots{position:absolute;inset:0;pointer-events:none;overflow:hidden;}
 .cot-hotspots[hidden]{display:none;}
-.cot-hotspot{position:absolute;left:0;top:0;display:flex;align-items:center;gap:8px;margin:-12px 0 0 -12px;will-change:transform;}
-.cot-hotspot[hidden]{display:none;}
-.cot-hotspot.l{flex-direction:row-reverse;margin-left:auto;translate:calc(-100% + 24px) 0;}
+.cot-hotspot-dot{position:absolute;left:0;top:0;width:7px;height:7px;margin:-3.5px 0 0 -3.5px;border-radius:50%;
+  background:var(--accent);outline:1.5px solid var(--glyph-plate);will-change:transform;}
+.cot-hotspot-lead{position:absolute;left:0;top:0;width:1px;height:1px;margin-top:-.5px;transform-origin:0 50%;
+  background:var(--line-control);will-change:transform;}
+.cot-hotspot{position:absolute;left:0;top:0;display:flex;align-items:center;gap:8px;margin:-15px 0 0 -12px;will-change:transform;}
+.cot-hotspot[hidden],.cot-hotspot-dot[hidden],.cot-hotspot-lead[hidden]{display:none;}
+.cot-hotspot.l{flex-direction:row-reverse;translate:calc(-100% + 24px) 0;}
 .cot-hotspot .n{display:grid;place-items:center;width:24px;height:24px;flex:none;border-radius:50%;background:var(--accent);
   box-shadow:var(--ring-3);color:var(--ink-on-accent);font:700 var(--fs-12)/1 var(--font-display);}
 .cot-hotspot .v{display:flex;align-items:center;gap:8px;height:30px;padding:0 10px;border-radius:var(--control-radius);
   background:var(--glyph-plate);box-shadow:var(--ring-2);white-space:nowrap;}
+.cot-hotspot .v svg{flex:none;color:var(--ink-3);}
 .cot-hotspot .v b{font:600 var(--fs-13)/1 var(--font-display);color:var(--ink-1);}
 .cot-hotspot .v small{font:500 var(--fs-12)/1 var(--font-data);color:var(--ink-2);}
 /* the roster's count, at the rail's end */

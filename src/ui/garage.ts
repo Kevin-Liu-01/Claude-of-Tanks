@@ -64,7 +64,7 @@ import { readFavouriteTanks, writeFavouriteTanks } from '../game/favouriteTanks.
 import type { DeployDifficulty, DeployScreen } from './deployScreen.ts';
 import type { PhotoStill } from './photoMode.ts';
 import { minimapAssetUrl } from './minimapAssetUrl.ts';
-import type { GarageHotspots, HotspotFacts } from './garageHotspots.ts';
+import type { GarageHotspots, HotspotFacts, HotspotRoom } from './garageHotspots.ts';
 import type { Object3D, PerspectiveCamera } from 'three';
 import { mountGitHubStars } from './githubStars.ts';
 import {
@@ -2977,15 +2977,18 @@ export function createGarage(opts: GarageOptions): GarageRuntime {
   });
   const lowerThird = requiredElement<HTMLElement>(root, '.cot-lower-third');
   // the stage's numbered hotspots (the direction's 05-garage page): the selected tank's gun, turret, powerpack and
-  // running gear, each with its real values, on the tank itself. The module loads off the entry once the Garage is
-  // playable and idle; the latest facts wait for it.
+  // running gear, each with its real values, a dot on its part and a plate off the tank. The module loads off the entry
+  // once the Garage is playable and idle; the latest facts wait for it.
   let hotspots: GarageHotspots | null = null;
+  // where the plates may stand: the stage the tank is framed in, less the name block and the featured take standing in it
+  const hotspotRoom: HotspotRoom = { stage: () => api.getStageRect(), avoid: () => [...lowerThird.children, root.querySelector('.cot-featured')] };
   let hotspotFacts: HotspotFacts | null = null;
   const setHotspotFacts = (facts: HotspotFacts | null): void => { hotspotFacts = facts; hotspots?.setFacts(facts); };
   const loadHotspots = (): void => {
     if (window.__GAME_READY !== true) { setTimeout(loadHotspots, 300); return; }
     const load = () => void import('./garageHotspots.ts').then(({ createGarageHotspots }) => {
-      hotspots = createGarageHotspots(root);
+      // over the Garage's edge bands (which dim the scene), under every panel
+      hotspots = createGarageHotspots(root, hotspotRoom, root.querySelector('.band-r')?.nextElementSibling ?? null);
       hotspots.setFacts(hotspotFacts);
     }, () => undefined);
     if (typeof requestIdleCallback === 'function') requestIdleCallback(load, { timeout: 2500 }); else setTimeout(load, 900);
