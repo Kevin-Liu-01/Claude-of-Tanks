@@ -8,7 +8,6 @@
 .cot-modal-root.cot-service-record .cot-modal::before{display:none}
 .cot-modal-root.cot-service-record .cot-modal__body{display:flex;flex:1;flex-direction:column;padding:0;overflow:hidden}
 .cot-modal-root.cot-service-record .cot-modal__footer{display:none}
-.cot-modal-root.cot-service-record .cot-modal__eyebrow{display:none}
 .cot-modal-root.cot-service-record .cot-modal__title{color:var(--accent)}
 .cot-modal-root.cot-service-record .cot-modal__close{grid-area:close;align-self:start;justify-self:end;min-width:44px;min-height:44px}
 .cot-service-record :is(button,summary,[tabindex]):focus-visible{outline:2px solid var(--accent);outline-offset:2px}
