@@ -27,14 +27,14 @@
     },
     "urban": {
       "bytes": 3514862,
-      "sha256": "4e1c2892aa6ccd093a286d196f78e6f9298a25a0344c74e766d8f8987bb8c2c4",
+      "sha256": "703901ecf63fbc221d10263ea078fe327f063cbc6765b8f5ae69f38d1e8bc5b7",
       "obstacles": 2988,
       "colliders": 8124,
       "concealers": 2491
     },
     "coastal": {
-      "bytes": 1837302,
-      "sha256": "f3e0bd629c885e24b3ebe114d2b08b0234a0c1e26c6efb50a95113e06cdd61a4",
+      "bytes": 1837334,
+      "sha256": "3b8addd1da12fa20471f8ea2d8fc77eab4ca931aa5e0db2ac704df86ab101af6",
       "obstacles": 4141,
       "colliders": 4690,
       "concealers": 3675
@@ -61,8 +61,8 @@
       "concealers": 1904
     },
     "frontier": {
-      "bytes": 2218684,
-      "sha256": "17f8d2e2e208caad987cda2dd0636497202b3d07f75574df00f48d2c1ceaa3e2",
+      "bytes": 2218681,
+      "sha256": "982f6ec3b2629f9c79e50d96d288f54380217a39b3fda28a084229470fae5469",
       "obstacles": 8357,
       "colliders": 9047,
       "concealers": 8325
@@ -103,8 +103,8 @@
       "concealers": 1139
     },
     "caldera": {
-      "bytes": 1585134,
-      "sha256": "dd89874039729577949f710491cd3c3a7ff9454270832aedb6b56a6d29e354c1",
+      "bytes": 1585140,
+      "sha256": "47b9a934bb3efbd6f3c37e758f9afbc3944c3b968f9050a7ef95a94604faa35b",
       "obstacles": 2654,
       "colliders": 2817,
       "concealers": 1035
