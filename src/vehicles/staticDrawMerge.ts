@@ -68,6 +68,24 @@ interface StaticMergeOptions {
   readonly detail: ReadonlySet<THREE.Object3D>;
   /** Receives every finished merge so owners can move their references. */
   onMerge(sources: readonly VehicleMesh[], merged: VehicleMesh): void;
+  /**
+   * (perf-250, the far merge) Leave every run's meshes where they are and build its translated merge beside them,
+   * hidden, as a far copy (FarMergeRun): the vehicle draws its parts where the camera is near and the copy where it is
+   * far (tankFactoryCore's syncFromState). Only runs with a translated part become copies; a part in a detail wrapper, a
+   * battle detail group, a turret squash frame or the near-hull shadow cascade never joins one (their visibility and
+   * frame are another owner's).
+   */
+  readonly dual?: boolean;
+}
+
+/** A far copy of a run (StaticMergeOptions.dual): the merged draw, hidden, and the parts it stands for. */
+export interface FarMergeRun {
+  readonly copy: VehicleMesh;
+  readonly sources: readonly VehicleMesh[];
+  /** The run's top layer (the copy's place in the far layer order). */
+  readonly layer: number;
+  /** The parts are distance-detail objects (StaticMergeOptions.detail): the copy follows their policy too. */
+  readonly detail: boolean;
 }
 
 interface StaticMergeResult {
@@ -75,6 +93,8 @@ interface StaticMergeResult {
   sourceMeshes: number;
   merges: number;
   savedDraws: number;
+  /** The far copies (StaticMergeOptions.dual); empty otherwise. */
+  duals: FarMergeRun[];
 }
 
 const IDENTITY = new THREE.Matrix4();
@@ -179,6 +199,8 @@ function candidateFor(record: CoplanarLayerRecord, options: StaticMergeOptions):
   const identity = matrix.equals(IDENTITY);
   const section = !identity && !owner.wrapper && isTurretSectionFrame(owner.owner, matrix);
   if (!identity && !section && !(options.bakeTranslations && isPureTranslation(matrix))) return null;
+  if (options.dual && (owner.wrapper || section || options.nearShadow.has(mesh)
+    || owner.owner.userData?.battleDetailGroup)) return null;
   const key = [
     owner.owner.uuid, owner.signature, material.uuid, layout,
     mesh.castShadow ? 1 : 0, mesh.receiveShadow ? 1 : 0, mesh.renderOrder, mesh.layers.mask,
@@ -311,9 +333,24 @@ export function mergeContiguousStaticRuns(
 ): StaticMergeResult {
   const ordered = [...records].sort((a, b) => a.layer - b.layer);
   const output: CoplanarLayerRecord[] = [];
+  const duals: FarMergeRun[] = [];
   let sourceMeshes = 0, merges = 0;
   let run: Candidate[] = [];
   const mergeChunk = (chunk: Candidate[]): void => {
+    if (options.dual) {
+      // a far copy: the parts stay as they are (their records unchanged); a run with no translated part is the identity
+      // merge's already
+      for (const candidate of chunk) output.push(candidate.record);
+      if (chunk.length < 2 || chunk.every((candidate) => candidate.matrix.equals(IDENTITY))) return;
+      const copy = mergeRun(chunk, duals.length, disposables, options);
+      if (!copy) return;
+      copy.name = `staticMergeFar_${duals.length}`;
+      copy.visible = false;
+      chunk[0].owner.owner.add(copy);
+      duals.push({ copy, sources: chunk.map(({ record }) => record.object), layer: chunk[chunk.length - 1].record.layer,
+        detail: options.detail.has(chunk[0].record.object) });
+      return;
+    }
     const mesh = chunk.length > 1 ? mergeRun(chunk, merges, disposables, options) : null;
     if (!mesh) {
       for (const candidate of chunk) output.push(candidate.record);
@@ -358,5 +395,5 @@ export function mergeContiguousStaticRuns(
   }
   flush();
   output.sort((a, b) => a.layer - b.layer);
-  return { records: output, sourceMeshes, merges, savedDraws: sourceMeshes - merges };
+  return { records: output, sourceMeshes, merges, savedDraws: sourceMeshes - merges, duals };
 }

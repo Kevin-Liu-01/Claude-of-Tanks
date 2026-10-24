@@ -21,7 +21,7 @@ import * as THREE from 'three';
 import { installCarvedMuzzleBore, verifyCarvedMuzzleBore } from './carvedMuzzleBore.ts';
 import { vehicleProvenance } from '../authorship.ts';
 import { isBattleShareableMesh, shareBattleGeometry } from './battleGeometrySharing.ts';
-import { mergeContiguousStaticRuns, type CoplanarLayerRecord } from './staticDrawMerge.ts';
+import { mergeContiguousStaticRuns, type CoplanarLayerRecord, type FarMergeRun } from './staticDrawMerge.ts';
 import { assignCoplanarDepth, coplanarDepthUnits, markingDepthRecords } from './coplanarDepth.ts';
 import { releaseStaticMergeParts } from './staticMergeParts.ts';
 import { combatVisibleObjects, retainCombatLods } from './combatVisibility.ts';
@@ -1202,7 +1202,7 @@ export interface TankFactoryOptions {
    * also bakes pure translations (more draws saved, but float rounding of the baked
    * positions moved up to 1,615 px in the P21 captures); 'off' keeps the separate
    * draws (A/B receipts and probes). */
-  staticDrawMerge?: 'off' | 'identity' | 'translations';
+  staticDrawMerge?: 'off' | 'identity' | 'translations' | 'dual';
   /** Build the deferred assembly (TankBuilderPort.afterAssemble: a suit or field net) inside the core, where it ran
    * before 2026-10-16, instead of in its own slices after the core checkpoint. Only the parity receipts pass it
    * (tools/deferred-assembly-parity.mjs, tankFactoryDeferredAssembly.selftest.mjs): both builds must be identical.
@@ -1779,13 +1779,19 @@ function collectCoplanarDepthLayers(root: THREE.Object3D): CoplanarLayerRecord[]
   return records.map(({ object, materials }, index) => ({ object, materials, layer: index + 1 }));
 }
 
-export function installCoplanarDepthLayers(root: THREE.Object3D, records: readonly CoplanarLayerRecord[]): void {
+export function installCoplanarDepthLayers(
+  root: THREE.Object3D, records: readonly CoplanarLayerRecord[],
+  /** (perf-250) the 'dual' merge's far layer order: an object in it draws with its far offset while `mode.far` holds, and
+   * a far copy (in it alone) always does; the root's record of the layers is the near order's, the identity build's. */
+  dual?: { readonly far: readonly CoplanarLayerRecord[]; readonly mode: { readonly far: boolean } },
+): void {
   let top = 0;
-  for (const { object, materials, layer, depth = layer, ties = 0 } of records) {
-    object.userData.coplanarDepthLayer = layer;
-    object.userData.coplanarDepthOffset = depth;
-    object.userData.coplanarDepthTies = ties;
-    top = Math.max(top, depth);
+  const farOf = new Map<THREE.Object3D, CoplanarLayerRecord>();
+  if (dual) for (const record of dual.far) farOf.set(record.object, record);
+  const install = (object: VehicleMesh, materials: THREE.Material[], depth: number, ties: number,
+    far: CoplanarLayerRecord | null): void => {
+    const farDepth = far ? far.depth ?? far.layer : depth, farTies = far ? far.ties ?? 0 : ties;
+    const mode = far ? dual!.mode : null;
     const previous = object.onBeforeRender;
     object.onBeforeRender = function applyCoplanarDepthLayer(
       renderer: THREE.WebGLRenderer,
@@ -1799,15 +1805,38 @@ export function installCoplanarDepthLayers(root: THREE.Object3D, records: readon
       if (!materials.includes(renderedMaterial) || renderedMaterial.depthTest === false) return;
       renderedMaterial.polygonOffset = true;
       renderedMaterial.polygonOffsetFactor = 0;
+      const useFar = mode !== null && mode.far;
       // exact ties climb more under a deeper near plane (the Gallery's tight one): coplanarDepth.ts coplanarDepthUnits
-      renderedMaterial.polygonOffsetUnits = -coplanarDepthUnits(depth, ties,
+      renderedMaterial.polygonOffsetUnits = -coplanarDepthUnits(useFar ? farDepth : depth, useFar ? farTies : ties,
         (camera as THREE.PerspectiveCamera | null)?.near ?? 0);
     };
+  };
+  for (const { object, materials, layer, depth = layer, ties = 0 } of records) {
+    object.userData.coplanarDepthLayer = layer;
+    object.userData.coplanarDepthOffset = depth;
+    object.userData.coplanarDepthTies = ties;
+    top = Math.max(top, depth);
+    install(object, materials, depth, ties, farOf.get(object) ?? null);
+    farOf.delete(object);
+  }
+  // the far copies (the far order's own records): they draw only in the far mode, with their far offsets
+  for (const record of farOf.values()) {
+    const depth = record.depth ?? record.layer, ties = record.ties ?? 0;
+    record.object.userData.coplanarDepthLayer = record.layer;
+    record.object.userData.coplanarDepthOffset = depth;
+    record.object.userData.coplanarDepthTies = ties;
+    install(record.object, record.materials, depth, ties, null);
   }
   root.userData.coplanarDepthLayerCount = records.length;
   // the deepest offset any record draws with: one unit past it is in front of every layer
   root.userData.coplanarDepthTop = top;
 }
+
+/** (perf-250) The 'dual' static merge draws a vehicle's far copies from this screen-equivalent camera distance (m) and its
+ * parts again under FAR_MERGE_RETURN_M: past ~25 m the translated merge's float rounding moves no pixel a player can see
+ * (the coordinator's ruling on the CPU render pairs), nearer the parts draw exactly as the identity build. */
+export const FAR_MERGE_ENTER_M = 30;
+export const FAR_MERGE_RETURN_M = 27;
 
 // LOD1: greeble-class objects vanish past this range; the camo hull/turret
 // shells, wheels and track band carry the silhouette. The renderer drives
@@ -7844,7 +7873,7 @@ function* prepareTankDecorationSteps(
 function defaultStaticDrawMerge(): NonNullable<TankFactoryOptions['staticDrawMerge']> {
   const requested = typeof location !== 'undefined'
     ? new URLSearchParams(location.search).get('staticmerge') : null;
-  return requested === 'off' || requested === 'translations' ? requested : 'identity';
+  return requested === 'off' || requested === 'translations' || requested === 'dual' ? requested : 'identity';
 }
 
 /**
@@ -9987,6 +10016,18 @@ export function* createTankRuntimeSteps(
   let mobileDetailObjects: StaticDetailRecord[] = [];
   let mobileDetailsVisible = true;
   let battleDetailGroups: BattleDetailGroup[] = [];
+  // (perf-250) the 'dual' static merge's far copies and the mode the depth hooks read (applyFarMerge)
+  let farMergeRuns: FarMergeRun[] = [];
+  const farMergeMode = { far: false };
+  /** Draw each copied run as its far copy or as its parts; a distance-detail run keeps that policy's visibility too. */
+  const applyFarMerge = (far: boolean): void => {
+    farMergeMode.far = far;
+    for (const run of farMergeRuns) {
+      const shown = !run.detail || mobileDetailsVisible;
+      run.copy.visible = shown && far;
+      for (const source of run.sources) source.visible = shown && !far;
+    }
+  };
   let battleDetailsAttached = true;
   function setBattleDetailsAttached(attached: boolean): void {
     if (!battleDetailGroups.length || attached === battleDetailsAttached) return;
@@ -10484,6 +10525,7 @@ export function* createTankRuntimeSteps(
             || (battleDetailsAttached ? viewDistM < 122 : viewDistM < 96);
           setBattleDetailsAttached(shouldAttach);
         }
+        let detailChanged = false;
         if (mobileDetailObjects.length) {
           // Hysteresis prevents tiny cosmetics from toggling when a vehicle
           // hovers around the handoff. Callers without a battle-camera distance
@@ -10492,10 +10534,19 @@ export function* createTankRuntimeSteps(
             || (mobileDetailsVisible ? viewDistM < 66 : viewDistM < 52);
           if (shouldShow !== mobileDetailsVisible) {
             mobileDetailsVisible = shouldShow;
+            detailChanged = true;
             for (const record of mobileDetailObjects) {
               record.object.visible = record.baseVisible && shouldShow;
             }
           }
+        }
+        if (farMergeRuns.length) {
+          // (perf-250) the far copies past FAR_MERGE_ENTER_M of screen-equivalent distance; the parts themselves, the
+          // identity build to the byte, nearer, in every inspection context (no distance: the killcam, the Garage, the
+          // Studio) and on a wreck
+          const far = viewDistM !== undefined && !destroyed
+            && (farMergeMode.far ? viewDistM >= FAR_MERGE_RETURN_M : viewDistM >= FAR_MERGE_ENTER_M);
+          if (far !== farMergeMode.far || detailChanged) applyFarMerge(far);
         }
         root.position.copy(renderState.pos);
       };
@@ -11164,6 +11215,8 @@ export function* createTankRuntimeSteps(
           mesh.visible = wasVisible !== false;
         }
         for (const d of decalMeshes) d.visible = true;
+        // (perf-250) the captured visibility may be the far copies' from before the wreck: the mode as it stands now
+        if (farMergeRuns.length) applyFarMerge(farMergeMode.far);
         // restore the CAPTURED pre-wreck seat, never spec.armor.turretPivot —
         // the spec pivot is only where the procedural turret sits; a GLB
         // swap seats turretG on the model's real ring (t90am restaged 1.21 m
@@ -11230,6 +11283,8 @@ export function* createTankRuntimeSteps(
           record.object.visible = record.baseVisible;
         }
       }
+      // (perf-250) the parts, never the far copies, in the Garage
+      if (farMergeRuns.length) applyFarMerge(false);
     },
 
     setVisible(v) { root.visible = v; },
@@ -11450,32 +11505,39 @@ export function* createTankRuntimeSteps(
     // P21 (staticDrawMerge.ts): fold contiguous same-material runs of the final
     // layer order into one draw per articulation owner, then move every
     // per-mesh reference a runtime owner holds onto the merged draw.
-    const mergeBattleStaticRuns = (
-      records: CoplanarLayerRecord[], bakeTranslations: boolean,
-    ): CoplanarLayerRecord[] => {
+    const staticMergeOptions = (bakeTranslations: boolean, dual: boolean,
+      onMerge: (sources: readonly VehicleMesh[], merged: VehicleMesh) => void) => {
       const pinnedPositions = new Set<THREE.BufferAttribute | THREE.InterleavedBufferAttribute>();
       for (const cluster of destructibleClusters.values()) {
         for (const range of cluster.ranges) pinnedPositions.add(range.position);
         for (const drape of cluster.drapes ?? []) pinnedPositions.add(drape.position);
       }
       const shadowDetail = vehicleShadowDetailOf(root);
-      const replaced = new Map<THREE.Object3D, VehicleMesh>();
-      const result = mergeContiguousStaticRuns(records, disposables, {
+      return {
         bakeTranslations,
-        isPinned: (mesh) => equipmentDamage.ownsGeometry(mesh.geometry)
+        dual,
+        isPinned: (mesh: VehicleMesh) => equipmentDamage.ownsGeometry(mesh.geometry)
           || weaponDamage.ownsGeometry(mesh.geometry)
           || pinnedPositions.has(mesh.geometry.getAttribute('position'))
           || decalMeshes.includes(mesh),
         isShareable: isBattleShareableMesh,
         staticGearName: BATTLE_STATIC_BATCH_NAME,
-        nearShadow: new Set(shadowDetail?.detail ?? []),
-        detail: new Set(mobileDetailObjects.map((record) => record.object)),
-        onMerge: (sources, merged) => {
+        nearShadow: new Set<THREE.Object3D>(shadowDetail?.detail ?? []),
+        detail: new Set<THREE.Object3D>(mobileDetailObjects.map((record) => record.object)),
+        onMerge,
+      };
+    };
+    const mergeBattleStaticRuns = (
+      records: CoplanarLayerRecord[], bakeTranslations: boolean,
+    ): CoplanarLayerRecord[] => {
+      const shadowDetail = vehicleShadowDetailOf(root);
+      const replaced = new Map<THREE.Object3D, VehicleMesh>();
+      const result = mergeContiguousStaticRuns(records, disposables, staticMergeOptions(bakeTranslations, false,
+        (sources, merged) => {
           transferVehicleNightLenses(sources, merged);
           transferSmokeSockets(sources, merged);
           for (const source of sources) replaced.set(source, merged);
-        },
-      });
+        }));
       if (result.merges) {
         const swap = <T extends { object: THREE.Object3D }>(entries: readonly T[], make: (entry: T, object: VehicleMesh) => T): T[] => {
           const seen = new Set<THREE.Object3D>();
@@ -11516,10 +11578,29 @@ export function* createTankRuntimeSteps(
     if (batchStatic && staticDrawMerge !== 'off') {
       depthLayers = mergeBattleStaticRuns(depthLayers, staticDrawMerge === 'translations');
     }
+    // (perf-250) the 'dual' merge: the identity build exactly, plus each translated run's merged copy beside it, hidden;
+    // the far layer order is the identity records with every copied run's parts replaced by its copy
+    let farLayers: CoplanarLayerRecord[] | null = null;
+    if (batchStatic && staticDrawMerge === 'dual') {
+      farMergeRuns = mergeContiguousStaticRuns(depthLayers, disposables, staticMergeOptions(true, true, () => {})).duals;
+      if (farMergeRuns.length) {
+        const copied = new Set<THREE.Object3D>(farMergeRuns.flatMap((run) => run.sources));
+        farLayers = [...depthLayers.filter((record) => !copied.has(record.object)),
+          ...farMergeRuns.map((run) => ({ object: run.copy, materials: [run.copy.material as THREE.Material], layer: run.layer }))];
+      }
+      root.userData.staticMergeFarCopies = farMergeRuns.length;
+      root.userData.staticMergeFarSavedDraws = farMergeRuns.reduce((sum, run) => sum + run.sources.length - 1, 0);
+    }
     // 243: offsets bounded by contact, then the markings' draws above the armour they are painted on (coplanarDepth.ts)
     depthLayers = assignCoplanarDepth(root, depthLayers);
     depthLayers = [...depthLayers, ...markingDepthRecords(root, depthLayers, decalMeshes)];
-    installCoplanarDepthLayers(root, depthLayers);
+    if (farLayers) {
+      farLayers = assignCoplanarDepth(root, farLayers);
+      farLayers = [...farLayers, ...markingDepthRecords(root, farLayers, decalMeshes)];
+      installCoplanarDepthLayers(root, depthLayers, { far: farLayers, mode: farMergeMode });
+    } else {
+      installCoplanarDepthLayers(root, depthLayers);
+    }
     // after the static merge, so the merged draws carry it too; it wraps the layer hook, as on main
     installVehicleGroundReference(root);
     const tailFinalizeFinishedAt = performance.now();
