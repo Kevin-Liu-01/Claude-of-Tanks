@@ -18,7 +18,7 @@ import { crewArmour, crewFallbackLadders, crewPostureLadders, crewShell, shapeSu
 // there, shapes trimmed inside. The ZTZ-100's turret stands on a floor under 10 cm across (its crew ride in the hull
 // on the real vehicle: a layout question, not a seat); the two drivers miss by 0.1 %.
 const TRIMMED = Object.freeze({
-  'ztz100/gunner': 0.021, 'ztz100/commander': 0.022, 'm60a3/driver': 0.001, 't72b3m_hetman_ii/driver': 0.001,
+  'ztz100/gunner': 0.022, 'ztz100/commander': 0.021, 'm60a3/driver': 0.001, 't72b3m_hetman_ii/driver': 0.001,
 });
 
 assert.deepEqual(crewPostureLadders('leo2a6', 'leopard', 'driver', 'hull'), ['driverReclined']);
