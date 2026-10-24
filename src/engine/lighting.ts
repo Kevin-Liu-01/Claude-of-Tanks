@@ -51,6 +51,8 @@ import { SCENE_ALPHA_SNOW_WRITE_GLSL } from './sceneAlpha.ts';
 import { authoredSunOf, lightTune, resolveLightModel, type LightModel, type LightModelPreset } from './lightModelCore.ts';
 import type { AtmosphereParams } from './atmosphere.ts';
 import { bindMaterialEnvIntensity } from './materialEnvIntensity.ts';
+import { limitPointLightFalloff } from './renderer.ts';
+import { shapeLampPointLights } from './lampLightShape.ts';
 
 /** What sky.ts publishes on scene.userData.atmosphere that the grounded light model reads (sky.ts AtmospherePublishedState). */
 interface AtmosphereLightInputs {
@@ -1044,6 +1046,13 @@ export function createLighting(
   // visibility onto it, then scale the indirect terms in lights_fragment_end.
   // Applied ONCE per page load (guarded), before any lit material compiles.
   patchStableShadowSampling();
+  // (245, the lamp census: no compiled program carried the town lamps' lantern) CSM's constructor also replaced
+  // ShaderChunk.lights_pars_begin with CSMShader's copy of three's stock chunk (built when that module loaded, before
+  // createRenderer ran), dropping the point-light patches the renderer had made: the 0.25 m falloff floor (2026-10-08) and
+  // the lantern (lampLightShape.ts). Both are idempotent and anchor on lines CSM's copy keeps: laid on it here, before any
+  // lit material compiles.
+  limitPointLightFalloff();
+  shapeLampPointLights();
   // r6: reroute all shadow-map depth draws onto the working RGBA-packing
   // program (see patchShadowDepthPacking above) — restores building/prop/
   // vehicle cast shadows that the broken Basic-packing path was dropping.
