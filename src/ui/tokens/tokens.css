@@ -86,7 +86,10 @@
   --battle-plate-shadow:0 0 0 1px var(--line-1),0 6px 18px rgba(0,0,0,.35);--battle-edge-own:inset 3px 0 0 var(--accent),0 0 0 1px oklch(from var(--accent) l c h / .35),0 6px 18px rgba(0,0,0,.35);
   --battle-veil:rgba(5,6,8,.6);--battle-ring-ammo:inset 0 0 0 1px oklch(from var(--sys-ammo) l c h / .6);
   --battle-text-halo:0 1px 2px oklch(from var(--surface-scene) l c h / .9),0 0 3px oklch(from var(--surface-scene) l c h / .65);
-  --battle-mark-ring:0 0 0 2px oklch(from var(--surface-scene) l c h / .55);--battle-chip-danger:inset 3px 0 0 var(--danger),inset 0 0 0 1px oklch(from var(--danger) l c h / .35),var(--battle-plate-shadow);
+  --battle-mark-ring:0 0 0 2px oklch(from var(--surface-scene) l c h / .55);--battle-control-on:inset 0 -2px #efb84e;
+  --battle-control-slash-ring:0 0 0 1px #05080bd9;--battle-control-label-halo:0 1px 3px #000,0 0 5px #000;
+  --battle-control-tile:inset 0 1px #ffffff09,0 4px 13px #00000042;--battle-control-count-halo:0 1px 2px #000e;
+  --battle-track-control:.015em;--battle-track-status:.06em;--battle-track-count:-.01em;--battle-chip-danger:inset 3px 0 0 var(--danger),inset 0 0 0 1px oklch(from var(--danger) l c h / .35),var(--battle-plate-shadow);
   --battle-chip-warn:inset 3px 0 0 var(--warn),inset 0 0 0 1px oklch(from var(--warn) l c h / .3),var(--battle-plate-shadow);
   --battle-chip-ok:inset 3px 0 0 var(--ok),inset 0 0 0 1px oklch(from var(--ok) l c h / .3),var(--battle-plate-shadow);
   --battle-fs-11:11px;--battle-fs-12:12px;--battle-fs-13:13px;--battle-fs-14:14px;--battle-fs-15:15px;--battle-fs-18:18px;
