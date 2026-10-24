@@ -95,7 +95,7 @@
   "leo2a4_v": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"204fed05a6eb43b8","gun":"79aa584ddbacfa8f"}},
   "leo2a4m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"f528deb320b2decc","gun":"764fdbd25e1d5523"}},
   "leo2a4m_can": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"d0c6b30ed784f8cf","gun":"f596227993889870"}},
-  "leo2a5": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"b4d0924119cb3bd9","gun":"f999ced10f88ec91"}},
+  "leo2a5": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"6ccc61d5427db9a6","gun":"f999ced10f88ec91"}},
   "leo2a5m": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"38eb35bf1228818c","gun":"a8de45b826529169"}},
   "leo2a6": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"257396047ac20c2c","gun":"4631954b109e28a1"}},
   "leo2a6_ua": {"status":"closed","kind":"turret","mouths":1,"geometry":{"turret":"70a307a5da8037ec","gun":"62d58fa062fd621b"}},
