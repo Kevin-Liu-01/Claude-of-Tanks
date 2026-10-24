@@ -964,11 +964,11 @@ function boxReaches(box: THREE.Box3, cut: TurretRingCut, margin = 0): boolean {
  * planes miss) holds only the edge's two ends, so its edge stays their straight chord while the corners bow off it: a
  * crack as wide as the bow (the fleet census at three seeds: 397 of 651 wrecks over 1 mm, 7 cm 0.3 m under the vt4a1's
  * deck, 41 cm on the M60A3's). So a dented cut splits every dented mesh of the hull first (splitGeometryAtRing),
- * gathers the new corners on every face's edge that holds one within the zone, the field's (ringEdgeCorners: once the
- * far side holds that one the edge is no longer its chord, so the placed ones on it go too), and gives each to every
- * dented face with that edge, whole or split, in every mesh (assembleRingCut): on every edge both sides then hold the
- * same corners, bent by the same law at every share of the dents' ramp. An edge whose new corners all lie past the zone
- * needs no giving: placed for the dents, they land on its chord.
+ * gathers the new corners on every face's edge (ringEdgeCorners), and gives an edge that holds one within the zone
+ * (the field's) every one of them, on every dented face with that edge, whole or split, in every mesh (assembleRingCut;
+ * once the far side holds the field's corner the edge is no longer its chord, so the placed ones on it go too): on every
+ * such edge both sides then hold the same corners, bent by the same law at every share of the dents' ramp. An edge whose
+ * new corners all lie past the zone needs no giving: placed for the dents, they land on its chord.
  */
 /** An edge holding a corner this near past the zone counts as holding one within it (m), and a dented mesh's box this
  *  near it is split with the rest. */
@@ -1039,64 +1039,56 @@ interface RingEdgeCorners {
   readonly nz: number;
   readonly start: Int32Array;
   readonly xyz: Float64Array;
+  /** Per corner: 1 when it lies within the zone (the field bends it). */
+  readonly field: Uint8Array;
   readonly yLo: number;
   readonly yHi: number;
 }
 
 /**
- * The corners the split faces put on their edges (a piece's corner with exactly one weight 0: on that edge, off both its
- * ends), every one of them on an edge that holds one within the zone: the field bends that one at its own point, so the
- * face across the edge needs it, and then every other one on the edge (one past the zone, placed on the edge's chord, no
- * longer lies on the far side's edge once it bends).
+ * Every corner the split faces put on their edges (a piece's corner with exactly one weight 0: on that edge, off both
+ * its ends), each flagged when it lies within the zone (the field bends it). A face's edge takes them all when one of
+ * them is flagged (edgeCornersOf): the far side bends there, so the edge is no longer its chord, and then every corner
+ * on it, the placed ones too, must be its own (two faces on one edge decide alike; a face whose edge another face only
+ * partly shares, a source mesh's T-joint, takes the other's placed corners as well).
  */
 function ringEdgeCorners(cut: TurretRingCut, splits: readonly RingSplit[]): RingEdgeCorners | null {
   const reach = cut.r + LIVE_ZONE_M + CONFORM_MARGIN_M;
   const found: number[] = [];
+  const bent: number[] = [];
+  let any = false;
   let yLo = Infinity, yHi = -Infinity, xLo = Infinity, xHi = -Infinity, zLo = Infinity, zHi = -Infinity;
-  const near = [false, false, false];
   for (const split of splits) {
-    const { faces, pieces } = split;
-    for (let f = 0; f < faces.length; f += FACE_STRIDE) {
-      const first = faces[f + 3], count = faces[f + 4];
-      if (count <= 0) continue;
-      // which of the face's edges (edge e: off corner e + 2) hold a corner within the zone
-      near[0] = near[1] = near[2] = false;
-      for (let p = first; p < first + count; p++) {
-        const poly = pieces[p];
-        for (let o = 0; o < poly.length; o += POLY_STRIDE) {
-          const e = edgeOfCorner(poly, o);
-          if (e >= 0 && Math.hypot(poly[o] - cut.cx, poly[o + 2] - cut.cz) <= reach) near[e] = true;
-        }
-      }
-      if (!near[0] && !near[1] && !near[2]) continue;
-      for (let p = first; p < first + count; p++) {
-        const poly = pieces[p];
-        for (let o = 0; o < poly.length; o += POLY_STRIDE) {
-          const e = edgeOfCorner(poly, o);
-          if (e < 0 || !near[e]) continue;
-          const x = poly[o], y = poly[o + 1], z = poly[o + 2];
-          found.push(x, y, z);
-          yLo = Math.min(yLo, y); yHi = Math.max(yHi, y);
-          xLo = Math.min(xLo, x); xHi = Math.max(xHi, x);
-          zLo = Math.min(zLo, z); zHi = Math.max(zHi, z);
-        }
+    for (const poly of split.pieces) {
+      for (let o = 0; o < poly.length; o += POLY_STRIDE) {
+        if (edgeOfCorner(poly, o) < 0) continue;
+        const x = poly[o], y = poly[o + 1], z = poly[o + 2];
+        const field = Math.hypot(x - cut.cx, z - cut.cz) <= reach;
+        any ||= field;
+        found.push(x, y, z);
+        bent.push(field ? 1 : 0);
+        yLo = Math.min(yLo, y); yHi = Math.max(yHi, y);
+        xLo = Math.min(xLo, x); xHi = Math.max(xHi, x);
+        zLo = Math.min(zLo, z); zHi = Math.max(zHi, z);
       }
     }
   }
-  if (!found.length) return null;
+  if (!any) return null;
   const x0 = xLo - CONFORM_CELL_M, z0 = zLo - CONFORM_CELL_M;
   const nx = Math.ceil((xHi - x0) / CONFORM_CELL_M) + 1, nz = Math.ceil((zHi - z0) / CONFORM_CELL_M) + 1;
-  const cellOf = (i: number): number => Math.floor((found[i] - x0) / CONFORM_CELL_M) * nz
-    + Math.floor((found[i + 2] - z0) / CONFORM_CELL_M);
+  const cellOf = (i: number): number => Math.floor((found[i * 3] - x0) / CONFORM_CELL_M) * nz
+    + Math.floor((found[i * 3 + 2] - z0) / CONFORM_CELL_M);
+  const count = bent.length;
   const start = new Int32Array(nx * nz + 1);
-  for (let i = 0; i < found.length; i += 3) start[cellOf(i) + 1]++;
+  for (let i = 0; i < count; i++) start[cellOf(i) + 1]++;
   for (let c = 0; c < nx * nz; c++) start[c + 1] += start[c];
-  const fill = start.slice(0, nx * nz), xyz = new Float64Array(found.length);
-  for (let i = 0; i < found.length; i += 3) {
-    const at = fill[cellOf(i)]++ * 3;
-    xyz[at] = found[i]; xyz[at + 1] = found[i + 1]; xyz[at + 2] = found[i + 2];
+  const fill = start.slice(0, nx * nz), xyz = new Float64Array(count * 3), field = new Uint8Array(count);
+  for (let i = 0; i < count; i++) {
+    const at = fill[cellOf(i)]++;
+    xyz[at * 3] = found[i * 3]; xyz[at * 3 + 1] = found[i * 3 + 1]; xyz[at * 3 + 2] = found[i * 3 + 2];
+    field[at] = bent[i];
   }
-  return { x0, z0, nx, nz, start, xyz, yLo, yHi };
+  return { x0, z0, nx, nz, start, xyz, field, yLo, yHi };
 }
 
 /** The edge of its source triangle a clip corner lies on, off both its ends (edge e: corners e and e + 1, weight 0 on
@@ -1121,7 +1113,7 @@ function boxReachesCorners(box: THREE.Box3, corners: RingEdgeCorners): boolean {
  * `length[e]`. Returns whether any edge has one.
  */
 function edgeCornersOf(corners: RingEdgeCorners, t: Float64Array, along: number[][], length: Float64Array): boolean {
-  const e0 = CONFORM_ON_EDGE_M, { x0, z0, nx, nz, start, xyz } = corners;
+  const e0 = CONFORM_ON_EDGE_M, { x0, z0, nx, nz, start, xyz, field } = corners;
   let any = false;
   for (let e = 0; e < 3; e++) {
     const list = along[e];
@@ -1137,6 +1129,7 @@ function edgeCornersOf(corners: RingEdgeCorners, t: Float64Array, along: number[
     const j0 = Math.floor((Math.min(az, t[b + 2]) - e0 - z0) / CONFORM_CELL_M), j1 = Math.floor((Math.max(az, t[b + 2]) + e0 - z0) / CONFORM_CELL_M);
     if (i1 < 0 || j1 < 0 || i0 >= nx || j0 >= nz) continue;
     const ends = CONFORM_SAME_M / length[e];
+    let bends = false;
     for (let i = Math.max(0, i0); i <= Math.min(nx - 1, i1); i++) {
       for (let j = Math.max(0, j0); j <= Math.min(nz - 1, j1); j++) {
         for (let p = start[i * nz + j] * 3, end = start[i * nz + j + 1] * 3; p < end; p += 3) {
@@ -1145,10 +1138,12 @@ function edgeCornersOf(corners: RingEdgeCorners, t: Float64Array, along: number[
           if (!(s > ends && s < 1 - ends)) continue;
           if (Math.hypot(px - s * dx, py - s * dy, pz - s * dz) > e0) continue;
           list.push(s);
+          if (field[p / 3]) bends = true;
         }
       }
     }
-    if (!list.length) continue;
+    // (an edge none of whose corners the field bends stays its chord: its placed corners lie on it already)
+    if (!bends) { list.length = 0; continue; }
     // one per point (a corner both faces of an edge put there is one)
     list.sort((u, v) => u - v);
     let kept = 1;
