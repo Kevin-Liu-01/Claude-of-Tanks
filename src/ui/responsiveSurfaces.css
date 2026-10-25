@@ -230,7 +230,7 @@ body[data-cot-width='phone'] .cot-play .player{
   grid-template-columns:44px minmax(0,1fr) auto;grid-template-rows:auto auto;min-height:76px;gap:4px 8px;
 }
 body[data-cot-width='compact'] .cot-play .player .vehicle,
-body[data-cot-width='phone'] .cot-play .player .vehicle{grid-column:1/3;grid-row:2}
+body[data-cot-width='phone'] .cot-play .player .vehicle{grid-column:2;grid-row:2}
 body[data-cot-width='compact'] .cot-play .player .team,
 body[data-cot-width='phone'] .cot-play .player .team{grid-column:3;grid-row:2;text-align:right}
 body[data-cot-width='phone'] .cot-play .roomhead{align-items:flex-start;flex-direction:column}
@@ -239,8 +239,9 @@ body[data-cot-width='compact'] .cot-play .identity,
 body[data-cot-width='phone'] .cot-play .identity{display:grid;gap:var(--s2)}
 body[data-cot-width='compact'] .cot-play .room-action,
 body[data-cot-width='phone'] .cot-play .room-action{min-height:124px}
+/* a phone's roster card: the vehicle's name under the player's, on one edge (no picture) */
 body[data-cot-width='compact'] .cot-play .vehicle-icon,
-body[data-cot-width='phone'] .cot-play .vehicle-icon{width:46px;height:32px;flex-basis:46px}
+body[data-cot-width='phone'] .cot-play .vehicle-icon{display:none}
 body[data-cot-width='compact'] .cot-play .vehicle-name,
 body[data-cot-width='phone'] .cot-play .vehicle-name{font-size:max(var(--fs-floor-11),var(--fs-11))}
 body[data-cot-width='compact'] .cot-play .controls,

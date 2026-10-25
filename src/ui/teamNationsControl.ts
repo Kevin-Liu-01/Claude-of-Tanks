@@ -30,7 +30,7 @@ export function createTeamNationsControl(options: TeamNationsControlOptions): { 
   ensureStyle('cot-team-nations-style', `
 .cot-teams{display:flex;align-items:center;gap:var(--s3);flex-wrap:wrap}
 .cot-teams>b{min-width:54px;color:var(--ink-3);font:600 max(var(--fs-floor-12),var(--fs-12))/1 ${FONT_COND};letter-spacing:var(--track-label);text-transform:uppercase}
-.cot-teams .cot-c-seg__opt{padding-inline:var(--s3)}
+.cot-teams .cot-c-seg__opt{padding-inline:var(--s3);font-size:max(var(--fs-floor-12),var(--fs-12))}
 .cot-teams .cot-flag{border-radius:2px;box-shadow:0 0 0 1px var(--line-3)}
 .cot-teams .vs{color:var(--ink-3);font-size:max(var(--fs-floor-11),var(--fs-11))}
 .cot-teams .globe{display:inline-flex;width:18px;height:18px}

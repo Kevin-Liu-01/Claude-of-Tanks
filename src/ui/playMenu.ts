@@ -205,7 +205,7 @@ const CSS = `
 /* one plate, no glass (the Premiere direction): the plate laid on the opaque scene colour, so neither the Garage behind the
    panel nor the roster scrolling under its sticky head and foot shows through */
 .cot-play{--play-plate:linear-gradient(var(--surface-plate),var(--surface-plate)) var(--surface-scene)}
-.cot-play .panel{position:relative;display:flex;flex-direction:column;width:min(calc(860px * var(--cot-ui-scale, 1)),96vw);max-height:100%;overflow:auto;
+.cot-play .panel{position:relative;display:flex;flex-direction:column;width:min(calc(860px * max(1, var(--cot-ui-scale, 1))),96vw);max-height:100%;overflow:auto;
   padding:var(--s5);border-radius:var(--r2);background:var(--play-plate);box-shadow:var(--e4);
   scrollbar-width:thin;scrollbar-color:var(--line-3) transparent;color-scheme:dark;overscroll-behavior:contain}
 .cot-play .panel:focus-visible{outline:none}
@@ -222,7 +222,6 @@ const CSS = `
   letter-spacing:var(--track-title);text-transform:uppercase}
 .cot-play .lead{margin:var(--s3) 0 var(--s5);color:var(--ink-3);font-size:max(var(--fs-floor-12),var(--fs-13));line-height:1.5}
 .cot-play .lead:empty{display:none}
-.cot-play.invite-entry .panel{box-shadow:var(--e4),var(--ring-accent)}
 .cot-play.lobby-active .modes{display:none}.cot-play.lobby-active .lead{margin-bottom:var(--s2)}
 
 /* the two ways in: a private room and the local network */
@@ -238,7 +237,7 @@ const CSS = `
 .cot-play .mode:hover .mode-icon{color:var(--ink-1)}.cot-play .mode.on .mode-icon{color:var(--accent)}
 .cot-play .mode-icon svg{display:block}
 .cot-play .mode[data-mode='solo']{order:3;align-self:flex-start;min-height:44px;padding:var(--s2) 0;
-  background:none;box-shadow:none;color:var(--ink-3);font-size:max(var(--fs-floor-12),var(--fs-12))}
+  background:none;box-shadow:none;color:var(--ink-2);font-size:max(var(--fs-floor-12),var(--fs-12))}
 .cot-play.lobby-active .mode[data-mode='solo'],.cot-play:not(.multiplayer-entry) .mode[data-mode='solo']{display:none}
 
 /* labels: 12 px at the label tracking */
@@ -274,7 +273,8 @@ const CSS = `
 /* host arrangement and the opponent brain: plates */
 .cot-play :is(.arrange,.brain){margin:var(--s3) 0 var(--s1);padding:var(--s3);border-radius:var(--r1);background:var(--fill-quiet);box-shadow:var(--ring-1)}
 .cot-play .brain[hidden]{display:none}
-.cot-play .arrange-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s2)}
+.cot-play .arrange-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s3)}
+.cot-play .arrange-head b{color:var(--ink-1);font:600 max(var(--fs-floor-12),var(--fs-13))/1.2 var(--font-body);letter-spacing:normal;text-transform:none}
 .cot-play .arrange-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:var(--s2);align-items:end}
 .cot-play .arrange-fields label[hidden],.cot-play .arrange-cap[hidden],.cot-play .brain-note[hidden],.cot-play .arrange-sides[hidden],
 .cot-play .operation-picker[hidden]{display:none}
@@ -368,8 +368,10 @@ body[data-cot-width='phone'] .cot-play .arrange-fields,body[data-cot-width='comp
 .cot-play .menu-select-option-copy small,.cot-play .menu-select-trigger-copy small{color:var(--ink-3);
   font:500 max(var(--fs-floor-11),var(--fs-11))/1.2 var(--font-data)}
 /* a seat's team: alpha in the own-team blue and bravo in the enemy red, as the roster draws them */
-.cot-play .menu-select-mark{width:8px;height:22px;flex:0 0 8px;border-radius:2px;background:var(--team-neutral)}
-.cot-play .menu-select-mark.alpha{background:var(--team-own)}.cot-play .menu-select-mark.bravo{background:var(--team-enemy)}
+.cot-play :is(.menu-select-mark,.team-mark){display:inline-block;width:8px;height:8px;flex:0 0 8px;border:1.5px solid var(--team-neutral);border-radius:50%;background:none}
+.cot-play :is(.menu-select-mark,.team-mark).alpha{border:0;background:var(--team-own)}
+.cot-play :is(.menu-select-mark,.team-mark).bravo{border:0;border-radius:1px;background:var(--team-enemy);transform:rotate(45deg) scale(.85)}
+.cot-play .player .team{display:inline-flex;align-items:center;gap:var(--s2)}
 .cot-play .menu-select--map .menu-select-trigger,.cot-play .menu-select--vehicle .menu-select-trigger{min-height:44px;padding-left:var(--s1)}
 .cot-play .menu-select-thumb{position:relative;display:block;width:60px;height:34px;flex:0 0 60px;overflow:hidden;border-radius:2px;
   background:var(--surface-hover) center/cover no-repeat;box-shadow:var(--ring-1)}
@@ -423,14 +425,16 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .player.self.awaiting-ready{background:var(--accent-wash);box-shadow:var(--ring-accent)}
 /* the room's admin wears the kit tag; a seat's team is its word in the team's colour */
 .cot-play .player .host{justify-self:start}
+.cot-play .player .host.cot-c-tag{font-size:max(var(--fs-floor-11),var(--fs-11))}
 .cot-play .player .name{min-width:0;overflow-wrap:anywhere;font:600 max(var(--fs-floor-12),var(--fs-13))/1.25 var(--font-body)}
 .cot-play .player .vehicle{display:flex;align-items:center;gap:var(--s3);min-width:0;color:var(--ink-2)}
 /* a seat without a picture keeps the picture's room, so every vehicle name starts on one line */
 .cot-play .vehicle-icon{width:58px;height:42px;flex:0 0 58px;object-fit:contain}.cot-play .vehicle-icon:is(.missing,.placeholder){visibility:hidden}
-.cot-play .vehicle-name{min-width:0;overflow-wrap:anywhere;line-height:1.3}
+.cot-play .vehicle-name{min-width:0;overflow-wrap:anywhere;line-height:1.3;text-wrap:pretty}
 .cot-play .vehicle-copy{display:grid;min-width:0;gap:var(--s1)}
 .cot-play .player :is(.team,.ready,.wait){font:600 max(var(--fs-floor-11),var(--fs-11))/1 var(--font-body);letter-spacing:var(--track-label);text-transform:uppercase}
 .cot-play .player .team{color:var(--ink-3)}.cot-play .player.alpha .team{color:var(--team-own)}.cot-play .player.bravo .team{color:var(--team-enemy)}
+.cot-play .player.offline .name{color:var(--ink-3)}
 .cot-play .player .ready{color:var(--ink-1);text-align:right}.cot-play .player .wait{color:var(--ink-3);text-align:right}
 
 /* the lobby's controls stay in view at the panel's foot while a long roster scrolls under them */
@@ -442,12 +446,9 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .control-actions{display:flex;flex-wrap:wrap;align-items:end;justify-content:flex-end;gap:var(--s2)}
 .cot-play .control-actions .action{min-width:128px}
 .cot-play .control-actions .leave-room{margin-right:auto}
-@keyframes cot-ready-attention{0%,100%{box-shadow:var(--ring-accent)}48%{box-shadow:var(--ring-accent),0 0 0 4px var(--accent-wash)}}
-.cot-play .action.needs-ready{background:var(--accent-wash);box-shadow:var(--ring-accent);color:var(--ink-1);
-  animation:cot-ready-attention 1.7s var(--ease-move) infinite}
+.cot-play .action.needs-ready{background:var(--btn-primary-fill);box-shadow:var(--btn-primary-shadow);color:var(--btn-primary-ink)}
 /* Ready is a toggle: pressed, it wears the selection */
 .cot-play .action.is-ready{background:var(--accent-wash);box-shadow:var(--ring-accent);color:var(--ink-1)}
-.cot-play .action.can-start{animation:cot-ready-attention 1.35s var(--ease-move) infinite}
 /* the room's fill rule and the arrangement's owner are hover tips (renderLobbyNote); their words stay for assistive tech */
 .cot-play :is(.note,[data-arrange-note]){position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 
@@ -477,8 +478,8 @@ body.cot-touch-layout .cot-play .menu-select-option{min-height:44px}
 .cot-play .teams-host:not(:empty){margin-top:var(--s3)}
 .cot-play input::placeholder{color:var(--ink-3);opacity:1}
 /* the arrangement's pickers are the room's selects: the 44 px row and the thin chevron */
-.cot-play .cot-custom-select-trigger{min-height:44px}
-.cot-play .cot-custom-select-trigger::after{border-right-width:1.5px;border-bottom-width:1.5px;color:var(--ink-2)}
+.cot-play .cot-custom-select-trigger{position:relative;min-height:44px}
+.cot-play .cot-custom-select-trigger::after{position:absolute;right:var(--s4);top:50%;margin:0;border-right-width:1.5px;border-bottom-width:1.5px;color:var(--ink-2);transform:translateY(-68%) rotate(45deg)}
 .cot-play .room-rules .rules{grid-template-columns:repeat(2,minmax(0,1fr))}
 .cot-play .room-rules .rule{min-height:60px}
 .cot-play .room-rules .rule-copy b{white-space:normal;line-height:1.4}
@@ -493,11 +494,11 @@ body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .lobby.sh
   margin:var(--s3) calc(-1 * var(--s4)) calc(-1 * var(--s5));padding:var(--s3) var(--s4) var(--s4)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .control-options{grid-template-columns:repeat(2,minmax(0,1fr))}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .control-options .vehicle-field{grid-column:1/-1}
-body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode{min-height:64px;padding:var(--s3) 52px var(--s3) var(--s3)}
+body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode:not([data-mode='solo']){min-height:64px;padding:var(--s3) 52px var(--s3) var(--s3)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode-icon{right:var(--s2)}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .mode b{font-size:max(var(--fs-floor-12),var(--fs-13))}
 body:is([data-cot-width='compact'],[data-cot-width='phone']) .cot-play .room-action{gap:var(--s3);padding:var(--s3)}
-@media(prefers-reduced-motion:reduce){.cot-play,.cot-play .panel,.cot-play .action.needs-ready,.cot-play .action.can-start{animation:none}
+@media(prefers-reduced-motion:reduce){.cot-play,.cot-play .panel{animation:none}
   .cot-play .menu-select-trigger,.cot-play .menu-select-trigger::after,.cot-play .menu-select-option{transition:none}}
 `;
 
@@ -803,7 +804,7 @@ export function createPlayMenu({
   root.innerHTML = `<div class="panel" role="dialog" aria-modal="true" aria-labelledby="cot-play-title"><header class="play-head"><button class="close cot-c-btn cot-c-btn--36 cot-c-btn--icon cot-c-btn--ghost" type="button" aria-label="${t('playMenu.close')}">${uiIconSVG('close', 18)}</button>
     <div class="eyebrow">${t('playMenu.eyebrow')}</div><h2 id="cot-play-title">${t('playMenu.title')}</h2>
     <section class="version-refusal cot-c-notice" data-severity="warning" hidden role="alert" aria-atomic="true" tabindex="-1" aria-labelledby="cot-version-refusal-title">
-      <span class="cot-c-notice__glyph">${uiIconSVG('lampWarn', 20)}</span><span class="cot-c-notice__body"><span class="cot-c-notice__text" id="cot-version-refusal-title">${t('playMenu.versionRefusal.title')}</span><span class="cot-c-notice__detail" data-version-text></span></span>
+      <span class="cot-c-notice__glyph">${uiIconSVG('alert', 20)}</span><span class="cot-c-notice__body"><span class="cot-c-notice__text" id="cot-version-refusal-title">${t('playMenu.versionRefusal.title')}</span><span class="cot-c-notice__detail" data-version-text></span></span>
       <span class="cot-c-notice__acts"><button class="action cot-c-btn cot-c-btn--primary" data-action="refresh-page" type="button">${t('playMenu.versionRefusal.refresh')}</button></span>
     </section></header>
     <p class="lead"></p>
@@ -830,7 +831,7 @@ export function createPlayMenu({
             </div></div>
             <button class="action cot-c-btn cot-c-btn--primary" data-action="create" type="button">${t('playMenu.create.action')}</button></div></div>
         <div class="room-action"><div class="room-action-head"><b>${t('playMenu.join.title')}</b></div>
-          <div class="room-action-fields"><label>${t('playMenu.join.code')}<input class="code-input" data-field="code" maxlength="6"
+          <div class="room-action-fields"><label>${t('playMenu.join.code')}<input class="code-input" lang="en" data-field="code" maxlength="6"
             autocomplete="off" spellcheck="false" placeholder="ABC123"></label>
             <button class="action alt cot-c-btn" data-action="join" type="button">${t('playMenu.join.action')}</button></div></div>
       </div>
@@ -844,7 +845,7 @@ export function createPlayMenu({
         <button class="action alt cot-c-btn" data-room-failure="garage" data-ui-sound="back" type="button">${t('playMenu.failure.returnGarage')}</button>
       </div>
     </section><div class="lobby">
-      <div class="roomhead"><div><div class="roommeta">${t('playMenu.advanced.roomCode')}</div><div class="code"></div></div>
+      <div class="roomhead"><div><div class="roommeta">${t('playMenu.advanced.roomCode')}</div><div class="code" lang="en"></div></div>
         <button class="action alt cot-c-btn" data-action="copy" type="button">${t('playMenu.advanced.copyLink')}</button></div>
       <div class="battlefield-card"><div class="battlefield-art"></div>
         <div class="battlefield-copy">          <div class="field battlefield-picker"><span class="field-label" id="cot-room-map-label">${t('playMenu.advanced.battlefield')}</span>
@@ -1386,7 +1387,7 @@ export function createPlayMenu({
     menuTitle.textContent = connected ? lobbyTitle() : invitedHostName
       ? t('playMenu.invite.titleHost', { host: invitedHostName })
       : t('playMenu.invite.titlePrivate');
-    menuLead.textContent = connected ? '' : t('playMenu.invite.connecting', { code });
+    menuLead.textContent = '';
     const metadataUrl = new URL(window.location.href);
     metadataUrl.searchParams.set('room', code);
     metadataUrl.searchParams.set('mode', mode === 'lan' ? 'lan' : 'private');
@@ -1709,7 +1710,7 @@ export function createPlayMenu({
   function createLobbyPlayerRow(player: LobbyPlayer, playerId: string | undefined): HTMLDivElement {
     const row = document.createElement('div');
     const isMe = player.id === playerId;
-    row.className = `player ${player.team}${isMe ? ' self' : ''}${
+    row.className = `player ${player.team}${isMe ? ' self' : ''}${player.connected ? '' : ' offline'}${
       isMe && player.team !== 'spectator' && !player.ready ? ' awaiting-ready' : ''}`;
     const host = document.createElement('span');
     host.className = player.isHost ? 'host cot-c-tag' : 'host';
@@ -1719,12 +1720,19 @@ export function createPlayMenu({
     playerName.textContent = player.name;
     const team = document.createElement('span');
     team.className = 'team';
-    team.textContent = lobbyTeamLabel(player.team);
+    if (player.team !== 'spectator') {
+      const mark = document.createElement('i');
+      mark.className = `team-mark ${player.team}`;
+      team.append(mark);
+    }
+    team.append(lobbyTeamLabel(player.team));
     const ready = document.createElement('span');
-    ready.className = player.ready || player.team === 'spectator' ? 'ready' : 'wait';
-    ready.textContent = player.team === 'spectator'
-      ? t('playMenu.lobby.watching')
-      : t(player.ready ? 'playMenu.lobby.ready' : 'playMenu.lobby.notReady');
+    ready.className = player.connected && (player.ready || player.team === 'spectator') ? 'ready' : 'wait';
+    ready.textContent = !player.connected
+      ? t('playMenu.lobby.offline')
+      : player.team === 'spectator'
+        ? t('playMenu.lobby.watching')
+        : t(player.ready ? 'playMenu.lobby.ready' : 'playMenu.lobby.notReady');
     row.append(host, playerName, createLobbyVehicle(player), team, ready);
     return row;
   }
